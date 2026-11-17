@@ -1,8 +1,8 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 
 import { Glyph } from '../components/Glyph.tsx';
-import { MakeLiveDialog } from '../components/MakeLiveDialog.tsx';
-import { AskAlert } from '../components/SettingsParts.tsx';
+import { HostOneField } from '../components/HostOneField.tsx';
+import { Ask, AskAlert } from '../components/SettingsParts.tsx';
 import type { SampleEvent } from './events.ts';
 import { type Offer, type Phase, LW, costOf, hostTyped, lw } from './makeLive.ts';
 import './messagesWaits.css';
@@ -34,6 +34,7 @@ export function MakeLiveAsk({
   onSent,
   onChangeDates,
 }: MakeLiveProps) {
+  const id = useId();
   const field = useRef<HTMLInputElement>(null);
   const timer = useRef<number | undefined>(undefined);
   const [phase, setPhase] = useState<Phase>(first);
@@ -102,26 +103,16 @@ export function MakeLiveAsk({
   const confirms = phase.at !== 'cannot' && told !== 'changed';
 
   return (
-    <MakeLiveDialog
+    <Ask
       title={title}
       line={line}
       told={told != null}
-      turned={turned}
-      host={
-        asksHost && asking
-          ? {
-              label: LW.host,
-              value: typed,
-              wrong: blank ? LW.hostEmpty : null,
-              help: LW.hostExplainer,
-              onType: (value) => {
-                setTyped(value);
-                setBlank(false);
-              },
-            }
-          : undefined
-      }
-      field={field}
+      red={false}
+      titleFirst={turned}
+      flat={!turned}
+      first={asksHost && asking ? field : undefined}
+      keepFirst
+      describedBy={asksHost && asking ? `${id}-help` : undefined}
       failed={failed ? (asking ? LW.failed : LW.notSent) : undefined}
       keep={closes ? LW.close : LW.notYet}
       go={confirms ? verb : undefined}
@@ -151,6 +142,24 @@ export function MakeLiveAsk({
             </div>
           )
         ))}
-    </MakeLiveDialog>
+      {asksHost && asking && (
+        <HostOneField
+          id={id}
+          host={{
+            label: LW.host,
+            value: typed,
+            wrong: blank ? LW.hostEmpty : null,
+            help: LW.hostExplainer,
+            onType: (value) => {
+              setTyped(value);
+              setBlank(false);
+            },
+          }}
+          field={field}
+          readOnly={busy}
+          onGo={makeLive}
+        />
+      )}
+    </Ask>
   );
 }
