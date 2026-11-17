@@ -5743,5 +5743,8 @@ describe('Deleting many with guests in them (sc-57680)', () => {
     await waitFor(() => expect(stepLine()).toBe('These seats changed since. Nothing was undone.'));
     expect(bodies(sent, 'delete')[0]?.emptyOnly).toBe(true);
     expect(screen.queryByRole('button', { name: 'Undo' })).toBeNull();
+    await waitFor(() =>
+      expect(document.activeElement).toBe(document.querySelector('.st-under-views .st-bar p')),
+    );
   });
 });

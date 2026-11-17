@@ -1554,6 +1554,9 @@ function Plan({
     );
   };
 
+  const focusRefusal = () =>
+    focusWhenFree(() => document.querySelector<HTMLElement>('.st-bar [data-said="bar"]'));
+
   const duplicateStep = () => {
     const items = chosenItems;
 
@@ -1580,6 +1583,7 @@ function Plan({
               pick(items.map((item) => item.one.id));
               undone();
             },
+            focusRefusal,
           ),
         );
       },
@@ -1625,10 +1629,7 @@ function Plan({
                     ) ?? null,
                 );
               },
-              () =>
-                focusWhenFree(() =>
-                  document.querySelector<HTMLElement>('.st-bar [data-said="bar"]'),
-                ),
+              focusRefusal,
             ),
         );
         focusWhenFree(() => document.querySelector<HTMLButtonElement>('.st-bar [data-act="undo"]'));
