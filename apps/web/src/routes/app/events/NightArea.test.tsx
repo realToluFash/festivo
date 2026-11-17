@@ -641,7 +641,9 @@ describe('moving to another area of an event while offline (sc-65646)', () => {
     await go('/app/events/ev_1/guests');
 
     expect(await screen.findByText('We could not load the guests.')).toBeDefined();
-    expect(screen.getByText(/^Offline · as of \d\d:\d\d$/)).toBeDefined();
+    expect(
+      screen.getByText(/^Offline · as of \d\d:\d\d$/, { selector: '.ev-offline-words' }),
+    ).toBeDefined();
     expect(screen.getAllByText('Adaeze and Tunde').length).toBeGreaterThan(0);
     expect(screen.queryByText('The event did not load. Try again in a moment.')).toBeNull();
   });
@@ -651,7 +653,9 @@ describe('moving to another area of an event while offline (sc-65646)', () => {
 
     await go('/app/events/ev_1');
 
-    expect(await screen.findByText(/^Offline · as of \d\d:\d\d$/)).toBeDefined();
+    expect(
+      await screen.findByText(/^Offline · as of \d\d:\d\d$/, { selector: '.ev-offline-words' }),
+    ).toBeDefined();
     expect(screen.getAllByText('Adaeze and Tunde').length).toBeGreaterThan(0);
     expect(
       await screen.findByText('12 coming of 20 invited. Each number opens the guests it counts.'),
