@@ -165,15 +165,23 @@ final class GuestExportTest extends ApiTestCase
     }
 
     #[Test]
-    public function canEditTheEventExportsAsAMemberDoesWithTheNeeds(): void
+    #[DataProvider('exports')]
+    public function aGrantThatEditsTheEventExportsWithTheNeeds(EventRole $role): void
     {
         $guest = $this->add(['fullName' => 'Bisi', 'needs' => ['diet' => ['vegan']]]);
-        $editor = $this->member('editor@ire.events', EventRole::CanEdit);
+        $editor = $this->member('editor@ire.events', $role);
 
         $rows = $this->csv($this->export('csv', [$this->id($guest)], by: $editor));
 
         self::assertSame(200, $this->statusCode());
         self::assertSame('Vegan', $rows[1][8]);
+    }
+
+    /** @return iterable<string, array{EventRole}> */
+    public static function exports(): iterable
+    {
+        yield 'Lead' => [EventRole::Lead];
+        yield 'Can edit' => [EventRole::CanEdit];
     }
 
     /** @return iterable<string, array{EventRole}> */

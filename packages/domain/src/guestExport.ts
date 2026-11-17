@@ -29,15 +29,15 @@ export function exportColumns(needs: boolean): readonly ExportColumn[] {
   return needs ? EXPORT_COLUMNS : EXPORT_COLUMNS.filter((one) => !NEEDS_COLUMNS.includes(one));
 }
 
-/** Decided, 1 Nov: Can view and Can check guests in look and check people in on the live list, so they get no copy of it; the API refuses them too. */
+const EXPORTING_ROLES: readonly (string | null)[] = [null, 'lead', 'can_edit'];
+
+/** Decided, 1 Nov: only the grants that edit the event get a copy; Owner and Admin hold no event role, and any other level is refused until decided, as the API refuses it. */
 export function exportsGuests(event: {
   permissions: readonly string[];
   roleOnEvent?: string | null;
 }): boolean {
   return (
-    event.permissions.includes('guests.read') &&
-    event.roleOnEvent !== 'can_view' &&
-    event.roleOnEvent !== 'can_check_in'
+    event.permissions.includes('guests.read') && EXPORTING_ROLES.includes(event.roleOnEvent ?? null)
   );
 }
 

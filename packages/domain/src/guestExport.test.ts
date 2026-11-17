@@ -29,11 +29,14 @@ describe('guest export (sc-3784)', () => {
     ]);
   });
 
-  it('offers Export to everyone who reads guests but Can view and Can check guests in', () => {
+  it('offers Export to Owner, Admin, Lead and Can edit, and to no other event role', () => {
     const reads = ['guests.read'];
 
     expect(exportsGuests({ permissions: reads })).toBe(true);
+    expect(exportsGuests({ permissions: reads, roleOnEvent: null })).toBe(true);
+    expect(exportsGuests({ permissions: reads, roleOnEvent: 'lead' })).toBe(true);
     expect(exportsGuests({ permissions: reads, roleOnEvent: 'can_edit' })).toBe(true);
+    expect(exportsGuests({ permissions: reads, roleOnEvent: 'door_staff' })).toBe(false);
     expect(exportsGuests({ permissions: reads, roleOnEvent: 'can_view' })).toBe(false);
     expect(exportsGuests({ permissions: reads, roleOnEvent: 'can_check_in' })).toBe(false);
     expect(exportsGuests({ permissions: [] })).toBe(false);

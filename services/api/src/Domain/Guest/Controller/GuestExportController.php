@@ -26,8 +26,8 @@ use Symfony\Component\Routing\Attribute\Route;
 /** Export (sc-3784): the guests and companions the host is looking at, as .xlsx or .csv, the needs columns only with guests.manage. */
 final readonly class GuestExportController
 {
-    /** A grant that is built to end on its own gets no copy that outlives it (Decided, 1 Nov). */
-    private const array NO_EXPORT = [EventRole::CanView, EventRole::CanCheckIn];
+    /** Only the grants that edit the event take a copy; Owner and Admin hold no event role, and any other level is refused until decided (Decided, 1 Nov). */
+    private const array EXPORTS = [null, EventRole::Lead, EventRole::CanEdit];
 
     public function __construct(
         private Security $security,
@@ -37,7 +37,7 @@ final readonly class GuestExportController
     ) {
     }
 
-    /** `people` names who is in the file, in its order; refused 403 for Can view and Can check guests in. */
+    /** `people` names who is in the file, in its order; refused 403 for every event role but Lead and Can edit. */
     #[Route('/api/events/{eventId}/guests/export', name: 'guests_export', methods: ['POST'])]
     #[InEvent(Permission::GuestsRead)]
     public function export(Request $request, string $eventId): Response
@@ -45,7 +45,7 @@ final readonly class GuestExportController
         $event = $this->eventRepository->find($eventId) ?? throw ApiException::notFound('access.not_found');
         $user = $this->user();
         $grants = $this->membershipDirectory->grantsOnEvent($user, $event->getOrganisation()->getId(), $event->getId());
-        if (null === $grants || Iter\contains(self::NO_EXPORT, $grants->eventRole())) {
+        if (null === $grants || !Iter\contains(self::EXPORTS, $grants->eventRole())) {
             throw ApiException::permissionRequired(Permission::GuestsManage);
         }
 
