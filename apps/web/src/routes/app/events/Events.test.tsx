@@ -13,6 +13,7 @@ import { endingNow } from './openInPlace.ts';
 import { cssRule, stylesheet } from '../../../test-styles.ts';
 
 const EVENTS_DESK_CSS = stylesheet(import.meta.dirname, '../../../components/eventsDesk.css');
+const EVENT_PAGE_CSS = stylesheet(import.meta.dirname, '../../../components/eventPage.css');
 
 const IRE = membership({ id: 'org_1', name: 'Ìrè Events' });
 
@@ -2200,6 +2201,10 @@ describe("An event's page", () => {
       expect(cssRule('.event-form-page')).toContain('max-width: 72rem;');
     },
   );
+
+  it('gives way at its name in the crumb, never at Events (sc-60699, QA #63079)', () => {
+    expect(cssRule('.ev-crumb-part:first-child', EVENT_PAGE_CSS)).toContain('flex-shrink: 0;');
+  });
 });
 
 describe("An event's venue (sc-3589)", () => {
