@@ -32,6 +32,7 @@ import { SchedulePage } from './Schedule.tsx';
 import { SCHEDULE_PAGES } from './schedule.ts';
 import { GetBackInBoard } from './GetBackIn.tsx';
 import { GuestPage } from './Guest.tsx';
+import { MealStepPage } from './MealStep.tsx';
 import { HandoffPage } from './Handoff.tsx';
 import { HANDOFF_PAGES, forgetAnyway } from './handoff.ts';
 import { PHONE_FIT_PAGES } from './longName.ts';
@@ -54,6 +55,7 @@ import { KitchenPage } from './Kitchen.tsx';
 import { MenuPage } from './MenuServed.tsx';
 import { MENU_PAGES } from './menuServed.ts';
 import { COURSES_PAGES } from './menuCourses.ts';
+import { MEAL_PAGES } from './mealStep.ts';
 import { MenuLibraryPage } from './MenuLibrary.tsx';
 import { LIBRARY_PAGES } from './menuLibrary.ts';
 import { CHANGES_PAGES, KITCHEN_PAGES, PARTS_PAGES } from './kitchen.ts';
@@ -279,6 +281,7 @@ export default function Demo() {
       <Route path="share/:scope" element={<ShareRecipient />} />
       <Route path="unsubscribe" element={<Unsubscribe />} />
       <Route path="guest" element={<GuestPage />} />
+      <Route path="guest/meal" element={<MealStepPage />} />
       <Route path="guests" element={<Guests />} />
       <Route path="guests/select" element={<GuestsMark />} />
       <Route path="guests/many" element={<GuestsMany />} />
@@ -391,6 +394,8 @@ function DemoHome({ from }: { from: string }) {
           px (tweaks: &amp;format=fr or pt for the allergen names, &amp;budget=no)
         </h3>
         <BoardPages pages={COURSES_PAGES} />
+        <h3>The guest’s questions inside a dish · sc-3904 · phone, tablet and desk</h3>
+        <BoardPages pages={MEAL_PAGES} />
         <h3>How a course is served, and a dish’s parts · sc-34230 · desktop</h3>
         <BoardPages pages={MENU_PAGES} />
       </section>
