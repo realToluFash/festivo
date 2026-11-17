@@ -5354,6 +5354,23 @@ describe('A table’s guests in Seat, and the chairs in their states (sc-4013)',
     expect(within(pop).getByText('Tables with a free seat for them.')).toBeDefined();
   });
 
+  it('says no other table has room in Move everyone to…, with no list under it', async () => {
+    signedIn();
+    await onSeating({
+      'GET /api/events/ev_1/seating-plan': () => seating(withGuests(AT_T1, table(), T3)),
+    });
+
+    fireEvent.click(await screen.findByRole('tab', { name: 'Seat' }));
+    await chooseTable('Table 1, round, 2 of 10 seats taken');
+    fireEvent.click(screen.getByRole('button', { name: 'Move everyone to…' }));
+    const pop = screen.getByRole('dialog', { name: 'Move everyone to…' });
+
+    expect(
+      within(pop).getByText('No other table has room for all 2. Move them one at a time.'),
+    ).toBeDefined();
+    expect(within(pop).queryByRole('list')).toBeNull();
+  });
+
   it('picks a seated guest from their chair in Seat, and moves just them to the next table', async () => {
     signedIn();
     const sent = await onSeating({
