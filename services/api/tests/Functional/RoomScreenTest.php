@@ -80,6 +80,22 @@ final class RoomScreenTest extends ApiTestCase
     }
 
     #[Test]
+    public function aPlaceMovedToANewNameHasItsLinkTheFirstTimeTheLinksAreAsked(): void
+    {
+        $this->sample();
+        $this->links();
+
+        $this->client->request('PUT', '/api/events/' . $this->eventId . '/schedule/items/' . $this->items['Vendors load in'], server: [
+            'CONTENT_TYPE' => 'application/json',
+            'HTTP_AUTHORIZATION' => 'Bearer ' . self::service(JWTTokenManagerInterface::class)->create($this->owner),
+            'HTTP_IF_MATCH' => '"1"',
+        ], content: Json\encode(['title' => 'Vendors load in', 'startsAt' => '2027-03-06T12:00', 'place' => 'Ballroom', 'ownerName' => 'Bisi', 'note' => 'Back door']));
+        self::assertSame(200, $this->statusCode(), Json\encode($this->last()));
+
+        self::assertSame([null, 'Ballroom', 'Garden'], Vec\map($this->links(), static fn (array $link): ?string => $link['place']));
+    }
+
+    #[Test]
     public function onlyThoseWhoManageTheRunOfShowSeeOrReplaceTheLinks(): void
     {
         $this->sample();
@@ -240,6 +256,19 @@ final class RoomScreenTest extends ApiTestCase
     public function aTokenNeverIssuedFindsNothing(): void
     {
         $this->client->request('POST', '/api/screen-links/screen', server: ['CONTENT_TYPE' => 'application/json'], content: Json\encode(['token' => Str\repeat('q', 22)]));
+
+        self::assertSame(404, $this->statusCode());
+    }
+
+    #[Test]
+    public function aDeletedEventsLinkFindsNothing(): void
+    {
+        $this->sample();
+        $token = $this->tokenFor('Garden');
+        $this->as($this->owner, 'DELETE', '/api/events/' . $this->eventId, ['name' => 'Owambe']);
+        self::assertSame(200, $this->statusCode(), Json\encode($this->last()));
+
+        $this->client->request('POST', '/api/screen-links/screen', server: ['CONTENT_TYPE' => 'application/json'], content: Json\encode(['token' => $token]));
 
         self::assertSame(404, $this->statusCode());
     }

@@ -53,13 +53,13 @@ final readonly class ScreenLinks
         $places = $this->placesOf($event);
         $current = $this->screenLinkRepository->findCurrentOn($event);
 
-        foreach ($places as $place) {
-            if (!isset($current[$place])) {
-                $this->insert($event, $place);
-            }
+        $missing = Vec\filter($places, static fn (string $place): bool => !isset($current[$place]));
+
+        foreach ($missing as $place) {
+            $this->insert($event, $place);
         }
 
-        if (Iter\count($current) < Iter\count($places)) {
+        if ([] !== $missing) {
             $current = $this->screenLinkRepository->findCurrentOn($event);
         }
 
