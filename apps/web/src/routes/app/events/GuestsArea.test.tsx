@@ -2239,6 +2239,22 @@ describe('a guest’s column at 320 (sc-3773)', () => {
     expect(cssRule('.gs-column', GUESTS_CSS)).toContain('min-width: 0;');
   });
 });
+describe('Guests from 961 to 1240 px (sc-61150)', () => {
+  const band = () => GUESTS_CSS.slice(GUESTS_CSS.indexOf('(60rem < width <= 77.5rem)'));
+
+  it('puts an open guest before the list, each full width, with Pick a guest hidden', () => {
+    expect(cssRule('.gs-cols', band())).toContain('flex-flow: column nowrap;');
+    expect(cssRule('.gs-column', band())).toContain('order: -1;');
+    expect(cssRule('.gs-column:has(> .gs-pick)', band())).toContain('display: none;');
+  });
+
+  it('keeps the guest in view beside the list only from 1241 px', () => {
+    const beside = GUESTS_CSS.slice(GUESTS_CSS.indexOf('(width > 77.5rem)'));
+
+    expect(cssRule('.gs-column', beside)).toContain('position: sticky;');
+  });
+});
+
 describe('the Guests top at 320 (sc-3773, ux #44604)', () => {
   it('wraps the title only at spaces, with Add guest dropping to its own row', () => {
     expect(cssRule('.gs-top', GUESTS_CSS)).toContain('flex-wrap: wrap;');

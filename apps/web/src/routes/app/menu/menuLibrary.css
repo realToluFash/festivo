@@ -647,6 +647,37 @@
   }
 }
 
+/* From 961 px (sc-61150) the title keeps its words whole and the actions go under it only when both do not fit; up to 1120 px an open form comes before the list. */
+@media (width > 60rem) {
+  .lib-page .desk-top {
+    flex-wrap: wrap;
+    row-gap: var(--spaceLg);
+  }
+
+  .lib-page .desk-title {
+    min-width: auto;
+    overflow-wrap: normal;
+  }
+}
+
+@media (60rem < width <= 70rem) {
+  .lib-split.is-docked {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .lib-split.is-docked .lib-panel {
+    position: static;
+    order: -1;
+    width: auto;
+    max-height: none;
+  }
+
+  .lib-split.is-docked .lib-panel .mn-panel-body {
+    overflow: visible;
+  }
+}
+
 /* At 400% zoom (320 CSS px) the desk reflows into one column, and an open form comes before the list (WCAG 2.2 1.4.10, sc-3901 Decided 15 Nov). */
 @media (width <= 720px) {
   .today.desk:has(.lib-page) {

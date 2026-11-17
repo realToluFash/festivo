@@ -120,8 +120,30 @@
   gap: var(--spaceXl);
 }
 
+/* 961 to 1240 px (sc-61150): until the list and the guest fit at their 520 and 380, an open guest or form comes before the list. */
+@media (60rem < width <= 77.5rem) {
+  .gs-cols {
+    flex-flow: column nowrap;
+    align-items: stretch;
+  }
+
+  .gs-list,
+  .gs-column {
+    flex: none;
+    max-width: none;
+  }
+
+  .gs-column {
+    order: -1;
+  }
+
+  .gs-column:has(> .gs-pick) {
+    display: none;
+  }
+}
+
 /* The form stays in view while the list scrolls, only when the two sit side by side. */
-@media (width > 60rem) {
+@media (width > 77.5rem) {
   .gs-column {
     position: sticky;
     top: 0;

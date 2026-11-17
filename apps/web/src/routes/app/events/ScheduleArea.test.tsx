@@ -878,3 +878,13 @@ describe('Show on a screen (sc-3897)', () => {
     expect(sent.some(({ line }) => line.endsWith('/replace'))).toBe(false);
   });
 });
+
+describe('Schedule from 961 to 1200 px (sc-61150)', () => {
+  it('puts the open item before the table, full width', () => {
+    const band = SCHEDULE_CSS.slice(SCHEDULE_CSS.indexOf('(60rem < width <= 75rem)'));
+
+    expect(cssRule('.ro .mn-split:has(> .mn-panel)', band)).toContain('flex-direction: column;');
+    expect(cssRule('.ro .mn-split > .mn-panel', band)).toContain('order: -1;');
+    expect(cssRule('.ro .mn-split > .mn-panel', band)).toContain('width: auto;');
+  });
+});
