@@ -1727,6 +1727,50 @@ describe('seating guests (sc-4013, sc-4016, sc-5030)', () => {
       const bottom = (name: RegExp) =>
         Number(ring(name).getAttribute('cy')) + Number(ring(name).getAttribute('r'));
 
+      const rings = [...room().querySelectorAll('.st-room-for')].map((one) => {
+        if (one.tagName === 'circle') {
+          const [cx, cy, r] = ['cx', 'cy', 'r'].map((at) => Number(one.getAttribute(at)));
+
+          return { one, x0: cx! - r!, y0: cy! - r!, x1: cx! + r!, y1: cy! + r! };
+        }
+        const [, tx, ty] = /translate\(([-\d.]+) ([-\d.]+)\)/u.exec(
+          one.parentElement!.getAttribute('transform')!,
+        )!;
+        const x0 = Number(tx) + Number(one.getAttribute('x'));
+        const y0 = Number(ty) + Number(one.getAttribute('y'));
+
+        return {
+          one,
+          x0,
+          y0,
+          x1: x0 + Number(one.getAttribute('width')),
+          y1: y0 + Number(one.getAttribute('height')),
+        };
+      });
+      const taken = (name: RegExp, y: number) => {
+        const own = ring(name);
+        const tag = [...room().querySelectorAll('.st-free rect')].find(
+          (one) =>
+            Math.abs(
+              Number(one.getAttribute('x')) +
+                Number(one.getAttribute('width')) / 2 -
+                Number(own.getAttribute('cx')),
+            ) < 1,
+        )!;
+        const half = Number(tag.getAttribute('width')) / 2;
+
+        return rings.some(
+          (b) =>
+            b.one !== own &&
+            Number(own.getAttribute('cx')) - half < b.x1 &&
+            b.x0 < Number(own.getAttribute('cx')) + half &&
+            y - 11 < b.y1 &&
+            b.y0 < y + 11,
+        );
+      };
+
+      expect(taken(/^Table 3,/u, bottom(/^Table 3,/u) + 26)).toBe(true);
+      expect(taken(/^Table 3,/u, top(/^Table 3,/u) - 26)).toBe(true);
       expect(tagBy(/^Table 4,/u)).toBeLessThan(top(/^Table 4,/u));
       expect(tagBy(/^Table 3,/u)).toBeGreaterThan(bottom(/^Table 3,/u));
       expect(tagBy(/^Table 10,/u)).toBeGreaterThan(bottom(/^Table 10,/u));
