@@ -61,6 +61,7 @@ import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router';
 
 import { api } from '../../../api.ts';
+import { keptKeys, keptLoad, useAnsweredAgain, useKeptAsShown } from '../../../tabKept.ts';
 import { useDeskTop } from '../../../deskTop.ts';
 import { config } from '../../../config.ts';
 import { Glyph } from '../../../components/Glyph.tsx';
@@ -552,13 +553,14 @@ export function SeatingArea({ event }: { event: OrganisationEvent }) {
   const desk = useDeskTop();
   const [load, setLoad] = useState<Load>({ kind: 'loading' });
   const [attempt, setAttempt] = useState(0);
+  const answeredAgain = useAnsweredAgain();
 
   usePageTitle(pageTitle(t, [t('seating.area'), event.name]));
 
   useEffect(() => {
     let current = true;
 
-    api.seating(event.id).then(
+    keptLoad(keptKeys.seating(event.id), api.seating(event.id)).then(
       (seating) => current && setLoad({ kind: 'loaded', seating }),
       () => current && setLoad((was) => (was.kind === 'loaded' ? was : { kind: 'failed' })),
     );
@@ -566,7 +568,9 @@ export function SeatingArea({ event }: { event: OrganisationEvent }) {
     return () => {
       current = false;
     };
-  }, [event.id, attempt]);
+  }, [event.id, attempt, answeredAgain]);
+
+  useKeptAsShown(keptKeys.seating(event.id), load.kind === 'loaded' ? load.seating : null);
 
   const presence = usePresence(event);
 

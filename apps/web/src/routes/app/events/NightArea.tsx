@@ -35,6 +35,13 @@ import { useTranslation } from 'react-i18next';
 import { Link, useSearchParams } from 'react-router';
 
 import { api } from '../../../api.ts';
+import {
+  keepLoaded,
+  keptFor,
+  keptKeys,
+  useAnsweredAgain,
+  useKeptAsShown,
+} from '../../../tabKept.ts';
 import { Glyph } from '../../../components/Glyph.tsx';
 import { useDeskTop } from '../../../deskTop.ts';
 import { dateLocale } from '../../../i18n/index.ts';
@@ -79,6 +86,8 @@ function NightArea({ event }: { event: OrganisationEvent }) {
   const store = useMemo(() => pressStoreOf(kept), [kept]);
   const [load, setLoad] = useState<Load>({ kind: 'loading' });
   const [attempt, setAttempt] = useState(0);
+  const answeredAgain = useAnsweredAgain();
+  const showing = useRef(false);
   const [queue, setQueue] = useState<QueuedPress[]>(() => kept.read());
   const [offline, setOffline] = useState(false);
   const [syncedAt, setSyncedAt] = useState(() => serverClock.now());
@@ -91,23 +100,47 @@ function NightArea({ event }: { event: OrganisationEvent }) {
 
   usePageTitle(pageTitle(t, [t('runView.title'), event.name]));
 
-  const loaded = useCallback((schedule: Schedule) => {
-    setLoad({ kind: 'loaded', schedule });
-    setSyncedAt(serverClock.now());
-  }, []);
+  const loaded = useCallback(
+    (schedule: Schedule) => {
+      keepLoaded(keptKeys.schedule(event.id), schedule);
+      setLoad({ kind: 'loaded', schedule });
+      setSyncedAt(serverClock.now());
+    },
+    [event.id],
+  );
+
+  useEffect(() => {
+    showing.current = load.kind === 'loaded';
+  });
 
   useEffect(() => {
     let current = true;
 
     api.schedule(event.id).then(
       (schedule) => current && loaded(schedule),
-      () => current && setLoad((was) => (was.kind === 'loaded' ? was : { kind: 'failed' })),
+      (error: unknown) => {
+        if (!current) return;
+        const kept = keptFor<Schedule>(keptKeys.schedule(event.id), error);
+
+        if (kept != null && !showing.current) {
+          setOffline(true);
+          setSyncedAt(kept.at);
+        }
+        setLoad((was) =>
+          was.kind === 'loaded'
+            ? was
+            : kept != null
+              ? { kind: 'loaded', schedule: kept.value }
+              : { kind: 'failed' },
+        );
+      },
     );
 
     return () => {
       current = false;
     };
-  }, [event.id, attempt, loaded]);
+  }, [event.id, attempt, loaded, answeredAgain]);
+  useKeptAsShown(keptKeys.schedule(event.id), load.kind === 'loaded' ? load.schedule : null);
 
   const topics = useMemo(() => [realtimeTopic('EventSchedule', event.id)], [event.id]);
   useHubTopics(

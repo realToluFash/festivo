@@ -12,6 +12,7 @@ import { Link } from 'react-router';
 import { api } from '../../../api.ts';
 import { Glyph } from '../../../components/Glyph.tsx';
 import { Chevron, Head, RowWords, TextAction } from '../../../components/SettingsParts.tsx';
+import { keptKeys, keptLoad, rekeep, useAnsweredAgain } from '../../../tabKept.ts';
 import { MarkLead, ReplyMark } from './GuestColumn.tsx';
 import { useHubTopics } from './useHubTopics.ts';
 import './guests.css';
@@ -44,12 +45,13 @@ export function GuestNumbers({ event }: { event: OrganisationEvent }) {
   const figure = numberFormat(i18n.language);
   const [load, setLoad] = useState<Load>({ kind: 'loading' });
   const [attempt, setAttempt] = useState(0);
+  const answeredAgain = useAnsweredAgain();
   const guests = `/app/events/${encodeURIComponent(event.id)}/guests`;
 
   useEffect(() => {
     let current = true;
 
-    api.headcount(event.id).then(
+    keptLoad(keptKeys.headcount(event.id), api.headcount(event.id)).then(
       (headcount) => current && setLoad({ kind: 'loaded', counts: headcount.counts }),
       () => current && setLoad((was) => (was.kind === 'loaded' ? was : { kind: 'failed' })),
     );
@@ -57,7 +59,7 @@ export function GuestNumbers({ event }: { event: OrganisationEvent }) {
     return () => {
       current = false;
     };
-  }, [event.id, attempt]);
+  }, [event.id, attempt, answeredAgain]);
 
   useHubTopics(
     [realtimeTopic('EventHeadcount', event.id)],
@@ -66,7 +68,10 @@ export function GuestNumbers({ event }: { event: OrganisationEvent }) {
       const headcount = asHeadcount((data as { headcount?: unknown } | null)?.headcount);
 
       if (headcount == null) setAttempt((n) => n + 1);
-      else setLoad({ kind: 'loaded', counts: headcount.counts });
+      else {
+        rekeep(keptKeys.headcount(event.id), headcount);
+        setLoad({ kind: 'loaded', counts: headcount.counts });
+      }
     },
     () => setAttempt((n) => n + 1),
   );

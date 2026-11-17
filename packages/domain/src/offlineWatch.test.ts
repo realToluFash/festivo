@@ -98,6 +98,38 @@ describe('the offline watch', () => {
     expect(watch.state().stale).toBe(true);
   });
 
+  it('stands a first load that never reached Soirely on what an earlier one kept, as of then, until a load answers (sc-65646)', async () => {
+    const { watch, soirely, connection, reload, failures } = screen();
+    const kept = new Date('2026-11-01T19:42:00Z');
+
+    soirely.now = 'unreachable';
+    reload();
+    await vi.advanceTimersByTimeAsync(0);
+    expect(keepsWhatLoaded(failures[0])).toBe(true);
+
+    watch.keep(kept);
+    expect(watch.state()).toMatchObject({ stale: true, at: kept });
+
+    soirely.now = 'answers';
+    watch.setScreen({ loaded: true, reload, pressAnswered: () => {} });
+    reload.mockClear();
+    connection.deviceOnline();
+    connection.deviceOffline();
+    connection.deviceOnline();
+    await vi.advanceTimersByTimeAsync(0);
+
+    expect(reload).toHaveBeenCalled();
+    expect(watch.state()).toMatchObject({ stale: false, at: new Date('2026-11-01T20:00:00Z') });
+  });
+
+  it('never moves the time back on a screen that has already heard from Soirely', async () => {
+    const { watch } = await loadedThenOffline();
+
+    watch.keep(new Date('2026-11-01T19:00:00Z'));
+
+    expect(watch.state().at).toEqual(new Date('2026-11-01T20:00:00Z'));
+  });
+
   it('takes the band down when Soirely answers with a 5xx, even on the token refresh, and asks no more', async () => {
     const { watch, soirely, connection, reload, failures } = await loadedThenOffline();
 

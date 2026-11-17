@@ -25,6 +25,7 @@ import { followAccount } from './accountLanguage.ts';
 import { GATED, SIGNED_OUT, api } from './api.ts';
 import { followAccountScheme, schemeIn } from './colourScheme.ts';
 import { currentLocale } from './i18n/index.ts';
+import { forgetKept } from './tabKept.ts';
 
 export interface Session {
   /** The account's id, which names its own realtime topics. */
@@ -230,6 +231,7 @@ export async function rereadOrganisations(): Promise<void> {
     const pausedIn = choosePaused(read.paused, recalled(), read.organisations.length);
 
     forgetEventsTab();
+    forgetKept();
     set({
       status: 'signedIn',
       session: { ...current, organisations: read.organisations, organisation, pausedIn },
@@ -275,6 +277,7 @@ export function switchOrganisation(id: string): void {
 
   remember(id);
   forgetEventsTab();
+  forgetKept();
   set({ status: 'signedIn', session: { ...state.session, organisation, pausedIn: null } });
 }
 
@@ -310,6 +313,7 @@ export function forgetSession(ended = false, why?: Problem): void {
   const providerOnly = providerOnlyBy(why);
 
   generation += 1;
+  forgetKept();
   set({
     status: 'signedOut',
     ended,

@@ -74,6 +74,7 @@ import { useTranslation } from 'react-i18next';
 import { Link, useBlocker, useNavigate, useSearchParams } from 'react-router';
 
 import { api } from '../../../api.ts';
+import { keptKeys, keptLoad, useAnsweredAgain, useKeptAsShown } from '../../../tabKept.ts';
 import { GlassMark } from '../../../components/EventCard.tsx';
 import { useDeskTop } from '../../../deskTop.ts';
 import { Glyph } from '../../../components/Glyph.tsx';
@@ -252,6 +253,7 @@ export function GuestsArea({
   const focus = useFocusKeys(root);
   const [load, setLoad] = useState<Load>({ kind: 'loading' });
   const [attempt, setAttempt] = useState(0);
+  const answeredAgain = useAnsweredAgain();
   const [heard, setHeard] = useState(0);
   const [flagged, setFlagged] = useState<ReadonlySet<string>>(new Set());
   const [adding, setAdding] = useState(false);
@@ -366,7 +368,7 @@ export function GuestsArea({
   useEffect(() => {
     let current = true;
 
-    api.guests(event.id).then(
+    keptLoad(keptKeys.guests(event.id), api.guests(event.id)).then(
       (list) => current && setLoad({ kind: 'loaded', list }),
       () => current && setLoad((was) => (was.kind === 'loaded' ? was : { kind: 'failed' })),
     );
@@ -374,12 +376,14 @@ export function GuestsArea({
     return () => {
       current = false;
     };
-  }, [event.id, attempt]);
+  }, [event.id, attempt, answeredAgain]);
+
+  useKeptAsShown(keptKeys.guests(event.id), load.kind === 'loaded' ? load.list : null);
 
   useEffect(() => {
     let current = true;
 
-    api.headcount(event.id).then(
+    keptLoad(keptKeys.headcount(event.id), api.headcount(event.id)).then(
       (headcount) => current && setCounted(countsOf(headcount.counts)),
       () => current && setCounted((was) => (was == null ? 'failed' : was)),
     );
@@ -387,7 +391,7 @@ export function GuestsArea({
     return () => {
       current = false;
     };
-  }, [event.id, attempt, recount]);
+  }, [event.id, attempt, recount, answeredAgain]);
 
   useEffect(() => {
     let current = true;

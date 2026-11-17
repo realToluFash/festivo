@@ -3,7 +3,7 @@ import { connection } from '@soirely/domain';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { RouterProvider, createMemoryRouter } from 'react-router';
 
-import { __setSessionState, type Session } from '../../../session.ts';
+import { __setSessionState, forgetSession, type Session } from '../../../session.ts';
 import { OWNER_PERMISSIONS, membership } from '../../../test-memberships.ts';
 import { routes } from '../../index.tsx';
 
@@ -579,5 +579,185 @@ describe('Run of show on the night (sc-3895)', () => {
       expect(screen.queryByRole('navigation', { name: 'Schedule or run of show' })).toBeNull();
       expect(screen.queryByRole('region', { name: 'Now' })).toBeNull();
     });
+  });
+});
+
+describe('moving to another area of an event while offline (sc-65646)', () => {
+  const HEADCOUNT = {
+    counts: {
+      onList: 20,
+      notYetInvited: 0,
+      invited: 20,
+      accepted: 12,
+      maybe: 2,
+      awaitingReply: 4,
+      held: 0,
+      declined: 2,
+      heldBy: { hostNoReply: 0, hostMaybe: 0, hostNotComing: 0 },
+    },
+    byGroup: [],
+    byDietaryNeed: { addsUp: false, needs: [] },
+  };
+
+  async function loadedThenOffline() {
+    let online = true;
+    const sent: string[] = [];
+    clock = '20:02';
+    signedIn();
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
+      const line = `${init?.method ?? 'GET'} ${new URL(String(input)).pathname}`;
+      sent.push(line);
+      if (!online) throw new TypeError('Failed to fetch');
+      if (line === 'GET /api/events/ev_1') return json({ event: EVENT });
+      if (line === 'GET /api/events/ev_1/schedule') return json({ schedule: schedule(NIGHT) });
+      if (line === PRESS_SPEECHES) return json({ schedule: schedule(GAP) });
+      if (line === 'GET /api/events/ev_1/headcount') return json({ headcount: HEADCOUNT });
+
+      return json({});
+    });
+    const router = createMemoryRouter(routes, { initialEntries: ['/app/events/ev_1'] });
+    render(<RouterProvider router={router} />);
+    await screen.findByText('12 coming of 20 invited. Each number opens the guests it counts.');
+    await act(() => router.navigate('/app/events/ev_1/schedule'));
+    await screen.findByRole('button', { name: 'Done: Speeches' });
+
+    online = false;
+    act(() => connection.deviceOffline());
+    fireEvent.click(screen.getByRole('button', { name: 'Done: Speeches' }));
+    expect(await screen.findByText('1 press waiting to send.')).toBeDefined();
+
+    return {
+      sent,
+      go: (to: string) => act(() => router.navigate(to)),
+      reconnect: () => {
+        online = true;
+      },
+    };
+  }
+
+  it('keeps the event over an area whose own list never loaded, under the box, with its own failure line', async () => {
+    const { go } = await loadedThenOffline();
+
+    await go('/app/events/ev_1/guests');
+
+    expect(await screen.findByText('We could not load the guests.')).toBeDefined();
+    expect(
+      screen.getByText(/^Offline · as of \d\d:\d\d$/, { selector: '.ev-offline-words' }),
+    ).toBeDefined();
+    expect(screen.getAllByText('Adaeze and Tunde').length).toBeGreaterThan(0);
+    expect(screen.queryByText('The event did not load. Try again in a moment.')).toBeNull();
+  });
+
+  it('shows Overview as last loaded, under the box', async () => {
+    const { go } = await loadedThenOffline();
+
+    await go('/app/events/ev_1');
+
+    expect(
+      await screen.findByText(/^Offline · as of \d\d:\d\d$/, { selector: '.ev-offline-words' }),
+    ).toBeDefined();
+    expect(screen.getAllByText('Adaeze and Tunde').length).toBeGreaterThan(0);
+    expect(
+      await screen.findByText('12 coming of 20 invited. Each number opens the guests it counts.'),
+    ).toBeDefined();
+    expect(screen.queryByText('Guest numbers did not load.')).toBeNull();
+    expect(screen.queryByText('The event did not load. Try again in a moment.')).toBeNull();
+  });
+
+  it('comes back to the night as last loaded, with its count and its presses applied, and no box', async () => {
+    const { go } = await loadedThenOffline();
+
+    await go('/app/events/ev_1/guests');
+    await screen.findByText('We could not load the guests.');
+    await go('/app/events/ev_1/schedule');
+
+    expect(await screen.findByText('1 press waiting to send.')).toBeDefined();
+    expect(screen.getByText('Nothing is on')).toBeDefined();
+    expect(screen.getByRole('button', { name: 'Try now' })).toBeDefined();
+    expect(screen.getByRole('button', { name: 'Start now: First dance' })).toBeDefined();
+    expect(screen.queryByText('The run of show did not load.')).toBeNull();
+    expect(screen.queryByText(/^Offline · as of/)).toBeNull();
+  });
+
+  it('loads the event and the night afresh and sends the press when Try now answers', async () => {
+    const { go, sent, reconnect } = await loadedThenOffline();
+
+    await go('/app/events/ev_1/guests');
+    await screen.findByText('We could not load the guests.');
+    await go('/app/events/ev_1/schedule');
+    await screen.findByText('1 press waiting to send.');
+    const before = sent.length;
+
+    reconnect();
+    fireEvent.click(screen.getByRole('button', { name: 'Try now' }));
+
+    expect(await screen.findByText('Live · updated just now')).toBeDefined();
+    await waitFor(() =>
+      expect(sent.slice(before)).toEqual(
+        expect.arrayContaining([
+          'GET /api/events/ev_1',
+          PRESS_SPEECHES,
+          'GET /api/events/ev_1/schedule',
+        ]),
+      ),
+    );
+    expect(kept()).toEqual([]);
+  });
+
+  it('shows nothing the last account kept once another signs in on the same tab', async () => {
+    const { go } = await loadedThenOffline();
+
+    await go('/app/events/ev_1/guests');
+    await screen.findByText('We could not load the guests.');
+    act(() => forgetSession());
+    signedIn();
+    await go('/app/events/ev_1');
+
+    expect(await screen.findByText('The event did not load. Try again in a moment.')).toBeDefined();
+    expect(screen.queryByText('Adaeze and Tunde')).toBeNull();
+    await go('/app/events/ev_1/guests');
+    expect(await screen.findByText('The event did not load. Try again in a moment.')).toBeDefined();
+    expect(screen.queryByText('Adaeze and Tunde')).toBeNull();
+  });
+
+  it('shows no event kept for another organisation than the one the tab is in', async () => {
+    const { go } = await loadedThenOffline();
+    const other = membership({ id: 'org_2', name: 'Other Events' });
+
+    await go('/app/events/ev_1/guests');
+    await screen.findByText('We could not load the guests.');
+    act(() =>
+      __setSessionState({
+        status: 'signedIn',
+        session: {
+          name: 'Folake Adeyemi',
+          email: 'folake@ire.events',
+          verified: true,
+          complete: true,
+          awaiting: null,
+          providers: [],
+          userId: 'u_folake',
+          needsOrganisation: false,
+          hasPassword: true,
+          organisation: other,
+          organisations: [IRE, other],
+          organisationCountry: null,
+          timezone: null,
+          waitingFor: null,
+        },
+      }),
+    );
+    await go('/app/events/ev_1');
+
+    expect(await screen.findByText('The event did not load. Try again in a moment.')).toBeDefined();
+    expect(screen.queryByText('Adaeze and Tunde')).toBeNull();
+  });
+
+  it('still says the event did not load for one this tab never loaded', async () => {
+    const { go } = await loadedThenOffline();
+
+    await go('/app/events/ev_2');
+
+    expect(await screen.findByText('The event did not load. Try again in a moment.')).toBeDefined();
   });
 });
