@@ -104,6 +104,7 @@ import {
   type PressSent,
   asSchedule,
 } from './schedule.ts';
+import { type RoomScreen, type ScreenLink, asRoomScreen, asScreenLinks } from './screens.ts';
 
 /** A table call's answer: the plan whole, and the table it added or changed. */
 export interface SeatingWithTable {
@@ -2871,6 +2872,62 @@ export class ApiClient {
       token: typeof body.token === 'string' ? body.token : '',
       expiresAt: typeof body.expiresAt === 'string' ? body.expiresAt : '',
     };
+  }
+
+  /** A link for each place, Main first; refused 403 without run_of_show.manage (sc-3897). */
+  async screenLinks(eventId: string): Promise<ScreenLink[]> {
+    return this.screenLinksOf(
+      await this.get<unknown>(`/api/events/${encodeURIComponent(eventId)}/screen-links`),
+    );
+  }
+
+  /** The place's old link answers that it was replaced from now on; `place` is null for Main. */
+  async replaceScreenLink(eventId: string, place: string | null): Promise<ScreenLink[]> {
+    return this.screenLinksOf(
+      await this.post<unknown>(`/api/events/${encodeURIComponent(eventId)}/screen-links/replace`, {
+        place,
+      }),
+    );
+  }
+
+  /** The token is a credential, so it travels in the body. Refused `not_found` for a token never issued or a deleted event's. */
+  async roomScreen(token: string): Promise<RoomScreen> {
+    const screen = asRoomScreen(
+      await this.post<unknown>('/api/screen-links/screen', { token }, { anonymous: true }),
+    );
+
+    if (screen == null) {
+      throw new Error(
+        'The API answered the room screen in a shape this client does not know. Check RoomScreen in services/api.',
+      );
+    }
+
+    return screen;
+  }
+
+  /** A hub token for the event's bare signal to ask again; refused `not_found` once the link is replaced. */
+  async roomScreenSubscription(token: string): Promise<RealtimeSubscription> {
+    const body = await this.post<{ token?: unknown; expiresAt?: unknown }>(
+      '/api/screen-links/subscriptions',
+      { token },
+      { anonymous: true },
+    );
+
+    return {
+      token: typeof body.token === 'string' ? body.token : '',
+      expiresAt: typeof body.expiresAt === 'string' ? body.expiresAt : '',
+    };
+  }
+
+  private screenLinksOf(body: unknown): ScreenLink[] {
+    return (
+      asScreenLinks(body) ??
+      (() => {
+        throw new Error(
+          'The API answered the screen links in a shape this client does not know. Check ScreenLinkController in services/api.',
+        );
+      })()
+    );
   }
 
   private scheduleOf(body: unknown): Schedule {

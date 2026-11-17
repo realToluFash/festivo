@@ -68,7 +68,22 @@
   color: var(--colorInk);
 }
 
+.ss-said.is-quiet {
+  color: var(--colorInkSecondary);
+}
+
+.ss-status {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spaceSm);
+  align-items: center;
+}
+
 .ss-said:empty {
+  display: none;
+}
+
+.ss-status:has(.ss-said:empty) {
   display: none;
 }
 

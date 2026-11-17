@@ -1113,7 +1113,7 @@ function Refused({
 }
 
 const styles = StyleSheet.create({
-  fill: { flex: 1 },
+  fill: { flexGrow: 1, flexShrink: 1 },
   grow: { flex: 1, minWidth: 0 },
   secondary: { color: tokens.colorInkSecondary },
   accent: { color: tokens.colorAccentText },

@@ -29,7 +29,7 @@ use Doctrine\ORM\EntityManagerInterface;
 use Psl\Str;
 use Psr\Clock\ClockInterface;
 
-/** Each change runs under a lock on the event's row, so two adds sent together cannot both pass the limit, and is published whole to the event's schedule topic (sc-3893). */
+/** Each change runs under a lock on the event's row, so two adds sent together cannot both pass the limit, and is published whole to the event's schedule topic (sc-3893), with a bare signal to its room screens to ask again (sc-3897). */
 final readonly class ScheduleEditor
 {
     public const string ADDED = 'run_of_show.item_added';
@@ -226,6 +226,7 @@ final readonly class ScheduleEditor
     private function published(Event $event): void
     {
         $this->realtimePublisher->publish(RealtimeTopic::EventSchedule, $event->getId()->toRfc4122(), $this->scheduleSerialiser->schedule($event));
+        $this->realtimePublisher->publish(RealtimeTopic::EventScreens, $event->getId()->toRfc4122(), []);
     }
 
     /** @return array<string, mixed> */
