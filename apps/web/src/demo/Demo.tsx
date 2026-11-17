@@ -44,6 +44,7 @@ import { GUEST_PARTY_PAGES } from './guestCompanions.ts';
 import { GUEST_ASK_PAGES } from './guestAskStates.ts';
 import { GUEST_DAY_PAGES } from './guestDay.ts';
 import { GUEST_PROGRAMME_PAGES } from './guestProgramme.ts';
+import { GUEST_TABLE_PAGES } from './guestTable.ts';
 import { GUEST_NOTE_PAGES } from './guestNote.ts';
 import { GUEST_CHANGE_PAGES } from './guestChange.ts';
 import { Guests } from './Guests.tsx';
@@ -500,6 +501,11 @@ function DemoHome({ from }: { from: string }) {
         <h2 id="demo-page-31">31 · Venue and seating · Seating on an event</h2>
         <h3>Seating in A · The room · desktop</h3>
         <BoardPages pages={SEATING_PAGES} />
+        <h3>
+          Your table on the guest’s page (sc-4022) · phone, tablet portrait, tablet landscape and
+          desk
+        </h3>
+        <BoardPages pages={GUEST_TABLE_PAGES} />
       </section>
 
       <section className="demo-home-page" aria-labelledby="demo-page-28">
