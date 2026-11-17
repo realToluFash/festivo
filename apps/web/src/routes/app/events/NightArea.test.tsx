@@ -509,6 +509,21 @@ describe('Run of show on the night (sc-3895)', () => {
     });
   });
 
+  it('opens on the track Today followed, named by ?track= (sc-61017)', async () => {
+    const foyer = item('it_bar', 'Late bar', '19:30', {
+      place: 'Foyer',
+      lengthMinutes: 60,
+      startedAt: at('19:30'),
+    });
+    await onNight([...NIGHT, foyer], {
+      url: `/app/events/ev_1/schedule?${new URLSearchParams({ track: '2030-11-15|Foyer' }).toString()}`,
+    });
+
+    expect(await screen.findByRole('button', { name: 'Track: Foyer' })).toBeDefined();
+    const now = screen.getByRole('region', { name: 'Now' });
+    expect(within(now).getByRole('heading', { name: 'Late bar' })).toBeDefined();
+  });
+
   it('says a day with nothing on it has nothing planned, and links to the Schedule', async () => {
     await onNight([{ ...DANCE, startsAt: '2030-11-17T20:30:00+00:00', day: '2030-11-17' }]);
 
