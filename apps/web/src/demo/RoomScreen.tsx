@@ -169,7 +169,7 @@ function Screen({ shown, offline }: { shown: Shown; offline: boolean }) {
     return (
       <div className="rs-centre">
         <h1 className="rs-big">{W.thanks}</h1>
-        <p className="rs-name">{answer.event}</p>
+        <p className="rs-event-name">{answer.event}</p>
       </div>
     );
   if (answer.kind === 'nothingLeft')
@@ -182,7 +182,7 @@ function Screen({ shown, offline }: { shown: Shown; offline: boolean }) {
 
   return (
     <>
-      <h1 className="rs-name rs-event">{answer.event}</h1>
+      <h1 className="rs-event-name rs-event">{answer.event}</h1>
       <div className={answer.now == null ? 'rs-body is-between' : 'rs-body'}>
         {answer.now != null && (
           <section className="rs-now" aria-labelledby="rs-now-h">

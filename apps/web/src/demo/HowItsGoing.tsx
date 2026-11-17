@@ -664,7 +664,7 @@ function RunOutKitchenRow({
   const n = waiting(ro).length;
   const words = (
     <span className="hig-kitchen-words">
-      <span className="hig-title">
+      <span className="hig-title rout-kitchen-title">
         <strong>{kitchenLine()}</strong>
       </span>
       {n > 0 && <span className="hig-waiting">{waitingWord(n)}</span>}
@@ -683,7 +683,7 @@ function RunOutKitchenRow({
         </button>
       ) : (
         <>
-          <span className="hig-alert-icon" aria-hidden="true">
+          <span className="hig-alert-icon rout-kitchen-icon" aria-hidden="true">
             <Glyph paths={BAN_GLYPH} size={18} />
           </span>
           {words}
@@ -696,7 +696,7 @@ function RunOutKitchenRow({
 function EarlierKitchenRow({ line, n }: { line: string; n: number }) {
   return (
     <li className="hig-kitchen-row rout-kitchen-row">
-      <span className="hig-alert-icon" aria-hidden="true">
+      <span className="hig-alert-icon rout-kitchen-icon" aria-hidden="true">
         <Glyph paths={BAN_GLYPH} size={18} />
       </span>
       <span className="hig-kitchen-words">
