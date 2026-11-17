@@ -294,7 +294,7 @@ export function MoveAllPop({
   return (
     <div className="st-float st-pop is-move-all" role="dialog" aria-label={t('seating.moveAll')}>
       <h2>{t('seating.moveAll')}</h2>
-      <p className="st-line">{t('seating.roomForAll', { n })}</p>
+      <p className="st-line">{t('seating.roomForAll', { count: n })}</p>
       <ul className="st-rows is-dense">
         {room.map((one) => (
           <li key={one.id}>

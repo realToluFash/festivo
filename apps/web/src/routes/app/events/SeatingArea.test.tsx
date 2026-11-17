@@ -5320,6 +5320,20 @@ describe('A table’s guests in Seat, and the chairs in their states (sc-4013)',
     expect(screen.queryByRole('dialog', { name: 'Move everyone to…' })).toBeNull();
   });
 
+  it('says a free seat for them in Move everyone to… on a table of one', async () => {
+    signedIn();
+    await onSeating({
+      'GET /api/events/ev_1/seating-plan': () => seating(withGuests([AT_T1[0]], table(), T2)),
+    });
+
+    fireEvent.click(await screen.findByRole('tab', { name: 'Seat' }));
+    await chooseTable('Table 1, round, 1 of 10 seats taken');
+    fireEvent.click(screen.getByRole('button', { name: 'Move everyone to…' }));
+    const pop = screen.getByRole('dialog', { name: 'Move everyone to…' });
+
+    expect(within(pop).getByText('Tables with a free seat for them.')).toBeDefined();
+  });
+
   it('picks a seated guest from their chair in Seat, and moves just them to the next table', async () => {
     signedIn();
     const sent = await onSeating({
@@ -5480,6 +5494,9 @@ describe('The Tables view (sc-4013)', () => {
     expect(await screen.findAllByText('Bo Ade is at Table 3.')).not.toHaveLength(0);
     expect(screen.getByRole('button', { name: 'Undo' })).toBeDefined();
     expect(screen.getByRole('button', { name: 'Table 3, 0 of 10' }).className).toContain('is-lit');
+    expect((await screen.findByText('Saved')).closest('.st-canvas')?.className).toContain(
+      'is-tables',
+    );
     expect(sent.find((one) => one.line.endsWith('/guests/seat'))?.body).toMatchObject({
       guestId: 'g_bo',
       kind: 'table',
