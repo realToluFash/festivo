@@ -206,6 +206,10 @@ class Scratch(unittest.TestCase):
         self.config = {"machine": "tolu-linux", "workspace": str(self.root)}
         self.db = store.connect(":memory:")
         self.said = []
+        self.home = self.root / "home"
+        home = mock.patch.dict(os.environ, {"HOME": str(self.home)})
+        home.start()
+        self.addCleanup(home.stop)
 
     def entry(self, name, days, size=2_000_000, tester="qa3"):
         path = self.root / f"soirely-{tester}" / ".qa" / name
@@ -313,10 +317,11 @@ class Scratch(unittest.TestCase):
                          ["soirely-qa3", "soirely-dev3", "soirely-dev2", "soirely-qa2",
                           "soirely-l10n", "Devices", "avd"])
 
-    def log(self, entry, days, size=3_000_000, under=".maestro/tests/2026-11-16_160137"):
+    def log(self, entry, days, size=3_000_000, under=".maestro/tests/2026-11-16_160137",
+            name="maestro.log"):
         folder = entry / under if under else entry
         folder.mkdir(parents=True, exist_ok=True)
-        path = folder / "maestro.log"
+        path = folder / name
         path.write_bytes(b"x" * size)
         at = self.NOW - days * DAY
         os.utime(path, (at, at))
@@ -360,6 +365,49 @@ class Scratch(unittest.TestCase):
         self.assertIn("swept 5 MB of Maestro logs", self.said[0])
         self.assertIn("soirely-qa3/.qa", self.said[0])
         self.assertIn("2 maestro.log", self.said[0])
+
+    def test_the_device_logs_a_day_old_go_too_and_the_evidence_stays(self):
+        entry = self.entry("sc5519-ipad", 0)
+        names = ("device-simulator.log", "device-logcat.txt", "device-xctest.log",
+                 "xctest_runner_2026-11-16_160137.log")
+        old = [self.log(entry, 2, name=name) for name in names]
+        fresh = self.log(entry, 0.5, under="_batch/logs", name="device-simulator.log")
+        kept = [entry / ".maestro/tests/2026-11-16_160137" / name
+                for name in ("commands-(sign-in.yaml).json", "screenshot-1.png")]
+        for path in kept:
+            path.write_text("kept")
+            os.utime(path, (self.NOW - 2 * DAY, self.NOW - 2 * DAY))
+        self.sweep()
+        self.assertEqual([p.exists() for p in old], [False] * 4)
+        self.assertTrue(fresh.exists())
+        self.assertEqual([p.exists() for p in kept], [True, True])
+        self.assertIn("1 device-simulator.log, 1 device-logcat.txt", self.said[0])
+        self.assertIn("1 xctest_runner_*.log", self.said[0])
+
+    def runs(self, name, days, size=1_000_000):
+        run = self.home / ".maestro/tests" / name
+        run.mkdir(parents=True)
+        shot = run / "screenshot-1.png"
+        shot.write_bytes(b"x" * size)
+        at = self.NOW - days * DAY
+        os.utime(shot, (at, at))
+        os.utime(run, (at, at))
+        return run
+
+    def test_a_maestro_run_folder_a_day_old_goes_from_home(self):
+        old, fresh = self.runs("2026-11-15_101010", 2, 4_000_000), \
+            self.runs("2026-11-16_101010", 0.5)
+        self.sweep()
+        self.assertEqual([old.exists(), fresh.exists()], [False, True])
+        self.assertEqual(len(self.said), 1)
+        self.assertIn("swept 4 MB of Maestro runs", self.said[0])
+        self.assertIn(".maestro/tests", self.said[0])
+
+    def test_a_machine_without_maestro_runs_says_nothing_of_them(self):
+        (self.root / "soirely-ops").mkdir()
+        self.sweep()
+        self.assertEqual([s for s in self.said if "Maestro runs" in s], [])
+        self.assertFalse((self.home / ".maestro").exists())
 
     def test_a_machine_without_testers_sweeps_nothing(self):
         (self.root / "soirely-ops").mkdir()
