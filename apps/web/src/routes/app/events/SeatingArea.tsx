@@ -120,11 +120,13 @@ import {
   type ColleagueRing,
   NOBODY_ELSE,
   type OwnChoice,
+  LEAVING_HOLD_MS,
   type PresenceState,
   RingsContext,
   changed,
   chose,
   colleaguesOf,
+  departed,
   listed,
   ringsOf,
 } from './seatingPresence.ts';
@@ -203,6 +205,7 @@ function useLiveSeating(eventId: string, handlers: LiveHandlers) {
     const topic = realtimeTopic('EventSeating', eventId);
     let source: EventSource | null = null;
     let timer: ReturnType<typeof setTimeout> | undefined;
+    let listing: ReturnType<typeof setTimeout> | undefined;
     let stopped = false;
 
     const connect = async (): Promise<void> => {
@@ -224,16 +227,26 @@ function useLiveSeating(eventId: string, handlers: LiveHandlers) {
       const token = subscription.token;
 
       source?.close();
+      clearTimeout(listing);
       source = new EventSource(url);
-      source.onopen = () => {
-        latest.current.onGap();
+      const opened = source;
+      const list = (): void => {
+        clearTimeout(listing);
         fetch(subscribersUrl(hub, topic), { headers: { Authorization: `Bearer ${token}` } })
           .then((response) => (response.ok ? response.json() : Promise.reject(new Error())))
           .then(
             (body: unknown) =>
               !stopped && latest.current.onSubscribers(asPlanSubscribers(body, topic)),
-            () => !stopped && latest.current.onLost(),
+            () => {
+              if (stopped || source !== opened) return;
+              latest.current.onLost();
+              listing = setTimeout(list, RETRY_MS);
+            },
           );
+      };
+      source.onopen = () => {
+        latest.current.onGap();
+        list();
       };
       source.onmessage = (message: MessageEvent<string>) => {
         let data: unknown = null;
@@ -268,6 +281,7 @@ function useLiveSeating(eventId: string, handlers: LiveHandlers) {
     return () => {
       stopped = true;
       clearTimeout(timer);
+      clearTimeout(listing);
       source?.close();
     };
   }, [eventId]);
@@ -281,6 +295,12 @@ function usePresence(event: OrganisationEvent) {
   const [presence, setPresence] = useState<PresenceState>(NOBODY_ELSE);
   const mine = useRef<OwnChoice | null>(null);
   const told = useRef<string>('null');
+  const holds = useRef<ReturnType<typeof setTimeout>[]>([]);
+
+  useEffect(() => {
+    const pending = holds.current;
+    return () => pending.forEach(clearTimeout);
+  }, []);
 
   const tell = useCallback(
     (chosen: OwnChoice | null, again = false) => {
@@ -303,6 +323,13 @@ function usePresence(event: OrganisationEvent) {
     },
     onSubscriber: (tab) => {
       setPresence((was) => changed(was, tab, me, say));
+      if (!tab.active)
+        holds.current.push(
+          setTimeout(
+            () => setPresence((was) => departed(was, tab.subscriber, me, say)),
+            LEAVING_HOLD_MS,
+          ),
+        );
       if (tab.active && tab.userId !== me && mine.current != null) tell(mine.current, true);
     },
     onChoice: (choice) => {

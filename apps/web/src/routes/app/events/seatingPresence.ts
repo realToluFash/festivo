@@ -3,6 +3,8 @@ import { initials } from '@soirely/domain';
 import { createContext, useContext } from 'react';
 
 const TONES = 6;
+/** A renewed connection is a new subscriber, often published after the old one leaves; a departure waits this long for it. */
+export const LEAVING_HOLD_MS = 1_000;
 
 export interface Colleague {
   userId: string;
@@ -21,6 +23,8 @@ export interface PresenceState {
   /** Everyone seen, in the order they arrived, for their colour. */
   arrived: string[];
   chosen: Record<string, ColleagueChoice['chosen']>;
+  /** Tabs closed but still counted, until {@link departed} lets them go. */
+  leaving: string[];
   /** Lost only once a connection has failed, so a page still opening says nothing. */
   connection: 'opening' | 'open' | 'lost';
   spoken: string;
@@ -30,6 +34,7 @@ export const NOBODY_ELSE: PresenceState = {
   tabs: {},
   arrived: [],
   chosen: {},
+  leaving: [],
   connection: 'opening',
   spoken: '',
 };
@@ -52,31 +57,73 @@ export function listed(state: PresenceState, list: PlanSubscriber[]): PresenceSt
     Object.entries(state.chosen).filter(([userId]) => hereNow(tabs, userId) != null),
   );
 
-  return { ...state, tabs, arrived, chosen, connection: 'open' };
+  return { ...state, tabs, arrived, chosen, leaving: [], connection: 'open' };
 }
 
-/** One tab arriving or leaving; `say` words the arrival or departure of a person, not of their second tab. */
+/** One tab arriving or leaving; `say` words the arrival or departure of a person, not of their second tab, nor of a tab they renewed. */
 export function changed(
   state: PresenceState,
   tab: PlanSubscriber,
   me: string,
   say: (key: 'joinedPlan' | 'leftPlan', name: string) => string,
 ): PresenceState {
-  const wasHere = hereNow(state.tabs, tab.userId) != null;
+  if (!tab.active && state.leaving.includes(tab.subscriber)) return state;
+  if (!tab.active && tab.userId !== me && state.tabs[tab.subscriber] != null) {
+    const others = Object.values(state.tabs).filter(
+      (one) =>
+        one.userId === tab.userId &&
+        one.subscriber !== tab.subscriber &&
+        !state.leaving.includes(one.subscriber),
+    );
+    if (others.length === 0) return { ...state, leaving: [...state.leaving, tab.subscriber] };
+  }
+
   const tabs = { ...state.tabs };
+  let leaving = state.leaving;
+  if (tab.active) {
+    for (const held of leaving) if (tabs[held]?.userId === tab.userId) delete tabs[held];
+    leaving = leaving.filter((held) => tabs[held] != null);
+  }
+
+  return without({ ...state, tabs, leaving }, tab, me, say, state);
+}
+
+/** A closed tab nobody renewed in time: its person leaves, unless another of their tabs is still here. */
+export function departed(
+  state: PresenceState,
+  subscriber: string,
+  me: string,
+  say: (key: 'joinedPlan' | 'leftPlan', name: string) => string,
+): PresenceState {
+  const tab = state.tabs[subscriber];
+  if (tab == null || !state.leaving.includes(subscriber)) return state;
+  const leaving = state.leaving.filter((held) => held !== subscriber);
+
+  return without({ ...state, leaving }, { ...tab, active: false }, me, say, state);
+}
+
+function without(
+  next: PresenceState,
+  tab: PlanSubscriber,
+  me: string,
+  say: (key: 'joinedPlan' | 'leftPlan', name: string) => string,
+  was: PresenceState,
+): PresenceState {
+  const wasHere = hereNow(was.tabs, tab.userId) != null;
+  const tabs = { ...next.tabs };
 
   if (tab.active) tabs[tab.subscriber] = tab;
   else delete tabs[tab.subscriber];
 
   const isHere = hereNow(tabs, tab.userId) != null;
-  const chosen = { ...state.chosen };
+  const chosen = { ...next.chosen };
   if (!isHere) delete chosen[tab.userId];
   const spoken =
     tab.userId === me || wasHere === isHere
-      ? state.spoken
+      ? next.spoken
       : say(isHere ? 'joinedPlan' : 'leftPlan', tab.name);
 
-  return { ...state, tabs, chosen, spoken, arrived: arrive(state, tab.userId) };
+  return { ...next, tabs, chosen, spoken, arrived: arrive(next, tab.userId) };
 }
 
 /** An editor's choice; a viewer's is never shared, and is dropped should one arrive. */

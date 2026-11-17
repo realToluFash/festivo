@@ -3905,7 +3905,7 @@ describe('Who else is on the plan (sc-4719)', () => {
     expect(screen.getByRole('button', { name: 'Kemi Adeyemi' })).toBeDefined();
 
     source.publish(tab('urn:uuid:k1', 'u_kemi', 'Kemi Adeyemi', true, false));
-    await waitFor(() => expect(heard()).toBe('Kemi Adeyemi left the plan.'));
+    await waitFor(() => expect(heard()).toBe('Kemi Adeyemi left the plan.'), { timeout: 2_000 });
     expect(screen.queryByRole('button', { name: 'Kemi Adeyemi' })).toBeNull();
   });
 
@@ -3929,10 +3929,39 @@ describe('Who else is on the plan (sc-4719)', () => {
     await screen.findByRole('button', { name: `${TABLE_1}, chosen by Priya Shah` });
     source.publish({ ...PRIYA, active: false });
 
-    await screen.findByRole('button', { name: TABLE_1 });
+    await screen.findByRole('button', { name: TABLE_1 }, { timeout: 2_000 });
     expect(document.querySelector('.st-ring')).toBeNull();
     expect(screen.queryByRole('button', { name: 'Priya Shah' })).toBeNull();
   });
+
+  it('announces nothing and keeps the outline when a colleague’s connection renews', async () => {
+    const { source } = await onPlanWith([ME, PRIYA]);
+    const heard = () => document.querySelector('.st-top [aria-live="polite"]')?.textContent ?? '';
+    source.publish({ userId: 'u_priya', chosen: { kind: 'table', id: 't1', chair: null } });
+    await screen.findByRole('button', { name: `${TABLE_1}, chosen by Priya Shah` });
+
+    source.publish({ ...PRIYA, active: false });
+    source.publish(tab('urn:uuid:p9', 'u_priya', 'Priya Shah'));
+    await new Promise((done) => setTimeout(done, 1_200));
+
+    expect(heard()).toBe('');
+    expect(screen.getByRole('button', { name: 'Priya Shah' })).toBeDefined();
+    expect(screen.getByRole('button', { name: `${TABLE_1}, chosen by Priya Shah` })).toBeDefined();
+  });
+
+  it('asks again for who is here when the list fails, while the connection stays open', async () => {
+    let asked = 0;
+    await onPlanWith([], OWNER_PERMISSIONS, {
+      [LIST]: () => (++asked === 1 ? json({}, 404) : json({ subscriptions: [ME, PRIYA] })),
+    });
+    expect(await screen.findByText('Can’t see who else is here. Reconnecting…')).toBeDefined();
+
+    expect(
+      await screen.findByRole('button', { name: 'Priya Shah' }, { timeout: 7_000 }),
+    ).toBeDefined();
+    expect(screen.queryByText('Can’t see who else is here. Reconnecting…')).toBeNull();
+    expect(asked).toBe(2);
+  }, 10_000);
 
   it('never outlines what a viewer chooses', async () => {
     const { source } = await onPlanWith([ME, SADE]);
