@@ -172,6 +172,10 @@
   font: 600 14px/1.45 var(--fontFamily);
 }
 
+.mn-failed > svg {
+  flex: none;
+}
+
 .lib-page {
   display: flex;
   flex-direction: column;
@@ -621,7 +625,7 @@
 }
 
 .lib-empty p {
-  color: var(--colorInkSecondary);
+  color: var(--colorInkOnDark);
   font: 400 15px/1.45 var(--fontFamily);
 }
 

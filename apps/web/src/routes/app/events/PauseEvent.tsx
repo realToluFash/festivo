@@ -4,6 +4,7 @@ import { type RefObject, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { api } from '../../../api.ts';
+import { focusWhenFree } from '../../../layers.ts';
 import { offButton } from '../../../offButton.ts';
 import { InManage, LifecycleAsk } from './LifecycleAsk.tsx';
 import { useLifecycleAction } from './useLifecycleAction.ts';
@@ -93,7 +94,7 @@ export function useResume({
         setState('idle');
         onChange(resumed.event, resumed.tag);
         onResumed();
-        window.setTimeout(() => heading.current?.focus(), 0);
+        focusWhenFree(() => heading.current);
       },
       (error: unknown) => {
         if (!(error instanceof ApiError && error.is('event_state_invalid'))) {
@@ -107,7 +108,7 @@ export function useResume({
             setState('idle');
             setChangedTo(latest.event.status);
             onChange(latest.event, latest.tag);
-            window.setTimeout(() => heading.current?.focus(), 0);
+            focusWhenFree(() => heading.current);
           },
           () => setState('failed'),
         );

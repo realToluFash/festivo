@@ -20,7 +20,7 @@ import {
   writeFileSync,
 } from 'node:fs';
 import { homedir, hostname, networkInterfaces, tmpdir } from 'node:os';
-import { basename, dirname, extname, join, resolve } from 'node:path';
+import { basename, dirname, extname, join, posix, resolve } from 'node:path';
 import { Readable } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
 import { fileURLToPath } from 'node:url';
@@ -981,6 +981,75 @@ export function clearApiCache(root, exec = run) {
   ]);
 }
 
+// Docker Desktop's VM can go on serving a mounted file's old bytes after a checkout rewrote
+// it on the host, and nothing short of writing through the mount refreshes it (sc-60846).
+export function staleInContainer(hostHashes, sha256sumOutput) {
+  const served = new Map(
+    sha256sumOutput
+      .split('\n')
+      .map((line) => /^([0-9a-f]{64}) [ *](.+)$/.exec(line))
+      .filter(Boolean)
+      .map(([, hash, path]) => [path.replace(/^\.\//, ''), hash]),
+  );
+  return [...hostHashes].filter(([path, hash]) => served.get(path) !== hash).map(([path]) => path);
+}
+
+export function execOutput(result, label) {
+  if (result.error) throw new Error(`${label}: ${result.error.message}`);
+  if (result.status !== 0) {
+    throw new Error(`${label} exited ${result.status}: ${String(result.stderr ?? '').trim()}`);
+  }
+  return String(result.stdout ?? '');
+}
+
+function apiServedHashes(root, paths) {
+  const result = spawnSync(
+    'docker',
+    ['compose', 'exec', '-T', 'api', 'sh', '-c', 'cd /app && xargs -0 sha256sum'],
+    { cwd: root, input: paths.join('\0'), encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 },
+  );
+  return execOutput(result, 'docker compose exec api sha256sum');
+}
+
+function proveApiMount(root) {
+  step('The api container, serving this commit');
+  const api = join(root, 'services/api');
+  const hostHashes = new Map(
+    git(['ls-files', '-z'], api)
+      .split('\0')
+      .filter((path) => path && existsSync(join(api, path)))
+      .map((path) => [path, hashOf(join(api, path))]),
+  );
+  const paths = [...hostHashes.keys()];
+  const stale = staleInContainer(hostHashes, apiServedHashes(root, paths));
+  if (stale.length === 0) {
+    console.log(`  api container matches the commit (${paths.length} files)`);
+    return;
+  }
+  for (const path of stale) {
+    console.log(`  stale in the container, rewritten: ${path}`);
+    execOutput(
+      spawnSync(
+        'docker',
+        ['compose', 'exec', '-T', 'api', 'sh', '-c', 'cat > "$1"', 'sh', `/app/${path}`],
+        { cwd: root, input: readFileSync(join(api, path)), encoding: 'utf8' },
+      ),
+      `docker compose exec api rewrite ${path}`,
+    );
+  }
+  const still = staleInContainer(
+    new Map(stale.map((path) => [path, hostHashes.get(path)])),
+    apiServedHashes(root, stale),
+  );
+  if (still.length > 0) {
+    throw new Error(
+      `the api container still serves old bytes of:\n  ${still.join('\n  ')}\n` +
+        'Restart Docker Desktop and run the checkout again.',
+    );
+  }
+  console.log(`  api container matches the commit after rewriting ${stale.length} files`);
+}
+
 const HERE = dirname(fileURLToPath(import.meta.url));
 
 // QA runs the copy in .qa/bin, gitignored, so checking out an old commit keeps the harness.
@@ -1382,6 +1451,8 @@ function checkout(args) {
     ['compose', 'up', '-d', '--wait', '--no-recreate', ...servicesToWait(composeServices(root))],
     { cwd: root },
   );
+
+  proveApiMount(root);
 
   const console_ = ['compose', 'exec', '-T', 'api', 'php', 'bin/console'];
   run('docker', [...console_, 'lexik:jwt:generate-keypair', '--skip-if-exists'], { cwd: root });
@@ -3097,31 +3168,38 @@ export function composeBatch(
   const finish = (flow) => (onAndroid ? forAndroid(flow) : flow);
   aloneFlows(source, target, { catalogues, email, onAndroid, skipChecks: true });
   mkdirSync(join(target, '_checks'));
-  const subFlows = (flow, language, caller, chain) =>
+  const subFlows = (flow, language, caller, chain, dir = '') =>
     flow.replace(
-      /^(\s*(?:-\s*runFlow|file):\s*)(['"]?)([\w.-]+)\.ya?ml\2(?=\s*$)/gm,
-      (line, key, quote, name) => {
-        if (!existsSync(join(source, 'checks', `${name}.yaml`))) return line;
+      /^(\s*(?:-\s*runFlow|file):\s*)(['"]?)([\w./-]+)\.ya?ml\2(?=\s*$)/gm,
+      (line, key, quote, ref) => {
+        const name = posix.relative('checks', posix.join('checks', dir, ref));
+        if (name.startsWith('../') || !existsSync(join(source, 'checks', `${name}.yaml`)))
+          return line;
         if (chain.includes(name))
           throw new Error(`${[...chain, name].join(' → ')}: a check runs itself`);
-        const id = `${caller}.${name}`;
-        const path = join(target, '_checks', `${id}.flow.yaml`);
+        const id = `${caller}.${name.replaceAll('/', '.')}`;
+        const file = posix.join(posix.dirname(name), `${id}.flow.yaml`);
+        const path = join(target, '_checks', file);
         if (!existsSync(path)) {
           const sub = readFileSync(join(source, 'checks', `${name}.yaml`), 'utf8');
+          mkdirSync(dirname(path), { recursive: true });
           writeFileSync(
             path,
             finish(
               prefixShots(
-                subFlows(localise(sub, catalogues, language, { email }), language, id, [
-                  ...chain,
-                  name,
-                ]),
+                subFlows(
+                  localise(sub, catalogues, language, { email }),
+                  language,
+                  id,
+                  [...chain, name],
+                  posix.dirname(name),
+                ),
                 id,
               ),
             ),
           );
         }
-        return `${key}${id}.flow.yaml`;
+        return `${key}${posix.relative(dir, file)}`;
       },
     );
   for (const run of batchRuns(checks, languages)) {

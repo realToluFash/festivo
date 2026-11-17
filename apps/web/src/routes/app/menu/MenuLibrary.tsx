@@ -660,7 +660,7 @@ function Library({
                       key={dish.id}
                       dish={dish}
                       manage={manage}
-                      lit={editing?.id === dish.id || variantDish?.id === dish.id}
+                      lit={editing?.id === dish.id}
                       language={language}
                       variants={rowVariants(dish)}
                       asking={askDelete === dish.id}
@@ -699,7 +699,14 @@ function Library({
           {panel?.kind === 'variant' && variantDish != null && (
             <aside className="mn-panel lib-panel" aria-labelledby="lib-panel-title">
               <PanelTop
-                eyebrow={null}
+                eyebrow={
+                  panel.mode === 'addFirst'
+                    ? null
+                    : t('dishVariants.ways', {
+                        dish: variantDish.name,
+                        count: variantDish.variants.length,
+                      })
+                }
                 title={
                   panel.mode === 'addFirst'
                     ? t('dishVariants.addFirstTitle', { dish: variantDish.name })

@@ -2947,6 +2947,7 @@ describe('events (sc-1486)', () => {
     deleteRefusedBecause: null,
     createdAt: '2026-10-21T09:00:00+00:00',
     permissions: ['events.read', 'events.manage'],
+    roleOnEvent: null,
   };
 
   function client(response: () => Response, sent: { line: string; body: unknown }[] = []) {
@@ -3280,6 +3281,17 @@ describe('events (sc-1486)', () => {
     ).rejects.toThrow(/events controller/);
     await expect(
       client(() => json({ event: { ...EVENT, type: undefined } })).api.event('e1'),
+    ).rejects.toThrow(/events controller/);
+  });
+
+  test("a Member's role on the event comes with it, and a role the client does not know is refused (sc-59617)", async () => {
+    const member = { ...EVENT, permissions: ['events.read'], roleOnEvent: 'can_check_in' };
+
+    expect((await client(() => json({ event: member })).api.event('e1')).roleOnEvent).toBe(
+      'can_check_in',
+    );
+    await expect(
+      client(() => json({ event: { ...EVENT, roleOnEvent: 'usher' } })).api.event('e1'),
     ).rejects.toThrow(/events controller/);
   });
 

@@ -1,4 +1,4 @@
-import { useLocalSearchParams } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { type ReactNode, useEffect, useRef, useState } from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, View, type ViewInstance } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -14,6 +14,7 @@ import { DemoOnly } from '../../steps/Lines.tsx';
 import { tokens } from '../../theme/tokens.ts';
 import { goBack } from '../DemoScreen.tsx';
 import { Glyph } from '../queue/QueueParts.tsx';
+import { RUN_EVENT } from '../runView/runViewModel.ts';
 import {
   type LaterRow,
   type Night,
@@ -200,7 +201,9 @@ function NightBody({ first, locale }: { first: NightStart; locale: string }) {
                   {night.lost.title}
                 </Text>
                 <Text size={14} weight="semibold" style={styles.attention}>
-                  {`Already started by ${night.lost.by} at ${timeIn(locale, night.lost.at)}.`}
+                  {night.lost.by == null
+                    ? night.lost.said
+                    : `Already started by ${night.lost.by} at ${timeIn(locale, night.lost.at)}.`}
                 </Text>
               </View>
               <SecondaryButton
@@ -459,7 +462,7 @@ function Cards({
           <Pressable
             accessibilityRole="link"
             style={styles.link}
-            onPress={() => undefined}
+            onPress={() => router.push(`/demo/events/${RUN_EVENT}?state=endNow`)}
             testID="night.endNow"
           >
             <Text size={15} weight="semibold" style={styles.accentText}>

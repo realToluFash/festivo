@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Access;
 
+use App\Enum\EventRole;
 use App\Enum\Permission;
 use App\Http\Exception\ApiException;
 use Psl\Iter;
@@ -22,6 +23,7 @@ final readonly class Grants
         private array $withheld = [],
         private bool $readOnly = false,
         private bool $heldForTwoFactor = false,
+        private ?EventRole $eventRole = null,
     ) {
     }
 
@@ -36,22 +38,28 @@ final readonly class Grants
         return new self(false, $permissions);
     }
 
+    /** A Member's, which come from their role on one event and from nothing in the organisation (sc-29912). */
+    public static function onEvent(EventRole $role): self
+    {
+        return new self(false, $role->permissions(), eventRole: $role);
+    }
+
     /** The administrative permissions this holds, kept back until the member turns two-factor on. */
     public function withholdingAdministration(): self
     {
-        return new self($this->everything, $this->permissions, Vec\filter(Permission::cases(), fn (Permission $permission): bool => $permission->isAdministrative() && $this->roleHolds($permission)), $this->readOnly, $this->heldForTwoFactor);
+        return new self($this->everything, $this->permissions, Vec\filter(Permission::cases(), fn (Permission $permission): bool => $permission->isAdministrative() && $this->roleHolds($permission)), $this->readOnly, $this->heldForTwoFactor, $this->eventRole);
     }
 
     /** Reading only, until the member links Google or Apple. */
     public function readingOnly(): self
     {
-        return new self($this->everything, $this->permissions, $this->withheld, true, $this->heldForTwoFactor);
+        return new self($this->everything, $this->permissions, $this->withheld, true, $this->heldForTwoFactor, $this->eventRole);
     }
 
     /** Nothing at all, past the organisation's deadline for two-factor, until the member turns it on (sc-609). */
     public function heldForTwoFactor(): self
     {
-        return new self($this->everything, $this->permissions, $this->withheld, $this->readOnly, true);
+        return new self($this->everything, $this->permissions, $this->withheld, $this->readOnly, true, $this->eventRole);
     }
 
     /** The one refusal for a permission not held: 403 `two_factor_required` while two-factor keeps it back, `permission_required` otherwise. */
@@ -97,6 +105,12 @@ final readonly class Grants
     public function isReadOnly(): bool
     {
         return $this->readOnly;
+    }
+
+    /** The role on the event these come from, for a Member; null when they are the organisation role's. */
+    public function eventRole(): ?EventRole
+    {
+        return $this->eventRole;
     }
 
     public function isHeldForTwoFactor(): bool

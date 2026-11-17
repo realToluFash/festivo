@@ -646,8 +646,9 @@ describe('A thank-you for your guests, on a Finished event (sc-6476)', () => {
     const end = within(ask).getByRole('button', { name: 'End now' });
     expect(field.compareDocumentPosition(alert) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(alert.compareDocumentPosition(keep) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-    expect(keep.classList.contains('link-button')).toBe(true);
-    expect(end.classList.contains('button-danger')).toBe(true);
+    expect(keep.classList.contains('desk-ask-keep')).toBe(true);
+    expect(end.classList.contains('desk-text')).toBe(true);
+    expect(end.classList.contains('is-red')).toBe(false);
   });
 
   it('opens End now a second time empty, as the app does', SLOW, async () => {

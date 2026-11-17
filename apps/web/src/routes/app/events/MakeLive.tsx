@@ -9,13 +9,14 @@ import {
   needsHost,
   rereadOf,
 } from '@soirely/domain';
-import { type ReactNode, type RefObject, useEffect, useRef, useState } from 'react';
+import { type ReactNode, type RefObject, useEffect, useId, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router';
 
 import { api } from '../../../api.ts';
-import { MakeLiveDialog } from '../../../components/MakeLiveDialog.tsx';
-import { AskAlert } from '../../../components/SettingsParts.tsx';
+import { HostOneField } from '../../../components/HostOneField.tsx';
+import { Ask, AskAlert } from '../../../components/SettingsParts.tsx';
+import { focusWhenFree } from '../../../layers.ts';
 import { StatusChip } from '../../../components/StatusChip.tsx';
 import { PHASE_WORD } from './eventWords.ts';
 import { inPlace } from './openInPlace.ts';
@@ -108,7 +109,7 @@ export function useMakeLive({
       setAsking(null);
       changed(step.tagged);
       onMadeLive();
-      window.setTimeout(() => heading.current?.focus(), 0);
+      focusWhenFree(() => heading.current);
       return;
     }
 
@@ -255,6 +256,7 @@ function MakeLiveAsking({
 }) {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const id = useId();
   const field = useRef<HTMLInputElement>(null);
   const hostsNow = useRef<HTMLDivElement>(null);
   const confirm = asking.kind === 'confirm' ? asking : null;
@@ -274,10 +276,12 @@ function MakeLiveAsking({
     const told = asking as Told;
 
     return (
-      <MakeLiveDialog
+      <Ask
         title={told.title}
         line={told.line}
         told
+        red={false}
+        flat
         keep={t('eventLive.close')}
         go={told.changeDates ? t('eventLive.changeDates') : undefined}
         onKeep={onClose}
@@ -291,31 +295,25 @@ function MakeLiveAsking({
   }
 
   const { askHost, typed, pending, failed } = confirm;
+  const go = (): void => {
+    if (!pending) onGo();
+  };
 
   return (
-    <MakeLiveDialog
+    <Ask
       title={t('eventLive.confirmTitle', { name: event.name })}
       line={`${t('eventLive.confirmGuests')} ${t('eventLive.confirmFinal')}`}
-      host={
-        askHost
-          ? {
-              label: t('eventHosts.label', { position: 1 }),
-              value: typed,
-              wrong: error,
-              help: t('eventLive.hostExplainer'),
-              onType,
-            }
-          : undefined
-      }
-      field={field}
+      red={false}
+      flat
+      first={askHost ? field : undefined}
+      keepFirst
+      describedBy={askHost ? `${id}-help` : undefined}
       failed={failed ? t('eventLive.failed') : undefined}
       keep={t('eventLive.notYet')}
       go={t('eventLive.makeLive')}
       busy={pending ? t('eventLive.making') : undefined}
       onKeep={onClose}
-      onGo={() => {
-        if (!pending) onGo();
-      }}
+      onGo={go}
     >
       {notice === 'nowHosted' && (
         <div ref={hostsNow} className="event-live-hosts-now" role="group" tabIndex={-1}>
@@ -329,6 +327,21 @@ function MakeLiveAsking({
         </div>
       )}
       {notice === 'stillNoHost' && <AskAlert>{t('eventEdit.changedElsewhere')}</AskAlert>}
-    </MakeLiveDialog>
+      {askHost && (
+        <HostOneField
+          id={id}
+          host={{
+            label: t('eventHosts.label', { position: 1 }),
+            value: typed,
+            wrong: error,
+            help: t('eventLive.hostExplainer'),
+            onType,
+          }}
+          field={field}
+          readOnly={pending}
+          onGo={go}
+        />
+      )}
+    </Ask>
   );
 }
