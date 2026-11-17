@@ -2239,6 +2239,14 @@ describe('a guest’s column at 320 (sc-3773)', () => {
     expect(cssRule('.gs-column', GUESTS_CSS)).toContain('min-width: 0;');
   });
 });
+describe('Guests from 1241 px (sc-61150)', () => {
+  it('keeps the guest in view beside the list only from 1241 px', () => {
+    const beside = GUESTS_CSS.slice(GUESTS_CSS.indexOf('(width > 77.5rem)'));
+
+    expect(cssRule('.gs-column', beside)).toContain('position: sticky;');
+  });
+});
+
 describe('the Guests top at 320 (sc-3773, ux #44604)', () => {
   it('wraps the title only at spaces, with Add guest dropping to its own row', () => {
     expect(cssRule('.gs-top', GUESTS_CSS)).toContain('flex-wrap: wrap;');

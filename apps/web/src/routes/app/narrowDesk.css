@@ -1,4 +1,4 @@
-/* 641 to 960 px only, as the web demo's narrowDesk.css (sc-60699): 961 and up, and 640 and down, stay as on main. */
+/* 641 to 960 px only, as the web demo's narrowDesk.css (sc-60699): 961 and up, and 640 and down, stay as on main. What runs on past 960 is in wideDesk.css. */
 @media (40rem < width <= 60rem) {
   .shell-content.is-card {
     padding-inline: var(--spaceXxl);
@@ -10,21 +10,11 @@
 
   .shell :is(.desk-top, .gs-top) {
     flex-shrink: 0;
-    flex-wrap: wrap;
-    row-gap: var(--spaceLg);
-  }
-
-  .shell :is(.desk-title, .gs-title) {
-    min-width: auto;
   }
 
   .shell .gs-top > .mn-head {
     flex: 1 1 auto;
     min-width: auto;
-  }
-
-  .shell :is(.desk-title, .desk-title *, .gs-title, .gs-title *) {
-    overflow-wrap: normal;
   }
 
   /* Settings' list stays above its page, as up to 60rem it already is, and the card scrolls the two together. */
@@ -68,52 +58,23 @@
     grid-template-columns: minmax(0, 1fr);
   }
 
-  .shell .lib-split.is-docked {
+  .shell .mn-split:not(.ro .mn-split):has(> .mn-panel) {
     flex-direction: column;
     align-items: stretch;
   }
 
-  .shell .lib-split.is-docked .lib-panel {
+  .shell .mn-split:not(.ro .mn-split) > .mn-panel {
     position: static;
     order: -1;
     width: auto;
     max-height: none;
   }
 
-  .shell .mn-split:has(> .mn-panel) {
-    flex-direction: column;
-    align-items: stretch;
-  }
-
-  .shell .mn-split > .mn-panel {
-    position: static;
-    order: -1;
-    width: auto;
-    max-height: none;
-  }
-
-  .shell :is(.lib-split.is-docked .lib-panel, .mn-split > .mn-panel) .mn-panel-body {
+  .shell .mn-split:not(.ro .mn-split) > .mn-panel .mn-panel-body {
     overflow: visible;
   }
 
   .shell .ev-columns {
     grid-template-columns: minmax(0, 1fr);
-  }
-
-  .shell .gs-cols {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
-  .shell .gs-column {
-    position: static;
-    order: -1;
-    max-height: none;
-    margin: 0;
-    padding: 0;
-    overflow: visible;
-  }
-
-  .shell .gs-column:has(> .gs-pick) {
-    display: none;
   }
 }

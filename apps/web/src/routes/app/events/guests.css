@@ -121,7 +121,7 @@
 }
 
 /* The form stays in view while the list scrolls, only when the two sit side by side. */
-@media (width > 60rem) {
+@media (width > 77.5rem) {
   .gs-column {
     position: sticky;
     top: 0;

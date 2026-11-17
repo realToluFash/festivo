@@ -152,7 +152,9 @@
     "web:eventMenu.dessert",
     "web:night.minutes_one",
     "web:night.minutes_other",
-    "web:night.hoursMinutes"
+    "web:night.hoursMinutes",
+    "web:dishChoices.options",
+    "web:dishChoices.option"
   ],
   "pt": [
     "web:seating.shapeCocktailShort",

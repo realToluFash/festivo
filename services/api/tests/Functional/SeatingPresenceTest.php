@@ -6,6 +6,7 @@ namespace App\Tests\Functional;
 
 use App\Domain\Organisation\OrganisationFounder;
 use App\Domain\User\UserRegistrar;
+use App\Entity\EventPerson;
 use App\Entity\Membership;
 use App\Entity\Organisation;
 use App\Entity\Role;
@@ -188,6 +189,59 @@ final class SeatingPresenceTest extends ApiTestCase
             $this->as($this->owner, 'PUT', $this->chosen(), ['chosen' => ['kind' => 'table', 'id' => $id]]);
             self::assertSame(404, $this->statusCode(), $id);
         }
+    }
+
+    #[Test]
+    public function aChairPastTheTablesSeatsIsNotFound(): void
+    {
+        $table = $this->addTable();
+        $before = Iter\count(self::service(RecordingHub::class)->published);
+
+        foreach ([0, 99] as $chair) {
+            $this->as($this->owner, 'PUT', $this->chosen(), ['chosen' => ['kind' => 'table', 'id' => $table, 'chair' => $chair]]);
+            self::assertSame(404, $this->statusCode(), (string) $chair);
+        }
+
+        self::assertCount($before, self::service(RecordingHub::class)->published);
+    }
+
+    #[Test]
+    public function anEditorAndAViewerEachSayTheyAreStillHere(): void
+    {
+        $viewer = $this->member('ada@ire.events', 'Ada Obi', EventRole::CanView);
+
+        foreach ([$this->owner, $viewer] as $who) {
+            $this->as($who, 'POST', $this->plan() . '/here');
+
+            self::assertSame(204, $this->statusCode());
+            $update = Iter\last(self::service(RecordingHub::class)->published) ?? self::fail('nothing published');
+            self::assertSame(['events/' . $this->eventId . '/seating/choices'], $update->getTopics());
+            self::assertTrue($update->isPrivate());
+            self::assertSame(['userId' => $who->getId()->toRfc4122(), 'here' => true], Json\decode($update->getData()));
+            self::assertFalse(Str\contains($update->getData(), '@'));
+        }
+    }
+
+    #[Test]
+    public function somebodyWhoCannotOpenThePlanCannotSayTheyAreHere(): void
+    {
+        $outsider = $this->member('tunde@ire.events', 'Tunde Bello', null);
+        $stranger = $this->account('stranger@else.where', 'Someone Else');
+        $revoked = $this->member('ada@ire.events', 'Ada Obi', EventRole::CanView);
+        $this->as($revoked, 'POST', $this->plan() . '/here');
+        self::assertSame(204, $this->statusCode());
+        $membership = self::em()->getRepository(Membership::class)->findOneBy(['user' => $revoked->getId()]) ?? self::fail('not a member');
+        $role = self::em()->getRepository(EventPerson::class)->findOneBy(['event' => $this->eventId, 'membership' => $membership]) ?? self::fail('no role on the event');
+        self::em()->remove($role);
+        self::em()->flush();
+        $before = Iter\count(self::service(RecordingHub::class)->published);
+
+        foreach (['outsider' => $outsider, 'stranger' => $stranger, 'revoked' => $revoked] as $who => $user) {
+            $this->as($user, 'POST', $this->plan() . '/here');
+            self::assertSame(404, $this->statusCode(), $who);
+        }
+
+        self::assertCount($before, self::service(RecordingHub::class)->published);
     }
 
     /** @return non-empty-string */

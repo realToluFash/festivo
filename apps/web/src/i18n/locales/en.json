@@ -2594,6 +2594,7 @@
     "overview": "Overview",
     "guests": "Guests",
     "menu": "Menu",
+    "menuReady": "{{ready, number}} of {{count, number}} ready",
     "seating": "Seating",
     "messages": "Messages",
     "schedule": "Schedule",

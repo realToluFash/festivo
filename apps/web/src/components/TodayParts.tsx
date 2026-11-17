@@ -1,15 +1,18 @@
 import { useTranslation } from 'react-i18next';
 
+import { useShownLanguage } from '../i18n/index.ts';
 import { Notice } from './Notice.tsx';
 import { Glyph } from './Glyph.tsx';
-import type {
-  AgendaDay,
-  DayRange,
-  EventCard,
-  Moment,
-  Open,
-  ShownEvent,
-  StripBar,
+import {
+  type AgendaDay,
+  type DayRange,
+  type EventCard,
+  lettersAtEveryWidth,
+  type Moment,
+  type Open,
+  type ShownEvent,
+  type StripBar,
+  type StripDay,
 } from './today.ts';
 import './today.css';
 import './phoneFit.css';
@@ -66,8 +69,25 @@ function Bar({ bar }: { bar: StripBar }) {
   );
 }
 
-function Strip({ moment }: { moment: Moment }) {
+function Weekday({ day }: { day: StripDay }) {
   const { t } = useTranslation();
+
+  if (day.today) {
+    return <span className="today-weekday">{t('today.today')}</span>;
+  }
+
+  return (
+    <span className="today-weekday">
+      <span className="today-weekday-short">{day.weekday}</span>
+      <span className="today-weekday-narrow" aria-hidden="true">
+        {day.narrow}
+      </span>
+      <span className="today-weekday-spoken">{day.spoken}</span>
+    </span>
+  );
+}
+
+function Strip({ moment, letters }: { moment: Moment; letters: boolean }) {
   const rows = Array.from(
     { length: Math.max(0, ...moment.bars.map((bar) => bar.lane + 1)) },
     (_, lane) => moment.bars.filter((bar) => bar.lane === lane),
@@ -79,10 +99,10 @@ function Strip({ moment }: { moment: Moment }) {
         moment.bars.length > 0 ? 'today-panel today-strip has-bars' : 'today-panel today-strip'
       }
     >
-      <ol className="today-days">
+      <ol className={letters ? 'today-days has-letters' : 'today-days'}>
         {moment.days.map((day) => (
           <li key={day.number} className={day.today ? 'today-day is-today' : 'today-day'}>
-            <span className="today-weekday">{day.today ? t('today.today') : day.weekday}</span>
+            <Weekday day={day} />
             <span className="today-date">{day.number}</span>
             <span className="today-dots">
               {day.dots.map((event) => (
@@ -144,6 +164,7 @@ function Agenda({ days, nothing }: { days: AgendaDay[]; nothing: string }) {
 
 export function ThisWeek({ moment, open }: { moment: Moment; open: Open }) {
   const { t } = useTranslation();
+  const letters = lettersAtEveryWidth(useShownLanguage());
   const { nextUp } = moment;
 
   return (
@@ -153,7 +174,7 @@ export function ThisWeek({ moment, open }: { moment: Moment; open: Open }) {
         title={t('today.thisWeek')}
         link={{ label: t('nav.calendar'), onClick: () => open({ to: 'calendar' }) }}
       />
-      <Strip moment={moment} />
+      <Strip moment={moment} letters={letters} />
       {nextUp == null ? (
         <Agenda days={moment.agenda} nothing={moment.nothing} />
       ) : (

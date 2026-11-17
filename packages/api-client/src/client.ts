@@ -2492,6 +2492,11 @@ export class ApiClient {
     await this.put<undefined>(`${this.seatingPath(eventId)}/chosen`, { chosen });
   }
 
+  /** Tells everyone with the plan open that you still have it open, editor or viewer (sc-4719). */
+  async sayHereOnPlan(eventId: string): Promise<void> {
+    await this.post<undefined>(`${this.seatingPath(eventId)}/here`);
+  }
+
   /** A hub token for this event's seating, its editors' choices and who else has it open (sc-4719). */
   async seatingSubscription(eventId: string): Promise<RealtimeSubscription> {
     const body = await this.post<{ token?: unknown; expiresAt?: unknown }>(
@@ -2892,9 +2897,13 @@ export class ApiClient {
   }
 
   /** The token is a credential, so it travels in the body. Refused `not_found` for a token never issued or a deleted event's. */
-  async roomScreen(token: string): Promise<RoomScreen> {
+  async roomScreen(token: string, { signal }: { signal?: AbortSignal } = {}): Promise<RoomScreen> {
     const screen = asRoomScreen(
-      await this.post<unknown>('/api/screen-links/screen', { token }, { anonymous: true }),
+      await this.post<unknown>(
+        '/api/screen-links/screen',
+        { token },
+        signal == null ? { anonymous: true } : { anonymous: true, signal },
+      ),
     );
 
     if (screen == null) {

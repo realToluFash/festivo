@@ -48,8 +48,13 @@ export function ShowOnScreen({ start, onClose }: { start: ScreensStart; onClose:
     else title.current?.focus();
     if (start === 'refused') selectLink('Ballroom');
   }, [start]);
+  const asked = useRef<ScreenPlace | null>(null);
+
   useEffect(() => {
     if (asking != null) keep.current?.focus();
+    else if (asked.current != null)
+      document.getElementById(`ss-${asked.current.toLowerCase()}-replace`)?.focus();
+    asked.current = asking;
   }, [asking]);
 
   function copy(place: ScreenPlace) {

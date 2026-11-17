@@ -83,6 +83,7 @@ import {
 import { type ChoiceAsk, ChoiceFields, ChoiceIntro } from './ChoiceParts.tsx';
 import { choiceName } from './choiceWords.ts';
 import { firstItemProblem, ownRowsOf, rowsOf, useOrList, withoutRow } from './menuItems.ts';
+import { useShowMenuReady } from './EventNav.tsx';
 import {
   AddDishPanel,
   type ChoiceHandlers,
@@ -350,6 +351,7 @@ function Courses({
   const prices = canOn(event, 'budget.read');
   const focusAfter = useRef<string | null>(null);
   const counts = menuCounts(courses);
+  useShowMenuReady(event.id, counts.ready, counts.courses);
   const openCourse =
     open == null || open.courseId == null
       ? null

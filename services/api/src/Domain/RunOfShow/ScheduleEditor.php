@@ -9,6 +9,7 @@ use App\Domain\RunOfShow\Http\ScheduleSerialiser;
 use App\Domain\RunOfShow\Model\ItemDetails;
 use App\Domain\RunOfShow\Model\PressLoss;
 use App\Domain\RunOfShow\Model\Replayed;
+use App\Domain\RunOfShow\Screen\ScreenSignal;
 use App\Entity\Event;
 use App\Entity\ScheduleItem;
 use App\Entity\SchedulePress;
@@ -54,6 +55,7 @@ final readonly class ScheduleEditor
         private EntityManagerInterface $entityManager,
         private Auditor $auditor,
         private RealtimePublisher $realtimePublisher,
+        private ScreenSignal $screenSignal,
         private ClockInterface $clock,
     ) {
     }
@@ -239,7 +241,7 @@ final readonly class ScheduleEditor
     private function published(Event $event): void
     {
         $this->realtimePublisher->publish(RealtimeTopic::EventSchedule, $event->getId()->toRfc4122(), $this->scheduleSerialiser->schedule($event));
-        $this->realtimePublisher->publish(RealtimeTopic::EventScreens, $event->getId()->toRfc4122(), []);
+        $this->screenSignal->send($event);
     }
 
     /** @return array<string, mixed> */
