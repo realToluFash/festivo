@@ -260,7 +260,9 @@ export function StepLine({ bar, onUndo }: { bar: StepBar; onUndo: () => void }) 
         weight={2.2}
       />
       <div className="st-bar-body">
-        <p>{bar.words}</p>
+        <p tabIndex={-1} data-said="bar">
+          {bar.words}
+        </p>
         {(bar.undo != null || (bar.acts?.length ?? 0) > 0) && (
           <span className="st-bar-acts">
             {bar.acts?.map((act) => (
@@ -269,7 +271,7 @@ export function StepLine({ bar, onUndo }: { bar: StepBar; onUndo: () => void }) 
               </button>
             ))}
             {bar.undo != null && (
-              <button type="button" className="desk-text" onClick={onUndo}>
+              <button type="button" className="desk-text" data-act="undo" onClick={onUndo}>
                 {t('seating.undo')}
               </button>
             )}

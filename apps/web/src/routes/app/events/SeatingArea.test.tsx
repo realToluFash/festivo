@@ -5600,9 +5600,14 @@ describe('Deleting many with guests in them (sc-57680)', () => {
       expect(stepLine()).toBe('2 tables deleted. 3 guests moved to Without a seat.'),
     );
     expect(heard()).toBe('2 tables deleted. 3 guests moved to Without a seat.');
+    await waitFor(() =>
+      expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Undo' })),
+    );
 
     fireEvent.click(screen.getByRole('button', { name: 'Undo' }));
     await waitFor(() => expect(heard()).toBe('Undone. Everything is back as it was.'));
+    await screen.findByRole('heading', { level: 2, name: '2 chosen' });
+    await waitFor(() => expect(document.activeElement?.getAttribute('data-table')).toBe('t6'));
     expect(bodies(sent, 'restore')[0]?.items.map((item) => item.guests)).toEqual([
       [
         { guestId: 'g_ada', seat: 2 },
@@ -5634,6 +5639,33 @@ describe('Deleting many with guests in them (sc-57680)', () => {
     expect(document.querySelectorAll('[data-table="t1"]')).toHaveLength(1);
   });
 
+  it.each([
+    [
+      'Keep them',
+      (ask: ReturnType<typeof within>) =>
+        fireEvent.click(ask.getByRole('button', { name: 'Keep them' })),
+    ],
+    ['Escape', () => fireEvent.keyDown(document, { key: 'Escape' })],
+  ])('puts focus back on the Delete that asked after %s', async (_, close) => {
+    signedIn();
+    await onSeating({
+      'GET /api/events/ev_1/seating-plan': () =>
+        seating(
+          withGuests([ada, chidi, held], first, table({ id: 't2', name: 'Table 2', xCm: 600 })),
+        ),
+    });
+
+    await chooseTwo(/^Table 2,/);
+    const remove = panel().getByRole('button', { name: 'Delete' });
+
+    remove.focus();
+    fireEvent.click(remove);
+    close(within(await screen.findByRole('alertdialog')));
+
+    await waitFor(() => expect(screen.queryByRole('alertdialog')).toBeNull());
+    await waitFor(() => expect(document.activeElement).toBe(remove));
+  });
+
   it('changes nothing when Undo finds a freed guest has moved since, and offers no Undo of that', async () => {
     signedIn();
     const second = table({ id: 't2', name: 'Table 2', xCm: 600 });
@@ -5660,6 +5692,9 @@ describe('Deleting many with guests in them (sc-57680)', () => {
 
     await waitFor(() => expect(stepLine()).toBe('These seats changed since. Nothing was undone.'));
     expect(screen.queryByRole('button', { name: 'Undo' })).toBeNull();
+    await waitFor(() =>
+      expect(document.activeElement).toBe(document.querySelector('.st-under-views .st-bar p')),
+    );
   });
 
   it('refuses the Undo of a Duplicate once somebody sits in a copy', async () => {

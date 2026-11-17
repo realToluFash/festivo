@@ -1464,6 +1464,7 @@ function Plan({
   const runStep = <A extends Seating | SeatingWithChosen | SeatingMoved>(
     change: () => Promise<A> | null,
     done: (answer: A) => void,
+    refused?: () => void,
   ) => {
     setSave('saving');
     setBar(null);
@@ -1488,14 +1489,16 @@ function Plan({
       } catch (error) {
         setSave('saved');
         if (error instanceof ApiError && error.status === 412) staleStep(error);
-        else if (error instanceof ApiError && error.is('seating_undo_stale'))
-          refuseStep(t('seating.undoRefused'));
-        else
+        else {
           refuseStep(
-            error instanceof ApiError
-              ? (Object.values(error.fieldErrors())[0] ?? t('seating.notSaved'))
-              : t('seating.notSaved'),
+            error instanceof ApiError && error.is('seating_undo_stale')
+              ? t('seating.undoRefused')
+              : error instanceof ApiError
+                ? (Object.values(error.fieldErrors())[0] ?? t('seating.notSaved'))
+                : t('seating.notSaved'),
           );
+          refused?.();
+        }
       }
     });
   };
@@ -1612,9 +1615,23 @@ function Plan({
               (back) => {
                 pick(back.chosen);
                 undone();
+                focusWhenFree(
+                  () =>
+                    [...document.querySelectorAll<SVGElement>(`.st-room :is(${ITEM})`)].find(
+                      (item) =>
+                        ITEM_ATTRIBUTES.some((name) =>
+                          back.chosen.includes(item.getAttribute(name) ?? ''),
+                        ),
+                    ) ?? null,
+                );
               },
+              () =>
+                focusWhenFree(() =>
+                  document.querySelector<HTMLElement>('.st-bar [data-said="bar"]'),
+                ),
             ),
         );
+        focusWhenFree(() => document.querySelector<HTMLButtonElement>('.st-bar [data-act="undo"]'));
       },
     );
   };
