@@ -17,6 +17,7 @@ import {
 import type { TFunction } from 'i18next';
 
 import type { MarkKind } from '../components/StatusMark.tsx';
+import type { LayoutKind } from '../layout/classify.ts';
 import { toneOf } from './personFace.ts';
 
 /** The app lists memberships and does not invite, so it has no Invited and no Waiting filter. */
@@ -39,6 +40,11 @@ export function membersCounts({ counts }: MembersList): Record<MembersFilter, nu
     suspended: counts.suspended,
     former: counts.former,
   };
+}
+
+/** A person's page stands alone in front of the list, its card naming it, so the frame draws no title over it (sc-37693). */
+export function personInFront(kind: LayoutKind, open: boolean): boolean {
+  return open && kind !== 'tabletLandscape';
 }
 
 /** Someone on Members by id, among the rows, Waiting and the card's faces held. */
