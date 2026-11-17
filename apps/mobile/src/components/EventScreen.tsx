@@ -54,6 +54,7 @@ import { bodyEdges } from './bodyEdges.ts';
 import { SecondaryButton } from './Buttons.tsx';
 import { cardFrame } from './cardFrame.ts';
 import { DuplicateEvent } from './DuplicateEvent.tsx';
+import { EventNotice } from './EventNotice.tsx';
 import { EventPage } from './EventPage.tsx';
 import { EDIT_PARTS } from './EventEdits.tsx';
 import { EventEditScreen } from './EventPartEdits.tsx';
@@ -61,10 +62,9 @@ import { EventGuests, type GuestsTop } from './EventGuests.tsx';
 import { ExportButton } from './GuestExport.tsx';
 import { EventPeople } from './EventPeople.tsx';
 import { EventNotFound, EventTop, EventsFailed, usePhaseOf } from './Events.tsx';
-import { Notice } from './Notice.tsx';
 import { Refreshing } from './Refreshing.tsx';
 import { Screen } from './Screen.tsx';
-import { LoadingBlock, PageToast } from './Summary.tsx';
+import { LoadingBlock, PageToast, TextAction } from './Summary.tsx';
 import type { ToastAction } from './Toast.tsx';
 import { phoneTabBarClearance } from './TodayCover.tsx';
 import { Arrived } from './Skeleton.tsx';
@@ -141,7 +141,6 @@ export function EventScreen({
         RefObject<ViewInstance | null>
       >,
   );
-  const coverNotice = useRef<ViewInstance>(null);
   const [guestsOffline, setGuestsOffline] = useState<ScreenOffline>(NOT_OFFLINE);
   const [guestsTop, setGuestsTop] = useState<GuestsTop>({
     add: null,
@@ -296,25 +295,28 @@ export function EventScreen({
             tell={(words) => setToast({ eventId, area, words })}
             opensEndNow={opensEndNow}
             onEndNowOpened={() => navigation.setParams({ [ASKS_END]: undefined })}
-          />
-          {coverRefused?.eventId === eventId && (
-            <View style={styles.stack}>
-              <Notice
-                tone="broken"
-                mark={tokens.marks.broken.glyph}
-                body={t('eventCover.createdWithout', { reason: coverRefused.reason })}
-                announce
-              />
-              {onEdit != null && (
-                <SecondaryButton
-                  ref={coverNotice}
-                  label={t('eventEdit.open')}
-                  onPress={() => onEdit('cover', coverNotice)}
-                  testID="events.page.coverRefused.edit"
+            notice={
+              coverRefused?.eventId === eventId ? (
+                <EventNotice
+                  tone="broken"
+                  words={t('eventCover.createdWithout', { reason: coverRefused.reason })}
+                  actions={
+                    onEdit == null ? null : (
+                      <TextAction
+                        label={t('eventCover.upload')}
+                        glyph="camera"
+                        onPress={() => {
+                          setCoverRefused(null);
+                          onEdit('cover', partRef('cover'));
+                        }}
+                        testID="events.page.coverRefused.upload"
+                      />
+                    )
+                  }
                 />
-              )}
-            </View>
-          )}
+              ) : null
+            }
+          />
         </Arrived>
       ) : area === 'people' ? (
         <EventPeople

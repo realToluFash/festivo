@@ -2,7 +2,7 @@ import type { OrganisationEvent } from '@soirely/api-client';
 import { type Choice, changedWords, takesThankYou } from '@soirely/domain';
 import { router } from 'expo-router';
 import type { TFunction } from 'i18next';
-import { type Ref, type RefObject, useEffect, useRef, useState } from 'react';
+import { type ReactNode, type Ref, type RefObject, useEffect, useRef, useState } from 'react';
 import { StyleSheet, View, type ViewInstance } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
@@ -69,6 +69,7 @@ export function EventPage({
   tell,
   opensEndNow = false,
   onEndNowOpened,
+  notice,
 }: {
   kind: LayoutKind;
   event: OrganisationEvent;
@@ -93,6 +94,8 @@ export function EventPage({
   /** Arrived from the night's End now: End now's confirmation opens over the page, where it is offered (sc-3895). */
   opensEndNow?: boolean;
   onEndNowOpened?: () => void;
+  /** A notice about the event as it was saved, first under its card. */
+  notice?: ReactNode;
 }) {
   const { t } = useTranslation();
   const locale = dateLocale();
@@ -352,6 +355,7 @@ export function EventPage({
         card={card}
         left={
           <>
+            {notice}
             {thankYou}
             {details}
             {comingUp}
@@ -367,6 +371,7 @@ export function EventPage({
         }
         stacked={
           <>
+            {notice}
             {thankYou}
             {numbers}
             {details}
