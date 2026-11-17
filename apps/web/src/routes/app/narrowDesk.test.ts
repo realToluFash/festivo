@@ -67,6 +67,7 @@ describe('a desk window from 641 px up (sc-61150)', () => {
   it('keeps a title whole, its actions going under it when both do not fit', () => {
     expect(cssRule('.shell :is(.desk-top, .gs-top)', WIDE)).toContain('flex-wrap: wrap;');
     expect(cssRule('.shell :is(.desk-title, .gs-title)', WIDE)).toContain('min-width: auto;');
+    expect(cssRule('.shell .gs-top > .mn-head', WIDE)).toContain('min-width: auto;');
   });
 
   it("puts the Schedule's open item before the table up to 1200 px", () => {

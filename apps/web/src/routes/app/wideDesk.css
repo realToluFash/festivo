@@ -9,6 +9,10 @@
     min-width: auto;
   }
 
+  .shell .gs-top > .mn-head {
+    min-width: auto;
+  }
+
   .shell :is(.desk-title, .desk-title *, .gs-title, .gs-title *) {
     overflow-wrap: normal;
   }
