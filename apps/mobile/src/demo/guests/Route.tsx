@@ -4,6 +4,7 @@ import { EventScreen } from '../events/EventPage.tsx';
 import { EventsShell } from '../events/Route.tsx';
 import { CheckInScreen } from './CheckIn.tsx';
 import { doorStateOf, eventOf, guestsStateOf } from './GuestsModel.ts';
+import { seatingOf } from './DoorSeats.ts';
 import { ScannerScreen } from './Scanner.tsx';
 import { scanStateOf, searchAskOf, waitingOf } from './ScanModel.ts';
 
@@ -25,27 +26,44 @@ export function GuestsRoute() {
   );
 }
 
-/** /demo/guests/check-in: the door on the day, by its ?state=. */
+/** /demo/guests/check-in: the door on the day, by its ?state=, and &seats=none for an event nobody is seated on. */
 export function CheckInRoute() {
-  const params = useLocalSearchParams<{ state?: string; focus?: string; tap?: string }>();
+  const params = useLocalSearchParams<{
+    state?: string;
+    focus?: string;
+    tap?: string;
+    seats?: string;
+  }>();
   const state = doorStateOf(params.state);
+  const seating = seatingOf(params.seats);
 
   return (
     <EventsShell>
-      <CheckInScreen key={state ?? ''} state={state} searchAsk={searchAskOf(params)} />
+      <CheckInScreen
+        key={`${state ?? ''}.${seating}`}
+        state={state}
+        seating={seating}
+        searchAsk={searchAskOf(params)}
+      />
     </EventsShell>
   );
 }
 
-/** /demo/guests/scan: Scan a code (sc-1301), by guests-a-spec §19's ?state=, and &waiting= for the offline count. */
+/** /demo/guests/scan: Scan a code (sc-1301), by guests-a-spec §19's ?state=, &waiting= for the offline count, and &seats=none. */
 export function ScanRoute() {
-  const params = useLocalSearchParams<{ state?: string; waiting?: string }>();
+  const params = useLocalSearchParams<{ state?: string; waiting?: string; seats?: string }>();
   const state = scanStateOf(params.state);
   const waiting = waitingOf(params.waiting);
+  const seating = seatingOf(params.seats);
 
   return (
     <EventsShell>
-      <ScannerScreen key={`${state ?? ''}.${waiting}`} state={state} waiting={waiting} />
+      <ScannerScreen
+        key={`${state ?? ''}.${waiting}.${seating}`}
+        state={state}
+        waiting={waiting}
+        seating={seating}
+      />
     </EventsShell>
   );
 }

@@ -31,6 +31,7 @@ import { Amber, Choices, GuestToast, GuestsCard, type Layout } from './GuestsPar
 import { ARRIVALS, COLLEAGUE, KOFI_WALKIN, READER, WEDDING } from './GuestsSample.ts';
 import { REPLY_WORD, W, say } from './GuestsWords.ts';
 import { DoorGlyph, MarkSlot } from '../../components/ReplyMark.tsx';
+import { type Seating, seatLineOf } from './DoorSeats.ts';
 
 type Phase = 'open' | 'before' | 'ended';
 
@@ -165,9 +166,11 @@ export function ArrivedButton({
 /** Check-in (sc-1454), opened from Guests on the day: its card, Search by name, everyone A to Z with Arrived. */
 export function CheckInScreen({
   state,
+  seating = 'seated',
   searchAsk = null,
 }: {
   state: DoorState | null;
+  seating?: Seating;
   searchAsk?: string | null;
 }) {
   const shell = useShell();
@@ -260,6 +263,7 @@ export function CheckInScreen({
         const word = REPLY_WORD[p.kind];
         const line =
           p.arrivedAt != null ? `${word} · ${say.arrivedAt(p.arrivedAt, p.by ?? '')}` : word;
+        const seat = seatLineOf(p.key, seating);
         const trail =
           p.arrivedAt != null ? (
             open ? (
@@ -277,7 +281,14 @@ export function CheckInScreen({
         const row = (
           <Row
             title={p.name}
-            line={line}
+            line={seat ?? line}
+            below={
+              seat == null ? undefined : (
+                <Text size={14} weight="medium" accessible={false} style={styles.below}>
+                  {line}
+                </Text>
+              )
+            }
             lead={
               <MarkSlot
                 kind={p.arrivedAt != null ? (p.kind === 'walkin' ? 'walkin' : 'arrived') : p.kind}
@@ -285,7 +296,7 @@ export function CheckInScreen({
             }
             trail={trail}
             pad={10}
-            accessibilityLabel={`${p.name}. ${line}`}
+            accessibilityLabel={[p.name, seat, line].filter((one) => one != null).join('. ')}
             testID={`door.row.${p.key}`}
           />
         );
@@ -598,6 +609,7 @@ const styles = StyleSheet.create({
   grow: { flex: 1, minWidth: 0 },
   page: { flex: 1, backgroundColor: tokens.colorCard },
   secondary: { color: tokens.colorInkSecondary },
+  below: { color: tokens.colorInkSecondary, lineHeight: 14 * 1.4 },
   accent: { color: tokens.colorAccentText },
   figures: { fontVariant: ['tabular-nums'] },
   pressed: { opacity: tokens.opacityPressed },
