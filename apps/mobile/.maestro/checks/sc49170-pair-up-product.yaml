@@ -1,0 +1,15 @@
+# sc-49170: Members at 12,345 (product, /settings/members), natural orientation (the phone upright, the QA tablet in landscape), its top, for the pair beside the demo.
+appId: host.exp.Exponent
+---
+- setOrientation: PORTRAIT
+- waitForAnimationToEnd:
+    timeout: 3000
+- openLink: ${METRO_URL}/--/settings/members
+- extendedWaitUntil:
+    visible: { id: 'members.card' }
+    timeout: 60000
+- waitForAnimationToEnd:
+    timeout: 8000
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 2000, optional: true }
+- takeScreenshot: up-largest-product
+- setOrientation: PORTRAIT
