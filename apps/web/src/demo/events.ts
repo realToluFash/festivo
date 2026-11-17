@@ -1577,6 +1577,22 @@ export const EVENTS_PAGES: readonly { name: string; states: readonly DemoLink[] 
       { to: '/demo/events/new?state=created', name: 'Created, opening the event' },
       { to: '/demo/events/new?state=photo', name: 'With a photo chosen' },
       { to: '/demo/events/new?state=photoRefused', name: 'Created, its photo refused' },
+      {
+        to: '/demo/events/new?state=photoSending',
+        name: 'A HEIC on its way: Uploading… over the default cover',
+      },
+      {
+        to: '/demo/events/new?state=photoSendingCreating',
+        name: 'Create event pressed while a HEIC is on its way: Creating… held',
+      },
+      {
+        to: '/demo/events/new?state=photoSendFailed',
+        name: 'A HEIC that did not upload, before Create event',
+      },
+      {
+        to: '/demo/events/new?state=photoSendLost',
+        name: 'Created, its HEIC did not upload after Create event',
+      },
     ],
   },
   {
