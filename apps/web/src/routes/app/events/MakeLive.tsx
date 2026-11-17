@@ -16,6 +16,7 @@ import { Link, useNavigate } from 'react-router';
 import { api } from '../../../api.ts';
 import { HostOneField } from '../../../components/HostOneField.tsx';
 import { Ask, AskAlert } from '../../../components/SettingsParts.tsx';
+import { focusWhenFree } from '../../../layers.ts';
 import { StatusChip } from '../../../components/StatusChip.tsx';
 import { PHASE_WORD } from './eventWords.ts';
 import { inPlace } from './openInPlace.ts';
@@ -108,7 +109,7 @@ export function useMakeLive({
       setAsking(null);
       changed(step.tagged);
       onMadeLive();
-      window.setTimeout(() => heading.current?.focus(), 0);
+      focusWhenFree(() => heading.current);
       return;
     }
 
