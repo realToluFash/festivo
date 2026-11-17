@@ -2230,6 +2230,7 @@
     "nowLine": "Agora · {{happening}}, {{until}}",
     "liveName": "A decorrer · {{name}}",
     "runUntil": "até {{time}}",
+    "runUntil_hour1": "até {{time}}",
     "runOver_one": "{{count, number}} min a mais",
     "runOver_other": "{{count, number}} min a mais",
     "runOver_many": "{{count, number}} min a mais",

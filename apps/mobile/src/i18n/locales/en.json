@@ -2161,6 +2161,7 @@
     "nowLine": "Now · {{happening}}, {{until}}",
     "liveName": "Live · {{name}}",
     "runUntil": "until {{time}}",
+    "runUntil_hour1": "until {{time}}",
     "runOver_one": "{{count, number}} min over",
     "runOver_other": "{{count, number}} min over",
     "runOverSaid_one": "{{count, number}} minute over",

@@ -2230,6 +2230,7 @@
     "nowLine": "Maintenant · {{happening}}, {{until}}",
     "liveName": "En cours · {{name}}",
     "runUntil": "jusqu’à {{time}}",
+    "runUntil_hour1": "jusqu’à {{time}}",
     "runOver_one": "{{count, number}} min de dépassement",
     "runOver_other": "{{count, number}} min de dépassement",
     "runOver_many": "{{count, number}} min de dépassement",
