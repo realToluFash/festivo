@@ -73,13 +73,18 @@ export const READER = 'Folake Adeyemi';
 export const PRIYA: Person = { name: 'Priya Shah', colour: PRESENCE[0], viewer: false };
 export const SADE: Person = { name: 'Sade Bello', colour: PRESENCE[1], viewer: true };
 export const FOLAKE: Person = { name: READER, colour: PRESENCE[2], viewer: false };
+export const ANA: Person = { name: 'Ana Souza', colour: PRESENCE[2], viewer: false };
+export const JULIEN: Person = { name: 'Julien Moreau', colour: PRESENCE[3], viewer: false };
+export const TOM: Person = { name: 'Tom Baker', colour: PRESENCE[5], viewer: false };
+/** The fifth here when three colleagues chose one table (sc-60717), in the colour a viewer would otherwise have. */
+export const NGOZI: Person = { name: 'Ngozi Eze', colour: PRESENCE[1], viewer: false };
 export const SIX: readonly Person[] = [
   PRIYA,
   SADE,
-  { name: 'Ana Souza', colour: PRESENCE[2], viewer: false },
-  { name: 'Julien Moreau', colour: PRESENCE[3], viewer: false },
+  ANA,
+  JULIEN,
   { name: 'Kemi Okafor', colour: PRESENCE[4], viewer: true },
-  { name: 'Tom Baker', colour: PRESENCE[5], viewer: false },
+  TOM,
 ];
 
 /** Who sits where, as the web's demo seats them (seatingSeed); the last names at Tables 3, 4, 6, 7 and 9 are the iPhone's on the day only. */

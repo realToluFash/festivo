@@ -43,6 +43,9 @@ import {
 import {
   SEATING_STATES,
   type Seating,
+  accName,
+  chairChosenWords,
+  choicesOn,
   freeCount,
   handlesLive,
   itemOf,
@@ -82,7 +85,7 @@ const item = (m: Seating, id: string) => {
 
 describe('the states', () => {
   it('are seating-a-spec §6’s, by the names both demos use', () => {
-    expect(SEATING_STATES).toHaveLength(110);
+    expect(SEATING_STATES).toHaveLength(115);
     expect(new Set(SEATING_STATES).size).toBe(SEATING_STATES.length);
     expect(SEATING_STATES.slice(0, 5)).toEqual([
       'plan',
@@ -246,7 +249,7 @@ describe('the iPad room’s words below 50% (sc-31783)', () => {
     const add = (id: string, mark: { ring?: true; lit?: true }) =>
       (marks[id] = { ...marks[id], ...mark });
     [...m.lit, ...(m.chosen == null ? [] : [m.chosen])].forEach((id) => add(id, { lit: true }));
-    Object.entries(m.rings).forEach(([id, person]) => !person.viewer && add(id, { ring: true }));
+    Object.keys(m.rings).forEach((id) => choicesOn(m, id).length > 0 && add(id, { ring: true }));
     return marks;
   };
   const says = (m: Seating, s: number) =>
@@ -667,12 +670,12 @@ describe('a table’s fields apply as each is entered', () => {
     expect(row.fields.changedBy).toBe(
       'Priya Shah just changed this row. Your change was not saved.',
     );
-    expect(row.rings.rowA?.name).toBe('Priya Shah');
+    expect(row.rings.rowA?.[0]?.who.name).toBe('Priya Shah');
     const seat = startOf('seatChanged', 'portrait');
     expect(seat.fields.changedBy).toBe(
       'Priya Shah just changed this seat. Your change was not saved.',
     );
-    expect(seat.rings.door?.name).toBe('Priya Shah');
+    expect(seat.rings.door?.[0]?.who.name).toBe('Priya Shah');
   });
 
   it('take sizes in feet and inches where the organisation is US customary', () => {
@@ -1269,5 +1272,71 @@ describe('the room’s words and handles (qa3, 11 Nov)', () => {
       const [corner] = handlePoints(t4, s, pad);
       expect(sideFrom(corner?.x ?? 0, handleReach(t4, s, pad).x, s)).toBe(t4.d);
     });
+  });
+});
+
+describe('a colleague’s choice on Tables and the List (sc-60717)', () => {
+  const names = (m: Seating, id: string) => choicesOn(m, id).map((one) => one.who.name);
+
+  it('open on the iPad with View set, both ways up', () => {
+    for (const layout of ['landscape', 'portrait'] as const) {
+      expect(startOf('presenceSeatTables', layout).view).toBe('Tables');
+      expect(startOf('presenceTwoTables', layout).view).toBe('Tables');
+      expect(startOf('presenceBothTables', layout).view).toBe('Tables');
+      const list = startOf('presenceSeatList', layout);
+      expect([list.view, list.listTab, list.listOpen]).toEqual(['List', 'All', 't9']);
+      expect(startOf('presenceTwoList', layout).listTab).toBe('All');
+    }
+  });
+
+  it('keep each colleague in the order they chose it', () => {
+    const m = startOf('presenceTwoTables', 'landscape');
+    expect(names(m, 't7')).toEqual(['Priya Shah', 'Ana Souza']);
+    expect(names(m, 't9')).toEqual(['Julien Moreau', 'Tom Baker', 'Ngozi Eze']);
+  });
+
+  it('name one, two and three colleagues as English joins a list, and a seat by its number', () => {
+    const chose = startOf('presenceChose', 'landscape');
+    expect(accName(chose, item(chose, 't7'))).toMatch(/, chosen by Priya Shah$/u);
+    const two = startOf('presenceTwoList', 'portrait');
+    expect(accName(two, item(two, 't7'))).toMatch(/, chosen by Priya Shah and Ana Souza$/u);
+    expect(accName(two, item(two, 't9'))).toMatch(
+      /, chosen by Julien Moreau, Tom Baker, and Ngozi Eze$/u,
+    );
+    const seat = startOf('presenceSeatList', 'landscape');
+    expect(accName(seat, item(seat, 't9'))).toMatch(/, seat 2 chosen by Julien Moreau$/u);
+    expect(chairChosenWords(choicesOn(seat, 't9'), 1)).toBe(', chosen by Julien Moreau');
+    expect(chairChosenWords(choicesOn(seat, 't9'), 0)).toBe('');
+  });
+
+  it('carry every mark across a View switch, and expanding a row chooses nothing', () => {
+    for (const state of ['presenceChose', 'presenceBoth', 'presenceTwoTables'] as const) {
+      const m = startOf(state, 'landscape');
+      const away = run(m, { type: 'setView', view: 'List' }, { type: 'setView', view: 'Tables' });
+      expect(away.rings, state).toEqual(m.rings);
+      expect(run(m, { type: 'setView', view: 'Floor plan' }).rings, state).toEqual(m.rings);
+    }
+    const list = run(startOf('presenceTwoList', 'landscape'), { type: 'listOpen', id: 't4' });
+    expect([list.chosen, list.lit]).toEqual([null, []]);
+  });
+
+  it('show both your Tint and her ring on one card', () => {
+    const m = startOf('presenceBothTables', 'portrait');
+    expect(m.chosen).toBe('t7');
+    expect(names(m, 't7')).toEqual(['Priya Shah']);
+  });
+
+  it('never mark a viewer’s choice, and mark nothing while reconnecting', () => {
+    const viewer = startOf('presenceViewer', 'landscape');
+    expect(viewer.rings.t2?.length).toBe(1);
+    expect(choicesOn(viewer, 't2')).toEqual([]);
+    expect(accName(viewer, item(viewer, 't2'))).not.toMatch(/chosen by/u);
+    const down = {
+      ...startOf('presenceTwoTables', 'landscape'),
+      presence: 'reconnecting' as const,
+    };
+    expect(choicesOn(down, 't7')).toEqual([]);
+    expect(accName(down, item(down, 't7'))).not.toMatch(/chosen by/u);
+    expect(choicesOn(startOf('left', 'landscape'), 't7')).toEqual([]);
   });
 });

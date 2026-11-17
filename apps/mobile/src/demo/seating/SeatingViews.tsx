@@ -1,6 +1,15 @@
 import { useRef } from 'react';
-import { Pressable, ScrollView, StyleSheet, View, type ViewInstance } from 'react-native';
+import {
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  View,
+  type ViewInstance,
+  type ViewStyle,
+} from 'react-native';
+import Svg, { Circle } from 'react-native-svg';
 
+import { Initials } from '../../components/Initials.tsx';
 import { Pill } from '../../components/SettingsParts.tsx';
 import { Sheet } from '../../components/Sheet.tsx';
 import { TextAction, TurningMark } from '../../components/SummaryRows.tsx';
@@ -8,14 +17,17 @@ import { RadioMark } from '../../components/RadioMark.tsx';
 import { Text } from '../../components/Text.tsx';
 import { tokens } from '../../theme/tokens.ts';
 import type { Action } from './SeatingActs.ts';
-import { extent, free } from './SeatingGeometry.ts';
+import { CHAIR_R, chairPoints, detailOf, extent, free, turn } from './SeatingGeometry.ts';
 import {
+  type Choice,
   DOCS,
   type Doc,
   type ListTab,
   type Seating,
   accName,
+  chairChosenWords,
   chairWord,
+  choicesOn,
   hexOf,
   listed,
   seatedWords,
@@ -132,42 +144,192 @@ function TableCard({
   const h = 132;
   const s = Math.min((w - 16) / (2 * e.x), 120 / (2 * e.y), 0.45);
   const sec = sectionOf(m, it.sec);
+  const choices = choicesOn(m, it.id);
+  const reach = RING_STEP * choices.length;
   return (
-    <Pressable
-      onPress={onPress}
-      style={({ pressed }) => [styles.card, lit && styles.cardLit, pressed && styles.pressed]}
-      accessibilityRole="button"
-      accessibilityState={{ selected: lit }}
-      accessibilityLabel={accName(m, it)}
-      testID={`seating.card.${it.id}`}
+    <View
+      style={choices.length === 0 ? undefined : { margin: reach, marginTop: reach + PILL_H / 2 }}
     >
-      <View style={styles.cardHead}>
-        <Text size={16} weight="bold" accessible={false} style={styles.grow}>
-          {it.name}
-        </Text>
-        <Text size={14} weight="semibold" accessible={false} style={styles.figures}>
-          {ofWords(it)}
-        </Text>
-      </View>
-      <View style={styles.cardSection}>
-        <Swatch hex={sec == null ? null : hexOf(sec.colour)} side={12} />
-        <Text size={13} weight="semibold" accessible={false}>
-          {sectionName(m, it)}
-        </Text>
-      </View>
-      <View style={{ width: w, height: h }}>
-        <RoomDrawing
-          m={{ ...m, wallAt: null }}
-          v={{ s, ox: w / 2 - it.x * s, oy: h / 2 - it.y * s }}
-          width={w}
-          height={h}
-          items={[{ ...it, name: '' }]}
-          looks={{}}
-          grid={false}
-          floor={false}
+      <Pressable
+        onPress={onPress}
+        style={({ pressed }) => [styles.card, lit && styles.cardLit, pressed && styles.pressed]}
+        accessibilityRole="button"
+        accessibilityState={{ selected: lit }}
+        accessibilityLabel={accName(m, it)}
+        testID={`seating.card.${it.id}`}
+      >
+        <View style={styles.cardHead}>
+          <Text size={16} weight="bold" accessible={false} style={styles.grow}>
+            {it.name}
+          </Text>
+          <Text size={14} weight="semibold" accessible={false} style={styles.figures}>
+            {ofWords(it)}
+          </Text>
+        </View>
+        <View style={styles.cardSection}>
+          <Swatch hex={sec == null ? null : hexOf(sec.colour)} side={12} />
+          <Text size={13} weight="semibold" accessible={false}>
+            {sectionName(m, it)}
+          </Text>
+        </View>
+        <View style={{ width: w, height: h }}>
+          <RoomDrawing
+            m={{ ...m, wallAt: null }}
+            v={{ s, ox: w / 2 - it.x * s, oy: h / 2 - it.y * s }}
+            width={w}
+            height={h}
+            items={[{ ...it, name: '' }]}
+            looks={{}}
+            grid={false}
+            floor={false}
+          />
+          {detailOf(s) !== 'out' && <SeatRings it={it} s={s} w={w} h={h} choices={choices} />}
+        </View>
+      </Pressable>
+      {choices.map((one, k) => (
+        <CardRing key={k} k={k} who={one.who} />
+      ))}
+    </View>
+  );
+}
+
+const RING_STEP = 5;
+const PILL_W = 30;
+const PILL_H = 22;
+const CARD_RADIUS = tokens.spaceXxl;
+
+/** A colleague's ring about a card (sc-60717): 2 px of the card's white, then 3 px of their colour, each later chooser 5 px further out, their initials on a pill at the ring's top left, stepped right so no pill covers another. */
+function CardRing({ k, who }: { k: number; who: Choice['who'] }) {
+  const out = RING_STEP * (k + 1);
+  return (
+    <>
+      <View
+        pointerEvents="none"
+        accessibilityElementsHidden
+        importantForAccessibility="no-hide-descendants"
+        style={[
+          styles.ring,
+          {
+            top: -out,
+            left: -out,
+            right: -out,
+            bottom: -out,
+            borderRadius: CARD_RADIUS + out,
+            borderColor: who.colour,
+          },
+        ]}
+      />
+      <View
+        pointerEvents="none"
+        accessibilityElementsHidden
+        importantForAccessibility="no-hide-descendants"
+        style={[
+          styles.gap,
+          {
+            top: 3 - out,
+            left: 3 - out,
+            right: 3 - out,
+            bottom: 3 - out,
+            borderRadius: CARD_RADIUS + out - 3,
+          },
+        ]}
+      />
+      <WhoPill
+        who={who}
+        at={{
+          position: 'absolute',
+          top: 1.5 - out - PILL_H / 2,
+          left: 16 + (PILL_W + 4) * k - out,
+        }}
+      />
+    </>
+  );
+}
+
+/** A colleague's initials on their colour, the pill every ring carries. */
+function WhoPill({ who, at }: { who: Choice['who']; at?: ViewStyle }) {
+  return (
+    <View
+      pointerEvents="none"
+      accessibilityElementsHidden
+      importantForAccessibility="no-hide-descendants"
+      style={[styles.initials, { backgroundColor: who.colour }, at]}
+    >
+      <Initials name={who.name} size={12} weight="bold" style={styles.onDark} />
+    </View>
+  );
+}
+
+/** A colleague's chosen seat on the card's drawing: the chair ringed as the room rings it, with their pill. */
+function SeatRings({
+  it,
+  s,
+  w,
+  h,
+  choices,
+}: {
+  it: Item;
+  s: number;
+  w: number;
+  h: number;
+  choices: readonly Choice[];
+}) {
+  const points = chairPoints(it);
+  const seated = choices.filter((one) => one.seat != null && points[one.seat] != null);
+  if (seated.length === 0) return null;
+  const r = CHAIR_R * s;
+  const at = seated.map((one) => {
+    const p = turn(points[one.seat ?? 0] ?? { x: 0, y: 0 }, it.rot);
+    const k = seated.filter(
+      (other, j) => other.seat === one.seat && j < seated.indexOf(one),
+    ).length;
+    return { one, x: w / 2 + p.x * s, y: h / 2 + p.y * s, rr: r + 2 + RING_STEP * k, k };
+  });
+  return (
+    <>
+      <Svg
+        width={w}
+        height={h}
+        style={StyleSheet.absoluteFill}
+        pointerEvents="none"
+        accessibilityElementsHidden
+        importantForAccessibility="no-hide-descendants"
+      >
+        {at.map(({ x, y, rr }, i) => (
+          <Circle
+            key={`gap${i}`}
+            cx={x}
+            cy={y}
+            r={rr}
+            fill="none"
+            stroke={tokens.colorCard}
+            strokeWidth={4}
+          />
+        ))}
+        {at.map(({ one, x, y, rr }, i) => (
+          <Circle
+            key={`ring${i}`}
+            cx={x}
+            cy={y}
+            r={rr + 1.5}
+            fill="none"
+            stroke={one.who.colour}
+            strokeWidth={3}
+          />
+        ))}
+      </Svg>
+      {at.map(({ one, x, y, rr, k }, i) => (
+        <WhoPill
+          key={i}
+          who={one.who}
+          at={{
+            position: 'absolute',
+            left: x - rr * 0.72 - PILL_W / 2,
+            top: y - rr * 0.72 - PILL_H / 2 - (PILL_H + 2) * k,
+          }}
         />
-      </View>
-    </Pressable>
+      ))}
+    </>
   );
 }
 
@@ -232,6 +394,9 @@ export function ListView({ m, go, top }: { m: Seating; go: Go; top: number }) {
                       {shapeWord(it)}
                     </Text>
                   </View>
+                  {choicesOn(m, it.id).map((one, k) => (
+                    <WhoPill key={k} who={one.who} />
+                  ))}
                 </View>
                 <Text size={14} weight="medium" accessible={false} style={{ flex: COLUMN[1] }}>
                   {sectionName(m, it)}
@@ -266,13 +431,28 @@ export function ListView({ m, go, top }: { m: Seating; go: Go; top: number }) {
             {open &&
               it.chairs.map((chair, i) => (
                 <View key={i} style={styles.chairRow}>
-                  <StateMark state={chair.state} side={20} />
-                  <Text size={14} weight="semibold" style={[styles.secondary, styles.seatNo]}>
-                    {say.seatNumber(i + 1)}
-                  </Text>
-                  <Text size={14.5} weight="semibold" style={styles.grow}>
-                    {chairWord(it, i)}
-                  </Text>
+                  <View
+                    style={styles.chairWords}
+                    accessible
+                    accessibilityLabel={
+                      say.chairName(i + 1, chairWord(it, i)) +
+                      chairChosenWords(choicesOn(m, it.id), i)
+                    }
+                    testID={`seating.list.chair.${it.id}.${i}`}
+                  >
+                    <StateMark state={chair.state} side={20} />
+                    <Text size={14} weight="semibold" style={[styles.secondary, styles.seatNo]}>
+                      {say.seatNumber(i + 1)}
+                    </Text>
+                    <Text size={14.5} weight="semibold" style={styles.grow}>
+                      {chairWord(it, i)}
+                    </Text>
+                    {choicesOn(m, it.id)
+                      .filter((one) => one.seat === i)
+                      .map((one, k) => (
+                        <WhoPill key={k} who={one.who} />
+                      ))}
+                  </View>
                   {party != null && chair.state === 'empty' && (
                     <Pill
                       label={W.seatHere}
@@ -462,6 +642,16 @@ const styles = StyleSheet.create({
     borderColor: tokens.colorBorder,
   },
   cardLit: { backgroundColor: tokens.colorAccentTint },
+  ring: { position: 'absolute', borderWidth: 3 },
+  gap: { position: 'absolute', borderWidth: 2, borderColor: tokens.colorCard },
+  initials: {
+    width: PILL_W,
+    height: PILL_H,
+    borderRadius: PILL_H / 2,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  chairWords: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: tokens.spaceMd },
   cardHead: { flexDirection: 'row', alignItems: 'center', gap: tokens.spaceSm },
   cardSection: { flexDirection: 'row', alignItems: 'center', gap: 7 },
   listTabs: { maxWidth: 420 },
