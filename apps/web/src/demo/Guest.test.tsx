@@ -8,6 +8,7 @@ import { GUEST_PAGES, HOLD_MS, LONG_NOTE, SEND_MS, THANK_YOU } from './guest.ts'
 import { GUEST_ASK_PAGES } from './guestAskStates.ts';
 import { GUEST_DAY_PAGES } from './guestDay.ts';
 import { GUEST_PROGRAMME_PAGES } from './guestProgramme.ts';
+import { GUEST_TABLE_PAGES } from './guestTable.ts';
 import { GUEST_KITCHEN_PAGES } from './guestKitchen.ts';
 import { GUEST_NOTE_PAGES } from './guestNote.ts';
 import { GUEST_CHANGE_PAGES } from './guestChange.ts';
@@ -83,6 +84,7 @@ describe('the guest’s own page, A · The cover card (sc-31306)', () => {
         ...GUEST_PROGRAMME_PAGES,
         ...GUEST_NOTE_PAGES,
         ...GUEST_CHANGE_PAGES,
+        ...GUEST_TABLE_PAGES,
       ]
         .flatMap((one) => one.states)
         .map((one) => one.to),

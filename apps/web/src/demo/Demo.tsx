@@ -382,6 +382,11 @@ function DemoHome({ from }: { from: string }) {
         <BoardPages pages={GUEST_ASK_PAGES} />
         <h3>The guest’s page on the event’s day · sc-24381 · phone, tablet and desk</h3>
         <BoardPages pages={GUEST_DAY_PAGES} />
+        <h3>
+          Your table on the guest’s page (sc-4022) · phone, tablet portrait, tablet landscape and
+          desk
+        </h3>
+        <BoardPages pages={GUEST_TABLE_PAGES} />
       </section>
 
       <section className="demo-home-page" aria-labelledby="demo-page-30">
@@ -501,11 +506,6 @@ function DemoHome({ from }: { from: string }) {
         <h2 id="demo-page-31">31 · Venue and seating · Seating on an event</h2>
         <h3>Seating in A · The room · desktop</h3>
         <BoardPages pages={SEATING_PAGES} />
-        <h3>
-          Your table on the guest’s page (sc-4022) · phone, tablet portrait, tablet landscape and
-          desk
-        </h3>
-        <BoardPages pages={GUEST_TABLE_PAGES} />
       </section>
 
       <section className="demo-home-page" aria-labelledby="demo-page-28">
