@@ -30,6 +30,7 @@ import {
   sideBySide,
   usable,
   filled,
+  freedFrom,
 } from './seating.ts';
 import { NOT_SHARED, SHARE_STATES, type Share, isShareState, shareOf } from './shareTables.ts';
 import {
@@ -39,6 +40,7 @@ import {
   copiesOf,
   gridOf,
   outsider,
+  seatedOf,
   thingsOf,
   tooBig,
   withMoved,
@@ -129,7 +131,7 @@ export interface Ui {
   groups: string[];
   hover: string | null;
   pop: Pop | null;
-  undo: { plan: Plan; tray: Party[] } | null;
+  undo: { plan: Plan; tray: Party[]; chosen?: string[]; stale?: boolean } | null;
   tablesSection: string | null;
   listTab: ListTab | null;
   listOpen: string | null;
@@ -1318,6 +1320,27 @@ function choosingSeed(state: SeatingState, ui: Ui): Ui {
       const ids = ['t8', 'rowA', 'door'];
 
       return { ...ui, chosen: ids, asking: { kind: 'deleteItems', ids } };
+    }
+    case 'deleteManyChanged': {
+      const doomed = plan.items.filter((item) => SIX_TABLES.includes(item.id));
+      const freed = freedFrom(doomed);
+      const after = { ...plan, items: plan.items.filter((item) => !SIX_TABLES.includes(item.id)) };
+      const since = seated(after, [...ui.tray, ...freed], freed[0]!.id, 't8');
+
+      return {
+        ...ui,
+        plan: since.plan,
+        tray: since.tray,
+        chosen: [],
+        rings: { t8: [{ who: PRIYA }] },
+        people: [PRIYA, SADE],
+        undo: { plan, tray: ui.tray, chosen: SIX_TABLES, stale: true },
+        bar: {
+          kind: 'undo',
+          words: many('deletedMany', seatedOf(doomed), { things: thingsOf(doomed) }),
+          does: 'undo',
+        },
+      };
     }
     case 'toolChanged': {
       const chosen = ['t1', 't2', 't3', 't4', 't5'];

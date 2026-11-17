@@ -79,6 +79,18 @@ export interface Party {
   behind?: boolean;
 }
 
+export function freedParty(who: string): Party {
+  return { id: `back-${who}`, name: who, companions: [], group: null, reply: 'coming' };
+}
+
+export function freedFrom(items: readonly Item[]): Party[] {
+  return items.flatMap((item) =>
+    item.chairs.flatMap((chair) =>
+      chair.state === 'taken' && chair.who != null ? [freedParty(chair.who)] : [],
+    ),
+  );
+}
+
 export interface Person {
   name: string;
   initials: string;
@@ -1585,6 +1597,11 @@ export const SEATING_STATES = [
   { key: 'deleteMany', name: 'Delete 6 tables, guests seated', group: 'Choosing many' },
   { key: 'deleteManyEmpty', name: 'Delete 3 tables, nobody seated', group: 'Choosing many' },
   { key: 'deleteMixed', name: 'Delete 3 items, mixed kinds', group: 'Choosing many' },
+  {
+    key: 'deleteManyChanged',
+    name: '6 tables deleted, a freed guest seated since',
+    group: 'Choosing many',
+  },
   { key: 'toolChanged', name: 'A colleague changed one first (412)', group: 'Choosing many' },
   {
     key: 'readOnlyMany',

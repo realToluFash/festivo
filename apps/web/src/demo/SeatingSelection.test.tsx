@@ -532,6 +532,49 @@ describe('choosing many (sc-4717)', () => {
     expect(screen.getByRole('alertdialog', { name: 'Delete 3 items?' })).toBeDefined();
   });
 
+  it(
+    'puts focus on Undo after deleting many, and Undo chooses them again (sc-57680)',
+    SLOW,
+    async () => {
+      await seating('deleteMany');
+      const ask = screen.getByRole('alertdialog', { name: 'Delete 6 tables?' });
+
+      fireEvent.click(within(ask).getByRole('button', { name: 'Delete 6 tables' }));
+      const undo = screen.getByRole('button', { name: 'Undo' });
+
+      await waitFor(() => expect(document.activeElement).toBe(undo));
+      fireEvent.click(undo);
+      expect(chosen()).toBe('6 chosen');
+      await waitFor(() => expect(document.activeElement).toBe(item(/^Table 1,/u)));
+    },
+  );
+
+  it('puts focus back on the Delete that asked, after Keep them (sc-57680)', SLOW, async () => {
+    await seating('selection');
+    const remove = within(panel()).getByRole('button', { name: 'Delete' });
+
+    remove.focus();
+    fireEvent.click(remove);
+    fireEvent.click(
+      within(screen.getByRole('alertdialog')).getByRole('button', { name: 'Keep them' }),
+    );
+    await waitFor(() => expect(document.activeElement).toBe(remove));
+  });
+
+  it(
+    'refuses Undo once a freed guest is seated, with focus on the status line (sc-57680)',
+    SLOW,
+    async () => {
+      await seating('deleteManyChanged');
+      fireEvent.click(screen.getByRole('button', { name: 'Undo' }));
+      const line = await screen.findByText('These seats changed since. Nothing was undone.');
+
+      await waitFor(() => expect(document.activeElement).toBe(line));
+      expect(screen.queryByRole('button', { name: 'Undo' })).toBeNull();
+      expect(within(room()).queryAllByRole('button', { name: /^Table 1,/u })).toHaveLength(0);
+    },
+  );
+
   it('says a colleague’s change refused the step and keeps the choice', SLOW, async () => {
     await seating('toolChanged');
     expect(
