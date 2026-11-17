@@ -174,6 +174,41 @@ describe('Today at a desk (sc-30413)', () => {
     expect(rows).toEqual([['Aso ebi', 'Chidi & Ngozi'], ['Bisi’s 40th']]);
   });
 
+  it.each([
+    ['en', false],
+    ['fr', false],
+    ['pt', true],
+  ])(
+    'in %s, This week writes the letter at every width: %s, with the full weekday read in its place (sc-61548)',
+    async (language, letters) => {
+      vi.useFakeTimers({ toFake: ['Date'] });
+      vi.setSystemTime(new Date('2026-11-03T09:00:00+01:00'));
+      signedIn(membership({ id: 'org_1' }));
+      serving([event('Casamento')]);
+      await act(() => i18next.changeLanguage(language));
+
+      try {
+        open();
+
+        const week = await screen.findByRole('region', { name: i18next.t('today.thisWeek') });
+        const days = week.querySelector('.today-days') as HTMLElement;
+        const friday = days.children[3] as HTMLElement;
+
+        expect(days.classList.contains('has-letters')).toBe(letters);
+        expect(friday.querySelector('.today-weekday-narrow')?.getAttribute('aria-hidden')).toBe(
+          'true',
+        );
+        expect(friday.querySelector('.today-weekday-spoken')?.textContent).toBe(
+          new Intl.DateTimeFormat(language, { weekday: 'long', timeZone: 'UTC' }).format(
+            new Date('2026-11-06T00:00Z'),
+          ),
+        );
+      } finally {
+        await act(() => i18next.changeLanguage('en'));
+      }
+    },
+  );
+
   it('keeps a row’s day count and its date each whole, so the date wraps rather than cuts (sc-36532)', async () => {
     vi.useFakeTimers({ toFake: ['Date'] });
     vi.setSystemTime(new Date('2026-11-03T09:00:00+01:00'));

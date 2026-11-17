@@ -124,9 +124,10 @@
   }
 
   @container today (width < 620px) {
-    /* Today's name keeps its width and the other six days share the rest. */
+    /* Today's name keeps its width and the other six days share the rest; the strip's sides give 12 px to them, so French's MER. and JEU. keep 4 px apart at 641 px (sc-61548). */
     .fits-phone .today-strip {
       grid-template-columns: max-content repeat(6, minmax(0, 1fr));
+      padding-inline: var(--spaceXxs);
     }
 
     /* Too narrow for a name inside its days: the bar marks its days, and its name and length take the line under it, whole. */
