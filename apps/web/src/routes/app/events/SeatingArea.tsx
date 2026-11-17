@@ -176,6 +176,8 @@ const PAN_FROM_PX = 4;
 const STEP_TRIES = 3;
 const STEP_RETRY_MS = 1_000;
 const SIZE_STEP_CM = 10;
+const ITEM_ATTRIBUTES = ['data-table', 'data-row', 'data-seat'];
+const ITEM = ITEM_ATTRIBUTES.map((attribute) => `[${attribute}]`).join(', ');
 
 type Drag =
   | {
@@ -665,6 +667,7 @@ function Plan({
   } | null>(null);
   const spaceHeld = useRef(false);
   const spacePanned = useRef(false);
+  const spaceOn = useRef<{ id: string; shift: boolean } | null>(null);
   const touches = useRef(new Set<number>());
 
   useEffect(() => {
@@ -991,24 +994,6 @@ function Plan({
     }
   });
 
-  useEffect(() => {
-    const keys = (event: KeyboardEvent) => onKey(event);
-    const lift = (event: KeyboardEvent) => {
-      if (event.key !== ' ') return;
-      if (spacePanned.current || (spaceHeld.current && !control(event.target)))
-        event.preventDefault();
-      spaceHeld.current = false;
-      spacePanned.current = false;
-    };
-
-    window.addEventListener('keydown', keys);
-    window.addEventListener('keyup', lift);
-    return () => {
-      window.removeEventListener('keydown', keys);
-      window.removeEventListener('keyup', lift);
-    };
-  }, []);
-
   const attempt = <A,>(
     change: () => Promise<A>,
     seatingOf: (answer: A) => Seating,
@@ -1218,6 +1203,40 @@ function Plan({
       setNotice(null);
     }
   };
+
+  const onSpaceUp = useEffectEvent((event: KeyboardEvent) => {
+    const on = spaceOn.current;
+
+    spaceOn.current = null;
+    if (on == null || spacePanned.current) return;
+    const focused = document.activeElement;
+
+    if (!ITEM_ATTRIBUTES.some((attribute) => focused?.getAttribute(attribute) === on.id)) return;
+    const item = itemOf(on.id);
+
+    if (item == null) return;
+    if ((on.shift || event.shiftKey || adding) && !readOnly) toggle(on.id);
+    else open({ kind: item.kind, id: on.id }, true);
+  });
+
+  useEffect(() => {
+    const keys = (event: KeyboardEvent) => onKey(event);
+    const lift = (event: KeyboardEvent) => {
+      if (event.key !== ' ') return;
+      if (spacePanned.current || (spaceHeld.current && !control(event.target)))
+        event.preventDefault();
+      onSpaceUp(event);
+      spaceHeld.current = false;
+      spacePanned.current = false;
+    };
+
+    window.addEventListener('keydown', keys);
+    window.addEventListener('keyup', lift);
+    return () => {
+      window.removeEventListener('keydown', keys);
+      window.removeEventListener('keyup', lift);
+    };
+  }, []);
 
   const versionNow = (id: string): number => itemOf(id, newest.current)?.one.version ?? 0;
   const refNow = (kind: FloorItem['kind'], id: string) => ({ kind, id, version: versionNow(id) });
@@ -1474,7 +1493,7 @@ function Plan({
     if (readOnly || plan == null) return;
     const target = event.target as Element;
 
-    if (!target.matches('[data-table], [data-row], [data-seat]')) return;
+    if (!target.matches(ITEM)) return;
     const id = item.one.id;
     const chosen = chosenIds.includes(id);
     const arrows: Record<string, [number, number]> = {
@@ -1877,6 +1896,9 @@ function Plan({
           height={size.h}
           viewBox={`0 0 ${size.w} ${size.h}`}
           role="group"
+          onMouseDown={(event) => {
+            if (spaceHeld.current) event.preventDefault();
+          }}
           onPointerDown={(event) => {
             panned.current = false;
             if (event.button !== 0 || !isFloor(event.target)) return;
@@ -2014,8 +2036,14 @@ function Plan({
                 }}
                 onKeyDownCapture={(event) => {
                   if (event.key !== 'Enter' && event.key !== ' ') return;
-                  if (!(event.target as Element).matches('[data-table], [data-row], [data-seat]'))
+                  if (!(event.target as Element).matches(ITEM)) return;
+                  if (event.key === ' ') {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    spaceHeld.current = true;
+                    if (!event.repeat) spaceOn.current = { id, shift: event.shiftKey };
                     return;
+                  }
                   if ((event.shiftKey || adding) && !readOnly) {
                     event.preventDefault();
                     event.stopPropagation();
@@ -2024,8 +2052,7 @@ function Plan({
                 }}
                 onKeyDown={(event) => onItemKey(event, item)}
                 onFocus={(event) => {
-                  if ((event.target as Element).matches('[data-table], [data-row], [data-seat]'))
-                    setFocusId(id);
+                  if ((event.target as Element).matches(ITEM)) setFocusId(id);
                 }}
                 onBlur={() => setFocusId(null)}
               >
