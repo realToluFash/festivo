@@ -66,6 +66,7 @@ import {
   membersCard,
   membersCounts,
   membersShown,
+  personInFront,
   waitingToJoin,
 } from '../../src/kit/membersSummary.ts';
 import {
@@ -331,7 +332,7 @@ export default function MembersScreen() {
   const recovery = load.kind === 'loaded' && manages ? load.recovery : [];
   const recoveryAsked =
     recoveryAsk == null ? null : (recovery.find((one) => one.id === recoveryAsk.id) ?? null);
-  const listBehind = !landscape && member != null;
+  const listBehind = personInFront(kind, member != null);
   const day = (at: string) => formatDay(at, dateLocale());
 
   function moveOn(): void {
@@ -649,6 +650,7 @@ export default function MembersScreen() {
       listUnderTabs
       offline={stale}
       besideTitle={alone ? refreshingWords : undefined}
+      untitled={listBehind}
       title={
         phone
           ? listBehind
