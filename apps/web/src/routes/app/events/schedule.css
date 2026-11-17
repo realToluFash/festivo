@@ -668,25 +668,6 @@
   width: 100%;
 }
 
-/* 961 to 1200 px (sc-61150): the open item comes before the table, full width, until the two fit beside each other. */
-@media (60rem < width <= 75rem) {
-  .ro .mn-split:has(> .mn-panel) {
-    flex-direction: column;
-    align-items: stretch;
-  }
-
-  .ro .mn-split > .mn-panel {
-    position: static;
-    order: -1;
-    width: auto;
-    max-height: none;
-  }
-
-  .ro .mn-split > .mn-panel .mn-panel-body {
-    overflow: visible;
-  }
-}
-
 /* At 720px and under the page beside the sidebar is narrower than a phone's, so the day tabs stack and the table folds to Starts and Item (sc-60699). */
 @media (width <= 720px) {
   .ro-days {

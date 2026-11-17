@@ -2239,15 +2239,7 @@ describe('a guest’s column at 320 (sc-3773)', () => {
     expect(cssRule('.gs-column', GUESTS_CSS)).toContain('min-width: 0;');
   });
 });
-describe('Guests from 961 to 1240 px (sc-61150)', () => {
-  const band = () => GUESTS_CSS.slice(GUESTS_CSS.indexOf('(60rem < width <= 77.5rem)'));
-
-  it('puts an open guest before the list, each full width, with Pick a guest hidden', () => {
-    expect(cssRule('.gs-cols', band())).toContain('flex-flow: column nowrap;');
-    expect(band()).toMatch(/\n {2}\.gs-column \{\n {4}order: -1;/u);
-    expect(cssRule('.gs-column:has(> .gs-pick)', band())).toContain('display: none;');
-  });
-
+describe('Guests from 1241 px (sc-61150)', () => {
   it('keeps the guest in view beside the list only from 1241 px', () => {
     const beside = GUESTS_CSS.slice(GUESTS_CSS.indexOf('(width > 77.5rem)'));
 

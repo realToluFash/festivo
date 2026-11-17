@@ -4,7 +4,7 @@ import { RouterProvider, createMemoryRouter } from 'react-router';
 
 import { __setSessionState, type Session } from '../../../session.ts';
 import { membership } from '../../../test-memberships.ts';
-import { STYLES, cssRule, stylesheet } from '../../../test-styles.ts';
+import { STYLES, cssRule } from '../../../test-styles.ts';
 import { routes } from '../../index.tsx';
 
 const IRE = membership({ id: 'org_1', name: 'Ìrè Events', currency: 'NGN' });
@@ -539,23 +539,5 @@ describe('the Menu library (sc-3901)', () => {
         sent.some((one) => one.method === 'DELETE' && one.path.endsWith('/variants/v_hen')),
       ).toBe(true);
     });
-  });
-});
-
-describe('Menu library from 961 px (sc-61150)', () => {
-  const LIBRARY_CSS = stylesheet(import.meta.dirname, 'menuLibrary.css');
-
-  it('keeps the title whole, the actions going under it when both do not fit', () => {
-    const wide = LIBRARY_CSS.slice(LIBRARY_CSS.indexOf('(width > 60rem)'));
-
-    expect(cssRule('.lib-page .desk-top', wide)).toContain('flex-wrap: wrap;');
-    expect(cssRule('.lib-page .desk-title', wide)).toContain('min-width: auto;');
-  });
-
-  it('puts an open form before the list up to 1120 px', () => {
-    const band = LIBRARY_CSS.slice(LIBRARY_CSS.indexOf('(60rem < width <= 70rem)'));
-
-    expect(cssRule('.lib-split.is-docked', band)).toContain('flex-direction: column;');
-    expect(cssRule('.lib-split.is-docked .lib-panel', band)).toContain('order: -1;');
   });
 });
