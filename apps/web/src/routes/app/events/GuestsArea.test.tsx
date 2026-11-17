@@ -5173,3 +5173,157 @@ describe('Nobody on the list yet, in each phase (sc-50409)', () => {
     }
   });
 });
+
+describe('Export (sc-3784)', () => {
+  const ZOE = guest('g_3', 'Zoë Martin');
+  const LISTED = { 'GET /api/events/ev_1/guests': () => json(listOf([NGOZI, AMAKA, ZOE])) };
+
+  beforeEach(() => {
+    vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:export');
+    vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => undefined);
+    vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => undefined);
+  });
+
+  async function exportOpened(answers: Record<string, Answer>, at = '') {
+    signedIn();
+    const sent = await onGuests({ ...LISTED, ...answers }, OWNER_PERMISSIONS, at);
+    fireEvent.click(await screen.findByRole('button', { name: 'Export' }));
+
+    return { sent, dialog: await screen.findByRole('dialog', { name: 'Export guests' }) };
+  }
+
+  it('offers This view and All guests in people, companions included, then the format, the file and its columns', async () => {
+    const { dialog } = await exportOpened({}, '?filter=coming');
+
+    expect(within(dialog).getByRole('radio', { name: /^This view \(4 people\)/u })).toHaveProperty(
+      'checked',
+      true,
+    );
+    expect(within(dialog).getByText('Filter: Coming')).toBeDefined();
+    expect(within(dialog).getByRole('radio', { name: /^All guests \(6 people\)/u })).toBeDefined();
+    expect(within(dialog).getByRole('radio', { name: 'Excel (.xlsx)' })).toHaveProperty(
+      'checked',
+      true,
+    );
+    expect(
+      within(dialog).getByText(/^Adaeze and Tunde – guests – \d{4}-\d{2}-\d{2}\.xlsx$/u),
+    ).toBeDefined();
+    expect(
+      within(dialog)
+        .getAllByRole('listitem')
+        .slice(-12)
+        .map((one) => one.textContent),
+    ).toEqual([
+      'Full name',
+      'Guest of',
+      'Group',
+      'Reply',
+      'Replied on',
+      'Email',
+      'Mobile number',
+      'Allergies',
+      'Diet',
+      'Access',
+      'Places',
+      'Added on',
+    ]);
+    expect(
+      within(dialog).getByText(
+        'This file has guests’ personal details. Keep it somewhere safe, and delete it when you’re done.',
+      ),
+    ).toBeDefined();
+  });
+
+  it('sends the people in view in the list’s order, each companion after their guest, and says where the file went', async () => {
+    const { sent, dialog } = await exportOpened(
+      {
+        'POST /api/events/ev_1/guests/export': () =>
+          new Response(new Uint8Array([80, 75]), {
+            headers: { 'Content-Type': 'text/csv; charset=UTF-8' },
+          }),
+      },
+      '?filter=coming',
+    );
+
+    fireEvent.click(within(dialog).getByRole('radio', { name: 'CSV' }));
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Download' }));
+
+    expect(
+      await screen.findByText(
+        /^Your file is ready\. Look in your downloads for Adaeze and Tunde – guests – .*\.csv\.$/u,
+      ),
+    ).toBeDefined();
+    expect(screen.queryByRole('dialog', { name: 'Export guests' })).toBeNull();
+    expect(sent.find((one) => one.line === 'POST /api/events/ev_1/guests/export')?.body).toEqual({
+      format: 'csv',
+      scope: 'view',
+      people: ['g_1', 'c_1', 'c_2', 'c_3'],
+    });
+  });
+
+  it('keeps the dialog open with the failure line when the API fails, and Download tries again', async () => {
+    const { sent, dialog } = await exportOpened({
+      'POST /api/events/ev_1/guests/export': () => problem('internal', 500),
+    });
+
+    fireEvent.click(within(dialog).getByRole('radio', { name: /^All guests/u }));
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Download' }));
+
+    expect(
+      await within(dialog).findByText(
+        'The file could not be made, so nothing was downloaded. Try again.',
+      ),
+    ).toBeDefined();
+    expect(URL.createObjectURL).not.toHaveBeenCalled();
+    expect(sent.find((one) => one.line === 'POST /api/events/ev_1/guests/export')?.body).toEqual({
+      format: 'xlsx',
+      scope: 'all',
+      people: ['g_2', 'g_1', 'c_1', 'c_2', 'c_3', 'g_3'],
+    });
+  });
+
+  it('disables This view on an empty view and chooses All guests', async () => {
+    const { dialog } = await exportOpened({}, '?filter=notComing');
+
+    const view = within(dialog).getByRole('radio', { name: /^This view \(0 people\)/u });
+    expect(view).toHaveProperty('disabled', true);
+    expect(within(dialog).getByText('Nothing in this view to export.')).toBeDefined();
+    expect(within(dialog).getByRole('radio', { name: /^All guests/u })).toHaveProperty(
+      'checked',
+      true,
+    );
+  });
+
+  it('leaves the needs columns out and says why without guests.manage', async () => {
+    signedIn();
+    await onGuests(
+      LISTED,
+      OWNER_PERMISSIONS.filter((one) => one !== 'guests.manage'),
+    );
+    fireEvent.click(await screen.findByRole('button', { name: 'Export' }));
+    const dialog = await screen.findByRole('dialog', { name: 'Export guests' });
+
+    expect(within(dialog).queryByText('Allergies')).toBeNull();
+    expect(
+      within(dialog).getByText(
+        'Allergies, diet and access aren’t in this file, because seeing them needs permission to manage guests.',
+      ),
+    ).toBeDefined();
+  });
+
+  it('shows no Export to Can view or Can check guests in', async () => {
+    for (const role of ['can_view', 'can_check_in']) {
+      signedIn();
+      await onGuests({
+        ...LISTED,
+        'GET /api/events/ev_1': () =>
+          json({ event: { ...EVENT, permissions: ['guests.read'], roleOnEvent: role } }),
+      });
+
+      expect(await screen.findByText('Zoë Martin')).toBeDefined();
+      expect(screen.queryByRole('button', { name: 'Export' })).toBeNull();
+      cleanup();
+      vi.mocked(globalThis.fetch).mockRestore();
+    }
+  });
+});

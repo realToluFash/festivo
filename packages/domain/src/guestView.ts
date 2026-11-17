@@ -153,6 +153,34 @@ export interface ViewGroup {
 
 export type ListView = { kind: 'groups'; groups: ViewGroup[] } | { kind: 'rows'; rows: ViewRow[] };
 
+/** Whether the choice, the search, Dietary notes and the group chip all keep this person. */
+function inView(
+  one: Person,
+  choice: Choice,
+  q: string,
+  dietaryOnly: boolean,
+  group: string | null,
+): boolean {
+  return (
+    (choice === 'all' ||
+      (choice === 'invited' ? one.standing !== 'notYetInvited' : one.standing === choice)) &&
+    matches(one, q) &&
+    inGroup(one, group) &&
+    (!dietaryOnly || dietary(one.companion == null ? one.guest.needs : one.companion.needs))
+  );
+}
+
+/** sc-3784's This view: everyone the list keeps, collapsed groups included, in its order, each companion straight after their guest. */
+export function peopleInView(
+  guests: readonly Guest[],
+  choice: Choice,
+  q: string,
+  dietaryOnly = false,
+  group: string | null = null,
+): readonly Person[] {
+  return peopleOf(guests).filter((one) => inView(one, choice, q, dietaryOnly, group));
+}
+
 /** On All or Invited with no search, no Dietary notes and no group chip, the groups (Invited's without Not yet invited); otherwise the flat rows the choice, the search and Dietary notes keep, a companion under their guest when both are kept. */
 export function viewOf(
   guests: readonly Guest[],
@@ -168,14 +196,7 @@ export function viewOf(
   const totals = choice === 'all' || choice === 'invited';
 
   if (!totals || q.trim() !== '' || dietaryOnly || group != null) {
-    const found = people.filter(
-      (one) =>
-        (choice === 'all' ||
-          (choice === 'invited' ? one.standing !== 'notYetInvited' : one.standing === choice)) &&
-        matches(one, q) &&
-        inGroup(one, group) &&
-        (!dietaryOnly || dietary(one.companion == null ? one.guest.needs : one.companion.needs)),
-    );
+    const found = people.filter((one) => inView(one, choice, q, dietaryOnly, group));
     const hosts = new Set(found.filter((one) => one.companion == null).map((one) => one.id));
 
     return {
