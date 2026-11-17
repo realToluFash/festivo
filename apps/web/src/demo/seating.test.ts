@@ -26,8 +26,10 @@ import {
   intoView,
   inside,
   keepSeats,
+  marksOf,
   leastUsed,
   many,
+  seatChosenWords,
   metres,
   nearestFree,
   nextName,
@@ -579,5 +581,24 @@ describe('the breadcrumb (sc-55300)', () => {
       events: 'Événements',
       area: 'Plan de table',
     });
+  });
+});
+
+describe('a colleague’s marks on Tables and the List (sc-60717)', () => {
+  const ana = { name: 'Ana Souza', initials: 'AS', tone: 2, viewer: false };
+  const sade = { name: 'Sade Bello', initials: 'SB', tone: 1, viewer: true };
+  const rings = { t7: [{ who: sade }, { who: ana, seat: 2 }] };
+
+  it('never marks a viewer’s choice, and marks nothing while reconnecting', () => {
+    expect(marksOf(rings, 'chips', 't7').map((one) => one.who.name)).toEqual(['Ana Souza']);
+    expect(marksOf(rings, 'reconnecting', 't7')).toEqual([]);
+    expect(marksOf(rings, 'chips', 'nothing')).toEqual([]);
+  });
+
+  it('names who chose a chair, and nobody on another', () => {
+    const marks = marksOf(rings, 'chips', 't7');
+
+    expect(seatChosenWords(marks, 2)).toBe(', chosen by Ana Souza');
+    expect(seatChosenWords(marks, 0)).toBe('');
   });
 });

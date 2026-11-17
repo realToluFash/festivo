@@ -3,6 +3,7 @@ import { Keyboard } from 'react-native';
 import {
   type InContent,
   type IntoView,
+  offsetShowingFoot,
   settledAnswer,
   settledOffsetKeeping,
   shownAboveKeys,
@@ -24,13 +25,19 @@ export interface Sight {
   keep?: ScreenReaderTarget | null;
   /** The scroll keeps the hold, as `scrollHolding`. */
   holding?: boolean;
+  /** A view taller than the sight shows its foot, as offsetShowingFoot. */
+  foot?: boolean;
 }
 
+/** What bringIntoView reads of a scroll: a screen's, or one in its own window. */
+export type SightScroll = Pick<ScreenScrollView, 'ref' | 'offset' | 'origin'> &
+  Partial<Pick<ScreenScrollView, 'scrollHolding'>>;
+
 export function bringIntoView(
-  scroll: ScreenScrollView | null,
+  scroll: SightScroll | null,
   line: ScreenReaderTarget | null,
   animated: boolean,
-  { when = 'wholly', aboveKeys = false, keep = null, holding = false }: Sight = {},
+  { when = 'wholly', aboveKeys = false, keep = null, holding = false, foot = false }: Sight = {},
   measured: (found: { to: number | null } | null) => void = () => {},
 ): void {
   const view = scroll?.ref.current;
@@ -63,8 +70,8 @@ export function bringIntoView(
             shown,
             margin: tokens.spaceLg,
           };
-          const to = settledOffsetKeeping(at, when, keptAt);
-          if (to != null && holding) scroll.scrollHolding(to);
+          const to = foot ? offsetShowingFoot(at) : settledOffsetKeeping(at, when, keptAt);
+          if (to != null && holding && scroll.scrollHolding != null) scroll.scrollHolding(to);
           else if (to != null) view.scrollTo({ y: to, animated });
           measured({ to });
         }),

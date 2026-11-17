@@ -100,7 +100,33 @@
   display: flex;
   flex: none;
   justify-content: flex-end;
-  width: var(--todayAct);
+  min-width: var(--todayAct);
+  margin-left: var(--spaceMd);
+}
+
+/* Every word in a row shows whole at every width, a 120-character event name included (sc-61015). */
+.fits-phone .today-need :is(.today-need-title, .today-need-event) {
+  overflow: visible;
+  white-space: normal;
+  overflow-wrap: break-word;
+}
+
+/* A page as narrow as a phone's: the button goes under the row's words, so they keep the width. */
+@container today (width < 620px) {
+  .fits-phone .today-need {
+    flex-wrap: wrap;
+  }
+
+  .fits-phone .today-need .today-need-open {
+    flex-basis: 100%;
+  }
+
+  .fits-phone .today-need .today-need-act {
+    flex-basis: 100%;
+    justify-content: flex-start;
+    margin: calc(var(--spaceSm) * -1) 0 var(--spaceXs);
+    padding-left: calc(var(--sizeAvatar) + var(--spaceMd));
+  }
 }
 
 /* 44 to a finger, 34 to the eye. */
@@ -109,6 +135,7 @@
   align-items: center;
   height: var(--sizeHit);
   padding: 0;
+  text-decoration: none;
 }
 
 .today-act:focus-visible {

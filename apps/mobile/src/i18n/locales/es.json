@@ -1698,7 +1698,7 @@
     "timesIn": "Horas en {{zone}}",
     "notChosen": "Sin elegir",
     "pickerDone": "Listo",
-    "created": "Se ha creado el evento. Abriéndolo.",
+    "created": "Se ha creado el evento. Se está abriendo.",
     "leaveBody": "Se perderá lo que ha escrito para este evento.",
     "venueLookupDown": "Las sugerencias no están disponibles en este momento. Escriba la dirección completa y se guardará tal como la ha escrito.",
     "venueAddressHint": "Escriba al menos 3 caracteres para ver sugerencias. También puede escribir cualquier dirección.",

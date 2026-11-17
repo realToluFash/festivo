@@ -7,16 +7,14 @@ namespace App\Domain\Event\CalendarFeed;
 use App\Entity\CalendarFeed;
 use App\Entity\Organisation;
 use App\Entity\User;
+use App\Http\LinkTokens;
 use App\Repository\CalendarFeedRepository;
 use Doctrine\DBAL\Connection;
 use LogicException;
-use Psl\Encoding\Base64;
-use Psl\SecureRandom;
-use SensitiveParameter;
 use Symfony\Component\Uid\Uuid;
 
 /**
- * A person's calendar link (sc-3626). Its token is the HMAC of a 256-bit random seed under the app secret: shown again whenever the panel opens, yet stored only as its SHA-256, and a copy of the database alone cannot rebuild it.
+ * A person's calendar link (sc-3626), its token made by LinkTokens.
  */
 final readonly class FeedLinkIssuer
 {
@@ -24,9 +22,10 @@ final readonly class FeedLinkIssuer
 
     public const string SUFFIX = '.ics';
 
+    private const string PURPOSE = 'calendar-feed';
+
     public function __construct(
-        #[SensitiveParameter]
-        private string $secret,
+        private LinkTokens $linkTokens,
         private CalendarFeedRepository $calendarFeedRepository,
         private Connection $connection,
     ) {
@@ -41,7 +40,7 @@ final readonly class FeedLinkIssuer
             return $existing;
         }
 
-        $seed = self::seed();
+        $seed = LinkTokens::seed();
         $this->connection->executeStatement(<<<'SQL'
             INSERT INTO calendar_feeds (id, user_id, organisation_id, seed, token_hash, created_at, updated_at)
             VALUES (:id, :user, :organisation, :seed, :hash, NOW(), NOW())
@@ -51,7 +50,7 @@ final readonly class FeedLinkIssuer
             'user' => $user->getId()->toRfc4122(),
             'organisation' => $organisation->getId()->toRfc4122(),
             'seed' => $seed,
-            'hash' => self::hash($this->token($seed)),
+            'hash' => LinkTokens::hash($this->token($seed)),
         ]);
 
         return $this->calendarFeedRepository->findOneFor($user, $organisation) ?? throw new LogicException('The calendar link was neither found nor made.');
@@ -60,8 +59,8 @@ final readonly class FeedLinkIssuer
     /** The old token stops matching at the flush. */
     public function reset(CalendarFeed $feed): void
     {
-        $seed = self::seed();
-        $feed->reissue($seed, self::hash($this->token($seed)));
+        $seed = LinkTokens::seed();
+        $feed->reissue($seed, LinkTokens::hash($this->token($seed)));
     }
 
     public function pathOf(CalendarFeed $feed): string
@@ -69,18 +68,8 @@ final readonly class FeedLinkIssuer
         return self::PATH . $this->token($feed->getSeed()) . self::SUFFIX;
     }
 
-    public static function hash(#[SensitiveParameter] string $token): string
-    {
-        return \hash('sha256', $token);
-    }
-
     private function token(string $seed): string
     {
-        return Base64\encode(\hash_hmac('sha256', 'calendar-feed:' . $seed, $this->secret, true), Base64\Variant::UrlSafe, padding: false);
-    }
-
-    private static function seed(): string
-    {
-        return \bin2hex(SecureRandom\bytes(32));
+        return $this->linkTokens->token(self::PURPOSE, $seed);
     }
 }

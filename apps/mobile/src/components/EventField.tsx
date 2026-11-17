@@ -2,7 +2,7 @@ import { type ReactNode, useEffect, useRef } from 'react';
 import { StyleSheet, View, type ViewInstance } from 'react-native';
 
 import { FieldError } from './Field.tsx';
-import { fieldFocused, fieldLeft } from './focusedField.ts';
+import { fieldFocused, fieldLeft, fieldReshaped } from './focusedField.ts';
 import { Text } from './Text.tsx';
 import { tokens } from '../theme/tokens.ts';
 
@@ -30,12 +30,16 @@ export function EventField({
 
     return () => fieldLeft(mounted);
   }, []);
+  useEffect(() => {
+    if (error != null) fieldReshaped(field.current);
+  }, [error]);
 
   return (
     <View
       ref={field}
       onFocus={() => fieldFocused(field.current)}
       onBlur={() => fieldLeft(field.current)}
+      onLayout={() => fieldReshaped(field.current)}
       style={styles.labelled}
     >
       <View

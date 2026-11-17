@@ -30,6 +30,7 @@ import { SettingsDesk } from './app/SettingsDesk.tsx';
 import { SignedInHome } from './app/Today.tsx';
 import { GuestLayout } from './guest/GuestLayout.tsx';
 import { Invitation } from './guest/Invitation.tsx';
+import { RoomScreenPage } from './screen/RoomScreen.tsx';
 import { ChangePhone } from './public/ChangePhone.tsx';
 import { CompleteProfile } from './public/CompleteProfile.tsx';
 import { ForgotPassword } from './public/ForgotPassword.tsx';
@@ -54,6 +55,7 @@ import { Status } from './public/Status.tsx';
  *   /        public — anybody, no account, no authentication
  *   /app     the product — signed in, scoped to an organisation
  *   /i/:tok  a guest — reached by an invitation, will never install anything
+ *   /s/:tok  a room screen — a TV or projector, shown what guests see (sc-3897)
  *
  * Separated structurally because the alternative is one tree with conditions in
  * it, and a condition is something that can be forgotten on a new route. A
@@ -122,6 +124,7 @@ export const routes = [
         element: <GuestLayout />,
         children: [{ index: true, element: <Invitation /> }],
       },
+      { path: '/s/:token', element: <RoomScreenPage /> },
       { path: '/demo/*', element: <DemoRoute /> },
       { path: '*', element: <NotFound /> },
     ],
