@@ -502,6 +502,184 @@ describe('the plan and the room (sc-3998, sc-4007)', () => {
         measured.mockRestore();
       }
     });
+
+    describe('and keeps an item moved by keys clear of the keys strip (sc-61042)', () => {
+      const CLEAR: Rect = [300, 200, 360, 260];
+      const UNDER: Rect = [300, 540, 360, 600];
+      let at: Rect = CLEAR;
+      let strip: Rect = [16, 520, 702, 600];
+
+      function floor(): string {
+        const box = document.querySelector('.st-floor[y]');
+
+        return `${box?.getAttribute('x')} ${box?.getAttribute('y')}`;
+      }
+
+      async function chosen() {
+        at = CLEAR;
+        strip = [16, 520, 702, 600];
+        await seating();
+        const table = item(/^Table 9,/u);
+        const measured = measure((node) =>
+          node === table ? at : node.classList.contains('st-keys') ? strip : null,
+        );
+
+        key(table, 'Tab');
+        table.focus();
+        key(table, 'Enter');
+        await screen.findByRole('note', { name: 'Keys for the chosen item' }, WAIT);
+        return { table, measured };
+      }
+
+      async function still(before: string): Promise<void> {
+        await new Promise((done) => window.setTimeout(done, 50));
+        expect(floor()).toBe(before);
+      }
+
+      it('pans after an arrow, a Shift+arrow and R', SLOW, async () => {
+        const { table, measured } = await chosen();
+
+        try {
+          at = UNDER;
+          for (const [name, shiftKey] of [
+            ['ArrowUp', false],
+            ['ArrowLeft', true],
+            ['r', false],
+          ] as const) {
+            const before = floor();
+
+            key(table, name, { shiftKey });
+            await waitFor(() => expect(floor()).not.toBe(before), WAIT);
+          }
+        } finally {
+          measured.mockRestore();
+        }
+      });
+
+      it('pans after an arrow the room stops, with nothing moved', SLOW, async () => {
+        const { table, measured } = await chosen();
+        const down = () => (within(panel()).getByLabelText('Down') as HTMLInputElement).value;
+
+        try {
+          for (let step = 0; step < 40; step += 1) key(table, 'ArrowDown', { shiftKey: true });
+          const foot = down();
+
+          at = UNDER;
+          const before = floor();
+
+          key(table, 'ArrowDown', { shiftKey: true });
+          await waitFor(() => expect(floor()).not.toBe(before), WAIT);
+          expect(down()).toBe(foot);
+        } finally {
+          measured.mockRestore();
+        }
+      });
+
+      it('leaves the plan where it is for an item already clear', SLOW, async () => {
+        const { table, measured } = await chosen();
+
+        try {
+          const before = floor();
+
+          key(table, 'ArrowUp');
+          await still(before);
+        } finally {
+          measured.mockRestore();
+        }
+      });
+
+      it('pans when the strip shows over the focused item', SLOW, async () => {
+        at = UNDER;
+        await seating();
+        const table = item(/^Table 9,/u);
+        const measured = measure((node) =>
+          node === table ? at : node.classList.contains('st-keys') ? strip : null,
+        );
+
+        try {
+          key(table, 'Tab');
+          table.focus();
+          await new Promise((done) => window.setTimeout(done, 50));
+          const before = floor();
+
+          key(table, 'Enter');
+          await waitFor(() => expect(floor()).not.toBe(before), WAIT);
+        } finally {
+          measured.mockRestore();
+        }
+      });
+
+      it('pans when the strip wraps to a second line', SLOW, async () => {
+        const watching: { tell: ResizeObserverCallback; bars: Element[] }[] = [];
+
+        vi.stubGlobal(
+          'ResizeObserver',
+          class {
+            private readonly seen: { tell: ResizeObserverCallback; bars: Element[] };
+
+            constructor(tell: ResizeObserverCallback) {
+              this.seen = { tell, bars: [] };
+              watching.push(this.seen);
+            }
+
+            observe(bar: Element): void {
+              this.seen.bars.push(bar);
+            }
+
+            disconnect(): void {
+              this.seen.bars = [];
+            }
+          },
+        );
+        const grow = () =>
+          watching.forEach(({ tell, bars }) =>
+            tell(
+              bars.map((target) => ({ target }) as ResizeObserverEntry),
+              {} as ResizeObserver,
+            ),
+          );
+        const { measured } = await chosen();
+
+        try {
+          at = [300, 440, 360, 500];
+          grow();
+          const before = floor();
+
+          strip = [16, 440, 702, 600];
+          grow();
+          await waitFor(() => expect(floor()).not.toBe(before), WAIT);
+        } finally {
+          measured.mockRestore();
+          vi.unstubAllGlobals();
+        }
+      });
+
+      it('never pans after a click or a drag, even under the strip', SLOW, async () => {
+        const { table, measured } = await chosen();
+        const matches = Element.prototype.matches;
+        const pointer = vi.spyOn(Element.prototype, 'matches').mockImplementation(function (
+          this: Element,
+          selector: string,
+        ) {
+          return selector === ':focus-visible' ? false : matches.call(this, selector);
+        });
+
+        try {
+          at = UNDER;
+          const before = floor();
+
+          press(table);
+          await still(before);
+          fireEvent.pointerDown(table, { button: 0, pointerId: 1, clientX: 100, clientY: 100 });
+          fireEvent.pointerMove(window, { pointerId: 1, clientX: 100, clientY: 160 });
+          fireEvent.pointerUp(window, { button: 0, pointerId: 1, clientX: 100, clientY: 160 });
+          await still(before);
+        } finally {
+          pointer.mockRestore();
+          measured.mockRestore();
+        }
+      });
+    });
   });
 });
 

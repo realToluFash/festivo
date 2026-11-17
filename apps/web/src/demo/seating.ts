@@ -516,8 +516,8 @@ export function isRound(item: Item): boolean {
 }
 
 /** How far past its box a focused item's ring and halo reach once turned with it, in screen px: the halo's 17.5 offset and half its 5 px stroke (sc-57361). */
-export function focusReach(item: Item): number {
-  const reach = 17.5 + 5 / 2;
+export function focusReach(item: Item, drawn = false): number {
+  const reach = (drawn ? 0 : 17.5) + 5 / 2;
 
   if (isRound(item)) return reach;
   const angle = (item.rot * Math.PI) / 180;
