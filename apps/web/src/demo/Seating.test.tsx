@@ -1058,7 +1058,9 @@ describe('tables, rows and seats (sc-4000, sc-4003)', () => {
     fireEvent.click(within(panel()).getByRole('button', { name: 'Mark unusable' }));
     expect(await within(panel()).findByRole('button', { name: 'Mark usable' })).toBeDefined();
     expect(within(room()).getByRole('button', { name: 'Table 4, Seat 9, Unusable' })).toBeDefined();
-    fireEvent.click(within(room()).getByRole('button', { name: 'Table 4, Seat 2, Chidi Obi' }));
+    fireEvent.click(
+      within(room()).getByRole('button', { name: 'Table 4, Seat 2, Chidi Obi, Coming' }),
+    );
     fireEvent.click(within(panel()).getByRole('button', { name: 'Mark unusable' }));
     expect(
       await within(panel()).findByText('Chidi Obi is in this seat. Move them first.'),
@@ -1691,6 +1693,51 @@ describe('seating guests (sc-4013, sc-4016, sc-5030)', () => {
     expect(tray()).toContain('12');
   });
 
+  it('says on every table whether it has room while a party is picked', SLOW, async () => {
+    await seating('picked');
+    expect(within(room()).getAllByText('Full').length).toBeGreaterThan(0);
+    expect(within(room()).getAllByText(/^\d+ free$/u).length).toBeGreaterThan(1);
+    await seating('seat');
+    expect(within(room()).queryByText('Full')).toBeNull();
+    expect(within(room()).queryByText(/^\d+ free$/u)).toBeNull();
+  });
+
+  it('draws no chairs below 50%, so the table is the target', SLOW, async () => {
+    await seating('pickedOut');
+    expect(within(room()).queryAllByRole('button', { name: /, Seat \d+, /u })).toHaveLength(0);
+    expect(within(room()).getAllByText(/^\d+ free$/u).length).toBeGreaterThan(1);
+    press(item(/^Table 8,/u));
+    expect(await screen.findByText('Kwame Mensah and 1 guest are at Table 8.')).toBeDefined();
+  });
+
+  it('labels a chair with its seat, guest and reply on hover and focus', SLOW, async () => {
+    await seating('chairLabel');
+    expect(within(room()).getByText('Seat 1, Sofia Rossi, Not sure yet')).toBeDefined();
+    const chair = within(room()).getByRole('button', {
+      name: 'Table 9, Seat 2, Luca Rossi, Coming',
+    });
+
+    fireEvent.focus(chair);
+    expect(within(room()).getByText('Seat 2, Luca Rossi, Coming')).toBeDefined();
+    expect(within(room()).queryByText('Seat 1, Sofia Rossi, Not sure yet')).toBeNull();
+    fireEvent.blur(chair);
+    expect(within(room()).queryByText('Seat 2, Luca Rossi, Coming')).toBeNull();
+  });
+
+  it('drops the chair label once the pick ends, though the pointer never left', SLOW, async () => {
+    await seating('chairLabel');
+    key(item(/^Table 9,/u), 'Escape');
+    expect(within(room()).queryByText('Seat 1, Sofia Rossi, Not sure yet')).toBeNull();
+    await seating('chairLabel');
+    const free = within(room()).getAllByRole('button', { name: /^Table 9, Seat \d+, Empty/u })[0]!;
+
+    fireEvent.pointerEnter(free);
+    expect(within(room()).getByText(/^Seat \d+, Empty$/u)).toBeDefined();
+    fireEvent.click(free);
+    expect(await screen.findByText(/ (is|are) at Table 9\.$/u)).toBeDefined();
+    expect(within(room()).queryByText(/^Seat \d+, Empty$/u)).toBeNull();
+  });
+
   it(
     'refuses a full table, and offers Seat just {name} when the party won’t fit',
     SLOW,
@@ -1898,6 +1945,14 @@ describe('the Tables and List views (sc-4013, sc-4016)', () => {
       expect(screen.getByRole('button', { name: /^Table 1/u, expanded: false })).toBeDefined();
     },
   );
+
+  it('writes a seated chair’s guest alone in the List, with no reply (sc-5030)', SLOW, async () => {
+    await seating('listOpen');
+    const seat1 = screen.getAllByRole('row').find((row) => row.textContent?.startsWith('Seat 1'));
+
+    expect(within(seat1!).getByText('Amara Diallo')).toBeDefined();
+    expect(within(seat1!).queryByText(/, Coming$/u)).toBeNull();
+  });
 });
 
 describe('Print and its paper (sc-4024, sc-5032)', () => {

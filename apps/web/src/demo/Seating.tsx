@@ -647,6 +647,7 @@ function Seating({
           chair: null,
           pop: null,
           hover: null,
+          chairLabel: null,
           bar: party == null ? null : { kind: 'tint', words: pickWords(party), does: 'pick' },
         };
       }),
@@ -1807,6 +1808,8 @@ function Seating({
         ? (ui.chosen[0] ?? null)
         : null,
     chair: ui.chair,
+    picking: ui.picked != null,
+    label: ui.picked != null ? ui.chairLabel : null,
     chairsFor:
       detail === 'out'
         ? null
@@ -2019,6 +2022,7 @@ function Seating({
                   onItemEnter: (id) => {
                     if (ui$.current.picked != null) set((now) => ({ ...now, hover: id }));
                   },
+                  onChairLabel: (spot) => set((now) => ({ ...now, chairLabel: spot })),
                   onChair: (id, index) => {
                     if (ui$.current.picked != null) seatAt(id, index);
                     else

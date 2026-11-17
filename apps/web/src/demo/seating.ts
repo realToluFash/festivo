@@ -31,6 +31,7 @@ export interface Chair {
   state: ChairState;
   who?: string | undefined;
   party?: string | undefined;
+  reply?: Reply | undefined;
 }
 
 export interface Item {
@@ -276,6 +277,9 @@ const SEATED_AT: Readonly<Record<string, readonly string[]>> = {
   door: ['Grace Obi'],
 };
 
+/** The seated who have not said Coming; everyone else seated is Coming. */
+const SEATED_REPLY: Readonly<Record<string, Reply>> = { 'Sofia Rossi': 'notSure' };
+
 function chairsFor(
   id: string,
   seats: number,
@@ -293,7 +297,9 @@ function chairsFor(
     if (held.includes(number)) return { state: 'held' };
     if (left <= 0) return { state: 'empty' };
     left -= 1;
-    return { state: 'taken', who: names.shift() };
+    const who = names.shift();
+
+    return { state: 'taken', who, reply: who == null ? undefined : SEATED_REPLY[who] };
   });
 }
 
@@ -500,6 +506,25 @@ export function chairsOf(item: Item): Point[] {
     default:
       return [[0, 0]];
   }
+}
+
+export const POINTER_TARGET = 44;
+
+/** The closest two of a table's chairs, in cm: a chair takes a pointer once this is a 44 target on screen (sc-5030). */
+export function chairGap(item: Item): number {
+  const points = chairsOf(item);
+  let gap = Infinity;
+
+  points.forEach(([ax, ay], a) => {
+    points.slice(a + 1).forEach(([bx, by]) => {
+      gap = Math.min(gap, Math.hypot(ax - bx, ay - by));
+    });
+  });
+  return gap;
+}
+
+export function chairsTakePointer(item: Item, s: number): boolean {
+  return chairGap(item) * s >= POINTER_TARGET - 1e-9;
 }
 
 export function extent(item: Item): Point {
@@ -863,7 +888,7 @@ export function percentWritten(pct: number, locale = 'en'): string {
   return new Intl.NumberFormat(locale, { style: 'percent' }).format(pct / 100);
 }
 
-/** Under 50% a table is its outline, name and how full; from 50% its chairs; from 150% each chair is a 44 target. */
+/** Under 50% a table is its outline, name and how full; from 50% its chairs; from 150% their numbers. */
 export type Detail = 'out' | 'fit' | 'near';
 
 export function detailOf(s: number): Detail {
@@ -967,9 +992,22 @@ export function itemName(plan: Plan, item: Item, extra = ''): string {
   );
 }
 
+const REPLY_WORD: Record<Reply, string> = {
+  coming: SW.coming,
+  notSure: SW.notSureYet,
+  noReply: SW.noReply,
+};
+
 export function chairWord(chair: Chair): string {
   if (chair.state === 'taken') return chair.who ?? SW.taken;
   return { held: SW.held, empty: SW.empty, unusable: SW.unusable }[chair.state];
+}
+
+/** Only the chair on the picture adds its guest's reply, Coming included (sc-5030); Tables and the List keep chairWord. */
+export function chairSaid(chair: Chair): string {
+  if (chair.state === 'taken' && chair.who != null)
+    return `${chair.who}, ${REPLY_WORD[chair.reply ?? 'coming']}`;
+  return chairWord(chair);
 }
 
 export function stateWord(state: ChairState): string {
@@ -1429,7 +1467,9 @@ export function seatAt(item: Item, party: Party, chairs: readonly number[]): Ite
     chairs: item.chairs.map((chair, index) => {
       const at = chairs.indexOf(index);
 
-      return at < 0 || who[at] == null ? chair : { state: 'taken', who: who[at], party: party.id };
+      return at < 0 || who[at] == null
+        ? chair
+        : { state: 'taken', who: who[at], party: party.id, reply: party.reply };
     }),
   };
 }
@@ -1642,7 +1682,17 @@ export const SEATING_STATES = [
   { key: 'left', name: 'Priya Shah left', group: 'Who else is here' },
   { key: 'arriving', name: 'A colleague’s change arrives', group: 'Who else is here' },
   { key: 'seat', name: 'Seat: Without a seat 12', group: 'Seating guests' },
-  { key: 'picked', name: 'A party picked', group: 'Seating guests' },
+  { key: 'picked', name: 'A party picked, every table free or Full', group: 'Seating guests' },
+  {
+    key: 'pickedOut',
+    name: 'A party picked at 40%, the table the target',
+    group: 'Seating guests',
+  },
+  {
+    key: 'chairLabel',
+    name: 'A party picked at 150%, a chair’s label on hover',
+    group: 'Seating guests',
+  },
   { key: 'seated', name: 'Seated, with Undo', group: 'Seating guests' },
   { key: 'apart', name: 'Not side by side', group: 'Seating guests' },
   { key: 'full', name: 'A full table', group: 'Seating guests' },

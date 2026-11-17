@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  chairSaid,
+  chairWord,
+  chairsTakePointer,
   type Item,
   type Point,
   keepsClear,
@@ -272,11 +275,27 @@ describe('the room to scale (sc-4007)', () => {
     expect(focusReach({ ...row, rot: 45 })).toBeCloseTo(20 * Math.SQRT2);
   });
 
-  it('draws outlines under 50%, chairs from 50%, and 44 targets from 150%', () => {
+  it('draws outlines under 50%, chairs from 50%, and their numbers from 150%', () => {
     expect(detailOf(0.2)).toBe('out');
     expect(detailOf(0.25)).toBe('fit');
     expect(detailOf(0.5)).toBe('fit');
     expect(detailOf(0.75)).toBe('near');
+  });
+
+  it('adds the reply only to the chair on the picture (sc-5030)', () => {
+    const chair = { state: 'taken' as const, who: 'Chidi Obi' };
+
+    expect(chairWord(chair)).toBe('Chidi Obi');
+    expect(chairSaid(chair)).toBe('Chidi Obi, Coming');
+    expect(chairSaid({ ...chair, reply: 'notSure' as const })).toBe('Chidi Obi, Not sure yet');
+    expect(chairSaid({ state: 'empty' })).toBe(chairWord({ state: 'empty' }));
+  });
+
+  it('gives a chair the pointer only once it is a 44 target, table by table', () => {
+    expect(chairsTakePointer(byId('t1'), 0.5)).toBe(false);
+    expect(chairsTakePointer(byId('t1'), 0.75)).toBe(true);
+    expect(chairsTakePointer(byId('rowA'), 0.75)).toBe(false);
+    expect(chairsTakePointer(byId('rowA'), 1)).toBe(true);
   });
 
   it('puts seat 1 at the top of a round table and goes clockwise', () => {

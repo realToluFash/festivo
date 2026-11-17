@@ -130,6 +130,7 @@ export interface Ui {
   search: string;
   groups: string[];
   hover: string | null;
+  chairLabel: { id: string; i: number } | null;
   pop: Pop | null;
   undo: { plan: Plan; tray: Party[]; chosen?: string[]; stale?: boolean } | null;
   tablesSection: string | null;
@@ -206,6 +207,7 @@ export function freshUi(): Ui {
     search: '',
     groups: [],
     hover: null,
+    chairLabel: null,
     pop: null,
     undo: null,
     tablesSection: null,
@@ -931,6 +933,25 @@ export function seedOf(state: SeatingState | null): Ui {
         tab: 'seat',
         picked: 'kwame',
         hover: 't8',
+        bar: { kind: 'tint', words: pickWords(ui.tray[0]!), does: 'pick' },
+      };
+    case 'pickedOut':
+      return {
+        ...ui,
+        tab: 'seat',
+        picked: 'kwame',
+        hover: 't8',
+        camera: at(0.2, 1200, 1100),
+        bar: { kind: 'tint', words: pickWords(ui.tray[0]!), does: 'pick' },
+      };
+    case 'chairLabel':
+      return {
+        ...ui,
+        tab: 'seat',
+        picked: 'kwame',
+        hover: 't9',
+        camera: at(0.75, 1590, 1020),
+        chairLabel: { id: 't9', i: 0 },
         bar: { kind: 'tint', words: pickWords(ui.tray[0]!), does: 'pick' },
       };
     case 'seated':
