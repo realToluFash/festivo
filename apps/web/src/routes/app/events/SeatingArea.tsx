@@ -1596,16 +1596,12 @@ function Plan({
 
         pick([]);
         stepDone(
-          freed.length === 0
-            ? t(tables ? 'seating.deletedEmptyTables' : 'seating.deletedEmptyItems', {
-                count: items.length,
-              })
-            : t('seating.deletedFreed', {
-                things: t(tables ? 'seating.countTables' : 'seating.countItems', {
-                  count: items.length,
-                }),
-                count: freed.length,
-              }),
+          [
+            t(tables ? 'seating.deletedEmptyTables' : 'seating.deletedEmptyItems', {
+              count: items.length,
+            }),
+            ...(freed.length === 0 ? [] : [t('seating.movedToTrayDone', { count: freed.length })]),
+          ].join(' '),
           () =>
             runStep(
               () =>
