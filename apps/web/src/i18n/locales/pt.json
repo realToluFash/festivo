@@ -3160,6 +3160,7 @@
     "tableEmpty": "{{table}} is empty now.",
     "movedAll_one": "{{count, number}} guest moved to {{table}}.",
     "movedAll_other": "{{count, number}} guests moved to {{table}}.",
+    "movedAll_many": "{{count, number}} guests moved to {{table}}.",
     "moveAll": "Move everyone to…",
     "rename": "Rename",
     "roomForAll": "Tables with room for all {{n, number}}.",
