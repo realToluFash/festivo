@@ -253,6 +253,11 @@
   font: var(--typeTitleSection);
 }
 
+.hig-card-title:focus-visible {
+  outline: 2px solid var(--colorAccent);
+  outline-offset: 2px;
+}
+
 .hig-label {
   margin: 0;
   color: var(--colorInkSecondary);
@@ -305,6 +310,10 @@
   background: var(--colorTrack);
 }
 
+.hig-bar-part[data-kind='choice'] {
+  background: var(--colorInkSecondary);
+}
+
 .hig-counts {
   display: flex;
   gap: var(--spaceLg);
@@ -336,6 +345,11 @@
   flex: none;
   min-width: 140px;
   border: 1.5px dashed var(--colorFieldBorder);
+  background: var(--colorCard);
+}
+
+.hig-count[data-kind='choice'] {
+  border: var(--borderControl);
   background: var(--colorCard);
 }
 

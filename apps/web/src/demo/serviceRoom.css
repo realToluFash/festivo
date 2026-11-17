@@ -30,7 +30,7 @@
   list-style: none;
 }
 
-.sr-section.hig-card {
+.sr-sections > .sr-section {
   flex-direction: row;
   align-items: flex-start;
   gap: var(--spaceSm);
@@ -378,6 +378,12 @@
 
 .sr-ring-seat[data-word='notHere'] {
   stroke: var(--colorInkTertiary);
+  stroke-dasharray: 4 3;
+}
+
+.sr-ring-seat[data-word='choice'] {
+  fill: var(--colorCard);
+  stroke: var(--colorInk);
   stroke-dasharray: 4 3;
 }
 
