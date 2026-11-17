@@ -1219,7 +1219,7 @@ describe('what a person’s page lets the viewer do (sc-34200)', () => {
 
 describe('the dates the server wrote, after a language change (sc-9267)', () => {
   const WRITTEN: Record<string, { asked: string; suspended: string }> = {
-    en: { asked: 'Wednesday, Nov 11 at 09:40 WAT', suspended: 'Monday, Nov 16 at 14:20 WAT' },
+    'en-US': { asked: 'Wednesday, Nov 11 at 09:40 WAT', suspended: 'Monday, Nov 16 at 14:20 WAT' },
     es: { asked: 'miércoles, 11 nov a las 09:40 WAT', suspended: 'lunes, 16 nov a las 14:20 WAT' },
   };
 
@@ -1270,7 +1270,7 @@ describe('the dates the server wrote, after a language change (sc-9267)', () => 
     await act(() => setLanguage('es'));
 
     expect(await page().findByText(/miércoles, 11 nov a las 09:40 WAT/)).toBeDefined();
-    expect(asked).toEqual(['en', 'es']);
+    expect(asked).toEqual(['en-US', 'es']);
 
     fireEvent.click(page().getByRole('button', { name: /^Bisi Adeyemi/ }));
     expect(
@@ -1288,7 +1288,7 @@ describe('the dates the server wrote, after a language change (sc-9267)', () => 
     expect(page().getByText(REMOVED_ON)).toBeDefined();
 
     await act(() => setLanguage('es'));
-    await waitFor(() => expect(asked).toEqual(['en', 'es']));
+    await waitFor(() => expect(asked).toEqual(['en-US', 'es']));
     await act(async () => {});
 
     expect(
