@@ -1373,6 +1373,7 @@ describe('moving without dragging, and the save line (sc-5028, WCAG 2.2 SC 2.5.7
 
       t9.focus();
       key(t9, ' ');
+      fireEvent.keyUp(t9, { key: ' ' });
       key(t9, 'r');
       expect(within(panel()).getByLabelText('Rotation')).toHaveProperty('value', '15');
       key(t9, 'Delete');
