@@ -4,6 +4,7 @@ import { realtimeTopic } from './topics.ts';
 
 import {
   asColleagueChoice,
+  asPlanBeat,
   asPlanSubscriber,
   asPlanSubscribers,
   subscribersTopic,
@@ -95,5 +96,18 @@ describe('asColleagueChoice', () => {
   it('drops the plan itself and anything else', () => {
     expect(asColleagueChoice({ plan: null, measurementSystem: 'metric' })).toBeNull();
     expect(asColleagueChoice({ userId: 'u1', chosen: { kind: 'stage', id: 's' } })).toBeNull();
+  });
+});
+
+describe('asPlanBeat', () => {
+  it('reads who says they are still here, and nothing else', () => {
+    expect(asPlanBeat({ userId: 'u1', here: true })).toBe('u1');
+    expect(asPlanBeat({ userId: 'u1', chosen: null })).toBeNull();
+    expect(asPlanBeat({ here: true })).toBeNull();
+    expect(asPlanBeat(null)).toBeNull();
+  });
+
+  it('is never read as a choice', () => {
+    expect(asColleagueChoice({ userId: 'u1', here: true })).toBeNull();
   });
 });

@@ -204,6 +204,35 @@ final class SeatingPresenceTest extends ApiTestCase
         self::assertCount($before, self::service(RecordingHub::class)->published);
     }
 
+    #[Test]
+    public function anEditorAndAViewerEachSayTheyAreStillHere(): void
+    {
+        $viewer = $this->member('ada@ire.events', 'Ada Obi', EventRole::CanView);
+
+        foreach ([$this->owner, $viewer] as $who) {
+            $this->as($who, 'POST', $this->plan() . '/here');
+
+            self::assertSame(204, $this->statusCode());
+            $update = Iter\last(self::service(RecordingHub::class)->published) ?? self::fail('nothing published');
+            self::assertSame(['events/' . $this->eventId . '/seating/choices'], $update->getTopics());
+            self::assertTrue($update->isPrivate());
+            self::assertSame(['userId' => $who->getId()->toRfc4122(), 'here' => true], Json\decode($update->getData()));
+            self::assertFalse(Str\contains($update->getData(), '@'));
+        }
+    }
+
+    #[Test]
+    public function somebodyWhoCannotOpenThePlanCannotSayTheyAreHere(): void
+    {
+        $outsider = $this->member('tunde@ire.events', 'Tunde Bello', null);
+        $before = Iter\count(self::service(RecordingHub::class)->published);
+
+        $this->as($outsider, 'POST', $this->plan() . '/here');
+
+        self::assertContains($this->statusCode(), [403, 404]);
+        self::assertCount($before, self::service(RecordingHub::class)->published);
+    }
+
     /** @return non-empty-string */
     private function token(User $as): string
     {

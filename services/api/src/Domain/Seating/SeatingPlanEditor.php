@@ -1161,6 +1161,15 @@ final readonly class SeatingPlanEditor
         ]);
     }
 
+    /** Tells everyone with the plan open that this person still has it open, so a connection that died without a word is let go of within seconds rather than when the hub notices (sc-4719). */
+    public function announceHere(Event $event, User $user): void
+    {
+        $this->realtimePublisher->publish(RealtimeTopic::EventSeatingChoices, $event->getId()->toRfc4122(), [
+            'userId' => $user->getId()->toRfc4122(),
+            'here' => true,
+        ]);
+    }
+
     private static function changedSince(?User $changedBy): ApiException
     {
         $name = $changedBy?->getName();

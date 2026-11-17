@@ -3801,6 +3801,7 @@ describe('Who else is on the plan (sc-4719)', () => {
   afterEach(() => {
     __setConfig(before);
     vi.unstubAllGlobals();
+    vi.useRealTimers();
   });
 
   async function onPlanWith(
@@ -4083,14 +4084,91 @@ describe('Who else is on the plan (sc-4719)', () => {
     expect(screen.getByLabelText('Seats')).not.toHaveProperty('disabled', true);
   });
 
-  it('hides the chips and says so when its own connection drops', async () => {
+  it('hides the chips and every colleague’s ring, and says so, when its own connection drops (#62213)', async () => {
     const { source } = await onPlanWith([ME, PRIYA]);
-    await screen.findByRole('button', { name: 'Priya Shah' });
+    source.publish({ userId: 'u_priya', chosen: { kind: 'table', id: 't1', chair: null } });
+    await screen.findByRole('button', { name: `${TABLE_1}, chosen by Priya Shah` });
 
     act(() => source.onerror?.());
 
     expect(await screen.findByText('Can’t see who else is here. Reconnecting…')).toBeDefined();
     expect(screen.queryByRole('button', { name: 'Priya Shah' })).toBeNull();
+    expect(screen.getByRole('button', { name: TABLE_1 })).toBeDefined();
+    expect(document.querySelector('.st-ring')).toBeNull();
+    expect(source.readyState).toBe(StubSource.CLOSED);
+  });
+
+  const seatingSources = () =>
+    StubSource.made.filter((one) => decodeURIComponent(one.url).includes('/seating'));
+  const beatsSent = (sent: { line: string }[]) =>
+    sent.filter((one) => one.line === 'POST /api/events/ev_1/seating-plan/here').length;
+  const heardOwn = (source: StubSource) => source.publish({ userId: 'u_folake', here: true });
+
+  it('says it is still here every 5 seconds while its connection is open, as a viewer too', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    const { sent, source } = await onPlanWith([ME], ['events.read', 'seating.read']);
+    await waitFor(() => expect(beatsSent(sent)).toBe(1));
+
+    act(() => vi.advanceTimersByTime(5_000));
+    heardOwn(source);
+
+    await waitFor(() => expect(beatsSent(sent)).toBe(2));
+  });
+
+  it('lets a colleague whose connection died without a word go within 30 seconds, ring and all, and back once heard (#62200)', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    const { source } = await onPlanWith([ME, PRIYA]);
+    const heard = () => document.querySelector('.st-top [aria-live="polite"]')?.textContent ?? '';
+    source.publish({ userId: 'u_priya', chosen: { kind: 'table', id: 't1', chair: null } });
+    await screen.findByRole('button', { name: `${TABLE_1}, chosen by Priya Shah` });
+
+    for (let second = 0; second < 30; second += 1) {
+      act(() => vi.advanceTimersByTime(1_000));
+      heardOwn(source);
+    }
+
+    expect(screen.queryByRole('button', { name: 'Priya Shah' })).toBeNull();
+    expect(screen.getByRole('button', { name: TABLE_1 })).toBeDefined();
+    expect(document.querySelector('.st-ring')).toBeNull();
+    expect(heard()).toBe('Priya Shah left the plan.');
+    expect(screen.queryByText('Can’t see who else is here. Reconnecting…')).toBeNull();
+
+    source.publish({ userId: 'u_priya', here: true });
+
+    expect(await screen.findByRole('button', { name: 'Priya Shah' })).toBeDefined();
+    expect(heard()).toBe('Priya Shah joined the plan.');
+  });
+
+  it('keeps a colleague who keeps saying they are here', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    const { source } = await onPlanWith([ME, PRIYA]);
+    await screen.findByRole('button', { name: 'Priya Shah' });
+
+    for (let second = 0; second < 30; second += 1) {
+      act(() => vi.advanceTimersByTime(1_000));
+      heardOwn(source);
+      if (second % 5 === 0) source.publish({ userId: 'u_priya', here: true });
+    }
+
+    expect(screen.getByRole('button', { name: 'Priya Shah' })).toBeDefined();
+  });
+
+  it('takes its own connection for dead when it hears nothing, says so, and opens a new one (#62200)', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    const { source } = await onPlanWith([ME, PRIYA]);
+    await screen.findByRole('button', { name: 'Priya Shah' });
+
+    act(() => vi.advanceTimersByTime(13_000));
+
+    expect(await screen.findByText('Can’t see who else is here. Reconnecting…')).toBeDefined();
+    expect(screen.queryByRole('button', { name: 'Priya Shah' })).toBeNull();
+    expect(source.readyState).toBe(StubSource.CLOSED);
+
+    act(() => vi.advanceTimersByTime(5_000));
+    await waitFor(() => expect(seatingSources()).toHaveLength(2));
+    act(() => seatingSources()[1]!.onopen?.());
+
+    expect(await screen.findByRole('button', { name: 'Priya Shah' })).toBeDefined();
   });
 
   it('shows no email address', async () => {
