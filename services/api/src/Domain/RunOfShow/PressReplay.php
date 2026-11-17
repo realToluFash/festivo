@@ -70,9 +70,6 @@ final readonly class PressReplay
     }
 
     /**
-     * Whether a press, replayed at its time, would change any other item on its track: the press it would have
-     * overturned or revived first, as the loss it is refused with (sc-3895, 17 Nov). Null when it reaches no further than its own item.
-     *
      * @param list<ScheduleItem>  $items
      * @param list<SchedulePress> $presses the standing ones, the new press among them
      */
