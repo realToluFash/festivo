@@ -216,7 +216,11 @@ function NightBody({
           <div className="nt-alert" role="alert">
             <p className="nt-alert-words">
               <strong>{night.lost.title}</strong>
-              <span>{`Already started by ${night.lost.by} at ${timeIn(locale, night.lost.at)}.`}</span>
+              <span>
+                {night.lost.by == null
+                  ? night.lost.said
+                  : `Already started by ${night.lost.by} at ${timeIn(locale, night.lost.at)}.`}
+              </span>
             </p>
             <button type="button" className="rv-act" onClick={() => setNight(dismiss(night))}>
               {NW.dismiss}
@@ -399,7 +403,7 @@ function Cards({
         )}
         {view.finished.workedOut != null && <p className="nt-muted">{view.finished.workedOut}</p>}
         {view.finished.endNow && (
-          <Link className="nt-link" to="/demo/events">
+          <Link className="nt-link" to={`/demo/events/${NIGHT_EVENT}?state=endNow`}>
             {NW.endNow}
           </Link>
         )}
