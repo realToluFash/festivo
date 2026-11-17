@@ -532,6 +532,23 @@ describe('choosing many (sc-4717)', () => {
     expect(screen.getByRole('alertdialog', { name: 'Delete 3 items?' })).toBeDefined();
   });
 
+  it(
+    'puts focus on Undo after deleting many, and Undo chooses them again (sc-57680)',
+    SLOW,
+    async () => {
+      await seating('deleteMany');
+      const ask = screen.getByRole('alertdialog', { name: 'Delete 6 tables?' });
+
+      fireEvent.click(within(ask).getByRole('button', { name: 'Delete 6 tables' }));
+      const undo = screen.getByRole('button', { name: 'Undo' });
+
+      await waitFor(() => expect(document.activeElement).toBe(undo));
+      fireEvent.click(undo);
+      expect(chosen()).toBe('6 chosen');
+      await waitFor(() => expect(document.activeElement).toBe(item(/^Table 1,/u)));
+    },
+  );
+
   it('says a colleague’s change refused the step and keeps the choice', SLOW, async () => {
     await seating('toolChanged');
     expect(

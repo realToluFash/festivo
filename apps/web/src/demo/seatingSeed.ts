@@ -125,7 +125,7 @@ export interface Ui {
   groups: string[];
   hover: string | null;
   pop: Pop | null;
-  undo: { plan: Plan; tray: Party[] } | null;
+  undo: { plan: Plan; tray: Party[]; chosen?: string[] } | null;
   tablesSection: string | null;
   listTab: ListTab | null;
   listOpen: string | null;

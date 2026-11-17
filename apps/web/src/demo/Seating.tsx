@@ -2264,8 +2264,10 @@ function MessageBar({
             <button
               type="button"
               className="desk-text"
+              data-act="undo"
               onClick={() => {
                 const undoing = ui.undo != null;
+                const back = ui.undo?.chosen ?? [];
 
                 set((now) =>
                   now.undo == null
@@ -2274,6 +2276,7 @@ function MessageBar({
                         ...now,
                         plan: now.undo.plan,
                         tray: now.undo.tray,
+                        chosen: now.undo.chosen ?? now.chosen,
                         undo: null,
                         bar: null,
                         hover: null,
@@ -2282,7 +2285,11 @@ function MessageBar({
                       },
                 );
                 if (undoing)
-                  window.setTimeout(() => set((now) => ({ ...now, spoken: SW.undone })), 60);
+                  window.setTimeout(() => {
+                    set((now) => ({ ...now, spoken: SW.undone }));
+                    if (back[0] != null)
+                      document.querySelector<SVGElement>(`[data-item="${back[0]}"]`)?.focus();
+                  }, 60);
               }}
             >
               {SW.undo}
@@ -2647,7 +2654,7 @@ function Asking() {
         go={many(tables ? 'deleteTablesGo' : 'deleteItemsGo', doomed.length)}
         red={false}
         onKeep={keep}
-        onGo={() =>
+        onGo={() => {
           set((now) => ({
             ...now,
             plan: {
@@ -2655,15 +2662,19 @@ function Asking() {
               items: now.plan.items.filter((item) => !asking.ids.includes(item.id)),
             },
             tray: [...now.tray, ...freed],
-            undo: { plan: now.plan, tray: now.tray },
+            undo: { plan: now.plan, tray: now.tray, chosen: asking.ids },
             bar: { kind: 'undo', words, does: 'undo' },
             asking: null,
             chosen: [],
             chair: null,
             notice: null,
             save: 'saving',
-          }))
-        }
+          }));
+          window.setTimeout(
+            () => document.querySelector<HTMLButtonElement>('.st-bar [data-act="undo"]')?.focus(),
+            0,
+          );
+        }}
       />
     );
   }
