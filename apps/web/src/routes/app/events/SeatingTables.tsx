@@ -506,6 +506,57 @@ export function TableDrawing({
       ))}
       {seatRings}
       {outside && box(6, 'st-overlap', 'outside')}
+      <FocusRing round={round} cx={cx} cy={cy} ex={ex * s} ey={ey * s} rotation={table.rotation} />
+    </g>
+  );
+}
+
+/** The keyboard's ring, 2 px of Accent with its 22% halo, past the item's chairs and its chosen Tint, turned with it; shown only under :focus-visible (sc-64879). */
+export function FocusRing({
+  round,
+  cx,
+  cy,
+  ex,
+  ey,
+  rotation,
+}: {
+  round: boolean;
+  cx: number;
+  cy: number;
+  ex: number;
+  ey: number;
+  rotation: number;
+}) {
+  if (round)
+    return (
+      <g className="st-focus-ring" aria-hidden="true">
+        <circle className="st-focus" cx={f(cx)} cy={f(cy)} r={f(ex + 14)} />
+        <circle className="st-focus-halo" cx={f(cx)} cy={f(cy)} r={f(ex + 17.5)} />
+      </g>
+    );
+
+  return (
+    <g
+      className="st-focus-ring"
+      aria-hidden="true"
+      transform={`translate(${f(cx)} ${f(cy)}) rotate(${rotation})`}
+    >
+      <rect
+        className="st-focus"
+        x={f(-ex - 14)}
+        y={f(-ey - 14)}
+        width={f(2 * ex + 28)}
+        height={f(2 * ey + 28)}
+        rx="14"
+      />
+      <rect
+        className="st-focus-halo"
+        x={f(-ex - 17.5)}
+        y={f(-ey - 17.5)}
+        width={f(2 * ex + 35)}
+        height={f(2 * ey + 35)}
+        rx="17"
+      />
     </g>
   );
 }
