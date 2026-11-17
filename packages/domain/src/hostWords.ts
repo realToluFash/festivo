@@ -40,6 +40,27 @@ export function hostErrorsOf(rows: readonly HostRow[], t: Translate): HostErrors
   return found;
 }
 
+/** Hosted by's messages as an edit shows them while typing: a repeat and an overlong name at once, a blank one once Save was tried. */
+export function hostErrorsShownOf(
+  rows: readonly HostRow[],
+  t: Translate,
+  tried: boolean,
+): HostErrors {
+  if (tried) return hostErrorsOf(rows, t);
+
+  const found = hostErrorsOf(rows, t);
+  const problems = hostProblems(rows.map((row) => row.name));
+  const shown: HostErrors = {};
+
+  rows.forEach((row, index) => {
+    const message = found[row.key];
+
+    if (message != null && problems[index]?.problem !== 'hostBlank') shown[row.key] = message;
+  });
+
+  return shown;
+}
+
 const HOST_PATH = /^hosts\[(\d+)\]$/;
 
 /** The server's refusals of the hosts, each under its row; one of the whole list goes under the last. */
