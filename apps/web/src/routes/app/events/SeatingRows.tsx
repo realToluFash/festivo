@@ -38,7 +38,14 @@ import {
   usableSeats,
 } from './seatingDraw.ts';
 import { chairStateOf, takenAt } from './seatingGuests.ts';
-import { ChairMark, OutWords, StateMark, chairLabel, chairStateWord } from './SeatingTables.tsx';
+import {
+  ChairMark,
+  FocusRing,
+  OutWords,
+  StateMark,
+  chairLabel,
+  chairStateWord,
+} from './SeatingTables.tsx';
 import {
   centimetreUnit,
   tableLengthWords,
@@ -266,6 +273,7 @@ export function RowDrawing({
         />
       ))}
       {outside && box(6, 'st-overlap')}
+      <FocusRing round={false} cx={cx} cy={cy} ex={ex * s} ey={ey * s} rotation={row.rotation} />
     </g>
   );
 }
@@ -347,6 +355,7 @@ export function SingleSeatDrawing({
         />
       ))}
       {outside && <circle className="st-overlap" cx={f(cx)} cy={f(cy)} r={f(r + 6)} />}
+      <FocusRing round cx={cx} cy={cy} ex={r} ey={r} rotation={0} />
     </g>
   );
 }

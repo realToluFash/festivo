@@ -5745,3 +5745,221 @@ describe('Deleting many with guests in them (sc-57680)', () => {
     expect(screen.queryByRole('button', { name: 'Undo' })).toBeNull();
   });
 });
+
+describe('The keyboard focus ring on the Floor plan (sc-64879)', () => {
+  const SHEET = stylesheet(import.meta.dirname, 'seating.css');
+  const KINDS = [
+    ['Round table', '[data-table="t1"]'],
+    ['Rectangular table', '[data-table="t2"]'],
+    ['Head table', '[data-table="t3"]'],
+    ['Cocktail table', '[data-table="t4"]'],
+    ['Row of chairs', '[data-row="r1"]'],
+    ['Single seat', '[data-seat="s1"]'],
+  ] as const;
+
+  function everyKind(turned = 0) {
+    const tables = [
+      table({ xCm: 400, yCm: 400 }),
+      table({
+        id: 't2',
+        name: 'Table 2',
+        shape: 'rectangular',
+        seats: 6,
+        widthCm: 180,
+        lengthCm: 76,
+        endSeats: 1,
+        rotation: turned,
+        xCm: 1100,
+        yCm: 400,
+      }),
+      table({
+        id: 't3',
+        name: 'Table 3',
+        shape: 'head',
+        seats: 4,
+        widthCm: 240,
+        lengthCm: 76,
+        xCm: 1800,
+        yCm: 400,
+      }),
+      table({
+        id: 't4',
+        name: 'Table 4',
+        shape: 'cocktail',
+        seats: 4,
+        widthCm: 70,
+        lengthCm: 70,
+        xCm: 400,
+        yCm: 1200,
+      }),
+    ];
+    const seated = guest({ seat: { kind: 'table', id: 't1', seat: 1 } });
+    const rows = [row({ seats: 6, xCm: 1100, yCm: 1200 })];
+    const singleSeats = [single({ xCm: 1800, yCm: 1200 })];
+
+    return {
+      ...withGuests([seated], ...tables),
+      rows,
+      singleSeats,
+      counts: { ...NONE, tables: 4, rows: 1, singleSeats: 1, seatedGuests: 1 },
+    };
+  }
+
+  function ringOf(item: Element): Element {
+    const rings = [...item.children].filter((one) => one.matches('.st-focus-ring'));
+
+    expect(rings).toHaveLength(1);
+    return rings[0]!;
+  }
+
+  function num(of: Element | null | undefined, name: string): number {
+    return Number(of?.getAttribute(name));
+  }
+
+  /** How far from the item's centre its ring's inner edge lies, along each axis before turning. */
+  function innerEdge(ring: Element): { cx: number; cy: number; ix: number; iy: number } {
+    const line = ring.querySelector('.st-focus')!;
+
+    if (line.tagName === 'circle')
+      return {
+        cx: num(line, 'cx'),
+        cy: num(line, 'cy'),
+        ix: num(line, 'r') - 1,
+        iy: num(line, 'r') - 1,
+      };
+    const [, tx, ty] = /translate\(([-\d.]+) ([-\d.]+)\)/u.exec(ring.getAttribute('transform')!)!;
+
+    return {
+      cx: Number(tx),
+      cy: Number(ty),
+      ix: -num(line, 'x') - 1,
+      iy: -num(line, 'y') - 1,
+    };
+  }
+
+  /** The points a mark reaches, relative to (cx, cy), unturned: a circle's four, a rect's corners. */
+  function corners(item: Element, mark: Element, cx: number, cy: number): [number, number][] {
+    const owner = mark.parentElement?.closest('[transform]');
+    const local = owner != null && owner !== item && item.contains(owner);
+    const [dx, dy] = local ? [0, 0] : [-cx, -cy];
+
+    if (mark.tagName === 'circle') {
+      const [x, y, r] = [num(mark, 'cx') + dx, num(mark, 'cy') + dy, num(mark, 'r')];
+      const out = Math.hypot(x, y) + r;
+      const along = Math.hypot(x, y) === 0 ? [1, 0] : [x / Math.hypot(x, y), y / Math.hypot(x, y)];
+
+      return [
+        [x + r, y],
+        [x - r, y],
+        [x, y + r],
+        [x, y - r],
+        [along[0]! * out, along[1]! * out],
+      ];
+    }
+    const [x, y] = [num(mark, 'x') + dx, num(mark, 'y') + dy];
+    const [w, h] = [num(mark, 'width'), num(mark, 'height')];
+
+    return [
+      [x, y],
+      [x + w, y],
+      [x, y + h],
+      [x + w, y + h],
+    ];
+  }
+
+  function clearOf(item: Element, marks: Element[], gap: number): void {
+    const ring = ringOf(item);
+    const { cx, cy, ix, iy } = innerEdge(ring);
+    const round = ring.querySelector('.st-focus')!.tagName === 'circle';
+
+    expect(marks.length).toBeGreaterThan(0);
+    for (const [x, y] of marks.flatMap((mark) => corners(item, mark, cx, cy))) {
+      if (round) expect(Math.hypot(x, y)).toBeLessThanOrEqual(ix - gap + 0.01);
+      else {
+        expect(Math.abs(x)).toBeLessThanOrEqual(ix - gap + 0.01);
+        expect(Math.abs(y)).toBeLessThanOrEqual(iy - gap + 0.01);
+      }
+    }
+  }
+
+  it.each(KINDS)('draws one ring and its halo on a %s, outside its chairs', async (_kind, at) => {
+    signedIn();
+    await onSeating({ 'GET /api/events/ev_1/seating-plan': () => seating(everyKind()) });
+    await screen.findByRole('button', { name: /^Table 1,/u });
+    const item = document.querySelector(at)!;
+    const ring = ringOf(item);
+
+    expect(ring.querySelectorAll('.st-focus')).toHaveLength(1);
+    expect(ring.querySelectorAll('.st-focus-halo')).toHaveLength(1);
+    expect(ring.getAttribute('aria-hidden')).toBe('true');
+    expect(item.lastElementChild).toBe(ring);
+    clearOf(item, [...item.querySelectorAll('.st-chair, .st-body.is-single, .st-row-tab')], 0);
+  });
+
+  it('keeps a seated guest’s chair inside the ring', async () => {
+    signedIn();
+    await onSeating({ 'GET /api/events/ev_1/seating-plan': () => seating(everyKind()) });
+    await screen.findByRole('button', { name: /^Table 1,/u });
+    const item = document.querySelector('[data-table="t1"]')!;
+    const taken = item.querySelectorAll('.st-chair:not(.is-empty)');
+
+    expect(taken.length).toBeGreaterThan(0);
+    clearOf(item, [...taken], 0);
+  });
+
+  it.each(KINDS)(
+    'lies wholly outside the Tint of a chosen %s, with a 3 px gap',
+    async (_kind, at) => {
+      const tint = `${at} > .st-lit, ${at} > g > .st-lit`;
+
+      signedIn();
+      await onSeating({ 'GET /api/events/ev_1/seating-plan': () => seating(everyKind()) });
+      await screen.findByRole('button', { name: /^Table 1,/u });
+      fireEvent.click(document.querySelector(at)!);
+      await waitFor(() => expect(document.querySelector(tint)).not.toBeNull());
+
+      clearOf(document.querySelector(at)!, [document.querySelector(tint)!], 3);
+    },
+  );
+
+  it('turns a turned table’s ring with it', async () => {
+    signedIn();
+    await onSeating({ 'GET /api/events/ev_1/seating-plan': () => seating(everyKind(30)) });
+    await screen.findByRole('button', { name: /^Table 2,/u });
+
+    expect(ringOf(document.querySelector('[data-table="t2"]')!).getAttribute('transform')).toMatch(
+      /rotate\(30\)$/u,
+    );
+  });
+
+  it('keeps the ring on a focused table an arrow key moved', async () => {
+    signedIn();
+    await onSeating({
+      'GET /api/events/ev_1/seating-plan': () => seating(withTables(table())),
+      'PATCH /api/events/ev_1/seating-plan/furniture': () =>
+        seating(withTables(table({ xCm: 1210, version: 2 }))),
+    });
+    await chooseTable('Table 1, round, 0 of 10 seats taken');
+    const item = document.querySelector('[data-table="t1"]') as SVGElement;
+    const before = innerEdge(ringOf(item)).cx;
+
+    act(() => item.focus());
+    fireEvent.keyDown(item, { key: 'ArrowRight' });
+    await waitFor(() => expect(innerEdge(ringOf(item)).cx).toBeGreaterThan(before));
+    expect(document.activeElement).toBe(item);
+    expect(innerEdge(ringOf(item)).cx).toBeCloseTo(centreOf('t1'), 0);
+  });
+
+  it('shows the ring only under keyboard focus, in the demo’s Accent and halo, and drops the old one', () => {
+    expect(cssRule('.st-focus-ring', SHEET)).toMatch(/display: none;/u);
+    expect(cssRule('.st-item:focus-visible > .st-focus-ring', SHEET)).toMatch(/display: inline;/u);
+    expect(SHEET).not.toMatch(/\.st-item:focus(?:-visible)?\s+\.st-hit/u);
+    expect(SHEET).not.toMatch(/\.st-item:focus\b(?!-)/u);
+    expect(cssRule('.st-focus', SHEET)).toMatch(
+      /stroke: var\(--colorAccent\);\s*stroke-width: 2;/u,
+    );
+    expect(cssRule('.st-focus-halo', SHEET)).toMatch(
+      /stroke: color-mix\(in srgb, var\(--colorAccent\) 22%, transparent\);\s*stroke-width: 5;/u,
+    );
+  });
+});
