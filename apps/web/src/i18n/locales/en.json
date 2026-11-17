@@ -2745,6 +2745,8 @@
     "deleteTable": "Delete table",
     "deleteNamedGo": "Delete {{name}}",
     "nobodyHere": "Nobody is seated here.",
+    "seatedHereGoBack_one": "{{count, number}} guest is seated here. They go back to Without a seat.",
+    "seatedHereGoBack_other": "{{count, number}} guests are seated here. They go back to Without a seat.",
     "changedTable": "{{name}} just changed this table. Your change was not saved.",
     "itemsOutside_one": "{{count, number}} item sits outside {{width}} × {{roomLength}}. Move it first.",
     "itemsOutside_other": "{{count, number}} items sit outside {{width}} × {{roomLength}}. Move them first.",

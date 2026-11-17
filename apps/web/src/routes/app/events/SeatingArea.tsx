@@ -759,6 +759,13 @@ function Plan({
       const said = error instanceof ApiError ? (refusal?.(error) ?? null) : null;
 
       if (said != null) return { refused: said };
+      if (error instanceof ApiError && error.is('seating_guests_seated')) {
+        const line = error.problem.detail ?? t('seating.notSaved');
+
+        if (field != null) return { refused: line };
+        setNotice(line);
+        return { refused: null };
+      }
       if (error instanceof ApiError && field != null) {
         const refused = error.fieldErrors()[field];
 
@@ -2813,6 +2820,16 @@ export function deletePlanWords(
   return `${t('seating.deletePlanDeletes', { counts: listed })} ${guests}`;
 }
 
+/** What a delete does to the guests seated in what it deletes (sc-4013). */
+function seatedHereWords(
+  t: ReturnType<typeof useTranslation>['t'],
+  seated: readonly { guestId: string }[],
+): string {
+  return seated.length === 0
+    ? t('seating.nobodyHere')
+    : t('seating.seatedHereGoBack', { count: seated.length });
+}
+
 function AskFor({
   ctx,
   plan,
@@ -2855,7 +2872,7 @@ function AskFor({
     return (
       <Ask
         title={t('seating.deleteNamed', { name: table.name })}
-        line={t('seating.nobodyHere')}
+        line={seatedHereWords(t, table.seated)}
         keep={t('seating.keepIt')}
         go={t('seating.deleteNamedGo', { name: table.name })}
         busy={busy ? t('seating.deleteNamedGo', { name: table.name }) : undefined}
@@ -2881,7 +2898,7 @@ function AskFor({
     return (
       <Ask
         title={t('seating.deleteNamed', { name })}
-        line={t('seating.nobodyHere')}
+        line={seatedHereWords(t, (row ?? seat)?.seated ?? [])}
         keep={t('seating.keepIt')}
         go={t('seating.deleteNamedGo', { name })}
         busy={busy ? t('seating.deleteNamedGo', { name }) : undefined}
