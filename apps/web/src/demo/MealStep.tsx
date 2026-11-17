@@ -29,6 +29,7 @@ import {
   ruledOutBy,
   screensOf,
 } from './mealStep.ts';
+import { type Lang, LANGS } from './menuLibrary.ts';
 import '../components/SettingsParts.css';
 import './guest.css';
 import './guestKitchen.css';
@@ -39,6 +40,8 @@ export function MealStepPage() {
   const [params] = useSearchParams();
   const raw = params.get('state');
   const state = isMealState(raw) ? raw : 'variant';
+  const format = params.get('format');
+  const lang: Lang = LANGS.includes(format as Lang) ? (format as Lang) : 'en';
   const layout = layoutOf({
     small: useMatches(LAYOUT_MEDIA.small),
     phone: useMatches(LAYOUT_MEDIA.phone),
@@ -58,7 +61,12 @@ export function MealStepPage() {
           <div className="gp-columns">
             <Cover visit={visit} words={words} ended={false} />
             <div className="gp-under">
-              <Flow key={state} first={mealStart(state)} again={mealAt(state)} />
+              <Flow
+                key={`${state}|${lang}`}
+                first={mealStart(state)}
+                again={lang === 'en' ? mealAt(state) : `${mealAt(state)}&format=${lang}`}
+                lang={lang}
+              />
             </div>
           </div>
         </main>
@@ -72,7 +80,7 @@ export function MealStepPage() {
   );
 }
 
-function Flow({ first, again }: { first: MealStart; again: string }) {
+function Flow({ first, again, lang }: { first: MealStart; again: string; lang: Lang }) {
   const [answer, setAnswer] = useState<MealAnswer>(first.answer);
   const [at, setAt] = useState(first.at);
   const [pressed, setPressed] = useState(first.pressed);
@@ -174,6 +182,7 @@ function Flow({ first, again }: { first: MealStart; again: string }) {
         <DishScreen
           course={course}
           answer={answer}
+          lang={lang}
           refusal={refusal}
           onPick={(id) => choose((was) => ({ ...was, dishId: id, way: 'chosen' }))}
         />
@@ -184,6 +193,7 @@ function Flow({ first, again }: { first: MealStart; again: string }) {
           dish={dish as MealDish}
           answer={answer}
           allergies={allergies}
+          lang={lang}
           firstOfSet={firstOfSet}
           safe={safe}
           refusal={refusal}
@@ -209,11 +219,13 @@ function Refused({ words }: { words: string }) {
 function DishScreen({
   course,
   answer,
+  lang,
   refusal,
   onPick,
 }: {
   course: MealCourse;
   answer: MealAnswer;
+  lang: Lang;
   refusal: string | null;
   onPick: (id: string) => void;
 }) {
@@ -228,7 +240,7 @@ function DishScreen({
       {refusal != null && <Refused words={refusal} />}
       <div className={refusal == null ? 'ms-options' : 'ms-options is-wrong'}>
         {course.dishes.map((dish) => {
-          const card = cardLines(dish, answer);
+          const card = cardLines(dish, answer, lang);
 
           return (
             <label key={dish.id} className="ms-option">
@@ -254,7 +266,7 @@ function DishScreen({
                 ) : dish.ways.length >= 2 ? (
                   <span className="ms-quiet">{MW.pickWayNext}</span>
                 ) : (
-                  <span className="ms-contains">{containsLine(dish.contains)}</span>
+                  <span className="ms-contains">{containsLine(dish.contains, lang)}</span>
                 )}
               </span>
             </label>
@@ -271,6 +283,7 @@ function Question({
   dish,
   answer,
   allergies,
+  lang,
   firstOfSet,
   safe,
   refusal,
@@ -281,6 +294,7 @@ function Question({
   dish: MealDish;
   answer: MealAnswer;
   allergies: MealStart['allergies'];
+  lang: Lang;
   firstOfSet: boolean;
   safe: boolean;
   refusal: string | null;
@@ -323,11 +337,11 @@ function Question({
         <div className="ms-dish">
           <p className="ms-option-name">{dish.name}</p>
           <p className="ms-quiet">{dish.desc}</p>
-          <p className="ms-contains">{containsLine(dish.contains)}</p>
+          <p className="ms-contains">{containsLine(dish.contains, lang)}</p>
           {!safe && ruledOutBy(dish.contains, allergies).length > 0 && (
             <p className="ms-out-line">
               <AllergyMark />
-              {MW.allergicTo(PERSON, allergenList(ruledOutBy(dish.contains, allergies)))}
+              {MW.allergicTo(PERSON, allergenList(ruledOutBy(dish.contains, allergies), lang))}
             </p>
           )}
         </div>
@@ -373,11 +387,11 @@ function Question({
                 />
                 <span className="ms-option-words">
                   <span className="ms-option-name">{one.name}</span>
-                  <span className="ms-contains">{containsLine(one.contains)}</span>
+                  <span className="ms-contains">{containsLine(one.contains, lang)}</span>
                   {safe && (ruled[index]?.length ?? 0) > 0 && (
                     <span className="ms-out-line">
                       <AllergyMark />
-                      {MW.allergicTo(PERSON, allergenList(ruled[index] ?? []))}
+                      {MW.allergicTo(PERSON, allergenList(ruled[index] ?? [], lang))}
                     </span>
                   )}
                 </span>

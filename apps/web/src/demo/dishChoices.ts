@@ -2,8 +2,7 @@ import type { Allergen } from './guestKitchenWords.ts';
 import {
   type VariantPicker,
   type WithVariants,
-  VW,
-  isForEveryone,
+  sameHint,
   variantPicked,
   variantsOf,
 } from './dishVariants.ts';
@@ -222,9 +221,8 @@ export function optionContainsLine(contains: Contains, lang: Lang, withVariants:
 export function courseHint(dishes: readonly WithChoices[]): string | null {
   if (dishes.length !== 1) return null;
   const dish = dishes[0] as WithChoices;
-  if (variantsOf(dish).filter(isForEveryone).length >= 2) return VW.guestsPickTheWay(dish.name);
 
-  return hasChoices(dish) ? CHW.answerChoices(dish.name) : null;
+  return sameHint(dishes) ?? (hasChoices(dish) ? CHW.answerChoices(dish.name) : null);
 }
 
 export interface OptionForm {

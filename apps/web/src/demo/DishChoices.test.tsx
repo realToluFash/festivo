@@ -94,6 +94,11 @@ describe('choices on the event Menu (sc-3904)', () => {
 
       fireEvent.click(screen.getByRole('button', { name: 'Remove “And a side?”…' }));
       expect(byId('mc-chline-c-side').textContent).toContain(CHW.answered);
+      expect(
+        screen
+          .getByRole('button', { name: 'Remove “And a side?”…' })
+          .getAttribute('aria-describedby'),
+      ).toBe('mc-chline-c-side');
 
       fireEvent.click(screen.getByRole('button', { name: 'Remove “And a sauce?”…' }));
       fireEvent.click(screen.getByRole('button', { name: CHW.removeChoice }));
@@ -107,6 +112,10 @@ describe('choices on the event Menu (sc-3904)', () => {
     async () => {
       await menu('editPickedOption');
       expect(within(panel()).getByText(CHW.optionPicked)).toBeTruthy();
+      const line = within(panel()).getByText(CHW.optionPicked).closest('[id]');
+      expect(
+        panel().querySelector(`[aria-describedby="${line?.id ?? ''}"][id$="-bin"]`),
+      ).toBeTruthy();
 
       await menu('editCountAnswered');
       expect(byId('ch-pick-error').textContent).toContain(CHW.answered);

@@ -77,7 +77,7 @@ describe('allergies', () => {
 describe('the dish card and the answer', () => {
   it('adds the picked options’ allergens to the way’s, each source on its line', () => {
     const { course, answer } = mealStart('cardShito');
-    expect(cardLines(course.dishes[0]!, answer)).toEqual({
+    expect(cardLines(course.dishes[0]!, answer, 'en')).toEqual({
       contains: 'Contains: crustaceans, fish',
       sources: [
         'Jollof rice with fish · fish',
@@ -85,6 +85,13 @@ describe('the dish card and the answer', () => {
         'Shito · crustaceans, fish',
       ],
     });
+  });
+
+  it('names the allergens in the language the format asks', () => {
+    const { course, answer } = mealStart('cardShito');
+    expect(cardLines(course.dishes[0]!, answer, 'fr')?.contains).toBe(
+      'Contains: crustacés, poissons',
+    );
   });
 
   it('records the picks, the kitchen’s choice, or the host', () => {

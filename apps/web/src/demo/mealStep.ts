@@ -1,5 +1,5 @@
 import type { Allergen } from './guestKitchenWords.ts';
-import { type DishAllergen, DISH_ALLERGENS, allergenName } from './menuLibrary.ts';
+import { type DishAllergen, type Lang, DISH_ALLERGENS, allergenName } from './menuLibrary.ts';
 import type { DemoLink } from './settings.ts';
 
 /** sc-3904's questions inside a dish on the guest's meal step (board MealStep, page e32): the way, then each choice, one per screen. */
@@ -91,15 +91,13 @@ export const MW = {
   again: 'Start this step again',
 } as const;
 
-const lower = (code: DishAllergen): string => allergenName(code, 'en').toLocaleLowerCase('en');
-
-export const allergenList = (codes: readonly DishAllergen[]): string =>
+export const allergenList = (codes: readonly DishAllergen[], lang: Lang): string =>
   DISH_ALLERGENS.filter((code) => codes.includes(code))
-    .map(lower)
+    .map((code) => allergenName(code, lang).toLocaleLowerCase(lang))
     .join(', ');
 
-export function containsLine(contains: MealContains): string {
-  return contains === 'none' ? MW.containsNone : MW.contains(allergenList(contains));
+export function containsLine(contains: MealContains, lang: Lang): string {
+  return contains === 'none' ? MW.containsNone : MW.contains(allergenList(contains, lang));
 }
 
 const codesOf = (contains: MealContains): readonly DishAllergen[] =>
@@ -182,6 +180,7 @@ export function refusalOf(
 export function cardLines(
   dish: MealDish,
   answer: MealAnswer,
+  lang: Lang,
 ): { contains: string; sources: string[] } | null {
   if (answer.dishId !== dish.id) return null;
   const way = dish.ways.find((one) => one.id === answer.wayId) ?? null;
@@ -201,10 +200,10 @@ export function cardLines(
   );
 
   return {
-    contains: all.length === 0 ? MW.containsNone : MW.contains(allergenList(all)),
+    contains: all.length === 0 ? MW.containsNone : MW.contains(allergenList(all, lang)),
     sources: parts.map(
       (one) =>
-        `${one.name} · ${one.contains === 'none' ? MW.noneOf14 : allergenList(one.contains)}`,
+        `${one.name} · ${one.contains === 'none' ? MW.noneOf14 : allergenList(one.contains, lang)}`,
     ),
   };
 }

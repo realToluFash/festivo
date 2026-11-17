@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import { type ComponentProps, type ReactNode, useEffect } from 'react';
 
 import { Glyph } from '../components/Glyph.tsx';
 import { HintButton } from '../components/HintButton.tsx';
@@ -84,6 +84,22 @@ export function AddChoiceButton({
       <ChecklistGlyph />
     </HintButton>
   );
+}
+
+/** A HintButton whose button is described by a line beside it, so focus left on it hears why nothing happened. */
+function DescribedHintButton({
+  describedBy,
+  ...props
+}: ComponentProps<typeof HintButton> & { describedBy: string | null }) {
+  useEffect(() => {
+    const button = document.getElementById(props.id);
+    if (button == null || describedBy == null) return undefined;
+    button.setAttribute('aria-describedby', describedBy);
+
+    return () => button.removeAttribute('aria-describedby');
+  }, [props.id, describedBy]);
+
+  return <HintButton {...props} />;
 }
 
 /** Beside the dish's name while a draft choice hides it: the dashed ring and the words. */
@@ -221,15 +237,16 @@ export function ChoiceInsets({
                     >
                       <ActionGlyph icon="edit" />
                     </HintButton>
-                    <HintButton
+                    <DescribedHintButton
                       id={`mc-chremove-${choice.id}`}
                       label={CHW.removeAria(named)}
                       hint={CHW.remove}
                       className="lib-act"
+                      describedBy={here?.kind === 'answered' ? `mc-chline-${choice.id}` : null}
                       onClick={() => onRemove(choice)}
                     >
                       <ActionGlyph icon="remove" />
-                    </HintButton>
+                    </DescribedHintButton>
                   </div>
                 )}
               </div>
@@ -316,15 +333,16 @@ function OptionBlock({
         <h4 id={`${p}-title`} className="vr-block-title">
           {title}
         </h4>
-        <HintButton
+        <DescribedHintButton
           id={`${p}-bin`}
           label={CHW.removeOption(title)}
           hint={CHW.removeOption(title)}
           className="lib-act"
+          describedBy={pickedLine == null ? null : `${p}-picked`}
           onClick={onBin}
         >
           <ActionGlyph icon="bin" />
-        </HintButton>
+        </DescribedHintButton>
       </div>
       <div className="desk-field">
         <label htmlFor={`${p}-name`} className="desk-label gs-label">
