@@ -421,7 +421,7 @@ function Seating({
         set((now) => ({
           ...now,
           colleague: null,
-          rings: { ...now.rings, [colleague.id]: PRIYA },
+          rings: { ...now.rings, [colleague.id]: [{ who: PRIYA }] },
           plan: {
             ...now.plan,
             items: now.plan.items.map((item) =>

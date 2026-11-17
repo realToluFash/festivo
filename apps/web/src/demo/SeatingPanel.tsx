@@ -1018,17 +1018,17 @@ function Overlaps({ item }: { item: Item }) {
 
 function Colleague({ item }: { item: Item }) {
   const { ui } = useSeating();
-  const ring = ui.rings[item.id];
+  const shown = (ui.rings[item.id] ?? []).filter((one) => !one.who.viewer && one.seat == null);
 
-  if (ring == null || ring.viewer || !ui.chosen.includes(item.id)) return null;
-  return (
-    <div className="st-colleague">
-      <span className={`st-face p${ring.tone} is-24`} aria-hidden="true">
-        {ring.initials}
+  if (shown.length === 0 || !ui.chosen.includes(item.id)) return null;
+  return shown.map(({ who }) => (
+    <div key={who.name} className="st-colleague">
+      <span className={`st-face p${who.tone} is-24`} aria-hidden="true">
+        {who.initials}
       </span>
-      <p>{say(SW.choseToo, { name: ring.name })}</p>
+      <p>{say(SW.choseToo, { name: who.name })}</p>
     </div>
-  );
+  ));
 }
 
 function RowFields({ item }: { item: Item }) {

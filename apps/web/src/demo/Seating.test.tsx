@@ -1298,6 +1298,25 @@ describe('who else is here (sc-4719)', () => {
     expect(item(/chosen by Julien Moreau$/u)).toBeDefined();
   });
 
+  it(
+    'rings two colleagues on one table in turn, and a chosen seat on its chair (#60709)',
+    SLOW,
+    async () => {
+      await seating('presenceSix');
+      const rings = (id: string) =>
+        [...room().querySelectorAll(`[data-item="${id}"] .st-ring`)].map(
+          (ring) => ring.textContent,
+        );
+
+      expect(rings('t7')).toEqual(['PS', 'AS']);
+      expect(item(/chosen by Priya Shah and Ana Souza$/u)).toBeDefined();
+      expect(rings('t9')).toEqual(['JM']);
+      expect(item(/, seat 2 chosen by Julien Moreau$/u)).toBeDefined();
+      expect(room().querySelector('[data-item="t9"] rect.st-ring-line')).toBeNull();
+      expect(room().querySelector('[data-item="t9"] circle.st-ring-line')).not.toBeNull();
+    },
+  );
+
   it('never outlines a viewer’s choice, and hides the chips while reconnecting', SLOW, async () => {
     await seating('presenceViewer');
     expect(screen.getByText('Priya Shah and 1 other')).toBeDefined();
