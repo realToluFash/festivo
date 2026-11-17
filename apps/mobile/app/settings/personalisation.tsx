@@ -15,7 +15,7 @@ import {
 } from '../../src/colourScheme.ts';
 import { AppFrame, FrameTop, besideRow } from '../../src/components/AppFrame.tsx';
 import { bodyEdges } from '../../src/components/bodyEdges.ts';
-import { SETTINGS_PAGE } from '../../src/components/listFrame.ts';
+import { SETTINGS_PAGE, titleFoot } from '../../src/components/listFrame.ts';
 import { ColoursScreen } from '../../src/components/ColoursScreen.tsx';
 import { useReadOut } from '../../src/components/ReadOut.tsx';
 import { SchemeCard } from '../../src/components/SchemeParts.tsx';
@@ -170,7 +170,7 @@ export default function Personalisation() {
     >
       <SettingsSplit open="personalisation">
         <Screen edges={bodyEdges(kind)} contentStyle={SETTINGS_PAGE[kind]}>
-          {alone && <FrameTop />}
+          {alone && <FrameTop style={titleFoot(SETTINGS_PAGE[kind])} />}
           {!alone && (
             <View style={besideRow.row}>
               <Text size={PANE_TITLE} weight="bold" accessibilityRole="header" style={paneTitle}>
