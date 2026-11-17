@@ -15,6 +15,7 @@ import {
   type SectionContents,
   type SingleSeat,
   asColleagueChoice,
+  asPlanBeat,
   asPlanSubscriber,
   asPlanSubscribers,
   asSeating,
@@ -49,6 +50,7 @@ import {
   useEffect,
   useEffectEvent,
   useId,
+  useLayoutEffect,
   useRef,
   useState,
 } from 'react';
@@ -71,6 +73,7 @@ import { currentLocale } from '../../../i18n/index.ts';
 import { LayersContext, focusWhenFree, useDeskLayers } from '../../../layers.ts';
 import { pageTitle, usePageTitle } from '../../../pageTitle.ts';
 import { canOn, useSession } from '../../../session.ts';
+import { steadyTicks } from '../../../steadyTicks.ts';
 import {
   type Asking,
   BackHead,
@@ -117,18 +120,23 @@ import {
 import { fitOf, intoView, useCamera } from './seatingCamera.ts';
 import { Presence } from './SeatingPresence.tsx';
 import {
+  BEAT_MS,
   type ColleagueRing,
   NOBODY_ELSE,
   type OwnChoice,
   LEAVING_HOLD_MS,
   type PresenceState,
   RingsContext,
+  SILENT_MS,
+  beat,
   changed,
   chose,
   colleaguesOf,
   departed,
   listed,
+  quieted,
   ringsOf,
+  woke,
 } from './seatingPresence.ts';
 import {
   type Fold,
@@ -162,6 +170,7 @@ import './seating.css';
 type Load = { kind: 'loading' } | { kind: 'failed' } | { kind: 'loaded'; seating: Seating };
 
 const RETRY_MS = 5_000;
+const WATCH_MS = 1_000;
 const RENEW_BEFORE_MS = 60_000;
 const PAN_FROM_PX = 4;
 const STEP_TRIES = 3;
@@ -189,6 +198,7 @@ interface LiveHandlers {
   onSubscribers: (list: PlanSubscriber[]) => void;
   onSubscriber: (tab: PlanSubscriber) => void;
   onChoice: (choice: ColleagueChoice) => void;
+  onBeat: (userId: string) => void;
   onLost: () => void;
 }
 
@@ -209,6 +219,8 @@ function useLiveSeating(eventId: string, handlers: LiveHandlers) {
     let timer: ReturnType<typeof setTimeout> | undefined;
     let listing: ReturnType<typeof setTimeout> | undefined;
     let stopped = false;
+    let heardAt = Date.now();
+    let open = false;
 
     const connect = async (): Promise<void> => {
       let subscription;
@@ -231,6 +243,8 @@ function useLiveSeating(eventId: string, handlers: LiveHandlers) {
       source?.close();
       clearTimeout(listing);
       source = new EventSource(url);
+      heardAt = Date.now();
+      open = false;
       const opened = source;
       const list = (): void => {
         clearTimeout(listing);
@@ -247,10 +261,14 @@ function useLiveSeating(eventId: string, handlers: LiveHandlers) {
           );
       };
       source.onopen = () => {
+        heardAt = Date.now();
+        open = true;
+        sayHere();
         latest.current.onGap();
         list();
       };
       source.onmessage = (message: MessageEvent<string>) => {
+        heardAt = Date.now();
         let data: unknown = null;
         try {
           data = JSON.parse(message.data);
@@ -259,6 +277,8 @@ function useLiveSeating(eventId: string, handlers: LiveHandlers) {
         }
         const tab = asPlanSubscriber(data, topic);
         if (tab != null) return latest.current.onSubscriber(tab);
+        const here = asPlanBeat(data);
+        if (here != null) return latest.current.onBeat(here);
         const choice = asColleagueChoice(data);
         if (choice != null) return latest.current.onChoice(choice);
         const seating = asSeating(data);
@@ -266,11 +286,8 @@ function useLiveSeating(eventId: string, handlers: LiveHandlers) {
         else latest.current.onSeating(seating);
       };
       source.onerror = () => {
-        if (stopped) return;
-        latest.current.onLost();
-        if (source?.readyState !== EventSource.CLOSED) return;
-        clearTimeout(timer);
-        timer = setTimeout(() => void connect(), RETRY_MS);
+        if (stopped || source !== opened) return;
+        dropped();
       };
 
       const lapses = Date.parse(subscription.expiresAt) - Date.now() - RENEW_BEFORE_MS;
@@ -278,12 +295,41 @@ function useLiveSeating(eventId: string, handlers: LiveHandlers) {
       timer = setTimeout(() => void connect(), Math.max(lapses, RETRY_MS));
     };
 
+    /** Closed rather than left to the browser's retry, which would present a token that may have lapsed with the reader's access. */
+    const dropped = (): void => {
+      latest.current.onLost();
+      open = false;
+      source?.close();
+      source = null;
+      clearTimeout(listing);
+      clearTimeout(timer);
+      timer = setTimeout(() => void connect(), RETRY_MS);
+    };
+    const sayHere = (): void => {
+      if (open) api.sayHereOnPlan(eventId).catch(() => undefined);
+    };
+    let watchedAt = Date.now();
+    const stopBeating = steadyTicks(BEAT_MS, sayHere);
+    /** A page held back past a beat, by sleep or a hidden tab without a worker, says it is here and waits to be heard again rather than reconnecting. */
+    const stopWatching = steadyTicks(WATCH_MS, () => {
+      const now = Date.now();
+      const heldBack = now - watchedAt > BEAT_MS;
+      watchedAt = now;
+      if (source == null) return;
+      if (heldBack) {
+        heardAt = now;
+        sayHere();
+      } else if (now - heardAt > SILENT_MS) dropped();
+    });
+
     void connect();
 
     return () => {
       stopped = true;
       clearTimeout(timer);
       clearTimeout(listing);
+      stopBeating();
+      stopWatching();
       source?.close();
     };
   }, [eventId]);
@@ -304,6 +350,17 @@ function usePresence(event: OrganisationEvent) {
     return () => pending.forEach(clearTimeout);
   }, []);
 
+  useEffect(() => {
+    const say = (key: 'joinedPlan' | 'leftPlan', name: string) => t(`seating.${key}`, { name });
+    let tickedAt = Date.now();
+    return steadyTicks(WATCH_MS, () => {
+      const now = Date.now();
+      const heldBack = now - tickedAt > BEAT_MS;
+      tickedAt = now;
+      setPresence((was) => (heldBack ? woke(was, now) : quieted(was, now, me, say)));
+    });
+  }, [me, t]);
+
   const tell = useCallback(
     (chosen: OwnChoice | null, again = false) => {
       mine.current = chosen;
@@ -320,11 +377,11 @@ function usePresence(event: OrganisationEvent) {
 
   const handlers: Omit<LiveHandlers, 'onSeating' | 'onGap'> = {
     onSubscribers: (list) => {
-      setPresence((was) => listed(was, list));
+      setPresence((was) => listed(was, list, Date.now()));
       if (mine.current != null) tell(mine.current, true);
     },
     onSubscriber: (tab) => {
-      setPresence((was) => changed(was, tab, me, say));
+      setPresence((was) => changed(was, tab, me, say, Date.now()));
       if (!tab.active)
         holds.current.push(
           setTimeout(
@@ -336,6 +393,9 @@ function usePresence(event: OrganisationEvent) {
     },
     onChoice: (choice) => {
       if (choice.userId !== me) setPresence((was) => chose(was, choice));
+    },
+    onBeat: (userId) => {
+      if (userId !== me) setPresence((was) => beat(was, userId, Date.now(), say));
     },
     onLost: () =>
       setPresence((was) => (was.connection === 'lost' ? was : { ...was, connection: 'lost' })),
@@ -727,23 +787,14 @@ function Plan({
     return () => node.removeEventListener('wheel', wheel);
   }, [hasRoom, zoomTo, panBy, view]);
 
-  useEffect(() => {
-    const node = canvasNode.current;
+  const keepClear = useCallback(
+    (target: Element) => {
+      const node = canvasNode.current;
 
-    if (node == null || !hasRoom) return;
-    let byKey = false;
-    const key = (event: KeyboardEvent) => {
-      byKey = event.key === 'Tab';
-    };
-    const point = () => {
-      byKey = false;
-    };
-    const follow = (event: FocusEvent) => {
-      const target = event.target;
-
-      if (!byKey || !(target instanceof Element) || target.closest('.st-room') == null) return;
+      if (node == null) return;
       const box = node.getBoundingClientRect();
       const at = target.getBoundingClientRect();
+
       const [dx, dy] = intoView(
         {
           x0: at.left - box.left,
@@ -766,6 +817,96 @@ function Plan({
       );
 
       if (dx !== 0 || dy !== 0) panBy(-dx, -dy);
+    },
+    [panBy, view],
+  );
+
+  const keyed = useRef<string | null>(null);
+  const keysShown =
+    keyboard && focusId != null && chosenIds.includes(focusId) && !readOnly && !adding;
+  const focusedItem = useCallback((): Element | null => {
+    const active = document.activeElement;
+
+    return active != null &&
+      canvasNode.current?.contains(active) === true &&
+      active.matches('[data-table], [data-row], [data-seat]')
+      ? active
+      : null;
+  }, []);
+
+  useLayoutEffect(() => {
+    const id = keyed.current;
+
+    keyed.current = null;
+    if (id == null) return;
+    const target = focusedItem();
+
+    if (target == null) return;
+    if (['data-table', 'data-row', 'data-seat'].some((one) => target.getAttribute(one) === id))
+      keepClear(target);
+  });
+
+  useLayoutEffect(() => {
+    const target = keysShown ? focusedItem() : null;
+
+    if (target != null) keepClear(target);
+  }, [keysShown, focusedItem, keepClear]);
+
+  const keyFocus = keyboard && focusId != null;
+
+  useEffect(() => {
+    const node = canvasNode.current;
+
+    if (!keyFocus || node == null || typeof ResizeObserver === 'undefined') return;
+    const tall = new WeakMap<Element, number>();
+    const grows = new ResizeObserver((entries) => {
+      const grew = entries.some((entry) => {
+        const was = tall.get(entry.target);
+        const now = entry.target.getBoundingClientRect().height;
+
+        tall.set(entry.target, now);
+        return was != null && now > was;
+      });
+      const target = grew ? focusedItem() : null;
+
+      if (target != null) keepClear(target);
+    });
+    const watch = () =>
+      node.querySelectorAll(':scope > .st-float').forEach((bar) => grows.observe(bar));
+    const shows = new MutationObserver((changes) => {
+      watch();
+      const shown = changes.some((change) =>
+        [...change.addedNodes].some((one) => one instanceof Element && one.matches('.st-float')),
+      );
+      const target = shown ? focusedItem() : null;
+
+      if (target != null) keepClear(target);
+    });
+
+    watch();
+    shows.observe(node, { childList: true });
+    return () => {
+      grows.disconnect();
+      shows.disconnect();
+    };
+  }, [keyFocus, focusedItem, keepClear]);
+
+  useEffect(() => {
+    const node = canvasNode.current;
+
+    if (node == null || !hasRoom) return;
+    let byKey = false;
+    const key = (event: KeyboardEvent) => {
+      byKey = event.key === 'Tab';
+    };
+    const point = () => {
+      byKey = false;
+    };
+    const follow = (event: FocusEvent) => {
+      const target = event.target;
+
+      if (!byKey || !(target instanceof Element) || target.closest('.st-room') == null) return;
+      keepClear(target);
     };
 
     window.addEventListener('keydown', key, true);
@@ -776,7 +917,7 @@ function Plan({
       window.removeEventListener('pointerdown', point, true);
       node.removeEventListener('focusin', follow);
     };
-  }, [hasRoom, panBy, view]);
+  }, [hasRoom, keepClear]);
 
   useEffect(() => {
     const move = (event: PointerEvent) => {
@@ -1373,7 +1514,11 @@ function Plan({
         arrow[1] * step,
       ]);
 
-      if (mx === 0 && my === 0) return;
+      if (mx === 0 && my === 0) {
+        keepClear(target);
+        return;
+      }
+      keyed.current = id;
       arrange(
         moving.map((one) => ({
           ...placementOf(one),
@@ -1398,8 +1543,10 @@ function Plan({
 
       if (!insideRoom({ ...footprintOf(item), rotation }, plan)) {
         setNotice(t('seating.outside', { name: itemName(t, item) }));
+        keepClear(target);
         return;
       }
+      keyed.current = id;
       arrange([{ ...placementOf(item), rotation }]);
       setHeard(t('seating.turnedTo', { name: itemName(t, item), degrees: rotation }));
       return;
@@ -1972,9 +2119,7 @@ function Plan({
             onStop={() => setPlacing(null)}
           />
         )}
-        {keyboard && focusId != null && chosenIds.includes(focusId) && !readOnly && !adding && (
-          <KeysStrip system={system} />
-        )}
+        {keysShown && <KeysStrip system={system} />}
         {adding && !readOnly && <RulesStrip />}
         <p className="visually-hidden" aria-live="polite">
           {heard}

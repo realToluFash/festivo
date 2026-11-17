@@ -345,8 +345,8 @@
   font: 600 15px/1.3 var(--fontFamily);
 }
 
-/* At 60rem and under the page's 16 px gutters already inset the band, so it keeps no padding of its own, and the name and the item that flexes around it both stop at 44 px (sc-55300). */
-@media (width <= 60rem) {
+/* At 40rem and under the page's 16 px gutters already inset the band, so it keeps no padding of its own, and the name and the item that flexes around it both stop at 44 px (sc-55300). Wider, the room fills its card as at a desk (sc-60699). */
+@media (width <= 40rem) {
   .st-top {
     padding-inline: 0;
   }
@@ -661,6 +661,7 @@
 @media (width < 960px) {
   .st-main:not(.is-none) {
     flex-direction: column;
+    overflow-y: auto;
   }
 
   .st-main:not(.is-none) .st-canvas {

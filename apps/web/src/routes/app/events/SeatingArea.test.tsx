@@ -2585,6 +2585,20 @@ function usSeating(planned: unknown, tableId?: string) {
 describe('Moving, turning and resizing on the Floor plan (sc-5028)', () => {
   beforeAll(standInPointerEvents);
 
+  const measure = Element.prototype.getBoundingClientRect;
+
+  beforeEach(() => {
+    vi.spyOn(Element.prototype, 'getBoundingClientRect').mockImplementation(function (
+      this: Element,
+    ) {
+      return this.matches('[data-table], [data-row], [data-seat]')
+        ? new DOMRect(340, 340, 40, 40)
+        : measure.call(this);
+    });
+  });
+
+  afterEach(() => vi.restoreAllMocks());
+
   it('moves a chosen table 10 cm with an arrow and 1 m with Shift, each a step with its version', async () => {
     signedIn();
     const sent = await onSeating({
@@ -3804,6 +3818,7 @@ describe('Who else is on the plan (sc-4719)', () => {
   beforeAll(standInPointerEvents);
 
   afterEach(() => {
+    vi.useRealTimers();
     __setConfig(before);
     vi.unstubAllGlobals();
   });
@@ -3821,6 +3836,8 @@ describe('Who else is on the plan (sc-4719)', () => {
       {
         'GET /api/events/ev_1/seating-plan': () => seating(withTables(table())),
         'POST /api/events/ev_1/seating-plan/subscriptions': () =>
+          json({ token: 'tok', expiresAt: new Date(Date.now() + 3_600_000).toISOString() }),
+        'POST /api/realtime/subscriptions': () =>
           json({ token: 'tok', expiresAt: new Date(Date.now() + 3_600_000).toISOString() }),
         [LIST]: () => json({ subscriptions: here }),
         ...more,
@@ -4088,14 +4105,157 @@ describe('Who else is on the plan (sc-4719)', () => {
     expect(screen.getByLabelText('Seats')).not.toHaveProperty('disabled', true);
   });
 
-  it('hides the chips and says so when its own connection drops', async () => {
+  it('hides the chips and every colleague’s ring, and says so, when its own connection drops (#62213)', async () => {
     const { source } = await onPlanWith([ME, PRIYA]);
-    await screen.findByRole('button', { name: 'Priya Shah' });
+    source.publish({ userId: 'u_priya', chosen: { kind: 'table', id: 't1', chair: null } });
+    await screen.findByRole('button', { name: `${TABLE_1}, chosen by Priya Shah` });
 
     act(() => source.onerror?.());
 
     expect(await screen.findByText('Can’t see who else is here. Reconnecting…')).toBeDefined();
     expect(screen.queryByRole('button', { name: 'Priya Shah' })).toBeNull();
+    expect(screen.getByRole('button', { name: TABLE_1 })).toBeDefined();
+    expect(document.querySelector('.st-ring')).toBeNull();
+    expect(source.readyState).toBe(StubSource.CLOSED);
+  });
+
+  const seatingSources = () =>
+    StubSource.made.filter((one) => decodeURIComponent(one.url).includes('/seating'));
+  const beatsSent = (sent: { line: string }[]) =>
+    sent.filter((one) => one.line === 'POST /api/events/ev_1/seating-plan/here').length;
+  const heardOwn = (source: StubSource) => source.publish({ userId: 'u_folake', here: true });
+
+  it('says it is still here every 5 seconds while its connection is open, as a viewer too', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    const { sent, source } = await onPlanWith([ME], ['events.read', 'seating.read']);
+    await waitFor(() => expect(beatsSent(sent)).toBe(1));
+
+    act(() => vi.advanceTimersByTime(5_000));
+    heardOwn(source);
+
+    await waitFor(() => expect(beatsSent(sent)).toBe(2));
+  });
+
+  it('lets a colleague whose connection died without a word go within 30 seconds, ring and all, and back once heard (#62200)', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    const { source } = await onPlanWith([ME, PRIYA]);
+    const heard = () => document.querySelector('.st-top [aria-live="polite"]')?.textContent ?? '';
+    source.publish({ userId: 'u_priya', chosen: { kind: 'table', id: 't1', chair: null } });
+    await screen.findByRole('button', { name: `${TABLE_1}, chosen by Priya Shah` });
+
+    for (let second = 0; second < 30; second += 1) {
+      act(() => vi.advanceTimersByTime(1_000));
+      heardOwn(source);
+    }
+
+    expect(screen.queryByRole('button', { name: 'Priya Shah' })).toBeNull();
+    expect(screen.getByRole('button', { name: TABLE_1 })).toBeDefined();
+    expect(document.querySelector('.st-ring')).toBeNull();
+    expect(heard()).toBe('Priya Shah left the plan.');
+    expect(screen.queryByText('Can’t see who else is here. Reconnecting…')).toBeNull();
+
+    source.publish({ userId: 'u_priya', here: true });
+
+    expect(await screen.findByRole('button', { name: 'Priya Shah' })).toBeDefined();
+    expect(heard()).toBe('Priya Shah joined the plan.');
+  });
+
+  it('keeps a colleague who keeps saying they are here', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    const { source } = await onPlanWith([ME, PRIYA]);
+    await screen.findByRole('button', { name: 'Priya Shah' });
+
+    for (let second = 0; second < 30; second += 1) {
+      act(() => vi.advanceTimersByTime(1_000));
+      heardOwn(source);
+      if (second % 5 === 0) source.publish({ userId: 'u_priya', here: true });
+    }
+
+    expect(screen.getByRole('button', { name: 'Priya Shah' })).toBeDefined();
+  });
+
+  it('takes its own connection for dead when it hears nothing, says so, and opens a new one (#62200)', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    const { source } = await onPlanWith([ME, PRIYA]);
+    await screen.findByRole('button', { name: 'Priya Shah' });
+
+    act(() => vi.advanceTimersByTime(13_000));
+
+    expect(await screen.findByText('Can’t see who else is here. Reconnecting…')).toBeDefined();
+    expect(screen.queryByRole('button', { name: 'Priya Shah' })).toBeNull();
+    expect(source.readyState).toBe(StubSource.CLOSED);
+
+    act(() => vi.advanceTimersByTime(5_000));
+    await waitFor(() => expect(seatingSources()).toHaveLength(2));
+    act(() => seatingSources()[1]!.onopen?.());
+
+    expect(await screen.findByRole('button', { name: 'Priya Shah' })).toBeDefined();
+  });
+
+  class StubWorker {
+    static made: StubWorker[] = [];
+    url = '';
+    every = 0;
+    onmessage: (() => void) | null = null;
+    onerror: (() => void) | null = null;
+    terminated = false;
+    constructor(url: URL) {
+      this.url = url.href;
+      StubWorker.made.push(this);
+    }
+    postMessage(ms: number) {
+      this.every = ms;
+    }
+    terminate() {
+      this.terminated = true;
+    }
+  }
+
+  it('beats from a worker served from its own origin, whose timers a hidden tab does not hold back to one a minute', async () => {
+    StubWorker.made = [];
+    vi.stubGlobal('Worker', StubWorker);
+    const { sent } = await onPlanWith([ME]);
+    await waitFor(() => expect(beatsSent(sent)).toBe(1));
+    const beating = StubWorker.made.find((one) => one.every === 5_000)!;
+
+    expect(new URL(beating.url).origin).toBe(window.location.origin);
+
+    act(() => beating.onmessage?.());
+
+    await waitFor(() => expect(beatsSent(sent)).toBe(2));
+  });
+
+  it('beats from the page when the worker is refused after it was made, rather than going silent', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    StubWorker.made = [];
+    vi.stubGlobal('Worker', StubWorker);
+    const { sent, source } = await onPlanWith([ME]);
+    await waitFor(() => expect(beatsSent(sent)).toBe(1));
+
+    act(() => StubWorker.made.forEach((one) => one.onerror?.()));
+    act(() => vi.advanceTimersByTime(5_000));
+    heardOwn(source);
+
+    await waitFor(() => expect(beatsSent(sent)).toBe(2));
+    expect(StubWorker.made.every((one) => one.terminated)).toBe(true);
+  });
+
+  it('neither leaves nor reconnects when its timers wake a minute late, and says it is here at once', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    const { sent, source } = await onPlanWith([ME, PRIYA]);
+    const heard = () => document.querySelector('.st-top [aria-live="polite"]')?.textContent ?? '';
+    await waitFor(() => expect(beatsSent(sent)).toBe(1));
+
+    vi.setSystemTime(Date.now() + 60_000);
+    act(() => vi.advanceTimersByTime(1_000));
+    act(() => vi.advanceTimersByTime(1_000));
+
+    await waitFor(() => expect(beatsSent(sent)).toBeGreaterThanOrEqual(2));
+    expect(screen.queryByText('Can’t see who else is here. Reconnecting…')).toBeNull();
+    expect(source.readyState).not.toBe(StubSource.CLOSED);
+    expect(seatingSources()).toHaveLength(1);
+    expect(screen.getByRole('button', { name: 'Priya Shah' })).toBeDefined();
+    expect(heard()).not.toContain('left the plan');
   });
 
   it('shows no email address', async () => {
@@ -4454,5 +4614,249 @@ describe('Holding Space pans with an item focused, and Space acts on release (sc
     expect(await screen.findByRole('heading', { level: 2, name: '2 chosen' })).toBeDefined();
     fireEvent.keyDown(item(TABLE_2), { key: 'Enter' });
     expect(await screen.findByRole('heading', { level: 2, name: 'Table 2' })).toBeDefined();
+  });
+});
+
+describe('An item moved by keys stays clear of the keys strip (sc-61042)', () => {
+  beforeAll(standInPointerEvents);
+  beforeEach(() => localStorage.clear());
+
+  const STRIP = { left: 100, right: 618, top: 600, bottom: 680 };
+  let below = 0;
+
+  function floorTop(): number {
+    return Number(document.querySelector('.st-room-line')?.getAttribute('y'));
+  }
+
+  function rect(left: number, top: number, width: number, height: number): DOMRect {
+    return {
+      width,
+      height,
+      left,
+      top,
+      right: left + width,
+      bottom: top + height,
+      x: left,
+      y: top,
+    } as DOMRect;
+  }
+
+  function measure() {
+    return vi.spyOn(Element.prototype, 'getBoundingClientRect').mockImplementation(function (
+      this: Element,
+    ) {
+      if (this.getAttribute('data-table') === 't1') return rect(300, floorTop() + below, 100, 100);
+      if (this.classList.contains('st-keys'))
+        return rect(STRIP.left, STRIP.top, STRIP.right - STRIP.left, STRIP.bottom - STRIP.top);
+      return rect(0, 0, 0, 0);
+    });
+  }
+
+  async function keyed(
+    answers: Record<string, Answer> = {},
+    more: Record<string, unknown> = {},
+    at = 400,
+  ) {
+    signedIn();
+    const long = table({ shape: 'rectangular', seats: 6, widthCm: 180, lengthCm: 76, ...more });
+    const sent = await onSeating({
+      'GET /api/events/ev_1/seating-plan': () => seating(withTables(long)),
+      'PATCH /api/events/ev_1/seating-plan/furniture': (body) => {
+        const [item] = (body as { items: Record<string, number>[] }).items;
+
+        return seating(withTables({ ...long, ...item, version: 2 }));
+      },
+      ...answers,
+    });
+
+    await chooseTable('Table 1, rectangular, 0 of 6 seats taken');
+    const drawn = document.querySelector('[data-table="t1"]') as SVGGElement & HTMLElement;
+
+    act(() => drawn.focus());
+    const was = floorTop();
+
+    below = at - was;
+    fireEvent.keyDown(drawn, { key: 'Shift' });
+    expect(document.querySelector('.st-keys')).not.toBeNull();
+    return { drawn, sent, was };
+  }
+
+  function watchShows() {
+    const shows: MutationCallback[] = [];
+
+    vi.stubGlobal(
+      'ResizeObserver',
+      class {
+        observe() {}
+        disconnect() {}
+      },
+    );
+    vi.stubGlobal(
+      'MutationObserver',
+      class {
+        constructor(callback: MutationCallback) {
+          shows.push(callback);
+        }
+        observe() {}
+        disconnect() {}
+      },
+    );
+    return shows;
+  }
+
+  it('pans by the least distance once an arrow, Shift+arrow or R has moved the item under the strip', async () => {
+    const measured = measure();
+
+    try {
+      const { drawn } = await keyed();
+      const zoom = percent();
+
+      for (const key of [
+        { key: 'ArrowUp' },
+        { key: 'ArrowDown', shiftKey: true },
+        { key: 'ArrowLeft' },
+        { key: 'R' },
+      ]) {
+        const was = floorTop();
+
+        below = 520 - was;
+        fireEvent.keyDown(drawn, key);
+        expect(floorTop()).toBeCloseTo(was - 28, 0);
+        expect(percent()).toBe(zoom);
+      }
+    } finally {
+      measured.mockRestore();
+    }
+  });
+
+  it('does not move the plan for an item a key leaves clear', async () => {
+    const measured = measure();
+
+    try {
+      const { drawn } = await keyed();
+      const was = floorTop();
+
+      fireEvent.keyDown(drawn, { key: 'ArrowUp' });
+      expect(floorTop()).toBe(was);
+    } finally {
+      measured.mockRestore();
+    }
+  });
+
+  it('keeps the item clear when the room’s foot stops the arrow', async () => {
+    const measured = measure();
+
+    try {
+      const { drawn, sent } = await keyed({}, { yCm: 1762 });
+      const was = floorTop();
+
+      below = 520 - was;
+      fireEvent.keyDown(drawn, { key: 'ArrowDown' });
+      expect(furniture(sent)).toEqual([]);
+      expect(floorTop()).toBeCloseTo(was - 28, 0);
+    } finally {
+      measured.mockRestore();
+    }
+  });
+
+  it('pans when the strip grows to a second line while the item has focus', async () => {
+    const measured = measure();
+    const watched: { callback: ResizeObserverCallback; targets: Element[] }[] = [];
+
+    vi.stubGlobal(
+      'ResizeObserver',
+      class {
+        targets: Element[] = [];
+        constructor(callback: ResizeObserverCallback) {
+          watched.push({ callback, targets: this.targets });
+        }
+        observe(target: Element) {
+          this.targets.push(target);
+        }
+        disconnect() {}
+      },
+    );
+
+    try {
+      await keyed();
+      const was = floorTop();
+      const strip = document.querySelector('.st-keys')!;
+      const grow = () =>
+        act(() => {
+          for (const one of watched)
+            if (one.targets.includes(strip))
+              one.callback(
+                [{ target: strip, contentRect: strip.getBoundingClientRect() }] as never,
+                {} as ResizeObserver,
+              );
+        });
+
+      STRIP.top = 640;
+      grow();
+      below = 520 - was;
+      STRIP.top = 600;
+      grow();
+      expect(floorTop()).toBeCloseTo(was - 28, 0);
+    } finally {
+      STRIP.top = 600;
+      vi.unstubAllGlobals();
+      measured.mockRestore();
+    }
+  });
+
+  it('pans when the strip shows over the item that has focus', async () => {
+    const measured = measure();
+
+    watchShows();
+    try {
+      const { was } = await keyed({}, {}, 520);
+
+      expect(floorTop()).toBeCloseTo(was - 28, 0);
+    } finally {
+      vi.unstubAllGlobals();
+      measured.mockRestore();
+    }
+  });
+
+  it('pans when a bar appears over the item that has focus', async () => {
+    const measured = measure();
+    const shows = watchShows();
+
+    try {
+      const { was } = await keyed();
+      const strip = document.querySelector('.st-keys')!;
+
+      below = 520 - was;
+      act(() => {
+        for (const show of shows)
+          show([{ addedNodes: [strip] as unknown as NodeList } as MutationRecord], {} as never);
+      });
+      expect(floorTop()).toBeCloseTo(was - 28, 0);
+    } finally {
+      vi.unstubAllGlobals();
+      measured.mockRestore();
+    }
+  });
+
+  it('never moves the plan for a click or a drag, even with the item where the strip was', async () => {
+    const measured = measure();
+
+    try {
+      const { drawn } = await keyed();
+      const was = floorTop();
+
+      below = 520 - was;
+      fireEvent.pointerDown(drawn, { button: 0, pointerId: 1, clientX: 350, clientY: 570 });
+      fireEvent.pointerUp(drawn, { button: 0, pointerId: 1, clientX: 350, clientY: 570 });
+      fireEvent.click(drawn);
+      expect(floorTop()).toBe(was);
+
+      fireEvent.pointerDown(drawn, { button: 0, pointerId: 1, clientX: 350, clientY: 570 });
+      fireEvent.pointerMove(drawn, { button: 0, pointerId: 1, clientX: 350, clientY: 640 });
+      fireEvent.pointerUp(drawn, { button: 0, pointerId: 1, clientX: 350, clientY: 640 });
+      expect(floorTop()).toBe(was);
+    } finally {
+      measured.mockRestore();
+    }
   });
 });
