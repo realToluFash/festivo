@@ -12,12 +12,6 @@
   .today.desk :is(.desk-title, .desk-title *, .gs-title, .gs-title *) {
     overflow-wrap: normal;
   }
-
-  /* Shrinks the list and the open guest in the boards' 520 : 380, up to their widths. */
-  .today.desk .gs-cols {
-    grid-template-columns: minmax(0, 520fr) minmax(0, 380fr);
-    max-width: calc(var(--gsList) + var(--gsGuest) + var(--gsGap));
-  }
 }
 
 /* Up to 1200 px the Schedule's open item, and up to 1120 px Menu library's open dish, come before the list, as they do at 641 to 960. */
@@ -57,8 +51,8 @@
   }
 }
 
-/* Up to 1200 px an open guest or form comes before the list, as it does at 641 to 960. */
-@media (60rem < width <= 75rem) {
+/* Up to 1240 px, until the list and the guest fit at their 520 and 380, an open guest or form comes before the list, as it does at 641 to 960. */
+@media (60rem < width <= 77.5rem) {
   .today.desk .gs-cols {
     grid-template-columns: minmax(0, 1fr);
   }
