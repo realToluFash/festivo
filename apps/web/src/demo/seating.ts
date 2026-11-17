@@ -1693,6 +1693,11 @@ export const SEATING_STATES = [
     name: 'A party picked at 150%, a chair’s label on hover',
     group: 'Seating guests',
   },
+  {
+    key: 'pickedTight',
+    name: 'A party picked, tables close together: each free tag where it can be read',
+    group: 'Seating guests',
+  },
   { key: 'seated', name: 'Seated, with Undo', group: 'Seating guests' },
   { key: 'apart', name: 'Not side by side', group: 'Seating guests' },
   { key: 'full', name: 'A full table', group: 'Seating guests' },
@@ -1702,6 +1707,11 @@ export const SEATING_STATES = [
   { key: 'undoRefused', name: 'Undo refused', group: 'Seating guests' },
   { key: 'tableGuests', name: 'A table’s guests', group: 'Seating guests' },
   { key: 'moveAll', name: 'Move everyone to…', group: 'Seating guests' },
+  {
+    key: 'moveAllNone',
+    name: 'Move everyone to…, no other table has room',
+    group: 'Seating guests',
+  },
   { key: 'emptyTable', name: 'An empty table', group: 'Seating guests' },
   { key: 'everyoneSeated', name: 'Everyone coming has a seat', group: 'Seating guests' },
   { key: 'nobodyComing', name: 'Nobody coming yet', group: 'Seating guests' },

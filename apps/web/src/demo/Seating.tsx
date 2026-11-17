@@ -2647,29 +2647,31 @@ function PopOver({
     body = (
       <>
         <h2>{SW.moveAll}</h2>
-        <p className="st-line">{many('roomForAll', n)}</p>
-        <ul className="st-rows is-dense">
-          {room.map((one) => (
-            <li key={one.id}>
-              <button type="button" className="st-party" onClick={() => moveAll(item.id, one.id)}>
-                <ShapeTile kind={one.kind} />
-                <span className="st-row-words">
-                  <span className="st-row-name">{one.name}</span>
-                  <span className="st-row-line">
-                    {say(SW.freeLine, {
-                      section:
-                        sectionLine(ui.plan, one.sec).split(' · ')[0] === undefined
-                          ? ''
-                          : (ui.plan.sections.find((sec) => sec.id === one.sec)?.name ??
-                            SW.noSection),
-                      n: free(one),
-                    })}
+        <p className="st-line">{many(room.length === 0 ? 'roomForNone' : 'roomForAll', n)}</p>
+        {room.length === 0 ? null : (
+          <ul className="st-rows is-dense">
+            {room.map((one) => (
+              <li key={one.id}>
+                <button type="button" className="st-party" onClick={() => moveAll(item.id, one.id)}>
+                  <ShapeTile kind={one.kind} />
+                  <span className="st-row-words">
+                    <span className="st-row-name">{one.name}</span>
+                    <span className="st-row-line">
+                      {say(SW.freeLine, {
+                        section:
+                          sectionLine(ui.plan, one.sec).split(' · ')[0] === undefined
+                            ? ''
+                            : (ui.plan.sections.find((sec) => sec.id === one.sec)?.name ??
+                              SW.noSection),
+                        n: free(one),
+                      })}
+                    </span>
                   </span>
-                </span>
-              </button>
-            </li>
-          ))}
-        </ul>
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
       </>
     );
   }

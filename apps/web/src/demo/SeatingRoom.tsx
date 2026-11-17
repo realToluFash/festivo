@@ -540,7 +540,6 @@ function ItemDrawing({
         </g>
       ),
     );
-    if (detail !== 'out') marks.push(<FreeTag key="free" x={cx} y={cy + ey * s + 32} n={room} />);
   }
   onItem.forEach(({ who }, k) => {
     const pad = (lit ? 10 : 2) + RING_STEP * k;
@@ -683,6 +682,53 @@ function ItemDrawing({
 /** One guess at 12 px words, so the tip, the label and the free tag grow together in every locale. */
 function wordsWide(words: string): number {
   return words.length * 7;
+}
+
+type Box = { x0: number; y0: number; x1: number; y1: number };
+
+/** An item's outline on screen, chairs included, as its rotation leaves it. */
+function footprint(item: Item, s: number, ox: number, oy: number): Box {
+  const [ex, ey] = extent(item);
+  const rad = (item.rot * Math.PI) / 180;
+  const hx = (Math.abs(ex * Math.cos(rad)) + Math.abs(ey * Math.sin(rad))) * s + 6;
+  const hy = (Math.abs(ex * Math.sin(rad)) + Math.abs(ey * Math.cos(rad))) * s + 6;
+  const cx = ox + item.x * s;
+  const cy = oy + item.y * s;
+
+  return { x0: cx - hx, y0: cy - hy, x1: cx + hx, y1: cy + hy };
+}
+
+function crosses(a: Box, b: Box): boolean {
+  return a.x0 < b.x1 && b.x0 < a.x1 && a.y0 < b.y1 && b.y0 < a.y1;
+}
+
+/** Under its item, or over it when only the space under it is taken (sc-5030). */
+function freeTags(
+  items: readonly Item[],
+  s: number,
+  ox: number,
+  oy: number,
+): { id: string; x: number; y: number; n: number }[] {
+  const boxes = items.map((item) => ({ id: item.id, box: footprint(item, s, ox, oy) }));
+
+  return items
+    .filter((item) => item.kind !== 'single')
+    .map((item) => {
+      const n = free(item);
+      const own = footprint(item, s, ox, oy);
+      const x = (own.x0 + own.x1) / 2;
+      const half = (wordsWide(n === 0 ? SW.fullTab : say(SW.freeTag, { n })) + 16) / 2;
+      const clash = (y: number) =>
+        boxes.some(
+          (other) =>
+            other.id !== item.id &&
+            crosses({ x0: x - half, y0: y - 11, x1: x + half, y1: y + 11 }, other.box),
+        );
+      const below = own.y1 + 26;
+      const above = own.y0 - 26;
+
+      return { id: item.id, x, y: clash(below) && !clash(above) ? above : below, n };
+    });
 }
 
 /** While a guest is picked: "{n} free" on a green dashed outline, or "Full" on a grey one (sc-5030). */
@@ -978,6 +1024,11 @@ export function RoomDrawing({
       {tip != null && (
         <Tip x={ox + tip.at[0] * s + 26} y={oy + tip.at[1] * s + 30} words={tip.words} />
       )}
+      {detail !== 'out' &&
+        look.picking === true &&
+        freeTags(ordered, s, ox, oy).map((tag) => (
+          <FreeTag key={`free-${tag.id}`} x={tag.x} y={tag.y} n={tag.n} />
+        ))}
       {detail !== 'out' && (
         <ChairLabel items={items} spot={look.label ?? null} s={s} ox={ox} oy={oy} />
       )}

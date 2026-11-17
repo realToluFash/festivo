@@ -1702,6 +1702,37 @@ describe('seating guests (sc-4013, sc-4016, sc-5030)', () => {
     expect(within(room()).queryByText(/^\d+ free$/u)).toBeNull();
   });
 
+  it(
+    'draws each free tag above every item, over its table when the next table is under it',
+    SLOW,
+    async () => {
+      await seating('pickedTight');
+      const kids = [...room().children];
+      const lastItem = kids.findLastIndex((one) => one.classList.contains('st-item'));
+
+      expect(kids.findIndex((one) => one.classList.contains('st-free'))).toBeGreaterThan(lastItem);
+      const ring = (name: RegExp) => item(name).querySelector('circle.st-room-for')!;
+      const tagBy = (name: RegExp) => {
+        const cx = Number(ring(name).getAttribute('cx'));
+        const cy = Number(ring(name).getAttribute('cy'));
+        const ys = [...room().querySelectorAll('.st-free text')]
+          .filter((one) => Math.abs(Number(one.getAttribute('x')) - cx) < 1)
+          .map((one) => Number(one.getAttribute('y')));
+
+        return ys.reduce((near, y) => (Math.abs(y - cy) < Math.abs(near - cy) ? y : near));
+      };
+      const top = (name: RegExp) =>
+        Number(ring(name).getAttribute('cy')) - Number(ring(name).getAttribute('r'));
+      const bottom = (name: RegExp) =>
+        Number(ring(name).getAttribute('cy')) + Number(ring(name).getAttribute('r'));
+
+      expect(tagBy(/^Table 4,/u)).toBeLessThan(top(/^Table 4,/u));
+      expect(tagBy(/^Table 3,/u)).toBeGreaterThan(bottom(/^Table 3,/u));
+      expect(tagBy(/^Table 10,/u)).toBeGreaterThan(bottom(/^Table 10,/u));
+      expect(tagBy(/^Table 6,/u)).toBeGreaterThan(bottom(/^Table 6,/u));
+    },
+  );
+
   it('draws no chairs below 50%, so the table is the target', SLOW, async () => {
     await seating('pickedOut');
     expect(within(room()).queryAllByRole('button', { name: /, Seat \d+, /u })).toHaveLength(0);
@@ -1773,6 +1804,17 @@ describe('seating guests (sc-4013, sc-4016, sc-5030)', () => {
     expect(
       screen.getAllByText('These seats changed since. Nothing was undone.').length,
     ).toBeGreaterThan(0);
+  });
+
+  it('says so when no other table has room for everyone at a table', SLOW, async () => {
+    await seating('moveAllNone');
+    const dialog = screen.getByRole('dialog', { name: /^Table 1,/u });
+
+    expect(
+      within(dialog).getByText('No other table has room for all 10. Move them one at a time.'),
+    ).toBeDefined();
+    expect(within(dialog).queryByText(/^Tables with room/u)).toBeNull();
+    expect(within(dialog).queryAllByRole('button')).toHaveLength(0);
   });
 
   it(

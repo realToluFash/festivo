@@ -245,6 +245,8 @@ export const SW = {
   rename: 'Rename',
   roomForAll_one: 'Tables with a free seat for them.',
   roomForAll_other: 'Tables with room for all {{count}}.',
+  roomForNone_one: 'No other table has a free seat for them.',
+  roomForNone_other: 'No other table has room for all {{count}}. Move them one at a time.',
   freeLine: '{{section}} · {{n}} free',
   emptyTable: 'Nobody here yet. Pick a guest in Seat, then this table.',
   everyoneSeated: 'Everyone who is coming has a seat.',
