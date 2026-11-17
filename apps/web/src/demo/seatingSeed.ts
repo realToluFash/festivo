@@ -37,6 +37,7 @@ import {
   copiesOf,
   gridOf,
   outsider,
+  seatedOf,
   thingsOf,
   tooBig,
   withMoved,
@@ -125,7 +126,7 @@ export interface Ui {
   groups: string[];
   hover: string | null;
   pop: Pop | null;
-  undo: { plan: Plan; tray: Party[]; chosen?: string[] } | null;
+  undo: { plan: Plan; tray: Party[]; chosen?: string[]; stale?: boolean } | null;
   tablesSection: string | null;
   listTab: ListTab | null;
   listOpen: string | null;
@@ -1193,6 +1194,37 @@ function choosingSeed(state: SeatingState, ui: Ui): Ui {
       const ids = ['t8', 'rowA', 'door'];
 
       return { ...ui, chosen: ids, asking: { kind: 'deleteItems', ids } };
+    }
+    case 'deleteManyChanged': {
+      const doomed = plan.items.filter((item) => SIX_TABLES.includes(item.id));
+      const freed: Party[] = doomed.flatMap((item) =>
+        item.chairs
+          .filter((chair) => chair.state === 'taken' && chair.who != null)
+          .map((chair) => ({
+            id: `back-${chair.who}`,
+            name: chair.who!,
+            companions: [],
+            group: null,
+            reply: 'coming' as const,
+          })),
+      );
+      const after = { ...plan, items: plan.items.filter((item) => !SIX_TABLES.includes(item.id)) };
+      const since = seated(after, [...ui.tray, ...freed], freed[0]!.id, 't8');
+
+      return {
+        ...ui,
+        plan: since.plan,
+        tray: since.tray,
+        chosen: [],
+        rings: { t8: [{ who: PRIYA }] },
+        people: [PRIYA, SADE],
+        undo: { plan, tray: ui.tray, chosen: SIX_TABLES, stale: true },
+        bar: {
+          kind: 'undo',
+          words: many('deletedMany', seatedOf(doomed), { things: thingsOf(doomed) }),
+          does: 'undo',
+        },
+      };
     }
     case 'toolChanged': {
       const chosen = ['t1', 't2', 't3', 't4', 't5'];

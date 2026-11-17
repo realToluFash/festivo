@@ -1556,6 +1556,11 @@ export const SEATING_STATES = [
   { key: 'deleteMany', name: 'Delete 6 tables, guests seated', group: 'Choosing many' },
   { key: 'deleteManyEmpty', name: 'Delete 3 tables, nobody seated', group: 'Choosing many' },
   { key: 'deleteMixed', name: 'Delete 3 items, mixed kinds', group: 'Choosing many' },
+  {
+    key: 'deleteManyChanged',
+    name: '6 tables deleted, a freed guest seated since',
+    group: 'Choosing many',
+  },
   { key: 'toolChanged', name: 'A colleague changed one first (412)', group: 'Choosing many' },
   {
     key: 'readOnlyMany',

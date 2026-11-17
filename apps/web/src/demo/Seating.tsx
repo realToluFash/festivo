@@ -2241,7 +2241,9 @@ function MessageBar({
     >
       <Icon name={glyph} size={17} weight={2.2} />
       <div className="st-bar-body">
-        <p>{bar.words}</p>
+        <p tabIndex={-1} data-said="bar">
+          {bar.words}
+        </p>
         {bar.does === 'placing' && (
           <span className="st-bar-acts">
             <button type="button" className="desk-text" onClick={onPlace}>
@@ -2266,6 +2268,18 @@ function MessageBar({
               className="desk-text"
               data-act="undo"
               onClick={() => {
+                if (ui.undo?.stale === true) {
+                  set((now) => ({
+                    ...now,
+                    undo: null,
+                    bar: { kind: 'amber', words: SW.undoRefused },
+                  }));
+                  window.setTimeout(
+                    () => document.querySelector<HTMLElement>('.st-bar [data-said="bar"]')?.focus(),
+                    0,
+                  );
+                  return;
+                }
                 const undoing = ui.undo != null;
                 const back = ui.undo?.chosen ?? [];
 
