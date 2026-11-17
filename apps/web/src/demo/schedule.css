@@ -450,14 +450,16 @@
 /* At 720px and under the page beside the sidebar is narrower than a phone's, so the day tabs stack and the table folds to Starts and Item (sc-60699). */
 @media (width <= 720px) {
   .ro-days {
+    --roDayStack: 56px;
+
     align-self: stretch;
-    border-radius: calc(56px / 2 + var(--spaceHair));
+    border-radius: calc(var(--roDayStack) / 2 + var(--spaceHair));
   }
 
   .ro-day {
     flex: 1;
     flex-direction: column;
-    min-height: 56px;
+    min-height: var(--roDayStack);
     padding: var(--spaceXs) var(--spaceSm);
     line-height: 1.25;
   }

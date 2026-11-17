@@ -1,3 +1,5 @@
+import i18next from 'i18next';
+
 import { writtenTime } from './clock.ts';
 import type { DemoLink } from './settings.ts';
 
@@ -239,23 +241,9 @@ export function sevenDayItems(): Item[] {
   ];
 }
 
-type CountWords = readonly [one: string, other: string];
-
-const ENGLISH_COUNT: CountWords = ['item', 'items'];
-
-const DAY_COUNT_WORDS: Partial<Record<string, CountWords>> = {
-  en: ENGLISH_COUNT,
-  es: ['elemento', 'elementos'],
-  fr: ['élément', 'éléments'],
-  pt: ['item', 'itens'],
-};
-
-/** A day tab's count in the reader's language, the product's schedule.items words in en, es, fr and pt (sc-64803). */
+/** A day tab's count in the reader's language, read from the product's schedule.items so the two cannot drift (sc-64803). */
 export function dayCount(n: number, locale: string): string {
-  const [one, other] = DAY_COUNT_WORDS[locale.slice(0, 2)] ?? ENGLISH_COUNT;
-  const word = new Intl.PluralRules(locale).select(n) === 'one' ? one : other;
-
-  return `${new Intl.NumberFormat(locale).format(n)} ${word}`;
+  return i18next.getFixedT(locale.slice(0, 2))('schedule.items', { count: n });
 }
 
 export function atLimit(): Item[] {

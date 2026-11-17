@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
 
+import en from '../i18n/locales/en.json';
+import es from '../i18n/locales/es.json';
+import fr from '../i18n/locales/fr.json';
+import pt from '../i18n/locales/pt.json';
+
 import {
   DAYS,
   HOME_READER,
@@ -153,11 +158,13 @@ describe('the schedule’s rules (sc-3893)', () => {
 });
 
 describe('the day tabs’ words (sc-64803)', () => {
-  it('counts a day in each of the four languages, as the product’s schedule.items does', () => {
-    expect([1, 12].map((n) => dayCount(n, 'en-GB'))).toEqual(['1 item', '12 items']);
-    expect([1, 12].map((n) => dayCount(n, 'es-ES'))).toEqual(['1 elemento', '12 elementos']);
-    expect([1, 12].map((n) => dayCount(n, 'fr-FR'))).toEqual(['1 élément', '12 éléments']);
-    expect([1, 12].map((n) => dayCount(n, 'pt-BR'))).toEqual(['1 item', '12 itens']);
+  it('counts a day in each of the four languages with the product’s own schedule.items', () => {
+    const product = { en, es, fr, pt };
+    for (const [lang, words] of Object.entries(product)) {
+      const one = words.schedule.items_one.replace('{{count, number}}', '1');
+      const other = words.schedule.items_other.replace('{{count, number}}', '12');
+      expect([1, 12].map((n) => dayCount(n, lang))).toEqual([one, other]);
+    }
   });
 
   it('gives the seven-day event a day of 1 item and a day of 12', () => {
