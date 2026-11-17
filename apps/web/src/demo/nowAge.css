@@ -8,7 +8,7 @@
 }
 
 .na-line:empty {
-  display: none;
+  margin: 0;
 }
 
 .na-mark {

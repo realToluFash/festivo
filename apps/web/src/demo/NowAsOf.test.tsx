@@ -75,4 +75,26 @@ describe("Now's line once its reads stop landing (sc-62416)", () => {
       expect(screen.queryByRole('button', { name: 'Open run of show' })).toBeNull();
     },
   );
+
+  it(
+    'counts a read with no answer as failed after 10 seconds, and only then can the line show',
+    SLOW,
+    async () => {
+      vi.useFakeTimers({ shouldAdvanceTime: true });
+      await today('moment=day&reads=live');
+      const line = screen.getByRole('status');
+      const account = () => screen.getByText(/^Now reads every 50 seconds/u).textContent ?? '';
+
+      fireEvent.click(screen.getByRole('button', { name: 'Reads get no answer' }));
+      await act(() => vi.advanceTimersByTimeAsync(9_000));
+      expect(account()).not.toMatch(/A read failed/u);
+
+      await act(() => vi.advanceTimersByTimeAsync(1_500));
+      expect(account()).toMatch(/A read failed at 16:40\./u);
+      expect(line.textContent).toBe('');
+
+      await act(() => vi.advanceTimersByTimeAsync(51_000));
+      expect(line.textContent).toBe('Offline · as of 16:40');
+    },
+  );
 });

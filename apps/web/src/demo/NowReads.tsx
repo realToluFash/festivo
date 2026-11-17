@@ -86,12 +86,15 @@ export function useNowReads(state: ReadsState | null, clock: string, locale: str
   const [reads, setReads] = useState<Reads>(() => startOf(state ?? 'live', start));
   const [answer, setAnswer] = useState<AnswerName>('order');
   const [now, setNow] = useState(start);
+  /** When the last read failed, for the demo's own account of its reads; null once one lands. */
+  const [failedAt, setFailedAt] = useState<Date | null>(null);
   const [startedFor, setStartedFor] = useState(`${state}|${clock}`);
 
   if (startedFor !== `${state}|${clock}`) {
     setStartedFor(`${state}|${clock}`);
     setReads(startOf(state ?? 'live', start));
     setNow(start);
+    setFailedAt(null);
   }
 
   useEffect(() => {
@@ -101,8 +104,10 @@ export function useNowReads(state: ReadsState | null, clock: string, locale: str
       const given = ANSWERS[answer];
       const answered = () => {
         const at = demoNow();
+        const outcome = outcomeOf(given);
 
-        setReads((was) => afterRead(was, outcomeOf(given), at));
+        setReads((was) => afterRead(was, outcome, at));
+        setFailedAt((was) => (outcome === 'failed' ? at : outcome === 'landed' ? null : was));
         setNow(at);
       };
 
@@ -157,6 +162,10 @@ export function useNowReads(state: ReadsState | null, clock: string, locale: str
             reads.landed == null
               ? 'No read has landed yet.'
               : `The last read landed at ${formatEventClock(reads.landed.toISOString(), EVENT_ZONE, locale)}.`
+          }${
+            failedAt == null
+              ? ''
+              : ` A read failed at ${formatEventClock(failedAt.toISOString(), EVENT_ZONE, locale)}.`
           } The line shows once a read has failed and that one is more than 60 seconds old; a read with no answer fails after 10 seconds.`}
         </p>
         <div className="na-demo-acts" role="group" aria-label="How Soirely answers">
