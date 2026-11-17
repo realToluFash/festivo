@@ -62,3 +62,10 @@ export function asColleagueChoice(raw: unknown): ColleagueChoice | null {
 
   return { userId, chosen: { kind, id, chair: typeof chair === 'number' ? chair : null } };
 }
+
+/** The userId of someone saying they still have the plan open, or null for anything else. */
+export function asPlanBeat(raw: unknown): string | null {
+  if (!isRecord(raw) || raw['here'] !== true || typeof raw['userId'] !== 'string') return null;
+
+  return raw['userId'];
+}

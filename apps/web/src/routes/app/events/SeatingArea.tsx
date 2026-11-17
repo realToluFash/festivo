@@ -15,6 +15,7 @@ import {
   type SectionContents,
   type SingleSeat,
   asColleagueChoice,
+  asPlanBeat,
   asPlanSubscriber,
   asPlanSubscribers,
   asSeating,
@@ -71,6 +72,7 @@ import { currentLocale } from '../../../i18n/index.ts';
 import { LayersContext, focusWhenFree, useDeskLayers } from '../../../layers.ts';
 import { pageTitle, usePageTitle } from '../../../pageTitle.ts';
 import { canOn, useSession } from '../../../session.ts';
+import { steadyTicks } from '../../../steadyTicks.ts';
 import {
   type Asking,
   BackHead,
@@ -117,18 +119,23 @@ import {
 import { fitOf, intoView, useCamera } from './seatingCamera.ts';
 import { Presence } from './SeatingPresence.tsx';
 import {
+  BEAT_MS,
   type ColleagueRing,
   NOBODY_ELSE,
   type OwnChoice,
   LEAVING_HOLD_MS,
   type PresenceState,
   RingsContext,
+  SILENT_MS,
+  beat,
   changed,
   chose,
   colleaguesOf,
   departed,
   listed,
+  quieted,
   ringsOf,
+  woke,
 } from './seatingPresence.ts';
 import {
   type Fold,
@@ -162,6 +169,7 @@ import './seating.css';
 type Load = { kind: 'loading' } | { kind: 'failed' } | { kind: 'loaded'; seating: Seating };
 
 const RETRY_MS = 5_000;
+const WATCH_MS = 1_000;
 const RENEW_BEFORE_MS = 60_000;
 const PAN_FROM_PX = 4;
 const STEP_TRIES = 3;
@@ -187,6 +195,7 @@ interface LiveHandlers {
   onSubscribers: (list: PlanSubscriber[]) => void;
   onSubscriber: (tab: PlanSubscriber) => void;
   onChoice: (choice: ColleagueChoice) => void;
+  onBeat: (userId: string) => void;
   onLost: () => void;
 }
 
@@ -207,6 +216,8 @@ function useLiveSeating(eventId: string, handlers: LiveHandlers) {
     let timer: ReturnType<typeof setTimeout> | undefined;
     let listing: ReturnType<typeof setTimeout> | undefined;
     let stopped = false;
+    let heardAt = Date.now();
+    let open = false;
 
     const connect = async (): Promise<void> => {
       let subscription;
@@ -229,6 +240,8 @@ function useLiveSeating(eventId: string, handlers: LiveHandlers) {
       source?.close();
       clearTimeout(listing);
       source = new EventSource(url);
+      heardAt = Date.now();
+      open = false;
       const opened = source;
       const list = (): void => {
         clearTimeout(listing);
@@ -245,10 +258,14 @@ function useLiveSeating(eventId: string, handlers: LiveHandlers) {
           );
       };
       source.onopen = () => {
+        heardAt = Date.now();
+        open = true;
+        sayHere();
         latest.current.onGap();
         list();
       };
       source.onmessage = (message: MessageEvent<string>) => {
+        heardAt = Date.now();
         let data: unknown = null;
         try {
           data = JSON.parse(message.data);
@@ -257,6 +274,8 @@ function useLiveSeating(eventId: string, handlers: LiveHandlers) {
         }
         const tab = asPlanSubscriber(data, topic);
         if (tab != null) return latest.current.onSubscriber(tab);
+        const here = asPlanBeat(data);
+        if (here != null) return latest.current.onBeat(here);
         const choice = asColleagueChoice(data);
         if (choice != null) return latest.current.onChoice(choice);
         const seating = asSeating(data);
@@ -264,11 +283,8 @@ function useLiveSeating(eventId: string, handlers: LiveHandlers) {
         else latest.current.onSeating(seating);
       };
       source.onerror = () => {
-        if (stopped) return;
-        latest.current.onLost();
-        if (source?.readyState !== EventSource.CLOSED) return;
-        clearTimeout(timer);
-        timer = setTimeout(() => void connect(), RETRY_MS);
+        if (stopped || source !== opened) return;
+        dropped();
       };
 
       const lapses = Date.parse(subscription.expiresAt) - Date.now() - RENEW_BEFORE_MS;
@@ -276,12 +292,41 @@ function useLiveSeating(eventId: string, handlers: LiveHandlers) {
       timer = setTimeout(() => void connect(), Math.max(lapses, RETRY_MS));
     };
 
+    /** Closed rather than left to the browser's retry, which would present a token that may have lapsed with the reader's access. */
+    const dropped = (): void => {
+      latest.current.onLost();
+      open = false;
+      source?.close();
+      source = null;
+      clearTimeout(listing);
+      clearTimeout(timer);
+      timer = setTimeout(() => void connect(), RETRY_MS);
+    };
+    const sayHere = (): void => {
+      if (open) api.sayHereOnPlan(eventId).catch(() => undefined);
+    };
+    let watchedAt = Date.now();
+    const stopBeating = steadyTicks(BEAT_MS, sayHere);
+    /** A page held back past a beat, by sleep or a hidden tab without a worker, says it is here and waits to be heard again rather than reconnecting. */
+    const stopWatching = steadyTicks(WATCH_MS, () => {
+      const now = Date.now();
+      const heldBack = now - watchedAt > BEAT_MS;
+      watchedAt = now;
+      if (source == null) return;
+      if (heldBack) {
+        heardAt = now;
+        sayHere();
+      } else if (now - heardAt > SILENT_MS) dropped();
+    });
+
     void connect();
 
     return () => {
       stopped = true;
       clearTimeout(timer);
       clearTimeout(listing);
+      stopBeating();
+      stopWatching();
       source?.close();
     };
   }, [eventId]);
@@ -302,6 +347,17 @@ function usePresence(event: OrganisationEvent) {
     return () => pending.forEach(clearTimeout);
   }, []);
 
+  useEffect(() => {
+    const say = (key: 'joinedPlan' | 'leftPlan', name: string) => t(`seating.${key}`, { name });
+    let tickedAt = Date.now();
+    return steadyTicks(WATCH_MS, () => {
+      const now = Date.now();
+      const heldBack = now - tickedAt > BEAT_MS;
+      tickedAt = now;
+      setPresence((was) => (heldBack ? woke(was, now) : quieted(was, now, me, say)));
+    });
+  }, [me, t]);
+
   const tell = useCallback(
     (chosen: OwnChoice | null, again = false) => {
       mine.current = chosen;
@@ -318,11 +374,11 @@ function usePresence(event: OrganisationEvent) {
 
   const handlers: Omit<LiveHandlers, 'onSeating' | 'onGap'> = {
     onSubscribers: (list) => {
-      setPresence((was) => listed(was, list));
+      setPresence((was) => listed(was, list, Date.now()));
       if (mine.current != null) tell(mine.current, true);
     },
     onSubscriber: (tab) => {
-      setPresence((was) => changed(was, tab, me, say));
+      setPresence((was) => changed(was, tab, me, say, Date.now()));
       if (!tab.active)
         holds.current.push(
           setTimeout(
@@ -334,6 +390,9 @@ function usePresence(event: OrganisationEvent) {
     },
     onChoice: (choice) => {
       if (choice.userId !== me) setPresence((was) => chose(was, choice));
+    },
+    onBeat: (userId) => {
+      if (userId !== me) setPresence((was) => beat(was, userId, Date.now(), say));
     },
     onLost: () =>
       setPresence((was) => (was.connection === 'lost' ? was : { ...was, connection: 'lost' })),

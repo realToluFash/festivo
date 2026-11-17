@@ -449,6 +449,16 @@ final readonly class SeatingPlanController
         return new Response(status: Response::HTTP_NO_CONTENT);
     }
 
+    /** Someone with the plan open, editor or viewer, saying so every few seconds; told to everyone with it open and kept nowhere (sc-4719). */
+    #[Route('/api/events/{eventId}/seating-plan/here', name: 'seating_plan_here', methods: ['POST'])]
+    #[InEvent(Permission::SeatingRead)]
+    public function here(string $eventId): Response
+    {
+        $this->seatingPlanEditor->announceHere($this->event($eventId), $this->user());
+
+        return new Response(status: Response::HTTP_NO_CONTENT);
+    }
+
     /** @param array<string, string|list<string>> $chosen a table's, row's or seat's id as `tableId`, `rowId` or `seatId`, so a client opens the one it added, or the ids it should choose as `chosen` */
     private function seating(Event $event, ?SeatingPlan $plan, int $status = Response::HTTP_OK, array $chosen = []): JsonResponse
     {
