@@ -5,15 +5,15 @@
 const query = `${MAILPIT_URL}/api/v1/search?query=${encodeURIComponent(`to:${EMAIL}`)}`;
 const before = typeof AFTER === 'undefined' || AFTER === '' ? -1 : Number(AFTER);
 const deadline = Date.now() + 30000;
-let messages = json(http.get(query).body).messages;
-while (messages.length <= before && Date.now() < deadline) {
-  messages = json(http.get(query).body).messages;
+let found = json(http.get(query).body);
+while (found.messages_count <= before && Date.now() < deadline) {
+  found = json(http.get(query).body);
 }
-if (messages.length <= before) {
+if (found.messages_count <= before) {
   throw new Error(`No new email reached ${EMAIL} in Mailpit (${MAILPIT_URL}) within 30s`);
 }
-const codes = messages.map((found) => {
-  const message = http.get(`${MAILPIT_URL}/api/v1/message/${found.ID}`);
+const codes = found.messages.map((summary) => {
+  const message = http.get(`${MAILPIT_URL}/api/v1/message/${summary.ID}`);
   return json(message.body).Text.match(/\b\d{6}\b/);
 });
 const newest = codes.find((code) => code !== null);
