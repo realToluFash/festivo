@@ -4,7 +4,7 @@ import { shareAsync } from 'expo-sharing';
 
 import { EXPORT_TYPES } from './guestExport.ts';
 
-/** Writes the bytes to the cache under the name the dialog showed; handing them over opens the system share sheet, and the file is deleted once it closes, so the app keeps no copy. */
+/** Writes the bytes to the cache under the name the dialog showed; handing them over opens the system share sheet, and the file is deleted once it closes, so the app keeps no copy; a write that fails deletes it too. */
 export async function writeToShare(
   bytes: Uint8Array<ArrayBuffer>,
   name: string,
@@ -13,7 +13,12 @@ export async function writeToShare(
   const file = new File(Paths.cache, name);
 
   file.create({ overwrite: true });
-  await file.write(bytes);
+  try {
+    await file.write(bytes);
+  } catch (error) {
+    if (file.exists) file.delete();
+    throw error;
+  }
 
   return async () => {
     try {
