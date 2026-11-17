@@ -4,7 +4,6 @@ import { createContext, useContext } from 'react';
 
 const TONES = 6;
 
-/** Someone else with the plan open, in their colour by the order they arrived (sc-4719). */
 export interface Colleague {
   userId: string;
   name: string;
@@ -13,13 +12,11 @@ export interface Colleague {
   editor: boolean;
 }
 
-/** A colleague's choice as the plan draws it: on the item, and the chair when it is one of a table's. */
 export interface ColleagueRing extends Colleague {
   chair: number | null;
 }
 
 export interface PresenceState {
-  /** Each tab open on the plan, by the hub's subscriber. */
   tabs: Record<string, PlanSubscriber>;
   /** Everyone seen, in the order they arrived, for their colour. */
   arrived: string[];
@@ -45,7 +42,6 @@ function hereNow(tabs: Record<string, PlanSubscriber>, userId: string): PlanSubs
   return Object.values(tabs).find((tab) => tab.userId === userId) ?? null;
 }
 
-/** The hub's list on (re)connecting replaces what was known, without announcing anyone. */
 export function listed(state: PresenceState, list: PlanSubscriber[]): PresenceState {
   const tabs = Object.fromEntries(list.map((tab) => [tab.subscriber, tab]));
   const arrived = list.reduce(
@@ -91,7 +87,6 @@ export function chose(state: PresenceState, choice: ColleagueChoice): PresenceSt
   return { ...state, chosen: { ...state.chosen, [choice.userId]: choice.chosen } };
 }
 
-/** Everyone else here, each once however many tabs they have open, in the order they arrived. */
 export function colleaguesOf(state: PresenceState, me: string): Colleague[] {
   const others = state.arrived.filter((userId) => userId !== me);
 
@@ -124,14 +119,12 @@ export function ringsOf(state: PresenceState, me: string): Record<string, Collea
   return rings;
 }
 
-/** What each colleague here has chosen, by item, for the room and the side panel to draw. */
 export const RingsContext = createContext<Readonly<Record<string, ColleagueRing>>>({});
 
 export function useRing(id: string): ColleagueRing | null {
   return useContext(RingsContext)[id] ?? null;
 }
 
-/** What you have chosen, as the API tells your colleagues. */
 export interface OwnChoice {
   kind: 'table' | 'row' | 'seat';
   id: string;

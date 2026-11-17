@@ -33,11 +33,7 @@ final readonly class SubscriberTokenIssuer
         return $this->issue([RealtimeTopic::UserNotifications->for($user->getId()->toRfc4122())]);
     }
 
-    /**
-     * One event's seating, its editors' choices, and who else has it open, for someone the route has already found holds seating.read on it (sc-3998, sc-4719).
-     *
-     * The hub shows this payload to the event's other subscribers, so it names the person and never gives their email address.
-     */
+    /** The hub shows the payload to the event's other subscribers: a name, never an email address (sc-4719). */
     public function issueForEventSeating(Uuid $eventId, User $user, bool $editor): IssuedSubscriberToken
     {
         $seating = RealtimeTopic::EventSeating->for($eventId->toRfc4122());
