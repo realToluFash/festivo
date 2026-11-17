@@ -8,10 +8,10 @@ appId: host.exp.Exponent
     timeout: 30000
 - scrollUntilVisible:
     element:
-      id: 'eventForm.venueAddress'
+      id: 'eventForm.venue.address'
     direction: DOWN
 - tapOn:
-    id: 'eventForm.venueAddress'
+    id: 'eventForm.venue.address'
 - inputText: 'Praca do Comercio Lisboa'
 - waitForAnimationToEnd:
     timeout: 5000

@@ -13,7 +13,12 @@ export function useLeaveGuard({
   dirty: boolean;
   busy: boolean;
   body: string;
-}): { release: () => void; dialog: ReactNode } {
+}): {
+  release: () => void;
+  dialog: ReactNode;
+  /** The question as answers, for a page that asks it in its own dialog. */
+  asking: { keep: () => void; go: () => void } | null;
+} {
   const { t } = useTranslation();
   const released = useRef(false);
   const blocker = useBlocker(
@@ -49,5 +54,10 @@ export function useLeaveGuard({
       </ConfirmDialog>
     ) : null;
 
-  return { release, dialog };
+  const asking =
+    blocker.state === 'blocked' && !busy
+      ? { keep: () => blocker.reset(), go: () => blocker.proceed() }
+      : null;
+
+  return { release, dialog, asking };
 }

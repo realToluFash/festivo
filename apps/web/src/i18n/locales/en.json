@@ -216,6 +216,8 @@
     "problems_one": "{{count, number}} field needs fixing, so nothing was sent.",
     "problems_other": "{{count, number}} fields need fixing, so nothing was sent.",
     "notCreated": "Not created. Nothing was saved. Try again.",
+    "coverHeading": "Cover photo",
+    "created": "Created. Opening the event.",
     "venueHeading": "Venue",
     "venueName": "Venue name",
     "optional": "Optional",

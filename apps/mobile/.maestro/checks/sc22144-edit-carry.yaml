@@ -8,12 +8,12 @@ appId: host.exp.Exponent
     timeout: 30000
 - scrollUntilVisible:
     element:
-      id: 'eventForm.start.date'
+      id: 'eventForm.startDate'
     direction: DOWN
     centerElement: true
 - takeScreenshot: loaded
 - tapOn:
-    id: 'eventForm.start.date'
+    id: 'eventForm.startDate'
 - waitForAnimationToEnd
 - swipe:
     start: 23%, 47%
@@ -25,7 +25,7 @@ appId: host.exp.Exponent
 - waitForAnimationToEnd
 - takeScreenshot: start-later
 - tapOn:
-    id: 'eventForm.end.date'
+    id: 'eventForm.endDate'
 - waitForAnimationToEnd
 - swipe:
     start: 23%, 47%
@@ -36,7 +36,7 @@ appId: host.exp.Exponent
 - waitForAnimationToEnd
 - takeScreenshot: end-later
 - tapOn:
-    id: 'eventForm.start.date'
+    id: 'eventForm.startDate'
 - waitForAnimationToEnd
 - swipe:
     start: 23%, 47%
