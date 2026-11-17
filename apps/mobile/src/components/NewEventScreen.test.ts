@@ -46,10 +46,13 @@ describe("the app's New event refuses on its fields (sc-48607)", () => {
     expect(screen).toContain('error={errors.timeZone ?? null}');
   });
 
-  it('hands the created draft’s id to onCreated once its cover is settled', () => {
+  it('says Created once its cover is settled, and opens the event after the line has been up', () => {
     expect(send).toMatch(
-      /const created = await api\.createEvent\([\s\S]*await coverAfterCreate\([\s\S]*onCreated\(created\.id\);/u,
+      /const created = await api\.createEvent\([\s\S]*await coverAfterCreate\([\s\S]*setStatus\('created'\);\s*setOpening\(created\.id\);/u,
     );
+    expect(send).not.toContain('onCreated(');
+    expect(screen).toContain('const OPENING_MS = 1600;');
+    expect(screen).toMatch(/setTimeout\(\(\) => opens\.current\(opening\), OPENING_MS\)/u);
   });
 });
 

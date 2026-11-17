@@ -88,6 +88,9 @@ import { Pill } from './SettingsParts.tsx';
 import { ASK_WIDTH, type AskProps, FocusedScreen } from './Summary.tsx';
 
 type Status = 'editing' | 'sending' | 'failed' | 'created';
+
+/** How long "Created. Opening the event." is up before the event opens, as the app demo holds it (sc-48607). */
+const OPENING_MS = 1600;
 type ListOpen = 'type' | 'zone' | 'currency';
 
 type Photo =
@@ -126,6 +129,7 @@ export function NewEventScreen({
   const [hostsChecked, setHostsChecked] = useState(false);
   const [unsent, setUnsent] = useState<{ count: number; keysGoDown: boolean } | null>(null);
   const [status, setStatus] = useState<Status>('editing');
+  const [opening, setOpening] = useState<string | null>(null);
   const [picking, setPicking] = useState<Picking | null>(null);
   const [list, setList] = useState<ListOpen | null>(null);
   const [leaving, setLeaving] = useState(false);
@@ -164,6 +168,18 @@ export function NewEventScreen({
     currency: useRef<ViewInstance>(null),
   };
   const busy = status === 'sending' || status === 'created';
+  const opens = useRef(onCreated);
+
+  useEffect(() => {
+    opens.current = onCreated;
+  }, [onCreated]);
+
+  useEffect(() => {
+    if (opening == null) return undefined;
+    const id = setTimeout(() => opens.current(opening), OPENING_MS);
+
+    return () => clearTimeout(id);
+  }, [opening]);
   const { draft, venue, timeZone, currency, hosts } = typed;
   const quietAfter = quietOn?.field ?? null;
   const dirty = isDirty(typed, from) || photo.kind !== 'none';
@@ -393,7 +409,7 @@ export function NewEventScreen({
       );
 
       setStatus('created');
-      onCreated(created.id);
+      setOpening(created.id);
     } catch (error) {
       const outcome = sendOutcome(error, t, newEventHosts(hosts));
 
