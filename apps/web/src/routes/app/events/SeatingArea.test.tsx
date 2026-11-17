@@ -5815,6 +5815,20 @@ describe('Seating on the Floor plan (sc-5030)', () => {
     expect(document.querySelectorAll('.st-room-for')).toHaveLength(0);
   });
 
+  it('lights the table under the pointer in Tint while a guest is picked', async () => {
+    signedIn();
+    await pickAda();
+
+    const t1 = document.querySelector('[data-table="t1"]')!;
+
+    expect(t1.querySelectorAll('.st-lit')).toHaveLength(0);
+    fireEvent.pointerEnter(t1.parentElement!);
+    expect(t1.querySelectorAll('.st-lit')).toHaveLength(1);
+    expect(t1.getAttribute('aria-pressed')).toBe('false');
+    fireEvent.pointerLeave(t1.parentElement!);
+    expect(t1.querySelectorAll('.st-lit')).toHaveLength(0);
+  });
+
   it('below 50% draws no chairs, puts the tag in place of the bar, and seats at the table clicked', async () => {
     signedIn();
     const sent = await pickAda();

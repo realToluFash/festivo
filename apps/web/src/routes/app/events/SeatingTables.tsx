@@ -368,6 +368,7 @@ export function TableDrawing({
   chosenSeat,
   outside,
   picking = false,
+  tinted = false,
   onChoose,
   onChair,
   onChairTip,
@@ -381,6 +382,7 @@ export function TableDrawing({
   chosenSeat: number | null;
   outside: boolean;
   picking?: boolean;
+  tinted?: boolean;
   onChoose: () => void;
   onChair: (seat: number) => void;
   onChairTip?: (tip: ChairTip | null) => void;
@@ -556,7 +558,7 @@ export function TableDrawing({
         onChoose();
       }}
     >
-      {lit && box(10, 'st-lit', 'lit')}
+      {(lit || tinted) && box(10, 'st-lit', 'lit')}
       {round ? (
         <circle
           className="st-hit"

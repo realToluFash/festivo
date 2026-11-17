@@ -680,6 +680,7 @@ function Plan({
   const [bar, setBar] = useState<StepBar | null>(null);
   const [tab, setTab] = useState<'arrange' | 'seat'>('arrange');
   const [pickedGuest, setPickedGuest] = useState<string | null>(null);
+  const [pointedAt, setPointedAt] = useState<string | null>(null);
   const [chairTip, setChairTip] = useState<{ pick: string; tip: ChairTip } | null>(null);
   const [moveFrom, setMoveFrom] = useState<string | null>(null);
   const [seatingView, setSeatingView] = useState<SeatingView>('plan');
@@ -2286,6 +2287,7 @@ function Plan({
                   }
                   outside={outlined}
                   picking={party != null}
+                  tinted={party != null && pointedAt === id}
                   onChairTip={showChairTip}
                   onChoose={() =>
                     party != null ? seatAt(item) : open({ kind: 'table', id }, true)
@@ -2311,6 +2313,7 @@ function Plan({
                   }
                   outside={outlined}
                   picking={party != null}
+                  tinted={party != null && pointedAt === id}
                   onChairTip={showChairTip}
                   onChoose={() => (party != null ? seatAt(item) : open({ kind: 'row', id }, true))}
                   onChair={(seat) =>
@@ -2341,6 +2344,8 @@ function Plan({
                 key={id}
                 className={readOnly ? undefined : 'st-movable'}
                 onPointerDown={(event) => onItemDown(event, item)}
+                onPointerEnter={() => setPointedAt(id)}
+                onPointerLeave={() => setPointedAt((now) => (now === id ? null : now))}
                 onClickCapture={(event) => {
                   if (dragged.current) {
                     dragged.current = false;

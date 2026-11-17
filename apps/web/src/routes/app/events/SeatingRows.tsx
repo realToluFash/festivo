@@ -115,6 +115,7 @@ export function RowDrawing({
   chosenSeat,
   outside,
   picking = false,
+  tinted = false,
   onChoose,
   onChair,
   onChairTip,
@@ -128,6 +129,7 @@ export function RowDrawing({
   chosenSeat: number | null;
   outside: boolean;
   picking?: boolean;
+  tinted?: boolean;
   onChoose: () => void;
   onChair: (seat: number) => void;
   onChairTip?: (tip: ChairTip | null) => void;
@@ -249,7 +251,7 @@ export function RowDrawing({
       onClick={onChoose}
       onKeyDown={onKeys(onChoose)}
     >
-      {lit && box(10, 'st-lit')}
+      {(lit || tinted) && box(10, 'st-lit')}
       <g transform={`translate(${f(cx)} ${f(cy)}) rotate(${row.rotation})`}>
         <rect
           className="st-hit"
