@@ -1129,17 +1129,19 @@ function ItemPanel({
                 {t('schedule.deleteItemAsk')}
               </button>
             )}
-            <button type="button" className="desk-text ro-cancel" onClick={onClose}>
-              {t('schedule.cancel')}
-            </button>
-            <button
-              type="button"
-              className="gs-pill is-primary ro-save"
-              aria-disabled={busy || undefined}
-              onClick={onSave}
-            >
-              {t(gone ? 'schedule.addAgain' : 'schedule.save')}
-            </button>
+            <div className="ro-acts-end">
+              <button type="button" className="desk-text ro-cancel" onClick={onClose}>
+                {t('schedule.cancel')}
+              </button>
+              <button
+                type="button"
+                className="gs-pill is-primary ro-save"
+                aria-disabled={busy || undefined}
+                onClick={onSave}
+              >
+                {t(gone ? 'schedule.addAgain' : 'schedule.save')}
+              </button>
+            </div>
           </div>
         )}
       </div>
