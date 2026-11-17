@@ -169,7 +169,7 @@ describe('The event’s Menu (sc-3902)', () => {
     expect(cards[2]?.textContent).toContain('Empty · not shown to guests');
     expect(screen.getByText('3 courses · 3 dishes')).toBeDefined();
     expect(screen.getByText('2 of 3 courses ready')).toBeDefined();
-    expect(screen.getByText('2 of 3 ready').closest('a')?.getAttribute('href')).toBe(
+    expect((await screen.findByText('2 of 3 ready')).closest('a')?.getAttribute('href')).toBe(
       '/app/events/ev_1/menu',
     );
     expect(
