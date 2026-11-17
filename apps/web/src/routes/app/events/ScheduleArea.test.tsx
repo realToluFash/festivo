@@ -212,6 +212,44 @@ describe('The event’s Schedule (sc-3893)', () => {
     expect(main.textContent).toContain('Shown to guests');
   });
 
+  it('keeps each word of an owner whole, wrapping at its spaces only, on the column and the line under the title (sc-63743)', async () => {
+    const SEATED = item('it_seated', 'Guests seated', '2030-11-15T20:00:00+00:00', '2030-11-15', {
+      ownerName: 'Chief Mrs Folasade Okonkwo-Williams',
+      ownerRole: 'Aunt',
+    });
+    await onSchedule({
+      'GET /api/events/ev_1/schedule': () => json({ schedule: schedule([SEATED]) }),
+    });
+
+    const main = await screen.findByRole('table', { name: 'Main' });
+    expect(main.closest('.ro-fit')).not.toBeNull();
+    const owner = main.querySelector('.ro-owner-name') as HTMLElement;
+    expect(owner.textContent).toBe('Chief Mrs Folasade Okonkwo-Williams');
+    expect([...owner.querySelectorAll('.ro-word')].map((one) => one.textContent)).toEqual([
+      'Chief',
+      'Mrs',
+      'Folasade',
+      'Okonkwo-Williams',
+    ]);
+    const under = main.querySelector('.ro-under') as HTMLElement;
+    expect(under.querySelectorAll('.ro-word').length).toBeGreaterThan(1);
+    expect([...under.querySelectorAll('.ro-word')].map((one) => one.textContent)).toContain(
+      'Okonkwo-Williams',
+    );
+
+    expect(cssRule('.ro-owner-name', SCHEDULE_CSS)).not.toContain('overflow-wrap');
+    const word = cssRule('.ro-word', SCHEDULE_CSS);
+    expect(word).toContain('display: inline-block;');
+    expect(word).toContain('max-width: var(--roWordCap);');
+    expect(word).toContain('overflow-wrap: anywhere;');
+    expect(cssRule('.ro-fit', SCHEDULE_CSS)).toContain(
+      '--roWordCap: calc(100cqw - 136px - 2 * var(--spaceMd) - 6rem);',
+    );
+    expect(
+      cssRule('.ro-fit', SCHEDULE_CSS.slice(SCHEDULE_CSS.indexOf('(width <= 720px)'))),
+    ).toContain('--roWordCap: calc(100cqw - 72px - var(--spaceMd));');
+  });
+
   it("sits inside the desk's button and field resets, and gives the narrow page its own padding", async () => {
     await onSchedule({
       'GET /api/events/ev_1/schedule': () => json({ schedule: schedule([DRINKS, BRUNCH]) }),
