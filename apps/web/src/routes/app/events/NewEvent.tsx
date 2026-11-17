@@ -1,5 +1,6 @@
 import { ApiError, type Membership } from '@soirely/api-client';
 import {
+  COVER_DESCRIPTION_MAXIMUM,
   COVER_MIDDLE,
   CURRENCY_CODES,
   EVENT_NAME_MAXIMUM,
@@ -23,6 +24,7 @@ import {
   skippedLine,
   venueDraftOf,
   venueSent,
+  visibleLength,
 } from '@soirely/domain';
 import { type FormEvent, type ReactNode, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -38,7 +40,8 @@ import {
 } from '../../../components/EventFormParts.tsx';
 import { Broken, DateTime, EditText } from '../../../components/EventPageParts.tsx';
 import { Glyph } from '../../../components/Glyph.tsx';
-import { Ask, RedAction, TitleRow } from '../../../components/SettingsParts.tsx';
+import { CoverPhotoFields } from '../../../components/CoverEdit.tsx';
+import { Ask, TitleRow } from '../../../components/SettingsParts.tsx';
 import { currentLocale, dateLocale } from '../../../i18n/index.ts';
 import { LayersContext, useDeskLayers } from '../../../layers.ts';
 import { meshFor } from '../../../mesh.ts';
@@ -112,12 +115,17 @@ function EventForm({ organisation }: { organisation: Membership }) {
   const [hostsChecked, setHostsChecked] = useState(false);
   const [chosen, setChosen] = useState<Chosen | null>(null);
   const [coverRefusal, setCoverRefusal] = useState<string | null>(null);
+  const [position, setPosition] = useState(COVER_MIDDLE);
+  const [description, setDescription] = useState('');
+  const [tooLong, setTooLong] = useState(false);
   const [unsent, setUnsent] = useState(0);
   const [moved, setMoved] = useState<string | null>(null);
   const [status, setStatus] = useState<Status>('editing');
   const focusNext = useRef<(() => void) | null>(null);
   const fileInput = useRef<HTMLInputElement>(null);
   const uploadButton = useRef<HTMLButtonElement>(null);
+  const describe = useRef<HTMLInputElement>(null);
+  const preview = useRef<HTMLImageElement>(null);
   const currencies = useMemo(() => currencyChoices('', currency, locale, t), [currency, locale, t]);
   const zones = useMemo(
     () => timeZoneChoices(organisation.timezone, timeZone),
@@ -140,6 +148,10 @@ function EventForm({ organisation }: { organisation: Membership }) {
     focusNext.current?.();
     focusNext.current = null;
   }, [errors, hostErrors]);
+
+  useEffect(() => {
+    if (preview.current != null) preview.current.style.objectPosition = `50% ${position}%`;
+  }, [chosen, position]);
 
   useEffect(() => {
     const url = chosen?.url;
@@ -215,6 +227,9 @@ function EventForm({ organisation }: { organisation: Membership }) {
 
     setCoverRefusal(null);
     setChosen({ file, url: checked.shows ? URL.createObjectURL(file) : null });
+    setPosition(COVER_MIDDLE);
+    setDescription('');
+    setTooLong(false);
     touched();
   }
 
@@ -233,8 +248,8 @@ function EventForm({ organisation }: { organisation: Membership }) {
       await api.previewEventCoverUpload(organisation.id, signed.key);
       await api.setEventCover(eventId, {
         uploadKey: signed.key,
-        position: COVER_MIDDLE,
-        description: null,
+        position,
+        description: description.trim() === '' ? null : description.trim(),
       });
 
       return null;
@@ -253,15 +268,20 @@ function EventForm({ organisation }: { organisation: Membership }) {
     const found: Errors = eventFormErrors({ draft, venue, timeZone, currency }, t);
     const sentHosts = newEventHosts(hosts);
     const hostFound = hostErrorsOf(sentHosts, t);
-    const unsentFields = Object.keys(found).length + Object.keys(hostFound).length;
+    const describeWrong = chosen != null && visibleLength(description) > COVER_DESCRIPTION_MAXIMUM;
+    const unsentFields =
+      Object.keys(found).length + Object.keys(hostFound).length + (describeWrong ? 1 : 0);
     const { type } = draft;
 
     setHostsChecked(true);
+    setTooLong(describeWrong);
 
     if (unsentFields > 0 || type === '') {
       setUnsent(unsentFields);
       setStatus('editing');
       refuse(found, undefined, hostFound);
+      if (describeWrong && !aboveCover(firstRefusedOf(found, hostFound, hosts)))
+        focusNext.current = () => describe.current?.focus();
       return;
     }
 
@@ -367,7 +387,7 @@ function EventForm({ organisation }: { organisation: Membership }) {
             chosen == null ? null : chosen.url == null ? (
               <Glyph name="photo" size={56} weight={1.6} />
             ) : (
-              <img src={chosen.url} alt="" />
+              <img ref={preview} src={chosen.url} alt="" />
             )
           }
           mesh={meshFor(draft.type === '' ? 'new-event' : draft.type)}
@@ -384,17 +404,30 @@ function EventForm({ organisation }: { organisation: Membership }) {
           onChange={(change) => void pick(change.target.files?.[0])}
         />
         {chosen != null ? (
-          !busy && (
-            <RedAction
-              label={t('eventCover.remove')}
-              line={t('eventCover.removeLine')}
-              onClick={() => {
-                setChosen(null);
-                touched();
-                requestAnimationFrame(() => uploadButton.current?.focus());
-              }}
-            />
-          )
+          <CoverPhotoFields
+            position={position}
+            onPosition={(next) => {
+              setPosition(next);
+              touched();
+            }}
+            description={description}
+            onDescription={(next) => {
+              setDescription(next);
+              setTooLong(false);
+              touched();
+            }}
+            tooLong={tooLong}
+            describeRef={describe}
+            off={busy}
+            onChange={() => fileInput.current?.click()}
+            onRemove={() => {
+              setChosen(null);
+              setDescription('');
+              setTooLong(false);
+              touched();
+              requestAnimationFrame(() => uploadButton.current?.focus());
+            }}
+          />
         ) : (
           <CoverUpload
             words={{
@@ -560,6 +593,14 @@ function EventForm({ organisation }: { organisation: Membership }) {
 }
 
 /** What a start or end in the clocks' gap is saved as, in a region that is there before the line is, so it is read out (sc-10638). */
+/** Whether the first refusal sits above the cover's Description in the form: Event name, Type or a host. */
+function aboveCover(first: ReturnType<typeof firstRefusedOf>): boolean {
+  if (first == null) return false;
+  if ('host' in first) return true;
+
+  return first.field === 'name' || first.field === 'type';
+}
+
 function Gap({ id, line }: { id: string; line: string | null }) {
   return (
     <div id={id} aria-live="polite">

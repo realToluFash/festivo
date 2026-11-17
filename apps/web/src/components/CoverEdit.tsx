@@ -5,7 +5,7 @@ import {
   positionPart,
   visibleLength,
 } from '@soirely/domain';
-import { useEffect, useId, useRef, useState } from 'react';
+import { type RefObject, useEffect, useId, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { checkCoverPick } from '../coverPick.ts';
@@ -196,8 +196,6 @@ export function CoverEdit<Saved>({
     onSaved(result);
   }
 
-  const part = positionPart(position);
-
   return (
     <Opened
       label={t('eventCover.heading')}
@@ -249,54 +247,19 @@ export function CoverEdit<Saved>({
       {photo != null ? (
         <>
           {pickRefused != null && <Broken>{pickRefused}</Broken>}
-          <button
-            ref={picker}
-            type="button"
-            className="desk-text"
-            onClick={() => fileInput.current?.click()}
-          >
-            {t('eventCover.change')}
-          </button>
-          <div className="desk-field">
-            <label htmlFor={`${id}-position`} className="desk-label">
-              {t('eventCover.position')}
-            </label>
-            <input
-              id={`${id}-position`}
-              type="range"
-              className="ev-slider"
-              min={0}
-              max={100}
-              step={1}
-              value={position}
-              aria-valuetext={t(`eventCover.showing_${part}`)}
-              onChange={(change) => setPosition(Number(change.target.value))}
-            />
-            <div className="ev-slider-ends" aria-hidden="true">
-              <span>{t('eventCover.top')}</span>
-              <span>{t('eventCover.bottom')}</span>
-            </div>
-            <p className="desk-help">{t(`eventCover.showing_${part}`)}</p>
-          </div>
-          <EditText
-            label={t('eventCover.describe')}
-            optional
-            value={description}
-            inputRef={describe}
-            error={
-              tooLong ? t('eventCover.describeTooLong', { most: COVER_DESCRIPTION_MAXIMUM }) : null
-            }
-            help={`${t('eventCover.describeHint')} ${t('eventCover.describeCount', { count, most: COVER_DESCRIPTION_MAXIMUM })}`}
-            input={{ autoComplete: 'off' }}
-            onChange={(value) => {
+          <CoverPhotoFields
+            position={position}
+            onPosition={setPosition}
+            description={description}
+            onDescription={(value) => {
               setDescription(value);
               setTooLong(false);
             }}
-          />
-          <RedAction
-            label={t('eventCover.remove')}
-            line={t('eventCover.removeLine')}
-            onClick={remove}
+            tooLong={tooLong}
+            describeRef={describe}
+            pickerRef={picker}
+            onChange={() => fileInput.current?.click()}
+            onRemove={remove}
           />
         </>
       ) : (
@@ -322,5 +285,84 @@ export function CoverEdit<Saved>({
         </>
       )}
     </Opened>
+  );
+}
+
+/** Change, Position, Description and Remove under a chosen photo, as the cover part draws them; New event shows the same (sc-48607). */
+export function CoverPhotoFields({
+  position,
+  onPosition,
+  description,
+  onDescription,
+  tooLong,
+  describeRef,
+  pickerRef,
+  off = false,
+  onChange,
+  onRemove,
+}: {
+  position: number;
+  onPosition: (position: number) => void;
+  description: string;
+  onDescription: (description: string) => void;
+  tooLong: boolean;
+  describeRef: RefObject<HTMLInputElement | null>;
+  pickerRef?: RefObject<HTMLButtonElement | null>;
+  off?: boolean;
+  onChange: () => void;
+  onRemove: () => void;
+}) {
+  const { t } = useTranslation();
+  const id = useId();
+  const part = positionPart(position);
+  const count = visibleLength(description);
+
+  return (
+    <>
+      <button ref={pickerRef} type="button" className="desk-text" disabled={off} onClick={onChange}>
+        {t('eventCover.change')}
+      </button>
+      <div className="desk-field">
+        <label htmlFor={`${id}-position`} className="desk-label">
+          {t('eventCover.position')}
+        </label>
+        <input
+          id={`${id}-position`}
+          type="range"
+          className="ev-slider"
+          min={0}
+          max={100}
+          step={1}
+          value={position}
+          disabled={off}
+          aria-valuetext={t(`eventCover.showing_${part}`)}
+          onChange={(change) => onPosition(Number(change.target.value))}
+        />
+        <div className="ev-slider-ends" aria-hidden="true">
+          <span>{t('eventCover.top')}</span>
+          <span>{t('eventCover.bottom')}</span>
+        </div>
+        <p className="desk-help">{t(`eventCover.showing_${part}`)}</p>
+      </div>
+      <EditText
+        label={t('eventCover.describe')}
+        optional
+        value={description}
+        inputRef={describeRef}
+        error={
+          tooLong ? t('eventCover.describeTooLong', { most: COVER_DESCRIPTION_MAXIMUM }) : null
+        }
+        help={`${t('eventCover.describeHint')} ${t('eventCover.describeCount', { count, most: COVER_DESCRIPTION_MAXIMUM })}`}
+        input={{ autoComplete: 'off', readOnly: off }}
+        onChange={onDescription}
+      />
+      {!off && (
+        <RedAction
+          label={t('eventCover.remove')}
+          line={t('eventCover.removeLine')}
+          onClick={onRemove}
+        />
+      )}
+    </>
   );
 }

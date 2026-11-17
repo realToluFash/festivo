@@ -4071,6 +4071,64 @@ describe('The cover (sc-3590)', () => {
     );
   });
 
+  function filledNewEvent(): void {
+    fireEvent.change(document.getElementById('event-name')!, { target: { value: 'Owambe' } });
+    fireEvent.change(document.getElementById('event-type')!, { target: { value: 'wedding' } });
+    for (const [id, value] of [
+      ['event-start-date', '2026-11-14'],
+      ['event-start-time', '16:00'],
+      ['event-end-time', '23:00'],
+    ] as const)
+      fireEvent.change(document.getElementById(id)!, { target: { value } });
+  }
+
+  it('a new event sends the position and description the host chose with its photo (sc-48607)', async () => {
+    signedIn();
+    const sent = serving(null, {
+      'POST /api/orgs/org_1/events': () => json({ event: event() }, 201),
+    });
+    at('/app/events/new');
+    await screen.findByRole('heading', { level: 1, name: 'New event' });
+
+    choose(file());
+    fireEvent.change(await screen.findByRole('slider', { name: 'Photo position' }), {
+      target: { value: '10' },
+    });
+    fireEvent.change(screen.getByLabelText(/Describe the image/u), {
+      target: { value: '  Adaeze under the arch  ' },
+    });
+    expect(screen.getByRole('button', { name: 'Change photo' })).toBeTruthy();
+    filledNewEvent();
+    fireEvent.click(screen.getByRole('button', { name: 'Create event' }));
+
+    await waitFor(() =>
+      expect(sent.find(({ line }) => line === 'PUT /api/events/ev_1/cover')?.body).toEqual({
+        uploadKey: 'event_cover/org_1/2026/10/one.jpg',
+        position: 10,
+        description: 'Adaeze under the arch',
+      }),
+    );
+  });
+
+  it('a new event refuses a description over 250 characters before anything is created (sc-48607)', async () => {
+    signedIn();
+    const sent = serving(null);
+    at('/app/events/new');
+    await screen.findByRole('heading', { level: 1, name: 'New event' });
+
+    choose(file());
+    const describe = await screen.findByLabelText(/Describe the image/u);
+    fireEvent.change(describe, { target: { value: 'a'.repeat(251) } });
+    filledNewEvent();
+    fireEvent.click(screen.getByRole('button', { name: 'Create event' }));
+
+    expect(
+      await screen.findByText('Shorten the description to 250 characters or fewer.'),
+    ).toBeTruthy();
+    await waitFor(() => expect(document.activeElement).toBe(describe));
+    expect(sent.map(({ line }) => line)).not.toContain('POST /api/orgs/org_1/events');
+  });
+
   it('a new event left without saving has uploaded nothing (sc-22147)', async () => {
     signedIn();
     const sent = serving(null);
