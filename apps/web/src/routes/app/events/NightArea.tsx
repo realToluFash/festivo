@@ -353,7 +353,8 @@ function Night({
     }
     const target =
       (refocus.row == null ? undefined : rows.get(refocus.row)) ??
-      cards.current?.querySelector<HTMLElement>('button.nt-big, a, button') ??
+      cards.current?.querySelector<HTMLElement>('button.nt-big') ??
+      cards.current?.querySelector<HTMLElement>('a, button') ??
       cards.current;
     target?.focus();
   }, [refocus, schedule, rows]);
