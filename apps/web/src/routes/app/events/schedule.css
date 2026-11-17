@@ -453,9 +453,9 @@
   display: block;
 }
 
-/* The cap is what Starts (64), Lasts (72), two cell paddings and 6rem kept for the title leave a word (sc-63743). */
+/* The cap is what Starts (64), Lasts (72), two cell paddings and 5.5rem kept for the title leave a word (sc-63743). */
 .ro-fit {
-  --roWordCap: calc(100cqw - 136px - 2 * var(--spaceMd) - 6rem);
+  --roWordCap: calc(100cqw - 136px - 2 * var(--spaceMd) - 5.5rem);
 
   container-type: inline-size;
 }
