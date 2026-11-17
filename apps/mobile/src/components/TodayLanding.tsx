@@ -22,7 +22,7 @@ import { dateLocale } from '../i18n/index.ts';
 import { DESTINATION_HREF, SECTION_HREF } from '../kit/appNav.ts';
 import { SEARCH_HREF } from '../kit/searchLinks.ts';
 import { todayMoment } from '../kit/todayMoment.ts';
-import { runNowOf } from '../kit/todayRun.ts';
+import { asOfWords, runNowOf } from '../kit/todayRun.ts';
 import { SKELETON_AFTER_MS } from '../kit/skeleton.ts';
 import { useLayout } from '../layout/useLayout.ts';
 import { publishSidebarEvents } from '../sidebarEvents.ts';
@@ -158,7 +158,7 @@ export function TodayLanding({
   };
   const underWay =
     load.kind === 'loaded' ? (todayView(load, serverClock.now(), reader).now?.event ?? null) : null;
-  const schedule = useRunSchedule(underWay, refresh);
+  const { schedule, asOf } = useRunSchedule(underWay, refresh);
   const onTab = useCallback((tab: Tab) => {
     if (tab !== 'Today') router.navigate(TAB_HREF[tab]);
   }, []);
@@ -188,7 +188,11 @@ export function TodayLanding({
   const moment =
     shown.now == null || schedule == null
       ? shown
-      : { ...shown, run: runNowOf(shown.now.name, schedule, at, reader.locale, t) };
+      : {
+          ...shown,
+          run: runNowOf(shown.now.name, schedule, at, reader.locale, t),
+          asOf: asOfWords(asOf, at, schedule.timeZone, reader.locale, t),
+        };
 
   return (
     <TodayShellProvider value={shell}>

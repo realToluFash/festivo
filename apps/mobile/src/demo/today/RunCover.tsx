@@ -17,7 +17,6 @@ import { RunNowBlock } from '../../components/TodayRun.tsx';
 import { useTodayShell } from '../../components/todayShell.ts';
 import { tokens } from '../../theme/tokens.ts';
 import { ArrivedFigure } from './ArrivedCover.tsx';
-import { RunNowAsOfBlock } from './RunNowAsOf.tsx';
 import type { RunMoment } from './runOfShow.ts';
 
 function RunNow({ moment, wide }: { moment: RunMoment; wide: boolean }) {
@@ -27,13 +26,11 @@ function RunNow({ moment, wide }: { moment: RunMoment; wide: boolean }) {
   const aside = moment.figure != null && <ArrivedFigure figure={moment.figure} />;
   const onOpen = () => go({ to: 'event', id: now.event.id, name: now.name });
 
-  return moment.asOf === undefined ? (
-    <RunNowBlock now={now} run={moment.run} wide={wide} aside={aside} onOpen={onOpen} />
-  ) : (
-    <RunNowAsOfBlock
+  return (
+    <RunNowBlock
       now={now}
       run={moment.run}
-      asOf={moment.asOf}
+      asOf={moment.asOf ?? null}
       wide={wide}
       aside={aside}
       onOpen={onOpen}

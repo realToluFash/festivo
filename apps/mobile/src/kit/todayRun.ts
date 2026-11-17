@@ -7,6 +7,7 @@ import {
   todayRunOf,
   roleHolds,
   todayTrackParam,
+  nowAsOfLine,
   zonedAt,
 } from '@soirely/domain';
 import type { TFunction } from 'i18next';
@@ -142,4 +143,19 @@ export function runNowOf(
   const run = todayRunOf(nightItemsOf(schedule), zonedAt(at, schedule.timeZone), schedule.timeZone);
 
   return run == null ? null : runNowWords(name, run, locale, t);
+}
+
+/** sc-62416's line, "Offline · as of 16:38" or with its day, from the last landed read's time; null while it does not show. */
+export function asOfWords(
+  asOf: Date | null,
+  now: Date,
+  timeZone: string,
+  locale: string,
+  t: TFunction,
+): string | null {
+  if (asOf == null) return null;
+
+  const line = nowAsOfLine(asOf, now, timeZone, locale);
+
+  return t(line.key, line.values);
 }
