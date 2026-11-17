@@ -22,11 +22,11 @@ import {
 import type { Tell } from '../components/SettingsParts.tsx';
 import type { Open } from '../components/today.ts';
 import { Banner, type BannerActions, NowBanner } from '../components/TodayBanner.tsx';
+import { RunNowBanner } from '../components/TodayRunBanner.tsx';
 import { FirstRun, ThisWeek, YourEvents } from '../components/TodayParts.tsx';
 import { NeedsYou } from './TodayParts.tsx';
 import { TodaySidebar } from './TodaySidebar.tsx';
-import { RunNowBanner } from './TodayNow.tsx';
-import { isNowState, runNowOf, trackAt } from './todayRun.ts';
+import { isNowState, runNowOf, runWordsOf, trackAt } from './todayRun.ts';
 import { nightAtUrl } from './night.ts';
 import { isLong, LONG_NAME, renamed } from './longName.ts';
 import { DeskSearch } from './Search.tsx';
@@ -67,15 +67,15 @@ export function Today({ search = null }: { search?: SearchStart | null }) {
   const needing = name === 'plan' && isNeedsState(rawNeeds) ? rawNeeds : undefined;
   const rawNow = params.get('now');
   const nowState = isNowState(rawNow) ? rawNow : 'on';
-  const { i18n } = useTranslation();
+  const { t, i18n } = useTranslation();
   const language = i18n.resolvedLanguage ?? i18n.language;
   const locale = formattingLocale(language, navigator.language);
   // On the event day, a role with run_of_show.read sees the run of show (sc-61017); `?now=` picks the moment, as the app's demo does.
   const run = useMemo(() => {
     const { clock, items } = trackAt(nowState);
 
-    return runNowOf(items, clock);
-  }, [nowState]);
+    return runWordsOf(runNowOf(items, clock), locale, t);
+  }, [nowState, locale, t]);
   const moment = useMemo(
     () =>
       renamed(
@@ -142,14 +142,7 @@ export function Today({ search = null }: { search?: SearchStart | null }) {
             ) : (
               <>
                 {moment.now != null && moment.full ? (
-                  <RunNowBanner
-                    now={moment.now}
-                    run={run}
-                    actions={ACTIONS}
-                    open={open}
-                    language={language}
-                    locale={locale}
-                  />
+                  <RunNowBanner now={moment.now} run={run} actions={ACTIONS} open={open} />
                 ) : moment.now != null ? (
                   <NowBanner now={moment.now} full={false} actions={ACTIONS} open={open} />
                 ) : (

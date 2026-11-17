@@ -55,3 +55,10 @@ export function durationWords(t: TFunction, minutes: number): string {
 export function scheduleViewPath(eventId: string): string {
   return `${eventAreaPath(eventId, 'schedule')}?view=schedule`;
 }
+
+/** The Schedule's address on a track, as Today's Open run of show names it: Run of show while the event is on, with that track's place chosen. */
+export function nightTrackPath(eventId: string, track: string | null): string {
+  const path = eventAreaPath(eventId, 'schedule');
+
+  return track == null ? path : `${path}?${new URLSearchParams({ track }).toString()}`;
+}

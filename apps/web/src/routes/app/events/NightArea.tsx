@@ -24,6 +24,7 @@ import {
   serverClock,
   shownPhase,
   timeSlot,
+  todayTrackParam,
   wallOfZoned,
   weekdayOf,
   zonedAt,
@@ -313,6 +314,7 @@ function Night({
   const serverNow = useServerNow();
   const zone = schedule.timeZone;
   const now = zonedAt(serverNow, zone);
+  const [params] = useSearchParams();
   const manage = canOn(event, 'run_of_show.manage');
   const items = schedule.items.map(runItemOf);
   const tracks = nightTracks(items, now);
@@ -322,7 +324,11 @@ function Night({
   const [chosen, setChosen] = useState<string | null>(null);
   const [moving, setMoving] = useState(false);
   const [rows] = useState(() => new Map<string, HTMLButtonElement>());
-  const track = tracks.find((one) => one.key === trackKey) ?? tracks[0] ?? null;
+  const track =
+    tracks.find((one) => one.key === trackKey) ??
+    tracks.find((one) => todayTrackParam(one) === params.get('track')) ??
+    tracks[0] ??
+    null;
   const view = track == null ? null : nightView(track, now, zone);
   const chosenRow =
     view?.later.find((row) => row.item.id === chosen && row.mark === 'notStarted') ?? null;
