@@ -109,7 +109,7 @@ final readonly class ScheduleEditor
         return $item;
     }
 
-    /** A press that changes nothing is still kept, so a late earlier press can make it count; the same key answers as the first time (sc-3895). */
+    /** A press that changes nothing is still kept, so a late earlier press can make it count, unless it would have changed another item on its track; the same key answers as the first time (sc-3895). */
     public function press(Event $event, ScheduleItem $item, PressKind $kind, DateTimeImmutable $pressedAt, string $key, string $fingerprint, User $by): void
     {
         $loss = $this->locked($event, function () use ($event, $item, $kind, $pressedAt, $key, $fingerprint, $by): ?PressLoss {
@@ -120,12 +120,25 @@ final readonly class ScheduleEditor
                     throw new ApiException(ErrorCode::IdempotencyKeyReused, 'run_of_show.idempotency_key_reused');
                 }
 
+                if ($sent->isSetAside()) {
+                    return new PressLoss(ErrorCode::TrackBusy, $sent->getSetAsideFor());
+                }
+
                 return $this->replayed($event)->losses[$sent->getId()->toRfc4122()] ?? self::answered($sent);
             }
 
             $press = new SchedulePress($event, $item, $kind, $this->clamped($event, $pressedAt), $key, $fingerprint, $by, $by->getName());
             $this->entityManager->persist($press);
             $this->entityManager->flush();
+
+            $overreach = PressReplay::overreach($this->scheduleItemRepository->findOnEvent($event), $this->schedulePressRepository->findStandingOnEvent($event), $press);
+
+            if (null !== $overreach) {
+                $press->setAside($overreach->to);
+                $press->setAnswer($overreach->code->value);
+
+                return $overreach;
+            }
 
             $replayed = $this->replayed($event);
             $loss = $replayed->losses[$press->getId()->toRfc4122()] ?? null;
@@ -203,7 +216,7 @@ final readonly class ScheduleEditor
     private function replayed(Event $event): Replayed
     {
         $items = $this->scheduleItemRepository->findOnEvent($event);
-        $replayed = PressReplay::of($items, $this->schedulePressRepository->findOnEvent($event));
+        $replayed = PressReplay::of($items, $this->schedulePressRepository->findStandingOnEvent($event));
 
         foreach ($items as $item) {
             $run = $replayed->runs[$item->getId()->toRfc4122()];

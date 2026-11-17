@@ -62,6 +62,15 @@ class SchedulePress
     #[ORM\Column(type: Types::STRING, length: 40, nullable: true)]
     private ?string $answer = null;
 
+    /** Refused because, replayed at its time, it would have changed another item on its track: it never counts, whatever arrives after it (sc-3895). */
+    #[ORM\Column(type: Types::BOOLEAN, options: ['default' => false])]
+    private bool $setAside = false;
+
+    /** The earliest press on another item it would have changed, named again when the same key is sent again. */
+    #[ORM\ManyToOne(targetEntity: self::class)]
+    #[ORM\JoinColumn(nullable: true, onDelete: 'SET NULL')]
+    private ?SchedulePress $setAsideFor = null;
+
     public function __construct(Event $event, ScheduleItem $item, PressKind $kind, DateTimeImmutable $pressedAt, string $idempotencyKey, string $fingerprint, ?User $pressedBy, string $pressedByName)
     {
         $this->id = Uuid::v7();
@@ -128,5 +137,21 @@ class SchedulePress
     public function setAnswer(?string $answer): void
     {
         $this->answer = $answer;
+    }
+
+    public function isSetAside(): bool
+    {
+        return $this->setAside;
+    }
+
+    public function getSetAsideFor(): ?self
+    {
+        return $this->setAsideFor;
+    }
+
+    public function setAside(?self $for): void
+    {
+        $this->setAside = true;
+        $this->setAsideFor = $for;
     }
 }
