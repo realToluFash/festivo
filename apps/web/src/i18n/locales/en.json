@@ -4089,6 +4089,7 @@
     "unwarned_one": "{{count, number}} guest who picked {{dish}} has {{allergens}} recorded, and nobody has told them.",
     "unwarned_other": "{{count, number}} guests who picked {{dish}} have {{allergens}} recorded, and nobody has told them.",
     "lock": "Your role, {{role}}, can see this menu but not change it. Someone whose role can change Menu can.",
+    "lockOnEvent": "Your role on this event, {{role}}, can see this menu but not change it. Someone whose role can change Menu can.",
     "loading": "Loading the menu…",
     "forbidden": "Nothing was changed. Your role does not include the permission this needs.",
     "failedSave": "Nothing was saved. Check your connection, then press {{button}} again.",

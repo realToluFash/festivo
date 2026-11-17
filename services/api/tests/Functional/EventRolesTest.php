@@ -183,6 +183,40 @@ final class EventRolesTest extends ApiTestCase
         self::assertContains(Permission::EventsManage->value, $byName['Naming']);
     }
 
+    /** sc-59617: a client names the role a Member's grants come from, and an organisation role's come from no event role. */
+    #[Test]
+    public function theEventReadNamesAMembersRoleOnItAndNoOtherRoles(): void
+    {
+        $viewer = $this->member('viewer@ire.events', SeededRole::Member);
+        $admin = $this->member('admin@ire.events', SeededRole::Admin);
+        self::onEvent($viewer, $this->owambe, EventRole::CanView);
+        self::onEvent($viewer, $this->naming, EventRole::CanCheckIn);
+        self::onEvent($admin, $this->owambe, EventRole::CanView);
+
+        $roleOn = function (User $who, string $eventId): mixed {
+            $this->as($who, 'GET', '/api/events/' . $eventId);
+            self::assertSame(200, $this->statusCode());
+
+            $event = $this->last()['event'];
+            self::assertArrayHasKey('roleOnEvent', $event);
+
+            return $event['roleOnEvent'];
+        };
+
+        self::assertSame('can_view', $roleOn($viewer, $this->owambe));
+        self::assertSame('can_check_in', $roleOn($viewer, $this->naming));
+        self::assertNull($roleOn($admin, $this->owambe), 'an Admin on the event still holds the organisation role');
+        self::assertNull($roleOn($this->owner, $this->owambe));
+
+        $this->as($viewer, 'GET', $this->path('events'));
+        $listed = Type\vec(Type\shape(['name' => Type\string(), 'roleOnEvent' => Type\nullable(Type\string())], true))->coerce($this->last()['events']);
+        $byName = [];
+        foreach ($listed as $event) {
+            $byName[$event['name']] = $event['roleOnEvent'];
+        }
+        self::assertSame(['Owambe' => 'can_view', 'Naming' => 'can_check_in'], $byName, 'the list says the same');
+    }
+
     /** @return iterable<string, array{string}> */
     public static function jobLabelsPast60Letters(): iterable
     {

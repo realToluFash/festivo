@@ -47,7 +47,7 @@ final readonly class MembershipDirectory implements MembershipDirectoryInterface
 
         $person = $this->eventPersonRepository->findOneOn($eventId, $membership);
 
-        return null === $person ? null : $this->signInRules->narrow(Grants::only($person->getRole()->permissions()), $membership);
+        return null === $person ? null : $this->signInRules->narrow(Grants::onEvent($person->getRole()), $membership);
     }
 
     /** Null unless an active member; for a Member, their roles on events in one query rather than one per event. */
@@ -68,7 +68,7 @@ final readonly class MembershipDirectory implements MembershipDirectoryInterface
         $byEvent = [];
 
         foreach ($this->eventPersonRepository->findFor($membership) as $person) {
-            $byEvent[$person->getEvent()->getId()->toRfc4122()] = $this->signInRules->narrow(Grants::only($person->getRole()->permissions()), $membership);
+            $byEvent[$person->getEvent()->getId()->toRfc4122()] = $this->signInRules->narrow(Grants::onEvent($person->getRole()), $membership);
         }
 
         return new EventScope($membership, $grants, $byEvent);
