@@ -154,43 +154,24 @@
     padding-block: var(--space3xl) 48px;
     overflow-y: auto;
   }
-}
 
-@media (40rem < width <= 720px) {
-  .today.desk .ro-days {
-    align-self: stretch;
+  :root .today.desk :is(.lib-page .desk-row, .lib-top-acts, .lib-price) {
+    flex-wrap: nowrap;
   }
 
-  .today.desk .ro-day {
+  :root .today.desk .lib-search {
+    max-width: 420px;
+  }
+
+  :root .today.desk .lib-amount {
     flex: 1;
-    flex-direction: column;
-    min-height: 56px;
-    padding: var(--spaceXs) var(--spaceSm);
-    line-height: 1.25;
   }
 
-  .today.desk .ro-day-sep {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    overflow: hidden;
-    clip-path: inset(50%);
+  :root .today.desk .lib-page .desk-title {
+    flex: 1;
   }
 
-  .today.desk .ro-day-count {
-    font-weight: 400;
-  }
-
-  .today.desk .ro-table .ro-wide {
-    display: none;
-  }
-
-  .today.desk .ro-table .ro-starts {
-    width: 72px;
-    padding-left: var(--spaceXs);
-  }
-
-  .today.desk .ro-under {
-    display: block;
+  :root .today.desk .lib-top-acts {
+    margin-left: auto;
   }
 }
