@@ -279,15 +279,18 @@ describe('The event’s Schedule (sc-3893)', () => {
     expect(days).toContain('flex-wrap: wrap;');
     expect(days).toContain('max-width: 100%;');
     expect(days).toContain('border-radius: calc(var(--sizeHit) / 2 + var(--spaceHair));');
-    const tab = cssRule('.ro-day', SCHEDULE_CSS);
+    const tab = cssRule('.ro .ro-day', SCHEDULE_CSS);
     expect(tab).toContain('flex: 1 0 auto;');
     expect(tab).toContain('overflow-wrap: normal;');
+    expect(tab).toContain('border-radius: calc(var(--sizeHit) / 2);');
     expect(cssRule('.ro-day > span', SCHEDULE_CSS)).toContain('overflow-wrap: normal;');
     const narrow = SCHEDULE_CSS.slice(SCHEDULE_CSS.indexOf('(width <= 720px)'));
     expect(cssRule('.ro .ro-days', narrow)).toContain(
       'border-radius: calc(var(--roDayStack) / 2 + var(--spaceHair));',
     );
-    expect(cssRule('.ro .ro-day', narrow)).toContain('min-height: var(--roDayStack);');
+    const stacked = cssRule('.ro .ro-day', narrow);
+    expect(stacked).toContain('min-height: var(--roDayStack);');
+    expect(stacked).toContain('border-radius: calc(var(--roDayStack) / 2);');
   });
 
   it('moves between days with the arrow keys', async () => {

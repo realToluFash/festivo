@@ -163,6 +163,7 @@ describe('todayView', () => {
       owner: 'event' as const,
       area: 'events',
       action: null,
+      done: false,
     };
     const speeches = {
       ...starts,
@@ -201,6 +202,7 @@ describe('todayView', () => {
           owner: 'automatic',
           area: 'guests',
           action: null,
+          done: false,
         },
       ],
     });

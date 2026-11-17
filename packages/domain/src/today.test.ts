@@ -23,7 +23,7 @@ function event(name: string, rest: Partial<TodayEvent> = {}): TodayEvent {
 }
 
 function milestone(at: string, title: string): Milestone {
-  return { at, title, note: null, owner: 'automatic', area: 'guests', action: null };
+  return { at, title, note: null, owner: 'automatic', area: 'guests', action: null, done: false };
 }
 
 const ONE_NIGHT = { startsAt: '2026-11-28T18:00:00Z', endsAt: '2026-11-28T23:00:00Z', dayCount: 1 };

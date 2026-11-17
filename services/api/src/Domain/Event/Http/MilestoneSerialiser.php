@@ -19,7 +19,7 @@ final readonly class MilestoneSerialiser
     ) {
     }
 
-    /** @return list<array{at: string, title: string, note: ?string, owner: string, area: string, action: ?array{label: string, link: string}}> earliest first, at the offset in force in the event's zone */
+    /** @return list<array{at: string, title: string, note: ?string, owner: string, area: string, action: ?array{label: string, link: string}, done: bool}> earliest first, at the offset in force in the event's zone */
     public function milestones(Event $event, Grants $grants): array
     {
         $zone = new DateTimeZone($event->getTimeZone());
@@ -31,6 +31,7 @@ final readonly class MilestoneSerialiser
             'owner' => $milestone->owner->value,
             'area' => $milestone->area->value,
             'action' => null === $milestone->action ? null : ['label' => $milestone->action->label, 'link' => $milestone->action->link],
+            'done' => $milestone->done,
         ]);
     }
 }

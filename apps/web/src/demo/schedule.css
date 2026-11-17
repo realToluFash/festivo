@@ -24,6 +24,7 @@
   flex-wrap: wrap;
   gap: var(--spaceXxs);
   max-width: 100%;
+  border-radius: calc(var(--sizeHit) / 2);
   overflow-wrap: normal;
   text-align: center;
 }
@@ -461,6 +462,7 @@
     flex-direction: column;
     min-height: var(--roDayStack);
     padding: var(--spaceXs) var(--spaceSm);
+    border-radius: calc(var(--roDayStack) / 2);
     line-height: 1.25;
   }
 

@@ -4849,7 +4849,7 @@ function asEventTimeline(raw: unknown): EventTimeline | null {
 function asMilestone(raw: unknown): Milestone | null {
   if (typeof raw !== 'object' || raw == null) return null;
 
-  const { at, title, note, owner, area, action } = raw as Record<string, unknown>;
+  const { at, title, note, owner, area, action, done } = raw as Record<string, unknown>;
   const known = oneOf(owner, MILESTONE_OWNERS);
   const link =
     action === null
@@ -4869,12 +4869,13 @@ function asMilestone(raw: unknown): Milestone | null {
     !isStringOrNull(note) ||
     typeof area !== 'string' ||
     known == null ||
-    link === undefined
+    link === undefined ||
+    typeof done !== 'boolean'
   ) {
     return null;
   }
 
-  return { at, title, note, owner: known, area, action: link };
+  return { at, title, note, owner: known, area, action: link, done };
 }
 
 function asListedEvent(raw: unknown): ListedEvent | null {

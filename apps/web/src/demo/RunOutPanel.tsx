@@ -79,29 +79,29 @@ export function RunOutPanel({
 
   return (
     <>
-      <div className="ro-scrim" aria-hidden="true" />
+      <div className="rout-scrim" aria-hidden="true" />
       <div
         ref={box}
-        className="ro-panel"
+        className="rout-panel"
         role="dialog"
         aria-modal="true"
-        aria-labelledby="ro-title"
+        aria-labelledby="rout-title"
         tabIndex={-1}
       >
-        <div className="ro-head">
-          <div className="ro-head-words">
-            <h2 id="ro-title" ref={heading} className="ro-title" tabIndex={-1}>
+        <div className="rout-head">
+          <div className="rout-head-words">
+            <h2 id="rout-title" ref={heading} className="rout-title" tabIndex={-1}>
               <Glyph paths={BAN_GLYPH} size={22} />
               {ITEM} has run out
             </h2>
             <p className="hig-meta">{MARKED}</p>
           </div>
-          <button className="ro-close" type="button" aria-label="Close" onClick={close}>
+          <button className="rout-close" type="button" aria-label="Close" onClick={close}>
             <Glyph paths={CLOSE_GLYPH} size={20} />
           </button>
         </div>
-        <div className="ro-body">
-          <div className="ro-strip" role="status">
+        <div className="rout-body">
+          <div className="rout-strip" role="status">
             {access.online ? (
               <span className="hig-status-dot" aria-hidden="true" />
             ) : (
@@ -116,24 +116,24 @@ export function RunOutPanel({
             </div>
           )}
 
-          <section className="ro-part" aria-labelledby="ro-bulk">
-            <h3 id="ro-bulk" className="ro-part-title">
+          <section className="rout-part" aria-labelledby="rout-bulk">
+            <h3 id="rout-bulk" className="rout-part-title">
               Everyone at once
             </h3>
-            <ul className="ro-bulk-list">
+            <ul className="rout-bulk-list">
               {bulkRows(ro).map((b) => (
                 <li key={b.key}>
                   {b.stands ? (
-                    <div className="ro-stands">
+                    <div className="rout-stands">
                       <Glyph paths={ARROW_GLYPH} size={18} />
-                      <span className="ro-stands-words">
+                      <span className="rout-stands-words">
                         <strong>{b.label}</strong>
                         <span>Applies to guests still to come</span>
                       </span>
                     </div>
                   ) : (
                     <button
-                      className="ro-bulk"
+                      className="rout-bulk"
                       type="button"
                       data-bulk={b.key}
                       onClick={() => act(askBulk(ro, b.bulk, access))}
@@ -146,19 +146,19 @@ export function RunOutPanel({
             </ul>
           </section>
 
-          <section className="ro-part" aria-labelledby="ro-waiting">
-            <h3 id="ro-waiting" className="ro-part-title">
+          <section className="rout-part" aria-labelledby="rout-waiting">
+            <h3 id="rout-waiting" className="rout-part-title">
               Waiting for a choice · {rows.length}
             </h3>
             {rows.length === 0 ? (
               <p className="hig-meta">Nobody is waiting for a choice now.</p>
             ) : (
-              <ul className="ro-guests">
+              <ul className="rout-guests">
                 {rows.map((x) => (
-                  <li key={x.id} className="ro-guest">
+                  <li key={x.id} className="rout-guest">
                     <GuestWords x={x} />
                     <button
-                      className="button ro-choose-for"
+                      className="button rout-choose-for"
                       type="button"
                       data-choose-for={x.id}
                       onClick={() => act(openChoose(ro, x.id, access))}
@@ -172,17 +172,17 @@ export function RunOutPanel({
           </section>
 
           {done.length > 0 && (
-            <section className="ro-part" aria-labelledby="ro-changed">
-              <h3 id="ro-changed" className="ro-part-title">
+            <section className="rout-part" aria-labelledby="rout-changed">
+              <h3 id="rout-changed" className="rout-part-title">
                 Already changed
               </h3>
-              <ul className="ro-guests">
+              <ul className="rout-guests">
                 {done.map((x) => (
-                  <li key={x.id} className="ro-guest ro-changed">
-                    <span className="ro-guest-words">
+                  <li key={x.id} className="rout-guest rout-changed">
+                    <span className="rout-guest-words">
                       <strong>{x.name}</strong>
                       <span className="hig-meta">{whereLine(x)}</span>
-                      <span className="ro-now">
+                      <span className="rout-now">
                         <Glyph paths={CHECK_GLYPH} size={16} />
                         {nowLine(ro, x)}
                       </span>
@@ -203,7 +203,7 @@ export function RunOutPanel({
             </section>
           )}
 
-          <div className="ro-foot">
+          <div className="rout-foot">
             <button className="button" type="button" onClick={() => act(markAvailable(ro, access))}>
               Mark available again
             </button>
@@ -215,7 +215,7 @@ export function RunOutPanel({
         <ConfirmDialog
           ro={ro}
           onCancel={() => then(cancel(ro), `[data-bulk="${bulkKey(ro.confirm as Bulk)}"]`)}
-          onGo={() => then(confirmBulk(ro, access), '#ro-title')}
+          onGo={() => then(confirmBulk(ro, access), '#rout-title')}
         />
       )}
       {choosing != null && (
@@ -234,11 +234,11 @@ export function RunOutPanel({
 
 function GuestWords({ x }: { x: Guest }) {
   return (
-    <span className="ro-guest-words">
+    <span className="rout-guest-words">
       <strong>{x.name}</strong>
       <span className="hig-meta">{whereLine(x)}</span>
       {x.flags.length > 0 && (
-        <span className="ro-flags">
+        <span className="rout-flags">
           {x.flags.map((f) => (
             <FlagTag key={f.words} f={f} />
           ))}
@@ -250,7 +250,7 @@ function GuestWords({ x }: { x: Guest }) {
 
 function FlagTag({ f }: { f: Flag }) {
   return (
-    <span className="ro-flag" data-kind={f.kind === 'diet' ? 'diet' : 'allergy'}>
+    <span className="rout-flag" data-kind={f.kind === 'diet' ? 'diet' : 'allergy'}>
       <Glyph paths={FLAG_GLYPH} size={14} />
       {f.words}
     </span>
@@ -278,13 +278,13 @@ function ConfirmDialog({
       <div className="dialog-scrim" aria-hidden="true" />
       <div
         ref={box}
-        className="dialog ro-dialog"
+        className="dialog rout-dialog"
         role="alertdialog"
         aria-modal="true"
-        aria-labelledby="ro-confirm-title"
+        aria-labelledby="rout-confirm-title"
         tabIndex={-1}
       >
-        <h2 id="ro-confirm-title" className="hig-dialog-title">
+        <h2 id="rout-confirm-title" className="hig-dialog-title">
           {confirmTitle(ro, ro.confirm)}
         </h2>
         <ActionPair
@@ -326,37 +326,37 @@ function ChooseDialog({
       <div className="dialog-scrim" aria-hidden="true" />
       <div
         ref={box}
-        className="dialog ro-dialog"
+        className="dialog rout-dialog"
         role="dialog"
         aria-modal="true"
-        aria-labelledby="ro-choose-title"
+        aria-labelledby="rout-choose-title"
         tabIndex={-1}
       >
-        <div className="ro-choose-head">
-          <h2 id="ro-choose-title" className="hig-dialog-title">
+        <div className="rout-choose-head">
+          <h2 id="rout-choose-title" className="hig-dialog-title">
             Choose for {x.name}
           </h2>
           <span className="hig-meta">{whereLine(x)}</span>
           {x.flags.length > 0 && (
-            <span className="ro-flags">
+            <span className="rout-flags">
               {x.flags.map((f) => (
                 <FlagTag key={f.words} f={f} />
               ))}
             </span>
           )}
         </div>
-        <ul className="ro-options" aria-labelledby="ro-choose-title">
+        <ul className="rout-options" aria-labelledby="rout-choose-title">
           {options(ro, x).map((o) => (
             <li key={o.label}>
               {o.no == null ? (
-                <button className="ro-bulk" type="button" onClick={() => onPick(o.to)}>
+                <button className="rout-bulk" type="button" onClick={() => onPick(o.to)}>
                   {o.label}
                 </button>
               ) : (
-                <div className="ro-not-for">
+                <div className="rout-not-for">
                   <Glyph paths={BAN_GLYPH} size={18} />
-                  <span className="ro-not-for-words">
-                    <span className="ro-not-for-item">{o.item}</span>
+                  <span className="rout-not-for-words">
+                    <span className="rout-not-for-item">{o.item}</span>
                     <strong>{o.no.line}</strong>
                     {o.no.note !== '' && <span className="hig-meta">{o.no.note}</span>}
                   </span>
@@ -365,7 +365,7 @@ function ChooseDialog({
             </li>
           ))}
         </ul>
-        <button className="hig-text-button ro-cancel" type="button" onClick={onCancel}>
+        <button className="hig-text-button rout-cancel" type="button" onClick={onCancel}>
           Cancel
         </button>
       </div>

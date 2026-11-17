@@ -672,9 +672,9 @@ function RunOutKitchenRow({
   );
 
   return (
-    <li className="hig-kitchen-row ro-kitchen-row">
+    <li className="hig-kitchen-row rout-kitchen-row">
       {manage ? (
-        <button className="ro-kitchen-line" type="button" data-run-out="kitchen" onClick={onOpen}>
+        <button className="rout-kitchen-line" type="button" data-run-out="kitchen" onClick={onOpen}>
           <span className="hig-alert-icon" aria-hidden="true">
             <Glyph paths={BAN_GLYPH} size={18} />
           </span>
@@ -695,7 +695,7 @@ function RunOutKitchenRow({
 
 function EarlierKitchenRow({ line, n }: { line: string; n: number }) {
   return (
-    <li className="hig-kitchen-row ro-kitchen-row">
+    <li className="hig-kitchen-row rout-kitchen-row">
       <span className="hig-alert-icon" aria-hidden="true">
         <Glyph paths={BAN_GLYPH} size={18} />
       </span>

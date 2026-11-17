@@ -52,7 +52,7 @@ describe('Share tables with guests (sc-4022)', () => {
     fireEvent.click(within(ask()).getByRole('button', { name: 'Share tables' }));
     expect(screen.queryByRole('alertdialog')).toBeNull();
     expect(card().textContent).toContain('Tables are shared with guests');
-    expect(card().textContent).toContain('Since Tuesday, Nov 3.');
+    expect(card().textContent).toContain('Since Tue, Nov 3.');
   });
 
   it('leaves out the unseated lines once every Coming guest has a seat', SLOW, async () => {
@@ -73,13 +73,13 @@ describe('Share tables with guests (sc-4022)', () => {
       fireEvent.change(field, { target: { value: '2026-11-05' } });
       fireEvent.click(within(card()).getByRole('button', { name: 'Save the date' }));
       expect(within(card()).getByRole('alert').textContent).toBe(
-        'Choose a date before the event, Thursday, Nov 5.',
+        'Choose a date before the event, Thu, Nov 5.',
       );
 
       fireEvent.change(field, { target: { value: '2026-11-04' } });
       fireEvent.click(within(card()).getByRole('button', { name: 'Save the date' }));
       expect(card().textContent).toContain(
-        'Share tables by Wednesday, Nov 4. Nothing is shared until you share it.',
+        'Share tables by Wed, Nov 4. Nothing is shared until you share it.',
       );
       expect(within(card()).getByRole('button', { name: 'Change' })).toBeTruthy();
     },
@@ -114,7 +114,7 @@ describe('Share tables with guests (sc-4022)', () => {
     fireEvent.click(within(ask()).getByRole('button', { name: 'Stop sharing' }));
 
     expect(card().textContent).toContain('Guests’ pages no longer show their table.');
-    expect(card().textContent).toContain('Share tables by Wednesday, Nov 4.');
+    expect(card().textContent).toContain('Share tables by Wed, Nov 4.');
   });
 
   it(
@@ -123,7 +123,7 @@ describe('Share tables with guests (sc-4022)', () => {
     async () => {
       await seating('shareReadOnly');
       expect(within(card()).queryAllByRole('button')).toHaveLength(0);
-      expect(card().textContent).toContain('Wednesday, Nov 4');
+      expect(card().textContent).toContain('Wed, Nov 4');
       expect(card().textContent).toContain(
         'You can see this. Changing it needs the Manage seating permission.',
       );

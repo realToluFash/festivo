@@ -2977,6 +2977,7 @@ describe('events (sc-1486)', () => {
       owner: 'event',
       area: 'events',
       action: null,
+      done: false,
     };
     const WEDDING_GUESTS = { invited: 142, coming: 96, notReplied: 25 };
     const later = { ...EVENT, id: 'e2', name: 'Later', milestones: [] };
@@ -3232,6 +3233,7 @@ describe('events (sc-1486)', () => {
           owner: 'event',
           area: 'events',
           action: null,
+          done: false,
         },
         {
           at: '2026-10-26T02:00:00+01:00',
@@ -3240,6 +3242,7 @@ describe('events (sc-1486)', () => {
           owner: 'you',
           area: 'budget',
           action: { label: 'Open the budget', link: '/app/events/e1/budget' },
+          done: true,
         },
       ],
     };
@@ -3258,6 +3261,11 @@ describe('events (sc-1486)', () => {
       client(() =>
         json({ ...timeline, milestones: [{ ...first, action: { label: 'Open' } }] }),
       ).api.eventTimeline('e1'),
+    ).rejects.toThrow(/EventTimelineController/);
+    await expect(
+      client(() => json({ ...timeline, milestones: [{ ...first, done: 'no' }] })).api.eventTimeline(
+        'e1',
+      ),
     ).rejects.toThrow(/EventTimelineController/);
     await expect(client(() => json({ milestones: [] })).api.eventTimeline('e1')).rejects.toThrow(
       /EventTimelineController/,

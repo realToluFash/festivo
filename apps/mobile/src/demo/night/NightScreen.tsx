@@ -180,8 +180,8 @@ function NightBody({ first, locale }: { first: NightStart; locale: string }) {
               })}
             </View>
           )}
-          <Strip night={night} onTry={() => setNight(tryNow(night))} />
-          {!night.manage && (
+          {!first.loading && <Strip night={night} onTry={() => setNight(tryNow(night))} />}
+          {!first.loading && !night.manage && (
             <View style={styles.viewOnly}>
               <View style={styles.pill}>
                 <Glyph paths={PATHS.eye} ink={tokens.colorInkSecondary} side={14} />

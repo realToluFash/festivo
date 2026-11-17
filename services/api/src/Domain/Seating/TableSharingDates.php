@@ -37,7 +37,7 @@ final readonly class TableSharingDates implements MilestoneSourceInterface
         $sharedAt = $sharing->getSharedAt();
 
         if (null !== $sharedAt) {
-            return [new Milestone(self::KEY, $sharedAt, $this->translator->trans('timeline.tables_shared'), null, MilestoneOwner::You, PermissionArea::Seating)];
+            return [new Milestone(self::KEY, $sharedAt, $this->translator->trans('timeline.tables_shared'), null, MilestoneOwner::You, PermissionArea::Seating, done: true)];
         }
 
         $endOfDay = new DateTimeImmutable($shareBy->format('Y-m-d') . ' 23:59:59', new DateTimeZone($event->getTimeZone()));

@@ -12,7 +12,7 @@ The code is `App\Domain\Event\Timeline`, served at `GET /api/events/<id>/timelin
 | Piece                      | What it is                                                                                   |
 | -------------------------- | -------------------------------------------------------------------------------------------- |
 | `MilestoneSourceInterface` | one area's milestones for one event, read on every request                                   |
-| `Milestone`                | a key, a date-time, a title, an optional note, an owner, the area, an optional action        |
+| `Milestone`                | a key, a date-time, a title, an optional note, an owner, the area, an optional action, done  |
 | `EventTimeline`            | merges every source, drops the areas the reader cannot see, sorts earliest first             |
 | `EventDates`               | the first source: the event's own dates, as they happened                                    |
 | `ReplyByDates`             | **Replies close**, at the end of the event's Reply by, owner Automatic (sc-3780)             |
@@ -84,7 +84,8 @@ after a call-off are not. A source that says nothing keeps returning its dates a
       "note": null,
       "owner": "event",
       "area": "events",
-      "action": null
+      "action": null,
+      "done": false
     }
   ]
 }
@@ -101,8 +102,10 @@ the same reader, so Events Home's **Next up** is the timeline's without one requ
 ## Next up
 
 `nextUp(milestones, now)` in `packages/domain` is the earliest milestone at or after `now`.
-An overdue `you` milestone stays Next up until the area stops returning it, because a missed
-deadline should not vanish from the screen. When every milestone has passed there is none.
+An overdue `you` milestone stays Next up until the area stops returning it or returns it
+`done`, because a missed deadline should not vanish from the screen. A `done` milestone is
+something the organiser has already seen through, such as **Tables shared**: it is Passed once
+its instant is behind `now`, never Overdue (sc-4022). When every milestone has passed there is none.
 A milestone is **Passed** once its instant is behind `now` and it is not Next up.
 On an Ended event the `events` area's milestones are Passed whatever the clock reads, so
 every caller passes `ended` to `nextUp`, `markedMilestones` and `comingUp` (sc-16709).
