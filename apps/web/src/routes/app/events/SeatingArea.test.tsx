@@ -3623,7 +3623,7 @@ describe('Choosing many and the Selection tools (sc-4717)', () => {
           201,
         ),
       'POST /api/events/ev_1/seating-plan/furniture/delete': () =>
-        seating(withTables(table(), second())),
+        moved(withTables(table(), second()), []),
     });
 
     await chooseBoth();
@@ -3683,7 +3683,7 @@ describe('Choosing many and the Selection tools (sc-4717)', () => {
     fireEvent.click(ask.getByRole('button', { name: 'Delete 4 tables' }));
     await waitFor(() => expect(posted(sent, 'delete')).toHaveLength(1));
     expect(screen.queryByRole('button', { name: 'Undo' })).toBeNull();
-    deleted(seating(withTables()));
+    deleted(moved(withTables(), []));
 
     await waitFor(() => expect(stepLine()).toBe('4 tables deleted.'));
     expect(screen.getByRole('button', { name: 'Undo' })).toBeDefined();
@@ -3722,7 +3722,7 @@ describe('Choosing many and the Selection tools (sc-4717)', () => {
     fireEvent.click(ask.getByRole('button', { name: 'Delete 2 tables' }));
     await waitFor(() => expect(posted(sent, 'delete')).toHaveLength(1));
     expect(screen.queryByRole('button', { name: 'Undo' })).toBeNull();
-    deleted(seating({ ...withTables(), sections: plan(sections).sections }));
+    deleted(moved({ ...withTables(), sections: plan(sections).sections }, []));
 
     await waitFor(() => expect(stepLine()).toBe('2 tables deleted.'));
     expect(screen.getByRole('button', { name: 'Undo' })).toBeDefined();
@@ -3733,7 +3733,7 @@ describe('Choosing many and the Selection tools (sc-4717)', () => {
     signedIn();
     const sent = await onSeating({
       'GET /api/events/ev_1/seating-plan': () => seating(withTables(table(), second())),
-      'POST /api/events/ev_1/seating-plan/furniture/delete': () => seating(withTables()),
+      'POST /api/events/ev_1/seating-plan/furniture/delete': () => moved(withTables(), []),
       'POST /api/events/ev_1/seating-plan/furniture/restore': () =>
         json(
           {
@@ -5506,5 +5506,190 @@ describe('The Tables view (sc-4013)', () => {
     card('Table 2, 0 of 8, Stage').focus();
     fireEvent.keyDown(card('Table 2, 0 of 8, Stage'), { key: 'ArrowUp' });
     expect(document.activeElement).toBe(card('Table 3, 0 of 10'));
+  });
+});
+
+describe('Deleting many with guests in them (sc-57680)', () => {
+  beforeEach(() => {
+    localStorage.clear();
+  });
+
+  const at = (id: string, seat: number, kind = 'table') => ({ kind, id, seat });
+  const ada = guest({ seat: at('t1', 2) });
+  const chidi = guest({
+    id: 'g_ada2',
+    fullName: 'Chidi Obi',
+    leadId: 'g_ada',
+    position: 2,
+    seat: at('t1', 3),
+  });
+  const held = guest({ id: 'g_ada3', fullName: null, leadId: 'g_ada', position: 3 });
+  const first = table({
+    seated: [
+      { seat: 2, guestId: 'g_ada' },
+      { seat: 3, guestId: 'g_ada2' },
+    ],
+  });
+  const freed = [
+    { guestId: 'g_ada', from: at('t1', 2), to: null },
+    { guestId: 'g_ada2', from: at('t1', 3), to: null },
+  ];
+
+  function stepLine(): string {
+    return document.querySelector('.st-under-views .st-bar p')?.textContent ?? '';
+  }
+
+  function heard(): string {
+    return document.querySelector('p.visually-hidden[aria-live]')?.textContent ?? '';
+  }
+
+  function panel() {
+    return within(document.querySelector<HTMLElement>('.st-panel')!);
+  }
+
+  function bodies(sent: { line: string; body: unknown }[], path: string) {
+    return sent
+      .filter((one) => one.line.endsWith(`/seating-plan/furniture/${path}`))
+      .map((one) => one.body as { items: Record<string, unknown>[]; emptyOnly?: boolean });
+  }
+
+  async function chooseTwo(second: RegExp): Promise<void> {
+    fireEvent.click(await screen.findByRole('button', { name: /^Table 1,/ }));
+    fireEvent.click(screen.getByRole('button', { name: second }), { shiftKey: true });
+    await screen.findByRole('heading', { level: 2, name: '2 chosen' });
+  }
+
+  it('counts every taken chair in the ask, frees them with the delete, and Undo seats each back in their chair', async () => {
+    signedIn();
+    const second = table({
+      id: 't2',
+      name: 'Table 2',
+      xCm: 600,
+      seated: [{ seat: 1, guestId: 'g_ada3' }],
+    });
+    const everyone = [ada, chidi, { ...held, seat: at('t2', 1) }];
+    const sent = await onSeating({
+      'GET /api/events/ev_1/seating-plan': () => seating(withGuests(everyone, first, second)),
+      'POST /api/events/ev_1/seating-plan/furniture/delete': () =>
+        moved(withGuests([guest(), chidi, held].map((one) => ({ ...one, seat: null }))), [
+          ...freed,
+          { guestId: 'g_ada3', from: at('t2', 1), to: null },
+        ]),
+      'POST /api/events/ev_1/seating-plan/furniture/restore': () =>
+        json(
+          {
+            seating: {
+              measurementSystem: 'metric',
+              plan: withGuests(everyone, { ...first, id: 't5' }, { ...second, id: 't6' }),
+            },
+            chosen: ['t5', 't6'],
+          },
+          201,
+        ),
+    });
+
+    await chooseTwo(/^Table 2,/);
+    expect(panel().getByText('2 tables · 3 guests seated')).toBeDefined();
+    fireEvent.click(panel().getByRole('button', { name: 'Delete' }));
+    const ask = within(await screen.findByRole('alertdialog'));
+
+    expect(ask.getByText('Delete 2 tables?')).toBeDefined();
+    expect(ask.getByText('3 guests will be moved to Without a seat.')).toBeDefined();
+    fireEvent.click(ask.getByRole('button', { name: 'Delete 2 tables' }));
+    await waitFor(() =>
+      expect(stepLine()).toBe('2 tables deleted. 3 guests moved to Without a seat.'),
+    );
+    expect(heard()).toBe('2 tables deleted. 3 guests moved to Without a seat.');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Undo' }));
+    await waitFor(() => expect(heard()).toBe('Undone. Everything is back as it was.'));
+    expect(bodies(sent, 'restore')[0]?.items.map((item) => item.guests)).toEqual([
+      [
+        { guestId: 'g_ada', seat: 2 },
+        { guestId: 'g_ada2', seat: 3 },
+      ],
+      [{ guestId: 'g_ada3', seat: 1 }],
+    ]);
+  });
+
+  it('asks about 2 items when a row is chosen with a table, and counts its held chair', async () => {
+    signedIn();
+    const everyone = [ada, chidi, { ...held, seat: at('r1', 4, 'row') }];
+    await onSeating({
+      'GET /api/events/ev_1/seating-plan': () =>
+        seating({
+          ...withGuests(everyone, first),
+          rows: [row({ seated: [{ seat: 4, guestId: 'g_ada3' }] })],
+        }),
+    });
+
+    await chooseTwo(/^Row A,/);
+    fireEvent.click(panel().getByRole('button', { name: 'Delete' }));
+    const ask = within(await screen.findByRole('alertdialog'));
+
+    expect(ask.getByText('Delete 2 items?')).toBeDefined();
+    expect(ask.getByText('3 guests will be moved to Without a seat.')).toBeDefined();
+    fireEvent.click(ask.getByRole('button', { name: 'Keep them' }));
+    expect(screen.queryByRole('alertdialog')).toBeNull();
+    expect(document.querySelectorAll('[data-table="t1"]')).toHaveLength(1);
+  });
+
+  it('changes nothing when Undo finds a freed guest has moved since, and offers no Undo of that', async () => {
+    signedIn();
+    const second = table({ id: 't2', name: 'Table 2', xCm: 600 });
+    await onSeating({
+      'GET /api/events/ev_1/seating-plan': () =>
+        seating(withGuests([ada, chidi, held], first, second)),
+      'POST /api/events/ev_1/seating-plan/furniture/delete': () =>
+        moved(withGuests([guest(), { ...chidi, seat: null }, held]), freed),
+      'POST /api/events/ev_1/seating-plan/furniture/restore': () =>
+        problem('seating_undo_stale', 409),
+    });
+
+    await chooseTwo(/^Table 2,/);
+    fireEvent.click(panel().getByRole('button', { name: 'Delete' }));
+    fireEvent.click(
+      within(await screen.findByRole('alertdialog')).getByRole('button', {
+        name: 'Delete 2 tables',
+      }),
+    );
+    await waitFor(() =>
+      expect(stepLine()).toBe('2 tables deleted. 2 guests moved to Without a seat.'),
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Undo' }));
+
+    await waitFor(() => expect(stepLine()).toBe('These seats changed since. Nothing was undone.'));
+    expect(screen.queryByRole('button', { name: 'Undo' })).toBeNull();
+  });
+
+  it('refuses the Undo of a Duplicate once somebody sits in a copy', async () => {
+    signedIn();
+    const second = table({ id: 't2', name: 'Table 2', xCm: 600 });
+    const copies = [table({ id: 't3', name: 'Table 3' }), table({ id: 't4', name: 'Table 4' })];
+    const sent = await onSeating({
+      'GET /api/events/ev_1/seating-plan': () => seating(withTables(table(), second)),
+      'POST /api/events/ev_1/seating-plan/furniture/duplicate': () =>
+        json(
+          {
+            seating: {
+              measurementSystem: 'metric',
+              plan: withTables(table(), second, ...copies),
+            },
+            chosen: ['t3', 't4'],
+          },
+          201,
+        ),
+      'POST /api/events/ev_1/seating-plan/furniture/delete': () =>
+        problem('seating_undo_stale', 409),
+    });
+
+    await chooseTwo(/^Table 2,/);
+    fireEvent.click(panel().getByRole('button', { name: 'Duplicate' }));
+    await waitFor(() => expect(stepLine()).toContain('2 copies added'));
+    fireEvent.click(screen.getByRole('button', { name: 'Undo' }));
+
+    await waitFor(() => expect(stepLine()).toBe('These seats changed since. Nothing was undone.'));
+    expect(bodies(sent, 'delete')[0]?.emptyOnly).toBe(true);
+    expect(screen.queryByRole('button', { name: 'Undo' })).toBeNull();
   });
 });

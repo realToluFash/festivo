@@ -32,6 +32,7 @@ import {
   readWhole,
   renumbered,
   spaced,
+  seatedIn,
   summaryOf,
 } from './seatingSelection.ts';
 import { lengthWords } from './seatingUnits.ts';
@@ -727,7 +728,6 @@ export function SelectionPanel({
   );
 }
 
-/** Nobody can be seated until sc-4013, so the ask always says nobody is in them. */
 export function DeleteItemsAsk({
   items,
   onKeep,
@@ -740,12 +740,13 @@ export function DeleteItemsAsk({
   const { t } = useTranslation();
   const tables = items.every((item) => item.kind === 'table');
   const count = items.length;
+  const seated = seatedIn(items);
 
   if (count === 0) return null;
   return (
     <Ask
       title={t(tables ? 'seating.deleteTablesAsk' : 'seating.deleteItemsAsk', { count })}
-      line={t('seating.nobodyInThem')}
+      line={seated === 0 ? t('seating.nobodyInThem') : t('seating.movedToTray', { count: seated })}
       keep={t('seating.keepThem')}
       go={t(tables ? 'seating.deleteTablesGo' : 'seating.deleteItemsGo', { count })}
       red={false}

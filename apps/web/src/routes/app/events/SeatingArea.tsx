@@ -12,6 +12,7 @@ import {
   type SeatingTable,
   type SeatingWithChosen,
   type SeatingMove,
+  type SeatingMoved,
   type SeatingPlaceKind,
   type SectionColour,
   type SectionContents,
@@ -165,7 +166,7 @@ import {
   readGap,
   readWhole,
   rectOf,
-  restoredOf,
+  restoredWith,
   seatingIn,
   touchedBy,
 } from './seatingSelection.ts';
@@ -1460,7 +1461,7 @@ function Plan({
   /** One step through the queue, all or nothing; a 412 keeps the choice and says who changed what.
    *  Queuing it takes the last step's Undo down, which would otherwise act on a plan this step changes,
    *  and an earlier step saved while this one waits puts no Undo up. */
-  const runStep = <A extends Seating | SeatingWithChosen>(
+  const runStep = <A extends Seating | SeatingWithChosen | SeatingMoved>(
     change: () => Promise<A> | null,
     done: (answer: A) => void,
   ) => {
@@ -1487,6 +1488,8 @@ function Plan({
       } catch (error) {
         setSave('saved');
         if (error instanceof ApiError && error.status === 412) staleStep(error);
+        else if (error instanceof ApiError && error.is('seating_undo_stale'))
+          refuseStep(t('seating.undoRefused'));
         else
           refuseStep(
             error instanceof ApiError
@@ -1568,7 +1571,7 @@ function Plan({
                 return copy == null ? [] : [refNow(copy.kind, id)];
               });
 
-              return copies.length === 0 ? null : api.deleteSeatingItems(event.id, copies);
+              return copies.length === 0 ? null : api.deleteSeatingItems(event.id, copies, true);
             },
             () => {
               pick(items.map((item) => item.one.id));
@@ -1581,25 +1584,33 @@ function Plan({
   };
 
   const deleteStep = (items: FloorItem[]) => {
-    const restored = items.map(restoredOf);
-
     runStep(
       () =>
         api.deleteSeatingItems(
           event.id,
           items.map((item) => refNow(item.kind, item.one.id)),
         ),
-      () => {
+      (answer) => {
+        const freed = answer.moves;
+        const tables = onlyTables(items);
+
         pick([]);
         stepDone(
-          t(onlyTables(items) ? 'seating.deletedEmptyTables' : 'seating.deletedEmptyItems', {
-            count: items.length,
-          }),
+          [
+            t(tables ? 'seating.deletedEmptyTables' : 'seating.deletedEmptyItems', {
+              count: items.length,
+            }),
+            ...(freed.length === 0 ? [] : [t('seating.movedToTrayDone', { count: freed.length })]),
+          ].join(' '),
           () =>
             runStep(
-              () => api.restoreSeatingItems(event.id, restored),
-              (answer) => {
-                pick(answer.chosen);
+              () =>
+                api.restoreSeatingItems(
+                  event.id,
+                  items.map((item) => restoredWith(item, freed)),
+                ),
+              (back) => {
+                pick(back.chosen);
                 undone();
               },
             ),

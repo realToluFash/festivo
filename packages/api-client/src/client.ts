@@ -2321,11 +2321,16 @@ export class ApiClient {
     );
   }
 
-  /** Deletes in one step, all or nothing (sc-4717). */
-  async deleteSeatingItems(eventId: string, items: SeatingItemRef[]): Promise<Seating> {
-    return this.seatingOf(
-      await this.post<{ seating?: unknown }>(`${this.seatingPath(eventId)}/furniture/delete`, {
+  /** Deletes in one step, all or nothing, freeing whoever sits in them: `moves` are theirs, to Without a seat (sc-4717, sc-57680). `emptyOnly` is refused 409 while anybody sits in one. */
+  async deleteSeatingItems(
+    eventId: string,
+    items: SeatingItemRef[],
+    emptyOnly = false,
+  ): Promise<SeatingMoved> {
+    return this.movedOf(
+      await this.post(`${this.seatingPath(eventId)}/furniture/delete`, {
         items,
+        ...(emptyOnly ? { emptyOnly } : {}),
       }),
     );
   }

@@ -1,5 +1,7 @@
 import {
   type Seating,
+  type SeatingMove,
+  type SeatingMoved,
   type SeatingPlan,
   type SeatingRestoredItem,
   type SeatingWithChosen,
@@ -272,8 +274,8 @@ export function readGap(text: string, system: 'metric' | 'us', locale: string): 
   return cm <= GAP_MAX_CM ? cm : null;
 }
 
-export function seatingIn(answer: Seating | SeatingWithChosen): Seating {
-  return 'chosen' in answer ? answer.seating : answer;
+export function seatingIn(answer: Seating | SeatingWithChosen | SeatingMoved): Seating {
+  return 'seating' in answer ? answer.seating : answer;
 }
 
 export function restoredOf(item: FloorItem): SeatingRestoredItem {
@@ -305,11 +307,27 @@ export function restoredOf(item: FloorItem): SeatingRestoredItem {
   return { kind: 'seat', name: item.one.name, ...at, unusable: item.one.unusable };
 }
 
+/** The item as it was, with whoever the Delete freed from it back in the chair they had (sc-57680). */
+export function restoredWith(item: FloorItem, freed: readonly SeatingMove[]): SeatingRestoredItem {
+  const guests = freed.flatMap((move) =>
+    move.from != null && move.from.id === item.one.id
+      ? [{ guestId: move.guestId, seat: move.from.seat }]
+      : [],
+  );
+
+  return guests.length === 0 ? restoredOf(item) : { ...restoredOf(item), guests };
+}
+
+/** Every chair in the items with somebody in it, held chairs included. */
+export function seatedIn(items: readonly FloorItem[]): number {
+  return items.reduce((sum, item) => sum + item.one.seated.length, 0);
+}
+
 export function onlyTables(items: readonly FloorItem[]): boolean {
   return items.every((item) => item.kind === 'table');
 }
 
-/** "2 tables · 1 row · 0 guests seated": nobody can be seated until sc-4013. */
+/** "2 tables · 1 row · 3 guests seated". */
 export function summaryOf(t: TFunction, items: readonly FloorItem[]): string {
   const tables = items.filter((item) => item.kind === 'table').length;
   const rows = items.filter((item) => item.kind === 'row').length;
@@ -319,7 +337,7 @@ export function summaryOf(t: TFunction, items: readonly FloorItem[]): string {
     tables > 0 ? t('seating.countTables', { count: tables }) : null,
     rows > 0 ? t('seating.countRows', { count: rows }) : null,
     seats > 0 ? t('seating.countSingleSeats', { count: seats }) : null,
-    t('seating.guestsSeated', { count: 0 }),
+    t('seating.guestsSeated', { count: seatedIn(items) }),
   ]
     .filter((part): part is string => part != null)
     .join(' · ');
