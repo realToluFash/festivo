@@ -65,6 +65,10 @@ export interface UnwarnedOption {
   allergens: DishAllergen[];
 }
 
+/** One item on a plate of a dish (sc-34230): a fixed name, one of the dish's choices, or its variant. */
+export type MenuItem =
+  { kind: 'fixed'; name: string } | { kind: 'choice'; choiceId: string } | { kind: 'variants' };
+
 /** An event's menu as the API answers and the hub publishes it (sc-3902): courses in order, each with the event's own copy of its dishes. */
 
 export interface MenuDish {
@@ -82,6 +86,8 @@ export interface MenuDish {
   choices: MenuDishChoice[];
   /** False while a draft choice hides it from guests. */
   offered: boolean;
+  /** What a plate of it holds, in order: none, or 2 to 6. None is the dish as one item. */
+  items: MenuItem[];
   /** Taken from the variant it folded back from; undefined without budget.read, and on the hub. */
   cost?: DishPrice | null;
 }
@@ -96,6 +102,10 @@ export interface MenuCourse {
   answer: MenuAnswer;
   skippable: boolean;
   dishes: MenuDish[];
+  /** Served with this course (sc-34230): on every plate of it, after the dish's items. */
+  ownItems: string[];
+  /** The course's items, each name once, in the order it first appears: the dishes' then its own. */
+  items: string[];
 }
 
 export interface EventMenu {
@@ -130,6 +140,11 @@ export const CHOICE_OPTIONS_MAXIMUM = 8;
 export const CHOICE_OPTION_NAME_MAXIMUM = 60;
 
 export const MENU_COURSE_MAXIMUM = 10;
+
+/** sc-34230: a dish's items and a course's own, on the API. */
+export const ITEMS_PER_DISH_MAXIMUM = 6;
+export const OWN_ITEMS_PER_COURSE_MAXIMUM = 3;
+export const ITEM_NAME_MAXIMUM = 40;
 export const MENU_COURSE_NAME_MAXIMUM = 60;
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -216,6 +231,22 @@ function asMenuDishChoice(raw: unknown): MenuDishChoice | null {
   };
 }
 
+function asMenuItem(raw: unknown): MenuItem | null {
+  if (!isRecord(raw)) return null;
+  if (raw.kind === 'fixed' && typeof raw.name === 'string')
+    return { kind: 'fixed', name: raw.name };
+  if (raw.kind === 'choice' && typeof raw.choiceId === 'string')
+    return { kind: 'choice', choiceId: raw.choiceId };
+
+  return raw.kind === 'variants' ? { kind: 'variants' } : null;
+}
+
+function names(raw: unknown): string[] | null {
+  return Array.isArray(raw) && raw.every((one) => typeof one === 'string')
+    ? (raw as string[])
+    : null;
+}
+
 function asMenuDish(raw: unknown): MenuDish | null {
   if (!isRecord(raw)) return null;
   const { id, name, description, allergens, diets, libraryDishId, picked } = raw;
@@ -223,6 +254,7 @@ function asMenuDish(raw: unknown): MenuDish | null {
   const suits = codes(diets, DISH_DIETS);
   const variants = Array.isArray(raw.variants) ? raw.variants.map(asMenuDishVariant) : null;
   const choices = Array.isArray(raw.choices) ? raw.choices.map(asMenuDishChoice) : null;
+  const items = Array.isArray(raw.items) ? raw.items.map(asMenuItem) : null;
 
   if (
     typeof id !== 'string' ||
@@ -236,7 +268,9 @@ function asMenuDish(raw: unknown): MenuDish | null {
     variants.some((one) => one == null) ||
     choices == null ||
     choices.some((one) => one == null) ||
-    typeof raw.offered !== 'boolean'
+    typeof raw.offered !== 'boolean' ||
+    items == null ||
+    items.some((one) => one == null)
   )
     return null;
 
@@ -251,6 +285,7 @@ function asMenuDish(raw: unknown): MenuDish | null {
     variants: variants as MenuDishVariant[],
     choices: choices as MenuDishChoice[],
     offered: raw.offered,
+    items: items as MenuItem[],
   };
 
   if ('cost' in raw) {
@@ -277,9 +312,11 @@ function asMenuCourse(raw: unknown): MenuCourse | null {
     return null;
 
   const read = dishes.map(asMenuDish);
+  const ownItems = names(raw.ownItems);
+  const items = names(raw.items);
 
-  return read.every((dish) => dish != null)
-    ? { id, name, servedAt, answer, skippable, dishes: read as MenuDish[] }
+  return read.every((dish) => dish != null) && ownItems != null && items != null
+    ? { id, name, servedAt, answer, skippable, dishes: read as MenuDish[], ownItems, items }
     : null;
 }
 

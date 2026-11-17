@@ -14,7 +14,11 @@ import {
   type DishProblems,
   type MoneyLanguage,
   guestsAnswerItsChoices,
+  type FixedRow,
+  type ItemProblems,
+  type ItemRow,
   guestsPickTheWay,
+  isItem,
   shownDishes,
 } from '@soirely/domain';
 import { useTranslation } from 'react-i18next';
@@ -35,6 +39,7 @@ import {
 import { shownVariants } from '../menu/variants.ts';
 import { AddChoiceButton, type ChoiceAsk, ChoiceInsets, NotOffered } from './ChoiceParts.tsx';
 import { describedBy } from './eventFieldOrder.ts';
+import { DishItemsField, ItemsLine, OwnItemsField, OwnItemsFacts } from './ItemParts.tsx';
 import {
   type CourseForm,
   type CourseProblems,
@@ -346,6 +351,7 @@ export function CourseCard({
           </div>
         )}
       </div>
+      <OwnItemsFacts course={course} />
       {refused === 'course' && <Refused words={t('eventMenu.coursePicked')} />}
       {asking === 'course' && (
         <div className="mn-ask">
@@ -598,8 +604,10 @@ function DishRow({
           onRemove={(variant) => variants.onRemove(dish, variant)}
           onKeep={variants.onKeep}
           onConfirm={(variant) => variants.onConfirm(dish, variant)}
+          foldItem={isItem(dish, null) ? t('dishItems.variantsAreItem', { dish: name }) : null}
         />
       )}
+      <ItemsLine dish={dish} />
       {asks && (
         <ChoiceInsets
           dish={dish}
@@ -644,12 +652,18 @@ export function CourseFields({
   adding,
   problems,
   zone,
+  own,
+  ownProblems,
+  onOwn,
   onPatch,
 }: {
   form: CourseForm;
   adding: boolean;
   problems: CourseProblems | null;
   zone: string;
+  own: FixedRow[];
+  ownProblems: ItemProblems | null;
+  onOwn: (rows: FixedRow[]) => void;
   onPatch: (next: Partial<CourseForm>) => void;
 }) {
   const { t } = useTranslation();
@@ -730,6 +744,7 @@ export function CourseFields({
           <Wrong id="mc-served-error">{t('eventMenu.timeWrong')}</Wrong>
         )}
       </div>
+      {!adding && <OwnItemsField rows={own} problems={ownProblems} onRows={onOwn} />}
       {adding && <p className="desk-help">{t('eventMenu.goesLast')}</p>}
     </>
   );
@@ -942,12 +957,18 @@ export function EditDishFields({
   dish,
   problems,
   language,
+  items,
+  itemProblems,
+  onItems,
   onPatch,
 }: {
   form: DishForm;
   dish: MenuDish | null;
   problems: DishProblems | null;
   language: MoneyLanguage;
+  items: ItemRow[];
+  itemProblems: ItemProblems | null;
+  onItems: (rows: ItemRow[]) => void;
   onPatch: (next: Partial<DishForm>) => void;
 }) {
   const { t } = useTranslation();
@@ -964,8 +985,12 @@ export function EditDishFields({
           editing={null}
           prices={false}
           language={language}
+          containsHelp={`${t('menuLibrary.containsHelp')} ${t('dishItems.containsStays')}`}
           onPatch={onPatch}
         />
+      )}
+      {dish != null && (
+        <DishItemsField dish={dish} rows={items} problems={itemProblems} onRows={onItems} />
       )}
       <p className="lib-own-copy">
         {dish?.libraryDishId == null ? t('eventMenu.eventOnly') : t('eventMenu.copyOnly')}

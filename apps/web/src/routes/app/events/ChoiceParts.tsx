@@ -17,6 +17,7 @@ import {
   choiceBlockId,
   dishLength,
   draftReasons,
+  isItem,
   listFormat,
   namedOptionCount,
   optionPicked,
@@ -120,7 +121,7 @@ export function NotOffered({ variants }: { variants: number }) {
   );
 }
 
-function DraftTag() {
+export function DraftTag() {
   const { t } = useTranslation();
 
   return (
@@ -301,6 +302,8 @@ export function ChoiceInsets({
                 <div className="mn-ask">
                   <p id={`mc-chask-${choice.id}`} tabIndex={-1}>
                     {t('dishChoices.removeAsk', { question: choice.question, dish: dish.name })}
+                    {isItem(dish, choice.id) &&
+                      ` ${t('dishItems.choiceIsItem', { question: choice.question, dish: dish.name })}`}
                   </p>
                   <div className="mn-ask-acts">
                     <button type="button" className="desk-text" onClick={() => onKeep(choice)}>
