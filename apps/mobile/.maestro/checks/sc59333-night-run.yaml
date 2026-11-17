@@ -1,4 +1,4 @@
-# The night in the app, on an event of ${EV} with nothing on and Start now on Next, a second track over, then presses with the API stopped: waiting 1 and 2, Reconnecting at a minute, and the replay on Try now (sc-59333). Run once per language, each with its own event, since the presses change it.
+# The night in the app, on an event of ${EV} with nothing on and Start now on Next, a second track over, then presses with the API stopped: waiting 1 and 2, Reconnecting at a minute, and the replay on Try now, or on the screen's own retry every 10 s, ending Live with Try now gone (sc-59333). Run once per language, each with its own event, since the presses change it.
 appId: host.exp.Exponent
 onFlowComplete:
   - runScript:
@@ -52,5 +52,10 @@ onFlowComplete:
 - tapOn:
     id: night.try
     optional: true
+- extendedWaitUntil:
+    visible: '(Live · updated just now|En directo · actualizado ahora mismo|En direct · mis à jour à l’instant|Em direto · atualizado agora mesmo)'
+    timeout: 30000
+- assertNotVisible:
+    id: night.try
 - waitForAnimationToEnd
 - takeScreenshot: back-online
