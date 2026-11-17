@@ -8,7 +8,7 @@ import {
 } from 'react-native';
 
 import { CountryPicker } from '../../components/CountryPicker.tsx';
-import { focusChecked } from '../../components/Field.tsx';
+import { Field, focusChecked } from '../../components/Field.tsx';
 import { Legend, SheetBody, SheetLayer } from '../../components/FormLayers.tsx';
 import { Glyph } from '../../components/Glyph.tsx';
 import { RadioMark } from '../../components/RadioMark.tsx';
@@ -16,7 +16,7 @@ import type { ScreenReaderTarget } from '../../components/screenReaderFocus.ts';
 import { Sheet } from '../../components/Sheet.tsx';
 import { Text } from '../../components/Text.tsx';
 import { tokens } from '../../theme/tokens.ts';
-import { ASK_WIDTH, AlertLine, EventField } from '../events/EventEdits.tsx';
+import { ASK_WIDTH, AlertLine } from '../events/EventEdits.tsx';
 import { BoxField } from '../../components/MomentPick.tsx';
 import { Pill } from '../../components/SettingsParts.tsx';
 import { type AskProps, FocusedScreen, TextAction } from '../../components/Summary.tsx';
@@ -108,7 +108,7 @@ export function GuestField({
   testID: string;
 }) {
   return (
-    <EventField label={label} optional={optional} error={error} help={help}>
+    <Field label={label} pill={optional ? W.optional : undefined} error={error} help={help}>
       <BoxField
         ref={fieldRef}
         value={value}
@@ -121,7 +121,7 @@ export function GuestField({
         accessibilityLabel={label}
         testID={testID}
       />
-    </EventField>
+    </Field>
   );
 }
 
@@ -148,7 +148,7 @@ export function PhoneField({
   testID: string;
 }) {
   return (
-    <EventField label={W.mobileNumber} optional error={error} help={help}>
+    <Field label={W.mobileNumber} pill={W.optional} error={error} help={help}>
       <View style={styles.phone}>
         <View style={styles.country}>
           <CountryPicker
@@ -156,11 +156,10 @@ export function PhoneField({
             value={country}
             onChange={onCountry}
             withCallingCode
-            compact
             testID={`${testID}.country`}
           />
         </View>
-        <View style={styles.grow}>
+        <View style={styles.number}>
           <BoxField
             ref={fieldRef}
             value={number}
@@ -174,7 +173,7 @@ export function PhoneField({
           />
         </View>
       </View>
-    </EventField>
+    </Field>
   );
 }
 
@@ -1020,8 +1019,9 @@ const styles = StyleSheet.create({
   lines: { lineHeight: 15 * 1.45 },
   small: { lineHeight: 13.5 * 1.45 },
   tight: { gap: 6 },
-  phone: { flexDirection: 'row', gap: tokens.spaceSm },
-  country: { width: 112 },
+  phone: { flexDirection: 'row', flexWrap: 'wrap', gap: tokens.spaceSm },
+  country: { flexGrow: 1, flexBasis: 140 },
+  number: { flexGrow: 2, flexBasis: 180 },
   companions: { gap: 8 },
   companion: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   companionBlock: { gap: 4 },

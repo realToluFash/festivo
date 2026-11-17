@@ -8,7 +8,7 @@ import {
   type ViewInstance,
 } from 'react-native';
 
-import { FieldError } from '../../components/Field.tsx';
+import { Field, FieldError } from '../../components/Field.tsx';
 import { Glyph } from '../../components/Glyph.tsx';
 import { BoxField } from '../../components/MomentPick.tsx';
 import { moveScreenReaderFocus } from '../../components/screenReaderFocus.ts';
@@ -17,7 +17,6 @@ import { Row } from '../../components/Summary.tsx';
 import { LineIcon } from '../../components/AccountCard.tsx';
 import { Text } from '../../components/Text.tsx';
 import { tokens } from '../../theme/tokens.ts';
-import { EventField } from '../events/EventEdits.tsx';
 import {
   ACCESS,
   ALLERGENS,
@@ -82,7 +81,7 @@ export function GroupField({
   const shown = value ?? GW.noGroup;
 
   return (
-    <EventField label={GW.group} optional error={error}>
+    <Field label={GW.group} pill={W.optional} error={error}>
       <Pressable
         ref={fieldRef}
         onPress={onOpen}
@@ -112,7 +111,7 @@ export function GroupField({
           {GW.madeOnSave(value)}
         </Text>
       )}
-    </EventField>
+    </Field>
   );
 }
 
@@ -448,9 +447,9 @@ export function NeedsSection({
             testID={`${testID}.access`}
           />
           <View style={styles.tight}>
-            <EventField
+            <Field
               label={NW.privateNote}
-              optional
+              pill={W.optional}
               error={lines.note ?? null}
               help={NW.noteHint}
             >
@@ -464,7 +463,7 @@ export function NeedsSection({
                 aria-invalid={lines.note != null}
                 testID={`${testID}.note`}
               />
-            </EventField>
+            </Field>
             <Text size={13.5} weight="medium" style={[styles.secondary, styles.figures]}>
               {NW.noteCount(lengthOf(needs.note))}
             </Text>
@@ -538,7 +537,7 @@ function NeedsGroup<T extends string>({
         ))}
       </View>
       {otherOn && (
-        <EventField label={other.label} error={other.error}>
+        <Field label={other.label} error={other.error}>
           <BoxField
             ref={otherRef}
             value={other.value}
@@ -548,7 +547,7 @@ function NeedsGroup<T extends string>({
             aria-invalid={other.error != null}
             testID={`${testID}.other`}
           />
-        </EventField>
+        </Field>
       )}
     </View>
   );
