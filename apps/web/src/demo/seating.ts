@@ -2,6 +2,7 @@ import { writtenTime } from './clock.ts';
 import { demoWords } from './demoWords.ts';
 import { CRUMB_WORDS, type CrumbLang, LONG_NAME, QA_NAME, SW } from './seatingWords.ts';
 import type { DemoLink } from './settings.ts';
+import { SHARE_STATES } from './shareTables.ts';
 
 /** Seating · A · The room (page e31, board/seating-a-spec.md): the sample, the room's geometry and the plan's rules; the words are in seatingWords.ts. */
 export { CRUMB_WORDS, type CrumbLang, LONG_NAME, QA_NAME, SW };
@@ -1395,6 +1396,8 @@ export function seatAt(item: Item, party: Party, chairs: readonly number[]): Ite
   };
 }
 
+const SHARE_GROUP = 'Share tables with guests (sc-4022)';
+
 export const SEATING_STATES = [
   { key: 'plan', name: 'The plan in use, nothing chosen', group: 'The plan' },
   { key: 'noPlan', name: 'No seating plan yet', group: 'The plan' },
@@ -1628,6 +1631,20 @@ export const SEATING_STATES = [
   { key: 'paperNobody', name: 'Paper: table lists, nobody seated', group: 'Print and paper' },
   { key: 'paperCard', name: 'Paper: a table card', group: 'Print and paper' },
   { key: 'paperCardTop', name: 'Paper: the head table’s card', group: 'Print and paper' },
+  { key: 'shareNotShared', name: SHARE_STATES.shareNotShared.name, group: SHARE_GROUP },
+  { key: 'shareAllSeated', name: SHARE_STATES.shareAllSeated.name, group: SHARE_GROUP },
+  { key: 'shareBySet', name: SHARE_STATES.shareBySet.name, group: SHARE_GROUP },
+  { key: 'shareByBlank', name: SHARE_STATES.shareByBlank.name, group: SHARE_GROUP },
+  { key: 'shareByAfterEvent', name: SHARE_STATES.shareByAfterEvent.name, group: SHARE_GROUP },
+  { key: 'shareByPast', name: SHARE_STATES.shareByPast.name, group: SHARE_GROUP },
+  { key: 'shareByPassed', name: SHARE_STATES.shareByPassed.name, group: SHARE_GROUP },
+  { key: 'shareConfirm', name: SHARE_STATES.shareConfirm.name, group: SHARE_GROUP },
+  { key: 'shareFailed', name: SHARE_STATES.shareFailed.name, group: SHARE_GROUP },
+  { key: 'shareShared', name: SHARE_STATES.shareShared.name, group: SHARE_GROUP },
+  { key: 'shareConfirmStop', name: SHARE_STATES.shareConfirmStop.name, group: SHARE_GROUP },
+  { key: 'shareStopped', name: SHARE_STATES.shareStopped.name, group: SHARE_GROUP },
+  { key: 'shareReadOnly', name: SHARE_STATES.shareReadOnly.name, group: SHARE_GROUP },
+  { key: 'shareReadOnlyShared', name: SHARE_STATES.shareReadOnlyShared.name, group: SHARE_GROUP },
   { key: 'longName', name: 'A 120-character event name', group: 'The breadcrumb' },
   { key: 'longNameFr', name: 'A 120-character event name, in French', group: 'The breadcrumb' },
   {

@@ -5,7 +5,6 @@ import {
   DEMO_CLOCK,
   type GuestItem,
   LIVE_MARKS,
-  TABLE_SLOT,
   byDay,
   dateTimeOf,
   guestProgramme,
@@ -93,18 +92,5 @@ function Items({
         </li>
       ))}
     </ul>
-  );
-}
-
-/** sc-4022's place on the day, drawn from GuestTable-*.dc.html until its own demo is built. */
-export function YourTableSlot() {
-  return (
-    <section className="gp-day-block" aria-labelledby="gp-table-h">
-      <h2 id="gp-table-h" className="gp-h2">
-        {TABLE_SLOT.heading}
-      </h2>
-      <p className="gp-day-venue">{TABLE_SLOT.line}</p>
-      <span className="ev-pill">{TABLE_SLOT.notBuilt}</span>
-    </section>
   );
 }

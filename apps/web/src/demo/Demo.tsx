@@ -45,6 +45,7 @@ import { GUEST_PARTY_PAGES } from './guestCompanions.ts';
 import { GUEST_ASK_PAGES } from './guestAskStates.ts';
 import { GUEST_DAY_PAGES } from './guestDay.ts';
 import { GUEST_PROGRAMME_PAGES } from './guestProgramme.ts';
+import { GUEST_TABLE_PAGES } from './guestTable.ts';
 import { GUEST_NOTE_PAGES } from './guestNote.ts';
 import { GUEST_CHANGE_PAGES } from './guestChange.ts';
 import { Guests } from './Guests.tsx';
@@ -390,6 +391,11 @@ function DemoHome({ from }: { from: string }) {
         <BoardPages pages={GUEST_ASK_PAGES} />
         <h3>The guest’s page on the event’s day · sc-24381 · phone, tablet and desk</h3>
         <BoardPages pages={GUEST_DAY_PAGES} />
+        <h3>
+          Your table on the guest’s page (sc-4022) · phone, tablet portrait, tablet landscape and
+          desk
+        </h3>
+        <BoardPages pages={GUEST_TABLE_PAGES} />
       </section>
 
       <section className="demo-home-page" aria-labelledby="demo-page-30">

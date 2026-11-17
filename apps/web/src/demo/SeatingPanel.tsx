@@ -49,6 +49,7 @@ import {
 import { useSeating } from './seatingContext.ts';
 import { StateMark } from './SeatingRoom.tsx';
 import { SelectionPanel } from './SeatingSelection.tsx';
+import { ShareTables } from './ShareTables.tsx';
 import { Mark, TextAction } from '../components/SettingsParts.tsx';
 
 export function Line({
@@ -447,6 +448,7 @@ function NothingChosen() {
   return (
     <>
       <RoomHead readOnly={ui.readOnly} />
+      <ShareTables />
       {ui.readOnly ? <Line>{SW.readOnly}</Line> : <SnapRow />}
       <SectionsBlock readOnly={ui.readOnly} />
       {ui.camera == null || ui.camera.s >= 0.25 ? <Legend /> : null}

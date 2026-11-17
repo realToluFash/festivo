@@ -30,6 +30,7 @@ import {
   usable,
   filled,
 } from './seating.ts';
+import { NOT_SHARED, SHARE_STATES, type Share, isShareState, shareOf } from './shareTables.ts';
 import {
   type Fold,
   type Rect,
@@ -149,6 +150,8 @@ export interface Ui {
   refused: string | null;
   renumber: { start: string; error: string | null };
   sectionPick: string;
+  /** sc-4022: sharing the tables with guests, the card at the top of the panel. */
+  share: Share;
 }
 
 const NO_DOCS: Record<Doc, DocState> = {
@@ -216,6 +219,7 @@ export function freshUi(): Ui {
     refused: null,
     renumber: { start: '1', error: null },
     sectionPick: '',
+    share: NOT_SHARED,
   };
 }
 
@@ -288,6 +292,17 @@ export function seedOf(state: SeatingState | null): Ui {
   const ui = freshUi();
   const plan = ui.plan;
   const at = (s: number, cx: number, cy: number) => ({ s, cx, cy });
+
+  if (isShareState(state)) {
+    const start = SHARE_STATES[state];
+
+    return {
+      ...ui,
+      share: shareOf(state),
+      readOnly: 'readOnly' in start,
+      tray: 'allSeated' in start ? ui.tray.filter((party) => party.reply !== 'coming') : ui.tray,
+    };
+  }
 
   switch (state) {
     case null:
