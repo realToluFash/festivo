@@ -64,6 +64,10 @@
   font: var(--typeSmall);
 }
 
+.ss-said.is-ink {
+  color: var(--colorInk);
+}
+
 .ss-said:empty {
   display: none;
 }

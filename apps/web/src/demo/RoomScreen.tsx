@@ -82,7 +82,7 @@ function RoomScreen({ place, raw }: { place: ScreenPlace; raw: string | null }) 
       <div className="rs-stage">
         <div className="rs-fill" data-testid="room-screen">
           <Screen shown={shown} offline={!online} />
-          <FullScreen />
+          {shown.answer.kind !== 'replaced' && <FullScreen />}
         </div>
       </div>
       <details className="rv-demo-only rs-demo">

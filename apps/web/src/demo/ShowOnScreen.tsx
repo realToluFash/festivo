@@ -14,7 +14,12 @@ import {
 } from './roomScreen.ts';
 import './showOnScreen.css';
 
-export type ScreensStart = 'list' | 'replace' | 'replaced';
+export type ScreensStart = 'list' | 'replace' | 'replaced' | 'refused';
+
+interface Said {
+  words: string;
+  copied: boolean;
+}
 
 /** sc-3897's Show on a screen: one screen link per place, each with Copy screen link, Open here and Replace link. */
 export function ShowOnScreen({ start, onClose }: { start: ScreensStart; onClose: () => void }) {
@@ -24,27 +29,39 @@ export function ShowOnScreen({ start, onClose }: { start: ScreensStart; onClose:
     start === 'replaced' ? { Ballroom: 1 } : {},
   );
   const [asking, setAsking] = useState<ScreenPlace | null>(start === 'replace' ? 'Ballroom' : null);
-  const [said, setSaid] = useState(start === 'replaced' ? W.replacedSaid('Ballroom') : '');
+  const [said, setSaid] = useState<Said | null>(() => {
+    if (start === 'replaced') return { words: W.replacedSaid('Ballroom'), copied: true };
+    if (start === 'refused') return { words: W.copyRefused('Ballroom'), copied: false };
+
+    return null;
+  });
 
   useDialogKeys(dialog, onClose, false);
   const keep = useRef<HTMLButtonElement>(null);
 
-  useEffect(() => title.current?.focus(), []);
+  useEffect(() => {
+    title.current?.focus();
+    if (start === 'refused') selectLink('Ballroom');
+  }, [start]);
   useEffect(() => {
     if (asking != null) keep.current?.focus();
   }, [asking]);
 
   function copy(place: ScreenPlace) {
-    const done = () => setSaid(W.copied(place));
+    const done = () => setSaid({ words: W.copied(place), copied: true });
+    const refused = () => {
+      setSaid({ words: W.copyRefused(place), copied: false });
+      selectLink(place);
+    };
 
-    if (navigator.clipboard == null) done();
-    else navigator.clipboard.writeText(screenLinkOf(place, rounds[place])).then(done, done);
+    if (navigator.clipboard == null) refused();
+    else navigator.clipboard.writeText(screenLinkOf(place, rounds[place])).then(done, refused);
   }
 
   function replace(place: ScreenPlace) {
     setRounds({ ...rounds, [place]: (rounds[place] ?? 0) + 1 });
     setAsking(null);
-    setSaid(W.replacedSaid(place));
+    setSaid({ words: W.replacedSaid(place), copied: true });
   }
 
   return (
@@ -77,7 +94,9 @@ export function ShowOnScreen({ start, onClose }: { start: ScreensStart; onClose:
                   <h3 id={id} className="ss-place">
                     {place}
                   </h3>
-                  <p className="ss-link">{screenLinkOf(place, round)}</p>
+                  <p id={`${id}-link`} className="ss-link">
+                    {screenLinkOf(place, round)}
+                  </p>
                   {round > 0 && (
                     <p className="ss-replaced">
                       <Glyph name="tick" size={15} weight={2.6} />
@@ -126,7 +145,7 @@ export function ShowOnScreen({ start, onClose }: { start: ScreensStart; onClose:
                       type="button"
                       className="gs-pill is-secondary"
                       onClick={() => {
-                        setSaid('');
+                        setSaid(null);
                         setAsking(place);
                       }}
                     >
@@ -138,11 +157,11 @@ export function ShowOnScreen({ start, onClose }: { start: ScreensStart; onClose:
             );
           })}
         </ul>
-        <p className="ss-said" role="status">
-          {said !== '' && (
+        <p className={said?.copied === false ? 'ss-said is-ink' : 'ss-said'} role="status">
+          {said != null && (
             <>
-              <Glyph name="tick" size={17} weight={2.6} />
-              {said}
+              {said.copied && <Glyph name="tick" size={17} weight={2.6} />}
+              {said.words}
             </>
           )}
         </p>
@@ -154,4 +173,17 @@ export function ShowOnScreen({ start, onClose }: { start: ScreensStart; onClose:
       </div>
     </>
   );
+}
+
+/** A refused clipboard leaves the link selected, so Ctrl+C or Command+C copies it (as Share does). */
+function selectLink(place: ScreenPlace) {
+  const link = document.getElementById(`ss-${place.toLowerCase()}-link`);
+  const selection = window.getSelection();
+
+  if (link == null || selection == null) return;
+  const range = document.createRange();
+
+  range.selectNodeContents(link);
+  selection.removeAllRanges();
+  selection.addRange(range);
 }

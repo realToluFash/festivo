@@ -97,6 +97,8 @@ export const SHOW_WORDS = {
   replace: 'Replace link',
   close: 'Close',
   copied: (place: string) => `Screen link for ${place} copied.`,
+  copyRefused: (place: string) =>
+    `Could not copy here. The link for ${place} is selected: press Ctrl+C or Command+C.`,
   replaceTitle: (place: string) => `Replace the screen link for ${place}?`,
   replaceBody:
     'A screen showing the old link stops within a minute and shows that its link was replaced, with nothing about the event on it. Copy the new link to that screen.',

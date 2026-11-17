@@ -84,7 +84,8 @@ describe('the room screen (sc-3897)', () => {
   it('shows only that the link was replaced, and the thank-you once Finished', SLOW, async () => {
     const replaced = await room('replaced');
 
-    expect(replaced.textContent).toBe('This screen link has been replacedFull screen');
+    expect(replaced.textContent).toBe('This screen link has been replaced');
+    expect(screen.queryByRole('button', { name: 'Full screen' })).toBeNull();
     cleanup();
     const finished = await room('finished');
 
@@ -122,6 +123,38 @@ describe('Show on a screen on the Schedule (sc-3897)', () => {
     expect(
       within(ballroom).getByText('Replaced at 17:25. The old link shows nothing.'),
     ).toBeDefined();
+  });
+
+  it('says so and selects the link when the browser refuses the copy', SLOW, async () => {
+    await open('/demo/events/evt-wed-4/schedule');
+    fireEvent.click(await screen.findByRole('button', { name: 'Show on a screen' }, SLOW));
+    const dialog = screen.getByRole('dialog', { name: 'Show on a screen' });
+    const ballroom = within(dialog).getAllByRole('listitem')[2] as HTMLElement;
+
+    Object.defineProperty(navigator, 'clipboard', {
+      configurable: true,
+      value: { writeText: () => Promise.reject(new Error('denied')) },
+    });
+    fireEvent.click(within(ballroom).getByRole('button', { name: 'Copy screen link' }));
+
+    expect(
+      await within(dialog).findByText(
+        'Could not copy here. The link for Ballroom is selected: press Ctrl+C or Command+C.',
+      ),
+    ).toBeDefined();
+    expect(within(dialog).queryByText('Screen link for Ballroom copied.')).toBeNull();
+    expect(window.getSelection()?.toString()).toBe('https://soirely.app/s/w3E6rT9yU2iO5pA8sD1fG4');
+    Reflect.deleteProperty(navigator, 'clipboard');
+  });
+
+  it('opens on the refused copy by ?state=screensRefused', SLOW, async () => {
+    await open('/demo/events/evt-wed-4/schedule?state=screensRefused');
+    const dialog = await screen.findByRole('dialog', { name: 'Show on a screen' }, SLOW);
+
+    expect(within(dialog).getByRole('status').textContent).toBe(
+      'Could not copy here. The link for Ballroom is selected: press Ctrl+C or Command+C.',
+    );
+    expect(window.getSelection()?.toString()).toBe('https://soirely.app/s/w3E6rT9yU2iO5pA8sD1fG4');
   });
 
   it('is not offered without run_of_show.manage', SLOW, async () => {
