@@ -161,7 +161,15 @@ export function sampleItems(): Item[] {
       guests: true,
     }),
     item('families', 'The families meet', '2026-11-05T20:00', 60, null, 'Ngozi Obi', 'Aunt'),
-    item('seated', 'Guests seated', '2026-11-06T13:30', 30, null, 'Ebele Nwosu', 'Venue'),
+    item(
+      'seated',
+      'Guests seated',
+      '2026-11-06T13:30',
+      30,
+      null,
+      'Chief Mrs Folasade Okonkwo-Williams',
+      'Aunt',
+    ),
     item('ceremony', 'Ceremony', '2026-11-06T14:00', 45, null, 'Father Okafor', 'Officiant', {
       fixed: true,
       guests: true,
@@ -550,6 +558,14 @@ function start(over: Partial<ScheduleStart> & { name: string }): ScheduleStart {
 
 const speeches = (): Item => sampleItems().find((one) => one.id === 'speeches') as Item;
 
+/** One word wider than the page can give it: the Owner field takes 120 characters (sc-63743). */
+function ownedBy(owner: string, name: string): ScheduleStart {
+  const items = sampleItems().map((one) => (one.id === 'seated' ? { ...one, owner } : one));
+  const seated = items.find((one) => one.id === 'seated') as Item;
+
+  return start({ name, items, panel: { kind: 'edit', id: 'seated' }, form: formOf(seated) });
+}
+
 const STATES = {
   populated: () => start({ name: 'Friday, three places' }),
   onePlace: () => start({ name: 'Thursday, one place, headed Main', day: DAYS[0] }),
@@ -600,6 +616,16 @@ const STATES = {
       panel: { kind: 'edit', id: 'speeches' },
       form: formOf(speeches()),
     }),
+  ownerHyphenLong: () =>
+    ownedBy(
+      'Oluwadamilareoluwatobiloba-Adekunleogundipeadeyemi',
+      'Editing Guests seated, an owner one long hyphenated word',
+    ),
+  ownerOneWord: () =>
+    ownedBy(
+      'Oluwadamilareoluwatobilobaadekunleogundipeadeyemi',
+      'Editing Guests seated, an owner one long word with no hyphen',
+    ),
   placeMoved: () =>
     start({
       name: 'Editing, Place changed to another table',
@@ -742,6 +768,8 @@ export const SCHEDULE_PAGES: readonly { name: string; states: readonly DemoLink[
         'startOutside',
         'tooLong',
         'editing',
+        'ownerHyphenLong',
+        'ownerOneWord',
         'placeMoved',
         'newPlace',
         'atLimit',
