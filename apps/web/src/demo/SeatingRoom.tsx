@@ -439,10 +439,7 @@ function ItemDrawing({
   const room = look.picking === true && item.kind !== 'single' ? free(item) : null;
 
   if (detail === 'out') {
-    const by =
-      item.kind === 'rect' || item.kind === 'head'
-        ? cy + ((item.l ?? 76) / 2) * s + 12
-        : cy + Math.max(ey, 40) * s * (item.kind === 'row' ? 1 : 0.55) + 12;
+    const by = nameAt(item, s, oy);
 
     words.push(
       <text
@@ -456,8 +453,7 @@ function ItemDrawing({
         {item.name}
       </text>,
     );
-    if (room != null) words.push(<FreeTag key="free" x={cx} y={by + 20} n={room} />);
-    else if (item.kind !== 'single') {
+    if (room == null && item.kind !== 'single') {
       const share = filled(item) / Math.max(1, usable(item));
 
       words.push(
@@ -700,6 +696,38 @@ function footprint(item: Item, s: number, ox: number, oy: number): Box {
 
 function crosses(a: Box, b: Box): boolean {
   return a.x0 < b.x1 && b.x0 < a.x1 && a.y0 < b.y1 && b.y0 < a.y1;
+}
+
+function nameAt(item: Item, s: number, oy: number): number {
+  const cy = oy + item.y * s;
+
+  return item.kind === 'rect' || item.kind === 'head'
+    ? cy + ((item.l ?? 76) / 2) * s + 12
+    : cy + Math.max(extent(item)[1], 40) * s * (item.kind === 'row' ? 1 : 0.55) + 12;
+}
+
+/** Below 50%, under the table's name; a tag that would cross one already placed goes a line lower (sc-5030). */
+function outTags(
+  items: readonly Item[],
+  s: number,
+  ox: number,
+  oy: number,
+): { id: string; x: number; y: number; n: number }[] {
+  const placed: Box[] = [];
+
+  return items
+    .filter((item) => item.kind !== 'single')
+    .map((item) => {
+      const n = free(item);
+      const x = ox + item.x * s;
+      const half = (wordsWide(n === 0 ? SW.fullTab : say(SW.freeTag, { n })) + 16) / 2;
+      const at = (y: number) => ({ x0: x - half, y0: y - 11, x1: x + half, y1: y + 11 });
+      let y = nameAt(item, s, oy) + 20;
+
+      while (placed.some((one) => crosses(at(y), one))) y += 24;
+      placed.push(at(y));
+      return { id: item.id, x, y, n };
+    });
 }
 
 /** Under its item, or over it when only the space under it is taken (sc-5030). */
@@ -1026,9 +1054,8 @@ export function RoomDrawing({
       {tip != null && (
         <Tip x={ox + tip.at[0] * s + 26} y={oy + tip.at[1] * s + 30} words={tip.words} />
       )}
-      {detail !== 'out' &&
-        look.picking === true &&
-        freeTags(ordered, s, ox, oy).map((tag) => (
+      {look.picking === true &&
+        (detail === 'out' ? outTags : freeTags)(ordered, s, ox, oy).map((tag) => (
           <FreeTag key={`free-${tag.id}`} x={tag.x} y={tag.y} n={tag.n} />
         ))}
       {detail !== 'out' && (

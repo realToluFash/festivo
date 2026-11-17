@@ -1742,6 +1742,28 @@ describe('seating guests (sc-4013, sc-4016, sc-5030)', () => {
     expect(await screen.findByText('Kwame Mensah and 1 guest are at Table 8.')).toBeDefined();
   });
 
+  it('keeps every free tag clear of the others at 25% in a close room', SLOW, async () => {
+    await seating('pickedTight');
+    const zoomOut = screen.getByRole('button', { name: 'Zoom out' });
+
+    while (zoomOut.getAttribute('aria-disabled') !== 'true') fireEvent.click(zoomOut);
+    const boxes = [...room().querySelectorAll('.st-free rect')].map((one) => {
+      const x = Number(one.getAttribute('x'));
+      const y = Number(one.getAttribute('y'));
+
+      return [x, y, x + Number(one.getAttribute('width')), y + 22] as const;
+    });
+
+    expect(boxes.length).toBeGreaterThan(3);
+    boxes.forEach((a, i) =>
+      boxes
+        .slice(i + 1)
+        .forEach((b) =>
+          expect(a[0] < b[2] && b[0] < a[2] && a[1] < b[3] && b[1] < a[3]).toBe(false),
+        ),
+    );
+  });
+
   it('labels a chair with its seat, guest and reply on hover and focus', SLOW, async () => {
     await seating('chairLabel');
     expect(within(room()).getByText('Seat 1, Sofia Rossi, Not sure yet')).toBeDefined();
