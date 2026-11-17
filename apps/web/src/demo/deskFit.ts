@@ -8,6 +8,10 @@ export const DESK_FIT_PAGES: readonly {
     states: [
       { to: '/demo/today', name: 'This week and Your events, the wedding over three days' },
       { to: '/demo/today?name=long', name: 'An event name of 120 characters' },
+      {
+        to: '/demo/today?moment=plan&needs=overdue&name=long',
+        name: 'Needs you, an overdue row for an event name of 120 characters',
+      },
       { to: '/demo/today?moment=plan&week=rows', name: 'Events sharing days in rows' },
       { to: '/demo/today?moment=day', name: 'The event day' },
     ],
