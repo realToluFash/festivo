@@ -155,7 +155,6 @@ export function colleaguesOf(state: PresenceState, me: string): Colleague[] {
   });
 }
 
-/** Each item editors here have chosen, with each of them in the order they chose it. */
 export function ringsOf(state: PresenceState, me: string): Record<string, ColleagueRing[]> {
   const editors = new Map(
     colleaguesOf(state, me)
