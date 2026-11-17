@@ -134,6 +134,18 @@ describe('the event Menu (sc-3902)', () => {
     expect(within(panel()).queryByRole('button', { name: CW.startNew('') })).toBeNull();
   });
 
+  it('says a library that did not load did not, and loads it again', SLOW, async () => {
+    await menu('addDishLibraryFailed');
+
+    expect(document.getElementById('mc-found')?.textContent).toBe(CW.libraryFailed);
+    expect(within(panel()).queryByText(CW.libraryEmpty)).toBeNull();
+    expect(within(panel()).queryByRole('button', { name: CW.startNewBlank })).toBeNull();
+    fireEvent.click(within(panel()).getByRole('button', { name: CW.tryAgain }));
+    expect(document.getElementById('mc-found')?.textContent).toMatch(/ in the menu library$/);
+    expect(document.activeElement?.id).toBe('mc-find');
+    expect(within(panel()).queryByRole('button', { name: CW.tryAgain })).toBeNull();
+  });
+
   it('says an empty library has no dishes, and starts a new dish', SLOW, async () => {
     await menu('addDishEmptyLibrary');
 

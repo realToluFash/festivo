@@ -160,7 +160,9 @@ export function AddDishPanel({
   budget,
   library,
   loading,
+  failed,
   errors,
+  onRetry,
   onTab,
   onFind,
   onAdd,
@@ -174,7 +176,9 @@ export function AddDishPanel({
   budget: boolean;
   library: readonly LibDish[];
   loading: boolean;
+  failed: boolean;
   errors: FormErrors | null;
+  onRetry: () => void;
   onTab: (tab: 'library' | 'new') => void;
   onFind: (q: string) => void;
   onAdd: (libraryId: string) => void;
@@ -224,9 +228,11 @@ export function AddDishPanel({
               <p id="mc-found" className="desk-help" role="status">
                 {loading
                   ? CW.libraryLoading
-                  : looking
-                    ? CW.foundOf(shown.length, library.length)
-                    : CW.inLibrary(library.length)}
+                  : failed
+                    ? CW.libraryFailed
+                    : looking
+                      ? CW.foundOf(shown.length, library.length)
+                      : CW.inLibrary(library.length)}
               </p>
             </div>
             <p className="mc-added" role="status">
@@ -242,6 +248,13 @@ export function AddDishPanel({
                 {[0, 1, 2].map((one) => (
                   <div key={one} className="lib-bone" aria-hidden="true" />
                 ))}
+              </div>
+            ) : failed ? (
+              <div className="mc-no-match">
+                <p>{CW.libraryFailedBody}</p>
+                <button type="button" className="gs-pill is-secondary" onClick={onRetry}>
+                  {CW.tryAgain}
+                </button>
               </div>
             ) : shown.length === 0 ? (
               <div className="mc-no-match">

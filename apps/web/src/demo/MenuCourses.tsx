@@ -434,6 +434,7 @@ function Courses({ first, lang, budget }: { first: CoursesStart; lang: Lang; bud
   const failing = useRef(first.failing);
   const focusAfter = useRef<string | null>(firstFocus(open, first.courses, budget));
   const library = first.library ?? SAMPLE_LIBRARY;
+  const [libraryFailed, setLibraryFailed] = useState(first.libraryFailed === true);
   const manage = first.manage;
   const lines = headerLines(courses);
   const openCourse =
@@ -1043,6 +1044,11 @@ function Courses({ first, lang, budget }: { first: CoursesStart; lang: Lang; bud
                   budget={budget}
                   library={library}
                   loading={first.libraryLoading === true}
+                  failed={libraryFailed}
+                  onRetry={() => {
+                    setLibraryFailed(false);
+                    focusAfter.current = 'mc-find';
+                  }}
                   errors={
                     open.pressed ? checkDish(open.form, lang, budget && !open.onlyEvent) : null
                   }
