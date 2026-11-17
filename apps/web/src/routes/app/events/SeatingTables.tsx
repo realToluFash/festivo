@@ -191,7 +191,7 @@ export function ChairTipDrawing({ tip }: { tip: ChairTip }) {
 /** While a guest is picked: "{n} free" on a green dashed outline, or "Full" on a grey one (sc-5030). */
 export function FreeTag({ x, y, n }: { x: number; y: number; n: number }) {
   const { t } = useTranslation();
-  const words = n === 0 ? t('seating.full') : t('seating.freeTag', { n });
+  const words = n === 0 ? t('seating.full') : t('seating.freeTag', { count: n });
   const w = wordsWide(words) + 16;
 
   return (

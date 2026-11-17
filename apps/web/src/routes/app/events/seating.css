@@ -2043,7 +2043,7 @@
   white-space: nowrap;
 }
 
-/* Move everyone to…: an answer by the panel, over the room. */
+/* Move everyone to…, by the panel; a short party or a taken chair, under the table (sc-5030). */
 .st-pop {
   z-index: 9;
   display: flex;
@@ -2054,6 +2054,14 @@
   border-radius: 18px;
   background: var(--colorCard);
   box-shadow: var(--stLift);
+}
+
+.st-pop.is-short {
+  width: 330px;
+}
+
+.st-pop.is-swap {
+  width: 340px;
 }
 
 .st-pop.is-move-all {

@@ -1,5 +1,5 @@
 import type { SeatingPlan } from '@soirely/api-client';
-import { type ReactNode, useId } from 'react';
+import { type ReactNode, useId, useLayoutEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Glyph } from '../../../components/Glyph.tsx';
 import { TextAction } from '../../../components/SettingsParts.tsx';
@@ -271,6 +271,49 @@ export function PlaceGuests({
         </>
       )}
       <SeatLegend />
+    </div>
+  );
+}
+
+/** Short party or a taken chair, on the Floor plan: the choice under the table that was clicked. */
+export function SeatChoicePop({
+  kind,
+  name,
+  words,
+  go,
+  left,
+  top,
+  onCancel,
+}: {
+  kind: 'short' | 'swap';
+  name: string;
+  words: string;
+  go: { label: string; run: () => void };
+  left: number;
+  top: number;
+  onCancel: () => void;
+}) {
+  const { t } = useTranslation();
+  const box = useRef<HTMLDivElement>(null);
+  const cancel = useRef<HTMLButtonElement>(null);
+
+  useLayoutEffect(() => {
+    box.current?.style.setProperty('left', `${Math.round(left)}px`);
+    box.current?.style.setProperty('top', `${Math.round(top)}px`);
+  }, [left, top]);
+  useLayoutEffect(() => cancel.current?.focus(), []);
+
+  return (
+    <div ref={box} className={`st-float st-pop is-${kind}`} role="dialog" aria-label={name}>
+      <p className="st-strong">{words}</p>
+      <div className="st-pair">
+        <button ref={cancel} type="button" className="button" onClick={onCancel}>
+          {t('seating.cancel')}
+        </button>
+        <button type="button" className="button button-primary" onClick={go.run}>
+          {go.label}
+        </button>
+      </div>
     </div>
   );
 }

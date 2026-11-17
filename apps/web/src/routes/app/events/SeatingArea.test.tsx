@@ -4597,9 +4597,25 @@ describe('Seating a guest at a desk (sc-4013)', () => {
     fireEvent.click(await screen.findByRole('tab', { name: 'Seat' }));
     fireEvent.click(screen.getByRole('button', { name: /Funmi Adeyemi/ }));
     press('Zoom in', 6);
-    fireEvent.click(screen.getByRole('button', { name: 'Table 1, Seat 2, Kemi Ade, Coming' }));
-    expect(await screen.findByText('Table 1, seat 2 is Kemi Ade’s.')).toBeDefined();
-    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+    const kemiChair = screen.getByRole('button', { name: 'Table 1, Seat 2, Kemi Ade, Coming' });
+
+    kemiChair.focus();
+    fireEvent.keyDown(kemiChair, { key: 'Enter' });
+    const asked = await screen.findByRole('dialog', { name: 'Table 1' });
+
+    expect(asked.textContent).toContain('Table 1, seat 2 is Kemi Ade’s.');
+    expect(document.activeElement).toBe(within(asked).getByRole('button', { name: 'Cancel' }));
+    expect(document.querySelector('.st-under-views')?.textContent).not.toContain('Kemi Ade’s');
+
+    fireEvent.keyDown(window, { key: 'Escape' });
+    expect(screen.queryByRole('dialog', { name: 'Table 1' })).toBeNull();
+    expect(screen.getByText('Now pick a table for Funmi Adeyemi.')).toBeDefined();
+    await waitFor(() => expect(document.activeElement).toBe(kemiChair));
+
+    fireEvent.click(kemiChair);
+    fireEvent.click(
+      within(await screen.findByRole('dialog')).getByRole('button', { name: 'Cancel' }),
+    );
     expect(screen.queryByText('Table 1, seat 2 is Kemi Ade’s.')).toBeNull();
     expect(sent.some((one) => one.line.endsWith('/guests/swap'))).toBe(false);
 
@@ -5890,6 +5906,44 @@ describe('Seating on the Floor plan (sc-5030)', () => {
     press('Zoom in');
     expect(percent()).toBe('200%');
     expect(rowTargets().some((one) => one.classList.contains('is-keys'))).toBe(false);
+  });
+
+  it('gives a Rectangular table’s chairs the pointer once its corner pair, its closest two, is 44 px apart', async () => {
+    signedIn();
+    await onSeating({
+      'GET /api/events/ev_1/seating-plan': () =>
+        seating(
+          withGuests(
+            [guest()],
+            table({ shape: 'rectangular', seats: 8, widthCm: 240, lengthCm: 90, endSeats: 1 }),
+          ),
+        ),
+    });
+
+    fireEvent.click(await screen.findByRole('tab', { name: 'Seat' }));
+    fireEvent.click(screen.getByRole('button', { name: /Ada Obi/ }));
+    const closest = () => {
+      const at = chairTargets('t1').map((one) => [
+        Number(one.getAttribute('cx')),
+        Number(one.getAttribute('cy')),
+      ]);
+
+      return Math.min(
+        ...at.flatMap(([x, y], i) => at.slice(i + 1).map(([u, v]) => Math.hypot(x! - u!, y! - v!))),
+      );
+    };
+    const seen: boolean[] = [];
+
+    press('Zoom in', 2);
+    for (let step = 0; step < 6; step += 1) {
+      const held = chairTargets('t1').every((one) => one.classList.contains('is-keys'));
+
+      expect(held).toBe(closest() < 44);
+      seen.push(held);
+      press('Zoom in');
+    }
+    expect(seen).toContain(true);
+    expect(seen).toContain(false);
   });
 
   it('keeps every table’s hit area at least 44 × 44 px at 25%', async () => {

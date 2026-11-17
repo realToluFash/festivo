@@ -131,7 +131,7 @@ import {
 import { fitOf, intoView, useCamera } from './seatingCamera.ts';
 import { type TrayFilter, pickedParty, seatedAt } from './seatingGuests.ts';
 import { type SeatingView, TablesView, ViewSwitch } from './SeatingCards.tsx';
-import { MoveAllPop, PlaceGuests, SeatTray } from './SeatingSeat.tsx';
+import { MoveAllPop, PlaceGuests, SeatChoicePop, SeatTray } from './SeatingSeat.tsx';
 import { Presence } from './SeatingPresence.tsx';
 import {
   BEAT_MS,
@@ -166,6 +166,7 @@ import {
 } from './SeatingSelection.tsx';
 import {
   COLUMNS_MAX,
+  boxOf,
   gridOf,
   inReadingOrder,
   onlyTables,
@@ -681,13 +682,30 @@ function Plan({
   const [tab, setTab] = useState<'arrange' | 'seat'>('arrange');
   const [pickedGuest, setPickedGuest] = useState<string | null>(null);
   const [pointedAt, setPointedAt] = useState<string | null>(null);
+  const [choice, setChoice] = useState<SeatChoice | null>(null);
+  const choiceFrom = useRef<Element | null>(null);
   const [chairTip, setChairTip] = useState<{ pick: string; tip: ChairTip } | null>(null);
   const [moveFrom, setMoveFrom] = useState<string | null>(null);
   const [seatingView, setSeatingView] = useState<SeatingView>('plan');
   const [cardSection, setCardSection] = useState<string | null>(null);
   const [tray, setTray] = useState<TrayFilter>({ unsure: false, search: '', groups: [] });
   const party = plan == null || readOnly ? null : pickedParty(plan, pickedGuest);
+  const closeChoice = () => {
+    const back = choiceFrom.current;
+    const at = choice == null ? null : `.st-room [${choice.attribute}="${choice.id}"]`;
+
+    choiceFrom.current = null;
+    setChoice(null);
+    focusWhenFree(() =>
+      back instanceof SVGElement && back.closest('.st-room') != null
+        ? back
+        : at == null
+          ? null
+          : document.querySelector<SVGElement>(at),
+    );
+  };
   const dropPick = () => {
+    setChoice(null);
     setPickedGuest(null);
     setBar((was) => (was?.tone === 'undo' ? was : null));
   };
@@ -1018,7 +1036,10 @@ function Plan({
       return;
     }
     if (event.key !== 'Escape') return;
-    if (moveFrom != null) {
+    if (choice != null) {
+      event.preventDefault();
+      closeChoice();
+    } else if (moveFrom != null) {
       event.preventDefault();
       setMoveFrom(null);
     } else if (pickedGuest != null) {
@@ -1399,34 +1420,60 @@ function Plan({
     const place = itemName(t, item);
     const kind: SeatingPlaceKind = item.kind;
     const there = seat == null ? null : seatedAt(plan, item.one.id, seat);
+    const ask = (kind: SeatChoice['kind'], words: string, go: SeatChoice['go']) => {
+      if (seatingView === 'tables') {
+        const cancel = { label: t('seating.cancel'), run: () => setBar(null) };
+        const yes = {
+          ...go,
+          run: () => {
+            setBar(null);
+            go.run();
+          },
+        };
+
+        setBar({
+          tone: kind === 'short' ? 'amber' : 'pick',
+          words,
+          acts: kind === 'short' ? [cancel, yes] : [yes, cancel],
+        });
+        return;
+      }
+      choiceFrom.current = document.activeElement;
+      setChoice({
+        kind,
+        id: item.one.id,
+        attribute: itemAttribute(item.kind) ?? 'data-table',
+        name: place,
+        words,
+        go: {
+          ...go,
+          run: () => {
+            setChoice(null);
+            go.run();
+          },
+        },
+      });
+    };
 
     if (there != null && there.id !== lead.id) {
       const theirs = there.fullName ?? '';
 
-      setBar({
-        tone: 'pick',
-        words: t('seating.swapLine', { table: place, n: seat, name: theirs }),
-        acts: [
-          {
-            label: t('seating.swapWith', { name: theirs }),
-            run: () => {
-              setBar(null);
-              api.swapGuests(event.id, lead.id, there.id).then(
-                (moved) => {
-                  onSeating(moved.seating);
-                  setPickedGuest(null);
-                  stepDone(seatedWords(name, 0, false, place), () => undoMoves(moved.moves));
-                },
-                () => refuseStep(t('seating.race', { name })),
-              );
+      ask('swap', t('seating.swapLine', { table: place, n: seat, name: theirs }), {
+        label: t('seating.swapWith', { name: theirs }),
+        run: () =>
+          api.swapGuests(event.id, lead.id, there.id).then(
+            (moved) => {
+              onSeating(moved.seating);
+              setPickedGuest(null);
+              stepDone(seatedWords(name, 0, false, place), () => undoMoves(moved.moves));
             },
-          },
-          { label: t('seating.cancel'), run: () => setBar(null) },
-        ],
+            () => refuseStep(t('seating.race', { name })),
+          ),
       });
       return;
     }
     setBar(null);
+    setChoice(null);
     api.seatGuest(event.id, lead.id, { kind, id: item.one.id }, { seat, justGuest }).then(
       (moved) => {
         onSeating(moved.seating);
@@ -1441,19 +1488,16 @@ function Plan({
         else if (error.is('seating_table_full'))
           refuseStep(t('seating.tableFull', { table: place }));
         else if (error.is('seating_table_short'))
-          setBar({
-            tone: 'amber',
-            words: t('seating.tableShort', {
+          ask(
+            'short',
+            t('seating.tableShort', {
               table: place,
               count: error.problem.free ?? 0,
               name,
               party: error.problem.party ?? party.companions.length + 1,
             }),
-            acts: [
-              { label: t('seating.cancel'), run: () => setBar(null) },
-              { label: t('seating.seatJust', { name }), run: () => seatAt(item, seat, true) },
-            ],
-          });
+            { label: t('seating.seatJust', { name }), run: () => seatAt(item, seat, true) },
+          );
         else if (error.is('seating_seat_taken')) refuseStep(t('seating.race', { name }));
         else refuseStep(t('seating.notSaved'));
       },
@@ -2189,6 +2233,17 @@ function Plan({
             onMove={(to) => moveAll(itemOf(moveFrom)!, to)}
           />
         )}
+        {party != null && choice != null && itemOf(choice.id) != null && (
+          <SeatChoicePop
+            kind={choice.kind}
+            name={choice.name}
+            words={choice.words}
+            go={choice.go}
+            left={Math.max(16, ox + itemOf(choice.id)!.one.xCm * s - 165)}
+            top={oy + boxOf(itemOf(choice.id)!).y1 * s + 12}
+            onCancel={closeChoice}
+          />
+        )}
         <svg
           className="st-room"
           width={size.w}
@@ -2661,7 +2716,15 @@ function Plan({
             }}
           >
             {seatingView === 'tables' && plan != null ? cards : canvas}
-            {plan != null && <ViewSwitch view={seatingView} onView={setSeatingView} />}
+            {plan != null && (
+              <ViewSwitch
+                view={seatingView}
+                onView={(view) => {
+                  setChoice(null);
+                  setSeatingView(view);
+                }}
+              />
+            )}
           </div>
           <aside className="st-panel" aria-label={t('seating.panel')}>
             {plan != null && shownPanel?.kind !== 'start' && (
@@ -2725,6 +2788,16 @@ function Plan({
       </RingsContext>
     </LayersContext>
   );
+}
+
+/** A short party or a taken chair waiting on the host's answer under its table (sc-5030). */
+interface SeatChoice {
+  kind: 'short' | 'swap';
+  id: string;
+  attribute: string;
+  name: string;
+  words: string;
+  go: { label: string; run: () => void };
 }
 
 function itemAttribute(kind: Panel['kind']): string | null {
