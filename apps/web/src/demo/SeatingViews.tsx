@@ -1,21 +1,25 @@
 import { Fragment } from 'react';
 
 import {
+  type Choice,
   type Item,
   type Party,
   type Plan,
   SW,
   chairWord,
   chairsOf,
+  chosenWords,
   extent,
   filled,
   inSectionOrder,
   isRound,
   itemName,
   listed,
+  marksOf,
   ofWords,
   peopleIn,
   say,
+  seatChosenWords,
   sectionName,
   sectionOf,
   shapeWord,
@@ -25,14 +29,39 @@ import {
 import { useSeating } from './seatingContext.ts';
 import type { ListTab } from './seatingSeed.ts';
 import { ShapeTile, Swatch } from './SeatingPanel.tsx';
-import { ChairMark, StateMark } from './SeatingRoom.tsx';
+import { ChairMark, Pill, StateMark } from './SeatingRoom.tsx';
+
+const RING_STEP = 5;
+const PILL_STEP = 24;
+
+/** Each colleague's initials in their colour, in the order they chose it (sc-60717). */
+function Whos({ choices }: { choices: readonly Choice[] }) {
+  if (choices.length === 0) return null;
+  return (
+    <span className="st-whos" aria-hidden="true">
+      {choices.map(({ who }, k) => (
+        <span key={k} className={`st-who p${who.tone}`}>
+          {who.initials}
+        </span>
+      ))}
+    </span>
+  );
+}
 
 function partyOf(tray: readonly Party[], id: string | null): Party | null {
   return tray.find((one) => one.id === id) ?? null;
 }
 
 /** A table's own drawing on its card: not to scale against the room, its chairs in order and in their states. */
-function CardDrawing({ item, colour }: { item: Item; colour: string }) {
+function CardDrawing({
+  item,
+  colour,
+  choices,
+}: {
+  item: Item;
+  colour: string;
+  choices: readonly Choice[];
+}) {
   const w = 188;
   const h = 132;
   const [ex, ey] = extent(item);
@@ -79,6 +108,25 @@ function CardDrawing({ item, colour }: { item: Item; colour: string }) {
           />
         );
       })}
+      {chairsOf(item).flatMap((point, index) => {
+        const [px, py] = turn(point, item.rot);
+        const x = cx + px * s;
+        const y = cy + py * s;
+
+        return choices
+          .filter((one) => one.seat === index)
+          .map(({ who }, k) => {
+            const rr = r + 5.5 + RING_STEP * k;
+
+            return (
+              <g key={`seat${index}.${k}`} className={`st-ring p${who.tone}`}>
+                <circle className="st-ring-gap" cx={x} cy={y} r={rr} />
+                <circle className="st-ring-line" cx={x} cy={y} r={rr + 1.5} />
+                <Pill x={x - rr * 0.72} y={y - rr * 0.72 - PILL_STEP * k} words={who.initials} />
+              </g>
+            );
+          });
+      })}
     </svg>
   );
 }
@@ -120,13 +168,16 @@ export function TablesView() {
         {items.map((item) => {
           const lit = ui.hover === item.id || ui.chosen.includes(item.id);
           const section = sectionOf(plan, item);
+          const marks = marksOf(ui.rings, ui.presence, item.id);
 
           return (
-            <li key={item.id}>
+            <li key={item.id} className="st-card-slot">
               <button
                 type="button"
-                className={lit ? 'st-card is-lit' : 'st-card'}
-                aria-label={itemName(plan, item)}
+                className={['st-card', lit && 'is-lit', marks.length > 0 && 'is-marked']
+                  .filter(Boolean)
+                  .join(' ')}
+                aria-label={itemName(plan, item, chosenWords(marks))}
                 aria-pressed={ui.chosen.includes(item.id)}
                 onPointerEnter={() => picked != null && set((now) => ({ ...now, hover: item.id }))}
                 onClick={() => (picked != null ? seatAt(item.id) : choose([item.id]))}
@@ -139,8 +190,21 @@ export function TablesView() {
                   <Swatch colour={section?.colour ?? null} size={12} />
                   {section?.name ?? SW.noSection}
                 </span>
-                <CardDrawing item={item} colour={section?.colour.toLowerCase() ?? 'none'} />
+                <CardDrawing
+                  item={item}
+                  colour={section?.colour.toLowerCase() ?? 'none'}
+                  choices={marks}
+                />
               </button>
+              {marks.map(({ who }, k) => (
+                <span
+                  key={k}
+                  className={`st-card-ring is-k${Math.min(k, 3)} p${who.tone}`}
+                  aria-hidden="true"
+                >
+                  <span className="st-who">{who.initials}</span>
+                </span>
+              ))}
             </li>
           );
         })}
@@ -211,6 +275,7 @@ export function ListView() {
           {rows.map((item) => {
             const open = ui.listOpen === item.id;
             const room = picked != null && usable(item) - filled(item) >= peopleIn(picked);
+            const marks = marksOf(ui.rings, ui.presence, item.id);
 
             return (
               <Fragment key={item.id}>
@@ -227,6 +292,10 @@ export function ListView() {
                         <span className="st-row-name">{item.name}</span>
                         <span className="st-row-line">{shapeWord(item)}</span>
                       </span>
+                      <Whos choices={marks} />
+                      {marks.length > 0 && (
+                        <span className="desk-unseen">{chosenWords(marks)}</span>
+                      )}
                     </button>
                   </th>
                   <td>{sectionName(plan, item)}</td>
@@ -252,6 +321,8 @@ export function ListView() {
                           <StateMark chair={chair} size={20} />
                           <span className="st-chair-number">{say(SW.seatN, { n: index + 1 })}</span>
                           <span className="st-row-name">{chairWord(chair)}</span>
+                          <Whos choices={marks.filter((one) => one.seat === index)} />
+                          <span className="desk-unseen">{seatChosenWords(marks, index)}</span>
                         </span>
                       </td>
                       <td>

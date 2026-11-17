@@ -1721,10 +1721,20 @@ describe('Today at a desk (sc-29092)', () => {
     const now = document.querySelector('.today-now');
 
     expect(screen.getByRole('heading', { level: 1, name: headline })).toBeDefined();
-    expect(now?.querySelector('.today-now-until')?.textContent ?? null).toBe(until);
+    const line = now?.querySelector('.today-now-until');
+
+    expect((line?.querySelector('[aria-hidden]') ?? line)?.textContent ?? null).toBe(until);
     expect(now?.querySelector('.tn-figure [aria-hidden]')?.textContent ?? null).toBe(figure);
     expect(now?.querySelector('.tn-next') == null).toBe(state === 'last' || state === 'done');
     expect(screen.getByRole('button', { name: 'Open run of show' })).toBeDefined();
+  });
+
+  it('says the minutes over in full to a screen reader', async () => {
+    await today('day&now=over');
+
+    expect(document.querySelector('.today-now-until .visually-hidden')?.textContent).toBe(
+      '12 minutes over',
+    );
   });
 
   it('draws Now long, the 120-character title whole in the heading', async () => {

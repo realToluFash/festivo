@@ -26,6 +26,7 @@ import {
   TabBarFade,
   tabBarFoot,
 } from './TodayCover.tsx';
+import { sidePadding } from './bodyEdges.ts';
 import { FirstRun, NeedsYou, ThisWeek, YourEvents } from './TodayParts.tsx';
 import { TodaySidebar } from './TodaySidebar.tsx';
 
@@ -165,7 +166,12 @@ function Scrolled({
             words={words}
           />
         </View>
-        <View style={[styles.sheet, phone ? styles.sheetPhone : styles.sheetTablet]}>
+        <View
+          style={[
+            styles.sheet,
+            phone ? [styles.sheetPhone, sidePadding(tokens.spaceXxl, insets)] : styles.sheetTablet,
+          ]}
+        >
           {notices}
           <Body moment={moment} wide={!phone} />
         </View>
@@ -238,7 +244,7 @@ const styles = StyleSheet.create({
     borderTopRightRadius: SHEET_RISE,
     backgroundColor: tokens.colorCard,
   },
-  sheetPhone: { paddingTop: 22, paddingHorizontal: tokens.spaceXxl },
+  sheetPhone: { paddingTop: 22 },
   sheetTablet: { paddingTop: 26, paddingHorizontal: BELOW_HEAD },
   side: { flexDirection: 'row', alignItems: 'flex-start', gap: BELOW_HEAD },
   band: { position: 'absolute', left: 0, right: 0, top: 0 },

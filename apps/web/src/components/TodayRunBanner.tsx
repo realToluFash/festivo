@@ -1,28 +1,37 @@
+import type { Ref } from 'react';
 import { useTranslation } from 'react-i18next';
 
-import { Glyph } from '../components/Glyph.tsx';
-import { type BannerActions, BannerBell } from '../components/TodayBanner.tsx';
-import type { Now, Open } from '../components/today.ts';
+import { Glyph } from './Glyph.tsx';
+import { Actions, type BannerActions } from './TodayBanner.tsx';
+import type { Now, Open } from './today.ts';
 import type { RunNow, RunStop } from './todayRun.ts';
-import { nowWordsIn } from './todayRun.ts';
-import './todayNow.css';
-
-type Words = ReturnType<typeof nowWordsIn>;
+import './todayRun.css';
 
 /** Each stop a shape as well as a place: filled once done, the large ringed dot Now, a ring Next, a small ring still to come. */
-function Rail({ rail, said, words }: { rail: readonly RunStop[]; said: string; words: Words }) {
+function Rail({ rail, said }: { rail: readonly RunStop[]; said: string }) {
   return (
     <div className="tn-rail" role="img" aria-label={said}>
-      {rail.map((stop) => (
-        <span key={stop.time} className={`tn-stop is-${stop.state}`}>
+      {rail.map((stop, index) => (
+        <span key={index} className={`tn-stop is-${stop.state}`}>
           <span className="tn-stop-line" aria-hidden="true">
             <span className="tn-stop-node" />
           </span>
-          <span className="tn-stop-time">{words.clock(stop.time)}</span>
+          <span className="tn-stop-time">{stop.time}</span>
           <span className="tn-stop-title">{stop.title}</span>
         </span>
       ))}
     </div>
+  );
+}
+
+function Said({ shown, said }: { shown: string; said: string | null }) {
+  if (said == null) return shown;
+
+  return (
+    <>
+      <span aria-hidden="true">{shown}</span>
+      <span className="visually-hidden">{said}</span>
+    </>
   );
 }
 
@@ -32,31 +41,15 @@ export function RunNowBanner({
   run,
   actions,
   open,
-  language,
-  locale,
+  titleRef,
 }: {
   now: Now;
   run: RunNow;
   actions: BannerActions;
   open: Open;
-  language: string;
-  locale: string;
+  titleRef?: Ref<HTMLHeadingElement>;
 }) {
   const { t } = useTranslation();
-  const words = nowWordsIn(language, locale);
-  const headline = run.title ?? (run.everything ? t('night.everything') : t('night.nothingOn'));
-  const figure =
-    run.figure == null
-      ? null
-      : run.figure.kind === 'onTime'
-        ? { shown: t('runView.onTime'), said: t('runView.onTime') }
-        : run.figure.kind === 'last'
-          ? { shown: t('runView.last'), said: t('runView.last') }
-          : {
-              shown: t('runView.behind', { count: run.figure.minutes }),
-              said: words.behindSaid(run.figure.minutes),
-            };
-  const bell = actions.bell;
 
   return (
     <header className={`today-now today-cover is-${now.event.mesh} tn`}>
@@ -69,33 +62,28 @@ export function RunNowBanner({
           </span>
           <span className="today-chip is-dark">{now.live}</span>
         </div>
-        <div className="today-actions">
-          {actions.create && (
-            <button type="button" className="today-glass" onClick={() => open({ to: 'create' })}>
-              <Glyph name="plus" size={18} />
-              {t('events.newEvent')}
-            </button>
-          )}
-          {typeof bell === 'object' && bell != null && 'unread' in bell ? (
-            <BannerBell unread={bell.unread} onOpen={() => open({ to: 'notifications' })} />
-          ) : (
-            bell
-          )}
-        </div>
+        <Actions actions={actions} open={open} />
       </div>
       <div className="today-now-mid">
         <div className="today-now-words">
           <p className="today-now-event">{now.name}</p>
-          <h1 className="today-now-title tn-headline">{headline}</h1>
-          {(run.until != null || figure != null) && (
+          <h1
+            ref={titleRef}
+            tabIndex={titleRef == null ? undefined : -1}
+            className="today-now-title tn-headline"
+          >
+            {run.headline}
+          </h1>
+          {(run.until != null || run.figure != null) && (
             <div className="today-now-line tn-line">
               {run.until != null && (
-                <span className="today-now-until">{words.until(run.until)}</span>
+                <span className="today-now-until">
+                  <Said shown={run.until} said={run.untilSaid} />
+                </span>
               )}
-              {figure != null && (
+              {run.figure != null && (
                 <span className="today-chip is-glass tn-figure">
-                  <span aria-hidden="true">{figure.shown}</span>
-                  <span className="visually-hidden">{figure.said}</span>
+                  <Said shown={run.figure.words} said={run.figure.said} />
                 </span>
               )}
             </div>
@@ -106,7 +94,7 @@ export function RunNowBanner({
             <div className="today-next-up tn-next">
               <span className="today-next-label">{t('today.next')}</span>
               <span className="today-next-what">
-                <span className="today-figures">{words.clock(run.next.time)}</span> {run.next.title}
+                <span className="today-figures">{run.next.time}</span> {run.next.title}
               </span>
             </div>
           )}
@@ -116,7 +104,7 @@ export function RunNowBanner({
           </button>
         </div>
       </div>
-      <Rail rail={run.rail} said={words.railSaid(run.rail)} words={words} />
+      <Rail rail={run.rail} said={run.railSaid} />
     </header>
   );
 }

@@ -52,7 +52,7 @@ function isCount(bell: BannerActions['bell']): bell is { unread: number } {
   return typeof bell === 'object' && bell != null && 'unread' in bell;
 }
 
-function Actions({ actions, open }: { actions: BannerActions; open: Open }) {
+export function Actions({ actions, open }: { actions: BannerActions; open: Open }) {
   const { t } = useTranslation();
   const { bell } = actions;
 

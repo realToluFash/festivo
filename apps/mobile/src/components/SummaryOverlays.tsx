@@ -198,6 +198,7 @@ export function FocusedScreen({
   over?: Layer | null;
   toast?: { words: string; onClose: () => void } | null;
   scrollRef?: Ref<ScrollViewInstance>;
+  /** The body brings its own scroller, sized `flexGrow: 1, flexShrink: 1`: a tablet sheet takes its height from it, so `flex: 1` draws it at none. */
   fills?: boolean;
   gap?: number;
   children: ReactNode;

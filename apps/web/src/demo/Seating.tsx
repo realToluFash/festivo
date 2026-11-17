@@ -1669,6 +1669,7 @@ function Seating({
     overlap: overlaps,
     focus: keyboard ? focusId : null,
     rings: ui.rings,
+    presence: ui.presence,
     handles:
       ui.chosen.length === 1 && !ui.readOnly && ui.chair == null && ui.tab === 'arrange'
         ? (ui.chosen[0] ?? null)
