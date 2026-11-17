@@ -42,12 +42,12 @@ export function membersCounts({ counts }: MembersList): Record<MembersFilter, nu
   };
 }
 
-/** Someone on Members by id, among the rows, Waiting and the card's faces held. */
 /** A person's page stands alone in front of the list, its card naming it, so the frame draws no title over it (sc-37693). */
 export function personInFront(kind: LayoutKind, open: boolean): boolean {
   return open && kind !== 'tabletLandscape';
 }
 
+/** Someone on Members by id, among the rows, Waiting and the card's faces held. */
 export function memberIn(list: MembersList, id: string): OrganisationMember | null {
   return [...list.members, ...list.waiting, ...list.faces].find((one) => one.id === id) ?? null;
 }
