@@ -484,6 +484,7 @@ export function GuestForm({
         pill={t('eventForm.optional')}
         help={adding ? '' : t('guestList.keepsLink')}
         country={values.country}
+        number={values.number}
         error={words('mobile')}
         errorOn={problems.mobile === 'noCountry' ? 'country' : 'number'}
         submitting={sending}

@@ -12,6 +12,7 @@ export function PhoneEntry({
   pill,
   help,
   country,
+  number,
   error,
   errorOn = 'number',
   submitting,
@@ -26,6 +27,7 @@ export function PhoneEntry({
   pill?: string | undefined;
   help: string;
   country: string;
+  number?: string | undefined;
   error: string | null | undefined;
   /** The control the line names takes the red edge: "Choose a country." is about the code (sc-30447). */
   errorOn?: 'country' | 'number';
@@ -58,6 +60,7 @@ export function PhoneEntry({
         <TextField
           ref={ref}
           style={styles.number}
+          value={number}
           wrong={error != null && errorOn === 'number'}
           submitting={submitting}
           keyboardType="phone-pad"
