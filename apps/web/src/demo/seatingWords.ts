@@ -206,6 +206,7 @@ export const SW = {
   choseToo:
     '{{name}} has chosen this too. You can still change it. If you both save, the later change is refused and says why.',
   chosenBy: ', chosen by {{name}}',
+  seatChosenBy: ', seat {{n}} chosen by {{name}}',
   left: '{{name}} left the plan.',
   joined: '{{name}} joined the plan.',
   moved: '{{name}} just moved {{table}}. Your change was not saved.',

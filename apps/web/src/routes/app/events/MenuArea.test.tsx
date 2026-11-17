@@ -34,7 +34,7 @@ const EVENT = {
   permissions: OWNER_PERMISSIONS,
 };
 
-function signedIn(): void {
+function signedIn(organisation = IRE): void {
   const session: Session = {
     name: 'Folake Adeyemi',
     email: 'folake@ire.events',
@@ -45,8 +45,8 @@ function signedIn(): void {
     userId: 'u_folake',
     needsOrganisation: false,
     hasPassword: true,
-    organisation: IRE,
-    organisations: [IRE],
+    organisation,
+    organisations: [organisation],
     organisationCountry: null,
     timezone: null,
     waitingFor: null,
@@ -101,9 +101,13 @@ const LATE = course('c_late', 'Late-night bites', []);
 async function onMenu(
   answers: Record<string, Answer>,
   permissions: string[] = OWNER_PERMISSIONS,
+  {
+    organisation = IRE,
+    roleOnEvent = null,
+  }: { organisation?: typeof IRE; roleOnEvent?: string | null } = {},
 ): Promise<{ line: string; body: unknown }[]> {
   const sent: { line: string; body: unknown }[] = [];
-  signedIn();
+  signedIn(organisation);
 
   vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
     const line = `${init?.method ?? 'GET'} ${new URL(String(input)).pathname}`;
@@ -112,7 +116,8 @@ async function onMenu(
 
     const answer = answers[line];
     if (answer != null) return answer(body);
-    if (line === 'GET /api/events/ev_1') return json({ event: { ...EVENT, permissions } });
+    if (line === 'GET /api/events/ev_1')
+      return json({ event: { ...EVENT, permissions, roleOnEvent } });
     if (line === 'GET /api/orgs/org_1/dishes')
       return json({ dishes: [], canManage: true, seesPrices: false });
 
@@ -422,6 +427,38 @@ describe('The event’s Menu (sc-3902)', () => {
     expect(screen.getByText('Guests choose')).toBeDefined();
   });
 
+  it.each([
+    ['can_view', 'Can view'],
+    ['can_check_in', 'Can check guests in'],
+  ])(
+    'names a Member’s role on the event, %s, in the read-only line (sc-59617)',
+    async (role, name) => {
+      await onMenu({ 'GET /api/events/ev_1/menu': menuOf(STARTER) }, ['events.read', 'menu.read'], {
+        organisation: membership({ role: { id: 'role_m', seededAs: 'member', name: null } }),
+        roleOnEvent: role,
+      });
+
+      expect(
+        await screen.findByText(
+          `Your role on this event, ${name}, can see this menu but not change it. Someone whose role can change Menu can.`,
+        ),
+      ).toBeDefined();
+      expect(screen.queryByRole('button', { name: 'Add course' })).toBeNull();
+    },
+  );
+
+  it('names a custom organisation role, not a role on the event, when the event’s answer carries none (sc-59617)', async () => {
+    await onMenu({ 'GET /api/events/ev_1/menu': menuOf(STARTER) }, ['events.read', 'menu.read'], {
+      organisation: membership({ role: { id: 'role_c', seededAs: null, name: 'Coordinator' } }),
+    });
+
+    expect(
+      await screen.findByText(
+        'Your role, Coordinator, can see this menu but not change it. Someone whose role can change Menu can.',
+      ),
+    ).toBeDefined();
+  });
+
   it('answers a member without menu.read as a page that does not exist, under a crumb that stops at Events', async () => {
     const sent = await onMenu({}, ['events.read']);
 
@@ -529,6 +566,18 @@ describe('The event’s Menu (sc-3902)', () => {
         ),
       ).toBeDefined();
       expect(sent.some((one) => one.line.startsWith('DELETE'))).toBe(false);
+    });
+
+    it('lights only the variant on Edit variant, never its dish row', async () => {
+      await onMenu({
+        'GET /api/events/ev_1/menu': menuOf(course('c_main', 'Main', [WAYS])),
+      });
+
+      fireEvent.click(await screen.findByRole('button', { name: 'Edit Chicken' }));
+      await screen.findByRole('complementary', { name: 'Edit Chicken' });
+
+      expect(document.querySelector('.mn-dish.is-lit')).toBeNull();
+      expect(document.querySelectorAll('.vr-inset.is-lit')).toHaveLength(1);
     });
 
     it('folds the last two into a single dish once asked', async () => {

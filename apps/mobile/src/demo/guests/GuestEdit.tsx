@@ -1,7 +1,6 @@
 import { type ReactNode, type Ref, type RefObject, useRef, useState } from 'react';
 import {
   Pressable,
-  ScrollView,
   StyleSheet,
   type TextInputInstance,
   View,
@@ -10,6 +9,7 @@ import {
 
 import { CountryPicker } from '../../components/CountryPicker.tsx';
 import { focusChecked } from '../../components/Field.tsx';
+import { Legend, SheetBody, SheetLayer } from '../../components/FormLayers.tsx';
 import { Glyph } from '../../components/Glyph.tsx';
 import { RadioMark } from '../../components/RadioMark.tsx';
 import type { ScreenReaderTarget } from '../../components/screenReaderFocus.ts';
@@ -18,7 +18,6 @@ import { Text } from '../../components/Text.tsx';
 import { tokens } from '../../theme/tokens.ts';
 import { ASK_WIDTH, AlertLine, EventField } from '../events/EventEdits.tsx';
 import { BoxField } from '../../components/MomentPick.tsx';
-import { useShell } from '../../components/settingsShell.ts';
 import { Pill } from '../../components/SettingsParts.tsx';
 import { type AskProps, FocusedScreen, TextAction } from '../../components/Summary.tsx';
 import {
@@ -176,21 +175,6 @@ export function PhoneField({
         </View>
       </View>
     </EventField>
-  );
-}
-
-export function Legend({ text, line }: { text: string; line?: string | null }) {
-  return (
-    <View style={styles.legend}>
-      <Text size={15} weight="bold" accessibilityRole="header">
-        {text}
-      </Text>
-      {line != null && (
-        <Text size={14.5} weight="medium" style={[styles.secondary, styles.figures]}>
-          {line}
-        </Text>
-      )}
-    </View>
   );
 }
 
@@ -1025,65 +1009,7 @@ export function MarkInvited({
   );
 }
 
-/** A sheet over a focused screen, in that screen's window, since iOS shows one window at a time. */
-export function SheetLayer({
-  onClose,
-  label,
-  alert = false,
-  children,
-}: {
-  onClose: () => void;
-  label: string;
-  alert?: boolean;
-  children: ReactNode;
-}) {
-  const phone = useShell().layout === 'phone';
-
-  return (
-    <View style={[StyleSheet.absoluteFill, !phone && styles.centred]}>
-      <Pressable
-        style={[StyleSheet.absoluteFill, styles.scrim]}
-        onPress={onClose}
-        accessibilityRole="button"
-        accessibilityLabel={label}
-      />
-      <View
-        style={phone ? styles.layerPhone : styles.layerWide}
-        accessibilityViewIsModal
-        onAccessibilityEscape={onClose}
-        accessibilityRole={alert ? 'alert' : undefined}
-      >
-        <ScrollView bounces={false} keyboardShouldPersistTaps="handled">
-          {children}
-        </ScrollView>
-      </View>
-    </View>
-  );
-}
-
-export function SheetBody({
-  title,
-  close,
-  onClose,
-  children,
-}: {
-  title: string;
-  close: string;
-  onClose: () => void;
-  children: ReactNode;
-}) {
-  return (
-    <View style={styles.sheet}>
-      <View style={styles.sheetHead}>
-        <Text size={20} weight="bold" accessibilityRole="header" style={styles.grow}>
-          {title}
-        </Text>
-        <TextAction label={close} onPress={onClose} testID="guests.sheet.close" />
-      </View>
-      {children}
-    </View>
-  );
-}
+export { Legend, SheetBody, SheetLayer };
 
 const styles = StyleSheet.create({
   grow: { flex: 1, minWidth: 0 },
@@ -1096,7 +1022,6 @@ const styles = StyleSheet.create({
   tight: { gap: 6 },
   phone: { flexDirection: 'row', gap: tokens.spaceSm },
   country: { width: 112 },
-  legend: { gap: 4 },
   companions: { gap: 8 },
   companion: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   companionBlock: { gap: 4 },
@@ -1152,26 +1077,4 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     borderRadius: tokens.radiusRow,
   },
-  sheet: { gap: 14, paddingHorizontal: tokens.spaceXxl, paddingTop: 20, paddingBottom: 34 },
-  centred: { alignItems: 'center', justifyContent: 'center' },
-  scrim: { backgroundColor: tokens.scrimSheet },
-  layerPhone: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    bottom: 0,
-    maxHeight: '88%',
-    borderTopLeftRadius: 30,
-    borderTopRightRadius: 30,
-    backgroundColor: tokens.colorCard,
-  },
-  layerWide: {
-    width: 540,
-    maxWidth: '92%',
-    maxHeight: '88%',
-    borderRadius: tokens.space3xl,
-    backgroundColor: tokens.colorCard,
-    overflow: 'hidden',
-  },
-  sheetHead: { minHeight: tokens.sizeHit, flexDirection: 'row', alignItems: 'center' },
 });

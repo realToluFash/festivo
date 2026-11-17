@@ -18,14 +18,14 @@ appId: host.exp.Exponent
 - hideKeyboard
 - scrollUntilVisible:
     element:
-      id: 'eventForm.start.date'
+      id: 'eventForm.startDate'
     direction: DOWN
     centerElement: true
 - tapOn:
-    id: 'eventForm.start.date'
+    id: 'eventForm.startDate'
 - tapOn: 'OK'
 - tapOn:
-    id: 'eventForm.start.time'
+    id: 'eventForm.startTime'
 - tapOn: 'OK'
 - hideKeyboard
 - scrollUntilVisible:

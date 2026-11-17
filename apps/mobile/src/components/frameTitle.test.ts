@@ -33,7 +33,6 @@ describe('a phone’s header title inside an event (sc-30413)', () => {
     const untitled = framed.filter((file) => frames(file).some((tag) => /\buntitled\b/u.test(tag)));
 
     expect(framed).toContain(join('app', 'events', '[id]', 'dates.tsx'));
-    expect(framed).toContain(join('src', 'components', 'EventFormScreen.tsx'));
     expect(untitled).toEqual([EVENT_SCREEN]);
   });
 

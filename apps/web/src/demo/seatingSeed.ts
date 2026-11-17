@@ -6,6 +6,7 @@ import {
   type Person,
   type Plan,
   type Point,
+  type Rings,
   type SeatingState,
   COLOURS,
   PRIYA,
@@ -104,7 +105,7 @@ export interface Ui {
   people: Person[];
   presence: 'chips' | 'overflow' | 'reconnecting';
   onPlanOpen: boolean;
-  rings: Record<string, Person>;
+  rings: Rings;
   bar: Bar | null;
   asking: Asking | null;
   seed: FieldSeed | null;
@@ -606,7 +607,7 @@ export function seedOf(state: SeatingState | null): Ui {
       return {
         ...ui,
         chosen: ['t7'],
-        rings: { t7: PRIYA },
+        rings: { t7: [{ who: PRIYA }] },
         people: [PRIYA, SADE],
         notice: { tone: 'amber', words: say(SW.tableChanged, { name: PRIYA.name }) },
       };
@@ -618,7 +619,7 @@ export function seedOf(state: SeatingState | null): Ui {
       return {
         ...ui,
         chosen: [id],
-        rings: { [id]: PRIYA },
+        rings: { [id]: [{ who: PRIYA }] },
         people: [PRIYA, SADE],
         notice: { tone: 'amber', words: say(words, { name: PRIYA.name }) },
       };
@@ -764,7 +765,7 @@ export function seedOf(state: SeatingState | null): Ui {
         ...ui,
         plan: next,
         chosen: ['t6', 't7', 't8'],
-        rings: { t7: PRIYA },
+        rings: { t7: [{ who: PRIYA }] },
         people: [PRIYA, SADE],
         bar: { kind: 'amber', words: say(SW.moved, { name: PRIYA.name, table: 'Table 7' }) },
       };
@@ -782,12 +783,12 @@ export function seedOf(state: SeatingState | null): Ui {
     case 'screenReader':
       return { ...ui, focus: 'item:top' };
     case 'presenceChose':
-      return { ...ui, rings: { t7: PRIYA } };
+      return { ...ui, rings: { t7: [{ who: PRIYA }] } };
     case 'presenceBoth':
       return {
         ...ui,
         chosen: ['t7'],
-        rings: { t7: PRIYA },
+        rings: { t7: [{ who: PRIYA }] },
         people: [PRIYA, SADE],
         contest: { id: 't7', at: [810, 1120], by: PRIYA.name },
       };
@@ -797,7 +798,11 @@ export function seedOf(state: SeatingState | null): Ui {
         people: [...SIX],
         presence: 'overflow',
         onPlanOpen: true,
-        rings: { t7: PRIYA, t2: SIX[2]!, t9: SIX[3]! },
+        rings: {
+          t7: [{ who: PRIYA }, { who: SIX[2]! }],
+          t2: [{ who: SIX[5]! }],
+          t9: [{ who: SIX[3]!, seat: 1 }],
+        },
       };
     case 'presenceViewer':
       return { ...ui, people: [PRIYA, SADE] };
@@ -1162,7 +1167,7 @@ function choosingSeed(state: SeatingState, ui: Ui): Ui {
         ...ui,
         plan: moved(plan, 't5', { y: 660 }),
         chosen,
-        rings: { t5: PRIYA },
+        rings: { t5: [{ who: PRIYA }] },
         people: [PRIYA, SADE],
         bar: {
           kind: 'amber',

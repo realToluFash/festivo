@@ -126,7 +126,7 @@ export const CW = {
   howAnswer: 'How guests answer',
   choose: 'Guests choose',
   same: 'Everyone gets the same',
-  sameNeedsOne: 'Everyone gets the same needs exactly one dish.',
+  sameNeedsOne: '“Everyone gets the same” needs exactly one dish.',
   skip: 'Guests may skip this course',
   skipOn: (course: string) => `Guests also see “No ${course.toLocaleLowerCase('en')} for me”.`,
   nowChoose: (course: string, n: number) => `${course} has ${n} dishes now, so guests choose.`,
@@ -151,6 +151,9 @@ export const CW = {
   inLibrary: (n: number) => `${n === 1 ? '1 dish' : `${n} dishes`} in the menu library`,
   foundOf: (shown: number, all: number) => `${shown} of ${all === 1 ? '1 dish' : `${all} dishes`}`,
   noMatch: (q: string) => `No dish name has “${q}” in it.`,
+  libraryLoading: 'Loading the menu library…',
+  libraryEmpty: 'The menu library has no dishes yet.',
+  startNewBlank: 'Start a new dish',
   startNew: (q: string) => `Start a new dish called “${q}”`,
   add: 'Add',
   addAria: (name: string) => `Add ${name}`,
@@ -667,6 +670,8 @@ export interface CoursesStart {
   failing: 'none' | 'network' | 'forbidden';
   /** The menu library Add dish lists, when a state needs one with variants. */
   library?: readonly LibDish[];
+  /** The menu has loaded and the library Add dish lists has not yet. */
+  libraryLoading?: boolean;
 }
 
 function start(over: Partial<CoursesStart> & { name: string; note: string }): CoursesStart {
@@ -783,6 +788,20 @@ const STATES = {
       name: 'Add dish, no match',
       note: 'Nothing found, and a new dish with the name filled in.',
       opened: { kind: 'addDish', courseId: MAIN, tab: 'library', q: 'plantain' },
+    }),
+  addDishLoading: () =>
+    start({
+      name: 'Add dish, the library still loading',
+      note: 'Opened before the library has loaded: the count line says so over three bones, and no line quotes a search. New dish works meanwhile.',
+      opened: { kind: 'addDish', courseId: MAIN, tab: 'library' },
+      libraryLoading: true,
+    }),
+  addDishEmptyLibrary: () =>
+    start({
+      name: 'Add dish, the library has no dishes',
+      note: 'Nothing to find: says the library is empty and starts a new dish instead.',
+      opened: { kind: 'addDish', courseId: MAIN, tab: 'library' },
+      library: [],
     }),
   addDishSame: () =>
     start({
@@ -1675,7 +1694,15 @@ export const COURSES_PAGES: readonly { name: string; states: readonly DemoLink[]
   {
     name: 'Add dish, from the library or new',
     states: (
-      ['addDish', 'addDishNoMatch', 'addDishSame', 'addDishNew', 'addDishNewBlank'] as const
+      [
+        'addDish',
+        'addDishLoading',
+        'addDishNoMatch',
+        'addDishEmptyLibrary',
+        'addDishSame',
+        'addDishNew',
+        'addDishNewBlank',
+      ] as const
     ).map(link),
   },
   {

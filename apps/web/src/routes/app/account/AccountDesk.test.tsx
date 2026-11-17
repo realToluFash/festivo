@@ -1,5 +1,12 @@
 import i18next from 'i18next';
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import {
+  fireEvent,
+  getDefaultNormalizer,
+  render,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { RouterProvider, createMemoryRouter } from 'react-router';
 
@@ -884,7 +891,9 @@ describe('Your account’s language (sc-39509)', () => {
     ]);
     expect(document.documentElement.lang).toBe('fr');
     expect(
-      within(card()).getByText(i18next.t('account.languageSaved', { language: 'Français' })),
+      within(card()).getByText(
+        getDefaultNormalizer()(i18next.t('account.languageSaved', { language: 'Français' })),
+      ),
     ).toBeDefined();
     expect(radio('Français').checked).toBe(true);
     expect(document.activeElement).toBe(radio('Français'));

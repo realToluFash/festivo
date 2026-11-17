@@ -1,14 +1,12 @@
-import { type ReactNode, type Ref, useRef, useState } from 'react';
+import { type Ref, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   Animated,
   Pressable,
-  type StyleProp,
   StyleSheet,
   useWindowDimensions,
   View,
   type ViewInstance,
-  type ViewStyle,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Circle, Defs, LinearGradient, Rect, Stop } from 'react-native-svg';
@@ -21,26 +19,31 @@ import { capsuleLabelMultiplier, useCapsuleLabels } from './CapsuleLabels.tsx';
 import { tokens } from '../theme/tokens.ts';
 import { Confetti, Cover, type Piece } from './Cover.tsx';
 import { EventMesh } from './EventMesh.tsx';
+import { Glass } from './Glass.tsx';
 import { Glyph, type GlyphName } from './Glyph.tsx';
 import type { Moment, Now } from '../kit/today.ts';
 import { useAccessibilitySizes, useLayout, useNameLines } from '../layout/useLayout.ts';
 import { OrgMark } from './OrgMark.tsx';
+import { Chips, RunNowBlock, WhiteButton } from './TodayRun.tsx';
 import { OPENER, OpenerWords, quietTap } from './OrgPill.tsx';
 import { useTodayShell } from './todayShell.ts';
 import { usePillFit } from './usePillFit.tsx';
 
 export type CoverLayout = 'phone' | 'portrait' | 'landscape';
 
+export { Glass };
+
 export const SHEET_RISE = tokens.space4xl;
 
 /** The cover's height under the status bar, from the board: taller on the day, when it is Now. */
 export function coverBody(moment: Moment, layout: CoverLayout): number {
   const day = moment.kind === 'day';
+  const full = moment.full || moment.run != null;
 
-  if (layout === 'phone') return day ? (moment.full ? 514 : 376) : 262;
-  if (layout === 'portrait') return day ? (moment.full ? 530 : 410) : 350;
+  if (layout === 'phone') return day ? (full ? 514 : 376) : 262;
+  if (layout === 'portrait') return day ? (full ? 530 : 410) : 350;
 
-  return day ? (moment.full ? 330 : 236) : 200;
+  return day ? (full ? 330 : 236) : 200;
 }
 
 export function bandBody(moment: Moment, layout: CoverLayout): number {
@@ -109,36 +112,6 @@ export type Tab = (typeof TABS)[number][0];
 
 /** The ways out that the Maestro flows open Settings and the switcher by, from the signed-in home before Today too. */
 export const SETTINGS_ID: Partial<Record<Tab, string>> = { Settings: 'home.openSettings' };
-
-export function Glass({
-  children,
-  height = 40,
-  grows = false,
-  style,
-  testID,
-}: {
-  children: ReactNode;
-  height?: number;
-  /** Taller than `height` when its words wrap, rather than clipped to it. */
-  grows?: boolean;
-  style?: StyleProp<ViewStyle>;
-  testID?: string | undefined;
-}) {
-  return (
-    <View
-      testID={testID}
-      style={[
-        styles.glass,
-        grows ? { minHeight: height } : { height },
-        { borderRadius: height / 2 },
-        style,
-      ]}
-    >
-      <View style={[StyleSheet.absoluteFill, styles.glassFill]} />
-      {children}
-    </View>
-  );
-}
 
 /** The switcher's opener in glass: the tile alone on the band, the tile, the name and what waits on the cover. */
 export function OrgButton({
@@ -360,52 +333,6 @@ export function Greeting({
   );
 }
 
-function WhiteButton({
-  label,
-  onPress,
-  style,
-}: {
-  label: string;
-  onPress: () => void;
-  style?: StyleProp<ViewStyle>;
-}) {
-  return (
-    <Pressable
-      onPress={onPress}
-      style={({ pressed }) => [styles.whiteButton, pressed && styles.pressed, style]}
-      accessibilityRole="button"
-      accessibilityLabel={label}
-    >
-      <Text size={16} weight="semibold" accessible={false}>
-        {label}
-      </Text>
-      <Glyph name="arrow" ink={tokens.colorInk} />
-    </Pressable>
-  );
-}
-
-function Chips({ now }: { now: Now }) {
-  const { t } = useTranslation();
-
-  return (
-    <View style={styles.chips}>
-      <View style={[styles.chip, styles.chipLight]}>
-        <View style={styles.liveRing}>
-          <View style={styles.liveDot} />
-        </View>
-        <Text size={13} weight="semibold">
-          {t('todayScreen.liveNow')}
-        </Text>
-      </View>
-      <View style={[styles.chip, styles.chipDark]}>
-        <Text size={13} weight="semibold" style={styles.white} numberOfLines={1}>
-          {now.live}
-        </Text>
-      </View>
-    </View>
-  );
-}
-
 function Rail({ now }: { now: Now }) {
   const last = now.rail.length - 1;
 
@@ -545,9 +472,21 @@ function NextAndArrived({ now }: { now: Now }) {
 export function NowBlock({ moment, wide }: { moment: Moment; wide: boolean }) {
   const { t } = useTranslation();
   const { open: go } = useTodayShell();
-  const { now } = moment;
+  const { now, run } = moment;
 
   if (now == null) return null;
+
+  if (run != null)
+    return (
+      <RunNowBlock
+        now={now}
+        run={run}
+        wide={wide}
+        onOpen={() =>
+          go({ to: 'runOfShow', id: now.event.id, name: now.name, track: run.track ?? null })
+        }
+      />
+    );
 
   if (!moment.full) {
     const words = (
@@ -848,9 +787,11 @@ export function Band({
         <View style={styles.bandNow}>
           <View style={styles.liveDot} />
           <Text size={13.5} weight="semibold" numberOfLines={1} style={styles.white}>
-            {moment.full
-              ? t('todayScreen.nowLine', { happening: now.happening, until: now.until })
-              : t('todayScreen.liveName', { name: now.name })}
+            {moment.run != null
+              ? moment.run.band
+              : moment.full
+                ? t('todayScreen.nowLine', { happening: now.happening, until: now.until })
+                : t('todayScreen.liveName', { name: now.name })}
           </Text>
         </View>
       )}
@@ -1066,8 +1007,6 @@ const styles = StyleSheet.create({
   gapMd: { gap: tokens.spacePillEnd },
   gapLg: { gap: tokens.spaceXl },
   gapXl: { gap: 22 },
-  glass: { flexDirection: 'row', alignItems: 'center', overflow: 'hidden' },
-  glassFill: { backgroundColor: tokens.colorInkOnDark, opacity: 0.22 },
   orgFit: { flexDirection: 'row', flexShrink: 1, minWidth: 0 },
   orgWide: { flexShrink: 1 },
   orgGlass: {
@@ -1114,36 +1053,6 @@ const styles = StyleSheet.create({
   capsuleAt: { position: 'absolute', left: 0, right: 0, top: 7, alignItems: 'center' },
   eyebrow: { letterSpacing: 12 * 0.08, opacity: 0.92 },
   subLine: { flexDirection: 'row', flexWrap: 'wrap' },
-  whiteButton: {
-    height: tokens.sizeHitPhoneHero,
-    borderRadius: tokens.sizeHitPhoneHero / 2,
-    backgroundColor: tokens.colorCard,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: tokens.spaceSm,
-    paddingHorizontal: 22,
-  },
-  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: tokens.spaceSm },
-  chip: {
-    height: tokens.space4xl,
-    paddingHorizontal: 12,
-    borderRadius: tokens.spacePillEnd,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: tokens.spaceXs,
-    flexShrink: 1,
-  },
-  chipLight: { backgroundColor: tokens.colorCard, flexShrink: 0 },
-  chipDark: { backgroundColor: tokens.scrimDialog },
-  liveRing: {
-    width: 14,
-    height: 14,
-    borderRadius: 7,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: tokens.colorBrokenTint,
-  },
   liveDot: {
     width: tokens.spaceSm,
     height: tokens.spaceSm,

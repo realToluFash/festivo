@@ -78,6 +78,14 @@ export function firstRefusedOf(
   return host == null ? null : { host: host.key };
 }
 
+/** Whether the first refusal sits above the cover's Description in the form: Event name, Type or a host. */
+export function aboveCover(first: ReturnType<typeof firstRefusedOf>): boolean {
+  if (first == null) return false;
+  if ('host' in first) return true;
+
+  return first.field === 'name' || first.field === 'type';
+}
+
 /** What a screen reader calls a row: its name, or "Host n" while it is empty. */
 export function hostCalled(row: HostRow, index: number, t: Translate): string {
   const name = hostNameOf(row.name);

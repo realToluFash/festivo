@@ -369,7 +369,7 @@
 
 .mc .lib-tags,
 .mc .lib-contains {
-  overflow-wrap: anywhere;
+  overflow-wrap: break-word;
 }
 
 @media (prefers-reduced-motion: no-preference) {
@@ -502,6 +502,10 @@
 
   .mc-dish .mn-dish-top {
     flex-wrap: wrap;
+  }
+
+  .mc-dish .mn-dish-words {
+    flex-basis: 12rem;
   }
 
   .mc-pick {

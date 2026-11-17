@@ -5,7 +5,7 @@ appId: host.exp.Exponent
 - openLink: ${METRO_URL}/--/events/new
 - extendedWaitUntil:
     visible:
-      id: 'eventForm.host.1'
+      id: 'eventForm.hosts.field.0'
     timeout: 30000
 - takeScreenshot: default
 - scrollUntilVisible:
@@ -32,9 +32,9 @@ appId: host.exp.Exponent
 - takeScreenshot: refused
 - scrollUntilVisible:
     element:
-      id: 'eventForm.host.2.remove'
+      id: 'eventForm.hosts.remove.1'
     direction: UP
     centerElement: true
 - tapOn:
-    id: 'eventForm.host.2.remove'
+    id: 'eventForm.hosts.remove.1'
 - takeScreenshot: one-row
