@@ -9,6 +9,7 @@ import {
   rmSync,
   statSync,
   symlinkSync,
+  utimesSync,
   writeFileSync,
 } from 'node:fs';
 import { spawnSync } from 'node:child_process';
@@ -125,6 +126,8 @@ import {
   renewingSession,
   resumeBatch,
   runHeld,
+  KEPT_LOG_BYTES,
+  trimMaestroLogs,
   maestroTarget,
   missingCmdlineTools,
   setupAgain,
@@ -4524,5 +4527,62 @@ describe('execOutput', () => {
     expect(() =>
       execOutput({ status: null, error: new Error('spawn docker ENOENT') }, 'exec api'),
     ).toThrow('exec api: spawn docker ENOENT');
+  });
+});
+
+describe("a Maestro run's debug logs", () => {
+  const run = () => {
+    const out = mkdtempSync(join(tmpdir(), 'maestro-logs-'));
+    const write = (under, text, at) => {
+      mkdirSync(join(out, under), { recursive: true });
+      const path = join(out, under, 'maestro.log');
+      writeFileSync(path, text);
+      if (at) utimesSync(path, at / 1000, at / 1000);
+      return path;
+    };
+    const evidence = join(out, '.maestro/tests/2026-11-17_044334/screenshot-1.png');
+    const log = write('.maestro/tests/2026-11-17_044334', 'run log', Date.now() - 1000);
+    const batch = write('_batch/logs', 'batch log', Date.now());
+    writeFileSync(evidence, 'png');
+    writeFileSync(join(out, '.maestro/tests/2026-11-17_044334/commands.json'), '[]');
+    return { out, log, batch, evidence };
+  };
+
+  it('are deleted after a run that passed, both copies, and the evidence stays', () => {
+    const { out, log, batch, evidence } = run();
+    trimMaestroLogs(out, { failed: false });
+    expect([existsSync(log), existsSync(batch), existsSync(evidence)]).toEqual([
+      false,
+      false,
+      true,
+    ]);
+    expect(existsSync(join(out, '.maestro/tests/2026-11-17_044334/commands.json'))).toBe(true);
+  });
+
+  it('keep one copy after a run that failed, the newest', () => {
+    const { out, log, batch } = run();
+    trimMaestroLogs(out, { failed: true });
+    expect([existsSync(log), readFileSync(batch, 'utf8')]).toEqual([false, 'batch log']);
+  });
+
+  it("keep a failed run's last 5 MB", () => {
+    const { out, batch } = run();
+    writeFileSync(
+      batch,
+      Buffer.concat([Buffer.alloc(100, 'a'), Buffer.alloc(KEPT_LOG_BYTES, 'z')]),
+    );
+    trimMaestroLogs(out, { failed: true });
+    const kept = readFileSync(batch);
+    expect([kept.length, kept.includes('a')]).toEqual([KEPT_LOG_BYTES, false]);
+  });
+
+  it("leave an earlier run's kept log to that run", () => {
+    const { out, log, batch } = run();
+    trimMaestroLogs(out, { since: Date.now() - 500, failed: false });
+    expect([existsSync(log), existsSync(batch)]).toEqual([true, false]);
+  });
+
+  it('ask nothing of a run that left no folder', () => {
+    expect(() => trimMaestroLogs(join(tmpdir(), 'no-such-maestro-run'))).not.toThrow();
   });
 });
