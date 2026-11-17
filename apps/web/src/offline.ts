@@ -22,7 +22,23 @@ export interface Stale {
 export const StaleScreen = createContext<{
   stale: Stale | null;
   show: (stale: Stale | null) => void;
-}>({ stale: null, show: () => {} });
+  /** A page that says it is offline in its own words keeps the shell's band and box away (sc-3895). */
+  hushed: boolean;
+  hush: (on: boolean) => void;
+}>({ stale: null, show: () => {}, hushed: false, hush: () => {} });
+
+/** For a page whose own notice is the only one: the shell draws none while it is open, and the page reads the stale load here. */
+export function useOwnOfflineNotice(): Stale | null {
+  const { stale, hush } = useContext(StaleScreen);
+
+  useLayoutEffect(() => {
+    hush(true);
+
+    return () => hush(false);
+  }, [hush]);
+
+  return stale;
+}
 
 /** Every load of the screen goes through `watch`, or the band never learns that Soirely answered again. */
 export function useOffline(screen: {

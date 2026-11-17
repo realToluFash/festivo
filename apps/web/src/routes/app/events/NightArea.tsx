@@ -40,6 +40,7 @@ import { useDeskTop } from '../../../deskTop.ts';
 import { dateLocale } from '../../../i18n/index.ts';
 import { pageTitle, usePageTitle } from '../../../pageTitle.ts';
 import { useLoadedAt, useServerNow } from '../../../serverNow.ts';
+import { useOwnOfflineNotice } from '../../../offline.ts';
 import { canOn } from '../../../session.ts';
 import { NightSwitch } from './NightSwitch.tsx';
 import { endingNow } from './openInPlace.ts';
@@ -86,6 +87,7 @@ function NightArea({ event }: { event: OrganisationEvent }) {
   const sending = useRef(false);
   const again = useRef(false);
   const wasOffline = useRef(false);
+  const stale = useOwnOfflineNotice();
 
   usePageTitle(pageTitle(t, [t('runView.title'), event.name]));
 
@@ -191,11 +193,14 @@ function NightArea({ event }: { event: OrganisationEvent }) {
             event={event}
             schedule={withPresses(load.schedule, queue)}
             queued={queue.length}
-            offline={offline}
+            offline={offline || stale != null}
             syncedAt={syncedAt}
             lost={lost}
             onDismiss={() => setLost(null)}
-            onTry={() => void flush()}
+            onTry={() => {
+              stale?.retry();
+              void flush();
+            }}
             onPress={(item, kind, words) => void press(item, kind, words)}
           />
         ) : (
