@@ -163,6 +163,11 @@ export interface WeekDay extends StripDay {
   spoken: string;
 }
 
+/** Portuguese's short weekday is the whole word in Portugal ("quarta"), so its days write the letter at every phone width, whatever the region (sc-61548). */
+export function lettersAtPhone(language: string): boolean {
+  return language.split('-')[0] === 'pt';
+}
+
 /** The sample is written in English; This week's weekdays follow the page's language, so the strip reads as the product's does in it. */
 export function weekIn(days: readonly WeekDay[], say: Say): WeekDay[] {
   return days.map((day) => ({

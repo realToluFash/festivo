@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { Glyph } from '../components/Glyph.tsx';
 import type { AgendaDay, Open, StripBar } from '../components/today.ts';
 import { EventCover, Head } from '../components/TodayParts.tsx';
-import type { Moment, WeekDay } from './today.ts';
+import { lettersAtPhone, type Moment, type WeekDay } from './today.ts';
 
 function Bar({ bar }: { bar: StripBar }) {
   const shape = bar.openLeft ? 'today-bar is-open' : 'today-bar';
@@ -36,7 +36,7 @@ function Weekday({ day }: { day: WeekDay }) {
   );
 }
 
-function Strip({ moment }: { moment: Moment }) {
+function Strip({ moment, letters }: { moment: Moment; letters: boolean }) {
   const rows = Array.from(
     { length: Math.max(0, ...moment.bars.map((bar) => bar.lane + 1)) },
     (_, lane) => moment.bars.filter((bar) => bar.lane === lane),
@@ -48,7 +48,7 @@ function Strip({ moment }: { moment: Moment }) {
         moment.bars.length > 0 ? 'today-panel today-strip has-bars' : 'today-panel today-strip'
       }
     >
-      <ol className="today-days">
+      <ol className={letters ? 'today-days has-letters' : 'today-days'}>
         {moment.days.map((day) => (
           <li key={day.number} className={day.today ? 'today-day is-today' : 'today-day'}>
             <Weekday day={day} />
@@ -111,9 +111,9 @@ function Agenda({ days, nothing }: { days: AgendaDay[]; nothing: string }) {
   );
 }
 
-/** The product's This week, with each day but today writing its narrow weekday at 360 px and narrower (sc-61548). */
+/** The product's This week, with each day but today writing its narrow weekday at 360 px and narrower, and in Portuguese at 640 px and narrower (sc-61548). */
 export function ThisWeek({ moment, open }: { moment: Moment; open: Open }) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { nextUp } = moment;
 
   return (
@@ -123,7 +123,7 @@ export function ThisWeek({ moment, open }: { moment: Moment; open: Open }) {
         title={t('today.thisWeek')}
         link={{ label: t('nav.calendar'), onClick: () => open({ to: 'calendar' }) }}
       />
-      <Strip moment={moment} />
+      <Strip moment={moment} letters={lettersAtPhone(i18n.resolvedLanguage ?? i18n.language)} />
       {nextUp == null ? (
         <Agenda days={moment.agenda} nothing={moment.nothing} />
       ) : (

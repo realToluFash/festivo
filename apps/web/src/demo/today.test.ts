@@ -10,6 +10,7 @@ import {
   repliesOf,
   sayIn,
   shown,
+  lettersAtPhone,
   weekIn,
 } from './today.ts';
 
@@ -354,5 +355,23 @@ describe('This week at 360 px and narrower (sc-61548)', () => {
     expect(days.map(({ narrow }) => narrow).join(' ')).toBe('M M J V S D L');
     expect(days.map(({ spoken, number }) => `${spoken} ${number}`)[3]).toBe('vendredi 6');
     expect(days[3]?.weekday).toBe('ven.');
+  });
+
+  it.each([
+    ['pt', true],
+    ['pt-PT', true],
+    ['pt-BR', true],
+    ['en', false],
+    ['es', false],
+    ['fr', false],
+  ])('in %s, writes the letter at every phone width: %s', (language, letters) => {
+    expect(lettersAtPhone(language)).toBe(letters);
+  });
+
+  it('in Portuguese, reads the full weekday where the letter shows', () => {
+    const days = weekIn(momentOf('plan', us).days, sayIn('pt-PT'));
+
+    expect(days.map(({ narrow }) => narrow).join(' ')).toBe('T Q Q S S D S');
+    expect(days.map(({ spoken }) => spoken)).toContain('quarta-feira');
   });
 });
