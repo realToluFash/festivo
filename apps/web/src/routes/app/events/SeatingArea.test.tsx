@@ -4279,3 +4279,184 @@ describe('A second finger on a box pans and keeps the choice (sc-60666)', () => 
     expect(screen.getByRole('heading', { level: 2, name: '2 chosen' })).toBeDefined();
   });
 });
+
+describe('An item moved by keys stays clear of the keys strip (sc-61042)', () => {
+  beforeAll(standInPointerEvents);
+  beforeEach(() => localStorage.clear());
+
+  const STRIP = { left: 100, right: 618, top: 600, bottom: 680 };
+  let below = 0;
+
+  function floorTop(): number {
+    return Number(document.querySelector('.st-room-line')?.getAttribute('y'));
+  }
+
+  function rect(left: number, top: number, width: number, height: number): DOMRect {
+    return {
+      width,
+      height,
+      left,
+      top,
+      right: left + width,
+      bottom: top + height,
+      x: left,
+      y: top,
+    } as DOMRect;
+  }
+
+  function measure() {
+    return vi.spyOn(Element.prototype, 'getBoundingClientRect').mockImplementation(function (
+      this: Element,
+    ) {
+      if (this.getAttribute('data-table') === 't1') return rect(300, floorTop() + below, 100, 100);
+      if (this.classList.contains('st-keys'))
+        return rect(STRIP.left, STRIP.top, STRIP.right - STRIP.left, STRIP.bottom - STRIP.top);
+      return rect(0, 0, 0, 0);
+    });
+  }
+
+  async function keyed(answers: Record<string, Answer> = {}, more: Record<string, unknown> = {}) {
+    signedIn();
+    const long = table({ shape: 'rectangular', seats: 6, widthCm: 180, lengthCm: 76, ...more });
+    const sent = await onSeating({
+      'GET /api/events/ev_1/seating-plan': () => seating(withTables(long)),
+      'PATCH /api/events/ev_1/seating-plan/furniture': (body) => {
+        const [item] = (body as { items: Record<string, number>[] }).items;
+
+        return seating(withTables({ ...long, ...item, version: 2 }));
+      },
+      ...answers,
+    });
+
+    await chooseTable('Table 1, rectangular, 0 of 6 seats taken');
+    const drawn = document.querySelector('[data-table="t1"]') as SVGGElement & HTMLElement;
+
+    act(() => drawn.focus());
+    below = 400 - floorTop();
+    fireEvent.keyDown(drawn, { key: 'Shift' });
+    expect(document.querySelector('.st-keys')).not.toBeNull();
+    return { drawn, sent };
+  }
+
+  it('pans by the least distance once an arrow, Shift+arrow or R has moved the item under the strip', async () => {
+    const measured = measure();
+
+    try {
+      const { drawn } = await keyed();
+      const zoom = percent();
+
+      for (const key of [
+        { key: 'ArrowUp' },
+        { key: 'ArrowDown', shiftKey: true },
+        { key: 'ArrowLeft' },
+        { key: 'R' },
+      ]) {
+        const was = floorTop();
+
+        below = 520 - was;
+        fireEvent.keyDown(drawn, key);
+        expect(floorTop()).toBeCloseTo(was - 28, 0);
+        expect(percent()).toBe(zoom);
+      }
+    } finally {
+      measured.mockRestore();
+    }
+  });
+
+  it('does not move the plan for an item a key leaves clear', async () => {
+    const measured = measure();
+
+    try {
+      const { drawn } = await keyed();
+      const was = floorTop();
+
+      fireEvent.keyDown(drawn, { key: 'ArrowUp' });
+      expect(floorTop()).toBe(was);
+    } finally {
+      measured.mockRestore();
+    }
+  });
+
+  it('keeps the item clear when the room’s foot stops the arrow', async () => {
+    const measured = measure();
+
+    try {
+      const { drawn, sent } = await keyed({}, { yCm: 1762 });
+      const was = floorTop();
+
+      below = 520 - was;
+      fireEvent.keyDown(drawn, { key: 'ArrowDown' });
+      expect(furniture(sent)).toEqual([]);
+      expect(floorTop()).toBeCloseTo(was - 28, 0);
+    } finally {
+      measured.mockRestore();
+    }
+  });
+
+  it('pans when the strip grows to a second line while the item has focus', async () => {
+    const measured = measure();
+    const watched: { callback: ResizeObserverCallback; targets: Element[] }[] = [];
+
+    vi.stubGlobal(
+      'ResizeObserver',
+      class {
+        targets: Element[] = [];
+        constructor(callback: ResizeObserverCallback) {
+          watched.push({ callback, targets: this.targets });
+        }
+        observe(target: Element) {
+          this.targets.push(target);
+        }
+        disconnect() {}
+      },
+    );
+
+    try {
+      await keyed();
+      const was = floorTop();
+      const strip = document.querySelector('.st-keys')!;
+      const grow = () =>
+        act(() => {
+          for (const one of watched)
+            if (one.targets.includes(strip))
+              one.callback(
+                [{ target: strip, contentRect: strip.getBoundingClientRect() }] as never,
+                {} as ResizeObserver,
+              );
+        });
+
+      STRIP.top = 640;
+      grow();
+      below = 520 - was;
+      STRIP.top = 600;
+      grow();
+      expect(floorTop()).toBeCloseTo(was - 28, 0);
+    } finally {
+      STRIP.top = 600;
+      vi.unstubAllGlobals();
+      measured.mockRestore();
+    }
+  });
+
+  it('never moves the plan for a click or a drag, even with the item where the strip was', async () => {
+    const measured = measure();
+
+    try {
+      const { drawn } = await keyed();
+      const was = floorTop();
+
+      below = 520 - was;
+      fireEvent.pointerDown(drawn, { button: 0, pointerId: 1, clientX: 350, clientY: 570 });
+      fireEvent.pointerUp(drawn, { button: 0, pointerId: 1, clientX: 350, clientY: 570 });
+      fireEvent.click(drawn);
+      expect(floorTop()).toBe(was);
+
+      fireEvent.pointerDown(drawn, { button: 0, pointerId: 1, clientX: 350, clientY: 570 });
+      fireEvent.pointerMove(drawn, { button: 0, pointerId: 1, clientX: 350, clientY: 640 });
+      fireEvent.pointerUp(drawn, { button: 0, pointerId: 1, clientX: 350, clientY: 640 });
+      expect(floorTop()).toBe(was);
+    } finally {
+      measured.mockRestore();
+    }
+  });
+});
