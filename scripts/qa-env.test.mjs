@@ -93,6 +93,7 @@ import {
   branchForStory,
   CACHE_CLEARER,
   clearApiCache,
+  execOutput,
   staleInContainer,
   defaultNetwork,
   COMPOSE_PROJECT,
@@ -4456,5 +4457,23 @@ describe('staleInContainer', () => {
     expect(staleInContainer(host, `${a}  ./src/Enum/ErrorCode.php\n`)).toEqual([
       'tests/Double/ScriptedMenuPicks.php',
     ]);
+  });
+});
+
+describe('execOutput', () => {
+  it('returns the stdout of an exec that succeeded', () => {
+    expect(execOutput({ status: 0, stdout: 'ok\n', stderr: '' }, 'exec')).toBe('ok\n');
+  });
+
+  it('throws with the stderr when the exec failed, rather than reading empty stdout', () => {
+    expect(() =>
+      execOutput({ status: 1, stdout: '', stderr: 'service "api" is not running\n' }, 'exec api'),
+    ).toThrow('exec api exited 1: service "api" is not running');
+  });
+
+  it('throws when docker could not be spawned', () => {
+    expect(() =>
+      execOutput({ status: null, error: new Error('spawn docker ENOENT') }, 'exec api'),
+    ).toThrow('exec api: spawn docker ENOENT');
   });
 });

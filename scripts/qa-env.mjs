@@ -994,13 +994,21 @@ export function staleInContainer(hostHashes, sha256sumOutput) {
   return [...hostHashes].filter(([path, hash]) => served.get(path) !== hash).map(([path]) => path);
 }
 
+export function execOutput(result, label) {
+  if (result.error) throw new Error(`${label}: ${result.error.message}`);
+  if (result.status !== 0) {
+    throw new Error(`${label} exited ${result.status}: ${String(result.stderr ?? '').trim()}`);
+  }
+  return String(result.stdout ?? '');
+}
+
 function apiServedHashes(root, paths) {
   const result = spawnSync(
     'docker',
     ['compose', 'exec', '-T', 'api', 'sh', '-c', 'cd /app && xargs -0 sha256sum'],
     { cwd: root, input: paths.join('\0'), encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 },
   );
-  return result.stdout ?? '';
+  return execOutput(result, 'docker compose exec api sha256sum');
 }
 
 function proveApiMount(root) {
@@ -1020,13 +1028,13 @@ function proveApiMount(root) {
   }
   for (const path of stale) {
     console.log(`  stale in the container, rewritten: ${path}`);
-    spawnSync(
-      'docker',
-      ['compose', 'exec', '-T', 'api', 'sh', '-c', 'cat > "$1"', 'sh', `/app/${path}`],
-      {
-        cwd: root,
-        input: readFileSync(join(api, path)),
-      },
+    execOutput(
+      spawnSync(
+        'docker',
+        ['compose', 'exec', '-T', 'api', 'sh', '-c', 'cat > "$1"', 'sh', `/app/${path}`],
+        { cwd: root, input: readFileSync(join(api, path)), encoding: 'utf8' },
+      ),
+      `docker compose exec api rewrite ${path}`,
     );
   }
   const still = staleInContainer(
