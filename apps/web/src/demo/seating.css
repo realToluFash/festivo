@@ -1927,6 +1927,12 @@
   background: var(--colorAccentTint);
 }
 
+.st-party.is-seat {
+  gap: 10px;
+  min-height: var(--sizeHit);
+  padding: 2px 10px;
+}
+
 .st-party:disabled {
   cursor: default;
 }
@@ -1950,13 +1956,29 @@
 
 .st-view-wrap {
   position: absolute;
-  inset: 0;
+  inset: 72px 0 0;
   display: flex;
   flex-direction: column;
   gap: 12px;
   box-sizing: border-box;
-  padding: 72px var(--spaceLg) var(--spaceLg);
+  padding: 0 var(--spaceLg) var(--spaceLg);
   overflow-y: auto;
+}
+
+/* sc-4013: the cards scroll under the view switch, and the step's message, with a choice it asks for (Seat just, Swap with, Move everyone to…), stays at the top of what is shown, so a card tapped far down the grid never scrolls its answer away. */
+.st-view-top {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.st-view-top > .st-bar.is-inline {
+  align-self: stretch;
 }
 
 .st-canvas.is-list {
@@ -1979,18 +2001,53 @@
 }
 
 .st-card {
+  position: relative;
   display: flex;
   flex-direction: column;
   gap: 6px;
   width: 212px;
   box-sizing: border-box;
   padding: 12px;
-  border: 0;
   border-radius: 20px;
   background: var(--colorCard);
   box-shadow: 0 0 0 1px var(--colorBorder);
+}
+
+/* sc-4013: the card's name is its button and reaches over the whole card, so a press anywhere but a chair is the table's; the chairs sit above it as targets of their own, never inside it. */
+.st-card-hit {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
   text-align: left;
   cursor: pointer;
+}
+
+.st-card-hit::after {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  content: '';
+}
+
+.st-card-hit:focus-visible {
+  outline: none;
+}
+
+.st-card-hit:focus-visible::after {
+  outline: 2px solid var(--colorAccent);
+  outline-offset: 2px;
+  border-radius: 20px;
+}
+
+.st-card-art .st-chair-hit.is-card {
+  pointer-events: auto;
+}
+
+.st-card-art .st-chair-hit.is-card:hover {
+  stroke: var(--colorAccent);
+  stroke-width: 2;
 }
 
 .st-card.is-lit {
@@ -2022,7 +2079,7 @@
   padding: 27px 15px 15px;
 }
 
-.st-card.is-marked:focus-visible {
+.st-card.is-marked .st-card-hit:focus-visible::after {
   outline-offset: -6px;
 }
 
@@ -2113,8 +2170,11 @@
 }
 
 .st-card-art {
+  position: relative;
+  z-index: 1;
   display: block;
   overflow: visible;
+  pointer-events: none;
 }
 
 .st-seg.is-list {
@@ -2881,5 +2941,5 @@
 }
 
 .is-row-down .st-view-wrap {
-  padding-top: 132px;
+  top: 132px;
 }

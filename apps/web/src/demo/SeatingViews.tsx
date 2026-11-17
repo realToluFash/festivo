@@ -57,10 +57,12 @@ function CardDrawing({
   item,
   colour,
   choices,
+  chairs,
 }: {
   item: Item;
   colour: string;
   choices: readonly Choice[];
+  chairs: CardChairs | null;
 }) {
   const w = 188;
   const h = 132;
@@ -96,8 +98,25 @@ function CardDrawing({
       ) : null}
       {chairsOf(item).map((point, index) => {
         const [px, py] = turn(point, item.rot);
+        const lit = chairs?.lit === index || chairs?.on === index;
 
-        return (
+        return lit ? (
+          <g key={index}>
+            <circle
+              className="st-lit"
+              cx={cx + px * s}
+              cy={cy + py * s}
+              r={Math.max(r + 5, CHAIR_HIT / 2 + 2)}
+            />
+            <ChairMark
+              x={cx + px * s}
+              y={cy + py * s}
+              r={r}
+              chair={item.chairs[index] ?? { state: 'empty' }}
+              square={item.kind === 'cocktail'}
+            />
+          </g>
+        ) : (
           <ChairMark
             key={index}
             x={cx + px * s}
@@ -127,18 +146,82 @@ function CardDrawing({
             );
           });
       })}
+      {chairs != null &&
+        chairsOf(item).map((point, index) => {
+          const chair = item.chairs[index] ?? { state: 'empty' as const };
+
+          if (!chairs.target(chair, index)) return null;
+          const [px, py] = turn(point, item.rot);
+
+          return (
+            <circle
+              key={`hit${index}`}
+              className="st-chair-hit is-card"
+              role="button"
+              tabIndex={chairs.keys ? 0 : -1}
+              aria-label={say(SW.chairName, {
+                table: item.name,
+                n: index + 1,
+                word: chairWord(chair),
+              })}
+              aria-pressed={chairs.on === index}
+              cx={cx + px * s}
+              cy={cy + py * s}
+              r={CHAIR_HIT / 2}
+              onPointerEnter={() => chairs.onHover(index)}
+              onPointerLeave={() => chairs.onHover(null)}
+              onFocus={() => chairs.onHover(index)}
+              onBlur={() => chairs.onHover(null)}
+              onClick={() => chairs.onChair(index)}
+              onKeyDown={(event) => {
+                if (event.key !== 'Enter' && event.key !== ' ') return;
+                event.preventDefault();
+                chairs.onChair(index);
+              }}
+            />
+          );
+        })}
     </svg>
   );
 }
 
+/** A card's chairs as targets (sc-4013): 24 px each, the web's floor (WCAG 2.2 SC 2.5.8). */
+const CHAIR_HIT = 24;
+
+interface CardChairs {
+  target: (chair: Item['chairs'][number], index: number) => boolean;
+  /** In the tab order: the lit card's chairs only, as the plan's `chairsFor`. */
+  keys: boolean;
+  lit: number | null;
+  on: number | null;
+  onHover: (index: number | null) => void;
+  onChair: (index: number) => void;
+}
+
 /** The Tables view (sc-4013): a card per table, by section then name, with All sections and a chip per section. */
 export function TablesView() {
-  const { ui, set, seatAt, choose } = useSeating();
+  const { ui, set, seatAt, choose, pickSeated } = useSeating();
   const plan = ui.plan;
   const items = inSectionOrder(plan).filter(
     (item) => ui.tablesSection == null || item.sec === ui.tablesSection,
   );
-  const picked = partyOf(ui.tray, ui.picked);
+  const picking = ui.picked != null;
+  const chairsOn = (item: Item): CardChairs | null =>
+    ui.readOnly
+      ? null
+      : {
+          target: (chair) => chair.state === 'taken' || (picking && chair.state === 'empty'),
+          keys: ui.hover === item.id || ui.moving?.table === item.id || ui.chosen.includes(item.id),
+          lit: ui.hover === item.id ? ui.hoverChair : null,
+          on: ui.moving?.table === item.id ? ui.moving.chair : null,
+          onHover: (index) =>
+            set((now) =>
+              now.picked == null
+                ? now
+                : { ...now, hover: index == null ? now.hover : item.id, hoverChair: index },
+            ),
+          onChair: (index) => (picking ? seatAt(item.id, index) : pickSeated(item.id, index)),
+        };
 
   return (
     <div className="st-view is-tables">
@@ -172,20 +255,29 @@ export function TablesView() {
 
           return (
             <li key={item.id} className="st-card-slot">
-              <button
-                type="button"
+              <div
                 className={['st-card', lit && 'is-lit', marks.length > 0 && 'is-marked']
                   .filter(Boolean)
                   .join(' ')}
-                aria-label={itemName(plan, item, chosenWords(marks))}
-                aria-pressed={ui.chosen.includes(item.id)}
-                onPointerEnter={() => picked != null && set((now) => ({ ...now, hover: item.id }))}
-                onClick={() => (picked != null ? seatAt(item.id) : choose([item.id]))}
               >
-                <span className="st-card-top">
-                  <span className="st-card-name">{item.name}</span>
-                  <span className="st-card-of">{ofWords(item)}</span>
-                </span>
+                <button
+                  type="button"
+                  className="st-card-hit"
+                  aria-label={itemName(plan, item, chosenWords(marks))}
+                  aria-pressed={ui.chosen.includes(item.id)}
+                  onPointerEnter={() =>
+                    picking && set((now) => ({ ...now, hover: item.id, hoverChair: null }))
+                  }
+                  onFocus={() =>
+                    picking && set((now) => ({ ...now, hover: item.id, hoverChair: null }))
+                  }
+                  onClick={() => (picking ? seatAt(item.id) : choose([item.id]))}
+                >
+                  <span className="st-card-top">
+                    <span className="st-card-name">{item.name}</span>
+                    <span className="st-card-of">{ofWords(item)}</span>
+                  </span>
+                </button>
                 <span className="st-sec-chip">
                   <Swatch colour={section?.colour ?? null} size={12} />
                   {section?.name ?? SW.noSection}
@@ -194,8 +286,9 @@ export function TablesView() {
                   item={item}
                   colour={section?.colour.toLowerCase() ?? 'none'}
                   choices={marks}
+                  chairs={chairsOn(item)}
                 />
-              </button>
+              </div>
               {marks.map(({ who }, k) => (
                 <span
                   key={k}

@@ -1500,7 +1500,7 @@ function Tray({ chips = true }: { chips?: boolean }) {
 }
 
 function TableGuests({ item }: { item: Item }) {
-  const { ui, unseatAll, set, focusField } = useSeating();
+  const { ui, unseatAll, set, focusField, pickSeated } = useSeating();
   const empty = filled(item) === 0;
 
   return (
@@ -1514,15 +1514,35 @@ function TableGuests({ item }: { item: Item }) {
       ) : (
         <>
           <ul className="st-rows is-dense">
-            {item.chairs.map((chair, index) => (
-              <li key={index} className="st-row is-dense">
-                <StateMark chair={chair} size={22} />
-                <span className="st-row-words">
-                  <span className="st-row-name">{say(SW.seatN, { n: index + 1 })}</span>
-                  <span className="st-row-line">{chairWord(chair)}</span>
-                </span>
-              </li>
-            ))}
+            {item.chairs.map((chair, index) => {
+              const words = (
+                <>
+                  <StateMark chair={chair} size={22} />
+                  <span className="st-row-words">
+                    <span className="st-row-name">{say(SW.seatN, { n: index + 1 })}</span>
+                    <span className="st-row-line">{chairWord(chair)}</span>
+                  </span>
+                </>
+              );
+              const on = ui.moving?.table === item.id && ui.moving.chair === index;
+
+              return (
+                <li key={index} className="st-row is-dense">
+                  {chair.state === 'taken' && !ui.readOnly ? (
+                    <button
+                      type="button"
+                      className={on ? 'st-party is-seat is-on' : 'st-party is-seat'}
+                      aria-pressed={on}
+                      onClick={() => pickSeated(item.id, index)}
+                    >
+                      {words}
+                    </button>
+                  ) : (
+                    words
+                  )}
+                </li>
+              );
+            })}
           </ul>
           {!ui.readOnly && (
             <Acts>
@@ -1560,7 +1580,12 @@ export function SeatingPanel() {
   let body: ReactNode;
 
   if (ui.tab === 'seat') {
-    const table = chosen.length === 1 && ui.picked == null ? chosen[0] : undefined;
+    const table =
+      ui.moving != null
+        ? plan.items.find((item) => item.id === ui.moving?.table)
+        : chosen.length === 1 && ui.picked == null
+          ? chosen[0]
+          : undefined;
 
     body = table != null && table.kind !== 'single' ? <TableGuests item={table} /> : <Tray />;
   } else if (ui.panel?.kind === 'start') body = <StartForm />;

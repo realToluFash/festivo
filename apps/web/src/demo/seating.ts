@@ -1613,6 +1613,22 @@ export const SEATING_STATES = [
   { key: 'notSureYet', name: 'Not sure yet and no reply too', group: 'Seating guests' },
   { key: 'tables', name: 'The Tables view', group: 'Seating guests' },
   { key: 'tablesPicked', name: 'The Tables view, a party picked', group: 'Seating guests' },
+  {
+    key: 'tablesChair',
+    name: 'The Tables view, a guest picked and a free chair under the pointer',
+    group: 'Seating guests',
+  },
+  {
+    key: 'tablesSwap',
+    name: 'The Tables view, a taken chair tapped: Swap with',
+    group: 'Seating guests',
+  },
+  {
+    key: 'tablesMoving',
+    name: 'The Tables view, a seated guest picked to move',
+    group: 'Seating guests',
+  },
+  { key: 'tablesMoved', name: 'The Tables view, a seated guest moved', group: 'Seating guests' },
   { key: 'list', name: 'The List view', group: 'Seating guests' },
   { key: 'listOpen', name: 'The List, Table 8 opened', group: 'Seating guests' },
   { key: 'print', name: 'Print', group: 'Print and paper' },
