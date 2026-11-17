@@ -14,7 +14,6 @@
 
   .shell .gs-top > .mn-head {
     flex: 1 1 auto;
-    min-width: auto;
   }
 
   /* Settings' list stays above its page, as up to 60rem it already is, and the card scrolls the two together. */

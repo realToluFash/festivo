@@ -9,6 +9,10 @@
     min-width: auto;
   }
 
+  .shell .gs-top > .mn-head {
+    min-width: auto;
+  }
+
   .shell :is(.desk-title, .desk-title *, .gs-title, .gs-title *) {
     overflow-wrap: normal;
   }
@@ -51,7 +55,7 @@
   }
 }
 
-/* Up to 1240 px, until the list and the guest fit at their 520 and 380, an open guest or form comes before the list. */
+/* Up to 1240 px, until the list and the guest fit at their 520 and 380, an open guest or form comes before the list, both at the card's width, as the demo's one column. */
 @media (40rem < width <= 77.5rem) {
   .shell .gs-cols {
     flex-flow: column nowrap;

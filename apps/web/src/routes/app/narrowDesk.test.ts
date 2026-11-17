@@ -67,6 +67,7 @@ describe('a desk window from 641 px up (sc-61150)', () => {
   it('keeps a title whole, its actions going under it when both do not fit', () => {
     expect(cssRule('.shell :is(.desk-top, .gs-top)', WIDE)).toContain('flex-wrap: wrap;');
     expect(cssRule('.shell :is(.desk-title, .gs-title)', WIDE)).toContain('min-width: auto;');
+    expect(cssRule('.shell .gs-top > .mn-head', WIDE)).toContain('min-width: auto;');
   });
 
   it("puts the Schedule's open item before the table up to 1200 px", () => {
@@ -81,10 +82,11 @@ describe('a desk window from 641 px up (sc-61150)', () => {
     ).toMatch(/position: static;\s+order: -1;/u);
   });
 
-  it('puts an open guest before the list, each full width, up to 1240 px', () => {
+  it("puts an open guest before the list, both at the card's width, up to 1240 px", () => {
     const guests = band('(40rem < width <= 77.5rem)');
 
     expect(cssRule('.shell .gs-cols', guests)).toContain('flex-flow: column nowrap;');
+    expect(cssRule('.shell :is(.gs-list, .gs-column)', guests)).toContain('max-width: none;');
     expect(cssRule('.shell .gs-column', guests)).toContain('order: -1;');
     expect(cssRule('.shell .gs-column:has(> .gs-pick)', guests)).toContain('display: none;');
   });

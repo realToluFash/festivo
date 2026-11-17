@@ -2240,10 +2240,13 @@ describe('a guest’s column at 320 (sc-3773)', () => {
   });
 });
 describe('Guests from 1241 px (sc-61150)', () => {
-  it('keeps the guest in view beside the list only from 1241 px', () => {
+  it('sets the list and the guest beside each other at 520 and 380, the guest in view, from 1241 px', () => {
     const beside = GUESTS_CSS.slice(GUESTS_CSS.indexOf('(width > 77.5rem)'));
 
     expect(cssRule('.gs-column', beside)).toContain('position: sticky;');
+    expect(cssRule('.gs-cols', beside)).toContain(
+      'grid-template-columns: var(--gsList) var(--gsGuest);',
+    );
   });
 });
 
