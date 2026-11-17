@@ -512,6 +512,32 @@ export function extent(item: Item): Point {
   }
 }
 
+/** A Tables card's drawing (sc-4013), and its chairs as targets: 24 px each, the web's floor (WCAG 2.2 SC 2.5.8). */
+export const CARD_SIZE = { w: 188, h: 132 } as const;
+export const CHAIR_HIT = 24;
+
+/** How much smaller than the room a card draws its table: as large as the card holds, never above 0.45. */
+export function cardScale(item: Item): number {
+  const [ex, ey] = extent(item);
+  const turned = item.rot % 180 !== 0 ? [ey, ex] : [ex, ey];
+
+  return Math.min(
+    (CARD_SIZE.w - 16) / (2 * turned[0]!),
+    (CARD_SIZE.h - 12) / (2 * turned[1]!),
+    0.45,
+  );
+}
+
+/** Whether a card draws its chairs far enough apart for each to be a 24 px target (WCAG 2.2 SC 2.5.8); a long row does not, and is one target. */
+export function chairsFit(item: Item): boolean {
+  const s = cardScale(item);
+  const at = chairsOf(item).map((point) => turn(point, item.rot));
+
+  return at.every(([x, y], i) =>
+    at.slice(i + 1).every(([x2, y2]) => Math.hypot(x - x2, y - y2) * s >= CHAIR_HIT),
+  );
+}
+
 export function isRound(item: Item): boolean {
   return item.kind === 'round' || item.kind === 'cocktail' || item.kind === 'single';
 }
@@ -1616,6 +1642,22 @@ export const SEATING_STATES = [
   { key: 'notSureYet', name: 'Not sure yet and no reply too', group: 'Seating guests' },
   { key: 'tables', name: 'The Tables view', group: 'Seating guests' },
   { key: 'tablesPicked', name: 'The Tables view, a party picked', group: 'Seating guests' },
+  {
+    key: 'tablesChair',
+    name: 'The Tables view, a guest picked and a free chair under the pointer',
+    group: 'Seating guests',
+  },
+  {
+    key: 'tablesSwap',
+    name: 'The Tables view, a taken chair tapped: Swap with',
+    group: 'Seating guests',
+  },
+  {
+    key: 'tablesMoving',
+    name: 'The Tables view, a seated guest picked to move',
+    group: 'Seating guests',
+  },
+  { key: 'tablesMoved', name: 'The Tables view, a seated guest moved', group: 'Seating guests' },
   { key: 'list', name: 'The List view', group: 'Seating guests' },
   { key: 'listOpen', name: 'The List, Table 8 opened', group: 'Seating guests' },
   { key: 'print', name: 'Print', group: 'Print and paper' },
