@@ -1,4 +1,5 @@
 import {
+  COVER_DESCRIPTION_MAXIMUM,
   COVER_MIDDLE,
   EVENT_NAME_MAXIMUM,
   type EventDraft,
@@ -11,6 +12,7 @@ import {
   firstRefusedOf,
   hostProblems,
   newEventHosts,
+  visibleLength,
 } from '@soirely/domain';
 
 import { ARRIVAL_NOTE, NOTE_WORDS } from './arrivalNote.ts';
@@ -49,6 +51,7 @@ export const NEW_WORDS = {
   venueNameTooLong: `Shorten the venue name to ${VENUE_NAME_MAXIMUM} characters or fewer.`,
   venueAddressTooLong: `Shorten the address to ${VENUE_ADDRESS_MAXIMUM} characters or fewer.`,
   currencyBlank: 'Choose a currency.',
+  describeTooLong: `Shorten the description to ${COVER_DESCRIPTION_MAXIMUM} characters or fewer.`,
   zoneRefused: 'Choose a time zone.',
   create: 'Create event',
   creating: 'Creating…',
@@ -230,36 +233,55 @@ export function hostWords(hosts: readonly string[], tried: boolean): (string | n
   );
 }
 
+/** Describe the image's refusal, as the cover edit's: the field takes the typing, and Create refuses it. */
+export function coverRefusalOf(typed: NewTyped): string | null {
+  return typed.photo && visibleLength(typed.described) > COVER_DESCRIPTION_MAXIMUM
+    ? NEW_WORDS.describeTooLong
+    : null;
+}
+
 export function checkOf(
   typed: NewTyped,
   server: Refusals = {},
 ): {
   refusals: Refusals;
+  cover: string | null;
   hosts: (string | null)[];
   count: number;
 } {
   const refusals = { ...refusalsOf(typed), ...server };
+  const cover = coverRefusalOf(typed);
   const hosts = hostWords(typed.hosts, true);
 
   return {
     refusals,
+    cover,
     hosts,
-    count: Object.keys(refusals).length + hosts.filter((one) => one != null).length,
+    count:
+      Object.keys(refusals).length +
+      (cover == null ? 0 : 1) +
+      hosts.filter((one) => one != null).length,
   };
 }
 
-/** Where focus lands on a refusal, by the domain's order: Event name and Type before the hosts, the rest after them (sc-22143). */
+/** Where focus lands on a refusal, in the form's order: Event name and Type, the hosts, the photo's description, then the rest (sc-22143). */
 export function firstRefused(
   refusals: Refusals,
   hosts: readonly (string | null)[],
-): { field: EventFormField } | { host: number } | null {
+  cover: string | null = null,
+): { field: EventFormField } | { host: number } | { cover: true } | null {
   const rows = hosts.map((_, key) => ({ key, name: '' }));
   const hostErrors = Object.fromEntries(
     hosts.flatMap((one, key) => (one == null ? [] : [[key, one]])),
   );
+  const first = firstRefusedOf(refusals, hostErrors, rows);
+  if (cover == null || (first != null && ('host' in first || ABOVE_COVER.has(first.field))))
+    return first;
 
-  return firstRefusedOf(refusals, hostErrors, rows);
+  return { cover: true };
 }
+
+const ABOVE_COVER: ReadonlySet<EventFormField> = new Set(['name', 'type']);
 
 export function typedSomething(typed: NewTyped): boolean {
   return JSON.stringify(typed) !== JSON.stringify(BLANK);

@@ -1,10 +1,12 @@
 import {
+  COVER_DESCRIPTION_MAXIMUM,
   type EventDraft,
   type EventFormField,
   type EventType,
   eventFormProblems,
   firstRefusedOf,
   newEventHosts,
+  visibleLength,
 } from '@soirely/domain';
 
 import type { Position } from '../../components/EventEdits.tsx';
@@ -187,14 +189,25 @@ export function refusalsOf(typed: NewTyped): Refusals {
   return found;
 }
 
-/** What Create checks before it sends: the fields', then each host row's, with a blank Host 1 alone let through. */
+export const DESCRIBE_TOO_LONG = `Shorten the description to ${COVER_DESCRIPTION_MAXIMUM} characters or fewer.`;
+
+/** Describe the image's refusal, as the cover edit's: the field takes the typing, and Create refuses it. */
+export function coverRefusalOf(typed: NewTyped): string | null {
+  return typed.photo && visibleLength(typed.described) > COVER_DESCRIPTION_MAXIMUM
+    ? DESCRIBE_TOO_LONG
+    : null;
+}
+
+/** What Create checks before it sends: the fields', the photo's description, then each host row's, with a blank Host 1 alone let through. */
 export function checkOf(typed: NewTyped): {
   refusals: Refusals;
+  cover: string | null;
   hosts: (string | null)[];
   count: number;
   summary: string | null;
 } {
   const refusals = refusalsOf(typed);
+  const cover = coverRefusalOf(typed);
   const sent = newEventHosts(typed.hosts);
   const hosts =
     sent.length === 0
@@ -203,23 +216,32 @@ export function checkOf(typed: NewTyped): {
           typed.hosts.map((row) => row.name),
           true,
         );
-  const count = Object.keys(refusals).length + hosts.filter((one) => one != null).length;
+  const count =
+    Object.keys(refusals).length +
+    (cover == null ? 0 : 1) +
+    hosts.filter((one) => one != null).length;
 
-  return { refusals, hosts, count, summary: count === 0 ? null : say.problems(count) };
+  return { refusals, cover, hosts, count, summary: count === 0 ? null : say.problems(count) };
 }
 
-/** Where focus lands on a refusal, by the domain's order: Event name and Type before the hosts, the rest after them (sc-22143). */
+/** Where focus lands on a refusal, in the form's order: Event name and Type, the hosts, the photo's description, then the rest (sc-22143). */
 export function firstRefused(
   refusals: Refusals,
   hosts: readonly (string | null)[],
-): { field: EventFormField } | { host: number } | null {
+  cover: string | null = null,
+): { field: EventFormField } | { host: number } | { cover: true } | null {
   const rows = hosts.map((_, key) => ({ key, name: '' }));
   const hostErrors = Object.fromEntries(
     hosts.flatMap((one, key) => (one == null ? [] : [[key, one]])),
   );
+  const first = firstRefusedOf(refusals, hostErrors, rows);
+  if (cover == null || (first != null && ('host' in first || ABOVE_COVER.has(first.field))))
+    return first;
 
-  return firstRefusedOf(refusals, hostErrors, rows);
+  return { cover: true };
 }
+
+const ABOVE_COVER: ReadonlySet<EventFormField> = new Set(['name', 'type']);
 
 /** Anything typed or chosen beyond what the form opened with, which Cancel asks about first. */
 export function typedSomething(typed: NewTyped): boolean {

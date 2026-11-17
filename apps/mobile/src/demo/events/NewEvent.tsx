@@ -1,4 +1,11 @@
-import { type EventFormField, endMovedLine, skippedLine, startMoved } from '@soirely/domain';
+import {
+  COVER_DESCRIPTION_MAXIMUM,
+  type EventFormField,
+  endMovedLine,
+  skippedLine,
+  startMoved,
+  visibleLength,
+} from '@soirely/domain';
 import { type ReactNode, type RefObject, useEffect, useRef, useState } from 'react';
 import {
   ScrollView,
@@ -115,6 +122,7 @@ export function NewEventScreen({
   const venueNameRef = useRef<TextInputInstance>(null);
   const addressRef = useRef<TextInputInstance>(null);
   const noteRef = useRef<TextInputInstance>(null);
+  const describeRef = useRef<TextInputInstance>(null);
   const typeRef = useRef<ViewInstance>(null);
   const startRef = useRef<ViewInstance>(null);
   const endRef = useRef<ViewInstance>(null);
@@ -141,6 +149,10 @@ export function NewEventScreen({
     if ('host' in target) {
       const input = hostRefs.current.get(target.host);
       if (input != null) focusChecked({ current: input });
+      return;
+    }
+    if ('cover' in target) {
+      focusChecked(describeRef);
       return;
     }
     const typedIn: Partial<Record<EventFormField, RefObject<TextInputInstance | null>>> = {
@@ -376,7 +388,13 @@ export function NewEventScreen({
         </Part>
 
         <Part head={W.coverPhoto}>
-          <CoverPart typed={typed} off={busy} onCover={(cover) => change(cover)} />
+          <CoverPart
+            typed={typed}
+            off={busy}
+            error={tried ? check.cover : null}
+            describeRef={describeRef}
+            onCover={(cover) => change(cover)}
+          />
         </Part>
 
         <Part head={W.whenHeading}>
@@ -495,12 +513,12 @@ export function NewEventScreen({
   );
 }
 
-type Target = { field: EventFormField } | { host: number };
+type Target = { field: EventFormField } | { host: number } | { cover: true };
 
 /** The first refusal in the form's order, a host by its row's key; a new object each time, so each press of Create moves focus. */
 function targetOf(typed: NewTyped, server: Refusals): Target | null {
   const now = checkOf(typed);
-  const first = firstRefused({ ...now.refusals, ...server }, now.hosts);
+  const first = firstRefused({ ...now.refusals, ...server }, now.hosts, now.cover);
   if (first == null) return null;
   if (!('host' in first)) return { ...first };
   const row = typed.hosts[first.host];
@@ -521,7 +539,6 @@ function Part({ head, children }: { head: string; children: ReactNode }) {
   );
 }
 
-const DESCRIBE_MOST = 250;
 const NO_PHOTO = { photo: false, position: 'middle', described: '' } as const;
 const CHOSEN = { photo: true, position: 'middle', described: '' } as const;
 
@@ -531,10 +548,14 @@ type Cover = Pick<NewTyped, 'photo' | 'position' | 'described'>;
 function CoverPart({
   typed,
   off,
+  error,
+  describeRef,
   onCover,
 }: {
   typed: NewTyped;
   off: boolean;
+  error: string | null;
+  describeRef: RefObject<TextInputInstance | null>;
   onCover: (cover: Partial<Cover>) => void;
 }) {
   return (
@@ -549,9 +570,11 @@ function CoverPart({
           position={typed.position}
           onPosition={(position) => onCover({ position })}
           described={typed.described}
-          onDescribed={(described) => onCover({ described: described.slice(0, DESCRIBE_MOST) })}
-          count={[...typed.described].length}
-          most={DESCRIBE_MOST}
+          onDescribed={(described) => !off && onCover({ described })}
+          count={visibleLength(typed.described)}
+          most={COVER_DESCRIPTION_MAXIMUM}
+          describeError={error}
+          describeRef={describeRef}
           onChange={() => onCover(CHOSEN)}
           onRemove={() => onCover(NO_PHOTO)}
           off={off}

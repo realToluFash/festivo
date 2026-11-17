@@ -1086,6 +1086,8 @@ export function CoverPhotoFields({
   onPosition,
   described,
   onDescribed,
+  describeError = null,
+  describeRef,
   onChange,
   onRemove,
   off = false,
@@ -1094,6 +1096,8 @@ export function CoverPhotoFields({
   onPosition: (position: number) => void;
   described: string;
   onDescribed: (described: string) => void;
+  describeError?: string | null;
+  describeRef?: RefObject<HTMLInputElement | null> | undefined;
   onChange: () => void;
   onRemove: () => void;
   off?: boolean;
@@ -1133,8 +1137,10 @@ export function CoverPhotoFields({
         optional
         value={described}
         help={`${W.describeHint} ${W.describeCount(visibleLength(described), COVER_DESCRIPTION_MAXIMUM)}`}
+        error={describeError}
+        {...(describeRef == null ? {} : { inputRef: describeRef })}
         input={{ autoComplete: 'off', readOnly: off }}
-        onChange={(typed) => onDescribed(typed.slice(0, COVER_DESCRIPTION_MAXIMUM))}
+        onChange={onDescribed}
       />
       {!off && <RedAction label={W.removePhoto} line={W.removePhotoLine} onClick={onRemove} />}
     </>

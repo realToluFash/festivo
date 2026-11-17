@@ -43,6 +43,7 @@ import {
   type NewTyped,
   type Refusals,
   checkOf,
+  coverRefusalOf,
   draftOf,
   firstRefused,
   hostWords,
@@ -123,6 +124,7 @@ export function NewEventForm({ state }: { state: NewEventState | null }) {
   const venueNameRef = useRef<HTMLInputElement>(null);
   const addressRef = useRef<HTMLInputElement>(null);
   const noteRef = useRef<HTMLTextAreaElement>(null);
+  const describeRef = useRef<HTMLInputElement>(null);
   const busy = status === 'creating' || status === 'created';
   const shown: Refusals = { ...(tried ? refusalsOf(typed) : {}), ...server };
   const hostErrors = hostWords(typed.hosts, tried);
@@ -139,6 +141,10 @@ export function NewEventForm({ state }: { state: NewEventState | null }) {
     if (target == null) return;
     if ('host' in target) {
       hostFields.current[target.host]?.focus();
+      return;
+    }
+    if ('cover' in target) {
+      describeRef.current?.focus();
       return;
     }
     const at: Record<EventFormField, RefObject<HTMLElement | null>> = {
@@ -274,6 +280,8 @@ export function NewEventForm({ state }: { state: NewEventState | null }) {
             onPosition={(position) => change({ position })}
             described={typed.described}
             onDescribed={(described) => change({ described })}
+            describeError={tried ? coverRefusalOf(typed) : null}
+            describeRef={describeRef}
             onChange={cover.pick}
             onRemove={() => change(NO_PHOTO)}
             off={busy}
@@ -418,11 +426,11 @@ export function NewEventForm({ state }: { state: NewEventState | null }) {
   );
 }
 
-type Target = { field: EventFormField } | { host: number };
+type Target = { field: EventFormField } | { host: number } | { cover: true };
 
 function targetOf(typed: NewTyped, server: Refusals): Target | null {
   const check = checkOf(typed, server);
-  const first = firstRefused(check.refusals, check.hosts);
+  const first = firstRefused(check.refusals, check.hosts, check.cover);
 
   return first == null ? null : { ...first };
 }

@@ -134,6 +134,21 @@ describe('New event’s form at a desk (sc-48607)', () => {
     expect(within(cover).getByRole('button', { name: W.upload })).toBeDefined();
   });
 
+  it('takes a photo description past 250 characters and refuses it on Create, after the hosts', async () => {
+    open('photo');
+
+    const cover = await screen.findByRole('region', { name: W.coverPhoto });
+    const describe = within(cover).getByRole('textbox', { name: /Describe the image/ });
+    fireEvent.change(describe, { target: { value: 'a'.repeat(300) } });
+    expect((describe as HTMLInputElement).value).toHaveLength(300);
+    expect(within(cover).getByText(/300 of 250 characters/)).toBeDefined();
+    fireEvent.click(screen.getByRole('button', { name: 'Create event' }));
+
+    expect(screen.getByText('Shorten the description to 250 characters or fewer.')).toBeDefined();
+    expect(screen.getByText('1 field needs fixing, so nothing was sent.')).toBeDefined();
+    expect(document.activeElement).toBe(describe);
+  });
+
   it('asks first when leaving with something typed', async () => {
     open('leave');
 
