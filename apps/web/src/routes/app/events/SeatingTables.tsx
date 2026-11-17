@@ -55,6 +55,8 @@ import {
   ShapeTile,
 } from './SeatingParts.tsx';
 import { Overlaps, PositionFields } from './SeatingArrange.tsx';
+import { ColleagueNote, ColleagueOutline } from './SeatingPresence.tsx';
+import { useRing } from './seatingPresence.ts';
 import { placementOf } from './seatingItems.ts';
 import {
   centimetreUnit,
@@ -308,6 +310,9 @@ export function TableDrawing({
   const near = s >= POINTER_CHAIRS_FROM_SCALE;
   const r = CHAIR_RADIUS_CM * s;
   const section = sectionOf(plan, table);
+  const ring = useRing(table.id);
+  const chosenBy = (name: string) =>
+    ring == null ? name : t('seating.chosenBy', { name, by: ring.name });
   const box = (pad: number, className: string, key: string) =>
     round ? (
       <circle key={key} className={className} cx={f(cx)} cy={f(cy)} r={f(ex * s + pad)} />
@@ -372,11 +377,13 @@ export function TableDrawing({
               className={near ? 'st-chair-hit' : 'st-chair-hit is-keys'}
               role="button"
               tabIndex={chosen ? 0 : -1}
-              aria-label={t('seating.chairName', {
-                table: table.name,
-                seat: chair.seat,
-                state: chairWord(t, table, chair.seat),
-              })}
+              aria-label={((name: string) => (ring?.chair === chair.seat ? chosenBy(name) : name))(
+                t('seating.chairName', {
+                  table: table.name,
+                  seat: chair.seat,
+                  state: chairWord(t, table, chair.seat),
+                }),
+              )}
               aria-pressed={chosenSeat === chair.seat}
               cx={f(x)}
               cy={f(y)}
@@ -413,7 +420,9 @@ export function TableDrawing({
       className={section == null ? 'st-item is-none' : `st-item is-${section.colour}`}
       role="button"
       tabIndex={0}
-      aria-label={section == null ? name : t('seating.inSection', { name, section: section.name })}
+      aria-label={chosenBy(
+        section == null ? name : t('seating.inSection', { name, section: section.name }),
+      )}
       aria-pressed={lit}
       data-table={table.id}
       onClick={onChoose}
@@ -448,6 +457,18 @@ export function TableDrawing({
         >
           {table.name}
         </text>
+      )}
+      {ring != null && (
+        <ColleagueOutline
+          ring={ring}
+          round={round}
+          cx={cx}
+          cy={cy}
+          ex={ex * s}
+          ey={ey * s}
+          rotation={table.rotation}
+          pad={lit ? 10 : 2}
+        />
       )}
       {outside && box(6, 'st-overlap', 'outside')}
     </g>
@@ -819,6 +840,7 @@ export function TablePanel({
         )}
       </div>
       <Overlaps plan={plan} id={table.id} />
+      <ColleagueNote id={table.id} />
       <div className="st-acts">
         <TextAction
           label={t('seating.duplicate')}

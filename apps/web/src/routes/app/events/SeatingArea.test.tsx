@@ -2,7 +2,7 @@ import { act, fireEvent, render, screen, waitFor, within } from '@testing-librar
 import i18next from 'i18next';
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { RouterProvider, createMemoryRouter } from 'react-router';
-import { type SeatingPlan } from '@soirely/api-client';
+import { type SeatingPlan, realtimeTopic } from '@soirely/api-client';
 
 import { __setConfig, config } from '../../../config.ts';
 import fr from '../../../i18n/locales/fr.json';
@@ -1981,7 +1981,9 @@ describe('At a narrow desk (sc-55937)', () => {
       ),
     );
     expect(screen.queryByRole('heading', { level: 2, name: 'Table 1' })).toBeNull();
-    expect(sent.filter((one) => !one.line.startsWith('GET'))).toEqual([]);
+    expect(
+      sent.filter((one) => !one.line.startsWith('GET') && !one.line.endsWith('/chosen')),
+    ).toEqual([]);
   });
 
   it('clears a refusal with the first Esc and leaves with the second', async () => {
@@ -2006,7 +2008,9 @@ describe('At a narrow desk (sc-55937)', () => {
     await waitFor(() =>
       expect(screen.queryByRole('heading', { level: 2, name: 'Table 1' })).toBeNull(),
     );
-    expect(sent.filter((one) => !one.line.startsWith('GET'))).toEqual([]);
+    expect(
+      sent.filter((one) => !one.line.startsWith('GET') && !one.line.endsWith('/chosen')),
+    ).toEqual([]);
   });
 
   it('leaves a row and a single seat by Esc in a field with nothing to undo', async () => {
@@ -3773,5 +3777,224 @@ describe('Choosing many and the Selection tools (sc-4717)', () => {
     expect(screen.queryByRole('button', { name: 'Add to choice' })).toBeNull();
     fireEvent.keyDown(window, { key: 'a', ctrlKey: true });
     expect(screen.queryByRole('heading', { name: '2 chosen' })).toBeNull();
+  });
+});
+
+describe('Who else is on the plan (sc-4719)', () => {
+  const before = config();
+  const LIST = 'GET /.well-known/mercure/subscriptions/events%2Fev_1%2Fseating';
+  const tab = (subscriber: string, userId: string, name: string, editor = true, active = true) => ({
+    type: 'Subscription',
+    subscriber,
+    topic: realtimeTopic('EventSeating', 'ev_1'),
+    active,
+    payload: { userId, name, editor },
+  });
+  const PRIYA = tab('urn:uuid:p1', 'u_priya', 'Priya Shah');
+  const SADE = tab('urn:uuid:s1', 'u_sade', 'Sade Bello', false);
+  const ME = tab('urn:uuid:me', 'u_folake', 'Folake Adeyemi');
+
+  beforeAll(standInPointerEvents);
+
+  afterEach(() => {
+    __setConfig(before);
+    vi.unstubAllGlobals();
+  });
+
+  async function onPlanWith(
+    here: unknown[],
+    permissions: string[] = OWNER_PERMISSIONS,
+    more: Record<string, Answer> = {},
+  ) {
+    __setConfig({ ...before, mercureUrl: 'http://hub.test/.well-known/mercure' });
+    StubSource.made = [];
+    vi.stubGlobal('EventSource', StubSource);
+    signedIn();
+    const sent = await onSeating(
+      {
+        'GET /api/events/ev_1/seating-plan': () => seating(withTables(table())),
+        'POST /api/events/ev_1/seating-plan/subscriptions': () =>
+          json({ token: 'tok', expiresAt: new Date(Date.now() + 3_600_000).toISOString() }),
+        [LIST]: () => json({ subscriptions: here }),
+        ...more,
+      },
+      permissions,
+    );
+    const seatingSource = () =>
+      StubSource.made.find((one) => decodeURIComponent(one.url).includes('/seating'));
+    await waitFor(() => expect(seatingSource()).toBeDefined());
+    const source = seatingSource()!;
+    act(() => source.onopen?.());
+    await screen.findByRole('button', { name: TABLE_1 });
+
+    return { sent, source };
+  }
+
+  const chosenSent = (sent: { line: string; body: unknown }[]) =>
+    sent
+      .filter((one) => one.line === 'PUT /api/events/ev_1/seating-plan/chosen')
+      .map((one) => one.body);
+
+  it('subscribes to the plan, its editors’ choices and who has it open, on one connection', async () => {
+    const { source } = await onPlanWith([]);
+    const topics = new URL(source.url).searchParams.getAll('topic');
+
+    expect(topics).toEqual([
+      realtimeTopic('EventSeating', 'ev_1'),
+      realtimeTopic('EventSeatingChoices', 'ev_1'),
+      '/.well-known/mercure/subscriptions/events%2Fev_1%2Fseating{/subscriber}',
+    ]);
+  });
+
+  it('shows nothing when you are alone, and never yourself', async () => {
+    await onPlanWith([ME]);
+
+    expect(document.querySelector('.st-faces')).toBeNull();
+    expect(screen.queryByText(/is on this plan/)).toBeNull();
+  });
+
+  it('shows two people as one chip and says who is on the plan', async () => {
+    await onPlanWith([ME, PRIYA]);
+
+    expect(await screen.findByRole('button', { name: 'Priya Shah' })).toBeDefined();
+    expect(screen.getByText('Priya Shah is on this plan')).toBeDefined();
+    expect(screen.getByRole('list', { name: 'Priya Shah is on this plan' })).toBeDefined();
+  });
+
+  it('counts three people, each once however many tabs they have, and says who can only view', async () => {
+    await onPlanWith([ME, PRIYA, tab('urn:uuid:p2', 'u_priya', 'Priya Shah'), SADE]);
+
+    const chips = await screen.findByRole('list', { name: 'Priya Shah and 1 other' });
+    expect(
+      within(chips)
+        .getAllByRole('button')
+        .map((one) => one.getAttribute('aria-label')),
+    ).toEqual(['Priya Shah', 'Sade Bello, can view']);
+    expect(chips.textContent).toBe('PSSB');
+  });
+
+  it('shows four chips and +n from six people, and lists them all', async () => {
+    const six = [
+      'Priya Shah',
+      'Sade Bello',
+      'Ana Souza',
+      'Julien Moreau',
+      'Kemi Okafor',
+      'Tom Baker',
+    ];
+    await onPlanWith(six.map((name, index) => tab(`urn:uuid:${index}`, `u_${index}`, name)));
+
+    const more = await screen.findByRole('button', { name: '2 more on this plan' });
+    expect(more.textContent).toBe('+2');
+    fireEvent.click(more);
+    const list = screen.getByRole('dialog', { name: 'On this plan' });
+    expect([...list.querySelectorAll('.st-row-name')].map((one) => one.textContent)).toEqual(six);
+  });
+
+  it('announces someone joining and leaving politely, but not their second tab', async () => {
+    const { source } = await onPlanWith([ME]);
+    const heard = () => document.querySelector('.st-top [aria-live="polite"]')?.textContent;
+
+    source.publish(tab('urn:uuid:k1', 'u_kemi', 'Kemi Adeyemi'));
+    await waitFor(() => expect(heard()).toBe('Kemi Adeyemi joined the plan.'));
+    expect(screen.getByRole('button', { name: 'Kemi Adeyemi' })).toBeDefined();
+
+    source.publish(tab('urn:uuid:k2', 'u_kemi', 'Kemi Adeyemi'));
+    source.publish(tab('urn:uuid:k2', 'u_kemi', 'Kemi Adeyemi', true, false));
+    expect(heard()).toBe('Kemi Adeyemi joined the plan.');
+    expect(screen.getByRole('button', { name: 'Kemi Adeyemi' })).toBeDefined();
+
+    source.publish(tab('urn:uuid:k1', 'u_kemi', 'Kemi Adeyemi', true, false));
+    await waitFor(() => expect(heard()).toBe('Kemi Adeyemi left the plan.'));
+    expect(screen.queryByRole('button', { name: 'Kemi Adeyemi' })).toBeNull();
+  });
+
+  it('outlines what a colleague chooses with their initials and names them, until they clear it', async () => {
+    const { source } = await onPlanWith([ME, PRIYA]);
+
+    source.publish({ userId: 'u_priya', chosen: { kind: 'table', id: 't1', chair: null } });
+    const chosen = await screen.findByRole('button', { name: `${TABLE_1}, chosen by Priya Shah` });
+    expect(chosen.querySelector('.st-ring.p0')).not.toBeNull();
+    expect(chosen.querySelector('.st-initials')?.textContent).toBe('PS');
+
+    source.publish({ userId: 'u_priya', chosen: null });
+    await screen.findByRole('button', { name: TABLE_1 });
+    expect(document.querySelector('.st-ring')).toBeNull();
+  });
+
+  it('drops a colleague’s outline when they close the plan', async () => {
+    const { source } = await onPlanWith([ME, PRIYA]);
+
+    source.publish({ userId: 'u_priya', chosen: { kind: 'table', id: 't1', chair: null } });
+    await screen.findByRole('button', { name: `${TABLE_1}, chosen by Priya Shah` });
+    source.publish({ ...PRIYA, active: false });
+
+    await screen.findByRole('button', { name: TABLE_1 });
+    expect(document.querySelector('.st-ring')).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Priya Shah' })).toBeNull();
+  });
+
+  it('never outlines what a viewer chooses', async () => {
+    const { source } = await onPlanWith([ME, SADE]);
+
+    source.publish({ userId: 'u_sade', chosen: { kind: 'table', id: 't1', chair: null } });
+
+    await screen.findByRole('button', { name: 'Sade Bello, can view' });
+    expect(screen.getByRole('button', { name: TABLE_1 })).toBeDefined();
+    expect(document.querySelector('.st-ring')).toBeNull();
+  });
+
+  it('tells colleagues what you choose and clear, and again when someone arrives', async () => {
+    const { sent, source } = await onPlanWith([ME]);
+
+    await chooseTable(TABLE_1);
+    await waitFor(() =>
+      expect(chosenSent(sent)).toEqual([{ chosen: { kind: 'table', id: 't1', chair: null } }]),
+    );
+
+    source.publish(PRIYA);
+    await waitFor(() => expect(chosenSent(sent)).toHaveLength(2));
+
+    fireEvent.keyDown(window, { key: 'Escape' });
+    await waitFor(() => expect(chosenSent(sent).at(-1)).toEqual({ chosen: null }));
+  });
+
+  it('never tells anyone what a viewer chooses', async () => {
+    const { sent } = await onPlanWith([ME, PRIYA], ['events.read', 'seating.read']);
+
+    await chooseTable(TABLE_1);
+
+    expect(chosenSent(sent)).toEqual([]);
+  });
+
+  it('says in the panel when you choose what a colleague has, and changes nothing', async () => {
+    const { source } = await onPlanWith([ME, PRIYA]);
+
+    source.publish({ userId: 'u_priya', chosen: { kind: 'table', id: 't1', chair: null } });
+    await chooseTable(`${TABLE_1}, chosen by Priya Shah`);
+
+    expect(
+      screen.getByText(
+        'Priya Shah has chosen this too. You can still change it. If you both save, the later change is refused and says why.',
+      ),
+    ).toBeDefined();
+    expect(screen.getByLabelText('Seats')).not.toHaveProperty('disabled', true);
+  });
+
+  it('hides the chips and says so when its own connection drops', async () => {
+    const { source } = await onPlanWith([ME, PRIYA]);
+    await screen.findByRole('button', { name: 'Priya Shah' });
+
+    act(() => source.onerror?.());
+
+    expect(await screen.findByText('Can’t see who else is here. Reconnecting…')).toBeDefined();
+    expect(screen.queryByRole('button', { name: 'Priya Shah' })).toBeNull();
+  });
+
+  it('shows no email address', async () => {
+    await onPlanWith([ME, PRIYA, SADE]);
+    await screen.findByRole('button', { name: 'Priya Shah' });
+
+    expect(document.body.textContent).not.toContain('@');
   });
 });

@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
+import { realtimeTopic } from './topics.ts';
+
 import {
   asColleagueChoice,
   asPlanSubscriber,
@@ -8,7 +10,7 @@ import {
   subscribersUrl,
 } from './seatingPresence.ts';
 
-const TOPIC = 'events/0199d4a2-7b1e/seating';
+const TOPIC = realtimeTopic('EventSeating', '0199d4a2-7b1e');
 
 function subscription(payload: unknown, active = true, topic = TOPIC) {
   return {
@@ -51,7 +53,7 @@ describe('asPlanSubscriber', () => {
         subscription(
           { userId: 'u1', name: 'Priya Shah', editor: true },
           true,
-          'events/x/seating/choices',
+          realtimeTopic('EventSeatingChoices', 'x'),
         ),
         TOPIC,
       ),
