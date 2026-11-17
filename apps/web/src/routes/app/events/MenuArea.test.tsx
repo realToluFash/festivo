@@ -361,6 +361,33 @@ describe('The event’s Menu (sc-3902)', () => {
     ]);
   });
 
+  it('says the library is loading, and quotes no search, until it has loaded', async () => {
+    await onMenu({
+      'GET /api/events/ev_1/menu': menuOf(LATE),
+      'GET /api/orgs/org_1/dishes': () => new Promise<Response>(() => undefined),
+    });
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Add dish' }));
+
+    expect(document.getElementById('mc-found')?.textContent).toBe('Loading the menu library…');
+    expect(screen.queryByText(/No dish name has/)).toBeNull();
+    expect(screen.queryByRole('button', { name: /Start a new dish/ })).toBeNull();
+    expect(screen.getByRole('searchbox', { name: 'Find a dish' })).toBeDefined();
+  });
+
+  it('says an empty library has no dishes, and starts a new dish with no name', async () => {
+    await onMenu({ 'GET /api/events/ev_1/menu': menuOf(LATE) });
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Add dish' }));
+
+    expect(await screen.findByText('The menu library has no dishes yet.')).toBeDefined();
+    expect(screen.queryByText(/No dish name has/)).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Start a new dish' }));
+    expect(screen.getByRole('tab', { name: 'New dish' }).getAttribute('aria-selected')).toBe(
+      'true',
+    );
+  });
+
   it('offers Everyone gets the same only with exactly one dish', async () => {
     await onMenu({ 'GET /api/events/ev_1/menu': menuOf(STARTER, MAIN) });
 
