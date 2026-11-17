@@ -511,7 +511,7 @@ const STATES = {
   fromLibrary: () =>
     start({
       name: 'A dish added from the library',
-      note: 'Moi moi arrives with no items. Add dish stays open for the next, as in sc-3902’s demo.',
+      note: 'Moi moi arrives with no items. The open Add dish list is sc-3902’s demo and isn’t drawn here; in it, the list stays open for the next dish.',
       courses: courses({ dishes: [jollof(JOLLOF_ITEMS), EGUSI, MOI_MOI] }),
       panel: null,
       told: mw(MW.added, { name: 'Moi moi', course: 'Main' }),
