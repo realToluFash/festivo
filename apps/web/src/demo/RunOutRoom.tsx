@@ -59,8 +59,8 @@ export function RunOutRoom({
         <Panel r={r} t={open} act={act} offline={!online} />
       ) : (
         manage && (
-          <section className="hig-card sr-side" aria-labelledby="ro-room-alerts">
-            <h2 id="ro-room-alerts" className="hig-card-title">
+          <section className="hig-card sr-side" aria-labelledby="rout-room-alerts">
+            <h2 id="rout-room-alerts" className="hig-card-title">
               Alerts
             </h2>
             <ul className="hig-rows">
