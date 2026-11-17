@@ -88,7 +88,7 @@ import {
 } from './seatingSeed.ts';
 import { SeatingPanel, ShapeTile } from './SeatingPanel.tsx';
 import { PaperPage, PrintPanel } from './SeatingPrint.tsx';
-import { type Handle, type Look, MiniMap, RoomDrawing } from './SeatingRoom.tsx';
+import { type Box, type Handle, type Look, MiniMap, RoomDrawing } from './SeatingRoom.tsx';
 import { ListView, TablesView } from './SeatingViews.tsx';
 import { ChooseBar, RulesStrip } from './SeatingSelection.tsx';
 import {
@@ -275,6 +275,50 @@ function CrumbFrames({
   );
 }
 
+/** Where the bar floating over the room covers it, in the room's own pixels (sc-5030). */
+function useCover(): [(node: HTMLDivElement | null) => void, Box | null] {
+  const [node, setNode] = useState<HTMLDivElement | null>(null);
+  const [cover, setCover] = useState<Box | null>(null);
+
+  useLayoutEffect(() => {
+    if (node == null) return;
+    const measure = () => {
+      const room = node.parentElement?.getBoundingClientRect();
+      const box = node.getBoundingClientRect();
+
+      const next =
+        room == null || box.height === 0
+          ? null
+          : {
+              x0: box.left - room.left,
+              y0: box.top - room.top,
+              x1: box.right - room.left,
+              y1: box.bottom - room.top,
+            };
+
+      setCover((now) =>
+        now != null &&
+        next != null &&
+        now.x0 === next.x0 &&
+        now.y0 === next.y0 &&
+        now.x1 === next.x1 &&
+        now.y1 === next.y1
+          ? now
+          : next,
+      );
+    };
+
+    measure();
+    if (typeof ResizeObserver === 'undefined') return;
+    const watch = new ResizeObserver(measure);
+
+    watch.observe(node);
+    return () => watch.disconnect();
+  });
+
+  return [setNode, cover];
+}
+
 function useSize(): [(node: HTMLDivElement | null) => void, { w: number; h: number }] {
   const [node, setNode] = useState<HTMLDivElement | null>(null);
   const [size, setSize] = useState(DEFAULT_SIZE);
@@ -417,6 +461,7 @@ function Seating({
 }) {
   const [ui, setUi] = useState<Ui>(first);
   const [setCanvas, size] = useSize();
+  const [setFloat, cover] = useCover();
   const [crowded, setCrowded] = useState(false);
   const [rowMet, setRowMet] = useState(false);
   const canvas = useRef<HTMLDivElement | null>(null);
@@ -1983,7 +2028,7 @@ function Seating({
             <MessageBar onPlace={placeAtCentre} onStop={stopPlacing} />
           )}
           {ui.view === 'plan' && room != null && (
-            <div className="st-float st-under-views">
+            <div className="st-float st-under-views" ref={setFloat}>
               {!ui.readOnly && ui.placing == null && ui.picked == null && <ChooseBar />}
               {ui.bar != null && ui.bar.at !== 'floor' && (
                 <MessageBar inline onPlace={placeAtCentre} onStop={stopPlacing} />
@@ -2011,6 +2056,7 @@ function Seating({
                 ghostAt={placingGhost}
                 box={ui.box}
                 outlines={outlines}
+                cover={cover}
                 onFloor={onFloor}
                 onFloorMouse={(event) => {
                   if (spaceHeld.current) event.preventDefault();

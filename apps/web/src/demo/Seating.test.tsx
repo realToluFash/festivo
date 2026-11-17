@@ -1756,6 +1756,47 @@ describe('seating guests (sc-4013, sc-4016, sc-5030)', () => {
     expect(within(room()).queryByText('Seat 2, Luca Rossi, Coming')).toBeNull();
   });
 
+  it(
+    'draws the chair label under its chair where the bar over the room would hide it',
+    SLOW,
+    async () => {
+      const label = () => within(room()).getByText('Seat 1, Sofia Rossi, Not sure yet');
+      const top = () => Number(label().getAttribute('y'));
+
+      await seating('chairLabel');
+      const open = top();
+      const covered = vi
+        .spyOn(Element.prototype, 'getBoundingClientRect')
+        .mockImplementation(function (this: Element) {
+          const [right, bottom] =
+            this.classList.contains('st-canvas') || this.classList.contains('st-under-views')
+              ? [1280, 800]
+              : [0, 0];
+
+          return {
+            left: 0,
+            top: 0,
+            right,
+            bottom,
+            x: 0,
+            y: 0,
+            width: right,
+            height: bottom,
+          } as DOMRect;
+        });
+
+      await seating('chairLabel');
+      const chair = within(room()).getByRole('button', {
+        name: 'Table 9, Seat 1, Sofia Rossi, Not sure yet',
+      });
+      const cy = Number(chair.getAttribute('cy'));
+
+      expect(top()).toBeGreaterThan(cy);
+      expect(open).not.toBe(top());
+      covered.mockRestore();
+    },
+  );
+
   it('drops the chair label once the pick ends, though the pointer never left', SLOW, async () => {
     await seating('chairLabel');
     key(item(/^Table 9,/u), 'Escape');

@@ -684,7 +684,7 @@ function wordsWide(words: string): number {
   return words.length * 7;
 }
 
-type Box = { x0: number; y0: number; x1: number; y1: number };
+export type Box = { x0: number; y0: number; x1: number; y1: number };
 
 /** An item's outline on screen, chairs included, as its rotation leaves it. */
 function footprint(item: Item, s: number, ox: number, oy: number): Box {
@@ -855,6 +855,7 @@ export function RoomDrawing({
   ghostAt = null,
   box = null,
   outlines = [],
+  cover = null,
   onFloor,
   onFloorMouse,
 }: {
@@ -875,6 +876,7 @@ export function RoomDrawing({
   ghostAt?: Item | null;
   box?: Rect | null;
   outlines?: readonly Outline[];
+  cover?: Box | null;
   onFloor?: (event: PointerEvent<SVGSVGElement>) => void;
   onFloorMouse?: (event: MouseEvent<SVGSVGElement>) => void;
 }) {
@@ -1030,25 +1032,27 @@ export function RoomDrawing({
           <FreeTag key={`free-${tag.id}`} x={tag.x} y={tag.y} n={tag.n} />
         ))}
       {detail !== 'out' && (
-        <ChairLabel items={items} spot={look.label ?? null} s={s} ox={ox} oy={oy} />
+        <ChairLabel items={items} spot={look.label ?? null} s={s} ox={ox} oy={oy} cover={cover} />
       )}
     </svg>
   );
 }
 
-/** The chair's name above it on hover or focus, never written on the picture otherwise (sc-5030). */
+/** The chair's name above it on hover or focus, or under it where the bar over the room or the room's top would hide it (sc-5030). */
 function ChairLabel({
   items,
   spot,
   s,
   ox,
   oy,
+  cover,
 }: {
   items: readonly Item[];
   spot: { id: string; i: number } | null;
   s: number;
   ox: number;
   oy: number;
+  cover: Box | null;
 }) {
   const item = spot == null ? undefined : items.find((one) => one.id === spot.id);
   const point = item == null || spot == null ? undefined : chairsOf(item)[spot.i];
@@ -1062,11 +1066,16 @@ function ChairLabel({
     word: chairSaid(item.chairs[spot.i] ?? { state: 'empty' }),
   });
   const w = wordsWide(words) + 20;
+  const over = y - CHAIR_R * s - 40;
+  const hidden =
+    over < 0 ||
+    (cover != null && crosses({ x0: x - w / 2, y0: over, x1: x + w / 2, y1: over + 28 }, cover));
+  const top = hidden ? y + CHAIR_R * s + 12 : over;
 
   return (
     <g className="st-tip" aria-hidden="true">
-      <rect x={f(x - w / 2)} y={f(y - CHAIR_R * s - 40)} width={f(w)} height="28" rx="10" />
-      <text x={f(x)} y={f(y - CHAIR_R * s - 26)} textAnchor="middle" dominantBaseline="central">
+      <rect x={f(x - w / 2)} y={f(top)} width={f(w)} height="28" rx="10" />
+      <text x={f(x)} y={f(top + 14)} textAnchor="middle" dominantBaseline="central">
         {words}
       </text>
     </g>
