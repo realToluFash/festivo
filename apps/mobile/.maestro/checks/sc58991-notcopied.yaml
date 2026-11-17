@@ -1,20 +1,20 @@
-# sc-58991: Copy invitation link with no way to the API, then the failed-copy line under the row. Pass METRO_URL, EVENT_ID, GUEST_ID, ORIENT, NET (a host helper that cuts and restores the API).
+# sc-58991: Copy invitation link with no way to the API, then the failed-copy line under the row. Pass METRO_URL, EVENT_ID, GUEST_ID, ORIENT. Needs the batch helper's /api to stop the API and bring it back up.
 appId: host.exp.Exponent
 onFlowComplete:
   - runScript:
-      file: ../scripts/sc58991-net.js
+      file: ../batch/helper.js
       env:
-        NET_URL: ${NET}/online
+        ASK: /api?to=up
 ---
-- runFlow: sc58991-open-guest.yaml
+- runFlow: ../checks/sc58991/open-guest.yaml
 - scrollUntilVisible:
     element:
       id: 'guest.copy'
     timeout: 20000
 - runScript:
-    file: ../scripts/sc58991-net.js
+    file: ../batch/helper.js
     env:
-      NET_URL: ${NET}/offline
+      ASK: /api?to=stopped
 - waitForAnimationToEnd
 - scrollUntilVisible:
     element:
@@ -33,6 +33,6 @@ onFlowComplete:
 - waitForAnimationToEnd
 - takeScreenshot: notcopied
 - runScript:
-    file: ../scripts/sc58991-net.js
+    file: ../batch/helper.js
     env:
-      NET_URL: ${NET}/online
+      ASK: /api?to=up

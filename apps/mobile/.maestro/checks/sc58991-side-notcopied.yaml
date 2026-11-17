@@ -1,23 +1,23 @@
-# sc-58991, tablet side by side: Copy invitation link with the API stopped, then the failed-copy line in the details pane. Pass METRO_URL, EVENT_ID, GUEST_ID, ORIENT, NET.
+# sc-58991, tablet side by side: Copy invitation link with the API stopped, then the failed-copy line in the details pane. Pass METRO_URL, EVENT_ID, GUEST_ID, ORIENT. Needs the batch helper's /api to stop the API and bring it back up.
 appId: host.exp.Exponent
 onFlowComplete:
   - runScript:
-      file: ../scripts/sc58991-net.js
+      file: ../batch/helper.js
       env:
-        NET_URL: ${NET}/online
+        ASK: /api?to=up
 ---
-- runFlow: sc58991-open-guest.yaml
+- runFlow: ../checks/sc58991/open-guest.yaml
 - runFlow:
-    file: sc58991-side-down.yaml
+    file: ../checks/sc58991/side-down.yaml
     env:
       TARGET: guest.replace
 - runScript:
-    file: ../scripts/sc58991-net.js
+    file: ../batch/helper.js
     env:
-      NET_URL: ${NET}/offline
+      ASK: /api?to=stopped
 - waitForAnimationToEnd
 - runFlow:
-    file: sc58991-side-down.yaml
+    file: ../checks/sc58991/side-down.yaml
     env:
       TARGET: guest.replace
 - tapOn:
@@ -27,7 +27,7 @@ onFlowComplete:
       id: 'guest.notCopied'
     timeout: 30000
 - runFlow:
-    file: sc58991-side-down.yaml
+    file: ../checks/sc58991/side-down.yaml
     env:
       TARGET: guest.replace
 - waitForAnimationToEnd
