@@ -274,6 +274,20 @@ describe('The event’s Schedule (sc-3893)', () => {
     ).toContain('padding: 0;');
   });
 
+  it('keeps a day tab’s words whole, wrapping the tabs to another row rather than breaking them (sc-64803)', () => {
+    const days = cssRule('.ro .ro-days', SCHEDULE_CSS);
+    expect(days).toContain('flex-wrap: wrap;');
+    expect(days).toContain('max-width: 100%;');
+    expect(days).toContain('border-radius: calc(var(--sizeHit) / 2 + var(--spaceHair));');
+    const tab = cssRule('.ro-day', SCHEDULE_CSS);
+    expect(tab).toContain('flex: 1 0 auto;');
+    expect(tab).toContain('overflow-wrap: normal;');
+    expect(cssRule('.ro-day > span', SCHEDULE_CSS)).toContain('overflow-wrap: normal;');
+    expect(
+      cssRule('.ro .ro-days', SCHEDULE_CSS.slice(SCHEDULE_CSS.indexOf('(width <= 720px)'))),
+    ).toContain('border-radius: calc(var(--roDayStack) / 2 + var(--spaceHair));');
+  });
+
   it('moves between days with the arrow keys', async () => {
     await onSchedule({
       'GET /api/events/ev_1/schedule': () => json({ schedule: schedule([DRINKS, BRUNCH]) }),

@@ -281,8 +281,24 @@
   text-decoration: none;
 }
 
+/* A day tab's words are never broken, cut or ended with an ellipsis (sc-64803). A tab is never narrower than its words; tabs that do not fit go to another row and share its width, the row's corners concentric with the tabs'. */
+.ro .ro-days {
+  flex-wrap: wrap;
+  max-width: 100%;
+  border-radius: calc(var(--sizeHit) / 2 + var(--spaceHair));
+}
+
 .ro-day {
+  flex: 1 0 auto;
+  flex-wrap: wrap;
   gap: var(--spaceXxs);
+  max-width: 100%;
+  overflow-wrap: normal;
+  text-align: center;
+}
+
+.ro-day > span {
+  overflow-wrap: normal;
 }
 
 .ro-day[aria-selected='true'] {
@@ -698,14 +714,17 @@
 
 /* At 720px and under the page beside the sidebar is narrower than a phone's, so the day tabs stack and the table folds to Starts and Item (sc-60699). */
 @media (width <= 720px) {
-  .ro-days {
+  .ro .ro-days {
+    --roDayStack: 56px;
+
     align-self: stretch;
+    border-radius: calc(var(--roDayStack) / 2 + var(--spaceHair));
   }
 
   .ro-day {
     flex: 1;
     flex-direction: column;
-    min-height: 56px;
+    min-height: var(--roDayStack);
     padding: var(--spaceXs) var(--spaceSm);
     line-height: 1.25;
   }
