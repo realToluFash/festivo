@@ -58,6 +58,7 @@ import { EventPage } from './EventPage.tsx';
 import { EDIT_PARTS } from './EventEdits.tsx';
 import { EventEditScreen } from './EventPartEdits.tsx';
 import { EventGuests, type GuestsTop } from './EventGuests.tsx';
+import { ExportButton } from './GuestExport.tsx';
 import { EventPeople } from './EventPeople.tsx';
 import { EventNotFound, EventTop, EventsFailed, usePhaseOf } from './Events.tsx';
 import { Notice } from './Notice.tsx';
@@ -144,10 +145,12 @@ export function EventScreen({
   const [guestsOffline, setGuestsOffline] = useState<ScreenOffline>(NOT_OFFLINE);
   const [guestsTop, setGuestsTop] = useState<GuestsTop>({
     add: null,
+    exports: null,
     back: null,
     toSearch: false,
   });
   const guestsAdd = useRef<ViewInstance>(null);
+  const guestsExport = useRef<ViewInstance>(null);
   const [toast, setToast] = useState<{
     eventId: string;
     area: EventPlace;
@@ -379,6 +382,15 @@ export function EventScreen({
         testID="guests.add"
       />
     ) : null;
+  const exportGuests =
+    guests && guestsTop.exports != null ? (
+      <ExportButton
+        ref={guestsExport}
+        kind={kind}
+        offline={guestsOffline.stale != null}
+        onPress={guestsTop.exports}
+      />
+    ) : null;
   const guestBack = guests ? guestsTop.back : null;
   const titledInList = areaTitled || guests;
   const frameBack =
@@ -432,6 +444,7 @@ export function EventScreen({
           onEventChange={change}
           onEventStale={reload}
           addRef={guestsAdd}
+          exportRef={guestsExport}
           tell={(words, action) => setToast({ eventId, area, words, action })}
           withdrawAction={withdrawToastAction}
           onTop={setGuestsTop}
@@ -449,6 +462,7 @@ export function EventScreen({
                 </Title>
               </View>
               {!phone && refreshing}
+              {exportGuests}
               {addGuest}
             </View>
           }
