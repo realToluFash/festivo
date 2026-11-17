@@ -99,7 +99,6 @@ export function NewEventForm({ state }: { state: NewEventState | null }) {
   const [summary, setSummary] = useState<string | null>(() =>
     state === 'refused' ? N.problems(checkOf(typedFor(state)).count) : null,
   );
-  const [said, setSaid] = useState<string | null>(null);
   const [leaving, setLeaving] = useState(state === 'leave');
   const [target, setTarget] = useState<Target | null>(() =>
     state === 'refused' ? targetOf(typedFor(state), {}) : null,
@@ -112,7 +111,6 @@ export function NewEventForm({ state }: { state: NewEventState | null }) {
   const zoneRef = useRef<HTMLDivElement>(null);
   const currencyRef = useRef<HTMLDivElement>(null);
   const hostFields = useRef<(HTMLInputElement | null)[]>([]);
-  const hostFocus = useRef<number | null>(null);
   const nameRef = useRef<HTMLInputElement>(null);
   const venueNameRef = useRef<HTMLInputElement>(null);
   const addressRef = useRef<HTMLInputElement>(null);
@@ -121,12 +119,6 @@ export function NewEventForm({ state }: { state: NewEventState | null }) {
   const hostErrors = hostWords(typed.hosts, tried);
   const skipped = skippedLine(typed.start.date, typed.start.time, typed.timeZone, LOCALE, WORDED);
   const nameLength = eventNameLength(typed.name);
-
-  useEffect(() => {
-    if (hostFocus.current == null) return;
-    hostFields.current[hostFocus.current]?.focus();
-    hostFocus.current = null;
-  });
 
   useEffect(() => {
     if (target == null) return;
@@ -249,8 +241,6 @@ export function NewEventForm({ state }: { state: NewEventState | null }) {
           errors={hostErrors}
           off={busy}
           fieldsRef={hostFields}
-          focusAtRef={hostFocus}
-          onSaid={setSaid}
         />
       </Block>
 
@@ -387,9 +377,6 @@ export function NewEventForm({ state }: { state: NewEventState | null }) {
           {status === 'creating' ? N.creating : N.create}
         </button>
       </div>
-      <p className="desk-unseen" role="status">
-        {said}
-      </p>
       {(leaving || away.blocked) && (
         <Ask
           title={N.leaveTitle}

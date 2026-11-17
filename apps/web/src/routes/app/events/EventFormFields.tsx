@@ -208,13 +208,8 @@ export function VenueFields({
   onVenue: (change: Partial<VenueDraft>) => void;
   onUseZone: (zone: string) => void;
 }) {
-  const { t } = useTranslation();
-  const made = useId();
-  const id = ids?.address ?? made;
-  const noteId = ids?.note ?? `${made}-note`;
   const [zoneSet, setZoneSet] = useState<string | null>(null);
   const [seen, setSeen] = useState(NOTHING_SEEN);
-  const field = useRef<HTMLInputElement>(null);
   const [lookup] = useState(() =>
     addressLookup({
       suggest: (query) => api.addressSuggestions(query),
@@ -223,23 +218,95 @@ export function VenueFields({
       onSeen: setSeen,
     }),
   );
-  const { suggestions, down } = seen;
-  const { active, setActive, onKeyDown } = useComboboxKeys({
-    count: suggestions.length,
-    onPick: (index) => {
-      const chosen = suggestions[index];
-      if (chosen != null) void lookup.pick(chosen, zone);
-    },
-    onEscape: () => lookup.dismiss(),
-  });
   const offer = seen.offered != null && seen.offered.zone !== zone && !over ? seen.offered : null;
 
   useEffect(() => () => lookup.stop(), [lookup]);
 
   return (
+    <VenueFieldsView
+      venue={venue}
+      errors={errors}
+      off={off}
+      {...(ids == null ? {} : { ids })}
+      suggestions={seen.suggestions}
+      down={seen.down}
+      offer={offer}
+      zoneSet={zoneSet}
+      onVenue={onVenue}
+      onType={(address) => {
+        setZoneSet(null);
+        lookup.type(address);
+      }}
+      onDismiss={() => lookup.dismiss()}
+      onPick={(chosen) => void lookup.pick(chosen, zone)}
+      onUseZone={(chosen) => {
+        onUseZone(chosen);
+        setZoneSet(chosen);
+        lookup.answered();
+      }}
+      onKeepZone={() => lookup.answered()}
+    />
+  );
+}
+
+/** What Venue shows, whoever looks the address up: the product asks the API, the demo its sample venues. */
+export function VenueFieldsView({
+  venue,
+  errors,
+  off = false,
+  ids,
+  withNote = true,
+  nameRef,
+  addressRef,
+  suggestions,
+  down,
+  offer,
+  zoneSet,
+  onVenue,
+  onType,
+  onDismiss,
+  onPick,
+  onUseZone,
+  onKeepZone,
+}: {
+  venue: VenueDraft;
+  errors: Errors;
+  off?: boolean;
+  ids?: { name: string; address: string; note: string };
+  withNote?: boolean;
+  nameRef?: RefObject<HTMLInputElement | null>;
+  addressRef?: RefObject<HTMLInputElement | null>;
+  suggestions: readonly AddressSuggestion[];
+  down: boolean;
+  offer: { zone: string; keep: string } | null;
+  zoneSet: string | null;
+  onVenue: (change: Partial<VenueDraft>) => void;
+  onType: (address: string) => void;
+  onDismiss: () => void;
+  onPick: (chosen: AddressSuggestion) => void;
+  onUseZone: (zone: string) => void;
+  onKeepZone: () => void;
+}) {
+  const { t } = useTranslation();
+  const made = useId();
+  const id = ids?.address ?? made;
+  const noteId = ids?.note ?? `${made}-note`;
+  const own = useRef<HTMLInputElement>(null);
+  const field = addressRef ?? own;
+  const { active, setActive, onKeyDown } = useComboboxKeys({
+    count: suggestions.length,
+    onPick: (index) => {
+      const chosen = suggestions[index];
+      if (chosen != null) onPick(chosen);
+    },
+    onEscape: onDismiss,
+  });
+
+  return (
     <>
       <EditText
         {...(ids == null ? {} : { id: ids.name })}
+        {...(nameRef == null ? {} : { inputRef: nameRef })}
         label={t('eventForm.venueName')}
         optional
         value={venue.name}
@@ -259,47 +326,48 @@ export function VenueFields({
         onKeyDown={onKeyDown}
         onType={(address) => {
           setActive(-1);
-          setZoneSet(null);
-          lookup.type(address);
+          onType(address);
         }}
-        onDismiss={() => lookup.dismiss()}
+        onDismiss={onDismiss}
         onPick={(index) => {
           const chosen = suggestions[index];
-          if (chosen != null) void lookup.pick(chosen, zone);
+          if (chosen != null) onPick(chosen);
         }}
       />
-      <div className="desk-field">
-        <label htmlFor={noteId} className="desk-label">
-          {t('eventForm.arrivalNote')}
-          <span className="ev-optional">{` · ${t('eventForm.optional')}`}</span>
-        </label>
-        <div
-          className={
-            errors.arrivalNote == null ? 'desk-box ev-note-box' : 'desk-box ev-note-box is-wrong'
-          }
-        >
-          <textarea
-            id={noteId}
-            rows={4}
-            value={venue.note}
-            {...offField(off)}
-            aria-invalid={errors.arrivalNote != null}
-            aria-describedby={
-              errors.arrivalNote == null ? `${noteId}-help` : `${noteId}-error ${noteId}-help`
+      {withNote && (
+        <div className="desk-field">
+          <label htmlFor={noteId} className="desk-label">
+            {t('eventForm.arrivalNote')}
+            <span className="ev-optional">{` · ${t('eventForm.optional')}`}</span>
+          </label>
+          <div
+            className={
+              errors.arrivalNote == null ? 'desk-box ev-note-box' : 'desk-box ev-note-box is-wrong'
             }
-            onChange={(change) => onVenue({ note: change.target.value })}
-          />
-        </div>
-        {errors.arrivalNote != null && (
-          <p id={`${noteId}-error`} className="desk-error">
-            <Glyph name="alert" size={15} weight={2.2} />
-            {errors.arrivalNote}
+          >
+            <textarea
+              id={noteId}
+              rows={4}
+              value={venue.note}
+              {...offField(off)}
+              aria-invalid={errors.arrivalNote != null}
+              aria-describedby={
+                errors.arrivalNote == null ? `${noteId}-help` : `${noteId}-error ${noteId}-help`
+              }
+              onChange={(change) => onVenue({ note: change.target.value })}
+            />
+          </div>
+          {errors.arrivalNote != null && (
+            <p id={`${noteId}-error`} className="desk-error">
+              <Glyph name="alert" size={15} weight={2.2} />
+              {errors.arrivalNote}
+            </p>
+          )}
+          <p id={`${noteId}-help`} className="desk-help">
+            {t('eventForm.arrivalNoteHint')}
           </p>
-        )}
-        <p id={`${noteId}-help`} className="desk-help">
-          {t('eventForm.arrivalNoteHint')}
-        </p>
-      </div>
+        </div>
+      )}
       {offer != null && (
         <Quiet
           action={
@@ -308,15 +376,13 @@ export function VenueFields({
                 label={t('eventForm.venueZoneUse', { zone: offer.zone })}
                 onClick={() => {
                   onUseZone(offer.zone);
-                  setZoneSet(offer.zone);
-                  lookup.answered();
                   field.current?.focus();
                 }}
               />
               <TextAction
                 label={t('eventForm.venueZoneKeep', { zone: offer.keep })}
                 onClick={() => {
-                  lookup.answered();
+                  onKeepZone();
                   field.current?.focus();
                 }}
               />

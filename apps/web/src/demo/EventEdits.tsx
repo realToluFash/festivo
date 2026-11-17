@@ -2,10 +2,10 @@ import {
   COVER_MIDDLE,
   EVENT_NAME_MAXIMUM,
   EVENT_TYPES,
-  HOSTS_MAXIMUM,
   HOST_NAME_MAXIMUM,
   type EventDraft,
   type EventType,
+  type HostErrors,
   endMovedLine,
   eventNameLength,
   hostProblems,
@@ -15,7 +15,7 @@ import {
   formatWallDay,
   timezoneLabel,
 } from '@soirely/domain';
-import { type RefObject, useEffect, useId, useRef, useState } from 'react';
+import { type RefObject, useEffect, useId, useLayoutEffect, useRef, useState } from 'react';
 
 import {
   type Currency,
@@ -47,18 +47,20 @@ import {
 } from './replyBy.ts';
 import { NotBuilt } from './EventParts.tsx';
 import {
-  Alert,
   Broken,
   DateTime,
   EditText as Text,
   Opened,
-  Quiet,
   Radios,
 } from '../components/EventPageParts.tsx';
 import { type CoverStart, type CoverUploaded, CoverEdit } from '../components/CoverEdit.tsx';
 import { Select } from '../components/EventFormParts.tsx';
 import { Glyph } from '../components/Glyph.tsx';
-import { Ask, RowWords, TextAction } from '../components/SettingsParts.tsx';
+import { Ask } from '../components/SettingsParts.tsx';
+import {
+  HostFields as ProductHostFields,
+  VenueFieldsView,
+} from '../routes/app/events/EventFormFields.tsx';
 
 const LOCALE = 'en-US';
 
@@ -308,7 +310,7 @@ function movedDay(end: Wall): string {
   return `${day}, ${writtenTime(end.time, LOCALE)}`;
 }
 
-/** Venue name and Address with the sample's suggestions from 3 characters, shared by the Venue part and New event; a venue in another zone offers it. */
+/** The product's Venue fields over the sample's suggestions from 3 characters, shared by the Venue part and New event; a venue in another zone offers it. */
 export function VenueFields({
   name,
   onName,
@@ -344,155 +346,59 @@ export function VenueFields({
   off?: boolean;
   onPicked?: (venue: SampleVenue | null) => void;
 }) {
-  const id = useId();
   const own = useRef<HTMLInputElement>(null);
   const field = addressRef ?? own;
   const [listOpen, setListOpen] = useState(listing);
-  const [active, setActive] = useState(-1);
   const [offer, setOffer] = useState<string | null>(offering);
-  const [zoneSaid, setZoneSaid] = useState<string | null>(null);
+  const [zoneSet, setZoneSet] = useState<string | null>(null);
   const shown = down || !listOpen || off ? [] : suggestionsFor(address);
-  const told = [addressError == null ? null : `${id}-error`, `${id}-help`]
-    .filter(Boolean)
-    .join(' ');
 
   useEffect(() => {
     if (focus) field.current?.focus();
   }, [focus, field]);
 
-  function choose(one: SampleVenue): void {
-    onPicked?.(one);
-    onAddress(one.address);
-    if (name.trim() === '') onName(one.name);
-    setListOpen(false);
-    setActive(-1);
-    setOffer(one.timeZone === zone ? null : one.timeZone);
-  }
-
   return (
-    <>
-      <Text
-        label={W.venueName}
-        optional
-        value={name}
-        error={nameError}
-        {...(nameRef == null ? {} : { inputRef: nameRef })}
-        input={{ readOnly: off }}
-        onChange={onName}
-      />
-      <div className="desk-field ev-combo">
-        <label htmlFor={id} className="desk-label">
-          {W.address}
-          <span className="ev-optional">{` · ${W.optional}`}</span>
-        </label>
-        <div className={addressError == null ? 'desk-box' : 'desk-box is-wrong'}>
-          <input
-            ref={field}
-            id={id}
-            type="text"
-            role="combobox"
-            value={address}
-            readOnly={off}
-            aria-invalid={addressError != null}
-            spellCheck={false}
-            autoComplete="off"
-            aria-autocomplete="list"
-            aria-expanded={shown.length > 0}
-            aria-controls={shown.length > 0 ? `${id}-list` : undefined}
-            aria-activedescendant={active >= 0 ? `${id}-option-${active}` : undefined}
-            aria-describedby={told}
-            onChange={(change) => {
-              onAddress(change.target.value);
-              onPicked?.(null);
-              setListOpen(true);
-              setActive(-1);
-            }}
-            onKeyDown={(key) => {
-              if (shown.length === 0) return;
-              if (key.key === 'ArrowDown' || key.key === 'ArrowUp') {
-                key.preventDefault();
-                const step = key.key === 'ArrowDown' ? 1 : -1;
-                setActive((at) => (at + step + shown.length) % shown.length);
-              } else if (key.key === 'Enter' && active >= 0) {
-                key.preventDefault();
-                const one = shown[active];
-                if (one != null) choose(one);
-              } else if (key.key === 'Escape') {
-                key.preventDefault();
-                setListOpen(false);
-              }
-            }}
-          />
-        </div>
-        {addressError != null && (
-          <p id={`${id}-error`} className="desk-error">
-            <Glyph name="alert" size={15} weight={2.2} />
-            {addressError}
-          </p>
-        )}
-        {down ? (
-          <Alert>{W.lookupDown}</Alert>
-        ) : shown.length > 0 ? (
-          <p id={`${id}-help`} className="desk-help" role="status">
-            {W.suggestions(shown.length)}
-          </p>
-        ) : (
-          <p id={`${id}-help`} className="desk-help">
-            {W.addressHint}
-          </p>
-        )}
-        {shown.length > 0 && (
-          <ul
-            id={`${id}-list`}
-            className="desk-rows ev-options"
-            role="listbox"
-            aria-label={W.address}
-          >
-            {shown.map((one, index) => (
-              <li
-                key={one.name}
-                id={`${id}-option-${index}`}
-                role="option"
-                aria-selected={index === active}
-                className={index === active ? 'desk-row ev-option is-active' : 'desk-row ev-option'}
-                onPointerDown={(pointer) => pointer.preventDefault()}
-                onClick={() => choose(one)}
-                onKeyDown={(key) => {
-                  if (key.key === 'Enter') choose(one);
-                }}
-              >
-                <Glyph name="pin" size={20} />
-                <RowWords title={one.name} lines={[one.line]} />
-              </li>
-            ))}
-          </ul>
-        )}
-      </div>
-      {offer != null && (
-        <Quiet
-          action={
-            <div className="ev-pair">
-              <TextAction
-                label={W.takeZone(offer)}
-                onClick={() => {
-                  onZone(offer);
-                  setOffer(null);
-                  setZoneSaid(W.zoneSet(offer));
-                }}
-              />
-              <TextAction label={W.keepZone(zone)} onClick={() => setOffer(null)} />
-            </div>
-          }
-        >
-          {W.zoneOffer(offer)}
-        </Quiet>
-      )}
-      {zoneSaid != null && (
-        <p className="ev-said" role="status">
-          {zoneSaid}
-        </p>
-      )}
-    </>
+    <VenueFieldsView
+      venue={{ name, address, addressId: null, note: '' }}
+      errors={{
+        ...(nameError == null ? {} : { venueName: nameError }),
+        ...(addressError == null ? {} : { venueAddress: addressError }),
+      }}
+      off={off}
+      withNote={false}
+      {...(nameRef == null ? {} : { nameRef })}
+      addressRef={field}
+      suggestions={shown.map((one) => ({ id: one.name, text: one.name, secondaryText: one.line }))}
+      down={down}
+      offer={offer == null ? null : { zone: offer, keep: zone }}
+      zoneSet={zoneSet}
+      onVenue={(change) => {
+        if (change.name != null) onName(change.name);
+        if (change.address != null) onAddress(change.address);
+      }}
+      onType={(typed) => {
+        onAddress(typed);
+        onPicked?.(null);
+        setListOpen(true);
+        setZoneSet(null);
+      }}
+      onDismiss={() => setListOpen(false)}
+      onPick={(chosen) => {
+        const one = shown.find((venue) => venue.name === chosen.id);
+        if (one == null) return;
+        onPicked?.(one);
+        onAddress(one.address);
+        if (name.trim() === '') onName(one.name);
+        setListOpen(false);
+        setOffer(one.timeZone === zone ? null : one.timeZone);
+      }}
+      onUseZone={(chosen) => {
+        onZone(chosen);
+        setOffer(null);
+        setZoneSet(chosen);
+      }}
+      onKeepZone={() => setOffer(null)}
+    />
   );
 }
 
@@ -629,7 +535,7 @@ export function VenuePart({ event, state, onDirty, onClose, onSave }: PartProps)
   );
 }
 
-/** Hosted by's list, shared by its part and New event: the explainer, Host 1 on down, then Add a host. */
+/** The product's Hosted by over the sample's names, shared by its part and New event; errors and focus go by position. */
 export function HostFields({
   typed,
   onTyped,
@@ -637,8 +543,6 @@ export function HostFields({
   keep = false,
   off = false,
   fieldsRef,
-  focusAtRef,
-  onSaid,
 }: {
   typed: readonly string[];
   onTyped: (typed: string[]) => void;
@@ -646,114 +550,40 @@ export function HostFields({
   keep?: boolean;
   off?: boolean;
   fieldsRef: RefObject<(HTMLInputElement | null)[]>;
-  focusAtRef: RefObject<number | null>;
-  onSaid: (said: string) => void;
 }) {
-  function move(index: number, by: -1 | 1): void {
-    const next = [...typed];
-    const [one] = next.splice(index, 1);
-    next.splice(index + by, 0, one ?? '');
-    onTyped(next);
-    onSaid(W.hostMoved(one ?? '', index + by + 1, next.length));
-  }
+  const id = useId();
+  const [keys, setKeys] = useState<readonly number[]>([]);
+  const aligned = keys.length === typed.length;
+  const rows = typed.map((name, index) => ({
+    key: aligned ? (keys[index] ?? index) : index,
+    name,
+  }));
+  const inputId = (row: { key: number }) => `${id}-host-${row.key}`;
+  const hostErrors: HostErrors = {};
+  rows.forEach((row, index) => {
+    const error = errors[index];
+    if (error != null) hostErrors[row.key] = error;
+  });
+
+  useLayoutEffect(() => {
+    fieldsRef.current = rows.map(
+      (row) => document.getElementById(inputId(row)) as HTMLInputElement | null,
+    );
+  });
 
   return (
-    <>
-      <p className="desk-line">{W.hostsExplainer}</p>
-      <ol className="ev-hosts">
-        {typed.map((name, index) => {
-          const error = errors[index] ?? null;
-          const only = typed.length === 1;
-          const called = name.trim() || W.host(index + 1);
-
-          return (
-            <li key={index} className="ev-host">
-              <div className="ev-host-head">
-                <label htmlFor={`host-${index}`} className="desk-label">
-                  {W.host(index + 1)}
-                </label>
-                {!(only && keep) && !off && (
-                  <button
-                    type="button"
-                    className="desk-text"
-                    aria-label={W.removeNamed(called)}
-                    onClick={() => {
-                      onTyped(only ? [''] : typed.filter((_, at) => at !== index));
-                      onSaid(W.hostRemoved(called));
-                      focusAtRef.current = Math.max(0, index - 1);
-                    }}
-                  >
-                    {W.remove}
-                  </button>
-                )}
-              </div>
-              <div className="ev-host-line">
-                <div className={error == null ? 'desk-box' : 'desk-box is-wrong'}>
-                  <input
-                    ref={(input) => {
-                      fieldsRef.current[index] = input;
-                    }}
-                    id={`host-${index}`}
-                    type="text"
-                    value={name}
-                    spellCheck={false}
-                    readOnly={off}
-                    aria-invalid={error != null}
-                    aria-describedby={error == null ? undefined : `host-${index}-error`}
-                    onChange={(change) =>
-                      onTyped(typed.map((one, at) => (at === index ? change.target.value : one)))
-                    }
-                  />
-                </div>
-                {!only && !off && (
-                  <>
-                    <button
-                      type="button"
-                      className="ev-round"
-                      aria-label={W.moveUp(called)}
-                      aria-disabled={index === 0}
-                      onClick={() => index > 0 && move(index, -1)}
-                    >
-                      <Glyph name="chevup" size={18} weight={2.4} />
-                    </button>
-                    <button
-                      type="button"
-                      className="ev-round"
-                      aria-label={W.moveDown(called)}
-                      aria-disabled={index === typed.length - 1}
-                      onClick={() => index < typed.length - 1 && move(index, 1)}
-                    >
-                      <Glyph name="chevdown" size={18} weight={2.4} />
-                    </button>
-                  </>
-                )}
-              </div>
-              {error != null && (
-                <p id={`host-${index}-error`} className="desk-error">
-                  <Glyph name="alert" size={15} weight={2.2} />
-                  {error}
-                </p>
-              )}
-            </li>
-          );
-        })}
-      </ol>
-      {typed.length === 1 && keep && <p className="desk-note">{W.lastHost}</p>}
-      {typed.length >= HOSTS_MAXIMUM ? (
-        <p className="desk-note">{W.mostHosts(HOSTS_MAXIMUM)}</p>
-      ) : (
-        !off && (
-          <TextAction
-            label={W.addHost}
-            before="plus"
-            onClick={() => {
-              onTyped([...typed, '']);
-              focusAtRef.current = typed.length;
-            }}
-          />
-        )
-      )}
-    </>
+    <ProductHostFields
+      rows={rows}
+      errors={hostErrors}
+      keep={keep}
+      off={off}
+      inputId={inputId}
+      onRows={(next) => {
+        setKeys(next.map((row) => row.key));
+        onTyped(next.map((row) => row.name));
+      }}
+      onEdited={() => undefined}
+    />
   );
 }
 
@@ -769,7 +599,6 @@ export function HostsPart({ event, state, onDirty, onClose, onSave }: PartProps)
           : [...event.hosts],
   );
   const [tried, setTried] = useState(state === 'hostsDuplicate');
-  const [said, setSaid] = useState<string | null>(null);
   const fields = useRef<(HTMLInputElement | null)[]>([]);
   const focusAt = useRef<number | null>(
     state === 'hostsDuplicate' ? 2 : state === 'lastHost' ? 0 : null,
@@ -820,12 +649,7 @@ export function HostsPart({ event, state, onDirty, onClose, onSave }: PartProps)
         errors={typed.map((_, index) => problemWords(index))}
         keep={keep}
         fieldsRef={fields}
-        focusAtRef={focusAt}
-        onSaid={setSaid}
       />
-      <p className="desk-unseen" role="status">
-        {said}
-      </p>
       <OnceSaved />
     </Opened>
   );
