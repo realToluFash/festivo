@@ -21,7 +21,6 @@ import {
   type Panel,
   type Reader,
   type ScheduleStart,
-  DAYS,
   EARLIEST,
   LATEST,
   MAIN,
@@ -31,6 +30,7 @@ import {
   TITLE_MAX,
   blankForm,
   check,
+  dayCount,
   dayName,
   dayOf,
   differences,
@@ -157,6 +157,7 @@ function ScheduleView({
   const [screens, setScreens] = useState(first.screens);
   const focusAfter = useRef<string | null>(null);
   const manage = first.manage;
+  const days = first.days;
 
   useEffect(() => {
     const at =
@@ -299,7 +300,7 @@ function ScheduleView({
     const by = change.key === 'ArrowRight' ? 1 : change.key === 'ArrowLeft' ? -1 : 0;
     if (by === 0) return;
     change.preventDefault();
-    const next = DAYS[(at + by + DAYS.length) % DAYS.length] as string;
+    const next = days[(at + by + days.length) % days.length] as string;
     setDay(next);
     setPicked(null);
     focusAfter.current = `ro-day-${next}`;
@@ -367,7 +368,7 @@ function ScheduleView({
           )}
         </header>
         <div className="sn-tabs ro-days ro-chrome" role="tablist" aria-label={RW.days}>
-          {DAYS.map((one, at) => {
+          {days.map((one, at) => {
             const on = one === day;
             const count = itemsOn(items, one).length;
             return (
@@ -389,7 +390,7 @@ function ScheduleView({
               >
                 <span>{dayName(one, reader)}</span>
                 <span className="ro-day-sep">{' · '}</span>
-                <span className="ro-day-count">{RW.items(count)}</span>
+                <span className="ro-day-count">{dayCount(count, reader.locale)}</span>
               </button>
             );
           })}

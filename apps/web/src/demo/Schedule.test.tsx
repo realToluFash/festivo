@@ -244,4 +244,18 @@ describe('/demo/events/evt-wed-4/schedule (sc-3893)', () => {
     expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('Schedule · Fri, Nov 6');
     expect(screen.getByText(/^10 items · 13:30 to 01:00 · 3 places · ./)).toBeTruthy();
   });
+
+  it(
+    'draws seven day tabs whose counts read in the reader’s language (sc-64803)',
+    SLOW,
+    async () => {
+      await open('sevenDays', '&locale=fr-FR');
+      const tabs = within(screen.getByRole('tablist', { name: 'Days' })).getAllByRole('tab');
+      expect(tabs).toHaveLength(7);
+      expect(tabs[2]?.textContent).toMatch(/· 1 élément$/);
+      expect(tabs[3]?.textContent).toMatch(/· 12 éléments$/);
+      fireEvent.keyDown(tabs[0] as HTMLElement, { key: 'ArrowLeft' });
+      expect(tabs[6]?.getAttribute('aria-selected')).toBe('true');
+    },
+  );
 });
