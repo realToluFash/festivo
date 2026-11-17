@@ -9,6 +9,7 @@ use App\Entity\ScheduleItem;
 use App\Entity\ScreenLink;
 use App\Enum\RealtimeTopic;
 use App\Http\Exception\ApiException;
+use App\Http\LinkTokens;
 use App\Realtime\RealtimePublisher;
 use App\Repository\ScheduleItemRepository;
 use App\Repository\ScreenLinkRepository;
@@ -16,25 +17,23 @@ use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\LockMode;
 use Doctrine\ORM\EntityManagerInterface;
 use Psl\Dict;
-use Psl\Encoding\Base64;
 use Psl\Iter;
-use Psl\SecureRandom;
-use Psl\Str;
 use Psl\Vec;
 use Psr\Clock\ClockInterface;
 use SensitiveParameter;
 use Symfony\Component\Uid\Uuid;
 
 /**
- * The room screen's links (sc-3897), one for each place of the event's schedule. A token is the HMAC of a 256-bit random seed under the app secret, cut to 128 bits: shown again whenever Show on a screen opens, yet stored only as its SHA-256.
+ * The room screen's links (sc-3897), one for each place of the event's schedule, each token made by LinkTokens and cut to 128 bits.
  */
 final readonly class ScreenLinks
 {
+    private const string PURPOSE = 'screen-link';
+
     private const int TOKEN_BYTES = 16;
 
     public function __construct(
-        #[SensitiveParameter]
-        private string $secret,
+        private LinkTokens $linkTokens,
         private ScreenLinkRepository $screenLinkRepository,
         private ScheduleItemRepository $scheduleItemRepository,
         private EntityManagerInterface $entityManager,
@@ -83,8 +82,8 @@ final readonly class ScreenLinks
                 $this->entityManager->flush();
             }
 
-            $seed = self::seed();
-            $this->entityManager->persist(new ScreenLink($event, $place, $seed, self::hash($this->token($seed))));
+            $seed = LinkTokens::seed();
+            $this->entityManager->persist(new ScreenLink($event, $place, $seed, LinkTokens::hash($this->token($seed))));
         });
 
         $this->realtimePublisher->publish(RealtimeTopic::EventScreens, $event->getId()->toRfc4122(), []);
@@ -92,7 +91,7 @@ final readonly class ScreenLinks
 
     public function find(#[SensitiveParameter] string $token): ?ScreenLink
     {
-        return '' === $token ? null : $this->screenLinkRepository->findOneByTokenHash(self::hash($token));
+        return '' === $token ? null : $this->screenLinkRepository->findOneByTokenHash(LinkTokens::hash($token));
     }
 
     public function tokenOf(ScreenLink $link): string
@@ -111,7 +110,7 @@ final readonly class ScreenLinks
 
     private function insert(Event $event, string $place): void
     {
-        $seed = self::seed();
+        $seed = LinkTokens::seed();
         $this->connection->executeStatement(<<<'SQL'
             INSERT INTO screen_links (id, event_id, place, seed, token_hash, replaced_at, created_at, updated_at)
             VALUES (:id, :event, :place, :seed, :hash, NULL, NOW(), NOW())
@@ -121,22 +120,12 @@ final readonly class ScreenLinks
             'event' => $event->getId()->toRfc4122(),
             'place' => $place,
             'seed' => $seed,
-            'hash' => self::hash($this->token($seed)),
+            'hash' => LinkTokens::hash($this->token($seed)),
         ]);
-    }
-
-    private static function hash(#[SensitiveParameter] string $token): string
-    {
-        return \hash('sha256', $token);
     }
 
     private function token(string $seed): string
     {
-        return Base64\encode(Str\Byte\slice(\hash_hmac('sha256', 'screen-link:' . $seed, $this->secret, true), 0, self::TOKEN_BYTES), Base64\Variant::UrlSafe, padding: false);
-    }
-
-    private static function seed(): string
-    {
-        return \bin2hex(SecureRandom\bytes(32));
+        return $this->linkTokens->token(self::PURPOSE, $seed, self::TOKEN_BYTES);
     }
 }
