@@ -32,6 +32,7 @@ SMALL_DAYS = 14
 SMALL_BYTES = 1_000_000
 RECENT_SECONDS = 60 * 60
 NEVER_SWEPT = "untracked-before-main-"
+MAESTRO_LOG = "maestro.log"
 HARNESS = ("bin", "state.json")
 RECORDS = {"release": ("installed",)}
 STORY_NUMBER = re.compile(r"\d{4,}")
@@ -197,6 +198,32 @@ def finished(stories, numbers, states):
                                       "Done" in states and s.get("done")) for s in known)
 
 
+def sweep_maestro_logs(scratch, now, say=print):
+    """Deletes every Maestro debug log a day old in a tester's `.qa/`: qa-env trims each run's,
+    and these are from before that or from runs killed part way."""
+    freed, gone = 0, 0
+    for entry in sweepable(scratch):
+        if entry.name.startswith(NEVER_SWEPT) or entry.is_symlink():
+            continue
+        logs = [entry] if entry.name == MAESTRO_LOG else \
+            entry.rglob(MAESTRO_LOG) if entry.is_dir() else []
+        for log in logs:
+            try:
+                found = log.lstat()
+                if not log.is_file() or now - found.st_mtime < SWEEP_SECONDS:
+                    continue
+                # The folder keeps its age, or the three-day sweep would wait three days more.
+                parent = log.parent.lstat()
+                log.unlink()
+                os.utime(log.parent, ns=(parent.st_atime_ns, parent.st_mtime_ns))
+            except OSError as error:
+                say(f"warning: could not sweep {log}: {error}")
+                continue
+            freed, gone = freed + found.st_size, gone + 1
+    if gone:
+        say(f"swept {amount(freed)} of Maestro logs from {scratch}: {gone} {MAESTRO_LOG}")
+
+
 def sweep_scratch(db, config, now=None, say=print, cwds=None):
     """Once a day, clears what testers left in `.qa/`: an entry whose stories have all passed
     QA or are Done, or one nothing has touched for three days, or fourteen for one under a
@@ -209,6 +236,7 @@ def sweep_scratch(db, config, now=None, say=print, cwds=None):
     store.set_meta(db, "scratch_swept", {"period": period})
     stories = store.stories(db)
     for tester, scratch in scratch_folders(config):
+        sweep_maestro_logs(scratch, now, say)
         held, freed, gone = held_stories(stories, tester), 0, 0
         for entry in sweepable(scratch):
             numbers = set(STORY_NUMBER.findall(entry.name))
@@ -446,6 +474,21 @@ def measure_litter(config, start, out=None):
     return sizes
 
 
+def disk_period(db, name, now, dry_run=False):
+    """The disk item's period: kept while its item is open or claimed, and a new one once it
+    is done, so every fall under the floor wakes ops, not only the first of the day."""
+    period = (store.get_meta(db, "disk_period") or {}).get(name)
+    if period is not None:
+        row = db.execute("select status from work where fingerprint = ?",
+                         (f"ops@{name}:disk:{period}",)).fetchone()
+        if not row or row["status"] != "done":
+            return period
+    period = int(now)
+    if not dry_run:
+        store.set_meta(db, "disk_period", {name: period})
+    return period
+
+
 def checks(db, config, now=None, cache=None, free=None, largest=None, dry_run=False):
     """What needs this machine's ops now, kept for the work it becomes."""
     now = now or time.time()
@@ -456,7 +499,7 @@ def checks(db, config, now=None, cache=None, free=None, largest=None, dry_run=Fa
     floor = config.get("minFreeGb", 15)
     left = free(config)
     if floor and left < floor:
-        found.append({"key": "disk", "urgent": True, "period": int(now // SWEEP_SECONDS),
+        found.append({"key": "disk", "urgent": True, "period": disk_period(db, name, now, dry_run),
                       "reason": f"only {left:.0f} GB free on {name}, under minFreeGb {floor}: "
                                 "free space before workers can start again"})
     elif floor and left < 2 * floor:

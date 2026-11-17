@@ -48,12 +48,40 @@ class Checks(unittest.TestCase):
         self.assertEqual(len(asked), 1)
 
     def test_one_finding_wakes_ops_once_a_day(self):
-        self.found(free=4.0)
+        self.found(cache=40.0)
         today = {i["fingerprint"] for i in self.items()}
-        self.found(now=DAY * 10 + 3600, free=4.0)
+        self.found(now=DAY * 10 + 3600, cache=40.0)
         self.assertEqual({i["fingerprint"] for i in self.items()}, today)
-        self.found(now=DAY * 11, free=4.0)
+        self.found(now=DAY * 11, cache=40.0)
         self.assertFalse(today & {i["fingerprint"] for i in self.items()})
+
+    def disk_item(self, now):
+        self.found(now=now, free=4.0)
+        cli.refresh_work(self.db, now)
+        return next(i["fingerprint"] for i in self.items() if "GB free" in i["reason"])
+
+    def test_a_disk_item_stays_one_item_while_it_is_open_or_claimed(self):
+        first = self.disk_item(DAY * 10)
+        self.assertEqual(self.disk_item(DAY * 10 + 600), first)
+        self.assertTrue(store.claim(self.db, "ops", DAY * 10 + 700))
+        self.assertEqual(self.disk_item(DAY * 11 + 600), first)
+
+    def test_a_fall_under_the_floor_after_the_disk_item_is_done_wakes_ops_again(self):
+        first = self.disk_item(DAY * 10)
+        row = self.db.execute("select id from work where fingerprint = ?", (first,)).fetchone()
+        store.finish(self.db, row["id"], "cleared", DAY * 10 + 600)
+        self.found(now=DAY * 10 + 1200)
+        cli.refresh_work(self.db, DAY * 10 + 1200)
+        again = self.disk_item(DAY * 10 + 3600)
+        self.assertNotEqual(again, first)
+        status = self.db.execute("select status from work where fingerprint = ?",
+                                 (again,)).fetchone()["status"]
+        self.assertEqual(status, "open")
+
+    def test_a_dry_run_keeps_no_new_disk_period(self):
+        local.checks(self.db, self.config, DAY * 10, cache=lambda: 1.0, free=lambda c: 4.0,
+                     dry_run=True)
+        self.assertIsNone(store.get_meta(self.db, "disk_period"))
 
     def test_urgent_findings_come_before_the_sweep_and_go_once_cleared(self):
         self.found(free=4.0, cache=40.0)
@@ -277,6 +305,54 @@ class Scratch(unittest.TestCase):
         self.assertEqual([n.split()[0].rsplit("/", 1)[-1] for n in named],
                          ["soirely-qa3", "soirely-dev3", "soirely-dev2", "soirely-qa2",
                           "soirely-l10n", "Devices", "avd"])
+
+    def log(self, entry, days, size=3_000_000, under=".maestro/tests/2026-11-16_160137"):
+        folder = entry / under if under else entry
+        folder.mkdir(parents=True, exist_ok=True)
+        path = folder / "maestro.log"
+        path.write_bytes(b"x" * size)
+        at = self.NOW - days * DAY
+        os.utime(path, (at, at))
+        return path
+
+    def test_a_maestro_log_a_day_old_goes_and_the_evidence_stays(self):
+        entry = self.entry("sc10200-phone", 0)
+        old, fresh = self.log(entry, 2), self.log(entry, 0.5, under="_batch/logs")
+        self.sweep()
+        self.assertFalse(old.exists())
+        self.assertTrue(fresh.exists())
+        self.assertTrue((entry / "shot.png").exists())
+
+    def test_a_held_storys_old_logs_go_but_its_entry_stays(self):
+        store.put_story(self.db, {"id": 10118, "state": "In QA", "done": False,
+                                  "comments": [{"text": "QA claim: qa3"}]})
+        entry = self.entry("sc10118", 30)
+        old = self.log(entry, 30)
+        self.sweep()
+        self.assertFalse(old.exists())
+        self.assertTrue((entry / "shot.png").exists())
+
+    def test_deleting_a_log_does_not_make_its_entry_look_recent(self):
+        entry = self.entry("s10118", 4)
+        self.log(entry, 4, under=None)
+        os.utime(entry, (self.NOW - 4 * DAY, self.NOW - 4 * DAY))
+        local.sweep_maestro_logs(entry.parent, self.NOW, self.said.append)
+        self.sweep()
+        self.assertFalse(entry.exists())
+
+    def test_untracked_before_main_keeps_its_logs(self):
+        kept = self.log(self.entry("untracked-before-main-20261001", 60), 60)
+        self.sweep()
+        self.assertTrue(kept.exists())
+
+    def test_a_log_sweep_says_how_much_it_freed_and_where(self):
+        self.log(self.entry("sc10200", 0), 2, size=3_000_000)
+        self.log(self.entry("sc10201", 0), 2, size=2_000_000)
+        self.sweep()
+        self.assertEqual(len(self.said), 1)
+        self.assertIn("swept 5 MB of Maestro logs", self.said[0])
+        self.assertIn("soirely-qa3/.qa", self.said[0])
+        self.assertIn("2 maestro.log", self.said[0])
 
     def test_a_machine_without_testers_sweeps_nothing(self):
         (self.root / "soirely-ops").mkdir()
