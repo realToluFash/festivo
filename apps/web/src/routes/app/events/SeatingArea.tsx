@@ -732,6 +732,7 @@ function Plan({
   const [pointedAt, setPointedAt] = useState<string | null>(null);
   const [choice, setChoice] = useState<SeatChoice | null>(null);
   const choiceFrom = useRef<Element | null>(null);
+  const [focusBack, setFocusBack] = useState<{ from: SVGElement; at: string } | null>(null);
   const [chairTip, setChairTip] = useState<{ pick: string; tip: ChairTip } | null>(null);
   const [moveFrom, setMoveFrom] = useState<string | null>(null);
   const [seatingView, setSeatingView] = useState<SeatingView>('plan');
@@ -756,7 +757,26 @@ function Plan({
     );
   };
   const movingFrom = party?.lead.seat ?? null;
+  /** A chair that takes the keyboard but not the pointer is drawn only while a guest is picked, so focus on it waits for the render that drops the pick before choosing between it and its place. */
+  const focusAfterPick = (from: Element | null, at: string | null) => {
+    if (!(from instanceof SVGElement) || from.closest('.st-room') == null || at == null) return;
+    setFocusBack({ from, at });
+  };
+  useEffect(() => {
+    if (focusBack == null) return;
+    focusWhenFree(() =>
+      focusBack.from.isConnected
+        ? focusBack.from
+        : document.querySelector<SVGElement>(focusBack.at),
+    );
+  }, [focusBack]);
   const dropPick = () => {
+    const from = document.activeElement;
+    const place = from?.closest(ITEM);
+    const attribute = ITEM_ATTRIBUTES.find((one) => place?.hasAttribute(one));
+
+    if (place !== from && attribute != null)
+      focusAfterPick(from, `.st-room [${attribute}="${place?.getAttribute(attribute)}"]`);
     setChoice(null);
     setPickedGuest(null);
     setBar((was) => (was?.tone === 'undo' ? was : null));
@@ -1474,13 +1494,8 @@ function Plan({
           count: others,
           table: place,
         });
-  /** A chair stops being a target once the pick drops, so focus seated from it goes back to its table, not to the page's start. */
-  const focusAfterSeat = (item: FloorItem, from: Element | null) => {
-    if (!(from instanceof SVGElement) || from.closest('.st-room') == null) return;
-    const at = `.st-room [${itemAttribute(item.kind) ?? 'data-table'}="${item.one.id}"]`;
-
-    focusWhenFree(() => (from.isConnected ? from : document.querySelector<SVGElement>(at)));
-  };
+  const focusAfterSeat = (item: FloorItem, from: Element | null) =>
+    focusAfterPick(from, `.st-room [${itemAttribute(item.kind) ?? 'data-table'}="${item.one.id}"]`);
   const seatAt = (item: FloorItem, seat: number | null = null, justGuest = false): void => {
     if (party == null || plan == null) return;
     const from = (choice == null ? null : choiceFrom.current) ?? document.activeElement;

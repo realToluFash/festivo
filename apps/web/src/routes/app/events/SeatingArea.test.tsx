@@ -6223,6 +6223,49 @@ describe('Seating on the Floor plan (sc-5030)', () => {
     await waitFor(() => expect(document.activeElement).toBe(t2));
   });
 
+  it('keeps focus in the room after Swap with from a chair that takes the keyboard but not the pointer', async () => {
+    signedIn();
+    const swapped = guest({ seat: { kind: 'table', id: 't1', seat: 1 } });
+
+    await onSeating({
+      'GET /api/events/ev_1/seating-plan': () =>
+        seating(withGuests([guest(), SEATED, AT_T2], table(), T2)),
+      'POST /api/events/ev_1/seating-plan/guests/swap': () =>
+        moved(withGuests([swapped, { ...SEATED, seat: null }, AT_T2], table(), T2), [
+          { guestId: 'g_ada', from: null, to: { kind: 'table', id: 't1', seat: 1 } },
+          { guestId: 'g_sofia', from: { kind: 'table', id: 't1', seat: 1 }, to: null },
+        ]),
+    });
+
+    fireEvent.click(await screen.findByRole('tab', { name: 'Seat' }));
+    fireEvent.click(screen.getByRole('button', { name: /Ada Obi/ }));
+    const t1 = screen.getByRole('button', { name: /^Table 1, (?!Seat)/ });
+    const sofia = screen.getByRole('button', {
+      name: 'Table 1, Seat 1, Sofia Rossi, Not sure yet',
+    });
+
+    expect(sofia.classList.contains('is-keys')).toBe(true);
+    sofia.focus();
+    fireEvent.keyDown(sofia, { key: 'Enter' });
+    fireEvent.click(await screen.findByRole('button', { name: 'Swap with Sofia Rossi' }));
+    await screen.findAllByText('Ada Obi is at Table 1.');
+    await waitFor(() => expect(document.activeElement).toBe(t1));
+  });
+
+  it('gives focus to the table when Esc drops the pick on a chair that takes the keyboard but not the pointer', async () => {
+    signedIn();
+    await pickAda();
+
+    const t1 = screen.getByRole('button', { name: /^Table 1, (?!Seat)/ });
+    const chair = screen.getByRole('button', { name: 'Table 1, Seat 3, Empty' });
+
+    expect(chair.classList.contains('is-keys')).toBe(true);
+    chair.focus();
+    fireEvent.keyDown(chair, { key: 'Escape' });
+    expect(screen.queryByText('Now pick a table for Ada Obi.')).toBeNull();
+    await waitFor(() => expect(document.activeElement).toBe(t1));
+  });
+
   it('steps the arrows through tables, rows and single seats in reading order, and Enter on a row seats there', async () => {
     signedIn();
     const sent = await onSeating({
