@@ -4,6 +4,7 @@ import { RouterProvider, createMemoryRouter } from 'react-router';
 import { act } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
+import { __setConfig, config } from '../../config.ts';
 import { setLanguage } from '../../i18n/index.ts';
 import { __setSessionState } from '../../session.ts';
 import { atPhoneWidth, atWideWidth } from '../../test-widths.ts';
@@ -1974,5 +1975,119 @@ describe('Anything the kitchen must know? (sc-3778)', () => {
     expect(screen.getByRole('button', { name: 'Change what the kitchen must know' })).toBe(
       document.activeElement,
     );
+  });
+});
+
+describe('Your table on the page (sc-4022)', () => {
+  const SEATED = {
+    ...answered('coming', '2026-10-17T14:20:00+01:00', 1, [CHIDI]),
+    seating: {
+      seat: { kind: 'table', name: 'Table 4', section: 'Main hall' },
+      elsewhere: [
+        {
+          name: 'Chidi Okonkwo-Williams',
+          seat: { kind: 'table', name: 'Table 6', section: 'Main hall' },
+        },
+      ],
+    },
+  };
+
+  it('shows a Coming guest their table under the answer, and each companion seated elsewhere', async () => {
+    api({ '/api/guest-links/page': [{ status: 200, body: SEATED }] });
+    open();
+
+    expect(await screen.findByText('Your table: Table 4 · Main hall')).toBeDefined();
+    expect(screen.getByText('Chidi Okonkwo-Williams: Table 6')).toBeDefined();
+    expect(
+      screen.getByRole('region', { name: 'Your table' }).querySelector('[aria-live="polite"]'),
+    ).not.toBeNull();
+  });
+
+  it('names a row seat and its section, and a companion with no name as Your guest', async () => {
+    api({
+      '/api/guest-links/page': [
+        {
+          status: 200,
+          body: {
+            ...SEATED,
+            seating: {
+              seat: { kind: 'row', name: 'C', seat: 4, section: 'Balcony' },
+              elsewhere: [
+                { name: null, seat: { kind: 'row', name: 'D', seat: 1, section: 'Balcony' } },
+              ],
+            },
+          },
+        },
+      ],
+    });
+    open();
+
+    expect(await screen.findByText('Your seat: Row C, seat 4 · Balcony')).toBeDefined();
+    expect(screen.getByText('Your guest: Row D, seat 1')).toBeDefined();
+  });
+
+  it('shows nothing about seating before the hosts share, as the page was', async () => {
+    api({ '/api/guest-links/page': [{ status: 200, body: answered('coming') }] });
+    open();
+
+    expect(await screen.findByRole('heading', { level: 1 })).toBeDefined();
+    expect(screen.queryByText(/^Your (table|seat):/)).toBeNull();
+    expect(screen.queryByRole('region', { name: 'Your table' })).toBeNull();
+  });
+
+  it('shows the table as soon as the hosts share, by the event’s signal rather than the next poll', async () => {
+    const before = config();
+    __setConfig({ ...before, mercureUrl: 'http://hub.test/.well-known/mercure' });
+    const made: { url: string; onmessage: ((message: { data: string }) => void) | null }[] = [];
+    vi.stubGlobal(
+      'EventSource',
+      class {
+        static readonly CLOSED = 2;
+        readyState = 0;
+        onopen = null;
+        onmessage: ((message: { data: string }) => void) | null = null;
+        onerror = null;
+        url: string;
+        constructor(url: string | URL) {
+          this.url = String(url);
+          made.push(this);
+        }
+        close(): void {}
+      },
+    );
+    const { sent } = api({
+      '/api/guest-links/page': [
+        { status: 200, body: answered('coming') },
+        { status: 200, body: SEATED },
+      ],
+      '/api/guest-links/subscriptions': [
+        {
+          status: 200,
+          body: { token: 'tok', expiresAt: new Date(Date.now() + 3_600_000).toISOString() },
+        },
+      ],
+    });
+
+    try {
+      open();
+      await screen.findByRole('heading', { level: 1 });
+      await waitFor(() =>
+        expect(made.some((one) => decodeURIComponent(one.url).includes('/guest-pages'))).toBe(true),
+      );
+      expect(sent.find((one) => one.path === '/api/guest-links/subscriptions')?.body).toEqual({
+        token: TOKEN,
+      });
+
+      act(() =>
+        made
+          .find((one) => decodeURIComponent(one.url).includes('/guest-pages'))
+          ?.onmessage?.({ data: '[]' }),
+      );
+
+      expect(await screen.findByText('Your table: Table 4 · Main hall')).toBeDefined();
+    } finally {
+      __setConfig(before);
+      vi.unstubAllGlobals();
+    }
   });
 });

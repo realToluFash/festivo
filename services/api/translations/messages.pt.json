@@ -326,5 +326,10 @@
     "run_of_show.idempotency_key_required": "Envie o cabeçalho Idempotency-Key em cada ação.",
     "run_of_show.idempotency_key_reused": "Esta Idempotency-Key já foi usada noutra ação. Nada foi alterado.",
     "run_of_show.pressed_at_invalid": "Envie pressedAt como data e hora com o respetivo fuso, por exemplo 2027-03-06T21:50:00+01:00.",
-    "timeline.run_of_show_begins": "Início do programa"
+    "timeline.run_of_show_begins": "Início do programa",
+    "timeline.share_tables": "Share tables",
+    "timeline.tables_shared": "Tables shared",
+    "validation.share_by_invalid": "Choose a valid date.",
+    "validation.share_by_past": "Choose today or a later date.",
+    "validation.share_by_not_before_event": "Choose a date before the event."
 }

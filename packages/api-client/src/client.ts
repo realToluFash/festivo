@@ -29,6 +29,7 @@ import {
   asGuestPageCompanion,
   asGuestPagePlace,
   asGuestProgrammeItem,
+  asGuestSeating,
   asPageNeeds,
   asHeadcount,
   asMarkedTogether,
@@ -2253,6 +2254,16 @@ export class ApiClient {
     );
   }
 
+  /** Share tables with guests or stop, and the day to share by, either or both (sc-4022). Refused `validation_failed` on `shareBy`, and 403 without seating.manage. */
+  async changeTableSharing(
+    eventId: string,
+    changes: { shared?: boolean; shareBy?: string | null },
+  ): Promise<Seating> {
+    return this.seatingOf(
+      await this.patch<{ seating?: unknown }>(`${this.seatingPath(eventId)}/sharing`, changes),
+    );
+  }
+
   async deleteSeatingPlan(eventId: string): Promise<Seating> {
     return this.seatingOf(await this.delete<{ seating?: unknown }>(this.seatingPath(eventId)));
   }
@@ -2942,6 +2953,20 @@ export class ApiClient {
   async roomScreenSubscription(token: string): Promise<RealtimeSubscription> {
     const body = await this.post<{ token?: unknown; expiresAt?: unknown }>(
       '/api/screen-links/subscriptions',
+      { token },
+      { anonymous: true },
+    );
+
+    return {
+      token: typeof body.token === 'string' ? body.token : '',
+      expiresAt: typeof body.expiresAt === 'string' ? body.expiresAt : '',
+    };
+  }
+
+  /** A hub token for the event's bare signal to ask again (sc-4022). Refused `not_found` as the page is. */
+  async guestPageSubscription(token: string): Promise<RealtimeSubscription> {
+    const body = await this.post<{ token?: unknown; expiresAt?: unknown }>(
+      '/api/guest-links/subscriptions',
       { token },
       { anonymous: true },
     );
@@ -5000,8 +5025,17 @@ function asEventCover(raw: unknown): EventCover | undefined {
 
 function asGuestPage(raw: unknown): GuestPage | null {
   if (typeof raw !== 'object' || raw == null) return null;
-  const { guest, event, phase, started, answersOpen, answersClosedOn, language, programme } =
-    raw as Record<string, unknown>;
+  const {
+    guest,
+    event,
+    phase,
+    started,
+    answersOpen,
+    answersClosedOn,
+    language,
+    programme,
+    seating,
+  } = raw as Record<string, unknown>;
   const shown = GUEST_PAGE_PHASES.find((known) => known === phase);
   if (typeof guest !== 'object' || guest == null || typeof event !== 'object' || event == null)
     return null;
@@ -5087,6 +5121,7 @@ function asGuestPage(raw: unknown): GuestPage | null {
     answersOpen,
     calendar: null,
     programme: items.filter((one) => one != null),
+    seating: asGuestSeating(seating),
   };
 }
 

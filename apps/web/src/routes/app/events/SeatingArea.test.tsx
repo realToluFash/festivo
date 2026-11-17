@@ -5855,6 +5855,136 @@ describe('Deleting many with guests in them (sc-57680)', () => {
   });
 });
 
+describe('Share tables with guests (sc-4022)', () => {
+  const SEATED = ADA_PARTY.map((one, index) =>
+    index < 2 ? { ...one, seat: { kind: 'table', id: 't1', seat: index + 1 } } : one,
+  );
+
+  function sharing(sharedAt: string | null, shareBy: string | null = null) {
+    return { ...withGuests(SEATED, table()), sharing: { sharedAt, shareBy } };
+  }
+
+  it('shares after asking, with how many will see a table and how many have no seat, then stops', async () => {
+    signedIn();
+    const sent = await onSeating({
+      'GET /api/events/ev_1/seating-plan': () => seating(sharing(null)),
+      'PATCH /api/events/ev_1/seating-plan/sharing': (body) =>
+        seating(sharing((body as { shared: boolean }).shared ? '2026-11-17T10:00:00+01:00' : null)),
+    });
+
+    expect(await screen.findByText('1 guest doesn’t have a seat yet.')).toBeDefined();
+    fireEvent.click(screen.getByRole('button', { name: 'Share tables with guests' }));
+    const ask = screen.getByRole('alertdialog', { name: 'Share tables with guests?' });
+
+    expect(
+      within(ask).getByText(
+        '2 guests who are coming will see their table on their page from now on. If you change the plan, their page changes with it.',
+      ),
+    ).toBeDefined();
+    expect(
+      within(ask).getByText(
+        '1 guest who is coming doesn’t have a seat yet. They’ll see nothing about seating until they do.',
+      ),
+    ).toBeDefined();
+    fireEvent.click(within(ask).getByRole('button', { name: 'Share tables' }));
+
+    expect(await screen.findByText('Tables are shared with guests')).toBeDefined();
+    expect(sent.find((one) => one.line.startsWith('PATCH'))?.body).toEqual({ shared: true });
+    expect(screen.queryByRole('alertdialog')).toBeNull();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Stop sharing' }));
+    const stop = screen.getByRole('alertdialog', { name: 'Stop sharing tables?' });
+    fireEvent.click(within(stop).getByRole('button', { name: 'Stop sharing' }));
+
+    expect(await screen.findByText('Guests’ pages no longer show their table.')).toBeDefined();
+    expect(sent.filter((one) => one.line.startsWith('PATCH')).at(-1)?.body).toEqual({
+      shared: false,
+    });
+    expect(screen.getByRole('button', { name: 'Share tables with guests' })).toBeDefined();
+  });
+
+  it('keeps the question open with what went wrong when sharing fails', async () => {
+    signedIn();
+    await onSeating({
+      'GET /api/events/ev_1/seating-plan': () => seating(sharing(null)),
+      'PATCH /api/events/ev_1/seating-plan/sharing': () => problem('internal_error', 500),
+    });
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Share tables with guests' }));
+    const ask = screen.getByRole('alertdialog', { name: 'Share tables with guests?' });
+    fireEvent.click(within(ask).getByRole('button', { name: 'Share tables' }));
+
+    expect(
+      await within(ask).findByText(
+        'We could not share the tables. Check your connection and try again.',
+      ),
+    ).toBeDefined();
+    expect(screen.queryByText('Tables are shared with guests')).toBeNull();
+  });
+
+  it('refuses an empty, a past or an on-the-day Share by beside its field, and saves a good one', async () => {
+    signedIn();
+    const sent = await onSeating({
+      'GET /api/events/ev_1/seating-plan': () => seating(sharing(null)),
+      'PATCH /api/events/ev_1/seating-plan/sharing': () => seating(sharing(null, '2030-11-01')),
+    });
+
+    const field = await screen.findByLabelText(/^Share by/);
+    const save = () => fireEvent.click(screen.getByRole('button', { name: 'Save the date' }));
+
+    save();
+    expect(screen.getByText('Choose a date, or leave Share by empty.')).toBeDefined();
+    fireEvent.change(field, { target: { value: '2030-11-14' } });
+    save();
+    expect(screen.getByText(/^Choose a date before the event, /)).toBeDefined();
+    fireEvent.change(field, { target: { value: '2020-01-01' } });
+    save();
+    expect(screen.getByText('Choose today or a later date.')).toBeDefined();
+    expect(field.getAttribute('aria-invalid')).toBe('true');
+    expect(sent.some((one) => one.line.startsWith('PATCH'))).toBe(false);
+
+    fireEvent.change(field, { target: { value: '2030-11-01' } });
+    save();
+
+    expect(
+      await screen.findByText(/^Share tables by .*\. Nothing is shared until you share it\.$/),
+    ).toBeDefined();
+    expect(sent.find((one) => one.line.startsWith('PATCH'))?.body).toEqual({
+      shareBy: '2030-11-01',
+    });
+    expect(screen.getByRole('button', { name: 'Change' })).toBeDefined();
+    expect(screen.getByRole('button', { name: 'Remove' })).toBeDefined();
+  });
+
+  it('marks a Share by that has passed, with nothing shared yet', async () => {
+    signedIn();
+    await onSeating({
+      'GET /api/events/ev_1/seating-plan': () => seating(sharing(null, '2020-01-02')),
+    });
+
+    expect(await screen.findByText('Passed')).toBeDefined();
+    expect(
+      screen.getByText(/^Share tables by .*\. That date has passed, and nothing is shared yet\.$/),
+    ).toBeDefined();
+  });
+
+  it('shows the state without its controls to someone who cannot manage seating', async () => {
+    signedIn();
+    await onSeating(
+      { 'GET /api/events/ev_1/seating-plan': () => seating(sharing(null, '2030-11-01')) },
+      OWNER_PERMISSIONS.filter((one) => one !== 'seating.manage'),
+    );
+
+    expect(await screen.findByText('Not shared')).toBeDefined();
+    expect(
+      screen.getByText('You can see this. Changing it needs the Manage seating permission.'),
+    ).toBeDefined();
+    expect(screen.queryByRole('button', { name: 'Share tables with guests' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Change' })).toBeNull();
+    expect(screen.queryByLabelText(/^Share by/)).toBeNull();
+  });
+});
+
 describe('The keyboard focus ring on the Floor plan (sc-64879)', () => {
   const SHEET = stylesheet(import.meta.dirname, 'seating.css');
   const KINDS = [

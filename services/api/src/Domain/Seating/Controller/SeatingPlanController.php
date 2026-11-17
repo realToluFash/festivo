@@ -6,6 +6,7 @@ namespace App\Domain\Seating\Controller;
 
 use App\Domain\Seating\Http\SeatingSerialiser;
 use App\Domain\Seating\SeatingPlanEditor;
+use App\Domain\Seating\TableSharer;
 use App\Entity\Event;
 use App\Entity\SeatingPlan;
 use App\Entity\SeatingRow;
@@ -44,6 +45,7 @@ final readonly class SeatingPlanController
         private SeatingSerialiser $seatingSerialiser,
         private SubscriberTokenIssuer $subscriberTokenIssuer,
         private MembershipDirectoryInterface $membershipDirectory,
+        private TableSharer $tableSharer,
     ) {
     }
 
@@ -87,6 +89,23 @@ final readonly class SeatingPlanController
         ]));
 
         $plan = $this->seatingPlanEditor->change($event, $this->plan($event), $request->headers->get('If-Match'), $this->user(), $body);
+
+        return $this->seating($event, $plan);
+    }
+
+    /** Share tables with guests or stop (`shared`), and the day to share them by (`shareBy`, a day or null), either or both (sc-4022). No If-Match: neither touches the room. Refused 422 on `shareBy`. */
+    #[Route('/api/events/{eventId}/seating-plan/sharing', name: 'seating_plan_sharing', methods: ['PATCH'])]
+    #[InEvent(Permission::SeatingManage)]
+    public function share(Request $request, string $eventId): JsonResponse
+    {
+        $event = $this->event($eventId);
+        $plan = $this->plan($event);
+        $body = Input::body($request, Type\shape([
+            'shared' => Type\optional(Type\bool()),
+            'shareBy' => Type\optional(Type\nullable(Type\string())),
+        ]));
+
+        $this->tableSharer->change($event, $plan, $body, $this->user());
 
         return $this->seating($event, $plan);
     }

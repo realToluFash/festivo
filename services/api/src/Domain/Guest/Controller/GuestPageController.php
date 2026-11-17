@@ -14,6 +14,7 @@ use App\Domain\Guest\Link\InvitationLinks;
 use App\Domain\Guest\Model\GuestNeeds;
 use App\Domain\Guest\Reply\GuestAnswers;
 use App\Domain\RunOfShow\GuestProgramme;
+use App\Domain\Seating\SharedSeats;
 use App\Entity\Guest;
 use App\Enum\ErrorCode;
 use App\Enum\GuestPagePhase;
@@ -22,6 +23,7 @@ use App\Http\Access\Policy\PublicAccess;
 use App\Http\Exception\ApiException;
 use App\Http\Input;
 use App\Locale\SupportedLocales;
+use App\Realtime\SubscriberTokenIssuer;
 use App\Repository\GuestRepository;
 use DateTimeZone;
 use Doctrine\ORM\EntityManagerInterface;
@@ -49,6 +51,8 @@ final readonly class GuestPageController
         private TranslatorInterface $translator,
         private EntityManagerInterface $entityManager,
         private GuestProgramme $guestProgramme,
+        private SharedSeats $sharedSeats,
+        private SubscriberTokenIssuer $subscriberTokenIssuer,
     ) {
     }
 
@@ -152,6 +156,7 @@ final readonly class GuestPageController
         $needs = $this->guestNeedsRecord->of([$guest, ...$places]);
         $needsOf = static fn (Guest $person): array => GuestSerialiser::needs($person, $needs[$person->getId()->toRfc4122()] ?? GuestNeeds::none(), note: false);
         $phase = $this->guestAnswers->phase($guest);
+        $seating = $this->sharedSeats->of($guest);
 
         return new JsonResponse([
             'guest' => [
@@ -207,7 +212,22 @@ final readonly class GuestPageController
             'answersClosedOn' => $this->guestAnswers->closedOn($guest),
             'calendarFeed' => $this->calendarFeed($guest),
             'programme' => $this->guestProgramme->of($event, $phase),
+            // Absent, not null, before the tables are shared (sc-4022).
+            ...null === $seating ? [] : ['seating' => $seating],
         ], headers: ['Cache-Control' => 'no-store']);
+    }
+
+    /** A hub token for the event's bare signal to ask again (sc-4022): it carries no guest's data, so every link of the event shares one topic. */
+    #[Route('/api/guest-links/subscriptions', name: 'guest_links_subscribe', methods: ['POST'])]
+    #[PublicAccess]
+    public function subscribe(Request $request): JsonResponse
+    {
+        $issued = $this->subscriberTokenIssuer->issueForGuestPages($this->guest($request)->getEvent()->getId());
+
+        return new JsonResponse([
+            'token' => $issued->token,
+            'expiresAt' => $issued->expiresAt->format(\DATE_ATOM),
+        ]);
     }
 
     /** The guest's own language menu (sc-3790): kept on the guest, so the link opens in it on any device, and never on an account. Refused 422 for a language Soirely does not offer. */

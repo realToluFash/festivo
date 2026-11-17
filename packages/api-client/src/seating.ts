@@ -224,6 +224,14 @@ export interface SeatingSection extends SectionContents {
   version: number;
 }
 
+/** Whether guests see their table on their page, and the day to share by (sc-4022). */
+export interface TableSharing {
+  /** With the event zone's offset; null while guests see nothing about seating. */
+  sharedAt: string | null;
+  /** A day in the event's zone. */
+  shareBy: string | null;
+}
+
 export interface SeatingPlan {
   id: string;
   roomName: string | null;
@@ -231,6 +239,7 @@ export interface SeatingPlan {
   lengthCm: number;
   version: number;
   changedBy: string | null;
+  sharing: TableSharing;
   sections: SeatingSection[];
   tables: SeatingTable[];
   rows: SeatingRow[];
@@ -479,6 +488,15 @@ export function asSeatingMoved(raw: unknown): SeatingMoved | null {
   return { seating, moves, apart: raw.apart === true };
 }
 
+function asSharing(raw: unknown): TableSharing {
+  if (!isRecord(raw)) return { sharedAt: null, shareBy: null };
+
+  return {
+    sharedAt: typeof raw.sharedAt === 'string' ? raw.sharedAt : null,
+    shareBy: typeof raw.shareBy === 'string' ? raw.shareBy : null,
+  };
+}
+
 function asPlan(raw: unknown): SeatingPlan | null {
   if (!isRecord(raw)) return null;
   const { id, roomName, widthCm, lengthCm, version, changedBy, sections, counts } = raw;
@@ -520,6 +538,7 @@ function asPlan(raw: unknown): SeatingPlan | null {
     lengthCm,
     version,
     changedBy,
+    sharing: asSharing(raw.sharing),
     sections: read as SeatingSection[],
     tables: tables as SeatingTable[],
     rows: rows as SeatingRow[],

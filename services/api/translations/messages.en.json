@@ -326,5 +326,10 @@
     "run_of_show.idempotency_key_required": "Send an Idempotency-Key with each press.",
     "run_of_show.idempotency_key_reused": "This Idempotency-Key was already used for a different press. Nothing was changed.",
     "run_of_show.pressed_at_invalid": "Send pressedAt as a date and time with its offset, such as 2027-03-06T21:50:00+01:00.",
-    "timeline.run_of_show_begins": "Run of show begins"
+    "timeline.run_of_show_begins": "Run of show begins",
+    "timeline.share_tables": "Share tables",
+    "timeline.tables_shared": "Tables shared",
+    "validation.share_by_invalid": "Choose a valid date.",
+    "validation.share_by_past": "Choose today or a later date.",
+    "validation.share_by_not_before_event": "Choose a date before the event."
 }
