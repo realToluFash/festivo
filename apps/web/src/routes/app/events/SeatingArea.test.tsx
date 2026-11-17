@@ -4173,35 +4173,52 @@ describe('Who else is on the plan (sc-4719)', () => {
     expect(await screen.findByRole('button', { name: 'Priya Shah' })).toBeDefined();
   });
 
-  it('beats from a worker, whose timers a hidden tab does not hold back to one a minute', async () => {
-    class StubWorker {
-      static made: StubWorker[] = [];
-      every = 0;
-      onmessage: (() => void) | null = null;
-      constructor() {
-        StubWorker.made.push(this);
-      }
-      postMessage(ms: number) {
-        this.every = ms;
-      }
-      terminate() {}
+  class StubWorker {
+    static made: StubWorker[] = [];
+    url = '';
+    every = 0;
+    onmessage: (() => void) | null = null;
+    onerror: (() => void) | null = null;
+    terminated = false;
+    constructor(url: URL) {
+      this.url = url.href;
+      StubWorker.made.push(this);
     }
-    const { createObjectURL, revokeObjectURL } = URL;
-    URL.createObjectURL = () => 'blob:ticks';
-    URL.revokeObjectURL = () => undefined;
+    postMessage(ms: number) {
+      this.every = ms;
+    }
+    terminate() {
+      this.terminated = true;
+    }
+  }
+
+  it('beats from a worker served from its own origin, whose timers a hidden tab does not hold back to one a minute', async () => {
+    StubWorker.made = [];
     vi.stubGlobal('Worker', StubWorker);
-    try {
-      const { sent } = await onPlanWith([ME]);
-      await waitFor(() => expect(beatsSent(sent)).toBe(1));
-      const beating = StubWorker.made.find((one) => one.every === 5_000)!;
+    const { sent } = await onPlanWith([ME]);
+    await waitFor(() => expect(beatsSent(sent)).toBe(1));
+    const beating = StubWorker.made.find((one) => one.every === 5_000)!;
 
-      act(() => beating.onmessage?.());
+    expect(new URL(beating.url).origin).toBe(window.location.origin);
 
-      await waitFor(() => expect(beatsSent(sent)).toBe(2));
-    } finally {
-      URL.createObjectURL = createObjectURL;
-      URL.revokeObjectURL = revokeObjectURL;
-    }
+    act(() => beating.onmessage?.());
+
+    await waitFor(() => expect(beatsSent(sent)).toBe(2));
+  });
+
+  it('beats from the page when the worker is refused after it was made, rather than going silent', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    StubWorker.made = [];
+    vi.stubGlobal('Worker', StubWorker);
+    const { sent, source } = await onPlanWith([ME]);
+    await waitFor(() => expect(beatsSent(sent)).toBe(1));
+
+    act(() => StubWorker.made.forEach((one) => one.onerror?.()));
+    act(() => vi.advanceTimersByTime(5_000));
+    heardOwn(source);
+
+    await waitFor(() => expect(beatsSent(sent)).toBe(2));
+    expect(StubWorker.made.every((one) => one.terminated)).toBe(true);
   });
 
   it('neither leaves nor reconnects when its timers wake a minute late, and says it is here at once', async () => {
