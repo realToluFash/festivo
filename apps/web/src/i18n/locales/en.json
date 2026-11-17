@@ -4085,7 +4085,7 @@
     "choiceTag": "Choice",
     "variantsTag": "Variants",
     "own": "Served with this course",
-    "ownHelp": "Items of the course’s own, on every plate of the course after the dish’s items, like a bread roll.",
+    "ownHelp": "Added to every plate of this course, after the dish’s items: a bread roll, for example.",
     "ownN": "Course item {{n, number}}",
     "addOwn": "Add a course item",
     "containsStays": "Items add nothing to Contains.",
