@@ -9,6 +9,10 @@
     min-width: auto;
   }
 
+  .today.desk .gs-top > .mn-head {
+    min-width: auto;
+  }
+
   .today.desk :is(.desk-title, .desk-title *, .gs-title, .gs-title *) {
     overflow-wrap: normal;
   }
@@ -51,15 +55,20 @@
   }
 }
 
-/* Up to 1240 px, until the list and the guest fit at their 520 and 380, an open guest or form comes before the list. */
+/* Up to 1240 px, until the list and the guest fit at their 520 and 380, an open guest or form comes before the list, each still at its 520 or 380. */
 @media (40rem < width <= 77.5rem) {
   .today.desk .gs-cols {
     grid-template-columns: minmax(0, 1fr);
   }
 
+  .today.desk .gs-list {
+    max-width: var(--gsList);
+  }
+
   .today.desk .gs-column {
     position: static;
     order: -1;
+    max-width: var(--gsGuest);
     max-height: none;
     margin: 0;
     padding: 0;

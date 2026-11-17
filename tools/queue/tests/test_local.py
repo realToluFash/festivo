@@ -258,6 +258,13 @@ class Scratch(unittest.TestCase):
         self.sweep()
         self.assertTrue(all(path.exists() for path in kept))
 
+    def test_old_batch_flows_go_and_recent_ones_and_the_folder_stay(self):
+        old, recent = self.entry(".batch/sc10118-ipad", 4), self.entry(".batch/sc10200", 1)
+        self.sweep()
+        self.assertFalse(old.exists())
+        self.assertTrue(recent.exists())
+        self.assertTrue(old.parent.is_dir())
+
     def test_an_old_release_folder_keeps_the_record_of_what_is_installed(self):
         release = self.entry("release", 30)
         record = release / "installed"

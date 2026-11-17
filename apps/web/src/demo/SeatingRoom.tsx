@@ -9,8 +9,10 @@ import {
   type Presence,
   type Rings,
   CHAIR_R,
+  chairsTakePointer,
   SW,
-  chairWord,
+  chairSaid,
+  free,
   chairsOf,
   chosenWords,
   extent,
@@ -42,6 +44,10 @@ export interface Look {
   handles: string | null;
   chair: { id: string; i: number } | null;
   chairsFor: string | null;
+  /** A guest is picked: every table says "{n} free" or "Full" (sc-5030). */
+  picking?: boolean;
+  /** The chair whose label shows above it, on hover or focus (sc-5030). */
+  label?: { id: string; i: number } | null;
 }
 
 export interface RoomHands {
@@ -50,6 +56,7 @@ export interface RoomHands {
   onItemFocus?: (id: string | null) => void;
   onItemEnter?: (id: string | null) => void;
   onChair?: (id: string, index: number) => void;
+  onChairLabel?: (spot: { id: string; i: number } | null) => void;
   onHandleDown?: (event: PointerEvent<SVGRectElement>, id: string, handle: Handle) => void;
 }
 
@@ -337,6 +344,7 @@ function ItemDrawing({
 
   if (detail !== 'out') {
     const r = CHAIR_R * s;
+    const pointer = chairsTakePointer(item, s);
 
     chairsOf(item).forEach((point, index) => {
       const chair = item.chairs[index] ?? { state: 'empty' };
@@ -351,7 +359,7 @@ function ItemDrawing({
       const picked = look.chair?.id === item.id && look.chair.i === index;
       const seated = onSeat.filter((one) => one.seat === index);
       // From 50% the keyboard reaches the chosen table's chairs; a pointer only once each is a 44 target (sc-5030).
-      const target = (near && look.chairsFor != null) || look.chairsFor === item.id;
+      const target = (pointer && look.chairsFor != null) || look.chairsFor === item.id;
 
       if (item.kind === 'single') {
         body.push(
@@ -394,11 +402,11 @@ function ItemDrawing({
           />
           {target && (
             <circle
-              className={near ? 'st-chair-hit' : 'st-chair-hit is-keys'}
+              className={pointer ? 'st-chair-hit' : 'st-chair-hit is-keys'}
               role="button"
               tabIndex={look.chairsFor === item.id ? 0 : -1}
               aria-label={
-                say(SW.chairName, { table: item.name, n: index + 1, word: chairWord(chair) }) +
+                say(SW.chairName, { table: item.name, n: index + 1, word: chairSaid(chair) }) +
                 chosenWords(seated.map(({ who }) => ({ who })))
               }
               aria-pressed={picked}
@@ -406,6 +414,10 @@ function ItemDrawing({
               cy={f(y)}
               r="22"
               onPointerDown={(event) => event.stopPropagation()}
+              onPointerEnter={() => hands.onChairLabel?.({ id: item.id, i: index })}
+              onPointerLeave={() => hands.onChairLabel?.(null)}
+              onFocus={() => hands.onChairLabel?.({ id: item.id, i: index })}
+              onBlur={() => hands.onChairLabel?.(null)}
               onClick={(event) => {
                 event.stopPropagation();
                 hands.onChair?.(item.id, index);
@@ -424,6 +436,7 @@ function ItemDrawing({
   }
 
   const words: ReactNode[] = [];
+  const room = look.picking === true && item.kind !== 'single' ? free(item) : null;
 
   if (detail === 'out') {
     const by =
@@ -443,7 +456,8 @@ function ItemDrawing({
         {item.name}
       </text>,
     );
-    if (item.kind !== 'single') {
+    if (room != null) words.push(<FreeTag key="free" x={cx} y={by + 20} n={room} />);
+    else if (item.kind !== 'single') {
       const share = filled(item) / Math.max(1, usable(item));
 
       words.push(
@@ -507,6 +521,27 @@ function ItemDrawing({
     );
   }
 
+  if (room != null) {
+    const ring = room === 0 ? 'st-room-for is-full' : 'st-room-for';
+
+    marks.push(
+      round ? (
+        <circle key="room" className={ring} cx={f(cx)} cy={f(cy)} r={f(ex * s + 6)} />
+      ) : (
+        <g key="room" transform={rot}>
+          <rect
+            className={ring}
+            x={f(-ex * s - 6)}
+            y={f(-ey * s - 6)}
+            width={f(2 * ex * s + 12)}
+            height={f(2 * ey * s + 12)}
+            rx="8"
+          />
+        </g>
+      ),
+    );
+    if (detail !== 'out') marks.push(<FreeTag key="free" x={cx} y={cy + ey * s + 32} n={room} />);
+  }
   onItem.forEach(({ who }, k) => {
     const pad = (lit ? 10 : 2) + RING_STEP * k;
     const lift = PILL_STEP * k;
@@ -641,6 +676,26 @@ function ItemDrawing({
       {!readOnly && look.handles === item.id && (
         <Handles item={item} cx={cx} cy={cy} s={s} hands={hands} />
       )}
+    </g>
+  );
+}
+
+/** One guess at 12 px words, so the tip, the label and the free tag grow together in every locale. */
+function wordsWide(words: string): number {
+  return words.length * 7;
+}
+
+/** While a guest is picked: "{n} free" on a green dashed outline, or "Full" on a grey one (sc-5030). */
+function FreeTag({ x, y, n }: { x: number; y: number; n: number }) {
+  const words = n === 0 ? SW.fullTab : say(SW.freeTag, { n });
+  const w = wordsWide(words) + 16;
+
+  return (
+    <g className={n === 0 ? 'st-free is-full' : 'st-free'} aria-hidden="true">
+      <rect x={f(x - w / 2)} y={f(y - 11)} width={f(w)} height="22" rx="11" />
+      <text x={f(x)} y={f(y)} textAnchor="middle" dominantBaseline="central">
+        {words}
+      </text>
     </g>
   );
 }
@@ -923,12 +978,52 @@ export function RoomDrawing({
       {tip != null && (
         <Tip x={ox + tip.at[0] * s + 26} y={oy + tip.at[1] * s + 30} words={tip.words} />
       )}
+      {detail !== 'out' && (
+        <ChairLabel items={items} spot={look.label ?? null} s={s} ox={ox} oy={oy} />
+      )}
     </svg>
   );
 }
 
+/** The chair's name above it on hover or focus, never written on the picture otherwise (sc-5030). */
+function ChairLabel({
+  items,
+  spot,
+  s,
+  ox,
+  oy,
+}: {
+  items: readonly Item[];
+  spot: { id: string; i: number } | null;
+  s: number;
+  ox: number;
+  oy: number;
+}) {
+  const item = spot == null ? undefined : items.find((one) => one.id === spot.id);
+  const point = item == null || spot == null ? undefined : chairsOf(item)[spot.i];
+
+  if (item == null || spot == null || point == null) return null;
+  const [px, py] = turn(point, item.rot);
+  const x = ox + (item.x + px) * s;
+  const y = oy + (item.y + py) * s;
+  const words = say(SW.seatLabel, {
+    n: spot.i + 1,
+    word: chairSaid(item.chairs[spot.i] ?? { state: 'empty' }),
+  });
+  const w = wordsWide(words) + 20;
+
+  return (
+    <g className="st-tip" aria-hidden="true">
+      <rect x={f(x - w / 2)} y={f(y - CHAIR_R * s - 40)} width={f(w)} height="28" rx="10" />
+      <text x={f(x)} y={f(y - CHAIR_R * s - 26)} textAnchor="middle" dominantBaseline="central">
+        {words}
+      </text>
+    </g>
+  );
+}
+
 function Tip({ x, y, words }: { x: number; y: number; words: string }) {
-  const w = words.length * 7 + 20;
+  const w = wordsWide(words) + 20;
 
   return (
     <g className="st-tip" aria-hidden="true">

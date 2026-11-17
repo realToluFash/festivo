@@ -5,6 +5,7 @@ import {
   useContext,
   useEffect,
   useLayoutEffect,
+  useMemo,
   useRef,
   useState,
 } from 'react';
@@ -17,13 +18,16 @@ import './OfflineBox.css';
 
 export function OfflineProvider({ children }: { children: ReactNode }) {
   const [stale, show] = useState<Stale | null>(null);
+  const [hushed, hush] = useState(false);
+  const value = useMemo(() => ({ stale, show, hushed, hush }), [stale, hushed]);
 
-  return <StaleScreen.Provider value={{ stale, show }}>{children}</StaleScreen.Provider>;
+  return <StaleScreen.Provider value={value}>{children}</StaleScreen.Provider>;
 }
 
 /** Under the header, taking its own room: what was in view stays in view, as `ReleaseBand` keeps it. */
 export function OfflineBand() {
-  const { stale } = useContext(StaleScreen);
+  const { stale: loaded, hushed } = useContext(StaleScreen);
+  const stale = hushed ? null : loaded;
   const band = useRef<HTMLDivElement>(null);
   const before = useRef<{ edge: number; scrolled: boolean; field: Element | null } | null>(null);
   const showing = stale != null;
@@ -68,9 +72,9 @@ export function OfflineBand() {
 
 /** Above the title of a page in its own card at a desk, where the band would be (sc-39471): the same words and Try again, in Events' amber box. */
 export function OfflineBox() {
-  const { stale } = useContext(StaleScreen);
+  const { stale, hushed } = useContext(StaleScreen);
 
-  return <StaleBand stale={stale} box />;
+  return <StaleBand stale={hushed ? null : stale} box />;
 }
 
 /** The amber box's look, for whatever says it is offline. */

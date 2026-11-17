@@ -43,6 +43,8 @@ import {
   detailOf,
   filled,
   firstFree,
+  freedFrom,
+  freedParty,
   fitOf,
   focusReach,
   free,
@@ -645,6 +647,7 @@ function Seating({
           chair: null,
           pop: null,
           hover: null,
+          chairLabel: null,
           bar: party == null ? null : { kind: 'tint', words: pickWords(party), does: 'pick' },
         };
       }),
@@ -776,13 +779,7 @@ function Seating({
         const was = item?.chairs[chair];
 
         if (party == null || item == null || was?.who == null) return now;
-        const moved: Party = {
-          id: `back-${was.who}`,
-          name: was.who,
-          companions: [],
-          group: null,
-          reply: 'coming',
-        };
+        const moved = freedParty(was.who);
 
         return {
           ...now,
@@ -815,15 +812,7 @@ function Seating({
         const item = now.plan.items.find((one) => one.id === tableId);
 
         if (item == null) return now;
-        const back: Party[] = item.chairs
-          .filter((chair) => chair.state === 'taken' && chair.who != null)
-          .map((chair) => ({
-            id: `back-${chair.who}`,
-            name: chair.who!,
-            companions: [],
-            group: null,
-            reply: 'coming',
-          }));
+        const back = freedFrom([item]);
 
         return {
           ...now,
@@ -1819,6 +1808,8 @@ function Seating({
         ? (ui.chosen[0] ?? null)
         : null,
     chair: ui.chair,
+    picking: ui.picked != null,
+    label: ui.picked != null ? ui.chairLabel : null,
     chairsFor:
       detail === 'out'
         ? null
@@ -2031,6 +2022,7 @@ function Seating({
                   onItemEnter: (id) => {
                     if (ui$.current.picked != null) set((now) => ({ ...now, hover: id }));
                   },
+                  onChairLabel: (spot) => set((now) => ({ ...now, chairLabel: spot })),
                   onChair: (id, index) => {
                     if (ui$.current.picked != null) seatAt(id, index);
                     else
@@ -2335,7 +2327,9 @@ function MessageBar({
     >
       <Icon name={glyph} size={17} weight={2.2} />
       <div className="st-bar-body">
-        <p>{bar.words}</p>
+        <p tabIndex={-1} data-said="bar">
+          {bar.words}
+        </p>
         {bar.does === 'placing' && (
           <span className="st-bar-acts">
             <button type="button" className="desk-text" onClick={onPlace}>
@@ -2358,8 +2352,22 @@ function MessageBar({
             <button
               type="button"
               className="desk-text"
+              data-act="undo"
               onClick={() => {
+                if (ui.undo?.stale === true) {
+                  set((now) => ({
+                    ...now,
+                    undo: null,
+                    bar: { kind: 'amber', words: SW.undoRefused },
+                  }));
+                  window.setTimeout(
+                    () => document.querySelector<HTMLElement>('.st-bar [data-said="bar"]')?.focus(),
+                    0,
+                  );
+                  return;
+                }
                 const undoing = ui.undo != null;
+                const back = ui.undo?.chosen ?? [];
 
                 set((now) =>
                   now.undo == null
@@ -2368,6 +2376,7 @@ function MessageBar({
                         ...now,
                         plan: now.undo.plan,
                         tray: now.undo.tray,
+                        chosen: now.undo.chosen ?? now.chosen,
                         undo: null,
                         bar: null,
                         hover: null,
@@ -2376,7 +2385,11 @@ function MessageBar({
                       },
                 );
                 if (undoing)
-                  window.setTimeout(() => set((now) => ({ ...now, spoken: SW.undone })), 60);
+                  window.setTimeout(() => {
+                    set((now) => ({ ...now, spoken: SW.undone }));
+                    if (back[0] != null)
+                      document.querySelector<SVGElement>(`[data-item="${back[0]}"]`)?.focus();
+                  }, 60);
               }}
             >
               {SW.undo}
@@ -2730,17 +2743,7 @@ function Asking() {
     );
   }
   const doomed = ui.plan.items.filter((item) => asking.ids.includes(item.id));
-  const freed: Party[] = doomed.flatMap((item) =>
-    item.chairs
-      .filter((chair) => chair.state === 'taken' && chair.who != null)
-      .map((chair) => ({
-        id: `back-${chair.who}`,
-        name: chair.who!,
-        companions: [],
-        group: null,
-        reply: 'coming' as const,
-      })),
-  );
+  const freed = freedFrom(doomed);
 
   if (doomed.length > 1) {
     const seated = seatedOf(doomed);
@@ -2757,7 +2760,7 @@ function Asking() {
         go={many(tables ? 'deleteTablesGo' : 'deleteItemsGo', doomed.length)}
         red={false}
         onKeep={keep}
-        onGo={() =>
+        onGo={() => {
           set((now) => ({
             ...now,
             plan: {
@@ -2765,15 +2768,19 @@ function Asking() {
               items: now.plan.items.filter((item) => !asking.ids.includes(item.id)),
             },
             tray: [...now.tray, ...freed],
-            undo: { plan: now.plan, tray: now.tray },
+            undo: { plan: now.plan, tray: now.tray, chosen: asking.ids },
             bar: { kind: 'undo', words, does: 'undo' },
             asking: null,
             chosen: [],
             chair: null,
             notice: null,
             save: 'saving',
-          }))
-        }
+          }));
+          window.setTimeout(
+            () => document.querySelector<HTMLButtonElement>('.st-bar [data-act="undo"]')?.focus(),
+            0,
+          );
+        }}
       />
     );
   }
