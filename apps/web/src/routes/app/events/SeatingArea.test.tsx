@@ -6145,7 +6145,10 @@ describe('Seating on the Floor plan (sc-5030)', () => {
     });
     const sent = await onSeating({
       'GET /api/events/ev_1/seating-plan': () =>
-        seating(withGuests([guest(), SEATED, held], table(), T2)),
+        seating({
+          ...withGuests([guest(), SEATED, held], table(), T2),
+          rows: [row({ seats: 4, unusableSeats: [2] })],
+        }),
       'POST /api/events/ev_1/seating-plan/guests/seat': () => seatedAt(3),
     });
 
@@ -6155,7 +6158,9 @@ describe('Seating on the Floor plan (sc-5030)', () => {
     expect(percent()).toBe('150%');
     expect(screen.queryByRole('button', { name: /^Table 1, Seat 2,/ })).toBeNull();
     expect(screen.queryByRole('button', { name: /^Table 2, Seat 1,/ })).toBeNull();
+    expect(screen.queryByRole('button', { name: /^Row A, seat 2,/ })).toBeNull();
     expect(screen.getByRole('button', { name: 'Table 1, Seat 3, Empty' })).toBeDefined();
+    expect(screen.getByRole('button', { name: /^Row A, seat 3,/ })).toBeDefined();
 
     fireEvent.click(document.querySelectorAll('[data-table="t1"] .st-chair')[1]!);
     await screen.findAllByText('Ada Obi is at Table 1.');
@@ -6173,6 +6178,49 @@ describe('Seating on the Floor plan (sc-5030)', () => {
     fireEvent.keyDown(chair, { key: 'Enter' });
     await screen.findAllByText('Ada Obi is at Table 1.');
     await waitFor(() => expect(document.activeElement).toBe(t1));
+  });
+
+  it('keeps focus on the table it seats at after a Swap with from a chair', async () => {
+    signedIn();
+    const bea = guest({ id: 'g_bea', fullName: 'Bea Lane', position: 2 });
+    const swapped = guest({ seat: { kind: 'table', id: 't1', seat: 1 } });
+    const sofiaOut = { ...SEATED, seat: null };
+    const atT2 = { ...bea, seat: { kind: 'table', id: 't2', seat: 2 } };
+    const after = [swapped, sofiaOut, bea];
+
+    await onSeating({
+      'GET /api/events/ev_1/seating-plan': () =>
+        seating(withGuests([guest(), SEATED, bea], table(), T2)),
+      'POST /api/events/ev_1/seating-plan/guests/swap': () =>
+        moved(withGuests(after, table(), T2), [
+          { guestId: 'g_ada', from: null, to: { kind: 'table', id: 't1', seat: 1 } },
+          { guestId: 'g_sofia', from: { kind: 'table', id: 't1', seat: 1 }, to: null },
+        ]),
+      'POST /api/events/ev_1/seating-plan/guests/seat': () =>
+        moved(withGuests([swapped, sofiaOut, atT2], table(), T2), [
+          { guestId: 'g_bea', from: null, to: { kind: 'table', id: 't2', seat: 2 } },
+        ]),
+    });
+
+    fireEvent.click(await screen.findByRole('tab', { name: 'Seat' }));
+    fireEvent.click(screen.getByRole('button', { name: /Ada Obi/ }));
+    press('Zoom in', 3);
+    const sofia = screen.getByRole('button', {
+      name: 'Table 1, Seat 1, Sofia Rossi, Not sure yet',
+    });
+
+    sofia.focus();
+    fireEvent.keyDown(sofia, { key: 'Enter' });
+    fireEvent.click(await screen.findByRole('button', { name: 'Swap with Sofia Rossi' }));
+    await screen.findAllByText('Ada Obi is at Table 1.');
+
+    fireEvent.click(screen.getByRole('button', { name: /Bea Lane/ }));
+    const t2 = screen.getByRole('button', { name: /^Table 2, (?!Seat)/ });
+
+    t2.focus();
+    fireEvent.keyDown(t2, { key: 'Enter' });
+    await screen.findAllByText('Bea Lane is at Table 2.');
+    await waitFor(() => expect(document.activeElement).toBe(t2));
   });
 
   it('steps the arrows through tables, rows and single seats in reading order, and Enter on a row seats there', async () => {

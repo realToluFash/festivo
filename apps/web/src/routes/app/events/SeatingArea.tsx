@@ -737,12 +737,15 @@ function Plan({
   const [cardSection, setCardSection] = useState<string | null>(null);
   const [tray, setTray] = useState<TrayFilter>({ unsure: false, search: '', groups: [] });
   const party = plan == null || readOnly ? null : pickedParty(plan, pickedGuest);
+  const dropChoice = () => {
+    choiceFrom.current = null;
+    setChoice(null);
+  };
   const closeChoice = () => {
     const back = choiceFrom.current;
     const at = choice == null ? null : `.st-room [${choice.attribute}="${choice.id}"]`;
 
-    choiceFrom.current = null;
-    setChoice(null);
+    dropChoice();
     focusWhenFree(() =>
       back instanceof SVGElement && back.closest('.st-room') != null
         ? back
@@ -1479,7 +1482,7 @@ function Plan({
   };
   const seatAt = (item: FloorItem, seat: number | null = null, justGuest = false): void => {
     if (party == null || plan == null) return;
-    const from = choiceFrom.current ?? document.activeElement;
+    const from = (choice == null ? null : choiceFrom.current) ?? document.activeElement;
 
     choiceFrom.current = null;
     const lead = party.lead;
@@ -1515,7 +1518,7 @@ function Plan({
         go: {
           ...go,
           run: () => {
-            setChoice(null);
+            dropChoice();
             go.run();
           },
         },
@@ -1545,7 +1548,7 @@ function Plan({
       return;
     }
     setBar(null);
-    setChoice(null);
+    dropChoice();
     api.seatGuest(event.id, lead.id, { kind, id: item.one.id }, { seat, justGuest }).then(
       (moved) => {
         onSeating(moved.seating);
@@ -2808,7 +2811,7 @@ function Plan({
               <ViewSwitch
                 view={seatingView}
                 onView={(view) => {
-                  setChoice(null);
+                  dropChoice();
                   setSeatingView(view);
                 }}
               />
