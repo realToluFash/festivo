@@ -7,7 +7,6 @@ namespace App\Domain\Seating;
 use App\Audit\Auditor;
 use App\Domain\Seating\Http\SeatingSerialiser;
 use App\Entity\Event;
-use App\Entity\Guest;
 use App\Entity\SeatAssignment;
 use App\Entity\SeatingPlan;
 use App\Entity\SeatingRow;
@@ -25,6 +24,7 @@ use App\Http\EntityTag;
 use App\Http\Exception\ApiException;
 use App\Locale\NameNormaliser;
 use App\Realtime\RealtimePublisher;
+use App\Repository\GuestRepository;
 use App\Repository\SeatAssignmentRepository;
 use App\Repository\SeatingPlanRepository;
 use App\Repository\SeatingRowRepository;
@@ -90,6 +90,7 @@ final readonly class SeatingPlanEditor
         private TranslatorInterface $translator,
         private SeatAssignmentRepository $seatAssignmentRepository,
         private GuestSeater $guestSeater,
+        private GuestRepository $guestRepository,
     ) {
     }
 
@@ -825,9 +826,9 @@ final readonly class SeatingPlanEditor
         $guests = [];
 
         foreach ($wanted as $one) {
-            $guest = Uuid::isValid($one['guestId']) ? $this->entityManager->find(Guest::class, Uuid::fromString($one['guestId'])) : null;
+            $guest = Uuid::isValid($one['guestId']) ? $this->guestRepository->findOneInEvent($event->getId(), Uuid::fromString($one['guestId'])) : null;
 
-            if (null === $guest || !$guest->getEvent()->getId()->equals($event->getId()) || !GuestSeater::mayBeSeated($guest) || !Iter\contains(GuestSeater::usableChairs($one['place']), $one['seat'])) {
+            if (null === $guest || !GuestSeater::mayBeSeated($guest) || !Iter\contains(GuestSeater::usableChairs($one['place']), $one['seat'])) {
                 throw new ApiException(ErrorCode::SeatingUndoStale, 'seating.undo_stale');
             }
 

@@ -502,6 +502,26 @@ final class SeatingGuestsTest extends ApiTestCase
     }
 
     #[Test]
+    public function undoOfDeletingManyRefusesAGuestOfAnotherEvent(): void
+    {
+        $table = $this->addTable();
+        $ada = $this->guest('Ada Obi');
+        $this->seat($ada, $table);
+        $before = [$this->itemNow('tables', $table)];
+        $moves = $this->deleteMany([['tables', $table]])['moves'];
+        $here = $this->eventId;
+        $this->eventId = $this->newEvent($this->owner, $this->organisation);
+        $elsewhere = $this->guest('Bola Ade');
+        $this->eventId = $here;
+
+        $this->restore($before, Vec\map($moves, static fn (array $move): array => ['guestId' => $elsewhere] + $move));
+
+        self::assertSame(409, $this->statusCode(), Json\encode($this->last()));
+        self::assertSame('https://soirely.com/errors/seating_undo_stale', $this->last()['type'] ?? null);
+        self::assertSame([], Type\vec(Type\mixed())->coerce($this->planNow()['tables']));
+    }
+
+    #[Test]
     public function undoOfDuplicateChangesNothingOnceSomebodySitsInACopy(): void
     {
         $table = $this->addTable();
