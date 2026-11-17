@@ -11,6 +11,7 @@ import { SAMPLE } from './rules.ts';
 import type { Tell } from '../components/SettingsParts.tsx';
 import { SearchRow } from './Search.tsx';
 import './narrowDesk.css';
+import './wideDesk.css';
 
 interface Reader {
   name: string;
