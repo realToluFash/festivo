@@ -1860,6 +1860,18 @@ describe('the Tables and List views (sc-4013, sc-4016)', () => {
     },
   );
 
+  it('finishes a move picked on Tables from the List', SLOW, async () => {
+    await seating('tablesMoving');
+    fireEvent.click(screen.getByRole('button', { name: 'List' }));
+    expect(screen.getByText('Now pick a table for Funmi Adeyemi.')).toBeDefined();
+    const table8 = screen
+      .getAllByRole('row')
+      .find((row) => row.querySelector('th')?.textContent?.startsWith('Table 8'));
+
+    fireEvent.click(within(table8!).getByRole('button', { name: 'Seat here' }));
+    expect(await screen.findByText('Funmi Adeyemi is at Table 8.')).toBeDefined();
+  });
+
   it('keeps chairs out of reach when read only', SLOW, async () => {
     await seating('readOnly');
     fireEvent.click(screen.getByRole('button', { name: 'Tables' }));

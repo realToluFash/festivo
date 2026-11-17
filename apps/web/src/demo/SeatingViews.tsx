@@ -367,7 +367,10 @@ export function ListView() {
         <tbody>
           {rows.map((item) => {
             const open = ui.listOpen === item.id;
-            const room = picked != null && usable(item) - filled(item) >= peopleIn(picked);
+            const room =
+              ui.moving != null
+                ? item.id !== ui.moving.table && usable(item) > filled(item)
+                : picked != null && usable(item) - filled(item) >= peopleIn(picked);
             const marks = marksOf(ui.rings, ui.presence, item.id);
 
             return (

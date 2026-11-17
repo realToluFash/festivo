@@ -1077,15 +1077,18 @@ export function seedOf(state: SeatingState | null): Ui {
         pop: { kind: 'swap', table: 't4', chair: 2, party: 'lucia' },
         bar: { kind: 'tint', words: pickWords(ui.tray[2]!), does: 'pick' },
       };
-    case 'tablesMoving':
+    case 'tablesMoving': {
+      const name = byId(plan, 't4').chairs[2]?.who ?? '';
+
       return {
         ...ui,
         tab: 'seat',
         view: 'tables',
         picked: MOVING,
         moving: { table: 't4', chair: 2 },
-        bar: { kind: 'tint', words: say(SW.pickOne, { name: 'Funmi Adeyemi' }), does: 'pick' },
+        bar: { kind: 'tint', words: say(SW.pickOne, { name }), does: 'pick' },
       };
+    }
     case 'tablesMoved': {
       const next = movedSeat(plan, { table: 't4', chair: 2 }, 't8');
 
@@ -1098,7 +1101,7 @@ export function seedOf(state: SeatingState | null): Ui {
         undo: { plan, tray: ui.tray },
         bar: {
           kind: 'undo',
-          words: say(SW.seatedOne, { name: 'Funmi Adeyemi', table: 'Table 8' }),
+          words: say(SW.seatedOne, { name: next?.name ?? '', table: byId(plan, 't8').name }),
           does: 'undo',
         },
       };
