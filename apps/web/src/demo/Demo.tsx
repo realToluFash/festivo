@@ -37,6 +37,7 @@ import { HandoffPage } from './Handoff.tsx';
 import { HANDOFF_PAGES, forgetAnyway } from './handoff.ts';
 import { PHONE_FIT_PAGES } from './longName.ts';
 import { DESK_FIT_PAGES } from './deskFit.ts';
+import { NOW_STATE_NAMES, NOW_STATES } from './todayRun.ts';
 import { GUEST_PAGES } from './guest.ts';
 import { GUEST_KITCHEN_PAGES } from './guestKitchen.ts';
 import { GUEST_PARTY_PAGES } from './guestCompanions.ts';
@@ -142,7 +143,11 @@ const TODAY_MOMENTS: { key: string; name: string }[] = [
   { key: 'plan&starts=later', name: 'A planning day, the event starts later today' },
   { key: 'plan&week=rows', name: 'A planning day, events sharing days in rows' },
   { key: 'planNow', name: 'A planning day, built now' },
-  { key: 'day', name: 'The event day' },
+  { key: 'day', name: 'The event day, Now as the run of show' },
+  ...NOW_STATES.filter((state) => state !== 'on').map((state) => ({
+    key: `day&now=${state}`,
+    name: `The event day, ${NOW_STATE_NAMES[state]}`,
+  })),
   { key: 'dayNow', name: 'The event day, built now' },
   { key: 'quiet', name: 'A quiet week' },
   { key: 'first', name: 'A first run' },
