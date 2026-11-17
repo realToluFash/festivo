@@ -7,6 +7,7 @@ namespace App\Domain\Seating;
 use App\Audit\Auditor;
 use App\Domain\Seating\Http\SeatingSerialiser;
 use App\Entity\Event;
+use App\Entity\Guest;
 use App\Entity\SeatAssignment;
 use App\Entity\SeatingPlan;
 use App\Entity\SeatingRow;
@@ -704,22 +705,45 @@ final readonly class SeatingPlanEditor
         return Vec\map($copies, static fn (SeatingTable|SeatingRow|SeatingSeat $copy): string => $copy->getId()->toRfc4122());
     }
 
-    /** @param list<array{kind: 'table'|'row'|'seat', id: string, version: int}> $items */
-    public function deleteFurniture(Event $event, SeatingPlan $plan, User $by, array $items): void
+    /**
+     * @param list<array{kind: 'table'|'row'|'seat', id: string, version: int}> $items
+     *
+     * @return list<array{guestId: string, from: array{kind: 'table'|'row'|'seat', id: string, seat: int}, to: null}> each freed guest's move to Without a seat
+     */
+    public function deleteFurniture(Event $event, SeatingPlan $plan, User $by, array $items, bool $emptyOnly = false): array
     {
         $this->somethingChosen($items);
 
-        $this->locked($plan, function () use ($plan, $by, $items): void {
-            foreach ($this->unchangedItems($plan, $items) as $item) {
+        $freed = $this->locked($plan, function () use ($by, $plan, $items, $emptyOnly): array {
+            $found = $this->unchangedItems($plan, $items);
+            $freed = [];
+
+            foreach ($found as $item) {
+                foreach ($this->seatAssignmentRepository->findAt($item->getId()) as $there) {
+                    if ($emptyOnly) {
+                        throw new ApiException(ErrorCode::SeatingUndoStale, 'seating.undo_stale');
+                    }
+
+                    $freed[] = ['guestId' => $there->getGuest()->getId()->toRfc4122(), 'from' => GuestSeater::refOf($item, $there->getSeat()), 'to' => null];
+                    $this->auditor->record(GuestSeater::MOVED, 'Guest', $there->getGuest()->getId(), Actor::User, $by->getId(), $by->getName(), Auditor::diff(['seat' => GuestSeater::placeName($item) . ' #' . $there->getSeat()], ['seat' => null]));
+                    $this->entityManager->remove($there);
+                }
+            }
+
+            foreach ($found as $item) {
                 $this->auditor->record(self::deletedAs($item), self::auditedAs($item), $item->getId(), Actor::User, $by->getId(), $by->getName(), Auditor::diff($this->recordedItem($item), []));
                 $this->entityManager->remove($item);
             }
+
+            return $freed;
         });
 
         $this->published($event, $plan);
+
+        return $freed;
     }
 
-    /** @param list<array{kind: 'table'|'row'|'seat', name: string, sectionId: ?string, xCm: int, yCm: int, shape?: TableShape, seats?: int, widthCm?: int, lengthCm?: int, endSeats?: int, rotation?: int, spacingCm?: int, unusableSeats?: list<int>, unusable?: bool}> $items */
+    /** @param list<array{kind: 'table'|'row'|'seat', name: string, sectionId: ?string, xCm: int, yCm: int, shape?: TableShape, seats?: int, widthCm?: int, lengthCm?: int, endSeats?: int, rotation?: int, spacingCm?: int, unusableSeats?: list<int>, unusable?: bool, guests?: list<array{guestId: string, seat: int}>}> $items */
     public function restoreFurniture(Event $event, SeatingPlan $plan, User $by, array $items): array
     {
         $this->somethingChosen($items);
@@ -762,9 +786,16 @@ final readonly class SeatingPlanEditor
                 throw ApiException::validation($violations);
             }
 
+            $reseated = $this->reseated($event, $restored, $items);
+
             foreach ($restored as $back) {
                 $this->entityManager->persist($back);
                 $this->auditor->record(self::addedAs($back), self::auditedAs($back), $back->getId(), Actor::User, $by->getId(), $by->getName(), Auditor::diff([], $this->recordedItem($back)));
+            }
+
+            foreach ($reseated as $assignment) {
+                $this->entityManager->persist($assignment);
+                $this->auditor->record(GuestSeater::MOVED, 'Guest', $assignment->getGuest()->getId(), Actor::User, $by->getId(), $by->getName(), Auditor::diff(['seat' => null], ['seat' => GuestSeater::placeName($assignment->getPlace()) . ' #' . $assignment->getSeat()]));
             }
 
             return $restored;
@@ -776,10 +807,47 @@ final readonly class SeatingPlanEditor
     }
 
     /**
-     * @param array{kind: 'table'|'row'|'seat', name: string, sectionId: ?string, xCm: int, yCm: int, shape?: TableShape, seats?: int, widthCm?: int, lengthCm?: int, endSeats?: int, rotation?: int, spacingCm?: int, unusableSeats?: list<int>, unusable?: bool} $item
-     * @param list<SeatingTable>                                                                                                                                                                                                                                   $tables
-     * @param list<SeatingRow>                                                                                                                                                                                                                                     $rows
-     * @param list<SeatingSeat>                                                                                                                                                                                                                                    $seats
+     * @param list<SeatingTable|SeatingRow|SeatingSeat>                          $restored in the order of `$items`
+     * @param list<array{guests?: list<array{guestId: string, seat: int}>, ...}> $items
+     *
+     * @return list<SeatAssignment>
+     */
+    private function reseated(Event $event, array $restored, array $items): array
+    {
+        $wanted = [];
+
+        foreach ($items as $index => $item) {
+            foreach ($item['guests'] ?? [] as $one) {
+                $wanted[] = ['place' => $restored[$index], 'guestId' => $one['guestId'], 'seat' => $one['seat']];
+            }
+        }
+
+        $guests = [];
+
+        foreach ($wanted as $one) {
+            $guest = Uuid::isValid($one['guestId']) ? $this->entityManager->find(Guest::class, Uuid::fromString($one['guestId'])) : null;
+
+            if (null === $guest || !$guest->getEvent()->getId()->equals($event->getId()) || !GuestSeater::mayBeSeated($guest) || !Iter\contains(GuestSeater::usableChairs($one['place']), $one['seat'])) {
+                throw new ApiException(ErrorCode::SeatingUndoStale, 'seating.undo_stale');
+            }
+
+            $guests[] = $guest;
+        }
+
+        $chairs = Vec\map($wanted, static fn (array $one): string => $one['place']->getId()->toRfc4122() . ':' . $one['seat']);
+
+        if (Iter\count(Vec\unique($chairs)) !== Iter\count($chairs) || Iter\count(Vec\unique(Vec\map($wanted, static fn (array $one): string => $one['guestId']))) !== Iter\count($wanted) || [] !== $this->seatAssignmentRepository->findOfGuests($guests)) {
+            throw new ApiException(ErrorCode::SeatingUndoStale, 'seating.undo_stale');
+        }
+
+        return Vec\map(Vec\zip($guests, $wanted), static fn (array $pair): SeatAssignment => new SeatAssignment($pair[0], $pair[1]['place'], $pair[1]['seat']));
+    }
+
+    /**
+     * @param array{kind: 'table'|'row'|'seat', name: string, sectionId: ?string, xCm: int, yCm: int, shape?: TableShape, seats?: int, widthCm?: int, lengthCm?: int, endSeats?: int, rotation?: int, spacingCm?: int, unusableSeats?: list<int>, unusable?: bool, guests?: list<array{guestId: string, seat: int}>} $item
+     * @param list<SeatingTable>                                                                                                                                                                                                                                                                                     $tables
+     * @param list<SeatingRow>                                                                                                                                                                                                                                                                                       $rows
+     * @param list<SeatingSeat>                                                                                                                                                                                                                                                                                      $seats
      */
     private function restored(SeatingPlan $plan, array $item, array $tables, array $rows, array $seats, MeasurementSystem $system, User $by): SeatingTable|SeatingRow|SeatingSeat
     {

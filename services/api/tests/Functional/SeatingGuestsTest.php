@@ -423,6 +423,127 @@ final class SeatingGuestsTest extends ApiTestCase
     }
 
     #[Test]
+    public function deletingManyItemsFreesEveryoneInThemAndAPartySplitAcrossAKeptOneKeepsThatSeat(): void
+    {
+        $first = $this->addTable();
+        $second = $this->addTable();
+        $kept = $this->addTable();
+        $row = $this->addRow();
+        $ada = $this->guest('Ada Obi', ['Chidi Obi', null]);
+        $bola = $this->guest('Bola Ade');
+        $this->seat($ada, $first);
+        $chidi = $this->companionId('Chidi Obi');
+        $this->seat($chidi, $kept, seat: 4);
+        $this->as($this->owner, 'POST', $this->plan() . '/guests/seat', ['guestId' => $bola, 'kind' => 'row', 'placeId' => $row]);
+        $published = Iter\count(self::service(RecordingHub::class)->published);
+
+        $answer = $this->deleteMany([['tables', $first], ['tables', $second], ['rows', $row]]);
+
+        self::assertSame(200, $this->statusCode(), Json\encode($answer));
+        self::assertSame(3, Iter\count(Type\vec(Type\mixed())->coerce($answer['moves'])), 'Ada, her held chair and Bola, not Chidi');
+        self::assertContains(['guestId' => $bola, 'from' => ['kind' => 'row', 'id' => $row, 'seat' => 1], 'to' => null], $answer['moves']);
+        self::assertNull($this->guestNow($ada)['seat']);
+        self::assertNull($this->guestNow($bola)['seat']);
+        self::assertSame([[4, 'Chidi Obi']], $this->namesAt($kept));
+        self::assertSame(1, $this->planNow()['counts']['seatedGuests']);
+        self::assertSame([$kept], Vec\map(Type\vec(Type\dict(Type\string(), Type\mixed()))->coerce($this->planNow()['tables']), static fn (array $one): mixed => $one['id']));
+        $update = Iter\last(Vec\slice(self::service(RecordingHub::class)->published, $published)) ?? self::fail('nothing published');
+        self::assertSame(['events/' . $this->eventId . '/seating'], $update->getTopics());
+    }
+
+    #[Test]
+    public function undoOfDeletingManyPutsEveryItemBackWithEveryGuestInTheChairTheyHad(): void
+    {
+        $table = $this->addTable();
+        $row = $this->addRow();
+        $ada = $this->guest('Ada Obi', ['Chidi Obi']);
+        $bola = $this->guest('Bola Ade');
+        $this->seat($ada, $table, seat: 6);
+        $this->as($this->owner, 'POST', $this->plan() . '/guests/seat', ['guestId' => $bola, 'kind' => 'row', 'placeId' => $row, 'seat' => 3]);
+        $before = [$this->itemNow('tables', $table), $this->itemNow('rows', $row)];
+        $moves = $this->deleteMany([['tables', $table], ['rows', $row]])['moves'];
+
+        $answer = $this->restore($before, $moves);
+
+        self::assertSame(201, $this->statusCode(), Json\encode($answer));
+        [$newTable, $newRow] = Type\vec(Type\string())->coerce($answer['chosen'] ?? null);
+        self::assertSame([[6, 'Ada Obi'], [7, 'Chidi Obi']], $this->namesAt($newTable));
+        self::assertSame([[3, 'Bola Ade']], $this->namesAt($newRow, 'rows'));
+        self::assertSame(3, $this->planNow()['counts']['seatedGuests']);
+    }
+
+    #[Test]
+    public function undoOfDeletingManyChangesNothingOnceAFreedGuestIsSeatedElsewhereNotComingOrRemoved(): void
+    {
+        foreach (['seated elsewhere', 'not coming', 'removed'] as $change) {
+            $table = $this->addTable();
+            $other = $this->addTable();
+            $ada = $this->guest('Ada ' . $change);
+            $bola = $this->guest('Bola ' . $change);
+            $this->seat($ada, $table);
+            $this->seat($bola, $table);
+            $before = [$this->itemNow('tables', $table)];
+            $moves = $this->deleteMany([['tables', $table]])['moves'];
+
+            match ($change) {
+                'seated elsewhere' => $this->seat($bola, $other),
+                'not coming' => $this->reply($bola, 'notComing'),
+                default => $this->as($this->owner, 'DELETE', '/api/events/' . $this->eventId . '/guests/' . $bola),
+            };
+            $tables = Iter\count(Type\vec(Type\mixed())->coerce($this->planNow()['tables']));
+
+            $this->restore($before, $moves);
+
+            self::assertSame(409, $this->statusCode(), $change);
+            self::assertSame('https://soirely.com/errors/seating_undo_stale', $this->last()['type'] ?? null, $change);
+            self::assertSame($tables, Iter\count(Type\vec(Type\mixed())->coerce($this->planNow()['tables'])), $change . ': the items stay deleted');
+            self::assertNull($this->guestNow($ada)['seat'], $change . ': nobody is seated back');
+        }
+    }
+
+    #[Test]
+    public function undoOfDuplicateChangesNothingOnceSomebodySitsInACopy(): void
+    {
+        $table = $this->addTable();
+        $answer = $this->as($this->owner, 'POST', $this->plan() . '/furniture/duplicate', ['items' => [['kind' => 'table', 'id' => $table, 'version' => $this->versionOf('tables', $table)]]]);
+        $copy = Type\vec(Type\string())->coerce($answer['chosen'] ?? null)[0] ?? self::fail('no copy');
+        $ada = $this->guest('Ada Obi');
+        $this->seat($ada, $copy);
+
+        $this->deleteMany([['tables', $copy]], emptyOnly: true);
+
+        self::assertSame(409, $this->statusCode(), Json\encode($this->last()));
+        self::assertSame('https://soirely.com/errors/seating_undo_stale', $this->last()['type'] ?? null);
+        self::assertSame([[1, 'Ada Obi']], $this->namesAt($copy));
+
+        $this->as($this->owner, 'POST', $this->plan() . '/guests/unseat', ['guestIds' => [$ada]]);
+        $this->deleteMany([['tables', $copy]], emptyOnly: true);
+        self::assertSame(200, $this->statusCode(), 'an empty copy is taken back as before');
+    }
+
+    #[Test]
+    public function withoutSeatingManageAnUndoThatSeatsGuestsBackIs403AndAnotherOrganisationGets404(): void
+    {
+        $table = $this->addTable();
+        $ada = $this->guest('Ada Obi');
+        $this->seat($ada, $table);
+        $before = [$this->itemNow('tables', $table)];
+        $moves = $this->deleteMany([['tables', $table]])['moves'];
+        $viewer = $this->member('viewer@ire.events', SeededRole::Member, EventRole::CanView);
+        $stranger = $this->account('stranger@else.where');
+        self::service(OrganisationFounder::class)->found($stranger, 'Elsewhere', 'NG', 'Africa/Lagos');
+        self::em()->flush();
+
+        foreach ([[$viewer, 403], [$stranger, 404]] as [$who, $status]) {
+            $this->restore($before, $moves, $who);
+            self::assertSame($status, $this->statusCode());
+        }
+
+        self::assertSame([], Type\vec(Type\mixed())->coerce($this->planNow()['tables']));
+        self::assertNull($this->guestNow($ada)['seat']);
+    }
+
+    #[Test]
     public function theDatabaseRefusesASecondGuestInAChairAndASecondChairForAGuest(): void
     {
         $table = $this->addTable();
@@ -529,6 +650,47 @@ final class SeatingGuestsTest extends ApiTestCase
         return 200 === $this->statusCode()
             ? Type\shape(['moves' => Type\vec(Type\dict(Type\string(), Type\mixed())), 'apart' => Type\bool()], true)->coerce($body)
             : ['moves' => [], 'apart' => false];
+    }
+
+    /**
+     * @param list<array{0: string, 1: string}> $items each list and id
+     *
+     * @return array{moves: list<array<string, mixed>>, ...}
+     */
+    private function deleteMany(array $items, bool $emptyOnly = false): array
+    {
+        $body = $this->as($this->owner, 'POST', $this->plan() . '/furniture/delete', [
+            'items' => Vec\map($items, fn (array $one): array => ['kind' => match ($one[0]) {
+                'tables' => 'table',
+                'rows' => 'row',
+                default => 'seat',
+            }, 'id' => $one[1], 'version' => $this->versionOf($one[0], $one[1])]),
+            ...$emptyOnly ? ['emptyOnly' => true] : [],
+        ]);
+
+        return ['moves' => Type\vec(Type\dict(Type\string(), Type\mixed()))->coerce($body['moves'] ?? [])] + $body;
+    }
+
+    /**
+     * Undo of a Delete: each item as the plan served it, with the guests the delete freed from it.
+     *
+     * @param list<array<string, mixed>> $items
+     * @param list<array<string, mixed>> $moves
+     *
+     * @return array<string, mixed>
+     */
+    private function restore(array $items, array $moves, ?User $by = null): array
+    {
+        $chair = Type\shape(['id' => Type\string(), 'seat' => Type\int()], true);
+        $back = static fn (array $item): array => Vec\filter_nulls(Vec\map($moves, static function (array $move) use ($chair, $item): ?array {
+            $from = $chair->coerce($move['from']);
+
+            return $from['id'] === $item['id'] ? ['guestId' => $move['guestId'], 'seat' => $from['seat']] : null;
+        }));
+
+        return $this->as($by ?? $this->owner, 'POST', $this->plan() . '/furniture/restore', ['items' => Vec\map($items, static fn (array $item): array => Iter\contains_key($item, 'label')
+            ? ['kind' => 'row', 'name' => $item['label'], 'sectionId' => null, 'xCm' => $item['xCm'], 'yCm' => $item['yCm'], 'seats' => $item['seats'], 'spacingCm' => $item['spacingCm'], 'rotation' => $item['rotation'], 'unusableSeats' => $item['unusableSeats'], 'guests' => $back($item)]
+            : ['kind' => 'table', 'name' => $item['name'], 'sectionId' => null, 'xCm' => $item['xCm'], 'yCm' => $item['yCm'], 'shape' => $item['shape'], 'seats' => $item['seats'], 'widthCm' => $item['widthCm'], 'lengthCm' => $item['lengthCm'], 'endSeats' => $item['endSeats'], 'rotation' => $item['rotation'], 'unusableSeats' => $item['unusableSeats'], 'guests' => $back($item)])]);
     }
 
     private function swap(string $guest, string $with): void
