@@ -82,6 +82,8 @@ function dish(id: string, name: string, more: Record<string, unknown> = {}) {
     libraryDishId: null,
     picked: false,
     variants: [],
+    choices: [],
+    offered: true,
     ...more,
   };
 }
@@ -700,6 +702,148 @@ describe('The event’s Menu (sc-3902)', () => {
       ).toBeDefined();
       const same = screen.getByRole('radio', { name: 'Everyone gets the same' });
       expect((same as HTMLInputElement).checked).toBe(true);
+    });
+  });
+  describe('choices inside a dish (sc-3904)', () => {
+    const option = (id: string, name: string, allergens: string[], picks = 0) => ({
+      id,
+      name,
+      allergens,
+      picks,
+    });
+    const side = (more: Record<string, unknown> = {}) => ({
+      id: 'ch_side',
+      question: 'And a side?',
+      pick: 1,
+      required: true,
+      draft: false,
+      noneAnswers: 0,
+      options: [
+        option('o_plantain', 'Plantain', [], 41),
+        option('o_salad', 'Garden salad', ['mustard'], 33),
+      ],
+      ...more,
+    });
+    const DRAFT = {
+      id: 'ch_draft',
+      question: '',
+      pick: 1,
+      required: true,
+      draft: true,
+      noneAnswers: 0,
+      options: [option('o_only', 'Plantain', [])],
+    };
+
+    it('adds a finished choice and says so', async () => {
+      const added = dish('d_asun', 'Asun', { choices: [side({ options: [] })] });
+      const sent = await onMenu({
+        'GET /api/events/ev_1/menu': menuOf(course('c_main', 'Main', [dish('d_asun', 'Asun')])),
+        'POST /api/events/ev_1/menu/dishes/d_asun/choices': () =>
+          json(
+            { menu: { courses: [course('c_main', 'Main', [added])] }, choiceId: 'ch_side' },
+            201,
+          ),
+      });
+
+      fireEvent.click(await screen.findByRole('button', { name: 'Add a choice to Asun' }));
+      const panel = await screen.findByRole('complementary', { name: 'Add a choice' });
+      fireEvent.change(within(panel).getByLabelText('Question guests see'), {
+        target: { value: 'And a side?' },
+      });
+      const names = within(panel).getAllByLabelText('Name');
+      fireEvent.change(names[0]!, { target: { value: 'Plantain' } });
+      fireEvent.change(names[1]!, { target: { value: 'Garden salad' } });
+      for (const set of within(panel).getAllByRole('button', { name: 'Set allergens' })) {
+        fireEvent.click(set);
+        fireEvent.click(within(panel).getByLabelText('Contains none of these'));
+      }
+      fireEvent.click(within(panel).getByRole('button', { name: 'Add choice' }));
+
+      expect(await screen.findByText('“And a side?” added to Asun.')).toBeDefined();
+      expect(
+        sent.find((one) => one.line === 'POST /api/events/ev_1/menu/dishes/d_asun/choices')?.body,
+      ).toEqual({
+        question: 'And a side?',
+        options: [
+          { name: 'Plantain', allergens: [], containsNone: true },
+          { name: 'Garden salad', allergens: [], containsNone: true },
+        ],
+        pick: 1,
+        required: true,
+      });
+    });
+
+    it('offers to save an unfinished choice as a draft, saying what it lacks', async () => {
+      await onMenu({
+        'GET /api/events/ev_1/menu': menuOf(course('c_main', 'Main', [dish('d_asun', 'Asun')])),
+      });
+
+      fireEvent.click(await screen.findByRole('button', { name: 'Add a choice to Asun' }));
+      const panel = await screen.findByRole('complementary', { name: 'Add a choice' });
+
+      expect(within(panel).getByText('Add the question guests see.')).toBeDefined();
+      expect(within(panel).getByText('Add at least 2 options.')).toBeDefined();
+      expect(within(panel).getByRole('button', { name: 'Save as a draft' })).toBeDefined();
+    });
+
+    it('marks a dish its draft hides, and a course of only such dishes as not shown', async () => {
+      await onMenu({
+        'GET /api/events/ev_1/menu': menuOf(
+          course('c_main', 'Main', [dish('d_asun', 'Asun', { choices: [DRAFT], offered: false })]),
+        ),
+      });
+
+      expect(await screen.findByText('Not offered to guests')).toBeDefined();
+      expect(screen.getByText('No finished dish · not shown to guests')).toBeDefined();
+      expect(screen.getByText('Choice 1, no question yet')).toBeDefined();
+      expect(
+        screen.getByRole('button', { name: 'Finish Choice 1, no question yet' }),
+      ).toBeDefined();
+    });
+
+    it('shows kitchen prep, and refuses Remove… and a new choice once guests have answered', async () => {
+      const sent = await onMenu({
+        'GET /api/events/ev_1/menu': menuOf(
+          course('c_main', 'Main', [dish('d_asun', 'Asun', { choices: [side()] })]),
+        ),
+      });
+
+      expect(await screen.findByText('Kitchen prep: 41 plantain, 33 garden salad')).toBeDefined();
+      fireEvent.click(screen.getByRole('button', { name: 'Remove “And a side?”…' }));
+      expect(await screen.findByText('Guests have answered this choice.')).toBeDefined();
+      fireEvent.click(screen.getByRole('button', { name: 'Add a choice to Asun' }));
+      expect(await screen.findByText('Guests have picked this dish.')).toBeDefined();
+      expect(sent.some((one) => one.line.startsWith('DELETE'))).toBe(false);
+      expect(sent.some((one) => one.line.includes('/choices'))).toBe(false);
+    });
+
+    it('names who picked an option whose allergens were just added', async () => {
+      await onMenu({
+        'GET /api/events/ev_1/menu': menuOf(
+          course('c_main', 'Main', [dish('d_asun', 'Asun', { choices: [side()] })]),
+        ),
+        'PUT /api/events/ev_1/menu/choices/ch_side': () =>
+          json({
+            menu: {
+              courses: [course('c_main', 'Main', [dish('d_asun', 'Asun', { choices: [side()] })])],
+            },
+            choiceId: 'ch_side',
+            unwarnedOptions: [
+              { optionId: 'o_salad', option: 'Garden salad', count: 2, allergens: ['celery'] },
+            ],
+          }),
+      });
+
+      fireEvent.click(await screen.findByRole('button', { name: 'Edit “And a side?”' }));
+      const panel = await screen.findByRole('complementary', { name: 'Edit “And a side?”' });
+      fireEvent.click(within(panel).getByRole('button', { name: 'Save choice' }));
+
+      expect(await screen.findByText('“And a side?” saved.')).toBeDefined();
+      expect(
+        screen.getByText(
+          '2 guests who picked Garden salad have celery recorded, and nobody has told them.',
+        ),
+      ).toBeDefined();
     });
   });
 });

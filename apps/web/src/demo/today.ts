@@ -198,16 +198,9 @@ export interface Moment extends Shown {
   bars: StripBar[];
 }
 
-/** A day of This week, with the letter it shows at 360 px and narrower and the name a screen reader hears there (sc-61548). */
+/** A day of This week, with the date its words are written from. */
 export interface WeekDay extends StripDay {
   date: string;
-  narrow: string;
-  spoken: string;
-}
-
-/** Portuguese's short weekday is the whole word in Portugal ("quarta"), so its days write the letter at every width, a desk's too, whatever the region (sc-61548). */
-export function lettersAtEveryWidth(language: string): boolean {
-  return language.split('-')[0] === 'pt';
 }
 
 /** The sample is written in English; This week's weekdays follow the page's language, so the strip reads as the product's does in it. */

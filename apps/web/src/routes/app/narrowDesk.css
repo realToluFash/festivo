@@ -1,0 +1,119 @@
+/* 641 to 960 px only, as the web demo's narrowDesk.css (sc-60699): 961 and up, and 640 and down, stay as on main. */
+@media (40rem < width <= 60rem) {
+  .shell-content.is-card {
+    padding-inline: var(--spaceXxl);
+  }
+
+  .shell-content.is-card:has(> .st) > :not(.st) {
+    margin-inline: var(--spaceXxl);
+  }
+
+  .shell :is(.desk-top, .gs-top) {
+    flex-shrink: 0;
+    flex-wrap: wrap;
+    row-gap: var(--spaceLg);
+  }
+
+  .shell :is(.desk-title, .gs-title) {
+    min-width: auto;
+  }
+
+  .shell .gs-top > .mn-head {
+    flex: 1 1 auto;
+    min-width: auto;
+  }
+
+  .shell :is(.desk-title, .desk-title *, .gs-title, .gs-title *) {
+    overflow-wrap: normal;
+  }
+
+  /* Settings' list stays above its page, as up to 60rem it already is, and the card scrolls the two together. */
+  .shell-content.is-card:has(> .settings-desk) {
+    padding: 0;
+  }
+
+  .shell-content.is-card > .settings-desk {
+    margin: 0;
+  }
+
+  .shell-content.is-card .settings-desk-page {
+    padding: var(--space3xl) var(--spaceXxl) 48px;
+  }
+
+  .shell .ev-search {
+    flex: 1 1 0;
+  }
+
+  .shell .ev-filter-at {
+    flex: none;
+  }
+
+  .shell .cal-tools {
+    flex-wrap: wrap;
+    row-gap: var(--spaceLg);
+  }
+
+  .shell .cal-month-row {
+    flex: 1 0 auto;
+    flex-wrap: wrap;
+    row-gap: var(--spaceLg);
+  }
+
+  .shell .cal-more.is-from-6 {
+    right: 0;
+    left: auto;
+  }
+
+  .shell .lib-cols {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .shell .lib-split.is-docked {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .shell .lib-split.is-docked .lib-panel {
+    position: static;
+    order: -1;
+    width: auto;
+    max-height: none;
+  }
+
+  .shell .mn-split:has(> .mn-panel) {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .shell .mn-split > .mn-panel {
+    position: static;
+    order: -1;
+    width: auto;
+    max-height: none;
+  }
+
+  .shell :is(.lib-split.is-docked .lib-panel, .mn-split > .mn-panel) .mn-panel-body {
+    overflow: visible;
+  }
+
+  .shell .ev-columns {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .shell .gs-cols {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .shell .gs-column {
+    position: static;
+    order: -1;
+    max-height: none;
+    margin: 0;
+    padding: 0;
+    overflow: visible;
+  }
+
+  .shell .gs-column:has(> .gs-pick) {
+    display: none;
+  }
+}

@@ -3168,6 +3168,10 @@ export function composeBatch(
   const finish = (flow) => (onAndroid ? forAndroid(flow) : flow);
   aloneFlows(source, target, { catalogues, email, onAndroid, skipChecks: true });
   mkdirSync(join(target, '_checks'));
+  cpSync(join(source, 'checks'), join(target, '_checks'), {
+    recursive: true,
+    filter: (path) => statSync(path).isDirectory() || !/\.ya?ml$/.test(path),
+  });
   const subFlows = (flow, language, caller, chain, dir = '') =>
     flow.replace(
       /^(\s*(?:-\s*runFlow|file):\s*)(['"]?)([\w./-]+)\.ya?ml\2(?=\s*$)/gm,

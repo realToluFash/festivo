@@ -354,7 +354,7 @@ describe('a 100-character name (sc-486)', () => {
     expect(cssRule('.shell')).toMatch(
       /grid-template-columns: var\(--todaySide\) minmax\(0, 1fr\);/u,
     );
-    expect(STYLES).toMatch(/\.shell \{[^}]*grid-template-columns: minmax\(0, 1fr\);/u);
+    expect(STYLES).toMatch(/\.shell \{[^}]*grid-template-columns: minmax\(0, 1fr\) auto;/u);
     expect(MENU_STYLES).toMatch(/\.sw-menu \{[^}]*width: min\(500px, 100vw - 24px\);/u);
   });
 
