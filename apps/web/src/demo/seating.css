@@ -2045,7 +2045,8 @@
   pointer-events: auto;
 }
 
-.st-card-art .st-chair-hit.is-card:hover {
+.st-card-art .st-chair-hit.is-card:hover,
+.st-card-art .st-chair-hit.is-card[aria-pressed='true'] {
   stroke: var(--colorAccent);
   stroke-width: 2;
 }
