@@ -3163,6 +3163,7 @@ describe('The phase, End now and Call off (sc-3585)', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Call off…' }));
     const dialog = await screen.findByRole('alertdialog', { name: 'Call off Adaeze and Tunde?' });
 
+    expect(within(dialog).getByRole('button', { name: 'Call off' }).className).toContain('is-red');
     expect(
       within(dialog).getByText(
         "It won't go ahead. Guests following their link will be told. You can't undo this.",
@@ -3241,6 +3242,9 @@ describe('The phase, End now and Call off (sc-3585)', () => {
     expect(
       within(dialog).getByText("It will be over for everybody. You can't undo this."),
     ).toBeDefined();
+    expect(within(dialog).getByRole('button', { name: 'End now' }).className).not.toContain(
+      'is-red',
+    );
     fireEvent.click(within(dialog).getByRole('button', { name: 'End now' }));
 
     await waitFor(() =>
