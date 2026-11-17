@@ -15,6 +15,8 @@ describe('hostErrorWords', () => {
   });
 
   it('shows an overlong name at once', () => {
-    expect(hostErrorWords(['x'.repeat(200)], false)[0]).toMatch(/^A host’s name can be at most /);
+    expect(hostErrorWords(['x'.repeat(61)], false)).toEqual([
+      'A host’s name can be at most 60 characters. This one has 61.',
+    ]);
   });
 });
