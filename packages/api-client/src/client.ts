@@ -1021,6 +1021,13 @@ export interface ClientOptions {
   clock?: ServerClock;
 }
 
+/** Who is in an exported file and how it is written (sc-3784); `scope` is the dialog's choice, for the audit entry. */
+export interface GuestExportRequest {
+  format: 'xlsx' | 'csv';
+  scope: 'view' | 'all';
+  people: readonly string[];
+}
+
 export interface RequestOptions {
   method?: string;
   body?: unknown;
@@ -1053,6 +1060,15 @@ export class ApiClient {
     path: string,
     init: RequestOptions,
   ): Promise<{ body: T; response: Response }> {
+    const response = await this.answered(path, init);
+
+    if (response.status === 204) return { body: undefined as T, response };
+
+    return { body: (await response.json()) as T, response };
+  }
+
+  /** A successful answer, after the one refresh a 401 earns; anything else is thrown as the ApiError it is. */
+  private async answered(path: string, init: RequestOptions): Promise<Response> {
     const session = this.session;
     let response = await this.send(path, init);
 
@@ -1080,9 +1096,7 @@ export class ApiClient {
       throw error;
     }
 
-    if (response.status === 204) return { body: undefined as T, response };
-
-    return { body: (await response.json()) as T, response };
+    return response;
   }
 
   get<T>(path: string, init?: Omit<RequestOptions, 'method' | 'body'>): Promise<T> {
@@ -2983,6 +2997,19 @@ export class ApiClient {
 
   private staffPath(eventId: string): string {
     return `/api/events/${encodeURIComponent(eventId)}/staff`;
+  }
+
+  /** sc-3784: the people named, in their order, as a spreadsheet the API builds from the list as it is now. */
+  async exportGuests(
+    eventId: string,
+    request: GuestExportRequest,
+  ): Promise<Uint8Array<ArrayBuffer>> {
+    const response = await this.answered(`${this.guestsPath(eventId)}/export`, {
+      method: 'POST',
+      body: request,
+    });
+
+    return new Uint8Array(await response.arrayBuffer());
   }
 
   async guests(eventId: string): Promise<GuestList> {

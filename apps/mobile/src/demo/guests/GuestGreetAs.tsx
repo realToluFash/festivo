@@ -4,7 +4,7 @@ import { StyleSheet, type TextInputInstance, View } from 'react-native';
 import { Row } from '../../components/Summary.tsx';
 import { Text } from '../../components/Text.tsx';
 import { tokens } from '../../theme/tokens.ts';
-import { EventField } from '../events/EventEdits.tsx';
+import { Field } from '../../components/Field.tsx';
 import { BoxField } from '../../components/MomentPick.tsx';
 import { LineIcon } from '../../components/AccountCard.tsx';
 import { GREET_AS_MAX, greetAsCount } from './GuestsModel.ts';
@@ -29,7 +29,7 @@ export function GreetAsField({
 }) {
   return (
     <View style={styles.tight}>
-      <EventField label={W.greetAs} optional error={error} help={W.greetAsHint}>
+      <Field label={W.greetAs} pill={W.optional} error={error} help={W.greetAsHint}>
         <BoxField
           ref={fieldRef}
           value={value}
@@ -41,7 +41,7 @@ export function GreetAsField({
           accessibilityLabel={W.greetAs}
           testID={testID}
         />
-      </EventField>
+      </Field>
       <Text size={13.5} weight="medium" style={[styles.secondary, styles.count]}>
         {say.ofMax(greetAsCount(value), GREET_AS_MAX)}
       </Text>

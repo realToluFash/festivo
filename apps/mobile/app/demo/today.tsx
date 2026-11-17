@@ -132,6 +132,12 @@ function DemoTodayScreen() {
   const reads = useNowReads(readsState, run?.time ?? '16:40', say.locale);
   const shownRun =
     run == null || readsState == null ? run : reads.built ? null : { ...run, asOf: reads.asOf };
+  const built = readsState != null && reads.built;
+  // A refused read, or a first read that never lands, leaves Now as the product builds it today: `?moment=dayNow`'s.
+  const drawn = useMemo(
+    () => (built ? momentOf('dayNow', say, i18n.getFixedT('en')) : moment),
+    [built, say, i18n, moment],
+  );
   const arrived = useMemo(
     () =>
       name !== 'dayNow' || arrivedState == null
@@ -200,12 +206,12 @@ function DemoTodayScreen() {
             <RunTodayScreen moment={shownRun} onTab={onTab} notices={notices} />
           ) : arrived != null ? (
             <ArrivedTodayScreen moment={arrived} onTab={onTab} notices={notices} />
-          ) : moment.needs != null ? (
-            <NeedsTodayScreen moment={moment} onTab={onTab} notices={notices} />
+          ) : drawn.needs != null ? (
+            <NeedsTodayScreen moment={drawn} onTab={onTab} notices={notices} />
           ) : kind === 'tabletLandscape' ? (
-            <PlanTodayLandscape moment={moment} onTab={onTab} notices={notices} />
+            <PlanTodayLandscape moment={drawn} onTab={onTab} notices={notices} />
           ) : (
-            <TodayScreen moment={moment} onTab={onTab} notices={notices} />
+            <TodayScreen moment={drawn} onTab={onTab} notices={notices} />
           )}
           {told != null && (
             <Told

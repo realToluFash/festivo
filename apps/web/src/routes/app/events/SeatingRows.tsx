@@ -44,6 +44,7 @@ import { chairStateOf, freeAt, takenAt } from './seatingGuests.ts';
 import {
   ChairMark,
   type ChairTip,
+  FocusRing,
   FreeTag,
   OutWords,
   StateMark,
@@ -314,6 +315,7 @@ export function RowDrawing({
         />
       ))}
       {outside && box(6, 'st-overlap')}
+      <FocusRing round={false} cx={cx} cy={cy} ex={ex * s} ey={ey * s} rotation={row.rotation} />
     </g>
   );
 }
@@ -395,6 +397,7 @@ export function SingleSeatDrawing({
         />
       ))}
       {outside && <circle className="st-overlap" cx={f(cx)} cy={f(cy)} r={f(r + 6)} />}
+      <FocusRing round cx={cx} cy={cy} ex={r} ey={r} rotation={0} />
     </g>
   );
 }

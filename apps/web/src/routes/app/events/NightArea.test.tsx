@@ -1,4 +1,5 @@
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { connection } from '@soirely/domain';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { RouterProvider, createMemoryRouter } from 'react-router';
 
@@ -362,6 +363,7 @@ describe('Run of show on the night (sc-3895)', () => {
 
     expect(await screen.findByText('Reconnecting · 1 min old')).toBeDefined();
     expect(screen.getByText('1 press waiting to send.')).toBeDefined();
+    expect(screen.queryByText(/^Offline · as of/)).toBeNull();
     expect(screen.getByText('Nothing is on')).toBeDefined();
     const [press] = kept();
     expect(press?.kind).toBe('done');
@@ -372,6 +374,22 @@ describe('Run of show on the night (sc-3895)', () => {
     expect(await screen.findByText('Live · updated just now')).toBeDefined();
     expect(liveRegion()?.textContent).toBe('Connected. Presses sent.');
     expect(kept()).toEqual([]);
+  });
+
+  it('says it is offline once, in the strip, and its Try now asks for the event again', async () => {
+    const sent = await onNight(NIGHT);
+    await screen.findByRole('button', { name: 'Done: Speeches' });
+
+    act(() => connection.deviceOffline());
+
+    expect(await screen.findByText('Reconnecting · 1 min old')).toBeDefined();
+    expect(screen.queryByText(/^Offline · as of/)).toBeNull();
+    const asked = sent.filter(({ line }) => line === 'GET /api/events/ev_1').length;
+
+    fireEvent.click(screen.getByRole('button', { name: 'Try now' }));
+
+    expect(await screen.findByText('Live · updated just now')).toBeDefined();
+    expect(sent.filter(({ line }) => line === 'GET /api/events/ev_1').length).toBe(asked + 1);
   });
 
   it('shows and sends what was pressed before the page was closed', async () => {

@@ -996,9 +996,26 @@
   fill: transparent;
 }
 
-.st-item:focus-visible .st-hit {
+/* The demo's ring, past the chairs and the Tint (sc-64879); a click or a tap draws none. */
+.st-focus-ring {
+  display: none;
+  pointer-events: none;
+}
+
+.st-item:focus-visible > .st-focus-ring {
+  display: inline;
+}
+
+.st-focus {
+  fill: none;
   stroke: var(--colorAccent);
   stroke-width: 2;
+}
+
+.st-focus-halo {
+  fill: none;
+  stroke: color-mix(in srgb, var(--colorAccent) 22%, transparent);
+  stroke-width: 5;
 }
 
 .st-lit {
