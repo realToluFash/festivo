@@ -14,6 +14,7 @@ import {
   eventFormErrors,
   eventNameLength,
   eventNameOf,
+  aboveCover,
   firstRefusedOf,
   hostErrorsOf,
   hostRefusalsOf,
@@ -85,8 +86,8 @@ function NewEventPage({ organisation }: { organisation: Membership }) {
   );
 }
 
-/** A photo chosen for the cover; it waits here until the draft exists. `url` is null when this browser cannot show the file. */
-type Chosen = { file: File; url: string | null };
+/** A photo chosen for the cover; one this browser cannot show is `sent` at once, so the server's copy stands in. */
+type Chosen = { file: File; url: string; sent: string | null };
 
 type Status = 'editing' | 'creating' | 'failed' | 'created';
 
@@ -126,6 +127,7 @@ function EventForm({ organisation }: { organisation: Membership }) {
   const uploadButton = useRef<HTMLButtonElement>(null);
   const describe = useRef<HTMLInputElement>(null);
   const preview = useRef<HTMLImageElement>(null);
+  const taken = useRef<string | null>(null);
   const currencies = useMemo(() => currencyChoices('', currency, locale, t), [currency, locale, t]);
   const zones = useMemo(
     () => timeZoneChoices(organisation.timezone, timeZone),
@@ -154,12 +156,14 @@ function EventForm({ organisation }: { organisation: Membership }) {
   }, [chosen, position]);
 
   useEffect(() => {
-    const url = chosen?.url;
+    const was = chosen;
 
     return () => {
-      if (url != null) URL.revokeObjectURL(url);
+      if (was == null) return;
+      if (was.sent == null) URL.revokeObjectURL(was.url);
+      else if (taken.current !== was.sent) discardCoverUpload(organisation.id, was.sent);
     };
-  }, [chosen]);
+  }, [chosen, organisation.id]);
 
   const { moveStart, moveEnd } = useStartCarriesEnd({
     draft,
@@ -225,16 +229,27 @@ function EventForm({ organisation }: { organisation: Membership }) {
       return;
     }
 
+    let shown: Chosen;
+
+    try {
+      shown = checked.shows
+        ? { file, url: URL.createObjectURL(file), sent: null }
+        : { file, ...(await sendForCopy(file)) };
+    } catch (error) {
+      setCoverRefusal(refusalOf(error, t));
+      return;
+    }
+
     setCoverRefusal(null);
-    setChosen({ file, url: checked.shows ? URL.createObjectURL(file) : null });
+    setChosen(shown);
     setPosition(COVER_MIDDLE);
     setDescription('');
     setTooLong(false);
     touched();
   }
 
-  /** The draft exists either way, so a refused photo is said on its page rather than here. */
-  async function sendCover(eventId: string, file: File): Promise<string | null> {
+  /** The server reads every new photo whole, so a damaged one is refused before it is placed. */
+  async function sendForCopy(file: File): Promise<{ url: string; sent: string }> {
     let key: string | null = null;
 
     try {
@@ -245,16 +260,36 @@ function EventForm({ organisation }: { organisation: Membership }) {
       });
       await api.uploadTo(signed, file);
       key = signed.key;
-      await api.previewEventCoverUpload(organisation.id, signed.key);
+      const copy = await api.previewEventCoverUpload(organisation.id, signed.key);
+
+      return { url: copy, sent: signed.key };
+    } catch (error) {
+      if (key != null) discardCoverUpload(organisation.id, key);
+      throw error;
+    }
+  }
+
+  /** The draft exists either way, so a refused photo is said on its page rather than here. */
+  async function sendCover(eventId: string, photo: Chosen): Promise<string | null> {
+    let key = photo.sent;
+    taken.current = key;
+
+    try {
+      key ??= (await sendForCopy(photo.file)).sent;
+    } catch (error) {
+      return refusalOf(error, t);
+    }
+
+    try {
       await api.setEventCover(eventId, {
-        uploadKey: signed.key,
+        uploadKey: key,
         position,
         description: description.trim() === '' ? null : description.trim(),
       });
 
       return null;
     } catch (error) {
-      if (key != null) discardCoverUpload(organisation.id, key);
+      discardCoverUpload(organisation.id, key);
 
       return refusalOf(error, t);
     }
@@ -305,7 +340,7 @@ function EventForm({ organisation }: { organisation: Membership }) {
       });
 
       setStatus('created');
-      const coverRefused = chosen == null ? null : await sendCover(created.id, chosen.file);
+      const coverRefused = chosen == null ? null : await sendCover(created.id, chosen);
 
       leave.release();
       void navigate(
@@ -383,13 +418,7 @@ function EventForm({ organisation }: { organisation: Membership }) {
 
       <FormBlock title={t('eventForm.coverHeading')}>
         <CoverPreview
-          photo={
-            chosen == null ? null : chosen.url == null ? (
-              <Glyph name="photo" size={56} weight={1.6} />
-            ) : (
-              <img ref={preview} src={chosen.url} alt="" />
-            )
-          }
+          photo={chosen == null ? null : <img ref={preview} src={chosen.url} alt="" />}
           mesh={meshFor(draft.type === '' ? 'new-event' : draft.type)}
           className="ev-new-cover"
         />
@@ -593,14 +622,6 @@ function EventForm({ organisation }: { organisation: Membership }) {
 }
 
 /** What a start or end in the clocks' gap is saved as, in a region that is there before the line is, so it is read out (sc-10638). */
-/** Whether the first refusal sits above the cover's Description in the form: Event name, Type or a host. */
-function aboveCover(first: ReturnType<typeof firstRefusedOf>): boolean {
-  if (first == null) return false;
-  if ('host' in first) return true;
-
-  return first.field === 'name' || first.field === 'type';
-}
-
 function Gap({ id, line }: { id: string; line: string | null }) {
   return (
     <div id={id} aria-live="polite">

@@ -4515,18 +4515,58 @@ describe('A HEIC the browser cannot show, and a cover that will not load (sc-138
     vi.unstubAllGlobals();
   });
 
-  it('marks a HEIC this browser cannot show as a photo in New event, uploading nothing yet', async () => {
+  it("shows the server's copy of a HEIC in New event, and attaches that upload once the draft exists (sc-48607)", async () => {
     signedIn();
-    const sent = serving(null);
+    const sent = serving(null, {
+      'POST /api/orgs/org_1/events': () => json({ event: event() }, 201),
+    });
     at('/app/events/new');
     await screen.findByRole('heading', { level: 1, name: 'New event' });
 
     chooseHeic();
 
     await screen.findByRole('button', { name: 'Remove photo' });
-    expect(document.querySelector('.ev-new-cover')!.className).toContain('is-photo');
-    expect(document.querySelector('.ev-new-cover img')).toBeNull();
-    expect(sent.map(({ line }) => line)).not.toContain(PREVIEW);
+    expect(document.querySelector('.ev-new-cover img')?.getAttribute('src')).toBe(COPY);
+    expect(sent.map(({ line }) => line)).toContain(PREVIEW);
+
+    fireEvent.change(document.getElementById('event-name')!, { target: { value: 'Owambe' } });
+    fireEvent.change(document.getElementById('event-type')!, { target: { value: 'wedding' } });
+    for (const [id, value] of [
+      ['event-start-date', '2026-11-14'],
+      ['event-start-time', '16:00'],
+      ['event-end-time', '23:00'],
+    ] as const)
+      fireEvent.change(document.getElementById(id)!, { target: { value } });
+    fireEvent.click(screen.getByRole('button', { name: 'Create event' }));
+
+    await waitFor(() =>
+      expect(sent.find(({ line }) => line === 'PUT /api/events/ev_1/cover')?.body).toEqual({
+        uploadKey: 'event_cover/org_1/2026/10/one.heic',
+        position: 50,
+        description: null,
+      }),
+    );
+    const lines = sent.map(({ line }) => line);
+    expect(
+      lines.filter((line) => line === 'POST /api/orgs/org_1/event-cover-uploads'),
+    ).toHaveLength(1);
+    expect(lines).not.toContain('DELETE /api/orgs/org_1/event-cover-uploads');
+  });
+
+  it('discards the HEIC sent for its copy when the host removes it from New event (sc-48607)', async () => {
+    signedIn();
+    const sent = serving(null);
+    at('/app/events/new');
+    await screen.findByRole('heading', { level: 1, name: 'New event' });
+
+    chooseHeic();
+    fireEvent.click(await screen.findByRole('button', { name: 'Remove photo' }));
+
+    await waitFor(() =>
+      expect(
+        sent.find(({ line }) => line === 'DELETE /api/orgs/org_1/event-cover-uploads')?.body,
+      ).toEqual({ uploadKey: 'event_cover/org_1/2026/10/one.heic' }),
+    );
   });
 });
 
