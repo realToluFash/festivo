@@ -1,6 +1,7 @@
 import { formattingLocale } from '@soirely/domain';
 import { useCallback, useMemo, useRef, useState } from 'react';
-import { useSearchParams } from 'react-router';
+import { useTranslation } from 'react-i18next';
+import { useNavigate, useSearchParams } from 'react-router';
 
 import { Toast } from '../components/Toast.tsx';
 import { LayersContext, useDeskLayers } from '../layers.ts';
@@ -23,6 +24,9 @@ import { Banner, type BannerActions, NowBanner } from '../components/TodayBanner
 import { FirstRun, ThisWeek, YourEvents } from '../components/TodayParts.tsx';
 import { NeedsYou } from './TodayParts.tsx';
 import { TodaySidebar } from './TodaySidebar.tsx';
+import { RunNowBanner } from './TodayNow.tsx';
+import { isNowState, runNowOf, trackAt } from './todayRun.ts';
+import { nightAtUrl } from './night.ts';
 import { isLong, LONG_NAME, renamed } from './longName.ts';
 import { DeskSearch } from './Search.tsx';
 import { REACHES, reachOfRole, type SearchStart } from './search.ts';
@@ -58,6 +62,17 @@ export function Today({ search = null }: { search?: SearchStart | null }) {
   const later = name === 'plan' && params.get('starts') === 'later';
   const rows = name === 'plan' && params.get('week') === 'rows';
   const long = isLong(params);
+  const rawNow = params.get('now');
+  const nowState = isNowState(rawNow) ? rawNow : 'on';
+  const { i18n } = useTranslation();
+  const language = i18n.resolvedLanguage ?? i18n.language;
+  const locale = formattingLocale(language, navigator.language);
+  // On the event day, a role with run_of_show.read sees the run of show (sc-61017); `?now=` picks the moment, as the app's demo does.
+  const run = useMemo(() => {
+    const { clock, items } = trackAt(nowState);
+
+    return runNowOf(items, clock);
+  }, [nowState]);
   const moment = useMemo(
     () =>
       renamed(
@@ -74,22 +89,26 @@ export function Today({ search = null }: { search?: SearchStart | null }) {
   );
   const [told, setTold] = useState<string | null>(null);
   const tell = useCallback<Tell>((words) => setTold(words), []);
+  const navigate = useNavigate();
   const open = useCallback<Open>(
     (opens) =>
-      tell(
-        opens.to === 'event'
-          ? `${opens.name} has its own design.`
-          : opens.to === 'create'
-            ? 'Create an event has its own design.'
-            : opens.to === 'notifications'
-              ? 'Notifications have their own design.'
-              : opens.to === 'runOfShow'
-                ? 'The run of show has its own design.'
-                : opens.to === 'calendar'
-                  ? 'Calendar has its own design.'
-                  : 'Events has its own design.',
-      ),
-    [tell],
+      // Open run of show lands on sc-3895's Run of show, with Start now and Done: the web demo's night page stands in for the Schedule while the event is on.
+      opens.to === 'runOfShow' && moment.full
+        ? void navigate(nightAtUrl())
+        : tell(
+            opens.to === 'event'
+              ? `${opens.name} has its own design.`
+              : opens.to === 'create'
+                ? 'Create an event has its own design.'
+                : opens.to === 'notifications'
+                  ? 'Notifications have their own design.'
+                  : opens.to === 'runOfShow'
+                    ? 'The run of show has its own design.'
+                    : opens.to === 'calendar'
+                      ? 'Calendar has its own design.'
+                      : 'Events has its own design.',
+          ),
+    [tell, navigate, moment.full],
   );
   const page = useRef<HTMLElement>(null);
   const { layers, covered, setHost } = useDeskLayers();
@@ -118,8 +137,17 @@ export function Today({ search = null }: { search?: SearchStart | null }) {
               <AccessPaused />
             ) : (
               <>
-                {moment.now != null ? (
-                  <NowBanner now={moment.now} full={moment.full} actions={ACTIONS} open={open} />
+                {moment.now != null && moment.full ? (
+                  <RunNowBanner
+                    now={moment.now}
+                    run={run}
+                    actions={ACTIONS}
+                    open={open}
+                    language={language}
+                    locale={locale}
+                  />
+                ) : moment.now != null ? (
+                  <NowBanner now={moment.now} full={false} actions={ACTIONS} open={open} />
                 ) : (
                   <Banner moment={moment} actions={ACTIONS} open={open} />
                 )}
