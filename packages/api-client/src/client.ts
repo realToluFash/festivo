@@ -2480,7 +2480,15 @@ export class ApiClient {
     );
   }
 
-  /** A hub token for this event's seating topic alone. */
+  /** Tells everyone with the plan open what you have chosen, or `null` for nothing; refused 403 to a viewer, whose choice is not shared (sc-4719). */
+  async chooseOnPlan(
+    eventId: string,
+    chosen: { kind: 'table' | 'row' | 'seat'; id: string; chair?: number | null } | null,
+  ): Promise<void> {
+    await this.put<undefined>(`${this.seatingPath(eventId)}/chosen`, { chosen });
+  }
+
+  /** A hub token for this event's seating, its editors' choices and who else has it open (sc-4719). */
   async seatingSubscription(eventId: string): Promise<RealtimeSubscription> {
     const body = await this.post<{ token?: unknown; expiresAt?: unknown }>(
       `${this.seatingPath(eventId)}/subscriptions`,
