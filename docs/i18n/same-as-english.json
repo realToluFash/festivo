@@ -154,7 +154,8 @@
     "web:night.minutes_other",
     "web:night.hoursMinutes",
     "web:dishChoices.options",
-    "web:dishChoices.option"
+    "web:dishChoices.option",
+    "web:seating.tablesView"
   ],
   "pt": [
     "web:seating.shapeCocktailShort",
