@@ -173,6 +173,12 @@ Then `change=pause` (through the domain, written in the database), `suspend`, `r
 with the same `org`. Before each check `batch/reset.yaml` deletes what the last one joined, so
 Access paused never outlives its check. sc-28178's checks are the example.
 
+A check that must prove what reached the server, not what the screen draws, asks
+`ASK: /schedule?event=<id>&place=<place>&done=<n>`. The harness reads the event's schedule as the
+batch's account, waiting while fewer than `n` items of that place are done, and answers
+`output.helper.started` and `output.helper.done`. sc59333-night-run is the example: held presses
+replayed after the API comes back.
+
 Two-factor sign-in is `sign-in-two-factor.yaml`. It asks the harness for each code
 (`batch/helper.js`), so it runs inside a batch, which holds the account's `TOTP_SECRET`.
 
