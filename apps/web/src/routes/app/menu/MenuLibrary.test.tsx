@@ -207,7 +207,7 @@ describe('the Menu library (sc-3901)', () => {
 
     expect(panel.closest('.shell-content .lib-page.desk-page')).not.toBeNull();
     expect(
-      cssRule('.shell-content.is-card .desk-page', STYLES.slice(STYLES.indexOf('(width > 60rem)'))),
+      cssRule('.shell-content.is-card .desk-page', STYLES.slice(STYLES.indexOf('(width > 40rem)'))),
     ).toContain('padding: 0;');
   });
 
