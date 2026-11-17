@@ -12,7 +12,6 @@ appId: host.exp.Exponent
     visible:
       id: 'guests.export.offline'
     timeout: 45000
-    optional: true
 - waitForAnimationToEnd
 - takeScreenshot: offline
 - setAirplaneMode: disabled
