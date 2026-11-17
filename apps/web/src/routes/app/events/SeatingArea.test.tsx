@@ -3818,6 +3818,8 @@ describe('Who else is on the plan (sc-4719)', () => {
         'GET /api/events/ev_1/seating-plan': () => seating(withTables(table())),
         'POST /api/events/ev_1/seating-plan/subscriptions': () =>
           json({ token: 'tok', expiresAt: new Date(Date.now() + 3_600_000).toISOString() }),
+        'POST /api/realtime/subscriptions': () =>
+          json({ token: 'tok', expiresAt: new Date(Date.now() + 3_600_000).toISOString() }),
         [LIST]: () => json({ subscriptions: here }),
         ...more,
       },
