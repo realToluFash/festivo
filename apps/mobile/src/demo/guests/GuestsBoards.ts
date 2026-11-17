@@ -153,7 +153,7 @@ const GUESTS: Record<GuestsState, Board> = {
   groupNew: ['Edit, Group, a new group', 'Family is a new group. It’s made when you save.'],
   groupTaken: [
     'Edit, Group, taken on Save',
-    'There’s already a group called Family. Nothing saved',
+    'There is already a group called Family. Nothing saved',
   ],
   groupLimit: ['Edit, Group, 50 groups', 'Choose one, or use Soirely on the web to delete one'],
   needsEmpty: ['Edit, Needs, none recorded', 'The section closed: None recorded'],

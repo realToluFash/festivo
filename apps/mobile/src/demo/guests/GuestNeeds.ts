@@ -131,7 +131,7 @@ export const GW = {
   people: (count: number) => `${count} ${count === 1 ? 'person' : 'people'}`,
   blank: 'Enter a name for the group.',
   tooLong: `A group name can be up to ${GROUP_NAME_MOST} characters.`,
-  taken: (name: string) => `There’s already a group called ${name}.`,
+  taken: (name: string) => `There is already a group called ${name}.`,
   /** Words settled, 23 Oct (#7802, #7811): the app's own, since Groups is on the web. */
   limit: `This event has ${GROUPS_MOST} groups, the most it can have. Choose one of them, or, to create another, use Soirely on the web to delete one in Groups.`,
 } as const;

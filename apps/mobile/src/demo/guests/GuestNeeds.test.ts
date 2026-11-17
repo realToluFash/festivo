@@ -85,7 +85,7 @@ describe('the Group picker (sc-3775 on the app)', () => {
     const start = groupNeedsStart('groupTaken', kwame, GUESTS);
     expect(start.groups).toContainEqual(THEIR_GROUP);
     expect(start.taken).toBe('Family');
-    expect(GW.taken('Family')).toBe('There’s already a group called Family.');
+    expect(GW.taken('Family')).toBe('There is already a group called Family.');
   });
 
   it('carries a group a save made into the next form, picked and listed once', () => {

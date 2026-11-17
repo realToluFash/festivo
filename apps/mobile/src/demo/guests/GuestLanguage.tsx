@@ -3,7 +3,7 @@ import { Pressable, StyleSheet, View } from 'react-native';
 import { Glyph } from '../../components/Glyph.tsx';
 import { Text } from '../../components/Text.tsx';
 import { tokens } from '../../theme/tokens.ts';
-import { EventField } from '../events/EventEdits.tsx';
+import { Field } from '../../components/Field.tsx';
 import { type GuestLanguage, GUEST_LANGUAGES, languageName } from './GuestsSample.ts';
 import { W, say } from './GuestsWords.ts';
 
@@ -34,7 +34,7 @@ export function LanguageField({
   const shown = languageName(value) ?? W.notSet;
 
   return (
-    <EventField label={W.language} optional help={W.languageHint}>
+    <Field label={W.language} pill={W.optional} help={W.languageHint}>
       <Pressable
         onPress={onOpen}
         style={({ pressed }) => [styles.box, pressed && styles.pressed]}
@@ -49,7 +49,7 @@ export function LanguageField({
         <Glyph name="down" size={15} ink={tokens.colorInkSecondary} weight={2.4} />
       </Pressable>
       {chose != null && <ChoseNote chose={chose} />}
-    </EventField>
+    </Field>
   );
 }
 
