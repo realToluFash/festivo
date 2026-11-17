@@ -34,7 +34,8 @@ RECENT_SECONDS = 60 * 60
 NEVER_SWEPT = "untracked-before-main-"
 MAESTRO_LOG = "maestro.log"
 HARNESS = ("bin", "state.json")
-RECORDS = {"release": ("installed",)}
+# `.batch` holds the flows each batch run writes again; they are swept like any entry.
+RECORDS = {"release": ("installed",), ".batch": ()}
 STORY_NUMBER = re.compile(r"\d{4,}")
 STORY_REF = re.compile(r"sc-?(\d+)", re.I)
 # Evidence is attached on Shortcut by then, so `.qa/sc<N>*` has done its job.
