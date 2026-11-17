@@ -94,7 +94,6 @@ export interface Order {
   lines: readonly Line[];
   follow: readonly string[];
   choice: HeldChoice;
-  /** The run-out item the floor lead chose to serve this guest without. */
   without: string | null;
 }
 
