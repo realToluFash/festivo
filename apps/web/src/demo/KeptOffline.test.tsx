@@ -1,10 +1,10 @@
-import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { RouterProvider, createMemoryRouter } from 'react-router';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import { __setConfig, config } from '../config.ts';
 import { routes } from '../routes/index.tsx';
-import { forgetTab } from './tabKept.ts';
+import { forgetTab, loseConnection, tabNow } from './tabKept.ts';
 
 const tested = config();
 const SLOW = { timeout: 15000 };
@@ -107,5 +107,35 @@ describe('offline, another area keeps the event, and the night its count (sc-656
     await router.navigate('/demo/guests');
     await screen.findByRole('heading', { level: 1, name: 'Guests' }, SLOW);
     expect(screen.queryByText(BOX)).toBeNull();
+  });
+
+  it('notes the area that is open, not Overview, when an area loads', SLOW, async () => {
+    const router = open('/demo/events/evt-wed-4?area=reports&tab=fresh');
+    await screen.findByRole('heading', { level: 1, name: 'Reports' }, SLOW);
+
+    expect(tabNow().areas.has('evt-wed-4|reports')).toBe(true);
+    expect(tabNow().areas.has('evt-wed-4|overview')).toBe(false);
+
+    await router.navigate('/demo/events/evt-wed-4');
+    await screen.findByRole('heading', { level: 1 }, SLOW);
+    expect(tabNow().areas.has('evt-wed-4|overview')).toBe(true);
+  });
+
+  it.each([
+    ['Seating', '/demo/events/evt-wed-4/seating'],
+    ['Menu', '/demo/events/evt-wed-4/menu'],
+    ['the kitchen', '/demo/events/evt-wed-4/kitchen'],
+    ['Staff, the roster', '/demo/events/evt-wed-4/staff/roster'],
+    ['Staff, the stations', '/demo/events/evt-wed-4/staff/stations'],
+    ['Budget', '/demo/events/evt-wed-4?area=budget'],
+    ['Messages', '/demo/events/evt-wed-4/messages'],
+  ])('draws the box above %s once the event is kept offline', SLOW, async (_area, at) => {
+    const router = open('/demo/events/evt-wed-4?tab=fresh');
+    await screen.findByRole('heading', { level: 1 }, SLOW);
+    act(() => loseConnection());
+
+    await router.navigate(at);
+    expect(await screen.findByText(BOX, {}, SLOW)).toBeDefined();
+    expect(screen.queryByText('The event did not load. Try again in a moment.')).toBeNull();
   });
 });

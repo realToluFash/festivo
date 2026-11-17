@@ -1,4 +1,4 @@
-import { useState, useSyncExternalStore } from 'react';
+import { useEffect, useState, useSyncExternalStore } from 'react';
 
 import type { Night } from './night.ts';
 
@@ -95,11 +95,16 @@ export function useKept(eventId: string, area: string, at: string, start: TabSta
     return null;
   });
   const now = useSyncExternalStore(subscribe, tabNow);
+  const opened = `${eventId}|${area}`;
+
+  useEffect(() => {
+    if (!now.offline && !now.areas.has(opened)) loadedIn(eventId, area, at);
+  }, [now, opened, eventId, area, at]);
 
   return {
     offline: now.offline,
     asOf: now.events.get(eventId) ?? null,
-    areaKept: now.areas.has(`${eventId}|${area}`),
+    areaKept: now.areas.has(opened),
     retry: () => {
       reconnect();
       loadedIn(eventId, area, at);

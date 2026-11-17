@@ -1,5 +1,5 @@
 import { DemoBell } from './DemoBell.tsx';
-import { EventNotLoaded, KeptBox } from './KeptOffline.tsx';
+import { EventNotLoaded, KeptBox, KeptProvider } from './KeptOffline.tsx';
 import { type Kept, type TabStart, clockWords, tabStartOf, useKept } from './tabKept.ts';
 import { calledOff, eventPhase, formatEventRange, hostsLine } from '@soirely/domain';
 import { type ComponentType, type ReactNode, useEffect, useState } from 'react';
@@ -259,6 +259,7 @@ export function EventPage({
       id={id}
       raw={raw}
       keptStart={tabStartOf(raw, tabStart)}
+      area={dates ? 'dates' : messages ? 'messages' : areaOf(params.get('area'))}
       dates={dates}
       messages={messages}
     />
@@ -269,12 +270,14 @@ function EventAt({
   id,
   raw,
   keptStart,
+  area,
   dates,
   messages,
 }: {
   id: string | undefined;
   raw: string | null;
   keptStart: TabStart;
+  area: string;
   dates: boolean;
   messages: boolean;
 }) {
@@ -316,7 +319,7 @@ function EventAt({
   });
   const kept = useKept(
     id ?? '',
-    'overview',
+    area,
     clockWords(clockOf(first.state), first.event?.timeZone ?? 'UTC'),
     keptStart,
   );
@@ -340,7 +343,11 @@ function EventAt({
   const telling = said === 'tell' || said === 'tellPlace' || seed != null;
 
   if (messages && first.event.id === SAMPLE_EVENT && !telling)
-    return <MessagesPage event={eventWhile(said, first.event)} state={said} now={clockOf(null)} />;
+    return (
+      <KeptProvider kept={kept}>
+        <MessagesPage event={eventWhile(said, first.event)} state={said} now={clockOf(null)} />
+      </KeptProvider>
+    );
 
   return (
     <EventView

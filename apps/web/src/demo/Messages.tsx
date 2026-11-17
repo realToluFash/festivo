@@ -12,6 +12,7 @@ import {
 } from 'react';
 import { useSearchParams } from 'react-router';
 
+import { KeptHere } from './KeptOffline.tsx';
 import { EventsShell } from './EventParts.tsx';
 import { EventSidebar } from './EventSidebar.tsx';
 import type { SampleEvent } from './events.ts';
@@ -443,6 +444,7 @@ function Messages({
     <InboxContext value={api}>
       <div ref={root} className="mg">
         <section className="mg-list" aria-labelledby={titleId}>
+          <KeptHere />
           <div className="mg-list-top">
             <h1 id={titleId} className="mg-title" tabIndex={-1} data-focus="title">
               {MESSAGES_WORD}

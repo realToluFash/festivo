@@ -18,6 +18,8 @@ import {
   type Tell,
 } from '../components/SettingsParts.tsx';
 import { DemoBell } from './DemoBell.tsx';
+import { KeptArea, KeptHere } from './KeptOffline.tsx';
+import { clockWords } from './tabKept.ts';
 import { EventsShell } from './EventParts.tsx';
 import { EventSidebar } from './EventSidebar.tsx';
 import { type Area, type SampleEvent } from './events.ts';
@@ -44,55 +46,58 @@ export function BudgetShell({
   children: (tell: Tell) => ReactNode;
 }) {
   return (
-    <EventsShell
-      told={told}
-      renderSide={(tell, covered) => (
-        <EventSidebar
-          event={event}
-          area={area}
-          now={NOW}
-          tell={tell}
-          inert={covered}
-          without={without}
-        />
-      )}
-    >
-      {(tell) => (
-        <div className="desk-page ev-page bud">
-          <div className="ev-wide">
-            <div className="ev-crumb-row">
-              <nav className="ev-crumb" aria-label={W.crumb}>
-                <ol>
-                  <li className="ev-crumb-part">
-                    <Link to="/demo/events">{W.events}</Link>
-                  </li>
-                  {[{ label: event.name, to: `/demo/events/${event.id}` }, ...trail].map(
-                    (part, index, all) => (
-                      <li
-                        key={part.label}
-                        className="ev-crumb-part"
-                        aria-current={index === all.length - 1 ? 'page' : undefined}
-                      >
-                        <Glyph name="chevron" size={15} weight={2.4} className="desk-chevron" />
-                        {part.to != null && index < all.length - 1 ? (
-                          <Link to={part.to}>
+    <KeptArea eventId={event.id} area={area} at={clockWords(NOW, event.timeZone)}>
+      <EventsShell
+        told={told}
+        renderSide={(tell, covered) => (
+          <EventSidebar
+            event={event}
+            area={area}
+            now={NOW}
+            tell={tell}
+            inert={covered}
+            without={without}
+          />
+        )}
+      >
+        {(tell) => (
+          <div className="desk-page ev-page bud">
+            <div className="ev-wide">
+              <KeptHere />
+              <div className="ev-crumb-row">
+                <nav className="ev-crumb" aria-label={W.crumb}>
+                  <ol>
+                    <li className="ev-crumb-part">
+                      <Link to="/demo/events">{W.events}</Link>
+                    </li>
+                    {[{ label: event.name, to: `/demo/events/${event.id}` }, ...trail].map(
+                      (part, index, all) => (
+                        <li
+                          key={part.label}
+                          className="ev-crumb-part"
+                          aria-current={index === all.length - 1 ? 'page' : undefined}
+                        >
+                          <Glyph name="chevron" size={15} weight={2.4} className="desk-chevron" />
+                          {part.to != null && index < all.length - 1 ? (
+                            <Link to={part.to}>
+                              <span className="ev-crumb-name">{part.label}</span>
+                            </Link>
+                          ) : (
                             <span className="ev-crumb-name">{part.label}</span>
-                          </Link>
-                        ) : (
-                          <span className="ev-crumb-name">{part.label}</span>
-                        )}
-                      </li>
-                    ),
-                  )}
-                </ol>
-              </nav>
-              <DemoBell tell={tell} />
+                          )}
+                        </li>
+                      ),
+                    )}
+                  </ol>
+                </nav>
+                <DemoBell tell={tell} />
+              </div>
+              {children(tell)}
             </div>
-            {children(tell)}
           </div>
-        </div>
-      )}
-    </EventsShell>
+        )}
+      </EventsShell>
+    </KeptArea>
   );
 }
 
