@@ -165,6 +165,8 @@ export const CW = {
   dishPicked: 'Guests have picked this dish.',
   coursePicked: 'Guests have picked from this course.',
   lock: 'Your role, Coordinator, can see this menu but not change it. Someone whose role can change Menu can.',
+  lockOnEvent: (role: string) =>
+    `Your role on this event, ${role}, can see this menu but not change it. Someone whose role can change Menu can.`,
   loading: 'Loading the menu…',
   refreshing: 'Refreshing…',
   forbidden: 'Nothing was changed. Your role does not include the permission this needs.',
@@ -539,6 +541,8 @@ export interface CoursesStart {
   note: string;
   courses: EvCourse[];
   manage: boolean;
+  /** The read-only line: the organisation role's, or a Member's role on this event (sc-59617). */
+  lock: string;
   opened: Opened | null;
   asking: Asking | null;
   refused: Refused | null;
@@ -555,6 +559,7 @@ function start(over: Partial<CoursesStart> & { name: string; note: string }): Co
   return {
     courses: sampleCourses(),
     manage: true,
+    lock: CW.lock,
     opened: null,
     asking: null,
     refused: null,
@@ -738,6 +743,20 @@ const STATES = {
       name: 'Read only, without menu.manage',
       note: 'Every course and dish as text, and no controls.',
       manage: false,
+    }),
+  readOnlyCanView: () =>
+    start({
+      name: 'Read only, a Member with Can view',
+      note: 'The line names the role on this event, as People shows it, not the organisation role.',
+      manage: false,
+      lock: CW.lockOnEvent('Can view'),
+    }),
+  readOnlyCheckIn: () =>
+    start({
+      name: 'Read only, a Member with Can check guests in',
+      note: 'The longest line the Menu shows: it wraps whole at 1280 px and at a 320 px window.',
+      manage: false,
+      lock: CW.lockOnEvent('Can check guests in'),
     }),
   emptyReadOnly: () =>
     start({
@@ -1151,7 +1170,16 @@ export const COURSES_PAGES: readonly { name: string; states: readonly DemoLink[]
   {
     name: 'The menu, its courses and their order',
     states: (
-      ['menu', 'loading', 'empty', 'courseMoved', 'menuReadOnly', 'emptyReadOnly'] as const
+      [
+        'menu',
+        'loading',
+        'empty',
+        'courseMoved',
+        'menuReadOnly',
+        'readOnlyCanView',
+        'readOnlyCheckIn',
+        'emptyReadOnly',
+      ] as const
     ).map(link),
   },
   {
