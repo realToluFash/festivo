@@ -163,3 +163,29 @@
   background: var(--colorAccentTint);
   color: var(--colorAccentText);
 }
+
+/* This week at 360 px and narrower: each day but today writes its narrow weekday, and a screen reader hears its full name (sc-61548). */
+.today-weekday-narrow,
+.today-weekday-spoken {
+  display: none;
+}
+
+@media (width <= 22.5rem) {
+  .today-weekday-short {
+    display: none;
+  }
+
+  .today-weekday-narrow {
+    display: inline;
+  }
+
+  .today-weekday-spoken {
+    display: block;
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+}

@@ -81,6 +81,8 @@ export interface Say {
   day(date: string, withYear?: boolean): string;
   weekday(date: string): string;
   weekdayLong(date: string): string;
+  /** CLDR's narrow weekday, one letter, which This week writes at 360 px and narrower (sc-61548). */
+  weekdayNarrow(date: string): string;
   number(date: string): string;
   clock(time: string): string;
   hour(time: string): string;
@@ -94,6 +96,7 @@ export function sayIn(locale: string, thisYear = 2026): Say {
   const dayAndYear = format({ weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
   const weekday = format({ weekday: 'short' });
   const weekdayLong = format({ weekday: 'long' });
+  const weekdayNarrow = format({ weekday: 'narrow' });
   const number = format({ day: 'numeric' });
   const at = (date: string) => new Date(`${date}T00:00Z`);
 
@@ -104,6 +107,7 @@ export function sayIn(locale: string, thisYear = 2026): Say {
       (withYear ? dayAndYear : day).format(at(date)),
     weekday: (date) => weekday.format(at(date)),
     weekdayLong: (date) => weekdayLong.format(at(date)),
+    weekdayNarrow: (date) => weekdayNarrow.format(at(date)),
     number: (date) => number.format(at(date)),
     clock: (hhmm) => writtenTime(hhmm, locale),
     hour: (hhmm) => writtenTime(hhmm, locale),
@@ -148,7 +152,25 @@ export interface Moment extends Shown {
   time: string;
   /** Null when the product has nothing to say yet; empty when nothing needs you. */
   needs: Need[] | null;
+  days: WeekDay[];
   bars: StripBar[];
+}
+
+/** A day of This week, with the letter it shows at 360 px and narrower and the name a screen reader hears there (sc-61548). */
+export interface WeekDay extends StripDay {
+  date: string;
+  narrow: string;
+  spoken: string;
+}
+
+/** The sample is written in English; This week's weekdays follow the page's language, so the strip reads as the product's does in it. */
+export function weekIn(days: readonly WeekDay[], say: Say): WeekDay[] {
+  return days.map((day) => ({
+    ...day,
+    weekday: say.weekday(day.date),
+    narrow: say.weekdayNarrow(day.date),
+    spoken: say.weekdayLong(day.date),
+  }));
 }
 
 /** A sample event as the product's parts draw it: its colour is its key. */
@@ -395,7 +417,7 @@ function week(
   agenda: readonly (readonly [string, Item[]])[],
   say: Say,
   sample: Sample,
-): { days: StripDay[]; bars: StripBar[] } {
+): { days: WeekDay[]; bars: StripBar[] } {
   const last = addDays(today, 6);
   const keys = (Object.keys(sample) as EventKey[]).filter((key) => {
     const event = sample[key];
@@ -434,7 +456,10 @@ function week(
     );
 
     return {
+      date,
       weekday: say.weekday(date),
+      narrow: say.weekdayNarrow(date),
+      spoken: say.weekdayLong(date),
       number: say.number(date),
       today: index === 0,
       dots: dots.map(shown),

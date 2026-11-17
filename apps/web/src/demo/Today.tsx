@@ -17,12 +17,14 @@ import {
   type MomentName,
   momentOf,
   sayIn,
+  weekIn,
 } from './today.ts';
 import type { Tell } from '../components/SettingsParts.tsx';
 import type { Open } from '../components/today.ts';
 import { Banner, type BannerActions, NowBanner } from '../components/TodayBanner.tsx';
-import { FirstRun, ThisWeek, YourEvents } from '../components/TodayParts.tsx';
+import { FirstRun, YourEvents } from '../components/TodayParts.tsx';
 import { NeedsYou } from './TodayParts.tsx';
+import { ThisWeek } from './TodayWeek.tsx';
 import { TodaySidebar } from './TodaySidebar.tsx';
 import { RunNowBanner } from './TodayNow.tsx';
 import { isNowState, runNowOf, trackAt } from './todayRun.ts';
@@ -86,6 +88,10 @@ export function Today({ search = null }: { search?: SearchStart | null }) {
         long ? LONG_NAME : EVENTS.ireti.name,
       ),
     [name, notSent, asks, later, rows, long],
+  );
+  const week = useMemo(
+    () => ({ ...moment, days: weekIn(moment.days, sayIn(locale)) }),
+    [moment, locale],
   );
   const [told, setTold] = useState<string | null>(null);
   const tell = useCallback<Tell>((words) => setTold(words), []);
@@ -157,7 +163,7 @@ export function Today({ search = null }: { search?: SearchStart | null }) {
                   <div className="today-columns">
                     <div className="today-left">
                       <NeedsYou moment={moment} tell={tell} />
-                      <ThisWeek moment={moment} open={open} />
+                      <ThisWeek moment={week} open={open} />
                     </div>
                     <div className="today-right">
                       <YourEvents moment={moment} open={open} />
