@@ -4731,6 +4731,14 @@ describe('A HEIC the browser cannot show, and a cover that will not load (sc-138
 
       await act(async () => copies[0]!.land());
 
+      await waitFor(() =>
+        expect(sent.map(({ line }) => line)).toContain('PUT /api/events/ev_1/cover'),
+      );
+      expect(await screen.findByText('Created. Opening the event.')).toBeDefined();
+      await act(async () => new Promise((done) => setTimeout(done, 1000)));
+      expect(screen.getByText('Created. Opening the event.')).toBeDefined();
+      expect(screen.getByRole('heading', { level: 1, name: 'New event' })).toBeDefined();
+
       expect(
         await screen.findByRole('heading', { level: 1, name: 'Adaeze and Tunde' }),
       ).toBeDefined();
