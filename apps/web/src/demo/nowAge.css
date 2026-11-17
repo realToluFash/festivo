@@ -7,7 +7,9 @@
   font: 600 14px/1.35 var(--fontFamily);
 }
 
+/* Out of the flow while empty, so the column's gap is not taken; display: none would silence the live region. */
 .na-line:empty {
+  position: absolute;
   margin: 0;
 }
 
