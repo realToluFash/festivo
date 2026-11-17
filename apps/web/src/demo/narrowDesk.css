@@ -1,4 +1,4 @@
-/* 641 to 960 px only (sc-60699): 961 and up, and 640 and down, stay as on main. */
+/* 641 to 960 px only (sc-60699): 961 and up, and 640 and down, stay as on main. What runs on past 960 is in wideDesk.css. */
 @media (40rem < width <= 60rem) {
   .today.desk .desk-page {
     padding-inline: var(--spaceXxl);
@@ -6,21 +6,11 @@
 
   .today.desk :is(.desk-top, .gs-top) {
     flex-shrink: 0;
-    flex-wrap: wrap;
-    row-gap: var(--spaceLg);
-  }
-
-  .today.desk :is(.desk-title, .gs-title) {
-    min-width: auto;
   }
 
   .today.desk .gs-top > .mn-head {
     flex: 1 1 auto;
     min-width: auto;
-  }
-
-  .today.desk :is(.desk-title, .desk-title *, .gs-title, .gs-title *) {
-    overflow-wrap: normal;
   }
 
   /* Mirrors the product's Settings, which stacks its list above the page up to 60rem. */
@@ -70,31 +60,19 @@
     grid-template-columns: minmax(0, 1fr);
   }
 
-  .today.desk .lib-split.is-docked {
+  .today.desk .mn-split:not(.ro .mn-split):has(> .mn-panel) {
     flex-direction: column;
     align-items: stretch;
   }
 
-  .today.desk .lib-split.is-docked .lib-panel {
+  .today.desk .mn-split:not(.ro .mn-split) > .mn-panel {
     position: static;
     order: -1;
     width: auto;
     max-height: none;
   }
 
-  .today.desk .mn-split:has(> .mn-panel) {
-    flex-direction: column;
-    align-items: stretch;
-  }
-
-  .today.desk .mn-split > .mn-panel {
-    position: static;
-    order: -1;
-    width: auto;
-    max-height: none;
-  }
-
-  .today.desk :is(.lib-split.is-docked .lib-panel, .mn-split > .mn-panel) .mn-panel-body {
+  .today.desk .mn-split:not(.ro .mn-split) > .mn-panel .mn-panel-body {
     overflow: visible;
   }
 
@@ -111,23 +89,6 @@
 
   .today.desk .ev-columns {
     grid-template-columns: minmax(0, 1fr);
-  }
-
-  .today.desk .gs-cols {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
-  .today.desk .gs-column {
-    position: static;
-    order: -1;
-    max-height: none;
-    margin: 0;
-    padding: 0;
-    overflow: visible;
-  }
-
-  .today.desk .gs-column:has(> .gs-pick) {
-    display: none;
   }
 }
 

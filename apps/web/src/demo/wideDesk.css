@@ -1,5 +1,5 @@
-/* 961 px and up (sc-61150): each rule changes nothing where the page already fits, so 1440 stays as on main. */
-@media (width > 60rem) {
+/* From 641 px (sc-60699, sc-61150), each arrangement in one rule: none changes a page that already fits, so 1440 stays as on main. */
+@media (width > 40rem) {
   .today.desk :is(.desk-top, .gs-top) {
     flex-wrap: wrap;
     row-gap: var(--spaceLg);
@@ -14,8 +14,8 @@
   }
 }
 
-/* Up to 1200 px the Schedule's open item, and up to 1120 px Menu library's open dish, come before the list, as they do at 641 to 960. */
-@media (60rem < width <= 75rem) {
+/* Up to 1200 px the Schedule's open item, and up to 1120 px Menu library's open dish, come before the list. */
+@media (40rem < width <= 75rem) {
   .today.desk .ro .mn-split:has(> .mn-panel) {
     flex-direction: column;
     align-items: stretch;
@@ -33,7 +33,7 @@
   }
 }
 
-@media (60rem < width <= 70rem) {
+@media (40rem < width <= 70rem) {
   .today.desk .lib-split.is-docked {
     flex-direction: column;
     align-items: stretch;
@@ -51,8 +51,8 @@
   }
 }
 
-/* Up to 1240 px, until the list and the guest fit at their 520 and 380, an open guest or form comes before the list, as it does at 641 to 960. */
-@media (60rem < width <= 77.5rem) {
+/* Up to 1240 px, until the list and the guest fit at their 520 and 380, an open guest or form comes before the list. */
+@media (40rem < width <= 77.5rem) {
   .today.desk .gs-cols {
     grid-template-columns: minmax(0, 1fr);
   }
