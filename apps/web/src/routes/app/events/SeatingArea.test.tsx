@@ -5468,15 +5468,39 @@ describe('The Tables view (sc-4013)', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Tables' }));
     fireEvent.click(screen.getByRole('tab', { name: 'Seat' }));
     fireEvent.click(screen.getByRole('button', { name: /Bo Ade/ }));
-    expect(screen.getByText('Now pick a table for Bo Ade.')).toBeDefined();
+    expect(
+      screen.getByText('Now pick a table for Bo Ade.').closest('.st-bar')?.className,
+    ).toContain('is-tint');
 
     fireEvent.click(screen.getByRole('button', { name: 'Table 3, 0 of 10' }));
     expect(await screen.findAllByText('Bo Ade is at Table 3.')).not.toHaveLength(0);
     expect(screen.getByRole('button', { name: 'Undo' })).toBeDefined();
+    expect(screen.getByRole('button', { name: 'Table 3, 0 of 10' }).className).toContain('is-lit');
     expect(sent.find((one) => one.line.endsWith('/guests/seat'))?.body).toMatchObject({
       guestId: 'g_bo',
       kind: 'table',
       placeId: 't3',
     });
+  });
+
+  it('moves between the cards with the arrow keys', async () => {
+    signedIn();
+    await onSeating({
+      'GET /api/events/ev_1/seating-plan': () => seating(roomOfCards()),
+    });
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Tables' }));
+    const card = (name: string) => screen.getByRole('button', { name });
+
+    card('Table 2, 0 of 8, Stage').focus();
+    fireEvent.keyDown(card('Table 2, 0 of 8, Stage'), { key: 'ArrowRight' });
+    expect(document.activeElement).toBe(card('Table 10, 1 of 10, Stage'));
+    fireEvent.keyDown(card('Table 10, 1 of 10, Stage'), { key: 'ArrowDown' });
+    expect(document.activeElement).toBe(card('Table 1, 0 of 10, Garden'));
+    fireEvent.keyDown(card('Table 1, 0 of 10, Garden'), { key: 'ArrowLeft' });
+    expect(document.activeElement).toBe(card('Table 10, 1 of 10, Stage'));
+    card('Table 2, 0 of 8, Stage').focus();
+    fireEvent.keyDown(card('Table 2, 0 of 8, Stage'), { key: 'ArrowUp' });
+    expect(document.activeElement).toBe(card('Table 3, 0 of 10'));
   });
 });
