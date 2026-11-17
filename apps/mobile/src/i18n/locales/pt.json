@@ -1698,7 +1698,7 @@
     "timesIn": "Horas no fuso horário {{zone}}",
     "notChosen": "Por escolher",
     "pickerDone": "OK",
-    "created": "O evento foi criado. A abrir o evento.",
+    "created": "O evento foi criado. A abrir…",
     "leaveBody": "O que escreveu para este evento vai perder-se.",
     "venueLookupDown": "As sugestões não estão disponíveis de momento. Escreva a morada completa e será guardada tal como a escreveu.",
     "venueAddressHint": "Escreva pelo menos 3 caracteres para ver sugestões. Também pode escrever qualquer morada.",
