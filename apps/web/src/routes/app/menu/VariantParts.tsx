@@ -46,8 +46,8 @@ export type VariantAsk =
   | { variantId: string; kind: 'ask' | 'fold' }
   | { variantId: string; kind: 'refused'; lines: readonly VariantRefusal[] };
 
-/** Add variant has no glyph in the web's set: stacked layers, in its 24 px stroke. */
-function LayersGlyph() {
+/** Variants have no glyph in the web’s set: stacked layers, in its 24 px stroke. */
+export function LayersGlyph() {
   return (
     <svg
       width={20}
