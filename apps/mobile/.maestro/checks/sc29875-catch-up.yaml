@@ -8,7 +8,7 @@ appId: host.exp.Exponent
 - takeScreenshot: before
 - evalScript: ${output.t0 = Date.now()}
 - extendedWaitUntil:
-    visible: 'Nothing is on'
+    visible: '{{t:runView.nothingNow}}'
     timeout: 75000
 - evalScript: ${console.log('caught up after ms ' + (Date.now() - output.t0))}
 - takeScreenshot: after

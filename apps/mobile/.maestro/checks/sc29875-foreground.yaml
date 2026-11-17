@@ -18,6 +18,6 @@ appId: host.exp.Exponent
 - launchApp:
     stopApp: false
 - extendedWaitUntil:
-    visible: 'Nothing is on'
+    visible: '{{t:runView.nothingNow}}'
     timeout: 8000
 - takeScreenshot: after
