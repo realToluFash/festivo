@@ -1138,6 +1138,25 @@ final readonly class SeatingPlanEditor
         return $ifMatch;
     }
 
+    /**
+     * Tells everyone with the plan open what this editor has chosen, or that they chose nothing; kept nowhere, so it is never a lock (sc-4719).
+     *
+     * @param array{kind: 'table'|'row'|'seat', id: string, chair?: int|null}|null $chosen `chair` is one of a table's chairs, by its number
+     */
+    public function announceChoice(Event $event, SeatingPlan $plan, User $user, ?array $chosen): void
+    {
+        $item = null === $chosen ? null : $this->itemIn($plan, $chosen['kind'], $chosen['id']);
+
+        $this->realtimePublisher->publish(RealtimeTopic::EventSeatingChoices, $event->getId()->toRfc4122(), [
+            'userId' => $user->getId()->toRfc4122(),
+            'chosen' => null === $item || null === $chosen ? null : [
+                'kind' => $chosen['kind'],
+                'id' => $item->getId()->toRfc4122(),
+                'chair' => $item instanceof SeatingTable ? $chosen['chair'] ?? null : null,
+            ],
+        ]);
+    }
+
     private static function changedSince(?User $changedBy): ApiException
     {
         $name = $changedBy?->getName();

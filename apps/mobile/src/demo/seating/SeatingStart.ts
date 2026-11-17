@@ -9,20 +9,32 @@ import {
   partySize,
 } from './SeatingModel.ts';
 import {
+  ANA,
   COLOURS,
   FOLAKE,
   type Item,
+  JULIEN,
+  NGOZI,
   PRIYA,
   ROOM,
   SADE,
   SECTIONS,
   SIX,
+  TOM,
   sampleItems,
   sampleTray,
 } from './SeatingSample.ts';
 import { W, say } from './SeatingWords.ts';
 
 const BOTH = [PRIYA, SADE];
+/** Julien Moreau chose seat 2 of Table 9 (sc-60717). */
+const ON_SEAT = { t9: [{ who: JULIEN, seat: 1 }] };
+/** Priya Shah then Ana Souza chose Table 7; Julien Moreau, Tom Baker and Ngozi Eze, in that order, Table 9 (sc-60717). */
+const TWO = {
+  t7: [{ who: PRIYA }, { who: ANA }],
+  t9: [{ who: JULIEN }, { who: TOM }, { who: NGOZI }],
+};
+const FIVE = [PRIYA, ANA, JULIEN, TOM, NGOZI];
 
 export function blank(layout: Layout): Seating {
   const day = layout === 'phone';
@@ -403,19 +415,19 @@ function tablet(state: SeatingState, b: Seating): Seating {
     case 'tableChanged':
       return chosen(b, 't7', {
         people: BOTH,
-        rings: { t7: PRIYA },
+        rings: { t7: [{ who: PRIYA }] },
         fields: { ...NO_FIELDS, changedBy: say.tableChanged(PRIYA.name) },
       });
     case 'rowChanged':
       return chosen(b, 'rowA', {
         people: BOTH,
-        rings: { rowA: PRIYA },
+        rings: { rowA: [{ who: PRIYA }] },
         fields: { ...NO_FIELDS, changedBy: say.rowChanged(PRIYA.name) },
       });
     case 'seatChanged':
       return chosen(b, 'door', {
         people: BOTH,
-        rings: { door: PRIYA },
+        rings: { door: [{ who: PRIYA }] },
         fields: { ...NO_FIELDS, changedBy: say.seatChanged(PRIYA.name) },
       });
     case 'rowAdded':
@@ -492,29 +504,48 @@ function tablet(state: SeatingState, b: Seating): Seating {
       });
     case 'stepRefused':
       return chosen(moved(b, 't8', { y: 980 }), 't8', {
-        rings: { t8: PRIYA },
+        rings: { t8: [{ who: PRIYA }] },
         people: BOTH,
         bar: { kind: 'amber', words: say.stepRefused(PRIYA.name, 'Table 8') },
       });
     case 'presenceChose':
-      return { ...b, rings: { t7: PRIYA } };
+      return { ...b, rings: { t7: [{ who: PRIYA }] } };
     case 'presenceBoth':
-      return chosen(b, 't7', { rings: { t7: PRIYA }, people: BOTH });
+      return chosen(b, 't7', { rings: { t7: [{ who: PRIYA }] }, people: BOTH });
     case 'presenceSix':
       return {
         ...b,
         people: [...SIX],
-        rings: { t7: PRIYA, t2: SIX[2] ?? PRIYA, t9: SIX[3] ?? PRIYA },
+        rings: { t7: [{ who: PRIYA }], t2: [{ who: ANA }], t9: [{ who: JULIEN }] },
         pop: { kind: 'people' },
       };
     case 'presenceViewer':
-      return { ...b, people: BOTH, rings: { t2: SADE } };
+      return { ...b, people: BOTH, rings: { t2: [{ who: SADE }] } };
+    case 'presenceSeatTables':
+      return { ...b, view: 'Tables', people: [JULIEN], rings: ON_SEAT };
+    case 'presenceSeatList':
+      return {
+        ...b,
+        view: 'List',
+        listTab: 'All',
+        listOpen: 't9',
+        people: [JULIEN],
+        rings: ON_SEAT,
+      };
+    case 'presenceTwoTables':
+      return { ...b, view: 'Tables', people: FIVE, rings: TWO };
+    case 'presenceTwoList':
+      return { ...b, view: 'List', listTab: 'All', people: FIVE, rings: TWO };
+    case 'presenceBothTables':
+      return chosen(b, 't7', { view: 'Tables', rings: { t7: [{ who: PRIYA }] }, people: BOTH });
     case 'reconnecting':
       return { ...b, presence: 'reconnecting', people: [] };
     case 'left':
       return { ...b, people: [SADE], spoken: say.left(PRIYA.name) };
     case 'arriving':
-      return chosen(moved(b, 't9', { x: 1700, y: 1180 }), 't4', { rings: { t9: PRIYA } });
+      return chosen(moved(b, 't9', { x: 1700, y: 1180 }), 't4', {
+        rings: { t9: [{ who: PRIYA }] },
+      });
     case 'tapChooses':
       return chosen(b, 't4', { zoom: at(0.375, 1590, 820) });
     case 'seat':

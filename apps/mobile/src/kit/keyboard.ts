@@ -199,6 +199,17 @@ export function offsetIntoView({
   return Math.max(0, Math.min(contentY + height + margin - shown, contentY - margin));
 }
 
+/** As offsetIntoView, except that a view taller than the sight shows its foot, where a field typed in grows and its error comes; null when the foot is already in sight. */
+export function offsetShowingFoot(at: InScroll): number | null {
+  const { contentY, height, offset, shown, margin } = at;
+  if (height + 2 * margin <= shown) return offsetIntoView(at);
+
+  const foot = contentY + height + margin;
+  if (foot >= offset && foot <= offset + shown) return null;
+
+  return Math.max(0, foot - shown);
+}
+
 /** Whether no part of a view is in sight. TalkBack's focus rests on a view partly in sight, and a scroll under it moves that focus on (sc-18588). */
 export function outOfSight({ contentY, height, offset, shown }: Omit<InScroll, 'margin'>): boolean {
   return contentY + height <= offset || contentY >= offset + shown;

@@ -26,9 +26,24 @@ import {
   sixWays,
   twoWays,
   variantAllergenLine,
-  variantPicked,
-  variantsOf,
 } from './dishVariants.ts';
+import {
+  type Choice,
+  type ChoiceAsk,
+  type ChoiceForm,
+  type ChoiceMode,
+  type OptionForm,
+  choiceForm,
+  dishHidden,
+  dishPicked,
+  draftChoice,
+  eightOptions,
+  optionalSide,
+  sauceChoice,
+  sideChoice,
+  thirdChoice,
+  withSavedChoice,
+} from './dishChoices.ts';
 import { MENU_EVENT, moved } from './menuServed.ts';
 import type { DemoLink } from './settings.ts';
 
@@ -54,6 +69,8 @@ export interface EvDish {
   variants?: readonly Variant[];
   /** The Cost a fold leaves the dish with, from the variant that stays. */
   cost?: Price | null;
+  /** sc-3904: the questions guests answer inside the dish. */
+  choices?: readonly Choice[];
 }
 
 export interface EvCourse {
@@ -109,7 +126,7 @@ export const CW = {
   howAnswer: 'How guests answer',
   choose: 'Guests choose',
   same: 'Everyone gets the same',
-  sameNeedsOne: 'Everyone gets the same needs exactly one dish.',
+  sameNeedsOne: '“Everyone gets the same” needs exactly one dish.',
   skip: 'Guests may skip this course',
   skipOn: (course: string) => `Guests also see “No ${course.toLocaleLowerCase('en')} for me”.`,
   nowChoose: (course: string, n: number) => `${course} has ${n} dishes now, so guests choose.`,
@@ -134,6 +151,9 @@ export const CW = {
   inLibrary: (n: number) => `${n === 1 ? '1 dish' : `${n} dishes`} in the menu library`,
   foundOf: (shown: number, all: number) => `${shown} of ${all === 1 ? '1 dish' : `${all} dishes`}`,
   noMatch: (q: string) => `No dish name has “${q}” in it.`,
+  libraryLoading: 'Loading the menu library…',
+  libraryEmpty: 'The menu library has no dishes yet.',
+  startNewBlank: 'Start a new dish',
   startNew: (q: string) => `Start a new dish called “${q}”`,
   add: 'Add',
   addAria: (name: string) => `Add ${name}`,
@@ -222,10 +242,13 @@ export function servedTime(typed: string): string | null {
 
 export const canAddCourse = (courses: readonly EvCourse[]): boolean => courses.length < COURSE_MAX;
 
-export const isReady = (course: EvCourse): boolean => course.dishes.length > 0;
+/** Ready once guests are offered a dish: a dish waiting on a draft choice isn't (sc-3904). */
+export const isReady = (course: EvCourse): boolean => course.dishes.some((one) => !dishHidden(one));
 
-export const isPicked = (dish: EvDish): boolean =>
-  dish.pickers.length > 0 || variantsOf(dish).some(variantPicked);
+export const onlyDrafts = (course: EvCourse): boolean =>
+  course.dishes.length > 0 && !isReady(course);
+
+export const isPicked = (dish: EvDish): boolean => dishPicked(dish);
 
 export const coursePicked = (course: EvCourse): boolean => course.dishes.some(isPicked);
 
@@ -242,6 +265,12 @@ export function headerLines(courses: readonly EvCourse[]): {
     counts: `${CW.courses(courses.length)} · ${CW.dishes(dishes)}`,
     ready: ready < courses.length ? CW.ready(ready, courses.length) : null,
   };
+}
+
+export function menuLinkLine(courses: readonly EvCourse[]): string | null {
+  const ready = courses.filter(isReady).length;
+
+  return ready < courses.length ? `${ready} of ${courses.length} ready` : null;
 }
 
 export function courseLine(at: number, all: number, servedAt: string | null): string {
@@ -475,6 +504,78 @@ function setMain(variants: readonly Variant[]): EvCourse[] {
   );
 }
 
+const asks =
+  (choices: readonly Choice[], variants?: readonly Variant[]): DishChange =>
+  (dish) => ({ ...dish, choices, ...(variants == null ? {} : { pickers: [], variants }) });
+
+/** sc-3904's sample: Jollof rice, picked, asks "And a side?", answered, and "And a sauce?", optional and not yet answered. */
+export function choiceCourses(choices: readonly Choice[] = [sideChoice(), sauceChoice()]) {
+  return changed({ 'k2-jollof': asks(choices) });
+}
+
+function waysAndChoices(choices: readonly Choice[], picked: boolean): EvCourse[] {
+  const two = twoWays().map((one, at) =>
+    picked ? { ...one, pickers: Array.from({ length: at === 0 ? 38 : 48 }, () => []) } : one,
+  );
+
+  return changed({ 'k2-jollof': asks(choices, two) });
+}
+
+const SHORT_RIB: EvDish = {
+  id: 'k2-rib',
+  name: 'Short rib',
+  desc: 'Braised beef short rib in pepper sauce, cooked for six hours.',
+  contains: ['celery'],
+  diets: ['halal', 'no_pork', 'no_alcohol'],
+  libraryId: null,
+  pickers: [],
+};
+
+function setMainOf(dish: EvDish): EvCourse[] {
+  return sampleCourses().map((one) =>
+    one.id === 'k2' ? { ...one, answer: 'same', skip: true, dishes: [dish] } : one,
+  );
+}
+
+/** Dessert, its dishes waiting on draft choices: every one, or Chin chin alone. */
+function dessertDrafts(all: boolean): EvCourse[] {
+  return changed({
+    'k3-chinchin': asks([draftChoice('c-chin', 'And a topping?')]),
+    ...(all ? { 'k3-zobo': asks([draftChoice('c-zobo')]) } : {}),
+  });
+}
+
+const SIDE_FORM: readonly Partial<OptionForm>[] = [
+  { name: 'Plantain', none: true },
+  { name: 'Garden salad', allergens: ['mustard'] },
+  { name: 'Moi moi', allergens: ['eggs'] },
+];
+
+/** "And a side?" saved with new allergens on its options, by place: the menu after it, and the status line. */
+function sideSaved(contains: readonly (DishAllergen[] | null)[]) {
+  const was = sideChoice();
+  const form = choiceForm(was);
+  const edited: ChoiceForm = {
+    ...form,
+    options: form.options.map((one, at) => {
+      const next = contains[at];
+      return next == null ? one : { ...one, allergens: next, none: false };
+    }),
+  };
+  const base = choiceCourses();
+  const jollof = dishIn(base, 'k2-jollof') as EvDish;
+  const saved = withSavedChoice(jollof, 'edit', was.id, edited, 'en');
+
+  return {
+    courses: changed({ 'k2-jollof': () => saved.dish }, base),
+    said: saved.said,
+    saidMore: saved.more,
+  };
+}
+
+const dishIn = (courses: readonly EvCourse[], id: string): EvDish | undefined =>
+  courses.flatMap((one) => one.dishes).find((one) => one.id === id);
+
 const unpicked = (variants: readonly Variant[]): Variant[] =>
   variants.map((one) => ({ ...one, pickers: [] }));
 
@@ -523,18 +624,34 @@ export type Opened =
       variantId?: string;
       forms?: readonly Partial<VariantForm>[];
       press?: boolean;
+    }
+  | {
+      kind: 'choice';
+      courseId: string;
+      dishId: string;
+      mode: ChoiceMode;
+      choiceId?: string;
+      form?: Partial<Omit<ChoiceForm, 'options'>>;
+      /** Over the form's options, by place; a longer list adds blocks. */
+      options?: readonly Partial<OptionForm>[];
+      openAt?: number;
+      binAt?: number;
+      optionsFull?: boolean;
+      press?: boolean;
     };
 
 export type Asking =
   | { kind: 'dish'; dishId: string }
   | { kind: 'course'; courseId: string }
-  | { kind: 'variant'; dishId: string; ask: VariantAsk };
+  | { kind: 'variant'; dishId: string; ask: VariantAsk }
+  | { kind: 'choice'; dishId: string; ask: ChoiceAsk };
 
 export type Refused =
   | { kind: 'dish'; dishId: string }
   | { kind: 'course'; courseId: string }
   | { kind: 'limit'; at: 'top' | 'end' }
-  | { kind: 'addVariant'; dishId: string; why: 'limit' | 'picked' };
+  | { kind: 'addVariant'; dishId: string; why: 'limit' | 'picked' }
+  | { kind: 'addChoice'; dishId: string; why: 'limit' | 'picked' };
 
 export interface CoursesStart {
   name: string;
@@ -547,12 +664,14 @@ export interface CoursesStart {
   asking: Asking | null;
   refused: Refused | null;
   said: string;
-  saidMore?: string | null;
+  saidMore?: string | readonly string[] | null;
   system: 'none' | 'loading' | 'refreshing' | 'offline' | 'cannotReach' | 'noAccess' | 'gone';
   /** The next save or action fails: no connection, or a role that lost menu.manage. */
   failing: 'none' | 'network' | 'forbidden';
   /** The menu library Add dish lists, when a state needs one with variants. */
   library?: readonly LibDish[];
+  /** The menu has loaded and the library Add dish lists has not yet. */
+  libraryLoading?: boolean;
 }
 
 function start(over: Partial<CoursesStart> & { name: string; note: string }): CoursesStart {
@@ -669,6 +788,20 @@ const STATES = {
       name: 'Add dish, no match',
       note: 'Nothing found, and a new dish with the name filled in.',
       opened: { kind: 'addDish', courseId: MAIN, tab: 'library', q: 'plantain' },
+    }),
+  addDishLoading: () =>
+    start({
+      name: 'Add dish, the library still loading',
+      note: 'Opened before the library has loaded: the count line says so over three bones, and no line quotes a search. New dish works meanwhile.',
+      opened: { kind: 'addDish', courseId: MAIN, tab: 'library' },
+      libraryLoading: true,
+    }),
+  addDishEmptyLibrary: () =>
+    start({
+      name: 'Add dish, the library has no dishes',
+      note: 'Nothing to find: says the library is empty and starts a new dish instead.',
+      opened: { kind: 'addDish', courseId: MAIN, tab: 'library' },
+      library: [],
     }),
   addDishSame: () =>
     start({
@@ -1147,6 +1280,369 @@ const STATES = {
       },
       failing: 'network',
     }),
+
+  choices: () =>
+    start({
+      name: 'A dish with choices',
+      note: 'Jollof rice asks “And a side?”, answered, with Kitchen prep, and “And a sauce?”, optional; Add a choice on every dish row.',
+      courses: choiceCourses(),
+    }),
+  choicesReadOnly: () =>
+    start({
+      name: 'Choices, read only',
+      note: 'The insets and Kitchen prep, with no Add a choice, Edit or Remove….',
+      courses: choiceCourses(),
+      manage: false,
+    }),
+  addChoice: () =>
+    start({
+      name: 'Add a choice',
+      note: 'On Coconut rice, nobody having picked it: the question, two option blocks, Guests pick exactly and Required, on.',
+      opened: { kind: 'choice', courseId: MAIN, dishId: 'k2-coconut', mode: 'add' },
+    }),
+  addChoiceDraft: () =>
+    start({
+      name: 'Add a choice, a draft',
+      note: 'One option named: the amber box says it saves as a draft, with the reason, and the button reads Save as a draft.',
+      opened: {
+        kind: 'choice',
+        courseId: MAIN,
+        dishId: 'k2-coconut',
+        mode: 'add',
+        form: { question: 'And a side?' },
+        options: [{ name: 'Plantain', none: true }],
+      },
+    }),
+  addChoiceTooLong: () =>
+    start({
+      name: 'Add a choice, too long',
+      note: 'A question over 80 and an option over 60, pressed: refused before sending, focus on the question.',
+      opened: {
+        kind: 'choice',
+        courseId: MAIN,
+        dishId: 'k2-coconut',
+        mode: 'add',
+        form: {
+          question:
+            'Which side would you like with your coconut rice, and would you like it warm or cold?',
+        },
+        options: [
+          { name: 'Plantain', none: true },
+          {
+            name: 'Garden salad of lettuce, tomato, cucumber, red onion and sweetcorn',
+            allergens: ['mustard'],
+          },
+        ],
+        press: true,
+      },
+    }),
+  addChoiceDuplicate: () =>
+    start({
+      name: 'Add a choice, the same name twice',
+      note: 'Plantain and “plantain ”: each option needs its own name, ignoring case and spaces.',
+      opened: {
+        kind: 'choice',
+        courseId: MAIN,
+        dishId: 'k2-coconut',
+        mode: 'add',
+        form: { question: 'And a side?' },
+        options: [
+          { name: 'Plantain', none: true },
+          { name: 'plantain ', none: true },
+        ],
+        press: true,
+      },
+    }),
+  addChoiceContains: () =>
+    start({
+      name: 'Add a choice, allergens not answered',
+      note: 'Garden salad named with nothing ticked: its allergens open, focus on the first.',
+      opened: {
+        kind: 'choice',
+        courseId: MAIN,
+        dishId: 'k2-coconut',
+        mode: 'add',
+        form: { question: 'And a side?' },
+        options: [{ name: 'Plantain', none: true }, { name: 'Garden salad' }],
+        press: true,
+      },
+    }),
+  containsOpen: () =>
+    start({
+      name: 'Add a choice, an option’s allergens open',
+      note: 'Set allergens on Garden salad: the 14 in Annex II order, Contains none of these below a rule. One list is open at a time.',
+      opened: {
+        kind: 'choice',
+        courseId: MAIN,
+        dishId: 'k2-coconut',
+        mode: 'add',
+        form: { question: 'And a side?' },
+        options: [
+          { name: 'Plantain', none: true },
+          { name: 'Garden salad', allergens: ['mustard'] },
+        ],
+        openAt: 1,
+      },
+    }),
+  optionsLimit: () =>
+    start({
+      name: 'Add a choice, 8 options',
+      note: 'Add an option pressed with 8: nothing is added, and the line says why.',
+      opened: {
+        kind: 'choice',
+        courseId: MAIN,
+        dishId: 'k2-coconut',
+        mode: 'add',
+        form: { question: 'And a side?', pick: 2 },
+        options: eightOptions(),
+        optionsFull: true,
+      },
+    }),
+  addChoicePicked: () =>
+    start({
+      name: 'Add a choice on a picked dish',
+      note: 'Until sc-3913 is built, Add a choice on Jollof rice, which guests have picked, opens nothing and says so under the row. It holds for every later choice.',
+      courses: choiceCourses(),
+      refused: { kind: 'addChoice', dishId: 'k2-jollof', why: 'picked' },
+    }),
+  choicesAtLimit: () =>
+    start({
+      name: 'Choices at the limit',
+      note: 'A 4th Add a choice opens nothing: a dish can have at most 3 choices, said before the picks.',
+      courses: choiceCourses([sideChoice(), sauceChoice(), thirdChoice()]),
+      refused: { kind: 'addChoice', dishId: 'k2-jollof', why: 'limit' },
+    }),
+  choiceSaved: () =>
+    start({
+      name: 'A choice added',
+      note: 'Coconut rice now asks “And a side?”; the status line says so.',
+      courses: changed({ 'k2-coconut': asks([sideChoice(false, 'c-new')]) }),
+      said: '“And a side?” added to Coconut rice.',
+    }),
+  choiceOptional: () =>
+    start({
+      name: 'A choice, optional',
+      note: 'Required off: guests also see None for me.',
+      courses: changed({
+        'k2-coconut': asks([{ ...sideChoice(false, 'c-opt'), required: false }]),
+      }),
+    }),
+  choiceAsDraft: () =>
+    start({
+      name: 'A draft choice',
+      note: 'Coconut rice waits on a choice with one option and no question: the Draft tag and its reasons, Not offered to guests by the name, and Finish for Edit.',
+      courses: changed({ 'k2-coconut': asks([draftChoice()]) }),
+    }),
+  editChoice: () =>
+    start({
+      name: 'Edit a choice',
+      note: 'Edit on “And a sauce?”, nobody having answered it.',
+      courses: choiceCourses(),
+      opened: {
+        kind: 'choice',
+        courseId: MAIN,
+        dishId: 'k2-jollof',
+        mode: 'edit',
+        choiceId: 'c-sauce',
+      },
+    }),
+  choiceRemoveConfirm: () =>
+    start({
+      name: 'Remove a choice, asked',
+      note: 'Remove… on “And a sauce?”, which nobody has answered: Keep it or Remove choice.',
+      courses: choiceCourses(),
+      asking: { kind: 'choice', dishId: 'k2-jollof', ask: { choiceId: 'c-sauce', kind: 'ask' } },
+    }),
+  choiceRemoveAnswered: () =>
+    start({
+      name: 'Remove an answered choice',
+      note: 'Until sc-3913 is built, Remove… on “And a side?” opens nothing: guests have answered it.',
+      courses: choiceCourses(),
+      asking: {
+        kind: 'choice',
+        dishId: 'k2-jollof',
+        ask: { choiceId: 'c-side', kind: 'answered' },
+      },
+    }),
+  editPickedOption: () =>
+    start({
+      name: 'Edit, a picked option’s bin',
+      note: 'The bin on Plantain removes nothing: guests have picked it. Focus stays on the bin.',
+      courses: choiceCourses(),
+      opened: {
+        kind: 'choice',
+        courseId: MAIN,
+        dishId: 'k2-jollof',
+        mode: 'edit',
+        choiceId: 'c-side',
+        binAt: 0,
+      },
+    }),
+  editCountAnswered: () =>
+    start({
+      name: 'Edit, the count of an answered choice',
+      note: 'Guests pick exactly 2, pressed: refused under the stepper, focus on One fewer.',
+      courses: choiceCourses(),
+      opened: {
+        kind: 'choice',
+        courseId: MAIN,
+        dishId: 'k2-jollof',
+        mode: 'edit',
+        choiceId: 'c-side',
+        form: { pick: 2 },
+        press: true,
+      },
+    }),
+  editRequiredAnswered: () =>
+    start({
+      name: 'Edit, Required over None for me',
+      note: '“And a side?” is optional and 4 guests answered None for me: Required turned on is refused under it.',
+      courses: choiceCourses([optionalSide(), sauceChoice()]),
+      opened: {
+        kind: 'choice',
+        courseId: MAIN,
+        dishId: 'k2-jollof',
+        mode: 'edit',
+        choiceId: 'c-side',
+        form: { required: true },
+        press: true,
+      },
+    }),
+  editAnsweredDraft: () =>
+    start({
+      name: 'Edit, an answered choice made unfinished',
+      note: 'The question cleared: no draft box, the button stays Save choice, and Save is refused with the reasons.',
+      courses: choiceCourses(),
+      opened: {
+        kind: 'choice',
+        courseId: MAIN,
+        dishId: 'k2-jollof',
+        mode: 'edit',
+        choiceId: 'c-side',
+        form: { question: '' },
+        press: true,
+      },
+    }),
+  editChoiceAllergenAdded: () =>
+    start({
+      name: 'Edit, an allergen added to a picked option',
+      note: 'Crustaceans added to Moi moi and saved: the confirmation, and under it the line until sc-3913 is built.',
+      ...sideSaved([null, null, ['crustaceans', 'eggs']]),
+    }),
+  editChoiceAllergensTwo: () =>
+    start({
+      name: 'Edit, allergens added to two picked options',
+      note: 'Celery on Garden salad, crustaceans and milk on Moi moi: one line per option, naming only what somebody who picked it has recorded.',
+      ...sideSaved([null, ['celery', 'mustard'], ['crustaceans', 'eggs', 'milk']]),
+    }),
+  variantsAndChoices: () =>
+    start({
+      name: 'Variants and choices',
+      note: 'Jollof rice · 2 ways, then “And a side?”, which applies to every variant, with one Kitchen prep total per option.',
+      courses: waysAndChoices([sideChoice()], true),
+    }),
+  vcReadOnly: () =>
+    start({
+      name: 'Variants and choices, read only',
+      note: 'The variants and the choice with no actions.',
+      courses: waysAndChoices([sideChoice()], true),
+      manage: false,
+    }),
+  vcAddChoice: () =>
+    start({
+      name: 'Variants and choices, Add a choice',
+      note: 'On Jollof rice · 2 ways, nobody having picked: the options apply to both variants.',
+      courses: waysAndChoices([], false),
+      opened: { kind: 'choice', courseId: MAIN, dishId: 'k2-jollof', mode: 'add' },
+    }),
+  vcAddChoiceDraft: () =>
+    start({
+      name: 'Variants and choices, a draft',
+      note: 'One option: the draft box says guests can’t choose this dish in either variant.',
+      courses: waysAndChoices([], false),
+      opened: {
+        kind: 'choice',
+        courseId: MAIN,
+        dishId: 'k2-jollof',
+        mode: 'add',
+        form: { question: 'And a side?' },
+        options: [{ name: 'Plantain', none: true }],
+      },
+    }),
+  vcDuplicate: () =>
+    start({
+      name: 'Variants and choices, the same name twice',
+      note: 'Moi moi twice: refused before sending.',
+      courses: waysAndChoices([], false),
+      opened: {
+        kind: 'choice',
+        courseId: MAIN,
+        dishId: 'k2-jollof',
+        mode: 'add',
+        form: { question: 'And a side?' },
+        options: [...SIDE_FORM, { name: 'MOI MOI', allergens: ['eggs'] }],
+        press: true,
+      },
+    }),
+  vcDraft: () =>
+    start({
+      name: 'Variants and choices, a draft choice',
+      note: 'Hidden in both variants until the draft choice is finished.',
+      courses: waysAndChoices([draftChoice()], false),
+    }),
+  vcAtLimit: () =>
+    start({
+      name: 'Variants and choices at the limit',
+      note: 'Three choices on Jollof rice · 2 ways: a 4th is refused.',
+      courses: waysAndChoices([sideChoice(false), sauceChoice(), thirdChoice()], false),
+      refused: { kind: 'addChoice', dishId: 'k2-jollof', why: 'limit' },
+    }),
+  setCourseChoices: () =>
+    start({
+      name: 'A set course, choices only',
+      note: 'Main is Everyone gets the same, Short rib alone, with two choices: the setting stays, and the hint says guests answer its choices.',
+      courses: setMainOf({ ...SHORT_RIB, choices: [sideChoice(false), sauceChoice()] }),
+    }),
+  setCourseVariantsChoices: () =>
+    start({
+      name: 'A set course, variants and choices',
+      note: 'Jollof rice · 2 ways for Everyone and a choice: sc-3903’s “Guests pick the way.” alone.',
+      courses: setMainOf({
+        ...SHORT_RIB,
+        id: 'k2-jollof',
+        name: 'Jollof rice',
+        desc: 'Smoky party jollof.',
+        variants: twoWays(),
+        choices: [sideChoice(false)],
+      }),
+    }),
+  setCourseChildrenChoice: () =>
+    start({
+      name: 'A set course, a children’s portion and a choice',
+      note: 'One Everyone variant and one Children only: guests answer the choice alone.',
+      courses: setMainOf({
+        ...SHORT_RIB,
+        id: 'k2-jollof',
+        name: 'Jollof rice',
+        desc: 'Smoky party jollof.',
+        variants: jollofVariants()
+          .slice(0, 2)
+          .map((one) => ({ ...one, pickers: [] })),
+        choices: [sideChoice(false)],
+      }),
+    }),
+  courseOfDrafts: () =>
+    start({
+      name: 'A course of drafts',
+      note: 'Every Dessert dish waits on a draft choice: No finished dish · not shown to guests, and 2 of 4 courses ready.',
+      courses: dessertDrafts(true),
+    }),
+  courseOneFinished: () =>
+    start({
+      name: 'A course with one finished dish',
+      note: 'Chin chin waits on a draft, Zobo is finished: Dessert stays Ready, and only Chin chin is not offered.',
+      courses: dessertDrafts(false),
+    }),
 } satisfies Record<string, () => CoursesStart>;
 
 export type CoursesStateName = keyof typeof STATES;
@@ -1198,7 +1694,15 @@ export const COURSES_PAGES: readonly { name: string; states: readonly DemoLink[]
   {
     name: 'Add dish, from the library or new',
     states: (
-      ['addDish', 'addDishNoMatch', 'addDishSame', 'addDishNew', 'addDishNewBlank'] as const
+      [
+        'addDish',
+        'addDishLoading',
+        'addDishNoMatch',
+        'addDishEmptyLibrary',
+        'addDishSame',
+        'addDishNew',
+        'addDishNewBlank',
+      ] as const
     ).map(link),
   },
   {
@@ -1268,6 +1772,62 @@ export const COURSES_PAGES: readonly { name: string; states: readonly DemoLink[]
       ...(['variantSaveFailed', 'variantForbidden', 'foldFailed'] as const).map(link),
       { to: coursesAt('addFirst', '&budget=no'), name: 'Add variants, without budget.read' },
     ],
+  },
+  {
+    name: 'Choices in a dish (sc-3904): the rows',
+    states: (
+      [
+        'choices',
+        'choicesReadOnly',
+        'choiceSaved',
+        'choiceOptional',
+        'choiceAsDraft',
+        'addChoicePicked',
+        'choicesAtLimit',
+        'choiceRemoveConfirm',
+        'choiceRemoveAnswered',
+      ] as const
+    ).map(link),
+  },
+  {
+    name: 'Choices: Add a choice and Edit',
+    states: (
+      [
+        'addChoice',
+        'addChoiceDraft',
+        'addChoiceTooLong',
+        'addChoiceDuplicate',
+        'addChoiceContains',
+        'containsOpen',
+        'optionsLimit',
+        'editChoice',
+        'editPickedOption',
+        'editCountAnswered',
+        'editRequiredAnswered',
+        'editAnsweredDraft',
+        'editChoiceAllergenAdded',
+        'editChoiceAllergensTwo',
+      ] as const
+    ).map(link),
+  },
+  {
+    name: 'Choices: with variants, a set course, and drafts',
+    states: (
+      [
+        'variantsAndChoices',
+        'vcReadOnly',
+        'vcAddChoice',
+        'vcAddChoiceDraft',
+        'vcDuplicate',
+        'vcDraft',
+        'vcAtLimit',
+        'setCourseChoices',
+        'setCourseVariantsChoices',
+        'setCourseChildrenChoice',
+        'courseOfDrafts',
+        'courseOneFinished',
+      ] as const
+    ).map(link),
   },
   {
     name: 'The system’s states',

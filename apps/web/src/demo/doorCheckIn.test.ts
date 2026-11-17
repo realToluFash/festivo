@@ -14,6 +14,8 @@ import {
   nameMatches,
   nameProblem,
   sameName,
+  seatOf,
+  seatingOf,
   shownName,
   shownPeople,
   undo,
@@ -75,5 +77,15 @@ describe('check-in in the browser (sc-28230)', () => {
     expect(checkInStart('empty_closed', 'shift')).toMatchObject({ phase: 'before', people: [] });
     expect(checkInStart('offline', 'shift')).toMatchObject({ offline: true, failed: 'adaeze' });
     expect(checkInStart('not_signed_in', 'shift').signedOut).toBe(true);
+  });
+
+  it('names each person’s own seat, No seat yet for the unseated, nothing when nobody is seated (sc-60684)', () => {
+    expect(seatOf('adaeze', 'seated')).toBe('Row C, seat 14 · Upper balcony east');
+    expect(seatOf('kemi', 'seated')).toBe('Table 4 · Main hall');
+    expect(seatOf('folasade', 'seated')).toBe('Table 2');
+    expect(seatOf('a1', 'seated')).toBe(CW.noSeat);
+    expect(seatOf('walkin-1', 'seated')).toBe(CW.noSeat);
+    expect(seatingOf('none')).toBe('none');
+    expect(seatOf('adaeze', seatingOf('none'))).toBeNull();
   });
 });

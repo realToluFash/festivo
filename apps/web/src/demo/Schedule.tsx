@@ -54,6 +54,8 @@ import {
   zoneNamed,
 } from './schedule.ts';
 import { RW as RUN_WORDS, runViewAt } from './runView.ts';
+import { SHOW_WORDS } from './roomScreen.ts';
+import { ShowOnScreen } from './ShowOnScreen.tsx';
 import { useSwitcherStart } from './switcher.ts';
 import './guests.css';
 import './menu.css';
@@ -152,6 +154,7 @@ function ScheduleView({
   const [failed, setFailed] = useState(first.failed);
   const [picked, setPicked] = useState<string | null>(null);
   const [said, setSaid] = useState('');
+  const [screens, setScreens] = useState(first.screens);
   const focusAfter = useRef<string | null>(null);
   const manage = first.manage;
 
@@ -340,6 +343,17 @@ function ScheduleView({
               {RUN_WORDS.openRun}
             </Link>
           )}
+          {manage && items.length > 0 && (
+            <button
+              id="ro-screens"
+              type="button"
+              className="gs-pill is-secondary ro-run"
+              onClick={() => setScreens('list')}
+            >
+              <Glyph name="device" size={17} weight={2.2} />
+              {SHOW_WORDS.open}
+            </button>
+          )}
           {manage && (
             <button
               id="ro-add"
@@ -477,6 +491,15 @@ function ScheduleView({
           )}
         </div>
       </div>
+      {screens != null && (
+        <ShowOnScreen
+          start={screens}
+          onClose={() => {
+            setScreens(null);
+            focusAfter.current = 'ro-screens';
+          }}
+        />
+      )}
       {deleted != null && (
         <Toast
           key={deleted.id}

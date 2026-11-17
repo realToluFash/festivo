@@ -31,6 +31,7 @@ export function EventSidebar({
   tell,
   inert,
   waiting = null,
+  menuLine = null,
   without = [],
   reader = OWNER,
 }: {
@@ -40,6 +41,8 @@ export function EventSidebar({
   tell: Tell;
   inert: boolean;
   waiting?: { line: string; name: string } | null;
+  /** The Menu link's line while a course isn't ready (sc-3902). */
+  menuLine?: string | null;
   without?: readonly Area[];
   reader?: Reader | undefined;
 }) {
@@ -61,32 +64,37 @@ export function EventSidebar({
         />
       </div>
       <ul className="today-places">
-        {AREAS.filter((one) => !without.includes(one.area)).map((one) => (
-          <li key={one.area}>
-            <Link
-              className={[
-                'today-place',
-                one.area === area && 'is-on',
-                one.area === 'messages' && waiting != null && 'has-line',
-              ]
-                .filter(Boolean)
-                .join(' ')}
-              to={areaPath(event.id, one.area)}
-              aria-current={one.area === area ? 'page' : undefined}
-              aria-label={one.area === 'messages' && waiting != null ? waiting.name : undefined}
-            >
-              <Glyph name={SIDE_AREA_GLYPHS[one.area]} />
-              {one.area === 'messages' && waiting != null ? (
-                <span className="ev-side-two">
-                  <span>{one.name}</span>
-                  <span className="ev-side-sub">{waiting.line}</span>
-                </span>
-              ) : (
-                one.name
-              )}
-            </Link>
-          </li>
-        ))}
+        {AREAS.filter((one) => !without.includes(one.area)).map((one) => {
+          const sub =
+            one.area === 'messages'
+              ? (waiting?.line ?? null)
+              : one.area === 'menu'
+                ? menuLine
+                : null;
+
+          return (
+            <li key={one.area}>
+              <Link
+                className={['today-place', one.area === area && 'is-on', sub != null && 'has-line']
+                  .filter(Boolean)
+                  .join(' ')}
+                to={areaPath(event.id, one.area)}
+                aria-current={one.area === area ? 'page' : undefined}
+                aria-label={one.area === 'messages' && waiting != null ? waiting.name : undefined}
+              >
+                <Glyph name={SIDE_AREA_GLYPHS[one.area]} />
+                {sub != null ? (
+                  <span className="ev-side-two">
+                    <span>{one.name}</span>
+                    <span className="ev-side-sub">{sub}</span>
+                  </span>
+                ) : (
+                  one.name
+                )}
+              </Link>
+            </li>
+          );
+        })}
       </ul>
       <div className="today-grow" />
       <div className="today-places">

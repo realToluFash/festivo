@@ -1185,6 +1185,7 @@ function Courses({
                   onlyEvent={open.onlyEvent}
                   course={openCourse}
                   library={shownLibrary}
+                  loading={library == null}
                   prices={library?.prices === true}
                   language={language}
                   problems={

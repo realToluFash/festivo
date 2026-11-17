@@ -213,6 +213,11 @@
   overflow-wrap: anywhere;
 }
 
+.ci-seat {
+  font-weight: 600;
+  overflow-wrap: break-word;
+}
+
 .ci-reply,
 .ci-here,
 .ci-failed,
