@@ -4173,6 +4173,53 @@ describe('Who else is on the plan (sc-4719)', () => {
     expect(await screen.findByRole('button', { name: 'Priya Shah' })).toBeDefined();
   });
 
+  it('beats from a worker, whose timers a hidden tab does not hold back to one a minute', async () => {
+    class StubWorker {
+      static made: StubWorker[] = [];
+      every = 0;
+      onmessage: (() => void) | null = null;
+      constructor() {
+        StubWorker.made.push(this);
+      }
+      postMessage(ms: number) {
+        this.every = ms;
+      }
+      terminate() {}
+    }
+    const { createObjectURL, revokeObjectURL } = URL;
+    URL.createObjectURL = () => 'blob:ticks';
+    URL.revokeObjectURL = () => undefined;
+    vi.stubGlobal('Worker', StubWorker);
+    try {
+      const { sent } = await onPlanWith([ME]);
+      await waitFor(() => expect(beatsSent(sent)).toBe(1));
+      const beating = StubWorker.made.find((one) => one.every === 5_000)!;
+
+      act(() => beating.onmessage?.());
+
+      await waitFor(() => expect(beatsSent(sent)).toBe(2));
+    } finally {
+      URL.createObjectURL = createObjectURL;
+      URL.revokeObjectURL = revokeObjectURL;
+    }
+  });
+
+  it('neither leaves nor reconnects when its timers wake a minute late, and says it is here at once', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    const { sent, source } = await onPlanWith([ME, PRIYA]);
+    await waitFor(() => expect(beatsSent(sent)).toBe(1));
+
+    vi.setSystemTime(Date.now() + 60_000);
+    source.publish({ userId: 'u_priya', here: true });
+    act(() => vi.advanceTimersByTime(1_000));
+
+    await waitFor(() => expect(beatsSent(sent)).toBeGreaterThanOrEqual(2));
+    expect(screen.queryByText('Can’t see who else is here. Reconnecting…')).toBeNull();
+    expect(source.readyState).not.toBe(StubSource.CLOSED);
+    expect(seatingSources()).toHaveLength(1);
+    expect(screen.getByRole('button', { name: 'Priya Shah' })).toBeDefined();
+  });
+
   it('shows no email address', async () => {
     await onPlanWith([ME, PRIYA, SADE]);
     await screen.findByRole('button', { name: 'Priya Shah' });

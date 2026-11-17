@@ -72,6 +72,7 @@ import { currentLocale } from '../../../i18n/index.ts';
 import { LayersContext, focusWhenFree, useDeskLayers } from '../../../layers.ts';
 import { pageTitle, usePageTitle } from '../../../pageTitle.ts';
 import { canOn, useSession } from '../../../session.ts';
+import { steadyTicks } from '../../../steadyTicks.ts';
 import {
   type Asking,
   BackHead,
@@ -167,6 +168,7 @@ import './seating.css';
 type Load = { kind: 'loading' } | { kind: 'failed' } | { kind: 'loaded'; seating: Seating };
 
 const RETRY_MS = 5_000;
+const WATCH_MS = 1_000;
 const RENEW_BEFORE_MS = 60_000;
 const PAN_FROM_PX = 4;
 const STEP_TRIES = 3;
@@ -302,10 +304,19 @@ function useLiveSeating(eventId: string, handlers: LiveHandlers) {
     const sayHere = (): void => {
       if (open) api.sayHereOnPlan(eventId).catch(() => undefined);
     };
-    const beating = setInterval(sayHere, BEAT_MS);
-    const watching = setInterval(() => {
-      if (source != null && Date.now() - heardAt > SILENT_MS) dropped();
-    }, 1_000);
+    let watchedAt = Date.now();
+    const stopBeating = steadyTicks(BEAT_MS, sayHere);
+    /** A page held back past a beat, by sleep or a hidden tab without a worker, says it is here and waits to be heard again rather than reconnecting. */
+    const stopWatching = steadyTicks(WATCH_MS, () => {
+      const now = Date.now();
+      const heldBack = now - watchedAt > BEAT_MS;
+      watchedAt = now;
+      if (source == null) return;
+      if (heldBack) {
+        heardAt = now;
+        sayHere();
+      } else if (now - heardAt > SILENT_MS) dropped();
+    });
 
     void connect();
 
@@ -313,8 +324,8 @@ function useLiveSeating(eventId: string, handlers: LiveHandlers) {
       stopped = true;
       clearTimeout(timer);
       clearTimeout(listing);
-      clearInterval(beating);
-      clearInterval(watching);
+      stopBeating();
+      stopWatching();
       source?.close();
     };
   }, [eventId]);
