@@ -336,8 +336,3 @@
   color: var(--colorInk);
   font: var(--deskLine);
 }
-
-.ev-new-frame {
-  position: relative;
-  max-width: 480px;
-}
