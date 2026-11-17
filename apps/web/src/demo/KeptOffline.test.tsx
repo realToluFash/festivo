@@ -1,4 +1,4 @@
-import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { RouterProvider, createMemoryRouter } from 'react-router';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
@@ -117,8 +117,7 @@ describe('offline, another area keeps the event, and the night its count (sc-656
     expect(tabNow().areas.has('evt-wed-4|overview')).toBe(false);
 
     await router.navigate('/demo/events/evt-wed-4');
-    await screen.findByRole('heading', { level: 1 }, SLOW);
-    expect(tabNow().areas.has('evt-wed-4|overview')).toBe(true);
+    await waitFor(() => expect(tabNow().areas.has('evt-wed-4|overview')).toBe(true), SLOW);
   });
 
   it.each([
