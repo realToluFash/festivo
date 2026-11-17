@@ -171,7 +171,8 @@ function NightBody({
         </div>
         <Head
           night={night}
-          view={view}
+          view={first.loading ? null : view}
+          loading={first.loading}
           locale={locale}
           many={tracks.length > 1}
           menuOpen={menuOpen}
@@ -202,8 +203,8 @@ function NightBody({
             })}
           </ul>
         )}
-        <Strip night={night} onTry={() => setNight(tryNow(night))} />
-        {!night.manage && (
+        {!first.loading && <Strip night={night} onTry={() => setNight(tryNow(night))} />}
+        {!first.loading && !night.manage && (
           <p className="nt-view-only">
             <span className="nt-pill">
               <Glyph name="eye" size={14} weight={2.4} />
@@ -277,6 +278,7 @@ function NightBody({
 function Head({
   night,
   view,
+  loading,
   locale,
   many,
   menuOpen,
@@ -284,6 +286,7 @@ function Head({
 }: {
   night: Night;
   view: TrackView | null;
+  loading: boolean;
   locale: string;
   many: boolean;
   menuOpen: boolean;
@@ -315,18 +318,20 @@ function Head({
           </div>
         )}
       </div>
-      <div className="nt-head-end">
-        <p className="rv-clock">
-          <Glyph name="clock" size={16} weight={2.2} />
-          <span className="num">{timeIn(locale, night.clock)}</span>
-        </p>
-        {words != null && view != null && (
-          <p className={`nt-figure is-${view.header.kind}`}>
-            <span className="nt-figure-mark" aria-hidden="true" />
-            <span className="num">{words}</span>
+      {!loading && (
+        <div className="nt-head-end">
+          <p className="rv-clock">
+            <Glyph name="clock" size={16} weight={2.2} />
+            <span className="num">{timeIn(locale, night.clock)}</span>
           </p>
-        )}
-      </div>
+          {words != null && view != null && (
+            <p className={`nt-figure is-${view.header.kind}`}>
+              <span className="nt-figure-mark" aria-hidden="true" />
+              <span className="num">{words}</span>
+            </p>
+          )}
+        </div>
+      )}
     </header>
   );
 }
