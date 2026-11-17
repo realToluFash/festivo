@@ -99,7 +99,7 @@ final class RoomScreenTest extends ApiTestCase
         $screen = $this->screen($this->tokenFor('Garden'));
         $raw = (string) $this->client->getResponse()->getContent();
 
-        self::assertSame(['kind', 'event', 'locale', 'at', 'now', 'coming'], Vec\keys($screen));
+        self::assertSame(['kind', 'eventId', 'event', 'locale', 'at', 'now', 'coming'], Vec\keys($screen));
         self::assertSame(['live', 'Owambe', 'en', null], [$screen['kind'], $screen['event'], $screen['locale'], $screen['now']]);
         self::assertSame([
             ['id' => $this->items['Ceremony'], 'title' => 'Ceremony', 'startsAt' => '2027-03-06T14:00:00+01:00'],
@@ -116,7 +116,7 @@ final class RoomScreenTest extends ApiTestCase
     {
         $this->sample();
 
-        self::assertSame(['kind', 'event', 'locale', 'at'], Vec\keys($this->screen($this->tokenFor('Hall'))));
+        self::assertSame(['kind', 'eventId', 'event', 'locale', 'at'], Vec\keys($this->screen($this->tokenFor('Hall'))));
         self::assertSame('nothingLeft', $this->screen($this->tokenFor('Hall'))['kind']);
     }
 
@@ -252,7 +252,7 @@ final class RoomScreenTest extends ApiTestCase
 
         self::mockTime(new DateTimeImmutable('2027-03-07T03:00:00Z'));
 
-        self::assertSame(['kind' => 'finished', 'event' => 'Owambe', 'locale' => 'en', 'at' => '2027-03-07T04:00:00+01:00'], $this->screen($token));
+        self::assertSame(['kind' => 'finished', 'eventId' => $this->eventId, 'event' => 'Owambe', 'locale' => 'en', 'at' => '2027-03-07T04:00:00+01:00'], $this->screen($token));
     }
 
     #[Test]

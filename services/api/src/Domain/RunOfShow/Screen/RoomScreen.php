@@ -40,7 +40,7 @@ final readonly class RoomScreen
             return ['kind' => 'replaced'] + $heard;
         }
 
-        $named = ['event' => $event->getName(), 'locale' => $event->getOrganisation()->getLocale()] + $heard;
+        $named = ['eventId' => $event->getId()->toRfc4122(), 'event' => $event->getName(), 'locale' => $event->getOrganisation()->getLocale()] + $heard;
         $phase = EventPhase::of($event->getStatus(), $event->getStartsAt(), $event->getEndsAt(), $now);
 
         if (EventPhase::Finished === $phase) {
