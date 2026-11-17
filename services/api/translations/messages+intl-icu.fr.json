@@ -151,5 +151,15 @@
     "guest_export.access.hearing_loop": "A hearing loop",
     "guest_export.access.sign_language": "Sign language",
     "guest_export.access.wheelchair_space": "Space for a wheelchair at the table",
-    "guest_export.access.other": "Other"
+    "guest_export.access.other": "Other",
+    "seating.table_full": "Il n’y a plus de place à {table}. Choisissez une autre table ou libérez d’abord une place.",
+    "seating.table_short": "{free, plural, one {Il reste {free, number} place libre à {table}.} many {Il reste {free, number} de places libres à {table}.} other {Il reste {free, number} places libres à {table}.}} {name} et ses accompagnants sont {party, number}.",
+    "seating.seat_taken": "Quelqu’un vient de prendre cette place. {name} est toujours sans place.",
+    "seating.undo_stale": "Ces places ont changé entre-temps. Rien n’a été annulé.",
+    "seating.table_below_seated": "{count, plural, one {{count, number, ::group-auto} invité a une place ici. Déplacez-le d’abord} many {{count, number, ::group-auto} d’invités ont une place ici. Déplacez-les d’abord} other {{count, number, ::group-auto} invités ont une place ici. Déplacez-les d’abord}} ou gardez {keep, plural, one {{keep, number} place} many {{keep, number} de places} other {{keep, number} places}}.",
+    "seating.row_below_seated": "{name} occupe la place {seat, number}. Libérez-la d’abord ou gardez {keep, plural, one {{keep, number} place} many {{keep, number} de places} other {{keep, number} places}}.",
+    "seating.seat_in_use": "{name} occupe cette place. Libérez-la d’abord.",
+    "seating.guest_not_waiting": "{name} ne vient pas ou n’est plus sur la liste : aucune place ne peut lui être attribuée.",
+    "seating.companion_of": "Accompagnant de {name}",
+    "validation.seating_no_such_chair": "Choisissez une place utilisable de {name}."
 }

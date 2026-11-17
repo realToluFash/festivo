@@ -45,9 +45,11 @@ export interface GridDraft {
 
 /** What the status line says after a step: Undo while it can be undone, amber when the step was refused. */
 export interface StepBar {
-  tone: 'undo' | 'amber';
+  tone: 'undo' | 'amber' | 'pick';
   words: string;
   undo?: () => void;
+  /** Choices said beside the words, such as Seat just {name} and Cancel (sc-4013). */
+  acts?: { label: string; run: () => void }[];
 }
 
 const EDGE_GLYPHS: Record<Edge, GlyphName> = {
@@ -244,14 +246,29 @@ export function StepLine({ bar, onUndo }: { bar: StepBar; onUndo: () => void }) 
   const { t } = useTranslation();
 
   return (
-    <div className={`st-bar is-inline is-${bar.tone}`} role="status" aria-live="polite">
-      <Glyph name={bar.tone === 'undo' ? 'tick' : 'alert'} size={17} weight={2.2} />
+    <div
+      className={`st-bar is-inline is-${bar.tone === 'pick' ? 'undo' : bar.tone}`}
+      role="status"
+      aria-live="polite"
+    >
+      <Glyph
+        name={bar.tone === 'undo' ? 'tick' : bar.tone === 'pick' ? 'info' : 'alert'}
+        size={17}
+        weight={2.2}
+      />
       <p>{bar.words}</p>
-      {bar.undo != null && (
+      {(bar.undo != null || (bar.acts?.length ?? 0) > 0) && (
         <span className="st-bar-acts">
-          <button type="button" className="desk-text" onClick={onUndo}>
-            {t('seating.undo')}
-          </button>
+          {bar.acts?.map((act) => (
+            <button key={act.label} type="button" className="desk-text" onClick={act.run}>
+              {act.label}
+            </button>
+          ))}
+          {bar.undo != null && (
+            <button type="button" className="desk-text" onClick={onUndo}>
+              {t('seating.undo')}
+            </button>
+          )}
         </span>
       )}
     </div>
@@ -316,7 +333,7 @@ function PressField({
   );
 }
 
-function focusField(key: string): void {
+export function focusField(key: string): void {
   focusWhenFree(() => document.querySelector(`.st-panel [data-focus="${key}"]`));
 }
 

@@ -6,6 +6,7 @@ import {
   type SeatingPlan,
   type SeatingRow,
   type SeatingSection,
+  type SectionColour,
   type SeatingTable,
   type SeatingWithRow,
   type SeatingWithSeat,
@@ -315,5 +316,22 @@ export function ShapeTile({ glyph }: { glyph: ShapeGlyph }) {
     <span className="st-shape-tile is-36" aria-hidden="true">
       <Glyph name={glyph} size={22} weight={1.9} />
     </span>
+  );
+}
+
+export function Swatch({
+  colour,
+  size = 20,
+}: {
+  colour: SectionColour | null;
+  size?: 12 | 16 | 20;
+}) {
+  return (
+    <span
+      className={
+        colour == null ? `st-swatch is-none is-${size}` : `st-swatch is-${colour} is-${size}`
+      }
+      aria-hidden="true"
+    />
   );
 }

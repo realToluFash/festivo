@@ -4445,6 +4445,264 @@ describe('A second finger on a box pans and keeps the choice (sc-60666)', () => 
   });
 });
 
+function guest(more: Record<string, unknown> = {}) {
+  return {
+    id: 'g_ada',
+    fullName: 'Ada Obi',
+    leadId: null,
+    position: 1,
+    reply: 'coming',
+    groupId: null,
+    groupName: 'Family',
+    seat: null,
+    ...more,
+  };
+}
+
+const ADA_PARTY = [
+  guest(),
+  guest({ id: 'g_ada2', fullName: 'Chidi Obi', leadId: 'g_ada', position: 2 }),
+  guest({ id: 'g_ada3', fullName: null, leadId: 'g_ada', position: 3 }),
+  guest({
+    id: 'g_bola',
+    fullName: 'Bọ́lá Ade',
+    position: 4,
+    groupName: 'Work',
+    reply: 'maybe',
+  }),
+];
+
+function withGuests(guests: unknown[], ...tables: ReturnType<typeof table>[]) {
+  return { ...withTables(...tables), guests };
+}
+
+function moved(planned: unknown, moves: unknown[], apart = false) {
+  return json({ seating: { measurementSystem: 'metric', plan: planned }, moves, apart });
+}
+
+describe('Seating a guest at a desk (sc-4013)', () => {
+  beforeEach(() => {
+    localStorage.clear();
+  });
+
+  it('lists who is coming without a seat in Seat, with Not sure yet behind the switch, and finds by name', async () => {
+    signedIn();
+    await onSeating({
+      'GET /api/events/ev_1/seating-plan': () => seating(withGuests(ADA_PARTY, table())),
+    });
+
+    fireEvent.click(await screen.findByRole('tab', { name: 'Seat' }));
+    expect(screen.getByRole('tab', { name: 'Seat' }).getAttribute('aria-selected')).toBe('true');
+    const list = screen.getByRole('list', { name: 'Without a seat' });
+
+    expect(
+      within(list)
+        .getAllByRole('button')
+        .map((one) => one.textContent),
+    ).toEqual(['AOAda Obi + 2Family']);
+    expect(document.querySelector('.st-tray-count')?.textContent).toBe('3');
+
+    fireEvent.click(screen.getByRole('switch', { name: 'Also show Not sure yet and No reply' }));
+    expect(screen.getByText('1 more: Not sure yet or No reply')).toBeDefined();
+    expect(within(list).getAllByRole('button')).toHaveLength(2);
+    expect(within(list).getByText('Work · Not sure yet')).toBeDefined();
+
+    fireEvent.change(screen.getByRole('searchbox', { name: 'Search by name' }), {
+      target: { value: 'bola' },
+    });
+    expect(
+      within(list)
+        .getAllByRole('button')
+        .map((one) => one.textContent),
+    ).toEqual(['BABọ́lá AdeWork · Not sure yet']);
+
+    fireEvent.change(screen.getByRole('searchbox', { name: 'Search by name' }), {
+      target: { value: 'nobody' },
+    });
+    expect(screen.getByText('Nobody without a seat matches this search.')).toBeDefined();
+    fireEvent.click(screen.getByRole('button', { name: 'Clear search and group' }));
+    expect(
+      within(screen.getByRole('list', { name: 'Without a seat' })).getAllByRole('button'),
+    ).toHaveLength(2);
+  });
+
+  it('picks a party, seats it at the table clicked with Undo, and Undo puts it back', async () => {
+    signedIn();
+    const seated = ADA_PARTY.map((one, index) =>
+      index < 3 ? { ...one, seat: { kind: 'table', id: 't1', seat: index + 1 } } : one,
+    );
+    const moves = [0, 1, 2].map((index) => ({
+      guestId: ADA_PARTY[index]!.id,
+      from: null,
+      to: { kind: 'table', id: 't1', seat: index + 1 },
+    }));
+    const sent = await onSeating({
+      'GET /api/events/ev_1/seating-plan': () => seating(withGuests(ADA_PARTY, table())),
+      'POST /api/events/ev_1/seating-plan/guests/seat': () =>
+        moved(withGuests(seated, table()), moves),
+      'POST /api/events/ev_1/seating-plan/guests/undo': () =>
+        moved(withGuests(ADA_PARTY, table()), []),
+    });
+
+    fireEvent.click(await screen.findByRole('tab', { name: 'Seat' }));
+    fireEvent.click(screen.getByRole('button', { name: /Ada Obi \+ 2/ }));
+    expect(screen.getByRole('button', { name: /Ada Obi \+ 2/, pressed: true })).toBeDefined();
+    expect(screen.getByText('Now pick a table for Ada Obi and 2 guests.')).toBeDefined();
+
+    fireEvent.click(screen.getByRole('button', { name: /^Table 1,/ }));
+    expect(await screen.findAllByText('Ada Obi and 2 guests are at Table 1.')).not.toHaveLength(0);
+    expect(sent.find((one) => one.line.endsWith('/guests/seat'))?.body).toEqual({
+      guestId: 'g_ada',
+      kind: 'table',
+      placeId: 't1',
+      seat: null,
+      justGuest: false,
+    });
+    expect(screen.queryByRole('list', { name: 'Without a seat' })).toBeNull();
+    expect(screen.getByText('Everyone who is coming has a seat.')).toBeDefined();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Undo' }));
+    await waitFor(() =>
+      expect(sent.find((one) => one.line.endsWith('/guests/undo'))?.body).toEqual({ moves }),
+    );
+    expect(await screen.findByRole('button', { name: /Ada Obi \+ 2/ })).toBeDefined();
+  });
+
+  it('asks before taking a guest’s chair, swaps on Swap with, and Undo trades them back', async () => {
+    signedIn();
+    const funmi = guest({ id: 'g_funmi', fullName: 'Funmi Adeyemi', position: 2 });
+    const kemi = guest({
+      id: 'g_kemi',
+      fullName: 'Kemi Ade',
+      position: 3,
+      seat: { kind: 'table', id: 't1', seat: 2 },
+    });
+    const before = [guest({ seat: { kind: 'table', id: 't1', seat: 3 } }), funmi, kemi];
+    const moves = [
+      { guestId: 'g_funmi', from: null, to: { kind: 'table', id: 't1', seat: 3 } },
+      { guestId: 'g_ada', from: { kind: 'table', id: 't1', seat: 3 }, to: null },
+    ];
+    const sent = await onSeating({
+      'GET /api/events/ev_1/seating-plan': () => seating(withGuests(before, table())),
+      'POST /api/events/ev_1/seating-plan/guests/swap': () =>
+        moved(withGuests([guest(), { ...funmi, seat: moves[0]!.to }, kemi], table()), moves),
+      'POST /api/events/ev_1/seating-plan/guests/undo': () =>
+        moved(withGuests(before, table()), []),
+    });
+
+    fireEvent.click(await screen.findByRole('tab', { name: 'Seat' }));
+    fireEvent.click(screen.getByRole('button', { name: /Funmi Adeyemi/ }));
+    press('Zoom in', 6);
+    fireEvent.click(screen.getByRole('button', { name: 'Table 1, Seat 2, Kemi Ade' }));
+    expect(await screen.findByText('Table 1, seat 2 is Kemi Ade’s.')).toBeDefined();
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+    expect(screen.queryByText('Table 1, seat 2 is Kemi Ade’s.')).toBeNull();
+    expect(sent.some((one) => one.line.endsWith('/guests/swap'))).toBe(false);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Table 1, Seat 3, Ada Obi' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Swap with Ada Obi' }));
+    expect(await screen.findAllByText('Funmi Adeyemi is at Table 1.')).not.toHaveLength(0);
+    expect(sent.find((one) => one.line.endsWith('/guests/swap'))?.body).toEqual({
+      guestId: 'g_funmi',
+      withGuestId: 'g_ada',
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Undo' }));
+    await waitFor(() =>
+      expect(sent.find((one) => one.line.endsWith('/guests/undo'))?.body).toEqual({ moves }),
+    );
+  });
+
+  it('says a full table and a short one, keeping the pick, and seats just the guest when asked', async () => {
+    signedIn();
+    const sent = await onSeating({
+      'GET /api/events/ev_1/seating-plan': () =>
+        seating(
+          withGuests(
+            ADA_PARTY,
+            table({ seats: 2 }),
+            table({ id: 't2', name: 'Table 13', seats: 4, xCm: 400 }),
+          ),
+        ),
+      'POST /api/events/ev_1/seating-plan/guests/seat': (body) =>
+        (body as { placeId: string }).placeId === 't2'
+          ? problem('seating_table_full', 409)
+          : (body as { justGuest: boolean }).justGuest
+            ? moved(
+                withGuests(
+                  [{ ...ADA_PARTY[0], seat: { kind: 'table', id: 't1', seat: 1 } }],
+                  table({ seats: 2 }),
+                ),
+                [{ guestId: 'g_ada', from: null, to: { kind: 'table', id: 't1', seat: 1 } }],
+              )
+            : problem('seating_table_short', 409, { free: 2, party: 3 }),
+    });
+
+    fireEvent.click(await screen.findByRole('tab', { name: 'Seat' }));
+    fireEvent.click(screen.getByRole('button', { name: /Ada Obi \+ 2/ }));
+    fireEvent.click(screen.getByRole('button', { name: /^Table 13,/ }));
+    expect(
+      await screen.findByText(
+        'Table 13 is full. Pick another table, or move someone off it first.',
+      ),
+    ).toBeDefined();
+    expect(screen.queryByRole('button', { name: 'Undo' })).toBeNull();
+
+    fireEvent.click(screen.getByRole('button', { name: /^Table 1,/ }));
+    expect(
+      await screen.findByText('Table 1 has 2 free seats. Ada Obi’s party is 3.'),
+    ).toBeDefined();
+    fireEvent.click(screen.getByRole('button', { name: 'Seat just Ada Obi' }));
+    expect(await screen.findAllByText('Ada Obi is at Table 1.')).not.toHaveLength(0);
+    expect(
+      sent.filter((one) => one.line.endsWith('/guests/seat')).map((one) => one.body),
+    ).toMatchObject([{ placeId: 't2' }, { placeId: 't1' }, { placeId: 't1', justGuest: true }]);
+  });
+
+  it('says the race and a refused Undo with no Undo of their own', async () => {
+    signedIn();
+    await onSeating({
+      'GET /api/events/ev_1/seating-plan': () => seating(withGuests([guest()], table())),
+      'POST /api/events/ev_1/seating-plan/guests/seat': () => problem('seating_seat_taken', 409),
+    });
+
+    fireEvent.click(await screen.findByRole('tab', { name: 'Seat' }));
+    fireEvent.click(screen.getByRole('button', { name: /Ada Obi/ }));
+    expect(screen.getByText('Now pick a table for Ada Obi.')).toBeDefined();
+    fireEvent.click(screen.getByRole('button', { name: /^Table 1,/ }));
+    expect(
+      await screen.findByText('Someone just took that seat. Ada Obi is still without a seat.'),
+    ).toBeDefined();
+    expect(screen.queryByRole('button', { name: 'Undo' })).toBeNull();
+  });
+
+  it('drops the pick on Esc and on Cancel', async () => {
+    signedIn();
+    await onSeating({
+      'GET /api/events/ev_1/seating-plan': () => seating(withGuests([guest()], table())),
+    });
+
+    fireEvent.click(await screen.findByRole('tab', { name: 'Seat' }));
+    fireEvent.click(screen.getByRole('button', { name: /Ada Obi/ }));
+    fireEvent.keyDown(document.body, { key: 'Escape' });
+    expect(screen.queryByText('Now pick a table for Ada Obi.')).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: /Ada Obi/ }));
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+    expect(screen.queryByText('Now pick a table for Ada Obi.')).toBeNull();
+  });
+
+  it('lets nobody be picked without seating.manage', async () => {
+    signedIn();
+    await onSeating(
+      { 'GET /api/events/ev_1/seating-plan': () => seating(withGuests([guest()], table())) },
+      OWNER_PERMISSIONS.filter((one) => one !== 'seating.manage'),
+    );
+
+    fireEvent.click(await screen.findByRole('tab', { name: 'Seat' }));
+    expect(screen.getByRole('button', { name: /Ada Obi/ })).toHaveProperty('disabled', true);
+  });
+});
+
 describe('Holding Space pans with an item focused, and Space acts on release (sc-62095)', () => {
   beforeAll(standInPointerEvents);
 
@@ -4932,5 +5190,293 @@ describe('An item moved by keys stays clear of the keys strip (sc-61042)', () =>
     } finally {
       measured.mockRestore();
     }
+  });
+});
+
+describe('A table’s guests in Seat, and the chairs in their states (sc-4013)', () => {
+  beforeEach(() => {
+    localStorage.clear();
+  });
+
+  const AT_T1 = [
+    guest({ reply: 'maybe', seat: { kind: 'table', id: 't1', seat: 1 } }),
+    guest({
+      id: 'g_ada2',
+      fullName: null,
+      leadId: 'g_ada',
+      position: 2,
+      reply: 'maybe',
+      seat: { kind: 'table', id: 't1', seat: 2 },
+    }),
+  ];
+  const T2 = table({ id: 't2', name: 'Table 2', seats: 4, xCm: 400 });
+  const T3 = table({ id: 't3', name: 'Table 3', seats: 2, unusableSeats: [1], xCm: 700 });
+
+  it('draws a taken and a held chair, counts them, and names each in the legend', async () => {
+    signedIn();
+    await onSeating({
+      'GET /api/events/ev_1/seating-plan': () => seating(withGuests(AT_T1, table())),
+    });
+
+    await chooseTable('Table 1, round, 2 of 10 seats taken');
+    expect(screen.getByRole('button', { name: 'Table 1, Seat 1, Ada Obi' })).toBeDefined();
+    expect(
+      screen.getByRole('button', { name: 'Table 1, Seat 2, Held for a companion' }),
+    ).toBeDefined();
+    expect(document.querySelectorAll('.st-chair.is-taken')).toHaveLength(1);
+    expect(document.querySelectorAll('.st-chair.is-held')).toHaveLength(1);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Table 1, Seat 1, Ada Obi' }));
+    expect(
+      within(await screen.findByRole('list', { name: 'What the seats show' }))
+        .getAllByRole('listitem')
+        .map((one) => one.textContent),
+    ).toEqual(['Taken', 'Held for a companion', 'Empty', 'Unusable']);
+  });
+
+  it('shows a chosen table’s chairs in words in Seat, and Unseat everyone empties it with Undo', async () => {
+    signedIn();
+    const sent = await onSeating({
+      'GET /api/events/ev_1/seating-plan': () => seating(withGuests(AT_T1, table())),
+      'POST /api/events/ev_1/seating-plan/guests/unseat': () =>
+        moved(
+          withGuests(
+            AT_T1.map((one) => ({ ...one, seat: null })),
+            table(),
+          ),
+          AT_T1.map((one) => ({ guestId: one.id, from: one.seat, to: null })),
+        ),
+    });
+
+    fireEvent.click(await screen.findByRole('tab', { name: 'Seat' }));
+    await chooseTable('Table 1, round, 2 of 10 seats taken');
+    expect(screen.getByRole('heading', { level: 2, name: 'Table 1' })).toBeDefined();
+    const chairs = document.querySelectorAll('.st-panel .st-row.is-dense');
+
+    expect([...chairs].slice(0, 3).map((one) => one.textContent)).toEqual([
+      'Seat 1Ada Obi · Not sure yet',
+      'Seat 2Held for a companion · Not sure yet',
+      'Seat 3Empty',
+    ]);
+    expect(chairs).toHaveLength(10);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Unseat everyone' }));
+    expect(await screen.findAllByText('Table 1 is empty now.')).not.toHaveLength(0);
+    expect(sent.find((one) => one.line.endsWith('/guests/unseat'))?.body).toEqual({
+      kind: 'table',
+      placeId: 't1',
+    });
+    expect(screen.getByRole('button', { name: 'Undo' })).toBeDefined();
+    expect(
+      screen.getByText('Nobody here yet. Pick a guest in Seat, then this table.'),
+    ).toBeDefined();
+  });
+
+  it('offers only the tables with room for all in Move everyone to…, and moves them there', async () => {
+    signedIn();
+    const sent = await onSeating({
+      'GET /api/events/ev_1/seating-plan': () => seating(withGuests(AT_T1, table(), T2, T3)),
+      'POST /api/events/ev_1/seating-plan/guests/move-everyone': () =>
+        moved(
+          withGuests(
+            AT_T1.map((one, index) => ({
+              ...one,
+              seat: { kind: 'table', id: 't2', seat: index + 1 },
+            })),
+            table(),
+            T2,
+            T3,
+          ),
+          AT_T1.map((one, index) => ({
+            guestId: one.id,
+            from: one.seat,
+            to: { kind: 'table', id: 't2', seat: index + 1 },
+          })),
+        ),
+    });
+
+    fireEvent.click(await screen.findByRole('tab', { name: 'Seat' }));
+    await chooseTable('Table 1, round, 2 of 10 seats taken');
+    fireEvent.click(screen.getByRole('button', { name: 'Move everyone to…' }));
+    const pop = screen.getByRole('dialog', { name: 'Move everyone to…' });
+
+    expect(within(pop).getByText('Tables with room for all 2.')).toBeDefined();
+    expect(
+      within(pop)
+        .getAllByRole('button')
+        .map((one) => one.textContent),
+    ).toEqual(['Table 2No section · 4 free']);
+
+    fireEvent.click(within(pop).getByRole('button', { name: /Table 2/ }));
+    expect(await screen.findAllByText('2 guests moved to Table 2.')).not.toHaveLength(0);
+    expect(sent.find((one) => one.line.endsWith('/guests/move-everyone'))?.body).toEqual({
+      from: { kind: 'table', id: 't1' },
+      to: { kind: 'table', id: 't2' },
+    });
+    expect(screen.queryByRole('dialog', { name: 'Move everyone to…' })).toBeNull();
+  });
+
+  it('picks a seated guest from their chair in Seat, and moves just them to the next table', async () => {
+    signedIn();
+    const sent = await onSeating({
+      'GET /api/events/ev_1/seating-plan': () => seating(withGuests(AT_T1, table(), T2)),
+      'POST /api/events/ev_1/seating-plan/guests/seat': () =>
+        moved(
+          withGuests(
+            [{ ...AT_T1[0], seat: { kind: 'table', id: 't2', seat: 1 } }, AT_T1[1]],
+            table(),
+            T2,
+          ),
+          [
+            {
+              guestId: 'g_ada',
+              from: { kind: 'table', id: 't1', seat: 1 },
+              to: { kind: 'table', id: 't2', seat: 1 },
+            },
+          ],
+        ),
+    });
+
+    fireEvent.click(await screen.findByRole('tab', { name: 'Seat' }));
+    await chooseTable('Table 1, round, 2 of 10 seats taken');
+    fireEvent.click(screen.getByRole('button', { name: 'Table 1, Seat 1, Ada Obi' }));
+    expect(screen.getByText('Now pick a table for Ada Obi.')).toBeDefined();
+
+    fireEvent.click(screen.getByRole('button', { name: /^Table 2,/ }));
+    expect(await screen.findAllByText('Ada Obi is at Table 2.')).not.toHaveLength(0);
+    expect(sent.find((one) => one.line.endsWith('/guests/seat'))?.body).toMatchObject({
+      guestId: 'g_ada',
+      placeId: 't2',
+    });
+  });
+
+  it('seats by keyboard: a picked guest, arrows step between tables, Enter seats, Esc drops', async () => {
+    signedIn();
+    const T2 = table({ id: 't2', name: 'Table 2', seats: 4, xCm: 400 });
+    const sent = await onSeating({
+      'GET /api/events/ev_1/seating-plan': () => seating(withGuests([guest()], table(), T2)),
+      'POST /api/events/ev_1/seating-plan/guests/seat': () =>
+        moved(withGuests([guest({ seat: { kind: 'table', id: 't1', seat: 1 } })], table(), T2), [
+          { guestId: 'g_ada', from: null, to: { kind: 'table', id: 't1', seat: 1 } },
+        ]),
+    });
+
+    fireEvent.click(await screen.findByRole('tab', { name: 'Seat' }));
+    const ada = screen.getByRole('button', { name: /Ada Obi/ });
+
+    fireEvent.click(ada);
+    expect(screen.getByText('Now pick a table for Ada Obi.')).toBeDefined();
+    fireEvent.keyDown(window, { key: 'Escape' });
+    expect(screen.queryByText('Now pick a table for Ada Obi.')).toBeNull();
+
+    fireEvent.click(ada);
+    const t2 = screen.getByRole('button', { name: /^Table 2,/ });
+    const t1 = screen.getByRole('button', { name: /^Table 1,/ });
+
+    t2.focus();
+    fireEvent.keyDown(t2, { key: 'ArrowRight' });
+    expect(document.activeElement).toBe(t1);
+    fireEvent.keyDown(t1, { key: 'ArrowRight' });
+    expect(document.activeElement).toBe(t2);
+    fireEvent.keyDown(t2, { key: 'ArrowLeft' });
+    expect(document.activeElement).toBe(t1);
+
+    fireEvent.keyDown(t1, { key: 'Enter' });
+    expect(await screen.findAllByText('Ada Obi is at Table 1.')).not.toHaveLength(0);
+    expect(sent.find((one) => one.line.endsWith('/guests/seat'))?.body).toMatchObject({
+      guestId: 'g_ada',
+      placeId: 't1',
+    });
+  });
+
+  it('takes Rename back to Arrange with the name field', async () => {
+    signedIn();
+    await onSeating({
+      'GET /api/events/ev_1/seating-plan': () => seating(withGuests(AT_T1, table())),
+    });
+
+    fireEvent.click(await screen.findByRole('tab', { name: 'Seat' }));
+    await chooseTable('Table 1, round, 2 of 10 seats taken');
+    fireEvent.click(screen.getByRole('button', { name: 'Rename' }));
+    expect(screen.getByRole('tab', { name: 'Arrange' }).getAttribute('aria-selected')).toBe('true');
+    expect(screen.getByRole('textbox', { name: 'Name' })).toBeDefined();
+  });
+});
+
+describe('The Tables view (sc-4013)', () => {
+  beforeEach(() => {
+    localStorage.clear();
+  });
+
+  const SECTIONS = [
+    { id: 's_stage', name: 'Stage', colour: 'blue', version: 1 },
+    { id: 's_garden', name: 'Garden', colour: 'olive', version: 1 },
+  ];
+
+  function roomOfCards() {
+    return {
+      ...withGuests(
+        [
+          guest({ seat: { kind: 'table', id: 't10', seat: 1 } }),
+          guest({ id: 'g_bo', fullName: 'Bo Ade', position: 2 }),
+        ],
+        table({ id: 't10', name: 'Table 10', sectionId: 's_stage', xCm: 300 }),
+        table({ id: 't2', name: 'Table 2', sectionId: 's_stage', xCm: 700, seats: 8 }),
+        table({ id: 't1', name: 'Table 1', sectionId: 's_garden', xCm: 1100 }),
+        table({ id: 't3', name: 'Table 3', sectionId: null, xCm: 1500 }),
+      ),
+      sections: plan(SECTIONS).sections,
+    };
+  }
+
+  it('shows a card per table by section, then by name in number order, and filters by section', async () => {
+    signedIn();
+    await onSeating({
+      'GET /api/events/ev_1/seating-plan': () => seating(roomOfCards()),
+    });
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Tables' }));
+    const cards = () =>
+      within(document.querySelector<HTMLElement>('.st-cards')!)
+        .getAllByRole('button')
+        .map((one) => one.getAttribute('aria-label'));
+
+    expect(cards()).toEqual([
+      'Table 2, 0 of 8, Stage',
+      'Table 10, 1 of 10, Stage',
+      'Table 1, 0 of 10, Garden',
+      'Table 3, 0 of 10',
+    ]);
+    expect(document.querySelectorAll('.st-cards .st-chair.is-taken')).toHaveLength(1);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Garden' }));
+    expect(cards()).toEqual(['Table 1, 0 of 10, Garden']);
+    fireEvent.click(screen.getByRole('button', { name: 'All sections' }));
+    expect(cards()).toHaveLength(4);
+  });
+
+  it('seats a picked guest at the card clicked, with Undo', async () => {
+    signedIn();
+    const sent = await onSeating({
+      'GET /api/events/ev_1/seating-plan': () => seating(roomOfCards()),
+      'POST /api/events/ev_1/seating-plan/guests/seat': () =>
+        moved(roomOfCards(), [
+          { guestId: 'g_bo', from: null, to: { kind: 'table', id: 't3', seat: 1 } },
+        ]),
+    });
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Tables' }));
+    fireEvent.click(screen.getByRole('tab', { name: 'Seat' }));
+    fireEvent.click(screen.getByRole('button', { name: /Bo Ade/ }));
+    expect(screen.getByText('Now pick a table for Bo Ade.')).toBeDefined();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Table 3, 0 of 10' }));
+    expect(await screen.findAllByText('Bo Ade is at Table 3.')).not.toHaveLength(0);
+    expect(screen.getByRole('button', { name: 'Undo' })).toBeDefined();
+    expect(sent.find((one) => one.line.endsWith('/guests/seat'))?.body).toMatchObject({
+      guestId: 'g_bo',
+      kind: 'table',
+      placeId: 't3',
+    });
   });
 });

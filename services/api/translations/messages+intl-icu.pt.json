@@ -151,5 +151,15 @@
     "guest_export.access.hearing_loop": "A hearing loop",
     "guest_export.access.sign_language": "Sign language",
     "guest_export.access.wheelchair_space": "Space for a wheelchair at the table",
-    "guest_export.access.other": "Other"
+    "guest_export.access.other": "Other",
+    "seating.table_full": "Já não há lugares em {table}. Escolha outra mesa ou liberte primeiro um lugar.",
+    "seating.table_short": "{free, plural, one {Em {table} resta {free, number} lugar livre.} many {Em {table} restam {free, number} de lugares livres.} other {Em {table} restam {free, number} lugares livres.}} {name} e respetivos acompanhantes são {party, number}.",
+    "seating.seat_taken": "Alguém acabou de ocupar esse lugar. {name} continua sem lugar.",
+    "seating.undo_stale": "Estes lugares mudaram entretanto. Nada foi anulado.",
+    "seating.table_below_seated": "{count, plural, one {{count, number, ::group-auto} convidado tem lugar aqui. Mude-o primeiro} many {{count, number, ::group-auto} de convidados têm lugar aqui. Mude-os primeiro} other {{count, number, ::group-auto} convidados têm lugar aqui. Mude-os primeiro}} ou mantenha {keep, plural, one {{keep, number} lugar} many {{keep, number} de lugares} other {{keep, number} lugares}}.",
+    "seating.row_below_seated": "{name} ocupa o lugar {seat, number}. Liberte-o primeiro ou mantenha {keep, plural, one {{keep, number} lugar} many {{keep, number} de lugares} other {{keep, number} lugares}}.",
+    "seating.seat_in_use": "{name} ocupa este lugar. Liberte-o primeiro.",
+    "seating.guest_not_waiting": "{name} não vem ou já não está na lista, por isso não pode ter lugar.",
+    "seating.companion_of": "Acompanhante de {name}",
+    "validation.seating_no_such_chair": "Escolha um lugar de {name} que possa ser usado."
 }

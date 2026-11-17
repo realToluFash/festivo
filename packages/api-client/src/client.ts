@@ -58,6 +58,10 @@ import {
 import { ApiError, ApiUnreachableError, type Problem, toProblem } from './problem.ts';
 import {
   asSeating,
+  asSeatingMoved,
+  type SeatingMove,
+  type SeatingMoved,
+  type SeatingPlaceKind,
   type Seating,
   type SeatingArrangement,
   type SeatingItemRef,
@@ -3442,6 +3446,67 @@ export class ApiClient {
       : [];
 
     return { seating: this.seatingOf(body), chosen };
+  }
+
+  /** Seats a guest at a table, a row or a single seat, in `seat` when given, with their party unless `justGuest` (sc-4013). Refused 409 `seating_table_full`, `seating_table_short` (with `free` and `party`), `seating_seat_taken` or `seating_guest_not_waiting`. */
+  async seatGuest(
+    eventId: string,
+    guestId: string,
+    place: { kind: SeatingPlaceKind; id: string },
+    options: { seat?: number | null; justGuest?: boolean } = {},
+  ): Promise<SeatingMoved> {
+    return this.movedOf(
+      await this.post(`${this.seatingPath(eventId)}/guests/seat`, {
+        guestId,
+        kind: place.kind,
+        placeId: place.id,
+        seat: options.seat ?? null,
+        justGuest: options.justGuest ?? false,
+      }),
+    );
+  }
+
+  /** `guestId` takes `withGuestId`'s chair; they take `guestId`'s, or go to Without a seat. */
+  async swapGuests(eventId: string, guestId: string, withGuestId: string): Promise<SeatingMoved> {
+    return this.movedOf(
+      await this.post(`${this.seatingPath(eventId)}/guests/swap`, { guestId, withGuestId }),
+    );
+  }
+
+  /** Back to Without a seat: the guests named, or everyone at a place (Unseat everyone). */
+  async unseatGuests(
+    eventId: string,
+    who: { guestIds: string[] } | { kind: SeatingPlaceKind; placeId: string },
+  ): Promise<SeatingMoved> {
+    return this.movedOf(await this.post(`${this.seatingPath(eventId)}/guests/unseat`, who));
+  }
+
+  /** Move everyone to…: refused 409 unless `to` has room for all. */
+  async moveEveryone(
+    eventId: string,
+    from: { kind: SeatingPlaceKind; id: string },
+    to: { kind: SeatingPlaceKind; id: string },
+  ): Promise<SeatingMoved> {
+    return this.movedOf(
+      await this.post(`${this.seatingPath(eventId)}/guests/move-everyone`, { from, to }),
+    );
+  }
+
+  /** Puts back an action's moves, all or nothing; refused 409 `seating_undo_stale` when the seats changed since. */
+  async undoSeating(eventId: string, moves: SeatingMove[]): Promise<SeatingMoved> {
+    return this.movedOf(await this.post(`${this.seatingPath(eventId)}/guests/undo`, { moves }));
+  }
+
+  private movedOf(body: unknown): SeatingMoved {
+    const moved = asSeatingMoved(body);
+
+    if (moved == null) {
+      throw new Error(
+        'The API answered a seating action in a shape this client does not know. Check SeatingGuestsController in services/api.',
+      );
+    }
+
+    return moved;
   }
 
   private seatingOf(body: { seating?: unknown } | null | undefined): Seating {
