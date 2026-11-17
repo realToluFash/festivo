@@ -102,7 +102,6 @@ export function forgetKept(): void {
   standingIn = false;
 }
 
-/** Tests only: a fresh tab. */
 export function __forgetTab(): void {
   forgetKept();
   answers = 0;
