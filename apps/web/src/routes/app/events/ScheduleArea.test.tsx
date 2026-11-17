@@ -283,9 +283,11 @@ describe('The event’s Schedule (sc-3893)', () => {
     expect(tab).toContain('flex: 1 0 auto;');
     expect(tab).toContain('overflow-wrap: normal;');
     expect(cssRule('.ro-day > span', SCHEDULE_CSS)).toContain('overflow-wrap: normal;');
-    expect(
-      cssRule('.ro .ro-days', SCHEDULE_CSS.slice(SCHEDULE_CSS.indexOf('(width <= 720px)'))),
-    ).toContain('border-radius: calc(var(--roDayStack) / 2 + var(--spaceHair));');
+    const narrow = SCHEDULE_CSS.slice(SCHEDULE_CSS.indexOf('(width <= 720px)'));
+    expect(cssRule('.ro .ro-days', narrow)).toContain(
+      'border-radius: calc(var(--roDayStack) / 2 + var(--spaceHair));',
+    );
+    expect(cssRule('.ro .ro-day', narrow)).toContain('min-height: var(--roDayStack);');
   });
 
   it('moves between days with the arrow keys', async () => {

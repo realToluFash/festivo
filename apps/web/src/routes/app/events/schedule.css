@@ -721,7 +721,7 @@
     border-radius: calc(var(--roDayStack) / 2 + var(--spaceHair));
   }
 
-  .ro-day {
+  .ro .ro-day {
     flex: 1;
     flex-direction: column;
     min-height: var(--roDayStack);
