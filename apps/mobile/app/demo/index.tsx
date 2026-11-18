@@ -12,6 +12,7 @@ import { TABLET_TABS_BOARDS } from '../../src/demo/tabletTabs/TabletTabsBoards.t
 import { TEXT_SIZE_BOARDS } from '../../src/demo/textSize/TextSizeBoards.ts';
 import { DATA_BOARDS } from '../../src/demo/settings/DataBoards.ts';
 import { FOCUSED_HEADER_BOARDS } from '../../src/demo/focusedHeader/FocusedHeaderBoards.ts';
+import { SIGN_OUT_SIZE_BOARDS } from '../../src/demo/signOutSize/SignOutSizeBoards.ts';
 import { SWITCHER_BOARDS } from '../../src/demo/OrgSwitcherBoards.ts';
 import { Heading } from '../../src/steps/Lines.tsx';
 import { SAMPLE } from '../../src/demo/samples.ts';
@@ -59,6 +60,14 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
   {
     page: 'Focused header · the largest text sizes',
     boards: FOCUSED_HEADER_BOARDS.map(({ title, what, href }) => ({
+      title,
+      what,
+      href: href as Href,
+    })),
+  },
+  {
+    page: 'Settings · Sign out at the largest text sizes (sc-66900)',
+    boards: SIGN_OUT_SIZE_BOARDS.map(({ title, what, href }) => ({
       title,
       what,
       href: href as Href,
