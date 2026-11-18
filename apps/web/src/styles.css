@@ -4850,10 +4850,16 @@ button.members-row {
   font: var(--typeSmall);
 }
 
-.timeline-row > .link-button {
+.timeline-action {
+  text-decoration: none;
+}
+
+.timeline-row > .link-button,
+.timeline-row > .timeline-action {
   grid-area: action;
   justify-self: start;
 }
+
 
 .timeline-marks {
   display: flex;
