@@ -62,17 +62,18 @@ describe('the Settings list (sc-30190)', () => {
   });
 
   it.each(['owner', 'administrator'] as const)(
-    'gives an %s General, Members and Sign-in rules, and no Roles',
+    'gives an %s General, Members, Sign-in rules and Vendors, and no Roles',
     (seededAs) => {
       expect(groupOf(listFor(seededAs), 'Organisation settings')).toEqual([
         expect.stringMatching(/General$/),
         'Members',
         'Sign-in rules',
+        'Vendors',
       ]);
     },
   );
 
-  it('gives a member General and Sign-in rules, and no Members', () => {
+  it('gives a member General and Sign-in rules, and no Members or Vendors', () => {
     expect(groupOf(listFor('member'), 'Organisation settings')).toEqual([
       expect.stringMatching(/General$/),
       'Sign-in rules',
@@ -87,6 +88,7 @@ describe('the Settings list (sc-30190)', () => {
     ['/app/settings', 'General', 'General – Settings – Soirely'],
     ['/app/settings/members', 'Members', 'Members – Settings – Soirely'],
     ['/app/settings/sign-in-rules', 'Sign-in rules', 'Sign-in rules – Settings – Soirely'],
+    ['/app/settings/vendors', 'Vendors', 'Vendors – Settings – Soirely'],
   ])('at %s selects %s alone, and titles the page', (at, name, title) => {
     const list = listFor('owner', at);
     const current = within(list)

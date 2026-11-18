@@ -2,7 +2,15 @@ import { describe, expect, it } from 'vitest';
 
 import { EARLIER, GUEST_PICKS, sendPicks } from './mealClose.ts';
 import { coursesStart, menuCloses } from './menuCourses.ts';
-import { PCW, SAMPLE_PICKS, closeOf, dayWords, headerClose, sentence } from './picksClose.ts';
+import {
+  PCW,
+  SAMPLE_PICKS,
+  closeOf,
+  dayWords,
+  headerClose,
+  lineClose,
+  sentence,
+} from './picksClose.ts';
 
 const header = (state: Parameters<typeof coursesStart>[0]) => {
   const first = coursesStart(state);
@@ -49,6 +57,18 @@ describe('when picks close (sc-3905)', () => {
     expect(header('picksDifferentDates')).toBe('picks close from Friday, Oct 16');
     expect(header('picksOneClosed')).toBe('picks close Saturday, Nov 14');
     expect(header('picksAllClosed')).toBe('picks closed on Monday, Oct 19');
+  });
+
+  it('gives the Picks card the header’s close, as a sentence (sc-3909)', () => {
+    const line = (state: Parameters<typeof coursesStart>[0]) => {
+      const first = coursesStart(state);
+
+      return lineClose(menuCloses(first.courses, first.picks), 'en');
+    };
+    expect(line('picksOneDate')).toBe('Picks close Monday, Oct 19.');
+    expect(line('picksDifferentDates')).toBe('Picks close from Friday, Oct 16.');
+    expect(line('picksAllClosed')).toBe('Picks closed on Monday, Oct 19.');
+    expect(lineClose([], 'en')).toBeNull();
   });
 
   it('counts only the courses that ask guests something', () => {

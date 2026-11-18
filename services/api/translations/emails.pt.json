@@ -186,5 +186,12 @@
     "memberRestored.body": "Pode voltar a usar {organisation} na Soirely, com a função que tinha: {role}.",
     "memberRestored.facts": "Organização: {organisation}\nData da reposição: {when}\nA sua função: {role}",
     "memberRestored.open": "Abrir {organisation}: {link}",
-    "memberAccess.footer": "Está a receber esta mensagem porque é membro de {organisation}."
+    "memberAccess.footer": "Está a receber esta mensagem porque é membro de {organisation}.",
+    "planDowngraded.subject": "{organisation} passou para o plano gratuito",
+    "planDowngraded.switchedOff": "Estas funcionalidades foram desativadas ({day}) e mantêm-se tal como estavam:",
+    "planDowngraded.setting.email_domains": "Domínios de e-mail",
+    "planDowngraded.setting.audit_log": "Registo de auditoria",
+    "planDowngraded.setting.guest_data_deletion": "Eliminação dos dados dos convidados após cada evento",
+    "planDowngraded.comeBack": "Com o plano Enterprise, voltam a ficar ativas tal como estavam. Contacte a Soirely sobre o plano Enterprise.",
+    "planDowngraded.footer": "Está a receber isto porque é proprietário ou administrador de {organisation}."
 }

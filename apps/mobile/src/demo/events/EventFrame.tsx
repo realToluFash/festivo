@@ -46,10 +46,11 @@ const PHONE_BAR: readonly (readonly [string, GlyphName])[] = [
   [W.more, 'dots'],
 ];
 
-/** On the phone People opens its own page from More, ‹ More over its title; on the iPad it is an area in the frame like the other nine (sc-67665). */
+/** On the phone People opens its own page from More, its ‹ Overview landing on Overview whatever More was opened over (sc-68022); on the iPad it is an area in the frame like the other nine (sc-67665). */
 function toArea(area: AreaKey, onArea: (area: AreaKey) => void): void {
-  if (area === 'people') router.push('/demo/people');
-  else onArea(area);
+  if (area !== 'people') return onArea(area);
+  onArea('overview');
+  router.push('/demo/people');
 }
 
 export function backToEvents(): void {
@@ -129,7 +130,7 @@ export function EventFrame({
   bellRef?: Ref<ViewInstance> | undefined;
   /** A page an area pushes in its own column: ‹ and the area it goes back to. */
   back?: { label: string; onPress: () => void } | null;
-  /** On the phone, a way back other than Overview, as Seating's ‹ More. */
+  /** On the phone, a way back other than Overview, as Seating's ‹ Guests. */
   phoneBack?: { label: string; onPress: () => void } | undefined;
   /** An area this viewer has no part in, as Budget for Can edit: gone from More, the pills and the sidebar. */
   without?: AreaKey | undefined;

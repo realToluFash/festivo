@@ -514,6 +514,14 @@ export function variantCourses(): EvCourse[] {
   });
 }
 
+/** sc-3909's sample menu: sc-3903's variants, with "And a side?" on Coconut rice. */
+export function picksCourses(): EvCourse[] {
+  return changed(
+    { 'k2-coconut': (dish) => ({ ...dish, choices: [sideChoice(false)] }) },
+    variantCourses(),
+  );
+}
+
 /** Main as a set course of Jollof rice alone, nobody having picked it. */
 function setMain(variants: readonly Variant[]): EvCourse[] {
   return changed(
@@ -703,6 +711,8 @@ export interface CoursesStart {
   picks: PicksDates;
   /** sc-3905: the reply-by date moves to this, two seconds after the state opens. */
   picksMoveTo?: string;
+  /** sc-3909: each dish row and variant inset shows its picks, See picks sits on each course, and the picks summary beside the menu. */
+  showPicks?: boolean;
 }
 
 function start(over: Partial<CoursesStart> & { name: string; note: string }): CoursesStart {
@@ -734,7 +744,7 @@ const CANAPE: EvDish = {
 };
 
 /** Starter guests choose, so all three courses with dishes ask something. */
-function picksCourses(): EvCourse[] {
+function allAskCourses(): EvCourse[] {
   const all = sampleCourses();
 
   return all.map((one) =>
@@ -788,7 +798,7 @@ function defaultCourses(): EvCourse[] {
   const [fish, chicken] = twoWays() as [Variant, Variant];
   const kids = variant('v-kids2', 'Children’s portion', 'children', ['celery'], ['halal']);
 
-  return picksCourses().map((one) =>
+  return allAskCourses().map((one) =>
     one.id === MAIN
       ? {
           ...one,
@@ -813,6 +823,21 @@ const SIDEBAR_NOTE =
   ' The sidebar keeps sc-3902’s sample event; the close dates are the picks sample’s, an event starting Saturday, Nov 14 at 16:00, Lagos time.';
 
 const STATES = {
+  menuPicks: () =>
+    start({
+      name: 'The menu with its picks (sc-3909)',
+      note: 'Each dish row and variant inset shows its picks and share of the room, from the same figures as See picks; See picks on each course, and the picks summary beside the menu.',
+      courses: picksCourses(),
+      showPicks: true,
+    }),
+  menuPicksReadOnly: () =>
+    start({
+      name: 'The menu with its picks, read only (sc-3909)',
+      note: 'Without menu.manage: the picks and See picks stay.',
+      courses: picksCourses(),
+      showPicks: true,
+      manage: false,
+    }),
   menu: () =>
     start({
       name: 'The menu',
@@ -1013,7 +1038,7 @@ const STATES = {
       note:
         'Today is Wednesday, Oct 14. Starter, Main and Dessert ask guests something and close on the reply-by date: the header reads “picks close Monday, Oct 19”, each course a clock pill and the host-only source line. Late-night bites has no dishes, so no close.' +
         SIDEBAR_NOTE,
-      courses: picksCourses(),
+      courses: allAskCourses(),
     }),
   picksDifferentDates: () =>
     start({
@@ -1021,7 +1046,7 @@ const STATES = {
       note:
         'No reply-by date. Starter on its own choose-by date, with its default’s line, Main and Dessert at the event’s start: “picks close from Friday, Oct 16”.' +
         SIDEBAR_NOTE,
-      courses: withPick(picksCourses(), 'k1', STARTER_DEFAULT),
+      courses: withPick(allAskCourses(), 'k1', STARTER_DEFAULT),
       picks: { ...SAMPLE_PICKS, replyBy: null, own: STARTER_OWN },
     }),
   picksOneClosed: () =>
@@ -1030,7 +1055,7 @@ const STATES = {
       note:
         'Today is Saturday, Oct 17, Starter closed Friday: a grey padlock pill, its default given to 23 guests, the closed line and Who hasn’t picked. The header counts only the open courses: “picks close Saturday, Nov 14”.' +
         SIDEBAR_NOTE,
-      courses: withPick(picksCourses(), 'k1', STARTER_DEFAULT, GIVEN),
+      courses: withPick(allAskCourses(), 'k1', STARTER_DEFAULT, GIVEN),
       picks: { ...SAMPLE_PICKS, today: '2026-10-17', replyBy: null, own: STARTER_OWN },
     }),
   picksAllClosed: () =>
@@ -1039,7 +1064,7 @@ const STATES = {
       note:
         'Today is Tuesday, Oct 20: Starter closed on its own choose-by date with its default given, Main and Dessert on the reply-by date, and the header reads “picks closed on Monday, Oct 19”, the last close.' +
         SIDEBAR_NOTE,
-      courses: withPick(picksCourses(), 'k1', STARTER_DEFAULT, GIVEN),
+      courses: withPick(allAskCourses(), 'k1', STARTER_DEFAULT, GIVEN),
       picks: { ...SAMPLE_PICKS, today: '2026-10-20', own: STARTER_OWN },
     }),
   picksAllClosedReadOnly: () =>
@@ -1048,7 +1073,7 @@ const STATES = {
       note:
         'Without guests.manage: the closed line’s first sentence only, and no Who hasn’t picked.' +
         SIDEBAR_NOTE,
-      courses: withPick(picksCourses(), 'k1', STARTER_DEFAULT, GIVEN),
+      courses: withPick(allAskCourses(), 'k1', STARTER_DEFAULT, GIVEN),
       picks: { ...SAMPLE_PICKS, today: '2026-10-20', own: STARTER_OWN },
       manage: false,
     }),
@@ -1058,7 +1083,7 @@ const STATES = {
       note:
         'Two seconds after it opens, as a change from Event details would arrive, the reply-by date moves to Friday, Oct 23: the pills, the header and the source lines change together, and the status line names the new date.' +
         SIDEBAR_NOTE,
-      courses: picksCourses(),
+      courses: allAskCourses(),
       picksMoveTo: '2026-10-23',
     }),
   defaultUnset: () =>

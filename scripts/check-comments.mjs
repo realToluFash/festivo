@@ -16,6 +16,10 @@ const HASH = /^\s*#(?!\[)/;
 
 export const EXEMPT = [
   { path: 'services/api/config/reference.php', because: 'generated from the bundle configuration' },
+  {
+    path: 'packages/api-client/src/schema.d.ts',
+    because: 'generated from the API’s OpenAPI document',
+  },
 ];
 
 export function isChecked(file) {

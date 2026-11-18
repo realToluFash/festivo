@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { opensOver, signInOver } from './signInOver.ts';
+import { openedOver, opensOver, signInOver } from './signInOver.ts';
 
 describe('whether Sign in opens over something (sc-67606)', () => {
   it('is alone unless its opener says otherwise', () => {
@@ -32,5 +32,21 @@ describe('whether Sign in opens over something (sc-67606)', () => {
     signInOver(false);
 
     expect(opensOver('replaced')).toBe(false);
+  });
+});
+
+describe('what Sign in itself reads of what is under it (sc-67709)', () => {
+  it('is the answer the root stack settled for its route', () => {
+    signInOver(true);
+    opensOver('settled');
+
+    expect(openedOver('settled')).toBe(true);
+  });
+
+  it('is alone for a route the root stack never settled, and leaves the next opener’s word unspent', () => {
+    signInOver(true);
+
+    expect(openedOver('unsettled')).toBe(false);
+    expect(opensOver('next')).toBe(true);
   });
 });

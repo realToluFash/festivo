@@ -383,6 +383,8 @@ permit = [
     "@layer:locale",
 ]
 
+# Budget & costs: the organisation's vendors (sc-82). A vendor's number is checked by
+# the account's parser, as a guest's is.
 # Budget & costs: an event's cost lines (sc-83). A line's quantity is read from what the
 # event already knows, accepted guests (sc-99), tables in the seating plan and the event's
 # days, so it reads the guest headcount and the event's day count; a price is parsed and
@@ -398,6 +400,7 @@ permit = [
     "@layer:domain_event",
     "@layer:domain_guest",
     "@layer:domain_menu",
+    "@layer:domain_user",
     "@layer:repository",
     "@layer:audit",
     "@layer:realtime",

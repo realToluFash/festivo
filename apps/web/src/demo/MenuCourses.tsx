@@ -67,6 +67,14 @@ import {
   NotOffered,
 } from './DishChoices.tsx';
 import { DemoOffline } from './DemoOffline.tsx';
+import {
+  DishPicks,
+  MenuPicksProvider,
+  PicksSummary,
+  SeePicksLink,
+  useHasPicks,
+} from './MenuPicks.tsx';
+import { samplePicks } from './seePicks.ts';
 import { KeptArea, KeptHere } from './KeptOffline.tsx';
 import { clockWords } from './tabKept.ts';
 import { EventsShell } from './EventParts.tsx';
@@ -279,6 +287,7 @@ function Body({
   onReady: (line: string | null) => void;
 }) {
   const [retried, setRetried] = useState(false);
+  const [picks] = useState(() => (first.showPicks === true ? samplePicks() : null));
   if (first.system === 'noAccess') return <NotFound />;
   if (first.system === 'gone')
     return (
@@ -300,7 +309,11 @@ function Body({
     );
   if (first.system === 'loading') return <Loading />;
 
-  return <Courses first={first} lang={lang} budget={budget} onReady={onReady} />;
+  return (
+    <MenuPicksProvider value={picks}>
+      <Courses first={first} lang={lang} budget={budget} onReady={onReady} />
+    </MenuPicksProvider>
+  );
 }
 
 function Refusal({
@@ -1463,6 +1476,7 @@ function Courses({
             </div>
           )}
         </div>
+        {open == null && <PicksSummary closes={closes} lang={lang} />}
         {open != null && (
           <aside className="mn-panel mc-panel" aria-labelledby="mc-panel-title">
             <button type="button" className="desk-text mc-back" onClick={() => close(closeBack())}>
@@ -1861,6 +1875,7 @@ function CourseCard({
   variants: VariantHandlers;
   choices: ChoiceHandlers;
 }) {
+  const picked = useHasPicks();
   const ready = isReady(course);
   const hint = course.answer === 'same' ? courseHint(course.dishes) : null;
   const drafts = onlyDrafts(course);
@@ -2126,17 +2141,20 @@ function CourseCard({
           {course.skip && <li>{CW.skip}</li>}
         </ul>
       )}
-      {manage && (
+      {(manage || picked) && (
         <div className="mn-course-foot">
-          <button
-            id={`mc-add-dish-${course.id}`}
-            type="button"
-            className="mn-add-dish"
-            onClick={onAddDish}
-          >
-            <Glyph name="plus" size={16} weight={2.4} />
-            {CW.addDish}
-          </button>
+          {manage && (
+            <button
+              id={`mc-add-dish-${course.id}`}
+              type="button"
+              className="mn-add-dish"
+              onClick={onAddDish}
+            >
+              <Glyph name="plus" size={16} weight={2.4} />
+              {CW.addDish}
+            </button>
+          )}
+          <SeePicksLink course={course} />
         </div>
       )}
     </li>
@@ -2204,6 +2222,7 @@ function DishRow({
           {withChoices && (
             <p className="mn-quiet">{withVariants ? CHW.plusVariantOptions : CHW.plusOptions}</p>
           )}
+          <DishPicks id={dish.id} />
         </div>
         {manage && (
           <div className="lib-acts" role="group" aria-label={CW.actionsFor(dish.name)}>

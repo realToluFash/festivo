@@ -1,0 +1,366 @@
+/* Jobs and shifts on the event's Staff page at a desk (sc-3908, JobsShifts-Desktop.dc.html on page e34): Coverage above Jobs, Stations' card and docked panel, colours from tokens. */
+.js-seg {
+  display: inline-flex;
+  flex: none;
+  padding: 3px;
+  border-radius: var(--radiusPill);
+  background: var(--colorNeutralFill);
+}
+
+.js-seg button {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spaceXs);
+  min-height: var(--sizeControlDense);
+  padding: 0 var(--spaceLg);
+  border: 0;
+  border-radius: var(--radiusPill);
+  background: transparent;
+  color: var(--colorInk);
+  font: var(--typeBodyStrong);
+  cursor: pointer;
+}
+
+.js-seg button[aria-pressed='true'] {
+  background: var(--colorCard);
+}
+
+.js-frame {
+  max-width: 100%;
+  overflow-x: auto;
+  border-radius: var(--radiusInset);
+}
+
+.js-frame:focus-visible {
+  outline: 2px solid var(--colorAccent);
+  outline-offset: 2px;
+}
+
+.js-strip {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceMd);
+  width: max-content;
+  padding-bottom: var(--spaceXs);
+}
+
+.js-axis,
+.js-cells {
+  display: grid;
+  grid-auto-columns: 44px;
+  grid-auto-flow: column;
+  gap: 2px;
+}
+
+.js-axis {
+  grid-template-columns: 120px;
+  color: var(--colorInkSecondary);
+  font: 600 12px/1.3 var(--fontFamily);
+  font-variant-numeric: tabular-nums;
+}
+
+.js-tick {
+  white-space: nowrap;
+}
+
+.js-tick.is-day {
+  grid-column: span 2;
+}
+
+.js-row {
+  display: grid;
+  grid-template-columns: 120px max-content;
+  align-items: center;
+  row-gap: var(--spaceXxs);
+}
+
+.js-row-name {
+  position: sticky;
+  left: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spaceXxs);
+  margin: 0;
+  padding-right: var(--spaceSm);
+  background: var(--colorCard);
+  color: var(--colorInk);
+  font: var(--typeBodyStrong);
+}
+
+.js-row-name svg {
+  color: var(--optionGreen);
+}
+
+.js-cell {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 32px;
+  border: 1px solid var(--colorBorder);
+  border-radius: var(--radiusSmall);
+  color: var(--colorInk);
+  font: 600 12px/1 var(--fontFamily);
+  font-variant-numeric: tabular-nums;
+}
+
+.js-cell.is-covered {
+  border-color: var(--colorAccentTintBorder);
+  background: var(--colorAccentTint);
+}
+
+.js-cell.is-short {
+  border: 2px solid var(--colorAttentionBorder);
+  background: repeating-linear-gradient(
+    135deg,
+    var(--colorAttentionTint) 0 4px,
+    var(--colorCard) 4px 8px
+  );
+  color: var(--colorAttentionText);
+}
+
+.js-gaps {
+  position: sticky;
+  left: 120px;
+  grid-column: 2;
+  width: max-content;
+  max-width: 22rem;
+  margin: 0;
+  color: var(--colorAttentionText);
+  font: var(--typeSmallStrong);
+}
+
+.js-gaps.is-covered {
+  color: var(--colorInkSecondary);
+}
+
+.js-table td,
+.js-table th {
+  white-space: nowrap;
+}
+
+.js-top-acts,
+.js-job-acts {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--spaceSm);
+}
+
+.js-jobs,
+.js-shifts,
+.js-chips,
+.js-people,
+.js-ask-shifts {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.js-job {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceSm);
+  padding: var(--spaceMd) 0;
+  border-top: 1px solid var(--colorBorder);
+}
+
+.js-job.is-lit {
+  background: var(--colorRowSelected);
+}
+
+.js-job-top,
+.js-shift-top {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--spaceSm) var(--spaceMd);
+}
+
+.js-job-name {
+  margin: 0;
+  font: var(--typeRowTitle);
+}
+
+.js-shifts {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceSm);
+}
+
+.js-shift {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceXs);
+  padding: var(--spaceSm) var(--spaceMd);
+  border: 1px solid var(--colorBorder);
+  border-radius: var(--radiusRow);
+}
+
+.js-shift.is-lit {
+  border-color: var(--colorAccentTintBorder);
+  background: var(--colorRowSelected);
+}
+
+.js-shift-times {
+  margin: 0;
+  font: var(--typeBodyStrong);
+  font-variant-numeric: tabular-nums;
+}
+
+.js-shift-top .js-job-acts {
+  margin-left: auto;
+}
+
+.js-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spaceXs);
+}
+
+.js-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spaceXxs);
+  min-height: var(--sizeControlDense);
+  padding: 0 var(--spaceXs) 0 var(--spaceSm);
+  border: 1px solid var(--colorBorder);
+  border-radius: var(--radiusPill);
+  background: var(--colorInset);
+  font: var(--typeSmallStrong);
+}
+
+.js-chip.is-open {
+  padding-right: var(--spaceSm);
+  border-style: dashed;
+  background: transparent;
+  color: var(--colorInkSecondary);
+}
+
+.js-chip-x {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radiusPill);
+  background: transparent;
+  color: var(--colorInkSecondary);
+  cursor: pointer;
+}
+
+.js-chip-x:hover {
+  background: var(--colorRowHover);
+  color: var(--colorInk);
+}
+
+.js-full {
+  margin: 0;
+}
+
+.js-levels {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceSm);
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.js-level {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--spaceSm);
+}
+
+.js-level input {
+  flex: none;
+  width: 20px;
+  height: 20px;
+  margin: 2px 0 0;
+  accent-color: var(--colorAccent);
+}
+
+.js-level-words {
+  display: flex;
+  flex-direction: column;
+}
+
+.js-level-name {
+  display: flex;
+  align-items: center;
+  min-height: 24px;
+  font: var(--typeBodyStrong);
+  cursor: pointer;
+}
+
+.js-when {
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.js-when-pair {
+  display: grid;
+  grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+  gap: var(--spaceSm);
+}
+
+.js-midnight {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spaceXs);
+}
+
+.js-on-shift {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceXs);
+  padding-bottom: var(--spaceMd);
+  border-bottom: 1px solid var(--colorBorder);
+}
+
+.js-person {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceXxs);
+  border-top: 1px solid var(--colorBorder);
+}
+
+.js-person-pick {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  width: 100%;
+  min-height: var(--sizeHit);
+  padding: var(--spaceSm) 0;
+  border: 0;
+  background: none;
+  color: var(--colorInk);
+  text-align: left;
+  cursor: pointer;
+}
+
+.js-person-pick:hover {
+  background: var(--colorRowHover);
+}
+
+.js-person-name {
+  font: var(--typeBodyStrong);
+}
+
+.js-person.is-refused .js-person-pick {
+  color: var(--colorInkSecondary);
+}
+
+.js-ask-shifts li {
+  font: var(--typeBodyStrong);
+}
+
+@media (width <= 720px) {
+  .js-shift-top .js-job-acts {
+    margin-left: 0;
+  }
+}

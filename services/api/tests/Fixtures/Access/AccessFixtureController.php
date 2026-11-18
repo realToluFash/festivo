@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Tests\Fixtures\Access;
 
 use App\Enum\Permission;
+use App\Enum\PlanFeature;
 use App\Http\Access\InThisEvent;
 use App\Http\Access\Policy\InEvent;
 use App\Http\Access\Policy\InOrganisation;
@@ -19,6 +20,20 @@ final class AccessFixtureController
     #[Route('/api/_access/organisations/{organisationId}', name: 'access_fixture_organisation', methods: ['GET'])]
     #[InOrganisation(Permission::OrganisationManage)]
     public function organisation(): JsonResponse
+    {
+        return new JsonResponse(['reached' => true]);
+    }
+
+    #[Route('/api/_access/organisations/{organisationId}/enterprise', name: 'access_fixture_enterprise', methods: ['GET', 'PUT'])]
+    #[InOrganisation(Permission::OrganisationManage, feature: PlanFeature::EmailDomains)]
+    public function enterprise(): JsonResponse
+    {
+        return new JsonResponse(['reached' => true]);
+    }
+
+    #[Route('/api/_access/organisations/{organisationId}/enterprise-on-an-event', name: 'access_fixture_enterprise_on_an_event', methods: ['PUT'])]
+    #[InOrganisation(Permission::MenuManage, orOnAnEvent: true, feature: PlanFeature::EmailDomains)]
+    public function enterpriseOnAnEvent(): JsonResponse
     {
         return new JsonResponse(['reached' => true]);
     }

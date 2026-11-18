@@ -7,6 +7,7 @@ namespace App\Http\Access;
 use App\Entity\User;
 use App\Enum\ErrorCode;
 use App\Enum\Permission;
+use App\Enum\PlanFeature;
 use App\Http\Access\Interfaces\EventDirectoryInterface;
 use App\Http\Access\Interfaces\MembershipDirectoryInterface;
 use App\Http\Access\Interfaces\OnboardingGateInterface;
@@ -68,12 +69,12 @@ final readonly class AccessListener
 
         if ($policy->orOnAnEvent && null !== $policy->permission) {
             $scope = $this->membershipDirectory->eventScopeIn($user, $organisationId) ?? throw self::notFound();
-            $this->check($request, $scope->organisation, $scope->anywhere($policy->permission) ? null : $policy->permission);
+            $this->check($request, $scope->organisation, $scope->anywhere($policy->permission) ? null : $policy->permission, $policy->feature);
 
             return;
         }
 
-        $this->require($request, $user, $organisationId, $policy->permission);
+        $this->require($request, $user, $organisationId, $policy->permission, $policy->feature);
     }
 
     /** The event is found first, then the caller's grants on it: a Member with no role on it gets the same 404 as an event that does not exist (sc-29912). */
@@ -90,12 +91,12 @@ final readonly class AccessListener
     }
 
     /** Not a member reads as not found: a 403 would confirm the organisation exists. */
-    private function require(Request $request, User $user, Uuid $organisationId, ?Permission $permission): void
+    private function require(Request $request, User $user, Uuid $organisationId, ?Permission $permission, ?PlanFeature $feature = null): void
     {
-        $this->check($request, $this->membershipDirectory->grantsIn($user, $organisationId) ?? throw self::notFound(), $permission);
+        $this->check($request, $this->membershipDirectory->grantsIn($user, $organisationId) ?? throw self::notFound(), $permission, $feature);
     }
 
-    private function check(Request $request, Grants $grants, ?Permission $permission): void
+    private function check(Request $request, Grants $grants, ?Permission $permission, ?PlanFeature $feature = null): void
     {
         if ($grants->isHeldForTwoFactor()) {
             throw new ApiException(ErrorCode::OrganisationTwoFactorOverdue, 'access.two_factor_overdue');
@@ -107,6 +108,10 @@ final readonly class AccessListener
 
         if (null !== $permission) {
             $grants->require($permission);
+        }
+
+        if (null !== $feature && !$request->isMethodSafe()) {
+            $grants->requirePlanFor($feature);
         }
     }
 
