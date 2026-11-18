@@ -196,6 +196,18 @@ final class OutsideAccessTest extends ApiTestCase
         self::assertSame(404, $this->statusCode());
     }
 
+    #[Test]
+    public function aMemberOfAnotherOrganisationIsToldOfTheEventsTheyReachFromOutside(): void
+    {
+        $other = $this->account('owner@ayo.events', 'Ayo Owner');
+        self::service(OrganisationFounder::class)->found($other, 'Ayo Events', 'NG', 'Africa/Lagos');
+        self::em()->flush();
+
+        $this->grant($this->owner, $this->owambe, 'owner@ayo.events', 'can_view');
+
+        self::assertSame(['Owambe'], Vec\map(Type\vec(Type\shape(['name' => Type\string()], true))->coerce($this->as($other, 'GET', '/api/auth/me')['outsideEvents']), static fn (array $event): string => $event['name']));
+    }
+
     /** @return iterable<string, array{string, bool}> each level, and whether it edits guests */
     public static function levels(): iterable
     {
@@ -254,12 +266,14 @@ final class OutsideAccessTest extends ApiTestCase
             'organisationName' => 'Ìrè Events',
             'role' => 'can_check_in',
             'jobLabel' => 'Kitchen',
+            'startsAt' => '2030-11-14T16:00:00+01:00',
         ]], Vec\map(Type\vec(Type\dict(Type\string(), Type\mixed()))->coerce($me['outsideEvents']), static fn (array $event): array => [
             'id' => $event['id'],
             'name' => $event['name'],
             'organisationName' => $event['organisationName'],
             'role' => $event['role'],
             'jobLabel' => $event['jobLabel'],
+            'startsAt' => $event['startsAt'],
         ]));
     }
 

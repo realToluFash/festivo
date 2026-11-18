@@ -502,6 +502,7 @@ export interface OutsideEvent {
   organisationName: string;
   role: EventRole;
   jobLabel: string | null;
+  startsAt: string;
   endsAt: string | null;
 }
 
@@ -4818,12 +4819,13 @@ function asAccount(raw: unknown): Account | null {
 function asOutsideEvent(raw: unknown): OutsideEvent[] {
   if (typeof raw !== 'object' || raw == null) return [];
 
-  const { id, name, organisationName, role, jobLabel, endsAt } = raw as Record<string, unknown>;
+  const { id, name, organisationName, role, jobLabel, startsAt, endsAt } = raw as Record<string, unknown>;
 
   if (
     typeof id !== 'string' ||
     typeof name !== 'string' ||
     typeof organisationName !== 'string' ||
+    typeof startsAt !== 'string' ||
     !(EVENT_ROLES as readonly unknown[]).includes(role)
   )
     return [];
@@ -4835,6 +4837,7 @@ function asOutsideEvent(raw: unknown): OutsideEvent[] {
       organisationName,
       role: role as EventRole,
       jobLabel: typeof jobLabel === 'string' ? jobLabel : null,
+      startsAt,
       endsAt: typeof endsAt === 'string' ? endsAt : null,
     },
   ];

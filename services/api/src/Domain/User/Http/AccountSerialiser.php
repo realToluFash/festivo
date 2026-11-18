@@ -66,6 +66,7 @@ final readonly class AccountSerialiser
                 'organisationName' => $person->getEvent()->getOrganisation()->getName(),
                 'role' => $person->getRole()->value,
                 'jobLabel' => $person->getJobLabel(),
+                'startsAt' => $person->getEvent()->getStartsAt()->format(\DATE_ATOM),
                 'endsAt' => $person->getEvent()->getClosesAt()?->format(\DATE_ATOM),
             ]),
             // In no organisation and asked to join one (sc-561): the details screen says whom it is waiting for.
