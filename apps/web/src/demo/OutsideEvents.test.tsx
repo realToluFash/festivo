@@ -143,6 +143,8 @@ describe('the way back from a gone event, with no organisation (sc-68438)', () =
   it('names the landing pick when the event it came from is gone too', async () => {
     await goneFrom('outside-gone-both', E4);
 
+    expect(screen.getByRole('navigation', { name: E1.name })).toBeDefined();
+    expect(screen.queryByRole('navigation', { name: E2.name })).toBeNull();
     expect(screen.queryByRole('button', { name: `Back to ${E2.name}` })).toBeNull();
     fireEvent.click(screen.getByRole('button', { name: `Back to ${E1.name}` }));
     await screen.findByRole('heading', { level: 1, name: E1.name });

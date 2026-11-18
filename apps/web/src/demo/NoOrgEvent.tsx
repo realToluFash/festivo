@@ -28,6 +28,7 @@ import {
 import {
   NO_ORG_HOME,
   OUTSIDE,
+  type Outside,
   type OutsideArea,
   type OutsideEvent,
   type OutsidePage,
@@ -138,6 +139,12 @@ export function NoOrgEvent({ state }: { state: NoOrgState }) {
   );
 }
 
+function shellOf(now: Outside, way: WayBack | null, from: string | null): string | undefined {
+  if (way?.kind === 'event') return way.event.id;
+
+  return from != null && !now.gone.includes(from) ? from : undefined;
+}
+
 /** An event joined from outside (sc-68438): the person menu lists the account's other events, and a member's organisations. */
 export function OutsideEventPage({
   id,
@@ -163,9 +170,7 @@ export function OutsideEventPage({
   const [told, tell, clear] = useTell();
   const gone = page === 'outside-gone-page';
   const way = gone ? wayBack(outside, id, from) : null;
-  const event = outsideEvent(
-    gone ? (from ?? (way?.kind === 'event' ? way.event.id : undefined)) : id,
-  );
+  const event = outsideEvent(gone ? shellOf(outside, way, from) : id);
   const [name, initials, tone] = JOINED.joao;
   const person: Person = outside.member
     ? { name: SAMPLE.name, initials: 'FA', tone: 1, role: event.role }
