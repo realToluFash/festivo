@@ -79,7 +79,8 @@ export function recoveryQuestion(
     ? t('recoveryRequests.turnDownTitle', { name })
     : t('recoveryRequests.approveTitle', { name });
   const off = ask?.phase === 'sending';
-  const busy = off ? t('recoveryRequests.sending') : undefined;
+  const busyWords = t('recoveryRequests.sending');
+  const busy = off ? busyWords : undefined;
   const failed = ask?.phase === 'failed' ? t('recoveryRequests.failed') : null;
 
   if (ask?.phase === 'closed')
@@ -100,6 +101,7 @@ export function recoveryQuestion(
         label: t('recoveryRequests.turnDownConfirm'),
         testID: 'members.recovery.turnDownConfirm',
         busy,
+        busyWords,
       },
     };
 
@@ -113,6 +115,7 @@ export function recoveryQuestion(
       testID: 'members.recovery.turnOff',
       removes: true,
       busy,
+      busyWords,
     },
   };
 }

@@ -1,4 +1,5 @@
 import { ApiError, type OrganisationEvent } from '@soirely/api-client';
+import type { AskConfirm } from '../components/AskLayer.tsx';
 import {
   type EventPhase,
   type MakeLiveRow,
@@ -70,7 +71,7 @@ export interface LiveAlert {
   later: string | null;
   failedLast: string | null;
   keep: { label: string; off: boolean };
-  confirm: { label: string; busy: string | undefined } | null;
+  confirm: AskConfirm | null;
 }
 
 /** `askHost` while the draft had no host when it opened; `notice` is what a reread found (sc-22143). */
@@ -137,10 +138,7 @@ export function liveAlertOf(
       host: null,
       hostsNow: null,
       keep: { label: t('eventLive.close'), off: false },
-      confirm:
-        asking.changeDates && changesDates
-          ? { label: t('eventLive.changeDates'), busy: undefined }
-          : null,
+      confirm: asking.changeDates && changesDates ? { label: t('eventLive.changeDates') } : null,
     };
 
   const hostLabel = t('eventHosts.label', { position: 1 });
@@ -167,6 +165,7 @@ export function liveAlertOf(
     confirm: {
       label: t('eventLive.makeLive'),
       busy: asking.pending ? t('eventLive.making') : undefined,
+      busyWords: t('eventLive.making'),
     },
   };
 }

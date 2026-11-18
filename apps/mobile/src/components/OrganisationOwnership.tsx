@@ -187,6 +187,7 @@ export function OwnershipSection({
             testID: 'organisation.leave.confirm',
             removes: true,
             busy: leaving ? t('ownership.leave', { organisation: name }) : undefined,
+            busyWords: t('ownership.leave', { organisation: name }),
           },
           failed: notLeft,
           onKeep: () => {

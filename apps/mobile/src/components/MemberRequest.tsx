@@ -120,6 +120,7 @@ export function RequestScreen({
             testID: 'members.turnDown.confirm',
             removes: true,
             busy: busy === 'turnDown' ? t('membersScreen.request.turningDown') : undefined,
+            busyWords: t('membersScreen.request.turningDown'),
           },
           failed: failed?.on === 'turnDown' ? failed.words : null,
           onKeep: () => {

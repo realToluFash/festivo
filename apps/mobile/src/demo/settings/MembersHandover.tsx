@@ -351,7 +351,7 @@ export function HandoverAsk({
         </>
       }
       keep={{ ...words.keep, off: sending }}
-      confirm={{ ...words.verb, busy: sending ? W.busy[kind] : undefined }}
+      confirm={{ ...words.verb, busy: sending ? W.busy[kind] : undefined, busyWords: W.busy[kind] }}
       onKeep={sending ? stay : onKeep}
       onConfirm={confirm}
       top={lifts ? liftTop : null}

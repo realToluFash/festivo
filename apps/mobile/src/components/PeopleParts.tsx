@@ -270,6 +270,7 @@ export function RoleSheet<R extends string>({
       label: words.removeConfirm,
       removes: true,
       busy: removing === 'sending' ? words.removing : undefined,
+      busyWords: words.removing,
       testID: 'people.remove.confirm',
     },
     failed: removeFailed,

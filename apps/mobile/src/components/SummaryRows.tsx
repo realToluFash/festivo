@@ -404,6 +404,7 @@ export function TextAction({
   wraps = false,
   consequence,
   accessibilityLabel,
+  maxFontSizeMultiplier,
   testID,
   ref,
 }: {
@@ -420,6 +421,8 @@ export function TextAction({
   wraps?: boolean;
   consequence?: string;
   accessibilityLabel?: string;
+  /** Set by a caller that steps its labels down to keep each word whole (sc-13496). */
+  maxFontSizeMultiplier?: number | undefined;
   testID?: string | undefined;
   ref?: Ref<ViewInstance> | undefined;
 }) {
@@ -449,6 +452,7 @@ export function TextAction({
         size={15}
         weight="semibold"
         accessible={false}
+        maxFontSizeMultiplier={maxFontSizeMultiplier}
         style={[
           { color: ink },
           figures && styles.figures,

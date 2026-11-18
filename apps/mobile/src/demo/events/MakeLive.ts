@@ -1,5 +1,6 @@
 import { makeLiveHostError } from '@soirely/domain';
 
+import type { AskConfirm } from '../../components/AskLayer.tsx';
 import { DRAFT_COUNTS, DRAFT_GUESTS } from '../guests/GuestsSample.ts';
 import { formatCount } from '../messages/MessagesSample.ts';
 import { LIVE, W, liveCounted, sayLive, t } from './EventsWords.ts';
@@ -497,7 +498,7 @@ export interface LiveAlert {
   /** Who hosts it now, one per line, when somebody else gave it a host meanwhile. */
   hostsNow: readonly string[] | null;
   keep: { label: string; off: boolean };
-  confirm: { label: string; busy: string | undefined } | null;
+  confirm: AskConfirm | null;
 }
 
 const NO_CREDITS: Credits = { line: null, waiting: 0 };
@@ -556,7 +557,11 @@ export function liveAlertOf(
         host: turn.host,
         hostsNow: turn.changed === 'nowHosted' ? hosts : null,
         keep: { label: LIVE.notYet, off: turn.making },
-        confirm: { label: LIVE.makeLive, busy: turn.making ? LIVE.making : undefined },
+        confirm: {
+          label: LIVE.makeLive,
+          busy: turn.making ? LIVE.making : undefined,
+          busyWords: LIVE.making,
+        },
       };
     case 'offer':
       return {
@@ -571,6 +576,7 @@ export function liveAlertOf(
         confirm: {
           label: liveCounted('send', reach.guests),
           busy: turn.sending ? LIVE.sending : undefined,
+          busyWords: LIVE.sending,
         },
       };
     case 'stopped':
@@ -591,7 +597,7 @@ export function liveAlertOf(
         ...toldWords(turn.why),
         alert: true,
         keep: close,
-        confirm: turn.why === 'endPassed' ? { label: W.changeDates, busy: undefined } : null,
+        confirm: turn.why === 'endPassed' ? { label: W.changeDates } : null,
       };
   }
 }

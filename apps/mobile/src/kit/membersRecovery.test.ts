@@ -101,6 +101,7 @@ describe('requests to get back in on Members (sc-30894)', () => {
       testID: 'members.recovery.turnOff',
       removes: true,
       busy: undefined,
+      busyWords: 'Sending your answer…',
     });
   });
 

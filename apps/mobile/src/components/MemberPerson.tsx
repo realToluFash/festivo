@@ -293,6 +293,7 @@ export function PersonBody({
           testID: 'members.remove.confirm',
           removes: true,
           busy: removeBusy ? t('membersScreen.removing') : undefined,
+          busyWords: t('membersScreen.removing'),
         }}
         failed={!onlyOwnerSuspended && refused?.on === 'remove' ? refused.words : null}
         onKeep={() => {

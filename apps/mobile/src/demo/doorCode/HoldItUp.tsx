@@ -127,6 +127,7 @@ export function HoldItUp({
               label: failed == null ? W.stopConfirm : W.tryAgain,
               removes: true,
               busy: stopping ? W.stopping : undefined,
+              busyWords: W.stopping,
               testID: 'door.hold.stop.confirm',
             },
             failed,
