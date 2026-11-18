@@ -88,8 +88,12 @@ import {
 import {
   type StaffAnswer,
   type StaffDetails,
+  type ShiftDetails,
+  type StaffAccess,
   type StaffEntry,
+  type StaffPlan,
   asStaffEntry,
+  asStaffPlan,
   asStaffRoster,
 } from './staff.ts';
 import {
@@ -2613,6 +2617,71 @@ export class ApiClient {
     await this.delete<unknown>(`${this.staffPath(eventId)}/${encodeURIComponent(staffId)}`);
   }
 
+  /** The roster with the event's jobs and shifts (sc-3908); refused 403 without staff.read. */
+  async staffPlan(eventId: string): Promise<StaffPlan> {
+    return this.staffPlanOf(await this.get<unknown>(this.staffPath(eventId)));
+  }
+
+  /** Refused `validation_failed` on `name`. */
+  async addStaffJob(
+    eventId: string,
+    job: { name: string; access: StaffAccess },
+  ): Promise<StaffPlan> {
+    return this.staffPlanOf(await this.post<unknown>(`${this.staffPath(eventId)}/jobs`, job));
+  }
+
+  async editStaffJob(
+    eventId: string,
+    jobId: string,
+    job: { name: string; access: StaffAccess },
+  ): Promise<StaffPlan> {
+    return this.staffPlanOf(
+      await this.put<unknown>(`${this.staffPath(eventId)}/jobs/${encodeURIComponent(jobId)}`, job),
+    );
+  }
+
+  /** Refused 409 `staff_job_staffed` while anyone is on its shifts. */
+  async removeStaffJob(eventId: string, jobId: string): Promise<StaffPlan> {
+    return this.staffPlanOf(
+      await this.delete<unknown>(`${this.staffPath(eventId)}/jobs/${encodeURIComponent(jobId)}`),
+    );
+  }
+
+  /** Refused `validation_failed` on each field at once. */
+  async addStaffShift(
+    eventId: string,
+    shift: ShiftDetails & { job: string | null },
+  ): Promise<StaffPlan> {
+    return this.staffPlanOf(await this.post<unknown>(`${this.staffPath(eventId)}/shifts`, shift));
+  }
+
+  /** Refused `validation_failed` naming `onShift` when People needed is below the people on it, and 409 `staff_shift_overlap`. */
+  async editStaffShift(eventId: string, shiftId: string, shift: ShiftDetails): Promise<StaffPlan> {
+    return this.staffPlanOf(
+      await this.put<unknown>(
+        `${this.staffPath(eventId)}/shifts/${encodeURIComponent(shiftId)}`,
+        shift,
+      ),
+    );
+  }
+
+  /** Refused 409 `staff_shift_full`, `staff_works_as`, then `staff_shift_overlap`. */
+  async assignStaff(eventId: string, shiftId: string, staffId: string): Promise<StaffPlan> {
+    return this.staffPlanOf(
+      await this.put<unknown>(
+        `${this.staffPath(eventId)}/shifts/${encodeURIComponent(shiftId)}/people/${encodeURIComponent(staffId)}`,
+      ),
+    );
+  }
+
+  async unassignStaff(eventId: string, shiftId: string, staffId: string): Promise<StaffPlan> {
+    return this.staffPlanOf(
+      await this.delete<unknown>(
+        `${this.staffPath(eventId)}/shifts/${encodeURIComponent(shiftId)}/people/${encodeURIComponent(staffId)}`,
+      ),
+    );
+  }
+
   async staffSubscription(eventId: string): Promise<RealtimeSubscription> {
     const body = await this.post<{ token?: unknown; expiresAt?: unknown }>(
       `${this.staffPath(eventId)}/subscriptions`,
@@ -2630,6 +2699,17 @@ export class ApiClient {
       (() => {
         throw new Error(
           'The API answered the roster in a shape this client does not know. Check StaffSerialiser in services/api.',
+        );
+      })()
+    );
+  }
+
+  private staffPlanOf(body: unknown): StaffPlan {
+    return (
+      asStaffPlan(body) ??
+      (() => {
+        throw new Error(
+          'The API answered the staff plan in a shape this client does not know. Check StaffSerialiser in services/api.',
         );
       })()
     );

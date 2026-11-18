@@ -92,7 +92,7 @@ function entry(id: string, fullName: string, more: Record<string, unknown> = {})
     email: null,
     job: null,
     station: null,
-    shift: null,
+    shifts: [],
     link: 'no_mobile',
     contactsErased: false,
     ...more,
@@ -179,12 +179,12 @@ describe('The Roster on the Staff page (sc-3906)', () => {
     expect(screen.getAllByRole('button', { name: /^Notifications/ })).toHaveLength(1);
   });
 
-  it('opens from Staff at its own address, with no tab bar while it is the only tab', async () => {
+  it('opens from Staff at its own address, its tab marked in the Staff tab row', async () => {
     signedIn();
     vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) =>
       new URL(String(input)).pathname === '/api/events/ev_1'
         ? json({ event: { ...EVENT, permissions: OWNER_PERMISSIONS, phase: 'live' } })
-        : json({ staff: [] }),
+        : json({ staff: [], jobs: [], shifts: [] }),
     );
     const router = createMemoryRouter(routes, { initialEntries: ['/app/events/ev_1/staff'] });
     render(<RouterProvider router={router} />);
@@ -192,7 +192,11 @@ describe('The Roster on the Staff page (sc-3906)', () => {
     expect(await screen.findByText('Nobody on the staff yet')).toBeDefined();
     expect(router.state.location.pathname).toBe('/app/events/ev_1/staff/roster');
     expect(router.state.historyAction).toBe('REPLACE');
-    expect(screen.queryByRole('navigation', { name: 'Staff' })).toBeNull();
+    const tabs = screen.getByRole('navigation', { name: 'Staff pages' });
+    expect(tabs.querySelector('[aria-current="page"]')?.textContent).toBe('Roster');
+    expect(screen.getByRole('link', { name: 'Jobs and shifts' }).getAttribute('href')).toBe(
+      '/app/events/ev_1/staff/jobs',
+    );
   });
 
   it("sits inside the desk's button and field resets, and wraps its card's header when narrow", async () => {
@@ -200,7 +204,7 @@ describe('The Roster on the Staff page (sc-3906)', () => {
     vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) =>
       new URL(String(input)).pathname === '/api/events/ev_1'
         ? json({ event: { ...EVENT, permissions: OWNER_PERMISSIONS, phase: 'live' } })
-        : json({ staff: [] }),
+        : json({ staff: [], jobs: [], shifts: [] }),
     );
     render(
       <RouterProvider
@@ -217,7 +221,9 @@ describe('The Roster on the Staff page (sc-3906)', () => {
 
   it("starts where the event's other pages do at a desk, inside the card's one padding", async () => {
     signedIn();
-    await onRoster({ 'GET /api/events/ev_1/staff': () => json({ staff: [] }) });
+    await onRoster({
+      'GET /api/events/ev_1/staff': () => json({ staff: [], jobs: [], shifts: [] }),
+    });
 
     const add = await screen.findByRole('button', { name: 'Add a person' });
     expect(add.closest('.shell-content .ev-page.desk-page')).not.toBeNull();
@@ -226,7 +232,7 @@ describe('The Roster on the Staff page (sc-3906)', () => {
   it('adds a person by name alone, refusing a blank name beside its field', async () => {
     signedIn();
     const sent = await onRoster({
-      'GET /api/events/ev_1/staff': () => json({ staff: [] }),
+      'GET /api/events/ev_1/staff': () => json({ staff: [], jobs: [], shifts: [] }),
       'POST /api/events/ev_1/staff': () =>
         json({ staff: entry('st_1', 'Chidi Okafor'), member: null }, 201),
     });
@@ -245,6 +251,7 @@ describe('The Roster on the Staff page (sc-3906)', () => {
       fullName: 'Chidi Okafor',
       mobile: null,
       email: null,
+      job: null,
       allowShared: false,
     });
     expect(screen.getByRole('button', { name: 'Chidi Okafor' })).toBeDefined();
@@ -255,7 +262,11 @@ describe('The Roster on the Staff page (sc-3906)', () => {
     signedIn();
     const sent = await onRoster({
       'GET /api/events/ev_1/staff': () =>
-        json({ staff: [entry('st_1', 'Amaka Eze', { mobile: '+2348031234567', link: 'none' })] }),
+        json({
+          staff: [entry('st_1', 'Amaka Eze', { mobile: '+2348031234567', link: 'none' })],
+          jobs: [],
+          shifts: [],
+        }),
       'POST /api/events/ev_1/staff': (body) =>
         (body as { allowShared: boolean }).allowShared
           ? json(
@@ -294,7 +305,8 @@ describe('The Roster on the Staff page (sc-3906)', () => {
   it('removes a person after asking', async () => {
     signedIn();
     const sent = await onRoster({
-      'GET /api/events/ev_1/staff': () => json({ staff: [entry('st_1', 'Amaka Eze')] }),
+      'GET /api/events/ev_1/staff': () =>
+        json({ staff: [entry('st_1', 'Amaka Eze')], jobs: [], shifts: [] }),
       'DELETE /api/events/ev_1/staff/st_1': () => new Response(null, { status: 204 }),
     });
 
@@ -312,7 +324,10 @@ describe('The Roster on the Staff page (sc-3906)', () => {
   it('keeps everyone once the event has finished: no Remove, but Edit stays', async () => {
     signedIn();
     await onRoster(
-      { 'GET /api/events/ev_1/staff': () => json({ staff: [entry('st_1', 'Amaka Eze')] }) },
+      {
+        'GET /api/events/ev_1/staff': () =>
+          json({ staff: [entry('st_1', 'Amaka Eze')], jobs: [], shifts: [] }),
+      },
       OWNER_PERMISSIONS,
       'finished',
     );
@@ -325,7 +340,10 @@ describe('The Roster on the Staff page (sc-3906)', () => {
   it('shows the roster read-only without permission to manage staff', async () => {
     signedIn();
     await onRoster(
-      { 'GET /api/events/ev_1/staff': () => json({ staff: [entry('st_1', 'Amaka Eze')] }) },
+      {
+        'GET /api/events/ev_1/staff': () =>
+          json({ staff: [entry('st_1', 'Amaka Eze')], jobs: [], shifts: [] }),
+      },
       OWNER_PERMISSIONS.filter((one) => one !== 'staff.manage'),
     );
 
