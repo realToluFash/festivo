@@ -10,26 +10,35 @@ import { takeHeldLink } from './heldLink.ts';
 import { type Landing, landingFor } from './landing.ts';
 
 let held: TwoFactorChallenge | null = null;
+let heldAlone = false;
 
 /** In memory only: a route parameter would put a credential where logs and history keep it. */
-export function holdChallenge(challenge: TwoFactorChallenge): void {
+export function holdChallenge(challenge: TwoFactorChallenge, alone = false): void {
   held = challenge;
+  heldAlone = alone;
 }
 
 export function heldChallenge(): TwoFactorChallenge | null {
   return held;
 }
 
+/** Whether the held sign-in began on a Sign in with nothing under it, as a cold `soirely://sign-in` opens one (sc-67606). */
+export function challengeBeganAlone(): boolean {
+  return heldAlone;
+}
+
 export function dropChallenge(): void {
   held = null;
+  heldAlone = false;
 }
 
 /** Where any sign-in goes next: the code screen when two-factor asks for one, else where the account belongs. */
 export async function nextAfterSignIn(
   outcome: SignInOutcome,
+  { alone = false }: { alone?: boolean } = {},
 ): Promise<Landing | '/sign-in-code' | '/two-factor-again' | `/join/${string}`> {
   if ('challenge' in outcome) {
-    holdChallenge(outcome);
+    holdChallenge(outcome, alone);
     return '/sign-in-code';
   }
 

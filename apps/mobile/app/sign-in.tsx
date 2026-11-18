@@ -113,7 +113,7 @@ export default function SignIn() {
 
     void api
       .signIn(address, typed)
-      .then(nextAfterSignIn)
+      .then((outcome) => nextAfterSignIn(outcome, { alone: !below }))
       .then((next) => {
         tap.light();
         router.replace(next);
@@ -203,6 +203,7 @@ export default function SignIn() {
             )}
             <ProviderButtons
               only={refusal.providers}
+              alone={!below}
               onFailed={(provider) => setStatus({ kind: 'providerFailed', provider })}
             />
             <Text size={tokens.typeSmall.size} muted>
