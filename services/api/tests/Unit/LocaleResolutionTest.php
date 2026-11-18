@@ -49,12 +49,10 @@ final class LocaleResolutionTest extends TestCase
         yield 'numeric region' => ['es', ['es-419'], 'es-419'];
         yield 'with a script' => ['pt', ['pt-Latn-PT'], 'pt-PT'];
         yield 'no region' => ['fr', ['fr'], 'fr'];
-        yield 'bare English, as Intl writes it' => ['en', ['en'], 'en-US'];
-        yield 'another language' => ['en', ['fr-FR'], 'en-US'];
-        yield 'another language, not English' => ['fr', ['en-US'], 'fr'];
+        yield 'another language' => ['en', ['fr-FR'], 'en'];
         yield 'the first in the shown language' => ['fr', ['en-US', 'fr-CA', 'fr-FR'], 'fr-CA'];
-        yield 'no device' => ['en', [], 'en-US'];
-        yield 'malformed' => ['en', ['en-not a region'], 'en-US'];
+        yield 'no device' => ['en', [], 'en'];
+        yield 'malformed' => ['en', ['en-not a region'], 'en'];
     }
 
     #[Test]

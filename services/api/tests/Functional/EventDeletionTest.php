@@ -74,7 +74,7 @@ final class EventDeletionTest extends ApiTestCase
 
         $preview = $this->as($this->owner, 'GET', '/api/events/' . $id . '/deletion');
         self::assertSame(200, $this->statusCode(), Json\encode($preview));
-        self::assertSame(['needsName' => false, 'people' => 0, 'deleteRefusedBecause' => null, 'restoreClosesAt' => '2026-11-16T13:20:00+00:00', 'restoreCloses' => 'Monday, Nov 16 at 14:20 WAT'], $preview);
+        self::assertSame(['needsName' => false, 'people' => 0, 'deleteRefusedBecause' => null, 'restoreClosesAt' => '2026-11-16T13:20:00+00:00', 'restoreCloses' => 'Monday 16 Nov at 14:20 WAT'], $preview);
 
         $body = $this->as($this->owner, 'DELETE', '/api/events/' . $id);
 

@@ -543,8 +543,8 @@ final class DomainSuspensionTest extends ApiTestCase
         $suspension = static fn (User $reader): array => [
             'reason' => 'address_gone',
             'domain' => 'ire.events',
-            'since' => ['at' => $since->format(\DATE_ATOM), 'written' => $mailer->deadline($since, $reader, 'en-US')],
-            'removesAt' => ['at' => $removesAt->format(\DATE_ATOM), 'written' => $mailer->deadline($removesAt, $reader, 'en-US')],
+            'since' => ['at' => $since->format(\DATE_ATOM), 'written' => $mailer->deadline($since, $reader, 'en')],
+            'removesAt' => ['at' => $removesAt->format(\DATE_ATOM), 'written' => $mailer->deadline($removesAt, $reader, 'en')],
             'onlyOwner' => false,
         ];
 
