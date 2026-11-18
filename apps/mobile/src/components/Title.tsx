@@ -42,6 +42,7 @@ export function MeasuredWords({
           <Text
             key={word}
             {...look}
+            style={[look.style, styles.word]}
             onLayout={(event) => onWidth(word, event.nativeEvent.layout.width)}
             accessible={false}
           >
@@ -185,4 +186,6 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
     opacity: 0,
   },
+  // A caller's stretch or flex would make a word as wide as the box above, and every text would step down to its floor (sc-37693).
+  word: { flex: 0, alignSelf: 'flex-start' },
 });
