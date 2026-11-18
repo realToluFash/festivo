@@ -367,7 +367,9 @@ function Shown({
   const carded = useRef(new Set<string>());
   const pressedOn = useRef(schedule);
 
-  pressedOn.current = schedule;
+  useEffect(() => {
+    pressedOn.current = schedule;
+  }, [schedule]);
 
   // Each press puts up its track's card here, and each send rewrites it with what is still waiting (sc-66580).
   useEffect(() => {
