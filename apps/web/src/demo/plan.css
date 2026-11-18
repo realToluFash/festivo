@@ -16,6 +16,16 @@
   vertical-align: -2px;
 }
 
+.plan-costs {
+  padding-left: 24px;
+}
+
+.plan-nothing {
+  flex: none;
+  color: var(--colorInkSecondary);
+  font: 500 14px/1.4 var(--fontFamily);
+}
+
 .plan-paper {
   display: flex;
   justify-content: center;

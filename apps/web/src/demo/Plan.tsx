@@ -1,10 +1,13 @@
-import { useEffect, useState } from 'react';
+import { type ReactNode, useEffect, useState } from 'react';
 import { createPortal, flushSync } from 'react-dom';
+import { useNavigate } from 'react-router';
 
+import { CardStep, OnCard, Says, TextAction } from '../components/SettingsParts.tsx';
 import {
   Amount,
   Block,
   BudgetCard,
+  BudgetLoading,
   BudgetRow,
   BudgetShell,
   CardPairs,
@@ -12,6 +15,9 @@ import {
   DashedMark,
   GlassTags,
   InfoLine,
+  MarkWord,
+  NotLiveStrip,
+  OpenMark,
   PageTitle,
   Rows,
 } from './BudgetParts.tsx';
@@ -20,25 +26,41 @@ import { BUDGET_WORDS } from './budgetWords.ts';
 import { type SampleEvent } from './events.ts';
 import { money } from './budget.ts';
 import {
+  type AcrossCost,
+  type AcrossRow,
+  type Fact,
   type PlanRow,
+  type PlanSample,
+  type PlanShown,
+  acrossRows,
   afterPairs,
   kindOf,
   planPairs,
   planRows,
   printedLine,
+  sampleOf,
   sheetFigures,
+  shownOf,
 } from './plan.ts';
 import { PLAN_WORDS as W } from './planWords.ts';
 import './plan.css';
 
-/** Against plan (sc-89): the card's four figures, By category with each quote, and Print. */
+const BUSY_MS = 900;
+
+/** The vendors with a page in the demo's Quotes; a quote from any other is named, not linked. */
+const QUOTED = new Set(['v3', 'v4', 'v5', 'v6']);
+
+/** Against plan (sc-89): the card's four figures, By category with each quote, the quotes in no one category, and Print. */
 export function PlanPage({ event, state }: { event: SampleEvent; state: string }) {
-  if (state === 'print')
+  if (state === 'print') {
+    const sample = sampleOf('plan');
+
     return (
       <main className="desk bud plan-paper">
-        <PrintSheet event={event} rows={planRows()} />
+        <PrintSheet event={event} sample={sample} />
       </main>
     );
+  }
 
   return (
     <BudgetShell
@@ -50,9 +72,83 @@ export function PlanPage({ event, state }: { event: SampleEvent; state: string }
   );
 }
 
+/** What stands in for a page's figures while it loads, fails or has no costs, the Budget home's way. */
+export function PlanAround({
+  title,
+  first,
+  words,
+  event,
+  emptyLine,
+  actions,
+  children,
+}: {
+  title: string;
+  first: PlanShown;
+  words: { loading: string; failed: string };
+  event: SampleEvent;
+  emptyLine: string;
+  actions?: ReactNode;
+  children: ReactNode;
+}) {
+  const navigate = useNavigate();
+  const [shown, setShown] = useState(first);
+
+  if (shown === 'loading')
+    return (
+      <>
+        <PageTitle title={title} />
+        <BudgetLoading words={words.loading} />
+      </>
+    );
+
+  if (shown === 'failed')
+    return (
+      <>
+        <PageTitle title={title} />
+        <p className="desk-line is-ink">{words.failed}</p>
+        <TextAction
+          label={W.tryAgain}
+          onClick={() => {
+            setShown('loading');
+            window.setTimeout(() => setShown('figures'), BUSY_MS);
+          }}
+        />
+      </>
+    );
+
+  if (shown === 'empty')
+    return (
+      <>
+        <PageTitle title={title} />
+        <BudgetCard event={event} label={title}>
+          <Says>{W.empty}</Says>
+          <OnCard>{emptyLine}</OnCard>
+          <div className="bud-card-foot">
+            <CardStep label={W.openBudget} onClick={() => void navigate(budgetAt('first_time'))} />
+          </div>
+        </BudgetCard>
+      </>
+    );
+
+  return (
+    <>
+      <PageTitle title={title}>{actions}</PageTitle>
+      {shown === 'notLive' && (
+        <NotLiveStrip
+          words={W.notLive}
+          onTry={() => {
+            setShown('figures');
+          }}
+        />
+      )}
+      {children}
+    </>
+  );
+}
+
 function PlanBody({ event, state }: { event: SampleEvent; state: string }) {
   const kind = kindOf(state);
-  const rows = planRows(kind === 'unknown');
+  const sample = sampleOf(state);
   const [printing, setPrinting] = useState(false);
 
   useEffect(() => {
@@ -73,23 +169,41 @@ function PlanBody({ event, state }: { event: SampleEvent; state: string }) {
     window.print();
   }
 
+  const pairs =
+    kind === 'after'
+      ? afterPairs(sample, true)
+      : kind === 'unrecorded'
+        ? afterPairs(sample, false)
+        : planPairs(sample);
+
   return (
-    <>
-      <PageTitle title={W.title}>
+    <PlanAround
+      title={W.title}
+      first={shownOf(state)}
+      words={{ loading: W.loading, failed: W.failed }}
+      event={event}
+      emptyLine={W.emptyLine}
+      actions={
         <button type="button" className="desk-text" onClick={print}>
           <PrintMark size={17} />
           {W.print}
         </button>
-      </PageTitle>
+      }
+    >
       {kind === 'unrecorded' && <InfoLine>{W.unrecorded}</InfoLine>}
       <div className="plan-card">
         <BudgetCard event={event} label={W.title}>
           <GlassTags tags={[{ word: W.title }]} />
-          <CardPairs pairs={kind === 'after' ? afterPairs() : planPairs()} />
+          <CardPairs pairs={pairs} />
         </BudgetCard>
       </div>
       <Columns
-        left={<ByCategory rows={rows} />}
+        left={
+          <>
+            <ByCategory rows={planRows(sample)} />
+            <Across rows={acrossRows(sample)} />
+          </>
+        }
         right={
           <Rows>
             <li>
@@ -106,16 +220,16 @@ function PlanBody({ event, state }: { event: SampleEvent; state: string }) {
       {printing &&
         createPortal(
           <div className="plan-print" aria-hidden="true">
-            <PrintSheet event={event} rows={rows} />
+            <PrintSheet event={event} sample={sample} />
           </div>,
           document.body,
         )}
-    </>
+    </PlanAround>
   );
 }
 
-function Facts({ row }: { row: PlanRow }) {
-  return row.facts.map((fact, index) => (
+function Facts({ facts }: { facts: readonly Fact[] }) {
+  return facts.map((fact, index) => (
     <span key={fact.words} className={fact.notKnown === true ? 'plan-not-known' : undefined}>
       {index > 0 && ' · '}
       {fact.notKnown === true && <DashedMark />}
@@ -131,7 +245,7 @@ function ByCategory({ rows, paper = false }: { rows: readonly PlanRow[]; paper?:
         {rows.map((row) => {
           const said = {
             title: row.name,
-            lines: [<Facts key="facts" row={row} />],
+            lines: [<Facts key="facts" facts={row.facts} />],
             end: (
               <>
                 <span className="desk-unseen">{W.planned}</span>
@@ -155,20 +269,97 @@ function ByCategory({ rows, paper = false }: { rows: readonly PlanRow[]; paper?:
   );
 }
 
+/** A cost's planned figure only: a quote's figures are never split across its costs. */
+export function CostEnd({ cost }: { cost: AcrossCost }) {
+  if (cost.state === 'notPriced')
+    return <MarkWord mark={<DashedMark />} word={BUDGET_WORDS.notPriced} />;
+  if (cost.state === 'nothingYet')
+    return <MarkWord mark={<OpenMark />} word={BUDGET_WORDS.notCounted} />;
+
+  return <Amount value={money(cost.settled)} />;
+}
+
+function acrossEnd(row: AcrossRow): ReactNode {
+  if (row.planned == null) return <span className="plan-nothing">{W.nothingPlannedShort}</span>;
+
+  return (
+    <>
+      <span className="desk-unseen">{W.planned}</span>
+      {row.notPriced === 0 ? (
+        <Amount value={money(row.planned)} />
+      ) : (
+        <Amount value={money(row.planned)} line={BUDGET_WORDS.notPricedCount(row.notPriced)} />
+      )}
+    </>
+  );
+}
+
+/** A quote over costs in two or more categories, or over none: a row of its own, by vendor name, in no category. */
+function Across({ rows, paper = false }: { rows: readonly AcrossRow[]; paper?: boolean }) {
+  if (rows.length === 0) return null;
+
+  return (
+    <Block title={W.across}>
+      <Rows>
+        {rows.map((row) => {
+          const said = {
+            title: row.vendor,
+            lines: [
+              row.categories,
+              row.figures,
+              <span key="against">
+                {`${W.againstPlanIs}: `}
+                <Facts facts={row.against} />
+              </span>,
+            ],
+            end: acrossEnd(row),
+          };
+
+          return (
+            <li key={row.vendorId}>
+              {paper || !QUOTED.has(row.vendorId) ? (
+                <BudgetRow {...said} />
+              ) : (
+                <BudgetRow {...said} to={budgetAt(undefined, { vendor: row.vendorId })} />
+              )}
+              {row.costs.length > 0 && (
+                <div className="plan-costs">
+                  <Rows label={W.costsOf(row.vendor)}>
+                    {row.costs.map((cost) => (
+                      <li key={cost.id}>
+                        <BudgetRow
+                          title={cost.name}
+                          lines={[cost.line]}
+                          end={<CostEnd cost={cost} />}
+                        />
+                      </li>
+                    ))}
+                  </Rows>
+                </div>
+              )}
+            </li>
+          );
+        })}
+      </Rows>
+    </Block>
+  );
+}
+
 /** The A4 sheet: client figures only, never internal cost or margin; no navigation, no buttons. */
-function PrintSheet({ event, rows }: { event: SampleEvent; rows: readonly PlanRow[] }) {
+function PrintSheet({ event, sample }: { event: SampleEvent; sample: PlanSample }) {
   return (
     <article className="plan-sheet">
       <h1 className="plan-sheet-title">{W.sheetTitle(event.name)}</h1>
       <p className="plan-sheet-line">{printedLine()}</p>
       <Rows>
-        {sheetFigures().map((one) => (
+        {sheetFigures(sample).map((one) => (
           <li key={one.label}>
             <BudgetRow title={one.label} end={<Amount value={one.amount} />} />
           </li>
         ))}
       </Rows>
-      <ByCategory rows={rows} paper />
+      <ByCategory rows={planRows(sample)} paper />
+      <Across rows={acrossRows(sample)} paper />
     </article>
   );
 }
