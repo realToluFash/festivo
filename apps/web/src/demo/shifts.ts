@@ -115,7 +115,8 @@ export const JW = {
     `${n} people are on this shift. Unassign some first, or keep ${n} or more.`,
   midnight: (weekday: string, time: string) => `Ends on ${weekday} at ${time}`,
   onShift: (n: number) => (n === 1 ? 'On this shift · 1 person' : `On this shift · ${n} people`),
-  filled: (on: number, needed: number) => `${on} of ${needed} places filled`,
+  filled: (on: number, needed: number) =>
+    `${on} of ${needed} ${needed === 1 ? 'place' : 'places'} filled`,
   shiftCount: (n: number) => (n === 1 ? '1 shift' : `${n} shifts`),
   short: (n: number) => `Short ${n}`,
   span: (start: number, end: number) => `${clock(start)} to ${clock(end)}`,

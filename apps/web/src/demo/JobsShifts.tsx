@@ -883,7 +883,7 @@ function ShiftForm({
   const onIt = shift?.people.length ?? 0;
   const checked = shiftProblems(draft, onIt);
   const below = checked.needed != null && checked.needed === JW.neededBelow(onIt);
-  const problems: ShiftProblems = pressed ? checked : below ? { needed: checked.needed } : {};
+  const problems: ShiftProblems = pressed ? checked : below ? { needed: JW.neededBelow(onIt) } : {};
   if (server != null) problems.needed = JW.neededBelow(server);
   const midnight = midnightLine(draft);
   const job = shift == null ? '' : jobName(plan, shift.job);
@@ -892,11 +892,15 @@ function ShiftForm({
 
   return (
     <>
-      <PanelTop
-        title={shift == null ? JW.addShift : JW.editShift(job, shift.start, shift.end)}
-        eyebrow={shift == null ? undefined : JW.editTimes}
-        onClose={onCancel}
-      />
+      {shift == null ? (
+        <PanelTop title={JW.addShift} onClose={onCancel} />
+      ) : (
+        <PanelTop
+          title={JW.editShift(job, shift.start, shift.end)}
+          eyebrow={JW.editTimes}
+          onClose={onCancel}
+        />
+      )}
       <div className="mn-panel-body">
         {shift != null && (
           <div className="js-on-shift">
@@ -914,7 +918,7 @@ function ShiftForm({
               value={draft.job}
               shown={draft.job === '' ? JW.chooseJob : jobName(plan, draft.job)}
               wrong={problems.job != null}
-              describedBy={told(SHIFT_IDS.job, problems.job)}
+              {...(problems.job == null ? {} : { describedBy: `${SHIFT_IDS.job}-error` })}
               onChange={(value) => onChange({ job: value })}
               options={[
                 { value: '', label: JW.chooseJob },

@@ -758,7 +758,7 @@ function PersonForm({
             value={draft.job}
             shown={draft.job === '' ? RW.noJob : draft.job}
             wrong={locked != null}
-            describedBy={locked == null ? undefined : 'rs-f-job-error rs-f-job-help'}
+            {...(locked == null ? {} : { describedBy: 'rs-f-job-error rs-f-job-help' })}
             onChange={(value) => onChange({ job: value, shift: jobOf(value)?.shifts[0] ?? '' })}
             options={[
               { value: '', label: RW.noJob },
