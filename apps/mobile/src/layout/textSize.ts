@@ -25,6 +25,34 @@ export function titleSize(size: number, fontScale: number): number {
   return fontScale >= NINTH_STEP_SCALE ? steps[1] : steps[0];
 }
 
+/** A page's title as it reported the size it drew at, for the page and text size `key` it drew on. */
+export interface DrawnTitle {
+  key: string;
+  size: number;
+}
+
+/** The page and the text size a title's report holds for: a report on another page or at another size caps nothing. */
+export function titleCapKey(at: string, fontScale: number): string {
+  return `${at}|${fontScale}`;
+}
+
+/** A title's report of `size` on `key`, keeping `now` where it says the same, so an unchanged report draws nothing again. */
+export function reportTitle(now: DrawnTitle | null, key: string, size: number): DrawnTitle {
+  return now?.key === key && now.size === size ? now : { key, size };
+}
+
+/** The cap under a page's title of `size` on `key`: the size it reported there, or until it does, the size it will draw at unless a word steps it down. */
+export function titleCapOn(
+  drawn: DrawnTitle | null,
+  key: string,
+  size: number,
+  fontScale: number,
+): { cap: number; drawn: boolean } {
+  const reported = drawn?.key === key;
+
+  return { cap: reported ? drawn.size : titleSize(size, fontScale), drawn: reported };
+}
+
 /** The most a text of `size` may grow so it never draws larger than a title drawn at `title`; React Native ignores a multiplier under 1. */
 export function capUnderTitle(title: number, size: number, own?: number): number {
   return Math.max(1, Math.min(own ?? Infinity, title / size));

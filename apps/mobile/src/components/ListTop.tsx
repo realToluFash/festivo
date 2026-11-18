@@ -17,6 +17,7 @@ export function ListTop({
   kind,
   title,
   titleRef,
+  onTitleDrawn,
   pill,
   bell,
   beside,
@@ -29,6 +30,7 @@ export function ListTop({
   kind: LayoutKind;
   title: string;
   titleRef?: RefObject<TextHandle | null> | undefined;
+  onTitleDrawn?: ((size: number) => void) | undefined;
   /** Drawn only on a phone; upright the pill stays in `PortraitTop`, and on its side it heads the sidebar. */
   pill: ReactNode;
   bell: ReactNode;
@@ -53,7 +55,13 @@ export function ListTop({
     <View style={[styles.titleRow, rowStyle]}>
       <View style={styles.fill} onLayout={label.onSlot}>
         {label.measure}
-        <Title size={TOP_TITLE} accessibilityRole="header" ref={titleRef} style={topTitle}>
+        <Title
+          size={TOP_TITLE}
+          accessibilityRole="header"
+          ref={titleRef}
+          style={topTitle}
+          onDrawn={onTitleDrawn}
+        >
           {title}
         </Title>
       </View>

@@ -117,7 +117,7 @@ import { Back } from './SettingsParts.tsx';
 import { SETTLED_MS, useFocusOnAnswer, useWindowOrigin } from './Screen.tsx';
 import type { ScreenReaderTarget } from './screenReaderFocus.ts';
 import { type TextHandle, Text, TitleCap } from './Text.tsx';
-import { Title } from './Title.tsx';
+import { PageTitleDrawn, Title, useTitleCap } from './Title.tsx';
 import { PAGE_TITLE, pageTitle } from './topTitle.ts';
 import { TopPrimary, type TopPrimaryProps, usePrimaryLabel } from './TopPrimary.tsx';
 import { ListTop, PortraitRow, PortraitTop } from './ListTop.tsx';
@@ -501,6 +501,9 @@ export function AppFrame({
         {switchedWords}
       </View>
     ) : null;
+  const titleCap = useTitleCap(`${kind}|${untitled}|${title}`, PAGE_TITLE);
+  // A page the frame draws no title for is capped only by a title its body draws, as an event area's (sc-67338).
+  const cap = framed && (titleCap.drawn || !untitled) ? titleCap.cap : null;
   const header: FrameHeaderProps = {
     current,
     kind,
@@ -522,6 +525,8 @@ export function AppFrame({
     besideBack: standIn == null || besideBack === undefined ? besideBack : null,
     switched: ownTop ? switchedNotice : null,
     untitled,
+    cap,
+    onTitleDrawn: titleCap.onDrawn,
   };
 
   return (
@@ -566,39 +571,47 @@ export function AppFrame({
                 },
               ]}
             >
-              {!ownTop && switchedNotice}
-              <OpenSwitcher.Provider value={openSwitcher}>
-                <StartOrganisation.Provider value={startOrganisation}>
-                  <HideBack.Provider value={backRow.hide}>
-                    <EdgeSwipeStrip.Provider value={setEdgeSwipe}>
-                      {standIn === 'paused' && signedIn.pausedIn != null ? (
-                        <AccessPaused
-                          paused={signedIn.pausedIn}
-                          others={signedIn.organisations}
-                          onSwitch={(next) => switchByTap(next.id)}
-                          onChoose={(opener) => openSwitcher?.(opener)}
-                        />
-                      ) : standIn === 'overdue' && signedIn.organisation != null ? (
-                        <TwoFactorOverdue
-                          organisation={signedIn.organisation.name}
-                          answer={switchAnswer ?? lapsed}
-                          headingRef={overdueHeading}
-                          onTurnOn={() => router.navigate(SECTION_HREF.security)}
-                          onSignOut={signOutHere}
-                        />
-                      ) : (
-                        <FrameSwitch.Provider value={switchAnswer}>
-                          <ScrolledTop.Provider value={ownTop && top === 'scrolls' ? header : null}>
-                            <BodySwitched.Provider value={bodySwitched}>
-                              <UnderTabsProvider value={underTabs}>{children}</UnderTabsProvider>
-                            </BodySwitched.Provider>
-                          </ScrolledTop.Provider>
-                        </FrameSwitch.Provider>
-                      )}
-                    </EdgeSwipeStrip.Provider>
-                  </HideBack.Provider>
-                </StartOrganisation.Provider>
-              </OpenSwitcher.Provider>
+              <PageTitleDrawn.Provider value={titleCap.onDrawn}>
+                <TitleCap.Provider value={cap}>
+                  {!ownTop && switchedNotice}
+                  <OpenSwitcher.Provider value={openSwitcher}>
+                    <StartOrganisation.Provider value={startOrganisation}>
+                      <HideBack.Provider value={backRow.hide}>
+                        <EdgeSwipeStrip.Provider value={setEdgeSwipe}>
+                          {standIn === 'paused' && signedIn.pausedIn != null ? (
+                            <AccessPaused
+                              paused={signedIn.pausedIn}
+                              others={signedIn.organisations}
+                              onSwitch={(next) => switchByTap(next.id)}
+                              onChoose={(opener) => openSwitcher?.(opener)}
+                            />
+                          ) : standIn === 'overdue' && signedIn.organisation != null ? (
+                            <TwoFactorOverdue
+                              organisation={signedIn.organisation.name}
+                              answer={switchAnswer ?? lapsed}
+                              headingRef={overdueHeading}
+                              onTurnOn={() => router.navigate(SECTION_HREF.security)}
+                              onSignOut={signOutHere}
+                            />
+                          ) : (
+                            <FrameSwitch.Provider value={switchAnswer}>
+                              <ScrolledTop.Provider
+                                value={ownTop && top === 'scrolls' ? header : null}
+                              >
+                                <BodySwitched.Provider value={bodySwitched}>
+                                  <UnderTabsProvider value={underTabs}>
+                                    {children}
+                                  </UnderTabsProvider>
+                                </BodySwitched.Provider>
+                              </ScrolledTop.Provider>
+                            </FrameSwitch.Provider>
+                          )}
+                        </EdgeSwipeStrip.Provider>
+                      </HideBack.Provider>
+                    </StartOrganisation.Provider>
+                  </OpenSwitcher.Provider>
+                </TitleCap.Provider>
+              </PageTitleDrawn.Provider>
             </View>
             {floatingTabs && <FrameTabBar current={current} organisation={signedIn.organisation} />}
             {eventTabs && inEvent != null && <TabBar inEvent={inEvent} />}
@@ -714,6 +727,9 @@ interface FrameHeaderProps {
   switched: ReactNode;
   /** A page whose body names it (an event's Overview card, a member's own card in front of the list), so the frame draws no title. */
   untitled: boolean;
+  /** The size the title drew at, which nothing under it outgrows; null where nothing caps (sc-67338). */
+  cap: number | null;
+  onTitleDrawn: (size: number) => void;
 }
 
 const ScrolledTop = createContext<FrameHeaderProps | null>(null);
@@ -731,7 +747,12 @@ export function FrameTop({
 
   if (top == null) return null;
 
-  return <ScreenTop {...top} style={style} rowStyle={rowStyle} />;
+  // Back, the pill and the bell keep their own sizes; ScreenTop caps only what is under the title (sc-67338).
+  return (
+    <TitleCap.Provider value={null}>
+      <ScreenTop {...top} style={style} rowStyle={rowStyle} />
+    </TitleCap.Provider>
+  );
 }
 
 const BodySwitched = createContext<ReactNode>(null);
@@ -793,6 +814,8 @@ function ScreenTop({
   besideBack,
   switched,
   untitled,
+  cap,
+  onTitleDrawn,
   stays = false,
   style,
   rowStyle,
@@ -810,10 +833,10 @@ function ScreenTop({
       </BesideBack>
     );
   const under = (
-    <>
+    <TitleCap.Provider value={cap}>
       {underTitle}
       {switched}
-    </>
+    </TitleCap.Provider>
   );
   const staysStyle = stays && LIST_EDGES[kind];
   const label = usePrimaryLabel({
@@ -831,6 +854,7 @@ function ScreenTop({
         kind={kind}
         title={title}
         titleRef={read}
+        onTitleDrawn={onTitleDrawn}
         pill={
           organisation != null && (
             <OrgPill organisation={organisation} waiting={waiting} onSwitch={onSwitch} ref={pill} />
@@ -850,7 +874,13 @@ function ScreenTop({
     <View style={[styles.topRow, styles.pageRow, rowStyle]}>
       <View style={styles.fill} onLayout={label.onSlot}>
         {label.measure}
-        <Title size={PAGE_TITLE} accessibilityRole="header" ref={read} style={pageTitle}>
+        <Title
+          size={PAGE_TITLE}
+          accessibilityRole="header"
+          ref={read}
+          style={pageTitle}
+          onDrawn={onTitleDrawn}
+        >
           {title}
         </Title>
       </View>
@@ -900,6 +930,8 @@ function FrameHeader({
   besideTitle,
   besideBack,
   untitled,
+  cap,
+  onTitleDrawn,
 }: FrameHeaderProps) {
   const insets = useSafeAreaInsets();
   const top = kind === 'tabletLandscape' ? undefined : { paddingTop: insets.top + tokens.spaceXxs };
@@ -917,13 +949,13 @@ function FrameHeader({
         <View style={[styles.titled, !large && styles.fill]}>
           <View style={styles.titleRow}>
             <View style={large ? styles.shrink : styles.fill}>
-              <Title size={titleSize} accessibilityRole="header" ref={read}>
+              <Title size={titleSize} accessibilityRole="header" ref={read} onDrawn={onTitleDrawn}>
                 {title}
               </Title>
             </View>
             {besideTitle}
           </View>
-          {underTitle}
+          <TitleCap.Provider value={cap}>{underTitle}</TitleCap.Provider>
         </View>
         <BellButton />
       </View>
@@ -954,13 +986,13 @@ function FrameHeader({
       <View style={styles.fill}>
         <View style={styles.titleRow}>
           <View style={styles.fill}>
-            <Title size={titleSize} accessibilityRole="header" ref={read}>
+            <Title size={titleSize} accessibilityRole="header" ref={read} onDrawn={onTitleDrawn}>
               {title}
             </Title>
           </View>
           {besideTitle}
         </View>
-        {underTitle}
+        <TitleCap.Provider value={cap}>{underTitle}</TitleCap.Provider>
       </View>
       {end}
     </View>

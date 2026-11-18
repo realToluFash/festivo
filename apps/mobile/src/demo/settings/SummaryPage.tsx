@@ -1,11 +1,10 @@
-import { type ReactNode, type Ref, useState } from 'react';
+import type { ReactNode, Ref } from 'react';
 import {
   type NativeScrollEvent,
   type NativeSyntheticEvent,
   ScrollView,
   type ScrollViewInstance,
   StyleSheet,
-  useWindowDimensions,
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -14,8 +13,7 @@ import { Back } from '../../components/SettingsParts.tsx';
 import { useShell } from '../../components/settingsShell.ts';
 import { PageToast, type PageToastProps } from '../../components/Summary.tsx';
 import { TitleCap } from '../../components/Text.tsx';
-import { Title } from '../../components/Title.tsx';
-import { titleSize } from '../../layout/textSize.ts';
+import { Title, useTitleCap } from '../../components/Title.tsx';
 import { PHONE_TAB_BAR, TabBarFade } from '../../components/TodayCover.tsx';
 import { tokens } from '../../theme/tokens.ts';
 import { PAGE_TITLE, PANE_TITLE, pageTitle, paneTitle } from '../../components/topTitle.ts';
@@ -45,13 +43,10 @@ export function SummaryPage({
   const shell = useShell();
   const insets = useSafeAreaInsets();
   const backTo = back === undefined ? { onPress: shell.toSettings } : back;
-  const { fontScale } = useWindowDimensions();
   const titled = shell.layout === 'landscape' ? PANE_TITLE : PAGE_TITLE;
-  const [drawn, setDrawn] = useState<{ at: string; size: number } | null>(null);
-  const at = `${titled}|${fontScale}|${title ?? ''}`;
-  const cap = title == null ? null : drawn?.at === at ? drawn.size : titleSize(titled, fontScale);
-  const onDrawn = (size: number) =>
-    setDrawn((now) => (now?.at === at && now.size === size ? now : { at, size }));
+  const drawn = useTitleCap(`${titled}|${title ?? ''}`, titled);
+  const cap = title == null ? null : drawn.cap;
+  const onDrawn = drawn.onDrawn;
 
   if (shell.layout === 'landscape')
     return (

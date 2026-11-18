@@ -1,4 +1,4 @@
-import { Fragment, type ReactNode, type Ref, useEffect, useRef, useState } from 'react';
+import { Fragment, type ReactNode, type Ref, useContext, useEffect, useRef, useState } from 'react';
 import {
   type AccessibilityRole,
   type AccessibilityState,
@@ -15,9 +15,9 @@ import {
 } from 'react-native';
 import Svg, { Circle, Path } from 'react-native-svg';
 
-import { Text } from './Text.tsx';
+import { Text, TitleCap } from './Text.tsx';
 import { WholeWords } from './Title.tsx';
-import { atAccessibilitySizes } from '../layout/textSize.ts';
+import { atAccessibilitySizes, capUnderTitle } from '../layout/textSize.ts';
 import { titleAtWidth, titleWithInkRoom, UNMEASURED_TITLE } from './titleWidth.ts';
 import { useReducedMotion } from '../reducedMotion.ts';
 import { tokens } from '../theme/tokens.ts';
@@ -172,13 +172,14 @@ export function HeadCount({ text }: { text: string }) {
 /** At the accessibility sizes the heading takes its own line, stepping down rather than break a word, never under 18, and what ends its row goes under it (sc-37693). */
 export function SectionHead({ title, right }: { title: string; right?: ReactNode }) {
   const { fontScale } = useWindowDimensions();
+  const cap = useContext(TitleCap);
 
   if (atAccessibilitySizes(fontScale)) {
     return (
       <View style={[styles.head, styles.headStacked]}>
         <WholeWords
           size={HEAD_SIZE}
-          start={HEAD_SIZE * fontScale}
+          start={HEAD_SIZE * capUnderTitle(cap ?? Infinity, HEAD_SIZE, fontScale)}
           weight="bold"
           accessibilityRole="header"
           style={[styles.headTitle, styles.headTitleStacked]}

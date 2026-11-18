@@ -19,7 +19,7 @@ import { useReadOut } from './ReadOut.tsx';
 import { AnswerHeading } from './AnswerHeading.tsx';
 import { FrameSwitched } from './AppFrame.tsx';
 import { useTappedSwitch } from '../tappedSwitch.ts';
-import { type TextHandle, Text } from './Text.tsx';
+import { type TextHandle, Text, TitleCap } from './Text.tsx';
 import { Toast, type ToastAction } from './Toast.tsx';
 import { tokens } from '../theme/tokens.ts';
 import type { Box } from '../kit/confettiClearance.ts';
@@ -92,9 +92,11 @@ export interface PageToastProps {
 
 export function PageToast({ words, action, onClose, bottom }: PageToastProps & { bottom: number }) {
   return (
-    <View style={[styles.toast, { bottom }]}>
-      <Toast key={words} words={words} action={action} onClose={onClose} />
-    </View>
+    <TitleCap.Provider value={null}>
+      <View style={[styles.toast, { bottom }]}>
+        <Toast key={words} words={words} action={action} onClose={onClose} />
+      </View>
+    </TitleCap.Provider>
   );
 }
 
