@@ -13,10 +13,11 @@ describe('the title row’s pills at the largest text sizes (sc-67659)', () => {
     );
   });
 
-  it('chooses the words or the round + from the pill at one line and 44 tall, as on main', () => {
+  it('chooses the words or the round + from the growing pill it draws, measured on one line', () => {
     expect(primary).toMatch(
-      /<Pill label=\{label\} glyph="plus" height=\{tokens\.sizeHit\} full=\{false\} \/>/u,
+      /<Pill label=\{label\} glyph="plus" height=\{tokens\.sizeHit\} full=\{false\} grows \/>/u,
     );
+    expect(primary).toMatch(/measure: \{[^}]*width: 10000,/u);
   });
 
   it('grows Export to hold its word', () => {
