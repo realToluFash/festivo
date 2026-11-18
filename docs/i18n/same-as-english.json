@@ -43,7 +43,8 @@
     "mobile:guestExport.csv",
     "messagesCounts:guest_export.diet.halal",
     "messagesCounts:guest_export.diet.kosher",
-    "web:vendors.categories.catering"
+    "web:vendors.categories.catering",
+    "messages:staff.job_suggested.runner"
   ],
   "fr": [
     "web:nav.menu",
@@ -177,7 +178,9 @@
     "messagesCounts:guest_export.column.places",
     "messagesCounts:guest_export.allergen.lupin",
     "messagesCounts:guest_export.diet.halal",
-    "web:vendors.categories.transport"
+    "web:vendors.categories.transport",
+    "web:jobs.date",
+    "messages:staff.job_suggested.bar"
   ],
   "pt": [
     "web:seating.shapeCocktailShort",
@@ -226,6 +229,8 @@
     "mobile:guestExport.csv",
     "messagesCounts:guest_export.diet.halal",
     "messagesCounts:guest_export.diet.kosher",
-    "web:vendors.categories.catering"
+    "web:vendors.categories.catering",
+    "messages:staff.job_suggested.runner",
+    "messages:staff.job_suggested.bar"
   ]
 }
