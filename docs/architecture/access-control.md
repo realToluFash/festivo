@@ -16,12 +16,12 @@ every one of them names a policy.**
 
 ## The four policies
 
-| Attribute                       | Who gets through                                                                                        |
-| ------------------------------- | ------------------------------------------------------------------------------------------------------- |
-| `#[PublicAccess]`               | anybody, signed in or not                                                                               |
-| `#[Authenticated]`              | any signed-in account                                                                                   |
-| `#[InOrganisation(permission)]` | an active member of the organisation in `{organisationId}`, holding it; with `null`, any active member  |
-| `#[InEvent(permission)]`        | an Owner or Admin of the organisation that owns the event in `{eventId}`, or a Member with a role on it |
+| Attribute                       | Who gets through                                                                                                                                                   |
+| ------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `#[PublicAccess]`               | anybody, signed in or not                                                                                                                                          |
+| `#[Authenticated]`              | any signed-in account                                                                                                                                              |
+| `#[InOrganisation(permission)]` | an active member of the organisation in `{organisationId}`, holding it; with `null`, any active member; with `feature:`, a change also needs the plan to unlock it |
+| `#[InEvent(permission)]`        | an Owner or Admin of the organisation that owns the event in `{eventId}`, or a Member with a role on it                                                            |
 
 All four live in `App\Http\Access\Policy`. One goes on the controller class or on the
 method; the method's wins, and two on the same level is refused at boot. A route that
@@ -129,9 +129,17 @@ For `#[InEvent]`:
 4. **Then the permission**, from the role on the event for a Member. A member without it gets **403 `permission_required`**, with
    the permission named in a `permission` member of the problem. Never an internal policy
    name, never a trace.
+5. **Then the plan, for a change to a setting a plan unlocks**, on `#[InOrganisation]` only
+   for now. A route that names one with `#[InOrganisation(…, feature: PlanFeature::…)]` refuses a request that is not `GET`,
+   `HEAD` or `OPTIONS` with **403 `plan_required`**, the feature named in a `feature` member,
+   unless the organisation's plan unlocks it (`Plan::unlocks()`, the one list). Reading stays
+   open, so a client can show the setting locked. The permission is asked first: the plan
+   says nothing to somebody who could not change the setting on any plan. `MembershipDirectory`
+   puts the organisation's plan on every `Grants` it hands out (sc-581).
 
-`#[InOrganisation]` is steps 2 and 3. **Permissions held in another organisation never
-reach this far**: membership of the route's organisation is asked first, so a permission
+`#[InOrganisation]` is steps 2, 4 and 5, and `feature:` works with `orOnAnEvent` too.
+`#[InEvent]` cannot name a feature yet: the first event-scoped setting a plan unlocks adds
+it. **Permissions held in another organisation never reach this far**: membership of the route's organisation is asked first, so a permission
 can only widen access for somebody already inside. There is no path around step 2.
 
 ## An organisation's sign-in rules narrow what a membership grants

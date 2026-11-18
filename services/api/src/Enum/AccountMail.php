@@ -29,6 +29,7 @@ enum AccountMail: string
     case MemberAccess = 'member_access';
     case DomainSuspended = 'domain_suspended';
     case OwnerClaim = 'owner_claim';
+    case PlanDowngraded = 'plan_downgraded';
 
     public function typeName(): string
     {

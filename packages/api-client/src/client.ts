@@ -449,7 +449,11 @@ export interface Organisation {
   contactAddress: string;
   /** What an invitation to somebody with no account is written in (sc-2914). */
   locale: string;
+  /** Set by Soirely staff (sc-581): on `free`, an Enterprise setting is shown locked and a change to it is refused `plan_required`. */
+  plan: Plan;
 }
+
+export type Plan = 'free' | 'enterprise';
 
 /** A seeded role is named by `seededAs`, which each client words itself; a custom one by `name`. */
 export interface MemberRole {
@@ -5231,6 +5235,7 @@ function asOrganisation(raw: unknown): Organisation | null {
     timezone: candidate.timezone as string,
     contactAddress: candidate.contactAddress as string,
     locale: candidate.locale as string,
+    plan: candidate.plan === 'enterprise' ? 'enterprise' : 'free',
   };
 }
 
