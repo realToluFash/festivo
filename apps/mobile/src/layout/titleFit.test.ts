@@ -47,6 +47,12 @@ describe('the row a title stands in', () => {
   });
 
   it('is unmeasured until the slot is', () => {
-    expect(rowRoom({ ...sides, slot: 0, drawn: 'labelled' })).toBe(0);
+    expect(rowRoom({ ...sides, slot: null, drawn: 'labelled' })).toBe(0);
+  });
+
+  it('leaves the title no room when its slot is squeezed to nothing, so the primary goes round', () => {
+    const room = rowRoom({ ...sides, slot: 0, drawn: 'labelled' });
+    expect(room).toBe(16 + 170);
+    expect(labelFits({ room, title: 90, extra: 0, labelled: 170, gap: 16 })).toBe(false);
   });
 });
