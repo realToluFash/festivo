@@ -554,7 +554,7 @@ const DEFAULT_STATES = {
   excludedBefore: () =>
     back({
       name: 'Excluded, before the date',
-      note: 'Chidi has a sesame allergy recorded, so is never given the default: Starter’s row says only “Picks close Friday, Oct 16.”',
+      note: 'Chidi has a sesame allergy recorded, so is never given the default: Starter’s row says only “Picks close Friday, Oct 16.” This sample’s Canapé selection claims no Suitable for, unlike the Menu sample’s Pescatarian, so a recorded diet would exclude Chidi as well.',
       saved: UNANSWERED,
       person: SESAME,
     }),

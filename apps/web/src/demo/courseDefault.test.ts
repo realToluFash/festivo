@@ -15,6 +15,7 @@ import {
   isLocked,
   moveCounts,
   moveOf,
+  moveWords,
   offeredDishes,
   optionInput,
   ownAfter,
@@ -216,6 +217,29 @@ describe('who is given the default (sc-1362)', () => {
     );
     expect(DFW.moved(21, 'Beef suya skewers', 2)).toBe(
       '[21 guests moved to Beef suya skewers. 2 are back to not chosen.]',
+    );
+  });
+
+  it('asks to change the default, never to move 0 guests, when nobody moves', () => {
+    const given = courseIn('defaultMoveNone', 'k1');
+    const dates = { ...before, today: '2026-10-17', stored: '2026-10-16' };
+    const move = moveOf(given, form({ dishId: 'k1-suya', chooseBy: '2026-10-16' }), dates);
+
+    expect(move).toEqual({
+      move: 0,
+      back: 4,
+      from: 'Canapé selection',
+      to: 'Beef suya skewers',
+      on: '2026-10-16',
+    });
+    expect(move == null ? null : moveWords(move, 'Friday, Oct 16')).toEqual({
+      title: '[Change the default to Beef suya skewers?]',
+      body: '[Nobody given Canapé selection on Friday, Oct 16 moves to Beef suya skewers. 4 go back to not chosen, because Beef suya skewers doesn’t meet their diet, and are listed first in Who hasn’t picked.]',
+      go: '[Change the default]',
+      done: '[The default is now Beef suya skewers. 4 are back to not chosen.]',
+    });
+    expect(DFW.lineGiven('Beef suya skewers', 'Friday, Oct 16', 0)).toBe(
+      '[Default: Beef suya skewers. Nobody who hadn’t answered by Friday, Oct 16 has it.]',
     );
   });
 });

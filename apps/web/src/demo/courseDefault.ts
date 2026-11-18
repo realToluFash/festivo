@@ -36,6 +36,14 @@ export interface DefaultDates {
 
 const guests = (n: number): string => (n === 1 ? '1 guest' : `${n} guests`);
 
+const goBack = (pick: string, back: number): string =>
+  back === 0
+    ? ''
+    : ` ${back} ${back === 1 ? 'goes' : 'go'} back to not chosen, because ${pick} doesn’t meet their diet, and ${back === 1 ? 'is' : 'are'} listed first in Who hasn’t picked.`;
+
+const backNow = (back: number): string =>
+  back === 0 ? '' : ` ${back} ${back === 1 ? 'is' : 'are'} back to not chosen.`;
+
 export const DFW = {
   heading: 'Default and choose-by date',
   help: '[Set both or neither. On the choose-by date, everyone coming who hasn’t answered gets the default, except anyone with an allergy recorded or a diet it doesn’t meet. They stay not chosen and are listed first for you.]',
@@ -59,20 +67,21 @@ export const DFW = {
   line: (pick: string, date: string) =>
     `[Default: ${pick}. Given on ${date} to anyone coming who hasn’t answered.]`,
   lineGiven: (pick: string, date: string, n: number) =>
-    `[Default: ${pick}. Given on ${date} to ${guests(n)} who hadn’t answered.]`,
+    n === 0
+      ? `[Default: ${pick}. Nobody who hadn’t answered by ${date} has it.]`
+      : `[Default: ${pick}. Given on ${date} to ${guests(n)} who hadn’t answered.]`,
   moveTitle: (n: number, pick: string) => `Move ${guests(n)} to ${pick}?`,
   moveBody: (n: number, was: string, date: string, pick: string, back: number) =>
-    `[${guests(n)} given ${was} on ${date} ${n === 1 ? 'moves' : 'move'} to ${pick}.${
-      back === 0
-        ? ''
-        : ` ${back} ${back === 1 ? 'goes' : 'go'} back to not chosen, because ${pick} doesn’t meet their diet, and ${back === 1 ? 'is' : 'are'} listed first in Who hasn’t picked.`
-    }]`,
+    `[${guests(n)} given ${was} on ${date} ${n === 1 ? 'moves' : 'move'} to ${pick}.${goBack(pick, back)}]`,
   moveGo: (n: number) => `Move ${guests(n)}`,
+  changeTitle: (pick: string) => `[Change the default to ${pick}?]`,
+  changeBody: (was: string, date: string, pick: string, back: number) =>
+    `[Nobody given ${was} on ${date} moves to ${pick}.${goBack(pick, back)}]`,
+  changeGo: '[Change the default]',
   cancel: 'Cancel',
   moved: (n: number, pick: string, back: number) =>
-    `[${guests(n)} moved to ${pick}.${
-      back === 0 ? '' : ` ${back} ${back === 1 ? 'is' : 'are'} back to not chosen.`
-    }]`,
+    `[${guests(n)} moved to ${pick}.${backNow(back)}]`,
+  changed: (pick: string, back: number) => `[The default is now ${pick}.${backNow(back)}]`,
   refuseDish: (dish: string, course: string) =>
     `[${dish} is ${course}’s default. Choose another default first, in Edit course.]`,
   refuseVariant: (variant: string, course: string) =>
@@ -303,6 +312,23 @@ export const defaultDates = (picks: PicksDates, courseId: string): DefaultDates 
   event: picks.start,
   stored: picks.own[courseId] ?? null,
 });
+
+/** Nobody moves when every person given the old default has a diet the new one doesn't meet: the question then asks to change the default. */
+export function moveWords(move: Move, date: string) {
+  return move.move === 0
+    ? {
+        title: DFW.changeTitle(move.to),
+        body: DFW.changeBody(move.from, date, move.to, move.back),
+        go: DFW.changeGo,
+        done: DFW.changed(move.to, move.back),
+      }
+    : {
+        title: DFW.moveTitle(move.move, move.to),
+        body: DFW.moveBody(move.move, move.from, date, move.to, move.back),
+        go: DFW.moveGo(move.move),
+        done: DFW.moved(move.move, move.to, move.back),
+      };
+}
 
 export interface Move {
   move: number;

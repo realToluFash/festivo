@@ -124,6 +124,7 @@ import {
   isDefaultOption,
   isDefaultVariant,
   moveOf,
+  moveWords,
   ownAfter,
   savedDefault,
   stillGiven,
@@ -848,9 +849,9 @@ function Courses({
 
   function confirmMove() {
     if (open?.kind !== 'editCourse' || open.move == null) return;
-    const { move, to, back } = open.move;
+    const { done } = moveWords(open.move, dayWords(open.move.on, lang));
     commitCourse(open, true);
-    tellDone(DFW.moved(move, to, back));
+    tellDone(done);
   }
 
   function cancelMove() {

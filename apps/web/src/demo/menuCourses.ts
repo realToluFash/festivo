@@ -759,6 +759,9 @@ const GIVEN: readonly Given[] = [
   ['pescatarian'],
 ];
 
+/** 4 Pescatarian people given Canapé selection: Beef suya skewers meets none of them, so nobody moves. */
+const GIVEN_PESCATARIAN: readonly Given[] = Array.from({ length: 4 }, () => ['pescatarian']);
+
 function withPick(
   courses: readonly EvCourse[],
   courseId: string,
@@ -1153,6 +1156,16 @@ const STATES = {
         'Beef suya skewers chosen after the date, Save changes pressed: 21 guests move, and the 2 Pescatarian go back to not chosen. Cancel changes nothing.' +
         SIDEBAR_NOTE,
       courses: withPick(defaultCourses(), 'k1', STARTER_DEFAULT, GIVEN),
+      picks: AFTER_DATE,
+      opened: { kind: 'editCourse', courseId: 'k1', pair: { dishId: 'k1-suya' }, press: true },
+    }),
+  defaultMoveNone: () =>
+    start({
+      name: 'Default, changed with nobody to move',
+      note:
+        'Beef suya skewers chosen after the date, Save changes pressed: the 4 guests given Canapé selection are all Pescatarian, so nobody moves and all 4 go back to not chosen. The question says the default changes instead of “Move 0 guests”.' +
+        SIDEBAR_NOTE,
+      courses: withPick(defaultCourses(), 'k1', STARTER_DEFAULT, GIVEN_PESCATARIAN),
       picks: AFTER_DATE,
       opened: { kind: 'editCourse', courseId: 'k1', pair: { dishId: 'k1-suya' }, press: true },
     }),
@@ -2041,6 +2054,7 @@ export const COURSES_PAGES: readonly { name: string; states: readonly DemoLink[]
         'defaultChoiceUnanswered',
         'defaultAfterDate',
         'defaultMove',
+        'defaultMoveNone',
         'defaultRemoveDish',
         'defaultRemoveVariant',
         'defaultRemoveOption',

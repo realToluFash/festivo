@@ -15,6 +15,7 @@ import {
   everyoneVariants,
   hasChildrenOnly,
   isLocked,
+  moveWords,
   offeredDishes,
   optionInput,
   requiredChoices,
@@ -275,6 +276,8 @@ export function MoveDialog({
   const box = useRef<HTMLDivElement>(null);
   const cancel = useRef<HTMLButtonElement>(null);
 
+  const words = moveWords(move, dayWords(move.on, lang));
+
   useDialogKeys(box, onCancel, false);
   useEffect(() => cancel.current?.focus(), []);
 
@@ -290,9 +293,9 @@ export function MoveDialog({
         aria-describedby="mc-move-body"
       >
         <div className="dialog-heading">
-          <h2 id="mc-move-title">{DFW.moveTitle(move.move, move.to)}</h2>
+          <h2 id="mc-move-title">{words.title}</h2>
           <p id="mc-move-body" className="dialog-body">
-            {DFW.moveBody(move.move, move.from, dayWords(move.on, lang), move.to, move.back)}
+            {words.body}
           </p>
         </div>
         <ActionPair
@@ -304,7 +307,7 @@ export function MoveDialog({
           }
           confirm={
             <button type="button" className="button button-primary" onClick={onMove}>
-              {DFW.moveGo(move.move)}
+              {words.go}
             </button>
           }
         />

@@ -468,6 +468,19 @@ describe('a default and a choose-by date (sc-1362)', () => {
         '[Default: Beef suya skewers. Given on Friday, Oct 16 to 21 guests who hadn’t answered.]',
       ),
     ).toBeTruthy();
+
+    await menu('defaultMoveNone');
+    expect(screen.queryByRole('alertdialog', { name: /Move 0 guests/ })).toBeNull();
+    const none = screen.getByRole('alertdialog', {
+      name: '[Change the default to Beef suya skewers?]',
+    });
+    fireEvent.click(within(none).getByRole('button', { name: '[Change the default]' }));
+    expect(said()).toBe('[The default is now Beef suya skewers. 4 are back to not chosen.]');
+    expect(
+      within(card('Starter')).getByText(
+        '[Default: Beef suya skewers. Nobody who hadn’t answered by Friday, Oct 16 has it.]',
+      ),
+    ).toBeTruthy();
   });
 
   it('refuses Remove… on the default’s dish, variant and option', SLOW, async () => {
