@@ -1,4 +1,4 @@
-import { Fragment, type ReactNode, type Ref, useContext, useEffect, useRef, useState } from 'react';
+import { Fragment, type ReactNode, type Ref, useEffect, useRef, useState } from 'react';
 import {
   type AccessibilityRole,
   type AccessibilityState,
@@ -15,9 +15,9 @@ import {
 } from 'react-native';
 import Svg, { Circle, Path } from 'react-native-svg';
 
-import { Text, TitleCap } from './Text.tsx';
-import { WholeWords } from './Title.tsx';
-import { atAccessibilitySizes, capUnderTitle } from '../layout/textSize.ts';
+import { Text } from './Text.tsx';
+import { CappedWholeWords } from './Title.tsx';
+import { atAccessibilitySizes } from '../layout/textSize.ts';
 import { titleAtWidth, titleWithInkRoom, UNMEASURED_TITLE } from './titleWidth.ts';
 import { useReducedMotion } from '../reducedMotion.ts';
 import { tokens } from '../theme/tokens.ts';
@@ -125,15 +125,17 @@ export function Tag({
   kind,
   word,
   turning = false,
-  wraps = false,
+  wraps: wrapsAlways = false,
 }: {
   kind: TagKind;
   word: string;
   turning?: boolean | undefined;
-  /** At the largest text a long word wraps inside the tag rather than run past the row. */
+  /** Wraps at every text size, not only at the accessibility sizes, where a tag always wraps rather than be cut (sc-67338). */
   wraps?: boolean;
 }) {
   const look = TAGS[kind];
+  const { fontScale } = useWindowDimensions();
+  const wraps = wrapsAlways || atAccessibilitySizes(fontScale);
 
   return (
     <View
@@ -172,20 +174,18 @@ export function HeadCount({ text }: { text: string }) {
 /** At the accessibility sizes the heading takes its own line, stepping down rather than break a word, never under 18, and what ends its row goes under it (sc-37693). */
 export function SectionHead({ title, right }: { title: string; right?: ReactNode }) {
   const { fontScale } = useWindowDimensions();
-  const cap = useContext(TitleCap);
 
   if (atAccessibilitySizes(fontScale)) {
     return (
       <View style={[styles.head, styles.headStacked]}>
-        <WholeWords
+        <CappedWholeWords
           size={HEAD_SIZE}
-          start={HEAD_SIZE * capUnderTitle(cap ?? Infinity, HEAD_SIZE, fontScale)}
           weight="bold"
           accessibilityRole="header"
           style={[styles.headTitle, styles.headTitleStacked]}
         >
           {title}
-        </WholeWords>
+        </CappedWholeWords>
         {right}
       </View>
     );
