@@ -204,6 +204,7 @@ function kept(): { key: string; kind: string; pressedAt: string }[] {
 const liveRegion = () => document.querySelector('.mn-page > [aria-live="polite"]');
 
 afterEach(() => {
+  vi.useRealTimers();
   vi.restoreAllMocks();
   localStorage.clear();
 });
@@ -774,5 +775,47 @@ describe('moving to another area of an event while offline (sc-65646)', () => {
     expect(await screen.findByText('The event did not load. Try again in a moment.')).toBeDefined();
     expect(screen.getAllByRole('link', { name: 'Calendar' }).length).toBeGreaterThan(0);
     expect(screen.queryByRole('link', { name: 'Overview' })).toBeNull();
+  });
+
+  it('says when the event last loaded, not when the Menu it moves to did', async () => {
+    const LATE = {
+      id: 'c_late',
+      name: 'Late-night bites',
+      servedAt: null,
+      answer: 'choose',
+      skippable: false,
+      dishes: [],
+      ownItems: [],
+      items: [],
+    };
+    let online = true;
+    vi.useFakeTimers({ shouldAdvanceTime: true, toFake: ['Date'] });
+    vi.setSystemTime(new Date(2030, 10, 15, 20, 2));
+    signedIn();
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
+      const line = `${init?.method ?? 'GET'} ${new URL(String(input)).pathname}`;
+      if (!online) throw new TypeError('Failed to fetch');
+      if (line === 'GET /api/events/ev_1') return json({ event: EVENT });
+      if (line === 'GET /api/events/ev_1/menu') return json({ menu: { courses: [LATE] } });
+      if (line === 'GET /api/events/ev_1/headcount') return json({ headcount: HEADCOUNT });
+
+      return json({});
+    });
+    const router = createMemoryRouter(routes, { initialEntries: ['/app/events/ev_1/menu'] });
+    render(<RouterProvider router={router} />);
+    await screen.findByRole('heading', { level: 2, name: 'Late-night bites' });
+
+    vi.setSystemTime(new Date(2030, 10, 15, 20, 10));
+    await act(() => router.navigate('/app/events/ev_1'));
+    await screen.findByText('12 coming of 20 invited. Each number opens the guests it counts.');
+
+    online = false;
+    act(() => connection.deviceOffline());
+    await act(() => router.navigate('/app/events/ev_1/menu'));
+
+    await screen.findByRole('heading', { level: 2, name: 'Late-night bites' });
+    expect(
+      await screen.findByText('Offline · as of 20:10', { selector: '.ev-offline-words' }),
+    ).toBeDefined();
   });
 });
