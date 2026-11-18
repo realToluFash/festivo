@@ -1,9 +1,9 @@
-import { type ReactNode, type Ref, useEffect, useRef } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { type ReactNode, type Ref, useEffect, useRef, useState } from 'react';
+import { type LayoutChangeEvent, Pressable, StyleSheet, View } from 'react-native';
 
 import { eventColour } from '../../components/EventMesh.tsx';
 import { Glyph } from '../../components/Glyph.tsx';
-import { Title } from '../../components/Title.tsx';
+import { MeasuredWords, Title } from '../../components/Title.tsx';
 import { TopPrimary, usePrimaryLabel } from '../../components/TopPrimary.tsx';
 import { useReadOut } from '../../components/ReadOut.tsx';
 import { type TextHandle, Text } from '../../components/Text.tsx';
@@ -25,7 +25,8 @@ import type { GuestsCardWords } from './GuestsModel.ts';
 import { W, say } from './GuestsWords.ts';
 import { type MarkKind, ReplyMark } from '../../components/ReplyMark.tsx';
 import { DoneLine } from '../../components/FormLayers.tsx';
-import { PaneBell } from '../events/EventFrame.tsx';
+import { PaneBell, useBellInPane } from '../events/EventFrame.tsx';
+import { actionsUnder } from './titleStack.ts';
 
 export type Layout = 'phone' | 'portrait' | 'landscape';
 
@@ -358,7 +359,7 @@ export function ShownLine({
   );
 }
 
-/** The title row as the product draws it: the title keeps its words whole under its cap, and the + keeps its label only where the title and the labelled + both fit beside what is there (sc-67338, sc-51444, sc-67659). */
+/** The title row as the product draws it: the title keeps its words whole under its cap, and the + keeps its label only where the title and the labelled + both fit beside what is there (sc-67338, sc-51444, sc-67659). Where the title at its default size has no room beside Export and the round +, those two go together to a row under it (sc-68417). */
 export function GuestsTitle({
   layout,
   title = W.guests,
@@ -384,20 +385,77 @@ export function GuestsTitle({
     gap: tokens.spaceMd,
     labelled: layout !== 'phone',
   });
+  const bell = useBellInPane();
+  const [room, setRoom] = useState(0);
+  const [extraWidth, setExtraWidth] = useState(0);
+  const [titleWidth, setTitleWidth] = useState(0);
+  const under = actionsUnder({
+    room,
+    title: titleWidth,
+    extra: extra == null ? 0 : extraWidth,
+    plus: plus ? tokens.sizeHit : 0,
+    bell: bell ? tokens.sizeHit : 0,
+    gap: tokens.spaceMd,
+  });
+  const widthOf = (set: (width: number) => void) => (event: LayoutChangeEvent) =>
+    set(Math.ceil(event.nativeEvent.layout.width));
+  const heading = (
+    <View style={styles.grow} onLayout={label.onSlot}>
+      {label.measure}
+      <Title size={size} accessibilityRole="header" style={titleStyle} testID="guests.title">
+        {title}
+      </Title>
+    </View>
+  );
+  const actions = (
+    <>
+      {extra != null && (
+        <View style={under && styles.shrink} onLayout={widthOf(setExtraWidth)}>
+          {extra}
+        </View>
+      )}
+      {plus && (
+        <TopPrimary
+          label={plusLabel}
+          onPress={onPlus}
+          wide={label.wide && !under}
+          testID="guests.add"
+        />
+      )}
+    </>
+  );
 
   return (
-    <View style={styles.titleRow} testID="guests.titleRow">
-      <View style={styles.grow} onLayout={label.onSlot}>
-        {label.measure}
-        <Title size={size} accessibilityRole="header" style={titleStyle} testID="guests.title">
-          {title}
-        </Title>
-      </View>
-      {extra}
-      {plus && (
-        <TopPrimary label={plusLabel} onPress={onPlus} wide={label.wide} testID="guests.add" />
+    <View
+      style={under ? styles.titleStack : styles.titleRow}
+      onLayout={widthOf(setRoom)}
+      testID="guests.titleRow"
+    >
+      <MeasuredWords
+        words={[title]}
+        size={size}
+        weight="bold"
+        style={titleStyle}
+        maxFontSizeMultiplier={1}
+        onWidth={(_, width) => setTitleWidth(Math.ceil(width))}
+      />
+      {under ? (
+        <>
+          <View style={styles.titleRow}>
+            {heading}
+            <PaneBell />
+          </View>
+          <View style={styles.actionsRow} testID="guests.actionsRow">
+            {actions}
+          </View>
+        </>
+      ) : (
+        <>
+          {heading}
+          {actions}
+          <PaneBell />
+        </>
       )}
-      <PaneBell />
     </View>
   );
 }
@@ -485,4 +543,7 @@ const styles = StyleSheet.create({
   headTitle: { letterSpacing: -0.18, lineHeight: 18 * 1.25 },
   shown: { minHeight: tokens.sizeHit, flexDirection: 'row', alignItems: 'center', gap: 10 },
   titleRow: { minHeight: 48, flexDirection: 'row', alignItems: 'center', gap: tokens.spaceMd },
+  titleStack: { gap: tokens.spaceSm },
+  actionsRow: { flexDirection: 'row', alignItems: 'center', gap: tokens.spaceMd },
+  shrink: { flexShrink: 1 },
 });

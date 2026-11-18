@@ -16,11 +16,11 @@ const GUESTS: Record<GuestsState, Board> = {
   ],
   exportPt: [
     'Exportar in Portuguese',
-    'sc-67659: Exportar and + Adicionar convidado beside Convidados, each as tall as its words at the largest text sizes',
+    'sc-67659, sc-68417: Exportar and the + beside Convidados where all three fit; at the largest phone sizes they go together to the row under it',
   ],
   offlinePt: [
     'offline in Portuguese',
-    'sc-67659: É preciso Internet para exportar in Exportar’s place, each word whole at the largest text sizes',
+    'sc-67659, sc-68417: É preciso Internet para exportar in Exportar’s place, each word whole; with the + under Convidados where they do not fit beside it',
   ],
   filterOpen: ['the filter menu', 'All, Invited, the five replies and Not yet invited'],
   filtered: ['after a filter', 'No reply · 21: 21 of 156 shown, and Clear'],
