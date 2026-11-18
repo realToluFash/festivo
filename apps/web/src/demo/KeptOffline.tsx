@@ -1,7 +1,9 @@
 import { type ReactNode, createContext, useContext, useEffect, useRef } from 'react';
 import { useSearchParams } from 'react-router';
 
-import { TextAction } from '../components/SettingsParts.tsx';
+import { Crumb } from '../components/EventPageParts.tsx';
+import { ArrivalNotice } from '../components/PageArrival.tsx';
+import { DemoBell } from './DemoBell.tsx';
 import { OfflineBox } from './DemoOffline.tsx';
 import { EventsShell } from './EventParts.tsx';
 import { EVENT_WORDS as W, TODAY_IDS, sampleEvent } from './events.ts';
@@ -58,7 +60,7 @@ export function KeptArea({
   return <KeptProvider kept={kept}>{children}</KeptProvider>;
 }
 
-/** An event this tab never loaded, opened offline: the shell has nothing to keep, so it says the event did not load, under the organisation's sidebar. */
+/** An event this tab never loaded, opened offline: the shell has nothing to keep, so it says the event did not load in the product's failed-load alert, as an online failure does, under the organisation's sidebar. */
 export function EventNotLoaded({ id, onRetry }: { id: string; onRetry: () => void }) {
   const heading = useRef<HTMLParagraphElement>(null);
 
@@ -77,15 +79,20 @@ export function EventNotLoaded({ id, onRetry }: { id: string; onRetry: () => voi
         />
       )}
     >
-      {() => (
+      {(tell) => (
         <div className="desk-page ev-page">
           <div className="ev-wide">
-            <div className="desk-failed" role="alert">
-              <p ref={heading} className="desk-line" tabIndex={-1}>
-                {W.eventFailed}
-              </p>
-              <TextAction label={W.retry} onClick={onRetry} />
-            </div>
+            <Crumb to="/demo/events" back={W.back} name={null}>
+              <DemoBell tell={tell} />
+            </Crumb>
+            <ArrivalNotice
+              role="alert"
+              line={W.eventFailed}
+              lineRef={heading}
+              focusable
+              retry={W.retry}
+              onRetry={onRetry}
+            />
           </div>
         </div>
       )}
