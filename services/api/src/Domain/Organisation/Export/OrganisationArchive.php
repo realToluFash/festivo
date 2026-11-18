@@ -85,19 +85,163 @@ final readonly class OrganisationArchive
         'guests' => <<<'SQL'
             SELECT g.id, g.event_id, g.host_id, g.full_name, g.email, g.mobile,
                    COALESCE(h.reply, g.reply, 'noReply') AS reply, COALESCE(h.replied_at, g.replied_at) AS replied_at,
-                   g.created_at
+                   COALESCE(g.group_id, h.group_id) AS guest_group_id,
+                   (SELECT string_agg(CASE WHEN n.code = 'other' AND g.other_allergy IS NOT NULL THEN 'other: ' || g.other_allergy ELSE n.code END, ', ' ORDER BY n.code)
+                      FROM guest_needs n WHERE n.guest_id = g.id AND n.kind = 'allergen') AS allergens,
+                   (SELECT string_agg(CASE WHEN n.code = 'other' AND g.other_diet IS NOT NULL THEN 'other: ' || g.other_diet ELSE n.code END, ', ' ORDER BY n.code)
+                      FROM guest_needs n WHERE n.guest_id = g.id AND n.kind = 'diet') AS diets,
+                   (SELECT string_agg(CASE WHEN n.code = 'other' AND g.other_access IS NOT NULL THEN 'other: ' || g.other_access ELSE n.code END, ', ' ORDER BY n.code)
+                      FROM guest_needs n WHERE n.guest_id = g.id AND n.kind = 'access') AS access_needs,
+                   g.needs_note, g.created_at
               FROM guests g
               JOIN events ev ON ev.id = g.event_id
               LEFT JOIN guests h ON h.id = g.host_id
              WHERE ev.organisation_id = :organisation AND ev.deleted_at IS NULL AND g.removed_at IS NULL
              ORDER BY ev.starts_at_utc, g.event_id, COALESCE(h.position, g.position), g.host_id NULLS FIRST, g.position, g.id
             SQL,
+        'guest_groups' => <<<'SQL'
+            SELECT gg.id, gg.event_id, gg.name, gg.created_at
+              FROM guest_groups gg
+              JOIN events ev ON ev.id = gg.event_id
+             WHERE ev.organisation_id = :organisation AND ev.deleted_at IS NULL
+             ORDER BY ev.starts_at_utc, gg.event_id, gg.name_key, gg.id
+            SQL,
+        'seating_plans' => <<<'SQL'
+            SELECT p.id, p.event_id, p.room_name, p.width_cm, p.length_cm, t.shared_at, t.share_by, p.created_at
+              FROM seating_plans p
+              JOIN events ev ON ev.id = p.event_id
+              LEFT JOIN table_sharings t ON t.plan_id = p.id
+             WHERE ev.organisation_id = :organisation AND ev.deleted_at IS NULL
+             ORDER BY ev.starts_at_utc, p.event_id, p.id
+            SQL,
+        'seating_sections' => <<<'SQL'
+            SELECT s.id, p.event_id, s.plan_id, s.name, s.colour
+              FROM seating_sections s
+              JOIN seating_plans p ON p.id = s.plan_id
+              JOIN events ev ON ev.id = p.event_id
+             WHERE ev.organisation_id = :organisation AND ev.deleted_at IS NULL
+             ORDER BY ev.starts_at_utc, p.event_id, s.name_key, s.id
+            SQL,
+        'seating_tables' => <<<'SQL'
+            SELECT t.id, p.event_id, t.plan_id, t.section_id, t.name, t.shape, t.seats, t.end_seats,
+                   array_to_string(ARRAY(SELECT json_array_elements_text(t.unusable_seats)), ', ') AS unusable_seats,
+                   t.width_cm, t.length_cm, t.x_cm, t.y_cm, t.rotation
+              FROM seating_tables t
+              JOIN seating_plans p ON p.id = t.plan_id
+              JOIN events ev ON ev.id = p.event_id
+             WHERE ev.organisation_id = :organisation AND ev.deleted_at IS NULL
+             ORDER BY ev.starts_at_utc, p.event_id, t.name_key, t.id
+            SQL,
+        'seating_rows' => <<<'SQL'
+            SELECT r.id, p.event_id, r.plan_id, r.section_id, r.label, r.seats,
+                   array_to_string(ARRAY(SELECT json_array_elements_text(r.unusable_seats)), ', ') AS unusable_seats,
+                   r.spacing_cm, r.x_cm, r.y_cm, r.rotation
+              FROM seating_rows r
+              JOIN seating_plans p ON p.id = r.plan_id
+              JOIN events ev ON ev.id = p.event_id
+             WHERE ev.organisation_id = :organisation AND ev.deleted_at IS NULL
+             ORDER BY ev.starts_at_utc, p.event_id, r.label_key, r.id
+            SQL,
+        'seating_seats' => <<<'SQL'
+            SELECT s.id, p.event_id, s.plan_id, s.section_id, s.name, s.unusable, s.x_cm, s.y_cm
+              FROM seating_seats s
+              JOIN seating_plans p ON p.id = s.plan_id
+              JOIN events ev ON ev.id = p.event_id
+             WHERE ev.organisation_id = :organisation AND ev.deleted_at IS NULL
+             ORDER BY ev.starts_at_utc, p.event_id, s.name_key, s.id
+            SQL,
+        'seat_assignments' => <<<'SQL'
+            SELECT a.event_id, a.guest_id, g.full_name, a.table_id, a.row_id, a.single_seat_id AS seat_id, a.seat
+              FROM seat_assignments a
+              JOIN events ev ON ev.id = a.event_id
+              JOIN guests g ON g.id = a.guest_id
+             WHERE ev.organisation_id = :organisation AND ev.deleted_at IS NULL AND g.removed_at IS NULL
+             ORDER BY ev.starts_at_utc, a.event_id, a.place_id, a.seat
+            SQL,
+        'menu_courses' => <<<'SQL'
+            SELECT c.id, c.event_id, c.position, c.name, c.served_at AS served_time, c.guests_choose, c.skippable
+              FROM menu_courses c
+              JOIN events ev ON ev.id = c.event_id
+             WHERE ev.organisation_id = :organisation AND ev.deleted_at IS NULL
+             ORDER BY ev.starts_at_utc, c.event_id, c.position, c.id
+            SQL,
+        'menu_dishes' => <<<'SQL'
+            SELECT d.id, d.course_id, d.library_dish_id, d.position, d.name, d.description,
+                   array_to_string(ARRAY(SELECT json_array_elements_text(d.allergens)), ', ') AS allergens, array_to_string(ARRAY(SELECT json_array_elements_text(d.diets)), ', ') AS diets
+              FROM menu_dishes d
+              JOIN menu_courses c ON c.id = d.course_id
+              JOIN events ev ON ev.id = c.event_id
+             WHERE ev.organisation_id = :organisation AND ev.deleted_at IS NULL
+             ORDER BY ev.starts_at_utc, c.event_id, c.position, d.position, d.id
+            SQL,
+        'menu_dish_variants' => <<<'SQL'
+            SELECT v.id, v.dish_id, v.position, v.name, v.for_children,
+                   array_to_string(ARRAY(SELECT json_array_elements_text(v.allergens)), ', ') AS allergens, array_to_string(ARRAY(SELECT json_array_elements_text(v.diets)), ', ') AS diets
+              FROM menu_dish_variants v
+              JOIN menu_dishes d ON d.id = v.dish_id
+              JOIN menu_courses c ON c.id = d.course_id
+              JOIN events ev ON ev.id = c.event_id
+             WHERE ev.organisation_id = :organisation AND ev.deleted_at IS NULL
+             ORDER BY ev.starts_at_utc, c.event_id, c.position, d.position, v.position, v.id
+            SQL,
+        'menu_dish_choices' => <<<'SQL'
+            SELECT q.id, q.dish_id, q.position, q.question, q.pick, q.required
+              FROM menu_dish_choices q
+              JOIN menu_dishes d ON d.id = q.dish_id
+              JOIN menu_courses c ON c.id = d.course_id
+              JOIN events ev ON ev.id = c.event_id
+             WHERE ev.organisation_id = :organisation AND ev.deleted_at IS NULL
+             ORDER BY ev.starts_at_utc, c.event_id, c.position, d.position, q.position, q.id
+            SQL,
+        'menu_choice_options' => <<<'SQL'
+            SELECT o.id, o.choice_id, o.position, o.name, array_to_string(ARRAY(SELECT json_array_elements_text(o.allergens)), ', ') AS allergens
+              FROM menu_choice_options o
+              JOIN menu_dish_choices q ON q.id = o.choice_id
+              JOIN menu_dishes d ON d.id = q.dish_id
+              JOIN menu_courses c ON c.id = d.course_id
+              JOIN events ev ON ev.id = c.event_id
+             WHERE ev.organisation_id = :organisation AND ev.deleted_at IS NULL
+             ORDER BY ev.starts_at_utc, c.event_id, c.position, d.position, q.position, o.position, o.id
+            SQL,
+        'dish_library' => <<<'SQL'
+            SELECT d.id, d.name, d.description, array_to_string(ARRAY(SELECT json_array_elements_text(d.allergens)), ', ') AS allergens, array_to_string(ARRAY(SELECT json_array_elements_text(d.diets)), ', ') AS diets,
+                   d.last_price_minor, d.last_price_currency, d.archived_at, d.created_at
+              FROM dishes d
+             WHERE d.organisation_id = :organisation
+             ORDER BY d.archived_at NULLS FIRST, d.name, d.id
+            SQL,
+        'dish_library_variants' => <<<'SQL'
+            SELECT v.id, v.dish_id, v.position, v.name, v.for_children,
+                   array_to_string(ARRAY(SELECT json_array_elements_text(v.allergens)), ', ') AS allergens, array_to_string(ARRAY(SELECT json_array_elements_text(v.diets)), ', ') AS diets,
+                   v.last_price_minor, v.last_price_currency
+              FROM dish_variants v
+              JOIN dishes d ON d.id = v.dish_id
+             WHERE d.organisation_id = :organisation
+             ORDER BY d.archived_at NULLS FIRST, d.name, d.id, v.position, v.id
+            SQL,
+        'run_of_show' => <<<'SQL'
+            SELECT s.id, s.event_id, s.title, (s.starts_at AT TIME ZONE ev.time_zone) AT TIME ZONE 'UTC' AS starts_at,
+                   s.length_minutes, s.place, s.owner_name, s.owner_role, s.note, s.show_to_guests,
+                   s.skipped, s.started_at, s.ended_at
+              FROM schedule_items s
+              JOIN events ev ON ev.id = s.event_id
+             WHERE ev.organisation_id = :organisation AND ev.deleted_at IS NULL
+             ORDER BY ev.starts_at_utc, s.event_id, s.starts_at, s.id
+            SQL,
+        'staff' => <<<'SQL'
+            SELECT s.id, s.event_id, s.full_name, s.mobile, s.email, m.id AS member_id
+              FROM staff_members s
+              JOIN events ev ON ev.id = s.event_id
+              LEFT JOIN memberships m ON m.user_id = s.member_id AND m.organisation_id = ev.organisation_id
+             WHERE ev.organisation_id = :organisation AND ev.deleted_at IS NULL
+             ORDER BY ev.starts_at_utc, s.event_id, s.full_name, s.id
+            SQL,
     ];
 
     /** Columns holding a date and time, written in UTC as `2026-11-05T14:20:07Z`. */
     private const array TIMES = [
         'created_at', 'proved_at', 'joined_at', 'expires_at', 'accepted_at', 'declined_at', 'revoked_at',
-        'asked_at', 'starts_at', 'ends_at', 'replied_at',
+        'asked_at', 'starts_at', 'ends_at', 'replied_at', 'shared_at', 'archived_at', 'started_at', 'ended_at',
     ];
 
     private const array ROLES = [
