@@ -676,6 +676,7 @@ export function EventScreen({
         without={without}
         loading
       >
+        <BellRow>{null}</BellRow>
         <LoadingBlock words={W.loadingEvent} />
       </EventFrame>
     );

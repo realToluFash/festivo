@@ -358,12 +358,12 @@ export function ShownLine({
   );
 }
 
-/** The title: "Guests" with the round plus on the phone; on an iPad Add guest beside it when both fit on one line, else the round plus (sc-51444). */
 /** What ends the title's row, Export and the pane's bell, as one width with the gap between them. */
 function besideTitle(extra: number, bell: number, gap: number): number {
   return extra > 0 && bell > 0 ? extra + gap + bell : extra + bell;
 }
 
+/** The title: "Guests" with the round plus on the phone; on an iPad Add guest beside it when both fit on one line, else the round plus (sc-51444). */
 export function GuestsTitle({
   layout,
   title = W.guests,
