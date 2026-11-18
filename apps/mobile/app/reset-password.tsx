@@ -20,6 +20,7 @@ import { Heading, Plain, Says } from '../src/steps/Lines.tsx';
 import { NavBar, StepScreen } from '../src/steps/StepScreen.tsx';
 import { tokens } from '../src/theme/tokens.ts';
 import { unreachableFrom } from '../src/unreachable.ts';
+import { signInOver } from '../src/steps/signInOver.ts';
 
 type Status =
   | { kind: 'checking' }
@@ -106,6 +107,7 @@ export default function ResetPassword() {
 
       // The password is set, but signs in only where a password sign-in would (sc-69).
       if (refusal != null) {
+        signInOver(false);
         router.replace(signInRoute(refusal, false));
       } else if (dead != null) {
         setStatus({ kind: dead, tapped: true });

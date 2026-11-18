@@ -397,23 +397,26 @@ describe("iPad Sign in's scroll view stays out of the sheet's reach (sc-67589)",
 });
 
 describe('Sign in pushed over welcome knows welcome is under it (sc-67709)', () => {
-  it('is pushed only where its opener says what stays under it, wherever under app/ and src/ a push reaches it', () => {
-    const pushesSignIn = (text: string): boolean =>
-      [...text.matchAll(/router\.push\(\s*(\{[^}]*\}|[^,)]+)/gu)].some(([, to = '']) =>
-        /^\w+$/u.test(to) ? text.includes("'/sign-in'") : /'\/sign-in'|timedOutSignIn\(/u.test(to),
+  it('is opened only where its opener says what stays under it, wherever under app/ and src/ a push or a replace reaches it', () => {
+    const opensSignIn = (text: string): boolean =>
+      [...text.matchAll(/router\.(?:push|replace|navigate)\(\s*(\{[^}]*\}|[^,)]+)/gu)].some(
+        ([, to = '']) =>
+          /^\w+$/u.test(to)
+            ? /'\/sign-in[?']/u.test(text)
+            : /'\/sign-in[?']|timedOutSignIn\(|signInRoute\(/u.test(to),
       );
-    const pushers = [APP, SRC]
+    const openers = [APP, SRC]
       .flatMap((root) =>
         readdirSync(root, { recursive: true, encoding: 'utf8' })
           .filter((path) => /\.tsx?$/u.test(path) && !/\.test\.tsx?$/u.test(path))
           .map((path) => join(root, path)),
       )
-      .filter((file) => pushesSignIn(source(file)));
+      .filter((file) => opensSignIn(source(file)));
 
-    expect(pushers.map((file) => file.slice(join(APP, '..').length + 1))).toContain(
+    expect(openers.map((file) => file.slice(join(APP, '..').length + 1))).toContain(
       'src/components/Welcome.tsx',
     );
-    expect(pushers.filter((file) => !/signInOver\(/u.test(source(file)))).toEqual([]);
+    expect(openers.filter((file) => !/signInOver\(/u.test(source(file)))).toEqual([]);
   });
 
   it('is not read from the stack while Sign in is drawn, which expo-router hands over as it was before the push', () => {
