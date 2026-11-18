@@ -41,8 +41,11 @@ describe('Data and control › Export all data (sc-612)', () => {
       'Each event’s menu',
       'Each event’s run of show',
       'Each event’s staff',
+      'Each event’s cost lines',
     ]);
-    expect(screen.getByText(/^One \.zip: a JSON file of everything/u)).toBeDefined();
+    expect(screen.getByText(/^One \.zip: a JSON file of everything/u).textContent).toContain(
+      'notification deliveries; the assistant’s log; photos; each event’s change history; and the audit log, which Audit log exports.',
+    );
   });
 
   it('exports, prepares, is ready, and is used up by its one download', async () => {
