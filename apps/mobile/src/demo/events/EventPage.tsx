@@ -259,6 +259,7 @@ export function EventScreen({
           ? 'overview'
           : area;
   });
+  const [peopleAt, setPeopleAt] = useState<PeopleParams>(peopleParams ?? {});
   const [guestsFrom, setGuestsFrom] = useState<ListFilter | null>(figureOpens);
   const [sinceFrom, setSinceFrom] = useState<string | null>(null);
   const [m, dispatch] = useReducer(reduceReach, null, () => {
@@ -519,7 +520,19 @@ export function EventScreen({
       onOpen={openGuests}
     />
   );
-  const peopleCard = <PeopleCard state={people} />;
+  const peopleCard = (
+    <PeopleCard
+      state={people}
+      onOpen={
+        shell.layout === 'phone'
+          ? undefined
+          : (params) => {
+              setPeopleAt(params);
+              setAt('people');
+            }
+      }
+    />
+  );
   const guestsPage = (
     <GuestsPage
       write={write}
@@ -680,7 +693,7 @@ export function EventScreen({
           without,
         }}
       >
-        <PeopleSection params={peopleParams ?? {}} />
+        <PeopleSection params={peopleAt} />
       </PeopleInEvent.Provider>
     );
 

@@ -18,7 +18,7 @@ export type InEvent = Omit<ComponentProps<typeof EventFrame>, 'area' | 'toast' |
 
 export const PeopleInEvent = createContext<InEvent | null>(null);
 
-/** A page inside an event: back, the title over the event's name, then the blocks 18 apart; on the iPad in the event's frame, with no back of its own. Nothing under the title draws larger than it, the frame's ‹ Events included (sc-67471, sc-67665). */
+/** A page inside an event: back, the title over the event's name, then the blocks 18 apart; on the iPad in the event's frame, named for the frame's event, with no back of its own. Nothing under the title draws larger than it, the frame's ‹ Events included (sc-67471, sc-67665). */
 export function PeoplePage({
   back,
   event = EVENT,
@@ -41,7 +41,7 @@ export function PeoplePage({
         People
       </Title>
       <Text size={15} weight="medium" style={styles.secondary}>
-        {event}
+        {inEvent == null || phone ? event : inEvent.event.name}
       </Text>
     </View>
   );

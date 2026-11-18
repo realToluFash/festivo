@@ -42,9 +42,13 @@ export interface CardStart {
   viewer: PeopleViewer;
   onEvent: OnEvent[];
   load: Load;
-  /** Where the card opens People: the state that shows the same people to the same viewer. */
-  href: string;
+  /** The People state the card opens: the one that shows the same people to the same viewer. */
+  opens: string | null;
 }
+
+/** People on its own page, as the phone opens it, in the state the card names. */
+export const peopleHref = (opens: string | null) =>
+  opens == null ? '/demo/people' : `/demo/people?state=${opens}`;
 
 export function cardStart(state: CardState | null): CardStart {
   const onEvent = sampleOnEvent();
@@ -52,7 +56,7 @@ export function cardStart(state: CardState | null): CardStart {
     viewer: PEOPLE_VIEWERS.julien,
     onEvent,
     load: 'loaded',
-    href: '/demo/people',
+    opens: null,
   };
 
   switch (state) {
@@ -63,17 +67,17 @@ export function cardStart(state: CardState | null): CardStart {
         ...base,
         viewer: PEOPLE_VIEWERS.priya,
         onEvent: onEvent.filter((one) => one.role === 'Lead'),
-        href: '/demo/people?state=lead',
+        opens: 'lead',
       };
     case 'noLead':
       return { ...base, onEvent: onEvent.filter((one) => one.role !== 'Lead') };
     case 'nobody':
-      return { ...base, onEvent: [], href: '/demo/people?state=nobody' };
+      return { ...base, onEvent: [], opens: 'nobody' };
     case 'loading':
     case 'failed':
       return { ...base, load: state };
     case 'readOnly':
-      return { ...base, viewer: PEOPLE_VIEWERS.ana, href: '/demo/people?state=readOnly' };
+      return { ...base, viewer: PEOPLE_VIEWERS.ana, opens: 'readOnly' };
     case 'long':
       return {
         ...base,

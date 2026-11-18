@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { LONG_LEAD, cardFacts, cardStart, cardStateOf } from './PeopleCardModel.ts';
+import { LONG_LEAD, cardFacts, cardStart, cardStateOf, peopleHref } from './PeopleCardModel.ts';
 import { PEOPLE_VIEWERS, sampleOnEvent } from './PeopleSample.ts';
 
 describe('the People card', () => {
@@ -30,7 +30,7 @@ describe('the People card', () => {
     expect(cardFacts(start.onEvent, start.viewer)).toEqual(
       cardFacts(sampleOnEvent(), PEOPLE_VIEWERS.julien),
     );
-    expect(start.href).toBe('/demo/people?state=readOnly');
+    expect(peopleHref(start.opens)).toBe('/demo/people?state=readOnly');
   });
 
   it('names a long Lead in full', () => {
@@ -41,6 +41,6 @@ describe('the People card', () => {
 
   it('reads an unknown state as the populated card', () => {
     expect(cardStateOf('nope')).toBeNull();
-    expect(cardStart(null).href).toBe('/demo/people');
+    expect(peopleHref(cardStart(null).opens)).toBe('/demo/people');
   });
 });
