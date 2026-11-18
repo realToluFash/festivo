@@ -262,7 +262,9 @@ permit = [
 # the seeded labels in every one of SupportedLocales (sc-2301). Its deletion uses the
 # shared restore window and typed-name check (sc-3592). Members reads
 # whether an invitation's email could not be delivered from its delivery record and the
-# suppression list (sc-46109); messaging does not reach back.
+# suppression list (sc-46109); messaging does not reach back. Export all data keeps
+# its archive in the private bucket, and writes its CSV files as the guest export
+# does (CsvFile, sc-612); neither reaches back.
 [[guard.perimeter.rules]]
 namespace = "App\\Domain\\Organisation\\"
 permit = [
@@ -272,10 +274,12 @@ permit = [
     "@layer:domain_organisation",
     "@layer:domain_user",
     "@layer:domain_messaging",
+    "@layer:domain_guest",
     "@layer:repository",
     "@layer:audit",
     "@layer:deletion",
     "@layer:locale",
+    "@layer:storage",
 ]
 
 # Events check their zone and currency as an organisation's are checked (Regions,
