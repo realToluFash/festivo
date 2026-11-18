@@ -2421,12 +2421,12 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
       {
         title: 'Sign in with email',
         what: 'The checks, and the refused shake',
-        href: '/demo/sign-in',
+        href: '/demo/welcome?signIn=email',
       },
       {
         title: 'Sign in · that sign-in timed out',
         what: 'A two-factor sign-in ran out, email kept',
-        href: `/demo/sign-in?timedOut=1&email=${SAMPLE.email}`,
+        href: '/demo/welcome?signIn=timedOut',
       },
     ],
   },
