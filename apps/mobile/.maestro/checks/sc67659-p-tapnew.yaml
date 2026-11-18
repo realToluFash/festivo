@@ -1,0 +1,10 @@
+# sc-67659: one tap on + New event opens a new event.
+appId: host.exp.Exponent
+---
+- setOrientation: ${ORIENT}
+- openLink: ${METRO_URL}/--/events
+- extendedWaitUntil: { visible: { id: 'events.new' }, timeout: 30000 }
+- waitForAnimationToEnd: { timeout: 8000 }
+- tapOn: { id: 'events.new' }
+- waitForAnimationToEnd: { timeout: 8000 }
+- takeScreenshot: t-new

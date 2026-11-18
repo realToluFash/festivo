@@ -67,7 +67,7 @@ function overdueSession(): Session {
 }
 
 function pausedSession(): Session {
-  const { id, name, countryCode, currency, timezone, contactAddress, locale } = membership({
+  const { id, name, countryCode, currency, timezone, contactAddress, locale, plan } = membership({
     id: 'org_3',
     name: 'Lagos Weddings',
   });
@@ -82,6 +82,7 @@ function pausedSession(): Session {
       currency,
       timezone,
       contactAddress,
+      plan,
       locale,
       suspension: {
         reason: 'address_gone',

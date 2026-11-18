@@ -23,6 +23,7 @@ const PAUSED: PausedOrganisation = {
   timezone: 'Africa/Lagos',
   contactAddress: 'hello@ire.events',
   locale: 'en',
+  plan: 'free',
   suspension: {
     reason: 'domain_closed',
     domain: 'ire.events',

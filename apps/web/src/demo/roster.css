@@ -293,3 +293,15 @@ a.sn-tab {
     flex-basis: 12rem;
   }
 }
+
+.rs-more {
+  margin-left: var(--spaceXs);
+  color: var(--colorInkSecondary);
+  font: var(--typeSmallStrong);
+}
+
+.rs-shifts {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}

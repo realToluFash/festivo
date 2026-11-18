@@ -128,5 +128,6 @@
     "item_finished": "Este item já foi concluído.",
     "track_busy": "Já está outro item em curso neste espaço. Conclua-o primeiro.",
     "idempotency_key_required": "Envie o cabeçalho Idempotency-Key em cada ação.",
-    "idempotency_key_reused": "Esta Idempotency-Key já foi enviada com outra ação."
+    "idempotency_key_reused": "Esta Idempotency-Key já foi enviada com outra ação.",
+    "plan_required": "O plano da organização não inclui isto."
 }
