@@ -72,14 +72,17 @@ final class OrganisationExportTest extends ApiTestCase
         'seating_seats' => ['id', 'event_id', 'plan_id', 'section_id', 'name', 'unusable', 'x_cm', 'y_cm'],
         'seat_assignments' => ['event_id', 'guest_id', 'full_name', 'table_id', 'row_id', 'seat_id', 'seat'],
         'menu_courses' => ['id', 'event_id', 'position', 'name', 'served_time', 'guests_choose', 'skippable'],
-        'menu_dishes' => ['id', 'course_id', 'library_dish_id', 'position', 'name', 'description', 'allergens', 'diets'],
-        'menu_dish_variants' => ['id', 'dish_id', 'position', 'name', 'for_children', 'allergens', 'diets'],
+        'menu_course_items' => ['course_id', 'position', 'name'],
+        'menu_dishes' => ['id', 'course_id', 'library_dish_id', 'position', 'name', 'description', 'allergens', 'diets', 'cost_minor', 'cost_currency'],
+        'menu_dish_items' => ['dish_id', 'position', 'kind', 'name', 'choice_id'],
+        'menu_dish_variants' => ['id', 'dish_id', 'position', 'name', 'for_children', 'allergens', 'diets', 'cost_minor', 'cost_currency'],
         'menu_dish_choices' => ['id', 'dish_id', 'position', 'question', 'pick', 'required'],
         'menu_choice_options' => ['id', 'choice_id', 'position', 'name', 'allergens'],
         'dish_library' => ['id', 'name', 'description', 'allergens', 'diets', 'last_price_minor', 'last_price_currency', 'archived_at', 'created_at'],
         'dish_library_variants' => ['id', 'dish_id', 'position', 'name', 'for_children', 'allergens', 'diets', 'last_price_minor', 'last_price_currency'],
         'run_of_show' => ['id', 'event_id', 'title', 'starts_at', 'length_minutes', 'place', 'owner_name', 'owner_role', 'note', 'show_to_guests', 'skipped', 'started_at', 'ended_at'],
         'staff' => ['id', 'event_id', 'full_name', 'mobile', 'email', 'member_id'],
+        'cost_lines' => ['id', 'event_id', 'label', 'category', 'basis', 'price_minor', 'price_currency', 'note', 'created_at', 'updated_at'],
     ];
 
     private const array NEVER = ['calendar_feeds', 'screen_links', 'event_mutes', 'notification_preferences', 'event_changes', 'notification_deliveries', 'assistant_interactions', 'covers', 'photos'];
@@ -147,7 +150,7 @@ final class OrganisationExportTest extends ApiTestCase
     }
 
     #[Test]
-    public function theArchiveHoldsGuestNeedsAndGroupsSeatingTheMenuTheRunOfShowAndStaff(): void
+    public function theArchiveHoldsGuestNeedsAndGroupsSeatingTheMenuTheRunOfShowStaffAndCostLines(): void
     {
         $eventId = $this->newEvent();
         $at = '2026-10-16 09:00:00';
@@ -172,14 +175,19 @@ final class OrganisationExportTest extends ApiTestCase
 
         $library = $this->row('dishes', ['organisation_id' => $this->organisation->getId()->toRfc4122(), 'name' => 'Moi moi', 'allergens' => '["eggs"]', 'diets' => '[]', 'last_price_minor' => 250000, 'last_price_currency' => 'NGN', 'used_by_event' => true, 'archived_at' => '2026-10-15 08:00:00', ...$stamps]);
         $this->row('dish_variants', ['dish_id' => $library, 'name' => 'Small', 'for_children' => true, 'allergens' => '["eggs"]', 'diets' => '[]', 'position' => 1, ...$stamps]);
-        $course = $this->row('menu_courses', ['event_id' => $eventId, 'name' => 'Starters', 'served_at' => '19:30', 'position' => 1, 'guests_choose' => true, 'skippable' => false, ...$stamps]);
-        $dish = $this->row('menu_dishes', ['course_id' => $course, 'library_dish_id' => $library, 'name' => 'Moi moi', 'allergens' => '["eggs","fish"]', 'diets' => '["halal"]', 'position' => 1, ...$stamps]);
-        $this->row('menu_dish_variants', ['dish_id' => $dish, 'name' => 'Small', 'for_children' => true, 'allergens' => '["eggs"]', 'diets' => '[]', 'position' => 1, ...$stamps]);
+        $course = $this->row('menu_courses', ['event_id' => $eventId, 'name' => 'Starters', 'served_at' => '19:30', 'position' => 1, 'guests_choose' => true, 'skippable' => false, 'own_items' => '["Bread roll","Butter"]', ...$stamps]);
+        $dish = $this->row('menu_dishes', ['course_id' => $course, 'library_dish_id' => $library, 'name' => 'Moi moi', 'allergens' => '["eggs","fish"]', 'diets' => '["halal"]', 'position' => 1, 'cost_minor' => 180000, ...$stamps]);
+        $this->row('menu_dishes', ['course_id' => $course, 'library_dish_id' => null, 'name' => 'Puff puff', 'allergens' => '[]', 'diets' => '[]', 'position' => 2, ...$stamps]);
+        $this->row('menu_dish_variants', ['dish_id' => $dish, 'name' => 'Small', 'for_children' => true, 'allergens' => '["eggs"]', 'diets' => '[]', 'position' => 1, 'cost_minor' => 90000, ...$stamps]);
         $choice = $this->row('menu_dish_choices', ['dish_id' => $dish, 'question' => 'Which sauce?', 'pick' => 1, 'required' => true, 'position' => 1, ...$stamps]);
+        $connection->update('menu_dishes', ['items' => Json\encode([['kind' => 'fixed', 'name' => 'Plantain'], ['kind' => 'choice', 'choiceId' => $choice], ['kind' => 'variants']])], ['id' => $dish]);
         $this->row('menu_choice_options', ['choice_id' => $choice, 'name' => 'Pepper sauce', 'allergens' => '["celery"]', 'position' => 1, ...$stamps]);
 
         $this->row('schedule_items', ['event_id' => $eventId, 'title' => 'First dance', 'starts_at' => '2026-11-14 18:30:00', 'length_minutes' => 10, 'show_to_guests' => true, 'started_at' => '2026-11-14 17:34:00', 'ended_at' => '2026-11-14 17:45:00', ...$stamps]);
         $this->row('staff_members', ['event_id' => $eventId, 'full_name' => 'Kemi Bello', 'mobile' => '+2348030000001', 'email' => 'kemi@example.com', 'member_id' => $this->owner->getId()->toRfc4122(), ...$stamps]);
+        $this->row('budget_lines', ['event_id' => $eventId, 'label' => 'Catering', 'category' => 'catering', 'basis' => 'per_head', 'price_minor' => 4800, 'note' => 'Three courses', 'created_at' => $at, 'updated_at' => '2026-10-16 10:00:00']);
+        $this->row('budget_lines', ['event_id' => $eventId, 'label' => 'Staff', 'category' => 'staffing', 'basis' => 'per_staff_hour', 'price_minor' => null, 'note' => null, ...$stamps]);
+        $currency = Type\string()->coerce($connection->fetchOne('SELECT currency FROM events WHERE id = ?', [$eventId]));
 
         $files = $this->archive();
         $json = Type\dict(Type\string(), Type\mixed())->coerce(Json\decode($files['archive.json']));
@@ -197,7 +205,13 @@ final class OrganisationExportTest extends ApiTestCase
         self::assertSame([$guest, 'Bísí Adéwálé', $table('seating_tables')[0]['id'], 2], [$table('seat_assignments')[0]['guest_id'], $table('seat_assignments')[0]['full_name'], $table('seat_assignments')[0]['table_id'], $table('seat_assignments')[0]['seat']]);
         self::assertSame(['Starters', '19:30', true], [$table('menu_courses')[0]['name'], $table('menu_courses')[0]['served_time'], $table('menu_courses')[0]['guests_choose']]);
         self::assertSame(['Moi moi', $library, 'eggs, fish', 'halal'], [$table('menu_dishes')[0]['name'], $table('menu_dishes')[0]['library_dish_id'], $table('menu_dishes')[0]['allergens'], $table('menu_dishes')[0]['diets']]);
-        self::assertSame(['Small', true], [$table('menu_dish_variants')[0]['name'], $table('menu_dish_variants')[0]['for_children']]);
+        self::assertSame([[180000, $currency], [null, null]], Vec\map($table('menu_dishes'), static fn (array $row): array => [$row['cost_minor'], $row['cost_currency']]));
+        self::assertSame(
+            [[$dish, 1, 'fixed', 'Plantain', null], [$dish, 2, 'choice', 'Which sauce?', $choice], [$dish, 3, 'variants', null, null]],
+            Vec\map($table('menu_dish_items'), static fn (array $row): array => Vec\values($row)),
+        );
+        self::assertSame([[$course, 1, 'Bread roll'], [$course, 2, 'Butter']], Vec\map($table('menu_course_items'), static fn (array $row): array => Vec\values($row)));
+        self::assertSame(['Small', true, 90000, $currency], [$table('menu_dish_variants')[0]['name'], $table('menu_dish_variants')[0]['for_children'], $table('menu_dish_variants')[0]['cost_minor'], $table('menu_dish_variants')[0]['cost_currency']]);
         self::assertSame(['Which sauce?', 1, true], [$table('menu_dish_choices')[0]['question'], $table('menu_dish_choices')[0]['pick'], $table('menu_dish_choices')[0]['required']]);
         self::assertSame(['Pepper sauce', 'celery'], [$table('menu_choice_options')[0]['name'], $table('menu_choice_options')[0]['allergens']]);
         self::assertSame(['Moi moi', 'eggs', 250000, 'NGN', '2026-10-15T08:00:00Z'], [$table('dish_library')[0]['name'], $table('dish_library')[0]['allergens'], $table('dish_library')[0]['last_price_minor'], $table('dish_library')[0]['last_price_currency'], $table('dish_library')[0]['archived_at']]);
@@ -209,6 +223,10 @@ final class OrganisationExportTest extends ApiTestCase
         $owner = Type\string()->coerce($connection->fetchOne('SELECT id FROM memberships WHERE user_id = ?', [$this->owner->getId()->toRfc4122()]));
         self::assertSame(['Kemi Bello', '+2348030000001', 'kemi@example.com', $owner], [$table('staff')[0]['full_name'], $table('staff')[0]['mobile'], $table('staff')[0]['email'], $table('staff')[0]['member_id']]);
 
+        self::assertSame(
+            [['Catering', 'catering', 'per_head', 4800, $currency, 'Three courses', '2026-10-16T09:00:00Z', '2026-10-16T10:00:00Z'], ['Staff', 'staffing', 'per_staff_hour', null, null, null, '2026-10-16T09:00:00Z', '2026-10-16T09:00:00Z']],
+            Vec\map($table('cost_lines'), static fn (array $row): array => Vec\values(Dict\drop($row, 2))),
+        );
         self::assertStringContainsString('"served_time": "19:30"', $files['archive.json']);
         foreach (self::TABLES as $name => $columns) {
             $lines = Str\split(Str\trim(Str\strip_prefix($files[$name . '.csv'], "\u{FEFF}")), "\r\n");

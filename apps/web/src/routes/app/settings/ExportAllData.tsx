@@ -170,6 +170,7 @@ function Loaded({
     t('exportAllData.holdsMenu'),
     t('exportAllData.holdsRunOfShow'),
     t('exportAllData.holdsStaff'),
+    t('exportAllData.holdsCostLines'),
   ];
 
   return (

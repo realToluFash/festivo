@@ -165,18 +165,40 @@ final readonly class OrganisationArchive
              WHERE ev.organisation_id = :organisation AND ev.deleted_at IS NULL
              ORDER BY ev.starts_at_utc, c.event_id, c.position, c.id
             SQL,
+        'menu_course_items' => <<<'SQL'
+            SELECT c.id AS course_id, i.position, i.name
+              FROM menu_courses c
+              JOIN events ev ON ev.id = c.event_id
+             CROSS JOIN LATERAL json_array_elements_text(c.own_items) WITH ORDINALITY AS i(name, position)
+             WHERE ev.organisation_id = :organisation AND ev.deleted_at IS NULL
+             ORDER BY ev.starts_at_utc, c.event_id, c.position, c.id, i.position
+            SQL,
         'menu_dishes' => <<<'SQL'
             SELECT d.id, d.course_id, d.library_dish_id, d.position, d.name, d.description,
-                   array_to_string(ARRAY(SELECT json_array_elements_text(d.allergens)), ', ') AS allergens, array_to_string(ARRAY(SELECT json_array_elements_text(d.diets)), ', ') AS diets
+                   array_to_string(ARRAY(SELECT json_array_elements_text(d.allergens)), ', ') AS allergens, array_to_string(ARRAY(SELECT json_array_elements_text(d.diets)), ', ') AS diets,
+                   d.cost_minor, CASE WHEN d.cost_minor IS NOT NULL THEN ev.currency END AS cost_currency
               FROM menu_dishes d
               JOIN menu_courses c ON c.id = d.course_id
               JOIN events ev ON ev.id = c.event_id
              WHERE ev.organisation_id = :organisation AND ev.deleted_at IS NULL
              ORDER BY ev.starts_at_utc, c.event_id, c.position, d.position, d.id
             SQL,
+        'menu_dish_items' => <<<'SQL'
+            SELECT d.id AS dish_id, i.position, i.item->>'kind' AS kind,
+                   CASE i.item->>'kind' WHEN 'fixed' THEN i.item->>'name' WHEN 'choice' THEN q.question END AS name,
+                   q.id AS choice_id
+              FROM menu_dishes d
+              JOIN menu_courses c ON c.id = d.course_id
+              JOIN events ev ON ev.id = c.event_id
+             CROSS JOIN LATERAL json_array_elements(d.items) WITH ORDINALITY AS i(item, position)
+              LEFT JOIN menu_dish_choices q ON q.dish_id = d.id AND q.id::text = i.item->>'choiceId'
+             WHERE ev.organisation_id = :organisation AND ev.deleted_at IS NULL
+             ORDER BY ev.starts_at_utc, c.event_id, c.position, d.position, d.id, i.position
+            SQL,
         'menu_dish_variants' => <<<'SQL'
             SELECT v.id, v.dish_id, v.position, v.name, v.for_children,
-                   array_to_string(ARRAY(SELECT json_array_elements_text(v.allergens)), ', ') AS allergens, array_to_string(ARRAY(SELECT json_array_elements_text(v.diets)), ', ') AS diets
+                   array_to_string(ARRAY(SELECT json_array_elements_text(v.allergens)), ', ') AS allergens, array_to_string(ARRAY(SELECT json_array_elements_text(v.diets)), ', ') AS diets,
+                   v.cost_minor, CASE WHEN v.cost_minor IS NOT NULL THEN ev.currency END AS cost_currency
               FROM menu_dish_variants v
               JOIN menu_dishes d ON d.id = v.dish_id
               JOIN menu_courses c ON c.id = d.course_id
@@ -236,12 +258,20 @@ final readonly class OrganisationArchive
              WHERE ev.organisation_id = :organisation AND ev.deleted_at IS NULL
              ORDER BY ev.starts_at_utc, s.event_id, s.full_name, s.id
             SQL,
+        'cost_lines' => <<<'SQL'
+            SELECT b.id, b.event_id, b.label, b.category, b.basis, b.price_minor,
+                   CASE WHEN b.price_minor IS NOT NULL THEN ev.currency END AS price_currency, b.note, b.created_at, b.updated_at
+              FROM budget_lines b
+              JOIN events ev ON ev.id = b.event_id
+             WHERE ev.organisation_id = :organisation AND ev.deleted_at IS NULL
+             ORDER BY ev.starts_at_utc, b.event_id, b.id
+            SQL,
     ];
 
     /** Columns holding a date and time, written in UTC as `2026-11-05T14:20:07Z`. */
     private const array TIMES = [
         'created_at', 'proved_at', 'joined_at', 'expires_at', 'accepted_at', 'declined_at', 'revoked_at',
-        'asked_at', 'starts_at', 'ends_at', 'replied_at', 'shared_at', 'archived_at', 'started_at', 'ended_at',
+        'asked_at', 'starts_at', 'ends_at', 'replied_at', 'shared_at', 'archived_at', 'started_at', 'ended_at', 'updated_at',
     ];
 
     private const array ROLES = [

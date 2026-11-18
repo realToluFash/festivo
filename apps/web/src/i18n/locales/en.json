@@ -4470,6 +4470,7 @@
     "holdsMenu": "Each event’s menu: its courses with their served time, and their dishes with variants, choices and options; and the dish library, archived dishes too",
     "holdsRunOfShow": "Each event’s run of show: each item’s title, time, length, place, owner and note, whether guests see it, and when it started and ended",
     "holdsStaff": "Each event’s staff: name, mobile number, email address and the member they are",
+    "holdsCostLines": "Each event’s cost lines: what each is, its category, basis, rate or amount, and note",
     "foot": "One .zip: a JSON file of everything and a CSV file per table. Every date and time is in UTC, except a course’s served time, which is the event’s time of day. It leaves out your own account’s sign-in methods, sessions, two-factor and phones; calendar and room screen links; mutes and notification settings; notification deliveries; the assistant’s log; photos; each event’s change history; and the audit log, which Audit log exports.",
     "usedLink": "This download has been used. It downloads nothing now.",
     "limited": "The next export can start on {{when}}. Nothing was started.",
