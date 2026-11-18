@@ -1,27 +1,35 @@
-# sc-68022 regression: the door code states on People's own page, as before.
+# sc-68022 regression: the door code states on People's own page, as before, each waited for on what it shows.
 appId: host.exp.Exponent
 ---
 - openLink: ${METRO_URL}/--/demo/people?code=open
-- waitForAnimationToEnd: { timeout: 6000 }
+- extendedWaitUntil: { visible: { id: 'door.make' }, timeout: 20000 }
+- waitForAnimationToEnd: { timeout: 4000 }
 - takeScreenshot: d-door-code-open
 - openLink: ${METRO_URL}/--/demo/people?code=blank
-- waitForAnimationToEnd: { timeout: 6000 }
+- extendedWaitUntil: { visible: { id: 'door.make.cap' }, timeout: 20000 }
+- waitForAnimationToEnd: { timeout: 4000 }
 - takeScreenshot: d-door-code-blank
 - openLink: ${METRO_URL}/--/demo/people?show=open
-- waitForAnimationToEnd: { timeout: 6000 }
+- extendedWaitUntil: { visible: { id: 'door.hold' }, timeout: 20000 }
+- waitForAnimationToEnd: { timeout: 4000 }
 - takeScreenshot: d-door-show-open
 - openLink: ${METRO_URL}/--/demo/people?show=counted
-- waitForAnimationToEnd: { timeout: 6000 }
+- extendedWaitUntil: { visible: { id: 'door.hold.count' }, timeout: 20000 }
+- waitForAnimationToEnd: { timeout: 4000 }
 - takeScreenshot: d-door-show-counted
 - openLink: ${METRO_URL}/--/demo/people?hold=new
-- waitForAnimationToEnd: { timeout: 6000 }
+- extendedWaitUntil: { visible: { id: 'door.hold' }, timeout: 20000 }
+- waitForAnimationToEnd: { timeout: 4000 }
 - takeScreenshot: d-door-hold-new
 - openLink: ${METRO_URL}/--/demo/people?state=code
-- waitForAnimationToEnd: { timeout: 6000 }
+- extendedWaitUntil: { visible: { id: 'door.card.code-q7km4xp2' }, timeout: 20000 }
+- waitForAnimationToEnd: { timeout: 4000 }
 - takeScreenshot: d-door-state-code
 - openLink: ${METRO_URL}/--/demo/people?state=code-none
-- waitForAnimationToEnd: { timeout: 6000 }
+- extendedWaitUntil: { visible: { id: 'door.card.none' }, timeout: 20000 }
+- waitForAnimationToEnd: { timeout: 4000 }
 - takeScreenshot: d-door-state-code-none
 - openLink: ${METRO_URL}/--/demo/people?state=code-full
-- waitForAnimationToEnd: { timeout: 6000 }
+- extendedWaitUntil: { visible: { id: 'door.card.code-m4tb7kq8' }, timeout: 20000 }
+- waitForAnimationToEnd: { timeout: 4000 }
 - takeScreenshot: d-door-state-code-full

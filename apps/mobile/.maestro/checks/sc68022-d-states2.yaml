@@ -1,6 +1,14 @@
 # sc-68022: /demo/people's remaining states on a phone; an add state opens Add people over the page, so ‹ Overview is checked only where the page shows.
 appId: host.exp.Exponent
 ---
+- openLink: ${METRO_URL}/--/demo/people?state=addPartial
+- waitForAnimationToEnd: { timeout: 6000 }
+- assertNotVisible: '(Back to|Voltar a|Volver a|Retour à) More'
+- takeScreenshot: d-state-addPartial
+- openLink: ${METRO_URL}/--/demo/people?state=everyoneOn
+- waitForAnimationToEnd: { timeout: 6000 }
+- assertNotVisible: '(Back to|Voltar a|Volver a|Retour à) More'
+- takeScreenshot: d-state-everyoneOn
 - openLink: ${METRO_URL}/--/demo/people?state=addOutside
 - waitForAnimationToEnd: { timeout: 6000 }
 - assertNotVisible: '(Back to|Voltar a|Volver a|Retour à) More'
@@ -22,12 +30,12 @@ appId: host.exp.Exponent
 - assertNotVisible: '(Back to|Voltar a|Volver a|Retour à) More'
 - takeScreenshot: d-state-addMemberAddress
 - openLink: ${METRO_URL}/--/demo/people?state=loading
-- waitForAnimationToEnd: { timeout: 6000 }
 - extendedWaitUntil: { visible: '(Back to|Voltar a|Volver a|Retour à) Overview', timeout: 20000 }
+- waitForAnimationToEnd: { timeout: 4000 }
 - assertNotVisible: '(Back to|Voltar a|Volver a|Retour à) More'
 - takeScreenshot: d-state-loading
 - openLink: ${METRO_URL}/--/demo/people?state=failed
-- waitForAnimationToEnd: { timeout: 6000 }
 - extendedWaitUntil: { visible: '(Back to|Voltar a|Volver a|Retour à) Overview', timeout: 20000 }
+- waitForAnimationToEnd: { timeout: 4000 }
 - assertNotVisible: '(Back to|Voltar a|Volver a|Retour à) More'
 - takeScreenshot: d-state-failed
