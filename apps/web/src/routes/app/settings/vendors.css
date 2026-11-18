@@ -1,8 +1,10 @@
 /* Settings › Vendors at a desk in A · Summary first (Budget-A-Vendors, page e81). */
 
-/* The count's live region is unseen until a search: positioned here, so it stays inside the page. */
+/* The count's live region is unseen until a search: positioned here, so it stays inside the page.
+   A row's tint reaches spaceMd past the column; the margin keeps it inside the page, which would scroll sideways. */
 .vd-column {
   position: relative;
+  margin-inline-end: var(--spaceMd);
 }
 
 .vd-tools {
