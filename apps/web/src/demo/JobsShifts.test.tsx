@@ -115,6 +115,8 @@ describe('/demo/events/evt-wed-4/staff/jobs (sc-3908)', () => {
     await open('readOnly');
     expect(button('Add a job')).toBeNull();
     expect(button('Unassign Ifeoma Nduka')).toBeNull();
+    expect(screen.queryByText(/Every place on this shift is filled/)).toBeNull();
+    expect(screen.getAllByText(/^(\d+) of \1 places? filled$/).length).toBe(5);
   });
 
   it('names each start and end’s day on an event over 24 hours', async () => {
