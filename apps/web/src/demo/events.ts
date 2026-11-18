@@ -744,7 +744,12 @@ export function rangeOf(event: SampleEvent, now: Date, keepDays = false): string
 }
 
 export function placeOf(event: SampleEvent): string {
-  return event.venue == null ? W.venueToBeConfirmed : `${event.venue.name}, ${event.venue.city}`;
+  return event.venue == null ? W.venueToBeConfirmed : venueLine(event.venue);
+}
+
+/** A venue typed by hand, as one made from an enquiry is, has no city of its own. */
+export function venueLine(venue: Venue): string {
+  return venue.city === '' ? venue.name : `${venue.name}, ${venue.city}`;
 }
 
 export function lineOf(event: SampleEvent, now: Date, keepDays = false): string {

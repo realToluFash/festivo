@@ -17,6 +17,9 @@ appId: host.exp.Exponent
           id: 'signIn.email'
       - eraseText: 120
       - inputText: ${EMAIL}
+      # Next moves focus to Password: at AX5 in a warm batch a tap on Password after the
+      # scroll left focus in Email, and the password overwrote the address (sc-67202).
+      - pressKey: Enter
 # On a remote Android emulator the keyboard typed part of the address twice (sc-3785),
 # so it is read back and typed again if it is not the address.
 - runFlow:
@@ -50,8 +53,6 @@ appId: host.exp.Exponent
     when:
       platform: iOS
     commands:
-      - tapOn:
-          id: 'signIn.password'
       - eraseText: 120
       - inputText: ${PASSWORD}
 # On Android the masked field dropped characters while typing: a 28-character password

@@ -6,6 +6,8 @@ import { consultationStateOf } from './ConsultationsModel.ts';
 import { EnquiriesList } from './EnquiriesList.tsx';
 import { enquiryStateOf } from './EnquiriesModel.ts';
 import { EnquiryPage } from './EnquiryPage.tsx';
+import { EnquiryEventPage } from './EnquiryEvent.tsx';
+import { formStateOf, pageStateOf } from './EnquiryToEventModel.ts';
 import { TellClient } from './TellClient.tsx';
 import { tellStateOf } from './TellClientModel.ts';
 
@@ -21,13 +23,19 @@ export function EnquiriesRoute() {
   );
 }
 
-/** /demo/enquiries/[id]: where a result opens. */
+/** /demo/enquiries/[id]: where a result opens; sc-31232's ?state= draws its parts of the page, and ?new= opens New event filled from it. */
 export function EnquiryRoute() {
-  const params = useLocalSearchParams<{ id?: string }>();
+  const params = useLocalSearchParams<{ id?: string; state?: string; new?: string }>();
+  const form = formStateOf(params.new);
+  const state = pageStateOf(params.state) ?? (form == null ? null : 'open-admin');
 
   return (
-    <EventsShell>
-      <EnquiryPage id={params.id} />
+    <EventsShell key={`${params.id ?? ''}:${state ?? ''}:${form ?? ''}`}>
+      {state == null ? (
+        <EnquiryPage id={params.id} />
+      ) : (
+        <EnquiryEventPage id={params.id} state={state} form={form} />
+      )}
     </EventsShell>
   );
 }
