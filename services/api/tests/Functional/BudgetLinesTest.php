@@ -93,6 +93,17 @@ final class BudgetLinesTest extends ApiTestCase
     }
 
     #[Test]
+    public function aLineOnAHeadIsZeroWithOneReasonForAnEmptyListAndAnotherForNoAcceptedYet(): void
+    {
+        $line = $this->add(self::CATERING);
+        self::assertSame(['count' => 0, 'source' => 'accepted', 'reason' => QuantityResolver::NO_GUESTS], $line['quantity']);
+
+        $this->guest('Bisi');
+
+        self::assertSame(['count' => 0, 'source' => 'accepted', 'reason' => QuantityResolver::NONE_ACCEPTED], $this->budget()[0]['quantity']);
+    }
+
+    #[Test]
     public function aFixedLineCarriesAnAmountAndCountsOnce(): void
     {
         $line = $this->add([...self::VENUE, 'amount' => '2400.5', 'currency' => 'gbp']);

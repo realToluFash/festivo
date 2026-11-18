@@ -8,6 +8,7 @@ namespace App\Domain\Budget\Model;
 final readonly class QuantityFacts
 {
     public function __construct(
+        public int $onList,
         public int $accepted,
         public ?int $seatingTables,
         public ?int $staffHours,
