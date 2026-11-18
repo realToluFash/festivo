@@ -433,11 +433,13 @@ export function whoHasnt(world: PicksWorld): Waiting[] {
   });
 }
 
-export function openFor(world: PicksWorld, person: Person): EvCourse[] {
+export function openFor(world: PicksWorld, person: Person, courseId?: string): EvCourse[] {
   return shownCourses(world).filter((course) => {
     const kind = spotOf(world, course, person).kind;
 
-    return kind === 'none' || kind === 'host';
+    return courseId == null
+      ? kind === 'none'
+      : course.id === courseId && (kind === 'none' || kind === 'host');
   });
 }
 
@@ -846,8 +848,8 @@ const STATES = {
   chooseForRuledOut: () =>
     start({
       name: 'Choose for them, every dish ruled out',
-      note: 'Kwame Asante, from Needs the host, the starter then Main: each dish keeps its Allergy mark and can still be picked.',
-      opened: { kind: 'chooseFor', personId: 'kwame-asante' },
+      note: 'Kwame Asante, from his Needs the host row on Main: each dish keeps its Allergy mark and can still be picked.',
+      opened: { kind: 'chooseFor', personId: 'kwame-asante', courseId: 'k2' },
     }),
   chooseForStarter: () =>
     start({

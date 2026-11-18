@@ -15,6 +15,7 @@ import { clockOfKitchen } from './kitchen.ts';
 import { allergenList } from './mealStep.ts';
 import type { DishAllergen } from './menuLibrary.ts';
 import { type EvCourse, type EvDish, CW, coursesAt } from './menuCourses.ts';
+import { MENU_EVENT } from './menuServed.ts';
 import { keptInbox, waitingLine } from './messages.ts';
 import {
   type CourseFigures,
@@ -148,7 +149,7 @@ function Picks({ first }: { first: PicksStart }) {
         <div className="desk-card pk-empty">
           <h2>{SW.emptyTitle}</h2>
           <p className="mn-quiet">{SW.emptyBody}</p>
-          <Link className="gs-pill is-primary pk-go" to="/demo/events/evt-wed-4/guests">
+          <Link className="gs-pill is-primary pk-go" to={`/demo/events/${MENU_EVENT}/guests`}>
             {SW.toGuests}
           </Link>
         </div>
@@ -595,9 +596,8 @@ function outcomeFor(
 
 function coursesFor(world: PicksWorld, opened: ForOpened): EvCourse[] {
   const person = world.people.find((one) => one.id === opened.personId) as Person;
-  const all = openFor(world, person);
 
-  return opened.courseId == null ? all : all.filter((one) => one.id === opened.courseId);
+  return openFor(world, person, opened.courseId);
 }
 
 const choiceOf = (opened: ForOpened): Choice =>

@@ -173,10 +173,22 @@ describe('Choose for them', () => {
   it('opens only the courses still open for the person', () => {
     const world = samplePicks();
     expect(openFor(world, person(world, 'bea-mensah')).map((one) => one.id)).toEqual(['k2', 'k3']);
-    expect(openFor(world, person(world, 'kwame-asante')).map((one) => one.id)).toEqual([
-      'k1',
+    expect(openFor(world, person(world, 'kwame-asante'), 'k2').map((one) => one.id)).toEqual([
       'k2',
     ]);
+  });
+
+  it('opens from Who hasn’t picked on the courses that row names, not the Needs the host ones', () => {
+    const world = samplePicks();
+    const kojo = person(world, 'kojo-asante');
+    const row = whoHasnt(world)
+      .flatMap((one) => one.people)
+      .find((one) => one.person.id === 'kojo-asante');
+
+    expect(row?.courses.map((one) => one.id)).toEqual(['k2']);
+    expect(openFor(world, kojo).map((one) => one.id)).toEqual(['k2']);
+    expect(openFor(world, kojo, 'k1').map((one) => one.id)).toEqual(['k1']);
+    expect(openFor(world, person(world, 'kwame-asante'))).toEqual([]);
   });
 
   it('records a ruled-out pick with who confirmed it, and counts it under its dish', () => {
