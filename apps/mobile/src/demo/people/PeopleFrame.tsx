@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import { type ComponentProps, createContext, type ReactNode, useContext } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -8,11 +8,17 @@ import { PAGE_TITLE, pageTitle } from '../../components/topTitle.ts';
 import { tokens } from '../../theme/tokens.ts';
 import { Bell, PortraitTop } from '../settings/Frame.tsx';
 import { EVENT } from './PeopleSample.ts';
+import { EventFrame } from '../events/EventFrame.tsx';
 import { useShell } from '../../components/settingsShell.ts';
 import { Back } from '../../components/SettingsParts.tsx';
 import { PageToast, type PageToastProps } from '../../components/Summary.tsx';
 
-/** A page inside an event, drawn with no event around it in the demo: back, the title over the event's name, then the blocks 18 apart. Nothing under the title draws larger than it (sc-67471). */
+/** On the iPad, the event's frame People draws in as every other area does, People lit in it (sc-67665). */
+export type InEvent = Omit<ComponentProps<typeof EventFrame>, 'area' | 'toast' | 'children'>;
+
+export const PeopleInEvent = createContext<InEvent | null>(null);
+
+/** A page inside an event: back, the title over the event's name, then the blocks 18 apart; on the iPad in the event's frame, with no back of its own. Nothing under the title draws larger than it, the frame's ‹ Events included (sc-67471, sc-67665). */
 export function PeoplePage({
   back,
   event = EVENT,
@@ -28,6 +34,34 @@ export function PeoplePage({
   const insets = useSafeAreaInsets();
   const phone = layout === 'phone';
   const { cap, onDrawn } = useTitleCap(`${PAGE_TITLE}|People`, PAGE_TITLE);
+  const inEvent = useContext(PeopleInEvent);
+  const head = (
+    <View style={inEvent == null || phone ? styles.title : styles.titleInEvent}>
+      <Title size={PAGE_TITLE} accessibilityRole="header" style={pageTitle} onDrawn={onDrawn}>
+        People
+      </Title>
+      <Text size={15} weight="medium" style={styles.secondary}>
+        {event}
+      </Text>
+    </View>
+  );
+
+  if (inEvent != null && !phone)
+    return (
+      <TitleCap.Provider value={cap}>
+        <EventFrame
+          {...inEvent}
+          area="people"
+          toast={toast == null ? null : { words: toast.words, onClose: toast.onClose }}
+        >
+          <View>
+            {head}
+            <View style={styles.blocks}>{children}</View>
+          </View>
+        </EventFrame>
+      </TitleCap.Provider>
+    );
+
   const page = (
     <TitleCap.Provider value={cap}>
       <View style={styles.top}>
@@ -35,14 +69,7 @@ export function PeoplePage({
         <View style={styles.grow} />
         {phone && <Bell tell={tell} />}
       </View>
-      <View style={styles.title}>
-        <Title size={PAGE_TITLE} accessibilityRole="header" style={pageTitle} onDrawn={onDrawn}>
-          People
-        </Title>
-        <Text size={15} weight="medium" style={styles.secondary}>
-          {event}
-        </Text>
-      </View>
+      {head}
       <View style={styles.blocks}>{children}</View>
     </TitleCap.Provider>
   );
@@ -101,6 +128,7 @@ const styles = StyleSheet.create({
   secondary: { color: tokens.colorInkSecondary },
   top: { flexDirection: 'row', alignItems: 'center' },
   title: { gap: tokens.spaceXxs, paddingTop: 14, paddingBottom: tokens.spaceXl },
+  titleInEvent: { gap: tokens.spaceXxs, paddingBottom: tokens.spaceXl },
   blocks: { gap: 18 },
   statusStrip: {
     position: 'absolute',

@@ -46,8 +46,8 @@ const PHONE_BAR: readonly (readonly [string, GlyphName])[] = [
   [W.more, 'dots'],
 ];
 
-/** People is built, as People A: it opens the People demo, with no event around it. */
-export function toArea(area: AreaKey, onArea: (area: AreaKey) => void): void {
+/** On the phone People opens its own page from More, ‹ More over its title; on the iPad it is an area in the frame like the other nine (sc-67665). */
+function toArea(area: AreaKey, onArea: (area: AreaKey) => void): void {
   if (area === 'people') router.push('/demo/people');
   else onArea(area);
 }
@@ -435,7 +435,7 @@ function AreaPills({
           return (
             <Pressable
               key={one}
-              onPress={() => toArea(one, onArea)}
+              onPress={() => onArea(one)}
               onLayout={(event: LayoutChangeEvent) => {
                 starts.current[one] = event.nativeEvent.layout.x;
                 if (on) reveal(one);
@@ -501,19 +501,14 @@ function EventSidebar({
         <SidebarPlaces>
           {AREAS.filter((one) => one !== without).map((one) =>
             one === 'messages' && badge != null ? (
-              <CountedPlace
-                key={one}
-                badge={badge}
-                on={one === area}
-                onPress={() => toArea(one, onArea)}
-              />
+              <CountedPlace key={one} badge={badge} on={one === area} onPress={() => onArea(one)} />
             ) : (
               <SidebarPlace
                 key={one}
                 label={AREA_WORDS[one]}
                 glyph={AREA_GLYPH[one]}
                 on={one === area}
-                onPress={() => toArea(one, onArea)}
+                onPress={() => onArea(one)}
                 testID={`event.side.${one}`}
               />
             ),
