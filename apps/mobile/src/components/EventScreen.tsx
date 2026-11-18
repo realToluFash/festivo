@@ -70,7 +70,7 @@ import { phoneTabBarClearance } from './TodayCover.tsx';
 import { Arrived } from './Skeleton.tsx';
 import { type ScreenReaderTarget, moveScreenReaderFocus } from './screenReaderFocus.ts';
 import { Text, type TextHandle } from './Text.tsx';
-import { Title } from './Title.tsx';
+import { BodyTitle } from './Title.tsx';
 import { TopPrimary, usePrimaryLabel } from './TopPrimary.tsx';
 import { COLUMN_TITLE, PAGE_TITLE, columnTitle, pageTitle } from './topTitle.ts';
 import { useSidebarCard } from './sidebarCard.ts';
@@ -454,14 +454,14 @@ export function EventScreen({
             <View style={styles.titleRow}>
               <View style={styles.fill} onLayout={guestsLabel.onSlot}>
                 {guestsLabel.measure}
-                <Title
+                <BodyTitle
                   size={guestsTitleSize}
                   accessibilityRole="header"
                   ref={title}
                   style={guestsTitleStyle}
                 >
                   {t('eventNav.guests')}
-                </Title>
+                </BodyTitle>
               </View>
               {!phone && refreshing}
               {exportGuests}
@@ -495,9 +495,14 @@ export function EventScreen({
             <View style={styles.areaTop}>
               <View style={styles.titleRow}>
                 <View style={styles.fill}>
-                  <Title size={PAGE_TITLE} accessibilityRole="header" ref={title} style={pageTitle}>
+                  <BodyTitle
+                    size={PAGE_TITLE}
+                    accessibilityRole="header"
+                    ref={title}
+                    style={pageTitle}
+                  >
                     {t(`eventNav.${area}`)}
-                  </Title>
+                  </BodyTitle>
                 </View>
                 {refreshing}
               </View>

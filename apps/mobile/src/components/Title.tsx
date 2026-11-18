@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { createContext, useCallback, useContext, useEffect, useState } from 'react';
 import {
   type StyleProp,
   StyleSheet,
@@ -174,6 +174,36 @@ export function Title({
   const { fontScale } = useWindowDimensions();
 
   return <WholeWords weight="bold" {...rest} size={size} start={titleSize(size, fontScale)} />;
+}
+
+/** Where a page's title says the size it drew at, so the frame caps what is under it there (sc-67338). */
+export const PageTitleDrawn = createContext<((size: number) => void) | undefined>(undefined);
+
+export function usePageTitleDrawn() {
+  return useContext(PageTitleDrawn);
+}
+
+/** A page's title drawn in the frame's body, as an event area's, which tells the frame the size it drew at (sc-67338). */
+export function BodyTitle(props: WholeWordsProps & { room?: number | undefined }) {
+  return <Title {...props} onDrawn={usePageTitleDrawn()} />;
+}
+
+/** The size a page's title of `size` drew at, for the page `at`; until it says, the size it will draw at unless a word steps it down (sc-67338). */
+export function useTitleCap(at: string, size: number) {
+  const { fontScale } = useWindowDimensions();
+  const key = `${at}|${fontScale}`;
+  const [drawn, setDrawn] = useState<{ key: string; size: number } | null>(null);
+  const onDrawn = useCallback(
+    (next: number) =>
+      setDrawn((now) => (now?.key === key && now.size === next ? now : { key, size: next })),
+    [key],
+  );
+
+  return {
+    cap: drawn?.key === key ? drawn.size : titleSize(size, fontScale),
+    drawn: drawn?.key === key,
+    onDrawn,
+  };
 }
 
 const styles = StyleSheet.create({
