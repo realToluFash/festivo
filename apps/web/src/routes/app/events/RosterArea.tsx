@@ -4,7 +4,8 @@ import {
   STAFF_NAME_MAXIMUM,
   type StaffEntry,
   type StaffLink,
-  asStaffRoster,
+  type StaffPlan,
+  asStaffPlan,
   realtimeTopic,
 } from '@soirely/api-client';
 import {
@@ -16,6 +17,7 @@ import {
   phoneLengthProblem,
 } from '@soirely/domain';
 import { useEffect, useMemo, useRef, useState } from 'react';
+import type { TFunction } from 'i18next';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router';
 
@@ -30,17 +32,25 @@ import { canOn, useSession } from '../../../session.ts';
 import { FieldWrong } from './GuestFields.tsx';
 import { useHubTopics } from './useHubTopics.ts';
 import { useStartingCountry } from './useStartingCountry.ts';
+import { StaffTabs } from './StaffTabs.tsx';
+import { type StaffTimes, rangeWords, staffTimes } from './staffTimes.ts';
 import { useDeskTop } from '../../../deskTop.ts';
 import '../../../components/SettingsParts.css';
 import '../../../components/eventsDesk.css';
 import '../../../components/eventPage.css';
 import './guests.css';
 import './roster.css';
+import './jobsShifts.css';
 
-const FIELD_IDS = { name: 'rs-f-name', number: 'rs-f-number', email: 'rs-f-email' } as const;
+const FIELD_IDS = {
+  name: 'rs-f-name',
+  number: 'rs-f-number',
+  email: 'rs-f-email',
+  job: 'rs-f-job',
+} as const;
 const BAR_MS = 10_000;
 
-type Load = { kind: 'loading' } | { kind: 'failed' } | { kind: 'loaded'; staff: StaffEntry[] };
+type Load = { kind: 'loading' } | { kind: 'failed' } | { kind: 'loaded'; plan: StaffPlan };
 
 type Panel =
   | { kind: 'details'; id: string }
@@ -54,9 +64,11 @@ interface Draft {
   country: string;
   number: string;
   email: string;
+  job: string;
+  shift: string;
 }
 
-type Problems = { name?: string; number?: string; email?: string };
+type Problems = { name?: string; number?: string; email?: string; job?: string };
 
 type Field = keyof Problems;
 
@@ -80,11 +92,13 @@ function draftOf(entry: StaffEntry | null, country: string): Draft {
     country: fields?.country ?? country,
     number: fields?.number ?? '',
     email: entry?.email ?? '',
+    job: entry?.job?.id ?? '',
+    shift: '',
   };
 }
 
 function firstWrong(problems: Problems): Field | null {
-  return (['name', 'number', 'email'] as const).find((one) => problems[one] != null) ?? null;
+  return (['name', 'number', 'email', 'job'] as const).find((one) => problems[one] != null) ?? null;
 }
 
 /** /app/events/:id/staff (sc-3906): the Roster on the event's Staff page, as its demo draws it at a desk. */
@@ -100,8 +114,8 @@ export function RosterArea({ event }: { event: OrganisationEvent }) {
   useEffect(() => {
     let current = true;
 
-    keptLoad(keptKeys.staff(event.id), api.staff(event.id)).then(
-      (staff) => current && setLoad({ kind: 'loaded', staff }),
+    keptLoad(keptKeys.staff(event.id), api.staffPlan(event.id)).then(
+      (plan) => current && setLoad({ kind: 'loaded', plan }),
       () => current && setLoad((was) => (was.kind === 'loaded' ? was : { kind: 'failed' })),
     );
 
@@ -109,16 +123,16 @@ export function RosterArea({ event }: { event: OrganisationEvent }) {
       current = false;
     };
   }, [event.id, attempt, answeredAgain]);
-  useKeptAsShown(keptKeys.staff(event.id), load.kind === 'loaded' ? load.staff : null);
+  useKeptAsShown(keptKeys.staff(event.id), load.kind === 'loaded' ? load.plan : null);
 
   const topics = useMemo(() => [realtimeTopic('EventStaff', event.id)], [event.id]);
   useHubTopics(
     topics,
     () => api.staffSubscription(event.id),
     (data) => {
-      const staff = asStaffRoster(data);
-      if (staff == null) setAttempt((n) => n + 1);
-      else setLoad({ kind: 'loaded', staff });
+      const plan = asStaffPlan(data);
+      if (plan == null) setAttempt((n) => n + 1);
+      else setLoad({ kind: 'loaded', plan });
     },
     () => setAttempt((n) => n + 1),
   );
@@ -152,6 +166,7 @@ export function RosterArea({ event }: { event: OrganisationEvent }) {
             <p className="mn-sub">{t('roster.sub')}</p>
           </div>
         </header>
+        <StaffTabs on="roster" eventId={event.id} />
         {load.kind === 'loading' && (
           <Skeleton words={t('roster.loading')} shape="rows" rowHeight={56} />
         )}
@@ -178,8 +193,8 @@ export function RosterArea({ event }: { event: OrganisationEvent }) {
         {load.kind === 'loaded' && (
           <Roster
             event={event}
-            staff={load.staff}
-            onStaff={(staff) => setLoad({ kind: 'loaded', staff })}
+            plan={load.plan}
+            onStaff={(staff) => setLoad({ kind: 'loaded', plan: { ...load.plan, staff } })}
             reload={() => setAttempt((n) => n + 1)}
           />
         )}
@@ -190,16 +205,18 @@ export function RosterArea({ event }: { event: OrganisationEvent }) {
 
 function Roster({
   event,
-  staff,
+  plan,
   onStaff,
   reload,
 }: {
   event: OrganisationEvent;
-  staff: StaffEntry[];
+  plan: StaffPlan;
   onStaff: (staff: StaffEntry[]) => void;
   reload: () => void;
 }) {
   const { t } = useTranslation();
+  const { staff } = plan;
+  const times = staffTimes(event, plan.shifts, currentLocale());
   const session = useSession();
   const manage = canOn(event, 'staff.manage');
   const finished = event.phase === 'finished';
@@ -265,6 +282,8 @@ function Roster({
   function checked(): Problems {
     const found: Problems = {};
     if (draft.name.trim() === '') found.name = t('roster.blank');
+    const locked = jobLocked();
+    if (locked != null) found.job = locked;
     if (!contact) return found;
 
     const length = phoneLengthProblem(draft.number, draft.country);
@@ -277,6 +296,13 @@ function Roster({
       found.email = t('forms.emailShape');
 
     return found;
+  }
+
+  function jobLocked(): string | null {
+    if (editing == null || editing.shifts.length === 0) return null;
+    if (draft.job === (editing.job?.id ?? '')) return null;
+
+    return t('roster.onShifts', { name: editing.fullName });
   }
 
   function refused(found: Problems) {
@@ -305,6 +331,8 @@ function Roster({
             email: draft.email.trim() === '' ? null : draft.email.trim(),
           }
         : {}),
+      job: draft.job === '' ? null : draft.job,
+      ...(editing == null && draft.shift !== '' ? { shift: draft.shift } : {}),
       allowShared: anyway,
     };
 
@@ -338,7 +366,9 @@ function Roster({
         focusAfter.current = 'sn-panel-title';
       }
     } catch (error) {
-      if (error instanceof ApiError && error.code === 'staff_number_shared') {
+      if (error instanceof ApiError && error.code === 'staff_on_shifts') {
+        refused({ job: error.problem.detail ?? t('roster.onShifts', { name }) });
+      } else if (error instanceof ApiError && error.code === 'staff_number_shared') {
         setWarning(error.problem.sharedWith ?? '');
         focusAfter.current = 'rs-warning';
       } else if (error instanceof ApiError && error.code === 'validation_failed') {
@@ -457,13 +487,13 @@ function Roster({
                           </button>
                         </th>
                         <td className={one.job == null ? 'rs-quiet' : undefined}>
-                          {one.job ?? t('roster.noJob')}
+                          {one.job?.name ?? t('roster.noJob')}
                         </td>
                         <td className={one.station == null ? 'rs-quiet' : undefined}>
                           {one.station ?? t('roster.noStation')}
                         </td>
-                        <td className={one.shift == null ? 'rs-quiet' : 'rs-shift'}>
-                          {one.shift ?? t('roster.noShift')}
+                        <td className={one.shifts.length === 0 ? 'rs-quiet' : 'rs-shift'}>
+                          <ShiftCell entry={one} times={times} />
                         </td>
                         <td>
                           <LinkWord link={one.link} />
@@ -483,6 +513,7 @@ function Roster({
               {panel.kind === 'details' && opened != null && (
                 <Details
                   entry={opened}
+                  times={times}
                   manage={manage}
                   finished={finished}
                   onClose={close}
@@ -493,6 +524,7 @@ function Roster({
               {panel.kind === 'remove' && opened != null && (
                 <RemoveAsk
                   entry={opened}
+                  times={times}
                   busy={busy}
                   failed={failed}
                   onKeep={() => {
@@ -511,6 +543,8 @@ function Roster({
                       : t('roster.editTitle', { name: editing.fullName })
                   }
                   draft={draft}
+                  plan={plan}
+                  times={times}
                   problems={problems}
                   contact={contact}
                   warning={warning}
@@ -550,6 +584,53 @@ function Roster({
   );
 }
 
+function shiftLines(entry: StaffEntry, times: StaffTimes, t: TFunction): string[] {
+  return entry.shifts.map((one) =>
+    t('jobs.jobAndShift', {
+      job: entry.job?.name ?? '',
+      when: rangeWords(one.startsAt, one.endsAt, times, t),
+    }),
+  );
+}
+
+function ShiftCell({ entry, times }: { entry: StaffEntry; times: StaffTimes }) {
+  const { t } = useTranslation();
+  const [first, ...more] = entry.shifts;
+  if (first == null) return <>{t('roster.noShift')}</>;
+
+  return (
+    <>
+      {rangeWords(first.startsAt, first.endsAt, times, t)}
+      {more.length > 0 && (
+        <span className="rs-more">{t('roster.moreShifts', { count: more.length })}</span>
+      )}
+    </>
+  );
+}
+
+function ShiftList({
+  entry,
+  times,
+  ask = false,
+}: {
+  entry: StaffEntry;
+  times: StaffTimes;
+  ask?: boolean;
+}) {
+  const { t } = useTranslation();
+  const lines = shiftLines(entry, times, t);
+
+  return (
+    <ul className="rs-shifts">
+      {(lines.length === 0 ? [t('roster.noShift')] : lines).map((line) => (
+        <li key={line} className={ask ? 'rs-ask-shift' : undefined}>
+          {line}
+        </li>
+      ))}
+    </ul>
+  );
+}
+
 function LinkWord({ link }: { link: StaffLink }) {
   const { t } = useTranslation();
 
@@ -585,6 +666,7 @@ function PanelTop({ title, onClose }: { title: string; onClose: () => void }) {
 
 function Details({
   entry,
+  times,
   manage,
   finished,
   onClose,
@@ -592,6 +674,7 @@ function Details({
   onRemove,
 }: {
   entry: StaffEntry;
+  times: StaffTimes;
   manage: boolean;
   finished: boolean;
   onClose: () => void;
@@ -623,7 +706,9 @@ function Details({
         <dl className="rs-facts">
           <div>
             <dt>{t('roster.shift')}</dt>
-            <dd>{entry.shift ?? t('roster.noShift')}</dd>
+            <dd>
+              <ShiftList entry={entry} times={times} />
+            </dd>
           </div>
           <div>
             <dt>{t('roster.station')}</dt>
@@ -675,12 +760,14 @@ function Details({
 
 function RemoveAsk({
   entry,
+  times,
   busy,
   failed,
   onKeep,
   onRemove,
 }: {
   entry: StaffEntry;
+  times: StaffTimes;
   busy: boolean;
   failed: string | null;
   onKeep: () => void;
@@ -699,7 +786,7 @@ function RemoveAsk({
       </div>
       <div className="mn-panel-body">
         {failed != null && <Failed words={failed} />}
-        <p className="rs-ask-shift">{entry.shift ?? t('roster.noShift')}</p>
+        <ShiftList entry={entry} times={times} ask />
         <p className="mn-quiet">{t('roster.stopsWorking')}</p>
       </div>
       <div className="mn-panel-foot">
@@ -733,6 +820,8 @@ function Failed({ words }: { words: string }) {
 function PersonForm({
   title,
   draft,
+  plan,
+  times,
   problems,
   contact,
   warning,
@@ -747,6 +836,8 @@ function PersonForm({
 }: {
   title: string;
   draft: Draft;
+  plan: StaffPlan;
+  times: StaffTimes;
   problems: Problems;
   contact: boolean;
   warning: string | null;
@@ -765,6 +856,10 @@ function PersonForm({
     () => countryChoices(locale).filter(({ code }) => callingCode(code) != null),
     [locale],
   );
+  const openShifts = plan.shifts
+    .filter((one) => one.job === draft.job && one.people.length < one.needed)
+    .sort((a, b) => Date.parse(a.startsAt) - Date.parse(b.startsAt))
+    .map((one) => ({ id: one.id, words: rangeWords(one.startsAt, one.endsAt, times, t) }));
   const told = (id: string, error: string | undefined, help?: boolean) =>
     [error == null ? null : `${id}-error`, help === true ? `${id}-help` : null]
       .filter(Boolean)
@@ -887,6 +982,73 @@ function PersonForm({
             {problems.email != null && (
               <FieldWrong id={`${FIELD_IDS.email}-error`}>{problems.email}</FieldWrong>
             )}
+          </div>
+        )}
+        <div className="desk-field">
+          <label htmlFor={FIELD_IDS.job} className="desk-label">
+            {t('roster.job')}
+          </label>
+          <div
+            className={
+              problems.job == null
+                ? 'desk-box gs-select sn-select'
+                : 'desk-box gs-select sn-select is-wrong'
+            }
+          >
+            <span aria-hidden="true">
+              {plan.jobs.find((one) => one.id === draft.job)?.name ?? t('roster.noJobOption')}
+            </span>
+            <Glyph name="chevdown" size={15} weight={2.4} />
+            <select
+              id={FIELD_IDS.job}
+              value={draft.job}
+              aria-invalid={problems.job != null || undefined}
+              aria-describedby={
+                problems.job == null ? undefined : `${FIELD_IDS.job}-error ${FIELD_IDS.job}-help`
+              }
+              onChange={(change) => onChange({ job: change.target.value, shift: '' })}
+            >
+              <option value="">{t('roster.noJobOption')}</option>
+              {plan.jobs.map((one) => (
+                <option key={one.id} value={one.id}>
+                  {one.name}
+                </option>
+              ))}
+            </select>
+          </div>
+          {problems.job != null && (
+            <>
+              <FieldWrong id={`${FIELD_IDS.job}-error`}>{problems.job}</FieldWrong>
+              <p id={`${FIELD_IDS.job}-help`} className="desk-help">
+                {t('roster.onShiftsHint')}
+              </p>
+            </>
+          )}
+        </div>
+        {!editing && draft.job !== '' && (
+          <div className="desk-field">
+            <label htmlFor="rs-f-shift" className="desk-label">
+              {t('roster.shift')}
+            </label>
+            <div className="desk-box gs-select sn-select">
+              <span aria-hidden="true">
+                {openShifts.find((one) => one.id === draft.shift)?.words ??
+                  t('roster.noShiftOption')}
+              </span>
+              <Glyph name="chevdown" size={15} weight={2.4} />
+              <select
+                id="rs-f-shift"
+                value={draft.shift}
+                onChange={(change) => onChange({ shift: change.target.value })}
+              >
+                <option value="">{t('roster.noShiftOption')}</option>
+                {openShifts.map((one) => (
+                  <option key={one.id} value={one.id}>
+                    {one.words}
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
         )}
       </div>

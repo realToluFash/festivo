@@ -22,6 +22,7 @@ import {
   venueDraftOf,
   venueProblems,
   venueSent,
+  resolvedInstant,
   savedWallClock,
   scheduleKept,
   startMoved,
@@ -586,5 +587,23 @@ describe('a copy of an event (sc-3593)', () => {
   it('has no end until the start has a date and a time', () => {
     expect(copiedEnd('2027-05-15', '', 'Africa/Lagos', lagos)).toBeNull();
     expect(copiedEnd('', '16:00', 'Africa/Lagos', lagos)).toBeNull();
+  });
+});
+
+describe('the instant a wall-clock time is stored at (sc-3908)', () => {
+  it('takes the earlier offset in a repeated hour and moves a skipped one later, as LocalTimeResolver does', () => {
+    expect(resolvedInstant('2026-10-25', '01:30', 'Europe/London')).toBe(
+      Date.parse('2026-10-25T00:30:00Z'),
+    );
+    expect(resolvedInstant('2026-10-26', '01:15', 'Europe/London')).toBe(
+      Date.parse('2026-10-26T01:15:00Z'),
+    );
+    expect(resolvedInstant('2027-03-28', '01:30', 'Europe/London')).toBe(
+      Date.parse('2027-03-28T01:30:00Z'),
+    );
+    expect(resolvedInstant('2026-10-24', '23:00', 'Europe/London')).toBe(
+      Date.parse('2026-10-24T22:00:00Z'),
+    );
+    expect(resolvedInstant('2026-10-24', '', 'Europe/London')).toBeNull();
   });
 });

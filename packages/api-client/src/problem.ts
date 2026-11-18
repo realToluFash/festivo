@@ -38,6 +38,8 @@ export interface Problem {
   /** On `session_timed_out`: the limit that ended it. With `oauth_only` too, the address to sign back in with. */
   days?: number;
   email?: string;
+  /** On a `validation_failed` shift (sc-3908): how many people are on it as the API now has them. */
+  onShift?: number;
   /** On `join_request_cooling_off`: when they may ask that organisation again (sc-562). */
   until?: string;
   /** On `provider_kept_by_rule`: the provider that must stay linked. */

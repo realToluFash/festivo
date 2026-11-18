@@ -31,6 +31,7 @@ import { RunArea } from './RunArea.tsx';
 import { MenuArea } from './MenuArea.tsx';
 import { ScheduleOrNight } from './NightArea.tsx';
 import { SeatingArea } from './SeatingArea.tsx';
+import { JobsShiftsArea } from './JobsShiftsArea.tsx';
 import { RosterArea } from './RosterArea.tsx';
 import { PAGE_NEEDS } from './handoff.ts';
 import { typeLabel } from './eventTypes.ts';
@@ -47,7 +48,7 @@ type Load =
   | { kind: 'notFound' }
   | { kind: 'loaded'; event: OrganisationEvent; tag: string };
 
-type Page = 'event' | 'guests' | 'dates' | 'people' | 'run' | PlaceholderEventArea;
+type Page = 'event' | 'guests' | 'dates' | 'people' | 'run' | 'staffJobs' | PlaceholderEventArea;
 
 export function EventView() {
   return <ForEvent page="event" />;
@@ -72,6 +73,10 @@ export function EventRun() {
 
 export function EventRoster() {
   return <ForEvent page="staff" />;
+}
+
+export function EventJobsShifts() {
+  return <ForEvent page="staffJobs" />;
 }
 
 /** Staff opens its first tab, the Roster (sc-3906). */
@@ -228,6 +233,13 @@ function EventOf({
 
   if (page === 'staff' && load.kind === 'loaded')
     return canOn(load.event, PAGE_NEEDS.staff) ? <RosterArea event={load.event} /> : <Withheld />;
+
+  if (page === 'staffJobs' && load.kind === 'loaded')
+    return canOn(load.event, PAGE_NEEDS.staff) ? (
+      <JobsShiftsArea event={load.event} />
+    ) : (
+      <Withheld />
+    );
 
   if (page === 'guests' && load.kind === 'loaded')
     return canOn(load.event, PAGE_NEEDS.guests) ? (

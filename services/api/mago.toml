@@ -285,7 +285,8 @@ permit = [
 # shared window and typed name (sc-3592). A new date, time or zone re-schedules
 # what the one clock counts from it (sc-104). A duplicate brings the guest list
 # through the guests' scope when asked (sc-3656). Search folds a member's name by the
-# shared rule (NameNormaliser) to match and rank it (sc-39534).
+# shared rule (NameNormaliser) to match and rank it (sc-39534). A new event, and a
+# duplicate, starts with the suggested jobs through the staff scope (sc-3908).
 [[guard.perimeter.rules]]
 namespace = "App\\Domain\\Event\\"
 permit = [
@@ -303,6 +304,7 @@ permit = [
     "@layer:deletion",
     "@layer:domain_seating",
     "@layer:domain_guest",
+    "@layer:domain_staff",
     "@layer:locale",
 ]
 
@@ -348,12 +350,14 @@ permit = [
 
 # Staffing: an event's roster, the people working it without being members (sc-3906). A
 # mobile number is checked by the account's parser; each change is audited and published.
+# A shift's wall-clock times are read in the event's zone as the event's own are (sc-3908).
 [[guard.perimeter.rules]]
 namespace = "App\\Domain\\Staff\\"
 permit = [
     "@layer:native",
     "@layer:external",
     "@layer:shared",
+    "@layer:domain_event",
     "@layer:domain_staff",
     "@layer:domain_user",
     "@layer:repository",

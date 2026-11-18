@@ -176,5 +176,6 @@
     "validation.vendor_email_too_long": "Raccourcissez l’adresse e-mail à {count, number, ::group-auto} caractères maximum.",
     "validation.vendor_website_too_long": "Raccourcissez l’adresse du site web à {count, number, ::group-auto} caractères maximum.",
     "validation.vendor_address_too_long": "Raccourcissez l’adresse à {count, number, ::group-auto} caractères maximum.",
-    "validation.vendor_note_too_long": "Raccourcissez la remarque à {count, number, ::group-auto} caractères maximum."
+    "validation.vendor_note_too_long": "Raccourcissez la remarque à {count, number, ::group-auto} caractères maximum.",
+    "staff.shift_needed_below": "{n, plural, one {{n, number, ::group-auto} person is on this shift. Unassign them first, or keep {n, number, ::group-auto} or more.} other {{n, number, ::group-auto} people are on this shift. Unassign some first, or keep {n, number, ::group-auto} or more.}}"
 }

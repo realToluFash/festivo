@@ -9,6 +9,7 @@ use App\Domain\Event\Cover\EventCoverEditor;
 use App\Domain\Event\Model\Duplicate;
 use App\Domain\Guest\GuestListCopier;
 use App\Domain\Seating\SeatingPlanCopier;
+use App\Domain\Staff\StaffPlan;
 use App\Entity\Event;
 use App\Entity\User;
 use App\Enum\Actor;
@@ -27,6 +28,7 @@ final readonly class EventDuplicator
         private GuestListCopier $guestListCopier,
         private EntityManagerInterface $entityManager,
         private Auditor $auditor,
+        private StaffPlan $staffPlan,
     ) {
     }
 
@@ -42,6 +44,7 @@ final readonly class EventDuplicator
         EventVenue::write($copy, EventVenue::of($original));
         $copy->setArrivalNote($original->getArrivalNote());
         $this->entityManager->persist($copy);
+        $this->staffPlan->suggest($copy);
         $cover = $this->eventCoverEditor->copy($original, $copy);
         $this->seatingPlanCopier->copy($original, $copy, $by);
         $groups = $this->guestListCopier->copyGroups($original, $copy);

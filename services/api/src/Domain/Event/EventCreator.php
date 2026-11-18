@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domain\Event;
 
 use App\Audit\Auditor;
+use App\Domain\Staff\StaffPlan;
 use App\Entity\Event;
 use App\Entity\Organisation;
 use App\Entity\User;
@@ -19,6 +20,7 @@ final readonly class EventCreator
         private EventRules $eventRules,
         private EntityManagerInterface $entityManager,
         private Auditor $auditor,
+        private StaffPlan $staffPlan,
     ) {
     }
 
@@ -42,6 +44,7 @@ final readonly class EventCreator
         $event->setArrivalNote($checked['arrivalNote'] ?? null);
         $event->setHosts($checked['hosts'] ?? []);
         $this->entityManager->persist($event);
+        $this->staffPlan->suggest($event);
 
         $this->auditor->record(self::CREATED, 'Event', $event->getId(), Actor::User, $by->getId(), $by->getName(), self::recorded($event));
 
