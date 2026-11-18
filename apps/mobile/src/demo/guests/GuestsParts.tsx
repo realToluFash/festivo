@@ -420,6 +420,7 @@ export function GuestsTitle({
             glyph="plus"
             height={tokens.sizeHit}
             full={false}
+            grows
             onPress={onPlus}
             testID="guests.add"
           />

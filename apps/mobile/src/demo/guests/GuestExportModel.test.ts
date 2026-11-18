@@ -82,11 +82,13 @@ describe('the app’s guest export (sc-3784)', () => {
     expect(areaStart('exportEmpty')).toMatchObject({ filter: 'held', typed: 'marta' });
     expect(areaStart('exportOffline').offline).toBe(true);
     expect(areaStart('exportDropped').offline).toBe(true);
+    expect(areaStart('offlinePt').offline).toBe(true);
+    expect(areaStart('exportPt').offline).toBe(false);
     expect(roleOf('exportGrantView')).toBe('viewer');
   });
 
   it('lists every state in the demo home', () => {
-    for (const state of EXPORT_STATES) {
+    for (const state of [...EXPORT_STATES, 'exportPt', 'offlinePt'] as const) {
       expect(guestsStateOf(state)).toBe(state);
       expect(GUESTS_BOARDS.some((b) => b.href === `/demo/guests?state=${state}`)).toBe(true);
     }

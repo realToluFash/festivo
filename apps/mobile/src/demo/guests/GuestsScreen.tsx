@@ -128,7 +128,7 @@ export function GuestsScreen({
   const pasted = useMemo(() => pasteStart(state), [state]);
   const [paste, setPaste] = useState<PasteFlow | null>(pasted.flow);
   const { t, i18n } = useTranslation();
-  const inPortuguese = state === 'titlePt';
+  const inPortuguese = state === 'titlePt' || state === 'exportPt' || state === 'offlinePt';
   const portuguese = useMemo(() => i18n.getFixedT('pt'), [i18n]);
   const [guests, setGuests] = useState(opening.guests);
   const [added, setAdded] = useState(opening.added);
@@ -393,11 +393,19 @@ export function GuestsScreen({
         plus={owner && phase !== 'loading' && !empty}
         onPlus={() => show('add', 'plus')}
         extra={
-          owner && phase === 'ok' && !empty && !inPortuguese ? (
+          owner && phase === 'ok' && !empty && state !== 'titlePt' ? (
             <ExportButton
               ref={refFor('export')}
               layout={layout}
               offline={offline}
+              words={
+                inPortuguese
+                  ? {
+                      export: portuguese('guestExport.export'),
+                      needsConnection: portuguese('guestExport.needsConnection'),
+                    }
+                  : undefined
+              }
               onPress={openExport}
             />
           ) : null

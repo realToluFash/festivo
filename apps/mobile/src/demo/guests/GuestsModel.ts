@@ -35,6 +35,8 @@ export const LIST_STATES = [
   'first',
   'inUse',
   'titlePt',
+  'exportPt',
+  'offlinePt',
   'filterOpen',
   'filtered',
   'search',
@@ -1482,6 +1484,7 @@ export function areaStart(state: GuestsState | null): AreaStart {
     case 'failed':
       return { ...base, phase: 'failed' };
     case 'offline':
+    case 'offlinePt':
     case 'whoseOffline':
     case 'fromMessageOffline':
     case 'exportOffline':
