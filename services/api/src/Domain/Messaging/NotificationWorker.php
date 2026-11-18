@@ -187,7 +187,7 @@ final class NotificationWorker
                 return;
             }
 
-            $this->writeDeliveries($id, $type, $audience->kind, $recipients, $eventId, self::moment($row['due_at']) ?? $now, $sendBy);
+            $this->writeDeliveries($id, $type, $audience->kind, $recipients, $eventId, self::moment($row['due_at']) ?? $now, $sendBy, $type->collapseKey(self::dict($row['payload'])));
 
             if (Iter\count($recipients) < self::CHUNK) {
                 $this->finishScheduled($id, ScheduledNotificationStatus::FannedOut, null);
@@ -225,7 +225,7 @@ final class NotificationWorker
     }
 
     /** @param list<Uuid> $recipients */
-    private function writeDeliveries(string $scheduledId, NotificationTypeInterface $type, NotificationAudienceKind $kind, array $recipients, ?string $eventId, DateTimeImmutable $dueAt, ?DateTimeImmutable $sendBy): void
+    private function writeDeliveries(string $scheduledId, NotificationTypeInterface $type, NotificationAudienceKind $kind, array $recipients, ?string $eventId, DateTimeImmutable $dueAt, ?DateTimeImmutable $sendBy, ?string $collapseKey): void
     {
         $sourceId = Type\string()->coerce($this->connection->fetchOne('SELECT source_id FROM scheduled_notifications WHERE id = :id', ['id' => $scheduledId]));
         $now = $this->clock->now();
@@ -238,7 +238,7 @@ final class NotificationWorker
             'type' => $type->name(),
             'source' => $sourceId,
             'kind' => $kind->value,
-            'collapse' => $type->collapseKey(),
+            'collapse' => $collapseKey,
             'pending' => NotificationDeliveryStatus::Pending->value,
             'due' => $dueAt,
             'sendBy' => $sendBy,
@@ -367,11 +367,12 @@ final class NotificationWorker
             return;
         }
 
-        $collapsed = null === $type->collapseKey() ? [] : $this->claimCollapsible($row, $type, $now);
+        $collapseKey = $type->collapseKey(self::dict($row['payload']));
+        $collapsed = null === $collapseKey ? [] : $this->claimCollapsible($row, $collapseKey, $now);
         $payloads = [self::dict($row['payload']), ...Vec\map($collapsed, static fn (array $sibling): array => self::dict($sibling['payload']))];
 
         try {
-            $providerId = $sender->send(Uuid::fromString($id), $recipient, $type->category(), $type->render($channel, $recipient, $payloads), $type->collapseKey());
+            $providerId = $sender->send(Uuid::fromString($id), $recipient, $type->category(), $type->render($channel, $recipient, $payloads), $collapseKey);
         } catch (Unreachable $unreachable) {
             if (!$this->forgetIfCancelled($id)) {
                 $this->finishDelivery($id, NotificationDeliveryStatus::Failed, $unreachable->getMessage(), attempted: true);
@@ -590,7 +591,7 @@ final class NotificationWorker
      *
      * @return list<array<string, mixed>>
      */
-    private function claimCollapsible(array $row, NotificationTypeInterface $type, DateTimeImmutable $now): array
+    private function claimCollapsible(array $row, string $collapseKey, DateTimeImmutable $now): array
     {
         $ids = $this->connection->fetchFirstColumn(
             <<<'SQL'
@@ -619,7 +620,7 @@ final class NotificationWorker
                 'kind' => $row['recipient_kind'],
                 'recipient' => $row['recipient_id'],
                 'channel' => $row['channel'],
-                'collapse' => $type->collapseKey(),
+                'collapse' => $collapseKey,
             ],
             ['now' => Types::DATETIME_IMMUTABLE, 'lease' => Types::DATETIME_IMMUTABLE],
         );

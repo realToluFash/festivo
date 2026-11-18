@@ -92,7 +92,7 @@ final readonly class ScriptedNotificationType implements NotificationTypeInterfa
         return false;
     }
 
-    public function collapseKey(): ?string
+    public function collapseKey(array $payload): ?string
     {
         return $this->collapseKey;
     }

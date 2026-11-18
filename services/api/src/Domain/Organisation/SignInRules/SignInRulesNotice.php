@@ -113,7 +113,7 @@ final readonly class SignInRulesNotice implements NotificationTypeInterface
         return false;
     }
 
-    public function collapseKey(): ?string
+    public function collapseKey(array $payload): ?string
     {
         return null;
     }

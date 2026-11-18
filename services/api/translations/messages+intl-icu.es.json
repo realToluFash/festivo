@@ -161,5 +161,14 @@
     "seating.seat_in_use": "{name} ocupa este asiento. Libérelo primero.",
     "seating.guest_not_waiting": "{name} no viene o ya no está en la lista, así que no puede tener asiento.",
     "seating.companion_of": "Acompañante de {name}",
-    "validation.seating_no_such_chair": "Elija un asiento de {name} que se pueda usar."
+    "validation.seating_no_such_chair": "Elija un asiento de {name} que se pueda usar.",
+    "run_of_show.card.title": "{event} · {place}",
+    "run_of_show.card.main": "Principal",
+    "run_of_show.card.on_day": "{place} · {day}",
+    "run_of_show.card.now": "{title} · desde {hour, plural, =1 {la} other {las}} {time}",
+    "run_of_show.card.nothing_on": "No hay nada en curso",
+    "run_of_show.card.next": "A continuación: {title} · hacia {hour, plural, =1 {la} other {las}} {time}",
+    "run_of_show.card.nothing_else": "No hay nada más previsto en {place}.",
+    "run_of_show.card.as_of": "Actualizado a {hour, plural, =1 {la} other {las}} {time}",
+    "run_of_show.card.everything": "Eso es todo."
 }

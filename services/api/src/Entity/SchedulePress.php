@@ -71,7 +71,11 @@ class SchedulePress
     #[ORM\JoinColumn(nullable: true, onDelete: 'SET NULL')]
     private ?SchedulePress $setAsideFor = null;
 
-    public function __construct(Event $event, ScheduleItem $item, PressKind $kind, DateTimeImmutable $pressedAt, string $idempotencyKey, string $fingerprint, ?User $pressedBy, string $pressedByName)
+    /** Made on a night opened by a tap on a run-of-show card and not left or sent to the background since, as the device settled it at the press (sc-66580). Nobody sees it: it counts for the parked Bold, sc-66604. */
+    #[ORM\Column(type: Types::BOOLEAN, options: ['default' => false])]
+    private bool $fromCard;
+
+    public function __construct(Event $event, ScheduleItem $item, PressKind $kind, DateTimeImmutable $pressedAt, string $idempotencyKey, string $fingerprint, ?User $pressedBy, string $pressedByName, bool $fromCard = false)
     {
         $this->id = Uuid::v7();
         $this->event = $event;
@@ -82,6 +86,7 @@ class SchedulePress
         $this->fingerprint = $fingerprint;
         $this->pressedBy = $pressedBy;
         $this->pressedByName = $pressedByName;
+        $this->fromCard = $fromCard;
     }
 
     public function getId(): Uuid
@@ -153,5 +158,10 @@ class SchedulePress
     {
         $this->setAside = true;
         $this->setAsideFor = $for;
+    }
+
+    public function isFromCard(): bool
+    {
+        return $this->fromCard;
     }
 }
