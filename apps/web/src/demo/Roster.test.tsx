@@ -193,6 +193,28 @@ describe('/demo/events/evt-wed-4/staff/roster (sc-3906)', () => {
     ).toEqual(['Door · 16:30 to 21:00', 'Door · 23:00 to 02:00']);
   });
 
+  it('names each shift’s day on an event over 24 hours (sc-3908)', async () => {
+    await open('longEvent');
+    const table = screen.getByRole('table');
+    expect(within(table).getByText('Thu 5 Nov, 17:30 to 21:00')).toBeTruthy();
+    expect(within(table).getByText('Sat 7 Nov, 10:00 to 15:00')).toBeTruthy();
+    const details = screen.getByRole('complementary');
+    expect(within(details).getByText('Door · Fri 6 Nov, 23:00 to Sat 7 Nov, 02:00')).toBeTruthy();
+  });
+
+  it('lists every dated shift on Remove from the event (sc-3908)', async () => {
+    await open('longEventRemove');
+    expect(
+      within(screen.getByRole('complementary'))
+        .getAllByRole('listitem')
+        .map((one) => one.textContent),
+    ).toEqual([
+      'Door · Thu 5 Nov, 17:30 to 21:00',
+      'Door · Fri 6 Nov, 16:30 to 21:00',
+      'Door · Fri 6 Nov, 23:00 to Sat 7 Nov, 02:00',
+    ]);
+  });
+
   it('keeps the card heading 12rem wide below 720 px, as the product does', () => {
     expect(
       cssRule('.rs .sn-card-names', ROSTER_CSS.slice(ROSTER_CSS.indexOf('(width <= 720px)'))),

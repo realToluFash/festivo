@@ -116,4 +116,26 @@ describe('/demo/events/evt-wed-4/staff/jobs (sc-3908)', () => {
     expect(button('Add a job')).toBeNull();
     expect(button('Unassign Ifeoma Nduka')).toBeNull();
   });
+
+  it('names each start and end’s day on an event over 24 hours', async () => {
+    await open('longEvent');
+    expect(screen.getByText('Fri 6 Nov')).toBeTruthy();
+    expect(screen.getByText('Sat 7 Nov')).toBeTruthy();
+    expect(screen.getAllByText('Fri 6 Nov, 16:00 to Sat 7 Nov, 01:00').length).toBeGreaterThan(0);
+    expect(
+      screen.getByText(
+        'The event runs from Thu 5 Nov, 18:00 to Sat 7 Nov, 15:00. A shift may start before it or end after it.',
+      ),
+    ).toBeTruthy();
+    fireEvent.click(button('Table') as HTMLElement);
+    const table = screen.getByRole('table');
+    expect(within(table).getAllByText('Thu 5 Nov, 18:00 to 23:00').length).toBeGreaterThan(0);
+  });
+
+  it('refuses an overlap with its days on an event over 24 hours', async () => {
+    await open('longEventOverlap');
+    expect(
+      screen.getByText('Sade Lawal is on Bar from Fri 6 Nov, 16:00 to Sat 7 Nov, 01:00.'),
+    ).toBeTruthy();
+  });
 });

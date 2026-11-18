@@ -146,10 +146,19 @@ export function linkOf(entry: Entry, erased: boolean): LinkState {
 const DAY = 24 * 60;
 const DAY_TURNS = 6 * 60;
 
-/** Minutes from 06:00, so a start after midnight sorts last; the product sorts on sc-3908's full start. */
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+/** Minutes from 06:00, so a start after midnight sorts last; a start that names its day ("Fri 6 Nov, 16:00") sorts by it. The product sorts on sc-3908's full start. */
 function startOf(entry: Entry): number | null {
   const clock = entry.shift?.split(' to ')[0];
   if (clock == null) return null;
+  const dated = /^\S+ (\d{1,2}) (\S+), (\d{2}):(\d{2})$/.exec(clock);
+  if (dated != null)
+    return (
+      Date.UTC(2026, MONTHS.indexOf(dated[2] as string), Number(dated[1])) / 60_000 +
+      Number(dated[3]) * 60 +
+      Number(dated[4])
+    );
   const [hours, minutes] = clock.split(':').map(Number);
 
   return ((hours as number) * 60 + (minutes as number) - DAY_TURNS + DAY) % DAY;
@@ -359,6 +368,41 @@ export function sample(): Entry[] {
   ];
 }
 
+const dated = (id: string, shift: string, ...more: string[]) => ({ id, shift, more });
+
+/** The wedding, Thu 5 Nov 18:00 to Sat 7 Nov 15:00 (sc-3908's weddingPlan): every start and end names its day. */
+const WEDDING: readonly { id: string; shift: string; more: string[] }[] = [
+  dated('bisi', 'Thu 5 Nov, 16:00 to 22:00', 'Fri 6 Nov, 14:00 to 23:00'),
+  dated('tayo', 'Thu 5 Nov, 16:00 to 22:00', 'Fri 6 Nov, 14:00 to 23:00'),
+  dated('ada', 'Fri 6 Nov, 14:00 to 23:00', 'Sat 7 Nov, 08:00 to 13:00'),
+  dated(
+    'ifeoma',
+    'Thu 5 Nov, 18:00 to 23:00',
+    'Fri 6 Nov, 16:00 to Sat 7 Nov, 01:00',
+    'Sat 7 Nov, 10:00 to 15:00',
+  ),
+  dated('sade', 'Fri 6 Nov, 16:00 to Sat 7 Nov, 01:00'),
+  dated(
+    'tolu',
+    'Thu 5 Nov, 17:30 to 21:00',
+    'Fri 6 Nov, 16:30 to 21:00',
+    'Fri 6 Nov, 23:00 to Sat 7 Nov, 02:00',
+  ),
+  dated('amina', 'Thu 5 Nov, 18:00 to 23:00', 'Fri 6 Nov, 17:00 to Sat 7 Nov, 00:00'),
+  dated('grace', 'Thu 5 Nov, 18:00 to 23:00', 'Fri 6 Nov, 17:00 to Sat 7 Nov, 00:00'),
+  dated('kunle', 'Fri 6 Nov, 17:00 to Sat 7 Nov, 00:00', 'Sat 7 Nov, 10:00 to 15:00'),
+  dated('ronke', 'Fri 6 Nov, 17:00 to Sat 7 Nov, 00:00'),
+  dated('emeka', 'Sat 7 Nov, 10:00 to 15:00'),
+];
+
+export function weddingSample(): Entry[] {
+  return sample().map((one) => {
+    const at = WEDDING.find((row) => row.id === one.id);
+
+    return at == null ? one : { ...one, shift: at.shift, more: at.more };
+  });
+}
+
 export interface RosterStart {
   name: string;
   note: string;
@@ -560,6 +604,20 @@ const STATES = {
       draft: typed({ name: 'Kemi Ade', number: '0803 111 0013' }),
       failed: RW.notAdded('Kemi Ade'),
     }),
+  longEvent: () =>
+    start({
+      name: 'An event over 24 hours, the wedding Thu 5 Nov to Sat 7 Nov',
+      note: 'Each Shift names its day; Tolu Bello’s details list all three by start.',
+      entries: weddingSample(),
+      panel: { kind: 'details', id: 'tolu' },
+    }),
+  longEventRemove: () =>
+    start({
+      name: 'An event over 24 hours, Remove from the event',
+      note: 'Tolu Bello’s three shifts, each with its day.',
+      entries: weddingSample(),
+      panel: { kind: 'remove', id: 'tolu' },
+    }),
 } satisfies Record<string, () => RosterStart>;
 
 export type RosterStateName = keyof typeof STATES;
@@ -616,5 +674,9 @@ export const ROSTER_PAGES: readonly { name: string; states: readonly DemoLink[] 
     states: (
       ['edit', 'editJobOnShift', 'editDuplicateNumber', 'removeAsk', 'removeTwoShifts'] as const
     ).map(link),
+  },
+  {
+    name: 'An event over 24 hours',
+    states: (['longEvent', 'longEventRemove'] as const).map(link),
   },
 ];

@@ -9,6 +9,8 @@ export const NEEDED_MAX = 50;
 export const JOB_NAME_MAX = 60;
 export const FIRST_DAY = '2026-11-07';
 export const EVENT_HOURS = { start: 16 * 60, end: 26 * 60 } as const;
+/** The sample wedding, Thu 5 Nov 18:00 to Sat 7 Nov 15:00: an event longer than 24 hours (Decided, 18 Nov 2026 (pm): from the demo). */
+export const WEDDING_HOURS = { start: -30 * 60, end: 15 * 60 } as const;
 
 export type Level = 'view' | 'checkIn' | 'floor' | 'pass' | 'run';
 
@@ -54,6 +56,7 @@ export interface Person {
 }
 
 export interface Plan {
+  event: { start: number; end: number };
   jobs: Job[];
   shifts: Shift[];
   people: Person[];
@@ -119,19 +122,15 @@ export const JW = {
     `${on} of ${needed} ${needed === 1 ? 'place' : 'places'} filled`,
   shiftCount: (n: number) => (n === 1 ? '1 shift' : `${n} shifts`),
   short: (n: number) => `Short ${n}`,
-  span: (start: number, end: number) => `${clock(start)} to ${clock(end)}`,
   summary: (short: number, covered: number) =>
     `${short === 1 ? '1 job is' : `${short} jobs are`} short at some point, ${covered} covered.`,
-  overlap: (name: string, job: string, start: number, end: number) =>
-    `${name} is on ${job} from ${clock(start)} to ${clock(end)}.`,
+  overlap: (name: string, job: string, when: string) => `${name} is on ${job} from ${when}.`,
   worksAs: (name: string, job: string) => `${name} works as ${job} on this event.`,
   noJobYet: 'No job yet',
   takesJob: (job: string) => `No job yet. Takes ${job}.`,
   otherShifts: 'Not on another shift',
-  assignTo: (job: string, start: number, end: number) =>
-    `Assign to ${job}, ${clock(start)} to ${clock(end)}`,
-  assigned: (name: string, job: string, start: number, end: number) =>
-    `${name} is on ${job} from ${clock(start)} to ${clock(end)}.`,
+  assignTo: (job: string, when: string) => `Assign to ${job}, ${when}`,
+  assigned: (name: string, job: string, when: string) => `${name} is on ${job} from ${when}.`,
   jobTaken: (name: string, job: string) => `${name}’s job is now ${job}.`,
   unassign: (name: string) => `Unassign ${name}`,
   unassigned: (name: string) => `${name} unassigned. The place is open.`,
@@ -143,14 +142,12 @@ export const JW = {
     n === 1 ? '1 person is on its shifts.' : `${n} people are on its shifts.`,
   removed: (job: string) => `${job} removed.`,
   jobAdded: (job: string) => `${job} added.`,
-  shiftAdded: (job: string, start: number, end: number) =>
-    `Shift added: ${job}, ${clock(start)} to ${clock(end)}.`,
+  shiftAdded: (job: string, when: string) => `Shift added: ${job}, ${when}.`,
   saved: 'Saved.',
   editJob: (job: string) => `Edit ${job}`,
-  editShift: (job: string, start: number, end: number) =>
-    `${job}, ${clock(start)} to ${clock(end)}`,
-  eventHours: (start: number, end: number) =>
-    `The event runs from ${clock(start)} to ${clock(end)}. A shift may start before it or end after it.`,
+  editShift: (job: string, when: string) => `${job}, ${when}`,
+  eventHours: (when: string) =>
+    `The event runs from ${when}. A shift may start before it or end after it.`,
   notOnHere: 'Everyone on the roster is on this shift.',
 };
 
@@ -168,6 +165,16 @@ const FIRST_MS = Date.UTC(2026, 10, 7);
 
 export function dateOf(minutes: number): string {
   return new Date(FIRST_MS + Math.floor(minutes / DAY) * DAY_MS).toISOString().slice(0, 10);
+}
+
+/** The locale's short date (CLDR), en-GB here: "Sat 7 Nov". */
+export function dayOf(minutes: number): string {
+  return new Date(`${dateOf(minutes)}T12:00:00Z`).toLocaleDateString('en-GB', {
+    weekday: 'short',
+    day: 'numeric',
+    month: 'short',
+    timeZone: 'UTC',
+  });
 }
 
 export function weekdayOf(date: string): string {
@@ -237,13 +244,53 @@ function at(shifts: readonly Shift[], moment: number): Cell {
   };
 }
 
+/** From the earlier of the event's start and its first shift's, to the later of their ends. */
+export function spanOf(plan: Plan): { start: number; end: number } {
+  return {
+    start: Math.min(plan.event.start, ...plan.shifts.map((one) => one.start)),
+    end: Math.max(plan.event.end, ...plan.shifts.map((one) => one.end)),
+  };
+}
+
 export function windowOf(plan: Plan): { start: number; end: number } {
-  const starts = plan.shifts.map((one) => one.start);
-  const ends = plan.shifts.map((one) => one.end);
-  const start = Math.min(EVENT_HOURS.start, ...starts);
-  const end = Math.max(EVENT_HOURS.end, ...ends);
+  const { start, end } = spanOf(plan);
 
   return { start: Math.floor(start / STEP) * STEP, end: Math.ceil(end / STEP) * STEP };
+}
+
+/** Over 24 hours a clock time no longer names one moment, so every start and end names its day. */
+export function isLong(plan: Plan): boolean {
+  const { start, end } = spanOf(plan);
+
+  return end - start > DAY;
+}
+
+/** "16:00 to 01:00"; over 24 hours "Fri 6 Nov, 16:00 to Sat 7 Nov, 01:00", the end's date left out on the start's date. */
+export function rangeOf(plan: Plan, start: number, end: number): string {
+  if (!isLong(plan)) return `${clock(start)} to ${clock(end)}`;
+  const ends = dateOf(end) === dateOf(start) ? clock(end) : `${dayOf(end)}, ${clock(end)}`;
+
+  return `${dayOf(start)}, ${clock(start)} to ${ends}`;
+}
+
+export interface Tick {
+  at: number;
+  words: string;
+  day: boolean;
+}
+
+/** The strip's axis, a tick per step: each hour's clock time, and over 24 hours each midnight's day in place of 00:00, across that step and the next so it has room in every locale. */
+export function ticksOf(plan: Plan): Tick[] {
+  const window = windowOf(plan);
+  const long = isLong(plan);
+  const ticks: Tick[] = [];
+  for (let at = window.start; at < window.end; at += STEP) {
+    const day = long && clock(at) === '00:00';
+    if (ticks.at(-1)?.day === true && ticks.at(-1)?.at === at - STEP) continue;
+    ticks.push({ at, words: day ? dayOf(at) : at % 60 === 0 ? clock(at) : '', day });
+  }
+
+  return ticks;
 }
 
 /** Each job with shifts, step by step at the moment it is shortest, with its steady spans and its gaps written out. */
@@ -358,13 +405,13 @@ export function midnightLine(draft: ShiftDraft): string | null {
   return JW.midnight(weekdayOf(draft.endDate), draft.endTime);
 }
 
-export function shiftDraftOf(shift: Shift | null, job = ''): ShiftDraft {
+export function shiftDraftOf(shift: Shift | null, job = '', day = FIRST_DAY): ShiftDraft {
   if (shift == null)
     return {
       job,
-      startDate: FIRST_DAY,
+      startDate: day,
       startTime: '',
-      endDate: FIRST_DAY,
+      endDate: day,
       endTime: '',
       needed: '1',
     };
@@ -385,7 +432,11 @@ export function newOverlap(plan: Plan, shift: Shift, start: number, end: number)
       (one) => one.id !== shift.id && overlaps(one, { start, end }),
     );
     if (other != null)
-      return JW.overlap(personName(plan, id), jobName(plan, other.job), other.start, other.end);
+      return JW.overlap(
+        personName(plan, id),
+        jobName(plan, other.job),
+        rangeOf(plan, other.start, other.end),
+      );
   }
 
   return null;
@@ -400,7 +451,7 @@ export function assignRefusal(plan: Plan, shift: Shift, personId: string): strin
 
   return other == null
     ? null
-    : JW.overlap(person.name, jobName(plan, other.job), other.start, other.end);
+    : JW.overlap(person.name, jobName(plan, other.job), rangeOf(plan, other.start, other.end));
 }
 
 export function assign(plan: Plan, shiftId: string, personId: string): Plan {
@@ -443,6 +494,7 @@ export function peopleOnJob(plan: Plan, jobId: string): number {
 /** Its shifts go with it, and anyone on the roster who held it is left with no job. */
 export function removeJob(plan: Plan, jobId: string): Plan {
   return {
+    event: plan.event,
     jobs: plan.jobs.filter((one) => one.id !== jobId),
     shifts: plan.shifts.filter((one) => one.job !== jobId),
     people: plan.people.map((one) => (one.job === jobId ? { ...one, job: null } : one)),
@@ -485,6 +537,7 @@ const shift = (
 
 export function samplePlan(): Plan {
   return {
+    event: { ...EVENT_HOURS },
     jobs: JOBS.map((one) => ({ ...one })),
     shifts: [
       shift('lead', 'lead', h(16), h(25), 1, ['ifeoma']),
@@ -503,6 +556,34 @@ export function samplePlan(): Plan {
       name: one.name,
       job: JOBS.find((job) => job.name === one.job)?.id ?? null,
     })),
+  };
+}
+
+const on = (date: number, hours: number, minutes = 0) => (date - 7) * DAY + h(hours, minutes);
+
+/** The wedding over three dates, Thu 5 Nov 18:00 to Sat 7 Nov 15:00, with the same roster: dinner, the party into Saturday, and brunch. */
+export function weddingPlan(): Plan {
+  return {
+    ...samplePlan(),
+    event: { ...WEDDING_HOURS },
+    shifts: [
+      shift('lead1', 'lead', on(5, 18), on(5, 23), 1, ['ifeoma']),
+      shift('lead2', 'lead', on(6, 16), on(7, 1), 1, ['ifeoma']),
+      shift('lead3', 'lead', on(7, 10), on(7, 15), 1, ['ifeoma']),
+      shift('cook1', 'cook', on(5, 16), on(5, 22), 2, ['bisi', 'tayo']),
+      shift('cook2', 'cook', on(6, 14), on(6, 23), 3, ['bisi', 'tayo', 'ada']),
+      shift('cook3', 'cook', on(7, 8), on(7, 13), 2, ['ada']),
+      shift('w1', 'waiter', on(5, 18), on(5, 23), 2, ['amina', 'grace']),
+      shift('w2', 'waiter', on(6, 17), on(7, 0), 4, ['amina', 'grace', 'kunle']),
+      shift('w3', 'waiter', on(7, 10), on(7, 15), 2, ['emeka', 'kunle']),
+      shift('run', 'runner', on(6, 17), on(7, 0), 2, ['ronke']),
+      shift('bar1', 'bar', on(6, 16), on(7, 1), 1, ['sade']),
+      shift('bar2', 'bar', on(6, 21, 15), on(6, 23), 1, []),
+      shift('door1', 'door', on(5, 17, 30), on(5, 21), 1, ['tolu']),
+      shift('door2', 'door', on(6, 16, 30), on(6, 21), 1, ['tolu']),
+      shift('door3', 'door', on(6, 23), on(7, 2), 1, ['tolu']),
+      shift('mc', 'mc', on(6, 19), on(6, 20), 1, []),
+    ],
   };
 }
 
@@ -568,6 +649,7 @@ const STATES = {
       name: 'A new event, the suggested jobs',
       note: 'No shifts yet: no strip, and each job says No shifts.',
       plan: {
+        event: { ...EVENT_HOURS },
         jobs: SUGGESTED.map((one) => ({ ...one })),
         shifts: [],
         people: samplePlan().people.map((one) => ({ ...one, job: null })),
@@ -710,7 +792,7 @@ const STATES = {
       note: 'Door 23:00 moved to 20:00: Tolu Bello is on Door until 21:00. The old times stay.',
       panel: { kind: 'editShift', shift: 'door2' },
       shiftDraft: { ...shiftDraftOf(sampled('door2')), startDate: FIRST_DAY, startTime: '20:00' },
-      overlap: JW.overlap('Tolu Bello', 'Door', h(16, 30), h(21)),
+      overlap: JW.overlap('Tolu Bello', 'Door', rangeOf(samplePlan(), h(16, 30), h(21))),
     }),
   editNeedBelow: () =>
     start({
@@ -748,7 +830,10 @@ const STATES = {
       name: 'Assign, an overlapping shift',
       note: 'Sade Lawal is on Bar from 16:00 to 01:00.',
       panel: { kind: 'assign', shift: 'bar2' },
-      refused: { person: 'sade', words: JW.overlap('Sade Lawal', 'Bar', h(16), h(25)) },
+      refused: {
+        person: 'sade',
+        words: JW.overlap('Sade Lawal', 'Bar', rangeOf(samplePlan(), h(16), h(25))),
+      },
     }),
   assignOtherJob: () =>
     start({
@@ -756,6 +841,33 @@ const STATES = {
       note: 'Tolu Bello works as Door on this event.',
       panel: { kind: 'assign', shift: 'bar2' },
       refused: { person: 'tolu', words: JW.worksAs('Tolu Bello', 'Door') },
+    }),
+  longEvent: () =>
+    start({
+      name: 'An event over 24 hours, the wedding Thu 5 Nov to Sat 7 Nov',
+      note: 'One strip over the whole span: each midnight reads its day, and every start and end names its day.',
+      plan: weddingPlan(),
+      shiftDraft: shiftDraftOf(null, '', dateOf(WEDDING_HOURS.start)),
+    }),
+  longEventTable: () =>
+    start({
+      name: 'An event over 24 hours, coverage as a table',
+      note: 'Each Time names its day; the end’s date only when it falls on another.',
+      plan: weddingPlan(),
+      view: 'table',
+      shiftDraft: shiftDraftOf(null, '', dateOf(WEDDING_HOURS.start)),
+    }),
+  longEventOverlap: () =>
+    start({
+      name: 'An event over 24 hours, an overlapping shift',
+      note: 'Sade Lawal is on Bar from Fri 6 Nov, 16:00 to Sat 7 Nov, 01:00.',
+      plan: weddingPlan(),
+      panel: { kind: 'assign', shift: 'bar2' },
+      refused: {
+        person: 'sade',
+        words: JW.overlap('Sade Lawal', 'Bar', rangeOf(weddingPlan(), on(6, 16), on(7, 1))),
+      },
+      shiftDraft: shiftDraftOf(null, '', dateOf(WEDDING_HOURS.start)),
     }),
 } satisfies Record<string, () => JobsStart>;
 
@@ -819,5 +931,9 @@ export const JOBS_PAGES: readonly { name: string; states: readonly DemoLink[] }[
   {
     name: 'Assigning, and a full shift',
     states: (['assign', 'assignOverlap', 'assignOtherJob'] as const).map(link),
+  },
+  {
+    name: 'An event over 24 hours',
+    states: (['longEvent', 'longEventTable', 'longEventOverlap'] as const).map(link),
   },
 ];

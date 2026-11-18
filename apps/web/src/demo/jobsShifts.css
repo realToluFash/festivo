@@ -59,6 +59,14 @@
   font-variant-numeric: tabular-nums;
 }
 
+.js-tick {
+  white-space: nowrap;
+}
+
+.js-tick.is-day {
+  grid-column: span 2;
+}
+
 .js-row {
   display: grid;
   grid-template-columns: 120px max-content;

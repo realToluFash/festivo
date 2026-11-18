@@ -18,8 +18,13 @@ import {
   shiftProblems,
   summaryOf,
   unassign,
+  ticksOf,
+  weddingPlan,
   windowOf,
+  rangeOf,
+  isLong,
 } from './shifts.ts';
+import { weddingSample } from './roster.ts';
 
 const draft = (o: Partial<ShiftDraft>): ShiftDraft => ({
   ...shiftDraftOf(null),
@@ -178,5 +183,52 @@ describe('removing a job', () => {
     const after = removeJob(unassign(held, 'mc', 'chinedu'), 'mc');
     expect(after.shifts.some((one) => one.job === 'mc')).toBe(false);
     expect(after.people.find((one) => one.id === 'chinedu')?.job).toBeNull();
+  });
+});
+
+describe('an event over 24 hours (sc-3908, Decided 18 Nov 2026 (pm): from the demo)', () => {
+  const wedding = weddingPlan();
+  const weddingRow = (job: string) => coverageOf(wedding).find((one) => one.job.id === job)!;
+
+  it('keeps clock times for the one night, and names the day once the span passes 24 hours', () => {
+    expect(isLong(samplePlan())).toBe(false);
+    expect(rangeOf(samplePlan(), 16 * 60, 25 * 60)).toBe('16:00 to 01:00');
+    expect(isLong(wedding)).toBe(true);
+    const bar = wedding.shifts.find((one) => one.id === 'bar1')!;
+    expect(rangeOf(wedding, bar.start, bar.end)).toBe('Fri 6 Nov, 16:00 to Sat 7 Nov, 01:00');
+    const door = wedding.shifts.find((one) => one.id === 'door2')!;
+    expect(rangeOf(wedding, door.start, door.end)).toBe('Fri 6 Nov, 16:30 to 21:00');
+  });
+
+  it('draws one strip from Cook’s Thursday set-up to the brunch’s end, each midnight reading its day', () => {
+    const window = windowOf(wedding);
+    expect([rangeOf(wedding, window.start, window.end)]).toEqual([
+      'Thu 5 Nov, 16:00 to Sat 7 Nov, 15:00',
+    ]);
+    expect(weddingRow('cook').cells).toHaveLength(94);
+    const days = ticksOf(wedding).filter((one) => one.day);
+    expect(days.map((one) => one.words)).toEqual(['Fri 6 Nov', 'Sat 7 Nov']);
+    expect(ticksOf(wedding).some((one) => one.words === '00:00')).toBe(false);
+    expect(ticksOf(samplePlan()).find((one) => one.words === '00:00')).toBeTruthy();
+  });
+
+  it('writes each gap and the overlap refusal with their days', () => {
+    expect(
+      weddingRow('waiter').gaps.map((gap) => [gap.short, rangeOf(wedding, gap.start, gap.end)]),
+    ).toEqual([[1, 'Fri 6 Nov, 17:00 to Sat 7 Nov, 00:00']]);
+    const bar2 = wedding.shifts.find((one) => one.id === 'bar2')!;
+    expect(assignRefusal(wedding, bar2, 'sade')).toBe(
+      'Sade Lawal is on Bar from Fri 6 Nov, 16:00 to Sat 7 Nov, 01:00.',
+    );
+  });
+
+  it('gives the roster the same shifts, earliest first, as the plan holds them', () => {
+    for (const entry of weddingSample().filter((one) => one.shift != null)) {
+      const theirs = wedding.shifts
+        .filter((one) => one.people.includes(entry.id))
+        .sort((a, b) => a.start - b.start)
+        .map((one) => rangeOf(wedding, one.start, one.end));
+      expect([entry.shift, ...entry.more]).toEqual(theirs);
+    }
   });
 });

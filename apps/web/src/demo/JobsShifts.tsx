@@ -23,7 +23,6 @@ import {
   type Shift,
   type ShiftDraft,
   type ShiftProblems,
-  EVENT_HOURS,
   JOB_NAME_MAX,
   JW,
   LEVELS,
@@ -31,8 +30,8 @@ import {
   assign,
   assignRefusal,
   byStart,
-  clock,
   coverageOf,
+  dateOf,
   firstProblem,
   jobName,
   jobProblem,
@@ -43,12 +42,14 @@ import {
   newOverlap,
   peopleOnJob,
   personName,
+  rangeOf,
   removeCase,
   removeJob,
   shiftDraftOf,
   shiftProblems,
   shiftsOf,
   summaryOf,
+  ticksOf,
   unassign,
   windowOf,
 } from './shifts.ts';
@@ -159,7 +160,7 @@ function JobsView({ first, event, tell }: { first: JobsStart; event: SampleEvent
       const job = plan.jobs.find((one) => one.id === next.job);
       setJobDraft({ name: job?.name ?? '', level: job?.level ?? 'view' });
     }
-    if (next?.kind === 'addShift') setShiftDraft(shiftDraftOf(null));
+    if (next?.kind === 'addShift') setShiftDraft(shiftDraftOf(null, '', dateOf(plan.event.start)));
     if (next?.kind === 'editShift') setShiftDraft(shiftDraftOf(shiftOf(next.shift)));
     setPanel(next);
     focusAfter.current = 'sn-panel-title';
@@ -247,7 +248,7 @@ function JobsView({ first, event, tell }: { first: JobsStart; event: SampleEvent
         ...plan,
         shifts: [...plan.shifts, { id, job: shiftDraft.job, start, end, needed, people: [] }],
       });
-      setSaid(JW.shiftAdded(jobName(plan, shiftDraft.job), start, end));
+      setSaid(JW.shiftAdded(jobName(plan, shiftDraft.job), rangeOf(plan, start, end)));
       close('js-add-shift');
       return;
     }
@@ -292,7 +293,9 @@ function JobsView({ first, event, tell }: { first: JobsStart; event: SampleEvent
     setPlan(now);
     setRefused(null);
     const took = person?.job == null ? ` ${JW.jobTaken(person?.name ?? '', job)}` : '';
-    setSaid(`${JW.assigned(person?.name ?? '', job, shift.start, shift.end)}${took}`);
+    setSaid(
+      `${JW.assigned(person?.name ?? '', job, rangeOf(plan, shift.start, shift.end))}${took}`,
+    );
     const after = now.shifts.find((one) => one.id === shift.id) as Shift;
     if (after.people.length >= after.needed) close(`js-times-${shift.id}`);
     else focusAfter.current = 'sn-panel-title';
@@ -519,6 +522,7 @@ function CoverageCard({
   const window = windowOf(plan);
   const steps: number[] = [];
   for (let at = window.start; at < window.end; at += STEP) steps.push(at);
+  const ticks = ticksOf(plan);
 
   return (
     <section className="sn-card" aria-labelledby="js-coverage">
@@ -526,7 +530,9 @@ function CoverageCard({
         <div className="sn-card-names">
           <h2 id="js-coverage">{JW.coverage}</h2>
           {coverage.length > 0 && <p className="mn-sub">{summaryOf(coverage)}</p>}
-          <p className="mn-quiet">{JW.eventHours(EVENT_HOURS.start, EVENT_HOURS.end)}</p>
+          <p className="mn-quiet">
+            {JW.eventHours(rangeOf(plan, plan.event.start, plan.event.end))}
+          </p>
         </div>
         {coverage.length > 0 && (
           <div className="js-seg" role="group" aria-label={JW.view}>
@@ -552,9 +558,9 @@ function CoverageCard({
           <div className="js-strip">
             <div className="js-axis" aria-hidden="true">
               <span className="js-axis-name" />
-              {steps.map((at) => (
-                <span key={at} className="js-tick">
-                  {at % 60 === 0 ? clock(at) : ''}
+              {ticks.map((tick) => (
+                <span key={tick.at} className={tick.day ? 'js-tick is-day' : 'js-tick'}>
+                  {tick.words}
                 </span>
               ))}
             </div>
@@ -584,7 +590,9 @@ function CoverageCard({
                   {row.gaps.length === 0
                     ? JW.covered
                     : row.gaps
-                        .map((gap) => `${JW.short(gap.short)} · ${JW.span(gap.start, gap.end)}`)
+                        .map(
+                          (gap) => `${JW.short(gap.short)} · ${rangeOf(plan, gap.start, gap.end)}`,
+                        )
                         .join('; ')}
                 </p>
               </div>
@@ -610,7 +618,7 @@ function CoverageCard({
                 row.spans.map((span) => (
                   <tr key={`${row.job.id}-${span.start}`}>
                     <th scope="row">{row.job.name}</th>
-                    <td className="rs-shift">{JW.span(span.start, span.end)}</td>
+                    <td className="rs-shift">{rangeOf(plan, span.start, span.end)}</td>
                     <td>{span.on}</td>
                     <td>{span.needed}</td>
                     <td>{span.on < span.needed ? JW.short(span.needed - span.on) : JW.covered}</td>
@@ -689,7 +697,7 @@ function ShiftRow({
     <li className={lit ? 'js-shift is-lit' : 'js-shift'}>
       <div className="js-shift-top">
         <p className="js-shift-times" id={`js-shift-${shift.id}`} tabIndex={-1}>
-          {JW.span(shift.start, shift.end)}
+          {rangeOf(plan, shift.start, shift.end)}
         </p>
         <p className="mn-sub">{JW.filled(shift.people.length, shift.needed)}</p>
         {manage && (
@@ -698,7 +706,7 @@ function ShiftRow({
               id={`js-times-${shift.id}`}
               type="button"
               className="desk-text"
-              aria-label={`${JW.editTimes}, ${JW.editShift(job, shift.start, shift.end)}`}
+              aria-label={`${JW.editTimes}, ${JW.editShift(job, rangeOf(plan, shift.start, shift.end))}`}
               onClick={onTimes}
             >
               {JW.editTimes}
@@ -707,7 +715,7 @@ function ShiftRow({
               <button
                 type="button"
                 className="desk-text"
-                aria-label={`${JW.assign}, ${JW.editShift(job, shift.start, shift.end)}`}
+                aria-label={`${JW.assign}, ${JW.editShift(job, rangeOf(plan, shift.start, shift.end))}`}
                 onClick={onAssign}
               >
                 <Glyph name="plus" size={16} weight={2.3} />
@@ -830,7 +838,7 @@ function RemoveJob({
           <>
             <ul className="js-ask-shifts">
               {shifts.map((one) => (
-                <li key={one.id}>{JW.editShift(name, one.start, one.end)}</li>
+                <li key={one.id}>{JW.editShift(name, rangeOf(plan, one.start, one.end))}</li>
               ))}
             </ul>
             <p className="mn-quiet">{JW.removeAskSub}</p>
@@ -896,7 +904,7 @@ function ShiftForm({
         <PanelTop title={JW.addShift} onClose={onCancel} />
       ) : (
         <PanelTop
-          title={JW.editShift(job, shift.start, shift.end)}
+          title={JW.editShift(job, rangeOf(plan, shift.start, shift.end))}
           eyebrow={JW.editTimes}
           onClose={onCancel}
         />
@@ -1071,7 +1079,7 @@ function AssignPanel({
   return (
     <>
       <PanelTop
-        title={JW.editShift(job, shift.start, shift.end)}
+        title={JW.editShift(job, rangeOf(plan, shift.start, shift.end))}
         eyebrow={JW.assign}
         onClose={onClose}
       />
@@ -1082,7 +1090,10 @@ function AssignPanel({
           {full && <p className="mn-quiet js-full">{JW.full}</p>}
         </div>
         {!full && (
-          <ul className="js-people" aria-label={JW.assignTo(job, shift.start, shift.end)}>
+          <ul
+            className="js-people"
+            aria-label={JW.assignTo(job, rangeOf(plan, shift.start, shift.end))}
+          >
             {others.length === 0 && <li className="mn-quiet">{JW.notOnHere}</li>}
             {others.map((person) => {
               const theirs = shiftsOf(plan, person.id);
@@ -1106,7 +1117,10 @@ function AssignPanel({
                           ? `${jobName(plan, person.job)} · ${JW.otherShifts}`
                           : theirs
                               .map((one) =>
-                                JW.editShift(jobName(plan, one.job), one.start, one.end),
+                                JW.editShift(
+                                  jobName(plan, one.job),
+                                  rangeOf(plan, one.start, one.end),
+                                ),
                               )
                               .join('; ')}
                     </span>
