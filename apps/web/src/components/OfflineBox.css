@@ -42,8 +42,8 @@
   margin-bottom: 18px;
 }
 
-/* Seating gives its card's padding to the room, so the box lines up with the crumb row's edges, as the demo's st-kept does. */
+/* Seating's page has no card padding, so the box takes the crumb row's insets. */
 .shell-content:has(> .st) > .offline-box > .ev-offline {
   max-width: none;
-  margin: var(--spaceMd) var(--spaceLg) 0 24px;
+  margin: var(--spaceMd) var(--spaceLg) 0 var(--space3xl);
 }
