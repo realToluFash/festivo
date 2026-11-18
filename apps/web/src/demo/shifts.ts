@@ -9,7 +9,6 @@ export const NEEDED_MAX = 50;
 export const JOB_NAME_MAX = 60;
 export const FIRST_DAY = '2026-11-07';
 export const EVENT_HOURS = { start: 16 * 60, end: 26 * 60 } as const;
-/** The sample wedding, Thu 5 Nov 18:00 to Sat 7 Nov 15:00: an event longer than 24 hours (Decided, 18 Nov 2026 (pm): from the demo). */
 export const WEDDING_HOURS = { start: -30 * 60, end: 15 * 60 } as const;
 
 export type Level = 'view' | 'checkIn' | 'floor' | 'pass' | 'run';
@@ -167,7 +166,6 @@ export function dateOf(minutes: number): string {
   return new Date(FIRST_MS + Math.floor(minutes / DAY) * DAY_MS).toISOString().slice(0, 10);
 }
 
-/** The locale's short date (CLDR), en-GB here: "Sat 7 Nov". */
 export function dayOf(minutes: number): string {
   return new Date(`${dateOf(minutes)}T12:00:00Z`).toLocaleDateString('en-GB', {
     weekday: 'short',
@@ -244,7 +242,6 @@ function at(shifts: readonly Shift[], moment: number): Cell {
   };
 }
 
-/** From the earlier of the event's start and its first shift's, to the later of their ends. */
 export function spanOf(plan: Plan): { start: number; end: number } {
   return {
     start: Math.min(plan.event.start, ...plan.shifts.map((one) => one.start)),
@@ -258,7 +255,6 @@ export function windowOf(plan: Plan): { start: number; end: number } {
   return { start: Math.floor(start / STEP) * STEP, end: Math.ceil(end / STEP) * STEP };
 }
 
-/** Over 24 hours a clock time no longer names one moment, so every start and end names its day. */
 export function isLong(plan: Plan): boolean {
   const { start, end } = spanOf(plan);
 
@@ -561,7 +557,6 @@ export function samplePlan(): Plan {
 
 const on = (date: number, hours: number, minutes = 0) => (date - 7) * DAY + h(hours, minutes);
 
-/** The wedding over three dates, Thu 5 Nov 18:00 to Sat 7 Nov 15:00, with the same roster: dinner, the party into Saturday, and brunch. */
 export function weddingPlan(): Plan {
   return {
     ...samplePlan(),
