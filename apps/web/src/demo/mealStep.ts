@@ -566,6 +566,16 @@ const DEFAULT_STATES = {
       saved: UNANSWERED,
       person: SESAME,
     }),
+  refusedExcluded: () =>
+    back({
+      name: 'Refused: Starter had no pick, and Chidi is excluded',
+      note: 'As Refused: Starter had no pick, but Chidi has a sesame allergy recorded, so was never given the default. After the 409 the row shows no dish, the needs-the-host mark and “The host will be in touch about it.” in place of the default.',
+      today: '2026-10-15',
+      saved: UNANSWERED,
+      person: SESAME,
+      changed: { starter: 'pepper', main: 'croaker' },
+      sendOn: '2026-10-17',
+    }),
   defaulted: () =>
     back({
       name: 'Defaulted',

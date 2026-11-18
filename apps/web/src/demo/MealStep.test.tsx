@@ -217,5 +217,14 @@ describe('a course’s default on the meal step (sc-1362)', () => {
     expect(
       within(row('Starter')).getByText('You had not chosen by then, so this is your starter.'),
     ).toBeTruthy();
+
+    await meal('refusedExcluded', MSW.send);
+    fireEvent.click(screen.getByRole('button', { name: MSW.send }));
+    expect(
+      within(row('Starter')).getByText(
+        '[You hadn’t chosen a starter by then. The host will be in touch about it.]',
+      ),
+    ).toBeTruthy();
+    expect(within(row('Starter')).queryByText('Canapé selection')).toBeNull();
   });
 });
