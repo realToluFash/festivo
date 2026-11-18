@@ -3,7 +3,15 @@ import { numberFormat } from '@soirely/domain';
 import type { TFunction } from 'i18next';
 import { describe, expect, it } from 'vitest';
 
-import { cardStep, dayTiles, daysWords, listEventOf, rowTag, shownEvent } from './eventsList.ts';
+import {
+  cardStep,
+  dayTiles,
+  daysWords,
+  listEventOf,
+  rowTag,
+  shownEvent,
+  tabsFit,
+} from './eventsList.ts';
 
 const t = ((key: string) => key) as unknown as TFunction;
 
@@ -252,5 +260,18 @@ describe('daysWords', () => {
     expect(
       daysWords({ ...day, endsAt: '2027-01-02T12:00:00+01:00' }, now, 'en-US', true, words),
     ).toBe('eventsScreen.days {"first":"Saturday, Nov 14, 2026","last":"Saturday, Jan 2, 2027"}');
+  });
+});
+
+describe('the tabs’ words at the largest sizes', () => {
+  it('keeps their size where every tab fits', () => {
+    expect(tabsFit(340, [90, 60, 50], [23, 4, 4], 24)).toBe(1);
+  });
+
+  it('steps every tab’s words down together until the row holds them, the tick and the pads unscaled', () => {
+    const fit = tabsFit(340, [250, 180, 140], [23, 4, 4], 24);
+
+    expect(fit).toBeCloseTo((340 - 3 * 24 - 31) / (570 - 31));
+    expect(23 + 227 * fit + 4 + 176 * fit + 4 + 136 * fit + 3 * 24).toBeCloseTo(340);
   });
 });

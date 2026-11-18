@@ -127,7 +127,7 @@ export function usePrimaryLabel({
           importantForAccessibility="no-hide-descendants"
         >
           <View onLayout={widthOf(setLabelledWidth)}>
-            <Pill label={label} glyph="plus" height={tokens.sizeHit} full={false} />
+            <Pill label={label} glyph="plus" height={tokens.sizeHit} full={false} grows />
           </View>
         </View>
       </>
