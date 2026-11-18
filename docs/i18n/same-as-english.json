@@ -178,7 +178,9 @@
     "messagesCounts:guest_export.column.places",
     "messagesCounts:guest_export.allergen.lupin",
     "messagesCounts:guest_export.diet.halal",
-    "web:vendors.categories.transport"
+    "web:vendors.categories.transport",
+    "web:jobs.date",
+    "messages:staff.job_suggested.bar"
   ],
   "pt": [
     "web:seating.shapeCocktailShort",
