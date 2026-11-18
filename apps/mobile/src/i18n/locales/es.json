@@ -1976,7 +1976,7 @@
     "note": {
       "guest_replies": "Las respuestas de los invitados y sus cambios, las necesidades que añaden y sus preguntas.",
       "messages": "Un envío que no llegó a todos, quedó retenido por falta de créditos o se canceló, y los créditos a punto de agotarse.",
-      "event_day": "Cambios en su turno o en su hora de convocatoria, o en el evento durante las 24 horas previas.",
+      "event_day": "Cambios en su turno o en su hora de convocatoria, o en el evento durante las 24 horas previas, y una notificación silenciosa con Ahora y A continuación para cada espacio que lleve en la escaleta.",
       "event_changes": "Cuando otra persona cambia si se celebra, cuándo o dónde un evento en el que usted participa.",
       "money": "Pagos pendientes, uso al {{low}} y al {{high}}, pagos fallidos y facturas.",
       "account_security": "Inicios de sesión, su contraseña, la verificación en dos pasos, la propiedad y los accesos."

@@ -2504,7 +2504,7 @@
     "note": {
       "guest_replies": "As respostas dos convidados e as suas alterações, as necessidades que acrescentam e as suas perguntas.",
       "messages": "Um envio que não chegou a todos, ficou retido por falta de créditos ou foi cancelado, e créditos a esgotar-se.",
-      "event_day": "Alterações ao seu turno ou à sua hora de convocatória, ou ao evento nas 24 horas que o antecedem.",
+      "event_day": "Alterações ao seu turno ou à sua hora de convocatória, ou ao evento nas 24 horas que o antecedem, e uma notificação silenciosa com Agora e A seguir para cada espaço que conduz no alinhamento.",
       "event_changes": "Quando outra pessoa altera se, quando ou onde se realiza um evento em que participa.",
       "money": "Pagamentos pendentes, utilização a {{low}} e a {{high}}, pagamentos falhados e faturas.",
       "account_security": "Inícios de sessão, a sua palavra-passe, dois fatores, a propriedade e os acessos."

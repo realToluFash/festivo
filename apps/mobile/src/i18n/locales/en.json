@@ -1920,7 +1920,7 @@
     "note": {
       "guest_replies": "Guests' replies and changes, the needs they add, and their questions.",
       "messages": "A send that did not reach everyone, was held for credits or was cancelled, and credits running low.",
-      "event_day": "Your shift or call time changed, or the event changed in its last 24 hours.",
+      "event_day": "Your shift or call time changed, or the event changed in its last 24 hours. Also a silent notification with Now and Next for each place you run on the run of show.",
       "event_changes": "When someone else changes whether, when or where an event you are on takes place.",
       "money": "Payments due, usage at {{low}} and {{high}}, failed payments and invoices.",
       "account_security": "Sign-ins, your password, two-factor, ownership and access."
