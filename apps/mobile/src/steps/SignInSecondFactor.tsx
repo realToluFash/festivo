@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { api } from '../api.ts';
 import { heldChallenge, nextAfterSignIn } from '../challenge.ts';
 import { codePassed } from '../providerSignIn.ts';
+import { backToSignIn } from './backToSignIn.ts';
 import { leaveTimedOutSignIn } from './leaveTimedOutSignIn.ts';
 import { TwoFactorStep } from './TwoFactorStep.tsx';
 
@@ -13,8 +14,6 @@ export function SignInSecondFactor({ recovery = false }: { recovery?: boolean })
   const challenge = heldChallenge();
 
   if (challenge == null) return <Redirect href="/sign-in" />;
-
-  const back = () => (router.canGoBack() ? router.back() : router.replace('/sign-in'));
 
   return (
     <TwoFactorStep
@@ -33,9 +32,9 @@ export function SignInSecondFactor({ recovery = false }: { recovery?: boolean })
         router.replace(next);
       }}
       onExpired={leaveTimedOutSignIn}
-      onOtherWay={() => (recovery ? back() : router.push('/sign-in-recovery'))}
+      onOtherWay={() => (recovery ? backToSignIn() : router.push('/sign-in-recovery'))}
       onLostBoth={() => router.push('/lost-two-factor')}
-      onBack={back}
+      onBack={backToSignIn}
     />
   );
 }
