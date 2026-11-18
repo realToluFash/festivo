@@ -1,4 +1,10 @@
-import { formatWallDay } from '@soirely/domain';
+import {
+  emailProblem,
+  formatPhone,
+  formatWallDay,
+  phoneE164,
+  phoneLengthProblem,
+} from '@soirely/domain';
 
 import type { AddWords, RoleSheetWords, RoleWords } from '../../components/PeopleParts.tsx';
 import { everyEventLine, inRoleOrder, joinedLine, opensRow } from '../../kit/eventPeople.ts';
@@ -29,7 +35,7 @@ const NOW_CAN: Record<EventRole, { one: string; several: string }> = {
   'Can check guests in': { one: 'can check guests in now.', several: 'can check guests in now.' },
 };
 
-export const ADD_PROMPT = 'Add by name';
+export const ADD_PROMPT = 'Add by name, email or mobile';
 export const ON_EVENT = 'On this event';
 export const EMPTY_TITLE = 'Nobody is on this event yet.';
 export const EMPTY_LINE = 'Add the people working on it. Owners and admins see it already.';
@@ -44,8 +50,12 @@ export const LEAD_OFF = leadOff(ORGANISATION);
 export const IN_ORGANISATION = inOrganisation(ORGANISATION);
 export const FROM_OUTSIDE = fromOutside(ORGANISATION);
 export const BY_CODE = 'Door code';
-/** People adds members only, found by name, until sc-71 adds someone from outside by their address (pm, 5 Nov 2026). */
+/** Under Lead the field finds members only, as Lead is for members (sc-71). */
 export const NAME_LABEL = 'Name';
+export const FIND_LABEL = 'Name, email or mobile number';
+export const UNUSABLE = 'That isn’t an email address or a mobile number we can use.';
+export const PICK_ANOTHER = 'Pick another role to add someone from outside.';
+export const NOT_JOINED = 'Not joined yet';
 export const LOADING_WORDS = 'Loading the people on this event…';
 export const FAILED_TITLE = 'We could not load the people on this event.';
 export const FAILED_LINE = 'Check your connection and try again.';
@@ -70,6 +80,8 @@ export interface OnEvent {
   role: EventRole;
   outside: boolean;
   label: string | null;
+  /** Added by an address the viewer is not shown: no name, no address, no kind of address. */
+  withheld?: boolean;
   /** Came in by a door code (sc-31774): which, and the day and time. */
   byCode?: { code: string; date: string; time: string } | undefined;
 }
@@ -116,6 +128,17 @@ function everyoneOn(onEvent: readonly OnEvent[]): OnEvent[] {
   return [...onEvent, ...rest.map((one) => onEventAs(one.id, 'Can view'))];
 }
 
+/** Added by her address and not joined yet, so the API has no name for her. */
+export const BISI: OnEvent = {
+  id: 'bisi@lagoslights.example',
+  name: 'bisi@lagoslights.example',
+  initials: null,
+  tone: 5,
+  role: 'Can check guests in',
+  outside: true,
+  label: 'Lighting',
+};
+
 export function sampleOnEvent(): OnEvent[] {
   return [
     onEventAs(PRIYA, 'Lead'),
@@ -140,6 +163,17 @@ export function sampleOnEvent(): OnEvent[] {
       label: 'The Landmark’s coordinator',
     },
   ];
+}
+
+/** Someone added by address with no account yet: only an owner, an admin or the lead sees the address, everyone else 'Not joined yet' (pm #67966). */
+export function seenBy(onEvent: readonly OnEvent[], seesAddresses: boolean): OnEvent[] {
+  return seesAddresses
+    ? [...onEvent]
+    : onEvent.map((one, index) =>
+        one.initials == null
+          ? { ...one, id: `not-joined-${index}`, name: NOT_JOINED, withheld: true }
+          : one,
+      );
 }
 
 export function listed(onEvent: readonly OnEvent[]): OnEvent[] {
@@ -301,6 +335,98 @@ export function addView(
   return { kind: 'members', offered };
 }
 
+export type Address =
+  | { kind: 'email'; address: string; shown: string }
+  | { kind: 'mobile'; address: string; shown: string };
+
+export type Typed = { kind: 'name' } | { kind: 'address'; address: Address } | { kind: 'unusable' };
+
+/** sc-71's form checks: a value with an @ is an email address; digits, with or without a + code, a mobile number by the country's lengths; letters alone, a name to find. */
+export function readTyped(typed: string, country: string): Typed {
+  const text = typed.trim();
+  if (text === '') return { kind: 'name' };
+  if (text.includes('@'))
+    return emailProblem(text) == null
+      ? { kind: 'address', address: { kind: 'email', address: text, shown: text } }
+      : { kind: 'unusable' };
+  if (/\p{L}/u.test(text) || !/\d/u.test(text)) return { kind: 'name' };
+  const e164 = phoneLengthProblem(text, country) == null ? phoneE164(text, country) : null;
+
+  return e164 == null
+    ? { kind: 'unusable' }
+    : { kind: 'address', address: { kind: 'mobile', address: e164, shown: formatPhone(e164) } };
+}
+
+export type OutsideView =
+  | { kind: 'none' }
+  | { kind: 'offer'; address: Address }
+  | { kind: 'unusable' }
+  | { kind: 'leadOff' }
+  | { kind: 'onEvent'; name: string };
+
+/** What Add shows for someone from outside: the address to tick, the line for half of one, Lead's refusal, or that they are on already. */
+export function outsideView(
+  typed: string,
+  country: string,
+  role: EventRole,
+  onEvent: readonly OnEvent[] = [],
+): OutsideView {
+  const read = readTyped(typed, country);
+  if (read.kind === 'name') return { kind: 'none' };
+  if (read.kind === 'unusable') return { kind: 'unusable' };
+  const there = onEvent.find((one) => one.id.toLowerCase() === read.address.address.toLowerCase());
+  if (there != null) return { kind: 'onEvent', name: there.name };
+
+  return role === 'Lead' ? { kind: 'leadOff' } : { kind: 'offer', address: read.address };
+}
+
+export function onAlreadyLine(name: string): string {
+  return `${name} is on this event already.`;
+}
+
+export class Refusal extends Error {
+  constructor(
+    readonly code: string,
+    readonly said: string,
+  ) {
+    super(said);
+  }
+}
+
+export const ALREADY_A_MEMBER = new Refusal(
+  'already_a_member',
+  'That person is already a member of this organisation.',
+);
+
+/** The sample API: a member's own address is refused `already_a_member`, which stays the server's to say. */
+export function outsideRefusal(address: Address, members: readonly OrgMember[]): Refusal | null {
+  const typed = address.address.toLowerCase();
+
+  return members.some((one) => one.id.toLowerCase() === typed) ? ALREADY_A_MEMBER : null;
+}
+
+export function withOutside(
+  onEvent: readonly OnEvent[],
+  role: EventRole,
+  address: Address,
+  job: string,
+): OnEvent[] {
+  const label = job.trim();
+
+  return [
+    ...onEvent,
+    {
+      id: address.address,
+      name: address.shown,
+      initials: null,
+      tone: onEvent.length,
+      role,
+      outside: true,
+      label: label === '' ? null : label,
+    },
+  ];
+}
+
 export function withRole(onEvent: readonly OnEvent[], id: string, role: EventRole): OnEvent[] {
   return onEvent.map((one) => (one.id === id ? { ...one, role } : one));
 }
@@ -336,6 +462,11 @@ export const PEOPLE_STATES = [
   'roleFails',
   'addPartial',
   'everyoneOn',
+  'addOutside',
+  'addMobile',
+  'addUnusable',
+  'addLeadOutside',
+  'addMemberAddress',
   'loading',
   'failed',
 ] as const;
@@ -354,12 +485,14 @@ export const PEOPLE_VIEWERS = {
 /** Whose People it is: Ire Events' wedding, or the door code's Lumen Feiras (sc-31774). */
 export interface PeopleWorld {
   organisation: string;
+  /** Where a mobile number typed without its + code is read (sc-62's lengths). */
+  country: string;
   event: string;
   members: OrgMember[];
 }
 
 export function ireWorld(): PeopleWorld {
-  return { organisation: ORGANISATION, event: EVENT, members: sampleMembers() };
+  return { organisation: ORGANISATION, country: 'NG', event: EVENT, members: sampleMembers() };
 }
 
 export type Removing = 'ask' | 'sending' | null;
@@ -373,6 +506,8 @@ export interface PeopleStart {
   adding?: boolean;
   /** The member Add people cannot add, so a batch with them in stops there. */
   addRefuses?: string;
+  addTyped?: string;
+  addRole?: EventRole;
   world?: PeopleWorld;
   /** Someone's sheet open on arrival, or its Remove asking or sending. */
   opened?: { id: string; removing: Removing };
@@ -391,7 +526,7 @@ export function peopleStart(state: PeopleState): PeopleStart {
     case 'people':
       return base;
     case 'readOnly':
-      return { ...base, viewer: PEOPLE_VIEWERS.ana };
+      return { ...base, viewer: PEOPLE_VIEWERS.ana, onEvent: [...base.onEvent, BISI] };
     case 'lead':
       return { ...base, viewer: PEOPLE_VIEWERS.priya };
     case 'nobody':
@@ -402,6 +537,16 @@ export function peopleStart(state: PeopleState): PeopleStart {
       return { ...base, adding: true, addRefuses: JULIEN };
     case 'everyoneOn':
       return { ...base, adding: true, onEvent: everyoneOn(base.onEvent) };
+    case 'addOutside':
+      return { ...base, adding: true, addTyped: 'bisi@lagoslights.example' };
+    case 'addMobile':
+      return { ...base, adding: true, addTyped: '0803 555 0142' };
+    case 'addUnusable':
+      return { ...base, adding: true, addTyped: 'bisi@lagos' };
+    case 'addLeadOutside':
+      return { ...base, adding: true, addTyped: 'bisi@lagoslights.example', addRole: 'Lead' };
+    case 'addMemberAddress':
+      return { ...base, adding: true, addTyped: 'kofi@ire.events' };
     case 'loading':
     case 'failed':
       return { ...base, load: state };
@@ -438,11 +583,14 @@ export function addRefusedLine(
   role: EventRole,
   went: readonly string[],
   left: readonly string[],
+  error?: unknown,
 ): string {
   const refused =
-    left.length === 1
-      ? `We couldn’t add ${left[0] ?? ''}, so they’re still ticked. Check your connection and press Add again.`
-      : `We couldn’t add the ${left.length} still ticked. Check your connection and press Add again.`;
+    error instanceof Refusal
+      ? error.said
+      : left.length === 1
+        ? `We couldn’t add ${left[0] ?? ''}, so they’re still ticked. Check your connection and press Add again.`
+        : `We couldn’t add the ${left.length} still ticked. Check your connection and press Add again.`;
 
   return went.length === 0 ? refused : `${addedToast(went, role)} ${refused}`;
 }
@@ -462,14 +610,14 @@ export function addWords(
     cancel: 'Cancel',
     done: 'Done',
     theirRole: 'Their role',
-    find: NAME_LABEL,
+    find: FIND_LABEL,
     inOrganisation: inOrganisation(organisation),
     noMatch: (typed) => noMatchLine(typed, organisation),
     discardTitle: 'Discard your changes?',
     discardLine: 'Nobody is added to this event.',
     discardKeep: 'Keep editing',
     discard: 'Discard',
-    refusal: (_error, role, went, left) => addRefusedLine(role, went, left),
+    refusal: (error, role, went, left) => addRefusedLine(role, went, left, error),
     everyoneOn: nothingLeft ? everyoneOnLine(organisation) : undefined,
   };
 }

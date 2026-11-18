@@ -28,6 +28,7 @@ import {
   listed,
   LOADING_WORDS,
   manages,
+  seenBy,
   ON_EVENT,
   type OnEvent,
   opens,
@@ -42,6 +43,7 @@ import {
   seesEveryEvent,
   withAdded,
   without,
+  withOutside,
   withRole,
 } from './people.ts';
 import { AddDialog, RoleDialog } from './PeopleDialogs.tsx';
@@ -99,7 +101,7 @@ function PeopleScreen({ start, door }: { start: PeopleStart; door: DoorStart | n
   const [opened, setOpened] = useState<Opened>(
     door?.person == null ? null : { id: door.person, visit: 0 },
   );
-  const [adding, setAdding] = useState(false);
+  const [adding, setAdding] = useState(start.adding != null);
   const [lit, setLit] = useState<{ id: string; held: boolean } | null>(
     door?.person == null ? null : { id: door.person, held: true },
   );
@@ -147,7 +149,7 @@ function PeopleScreen({ start, door }: { start: PeopleStart; door: DoorStart | n
     setLit((was) => (was == null ? null : { ...was, held: false }));
   }
 
-  const shown = listed(onEvent);
+  const shown = listed(seenBy(onEvent, canChange));
   const page =
     load !== 'loaded' ? (
       load === 'failed' ? (
@@ -265,16 +267,21 @@ function PeopleScreen({ start, door }: { start: PeopleStart; door: DoorStart | n
             onEvent={onEvent}
             viewer={viewer}
             organisation={place.organisation}
+            country={place.country}
+            start={start.adding}
             onClose={() => setAdding(false)}
-            onAdd={(role, added) => {
-              setOnEvent((was) => withAdded(was, role, added));
+            onAdd={(added, finished) => {
+              setOnEvent((was) => {
+                const next = withAdded(was, added.role, added.members);
+                return added.outside == null
+                  ? next
+                  : withOutside(next, added.role, added.outside.address, added.outside.job);
+              });
+              if (!finished) return;
               setAdding(false);
-              setTold(
-                addedToast(
-                  added.map((one) => one.name),
-                  role,
-                ),
-              );
+              const names = added.members.map((one) => one.name);
+              if (added.outside != null) names.push(added.outside.address.shown);
+              setTold(addedToast(names, added.role));
             }}
           />
         )}
@@ -301,7 +308,16 @@ function PersonRow({
   const line = rowLine(person, viewer);
   const words = (
     <>
-      <Avatar initials={person.initials} tone={person.tone} />
+      {person.initials === '' ? (
+        <span className="people-outside-face" aria-hidden="true">
+          <Glyph
+            name={person.withheld === true ? 'user' : person.id.includes('@') ? 'mail' : 'phone'}
+            size={18}
+          />
+        </span>
+      ) : (
+        <Avatar initials={person.initials} tone={person.tone} />
+      )}
       <RowWords
         title={person.name}
         tag={person.outside && <Tag kind="now" word={outsideTag(organisation)} />}
