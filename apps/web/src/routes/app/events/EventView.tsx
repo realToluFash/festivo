@@ -135,6 +135,7 @@ function EventOf({
     loaded: load.kind === 'loaded',
     reload: () => setRefresh((n) => n + 1),
     title: heading,
+    event: true,
   });
 
   useEffect(() => {

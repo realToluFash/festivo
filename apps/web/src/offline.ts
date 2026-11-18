@@ -17,6 +17,8 @@ export interface Stale {
   retry: () => void;
   /** Counts the presses of Try again that came back unanswered, each one announced again. */
   unanswered: number;
+  /** The event's own load, whose minute the box says over its area's (sc-65646). */
+  event?: boolean;
 }
 
 export const StaleScreen = createContext<{
@@ -47,6 +49,7 @@ export function useOffline(screen: {
   title: RefObject<HTMLElement | null>;
   /** The minute of what the screen shows, where a load that answers does not replace it: Edit details. */
   since?: Date | null;
+  event?: boolean;
 }): {
   watch: <T>(load: Promise<T>) => Promise<T>;
   keep: (at: Date) => void;
@@ -58,10 +61,14 @@ export function useOffline(screen: {
   const at = stale == null ? undefined : (screen.since ?? stale.at);
   const unanswered = stale?.unanswered;
   const retry = stale?.retry;
+  const event = screen.event ?? false;
 
   useLayoutEffect(() => {
-    show(screenId, at == null || retry == null ? null : { at, retry, unanswered: unanswered ?? 0 });
-  }, [show, screenId, at, retry, unanswered]);
+    show(
+      screenId,
+      at == null || retry == null ? null : { at, retry, unanswered: unanswered ?? 0, event },
+    );
+  }, [show, screenId, at, retry, unanswered, event]);
 
   useLayoutEffect(() => () => show(screenId, null), [show, screenId]);
 

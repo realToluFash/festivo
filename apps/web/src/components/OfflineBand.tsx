@@ -39,12 +39,14 @@ export function OfflineProvider({ children }: { children: ReactNode }) {
   return <StaleScreen.Provider value={value}>{children}</StaleScreen.Provider>;
 }
 
-/** An event and its area each load on their own (sc-65646): the box says the oldest, and Try again asks for both. */
+/** An event and its area each load on their own (sc-65646): the box says when the event last loaded, and Try again asks for both. */
 function together(stales: Stale[]): Stale | null {
   if (stales.length <= 1) return stales[0] ?? null;
 
+  const event = stales.find((stale) => stale.event);
+
   return {
-    at: new Date(Math.min(...stales.map((stale) => stale.at.getTime()))),
+    at: event?.at ?? new Date(Math.min(...stales.map((stale) => stale.at.getTime()))),
     retry: () => stales.forEach((stale) => stale.retry()),
     unanswered: stales.reduce((sum, stale) => sum + stale.unanswered, 0),
   };
