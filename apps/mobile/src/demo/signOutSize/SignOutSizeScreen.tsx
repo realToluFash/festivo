@@ -25,7 +25,6 @@ import { useShellLayout } from '../../components/settingsShell.ts';
 import { wordsIn } from '../../layout/textSize.ts';
 import { DemoOnly } from '../../steps/Lines.tsx';
 import { tokens } from '../../theme/tokens.ts';
-import { LegalLinks } from '../LegalLinks.tsx';
 import { Choices } from '../focusedHeader/FocusedHeaderScreen.tsx';
 import {
   HEADER_LANGUAGES,
@@ -85,7 +84,7 @@ export function SignOutSizeScreen({ start }: { start: SignOutSizeStart }) {
         onContentSizeChange={() => scroll.current?.scrollToEnd({ animated: false })}
       >
         <View style={{ width: room }}>
-          <DemoOnly title="Stand-ins for the phone’s own text size and language. Sign out is drawn at the size chosen and as wide as main gives it: the phone’s page, the left of the two upright columns on an iPad, the list column on its side. Terms, Privacy and the tab bar at this phone’s size. One tap on Sign out signs out, to Welcome. No string is added.">
+          <DemoOnly title="Stand-ins for the phone’s own text size and language. Sign out is drawn at the size chosen and as wide as main gives it: the phone’s page, the left of the two upright columns on an iPad, the list column on its side. The tab bar at this phone’s size, and nothing under Sign out, as on main: Terms · Privacy come with sc-29938. One tap on Sign out signs out, to Welcome. No string is added.">
             <Choices
               heading="Text size"
               options={HEADER_SIZES}
@@ -113,7 +112,6 @@ export function SignOutSizeScreen({ start }: { start: SignOutSizeStart }) {
             room={room}
             onPress={() => router.replace('/demo/welcome')}
           />
-          <LegalLinks style={styles.legal} />
         </View>
       </ScrollView>
       {phone && (
@@ -206,7 +204,6 @@ function DemoSignOut({
 const styles = StyleSheet.create({
   page: { flex: 1, backgroundColor: tokens.colorCard },
   body: { alignItems: 'center', gap: tokens.space3xl },
-  legal: { marginTop: tokens.spaceXs },
   pill: {
     flexDirection: 'row',
     alignItems: 'center',
