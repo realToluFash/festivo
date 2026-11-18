@@ -35,7 +35,6 @@ export interface Device {
 export const EVERY_WAY: Device = { whatsApp: true, mail: true };
 export const SIMULATOR: Device = { whatsApp: false, mail: false };
 
-/** The fields that make a message say "changed": Led by is not among them. */
 export type AsBooked = Pick<
   Consultation,
   'startsAt' | 'timeZone' | 'minutes' | 'how' | 'where' | 'link'
