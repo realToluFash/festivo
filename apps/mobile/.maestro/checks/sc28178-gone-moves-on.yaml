@@ -18,6 +18,7 @@ appId: host.exp.Exponent
     env:
       ORG: Alpha
       FROM: tab-events
+      AT: frame.events
       CHANGE: suspend
       MOVE: frame.calendar
 - extendedWaitUntil:
@@ -38,6 +39,7 @@ appId: host.exp.Exponent
     env:
       ORG: Alpha
       FROM: tab-events
+      AT: frame.events
       CHANGE: remove
       MOVE: frame.home
 - extendedWaitUntil:
@@ -58,6 +60,7 @@ appId: host.exp.Exponent
     env:
       ORG: Alpha
       FROM: tab-events
+      AT: frame.events
       CHANGE: delete
       MOVE: frame.home
 - extendedWaitUntil:

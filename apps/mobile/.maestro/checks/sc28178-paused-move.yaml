@@ -16,6 +16,7 @@ appId: host.exp.Exponent
     env:
       ORG: Alpha
       FROM: tab-events
+      AT: frame.events
       CHANGE: pause
       MOVE: frame.settings
 - extendedWaitUntil:
