@@ -7,8 +7,8 @@ appId: host.exp.Exponent
       id: 'timeline.allDates.page'
     timeout: 90000
 - waitForAnimationToEnd
-- assertVisible: 'Picks close'
-- assertNotVisible: 'Open the menu.*'
+- assertVisible: '(?:Picks close|Fin del plazo de elección|Clôture des choix|Fim do prazo de escolha)'
+- assertNotVisible: '(?:Open the menu|Abrir el menú|Ouvrir le menu|Abrir o menu).*'
 - takeScreenshot: alldates
 - openLink: ${METRO_URL}/--/events/${EVENT}
 - extendedWaitUntil:
@@ -21,5 +21,6 @@ appId: host.exp.Exponent
     centerElement: true
     timeout: 20000
 - waitForAnimationToEnd
+- assertVisible: '(?:Picks close|Fin del plazo de elección|Clôture des choix|Fim do prazo de escolha)'
 - takeScreenshot: comingup
-- assertNotVisible: 'Open the menu.*'
+- assertNotVisible: '(?:Open the menu|Abrir el menú|Ouvrir le menu|Abrir o menu).*'
