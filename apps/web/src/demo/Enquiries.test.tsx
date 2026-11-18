@@ -254,7 +254,7 @@ describe('Enquiries in the navigation (sc-31226)', () => {
     },
   );
 
-  it.each(['/demo/today?plan=free', '/demo/events?plan=free'])(
+  it.each(['/demo/today?plan=free', '/demo/events?plan=free', '/demo/consultations?state=freeOrg'])(
     'is not there on %s for a Free organisation',
     async (path) => {
       open(path);

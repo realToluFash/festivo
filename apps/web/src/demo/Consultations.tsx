@@ -71,6 +71,7 @@ export function Consultations() {
           events={[]}
           tell={tell}
           enquiries={start.view === 'page'}
+          free={start.calendar.free}
           calendar={start.view === 'calendar' || start.view === 'feed'}
           settings={start.view === 'notifications'}
           inert={covered}
