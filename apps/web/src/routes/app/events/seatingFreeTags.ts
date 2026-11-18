@@ -102,17 +102,20 @@ export function freeTags(
   });
 }
 
-/** A chair's label above it, or under it where above would sit under the bar over the room or past the room's top (sc-5030). */
-export function chairTipTop(
+const TIP_INSET = 8;
+
+/** Where a chair's label sits: above the chair, or under it where above would sit under the bar over the room or past the room's top, and slid inside the room's left and right edges (sc-5030). */
+export function chairTipBox(
   tip: { x: number; y: number; r: number },
   width: number,
+  roomWidth: number,
   cover: FloorBox | null,
-): number {
+): { left: number; top: number } {
+  const left = Math.max(TIP_INSET, Math.min(tip.x - width / 2, roomWidth - TIP_INSET - width));
   const over = tip.y - tip.r - 40;
   const hidden =
     over < 0 ||
-    (cover != null &&
-      crosses({ x0: tip.x - width / 2, y0: over, x1: tip.x + width / 2, y1: over + 28 }, cover));
+    (cover != null && crosses({ x0: left, y0: over, x1: left + width, y1: over + 28 }, cover));
 
-  return hidden ? tip.y + tip.r + 12 : over;
+  return { left, top: hidden ? tip.y + tip.r + 12 : over };
 }

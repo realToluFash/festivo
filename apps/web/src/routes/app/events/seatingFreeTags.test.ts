@@ -2,7 +2,7 @@ import { type SeatingPlan, type SeatingTable } from '@soirely/api-client';
 import { tableExtent } from '@soirely/domain';
 import { describe, expect, it } from 'vitest';
 
-import { chairTipTop, freeTags } from './seatingFreeTags.ts';
+import { chairTipBox, freeTags } from './seatingFreeTags.ts';
 import { floorItems } from './seatingItems.ts';
 
 function table(id: string, xCm: number, yCm: number) {
@@ -88,17 +88,34 @@ describe('Where a free tag goes while a guest is picked (sc-5030)', () => {
 
 describe("Where a chair's label goes (sc-5030)", () => {
   const chair = { x: 300, y: 200, r: 10 };
+  const top = (at: typeof chair, cover: Parameters<typeof chairTipBox>[3]) =>
+    chairTipBox(at, 120, 1000, cover).top;
 
   it('goes above the chair when nothing covers it there', () => {
-    expect(chairTipTop(chair, 120, null)).toBe(150);
-    expect(chairTipTop(chair, 120, { x0: 0, y0: 0, x1: 600, y1: 140 })).toBe(150);
+    expect(top(chair, null)).toBe(150);
+    expect(top(chair, { x0: 0, y0: 0, x1: 600, y1: 140 })).toBe(150);
   });
 
   it('goes under the chair where above would be under the bar over the room', () => {
-    expect(chairTipTop(chair, 120, { x0: 0, y0: 0, x1: 600, y1: 160 })).toBe(222);
+    expect(top(chair, { x0: 0, y0: 0, x1: 600, y1: 160 })).toBe(222);
   });
 
   it("goes under the chair where above would be past the room's top", () => {
-    expect(chairTipTop({ ...chair, y: 30 }, 120, null)).toBe(52);
+    expect(top({ ...chair, y: 30 }, null)).toBe(52);
+  });
+
+  it('is centred on the chair when the room is wide enough', () => {
+    expect(chairTipBox(chair, 120, 1000, null).left).toBe(240);
+  });
+
+  it("slides 8 px inside the room's left and right edges", () => {
+    expect(chairTipBox({ ...chair, x: 10 }, 120, 1000, null).left).toBe(8);
+    expect(chairTipBox({ ...chair, x: 990 }, 120, 1000, null).left).toBe(872);
+  });
+
+  it('goes under the chair when the slid label, not the centred one, would sit under the bar', () => {
+    const cover = { x0: 0, y0: 0, x1: 60, y1: 160 };
+
+    expect(chairTipBox({ ...chair, x: 10 }, 120, 1000, cover).top).toBe(222);
   });
 });

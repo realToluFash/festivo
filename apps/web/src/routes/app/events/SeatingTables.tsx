@@ -49,7 +49,7 @@ import {
   turned,
   usableSeats,
 } from './seatingDraw.ts';
-import { chairTipTop, freeTagWords, outNameY, wordsWide } from './seatingFreeTags.ts';
+import { chairTipBox, freeTagWords, outNameY, wordsWide } from './seatingFreeTags.ts';
 import {
   Added,
   BackHead,
@@ -177,15 +177,23 @@ export interface ChairTip {
   words: string;
 }
 
-/** `cover` is where the bar floating over the room covers it, in the room's own pixels. */
-export function ChairTipDrawing({ tip, cover }: { tip: ChairTip; cover: FloorBox | null }) {
+/** `cover` is where the bar floating over the room covers it, and `width` the room's width, both in the room's own pixels. */
+export function ChairTipDrawing({
+  tip,
+  width,
+  cover,
+}: {
+  tip: ChairTip;
+  width: number;
+  cover: FloorBox | null;
+}) {
   const w = wordsWide(tip.words) + 20;
-  const top = chairTipTop(tip, w, cover);
+  const { left, top } = chairTipBox(tip, w, width, cover);
 
   return (
     <g className="st-tip" aria-hidden="true">
-      <rect x={f(tip.x - w / 2)} y={f(top)} width={f(w)} height="28" rx="10" />
-      <text x={f(tip.x)} y={f(top + 14)} textAnchor="middle" dominantBaseline="central">
+      <rect x={f(left)} y={f(top)} width={f(w)} height="28" rx="10" />
+      <text x={f(left + w / 2)} y={f(top + 14)} textAnchor="middle" dominantBaseline="central">
         {tip.words}
       </text>
     </g>
