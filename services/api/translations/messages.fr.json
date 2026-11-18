@@ -353,5 +353,5 @@
     "validation.share_by_invalid": "Choisissez une date valide.",
     "validation.share_by_past": "Choisissez aujourd’hui ou une date ultérieure.",
     "validation.share_by_not_before_event": "Choisissez une date antérieure à l’événement.",
-    "access.plan_required": "Available on Enterprise. Contact Soirely about Enterprise to change this."
+    "access.plan_required": "Disponible avec le forfait Enterprise. Pour modifier ce réglage, contactez Soirely au sujet du forfait Enterprise."
 }
