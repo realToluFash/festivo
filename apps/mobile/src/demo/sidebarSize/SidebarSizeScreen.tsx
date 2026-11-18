@@ -33,7 +33,9 @@ import {
   SIDEBAR_PLACES,
   SIDEBAR_SIZES,
   SIDEBAR_WIDTH,
+  HEADING_TRACKING,
   type SideRoom,
+  lettersIn,
   type SidebarAt,
   type SidebarLanguage,
   type SidebarSize,
@@ -200,7 +202,12 @@ function useFit(text: string, room: SideRoom, scale: number, weight: WeightName,
   const size = sideTextSize(
     room,
     scale,
-    known ? { widest: Math.max(...words.map((word) => widths[word] ?? 0)), whole } : null,
+    known
+      ? {
+          words: words.map((word) => ({ width: widths[word] ?? 0, letters: lettersIn(word) })),
+          whole: { width: whole, letters: lettersIn(text) },
+        }
+      : null,
     oneLine,
   );
   const keep = (name: string, width: number) =>
@@ -606,7 +613,7 @@ const styles = StyleSheet.create({
   },
   list: { gap: 0 },
   caps: {
-    letterSpacing: 11 * 0.08,
+    letterSpacing: HEADING_TRACKING,
     paddingHorizontal: tokens.spaceLg,
     paddingVertical: tokens.spaceXs,
   },

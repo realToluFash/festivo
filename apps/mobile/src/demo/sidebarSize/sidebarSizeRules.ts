@@ -62,13 +62,17 @@ export interface SideRoom {
   size: number;
   glyph: number;
   inside: number;
+  /** Space after every letter, which stays the same when the size steps down. */
+  tracking?: number;
 }
+
+export const HEADING_TRACKING = 11 * 0.08;
 
 export const ROOMS = {
   place: { size: 14.5, glyph: PLACE_GLYPH, inside: INNER - 3 * tokens.spaceLg },
   search: { size: 14, glyph: SEARCH_GLYPH, inside: INNER - 2 * tokens.spaceLg - tokens.spaceMd },
   back: { size: 14, glyph: BACK_GLYPH, inside: INNER - 2 * tokens.spaceMd - tokens.spaceXs },
-  heading: { size: 12, glyph: 0, inside: INNER - 2 * tokens.spaceLg },
+  heading: { size: 12, glyph: 0, inside: INNER - 2 * tokens.spaceLg, tracking: HEADING_TRACKING },
   event: { size: 14, glyph: 0, inside: INNER - 3 * tokens.spaceLg - DOT },
   org: {
     size: 15,
@@ -89,9 +93,19 @@ export const ROOMS = {
   },
 } as const satisfies Record<string, SideRoom>;
 
+export interface Measured {
+  /** Drawn at the start size, without its tracking. */
+  width: number;
+  letters: number;
+}
+
 export interface Widths {
-  widest: number;
-  whole: number;
+  words: readonly Measured[];
+  whole: Measured;
+}
+
+export function lettersIn(text: string): number {
+  return Array.from(text).length;
 }
 
 // A one-line name fits whole, not just its widest word, before it may end in "…" (sc-68441).
@@ -102,14 +116,19 @@ export function sideTextSize(
   oneLine = false,
 ): number {
   const start = room.size * scale;
-  if (!atLargest(scale) || widths == null) return start;
+  const texts = oneLine ? (widths == null ? [] : [widths.whole]) : (widths?.words ?? []);
+  if (!atLargest(scale) || texts.length === 0) return start;
 
-  return besideGlyph(
-    room.size,
-    start,
-    oneLine ? widths.whole : widths.widest,
-    room.glyph / room.size,
-    room.inside,
+  return Math.min(
+    ...texts.map(({ width, letters }) =>
+      besideGlyph(
+        room.size,
+        start,
+        width,
+        room.glyph / room.size,
+        room.inside - letters * (room.tracking ?? 0),
+      ),
+    ),
   );
 }
 
