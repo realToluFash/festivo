@@ -315,3 +315,40 @@ describe('the event Menu (sc-3902)', () => {
     expect(within(card('Starter')).getByText('Contains: Poissons · Céleri')).toBeTruthy();
   });
 });
+
+describe('when picks close, on the Menu (sc-3905)', () => {
+  it('puts the close in the header and on each course that asks guests', SLOW, async () => {
+    await menu('picksOneDate');
+    expect(screen.getByText('picks close Monday, Oct 19')).toBeTruthy();
+    expect(within(card('Starter')).getByText('Picks close Monday, Oct 19')).toBeTruthy();
+    expect(within(card('Main')).getByText(/Set by the event’s reply-by date/)).toBeTruthy();
+    expect(within(card('Late-night bites')).queryByText(/Picks close/)).toBeNull();
+  });
+
+  it('greys a closed course, with Who hasn’t picked for a manager only', SLOW, async () => {
+    await menu('picksOneClosed');
+    expect(screen.getByText('picks close Saturday, Nov 14')).toBeTruthy();
+    expect(within(card('Starter')).getByText('Picks closed on Friday, Oct 16')).toBeTruthy();
+    fireEvent.click(
+      within(card('Starter')).getByRole('button', { name: 'Who hasn’t picked starter' }),
+    );
+    expect(said()).toContain('sc-3909');
+
+    await menu('picksAllClosedReadOnly');
+    expect(screen.getByText('picks closed on Monday, Oct 19')).toBeTruthy();
+    expect(screen.queryByRole('button', { name: /Who hasn’t picked/ })).toBeNull();
+  });
+
+  it('moves every date together when the reply-by date changes', SLOW, async () => {
+    await menu('picksDateChanged');
+    expect(screen.getByText('picks close Monday, Oct 19')).toBeTruthy();
+    expect(
+      await screen.findByText(
+        '[Picks now close Friday, Oct 23. The event’s reply-by date moved from Monday, Oct 19.]',
+        {},
+        WAIT,
+      ),
+    ).toBeTruthy();
+    expect(screen.getByText('picks close Friday, Oct 23')).toBeTruthy();
+  });
+});
