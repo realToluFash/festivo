@@ -13,6 +13,7 @@ use App\Http\Access\Grants;
 use App\Http\Access\Interfaces\MembershipDirectoryInterface;
 use App\Repository\EventPersonRepository;
 use App\Repository\MembershipRepository;
+use Psr\Clock\ClockInterface;
 use Symfony\Component\Uid\Uuid;
 
 final readonly class MembershipDirectory implements MembershipDirectoryInterface
@@ -21,6 +22,7 @@ final readonly class MembershipDirectory implements MembershipDirectoryInterface
         private MembershipRepository $membershipRepository,
         private EventPersonRepository $eventPersonRepository,
         private SignInRules $signInRules,
+        private ClockInterface $clock,
     ) {
     }
 
@@ -32,13 +34,15 @@ final readonly class MembershipDirectory implements MembershipDirectoryInterface
         return null === $membership ? null : $this->signInRules->narrow(self::grantsOf($membership), $membership);
     }
 
-    /** Read on every request, so a change to somebody's role on the event applies on their next one. */
+    /** Read on every request, so a change applies on the next one. A member reaches the event through the membership alone, never a grant from outside (sc-71). */
     public function grantsOnEvent(User $user, Uuid $organisationId, Uuid $eventId): ?Grants
     {
         $membership = $this->membershipRepository->findActive($user, $organisationId);
 
         if (null === $membership) {
-            return null;
+            $outside = $this->eventPersonRepository->findLiveOutside($eventId, $user, $this->clock->now());
+
+            return null === $outside ? null : Grants::onEvent($outside->getRole());
         }
 
         if (SeededRole::Member !== $membership->getRole()->getSeededAs()) {
