@@ -231,7 +231,7 @@ function useGrownLabel({
   return {
     measure: on ? (
       <MeasuredWords
-        words={words}
+        words={words.filter((word) => widths[word] == null)}
         size={size}
         weight="semibold"
         maxFontSizeMultiplier={start / size}
