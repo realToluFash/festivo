@@ -171,10 +171,10 @@
     "run_of_show.card.nothing_else": "Não há mais nada previsto em {place}.",
     "run_of_show.card.as_of": "Atualizado {hour, plural, =1 {à {time}} other {às {time}}}",
     "run_of_show.card.everything": "É tudo.",
-    "validation.vendor_name_too_long": "Shorten the name to {count, number, ::group-auto} characters or fewer.",
-    "validation.vendor_contact_name_too_long": "Shorten the contact name to {count, number, ::group-auto} characters or fewer.",
-    "validation.vendor_email_too_long": "Shorten the email address to {count, number, ::group-auto} characters or fewer.",
-    "validation.vendor_website_too_long": "Shorten the website to {count, number, ::group-auto} characters or fewer.",
-    "validation.vendor_address_too_long": "Shorten the address to {count, number, ::group-auto} characters or fewer.",
-    "validation.vendor_note_too_long": "Shorten the note to {count, number, ::group-auto} characters or fewer."
+    "validation.vendor_name_too_long": "Encurte o nome para um máximo de {count, number, ::group-auto} caracteres.",
+    "validation.vendor_contact_name_too_long": "Encurte o nome do contacto para um máximo de {count, number, ::group-auto} caracteres.",
+    "validation.vendor_email_too_long": "Encurte o endereço de e-mail para um máximo de {count, number, ::group-auto} caracteres.",
+    "validation.vendor_website_too_long": "Encurte o endereço do site para um máximo de {count, number, ::group-auto} caracteres.",
+    "validation.vendor_address_too_long": "Encurte a morada para um máximo de {count, number, ::group-auto} caracteres.",
+    "validation.vendor_note_too_long": "Encurte a nota para um máximo de {count, number, ::group-auto} caracteres."
 }
