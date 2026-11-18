@@ -8,6 +8,7 @@ import {
   Pressable,
   StyleSheet,
   type StyleProp,
+  useWindowDimensions,
   View,
   type ViewStyle,
   type ViewInstance,
@@ -15,6 +16,8 @@ import {
 import Svg, { Circle, Path } from 'react-native-svg';
 
 import { Text } from './Text.tsx';
+import { WholeWords } from './Title.tsx';
+import { atAccessibilitySizes } from '../layout/textSize.ts';
 import { titleAtWidth, titleWithInkRoom, UNMEASURED_TITLE } from './titleWidth.ts';
 import { useReducedMotion } from '../reducedMotion.ts';
 import { tokens } from '../theme/tokens.ts';
@@ -156,6 +159,8 @@ export function Tag({
   );
 }
 
+const HEAD_SIZE = 18;
+
 export function HeadCount({ text }: { text: string }) {
   return (
     <Text size={14.5} weight="medium" style={[styles.secondary, styles.count]}>
@@ -164,10 +169,30 @@ export function HeadCount({ text }: { text: string }) {
   );
 }
 
+/** At the accessibility sizes the heading takes its own line, stepping down rather than break a word, never under 18, and what ends its row goes under it (sc-37693). */
 export function SectionHead({ title, right }: { title: string; right?: ReactNode }) {
+  const { fontScale } = useWindowDimensions();
+
+  if (atAccessibilitySizes(fontScale)) {
+    return (
+      <View style={[styles.head, styles.headStacked]}>
+        <WholeWords
+          size={HEAD_SIZE}
+          start={HEAD_SIZE * fontScale}
+          weight="bold"
+          accessibilityRole="header"
+          style={[styles.headTitle, styles.headTitleStacked]}
+        >
+          {title}
+        </WholeWords>
+        {right}
+      </View>
+    );
+  }
+
   return (
     <View style={styles.head}>
-      <Text size={18} weight="bold" accessibilityRole="header" style={styles.headTitle}>
+      <Text size={HEAD_SIZE} weight="bold" accessibilityRole="header" style={styles.headTitle}>
         {title}
       </Text>
       {right}
@@ -514,7 +539,9 @@ const styles = StyleSheet.create({
   tagTurning: { gap: tokens.spaceXs },
   tagWraps: { flexShrink: 1 },
   head: { minHeight: tokens.sizeHit, flexDirection: 'row', alignItems: 'center', gap: 10 },
-  headTitle: { flex: 1, minWidth: 0, letterSpacing: -0.18, lineHeight: 18 * 1.25 },
+  headTitle: { flex: 1, minWidth: 0, letterSpacing: -0.18, lineHeight: HEAD_SIZE * 1.25 },
+  headStacked: { flexDirection: 'column', alignItems: 'flex-start' },
+  headTitleStacked: { flex: 0, alignSelf: 'stretch' },
   foot: { paddingTop: tokens.spaceXs },
   row: { flexDirection: 'row', alignItems: 'center', gap: tokens.spaceLg },
   // Lit like People's row, with no ring: the owner found the ring weird (6 Nov 2026).
