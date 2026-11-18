@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest';
 
-import { capsuleChrome, capsuleLabelSize, capsuleRoom, pillGivesWay } from './capsuleFit.ts';
+import {
+  capsuleChrome,
+  capsuleGrowth,
+  capsuleLabelSize,
+  capsuleRoom,
+  pillGivesWay,
+} from './capsuleFit.ts';
 
 const ROW_800 = 800 - 2 * 24;
 
@@ -11,6 +17,12 @@ function capsuleWidth(tabs: number, labels: number, own: number, size: number): 
 describe('the upright tablet’s capsule', () => {
   it('leaves the row less the tile with its ring, the bell and a 12 gap beside each', () => {
     expect(capsuleRoom(ROW_800)).toBe(ROW_800 - 2 * 58);
+  });
+
+  it('grows its row only by what a taller label adds to its 46', () => {
+    expect(capsuleGrowth(0)).toBe(0);
+    expect(capsuleGrowth(46)).toBe(0);
+    expect(capsuleGrowth(61)).toBe(15);
   });
 
   it('counts the chrome of four tabs as the capsule draws it', () => {

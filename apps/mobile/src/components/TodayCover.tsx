@@ -14,7 +14,7 @@ import Svg, { Circle, Defs, LinearGradient, Rect, Stop } from 'react-native-svg'
 import { coverRowSides, pastSides, sidePadding, tabBarSides } from './bodyEdges.ts';
 import { Text } from './Text.tsx';
 import { useWholeWords } from './Title.tsx';
-import { CAPSULE_LABEL } from '../layout/capsuleFit.ts';
+import { CAPSULE_HEIGHT, CAPSULE_LABEL } from '../layout/capsuleFit.ts';
 import { capsuleLabelMultiplier, useCapsuleLabels } from './CapsuleLabels.tsx';
 import { tokens } from '../theme/tokens.ts';
 import { Confetti, Cover, type Piece } from './Cover.tsx';
@@ -998,16 +998,16 @@ const styles = StyleSheet.create({
   ends: { flexDirection: 'row', alignItems: 'center', gap: tokens.spaceSm },
   fade: { position: 'absolute', left: 0, right: 0, bottom: 0, height: 150 },
   whiteCapsule: {
-    height: 46,
+    minHeight: CAPSULE_HEIGHT,
     flexDirection: 'row',
     alignItems: 'center',
     gap: tokens.spaceHair,
-    paddingHorizontal: tokens.spaceXxs,
+    padding: tokens.spaceXxs,
     borderRadius: 23,
     backgroundColor: tokens.colorInset,
   },
   whiteCapsuleTab: {
-    height: 38,
+    minHeight: CAPSULE_HEIGHT - 2 * tokens.spaceXxs,
     flexDirection: 'row',
     alignItems: 'center',
     gap: tokens.spaceSm,
