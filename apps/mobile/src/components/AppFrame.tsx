@@ -601,7 +601,7 @@ export function AppFrame({
                               >
                                 <BodySwitched.Provider value={bodySwitched}>
                                   <UnderTabsProvider value={underTabs}>
-                                    <BellInPane.Provider value={sidebar && inEvent != null}>
+                                    <BellInPane.Provider value={sidebar && untitled}>
                                       {children}
                                     </BellInPane.Provider>
                                   </UnderTabsProvider>

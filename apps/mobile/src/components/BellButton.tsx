@@ -42,7 +42,7 @@ export function BellButton() {
   return <Bell unread={unread} onPress={() => router.push('/notifications')} testID="frame.bell" />;
 }
 
-/** Inside an event on an iPad on its side, where the frame draws no title, the area's own title row ends with the bell (sc-68052). */
+/** On an iPad on its side, where the frame draws no title and so no bell, the pane's own title row ends with the bell (sc-68052). */
 export const BellInPane = createContext(false);
 
 /** The bell that ends an area's own title row in the pane, on an iPad on its side; elsewhere the frame's top has it. */
@@ -51,7 +51,7 @@ export function PaneBell() {
 }
 
 /** What heads the pane, ended by its bell at the top right: it wraps to the bell's left at the largest sizes, in a row as tall as the bell's target. */
-export function BellRow({ children }: { children: ReactNode }) {
+export function BellRow({ children = null }: { children?: ReactNode }) {
   if (!useContext(BellInPane)) return children;
 
   return (

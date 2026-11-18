@@ -488,7 +488,7 @@ export function EventScreen({
           }
         >
           {kind === 'tabletLandscape' && cardNamed && refreshing}
-          {cardNamed && event == null && <BellRow>{null}</BellRow>}
+          {cardNamed && event == null && <BellRow />}
           {top.bodyBack && <BackButton label={backLabel} onPress={back} testID="events.back" />}
           {areaTitled && (
             <View style={styles.areaTop}>
