@@ -90,6 +90,7 @@ export function NewEventScreen({
   opener,
   onClose,
   from,
+  onNotOpen,
 }: {
   open: boolean;
   start: NewState | null;
@@ -97,6 +98,7 @@ export function NewEventScreen({
   opener: Opener;
   onClose: () => void;
   from?: FromEnquiry | undefined;
+  onNotOpen?: (() => void) | undefined;
 }) {
   const insets = useSafeAreaInsets();
   const gap = useEditGap();
@@ -185,10 +187,12 @@ export function NewEventScreen({
 
   useEffect(() => {
     if (status === 'creating' && start !== 'newCreating') {
-      const later = setTimeout(
-        () => setStatus(enquiry.refuses ? 'failed' : 'created'),
-        CREATING_MS,
-      );
+      const later = setTimeout(() => {
+        if (enquiry.leaves) {
+          onClose();
+          onNotOpen?.();
+        } else setStatus(enquiry.refuses ? 'failed' : 'created');
+      }, CREATING_MS);
 
       return () => clearTimeout(later);
     }
@@ -204,7 +208,7 @@ export function NewEventScreen({
       return () => clearTimeout(later);
     }
     return undefined;
-  }, [status, start, onClose, enquiry.refuses, enquiry.opens]);
+  }, [status, start, onClose, onNotOpen, enquiry.refuses, enquiry.leaves, enquiry.opens]);
 
   const create = () => {
     if (busy) return;

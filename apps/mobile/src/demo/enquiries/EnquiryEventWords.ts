@@ -11,8 +11,11 @@ export const W = {
   reopen: 'Reopen',
   notReopened: 'Not reopened. This enquiry became an event meanwhile, so it stays Won.',
   eventDeleted: 'The event made from this enquiry was deleted.',
+  notClosed: 'Not closed. This enquiry became an event meanwhile, so it stays Won.',
   pressReopen: 'Press Reopen on the stale page',
+  pressClose: 'Press Close as lost on the stale page',
   staleDemo: 'The page as a tab opened before the event was made still shows it Lost.',
+  staleOpenDemo: 'The page as a tab opened before the event was made still shows it Open.',
   restOfPage:
     'The rest of the page (Reach them, About the event, Assigned to, Notes) is sc-31226’s.',
   notInSample: 'This enquiry is not in the sample.',

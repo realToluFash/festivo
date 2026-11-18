@@ -99,6 +99,39 @@ describe('the enquiry’s page as it becomes an event (sc-31232)', () => {
     expect(screen.getByRole('region', { name: 'Won' })).toBeDefined();
   });
 
+  it('keeps a stale Close as lost Won, and the demo replays it', async () => {
+    enquiry('lost-has-event');
+
+    const notice = 'Not closed. This enquiry became an event meanwhile, so it stays Won.';
+    expect(await screen.findByText(notice)).toBeDefined();
+    fireEvent.click(screen.getByRole('button', { name: 'Press Close as lost on the stale page' }));
+
+    expect(screen.queryByText(notice)).toBeNull();
+    expect(screen.getByText('Open')).toBeDefined();
+    const close = screen.getByRole('button', { name: 'Close as lost…' });
+    expect(document.activeElement).toBe(close);
+    fireEvent.click(close);
+
+    expect(screen.getByText(notice)).toBeDefined();
+    expect(screen.getByRole('region', { name: 'Won' })).toBeDefined();
+    expect(document.activeElement).toBe(screen.getByRole('heading', { level: 1 }));
+  });
+
+  it('shows the enquiry Lost after Create on a stale New event, the line first and focus on the title', async () => {
+    enquiry('not-open');
+
+    expect(
+      await screen.findByText(
+        'Not created. This enquiry was closed while you were filling this in, so no event was made from it.',
+      ),
+    ).toBeDefined();
+    expect(screen.getByRole('region', { name: 'Lost · Budget' })).toBeDefined();
+    expect(screen.queryByRole('link', { name: 'Create event' })).toBeNull();
+    expect(document.activeElement).toBe(
+      screen.getByRole('heading', { level: 1, name: 'Bisi Adebayo' }),
+    );
+  });
+
   it('offers Create event again once its event was deleted', async () => {
     enquiry('event-deleted');
 
@@ -212,17 +245,39 @@ describe('New event filled in from an enquiry (sc-31232)', () => {
     );
   });
 
-  it('answers Create with the 409 and the 403, keeping what was typed', async () => {
-    filled('not-open');
+  it('leaves New event for the enquiry as it now is when Create meets a closed enquiry', async () => {
+    const router = filled('not-open');
 
     const closed =
       'Not created. This enquiry was closed while you were filling this in, so no event was made from it.';
-    expect(await screen.findByText(closed)).toBeDefined();
-    const name = screen.getByRole('textbox', { name: /Event name/ });
-    fireEvent.change(name, { target: { value: 'Bisi’s 25th' } });
+    await screen.findByRole('textbox', { name: /Event name/ });
     expect(screen.queryByText(closed)).toBeNull();
     fireEvent.click(screen.getByRole('button', { name: 'Create event' }));
-    expect(screen.getByText(closed)).toBeDefined();
+
+    expect(await screen.findByText(closed)).toBeDefined();
+    expect(router.state.location.pathname).toBe('/demo/enquiries/enq-bisi-event');
+    expect(screen.queryByRole('textbox', { name: /Event name/ })).toBeNull();
+    expect(screen.getByRole('region', { name: 'Lost · Budget' })).toBeDefined();
+  });
+
+  it('proposes no Lead for a Member who has left', async () => {
+    filled('lead-left');
+
+    const name = (await screen.findByRole('textbox', { name: /Event name/ })) as HTMLInputElement;
+    expect(name.value).toBe('Femi Ogunleye · Birthday');
+    expect(screen.queryByRole('heading', { name: 'Lead' })).toBeNull();
+  });
+
+  it('keeps what was typed when Create is refused with the 403', async () => {
+    filled('forbidden');
+
+    const refused = 'Not created. Only an owner or admin can create an event from an enquiry.';
+    expect(await screen.findByText(refused)).toBeDefined();
+    const name = screen.getByRole('textbox', { name: /Event name/ });
+    fireEvent.change(name, { target: { value: 'Bisi’s 25th' } });
+    expect(screen.queryByText(refused)).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Create event' }));
+    expect(screen.getByText(refused)).toBeDefined();
     expect((name as HTMLInputElement).value).toBe('Bisi’s 25th');
   });
 

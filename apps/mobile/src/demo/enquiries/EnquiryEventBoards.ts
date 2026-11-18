@@ -27,6 +27,16 @@ const PAGE: readonly [PageState, string, string][] = [
     'Not reopened: it stays Won; the demo’s control shows the stale Lost page',
   ],
   [
+    'lost-has-event',
+    'Enquiry · Close as lost, once it has an event',
+    'Not closed: it stays Won; the demo’s control shows the stale Open page',
+  ],
+  [
+    'not-open',
+    'Enquiry · after Create on a stale New event',
+    'Lost as it now is, Not created first, the title in focus',
+  ],
+  [
     'event-deleted',
     'Enquiry · its event deleted',
     'Open again, the notice first, Create event offered again',
@@ -41,6 +51,7 @@ const FORM: readonly [FormState, string, string][] = [
   ['lead-member', 'New event · Lead', 'The Lead block in view: Change and Remove'],
   ['lead-removed', 'New event · Lead removed', 'No lead, and Choose a lead'],
   ['lead-none', 'New event · assigned to an Admin', 'Lucía: no Lead block, EUR from the budget'],
+  ['lead-left', 'New event · a Member who has left', 'Femi’s, assigned to Sade: no Lead block'],
   ['currency-from-budget', 'New event · the budget’s currency', 'Ada: GBP, from the budget'],
   [
     'currency-not-offered',
@@ -49,7 +60,11 @@ const FORM: readonly [FormState, string, string][] = [
   ],
   ['refused', 'New event · Create refused', 'Times still empty: Starts and Ends, 2 fields'],
   ['saving', 'New event · creating', '14:00 to 22:00 chosen: Creating…'],
-  ['not-open', 'New event · enquiry closed', 'Not created: closed while you were filling it in'],
+  [
+    'not-open',
+    'New event · enquiry closed meanwhile',
+    'Create event leaves for the enquiry, Lost, with Not created first',
+  ],
   ['forbidden', 'New event · not allowed', 'Not created: only an owner or admin'],
 ];
 

@@ -259,6 +259,10 @@ export function NewEventForm({
       return;
     }
     setSummary(null);
+    if (from?.leaves != null) {
+      away.release();
+      return void navigate(from.leaves, { replace: true });
+    }
     if (from?.refusal != null) return setStatus('failed');
     setStatus('creating');
     pressed.current = true;

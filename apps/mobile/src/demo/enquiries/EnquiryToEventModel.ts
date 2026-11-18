@@ -40,8 +40,11 @@ export interface EventEnquiry {
   date: string | null;
   where: string | null;
   budget: Budget | null;
-  assignedTo: Person | null;
+  assignedTo: Assignee | null;
 }
+
+/** Whoever the enquiry is assigned to; `left` once their membership is no longer active. */
+export type Assignee = Person & { left?: true };
 
 export type CurrencyFrom = 'budget' | 'organisation';
 
@@ -74,7 +77,10 @@ export function filledFrom(
     note: '',
     timeZone: defaults.timeZone,
     currency: fromBudget ? budget : defaults.currency,
-    lead: enquiry.assignedTo?.role === 'member' ? enquiry.assignedTo.name : null,
+    lead:
+      enquiry.assignedTo?.role === 'member' && enquiry.assignedTo.left !== true
+        ? enquiry.assignedTo.name
+        : null,
     currencyFrom: fromBudget ? 'budget' : 'organisation',
   };
 }
@@ -150,6 +156,15 @@ export const EVENT_ENQUIRIES = {
     budget: { amount: 12_000, currency: 'EUR' },
     assignedTo: PEOPLE.kemi,
   },
+  femi: {
+    id: 'enq-femi-event',
+    client: 'Femi Ogunleye',
+    type: 'birthday',
+    date: '2027-04-24',
+    where: 'Ikeja, Lagos',
+    budget: null,
+    assignedTo: { id: 'sade', name: 'Sade Bello', role: 'member', left: true },
+  },
 } as const satisfies Record<string, EventEnquiry>;
 
 export type EnquiryKey = keyof typeof EVENT_ENQUIRIES;
@@ -165,6 +180,8 @@ export const PAGE_STATES = [
   'open-member',
   'won',
   'won-has-event',
+  'lost-has-event',
+  'not-open',
   'event-deleted',
 ] as const;
 export type PageState = (typeof PAGE_STATES)[number];
@@ -177,6 +194,7 @@ export const FORM_STATES = [
   'lead-member',
   'lead-removed',
   'lead-none',
+  'lead-left',
   'currency-from-budget',
   'currency-not-offered',
   'refused',
@@ -208,6 +226,7 @@ export const FORM_ENQUIRY: Record<FormState, EnquiryKey> = {
   'lead-member': 'bisi',
   'lead-removed': 'bisi',
   'lead-none': 'lucia',
+  'lead-left': 'femi',
   'currency-from-budget': 'ada',
   'currency-not-offered': 'kenji',
   refused: 'bisi',
@@ -216,6 +235,7 @@ export const FORM_ENQUIRY: Record<FormState, EnquiryKey> = {
   forbidden: 'bisi',
 };
 
+/** What Create meets: `notOpen` leaves New event for the enquiry as it now is; `forbidden` keeps the form, with its line. */
 export type Refusal = 'notOpen' | 'forbidden';
 
 export interface Lead {
@@ -266,7 +286,7 @@ export function fromEnquiry(
         ? 'newRefused'
         : state === 'saving'
           ? 'newCreating'
-          : state === 'not-open' || state === 'forbidden'
+          : state === 'forbidden'
             ? 'newNotCreated'
             : null,
   };

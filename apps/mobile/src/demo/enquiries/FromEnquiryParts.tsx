@@ -27,6 +27,7 @@ export interface EnquiryParts {
   currencyHelp: string | null;
   notCreated: string | null;
   refuses: boolean;
+  leaves: boolean;
   opens: Readonly<Record<string, string>> | null;
 }
 
@@ -60,6 +61,7 @@ export function useFromEnquiry(
       currencyHelp: null,
       notCreated: null,
       refuses: false,
+      leaves: false,
       opens: null,
     };
 
@@ -150,9 +152,9 @@ export function useFromEnquiry(
         : null,
     currencyHelp:
       from.currencyFrom === 'budget' && currency === from.typed.currency ? W.fromBudget : null,
-    notCreated:
-      from.refusal === 'notOpen' ? W.notOpen : from.refusal === 'forbidden' ? W.forbidden : null,
-    refuses: from.refusal != null,
+    notCreated: from.refusal === 'forbidden' ? W.forbidden : null,
+    refuses: from.refusal === 'forbidden',
+    leaves: from.refusal === 'notOpen',
     opens: OPENS,
   };
 }

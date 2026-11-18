@@ -126,6 +126,11 @@ describe('filledFrom (sc-31232)', () => {
     expect(fill({ ...EMPTY, assignee: PEOPLE.kemi }).lead).toBeNull();
     expect(fill(EMPTY).lead).toBeNull();
   });
+
+  it('names no lead for a Member who has left', () => {
+    expect(fill({ ...EMPTY, assignee: { ...PEOPLE.tunde, left: true } }).lead).toBeNull();
+    expect(fill(SOURCES.femi).lead).toBeNull();
+  });
 });
 
 describe('the states (sc-31232)', () => {
@@ -159,9 +164,13 @@ describe('the states (sc-31232)', () => {
     expect(fillingOf('saving', OFFERED)).toMatchObject({ as: 'creating', refusal: null });
     expect(fillingOf('saving', OFFERED).typed.start).toEqual({ date: '2027-02-14', time: '14:00' });
     expect(fillingOf('saving', OFFERED).typed.end).toEqual({ date: '2027-02-14', time: '22:00' });
-    expect(fillingOf('not-open', OFFERED).refusal).toBe(
-      'Not created. This enquiry was closed while you were filling this in, so no event was made from it.',
-    );
+    expect(fillingOf('lead-left', OFFERED)).toMatchObject({ client: 'Femi Ogunleye', lead: null });
+    expect(fillingOf('not-open', OFFERED)).toMatchObject({
+      as: null,
+      refusal: null,
+      leaves: '/demo/enquiries/enq-bisi-event?state=not-open',
+    });
+    expect(fillingOf('forbidden', OFFERED).leaves).toBeNull();
     expect(fillingOf('forbidden', OFFERED).refusal).toBe(
       'Not created. Only an owner or admin can create an event from an enquiry.',
     );

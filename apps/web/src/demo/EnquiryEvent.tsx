@@ -33,6 +33,16 @@ function StatusLine({ status }: { status: Status }) {
   );
 }
 
+/** What the page shows: a stale page shows the enquiry as it was when the tab opened. */
+function statusOf(state: EnquiryEventState, stale: boolean): Status {
+  if (state === 'won') return 'won';
+  if (state === 'won-has-event') return stale ? 'lost' : 'won';
+  if (state === 'lost-has-event') return stale ? 'open' : 'won';
+  if (state === 'not-open') return 'lost';
+
+  return 'open';
+}
+
 /** An enquiry's page with sc-31232's parts: Create event in the head, or what it became once Won. The rest is sc-31226's. */
 export function EnquiryEvent({ state }: { state: EnquiryEventState }) {
   const { id } = useParams();
@@ -42,15 +52,22 @@ export function EnquiryEvent({ state }: { state: EnquiryEventState }) {
   const phone = usePhoneWidth();
   const source = sourceOf(id);
   const [stale, setStale] = useState(false);
-  const [moved, setMoved] = useState<'reopen' | 'title' | null>(null);
+  const [moved, setMoved] = useState<'stale' | 'title' | null>(
+    state === 'not-open' ? 'title' : null,
+  );
   const title = useRef<HTMLHeadingElement>(null);
   const reopen = useRef<HTMLButtonElement>(null);
-  const status: Status =
-    state === 'won' || (state === 'won-has-event' && !stale)
-      ? 'won'
-      : state === 'won-has-event'
-        ? 'lost'
-        : 'open';
+  const closer = useRef<HTMLButtonElement>(null);
+  const status = statusOf(state, stale);
+  const refused = stale
+    ? null
+    : state === 'won-has-event'
+      ? W.notReopened
+      : state === 'lost-has-event'
+        ? W.notClosed
+        : state === 'not-open'
+          ? W.notOpen
+          : null;
   const made = filledFrom(
     source,
     CURRENCY_CHOICES.map(([code]) => code),
@@ -58,7 +75,7 @@ export function EnquiryEvent({ state }: { state: EnquiryEventState }) {
   ).name;
 
   useEffect(() => {
-    if (moved === 'reopen') reopen.current?.focus();
+    if (moved === 'stale') (reopen.current ?? closer.current)?.focus();
     if (moved === 'title') title.current?.focus();
   }, [moved]);
 
@@ -79,9 +96,14 @@ export function EnquiryEvent({ state }: { state: EnquiryEventState }) {
   const close =
     status !== 'open' ? null : (
       <button
+        ref={closer}
         type="button"
         className="button enq-close"
-        onClick={() => tell(ENQUIRY_WORDS.ownDesign(W.closeAsLost))}
+        onClick={() => {
+          if (state !== 'lost-has-event') return tell(ENQUIRY_WORDS.ownDesign(W.closeAsLost));
+          setStale(false);
+          setMoved('title');
+        }}
       >
         {W.closeAsLost}
       </button>
@@ -117,7 +139,7 @@ export function EnquiryEvent({ state }: { state: EnquiryEventState }) {
           )}
         </div>
         {phone && create}
-        {state === 'won-has-event' && !stale && <Broken>{W.notReopened}</Broken>}
+        {refused != null && <Broken>{refused}</Broken>}
         {state === 'event-deleted' && <Quiet>{W.eventDeleted}</Quiet>}
         {status === 'won' && (
           <section className="enq-made-card" aria-labelledby="enq-made-won">
@@ -139,6 +161,7 @@ export function EnquiryEvent({ state }: { state: EnquiryEventState }) {
               type="button"
               className="button enq-made-reopen"
               onClick={() => {
+                if (state !== 'won-has-event') return tell(ENQUIRY_WORDS.ownDesign(W.reopen));
                 setStale(false);
                 setMoved('title');
               }}
@@ -148,17 +171,17 @@ export function EnquiryEvent({ state }: { state: EnquiryEventState }) {
           </section>
         )}
         <p className="enq-made-demo">{W.restElsewhere}</p>
-        {state === 'won-has-event' && !stale && (
+        {(state === 'won-has-event' || state === 'lost-has-event') && !stale && (
           <div className="enq-made-demo">
             <button
               type="button"
               className="button"
               onClick={() => {
                 setStale(true);
-                setMoved('reopen');
+                setMoved('stale');
               }}
             >
-              {W.pressReopen}
+              {state === 'won-has-event' ? W.pressReopen : W.pressClose}
             </button>
           </div>
         )}

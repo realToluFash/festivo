@@ -27,6 +27,7 @@ import { cardStateOf } from '../people/PeopleCardModel.ts';
 import { areaOf, sampleEvent } from './EventsSample.ts';
 import { say } from './EventsWords.ts';
 import { originStateOf } from '../enquiries/EnquiryToEventModel.ts';
+import { CREATED_ID } from './NewEvent.tsx';
 import {
   type Looking,
   type Shell,
@@ -146,7 +147,7 @@ export function EventRoute() {
   const state = noBudget ? 'more' : eventStateOf(params.state);
   const guests = area === 'guests' ? guestsStateOf(params.state) : null;
   const people = cardStateOf(params.people);
-  const origin = originStateOf(params.state);
+  const origin = params.id === CREATED_ID ? originStateOf(params.state) : null;
 
   if (area === 'guests' && params.state === 'eventDeleted')
     return (

@@ -1,16 +1,18 @@
 import { formattingLocale } from '@soirely/domain';
 import { getLocales } from 'expo-localization';
 import { router } from 'expo-router';
-import { type ReactNode, useMemo, useRef, useState } from 'react';
+import { type ReactNode, useEffect, useMemo, useRef, useState } from 'react';
 import { ScrollView, StyleSheet, View, type ViewInstance } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { EventNotice } from '../../components/EventNotice.tsx';
 import { Glyph } from '../../components/Glyph.tsx';
+import { SETTLED_MS } from '../../components/Screen.tsx';
+import { moveScreenReaderFocus } from '../../components/screenReaderFocus.ts';
 import { Back, Card, Pill } from '../../components/SettingsParts.tsx';
 import { StatusMark } from '../../components/StatusMark.tsx';
 import { TextAction } from '../../components/Summary.tsx';
-import { Text } from '../../components/Text.tsx';
+import { Text, type TextHandle } from '../../components/Text.tsx';
 import { useShell } from '../../components/settingsShell.ts';
 import { DemoOnly } from '../../steps/Lines.tsx';
 import { tokens } from '../../theme/tokens.ts';
@@ -34,6 +36,16 @@ import {
 const OFFERED: readonly string[] = currencyRows('').map((row) => row.code);
 
 type Shown = 'open' | 'won' | 'lost';
+
+/** What the page shows: a stale page shows the enquiry as it was when the tab opened, and a closed one as it now is. */
+function shownOf(state: PageState, stale: boolean, closed: boolean): Shown {
+  if (closed) return 'lost';
+  if (state === 'won') return 'won';
+  if (state === 'won-has-event') return stale ? 'lost' : 'won';
+  if (state === 'lost-has-event') return stale ? 'open' : 'won';
+
+  return 'open';
+}
 
 /** An enquiry's page with sc-31232's parts: Create event, the Member's line, Won and its event, and Reopen refused once it has one. */
 export function EnquiryEventPage({
@@ -75,6 +87,9 @@ function Page({
   const insets = useSafeAreaInsets();
   const locale = formattingLocale('en', getLocales()[0]?.languageTag);
   const [stale, setStale] = useState(false);
+  const [closed, setClosed] = useState(state === 'not-open');
+  const [focusing, setFocusing] = useState(state === 'not-open' ? 1 : 0);
+  const title = useRef<TextHandle>(null);
   const [making, setMaking] = useState(form == null ? 0 : 1);
   const [newOpen, setNewOpen] = useState(form != null);
   const opener = useRef<ViewInstance>(null);
@@ -84,15 +99,24 @@ function Page({
   );
   const landscape = shell.layout === 'landscape';
   const tablet = shell.layout !== 'phone';
-  const shown: Shown =
-    state === 'won' || state === 'won-has-event' ? (stale ? 'lost' : 'won') : 'open';
-  const creates = state === 'open-admin' || state === 'event-deleted';
+  const shown = shownOf(state, stale, closed);
+  const creates =
+    shown === 'open' &&
+    (state === 'open-admin' || state === 'event-deleted' || state === 'lost-has-event');
   const event = filledFrom(enquiry, OFFERED, ORG_DEFAULTS).name;
   const tellOwn = (what: string) => shell.tell(W.ownDesign(what));
   const create = () => {
     setMaking((times) => times + 1);
     setNewOpen(true);
   };
+  const toTitle = () => setFocusing((count) => count + 1);
+
+  useEffect(() => {
+    if (focusing === 0) return undefined;
+    const later = setTimeout(() => moveScreenReaderFocus(title.current), SETTLED_MS);
+
+    return () => clearTimeout(later);
+  }, [focusing]);
 
   const createButton = (height: number, full: boolean) => (
     <Pill
@@ -108,15 +132,28 @@ function Page({
     <Pill
       label={W.closeAsLost}
       kind="secondary"
-      onPress={() => tellOwn(W.closeAsLost)}
+      onPress={() => {
+        if (state !== 'lost-has-event') return tellOwn(W.closeAsLost);
+        setStale(false);
+        toTitle();
+      }}
       height={height}
       full={full}
       testID="enquiryEvent.closeAsLost"
     />
   );
+  const refused = closed
+    ? W.notOpen
+    : stale
+      ? null
+      : state === 'won-has-event'
+        ? W.notReopened
+        : state === 'lost-has-event'
+          ? W.notClosed
+          : null;
   const notice: ReactNode =
-    state === 'won-has-event' && !stale ? (
-      <EventNotice tone="broken" words={W.notReopened} />
+    refused != null ? (
+      <EventNotice tone="broken" words={refused} />
     ) : state === 'event-deleted' ? (
       <EventNotice tone="quiet" words={W.eventDeleted} />
     ) : null;
@@ -144,7 +181,11 @@ function Page({
           kind="secondary"
           height={tokens.sizeHit}
           full={false}
-          onPress={() => setStale(false)}
+          onPress={() => {
+            if (state !== 'won-has-event') return tellOwn(W.reopen);
+            setStale(false);
+            toTitle();
+          }}
           testID="enquiryEvent.reopen"
         />
       </Card>
@@ -167,6 +208,7 @@ function Page({
         <View style={[styles.head, landscape && styles.headRow]}>
           <View style={styles.headWords}>
             <Text
+              ref={title}
               size={tablet ? 36 : 30}
               weight="bold"
               accessibilityRole="header"
@@ -200,10 +242,10 @@ function Page({
         {notice}
         {card}
         <DemoOnly title={W.restOfPage}>{null}</DemoOnly>
-        {state === 'won-has-event' && !stale && (
-          <DemoOnly title={W.staleDemo}>
+        {(state === 'won-has-event' || state === 'lost-has-event') && !stale && (
+          <DemoOnly title={state === 'won-has-event' ? W.staleDemo : W.staleOpenDemo}>
             <TextAction
-              label={W.pressReopen}
+              label={state === 'won-has-event' ? W.pressReopen : W.pressClose}
               onPress={() => setStale(true)}
               testID="enquiryEvent.demo.stale"
             />
@@ -220,6 +262,10 @@ function Page({
           locale={locale}
           opener={opener}
           onClose={() => setNewOpen(false)}
+          onNotOpen={() => {
+            setClosed(true);
+            toTitle();
+          }}
         />
       )}
     </View>

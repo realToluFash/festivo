@@ -159,6 +159,13 @@ describe('filledFrom', () => {
     expect(fill({ ...EVENT_ENQUIRIES.bisi, assignedTo: PEOPLE.folake }).lead).toBeNull();
     expect(fill({ ...EVENT_ENQUIRIES.bisi, assignedTo: PEOPLE.kemi }).lead).toBeNull();
     expect(fill({ ...EVENT_ENQUIRIES.bisi, assignedTo: null }).lead).toBeNull();
+    expect(
+      fill({ ...EVENT_ENQUIRIES.bisi, assignedTo: { ...PEOPLE.tunde, left: true } }).lead,
+    ).toBeNull();
+    expect(fill(EVENT_ENQUIRIES.femi).lead).toBeNull();
+    expect(
+      fromEnquiry(EVENT_ENQUIRIES.femi, OFFERED, ORG_DEFAULTS, 'lead-left').from.lead,
+    ).toBeNull();
   });
 });
 
@@ -193,8 +200,11 @@ describe('the board’s states', () => {
       expect(checkOf(from.typed).count).toBe(0);
       expect(from.typed.start).toEqual({ date: '2027-02-14', time: '14:00' });
     }
-    expect(fromEnquiry(EVENT_ENQUIRIES.bisi, OFFERED, ORG_DEFAULTS, 'not-open').from.refusal).toBe(
-      'notOpen',
+    const notOpen = fromEnquiry(EVENT_ENQUIRIES.bisi, OFFERED, ORG_DEFAULTS, 'not-open');
+    expect(notOpen.from.refusal).toBe('notOpen');
+    expect(notOpen.start).toBeNull();
+    expect(fromEnquiry(EVENT_ENQUIRIES.bisi, OFFERED, ORG_DEFAULTS, 'forbidden').start).toBe(
+      'newNotCreated',
     );
     expect(fromEnquiry(EVENT_ENQUIRIES.bisi, OFFERED, ORG_DEFAULTS, 'forbidden').from.refusal).toBe(
       'forbidden',

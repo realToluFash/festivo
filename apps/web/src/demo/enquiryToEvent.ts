@@ -47,8 +47,11 @@ export interface SourceEnquiry {
   date: string | null;
   where: string | null;
   budget: Budget | null;
-  assignee: Person | null;
+  assignee: Assignee | null;
 }
+
+/** Whoever the enquiry is assigned to; `left` once their membership is no longer active. */
+export type Assignee = Person & { left?: true };
 
 export type CurrencyFrom = 'budget' | 'organisation';
 
@@ -79,7 +82,10 @@ export function filledFrom(
     note: '',
     timeZone: defaults.timeZone,
     currency: fromBudget && enquiry.budget != null ? enquiry.budget.currency : defaults.currency,
-    lead: enquiry.assignee?.role === 'member' ? enquiry.assignee.name : null,
+    lead:
+      enquiry.assignee?.role === 'member' && enquiry.assignee.left !== true
+        ? enquiry.assignee.name
+        : null,
     currencyFrom: fromBudget ? 'budget' : 'organisation',
   };
 }
@@ -155,6 +161,15 @@ export const SOURCES = {
     budget: { amount: 12_000, currency: 'EUR' },
     assignee: PEOPLE.kemi,
   },
+  femi: {
+    id: 'enq-femi-event',
+    client: 'Femi Ogunleye',
+    type: 'birthday',
+    date: '2027-04-24',
+    where: 'Ikeja, Lagos',
+    budget: null,
+    assignee: { id: 'sade', name: 'Sade Bello', role: 'member', left: true },
+  },
 } as const satisfies Record<string, SourceEnquiry>;
 
 export type SourceKey = keyof typeof SOURCES;
@@ -179,6 +194,8 @@ export const ENQUIRY_EVENT_STATES = [
   'open-member',
   'won',
   'won-has-event',
+  'lost-has-event',
+  'not-open',
   'event-deleted',
 ] as const;
 export type EnquiryEventState = (typeof ENQUIRY_EVENT_STATES)[number];
@@ -191,6 +208,7 @@ export const FILLED_STATES = [
   'lead-member',
   'lead-removed',
   'lead-none',
+  'lead-left',
   'currency-from-budget',
   'currency-not-offered',
   'refused',
@@ -214,7 +232,6 @@ export const madeStateOf = (raw: string | null) => oneOf(MADE_STATES, raw);
 const AS: Partial<Record<FilledState, NewEventState>> = {
   refused: 'refused',
   saving: 'creating',
-  'not-open': 'notCreated',
   forbidden: 'notCreated',
 };
 
@@ -226,6 +243,7 @@ const SOURCE_OF: Record<FilledState, SourceKey> = {
   'lead-member': 'bisi',
   'lead-removed': 'bisi',
   'lead-none': 'lucia',
+  'lead-left': 'femi',
   'currency-from-budget': 'ada',
   'currency-not-offered': 'kenji',
   refused: 'bisi',
@@ -233,6 +251,8 @@ const SOURCE_OF: Record<FilledState, SourceKey> = {
   'not-open': 'bisi',
   forbidden: 'bisi',
 };
+
+const ENQUIRY = (state: EnquiryEventState) => `/demo/enquiries/enq-bisi-event?state=${state}`;
 
 const WITH_TIMES: readonly FilledState[] = ['saving', 'not-open', 'forbidden'];
 
@@ -243,8 +263,10 @@ export interface Filling {
   leadRemoved: boolean;
   currencyFrom: CurrencyFrom;
   as: NewEventState | null;
-  /** What Create answers instead of going through: the 409 or the 403. */
+  /** What Create answers on the form instead of going through: the 403. */
   refusal: string | null;
+  /** Where Create goes instead when the enquiry stopped being Open meanwhile: the enquiry as it now is. */
+  leaves: string | null;
   opens: string;
 }
 
@@ -266,12 +288,8 @@ export function fillingOf(state: FilledState, offered: readonly string[]): Filli
     leadRemoved: state === 'lead-removed',
     currencyFrom,
     as: AS[state] ?? null,
-    refusal:
-      state === 'not-open'
-        ? ENQUIRY_EVENT_WORDS.notOpen
-        : state === 'forbidden'
-          ? ENQUIRY_EVENT_WORDS.forbidden
-          : null,
+    refusal: state === 'forbidden' ? ENQUIRY_EVENT_WORDS.forbidden : null,
+    leaves: state === 'not-open' ? ENQUIRY('not-open') : null,
     opens: `/demo/events/${MADE_FROM}?state=from-enquiry`,
   };
 }
@@ -325,7 +343,9 @@ export const ENQUIRY_EVENT_WORDS = {
   lostBudget: 'Lost · Budget',
   reopen: 'Reopen',
   notReopened: 'Not reopened. This enquiry became an event meanwhile, so it stays Won.',
+  notClosed: 'Not closed. This enquiry became an event meanwhile, so it stays Won.',
   pressReopen: 'Press Reopen on the stale page',
+  pressClose: 'Press Close as lost on the stale page',
   eventDeleted: 'The event made from this enquiry was deleted.',
   restElsewhere:
     'The rest of the page (Reach them, About the event, Assigned to, Notes) is sc-31226’s.',
@@ -351,7 +371,6 @@ function link(to: string, name: string): DemoLink {
   return { to, name };
 }
 
-const ENQUIRY = (state: EnquiryEventState) => `/demo/enquiries/enq-bisi-event?state=${state}`;
 const FILLED = (state: FilledState) => `/demo/events/new?from=enquiry&state=${state}`;
 const MADE = (state: MadeState) => `/demo/events/${MADE_FROM}?state=${state}`;
 
@@ -363,6 +382,8 @@ export const ENQUIRY_EVENT_PAGES: readonly { name: string; states: readonly Demo
       link(ENQUIRY('open-member'), 'The enquiry, Open, the assigned Member: no Create event'),
       link(ENQUIRY('won'), 'The enquiry, Won: Became Bisi Adebayo · Anniversary'),
       link(ENQUIRY('won-has-event'), 'The enquiry, Reopen on a stale page: it stays Won'),
+      link(ENQUIRY('lost-has-event'), 'The enquiry, Close as lost on a stale page: it stays Won'),
+      link(ENQUIRY('not-open'), 'The enquiry, after Create on a stale New event: Lost'),
       link(ENQUIRY('event-deleted'), 'The enquiry, its event deleted: Create event again'),
       link(FILLED('filled'), 'New event filled from Bisi Adebayo, times empty'),
       link(FILLED('sparse'), 'New event from a sparse enquiry: Chinedu Eze'),
@@ -371,11 +392,12 @@ export const ENQUIRY_EVENT_PAGES: readonly { name: string; states: readonly Demo
       link(FILLED('lead-member'), 'New event with Lead: the assigned Member'),
       link(FILLED('lead-removed'), 'New event with the Lead removed: No lead'),
       link(FILLED('lead-none'), 'New event from an Admin’s enquiry: no Lead'),
+      link(FILLED('lead-left'), 'New event, assigned to a Member who has left: no Lead'),
       link(FILLED('currency-from-budget'), 'New event in GBP, from the budget'),
       link(FILLED('currency-not-offered'), 'New event with JPY not offered: NGN'),
       link(FILLED('refused'), 'New event, Create with the times empty'),
       link(FILLED('saving'), 'New event, Creating…'),
-      link(FILLED('not-open'), 'New event, the enquiry was closed meanwhile'),
+      link(FILLED('not-open'), 'New event, the enquiry was closed meanwhile: Create leaves'),
       link(FILLED('forbidden'), 'New event, only an owner or admin creates it'),
       link(MADE('from-enquiry'), 'The event’s Overview: From an enquiry · Bisi Adebayo'),
       link(MADE('from-enquiry-hidden'), 'The event’s Overview, a Member without the enquiry'),
