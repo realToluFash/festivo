@@ -26,7 +26,7 @@ import { W, say } from './GuestsWords.ts';
 import { type MarkKind, ReplyMark } from '../../components/ReplyMark.tsx';
 import { DoneLine } from '../../components/FormLayers.tsx';
 import { PaneBell, useBellInPane } from '../events/EventFrame.tsx';
-import { actionsUnder } from './titleStack.ts';
+import { actionsUnder } from '../../layout/titleFit.ts';
 
 export type Layout = 'phone' | 'portrait' | 'landscape';
 
