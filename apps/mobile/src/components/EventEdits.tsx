@@ -136,7 +136,8 @@ export function EditShell({
             label: t('eventEdit.showLatest'),
             testID: `${testID}.latest.show`,
             removes: true,
-            ...(elsewhere.pending === true ? { busy: t('eventEdit.showLatest') } : {}),
+            busy: elsewhere.pending === true ? t('eventEdit.showLatest') : undefined,
+            busyWords: t('eventEdit.showLatest'),
           },
           onKeep: () => setQuestion(null),
           onConfirm: () => {

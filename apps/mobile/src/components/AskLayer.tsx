@@ -19,20 +19,22 @@ import { useLayout } from '../layout/useLayout.ts';
 import { tokens } from '../theme/tokens.ts';
 import { TextAction, TurningMark } from './SummaryRows.tsx';
 
+export type AskConfirm = { label: string; testID?: string; removes?: boolean } & (
+  | { busy?: never; busyWords?: never }
+  | {
+      busy: string | undefined;
+      /** The words `busy` will say, known before sending, so the two buttons are sized for them from the start. */
+      busyWords: string;
+    }
+);
+
 export interface AskProps {
   title: string;
   line: string;
   /** `off` while the answer is out: the way back waits in Ink 3. */
   keep: { label: string; testID?: string; off?: boolean };
   /** `busy` while the answer is out: the turning mark and these words in Ink 2, off. None once nothing is left to decide. */
-  confirm: {
-    label: string;
-    testID?: string;
-    removes?: boolean;
-    busy?: string | undefined;
-    /** The words `busy` will say, known before sending, so the two buttons are sized for them from the start. */
-    busyWords?: string | undefined;
-  } | null;
+  confirm: AskConfirm | null;
   onKeep: () => void;
   onConfirm?: () => void;
   /** The line says the question no longer stands, with the alert mark, and is read out. */
