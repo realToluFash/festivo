@@ -25,6 +25,7 @@ import type { GuestsCardWords } from './GuestsModel.ts';
 import { W, say } from './GuestsWords.ts';
 import { type MarkKind, ReplyMark } from '../../components/ReplyMark.tsx';
 import { DoneLine } from '../../components/FormLayers.tsx';
+import { PaneBell } from '../events/EventFrame.tsx';
 
 export type Layout = 'phone' | 'portrait' | 'landscape';
 
@@ -357,7 +358,6 @@ export function ShownLine({
   );
 }
 
-/** The title: "Guests" with the round plus on the phone; on an iPad Add guest beside it when both fit on one line, else the round plus (sc-51444). */
 /** The title row as the product draws it: the title keeps its words whole under its cap, and the + keeps its label only where the title and the labelled + both fit beside what is there (sc-67338, sc-51444, sc-67659). */
 export function GuestsTitle({
   layout,
@@ -397,6 +397,7 @@ export function GuestsTitle({
       {plus && (
         <TopPrimary label={plusLabel} onPress={onPlus} wide={label.wide} testID="guests.add" />
       )}
+      <PaneBell />
     </View>
   );
 }

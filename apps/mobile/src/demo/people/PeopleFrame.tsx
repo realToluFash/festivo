@@ -8,7 +8,7 @@ import { PAGE_TITLE, pageTitle } from '../../components/topTitle.ts';
 import { tokens } from '../../theme/tokens.ts';
 import { Bell, PortraitTop } from '../settings/Frame.tsx';
 import { EVENT } from './PeopleSample.ts';
-import { EventFrame } from '../events/EventFrame.tsx';
+import { BellRow, EventFrame } from '../events/EventFrame.tsx';
 import { useShell } from '../../components/settingsShell.ts';
 import { Back } from '../../components/SettingsParts.tsx';
 import { PageToast, type PageToastProps } from '../../components/Summary.tsx';
@@ -37,9 +37,11 @@ export function PeoplePage({
   const inEvent = useContext(PeopleInEvent);
   const head = (
     <View style={inEvent == null || phone ? styles.title : styles.titleInEvent}>
-      <Title size={PAGE_TITLE} accessibilityRole="header" style={pageTitle} onDrawn={onDrawn}>
-        People
-      </Title>
+      <BellRow>
+        <Title size={PAGE_TITLE} accessibilityRole="header" style={pageTitle} onDrawn={onDrawn}>
+          People
+        </Title>
+      </BellRow>
       <Text size={15} weight="medium" style={styles.secondary}>
         {inEvent == null || phone ? event : inEvent.event.name}
       </Text>
