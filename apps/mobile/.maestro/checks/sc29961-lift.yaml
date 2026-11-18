@@ -1,4 +1,5 @@
 # sc-29961: five wrong codes pause Enter your code; once the pause lifts (its sign-in run out meanwhile), the right code goes to Sign in saying so, Email kept; signing in again reaches Enter your code and the right code signs in. About 17 minutes: run it in a batch of four or more checks for the time budget.
+# The run-out and answer helpers are not in the repository: their recipe is qa's comment #67586 on sc-29961. Without them this check fails after its wait, with nothing saying why.
 appId: host.exp.Exponent
 ---
 - runFlow: ../sign-out.yaml

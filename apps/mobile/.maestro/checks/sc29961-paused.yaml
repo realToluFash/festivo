@@ -1,4 +1,5 @@
 # sc-29961: five wrong codes pause code entry; the sign-in run out while paused (expire.sh age, first 2 minutes) goes to Sign in saying so; signing in again, a code typed there shows the pause as today. The lift is sc29961-lift.
+# The run-out and answer helpers are not in the repository: their recipe is qa's comment #67586 on sc-29961. Without them this check fails after its wait, with nothing saying why.
 appId: host.exp.Exponent
 ---
 - runFlow: ../sign-out.yaml

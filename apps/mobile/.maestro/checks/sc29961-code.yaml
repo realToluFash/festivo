@@ -1,4 +1,5 @@
 # sc-29961: on Enter your code, the right code typed after the sign-in ran out (expire.sh age) goes to Sign in, saying so, Email kept; signing in again reaches Enter your code and the right code signs in.
+# The run-out and answer helpers are not in the repository: their recipe is qa's comment #67586 on sc-29961. Without them this check fails after its wait, with nothing saying why.
 appId: host.exp.Exponent
 ---
 - runFlow: ../sign-out.yaml

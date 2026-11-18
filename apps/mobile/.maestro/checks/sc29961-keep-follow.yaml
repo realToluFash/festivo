@@ -1,4 +1,5 @@
 # sc-29961: after Keep waiting and a tap outside, the screen goes on following the request: an approval made now shows within 20 seconds (made from the shell, .qa/sc29961/answer.py).
+# The run-out and answer helpers are not in the repository: their recipe is qa's comment #67586 on sc-29961. Without them this check fails after its wait, with nothing saying why.
 appId: host.exp.Exponent
 ---
 - runFlow: ../sign-out.yaml
