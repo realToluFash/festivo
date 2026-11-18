@@ -10,6 +10,7 @@ use App\Domain\Event\EventEditor;
 use App\Domain\Event\EventLifecycle;
 use App\Domain\Event\Http\EventSerialiser;
 use App\Domain\Event\Http\MilestoneSerialiser;
+use App\Domain\Event\Interfaces\EventDatesMovedInterface;
 use App\Domain\Event\ThankYouEditor;
 use App\Domain\Guest\Headcount\HeadcountCalculator;
 use App\Entity\Event;
@@ -38,6 +39,7 @@ use Psl\Type;
 use Psl\Vec;
 use Psr\Clock\ClockInterface;
 use Symfony\Bundle\SecurityBundle\Security;
+use Symfony\Component\DependencyInjection\Attribute\AutowireIterator;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -49,6 +51,7 @@ final readonly class EventsController
 
     private const int MOST_PER_PAGE = 200;
 
+    /** @param iterable<EventDatesMovedInterface> $datesMovedListeners */
     public function __construct(
         private Security $security,
         private OrganisationRepository $organisationRepository,
@@ -63,6 +66,8 @@ final readonly class EventsController
         private EventDuplicator $eventDuplicator,
         private HeadcountCalculator $headcountCalculator,
         private ThankYouEditor $thankYouEditor,
+        #[AutowireIterator(EventDatesMovedInterface::TAG)]
+        private iterable $datesMovedListeners,
     ) {
     }
 
@@ -154,7 +159,7 @@ final readonly class EventsController
         return $this->tagged($this->event($eventId));
     }
 
-    /** Any of the ten fields; those left out keep their value, a `venue`, an `arrivalNote` or a `replyBy` of null removes it, and `hosts` is the whole list (sc-6713). Needs If-Match with the ETag it read (sc-3587). */
+    /** Any of the ten fields; those left out keep their value, a `venue`, an `arrivalNote` or a `replyBy` of null removes it, and `hosts` is the whole list (sc-6713). Needs If-Match with the ETag it read (sc-3587). A Reply by, start or zone sent tells whatever closes by them (sc-3905). */
     #[Route('/api/events/{eventId}', name: 'events_update', methods: ['PATCH'])]
     #[InEvent(Permission::EventsManage)]
     public function update(Request $request, string $eventId): JsonResponse
@@ -173,7 +178,15 @@ final readonly class EventsController
             'replyBy' => Type\optional(Type\nullable(Type\string())),
         ]));
 
-        return $this->tagged($this->eventEditor->edit($event, $request->headers->get('If-Match'), $this->user(), $body));
+        $edited = $this->eventEditor->edit($event, $request->headers->get('If-Match'), $this->user(), $body);
+
+        if (Iter\any(['replyBy', 'startsAt', 'timeZone'], static fn (string $field): bool => Iter\contains_key($body, $field))) {
+            foreach ($this->datesMovedListeners as $listener) {
+                $listener->datesMoved($edited);
+            }
+        }
+
+        return $this->tagged($edited);
     }
 
     /** A Draft from `startsAt`, local to the original's zone, in any phase (sc-3593). Needs Create events, since it creates one, and guests.manage as well to bring the guest list (sc-3656). */

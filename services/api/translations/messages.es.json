@@ -320,6 +320,8 @@
     "timeline.event_ends": "Termina {name}",
     "timeline.event_called_off": "Se cancela {name}",
     "timeline.replies_close": "Fin del plazo de respuesta",
+    "timeline.picks_close": "Picks close",
+    "timeline.menu": "Menu",
     "calendar_feed.status.draft": "Borrador",
     "calendar_feed.status.live": "Publicado",
     "calendar_feed.status.paused": "En pausa",
