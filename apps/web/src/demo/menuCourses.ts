@@ -494,6 +494,14 @@ export function variantCourses(): EvCourse[] {
   });
 }
 
+/** sc-3909's sample menu: sc-3903's variants, with "And a side?" on Coconut rice. */
+export function picksCourses(): EvCourse[] {
+  return changed(
+    { 'k2-coconut': (dish) => ({ ...dish, choices: [sideChoice(false)] }) },
+    variantCourses(),
+  );
+}
+
 /** Main as a set course of Jollof rice alone, nobody having picked it. */
 function setMain(variants: readonly Variant[]): EvCourse[] {
   return changed(
@@ -678,6 +686,8 @@ export interface CoursesStart {
   libraryFailed?: boolean;
   /** Try again on a library that did not load fails once more, then loads. */
   libraryRetryFails?: boolean;
+  /** sc-3909: each dish row and variant inset shows its picks, See picks sits on each course, and the picks summary beside the menu. */
+  picks?: boolean;
 }
 
 function start(over: Partial<CoursesStart> & { name: string; note: string }): CoursesStart {
@@ -698,6 +708,21 @@ function start(over: Partial<CoursesStart> & { name: string; note: string }): Co
 const MAIN = 'k2';
 
 const STATES = {
+  menuPicks: () =>
+    start({
+      name: 'The menu with its picks (sc-3909)',
+      note: 'Each dish row and variant inset shows its picks and share of the room, from the same figures as See picks; See picks on each course, and the picks summary beside the menu.',
+      courses: picksCourses(),
+      picks: true,
+    }),
+  menuPicksReadOnly: () =>
+    start({
+      name: 'The menu with its picks, read only (sc-3909)',
+      note: 'Without menu.manage: the picks and See picks stay.',
+      courses: picksCourses(),
+      picks: true,
+      manage: false,
+    }),
   menu: () =>
     start({
       name: 'The menu',
