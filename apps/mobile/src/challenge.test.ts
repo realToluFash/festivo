@@ -2,6 +2,7 @@ import { type Account } from '@soirely/api-client';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import {
+  challengeBeganAlone,
   dropChallenge,
   heldChallenge,
   nextAfterRegistration,
@@ -242,5 +243,19 @@ describe.each(Object.entries(takes))('a held request link, taken by %s (sc-19752
 
     expect(await take()).toBe('/');
     expect(kept.has('soirely.requestLink')).toBe(false);
+  });
+});
+
+describe('where the held sign-in began (sc-67606)', () => {
+  it('holds whether it began on a Sign in with nothing under it, and forgets it once dropped', async () => {
+    await nextAfterSignIn(CHALLENGE, { alone: true });
+    expect(challengeBeganAlone()).toBe(true);
+
+    await nextAfterSignIn(CHALLENGE);
+    expect(challengeBeganAlone()).toBe(false);
+
+    await nextAfterSignIn(CHALLENGE, { alone: true });
+    dropChallenge();
+    expect(challengeBeganAlone()).toBe(false);
   });
 });

@@ -28,10 +28,13 @@ function failedElsewhere(provider: string): void {
 export function ProviderButtons({
   onFailed = failedElsewhere,
   only,
+  alone = false,
   before,
 }: {
   onFailed?: ((provider: string) => void) | undefined;
   only?: readonly string[] | undefined;
+  /** On a Sign in with nothing under it, which a sign-in that runs out goes back to as it is (sc-67606). */
+  alone?: boolean | undefined;
   /** Done before the provider opens, as a join link holds itself to come back to. */
   before?: (() => Promise<void>) | undefined;
 }) {
@@ -43,7 +46,7 @@ export function ProviderButtons({
 
     try {
       await before?.();
-      router.replace(await nextAfterSignIn(await signInWithProvider(provider)));
+      router.replace(await nextAfterSignIn(await signInWithProvider(provider), { alone }));
     } catch (error) {
       // Closing the provider is not a failure, so it says nothing; anything else says it did not work.
       if (!(error instanceof ProviderCancelled)) onFailed(PROVIDER_NAMES[provider]);

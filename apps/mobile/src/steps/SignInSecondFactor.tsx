@@ -3,8 +3,8 @@ import { useTranslation } from 'react-i18next';
 
 import { api } from '../api.ts';
 import { heldChallenge, nextAfterSignIn } from '../challenge.ts';
-import { timedOutSignIn } from '../kit/signInRules.ts';
 import { codePassed } from '../providerSignIn.ts';
+import { leaveTimedOutSignIn } from './leaveTimedOutSignIn.ts';
 import { TwoFactorStep } from './TwoFactorStep.tsx';
 
 /** "Enter your code", or with `recovery`, "Enter a recovery code": the second half of a sign-in, reached only with a challenge held. */
@@ -32,7 +32,7 @@ export function SignInSecondFactor({ recovery = false }: { recovery?: boolean })
         if (recovery && router.canDismiss()) router.dismiss();
         router.replace(next);
       }}
-      onExpired={() => router.replace(timedOutSignIn(challenge.email))}
+      onExpired={leaveTimedOutSignIn}
       onOtherWay={() => (recovery ? back() : router.push('/sign-in-recovery'))}
       onLostBoth={() => router.push('/lost-two-factor')}
       onBack={back}
