@@ -1,0 +1,24 @@
+# sc-68022: the app on a phone, People from the More sheet reads ‹ Overview and opens Overview.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/${EVENT_ID}?area=overview
+- extendedWaitUntil: { visible: { id: 'event.nav.more' }, timeout: 30000 }
+- waitForAnimationToEnd: { timeout: 5000 }
+- takeScreenshot: a-overview
+- tapOn: { id: 'event.nav.more' }
+- extendedWaitUntil: { visible: { id: 'event.nav.more.people' }, timeout: 10000 }
+- takeScreenshot: a-more-sheet
+- tapOn: { id: 'event.nav.more.people' }
+- waitForAnimationToEnd: { timeout: 6000 }
+- takeScreenshot: a-people-from-more
+- tapOn: { id: 'frame.back' }
+- waitForAnimationToEnd: { timeout: 6000 }
+- takeScreenshot: a-back-from-more
+- tapOn: { id: 'event.nav.guests' }
+- waitForAnimationToEnd: { timeout: 5000 }
+- tapOn: { id: 'event.nav.more' }
+- tapOn: { id: 'event.nav.more.people' }
+- waitForAnimationToEnd: { timeout: 6000 }
+- tapOn: { id: 'frame.back' }
+- waitForAnimationToEnd: { timeout: 6000 }
+- takeScreenshot: a-back-over-guests
