@@ -49,10 +49,10 @@ describe('Sign out at the largest text sizes (sc-66900)', () => {
   });
 
   it('grows the pill from main’s height, a capsule 12 above and below its words, which wrap rather than cut', () => {
-    expect(parts).toMatch(/grows \? \[styles\.pillGrows, \{ minHeight: height \}\]/u);
     expect(parts).toMatch(
-      /pillGrows: \{ borderRadius: tokens\.radiusPill, paddingVertical: tokens\.spaceLg \}/u,
+      /styles\.pillGrows,\s+\{ minHeight: height, paddingVertical: grownPad\(height, textSize, ring\) \}/u,
     );
+    expect(parts).toMatch(/pillGrows: \{ borderRadius: tokens\.radiusPill \}/u);
     expect(parts).toMatch(/numberOfLines=\{grows \? undefined : 1\}/u);
   });
 });

@@ -79,6 +79,13 @@ export function besideGlyph(
   return fitWidest(size, start, widest + glyph * start, inside);
 }
 
+const LABEL_LINE = 1.22;
+
+/** 12 above and below a growing pill's words, or what main's height leaves around them at the default size, so a tablet on its side keeps 44 (sc-66900). */
+export function grownPad(height: number, size: number, ring: number): number {
+  return Math.min(tokens.spaceLg, (height - 2 * ring - size * LABEL_LINE) / 2);
+}
+
 export interface WordsRoom {
   /** The width a text drawn at the start wrapped at, when it wrapped. */
   wrapped: number | null;

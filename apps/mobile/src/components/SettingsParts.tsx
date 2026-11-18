@@ -22,7 +22,7 @@ import {
   backScale,
 } from '../layout/focusedHeader.ts';
 import { tokens } from '../theme/tokens.ts';
-import { besideGlyph, capInDisc, capUnderTitle, wordsIn } from '../layout/textSize.ts';
+import { besideGlyph, capInDisc, capUnderTitle, grownPad, wordsIn } from '../layout/textSize.ts';
 import { Glyph, type GlyphName } from './Glyph.tsx';
 import type { ShellSection } from './settingsShell.ts';
 import { TurningMark } from './SummaryRows.tsx';
@@ -153,7 +153,12 @@ export function Pill({
       onLayout={grows ? (event) => grown.room(event.nativeEvent.layout.width) : undefined}
       style={({ pressed }) => [
         styles.pill,
-        grows ? [styles.pillGrows, { minHeight: height }] : { height, borderRadius: height / 2 },
+        grows
+          ? [
+              styles.pillGrows,
+              { minHeight: height, paddingVertical: grownPad(height, textSize, ring) },
+            ]
+          : { height, borderRadius: height / 2 },
         { backgroundColor: look.fill, borderWidth: ring, borderColor: look.ring },
         full ? styles.pillFull : styles.pillFit,
         kind === 'quiet' && styles.pillQuiet,
@@ -559,7 +564,7 @@ const styles = StyleSheet.create({
   pillFull: { alignSelf: 'stretch', paddingHorizontal: tokens.spaceXxl },
   pillFit: { alignSelf: 'flex-start', paddingHorizontal: 22 },
   pillQuiet: { paddingHorizontal: tokens.spaceXxs, minHeight: tokens.sizeHit },
-  pillGrows: { borderRadius: tokens.radiusPill, paddingVertical: tokens.spaceLg },
+  pillGrows: { borderRadius: tokens.radiusPill },
   pillWords: { textAlign: 'center' },
   pressed: { opacity: tokens.opacityPressed },
   stack: { gap: tokens.spaceMd },
