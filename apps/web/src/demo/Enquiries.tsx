@@ -1,19 +1,14 @@
 import { searching } from '@soirely/domain';
 import { type KeyboardEvent, type ReactNode, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import {
-  Link,
-  Outlet,
-  useLocation,
-  useNavigate,
-  useOutletContext,
-  useParams,
-  useSearchParams,
-} from 'react-router';
+import { Link, Outlet, useLocation, useSearchParams } from 'react-router';
 
+import { EventsLoading } from '../components/EventsList.tsx';
 import { Glyph } from '../components/Glyph.tsx';
+import { Refreshing } from '../components/OfflineBand.tsx';
 import { SearchField } from '../components/SearchField.tsx';
 import { Chevron, Head, RowWords, TextAction, type Tell } from '../components/SettingsParts.tsx';
+import type { DeskPerson } from '../components/DeskSidebar.tsx';
 import { dateLocale } from '../i18n/index.ts';
 import { DemoBell } from './DemoBell.tsx';
 import { OfflineBox } from './DemoOffline.tsx';
@@ -24,18 +19,21 @@ import {
   type Enquiry,
   type EnquiryTab,
   NOW,
+  type Person,
   type Results,
   type Start,
   assignedWords,
   byTab,
   changedWords,
-  enquiryOf,
   enquiryStateOf,
   resultsOf,
   startOf,
   visibleTo,
   whatLine,
 } from './enquiries.ts';
+import { formStart, formStateOf } from './enquiryForm.ts';
+import { LIST, NEW, pageStart, pageStateOf } from './enquiryPage.ts';
+import { useStore } from './enquiryStore.ts';
 import { TodaySidebar } from './TodaySidebar.tsx';
 import './enquiries.css';
 
@@ -43,8 +41,10 @@ const TYPING_PAUSE = 300;
 const PAUSE_SHOWN = 2500;
 const FIELD = 'enquiries-search';
 
-interface Store {
+export interface Store {
   start: Start;
+  enquiries: readonly Enquiry[];
+  put: (enquiry: Enquiry) => void;
   tab: EnquiryTab;
   setTab: (tab: EnquiryTab) => void;
   typed: string;
@@ -62,19 +62,44 @@ interface Store {
   tell: Tell;
 }
 
-/** /demo/enquiries and an enquiry under it: the search lives here, outside the address, for as long as the person stays in Enquiries. */
+const TUNDE: DeskPerson = { name: 'Tunde Bakare', initials: 'TB', role: 'Member' };
+
+function viewerAt(path: string, state: string | null): Person {
+  if (path === NEW) return formStart(formStateOf(state)).viewer;
+  if (path !== LIST) {
+    const page = pageStart(pageStateOf(state)).viewer;
+    if (page != null) return page;
+  }
+
+  return startOf(enquiryStateOf(state)).viewer.person;
+}
+
+/** /demo/enquiries and everything under it: the search and the sample's changes live here, outside the address, for as long as the person stays in Enquiries. */
 export function EnquiriesArea() {
   const [params] = useSearchParams();
-  const state = enquiryStateOf(params.get('state'));
+  const { pathname } = useLocation();
+  const asked = params.get('state');
+  const state = pathname === NEW ? 'idle' : enquiryStateOf(asked);
+  const [listState, setListState] = useState(state);
+  const viewer = viewerAt(pathname, asked);
+
+  if (pathname === LIST && state !== listState) setListState(state);
 
   return (
     <EventsShell
       fit
       renderSide={(tell, covered) => (
-        <TodaySidebar phone events={[]} tell={tell} enquiries inert={covered} />
+        <TodaySidebar
+          phone
+          events={[]}
+          tell={tell}
+          enquiries
+          person={viewer.role === 'member' ? TUNDE : undefined}
+          inert={covered}
+        />
       )}
     >
-      {(tell) => <EnquiriesStore key={state} start={startOf(state)} tell={tell} />}
+      {(tell) => <EnquiriesStore key={listState} start={startOf(listState)} tell={tell} />}
     </EventsShell>
   );
 }
@@ -87,6 +112,7 @@ function EnquiriesStore({ start, tell }: { start: Start; tell: Tell }) {
   const [offline, setOffline] = useState(start.offline);
   const [listFailed, setListFailed] = useState(start.listFailed);
   const [searchFailed, setSearchFailed] = useState(start.searchFailed);
+  const [enquiries, setEnquiries] = useState(start.enquiries);
   const firstPause = useRef(start.pausing);
 
   useEffect(() => {
@@ -104,6 +130,13 @@ function EnquiriesStore({ start, tell }: { start: Start; tell: Tell }) {
 
   const store: Store = {
     start,
+    enquiries,
+    put: (enquiry) =>
+      setEnquiries((was) =>
+        was.some((one) => one.id === enquiry.id)
+          ? was.map((one) => (one.id === enquiry.id ? enquiry : one))
+          : [enquiry, ...was],
+      ),
     tab,
     setTab,
     typed,
@@ -130,10 +163,6 @@ function EnquiriesStore({ start, tell }: { start: Start; tell: Tell }) {
   };
 
   return <Outlet context={store} />;
-}
-
-function useStore(): Store {
-  return useOutletContext<Store>();
 }
 
 function EnquiryRow({ enquiry }: { enquiry: Enquiry }) {
@@ -173,15 +202,15 @@ const row = (enquiry: Enquiry) => <EnquiryRow key={enquiry.id} enquiry={enquiry}
 export function EnquiriesList() {
   const { t } = useTranslation();
   const store = useStore();
-  const { start, tab, searched, offline, listFailed, searchFailed, tell } = store;
+  const { start, enquiries, tab, searched, offline, listFailed, searchFailed } = store;
   const viewer = useMemo(
     () => ({ person: start.viewer.person, mine: store.mine }),
     [start, store.mine],
   );
   const manages = viewer.person.role !== 'member';
-  const tabs = useMemo(() => byTab(visibleTo(start.enquiries, viewer)), [start, viewer]);
-  const results =
-    searching(searched) && !offline ? resultsOf(start.enquiries, viewer, searched) : null;
+  const tabs = useMemo(() => byTab(visibleTo(enquiries, viewer)), [enquiries, viewer]);
+  const results = searching(searched) && !offline ? resultsOf(enquiries, viewer, searched) : null;
+  const newPath = manages ? NEW : `${NEW}?state=member`;
 
   useEffect(() => {
     if (start.pausing)
@@ -193,13 +222,23 @@ export function EnquiriesList() {
       <h1 className="desk-title ev-title" tabIndex={-1}>
         {W.enquiries}
       </h1>
-      <button type="button" className="ev-new" onClick={() => tell(W.ownDesign(W.newEnquiry))}>
+      <Link className="ev-new" to={newPath}>
         <Glyph name="plus" size={18} weight={2.4} />
         <span>{W.newEnquiry}</span>
-      </button>
-      <DemoBell tell={tell} />
+      </Link>
+      <DemoBell tell={store.tell} />
     </header>
   );
+
+  if (start.loading)
+    return (
+      <div className="desk-page">
+        <div className="ev-column">
+          {top}
+          <EventsLoading />
+        </div>
+      </div>
+    );
 
   if (listFailed)
     return (
@@ -215,7 +254,14 @@ export function EnquiriesList() {
     <div className="desk-page">
       <div className="ev-column">
         {offline && <OfflineBox onRetry={() => store.setOffline(false)} />}
-        {top}
+        <div>
+          {top}
+          {start.refreshing && (
+            <p className="desk-line">
+              <Refreshing />
+            </p>
+          )}
+        </div>
         <div className="ev-search-row">
           <div className="ev-search" role="search">
             <SearchField
@@ -271,13 +317,9 @@ export function EnquiriesList() {
                 <p className="desk-line">{W.empty[tab].line}</p>
                 {tab === 'open' && (
                   <div className="ev-none-actions">
-                    <button
-                      type="button"
-                      className="button button-primary"
-                      onClick={() => tell(W.ownDesign(W.newEnquiry))}
-                    >
+                    <Link className="button button-primary" to={newPath}>
                       {W.newEnquiry}
-                    </button>
+                    </Link>
                   </div>
                 )}
               </div>
@@ -415,49 +457,6 @@ function Broken({ words, onRetry }: { words: string; onRetry: () => void }) {
         <button type="button" className="button button-primary" onClick={onRetry}>
           {t('events.retry')}
         </button>
-      </div>
-    </div>
-  );
-}
-
-/** Where a result opens. Its page is sc-31226's to draw; Back returns to the same search and results. */
-export function EnquiryPage() {
-  const { t } = useTranslation();
-  const { id } = useParams();
-  const navigate = useNavigate();
-  const location = useLocation();
-  const enquiry = enquiryOf(id);
-  const locale = dateLocale();
-
-  return (
-    <div className="desk-page">
-      <div className="ev-column">
-        <div className="desk-top">
-          <button
-            type="button"
-            className="desk-back"
-            onClick={() =>
-              location.key === 'default'
-                ? void navigate(`/demo/enquiries${location.search}`)
-                : void navigate(-1)
-            }
-          >
-            <Glyph name="back" size={17} weight={2.4} />
-            {W.enquiries}
-          </button>
-        </div>
-        <h1 className="desk-title">{enquiry?.client ?? W.enquiries}</h1>
-        {enquiry != null && (
-          <>
-            <p className="desk-line">
-              {whatLine(enquiry, (type) => t(`eventTypes.${type}`), W.noDate, NOW, locale)}
-            </p>
-            <p className="desk-line">
-              {`${assignedWords(enquiry, W.notAssigned)} · ${changedWords(enquiry.changedAt, NOW, locale)}`}
-            </p>
-          </>
-        )}
-        <p className="desk-note enq-demo-only">{W.pageDrawnElsewhere}</p>
       </div>
     </div>
   );

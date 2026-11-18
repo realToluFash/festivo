@@ -17,6 +17,43 @@ export const PEOPLE = {
   tunde: { id: 'tunde', name: 'Tunde Bakare', role: 'member' },
 } as const satisfies Record<string, Person>;
 
+export const BEST_WAYS = ['phone', 'whatsapp', 'text', 'email'] as const;
+export type BestWay = (typeof BEST_WAYS)[number];
+
+export const FOUND_VIA = [
+  'phone',
+  'whatsapp',
+  'instagram',
+  'referral',
+  'website',
+  'fair',
+  'other',
+] as const;
+export type FoundVia = (typeof FOUND_VIA)[number];
+
+export const LOST_REASONS = [
+  'elsewhere',
+  'budget',
+  'date',
+  'stopped',
+  'notGoingAhead',
+  'other',
+] as const;
+export type LostReason = (typeof LOST_REASONS)[number];
+
+export interface Note {
+  id: string;
+  author: string;
+  at: string;
+  text: string;
+  edited: boolean;
+}
+
+export interface Budget {
+  amount: string;
+  currency: string;
+}
+
 export interface Enquiry {
   id: string;
   client: string;
@@ -29,6 +66,13 @@ export interface Enquiry {
   email: string | null;
   /** Never searched (sc-42749, Decided 12 Nov). */
   notes: string;
+  bestWay: BestWay | null;
+  guests: number | null;
+  where: string | null;
+  budget: Budget | null;
+  foundVia: FoundVia | null;
+  lost: { reason: LostReason; line: string | null } | null;
+  notesList: readonly Note[];
 }
 
 /** The sample's clock: Wednesday 18 Nov 2026, 10:00 in London. */
@@ -50,6 +94,28 @@ export const ENQUIRIES: readonly Enquiry[] = [
     phone: '+447400123456',
     email: 'ada@example.com',
     notes: 'Garden ceremony, about 120 guests, budget around £30,000.',
+    bestWay: 'whatsapp',
+    guests: 120,
+    where: 'Hampton Manor, Solihull',
+    budget: { amount: '30000', currency: 'GBP' },
+    foundVia: 'instagram',
+    lost: null,
+    notesList: [
+      {
+        id: 'n2',
+        author: 'kemi',
+        at: '2026-11-18T09:40:00Z',
+        text: 'Called back: she would like a Saturday in June. Sending the garden photos.',
+        edited: true,
+      },
+      {
+        id: 'n1',
+        author: 'folake',
+        at: '2026-11-18T08:15:00Z',
+        text: 'Garden ceremony, about 120 guests, budget around £30,000.',
+        edited: false,
+      },
+    ],
   },
   {
     id: 'enq-femi',
@@ -62,6 +128,21 @@ export const ENQUIRIES: readonly Enquiry[] = [
     phone: '+447700900123',
     email: null,
     notes: 'Fiftieth, a surprise for his wife.',
+    bestWay: 'phone',
+    guests: 40,
+    where: null,
+    budget: null,
+    foundVia: 'referral',
+    lost: null,
+    notesList: [
+      {
+        id: 'n1',
+        author: 'tunde',
+        at: '2026-11-17T16:40:00Z',
+        text: 'Fiftieth, a surprise for his wife.',
+        edited: false,
+      },
+    ],
   },
   {
     id: 'enq-lucia',
@@ -74,6 +155,21 @@ export const ENQUIRIES: readonly Enquiry[] = [
     phone: null,
     email: 'lucia.fernandez@example.es',
     notes: 'Company dinner after the Madrid conference.',
+    bestWay: 'email',
+    guests: 60,
+    where: 'Madrid',
+    budget: { amount: '12000', currency: 'EUR' },
+    foundVia: 'website',
+    lost: null,
+    notesList: [
+      {
+        id: 'n1',
+        author: 'kemi',
+        at: '2026-11-16T11:05:00Z',
+        text: 'Company dinner after the Madrid conference.',
+        edited: false,
+      },
+    ],
   },
   {
     id: 'enq-long',
@@ -86,6 +182,21 @@ export const ENQUIRIES: readonly Enquiry[] = [
     phone: '+33612345678',
     email: null,
     notes: 'Wants the château in Chantilly.',
+    bestWay: 'phone',
+    guests: 80,
+    where: 'Château de Chantilly',
+    budget: { amount: '45000', currency: 'EUR' },
+    foundVia: 'referral',
+    lost: null,
+    notesList: [
+      {
+        id: 'n1',
+        author: 'kemi',
+        at: '2026-11-15T09:30:00Z',
+        text: 'Wants the château in Chantilly.',
+        edited: false,
+      },
+    ],
   },
   {
     id: 'enq-chinedu',
@@ -98,6 +209,13 @@ export const ENQUIRIES: readonly Enquiry[] = [
     phone: null,
     email: 'chinedu.eze@example.com',
     notes: 'Called about the hall, nothing more yet.',
+    bestWay: null,
+    guests: null,
+    where: null,
+    budget: null,
+    foundVia: null,
+    lost: null,
+    notesList: [],
   },
   {
     id: 'enq-bisi',
@@ -110,6 +228,21 @@ export const ENQUIRIES: readonly Enquiry[] = [
     phone: '+2348035550199',
     email: null,
     notes: 'Twenty-fifth, in Lagos.',
+    bestWay: 'text',
+    guests: 30,
+    where: 'Lagos',
+    budget: { amount: '2500000', currency: 'NGN' },
+    foundVia: 'fair',
+    lost: null,
+    notesList: [
+      {
+        id: 'n1',
+        author: 'tunde',
+        at: '2026-11-10T13:00:00Z',
+        text: 'Twenty-fifth, in Lagos.',
+        edited: false,
+      },
+    ],
   },
   {
     id: 'enq-ada-lost',
@@ -122,6 +255,21 @@ export const ENQUIRIES: readonly Enquiry[] = [
     phone: null,
     email: 'ada.okafor@example.com',
     notes: 'Budget. Might come back for the wedding.',
+    bestWay: 'email',
+    guests: null,
+    where: null,
+    budget: null,
+    foundVia: 'instagram',
+    lost: { reason: 'budget', line: 'Might come back for the wedding.' },
+    notesList: [
+      {
+        id: 'n1',
+        author: 'tunde',
+        at: '2026-10-02T15:45:00Z',
+        text: 'Budget. Might come back for the wedding.',
+        edited: false,
+      },
+    ],
   },
   {
     id: 'enq-ngozi',
@@ -134,6 +282,21 @@ export const ENQUIRIES: readonly Enquiry[] = [
     phone: '+2348035550142',
     email: null,
     notes: 'Chose someone else.',
+    bestWay: 'phone',
+    guests: 150,
+    where: 'Abuja',
+    budget: null,
+    foundVia: 'whatsapp',
+    lost: { reason: 'elsewhere', line: null },
+    notesList: [
+      {
+        id: 'n1',
+        author: 'kemi',
+        at: '2026-09-01T10:10:00Z',
+        text: 'Chose someone else.',
+        edited: false,
+      },
+    ],
   },
 ];
 
@@ -234,6 +397,11 @@ export const ENQUIRY_STATES = [
   'offline',
   'failed',
   'longNames',
+  'lostEmpty',
+  'loading',
+  'refreshing',
+  'mine',
+  'memberList',
 ] as const;
 export type EnquiryState = (typeof ENQUIRY_STATES)[number];
 
@@ -249,6 +417,8 @@ export interface Start {
   offline: boolean;
   listFailed: boolean;
   searchFailed: boolean;
+  loading: boolean;
+  refreshing: boolean;
   enquiries: readonly Enquiry[];
 }
 
@@ -261,6 +431,8 @@ export function startOf(state: EnquiryState): Start {
     offline: false,
     listFailed: false,
     searchFailed: false,
+    loading: false,
+    refreshing: false,
     enquiries: ENQUIRIES,
   };
 
@@ -295,6 +467,20 @@ export function startOf(state: EnquiryState): Start {
       return { ...start, typed: 'oka', searchFailed: true };
     case 'longNames':
       return { ...start, typed: 'rochefoucauld' };
+    case 'lostEmpty':
+      return {
+        ...start,
+        tab: 'lost',
+        enquiries: ENQUIRIES.filter((enquiry) => enquiry.tab !== 'lost'),
+      };
+    case 'loading':
+      return { ...start, loading: true };
+    case 'refreshing':
+      return { ...start, refreshing: true };
+    case 'mine':
+      return { ...start, viewer: { person: PEOPLE.folake, mine: true } };
+    case 'memberList':
+      return { ...start, viewer: { person: PEOPLE.tunde, mine: false } };
     default:
       return start;
   }
@@ -340,8 +526,15 @@ export function whatLine(
   return type == null ? date : `${type} · ${date}`;
 }
 
-export function assignedWords(enquiry: Enquiry, notAssigned: string): string {
-  const person = Object.values(PEOPLE).find((one) => one.id === enquiry.assignedTo);
+export function personOf(id: string | null | undefined): Person | null {
+  return Object.values(PEOPLE).find((one) => one.id === id) ?? null;
+}
 
-  return person?.name ?? notAssigned;
+export function assignedWords(enquiry: Enquiry, notAssigned: string): string {
+  return personOf(enquiry.assignedTo)?.name ?? notAssigned;
+}
+
+/** The query that opens a page as someone other than the sample's Owner. */
+export function asQuery(person: Person): string {
+  return person.id === PEOPLE.folake.id ? '' : `as=${person.id}`;
 }

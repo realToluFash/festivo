@@ -1,19 +1,34 @@
 import { formattingLocale, searching } from '@soirely/domain';
 import { getLocales } from 'expo-localization';
-import { router } from 'expo-router';
+import { type Href, router } from 'expo-router';
 import { type ReactNode, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Pressable, StyleSheet, type TextInputInstance, View } from 'react-native';
+import {
+  Pressable,
+  StyleSheet,
+  type TextInputInstance,
+  View,
+  type ViewInstance,
+} from 'react-native';
 
 import { BackButton } from '../../components/AppFrame.tsx';
 import { PrimaryButton } from '../../components/Buttons.tsx';
 import { SearchField, SearchRow } from '../../components/EventsSearch.tsx';
 import { Glyph } from '../../components/Glyph.tsx';
 import { ListTop } from '../../components/ListTop.tsx';
+import { Refreshing } from '../../components/Refreshing.tsx';
 import { Notice } from '../../components/Notice.tsx';
 import { useReadOut } from '../../components/ReadOut.tsx';
 import { kindOf, useShell } from '../../components/settingsShell.ts';
-import { HeadCount, Row, RowList, SectionHead, TextAction } from '../../components/Summary.tsx';
+import {
+  HeadCount,
+  LoadingBlock,
+  Row,
+  RowList,
+  SectionHead,
+  SunkTabs,
+  TextAction,
+} from '../../components/Summary.tsx';
 import { Text } from '../../components/Text.tsx';
 import { tokens } from '../../theme/tokens.ts';
 import { backToEvents } from '../events/EventFrame.tsx';
@@ -27,6 +42,7 @@ import {
   type EnquiryTab,
   NOW,
   type Results,
+  asQuery,
   assignedWords,
   byTab,
   changedWords,
@@ -36,13 +52,27 @@ import {
   whatLine,
 } from './EnquiriesModel.ts';
 import { W } from './EnquiriesWords.ts';
+import { EnquiryForm } from './EnquiryForm.tsx';
+import { type NewStart } from './EnquiryFormModel.ts';
+import { keepMade } from './made.ts';
 
 const SEARCH_PAUSE_MS = 300;
 /** The searching state holds its pause long enough to be seen, then searches as typing would. */
 const PAUSE_SHOWN_MS = 2500;
+const REFRESH_MS = 1200;
+
+export function enquiryHref(id: string, query: string): Href {
+  return `/demo/enquiries/${id}${query === '' ? '' : `?${query}`}` as Href;
+}
 
 /** Enquiries (sc-31226) with its search (sc-42749): Search enquiries over Open, Won and Lost; while something is searched, one set of results grouped by tab. */
-export function EnquiriesList({ state }: { state: EnquiryState }) {
+export function EnquiriesList({
+  state,
+  newStart = null,
+}: {
+  state: EnquiryState;
+  newStart?: NewStart | null;
+}) {
   const { t } = useTranslation();
   const shell = useShell();
   const locale = formattingLocale('en', getLocales()[0]?.languageTag);
@@ -54,6 +84,10 @@ export function EnquiriesList({ state }: { state: EnquiryState }) {
   const [offline, setOffline] = useState(start.offline);
   const [listFailed, setListFailed] = useState(start.listFailed);
   const [searchFailed, setSearchFailed] = useState(start.searchFailed);
+  const [refreshing, setRefreshing] = useState(start.refreshing);
+  const [making, setMaking] = useState(newStart == null ? 0 : 1);
+  const [newOpen, setNewOpen] = useState(newStart != null);
+  const newOpener = useRef<ViewInstance>(null);
   const field = useRef<TextInputInstance>(null);
   const firstPause = useRef(start.pausing);
   const viewer = useMemo(() => ({ person: start.viewer.person, mine }), [start, mine]);
@@ -68,6 +102,13 @@ export function EnquiriesList({ state }: { state: EnquiryState }) {
   useEffect(() => {
     if (start.pausing) field.current?.focus();
   }, [start]);
+
+  useEffect(() => {
+    if (!refreshing || start.refreshing) return undefined;
+    const later = setTimeout(() => setRefreshing(false), REFRESH_MS);
+
+    return () => clearTimeout(later);
+  }, [refreshing, start]);
 
   useEffect(() => {
     if (typed === searched || typed.trim() === '') return undefined;
@@ -86,6 +127,32 @@ export function EnquiriesList({ state }: { state: EnquiryState }) {
     setTyped(value);
     if (value.trim() === '') setSearched('');
   };
+  const as = asQuery(viewer.person);
+  const openNew = () => {
+    setMaking((times) => times + 1);
+    setNewOpen(true);
+  };
+  const newScreen = making > 0 && (
+    <EnquiryForm
+      key={making}
+      open={newOpen}
+      viewer={viewer.person}
+      start={making === 1 ? newStart : null}
+      editing={null}
+      locale={locale}
+      opener={newOpener}
+      onClose={() => setNewOpen(false)}
+      onSaved={(made) => {
+        keepMade(made);
+        setNewOpen(false);
+        router.push(enquiryHref(made.id, ['saved=1', as].filter(Boolean).join('&')));
+      }}
+      onOpenSame={(id) => {
+        setNewOpen(false);
+        router.push(enquiryHref(id, as));
+      }}
+    />
+  );
   const clearSearch = () => {
     setTyped('');
     setSearched('');
@@ -112,7 +179,7 @@ export function EnquiriesList({ state }: { state: EnquiryState }) {
           opens
           accessibilityLabel={`${enquiry.client}, ${what}, ${who}, ${when}`}
           accessibilityRole="link"
-          onPress={() => router.push(`/demo/enquiries/${enquiry.id}`)}
+          onPress={() => router.push(enquiryHref(enquiry.id, as))}
           testID={`enquiries.row.${enquiry.id}`}
         />
       ),
@@ -133,16 +200,42 @@ export function EnquiriesList({ state }: { state: EnquiryState }) {
         bell={<Bell tell={shell.tell} />}
         primary={{
           label: W.newEnquiry,
-          onPress: () => shell.tell(W.ownDesign(W.newEnquiry)),
+          onPress: openNew,
           testID: 'enquiries.new',
         }}
+        under={refreshing && <Refreshing testID="enquiries.refreshing" />}
       />
     </>
   );
 
+  if (start.loading)
+    return (
+      <EnquiriesFrame band={null} overlay={newScreen}>
+        {top}
+        <SearchRow
+          offline={false}
+          field={
+            <SearchField
+              typed=""
+              off
+              label={W.search}
+              width={shell.layout === 'portrait' ? 420 : shell.layout === 'landscape' ? 440 : null}
+              onTyped={() => undefined}
+              onSearch={() => undefined}
+              onClear={() => undefined}
+              testID="enquiries.search"
+            />
+          }
+          filter={manages && <AssignedToMe on={mine} off onPress={() => undefined} />}
+        />
+        <SunkTabs />
+        <LoadingBlock words={W.loading} height={0} />
+      </EnquiriesFrame>
+    );
+
   if (listFailed)
     return (
-      <EnquiriesFrame band={null}>
+      <EnquiriesFrame band={null} overlay={newScreen}>
         {top}
         <Failed
           words={W.listFailed}
@@ -155,7 +248,11 @@ export function EnquiriesList({ state }: { state: EnquiryState }) {
   const tabRows = tabs[tab];
 
   return (
-    <EnquiriesFrame band={offline && <OfflineBand onRetry={() => setOffline(false)} />}>
+    <EnquiriesFrame
+      band={offline && <OfflineBand onRetry={() => setOffline(false)} />}
+      overlay={newScreen}
+      refresh={{ refreshing, onRefresh: () => setRefreshing(true) }}
+    >
       {top}
       <SearchRow
         offline={offline}
@@ -205,7 +302,7 @@ export function EnquiriesList({ state }: { state: EnquiryState }) {
             onTab={setTab}
           />
           {tabRows.length === 0 ? (
-            <EmptyTab tab={tab} onNew={() => shell.tell(W.ownDesign(W.newEnquiry))} />
+            <EmptyTab tab={tab} onNew={openNew} />
           ) : (
             <RowList items={tabRows.map(row)} />
           )}
@@ -371,7 +468,7 @@ function ClearSearch({ onPress }: { onPress: () => void }) {
 }
 
 /** As Events' list says it: the broken Notice, then Try again. */
-function Failed({
+export function Failed({
   words,
   onRetry,
   testID,

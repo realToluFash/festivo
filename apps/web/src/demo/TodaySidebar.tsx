@@ -63,7 +63,7 @@ export function TodaySidebar({
   inert?: boolean;
   /** At 40rem and under the sidebar is the phone's bar: the switcher and Menu (sc-13413), as on Today, Events and Calendar (sc-57468). */
   phone?: boolean;
-  /** On Enquiries, which an Enterprise organisation has under Events (sc-31226). */
+  /** On Enquiries, which an Enterprise organisation has right after Events (sc-31226). */
   enquiries?: boolean;
 }) {
   const [params] = useSearchParams();
@@ -115,7 +115,7 @@ export function TodaySidebar({
       )}
       <SearchRow />
       <ul className="today-places">
-        {(enquiries ? WITH_ENQUIRIES : PLACES)
+        {(enquiries || listing ? WITH_ENQUIRIES : PLACES)
           .filter(([label]) => !hideLibrary || label !== 'Menu library')
           .map(([label, glyph]) => (
             <li key={label}>
@@ -129,7 +129,11 @@ export function TodaySidebar({
                   {label}
                 </Link>
               ) : label === 'Enquiries' ? (
-                <Link className="today-place is-on" to="/demo/enquiries" aria-current="page">
+                <Link
+                  className={enquiries ? 'today-place is-on' : 'today-place'}
+                  to="/demo/enquiries"
+                  aria-current={enquiries ? 'page' : undefined}
+                >
                   <Glyph name={glyph} />
                   {label}
                 </Link>
