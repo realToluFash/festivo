@@ -52,7 +52,7 @@ import { EDGE_SWIPE_WIDTH, headerDrawsBack, stackSwipes } from '../kit/systemBac
 import { EVENT_PLACES, type EventPlace, MORE_PLACES } from '../kit/eventNav.ts';
 import { leaveThen } from '../leaveHeld.ts';
 import { frameTitleSize } from '../layout/textSize.ts';
-import { backLeast, backScale } from '../layout/focusedHeader.ts';
+import { backScale } from '../layout/focusedHeader.ts';
 import {
   type LayoutKind,
   useAccessibilitySizes,
@@ -113,7 +113,7 @@ import { OrgDropDown } from './OrgDropDown.tsx';
 import { AREA_GLYPH } from './areaGlyph.ts';
 import { ReadOut } from './ReadOut.tsx';
 import { Row, RowList } from './SummaryRows.tsx';
-import { Back } from './SettingsParts.tsx';
+import { Back, useBackWord } from './SettingsParts.tsx';
 import { SETTLED_MS, useFocusOnAnswer, useWindowOrigin } from './Screen.tsx';
 import type { ScreenReaderTarget } from './screenReaderFocus.ts';
 import { type TextHandle, Text, TitleCap } from './Text.tsx';
@@ -1133,36 +1133,40 @@ export function BackButton({
 }) {
   const { fontScale } = useWindowDimensions();
   const scale = backScale(fontScale, useContext(TitleCap));
-  const mark = tokens.sizeMark * scale;
+  const body = tokens.typeBodyPhone.size;
+  const word = useBackWord(label, body * scale, body, tokens.sizeMark, 3 * tokens.spaceXs);
+  const mark = (tokens.sizeMark / body) * word.size;
   const button = (
-    <Pressable
-      style={styles.back}
-      onPress={onPress}
-      disabled={off}
-      accessibilityRole="button"
-      accessibilityLabel={heard}
-      accessibilityState={{ disabled: off }}
-      testID={testID}
-    >
-      <Svg width={mark} height={mark} viewBox="0 0 24 24" fill="none">
-        <Path
-          d="m15 18-6-6 6-6"
-          {...STROKE}
-          stroke={off ? tokens.colorInkSecondary : tokens.colorInk}
-        />
-      </Svg>
-      <Text
-        size={tokens.typeBodyPhone.size * scale}
-        weight="semibold"
-        muted={off}
-        allowFontScaling={false}
-        numberOfLines={1}
-        adjustsFontSizeToFit
-        minimumFontScale={backLeast(scale)}
+    <>
+      {word.measure}
+      <Pressable
+        style={styles.back}
+        onPress={onPress}
+        onLayout={word.onLayout}
+        disabled={off}
+        accessibilityRole="button"
+        accessibilityLabel={heard}
+        accessibilityState={{ disabled: off }}
+        testID={testID}
       >
-        {label}
-      </Text>
-    </Pressable>
+        <Svg width={mark} height={mark} viewBox="0 0 24 24" fill="none">
+          <Path
+            d="m15 18-6-6 6-6"
+            {...STROKE}
+            stroke={off ? tokens.colorInkSecondary : tokens.colorInk}
+          />
+        </Svg>
+        <Text
+          size={word.size}
+          weight="semibold"
+          muted={off}
+          allowFontScaling={false}
+          numberOfLines={1}
+        >
+          {label}
+        </Text>
+      </Pressable>
+    </>
   );
 
   return <BesideBack beside={beside}>{button}</BesideBack>;

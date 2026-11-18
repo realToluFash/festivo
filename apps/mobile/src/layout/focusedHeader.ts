@@ -84,8 +84,3 @@ export function pillTextSize(scale: number, word: number, room: number): number 
 export function backScale(fontScale: number, titleCap: number | null): number {
   return capUnderTitle(titleCap ?? Infinity, PILL_TEXT, fontScale);
 }
-
-/** The least a back's word drawn at `scale` may step down to, to stay whole in its room: never below 15. */
-export function backLeast(scale: number): number {
-  return Math.min(1, 1 / scale);
-}

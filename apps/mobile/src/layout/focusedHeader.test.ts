@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
 import {
-  backLeast,
   backScale,
   backWidth,
   buttonWidth,
@@ -142,10 +141,5 @@ describe('a back’s word', () => {
 
   it('grows no larger than a title drawn above it', () => {
     expect(backScale(3.12, 30)).toBe(2);
-  });
-
-  it('steps down to 15 at the least', () => {
-    expect(backLeast(3.12) * 15 * 3.12).toBeCloseTo(15, 5);
-    expect(backLeast(1)).toBe(1);
   });
 });
