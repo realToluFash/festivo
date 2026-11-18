@@ -8,7 +8,6 @@ import {
   useRef,
   useState,
 } from 'react';
-import { useTranslation } from 'react-i18next';
 import { Link, Navigate, useLocation, useSearchParams } from 'react-router';
 
 import { offButton } from '../offButton.ts';
@@ -19,7 +18,6 @@ import { DemoBell } from './DemoBell.tsx';
 import { owedBy, usedOn } from './quotes.ts';
 import { QW } from './quotesWords.ts';
 import { COUNTRIES, codeChoice } from './rules.ts';
-import { type Viewer, settingsPath } from './settings.ts';
 import {
   Ask,
   Card,
@@ -65,39 +63,10 @@ import {
 } from './vendors.ts';
 import { CATEGORY_WORDS, VW } from './vendorsWords.ts';
 import '../components/AccountParts.css';
-import './vendors.css';
+import '../routes/app/settings/vendors.css';
 
 const BUSY_MS = 900;
 const RETRY_MS = 1200;
-
-const STOREFRONT = [
-  'M3 9l1.5-5h15L21 9',
-  'M3 9a3 3 0 0 0 6 0a3 3 0 0 0 6 0a3 3 0 0 0 6 0',
-  'M5 12v8h14v-8',
-  'M10 20v-5h4v5',
-];
-
-/** #1418's storefront, drawn in the demo for Vendors' tile in the Settings list; the developer moves it into the product's glyphs. */
-export function StorefrontGlyph({ size = 18 }: { size?: number }) {
-  return (
-    <svg
-      width={size}
-      height={size}
-      viewBox="0 0 24 24"
-      aria-hidden="true"
-      focusable="false"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth={2}
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      {STOREFRONT.map((d) => (
-        <path key={d} d={d} />
-      ))}
-    </svg>
-  );
-}
 
 /** The old address keeps working: Vendors is a section of Settings now (A · Summary first). */
 export function VendorsMoved() {
@@ -107,29 +76,7 @@ export function VendorsMoved() {
 }
 
 /** Settings › Vendors in A · Summary first (Budget-A-Vendors, page e81): the card, the directory, its form, every state, on sample data. */
-export function Vendors({ viewer, state, tell }: { viewer: Viewer; state: string; tell: Tell }) {
-  return viewer.manages ? <Directory state={state} tell={tell} /> : <Refused viewer={viewer} />;
-}
-
-function Refused({ viewer }: { viewer: Viewer }) {
-  const { t } = useTranslation();
-
-  return (
-    <Page>
-      <div className="vd-refused" role="alert">
-        <h1 className="desk-title" tabIndex={-1}>
-          {t('forbidden.title')}
-        </h1>
-        <Link className="desk-text" to={settingsPath('account', viewer)}>
-          <Glyph name="back" size={16} weight={2.4} />
-          {VW.backToSettings}
-        </Link>
-      </div>
-    </Page>
-  );
-}
-
-function Directory({ state, tell }: { state: string; tell: Tell }) {
+export function Vendors({ state, tell }: { state: string; tell: Tell }) {
   const [params] = useSearchParams();
   const [locale] = useState(() => formattingLocale('en', navigator.language));
   const [start] = useState(() => vendorsStart(state, params.get('vendor')));

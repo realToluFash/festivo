@@ -1,9 +1,5 @@
 /* Settings › Vendors at a desk in A · Summary first (Budget-A-Vendors, page e81). */
 
-.desk-tile.is-vendors {
-  background: var(--optionGreen);
-}
-
 /* The count's live region is unseen until a search: positioned here, so it stays inside the page. */
 .vd-column {
   position: relative;
@@ -118,21 +114,6 @@
 .vd-pager .desk-text[aria-disabled='true'] {
   color: var(--colorInkTertiary);
   cursor: default;
-}
-
-.vd-refused {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: var(--spaceSm);
-}
-
-.vd-refused .desk-text {
-  gap: var(--spaceXxs);
-}
-
-.vd-refused .desk-text:not(:hover) {
-  text-decoration: none;
 }
 
 /* The vendor's form is the 700 dialog (spec §4), the product's 540 widened from the demo. */

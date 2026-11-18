@@ -355,5 +355,10 @@
     "timeline.tables_shared": "Mesas partilhadas",
     "validation.share_by_invalid": "Escolha uma data válida.",
     "validation.share_by_past": "Escolha hoje ou uma data posterior.",
-    "validation.share_by_not_before_event": "Escolha uma data anterior ao evento."
+    "validation.share_by_not_before_event": "Escolha uma data anterior ao evento.",
+    "validation.vendor_name_required": "Introduza o nome do fornecedor.",
+    "validation.vendor_category_required": "Escolha a categoria.",
+    "validation.vendor_website_scheme": "Introduza um endereço web que comece por https:// ou http://, ou omita essa parte.",
+    "validation.vendor_phone_invalid": "Esse número de telefone não é válido neste país: {country}. Verifique-o e tente novamente.",
+    "access.plan_required": "Disponível no plano Enterprise. Para alterar esta definição, contacte a Soirely sobre o plano Enterprise."
 }

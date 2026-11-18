@@ -73,7 +73,7 @@ import { FrameSwitch, switchByTap, useFrameSwitch } from '../tappedSwitch.ts';
 import { switcherFocusBack } from '../kit/focusBack.ts';
 import { tokens } from '../theme/tokens.ts';
 import { useTwoFactorStanding } from '../twoFactorStanding.ts';
-import { BellButton } from './BellButton.tsx';
+import { BellButton, BellInPane } from './BellButton.tsx';
 import { SearchAndBell } from './SearchButton.tsx';
 import { SEARCH_HREF } from '../kit/searchLinks.ts';
 import { CreateWalkWindow, type WalkOpening, deviceNow } from './CreateWalkWindow.tsx';
@@ -547,6 +547,7 @@ export function AppFrame({
               waiting={count}
               onSwitch={switchFromPill}
               pill={pill}
+              cap={titleCap.cap}
             />
           )}
           <View style={[styles.column, sidebar && side.card]}>
@@ -600,7 +601,9 @@ export function AppFrame({
                               >
                                 <BodySwitched.Provider value={bodySwitched}>
                                   <UnderTabsProvider value={underTabs}>
-                                    {children}
+                                    <BellInPane.Provider value={sidebar && untitled}>
+                                      {children}
+                                    </BellInPane.Provider>
                                   </UnderTabsProvider>
                                 </BodySwitched.Provider>
                               </ScrolledTop.Provider>
@@ -943,12 +946,14 @@ function FrameHeader({
 
   if (kind === 'tabletLandscape') {
     if (untitled) return null;
+    // Inside an event the bell ends the area's name's row at every size, the name wrapping to its left (sc-68052).
+    const stacks = large && !inEvent;
 
     return (
-      <View style={[styles.landscapeHeader, large && styles.stacked]}>
-        <View style={[styles.titled, !large && styles.fill]}>
-          <View style={styles.titleRow}>
-            <View style={large ? styles.shrink : styles.fill}>
+      <View style={[styles.landscapeHeader, stacks && styles.stacked, inEvent && styles.bellAtTop]}>
+        <View style={[styles.titled, !stacks && styles.fill]}>
+          <View style={[styles.titleRow, inEvent && styles.bellHigh]}>
+            <View style={stacks ? styles.shrink : styles.fill}>
               <Title size={titleSize} accessibilityRole="header" ref={read} onDrawn={onTitleDrawn}>
                 {title}
               </Title>
@@ -1423,6 +1428,7 @@ function FrameSidebar({
   waiting,
   onSwitch,
   pill,
+  cap,
 }: {
   current: Destination;
   entries: readonly NavEntry[];
@@ -1433,8 +1439,11 @@ function FrameSidebar({
   waiting: number;
   onSwitch: (() => void) | undefined;
   pill: Ref<ViewInstance>;
+  /** The size the area's name draws at in the pane, which nothing in an event's sidebar outgrows at the largest sizes (sc-68052). */
+  cap: number;
 }) {
   const { t } = useTranslation();
+  const large = useAccessibilitySizes();
   const { account } = useSignedIn();
   const events = useSidebarEvents(account?.id, inEvent ? undefined : organisation?.id);
   const tabs = useFrameTabs(current, organisation);
@@ -1447,7 +1456,7 @@ function FrameSidebar({
       person,
       unread: 0,
       creates: organisation != null && roleHolds(organisation, 'events.create'),
-      search: organisation != null,
+      search: organisation != null && !inEvent,
       open: (opens) => {
         if (opens.to === 'account') router.navigate(SECTION_HREF.account);
         if (opens.to === 'event') router.push(`/events/${opens.id}`);
@@ -1455,7 +1464,7 @@ function FrameSidebar({
       },
       useOrgOpener: useFrameOrgOpener,
     }),
-    [organisation, person],
+    [organisation, person, inEvent],
   );
   const places = inEvent
     ? entries.map((entry) => (
@@ -1483,36 +1492,38 @@ function FrameSidebar({
 
   return (
     <TodayShellProvider value={shell}>
-      <SidebarColumn>
-        <SidebarHead>
-          {organisation != null && (
-            <OrgPill
-              organisation={organisation}
-              waiting={waiting}
-              onSwitch={onSwitch}
-              sidebar
-              ref={pill}
+      <TitleCap.Provider value={inEvent && large ? cap : null}>
+        <SidebarColumn>
+          <SidebarHead>
+            {organisation != null && (
+              <OrgPill
+                organisation={organisation}
+                waiting={waiting}
+                onSwitch={onSwitch}
+                sidebar
+                ref={pill}
+              />
+            )}
+          </SidebarHead>
+          {inEvent && (
+            <SidebarBack
+              label={up?.label ?? t('todayScreen.tab.events')}
+              heard={up?.label ?? t('eventsScreen.backToEvents')}
+              onPress={up?.onPress ?? (() => goTo('events'))}
+              testID="frame.side.back"
             />
           )}
-        </SidebarHead>
-        {inEvent && (
-          <SidebarBack
-            label={up?.label ?? t('todayScreen.tab.events')}
-            heard={up?.label ?? t('eventsScreen.backToEvents')}
-            onPress={up?.onPress ?? (() => goTo('events'))}
-            testID="frame.side.back"
+          {inEvent && card != null && <SidebarEventCard event={card.event} now={card.now} />}
+          <SidebarPlaces>{places}</SidebarPlaces>
+          {inEvent ? <View style={styles.fill} /> : <SidebarEvents events={events} />}
+          <SidebarFoot
+            onTab={tabs.onTab}
+            at={inEvent ? null : tabs.at}
+            person={person}
+            settingsID={TAB_IDS.Settings}
           />
-        )}
-        {inEvent && card != null && <SidebarEventCard event={card.event} now={card.now} />}
-        <SidebarPlaces>{places}</SidebarPlaces>
-        {inEvent ? <View style={styles.fill} /> : <SidebarEvents events={events} />}
-        <SidebarFoot
-          onTab={tabs.onTab}
-          at={inEvent ? null : tabs.at}
-          person={person}
-          settingsID={TAB_IDS.Settings}
-        />
-      </SidebarColumn>
+        </SidebarColumn>
+      </TitleCap.Provider>
     </TodayShellProvider>
   );
 }
@@ -1606,6 +1617,8 @@ const styles = StyleSheet.create({
     paddingBottom: tokens.spaceLg,
   },
   stacked: { flexDirection: 'column', alignItems: 'flex-start', gap: tokens.spaceXs },
+  bellAtTop: { alignItems: 'flex-start' },
+  bellHigh: { minHeight: tokens.sizeHit },
   back: {
     alignSelf: 'flex-start',
     flexShrink: 1,

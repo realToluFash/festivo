@@ -1,5 +1,5 @@
 import { router } from 'expo-router';
-import { type ReactNode, type Ref, useEffect, useRef } from 'react';
+import { type ReactNode, type Ref, createContext, useContext, useEffect, useRef } from 'react';
 import {
   type LayoutChangeEvent,
   Pressable,
@@ -12,7 +12,9 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Sheet } from '../../components/Sheet.tsx';
-import { Text } from '../../components/Text.tsx';
+import { Text, TitleCap } from '../../components/Text.tsx';
+import { PageTitleDrawn, useTitleCap } from '../../components/Title.tsx';
+import { PAGE_TITLE } from '../../components/topTitle.ts';
 import { tokens } from '../../theme/tokens.ts';
 import { Glyph, type GlyphName } from '../../components/Glyph.tsx';
 import { PHONE_TAB_BAR, TabBar, TabBarFade } from '../../components/TodayCover.tsx';
@@ -46,10 +48,11 @@ const PHONE_BAR: readonly (readonly [string, GlyphName])[] = [
   [W.more, 'dots'],
 ];
 
-/** On the phone People opens its own page from More, ‹ More over its title; on the iPad it is an area in the frame like the other nine (sc-67665). */
+/** On the phone People opens its own page from More, its ‹ Overview landing on Overview whatever More was opened over (sc-68022); on the iPad it is an area in the frame like the other nine (sc-67665). */
 function toArea(area: AreaKey, onArea: (area: AreaKey) => void): void {
-  if (area === 'people') router.push('/demo/people');
-  else onArea(area);
+  if (area !== 'people') return onArea(area);
+  onArea('overview');
+  router.push('/demo/people');
 }
 
 export function backToEvents(): void {
@@ -60,6 +63,29 @@ export interface EventToast {
   words: string;
   onClose: () => void;
   action?: { label: string; onPress: () => void; testID?: string } | null;
+}
+
+/** On its side the frame draws no top of its own, so the area's title row ends with the bell, at the pane's top right (sc-68052). */
+const PaneBellAt = createContext<{ bell: ReactNode } | null>(null);
+
+export function useBellInPane(): boolean {
+  return useContext(PaneBellAt) != null;
+}
+
+/** The event's bell where an area's title row ends, on an iPad on its side; elsewhere the frame's own top has it. */
+export function PaneBell() {
+  return useContext(PaneBellAt)?.bell ?? null;
+}
+
+/** A title the pane's bell ends, the title wrapping to its left at the largest sizes, in a row as tall as the bell's target. */
+export function BellRow({ children }: { children: ReactNode }) {
+  if (!useBellInPane()) return children;
+  return (
+    <View style={styles.bellRow}>
+      <View style={styles.besideBell}>{children}</View>
+      <PaneBell />
+    </View>
+  );
 }
 
 /** Messages' count, on its tab, its pill and its place in the sidebar, named in words (sc-3976). */
@@ -106,7 +132,7 @@ export function EventFrame({
   bellRef?: Ref<ViewInstance> | undefined;
   /** A page an area pushes in its own column: ‹ and the area it goes back to. */
   back?: { label: string; onPress: () => void } | null;
-  /** On the phone, a way back other than Overview, as Seating's ‹ More. */
+  /** On the phone, a way back other than Overview, as Seating's ‹ Guests. */
   phoneBack?: { label: string; onPress: () => void } | undefined;
   /** An area this viewer has no part in, as Budget for Can edit: gone from More, the pills and the sidebar. */
   without?: AreaKey | undefined;
@@ -117,6 +143,13 @@ export function EventFrame({
   const shell = useShell();
   const insets = useSafeAreaInsets();
   const phone = shell.layout === 'phone';
+  const titleCap = useTitleCap(`${shell.layout}|${area}`, PAGE_TITLE);
+  // As the product's frame: an area is capped only once its body's title says the size it drew at (sc-67338, sc-67659).
+  const capped = (node: ReactNode) => (
+    <PageTitleDrawn.Provider value={titleCap.onDrawn}>
+      <TitleCap.Provider value={titleCap.drawn ? titleCap.cap : null}>{node}</TitleCap.Provider>
+    </PageTitleDrawn.Provider>
+  );
   const foot = Math.max(insets.bottom - tokens.spaceXxs, tokens.spaceLg);
   const toastBottom = phone
     ? foot + PHONE_TAB_BAR + tokens.spaceXl + tokens.spaceHair
@@ -155,19 +188,25 @@ export function EventFrame({
           </>
         }
       >
-        {fill ? (
-          <View style={styles.grow}>{children}</View>
-        ) : (
-          <ScrollView
-            ref={scrollRef}
-            style={styles.grow}
-            contentContainerStyle={styles.pane}
-            keyboardShouldPersistTaps="handled"
-            showsVerticalScrollIndicator={false}
-          >
-            {children}
-          </ScrollView>
-        )}
+        <PaneBellAt.Provider
+          value={{ bell: <Bell tell={shell.tell} onPress={onBell} ref={bellRef} /> }}
+        >
+          {capped(
+            fill ? (
+              <View style={styles.grow}>{children}</View>
+            ) : (
+              <ScrollView
+                ref={scrollRef}
+                style={styles.grow}
+                contentContainerStyle={styles.pane}
+                keyboardShouldPersistTaps="handled"
+                showsVerticalScrollIndicator={false}
+              >
+                {children}
+              </ScrollView>
+            ),
+          )}
+        </PaneBellAt.Provider>
       </Landscape>
     );
 
@@ -190,35 +229,37 @@ export function EventFrame({
             : { paddingTop: insets.top + tokens.spaceMd, paddingHorizontal: tokens.space5xl },
         ]}
       >
-        <Back label={back.label} onPress={back.onPress} />
+        {capped(<Back label={back.label} onPress={back.onPress} />)}
         <View style={styles.grow} />
         <Bell tell={shell.tell} onPress={onBell} ref={bellRef} />
       </View>
       {!phone && <AreaPills area={area} onArea={onArea} badge={badge} without={without} />}
-      {fill ? (
-        <View style={styles.grow}>{children}</View>
-      ) : (
-        <ScrollView
-          ref={scrollRef}
-          style={styles.grow}
-          contentContainerStyle={[
-            styles.blocks,
-            phone
-              ? {
-                  paddingHorizontal: tokens.spaceXxl,
-                  paddingBottom: foot + PHONE_TAB_BAR + tokens.space6xl * 2,
-                }
-              : {
-                  paddingTop: tokens.space3xl,
-                  paddingHorizontal: tokens.space5xl,
-                  paddingBottom: insets.bottom + tokens.space6xl * 2,
-                },
-          ]}
-          keyboardShouldPersistTaps="handled"
-          showsVerticalScrollIndicator={false}
-        >
-          {children}
-        </ScrollView>
+      {capped(
+        fill ? (
+          <View style={styles.grow}>{children}</View>
+        ) : (
+          <ScrollView
+            ref={scrollRef}
+            style={styles.grow}
+            contentContainerStyle={[
+              styles.blocks,
+              phone
+                ? {
+                    paddingHorizontal: tokens.spaceXxl,
+                    paddingBottom: foot + PHONE_TAB_BAR + tokens.space6xl * 2,
+                  }
+                : {
+                    paddingTop: tokens.space3xl,
+                    paddingHorizontal: tokens.space5xl,
+                    paddingBottom: insets.bottom + tokens.space6xl * 2,
+                  },
+            ]}
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
+          >
+            {children}
+          </ScrollView>
+        ),
       )}
       {phone && (
         <>
@@ -583,14 +624,16 @@ export function AreaPage({
   const { layout } = useShell();
   return (
     <>
-      <Text
-        size={30}
-        weight="bold"
-        accessibilityRole="header"
-        style={[styles.title, styles.areaTitle, AREA_TITLE[layout]]}
-      >
-        {AREA_WORDS[area]}
-      </Text>
+      <BellRow>
+        <Text
+          size={30}
+          weight="bold"
+          accessibilityRole="header"
+          style={[styles.title, styles.areaTitle, AREA_TITLE[layout]]}
+        >
+          {AREA_WORDS[area]}
+        </Text>
+      </BellRow>
       <View style={styles.strip}>
         <EventThumb event={event} side={40} radius={12} />
         <View style={[styles.grow, styles.stripWords]}>
@@ -703,6 +746,8 @@ const styles = StyleSheet.create({
   pressed: { opacity: tokens.opacityPressed },
   title: { letterSpacing: -0.6 },
   top: { flexDirection: 'row', alignItems: 'center' },
+  bellRow: { flexDirection: 'row', alignItems: 'flex-start', gap: tokens.spaceLg },
+  besideBell: { flex: 1, minWidth: 0, minHeight: tokens.sizeHit, justifyContent: 'center' },
   blocks: { gap: 18 },
   pane: { paddingTop: 26, paddingHorizontal: 30, paddingBottom: tokens.space6xl * 2, gap: 18 },
   more: { gap: tokens.spaceXl, paddingHorizontal: tokens.spaceXxl, paddingTop: 31 },

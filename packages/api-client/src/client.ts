@@ -56,6 +56,15 @@ import {
   type RecordedReplyInput,
   type TaggedGuest,
 } from './guests.ts';
+import {
+  type Vendor,
+  type VendorTyped,
+  type VendorsLooking,
+  type VendorsPage,
+  asVendor,
+  asVendorsPage,
+  vendorsQuery,
+} from './vendors.ts';
 import { ApiError, ApiUnreachableError, type Problem, toProblem } from './problem.ts';
 import {
   asSeating,
@@ -451,7 +460,11 @@ export interface Organisation {
   contactAddress: string;
   /** What an invitation to somebody with no account is written in (sc-2914). */
   locale: string;
+  /** Set by Soirely staff (sc-581): on `free`, an Enterprise setting is shown locked and a change to it is refused `plan_required`. */
+  plan: Plan;
 }
+
+export type Plan = 'free' | 'enterprise';
 
 /** A seeded role is named by `seededAs`, which each client words itself; a custom one by `name`. */
 export interface MemberRole {
@@ -4197,6 +4210,62 @@ export class ApiClient {
     await this.delete<unknown>('/api/join-offers/request');
   }
 
+  async vendors(organisationId: string, looking: VendorsLooking): Promise<VendorsPage> {
+    const page = asVendorsPage(
+      await this.get<unknown>(
+        `/api/orgs/${encodeURIComponent(organisationId)}/vendors${vendorsQuery(looking)}`,
+      ),
+    );
+
+    if (page == null) {
+      throw new Error(
+        'The API answered /api/orgs/{id}/vendors in a shape this client does not know. Check VendorDirectory in services/api.',
+      );
+    }
+
+    return page;
+  }
+
+  async addVendor(organisationId: string, typed: VendorTyped): Promise<Vendor> {
+    return this.readVendor(
+      await this.post<unknown>(`/api/orgs/${encodeURIComponent(organisationId)}/vendors`, typed),
+    );
+  }
+
+  async editVendor(organisationId: string, vendorId: string, typed: VendorTyped): Promise<Vendor> {
+    return this.readVendor(
+      await this.put<unknown>(this.vendorPath(organisationId, vendorId), typed),
+    );
+  }
+
+  async archiveVendor(organisationId: string, vendorId: string): Promise<Vendor> {
+    return this.readVendor(
+      await this.post<unknown>(`${this.vendorPath(organisationId, vendorId)}/archive`),
+    );
+  }
+
+  async restoreVendor(organisationId: string, vendorId: string): Promise<Vendor> {
+    return this.readVendor(
+      await this.post<unknown>(`${this.vendorPath(organisationId, vendorId)}/restore`),
+    );
+  }
+
+  private vendorPath(organisationId: string, vendorId: string): string {
+    return `/api/orgs/${encodeURIComponent(organisationId)}/vendors/${encodeURIComponent(vendorId)}`;
+  }
+
+  private readVendor(raw: unknown): Vendor {
+    const vendor = asVendor((raw as Record<string, unknown> | null)?.vendor);
+
+    if (vendor == null) {
+      throw new Error(
+        'The API answered a vendor in a shape this client does not know. Check VendorsController in services/api.',
+      );
+    }
+
+    return vendor;
+  }
+
   async companyDomains(organisationId: string): Promise<CompanyDomains> {
     return this.readCompanyDomains(
       await this.get<unknown>(`/api/orgs/${encodeURIComponent(organisationId)}/domains`),
@@ -5295,6 +5364,7 @@ function asOrganisation(raw: unknown): Organisation | null {
     timezone: candidate.timezone as string,
     contactAddress: candidate.contactAddress as string,
     locale: candidate.locale as string,
+    plan: candidate.plan === 'enterprise' ? 'enterprise' : 'free',
   };
 }
 

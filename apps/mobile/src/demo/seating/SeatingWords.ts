@@ -3,7 +3,6 @@ import { listFormat } from '@soirely/domain';
 /** Seating A's English, word for word from the boards and seating-a-spec; the linguist takes the four locales when the product is built. */
 export const W = {
   seating: 'Seating',
-  more: 'More',
   floorPlan: 'Floor plan',
   tables: 'Tables',
   list: 'List',

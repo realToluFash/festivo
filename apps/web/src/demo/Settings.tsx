@@ -30,7 +30,7 @@ import { PersonalTile } from './SchemeArt.tsx';
 import { underSavedName, useSavedNames } from './savedName.ts';
 import { Security } from './Security.tsx';
 import { SignInRules } from './SignInRules.tsx';
-import { StorefrontGlyph, Vendors } from './Vendors.tsx';
+import { Vendors } from './Vendors.tsx';
 import { vendorsViewerKey } from './vendors.ts';
 import { SectionTile, SettingsSections } from '../components/SettingsList.tsx';
 import { TextAction, TitleRow, type Tell } from '../components/SettingsParts.tsx';
@@ -147,10 +147,9 @@ export function Settings({
                 />
               ) : open === 'vendors' && reminders ? (
                 <PaymentReminders key={`${viewer.key}:${state}`} viewer={viewer} state={state} />
-              ) : open === 'vendors' ? (
+              ) : open === 'vendors' && viewer.manages ? (
                 <Vendors
                   key={`${viewer.key}:${state}:${params.get('vendor') ?? ''}`}
-                  viewer={viewer}
                   state={state}
                   tell={tell}
                 />
@@ -161,8 +160,8 @@ export function Settings({
                   state={state}
                   tell={tell}
                 />
-              ) : open === 'members' ? (
-                <MembersForbidden tell={tell} />
+              ) : open === 'members' || open === 'vendors' ? (
+                <Forbidden tell={tell} />
               ) : (
                 <div className="desk-page" />
               )}
@@ -179,8 +178,8 @@ export function Settings({
 /** Your account's own sections: they stay open while access to the organisation is paused, as in the product. */
 const YOURS: readonly Drawn[] = ['account', 'security', 'notifications', 'personalisation'];
 
-/** Members for a role without members.read, as the product refuses it: why as the page's heading, and the way back. */
-function MembersForbidden({ tell }: { tell: Tell }) {
+/** Members or Vendors for a role without their read permission, as the product's shared Forbidden page refuses it. */
+function Forbidden({ tell }: { tell: Tell }) {
   const { t } = useTranslation();
   const navigate = useNavigate();
 
@@ -226,7 +225,7 @@ function Tile({ section, viewer }: { section: Section; viewer: Viewer }) {
   if (section === 'vendors')
     return (
       <SectionTile look="vendors">
-        <StorefrontGlyph size={17} />
+        <Glyph name="storefront" size={17} />
       </SectionTile>
     );
   if (section === 'data')

@@ -25,7 +25,8 @@ final readonly class PhoneNumberParser
     ) {
     }
 
-    public function parse(string $typed, string $countryCode, string $field = 'number'): ParsedPhone
+    /** A vendor's number may be a landline, so its invalid refusal says "phone" where an account's says "mobile" (sc-82). */
+    public function parse(string $typed, string $countryCode, string $field = 'number', string $countryField = 'countryCode', string $invalid = 'validation.phone_invalid'): ParsedPhone
     {
         $country = Str\uppercase(Str\trim($countryCode));
 
@@ -36,7 +37,7 @@ final readonly class PhoneNumberParser
         $util = PhoneNumberUtil::getInstance();
 
         if (!Iter\contains($util->getSupportedRegions(), $country)) {
-            throw $this->refusal('countryCode', 'validation.country_invalid', $country);
+            throw $this->refusal($countryField, 'validation.country_invalid', $country);
         }
 
         try {
@@ -45,14 +46,14 @@ final readonly class PhoneNumberParser
             throw $this->refusal($field, match ($e->getErrorType()) {
                 NumberParseException::TOO_LONG => 'validation.phone_too_long',
                 NumberParseException::TOO_SHORT_NSN, NumberParseException::TOO_SHORT_AFTER_IDD => 'validation.phone_too_short',
-                default => 'validation.phone_invalid',
+                default => $invalid,
             }, $country);
         }
 
         $key = match ($util->isPossibleNumberWithReason($phone)) {
             ValidationResult::TOO_SHORT, ValidationResult::INVALID_LENGTH => 'validation.phone_too_short',
             ValidationResult::TOO_LONG => 'validation.phone_too_long',
-            default => $util->isValidNumberForRegion($phone, $country) ? null : 'validation.phone_invalid',
+            default => $util->isValidNumberForRegion($phone, $country) ? null : $invalid,
         };
 
         if (null !== $key) {

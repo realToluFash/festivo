@@ -2,6 +2,7 @@ import type { ReactNode } from 'react';
 
 import { Glyph } from '../components/Glyph.tsx';
 import { HintButton } from '../components/HintButton.tsx';
+import { useVariantPicks } from './MenuPicks.tsx';
 import {
   type Variant,
   type VariantAsk,
@@ -121,7 +122,7 @@ export function ChildrenTag() {
 }
 
 function Picks({ variant }: { variant: Variant }) {
-  const { count, share } = picksOf(variant);
+  const { count, share } = useVariantPicks(variant.id) ?? picksOf(variant);
 
   return (
     <p className="vr-picks">
@@ -228,7 +229,10 @@ export function VariantInsets({
               {here?.kind === 'refused' && (
                 <RowLine
                   id={`${ids}-vline-${variant.id}`}
-                  words={here.lines.map((one) => refusalLine(one, variant))}
+                  words={[
+                    ...(here.said == null ? [] : [here.said]),
+                    ...here.lines.map((one) => refusalLine(one, variant)),
+                  ]}
                 />
               )}
               {here?.kind === 'ask' && (
