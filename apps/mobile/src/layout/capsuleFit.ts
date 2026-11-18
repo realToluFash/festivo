@@ -5,6 +5,14 @@ import { fitWidest } from './textSize.ts';
 /** The capsule's label at the default size (`WhiteCapsule`). */
 export const CAPSULE_LABEL = 15;
 
+/** The capsule's height at the default size; a taller label makes it taller (`WhiteCapsule`). */
+export const CAPSULE_HEIGHT = 46;
+
+/** How much taller than its default a capsule of `height` is, which its row grows by so nothing clips it (sc-37693). */
+export function capsuleGrowth(height: number): number {
+  return Math.max(0, height - CAPSULE_HEIGHT);
+}
+
 /** Everything in a capsule of `tabs` tabs but its words: its padding, the gaps between tabs, and each tab's sides, glyph and gap (`WhiteCapsule`). */
 export function capsuleChrome(tabs: number): number {
   return (
