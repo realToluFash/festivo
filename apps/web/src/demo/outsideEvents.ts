@@ -224,7 +224,6 @@ export function outsideOf(state: OutsideState): Outside {
   }
 }
 
-/** sc-71's landing: the event under way, else the first to start, else the grant made first (the API's order). */
 export function landingOf(
   events: readonly OutsideEvent[],
   now: Date = new Date(DESK_NOW),
@@ -237,7 +236,6 @@ export type WayBack =
 
 export const NO_ORG_HOME = '/demo/today?orgs=none';
 
-/** The not-found page's way back (AC, "Decided, 18 Nov 2026 (pm): the way back from a gone event"). */
 export function wayBack(
   now: Outside,
   missing: string,
