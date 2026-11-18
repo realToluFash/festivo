@@ -187,11 +187,11 @@
     "memberRestored.facts": "Organização: {organisation}\nData da reposição: {when}\nA sua função: {role}",
     "memberRestored.open": "Abrir {organisation}: {link}",
     "memberAccess.footer": "Está a receber esta mensagem porque é membro de {organisation}.",
-    "planDowngraded.subject": "{organisation} is on the free plan",
-    "planDowngraded.switchedOff": "These were switched off on {day} and kept as they were:",
-    "planDowngraded.setting.email_domains": "Email domains",
-    "planDowngraded.setting.audit_log": "Audit log",
-    "planDowngraded.setting.guest_data_deletion": "Delete guest data after an event",
-    "planDowngraded.comeBack": "They come back on as they were with Enterprise. Contact Soirely about Enterprise.",
-    "planDowngraded.footer": "You're getting this because you're an owner or admin of {organisation}."
+    "planDowngraded.subject": "{organisation} passou para o plano gratuito",
+    "planDowngraded.switchedOff": "Estas funcionalidades foram desativadas ({day}) e mantêm-se tal como estavam:",
+    "planDowngraded.setting.email_domains": "Domínios de e-mail",
+    "planDowngraded.setting.audit_log": "Registo de auditoria",
+    "planDowngraded.setting.guest_data_deletion": "Eliminação dos dados dos convidados após cada evento",
+    "planDowngraded.comeBack": "Com o plano Enterprise, voltam a ficar ativas tal como estavam. Contacte a Soirely sobre o plano Enterprise.",
+    "planDowngraded.footer": "Está a receber isto porque é proprietário ou administrador de {organisation}."
 }
