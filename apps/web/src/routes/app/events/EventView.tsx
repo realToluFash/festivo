@@ -43,7 +43,7 @@ import '../../../components/eventsDesk.css';
 
 type Load =
   | { kind: 'loading' }
-  | { kind: 'failed' }
+  | { kind: 'failed'; offline?: boolean }
   | { kind: 'notFound' }
   | { kind: 'loaded'; event: OrganisationEvent; tag: string };
 
@@ -171,7 +171,7 @@ function EventOf({
               ? { kind: 'loaded', ...kept.value }
               : error instanceof ApiError && error.status === 404
                 ? { kind: 'notFound' }
-                : { kind: 'failed' },
+                : { kind: 'failed', offline: keepsWhatLoaded(error) },
         );
       },
     );
@@ -192,7 +192,11 @@ function EventOf({
     answered.current = null;
   }, [load, eventId]);
   useShowEvent(eventId, load.kind === 'loaded' ? load.event : undefined);
-  useGoneEvent(eventId, page === 'guests' && load.kind === 'notFound');
+  useGoneEvent(
+    eventId,
+    (page === 'guests' && load.kind === 'notFound') ||
+      (load.kind === 'failed' && load.offline === true),
+  );
 
   if (page === 'guests' && load.kind === 'notFound')
     return (

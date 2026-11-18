@@ -766,11 +766,13 @@ describe('moving to another area of an event while offline (sc-65646)', () => {
     ).toBeDefined();
   });
 
-  it('still says the event did not load for one this tab never loaded', async () => {
+  it("still says the event did not load for one this tab never loaded, under the organisation's sidebar", async () => {
     const { go } = await loadedThenOffline();
 
     await go('/app/events/ev_2');
 
     expect(await screen.findByText('The event did not load. Try again in a moment.')).toBeDefined();
+    expect(screen.getAllByRole('link', { name: 'Calendar' }).length).toBeGreaterThan(0);
+    expect(screen.queryByRole('link', { name: 'Overview' })).toBeNull();
   });
 });
