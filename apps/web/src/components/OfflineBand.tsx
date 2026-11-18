@@ -15,6 +15,7 @@ import { useTranslation } from 'react-i18next';
 import { dateLocale } from '../i18n/index.ts';
 import { type Stale, StaleScreen } from '../offline.ts';
 import { TextAction } from './SettingsParts.tsx';
+import './SettingsParts.css';
 import './OfflineBox.css';
 
 export function OfflineProvider({ children }: { children: ReactNode }) {
