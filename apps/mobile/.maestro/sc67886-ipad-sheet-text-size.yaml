@@ -1,0 +1,74 @@
+# On an iPad at the largest accessibility text size, Sign in in the sheet scrolls under its bar and Sign in draws over
+# neither field, the eye nor Forgot your password?, top and scrolled. sc-67886.
+#
+#   xcrun simctl ui booted content_size accessibility-extra-extra-extra-large
+#   node .qa/bin/qa-env.mjs maestro sc67886-ipad-sheet-text-size
+#
+# Set the size and turn the iPad to landscape first: the flow relaunches Expo Go, so the sheet shows at that size.
+# Each field, the eye and Forgot your password? are tapped at their foot, where Sign in drew over them (QA #67877):
+# a tap there that reaches Sign in instead leaves the typed text out of the field, or shows a refusal.
+appId: host.exp.Exponent
+---
+# Welcome reached by a link has nothing under Sign in, which then opens full screen: sign out to reach it.
+- runFlow: welcome-signed-out.yaml
+- tapOn:
+    id: 'welcome.email'
+- extendedWaitUntil:
+    visible:
+      id: 'signIn.email'
+    timeout: 20000
+- hideKeyboard
+- waitForAnimationToEnd:
+    timeout: 3000
+- takeScreenshot: sc67886-ipad-sheet-top
+- tapOn:
+    id: 'signIn.email'
+    point: '50%,92%'
+- eraseText: 120
+- inputText: 'qa-sc67886@example.com'
+- assertVisible:
+    id: 'signIn.email'
+    text: 'qa-sc67886@example.com'
+- assertNotVisible: 'Enter your password.'
+- hideKeyboard
+- waitForAnimationToEnd:
+    timeout: 3000
+- takeScreenshot: sc67886-ipad-sheet-typed
+- scrollUntilVisible:
+    element:
+      id: 'signIn.password'
+    centerElement: true
+- tapOn:
+    id: 'signIn.password'
+    point: '50%,92%'
+- inputText: 'not-the-password'
+- tapOn:
+    id: 'signIn.password.reveal'
+    point: '50%,92%'
+- waitForAnimationToEnd:
+    timeout: 3000
+- assertVisible:
+    id: 'signIn.password'
+    text: 'not-the-password'
+- assertNotVisible: 'That email and password do not match. Check both, or reset your password.'
+- takeScreenshot: sc67886-ipad-sheet-keys-up
+- hideKeyboard
+- scrollUntilVisible:
+    element:
+      id: 'signIn.forgot'
+    centerElement: true
+- waitForAnimationToEnd:
+    timeout: 3000
+- takeScreenshot: sc67886-ipad-sheet-scrolled
+- tapOn:
+    id: 'signIn.forgot'
+    point: '50%,92%'
+- extendedWaitUntil:
+    visible:
+      id: 'recovery.email'
+    timeout: 10000
+- assertVisible:
+    id: 'recovery.email'
+    text: 'qa-sc67886@example.com'
+- assertNotVisible: 'That email and password do not match. Check both, or reset your password.'
+- takeScreenshot: sc67886-ipad-sheet-forgot

@@ -15,7 +15,7 @@ export function labelFits({ room, title, extra, labelled, gap }: TitleRow): bool
   return title + gap + beside + labelled <= room;
 }
 
-/** The row's whole width, from the title's slot and whichever primary was drawn beside it, so the room is the same whether the labelled or the round primary took its share. */
+/** The row's whole width, from the title's slot and whichever primary was drawn beside it, so the room is the same whether the labelled or the round primary took its share. A slot squeezed to nothing is measured, not unmeasured: the title has no room (sc-67708). */
 export function rowRoom({
   slot,
   gap,
@@ -23,13 +23,13 @@ export function rowRoom({
   labelled,
   round,
 }: {
-  slot: number;
+  slot: number | null;
   gap: number;
   drawn: 'labelled' | 'round';
   labelled: number;
   round: number;
 }): number {
-  if (slot <= 0) return 0;
+  if (slot == null) return 0;
 
   return slot + gap + (drawn === 'labelled' ? labelled : round);
 }

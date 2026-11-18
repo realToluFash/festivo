@@ -7,7 +7,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Cover, OnCover, useWordsBox } from './Cover.tsx';
 import { saidOnWelcome } from '../kit/signInRules.ts';
-import { pushSignIn } from '../steps/signInBelow.ts';
+import { signInOver } from '../steps/signInOver.ts';
 import { useLayout } from '../layout/useLayout.ts';
 import { tokens } from '../theme/tokens.ts';
 import { Brand } from './Brand.tsx';
@@ -60,12 +60,13 @@ export function Welcome({ devTools }: { devTools?: ReactNode }) {
           <View style={styles.buttons}>
             <PrimaryButton
               label={t('welcome.withEmail')}
-              onPress={() =>
-                pushSignIn({
+              onPress={() => {
+                signInOver(true);
+                router.push({
                   pathname: '/sign-in',
                   params: params.email ? { email: params.email } : {},
-                })
-              }
+                });
+              }}
               testID="welcome.email"
             />
             <ProviderButtons onFailed={setProviderFailed} />

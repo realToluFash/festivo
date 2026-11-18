@@ -1,5 +1,5 @@
 import { router } from 'expo-router';
-import { type ReactNode, type Ref, useEffect, useRef } from 'react';
+import { type ReactNode, type Ref, createContext, useContext, useEffect, useRef } from 'react';
 import {
   type LayoutChangeEvent,
   Pressable,
@@ -60,6 +60,29 @@ export interface EventToast {
   words: string;
   onClose: () => void;
   action?: { label: string; onPress: () => void; testID?: string } | null;
+}
+
+/** On its side the frame draws no top of its own, so the area's title row ends with the bell, at the pane's top right (sc-68052). */
+const PaneBellAt = createContext<{ bell: ReactNode } | null>(null);
+
+export function useBellInPane(): boolean {
+  return useContext(PaneBellAt) != null;
+}
+
+/** The event's bell where an area's title row ends, on an iPad on its side; elsewhere the frame's own top has it. */
+export function PaneBell() {
+  return useContext(PaneBellAt)?.bell ?? null;
+}
+
+/** A title the pane's bell ends, the title wrapping to its left at the largest sizes, in a row as tall as the bell's target. */
+export function BellRow({ children }: { children: ReactNode }) {
+  if (!useBellInPane()) return children;
+  return (
+    <View style={styles.bellRow}>
+      <View style={styles.besideBell}>{children}</View>
+      <PaneBell />
+    </View>
+  );
 }
 
 /** Messages' count, on its tab, its pill and its place in the sidebar, named in words (sc-3976). */
@@ -155,19 +178,23 @@ export function EventFrame({
           </>
         }
       >
-        {fill ? (
-          <View style={styles.grow}>{children}</View>
-        ) : (
-          <ScrollView
-            ref={scrollRef}
-            style={styles.grow}
-            contentContainerStyle={styles.pane}
-            keyboardShouldPersistTaps="handled"
-            showsVerticalScrollIndicator={false}
-          >
-            {children}
-          </ScrollView>
-        )}
+        <PaneBellAt.Provider
+          value={{ bell: <Bell tell={shell.tell} onPress={onBell} ref={bellRef} /> }}
+        >
+          {fill ? (
+            <View style={styles.grow}>{children}</View>
+          ) : (
+            <ScrollView
+              ref={scrollRef}
+              style={styles.grow}
+              contentContainerStyle={styles.pane}
+              keyboardShouldPersistTaps="handled"
+              showsVerticalScrollIndicator={false}
+            >
+              {children}
+            </ScrollView>
+          )}
+        </PaneBellAt.Provider>
       </Landscape>
     );
 
@@ -583,14 +610,16 @@ export function AreaPage({
   const { layout } = useShell();
   return (
     <>
-      <Text
-        size={30}
-        weight="bold"
-        accessibilityRole="header"
-        style={[styles.title, styles.areaTitle, AREA_TITLE[layout]]}
-      >
-        {AREA_WORDS[area]}
-      </Text>
+      <BellRow>
+        <Text
+          size={30}
+          weight="bold"
+          accessibilityRole="header"
+          style={[styles.title, styles.areaTitle, AREA_TITLE[layout]]}
+        >
+          {AREA_WORDS[area]}
+        </Text>
+      </BellRow>
       <View style={styles.strip}>
         <EventThumb event={event} side={40} radius={12} />
         <View style={[styles.grow, styles.stripWords]}>
@@ -703,6 +732,8 @@ const styles = StyleSheet.create({
   pressed: { opacity: tokens.opacityPressed },
   title: { letterSpacing: -0.6 },
   top: { flexDirection: 'row', alignItems: 'center' },
+  bellRow: { flexDirection: 'row', alignItems: 'flex-start', gap: tokens.spaceLg },
+  besideBell: { flex: 1, minWidth: 0, minHeight: tokens.sizeHit, justifyContent: 'center' },
   blocks: { gap: 18 },
   pane: { paddingTop: 26, paddingHorizontal: 30, paddingBottom: tokens.space6xl * 2, gap: 18 },
   more: { gap: tokens.spaceXl, paddingHorizontal: tokens.spaceXxl, paddingTop: 31 },

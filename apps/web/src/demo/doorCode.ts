@@ -16,6 +16,7 @@ export const EVENT_ENDS = '2026-11-14T23:30:00Z';
 export const DESK_NOW = '2026-11-07T16:00:00Z';
 
 export const DOOR_PLACE: EventPlace = {
+  country: 'PT',
   organisation: DOOR_ORG,
   initials: 'LF',
   event: DOOR_EVENT,
