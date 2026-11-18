@@ -569,7 +569,7 @@ const STATES = {
       name: 'Edit, the job changed while on a shift',
       note: 'Kunle Ajayi from Waiter to Bar: refused until he is on no shift.',
       panel: { kind: 'edit', id: 'kunle' },
-      draft: { ...draftOf(byId('kunle')), job: 'Bar', shift: '16:00 to 01:00' },
+      draft: { ...draftOf(byId('kunle')), job: 'Bar' },
       pressed: true,
     }),
   finishedEvent: () =>
