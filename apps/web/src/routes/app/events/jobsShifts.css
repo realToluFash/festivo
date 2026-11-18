@@ -391,6 +391,10 @@
   color: var(--colorAccentText);
 }
 
+a.sn-tab {
+  text-decoration: none;
+}
+
 a.sn-tab:hover {
   color: var(--colorInk);
 }
