@@ -20,6 +20,12 @@ const PLACES: readonly (readonly [string, GlyphName])[] = [
   ['Menu library', 'menu'],
 ];
 
+const WITH_ENQUIRIES: readonly (readonly [string, GlyphName])[] = [
+  ...PLACES.slice(0, 2),
+  ['Enquiries', 'message'],
+  ...PLACES.slice(2),
+];
+
 const FOLAKE: DeskPerson = { name: SAMPLE.name, initials: 'FA', role: 'Owner' };
 
 /** `?sidebar=none` lists nothing and `?sidebar=many` all twenty sample events, past ones borrowed only for length, longer than the sidebar at 1280 × 800, on every screen that has it (sc-39290). */
@@ -43,6 +49,7 @@ export function TodaySidebar({
   person = FOLAKE,
   inert = false,
   phone = false,
+  enquiries = false,
 }: {
   events: readonly EventKey[];
   tell: Tell;
@@ -56,6 +63,8 @@ export function TodaySidebar({
   inert?: boolean;
   /** At 40rem and under the sidebar is the phone's bar: the switcher and Menu (sc-13413), as on Today, Events and Calendar (sc-57468). */
   phone?: boolean;
+  /** On Enquiries, which an Enterprise organisation has under Events (sc-31226). */
+  enquiries?: boolean;
 }) {
   const [params] = useSearchParams();
   const listed = sideEvents(events, params.get('sidebar'));
@@ -106,8 +115,9 @@ export function TodaySidebar({
       )}
       <SearchRow />
       <ul className="today-places">
-        {PLACES.filter(([label]) => !hideLibrary || label !== 'Menu library').map(
-          ([label, glyph]) => (
+        {(enquiries ? WITH_ENQUIRIES : PLACES)
+          .filter(([label]) => !hideLibrary || label !== 'Menu library')
+          .map(([label, glyph]) => (
             <li key={label}>
               {label === 'Events' ? (
                 <Link
@@ -115,6 +125,11 @@ export function TodaySidebar({
                   to="/demo/events"
                   aria-current={listing ? 'page' : undefined}
                 >
+                  <Glyph name={glyph} />
+                  {label}
+                </Link>
+              ) : label === 'Enquiries' ? (
+                <Link className="today-place is-on" to="/demo/enquiries" aria-current="page">
                   <Glyph name={glyph} />
                   {label}
                 </Link>
@@ -136,7 +151,7 @@ export function TodaySidebar({
                   <Glyph name={glyph} />
                   {label}
                 </Link>
-              ) : (settings || listing || calendar || library) && label === 'Today' ? (
+              ) : (settings || listing || calendar || library || enquiries) && label === 'Today' ? (
                 <Link className="today-place" to="/demo/today">
                   <Glyph name={glyph} />
                   {label}
@@ -155,8 +170,7 @@ export function TodaySidebar({
                 </button>
               )}
             </li>
-          ),
-        )}
+          ))}
       </ul>
       <DeskEvents heading="Your events" events={listed} to={(id) => `/demo/events/${id}`} />
     </DeskSidebar>
