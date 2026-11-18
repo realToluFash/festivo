@@ -59,7 +59,7 @@ final class PicksCloseTest extends ApiTestCase
         $this->dish($main, 'Jollof rice');
 
         self::assertSame(['at' => self::START, 'source' => 'start', 'closed' => false], $this->closeOf('Main'));
-        self::assertSame([['at' => self::START, 'title' => 'Picks close', 'area' => 'menu', 'action' => ['label' => 'Menu', 'link' => '/app/events/' . $this->eventId . '/menu']]], $this->picksMilestones());
+        self::assertSame([['at' => self::START, 'title' => 'Picks close', 'area' => 'menu', 'action' => ['label' => 'Open the menu', 'link' => '/app/events/' . $this->eventId . '/menu']]], $this->picksMilestones());
     }
 
     #[Test]

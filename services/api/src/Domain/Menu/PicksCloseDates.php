@@ -34,7 +34,7 @@ final readonly class PicksCloseDates implements MilestoneSourceInterface
             return [];
         }
 
-        $action = new MilestoneAction($this->translator->trans('timeline.menu'), '/app/events/' . $event->getId()->toRfc4122() . '/menu');
+        $action = new MilestoneAction($this->translator->trans('timeline.open_menu'), '/app/events/' . $event->getId()->toRfc4122() . '/menu');
 
         return [new Milestone(self::KEY, PicksClose::of($event)->at, $this->translator->trans('timeline.picks_close'), null, MilestoneOwner::Automatic, PermissionArea::Menu, $action)];
     }

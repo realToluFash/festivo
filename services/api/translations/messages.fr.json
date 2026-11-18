@@ -321,7 +321,7 @@
     "timeline.event_called_off": "Annulation : {name}",
     "timeline.replies_close": "Clôture des réponses",
     "timeline.picks_close": "Picks close",
-    "timeline.menu": "Menu",
+    "timeline.open_menu": "Open the menu",
     "calendar_feed.status.draft": "Brouillon",
     "calendar_feed.status.live": "Publié",
     "calendar_feed.status.paused": "En pause",
