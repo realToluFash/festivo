@@ -56,6 +56,13 @@ describe('a name and an email', () => {
     expect(ids('lucia')).toEqual(['enq-lucia']);
   });
 
+  it('takes a curly apostrophe and a straight one as the same, as Events does', () => {
+    const obrien = { ...ADA, client: 'Tunde O’Brien' };
+
+    expect(matches(obrien, "o'brien")).toBe(true);
+    expect(matches({ ...ADA, client: "Tunde O'Brien" }, 'O’Brien')).toBe(true);
+  });
+
   it('finds a whole email in another case, and nothing from part of one', () => {
     expect(ids('ADA@Example.com ')).toEqual(['enq-ada']);
     expect(ids('example.com')).toEqual([]);

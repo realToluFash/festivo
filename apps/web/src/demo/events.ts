@@ -967,7 +967,7 @@ export function rememberTab(tab: Tab): void {
   remembered = tab;
 }
 
-function folded(text: string): string {
+export function folded(text: string): string {
   return text
     .normalize('NFD')
     .replace(/\p{Diacritic}/gu, '')

@@ -109,7 +109,9 @@ function EnquiriesStore({ start, tell }: { start: Start; tell: Tell }) {
     typed,
     setTyped: (next) => {
       setTypedNow(next);
-      if (next.trim() === '') setSearched('');
+      if (next.trim() !== '') return;
+      setSearched('');
+      setSearchFailed(false);
     },
     searched,
     search: (next) => {

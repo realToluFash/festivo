@@ -1,5 +1,7 @@
 import { type EventType, searching } from '@soirely/domain';
 
+import { folded } from '../events/EventsModel.ts';
+
 export const ENQUIRY_TABS = ['open', 'won', 'lost'] as const;
 export type EnquiryTab = (typeof ENQUIRY_TABS)[number];
 
@@ -139,10 +141,6 @@ export const ENQUIRIES: readonly Enquiry[] = [
 
 export function enquiryOf(id: string | undefined): Enquiry | null {
   return ENQUIRIES.find((enquiry) => enquiry.id === id) ?? null;
-}
-
-export function folded(text: string): string {
-  return text.normalize('NFD').replace(/\p{M}/gu, '').toLocaleLowerCase('en');
 }
 
 /** Stands in for the server's parser: a national number is read with the organisation's country. */

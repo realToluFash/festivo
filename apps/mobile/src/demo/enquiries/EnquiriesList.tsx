@@ -84,7 +84,9 @@ export function EnquiriesList({ state }: { state: EnquiryState }) {
 
   const onTyped = (value: string) => {
     setTyped(value);
-    if (value.trim() === '') setSearched('');
+    if (value.trim() !== '') return;
+    setSearched('');
+    setSearchFailed(false);
   };
   const clearSearch = () => {
     setTyped('');
