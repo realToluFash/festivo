@@ -1,0 +1,21 @@
+# sc-30894: a short Approve confirm sits centred and closes. Needs ${METRO_URL}; ${REQUEST}, a request waiting.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/settings/members
+- waitForAnimationToEnd:
+    timeout: 5000
+- scrollUntilVisible:
+    element:
+      id: 'members.recovery.${REQUEST}.approve'
+    direction: DOWN
+    timeout: 20000
+    centerElement: true
+- tapOn:
+    id: 'members.recovery.${REQUEST}.approve'
+- extendedWaitUntil:
+    visible:
+      id: 'members.recovery.cancel'
+    timeout: 10000
+- takeScreenshot: ask
+- tapOn:
+    id: 'members.recovery.cancel'
