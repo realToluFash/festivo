@@ -453,7 +453,7 @@ final class OrganisationExportTest extends ApiTestCase
     }
 
     #[Test]
-    public function aTryThatOutlastsTheRetryAndFinishesSecondLeavesTheFirstArchiveAndEmailsNothing(): void
+    public function eachTryKeepsItsOwnArchiveAndOnceOneIsReadyNoLaterTryCanFinishIt(): void
     {
         $export = new OrganisationExport($this->fresh(), $this->freshUser($this->owner), new DateTimeImmutable(self::ASKED_AT));
         $export->attempting(new DateTimeImmutable(self::ASKED_AT));
@@ -462,6 +462,7 @@ final class OrganisationExportTest extends ApiTestCase
         self::mockTime(new DateTimeImmutable('2026-10-17T13:25:00+00:00'));
         self::service(OrganisationExports::class)->prepareDue();
         $ready = [$this->latest()->getArchiveKey(), $this->latest()->getReadyAt()];
+        self::assertStringEndsWith(Str\format('%s-2.zip', $export->getId()->toRfc4122()), (string) $ready[0]);
 
         self::em()->getConnection()->executeStatement('UPDATE organisation_exports SET attempts = 3 WHERE id = ?', [$export->getId()->toRfc4122()]);
         $export = $this->latest();

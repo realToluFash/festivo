@@ -113,6 +113,11 @@ final readonly class ObjectStore
         return $this->s3->getObject(['Bucket' => $this->privateBucket, 'Key' => $key])->getBody()->getContentAsString();
     }
 
+    public function discardKept(string $key): void
+    {
+        $this->delete($this->privateBucket, $key);
+    }
+
     /** Written by the server, readable by anyone at publicUrl(). */
     public function publish(string $key, string $bytes, string $contentType): void
     {

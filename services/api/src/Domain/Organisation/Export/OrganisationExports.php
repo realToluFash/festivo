@@ -101,7 +101,7 @@ final readonly class OrganisationExports
         }
 
         try {
-            $key = Str\format('organisation-exports/%s/%s.zip', $export->getOrganisation()->getId()->toRfc4122(), $export->getId()->toRfc4122());
+            $key = Str\format('organisation-exports/%s/%s-%d.zip', $export->getOrganisation()->getId()->toRfc4122(), $export->getId()->toRfc4122(), $export->getAttempts());
             $this->objectStore->keep($key, $this->organisationArchive->of($export->getOrganisation()), self::CONTENT_TYPE);
         } catch (Throwable $e) {
             $this->logger->error('An organisation export failed to prepare.', ['export' => $export->getId()->toRfc4122(), 'attempt' => $export->getAttempts(), 'exception' => $e::class]);
@@ -111,6 +111,8 @@ final readonly class OrganisationExports
         }
 
         if (!$this->organisationExportRepository->claimReady($export, $key, $this->clock->now())) {
+            $this->objectStore->discardKept($key);
+
             return;
         }
 
