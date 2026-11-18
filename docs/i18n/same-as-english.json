@@ -43,7 +43,8 @@
     "mobile:guestExport.csv",
     "messagesCounts:guest_export.diet.halal",
     "messagesCounts:guest_export.diet.kosher",
-    "web:vendors.categories.catering"
+    "web:vendors.categories.catering",
+    "messages:staff.job_suggested.runner"
   ],
   "fr": [
     "web:nav.menu",
