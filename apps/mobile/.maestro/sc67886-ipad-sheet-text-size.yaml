@@ -19,6 +19,8 @@ appId: host.exp.Exponent
     visible:
       id: 'signIn.email'
     timeout: 20000
+- tapOn:
+    id: 'signIn.email'
 - runFlow: keys-down-ipad-sheet.yaml
 - takeScreenshot: sc67886-ipad-sheet-top
 - tapOn:
