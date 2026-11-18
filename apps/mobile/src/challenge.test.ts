@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import {
   challengeBeganAlone,
+  challengeTypedEmail,
   dropChallenge,
   heldChallenge,
   nextAfterRegistration,
@@ -257,5 +258,15 @@ describe('where the held sign-in began (sc-67606)', () => {
     await nextAfterSignIn(CHALLENGE, { alone: true });
     dropChallenge();
     expect(challengeBeganAlone()).toBe(false);
+  });
+});
+
+describe('the address the held sign-in was typed with (sc-67828)', () => {
+  it('holds the address typed on Sign in, and forgets it when a sign-in with Google or Apple asks for a code', async () => {
+    await nextAfterSignIn(CHALLENGE, { typed: 'a@b.c' });
+    expect(challengeTypedEmail()).toBe('a@b.c');
+
+    await nextAfterSignIn(CHALLENGE);
+    expect(challengeTypedEmail()).toBeNull();
   });
 });

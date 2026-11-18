@@ -113,7 +113,7 @@ export default function SignIn() {
 
     void api
       .signIn(address, typed)
-      .then((outcome) => nextAfterSignIn(outcome, { alone: !below }))
+      .then((outcome) => nextAfterSignIn(outcome, { alone: !below, typed: address }))
       .then((next) => {
         tap.light();
         router.replace(next);
