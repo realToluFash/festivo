@@ -161,5 +161,14 @@
     "seating.seat_in_use": "{name} is in this seat. Move them first.",
     "seating.guest_not_waiting": "{name} is not coming or is off the list, so they can’t have a seat.",
     "seating.companion_of": "Guest of {name}",
-    "validation.seating_no_such_chair": "Choose a seat that is on {name} and can be used."
+    "validation.seating_no_such_chair": "Choose a seat that is on {name} and can be used.",
+    "run_of_show.card.title": "{event} · {place}",
+    "run_of_show.card.main": "Main",
+    "run_of_show.card.on_day": "{place} · {day}",
+    "run_of_show.card.now": "{title} · since {hour, plural, other {{time}}}",
+    "run_of_show.card.nothing_on": "Nothing is on",
+    "run_of_show.card.next": "Next: {title} · about {hour, plural, other {{time}}}",
+    "run_of_show.card.nothing_else": "Nothing else is planned for {place}.",
+    "run_of_show.card.as_of": "As of {hour, plural, other {{time}}}",
+    "run_of_show.card.everything": "That’s everything."
 }

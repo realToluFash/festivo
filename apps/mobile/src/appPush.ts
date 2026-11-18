@@ -10,6 +10,7 @@ import { AppState, Platform } from 'react-native';
 import { api } from './api.ts';
 import { config } from './config.ts';
 import { appPlace } from './kit/notificationPlace.ts';
+import { RUN_OF_SHOW_CHANNEL, openedFromCard } from './runOfShowCards.ts';
 
 const ASKED = 'soirely.pushAsked';
 
@@ -25,6 +26,11 @@ export async function registerAppPush(): Promise<void> {
     await Notifications.setNotificationChannelAsync('event_day', {
       name: t('notificationSettings.category.event_day'),
       importance: AndroidImportance.HIGH,
+    });
+    // The run-of-show card's: no sound and no pop-up (sc-66580).
+    await Notifications.setNotificationChannelAsync(RUN_OF_SHOW_CHANNEL, {
+      name: t('runOfShowCard.channel'),
+      importance: AndroidImportance.LOW,
     });
   }
 
@@ -90,11 +96,11 @@ export async function turnOnAppPush(): Promise<void> {
   if (granted) await registerAppPush();
 }
 
-/** A push that arrives with the app open still shows, quietly: the bell counts the same item. */
+/** A push that arrives with the app open still shows, quietly: the bell counts the same item. A run-of-show card goes to the list alone (sc-66580). */
 export function showPushInForeground(): void {
   Notifications.setNotificationHandler({
-    handleNotification: async () => ({
-      shouldShowBanner: true,
+    handleNotification: async (notification?: Notifications.Notification) => ({
+      shouldShowBanner: notification?.request.content.data?.silent !== true,
       shouldShowList: true,
       shouldPlaySound: false,
       shouldSetBadge: false,
@@ -122,7 +128,11 @@ function openPushed(response: Notifications.NotificationResponse): void {
   }
   Notifications.clearLastNotificationResponse();
   if (response.notification.request.content.data?.recipient !== signedInAs) return;
-  router.push(pushedPlace(response));
+  const place = pushedPlace(response);
+  const night = typeof place === 'string' ? /^\/events\/([^/?#]+)\/night/.exec(place) : null;
+  if (response.notification.request.content.data?.silent === true && night?.[1] != null)
+    openedFromCard(night[1]);
+  router.push(place);
 }
 
 /** In the signed-in frame, so a tap that launched the app opens once the account is known; every screen has a frame, and they share one listener. */

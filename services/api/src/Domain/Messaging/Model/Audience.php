@@ -50,6 +50,16 @@ final readonly class Audience
         return new self(NotificationAudienceKind::Member, $organisationId, permission: $permission, only: [$userId], eventId: $eventId);
     }
 
+    /**
+     * Those named, each while they still reach the event with the permission when it goes.
+     *
+     * @param non-empty-list<Uuid> $userIds
+     */
+    public static function namedMembersOfEvent(Uuid $organisationId, Uuid $eventId, Permission $permission, array $userIds): self
+    {
+        return new self(NotificationAudienceKind::Member, $organisationId, permission: $permission, only: $userIds, eventId: $eventId);
+    }
+
     /** @param list<Uuid> $except */
     public static function membersWithPermission(Uuid $organisationId, Permission $permission, array $except = []): self
     {

@@ -9,7 +9,7 @@ const notifications = vi.hoisted(() => ({
   getExpoPushTokenAsync: vi.fn(async () => ({ data: 'ExponentPushToken[abc]' })),
   setNotificationHandler: vi.fn(),
   setNotificationChannelAsync: vi.fn(async () => null),
-  AndroidImportance: { HIGH: 5 },
+  AndroidImportance: { HIGH: 5, LOW: 2 },
   DEFAULT_ACTION_IDENTIFIER: 'expo.modules.notifications.actions.DEFAULT',
   getLastNotificationResponse: vi.fn((): unknown => null),
   clearLastNotificationResponse: vi.fn(),
@@ -31,7 +31,13 @@ const appState = vi.hoisted(() => ({
   remove: vi.fn(),
 }));
 
+const cards = vi.hoisted(() => ({ opened: vi.fn() }));
+
 vi.mock('./api.ts', () => ({ api }));
+vi.mock('./runOfShowCards.ts', () => ({
+  RUN_OF_SHOW_CHANNEL: 'run_of_show',
+  openedFromCard: cards.opened,
+}));
 vi.mock('./config.ts', () => ({ config: settings }));
 vi.mock('expo-device', () => device);
 vi.mock('expo-notifications', () => notifications);
@@ -74,10 +80,13 @@ function tap(
   place: unknown,
   actionIdentifier = notifications.DEFAULT_ACTION_IDENTIFIER,
   recipient = 'u1',
+  silent = false,
 ) {
   return {
     actionIdentifier,
-    notification: { request: { content: { data: { place, recipient } } } },
+    notification: {
+      request: { content: { data: { place, recipient, ...(silent ? { silent } : {}) } } },
+    },
   };
 }
 
@@ -114,6 +123,16 @@ describe("the app's push (sc-3980)", () => {
     expect(notifications.setNotificationChannelAsync).toHaveBeenCalledWith('event_day', {
       name: 'notificationSettings.category.event_day',
       importance: 5,
+    });
+  });
+
+  it("makes the run-of-show card's own quiet channel on Android (sc-66580)", async () => {
+    platform.OS = 'android';
+    await registerAppPush();
+
+    expect(notifications.setNotificationChannelAsync).toHaveBeenCalledWith('run_of_show', {
+      name: 'runOfShowCard.channel',
+      importance: 2,
     });
   });
 
@@ -230,6 +249,30 @@ describe("the app's push (sc-3980)", () => {
       shouldPlaySound: false,
       shouldSetBadge: false,
     });
+  });
+
+  it('lists a run-of-show card that arrives with the app open, without a banner (sc-66580)', async () => {
+    showPushInForeground();
+
+    const { handleNotification } = notifications.setNotificationHandler.mock.calls[0]?.[0] as {
+      handleNotification: (notification: unknown) => Promise<unknown>;
+    };
+    expect(await handleNotification({ request: { content: { data: { silent: true } } } })).toEqual({
+      shouldShowBanner: false,
+      shouldShowList: true,
+      shouldPlaySound: false,
+      shouldSetBadge: false,
+    });
+  });
+
+  it("opens a tapped card's track on the night, from the card (sc-66580)", () => {
+    usePushTaps('u1');
+
+    tapped.listener?.(tap('/app/events/e1/schedule?track=2026-11-20%7C', undefined, 'u1', true));
+
+    expect(router.push).toHaveBeenCalledWith('/events/e1/night?track=2026-11-20%7C');
+    expect(cards.opened).toHaveBeenCalledWith('e1');
+    unmountAll();
   });
 
   it("opens a tapped push's own screen, and the bell when the app has none", () => {

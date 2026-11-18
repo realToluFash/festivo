@@ -1,4 +1,6 @@
-import { hourContext, visibleLength } from '@soirely/domain';
+import { hourContext } from '@soirely/domain';
+
+import { CARD_TITLE_MAX, cardTitle } from '../../kit/runOfShowCard.ts';
 
 import {
   DANCED,
@@ -102,24 +104,7 @@ export const CW = {
   noCard: 'No card: Event day push is off, so this device puts none up either.',
 } as const;
 
-/** The longest title the card shows whole; a longer one keeps its first 39 and "…", counted as the title field counts (VisibleText). */
-export const CARD_TITLE_MAX = 40;
-
-export function cardTitle(title: string): string {
-  const total = visibleLength(title);
-  if (total <= CARD_TITLE_MAX) return title;
-
-  let cut = 0;
-  let end = 0;
-  for (const point of title) {
-    end += point.length;
-    const head = visibleLength(title.slice(0, end));
-    if (head > CARD_TITLE_MAX - 1) break;
-    if (head + visibleLength(title.slice(end)) === total) cut = end;
-  }
-
-  return `${title.slice(0, cut)}…`;
-}
+export { CARD_TITLE_MAX, cardTitle };
 
 export interface RunCard {
   trackId: string;

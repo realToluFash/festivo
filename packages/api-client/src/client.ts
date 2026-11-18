@@ -2896,7 +2896,7 @@ export class ApiClient {
     return this.scheduleOf(
       await this.post<unknown>(
         `${this.schedulePath(eventId)}/items/${encodeURIComponent(itemId)}/presses`,
-        { kind, pressedAt: sent.pressedAt },
+        { kind, pressedAt: sent.pressedAt, ...(sent.fromCard === true ? { fromCard: true } : {}) },
         { headers: { 'Idempotency-Key': sent.key } },
       ),
     );

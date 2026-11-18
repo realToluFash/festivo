@@ -19,6 +19,7 @@ import { api } from './api.ts';
 import { registerAppPush } from './appPush.ts';
 import { currentLocale } from './i18n/index.ts';
 import { leaveThen } from './leaveHeld.ts';
+import { takeDownRunOfShowCards } from './runOfShowCards.ts';
 import { tokens } from './tokens.ts';
 
 const REMEMBERED = 'soirely.organisation';
@@ -251,6 +252,7 @@ export function endedHere(): void {
 }
 
 function forget(): void {
+  void takeDownRunOfShowCards().catch(() => undefined);
   ended = true;
   loading = null;
   set(SIGNED_OUT);

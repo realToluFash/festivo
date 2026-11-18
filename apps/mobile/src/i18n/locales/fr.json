@@ -1976,7 +1976,7 @@
     "note": {
       "guest_replies": "Les réponses des invités et leurs modifications, les besoins qu’ils ajoutent et leurs questions.",
       "messages": "Un envoi qui n’a pas atteint tout le monde, a été retenu faute de crédits ou a été annulé, et des crédits qui s’épuisent.",
-      "event_day": "Un changement de votre service ou de votre heure de convocation, ou de l’événement dans les 24 heures qui le précèdent.",
+      "event_day": "Un changement de votre service ou de votre heure de convocation, ou de l’événement dans les 24 heures qui le précèdent, ainsi qu’une notification silencieuse « Maintenant » et « Ensuite » pour chaque espace dont vous menez le déroulé.",
       "event_changes": "Quand quelqu’un d’autre modifie la tenue, la date ou le lieu d’un événement auquel vous participez.",
       "money": "Paiements à venir, utilisation à {{low}} et à {{high}}, paiements refusés et factures.",
       "account_security": "Connexions, votre mot de passe, la double authentification, la propriété et les accès."
@@ -2976,6 +2976,20 @@
     "doneSaid": "Terminé : « {{title}} ».",
     "doneNext": "Terminé : « {{title}} ». Ensuite : « {{next}} ».",
     "sent": "Connexion rétablie. Actions envoyées."
+  },
+  "runOfShowCard": {
+    "title": "{{event}} · {{place}}",
+    "next": "Ensuite : {{title}} · vers {{time}}",
+    "next_hour1": "Ensuite : {{title}} · vers {{time}}",
+    "asOf": "Mise à jour : {{time}}",
+    "asOf_hour1": "Mise à jour : {{time}}",
+    "asOfWaiting_one": "Mise à jour : {{time}} · {{count, number}} action en attente d’envoi",
+    "asOfWaiting_other": "Mise à jour : {{time}} · {{count, number}} actions en attente d’envoi",
+    "asOfWaiting_many": "Mise à jour : {{time}} · {{count, number}} actions en attente d’envoi",
+    "asOfWaiting_hour1_one": "Mise à jour : {{time}} · {{count, number}} action en attente d’envoi",
+    "asOfWaiting_hour1_other": "Mise à jour : {{time}} · {{count, number}} actions en attente d’envoi",
+    "asOfWaiting_hour1_many": "Mise à jour : {{time}} · {{count, number}} actions en attente d’envoi",
+    "channel": "Déroulé"
   },
   "guestExport": {
     "export": "Exporter",
