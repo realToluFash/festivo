@@ -18,6 +18,7 @@ import {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Link } from 'react-router';
 
 import { api } from '../../../api.ts';
 import { Glyph } from '../../../components/Glyph.tsx';
@@ -41,7 +42,6 @@ import { LayersContext, useDeskLayers } from '../../../layers.ts';
 import { offButton } from '../../../offButton.ts';
 import { codeChoice } from '../../../phoneProblem.ts';
 import { can, useSession } from '../../../session.ts';
-import { Forbidden } from '../Forbidden.tsx';
 import {
   BLANK,
   type Draft,
@@ -81,7 +81,7 @@ export function Vendors() {
   const organisation = session.organisation;
 
   if (organisation == null) return null;
-  if (!can(session, 'vendors.read')) return <Forbidden />;
+  if (!can(session, 'vendors.read')) return <Refused />;
 
   return (
     <Directory
@@ -90,6 +90,29 @@ export function Vendors() {
       named={organisation.name}
       manages={can(session, 'vendors.manage')}
     />
+  );
+}
+
+/** A Member's refusal, as the demo's `?state=member` draws it: the title and Back to Settings. */
+function Refused() {
+  const { t } = useTranslation();
+
+  return (
+    <div className="desk vd-desk">
+      <div className="desk-page">
+        <div className="desk-column vd-column">
+          <div className="vd-refused" role="alert">
+            <h1 className="desk-title" tabIndex={-1}>
+              {t('forbidden.title')}
+            </h1>
+            <Link className="desk-text" to="/app/account">
+              <Glyph name="back" size={16} weight={2.4} />
+              {t('vendors.backToSettings')}
+            </Link>
+          </div>
+        </div>
+      </div>
+    </div>
   );
 }
 

@@ -241,12 +241,16 @@ describe('Settings › Vendors at a desk (sc-82)', () => {
     ).toBe(true);
   });
 
-  it('a member is shown the page for a page they lack permission for', async () => {
+  it('a member is refused with a way back to Settings, as the demo draws it', async () => {
     signedIn(membership({ role: MEMBER, permissions: [] }));
     const sent = answering(() => pageOf([BLOOM]));
     open();
 
     await waitFor(() => expect(screen.getByText('You do not have access to this')).toBeDefined());
+    expect(screen.getByRole('link', { name: 'Back to Settings' }).getAttribute('href')).toBe(
+      '/app/account',
+    );
+    expect(screen.queryByText('Back to the dashboard')).toBeNull();
     expect(sent.filter(({ path }) => path.includes('/vendors'))).toEqual([]);
   });
 });
