@@ -29,6 +29,7 @@ import {
   JOAO,
   listsEvents,
   MEMBER,
+  NO_ORG_HOME,
   NOW,
   type Outside,
   type OutsideEvent,
@@ -41,6 +42,8 @@ import {
   VENUES,
   wallDay,
   wallTime,
+  type WayBack,
+  wayBack,
   WORDS,
 } from './OutsideModel.ts';
 import { OutsideSwitcher } from './OutsideSwitcher.tsx';
@@ -48,7 +51,7 @@ import { OutsideSwitcher } from './OutsideSwitcher.tsx';
 type Screen =
   | { kind: 'switcher' }
   | { kind: 'inside'; event: OutsideEvent; at: 'overview' | 'people'; more: boolean }
-  | { kind: 'notFound'; from: OutsideEvent };
+  | { kind: 'notFound'; way: WayBack };
 
 const LATER = {
   invitation: 'Invitations have their own design.',
@@ -98,12 +101,14 @@ function OutsideEvents({ state }: { state: OutsideState }) {
   if (screen.kind === 'notFound')
     return (
       <NotFound
-        member={outside.member}
-        from={screen.from}
+        way={screen.way}
         onBack={() => {
+          const { way } = screen;
+
           setOutside(afterRequest);
-          if (outside.member) router.push('/demo/events');
-          else enter(screen.from, true);
+          if (way.kind === 'events') router.push('/demo/events');
+          else if (way.kind === 'continue') router.replace(NO_ORG_HOME);
+          else enter(way.event, true);
         }}
       />
     );
@@ -113,7 +118,8 @@ function OutsideEvents({ state }: { state: OutsideState }) {
     const choice = choose(outside, picked);
 
     if (choice.kind === 'open') enter(choice.event);
-    else if (choice.kind === 'notFound') setScreen({ kind: 'notFound', from: event });
+    else if (choice.kind === 'notFound')
+      setScreen({ kind: 'notFound', way: wayBack(outside, choice.event.id, event.id, NOW) });
   });
 
   return (
@@ -189,21 +195,13 @@ function groupsOf(
   return [...(outside.member ? [places] : []), ...(listsEvents(outside) ? [events] : [])];
 }
 
-/** The product's not-found notice; with no organisation there are no Events to go back to, so back is to the event it came from. */
-function NotFound({
-  member,
-  from,
-  onBack,
-}: {
-  member: boolean;
-  from: OutsideEvent;
-  onBack: () => void;
-}) {
+/** The product's not-found notice; with no organisation there are no Events, so back is to an event, or on to the no-organisation home. */
+function NotFound({ way, onBack }: { way: WayBack; onBack: () => void }) {
   const { t } = useTranslation();
 
   return (
     <DemoScreen>
-      {member ? (
+      {way.kind === 'events' ? (
         <EventNotFound onBack={onBack} />
       ) : (
         <View style={styles.stack} testID="outside.notFound">
@@ -214,7 +212,7 @@ function NotFound({
             heading
           />
           <SecondaryButton
-            label={backTo(from.name)}
+            label={way.kind === 'event' ? backTo(way.event.name) : WORDS.continue}
             onPress={onBack}
             testID="outside.notFound.back"
           />

@@ -104,6 +104,7 @@ export const WORDS = {
   yourOrganisations: 'Your organisations',
   underWay: 'Under way',
   here: 'You’re here',
+  continue: 'Continue',
 } as const;
 
 export function rowLabel(
@@ -130,10 +131,13 @@ export const OUTSIDE_STATES = [
   'two',
   'several',
   'gone',
+  'gone-both',
+  'gone-last',
   'switcher-outside',
   'switcher-outside-one-org',
   'inside-member',
   'inside-member-one',
+  'inside-member-gone',
 ] as const;
 export type OutsideState = (typeof OUTSIDE_STATES)[number];
 
@@ -189,6 +193,10 @@ export function outsideOf(state: OutsideState): Outside {
       return joao;
     case 'gone':
       return { ...joao, revoked: [E4.id] };
+    case 'gone-both':
+      return { ...joao, revoked: [E2.id, E4.id] };
+    case 'gone-last':
+      return { ...joao, events: [E2, E4], revoked: [E2.id, E4.id] };
     case 'switcher-outside':
       return { ...member, here: null };
     case 'switcher-outside-one-org':
@@ -197,7 +205,36 @@ export function outsideOf(state: OutsideState): Outside {
       return member;
     case 'inside-member-one':
       return { ...member, events: [E2] };
+    case 'inside-member-gone':
+      return { ...member, revoked: [E3.id] };
   }
+}
+
+/** sc-71's landing: the event under way, else the first to start, else the grant made first (the API's order). */
+export function landingOf(events: readonly OutsideEvent[], now: Date): OutsideEvent | null {
+  return inOrder(events, now)[0] ?? null;
+}
+
+export type WayBack =
+  { kind: 'events' } | { kind: 'event'; event: OutsideEvent } | { kind: 'continue' };
+
+export const NO_ORG_HOME = '/demo/today?orgs=none';
+
+/** The not-found page's way back (AC, "Decided, 18 Nov 2026 (pm): the way back from a gone event"). */
+export function wayBack(
+  outside: Outside,
+  missing: string,
+  from: string | null,
+  now: Date,
+): WayBack {
+  if (outside.member) return { kind: 'events' };
+
+  const live = outside.events.filter(
+    (event) => event.id !== missing && !outside.revoked.includes(event.id),
+  );
+  const back = live.find((event) => event.id === from) ?? landingOf(live, now);
+
+  return back == null ? { kind: 'continue' } : { kind: 'event', event: back };
 }
 
 /** The next request after the not-found page: the grant that ended is gone from the list. */
@@ -236,10 +273,19 @@ const BOARD: Record<OutsideState, readonly [string, string]> = {
     'The congress under way first, the wedding keeps its place',
   ],
   gone: ['No organisation · a grant gone', 'The cocktail opens not available, back drops it'],
+  'gone-both': [
+    'No organisation · the wedding gone too',
+    'The cocktail not available, back to the congress, under way',
+  ],
+  'gone-last': [
+    'No organisation · no grant left',
+    'The cocktail not available, Continue to the no-organisation home',
+  ],
   'switcher-outside': ['Member · the switcher', 'Organisations, Events from outside, invitations'],
   'switcher-outside-one-org': ['Member · one organisation', 'Ire Events, one event from outside'],
   'inside-member': ['Member · inside the wedding', 'More: Your organisations, then Your events'],
   'inside-member-one': ['Member · inside, one event', 'More: Your organisations only'],
+  'inside-member-gone': ['Member · a grant gone', 'The gala not available, Back to Events'],
 };
 
 export const OUTSIDE_BOARDS: readonly { title: string; what: string; href: string }[] =

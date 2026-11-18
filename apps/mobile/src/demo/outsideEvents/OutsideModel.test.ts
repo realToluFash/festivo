@@ -9,6 +9,7 @@ import {
   E3,
   E4,
   inOrder,
+  landingOf,
   listsEvents,
   NOW,
   OUTSIDE_STATES,
@@ -16,6 +17,7 @@ import {
   rowLabel,
   rowLine,
   underWay,
+  wayBack,
 } from './OutsideModel.ts';
 
 const ids = (events: readonly { id: string }[]) => events.map((event) => event.id);
@@ -87,7 +89,38 @@ describe('the states', () => {
   });
 
   it('has a state for each board', () => {
-    expect(OUTSIDE_STATES).toHaveLength(8);
+    expect(OUTSIDE_STATES).toHaveLength(11);
+  });
+});
+
+describe('the way back from a gone event', () => {
+  it('lands where sc-71 lands an account', () => {
+    expect(landingOf([E1, E2, E3, E4], NOW)?.id).toBe(E1.id);
+    expect(landingOf([E3, E4], NOW)?.id).toBe(E3.id);
+    expect(landingOf([], NOW)).toBeNull();
+  });
+
+  it('goes back to the event it came from while that grant is live', () => {
+    expect(wayBack(outsideOf('gone'), E4.id, E2.id, NOW)).toEqual({ kind: 'event', event: E2 });
+  });
+
+  it('names the landing pick when the event it came from is gone too', () => {
+    const both = outsideOf('gone-both');
+
+    expect(choose(both, E4)).toEqual({ kind: 'notFound', event: E4 });
+    expect(wayBack(both, E4.id, E2.id, NOW)).toEqual({ kind: 'event', event: E1 });
+    expect(ids(afterRequest(both).events)).toEqual(ids([E1, E3]));
+  });
+
+  it('reads Continue with no live grant left', () => {
+    expect(wayBack(outsideOf('gone-last'), E4.id, E2.id, NOW)).toEqual({ kind: 'continue' });
+  });
+
+  it('keeps a member’s Back to Events', () => {
+    const member = outsideOf('inside-member-gone');
+
+    expect(choose(member, E3)).toEqual({ kind: 'notFound', event: E3 });
+    expect(wayBack(member, E3.id, E2.id, NOW)).toEqual({ kind: 'events' });
   });
 });
 
