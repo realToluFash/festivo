@@ -153,6 +153,21 @@ final class OutsideAccessTest extends ApiTestCase
     }
 
     #[Test]
+    public function eventsReachedFromOutsideComeSoonestFirstThenByTheGrantMadeFirst(): void
+    {
+        $later = $this->create($this->owner, $this->organisation, 'Later', '2031-01-10T16:00');
+        $sameStart = $this->create($this->owner, $this->organisation, 'Same start', '2030-11-14T16:00');
+        $caterer = $this->account('bisi@lagoslights.example', 'Bisi');
+
+        $this->grant($this->owner, $later, 'bisi@lagoslights.example', 'can_view');
+        $this->grant($this->owner, $sameStart, 'bisi@lagoslights.example', 'can_view');
+        $this->grant($this->owner, $this->owambe, 'bisi@lagoslights.example', 'can_edit');
+
+        $me = $this->as($caterer, 'GET', '/api/auth/me');
+        self::assertSame(['Same start', 'Owambe', 'Later'], Vec\map(Type\vec(Type\shape(['name' => Type\string()], true))->coerce($me['outsideEvents']), static fn (array $event): string => $event['name']));
+    }
+
+    #[Test]
     public function grantsInTwoOrganisationsStayInvisibleToEachOther(): void
     {
         $other = $this->account('owner@ayo.events', 'Ayo Owner');

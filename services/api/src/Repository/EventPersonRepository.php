@@ -81,7 +81,7 @@ final class EventPersonRepository extends ServiceEntityRepository implements Eve
             ->getOneOrNullResult();
     }
 
-    /** @return list<EventPerson> every live grant the account holds from outside, soonest event first */
+    /** @return list<EventPerson> every live grant the account holds from outside, soonest event first, then the grant made first: the first is where it lands */
     public function findLiveOutsideFor(User $user, DateTimeImmutable $now): array
     {
         /** @var list<EventPerson> */
@@ -93,6 +93,8 @@ final class EventPersonRepository extends ServiceEntityRepository implements Eve
             ->setParameter('user', $user->getId(), 'uuid')
             ->setParameter('now', $now)
             ->orderBy('e.startsAtUtc', 'ASC')
+            ->addOrderBy('p.createdAt', 'ASC')
+            ->addOrderBy('p.id', 'ASC')
             ->getQuery()
             ->getResult();
     }
