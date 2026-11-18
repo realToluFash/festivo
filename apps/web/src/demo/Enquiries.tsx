@@ -37,6 +37,8 @@ import {
   whatLine,
 } from './enquiries.ts';
 import { TodaySidebar } from './TodaySidebar.tsx';
+import { EnquiryEvent } from './EnquiryEvent.tsx';
+import { enquiryEventStateOf, isSource } from './enquiryToEvent.ts';
 import './enquiries.css';
 
 const TYPING_PAUSE = 300;
@@ -430,6 +432,10 @@ export function EnquiryPage() {
   const location = useLocation();
   const enquiry = enquiryOf(id);
   const locale = dateLocale();
+  const [params] = useSearchParams();
+  const made = enquiryEventStateOf(params.get('state'));
+
+  if (made != null && isSource(id)) return <EnquiryEvent key={made} state={made} />;
 
   return (
     <div className="desk-page">
