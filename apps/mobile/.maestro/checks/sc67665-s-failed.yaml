@@ -1,0 +1,8 @@
+# sc-67665: the People demo, failed, on the iPad in ${ORIENT}.
+appId: host.exp.Exponent
+---
+- setOrientation: ${ORIENT}
+- openLink: ${METRO_URL}/--/demo/people?state=failed
+- extendedWaitUntil: { visible: { id: 'people.retry' }, timeout: 30000 }
+- waitForAnimationToEnd: { timeout: 8000 }
+- takeScreenshot: d
