@@ -4,6 +4,8 @@
 # the four languages, since the last batch may have left the account in any of them. The card's
 # heading is waited for rather than the Signed in as line, which a long organisation name
 # or a large text size puts below the fold. sc-18454.
+# At AX5 the account card is taller than the space above the tab bar, so the scrolls for its
+# line stop at half of it. sc-67202.
 appId: host.exp.Exponent
 ---
 # A tablet in landscape shows no Signed in as line in Settings, so the session is read upright.
@@ -53,6 +55,7 @@ appId: host.exp.Exponent
           element:
             text: '{{t:any:settings.signedInAs}}|{{t:any:settings.personLabel}}|{{t:any:settings.personLabelWithRole}}'
           direction: DOWN
+          visibilityPercentage: 50
           timeout: 30000
 - runFlow:
     when:
@@ -62,6 +65,7 @@ appId: host.exp.Exponent
           element:
             text: '{{t:any:settings.signedInAs}}|{{t:any:settings.personLabel}}|{{t:any:settings.personLabelWithRole}}|{{t:any:noOrganisation.signedInAs}}'
           direction: DOWN
+          visibilityPercentage: 50
           timeout: 30000
 - runFlow:
     when:

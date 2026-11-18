@@ -14,6 +14,8 @@ import { offButton } from '../offButton.ts';
 import { offField } from '../offField.ts';
 import { BoardPage, OrLine, Providers } from './BoardPage.tsx';
 import { Calendar } from './Calendar.tsx';
+import { Consultations } from './Consultations.tsx';
+import { CONSULTATION_PAGES } from './consultations.ts';
 import { CALENDAR_PAGES } from './calendar.ts';
 import { CREATE_PAGES } from './createOrg.ts';
 import { DOOR_PAGES } from './doorCode.ts';
@@ -266,6 +268,7 @@ export default function Demo() {
       <Route path="screen/:place" element={<RoomScreenPage />} />
       <Route path="handoff" element={<HandoffPage />} />
       <Route path="calendar" element={<Calendar />} />
+      <Route path="consultations" element={<Consultations />} />
       <Route path="menu-library" element={<MenuLibraryPage />} />
       <Route path="settings" element={<Settings />} />
       <Route path="settings/members" element={<Settings />} />
@@ -359,6 +362,8 @@ function DemoHome({ from }: { from: string }) {
         <h2 id="demo-page-31221">31221 · Enquiries</h2>
         <h3>Enquiries and Search enquiries (sc-31226, sc-42749) · desktop, and 320 px</h3>
         <BoardPages pages={ENQUIRIES_PAGES} />
+        <h3>Consultations on an enquiry (sc-31228) · desktop, and 320 px</h3>
+        <BoardPages pages={CONSULTATION_PAGES} />
         <h3>An enquiry becomes an event (sc-31232) · desktop, and 320 px</h3>
         <BoardPages pages={ENQUIRY_EVENT_PAGES} />
       </section>

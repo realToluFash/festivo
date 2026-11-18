@@ -24,4 +24,5 @@ appId: host.exp.Exponent
     element:
       text: '{{t:any:settings.signedInAs|email}}|{{t:any:settings.personLabel|email}}|{{t:any:settings.personLabelWithRole|email}}|{{t:any:noOrganisation.signedInAs|email}}|{{t:any:steps.invitationFor|email}}|{{t:any:signInRules.overdueTitle}}|{{t:any:steps.organisationTitle}}'
     direction: DOWN
+    visibilityPercentage: 50
     timeout: 30000

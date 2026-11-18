@@ -19,6 +19,7 @@ import { tokens } from '../../theme/tokens.ts';
 import { backToEvents } from '../events/EventFrame.tsx';
 import { OfflineBand } from '../events/EventsList.tsx';
 import { Bell, OrgPill } from '../settings/Frame.tsx';
+import { nextFor, openOrder, relativeWords } from './ConsultationsModel.ts';
 import { EnquiriesFrame } from './EnquiriesFrame.tsx';
 import {
   ENQUIRY_TABS,
@@ -59,7 +60,11 @@ export function EnquiriesList({ state }: { state: EnquiryState }) {
   const viewer = useMemo(() => ({ person: start.viewer.person, mine }), [start, mine]);
   const manages = viewer.person.role !== 'member';
   const wide = shell.layout !== 'phone';
-  const tabs = useMemo(() => byTab(visibleTo(start.enquiries, viewer)), [start, viewer]);
+  const tabs = useMemo(() => {
+    const sorted = byTab(visibleTo(start.enquiries, viewer));
+
+    return { ...sorted, open: openOrder(sorted.open, nextFor) };
+  }, [start, viewer]);
   const results = useMemo(
     () => (searching(searched) ? resultsOf(start.enquiries, viewer, searched) : null),
     [searched, start, viewer],
@@ -97,6 +102,8 @@ export function EnquiriesList({ state }: { state: EnquiryState }) {
     const what = whatLine(enquiry, (type) => t(`eventTypes.${type}`), W.noDate, NOW, locale);
     const who = assignedWords(enquiry, W.notAssigned);
     const when = changedWords(enquiry.changedAt, NOW, locale);
+    const next = enquiry.tab === 'open' ? nextFor(enquiry) : null;
+    const consultation = next == null ? null : relativeWords(next, locale);
 
     return {
       key: enquiry.id,
@@ -106,13 +113,25 @@ export function EnquiriesList({ state }: { state: EnquiryState }) {
           title={enquiry.client}
           line={what}
           below={
-            <Text size={14} weight="medium" accessible={false} style={styles.secondary}>
-              {wide ? who : `${who} · ${when}`}
-            </Text>
+            <View style={styles.below}>
+              <Text size={14} weight="medium" accessible={false} style={styles.secondary}>
+                {wide ? who : `${who} · ${when}`}
+              </Text>
+              {consultation != null && (
+                <View style={styles.next}>
+                  <Glyph name="users" size={15} ink={tokens.colorAccentText} weight={2.4} />
+                  <Text size={14} weight="semibold" accessible={false} style={styles.accent}>
+                    {consultation}
+                  </Text>
+                </View>
+              )}
+            </View>
           }
           value={wide ? when : undefined}
           opens
-          accessibilityLabel={`${enquiry.client}, ${what}, ${who}, ${when}`}
+          accessibilityLabel={[enquiry.client, what, who, when, consultation]
+            .filter((part) => part != null)
+            .join(', ')}
           accessibilityRole="link"
           onPress={() => router.push(`/demo/enquiries/${enquiry.id}`)}
           testID={`enquiries.row.${enquiry.id}`}
@@ -395,6 +414,9 @@ function Failed({
 const styles = StyleSheet.create({
   shrink: { flexShrink: 1 },
   secondary: { color: tokens.colorInkSecondary },
+  accent: { flexShrink: 1, color: tokens.colorAccentText },
+  below: { gap: 2 },
+  next: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   disabled: { color: tokens.colorInkTertiary },
   figures: { fontVariant: ['tabular-nums'] },
   pressed: { opacity: tokens.opacityPressed },

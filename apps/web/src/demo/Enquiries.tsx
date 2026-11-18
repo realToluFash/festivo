@@ -15,6 +15,7 @@ import { Glyph } from '../components/Glyph.tsx';
 import { SearchField } from '../components/SearchField.tsx';
 import { Chevron, Head, RowWords, TextAction, type Tell } from '../components/SettingsParts.tsx';
 import { dateLocale } from '../i18n/index.ts';
+import { nextFor, openOrder, relativeWords } from './consultations.ts';
 import { DemoBell } from './DemoBell.tsx';
 import { OfflineBox } from './DemoOffline.tsx';
 import { EventsShell } from './EventParts.tsx';
@@ -147,6 +148,7 @@ function EnquiryRow({ enquiry }: { enquiry: Enquiry }) {
   const what = whatLine(enquiry, (type) => t(`eventTypes.${type}`), W.noDate, NOW, locale);
   const who = assignedWords(enquiry, W.notAssigned);
   const when = changedWords(enquiry.changedAt, NOW, locale);
+  const next = enquiry.tab === 'open' ? nextFor(enquiry) : null;
 
   return (
     <li>
@@ -162,6 +164,14 @@ function EnquiryRow({ enquiry }: { enquiry: Enquiry }) {
               {who}
               <span className="enq-when-inline"> · {when}</span>
             </span>,
+            ...(next == null
+              ? []
+              : [
+                  <span key="next" className="enq-next">
+                    <Glyph name="users" size={15} weight={2.4} />
+                    {relativeWords(next, locale)}
+                  </span>,
+                ]),
           ]}
         />
         <span className="ev-soon enq-when">{when}</span>
@@ -183,7 +193,11 @@ export function EnquiriesList() {
     [start, store.mine],
   );
   const manages = viewer.person.role !== 'member';
-  const tabs = useMemo(() => byTab(visibleTo(start.enquiries, viewer)), [start, viewer]);
+  const tabs = useMemo(() => {
+    const sorted = byTab(visibleTo(start.enquiries, viewer));
+
+    return { ...sorted, open: openOrder(sorted.open, nextFor) };
+  }, [start, viewer]);
   const results =
     searching(searched) && !offline ? resultsOf(start.enquiries, viewer, searched) : null;
 

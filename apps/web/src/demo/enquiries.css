@@ -48,3 +48,11 @@
 .enq-demo-only {
   margin-top: var(--spaceXl);
 }
+
+.enq-next {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spaceXs);
+  color: var(--colorAccentText);
+  font: var(--typeSmallStrong);
+}
