@@ -6,6 +6,7 @@ namespace App\Deletion;
 
 use App\Audit\Auditor;
 use App\Deletion\Interfaces\PurgedFileRemoverInterface;
+use App\Deletion\Interfaces\PurgedRowRemoverInterface;
 use App\Enum\DeletedKind;
 use DateInterval;
 use DateTimeImmutable;
@@ -22,7 +23,10 @@ use Symfony\Component\Uid\Uuid;
 /** Purges what support can no longer restore, of every kind; what lies beneath each goes with it by the foreign keys' cascade, and the files it cannot reach are removed after. */
 final readonly class Pruner
 {
-    /** @param iterable<PurgedFileRemoverInterface> $purgedFileRemovers */
+    /**
+     * @param iterable<PurgedFileRemoverInterface> $purgedFileRemovers
+     * @param iterable<PurgedRowRemoverInterface>  $purgedRowRemovers
+     */
     public function __construct(
         private Connection $connection,
         private EntityManagerInterface $entityManager,
@@ -30,6 +34,8 @@ final readonly class Pruner
         private ClockInterface $clock,
         #[AutowireIterator(PurgedFileRemoverInterface::TAG)]
         private iterable $purgedFileRemovers,
+        #[AutowireIterator(PurgedRowRemoverInterface::TAG)]
+        private iterable $purgedRowRemovers,
     ) {
     }
 
@@ -69,6 +75,10 @@ final readonly class Pruner
             }
 
             $count += Iter\count($ids);
+        }
+
+        foreach ($this->purgedRowRemovers as $remover) {
+            $remover->remove();
         }
 
         $this->entityManager->flush();

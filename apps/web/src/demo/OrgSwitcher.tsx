@@ -409,6 +409,7 @@ const PAUSED_SAMPLE: PausedOrganisation = {
   contactAddress: '',
   locale: 'es',
   plan: 'free',
+  subscription: { status: 'active', periodEnd: null },
   suspension: {
     reason: 'address_gone',
     domain: PAUSED.domain,

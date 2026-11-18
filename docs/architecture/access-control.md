@@ -135,7 +135,8 @@ For `#[InEvent]`:
    unless the organisation's plan unlocks it (`Plan::unlocks()`, the one list). Reading stays
    open, so a client can show the setting locked. The permission is asked first: the plan
    says nothing to somebody who could not change the setting on any plan. `MembershipDirectory`
-   puts the organisation's plan on every `Grants` it hands out (sc-581).
+   puts the organisation's plan on every `Grants` it hands out (sc-581), asking
+   `Entitlements::of()`, which reads the current subscription and nothing else (sc-3927).
 
 `#[InOrganisation]` is steps 2, 4 and 5, and `feature:` works with `orOnAnEvent` too.
 `#[InEvent]` cannot name a feature yet: the first event-scoped setting a plan unlocks adds

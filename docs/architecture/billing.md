@@ -144,3 +144,19 @@ limits" (memo sc-3928 #4131). Two lines above changed with them, and one rule is
   is charged per segment, and WhatsApp by the category Meta charged for the message. AI is
   13 credits per delivered proposal on the model in force (claude-opus-5-5); questions about
   the host's own event cost 0 (sc-3928 #4278). Guest email takes no credits and has no quota.
+
+## Built, sc-3927: the records and the one answer
+
+- `Subscription` (one per organisation, a unique index on `organisation_id`), its history in
+  `SubscriptionChange`, and the `BillingAccount` that pays for it. Founding an organisation
+  makes all of it in the same flush: Free, `manual`, `active`, no period end, the founder
+  the billing contact, the currency and country copied from the organisation.
+- `App\Domain\Billing\Entitlements::of()` is the one entitlement answer. It reads the
+  current subscription's plan and nothing else, cached for 60 seconds in `cache.entitlements`;
+  any write to a subscription clears it (`EntitlementForgetter`). sc-581's Enterprise
+  settings and its `plan_required` check ask it; the hard limits (sc-3930) and the meter
+  (sc-3929) ask it too.
+- `SubscriptionChanger` is the only writer of a subscription. Staff's `app:set-plan` is the
+  `manual` adapter; each provider's adapter (sc-3933) turns its events into the same calls.
+- The plan and status are any member's to read on the organisation; the billing account,
+  `GET /api/orgs/{id}/billing-account`, needs **billing.read**.
