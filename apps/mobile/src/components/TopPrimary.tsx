@@ -80,7 +80,10 @@ export function usePrimaryLabel({
 }): { wide: boolean; onSlot: (event: LayoutChangeEvent) => void; measure: ReactNode } {
   const { fontScale } = useWindowDimensions();
   // The title's slot as last laid out, and whether the primary beside it then was labelled.
-  const [slot, setSlot] = useState({ width: 0, wide: true });
+  const [slot, setSlot] = useState<{ width: number | null; wide: boolean }>({
+    width: null,
+    wide: true,
+  });
   const [titleWidth, setTitleWidth] = useState(0);
   const [labelledWidth, setLabelledWidth] = useState(0);
   const measuring = labelled && label != null;

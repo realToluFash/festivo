@@ -9,6 +9,7 @@ import { StatusBar } from 'expo-status-bar';
 import { showPushInForeground } from '../src/appPush.ts';
 import { LandingToast } from '../src/components/LandingToast.tsx';
 import { WindowOrigin } from '../src/components/Screen.tsx';
+import { opensOver } from '../src/steps/signInOver.ts';
 import { useStepsInSheet } from '../src/steps/StepScreen.tsx';
 import { Text } from '../src/components/Text.tsx';
 import { UpdateGate } from '../src/components/UpdateRequired.tsx';
@@ -105,9 +106,10 @@ export default function RootLayout() {
             >
               {/* On an iPad, email sign-in opens as a sheet over welcome and rises with the keys (sc-29076). */}
               <Stack.Screen
-                name="sign-in"
-                options={({ navigation }) => ({
-                  presentation: sheet && navigation.canGoBack() ? 'formSheet' : 'card',
+                name="(sign-in)"
+                options={({ route }) => ({
+                  presentation:
+                    sheet && route.key != null && opensOver(route.key) ? 'formSheet' : 'card',
                 })}
               />
               {/* On a tablet Search is a palette over the page it was opened from (sc-39534). */}

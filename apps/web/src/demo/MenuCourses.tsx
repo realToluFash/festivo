@@ -97,9 +97,11 @@ import {
   courseLine,
   coursePicked,
   firstCourseProblem,
+  courseClose,
   headerLines,
   isPicked,
   isReady,
+  menuCloses,
   menuLinkLine,
   moveCourse,
   onlyDrafts,
@@ -129,6 +131,16 @@ import {
 } from './menuLibrary.ts';
 import { ActionGlyph, ContainsMark } from './MenuLibrary.tsx';
 import { keptInbox, waitingLine } from './messages.ts';
+import {
+  type Close,
+  type PicksDates,
+  MOVE_MS,
+  PCW,
+  closeTime,
+  dayWords,
+  headerClose,
+  pillWords,
+} from './picksClose.ts';
 import './guests.css';
 import './menu.css';
 import './menuLibrary.css';
@@ -253,7 +265,7 @@ function Body({
   onReady: (line: string | null) => void;
 }) {
   const [retried, setRetried] = useState(false);
-  const [picks] = useState(() => (first.picks === true ? samplePicks() : null));
+  const [picks] = useState(() => (first.showPicks === true ? samplePicks() : null));
   if (first.system === 'noAccess') return <NotFound />;
   if (first.system === 'gone')
     return (
@@ -562,6 +574,11 @@ function Courses({
   const retryFails = useRef(first.libraryRetryFails === true);
   const manage = first.manage;
   const lines = headerLines(courses);
+  const [picks, setPicks] = useState(first.picks);
+  const [picksSaid, setPicksSaid] = useState<string | null>(null);
+  const closes = menuCloses(courses, picks);
+  const picksHead = headerClose(closes, lang);
+  const allClosed = closes.length > 0 && closes.every((one) => one.closed);
   const openCourse =
     open == null || open.courseId == null
       ? null
@@ -579,6 +596,18 @@ function Courses({
     document.getElementById(focusAfter.current)?.focus();
     focusAfter.current = null;
   });
+
+  useEffect(() => {
+    const moveTo = first.picksMoveTo;
+    const was = first.picks.replyBy;
+    if (moveTo == null || was == null) return;
+    const timer = setTimeout(() => {
+      setPicks((now) => ({ ...now, replyBy: moveTo }));
+      setPicksSaid(PCW.moved(dayWords(moveTo, lang), dayWords(was, lang)));
+    }, MOVE_MS);
+
+    return () => clearTimeout(timer);
+  }, [first, lang]);
 
   useEffect(() => {
     if (!libraryRetrying) return;
@@ -1160,6 +1189,12 @@ function Courses({
                 {lines.ready}
               </span>
             )}
+            {picksHead != null && (
+              <span className="mc-picks-head">
+                <Glyph name={allClosed ? 'lock' : 'clock'} size={15} weight={2.4} />
+                {picksHead}
+              </span>
+            )}
             {first.system === 'refreshing' && (
               <span className="lib-refreshing" role="status">
                 <Glyph name="refresh" size={15} weight={2.4} />
@@ -1191,6 +1226,14 @@ function Courses({
         </p>
       )}
       <Said said={said} />
+      <div className="mc-picks-said" role="status">
+        {picksSaid != null && (
+          <p className="mc-said-line">
+            <Glyph name="clock" size={17} weight={2.4} />
+            {picksSaid}
+          </p>
+        )}
+      </div>
       <div className={open == null ? 'mn-split mc-split' : 'mn-split mc-split is-open'}>
         <div className="mn-list mc-list">
           {courses.length === 0 ? (
@@ -1221,6 +1264,9 @@ function Courses({
                   all={courses.length}
                   manage={manage}
                   lang={lang}
+                  close={courseClose(course, picks)}
+                  picks={picks}
+                  onWhoHasnt={() => tellDone(PCW.whoHasntSaid(course.name))}
                   lit={open?.courseId === course.id}
                   litDish={open?.kind === 'editDish' ? open.dishId : null}
                   asking={asking}
@@ -1611,6 +1657,9 @@ function CourseCard({
   all,
   manage,
   lang,
+  close,
+  picks,
+  onWhoHasnt,
   lit,
   litDish,
   asking,
@@ -1638,6 +1687,9 @@ function CourseCard({
   all: number;
   manage: boolean;
   lang: Lang;
+  close: Close | null;
+  picks: PicksDates;
+  onWhoHasnt: () => void;
   lit: boolean;
   litDish: string | null;
   asking: CoursesStart['asking'];
@@ -1707,6 +1759,23 @@ function CourseCard({
             </span>
             {ready ? CW.readyTag : drafts ? CHW.noFinishedDish : CW.emptyTag}
           </p>
+          {close != null && (
+            <p className="mc-close">
+              <span className={close.closed ? 'mc-close-pill is-closed' : 'mc-close-pill'}>
+                <Glyph name={close.closed ? 'lock' : 'clock'} size={14} weight={2.4} />
+                {pillWords(close, lang)}
+              </span>
+              <span className="mc-close-source">
+                {PCW.source(
+                  course.name,
+                  close.source,
+                  closeTime(close, picks),
+                  picks.zone,
+                  close.closed,
+                )}
+              </span>
+            </p>
+          )}
         </div>
         {manage && (
           <div className="lib-acts mc-acts" role="group" aria-label={CW.actionsFor(course.name)}>
@@ -1751,6 +1820,28 @@ function CourseCard({
           </div>
         )}
       </div>
+      {close?.closed === true && (
+        <div className="mc-closed-line">
+          <p>
+            <Glyph name="lock" size={16} weight={2.2} />
+            <span>
+              {manage
+                ? `${PCW.closedCourse(course.name)} ${PCW.canStillChoose}`
+                : `${PCW.closedCourse(course.name)}]`}
+            </span>
+          </p>
+          {manage && (
+            <button
+              type="button"
+              className="gs-pill is-secondary mc-who-hasnt"
+              aria-label={PCW.whoHasntAria(course.name)}
+              onClick={onWhoHasnt}
+            >
+              {PCW.whoHasnt}
+            </button>
+          )}
+        </div>
+      )}
       {refused?.kind === 'course' && refused.courseId === course.id && (
         <p className="mc-refused" role="status">
           <span className="mc-ring is-warn" aria-hidden="true">

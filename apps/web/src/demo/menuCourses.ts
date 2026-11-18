@@ -34,6 +34,7 @@ import {
   type ChoiceMode,
   type OptionForm,
   choiceForm,
+  courseHint,
   dishHidden,
   dishPicked,
   draftChoice,
@@ -45,6 +46,7 @@ import {
   withSavedChoice,
 } from './dishChoices.ts';
 import { MENU_EVENT, moved } from './menuServed.ts';
+import { type Close, type PicksDates, SAMPLE_PICKS, closeOf } from './picksClose.ts';
 import type { DemoLink } from './settings.ts';
 
 /** sc-3902's event Menu at a desk and in a narrow web window (board Menu, page e32): courses in order, and the dishes on each. */
@@ -255,6 +257,16 @@ export const isPicked = (dish: EvDish): boolean => dishPicked(dish);
 export const coursePicked = (course: EvCourse): boolean => course.dishes.some(isPicked);
 
 export const canSame = (course: EvCourse): boolean => course.dishes.length === 1;
+
+/** sc-3905: a course asks guests something when they choose, or when its one dish asks the way or a choice; one not shown to guests asks nothing. */
+export const asksGuests = (course: EvCourse): boolean =>
+  isReady(course) && (course.answer === 'choose' || courseHint(course.dishes) != null);
+
+export const courseClose = (course: EvCourse, dates: PicksDates): Close | null =>
+  asksGuests(course) ? closeOf(course.id, dates) : null;
+
+export const menuCloses = (courses: readonly EvCourse[], dates: PicksDates): Close[] =>
+  courses.flatMap((one) => courseClose(one, dates) ?? []);
 
 export function headerLines(courses: readonly EvCourse[]): {
   counts: string;
@@ -686,8 +698,12 @@ export interface CoursesStart {
   libraryFailed?: boolean;
   /** Try again on a library that did not load fails once more, then loads. */
   libraryRetryFails?: boolean;
+  /** sc-3905: the dates every course's close is worked out from. */
+  picks: PicksDates;
+  /** sc-3905: the reply-by date moves to this, two seconds after the state opens. */
+  picksMoveTo?: string;
   /** sc-3909: each dish row and variant inset shows its picks, See picks sits on each course, and the picks summary beside the menu. */
-  picks?: boolean;
+  showPicks?: boolean;
 }
 
 function start(over: Partial<CoursesStart> & { name: string; note: string }): CoursesStart {
@@ -701,11 +717,28 @@ function start(over: Partial<CoursesStart> & { name: string; note: string }): Co
     said: '',
     system: 'none',
     failing: 'none',
+    picks: SAMPLE_PICKS,
     ...over,
   };
 }
 
 const MAIN = 'k2';
+
+/** Starter guests choose, so all three courses with dishes ask something. */
+function allAskCourses(): EvCourse[] {
+  const all = sampleCourses();
+
+  return all.map((one) =>
+    one.id === 'k1'
+      ? course('k1', 'Starter', '18:30', [from('d-pepper', 'k1-pepper'), from('d-suya', 'k1-suya')])
+      : one,
+  );
+}
+
+const STARTER_OWN = { k1: '2026-10-16' };
+
+const SIDEBAR_NOTE =
+  ' The sidebar keeps sc-3902’s sample event; the close dates are the picks sample’s, an event starting Saturday, Nov 14 at 16:00, Lagos time.';
 
 const STATES = {
   menuPicks: () =>
@@ -713,14 +746,14 @@ const STATES = {
       name: 'The menu with its picks (sc-3909)',
       note: 'Each dish row and variant inset shows its picks and share of the room, from the same figures as See picks; See picks on each course, and the picks summary beside the menu.',
       courses: picksCourses(),
-      picks: true,
+      showPicks: true,
     }),
   menuPicksReadOnly: () =>
     start({
       name: 'The menu with its picks, read only (sc-3909)',
       note: 'Without menu.manage: the picks and See picks stay.',
       courses: picksCourses(),
-      picks: true,
+      showPicks: true,
       manage: false,
     }),
   menu: () =>
@@ -916,6 +949,60 @@ const STATES = {
       name: 'Remove dish, guests have picked it',
       note: 'Refused at once until sc-3913 is built; nothing changes.',
       refused: { kind: 'dish', dishId: 'k2-jollof' },
+    }),
+  picksOneDate: () =>
+    start({
+      name: 'Picks close on one date',
+      note:
+        'Today is Wednesday, Oct 14. Starter, Main and Dessert ask guests something and close on the reply-by date: the header reads “picks close Monday, Oct 19”, each course a clock pill and the host-only source line. Late-night bites has no dishes, so no close.' +
+        SIDEBAR_NOTE,
+      courses: allAskCourses(),
+    }),
+  picksDifferentDates: () =>
+    start({
+      name: 'Picks close on different dates',
+      note:
+        'No reply-by date. Starter on its own choose-by date (sc-1362’s, sample only: until it is built every course shares one date), Main and Dessert at the event’s start: “picks close from Friday, Oct 16”.' +
+        SIDEBAR_NOTE,
+      courses: allAskCourses(),
+      picks: { ...SAMPLE_PICKS, replyBy: null, own: STARTER_OWN },
+    }),
+  picksOneClosed: () =>
+    start({
+      name: 'One course closed',
+      note:
+        'Today is Saturday, Oct 17, Starter closed Friday: a grey padlock pill, the closed line and Who hasn’t picked. The header counts only the open courses: “picks close Saturday, Nov 14”.' +
+        SIDEBAR_NOTE,
+      courses: allAskCourses(),
+      picks: { ...SAMPLE_PICKS, today: '2026-10-17', replyBy: null, own: STARTER_OWN },
+    }),
+  picksAllClosed: () =>
+    start({
+      name: 'All courses closed',
+      note:
+        'Today is Tuesday, Oct 20: every course closed on the reply-by date, and the header reads “picks closed on Monday, Oct 19”, the last close.' +
+        SIDEBAR_NOTE,
+      courses: allAskCourses(),
+      picks: { ...SAMPLE_PICKS, today: '2026-10-20' },
+    }),
+  picksAllClosedReadOnly: () =>
+    start({
+      name: 'All courses closed, read only',
+      note:
+        'Without guests.manage: the closed line’s first sentence only, and no Who hasn’t picked.' +
+        SIDEBAR_NOTE,
+      courses: allAskCourses(),
+      picks: { ...SAMPLE_PICKS, today: '2026-10-20' },
+      manage: false,
+    }),
+  picksDateChanged: () =>
+    start({
+      name: 'Close date changed',
+      note:
+        'Two seconds after it opens, as a change from Event details would arrive, the reply-by date moves to Friday, Oct 23: the pills, the header and the source lines change together, and the status line names the new date.' +
+        SIDEBAR_NOTE,
+      courses: allAskCourses(),
+      picksMoveTo: '2026-10-23',
     }),
   menuReadOnly: () =>
     start({
@@ -1721,6 +1808,19 @@ export const COURSES_PAGES: readonly { name: string; states: readonly DemoLink[]
         'readOnlyCanView',
         'readOnlyCheckIn',
         'emptyReadOnly',
+      ] as const
+    ).map(link),
+  },
+  {
+    name: 'When picks close (sc-3905)',
+    states: (
+      [
+        'picksOneDate',
+        'picksDifferentDates',
+        'picksOneClosed',
+        'picksAllClosed',
+        'picksAllClosedReadOnly',
+        'picksDateChanged',
       ] as const
     ).map(link),
   },

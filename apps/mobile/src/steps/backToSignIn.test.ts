@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { dropChallenge, holdChallenge } from '../challenge.ts';
 import { backToSignIn } from './backToSignIn.ts';
+import { opensOver } from './signInOver.ts';
 
 const moves = vi.hoisted(() => [] as unknown[]);
 const router = vi.hoisted(() => ({
@@ -46,6 +47,7 @@ describe('back from the code step to Sign in (sc-67709)', () => {
       ['replace', '/welcome'],
       ['push', '/sign-in'],
     ]);
+    expect(opensOver('pushed over welcome')).toBe(true);
   });
 
   it('opens Sign in on its own when the sign-in began on a Sign in with nothing under it', () => {
@@ -54,6 +56,7 @@ describe('back from the code step to Sign in (sc-67709)', () => {
     backToSignIn();
 
     expect(moves).toEqual([['replace', '/sign-in']]);
+    expect(opensOver('alone')).toBe(false);
   });
 
   it('gives Sign in back its place, holding the address typed on it, after Sign in with email on welcome (sc-67828)', () => {
@@ -65,6 +68,7 @@ describe('back from the code step to Sign in (sc-67709)', () => {
     expect(moves).toEqual([
       ['replace', { pathname: '/sign-in', params: { email: 'folake@ire.events' } }],
     ]);
+    expect(opensOver('typed over welcome')).toBe(true);
   });
 
   it('gives a Sign in begun alone its place back the same way, holding the address (sc-67828)', () => {
@@ -75,5 +79,6 @@ describe('back from the code step to Sign in (sc-67709)', () => {
     expect(moves).toEqual([
       ['replace', { pathname: '/sign-in', params: { email: 'Folake@ire.events' } }],
     ]);
+    expect(opensOver('typed alone')).toBe(false);
   });
 });
