@@ -179,7 +179,7 @@ function Picks({ first }: { first: PicksStart }) {
       )}
       {first.access === 'read' && <Lock words={SW.needsManage} />}
       {first.access === 'counts' && <Lock words={SW.needsRead} />}
-      {all.answered === all.room && (
+      {all.answered === all.room && host.length === 0 && (
         <p className="pk-all-in">
           <Glyph name="tick" size={16} weight={2.6} />
           {SW.allIn}
@@ -499,6 +499,12 @@ function CourseCard({
       {!course.skip && !figures.asksNothing && <p className="mn-quiet">{SW.noSkip}</p>}
     </section>
   );
+}
+
+function goesBack(course: EvCourse, person: Person): string {
+  const back = goesBackTo(course, person);
+
+  return back == null ? SW.goesBackNone : SW.goesBack(back);
 }
 
 const dishName = (course: EvCourse, dishId: string): string =>
@@ -1056,7 +1062,6 @@ function ChooseWho({
   const [refused, setRefused] = useState(shown?.kind === 'refused');
   const box = useRef<HTMLDivElement>(null);
   useDialogKeys(box, onClose, false);
-  const back = goesBackTo(course);
 
   useEffect(() => {
     if (shown?.kind !== 'ask') box.current?.focus();
@@ -1144,9 +1149,7 @@ function ChooseWho({
                               </span>
                             )}
                             {leaving && (
-                              <span className="pk-leaving">
-                                {back == null ? SW.goesBackNone : SW.goesBack(back)}
-                              </span>
+                              <span className="pk-leaving">{goesBack(course, person)}</span>
                             )}
                           </span>
                         )}

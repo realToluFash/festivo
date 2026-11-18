@@ -7,6 +7,7 @@ import {
   chooseFor,
   courseFigures,
   giveVariant,
+  goesBackTo,
   header,
   isPicksState,
   menuFigures,
@@ -51,12 +52,13 @@ describe('See picks figures', () => {
     expect(header(picksStart('picksAllIn').world).percent).toBe(100);
   });
 
-  it('count a course that asks nothing as everyone chosen, its Children only variant apart, and not in picks in', () => {
+  it('count a course that asks nothing as everyone chosen, its Children only variant apart, the people it rules out with the host, and not in picks in', () => {
     const world = samplePicks();
     expect(asksNothing(course(world, 'k1'))).toBe(true);
-    expect(row(world, 'k1', 'k1-pepper')?.chosen).toBe(48);
-    expect(row(world, 'k1', 'v-full')?.chosen).toBe(45);
+    expect(row(world, 'k1', 'k1-pepper')?.chosen).toBe(45);
+    expect(row(world, 'k1', 'v-full')?.chosen).toBe(42);
     expect(row(world, 'k1', 'v-small')?.chosen).toBe(3);
+    expect(courseFigures(world, course(world, 'k1')).host).toBe(3);
     expect(
       whoHasnt(world)
         .flatMap((one) => one.people)
@@ -92,10 +94,56 @@ describe('Needs the host', () => {
       (one) => `${one.person.name} · ${one.course.name} · ${one.reason.kind}`,
     );
     expect(lines).toEqual([
+      'Kwame Asante · Starter · nothing',
       'Kwame Asante · Main · nothing',
+      'Kojo Asante · Starter · nothing',
       'Ada Obi · Dessert · allergy',
+      'Elena Rossi · Starter · nothing',
       'Elena Rossi · Main · allergy',
     ]);
+  });
+
+  it('on a course that asks nothing, holds someone its dish rules out until the host chooses or the allergy is removed', () => {
+    const world = samplePicks();
+    const k1 = course(world, 'k1');
+    const elena = person(world, 'elena-rossi');
+    expect(spotOf(world, k1, elena)).toEqual({ kind: 'host', reason: { kind: 'nothing' } });
+    expect(sumOf(courseFigures(world, k1))).toBe(48);
+    expect(header(world).answered).toBe(39);
+
+    const picked = chooseFor(world, 'k1', 'elena-rossi', {
+      kind: 'dish',
+      dishId: 'k1-pepper',
+      variantId: 'v-full',
+      optionIds: [],
+      how: 'host',
+      override: at,
+    });
+    expect(spotOf(picked, k1, elena)).toMatchObject({ kind: 'dish', variantId: 'v-full' });
+    expect(row(picked, 'k1', 'v-full')?.chosen).toBe(43);
+    expect(sumOf(courseFigures(picked, k1))).toBe(48);
+
+    const kitchen = chooseFor(world, 'k1', 'elena-rossi', { kind: 'kitchen' });
+    expect(courseFigures(kitchen, k1).kitchen).toBe(1);
+    expect(courseFigures(kitchen, k1).host).toBe(2);
+
+    const cleared = {
+      ...world,
+      people: world.people.map((one) =>
+        one.id === 'elena-rossi' ? { ...one, allergies: [] } : one,
+      ),
+    };
+    expect(spotOf(cleared, k1, person(cleared, 'elena-rossi'))).toMatchObject({
+      kind: 'dish',
+      variantId: 'v-full',
+    });
+    expect(row(cleared, 'k1', 'v-full')?.chosen).toBe(43);
+  });
+
+  it('says everyone is in only when nobody needs the host on any course', () => {
+    const world = picksStart('picksAllIn').world;
+    expect(header(world).percent).toBe(100);
+    expect(needsHost(world)).toEqual([]);
   });
 
   it('moves a pick from its dish to the host once an allergy it contains is saved, and back once it is removed', () => {
@@ -125,7 +173,10 @@ describe('Choose for them', () => {
   it('opens only the courses still open for the person', () => {
     const world = samplePicks();
     expect(openFor(world, person(world, 'bea-mensah')).map((one) => one.id)).toEqual(['k2', 'k3']);
-    expect(openFor(world, person(world, 'kwame-asante')).map((one) => one.id)).toEqual(['k2']);
+    expect(openFor(world, person(world, 'kwame-asante')).map((one) => one.id)).toEqual([
+      'k1',
+      'k2',
+    ]);
   });
 
   it('records a ruled-out pick with who confirmed it, and counts it under its dish', () => {
@@ -169,12 +220,12 @@ describe('Choose who gets it', () => {
     const world = samplePicks();
     const k1 = course(world, 'k1');
     const now = ticked(world, 'k1', 'v-small');
-    now.add('kojo-asante');
+    now.add('bea-mensah');
     now.delete('sasha-petrova');
     const next = giveVariant(world, k1, 'k1-pepper', 'v-small', now, null);
     expect(row(next, 'k1', 'v-small')?.chosen).toBe(3);
     expect(spotOf(next, k1, person(next, 'sasha-petrova'))).toMatchObject({ variantId: 'v-full' });
-    expect(next.picks.k1?.['kojo-asante']).toMatchObject({ how: 'host', variantId: 'v-small' });
+    expect(next.picks.k1?.['bea-mensah']).toMatchObject({ how: 'host', variantId: 'v-small' });
     expect(sumOf(courseFigures(next, k1))).toBe(48);
   });
 
@@ -188,6 +239,20 @@ describe('Choose who gets it', () => {
     expect(spotOf(next, k2, person(next, 'tobi-bello')).kind).toBe('none');
     expect(spotOf(next, k2, person(next, 'bea-mensah')).kind).toBe('dish');
     expect(sumOf(courseFigures(next, k2))).toBe(48);
+  });
+
+  it('sends someone the Everyone variant rules out back to Needs the host when unticked', () => {
+    const world = samplePicks();
+    const k1 = course(world, 'k1');
+    expect(goesBackTo(k1, person(world, 'sasha-petrova'))).toBe('Full bowl');
+    expect(goesBackTo(k1, person(world, 'kojo-asante'))).toBe('Needs the host');
+    expect(goesBackTo(course(world, 'k2'), person(world, 'kojo-asante'))).toBeNull();
+
+    const given = giveVariant(world, k1, 'k1-pepper', 'v-small', new Set(['kojo-asante']), at);
+    expect(spotOf(given, k1, person(given, 'kojo-asante'))).toMatchObject({ variantId: 'v-small' });
+    const back = giveVariant(given, k1, 'k1-pepper', 'v-small', new Set(), null);
+    expect(spotOf(back, k1, person(back, 'kojo-asante')).kind).toBe('host');
+    expect(sumOf(courseFigures(back, k1))).toBe(48);
   });
 
   it('records the override for someone ruled out', () => {

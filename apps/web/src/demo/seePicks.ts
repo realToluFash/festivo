@@ -108,7 +108,7 @@ export const SW = {
   noSkip: 'This course can’t be skipped.',
   perPick: 'Options are counted per pick, so they add up to the dish, not to the room.',
   asksNothing: (dish: string) =>
-    `Guests are asked nothing on this course. Everyone coming gets ${dish}, except the people you give a children’s variant.`,
+    `Guests are asked nothing on this course. Everyone coming gets ${dish}, except the people you give a children’s variant, and anyone whose allergies rule it out, who wait for you under Needs the host.`,
   chooseWho: 'Choose who gets it',
   chooseWhoAria: (variant: string, dish: string) => `Choose who gets ${variant}, ${dish}`,
   whoHasnt: 'Who hasn’t picked',
@@ -242,17 +242,13 @@ export const pickOf = (world: PicksWorld, courseId: string, personId: string): P
 export function spotOf(world: PicksWorld, course: EvCourse, person: Person): Spot {
   const pick = pickOf(world, course.id, person.id);
 
-  if (asksNothing(course)) {
+  if (asksNothing(course) && pick == null) {
     const dish = course.dishes[0] as EvDish;
-    const given = pick?.kind === 'dish' && pick.variantId != null ? pick.variantId : null;
+    const variantId = everyoneVariant(dish)?.id ?? null;
 
-    return {
-      kind: 'dish',
-      dishId: dish.id,
-      variantId: given ?? everyoneVariant(dish)?.id ?? null,
-      optionIds: [],
-      defaulted: false,
-    };
+    return ruledOut(person, containsOf(dish, variantId, [])).length > 0
+      ? { kind: 'host', reason: { kind: 'nothing' } }
+      : { kind: 'dish', dishId: dish.id, variantId, optionIds: [], defaulted: false };
   }
 
   if (pick == null)
@@ -481,12 +477,14 @@ export function hasVariant(
   );
 }
 
-/** Where a person unticked from a Children only variant goes: the Everyone variant on a course that asks nothing, not chosen on any other. */
-export function goesBackTo(course: EvCourse): string | null {
+/** Where a person unticked from a Children only variant goes: the Everyone variant on a course that asks nothing, or Needs the host if it rules them out; not chosen on any other. */
+export function goesBackTo(course: EvCourse, person: Person): string | null {
   if (!asksNothing(course)) return null;
   const dish = course.dishes[0] as EvDish;
+  const everyone = everyoneVariant(dish);
+  if (ruledOut(person, containsOf(dish, everyone?.id ?? null, [])).length > 0) return SW.needsHost;
 
-  return everyoneVariant(dish)?.name ?? dish.name;
+  return everyone?.name ?? dish.name;
 }
 
 export function giveVariant(
@@ -707,6 +705,8 @@ function allInPicks(): PicksWorld {
     'elena-rossi',
     dishPick('k2-coconut', 'v-chicken2', ['c-side-plantain'], 'host'),
   );
+  for (const id of ['kwame-asante', 'kojo-asante', 'elena-rossi'])
+    next = chooseFor(next, 'k1', id, { kind: 'kitchen' });
   next = chooseFor(next, 'k3', 'ada-obi', {
     ...dishPick('k3-zobo', null, [], 'host'),
     override: { by: HOST, at },
@@ -774,7 +774,7 @@ const STATES = {
   picks: () =>
     start({
       name: 'See picks, populated, with Guests manage',
-      note: 'The room of 48: the starter asks guests nothing; Main and Dessert are chosen. Needs the host first, then each course, then Who hasn’t picked.',
+      note: 'The room of 48: the starter asks guests nothing, and Kwame, Kojo and Elena, whose allergies rule it out, wait under Needs the host; Main and Dessert are chosen. Needs the host first, then each course, then Who hasn’t picked.',
       demo: true,
     }),
   picksReadOnly: () =>
@@ -803,7 +803,7 @@ const STATES = {
   picksAllIn: () =>
     start({
       name: 'All in, after the close',
-      note: 'Not chosen defaulted (sc-1362), and the host settled Kwame, Elena and Ada.',
+      note: 'Not chosen defaulted (sc-1362), the host settled Kwame, Elena and Ada, and let the kitchen choose the starter for Kwame, Kojo and Elena.',
       world: allInPicks(),
     }),
   picksHeld: () =>
@@ -837,6 +837,7 @@ const STATES = {
       opened: {
         kind: 'chooseFor',
         personId: 'kojo-asante',
+        courseId: 'k2',
         dishId: 'k2-jollof',
         variantId: 'v-plain',
       },
@@ -844,8 +845,14 @@ const STATES = {
   chooseForRuledOut: () =>
     start({
       name: 'Choose for them, every dish ruled out',
-      note: 'Kwame Asante, from Needs the host: each dish keeps its Allergy mark and can still be picked.',
+      note: 'Kwame Asante, from Needs the host, the starter then Main: each dish keeps its Allergy mark and can still be picked.',
       opened: { kind: 'chooseFor', personId: 'kwame-asante' },
+    }),
+  chooseForStarter: () =>
+    start({
+      name: 'Choose for them, on a course that asks nothing',
+      note: 'Elena Rossi, from Needs the host on the starter: Full bowl and Children’s portion carry the Allergy mark; Let the kitchen choose does not.',
+      opened: { kind: 'chooseFor', personId: 'elena-rossi', courseId: 'k1' },
     }),
   chooseForOverride: () =>
     start({
@@ -854,6 +861,7 @@ const STATES = {
       opened: {
         kind: 'chooseFor',
         personId: 'kwame-asante',
+        courseId: 'k2',
         dishId: 'k2-jollof',
         variantId: 'v-chicken',
         press: true,
@@ -866,6 +874,7 @@ const STATES = {
       opened: {
         kind: 'chooseFor',
         personId: 'kwame-asante',
+        courseId: 'k2',
         dishId: 'k2-jollof',
         variantId: 'v-chicken',
         press: true,
@@ -977,6 +986,7 @@ export const PICKS_PAGES: readonly { name: string; states: readonly DemoLink[] }
         'chooseForBlank',
         'chooseForChildren',
         'chooseForRuledOut',
+        'chooseForStarter',
         'chooseForOverride',
         'chooseForOverridden',
         'chooseForRefused',

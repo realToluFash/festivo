@@ -37,8 +37,11 @@ describe('See picks (sc-3909)', () => {
 
       expect(screen.getByText('39 of 48 picks in · 81% of the room')).toBeTruthy();
       const host = region(SW.needsHost);
-      expect(within(host).getByText('Kwame Asante')).toBeTruthy();
+      expect(within(host).getAllByText('Kwame Asante')).toHaveLength(2);
+      expect(within(host).getAllByText('Elena Rossi')).toHaveLength(2);
       expect(within(host).getByText(/Dessert: their pick, Chin chin, contains milk/)).toBeTruthy();
+      expect(within(host).getAllByText(SW.nothingFor('Starter'))).toHaveLength(3);
+      expect(screen.queryByText(SW.allIn)).toBeNull();
       expect(
         within(region('Starter')).getByText(SW.asksNothing('Catfish pepper soup')),
       ).toBeTruthy();
@@ -61,6 +64,7 @@ describe('See picks (sc-3909)', () => {
 
       await picks('picksCountsOnly');
       expect(within(region(SW.needsHost)).getByText('Main · 2 people')).toBeTruthy();
+      expect(within(region(SW.needsHost)).getByText('Starter · 3 people')).toBeTruthy();
       expect(screen.queryByText('Kwame Asante')).toBeNull();
       expect(screen.queryByRole('region', { name: SW.whoHasnt })).toBeNull();
     },
@@ -101,6 +105,18 @@ describe('See picks (sc-3909)', () => {
 
     await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
     expect(said()).toContain('Children’s portion, Catfish pepper soup: 3 people now.');
+  });
+
+  it('chooses for Elena on the starter, which asks guests nothing', SLOW, async () => {
+    await picks('chooseForStarter');
+    const dialog = screen.getByRole('dialog');
+    expect(within(dialog).getByText('Starter · 1 of 1')).toBeTruthy();
+    fireEvent.click(within(dialog).getByRole('radio', { name: SW.kitchenChoose }));
+    fireEvent.click(within(dialog).getByRole('button', { name: SW.save }));
+
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+    expect(said()).toContain('Starter chosen for Elena');
+    expect(within(region(SW.needsHost)).getAllByText(SW.nothingFor('Starter'))).toHaveLength(2);
   });
 
   it('asks before giving a variant to someone it rules out', SLOW, async () => {
