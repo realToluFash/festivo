@@ -839,6 +839,7 @@ export function EventGuests({
             label: t('guestList.replace'),
             testID: 'guest.replace.do',
             busy: replacing ? t('guestList.replace') : undefined,
+            busyWords: t('guestList.replace'),
           }}
           onKeep={() => {
             if (!replacing) setAsking(false);

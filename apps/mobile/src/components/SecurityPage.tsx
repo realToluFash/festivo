@@ -569,6 +569,7 @@ export function SecurityPage({
           testID: `security.${ask ?? 'ask'}.confirm`,
           removes: question?.removes ?? false,
           busy: acting ? askBusy(ask, t) : undefined,
+          busyWords: askBusy(ask, t),
         }}
         onKeep={() => {
           if (!acting) setAsk(null);

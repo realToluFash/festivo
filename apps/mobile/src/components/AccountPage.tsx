@@ -364,6 +364,7 @@ export function AccountPage({
           label: t('contacts.promoteConfirm'),
           testID: 'account.promote.confirm',
           busy: acting ? t('contacts.promoting') : undefined,
+          busyWords: t('contacts.promoting'),
         }}
         onKeep={() => {
           if (!acting) setAsk(null);
@@ -388,6 +389,7 @@ export function AccountPage({
           testID: 'account.remove.confirm',
           removes: true,
           busy: acting ? t('contacts.removing') : undefined,
+          busyWords: t('contacts.removing'),
         }}
         onKeep={() => {
           if (!acting) setAsk(null);

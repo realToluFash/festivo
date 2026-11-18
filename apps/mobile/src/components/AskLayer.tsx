@@ -25,7 +25,14 @@ export interface AskProps {
   /** `off` while the answer is out: the way back waits in Ink 3. */
   keep: { label: string; testID?: string; off?: boolean };
   /** `busy` while the answer is out: the turning mark and these words in Ink 2, off. None once nothing is left to decide. */
-  confirm: { label: string; testID?: string; removes?: boolean; busy?: string | undefined } | null;
+  confirm: {
+    label: string;
+    testID?: string;
+    removes?: boolean;
+    busy?: string | undefined;
+    /** The words `busy` will say, known before sending, so the two buttons are sized for them from the start. */
+    busyWords?: string | undefined;
+  } | null;
   onKeep: () => void;
   onConfirm?: () => void;
   /** The line says the question no longer stands, with the alert mark, and is read out. */
@@ -69,10 +76,16 @@ export function AskLayer({
   const actionWords = useWholeWords(
     ACTION,
     ACTION * frame.fontScale,
-    [keep.label, confirm?.label, confirm?.busy].filter((label) => label != null),
+    [keep.label, confirm?.label].filter((label) => label != null),
     { weight: 'semibold' },
   );
-  const actionScale = actionWords.maxFontSizeMultiplier;
+  const busyWords = useWholeWords(
+    ACTION,
+    ACTION * frame.fontScale,
+    [confirm?.busyWords ?? confirm?.busy].filter((label) => label != null),
+    { weight: 'semibold' },
+  );
+  const actionScale = Math.min(actionWords.maxFontSizeMultiplier, busyWords.maxFontSizeMultiplier);
   const measured = widths.room > 0 && widths.keep > 0 && (confirm == null || widths.confirm > 0);
   const stacked =
     measured && confirm != null && widths.keep + tokens.space3xl + widths.confirm > widths.room;
@@ -115,7 +128,7 @@ export function AskLayer({
           accessibilityState={{ disabled: true, busy: true }}
           testID={confirm.testID}
         >
-          <TurningMark side={14} />
+          <TurningMark side={BUSY_MARK} />
           <Text
             size={ACTION}
             weight="semibold"
@@ -167,9 +180,11 @@ export function AskLayer({
         onLayout={(event) => {
           laid('room')(event);
           actionWords.room(event.nativeEvent.layout.width);
+          busyWords.room(event.nativeEvent.layout.width - BUSY_MARK - tokens.spaceXs);
         }}
       >
         {actionWords.measure}
+        {busyWords.measure}
         {stacked ? [confirmAction, keepAction] : [keepAction, confirmAction]}
       </View>
     </>
@@ -218,6 +233,7 @@ export function AskLayer({
 }
 
 const ACTION = 15;
+const BUSY_MARK = 14;
 
 function AlertLine({ words }: { words: string }) {
   return (

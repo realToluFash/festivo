@@ -120,6 +120,7 @@ function PauseAsk({
             confirm: {
               label: t('eventPause.pause'),
               busy: asking?.pending === true ? t('eventPause.pausing') : undefined,
+              busyWords: t('eventPause.pausing'),
               testID: 'events.pauseYes',
             },
             failed: asking?.failed === true ? t('eventPause.failed') : null,
@@ -194,6 +195,7 @@ function EndAsk({
                 asking?.pending === true
                   ? t(callOff ? 'eventEnd.callingOff' : 'eventEnd.ending')
                   : undefined,
+              busyWords: t(callOff ? 'eventEnd.callingOff' : 'eventEnd.ending'),
               testID: 'events.endYes',
             },
             failed:

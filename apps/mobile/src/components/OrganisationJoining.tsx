@@ -252,6 +252,7 @@ export function DomainsSection({
           testID: 'organisation.domain.confirm',
           removes: true,
           busy: busy ? t('companyDomains.confirmRemove') : undefined,
+          busyWords: t('companyDomains.confirmRemove'),
         }}
         failed={notRemoved}
         onKeep={() => {
@@ -569,6 +570,7 @@ export function RequestsSection({
           testID: 'organisation.link.confirm',
           removes: true,
           busy: busy ? t('requestLink.replaceConfirm') : undefined,
+          busyWords: t('requestLink.replaceConfirm'),
         }}
         failed={notReplaced}
         onKeep={() => {
