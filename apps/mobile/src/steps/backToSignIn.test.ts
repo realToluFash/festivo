@@ -49,10 +49,31 @@ describe('back from the code step to Sign in (sc-67709)', () => {
   });
 
   it('opens Sign in on its own when the sign-in began on a Sign in with nothing under it', () => {
-    holdChallenge(CHALLENGE, true);
+    holdChallenge(CHALLENGE, { alone: true });
 
     backToSignIn();
 
     expect(moves).toEqual([['replace', '/sign-in']]);
+  });
+
+  it('gives Sign in back its place, holding the address typed on it, after Sign in with email on welcome (sc-67828)', () => {
+    router.canGoBack.mockReturnValueOnce(true);
+    holdChallenge(CHALLENGE, { typed: 'folake@ire.events' });
+
+    backToSignIn();
+
+    expect(moves).toEqual([
+      ['replace', { pathname: '/sign-in', params: { email: 'folake@ire.events' } }],
+    ]);
+  });
+
+  it('gives a Sign in begun alone its place back the same way, holding the address (sc-67828)', () => {
+    holdChallenge(CHALLENGE, { alone: true, typed: 'Folake@ire.events' });
+
+    backToSignIn();
+
+    expect(moves).toEqual([
+      ['replace', { pathname: '/sign-in', params: { email: 'Folake@ire.events' } }],
+    ]);
   });
 });
