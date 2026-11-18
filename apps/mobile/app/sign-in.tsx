@@ -146,7 +146,13 @@ export default function SignIn() {
   return (
     <InSheet value={sheet}>
       <StepScreen
-        nav={<NavBar left="back" onLeft={back} testID="signIn" />}
+        nav={
+          <NavBar
+            left={sheet ? { label: t('steps.cancel'), onPress: back } : 'back'}
+            onLeft={back}
+            testID="signIn"
+          />
+        }
         foot={
           refusal?.kind === 'providerOnly' ? undefined : (
             <PrimaryButton

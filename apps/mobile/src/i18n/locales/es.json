@@ -2133,6 +2133,7 @@
   "steps": {
     "back": "Volver",
     "close": "Cerrar",
+    "cancel": "Cancelar",
     "stepOf": "Paso {{step, number}} de {{steps, number}}",
     "skip": "Omitir",
     "signOut": "Cerrar sesión",
