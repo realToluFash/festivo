@@ -20,7 +20,7 @@ use Symfony\Component\Uid\Uuid;
 
 #[AsCommand(
     name: 'app:set-plan',
-    description: 'Staff: move an organisation to another plan, audited, until billing exists (sc-581)',
+    description: 'Staff: move an organisation\'s subscription to another plan by hand, audited (sc-581, sc-3927)',
 )]
 final readonly class SetPlanCommand
 {
@@ -38,6 +38,8 @@ final readonly class SetPlanCommand
         string $plan,
         #[Option(description: 'The member of staff changing it, as the audit trail records them')]
         string $agent = '',
+        #[Option(description: 'Why, as the audit trail records it')]
+        string $reason = '',
     ): int {
         $to = Plan::tryFrom($plan);
 
@@ -56,7 +58,7 @@ final readonly class SetPlanCommand
         }
 
         try {
-            $switchedOff = $this->planChanger->change($found, $to, $agent);
+            $switchedOff = $this->planChanger->change($found, $to, $agent, $reason);
         } catch (RuntimeException $e) {
             $io->error($e->getMessage());
 

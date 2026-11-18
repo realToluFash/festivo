@@ -177,5 +177,5 @@
     "validation.vendor_website_too_long": "Encurte o endereço do site para um máximo de {count, number, ::group-auto} caracteres.",
     "validation.vendor_address_too_long": "Encurte a morada para um máximo de {count, number, ::group-auto} caracteres.",
     "validation.vendor_note_too_long": "Encurte a nota para um máximo de {count, number, ::group-auto} caracteres.",
-    "staff.shift_needed_below": "{n, plural, one {{n, number, ::group-auto} person is on this shift. Unassign them first, or keep {n, number, ::group-auto} or more.} other {{n, number, ::group-auto} people are on this shift. Unassign some first, or keep {n, number, ::group-auto} or more.}}"
+    "staff.shift_needed_below": "{n, plural, one {Está {n, number, ::group-auto} pessoa neste turno. Retire-a primeiro ou mantenha {n, number, ::group-auto} ou mais.} many {Estão {n, number, ::group-auto} de pessoas neste turno. Retire algumas primeiro ou mantenha {n, number, ::group-auto} ou mais.} other {Estão {n, number, ::group-auto} pessoas neste turno. Retire algumas primeiro ou mantenha {n, number, ::group-auto} ou mais.}}"
 }

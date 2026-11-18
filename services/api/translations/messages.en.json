@@ -350,6 +350,8 @@
     "timeline.event_ends": "{name} ends",
     "timeline.event_called_off": "{name} called off",
     "timeline.replies_close": "Replies close",
+    "timeline.picks_close": "Picks close",
+    "timeline.open_menu": "Open the menu",
     "calendar_feed.status.draft": "Draft",
     "calendar_feed.status.live": "Live",
     "calendar_feed.status.paused": "Paused",

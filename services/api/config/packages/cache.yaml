@@ -29,6 +29,11 @@ framework:
             cache.address:
                 adapter: cache.adapter.redis
                 provider: Redis
+            # One answer for every container, cleared at once by a change (sc-3927).
+            cache.entitlements:
+                adapter: cache.adapter.redis
+                provider: Redis
+                default_lifetime: 60
 
 when@test:
     framework:
@@ -53,4 +58,7 @@ when@test:
                 # between a test's requests, as it does between containers.
                 cache.address:
                     adapter: cache.adapter.filesystem
+                    provider: ~
+                cache.entitlements:
+                    adapter: cache.adapter.array
                     provider: ~

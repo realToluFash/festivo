@@ -54,6 +54,7 @@ const organisation = {
   contactAddress: 'hello@ire.events',
   locale: 'en',
   plan: 'free' as const,
+  subscription: { status: 'active' as const, periodEnd: null },
   currency: 'NGN',
   timezone: 'Africa/Lagos',
   role: { id: 'role_1', seededAs: 'owner', name: null },

@@ -69,6 +69,10 @@ services:
         arguments:
             $cache: '@cache.address'
 
+    App\Domain\Billing\Entitlements:
+        arguments:
+            $entitlementsCache: '@cache.entitlements'
+
     # One adapter behind the port. Have I Been Pwned is the only corpus worth
     # querying and swapping it is this line plus a class.
     App\Domain\User\Interfaces\BreachedPasswordCheckerInterface: '@App\Integrations\Hibp\HibpBreachedPasswordChecker'

@@ -28,6 +28,7 @@ const organisation: Membership = {
   contactAddress: 'hello@ire.events',
   locale: 'en',
   plan: 'free',
+  subscription: { status: 'active', periodEnd: null },
   currency: 'NGN',
   timezone: 'Africa/Lagos',
   role: { id: 'role_1', seededAs: 'owner', name: null },
@@ -63,6 +64,7 @@ describe('saving the Organisation page', () => {
       ...detailsOf(organisation),
       id: 'org_1',
       plan: 'free' as const,
+      subscription: { status: 'active' as const, periodEnd: null },
       name: 'Ìrè',
     }));
 
@@ -76,6 +78,7 @@ describe('saving the Organisation page', () => {
       ...detailsOf(organisation),
       id: 'org_1',
       plan: 'free' as const,
+      subscription: { status: 'active' as const, periodEnd: null },
       locale: 'fr',
     }));
 
@@ -93,6 +96,7 @@ describe('saving the Organisation page', () => {
       ...detailsOf(organisation),
       id: 'org_1',
       plan: 'free' as const,
+      subscription: { status: 'active' as const, periodEnd: null },
       name: 'Ìrè',
     }));
 

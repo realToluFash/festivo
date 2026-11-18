@@ -37,6 +37,7 @@ final readonly class InvitationsController
         private InvitationResponder $invitationResponder,
         private MembershipDirectoryInterface $membershipDirectory,
         private SignInRules $signInRules,
+        private OrganisationSerialiser $organisationSerialiser,
         private TranslatorInterface $translator,
     ) {
     }
@@ -77,7 +78,7 @@ final readonly class InvitationsController
     {
         $membership = $this->invitationResponder->accept($this->invitation($invitationId), $this->user());
 
-        return new JsonResponse(['organisation' => OrganisationSerialiser::membership(
+        return new JsonResponse(['organisation' => $this->organisationSerialiser->membership(
             $membership,
             $this->membershipDirectory->grantsIn($membership->getUser(), $membership->getOrganisation()->getId()) ?? Grants::only([]),
             $this->signInRules->twoFactorDue($membership),
