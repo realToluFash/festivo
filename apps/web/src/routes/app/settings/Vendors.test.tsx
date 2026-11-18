@@ -107,11 +107,9 @@ function answering(
 }
 
 function open() {
-  render(
-    <RouterProvider
-      router={createMemoryRouter(routes, { initialEntries: ['/app/settings/vendors'] })}
-    />,
-  );
+  const router = createMemoryRouter(routes, { initialEntries: ['/app/settings/vendors'] });
+  render(<RouterProvider router={router} />);
+  return router;
 }
 
 afterEach(() => {
@@ -241,16 +239,20 @@ describe('Settings › Vendors at a desk (sc-82)', () => {
     ).toBe(true);
   });
 
-  it('a member is refused with a way back to Settings, as the demo draws it', async () => {
+  it('a member is shown the page for a page they lack permission for', async () => {
     signedIn(membership({ role: MEMBER, permissions: [] }));
     const sent = answering(() => pageOf([BLOOM]));
-    open();
+    const router = open();
 
     await waitFor(() => expect(screen.getByText('You do not have access to this')).toBeDefined());
-    expect(screen.getByRole('link', { name: 'Back to Settings' }).getAttribute('href')).toBe(
-      '/app/account',
-    );
-    expect(screen.queryByText('Back to the dashboard')).toBeNull();
+    expect(
+      screen.getByText(
+        'Your account does not have permission for this page. If you believe it should, ask an admin of this organisation.',
+      ),
+    ).toBeDefined();
     expect(sent.filter(({ path }) => path.includes('/vendors'))).toEqual([]);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Back to the dashboard' }));
+    await waitFor(() => expect(router.state.location.pathname).toBe('/app'));
   });
 });

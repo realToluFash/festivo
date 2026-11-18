@@ -4677,7 +4677,6 @@
   },
   "vendors": {
     "title": "Vendors",
-    "backToSettings": "Back to Settings",
     "vendors_one": "{{count, number}} vendor",
     "vendors_other": "{{count, number}} vendors",
     "vendors_many": "{{count, number}} vendors",
