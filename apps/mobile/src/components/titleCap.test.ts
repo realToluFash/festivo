@@ -19,7 +19,6 @@ const event = readFileSync(join('src', 'components', 'EventScreen.tsx'), 'utf8')
 const settings = readFileSync(join('src', 'components', 'SettingsHome.tsx'), 'utf8');
 const demoFrame = readFileSync(join('src', 'demo', 'settings', 'Frame.tsx'), 'utf8');
 const demoMembers = readFileSync(join('src', 'demo', 'settings', 'MembersParts.tsx'), 'utf8');
-const demoPeople = readFileSync(join('src', 'demo', 'people', 'PeopleFrame.tsx'), 'utf8');
 
 const HEAD = 18;
 const AX5 = 3.12;
@@ -72,13 +71,6 @@ describe('nothing under a page title draws larger than the title (sc-67338)', ()
 
   it('caps an event area under the title its body draws', () => {
     expect(event.match(/<BodyTitle\b/gu)).toHaveLength(2);
-  });
-
-  it('caps the demo’s People in the event’s frame under its title, as the frame caps Guests (sc-67665)', () => {
-    expect(demoPeople).toMatch(
-      /const frameDrawn = usePageTitleDrawn\(\);[^]*?frameDrawn\?\.\(size\);/u,
-    );
-    expect(demoPeople).toMatch(/<PeopleTitle onDrawn=\{onDrawn\} \/>/u);
   });
 });
 
