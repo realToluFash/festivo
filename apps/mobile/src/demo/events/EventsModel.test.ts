@@ -35,6 +35,7 @@ import {
   wallOf,
   withoutTab,
 } from './EventsModel.ts';
+import { tabsFit } from '../../kit/eventsList.ts';
 import { CLOCKS, EVENTS, type SampleEvent, sampleEvent } from './EventsSample.ts';
 import { seedFinalNumbers } from './FinalNumbers.ts';
 import { say } from './EventsWords.ts';
@@ -466,6 +467,19 @@ describe('the wall clock and the instant', () => {
     expect(eventHref('evt-wed-4', { state: 'dates', area: 'guests' })).toBe(
       '/demo/events/evt-wed-4?state=dates&area=guests',
     );
+  });
+});
+
+describe('the tabs’ words at the largest sizes', () => {
+  it('keeps their size where every tab fits', () => {
+    expect(tabsFit(340, [90, 60, 50], [23, 4, 4], 24)).toBe(1);
+  });
+
+  it('steps every tab’s words down together until the row holds them, the tick and the pads unscaled', () => {
+    const fit = tabsFit(340, [250, 180, 140], [23, 4, 4], 24);
+
+    expect(fit).toBeCloseTo((340 - 3 * 24 - 31) / (570 - 31));
+    expect(23 + 227 * fit + 4 + 176 * fit + 4 + 136 * fit + 3 * 24).toBeCloseTo(340);
   });
 });
 

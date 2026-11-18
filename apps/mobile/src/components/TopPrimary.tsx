@@ -41,6 +41,7 @@ export function TopPrimary({
         glyph="plus"
         height={tokens.sizeHit}
         full={false}
+        grows
         onPress={onPress}
         testID={testID}
       />

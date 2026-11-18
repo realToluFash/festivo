@@ -279,6 +279,19 @@ export function cardStep(event: Shown, now: Date, locale: string, t: TFunction):
   }
 }
 
+/** How far the tabs' words step down together so that every tab fits `room`: each tab `widths` wide at its size, of which `fixed` does not scale with the text, plus its `pad`. 1 where they already fit. */
+export function tabsFit(
+  room: number,
+  widths: readonly number[],
+  fixed: readonly number[],
+  pad: number,
+): number {
+  const said = widths.reduce((sum, width, i) => sum + width - (fixed[i] ?? 0), 0);
+  const left = room - widths.length * pad - fixed.reduce((sum, width) => sum + width, 0);
+
+  return said <= left || said <= 0 ? 1 : Math.max(0, left) / said;
+}
+
 /** Each tab's width as CSS shares a row: an equal share of the room, or the tab's own words where they need more. */
 export function tabWidths(room: number, mins: readonly number[]): number[] {
   const fixed = mins.map(() => false);
