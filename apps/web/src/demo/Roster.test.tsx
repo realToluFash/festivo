@@ -175,6 +175,19 @@ describe('/demo/events/evt-wed-4/staff/roster (sc-3906)', () => {
     expect(within(details).getByText('Door · 23:00 to 02:00')).toBeTruthy();
   });
 
+  it('offers Shift on Add a person once a job is chosen (sc-3908)', async () => {
+    await open('populated');
+    press('Add a person');
+    type('Job', 'Waiter');
+    expect(screen.getByLabelText('Shift')).toBeTruthy();
+  });
+
+  it('Edit has Job and no Shift: shifts change on Jobs and shifts (sc-3908)', async () => {
+    await open('edit');
+    expect(screen.getByLabelText('Job')).toBeTruthy();
+    expect(screen.queryByLabelText('Shift')).toBeNull();
+  });
+
   it('refuses a new job while the person is on a shift (sc-3908)', async () => {
     await open('editJobOnShift');
     expect(screen.getByText('Unassign Kunle Ajayi from their shifts first.')).toBeTruthy();

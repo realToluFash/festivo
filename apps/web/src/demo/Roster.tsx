@@ -759,7 +759,11 @@ function PersonForm({
             shown={draft.job === '' ? RW.noJob : draft.job}
             wrong={locked != null}
             {...(locked == null ? {} : { describedBy: 'rs-f-job-error rs-f-job-help' })}
-            onChange={(value) => onChange({ job: value, shift: jobOf(value)?.shifts[0] ?? '' })}
+            onChange={(value) =>
+              onChange(
+                editing ? { job: value } : { job: value, shift: jobOf(value)?.shifts[0] ?? '' },
+              )
+            }
             options={[
               { value: '', label: RW.noJob },
               ...JOBS.map((one) => ({ value: one.job, label: one.job })),
@@ -774,7 +778,7 @@ function PersonForm({
             </>
           )}
         </div>
-        {job != null && (
+        {!editing && job != null && (
           <div className="desk-field">
             <div className="rs-label-row">
               <label htmlFor="rs-f-shift" className="desk-label">
