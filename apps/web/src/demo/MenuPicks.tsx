@@ -3,7 +3,9 @@ import { Link } from 'react-router';
 
 import './seePicks.css';
 
+import type { Lang } from './menuLibrary.ts';
 import type { EvCourse } from './menuCourses.ts';
+import { type Close, lineClose } from './picksClose.ts';
 import {
   type PicksWorld,
   SW,
@@ -65,9 +67,11 @@ export function SeePicksLink({ course }: { course: EvCourse }) {
   );
 }
 
-export function PicksSummary() {
+/** `closes` are the Menu header's, so the card and the header show one close. */
+export function PicksSummary({ closes, lang }: { closes: readonly Close[]; lang: Lang }) {
   const world = useContext(Picked);
   if (world == null) return null;
+  const line = lineClose(closes, lang);
   const all = header(world);
   const host = needsHost(world).length;
   const waiting = whoHasnt(world).reduce((sum, one) => sum + one.people.length, 0);
@@ -84,7 +88,7 @@ export function PicksSummary() {
         <li>{`${SW.needsHost} · ${numberIn(host)}`}</li>
         <li>{`${SW.whoHasnt} · ${numberIn(waiting)}`}</li>
       </ul>
-      <p className="mn-quiet">{SW.closes}</p>
+      {line != null && <p className="mn-quiet">{line}</p>}
       <Link className="gs-pill is-primary pk-go" to={picksAt('picks')}>
         {SW.title}
       </Link>

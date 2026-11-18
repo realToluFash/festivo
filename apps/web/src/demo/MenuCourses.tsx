@@ -1345,7 +1345,7 @@ function Courses({
             </div>
           )}
         </div>
-        {open == null && <PicksSummary />}
+        {open == null && <PicksSummary closes={closes} lang={lang} />}
         {open != null && (
           <aside className="mn-panel mc-panel" aria-labelledby="mc-panel-title">
             <button type="button" className="desk-text mc-back" onClick={() => close(closeBack())}>

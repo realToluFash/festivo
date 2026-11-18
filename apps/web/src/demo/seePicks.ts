@@ -168,7 +168,6 @@ export const SW = {
     on ? `Remove ${name}’s ${allergen} allergy` : `Save ${allergen} as ${name}’s allergy`,
   demoNobody: 'Nobody left to send',
   summaryTitle: 'Picks',
-  closes: 'Picks close Monday, Oct 19.',
   menuPicks: (count: number, n: string, share: string) =>
     `${n} ${count === 1 ? 'pick' : 'picks'} · ${share}% of the room`,
 } as const;

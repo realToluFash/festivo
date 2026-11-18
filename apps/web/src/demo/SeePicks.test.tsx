@@ -148,7 +148,9 @@ describe('the picks on the Menu’s rows (sc-3909)', () => {
 
       expect(screen.getByText('17 picks · 35% of the room')).toBeTruthy();
       expect(screen.getAllByRole('link', { name: /^See picks · / }).length).toBe(3);
-      expect(screen.getByRole('complementary', { name: SW.summaryTitle })).toBeTruthy();
+      const summary = screen.getByRole('complementary', { name: SW.summaryTitle });
+      expect(within(summary).getByText('Picks close Monday, Oct 19.')).toBeTruthy();
+      expect(screen.getByText('picks close Monday, Oct 19')).toBeTruthy();
     },
   );
 });
