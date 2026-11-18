@@ -3997,7 +3997,7 @@
     "shiftHelp": "Turnos de este puesto con alguna plaza libre, por hora de inicio.",
     "onShifts": "Quite primero a {{name}} de sus turnos.",
     "onShiftsHint": "Su puesto podrá cambiar cuando no esté en ningún turno.",
-    "moreShifts": "{{first}} +{{count, number}} más",
+    "moreShifts": "{{first}} <more>+{{count, number}} más</more>",
     "removeShifts": "Sus plazas en estos turnos quedarán libres:"
   },
   "schedule": {
