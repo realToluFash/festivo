@@ -33,7 +33,7 @@ export interface AskProps {
   failed?: string | null;
   testID?: string;
   width?: number;
-  /** After the line, 10 apart: a handover's button and list. Too tall for the screen, the Ask scrolls as a whole (sc-614). */
+  /** After the line, 10 apart: a handover's button and list. */
   body?: ReactNode;
   /** A menu is over it, so a screen reader stays in the menu. */
   covered?: boolean;
@@ -42,7 +42,7 @@ export interface AskProps {
   onPlaced?: (top: number) => void;
 }
 
-/** B's one question: what happens, in words, then the way back first and the verb last, red when it removes. Two actions too wide for one line stack with the verb on top (sc-22092). */
+/** B's one question: what happens, in words, then the way back first and the verb last, red when it removes. Two actions too wide for one line stack with the verb on top (sc-22092). Too tall for the screen, as at the largest text, it scrolls as a whole (sc-614, sc-30894). */
 export function AskLayer({
   title,
   line,
@@ -69,7 +69,7 @@ export function AskLayer({
   const stacked =
     measured && confirm != null && widths.keep + tokens.space3xl + widths.confirm > widths.room;
   const fits = frame.height - insets.top - tokens.spaceLg - insets.bottom;
-  const tall = body != null && inside > fits;
+  const tall = inside > fits;
   const laid = (part: keyof typeof widths) => (event: LayoutChangeEvent) => {
     const width = event.nativeEvent.layout.width;
     setWidths((now) => (now[part] === width ? now : { ...now, [part]: width }));
@@ -175,7 +175,6 @@ export function AskLayer({
       <View
         style={[
           styles.dialog,
-          body != null && styles.dialogScrolls,
           tall && styles.dialogTall,
           { maxWidth: width ?? (phone ? 340 : 400) },
         ]}
@@ -186,20 +185,16 @@ export function AskLayer({
         onLayout={(event) => onPlaced?.(event.nativeEvent.layout.y)}
         testID={testID}
       >
-        {body == null ? (
-          content
-        ) : (
-          <ScrollView
-            style={styles.grow}
-            contentContainerStyle={styles.inside}
-            scrollEnabled={tall}
-            bounces={false}
-            keyboardShouldPersistTaps="handled"
-            onContentSizeChange={(_width, height) => setInside(height)}
-          >
-            {content}
-          </ScrollView>
-        )}
+        <ScrollView
+          style={styles.grow}
+          contentContainerStyle={styles.inside}
+          scrollEnabled={tall}
+          bounces={false}
+          keyboardShouldPersistTaps="handled"
+          onContentSizeChange={(_width, height) => setInside(height)}
+        >
+          {content}
+        </ScrollView>
       </View>
     </View>
   );
@@ -229,13 +224,11 @@ const styles = StyleSheet.create({
   },
   dialog: {
     width: '100%',
-    gap: tokens.spaceSm,
-    padding: tokens.space3xl,
-    paddingBottom: tokens.spaceLg,
+    maxHeight: '100%',
+    overflow: 'hidden',
     borderRadius: tokens.space3xl,
     backgroundColor: tokens.colorCard,
   },
-  dialogScrolls: { padding: 0, paddingBottom: 0, maxHeight: '100%', overflow: 'hidden' },
   dialogTall: { flexShrink: 1 },
   inside: {
     gap: tokens.spaceSm,
