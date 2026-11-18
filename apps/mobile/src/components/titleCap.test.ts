@@ -10,6 +10,7 @@ import {
   titleCapOn,
   titleSize,
 } from '../layout/textSize.ts';
+import { backScale, PILL_TEXT } from '../layout/focusedHeader.ts';
 import { PAGE_TITLE } from './topTitle.ts';
 
 const frame = readFileSync(join('src', 'components', 'AppFrame.tsx'), 'utf8');
@@ -49,7 +50,7 @@ describe('nothing under a page title draws larger than the title (sc-67338)', ()
     );
   });
 
-  it('keeps Back, the pill and the bell of a scrolling top outside the cap', () => {
+  it('keeps the pill and the bell of a scrolling top outside the cap', () => {
     expect(frame).toMatch(
       /<TitleCap\.Provider value=\{null\}>\s+<ScreenTop \{\.\.\.top\} style=\{style\} rowStyle=\{rowStyle\} \/>/u,
     );
@@ -57,6 +58,27 @@ describe('nothing under a page title draws larger than the title (sc-67338)', ()
 
   it('caps an event area under the title its body draws', () => {
     expect(event.match(/<BodyTitle\b/gu)).toHaveLength(2);
+  });
+});
+
+describe('the Back pill over a page title draws no larger than the title (sc-67471)', () => {
+  it('stops the pill’s word at the title’s 43 at AX5, not about 53', () => {
+    const title = titleSize(PAGE_TITLE, AX5);
+
+    expect(PILL_TEXT * backScale(AX5, title)).toBe(43);
+    expect(PILL_TEXT * backScale(AX5, null)).toBeGreaterThan(43);
+  });
+
+  it('leaves the pill as it was below the accessibility sizes', () => {
+    expect(backScale(1.35, titleSize(PAGE_TITLE, 1.35))).toBe(1.35);
+  });
+
+  it('puts every Back the frame draws under the title’s cap', () => {
+    expect(frame).toMatch(
+      /<TitleCap\.Provider value=\{cap\}>\s+<Back label=\{back\.label\} onPress=\{back\.onPress\} off=\{back\.off\} testID="frame\.back" \/>/u,
+    );
+    expect(frame.match(/<Back\b/gu)).toHaveLength(1);
+    expect(frame.match(/<FrameBack back=\{back\} cap=\{cap\} \/>/gu)).toHaveLength(4);
   });
 });
 
