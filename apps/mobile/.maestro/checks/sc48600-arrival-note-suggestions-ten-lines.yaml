@@ -1,0 +1,52 @@
+# sc-48600 keyboard bullet, after PR #2734: the Arrival note with the address suggestions open, filling its 10 lines, then past 500 and Save. Needs ${METRO_URL}, ${EVENT_ID}.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/${EVENT_ID}/edit?at=venue
+- extendedWaitUntil:
+    visible:
+      id: 'event.edit.venue.save'
+    timeout: 30000
+- tapOn:
+    id: 'event.edit.venue.address'
+- eraseText: 60
+- inputText: '12 Hox'
+- waitForAnimationToEnd:
+    timeout: 3000
+- takeScreenshot: note-suggestions-open
+- scrollUntilVisible:
+    element:
+      id: 'event.edit.venue.note'
+    direction: DOWN
+    timeout: 10000
+    centerElement: true
+- swipe:
+    start: 50%, 40%
+    end: 50%, 20%
+    duration: 600
+- tapOn:
+    id: 'event.edit.venue.note'
+- waitForAnimationToEnd:
+    timeout: 2000
+- inputText: 'Come in by the side gate. '
+- waitForAnimationToEnd:
+    timeout: 1500
+- takeScreenshot: note-typing-with-suggestions
+- inputRandomText:
+    length: 400
+- waitForAnimationToEnd:
+    timeout: 1500
+- takeScreenshot: note-ten-lines
+- inputRandomText:
+    length: 90
+- waitForAnimationToEnd:
+    timeout: 1500
+- takeScreenshot: note-past-500-typing
+- tapOn:
+    id: 'event.edit.venue.save'
+- waitForAnimationToEnd:
+    timeout: 2500
+- takeScreenshot: note-saved-message
+- tapOn:
+    id: 'event.edit.venue.cancel'
+- tapOn:
+    id: 'event.edit.venue.discard'

@@ -1,0 +1,10 @@
+# sc-3787 tablet landscape: sc3787-demo-form-recordReplace, with the tablet turned landscape first.
+appId: host.exp.Exponent
+---
+- runScript:
+    file: ../batch/helper.js
+    env:
+      ASK: /landscape
+- waitForAnimationToEnd:
+    timeout: 3000
+- runFlow: sc3787-demo-form-recordReplace.yaml

@@ -1,0 +1,40 @@
+# Signed out: Set a new password from a live link, its lines, and Close back to sign-in. sc-29071.
+appId: host.exp.Exponent
+---
+- runFlow: ../sign-out.yaml
+- openLink: ${METRO_URL}/--/reset-password?token=${TOKEN_LINK}
+- extendedWaitUntil: { visible: { id: 'recovery.password' }, timeout: 30000 }
+- waitForAnimationToEnd
+- takeScreenshot: out-01-new-password
+- assertVisible: '{{t:recovery.signsOut}}'
+- assertVisible: { id: 'recovery.close' }
+- hideKeyboard
+- takeScreenshot: out-02-new-password-keys-down
+- tapOn: { id: 'recovery.password' }
+- inputText: 'short'
+- tapOn: { id: 'recovery.save' }
+- takeScreenshot: out-03-short
+- tapOn: { id: 'recovery.close' }
+- extendedWaitUntil: { visible: { id: 'signIn.email|welcome.email' }, timeout: 15000 }
+- takeScreenshot: out-04-closed-to-sign-in
+- openLink: ${METRO_URL}/--/reset-password?token=${TOKEN_USED}
+- extendedWaitUntil: { visible: '{{t:recovery.usedTitle}}', timeout: 30000 }
+- takeScreenshot: out-05-used
+- assertNotVisible: '.*Remembered it.*'
+- tapOn: { id: 'recovery.close' }
+- extendedWaitUntil: { visible: { id: 'signIn.email|welcome.email' }, timeout: 15000 }
+- takeScreenshot: out-06-used-closed
+- openLink: ${METRO_URL}/--/reset-password?token=${TOKEN_EXP}
+- extendedWaitUntil: { visible: '{{t:recovery.expiredTitle}}', timeout: 30000 }
+- takeScreenshot: out-07-expired
+- openLink: ${METRO_URL}/--/reset-password?token=nonsense29071
+- extendedWaitUntil: { visible: '{{t:recovery.invalidTitle}}', timeout: 30000 }
+- takeScreenshot: out-08-invalid
+- tapOn: { id: 'recovery.sendNew' }
+- extendedWaitUntil: { visible: { id: 'recovery.email' }, timeout: 15000 }
+- waitForAnimationToEnd
+- takeScreenshot: out-09-send-new-blank
+- hideKeyboard
+- tapOn: { id: 'recovery.close' }
+- extendedWaitUntil: { visible: { id: 'signIn.email|welcome.email' }, timeout: 15000 }
+- takeScreenshot: out-10-send-new-closed

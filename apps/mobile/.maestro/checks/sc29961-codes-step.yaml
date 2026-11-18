@@ -1,0 +1,16 @@
+# sc-29961: on the codes step of Get back in without your authenticator, the resend counts down from 1:00, then reads its ready words, with the note under it. Email only reads as Verify your email; with a phone, as before.
+appId: host.exp.Exponent
+---
+- runFlow: ../sign-out.yaml
+- runFlow: ../sc33828-to-code-signed-out.yaml
+- runFlow: ../sc29072-close-code-pad.yaml
+- scrollUntilVisible: { element: { id: 'twoFactor.lostBoth' } }
+- tapOn: { id: 'twoFactor.lostBoth' }
+- extendedWaitUntil: { visible: { id: 'lostTwoFactor.send' }, timeout: 30000 }
+- tapOn: { id: 'lostTwoFactor.send' }
+- extendedWaitUntil: { visible: { id: 'lostTwoFactor.resend' }, timeout: 30000 }
+- waitForAnimationToEnd
+- takeScreenshot: counting
+- extendedWaitUntil: { visible: 'zz-never-on-screen-zz', timeout: 62000, optional: true }
+- scrollUntilVisible: { element: { id: 'lostTwoFactor.resend' } }
+- takeScreenshot: ready

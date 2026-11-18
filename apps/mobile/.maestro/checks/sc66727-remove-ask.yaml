@@ -1,0 +1,54 @@
+# sc-66727: the removal confirm from ${MEMBER}'s page, from its title to its buttons, then Keep closes it and changes nothing.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/settings/members
+- waitForAnimationToEnd:
+    timeout: 8000
+- openLink: ${METRO_URL}/--/settings/members
+- waitForAnimationToEnd:
+    timeout: 8000
+- openLink: ${METRO_URL}/--/settings/members
+- extendedWaitUntil:
+    visible:
+      id: 'members.card'
+    timeout: 30000
+    optional: true
+- scrollUntilVisible:
+    element:
+      id: 'members.row.${MEMBER}'
+    direction: DOWN
+    timeout: 90000
+    centerElement: true
+- tapOn:
+    id: 'members.row.${MEMBER}'
+- waitForAnimationToEnd
+- scrollUntilVisible:
+    element:
+      id: 'members.remove'
+    direction: DOWN
+    timeout: 90000
+    centerElement: true
+- tapOn:
+    id: 'members.remove'
+- extendedWaitUntil:
+    visible:
+      id: 'members.remove.ask'
+    timeout: 10000
+- waitForAnimationToEnd
+- takeScreenshot: ask-top
+- scrollUntilVisible:
+    element:
+      id: 'members.remove.keep'
+    direction: DOWN
+    timeout: 90000
+- waitForAnimationToEnd
+- takeScreenshot: ask-foot
+- tapOn:
+    id: 'members.remove.keep'
+- extendedWaitUntil:
+    notVisible:
+      id: 'members.remove.ask'
+    timeout: 10000
+- assertVisible:
+    id: 'members.remove'
+- takeScreenshot: ask-closed

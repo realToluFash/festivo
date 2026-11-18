@@ -1,0 +1,41 @@
+# Signed out on iPhone: Continue with Apple beside Sign in with email on welcome, a request link (join), and the demo's welcome and join. Pass TOKEN. sc-28848.
+appId: host.exp.Exponent
+---
+- launchApp:
+    appId: host.exp.Exponent
+    stopApp: true
+- openLink: ${METRO_URL}/--/welcome
+- extendedWaitUntil:
+    visible: 'Continue|Service status|Sign in.*'
+    timeout: 90000
+- waitForAnimationToEnd
+- runFlow:
+    when:
+      visible: 'Reload'
+    file: expo-go-menu.yaml
+- extendedWaitUntil:
+    visible:
+      id: 'signIn.apple'
+    timeout: 60000
+- takeScreenshot: apple-ios-welcome
+- openLink: ${METRO_URL}/--/join/${TOKEN}
+- runFlow:
+    when:
+      visible: 'Reload'
+    file: expo-go-menu.yaml
+- extendedWaitUntil:
+    visible:
+      id: 'requestToJoin.signIn'
+    timeout: 60000
+- waitForAnimationToEnd
+- takeScreenshot: apple-ios-join
+- openLink: ${METRO_URL}/--/demo/welcome
+- extendedWaitUntil:
+    visible:
+      id: 'demo.apple'
+    timeout: 60000
+- waitForAnimationToEnd
+- takeScreenshot: apple-ios-demo-welcome
+- openLink: ${METRO_URL}/--/demo/join
+- waitForAnimationToEnd
+- takeScreenshot: apple-ios-demo-join

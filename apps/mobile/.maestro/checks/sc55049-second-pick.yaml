@@ -1,0 +1,54 @@
+# sc-55049: two photos picked in turn then discarded; both uploads leave the store. Needs ${METRO_URL}, ${EVENT_ID}.
+appId: host.exp.Exponent
+---
+- runFlow: ../checks/sc52652/open.yaml
+- scrollUntilVisible:
+    element:
+      id: 'event.edit.cover.upload'
+    direction: DOWN
+- tapOn:
+    id: 'event.edit.cover.upload'
+- extendedWaitUntil:
+    visible: 'Photos'
+    timeout: 15000
+- tapOn:
+    point: '16%,25%'
+- extendedWaitUntil:
+    visible: 'never.there'
+    timeout: 12000
+    optional: true
+- takeScreenshot: first
+- scrollUntilVisible:
+    element:
+      id: 'event.edit.cover.change'
+    direction: DOWN
+- tapOn:
+    id: 'event.edit.cover.change'
+- extendedWaitUntil:
+    visible: 'Photos'
+    timeout: 15000
+- tapOn:
+    point: '50%,25%'
+- extendedWaitUntil:
+    visible: 'never.there'
+    timeout: 15000
+    optional: true
+- takeScreenshot: second
+- tapOn:
+    id: 'event.edit.cover.cancel'
+- extendedWaitUntil:
+    visible:
+      id: 'event.edit.cover.discard'
+    timeout: 10000
+- takeScreenshot: discard-ask
+- tapOn:
+    id: 'event.edit.cover.discard'
+- extendedWaitUntil:
+    visible:
+      id: 'events.page'
+    timeout: 10000
+- extendedWaitUntil:
+    visible: 'never.there'
+    timeout: 12000
+    optional: true
+- takeScreenshot: page-after

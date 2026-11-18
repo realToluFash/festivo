@@ -1,0 +1,48 @@
+# sc-3787: Save on Record a reply that cannot reach the server says offline and keeps what was chosen.
+appId: host.exp.Exponent
+onFlowComplete:
+  - runScript:
+      file: ../batch/helper.js
+      env:
+        ASK: /api?to=up
+---
+- openLink: ${METRO_URL}/--/events/${EVENT_ID}?area=guests
+- extendedWaitUntil:
+    visible:
+      id: 'guests.search'
+    timeout: 30000
+- tapOn:
+    id: 'guests.search'
+- inputText: ${G_OFF_NAME}
+- hideKeyboard
+- extendedWaitUntil:
+    visible:
+      id: 'guests.row.${G_OFF}'
+    timeout: 15000
+- tapOn:
+    id: 'guests.row.${G_OFF}'
+- extendedWaitUntil:
+    visible:
+      id: 'guest.${G_OFF}'
+    timeout: 30000
+- tapOn:
+    id: 'guest.card.step'
+- extendedWaitUntil:
+    visible:
+      id: 'guest.record.maybe'
+    timeout: 10000
+- tapOn:
+    id: 'guest.record.maybe'
+- tapOn:
+    id: 'guest.record.how.message'
+- runScript:
+    file: ../batch/helper.js
+    env:
+      ASK: /api?to=stopped
+- tapOn:
+    id: 'guest.record.save'
+- extendedWaitUntil:
+    visible:
+      id: 'guest.record.offline'
+    timeout: 60000
+- takeScreenshot: offline-refused

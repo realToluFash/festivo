@@ -1,0 +1,56 @@
+# sc-38666: Create an organisation's name step on a phone on its side, keys up: pictures arrival before any keystroke, a typed name, the name cleared, the country step by the keys' action key, the name step after ‹ Back and focused, typed and cleared there, a blank name refused, then the step scrolled to its top and its foot. Turns the phone on its side itself and back upright at the end.
+appId: host.exp.Exponent
+---
+- setOrientation: LANDSCAPE_LEFT
+- waitForAnimationToEnd
+- runFlow: ../open-create-organisation.yaml
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 1500, optional: true }
+- takeScreenshot: n38666-01-arrive
+- inputText: 'Lagos Supper Club'
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 800, optional: true }
+- takeScreenshot: n38666-02-typed
+- eraseText: 40
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 800, optional: true }
+- takeScreenshot: n38666-03-cleared
+- inputText: 'Lagos Supper Club'
+- pressKey: Enter
+- extendedWaitUntil: { visible: { id: 'createWalk.back' }, timeout: 10000 }
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 1200, optional: true }
+- takeScreenshot: n38666-04-country
+- tapOn: { id: 'createWalk.back' }
+- extendedWaitUntil: { visible: { id: 'createWalk.name' }, timeout: 10000 }
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 1500, optional: true }
+- takeScreenshot: n38666-05-back
+- tapOn: { id: 'createWalk.name' }
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 1200, optional: true }
+- takeScreenshot: n38666-06-back-focused
+- inputText: ' Two'
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 800, optional: true }
+- takeScreenshot: n38666-07-back-typed
+- eraseText: 60
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 800, optional: true }
+- takeScreenshot: n38666-08-back-cleared
+- pressKey: Enter
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 1500, optional: true }
+- takeScreenshot: n38666-09-blank-refused
+- swipe: { start: '50%, 21%', end: '50%, 32%', duration: 400 }
+- swipe: { start: '50%, 21%', end: '50%, 32%', duration: 400 }
+- swipe: { start: '50%, 21%', end: '50%, 32%', duration: 400 }
+- swipe: { start: '50%, 21%', end: '50%, 32%', duration: 400 }
+- swipe: { start: '50%, 21%', end: '50%, 32%', duration: 400 }
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 800, optional: true }
+- takeScreenshot: n38666-10-top
+- swipe: { start: '50%, 32%', end: '50%, 21%', duration: 400 }
+- swipe: { start: '50%, 32%', end: '50%, 21%', duration: 400 }
+- swipe: { start: '50%, 32%', end: '50%, 21%', duration: 400 }
+- swipe: { start: '50%, 32%', end: '50%, 21%', duration: 400 }
+- swipe: { start: '50%, 32%', end: '50%, 21%', duration: 400 }
+- swipe: { start: '50%, 32%', end: '50%, 21%', duration: 400 }
+- swipe: { start: '50%, 32%', end: '50%, 21%', duration: 400 }
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 800, optional: true }
+- takeScreenshot: n38666-11-foot
+- hideKeyboard: { optional: true }
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 1000, optional: true }
+- takeScreenshot: n38666-12-keys-down
+- tapOn: { id: 'createWalk.cancel', optional: true }
+- setOrientation: PORTRAIT
