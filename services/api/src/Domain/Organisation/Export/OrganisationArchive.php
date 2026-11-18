@@ -241,6 +241,13 @@ final readonly class OrganisationArchive
              WHERE d.organisation_id = :organisation
              ORDER BY d.archived_at NULLS FIRST, d.name, d.id, v.position, v.id
             SQL,
+        'vendors' => <<<'SQL'
+            SELECT v.id, v.name, v.category, v.contact_name, v.email_address, v.phone_country_code, v.phone_number,
+                   v.website, v.address, v.note, v.archived_at, v.created_at
+              FROM vendors v
+             WHERE v.organisation_id = :organisation
+             ORDER BY v.archived_at NULLS FIRST, v.name, v.id
+            SQL,
         'run_of_show' => <<<'SQL'
             SELECT s.id, s.event_id, s.title, (s.starts_at AT TIME ZONE ev.time_zone) AT TIME ZONE 'UTC' AS starts_at,
                    s.length_minutes, s.place, s.owner_name, s.owner_role, s.note, s.show_to_guests,

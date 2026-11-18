@@ -86,6 +86,7 @@ final class OrganisationExportTest extends ApiTestCase
         'menu_choice_options' => ['id', 'choice_id', 'position', 'name', 'allergens'],
         'dish_library' => ['id', 'name', 'description', 'allergens', 'diets', 'last_price_minor', 'last_price_currency', 'archived_at', 'created_at'],
         'dish_library_variants' => ['id', 'dish_id', 'position', 'name', 'for_children', 'allergens', 'diets', 'last_price_minor', 'last_price_currency'],
+        'vendors' => ['id', 'name', 'category', 'contact_name', 'email_address', 'phone_country_code', 'phone_number', 'website', 'address', 'note', 'archived_at', 'created_at'],
         'run_of_show' => ['id', 'event_id', 'title', 'starts_at', 'length_minutes', 'place', 'owner_name', 'owner_role', 'note', 'show_to_guests', 'skipped', 'started_at', 'ended_at'],
         'staff' => ['id', 'event_id', 'full_name', 'mobile', 'email', 'member_id'],
         'cost_lines' => ['id', 'event_id', 'label', 'category', 'basis', 'price_minor', 'price_currency', 'note', 'created_at', 'updated_at'],
@@ -244,6 +245,36 @@ final class OrganisationExportTest extends ApiTestCase
             self::assertArrayNotHasKey($kept, $json);
             self::assertArrayNotHasKey($kept . '.csv', $files);
         }
+    }
+
+    #[Test]
+    public function theArchiveHoldsTheOrganisationsVendorsArchivedOnesIncludedAndNoOtherOrganisations(): void
+    {
+        $at = '2026-10-16 09:00:00';
+        $mine = $this->organisation->getId()->toRfc4122();
+        $kept = $this->row('vendors', ['organisation_id' => $mine, 'name' => 'Ẹ̀wà Kitchen', 'category' => 'catering', 'contact_name' => 'Tayo Bello', 'email_address' => 'tayo@ewa.example', 'phone_number' => '08031234567', 'phone_country_code' => 'NG', 'website' => 'https://ewa.example', 'address' => '12 Allen Avenue, Ikeja', 'note' => 'Books a month ahead', 'archived_at' => null, 'created_at' => $at, 'updated_at' => $at]);
+        $archived = $this->row('vendors', ['organisation_id' => $mine, 'name' => 'Bloom Florals', 'category' => 'flowers', 'archived_at' => '2026-10-15 08:00:00', 'created_at' => $at, 'updated_at' => $at]);
+        $other = self::service(OrganisationFounder::class)->found($this->freshUser($this->owner), 'Ìrè Two', 'NG', 'Africa/Lagos');
+        self::em()->flush();
+        $this->row('vendors', ['organisation_id' => $other->getId()->toRfc4122(), 'name' => 'Elsewhere Lights', 'category' => 'venue', 'created_at' => $at, 'updated_at' => $at]);
+
+        $files = $this->archive();
+        $json = Type\dict(Type\string(), Type\mixed())->coerce(Json\decode($files['archive.json']));
+        $vendors = Type\vec(Type\dict(Type\string(), Type\mixed()))->coerce($json['vendors']);
+
+        self::assertSame(
+            [
+                [$kept, 'Ẹ̀wà Kitchen', 'catering', 'Tayo Bello', 'tayo@ewa.example', 'NG', '08031234567', 'https://ewa.example', '12 Allen Avenue, Ikeja', 'Books a month ahead', null, '2026-10-16T09:00:00Z'],
+                [$archived, 'Bloom Florals', 'flowers', null, null, null, null, null, null, null, '2026-10-15T08:00:00Z', '2026-10-16T09:00:00Z'],
+            ],
+            Vec\map($vendors, static fn (array $row): array => Vec\values($row)),
+        );
+        $lines = Str\split(Str\trim(Str\strip_prefix($files['vendors.csv'], "\u{FEFF}")), "\r\n");
+        self::assertCount(3, $lines);
+        self::assertStringContainsString('"Bloom Florals",flowers', $lines[2]);
+        self::assertStringContainsString('2026-10-15T08:00:00Z', $lines[2]);
+        self::assertStringNotContainsString('Elsewhere Lights', $files['archive.json']);
+        self::assertStringNotContainsString('Elsewhere Lights', $files['vendors.csv']);
     }
 
     /** sc-611's rule: a person's own account gives only their name and the address they belong by. */

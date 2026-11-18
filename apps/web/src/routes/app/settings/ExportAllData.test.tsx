@@ -348,6 +348,7 @@ describe('Data and control › Export all data (sc-612)', () => {
     expect(screen.getByText(/^Each event’s run of show:/)).toBeDefined();
     expect(screen.getByText(/^Each event’s staff:/)).toBeDefined();
     expect(screen.getByText(/^Each event’s cost lines:/)).toBeDefined();
+    expect(screen.getByText(/^The organisation’s vendors:/)).toBeDefined();
     expect(screen.getByText(/guest group and needs/)).toBeDefined();
     expect(screen.getByText(/except a course’s served time/)).toBeDefined();
   });

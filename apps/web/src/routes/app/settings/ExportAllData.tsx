@@ -171,6 +171,7 @@ function Loaded({
     t('exportAllData.holdsRunOfShow'),
     t('exportAllData.holdsStaff'),
     t('exportAllData.holdsCostLines'),
+    t('exportAllData.holdsVendors'),
   ];
 
   return (
