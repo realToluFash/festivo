@@ -3,7 +3,7 @@ import { type LayoutChangeEvent, Pressable, StyleSheet, View } from 'react-nativ
 
 import { eventColour } from '../../components/EventMesh.tsx';
 import { Glyph } from '../../components/Glyph.tsx';
-import { MeasuredWords, Title } from '../../components/Title.tsx';
+import { BodyTitle, MeasuredWords } from '../../components/Title.tsx';
 import { TopPrimary, usePrimaryLabel } from '../../components/TopPrimary.tsx';
 import { useReadOut } from '../../components/ReadOut.tsx';
 import { type TextHandle, Text } from '../../components/Text.tsx';
@@ -402,9 +402,9 @@ export function GuestsTitle({
   const heading = (
     <View style={styles.grow} onLayout={label.onSlot}>
       {label.measure}
-      <Title size={size} accessibilityRole="header" style={titleStyle} testID="guests.title">
+      <BodyTitle size={size} accessibilityRole="header" style={titleStyle} testID="guests.title">
         {title}
-      </Title>
+      </BodyTitle>
     </View>
   );
   const actions = (
