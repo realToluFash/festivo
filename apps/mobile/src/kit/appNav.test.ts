@@ -397,18 +397,25 @@ describe("iPad Sign in's scroll view stays out of the sheet's reach (sc-67589)",
 });
 
 describe('Sign in pushed over welcome knows welcome is under it (sc-67709)', () => {
-  it('is pushed by every push that opens it over welcome, never by router.push alone', () => {
-    for (const file of [
-      '../components/Welcome.tsx',
-      '../steps/backToSignIn.ts',
-      '../steps/leaveTimedOutSignIn.ts',
-    ]) {
-      const text = source(join(import.meta.dirname, file));
-      expect(text).toMatch(/pushSignIn\(/u);
-      expect(text).not.toMatch(
-        /router\.push\(\s*(\{\s*pathname: '\/sign-in'|'\/sign-in'|signIn\))/u,
+  it('is pushed by pushSignIn alone, wherever under app/ and src/ a push reaches it', () => {
+    const pushesSignIn = (file: string): boolean => {
+      const text = source(file);
+      return [...text.matchAll(/router\.push\(\s*(\{[^}]*\}|[^,)]+)/gu)].some(([, to = '']) =>
+        /^\w+$/u.test(to) ? text.includes("'/sign-in'") : /'\/sign-in'|timedOutSignIn\(/u.test(to),
       );
-    }
+    };
+    const pushers = [APP, SRC]
+      .flatMap((root) =>
+        readdirSync(root, { recursive: true, encoding: 'utf8' })
+          .filter((path) => /\.tsx?$/u.test(path) && !/\.test\.tsx?$/u.test(path))
+          .map((path) => join(root, path)),
+      )
+      .filter(pushesSignIn)
+      .map((file) => file.slice(join(APP, '..').length + 1))
+      .sort();
+
+    // A join link's Sign in is not this story's, and keeps the presentation it had.
+    expect(pushers).toEqual(['app/join/[token].tsx']);
   });
 
   it('is not read from the stack while Sign in is drawn, which expo-router hands over as it was before the push', () => {
