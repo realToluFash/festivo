@@ -3166,8 +3166,7 @@ describe('a cold batch whose bundler goes away', () => {
 describe('the time a Maestro run is given', () => {
   it('grows with its checks, and stops a hung single check within minutes', () => {
     expect(runBudgetMs(1)).toBe(7 * 60_000);
-    expect(runBudgetMs(10)).toBeGreaterThan(runBudgetMs(1));
-    expect(runBudgetMs(10)).toBeLessThan(47 * 60_000);
+    expect(runBudgetMs(10)).toBe(43 * 60_000);
   });
 
   it('stops a run that never exits once its budget is spent', async () => {

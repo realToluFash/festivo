@@ -3924,7 +3924,7 @@ export function startHelper({
 
 // A dead driver either ends Maestro at once or hangs it. For the hang a run gets a budget, and a
 // batch whose flows stop calling the harness for STALL_MS is stopped sooner.
-export const runBudgetMs = (runs) => (5 + 2 * runs) * 60_000;
+export const runBudgetMs = (runs) => (3 + 4 * runs) * 60_000;
 export const STALL_MS = 5 * 60_000;
 
 export function runAsync(command, args, { cwd, env, timeoutMs, stall }) {
