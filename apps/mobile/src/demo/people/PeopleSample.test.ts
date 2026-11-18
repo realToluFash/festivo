@@ -5,9 +5,15 @@ import {
   addedToast,
   addRefusedLine,
   addView,
+  ALREADY_A_MEMBER,
+  outsideRefusal,
+  outsideView,
+  readTyped,
   firstName,
   listed,
   manages,
+  NOT_JOINED,
+  seenBy,
   noMatchLine,
   notChangedLine,
   offeredMembers,
@@ -29,6 +35,7 @@ import {
   sheetLine,
   withAdded,
   without,
+  withOutside,
   withRole,
 } from './PeopleSample.ts';
 
@@ -193,8 +200,8 @@ describe('a person’s sheet', () => {
 });
 
 describe('adding people', () => {
-  it('adds members only, found by name, until sc-71', () => {
-    expect(ADD_PROMPT).toBe('Add by name');
+  it('finds members by name and someone from outside by their address (sc-71)', () => {
+    expect(ADD_PROMPT).toBe('Add by name, email or mobile');
   });
 
   it('offers active members not on the event, members first, filtered by name', () => {
@@ -279,5 +286,116 @@ describe('Add people refused part way', () => {
     expect(addRefusedLine('Lead', [], ['Julien Moreau'])).toBe(
       'We couldn’t add Julien Moreau, so they’re still ticked. Check your connection and press Add again.',
     );
+  });
+});
+
+describe('adding someone from outside (sc-71)', () => {
+  it('reads an @ as an email address, digits as a mobile number, and letters as a name', () => {
+    expect(readTyped('Kofi', 'NG')).toEqual({ kind: 'name' });
+    expect(readTyped('  ', 'NG')).toEqual({ kind: 'name' });
+    expect(readTyped('bisi@lagoslights.example', 'NG')).toEqual({
+      kind: 'address',
+      address: {
+        kind: 'email',
+        address: 'bisi@lagoslights.example',
+        shown: 'bisi@lagoslights.example',
+      },
+    });
+    expect(readTyped('bisi@lagos', 'NG')).toEqual({ kind: 'unusable' });
+    expect(readTyped('kofi@', 'NG')).toEqual({ kind: 'unusable' });
+  });
+
+  it('checks a mobile number by the country’s lengths and keeps it in E.164', () => {
+    expect(readTyped('0803 555 0142', 'NG')).toEqual({
+      kind: 'address',
+      address: { kind: 'mobile', address: '+2348035550142', shown: '+234 803 555 0142' },
+    });
+    expect(readTyped('+351 912 345 678', 'NG')).toMatchObject({
+      address: { address: '+351912345678' },
+    });
+    expect(readTyped('0803 12', 'NG')).toEqual({ kind: 'unusable' });
+    expect(readTyped('0803 555 0142 9999 9999 99', 'NG')).toEqual({ kind: 'unusable' });
+  });
+
+  it('offers the address under any role but Lead, and says so under Lead', () => {
+    const email = 'bisi@lagoslights.example';
+
+    expect(outsideView(email, 'NG', 'Can view').kind).toBe('offer');
+    expect(outsideView(email, 'NG', 'Can edit').kind).toBe('offer');
+    expect(outsideView(email, 'NG', 'Lead')).toEqual({ kind: 'leadOff' });
+    expect(outsideView('Kofi', 'NG', 'Lead')).toEqual({ kind: 'none' });
+    expect(outsideView('bisi@', 'NG', 'Can view')).toEqual({ kind: 'unusable' });
+  });
+
+  it('does not offer someone already on the event', () => {
+    expect(outsideView('Kemi.Okafor@example.com', 'NG', 'Can view', onEvent)).toEqual({
+      kind: 'onEvent',
+      name: 'Kemi Okafor',
+    });
+  });
+
+  it('leaves already_a_member to the server, in its own words', () => {
+    const address = {
+      kind: 'email',
+      address: 'Kofi@ire.events',
+      shown: 'Kofi@ire.events',
+    } as const;
+
+    expect(outsideRefusal(address, members)).toBe(ALREADY_A_MEMBER);
+    expect(addRefusedLine('Can view', [], ['Kofi@ire.events'], ALREADY_A_MEMBER)).toBe(
+      'That person is already a member of this organisation.',
+    );
+    expect(outsideRefusal({ ...address, address: 'bisi@lagoslights.example' }, members)).toBeNull();
+  });
+
+  it('puts them on the list as Outside, with their job label, and counts the label to 60', () => {
+    const address = {
+      kind: 'mobile',
+      address: '+2348035550142',
+      shown: '+234 803 555 0142',
+    } as const;
+    const after = withOutside(onEvent, 'Can check guests in', address, ' Bar and drinks ');
+    const added = after.find((one) => one.id === '+2348035550142');
+
+    expect(added).toMatchObject({
+      outside: true,
+      label: 'Bar and drinks',
+      name: '+234 803 555 0142',
+    });
+    expect(rowLine(added as OnEvent, PEOPLE_VIEWERS.julien)).toBe(
+      'Can check guests in · Bar and drinks',
+    );
+    expect(withOutside([], 'Can view', address, '  ')[0]?.label).toBeNull();
+  });
+
+  it('opens each Add state from its link', () => {
+    expect(peopleStart(peopleStateOf('addOutside'))).toMatchObject({
+      adding: true,
+      addTyped: 'bisi@lagoslights.example',
+    });
+    expect(peopleStart(peopleStateOf('addLeadOutside'))).toMatchObject({ addRole: 'Lead' });
+    expect(peopleStart(peopleStateOf('addMemberAddress')).addTyped).toBe('kofi@ire.events');
+  });
+
+  it('names someone not joined yet by their address only to an owner, an admin or the lead (pm #67966)', () => {
+    const start = peopleStart('readOnly');
+    expect(manages(start.viewer, start.onEvent)).toBe(false);
+    const bisi = seenBy(start.onEvent, false).find((one) => one.initials == null);
+    expect(bisi).toMatchObject({
+      name: NOT_JOINED,
+      role: 'Can check guests in',
+      outside: true,
+      label: 'Lighting',
+    });
+    expect(seenBy(start.onEvent, false).some((one) => one.name.includes('lagoslights'))).toBe(
+      false,
+    );
+    expect(bisi?.withheld).toBe(true);
+    expect(JSON.stringify(seenBy(start.onEvent, false))).not.toContain('lagoslights');
+    expect(rowLine(bisi as OnEvent, start.viewer)).toBe('Can check guests in · Lighting');
+    expect(seenBy(start.onEvent, true).find((one) => one.initials == null)?.name).toBe(
+      'bisi@lagoslights.example',
+    );
+    expect(seenBy(start.onEvent, false).filter((one) => one.name === NOT_JOINED)).toHaveLength(1);
   });
 });

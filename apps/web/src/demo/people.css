@@ -49,3 +49,30 @@
   color: var(--colorInkSecondary);
   font: 500 12.5px/1.35 var(--fontFamily);
 }
+
+.people-outside-face {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: var(--colorNeutralFill);
+  color: var(--colorInkSecondary);
+}
+
+.people-outside-notice {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--spaceSm);
+  margin: 0;
+  color: var(--colorAttentionText);
+  font: 500 14px/1.4 var(--fontFamily);
+}
+
+.people-outside-notice svg {
+  flex: none;
+  margin-top: var(--spaceHair);
+  color: var(--colorAttention);
+}

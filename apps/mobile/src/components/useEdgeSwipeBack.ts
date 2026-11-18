@@ -1,4 +1,11 @@
-import { createContext, useContext, useEffect, useState } from 'react';
+import {
+  type Dispatch,
+  type SetStateAction,
+  createContext,
+  useContext,
+  useEffect,
+  useState,
+} from 'react';
 import { Animated, PanResponder, type PanResponderInstance, Platform } from 'react-native';
 
 import { edgeSwipeCompletes, edgeSwipeStarts } from '../kit/systemBack.ts';
@@ -8,7 +15,7 @@ export type EdgeSwipeHandlers = PanResponderInstance['panHandlers'];
 
 /** AppFrame's strip over the window's left edge, header included, which a page in front of its list hands its swipe to (sc-23327). */
 export const EdgeSwipeStrip = createContext<
-  ((handlers: EdgeSwipeHandlers | undefined) => void) | undefined
+  Dispatch<SetStateAction<EdgeSwipeHandlers | undefined>> | undefined
 >(undefined);
 
 function edgeSwipe(onDrag: (dragging: boolean) => void): {
@@ -67,8 +74,15 @@ export function useEdgeSwipeBack(
     if (!taking) return;
     strip(swipe.handlers);
 
-    return () => strip(undefined);
+    return () => strip((held) => (held === swipe.handlers ? undefined : held));
   }, [strip, swipe, taking]);
 
   return { taking, dragging: taking && dragging, shift: swipe.shift };
+}
+
+/** The left-edge swipe for a screen that draws its frame itself, so its swipe sits inside AppFrame's strip (sc-67708). */
+export function EdgeSwipeBack({ active, onBack }: { active: boolean; onBack: () => void }) {
+  useEdgeSwipeBack(active, onBack);
+
+  return null;
 }
