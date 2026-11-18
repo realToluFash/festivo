@@ -408,6 +408,7 @@ const PAUSED_SAMPLE: PausedOrganisation = {
   timezone: 'Europe/Madrid',
   contactAddress: '',
   locale: 'es',
+  plan: 'free',
   suspension: {
     reason: 'address_gone',
     domain: PAUSED.domain,

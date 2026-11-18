@@ -331,5 +331,6 @@
     "timeline.tables_shared": "Tables shared",
     "validation.share_by_invalid": "Choose a valid date.",
     "validation.share_by_past": "Choose today or a later date.",
-    "validation.share_by_not_before_event": "Choose a date before the event."
+    "validation.share_by_not_before_event": "Choose a date before the event.",
+    "access.plan_required": "Available on Enterprise. Contact Soirely about Enterprise to change this."
 }

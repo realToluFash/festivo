@@ -5,9 +5,10 @@ declare(strict_types=1);
 namespace App\Http\Access\Policy;
 
 use App\Enum\Permission;
+use App\Enum\PlanFeature;
 use Attribute;
 
-/** An active member of the organisation in the route, holding the permission, or with `orOnAnEvent` holding it on any one event; with none named, any active member. */
+/** An active member of the organisation in the route, holding the permission, or with `orOnAnEvent` holding it on any one event; with none named, any active member. With `feature`, a change also needs the plan to unlock it (sc-581). */
 #[Attribute(Attribute::TARGET_CLASS | Attribute::TARGET_METHOD)]
 final readonly class InOrganisation implements Policy
 {
@@ -15,6 +16,7 @@ final readonly class InOrganisation implements Policy
         public ?Permission $permission,
         public string $parameter = 'organisationId',
         public bool $orOnAnEvent = false,
+        public ?PlanFeature $feature = null,
     ) {
     }
 }

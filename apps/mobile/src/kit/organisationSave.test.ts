@@ -27,6 +27,7 @@ const organisation: Membership = {
   countryCode: 'NG',
   contactAddress: 'hello@ire.events',
   locale: 'en',
+  plan: 'free',
   currency: 'NGN',
   timezone: 'Africa/Lagos',
   role: { id: 'role_1', seededAs: 'owner', name: null },
@@ -58,7 +59,12 @@ function refusal(
 
 describe('saving the Organisation page', () => {
   it('sends only what changed, to the API the web’s General uses', async () => {
-    const update = vi.fn(async () => ({ ...detailsOf(organisation), id: 'org_1', name: 'Ìrè' }));
+    const update = vi.fn(async () => ({
+      ...detailsOf(organisation),
+      id: 'org_1',
+      plan: 'free' as const,
+      name: 'Ìrè',
+    }));
 
     await saveOrganisation(update, organisation, { ...detailsOf(organisation), name: ' Ìrè ' });
 
@@ -66,7 +72,12 @@ describe('saving the Organisation page', () => {
   });
 
   it('sends a new language on the same PATCH as the other details', async () => {
-    const update = vi.fn(async () => ({ ...detailsOf(organisation), id: 'org_1', locale: 'fr' }));
+    const update = vi.fn(async () => ({
+      ...detailsOf(organisation),
+      id: 'org_1',
+      plan: 'free' as const,
+      locale: 'fr',
+    }));
 
     const outcome = await saveOrganisation(update, organisation, {
       ...detailsOf(organisation),
@@ -78,7 +89,12 @@ describe('saving the Organisation page', () => {
   });
 
   it('keeps the role, so the switcher and the page still know who may change it', async () => {
-    const update = vi.fn(async () => ({ ...detailsOf(organisation), id: 'org_1', name: 'Ìrè' }));
+    const update = vi.fn(async () => ({
+      ...detailsOf(organisation),
+      id: 'org_1',
+      plan: 'free' as const,
+      name: 'Ìrè',
+    }));
 
     const outcome = await saveOrganisation(update, organisation, {
       ...detailsOf(organisation),

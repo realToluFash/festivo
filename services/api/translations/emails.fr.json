@@ -186,5 +186,12 @@
     "memberRestored.body": "Vous pouvez de nouveau utiliser {organisation} dans Soirely, avec le rôle que vous aviez : {role}.",
     "memberRestored.facts": "Organisation : {organisation}\nDate de rétablissement : {when}\nVotre rôle : {role}",
     "memberRestored.open": "Ouvrir {organisation} : {link}",
-    "memberAccess.footer": "Vous recevez ce message parce que vous êtes membre de l’organisation {organisation}."
+    "memberAccess.footer": "Vous recevez ce message parce que vous êtes membre de l’organisation {organisation}.",
+    "planDowngraded.subject": "{organisation} is on the free plan",
+    "planDowngraded.switchedOff": "These were switched off on {day} and kept as they were:",
+    "planDowngraded.setting.email_domains": "Email domains",
+    "planDowngraded.setting.audit_log": "Audit log",
+    "planDowngraded.setting.guest_data_deletion": "Delete guest data after an event",
+    "planDowngraded.comeBack": "They come back on as they were with Enterprise. Contact Soirely about Enterprise.",
+    "planDowngraded.footer": "You're getting this because you're an owner or admin of {organisation}."
 }
