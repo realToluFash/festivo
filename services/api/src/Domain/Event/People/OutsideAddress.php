@@ -31,14 +31,14 @@ final readonly class OutsideAddress
         $trimmed = Str\trim($typed);
 
         if ('' === $trimmed) {
-            throw $this->refusal('people.address_required');
+            throw $this->addressRefused('people.address_required');
         }
 
         if (Str\contains($trimmed, '@')) {
             $email = EmailAddressNormaliser::normalise($trimmed);
 
             if ('' === $email || false === \filter_var($email, \FILTER_VALIDATE_EMAIL)) {
-                throw $this->refusal('people.address_unusable');
+                throw $this->addressRefused('people.address_unusable');
             }
 
             return [$email, ContactKind::Email];
@@ -47,7 +47,7 @@ final readonly class OutsideAddress
         try {
             return [$this->phoneNumberParser->parse($trimmed, $this->countryOf($trimmed, $organisationCountry), self::FIELD)->number, ContactKind::Mobile];
         } catch (ApiException) {
-            throw $this->refusal('people.address_unusable');
+            throw $this->addressRefused('people.address_unusable');
         }
     }
 
@@ -66,7 +66,7 @@ final readonly class OutsideAddress
         }
     }
 
-    private function refusal(string $key): ApiException
+    private function addressRefused(string $key): ApiException
     {
         return ApiException::validation([[
             'propertyPath' => self::FIELD,
