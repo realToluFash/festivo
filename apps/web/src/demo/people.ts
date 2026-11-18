@@ -74,6 +74,8 @@ export interface OnEvent {
   role: EventRole;
   outside: boolean;
   label: string | null;
+  /** Added by an address the viewer is not shown: no name, no address, no kind of address. */
+  withheld?: boolean;
   /** In by a door code (sc-72): which one, and when. */
   door?: { code: string; at: string } | null;
 }
@@ -151,6 +153,19 @@ export function sampleOnEvent(): OnEvent[] {
       label: 'The Landmark’s coordinator',
     },
   ];
+}
+
+export const NOT_JOINED = 'Not joined yet';
+
+/** Someone added by address with no account yet: only an owner, an admin or the lead sees the address, everyone else 'Not joined yet' (pm #67966). */
+export function seenBy(onEvent: readonly OnEvent[], seesAddresses: boolean): OnEvent[] {
+  return seesAddresses
+    ? [...onEvent]
+    : onEvent.map((one, index) =>
+        one.initials === ''
+          ? { ...one, id: `not-joined-${index}`, name: NOT_JOINED, withheld: true }
+          : one,
+      );
 }
 
 export function listed(onEvent: readonly OnEvent[]): OnEvent[] {
@@ -276,7 +291,6 @@ export function offeredMembers(
 export const FIND_LABEL = 'Name, email or mobile number';
 export const NAME_LABEL = 'Name';
 export const UNUSABLE = 'That isn’t an email address or a mobile number we can use.';
-export const leadForMembers = (org: string = ORGANISATION) => `Lead is for members of ${org}.`;
 export const PICK_ANOTHER = 'Pick another role to add someone from outside.';
 export const fromOutside = (org: string = ORGANISATION) => `From outside ${org}`;
 export const ALREADY_A_MEMBER = 'That person is already a member of this organisation.';
@@ -417,6 +431,17 @@ export function peopleStateOf(name: string | null): PeopleState {
 
 const BISI = 'bisi@lagoslights.example';
 
+/** Added by her address and not joined yet, so the API has no name for her. */
+export const BISI_ON: OnEvent = {
+  id: BISI,
+  name: BISI,
+  initials: '',
+  tone: 5,
+  role: 'Can check guests in',
+  outside: true,
+  label: 'Lighting',
+};
+
 export function peopleStart(state: PeopleState): PeopleStart {
   const start: PeopleStart = {
     viewer: PEOPLE_VIEWERS.julien,
@@ -429,7 +454,7 @@ export function peopleStart(state: PeopleState): PeopleStart {
 
   switch (state) {
     case 'readOnly':
-      return { ...start, viewer: PEOPLE_VIEWERS.ana };
+      return { ...start, viewer: PEOPLE_VIEWERS.ana, onEvent: [...start.onEvent, BISI_ON] };
     case 'lead':
       return { ...start, viewer: PEOPLE_VIEWERS.priya };
     case 'nobody':

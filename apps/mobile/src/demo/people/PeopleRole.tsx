@@ -25,6 +25,8 @@ import {
 } from './PeopleSample.ts';
 
 export function Face({ person, side }: { person: OnEvent; side: number }) {
+  if (person.withheld === true)
+    return <Avatar initials="" side={side} tone={person.tone} glyph="user" />;
   if (person.initials == null && person.id.includes('@'))
     return <Avatar initials="" side={side} tone={person.tone} glyph="mail" />;
 

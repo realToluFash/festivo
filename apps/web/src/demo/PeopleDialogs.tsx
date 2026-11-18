@@ -8,7 +8,6 @@ import {
   EVENT_ROLES,
   FIND_LABEL,
   fromOutside,
-  leadForMembers,
   NAME_LABEL,
   onAlreadyLine,
   outsideRefusal,
@@ -388,7 +387,7 @@ export function AddDialog({
               )}
               {outside.kind === 'leadOff' && (
                 <>
-                  <p className="desk-empty-title">{leadForMembers(organisation)}</p>
+                  <p className="desk-empty-title">{leadOff(organisation)}</p>
                   <p className="desk-line">{PICK_ANOTHER}</p>
                 </>
               )}

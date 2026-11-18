@@ -54,14 +54,8 @@ export const BY_CODE = 'Door code';
 export const NAME_LABEL = 'Name';
 export const FIND_LABEL = 'Name, email or mobile number';
 export const UNUSABLE = 'That isn’t an email address or a mobile number we can use.';
-export const leadForMembers = (organisation: string) => `Lead is for members of ${organisation}.`;
 export const PICK_ANOTHER = 'Pick another role to add someone from outside.';
-export const JOB_LABEL = 'Job label (optional)';
-export const JOB_MOST = 60;
-
-export function jobHelp(job: string): string {
-  return `What they’re there for, shown beside their name. It grants nothing. ${[...job].length} of ${JOB_MOST}.`;
-}
+export const NOT_JOINED = 'Not joined yet';
 export const LOADING_WORDS = 'Loading the people on this event…';
 export const FAILED_TITLE = 'We could not load the people on this event.';
 export const FAILED_LINE = 'Check your connection and try again.';
@@ -86,6 +80,8 @@ export interface OnEvent {
   role: EventRole;
   outside: boolean;
   label: string | null;
+  /** Added by an address the viewer is not shown: no name, no address, no kind of address. */
+  withheld?: boolean;
   /** Came in by a door code (sc-31774): which, and the day and time. */
   byCode?: { code: string; date: string; time: string } | undefined;
 }
@@ -132,6 +128,17 @@ function everyoneOn(onEvent: readonly OnEvent[]): OnEvent[] {
   return [...onEvent, ...rest.map((one) => onEventAs(one.id, 'Can view'))];
 }
 
+/** Added by her address and not joined yet, so the API has no name for her. */
+export const BISI: OnEvent = {
+  id: 'bisi@lagoslights.example',
+  name: 'bisi@lagoslights.example',
+  initials: null,
+  tone: 5,
+  role: 'Can check guests in',
+  outside: true,
+  label: 'Lighting',
+};
+
 export function sampleOnEvent(): OnEvent[] {
   return [
     onEventAs(PRIYA, 'Lead'),
@@ -156,6 +163,17 @@ export function sampleOnEvent(): OnEvent[] {
       label: 'The Landmark’s coordinator',
     },
   ];
+}
+
+/** Someone added by address with no account yet: only an owner, an admin or the lead sees the address, everyone else 'Not joined yet' (pm #67966). */
+export function seenBy(onEvent: readonly OnEvent[], seesAddresses: boolean): OnEvent[] {
+  return seesAddresses
+    ? [...onEvent]
+    : onEvent.map((one, index) =>
+        one.initials == null
+          ? { ...one, id: `not-joined-${index}`, name: NOT_JOINED, withheld: true }
+          : one,
+      );
 }
 
 export function listed(onEvent: readonly OnEvent[]): OnEvent[] {
@@ -508,7 +526,7 @@ export function peopleStart(state: PeopleState): PeopleStart {
     case 'people':
       return base;
     case 'readOnly':
-      return { ...base, viewer: PEOPLE_VIEWERS.ana };
+      return { ...base, viewer: PEOPLE_VIEWERS.ana, onEvent: [...base.onEvent, BISI] };
     case 'lead':
       return { ...base, viewer: PEOPLE_VIEWERS.priya };
     case 'nobody':

@@ -36,6 +36,7 @@ import {
   READ_ONLY,
   removedToast,
   rowLine,
+  seenBy,
   seesEveryEvent,
   withAdded,
   without,
@@ -167,7 +168,7 @@ function PeopleScreen({ start, door }: { start: PeopleStart; door: DoorStart | n
       </PeoplePage>
     );
 
-  const shown = listed(onEvent);
+  const shown = listed(seenBy(onEvent, canChange));
 
   return (
     <>

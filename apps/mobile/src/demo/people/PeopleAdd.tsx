@@ -19,6 +19,8 @@ import {
 import { Text } from '../../components/Text.tsx';
 import { addInTurn } from '../../kit/addInTurn.ts';
 import { tokens } from '../../theme/tokens.ts';
+import { JOB_MOST } from '../doorCode/DoorCodeModel.ts';
+import { jobCount, W } from '../doorCode/DoorCodeWords.ts';
 import {
   type Address,
   addView,
@@ -26,10 +28,7 @@ import {
   type EventRole,
   FIRST_ROLE,
   fromOutside,
-  JOB_LABEL,
-  JOB_MOST,
-  jobHelp,
-  leadForMembers,
+  leadOff,
   NAME_LABEL,
   offerLine,
   onAlreadyLine,
@@ -289,7 +288,7 @@ export function AddScreen({
       {outside.kind === 'leadOff' && (
         <View style={styles.lines}>
           <Text size={16} weight="semibold">
-            {leadForMembers(organisation)}
+            {leadOff(organisation)}
           </Text>
           <Line text={PICK_ANOTHER} />
         </View>
@@ -314,7 +313,7 @@ export function AddScreen({
             />
           </View>
           {outsideOn && (
-            <Field label={JOB_LABEL} help={jobHelp(job)}>
+            <Field label={W.jobLabel} help={jobCount(job)}>
               <TextField
                 value={job}
                 onChangeText={setJob}
@@ -323,7 +322,7 @@ export function AddScreen({
                 returnKeyType="done"
                 submitBehavior="submit"
                 onSubmitEditing={() => void send()}
-                accessibilityLabel={JOB_LABEL}
+                accessibilityLabel={W.jobLabel}
                 testID="people.add.job"
               />
             </Field>

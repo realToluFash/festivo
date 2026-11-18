@@ -6,13 +6,14 @@ import {
   addRefusedLine,
   addView,
   ALREADY_A_MEMBER,
-  jobHelp,
   outsideRefusal,
   outsideView,
   readTyped,
   firstName,
   listed,
   manages,
+  NOT_JOINED,
+  seenBy,
   noMatchLine,
   notChangedLine,
   offeredMembers,
@@ -365,9 +366,6 @@ describe('adding someone from outside (sc-71)', () => {
       'Can check guests in · Bar and drinks',
     );
     expect(withOutside([], 'Can view', address, '  ')[0]?.label).toBeNull();
-    expect(jobHelp('Kitchen')).toBe(
-      'What they’re there for, shown beside their name. It grants nothing. 7 of 60.',
-    );
   });
 
   it('opens each Add state from its link', () => {
@@ -377,5 +375,27 @@ describe('adding someone from outside (sc-71)', () => {
     });
     expect(peopleStart(peopleStateOf('addLeadOutside'))).toMatchObject({ addRole: 'Lead' });
     expect(peopleStart(peopleStateOf('addMemberAddress')).addTyped).toBe('kofi@ire.events');
+  });
+
+  it('names someone not joined yet by their address only to an owner, an admin or the lead (pm #67966)', () => {
+    const start = peopleStart('readOnly');
+    expect(manages(start.viewer, start.onEvent)).toBe(false);
+    const bisi = seenBy(start.onEvent, false).find((one) => one.initials == null);
+    expect(bisi).toMatchObject({
+      name: NOT_JOINED,
+      role: 'Can check guests in',
+      outside: true,
+      label: 'Lighting',
+    });
+    expect(seenBy(start.onEvent, false).some((one) => one.name.includes('lagoslights'))).toBe(
+      false,
+    );
+    expect(bisi?.withheld).toBe(true);
+    expect(JSON.stringify(seenBy(start.onEvent, false))).not.toContain('lagoslights');
+    expect(rowLine(bisi as OnEvent, start.viewer)).toBe('Can check guests in · Lighting');
+    expect(seenBy(start.onEvent, true).find((one) => one.initials == null)?.name).toBe(
+      'bisi@lagoslights.example',
+    );
+    expect(seenBy(start.onEvent, false).filter((one) => one.name === NOT_JOINED)).toHaveLength(1);
   });
 });

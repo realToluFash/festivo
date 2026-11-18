@@ -2135,6 +2135,15 @@ describe('People on an event at a desk (sc-29915)', () => {
     ).toBeDefined();
   });
 
+  it('shows someone not joined yet without their address to a member who can edit (pm #67966)', async () => {
+    await people('readOnly');
+
+    const main = within(screen.getByRole('main'));
+    expect(main.getByText('Not joined yet')).toBeDefined();
+    expect(main.getByText('Can check guests in · Lighting')).toBeDefined();
+    expect(document.body.innerHTML).not.toContain('lagoslights');
+  });
+
   it('lets the lead change everybody but themselves', async () => {
     await people('lead');
 
@@ -2205,7 +2214,9 @@ describe('People on an event at a desk (sc-29915)', () => {
 
     const add = within(screen.getByRole('dialog', { name: 'Add people' }));
     expect(add.getByLabelText('Name')).toBeDefined();
-    expect(add.getByText('Lead is for members of Ire Events.')).toBeDefined();
+    expect(
+      add.getByText('For members of Ire Events only.', { selector: '.desk-empty-title' }),
+    ).toBeDefined();
     expect(add.getByText('Pick another role to add someone from outside.')).toBeDefined();
     expect(add.getByRole('button', { name: 'Add' }).getAttribute('aria-disabled')).toBe('true');
     fireEvent.click(add.getByRole('radio', { name: /^Can view/u }));

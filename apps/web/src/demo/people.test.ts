@@ -3,6 +3,8 @@ import { describe, expect, it } from 'vitest';
 import {
   listed,
   manages,
+  NOT_JOINED,
+  seenBy,
   outsideRefusal,
   outsideView,
   offeredMembers,
@@ -130,5 +132,21 @@ describe('someone from outside at a desk (sc-71)', () => {
 
     expect(added).toMatchObject({ outside: true, label: 'Kitchen', name: '+234 803 555 0142' });
     expect(withOutside([], 'Can view', phone, ' ')[0]?.label).toBeNull();
+  });
+
+  it('withholds the address of someone not joined yet from a viewer who does not manage it (pm #67966)', () => {
+    const start = peopleStart('readOnly');
+    expect(manages(start.viewer, start.onEvent)).toBe(false);
+    const seen = seenBy(start.onEvent, false);
+    expect(seen.find((one) => one.withheld === true)).toMatchObject({
+      name: NOT_JOINED,
+      role: 'Can check guests in',
+      outside: true,
+      label: 'Lighting',
+    });
+    expect(JSON.stringify(seen)).not.toContain('lagoslights');
+    expect(seenBy(start.onEvent, true).find((one) => one.initials === '')?.name).toBe(
+      'bisi@lagoslights.example',
+    );
   });
 });

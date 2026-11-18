@@ -28,6 +28,7 @@ import {
   listed,
   LOADING_WORDS,
   manages,
+  seenBy,
   ON_EVENT,
   type OnEvent,
   opens,
@@ -148,7 +149,7 @@ function PeopleScreen({ start, door }: { start: PeopleStart; door: DoorStart | n
     setLit((was) => (was == null ? null : { ...was, held: false }));
   }
 
-  const shown = listed(onEvent);
+  const shown = listed(seenBy(onEvent, canChange));
   const page =
     load !== 'loaded' ? (
       load === 'failed' ? (
@@ -309,7 +310,10 @@ function PersonRow({
     <>
       {person.initials === '' ? (
         <span className="people-outside-face" aria-hidden="true">
-          <Glyph name={person.id.includes('@') ? 'mail' : 'phone'} size={18} />
+          <Glyph
+            name={person.withheld === true ? 'user' : person.id.includes('@') ? 'mail' : 'phone'}
+            size={18}
+          />
         </span>
       ) : (
         <Avatar initials={person.initials} tone={person.tone} />
