@@ -4,8 +4,11 @@ declare(strict_types=1);
 
 namespace App\Tests\Functional;
 
+use App\Domain\Organisation\Export\OrganisationExportMailer;
 use App\Domain\Organisation\Export\OrganisationExports;
 use App\Domain\Organisation\OrganisationFounder;
+use App\Domain\User\Mail\AccountLanguage;
+use App\Domain\User\Mail\UserMailer;
 use App\Domain\User\UserRegistrar;
 use App\Entity\AuditEntry;
 use App\Entity\Membership;
@@ -37,9 +40,12 @@ use Psl\Regex;
 use Psl\Str;
 use Psl\Type;
 use Psl\Vec;
+use Psr\Clock\ClockInterface;
+use RuntimeException;
 use Symfony\Component\Clock\Test\ClockSensitiveTrait;
 use Symfony\Component\Mime\Email;
 use Symfony\Component\Uid\Uuid;
+use Symfony\Contracts\Translation\TranslatorInterface;
 use ZipArchive;
 
 /** Export all data (sc-612): one archive of the organisation, asked for by an Owner and downloaded once by them within 24 hours. */
@@ -397,6 +403,27 @@ final class OrganisationExportTest extends ApiTestCase
 
         self::assertSame([OrganisationExportStatus::Ready, 2], [$export->getStatus(), $export->getAttempts()]);
         self::assertSame('Your export of Ìrè Events is ready', $this->mailTo('folake@ire.events')->getSubject());
+    }
+
+    #[Test]
+    public function anExportWhoseEmailFailsIsStillReadyAndTheNextOneIsPrepared(): void
+    {
+        $failing = new UserMailer(static fn () => throw new RuntimeException('The scheduler is down.'), self::service(TranslatorInterface::class), self::service(AccountLanguage::class), self::service(ClockInterface::class));
+        self::getContainer()->set(OrganisationExportMailer::class, new OrganisationExportMailer($failing, 'https://soirely.test'));
+        $exports = [];
+        foreach ([$this->fresh(), self::service(OrganisationFounder::class)->found($this->freshUser($this->owner), 'Ìrè Two', 'NG', 'Africa/Lagos')] as $organisation) {
+            $export = new OrganisationExport($organisation, $this->freshUser($this->owner), new DateTimeImmutable(self::ASKED_AT));
+            $export->attempting(new DateTimeImmutable(self::ASKED_AT));
+            self::em()->persist($export);
+            $exports[] = $export;
+        }
+        self::em()->flush();
+        self::mockTime(new DateTimeImmutable('2026-10-17T13:25:00+00:00'));
+
+        self::assertSame(2, self::service(OrganisationExports::class)->prepareDue());
+
+        self::assertTrue(self::em()->isOpen());
+        self::assertSame([OrganisationExportStatus::Ready, OrganisationExportStatus::Ready], Vec\map($exports, static fn (OrganisationExport $export): OrganisationExportStatus => $export->getStatus()));
     }
 
     /** @return iterable<string, array{SeededRole}> */

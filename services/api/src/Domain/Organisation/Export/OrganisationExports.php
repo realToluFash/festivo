@@ -112,11 +112,14 @@ final readonly class OrganisationExports
             return;
         }
 
-        $this->entityManager->wrapInTransaction(function () use ($export, $key, $asked): void {
-            $export->ready($key, $this->clock->now());
-            $this->entityManager->flush();
-            $this->organisationExportMailer->ready($export, $asked);
-        });
+        $export->ready($key, $this->clock->now());
+        $this->entityManager->flush();
+
+        try {
+            $this->entityManager->getConnection()->transactional(fn () => $this->organisationExportMailer->ready($export, $asked));
+        } catch (Throwable $e) {
+            $this->logger->error('An organisation export is ready but its email failed.', ['export' => $export->getId()->toRfc4122(), 'exception' => $e::class]);
+        }
     }
 
     /** Each export still preparing whose last try has had its time, tried again. */
