@@ -4712,6 +4712,7 @@
     "noMatchIn": "Nenhum fornecedor corresponde a «{{typed}}» na categoria {{category}}.",
     "noneIn": "Não há fornecedores na categoria {{category}}.",
     "noneArchivedIn": "Não há fornecedores arquivados na categoria {{category}}.",
+    "noneArchived": "Não há fornecedores arquivados.",
     "everyCategory": "Mostrar todas as categorias",
     "pages": "Páginas",
     "page": "{{from, number}} a {{to, number}} de {{total, number}}, de A a Z",

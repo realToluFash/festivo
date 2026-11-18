@@ -239,6 +239,114 @@ describe('Settings › Vendors at a desk (sc-82)', () => {
     ).toBe(true);
   });
 
+  it('an archived row reads its short date, and restoring the last one stays on Archived with its own line', async () => {
+    signedIn(membership());
+    const gone = vendor({
+      id: 'v9',
+      name: 'Éclat Catering',
+      archivedAt: '2026-10-12T12:00:00+00:00',
+    });
+    let restored = false;
+    answering(
+      (search) =>
+        !search.includes('view=archived')
+          ? pageOf([BLOOM, DELTA], { archived: restored ? 0 : 1 })
+          : restored
+            ? pageOf([], { inUse: 2, archived: 0 })
+            : pageOf([gone], { inUse: 2 }),
+      () => {
+        restored = true;
+        return new Response(JSON.stringify({ vendor: { ...gone, archivedAt: null } }), {
+          status: 200,
+        });
+      },
+    );
+    open();
+
+    fireEvent.click(await screen.findByRole('button', { name: /In use/ }));
+    fireEvent.click(await screen.findByRole('menuitemradio', { name: /Archived/ }));
+    const line = await screen.findByText(/· Archived /);
+    expect(line.textContent).toMatch(/Mon/);
+    expect(line.textContent).not.toMatch(/Monday/);
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Restore' }));
+    });
+
+    expect(await screen.findByText('No archived vendors.')).toBeDefined();
+    expect(screen.queryByRole('button', { name: 'Clear the search' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Show every category' })).toBeNull();
+    expect(screen.getByRole('button', { name: /Archived/ })).toBeDefined();
+  });
+
+  it('a search the API does not answer shows the failed state, not the list it had', async () => {
+    signedIn(membership());
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) =>
+      new URL(String(input)).search.includes('q=')
+        ? Promise.reject(new TypeError('Failed to fetch'))
+        : new Response(JSON.stringify(pageOf([BLOOM, DELTA])), { status: 200 }),
+    );
+    open();
+
+    fireEvent.change(await screen.findByRole('searchbox', { name: 'Search vendors' }), {
+      target: { value: 'tulip' },
+    });
+
+    expect(await screen.findByText('We could not load the vendors.')).toBeDefined();
+    expect(screen.queryByText('Bloom & Co')).toBeNull();
+  });
+
+  it('trying a failed search again puts the person back in the search box', async () => {
+    signedIn(membership());
+    let reachable = false;
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) =>
+      new URL(String(input)).search.includes('q=') && !reachable
+        ? Promise.reject(new TypeError('Failed to fetch'))
+        : new Response(JSON.stringify(pageOf([BLOOM, DELTA])), { status: 200 }),
+    );
+    open();
+
+    fireEvent.change(await screen.findByRole('searchbox', { name: 'Search vendors' }), {
+      target: { value: 'tulip' },
+    });
+    const again = await screen.findByRole('button', { name: 'Try again' });
+    reachable = true;
+    fireEvent.click(again);
+
+    const box = await screen.findByRole('searchbox', { name: 'Search vendors' });
+    await waitFor(() => expect(document.activeElement).toBe(box));
+    expect((box as HTMLInputElement).value).toBe('tulip');
+  });
+
+  it('saving a vendor archived elsewhere shows the API’s words and keeps the form', async () => {
+    signedIn(membership());
+    const words =
+      'This vendor is archived, so your changes were not saved. To edit it, restore it under Archived.';
+    answering(
+      () => pageOf([BLOOM]),
+      () =>
+        new Response(
+          JSON.stringify({
+            type: 'https://soirely.com/errors/conflict',
+            title: 'Conflict',
+            status: 409,
+            detail: words,
+          }),
+          { status: 409, headers: { 'Content-Type': 'application/problem+json' } },
+        ),
+    );
+    open();
+
+    fireEvent.click(await screen.findByRole('button', { name: /Bloom & Co/ }));
+    const form = within(await screen.findByRole('dialog'));
+    fireEvent.change(form.getByLabelText('Name'), { target: { value: 'Bloom and Co' } });
+    fireEvent.click(form.getByRole('button', { name: 'Save' }));
+
+    expect(await form.findByText(words)).toBeDefined();
+    expect(form.queryByText('Check your connection and try again.')).toBeNull();
+    expect((form.getByLabelText('Name') as HTMLInputElement).value).toBe('Bloom and Co');
+  });
+
   it('a member is shown the page for a page they lack permission for', async () => {
     signedIn(membership({ role: MEMBER, permissions: [] }));
     const sent = answering(() => pageOf([BLOOM]));

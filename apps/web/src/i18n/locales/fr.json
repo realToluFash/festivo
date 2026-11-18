@@ -4712,6 +4712,7 @@
     "noMatchIn": "Aucun prestataire ne correspond à « {{typed}} » dans la catégorie {{category}}.",
     "noneIn": "Aucun prestataire dans la catégorie {{category}}.",
     "noneArchivedIn": "Aucun prestataire archivé dans la catégorie {{category}}.",
+    "noneArchived": "Aucun prestataire archivé.",
     "everyCategory": "Afficher toutes les catégories",
     "pages": "Pagination",
     "page": "{{from, number}} à {{to, number}} sur {{total, number}}, de A à Z",
