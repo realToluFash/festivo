@@ -30,6 +30,7 @@ import { NeedsTodayScreen } from '../../src/demo/today/NeedsToday.tsx';
 import { PlanTodayLandscape } from '../../src/demo/today/PlanToday.tsx';
 import { RunTodayScreen } from '../../src/demo/today/RunToday.tsx';
 import { isRunState, withRun } from '../../src/demo/today/runOfShow.ts';
+import { isReadsState, useNowReads } from '../../src/demo/today/nowReads.tsx';
 import type { MomentName } from '../../src/kit/today.ts';
 import type { Tab } from '../../src/components/TodayCover.tsx';
 import type { Tell } from '../../src/components/TodayParts.tsx';
@@ -94,6 +95,7 @@ function DemoTodayScreen() {
     figures?: string;
     needs?: string;
     starts?: string;
+    reads?: string;
   }>();
   const place = useCurrentPlace();
   // An organisation made in the walk has no events yet.
@@ -124,6 +126,17 @@ function DemoTodayScreen() {
           )
         : null,
     [moment, params.now, arrivedState, live, numbers, say],
+  );
+  const readsState = run != null && isReadsState(params.reads) ? params.reads : null;
+  // Now's own reads aging (sc-62416): `?reads=` shows the line, or runs the reads live; without it Now is as sc-29875 left it.
+  const reads = useNowReads(readsState, run?.time ?? '16:40', say.locale);
+  const shownRun =
+    run == null || readsState == null ? run : reads.built ? null : { ...run, asOf: reads.asOf };
+  const built = readsState != null && reads.built;
+  // A refused read, or a first read that never lands, leaves Now as the product builds it today: `?moment=dayNow`'s.
+  const drawn = useMemo(
+    () => (built ? momentOf('dayNow', say, i18n.getFixedT('en')) : moment),
+    [built, say, i18n, moment],
   );
   const arrived = useMemo(
     () =>
@@ -163,7 +176,10 @@ function DemoTodayScreen() {
   useCoverStatusBar(bar, false);
 
   const notices = (
-    <SwitchedNotice style={kind === 'tabletLandscape' ? undefined : styles.switched} />
+    <>
+      <SwitchedNotice style={kind === 'tabletLandscape' ? undefined : styles.switched} />
+      {reads.controls}
+    </>
   );
 
   const onTab = useCallback((tab: Tab) => {
@@ -186,16 +202,16 @@ function DemoTodayScreen() {
         <View style={styles.fill}>
           {place == null ? (
             <NoOrganisation tell={tell} />
-          ) : run != null ? (
-            <RunTodayScreen moment={run} onTab={onTab} notices={notices} />
+          ) : shownRun != null ? (
+            <RunTodayScreen moment={shownRun} onTab={onTab} notices={notices} />
           ) : arrived != null ? (
             <ArrivedTodayScreen moment={arrived} onTab={onTab} notices={notices} />
-          ) : moment.needs != null ? (
-            <NeedsTodayScreen moment={moment} onTab={onTab} notices={notices} />
+          ) : drawn.needs != null ? (
+            <NeedsTodayScreen moment={drawn} onTab={onTab} notices={notices} />
           ) : kind === 'tabletLandscape' ? (
-            <PlanTodayLandscape moment={moment} onTab={onTab} notices={notices} />
+            <PlanTodayLandscape moment={drawn} onTab={onTab} notices={notices} />
           ) : (
-            <TodayScreen moment={moment} onTab={onTab} notices={notices} />
+            <TodayScreen moment={drawn} onTab={onTab} notices={notices} />
           )}
           {told != null && (
             <Told

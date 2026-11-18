@@ -239,7 +239,7 @@ describe('the page a link opens, signed out (sc-94, sc-1300)', () => {
 
   it('follows the reader’s region when it speaks the language shown', () => {
     expect(readingOf('en', 'en-GB').locale).toBe('en-GB');
-    expect(readingOf('en', 'fr-FR').locale).toBe('en-US');
+    expect(readingOf('en', 'fr-FR').locale).toBe('en-GB');
     expect(readingOf('pt', 'pt-BR').locale).toBe('pt-BR');
     expect(
       sharedView('whole', { reading: readingOf('en', 'en-GB') }).blocks[0]?.rows[3]?.line,

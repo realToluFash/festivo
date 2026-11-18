@@ -2947,6 +2947,7 @@ describe('events (sc-1486)', () => {
     deleteRefusedBecause: null,
     createdAt: '2026-10-21T09:00:00+00:00',
     permissions: ['events.read', 'events.manage'],
+    roleOnEvent: null,
   };
 
   function client(response: () => Response, sent: { line: string; body: unknown }[] = []) {
@@ -2976,6 +2977,7 @@ describe('events (sc-1486)', () => {
       owner: 'event',
       area: 'events',
       action: null,
+      done: false,
     };
     const WEDDING_GUESTS = { invited: 142, coming: 96, notReplied: 25 };
     const later = { ...EVENT, id: 'e2', name: 'Later', milestones: [] };
@@ -3231,6 +3233,7 @@ describe('events (sc-1486)', () => {
           owner: 'event',
           area: 'events',
           action: null,
+          done: false,
         },
         {
           at: '2026-10-26T02:00:00+01:00',
@@ -3239,6 +3242,7 @@ describe('events (sc-1486)', () => {
           owner: 'you',
           area: 'budget',
           action: { label: 'Open the budget', link: '/app/events/e1/budget' },
+          done: true,
         },
       ],
     };
@@ -3257,6 +3261,11 @@ describe('events (sc-1486)', () => {
       client(() =>
         json({ ...timeline, milestones: [{ ...first, action: { label: 'Open' } }] }),
       ).api.eventTimeline('e1'),
+    ).rejects.toThrow(/EventTimelineController/);
+    await expect(
+      client(() => json({ ...timeline, milestones: [{ ...first, done: 'no' }] })).api.eventTimeline(
+        'e1',
+      ),
     ).rejects.toThrow(/EventTimelineController/);
     await expect(client(() => json({ milestones: [] })).api.eventTimeline('e1')).rejects.toThrow(
       /EventTimelineController/,
@@ -3280,6 +3289,17 @@ describe('events (sc-1486)', () => {
     ).rejects.toThrow(/events controller/);
     await expect(
       client(() => json({ event: { ...EVENT, type: undefined } })).api.event('e1'),
+    ).rejects.toThrow(/events controller/);
+  });
+
+  test("a Member's role on the event comes with it, and a role the client does not know is refused (sc-59617)", async () => {
+    const member = { ...EVENT, permissions: ['events.read'], roleOnEvent: 'can_check_in' };
+
+    expect((await client(() => json({ event: member })).api.event('e1')).roleOnEvent).toBe(
+      'can_check_in',
+    );
+    await expect(
+      client(() => json({ event: { ...EVENT, roleOnEvent: 'usher' } })).api.event('e1'),
     ).rejects.toThrow(/events controller/);
   });
 

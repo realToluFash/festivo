@@ -7,6 +7,7 @@ namespace App\Domain\Seating;
 use App\Audit\Auditor;
 use App\Domain\Seating\Http\SeatingSerialiser;
 use App\Entity\Event;
+use App\Entity\SeatAssignment;
 use App\Entity\SeatingPlan;
 use App\Entity\SeatingRow;
 use App\Entity\SeatingSeat;
@@ -23,6 +24,8 @@ use App\Http\EntityTag;
 use App\Http\Exception\ApiException;
 use App\Locale\NameNormaliser;
 use App\Realtime\RealtimePublisher;
+use App\Repository\GuestRepository;
+use App\Repository\SeatAssignmentRepository;
 use App\Repository\SeatingPlanRepository;
 use App\Repository\SeatingRowRepository;
 use App\Repository\SeatingSeatRepository;
@@ -85,6 +88,10 @@ final readonly class SeatingPlanEditor
         private Auditor $auditor,
         private RealtimePublisher $realtimePublisher,
         private TranslatorInterface $translator,
+        private SeatAssignmentRepository $seatAssignmentRepository,
+        private GuestSeater $guestSeater,
+        private GuestRepository $guestRepository,
+        private GuestPageSignal $guestPageSignal,
     ) {
     }
 
@@ -295,6 +302,7 @@ final readonly class SeatingPlanEditor
             $rotation = $fields['rotation'] ?? ($reshaped ? 0 : $table->getRotation());
             $unusable = $fields['unusableSeats'] ?? Vec\filter($table->getUnusableSeats(), static fn (int $seat): bool => $seat <= $seats);
             $this->seatingRules->tableLayout($shape, $seats, $widthCm, $lengthCm, $endSeats, $rotation, $unusable, self::systemOf($event));
+            $this->keepTheSeated($table, $seats, $unusable);
             $table->lay($shape, $seats, $widthCm, $lengthCm, $endSeats, $rotation, Vec\sort($unusable));
 
             $changes = Auditor::diff($before, self::tableRecorded($table));
@@ -395,6 +403,7 @@ final readonly class SeatingPlanEditor
             $rotation = $fields['rotation'] ?? $row->getRotation();
             $unusable = $fields['unusableSeats'] ?? Vec\filter($row->getUnusableSeats(), static fn (int $seat): bool => $seat <= $seats);
             $this->seatingRules->rowLayout($seats, $spacingCm, $rotation, $unusable, self::systemOf($event));
+            $this->keepTheSeated($row, $seats, $unusable);
             $row->lay($seats, $spacingCm, $rotation, Vec\sort($unusable));
 
             $changes = Auditor::diff($before, self::rowRecorded($row));
@@ -486,6 +495,7 @@ final readonly class SeatingPlanEditor
             }
 
             if (Iter\contains_key($fields, 'unusable')) {
+                $this->keepTheSeated($seat, 1, $fields['unusable'] ? [1] : []);
                 $seat->setUnusable($fields['unusable']);
             }
 
@@ -697,22 +707,45 @@ final readonly class SeatingPlanEditor
         return Vec\map($copies, static fn (SeatingTable|SeatingRow|SeatingSeat $copy): string => $copy->getId()->toRfc4122());
     }
 
-    /** @param list<array{kind: 'table'|'row'|'seat', id: string, version: int}> $items */
-    public function deleteFurniture(Event $event, SeatingPlan $plan, User $by, array $items): void
+    /**
+     * @param list<array{kind: 'table'|'row'|'seat', id: string, version: int}> $items
+     *
+     * @return list<array{guestId: string, from: array{kind: 'table'|'row'|'seat', id: string, seat: int}, to: null}> each freed guest's move to Without a seat
+     */
+    public function deleteFurniture(Event $event, SeatingPlan $plan, User $by, array $items, bool $emptyOnly = false): array
     {
         $this->somethingChosen($items);
 
-        $this->locked($plan, function () use ($plan, $by, $items): void {
-            foreach ($this->unchangedItems($plan, $items) as $item) {
+        $freed = $this->locked($plan, function () use ($by, $plan, $items, $emptyOnly): array {
+            $found = $this->unchangedItems($plan, $items);
+            $freed = [];
+
+            foreach ($found as $item) {
+                foreach ($this->seatAssignmentRepository->findAt($item->getId()) as $there) {
+                    if ($emptyOnly) {
+                        throw new ApiException(ErrorCode::SeatingUndoStale, 'seating.undo_stale');
+                    }
+
+                    $freed[] = ['guestId' => $there->getGuest()->getId()->toRfc4122(), 'from' => GuestSeater::refOf($item, $there->getSeat()), 'to' => null];
+                    $this->auditor->record(GuestSeater::MOVED, 'Guest', $there->getGuest()->getId(), Actor::User, $by->getId(), $by->getName(), Auditor::diff(['seat' => GuestSeater::placeName($item) . ' #' . $there->getSeat()], ['seat' => null]));
+                    $this->entityManager->remove($there);
+                }
+            }
+
+            foreach ($found as $item) {
                 $this->auditor->record(self::deletedAs($item), self::auditedAs($item), $item->getId(), Actor::User, $by->getId(), $by->getName(), Auditor::diff($this->recordedItem($item), []));
                 $this->entityManager->remove($item);
             }
+
+            return $freed;
         });
 
         $this->published($event, $plan);
+
+        return $freed;
     }
 
-    /** @param list<array{kind: 'table'|'row'|'seat', name: string, sectionId: ?string, xCm: int, yCm: int, shape?: TableShape, seats?: int, widthCm?: int, lengthCm?: int, endSeats?: int, rotation?: int, spacingCm?: int, unusableSeats?: list<int>, unusable?: bool}> $items */
+    /** @param list<array{kind: 'table'|'row'|'seat', name: string, sectionId: ?string, xCm: int, yCm: int, shape?: TableShape, seats?: int, widthCm?: int, lengthCm?: int, endSeats?: int, rotation?: int, spacingCm?: int, unusableSeats?: list<int>, unusable?: bool, guests?: list<array{guestId: string, seat: int}>}> $items */
     public function restoreFurniture(Event $event, SeatingPlan $plan, User $by, array $items): array
     {
         $this->somethingChosen($items);
@@ -755,9 +788,16 @@ final readonly class SeatingPlanEditor
                 throw ApiException::validation($violations);
             }
 
+            $reseated = $this->reseated($event, $restored, $items);
+
             foreach ($restored as $back) {
                 $this->entityManager->persist($back);
                 $this->auditor->record(self::addedAs($back), self::auditedAs($back), $back->getId(), Actor::User, $by->getId(), $by->getName(), Auditor::diff([], $this->recordedItem($back)));
+            }
+
+            foreach ($reseated as $assignment) {
+                $this->entityManager->persist($assignment);
+                $this->auditor->record(GuestSeater::MOVED, 'Guest', $assignment->getGuest()->getId(), Actor::User, $by->getId(), $by->getName(), Auditor::diff(['seat' => null], ['seat' => GuestSeater::placeName($assignment->getPlace()) . ' #' . $assignment->getSeat()]));
             }
 
             return $restored;
@@ -769,10 +809,47 @@ final readonly class SeatingPlanEditor
     }
 
     /**
-     * @param array{kind: 'table'|'row'|'seat', name: string, sectionId: ?string, xCm: int, yCm: int, shape?: TableShape, seats?: int, widthCm?: int, lengthCm?: int, endSeats?: int, rotation?: int, spacingCm?: int, unusableSeats?: list<int>, unusable?: bool} $item
-     * @param list<SeatingTable>                                                                                                                                                                                                                                   $tables
-     * @param list<SeatingRow>                                                                                                                                                                                                                                     $rows
-     * @param list<SeatingSeat>                                                                                                                                                                                                                                    $seats
+     * @param list<SeatingTable|SeatingRow|SeatingSeat>                          $restored in the order of `$items`
+     * @param list<array{guests?: list<array{guestId: string, seat: int}>, ...}> $items
+     *
+     * @return list<SeatAssignment>
+     */
+    private function reseated(Event $event, array $restored, array $items): array
+    {
+        $wanted = [];
+
+        foreach ($items as $index => $item) {
+            foreach ($item['guests'] ?? [] as $one) {
+                $wanted[] = ['place' => $restored[$index], 'guestId' => $one['guestId'], 'seat' => $one['seat']];
+            }
+        }
+
+        $guests = [];
+
+        foreach ($wanted as $one) {
+            $guest = Uuid::isValid($one['guestId']) ? $this->guestRepository->findOneInEvent($event->getId(), Uuid::fromString($one['guestId'])) : null;
+
+            if (null === $guest || !GuestSeater::mayBeSeated($guest) || !Iter\contains(GuestSeater::usableChairs($one['place']), $one['seat'])) {
+                throw new ApiException(ErrorCode::SeatingUndoStale, 'seating.undo_stale');
+            }
+
+            $guests[] = $guest;
+        }
+
+        $chairs = Vec\map($wanted, static fn (array $one): string => $one['place']->getId()->toRfc4122() . ':' . $one['seat']);
+
+        if (Iter\count(Vec\unique($chairs)) !== Iter\count($chairs) || Iter\count(Vec\unique(Vec\map($wanted, static fn (array $one): string => $one['guestId']))) !== Iter\count($wanted) || [] !== $this->seatAssignmentRepository->findOfGuests($guests)) {
+            throw new ApiException(ErrorCode::SeatingUndoStale, 'seating.undo_stale');
+        }
+
+        return Vec\map(Vec\zip($guests, $wanted), static fn (array $pair): SeatAssignment => new SeatAssignment($pair[0], $pair[1]['place'], $pair[1]['seat']));
+    }
+
+    /**
+     * @param array{kind: 'table'|'row'|'seat', name: string, sectionId: ?string, xCm: int, yCm: int, shape?: TableShape, seats?: int, widthCm?: int, lengthCm?: int, endSeats?: int, rotation?: int, spacingCm?: int, unusableSeats?: list<int>, unusable?: bool, guests?: list<array{guestId: string, seat: int}>} $item
+     * @param list<SeatingTable>                                                                                                                                                                                                                                                                                     $tables
+     * @param list<SeatingRow>                                                                                                                                                                                                                                                                                       $rows
+     * @param list<SeatingSeat>                                                                                                                                                                                                                                                                                      $seats
      */
     private function restored(SeatingPlan $plan, array $item, array $tables, array $rows, array $seats, MeasurementSystem $system, User $by): SeatingTable|SeatingRow|SeatingSeat
     {
@@ -1106,6 +1183,64 @@ final readonly class SeatingPlanEditor
         );
     }
 
+    /**
+     * Refuses, 409, seats lowered below the guests seated there or an unusable mark on a taken chair (sc-4013); at a table, guests in chairs a lower count takes away move into its first run of free chairs, in order and side by side where they fit.
+     *
+     * @param list<int> $unusable
+     */
+    private function keepTheSeated(SeatingTable|SeatingRow|SeatingSeat $place, int $seats, array $unusable): void
+    {
+        $there = $this->seatAssignmentRepository->findAt($place->getId());
+
+        foreach ($there as $at) {
+            if (Iter\contains($unusable, $at->getSeat())) {
+                throw new ApiException(ErrorCode::SeatingGuestsSeated, 'seating.seat_in_use', members: ['field' => $place instanceof SeatingSeat ? 'unusable' : 'unusableSeats'], parameters: ['{name}' => $this->guestSeater->nameOf($at->getGuest())]);
+            }
+        }
+
+        $past = Vec\filter($there, static fn (SeatAssignment $at): bool => $at->getSeat() > $seats);
+
+        if ([] === $past) {
+            return;
+        }
+
+        if ($place instanceof SeatingRow) {
+            $last = $there[Iter\count($there) - 1];
+
+            throw new ApiException(ErrorCode::SeatingGuestsSeated, 'seating.row_below_seated', members: ['field' => 'seats'], parameters: ['{name}' => $this->guestSeater->nameOf($last->getGuest()), '{seat}' => $last->getSeat(), '{keep}' => $last->getSeat()]);
+        }
+
+        $usable = Vec\filter(Vec\range(1, $seats), static fn (int $seat): bool => !Iter\contains($unusable, $seat));
+        $count = Iter\count($there);
+
+        if ($count > Iter\count($usable)) {
+            $keep = $count;
+            while (Iter\count(Vec\filter(Vec\range(1, $keep), static fn (int $seat): bool => !Iter\contains($unusable, $seat))) < $count) {
+                ++$keep;
+            }
+
+            throw new ApiException(ErrorCode::SeatingGuestsSeated, 'seating.table_below_seated', members: ['field' => 'seats'], parameters: ['{count}' => $count, '{keep}' => $keep]);
+        }
+
+        $taken = Vec\map(Vec\filter($there, static fn (SeatAssignment $at): bool => $at->getSeat() <= $seats), static fn (SeatAssignment $at): int => $at->getSeat());
+        $free = Vec\filter($usable, static fn (int $seat): bool => !Iter\contains($taken, $seat));
+
+        $moving = Iter\count($past);
+        $chairs = Vec\take($free, $moving);
+        foreach (Vec\range(1, $seats) as $start) {
+            $run = Vec\map(Vec\range(0, $moving - 1), static fn (int $step): int => (($start - 1 + $step) % $seats) + 1);
+
+            if (Iter\all($run, static fn (int $seat): bool => Iter\contains($free, $seat))) {
+                $chairs = $run;
+                break;
+            }
+        }
+
+        foreach (Vec\values($past) as $index => $at) {
+            $at->renumber($chairs[$index]);
+        }
+    }
+
     public static function systemOf(Event $event): MeasurementSystem
     {
         return MeasurementSystem::forTerritory($event->getOrganisation()->getCountryCode());
@@ -1138,6 +1273,38 @@ final readonly class SeatingPlanEditor
         return $ifMatch;
     }
 
+    /**
+     * Tells everyone with the plan open what this editor has chosen, or that they chose nothing; kept nowhere, so it is never a lock (sc-4719).
+     *
+     * @param array{kind: 'table'|'row'|'seat', id: string, chair?: int|null}|null $chosen `chair` is one of a table's chairs, by its number
+     */
+    public function announceChoice(Event $event, SeatingPlan $plan, User $user, ?array $chosen): void
+    {
+        $item = null === $chosen ? null : $this->itemIn($plan, $chosen['kind'], $chosen['id']);
+        $chair = $item instanceof SeatingTable ? $chosen['chair'] ?? null : null;
+        if ($item instanceof SeatingTable && null !== $chair && ($chair < 1 || $chair > $item->getSeats())) {
+            throw ApiException::notFound('seating.no_such_item');
+        }
+
+        $this->realtimePublisher->publish(RealtimeTopic::EventSeatingChoices, $event->getId()->toRfc4122(), [
+            'userId' => $user->getId()->toRfc4122(),
+            'chosen' => null === $item || null === $chosen ? null : [
+                'kind' => $chosen['kind'],
+                'id' => $item->getId()->toRfc4122(),
+                'chair' => $chair,
+            ],
+        ]);
+    }
+
+    /** Tells everyone with the plan open that this person still has it open, so a connection that died without a word is let go of within seconds rather than when the hub notices (sc-4719). */
+    public function announceHere(Event $event, User $user): void
+    {
+        $this->realtimePublisher->publish(RealtimeTopic::EventSeatingChoices, $event->getId()->toRfc4122(), [
+            'userId' => $user->getId()->toRfc4122(),
+            'here' => true,
+        ]);
+    }
+
     private static function changedSince(?User $changedBy): ApiException
     {
         $name = $changedBy?->getName();
@@ -1148,6 +1315,7 @@ final readonly class SeatingPlanEditor
     private function published(Event $event, ?SeatingPlan $plan): void
     {
         $this->realtimePublisher->publish(RealtimeTopic::EventSeating, $event->getId()->toRfc4122(), $this->seatingSerialiser->seating($event, $plan));
+        null === $plan ? $this->guestPageSignal->send($event) : $this->guestPageSignal->seatingChanged($event);
     }
 
     /** @return array<string, mixed> */

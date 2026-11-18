@@ -5,7 +5,13 @@ import { beforeAll, describe, expect, it } from 'vitest';
 import en from '../i18n/locales/en.json';
 
 import { membersListOf } from '../test-members.ts';
-import { membersCard, membersCounts, memberLine, memberTag } from './membersSummary.ts';
+import {
+  membersCard,
+  membersCounts,
+  memberLine,
+  memberTag,
+  personInFront,
+} from './membersSummary.ts';
 
 beforeAll(() =>
   init({
@@ -300,5 +306,21 @@ describe("Members' rows", () => {
       membersCard({ t, list, manages: false, organisation: 'Ire Events', said: null, claim: null })
         .says,
     ).toBe('12,345 people');
+  });
+});
+
+describe('a person’s page with no title over its card (sc-37693)', () => {
+  it('stands in front of the list on a phone and on an iPad upright, as the demo’s `priya` draws it', () => {
+    expect(personInFront('phone', true)).toBe(true);
+    expect(personInFront('tabletPortrait', true)).toBe(true);
+  });
+
+  it('sits beside the list on its side, under the frame’s own title', () => {
+    expect(personInFront('tabletLandscape', true)).toBe(false);
+  });
+
+  it('leaves the list titled while nobody is open', () => {
+    expect(personInFront('phone', false)).toBe(false);
+    expect(personInFront('tabletPortrait', false)).toBe(false);
   });
 });

@@ -5,10 +5,10 @@ import {
   positionPart,
   visibleLength,
 } from '@soirely/domain';
-import { useEffect, useId, useRef, useState } from 'react';
+import { type RefObject, useEffect, useId, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
-import { checkCoverPick } from '../coverPick.ts';
+import { useCoverSending } from '../coverPick.ts';
 import type { Mesh } from '../mesh.ts';
 import { Photo } from './EventCard.tsx';
 import { Broken, EditText, Opened } from './EventPageParts.tsx';
@@ -81,8 +81,7 @@ export function CoverEdit<Saved>({
   const fileInput = useRef<HTMLInputElement>(null);
   const picker = useRef<HTMLButtonElement>(null);
   const describe = useRef<HTMLInputElement>(null);
-  const picks = useRef(0);
-  const uploads = useRef(0);
+  const sending = useCoverSending<CoverUploaded>();
   const held = useRef(chosen);
   const open = useRef(true);
   const focusPicker = useRef(true);
@@ -108,7 +107,7 @@ export function CoverEdit<Saved>({
   });
   useEffect(() => {
     const first = start.uploading;
-    if (first != null) follow(first, ++uploads.current);
+    if (first != null) follow(first);
 
     return () => {
       open.current = false;
@@ -117,35 +116,34 @@ export function CoverEdit<Saved>({
     // eslint-disable-next-line react-hooks/exhaustive-deps -- the design demo's first upload is followed once, on opening.
   }, []);
 
-  function follow(uploadingNow: Promise<CoverUploaded>, mine: number): void {
-    uploadingNow.then(
-      (uploaded) => {
-        if (!open.current || mine !== uploads.current) return discard(uploaded);
-        if (held.current != null) discard(held.current);
-        focusPicker.current = document.activeElement === picker.current;
-        setChosen(uploaded);
-        setRemoved(false);
-        setPosition(COVER_MIDDLE);
-        setDescription('');
-        setTooLong(false);
-        setPickRefused(null);
+  function follow(uploadingNow: Promise<CoverUploaded>): void {
+    void sending.send(uploadingNow, discard).then((sent) => {
+      if (sent == null) return;
+      if ('refused' in sent) {
         setUploading(false);
-      },
-      (error: unknown) => {
-        if (!open.current || mine !== uploads.current) return;
-        setUploading(false);
-        setPickRefused(wordsOf(error));
-      },
-    );
+        setPickRefused(wordsOf(sent.refused));
+        return;
+      }
+
+      const uploaded = sent.landed;
+      if (held.current != null) discard(held.current);
+      focusPicker.current = document.activeElement === picker.current;
+      setChosen(uploaded);
+      setRemoved(false);
+      setPosition(COVER_MIDDLE);
+      setDescription('');
+      setTooLong(false);
+      setPickRefused(null);
+      setUploading(false);
+    });
   }
 
   async function pick(file: File | undefined): Promise<void> {
     if (fileInput.current != null) fileInput.current.value = '';
     if (file == null) return;
 
-    const mine = ++picks.current;
-    const checked = await checkCoverPick(file);
-    if (!open.current || mine !== picks.current) return;
+    const checked = await sending.check(file);
+    if (checked == null) return;
 
     if (checked.refusal != null) {
       setPickRefused(t(`eventCover.refused_${checked.refusal}`));
@@ -154,11 +152,11 @@ export function CoverEdit<Saved>({
 
     setPickRefused(null);
     setUploading(true);
-    follow(upload(file, checked.shows), ++uploads.current);
+    follow(upload(file, checked.shows));
   }
 
   function remove(): void {
-    uploads.current += 1;
+    sending.stop();
     if (chosen != null) discard(chosen);
     setChosen(null);
     setRemoved(true);
@@ -195,8 +193,6 @@ export function CoverEdit<Saved>({
     held.current = null;
     onSaved(result);
   }
-
-  const part = positionPart(position);
 
   return (
     <Opened
@@ -249,54 +245,19 @@ export function CoverEdit<Saved>({
       {photo != null ? (
         <>
           {pickRefused != null && <Broken>{pickRefused}</Broken>}
-          <button
-            ref={picker}
-            type="button"
-            className="desk-text"
-            onClick={() => fileInput.current?.click()}
-          >
-            {t('eventCover.change')}
-          </button>
-          <div className="desk-field">
-            <label htmlFor={`${id}-position`} className="desk-label">
-              {t('eventCover.position')}
-            </label>
-            <input
-              id={`${id}-position`}
-              type="range"
-              className="ev-slider"
-              min={0}
-              max={100}
-              step={1}
-              value={position}
-              aria-valuetext={t(`eventCover.showing_${part}`)}
-              onChange={(change) => setPosition(Number(change.target.value))}
-            />
-            <div className="ev-slider-ends" aria-hidden="true">
-              <span>{t('eventCover.top')}</span>
-              <span>{t('eventCover.bottom')}</span>
-            </div>
-            <p className="desk-help">{t(`eventCover.showing_${part}`)}</p>
-          </div>
-          <EditText
-            label={t('eventCover.describe')}
-            optional
-            value={description}
-            inputRef={describe}
-            error={
-              tooLong ? t('eventCover.describeTooLong', { most: COVER_DESCRIPTION_MAXIMUM }) : null
-            }
-            help={`${t('eventCover.describeHint')} ${t('eventCover.describeCount', { count, most: COVER_DESCRIPTION_MAXIMUM })}`}
-            input={{ autoComplete: 'off' }}
-            onChange={(value) => {
+          <CoverPhotoFields
+            position={position}
+            onPosition={setPosition}
+            description={description}
+            onDescription={(value) => {
               setDescription(value);
               setTooLong(false);
             }}
-          />
-          <RedAction
-            label={t('eventCover.remove')}
-            line={t('eventCover.removeLine')}
-            onClick={remove}
+            tooLong={tooLong}
+            describeRef={describe}
+            pickerRef={picker}
+            onChange={() => fileInput.current?.click()}
+            onRemove={remove}
           />
         </>
       ) : (
@@ -322,5 +283,84 @@ export function CoverEdit<Saved>({
         </>
       )}
     </Opened>
+  );
+}
+
+/** Change, Position, Description and Remove under a chosen photo, as the cover part draws them; New event shows the same (sc-48607). */
+export function CoverPhotoFields({
+  position,
+  onPosition,
+  description,
+  onDescription,
+  tooLong,
+  describeRef,
+  pickerRef,
+  off = false,
+  onChange,
+  onRemove,
+}: {
+  position: number;
+  onPosition: (position: number) => void;
+  description: string;
+  onDescription: (description: string) => void;
+  tooLong: boolean;
+  describeRef: RefObject<HTMLInputElement | null>;
+  pickerRef?: RefObject<HTMLButtonElement | null>;
+  off?: boolean;
+  onChange: () => void;
+  onRemove: () => void;
+}) {
+  const { t } = useTranslation();
+  const id = useId();
+  const part = positionPart(position);
+  const count = visibleLength(description);
+
+  return (
+    <>
+      <button ref={pickerRef} type="button" className="desk-text" disabled={off} onClick={onChange}>
+        {t('eventCover.change')}
+      </button>
+      <div className="desk-field">
+        <label htmlFor={`${id}-position`} className="desk-label">
+          {t('eventCover.position')}
+        </label>
+        <input
+          id={`${id}-position`}
+          type="range"
+          className="ev-slider"
+          min={0}
+          max={100}
+          step={1}
+          value={position}
+          disabled={off}
+          aria-valuetext={t(`eventCover.showing_${part}`)}
+          onChange={(change) => onPosition(Number(change.target.value))}
+        />
+        <div className="ev-slider-ends" aria-hidden="true">
+          <span>{t('eventCover.top')}</span>
+          <span>{t('eventCover.bottom')}</span>
+        </div>
+        <p className="desk-help">{t(`eventCover.showing_${part}`)}</p>
+      </div>
+      <EditText
+        label={t('eventCover.describe')}
+        optional
+        value={description}
+        inputRef={describeRef}
+        error={
+          tooLong ? t('eventCover.describeTooLong', { most: COVER_DESCRIPTION_MAXIMUM }) : null
+        }
+        help={`${t('eventCover.describeHint')} ${t('eventCover.describeCount', { count, most: COVER_DESCRIPTION_MAXIMUM })}`}
+        input={{ autoComplete: 'off', readOnly: off }}
+        onChange={onDescription}
+      />
+      {!off && (
+        <RedAction
+          label={t('eventCover.remove')}
+          line={t('eventCover.removeLine')}
+          onClick={onRemove}
+        />
+      )}
+    </>
   );
 }

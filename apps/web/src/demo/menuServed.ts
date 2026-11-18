@@ -1,3 +1,4 @@
+import { type Variant, type VariantAsk, VW, variant as made } from './dishVariants.ts';
 import type { DemoLink } from './settings.ts';
 
 /** A dish's Items and Served with this course (sc-34230), on every course of the Menu at a desk (board MenuServing, page e32). */
@@ -25,7 +26,7 @@ export interface Dish {
   name: string;
   desc: string;
   contains: readonly string[];
-  variants: readonly string[];
+  variants: readonly Variant[];
   choices: readonly Choice[];
   items: readonly Item[];
 }
@@ -69,7 +70,6 @@ export const MW = {
   desc: 'Description',
   contains: 'Contains',
   containsStays: 'Items add nothing to Contains.',
-  variants: 'Variants · guests pick one',
   choices: 'Choices',
   editCourse: 'Edit course',
   editDish: 'Edit dish',
@@ -82,20 +82,15 @@ export const MW = {
   removeHint: 'Remove',
   remove: 'Remove…',
   removeChoiceAria: 'Remove “{{q}}”…',
-  removeVariantAria: 'Remove the variant {{name}}…',
   close: 'Close',
   save: 'Save changes',
   cancel: 'Cancel',
   keepIt: 'Keep it',
   removeChoice: 'Remove choice',
-  fold: 'Make this a single dish?',
   foldItem: 'The variants are also one of {{dish}}’s items.',
-  keepVariants: 'Keep the variants',
-  makeSingle: 'Make it a single dish',
-  folded: '{{dish}} is now a single dish.',
   addDish: 'Add dish',
   saved: '{{name}} saved.',
-  added: '{{name}} added from the library. It has no items.',
+  added: '{{name}} added to {{course}}. It has no items.',
   forbidden: 'Nothing was changed. Your role does not include the permission this needs.',
   lock: 'Your role, Coordinator, can see this menu but not change it. Someone whose role can change Menu can.',
   tooMany: 'A dish can have at most 6 items.',
@@ -117,13 +112,16 @@ export function choiceOf(dish: Dish, id: string): Choice | undefined {
   return dish.choices.find((one) => one.id === id);
 }
 
+export const variantNames = (dish: Pick<Dish, 'variants'>): string[] =>
+  dish.variants.map((one) => one.name);
+
 export function orList(names: readonly string[], locale = 'en'): string {
   return new Intl.ListFormat(locale, { type: 'disjunction' }).format(names);
 }
 
 export function itemName(item: Item, dish: Dish): string {
   if (item.kind === 'fixed') return item.name;
-  if (item.kind === 'variant') return orList(dish.variants);
+  if (item.kind === 'variant') return orList(variantNames(dish));
 
   const choice = choiceOf(dish, item.choiceId);
   if (choice == null) return '';
@@ -142,7 +140,7 @@ export function offered(dish: Dish, items: readonly Item[]): Offer[] {
   const used = new Set(items.flatMap((one) => (one.kind === 'choice' ? [one.choiceId] : [])));
   const variant: Offer[] =
     dish.variants.length > 1 && !items.some((one) => one.kind === 'variant')
-      ? [{ kind: 'variant', name: orList(dish.variants) }]
+      ? [{ kind: 'variant', name: orList(variantNames(dish)) }]
       : [];
 
   return [
@@ -211,7 +209,7 @@ export function courseItems(course: Pick<Course, 'dishes' | 'ownItems'>): string
       ? [dish.name]
       : dish.items.flatMap((item) => {
           if (item.kind === 'fixed') return [item.name];
-          if (item.kind === 'variant') return dish.variants;
+          if (item.kind === 'variant') return variantNames(dish);
 
           return choiceOf(dish, item.choiceId)?.options ?? [];
         }),
@@ -275,14 +273,15 @@ export function removeChoiceLine(dish: Dish, choice: Choice, index: number): str
   return isItem ? `${ask} ${asked} is also one of ${dish.name}’s items.` : ask;
 }
 
-export function foldLine(dish: Dish): string {
+/** sc-3903's fold question gains this line when the variants are one of the dish's items. */
+export function foldItemLine(dish: Dish): string | null {
   return dish.items.some((one) => one.kind === 'variant')
-    ? `${MW.fold} ${mw(MW.foldItem, { dish: dish.name })}`
-    : MW.fold;
+    ? mw(MW.foldItem, { dish: dish.name })
+    : null;
 }
 
 export function removedLine(dish: Dish, choice: Choice): string {
-  return `${choice.question.trim() === '' ? 'The choice' : choice.question} removed from ${dish.name}.`;
+  return `${choice.question.trim() === '' ? 'The choice' : `“${choice.question}”`} removed from ${dish.name}.`;
 }
 
 const fixed = (key: string, name: string): FixedItem => ({ key, kind: 'fixed', name });
@@ -330,7 +329,16 @@ const FISH: Dish = {
   name: 'Grilled fish',
   desc: 'With pepper sauce.',
   contains: ['Fish'],
-  variants: ['Croaker', 'Tilapia'],
+  variants: [
+    made('v-croaker', 'Croaker', 'everyone', ['fish'], ['pescatarian'], {
+      minor: 1550,
+      currency: 'EUR',
+    }),
+    made('v-tilapia', 'Tilapia', 'everyone', ['fish'], ['pescatarian'], {
+      minor: 1400,
+      currency: 'EUR',
+    }),
+  ],
   choices: [],
   items: [fixed('p4', 'Fish'), fixed('p5', 'Pepper sauce'), fixed('p6', 'Yam chips')],
 };
@@ -417,7 +425,7 @@ export type Panel =
 
 export type Asking =
   | { dishId: string; kind: 'choice'; choiceId: string }
-  | { dishId: string; kind: 'variant'; name: string };
+  | { dishId: string; kind: 'variant'; ask: VariantAsk };
 
 export interface MenuStart {
   name: string;
@@ -511,10 +519,10 @@ const STATES = {
   fromLibrary: () =>
     start({
       name: 'A dish added from the library',
-      note: 'Moi moi arrives with no items.',
+      note: 'Moi moi arrives with no items. The open Add dish list is sc-3902’s demo and isn’t drawn here; in it, the list stays open for the next dish.',
       courses: courses({ dishes: [jollof(JOLLOF_ITEMS), EGUSI, MOI_MOI] }),
-      panel: { kind: 'dish', courseId: 'c2', dishId: 'e10' },
-      told: mw(MW.added, { name: 'Moi moi' }),
+      panel: null,
+      told: mw(MW.added, { name: 'Moi moi', course: 'Main' }),
     }),
   tooMany: () =>
     start({
@@ -603,7 +611,7 @@ const STATES = {
       note: 'The choice went, and its item with it; Rice and Chicken stay.',
       courses: courses({ dishes: [withoutChoice(jollof(JOLLOF_ITEMS), 'ch1'), EGUSI] }),
       panel: null,
-      told: 'And a side? removed from Jollof rice.',
+      told: removedLine(jollof(JOLLOF_ITEMS), SIDE),
     }),
   removedOne: () =>
     start({
@@ -616,7 +624,7 @@ const STATES = {
         ],
       }),
       panel: null,
-      told: 'And a side? removed from Jollof rice.',
+      told: removedLine(jollof(JOLLOF_ITEMS), SIDE),
     }),
   fold: () =>
     start({
@@ -624,7 +632,7 @@ const STATES = {
       note: 'Removing Tilapia leaves one variant, so sc-3903 asks to make it a single dish, and adds that the variants are one of its items.',
       courses: courses({ dishes: [FISH_VARIANT, EGUSI] }),
       panel: null,
-      asking: { dishId: 'e4', kind: 'variant', name: 'Tilapia' },
+      asking: { dishId: 'e4', kind: 'variant', ask: { variantId: 'v-tilapia', kind: 'fold' } },
     }),
   foldedTwo: () =>
     start({
@@ -632,7 +640,7 @@ const STATES = {
       note: 'The variant left the items; Pepper sauce and Yam chips stay.',
       courses: courses({ dishes: [asSingleDish(FISH_VARIANT), EGUSI] }),
       panel: null,
-      told: mw(MW.folded, { dish: 'Grilled fish' }),
+      told: VW.folded('Grilled fish', 'Croaker', 'event'),
     }),
   foldedOne: () =>
     start({
@@ -645,7 +653,7 @@ const STATES = {
         ],
       }),
       panel: null,
-      told: mw(MW.folded, { dish: 'Grilled fish' }),
+      told: VW.folded('Grilled fish', 'Croaker', 'event'),
     }),
   readOnly: () =>
     start({

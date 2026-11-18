@@ -26,9 +26,12 @@ import type { Open } from './MenuCourses.tsx';
 export interface Told {
   words: string;
   /** A second line under it, beside the amber ring: the allergen line, or Guests choose again. */
-  more?: string | null;
+  more?: string | readonly string[] | null;
   tone?: 'done' | 'fail';
 }
+
+const moreOf = (more: Told['more']): readonly string[] =>
+  more == null ? [] : typeof more === 'string' ? [more] : more;
 
 /** The page's one polite status line; focus moves here after a save, so a screen reader hears it once. */
 export function Said({ said }: { said: Told | null }) {
@@ -40,14 +43,14 @@ export function Said({ said }: { said: Told | null }) {
             <Glyph name={said.tone === 'fail' ? 'alert' : 'tick'} size={17} weight={2.6} />
             {said.words}
           </p>
-          {said.more != null && (
-            <p className="mc-said-more">
+          {moreOf(said.more).map((one) => (
+            <p key={one} className="mc-said-more">
               <span className="mc-ring is-warn" aria-hidden="true">
                 !
               </span>
-              {said.more}
+              {one}
             </p>
-          )}
+          ))}
         </>
       )}
     </div>
@@ -159,7 +162,10 @@ export function AddDishPanel({
   lang,
   budget,
   library,
+  loading,
+  failed,
   errors,
+  onRetry,
   onTab,
   onFind,
   onAdd,
@@ -172,7 +178,10 @@ export function AddDishPanel({
   lang: Lang;
   budget: boolean;
   library: readonly LibDish[];
+  loading: boolean;
+  failed: boolean;
   errors: FormErrors | null;
+  onRetry: () => void;
   onTab: (tab: 'library' | 'new') => void;
   onFind: (q: string) => void;
   onAdd: (libraryId: string) => void;
@@ -220,7 +229,13 @@ export function AddDishPanel({
                 />
               </div>
               <p id="mc-found" className="desk-help" role="status">
-                {looking ? CW.foundOf(shown.length, library.length) : CW.inLibrary(library.length)}
+                {loading
+                  ? CW.libraryLoading
+                  : failed
+                    ? CW.libraryFailed
+                    : looking
+                      ? CW.foundOf(shown.length, library.length)
+                      : CW.inLibrary(library.length)}
               </p>
             </div>
             <p className="mc-added" role="status">
@@ -231,15 +246,28 @@ export function AddDishPanel({
                 </>
               )}
             </p>
-            {shown.length === 0 ? (
+            {loading ? (
+              <div className="lib-loading" aria-busy="true">
+                {[0, 1, 2].map((one) => (
+                  <div key={one} className="lib-bone" aria-hidden="true" />
+                ))}
+              </div>
+            ) : failed ? (
               <div className="mc-no-match">
-                <p>{CW.noMatch(open.q.trim())}</p>
+                <p>{CW.libraryFailedBody}</p>
+                <button type="button" className="gs-pill is-secondary" onClick={onRetry}>
+                  {CW.tryAgain}
+                </button>
+              </div>
+            ) : shown.length === 0 ? (
+              <div className="mc-no-match">
+                <p>{looking ? CW.noMatch(open.q.trim()) : CW.libraryEmpty}</p>
                 <button
                   type="button"
                   className="gs-pill is-secondary"
                   onClick={() => onStartNew(open.q.trim())}
                 >
-                  {CW.startNew(open.q.trim())}
+                  {looking ? CW.startNew(open.q.trim()) : CW.startNewBlank}
                 </button>
               </div>
             ) : (

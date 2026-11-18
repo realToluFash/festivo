@@ -1,8 +1,9 @@
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { connection } from '@soirely/domain';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { RouterProvider, createMemoryRouter } from 'react-router';
 
-import { __setSessionState, type Session } from '../../../session.ts';
+import { __setSessionState, forgetSession, type Session } from '../../../session.ts';
 import { OWNER_PERMISSIONS, membership } from '../../../test-memberships.ts';
 import { routes } from '../../index.tsx';
 
@@ -203,6 +204,7 @@ function kept(): { key: string; kind: string; pressedAt: string }[] {
 const liveRegion = () => document.querySelector('.mn-page > [aria-live="polite"]');
 
 afterEach(() => {
+  vi.useRealTimers();
   vi.restoreAllMocks();
   localStorage.clear();
 });
@@ -273,6 +275,17 @@ describe('Run of show on the night (sc-3895)', () => {
     expect(await screen.findByRole('button', { name: 'Done: First dance' })).toBeDefined();
     expect(sent.find((one) => one.line === PRESS_DANCE)?.body).toMatchObject({ kind: 'start' });
     expect(liveRegion()?.textContent).toBe('First dance started.');
+  });
+
+  it('keeps focus on the night after a press replaces the pressed button', async () => {
+    await onNight(NIGHT, { answers: { [PRESS_SPEECHES]: answered(GAP) } });
+    const done = await screen.findByRole('button', { name: 'Done: Speeches' });
+
+    done.focus();
+    fireEvent.click(done);
+
+    const start = await screen.findByRole('button', { name: 'Start now: First dance' });
+    await waitFor(() => expect(document.activeElement).toBe(start));
   });
 
   it('docks a chosen Later row with Start now, Skip and Move, and Move offers Leave it', async () => {
@@ -351,6 +364,7 @@ describe('Run of show on the night (sc-3895)', () => {
 
     expect(await screen.findByText('Reconnecting · 1 min old')).toBeDefined();
     expect(screen.getByText('1 press waiting to send.')).toBeDefined();
+    expect(screen.queryByText(/^Offline · as of/)).toBeNull();
     expect(screen.getByText('Nothing is on')).toBeDefined();
     const [press] = kept();
     expect(press?.kind).toBe('done');
@@ -361,6 +375,22 @@ describe('Run of show on the night (sc-3895)', () => {
     expect(await screen.findByText('Live · updated just now')).toBeDefined();
     expect(liveRegion()?.textContent).toBe('Connected. Presses sent.');
     expect(kept()).toEqual([]);
+  });
+
+  it('says it is offline once, in the strip, and its Try now asks for the event again', async () => {
+    const sent = await onNight(NIGHT);
+    await screen.findByRole('button', { name: 'Done: Speeches' });
+
+    act(() => connection.deviceOffline());
+
+    expect(await screen.findByText('Reconnecting · 1 min old')).toBeDefined();
+    expect(screen.queryByText(/^Offline · as of/)).toBeNull();
+    const asked = sent.filter(({ line }) => line === 'GET /api/events/ev_1').length;
+
+    fireEvent.click(screen.getByRole('button', { name: 'Try now' }));
+
+    expect(await screen.findByText('Live · updated just now')).toBeDefined();
+    expect(sent.filter(({ line }) => line === 'GET /api/events/ev_1').length).toBe(asked + 1);
   });
 
   it('shows and sends what was pressed before the page was closed', async () => {
@@ -498,6 +528,21 @@ describe('Run of show on the night (sc-3895)', () => {
     });
   });
 
+  it('opens on the track Today followed, named by ?track= (sc-61017)', async () => {
+    const foyer = item('it_bar', 'Late bar', '19:30', {
+      place: 'Foyer',
+      lengthMinutes: 60,
+      startedAt: at('19:30'),
+    });
+    await onNight([...NIGHT, foyer], {
+      url: `/app/events/ev_1/schedule?${new URLSearchParams({ track: '2030-11-15|Foyer' }).toString()}`,
+    });
+
+    expect(await screen.findByRole('button', { name: 'Track: Foyer' })).toBeDefined();
+    const now = screen.getByRole('region', { name: 'Now' });
+    expect(within(now).getByRole('heading', { name: 'Late bar' })).toBeDefined();
+  });
+
   it('says a day with nothing on it has nothing planned, and links to the Schedule', async () => {
     await onNight([{ ...DANCE, startsAt: '2030-11-17T20:30:00+00:00', day: '2030-11-17' }]);
 
@@ -535,5 +580,242 @@ describe('Run of show on the night (sc-3895)', () => {
       expect(screen.queryByRole('navigation', { name: 'Schedule or run of show' })).toBeNull();
       expect(screen.queryByRole('region', { name: 'Now' })).toBeNull();
     });
+  });
+});
+
+describe('moving to another area of an event while offline (sc-65646)', () => {
+  const HEADCOUNT = {
+    counts: {
+      onList: 20,
+      notYetInvited: 0,
+      invited: 20,
+      accepted: 12,
+      maybe: 2,
+      awaitingReply: 4,
+      held: 0,
+      declined: 2,
+      heldBy: { hostNoReply: 0, hostMaybe: 0, hostNotComing: 0 },
+    },
+    byGroup: [],
+    byDietaryNeed: { addsUp: false, needs: [] },
+  };
+
+  async function loadedThenOffline() {
+    let online = true;
+    const sent: string[] = [];
+    clock = '20:02';
+    signedIn();
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
+      const line = `${init?.method ?? 'GET'} ${new URL(String(input)).pathname}`;
+      sent.push(line);
+      if (!online) throw new TypeError('Failed to fetch');
+      if (line === 'GET /api/events/ev_1') return json({ event: EVENT });
+      if (line === 'GET /api/events/ev_1/schedule') return json({ schedule: schedule(NIGHT) });
+      if (line === PRESS_SPEECHES) return json({ schedule: schedule(GAP) });
+      if (line === 'GET /api/events/ev_1/headcount') return json({ headcount: HEADCOUNT });
+
+      return json({});
+    });
+    const router = createMemoryRouter(routes, { initialEntries: ['/app/events/ev_1'] });
+    render(<RouterProvider router={router} />);
+    await screen.findByText('12 coming of 20 invited. Each number opens the guests it counts.');
+    await act(() => router.navigate('/app/events/ev_1/schedule'));
+    await screen.findByRole('button', { name: 'Done: Speeches' });
+
+    online = false;
+    act(() => connection.deviceOffline());
+    fireEvent.click(screen.getByRole('button', { name: 'Done: Speeches' }));
+    expect(await screen.findByText('1 press waiting to send.')).toBeDefined();
+
+    return {
+      sent,
+      go: (to: string) => act(() => router.navigate(to)),
+      reconnect: () => {
+        online = true;
+      },
+    };
+  }
+
+  it('keeps the event over an area whose own list never loaded, under the box, with its own failure line', async () => {
+    const { go } = await loadedThenOffline();
+
+    await go('/app/events/ev_1/guests');
+
+    expect(await screen.findByText('We could not load the guests.')).toBeDefined();
+    expect(
+      screen.getByText(/^Offline · as of \d\d:\d\d$/, { selector: '.ev-offline-words' }),
+    ).toBeDefined();
+    expect(screen.getAllByText('Adaeze and Tunde').length).toBeGreaterThan(0);
+    expect(screen.queryByText('The event did not load. Try again in a moment.')).toBeNull();
+  });
+
+  it('shows Overview as last loaded, under the box', async () => {
+    const { go } = await loadedThenOffline();
+
+    await go('/app/events/ev_1');
+
+    expect(
+      await screen.findByText(/^Offline · as of \d\d:\d\d$/, { selector: '.ev-offline-words' }),
+    ).toBeDefined();
+    expect(screen.getAllByText('Adaeze and Tunde').length).toBeGreaterThan(0);
+    expect(
+      await screen.findByText('12 coming of 20 invited. Each number opens the guests it counts.'),
+    ).toBeDefined();
+    expect(screen.queryByText('Guest numbers did not load.')).toBeNull();
+    expect(screen.queryByText('The event did not load. Try again in a moment.')).toBeNull();
+  });
+
+  it('comes back to the night as last loaded, with its count and its presses applied, and no box', async () => {
+    const { go } = await loadedThenOffline();
+
+    await go('/app/events/ev_1/guests');
+    await screen.findByText('We could not load the guests.');
+    await go('/app/events/ev_1/schedule');
+
+    expect(await screen.findByText('1 press waiting to send.')).toBeDefined();
+    expect(screen.getByText('Nothing is on')).toBeDefined();
+    expect(screen.getByRole('button', { name: 'Try now' })).toBeDefined();
+    expect(screen.getByRole('button', { name: 'Start now: First dance' })).toBeDefined();
+    expect(screen.queryByText('The run of show did not load.')).toBeNull();
+    expect(screen.queryByText(/^Offline · as of/)).toBeNull();
+  });
+
+  it('loads the event and the night afresh and sends the press when Try now answers', async () => {
+    const { go, sent, reconnect } = await loadedThenOffline();
+
+    await go('/app/events/ev_1/guests');
+    await screen.findByText('We could not load the guests.');
+    await go('/app/events/ev_1/schedule');
+    await screen.findByText('1 press waiting to send.');
+    const before = sent.length;
+
+    reconnect();
+    fireEvent.click(screen.getByRole('button', { name: 'Try now' }));
+
+    expect(await screen.findByText('Live · updated just now')).toBeDefined();
+    await waitFor(() =>
+      expect(sent.slice(before)).toEqual(
+        expect.arrayContaining([
+          'GET /api/events/ev_1',
+          PRESS_SPEECHES,
+          'GET /api/events/ev_1/schedule',
+        ]),
+      ),
+    );
+    expect(kept()).toEqual([]);
+  });
+
+  it('shows nothing the last account kept once another signs in on the same tab', async () => {
+    const { go } = await loadedThenOffline();
+
+    await go('/app/events/ev_1/guests');
+    await screen.findByText('We could not load the guests.');
+    act(() => forgetSession());
+    signedIn();
+    await go('/app/events/ev_1');
+
+    expect(await screen.findByText('The event did not load. Try again in a moment.')).toBeDefined();
+    expect(screen.queryByText('Adaeze and Tunde')).toBeNull();
+    await go('/app/events/ev_1/guests');
+    expect(await screen.findByText('The event did not load. Try again in a moment.')).toBeDefined();
+    expect(screen.queryByText('Adaeze and Tunde')).toBeNull();
+  });
+
+  it('shows no event kept for another organisation than the one the tab is in', async () => {
+    const { go } = await loadedThenOffline();
+    const other = membership({ id: 'org_2', name: 'Other Events' });
+
+    await go('/app/events/ev_1/guests');
+    await screen.findByText('We could not load the guests.');
+    act(() =>
+      __setSessionState({
+        status: 'signedIn',
+        session: {
+          name: 'Folake Adeyemi',
+          email: 'folake@ire.events',
+          verified: true,
+          complete: true,
+          awaiting: null,
+          providers: [],
+          userId: 'u_folake',
+          needsOrganisation: false,
+          hasPassword: true,
+          organisation: other,
+          organisations: [IRE, other],
+          organisationCountry: null,
+          timezone: null,
+          waitingFor: null,
+        },
+      }),
+    );
+    await go('/app/events/ev_1');
+
+    expect(await screen.findByText('The event did not load. Try again in a moment.')).toBeDefined();
+    expect(screen.queryByText('Adaeze and Tunde')).toBeNull();
+  });
+
+  it('keeps the box on an area with no load of its own after the Menu, whose load also failed', async () => {
+    const { go } = await loadedThenOffline();
+
+    await go('/app/events/ev_1/menu');
+    await screen.findByText(/^The menu did not load\./);
+    await go('/app/events/ev_1/messages');
+
+    await waitFor(() => expect(screen.queryByText(/^The menu did not load\./)).toBeNull());
+    expect(
+      screen.getByText(/^Offline · as of \d\d:\d\d$/, { selector: '.ev-offline-words' }),
+    ).toBeDefined();
+  });
+
+  it("still says the event did not load for one this tab never loaded, under the organisation's sidebar", async () => {
+    const { go } = await loadedThenOffline();
+
+    await go('/app/events/ev_2');
+
+    expect(await screen.findByText('The event did not load. Try again in a moment.')).toBeDefined();
+    expect(screen.getAllByRole('link', { name: 'Calendar' }).length).toBeGreaterThan(0);
+    expect(screen.queryByRole('link', { name: 'Overview' })).toBeNull();
+  });
+
+  it('says when the event last loaded, not when the Menu it moves to did', async () => {
+    const LATE = {
+      id: 'c_late',
+      name: 'Late-night bites',
+      servedAt: null,
+      answer: 'choose',
+      skippable: false,
+      dishes: [],
+      ownItems: [],
+      items: [],
+    };
+    let online = true;
+    vi.useFakeTimers({ shouldAdvanceTime: true, toFake: ['Date'] });
+    vi.setSystemTime(new Date(2030, 10, 15, 20, 2));
+    signedIn();
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
+      const line = `${init?.method ?? 'GET'} ${new URL(String(input)).pathname}`;
+      if (!online) throw new TypeError('Failed to fetch');
+      if (line === 'GET /api/events/ev_1') return json({ event: EVENT });
+      if (line === 'GET /api/events/ev_1/menu') return json({ menu: { courses: [LATE] } });
+      if (line === 'GET /api/events/ev_1/headcount') return json({ headcount: HEADCOUNT });
+
+      return json({});
+    });
+    const router = createMemoryRouter(routes, { initialEntries: ['/app/events/ev_1/menu'] });
+    render(<RouterProvider router={router} />);
+    await screen.findByRole('heading', { level: 2, name: 'Late-night bites' });
+
+    vi.setSystemTime(new Date(2030, 10, 15, 20, 10));
+    await act(() => router.navigate('/app/events/ev_1'));
+    await screen.findByText('12 coming of 20 invited. Each number opens the guests it counts.');
+
+    online = false;
+    act(() => connection.deviceOffline());
+    await act(() => router.navigate('/app/events/ev_1/menu'));
+
+    await screen.findByRole('heading', { level: 2, name: 'Late-night bites' });
+    expect(
+      await screen.findByText('Offline · as of 20:10', { selector: '.ev-offline-words' }),
+    ).toBeDefined();
   });
 });

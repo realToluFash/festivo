@@ -471,6 +471,7 @@ export const EVENT_WORDS = {
   ],
   offline: (time: string) => `Offline · as of ${time}`,
   retry: 'Try again',
+  eventFailed: 'The event did not load. Try again in a moment.',
   phase: {
     draft: 'Draft',
     live: 'Live',
@@ -525,8 +526,7 @@ export const EVENT_WORDS = {
   callOffTitle: (name: string) => `Call off ${name}?`,
   endNowOpen: 'End now…',
   endNow: 'End now',
-  endBody: 'It will be over for everybody.',
-  endFinal: 'You can’t undo this.',
+  endLine: 'It will be over for everybody. You can’t undo this.',
   endTitle: (name: string) => `End ${name} now?`,
   keepItOn: 'Keep it on',
   deleteOpen: 'Delete event…',
@@ -1578,6 +1578,22 @@ export const EVENTS_PAGES: readonly { name: string; states: readonly DemoLink[] 
       { to: '/demo/events/new?state=created', name: 'Created, opening the event' },
       { to: '/demo/events/new?state=photo', name: 'With a photo chosen' },
       { to: '/demo/events/new?state=photoRefused', name: 'Created, its photo refused' },
+      {
+        to: '/demo/events/new?state=photoSending',
+        name: 'A HEIC on its way: Uploading… over the default cover',
+      },
+      {
+        to: '/demo/events/new?state=photoSendingCreating',
+        name: 'Create event pressed while a HEIC is on its way: Creating… held',
+      },
+      {
+        to: '/demo/events/new?state=photoSendFailed',
+        name: 'A HEIC that did not upload, before Create event',
+      },
+      {
+        to: '/demo/events/new?state=photoSendLost',
+        name: 'Created, its HEIC did not upload after Create event',
+      },
     ],
   },
   {

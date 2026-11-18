@@ -151,7 +151,23 @@
 }
 
 .mc-course-top {
+  flex-wrap: wrap;
   align-items: flex-start;
+}
+
+/* A title or dish name keeps 12rem beside the panel (sc-3902, 961 to 1279 px); short of it, the actions go under. */
+.mc-course-top > .mn-course-names,
+.mc-dish .mn-dish-words {
+  flex-basis: 12rem;
+}
+
+.mc-dish .mn-dish-top {
+  flex-wrap: wrap;
+}
+
+.mc-acts,
+.mc-dish .lib-acts {
+  margin-left: auto;
 }
 
 .mc-course.is-dragging {
@@ -369,7 +385,7 @@
 
 .mc .lib-tags,
 .mc .lib-contains {
-  overflow-wrap: anywhere;
+  overflow-wrap: break-word;
 }
 
 @media (prefers-reduced-motion: no-preference) {
@@ -388,6 +404,25 @@
   from {
     transform: translateX(24px);
     opacity: 0;
+  }
+}
+
+/* 961 to 1199 px: docked, the panel leaves a course card under 26rem, so it stacks above the menu as at 641 to 960 (narrowDesk.css). */
+@media (60rem < width < 75rem) {
+  .today.desk .mc-split:has(> .mc-panel) {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .today.desk .mc-split > .mc-panel {
+    position: static;
+    order: -1;
+    width: auto;
+    max-height: none;
+  }
+
+  .today.desk .mc-split > .mc-panel .mn-panel-body {
+    overflow: visible;
   }
 }
 
@@ -502,6 +537,10 @@
 
   .mc-dish .mn-dish-top {
     flex-wrap: wrap;
+  }
+
+  .mc-dish .mn-dish-words {
+    flex-basis: 12rem;
   }
 
   .mc-pick {

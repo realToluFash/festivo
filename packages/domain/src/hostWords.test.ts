@@ -4,9 +4,11 @@ import { describe, expect, it } from 'vitest';
 import { type Translate } from './eventWords.ts';
 import {
   type HostRow,
+  aboveCover,
   eventSaveRefusal,
   firstRefusedOf,
   hostErrorsOf,
+  hostErrorsShownOf,
   hostRefusalsOf,
   hostRequiredOf,
   hostsArrival,
@@ -29,6 +31,21 @@ describe('Hosted by on both clients (sc-6713, sc-15497)', () => {
       3: 'eventHosts.duplicate {"name":"Funmi Adeyemi"}',
     });
     expect(hostErrorsOf(rows('a'.repeat(60), 'Tayo\r\nAdeyemi'), t)).toEqual({});
+  });
+
+  it('shows a repeat and an overlong name while typing, and a blank one only once Save was tried', () => {
+    const typed = [
+      { key: 4, name: 'Adaeze Obi' },
+      { key: 2, name: '' },
+      { key: 9, name: 'adaeze obi' },
+      { key: 5, name: 'a'.repeat(61) },
+    ];
+
+    expect(hostErrorsShownOf(typed, t, false)).toEqual({
+      9: 'eventHosts.duplicate {"name":"Adaeze Obi"}',
+      5: 'eventHosts.tooLong {"most":60,"length":61}',
+    });
+    expect(hostErrorsShownOf(typed, t, true)).toEqual(hostErrorsOf(typed, t));
   });
 
   it("puts the server's refusal of one name under its row, and of the whole list under the last", () => {
@@ -55,6 +72,14 @@ describe('Hosted by on both clients (sc-6713, sc-15497)', () => {
     });
     expect(firstRefusedOf({ endsAt: 'x' }, {}, hosts)).toEqual({ field: 'endsAt' });
     expect(firstRefusedOf({}, {}, hosts)).toBeNull();
+  });
+
+  it('puts the name, the type and the hosts above the cover, and the rest below it (sc-48607)', () => {
+    expect(aboveCover({ field: 'name' })).toBe(true);
+    expect(aboveCover({ field: 'type' })).toBe(true);
+    expect(aboveCover({ host: 0 })).toBe(true);
+    expect(aboveCover({ field: 'startsAt' })).toBe(false);
+    expect(aboveCover(null)).toBe(false);
   });
 });
 

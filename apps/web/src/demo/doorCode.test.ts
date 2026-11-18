@@ -144,8 +144,8 @@ describe('the door code’s words and checks (sc-72)', () => {
 
     expect(reading('en-US')).toEqual(['Sat, Nov 14', 'Sat, Nov 14, 23:30']);
     expect(reading('en-GB')).toEqual(['Sat 14 Nov', 'Sat 14 Nov, 23:30']);
-    expect(reading('pt-PT')).toEqual(['Sat, Nov 14', 'Sat, Nov 14, 23:30']);
-    expect(reading('fr-FR')).toEqual(['Sat, Nov 14', 'Sat, Nov 14, 23:30']);
+    expect(reading('pt-PT')).toEqual(['Sat 14 Nov', 'Sat 14 Nov, 23:30']);
+    expect(reading('fr-FR')).toEqual(['Sat 14 Nov', 'Sat 14 Nov, 23:30']);
     expect(clockOf('2026-11-14T23:30:00Z')).toBe('23:30');
   });
 });

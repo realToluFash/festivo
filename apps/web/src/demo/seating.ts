@@ -2,6 +2,7 @@ import { writtenTime } from './clock.ts';
 import { demoWords } from './demoWords.ts';
 import { CRUMB_WORDS, type CrumbLang, LONG_NAME, QA_NAME, SW } from './seatingWords.ts';
 import type { DemoLink } from './settings.ts';
+import { SHARE_STATES } from './shareTables.ts';
 
 /** Seating · A · The room (page e31, board/seating-a-spec.md): the sample, the room's geometry and the plan's rules; the words are in seatingWords.ts. */
 export { CRUMB_WORDS, type CrumbLang, LONG_NAME, QA_NAME, SW };
@@ -30,6 +31,7 @@ export interface Chair {
   state: ChairState;
   who?: string | undefined;
   party?: string | undefined;
+  reply?: Reply | undefined;
 }
 
 export interface Item {
@@ -78,11 +80,58 @@ export interface Party {
   behind?: boolean;
 }
 
+export function freedParty(who: string): Party {
+  return { id: `back-${who}`, name: who, companions: [], group: null, reply: 'coming' };
+}
+
+export function freedFrom(items: readonly Item[]): Party[] {
+  return items.flatMap((item) =>
+    item.chairs.flatMap((chair) =>
+      chair.state === 'taken' && chair.who != null ? [freedParty(chair.who)] : [],
+    ),
+  );
+}
+
 export interface Person {
   name: string;
   initials: string;
   tone: number;
   viewer: boolean;
+}
+
+/** `seat` counts chairs from 0; the ring's name says it from 1. */
+export interface Choice {
+  who: Person;
+  seat?: number;
+}
+
+export type Rings = Readonly<Record<string, readonly Choice[]>>;
+
+export type Presence = 'chips' | 'overflow' | 'reconnecting';
+
+const isColleague = (one: Choice): boolean => !one.who.viewer;
+
+export function chosenWords(choices: readonly Choice[] | undefined): string {
+  const shown = (choices ?? []).filter(isColleague);
+  const whole = shown.filter((one) => one.seat == null).map((one) => one.who.name);
+  const seats = shown
+    .filter((one) => one.seat != null)
+    .map((one) => say(SW.seatChosenBy, { n: (one.seat ?? 0) + 1, name: one.who.name }));
+
+  return (whole.length === 0 ? '' : say(SW.chosenBy, { name: listed(whole) })) + seats.join('');
+}
+
+/** The colleagues whose choice marks an item, in the order they chose it: never a viewer, and nobody while your own connection is down (sc-60717). */
+export function marksOf(rings: Rings, presence: Presence, id: string): readonly Choice[] {
+  if (presence === 'reconnecting') return [];
+  return (rings[id] ?? []).filter(isColleague);
+}
+
+/** A chair's own words: who chose that seat, joined as the language joins a list. */
+export function seatChosenWords(choices: readonly Choice[], seat: number): string {
+  const names = choices.filter((one) => one.seat === seat).map((one) => one.who.name);
+
+  return names.length === 0 ? '' : say(SW.chosenBy, { name: listed(names) });
 }
 
 export const EVENT_ID = 'evt-wed-4';
@@ -228,6 +277,9 @@ const SEATED_AT: Readonly<Record<string, readonly string[]>> = {
   door: ['Grace Obi'],
 };
 
+/** The seated who have not said Coming; everyone else seated is Coming. */
+const SEATED_REPLY: Readonly<Record<string, Reply>> = { 'Sofia Rossi': 'notSure' };
+
 function chairsFor(
   id: string,
   seats: number,
@@ -245,7 +297,9 @@ function chairsFor(
     if (held.includes(number)) return { state: 'held' };
     if (left <= 0) return { state: 'empty' };
     left -= 1;
-    return { state: 'taken', who: names.shift() };
+    const who = names.shift();
+
+    return { state: 'taken', who, reply: who == null ? undefined : SEATED_REPLY[who] };
   });
 }
 
@@ -454,6 +508,25 @@ export function chairsOf(item: Item): Point[] {
   }
 }
 
+export const POINTER_TARGET = 44;
+
+/** The closest two of a table's chairs, in cm: a chair takes a pointer once this is a 44 target on screen (sc-5030). */
+export function chairGap(item: Item): number {
+  const points = chairsOf(item);
+  let gap = Infinity;
+
+  points.forEach(([ax, ay], a) => {
+    points.slice(a + 1).forEach(([bx, by]) => {
+      gap = Math.min(gap, Math.hypot(ax - bx, ay - by));
+    });
+  });
+  return gap;
+}
+
+export function chairsTakePointer(item: Item, s: number): boolean {
+  return chairGap(item) * s >= POINTER_TARGET - 1e-9;
+}
+
 export function extent(item: Item): Point {
   switch (item.kind) {
     case 'round':
@@ -476,13 +549,39 @@ export function extent(item: Item): Point {
   }
 }
 
+/** A Tables card's drawing (sc-4013), and its chairs as targets: 24 px each, the web's floor (WCAG 2.2 SC 2.5.8). */
+export const CARD_SIZE = { w: 188, h: 132 } as const;
+export const CHAIR_HIT = 24;
+
+/** How much smaller than the room a card draws its table: as large as the card holds, never above 0.45. */
+export function cardScale(item: Item): number {
+  const [ex, ey] = extent(item);
+  const turned = item.rot % 180 !== 0 ? [ey, ex] : [ex, ey];
+
+  return Math.min(
+    (CARD_SIZE.w - 16) / (2 * turned[0]!),
+    (CARD_SIZE.h - 12) / (2 * turned[1]!),
+    0.45,
+  );
+}
+
+/** Whether a card draws its chairs far enough apart for each to be a 24 px target (WCAG 2.2 SC 2.5.8); a long row does not, and is one target. */
+export function chairsFit(item: Item): boolean {
+  const s = cardScale(item);
+  const at = chairsOf(item).map((point) => turn(point, item.rot));
+
+  return at.every(([x, y], i) =>
+    at.slice(i + 1).every(([x2, y2]) => Math.hypot(x - x2, y - y2) * s >= CHAIR_HIT),
+  );
+}
+
 export function isRound(item: Item): boolean {
   return item.kind === 'round' || item.kind === 'cocktail' || item.kind === 'single';
 }
 
-/** How far past its box a focused item's ring and halo reach once turned with it, in screen px: the halo's 17.5 offset and half its 5 px stroke (sc-57361). */
-export function focusReach(item: Item): number {
-  const reach = 17.5 + 5 / 2;
+/** How far past its box a focused item's ring and halo reach once turned with it, in screen px: the halo's 17.5 offset and half its 5 px stroke (sc-57361); with `drawn`, the box is the drawn one that already holds the halo, so only the half stroke. */
+export function focusReach(item: Item, drawn = false): number {
+  const reach = (drawn ? 0 : 17.5) + 5 / 2;
 
   if (isRound(item)) return reach;
   const angle = (item.rot * Math.PI) / 180;
@@ -789,7 +888,7 @@ export function percentWritten(pct: number, locale = 'en'): string {
   return new Intl.NumberFormat(locale, { style: 'percent' }).format(pct / 100);
 }
 
-/** Under 50% a table is its outline, name and how full; from 50% its chairs; from 150% each chair is a 44 target. */
+/** Under 50% a table is its outline, name and how full; from 50% its chairs; from 150% their numbers. */
 export type Detail = 'out' | 'fit' | 'near';
 
 export function detailOf(s: number): Detail {
@@ -893,9 +992,22 @@ export function itemName(plan: Plan, item: Item, extra = ''): string {
   );
 }
 
+const REPLY_WORD: Record<Reply, string> = {
+  coming: SW.coming,
+  notSure: SW.notSureYet,
+  noReply: SW.noReply,
+};
+
 export function chairWord(chair: Chair): string {
   if (chair.state === 'taken') return chair.who ?? SW.taken;
   return { held: SW.held, empty: SW.empty, unusable: SW.unusable }[chair.state];
+}
+
+/** Only the chair on the picture adds its guest's reply, Coming included (sc-5030); Tables and the List keep chairWord. */
+export function chairSaid(chair: Chair): string {
+  if (chair.state === 'taken' && chair.who != null)
+    return `${chair.who}, ${REPLY_WORD[chair.reply ?? 'coming']}`;
+  return chairWord(chair);
 }
 
 export function stateWord(state: ChairState): string {
@@ -1355,10 +1467,14 @@ export function seatAt(item: Item, party: Party, chairs: readonly number[]): Ite
     chairs: item.chairs.map((chair, index) => {
       const at = chairs.indexOf(index);
 
-      return at < 0 || who[at] == null ? chair : { state: 'taken', who: who[at], party: party.id };
+      return at < 0 || who[at] == null
+        ? chair
+        : { state: 'taken', who: who[at], party: party.id, reply: party.reply };
     }),
   };
 }
+
+const SHARE_GROUP = 'Share tables with guests (sc-4022)';
 
 export const SEATING_STATES = [
   { key: 'plan', name: 'The plan in use, nothing chosen', group: 'The plan' },
@@ -1521,6 +1637,11 @@ export const SEATING_STATES = [
   { key: 'deleteMany', name: 'Delete 6 tables, guests seated', group: 'Choosing many' },
   { key: 'deleteManyEmpty', name: 'Delete 3 tables, nobody seated', group: 'Choosing many' },
   { key: 'deleteMixed', name: 'Delete 3 items, mixed kinds', group: 'Choosing many' },
+  {
+    key: 'deleteManyChanged',
+    name: '6 tables deleted, a freed guest seated since',
+    group: 'Choosing many',
+  },
   { key: 'toolChanged', name: 'A colleague changed one first (412)', group: 'Choosing many' },
   {
     key: 'readOnlyMany',
@@ -1532,11 +1653,51 @@ export const SEATING_STATES = [
   { key: 'presenceBoth', name: 'You and Priya Shah chose Table 7', group: 'Who else is here' },
   { key: 'presenceSix', name: 'Six people here', group: 'Who else is here' },
   { key: 'presenceViewer', name: 'A viewer’s choice', group: 'Who else is here' },
+  {
+    key: 'presenceSeatTables',
+    name: 'Tables: Julien Moreau has chosen seat 2 of Table 9',
+    group: 'Who else is here',
+  },
+  {
+    key: 'presenceSeatList',
+    name: 'List: Julien Moreau’s seat, Table 9 open',
+    group: 'Who else is here',
+  },
+  {
+    key: 'presenceTwoTables',
+    name: 'Tables: two colleagues on Table 7, three on Table 4',
+    group: 'Who else is here',
+  },
+  {
+    key: 'presenceTwoList',
+    name: 'List: two colleagues on Table 7, three on Table 4',
+    group: 'Who else is here',
+  },
+  {
+    key: 'presenceBothTables',
+    name: 'Tables: you and Priya Shah chose Table 7',
+    group: 'Who else is here',
+  },
   { key: 'reconnecting', name: 'Reconnecting', group: 'Who else is here' },
   { key: 'left', name: 'Priya Shah left', group: 'Who else is here' },
   { key: 'arriving', name: 'A colleague’s change arrives', group: 'Who else is here' },
   { key: 'seat', name: 'Seat: Without a seat 12', group: 'Seating guests' },
-  { key: 'picked', name: 'A party picked', group: 'Seating guests' },
+  { key: 'picked', name: 'A party picked, every table free or Full', group: 'Seating guests' },
+  {
+    key: 'pickedOut',
+    name: 'A party picked at 40%, the table the target',
+    group: 'Seating guests',
+  },
+  {
+    key: 'chairLabel',
+    name: 'A party picked at 150%, a chair’s label on hover',
+    group: 'Seating guests',
+  },
+  {
+    key: 'pickedTight',
+    name: 'A party picked, tables close together: each free tag where it can be read',
+    group: 'Seating guests',
+  },
   { key: 'seated', name: 'Seated, with Undo', group: 'Seating guests' },
   { key: 'apart', name: 'Not side by side', group: 'Seating guests' },
   { key: 'full', name: 'A full table', group: 'Seating guests' },
@@ -1546,6 +1707,11 @@ export const SEATING_STATES = [
   { key: 'undoRefused', name: 'Undo refused', group: 'Seating guests' },
   { key: 'tableGuests', name: 'A table’s guests', group: 'Seating guests' },
   { key: 'moveAll', name: 'Move everyone to…', group: 'Seating guests' },
+  {
+    key: 'moveAllNone',
+    name: 'Move everyone to…, no other table has room',
+    group: 'Seating guests',
+  },
   { key: 'emptyTable', name: 'An empty table', group: 'Seating guests' },
   { key: 'everyoneSeated', name: 'Everyone coming has a seat', group: 'Seating guests' },
   { key: 'nobodyComing', name: 'Nobody coming yet', group: 'Seating guests' },
@@ -1553,6 +1719,22 @@ export const SEATING_STATES = [
   { key: 'notSureYet', name: 'Not sure yet and no reply too', group: 'Seating guests' },
   { key: 'tables', name: 'The Tables view', group: 'Seating guests' },
   { key: 'tablesPicked', name: 'The Tables view, a party picked', group: 'Seating guests' },
+  {
+    key: 'tablesChair',
+    name: 'The Tables view, a guest picked and a free chair under the pointer',
+    group: 'Seating guests',
+  },
+  {
+    key: 'tablesSwap',
+    name: 'The Tables view, a taken chair tapped: Swap with',
+    group: 'Seating guests',
+  },
+  {
+    key: 'tablesMoving',
+    name: 'The Tables view, a seated guest picked to move',
+    group: 'Seating guests',
+  },
+  { key: 'tablesMoved', name: 'The Tables view, a seated guest moved', group: 'Seating guests' },
   { key: 'list', name: 'The List view', group: 'Seating guests' },
   { key: 'listOpen', name: 'The List, Table 8 opened', group: 'Seating guests' },
   { key: 'print', name: 'Print', group: 'Print and paper' },
@@ -1568,6 +1750,20 @@ export const SEATING_STATES = [
   { key: 'paperNobody', name: 'Paper: table lists, nobody seated', group: 'Print and paper' },
   { key: 'paperCard', name: 'Paper: a table card', group: 'Print and paper' },
   { key: 'paperCardTop', name: 'Paper: the head table’s card', group: 'Print and paper' },
+  { key: 'shareNotShared', name: SHARE_STATES.shareNotShared.name, group: SHARE_GROUP },
+  { key: 'shareAllSeated', name: SHARE_STATES.shareAllSeated.name, group: SHARE_GROUP },
+  { key: 'shareBySet', name: SHARE_STATES.shareBySet.name, group: SHARE_GROUP },
+  { key: 'shareByBlank', name: SHARE_STATES.shareByBlank.name, group: SHARE_GROUP },
+  { key: 'shareByAfterEvent', name: SHARE_STATES.shareByAfterEvent.name, group: SHARE_GROUP },
+  { key: 'shareByPast', name: SHARE_STATES.shareByPast.name, group: SHARE_GROUP },
+  { key: 'shareByPassed', name: SHARE_STATES.shareByPassed.name, group: SHARE_GROUP },
+  { key: 'shareConfirm', name: SHARE_STATES.shareConfirm.name, group: SHARE_GROUP },
+  { key: 'shareFailed', name: SHARE_STATES.shareFailed.name, group: SHARE_GROUP },
+  { key: 'shareShared', name: SHARE_STATES.shareShared.name, group: SHARE_GROUP },
+  { key: 'shareConfirmStop', name: SHARE_STATES.shareConfirmStop.name, group: SHARE_GROUP },
+  { key: 'shareStopped', name: SHARE_STATES.shareStopped.name, group: SHARE_GROUP },
+  { key: 'shareReadOnly', name: SHARE_STATES.shareReadOnly.name, group: SHARE_GROUP },
+  { key: 'shareReadOnlyShared', name: SHARE_STATES.shareReadOnlyShared.name, group: SHARE_GROUP },
   { key: 'longName', name: 'A 120-character event name', group: 'The breadcrumb' },
   { key: 'longNameFr', name: 'A 120-character event name, in French', group: 'The breadcrumb' },
   {

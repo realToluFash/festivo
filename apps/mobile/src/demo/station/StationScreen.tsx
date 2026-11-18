@@ -3,9 +3,9 @@ import { useEffect, useRef, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, View, type ViewInstance } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { SecondaryButton } from '../../components/Buttons.tsx';
+import { DestructiveButton, QuietButton, SecondaryButton } from '../../components/Buttons.tsx';
 import { readOut } from '../../components/ReadOut.tsx';
-import { Sheet } from '../../components/Sheet.tsx';
+import { Sheet, SheetActions } from '../../components/Sheet.tsx';
 import { Text } from '../../components/Text.tsx';
 import { useLayout } from '../../layout/useLayout.ts';
 import { DemoOnly } from '../../steps/Lines.tsx';
@@ -14,15 +14,22 @@ import { goBack } from '../DemoScreen.tsx';
 import { Glyph } from '../queue/QueueParts.tsx';
 import { OFFLINE_GLYPH } from '../team/TeamParts.tsx';
 import {
+  CONFIRM_LEAD,
   EMPTY,
   EVENT,
   REFUSED,
+  RUN_OUT,
   type StationState,
   type StationStateName,
   type Tray,
+  armRunOutRival,
+  askRunOut,
   canUndo,
+  cancelRunOut,
   choose,
+  confirmRunOut,
   dismissNotSent,
+  dismissNotice,
   faced,
   flaggedCount,
   giveTray,
@@ -31,19 +38,25 @@ import {
   hereLine,
   hereTrays,
   isKept,
+  leadServes,
   leftToDish,
+  markAvailable,
   markPreparing,
   markReady,
   movedTo,
   nameOf,
   notSentLine,
+  offers,
   openPick,
   pauseTray,
   pick,
   plural,
+  runOutQuestion,
   seed,
   stateLine,
   stationStateOf,
+  stillNeed,
+  stillNeedLine,
   strip,
   takeToTable,
   trayCounts,
@@ -84,6 +97,8 @@ function KitchenStation({ start }: { start: StationStateName }) {
   const insets = useSafeAreaInsets();
   const [s, setS] = useState<StationState>(() => seed(start));
   const opener = useRef<ViewInstance | null>(null);
+  const runOutOpener = useRef<ViewInstance | null>(null);
+  const [asked, setAsked] = useState<string | null>(null);
   const phone = kind === 'phone';
   const z: Sizes = {
     phone,
@@ -95,6 +110,7 @@ function KitchenStation({ start }: { start: StationStateName }) {
 
   useEffect(() => (s.say === '' ? undefined : readOut(s.say)), [s.say]);
   useEffect(() => (s.moved === '' ? undefined : readOut(s.moved)), [s.moved]);
+  useEffect(() => (s.notice == null ? undefined : readOut(s.notice.line)), [s.notice]);
 
   if (s.access !== 'pass') return <Refused s={s} insets={insets.top} side={z.side} />;
 
@@ -128,13 +144,32 @@ function KitchenStation({ start }: { start: StationStateName }) {
           {`${s.you} · you’re on no kitchen station tonight. Open one to see the trays that need it.`}
         </Text>
         <Strip s={s} />
-        <StationList current={null} you={s.you} side={z.side} onPick={(id) => setS(pick(s, id))} />
+        <StationList
+          current={null}
+          you={s.you}
+          roster={s.roster}
+          side={z.side}
+          onPick={(id) => setS(pick(s, id))}
+        />
       </View>,
     );
   }
 
   const tray = <Facing s={s} z={z} />;
-  const left = <Left s={s} setS={setS} z={z} strip={kind === 'tabletPortrait'} />;
+  const left = (
+    <Left
+      s={s}
+      setS={setS}
+      z={z}
+      strip={kind === 'tabletPortrait'}
+      asked={asked}
+      opener={runOutOpener}
+      onAsk={(item) => {
+        setAsked(item);
+        setS(askRunOut(s, item));
+      }}
+    />
+  );
   const heading = <Heading s={s} z={z} />;
 
   return (
@@ -209,6 +244,7 @@ function KitchenStation({ start }: { start: StationStateName }) {
           <StationList
             current={s.station}
             you={s.you}
+            roster={s.roster}
             side={z.side}
             onPick={(id) => setS(pick(s, id))}
           />
@@ -220,7 +256,59 @@ function KitchenStation({ start }: { start: StationStateName }) {
           />
         </View>
       </Sheet>
+      <Sheet
+        open={s.confirming != null}
+        onClose={() => setS(cancelRunOut(s))}
+        scrimLabel="Cancel"
+        opener={runOutOpener}
+        testID="station.runOut.sheet"
+      >
+        {s.confirming != null && (
+          <RunOutConfirm
+            item={s.confirming}
+            n={stillNeed(s, s.confirming)}
+            phone={phone}
+            onCancel={() => setS(cancelRunOut(s))}
+            onGo={() => setS(confirmRunOut(s))}
+          />
+        )}
+      </Sheet>
     </>
+  );
+}
+
+/** Run out asks first; in a row Cancel comes first, and stacked on the phone Run out is on top. */
+function RunOutConfirm({
+  item,
+  n,
+  phone,
+  onCancel,
+  onGo,
+}: {
+  item: string;
+  n: number;
+  phone: boolean;
+  onCancel: () => void;
+  onGo: () => void;
+}) {
+  const go = (
+    <DestructiveButton label="Run out" onPress={onGo} stacked={phone} testID="station.runOut.go" />
+  );
+  const keep = <QuietButton label="Cancel" onPress={onCancel} testID="station.runOut.cancel" />;
+  return (
+    <View style={styles.confirm}>
+      <Text size={tokens.typeTitleSection.size} weight="bold" accessibilityRole="header">
+        {runOutQuestion(item)}
+      </Text>
+      <Text size={tokens.typeBodyPhone.size}>{stillNeedLine(n)}</Text>
+      <Text size={tokens.typeBodyPhone.size} style={styles.secondary}>
+        {CONFIRM_LEAD}
+      </Text>
+      <SheetActions>
+        {phone ? go : keep}
+        {phone ? keep : go}
+      </SheetActions>
+    </View>
   );
 }
 
@@ -322,8 +410,10 @@ function trayReading(s: StationState, tray: Tray): string {
   const flagged = rows
     .filter((r) => r.flags.length > 0)
     .map((r) => `${r.seat}, ${r.flags.join(', ')}, dish first, clean tools`);
+  const said = (r: (typeof rows)[number]) =>
+    r.items.map((it) => (r.runOut.includes(it) && r.marked[it] == null ? `${it}, run out` : it));
   const plates = rows.map((r) =>
-    [r.seat, r.items.length === 0 ? 'nothing from here' : r.items.join(', '), r.variant, r.course]
+    [r.seat, r.items.length === 0 ? 'nothing from here' : said(r).join(', '), r.variant, r.course]
       .filter((x) => x !== '')
       .join(', '),
   );
@@ -411,6 +501,9 @@ function TrayHere({
                     {mark === 'on' && <Chip status="on" big={!z.phone} />}
                     {mark === 'off' && <Chip status="off" big={!z.phone} />}
                     {prep && mark == null && <Chip status="preparing" big={!z.phone} />}
+                    {r.runOut.includes(it) && mark == null && (
+                      <Chip status="runOut" big={!z.phone} />
+                    )}
                   </View>
                 );
               })
@@ -428,11 +521,17 @@ function Left({
   setS,
   z,
   strip: compact,
+  asked,
+  opener,
+  onAsk,
 }: {
   s: StationState;
   setS: (s: StationState) => void;
   z: Sizes;
   strip: boolean;
+  asked: string | null;
+  opener: React.RefObject<ViewInstance | null>;
+  onAsk: (item: string) => void;
 }) {
   const lines = leftToDish(s);
   const st = s.station ?? 'pass';
@@ -447,6 +546,9 @@ function Left({
           {lines.map((l) => {
             const state = s.items[l.item];
             const prep = state?.kind === 'preparing';
+            const out = state?.kind === 'runOut';
+            const offer = offers(s, l.item);
+            const ref = l.item === asked ? opener : undefined;
             const sl = stateLine(s, l.item);
             const chooserOpen = s.choosing === l.item || prep;
             const words = [sl.word === 'Ready' ? '' : sl.line, sl.waiting].filter((x) => x !== '');
@@ -462,18 +564,27 @@ function Left({
                     <Text size={z.line + 1} weight="bold">
                       {l.label}
                     </Text>
-                    <Text size={z.line} weight="semibold" style={styles.tabular}>
-                      {`${l.n} to dish`}
-                    </Text>
+                    {(!out || sl.waiting !== '') && (
+                      <Text size={z.line} weight="semibold" style={styles.tabular}>
+                        {out ? sl.waiting : `${l.n} to dish`}
+                      </Text>
+                    )}
                   </View>
                   <Chip
                     status={
-                      sl.word === 'Ready' ? 'ready' : sl.word === 'Held up' ? 'heldUp' : 'preparing'
+                      out
+                        ? 'runOut'
+                        : sl.word === 'Ready'
+                          ? 'ready'
+                          : sl.word === 'Held up'
+                            ? 'heldUp'
+                            : 'preparing'
                     }
+                    words={out ? sl.line : undefined}
                     big
                   />
                 </View>
-                {words.length > 0 && (
+                {!out && words.length > 0 && (
                   <Text
                     size={z.line - 2 < 15 ? 15 : z.line - 2}
                     weight="semibold"
@@ -483,14 +594,39 @@ function Left({
                   </Text>
                 )}
                 {isKept(s, l.item) && <Chip status="kept" />}
-                <Segments
-                  item={l.item}
-                  preparing={prep || s.choosing === l.item}
-                  side={z.side}
-                  onReady={() => setS(prep ? markReady(s, l.item) : choose(s, null))}
-                  onPreparing={() => setS(choose(s, l.item))}
-                />
-                {chooserOpen && (
+                {out ? (
+                  <SecondaryButton
+                    label="Mark available again"
+                    onPress={() => setS(markAvailable(s, l.item))}
+                    stacked
+                    accessibilityLabel={`${l.item}, Mark available again`}
+                    ref={ref}
+                    testID={`station.available.${l.item}`}
+                  />
+                ) : (
+                  <View style={styles.lineActions}>
+                    <View style={styles.segments}>
+                      <Segments
+                        item={l.item}
+                        preparing={prep || s.choosing === l.item}
+                        side={z.side}
+                        onReady={() => setS(prep ? markReady(s, l.item) : choose(s, null))}
+                        onPreparing={() => setS(choose(s, l.item))}
+                      />
+                    </View>
+                    {offer.runOut && (
+                      <DestructiveButton
+                        label="Run out…"
+                        onPress={() => onAsk(l.item)}
+                        stacked={false}
+                        accessibilityLabel={`${l.item}, Run out…`}
+                        ref={ref}
+                        testID={`station.runOut.${l.item}`}
+                      />
+                    )}
+                  </View>
+                )}
+                {!out && chooserOpen && (
                   <Times
                     item={l.item}
                     chosen={prep ? state.eta : undefined}
@@ -498,7 +634,7 @@ function Left({
                     onPick={(eta) => setS(markPreparing(s, l.item, eta))}
                   />
                 )}
-                {u != null && canUndo(s, l.item) && (
+                {!out && u != null && canUndo(s, l.item) && (
                   <View style={styles.undo}>
                     <Text size={14} style={[styles.secondary, styles.grow]}>
                       {undoLine(sl.word === 'Ready' ? 'Ready' : 'Preparing', u.at)}
@@ -508,6 +644,26 @@ function Left({
                       side={z.side}
                       onPress={() => setS(undo(s, l.item))}
                       testID={`station.undo.${l.item}`}
+                    />
+                  </View>
+                )}
+                {s.notice?.item === l.item && (
+                  <View
+                    style={styles.notice}
+                    accessibilityRole="alert"
+                    testID={`station.notice.${l.item}`}
+                  >
+                    <View style={styles.noticeWords}>
+                      <Glyph paths={GLYPH.info} ink={tokens.colorInk} side={18} circle />
+                      <Text size={16} style={styles.grow}>
+                        {s.notice.line}
+                      </Text>
+                    </View>
+                    <Quiet
+                      label="Got it"
+                      side={z.side}
+                      onPress={() => setS(dismissNotice(s))}
+                      testID={`station.notice.ok.${l.item}`}
                     />
                   </View>
                 )}
@@ -701,6 +857,24 @@ function Switches({
         onPress={() => setS(movedTo(s, 'grill'))}
         testID="station.demo.moved"
       />
+      {s.station === 'grill' && (
+        <>
+          <SecondaryButton
+            label="The floor lead serves Grilled fish to 3 guests"
+            onPress={() => setS(leadServes(s, RUN_OUT.item, RUN_OUT.substitute, RUN_OUT.served))}
+            testID="station.demo.serve"
+          />
+          <SecondaryButton
+            label={
+              s.runOutRival == null
+                ? 'Another disher marks it first'
+                : 'Another disher marks it first · on'
+            }
+            onPress={() => setS(armRunOutRival(s, RUN_OUT.item))}
+            testID="station.demo.runOutRival"
+          />
+        </>
+      )}
     </DemoOnly>
   );
 }
@@ -815,6 +989,23 @@ const styles = StyleSheet.create({
   itemCardStrip: { flex: 1, minWidth: 0 },
   itemHead: { flexDirection: 'row', alignItems: 'flex-start', gap: tokens.spaceSm },
   undo: { flexDirection: 'row', alignItems: 'center', gap: tokens.spaceSm },
+  lineActions: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    gap: tokens.spaceSm,
+  },
+  segments: { flexGrow: 1, flexBasis: 200, minWidth: 0 },
+  notice: {
+    gap: tokens.spaceXs,
+    padding: tokens.spaceLg,
+    borderRadius: tokens.radiusRow,
+    backgroundColor: tokens.colorAttentionTint,
+    borderWidth: 1,
+    borderColor: tokens.colorAttentionBorder,
+  },
+  noticeWords: { flexDirection: 'row', alignItems: 'flex-start', gap: tokens.spaceSm },
+  confirm: { flexShrink: 1, gap: tokens.spaceLg, padding: tokens.space3xl },
   headRow: { paddingVertical: tokens.spaceLg, gap: tokens.spaceXs },
   headTop: { flexDirection: 'row', alignItems: 'center', gap: tokens.spaceSm },
   counts: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: tokens.spaceLg },

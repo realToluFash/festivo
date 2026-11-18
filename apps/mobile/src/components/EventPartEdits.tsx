@@ -26,6 +26,7 @@ import {
   eventNameLength,
   type EventSaveRefusal,
   hostErrorsOf,
+  hostErrorsShownOf,
   hostsChanged,
   keepsLastHost,
   positionPart,
@@ -89,6 +90,7 @@ import {
   HostRows,
   NameView,
   type Position,
+  POSITION_AT,
   type Suggested,
   TypeChoices,
   VenueFieldsView,
@@ -789,9 +791,8 @@ function HostsEdit(props: PartEditProps) {
   const { busy, save, elsewhere, failed } = usePartSave('hosts', props);
   const names = hosts.map((host) => host.name);
   const found = hostErrorsOf(hosts, t);
-  const errors = hosts.map(
-    (host) => (tried ? found[host.key] : undefined) ?? refused[host.key] ?? null,
-  );
+  const shown = hostErrorsShownOf(hosts, t, tried);
+  const errors = hosts.map((host) => shown[host.key] ?? refused[host.key] ?? null);
 
   useReadOut(said);
 
@@ -827,8 +828,6 @@ function HostsEdit(props: PartEditProps) {
     </EditShell>
   );
 }
-
-const POSITION_AT: Record<Position, number> = { top: 0, middle: COVER_MIDDLE, bottom: 100 };
 
 type Photo =
   | { kind: 'saved'; cover: Cover }

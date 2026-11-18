@@ -1,22 +1,27 @@
-import type { KeyboardEvent, PointerEvent, ReactNode } from 'react';
+import type { KeyboardEvent, MouseEvent, PointerEvent, ReactNode } from 'react';
 
 import {
   type Chair,
   type Detail,
   type Item,
-  type Person,
   type Plan,
   type Point,
+  type Presence,
+  type Rings,
   CHAIR_R,
+  chairsTakePointer,
   SW,
-  chairWord,
+  chairSaid,
+  free,
   chairsOf,
+  chosenWords,
   extent,
   filled,
   initials,
   isRound,
   itemName,
   lengthOf,
+  marksOf,
   ofWords,
   readingOrder,
   say,
@@ -34,10 +39,15 @@ export interface Look {
   faint: ReadonlySet<string>;
   overlap: ReadonlySet<string>;
   focus: string | null;
-  rings: Readonly<Record<string, Person>>;
+  rings: Rings;
+  presence: Presence;
   handles: string | null;
   chair: { id: string; i: number } | null;
   chairsFor: string | null;
+  /** A guest is picked: every table says "{n} free" or "Full" (sc-5030). */
+  picking?: boolean;
+  /** The chair whose label shows above it, on hover or focus (sc-5030). */
+  label?: { id: string; i: number } | null;
 }
 
 export interface RoomHands {
@@ -46,8 +56,13 @@ export interface RoomHands {
   onItemFocus?: (id: string | null) => void;
   onItemEnter?: (id: string | null) => void;
   onChair?: (id: string, index: number) => void;
+  onChairLabel?: (spot: { id: string; i: number } | null) => void;
   onHandleDown?: (event: PointerEvent<SVGRectElement>, id: string, handle: Handle) => void;
 }
+
+/** Each further colleague's ring sits outside the last: its 2 px white gap, then its 3 px line, fixed at every zoom. */
+const RING_STEP = 5;
+const PILL_STEP = 24;
 
 const SEC_CLASS: Record<string, string> = {
   Blue: 'is-blue',
@@ -231,7 +246,9 @@ function ItemDrawing({
   const chosen = look.chosen.has(item.id);
   const lit = chosen || look.lit.has(item.id);
   const faint = look.faint.has(item.id);
-  const ring = look.rings[item.id];
+  const choices = marksOf(look.rings, look.presence, item.id);
+  const onItem = choices.filter((one) => one.seat == null || detail === 'out');
+  const onSeat = detail === 'out' ? [] : choices.filter((one) => one.seat != null);
   const rot = `translate(${f(cx)} ${f(cy)}) rotate(${item.rot})`;
   const shapes: ReactNode[] = [];
   const marks: ReactNode[] = [];
@@ -327,6 +344,7 @@ function ItemDrawing({
 
   if (detail !== 'out') {
     const r = CHAIR_R * s;
+    const pointer = chairsTakePointer(item, s);
 
     chairsOf(item).forEach((point, index) => {
       const chair = item.chairs[index] ?? { state: 'empty' };
@@ -339,8 +357,9 @@ function ItemDrawing({
           : String(index + 1)
         : undefined;
       const picked = look.chair?.id === item.id && look.chair.i === index;
+      const seated = onSeat.filter((one) => one.seat === index);
       // From 50% the keyboard reaches the chosen table's chairs; a pointer only once each is a 44 target (sc-5030).
-      const target = (near && look.chairsFor != null) || look.chairsFor === item.id;
+      const target = (pointer && look.chairsFor != null) || look.chairsFor === item.id;
 
       if (item.kind === 'single') {
         body.push(
@@ -358,6 +377,17 @@ function ItemDrawing({
         );
         return;
       }
+      seated.forEach(({ who }, k) => {
+        const rr = r + 5.5 + RING_STEP * k;
+
+        marks.push(
+          <g key={`seat${index}.${k}`} className={`st-ring p${who.tone}`}>
+            <circle className="st-ring-gap" cx={f(x)} cy={f(y)} r={f(rr)} />
+            <circle className="st-ring-line" cx={f(x)} cy={f(y)} r={f(rr + 1.5)} />
+            <Pill x={x - rr * 0.72} y={y - rr * 0.72 - PILL_STEP * k} words={who.initials} />
+          </g>,
+        );
+      });
       body.push(
         <g key={`c${index}`}>
           {picked && <circle className="st-lit" cx={f(x)} cy={f(y)} r={f(Math.max(r + 8, 26))} />}
@@ -372,19 +402,22 @@ function ItemDrawing({
           />
           {target && (
             <circle
-              className={near ? 'st-chair-hit' : 'st-chair-hit is-keys'}
+              className={pointer ? 'st-chair-hit' : 'st-chair-hit is-keys'}
               role="button"
               tabIndex={look.chairsFor === item.id ? 0 : -1}
-              aria-label={say(SW.chairName, {
-                table: item.name,
-                n: index + 1,
-                word: chairWord(chair),
-              })}
+              aria-label={
+                say(SW.chairName, { table: item.name, n: index + 1, word: chairSaid(chair) }) +
+                chosenWords(seated.map(({ who }) => ({ who })))
+              }
               aria-pressed={picked}
               cx={f(x)}
               cy={f(y)}
               r="22"
               onPointerDown={(event) => event.stopPropagation()}
+              onPointerEnter={() => hands.onChairLabel?.({ id: item.id, i: index })}
+              onPointerLeave={() => hands.onChairLabel?.(null)}
+              onFocus={() => hands.onChairLabel?.({ id: item.id, i: index })}
+              onBlur={() => hands.onChairLabel?.(null)}
               onClick={(event) => {
                 event.stopPropagation();
                 hands.onChair?.(item.id, index);
@@ -403,12 +436,10 @@ function ItemDrawing({
   }
 
   const words: ReactNode[] = [];
+  const room = look.picking === true && item.kind !== 'single' ? free(item) : null;
 
   if (detail === 'out') {
-    const by =
-      item.kind === 'rect' || item.kind === 'head'
-        ? cy + ((item.l ?? 76) / 2) * s + 12
-        : cy + Math.max(ey, 40) * s * (item.kind === 'row' ? 1 : 0.55) + 12;
+    const by = nameAt(item, s, oy);
 
     words.push(
       <text
@@ -422,7 +453,7 @@ function ItemDrawing({
         {item.name}
       </text>,
     );
-    if (item.kind !== 'single') {
+    if (room == null && item.kind !== 'single') {
       const share = filled(item) / Math.max(1, usable(item));
 
       words.push(
@@ -486,17 +517,38 @@ function ItemDrawing({
     );
   }
 
-  if (ring != null) {
-    const pad = lit ? 10 : 2;
+  if (room != null) {
+    const ring = room === 0 ? 'st-room-for is-full' : 'st-room-for';
+
+    marks.push(
+      round ? (
+        <circle key="room" className={ring} cx={f(cx)} cy={f(cy)} r={f(ex * s + 6)} />
+      ) : (
+        <g key="room" transform={rot}>
+          <rect
+            className={ring}
+            x={f(-ex * s - 6)}
+            y={f(-ey * s - 6)}
+            width={f(2 * ex * s + 12)}
+            height={f(2 * ey * s + 12)}
+            rx="8"
+          />
+        </g>
+      ),
+    );
+  }
+  onItem.forEach(({ who }, k) => {
+    const pad = (lit ? 10 : 2) + RING_STEP * k;
+    const lift = PILL_STEP * k;
 
     if (round) {
       const rr = ex * s + pad + 3.5;
 
       marks.push(
-        <g key="ring" className={`st-ring p${ring.tone}`}>
+        <g key={`ring${k}`} className={`st-ring p${who.tone}`}>
           <circle className="st-ring-gap" cx={f(cx)} cy={f(cy)} r={f(rr)} />
           <circle className="st-ring-line" cx={f(cx)} cy={f(cy)} r={f(rr + 1.5)} />
-          <Pill x={cx - rr * 0.72} y={cy - rr * 0.72} words={ring.initials} />
+          <Pill x={cx - rr * 0.72} y={cy - rr * 0.72 - lift} words={who.initials} />
         </g>,
       );
     } else {
@@ -505,8 +557,16 @@ function ItemDrawing({
       const [px, py] = turn([-gw, -gh], item.rot);
 
       marks.push(
-        <g key="ring" className={`st-ring p${ring.tone}`}>
+        <g key={`ring${k}`} className={`st-ring p${who.tone}`}>
           <g transform={rot}>
+            <rect
+              className="st-ring-gap"
+              x={f(-gw)}
+              y={f(-gh)}
+              width={f(2 * gw)}
+              height={f(2 * gh)}
+              rx="10"
+            />
             <rect
               className="st-ring-line"
               x={f(-gw - 1.5)}
@@ -516,11 +576,11 @@ function ItemDrawing({
               rx="10"
             />
           </g>
-          <Pill x={cx + px} y={cy + py} words={ring.initials} />
+          <Pill x={cx + px} y={cy + py - lift} words={who.initials} />
         </g>,
       );
     }
-  }
+  });
   if (look.overlap.has(item.id))
     marks.push(
       round ? (
@@ -588,15 +648,7 @@ function ItemDrawing({
         .join(' ')}
       role={faint ? undefined : 'button'}
       tabIndex={faint ? undefined : tabbable ? 0 : -1}
-      aria-label={
-        faint
-          ? undefined
-          : itemName(
-              plan,
-              item,
-              ring != null && !ring.viewer ? say(SW.chosenBy, { name: ring.name }) : '',
-            )
-      }
+      aria-label={faint ? undefined : itemName(plan, item, chosenWords(choices))}
       aria-pressed={faint ? undefined : chosen}
       aria-hidden={faint ? true : undefined}
       data-item={item.id}
@@ -623,7 +675,106 @@ function ItemDrawing({
   );
 }
 
-function Pill({ x, y, words }: { x: number; y: number; words: string }) {
+/** One guess at 12 px words, so the tip, the label and the free tag grow together in every locale. */
+function wordsWide(words: string): number {
+  return words.length * 7;
+}
+
+export type Box = { x0: number; y0: number; x1: number; y1: number };
+
+/** An item's outline on screen, chairs included, as its rotation leaves it. */
+function footprint(item: Item, s: number, ox: number, oy: number): Box {
+  const [ex, ey] = extent(item);
+  const rad = (item.rot * Math.PI) / 180;
+  const hx = (Math.abs(ex * Math.cos(rad)) + Math.abs(ey * Math.sin(rad))) * s + 6;
+  const hy = (Math.abs(ex * Math.sin(rad)) + Math.abs(ey * Math.cos(rad))) * s + 6;
+  const cx = ox + item.x * s;
+  const cy = oy + item.y * s;
+
+  return { x0: cx - hx, y0: cy - hy, x1: cx + hx, y1: cy + hy };
+}
+
+function crosses(a: Box, b: Box): boolean {
+  return a.x0 < b.x1 && b.x0 < a.x1 && a.y0 < b.y1 && b.y0 < a.y1;
+}
+
+function nameAt(item: Item, s: number, oy: number): number {
+  const cy = oy + item.y * s;
+
+  return item.kind === 'rect' || item.kind === 'head'
+    ? cy + ((item.l ?? 76) / 2) * s + 12
+    : cy + Math.max(extent(item)[1], 40) * s * (item.kind === 'row' ? 1 : 0.55) + 12;
+}
+
+/** Below 50%, under the table's name; a tag that would cross one already placed goes a line lower (sc-5030). */
+function outTags(
+  items: readonly Item[],
+  s: number,
+  ox: number,
+  oy: number,
+): { id: string; x: number; y: number; n: number }[] {
+  const placed: Box[] = [];
+
+  return items
+    .filter((item) => item.kind !== 'single')
+    .map((item) => {
+      const n = free(item);
+      const x = ox + item.x * s;
+      const half = (wordsWide(n === 0 ? SW.fullTab : say(SW.freeTag, { n })) + 16) / 2;
+      const at = (y: number) => ({ x0: x - half, y0: y - 11, x1: x + half, y1: y + 11 });
+      let y = nameAt(item, s, oy) + 20;
+
+      while (placed.some((one) => crosses(at(y), one))) y += 24;
+      placed.push(at(y));
+      return { id: item.id, x, y, n };
+    });
+}
+
+/** Under its item, or over it when only the space under it is taken (sc-5030). */
+function freeTags(
+  items: readonly Item[],
+  s: number,
+  ox: number,
+  oy: number,
+): { id: string; x: number; y: number; n: number }[] {
+  const boxes = items.map((item) => ({ id: item.id, box: footprint(item, s, ox, oy) }));
+
+  return items
+    .filter((item) => item.kind !== 'single')
+    .map((item) => {
+      const n = free(item);
+      const own = footprint(item, s, ox, oy);
+      const x = (own.x0 + own.x1) / 2;
+      const half = (wordsWide(n === 0 ? SW.fullTab : say(SW.freeTag, { n })) + 16) / 2;
+      const clash = (y: number) =>
+        boxes.some(
+          (other) =>
+            other.id !== item.id &&
+            crosses({ x0: x - half, y0: y - 11, x1: x + half, y1: y + 11 }, other.box),
+        );
+      const below = own.y1 + 26;
+      const above = own.y0 - 26;
+
+      return { id: item.id, x, y: clash(below) && !clash(above) ? above : below, n };
+    });
+}
+
+/** While a guest is picked: "{n} free" on a green dashed outline, or "Full" on a grey one (sc-5030). */
+function FreeTag({ x, y, n }: { x: number; y: number; n: number }) {
+  const words = n === 0 ? SW.fullTab : say(SW.freeTag, { n });
+  const w = wordsWide(words) + 16;
+
+  return (
+    <g className={n === 0 ? 'st-free is-full' : 'st-free'} aria-hidden="true">
+      <rect x={f(x - w / 2)} y={f(y - 11)} width={f(w)} height="22" rx="11" />
+      <text x={f(x)} y={f(y)} textAnchor="middle" dominantBaseline="central">
+        {words}
+      </text>
+    </g>
+  );
+}
+
+export function Pill({ x, y, words }: { x: number; y: number; words: string }) {
   return (
     <g className="st-pill" aria-hidden="true">
       <rect x={f(x - 4)} y={f(y - 11)} width="30" height="22" rx="11" />
@@ -732,7 +883,9 @@ export function RoomDrawing({
   ghostAt = null,
   box = null,
   outlines = [],
+  cover = null,
   onFloor,
+  onFloorMouse,
 }: {
   width: number;
   height: number;
@@ -751,7 +904,9 @@ export function RoomDrawing({
   ghostAt?: Item | null;
   box?: Rect | null;
   outlines?: readonly Outline[];
+  cover?: Box | null;
   onFloor?: (event: PointerEvent<SVGSVGElement>) => void;
+  onFloorMouse?: (event: MouseEvent<SVGSVGElement>) => void;
 }) {
   const room = plan.room;
 
@@ -801,6 +956,7 @@ export function RoomDrawing({
         length: lengthOf(room.l, units),
       })}
       onPointerDown={onFloor}
+      onMouseDown={onFloorMouse}
     >
       <rect className="st-floor" x={f(ox)} y={f(oy)} width={f(rw)} height={f(rl)} />
       {lines}
@@ -898,12 +1054,76 @@ export function RoomDrawing({
       {tip != null && (
         <Tip x={ox + tip.at[0] * s + 26} y={oy + tip.at[1] * s + 30} words={tip.words} />
       )}
+      {look.picking === true &&
+        (detail === 'out' ? outTags : freeTags)(ordered, s, ox, oy).map((tag) => (
+          <FreeTag key={`free-${tag.id}`} x={tag.x} y={tag.y} n={tag.n} />
+        ))}
+      {detail !== 'out' && (
+        <ChairLabel
+          items={items}
+          spot={look.label ?? null}
+          s={s}
+          ox={ox}
+          oy={oy}
+          width={width}
+          cover={cover}
+        />
+      )}
     </svg>
   );
 }
 
+const LABEL_INSET = 8;
+
+/** The chair's name above it on hover or focus, or under it where the bar over the room or the room's top would hide it, and slid inside the room's left and right edges (sc-5030). */
+function ChairLabel({
+  items,
+  spot,
+  s,
+  ox,
+  oy,
+  width,
+  cover,
+}: {
+  items: readonly Item[];
+  spot: { id: string; i: number } | null;
+  s: number;
+  ox: number;
+  oy: number;
+  width: number;
+  cover: Box | null;
+}) {
+  const item = spot == null ? undefined : items.find((one) => one.id === spot.id);
+  const point = item == null || spot == null ? undefined : chairsOf(item)[spot.i];
+
+  if (item == null || spot == null || point == null) return null;
+  const [px, py] = turn(point, item.rot);
+  const x = ox + (item.x + px) * s;
+  const y = oy + (item.y + py) * s;
+  const words = say(SW.seatLabel, {
+    n: spot.i + 1,
+    word: chairSaid(item.chairs[spot.i] ?? { state: 'empty' }),
+  });
+  const w = wordsWide(words) + 20;
+  const left = Math.max(LABEL_INSET, Math.min(x - w / 2, width - LABEL_INSET - w));
+  const over = y - CHAIR_R * s - 40;
+  const hidden =
+    over < 0 ||
+    (cover != null && crosses({ x0: left, y0: over, x1: left + w, y1: over + 28 }, cover));
+  const top = hidden ? y + CHAIR_R * s + 12 : over;
+
+  return (
+    <g className="st-tip" aria-hidden="true">
+      <rect x={f(left)} y={f(top)} width={f(w)} height="28" rx="10" />
+      <text x={f(left + w / 2)} y={f(top + 14)} textAnchor="middle" dominantBaseline="central">
+        {words}
+      </text>
+    </g>
+  );
+}
+
 function Tip({ x, y, words }: { x: number; y: number; words: string }) {
-  const w = words.length * 7 + 20;
+  const w = wordsWide(words) + 20;
 
   return (
     <g className="st-tip" aria-hidden="true">
@@ -935,6 +1155,7 @@ export function MiniMap({
     overlap: new Set(),
     focus: null,
     rings: {},
+    presence: 'chips',
     handles: null,
     chair: null,
     chairsFor: null,

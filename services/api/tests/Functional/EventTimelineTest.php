@@ -58,7 +58,7 @@ final class EventTimelineTest extends ApiTestCase
         self::assertSame([
             'timeZone' => 'Africa/Lagos',
             'milestones' => [
-                ['at' => '2030-11-14T16:00:00+01:00', 'title' => 'Adé at 40 starts', 'note' => null, 'owner' => 'event', 'area' => 'events', 'action' => null],
+                ['at' => '2030-11-14T16:00:00+01:00', 'title' => 'Adé at 40 starts', 'note' => null, 'owner' => 'event', 'area' => 'events', 'action' => null, 'done' => false],
             ],
         ], $this->timeline($this->owner, $id));
     }
@@ -145,7 +145,7 @@ final class EventTimelineTest extends ApiTestCase
         $this->end($id, '2030-11-01 09:30:00');
 
         self::assertSame([
-            ['at' => '2030-11-01T10:30:00+01:00', 'title' => 'Owambe called off', 'note' => null, 'owner' => 'event', 'area' => 'events', 'action' => null],
+            ['at' => '2030-11-01T10:30:00+01:00', 'title' => 'Owambe called off', 'note' => null, 'owner' => 'event', 'area' => 'events', 'action' => null, 'done' => false],
         ], $this->timeline($this->owner, $id)['milestones']);
     }
 
@@ -229,7 +229,7 @@ final class EventTimelineTest extends ApiTestCase
         return Vec\map($this->timeline($user, $eventId)['milestones'], static fn (array $milestone): string => $milestone['title']);
     }
 
-    /** @return array{timeZone: string, milestones: list<array{at: string, title: string, note: ?string, owner: string, area: string, action: ?array{label: string, link: string}}>} */
+    /** @return array{timeZone: string, milestones: list<array{at: string, title: string, note: ?string, owner: string, area: string, action: ?array{label: string, link: string}, done: bool}>} */
     private function timeline(User $user, string $eventId): array
     {
         $body = $this->as($user, '/api/events/' . $eventId . '/timeline');
@@ -244,6 +244,7 @@ final class EventTimelineTest extends ApiTestCase
                 'owner' => Type\string(),
                 'area' => Type\string(),
                 'action' => Type\nullable(Type\shape(['label' => Type\string(), 'link' => Type\string()])),
+                'done' => Type\bool(),
             ])),
         ])->assert($body);
     }

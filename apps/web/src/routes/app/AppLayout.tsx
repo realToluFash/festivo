@@ -42,18 +42,15 @@ import { NoOrganisation } from './NoOrganisation.tsx';
 import { heldRegistration } from '../../pendingRegistration.ts';
 import { useTwoFactorStanding } from '../../twoFactorStanding.ts';
 import { useDialogKeys } from '../../dialogFocus.ts';
-import { PHONE_WIDTH, useDeskWidth, usePhoneWidth } from '../../phoneWidth.ts';
+import { PHONE_WIDTH, usePhoneWidth } from '../../phoneWidth.ts';
 import { DeskTopContext, fitsPhone, placesItsNotices } from '../../deskTop.ts';
-import {
-  EventNav,
-  type InsideEvent,
-  useInsideEvent,
-  useShownEventName,
-} from './events/EventNav.tsx';
+import { EventNav, type InsideEvent, useInsideEvent } from './events/EventNav.tsx';
 import { EventHandoff } from './events/EventHandoff.tsx';
 import { type Handoff, useHandoff } from './events/handoff.ts';
 import { Skeleton } from '../../components/Skeleton.tsx';
 import { arriveAt, pageStart } from '../../pageArrival.ts';
+import './narrowDesk.css';
+import './wideDesk.css';
 
 /**
  * The signed-in shell, built for a desk.
@@ -144,12 +141,13 @@ function Shell() {
   const offer = useDomainOffer();
   const overdue = useTwoFactorStanding(organisation) === 'overdue';
   const switchTo = switchOf(location.state);
-  const atDesk = useDeskWidth();
   const atPhone = usePhoneWidth();
   const fits = fitsPhone(pathname);
-  // At a desk no page has the band: each page's own top carries the bell (sc-39509), as Today, Events and Calendar do in a phone's window (sc-57468).
-  const bandless = atDesk || (atPhone && fits);
+  // Wider than a phone no page has the band (sc-39509, sc-60699): each page's own top carries the bell, as Today, Events and Calendar do in a phone's window (sc-57468).
+  const bandless = !atPhone || fits;
   const ownNotices = placesItsNotices(pathname);
+  // An event's areas at a desk say they are offline in Events' amber box, above their crumb row (sc-65646).
+  const boxed = bandless && !ownNotices && pathname.startsWith('/app/events/');
 
   // Before the first paint, so the first signed-in screen is already in the account's language.
   useLayoutEffect(() => {
@@ -349,18 +347,6 @@ function Shell() {
 
         {!bandless && (
           <header className="shell-band" inert={menuOpen}>
-            <p className="shell-crumb">
-              {organisation?.name ?? session.pausedIn?.name}
-              {/* A screen standing in for the page leaves only the organisation (pm, 2 Nov). */}
-              {standIn == null && (
-                <>
-                  <span aria-hidden="true"> / </span>
-                  <b>
-                    <Destination />
-                  </b>
-                </>
-              )}
-            </p>
             <NotificationsBell userId={session.userId} />
           </header>
         )}
@@ -370,7 +356,7 @@ function Shell() {
           className={bandless ? 'shell-content is-card' : 'shell-content'}
           inert={menuOpen}
         >
-          {!(bandless && ownNotices) && <OfflineBand />}
+          {boxed ? <OfflineBox /> : !(bandless && ownNotices) && <OfflineBand />}
           <LinkedNotice />
           {organisation != null && session.pausedIn == null && (
             <SignInRulesNotices key={organisation.id} organisation={organisation} />
@@ -553,25 +539,6 @@ function ShellFoot({ onFollow }: { onFollow?: () => void }) {
       </NavLink>
     </>
   );
-}
-
-/** Where the person is, after the organisation in the band's crumb: inside an event, its name once loaded. */
-function Destination() {
-  const { t } = useTranslation();
-  const { pathname } = useLocation();
-  const inside = useInsideEvent();
-  const eventName = useShownEventName(inside?.eventId);
-
-  if (inside != null) return eventName ?? t(`eventNav.${inside.area}`);
-  if (pathname.startsWith('/app/account')) return t('nav.account');
-
-  if (pathname.startsWith('/app/menu-library')) return t('nav.menuLibrary');
-
-  const section = ['events', 'calendar', 'settings'].find((name) =>
-    pathname.startsWith(`/app/${name}`),
-  );
-
-  return t(`nav.${section ?? 'today'}`);
 }
 
 /** `AppShell-Phone`'s sheet: a modal dialog, so focus goes back to Menu when it closes. */

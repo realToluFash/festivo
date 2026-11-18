@@ -9,6 +9,7 @@ import {
   rmSync,
   statSync,
   symlinkSync,
+  utimesSync,
   writeFileSync,
 } from 'node:fs';
 import { spawnSync } from 'node:child_process';
@@ -93,6 +94,8 @@ import {
   branchForStory,
   CACHE_CLEARER,
   clearApiCache,
+  execOutput,
+  staleInContainer,
   defaultNetwork,
   COMPOSE_PROJECT,
   emulatorAbi,
@@ -123,6 +126,8 @@ import {
   renewingSession,
   resumeBatch,
   runHeld,
+  KEPT_LOG_BYTES,
+  trimMaestroLogs,
   maestroTarget,
   missingCmdlineTools,
   setupAgain,
@@ -2425,6 +2430,55 @@ describe('the batch helper', () => {
     }
   });
 
+  it('answers what the API holds of one track once the asked presses have reached it', async () => {
+    const event = '0f8e2c1a-5b3d-4e6f-9a7b-1c2d3e4f5a6b';
+    const reads = [
+      {
+        items: [
+          { place: 'Salle', startedAt: '2026-11-17T20:00:00+00:00', endedAt: null },
+          {
+            place: 'Jardin',
+            startedAt: '2026-11-17T18:00:00+00:00',
+            endedAt: '2026-11-17T19:00:00+00:00',
+          },
+        ],
+      },
+      {
+        items: [
+          {
+            place: 'Salle',
+            startedAt: '2026-11-17T20:00:00+00:00',
+            endedAt: '2026-11-17T20:01:00+00:00',
+          },
+          { place: 'Salle', startedAt: null, endedAt: null },
+          {
+            place: 'Jardin',
+            startedAt: '2026-11-17T18:00:00+00:00',
+            endedAt: '2026-11-17T19:00:00+00:00',
+          },
+        ],
+      },
+    ];
+    const asked = [];
+    const readSchedule = async (id) => {
+      asked.push(id);
+      return reads[Math.min(asked.length - 1, reads.length - 1)];
+    };
+    const { server, ask } = await helperFor('running', undefined, { readSchedule });
+    try {
+      expect(await ask(`/schedule?event=${event}&place=Salle&done=1`)).toEqual({
+        started: 1,
+        done: 1,
+      });
+      expect(asked).toEqual([event, event]);
+      expect(await ask('/schedule?event=..%2Fauth')).toEqual({
+        error: 'whose schedule? /schedule?event=<id> gave ../auth',
+      });
+    } finally {
+      server.close();
+    }
+  });
+
   it('turns an Android device to portrait, and leaves iOS to Maestro', async () => {
     const turned = [];
     const portrait = () => turned.push('portrait') && 1;
@@ -3250,7 +3304,9 @@ describe('the flows a batch runs', () => {
             else if (/\.ya?ml$/.test(path)) follow(reached);
           }
         };
-        for (const file of readdirSync(join(target, '_checks')))
+        for (const file of readdirSync(join(target, '_checks')).filter((name) =>
+          name.endsWith('.yaml'),
+        ))
           follow(join(target, '_checks', file));
         expect(unreached).toEqual([]);
       } finally {
@@ -3297,6 +3353,13 @@ describe('the flows a batch runs', () => {
       expect(
         existsSync(join(target, '_checks/sc23267-start-cold.fr.sc23267-start-cold-once.flow.yaml')),
       ).toBe(true);
+      const joined = 'sc28178/sc28178-gone-moves-on.es.sc28178.joined.flow.yaml';
+      expect(readFileSync(join(target, '_checks/sc28178-gone-moves-on.es.yaml'), 'utf8')).toContain(
+        `file: ${joined}`,
+      );
+      const sub = readFileSync(join(target, '_checks', joined), 'utf8');
+      expect(sub).toContain(localise("'{{t:switcher.switched}}'", catalogues, 'es'));
+      expect(sub).not.toContain('{{t:');
       const session = readFileSync(join(target, 'batch/session.yaml'), 'utf8');
       expect(session).not.toContain('{{t:');
       expect(session).toMatch(/when:\s+visible:\s+id: 'settings\\\.\.\*'\s+commands:/);
@@ -4421,5 +4484,150 @@ describe('withAvdRam', () => {
 
   it('adds the line when the config has none', () => {
     expect(withAvdRam('a=1', 4096)).toBe('a=1\nhw.ramSize=4096\n');
+  });
+});
+
+describe('staleInContainer', () => {
+  const a = 'a'.repeat(64);
+  const b = 'b'.repeat(64);
+  const host = new Map([
+    ['src/Enum/ErrorCode.php', a],
+    ['tests/Double/ScriptedMenuPicks.php', b],
+  ]);
+
+  it('finds nothing when the container serves the host bytes', () => {
+    const output = `${a}  src/Enum/ErrorCode.php\n${b}  tests/Double/ScriptedMenuPicks.php\n`;
+    expect(staleInContainer(host, output)).toEqual([]);
+  });
+
+  it('names a file served with other bytes', () => {
+    const output = `${a}  src/Enum/ErrorCode.php\n${a}  tests/Double/ScriptedMenuPicks.php\n`;
+    expect(staleInContainer(host, output)).toEqual(['tests/Double/ScriptedMenuPicks.php']);
+  });
+
+  it('names a file the container did not hash at all', () => {
+    expect(staleInContainer(host, `${a}  ./src/Enum/ErrorCode.php\n`)).toEqual([
+      'tests/Double/ScriptedMenuPicks.php',
+    ]);
+  });
+});
+
+describe('execOutput', () => {
+  it('returns the stdout of an exec that succeeded', () => {
+    expect(execOutput({ status: 0, stdout: 'ok\n', stderr: '' }, 'exec')).toBe('ok\n');
+  });
+
+  it('throws with the stderr when the exec failed, rather than reading empty stdout', () => {
+    expect(() =>
+      execOutput({ status: 1, stdout: '', stderr: 'service "api" is not running\n' }, 'exec api'),
+    ).toThrow('exec api exited 1: service "api" is not running');
+  });
+
+  it('throws when docker could not be spawned', () => {
+    expect(() =>
+      execOutput({ status: null, error: new Error('spawn docker ENOENT') }, 'exec api'),
+    ).toThrow('exec api: spawn docker ENOENT');
+  });
+});
+
+describe("a Maestro run's debug logs", () => {
+  const run = () => {
+    const out = mkdtempSync(join(tmpdir(), 'maestro-logs-'));
+    const write = (under, text, at) => {
+      mkdirSync(join(out, under), { recursive: true });
+      const path = join(out, under, 'maestro.log');
+      writeFileSync(path, text);
+      if (at) utimesSync(path, at / 1000, at / 1000);
+      return path;
+    };
+    const evidence = join(out, '.maestro/tests/2026-11-17_044334/screenshot-1.png');
+    const log = write('.maestro/tests/2026-11-17_044334', 'run log', Date.now() - 1000);
+    const batch = write('_batch/logs', 'batch log', Date.now());
+    writeFileSync(evidence, 'png');
+    writeFileSync(join(out, '.maestro/tests/2026-11-17_044334/commands.json'), '[]');
+    return { out, log, batch, evidence };
+  };
+
+  it('are deleted after a run that passed, both copies, and the evidence stays', () => {
+    const { out, log, batch, evidence } = run();
+    trimMaestroLogs(out, { failed: false });
+    expect([existsSync(log), existsSync(batch), existsSync(evidence)]).toEqual([
+      false,
+      false,
+      true,
+    ]);
+    expect(existsSync(join(out, '.maestro/tests/2026-11-17_044334/commands.json'))).toBe(true);
+  });
+
+  it('keep one copy after a run that failed, the newest', () => {
+    const { out, log, batch } = run();
+    trimMaestroLogs(out, { failed: true });
+    expect([existsSync(log), readFileSync(batch, 'utf8')]).toEqual([false, 'batch log']);
+  });
+
+  it("keep a failed run's last 5 MB", () => {
+    const { out, batch } = run();
+    writeFileSync(
+      batch,
+      Buffer.concat([Buffer.alloc(100, 'a'), Buffer.alloc(KEPT_LOG_BYTES, 'z')]),
+    );
+    trimMaestroLogs(out, { failed: true });
+    const kept = readFileSync(batch);
+    expect([kept.length, kept.includes('a')]).toEqual([KEPT_LOG_BYTES, false]);
+  });
+
+  it("leave an earlier run's kept log to that run", () => {
+    const { out, log, batch } = run();
+    trimMaestroLogs(out, { since: Date.now() - 500, failed: false });
+    expect([existsSync(log), existsSync(batch)]).toEqual([true, false]);
+  });
+
+  const DEVICE_LOGS = [
+    'device-simulator.log',
+    'device-logcat.txt',
+    'device-xctest.log',
+    'xctest_runner_2026-11-17_044334.log',
+  ];
+  const withDeviceLogs = (out, under, at) =>
+    DEVICE_LOGS.map((name) => {
+      const path = join(out, under, name);
+      writeFileSync(path, name);
+      utimesSync(path, at / 1000, at / 1000);
+      return path;
+    });
+
+  it("delete the device's logs after a run that passed, every copy, and the evidence stays", () => {
+    const { out, evidence } = run();
+    const logs = [
+      ...withDeviceLogs(out, '.maestro/tests/2026-11-17_044334', Date.now() - 1000),
+      ...withDeviceLogs(out, '_batch/logs', Date.now()),
+    ];
+    trimMaestroLogs(out, { failed: false });
+    expect(logs.filter(existsSync)).toEqual([]);
+    expect(existsSync(evidence)).toBe(true);
+  });
+
+  it("keep the newest of each of the device's logs after a run that failed", () => {
+    const { out } = run();
+    const older = withDeviceLogs(out, '.maestro/tests/2026-11-17_044334', Date.now() - 1000);
+    const newer = withDeviceLogs(out, '_batch/logs', Date.now());
+    trimMaestroLogs(out, { failed: true });
+    expect([older.filter(existsSync), newer.filter(existsSync)]).toEqual([[], newer]);
+  });
+
+  it("cut a failed run's device log to its last 5 MB", () => {
+    const { out } = run();
+    const [simulator] = withDeviceLogs(out, '_batch/logs', Date.now());
+    writeFileSync(
+      simulator,
+      Buffer.concat([Buffer.alloc(100, 'a'), Buffer.alloc(KEPT_LOG_BYTES, 'z')]),
+    );
+    trimMaestroLogs(out, { failed: true });
+    const kept = readFileSync(simulator);
+    expect([kept.length, kept.includes('a')]).toEqual([KEPT_LOG_BYTES, false]);
+  });
+
+  it('ask nothing of a run that left no folder', () => {
+    expect(() => trimMaestroLogs(join(tmpdir(), 'no-such-maestro-run'))).not.toThrow();
   });
 });

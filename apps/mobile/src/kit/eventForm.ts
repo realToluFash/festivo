@@ -158,3 +158,22 @@ export function pickedInto(
 
   return { date: field.date === '' ? pickedDate(picked) : field.date, time: pickedTime(picked) };
 }
+
+/** null when the photo was removed or replaced before its upload finished. */
+export type StagedCover = { key: string } | { refused: string } | null;
+
+/** The event exists by now, so a refused or failed cover is said on its page rather than on the form. */
+export async function coverAfterCreate(
+  upload: StagedCover,
+  attach: (uploadKey: string) => Promise<unknown>,
+  refuse: (words: string) => void,
+  refusalOf: (error: unknown) => string,
+): Promise<void> {
+  if (upload == null) return;
+  if ('refused' in upload) {
+    refuse(upload.refused);
+    return;
+  }
+
+  await attach(upload.key).catch((error: unknown) => refuse(refusalOf(error)));
+}

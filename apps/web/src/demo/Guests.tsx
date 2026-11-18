@@ -13,6 +13,8 @@ import {
 import { Link, useNavigate, useSearchParams } from 'react-router';
 
 import { EventsShell } from './EventParts.tsx';
+import { EventNotLoaded, KeptBox } from './KeptOffline.tsx';
+import { type Kept, clockWords, tabStartOf, useKept } from './tabKept.ts';
 import { EventSidebar } from './EventSidebar.tsx';
 import {
   EVENT_WORDS,
@@ -187,8 +189,16 @@ function GuestsAt({ params }: { params: URLSearchParams }) {
     return their.state === 'erased' ? { ...opened, list: erasedIn(opened.list, EMEKA.id) } : opened;
   });
   const event = params.get('state') === 'eventDeleted' ? null : sampleEvent(start.event);
+  const kept = useKept(
+    start.event,
+    'guests',
+    clockWords(start.clock, sampleEvent(start.event)?.timeZone ?? 'UTC'),
+    tabStartOf(params.get('state'), params.get('tab')),
+  );
 
   if (event == null) return <EventGone id={start.event} />;
+  if (kept.offline && kept.asOf == null)
+    return <EventNotLoaded id={start.event} onRetry={kept.retry} />;
 
   return (
     <EventsShell
@@ -212,6 +222,7 @@ function GuestsAt({ params }: { params: URLSearchParams }) {
           their={their}
           tell={tell}
           tellLink={params.get('tell') === 'link'}
+          kept={kept}
         />
       )}
     </EventsShell>
@@ -260,6 +271,7 @@ function GuestsPage({
   their,
   tell,
   tellLink,
+  kept,
 }: {
   event: SampleEvent;
   start: GuestsStart;
@@ -267,6 +279,7 @@ function GuestsPage({
   their: { state: TheirState; viewer: Viewer };
   tell: Tell;
   tellLink: boolean;
+  kept: Kept;
 }) {
   const [linkTold, setLinkTold] = useState<string | null>(tellLink ? 'Kwame Mensah' : null);
   const locale = useMemo(() => formattingLocale('en', navigator.language), []);
@@ -279,7 +292,8 @@ function GuestsPage({
   const pending = useRef<string[]>(firstFocus(start));
   const [, rerender] = useReducer((count: number) => count + 1, 0);
   const [list, setList] = useState<Guest[]>(start.list);
-  const [status, setStatus] = useState(start.status);
+  const [loaded, setStatus] = useState(start.status);
+  const status = kept.offline && !kept.areaKept ? 'failed' : loaded;
   const { choice, q, since, setChoice, setQ, clear } = useGuestsAddress(base);
   const [looked, setLooked] = useState(lastLooked);
   const [dietaryOnly, setDietary] = useState(start.dietary);
@@ -667,6 +681,7 @@ function GuestsPage({
   return (
     <div ref={root} className="desk-page ev-page gs">
       <div className="ev-wide gs-page">
+        <KeptBox kept={kept} />
         <div className="ev-crumb-row">
           <nav className="ev-crumb" aria-label={GW.crumb}>
             <ol>
@@ -735,7 +750,13 @@ function GuestsPage({
           <div className="desk-failed gs-failed" role="alert">
             <h2>{GW.loadFailed}</h2>
             <p className="desk-line">{GW.loadFailedLine}</p>
-            <TextAction label={GW.retry} onClick={() => setStatus('ready')} />
+            <TextAction
+              label={GW.retry}
+              onClick={() => {
+                if (kept.offline) kept.retry();
+                setStatus('ready');
+              }}
+            />
           </div>
         ) : (
           <>

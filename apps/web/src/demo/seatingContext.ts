@@ -15,6 +15,8 @@ export interface SeatingApi {
   open: (mode: PanelMode | null) => void;
   ask: (asking: Asking) => void;
   pick: (party: string | null) => void;
+  /** Picks a guest who already has a seat, to move them and only them (sc-4013); picking them again drops it. */
+  pickSeated: (table: string, chair: number) => void;
   seatAt: (table: string, chair?: number) => void;
   seatJust: (party: string, table: string) => void;
   swap: (table: string, chair: number, party: string) => void;

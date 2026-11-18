@@ -25,6 +25,7 @@ use App\Tests\Traits\OnboardsAccounts;
 use DateTimeImmutable;
 use Doctrine\ORM\EntityManagerInterface;
 use Lexik\Bundle\JWTAuthenticationBundle\Services\JWTTokenManagerInterface;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use Psl\Iter;
 use Psl\Json;
@@ -268,6 +269,34 @@ final class JoinRequestsTest extends ApiTestCase
         $written = fn (string $locale): string => self::service(UserMailer::class)->deadline(new DateTimeImmutable($removes['at']), $this->fresh($owner), $locale);
         self::assertSame($written('es'), $removes['written']);
         self::assertNotSame($written('pt'), $removes['written']);
+    }
+
+    /** sc-65714: on a screen, the date part follows the device's region while the device speaks the shown language; the zone and its label stay the account's. */
+    #[Test]
+    #[DataProvider('devices')]
+    public function theRemovalFollowsTheDevicesRegion(string $header, string $query, string $expected): void
+    {
+        self::mockTime(self::ASKED);
+        [$owner, $organisation] = $this->organisation();
+        $this->asks($organisation, 'ada@okeke.ng');
+        $this->signIn($owner);
+        $this->fresh($owner)->setTimezone('Africa/Lagos');
+        $this->client->setServerParameter('HTTP_ACCEPT_LANGUAGE', $header);
+
+        $pending = Iter\first(Vec\filter($this->listed($organisation, 'waiting' . $query), static fn (array $member): bool => 'pending_approval' === $member['status']));
+
+        self::assertSame($expected, Type\shape(['written' => Type\string()], true)->coerce($pending['removesAt'] ?? null)['written']);
+    }
+
+    /** @return iterable<string, array{string, string, string}> */
+    public static function devices(): iterable
+    {
+        yield 'en-US' => ['en-US', '', 'Wednesday, Nov 11 at 09:40 WAT'];
+        yield 'en-GB' => ['en-GB', '', 'Wednesday 11 Nov at 09:40 WAT'];
+        yield 'English alone' => ['en', '', 'Wednesday 11 Nov at 09:40 WAT'];
+        yield 'a picker switch keeps the region' => ['en-US', '&locale=en', 'Wednesday, Nov 11 at 09:40 WAT'];
+        yield 'a device in another language' => ['fr-FR', '&locale=en', 'Wednesday 11 Nov at 09:40 WAT'];
+        yield 'a malformed tag' => ['en-x', '', 'Wednesday 11 Nov at 09:40 WAT'];
     }
 
     #[Test]

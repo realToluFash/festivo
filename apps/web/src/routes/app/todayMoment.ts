@@ -194,6 +194,8 @@ export function todayMoment(
     sub: subOf(view.sub, now, reader, t),
     days: view.days.map(({ day, today: isToday, dots }) => ({
       weekday: dayWords(day, reader.locale, { weekday: 'short' }),
+      narrow: dayWords(day, reader.locale, { weekday: 'narrow' }),
+      spoken: dayWords(day, reader.locale, { weekday: 'long' }),
       number: dayWords(day, reader.locale, { day: 'numeric' }),
       today: isToday,
       dots: dots.map(shownEvent),

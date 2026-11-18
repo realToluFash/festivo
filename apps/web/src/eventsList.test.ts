@@ -119,7 +119,15 @@ describe('cardStep', () => {
   const nextUpAt = (at: string) => ({
     ...lasting(547, 'happening_now'),
     milestones: [
-      { at, title: 'ends', note: null, owner: 'event' as const, area: 'event', action: null },
+      {
+        at,
+        title: 'ends',
+        note: null,
+        owner: 'event' as const,
+        area: 'event',
+        action: null,
+        done: false,
+      },
     ],
   });
 

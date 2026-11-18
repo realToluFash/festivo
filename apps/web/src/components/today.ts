@@ -24,9 +24,18 @@ export interface AgendaDay {
 
 export interface StripDay {
   weekday: string;
+  /** The narrow weekday, one letter, written at 360 px and narrower and in Portuguese at every width (sc-61548). */
+  narrow: string;
+  /** The full weekday, which a screen reader hears where the letter shows. */
+  spoken: string;
   number: string;
   today: boolean;
   dots: ShownEvent[];
+}
+
+/** Portuguese's short weekday is the whole word in Portugal ("quarta"), so its days write the letter at every width, whatever the region (sc-61548). */
+export function lettersAtEveryWidth(language: string): boolean {
+  return language.split('-')[0] === 'pt';
 }
 
 export interface StripBar {

@@ -24,6 +24,7 @@ import {
   serverClock,
   shownPhase,
   timeSlot,
+  todayTrackParam,
   wallOfZoned,
   weekdayOf,
   zonedAt,
@@ -34,11 +35,19 @@ import { useTranslation } from 'react-i18next';
 import { Link, useSearchParams } from 'react-router';
 
 import { api } from '../../../api.ts';
+import {
+  keepLoaded,
+  keptFor,
+  keptKeys,
+  useAnsweredAgain,
+  useKeptAsShown,
+} from '../../../tabKept.ts';
 import { Glyph } from '../../../components/Glyph.tsx';
 import { useDeskTop } from '../../../deskTop.ts';
 import { dateLocale } from '../../../i18n/index.ts';
 import { pageTitle, usePageTitle } from '../../../pageTitle.ts';
 import { useLoadedAt, useServerNow } from '../../../serverNow.ts';
+import { useOwnOfflineNotice } from '../../../offline.ts';
 import { canOn } from '../../../session.ts';
 import { NightSwitch } from './NightSwitch.tsx';
 import { endingNow } from './openInPlace.ts';
@@ -77,6 +86,8 @@ function NightArea({ event }: { event: OrganisationEvent }) {
   const store = useMemo(() => pressStoreOf(kept), [kept]);
   const [load, setLoad] = useState<Load>({ kind: 'loading' });
   const [attempt, setAttempt] = useState(0);
+  const answeredAgain = useAnsweredAgain();
+  const showing = useRef(false);
   const [queue, setQueue] = useState<QueuedPress[]>(() => kept.read());
   const [offline, setOffline] = useState(false);
   const [syncedAt, setSyncedAt] = useState(() => serverClock.now());
@@ -85,26 +96,51 @@ function NightArea({ event }: { event: OrganisationEvent }) {
   const sending = useRef(false);
   const again = useRef(false);
   const wasOffline = useRef(false);
+  const stale = useOwnOfflineNotice();
 
   usePageTitle(pageTitle(t, [t('runView.title'), event.name]));
 
-  const loaded = useCallback((schedule: Schedule) => {
-    setLoad({ kind: 'loaded', schedule });
-    setSyncedAt(serverClock.now());
-  }, []);
+  const loaded = useCallback(
+    (schedule: Schedule) => {
+      keepLoaded(keptKeys.schedule(event.id), schedule);
+      setLoad({ kind: 'loaded', schedule });
+      setSyncedAt(serverClock.now());
+    },
+    [event.id],
+  );
+
+  useEffect(() => {
+    showing.current = load.kind === 'loaded';
+  });
 
   useEffect(() => {
     let current = true;
 
     api.schedule(event.id).then(
       (schedule) => current && loaded(schedule),
-      () => current && setLoad((was) => (was.kind === 'loaded' ? was : { kind: 'failed' })),
+      (error: unknown) => {
+        if (!current) return;
+        const kept = keptFor<Schedule>(keptKeys.schedule(event.id), error);
+
+        if (kept != null && !showing.current) {
+          setOffline(true);
+          setSyncedAt(kept.at);
+        }
+        setLoad((was) =>
+          was.kind === 'loaded'
+            ? was
+            : kept != null
+              ? { kind: 'loaded', schedule: kept.value }
+              : { kind: 'failed' },
+        );
+      },
     );
 
     return () => {
       current = false;
     };
-  }, [event.id, attempt, loaded]);
+  }, [event.id, attempt, loaded, answeredAgain]);
+  useKeptAsShown(keptKeys.schedule(event.id), load.kind === 'loaded' ? load.schedule : null);
 
   const topics = useMemo(() => [realtimeTopic('EventSchedule', event.id)], [event.id]);
   useHubTopics(
@@ -190,11 +226,14 @@ function NightArea({ event }: { event: OrganisationEvent }) {
             event={event}
             schedule={withPresses(load.schedule, queue)}
             queued={queue.length}
-            offline={offline}
+            offline={offline || stale != null}
             syncedAt={syncedAt}
             lost={lost}
             onDismiss={() => setLost(null)}
-            onTry={() => void flush()}
+            onTry={() => {
+              stale?.retry();
+              void flush();
+            }}
             onPress={(item, kind, words) => void press(item, kind, words)}
           />
         ) : (
@@ -287,6 +326,8 @@ interface Acts {
 
 type View = NightView<RunItem>;
 
+const REFOCUS_MS = 5000;
+
 function Night({
   event,
   schedule,
@@ -313,6 +354,7 @@ function Night({
   const serverNow = useServerNow();
   const zone = schedule.timeZone;
   const now = zonedAt(serverNow, zone);
+  const [params] = useSearchParams();
   const manage = canOn(event, 'run_of_show.manage');
   const items = schedule.items.map(runItemOf);
   const tracks = nightTracks(items, now);
@@ -322,7 +364,13 @@ function Night({
   const [chosen, setChosen] = useState<string | null>(null);
   const [moving, setMoving] = useState(false);
   const [rows] = useState(() => new Map<string, HTMLButtonElement>());
-  const track = tracks.find((one) => one.key === trackKey) ?? tracks[0] ?? null;
+  const cards = useRef<HTMLDivElement>(null);
+  const [refocus, setRefocus] = useState<{ row: string | null } | null>(null);
+  const track =
+    tracks.find((one) => one.key === trackKey) ??
+    tracks.find((one) => todayTrackParam(one) === params.get('track')) ??
+    tracks[0] ??
+    null;
   const view = track == null ? null : nightView(track, now, zone);
   const chosenRow =
     view?.later.find((row) => row.item.id === chosen && row.mark === 'notStarted') ?? null;
@@ -339,12 +387,38 @@ function Night({
     manage,
   });
 
+  // A press replaces the button it was made with, so focus would fall to the page; it goes to the night's next control instead.
+  useEffect(() => {
+    if (refocus == null) return;
+    const active = document.activeElement;
+    if (active != null && active !== document.body) {
+      if (!cards.current?.contains(active)) setRefocus(null);
+      return;
+    }
+    const target =
+      (refocus.row == null ? undefined : rows.get(refocus.row)) ??
+      cards.current?.querySelector<HTMLElement>('button.nt-big') ??
+      cards.current?.querySelector<HTMLElement>('a, button') ??
+      cards.current;
+    target?.focus();
+  }, [refocus, schedule, rows]);
+
+  useEffect(() => {
+    if (refocus == null) return undefined;
+    const late = setTimeout(() => setRefocus(null), REFOCUS_MS);
+
+    return () => clearTimeout(late);
+  }, [refocus]);
+
   const settle = () => {
     setChosen(null);
     setMoving(false);
   };
+  const pressed = (item: RunItem, kind: ScheduleItemPress) =>
+    setRefocus({ row: kind === 'skip' && item.id === chosen ? item.id : null });
   const acts: Acts = {
     done: (item) => {
+      pressed(item, 'done');
       settle();
       onPress(
         item,
@@ -355,10 +429,12 @@ function Night({
       );
     },
     skip: (item) => {
+      pressed(item, 'skip');
       settle();
       onPress(item, 'skip', t('night.saidSkipped', { title: item.title }));
     },
     start: (item) => {
+      pressed(item, 'start');
       settle();
       onPress(item, 'start', t('night.saidStarted', { title: item.title }));
     },
@@ -442,7 +518,7 @@ function Night({
         </div>
       )}
       <div className="nt-split">
-        <div className="nt-cards">
+        <div className="nt-cards" ref={cards} tabIndex={-1}>
           <Cards
             eventId={event.id}
             view={view}
@@ -827,7 +903,7 @@ function NextCard({
             {next.expected != null && (
               <span className="nt-about" aria-hidden="true">
                 <Glyph name="arrow" size={16} weight={2.4} />
-                {t('runView.about', { time: clock(next.expected) })}
+                {t('runView.about', timeSlot(next.expected, dateLocale()))}
               </span>
             )}
           </p>

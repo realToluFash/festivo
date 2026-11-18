@@ -207,7 +207,7 @@ describe('the Menu library (sc-3901)', () => {
 
     expect(panel.closest('.shell-content .lib-page.desk-page')).not.toBeNull();
     expect(
-      cssRule('.shell-content.is-card .desk-page', STYLES.slice(STYLES.indexOf('(width > 60rem)'))),
+      cssRule('.shell-content.is-card .desk-page', STYLES.slice(STYLES.indexOf('(width > 40rem)'))),
     ).toContain('padding: 0;');
   });
 
@@ -476,6 +476,20 @@ describe('the Menu library (sc-3901)', () => {
         2,
       );
       expect(sent.some((one) => one.path.endsWith('/variants'))).toBe(false);
+    });
+
+    it('heads Edit variant with its dish and lights only the variant', SLOW, async () => {
+      signedIn();
+      answering({}, library([PEPPER]));
+      at('/app/menu-library');
+      await loaded();
+
+      fireEvent.click(screen.getByRole('button', { name: 'Edit Full bowl' }));
+      const panel = await screen.findByRole('complementary', { name: 'Edit Full bowl' });
+
+      expect(within(panel).getByText('Pepper soup · 3 ways')).toBeTruthy();
+      expect(document.querySelector('.lib-row.is-lit')).toBeNull();
+      expect(document.querySelector('.vr-inset.is-lit')).not.toBeNull();
     });
 
     it('opens nothing on Remove… of the last Everyone variant, and says why', SLOW, async () => {

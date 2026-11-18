@@ -13,6 +13,7 @@ import { Navigate, useParams } from 'react-router';
 import { api } from '../../../api.ts';
 import { Refreshing } from '../../../components/OfflineBand.tsx';
 import { keepsWhatLoaded, useOffline } from '../../../offline.ts';
+import { keepLoaded, keptFor, keptKeys, rekeep } from '../../../tabKept.ts';
 import { dateLocale } from '../../../i18n/index.ts';
 import { ArrivalNotice } from '../../../components/PageArrival.tsx';
 import { pageTitle, usePageTitle } from '../../../pageTitle.ts';
@@ -42,7 +43,7 @@ import '../../../components/eventsDesk.css';
 
 type Load =
   | { kind: 'loading' }
-  | { kind: 'failed' }
+  | { kind: 'failed'; offline?: boolean }
   | { kind: 'notFound' }
   | { kind: 'loaded'; event: OrganisationEvent; tag: string };
 
@@ -129,18 +130,21 @@ function EventOf({
   const heading = useRef<HTMLHeadingElement>(null);
   const failedLine = useRef<HTMLParagraphElement>(null);
   const land = useFocusOnceShown();
-  const { watch, refreshing } = useOffline({
+  const answered = useRef<Date | null>(null);
+  const { watch, keep, refreshing } = useOffline({
     loaded: load.kind === 'loaded',
     reload: () => setRefresh((n) => n + 1),
     title: heading,
+    event: true,
   });
 
   useEffect(() => {
     let current = true;
 
     watch(api.taggedEvent(eventId)).then(
-      ({ event, tag }) =>
-        current &&
+      ({ event, tag }) => {
+        if (!current) return;
+        answered.current = new Date();
         setLoad((was) => {
           if (event.organisationId !== organisationId) return { kind: 'notFound' };
 
@@ -151,24 +155,49 @@ function EventOf({
           } catch {
             return { kind: 'failed' };
           }
-        }),
-      (error: unknown) =>
-        current &&
+        });
+      },
+      (error: unknown) => {
+        if (!current) return;
+        const found = keepsWhatLoaded(error)
+          ? keptFor<{ event: OrganisationEvent; tag: string }>(keptKeys.event(eventId), error)
+          : null;
+        const kept = found?.value.event.organisationId === organisationId ? found : null;
+
+        if (kept != null) keep(kept.at);
         setLoad((was) =>
           was.kind === 'loaded' && keepsWhatLoaded(error)
             ? was
-            : error instanceof ApiError && error.status === 404
-              ? { kind: 'notFound' }
-              : { kind: 'failed' },
-        ),
+            : kept != null
+              ? { kind: 'loaded', ...kept.value }
+              : error instanceof ApiError && error.status === 404
+                ? { kind: 'notFound' }
+                : { kind: 'failed', offline: keepsWhatLoaded(error) },
+        );
+      },
     );
 
     return () => {
       current = false;
     };
-  }, [organisationId, eventId, attempt, refresh, watch]);
+  }, [organisationId, eventId, attempt, refresh, watch, keep]);
+
+  useEffect(() => {
+    if (load.kind !== 'loaded') return;
+
+    const shown = { event: load.event, tag: load.tag };
+    const key = keptKeys.event(eventId);
+
+    if (answered.current == null) rekeep(key, shown);
+    else keepLoaded(key, shown, answered.current);
+    answered.current = null;
+  }, [load, eventId]);
   useShowEvent(eventId, load.kind === 'loaded' ? load.event : undefined);
-  useGoneEvent(eventId, page === 'guests' && load.kind === 'notFound');
+  useGoneEvent(
+    eventId,
+    (page === 'guests' && load.kind === 'notFound') ||
+      (load.kind === 'failed' && load.offline === true),
+  );
 
   if (page === 'guests' && load.kind === 'notFound')
     return (

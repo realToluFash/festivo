@@ -1227,6 +1227,31 @@ class Merging(Base):
         self.assertEqual(self.state(1), "Ready For QA")
         self.assertIn("m" * 40, self.fake.comments[-1][1])
 
+    def test_to_qa_finds_a_merge_the_sync_window_has_passed(self):
+        self.fake.add(1, "In Review", ["dev2"])
+        merged = {**pr("pass"), "state": "merged", "merge_sha": "m" * 40}
+        with mock.patch("soirely_queue.github.merged_for_story",
+                        return_value=[merged]) as found:
+            actions.to_qa(self.as_("dev2"), args(story="sc-1", text=None))
+        found.assert_called_once_with(1)
+        self.assertEqual(self.state(1), "Ready For QA")
+        self.assertIn("m" * 40, self.fake.comments[-1][1])
+
+    def test_to_qa_still_refuses_a_story_github_has_no_merge_for(self):
+        self.fake.add(1, "In Review", ["dev2"])
+        with mock.patch("soirely_queue.github.merged_for_story", return_value=[]), \
+                self.assertRaisesRegex(actions.Refused, "sc-1 has no merged pull request"):
+            actions.to_qa(self.as_("dev2"), args(story="sc-1", text=None))
+
+    def test_to_qa_refuses_cleanly_when_githubs_search_fails(self):
+        self.fake.add(1, "In Review", ["dev2"])
+        with mock.patch("soirely_queue.github.merged_for_story",
+                        side_effect=github.RateLimited("search limit")), \
+                self.assertRaisesRegex(actions.Refused, "sc-1 has no merged pull request in the "
+                                       "last sync, and GitHub's search failed: search limit"):
+            actions.to_qa(self.as_("dev2"), args(story="sc-1", text=None))
+        self.assertEqual(self.state(1), "In Review")
+
     def test_a_passed_merge_lands_at_the_head_and_tells_qa(self):
         self.fake.add(1, "In Review", ["dev2"])
         store.put_pr(self.db, pr("pass"))

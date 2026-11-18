@@ -43,6 +43,49 @@ export const TABLE_DEFAULTS: Record<
   cocktail: { widthCm: 60, lengthCm: 60, seats: 4 },
 };
 
+/** A guest in one of a place's chairs, by seat number from 1 (sc-4013). */
+export interface SeatedGuest {
+  seat: number;
+  guestId: string;
+}
+
+export type SeatingPlaceKind = 'table' | 'row' | 'seat';
+
+/** A chair: a table's, a row's or a single seat's (always seat 1). */
+export interface SeatingChair {
+  kind: SeatingPlaceKind;
+  id: string;
+  seat: number;
+}
+
+export type SeatingReply = 'noReply' | 'coming' | 'maybe';
+
+/** A guest who may be seated: never Not coming or off the list; a companion's reply is their lead's, and `fullName` is null for a companion with no name yet. */
+export interface SeatingGuest {
+  id: string;
+  fullName: string | null;
+  leadId: string | null;
+  position: number;
+  reply: SeatingReply;
+  groupId: string | null;
+  groupName: string | null;
+  seat: SeatingChair | null;
+}
+
+/** One guest's move in a seating action: `from` and `to` are null for Without a seat. Sent back whole, they are its Undo. */
+export interface SeatingMove {
+  guestId: string;
+  from: SeatingChair | null;
+  to: SeatingChair | null;
+}
+
+export interface SeatingMoved {
+  seating: Seating;
+  moves: SeatingMove[];
+  /** A party at a table with room but no run of neighbouring free chairs. */
+  apart: boolean;
+}
+
 export interface SeatingTable {
   id: string;
   name: string;
@@ -60,6 +103,7 @@ export interface SeatingTable {
   unusableSeats: number[];
   version: number;
   changedBy: string | null;
+  seated: SeatedGuest[];
 }
 
 export interface SeatingTableChanges {
@@ -109,6 +153,8 @@ export interface SeatingRestoredItem {
   spacingCm?: number;
   unusableSeats?: number[];
   unusable?: boolean;
+  /** Who the Delete freed from it, back in the chairs they had (sc-57680). */
+  guests?: { guestId: string; seat: number }[];
 }
 
 /** The plan after a step that made items, and their ids to choose. */
@@ -132,6 +178,7 @@ export interface SeatingRow {
   unusableSeats: number[];
   version: number;
   changedBy: string | null;
+  seated: SeatedGuest[];
 }
 
 export interface SeatingRowChanges {
@@ -153,6 +200,7 @@ export interface SingleSeat {
   unusable: boolean;
   version: number;
   changedBy: string | null;
+  seated: SeatedGuest[];
 }
 
 export interface SingleSeatChanges {
@@ -176,6 +224,14 @@ export interface SeatingSection extends SectionContents {
   version: number;
 }
 
+/** Whether guests see their table on their page, and the day to share by (sc-4022). */
+export interface TableSharing {
+  /** With the event zone's offset; null while guests see nothing about seating. */
+  sharedAt: string | null;
+  /** A day in the event's zone. */
+  shareBy: string | null;
+}
+
 export interface SeatingPlan {
   id: string;
   roomName: string | null;
@@ -183,11 +239,13 @@ export interface SeatingPlan {
   lengthCm: number;
   version: number;
   changedBy: string | null;
+  sharing: TableSharing;
   sections: SeatingSection[];
   tables: SeatingTable[];
   rows: SeatingRow[];
   singleSeats: SingleSeat[];
   withoutSection: SectionContents;
+  guests: SeatingGuest[];
   counts: {
     sections: number;
     tables: number;
@@ -305,6 +363,7 @@ function asTable(raw: unknown): SeatingTable | null {
     unusableSeats: unusableSeats as number[],
     version,
     changedBy,
+    seated: asSeated(raw.seated),
   };
 }
 
@@ -341,6 +400,7 @@ function asRow(raw: unknown): SeatingRow | null {
     unusableSeats: unusableSeats as number[],
     version,
     changedBy,
+    seated: asSeated(raw.seated),
   };
 }
 
@@ -369,6 +429,71 @@ function asSingleSeat(raw: unknown): SingleSeat | null {
     unusable,
     version,
     changedBy,
+    seated: asSeated(raw.seated),
+  };
+}
+
+/** Who sits in a place's chairs; none when a plan predates seating. */
+function asSeated(raw: unknown): SeatedGuest[] {
+  if (!Array.isArray(raw)) return [];
+  return raw.filter(
+    (one): one is SeatedGuest =>
+      isRecord(one) && isCount(one.seat) && typeof one.guestId === 'string',
+  );
+}
+
+function asChair(raw: unknown): SeatingChair | null {
+  if (!isRecord(raw)) return null;
+  const { kind, id, seat } = raw;
+  if (
+    (kind !== 'table' && kind !== 'row' && kind !== 'seat') ||
+    typeof id !== 'string' ||
+    !isCount(seat)
+  )
+    return null;
+  return { kind, id, seat };
+}
+
+function asGuest(raw: unknown): SeatingGuest | null {
+  if (!isRecord(raw)) return null;
+  const { id, fullName, leadId, position, reply, groupId, groupName, seat } = raw;
+  if (
+    typeof id !== 'string' ||
+    !(fullName === null || typeof fullName === 'string') ||
+    !(leadId === null || typeof leadId === 'string') ||
+    !isCount(position) ||
+    (reply !== 'noReply' && reply !== 'coming' && reply !== 'maybe') ||
+    !(groupId === null || typeof groupId === 'string') ||
+    !(groupName === null || typeof groupName === 'string')
+  )
+    return null;
+  return { id, fullName, leadId, position, reply, groupId, groupName, seat: asChair(seat) };
+}
+
+function asGuests(raw: unknown): SeatingGuest[] {
+  if (!Array.isArray(raw)) return [];
+  return raw.map(asGuest).filter((one): one is SeatingGuest => one != null);
+}
+
+/** Null for anything but a seating action's answer. */
+export function asSeatingMoved(raw: unknown): SeatingMoved | null {
+  if (!isRecord(raw) || !Array.isArray(raw.moves)) return null;
+  const seating = asSeating(raw.seating);
+  const moves: SeatingMove[] = [];
+  for (const one of raw.moves) {
+    if (!isRecord(one) || typeof one.guestId !== 'string') return null;
+    moves.push({ guestId: one.guestId, from: asChair(one.from), to: asChair(one.to) });
+  }
+  if (seating == null) return null;
+  return { seating, moves, apart: raw.apart === true };
+}
+
+function asSharing(raw: unknown): TableSharing {
+  if (!isRecord(raw)) return { sharedAt: null, shareBy: null };
+
+  return {
+    sharedAt: typeof raw.sharedAt === 'string' ? raw.sharedAt : null,
+    shareBy: typeof raw.shareBy === 'string' ? raw.shareBy : null,
   };
 }
 
@@ -413,11 +538,13 @@ function asPlan(raw: unknown): SeatingPlan | null {
     lengthCm,
     version,
     changedBy,
+    sharing: asSharing(raw.sharing),
     sections: read as SeatingSection[],
     tables: tables as SeatingTable[],
     rows: rows as SeatingRow[],
     singleSeats: singleSeats as SingleSeat[],
     withoutSection,
+    guests: asGuests(raw.guests),
     counts: {
       sections: counts.sections,
       tables: counts.tables,

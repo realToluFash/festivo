@@ -4,6 +4,8 @@ import { Link, Navigate, useParams, useSearchParams } from 'react-router';
 import { Glyph } from '../components/Glyph.tsx';
 import type { Tell } from '../components/SettingsParts.tsx';
 import { DemoBell } from './DemoBell.tsx';
+import { KeptArea, KeptHere } from './KeptOffline.tsx';
+import { clockWords } from './tabKept.ts';
 import { EventsShell } from './EventParts.tsx';
 import { EventSidebar } from './EventSidebar.tsx';
 import { type SampleEvent, sampleEvent } from './events.ts';
@@ -69,20 +71,22 @@ function StationsAt({ id, raw }: { id: string | undefined; raw: string | null })
     return <Navigate to={`/demo/events/${event.id}?area=staff`} replace />;
 
   return (
-    <EventsShell
-      renderSide={(tell, covered) => (
-        <EventSidebar
-          event={event}
-          area="staff"
-          now={clockOfKitchen()}
-          tell={tell}
-          inert={covered}
-          waiting={waitingLine(keptInbox())}
-        />
-      )}
-    >
-      {(tell) => <StationsView first={first} event={event} tell={tell} />}
-    </EventsShell>
+    <KeptArea eventId={event.id} area="staff" at={clockWords(clockOfKitchen(), event.timeZone)}>
+      <EventsShell
+        renderSide={(tell, covered) => (
+          <EventSidebar
+            event={event}
+            area="staff"
+            now={clockOfKitchen()}
+            tell={tell}
+            inert={covered}
+            waiting={waitingLine(keptInbox())}
+          />
+        )}
+      >
+        {(tell) => <StationsView first={first} event={event} tell={tell} />}
+      </EventsShell>
+    </KeptArea>
   );
 }
 
@@ -198,6 +202,7 @@ function StationsView({
   return (
     <div className="desk-page ev-page gs mn sn">
       <div className="ev-wide mn-page">
+        <KeptHere />
         <div className="ev-crumb-row">
           <nav className="ev-crumb" aria-label="Breadcrumb">
             <ol>

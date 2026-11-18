@@ -4,6 +4,7 @@ import Svg, { Path } from 'react-native-svg';
 
 import { Text } from '../../src/components/Text.tsx';
 import { DemoScreen, NavBar } from '../../src/demo/DemoScreen.tsx';
+import { BELL_BOARDS } from '../../src/demo/bell/BellBoards.ts';
 import { BOLD_TEXT_BOARDS } from '../../src/demo/boldText/BoldTextBoards.ts';
 import { BUDGET_BOARDS } from '../../src/demo/budget/BudgetBoards.ts';
 import { PILL_FIT_BOARDS } from '../../src/demo/pillFit/PillFitBoards.ts';
@@ -22,6 +23,7 @@ import { NEXT_BOARDS, QUEUE_BOARDS } from '../../src/demo/queue/QueueBoards.ts';
 import { SERVICE_BOARDS, SERVICE_NEXT_BOARDS } from '../../src/demo/service/HowItsGoingBoards.ts';
 import { REQUEST_BOARDS } from '../../src/demo/service/RequestsBoards.ts';
 import { ROOM_BOARDS } from '../../src/demo/service/ServiceRoomBoards.ts';
+import { RUN_OUT_TRAY_BOARDS } from '../../src/demo/runOut/RunOutTrayBoards.ts';
 import { MESSAGES_BOARDS } from '../../src/demo/messages/MessagesBoards.ts';
 import { isSmsState } from '../../src/demo/messages/Sms.ts';
 import { isStopState } from '../../src/demo/messages/StopWriting.ts';
@@ -44,6 +46,10 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
   {
     page: '26 · Foundation · Search in A, a command palette (sc-39534)',
     boards: SEARCH_BOARDS.map(({ title, what, href }) => ({ title, what, href: href as Href })),
+  },
+  {
+    page: '26 · Foundation · Notifications on a phone on its side (sc-62023)',
+    boards: BELL_BOARDS.map(({ title, what, href }) => ({ title, what, href: href as Href })),
   },
   {
     page: 'Bold text · the weight map',
@@ -159,7 +165,7 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
       { title: 'The event day', what: 'The cover is Now', href: '/demo/today?moment=day' },
       {
         title: 'The event day · built now',
-        what: 'The dates, and Open the event',
+        what: 'The dates, and Open the event; also Now after a refused read',
         href: '/demo/today?moment=dayNow',
       },
       {
@@ -246,6 +252,21 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
         title: 'Now · four-digit figures',
         what: '1,204/1,250 beside Next; try the iPhone SE',
         href: '/demo/today?moment=day&now=on&arrived=thousands',
+      },
+      {
+        title: 'Now · reads stop landing',
+        what: 'Offline · as of 16:38 under the figure (sc-62416)',
+        href: '/demo/today?moment=day&now=on&reads=asOf',
+      },
+      {
+        title: 'Now · reads stop landing, day form',
+        what: 'The last read landed yesterday; try the iPhone SE in French',
+        href: '/demo/today?moment=day&now=over&reads=asOfDay',
+      },
+      {
+        title: 'Now · reads live',
+        what: 'Choose how Soirely answers; the line shows within 60 s, a refusal builds Now',
+        href: '/demo/today?moment=day&now=on&reads=live',
       },
       { title: 'A quiet week', what: 'Nothing due, nothing on', href: '/demo/today?moment=quiet' },
       { title: 'A first run', what: 'No events yet', href: '/demo/today?moment=first' },
@@ -2188,6 +2209,14 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
   {
     page: 'Service · the whole room as a plan or a list (sc-4026) · tablet landscape',
     boards: ROOM_BOARDS.map(({ title, what, href }) => ({ title, what, href: href as Href })),
+  },
+  {
+    page: 'Service · the waiter’s tray when an item runs out (sc-59384) · phone, tablet portrait and landscape',
+    boards: RUN_OUT_TRAY_BOARDS.map(({ title, what, href }) => ({
+      title,
+      what,
+      href: href as Href,
+    })),
   },
   {
     page: 'Guests · A Summary first',

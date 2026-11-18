@@ -24,18 +24,36 @@ import { TextAction } from '../../../components/SettingsParts.tsx';
 import { currentLocale } from '../../../i18n/index.ts';
 import { Added, BackHead, Field, Line, type PlanApi, Said, Select } from './SeatingParts.tsx';
 import { Overlaps, PositionFields } from './SeatingArrange.tsx';
+import { ColleagueNote, ColleagueOutline } from './SeatingPresence.tsx';
+import { chosenBy, useRings } from './seatingPresence.ts';
 import { placementOf } from './seatingItems.ts';
 import {
   CHAIRS_FROM_SCALE,
+  chairsTakePointer,
   f,
+  hitPad,
   POINTER_CHAIRS_FROM_SCALE,
+  POINTER_TARGET_PX,
   readCount,
   rotations,
   sectionOf,
   turned,
   usableSeats,
 } from './seatingDraw.ts';
-import { ChairMark, OutWords, StateMark } from './SeatingTables.tsx';
+import { outNameY } from './seatingFreeTags.ts';
+import { chairStateOf, freeAt, takenAt } from './seatingGuests.ts';
+import {
+  ChairMark,
+  type ChairTip,
+  FocusRing,
+  OutWords,
+  StateMark,
+  chairLabel,
+  chairSaid,
+  chairStateWord,
+  chairTipHandlers,
+  seatsOn,
+} from './SeatingTables.tsx';
 import {
   centimetreUnit,
   tableLengthWords,
@@ -47,15 +65,11 @@ type T = ReturnType<typeof useTranslation>['t'];
 
 const STRIP_SHOWS = 5;
 
-function stateWord(t: T, unusable: boolean): string {
-  return unusable ? t('seating.unusable') : t('seating.empty');
-}
-
-function rowLine(t: T, plan: SeatingPlan, row: SeatingRow): string {
+export function rowLine(t: T, plan: SeatingPlan, row: SeatingRow): string {
   return t('seating.tableLine', {
     shape: t('seating.rowOf', { count: row.seats }),
     section: sectionOf(plan, row)?.name ?? t('seating.noSection'),
-    taken: 0,
+    taken: takenAt(plan, row.id),
     seats: usableSeats(row),
   });
 }
@@ -75,8 +89,7 @@ function itemClass(plan: SeatingPlan, item: { sectionId: string | null }): strin
 
 function onKeys(onChoose: () => void) {
   return (event: KeyboardEvent) => {
-    if (event.target !== event.currentTarget) return;
-    if (event.key !== 'Enter' && event.key !== ' ') return;
+    if (event.target !== event.currentTarget || event.key !== 'Enter') return;
     event.preventDefault();
     onChoose();
   };
@@ -103,8 +116,11 @@ export function RowDrawing({
   chosen,
   chosenSeat,
   outside,
+  picking = false,
+  tinted = false,
   onChoose,
   onChair,
+  onChairTip,
 }: {
   plan: SeatingPlan;
   row: SeatingRow;
@@ -114,16 +130,23 @@ export function RowDrawing({
   chosen: boolean;
   chosenSeat: number | null;
   outside: boolean;
+  picking?: boolean;
+  tinted?: boolean;
   onChoose: () => void;
   onChair: (seat: number) => void;
+  onChairTip?: (tip: ChairTip | null) => void;
 }) {
   const { t } = useTranslation();
   const cx = ox + row.xCm * s;
   const cy = oy + row.yCm * s;
   const [ex, ey] = rowExtent(row);
   const near = s >= POINTER_CHAIRS_FROM_SCALE;
+  const placed = rowSeatsOf(row);
+  const pointer = chairsTakePointer(placed, s);
+  const room = picking ? freeAt(plan, row) : null;
   const r = CHAIR_RADIUS_CM * s;
   const section = sectionOf(plan, row);
+  const rings = useRings(row.id);
   const name = t('seating.rowName', { label: row.label });
   const box = (pad: number, className: string) => (
     <g transform={`translate(${f(cx)} ${f(cy)}) rotate(${row.rotation})`}>
@@ -144,11 +167,16 @@ export function RowDrawing({
   const seats: ReactNode[] = [];
 
   if (s >= CHAIRS_FROM_SCALE)
-    rowSeatsOf(row).forEach((chair) => {
+    placed.forEach((chair) => {
       const [px, py] = turned([chair.x, chair.y], row.rotation);
       const x = cx + px * s;
       const y = cy + py * s;
-      const unusable = row.unusableSeats.includes(chair.seat);
+      const { state, guest } = chairStateOf(
+        plan,
+        row.id,
+        chair.seat,
+        row.unusableSeats.includes(chair.seat),
+      );
 
       seats.push(
         <g key={chair.seat}>
@@ -159,24 +187,33 @@ export function RowDrawing({
             x={x}
             y={y}
             r={r}
-            unusable={unusable}
+            state={state}
             square={false}
-            label={near ? String(chair.seat) : undefined}
+            label={near ? chairLabel(state, guest, chair.seat) : undefined}
           />
-          {(chosen || near) && (
+          {(chosen || picking || pointer) && (!picking || seatsOn(state)) && (
             <circle
-              className={near ? 'st-chair-hit' : 'st-chair-hit is-keys'}
+              className={pointer ? 'st-chair-hit' : 'st-chair-hit is-keys'}
               role="button"
-              tabIndex={chosen ? 0 : -1}
+              tabIndex={chosen || picking ? 0 : -1}
               aria-label={t('seating.rowSeatName', {
                 label: row.label,
                 seat: chair.seat,
-                state: stateWord(t, unusable),
+                state: chairSaid(t, state, guest),
               })}
               aria-pressed={chosenSeat === chair.seat}
               cx={f(x)}
               cy={f(y)}
-              r="22"
+              r={POINTER_TARGET_PX / 2}
+              {...chairTipHandlers(onChairTip, {
+                x,
+                y,
+                r,
+                words: t('seating.seatLabel', {
+                  seat: chair.seat,
+                  state: chairSaid(t, state, guest),
+                }),
+              })}
               onClick={(event) => {
                 event.stopPropagation();
                 onChair(chair.seat);
@@ -197,7 +234,7 @@ export function RowDrawing({
   const said = t('seating.tableName', {
     name,
     shape: t('seating.kindRow', { count: row.seats }),
-    taken: 0,
+    taken: takenAt(plan, row.id),
     count: usableSeats(row),
   });
 
@@ -206,16 +243,27 @@ export function RowDrawing({
       className={itemClass(plan, row)}
       role="button"
       tabIndex={0}
-      aria-label={
-        section == null ? said : t('seating.inSection', { name: said, section: section.name })
-      }
+      aria-label={chosenBy(
+        t,
+        section == null ? said : t('seating.inSection', { name: said, section: section.name }),
+        rings,
+      )}
       aria-pressed={lit}
       data-row={row.id}
       onClick={onChoose}
       onKeyDown={onKeys(onChoose)}
     >
-      {lit && box(10, 'st-lit')}
-      {box(0, 'st-hit')}
+      {(lit || tinted) && box(10, 'st-lit')}
+      <g transform={`translate(${f(cx)} ${f(cy)}) rotate(${row.rotation})`}>
+        <rect
+          className="st-hit"
+          x={f(-ex * s - hitPad(ex, s))}
+          y={f(-ey * s - hitPad(ey, s))}
+          width={f(2 * (ex * s + hitPad(ex, s)))}
+          height={f(2 * (ey * s + hitPad(ey, s)))}
+          rx="8"
+        />
+      </g>
       <g className="st-item-body">
         <rect
           className="st-row-tab"
@@ -236,16 +284,32 @@ export function RowDrawing({
         </text>
         {seats}
       </g>
+      {room != null && box(6, room === 0 ? 'st-room-for is-full' : 'st-room-for')}
       {s < CHAIRS_FROM_SCALE && (
         <OutWords
           x={cx}
-          y={cy + Math.max(ey, 40) * s + 12}
+          y={outNameY({ kind: 'row', one: row }, s, oy)}
           name={name}
-          taken={0}
-          seats={usableSeats(row)}
+          taken={takenAt(plan, row.id)}
+          seats={room == null ? usableSeats(row) : null}
         />
       )}
+      {rings.map((ring, step) => (
+        <ColleagueOutline
+          key={ring.userId}
+          ring={ring}
+          step={step}
+          round={false}
+          cx={cx}
+          cy={cy}
+          ex={ex * s}
+          ey={ey * s}
+          rotation={row.rotation}
+          pad={lit ? 10 : 2}
+        />
+      ))}
       {outside && box(6, 'st-overlap')}
+      <FocusRing round={false} cx={cx} cy={cy} ex={ex * s} ey={ey * s} rotation={row.rotation} />
     </g>
   );
 }
@@ -275,9 +339,11 @@ export function SingleSeatDrawing({
   const cy = oy + seat.yCm * s;
   const r = Math.max(5, CHAIR_RADIUS_CM * s);
   const section = sectionOf(plan, seat);
+  const rings = useRings(seat.id);
+  const { state, guest } = chairStateOf(plan, seat.id, 1, seat.unusable);
   const said = t('seating.singleSeatName', {
     name: seat.name,
-    state: stateWord(t, seat.unusable),
+    state: chairStateWord(t, state, guest),
   });
 
   return (
@@ -285,9 +351,11 @@ export function SingleSeatDrawing({
       className={itemClass(plan, seat)}
       role="button"
       tabIndex={0}
-      aria-label={
-        section == null ? said : t('seating.inSection', { name: said, section: section.name })
-      }
+      aria-label={chosenBy(
+        t,
+        section == null ? said : t('seating.inSection', { name: said, section: section.name }),
+        rings,
+      )}
       aria-pressed={chosen}
       data-seat={seat.id}
       onClick={onChoose}
@@ -297,8 +365,8 @@ export function SingleSeatDrawing({
       <circle className="st-hit" cx={f(cx)} cy={f(cy)} r={f(Math.max(r, 22))} />
       <g className="st-item-body">
         <circle className="st-body is-single" cx={f(cx)} cy={f(cy)} r={f(r)} />
-        {seat.unusable && (
-          <ChairMark x={cx} y={cy} r={r} unusable square={false} label={undefined} />
+        {state !== 'empty' && (
+          <ChairMark x={cx} y={cy} r={r} state={state} square={false} label={undefined} />
         )}
       </g>
       {s >= CHAIRS_FROM_SCALE ? (
@@ -308,7 +376,22 @@ export function SingleSeatDrawing({
       ) : (
         <OutWords x={cx} y={cy + 40 * s * 0.55 + 12} name={seat.name} taken={0} seats={null} />
       )}
+      {rings.map((ring, step) => (
+        <ColleagueOutline
+          key={ring.userId}
+          ring={ring}
+          step={step}
+          round
+          cx={cx}
+          cy={cy}
+          ex={r}
+          ey={r}
+          rotation={0}
+          pad={chosen ? 10 : 2}
+        />
+      ))}
       {outside && <circle className="st-overlap" cx={f(cx)} cy={f(cy)} r={f(r + 6)} />}
+      <FocusRing round cx={cx} cy={cy} ex={r} ey={r} rotation={0} />
     </g>
   );
 }
@@ -379,8 +462,8 @@ export function RowPanel({
     return (
       <div className="st-stack">
         <BackHead title={name} line={rowLine(t, plan, row)} />
-        <SeatStrip t={t} row={row} chosen={seat} onPick={pick} />
-        {seat != null && <ChosenSeat ctx={ctx} row={row} seat={seat} />}
+        <SeatStrip t={t} plan={plan} row={row} chosen={seat} onPick={pick} />
+        {seat != null && <ChosenSeat ctx={ctx} plan={plan} row={row} seat={seat} />}
         <dl className="st-facts">
           {[
             [t('seating.section'), sectionOf(plan, row)?.name ?? t('seating.noSection')],
@@ -403,8 +486,8 @@ export function RowPanel({
       {said != null && <Added>{said}</Added>}
       {ctx.notice != null && <Said>{ctx.notice}</Said>}
       <Line>{t('seating.faces')}</Line>
-      <SeatStrip t={t} row={row} chosen={seat} onPick={pick} />
-      {seat != null && <ChosenSeat ctx={ctx} row={row} seat={seat} />}
+      <SeatStrip t={t} plan={plan} row={row} chosen={seat} onPick={pick} />
+      {seat != null && <ChosenSeat ctx={ctx} plan={plan} row={row} seat={seat} />}
       <div className="st-fields">
         <Field
           onLeave={leave}
@@ -451,6 +534,7 @@ export function RowPanel({
         />
       </div>
       <Overlaps plan={plan} id={row.id} />
+      <ColleagueNote id={row.id} />
       <div className="st-acts">
         <TextAction
           label={t('seating.duplicate')}
@@ -483,11 +567,13 @@ export function RowPanel({
 /** Five seats at a time from seat 1, moving on so the chosen one stays in view; the rest counted to the right. */
 function SeatStrip({
   t,
+  plan,
   row,
   chosen,
   onPick,
 }: {
   t: T;
+  plan: SeatingPlan;
   row: SeatingRow;
   chosen: number | null;
   onPick: (seat: number) => void;
@@ -499,7 +585,7 @@ function SeatStrip({
   return (
     <div className="st-strip">
       {shown.map((seat) => {
-        const unusable = row.unusableSeats.includes(seat);
+        const { state, guest } = chairStateOf(plan, row.id, seat, row.unusableSeats.includes(seat));
 
         return (
           <button
@@ -510,11 +596,11 @@ function SeatStrip({
             aria-label={t('seating.rowSeatName', {
               label: row.label,
               seat,
-              state: stateWord(t, unusable),
+              state: chairStateWord(t, state, guest),
             })}
             onClick={() => onPick(seat)}
           >
-            <StateMark unusable={unusable} square={false} />
+            <StateMark state={state} />
             <span>{seat}</span>
           </button>
         );
@@ -528,14 +614,29 @@ function SeatStrip({
   );
 }
 
-function ChosenSeat({ ctx, row, seat }: { ctx: PlanApi; row: SeatingRow; seat: number }) {
+function ChosenSeat({
+  ctx,
+  plan,
+  row,
+  seat,
+}: {
+  ctx: PlanApi;
+  plan: SeatingPlan;
+  row: SeatingRow;
+  seat: number;
+}) {
   const { t } = useTranslation();
   const unusable = row.unusableSeats.includes(seat);
+  const { state, guest } = chairStateOf(plan, row.id, seat, unusable);
 
   return (
     <div className="st-block">
       <p className="st-strong">
-        {t('seating.rowSeatState', { label: row.label, seat, state: stateWord(t, unusable) })}
+        {t('seating.rowSeatState', {
+          label: row.label,
+          seat,
+          state: chairStateWord(t, state, guest),
+        })}
       </p>
       {!ctx.readOnly && (
         <div className="st-acts">
@@ -599,10 +700,11 @@ export function SingleSeatPanel({
     return change({ name: typed }, 'name');
   }
 
+  const here = chairStateOf(plan, seat.id, 1, seat.unusable);
   const state = (
     <p className="st-state-line">
-      <StateMark unusable={seat.unusable} square={false} />
-      {stateWord(t, seat.unusable)}
+      <StateMark state={here.state} />
+      {chairStateWord(t, here.state, here.guest)}
     </p>
   );
 
@@ -639,6 +741,7 @@ export function SingleSeatPanel({
         {ctx.system === 'us' && <Line>{t('seating.usHint')}</Line>}
       </div>
       <Overlaps plan={plan} id={seat.id} />
+      <ColleagueNote id={seat.id} />
       <div className="st-block">
         {state}
         <div className="st-acts">

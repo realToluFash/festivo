@@ -280,10 +280,16 @@ def cmd_comments(s, a):
     s.done()
 
 
+def older_pr(number):
+    """Read from GitHub when the sync's window of 15 merges has passed it (sc-63634)."""
+    try:
+        return github.pull(number)
+    except github.GitHubError as error:
+        sys.exit(f"PR #{number} is not in the last sync and GitHub did not give it: {error}")
+
+
 def cmd_pr(s, a):
-    pr = store.pr(s.db, a.pr)
-    if not pr:
-        sys.exit(f"PR #{a.pr} is neither open nor among the 15 most recently merged")
+    pr = store.pr(s.db, a.pr) or older_pr(a.pr)
     if a.section:
         V.pr_section(s.printer, pr, a.section)
     else:
@@ -294,9 +300,7 @@ def cmd_pr(s, a):
 
 
 def cmd_diff(s, a):
-    pr = store.pr(s.db, a.pr)
-    if not pr:
-        sys.exit(f"PR #{a.pr} is neither open nor among the 15 most recently merged")
+    pr = store.pr(s.db, a.pr) or older_pr(a.pr)
     files = V.diff_files(payloads.cached_diff(s.cache, pr))
     p = s.printer
     if not a.paths and not a.all:

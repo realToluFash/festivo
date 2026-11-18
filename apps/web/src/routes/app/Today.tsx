@@ -1,6 +1,6 @@
 import type { ListedEvent } from '@soirely/api-client';
-import { firstName, serverClock } from '@soirely/domain';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { firstName, nowAsOfLine, serverClock, todayView } from '@soirely/domain';
+import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router';
 
@@ -11,6 +11,9 @@ import { ArrivalNotice } from '../../components/PageArrival.tsx';
 import { Skeleton } from '../../components/Skeleton.tsx';
 import type { Open } from '../../components/today.ts';
 import { Banner, type BannerActions, NowBanner } from '../../components/TodayBanner.tsx';
+import { RunNowBanner } from '../../components/TodayRunBanner.tsx';
+import { runNowOf } from '../../components/todayRun.ts';
+import { useRunSchedule } from '../../components/useRunSchedule.ts';
 import { FirstRun, ThisWeek, YourEvents } from '../../components/TodayParts.tsx';
 import { useDeskTop } from '../../deskTop.ts';
 import { dateLocale } from '../../i18n/index.ts';
@@ -19,6 +22,7 @@ import { useServerNow } from '../../serverNow.ts';
 import { can, useSession } from '../../session.ts';
 import { useFocusOnceShown } from '../../stepFocus.ts';
 import { Dashboard } from './Dashboard.tsx';
+import { nightTrackPath } from './events/nightArea.ts';
 import { todayMoment } from './todayMoment.ts';
 
 type Load =
@@ -79,28 +83,42 @@ function Today({ organisationId }: { organisationId: string }) {
     };
   }, [organisationId, attempt, refresh, watch, land]);
 
-  const open = useCallback<Open>(
-    (opens) => {
-      switch (opens.to) {
-        case 'event':
-          void navigate(`/app/events/${encodeURIComponent(opens.id)}`);
-          return;
-        case 'calendar':
-          void navigate('/app/calendar');
-          return;
-        case 'events':
-          void navigate('/app/events');
-          return;
-        case 'create':
-          void navigate('/app/events/new');
-          return;
-        case 'notifications':
-        case 'runOfShow':
-          return;
-      }
-    },
-    [navigate],
-  );
+  const reader = {
+    timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+    locale: dateLocale(),
+  };
+  const underWay =
+    load.kind === 'loaded' ? (todayView(load, now, reader).now?.event ?? null) : null;
+  const { schedule, asOf } = useRunSchedule(underWay);
+  const run =
+    underWay == null || schedule == null ? null : runNowOf(schedule, now, reader.locale, t);
+  const asOfLine =
+    schedule == null || asOf == null
+      ? null
+      : nowAsOfLine(asOf, serverClock.now(), schedule.timeZone, reader.locale);
+  const runPath = underWay == null ? null : nightTrackPath(underWay.id, run?.track ?? null);
+
+  const open: Open = (opens) => {
+    switch (opens.to) {
+      case 'event':
+        void navigate(`/app/events/${encodeURIComponent(opens.id)}`);
+        return;
+      case 'calendar':
+        void navigate('/app/calendar');
+        return;
+      case 'events':
+        void navigate('/app/events');
+        return;
+      case 'create':
+        void navigate('/app/events/new');
+        return;
+      case 'runOfShow':
+        if (runPath != null) void navigate(runPath);
+        return;
+      case 'notifications':
+        return;
+    }
+  };
 
   if (load.kind !== 'loaded')
     return (
@@ -125,13 +143,7 @@ function Today({ organisationId }: { organisationId: string }) {
       </div>
     );
 
-  const moment = todayMoment(
-    load,
-    now,
-    { timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone, locale: dateLocale() },
-    firstName(session.name),
-    t,
-  );
+  const moment = todayMoment(load, now, reader, firstName(session.name), t);
   // Where the shell keeps its band the bell is the band's, so the banner carries only New event there.
   const actions: BannerActions = {
     create: creates,
@@ -140,7 +152,16 @@ function Today({ organisationId }: { organisationId: string }) {
 
   return (
     <div className="today-page">
-      {moment.now != null ? (
+      {moment.now != null && run != null ? (
+        <RunNowBanner
+          now={moment.now}
+          run={run}
+          asOf={asOfLine == null ? null : t(asOfLine.key, asOfLine.values)}
+          actions={actions}
+          open={open}
+          titleRef={title}
+        />
+      ) : moment.now != null ? (
         <NowBanner now={moment.now} full={false} actions={actions} open={open} titleRef={title} />
       ) : (
         <Banner moment={moment} actions={actions} open={open} titleRef={title} />

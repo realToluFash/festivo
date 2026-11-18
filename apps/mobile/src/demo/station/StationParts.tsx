@@ -3,7 +3,7 @@ import { Pressable, StyleSheet, View } from 'react-native';
 import { Text } from '../../components/Text.tsx';
 import { tokens } from '../../theme/tokens.ts';
 import { Glyph } from '../queue/QueueParts.tsx';
-import { type Eta, ETAS, type StationId, STATIONS, ROSTER, whoLine } from './stationModel.ts';
+import { type Eta, ETAS, type Roster, type StationId, STATIONS, whoLine } from './stationModel.ts';
 
 export const GLYPH = {
   check: ['M5 12.5l4.5 4.5L19 7.5'],
@@ -14,6 +14,7 @@ export const GLYPH = {
   chevron: ['m6 9 6 6 6-6'],
   send: ['M12 19V5', 'm6 11 6-6 6 6'],
   info: ['M12 11v6', 'M12 7.5h.01'],
+  ban: ['M5.6 5.6l12.8 12.8'],
 } as const;
 
 /** The house quiet action at this view's target: 44 px, and 48 on the phone (sc-4015). */
@@ -42,7 +43,7 @@ export function Quiet({
   );
 }
 
-export type Status = 'on' | 'off' | 'ready' | 'preparing' | 'heldUp' | 'paused' | 'kept';
+export type Status = 'on' | 'off' | 'ready' | 'preparing' | 'heldUp' | 'runOut' | 'paused' | 'kept';
 
 const STATUS: Record<Status, { word: string; ink: string; fill: string; edge: string }> = {
   on: {
@@ -75,6 +76,12 @@ const STATUS: Record<Status, { word: string; ink: string; fill: string; edge: st
     fill: tokens.colorBrokenTint,
     edge: tokens.colorBroken,
   },
+  runOut: {
+    word: 'Run out',
+    ink: tokens.colorInk,
+    fill: tokens.colorNeutralFill,
+    edge: tokens.colorInk,
+  },
   paused: {
     word: 'Paused',
     ink: tokens.colorPausedText,
@@ -100,6 +107,8 @@ function Shape({ status, side }: { status: Status; side: number }) {
     case 'preparing':
     case 'heldUp':
       return <Glyph paths={GLYPH.clock} ink={ink} side={side} circle />;
+    case 'runOut':
+      return <Glyph paths={GLYPH.ban} ink={ink} side={side} circle />;
     case 'paused':
       return <Glyph paths={GLYPH.pause} ink={ink} side={side} />;
     case 'kept':
@@ -108,7 +117,15 @@ function Shape({ status, side }: { status: Status; side: number }) {
 }
 
 /** Every status is a shape with its word, never colour alone (a kitchen prints in black and white). */
-export function Chip({ status, big = false }: { status: Status; big?: boolean }) {
+export function Chip({
+  status,
+  big = false,
+  words,
+}: {
+  status: Status;
+  big?: boolean;
+  words?: string | undefined;
+}) {
   const st = STATUS[status];
   return (
     <View
@@ -121,7 +138,7 @@ export function Chip({ status, big = false }: { status: Status; big?: boolean })
     >
       <Shape status={status} side={big ? 18 : 15} />
       <Text size={big ? 15 : 13} weight="semibold" style={{ color: st.ink }}>
-        {st.word}
+        {words ?? st.word}
       </Text>
     </View>
   );
@@ -245,11 +262,13 @@ export function Times({
 export function StationList({
   current,
   you,
+  roster,
   side,
   onPick,
 }: {
   current: StationId | null;
   you: string;
+  roster: Roster;
   side: number;
   onPick: (id: StationId) => void;
 }) {
@@ -257,8 +276,8 @@ export function StationList({
     <View style={styles.list}>
       {STATIONS.map((st) => {
         const on = st.id === current;
-        const who = ROSTER[st.id].map((n) => (n === you ? `${n} · you` : n));
-        const line = who.length === 0 ? whoLine(st.id) : who.join(', ');
+        const who = roster[st.id].map((n) => (n === you ? `${n} · you` : n));
+        const line = who.length === 0 ? whoLine(st.id, roster) : who.join(', ');
         return (
           <Pressable
             key={st.id}

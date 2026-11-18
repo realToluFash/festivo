@@ -2,10 +2,13 @@ import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testi
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { RouterProvider, createMemoryRouter } from 'react-router';
 import { forgetEventsTab } from '@soirely/domain';
+import { useContext, useLayoutEffect, useState } from 'react';
 
 import { __setSessionState } from '../session.ts';
 import { OWNER_PERMISSIONS, membership } from '../test-memberships.ts';
 import { routes } from '../routes/index.tsx';
+import { type Stale, StaleScreen } from '../offline.ts';
+import { OfflineBox, OfflineProvider } from './OfflineBand.tsx';
 
 const IRE = membership({ id: 'org_1', name: 'Ìrè Events' });
 
@@ -569,5 +572,31 @@ describe('the offline band on the planning screens (sc-27086)', () => {
 
     expect(band()?.textContent).toContain('Offline · as of 09:41');
     expect(screen.getByText('Adaeze and Tunde', { selector: '#content *' })).toBeDefined();
+  });
+});
+
+describe("an event's area under the box (sc-65646)", () => {
+  function Load({ stale }: { stale: Stale }) {
+    const { show } = useContext(StaleScreen);
+    const [id] = useState(() => Symbol('load'));
+
+    useLayoutEffect(() => show(id, stale), [show, id, stale]);
+
+    return null;
+  }
+
+  it("says when the event last loaded, though its area's list is older", () => {
+    const retry = () => {};
+    render(
+      <OfflineProvider>
+        <Load stale={{ at: new Date(2026, 10, 18, 10, 0), retry, unanswered: 0 }} />
+        <Load stale={{ at: new Date(2026, 10, 18, 10, 5), retry, unanswered: 0, event: true }} />
+        <OfflineBox />
+      </OfflineProvider>,
+    );
+
+    expect(
+      screen.getByText('Offline · as of 10:05', { selector: '.ev-offline-words' }),
+    ).toBeDefined();
   });
 });

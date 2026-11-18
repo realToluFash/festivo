@@ -72,6 +72,11 @@
   min-width: 0;
 }
 
+/* The name gives way to the window, never the way back (sc-60699). */
+.ev-crumb-part:first-child {
+  flex-shrink: 0;
+}
+
 .ev-crumb-name {
   overflow: hidden;
   text-overflow: ellipsis;

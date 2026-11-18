@@ -11,6 +11,8 @@ import {
 } from 'react';
 import { Link, Navigate, useParams, useSearchParams } from 'react-router';
 
+import { KeptArea, KeptHere } from './KeptOffline.tsx';
+import { clockWords } from './tabKept.ts';
 import { EventsShell } from './EventParts.tsx';
 import { EventSidebar } from './EventSidebar.tsx';
 import { clockOf, sampleEvent, type SampleEvent } from './events.ts';
@@ -43,6 +45,8 @@ import {
   detailOf,
   filled,
   firstFree,
+  freedFrom,
+  freedParty,
   fitOf,
   focusReach,
   free,
@@ -73,17 +77,20 @@ import {
 } from './seating.ts';
 import { SeatingContext, type SeatingApi, useSeating } from './seatingContext.ts';
 import {
+  MOVING,
   type Pop,
   type Ui,
   freshUi,
+  movedSeat,
   pickWords,
   seated,
   seatedWords,
   seedOf,
+  swappedSeats,
 } from './seatingSeed.ts';
 import { SeatingPanel, ShapeTile } from './SeatingPanel.tsx';
 import { PaperPage, PrintPanel } from './SeatingPrint.tsx';
-import { type Handle, type Look, MiniMap, RoomDrawing } from './SeatingRoom.tsx';
+import { type Box, type Handle, type Look, MiniMap, RoomDrawing } from './SeatingRoom.tsx';
 import { ListView, TablesView } from './SeatingViews.tsx';
 import { ChooseBar, RulesStrip } from './SeatingSelection.tsx';
 import {
@@ -150,20 +157,22 @@ function SeatingAt({ id, raw }: { id: string | undefined; raw: string | null }) 
   const named = crumbOf(state, event.name);
 
   return (
-    <EventsShell
-      renderSide={(tell, covered) => (
-        <EventSidebar
-          event={event}
-          area="seating"
-          now={clockOf(null)}
-          tell={tell}
-          inert={covered}
-          waiting={event.id === EVENT_ID ? waitingLine(keptInbox()) : null}
-        />
-      )}
-    >
-      {(tell) => <Seating first={first} event={event} named={named} tell={tell} />}
-    </EventsShell>
+    <KeptArea eventId={event.id} area="seating" at={clockWords(clockOf(null), event.timeZone)}>
+      <EventsShell
+        renderSide={(tell, covered) => (
+          <EventSidebar
+            event={event}
+            area="seating"
+            now={clockOf(null)}
+            tell={tell}
+            inert={covered}
+            waiting={event.id === EVENT_ID ? waitingLine(keptInbox()) : null}
+          />
+        )}
+      >
+        {(tell) => <Seating first={first} event={event} named={named} tell={tell} />}
+      </EventsShell>
+    </KeptArea>
   );
 }
 
@@ -270,6 +279,50 @@ function CrumbFrames({
   );
 }
 
+/** Where the bar floating over the room covers it, in the room's own pixels (sc-5030). */
+function useCover(): [(node: HTMLDivElement | null) => void, Box | null] {
+  const [node, setNode] = useState<HTMLDivElement | null>(null);
+  const [cover, setCover] = useState<Box | null>(null);
+
+  useLayoutEffect(() => {
+    if (node == null) return;
+    const measure = () => {
+      const room = node.parentElement?.getBoundingClientRect();
+      const box = node.getBoundingClientRect();
+
+      const next =
+        room == null || box.height === 0
+          ? null
+          : {
+              x0: box.left - room.left,
+              y0: box.top - room.top,
+              x1: box.right - room.left,
+              y1: box.bottom - room.top,
+            };
+
+      setCover((now) =>
+        now != null &&
+        next != null &&
+        now.x0 === next.x0 &&
+        now.y0 === next.y0 &&
+        now.x1 === next.x1 &&
+        now.y1 === next.y1
+          ? now
+          : next,
+      );
+    };
+
+    measure();
+    if (typeof ResizeObserver === 'undefined') return;
+    const watch = new ResizeObserver(measure);
+
+    watch.observe(node);
+    return () => watch.disconnect();
+  });
+
+  return [setNode, cover];
+}
+
 function useSize(): [(node: HTMLDivElement | null) => void, { w: number; h: number }] {
   const [node, setNode] = useState<HTMLDivElement | null>(null);
   const [size, setSize] = useState(DEFAULT_SIZE);
@@ -306,9 +359,25 @@ type Press =
       pointer: number;
     }
   | { kind: 'resize'; id: string; handle: Handle; item: Item; moved: boolean; pointer: number }
-  | { kind: 'pan'; from: Point; cx: number; cy: number; moved: boolean; pointer: number }
+  | {
+      kind: 'pan';
+      from: Point;
+      cx: number;
+      cy: number;
+      moved: boolean;
+      fingers: boolean;
+      pointer: number;
+    }
   | { kind: 'click'; id: string; shift: boolean; pointer: number }
-  | { kind: 'box'; from: Point; at: Point; base: string[]; moved: boolean; pointer: number }
+  | {
+      kind: 'box';
+      from: Point;
+      at: Point;
+      base: string[];
+      before: Pick<Ui, 'chosen' | 'chair' | 'panel' | 'notice' | 'tab'>;
+      moved: boolean;
+      pointer: number;
+    }
   | { kind: 'seat'; id: string; pointer: number };
 
 function keyStep(units: 'metric' | 'us', big: boolean): number {
@@ -327,6 +396,62 @@ function shapeWords(kind: Kind): string {
   }[kind];
 }
 
+/** A seated guest picked and a table or chair tapped (sc-4013): they move, and only they; a taken chair asks Swap with; their own chair drops the pick. */
+function moveTo(now: Ui, tableId: string, chair?: number): Ui {
+  const from = now.moving;
+  const item = now.plan.items.find((one) => one.id === tableId);
+
+  if (from == null || item == null) return now;
+  const at = chair == null ? null : item.chairs[chair];
+
+  if (tableId === from.table && chair === from.chair)
+    return { ...now, picked: null, moving: null, hoverChair: null, bar: null };
+  if (chair != null && at?.state === 'taken')
+    return { ...now, hover: tableId, pop: { kind: 'swap', table: tableId, chair, party: MOVING } };
+  if (chair == null && tableId === from.table) return now;
+  const next = movedSeat(now.plan, from, tableId, chair);
+
+  if (next == null)
+    return chair == null
+      ? { ...now, hover: null, bar: { kind: 'amber', words: say(SW.full, { table: item.name }) } }
+      : now;
+  return afterMove(
+    now,
+    next.plan,
+    tableId,
+    say(SW.seatedOne, { name: next.name, table: item.name }),
+  );
+}
+
+function swapMoving(now: Ui, tableId: string, chair: number): Ui {
+  const from = now.moving;
+  const item = now.plan.items.find((one) => one.id === tableId);
+  const name = now.plan.items.find((one) => one.id === from?.table)?.chairs[from?.chair ?? -1]?.who;
+
+  if (from == null || item == null || name == null) return now;
+  return afterMove(
+    now,
+    swappedSeats(now.plan, from, { table: tableId, chair }),
+    tableId,
+    say(SW.seatedOne, { name, table: item.name }),
+  );
+}
+
+function afterMove(now: Ui, plan: Plan, tableId: string, words: string): Ui {
+  return {
+    ...now,
+    plan,
+    picked: null,
+    moving: null,
+    hoverChair: null,
+    pop: null,
+    hover: tableId,
+    save: now.save === 'retrying' ? 'retrying' : 'saving',
+    undo: { plan: now.plan, tray: now.tray },
+    bar: { kind: 'undo', words, does: 'undo' },
+  };
+}
+
 function Seating({
   first,
   event,
@@ -340,6 +465,7 @@ function Seating({
 }) {
   const [ui, setUi] = useState<Ui>(first);
   const [setCanvas, size] = useSize();
+  const [setFloat, cover] = useCover();
   const [crowded, setCrowded] = useState(false);
   const [rowMet, setRowMet] = useState(false);
   const canvas = useRef<HTMLDivElement | null>(null);
@@ -347,8 +473,10 @@ function Seating({
   const held = useRef<string | null>(null);
   const spaceHeld = useRef(false);
   const spacePanned = useRef(false);
+  const spaceOn = useRef<{ id: string; shift: boolean } | null>(null);
   const touches = useRef(new Set<number>());
   const [focusId, setFocusId] = useState<string | null>(null);
+  const keyed = useRef<string | null>(null);
   const [keyboard, setKeyboard] = useState(first.focus?.startsWith('item:') === true);
   const [placingAt, setPlacingAt] = useState<Point | null>(
     first.ghost != null && first.placing != null ? [first.ghost.x, first.ghost.y] : null,
@@ -421,7 +549,7 @@ function Seating({
         set((now) => ({
           ...now,
           colleague: null,
-          rings: { ...now.rings, [colleague.id]: PRIYA },
+          rings: { ...now.rings, [colleague.id]: [{ who: PRIYA }] },
           plan: {
             ...now.plan,
             items: now.plan.items.map((item) =>
@@ -562,11 +690,38 @@ function Seating({
         return {
           ...now,
           picked: party?.id ?? null,
+          moving: null,
+          hoverChair: null,
           chosen: [],
           chair: null,
           pop: null,
           hover: null,
+          chairLabel: null,
           bar: party == null ? null : { kind: 'tint', words: pickWords(party), does: 'pick' },
+        };
+      }),
+    [set],
+  );
+
+  const pickSeated = useCallback(
+    (tableId: string, chair: number) =>
+      set((now) => {
+        const who = now.plan.items.find((one) => one.id === tableId)?.chairs[chair];
+        const again = now.moving?.table === tableId && now.moving.chair === chair;
+
+        if (now.readOnly || who?.state !== 'taken' || who.who == null) return now;
+        return {
+          ...now,
+          picked: again ? null : MOVING,
+          moving: again ? null : { table: tableId, chair },
+          hoverChair: null,
+          chosen: [],
+          chair: null,
+          pop: null,
+          hover: null,
+          bar: again
+            ? null
+            : { kind: 'tint', words: say(SW.pickOne, { name: who.who }), does: 'pick' },
         };
       }),
     [set],
@@ -575,6 +730,7 @@ function Seating({
   const seatAt = useCallback(
     (tableId: string, chair?: number) =>
       set((now) => {
+        if (now.moving != null) return moveTo(now, tableId, chair);
         const party = now.tray.find((one) => one.id === now.picked);
         const item = now.plan.items.find((one) => one.id === tableId);
 
@@ -619,6 +775,7 @@ function Seating({
           plan: next.plan,
           tray: next.tray,
           picked: null,
+          hoverChair: null,
           pop: null,
           hover: tableId,
           save: now.save === 'retrying' ? 'retrying' : 'saving',
@@ -665,18 +822,13 @@ function Seating({
   const swap = useCallback(
     (tableId: string, chair: number, partyId: string) =>
       set((now) => {
+        if (partyId === MOVING) return swapMoving(now, tableId, chair);
         const party = now.tray.find((one) => one.id === partyId);
         const item = now.plan.items.find((one) => one.id === tableId);
         const was = item?.chairs[chair];
 
         if (party == null || item == null || was?.who == null) return now;
-        const moved: Party = {
-          id: `back-${was.who}`,
-          name: was.who,
-          companions: [],
-          group: null,
-          reply: 'coming',
-        };
+        const moved = freedParty(was.who);
 
         return {
           ...now,
@@ -688,6 +840,7 @@ function Seating({
           },
           tray: [...now.tray.filter((one) => one.id !== partyId), moved],
           picked: null,
+          hoverChair: null,
           pop: null,
           hover: tableId,
           save: 'saving',
@@ -708,15 +861,7 @@ function Seating({
         const item = now.plan.items.find((one) => one.id === tableId);
 
         if (item == null) return now;
-        const back: Party[] = item.chairs
-          .filter((chair) => chair.state === 'taken' && chair.who != null)
-          .map((chair) => ({
-            id: `back-${chair.who}`,
-            name: chair.who!,
-            companions: [],
-            group: null,
-            reply: 'coming',
-          }));
+        const back = freedFrom([item]);
 
         return {
           ...now,
@@ -885,6 +1030,7 @@ function Seating({
         })),
       ask: (asking) => set((now) => ({ ...now, asking })),
       pick,
+      pickSeated,
       seatAt,
       seatJust,
       swap,
@@ -902,6 +1048,7 @@ function Seating({
       edit,
       choose,
       pick,
+      pickSeated,
       seatAt,
       seatJust,
       swap,
@@ -1023,6 +1170,15 @@ function Seating({
       place(toCm(event.clientX, event.clientY));
       return;
     }
+    if (
+      event.pointerType === 'touch' &&
+      press.current?.kind === 'box' &&
+      touches.current.size > 0
+    ) {
+      touches.current.add(event.pointerId);
+      panWith(event);
+      return;
+    }
     if (ui.picked != null) {
       press.current = { kind: 'seat', id, pointer: event.pointerId };
       return;
@@ -1069,11 +1225,6 @@ function Seating({
       return;
     }
     if (event.pointerType === 'touch') touches.current.add(event.pointerId);
-    const now = press.current;
-
-    if (now?.kind === 'box' && touches.current.size > 1) {
-      set((ui_) => ({ ...ui_, chosen: now.base, box: null }));
-    }
     if (!ui.readOnly && ui.picked == null && !spaceHeld.current && touches.current.size < 2) {
       const at = toCm(event.clientX, event.clientY);
 
@@ -1082,17 +1233,33 @@ function Seating({
         from: at,
         at: [event.clientX, event.clientY],
         base: event.shiftKey || ui.adding ? ui.chosen : [],
+        before: {
+          chosen: ui.chosen,
+          chair: ui.chair,
+          panel: ui.panel,
+          notice: ui.notice,
+          tab: ui.tab,
+        },
         moved: false,
         pointer: event.pointerId,
       };
       return;
     }
+    panWith(event);
+  }
+
+  function panWith(event: ReactPointerEvent<Element>): void {
+    const now = press.current;
+    const fingers = touches.current.size > 1;
+
+    if (now?.kind === 'box' && fingers) set((ui_) => ({ ...ui_, ...now.before, box: null }));
     press.current = {
       kind: 'pan',
       from: [event.clientX, event.clientY],
       cx: (size.w / 2 - ox) / s,
       cy: (size.h / 2 - oy) / s,
       moved: false,
+      fingers,
       pointer: event.pointerId,
     };
   }
@@ -1208,6 +1375,7 @@ function Seating({
             note: null,
           }));
       } else if (now.kind === 'pan') {
+        if (now.fingers) return;
         if (!now.moved && kept != null) focusField(kept);
         else if (!now.moved) {
           set((ui_) => ({
@@ -1351,6 +1519,23 @@ function Seating({
       );
   }
 
+  function activate(id: string, shift: boolean): void {
+    const now = ui$.current;
+
+    if (now.picked != null) seatAt(id);
+    else if (shift || now.adding)
+      set((ui_) => ({
+        ...ui_,
+        chosen: ui_.chosen.includes(id)
+          ? ui_.chosen.filter((one) => one !== id)
+          : [...ui_.chosen, id],
+        panel: null,
+        chair: null,
+        notice: null,
+      }));
+    else choose([id]);
+  }
+
   function onItemKey(event: ReactKeyboardEvent<SVGGElement>, id: string): void {
     const now = ui$.current;
     const item = now.plan.items.find((one) => one.id === id);
@@ -1364,26 +1549,21 @@ function Seating({
       ArrowDown: [0, 1],
     };
 
-    if (event.key === 'Enter' || event.key === ' ') {
+    if (event.key === ' ') {
       event.preventDefault();
-      if (now.picked != null) seatAt(id);
-      else if (event.shiftKey || now.adding)
-        set((ui_) => ({
-          ...ui_,
-          chosen: ui_.chosen.includes(id)
-            ? ui_.chosen.filter((one) => one !== id)
-            : [...ui_.chosen, id],
-          panel: null,
-          chair: null,
-          notice: null,
-        }));
-      else choose([id]);
+      spaceHeld.current = true;
+      if (!event.repeat) spaceOn.current = { id, shift: event.shiftKey };
+      return;
+    }
+    if (event.key === 'Enter') {
+      event.preventDefault();
+      activate(id, event.shiftKey);
       return;
     }
     if (event.key in arrows) {
       event.preventDefault();
       if (now.picked != null) {
-        const order = readingOrder(now.plan.items.filter(isTable));
+        const order = readingOrder(now.plan.items);
         const at = order.findIndex((one) => one.id === id);
         const step = event.key === 'ArrowLeft' || event.key === 'ArrowUp' ? -1 : 1;
         const next = order[(at + step + order.length) % order.length];
@@ -1392,6 +1572,7 @@ function Seating({
         return;
       }
       if (!chosen || now.readOnly || now.plan.room == null) return;
+      keyed.current = id;
       const [ax, ay] = arrows[event.key]!;
       const step = keyStep(now.units, event.shiftKey);
       const room_ = now.plan.room;
@@ -1423,6 +1604,7 @@ function Seating({
       event.preventDefault();
       const rot = (item.rot + 15) % 360;
 
+      keyed.current = id;
       commit(id, (plan) => ({
         ...plan,
         items: plan.items.map((one) => (one.id === id ? { ...one, rot } : one)),
@@ -1492,6 +1674,15 @@ function Seating({
       if (event.key !== ' ') return;
       if (spacePanned.current || (spaceHeld.current && !control(event.target)))
         event.preventDefault();
+      const on = spaceOn.current;
+
+      spaceOn.current = null;
+      if (
+        on != null &&
+        !spacePanned.current &&
+        document.activeElement?.getAttribute('data-item') === on.id
+      )
+        activate(on.id, on.shift || event.shiftKey);
       spaceHeld.current = false;
       spacePanned.current = false;
     };
@@ -1553,6 +1744,57 @@ function Seating({
     return () => node.removeEventListener('wheel', wheel);
   });
 
+  function keepClear(target: Element, drawn: boolean): void {
+    const node = canvas.current;
+
+    if (node == null || ui$.current.view !== 'plan' || ui$.current.plan.room == null) return;
+    const box = node.getBoundingClientRect();
+    const at = target.getBoundingClientRect();
+    const ringed = ui$.current.plan.items.find(
+      (item) => item.id === target.getAttribute('data-item'),
+    );
+    const reach = ringed == null ? 0 : focusReach(ringed, drawn);
+    const [dx, dy] = intoView(
+      {
+        x0: at.left - box.left - reach,
+        y0: at.top - box.top - reach,
+        x1: at.right - box.left + reach,
+        y1: at.bottom - box.top + reach,
+      },
+      size.w,
+      size.h,
+      [...node.querySelectorAll('.st-float')].map((bar) => {
+        const on = bar.getBoundingClientRect();
+
+        return {
+          x0: on.left - box.left,
+          y0: on.top - box.top,
+          x1: on.right - box.left,
+          y1: on.bottom - box.top,
+        };
+      }),
+    );
+
+    if (dx === 0 && dy === 0) return;
+    const cx = (size.w / 2 - oRef.current[0] - dx) / sRef.current;
+    const cy = (size.h / 2 - oRef.current[1] - dy) / sRef.current;
+
+    set((now) => ({ ...now, camera: { s: sRef.current, cx, cy } }));
+  }
+  const keepClear$ = useRef(keepClear);
+
+  keepClear$.current = keepClear;
+
+  function focusedItem(): Element | null {
+    const active = document.activeElement;
+
+    return active != null &&
+      canvas.current?.contains(active) === true &&
+      active.matches('[data-item]')
+      ? active
+      : null;
+  }
+
   useEffect(() => {
     const node = canvas.current;
 
@@ -1562,44 +1804,21 @@ function Seating({
 
       if (!(target instanceof Element) || target.closest('[data-item]') == null) return;
       if (!target.matches(':focus-visible')) return;
-      if (ui$.current.view !== 'plan' || ui$.current.plan.room == null) return;
-      const box = node.getBoundingClientRect();
-      const at = target.getBoundingClientRect();
       // The ring and halo are drawn once this focus renders, so the box does not hold them yet.
-      const ringed = ui$.current.plan.items.find(
-        (item) => item.id === target.getAttribute('data-item'),
-      );
-      const reach = ringed == null ? 0 : focusReach(ringed);
-      const [dx, dy] = intoView(
-        {
-          x0: at.left - box.left - reach,
-          y0: at.top - box.top - reach,
-          x1: at.right - box.left + reach,
-          y1: at.bottom - box.top + reach,
-        },
-        size.w,
-        size.h,
-        [...node.querySelectorAll('.st-float')].map((bar) => {
-          const on = bar.getBoundingClientRect();
-
-          return {
-            x0: on.left - box.left,
-            y0: on.top - box.top,
-            x1: on.right - box.left,
-            y1: on.bottom - box.top,
-          };
-        }),
-      );
-
-      if (dx === 0 && dy === 0) return;
-      const cx = (size.w / 2 - oRef.current[0] - dx) / sRef.current;
-      const cy = (size.h / 2 - oRef.current[1] - dy) / sRef.current;
-
-      set((now) => ({ ...now, camera: { s: sRef.current, cx, cy } }));
+      keepClear(target, false);
     };
 
     node.addEventListener('focusin', follow);
     return () => node.removeEventListener('focusin', follow);
+  });
+
+  useLayoutEffect(() => {
+    const id = keyed.current;
+
+    keyed.current = null;
+    const target = focusedItem();
+
+    if (id != null && target?.getAttribute('data-item') === id) keepClear(target, true);
   });
 
   const items = ui.plan.items;
@@ -1632,11 +1851,14 @@ function Seating({
     overlap: overlaps,
     focus: keyboard ? focusId : null,
     rings: ui.rings,
+    presence: ui.presence,
     handles:
       ui.chosen.length === 1 && !ui.readOnly && ui.chair == null && ui.tab === 'arrange'
         ? (ui.chosen[0] ?? null)
         : null,
     chair: ui.chair,
+    picking: ui.picked != null,
+    label: ui.picked != null ? ui.chairLabel : null,
     chairsFor:
       detail === 'out'
         ? null
@@ -1658,6 +1880,34 @@ function Seating({
     !ui.readOnly &&
     !ui.adding &&
     ui.view === 'plan';
+
+  useLayoutEffect(() => {
+    const target = keysShown ? focusedItem() : null;
+
+    if (target != null) keepClear$.current(target, true);
+  }, [keysShown]);
+
+  useEffect(() => {
+    const node = canvas.current;
+
+    if (!keysShown || node == null || typeof ResizeObserver === 'undefined') return;
+    const tall = new WeakMap<Element, number>();
+    const watch = new ResizeObserver((entries) => {
+      const grew = entries.some((entry) => {
+        const was = tall.get(entry.target);
+        const now = entry.target.getBoundingClientRect().height;
+
+        tall.set(entry.target, now);
+        return was != null && now > was;
+      });
+      const target = grew ? focusedItem() : null;
+
+      if (target != null) keepClear$.current(target, true);
+    });
+
+    node.querySelectorAll('.st-float').forEach((bar) => watch.observe(bar));
+    return () => watch.disconnect();
+  }, [keysShown]);
   const outlines = gridOutlines(ui);
   const showSave = room != null || ui.panel?.kind !== 'start';
 
@@ -1674,11 +1924,14 @@ function Seating({
   }, [size.w, ui.load, ui.view, ui.save, room, showSave]);
 
   const crumb = (
-    <header className="st-top">
-      <SeatingCrumb id={event.id} named={named} />
-      <Presence />
-      <DemoBell tell={tell} />
-    </header>
+    <>
+      <KeptHere className="st-kept" />
+      <header className="st-top">
+        <SeatingCrumb id={event.id} named={named} />
+        <Presence />
+        <DemoBell tell={tell} />
+      </header>
+    </>
   );
 
   let main: ReactNode;
@@ -1782,7 +2035,7 @@ function Seating({
             <MessageBar onPlace={placeAtCentre} onStop={stopPlacing} />
           )}
           {ui.view === 'plan' && room != null && (
-            <div className="st-float st-under-views">
+            <div className="st-float st-under-views" ref={setFloat}>
               {!ui.readOnly && ui.placing == null && ui.picked == null && <ChooseBar />}
               {ui.bar != null && ui.bar.at !== 'floor' && (
                 <MessageBar inline onPlace={placeAtCentre} onStop={stopPlacing} />
@@ -1810,7 +2063,11 @@ function Seating({
                 ghostAt={placingGhost}
                 box={ui.box}
                 outlines={outlines}
+                cover={cover}
                 onFloor={onFloor}
+                onFloorMouse={(event) => {
+                  if (spaceHeld.current) event.preventDefault();
+                }}
                 hands={{
                   onItemDown,
                   onItemKey,
@@ -1818,6 +2075,7 @@ function Seating({
                   onItemEnter: (id) => {
                     if (ui$.current.picked != null) set((now) => ({ ...now, hover: id }));
                   },
+                  onChairLabel: (spot) => set((now) => ({ ...now, chairLabel: spot })),
                   onChair: (id, index) => {
                     if (ui$.current.picked != null) seatAt(id, index);
                     else
@@ -1836,8 +2094,11 @@ function Seating({
             )
           ) : (
             <div className="st-view-wrap">
-              {ui.bar != null && (
-                <MessageBar inline onPlace={() => undefined} onStop={stopPlacing} />
+              {(ui.bar != null || ui.pop != null) && (
+                <div className="st-view-top">
+                  <MessageBar inline onPlace={() => undefined} onStop={stopPlacing} />
+                  {ui.pop != null && <PopOver pop={ui.pop} inline />}
+                </div>
               )}
               {ui.view === 'tables' ? <TablesView /> : <ListView />}
             </div>
@@ -2119,7 +2380,9 @@ function MessageBar({
     >
       <Icon name={glyph} size={17} weight={2.2} />
       <div className="st-bar-body">
-        <p>{bar.words}</p>
+        <p tabIndex={-1} data-said="bar">
+          {bar.words}
+        </p>
         {bar.does === 'placing' && (
           <span className="st-bar-acts">
             <button type="button" className="desk-text" onClick={onPlace}>
@@ -2142,8 +2405,22 @@ function MessageBar({
             <button
               type="button"
               className="desk-text"
+              data-act="undo"
               onClick={() => {
+                if (ui.undo?.stale === true) {
+                  set((now) => ({
+                    ...now,
+                    undo: null,
+                    bar: { kind: 'amber', words: SW.undoRefused },
+                  }));
+                  window.setTimeout(
+                    () => document.querySelector<HTMLElement>('.st-bar [data-said="bar"]')?.focus(),
+                    0,
+                  );
+                  return;
+                }
                 const undoing = ui.undo != null;
+                const back = ui.undo?.chosen ?? [];
 
                 set((now) =>
                   now.undo == null
@@ -2152,6 +2429,7 @@ function MessageBar({
                         ...now,
                         plan: now.undo.plan,
                         tray: now.undo.tray,
+                        chosen: now.undo.chosen ?? now.chosen,
                         undo: null,
                         bar: null,
                         hover: null,
@@ -2160,7 +2438,11 @@ function MessageBar({
                       },
                 );
                 if (undoing)
-                  window.setTimeout(() => set((now) => ({ ...now, spoken: SW.undone })), 60);
+                  window.setTimeout(() => {
+                    set((now) => ({ ...now, spoken: SW.undone }));
+                    if (back[0] != null)
+                      document.querySelector<SVGElement>(`[data-item="${back[0]}"]`)?.focus();
+                  }, 60);
               }}
             >
               {SW.undo}
@@ -2322,13 +2604,29 @@ function AddBar({
 }
 
 /** A dark-free place for an answer by the table: Seat just {name}, Swap with {name}, Move everyone to…. */
-function PopOver({ pop, s, ox, oy }: { pop: Pop; s: number; ox: number; oy: number }) {
+function PopOver({
+  pop,
+  s = 1,
+  ox = 0,
+  oy = 0,
+  inline = false,
+}: {
+  pop: Pop;
+  s?: number;
+  ox?: number;
+  oy?: number;
+  inline?: boolean;
+}) {
   const { ui, set, seatJust, swap, moveAll } = useSeating();
   const box = useRef<HTMLDivElement>(null);
   const item = ui.plan.items.find((one) => one.id === pop.table);
 
   useLayoutEffect(() => {
     if (box.current == null || item == null) return;
+    if (inline) {
+      box.current.querySelector<HTMLElement>('button')?.focus();
+      return;
+    }
     const x = ox + item.x * s;
     const y = oy + item.y * s;
     const left =
@@ -2338,7 +2636,7 @@ function PopOver({ pop, s, ox, oy }: { pop: Pop; s: number; ox: number; oy: numb
     box.current.style.setProperty('left', `${Math.round(left)}px`);
     box.current.style.setProperty('top', `${Math.round(top)}px`);
     box.current.querySelector<HTMLElement>('button')?.focus();
-  }, [item, s, ox, oy, pop.kind]);
+  }, [item, s, ox, oy, pop.kind, inline]);
 
   if (item == null) return null;
   const close = () => set((now) => ({ ...now, pop: null }));
@@ -2402,29 +2700,31 @@ function PopOver({ pop, s, ox, oy }: { pop: Pop; s: number; ox: number; oy: numb
     body = (
       <>
         <h2>{SW.moveAll}</h2>
-        <p className="st-line">{say(SW.roomForAll, { n })}</p>
-        <ul className="st-rows is-dense">
-          {room.map((one) => (
-            <li key={one.id}>
-              <button type="button" className="st-party" onClick={() => moveAll(item.id, one.id)}>
-                <ShapeTile kind={one.kind} />
-                <span className="st-row-words">
-                  <span className="st-row-name">{one.name}</span>
-                  <span className="st-row-line">
-                    {say(SW.freeLine, {
-                      section:
-                        sectionLine(ui.plan, one.sec).split(' · ')[0] === undefined
-                          ? ''
-                          : (ui.plan.sections.find((sec) => sec.id === one.sec)?.name ??
-                            SW.noSection),
-                      n: free(one),
-                    })}
+        <p className="st-line">{many(room.length === 0 ? 'roomForNone' : 'roomForAll', n)}</p>
+        {room.length === 0 ? null : (
+          <ul className="st-rows is-dense">
+            {room.map((one) => (
+              <li key={one.id}>
+                <button type="button" className="st-party" onClick={() => moveAll(item.id, one.id)}>
+                  <ShapeTile kind={one.kind} />
+                  <span className="st-row-words">
+                    <span className="st-row-name">{one.name}</span>
+                    <span className="st-row-line">
+                      {say(SW.freeLine, {
+                        section:
+                          sectionLine(ui.plan, one.sec).split(' · ')[0] === undefined
+                            ? ''
+                            : (ui.plan.sections.find((sec) => sec.id === one.sec)?.name ??
+                              SW.noSection),
+                        n: free(one),
+                      })}
+                    </span>
                   </span>
-                </span>
-              </button>
-            </li>
-          ))}
-        </ul>
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
       </>
     );
   }
@@ -2432,7 +2732,7 @@ function PopOver({ pop, s, ox, oy }: { pop: Pop; s: number; ox: number; oy: numb
   return (
     <div
       ref={box}
-      className={`st-float st-pop is-${pop.kind === 'moveAll' ? 'move-all' : pop.kind}`}
+      className={`${inline ? 'st-pop is-inline' : 'st-float st-pop'} is-${pop.kind === 'moveAll' ? 'move-all' : pop.kind}`}
       role="dialog"
       aria-label={itemName(ui.plan, item)}
     >
@@ -2498,17 +2798,7 @@ function Asking() {
     );
   }
   const doomed = ui.plan.items.filter((item) => asking.ids.includes(item.id));
-  const freed: Party[] = doomed.flatMap((item) =>
-    item.chairs
-      .filter((chair) => chair.state === 'taken' && chair.who != null)
-      .map((chair) => ({
-        id: `back-${chair.who}`,
-        name: chair.who!,
-        companions: [],
-        group: null,
-        reply: 'coming' as const,
-      })),
-  );
+  const freed = freedFrom(doomed);
 
   if (doomed.length > 1) {
     const seated = seatedOf(doomed);
@@ -2525,7 +2815,7 @@ function Asking() {
         go={many(tables ? 'deleteTablesGo' : 'deleteItemsGo', doomed.length)}
         red={false}
         onKeep={keep}
-        onGo={() =>
+        onGo={() => {
           set((now) => ({
             ...now,
             plan: {
@@ -2533,15 +2823,19 @@ function Asking() {
               items: now.plan.items.filter((item) => !asking.ids.includes(item.id)),
             },
             tray: [...now.tray, ...freed],
-            undo: { plan: now.plan, tray: now.tray },
+            undo: { plan: now.plan, tray: now.tray, chosen: asking.ids },
             bar: { kind: 'undo', words, does: 'undo' },
             asking: null,
             chosen: [],
             chair: null,
             notice: null,
             save: 'saving',
-          }))
-        }
+          }));
+          window.setTimeout(
+            () => document.querySelector<HTMLButtonElement>('.st-bar [data-act="undo"]')?.focus(),
+            0,
+          );
+        }}
       />
     );
   }

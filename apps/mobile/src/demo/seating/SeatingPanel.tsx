@@ -14,6 +14,7 @@ import { filled, free, overlapping } from './SeatingGeometry.ts';
 import {
   type Seating,
   chairWord,
+  choicesOn,
   editable,
   groupCounts,
   hexOf,
@@ -503,12 +504,12 @@ function fieldsOf(m: Seating, go: Go, it: Item) {
 }
 
 function Notes({ m, it }: { m: Seating; it: Item }) {
-  const ring = m.rings[it.id];
+  const ring = choicesOn(m, it.id)[0]?.who;
   return (
     <>
       {m.fields.added != null && <Notice words={m.fields.added} tone="green" />}
       {m.fields.changedBy != null && <Notice words={m.fields.changedBy} tone="amber" />}
-      {ring != null && !ring.viewer && m.fields.changedBy == null && (
+      {ring != null && m.fields.changedBy == null && (
         <Notice words={say.bothChose(ring.name)} tone="note" />
       )}
       {m.fields.note != null && <Notice words={m.fields.note} tone="note" />}

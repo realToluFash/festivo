@@ -1,14 +1,18 @@
 import {
+  COVER_DESCRIPTION_MAXIMUM,
   type EventDraft,
   type EventFormField,
   type EventType,
   eventFormProblems,
   firstRefusedOf,
   newEventHosts,
+  visibleLength,
 } from '@soirely/domain';
 
-import { hostErrorWords } from './hostErrors.ts';
+import type { Position } from '../../components/EventEdits.tsx';
+import { ARRIVAL_NOTE, NOTE_WORDS } from './ArrivalNote.ts';
 import { W, say } from './EventsWords.ts';
+import { hostErrorWords } from './hostErrors.ts';
 
 /** New event's states (sc-48607), each a ?state= on /demo/events with the form open over the list. */
 export const NEW_STATES = [
@@ -42,10 +46,13 @@ export interface NewTyped {
   type: EventType | '';
   hosts: { key: number; name: string }[];
   photo: boolean;
+  position: Position;
+  described: string;
   start: Moment;
   end: Moment;
   venueName: string;
   venueAddress: string;
+  note: string;
   timeZone: string;
   currency: string;
 }
@@ -57,10 +64,13 @@ export const BLANK: NewTyped = {
   type: '',
   hosts: [{ key: 0, name: '' }],
   photo: false,
+  position: 'middle',
+  described: '',
   start: { date: '', time: '' },
   end: { date: '', time: '' },
   venueName: '',
   venueAddress: '',
+  note: '',
   ...ORG_DEFAULTS,
 };
 
@@ -72,10 +82,13 @@ export const FILLED: NewTyped = {
     { key: 1, name: 'Tunde Bakare' },
   ],
   photo: false,
+  position: 'middle',
+  described: '',
   start: { date: '2027-03-13', time: '14:00' },
   end: { date: '2027-03-13', time: '23:00' },
   venueName: 'Eko Hotel',
   venueAddress: 'Adetokunbo Ademola Street, Victoria Island, Lagos',
+  note: 'Use the hotel’s main entrance on Adetokunbo Ademola Street. Parking is in the hotel’s car park.',
   ...ORG_DEFAULTS,
 };
 
@@ -102,6 +115,7 @@ const SKIPPED: NewTyped = {
   end: { date: '2027-03-28', time: '05:00' },
   venueName: 'The Landmark',
   venueAddress: '222 Marylebone Road, London NW1 6JQ',
+  note: ARRIVAL_NOTE,
   timeZone: 'Europe/London',
   currency: 'GBP',
 };
@@ -153,6 +167,7 @@ const WORDS: Record<string, string> = {
   endBeforeStart: W.endBeforeStart,
   venueNameTooLong: W.venueNameTooLong,
   venueAddressTooLong: W.venueAddressTooLong,
+  arrivalNoteTooLong: NOTE_WORDS.tooLong,
   currencyBlank: W.currencyBlank,
 };
 
@@ -160,7 +175,12 @@ export function refusalsOf(typed: NewTyped): Refusals {
   const found: Refusals = {};
   for (const one of eventFormProblems({
     draft: draftOf(typed),
-    venue: { name: typed.venueName, address: typed.venueAddress, addressId: null, note: '' },
+    venue: {
+      name: typed.venueName,
+      address: typed.venueAddress,
+      addressId: null,
+      note: typed.note,
+    },
     timeZone: typed.timeZone,
     currency: typed.currency,
   }))
@@ -169,14 +189,25 @@ export function refusalsOf(typed: NewTyped): Refusals {
   return found;
 }
 
-/** What Create checks before it sends: the fields', then each host row's, with a blank Host 1 alone let through. */
+export const DESCRIBE_TOO_LONG = `Shorten the description to ${COVER_DESCRIPTION_MAXIMUM} characters or fewer.`;
+
+/** Describe the image's refusal, as the cover edit's: the field takes the typing, and Create refuses it. */
+export function coverRefusalOf(typed: NewTyped): string | null {
+  return typed.photo && visibleLength(typed.described) > COVER_DESCRIPTION_MAXIMUM
+    ? DESCRIBE_TOO_LONG
+    : null;
+}
+
+/** What Create checks before it sends: the fields', the photo's description, then each host row's, with a blank Host 1 alone let through. */
 export function checkOf(typed: NewTyped): {
   refusals: Refusals;
+  cover: string | null;
   hosts: (string | null)[];
   count: number;
   summary: string | null;
 } {
   const refusals = refusalsOf(typed);
+  const cover = coverRefusalOf(typed);
   const sent = newEventHosts(typed.hosts);
   const hosts =
     sent.length === 0
@@ -185,23 +216,32 @@ export function checkOf(typed: NewTyped): {
           typed.hosts.map((row) => row.name),
           true,
         );
-  const count = Object.keys(refusals).length + hosts.filter((one) => one != null).length;
+  const count =
+    Object.keys(refusals).length +
+    (cover == null ? 0 : 1) +
+    hosts.filter((one) => one != null).length;
 
-  return { refusals, hosts, count, summary: count === 0 ? null : say.problems(count) };
+  return { refusals, cover, hosts, count, summary: count === 0 ? null : say.problems(count) };
 }
 
-/** Where focus lands on a refusal, by the domain's order: Event name and Type before the hosts, the rest after them (sc-22143). */
+/** Where focus lands on a refusal, in the form's order: Event name and Type, the hosts, the photo's description, then the rest (sc-22143). */
 export function firstRefused(
   refusals: Refusals,
   hosts: readonly (string | null)[],
-): { field: EventFormField } | { host: number } | null {
+  cover: string | null = null,
+): { field: EventFormField } | { host: number } | { cover: true } | null {
   const rows = hosts.map((_, key) => ({ key, name: '' }));
   const hostErrors = Object.fromEntries(
     hosts.flatMap((one, key) => (one == null ? [] : [[key, one]])),
   );
+  const first = firstRefusedOf(refusals, hostErrors, rows);
+  if (cover == null || (first != null && ('host' in first || ABOVE_COVER.has(first.field))))
+    return first;
 
-  return firstRefusedOf(refusals, hostErrors, rows);
+  return { cover: true };
 }
+
+const ABOVE_COVER: ReadonlySet<EventFormField> = new Set(['name', 'type']);
 
 /** Anything typed or chosen beyond what the form opened with, which Cancel asks about first. */
 export function typedSomething(typed: NewTyped): boolean {

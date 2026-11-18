@@ -1,7 +1,18 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, Navigate, useParams, useSearchParams } from 'react-router';
 
 import { Glyph } from '../components/Glyph.tsx';
+import { TextAction } from '../components/SettingsParts.tsx';
+import { EventNotLoaded } from './KeptOffline.tsx';
+import {
+  type Kept,
+  type TabStart,
+  keepNight,
+  loseConnection,
+  nightOpened,
+  tabStartOf,
+  useKept,
+} from './tabKept.ts';
 import { DemoBell } from './DemoBell.tsx';
 import { EventsShell } from './EventParts.tsx';
 import { EventSidebar } from './EventSidebar.tsx';
@@ -44,30 +55,47 @@ export function NightPage() {
   const locale = params.get('locale') ?? 'en-US';
   useSwitcherStart();
 
+  const tab = params.get('tab');
+
   return (
     <NightAt
-      key={`${id ?? ''}|${raw ?? ''}|${tracks ?? ''}|${as ?? ''}|${locale}`}
+      key={`${id ?? ''}|${raw ?? ''}|${tracks ?? ''}|${as ?? ''}|${locale}|${tab ?? ''}`}
       id={id}
       first={nightAt(raw, { oneTrack: tracks === 'one', as })}
       locale={locale}
+      start={tabStartOf(raw, tab)}
     />
   );
 }
 
 function NightAt({
   id,
-  first,
+  first: loaded,
   locale,
+  start,
 }: {
   id: string | undefined;
   first: NightStart;
   locale: string;
+  start: TabStart;
 }) {
   const [event] = useState(() => sampleEvent(id));
+  const [first] = useState(() => {
+    const night = nightOpened(loaded.night, start);
+
+    return night === loaded.night ? loaded : { ...loaded, night };
+  });
+  const kept = useKept(id ?? '', 'night', timeIn(locale, first.night.clock), start);
+
+  useEffect(() => {
+    if (!first.night.online) loseConnection();
+  }, [first]);
 
   if (event == null) return <Navigate to="/demo/events" replace />;
   if (event.id !== NIGHT_EVENT)
     return <Navigate to={`/demo/events/${event.id}?area=schedule`} replace />;
+  if (kept.offline && kept.asOf == null)
+    return <EventNotLoaded id={event.id} onRetry={kept.retry} />;
 
   return (
     <EventsShell
@@ -83,7 +111,14 @@ function NightAt({
       )}
     >
       {(tell) => (
-        <NightBody first={first} eventId={event.id} name={event.name} locale={locale} tell={tell} />
+        <NightBody
+          first={first}
+          eventId={event.id}
+          name={event.name}
+          locale={locale}
+          tell={tell}
+          kept={kept}
+        />
       )}
     </EventsShell>
   );
@@ -102,14 +137,25 @@ function NightBody({
   name,
   locale,
   tell,
+  kept,
 }: {
   first: NightStart;
   eventId: string;
   name: string;
   locale: string;
   tell: (words: string) => void;
+  kept: Kept;
 }) {
-  const [night, setNight] = useState<Night>(first.night);
+  const [night, setKept] = useState<Night>(() => {
+    if (kept.areaKept) keepNight(first.night, false);
+
+    return first.night;
+  });
+  const setNight = (next: Night) => {
+    setKept(next);
+    keepNight(next);
+  };
+  const failed = kept.offline && !kept.areaKept;
   const [trackId, setTrackId] = useState(first.trackId);
   const [chosen, setChosen] = useState<string | null>(first.chosen);
   const [moving, setMoving] = useState(false);
@@ -171,7 +217,8 @@ function NightBody({
         </div>
         <Head
           night={night}
-          view={view}
+          view={first.loading ? null : view}
+          loading={first.loading}
           locale={locale}
           many={tracks.length > 1}
           menuOpen={menuOpen}
@@ -202,8 +249,22 @@ function NightBody({
             })}
           </ul>
         )}
-        <Strip night={night} onTry={() => setNight(tryNow(night))} />
-        {!night.manage && (
+        {failed && (
+          <div className="desk-failed" role="alert">
+            <p className="desk-line">{NW.failed}</p>
+            <TextAction label={NW.tryAgain} onClick={kept.retry} />
+          </div>
+        )}
+        {!first.loading && !failed && (
+          <Strip
+            night={night}
+            onTry={() => {
+              setNight(tryNow(night));
+              kept.retry();
+            }}
+          />
+        )}
+        {!first.loading && !night.manage && (
           <p className="nt-view-only">
             <span className="nt-pill">
               <Glyph name="eye" size={14} weight={2.4} />
@@ -216,39 +277,45 @@ function NightBody({
           <div className="nt-alert" role="alert">
             <p className="nt-alert-words">
               <strong>{night.lost.title}</strong>
-              <span>{`Already started by ${night.lost.by} at ${timeIn(locale, night.lost.at)}.`}</span>
+              <span>
+                {night.lost.by == null
+                  ? night.lost.said
+                  : `Already started by ${night.lost.by} at ${timeIn(locale, night.lost.at)}.`}
+              </span>
             </p>
             <button type="button" className="rv-act" onClick={() => setNight(dismiss(night))}>
               {NW.dismiss}
             </button>
           </div>
         )}
-        <div className="nt-split">
-          <div className="nt-cards">
-            <Cards
-              first={first}
-              night={night}
-              view={view}
-              locale={locale}
-              chosen={chosen}
-              acts={acts}
-              rows={rows}
-            />
-          </div>
-          {chosenRow != null && (
-            <aside className="nt-panel" aria-label={chosenRow.item.title}>
-              <Chosen
-                row={chosenRow}
-                busy={view?.now != null}
-                manage={night.manage}
-                moving={moving}
-                onMove={setMoving}
-                onClose={close}
+        {!failed && (
+          <div className="nt-split">
+            <div className="nt-cards">
+              <Cards
+                first={first}
+                night={night}
+                view={view}
+                locale={locale}
+                chosen={chosen}
                 acts={acts}
+                rows={rows}
               />
-            </aside>
-          )}
-        </div>
+            </div>
+            {chosenRow != null && (
+              <aside className="nt-panel" aria-label={chosenRow.item.title}>
+                <Chosen
+                  row={chosenRow}
+                  busy={view?.now != null}
+                  manage={night.manage}
+                  moving={moving}
+                  onMove={setMoving}
+                  onClose={close}
+                  acts={acts}
+                />
+              </aside>
+            )}
+          </div>
+        )}
         <div className="visually-hidden" aria-live="polite">
           {night.said}
         </div>
@@ -259,7 +326,10 @@ function NightBody({
             <button
               type="button"
               className="rv-act"
-              onClick={() => setNight({ ...night, online: false, age: 1 })}
+              onClick={() => {
+                setNight({ ...night, online: false, age: 1 });
+                loseConnection();
+              }}
             >
               Lose the connection
             </button>
@@ -273,6 +343,7 @@ function NightBody({
 function Head({
   night,
   view,
+  loading,
   locale,
   many,
   menuOpen,
@@ -280,6 +351,7 @@ function Head({
 }: {
   night: Night;
   view: TrackView | null;
+  loading: boolean;
   locale: string;
   many: boolean;
   menuOpen: boolean;
@@ -311,18 +383,20 @@ function Head({
           </div>
         )}
       </div>
-      <div className="nt-head-end">
-        <p className="rv-clock">
-          <Glyph name="clock" size={16} weight={2.2} />
-          <span className="num">{timeIn(locale, night.clock)}</span>
-        </p>
-        {words != null && view != null && (
-          <p className={`nt-figure is-${view.header.kind}`}>
-            <span className="nt-figure-mark" aria-hidden="true" />
-            <span className="num">{words}</span>
+      {!loading && (
+        <div className="nt-head-end">
+          <p className="rv-clock">
+            <Glyph name="clock" size={16} weight={2.2} />
+            <span className="num">{timeIn(locale, night.clock)}</span>
           </p>
-        )}
-      </div>
+          {words != null && view != null && (
+            <p className={`nt-figure is-${view.header.kind}`}>
+              <span className="nt-figure-mark" aria-hidden="true" />
+              <span className="num">{words}</span>
+            </p>
+          )}
+        </div>
+      )}
     </header>
   );
 }
@@ -399,7 +473,7 @@ function Cards({
         )}
         {view.finished.workedOut != null && <p className="nt-muted">{view.finished.workedOut}</p>}
         {view.finished.endNow && (
-          <Link className="nt-link" to="/demo/events">
+          <Link className="nt-link" to={`/demo/events/${NIGHT_EVENT}?state=endNow`}>
             {NW.endNow}
           </Link>
         )}

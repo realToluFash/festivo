@@ -227,6 +227,9 @@ export const say = {
   bothChose: (name: string) =>
     `${name} has chosen this too. You can still change it. If you both save, the later change is refused and says why.`,
   chosenBy: (name: string) => `, chosen by ${name}`,
+  seatChosenBy: (n: number, name: string) => `, seat ${n} chosen by ${name}`,
+  names: (names: readonly string[]) =>
+    listFormat('en', { style: 'long', type: 'conjunction' }).format(names),
   left: (name: string) => `${name} left the plan.`,
   party: (lead: string, plus: number) => (plus > 0 ? `${lead} + ${plus}` : lead),
   guestOf: (name: string) => `Guest of ${name}`,
@@ -249,7 +252,8 @@ export const say = {
   emptyNow: (table: string) => `${table} is empty now.`,
   movedAll: (n: number, table: string) => `${plural(n, 'guest', 'guests')} moved to ${table}.`,
   race: (lead: string) => `Someone just took that seat. ${lead} is still without a seat.`,
-  roomForAll: (n: number) => `Tables with room for all ${n}.`,
+  roomForAll: (n: number) =>
+    n === 1 ? 'Tables with a free seat for them.' : `Tables with room for all ${n}.`,
   moreNotYet: (n: number) => `${n} more: Not sure yet or No reply`,
   tab: (word: string, n: number) => `${word} · ${n}`,
   summary: (tables: number, seated: number, coming: number, free: number) =>

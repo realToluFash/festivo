@@ -1,8 +1,8 @@
 import { act, render, waitFor } from '@testing-library/react';
 import { useRef } from 'react';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { useDeskDialog } from './layers.ts';
+import { focusWhenFree, useDeskDialog } from './layers.ts';
 
 function Ask() {
   const box = useRef<HTMLDivElement>(null);
@@ -31,6 +31,7 @@ function Page({ asking }: { asking: boolean }) {
 }
 
 afterEach(() => {
+  vi.restoreAllMocks();
   document.body.innerHTML = '';
 });
 
@@ -45,5 +46,30 @@ describe('useDeskDialog', () => {
 
     act(() => page.rerender(<Page asking={false} />));
     await waitFor(() => expect(document.activeElement).toBe(item));
+  });
+});
+
+describe('focusWhenFree', () => {
+  it('waits for the closing layer to lift the page’s inert before it focuses', async () => {
+    // jsdom focuses inside an `[inert]` subtree; a browser does not.
+    const focus = HTMLElement.prototype.focus;
+    vi.spyOn(HTMLElement.prototype, 'focus').mockImplementation(function (
+      this: HTMLElement,
+      options?: FocusOptions,
+    ) {
+      if (this.closest('[inert]') == null) focus.call(this, options);
+    });
+    const page = render(<Page asking={false} />);
+    const main = page.container.querySelector('main') as HTMLElement;
+    const heading = page.getByRole('heading', { name: 'Seating' });
+    main.setAttribute('inert', '');
+
+    focusWhenFree(() => heading);
+    await new Promise((done) => window.setTimeout(done, 0));
+    await new Promise((done) => window.requestAnimationFrame(done));
+    expect(document.activeElement).toBe(document.body);
+
+    main.removeAttribute('inert');
+    await waitFor(() => expect(document.activeElement).toBe(heading));
   });
 });

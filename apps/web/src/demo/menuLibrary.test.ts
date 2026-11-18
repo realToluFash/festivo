@@ -190,4 +190,11 @@ describe('the states', () => {
         expect(libraryStart(state).name).not.toBe('');
       }
   });
+
+  it.each([
+    ['gone', 'Chin chin'],
+    ['libVariantGone', 'Jollof rice'],
+  ])('%s no longer lists %s, which someone deleted', (state, name) => {
+    expect(libraryStart(state).dishes.map((one) => one.name)).not.toContain(name);
+  });
 });

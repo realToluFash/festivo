@@ -284,6 +284,7 @@ function NumberForm({
         label={t('verifyPhone.numberLabel')}
         help={t('verifyPhone.numberHelp')}
         country={country}
+        number={number}
         error={error}
         errorOn={errorOn}
         submitting={sending}

@@ -1,7 +1,7 @@
 import type { Guest, HeadcountCounts } from '@soirely/api-client';
 import { describe, expect, it } from 'vitest';
 
-import { choiceOf, countsOf, viewOf } from './guestView.ts';
+import { choiceOf, countsOf, peopleInView, viewOf } from './guestView.ts';
 
 function guest(id: string, fullName: string, more: Partial<Guest> = {}): Guest {
   return {
@@ -203,5 +203,26 @@ describe('the list as the choice and the search leave it', () => {
 
     viewOf(many, COUNTS, 'noReply', 'okafor', new Set());
     expect(performance.now() - started).toBeLessThan(100);
+  });
+});
+
+describe('peopleInView (sc-3784)', () => {
+  const ids = (...args: Parameters<typeof peopleInView>) =>
+    peopleInView(...args).map((one) => one.id);
+
+  it('is everyone on All, collapsed groups included, each companion straight after their guest', () => {
+    expect(ids(LIST, 'all', '')).toEqual(['g_3', 'g_1', 'c_1', 'g_4', 'g_5', 'g_2', 'c_2']);
+  });
+
+  it('is what the choice and the search keep, a companion kept without their guest included', () => {
+    expect(ids(LIST, 'coming', '')).toEqual(['g_1', 'c_1']);
+    expect(ids(LIST, 'all', 'obi')).toEqual(['c_1']);
+    expect(ids(LIST, 'invited', 'ben')).toEqual(['g_3']);
+  });
+
+  it('is never more people than the list shows for the same choice and search', () => {
+    expect(peopleInView(LIST, 'all', 'o')).toHaveLength(
+      viewOf(LIST, COUNTS, 'all', 'o', new Set()).shown,
+    );
   });
 });

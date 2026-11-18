@@ -157,9 +157,9 @@ API's `adb reverse` away for that move and puts it back once the API is held: th
 throughout, with no network change announced. `qa-env.mjs ios`, `android` and `release` unpause
 a paused API before starting the stack, so a batch killed mid-hold does not block the next run,
 and wait out the unhealthy status a long pause leaves before `up --wait`, which would give up on
-it. The `sc17675-*` checks turn the device with `${ORIENT}`: pass `ORIENT=PORTRAIT`
-(`LANDSCAPE_LEFT` on a landscape-natural tablet), or Maestro reports the unset value as a driver
-crash.
+it. The `sc17675-*` checks and the `sc59333-*-tablet` ones turn the device with `${ORIENT}`:
+pass `ORIENT=PORTRAIT` (`LANDSCAPE_LEFT` on a landscape-natural tablet), or Maestro reports the
+unset value as a driver crash.
 A picture at a held moment, which `takeScreenshot` would take only once the screen settles, is
 `ASK: /shot?name=<name>`: the harness screenshots the device at once and saves it with the
 batch's screenshots under the same check-and-language prefix, so `held-1` in an English batch
@@ -172,6 +172,12 @@ for the batch, with the account an administrator in it, and answers its id (`swi
 Then `change=pause` (through the domain, written in the database), `suspend`, `remove` or `delete`
 with the same `org`. Before each check `batch/reset.yaml` deletes what the last one joined, so
 Access paused never outlives its check. sc-28178's checks are the example.
+
+A check that must prove what reached the server, not what the screen draws, asks
+`ASK: /schedule?event=<id>&place=<place>&done=<n>`. The harness reads the event's schedule as the
+batch's account, waiting while fewer than `n` items of that place are done, and answers
+`output.helper.started` and `output.helper.done`. sc59333-night-run is the example: held presses
+replayed after the API comes back.
 
 Two-factor sign-in is `sign-in-two-factor.yaml`. It asks the harness for each code
 (`batch/helper.js`), so it runs inside a batch, which holds the account's `TOTP_SECRET`.
@@ -286,7 +292,7 @@ link, which in Expo Go lands on Home (sc-22740): each starts from Home or from a
   view, and `centerElement` pushes it under the page's opaque header. The name row opens Edit
   details at the name; the page's other rows are `events.details.<part>`.
 - **On Android, New event's dates and times are the system's dialogs**, closed with `OK`, not
-  the sheet's `eventForm.start.done`. `checks/sc20824-create-android.yaml` is the Android copy of
+  the sheet's `events.pick.done`. `checks/sc20824-create-android.yaml` is the Android copy of
   `checks/sc20824-create.yaml`.
 - **A `runScript` reaches the stack through `${API_URL}` and `${WEB_URL}`**, which the harness
   passes to every flow and batch, as it does `${METRO_URL}`.

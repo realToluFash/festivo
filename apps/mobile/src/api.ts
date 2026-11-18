@@ -19,7 +19,7 @@ import { router } from 'expo-router';
 import { appAgent } from './appAgent.ts';
 import { heardFrom, readsMe } from './colourScheme.ts';
 import { config } from './config.ts';
-import { currentLocale } from './i18n/index.ts';
+import { dateLocale } from './i18n/index.ts';
 import { installId } from './installId.ts';
 import { landingFor } from './landing.ts';
 import { ruleRefusal, signInRoute } from './kit/signInRules.ts';
@@ -31,7 +31,7 @@ const hold = signedOutHold((why) => router.replace(signInRoute(ruleRefusal(why),
 
 export const api = new ApiClient({
   baseUrl: () => config.apiBaseUrl,
-  locale: () => currentLocale(),
+  locale: () => dateLocale(),
   timeZone: () => getCalendars()[0]?.timeZone ?? null,
   userAgent: appAgent,
   device: () => installId(),

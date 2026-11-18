@@ -52,6 +52,10 @@ import {
   needsInputOf,
   needsViolations,
   problemsByWho,
+  NO_GROUP,
+  exportNarrowing,
+  exportsGuests,
+  peopleInView,
 } from '@soirely/domain';
 import {
   type ReactNode,
@@ -70,6 +74,7 @@ import { useTranslation } from 'react-i18next';
 import { Link, useBlocker, useNavigate, useSearchParams } from 'react-router';
 
 import { api } from '../../../api.ts';
+import { keptKeys, keptLoad, useAnsweredAgain, useKeptAsShown } from '../../../tabKept.ts';
 import { GlassMark } from '../../../components/EventCard.tsx';
 import { useDeskTop } from '../../../deskTop.ts';
 import { Glyph } from '../../../components/Glyph.tsx';
@@ -92,6 +97,7 @@ import { useLoadedAt, useServerNow } from '../../../serverNow.ts';
 import { canOn } from '../../../session.ts';
 import { useMakeLive } from './MakeLive.tsx';
 import { inPlace } from './openInPlace.ts';
+import { ExportDialog } from './GuestExport.tsx';
 import { GroupChips, GroupField, GroupTag, GroupsColumn } from './GuestGroups.tsx';
 import {
   GroupSheet,
@@ -247,6 +253,7 @@ export function GuestsArea({
   const focus = useFocusKeys(root);
   const [load, setLoad] = useState<Load>({ kind: 'loading' });
   const [attempt, setAttempt] = useState(0);
+  const answeredAgain = useAnsweredAgain();
   const [heard, setHeard] = useState(0);
   const [flagged, setFlagged] = useState<ReadonlySet<string>>(new Set());
   const [adding, setAdding] = useState(false);
@@ -258,6 +265,8 @@ export function GuestsArea({
   const [dietaryOnly, setDietary] = useState(false);
   const [groupFilter, setGroupFilter] = useState<string | null>(null);
   const [grouping, setGrouping] = useState(false);
+  const [exporting, setExporting] = useState(false);
+  const [exported, setExported] = useState<string | null>(null);
   const [menu, setMenu] = useState(false);
   const [expanded, setExpanded] = useState<ReadonlySet<Standing>>(new Set());
   const [stamp, setStamp] = useState(0);
@@ -359,7 +368,7 @@ export function GuestsArea({
   useEffect(() => {
     let current = true;
 
-    api.guests(event.id).then(
+    keptLoad(keptKeys.guests(event.id), api.guests(event.id)).then(
       (list) => current && setLoad({ kind: 'loaded', list }),
       () => current && setLoad((was) => (was.kind === 'loaded' ? was : { kind: 'failed' })),
     );
@@ -367,12 +376,14 @@ export function GuestsArea({
     return () => {
       current = false;
     };
-  }, [event.id, attempt]);
+  }, [event.id, attempt, answeredAgain]);
+
+  useKeptAsShown(keptKeys.guests(event.id), load.kind === 'loaded' ? load.list : null);
 
   useEffect(() => {
     let current = true;
 
-    api.headcount(event.id).then(
+    keptLoad(keptKeys.headcount(event.id), api.headcount(event.id)).then(
       (headcount) => current && setCounted(countsOf(headcount.counts)),
       () => current && setCounted((was) => (was == null ? 'failed' : was)),
     );
@@ -380,7 +391,7 @@ export function GuestsArea({
     return () => {
       current = false;
     };
-  }, [event.id, attempt, recount]);
+  }, [event.id, attempt, recount, answeredAgain]);
 
   useEffect(() => {
     let current = true;
@@ -957,6 +968,16 @@ export function GuestsArea({
                 {t('guestGroups.groups')}
               </button>
             )}
+            {shows === 'loaded' && guests.length > 0 && exportsGuests(event) && (
+              <button
+                type="button"
+                className="gs-pill is-secondary"
+                data-focus="export"
+                onClick={() => setExporting(true)}
+              >
+                {t('guestExport.export')}
+              </button>
+            )}
             {manages && card != null && card.step !== 'add' && (
               <button type="button" className="ev-new" data-focus="add" onClick={startAdd}>
                 <Glyph name="plus" size={18} weight={2.4} />
@@ -1334,6 +1355,41 @@ export function GuestsArea({
           />
         )}
         {makeLive.dialogs}
+        {exporting && (
+          <ExportDialog
+            event={event}
+            inView={peopleInView(guests, choice, q, dietaryOn, groupFilter).map((one) => one.id)}
+            everyone={peopleInView(guests, 'all', '').map((one) => one.id)}
+            narrowing={exportNarrowing(t, t(CHOICE_KEY[choice]), q, [
+              ...(dietaryOn ? [t('guestNeeds.dietaryNotes')] : []),
+              ...(groupFilter == null
+                ? []
+                : [
+                    groupFilter === NO_GROUP
+                      ? t('guestGroups.noGroup')
+                      : ((load.kind === 'loaded'
+                          ? load.list.groups.find((one) => one.id === groupFilter)?.name
+                          : null) ?? ''),
+                  ]),
+            ])}
+            needs={manages}
+            onClose={() => {
+              setExporting(false);
+              focus('export');
+            }}
+            onReady={(file) => {
+              setExporting(false);
+              setExported(file);
+              focus('export');
+            }}
+          />
+        )}
+        {exported != null && (
+          <Toast
+            words={t('guestExport.ready', { fileName: exported })}
+            onClose={() => setExported(null)}
+          />
+        )}
         {saved && <Toast words={t('guestList.saved')} onClose={() => setSaved(false)} />}
         {removed != null && (
           <Toast

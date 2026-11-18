@@ -18,15 +18,15 @@ appId: host.exp.Exponent
 - hideKeyboard
 - scrollUntilVisible:
     element:
-      id: 'eventForm.start.date'
+      id: 'eventForm.startDate'
     direction: DOWN
     centerElement: true
 - takeScreenshot: before-tap
 - tapOn:
-    id: 'eventForm.start.date'
+    id: 'eventForm.startDate'
 - waitForAnimationToEnd
 - takeScreenshot: after-tap
 - assertNotVisible:
     id: 'eventForm.leave.keep'
 - assertVisible:
-    id: 'eventForm.start.done'
+    id: 'events.pick.done'

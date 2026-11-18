@@ -27,6 +27,7 @@ nelmio_cors:
                 'Accept-Language',
                 'Authorization',
                 'Content-Type',
+                'Idempotency-Key',
                 'If-Match',
                 'X-Device-Id',
                 'X-Timezone',

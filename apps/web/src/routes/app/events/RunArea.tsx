@@ -25,6 +25,7 @@ import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router';
 
 import { api } from '../../../api.ts';
+import { keptKeys, keptLoad, useAnsweredAgain, useKeptAsShown } from '../../../tabKept.ts';
 import { Glyph } from '../../../components/Glyph.tsx';
 import { Skeleton } from '../../../components/Skeleton.tsx';
 import { dateLocale } from '../../../i18n/index.ts';
@@ -50,13 +51,14 @@ export function RunArea({ event }: { event: OrganisationEvent }) {
   const { t } = useTranslation();
   const [load, setLoad] = useState<Load>({ kind: 'loading' });
   const [attempt, setAttempt] = useState(0);
+  const answeredAgain = useAnsweredAgain();
 
   usePageTitle(pageTitle(t, [t('runView.title'), event.name]));
 
   useEffect(() => {
     let current = true;
 
-    api.schedule(event.id).then(
+    keptLoad(keptKeys.schedule(event.id), api.schedule(event.id)).then(
       (schedule) => current && setLoad({ kind: 'loaded', schedule }),
       () => current && setLoad((was) => (was.kind === 'loaded' ? was : { kind: 'failed' })),
     );
@@ -64,7 +66,8 @@ export function RunArea({ event }: { event: OrganisationEvent }) {
     return () => {
       current = false;
     };
-  }, [event.id, attempt]);
+  }, [event.id, attempt, answeredAgain]);
+  useKeptAsShown(keptKeys.schedule(event.id), load.kind === 'loaded' ? load.schedule : null);
 
   const topics = useMemo(() => [realtimeTopic('EventSchedule', event.id)], [event.id]);
   useHubTopics(

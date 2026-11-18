@@ -1,24 +1,16 @@
-import {
-  DISH_ALLERGENS,
-  DISH_DESCRIPTION_MAXIMUM,
-  DISH_DIETS,
-  DISH_NAME_MAXIMUM,
-  type Dish,
-  type DishAllergen,
-} from '@soirely/api-client';
-import {
-  type DishForm,
-  type DishProblems,
-  type MoneyLanguage,
-  amountExample,
-  dishLength,
-} from '@soirely/domain';
+import { DISH_ALLERGENS, type Dish } from '@soirely/api-client';
+import { type DishForm, type DishProblems, type MoneyLanguage } from '@soirely/domain';
 import { type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { Glyph } from '../../../components/Glyph.tsx';
-import { currencyCodeChoices } from '../../../zoneAndCurrencyChoices.ts';
-import { describedBy } from '../events/eventFieldOrder.ts';
+import {
+  ContainsField,
+  DescriptionField,
+  DietsField,
+  DishNameField,
+  LastPriceField,
+} from './MenuFields.tsx';
 
 /** What a dish contains, as a shape with words: the red "!", the grey "0" or the dashed amber "?" (sc-3901). */
 export function ContainsMark({ dish }: { dish: Pick<Dish, 'allergens'> }) {
@@ -82,15 +74,6 @@ export function ActionGlyph({ icon }: { icon: ActionIcon }) {
   );
 }
 
-export function Wrong({ id, children }: { id: string; children: ReactNode }) {
-  return (
-    <p id={id} className="desk-error">
-      <Glyph name="alert" size={15} weight={2.2} />
-      {children}
-    </p>
-  );
-}
-
 export function DishFields({
   form,
   problems,
@@ -99,6 +82,7 @@ export function DishFields({
   prices,
   language,
   beforePrice,
+  containsHelp,
   onPatch,
 }: {
   form: DishForm;
@@ -109,239 +93,49 @@ export function DishFields({
   language: MoneyLanguage;
   /** Sits between Suitable for and Last price: the event's Only for this event (sc-3902). */
   beforePrice?: ReactNode;
+  containsHelp?: string;
   onPatch: (next: Partial<DishForm>) => void;
 }) {
-  const { t, i18n } = useTranslation();
-  const nameLength = dishLength(form.name);
-  const descLength = dishLength(form.description);
-  const clashing = new Set(problems?.clashes.map((one) => one.diet) ?? []);
-  const optional = <span className="gs-optional">{t('menuLibrary.optional')}</span>;
-  const held = editing?.lastPrice?.currency ?? '';
+  const { t } = useTranslation();
 
   return (
     <>
-      <div className="desk-field">
-        <label htmlFor="lib-name" className="desk-label gs-label">
-          {t('menuLibrary.name')}
-        </label>
-        <div className={problems?.name == null ? 'desk-box' : 'desk-box is-wrong'}>
-          <input
-            id="lib-name"
-            type="text"
-            value={form.name}
-            spellCheck={false}
-            autoComplete="off"
-            aria-invalid={problems?.name != null}
-            aria-describedby={describedBy(
-              'lib-name-count',
-              problems?.name == null ? null : 'lib-name-error',
-            )}
-            onChange={(event) => onPatch({ name: event.target.value })}
-          />
-        </div>
-        <p
-          id="lib-name-count"
-          className={nameLength > DISH_NAME_MAXIMUM ? 'lib-counter is-over' : 'lib-counter'}
-        >
-          {t('menuLibrary.counter', { count: nameLength, most: DISH_NAME_MAXIMUM })}
-        </p>
-        {problems?.name != null && (
-          <Wrong id="lib-name-error">
-            {problems.name === 'blank'
-              ? t('menuLibrary.nameBlank')
-              : t('menuLibrary.nameLong', { most: DISH_NAME_MAXIMUM })}
-          </Wrong>
-        )}
-      </div>
-      <div className="desk-field">
-        <label htmlFor="lib-desc" className="desk-label gs-label">
-          {t('menuLibrary.desc')}
-          {optional}
-        </label>
-        <div
-          className={
-            problems?.description == null ? 'desk-box lib-area' : 'desk-box lib-area is-wrong'
-          }
-        >
-          <textarea
-            id="lib-desc"
-            rows={3}
-            value={form.description}
-            aria-invalid={problems?.description != null}
-            aria-describedby={describedBy(
-              'lib-desc-count',
-              problems?.description == null ? null : 'lib-desc-error',
-            )}
-            onChange={(event) => onPatch({ description: event.target.value })}
-          />
-        </div>
-        <p
-          id="lib-desc-count"
-          className={descLength > DISH_DESCRIPTION_MAXIMUM ? 'lib-counter is-over' : 'lib-counter'}
-        >
-          {t('menuLibrary.counter', { count: descLength, most: DISH_DESCRIPTION_MAXIMUM })}
-        </p>
-        {problems?.description != null && (
-          <Wrong id="lib-desc-error">
-            {t('menuLibrary.descLong', { most: DISH_DESCRIPTION_MAXIMUM })}
-          </Wrong>
-        )}
-      </div>
-      <fieldset
-        className="lib-set"
-        aria-describedby={describedBy(
-          'lib-contains-help',
-          problems?.contains == null ? null : 'lib-contains-error',
-        )}
-        aria-invalid={problems?.contains != null || undefined}
-      >
-        <legend className="desk-label gs-label">{t('menuLibrary.containsLegend')}</legend>
-        <p id="lib-contains-help" className="desk-help">
-          {t('menuLibrary.containsHelp')}
-        </p>
-        {notStated && form.allergens.length === 0 && !form.none && (
-          <p className="lib-contains is-unknown lib-not-stated">
-            <span className="lib-mark" aria-hidden="true">
-              ?
-            </span>
-            {t('menuLibrary.notStatedLine')}
-          </p>
-        )}
-        <div className="lib-ticks">
-          {DISH_ALLERGENS.map((code: DishAllergen) => (
-            <label key={code} className="gs-tick lib-tick">
-              <input
-                id={`lib-has-${code}`}
-                type="checkbox"
-                className="gs-box"
-                checked={form.allergens.includes(code)}
-                onChange={() =>
-                  onPatch({
-                    none: false,
-                    allergens: form.allergens.includes(code)
-                      ? form.allergens.filter((one) => one !== code)
-                      : DISH_ALLERGENS.filter(
-                          (one) => one === code || form.allergens.includes(one),
-                        ),
-                  })
-                }
-              />
-              {t(`guestNeeds.allergen.${code}`)}
-            </label>
-          ))}
-        </div>
-        <label className="gs-tick lib-tick lib-none-tick">
-          <input
-            id="lib-none"
-            type="checkbox"
-            className="gs-box"
-            checked={form.none}
-            onChange={() => onPatch({ none: !form.none, allergens: [] })}
-          />
-          {t('menuLibrary.none')}
-        </label>
-        {problems?.contains != null && (
-          <Wrong id="lib-contains-error">{t('menuLibrary.containsBlank')}</Wrong>
-        )}
-      </fieldset>
-      <fieldset
-        className="lib-set"
-        aria-describedby={clashing.size > 0 ? 'lib-diets-error' : undefined}
-      >
-        <legend className="desk-label gs-label">
-          {t('menuLibrary.dietsLegend')}
-          {optional}
-        </legend>
-        <div className="lib-ticks">
-          {DISH_DIETS.map((diet) => (
-            <label key={diet} className="gs-tick lib-tick">
-              <input
-                id={`lib-diet-${diet}`}
-                type="checkbox"
-                className="gs-box"
-                checked={form.diets.includes(diet)}
-                aria-invalid={clashing.has(diet) || undefined}
-                onChange={() =>
-                  onPatch({
-                    diets: form.diets.includes(diet)
-                      ? form.diets.filter((one) => one !== diet)
-                      : DISH_DIETS.filter((one) => one === diet || form.diets.includes(one)),
-                  })
-                }
-              />
-              {t(`guestNeeds.dietName.${diet}`)}
-            </label>
-          ))}
-        </div>
-        {problems != null && problems.clashes.length > 0 && (
-          <div id="lib-diets-error" className="lib-clashes">
-            {problems.clashes.map((one) => (
-              <Wrong key={one.diet} id={`lib-clash-${one.diet}`}>
-                {t(`menuLibrary.clash.${one.clash}`)}
-              </Wrong>
-            ))}
-          </div>
-        )}
-      </fieldset>
+      <DishNameField
+        value={form.name}
+        problem={problems?.name ?? null}
+        onChange={(name) => onPatch({ name })}
+      />
+      <DescriptionField
+        value={form.description}
+        problem={problems?.description ?? null}
+        onChange={(description) => onPatch({ description })}
+      />
+      <ContainsField
+        prefix="lib-"
+        help={containsHelp ?? t('menuLibrary.containsHelp')}
+        allergens={form.allergens}
+        none={form.none}
+        notStated={notStated}
+        wrong={problems?.contains != null}
+        onChange={onPatch}
+      />
+      <DietsField
+        prefix="lib-"
+        diets={form.diets}
+        clashes={problems?.clashes ?? []}
+        onChange={(diets) => onPatch({ diets })}
+      />
       {beforePrice}
       {prices && (
-        <fieldset className="lib-set" aria-describedby="lib-price-help">
-          <legend className="desk-label gs-label">
-            {t('menuLibrary.price')}
-            {optional}
-          </legend>
-          <div className="lib-price">
-            <div className="desk-field lib-currency">
-              <label htmlFor="lib-currency" className="desk-unseen">
-                {t('menuLibrary.currency')}
-              </label>
-              <div className={problems?.currency == null ? 'desk-box' : 'desk-box is-wrong'}>
-                <select
-                  id="lib-currency"
-                  value={form.currency}
-                  aria-invalid={problems?.currency != null}
-                  aria-describedby={problems?.currency == null ? undefined : 'lib-currency-error'}
-                  onChange={(event) => onPatch({ currency: event.target.value })}
-                >
-                  {currencyCodeChoices(held, form.currency, i18n.language, t).map((choice) => (
-                    <option key={choice.value} value={choice.value}>
-                      {choice.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            </div>
-            <div className="desk-field lib-amount">
-              <label htmlFor="lib-amount" className="desk-unseen">
-                {t('menuLibrary.amount')}
-              </label>
-              <div className={problems?.amount == null ? 'desk-box' : 'desk-box is-wrong'}>
-                <input
-                  id="lib-amount"
-                  type="text"
-                  inputMode="decimal"
-                  lang={language}
-                  value={form.amount}
-                  autoComplete="off"
-                  aria-invalid={problems?.amount != null}
-                  aria-describedby={problems?.amount == null ? undefined : 'lib-amount-error'}
-                  onChange={(event) => onPatch({ amount: event.target.value })}
-                />
-              </div>
-            </div>
-          </div>
-          {problems?.currency != null && (
-            <Wrong id="lib-currency-error">{t('orgGeneral.currencyBlank')}</Wrong>
-          )}
-          {problems?.amount != null && (
-            <Wrong id="lib-amount-error">
-              {t('menuLibrary.priceWrong', { example: amountExample(language, form.currency) })}
-            </Wrong>
-          )}
-          <p id="lib-price-help" className="desk-help">
-            {t('menuLibrary.priceHint')}
-          </p>
-        </fieldset>
+        <LastPriceField
+          prefix="lib-"
+          currency={form.currency}
+          amount={form.amount}
+          held={editing?.lastPrice?.currency ?? ''}
+          problems={problems}
+          language={language}
+          onChange={onPatch}
+        />
       )}
       {editing != null && <p className="lib-own-copy">{t('menuLibrary.ownCopy')}</p>}
     </>
