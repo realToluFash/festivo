@@ -7,7 +7,9 @@ import { Back } from '../../components/SettingsParts.tsx';
 import { useShell } from '../../components/settingsShell.ts';
 import { ShapeMark, Tag } from '../../components/Summary.tsx';
 import { Glyph } from '../../components/Glyph.tsx';
-import { Text } from '../../components/Text.tsx';
+import { Text, TitleCap } from '../../components/Text.tsx';
+import { Title, useTitleCap } from '../../components/Title.tsx';
+import { PANE_TITLE, paneTitle } from '../../components/topTitle.ts';
 import { useAccessibilitySizes } from '../../layout/useLayout.ts';
 import { tokens } from '../../theme/tokens.ts';
 import {
@@ -258,14 +260,40 @@ export function DataSubPage({ title, children }: { title: string; children: Reac
     );
 
   return (
-    <SummaryPage>
-      <View style={styles.paneHead}>
-        <Back {...back} />
-        <Text size={28} weight="bold" accessibilityRole="header" style={styles.paneTitle}>
-          {title}
-        </Text>
-      </View>
+    <DataPane title={title} back={back}>
       {children}
+    </DataPane>
+  );
+}
+
+/** On its side, the back above the pane's title draws no larger than it, nor does anything under it (sc-67471). */
+function DataPane({
+  title,
+  back,
+  children,
+}: {
+  title: string;
+  back: { label: string; onPress: () => void };
+  children: ReactNode;
+}) {
+  const { cap, onDrawn } = useTitleCap(`${PANE_TITLE}|${title}`, PANE_TITLE);
+
+  return (
+    <SummaryPage>
+      <TitleCap.Provider value={cap}>
+        <View style={styles.paneHead}>
+          <Back {...back} />
+          <Title
+            size={PANE_TITLE}
+            accessibilityRole="header"
+            style={[styles.paneTitle, paneTitle]}
+            onDrawn={onDrawn}
+          >
+            {title}
+          </Title>
+        </View>
+        {children}
+      </TitleCap.Provider>
     </SummaryPage>
   );
 }
@@ -326,5 +354,5 @@ const styles = StyleSheet.create({
   status: { flexDirection: 'row', alignItems: 'flex-start', gap: tokens.spaceSm },
   statusMark: { paddingTop: 3 },
   paneHead: { gap: tokens.spaceXs },
-  paneTitle: { letterSpacing: 28 * -0.02, paddingTop: 6, paddingBottom: tokens.spaceXs },
+  paneTitle: { paddingTop: 6, paddingBottom: tokens.spaceXs },
 });

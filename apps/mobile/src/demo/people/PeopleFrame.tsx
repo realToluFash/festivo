@@ -2,7 +2,9 @@ import type { ReactNode } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { Text } from '../../components/Text.tsx';
+import { Text, TitleCap } from '../../components/Text.tsx';
+import { Title, useTitleCap } from '../../components/Title.tsx';
+import { PAGE_TITLE, pageTitle } from '../../components/topTitle.ts';
 import { tokens } from '../../theme/tokens.ts';
 import { Bell, PortraitTop } from '../settings/Frame.tsx';
 import { EVENT } from './PeopleSample.ts';
@@ -10,7 +12,7 @@ import { useShell } from '../../components/settingsShell.ts';
 import { Back } from '../../components/SettingsParts.tsx';
 import { PageToast, type PageToastProps } from '../../components/Summary.tsx';
 
-/** A page inside an event, drawn with no event around it in the demo: back, the title over the event's name, then the blocks 18 apart. */
+/** A page inside an event, drawn with no event around it in the demo: back, the title over the event's name, then the blocks 18 apart. Nothing under the title draws larger than it (sc-67471). */
 export function PeoplePage({
   back,
   event = EVENT,
@@ -25,23 +27,24 @@ export function PeoplePage({
   const { layout, tell } = useShell();
   const insets = useSafeAreaInsets();
   const phone = layout === 'phone';
+  const { cap, onDrawn } = useTitleCap(`${PAGE_TITLE}|People`, PAGE_TITLE);
   const page = (
-    <>
+    <TitleCap.Provider value={cap}>
       <View style={styles.top}>
         <Back label={back.label} onPress={back.onPress} />
         <View style={styles.grow} />
         {phone && <Bell tell={tell} />}
       </View>
       <View style={styles.title}>
-        <Text size={30} weight="bold" accessibilityRole="header" style={styles.titleText}>
+        <Title size={PAGE_TITLE} accessibilityRole="header" style={pageTitle} onDrawn={onDrawn}>
           People
-        </Text>
+        </Title>
         <Text size={15} weight="medium" style={styles.secondary}>
           {event}
         </Text>
       </View>
       <View style={styles.blocks}>{children}</View>
-    </>
+    </TitleCap.Provider>
   );
   const told = toast != null && (
     <PageToast {...toast} bottom={Math.max(insets.bottom, tokens.spaceLg)} />
@@ -98,7 +101,6 @@ const styles = StyleSheet.create({
   secondary: { color: tokens.colorInkSecondary },
   top: { flexDirection: 'row', alignItems: 'center' },
   title: { gap: tokens.spaceXxs, paddingTop: 14, paddingBottom: tokens.spaceXl },
-  titleText: { letterSpacing: 30 * -0.02 },
   blocks: { gap: 18 },
   statusStrip: {
     position: 'absolute',
