@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Tests\Functional;
 
 use App\Domain\Event\People\OutsideAccess;
+use App\Domain\Event\Timeline\Model\Milestone;
 use App\Domain\Organisation\OrganisationFounder;
 use App\Domain\User\UserRegistrar;
 use App\Entity\AuditEntry;
@@ -17,10 +18,12 @@ use App\Entity\User;
 use App\Enum\ErrorCode;
 use App\Enum\EventRole;
 use App\Enum\MembershipStatus;
+use App\Enum\MilestoneOwner;
 use App\Enum\Permission;
 use App\Enum\PermissionArea;
 use App\Enum\SeededRole;
 use App\Tests\ApiTestCase;
+use App\Tests\Double\ScriptedMilestones;
 use App\Tests\Traits\OnboardsAccounts;
 use App\Tests\Traits\PutsPeopleOnEvents;
 use DateTimeImmutable;
@@ -265,6 +268,44 @@ final class OutsideAccessTest extends ApiTestCase
             self::assertNotContains($budget, $held, $budget->value);
         }
         self::assertSame([], Vec\filter($held, static fn (Permission $permission): bool => PermissionArea::Budget === $permission->area() || $permission->isAdministrative()));
+    }
+
+    /** @return iterable<string, array{string, list<string>}> each level, and the areas whose milestones its Needs you shows */
+    public static function areasByLevel(): iterable
+    {
+        yield 'Can edit the event' => ['can_edit', ['guests', 'menu', 'seating', 'run_of_show', 'staff', 'messages', 'reports']];
+        yield 'Can view' => ['can_view', ['guests', 'seating', 'run_of_show']];
+        yield 'Can check guests in' => ['can_check_in', ['guests', 'seating', 'run_of_show']];
+    }
+
+    /** @param list<string> $shown */
+    #[Test]
+    #[DataProvider('areasByLevel')]
+    public function needsYouListsOnlyTheAreasTheLevelOpensAndNeverBudget(string $level, array $shown): void
+    {
+        foreach ([PermissionArea::Guests, PermissionArea::Menu, PermissionArea::Seating, PermissionArea::RunOfShow, PermissionArea::Staff, PermissionArea::Messages, PermissionArea::Reports, PermissionArea::Budget] as $area) {
+            self::service(ScriptedMilestones::class)->add($this->owambe, new Milestone($area->value . '.due', new DateTimeImmutable('2030-11-01T09:00:00+01:00'), $area->value . ' due', null, MilestoneOwner::You, $area));
+        }
+        $caterer = $this->account('bisi@lagoslights.example', 'Bisi');
+        $this->grant($this->owner, $this->owambe, 'bisi@lagoslights.example', $level);
+
+        $timeline = Type\shape(['milestones' => Type\vec(Type\shape(['area' => Type\string()], true))], true)->coerce($this->as($caterer, 'GET', '/api/events/' . $this->owambe . '/timeline'));
+        self::assertSame(200, $this->statusCode());
+        $areas = Vec\map($timeline['milestones'], static fn (array $milestone): string => $milestone['area']);
+        self::assertSame($shown, Vec\values(Vec\filter($areas, static fn (string $area): bool => 'events' !== $area)));
+    }
+
+    #[Test]
+    #[DataProvider('levels')]
+    public function noLevelDuplicatesOrDeletesTheEvent(string $level): void
+    {
+        $caterer = $this->account('bisi@lagoslights.example', 'Bisi');
+        $this->grant($this->owner, $this->owambe, 'bisi@lagoslights.example', $level);
+
+        $this->as($caterer, 'POST', '/api/events/' . $this->owambe . '/duplicate', ['name' => 'Owambe again', 'startsAt' => '2030-12-14T16:00', 'endsAt' => '2030-12-14T16:00']);
+        self::assertSame(403, $this->statusCode(), Json\encode($this->last()));
+        $this->as($caterer, 'DELETE', '/api/events/' . $this->owambe);
+        self::assertSame(403, $this->statusCode(), Json\encode($this->last()));
     }
 
     #[Test]

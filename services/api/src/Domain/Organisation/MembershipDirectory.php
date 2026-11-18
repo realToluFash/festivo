@@ -42,7 +42,7 @@ final readonly class MembershipDirectory implements MembershipDirectoryInterface
         if (null === $membership) {
             $outside = $this->eventPersonRepository->findLiveOutside($eventId, $user, $this->clock->now());
 
-            return null === $outside ? null : Grants::onEvent($outside->getRole());
+            return null === $outside ? null : Grants::fromOutside($outside->getRole());
         }
 
         if (SeededRole::Member !== $membership->getRole()->getSeededAs()) {
