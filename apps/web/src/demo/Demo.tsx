@@ -67,6 +67,7 @@ import { KitchenPage } from './Kitchen.tsx';
 import { MenuPage } from './MenuServed.tsx';
 import { MENU_PAGES } from './menuServed.ts';
 import { COURSES_PAGES } from './menuCourses.ts';
+import { PICKS_PAGES } from './seePicks.ts';
 import { MEAL_PAGES } from './mealStep.ts';
 import { MenuLibraryPage } from './MenuLibrary.tsx';
 import { LIBRARY_PAGES } from './menuLibrary.ts';
@@ -456,6 +457,11 @@ function DemoHome({ from }: { from: string }) {
           px (tweaks: &amp;format=fr or pt for the allergen names, &amp;budget=no)
         </h3>
         <BoardPages pages={COURSES_PAGES} />
+        <h3>
+          See picks, Choose for them and Choose who gets it · sc-3909 · desktop, and a web window
+          down to 320 px
+        </h3>
+        <BoardPages pages={PICKS_PAGES} />
         <h3>The guest’s questions inside a dish · sc-3904 · phone, tablet and desk</h3>
         <BoardPages pages={MEAL_PAGES} />
         <h3>How a course is served, and a dish’s parts · sc-34230 · desktop</h3>

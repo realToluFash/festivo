@@ -25,6 +25,7 @@ export const PCW = {
   pill: (date: string) => `Picks close ${date}`,
   pillClosed: (date: string) => `Picks closed on ${date}`,
   line: (date: string) => sentence(`Picks close ${date}`),
+  lineFrom: (date: string) => sentence(`Picks close from ${date}`),
   lineClosed: (date: string) => sentence(`Picks closed on ${date}`),
   header: (date: string) => `picks close ${date}`,
   headerFrom: (date: string) => `picks close from ${date}`,
@@ -86,8 +87,10 @@ export function closeOf(courseId: string, dates: PicksDates): Close {
 export const closeTime = (close: Close, dates: PicksDates): string =>
   close.source === 'start' ? dates.startTime : CLOSES_AT;
 
-/** The Menu header: the earliest close still ahead, "from" when the open ones differ, or the last close once all have passed. */
-export function headerClose(closes: readonly Close[], lang: Lang): string | null {
+type CloseFigure = { kind: 'one' | 'from' | 'closed'; day: string };
+
+/** The earliest close still ahead, "from" when the open ones differ, or the last close once all have passed. */
+function closeFigure(closes: readonly Close[], lang: Lang): CloseFigure | null {
   if (closes.length === 0) return null;
   const open = closes.filter((one) => !one.closed).map((one) => one.on);
   if (open.length === 0) {
@@ -96,14 +99,30 @@ export function headerClose(closes: readonly Close[], lang: Lang): string | null
       .sort()
       .at(-1) as string;
 
-    return PCW.headerClosed(dayWords(last, lang));
+    return { kind: 'closed', day: dayWords(last, lang) };
   }
   const sorted = [...open].sort();
   const first = sorted[0] as string;
 
-  return new Set(sorted).size === 1
-    ? PCW.header(dayWords(first, lang))
-    : PCW.headerFrom(dayWords(first, lang));
+  return { kind: new Set(sorted).size === 1 ? 'one' : 'from', day: dayWords(first, lang) };
+}
+
+/** The Menu header's close. */
+export function headerClose(closes: readonly Close[], lang: Lang): string | null {
+  const figure = closeFigure(closes, lang);
+  if (figure == null) return null;
+
+  return { one: PCW.header, from: PCW.headerFrom, closed: PCW.headerClosed }[figure.kind](
+    figure.day,
+  );
+}
+
+/** The same close as the Menu header, as a sentence for the Picks card beside it. */
+export function lineClose(closes: readonly Close[], lang: Lang): string | null {
+  const figure = closeFigure(closes, lang);
+  if (figure == null) return null;
+
+  return { one: PCW.line, from: PCW.lineFrom, closed: PCW.lineClosed }[figure.kind](figure.day);
 }
 
 export function pillWords(close: Close, lang: Lang): string {

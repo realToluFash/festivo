@@ -49,6 +49,8 @@ import { CoursesAt } from './MenuCourses.tsx';
 import { VariantInsets } from './DishVariants.tsx';
 import { type Variant, VW, removeOutcome, stayingAfter } from './dishVariants.ts';
 import { type CoursesStateName, coursesStart, isCoursesState } from './menuCourses.ts';
+import { PicksAt } from './SeePicks.tsx';
+import { type PicksStateName, isPicksState, picksStart } from './seePicks.ts';
 import { type Lang, LANGS } from './menuLibrary.ts';
 import { useSwitcherStart } from './switcher.ts';
 import './guests.css';
@@ -64,6 +66,8 @@ export function MenuPage() {
   const lang: Lang = LANGS.includes(format as Lang) ? (format as Lang) : 'en';
   const budget = params.get('budget') !== 'no';
   useSwitcherStart();
+
+  if (isPicksState(raw)) return <PicksStarted key={`${id ?? ''}|${raw}`} id={id} raw={raw} />;
 
   if (isCoursesState(raw)) {
     return (
@@ -86,6 +90,17 @@ export function MenuPage() {
       budget={budget}
     />
   );
+}
+
+function PicksStarted({ id, raw }: { id: string | undefined; raw: PicksStateName }) {
+  const [event] = useState(() => sampleEvent(id));
+  const [first] = useState(() => picksStart(raw));
+
+  if (event == null) return <Navigate to="/demo/events" replace />;
+  if (event.id !== MENU_EVENT)
+    return <Navigate to={`/demo/events/${event.id}?area=menu`} replace />;
+
+  return <PicksAt event={event} first={first} />;
 }
 
 function CoursesStarted({
