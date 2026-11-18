@@ -291,13 +291,16 @@ function EnquiryWithConsultations({ start, tell }: { start: ConsultationStart; t
   );
 }
 
-function ConsultationRow({
+export function ConsultationRow({
   consultation,
   list,
   edits,
   manages,
   onChange,
   onCancel,
+  now = NOW,
+  tell = null,
+  lit = false,
 }: {
   consultation: Consultation;
   list: readonly Consultation[];
@@ -305,13 +308,18 @@ function ConsultationRow({
   manages: boolean;
   onChange: () => void;
   onCancel: () => void;
+  now?: string;
+  /** sc-37133's Tell {client}, which shows whether or not this viewer edits. */
+  tell?: ReactNode;
+  /** The row a notification opened the page at (sc-37133). */
+  lit?: boolean;
 }) {
-  const standing = standingOf(consultation, list);
+  const standing = standingOf(consultation, list, now);
   const leader = leaderOf(consultation);
-  const goes = edits && changeable(consultation);
+  const goes = edits && changeable(consultation, now);
 
   return (
-    <li className={`con-row is-${standing}`}>
+    <li className={lit ? `con-row is-${standing} is-lit` : `con-row is-${standing}`}>
       <div className="con-row-top">
         <p className="con-when">
           <span className="con-day">{dayWords(consultation, LOCALE)}</span>
@@ -352,6 +360,7 @@ function ConsultationRow({
           </button>
         </div>
       )}
+      {tell}
     </li>
   );
 }
@@ -371,7 +380,7 @@ function StandingTag({ standing }: { standing: 'next' | 'held' | 'cancelled' }) 
   );
 }
 
-function Refused({ words, onRetry }: { words: string; onRetry?: () => void }) {
+export function Refused({ words, onRetry }: { words: string; onRetry?: () => void }) {
   return (
     <div className="notice notice-broken con-refused" role="alert">
       <span className="mark mark-broken" aria-hidden="true">
@@ -389,18 +398,20 @@ function Refused({ words, onRetry }: { words: string; onRetry?: () => void }) {
   );
 }
 
-function BookPanel({
+export function BookPanel({
   panel,
   start,
   save,
   onClose,
   onBook,
+  now = NOW,
 }: {
   panel: Extract<Panel, { kind: 'book' }>;
-  start: ConsultationStart;
+  start: Pick<ConsultationStart, 'enquiry' | 'viewer'>;
   save: Save;
   onClose: () => void;
   onBook: (draft: Draft, change: Consultation | null) => void;
+  now?: string;
 }) {
   const { t } = useTranslation();
   const id = useId();
@@ -409,7 +420,7 @@ function BookPanel({
   const [pressed, setPressed] = useState(panel.pressed);
   const title = useRef<HTMLHeadingElement>(null);
   const member = start.viewer.role === 'member';
-  const problems = pressed ? problemsOf(draft, touched, NOW, !member) : {};
+  const problems = pressed ? problemsOf(draft, touched, now, !member) : {};
   const skip = skipWords(draft, LOCALE);
   const people = Object.values(PEOPLE);
   const change = panel.change;
@@ -423,7 +434,7 @@ function BookPanel({
 
   function press(): void {
     setPressed(true);
-    const found = problemsOf(draft, touched, NOW, !member);
+    const found = problemsOf(draft, touched, now, !member);
     const first = FIELD_ORDER.find((field) => found[field] != null);
 
     if (first != null) {

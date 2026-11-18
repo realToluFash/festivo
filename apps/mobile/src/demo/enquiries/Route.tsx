@@ -11,6 +11,8 @@ import { EnquiryPage } from './EnquiryPage.tsx';
 import { EnquiryEventPage } from './EnquiryEvent.tsx';
 import { pageStateOf } from './EnquiryPageModel.ts';
 import { formStateOf, pageStateOf as madeStateOf } from './EnquiryToEventModel.ts';
+import { TellClient } from './TellClient.tsx';
+import { tellStateOf } from './TellClientModel.ts';
 
 /** /demo/enquiries: the list and its search, with ?state= for each state the board names. */
 export function EnquiriesRoute() {
@@ -75,6 +77,18 @@ export function ConsultationsRoute() {
   return (
     <EventsShell key={state}>
       <Consultations state={state} />
+    </EventsShell>
+  );
+}
+
+/** /demo/tell-client (sc-37133): Tell {client}, with ?state= for each state the board names. */
+export function TellClientRoute() {
+  const params = useLocalSearchParams<{ state?: string }>();
+  const state = tellStateOf(params.state);
+
+  return (
+    <EventsShell key={state}>
+      <TellClient state={state} />
     </EventsShell>
   );
 }

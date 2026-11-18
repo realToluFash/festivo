@@ -169,6 +169,15 @@
   border-top: 0;
 }
 
+/* sc-37133: the row a notification opened the page at. */
+.con-row.is-lit {
+  margin: 0 calc(-1 * var(--spaceMd));
+  padding-right: var(--spaceMd);
+  padding-left: var(--spaceMd);
+  border: 2px solid var(--colorAccent);
+  border-radius: var(--radiusRow);
+}
+
 .con-row-top {
   display: flex;
   align-items: flex-start;
