@@ -1561,7 +1561,8 @@
     "sectionMembers": "Miembros",
     "sectionSignInRules": "Normas de inicio de sesión",
     "dialogCancel": "Cancelar",
-    "choiceNow": "Actual"
+    "choiceNow": "Actual",
+    "sectionDataAndControl": "Data and control"
   },
   "membersScreen": {
     "proveOwner_one": "Para dar a alguien el rol de Propietario de {{organisation}}, confirme que es usted. No se lo volveremos a pedir en un minuto.",
@@ -4673,5 +4674,51 @@
     "preparing": "Preparando el archivo…",
     "failed": "No se ha podido crear el archivo, así que no se ha descargado nada. Inténtelo de nuevo.",
     "ready": "El archivo está listo. Busque {{fileName}} en sus descargas."
+  },
+  "dataControl": {
+    "title": "Data and control",
+    "data": "Data",
+    "loading": "Loading Data and control…",
+    "failed": "We could not load Data and control.",
+    "failedLine": "Check your connection and try again.",
+    "tryAgain": "Try again",
+    "ready": "Ready",
+    "cardReadyLine": "It downloads once, until {{when}}, and only for you, signed in.",
+    "exportIdle": "Everything {{organisation}} holds, in one archive",
+    "exportReadyMine": "Ready until {{when}}",
+    "exportReadyOther": "Ready · asked by {{name}}",
+    "exportDownloaded": "Downloaded"
+  },
+  "exportAllData": {
+    "title": "Export all data",
+    "loading": "Loading Export all data…",
+    "failed": "We could not load Export all data.",
+    "export": "Export all data",
+    "download": "Download",
+    "holds": "What the archive holds",
+    "holdsOrganisation": "The organisation: its details, company domains and sign-in rules",
+    "holdsMembers": "Members with their role, state and when they joined; invitations and requests to join",
+    "holdsEvents": "Events with their People",
+    "holdsGuests": "Each event’s guests and companions: name, email address, mobile number, reply and host",
+    "foot": "One .zip: a JSON file of everything and a CSV file per table, every time in UTC. It leaves out your own account’s sign-in methods, sessions, two-factor and phones, and the audit log, which Audit log exports.",
+    "usedLink": "This download has been used. It downloads nothing now.",
+    "limited": "The next export can start on {{when}}. Nothing was started.",
+    "next": "The next export can start on {{when}}.",
+    "idleSays": "Take everything {{organisation}} holds",
+    "idleLine": "One archive, on every plan. Only an owner exports it.",
+    "preparingSays": "Preparing your export",
+    "preparingLine": "Asked by you, {{when}}. We’ll email {{email}} when it’s ready, and it shows here.",
+    "readySays": "Your export is ready",
+    "readyLine": "We emailed a link to {{email}}. It downloads once, until {{when}}, and only for you, signed in.",
+    "readyOtherSays": "{{organisation}}’s export is ready",
+    "readyOtherLine": "Asked by {{name}}, {{when}}. Only they can download it, until {{until}}.",
+    "usedSays": "Your export was downloaded",
+    "usedLine": "Downloaded {{when}}. Its link is used up.",
+    "expiredSays": "Your export’s link has ended",
+    "expiredLine": "It ended on {{when}} without a download. You can export again.",
+    "failedSays": "Your export did not finish",
+    "failedLine": "Nothing was emailed, and it doesn’t count toward today’s export.",
+    "notOwnerSays": "Only an owner exports {{organisation}}’s data",
+    "notOwnerLine": "An owner can take everything {{organisation}} holds in one archive."
   }
 }

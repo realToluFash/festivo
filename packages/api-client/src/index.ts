@@ -16,6 +16,7 @@ export * from './seating.ts';
 export * from './seatingPresence.ts';
 export * from './guests.ts';
 export * from './staff.ts';
+export * from './organisationExport.ts';
 export * from './dishes.ts';
 export * from './menu.ts';
 export * from './schedule.ts';

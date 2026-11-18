@@ -1,0 +1,75 @@
+/* Settings › Data and control, shared by the product and its demo: a row with its lead, a line saying where something stands, and a page loading. */
+
+a.desk-row.dc-row {
+  width: calc(100% + 2 * var(--spaceMd));
+  margin: 0 calc(-1 * var(--spaceMd));
+  padding-inline: var(--spaceMd);
+  border-radius: var(--radiusRow);
+  color: var(--colorInk);
+  text-decoration: none;
+}
+
+a.desk-row.dc-row:hover {
+  background: var(--deskHover);
+}
+
+.dc-lead {
+  display: flex;
+  flex: none;
+  justify-content: center;
+  width: 28px;
+  color: var(--colorInkSecondary);
+}
+
+.desk-rows.dc-led > * + * {
+  background-position: 40px 0;
+  background-size: calc(100% - 40px) 1px;
+}
+
+.dc-status {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--spaceSm);
+  color: var(--colorInk);
+  font: var(--deskLine);
+}
+
+.dc-status > :is(.desk-mark, svg) {
+  margin-top: 3px;
+}
+
+.dc-status.is-waiting > .desk-mark {
+  color: var(--colorAttention);
+}
+
+.dc-status.is-ended > .desk-mark {
+  color: var(--colorInkSecondary);
+}
+
+.dc-status.is-refused {
+  color: var(--colorBrokenText);
+}
+
+.dc-status.is-refused > svg {
+  flex: none;
+  color: var(--colorBroken);
+}
+
+.dc-turning,
+.dc-loading {
+  display: flex;
+  align-items: center;
+  gap: var(--spaceSm);
+  min-height: var(--sizeHit);
+  color: var(--colorInkSecondary);
+  font: var(--deskLine);
+}
+
+.dc-loading {
+  gap: var(--spaceMd);
+}
+
+.dc-loading .pending-spinner {
+  flex: none;
+  box-sizing: border-box;
+}
