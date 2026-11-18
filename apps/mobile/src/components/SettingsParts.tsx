@@ -13,13 +13,15 @@ import {
 
 import { Text, TitleCap } from './Text.tsx';
 import {
+  type BackSizing,
   PILL_ABOVE,
   PILL_GAP,
-  PILL_GLYPH,
   PILL_LEFT,
   PILL_RIGHT,
-  PILL_TEXT,
+  backRoomIsLaid,
   backScale,
+  backWordSize,
+  pillBack,
 } from '../layout/focusedHeader.ts';
 import { tokens } from '../theme/tokens.ts';
 import { besideGlyph, capInDisc, capUnderTitle, grownPad, wordsIn } from '../layout/textSize.ts';
@@ -283,45 +285,32 @@ export function Pair({
   );
 }
 
-/** A back's word at `full` while it and its ‹ fit, else the size that fits, never below `least`; measured, as adjustsFontSizeToFit drew it above the ‹ on Android (sc-68778). */
-export function useBackWord(
-  word: string,
-  full: number,
-  least: number,
-  glyph: number,
-  sides: number,
-) {
+/** A back's word sized by `backWordSize`, measured, as adjustsFontSizeToFit drew it above the ‹ on Android (sc-68778). */
+export function useBackWord(word: string, back: BackSizing) {
   const { width: windowWidth } = useWindowDimensions();
-  const key = `${full}|${word}`;
+  const key = `${back.full}|${word}`;
   const roomKey = `${key}|${windowWidth}`;
   const [width, setWidth] = useState<{ key: string; width: number } | null>(null);
   const [room, setRoom] = useState<{ key: string; width: number } | null>(null);
   const measured = width?.key === key ? width.width : null;
   const known = room?.key === roomKey ? room.width : null;
-  // A point of slack, so a word measured hidden a hair wider than it lays out in the back keeps its full size.
-  const size =
-    measured == null || known == null
-      ? full
-      : besideGlyph(least, full, measured, glyph / least, known - sides + 1);
+  const size = measured == null || known == null ? back.full : backWordSize(back, measured, known);
 
   return {
     size,
     measure: (
       <MeasuredWords
         words={[word]}
-        size={full}
+        size={back.full}
         weight="semibold"
         allowFontScaling={false}
         onWidth={(_, drawn) => setWidth({ key, width: drawn })}
       />
     ),
-    /** The back's width is its room while its word draws at `full`, or once something beside it squeezes it narrower than its words. */
     onLayout: (event: LayoutChangeEvent) => {
       const laid = event.nativeEvent.layout.width;
-      const natural =
-        measured == null ? null : sides + (glyph / least) * size + (measured * size) / full;
 
-      if (size === full || (natural != null && laid < natural - 1))
+      if (size === back.full || (measured != null && backRoomIsLaid(back, measured, size, laid)))
         setRoom({ key: roomKey, width: laid });
     },
   };
@@ -343,13 +332,8 @@ export function Back({
   const { fontScale } = useWindowDimensions();
   const scale = backScale(fontScale, useContext(TitleCap));
   const place = label ?? t('settings.title');
-  const word = useBackWord(
-    place,
-    PILL_TEXT * scale,
-    PILL_TEXT,
-    PILL_GLYPH,
-    PILL_LEFT + PILL_GAP + PILL_RIGHT,
-  );
+  const back = pillBack(scale);
+  const word = useBackWord(place, back);
 
   return (
     <>
@@ -366,7 +350,7 @@ export function Back({
       >
         <Glyph
           name="back"
-          size={(PILL_GLYPH / PILL_TEXT) * word.size}
+          size={(back.glyph / back.least) * word.size}
           ink={off ? tokens.colorInkSecondary : tokens.colorInk}
           weight={2.4}
         />

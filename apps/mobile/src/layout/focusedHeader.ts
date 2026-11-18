@@ -69,15 +69,47 @@ export function titleOnItsRow(scale: number, widest: number, width: number): num
   return fitWidest(HEADER_TEXT, HEADER_TEXT * scale, widest, width - 2 * TITLE_ROW_SIDE);
 }
 
+/** A back's word: `full` and the `least` it steps down to, the ‹ at `glyph` beside `least`, and its `sides`. */
+export interface BackSizing {
+  full: number;
+  least: number;
+  glyph: number;
+  sides: number;
+}
+
+export function pillBack(scale: number): BackSizing {
+  return {
+    full: PILL_TEXT * scale,
+    least: PILL_TEXT,
+    glyph: PILL_GLYPH,
+    sides: PILL_LEFT + PILL_GAP + PILL_RIGHT,
+  };
+}
+
+/** The word at `full` while it and its ‹ fit `room`, else the size that fits, never below `least`; a point of slack keeps `full` for a word measured hidden a hair wider than it lays out. */
+export function backWordSize(
+  { full, least, glyph, sides }: BackSizing,
+  word: number,
+  room: number,
+): number {
+  return besideGlyph(least, full, word, glyph / least, room - sides + 1);
+}
+
+/** The back's laid width is its room while its word draws at `full`, or once something beside it squeezes it narrower than its words. */
+export function backRoomIsLaid(
+  back: BackSizing,
+  word: number,
+  size: number,
+  laid: number,
+): boolean {
+  const natural = back.sides + (back.glyph / back.least) * size + (word * size) / back.full;
+
+  return size === back.full || laid < natural - 1;
+}
+
 /** The pill's word at its full size unless the pill would be wider than its room, then the size that fits; never below 15. */
 export function pillTextSize(scale: number, word: number, room: number): number {
-  return besideGlyph(
-    PILL_TEXT,
-    PILL_TEXT * scale,
-    word,
-    PILL_GLYPH / PILL_TEXT,
-    room - PILL_LEFT - PILL_GAP - PILL_RIGHT,
-  );
+  return backWordSize(pillBack(scale), word, room);
 }
 
 /** How much a back's word grows: with the text, and no further than a title drawn at `titleCap` (sc-28812). */
