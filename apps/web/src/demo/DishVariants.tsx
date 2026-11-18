@@ -228,7 +228,10 @@ export function VariantInsets({
               {here?.kind === 'refused' && (
                 <RowLine
                   id={`${ids}-vline-${variant.id}`}
-                  words={here.lines.map((one) => refusalLine(one, variant))}
+                  words={[
+                    ...(here.said == null ? [] : [here.said]),
+                    ...here.lines.map((one) => refusalLine(one, variant)),
+                  ]}
                 />
               )}
               {here?.kind === 'ask' && (
