@@ -1,0 +1,7 @@
+# sc-67665: on the phone, /demo/people opens People's own page as before.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/demo/people
+- extendedWaitUntil: { visible: '.*People.*', timeout: 30000 }
+- waitForAnimationToEnd: { timeout: 8000 }
+- takeScreenshot: ph-people

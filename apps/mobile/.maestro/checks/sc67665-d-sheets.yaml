@@ -1,0 +1,9 @@
+# sc-67665: from the People demo in the event's frame on the iPad, Add people and a person's role sheet, each in the 540 sheet.
+appId: host.exp.Exponent
+---
+- setOrientation: ${ORIENT}
+- openLink: ${METRO_URL}/--/demo/people
+- extendedWaitUntil: { visible: '.*Add by name.*', timeout: 30000 }
+- tapOn: { text: '.*Add by name.*' }
+- waitForAnimationToEnd: { timeout: 8000 }
+- takeScreenshot: add

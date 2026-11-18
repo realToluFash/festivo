@@ -1,0 +1,31 @@
+# sc-67665: from the Events demo's evt-wed-4, People by the pill (upright) or the sidebar (on its side), then another area, People again, and back to Events; then People from Overview's People card.
+appId: host.exp.Exponent
+---
+- setOrientation: ${ORIENT}
+- openLink: ${METRO_URL}/--/demo/events/evt-wed-4
+- extendedWaitUntil: { visible: '.*Overview.*', timeout: 30000 }
+- waitForAnimationToEnd: { timeout: 8000 }
+- takeScreenshot: n-overview
+- tapOn: { id: '${PREFIX}people' }
+- waitForAnimationToEnd: { timeout: 8000 }
+- takeScreenshot: n-people
+- tapOn: { id: '${PREFIX}guests' }
+- waitForAnimationToEnd: { timeout: 8000 }
+- takeScreenshot: n-guests
+- tapOn: { id: '${PREFIX}people' }
+- waitForAnimationToEnd: { timeout: 8000 }
+- tapOn: { id: '${PREFIX}budget' }
+- waitForAnimationToEnd: { timeout: 8000 }
+- takeScreenshot: n-budget
+- tapOn: { id: '${PREFIX}people' }
+- waitForAnimationToEnd: { timeout: 8000 }
+- tapOn: { text: 'Back to Events' }
+- waitForAnimationToEnd: { timeout: 8000 }
+- takeScreenshot: n-events
+- openLink: ${METRO_URL}/--/demo/events/evt-wed-4
+- extendedWaitUntil: { visible: '.*Overview.*', timeout: 30000 }
+- scrollUntilVisible:
+    { element: { id: 'overview.people.open' }, centerElement: true, timeout: 20000 }
+- tapOn: { id: 'overview.people.open' }
+- waitForAnimationToEnd: { timeout: 8000 }
+- takeScreenshot: n-card-people
