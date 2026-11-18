@@ -16,6 +16,7 @@ use App\Entity\Organisation;
 use App\Entity\Role;
 use App\Entity\Subscription;
 use App\Entity\User;
+use App\Enum\ErrorCode;
 use App\Enum\MembershipChannel;
 use App\Enum\MembershipStatus;
 use App\Enum\Plan;
@@ -128,6 +129,35 @@ final class SubscriptionTest extends ApiTestCase
         self::em()->flush();
 
         self::assertSame(Plan::Enterprise, $entitlements->of($this->organisation->getId())->plan);
+    }
+
+    #[Test]
+    public function ownersAndAdminsReadTheBillingAccountAndAMemberIsRefused(): void
+    {
+        $admin = $this->member('admin@ire.events', SeededRole::Admin);
+        $member = $this->member('member@ire.events', SeededRole::Member);
+        $path = '/api/orgs/' . $this->organisation->getId()->toRfc4122() . '/billing-account';
+
+        foreach ([$this->owner, $admin] as $reader) {
+            $this->signIn($reader);
+            $this->client->request('GET', $path);
+
+            self::assertResponseIsSuccessful();
+            self::assertSame(
+                ['contactEmail' => 'folake@ire.events', 'currency' => 'NGN', 'countryCode' => 'NG', 'taxId' => null, 'creditBalance' => 0],
+                Json\decode((string) $this->client->getResponse()->getContent()),
+            );
+        }
+
+        $this->signIn($member);
+        $this->client->request('GET', $path);
+        $body = Json\typed((string) $this->client->getResponse()->getContent(), Type\shape(['type' => Type\string()], true));
+
+        self::assertResponseStatusCodeSame(403);
+        self::assertSame(ErrorCode::PermissionRequired->type(), $body['type']);
+
+        $this->client->request('GET', '/api/orgs');
+        self::assertResponseIsSuccessful('the plan and status stay any member\'s to read');
     }
 
     #[Test]
