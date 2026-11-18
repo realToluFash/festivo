@@ -16,6 +16,8 @@ type WholeWordsProps = TextProps & { size: number; children: string };
 interface WordsLook {
   weight?: WeightName | undefined;
   style?: StyleProp<TextStyle> | undefined;
+  /** The width the texts have, known from the container, so the size does not wait on seeing a text wrap. */
+  room?: number | undefined;
 }
 
 /** Each of these words drawn hidden and unbounded, to know how wide it is before anything that shows it is laid out. */
@@ -72,7 +74,11 @@ export function useWholeWords(
   const wrapped =
     seen?.key === seenKey && natural.some((width) => width != null && width > seen.width + 0.5);
   const slot = wordsSlot(
-    { wrapped: wrapped ? seen.width : null, kept: room, reported },
+    {
+      wrapped: wrapped ? seen.width : null,
+      kept: room,
+      reported: look.room != null && look.room > 0 ? { windowWidth, width: look.room } : reported,
+    },
     start,
     windowWidth,
   );
@@ -122,9 +128,18 @@ export function WholeWords({
   children,
   onLayout,
   onDrawn,
+  room,
   ...rest
-}: WholeWordsProps & { start: number; onDrawn?: ((size: number) => void) | undefined }) {
-  const words = useWholeWords(size, start, [children], { weight: rest.weight, style: rest.style });
+}: WholeWordsProps & {
+  start: number;
+  onDrawn?: ((size: number) => void) | undefined;
+  room?: number | undefined;
+}) {
+  const words = useWholeWords(size, start, [children], {
+    weight: rest.weight,
+    style: rest.style,
+    room,
+  });
   const drawnSize = words.maxFontSizeMultiplier * size;
 
   useEffect(() => onDrawn?.(drawnSize), [onDrawn, drawnSize]);
@@ -151,7 +166,10 @@ export function WholeWords({
 export function Title({
   size,
   ...rest
-}: WholeWordsProps & { onDrawn?: ((size: number) => void) | undefined }) {
+}: WholeWordsProps & {
+  onDrawn?: ((size: number) => void) | undefined;
+  room?: number | undefined;
+}) {
   const { fontScale } = useWindowDimensions();
 
   return <WholeWords weight="bold" {...rest} size={size} start={titleSize(size, fontScale)} />;
