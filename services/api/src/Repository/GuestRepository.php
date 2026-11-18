@@ -115,7 +115,7 @@ final class GuestRepository extends ServiceEntityRepository implements EventScop
             return [];
         }
 
-        return $this->findBy(['event' => $events]);
+        return $this->findBy(['event' => $events, 'removedAt' => null]);
     }
 
     /** @return list<Guest> the hosts in it; their companions follow them */

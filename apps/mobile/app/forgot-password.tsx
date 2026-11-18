@@ -18,6 +18,7 @@ import { RESEND_SECONDS } from '../src/steps/rules.ts';
 import { NavBar, StepScreen } from '../src/steps/StepScreen.tsx';
 import { useCountdown } from '../src/steps/useCountdown.ts';
 import { tokens } from '../src/theme/tokens.ts';
+import { signInOver } from '../src/steps/signInOver.ts';
 
 /** The step that pushed this one, when it is not Sign in; `link`, a dead reset link, replaced itself with it. */
 export type ForgotFrom = 'code' | 'recovery' | 'security' | 'link';
@@ -81,12 +82,14 @@ export default function ForgotPassword() {
     void send(email, false);
   }
 
-  const back = () =>
-    from === 'link'
-      ? closeReset()
-      : router.canGoBack()
-        ? router.back()
-        : router.replace('/sign-in');
+  const back = () => {
+    if (from === 'link') closeReset();
+    else if (router.canGoBack()) router.back();
+    else {
+      signInOver(false);
+      router.replace('/sign-in');
+    }
+  };
 
   if (status.kind === 'sent') {
     const sendAgain = () => void send(status.email, true);

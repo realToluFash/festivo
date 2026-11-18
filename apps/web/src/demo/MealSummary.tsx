@@ -4,20 +4,30 @@ import { Glyph } from '../components/Glyph.tsx';
 import { Filled } from './GuestParts.tsx';
 import {
   type CourseId,
+  type Person,
   type Saved,
   type SummaryStart,
+  GUEST_DEFAULTS,
   GUEST_PICKS,
   MSW,
   SUMMARY_COURSES,
+  closeWords,
   courseOf,
+  defaultedWords,
   pickName,
+  rowLine,
   sendPicks,
   summaryClose,
 } from './mealClose.ts';
 import { DishScreen } from './MealParts.tsx';
 import { MW, PERSON, containsLine } from './mealStep.ts';
 import type { Lang } from './menuLibrary.ts';
-import { PCW, dayWords } from './picksClose.ts';
+import { dayWords } from './picksClose.ts';
+
+const CHIDI: Person = { name: PERSON, companion: false, allergies: [], diets: [] };
+
+const defaultName = (id: CourseId): string =>
+  pickName(id, GUEST_DEFAULTS[id]?.dishId ?? null) ?? '';
 
 type Told = { kind: 'saved' | 'other' | 'nothing' } | null;
 
@@ -29,6 +39,7 @@ export function Summary({ first, lang }: { first: SummaryStart; lang: Lang }) {
   const [refused, setRefused] = useState<CourseId[]>([]);
   const [told, setTold] = useState<Told>(null);
   const [screen, setScreen] = useState<CourseId | null>(first.screen);
+  const person = first.person ?? CHIDI;
   const focus = useRef<string | null>(null);
   const dates = { ...GUEST_PICKS, today };
   const closes = SUMMARY_COURSES.map((one) => summaryClose(one.id, dates));
@@ -83,6 +94,8 @@ export function Summary({ first, lang }: { first: SummaryStart; lang: Lang }) {
       <CourseScreen
         id={screen}
         pick={changed[screen] !== undefined ? (changed[screen] ?? null) : saved[screen]}
+        saved={saved[screen]}
+        person={person}
         dates={dates}
         lang={lang}
         onPick={(dishId) => {
@@ -101,7 +114,7 @@ export function Summary({ first, lang }: { first: SummaryStart; lang: Lang }) {
   return (
     <section className="gk ms mx" aria-labelledby="mx-h">
       <div className="gk-head">
-        <p className="gk-label">{MSW.forName(PERSON)}</p>
+        <p className="gk-label">{MSW.forName(person.name)}</p>
         <h2 id="mx-h" className="gp-h2 gk-h2">
           {MSW.title}
         </h2>
@@ -112,17 +125,26 @@ export function Summary({ first, lang }: { first: SummaryStart; lang: Lang }) {
           const pending = changed[one.id] !== undefined;
           const pick = pending ? (changed[one.id] ?? null) : saved[one.id];
           const day = dayWords(close.on, lang);
+          const line = rowLine(
+            one.id,
+            (close.closed ? saved[one.id] : pick) != null,
+            close.closed,
+            person,
+          );
+          const shown = line === 'defaulted' ? defaultName(one.id) : pickName(one.id, pick);
+          const after = defaultedWords(line, one.course.name, person);
 
           return (
             <li key={one.id} className={close.closed ? 'mx-row is-closed' : 'mx-row'}>
               <div className="mx-words">
                 <p className="mx-course">{one.course.name}</p>
-                <p className="mx-pick">{pickName(one.id, pick) ?? MSW.notChosen}</p>
+                {line !== 'hostInTouch' && <p className="mx-pick">{shown ?? MSW.notChosen}</p>}
                 {pending && <p className="mx-pending">{MSW.notSent}</p>}
                 <p className="mx-close">
                   <Glyph name={close.closed ? 'lock' : 'clock'} size={15} weight={2.4} />
-                  {close.closed ? PCW.lineClosed(day) : PCW.line(day)}
+                  {closeWords(line, one.course.name, day, defaultName(one.id), person)}
                 </p>
+                {after != null && <p className="mx-close mx-default">{after}</p>}
                 {refused.includes(one.id) && (
                   <p
                     id={`mx-refused-${one.id}`}
@@ -140,7 +162,7 @@ export function Summary({ first, lang }: { first: SummaryStart; lang: Lang }) {
                   id={`mx-change-${one.id}`}
                   type="button"
                   className="gp-text is-ink"
-                  aria-label={MSW.changeAria(one.course.name, PERSON)}
+                  aria-label={MSW.changeAria(one.course.name, person.name)}
                   onClick={() => openCourse(one.id)}
                 >
                   <span>{MSW.change}</span>
@@ -169,6 +191,8 @@ export function Summary({ first, lang }: { first: SummaryStart; lang: Lang }) {
 function CourseScreen({
   id,
   pick,
+  saved,
+  person,
   dates,
   lang,
   onPick,
@@ -176,6 +200,8 @@ function CourseScreen({
 }: {
   id: CourseId;
   pick: string | null;
+  saved: string | null;
+  person: Person;
   dates: typeof GUEST_PICKS;
   lang: Lang;
   onPick: (dishId: string) => void;
@@ -185,17 +211,21 @@ function CourseScreen({
   const close = summaryClose(id, dates);
   const day = dayWords(close.on, lang);
   const at = SUMMARY_COURSES.findIndex((one) => one.id === id);
-  const dish = course.dishes.find((one) => one.id === pick) ?? null;
+  const line = rowLine(id, (close.closed ? saved : pick) != null, close.closed, person);
+  const shown = line === 'defaulted' ? (GUEST_DEFAULTS[id]?.dishId ?? null) : pick;
+  const dish =
+    line === 'hostInTouch' ? null : (course.dishes.find((one) => one.id === shown) ?? null);
+  const after = defaultedWords(line, course.name, person);
 
   return (
     <section className="gk ms" aria-labelledby="ms-h">
       <div className="gk-head">
         <p className="gk-label ms-who">
-          {[PERSON, course.name, MW.of(at + 1, SUMMARY_COURSES.length)].join(' · ')}
+          {[person.name, course.name, MW.of(at + 1, SUMMARY_COURSES.length)].join(' · ')}
         </p>
         <p id="ms-close" className="gk-text is-quiet ms-close">
           <Glyph name={close.closed ? 'lock' : 'clock'} size={15} weight={2.4} />
-          {close.closed ? PCW.lineClosed(day) : PCW.line(day)}
+          {closeWords(line, course.name, day, defaultName(id), person)}
         </p>
       </div>
       {close.closed ? (
@@ -203,8 +233,9 @@ function CourseScreen({
           <h2 id="ms-h" className="gp-h2 gk-h2" tabIndex={-1}>
             {MSW.yourCourse(course.name)}
           </h2>
+          {after != null && <p className="gk-text">{after}</p>}
           {dish == null ? (
-            <p className="gk-text">{MSW.notChosen}</p>
+            line !== 'hostInTouch' && <p className="gk-text">{MSW.notChosen}</p>
           ) : (
             <div className="ms-dish">
               <p className="ms-option-name">{dish.name}</p>

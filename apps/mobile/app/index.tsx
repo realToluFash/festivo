@@ -18,6 +18,7 @@ import { SKELETON_AFTER_MS } from '../src/kit/skeleton.ts';
 import { launchSignedIn, resumesSession } from '../src/signedIn.ts';
 import { tokens } from '../src/theme/tokens.ts';
 import { unreachableFrom } from '../src/unreachable.ts';
+import { signInOver } from '../src/steps/signInOver.ts';
 
 /**
  * Launch: the signed-in home once somebody is in (sc-722), else welcome (sc-29076).
@@ -88,6 +89,7 @@ export default function Home() {
       ).then((route) => {
         if (route == null) return;
         // An organisation's rule that ended the session is named on sign-in (sc-69).
+        signInOver(false);
         router.replace(
           route === '/sign-in?signedOut=1' ? signInRoute(ruleRefusal(answer.why), true) : route,
         );
