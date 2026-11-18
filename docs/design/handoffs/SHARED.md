@@ -187,7 +187,11 @@ Take exact values from `docs/design/tokens.mjs`.
   clears the grabber, which ends 13 from the top. A list of selectable rows with their own
   12 padding and fill sits 12 in from the sides instead, so its icons and words start on
   the title's 24 line and the chosen row's fill runs to 12 from each side. Nothing starts
-  flush against a sheet's edge.
+  flush against a sheet's edge. **More** is the one exception (ux, 18 Nov 2026, sc-27948):
+  it keeps the demo's `MoreSheet` layout that sc-56935 built, a 31 top, 20 sides and a 116
+  foot, its title 40 down and clear of the grabber. It is the event's navigation, the
+  sidebar's rows in a sheet, not a sheet of content, and its rows line up with each other
+  rather than with a title above a form. A new sheet follows the 24 rule, not More.
 - **A text field's edge is `#80868F`** at rest and focused (3.67 on white, 3.39 on the page,
   3.20 on the header band). Focused, the ring sits outside it: 2px `#1E9A64` at a 2px
   offset. On an error the edge is `#C2410C`. A secondary button's and a chip's edge stay
