@@ -110,9 +110,11 @@ final readonly class OrganisationExports
             return;
         }
 
-        $export->ready($key, $this->clock->now());
-        $this->entityManager->flush();
-        $this->organisationExportMailer->ready($export, $asked);
+        $this->entityManager->wrapInTransaction(function () use ($export, $key, $asked): void {
+            $export->ready($key, $this->clock->now());
+            $this->entityManager->flush();
+            $this->organisationExportMailer->ready($export, $asked);
+        });
     }
 
     /** Each export still preparing whose last try has had its time, tried again. */

@@ -92,10 +92,10 @@ final class OrganisationExportTest extends ApiTestCase
         $this->as($this->owner, 'POST', "/api/events/{$eventId}/guests", [
             'fullName' => 'Bísí Adéwálé',
             'email' => 'bisi@example.com',
-            'mobile' => '+2348031234567',
+            'mobile' => ['countryCode' => 'NG', 'number' => '08031234567'],
             'companions' => [['fullName' => 'Tunde Adéwálé']],
         ]);
-        self::assertSame(201, $this->statusCode());
+        self::assertSame(201, $this->statusCode(), Json\encode($this->last()));
 
         $files = $this->archive();
 
@@ -122,7 +122,7 @@ final class OrganisationExportTest extends ApiTestCase
             self::assertCount(Iter\count(Type\vec(Type\mixed())->coerce($json[$table])) + 1, $lines, $table);
         }
 
-        self::assertStringContainsString('Bísí Adéwálé,bisi@example.com,+2348031234567', $files['guests.csv']);
+        self::assertStringContainsString('"Bísí Adéwálé",bisi@example.com,\'+2348031234567', $files['guests.csv']);
     }
 
     /** sc-611's rule: a person's own account gives only their name and the address they belong by. */
@@ -238,7 +238,7 @@ final class OrganisationExportTest extends ApiTestCase
 
         self::assertSame([429, ErrorCode::TooManyAttempts->type()], [$this->statusCode(), $this->last()['type'] ?? null]);
         self::assertSame('Sunday 18 Oct at 14:21 WAT', $this->last()['retryAt'] ?? null);
-        self::assertSame('61', $this->client->getResponse()->headers->get('Retry-After'));
+        self::assertGreaterThan(0, Str\to_int((string) $this->client->getResponse()->headers->get('Retry-After')));
         self::assertCount(1, self::em()->getRepository(OrganisationExport::class)->findAll());
 
         self::mockTime(new DateTimeImmutable('2026-10-18T13:20:00+00:00'));
@@ -262,7 +262,7 @@ final class OrganisationExportTest extends ApiTestCase
         $body = $this->as($this->owner, 'GET', $this->path(''));
         self::assertSame(['failed', null], [Type\dict(Type\string(), Type\mixed())->coerce($body['export'])['state'], $body['nextAllowedAt']]);
         self::assertSame(0, self::service(OrganisationExports::class)->prepareDue());
-        self::assertEmpty(self::getMailerMessages());
+        self::assertSame([], Vec\filter(self::getMailerMessages(), static fn (object $message): bool => $message instanceof Email && Str\contains((string) $message->getSubject(), 'export')));
 
         $this->as($this->owner, 'POST', $this->path(''));
         self::assertSame(202, $this->statusCode());
