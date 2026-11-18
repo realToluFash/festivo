@@ -747,7 +747,7 @@ export function FrameTop({
 
   if (top == null) return null;
 
-  // Back, the pill and the bell keep their own sizes; ScreenTop caps only what is under the title (sc-67338).
+  // The pill and the bell keep their own sizes; ScreenTop caps Back and what is under the title (sc-67338, sc-67471).
   return (
     <TitleCap.Provider value={null}>
       <ScreenTop {...top} style={style} rowStyle={rowStyle} />
@@ -829,7 +829,7 @@ function ScreenTop({
   const backView =
     back == null || backHidden ? null : (
       <BesideBack beside={besideBack}>
-        <Back label={back.label} onPress={back.onPress} off={back.off} testID="frame.back" />
+        <FrameBack back={back} cap={cap} />
       </BesideBack>
     );
   const under = (
@@ -970,7 +970,7 @@ function FrameHeader({
   const backView =
     back == null || backHidden ? null : back.pill === true ? (
       <BesideBack beside={besideBack}>
-        <Back label={back.label} onPress={back.onPress} off={back.off} testID="frame.back" />
+        <FrameBack back={back} cap={cap} />
       </BesideBack>
     ) : (
       <BackButton
@@ -1040,12 +1040,7 @@ function FrameHeader({
           <View style={styles.fill}>
             {back != null && !backHidden && (
               <BesideBack beside={besideBack}>
-                <Back
-                  label={back.label}
-                  onPress={back.onPress}
-                  off={back.off}
-                  testID="frame.back"
-                />
+                <FrameBack back={back} cap={cap} />
               </BesideBack>
             )}
           </View>
@@ -1065,12 +1060,7 @@ function FrameHeader({
           <View style={styles.fill}>
             {!backHidden && (
               <BesideBack beside={besideBack}>
-                <Back
-                  label={back.label}
-                  onPress={back.onPress}
-                  off={back.off}
-                  testID="frame.back"
-                />
+                <FrameBack back={back} cap={cap} />
               </BesideBack>
             )}
           </View>
@@ -1102,6 +1092,21 @@ function FrameHeader({
       {backView}
       {titleRow(<BellButton />)}
     </View>
+  );
+}
+
+/** The frame's Back pill over a page title draws no larger than the title, as on the signed-out screens (sc-67471). */
+function FrameBack({
+  back,
+  cap,
+}: {
+  back: NonNullable<FrameHeaderProps['back']>;
+  cap: number | null;
+}) {
+  return (
+    <TitleCap.Provider value={cap}>
+      <Back label={back.label} onPress={back.onPress} off={back.off} testID="frame.back" />
+    </TitleCap.Provider>
   );
 }
 
