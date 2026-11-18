@@ -155,6 +155,7 @@ export function ClaimScreen({
         testID: 'ownerClaim.check',
       }}
       onCancel={owner.close}
+      cancelLabel="Close"
       cancelTestID="ownerClaim.cancel"
       opener={opener}
       ask={owner.asking ? withdrawAsk(false, () => owner.ask(false), owner.withdraw) : null}
