@@ -37,19 +37,22 @@ export function GuestsHeading({
     size,
     style,
     label: onAdd != null ? t('guestList.addGuest') : undefined,
-    gap: tokens.spaceSm,
+    gap: tokens.spaceMd,
     labelled: !phone,
   });
   const bell = useContext(BellInPane);
   const [room, setRoom] = useState(0);
   const [titleWidth, setTitleWidth] = useState(0);
   const [exportWidth, setExportWidth] = useState(0);
+  const [spinnerWidth, setSpinnerWidth] = useState(0);
+  const spinning = !phone && refreshing != null;
   const under = actionsUnder({
     room,
     title: titleWidth,
     extra: exports == null ? 0 : exportWidth,
     plus: onAdd == null ? 0 : tokens.sizeHit,
     bell: bell ? tokens.sizeHit : 0,
+    refreshing: spinning ? spinnerWidth : 0,
     gap: tokens.spaceMd,
   });
   const widthOf = (set: (width: number) => void) => (event: LayoutChangeEvent) =>
@@ -63,6 +66,7 @@ export function GuestsHeading({
       </BodyTitle>
     </View>
   );
+  const spinner = spinning && <View onLayout={widthOf(setSpinnerWidth)}>{refreshing}</View>;
   const actions = (
     <>
       {exports != null && (
@@ -96,7 +100,7 @@ export function GuestsHeading({
         <>
           <View style={styles.row}>
             {heading}
-            {!phone && refreshing}
+            {spinner}
             <PaneBell />
           </View>
           <View style={styles.actions} testID="guests.actionsRow">
@@ -106,7 +110,7 @@ export function GuestsHeading({
       ) : (
         <View style={styles.row}>
           {heading}
-          {!phone && refreshing}
+          {spinner}
           {actions}
           <PaneBell />
         </View>
@@ -118,7 +122,7 @@ export function GuestsHeading({
 const styles = StyleSheet.create({
   fill: { flex: 1 },
   shrink: { flexShrink: 1 },
-  row: { flexDirection: 'row', alignItems: 'center', gap: tokens.spaceSm },
+  row: { flexDirection: 'row', alignItems: 'center', gap: tokens.spaceMd },
   stack: { gap: tokens.spaceSm },
   actions: { flexDirection: 'row', alignItems: 'center', gap: tokens.spaceMd },
 });

@@ -22,13 +22,22 @@ export interface TitleActions {
   extra: number;
   plus: number;
   bell: number;
+  refreshing: number;
   gap: number;
 }
 
-/** sc-68417: Export and the + go together to a row under the title only where the title at its default size, they and the bell cannot share one line. Unlike `labelFits`, the bell counts: it stays on the title's row and takes its room. */
-export function actionsUnder({ room, title, extra, plus, bell, gap }: TitleActions): boolean {
+/** sc-68417: Export and the + go together to a row under the title only where the title at its default size, they and the bell cannot share one line. Unlike `labelFits`, the bell and a tablet's refresh spinner count: they stay on the title's row and take its room. */
+export function actionsUnder({
+  room,
+  title,
+  extra,
+  plus,
+  bell,
+  refreshing,
+  gap,
+}: TitleActions): boolean {
   if (unmeasured(room, title)) return false;
-  const beside = [extra, plus, bell]
+  const beside = [refreshing, extra, plus, bell]
     .filter((width) => width > 0)
     .reduce((sum, width) => sum + gap + width, 0);
 

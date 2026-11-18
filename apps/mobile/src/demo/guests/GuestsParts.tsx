@@ -395,6 +395,7 @@ export function GuestsTitle({
     extra: extra == null ? 0 : extraWidth,
     plus: plus ? tokens.sizeHit : 0,
     bell: bell ? tokens.sizeHit : 0,
+    refreshing: 0,
     gap: tokens.spaceMd,
   });
   const widthOf = (set: (width: number) => void) => (event: LayoutChangeEvent) =>

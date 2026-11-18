@@ -58,7 +58,7 @@ describe('the row a title stands in', () => {
 });
 
 describe('Export and the + under the title (sc-68417)', () => {
-  const actions = { room: 370, title: 170, extra: 0, plus: 44, bell: 0, gap: 10 };
+  const actions = { room: 370, title: 170, extra: 0, plus: 44, bell: 0, refreshing: 0, gap: 10 };
 
   it('stay beside the title where all three fit', () => {
     expect(actionsUnder({ ...actions, extra: 120 })).toBe(false);
@@ -77,6 +77,15 @@ describe('Export and the + under the title (sc-68417)', () => {
     const room = 170 + 10 + 100 + 10 + 44 + 10 + 44;
     expect(actionsUnder({ ...actions, extra: 100, bell: 44, room })).toBe(false);
     expect(actionsUnder({ ...actions, extra: 100, bell: 44, room: room - 1 })).toBe(true);
+  });
+
+  it('count a refresh spinner while it shows, with its own gap', () => {
+    const room = 170 + 10 + 100 + 10 + 44 + 10 + 44;
+    expect(actionsUnder({ ...actions, extra: 100, bell: 44, room })).toBe(false);
+    expect(actionsUnder({ ...actions, extra: 100, bell: 44, refreshing: 20, room })).toBe(true);
+    expect(
+      actionsUnder({ ...actions, extra: 100, bell: 44, refreshing: 20, room: room + 30 }),
+    ).toBe(false);
   });
 
   it('stay beside it until the row and the title are measured', () => {
