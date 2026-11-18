@@ -1,5 +1,5 @@
 import { type Href, router, useLocalSearchParams } from 'expo-router';
-import { type ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
+import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { I18nextProvider, useTranslation } from 'react-i18next';
 import { StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -121,8 +121,6 @@ export function EventsRoute() {
   return <ListRoute params={params} />;
 }
 
-let openedEnquiries = false;
-
 function WayInRoute({ state }: { state: WayInState }) {
   const { i18n } = useTranslation();
   const way = wayInOf(state);
@@ -131,15 +129,17 @@ function WayInRoute({ state }: { state: WayInState }) {
     [i18n, way.language],
   );
 
+  const pushedFor = useRef<WayInState | null>(null);
+
   useEffect(() => {
-    if (!way.opensEnquiries || openedEnquiries) return undefined;
+    if (!way.opensEnquiries || pushedFor.current === state) return undefined;
     const later = setTimeout(() => {
-      openedEnquiries = true;
+      pushedFor.current = state;
       router.push('/demo/enquiries' as Href);
     }, 600);
 
     return () => clearTimeout(later);
-  }, [way.opensEnquiries]);
+  }, [way.opensEnquiries, state]);
 
   return (
     <I18nextProvider i18n={words}>

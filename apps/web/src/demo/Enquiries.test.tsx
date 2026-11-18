@@ -241,3 +241,25 @@ describe('An enquiry’s page (sc-31226)', () => {
     expect(notes[0]?.textContent).toContain('Sent the brochure.');
   });
 });
+
+describe('Enquiries in the navigation (sc-31226)', () => {
+  beforeEach(() => __setConfig({ ...tested, environment: 'development' }));
+
+  it.each(['/demo/today', '/demo/calendar', '/demo/events', '/demo/menu-library'])(
+    'is right after Events on %s for an Enterprise organisation',
+    async (path) => {
+      open(path);
+      const places = await screen.findAllByRole('link', { name: /^(Events|Enquiries)$/ });
+      expect(places.map((one) => one.textContent)).toEqual(['Events', 'Enquiries']);
+    },
+  );
+
+  it.each(['/demo/today?plan=free', '/demo/events?plan=free'])(
+    'is not there on %s for a Free organisation',
+    async (path) => {
+      open(path);
+      await screen.findAllByRole('link', { name: 'Events' });
+      expect(screen.queryByRole('link', { name: 'Enquiries' })).toBeNull();
+    },
+  );
+});

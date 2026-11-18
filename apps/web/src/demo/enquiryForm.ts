@@ -16,9 +16,9 @@ import {
   NOW,
   ORG_COUNTRY,
   ORG_CURRENCY,
-  ORG_ZONE,
   PEOPLE,
   type Person,
+  VIEWER_ZONE,
   canSee,
   personOf,
 } from './enquiries.ts';
@@ -256,7 +256,7 @@ export function problemsOf(typed: EnquiryTyped, savedDate: string | null = null)
   add('email', emailWrong(typed.email));
   add('contact', contactProblem(typed.phone, typed.email));
   add('mind', mindProblem(typed.mind));
-  add('date', dateProblem(typed.date, savedDate, todayIn(ORG_ZONE)));
+  add('date', dateProblem(typed.date, savedDate, todayIn(VIEWER_ZONE)));
   add('guests', guestsProblem(typed.guests));
   add('where', whereProblem(typed.where));
 

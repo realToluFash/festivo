@@ -81,7 +81,8 @@ export const ORG_COUNTRY = 'GB';
 
 export const ORG_CURRENCY = 'GBP';
 
-export const ORG_ZONE = 'Europe/London';
+/** The time zone on the viewer's own account, which decides whether a date has passed: never the organisation's, and UTC while their account has none. */
+export const VIEWER_ZONE = 'Europe/London';
 
 export const LONG_CLIENT = 'Anne-Sophie de La Rochefoucauld-Montmorency';
 
@@ -592,6 +593,15 @@ export const ENQUIRIES_PAGES: readonly { name: string; states: readonly DemoLink
       page('enq-bisi', 'datePassed', 'A date that has gone by, shown plainly'),
       page('enq-ada', 'notFound', 'A Member opening another’s: not here'),
       page('enq-ada', 'loadFailed', 'The enquiry did not load'),
+    ],
+  },
+  {
+    name: 'Enquiries in the navigation (sc-31226)',
+    states: [
+      { to: '/demo/today', name: 'Enterprise: Enquiries right after Events, on Today' },
+      { to: '/demo/calendar', name: 'Enterprise: on the Calendar' },
+      { to: '/demo/today?plan=free', name: 'Free: no Enquiries, on Today' },
+      { to: '/demo/events?plan=free', name: 'Free: no Enquiries, on Events' },
     ],
   },
   {

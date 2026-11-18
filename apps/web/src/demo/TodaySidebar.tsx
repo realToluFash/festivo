@@ -50,6 +50,7 @@ export function TodaySidebar({
   inert = false,
   phone = false,
   enquiries = false,
+  free = false,
 }: {
   events: readonly EventKey[];
   tell: Tell;
@@ -65,9 +66,12 @@ export function TodaySidebar({
   phone?: boolean;
   /** On Enquiries, which an Enterprise organisation has right after Events (sc-31226). */
   enquiries?: boolean;
+  /** A Free organisation has no Enquiries; every other screen of the sample is Enterprise and lists it, and `?plan=free` shows any of them as Free (sc-31226). */
+  free?: boolean;
 }) {
   const [params] = useSearchParams();
   const listed = sideEvents(events, params.get('sidebar'));
+  const places = free || params.get('plan') === 'free' ? PLACES : WITH_ENQUIRIES;
 
   return (
     <DeskSidebar
@@ -115,7 +119,7 @@ export function TodaySidebar({
       )}
       <SearchRow />
       <ul className="today-places">
-        {(enquiries || listing ? WITH_ENQUIRIES : PLACES)
+        {places
           .filter(([label]) => !hideLibrary || label !== 'Menu library')
           .map(([label, glyph]) => (
             <li key={label}>
