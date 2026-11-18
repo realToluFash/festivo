@@ -25,4 +25,6 @@ appId: host.exp.Exponent
 - waitForAnimationToEnd: { timeout: 8000 }
 - takeScreenshot: guest-page
 - assertVisible: { id: 'guests.row.${GUEST_ID}' }
-- assertNotVisible: { id: 'frame.side.back' }
+- assertVisible: { id: 'guest.${GUEST_ID}' }
+- assertNotVisible: { id: 'guest.back' }
+- assertNotVisible: { id: 'events.back' }

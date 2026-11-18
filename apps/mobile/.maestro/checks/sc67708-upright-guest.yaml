@@ -8,7 +8,9 @@ appId: host.exp.Exponent
 - tapOn: { id: 'guests.row.${GUEST_ID}' }
 - waitForAnimationToEnd: { timeout: 8000 }
 - takeScreenshot: upright-guest-page
-- tapOn: '.*Guests'
+- assertVisible: { id: 'guest.${GUEST_ID}' }
+- assertNotVisible: { id: 'guests.row.${GUEST_ID}' }
+- tapOn: { id: 'guest.back' }
 - waitForAnimationToEnd: { timeout: 8000 }
 - takeScreenshot: upright-after-guests-back
 - assertVisible: { id: 'guests.row.${GUEST_ID}' }
