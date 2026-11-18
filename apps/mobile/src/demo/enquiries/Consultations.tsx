@@ -465,7 +465,7 @@ function BookForm({
         )}
         <Field label={CW.length}>
           <Chips
-            items={LENGTHS.map((one) => ({ key: String(one), title: CW.minutes(one) }))}
+            items={LENGTHS.map((one) => ({ key: String(one), title: CW.lengths[one] }))}
             on={String(draft.minutes)}
             onPick={(key) => set({ minutes: LENGTHS.find((one) => String(one) === key) ?? 60 })}
             testID="consultations.form.length"
@@ -764,6 +764,12 @@ function EnquiriesCategory() {
             {CW.given('Folake Adeyemi', 'Lucía Fernández', 'Thursday, Nov 19, 14:30')}
           </Text>
           <Text size={15} weight="medium">
+            {CW.moved('Folake Adeyemi', 'Lucía Fernández', 'Friday, Nov 20, 10:00')}
+          </Text>
+          <Text size={15} weight="medium">
+            {CW.cancelledBy('Folake Adeyemi', 'Lucía Fernández', 'Thursday, Nov 19, 14:30')}
+          </Text>
+          <Text size={15} weight="medium">
             {CW.reminder('Lucía Fernández', '14:30')}
           </Text>
         </View>
@@ -799,6 +805,23 @@ function WhatsInTheFeed() {
             </Text>
           </View>
         ))}
+      </Card>
+      <Card>
+        <CardHead title="Never in it" />
+        {['Guest names', CW.feedNever, 'Contact details', 'Dietary notes', 'Amounts of money'].map(
+          (line) => (
+            <View key={line} style={styles.inline}>
+              <Glyph name="x" size={16} ink={tokens.colorInk} weight={2.4} />
+              <Text
+                size={15}
+                weight={line === CW.feedNever ? 'semibold' : 'medium'}
+                style={styles.grow}
+              >
+                {line}
+              </Text>
+            </View>
+          ),
+        )}
       </Card>
       <DemoOnly title="The sheet is the product’s CalendarSubscribe; the demo shows its list with the line this story adds.">
         {null}

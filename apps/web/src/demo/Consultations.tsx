@@ -506,7 +506,7 @@ function BookPanel({
             >
               {LENGTHS.map((one) => (
                 <option key={one} value={one}>
-                  {CW.minutes(one)}
+                  {CW.lengths[one]}
                 </option>
               ))}
             </select>
@@ -840,6 +840,8 @@ function EnquiriesCategory() {
           <div className="con-copy">
             <p className="con-label">What it sends, as [l10n] will word it</p>
             <p>{CW.given('Folake Adeyemi', 'Lucía Fernández', 'Thursday, Nov 19, 14:30')}</p>
+            <p>{CW.moved('Folake Adeyemi', 'Lucía Fernández', 'Friday, Nov 20, 10:00')}</p>
+            <p>{CW.cancelledBy('Folake Adeyemi', 'Lucía Fernández', 'Thursday, Nov 19, 14:30')}</p>
             <p>{CW.reminder('Lucía Fernández', '14:30')}</p>
           </div>
         </section>
@@ -880,7 +882,13 @@ function WhatsInTheFeed() {
           </ul>
           <h2 className="con-feed-title">Never in it</h2>
           <ul className="con-feed is-never">
-            {['Guest names', 'Contact details', 'Dietary notes', 'Amounts of money'].map((line) => (
+            {[
+              'Guest names',
+              CW.feedNever,
+              'Contact details',
+              'Dietary notes',
+              'Amounts of money',
+            ].map((line) => (
               <li key={line}>
                 <Glyph name="slash" size={15} weight={2.4} />
                 {line}

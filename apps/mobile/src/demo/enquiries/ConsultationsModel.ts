@@ -8,6 +8,7 @@ import {
   wallDay,
 } from '@soirely/domain';
 
+import { t } from '../events/EventsWords.ts';
 import { ENQUIRIES, type Enquiry, NOW, PEOPLE, type Person } from './EnquiriesModel.ts';
 
 export const READER_ZONE = 'Europe/London';
@@ -97,21 +98,25 @@ export function relativeWords(
     (Date.parse(`${day}T00:00Z`) - Date.parse(`${today}T00:00Z`)) / 86_400_000,
   );
   const time = formatEventClock(consultation.startsAt, readerZone, locale);
-  const when =
-    days <= 1
-      ? new Intl.RelativeTimeFormat(locale, { numeric: 'auto' }).format(days, 'day')
-      : days < 7
-        ? new Intl.DateTimeFormat(locale, { weekday: 'long', timeZone: 'UTC' }).format(
-            new Date(`${day}T12:00Z`),
-          )
-        : new Intl.DateTimeFormat(locale, {
-            weekday: 'short',
-            month: 'short',
-            day: 'numeric',
-            timeZone: 'UTC',
-          }).format(new Date(`${day}T12:00Z`));
+  const noon = new Date(`${day}T12:00Z`);
 
-  return CW.openRow(when, time);
+  if (days <= 0) return CW.openToday(time);
+  if (days === 1) return CW.openTomorrow(time);
+  if (days < 7)
+    return CW.openWeekday(
+      new Intl.DateTimeFormat(locale, { weekday: 'long', timeZone: 'UTC' }).format(noon),
+      time,
+    );
+
+  return CW.openDate(
+    new Intl.DateTimeFormat(locale, {
+      weekday: 'short',
+      month: 'short',
+      day: 'numeric',
+      timeZone: 'UTC',
+    }).format(noon),
+    time,
+  );
 }
 
 export function leaderOf(consultation: Consultation): Person | null {
@@ -291,7 +296,7 @@ export const CW = {
   keepIt: 'Keep it booked',
   cancelTitle: 'Cancel this consultation?',
   cancelLine: (day: string, time: string) =>
-    `${day}, ${time}. It stays on the enquiry, marked Cancelled. Whoever leads it is told.`,
+    `${day}, ${time}. It stays on the enquiry, marked Cancelled. If someone else leads it, they are told.`,
   none: 'No consultations booked.',
   noneLine: 'Book one once you and the client agree a time.',
   next: 'Next',
@@ -299,48 +304,48 @@ export const CW = {
   cancelled: 'Cancelled',
   ledBy: (name: string) => `Led by ${name}`,
   nobodyLeading: 'Nobody leading',
-  nobodyLine: 'Whoever led it has left. Change it to give it to someone.',
+  nobodyLine: 'Whoever led it has left the organisation. Use Change to choose who leads it.',
   how: { inPerson: 'In person', video: 'Video call', phone: 'Phone call' } satisfies Record<
     How,
     string
   >,
   readOnly: (assignee: string) =>
-    `You lead a consultation on this enquiry, so you can read it. It is assigned to ${assignee}: only they, Owners and Admins can change it.`,
+    `You lead a consultation on this enquiry, so you can read it. It is assigned to ${assignee}: only they, owners and admins can change it.`,
   readOnlyNobody:
-    'You lead a consultation on this enquiry, so you can read it. Only Owners and Admins can change it.',
+    'You lead a consultation on this enquiry, so you can read it. Only owners and admins can change it.',
   date: 'Date',
   startTime: 'Start time',
   length: 'Length',
-  minutes: (count: number) =>
-    count < 60
-      ? `${count} minutes`
-      : count === 60
-        ? '1 hour'
-        : count === 90
-          ? '1 hour 30 minutes'
-          : '2 hours',
+  lengths: {
+    15: '15 minutes',
+    30: '30 minutes',
+    45: '45 minutes',
+    60: '1 hour',
+    90: '1 hour 30 minutes',
+    120: '2 hours',
+  } satisfies Record<Length, string>,
   timeZone: 'Time zone',
   howLabel: 'How',
   where: 'Where',
   whereHint: 'A place or an address.',
   link: 'Link',
-  linkHint: 'The video call’s link, starting https://',
+  linkHint: 'The link to the video call, starting https://',
   phoneNothing: 'Nothing more to add: whoever leads it calls the client.',
   optional: 'Optional',
   ledByLabel: 'Led by',
   ledByYou: (name: string) => `You, ${name}`,
   ledByMemberLine: 'You lead the consultations you book.',
-  ledByKeptLine: 'Only Owners and Admins change who leads it.',
+  ledByKeptLine: 'Only owners and admins can change who leads it.',
   chooseLeader: 'Choose who leads it',
   dateMissing: 'Choose the date it starts.',
   timeMissing: 'Choose the time it starts.',
   passed: 'That time has passed.',
-  whereTooLong: `Shorten the place to ${WHERE_MOST} characters or fewer.`,
+  whereTooLong: `Shorten the location to ${WHERE_MOST} characters or fewer.`,
   linkNotHttps: 'Enter a link that starts with https://',
   ledByMissing: 'Choose who leads it.',
   count: (typed: number) => `${typed} / ${WHERE_MOST}`,
   clocksSkip: (time: string, day: string, zone: string, savedAs: string) =>
-    `There is no ${time} on ${day} in ${zone}: the clocks go forward that night. It will be saved as ${savedAs}.`,
+    t('eventForm.clocksSkip', { time, day, zone, savedAs }),
   notBooked: 'Not booked. Nothing was saved. Try again.',
   notSaved: 'Not saved. Your changes are still here. Try again.',
   notCancelled: 'Not cancelled. It is still booked. Try again.',
@@ -348,16 +353,26 @@ export const CW = {
   booked: 'Consultation booked.',
   changed: 'Consultation changed.',
   cancelledSaid: 'Consultation cancelled.',
-  openRow: (when: string, time: string) => `Consultation ${when}, ${time}`,
+  openToday: (time: string) => `Consultation today at ${time}`,
+  openTomorrow: (time: string) => `Consultation tomorrow at ${time}`,
+  openWeekday: (day: string, time: string) => `Consultation on ${day} at ${time}`,
+  openDate: (date: string, time: string) => `Consultation on ${date} at ${time}`,
   closeLostCancels: (count: number) =>
-    count === 1 ? 'It will cancel 1 consultation.' : `It will cancel ${count} consultations.`,
+    count === 1
+      ? 'It will cancel 1 consultation that has not started.'
+      : `It will cancel ${count} consultations that have not started.`,
   calendarWord: 'Consultation',
   calendarLine: (client: string) => `Consultation · ${client}`,
-  feedLine: 'Consultations, without the client’s name or contacts',
+  feedLine: 'Consultations you can see: their time, place or link, and a link back to the enquiry',
+  feedNever: 'Client names',
   enquiriesCategory: 'Enquiries',
-  enquiriesNote: 'Consultations you’re given, and reminders before they start.',
+  enquiriesNote: 'Consultations given to you, and a reminder before each one starts.',
   given: (person: string, client: string, when: string) =>
-    `${person} gave you a consultation with ${client}, ${when}`,
+    `${person} gave you a consultation to lead: ${client}, ${when}`,
+  moved: (person: string, client: string, when: string) =>
+    `${person} moved the consultation with ${client} to ${when}`,
+  cancelledBy: (person: string, client: string, when: string) =>
+    `${person} cancelled the consultation with ${client} on ${when}`,
   reminder: (client: string, time: string) => `Consultation with ${client} at ${time}`,
   demoPage:
     'The rest of the enquiry’s page is sc-31226’s (branch ux/sc-31226-enquiry). Consultations sits on it after Assigned to.',
@@ -679,8 +694,12 @@ export const CONSULTATION_BOARDS: readonly { title: string; what: string; href: 
   at('saving', 'Book · booking', 'Booking… while it sends'),
   at('failed', 'Book · not booked', 'Not booked, with Try again'),
   at('cancelConfirm', 'Cancel consultation', 'Cancel this consultation?'),
-  at('closeLostCount', 'Close as lost · 2', 'It will cancel 2 consultations.'),
-  at('closeLostOne', 'Close as lost · 1', 'It will cancel 1 consultation.'),
+  at(
+    'closeLostCount',
+    'Close as lost · 2',
+    'It will cancel 2 consultations that have not started.',
+  ),
+  at('closeLostOne', 'Close as lost · 1', 'It will cancel 1 consultation that has not started.'),
   at('calendarEventsAndMilestones', 'Calendar · a consultation', 'Beside an event and a milestone'),
   at('calendarAgenda', 'Calendar · Agenda', 'The consultation’s row in Agenda'),
   at('calendarEventsOnly', 'Calendar · Events only', 'No consultations'),

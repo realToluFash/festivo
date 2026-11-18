@@ -68,8 +68,8 @@ describe('a consultation’s standing', () => {
 describe('closing as Lost', () => {
   it('cancels only the ones not yet started', () => {
     expect(cancelledByLost([SAMPLE.underWay, SAMPLE.next, SAMPLE.later, SAMPLE.called])).toBe(2);
-    expect(CW.closeLostCancels(1)).toBe('It will cancel 1 consultation.');
-    expect(CW.closeLostCancels(2)).toBe('It will cancel 2 consultations.');
+    expect(CW.closeLostCancels(1)).toBe('It will cancel 1 consultation that has not started.');
+    expect(CW.closeLostCancels(2)).toBe('It will cancel 2 consultations that have not started.');
   });
 });
 
@@ -80,8 +80,10 @@ describe('the words on a row', () => {
   });
 
   it('gives the Open row a relative day and time', () => {
-    expect(relativeWords(SAMPLE.next, 'en')).toBe('Consultation tomorrow, 14:30');
-    expect(relativeWords(SAMPLE.later, 'en')).toBe('Consultation Tuesday, 11:00');
+    expect(relativeWords(SAMPLE.next, 'en')).toBe('Consultation tomorrow at 14:30');
+    expect(relativeWords(SAMPLE.later, 'en')).toBe('Consultation on Tuesday at 11:00');
+    expect(relativeWords(SAMPLE.underWay, 'en')).toBe('Consultation today at 09:30');
+    expect(relativeWords(SAMPLE.madrid, 'en')).toBe('Consultation on Thu, Nov 26 at 08:00');
   });
 });
 
