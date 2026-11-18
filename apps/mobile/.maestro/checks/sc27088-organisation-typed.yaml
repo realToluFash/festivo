@@ -1,6 +1,7 @@
 # sc-27088, Android only: Organisation keeps a typed name across offline, a refused Save, the automatic rereads being refused, and a pressed Try again.
 appId: host.exp.Exponent
 onFlowComplete:
+  - setAirplaneMode: disabled
   - runScript:
       file: ../batch/helper.js
       env:
@@ -35,10 +36,11 @@ onFlowComplete:
       - inputText: 'Offline Org Name'
       - hideKeyboard
       - setAirplaneMode: enabled
+      # As sc63653-export-offline: an emulator can take well over 8s to report the network gone.
       - extendedWaitUntil:
           visible:
             id: 'offline.band'
-          timeout: 8000
+          timeout: 45000
 - runScript:
     file: ../batch/helper.js
     env:
