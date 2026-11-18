@@ -1272,7 +1272,6 @@
     "goToOrganisation": "Aller à Organisation ›",
     "fromTheWeb": "Pour inviter quelqu’un, utilisez Soirely sur le web.",
     "pickSomebody": "Choisissez une personne dans la liste pour l’afficher ici.",
-    "backToList": "‹ Membres",
     "suspendedBody": "Cette personne ne peut plus utiliser {{organisation}}. Son rôle, ses événements et son historique sont conservés.",
     "restoreAccess": "Rétablir l’accès",
     "seatsInUse_one": "La seule place d’équipe du forfait de cette organisation est occupée, rien n’a donc changé.",

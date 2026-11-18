@@ -1272,7 +1272,6 @@
     "goToOrganisation": "Ir para Organização ›",
     "fromTheWeb": "Para convidar alguém, use a Soirely na web.",
     "pickSomebody": "Escolha alguém na lista para ver aqui os dados.",
-    "backToList": "‹ Membros",
     "suspendedBody": "Esta pessoa não pode usar {{organisation}}. A função, os eventos e o histórico desta pessoa são mantidos.",
     "restoreAccess": "Repor o acesso",
     "seatsInUse_one": "O único lugar de equipa do plano desta organização está ocupado, por isso nada mudou.",
