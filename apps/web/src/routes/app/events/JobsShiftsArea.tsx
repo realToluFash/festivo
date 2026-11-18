@@ -16,7 +16,9 @@ import {
   type CoverageShift,
   type JobCoverage,
   coverageWindow,
+  holdingName,
   jobCoverage,
+  resolvedInstant,
 } from '@soirely/domain';
 import type { TFunction } from 'i18next';
 import { useEffect, useMemo, useRef, useState } from 'react';
@@ -36,7 +38,6 @@ import {
   type StaffTimes,
   clockWords,
   dayWords,
-  instantOf,
   rangeWords,
   staffTimes,
   wallOf,
@@ -87,9 +88,6 @@ interface ShiftDraft {
 }
 
 type ShiftProblems = Partial<Record<(typeof SHIFT_FIELDS)[number], string>>;
-
-const folded = (name: string) =>
-  name.normalize('NFKD').replace(/\p{M}/gu, '').trim().replace(/\s+/g, ' ').toLowerCase();
 
 const byStart = (a: StaffShift, b: StaffShift) =>
   Date.parse(a.startsAt) - Date.parse(b.startsAt) || Date.parse(a.endsAt) - Date.parse(b.endsAt);
@@ -222,8 +220,8 @@ function shiftProblems(
 ): ShiftProblems {
   const problems: ShiftProblems = {};
   if (adding && draft.job === '') problems.job = t('jobs.jobBlank');
-  const start = instantOf(draft.startDate, draft.startTime, timeZone);
-  const end = instantOf(draft.endDate, draft.endTime, timeZone);
+  const start = resolvedInstant(draft.startDate, draft.startTime, timeZone);
+  const end = resolvedInstant(draft.endDate, draft.endTime, timeZone);
   if (start == null) problems.start = t('jobs.startBlank');
   if (end == null) problems.end = t('jobs.endBlank');
   else if (start != null && end <= start) problems.end = t('jobs.endBefore');
@@ -293,9 +291,7 @@ function JobsShifts({
     const name = jobDraft.name.trim();
     if (name === '') return t('jobs.nameBlank');
     if ([...name].length > JOB_NAME_MAXIMUM) return t('jobs.nameLong', { max: JOB_NAME_MAXIMUM });
-    const same = plan.jobs.find(
-      (one) => one.id !== editingJob && folded(one.name) === folded(name),
-    );
+    const same = holdingName(plan.jobs, name, editingJob);
 
     return same == null ? null : t('jobs.nameTaken', { name: same.name });
   }
@@ -426,8 +422,12 @@ function JobsShifts({
       focusAfter.current = SHIFT_IDS[wrong];
       return;
     }
-    const start = instantOf(shiftDraft.startDate, shiftDraft.startTime, event.timeZone) as number;
-    const end = instantOf(shiftDraft.endDate, shiftDraft.endTime, event.timeZone) as number;
+    const start = resolvedInstant(
+      shiftDraft.startDate,
+      shiftDraft.startTime,
+      event.timeZone,
+    ) as number;
+    const end = resolvedInstant(shiftDraft.endDate, shiftDraft.endTime, event.timeZone) as number;
     if (editing != null) {
       const clash = newOverlap(editing, start, end);
       if (clash != null) {
@@ -1321,8 +1321,8 @@ function ShiftForm({
       ? { needed: below }
       : {};
   if (server != null) problems.needed = t('jobs.neededBelow', { count: server });
-  const start = instantOf(draft.startDate, draft.startTime, times.timeZone);
-  const end = instantOf(draft.endDate, draft.endTime, times.timeZone);
+  const start = resolvedInstant(draft.startDate, draft.startTime, times.timeZone);
+  const end = resolvedInstant(draft.endDate, draft.endTime, times.timeZone);
   const midnight =
     start != null &&
     end != null &&

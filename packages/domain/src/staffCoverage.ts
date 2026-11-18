@@ -1,3 +1,5 @@
+import { zoneOffsets } from './events.ts';
+
 /** Coverage of an event's jobs by their shifts (sc-3908), computed and never stored; sc-101's scheduled hours read the same shifts through it. Every moment is epoch milliseconds. */
 
 export const COVERAGE_STEP_MS = 30 * 60_000;
@@ -42,33 +44,8 @@ export interface CoverageWindow {
   long: boolean;
 }
 
-function zoneOffsetMs(moment: number, timeZone: string): number {
-  const parts = new Intl.DateTimeFormat('en-US', {
-    timeZone,
-    hourCycle: 'h23',
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit',
-  }).formatToParts(new Date(moment));
-  const part = (type: Intl.DateTimeFormatPartTypes) =>
-    Number(parts.find((one) => one.type === type)?.value ?? 0);
-  const wall = Date.UTC(
-    part('year'),
-    part('month') - 1,
-    part('day'),
-    part('hour'),
-    part('minute'),
-    part('second'),
-  );
-
-  return wall - Math.floor(moment / 1000) * 1000;
-}
-
 function toStep(moment: number, timeZone: string, round: (n: number) => number): number {
-  const offset = zoneOffsetMs(moment, timeZone);
+  const offset = zoneOffsets(timeZone)?.(moment) ?? 0;
 
   return round((moment + offset) / COVERAGE_STEP_MS) * COVERAGE_STEP_MS - offset;
 }

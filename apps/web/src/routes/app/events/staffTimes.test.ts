@@ -1,7 +1,7 @@
 import type { TFunction } from 'i18next';
 import { describe, expect, it } from 'vitest';
 
-import { instantOf, rangeWords, staffTimes, wallOf } from './staffTimes.ts';
+import { rangeWords, staffTimes, wallOf } from './staffTimes.ts';
 
 const t = ((key: string, values: Record<string, string>) =>
   key === 'jobs.range'
@@ -36,17 +36,10 @@ describe('staff times (sc-3908)', () => {
     );
   });
 
-  it('reads and writes the form’s date and time in the event’s zone, across a change of clocks', () => {
+  it('reads a moment as the form’s date and time in the event’s zone', () => {
     expect(wallOf('2026-11-06T15:30:00Z', 'Africa/Lagos')).toEqual({
       date: '2026-11-06',
       time: '16:30',
     });
-    expect(instantOf('2026-10-25', '03:00', 'Europe/London')).toBe(
-      Date.parse('2026-10-25T03:00:00Z'),
-    );
-    expect(instantOf('2026-10-24', '23:00', 'Europe/London')).toBe(
-      Date.parse('2026-10-24T22:00:00Z'),
-    );
-    expect(instantOf('2026-10-24', '', 'Europe/London')).toBeNull();
   });
 });

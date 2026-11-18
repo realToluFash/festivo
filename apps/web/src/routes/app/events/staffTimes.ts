@@ -85,18 +85,3 @@ export function wallOf(moment: string | number, timeZone: string): { date: strin
     time: `${part('hour')}:${part('minute')}`,
   };
 }
-
-/** The instant a wall-clock date and time name in a zone, or null when either is not one. */
-export function instantOf(date: string, time: string, timeZone: string): number | null {
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || !/^\d{2}:\d{2}$/.test(time)) return null;
-  const guess = Date.parse(`${date}T${time}:00Z`);
-  if (Number.isNaN(guess)) return null;
-  const offset = (at: number) => {
-    const wall = wallOf(at, timeZone);
-
-    return Date.parse(`${wall.date}T${wall.time}:00Z`) - Math.floor(at / 60_000) * 60_000;
-  };
-  const first = guess - offset(guess);
-
-  return guess - offset(first);
-}
