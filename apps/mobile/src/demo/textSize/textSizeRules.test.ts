@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
 
+import { LABEL_LINE } from '../../layout/textSize.ts';
 import {
   cardTileShown,
-  LABEL_LINE,
   languageOf,
   LONG_ORGANISATION,
   scaleFor,

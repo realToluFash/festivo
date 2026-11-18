@@ -10,6 +10,7 @@ import {
   besideGlyph,
   fitWidest,
   grownPad,
+  LABEL_LINE,
   frameTitleSize,
   nameLines,
   paddingToCentre,
@@ -181,7 +182,7 @@ describe('besideGlyph, Sign out at the foot of Settings (sc-66900)', () => {
 
 describe('grownPad, the room above and below Sign out’s words (sc-66900)', () => {
   it('keeps main’s 44 on a tablet on its side at the default size', () => {
-    expect(2 * grownPad(44, 15, 1.5) + 2 * 1.5 + 15 * 1.22).toBeCloseTo(44, 5);
+    expect(2 * grownPad(44, 15, 1.5) + 2 * 1.5 + 15 * LABEL_LINE).toBeCloseTo(44, 5);
   });
 
   it('keeps 12 on a phone, where the words and 12 stay under 52', () => {
