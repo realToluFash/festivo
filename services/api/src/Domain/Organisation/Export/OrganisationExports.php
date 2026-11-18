@@ -21,6 +21,8 @@ use DateInterval;
 use DateTimeImmutable;
 use Doctrine\DBAL\LockMode;
 use Doctrine\ORM\EntityManagerInterface;
+use Psl\Iter;
+use Psl\Str;
 use Psr\Clock\ClockInterface;
 use Psr\Log\LoggerInterface;
 use Throwable;
@@ -100,7 +102,7 @@ final readonly class OrganisationExports
         $this->entityManager->flush();
 
         try {
-            $key = \sprintf('organisation-exports/%s/%s.zip', $export->getOrganisation()->getId()->toRfc4122(), $export->getId()->toRfc4122());
+            $key = Str\format('organisation-exports/%s/%s.zip', $export->getOrganisation()->getId()->toRfc4122(), $export->getId()->toRfc4122());
             $this->objectStore->keep($key, $this->organisationArchive->of($export->getOrganisation()), self::CONTENT_TYPE);
         } catch (Throwable $e) {
             $this->logger->error('An organisation export failed to prepare.', ['export' => $export->getId()->toRfc4122(), 'attempt' => $export->getAttempts(), 'exception' => $e::class]);
@@ -126,7 +128,7 @@ final readonly class OrganisationExports
             $this->prepare($export);
         }
 
-        return \count($due);
+        return Iter\count($due);
     }
 
     /** The archive, once, for the Owner who asked, within 24 hours of its being ready; anyone else is told it isn't there. */
@@ -167,7 +169,7 @@ final readonly class OrganisationExports
         $this->entityManager->flush();
 
         return new DownloadedArchive(
-            \sprintf('%s %s.zip', $organisation->getName(), $export->getAskedAt()->format('Y-m-d')),
+            Str\format('%s %s.zip', $organisation->getName(), $export->getAskedAt()->format('Y-m-d')),
             $bytes,
         );
     }
