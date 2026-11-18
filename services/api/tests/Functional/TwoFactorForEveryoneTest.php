@@ -99,7 +99,7 @@ final class TwoFactorForEveryoneTest extends ApiTestCase
         self::assertSame(['bisi@ire.events'], Vec\map($mails, static fn (Email $mail): string => $mail->getTo()[0]->getAddress()));
         $deadline = Type\shape(['at' => Type\string(), 'written' => Type\string()], true)->coerce($body['twoFactorDeadline'] ?? null);
         self::assertStringContainsString('Ìrè Events', (string) $mails[0]->getSubject());
-        self::assertStringContainsString($deadline['written'], (string) $mails[0]->getSubject());
+        self::assertStringContainsString(new DateTimeImmutable($deadline['at'])->format('l j M \\a\\t H:i'), (string) $mails[0]->getSubject());
         self::assertSame(
             new Clock()->now()->modify('+7 days')->format('Y-m-d H:i'),
             new DateTimeImmutable($deadline['at'])->setTimezone(new Clock()->now()->getTimezone())->format('Y-m-d H:i'),

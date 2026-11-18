@@ -23,6 +23,13 @@ final class SupportedLocales
      */
     public const PLURALS = ['pt' => 'pt_PT'];
 
+    /**
+     * What a client's `Intl` writes a bare language in, where the house mapping in `dates()` writes it otherwise.
+     *
+     * @var array<string, string>
+     */
+    public const CLIENT_BARE = ['en' => 'en-US'];
+
     public static function plurals(string $locale): string
     {
         return self::PLURALS[$locale] ?? $locale;
@@ -37,7 +44,7 @@ final class SupportedLocales
     }
 
     /**
-     * The client's `formattingLocale` (sc-8421): the first tag in the shown language, with its region, else the language alone.
+     * The client's `formattingLocale` (sc-8421): the first tag in the shown language, with its region, else the language alone, as the client's `Intl` reads it.
      *
      * @param list<string> $tags
      */
@@ -46,7 +53,7 @@ final class SupportedLocales
         $tag = Iter\first(Vec\filter($tags, static fn (string $tag): bool => self::normalise($tag) === $shown));
         $matched = null === $tag ? null : Regex\first_match(Str\replace(Str\trim($tag), '_', '-'), '/^[a-z]{2,3}(?:-[a-z]{4})?-([a-z]{2}|\d{3})$/i');
 
-        return null === $matched ? $shown : $shown . '-' . Str\uppercase($matched[1]);
+        return null === $matched ? self::CLIENT_BARE[$shown] ?? $shown : $shown . '-' . Str\uppercase($matched[1]);
     }
 
     public static function supports(?string $locale): bool

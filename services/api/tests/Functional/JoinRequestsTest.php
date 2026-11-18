@@ -245,11 +245,11 @@ final class JoinRequestsTest extends ApiTestCase
         $removes = fn (): mixed => Iter\first(Vec\filter($this->listed($organisation, 'waiting'), static fn (array $member): bool => 'pending_approval' === $member['status']))['removesAt'] ?? null;
 
         $this->fresh($owner)->setTimezone('Africa/Lagos');
-        self::assertSame(['at' => '2026-11-11T08:40:00+00:00', 'written' => 'Wednesday 11 Nov at 09:40 WAT'], $removes());
+        self::assertSame(['at' => '2026-11-11T08:40:00+00:00', 'written' => 'Wednesday, Nov 11 at 09:40 WAT'], $removes());
         $this->fresh($owner)->setTimezone('Europe/London');
-        self::assertSame('Wednesday 11 Nov at 08:40 GMT', Type\shape(['written' => Type\string()], true)->coerce($removes())['written']);
+        self::assertSame('Wednesday, Nov 11 at 08:40 GMT', Type\shape(['written' => Type\string()], true)->coerce($removes())['written']);
         $this->fresh($owner)->setTimezone(null);
-        self::assertSame('Wednesday 11 Nov at 08:40 UTC', Type\shape(['written' => Type\string()], true)->coerce($removes())['written']);
+        self::assertSame('Wednesday, Nov 11 at 08:40 UTC', Type\shape(['written' => Type\string()], true)->coerce($removes())['written']);
     }
 
     /** sc-9267: written in the language the request asks for, not the one the reader saved. */
@@ -293,10 +293,10 @@ final class JoinRequestsTest extends ApiTestCase
     {
         yield 'en-US' => ['en-US', '', 'Wednesday, Nov 11 at 09:40 WAT'];
         yield 'en-GB' => ['en-GB', '', 'Wednesday 11 Nov at 09:40 WAT'];
-        yield 'English alone' => ['en', '', 'Wednesday 11 Nov at 09:40 WAT'];
+        yield 'English alone' => ['en', '', 'Wednesday, Nov 11 at 09:40 WAT'];
         yield 'a picker switch keeps the region' => ['en-US', '&locale=en', 'Wednesday, Nov 11 at 09:40 WAT'];
-        yield 'a device in another language' => ['fr-FR', '&locale=en', 'Wednesday 11 Nov at 09:40 WAT'];
-        yield 'a malformed tag' => ['en-x', '', 'Wednesday 11 Nov at 09:40 WAT'];
+        yield 'a device in another language' => ['fr-FR', '&locale=en', 'Wednesday, Nov 11 at 09:40 WAT'];
+        yield 'a malformed tag' => ['en-x', '', 'Wednesday, Nov 11 at 09:40 WAT'];
     }
 
     #[Test]

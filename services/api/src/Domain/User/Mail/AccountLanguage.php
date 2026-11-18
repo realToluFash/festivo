@@ -35,7 +35,7 @@ final readonly class AccountLanguage
     /** What a screen writes a date in (sc-9267, sc-65714): the request's formatting tag when it asked for a language; else theirs. */
     public function shown(User $user): string
     {
-        return null === self::askedIn($this->requestStack->getMainRequest()) ? $this->of($user) : $this->answeredFormatting();
+        return null === self::askedIn($this->requestStack->getMainRequest()) ? SupportedLocales::formatting($this->of($user), []) : $this->answeredFormatting();
     }
 
     /** The request's language with the device's region while the device speaks it, for a date a screen shows. */
@@ -43,7 +43,7 @@ final readonly class AccountLanguage
     {
         $formatting = $this->requestStack->getMainRequest()?->attributes->get(RequestLocaleListener::FORMATTING);
 
-        return \is_string($formatting) ? $formatting : $this->answered();
+        return \is_string($formatting) ? $formatting : SupportedLocales::formatting($this->answered(), []);
     }
 
     /** What the API's own sentences are in (sc-10700), and so a date written inside one (sc-11329): the language the listener settled for the request, which its `detail` is translated in; never the account's. */
