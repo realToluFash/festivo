@@ -25,12 +25,16 @@ describe('when picks close (sc-3905)', () => {
     });
   });
 
-  it('closes a date the day after it, and the start on its own day', () => {
-    expect(closeOf('k1', { ...SAMPLE_PICKS, today: '2026-10-19' }).closed).toBe(false);
-    expect(closeOf('k1', { ...SAMPLE_PICKS, today: '2026-10-20' }).closed).toBe(true);
-    expect(closeOf('k1', { ...SAMPLE_PICKS, replyBy: null, today: '2026-11-14' }).closed).toBe(
-      true,
+  it('closes a date at the end of its day, and the start at its time', () => {
+    const atStart = { ...SAMPLE_PICKS, replyBy: null, today: '2026-11-14' };
+    expect(closeOf('k1', { ...SAMPLE_PICKS, today: '2026-10-19', now: '23:58' }).closed).toBe(
+      false,
     );
+    expect(closeOf('k1', { ...SAMPLE_PICKS, today: '2026-10-20', now: '00:00' }).closed).toBe(true);
+    expect(closeOf('k1', { ...atStart, now: '10:00' }).closed).toBe(false);
+    expect(closeOf('k1', { ...atStart, now: '15:59' }).closed).toBe(false);
+    expect(closeOf('k1', { ...atStart, now: '16:00' }).closed).toBe(true);
+    expect(closeOf('k1', { ...atStart, today: '2026-11-15', now: '00:00' }).closed).toBe(true);
   });
 
   it('writes the date as each locale does, with one full stop', () => {

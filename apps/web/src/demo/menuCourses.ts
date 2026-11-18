@@ -727,6 +727,9 @@ function picksCourses(): EvCourse[] {
 
 const STARTER_OWN = { k1: '2026-10-16' };
 
+const SIDEBAR_NOTE =
+  ' The sidebar keeps sc-3902’s sample event; the close dates are the picks sample’s, an event starting Saturday, Nov 14 at 16:00, Lagos time.';
+
 const STATES = {
   menu: () =>
     start({
@@ -925,34 +928,44 @@ const STATES = {
   picksOneDate: () =>
     start({
       name: 'Picks close on one date',
-      note: 'Today is Wednesday, Oct 14. Starter, Main and Dessert ask guests something and close on the reply-by date: the header reads “picks close Monday, Oct 19”, each course a clock pill and the host-only source line. Late-night bites has no dishes, so no close.',
+      note:
+        'Today is Wednesday, Oct 14. Starter, Main and Dessert ask guests something and close on the reply-by date: the header reads “picks close Monday, Oct 19”, each course a clock pill and the host-only source line. Late-night bites has no dishes, so no close.' +
+        SIDEBAR_NOTE,
       courses: picksCourses(),
     }),
   picksDifferentDates: () =>
     start({
       name: 'Picks close on different dates',
-      note: 'No reply-by date. Starter on its own choose-by date (sc-1362’s, sample only: until it is built every course shares one date), Main and Dessert at the event’s start: “picks close from Friday, Oct 16”.',
+      note:
+        'No reply-by date. Starter on its own choose-by date (sc-1362’s, sample only: until it is built every course shares one date), Main and Dessert at the event’s start: “picks close from Friday, Oct 16”.' +
+        SIDEBAR_NOTE,
       courses: picksCourses(),
       picks: { ...SAMPLE_PICKS, replyBy: null, own: STARTER_OWN },
     }),
   picksOneClosed: () =>
     start({
       name: 'One course closed',
-      note: 'Today is Saturday, Oct 17, Starter closed Friday: a grey padlock pill, the closed line and Who hasn’t picked. The header counts only the open courses: “picks close Saturday, Nov 14”.',
+      note:
+        'Today is Saturday, Oct 17, Starter closed Friday: a grey padlock pill, the closed line and Who hasn’t picked. The header counts only the open courses: “picks close Saturday, Nov 14”.' +
+        SIDEBAR_NOTE,
       courses: picksCourses(),
       picks: { ...SAMPLE_PICKS, today: '2026-10-17', replyBy: null, own: STARTER_OWN },
     }),
   picksAllClosed: () =>
     start({
       name: 'All courses closed',
-      note: 'Today is Tuesday, Oct 20: every course closed on the reply-by date, and the header reads “picks closed on Monday, Oct 19”, the last close.',
+      note:
+        'Today is Tuesday, Oct 20: every course closed on the reply-by date, and the header reads “picks closed on Monday, Oct 19”, the last close.' +
+        SIDEBAR_NOTE,
       courses: picksCourses(),
       picks: { ...SAMPLE_PICKS, today: '2026-10-20' },
     }),
   picksAllClosedReadOnly: () =>
     start({
       name: 'All courses closed, read only',
-      note: 'Without guests.manage: the closed line’s first sentence only, and no Who hasn’t picked.',
+      note:
+        'Without guests.manage: the closed line’s first sentence only, and no Who hasn’t picked.' +
+        SIDEBAR_NOTE,
       courses: picksCourses(),
       picks: { ...SAMPLE_PICKS, today: '2026-10-20' },
       manage: false,
@@ -960,7 +973,9 @@ const STATES = {
   picksDateChanged: () =>
     start({
       name: 'Close date changed',
-      note: 'Two seconds after it opens, as a change from Event details would arrive, the reply-by date moves to Friday, Oct 23: the pills, the header and the source lines change together, and the status line names the new date.',
+      note:
+        'Two seconds after it opens, as a change from Event details would arrive, the reply-by date moves to Friday, Oct 23: the pills, the header and the source lines change together, and the status line names the new date.' +
+        SIDEBAR_NOTE,
       courses: picksCourses(),
       picksMoveTo: '2026-10-23',
     }),

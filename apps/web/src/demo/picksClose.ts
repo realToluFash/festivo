@@ -5,6 +5,8 @@ export type CloseSource = 'own' | 'replyBy' | 'start';
 
 export interface PicksDates {
   today: string;
+  /** The time now on `today`, in the event's zone; the event's start closes at its time, not its day. */
+  now: string;
   replyBy: string | null;
   start: string;
   startTime: string;
@@ -68,14 +70,17 @@ export function dayWords(date: string, lang: Lang): string {
   }).format(new Date(`${date}T12:00:00Z`));
 }
 
-/** The close of a course that asks guests something; a date passed is closed the day after, the event's start from its own day. */
+/** The close of a course that asks guests something; a date closes at the end of its day, the event's start at its time. */
 export function closeOf(courseId: string, dates: PicksDates): Close {
   const own = dates.own[courseId] ?? null;
   if (own != null) return { on: own, source: 'own', closed: dates.today > own };
   if (dates.replyBy != null)
     return { on: dates.replyBy, source: 'replyBy', closed: dates.today > dates.replyBy };
 
-  return { on: dates.start, source: 'start', closed: dates.today >= dates.start };
+  const started =
+    dates.today > dates.start || (dates.today === dates.start && dates.now >= dates.startTime);
+
+  return { on: dates.start, source: 'start', closed: started };
 }
 
 export const closeTime = (close: Close, dates: PicksDates): string =>
@@ -109,6 +114,7 @@ export function pillWords(close: Close, lang: Lang): string {
 
 export const SAMPLE_PICKS: PicksDates = {
   today: '2026-10-14',
+  now: '10:00',
   replyBy: '2026-10-19',
   start: '2026-11-14',
   startTime: '16:00',

@@ -9,7 +9,8 @@ import { Cover, Filled, Notice, TextAction } from './GuestParts.tsx';
 import { AllergyMark } from './GuestNeeds.tsx';
 import { DishScreen, Refused } from './MealParts.tsx';
 import { Summary } from './MealSummary.tsx';
-import { PCW, SAMPLE_PICKS, dayWords } from './picksClose.ts';
+import { GUEST_PICKS } from './mealClose.ts';
+import { PCW, closeOf, dayWords } from './picksClose.ts';
 import {
   type MealAnswer,
   type MealCourse,
@@ -155,7 +156,7 @@ function Flow({ first, again, lang }: { first: MealStart; again: string; lang: L
       {first.closes && (
         <p id="ms-close" className="gk-text is-quiet ms-close">
           <Glyph name="clock" size={15} weight={2.4} />
-          {PCW.line(dayWords(SAMPLE_PICKS.replyBy as string, lang))}
+          {PCW.line(dayWords(closeOf('main', GUEST_PICKS).on, lang))}
         </p>
       )}
     </div>
