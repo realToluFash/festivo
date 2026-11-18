@@ -4844,6 +4844,7 @@
     "shiftCount_many": "{{count, number}} de services",
     "short": "À pourvoir : {{count, number}}",
     "gap": "{{short}} · {{when}}",
+    "summaryShort_zero": "Toutes les fonctions sont couvertes en permanence.",
     "summaryShort_one": "{{count, number}} fonction manque de monde à un moment donné. Couvertes : {{covered, number}}.",
     "summaryShort_other": "{{count, number}} fonctions manquent de monde à un moment donné. Couvertes : {{covered, number}}.",
     "summaryShort_many": "{{count, number}} de fonctions manquent de monde à un moment donné. Couvertes : {{covered, number}}.",
