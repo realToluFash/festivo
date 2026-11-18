@@ -29,7 +29,7 @@ import {
   PartsSection,
   type RefFor,
 } from '../../components/EventOverview.tsx';
-import { AreaPage, EventFrame, type EventToast } from './EventFrame.tsx';
+import { AreaPage, BellRow, EventFrame, type EventToast } from './EventFrame.tsx';
 import { INVITATION_HREF, liveToastOf, makeLiveStateOf, reachOf, seededEvent } from './MakeLive.ts';
 import { MakeLiveAsk, useMakeLive } from './MakeLiveAsk.tsx';
 import { EventNeedsYou } from './EventNeedsYou.tsx';
@@ -786,7 +786,7 @@ export function EventScreen({
     page = (
       <OverviewColumns
         landscape={shell.layout === 'landscape'}
-        card={card}
+        card={<BellRow>{card}</BellRow>}
         left={
           <>
             {photoNotice}

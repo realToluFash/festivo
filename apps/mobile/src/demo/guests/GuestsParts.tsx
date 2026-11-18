@@ -25,6 +25,7 @@ import { W, say } from './GuestsWords.ts';
 import { labelFits } from '../../layout/titleFit.ts';
 import { type MarkKind, ReplyMark } from '../../components/ReplyMark.tsx';
 import { DoneLine } from '../../components/FormLayers.tsx';
+import { PaneBell, useBellInPane } from '../events/EventFrame.tsx';
 
 export type Layout = 'phone' | 'portrait' | 'landscape';
 
@@ -358,6 +359,11 @@ export function ShownLine({
 }
 
 /** The title: "Guests" with the round plus on the phone; on an iPad Add guest beside it when both fit on one line, else the round plus (sc-51444). */
+/** What ends the title's row, Export and the pane's bell, as one width with the gap between them. */
+function besideTitle(extra: number, bell: number, gap: number): number {
+  return extra > 0 && bell > 0 ? extra + gap + bell : extra + bell;
+}
+
 export function GuestsTitle({
   layout,
   title = W.guests,
@@ -374,6 +380,7 @@ export function GuestsTitle({
   extra?: ReactNode;
 }) {
   const size = layout === 'landscape' ? 26 : 30;
+  const bell = useBellInPane();
   const [room, setRoom] = useState(0);
   const [extraWidth, setExtraWidth] = useState(0);
   const [titleWidth, setTitleWidth] = useState(0);
@@ -384,7 +391,7 @@ export function GuestsTitle({
     !labelFits({
       room,
       title: titleWidth,
-      extra: extra == null ? 0 : extraWidth,
+      extra: besideTitle(extra == null ? 0 : extraWidth, bell ? tokens.sizeHit : 0, tokens.spaceMd),
       labelled: labelledWidth,
       gap: tokens.spaceMd,
     });
@@ -425,6 +432,7 @@ export function GuestsTitle({
             testID="guests.add"
           />
         ))}
+      <PaneBell />
       {layout !== 'phone' && (
         <MeasuredWords
           words={[title]}
