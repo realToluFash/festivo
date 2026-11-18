@@ -1,0 +1,50 @@
+.enq-mine {
+  gap: var(--spaceSm);
+}
+
+.enq-mine[aria-pressed='false'] {
+  color: var(--colorInk);
+}
+
+.enq-box {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 7px;
+  box-shadow: inset 0 0 0 2px var(--colorFieldBorder);
+}
+
+.enq-mine[aria-pressed='true'] .enq-box {
+  background: var(--colorAccent);
+  box-shadow: none;
+  color: var(--colorInkOnDark);
+}
+
+.enq-mine.is-off .enq-box {
+  box-shadow: inset 0 0 0 2px var(--colorBorder);
+}
+
+.enq-row .desk-row-name {
+  overflow-wrap: anywhere;
+}
+
+.enq-when-inline {
+  display: none;
+}
+
+@media (width <= 40rem) {
+  .enq-when {
+    display: none;
+  }
+
+  .enq-when-inline {
+    display: inline;
+  }
+}
+
+.enq-demo-only {
+  margin-top: var(--spaceXl);
+}
