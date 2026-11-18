@@ -113,7 +113,6 @@ final readonly class VendorRules
         );
     }
 
-    /** `bloom.co` is saved as `https://bloom.co`; a scheme other than http or https is null. */
     private function website(string $typed): ?string
     {
         if ('' === $typed) {
