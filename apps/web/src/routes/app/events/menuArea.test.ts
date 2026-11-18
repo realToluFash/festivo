@@ -4,9 +4,12 @@ import { describe, expect, it } from 'vitest';
 import {
   canAddCourse,
   canSame,
+  closeDay,
+  closeTime,
   courseProblems,
   coursePicked,
   firstCourseProblem,
+  menuClose,
   menuCounts,
   moveTarget,
   servedTime,
@@ -36,6 +39,7 @@ const course = (id: string, dishes: MenuDish[] = []): MenuCourse => ({
   dishes,
   ownItems: [],
   items: [],
+  picksClose: null,
 });
 
 describe('the course form', () => {
@@ -117,5 +121,38 @@ describe('the menu', () => {
   it('names the zone by its city', () => {
     expect(zoneCity('Africa/Lagos')).toBe('Lagos');
     expect(zoneCity('America/Argentina/Buenos_Aires')).toBe('Buenos Aires');
+  });
+
+  it('writes the close day in the event’s zone as each locale writes it', () => {
+    const at = '2026-10-19T23:59:59+01:00';
+
+    expect(closeDay(at, 'Africa/Lagos', 'en-US')).toBe('Monday, Oct 19');
+    expect(closeDay(at, 'Africa/Lagos', 'fr-FR')).toBe('lundi 19 oct.');
+    expect(closeDay(at, 'Africa/Lagos', 'es-ES')).toBe('lunes, 19 oct');
+    expect(closeDay(at, 'Africa/Lagos', 'pt-BR')).toBe('segunda-feira, 19 de out.');
+    expect(closeTime(at, 'Africa/Lagos', 'en-US')).toBe('23:59');
+    expect(closeTime('2026-11-14T16:00:00+01:00', 'Africa/Lagos', 'en-US')).toBe('16:00');
+  });
+
+  it('heads the Menu with the earliest close still open, or the last once all have closed', () => {
+    const closing = (at: string, closed: boolean): MenuCourse => ({
+      ...course(at),
+      picksClose: { at, source: 'replyBy', closed },
+    });
+
+    expect(menuClose([course('a')])).toBeNull();
+    expect(
+      menuClose([
+        closing('2026-10-19T23:59:59+01:00', false),
+        course('b'),
+        closing('2026-10-16T23:59:59+01:00', false),
+      ])?.at,
+    ).toBe('2026-10-16T23:59:59+01:00');
+    expect(
+      menuClose([
+        closing('2026-10-19T23:59:59+01:00', true),
+        closing('2026-10-16T23:59:59+01:00', true),
+      ]),
+    ).toEqual({ at: '2026-10-19T23:59:59+01:00', source: 'replyBy', closed: true });
   });
 });
