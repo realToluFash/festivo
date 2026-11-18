@@ -8,7 +8,7 @@ import {
   useRef,
   useState,
 } from 'react';
-import { useNavigate } from 'react-router';
+import { Link, useNavigate } from 'react-router';
 
 import { Brand } from '../components/Brand.tsx';
 import { SIDE_AREA_GLYPHS } from '../components/eventSideAreas.ts';
@@ -26,11 +26,13 @@ import {
   whenLine as doorWhenLine,
 } from './noOrg.ts';
 import {
+  NO_ORG_HOME,
   OUTSIDE,
   type OutsideArea,
   type OutsideEvent,
   type OutsidePage,
   VENUES,
+  type WayBack,
   areasAt,
   askAgain,
   coverOf,
@@ -45,6 +47,7 @@ import {
   useOutside,
   wallClock,
   wallDay,
+  wayBack,
   whenLine,
 } from './outsideEvents.ts';
 import { EventRowWords, PlaceRowWords } from './OutsideRows.tsx';
@@ -52,6 +55,7 @@ import { SAMPLE } from './rules.ts';
 import { switchTo, useWhere } from './switcher.ts';
 import './today.css';
 import '../components/SettingsParts.css';
+import '../components/eventPage.css';
 import './events.css';
 import './people.css';
 import './doorCode.css';
@@ -147,6 +151,7 @@ export function OutsideEventPage({
   menu: boolean;
 }) {
   const [opening] = useState(() => {
+    if (page === 'outside-gone-page' && from == null) startOutside('outside-several');
     if (page === 'outside-in' || page === 'outside-gone-page') return menu;
 
     startOutside(page);
@@ -157,7 +162,10 @@ export function OutsideEventPage({
   const navigate = useNavigate();
   const [told, tell, clear] = useTell();
   const gone = page === 'outside-gone-page';
-  const event = outsideEvent(gone ? (from ?? undefined) : id);
+  const way = gone ? wayBack(outside, id, from) : null;
+  const event = outsideEvent(
+    gone ? (from ?? (way?.kind === 'event' ? way.event.id : undefined)) : id,
+  );
   const [name, initials, tone] = JOINED.joao;
   const person: Person = outside.member
     ? { name: SAMPLE.name, initials: 'FA', tone: 1, role: event.role }
@@ -228,12 +236,14 @@ export function OutsideEventPage({
       told={told}
       onToastClose={clear}
     >
-      {gone ? (
+      {way != null ? (
         <NotFound
-          back={event}
+          way={way}
           onBack={() => {
-            askAgain();
-            void navigate(`/demo/events/${event.id}?state=outside-in&menu=open`);
+            askAgain(id);
+            if (way.kind === 'event')
+              void navigate(`/demo/events/${way.event.id}?state=outside-in&menu=open`);
+            else if (way.kind === 'continue') void navigate(NO_ORG_HOME);
           }}
         />
       ) : (
@@ -413,20 +423,33 @@ function EventMain({
   );
 }
 
-/** The web's event not-found, in the sidebar of the event the person came from; with no organisation there is no Events to fall back on. */
-function NotFound({ back, onBack }: { back: OutsideEvent; onBack: () => void }) {
+/** The web's event not-found: a member keeps the Events crumb; with no organisation there is no Events, so it goes back to an event, or on to the no-organisation home. */
+function NotFound({ way, onBack }: { way: WayBack; onBack: () => void }) {
   const heading = useRef<HTMLHeadingElement>(null);
 
   useEffect(() => heading.current?.focus(), []);
 
   return (
     <section className="card oe-gone">
+      {way.kind === 'events' && (
+        <nav className="ev-crumb" aria-label={OUTSIDE.events}>
+          <ol>
+            <li className="ev-crumb-part">
+              <Link to="/demo/events" onClick={onBack}>
+                {OUTSIDE.events}
+              </Link>
+            </li>
+          </ol>
+        </nav>
+      )}
       <h1 ref={heading} tabIndex={-1}>
         {OUTSIDE.notFound}
       </h1>
-      <button type="button" className="button" onClick={onBack}>
-        {OUTSIDE.backTo(back.name)}
-      </button>
+      {way.kind !== 'events' && (
+        <button type="button" className="button" onClick={onBack}>
+          {way.kind === 'event' ? OUTSIDE.backTo(way.event.name) : OUTSIDE.continue}
+        </button>
+      )}
     </section>
   );
 }

@@ -1,14 +1,18 @@
-import { fireEvent, render, screen, within } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { RouterProvider, createMemoryRouter } from 'react-router';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import { __setConfig, config } from '../config.ts';
 import { routes } from '../routes/index.tsx';
 import { E1, E2, E3, E4 } from './outsideEvents.ts';
+import { startSwitcher } from './switcher.ts';
 
 const tested = config();
 
-beforeEach(() => __setConfig({ ...tested, environment: 'development' }));
+beforeEach(() => {
+  __setConfig({ ...tested, environment: 'development' });
+  startSwitcher(null);
+});
 
 afterEach(() => __setConfig(tested));
 
@@ -109,6 +113,64 @@ describe('Your events in the person menu, with no organisation (sc-68438)', () =
       'Your account',
       'Sign out',
     ]);
+  });
+});
+
+describe('the way back from a gone event, with no organisation (sc-68438)', () => {
+  const notFound = 'This event is not available';
+  const goneFrom = async (state: string, event: { name: string }) => {
+    const router = await inside(state);
+    fireEvent.click(screen.getByRole('menuitem', { name: new RegExp(`^${event.name}`, 'u') }));
+    await screen.findByRole('heading', { level: 1, name: notFound });
+
+    return router;
+  };
+
+  it('names sc-71’s landing pick when the page was opened from its address', async () => {
+    await open(`/demo/events/${E4.id}?state=outside-gone-page`, notFound);
+    fireEvent.click(screen.getByRole('button', { name: `Back to ${E1.name}` }));
+    await screen.findByRole('heading', { level: 1, name: E1.name });
+
+    expect(items().map((one) => one.split('. ')[0])).toEqual([
+      E1.name,
+      E2.name,
+      E3.name,
+      'Your account',
+      'Sign out',
+    ]);
+  });
+
+  it('names the landing pick when the event it came from is gone too', async () => {
+    await goneFrom('outside-gone-both', E4);
+
+    expect(screen.queryByRole('button', { name: `Back to ${E2.name}` })).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: `Back to ${E1.name}` }));
+    await screen.findByRole('heading', { level: 1, name: E1.name });
+
+    expect(items().map((one) => one.split('. ')[0])).toEqual([
+      E1.name,
+      E3.name,
+      'Your account',
+      'Sign out',
+    ]);
+  });
+
+  it('reads Continue and opens the no-organisation home with no live grant left', async () => {
+    const router = await goneFrom('outside-gone-last', E4);
+
+    expect(screen.queryByRole('button', { name: /^Back to/u })).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
+    await waitFor(() => expect(router.state.location.search).toBe('?orgs=none'));
+
+    expect(router.state.location.pathname).toBe('/demo/today');
+  });
+
+  it('keeps a member’s Events crumb and no Back to', async () => {
+    const router = await goneFrom('inside-member-gone', E3);
+
+    expect(screen.queryByRole('button', { name: /^Back to|^Continue$/u })).toBeNull();
+    fireEvent.click(screen.getByRole('link', { name: 'Events' }));
+    await waitFor(() => expect(router.state.location.pathname).toBe('/demo/events'));
   });
 });
 

@@ -12,6 +12,7 @@ import {
   OUTSIDE_STATES,
   areasAt,
   inOrder,
+  landingOf,
   openingOf,
   outsideOf,
   outsidePageOf,
@@ -20,6 +21,7 @@ import {
   underWay,
   wallClock,
   wallDay,
+  wayBack,
 } from './outsideEvents.ts';
 
 const NOW = new Date('2026-11-07T16:00:00Z');
@@ -107,12 +109,40 @@ describe('events from outside (sc-68438)', () => {
   it('links every state from the demo’s home', () => {
     const linked = [...OUTSIDE_PAGE.states, ...OUTSIDE_MEMBER_PAGE.states].map((one) => one.to);
 
-    expect(linked).toEqual(OUTSIDE_STATES.map((state) => `/demo/events/${E2.id}?state=${state}`));
+    expect([...linked].sort()).toEqual(
+      [
+        ...OUTSIDE_STATES.map((state) => `/demo/events/${E2.id}?state=${state}`),
+        `/demo/events/${E4.id}?state=outside-gone-page`,
+      ].sort(),
+    );
     expect(SWITCHER_PAGES.flatMap((page) => page.states.map((one) => one.to))).toEqual(
       expect.arrayContaining([
         '/demo/today?switcher=outside',
         '/demo/today?switcher=outside-one-org',
       ]),
     );
+  });
+
+  it('goes back from a gone event as the 18 Nov decision says', () => {
+    const several = outsideOf('outside-several');
+
+    expect(landingOf(OUTSIDE_API, NOW)?.id).toBe(E1.id);
+    expect(landingOf([E3, E4], NOW)?.id).toBe(E3.id);
+    expect(landingOf([], NOW)).toBeNull();
+    expect(wayBack(outsideOf('outside-gone'), E4.id, E2.id, NOW)).toEqual({
+      kind: 'event',
+      event: E2,
+    });
+    expect(wayBack(several, E4.id, null, NOW)).toEqual({ kind: 'event', event: E1 });
+    expect(wayBack(outsideOf('outside-gone-both'), E4.id, E2.id, NOW)).toEqual({
+      kind: 'event',
+      event: E1,
+    });
+    expect(wayBack(outsideOf('outside-gone-last'), E4.id, E2.id, NOW)).toEqual({
+      kind: 'continue',
+    });
+    expect(wayBack(outsideOf('inside-member-gone'), E3.id, E2.id, NOW)).toEqual({
+      kind: 'events',
+    });
   });
 });
