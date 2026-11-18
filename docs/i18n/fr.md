@@ -588,6 +588,9 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
   {{name}} », so no elision is due. An owner is « une personne ayant le rôle Propriétaire ».
   The permission's states are « Autorisé » / « Non autorisé », agreeing with the masculine
   default. A refused send closes « donc rien n'a été envoyé ».
+  18 Nov (qa2, sc-68011): every email footer naming the organisation reads « … de
+  l’organisation {organisation} », as `organisationDeleted.footer`; `planDowngraded`,
+  `twoFactorRecovery.approver`, `signInRules.changed` and `ownershipTransferred` follow it.
 
 - **21 Oct 2026. Two-factor for everyone** (`signInRules.everyone*`, `due*`, `overdue*`,
   `twoFactorCard.keptByRule`, `emails:signInRules.twoFactorDue.*`, sc-5702). "Require" is
