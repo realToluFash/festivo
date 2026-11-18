@@ -1,9 +1,11 @@
 import { type Ref, useRef } from 'react';
-import { StyleSheet, View, type ViewInstance } from 'react-native';
+import { StyleSheet, useWindowDimensions, View, type ViewInstance } from 'react-native';
 
 import { useReadOut } from '../../components/ReadOut.tsx';
 import type { ScreenReaderTarget } from '../../components/screenReaderFocus.ts';
-import { Text } from '../../components/Text.tsx';
+import { Text, TitleCap } from '../../components/Text.tsx';
+import { PAGE_TITLE } from '../../components/topTitle.ts';
+import { titleSize } from '../../layout/textSize.ts';
 import { tokens } from '../../theme/tokens.ts';
 import {
   type CardStep,
@@ -298,12 +300,17 @@ function Empty({ filter, onShowEveryone }: { filter: Filter; onShowEveryone: () 
 
 /** Nobody opens by themselves on its side: the pane says what to do. */
 export function NobodyPicked() {
+  const { fontScale } = useWindowDimensions();
+
+  // The product's frame caps the pane beside the column too, so it draws no larger than the page title (sc-67338).
   return (
-    <View style={styles.nobody}>
-      <Text size={15} weight="medium" style={[styles.secondary, styles.centred]}>
-        Choose somebody in the list to see them here.
-      </Text>
-    </View>
+    <TitleCap.Provider value={titleSize(PAGE_TITLE, fontScale)}>
+      <View style={styles.nobody}>
+        <Text size={15} weight="medium" style={[styles.secondary, styles.centred]}>
+          Choose somebody in the list to see them here.
+        </Text>
+      </View>
+    </TitleCap.Provider>
   );
 }
 
