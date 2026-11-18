@@ -54,6 +54,7 @@ import {
   languageName,
   languageOf,
   messageOf,
+  rebooked,
   saidOf,
   tellStart,
   waysOf,
@@ -121,13 +122,19 @@ function EnquiryWithTell({ start, state }: { start: TellStart; state: TellState 
 
     if (made == null) return;
     finish(() => {
-      const before = change == null ? asBooked(made) : (booked[made.id] ?? asBooked(change));
+      const before =
+        change == null ? asBooked(made) : rebooked(booked[made.id] ?? asBooked(change), made);
 
       setList((now) =>
         change == null ? [...now, made] : now.map((one) => (one.id === change.id ? made : one)),
       );
       setBooked((now) => ({ ...now, [made.id]: before }));
-      setLayer({ kind: 'offer', id: made.id, said: saidOf(made, before, TELL_NOW) ?? 'booked' });
+      setLayer({
+        kind: 'offer',
+        id: made.id,
+        said: saidOf(made, before, TELL_NOW) ?? 'booked',
+        saved: change == null ? 'booked' : 'changed',
+      });
     });
   };
   const found = (id: string) => list.find((one) => one.id === id) ?? null;
@@ -160,6 +167,7 @@ function EnquiryWithTell({ start, state }: { start: TellStart; state: TellState 
       <Offer
         consultation={found(layer.id) as Consultation}
         said={layer.said}
+        saved={layer.saved}
         client={client}
         locale={locale}
         onTell={() => setLayer({ kind: 'tell', id: layer.id })}
@@ -281,7 +289,7 @@ function EnquiryWithTell({ start, state }: { start: TellStart; state: TellState 
               );
               setLayer(
                 changeable(layer.consultation, TELL_NOW)
-                  ? { kind: 'offer', id, said: 'cancelled' }
+                  ? { kind: 'offer', id, said: 'cancelled', saved: 'cancelled' }
                   : { kind: 'none' },
               );
             })
@@ -303,6 +311,7 @@ const SAVED: Record<Said, string> = {
 function Offer({
   consultation,
   said,
+  saved,
   client,
   locale,
   onTell,
@@ -310,14 +319,20 @@ function Offer({
 }: {
   consultation: Consultation;
   said: Said;
+  saved: Said;
   client: string;
   locale: string;
   onTell: () => void;
   onDone: () => void;
 }) {
   return (
-    <SheetBody title={SAVED[said]} close={TW.close} onClose={onDone} closeTestID="tell.offer.close">
-      <DoneLine text={SAVED[said]} reads />
+    <SheetBody
+      title={SAVED[saved]}
+      close={TW.close}
+      onClose={onDone}
+      closeTestID="tell.offer.close"
+    >
+      <DoneLine text={SAVED[saved]} reads />
       <Text
         size={15}
         weight="medium"

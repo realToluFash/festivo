@@ -48,10 +48,23 @@ export function asBooked(consultation: Consultation): AsBooked {
   return { startsAt, timeZone, minutes, how, where, link };
 }
 
+/** A link or a Where added where there was none isn't a change; changing or removing it afterwards is (pm, 18 Nov). */
+const ADDABLE: readonly (keyof AsBooked)[] = ['where', 'link'];
+
 export function hasChanged(consultation: Consultation, booked: AsBooked): boolean {
   const now = asBooked(consultation);
 
-  return (Object.keys(now) as (keyof AsBooked)[]).some((key) => now[key] !== booked[key]);
+  return (Object.keys(now) as (keyof AsBooked)[]).some(
+    (key) => now[key] !== booked[key] && !(ADDABLE.includes(key) && booked[key] == null),
+  );
+}
+
+export function rebooked(booked: AsBooked, consultation: Consultation): AsBooked {
+  return {
+    ...booked,
+    where: booked.where ?? consultation.where,
+    link: booked.link ?? consultation.link,
+  };
 }
 
 export function saidOf(consultation: Consultation, booked: AsBooked, now: string): Said | null {
@@ -318,6 +331,8 @@ export const TW = {
   wouldOpen: 'In the product this opens, and the demo does not:',
   fromNotification: (words: string) => `Opened from the notification: “${words}”`,
   free: 'In a Free organisation Enquiries isn’t there: no enquiry page, no Consultations and no Tell {client}, as with the rest of Enquiries (sc-31226).',
+  linkAdded:
+    'The link was added after the booking. That isn’t a change: Tell confirms the consultation again, now with the link. Changing or removing it from here on is.',
   ledByChanged:
     'Led by moved from Folake Adeyemi to Kemi Ojo since it was booked: Tell still writes the booked message.',
   pressNotSeen:
@@ -430,6 +445,7 @@ export const TOLD = {
   },
 } as const satisfies Record<string, Consultation>;
 
+const NO_LINK: AsBooked = { ...asBooked(TOLD.video), link: null };
 const MOVED_FROM: AsBooked = { ...asBooked(TOLD.video), startsAt: '2026-11-11T15:00:00Z' };
 
 export const TELL_STATES = [
@@ -442,6 +458,7 @@ export const TELL_STATES = [
   'read-only-leader',
   'free',
   'video',
+  'video-no-link',
   'in-person',
   'in-person-no-where',
   'phone-call',
@@ -460,6 +477,7 @@ export const TELL_STATES = [
   'copied',
   'offer-booked',
   'offer-changed',
+  'offer-link-added',
   'offer-cancelled',
   'notification-changed',
   'notification-cancelled',
@@ -472,7 +490,9 @@ export function tellStateOf(value: string | null | undefined): TellState {
 }
 
 export type Surface =
-  { kind: 'none' } | { kind: 'tell'; id: string } | { kind: 'offer'; id: string; said: Said };
+  | { kind: 'none' }
+  | { kind: 'tell'; id: string }
+  | { kind: 'offer'; id: string; said: Said; saved: Said };
 
 export interface TellStart {
   enquiry: Enquiry;
@@ -551,6 +571,8 @@ export function tellStart(state: TellState): TellStart {
       return { ...start, free: true };
     case 'video':
       return { ...start, surface: panel };
+    case 'video-no-link':
+      return only({ ...TOLD.video, link: null });
     case 'in-person':
       return only(TOLD.inPerson);
     case 'in-person-no-where':
@@ -584,18 +606,28 @@ export function tellStart(state: TellState): TellStart {
     case 'copied':
       return { ...start, surface: panel, copied: true, note: TW.copiedLook };
     case 'offer-booked':
-      return { ...start, surface: { kind: 'offer', id: TOLD.video.id, said: 'booked' } };
+      return {
+        ...start,
+        surface: { kind: 'offer', id: TOLD.video.id, said: 'booked', saved: 'booked' },
+      };
     case 'offer-changed':
       return {
         ...start,
         booked: moved,
-        surface: { kind: 'offer', id: TOLD.video.id, said: 'changed' },
+        surface: { kind: 'offer', id: TOLD.video.id, said: 'changed', saved: 'changed' },
       };
     case 'offer-cancelled':
       return {
         ...start,
         list: [cancelled, TOLD.visit],
-        surface: { kind: 'offer', id: TOLD.video.id, said: 'cancelled' },
+        surface: { kind: 'offer', id: TOLD.video.id, said: 'cancelled', saved: 'cancelled' },
+      };
+    case 'offer-link-added':
+      return {
+        ...start,
+        booked: { ...start.booked, [TOLD.video.id]: rebooked(NO_LINK, TOLD.video) },
+        surface: { kind: 'offer', id: TOLD.video.id, said: 'booked', saved: 'changed' },
+        note: TW.linkAdded,
       };
     case 'notification-changed':
       return {
@@ -638,6 +670,7 @@ const STATE_WORDS: Record<TellState, [string, string]> = {
   'read-only-leader': ['Row · a Member who leads it', 'Reads the page, and Tell still shows'],
   free: ['A Free organisation', 'None of Enquiries shows'],
   video: ['Tell · video call', 'The default: message, Language and the ways'],
+  'video-no-link': ['Tell · video call, no link', '“…, by video call.” with no link line'],
   'in-person': ['Tell · in person', 'The Where line as typed'],
   'in-person-no-where': ['Tell · in person, no Where', 'Only “in person”'],
   'phone-call': ['Tell · phone call', '“We’ll call you”'],
@@ -656,6 +689,10 @@ const STATE_WORDS: Record<TellState, [string, string]> = {
   copied: ['Tell · Copied', 'Copied, read out'],
   'offer-booked': ['Offer · after Book', 'Booked, with Tell Ana Ferreira next'],
   'offer-changed': ['Offer · after a change', 'Changed, with Tell Ana Ferreira next'],
+  'offer-link-added': [
+    'Offer · a link added later',
+    'Consultation changed, and the booked message again: “…when and how.”',
+  ],
   'offer-cancelled': ['Offer · after Cancel', 'Cancelled, with Tell Ana Ferreira next'],
   'notification-changed': ['Notification · moved', 'Opens the page at that consultation'],
   'notification-cancelled': ['Notification · cancelled', 'Opens the page at that consultation'],
@@ -681,6 +718,7 @@ const ROW: readonly TellState[] = [
 const OFFER: readonly TellState[] = [
   'offer-booked',
   'offer-changed',
+  'offer-link-added',
   'offer-cancelled',
   'notification-changed',
   'notification-cancelled',

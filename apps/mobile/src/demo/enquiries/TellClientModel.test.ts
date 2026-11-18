@@ -15,6 +15,7 @@ import {
   languageName,
   mailtoHref,
   messageOf,
+  rebooked,
   saidOf,
   tellStart,
   waysOf,
@@ -42,6 +43,13 @@ describe('the message', () => {
     expect(say({ ...TOLD.inPerson, how: 'phone', where: null }).body).toMatch(
       /by phone\. We’ll call you\.$/u,
     );
+  });
+
+  it('ends a video call with no link at “by video call.”, with no link line', () => {
+    const body = say({ ...TOLD.video, link: null }).body;
+
+    expect(body).toMatch(/for 60 minutes, by video call\.$/u);
+    expect(body).not.toContain('The link');
   });
 
   it('writes the 15:00 hour plural and the 01:30 hour singular', () => {
@@ -101,6 +109,33 @@ describe('which message is offered', () => {
     );
     expect(saidOf(TOLD.held, asBooked(TOLD.held), TELL_NOW)).toBeNull();
     expect(saidOf(TOLD.cancelledPast, asBooked(TOLD.cancelledPast), TELL_NOW)).toBeNull();
+  });
+
+  it('counts a link or a Where added later as no change, and changing or removing it as one', () => {
+    const noLink = { ...asBooked(TOLD.video), link: null };
+    const withLink = rebooked(noLink, TOLD.video);
+
+    expect(saidOf(TOLD.video, noLink, TELL_NOW)).toBe('booked');
+    expect(
+      saidOf({ ...TOLD.video, link: 'https://meet.example.com/xyz' }, withLink, TELL_NOW),
+    ).toBe('changed');
+    expect(saidOf({ ...TOLD.video, link: null }, withLink, TELL_NOW)).toBe('changed');
+
+    const noWhere = { ...asBooked(TOLD.inPerson), where: null };
+
+    expect(saidOf(TOLD.inPerson, noWhere, TELL_NOW)).toBe('booked');
+    expect(
+      saidOf({ ...TOLD.inPerson, where: null }, rebooked(noWhere, TOLD.inPerson), TELL_NOW),
+    ).toBe('changed');
+  });
+
+  it('after a link added later, says it was changed and offers the booked message', () => {
+    expect(tellStart('offer-link-added').surface).toEqual({
+      kind: 'offer',
+      id: TOLD.video.id,
+      said: 'booked',
+      saved: 'changed',
+    });
   });
 
   it('ignores Led by', () => {

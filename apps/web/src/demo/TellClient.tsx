@@ -39,6 +39,7 @@ import {
   languageName,
   languageOf,
   messageOf,
+  rebooked,
   saidOf,
   tellStart,
   tellStateOf,
@@ -134,13 +135,19 @@ function EnquiryWithTell({ start, tell }: { start: TellStart; tell: Tell }) {
 
     if (made == null) return;
     finish(() => {
-      const before = change == null ? asBooked(made) : (booked[made.id] ?? asBooked(change));
+      const before =
+        change == null ? asBooked(made) : rebooked(booked[made.id] ?? asBooked(change), made);
 
       setList((now) =>
         change == null ? [...now, made] : now.map((one) => (one.id === change.id ? made : one)),
       );
       setBooked((now) => ({ ...now, [made.id]: before }));
-      setLayer({ kind: 'offer', id: made.id, said: saidOf(made, before, TELL_NOW) ?? 'booked' });
+      setLayer({
+        kind: 'offer',
+        id: made.id,
+        said: saidOf(made, before, TELL_NOW) ?? 'booked',
+        saved: change == null ? 'booked' : 'changed',
+      });
     });
   }
 
@@ -262,6 +269,7 @@ function EnquiryWithTell({ start, tell }: { start: TellStart; tell: Tell }) {
           <Offer
             consultation={shown}
             said={layer.said}
+            saved={layer.saved}
             client={client}
             onTell={() => setLayer({ kind: 'tell', id: shown.id })}
             onDone={close}
@@ -286,7 +294,7 @@ function EnquiryWithTell({ start, tell }: { start: TellStart; tell: Tell }) {
               );
               setLayer(
                 changeable(layer.consultation, TELL_NOW)
-                  ? { kind: 'offer', id, said: 'cancelled' }
+                  ? { kind: 'offer', id, said: 'cancelled', saved: 'cancelled' }
                   : { kind: 'none' },
               );
             })
@@ -322,12 +330,14 @@ function usePanelTitle() {
 function Offer({
   consultation,
   said,
+  saved,
   client,
   onTell,
   onDone,
 }: {
   consultation: Consultation;
   said: Said;
+  saved: Said;
   client: string;
   onTell: () => void;
   onDone: () => void;
@@ -342,7 +352,7 @@ function Offer({
           <span className="tc-saved-mark" aria-hidden="true">
             <Glyph name="tick" size={16} weight={2.8} />
           </span>
-          {SAVED[said]}
+          {SAVED[saved]}
         </h2>
         <button type="button" className="con-close" aria-label={TW.close} onClick={onDone}>
           <Glyph name="clear" size={18} weight={2.4} />
