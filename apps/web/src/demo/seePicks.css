@@ -131,6 +131,10 @@
   font: var(--typeBody);
 }
 
+.pk-default-mark {
+  color: var(--colorInkSecondary);
+}
+
 .pk-act {
   flex: none;
   min-height: var(--sizeHit);

@@ -154,3 +154,43 @@ describe('the picks on the Menu’s rows (sc-3909)', () => {
     },
   );
 });
+
+describe('a course’s default on See picks (sc-1362)', () => {
+  it('shows Defaulted, the default’s line and Given the default after its date', SLOW, async () => {
+    await picks('picksDefaultAfter');
+    const main = region('Main');
+    expect(within(main).getByRole('columnheader', { name: SW.defaulted })).toBeTruthy();
+    expect(
+      within(main).getByText(
+        '[Default: Jollof rice, Chicken. Given on Friday, Oct 16 to 2 guests who hadn’t answered.]',
+      ),
+    ).toBeTruthy();
+    const waiting = region(SW.whoHasnt);
+    expect(within(waiting).getByText(SW.neverGiven(3))).toBeTruthy();
+    expect(within(waiting).getByText('Not chosen: Main · allergy')).toBeTruthy();
+    const given = region(SW.given(2));
+    expect(within(given).getByText('Kofi Mensah')).toBeTruthy();
+    expect(within(given).getByRole('button', { name: 'Choose for Kofi Mensah' })).toBeTruthy();
+  });
+
+  it('moves Kofi from Given the default to chosen once chosen for', SLOW, async () => {
+    await picks('chooseForDefaultedSaved');
+    expect(said()).toContain('Main chosen for Kofi: Suya wrap, Beef.');
+    expect(within(region(SW.given(1))).queryByText('Kofi Mensah')).toBeNull();
+  });
+
+  it('opens Choose for them at the default', SLOW, async () => {
+    await picks('chooseForDefaulted');
+    const dialog = screen.getByRole('dialog');
+    expect(within(dialog).getByText('Main · 1 of 1')).toBeTruthy();
+    expect(
+      (within(dialog).getByRole('radio', { name: /^Jollof rice/ }) as HTMLInputElement).checked,
+    ).toBe(true);
+  });
+
+  it('lists names without Choose for them on Guests read', SLOW, async () => {
+    await picks('picksDefaultReadOnly');
+    expect(within(region(SW.given(2))).getByText('Ivan Petrov')).toBeTruthy();
+    expect(screen.queryByRole('button', { name: /^Choose for / })).toBeNull();
+  });
+});
