@@ -1,0 +1,32 @@
+/* Settings > Data at a desk, in B · Summary first: what the page reads when it isn't the Owner's to change. */
+
+.desk-tile.is-data {
+  background: color-mix(in srgb, var(--optionBlue) 55%, var(--optionTeal));
+}
+
+.data-value {
+  flex: none;
+  color: var(--colorInk);
+  font: 600 15px/1 var(--fontFamily);
+  white-space: nowrap;
+}
+
+.desk-row.data-held {
+  align-items: flex-start;
+}
+
+.data-question-events {
+  margin-block: var(--spaceSm);
+}
+
+.data-refusal {
+  display: flex;
+  gap: var(--spaceLg);
+  color: var(--colorInk);
+}
+
+.data-refusal > svg {
+  flex: none;
+  margin-top: var(--spaceHair);
+  color: var(--colorAttentionText);
+}

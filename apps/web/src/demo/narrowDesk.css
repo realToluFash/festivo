@@ -1,0 +1,137 @@
+/* 641 to 960 px only (sc-60699): 961 and up, and 640 and down, stay as on main. What runs on past 960 is in wideDesk.css. */
+@media (40rem < width <= 60rem) {
+  .today.desk .desk-page {
+    padding-inline: var(--spaceXxl);
+  }
+
+  .today.desk :is(.desk-top, .gs-top) {
+    flex-shrink: 0;
+  }
+
+  .today.desk .gs-top > .mn-head {
+    flex: 1 1 auto;
+  }
+
+  /* Mirrors the product's Settings, which stacks its list above the page up to 60rem. */
+  .today.desk .desk-main:has(> .desk-list) {
+    flex-direction: column;
+    overflow-y: auto;
+  }
+
+  .today.desk .desk-main > .desk-list {
+    width: auto;
+    overflow: visible;
+    border-right: 0;
+    border-bottom: 1px solid var(--colorBorder);
+  }
+
+  .today.desk .desk-main > .desk-list ~ .desk-page {
+    flex: none;
+    overflow: visible;
+  }
+
+  .today.desk .ev-search {
+    flex: 1 1 0;
+  }
+
+  .today.desk .ev-filter-at {
+    flex: none;
+  }
+
+  .today.desk .cal-tools {
+    flex-wrap: wrap;
+    row-gap: var(--spaceLg);
+  }
+
+  .today.desk .cal-month-row {
+    flex: 1 0 auto;
+    flex-wrap: wrap;
+    row-gap: var(--spaceLg);
+  }
+
+  /* Saturday's "+N more" ends at the week's edge rather than starting past its inset. */
+  .today.desk .cal-more.is-from-6 {
+    right: 0;
+    left: auto;
+  }
+
+  .today.desk .lib-cols {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .today.desk .mn-split:not(.ro .mn-split):has(> .mn-panel) {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .today.desk .mn-split:not(.ro .mn-split) > .mn-panel {
+    position: static;
+    order: -1;
+    width: auto;
+    max-height: none;
+  }
+
+  .today.desk .mn-split:not(.ro .mn-split) > .mn-panel .mn-panel-body {
+    overflow: visible;
+  }
+
+  .today.desk .mn-choice-item {
+    flex-wrap: wrap;
+    padding-block: var(--spaceXs);
+  }
+
+  .today.desk .mn-choice-item-name {
+    flex: 1 0 auto;
+    min-width: auto;
+    overflow-wrap: normal;
+  }
+
+  .today.desk .ev-columns {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* Undoes routes/app/menu/menuLibrary.css, which stacks the shell at 720px and loads in the demo too; drop this once that line moves to 40rem. */
+@media (40rem < width <= 720px) {
+  :root .today.desk:has(.lib-page) {
+    flex-direction: row;
+    height: 100vh;
+    min-height: 0;
+  }
+
+  :root .today.desk:has(.lib-page) .today-side {
+    width: var(--todaySide);
+    height: 100%;
+    overflow-y: auto;
+  }
+
+  :root .today.desk:has(.lib-page) .desk-main {
+    margin: var(--spaceMd) var(--spaceMd) var(--spaceMd) 0;
+    overflow: hidden;
+  }
+
+  :root .today.desk .lib-page.desk-page {
+    padding-block: var(--space3xl) 48px;
+    overflow-y: auto;
+  }
+
+  :root .today.desk :is(.lib-page .desk-row, .lib-top-acts, .lib-price) {
+    flex-wrap: nowrap;
+  }
+
+  :root .today.desk .lib-search {
+    max-width: 420px;
+  }
+
+  :root .today.desk .lib-amount {
+    flex: 1;
+  }
+
+  :root .today.desk .lib-page .desk-title {
+    flex: 1;
+  }
+
+  :root .today.desk .lib-top-acts {
+    margin-left: auto;
+  }
+}

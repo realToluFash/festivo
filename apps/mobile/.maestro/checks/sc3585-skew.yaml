@@ -1,0 +1,17 @@
+# sc-3585: on a device whose clock is wrong, ${EV_SKEW_LIVE} (Live, 5 minutes from the real start) and ${EV_SKEW_DRAFT} (a Draft, 5 minutes from its real end) show what the server's clock says.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/${EV_SKEW_LIVE}
+- extendedWaitUntil:
+    visible:
+      id: 'events\.phase\..+'
+    timeout: 30000
+- waitForAnimationToEnd
+- takeScreenshot: live
+- openLink: ${METRO_URL}/--/events/${EV_SKEW_DRAFT}
+- extendedWaitUntil:
+    visible:
+      id: 'events\.phase\..+'
+    timeout: 30000
+- waitForAnimationToEnd
+- takeScreenshot: draft

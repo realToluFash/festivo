@@ -1,0 +1,26 @@
+# sc-54804: Whose reply is this? with nobody waiting, in the account's language.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/${EVENT2_ID}?area=guests
+- extendedWaitUntil:
+    visible:
+      id: 'guests.paste'
+    timeout: 30000
+- tapOn:
+    id: 'guests.search'
+- inputText: 'See you there, thank you!'
+- longPressOn: { id: 'guests.search' }
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 800, optional: true }
+- tapOn: { text: '(Select all|Tout sélectionner)', optional: true }
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 600, optional: true }
+- tapOn: { text: '(Copy|Copier)' }
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 600, optional: true }
+- eraseText: 400
+- hideKeyboard
+- tapOn:
+    id: 'guests.paste'
+- extendedWaitUntil:
+    visible:
+      id: 'paste.everyone'
+    timeout: 10000
+- takeScreenshot: everyone

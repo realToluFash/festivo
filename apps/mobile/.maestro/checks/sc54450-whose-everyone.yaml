@@ -1,0 +1,20 @@
+# sc-54450: with nobody waiting on ${EVENT_ID}, Whose reply is this? shows the quote, Find a guest and the everyone-replied line.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/${EVENT_ID}?area=guests
+- extendedWaitUntil:
+    visible:
+      id: 'guests.paste'
+    timeout: 30000
+- takeScreenshot: guests
+- tapOn:
+    id: 'guests.paste'
+- extendedWaitUntil:
+    visible:
+      id: 'paste.everyone'
+    timeout: 10000
+- assertVisible:
+    id: 'paste.quote'
+- assertVisible:
+    id: 'paste.search'
+- takeScreenshot: everyone

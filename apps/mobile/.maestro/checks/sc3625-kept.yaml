@@ -1,0 +1,62 @@
+# sc-3625: the Calendar reopens after a bundle reload on the view and month chosen last (Month, October 2026, a month no today can be any more), and an event row opens its page. The view half holds on a phone only, where Agenda is the default; on a tablet Month is the default either way. Needs ORIENT and EVENT, an event of the signed-in organisation on 7 November 2026.
+appId: host.exp.Exponent
+---
+- setOrientation: ${ORIENT}
+- runFlow: ../return-home.yaml
+- tapOn:
+    id: 'frame.calendar'
+- extendedWaitUntil:
+    visible:
+      id: 'calendar.month'
+    timeout: 30000
+- tapOn:
+    id: 'calendar.view.month'
+- extendedWaitUntil:
+    visible:
+      id: 'calendar.grid'
+    timeout: 20000
+- runFlow: ../checks/sc3625/to-november.yaml
+- assertNotVisible:
+    id: 'calendar.day.2026-10-14'
+- tapOn:
+    id: 'calendar.previous'
+- waitForAnimationToEnd
+- assertVisible:
+    id: 'calendar.day.2026-10-14'
+- assertNotVisible:
+    id: 'calendar.day.2026-11-14'
+- takeScreenshot: picked
+- runFlow: ../batch/reset.yaml
+- setOrientation: ${ORIENT}
+- extendedWaitUntil:
+    visible:
+      id: 'home.openSettings'
+    timeout: 30000
+- tapOn:
+    id: 'frame.calendar'
+- extendedWaitUntil:
+    visible:
+      id: 'calendar.grid'
+    timeout: 30000
+- waitForAnimationToEnd
+- assertVisible:
+    id: 'calendar.day.2026-10-14'
+- assertNotVisible:
+    id: 'calendar.day.2026-11-14'
+- takeScreenshot: kept
+- tapOn:
+    id: 'calendar.next'
+- waitForAnimationToEnd
+- tapOn:
+    id: 'calendar.day.2026-11-07'
+- extendedWaitUntil:
+    visible:
+      id: 'calendar.row.event-${EVENT}'
+    timeout: 10000
+- tapOn:
+    id: 'calendar.row.event-${EVENT}'
+- extendedWaitUntil:
+    visible:
+      id: 'events.page'
+    timeout: 20000
+- takeScreenshot: event-page
