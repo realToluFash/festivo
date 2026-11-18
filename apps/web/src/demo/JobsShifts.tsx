@@ -726,7 +726,7 @@ function ShiftRow({
         )}
       </div>
       <Places plan={plan} shift={shift} manage={manage} onDrop={onDrop} />
-      {full && <p className="mn-quiet js-full">{JW.full}</p>}
+      {full && manage && <p className="mn-quiet js-full">{JW.full}</p>}
     </li>
   );
 }

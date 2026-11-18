@@ -153,6 +153,16 @@ final class VendorsTest extends ApiTestCase
     }
 
     #[Test]
+    public function anAccentedNameSortsWithItsPlainLetter(): void
+    {
+        foreach (['zeta Hire', 'Ómega Music', 'Marquee Masters', 'Éclat Catering', 'Àbẹ̀ní Flowers', 'bloom & Co'] as $name) {
+            $this->add(['name' => $name, 'category' => 'other']);
+        }
+
+        self::assertSame(['Àbẹ̀ní Flowers', 'bloom & Co', 'Éclat Catering', 'Marquee Masters', 'Ómega Music', 'zeta Hire'], $this->names($this->list()));
+    }
+
+    #[Test]
     public function searchMatchesANameContainingItIgnoringCaseWithAccentsAsTyped(): void
     {
         $this->add(['name' => 'Éclat Catering', 'category' => 'catering']);
@@ -199,6 +209,26 @@ final class VendorsTest extends ApiTestCase
         $edited = Type\dict(Type\string(), Type\mixed())->coerce($this->send('PUT', "/{$id}", ['name' => 'Bloom and Co', 'category' => 'hire', 'contactName' => '', 'website' => 'http://bloom.co'])['vendor']);
 
         self::assertSame(['Bloom and Co', 'hire', null, 'http://bloom.co'], [$edited['name'], $edited['category'], $edited['contactName'], $edited['website']]);
+    }
+
+    #[Test]
+    public function anArchivedVendorIsReadOnlyUntilItIsRestored(): void
+    {
+        $bloom = $this->add(['name' => 'Bloom & Co', 'category' => 'flowers', 'contactName' => 'Ngozi Eze']);
+        $id = Type\string()->coerce($bloom['id']);
+        $archived = Type\dict(Type\string(), Type\mixed())->coerce($this->send('POST', "/{$id}/archive")['vendor']);
+        $change = ['name' => 'Bloom and Co', 'category' => 'hire', 'contactName' => ''];
+
+        $refused = $this->send('PUT', "/{$id}", $change, 409);
+
+        self::assertSame('https://soirely.com/errors/conflict', $refused['type']);
+        self::assertSame('This vendor is archived, so your changes were not saved. To edit it, restore it under Archived.', $refused['detail']);
+        self::assertSame([$archived], Type\vec(Type\mixed())->coerce($this->list('?view=archived')['vendors']));
+
+        $this->send('POST', "/{$id}/restore");
+        $edited = Type\dict(Type\string(), Type\mixed())->coerce($this->send('PUT', "/{$id}", $change)['vendor']);
+
+        self::assertSame(['Bloom and Co', 'hire', null], [$edited['name'], $edited['category'], $edited['contactName']]);
     }
 
     #[Test]

@@ -348,8 +348,8 @@
     "timeline.event_ends": "{name} se termine",
     "timeline.event_called_off": "Annulation : {name}",
     "timeline.replies_close": "Clôture des réponses",
-    "timeline.picks_close": "Picks close",
-    "timeline.open_menu": "Open the menu",
+    "timeline.picks_close": "Clôture des choix",
+    "timeline.open_menu": "Ouvrir le menu",
     "calendar_feed.status.draft": "Brouillon",
     "calendar_feed.status.live": "Publié",
     "calendar_feed.status.paused": "En pause",
@@ -387,5 +387,6 @@
     "validation.vendor_category_required": "Choisissez la catégorie.",
     "validation.vendor_website_scheme": "Saisissez une adresse web qui commence par https:// ou http://, ou omettez cette partie.",
     "validation.vendor_phone_invalid": "Ce numéro de téléphone n’est pas valide dans ce pays : {country}. Vérifiez-le et réessayez.",
+    "vendors.archived_read_only": "This vendor is archived, so your changes were not saved. To edit it, restore it under Archived.",
     "access.plan_required": "Disponible avec le forfait Enterprise. Pour modifier ce réglage, contactez Soirely au sujet du forfait Enterprise."
 }
