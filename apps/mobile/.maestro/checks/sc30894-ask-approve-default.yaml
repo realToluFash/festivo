@@ -19,3 +19,8 @@ appId: host.exp.Exponent
 - takeScreenshot: ask
 - tapOn:
     id: 'members.recovery.cancel'
+- extendedWaitUntil:
+    notVisible:
+      id: 'members.recovery.ask'
+    timeout: 10000
+- takeScreenshot: ask-closed
