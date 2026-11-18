@@ -12,7 +12,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Back } from '../../components/SettingsParts.tsx';
 import { useShell } from '../../components/settingsShell.ts';
 import { PageToast, type PageToastProps } from '../../components/Summary.tsx';
-import { Text } from '../../components/Text.tsx';
+import { Title } from '../../components/Title.tsx';
 import { PHONE_TAB_BAR, TabBarFade } from '../../components/TodayCover.tsx';
 import { tokens } from '../../theme/tokens.ts';
 import { PAGE_TITLE, PANE_TITLE, pageTitle, paneTitle } from '../../components/topTitle.ts';
@@ -133,9 +133,9 @@ function PageTitle({
   look: { letterSpacing: number };
 }) {
   return (
-    <Text size={size} weight="bold" accessibilityRole="header" style={[styles.title, look]}>
+    <Title size={size} accessibilityRole="header" style={[styles.title, look]}>
       {text}
-    </Text>
+    </Title>
   );
 }
 
