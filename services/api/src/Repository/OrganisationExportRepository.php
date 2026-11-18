@@ -96,4 +96,37 @@ final class OrganisationExportRepository extends ServiceEntityRepository
 
         return 1 === $claimed;
     }
+
+    /** Marks it Ready with its archive, once: false when another try already finished it. */
+    public function claimReady(OrganisationExport $export, string $archiveKey, DateTimeImmutable $at): bool
+    {
+        return $this->claimFinish($export, <<<'SQL'
+            UPDATE organisation_exports SET status = :status, archive_key = :key, ready_at = :at, updated_at = :at
+            WHERE id = :id AND status = :preparing
+            SQL, OrganisationExportStatus::Ready, $at, ['key' => $archiveKey]);
+    }
+
+    /** Marks it Didn't finish once it has had its tries, unless another try finished it first. */
+    public function claimFailed(OrganisationExport $export, DateTimeImmutable $at): bool
+    {
+        return $export->getAttempts() >= OrganisationExport::MOST_ATTEMPTS
+            && $this->claimFinish($export, <<<'SQL'
+                UPDATE organisation_exports SET status = :status, updated_at = :at
+                WHERE id = :id AND status = :preparing
+                SQL, OrganisationExportStatus::Failed, $at);
+    }
+
+    /** @param array<string, string> $more */
+    private function claimFinish(OrganisationExport $export, string $sql, OrganisationExportStatus $status, DateTimeImmutable $at, array $more = []): bool
+    {
+        $claimed = $this->getEntityManager()->getConnection()->executeStatement(
+            $sql,
+            [...$more, 'status' => $status->value, 'at' => $at, 'id' => $export->getId()->toRfc4122(), 'preparing' => OrganisationExportStatus::Preparing->value],
+            ['at' => Types::DATETIME_IMMUTABLE],
+        );
+
+        $this->getEntityManager()->refresh($export);
+
+        return 1 === $claimed;
+    }
 }

@@ -145,19 +145,4 @@ class OrganisationExport
         ++$this->attempts;
         $this->attemptedAt = $at;
     }
-
-    public function ready(string $archiveKey, DateTimeImmutable $at): void
-    {
-        $this->status = OrganisationExportStatus::Ready;
-        $this->archiveKey = $archiveKey;
-        $this->readyAt = $at;
-    }
-
-    /** Tried again later, unless it has had its tries. */
-    public function attemptFailed(): void
-    {
-        if ($this->attempts >= self::MOST_ATTEMPTS) {
-            $this->status = OrganisationExportStatus::Failed;
-        }
-    }
 }

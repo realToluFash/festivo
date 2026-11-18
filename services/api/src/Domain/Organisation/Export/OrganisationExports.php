@@ -105,14 +105,14 @@ final readonly class OrganisationExports
             $this->objectStore->keep($key, $this->organisationArchive->of($export->getOrganisation()), self::CONTENT_TYPE);
         } catch (Throwable $e) {
             $this->logger->error('An organisation export failed to prepare.', ['export' => $export->getId()->toRfc4122(), 'attempt' => $export->getAttempts(), 'exception' => $e::class]);
-            $export->attemptFailed();
-            $this->entityManager->flush();
+            $this->organisationExportRepository->claimFailed($export, $this->clock->now());
 
             return;
         }
 
-        $export->ready($key, $this->clock->now());
-        $this->entityManager->flush();
+        if (!$this->organisationExportRepository->claimReady($export, $key, $this->clock->now())) {
+            return;
+        }
 
         try {
             $this->entityManager->getConnection()->transactional(fn () => $this->organisationExportMailer->ready($export, $asked));

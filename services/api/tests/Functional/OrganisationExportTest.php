@@ -22,6 +22,7 @@ use App\Enum\EventRole;
 use App\Enum\MembershipStatus;
 use App\Enum\OrganisationExportStatus;
 use App\Enum\SeededRole;
+use App\Repository\OrganisationExportRepository;
 use App\Tests\ApiTestCase;
 use App\Tests\Traits\InvitesPeople;
 use App\Tests\Traits\OnboardsAccounts;
@@ -405,11 +406,10 @@ final class OrganisationExportTest extends ApiTestCase
         self::em()->persist($export);
         foreach (Vec\range(1, OrganisationExport::MOST_ATTEMPTS) as $attempt) {
             $export->attempting(new DateTimeImmutable(self::ASKED_AT));
-            $export->attemptFailed();
+            self::em()->flush();
+            self::service(OrganisationExportRepository::class)->claimFailed($export, new DateTimeImmutable(self::ASKED_AT));
             self::assertSame($attempt < OrganisationExport::MOST_ATTEMPTS ? OrganisationExportStatus::Preparing : OrganisationExportStatus::Failed, $export->getStatus());
         }
-
-        self::em()->flush();
 
         $body = $this->as($this->owner, 'GET', $this->path(''));
         self::assertSame(['failed', null], [Type\dict(Type\string(), Type\mixed())->coerce($body['export'])['state'], $body['nextAllowedAt']]);
@@ -450,6 +450,28 @@ final class OrganisationExportTest extends ApiTestCase
 
         self::assertSame([OrganisationExportStatus::Preparing, 1], [$this->latest()->getStatus(), $this->latest()->getAttempts()]);
         self::assertSame([], Vec\filter(self::getMailerMessages(), static fn (object $message): bool => $message instanceof Email && Str\contains((string) $message->getSubject(), 'export')));
+    }
+
+    #[Test]
+    public function aTryThatOutlastsTheRetryAndFinishesSecondLeavesTheFirstArchiveAndEmailsNothing(): void
+    {
+        $export = new OrganisationExport($this->fresh(), $this->freshUser($this->owner), new DateTimeImmutable(self::ASKED_AT));
+        $export->attempting(new DateTimeImmutable(self::ASKED_AT));
+        self::em()->persist($export);
+        self::em()->flush();
+        self::mockTime(new DateTimeImmutable('2026-10-17T13:25:00+00:00'));
+        self::service(OrganisationExports::class)->prepareDue();
+        $ready = [$this->latest()->getArchiveKey(), $this->latest()->getReadyAt()];
+
+        self::em()->getConnection()->executeStatement('UPDATE organisation_exports SET attempts = 3 WHERE id = ?', [$export->getId()->toRfc4122()]);
+        $export = $this->latest();
+
+        $repository = self::service(OrganisationExportRepository::class);
+        self::assertFalse($repository->claimReady($export, 'organisation-exports/slow.zip', new DateTimeImmutable('2026-10-17T13:31:00+00:00')));
+        self::assertFalse($repository->claimFailed($export, new DateTimeImmutable('2026-10-17T13:31:00+00:00')));
+
+        self::assertSame(OrganisationExportStatus::Ready, $this->latest()->getStatus());
+        self::assertEquals($ready, [$this->latest()->getArchiveKey(), $this->latest()->getReadyAt()]);
     }
 
     #[Test]
