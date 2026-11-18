@@ -12,6 +12,7 @@ import { TABLET_TABS_BOARDS } from '../../src/demo/tabletTabs/TabletTabsBoards.t
 import { TEXT_SIZE_BOARDS } from '../../src/demo/textSize/TextSizeBoards.ts';
 import { DATA_BOARDS } from '../../src/demo/settings/DataBoards.ts';
 import { ENQUIRIES_BOARDS } from '../../src/demo/enquiries/EnquiriesBoards.ts';
+import { ENQUIRY_EVENT_BOARDS } from '../../src/demo/enquiries/EnquiryEventBoards.ts';
 import { FOCUSED_HEADER_BOARDS } from '../../src/demo/focusedHeader/FocusedHeaderBoards.ts';
 import { SIGN_OUT_SIZE_BOARDS } from '../../src/demo/signOutSize/SignOutSizeBoards.ts';
 import { SWITCHER_BOARDS } from '../../src/demo/OrgSwitcherBoards.ts';
@@ -53,6 +54,14 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
   {
     page: '31221 · Enquiries · the list and its search (sc-31226, sc-42749)',
     boards: ENQUIRIES_BOARDS.map(({ title, what, href }) => ({ title, what, href: href as Href })),
+  },
+  {
+    page: '31221 · Enquiries · An enquiry becomes an event (sc-31232)',
+    boards: ENQUIRY_EVENT_BOARDS.map(({ title, what, href }) => ({
+      title,
+      what,
+      href: href as Href,
+    })),
   },
   {
     page: '26 · Foundation · Notifications on a phone on its side (sc-62023)',
