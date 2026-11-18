@@ -459,7 +459,9 @@ const BRUNCH: readonly Plan[] = [
 
 const GARDEN: readonly Plan[] = [['croquet', '11:00', 'Croquet on the lawn', 60, 'Sade Lawal']];
 
-type Marks = Readonly<Record<string, readonly [started: string, ended?: string] | 'skipped'>>;
+export type Marks = Readonly<
+  Record<string, readonly [started: string, ended?: string] | 'skipped'>
+>;
 
 function planned(plans: readonly Plan[], marks: Marks, day = 0): NightItem[] {
   return plans.map(([id, time, title, length, owner]) => {
@@ -477,11 +479,11 @@ function planned(plans: readonly Plan[], marks: Marks, day = 0): NightItem[] {
   });
 }
 
-const DINED: Marks = {
+export const DINED: Marks = {
   arrive: ['18:02', '18:31'],
   dinner: ['18:33', '19:48'],
 };
-const DANCED: Marks = {
+export const DANCED: Marks = {
   ...DINED,
   speeches: ['19:50', '20:28'],
   dance: ['20:31', '20:46'],
@@ -490,10 +492,10 @@ const DANCED: Marks = {
   bouquet: ['22:09', '22:17'],
   dancing: ['22:18', '00:20'],
 };
-const FOYER_RUN: Marks = { booth: ['19:00', '21:00'], bar: ['23:30', '00:30'] };
+export const FOYER_RUN: Marks = { booth: ['19:00', '21:00'], bar: ['23:30', '00:30'] };
 const FOYER_DONE: Marks = { ...FOYER_RUN, carriages: ['00:31', '01:10'] };
 
-interface Scene {
+export interface Scene {
   name: string;
   clock: string;
   hall: Marks;
@@ -508,7 +510,7 @@ interface Scene {
 }
 
 const SPEAKING: Marks = { ...DINED, speeches: ['19:50'] };
-const GAP: Marks = { ...DINED, speeches: ['19:50', '20:28'] };
+export const GAP: Marks = { ...DINED, speeches: ['19:50', '20:28'] };
 
 export const NIGHT_STATES = {
   populated: { name: 'Speeches on, First dance next on plan', clock: '20:02', hall: SPEAKING },
@@ -682,6 +684,27 @@ export function nightAt(
     chosen: scene.chosen ?? null,
     menuOpen: name === 'picker_earlier_day',
     loading: name === 'loading',
+  };
+}
+
+/** One night on the first day, the Ballroom and the Foyer, as a scene draws it: for boards that need a moment no state above has. */
+export function sceneNight(scene: Scene): Night {
+  return {
+    clock: at(scene.clock),
+    today: 0,
+    tracks: [
+      { id: 'hall', place: 'Ballroom', day: 0, items: planned(BALLROOM, scene.hall) },
+      { id: 'foyer', place: 'Foyer', day: 0, items: planned(FOYER, scene.foyer ?? {}) },
+    ],
+    online: scene.online ?? true,
+    queued: scene.queued ?? 0,
+    age: scene.online === false ? 2 : 0,
+    lost: scene.lost ?? null,
+    said: scene.said ?? '',
+    manage: scene.manage ?? true,
+    eventsManage: scene.manage ?? true,
+    happening: true,
+    laterDayHasItems: false,
   };
 }
 

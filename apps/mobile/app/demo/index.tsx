@@ -30,6 +30,7 @@ import { isStopState } from '../../src/demo/messages/StopWriting.ts';
 import { isReasonState } from '../../src/demo/messages/TrySms.ts';
 import { SEATING_BOARDS } from '../../src/demo/seating/SeatingBoards.ts';
 import { RUN_BOARDS, RUN_READ_BOARDS } from '../../src/demo/runView/runViewModel.ts';
+import { LOCK_CARD_BOARDS } from '../../src/demo/night/lockCard.ts';
 import { NIGHT_BOARDS } from '../../src/demo/night/nightModel.ts';
 import { STATION_BOARDS } from '../../src/demo/station/StationBoards.ts';
 import { MOVED_BOARDS, TEAM_BOARDS } from '../../src/demo/team/TeamBoards.ts';
@@ -674,6 +675,21 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
         title: 'Notifications · failed',
         what: 'Could not be loaded, Try again',
         href: '/demo/settings/notifications?state=failed',
+      },
+      {
+        title: 'Notifications · Event day, opened (sc-66580)',
+        what: 'Its longer description names the run-of-show notification',
+        href: '/demo/settings/notifications?state=eventDay',
+      },
+      {
+        title: 'Notifications · Event day, opened, in French (sc-66580)',
+        what: 'The longest row, shown whole on an iPhone SE',
+        href: '/demo/settings/notifications?state=eventDay&lang=fr',
+      },
+      {
+        title: 'Notifications · Event day push off (sc-66580)',
+        what: 'No run-of-show card, this device’s own included',
+        href: '/demo/settings/notifications?state=eventDayPushOff',
       },
       {
         title: 'Personalisation',
@@ -2157,6 +2173,10 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
   {
     page: 'Run of show · the night (sc-3895) · phone, tablet portrait and landscape',
     boards: NIGHT_BOARDS.map(({ title, what, href }) => ({ title, what, href: href as Href })),
+  },
+  {
+    page: 'Run of show · the lock-screen card (sc-66580) · iPhone, iPad and Android, and Event day',
+    boards: LOCK_CARD_BOARDS.map(({ title, what, href }) => ({ title, what, href: href as Href })),
   },
   {
     page: 'Run of show · the run view (sc-1404) · phone, tablet portrait and landscape',

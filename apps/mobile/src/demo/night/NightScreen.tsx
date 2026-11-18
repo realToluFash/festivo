@@ -15,6 +15,16 @@ import { tokens } from '../../theme/tokens.ts';
 import { goBack } from '../DemoScreen.tsx';
 import { Glyph } from '../queue/QueueParts.tsx';
 import { RUN_EVENT } from '../runView/runViewModel.ts';
+import { RunCardView } from './LockScreenCard.tsx';
+import {
+  CW,
+  type HeldCards,
+  afterPress,
+  afterSend,
+  cardsOf,
+  heldAtStart,
+  systemAge,
+} from './lockCard.ts';
 import {
   type LaterRow,
   type Night,
@@ -53,17 +63,30 @@ export function NightRoute() {
     tracks?: string;
     locale?: string;
     as?: string;
+    track?: string;
   }>();
   const locale = params.locale ?? 'en-US';
 
   return (
     <NightBody
-      key={`${params.state ?? ''}|${params.tracks ?? ''}|${locale}|${params.as ?? ''}`}
-      first={nightAt(params.state, { oneTrack: params.tracks === 'one', as: params.as })}
+      key={`${params.state ?? ''}|${params.tracks ?? ''}|${locale}|${params.as ?? ''}|${params.track ?? ''}`}
+      first={opened(
+        nightAt(params.state, { oneTrack: params.tracks === 'one', as: params.as }),
+        params.track,
+      )}
       locale={locale}
     />
   );
 }
+
+/** Opened from a lock-screen card: on that card's track, where the night has it (sc-66580). */
+function opened(first: NightStart, track: string | undefined): NightStart {
+  return track != null && first.night.tracks.some((one) => one.id === track)
+    ? { ...first, trackId: track }
+    : first;
+}
+
+const CARD_NOTE = `The lock-screen card (sc-66580), as this device would show it: one per track pressed on, replaced at each press, with no signal needed. A tap on it picks its track here. Its words are ${CW.settled}.`;
 
 type Layout = 'phone' | 'tabletPortrait' | 'tabletLandscape';
 
@@ -82,6 +105,8 @@ function NightBody({ first, locale }: { first: NightStart; locale: string }) {
   const sheetShown = useModalOpen(kind !== 'tabletLandscape' && chosenRow != null);
   const rows = useRef(new Map<string, ViewInstance>());
   const [back, setBack] = useState<{ id: string } | null>(null);
+  const [held, setHeld] = useState<HeldCards>(() => heldAtStart(first.night));
+  const [pushOn, setPushOn] = useState(true);
 
   useEffect(() => {
     if (back == null) return;
@@ -95,6 +120,7 @@ function NightBody({ first, locale }: { first: NightStart; locale: string }) {
   useReadOut(night.said === '' ? null : night.said, { quietAtMount: true, answer: night.clock });
 
   const press = (next: Night) => {
+    setHeld(afterPress(held, track?.id ?? '', night, next));
     setNight(next);
     setChosen(null);
     setMoving(false);
@@ -180,7 +206,16 @@ function NightBody({ first, locale }: { first: NightStart; locale: string }) {
               })}
             </View>
           )}
-          {!first.loading && <Strip night={night} onTry={() => setNight(tryNow(night))} />}
+          {!first.loading && (
+            <Strip
+              night={night}
+              onTry={() => {
+                const sent = tryNow(night);
+                setHeld(afterSend(held, sent.clock));
+                setNight(sent);
+              }}
+            />
+          )}
           {!first.loading && !night.manage && (
             <View style={styles.viewOnly}>
               <View style={styles.pill}>
@@ -234,6 +269,35 @@ function NightBody({ first, locale }: { first: NightStart; locale: string }) {
               />
             )}
           </DemoOnly>
+          {night.manage && (
+            <DemoOnly title={CARD_NOTE}>
+              <View style={styles.lock}>
+                {!pushOn ? (
+                  <Text size={14} style={styles.onDarkSecondary}>
+                    {CW.noCard}
+                  </Text>
+                ) : (
+                  cardsOf(night, held, locale).map((card) => (
+                    <RunCardView
+                      key={card.trackId}
+                      card={card}
+                      age={systemAge(night.clock, held[card.trackId]?.asOf ?? night.clock)}
+                      onPress={(one) => {
+                        setTrackId(one.trackId);
+                        setMenuOpen(false);
+                        close();
+                      }}
+                    />
+                  ))
+                )}
+              </View>
+              <SecondaryButton
+                label={pushOn ? 'Turn Event day push off' : 'Turn Event day push on'}
+                onPress={() => setPushOn(!pushOn)}
+                testID="night.eventDayPush"
+              />
+            </DemoOnly>
+          )}
         </ScrollView>
         {kind === 'tabletLandscape' && chosenRow != null && (
           <View style={[styles.docked, { paddingBottom: insets.bottom }]}>
@@ -945,6 +1009,12 @@ const styles = StyleSheet.create({
   attention: { color: tokens.colorAttentionText },
   onDark: { color: tokens.colorInkOnDark },
   onDarkSecondary: { color: tokens.colorInkOnDarkSecondary },
+  lock: {
+    gap: tokens.spaceSm,
+    padding: tokens.spaceMd,
+    borderRadius: tokens.radiusCardLarge,
+    backgroundColor: tokens.colorDark,
+  },
   overOnDark: { color: tokens.colorAttentionOnDark },
   num: { fontVariant: ['tabular-nums'] },
   grow: { flex: 1, minWidth: 0 },
