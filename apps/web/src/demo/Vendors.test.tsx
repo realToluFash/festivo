@@ -66,6 +66,23 @@ describe('Settings › Vendors in A · Summary first (sc-82)', () => {
     );
   });
 
+  it(
+    'fits a phone’s window as the product does, and Members keeps its desk frame',
+    SLOW,
+    async () => {
+      await open('/demo/settings/vendors');
+
+      expect(document.querySelector('.today.desk')?.classList.contains('dp-fit')).toBe(true);
+      expect(screen.getByRole('button', { name: 'Menu' })).toBeTruthy();
+
+      cleanup();
+      await open('/demo/settings/members');
+
+      expect(document.querySelector('.today.desk')?.classList.contains('dp-fit')).toBe(false);
+      expect(screen.queryByRole('button', { name: 'Menu' })).toBeNull();
+    },
+  );
+
   it('keeps the old address, and its query, on the new one', SLOW, async () => {
     const router = await open('/demo/vendors?state=archived');
 
