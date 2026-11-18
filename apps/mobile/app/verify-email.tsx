@@ -27,6 +27,7 @@ import { dropRegistration, heldRegistration } from '../src/pendingRegistration.t
 import { timedOutRoute } from '../src/resumeSignUp.ts';
 import { rereadAccount, signOutHere } from '../src/signedIn.ts';
 import { CodeStep, type CodeStepStatus, NEXT_STEP_MS } from '../src/steps/CodeStep.tsx';
+import { signInOver } from '../src/steps/signInOver.ts';
 import { NavBar, StepScreen } from '../src/steps/StepScreen.tsx';
 import { useCodeCheck } from '../src/steps/useCodeCheck.ts';
 import { useCountdown } from '../src/steps/useCountdown.ts';
@@ -85,7 +86,9 @@ function SignUpCode() {
         const opening = await api.verificationOpening();
         if (live) opened(opening);
       } catch {
-        if (live) router.replace('/sign-in');
+        if (!live) return;
+        signInOver(router.canGoBack());
+        router.replace('/sign-in');
       }
     })();
 
