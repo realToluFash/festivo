@@ -311,7 +311,7 @@ export function variantSaveLabel(mode: VariantMode): string {
 
 export type VariantAsk =
   | { variantId: string; kind: 'ask' | 'fold' }
-  | { variantId: string; kind: 'refused'; lines: readonly Refusal[] };
+  | { variantId: string; kind: 'refused'; lines: readonly Refusal[]; said?: string };
 
 export function othersFor(dish: WithVariants, mode: VariantMode, variantId: string | null) {
   if (mode === 'addFirst') return [];

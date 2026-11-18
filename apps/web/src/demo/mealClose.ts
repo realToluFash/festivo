@@ -1,5 +1,7 @@
+import { excludedFromDefault } from './courseDefault.ts';
 import type { MealCourse, MealDish } from './mealStep.ts';
-import { type Close, type PicksDates, SAMPLE_PICKS, closeOf } from './picksClose.ts';
+import type { Diet } from './menuLibrary.ts';
+import { type Close, type PicksDates, PCW, SAMPLE_PICKS, closeOf } from './picksClose.ts';
 
 /** sc-3905 on the guest's meal step (board MealStep, page e32): a row per course with its close, Change while it is open, and a send refused per course. */
 export type CourseId = 'starter' | 'main' | 'dessert';
@@ -27,6 +29,16 @@ export const MSW = {
   refused: (course: string, date: string) =>
     `Picks for ${course} closed on ${date}, so your change was not saved.`,
   yourCourse: (course: string) => `[Your ${course.toLocaleLowerCase('en')}]`,
+  chooseBy: (course: string, date: string, dish: string) =>
+    `Choose your ${course.toLocaleLowerCase('en')} by ${date}. If you have not chosen by then, ${dish} will be waiting for you.`,
+  chooseByFor: (course: string, name: string, date: string, dish: string) =>
+    `Choose a ${course.toLocaleLowerCase('en')} for ${name} by ${date}. If none is chosen by then, ${dish} will be waiting for ${name}.`,
+  neverChose: (course: string) =>
+    `You had not chosen by then, so this is your ${course.toLocaleLowerCase('en')}.`,
+  neverChoseFor: (course: string, name: string) =>
+    `[${name} had not chosen by then, so this is ${name}’s ${course.toLocaleLowerCase('en')}.]`,
+  hostInTouch: (course: string, name: string | null) =>
+    `[${name ?? 'You'} hadn’t chosen a ${course.toLocaleLowerCase('en')} by then. The host will be in touch about it.]`,
 } as const;
 
 const dish = (
@@ -128,10 +140,63 @@ export function sendPicks(
   return { saved: next, refused, savedOther: kept.length > 0 };
 }
 
-/** The guest's sample: Starter on its own choose-by date, Friday, Oct 16 (sc-1362's, sample only); Main and Dessert on the reply-by date, Monday, Oct 19. */
+/** The guest's sample: Starter on its own choose-by date, Friday, Oct 16, with Canapé selection as its default (sc-1362); Main and Dessert on the reply-by date, Monday, Oct 19. */
 export const GUEST_PICKS: PicksDates = { ...SAMPLE_PICKS, own: { starter: '2026-10-16' } };
 
+export interface GuestDefault {
+  dishId: string;
+  suitable: readonly Diet[];
+}
+
+export const GUEST_DEFAULTS: Partial<Record<CourseId, GuestDefault>> = {
+  starter: { dishId: 'canape', suitable: [] },
+};
+
+/** Whose picks these are: a companion the reply covers is named in the line, never "you". */
+export interface Person {
+  name: string;
+  companion: boolean;
+  allergies: readonly string[];
+  diets: readonly (Diet | 'other')[];
+}
+
+export type RowLine = 'open' | 'chooseBy' | 'closed' | 'defaulted' | 'hostInTouch';
+
+export function rowLine(id: CourseId, answered: boolean, closed: boolean, person: Person): RowLine {
+  const given = GUEST_DEFAULTS[id];
+  const excluded = given == null || excludedFromDefault(person, given.suitable);
+  if (answered || given == null) return closed ? 'closed' : 'open';
+  if (!closed) return excluded ? 'open' : 'chooseBy';
+
+  return excluded ? 'hostInTouch' : 'defaulted';
+}
+
+/** The words for a row or a course screen's close: sc-3905's line, or sc-1362's when the course has a default. */
+export function closeWords(
+  line: RowLine,
+  course: string,
+  day: string,
+  dish: string,
+  person: Person,
+): string {
+  if (line !== 'chooseBy') return line === 'open' ? PCW.line(day) : PCW.lineClosed(day);
+
+  return person.companion
+    ? MSW.chooseByFor(course, person.name, day, dish)
+    : MSW.chooseBy(course, day, dish);
+}
+
+export function defaultedWords(line: RowLine, course: string, person: Person): string | null {
+  const name = person.companion ? person.name : null;
+  if (line === 'hostInTouch') return MSW.hostInTouch(course, name);
+  if (line !== 'defaulted') return null;
+
+  return name == null ? MSW.neverChose(course) : MSW.neverChoseFor(course, name);
+}
+
 export interface SummaryStart {
+  /** Chidi, with nothing recorded, unless a state says otherwise. */
+  person?: Person;
   today: string;
   saved: Saved;
   /** Changes made on the page and not sent yet. */

@@ -315,7 +315,7 @@ function OptionBlock({
   form: OptionForm;
   errors: ChoiceErrors['options'][number] | null;
   open: boolean;
-  binRefused: boolean;
+  binRefused: string | null;
   lang: Lang;
   onPatch: (next: Partial<OptionForm>) => void;
   onOpen: () => void;
@@ -325,7 +325,7 @@ function OptionBlock({
   const length = lengthOf(form.name);
   const title = form.name.trim() === '' ? CHW.option(at + 1) : form.name.trim();
   const contains = optionContains(form);
-  const pickedLine = binRefused ? CHW.optionPicked : (errors?.picked ?? null);
+  const pickedLine = binRefused ?? errors?.picked ?? null;
 
   return (
     <section className="vr-block ch-block" aria-labelledby={`${p}-title`}>
@@ -443,6 +443,7 @@ export function ChoiceFields({
   ways,
   openKey,
   binRefused,
+  binLine = CHW.optionPicked,
   optionsFull,
   lang,
   intro,
@@ -458,6 +459,7 @@ export function ChoiceFields({
   ways: number;
   openKey: string | null;
   binRefused: string | null;
+  binLine?: string | undefined;
   optionsFull: boolean;
   lang: Lang;
   intro: ReactNode;
@@ -517,7 +519,7 @@ export function ChoiceFields({
           form={one}
           errors={errors?.options[at] ?? null}
           open={openKey === one.key}
-          binRefused={binRefused === one.key}
+          binRefused={binRefused === one.key ? binLine : null}
           lang={lang}
           onPatch={(next) => onOption(one.key, next)}
           onOpen={() => onOpen(one.key)}

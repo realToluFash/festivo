@@ -90,6 +90,7 @@ import {
   type EvDish,
   CW,
   addedAllergenLine,
+  asksGuests,
   canAddCourse,
   canSame,
   checkCourse,
@@ -117,6 +118,27 @@ import {
   Said,
   type Told,
 } from './MenuCoursesParts.tsx';
+import {
+  type DefaultForm,
+  type Move,
+  DFW,
+  checkDefault,
+  defaultDates,
+  defaultForm,
+  defaultLine,
+  firstDefaultProblem,
+  hasDefaultProblem,
+  isDefaultDish,
+  isDefaultOption,
+  isDefaultVariant,
+  moveOf,
+  moveWords,
+  ownAfter,
+  savedDefault,
+  stillGiven,
+  suitableFor,
+} from './courseDefault.ts';
+import { DefaultFields, MoveDialog } from './MenuDefault.tsx';
 import {
   type DishForm,
   type Lang,
@@ -344,6 +366,9 @@ export type Open =
       full: boolean;
       /** Another open Menu page has added the 10th course: the server refuses this one. */
       serverFull: boolean;
+      /** sc-1362's default and choose-by date; null on Add course and on a course that asks guests nothing. */
+      pair: DefaultForm | null;
+      move: Move | null;
     }
   | {
       kind: 'addDish';
@@ -419,6 +444,16 @@ function dishErrors(form: DishForm, dish: EvDish | null, lang: Lang) {
   return { ...found, contains: null, clashes: [], currency: null, amount: null };
 }
 
+function pairOf(
+  course: EvCourse,
+  picks: CoursesStart['picks'],
+  over: Partial<DefaultForm> = {},
+): DefaultForm | null {
+  if (!asksGuests(course)) return null;
+
+  return { ...defaultForm(course, picks.own[course.id] ?? null), ...over };
+}
+
 function openOf(first: CoursesStart, lang: Lang): Open | null {
   const o = first.opened;
   if (o == null) return null;
@@ -431,18 +466,26 @@ function openOf(first: CoursesStart, lang: Lang): Open | null {
       failed: null,
       full: o.serverFull === true,
       serverFull: o.serverFull === true,
+      pair: null,
+      move: null,
     };
   if (o.kind === 'editCourse') {
     const course = first.courses.find((one) => one.id === o.courseId) as EvCourse;
+    const pair = pairOf(course, first.picks, o.pair);
+    const pressed = o.press === true;
+    const dates = defaultDates(first.picks, course.id);
+    const clean = pair == null || !hasDefaultProblem(checkDefault(pair, course, dates, lang));
 
     return {
       kind: 'editCourse',
       courseId: course.id,
       form: { name: course.name, servedAt: course.servedAt ?? '' },
-      pressed: false,
+      pressed,
       failed: null,
       full: false,
       serverFull: false,
+      pair,
+      move: pressed && clean && pair != null ? moveOf(course, pair, dates) : null,
     };
   }
   if (o.kind === 'addDish')
@@ -520,6 +563,7 @@ function firstFocus(
   open: Open | null,
   courses: readonly EvCourse[],
   budget: boolean,
+  picks: CoursesStart['picks'],
 ): string | null {
   if (open?.kind === 'choice' && open.binRefused != null) return `ch-${open.binRefused}-bin`;
   if (open?.kind === 'choice' && open.optionsFull) return 'ch-add-option';
@@ -544,7 +588,19 @@ function firstFocus(
   if (open.kind === 'addDish' || open.kind === 'editDish')
     return firstProblem(checkDish(open.form, 'en', false));
 
-  return firstCourseProblem(checkCourse(open.form)) ?? (open.full ? 'mc-form-full' : null);
+  const course = courses.find((one) => one.id === open.courseId);
+  const pairProblem =
+    open.pair == null || course == null
+      ? null
+      : firstDefaultProblem(
+          checkDefault(open.pair, course, defaultDates(picks, course.id), 'en'),
+          open.pair,
+          course,
+        );
+
+  return (
+    firstCourseProblem(checkCourse(open.form)) ?? pairProblem ?? (open.full ? 'mc-form-full' : null)
+  );
 }
 
 function Courses({
@@ -567,7 +623,7 @@ function Courses({
   );
   const [dragging, setDragging] = useState<string | null>(null);
   const failing = useRef(first.failing);
-  const focusAfter = useRef<string | null>(firstFocus(open, first.courses, budget));
+  const focusAfter = useRef<string | null>(firstFocus(open, first.courses, budget, first.picks));
   const library = first.library ?? SAMPLE_LIBRARY;
   const [libraryFailed, setLibraryFailed] = useState(first.libraryFailed === true);
   const [libraryRetrying, setLibraryRetrying] = useState(false);
@@ -669,6 +725,8 @@ function Courses({
       failed: null,
       full: false,
       serverFull: false,
+      pair: null,
+      move: null,
     });
     focusAfter.current = 'mc-panel-title';
   }
@@ -684,6 +742,8 @@ function Courses({
       failed: null,
       full: false,
       serverFull: false,
+      pair: pairOf(course, picks),
+      move: null,
     });
     focusAfter.current = 'mc-panel-title';
   }
@@ -727,6 +787,16 @@ function Courses({
       focusAfter.current = problem;
       return;
     }
+    const course = courses.find((one) => one.id === open.courseId);
+    const dates = course == null ? null : defaultDates(picks, course.id);
+    if (open.pair != null && course != null && dates != null) {
+      const wrong = checkDefault(open.pair, course, dates, lang);
+      if (hasDefaultProblem(wrong)) {
+        setOpen({ ...open, pressed: true, failed: null });
+        focusAfter.current = firstDefaultProblem(wrong, open.pair, course);
+        return;
+      }
+    }
     const adding = open.kind === 'addCourse';
     if (open.kind === 'addCourse' && (open.serverFull || !canAddCourse(courses))) {
       setOpen({ ...open, pressed: true, failed: null, full: true });
@@ -756,9 +826,51 @@ function Courses({
       tellDone(CW.courseAdded(name, courses.length + 1, courses.length + 1));
       return;
     }
-    setCourses(courses.map((one) => (one.id === open.courseId ? { ...one, name, servedAt } : one)));
-    setOpen(null);
+    const move =
+      open.pair == null || course == null || dates == null
+        ? null
+        : moveOf(course, open.pair, dates);
+    if (move != null) {
+      setOpen({ ...open, pressed: true, failed: null, move });
+      return;
+    }
+    commitCourse(open, false);
     tellDone(CW.saved(name));
+  }
+
+  /** Saves Edit course's fields; moving, the people given the old default keep the new one only if it meets their diet. */
+  function commitCourse(now: Extract<Open, { kind: 'addCourse' | 'editCourse' }>, moving: boolean) {
+    const name = now.form.name.trim();
+    const servedAt = servedTime(now.form.servedAt);
+    const course = courses.find((one) => one.id === now.courseId);
+    if (course == null) return;
+    const pick = now.pair == null ? (course.pick ?? null) : savedDefault(now.pair, course);
+    const given = course.given ?? [];
+    const kept = pick == null ? [] : moving ? stillGiven(given, suitableFor(course, pick)) : given;
+    setCourses(
+      courses.map((one) =>
+        one.id === course.id ? { ...one, name, servedAt, pick, given: kept } : one,
+      ),
+    );
+    if (now.pair != null)
+      setPicks((was) => ({
+        ...was,
+        own: ownAfter(was.own, course.id, pick == null ? null : (now.pair?.chooseBy ?? null)),
+      }));
+    setOpen(null);
+  }
+
+  function confirmMove() {
+    if (open?.kind !== 'editCourse' || open.move == null) return;
+    const { done } = moveWords(open.move, dayWords(open.move.on, lang));
+    commitCourse(open, true);
+    tellDone(done);
+  }
+
+  function cancelMove() {
+    if (open?.kind !== 'editCourse') return;
+    setOpen({ ...open, move: null });
+    focusAfter.current = 'mc-panel-save';
   }
 
   function changeCourse(id: string, change: (course: EvCourse) => EvCourse) {
@@ -925,9 +1037,22 @@ function Courses({
     tellDone(saved.said, saved.more);
   }
 
-  function pressRemoveVariant(dish: EvDish, variant: Variant) {
+  function pressRemoveVariant(course: EvCourse, dish: EvDish, variant: Variant) {
     settle();
     setSaid(null);
+    if (isDefaultVariant(course, dish.id, variant.id)) {
+      setAsking({
+        kind: 'variant',
+        dishId: dish.id,
+        ask: {
+          variantId: variant.id,
+          kind: 'refused',
+          lines: [],
+          said: DFW.refuseVariant(variant.name, course.name),
+        },
+      });
+      return;
+    }
     const outcome = removeOutcome(dish, variant, 'event');
     if (outcome.kind === 'refused') {
       setAsking({
@@ -1030,7 +1155,9 @@ function Courses({
     const was = wasChoice(openDish, now.choiceId);
     const option = now.form.options.find((one) => one.key === key);
     const saved = was?.options.find((one) => one.id === option?.id);
-    if (saved != null && optionPicked(saved)) {
+    const isDefault =
+      openCourse != null && saved != null && isDefaultOption(openCourse, now.dishId, saved.id);
+    if (saved != null && (isDefault || optionPicked(saved))) {
       setOpen({ ...now, binRefused: key, optionsFull: false });
       focusAfter.current = `ch-${key}-bin`;
       return;
@@ -1132,9 +1259,13 @@ function Courses({
     focusAfter.current = focus;
   }
 
-  function askRemove(dish: EvDish) {
+  function askRemove(course: EvCourse, dish: EvDish) {
     settle();
     setSaid(null);
+    if (isDefaultDish(course, dish.id)) {
+      setRefused({ kind: 'defaultDish', dishId: dish.id });
+      return;
+    }
     if (isPicked(dish)) {
       setRefused({ kind: 'dish', dishId: dish.id });
       return;
@@ -1299,14 +1430,14 @@ function Courses({
                   }}
                   onAddDish={() => openAddDish(course)}
                   onEditDish={(dish) => openEditDish(course, dish)}
-                  onAskRemove={(dish) => askRemove(dish)}
+                  onAskRemove={(dish) => askRemove(course, dish)}
                   onRemove={(dish) => remove(course, dish)}
                   variants={{
                     budget,
                     lit: open?.kind === 'variants' ? open.variantId : null,
                     onAdd: (dish) => pressAddVariant(course, dish),
                     onEdit: (dish, variant) => openEditVariant(course, dish, variant),
-                    onRemove: (dish, variant) => pressRemoveVariant(dish, variant),
+                    onRemove: (dish, variant) => pressRemoveVariant(course, dish, variant),
                     onKeep: (variant) => {
                       setAsking(null);
                       focusAfter.current = `mc-vremove-${variant.id}`;
@@ -1383,6 +1514,25 @@ function Courses({
                   onPatch={(next) =>
                     setOpen({ ...open, form: { ...open.form, ...next }, full: false })
                   }
+                />
+              )}
+              {open.kind === 'editCourse' && open.pair != null && openCourse != null && (
+                <DefaultFields
+                  course={openCourse}
+                  form={open.pair}
+                  dates={defaultDates(picks, openCourse.id)}
+                  errors={
+                    open.pressed
+                      ? checkDefault(
+                          open.pair,
+                          openCourse,
+                          defaultDates(picks, openCourse.id),
+                          lang,
+                        )
+                      : null
+                  }
+                  lang={lang}
+                  onPatch={(pair) => setOpen({ ...open, pair })}
                 />
               )}
               {open.kind === 'addDish' && openCourse != null && (
@@ -1476,6 +1626,7 @@ function Courses({
                   ways={variantsOf(openDish).length}
                   openKey={open.openKey}
                   binRefused={open.binRefused}
+                  binLine={binLineOf(open, openCourse)}
                   optionsFull={open.optionsFull}
                   lang={lang}
                   intro={
@@ -1544,8 +1695,20 @@ function Courses({
           </aside>
         )}
       </div>
+      {open?.kind === 'editCourse' && open.move != null && (
+        <MoveDialog move={open.move} lang={lang} onCancel={cancelMove} onMove={confirmMove} />
+      )}
     </>
   );
+}
+
+/** The bin on an option of the course's default says so; any other picked option keeps choices' own line. */
+function binLineOf(open: Extract<Open, { kind: 'choice' }>, course: EvCourse | null) {
+  const option = open.form.options.find((one) => one.key === open.binRefused);
+  if (course == null || option?.id == null || !isDefaultOption(course, open.dishId, option.id))
+    return undefined;
+
+  return DFW.refuseOption(option.name.trim(), course.name);
 }
 
 function panelTitle(open: Open, dish: EvDish | null): string {
@@ -1776,6 +1939,11 @@ function CourseCard({
               </span>
             </p>
           )}
+          {close != null && course.pick != null && picks.own[course.id] != null && (
+            <p className="mc-def-line">
+              {defaultLine(course, course.pick, picks.own[course.id] ?? '', close.closed, lang)}
+            </p>
+          )}
         </div>
         {manage && (
           <div className="lib-acts mc-acts" role="group" aria-label={CW.actionsFor(course.name)}>
@@ -1880,7 +2048,13 @@ function CourseCard({
               lang={lang}
               lit={litDish === dish.id}
               asking={asking?.kind === 'dish' && asking.dishId === dish.id}
-              refused={refused?.kind === 'dish' && refused.dishId === dish.id}
+              refused={
+                refused?.kind === 'dish' && refused.dishId === dish.id
+                  ? CW.dishPicked
+                  : refused?.kind === 'defaultDish' && refused.dishId === dish.id
+                    ? DFW.refuseDish(dish.name, course.name)
+                    : null
+              }
               onEdit={() => onEditDish(dish)}
               onAskRemove={() => onAskRemove(dish)}
               onKeep={() => onKeep(`mc-remove-${dish.id}`)}
@@ -2012,7 +2186,7 @@ function DishRow({
   lang: Lang;
   lit: boolean;
   asking: boolean;
-  refused: boolean;
+  refused: string | null;
   onEdit: () => void;
   onAskRemove: () => void;
   onKeep: () => void;
@@ -2126,12 +2300,12 @@ function DishRow({
           onConfirmRemove={(choice) => choices.onConfirmRemove(dish, choice)}
         />
       )}
-      {refused && (
+      {refused != null && (
         <p className="mc-refused" role="status">
           <span className="mc-ring is-warn" aria-hidden="true">
             !
           </span>
-          {CW.dishPicked}
+          {refused}
         </p>
       )}
       {asking && (

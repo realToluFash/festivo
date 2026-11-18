@@ -57,7 +57,7 @@ export function Said({ said }: { said: Told | null }) {
   );
 }
 
-function Wrong({ id, words }: { id: string; words: string }) {
+export function Wrong({ id, words }: { id: string; words: string }) {
   return (
     <p id={id} className="desk-error">
       <Glyph name="alert" size={15} weight={2.2} />
