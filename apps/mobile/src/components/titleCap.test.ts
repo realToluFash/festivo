@@ -3,7 +3,13 @@ import { join } from 'node:path';
 
 import { describe, expect, it } from 'vitest';
 
-import { capUnderTitle, titleSize } from '../layout/textSize.ts';
+import {
+  capUnderTitle,
+  reportTitle,
+  titleCapKey,
+  titleCapOn,
+  titleSize,
+} from '../layout/textSize.ts';
 import { PAGE_TITLE } from './topTitle.ts';
 
 const frame = readFileSync(join('src', 'components', 'AppFrame.tsx'), 'utf8');
@@ -51,5 +57,41 @@ describe('nothing under a page title draws larger than the title (sc-67338)', ()
 
   it('caps an event area under the title its body draws', () => {
     expect(event.match(/<BodyTitle\b/gu)).toHaveLength(2);
+  });
+});
+
+describe('the cap a page’s title reported holds for that page and text size only (sc-67338)', () => {
+  const guests = titleCapKey('phone|true|Guests', AX5);
+  const overview = titleCapKey('phone|true|Overview', AX5);
+
+  it('caps nothing reported until the title reports, and caps at the size it will draw meanwhile', () => {
+    expect(titleCapOn(null, guests, PAGE_TITLE, AX5)).toEqual({ cap: 43, drawn: false });
+  });
+
+  it('caps at the size the title reported, stepped down below its own', () => {
+    const drawn = reportTitle(null, guests, 30);
+
+    expect(titleCapOn(drawn, guests, PAGE_TITLE, AX5)).toEqual({ cap: 30, drawn: true });
+  });
+
+  it('drops a report made on another page, so an event’s Overview is not capped by Guests’ title', () => {
+    const drawn = reportTitle(null, guests, 30);
+
+    expect(titleCapOn(drawn, overview, PAGE_TITLE, AX5).drawn).toBe(false);
+  });
+
+  it('drops a report made at another text size', () => {
+    const drawn = reportTitle(null, guests, 30);
+    const larger = titleCapKey('phone|true|Guests', 3.5);
+
+    expect(titleCapOn(drawn, larger, PAGE_TITLE, 3.5)).toEqual({ cap: 43, drawn: false });
+  });
+
+  it('keeps the same report where the title says the same again, so nothing redraws', () => {
+    const drawn = reportTitle(null, guests, 30);
+
+    expect(reportTitle(drawn, guests, 30)).toBe(drawn);
+    expect(reportTitle(drawn, guests, 28)).toEqual({ key: guests, size: 28 });
+    expect(reportTitle(drawn, overview, 30)).toEqual({ key: overview, size: 30 });
   });
 });

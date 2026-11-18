@@ -1,4 +1,4 @@
-import { createContext, type ReactNode, useContext, useState } from 'react';
+import { type ReactNode, useState } from 'react';
 import { type StyleProp, StyleSheet, View, type ViewStyle } from 'react-native';
 
 import { type LayoutKind, useAccessibilitySizes, useLayout } from '../layout/useLayout.ts';
@@ -12,13 +12,10 @@ import { useMarkSide } from './markSide.ts';
 import { useReadOut } from './ReadOut.tsx';
 import { Screen, useFocusOnAnswer } from './Screen.tsx';
 import { Text, type TextHandle, TitleCap } from './Text.tsx';
-import { Title } from './Title.tsx';
+import { PageTitleDrawn, Title, usePageTitleDrawn } from './Title.tsx';
 
 const CARD_WIDTH = 520;
 const FORM_COLUMN_WIDTH = 600;
-
-/** Where the heading says the size its title was drawn at, for the frame to cap the words under it. */
-const TitleDrawn = createContext<((size: number) => void) | null>(null);
 
 /** The screen's title, sized for the layout; `landscapeOnly` keeps the intro to a landscape tablet. */
 export function AuthHeading({
@@ -45,7 +42,7 @@ export function AuthHeading({
   const doneMarkSide = useMarkSide(tokens.sizeHitPhoneHero);
   const { shown, read } = useFocusOnAnswer<TextHandle>(answer);
   const { read: introRead } = useFocusOnAnswer<TextHandle>(introAnswer);
-  const titleDrawn = useContext(TitleDrawn);
+  const titleDrawn = usePageTitleDrawn();
   const size = useStepTitleSize();
   const showIntro = intro != null && (!landscapeOnly || kind === 'tabletLandscape');
   useReadOut(introLive && showIntro && introAnswer === undefined ? intro : null, {
@@ -76,7 +73,7 @@ export function AuthHeading({
           size={size}
           style={stepTitle(size)}
           accessibilityRole="header"
-          onDrawn={titleDrawn ?? undefined}
+          onDrawn={titleDrawn}
         >
           {title}
         </Title>
@@ -133,7 +130,7 @@ export function AuthFrame({
   const phone = kind === 'phone';
 
   return (
-    <TitleDrawn.Provider value={setTitleDrawn}>
+    <PageTitleDrawn.Provider value={setTitleDrawn}>
       <TitleCap.Provider value={titleDrawn}>
         <Screen style={styles.page} contentStyle={CONTENT[kind]}>
           <View style={landscape ? styles.landscapeLeft : undefined}>
@@ -151,7 +148,7 @@ export function AuthFrame({
           </View>
         </Screen>
       </TitleCap.Provider>
-    </TitleDrawn.Provider>
+    </PageTitleDrawn.Provider>
   );
 }
 

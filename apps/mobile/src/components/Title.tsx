@@ -8,7 +8,16 @@ import {
 } from 'react-native';
 
 import { type WeightName } from '../theme/fonts.ts';
-import { fitWidest, titleSize, wordsIn, wordsSlot } from '../layout/textSize.ts';
+import {
+  type DrawnTitle,
+  fitWidest,
+  reportTitle,
+  titleCapKey,
+  titleCapOn,
+  titleSize,
+  wordsIn,
+  wordsSlot,
+} from '../layout/textSize.ts';
 import { Text, TitleCap, type TextProps } from './Text.tsx';
 
 type WholeWordsProps = TextProps & { size: number; children: string };
@@ -191,19 +200,14 @@ export function BodyTitle(props: WholeWordsProps & { room?: number | undefined }
 /** The size a page's title of `size` drew at, for the page `at`; until it says, the size it will draw at unless a word steps it down (sc-67338). */
 export function useTitleCap(at: string, size: number) {
   const { fontScale } = useWindowDimensions();
-  const key = `${at}|${fontScale}`;
-  const [drawn, setDrawn] = useState<{ key: string; size: number } | null>(null);
+  const key = titleCapKey(at, fontScale);
+  const [drawn, setDrawn] = useState<DrawnTitle | null>(null);
   const onDrawn = useCallback(
-    (next: number) =>
-      setDrawn((now) => (now?.key === key && now.size === next ? now : { key, size: next })),
+    (next: number) => setDrawn((now) => reportTitle(now, key, next)),
     [key],
   );
 
-  return {
-    cap: drawn?.key === key ? drawn.size : titleSize(size, fontScale),
-    drawn: drawn?.key === key,
-    onDrawn,
-  };
+  return { ...titleCapOn(drawn, key, size, fontScale), onDrawn };
 }
 
 const styles = StyleSheet.create({
