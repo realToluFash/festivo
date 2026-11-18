@@ -5,28 +5,28 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { Animated, StyleSheet, type TextInputInstance, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
-import { api } from '../src/api.ts';
-import { PrimaryButton, QuietButton } from '../src/components/Buttons.tsx';
-import { AboveKeyboardView, AnswerInView } from '../src/components/Screen.tsx';
-import { focusChecked, focusRefused, keysStayDown } from '../src/components/Field.tsx';
-import { ProviderButtons } from '../src/components/ProviderSignIn.tsx';
-import { Text } from '../src/components/Text.tsx';
-import { tap } from '../src/steps/haptics.ts';
-import { InsideField } from '../src/steps/InsideField.tsx';
-import { Heading, Says } from '../src/steps/Lines.tsx';
-import { useShake } from '../src/steps/shake.ts';
-import { InSheet, NavBar, StepScreen, useStepsInSheet } from '../src/steps/StepScreen.tsx';
-import { currentLocale, dateLocale } from '../src/i18n/index.ts';
-import { emailMessage, useFormChecks } from '../src/kit/formChecks.ts';
-import { tokens } from '../src/theme/tokens.ts';
-import { nextAfterSignIn } from '../src/challenge.ts';
+import { api } from '../../src/api.ts';
+import { PrimaryButton, QuietButton } from '../../src/components/Buttons.tsx';
+import { AboveKeyboardView, AnswerInView } from '../../src/components/Screen.tsx';
+import { focusChecked, focusRefused, keysStayDown } from '../../src/components/Field.tsx';
+import { ProviderButtons } from '../../src/components/ProviderSignIn.tsx';
+import { Text } from '../../src/components/Text.tsx';
+import { tap } from '../../src/steps/haptics.ts';
+import { InsideField } from '../../src/steps/InsideField.tsx';
+import { Heading, Says } from '../../src/steps/Lines.tsx';
+import { useShake } from '../../src/steps/shake.ts';
+import { InSheet, NavBar, StepScreen, useStepsInSheet } from '../../src/steps/StepScreen.tsx';
+import { currentLocale, dateLocale } from '../../src/i18n/index.ts';
+import { emailMessage, useFormChecks } from '../../src/kit/formChecks.ts';
+import { tokens } from '../../src/theme/tokens.ts';
+import { nextAfterSignIn } from '../../src/challenge.ts';
 import {
   type RuleRefusal,
   codeTimedOutFromParams,
   providerNames,
   refusalFromParams,
   ruleRefusal,
-} from '../src/kit/signInRules.ts';
+} from '../../src/kit/signInRules.ts';
 
 type Status =
   | { kind: 'ready' }

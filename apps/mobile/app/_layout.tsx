@@ -105,7 +105,7 @@ export default function RootLayout() {
             >
               {/* On an iPad, email sign-in opens as a sheet over welcome and rises with the keys (sc-29076). */}
               <Stack.Screen
-                name="sign-in"
+                name="(sign-in)"
                 options={({ navigation }) => ({
                   presentation: sheet && navigation.canGoBack() ? 'formSheet' : 'card',
                 })}
