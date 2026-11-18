@@ -614,8 +614,15 @@ interface Line {
 }
 
 const WEEK: readonly Line[] = [
-  { day: 'Tue, Nov 17', kind: 'event', time: '18:00', title: 'Gala Fundación Lucía' },
-  { day: 'Wed, Nov 18', kind: 'milestone', time: '12:00', title: 'Confirm the florist' },
+  { day: 'Thu, Nov 5', kind: 'event', time: '18:00', title: 'Adaeze & Tunde’s wedding' },
+  { day: 'Sat, Nov 7', kind: 'milestone', time: '15:00', title: 'Adaeze & Tunde’s wedding ends' },
+  { day: 'Fri, Nov 13', kind: 'event', time: '19:00', title: 'Ireti at 40' },
+  {
+    day: 'Sat, Nov 14',
+    kind: 'event',
+    time: '19:30 Europe/Madrid',
+    title: 'Gala Fundación Lucía',
+  },
   {
     day: 'Thu, Nov 19',
     kind: 'consultation',
@@ -709,7 +716,7 @@ function CalendarStrip({ start }: { start: ConsultationStart }) {
       <DemoOnly
         title={
           start.calendar.free
-            ? 'A Free organisation’s Calendar shows no consultations: the event and the milestone stay.'
+            ? 'A Free organisation’s Calendar shows no consultations: the events and the milestone stay.'
             : 'Month and Agenda are the product’s Calendar, which a demo may not change: this list shows the line its third kind adds. A cancelled consultation is not on it.'
         }
       >

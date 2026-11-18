@@ -668,19 +668,23 @@ interface Line {
   title: string;
 }
 
-const WEEK: readonly Line[] = [
-  { day: 17, kind: 'event', time: '18:00', title: 'Gala Fundación Lucía' },
-  { day: 18, kind: 'milestone', time: '12:00', title: 'Confirm the florist' },
+const NOVEMBER: readonly Line[] = [
+  { day: 5, kind: 'event', time: '18:00', title: 'Adaeze & Tunde’s wedding' },
+  { day: 7, kind: 'milestone', time: '15:00', title: 'Adaeze & Tunde’s wedding ends' },
+  { day: 13, kind: 'event', time: '19:00', title: 'Ireti at 40' },
+  { day: 14, kind: 'event', time: '19:30 Europe/Madrid', title: 'Gala Fundación Lucía' },
   { day: 19, kind: 'consultation', time: '14:30', title: CW.calendarLine('Lucía Fernández') },
   { day: 24, kind: 'consultation', time: '11:00', title: CW.calendarLine('Lucía Fernández') },
 ];
+
+const CELLS = Array.from({ length: 42 }, (_, index) => index - 5);
 
 const KIND_WORD = { event: 'Event', milestone: 'Milestone', consultation: CW.calendarWord };
 
 function CalendarStrip({ start }: { start: ConsultationStart }) {
   const [view, setView] = useState(start.calendar.view);
   const [show, setShow] = useState(start.calendar.show);
-  const lines = WEEK.filter(
+  const lines = NOVEMBER.filter(
     (line) =>
       (show === 'all' || line.kind === 'event') &&
       !(start.calendar.free && line.kind === 'consultation'),
@@ -717,17 +721,24 @@ function CalendarStrip({ start }: { start: ConsultationStart }) {
           </label>
         </div>
         {view === 'month' ? (
-          <div className="con-week" role="grid" aria-label="Week of Monday, Nov 16">
-            {[16, 17, 18, 19, 20, 21, 22].map((day, index) => (
-              <div key={day} className="con-week-day" role="gridcell">
-                <p className={day === 18 ? 'con-week-num is-today' : 'con-week-num'}>
-                  <span className="con-week-name">{DAYS[index]}</span> {day}
-                </p>
-                {lines
-                  .filter((line) => line.day === day)
-                  .map((line) => (
-                    <CalendarLine key={line.title + line.day} line={line} mark />
-                  ))}
+          <div className="con-week" role="grid" aria-label="November 2026">
+            {DAYS.map((name) => (
+              <div key={name} className="con-week-name" role="columnheader">
+                {name}
+              </div>
+            ))}
+            {CELLS.map((day, index) => (
+              <div key={index} className="con-week-day" role="gridcell">
+                {day >= 1 && day <= 30 && (
+                  <>
+                    <p className={day === 18 ? 'con-week-num is-today' : 'con-week-num'}>{day}</p>
+                    {lines
+                      .filter((line) => line.day === day)
+                      .map((line) => (
+                        <CalendarLine key={line.title + line.day} line={line} mark />
+                      ))}
+                  </>
+                )}
               </div>
             ))}
           </div>
@@ -735,7 +746,7 @@ function CalendarStrip({ start }: { start: ConsultationStart }) {
           <ul className="desk-rows con-agenda">
             {lines.map((line) => (
               <li key={line.title + line.day} className="con-agenda-day">
-                <p className="con-agenda-date">{`${DAYS[(line.day - 16) % 7]}, Nov ${line.day}`}</p>
+                <p className="con-agenda-date">{`${DAYS[(line.day + 5) % 7]}, Nov ${line.day}`}</p>
                 <CalendarLine line={line} />
               </li>
             ))}
@@ -743,7 +754,7 @@ function CalendarStrip({ start }: { start: ConsultationStart }) {
         )}
         <p className="desk-note con-demo-only">
           {start.calendar.free
-            ? 'A Free organisation’s Calendar shows no consultations: the event and the milestone stay.'
+            ? 'A Free organisation’s Calendar shows no consultations: the events and the milestone stay.'
             : 'Month and Agenda are the product’s Calendar, which a demo may not change: this strip shows the line its third kind adds. A cancelled consultation is not on it.'}
         </p>
       </div>
@@ -866,7 +877,7 @@ function WhatsInTheFeed() {
           </ul>
           <h2 className="con-feed-title">Never in it</h2>
           <ul className="con-feed is-never">
-            {['Guest names', 'Contact details', 'Dietary notes', 'Money'].map((line) => (
+            {['Guest names', 'Contact details', 'Dietary notes', 'Amounts of money'].map((line) => (
               <li key={line}>
                 <Glyph name="slash" size={15} weight={2.4} />
                 {line}
