@@ -318,6 +318,7 @@ export function SettingsSignOut({
         kind="secondary"
         glyph="signOut"
         height={height}
+        grows
         onPress={onSignOut}
         testID="settings.signOut"
       />

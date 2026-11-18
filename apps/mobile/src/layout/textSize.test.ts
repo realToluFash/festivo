@@ -7,7 +7,10 @@ import {
   capInDisc,
   capUnderTitle,
   drawnLine,
+  besideGlyph,
   fitWidest,
+  grownPad,
+  LABEL_LINE,
   frameTitleSize,
   nameLines,
   paddingToCentre,
@@ -152,6 +155,38 @@ describe('fitWidest', () => {
 
   it('never steps below the default size', () => {
     expect(fitWidest(12, 25.7, 400, 118)).toBe(12);
+  });
+});
+
+describe('besideGlyph, Sign out at the foot of Settings (sc-66900)', () => {
+  // The iPhone 17 Pro's page, 402 less 20 a side, less the pill's 20 and 1.5 ring a side and the 8 beside the glyph.
+  const inside = 362 - 2 * (20 + 1.5) - 8;
+  const glyph = 18 / 16;
+
+  it('keeps the label at 16 at the default size', () => {
+    expect(besideGlyph(16, 16, 40, glyph, inside)).toBe(16);
+  });
+
+  it('keeps Sign at its full size, about 50, at the twelfth step', () => {
+    expect(besideGlyph(16, 49.92, 100, glyph, inside)).toBeCloseTo(49.92, 2);
+  });
+
+  it('steps déconnecter down to 44, so it fits whole beside the glyph, at the twelfth step', () => {
+    expect(besideGlyph(16, 49.92, 290, glyph, inside)).toBe(44);
+  });
+
+  it('never draws the label under the default size', () => {
+    expect(besideGlyph(16, 49.92, 2000, glyph, inside)).toBe(16);
+  });
+});
+
+describe('grownPad, the room above and below Sign out’s words (sc-66900)', () => {
+  it('keeps main’s 44 on a tablet on its side at the default size', () => {
+    expect(2 * grownPad(44, 15, 1.5) + 2 * 1.5 + 15 * LABEL_LINE).toBeCloseTo(44, 5);
+  });
+
+  it('keeps 12 on a phone, where the words and 12 stay under 52', () => {
+    expect(grownPad(52, 16, 1.5)).toBe(12);
   });
 });
 

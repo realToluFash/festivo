@@ -41,7 +41,6 @@ export const TAB_LABEL_MOST = 20;
 export const TAB_HEIGHT = 54;
 export const TAB_GLYPH = 22;
 export const TAB_GLYPH_GAP = 3;
-export const LABEL_LINE = 1.22;
 
 /** One size for the bar's four labels: the widest word, measured at the selected weight and `12 × scale`, fits whole in its tab; never under 12, never over 20. */
 export function tabLabelSize(scale: number, widest: number, slot: number): number {
