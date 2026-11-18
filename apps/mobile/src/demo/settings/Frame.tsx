@@ -1,9 +1,11 @@
 import { type ReactNode, type Ref, useMemo, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ScrollView, StyleSheet, View, type ViewInstance } from 'react-native';
+import { ScrollView, StyleSheet, View, type ViewInstance, useWindowDimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { Text } from '../../components/Text.tsx';
+import { Text, TitleCap } from '../../components/Text.tsx';
+import { PAGE_TITLE } from '../../components/topTitle.ts';
+import { titleSize } from '../../layout/textSize.ts';
 import { tokens } from '../../theme/tokens.ts';
 import { useOrgOpener } from '../OrgSwitcher.tsx';
 import { OrgPill as ProductOrgPill } from '../../components/OrgPill.tsx';
@@ -64,9 +66,15 @@ export function Landscape({
 }) {
   const shell = useShell();
   const side = useSideFrame();
+  const { fontScale } = useWindowDimensions();
+  // The product's frame caps its Settings column under the page title's size, as everything under it (sc-67338).
   const columns = (
     <>
-      {column != null && <View style={styles.column}>{column}</View>}
+      {column != null && (
+        <View style={styles.column}>
+          <TitleCap.Provider value={titleSize(PAGE_TITLE, fontScale)}>{column}</TitleCap.Provider>
+        </View>
+      )}
       <View style={styles.grow}>{children}</View>
     </>
   );
