@@ -82,7 +82,6 @@ final class OrganisationExportTest extends ApiTestCase
         'staff' => ['id', 'event_id', 'full_name', 'mobile', 'email', 'member_id'],
     ];
 
-    /** Kept out of the archive by the AC (18 Nov 2026): feeds and screen links, mutes and preferences, change history, deliveries, the assistant's log, photos. */
     private const array NEVER = ['calendar_feeds', 'screen_links', 'event_mutes', 'notification_preferences', 'event_changes', 'notification_deliveries', 'assistant_interactions', 'covers', 'photos'];
 
     private User $owner;
@@ -147,7 +146,6 @@ final class OrganisationExportTest extends ApiTestCase
         self::assertStringContainsString('"Bísí Adéwálé",bisi@example.com,\'+2348031234567', $files['guests.csv']);
     }
 
-    /** The areas built since (sc-1468, seating, menus, run of show, staff) join the archive by the AC's "whichever merges second". */
     #[Test]
     public function theArchiveHoldsGuestNeedsAndGroupsSeatingTheMenuTheRunOfShowAndStaff(): void
     {
@@ -478,11 +476,7 @@ final class OrganisationExportTest extends ApiTestCase
         }
     }
 
-    /**
-     * @param array<string, string|int|bool|null> $values
-     *
-     * @return string the new row's id
-     */
+    /** @param array<string, string|int|bool|null> $values */
     private function row(string $table, array $values): string
     {
         $id = Uuid::v7()->toRfc4122();
