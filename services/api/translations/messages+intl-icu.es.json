@@ -165,10 +165,10 @@
     "run_of_show.card.title": "{event} · {place}",
     "run_of_show.card.main": "Principal",
     "run_of_show.card.on_day": "{place} · {day}",
-    "run_of_show.card.now": "{title} · desde {hour, plural, =1 {la} other {las}} {time}",
+    "run_of_show.card.now": "{title} · desde {hour, plural, =1 {la {time}} other {las {time}}}",
     "run_of_show.card.nothing_on": "No hay nada en curso",
-    "run_of_show.card.next": "A continuación: {title} · hacia {hour, plural, =1 {la} other {las}} {time}",
+    "run_of_show.card.next": "A continuación: {title} · hacia {hour, plural, =1 {la {time}} other {las {time}}}",
     "run_of_show.card.nothing_else": "No hay nada más previsto en {place}.",
-    "run_of_show.card.as_of": "Actualizado a {hour, plural, =1 {la} other {las}} {time}",
+    "run_of_show.card.as_of": "Actualizado a {hour, plural, =1 {la {time}} other {las {time}}}",
     "run_of_show.card.everything": "Eso es todo."
 }

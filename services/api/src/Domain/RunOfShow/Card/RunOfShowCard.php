@@ -33,15 +33,10 @@ use Psr\Clock\ClockInterface;
 use Symfony\Component\Uid\Uuid;
 use Symfony\Contracts\Translation\TranslatorInterface;
 
-/**
- * A track's Now and Next on the lock screen of each person who pressed there (sc-66580): a silent push alone, one per track on each device, worked out when it goes.
- * Event day, so neither the night hold nor a mute keeps it back, and Event day's Push switch turns it off.
- */
 final readonly class RunOfShowCard implements NotificationTypeInterface
 {
     public const string NAME = 'run_of_show.card';
 
-    /** A longer title keeps its first 39 and "…", so the time after it stays whole. */
     public const int TITLE_SHOWN = 40;
 
     /** The app writes its own card under the same key, so the server's replaces it: apns-collapse-id takes 64 bytes. */
@@ -55,7 +50,6 @@ final readonly class RunOfShowCard implements NotificationTypeInterface
     ) {
     }
 
-    /** The app works out the same from the night's track, `{eventId}|{day}|{place}`. */
     public static function key(string $eventId, string $day, ?string $place): string
     {
         return 'run-of-show:' . Str\slice(Hash\hash($eventId . '|' . $day . '|' . ($place ?? ''), Hash\Algorithm::Sha256), 0, self::KEY_HASH_LENGTH);
@@ -91,7 +85,6 @@ final readonly class RunOfShowCard implements NotificationTypeInterface
         return [NotificationChannel::Push];
     }
 
-    /** The night runs while paused too; a deleted event's card goes no more. */
     public function eventRule(): NotificationEventRule
     {
         return NotificationEventRule::ChangeNotice;
@@ -160,8 +153,6 @@ final readonly class RunOfShowCard implements NotificationTypeInterface
     }
 
     /**
-     * Now and Next as the night has them at this moment, then As of; or the end alone.
-     *
      * @param list<ScheduleItem> $track
      *
      * @return list<string>
@@ -207,7 +198,6 @@ final readonly class RunOfShowCard implements NotificationTypeInterface
         ];
     }
 
-    /** As the night's picker names it: the place, Main for none, and its weekday when it is not today's. */
     private function placeLabel(Event $event, string $day, ?string $place, string $locale): string
     {
         $named = $place ?? $this->trans('run_of_show.card.main', [], $locale);
@@ -224,7 +214,6 @@ final readonly class RunOfShowCard implements NotificationTypeInterface
         return $this->trans('run_of_show.card.on_day', ['place' => $named, 'day' => $weekday], $locale);
     }
 
-    /** Counted in graphemes, as the title field counts. */
     private static function shown(string $title): string
     {
         return Grapheme\length($title) > self::TITLE_SHOWN ? Grapheme\slice($title, 0, self::TITLE_SHOWN - 1) . '…' : $title;
@@ -244,21 +233,18 @@ final readonly class RunOfShowCard implements NotificationTypeInterface
         return $this->translator->trans($key, $parameters, 'messages', $locale);
     }
 
-    /** @param array<string, mixed> $payload */
-    private static function eventId(array $payload): string
+    private static function eventId(mixed $payload): string
     {
-        return Type\string()->coerce($payload['eventId'] ?? '');
+        return Type\shape(['eventId' => Type\string()], true)->coerce($payload)['eventId'];
     }
 
-    /** @param array<string, mixed> $payload */
-    private static function day(array $payload): string
+    private static function day(mixed $payload): string
     {
-        return Type\string()->coerce($payload['day'] ?? '');
+        return Type\shape(['day' => Type\string()], true)->coerce($payload)['day'];
     }
 
-    /** @param array<string, mixed> $payload */
-    private static function place(array $payload): ?string
+    private static function place(mixed $payload): ?string
     {
-        return Type\nullable(Type\string())->coerce($payload['place'] ?? null);
+        return Type\shape(['place' => Type\nullable(Type\string())], true)->coerce($payload)['place'];
     }
 }
