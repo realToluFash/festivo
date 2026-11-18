@@ -54,7 +54,7 @@ describe('leaving a two-factor sign-in that ran out (sc-67606)', () => {
   });
 
   it('opens it on its own when the sign-in began on a Sign in with nothing under it', () => {
-    holdChallenge(CHALLENGE, true);
+    holdChallenge(CHALLENGE, { alone: true });
 
     leaveTimedOutSignIn();
 
