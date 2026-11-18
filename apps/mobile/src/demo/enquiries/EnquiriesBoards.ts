@@ -120,7 +120,13 @@ const WAY_IN: readonly [WayInState, string, string][] = [
   ['eventsFailed', 'Events · did not load', 'The row above the broken Notice'],
   ['wayInOffline', 'Events · offline', 'The row with the offline band'],
   ['eventsSearch', 'Events · searching', '“lucia” searched, the row stays'],
-  ['wayInFr', 'Events · French', 'The row reads Demandes'],
+  [
+    'wayInFr',
+    'Events · French',
+    'The row reads Demandes; at 200 percent it grows, whole on one line',
+  ],
+  ['wayInEs', 'Events · Spanish', 'The row reads Consultas'],
+  ['wayInPt', 'Events · Portuguese', 'The row reads Pedidos'],
   ['enquiriesBack', 'Events · back from Enquiries', 'Opens Enquiries; Back lands on Events'],
 ];
 

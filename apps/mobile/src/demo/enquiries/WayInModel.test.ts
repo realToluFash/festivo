@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { listStateOf } from '../events/EventsModel.ts';
-import { WAY_IN_STATES, wayInOf, wayInStateOf } from './WayInModel.ts';
+import { WAY_IN_STATES, WAY_IN_WORDS, wayInOf, wayInStateOf } from './WayInModel.ts';
 
 describe('Events’ way into Enquiries', () => {
   it('shows the row on every state but Free', () => {
@@ -14,7 +14,11 @@ describe('Events’ way into Enquiries', () => {
     expect(wayInStateOf(undefined)).toBeNull();
   });
 
-  it('reads the French row', () => {
+  it('reads the row in each of the four languages, with l10n’s nouns', () => {
     expect(wayInOf('wayInFr').language).toBe('fr');
+    expect(wayInOf('wayInEs').language).toBe('es');
+    expect(wayInOf('wayInPt').language).toBe('pt');
+    expect(wayInOf('eventsEnterprise').language).toBe('en');
+    expect(Object.values(WAY_IN_WORDS)).toEqual(['Enquiries', 'Consultas', 'Demandes', 'Pedidos']);
   });
 });

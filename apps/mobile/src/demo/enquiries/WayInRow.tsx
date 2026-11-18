@@ -5,12 +5,16 @@ import { Pressable, StyleSheet } from 'react-native';
 import { Glyph } from '../../components/Glyph.tsx';
 import { Text } from '../../components/Text.tsx';
 import { tokens } from '../../theme/tokens.ts';
-import { WAY_IN_WORDS } from './WayInModel.ts';
+import { WAY_IN_WORDS, type WayIn } from './WayInModel.ts';
+
+function languageOf(language: string): WayIn['language'] {
+  return language === 'es' || language === 'fr' || language === 'pt' ? language : 'en';
+}
 
 /** Events' way into Enquiries, under its title block: one row, the whole of it the target. */
 export function WayInRow() {
   const { i18n } = useTranslation();
-  const words = WAY_IN_WORDS[i18n.language === 'fr' ? 'fr' : 'en'];
+  const words = WAY_IN_WORDS[languageOf(i18n.language)];
 
   return (
     <Pressable
