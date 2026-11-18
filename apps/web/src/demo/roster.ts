@@ -533,7 +533,7 @@ const STATES = {
   edit: () =>
     start({
       name: 'Edit, Kunle Ajayi',
-      note: 'Name, mobile, email, job and shift; no Station field.',
+      note: 'Name, mobile, email and job; no Station or Shift field.',
       panel: { kind: 'edit', id: 'kunle' },
       draft: draftOf(byId('kunle')),
     }),
