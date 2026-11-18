@@ -2018,3 +2018,20 @@ describe('a failing check keeps the keys up on a field Android holds focused, ov
     expect(android).not.toMatch(/\.blur\(|Keyboard\.isVisible\(/u);
   });
 });
+
+describe("a hidden measure reads a word at its own width, whatever the caller's style stretches (sc-37693)", () => {
+  const text = readFileSync(join('src', 'components', 'Title.tsx'), 'utf8');
+  const measured = /export function MeasuredWords\([\s\S]*?\n\}\n/u.exec(text)?.[0] ?? '';
+  const word = /\n {2}word: \{([^}]*)\}/u.exec(text)?.[1] ?? '';
+
+  it("ends every measured word's style with styles.word", () => {
+    expect(measured).toMatch(/<Text\b[^>]*\bstyle=\{\[[^\]]*,\s*styles\.word\s*\]\}/u);
+  });
+
+  it('keeps styles.word at its natural width', () => {
+    expect(
+      word,
+      'SectionHead stretches its title; measured stretched, a heading steps down to 18 at AX5.',
+    ).toMatch(/alignSelf: 'flex-start'/u);
+  });
+});
