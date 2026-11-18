@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ScrollView, StyleSheet, View } from 'react-native';
+import { RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { PortraitTop as ProductPortraitTop } from '../../components/ListTop.tsx';
@@ -90,23 +90,44 @@ function EnquiriesPortraitTop() {
 }
 
 /** Enquiries is pushed from Events, not a fifth tab (pm, sc-31226 #66918): the bar, capsule and sidebar keep four, with Events selected. */
-export function EnquiriesFrame({ band, children }: { band: ReactNode; children: ReactNode }) {
+export function EnquiriesFrame({
+  band,
+  overlay,
+  dock,
+  refresh,
+  children,
+}: {
+  band: ReactNode;
+  overlay?: ReactNode;
+  /** On an iPad on its side, a panel docked beside the page in place of a sheet over it. */
+  dock?: ReactNode;
+  refresh?: { refreshing: boolean; onRefresh: () => void } | undefined;
+  children: ReactNode;
+}) {
   const shell = useShell();
   const insets = useSafeAreaInsets();
   const say = useSay();
+  const pull =
+    refresh == null ? undefined : (
+      <RefreshControl refreshing={refresh.refreshing} onRefresh={refresh.onRefresh} />
+    );
 
   if (shell.layout === 'landscape')
     return (
-      <Landscape column={null} sidebar={<EnquiriesSidebar />}>
+      <Landscape column={null} sidebar={<EnquiriesSidebar />} overlay={overlay}>
         {band}
-        <ScrollView
-          style={styles.grow}
-          contentContainerStyle={[styles.pane, LIST_EDGES.tabletLandscape]}
-          keyboardShouldPersistTaps="handled"
-          showsVerticalScrollIndicator={false}
-        >
-          {children}
-        </ScrollView>
+        <View style={styles.docked}>
+          <ScrollView
+            style={styles.grow}
+            contentContainerStyle={[styles.pane, LIST_EDGES.tabletLandscape]}
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
+            refreshControl={pull}
+          >
+            {children}
+          </ScrollView>
+          {dock != null && <View style={styles.dock}>{dock}</View>}
+        </View>
       </Landscape>
     );
 
@@ -128,6 +149,7 @@ export function EnquiriesFrame({ band, children }: { band: ReactNode; children: 
           ]}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
+          refreshControl={pull}
         >
           {children}
         </ScrollView>
@@ -138,6 +160,7 @@ export function EnquiriesFrame({ band, children }: { band: ReactNode; children: 
           <TabBar tabs={TABS} bottom={foot} onTab={shell.onTab} at="Events" say={say} />
         </>
       )}
+      {overlay}
     </View>
   );
 }
@@ -148,4 +171,11 @@ const styles = StyleSheet.create({
   ends: { flexDirection: 'row', alignItems: 'center', gap: tokens.spaceSm },
   blocks: { gap: LIST_GAP },
   pane: { paddingBottom: tokens.space6xl * 2, gap: LIST_GAP },
+  docked: { flex: 1, flexDirection: 'row' },
+  dock: {
+    width: 380,
+    borderLeftWidth: 1,
+    borderLeftColor: tokens.colorBorder,
+    backgroundColor: tokens.colorCard,
+  },
 });

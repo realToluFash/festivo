@@ -1,5 +1,6 @@
-import { router, useLocalSearchParams } from 'expo-router';
-import { type ReactNode, useCallback, useMemo, useState } from 'react';
+import { type Href, router, useLocalSearchParams } from 'expo-router';
+import { type ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
+import { I18nextProvider, useTranslation } from 'react-i18next';
 import { StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -35,6 +36,8 @@ import {
   type ShellSection,
 } from '../../components/settingsShell.ts';
 import { PageToast } from '../../components/Summary.tsx';
+import { type WayInState, wayInOf, wayInStateOf } from '../enquiries/WayInModel.ts';
+import { WayInRow } from '../enquiries/WayInRow.tsx';
 
 const OWNER = lookingAs('owner');
 
@@ -112,6 +115,46 @@ export function EventsShell({
 /** /demo/events: the list, with ?state= for each of its states and ?deleted= after a delete. */
 export function EventsRoute() {
   const params = useLocalSearchParams<{ state?: string; deleted?: string; switcher?: string }>();
+  const wayIn = wayInStateOf(params.state);
+  if (wayIn != null) return <WayInRoute state={wayIn} />;
+
+  return <ListRoute params={params} />;
+}
+
+let openedEnquiries = false;
+
+function WayInRoute({ state }: { state: WayInState }) {
+  const { i18n } = useTranslation();
+  const way = wayInOf(state);
+  const words = useMemo(
+    () => i18n.cloneInstance({ lng: way.language, initAsync: false }),
+    [i18n, way.language],
+  );
+
+  useEffect(() => {
+    if (!way.opensEnquiries || openedEnquiries) return undefined;
+    const later = setTimeout(() => {
+      openedEnquiries = true;
+      router.push('/demo/enquiries' as Href);
+    }, 600);
+
+    return () => clearTimeout(later);
+  }, [way.opensEnquiries]);
+
+  return (
+    <I18nextProvider i18n={words}>
+      <EventsShell key={state}>
+        <EventsList state={way.list} deleted={null} wayIn={way.enterprise && <WayInRow />} />
+      </EventsShell>
+    </I18nextProvider>
+  );
+}
+
+function ListRoute({
+  params,
+}: {
+  params: { state?: string; deleted?: string; switcher?: string };
+}) {
   const state = listStateOf(params.state);
   const deleted = sampleEvent(params.deleted);
 

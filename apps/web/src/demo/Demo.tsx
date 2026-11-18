@@ -26,7 +26,9 @@ import { NewEventTop } from './NewEventTop.tsx';
 import { EVENTS_PAGES } from './events.ts';
 import { ENQUIRIES_PAGES } from './enquiries.ts';
 import { ENQUIRY_EVENT_PAGES } from './enquiryToEvent.ts';
-import { EnquiriesArea, EnquiriesList, EnquiryPage } from './Enquiries.tsx';
+import { EnquiriesArea, EnquiriesList } from './Enquiries.tsx';
+import { EditEnquiry, NewEnquiry } from './EnquiryForm.tsx';
+import { EnquiryPage } from './EnquiryPage.tsx';
 import { ACCOUNT_PAGES } from './account.ts';
 import { DATA_CONTROL_PAGES } from './dataControlPages.ts';
 import { GENERAL_PAGES } from './general.ts';
@@ -250,7 +252,9 @@ export default function Demo() {
       <Route path="events" element={<Events />} />
       <Route path="enquiries" element={<EnquiriesArea />}>
         <Route index element={<EnquiriesList />} />
+        <Route path="new" element={<NewEnquiry />} />
         <Route path=":id" element={<EnquiryPage />} />
+        <Route path=":id/edit" element={<EditEnquiry />} />
       </Route>
       <Route path="events/new" element={<NewEventTop />} />
       <Route path="events/:id" element={<EventPage />} />
@@ -360,7 +364,10 @@ function DemoHome({ from }: { from: string }) {
 
       <section className="demo-home-page" aria-labelledby="demo-page-31221">
         <h2 id="demo-page-31221">31221 · Enquiries</h2>
-        <h3>Enquiries and Search enquiries (sc-31226, sc-42749) · desktop, and 320 px</h3>
+        <h3>
+          Enquiries, New enquiry, an enquiry’s page and Search enquiries (sc-31226, sc-42749) ·
+          desktop, and 320 px
+        </h3>
         <BoardPages pages={ENQUIRIES_PAGES} />
         <h3>Consultations on an enquiry (sc-31228) · desktop, and 320 px</h3>
         <BoardPages pages={CONSULTATION_PAGES} />

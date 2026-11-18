@@ -1,0 +1,52 @@
+import type { ListState } from '../events/EventsModel.ts';
+
+export const WAY_IN_STATES = [
+  'eventsEnterprise',
+  'eventsFree',
+  'eventsFirstRun',
+  'eventsLoading',
+  'eventsFailed',
+  'wayInOffline',
+  'eventsSearch',
+  'wayInFr',
+  'enquiriesBack',
+] as const;
+export type WayInState = (typeof WAY_IN_STATES)[number];
+
+export function wayInStateOf(value: string | undefined | null): WayInState | null {
+  return WAY_IN_STATES.find((state) => state === value) ?? null;
+}
+
+export interface WayIn {
+  list: ListState | null;
+  enterprise: boolean;
+  language: 'en' | 'fr';
+  opensEnquiries: boolean;
+}
+
+const LIST_OF: Record<WayInState, ListState | null> = {
+  eventsEnterprise: null,
+  eventsFree: null,
+  eventsFirstRun: 'first',
+  eventsLoading: 'loading',
+  eventsFailed: 'failed',
+  wayInOffline: 'offline',
+  eventsSearch: 'search',
+  wayInFr: null,
+  enquiriesBack: null,
+};
+
+/** Every way-in state is on Enterprise but Free, which shows Events as it is today. */
+export function wayInOf(state: WayInState): WayIn {
+  return {
+    list: LIST_OF[state],
+    enterprise: state !== 'eventsFree',
+    language: state === 'wayInFr' ? 'fr' : 'en',
+    opensEnquiries: state === 'enquiriesBack',
+  };
+}
+
+export const WAY_IN_WORDS: Record<WayIn['language'], string> = {
+  en: 'Enquiries',
+  fr: 'Demandes',
+};
