@@ -830,7 +830,7 @@ describe('a refused submit leaves the keyboard as it was, unless dropsKeysAfter 
     'app/complete-profile.tsx',
     'app/verify-email.tsx',
     'app/verify-phone.tsx',
-    'app/sign-in.tsx',
+    'app/(sign-in)/sign-in.tsx',
     'app/register.tsx',
     'app/forgot-password.tsx',
     'app/reset-password.tsx',
@@ -999,7 +999,7 @@ describe('a signed-out submit sends one request, and none with the keys down ope
   // Where each submit starts its request, and what its first return waits on: the request, and a 429 where one locks the button.
   const SIGNED_OUT = [
     [
-      'app/sign-in.tsx',
+      'app/(sign-in)/sign-in.tsx',
       /^\s*onSubmit\(/u,
       ["status.kind === 'signingIn'", "status.kind === 'rateLimited'"],
     ],
@@ -1969,7 +1969,7 @@ describe('a screen still reading says so in words (sc-23279)', () => {
 
 describe('every sign-in lands through nextAfterSignIn (sc-39703)', () => {
   it.each([
-    'app/sign-in.tsx',
+    'app/(sign-in)/sign-in.tsx',
     'app/reset-password.tsx',
     'src/components/ProviderSignIn.tsx',
     'src/steps/SignInSecondFactor.tsx',

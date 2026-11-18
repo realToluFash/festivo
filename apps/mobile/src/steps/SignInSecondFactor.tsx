@@ -32,9 +32,9 @@ export function SignInSecondFactor({ recovery = false }: { recovery?: boolean })
         router.replace(next);
       }}
       onExpired={leaveTimedOutSignIn}
-      onOtherWay={() => (recovery ? backToSignIn() : router.push('/sign-in-recovery'))}
+      onOtherWay={() => (recovery ? router.back() : router.push('/sign-in-recovery'))}
       onLostBoth={() => router.push('/lost-two-factor')}
-      onBack={backToSignIn}
+      onBack={recovery ? () => router.back() : backToSignIn}
     />
   );
 }
