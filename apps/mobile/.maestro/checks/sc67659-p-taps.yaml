@@ -1,4 +1,4 @@
-# sc-67659: one tap on Export opens the export sheet, one on + Add guest opens adding a guest, one on + New event opens a new event.
+# sc-67659: one tap on Export opens the export sheet.
 appId: host.exp.Exponent
 ---
 - setOrientation: ${ORIENT}
