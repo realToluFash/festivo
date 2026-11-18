@@ -1,0 +1,48 @@
+# On an iPad at the largest accessibility text size, Sign in in the sheet scrolls under its bar and Sign in draws over
+# neither field nor Forgot your password?, top and scrolled. sc-67886.
+#
+#   xcrun simctl ui booted content_size accessibility-extra-extra-extra-large
+#   node .qa/bin/qa-env.mjs maestro sc67886-ipad-sheet-text-size
+#
+# Set the size and turn the iPad to landscape first: the flow relaunches Expo Go, so the sheet shows at that size.
+appId: host.exp.Exponent
+---
+# Welcome reached by a link has nothing under Sign in, which then opens full screen: sign out to reach it.
+- runFlow: welcome-signed-out.yaml
+- tapOn:
+    id: 'welcome.email'
+- extendedWaitUntil:
+    visible:
+      id: 'signIn.email'
+    timeout: 20000
+- hideKeyboard
+- waitForAnimationToEnd:
+    timeout: 3000
+- assertVisible:
+    id: 'signIn.email'
+    above:
+      id: 'signIn.submit'
+- takeScreenshot: sc67886-ipad-sheet-top
+- scrollUntilVisible:
+    element:
+      id: 'signIn.forgot'
+    centerElement: true
+- assertVisible:
+    id: 'signIn.password'
+    above:
+      id: 'signIn.submit'
+- assertVisible:
+    id: 'signIn.forgot'
+    above:
+      id: 'signIn.submit'
+- takeScreenshot: sc67886-ipad-sheet-scrolled
+- tapOn:
+    id: 'signIn.password'
+- inputText: 'not-the-password'
+- waitForAnimationToEnd:
+    timeout: 3000
+- assertVisible:
+    id: 'signIn.password'
+    above:
+      id: 'signIn.submit'
+- takeScreenshot: sc67886-ipad-sheet-keys-up
