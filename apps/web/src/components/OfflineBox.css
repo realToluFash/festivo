@@ -30,6 +30,9 @@
 
 .ev-offline .desk-text {
   margin: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
 }
 
 /* An event's areas at a desk: the shell puts the box above the page's crumb row, as wide as an event page's --evWide, which is not set out here (sc-65646). */

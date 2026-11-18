@@ -91,7 +91,7 @@ function useMenuReady(eventId: string): { ready: number; courses: number } | nul
 
 let gone: string | null = null;
 
-/** An event its page found deleted or never there: the shell shows the organisation's sidebar instead of the event's (sc-1468). */
+/** An event its page found deleted or never there (sc-1468), or never loaded in this tab and opened offline (sc-65646): the shell shows the organisation's sidebar instead of the event's. */
 export function useGoneEvent(eventId: string, isGone: boolean): void {
   useEffect(() => {
     if (!isGone) return;
