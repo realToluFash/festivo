@@ -395,7 +395,7 @@ describe('Settings › Vendors in A · Summary first (sc-82)', () => {
 
   it('refuses a member inside Settings, with no Vendors in their list', SLOW, async () => {
     for (const path of ['/demo/settings/vendors?state=member', '/demo/settings/vendors?as=ana']) {
-      await open(path);
+      const router = await open(path);
 
       expect(within(main()).getByRole('alert').textContent).toContain(
         'You do not have access to this',
@@ -405,8 +405,11 @@ describe('Settings › Vendors in A · Summary first (sc-82)', () => {
       expect(within(main()).getByRole('alert').textContent).toContain(
         'Your account does not have permission for this page.',
       );
-      expect(within(main()).getByRole('button', { name: 'Back to the dashboard' })).toBeDefined();
       expect(within(main()).queryByRole('heading', { name: 'Vendors' })).toBeNull();
+
+      fireEvent.click(within(main()).getByRole('button', { name: 'Back to the dashboard' }));
+
+      await waitFor(() => expect(router.state.location.pathname).toBe('/demo/today'));
       cleanup();
     }
   });
