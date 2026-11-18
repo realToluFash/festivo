@@ -14,7 +14,7 @@ use Symfony\Component\Uid\Uuid;
 /** The push channel in the suite: keeps what would have gone to the member's devices. */
 final class RecordingPushSender implements ChannelSenderInterface
 {
-    /** @var list<array{delivery: string, recipient: Recipient, category: NotificationCategory, notification: RenderedNotification}> */
+    /** @var list<array{delivery: string, recipient: Recipient, category: NotificationCategory, notification: RenderedNotification, collapseKey: ?string}> */
     public array $sent = [];
 
     public function channel(): NotificationChannel
@@ -24,7 +24,7 @@ final class RecordingPushSender implements ChannelSenderInterface
 
     public function send(Uuid $deliveryId, Recipient $recipient, NotificationCategory $category, RenderedNotification $notification, ?string $collapseKey = null): ?string
     {
-        $this->sent[] = ['delivery' => $deliveryId->toRfc4122(), 'recipient' => $recipient, 'category' => $category, 'notification' => $notification];
+        $this->sent[] = ['delivery' => $deliveryId->toRfc4122(), 'recipient' => $recipient, 'category' => $category, 'notification' => $notification, 'collapseKey' => $collapseKey];
 
         return 'push-' . $deliveryId->toRfc4122();
     }

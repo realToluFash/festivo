@@ -6,6 +6,7 @@ namespace App\Tests\Functional;
 
 use App\Domain\Messaging\NotificationPreferenceSetter;
 use App\Domain\Organisation\OrganisationFounder;
+use App\Domain\RunOfShow\Card\RunOfShowCard;
 use App\Domain\RunOfShow\ScheduleEditor;
 use App\Domain\User\UserRegistrar;
 use App\Entity\AuditEntry;
@@ -381,6 +382,7 @@ final class SchedulePressTest extends ApiTestCase
             'place' => '/app/events/' . $this->eventId . '/schedule?track=2027-03-06%7CBallroom',
             'silent' => true,
             'category' => NotificationCategory::EventDay,
+            'collapseKey' => RunOfShowCard::key($this->eventId, '2027-03-06', 'Ballroom'),
         ]], $this->cards());
 
         self::mockTime(new DateTimeImmutable('2027-03-06T19:05:00Z'));
@@ -459,7 +461,7 @@ final class SchedulePressTest extends ApiTestCase
     /**
      * What the worker sends from the presses so far, each sent once.
      *
-     * @return list<array{to: string, title: string, lines: list<string>, place: ?string, silent: bool, category: NotificationCategory}>
+     * @return list<array{to: string, title: string, lines: list<string>, place: ?string, silent: bool, category: NotificationCategory, collapseKey: ?string}>
      */
     private function cards(): array
     {
@@ -473,6 +475,7 @@ final class SchedulePressTest extends ApiTestCase
             'place' => $push['notification']->place,
             'silent' => $push['notification']->silent,
             'category' => $push['category'],
+            'collapseKey' => $push['collapseKey'],
         ]);
         $pushes->sent = [];
 
