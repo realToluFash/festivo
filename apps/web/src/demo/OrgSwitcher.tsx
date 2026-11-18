@@ -30,6 +30,7 @@ import {
 import { OrgPill } from '../components/OrgPill.tsx';
 import { Switched as ProductSwitched } from '../components/Switched.tsx';
 import { ManagedBanner } from './managed.tsx';
+import { OutsideSwitcher } from './OutsideSwitcher.tsx';
 import { SAMPLE } from './rules.ts';
 import {
   BLUEBIRD,
@@ -79,6 +80,16 @@ function invitationsLine(count: number): string {
 
 /** The sidebar's organisation button, and the menu of places it drops (OrgSwitcher-B-Places-Web, page 29). Pages with no notice of their own say a switch in the toast. */
 export function OrgSwitcher({ tell, toast = false }: { tell: Tell; toast?: boolean }) {
+  const where = useWhere();
+
+  return where.outside.length > 0 ? (
+    <OutsideSwitcher tell={tell} toast={toast} />
+  ) : (
+    <PlacesSwitcher tell={tell} toast={toast} />
+  );
+}
+
+function PlacesSwitcher({ tell, toast }: { tell: Tell; toast: boolean }) {
   const { t } = useTranslation();
   const [params] = useSearchParams();
   const { pathname } = useLocation();
