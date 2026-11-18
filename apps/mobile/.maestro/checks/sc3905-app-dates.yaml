@@ -1,0 +1,25 @@
+# sc-3905: the app's All dates and Coming up for ${EVENT} show Picks close with no Open the menu link. Needs ${METRO_URL}.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/${EVENT}/dates
+- extendedWaitUntil:
+    visible:
+      id: 'timeline.allDates.page'
+    timeout: 90000
+- waitForAnimationToEnd
+- assertVisible: 'Picks close'
+- assertNotVisible: 'Open the menu.*'
+- takeScreenshot: alldates
+- openLink: ${METRO_URL}/--/events/${EVENT}
+- extendedWaitUntil:
+    visible:
+      id: 'events.page'
+    timeout: 90000
+- scrollUntilVisible:
+    element:
+      id: 'timeline.comingUp'
+    centerElement: true
+    timeout: 20000
+- waitForAnimationToEnd
+- takeScreenshot: comingup
+- assertNotVisible: 'Open the menu.*'
