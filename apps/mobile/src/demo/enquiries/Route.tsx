@@ -1,6 +1,8 @@
 import { useLocalSearchParams } from 'expo-router';
 
 import { EventsShell } from '../events/Route.tsx';
+import { Consultations } from './Consultations.tsx';
+import { consultationStateOf } from './ConsultationsModel.ts';
 import { EnquiriesList } from './EnquiriesList.tsx';
 import { enquiryStateOf } from './EnquiriesModel.ts';
 import { EnquiryPage } from './EnquiryPage.tsx';
@@ -24,6 +26,18 @@ export function EnquiryRoute() {
   return (
     <EventsShell>
       <EnquiryPage id={params.id} />
+    </EventsShell>
+  );
+}
+
+/** /demo/consultations (sc-31228): an enquiry's Consultations, with ?state= for each state the board names. */
+export function ConsultationsRoute() {
+  const params = useLocalSearchParams<{ state?: string }>();
+  const state = consultationStateOf(params.state);
+
+  return (
+    <EventsShell key={state}>
+      <Consultations state={state} />
     </EventsShell>
   );
 }
