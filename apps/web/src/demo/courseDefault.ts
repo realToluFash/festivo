@@ -4,7 +4,6 @@ import { type Choice, choicesOf, dishHidden } from './dishChoices.ts';
 import { type PicksDates, dayWords } from './picksClose.ts';
 import type { EvCourse, EvDish } from './menuCourses.ts';
 
-/** sc-1362's default and choose-by date on a course that asks guests something (board Menu, page e32): set together or not at all. */
 export interface CourseDefault {
   dishId: string;
   variantId: string | null;
