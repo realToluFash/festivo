@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { signOutTextSize } from './signOutSizeRules.ts';
+import { SIGN_OUT_TEXT_COLUMN, signOutRoom, signOutTextSize } from './signOutSizeRules.ts';
 
 // The iPhone 17 Pro's page is 402 less 20 to each side.
 const ROOM = 362;
@@ -20,5 +20,23 @@ describe('signOutTextSize', () => {
 
   it('never draws the label under the default size', () => {
     expect(signOutTextSize(3.12, 2000, ROOM)).toBe(16);
+  });
+});
+
+describe('signOutRoom', () => {
+  it('gives the phone its page less 20 to each side', () => {
+    expect(signOutRoom('phone', 402)).toBe(ROOM);
+  });
+
+  it('gives an upright iPad the left of main’s two columns', () => {
+    expect(signOutRoom('portrait', 820)).toBe(366);
+  });
+
+  it('gives an iPad on its side main’s list column', () => {
+    expect(signOutRoom('landscape', 1180)).toBe(329);
+  });
+
+  it('keeps the label at 15 in that column at the default size', () => {
+    expect(signOutTextSize(1, 30, signOutRoom('landscape', 1180), SIGN_OUT_TEXT_COLUMN)).toBe(15);
   });
 });

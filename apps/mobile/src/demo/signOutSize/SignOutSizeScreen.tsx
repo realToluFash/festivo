@@ -1,11 +1,25 @@
 import { router } from 'expo-router';
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Pressable, ScrollView, StyleSheet, View, useWindowDimensions } from 'react-native';
+import {
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  View,
+  useWindowDimensions,
+  type ScrollViewInstance,
+} from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Glyph } from '../../components/Glyph.tsx';
 import { Text } from '../../components/Text.tsx';
+import {
+  PHONE_TAB_BAR,
+  TABS,
+  TabBar,
+  TabBarFade,
+  tabBarFoot,
+} from '../../components/TodayCover.tsx';
 import { MeasuredWords } from '../../components/Title.tsx';
 import { useShellLayout } from '../../components/settingsShell.ts';
 import { wordsIn } from '../../layout/textSize.ts';
@@ -26,6 +40,8 @@ import {
   SIGN_OUT_RING,
   SIGN_OUT_SIDE,
   SIGN_OUT_TEXT,
+  SIGN_OUT_TEXT_COLUMN,
+  signOutRoom,
   signOutTextSize,
 } from './signOutSizeRules.ts';
 
@@ -34,15 +50,14 @@ export interface SignOutSizeStart {
   language: HeaderLanguage;
 }
 
-const PAGE_SIDE = tokens.spaceXxl;
-const TABLET_COLUMN = 540;
-
-/** Settings' foot at a text size and language the board chooses: Sign out grows to hold its words, each word whole. */
+/** Settings' foot at a text size and language the board chooses: Sign out grows to hold its words, each word whole. On a phone it sits at the foot, above the tab bar, as Settings scrolled to its end. */
 export function SignOutSizeScreen({ start }: { start: SignOutSizeStart }) {
   const { i18n } = useTranslation();
   const insets = useSafeAreaInsets();
   const { width: windowWidth, fontScale } = useWindowDimensions();
-  const tablet = useShellLayout() !== 'phone';
+  const layout = useShellLayout();
+  const phone = layout === 'phone';
+  const scroll = useRef<ScrollViewInstance>(null);
   const [size, setSize] = useState(start.size);
   const [language, setLanguage] = useState(start.language);
   const words = useMemo(
@@ -50,65 +65,90 @@ export function SignOutSizeScreen({ start }: { start: SignOutSizeStart }) {
     [i18n, language],
   );
   const t = words.t.bind(words);
-  const room = Math.min(windowWidth - 2 * PAGE_SIDE, tablet ? TABLET_COLUMN : Infinity);
+  const room = signOutRoom(layout, windowWidth);
+  const foot = tabBarFoot(insets.bottom);
 
   return (
-    <ScrollView
-      style={styles.page}
-      contentContainerStyle={[
-        styles.body,
-        {
-          paddingTop: insets.top + tokens.space3xl,
-          paddingBottom: insets.bottom + tokens.space5xl,
-        },
-      ]}
-    >
-      <View style={{ width: room }}>
-        <DemoSignOut
-          scale={scaleFor(size, fontScale)}
-          label={t('settings.signOut')}
-          room={room}
-          onPress={() => router.replace('/demo/welcome')}
-        />
-        <LegalLinks style={styles.legal} />
-      </View>
-      <View style={{ width: room }}>
-        <DemoOnly title="Stand-ins for the phone’s own text size and language. Sign out is drawn at the size chosen; Terms and Privacy under it at this phone’s size. One tap on Sign out signs out, to Welcome. No string is added.">
-          <Choices
-            heading="Text size"
-            options={HEADER_SIZES}
-            chosen={size}
-            onChoose={setSize}
-            id="size"
-            prefix="demo.signOut"
+    <View style={styles.page}>
+      <ScrollView
+        ref={scroll}
+        style={styles.page}
+        contentContainerStyle={[
+          styles.body,
+          {
+            paddingTop: insets.top + tokens.space3xl,
+            paddingBottom: phone
+              ? foot + PHONE_TAB_BAR + tokens.space6xl
+              : insets.bottom + tokens.space6xl,
+          },
+        ]}
+        onContentSizeChange={() => scroll.current?.scrollToEnd({ animated: false })}
+      >
+        <View style={{ width: room }}>
+          <DemoOnly title="Stand-ins for the phone’s own text size and language. Sign out is drawn at the size chosen and as wide as main gives it: the phone’s page, the left of the two upright columns on an iPad, the list column on its side. Terms, Privacy and the tab bar at this phone’s size. One tap on Sign out signs out, to Welcome. No string is added.">
+            <Choices
+              heading="Text size"
+              options={HEADER_SIZES}
+              chosen={size}
+              onChoose={setSize}
+              id="size"
+              prefix="demo.signOut"
+            />
+            <Choices
+              heading="Language"
+              options={HEADER_LANGUAGES}
+              chosen={language}
+              onChoose={setLanguage}
+              id="language"
+              prefix="demo.signOut"
+            />
+          </DemoOnly>
+        </View>
+        <View style={{ width: room }}>
+          <DemoSignOut
+            scale={scaleFor(size, fontScale)}
+            text={layout === 'landscape' ? SIGN_OUT_TEXT_COLUMN : SIGN_OUT_TEXT}
+            least={layout === 'landscape' ? tokens.sizeHit : tokens.sizeHitPhoneHero}
+            label={t('settings.signOut')}
+            room={room}
+            onPress={() => router.replace('/demo/welcome')}
           />
-          <Choices
-            heading="Language"
-            options={HEADER_LANGUAGES}
-            chosen={language}
-            onChoose={setLanguage}
-            id="language"
-            prefix="demo.signOut"
+          <LegalLinks style={styles.legal} />
+        </View>
+      </ScrollView>
+      {phone && (
+        <>
+          <TabBarFade />
+          <TabBar
+            tabs={TABS}
+            bottom={foot}
+            onTab={() => undefined}
+            at="Settings"
+            say={(_, glyph) => t(`todayScreen.tab.${glyph}`)}
           />
-        </DemoOnly>
-      </View>
-    </ScrollView>
+        </>
+      )}
+    </View>
   );
 }
 
-/** Sign out as proposed: at least 52, a capsule as tall as its words, the glyph growing with them, a second line before a smaller label. */
+/** Sign out as proposed: at least main's height, a capsule as tall as its words, the glyph growing with them, a second line before a smaller label. */
 function DemoSignOut({
   scale,
+  text,
+  least,
   label,
   room,
   onPress,
 }: {
   scale: number;
+  text: number;
+  least: number;
   label: string;
   room: number;
   onPress: () => void;
 }) {
-  const full = SIGN_OUT_TEXT * scale;
+  const full = text * scale;
   const [measured, setMeasured] = useState<{ key: string; widths: Record<string, number> }>({
     key: '',
     widths: {},
@@ -119,7 +159,7 @@ function DemoSignOut({
   const widest = labelWords.every((word) => widths[word] != null)
     ? Math.max(...labelWords.map((word) => widths[word] ?? 0))
     : null;
-  const size = widest == null ? full : signOutTextSize(scale, widest, room);
+  const size = widest == null ? full : signOutTextSize(scale, widest, room, text);
 
   return (
     <>
@@ -138,14 +178,14 @@ function DemoSignOut({
       />
       <Pressable
         onPress={onPress}
-        style={({ pressed }) => [styles.pill, pressed && styles.pressed]}
+        style={({ pressed }) => [styles.pill, { minHeight: least }, pressed && styles.pressed]}
         accessibilityRole="button"
         accessibilityLabel={label}
         testID="settings.signOut"
       >
         <Glyph
           name="signOut"
-          size={(SIGN_OUT_GLYPH / SIGN_OUT_TEXT) * size}
+          size={(SIGN_OUT_GLYPH / text) * size}
           ink={tokens.colorInk}
           weight={2.1}
         />
@@ -168,7 +208,6 @@ const styles = StyleSheet.create({
   body: { alignItems: 'center', gap: tokens.space3xl },
   legal: { marginTop: tokens.spaceXs },
   pill: {
-    minHeight: tokens.sizeHitPhoneHero,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
