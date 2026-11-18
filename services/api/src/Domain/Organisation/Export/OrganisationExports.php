@@ -91,15 +91,14 @@ final readonly class OrganisationExports
         return $export;
     }
 
-    /** One try: the archive kept and its asker emailed, or the try counted and, after the last, Didn't finish. */
+    /** One try, unless another is under way: the archive kept and its asker emailed, or the try counted and, after the last, Didn't finish. */
     public function prepare(OrganisationExport $export, ?string $asked = null): void
     {
-        if (OrganisationExportStatus::Preparing !== $export->getStatus()) {
+        $now = $this->clock->now();
+
+        if (!$this->organisationExportRepository->claimTry($export, $now, $now->sub(new DateInterval(self::RETRY_AFTER)))) {
             return;
         }
-
-        $export->attempting($this->clock->now());
-        $this->entityManager->flush();
 
         try {
             $key = Str\format('organisation-exports/%s/%s.zip', $export->getOrganisation()->getId()->toRfc4122(), $export->getId()->toRfc4122());

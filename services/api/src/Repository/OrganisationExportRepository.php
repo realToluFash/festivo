@@ -59,6 +59,25 @@ final class OrganisationExportRepository extends ServiceEntityRepository
             ->getResult();
     }
 
+    /** Counts a try as this one's, once: false when the export is no longer preparing or another try started after `$triedBefore`. */
+    public function claimTry(OrganisationExport $export, DateTimeImmutable $at, DateTimeImmutable $triedBefore): bool
+    {
+        $claimed = $this->getEntityManager()->getConnection()->executeStatement(
+            <<<'SQL'
+                UPDATE organisation_exports SET attempts = attempts + 1, attempted_at = :at, updated_at = :at
+                WHERE id = :id AND status = :preparing AND (attempted_at IS NULL OR attempted_at <= :before)
+                SQL,
+            ['at' => $at, 'id' => $export->getId()->toRfc4122(), 'preparing' => OrganisationExportStatus::Preparing->value, 'before' => $triedBefore],
+            ['at' => Types::DATETIME_IMMUTABLE, 'before' => Types::DATETIME_IMMUTABLE],
+        );
+
+        if (1 === $claimed) {
+            $this->getEntityManager()->refresh($export);
+        }
+
+        return 1 === $claimed;
+    }
+
     /** Marks the download used, once: false when another request already did. */
     public function claimDownload(OrganisationExport $export, DateTimeImmutable $at): bool
     {

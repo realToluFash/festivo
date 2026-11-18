@@ -437,6 +437,22 @@ final class OrganisationExportTest extends ApiTestCase
     }
 
     #[Test]
+    public function aTryUnderWayIsNotStartedAgainSoTheOwnerIsEmailedOnce(): void
+    {
+        $export = new OrganisationExport($this->fresh(), $this->freshUser($this->owner), new DateTimeImmutable(self::ASKED_AT));
+        self::em()->persist($export);
+        self::em()->flush();
+        $first = self::em()->getConnection();
+        $first->executeStatement("UPDATE organisation_exports SET attempts = 1, attempted_at = '2026-10-17 13:20:00' WHERE id = ?", [$export->getId()->toRfc4122()]);
+
+        self::mockTime(new DateTimeImmutable('2026-10-17T13:24:00+00:00'));
+        self::service(OrganisationExports::class)->prepare($export);
+
+        self::assertSame([OrganisationExportStatus::Preparing, 1], [$this->latest()->getStatus(), $this->latest()->getAttempts()]);
+        self::assertSame([], Vec\filter(self::getMailerMessages(), static fn (object $message): bool => $message instanceof Email && Str\contains((string) $message->getSubject(), 'export')));
+    }
+
+    #[Test]
     public function anExportWhoseEmailFailsIsStillReadyAndTheNextOneIsPrepared(): void
     {
         $failing = new UserMailer(static fn () => throw new RuntimeException('The scheduler is down.'), self::service(TranslatorInterface::class), self::service(AccountLanguage::class), self::service(ClockInterface::class));
