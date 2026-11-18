@@ -7,6 +7,7 @@ import {
   RoleSheet as PersonSheet,
 } from '../../components/PeopleParts.tsx';
 import type { ScreenReaderTarget } from '../../components/screenReaderFocus.ts';
+import { Avatar } from '../../components/SettingsParts.tsx';
 import { Line } from '../../components/Summary.tsx';
 import { tokens } from '../../theme/tokens.ts';
 import {
@@ -24,6 +25,9 @@ import {
 } from './PeopleSample.ts';
 
 export function Face({ person, side }: { person: OnEvent; side: number }) {
+  if (person.initials == null && person.id.includes('@'))
+    return <Avatar initials="" side={side} tone={person.tone} glyph="mail" />;
+
   return <PersonFace initials={person.initials} tone={person.tone} side={side} />;
 }
 
