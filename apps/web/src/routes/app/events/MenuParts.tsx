@@ -7,6 +7,7 @@ import {
   type MenuCourse,
   type MenuDish,
   type MenuDishChoice,
+  type PicksClose,
   VARIANTS_PER_DISH_MAXIMUM,
 } from '@soirely/api-client';
 import {
@@ -26,6 +27,7 @@ import { useTranslation } from 'react-i18next';
 import { Switch } from '../../../components/GeneralParts.tsx';
 import { Glyph } from '../../../components/Glyph.tsx';
 import { HintButton } from '../../../components/HintButton.tsx';
+import { dateLocale } from '../../../i18n/index.ts';
 import { ActionGlyph, ContainsMark, DishFields } from '../menu/DishParts.tsx';
 import { Wrong } from '../menu/MenuFields.tsx';
 import {
@@ -44,9 +46,12 @@ import {
   type CourseForm,
   type CourseProblems,
   canSame,
+  closeDay,
+  closeTime,
   courseLength,
   isReady,
   onCourse,
+  zoneCity,
 } from './menuArea.ts';
 
 export interface VariantHandlers {
@@ -186,11 +191,38 @@ function Tags({ dish }: { dish: { name: string; diets: readonly DishDiet[] } }) 
   );
 }
 
+/** sc-3905: the course's close as a shape with a word, and beside it where the date comes from, for the host only. */
+function CloseLine({ close, timeZone }: { close: PicksClose; timeZone: string }) {
+  const { t } = useTranslation();
+  const locale = dateLocale();
+  const date = closeDay(close.at, timeZone, locale);
+  const by = { time: closeTime(close.at, timeZone, locale), zone: zoneCity(timeZone) };
+  const source =
+    close.source === 'replyBy'
+      ? close.closed
+        ? t('eventMenu.picksByReplyByClosed', by)
+        : t('eventMenu.picksByReplyBy', by)
+      : close.closed
+        ? t('eventMenu.picksByStartClosed', by)
+        : t('eventMenu.picksByStart', by);
+
+  return (
+    <p className="mc-close">
+      <span className={close.closed ? 'mc-close-pill is-closed' : 'mc-close-pill'}>
+        <Glyph name={close.closed ? 'lock' : 'clock'} size={14} weight={2.4} />
+        {close.closed ? t('eventMenu.picksClosed', { date }) : t('eventMenu.picksClose', { date })}
+      </span>
+      <span className="mc-close-source">{source}</span>
+    </p>
+  );
+}
+
 export function CourseCard({
   course,
   index,
   all,
   manage,
+  timeZone,
   lit,
   litDish,
   asking,
@@ -218,6 +250,7 @@ export function CourseCard({
   index: number;
   all: number;
   manage: boolean;
+  timeZone: string;
   lit: boolean;
   litDish: string | null;
   asking: 'course' | string | null;
@@ -254,6 +287,7 @@ export function CourseCard({
           : null;
   const sameOk = canSame(course);
   const name = course.name;
+  const close = course.picksClose;
   const line =
     course.servedAt == null
       ? t('eventMenu.courseOf', { n: index + 1, count: all })
@@ -303,6 +337,7 @@ export function CourseCard({
                 ? t('dishChoices.noFinishedDish')
                 : t('eventMenu.emptyTag')}
           </p>
+          {close != null && <CloseLine close={close} timeZone={timeZone} />}
         </div>
         {manage && (
           <div
@@ -351,6 +386,18 @@ export function CourseCard({
           </div>
         )}
       </div>
+      {close?.closed === true && (
+        <div className="mc-closed-line">
+          <p>
+            <Glyph name="lock" size={16} weight={2.2} />
+            <span>
+              {t('eventMenu.picksClosedCourse', {
+                course: name.toLocaleLowerCase(i18n.resolvedLanguage),
+              })}
+            </span>
+          </p>
+        </div>
+      )}
       <OwnItemsFacts course={course} />
       {refused === 'course' && <Refused words={t('eventMenu.coursePicked')} />}
       {asking === 'course' && (

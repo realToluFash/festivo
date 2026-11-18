@@ -5560,6 +5560,38 @@ describe("An event's timeline: Coming up and All dates (sc-3624)", () => {
     expect(within(page).getByRole('button', { name: 'Try again' })).toBeDefined();
     expect(within(page).queryByRole('listitem')).toBeNull();
   });
+
+  it('links a milestone to where it is acted on under its row, on Coming up and All dates, and only the action is a link (sc-3905)', async () => {
+    clockAt('2026-10-11T08:00:00Z');
+    signedIn();
+    const picks = {
+      ...milestone('2026-10-17T16:00:00+02:00', 'Picks close', 'automatic'),
+      area: 'menu',
+      action: { label: 'Open the menu', link: '/app/events/ev_1/menu' },
+    };
+    answering({
+      'GET /api/events/ev_1': () => json({ event: event() }),
+      'GET /api/events/ev_1/timeline': () =>
+        json({ ...MADRID, milestones: [picks, ...MADRID.milestones.slice(1)] }),
+    });
+    at('/app/events/ev_1');
+
+    const panel = await comingUp();
+    const link = await within(panel).findByRole('link', { name: 'Open the menu' });
+
+    expect(link.getAttribute('href')).toBe('/app/events/ev_1/menu');
+    expect(link.closest('li')!.textContent).toContain('Picks close');
+    expect(within(link.closest('li')!).getAllByRole('link')).toEqual([link]);
+
+    fireEvent.click(within(panel).getByRole('link', { name: 'All dates' }));
+    const page = (await screen.findByRole('heading', { level: 2, name: 'All dates' })).closest(
+      'section',
+    )!;
+    const onAllDates = await within(page).findByRole('link', { name: 'Open the menu' });
+
+    expect(onAllDates.getAttribute('href')).toBe('/app/events/ev_1/menu');
+    expect(within(page).getAllByRole('link', { name: 'Open the menu' })).toHaveLength(1);
+  });
 });
 
 describe('Someone who can only view an event is never told to change its dates or resume it (sc-50996)', () => {

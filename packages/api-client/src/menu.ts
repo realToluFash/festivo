@@ -106,6 +106,15 @@ export interface MenuCourse {
   ownItems: string[];
   /** The course's items, each name once, in the order it first appears: the dishes' then its own. */
   items: string[];
+  /** Null on a course that asks guests nothing, or that guests are not shown. */
+  picksClose: PicksClose | null;
+}
+
+/** When a course's picks close (sc-3905): the end of the event's Reply by, else its start, with the offset in the event's zone. */
+export interface PicksClose {
+  at: string;
+  source: 'replyBy' | 'start';
+  closed: boolean;
 }
 
 export interface EventMenu {
@@ -314,10 +323,37 @@ function asMenuCourse(raw: unknown): MenuCourse | null {
   const read = dishes.map(asMenuDish);
   const ownItems = names(raw.ownItems);
   const items = names(raw.items);
+  const picksClose = asPicksClose(raw.picksClose);
 
-  return read.every((dish) => dish != null) && ownItems != null && items != null
-    ? { id, name, servedAt, answer, skippable, dishes: read as MenuDish[], ownItems, items }
+  return read.every((dish) => dish != null) &&
+    ownItems != null &&
+    items != null &&
+    picksClose !== undefined
+    ? {
+        id,
+        name,
+        servedAt,
+        answer,
+        skippable,
+        dishes: read as MenuDish[],
+        ownItems,
+        items,
+        picksClose,
+      }
     : null;
+}
+
+/** A menu kept offline from before sc-3905 has no close, which reads as none. */
+function asPicksClose(raw: unknown): PicksClose | null | undefined {
+  if (raw == null) return null;
+  if (!isRecord(raw)) return undefined;
+  const { at, source, closed } = raw;
+
+  return typeof at === 'string' &&
+    (source === 'replyBy' || source === 'start') &&
+    typeof closed === 'boolean'
+    ? { at, source, closed }
+    : undefined;
 }
 
 export function asEventMenu(raw: unknown): EventMenu | null {
