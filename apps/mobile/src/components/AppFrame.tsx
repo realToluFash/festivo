@@ -1283,7 +1283,7 @@ function TabBar({ inEvent }: { inEvent: InsideEvent }) {
         opener={moreTab}
         testID="event.nav.moreSheet"
       >
-        <View style={[styles.moreSheet, { paddingBottom: Math.max(MORE_FOOT - insets.bottom, 0) }]}>
+        <View style={styles.moreSheet}>
           <View style={styles.moreHead}>
             <Text
               size={22}
@@ -1305,12 +1305,13 @@ function TabBar({ inEvent }: { inEvent: InsideEvent }) {
           </View>
           <View accessibilityRole="tablist">
             <RowList
+              gutter={MORE_ROW_GUTTER}
               items={MORE_PLACES.map((area) => {
                 const on = area === inEvent.area;
 
                 return {
                   key: area,
-                  inset: 40,
+                  inset: MORE_GLYPH + tokens.spaceLg,
                   selected: on,
                   row: (
                     <Row
@@ -1318,6 +1319,7 @@ function TabBar({ inEvent }: { inEvent: InsideEvent }) {
                       lead={<MoreGlyph name={AREA_GLYPH[area]} on={on} />}
                       opens
                       selected={on}
+                      gutter={MORE_ROW_GUTTER}
                       onPress={() => {
                         setMore(false);
                         inEvent.onArea(area);
@@ -1350,7 +1352,10 @@ function MoreGlyph({ name, on }: { name: GlyphName; on: boolean }) {
   );
 }
 
-const MORE_FOOT = 116;
+const MORE_GLYPH = 28;
+// The list sits 12 pt in, so the row pads the glyph's own margin less, putting the glyph on the title's 24 pt line.
+const MORE_ROW_GUTTER = tokens.spaceLg - (MORE_GLYPH - tokens.sizeMark) / 2;
+const MORE_TITLE_LINE = 22 * 1.2;
 
 /** The header band's pills in tablet portrait; inside an event they scroll sideways, so no area's name is cut. */
 function Pills({ entries, scrolls }: { entries: readonly NavEntry[]; scrolls: boolean }) {
@@ -1628,9 +1633,20 @@ const styles = StyleSheet.create({
     borderRadius: tokens.sizeHit / 2,
   },
   pillOn: { backgroundColor: tokens.colorCard, ...tokens.elevationNative.raised.ios },
-  moreSheet: { gap: tokens.spaceXl, paddingHorizontal: tokens.spaceXxl, paddingTop: 31 },
-  moreTitle: { letterSpacing: 22 * -0.015, lineHeight: 22 * 1.2 },
-  moreHead: { minHeight: tokens.sizeHit, flexDirection: 'row', alignItems: 'center' },
+  moreSheet: {
+    gap: tokens.spaceXl,
+    paddingHorizontal: tokens.spaceLg,
+    // The head is a tap tall and centres the title, so the title's top lands 24 pt down (sc-27948).
+    paddingTop: tokens.space3xl - (tokens.sizeHit - MORE_TITLE_LINE) / 2,
+    paddingBottom: tokens.space3xl,
+  },
+  moreTitle: { letterSpacing: 22 * -0.015, lineHeight: MORE_TITLE_LINE },
+  moreHead: {
+    minHeight: tokens.sizeHit,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: tokens.space3xl - tokens.spaceLg,
+  },
   moreClose: {
     width: tokens.sizeHit,
     height: tokens.sizeHit,
@@ -1640,7 +1656,12 @@ const styles = StyleSheet.create({
     backgroundColor: tokens.colorInset,
   },
   closePressed: { opacity: tokens.opacityPressed },
-  moreGlyph: { width: 28, height: 28, alignItems: 'center', justifyContent: 'center' },
+  moreGlyph: {
+    width: MORE_GLYPH,
+    height: MORE_GLYPH,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   pillsBar: { flexGrow: 0, borderRadius: 26, backgroundColor: tokens.colorInset },
   pillsInEvent: {
     minHeight: 52,
