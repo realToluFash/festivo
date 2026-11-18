@@ -1,6 +1,8 @@
-# sc-19104, iPad: each Settings section chosen shows beside the Settings list.
+# sc-19104, iPad on its side: each Settings section chosen shows beside the Settings list, its row lit there.
+# Upright, Settings is its own screen (sc-30412).
 appId: host.exp.Exponent
 ---
+- setOrientation: LANDSCAPE_LEFT
 - runFlow: ../open-settings.yaml
 - takeScreenshot: choose-section
 - scrollUntilVisible:
@@ -12,6 +14,7 @@ appId: host.exp.Exponent
 - waitForAnimationToEnd
 - assertVisible:
     id: 'settings.account'
+    selected: true
 - assertVisible:
     id: 'account.zone'
 - takeScreenshot: account-beside
@@ -23,7 +26,8 @@ appId: host.exp.Exponent
     id: 'settings.security'
 - waitForAnimationToEnd
 - assertVisible:
-    id: 'settings.account'
+    id: 'settings.security'
+    selected: true
 - assertVisible:
     id: 'security.password'
 - takeScreenshot: security-beside
@@ -35,7 +39,8 @@ appId: host.exp.Exponent
     id: 'settings.organisation'
 - waitForAnimationToEnd
 - assertVisible:
-    id: 'settings.account'
+    id: 'settings.organisation'
+    selected: true
 - assertVisible: '{{t:orgGeneral.details}}'
 - takeScreenshot: organisation-beside
 - scrollUntilVisible:
@@ -46,7 +51,8 @@ appId: host.exp.Exponent
     id: 'settings.members'
 - waitForAnimationToEnd
 - assertVisible:
-    id: 'settings.account'
+    id: 'settings.members'
+    selected: true
 - assertVisible:
     id: 'members.card'
 - takeScreenshot: members-beside
@@ -58,6 +64,8 @@ appId: host.exp.Exponent
     id: 'settings.signInRules'
 - waitForAnimationToEnd
 - assertVisible:
-    id: 'settings.account'
+    id: 'settings.signInRules'
+    selected: true
 - assertVisible: '{{t:signInRules.stand.whereTitle}}'
 - takeScreenshot: signInRules-beside
+- setOrientation: PORTRAIT
