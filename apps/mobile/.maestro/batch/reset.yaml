@@ -27,15 +27,15 @@ appId: host.exp.Exponent
     file: helper.js
     env:
       ASK: /reload
-- runFlow:
-    when:
-      platform: Android
-    file: not-responding.yaml
 # On Android a reload the app never took leaves the last check's screen mounted.
 - runFlow:
     when:
       true: ${!output.helper.reloaded}
     file: reopen.yaml
+- runFlow:
+    when:
+      platform: Android
+    file: not-responding.yaml
 # Home, whatever link Expo Go reopens the experience at. Four sign-in rule notices push the
 # card below the fold and the two-factor overdue screen replaces it, so either settles. sc-23252.
 # For an organisation that has events Home is Today, which loads them first. sc-30091.
