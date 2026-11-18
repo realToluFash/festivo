@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Tests\Functional;
 
 use App\Domain\Messaging\NotificationPreferenceSetter;
-use App\Domain\Messaging\NotificationWorker;
 use App\Domain\Organisation\OrganisationFounder;
 use App\Domain\RunOfShow\ScheduleEditor;
 use App\Domain\User\UserRegistrar;
@@ -464,10 +463,7 @@ final class SchedulePressTest extends ApiTestCase
      */
     private function cards(): array
     {
-        $worker = self::service(NotificationWorker::class);
-
-        while ($worker->step()) {
-        }
+        self::drainNotifications();
 
         $pushes = self::service(RecordingPushSender::class);
         $sent = Vec\map($pushes->sent, static fn (array $push): array => [
