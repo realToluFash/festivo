@@ -690,9 +690,10 @@ export default function MembersScreen() {
             pageKey={member?.id ?? ''}
             pageInFront={listBehind}
             back={{
-              label: t('membersScreen.backToList'),
+              label: t('membersScreen.title'),
               onPress: () => openPerson(null),
               testID: 'members.back',
+              pill: true,
             }}
             spacing={SPACING}
           />
