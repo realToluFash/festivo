@@ -1,10 +1,11 @@
 import { router } from 'expo-router';
-import type { Ref } from 'react';
+import { type ReactNode, type Ref, createContext, useContext } from 'react';
 import { useTranslation } from 'react-i18next';
-import type { ViewInstance } from 'react-native';
+import { StyleSheet, View, type ViewInstance } from 'react-native';
 
 import { useUnread } from '../notificationsUnread.ts';
 import { RoundButton } from './SettingsParts.tsx';
+import { tokens } from '../theme/tokens.ts';
 
 /** The bell as the demos draw it: round and grey, a dot while anything is unread, and the exact count in its name. */
 export function Bell({
@@ -40,3 +41,28 @@ export function BellButton() {
 
   return <Bell unread={unread} onPress={() => router.push('/notifications')} testID="frame.bell" />;
 }
+
+/** Inside an event on an iPad on its side, where the frame draws no title, the area's own title row ends with the bell (sc-68052). */
+export const BellInPane = createContext(false);
+
+/** The bell that ends an area's own title row in the pane, on an iPad on its side; elsewhere the frame's top has it. */
+export function PaneBell() {
+  return useContext(BellInPane) ? <BellButton /> : null;
+}
+
+/** What heads the pane, ended by its bell at the top right: it wraps to the bell's left at the largest sizes, in a row as tall as the bell's target. */
+export function BellRow({ children }: { children: ReactNode }) {
+  if (!useContext(BellInPane)) return children;
+
+  return (
+    <View style={styles.row}>
+      <View style={styles.beside}>{children}</View>
+      <BellButton />
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  row: { flexDirection: 'row', alignItems: 'flex-start', gap: tokens.spaceLg },
+  beside: { flex: 1, minWidth: 0, minHeight: tokens.sizeHit, justifyContent: 'center' },
+});

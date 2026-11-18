@@ -50,6 +50,7 @@ import { useLayout } from '../layout/useLayout.ts';
 import { useSignedIn } from '../signedIn.ts';
 import { tokens } from '../theme/tokens.ts';
 import { AppFrame, BackButton } from './AppFrame.tsx';
+import { BellRow, PaneBell } from './BellButton.tsx';
 import { bodyEdges } from './bodyEdges.ts';
 import { SecondaryButton } from './Buttons.tsx';
 import { cardFrame } from './cardFrame.ts';
@@ -466,6 +467,7 @@ export function EventScreen({
               {!phone && refreshing}
               {exportGuests}
               {addGuest}
+              <PaneBell />
             </View>
           }
           onOffline={setGuestsOffline}
@@ -486,6 +488,7 @@ export function EventScreen({
           }
         >
           {kind === 'tabletLandscape' && cardNamed && refreshing}
+          {cardNamed && event == null && <BellRow>{null}</BellRow>}
           {top.bodyBack && <BackButton label={backLabel} onPress={back} testID="events.back" />}
           {areaTitled && (
             <View style={styles.areaTop}>
