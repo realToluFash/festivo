@@ -10,6 +10,7 @@ use App\Entity\SubscriptionChange;
 use App\Enum\Plan;
 use App\Enum\SubscriptionChangeKind;
 use App\Enum\SubscriptionSource;
+use Closure;
 use Doctrine\ORM\EntityManagerInterface;
 use Psr\Clock\ClockInterface;
 
@@ -19,19 +20,27 @@ final readonly class SubscriptionChanger
     public function __construct(
         private EntityManagerInterface $entityManager,
         private ClockInterface $clock,
+        private Entitlements $entitlements,
     ) {
     }
 
-    public function changePlan(Subscription $subscription, Plan $plan, SubscriptionSource $source, ChangedBy $by): void
+    /** @param ?Closure(): void $alongside written in the same transaction, such as the audit of the change */
+    public function changePlan(Subscription $subscription, Plan $plan, SubscriptionSource $source, ChangedBy $by, ?Closure $alongside = null): void
     {
-        $subscription->setSource($source);
+        $this->entityManager->wrapInTransaction(function () use ($subscription, $plan, $source, $by, $alongside): void {
+            if ($subscription->getPlan() !== $plan) {
+                $this->record($subscription, SubscriptionChangeKind::Plan, $subscription->getPlan()->value, $plan->value, $by);
+            }
 
-        if ($subscription->getPlan() === $plan) {
-            return;
-        }
+            $subscription->changePlan($plan, $source);
 
-        $this->record($subscription, SubscriptionChangeKind::Plan, $subscription->getPlan()->value, $plan->value, $by);
-        $subscription->setPlan($plan);
+            if (null !== $alongside) {
+                $alongside();
+            }
+        });
+
+        // After the commit: forgotten inside the transaction, a request in between re-caches the old plan.
+        $this->entitlements->forget($subscription->getOrganisation()->getId());
     }
 
     private function record(Subscription $subscription, SubscriptionChangeKind $kind, ?string $from, ?string $to, ChangedBy $by): void

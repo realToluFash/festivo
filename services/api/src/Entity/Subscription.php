@@ -95,9 +95,11 @@ class Subscription
         return $this->plan;
     }
 
-    public function setPlan(Plan $plan): void
+    /** Only `SubscriptionChanger` calls this, so the change is recorded in the history. */
+    public function changePlan(Plan $plan, SubscriptionSource $source): void
     {
         $this->plan = $plan;
+        $this->source = $source;
     }
 
     public function getCatalogueVersion(): ?string
@@ -105,19 +107,9 @@ class Subscription
         return $this->catalogueVersion;
     }
 
-    public function setCatalogueVersion(?string $catalogueVersion): void
-    {
-        $this->catalogueVersion = $catalogueVersion;
-    }
-
     public function getPeriodStart(): DateTimeImmutable
     {
         return $this->periodStart;
-    }
-
-    public function setPeriodStart(DateTimeImmutable $periodStart): void
-    {
-        $this->periodStart = $periodStart;
     }
 
     public function getPeriodEnd(): ?DateTimeImmutable
@@ -125,19 +117,9 @@ class Subscription
         return $this->periodEnd;
     }
 
-    public function setPeriodEnd(?DateTimeImmutable $periodEnd): void
-    {
-        $this->periodEnd = $periodEnd;
-    }
-
     public function getStatus(): SubscriptionStatus
     {
         return $this->status;
-    }
-
-    public function setStatus(SubscriptionStatus $status): void
-    {
-        $this->status = $status;
     }
 
     public function getSource(): SubscriptionSource
@@ -145,18 +127,8 @@ class Subscription
         return $this->source;
     }
 
-    public function setSource(SubscriptionSource $source): void
-    {
-        $this->source = $source;
-    }
-
     public function getExternalRef(): ?string
     {
         return $this->externalRef;
-    }
-
-    public function setExternalRef(?string $externalRef): void
-    {
-        $this->externalRef = $externalRef;
     }
 }

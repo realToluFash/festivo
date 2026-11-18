@@ -13,7 +13,6 @@ use App\Enum\Plan;
 use App\Enum\PlanFeature;
 use App\Enum\SubscriptionSource;
 use App\Repository\SubscriptionRepository;
-use Doctrine\ORM\EntityManagerInterface;
 use Psl\Str;
 use Psr\Clock\ClockInterface;
 use RuntimeException;
@@ -27,7 +26,6 @@ final readonly class PlanChanger
     public function __construct(
         private Auditor $auditor,
         private PlanDowngradeMailer $planDowngradeMailer,
-        private EntityManagerInterface $entityManager,
         private ClockInterface $clock,
         private EnterpriseSettings $enterpriseSettings,
         private SubscriptionRepository $subscriptionRepository,
@@ -58,8 +56,7 @@ final readonly class PlanChanger
 
         $switchedOff = $this->enterpriseSettings->switchedOff($organisation, $was, $plan);
 
-        $this->entityManager->wrapInTransaction(function () use ($organisation, $subscription, $was, $plan, $agent, $reason, $switchedOff): void {
-            $this->subscriptionChanger->changePlan($subscription, $plan, SubscriptionSource::Manual, ChangedBy::staff($agent, $reason));
+        $this->subscriptionChanger->changePlan($subscription, $plan, SubscriptionSource::Manual, ChangedBy::staff($agent, $reason), function () use ($organisation, $was, $plan, $agent, $reason, $switchedOff): void {
             $this->auditor->record(self::CHANGED, self::SUBJECT, $organisation->getId(), Actor::Agent, null, $agent, [
                 'plan' => [$was->value, $plan->value],
                 'reason' => [null, $reason],

@@ -156,7 +156,10 @@ limits" (memo sc-3928 #4131). Two lines above changed with them, and one rule is
   any write to a subscription clears it (`EntitlementForgetter`). sc-581's Enterprise
   settings and its `plan_required` check ask it; the hard limits (sc-3930) and the meter
   (sc-3929) ask it too.
-- `SubscriptionChanger` is the only writer of a subscription. Staff's `app:set-plan` is the
-  `manual` adapter; each provider's adapter (sc-3933) turns its events into the same calls.
+- `SubscriptionChanger` is the only writer of a subscription; the entity offers named
+  transitions rather than setters, and only the changer calls them. It opens the
+  transaction itself and forgets the cached entitlement after the commit, so a request
+  in between cannot re-cache the old plan. Staff's `app:set-plan` is the `manual` adapter;
+  each provider's adapter (sc-3933) turns its events into the same calls.
 - The plan and status are any member's to read on the organisation; the billing account,
   `GET /api/orgs/{id}/billing-account`, needs **billing.read**.

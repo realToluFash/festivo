@@ -252,7 +252,6 @@ final class OrganisationPlanTest extends ApiTestCase
         return new PlanChanger(
             self::service(Auditor::class),
             self::service(PlanDowngradeMailer::class),
-            self::service(EntityManagerInterface::class),
             self::service(ClockInterface::class),
             $settings,
             self::service(SubscriptionRepository::class),

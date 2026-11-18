@@ -37,6 +37,7 @@ use PHPUnit\Framework\Attributes\Test;
 use Psl\Json;
 use Psl\Type;
 use Psl\Vec;
+use Symfony\Contracts\Cache\CacheInterface;
 
 /** sc-3927: every organisation has one current subscription, paid for by a billing account no entitlement reads. */
 final class SubscriptionTest extends ApiTestCase
@@ -110,9 +111,8 @@ final class SubscriptionTest extends ApiTestCase
         $account->setCreditBalance(5000);
         $account->setProviderCustomerRef('ctm_01');
         $account->setTaxId('PT123456789');
-        $subscription->setSource(SubscriptionSource::Paddle);
-        $subscription->setExternalRef('sub_01');
         self::em()->flush();
+        self::service(SubscriptionChanger::class)->changePlan($subscription, Plan::Free, SubscriptionSource::Paddle, ChangedBy::staff('Ada at Soirely', 'Moved to Paddle'));
         $entitlements->forget($this->organisation->getId());
 
         self::assertSame(Plan::Free, $entitlements->of($this->organisation->getId())->plan);
@@ -126,7 +126,22 @@ final class SubscriptionTest extends ApiTestCase
         self::assertSame(Plan::Free, $entitlements->of($this->organisation->getId())->plan);
 
         self::service(SubscriptionChanger::class)->changePlan($this->subscription(), Plan::Enterprise, SubscriptionSource::Manual, ChangedBy::staff('Ada at Soirely', 'Signed the order form'));
-        self::em()->flush();
+
+        self::assertSame(Plan::Enterprise, $entitlements->of($this->organisation->getId())->plan);
+    }
+
+    #[Test]
+    public function aRequestCachingTheOldPlanBeforeTheChangeCommitsIsForgotten(): void
+    {
+        $entitlements = self::service(Entitlements::class);
+        $cache = self::getContainer()->get('cache.entitlements');
+        self::assertInstanceOf(CacheInterface::class, $cache);
+        $key = 'entitlement.' . $this->organisation->getId()->toRfc4122();
+
+        self::service(SubscriptionChanger::class)->changePlan($this->subscription(), Plan::Enterprise, SubscriptionSource::Manual, ChangedBy::staff('Ada at Soirely', 'Signed the order form'), static function () use ($cache, $key): void {
+            self::em()->flush();
+            $cache->get($key, static fn (): string => Plan::Free->value);
+        });
 
         self::assertSame(Plan::Enterprise, $entitlements->of($this->organisation->getId())->plan);
     }
