@@ -260,6 +260,20 @@ final class HeadcountTest extends ApiTestCase
     }
 
     #[Test]
+    public function aGuestRemovedAfterAnsweringComingLeavesTheFiguresOnEvents(): void
+    {
+        $this->answer($this->add('Adaeze'), 'coming');
+        $removed = $this->add('Bisi');
+        $this->answer($removed, 'coming');
+        self::assertSame(['invited' => 2, 'coming' => 2, 'notReplied' => 0], $this->listedFigures($this->owner)[$this->eventId] ?? null);
+
+        $this->as($this->owner, 'DELETE', $this->guests() . '/' . $removed);
+        self::assertSame(204, $this->statusCode(), Json\encode($this->last()));
+
+        self::assertSame(['invited' => 1, 'coming' => 1, 'notReplied' => 0], $this->listedFigures($this->owner)[$this->eventId] ?? null);
+    }
+
+    #[Test]
     public function eventsCarriesNoGuestFiguresWithoutGuestsRead(): void
     {
         $this->answer($this->add('Adaeze'), 'coming');

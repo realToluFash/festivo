@@ -104,6 +104,22 @@ final class BudgetLinesTest extends ApiTestCase
     }
 
     #[Test]
+    public function aLineOnAHeadLeavesOutAGuestWhoWasRemoved(): void
+    {
+        self::em()->getConnection()->executeStatement('UPDATE events SET hosts = :hosts WHERE id = :id', ['hosts' => '["Ada and Obi"]', 'id' => $this->eventId]);
+        $this->as($this->owner, 'POST', '/api/events/' . $this->eventId . '/make-live');
+        self::assertSame(200, $this->statusCode(), Json\encode($this->last()));
+        $guest = $this->guest('Adaeze');
+        $this->answer($guest, 'coming');
+        $this->add(self::CATERING);
+
+        $this->as($this->owner, 'DELETE', '/api/events/' . $this->eventId . '/guests/' . $guest);
+        self::assertSame(204, $this->statusCode(), Json\encode($this->last()));
+
+        self::assertSame(['count' => 0, 'source' => 'accepted', 'reason' => QuantityResolver::NO_GUESTS], $this->budget()[0]['quantity']);
+    }
+
+    #[Test]
     public function aFixedLineCarriesAnAmountAndCountsOnce(): void
     {
         $line = $this->add([...self::VENUE, 'amount' => '2400.5', 'currency' => 'gbp']);
