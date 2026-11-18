@@ -225,8 +225,10 @@ export function StepScreen({
   const bottom = keysUp || inSheet ? tokens.spaceXl : Math.max(insets.bottom, tokens.spaceLg);
   const page = useRef<ViewInstance>(null);
   const measured = ANDROID || inSheet;
-  const cover = useKeysCover(page, measured, inSheet ? insets.top + SHEET_LIFTED_GAP : 0);
-  const { screenScroll, scrollProps } = useScreenScrollView();
+  const sheetTop = inSheet ? insets.top + SHEET_LIFTED_GAP : 0;
+  const cover = useKeysCover(page, measured, sheetTop);
+  // The lifts read the keys against the sheet's own frame, as the cover does.
+  const { screenScroll, scrollProps } = useScreenScrollView(sheetTop);
   useFocusedFieldAboveToast(screenScroll);
   const [sizes, setSizes] = useState({ shown: 0, foot: 0, field: 0, group: 0 });
   const measuredAs = (key: 'shown' | 'foot') => (event: LayoutChangeEvent) => {
