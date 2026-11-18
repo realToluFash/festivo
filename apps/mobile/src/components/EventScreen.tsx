@@ -43,6 +43,7 @@ import {
   areaBack,
 } from '../kit/eventNav.ts';
 import { markDeleted, takeCoverRefused } from '../kit/eventSaved.ts';
+import { outsideOn, outsidePlaces } from '../kit/outsideEvent.ts';
 import { type Opened, openedOf, openedWithoutAsking } from '../kit/eventsOpen.ts';
 import { ASKS_END, SHOWN_EVENT, goUpToEvent } from '../kit/upToEvent.ts';
 import { useServerNow } from '../kit/serverNow.ts';
@@ -82,7 +83,7 @@ import { useSystemBack } from './useSystemBack.ts';
 /** An event's page, a screen of its own pushed over Events, Happening now or Calendar (sc-22103). */
 export function EventScreen({
   eventId,
-  area,
+  area: asked,
   filter = 'all',
   copiedFrom,
   opensDuplicate = false,
@@ -113,7 +114,8 @@ export function EventScreen({
 }) {
   const { t } = useTranslation();
   const { kind } = useLayout();
-  const { account, organisation } = useSignedIn();
+  const signedIn = useSignedIn();
+  const { account, organisation } = signedIn;
   const organisationId = organisation?.id;
   const phone = kind === 'phone';
   const navigation = useNavigation<{
@@ -172,7 +174,10 @@ export function EventScreen({
   );
   const title = useRef<TextHandle>(null);
   const cardName = useRef<TextHandle>(null);
-  const opened = useOpened(eventId, account != null, organisation, () =>
+  const outside = outsideOn(signedIn, eventId);
+  const outsideAt = outside == null ? null : outsidePlaces(outside.role);
+  const area = outsideAt == null || outsideAt.includes(asked) ? asked : 'overview';
+  const opened = useOpened(eventId, account != null, organisation, outside != null, () =>
     moveScreenReaderFocus(cardName.current ?? title.current),
   );
   const { reload, freshen, change } = opened;
@@ -221,6 +226,8 @@ export function EventScreen({
   };
   const fromSearch = phone && opensGuest != null;
   const back = !fromSearch && areaBack(area) === 'overview' ? () => chooseArea('overview') : leave;
+  // Held from outside, Overview is the account's whole app: nothing behind it to go back to (sc-71).
+  const backs = outside == null || area !== 'overview';
   const backLabel = fromSearch
     ? t('todayScreen.search')
     : area !== 'overview'
@@ -229,7 +236,7 @@ export function EventScreen({
         ? t('timeline.backToEvent')
         : t('eventsScreen.title');
 
-  useSystemBack(true, back);
+  useSystemBack(backs, back);
 
   const partRef = (part: EditPart): RefObject<ViewInstance | null> => partRows[part];
   const openEdit = (
@@ -395,15 +402,16 @@ export function EventScreen({
     ) : null;
   const guestBack = guests ? guestsTop.back : null;
   const titledInList = areaTitled || guests;
-  const frameBack =
-    guestBack != null
+  const frameBack = !backs
+    ? undefined
+    : guestBack != null
       ? {
           label: guestsTop.toSearch ? t('todayScreen.search') : t('eventNav.guests'),
           onPress: guestBack,
         }
       : top.frameBack === 'area'
         ? { label: backLabel, onPress: back }
-        : top.frameBack === 'events'
+        : top.frameBack === 'events' && outside == null
           ? {
               label: original != null ? t('timeline.backToEvent') : t('eventsScreen.title'),
               onPress: leave,
@@ -429,6 +437,7 @@ export function EventScreen({
               card,
               up:
                 original != null ? { label: t('timeline.backToEvent'), onPress: leave } : undefined,
+              outside: outside == null ? undefined : { role: outside.role },
             }
           : undefined
       }
@@ -489,7 +498,9 @@ export function EventScreen({
         >
           {kind === 'tabletLandscape' && cardNamed && refreshing}
           {cardNamed && event == null && <BellRow />}
-          {top.bodyBack && <BackButton label={backLabel} onPress={back} testID="events.back" />}
+          {top.bodyBack && backs && (
+            <BackButton label={backLabel} onPress={back} testID="events.back" />
+          )}
           {areaTitled && (
             <View style={styles.areaTop}>
               <View style={styles.titleRow}>
@@ -640,6 +651,7 @@ function useOpened(
   eventId: string,
   accountLoaded: boolean,
   organisation: Membership | null,
+  outside: boolean,
   focusTitle: () => void,
 ): Opened & {
   retry: () => void;
@@ -650,7 +662,7 @@ function useOpened(
   refreshing: boolean;
 } {
   const organisationId = organisation?.id;
-  const settled = openedWithoutAsking(accountLoaded, organisation);
+  const settled = openedWithoutAsking(accountLoaded, organisation, outside);
   const asks = settled == null;
   const [held, setHeld] = useState<{ for: string | null; opened: Opened }>({
     for: null,
@@ -676,24 +688,25 @@ function useOpened(
   });
 
   useEffect(() => {
-    if (eventId === '' || organisationId == null || !asks) return;
+    if (eventId === '' || (organisationId == null && !outside) || !asks) return;
     let live = true;
+    const holder = outside ? null : (organisationId ?? null);
 
     watch(api.event(eventId)).then(
-      (event) => live && setHeld({ for: key, opened: openedOf({ event }, organisationId) }),
+      (event) => live && setHeld({ for: key, opened: openedOf({ event }, holder) }),
       (error: unknown) =>
         live &&
         setHeld((before) =>
           before.for === key && before.opened.kind === 'loaded' && keepsWhatLoaded(error)
             ? before
-            : { for: key, opened: openedOf({ error }, organisationId) },
+            : { for: key, opened: openedOf({ error }, holder) },
         ),
     );
 
     return () => {
       live = false;
     };
-  }, [eventId, organisationId, asks, key, attempt, watch]);
+  }, [eventId, organisationId, outside, asks, key, attempt, watch]);
 
   if (settled != null)
     return { ...settled, retry, reload, freshen, change, stale: null, refreshing: false };
