@@ -13,6 +13,7 @@ import { Pill } from '../../components/SettingsParts.tsx';
 import { Sheet } from '../../components/Sheet.tsx';
 import { TextAction } from '../../components/Summary.tsx';
 import { Text, type TextHandle } from '../../components/Text.tsx';
+import { CappedWholeWords } from '../../components/Title.tsx';
 import { tokens } from '../../theme/tokens.ts';
 import { DemoOnly } from '../../steps/Lines.tsx';
 import {
@@ -28,15 +29,17 @@ import type { Layout } from './GuestsParts.tsx';
 const MAKING_MS = 900;
 const SETTLED_MS = 450;
 
-/** Export in the Guests header: a secondary pill, or offline the words and the no-signal mark in its place. */
+/** Export in the Guests header: a secondary pill as tall as its word, or offline the words and the no-signal mark in its place, each word whole (sc-67659). */
 export function ExportButton({
   layout,
   offline,
+  words = { export: XW.export, needsConnection: XW.needsConnection },
   onPress,
   ref,
 }: {
   layout: Layout;
   offline: boolean;
+  words?: { export: string; needsConnection: string } | undefined;
   onPress: () => void;
   ref: Ref<ViewInstance>;
 }) {
@@ -45,23 +48,28 @@ export function ExportButton({
       <View
         style={[styles.offline, layout === 'phone' && styles.offlinePhone]}
         accessible
-        accessibilityLabel={XW.needsConnection}
+        accessibilityLabel={words.needsConnection}
         testID="guests.export.offline"
       >
         <NoSignal />
-        <Text size={13.5} weight="semibold" style={[styles.secondary, styles.offlineWords]}>
-          {XW.needsConnection}
-        </Text>
+        <CappedWholeWords
+          size={13.5}
+          weight="semibold"
+          style={[styles.secondary, styles.offlineWords]}
+        >
+          {words.needsConnection}
+        </CappedWholeWords>
       </View>
     );
 
   return (
     <Pill
       ref={ref}
-      label={XW.export}
+      label={words.export}
       kind="secondary"
       height={tokens.sizeHit}
       full={false}
+      grows
       onPress={onPress}
       testID="guests.export"
     />

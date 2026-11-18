@@ -114,6 +114,13 @@ export function narrowing(shown: string, searched: string): string {
 
 const people = (count: number) => (count === 1 ? '1 person' : `${count} people`);
 
+/** Export's header words from a catalogue, as the Portuguese title row reads them (sc-67659). */
+export function exportWordsIn(
+  t: (key: 'guestExport.export' | 'guestExport.needsConnection') => string,
+) {
+  return { export: t('guestExport.export'), needsConnection: t('guestExport.needsConnection') };
+}
+
 export const XW = {
   export: 'Export',
   title: 'Export guests',

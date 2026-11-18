@@ -14,6 +14,14 @@ const GUESTS: Record<GuestsState, Board> = {
     'the title in Portuguese',
     'sc-51444: Convidados whole; Adicionar convidado gives way to the round + where both do not fit',
   ],
+  exportPt: [
+    'Exportar in Portuguese',
+    'sc-67659: Exportar and + Adicionar convidado beside Convidados, each as tall as its words at the largest text sizes',
+  ],
+  offlinePt: [
+    'offline in Portuguese',
+    'sc-67659: É preciso Internet para exportar in Exportar’s place, each word whole at the largest text sizes',
+  ],
   filterOpen: ['the filter menu', 'All, Invited, the five replies and Not yet invited'],
   filtered: ['after a filter', 'No reply · 21: 21 of 156 shown, and Clear'],
   search: ['a search', '“okon”: 2 of 156 shown, the card aside'],

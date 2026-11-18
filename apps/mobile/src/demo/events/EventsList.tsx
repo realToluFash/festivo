@@ -82,7 +82,7 @@ import {
 import { SwitchedNotice } from '../../components/SwitchedNotice.tsx';
 import { Notice } from '../../components/Notice.tsx';
 import { EventsFailed } from '../../components/Events.tsx';
-import { ListTop } from '../../components/ListTop.tsx';
+import { EventsTop } from './EventsTop.tsx';
 import { sideInsets } from '../../components/bodyEdges.ts';
 import { OfflineBand as ProductOfflineBand } from '../../components/OfflineBand.tsx';
 import { LIST_EDGES, LIST_GAP } from '../../components/listFrame.ts';
@@ -249,7 +249,7 @@ export function EventsList({
   );
   const top = (
     <>
-      <ListTop
+      <EventsTop
         kind={kindOf(shell.layout)}
         title={W.events}
         pill={<OrgPill />}
