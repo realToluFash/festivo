@@ -97,7 +97,7 @@ final readonly class LineRules
                 }
 
                 if ('' === $price) {
-                    $violations[] = $this->violation($field, Str\format('validation.budget_%s_required', $field));
+                    $violations[] = $this->violation($field, 'rate' === $field ? 'validation.budget_rate_required' : 'validation.budget_amount_required');
                 } else {
                     $priceMinor = DishRules::minorOf($price, $eventCurrency);
 
@@ -143,16 +143,16 @@ final readonly class LineRules
     private function priceRefusal(string $field, string $price, string $currency): array
     {
         if (Regex\matches($price, '/^-\d+(\.\d+)?$/')) {
-            return $this->violation($field, Str\format('validation.budget_%s_negative', $field), code: self::PRICE_NEGATIVE);
+            return $this->violation($field, 'rate' === $field ? 'validation.budget_rate_negative' : 'validation.budget_amount_negative', code: self::PRICE_NEGATIVE);
         }
 
         $example = ['{example}' => $this->dishRules->example($currency)];
 
         if (Regex\matches($price, '/^\d{1,15}\.\d+$/')) {
-            return $this->violation($field, Str\format('validation.budget_%s_too_many_decimals', $field), $example);
+            return $this->violation($field, 'rate' === $field ? 'validation.budget_rate_too_many_decimals' : 'validation.budget_amount_too_many_decimals', $example);
         }
 
-        return $this->violation($field, Str\format('validation.budget_%s_invalid', $field), $example);
+        return $this->violation($field, 'rate' === $field ? 'validation.budget_rate_invalid' : 'validation.budget_amount_invalid', $example);
     }
 
     /**
