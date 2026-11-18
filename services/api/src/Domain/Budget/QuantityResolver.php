@@ -18,6 +18,10 @@ use DateTimeZone;
 /** The only answer to a basis's quantity (sc-83): a surface asks here, never counting from a guest list it has loaded. */
 final readonly class QuantityResolver
 {
+    public const string NO_GUESTS = 'no_guests';
+
+    public const string NONE_ACCEPTED = 'none_accepted';
+
     public const string NO_SEATING_PLAN = 'no_seating_plan';
 
     public const string NO_TABLES = 'no_tables';
@@ -34,9 +38,11 @@ final readonly class QuantityResolver
     public function factsFor(Event $event): QuantityFacts
     {
         $plan = $this->seatingPlanRepository->findOneForEvent($event);
+        $counts = $this->headcountCalculator->forEvents([$event])[$event->getId()->toRfc4122()];
 
         return new QuantityFacts(
-            $this->headcountCalculator->forEvents([$event])[$event->getId()->toRfc4122()]['accepted'],
+            $counts['onList'],
+            $counts['accepted'],
             null === $plan ? null : $this->seatingTableRepository->count(['plan' => $plan]),
             null, // Staffing's shifts (sc-101) are not built, so no event has scheduled hours yet.
             EventDayCount::of($event->getStartsAt(), $event->getEndsAt(), new DateTimeZone($event->getTimeZone())),
@@ -46,7 +52,11 @@ final readonly class QuantityResolver
     public static function resolve(CostBasis $basis, QuantityFacts $facts): Quantity
     {
         return match ($basis) {
-            CostBasis::PerHead => new Quantity($facts->accepted, QuantitySource::Accepted),
+            CostBasis::PerHead => match (true) {
+                0 === $facts->onList => new Quantity(0, QuantitySource::Accepted, self::NO_GUESTS),
+                0 === $facts->accepted => new Quantity(0, QuantitySource::Accepted, self::NONE_ACCEPTED),
+                default => new Quantity($facts->accepted, QuantitySource::Accepted),
+            },
             CostBasis::PerTable => match ($facts->seatingTables) {
                 null => new Quantity(0, QuantitySource::SeatingTables, self::NO_SEATING_PLAN),
                 0 => new Quantity(0, QuantitySource::SeatingTables, self::NO_TABLES),
