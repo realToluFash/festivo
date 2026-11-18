@@ -30,7 +30,7 @@ import { PersonalTile } from './SchemeArt.tsx';
 import { underSavedName, useSavedNames } from './savedName.ts';
 import { Security } from './Security.tsx';
 import { SignInRules } from './SignInRules.tsx';
-import { StorefrontGlyph, Vendors } from './Vendors.tsx';
+import { Vendors } from './Vendors.tsx';
 import { vendorsViewerKey } from './vendors.ts';
 import { SectionTile, SettingsSections } from '../components/SettingsList.tsx';
 import { TextAction, TitleRow, type Tell } from '../components/SettingsParts.tsx';
@@ -225,7 +225,7 @@ function Tile({ section, viewer }: { section: Section; viewer: Viewer }) {
   if (section === 'vendors')
     return (
       <SectionTile look="vendors">
-        <StorefrontGlyph size={17} />
+        <Glyph name="storefront" size={17} />
       </SectionTile>
     );
   if (section === 'data')
