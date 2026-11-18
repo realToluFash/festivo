@@ -462,11 +462,21 @@ export interface Organisation {
   contactAddress: string;
   /** What an invitation to somebody with no account is written in (sc-2914). */
   locale: string;
-  /** Set by Soirely staff (sc-581): on `free`, an Enterprise setting is shown locked and a change to it is refused `plan_required`. */
+  /** The subscription's plan (sc-581, sc-3927): on `free`, an Enterprise setting is shown locked and a change to it is refused `plan_required`. */
   plan: Plan;
+  /** Any member reads it; who pays is `GET /api/orgs/{id}/billing-account`, with billing.read (sc-3927). */
+  subscription: OrganisationSubscription;
 }
 
 export type Plan = 'free' | 'enterprise';
+
+export type SubscriptionStatus = 'active' | 'past_due' | 'read_only' | 'cancelled';
+
+/** `periodEnd` is null for a subscription with no end, as Free has. */
+export interface OrganisationSubscription {
+  status: SubscriptionStatus;
+  periodEnd: string | null;
+}
 
 /** A seeded role is named by `seededAs`, which each client words itself; a custom one by `name`. */
 export interface MemberRole {
@@ -5381,6 +5391,24 @@ function asOrganisation(raw: unknown): Organisation | null {
     contactAddress: candidate.contactAddress as string,
     locale: candidate.locale as string,
     plan: candidate.plan === 'enterprise' ? 'enterprise' : 'free',
+    subscription: subscriptionFrom(candidate.subscription),
+  };
+}
+
+const SUBSCRIPTION_STATUSES: readonly SubscriptionStatus[] = [
+  'active',
+  'past_due',
+  'read_only',
+  'cancelled',
+];
+
+function subscriptionFrom(raw: unknown): OrganisationSubscription {
+  const candidate = typeof raw === 'object' && raw != null ? (raw as Record<string, unknown>) : {};
+  const status = SUBSCRIPTION_STATUSES.find((one) => one === candidate.status) ?? 'active';
+
+  return {
+    status,
+    periodEnd: typeof candidate.periodEnd === 'string' ? candidate.periodEnd : null,
   };
 }
 

@@ -11,6 +11,7 @@ export function membership(overrides: Partial<Membership> = {}): Membership {
     contactAddress: 'hello@ire.events',
     locale: 'en',
     plan: 'free',
+    subscription: { status: 'active', periodEnd: null },
     role: { id: 'role_1', seededAs: 'owner', name: null },
     permissions: OWNER_PERMISSIONS,
     withheldUntilTwoFactor: [],

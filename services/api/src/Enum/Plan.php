@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Enum;
 
-/** An organisation's plan (sc-581). Soirely staff set it until billing exists; sc-3927 makes it a subscription's. */
+/** A subscription's plan (sc-581, sc-3927), until sc-3928's catalogue. */
 enum Plan: string
 {
     case Free = 'free';
