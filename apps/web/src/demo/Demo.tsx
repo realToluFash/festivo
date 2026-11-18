@@ -25,6 +25,7 @@ import { Events } from './Events.tsx';
 import { NewEventTop } from './NewEventTop.tsx';
 import { EVENTS_PAGES } from './events.ts';
 import { ENQUIRIES_PAGES } from './enquiries.ts';
+import { ENQUIRY_EVENT_PAGES } from './enquiryToEvent.ts';
 import { EnquiriesArea, EnquiriesList, EnquiryPage } from './Enquiries.tsx';
 import { ACCOUNT_PAGES } from './account.ts';
 import { DATA_CONTROL_PAGES } from './dataControlPages.ts';
@@ -363,6 +364,8 @@ function DemoHome({ from }: { from: string }) {
         <BoardPages pages={ENQUIRIES_PAGES} />
         <h3>Consultations on an enquiry (sc-31228) · desktop, and 320 px</h3>
         <BoardPages pages={CONSULTATION_PAGES} />
+        <h3>An enquiry becomes an event (sc-31232) · desktop, and 320 px</h3>
+        <BoardPages pages={ENQUIRY_EVENT_PAGES} />
       </section>
 
       <section className="demo-home-page" aria-labelledby="demo-page-29">

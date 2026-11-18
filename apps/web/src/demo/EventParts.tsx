@@ -18,6 +18,7 @@ import {
   EVENT_WORDS,
   phaseWord,
   tagKind,
+  venueLine,
 } from './events.ts';
 import { Glyph } from '../components/Glyph.tsx';
 import { type CardMilestone, KW } from './kitchen.ts';
@@ -97,7 +98,7 @@ export function shownSample(event: SampleEvent, now: Date): Shown {
     ...shownEvent(
       {
         ...event,
-        place: event.venue == null ? null : `${event.venue.name}, ${event.venue.city}`,
+        place: event.venue == null ? null : venueLine(event.venue),
         photo: event.photo ? 'standIn' : null,
         milestones: [
           milestoneAt(event.startsAt, `${event.name} starts`),

@@ -129,6 +129,8 @@ import { DemoOnly } from '../../steps/Lines.tsx';
 import { GUESTS as TALKS, type GuestKey } from '../messages/MessagesSample.ts';
 import type { BudgetState } from '../budget/BudgetModel.ts';
 import { BudgetScreen } from '../budget/BudgetScreen.tsx';
+import { type OriginState, draftFromEnquiry } from '../enquiries/EnquiryToEventModel.ts';
+import { FromEnquiryLine } from '../enquiries/FromEnquiryParts.tsx';
 
 type Mute = 'ok' | 'notLoaded' | 'notSaved';
 
@@ -202,6 +204,7 @@ export function EventScreen({
   people = null,
   guestsFrom: figureOpens = null,
   without,
+  origin = null,
 }: {
   id: string | undefined;
   state: EventDemoState | null;
@@ -216,6 +219,7 @@ export function EventScreen({
   /** A figure on Events opens the event's Guests with its choice in the filter menu (sc-3786). */
   guestsFrom?: FilterKey | null;
   without?: AreaKey | undefined;
+  origin?: OriginState | null;
 }) {
   const shell = useShell();
   const locale = formattingLocale('en', getLocales()[0]?.languageTag);
@@ -223,7 +227,11 @@ export function EventScreen({
     () => (guests == null ? clockOf(state) : guestsClock(guests)),
     [state, guests],
   );
-  const [event, setEvent] = useState(() => startEvent(id, state, messages, now));
+  const [event, setEvent] = useState(() =>
+    origin == null
+      ? startEvent(id, state, messages, now)
+      : draftFromEnquiry(startEvent(id, state, messages, now)),
+  );
   const reach = useMemo(() => reachOf(state, event), [state, event]);
   const live = useMakeLive(state, reach, (host) =>
     setEvent((now) => ({ ...now, hosts: host == null ? now.hosts : [host], status: 'live' })),
@@ -464,6 +472,7 @@ export function EventScreen({
       refFor={refFor}
       onEdit={openEdit}
       onMaps={() => shell.tell(W.mapsHandOff)}
+      last={origin === 'from-enquiry' ? <FromEnquiryLine /> : null}
     />
   );
   const needsYou = (
@@ -894,6 +903,7 @@ function Details({
   refFor,
   onEdit,
   onMaps,
+  last,
 }: {
   shown: Shown;
   replyBy: string | null;
@@ -902,6 +912,7 @@ function Details({
   refFor: RefFor;
   onEdit: (part: EditPart) => void;
   onMaps: () => void;
+  last?: ReactNode;
 }) {
   const dates = datesRow(shown, locale);
   const hosts = hostsRow(shown, locale);
@@ -945,7 +956,13 @@ function Details({
         },
         { part: 'hosts', ...hosts, opens: true },
         { part: 'type', title: TYPE_WORDS[shown.type], line: W.type, opens: true },
-        { part: 'currency', title: currencyWords(shown.currency), line: W.currency, opens: true },
+        {
+          part: 'currency',
+          title: currencyWords(shown.currency),
+          line: W.currency,
+          opens: true,
+          after: last,
+        },
       ]}
     />
   );
