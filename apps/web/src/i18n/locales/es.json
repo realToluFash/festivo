@@ -4844,6 +4844,7 @@
     "shiftCount_many": "{{count, number}} de turnos",
     "short": "Por cubrir: {{count, number}}",
     "gap": "{{short}} · {{when}}",
+    "summaryShort_zero": "Todos los puestos están cubiertos en todo momento.",
     "summaryShort_one": "A {{count, number}} puesto le falta personal en algún momento. Cubiertos: {{covered, number}}.",
     "summaryShort_other": "A {{count, number}} puestos les falta personal en algún momento. Cubiertos: {{covered, number}}.",
     "summaryShort_many": "A {{count, number}} de puestos les falta personal en algún momento. Cubiertos: {{covered, number}}.",
