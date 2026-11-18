@@ -93,7 +93,7 @@ export interface DoorCode {
   endedAt: string | null;
 }
 
-/** The reader's region refines the English screen's dates, never replaces them (formattingLocale): en-GB reads "Sat 14 Nov", pt-PT stays "Sat, Nov 14". */
+/** The reader's region refines the English screen's dates, never replaces them (formattingLocale): en-US reads "Sat, Nov 14", and en-GB or any other region "Sat 14 Nov". */
 export const readerLocale = () => formattingLocale('en', navigator.language);
 const DAYS = new Map<string, Intl.DateTimeFormat>();
 const dayFormat = (locale: string): Intl.DateTimeFormat => {
