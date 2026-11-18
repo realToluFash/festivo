@@ -15,19 +15,23 @@ export interface EventTop {
   areaTitled: boolean;
   /** Who draws ‹ in the frame: the phone's back row, and upright the row it shares with the bell. */
   frameBack: 'area' | 'events' | null;
+  /** On its side the body draws ‹ only on a failed or missing event: in the event, its sidebar is the way to Overview (sc-67708). */
+  bodyBack: boolean;
 }
 
 /** An event's page's top as the demo's EventFrame draws it, in every phase and while the event loads (sc-30413). */
 export function eventTop(kind: LayoutKind, area: EventPlace, opened: Opened['kind']): EventTop {
   const portrait = kind === 'tabletPortrait';
   const inEvent = opened === 'loaded' || opened === 'loading';
+  const landscape = kind === 'tabletLandscape';
 
   return {
     inEvent,
     // On its side the frame's title is dropped only when the card takes its place: a failed or missing event has none.
-    cardNamed: area === 'overview' && (kind !== 'tabletLandscape' || inEvent),
+    cardNamed: area === 'overview' && (!landscape || inEvent),
     areaTitled: portrait && area !== 'overview',
     frameBack: kind === 'phone' ? 'area' : portrait ? 'events' : null,
+    bodyBack: landscape && !inEvent,
   };
 }
 

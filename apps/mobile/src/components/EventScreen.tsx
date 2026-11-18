@@ -485,12 +485,8 @@ export function EventScreen({
                   : styles.tabletLandscape
           }
         >
-          {kind === 'tabletLandscape' &&
-            (cardNamed ? (
-              refreshing
-            ) : (
-              <BackButton label={backLabel} onPress={back} testID="events.back" />
-            ))}
+          {kind === 'tabletLandscape' && cardNamed && refreshing}
+          {top.bodyBack && <BackButton label={backLabel} onPress={back} testID="events.back" />}
           {areaTitled && (
             <View style={styles.areaTop}>
               <View style={styles.titleRow}>
