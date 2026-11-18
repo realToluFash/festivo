@@ -81,7 +81,15 @@ export function InsideField({
     setTyped(text);
     onChangeText?.(text);
   });
-  const labelLine = LABEL_SMALL * 1.35 * fontScale;
+  // The label wraps rather than ending in "…", and the field grows to hold it (sc-67886).
+  const oneLine = LABEL_LARGE * 1.3 * fontScale;
+  const [laidOut, setLabelHeight] = useState(oneLine);
+  const labelHeight = laidOut > oneLine * 1.4 ? laidOut : oneLine;
+  const labelLine =
+    labelHeight === oneLine
+      ? LABEL_SMALL * 1.35 * fontScale
+      : labelHeight * (LABEL_SMALL / LABEL_LARGE);
+  const height = Math.max(HEIGHT, labelHeight + 2 * tokens.spaceSm);
   const box = useRef<ViewInstance>(null);
 
   useEffect(() => {
@@ -103,7 +111,7 @@ export function InsideField({
   });
   const translateY = lift.interpolate({
     inputRange: [0, 1],
-    outputRange: [(HEIGHT - 2 - LABEL_LARGE * 1.3 * fontScale) / 2, tokens.spaceSm],
+    outputRange: [(height - 2 - labelHeight) / 2, tokens.spaceSm],
   });
 
   return (
@@ -132,7 +140,7 @@ export function InsideField({
         style={inputFaced(
           [
             styles.input,
-            { paddingTop: tokens.spaceSm + labelLine },
+            { minHeight: height - 2, paddingTop: tokens.spaceSm + labelLine },
             password && styles.inputBeside,
           ],
           'sans',
@@ -146,13 +154,17 @@ export function InsideField({
       </UnseenName>
       <Animated.View
         pointerEvents="none"
-        style={[styles.label, { transform: [{ translateY }, { scale }] }]}
+        style={[
+          styles.label,
+          password && styles.labelBeside,
+          { transform: [{ translateY }, { scale }] },
+        ]}
+        onLayout={(event) => setLabelHeight(event.nativeEvent.layout.height)}
       >
         <Text
           nativeID={labelID}
           size={LABEL_LARGE}
           weight="medium"
-          numberOfLines={1}
           style={state === 'blank' ? styles.labelBlank : styles.labelText}
           accessible={false}
         >
@@ -248,6 +260,7 @@ const styles = StyleSheet.create({
     right: tokens.sizeHit,
     transformOrigin: 'left top',
   },
+  labelBeside: { right: tokens.sizeHit + tokens.spaceXxs },
   labelText: { color: tokens.colorInkSecondary },
   labelBlank: { color: tokens.colorBrokenText },
   eye: {
