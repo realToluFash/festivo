@@ -1,0 +1,46 @@
+# sc-29961: five wrong codes pause code entry; the sign-in run out while paused (expire.sh age, first 2 minutes) goes to Sign in saying so; signing in again, a code typed there shows the pause as today. The lift is sc29961-lift.
+appId: host.exp.Exponent
+---
+- runFlow: ../sign-out.yaml
+- runFlow: ../sc33828-to-code-signed-out.yaml
+- tapOn: { id: 'twoFactor.code' }
+- eraseText: 10
+- inputText: '000000'
+- extendedWaitUntil: { visible: 'zz-never-on-screen-zz', timeout: 2500, optional: true }
+- tapOn: { id: 'twoFactor.code' }
+- eraseText: 10
+- inputText: '000000'
+- extendedWaitUntil: { visible: 'zz-never-on-screen-zz', timeout: 2500, optional: true }
+- tapOn: { id: 'twoFactor.code' }
+- eraseText: 10
+- inputText: '000000'
+- extendedWaitUntil: { visible: 'zz-never-on-screen-zz', timeout: 2500, optional: true }
+- tapOn: { id: 'twoFactor.code' }
+- eraseText: 10
+- inputText: '000000'
+- extendedWaitUntil: { visible: 'zz-never-on-screen-zz', timeout: 2500, optional: true }
+- tapOn: { id: 'twoFactor.code' }
+- eraseText: 10
+- inputText: '000000'
+- extendedWaitUntil: { visible: 'zz-never-on-screen-zz', timeout: 2500, optional: true }
+- extendedWaitUntil: { visible: '{{t:twoFactor.pausedTitle}}', timeout: 15000 }
+- runFlow: ../sc29072-close-code-pad.yaml
+- takeScreenshot: paused
+- extendedWaitUntil: { visible: 'zz-never-on-screen-zz', timeout: 50000, optional: true }
+- scrollUntilVisible: { element: { id: 'twoFactor.lostBoth' } }
+- tapOn: { id: 'twoFactor.lostBoth' }
+- extendedWaitUntil: { visible: { id: 'signIn.password' }, timeout: 30000 }
+- waitForAnimationToEnd
+- assertVisible: '{{t:signIn.codeTimedOutTitle}}\. {{t:signIn.endedBody}}'
+- takeScreenshot: timed-out-while-paused
+- tapOn: { id: 'signIn.password' }
+- eraseText: 120
+- inputText: ${PASSWORD}
+- pressKey: Enter
+- extendedWaitUntil: { visible: { id: 'twoFactor.code' }, timeout: 30000 }
+- runScript: { file: ../batch/helper.js, env: { ASK: /code } }
+- tapOn: { id: 'twoFactor.code' }
+- inputText: ${output.helper.code}
+- extendedWaitUntil: { visible: '{{t:twoFactor.pausedTitle}}', timeout: 15000 }
+- runFlow: ../sc29072-close-code-pad.yaml
+- takeScreenshot: again-still-paused

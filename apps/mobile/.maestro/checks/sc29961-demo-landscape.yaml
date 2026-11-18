@@ -1,0 +1,6 @@
+# sc-29961: the demo's states (sc29961-demo) with the tablet in landscape.
+appId: host.exp.Exponent
+---
+- setOrientation: LANDSCAPE_LEFT
+- runFlow: sc29961-demo.yaml
+- setOrientation: PORTRAIT

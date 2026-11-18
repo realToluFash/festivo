@@ -1,0 +1,56 @@
+# sc-29961: five wrong codes pause Enter your code; once the pause lifts (its sign-in run out meanwhile), the right code goes to Sign in saying so, Email kept; signing in again reaches Enter your code and the right code signs in. About 17 minutes: run it in a batch of four or more checks for the time budget.
+appId: host.exp.Exponent
+---
+- runFlow: ../sign-out.yaml
+- runFlow: ../sc33828-to-code-signed-out.yaml
+- tapOn: { id: 'twoFactor.code' }
+- eraseText: 10
+- inputText: '000000'
+- extendedWaitUntil: { visible: 'zz-never-on-screen-zz', timeout: 2500, optional: true }
+- tapOn: { id: 'twoFactor.code' }
+- eraseText: 10
+- inputText: '000000'
+- extendedWaitUntil: { visible: 'zz-never-on-screen-zz', timeout: 2500, optional: true }
+- tapOn: { id: 'twoFactor.code' }
+- eraseText: 10
+- inputText: '000000'
+- extendedWaitUntil: { visible: 'zz-never-on-screen-zz', timeout: 2500, optional: true }
+- tapOn: { id: 'twoFactor.code' }
+- eraseText: 10
+- inputText: '000000'
+- extendedWaitUntil: { visible: 'zz-never-on-screen-zz', timeout: 2500, optional: true }
+- tapOn: { id: 'twoFactor.code' }
+- eraseText: 10
+- inputText: '000000'
+- extendedWaitUntil: { visible: 'zz-never-on-screen-zz', timeout: 2500, optional: true }
+- extendedWaitUntil: { visible: '{{t:twoFactor.pausedTitle}}', timeout: 15000 }
+- runFlow: ../sc29072-close-code-pad.yaml
+- takeScreenshot: lift-paused
+- repeat:
+    while: { visible: '{{t:twoFactor.pausedTitle}}' }
+    commands:
+      - runScript: { file: ../sc29961-ping.js }
+      - extendedWaitUntil: { visible: 'zz-never-on-screen-zz', timeout: 30000, optional: true }
+- waitForAnimationToEnd
+- takeScreenshot: lift-lifted
+- runScript: { file: ../batch/helper.js, env: { ASK: /code } }
+- tapOn: { id: 'twoFactor.code' }
+- eraseText: 10
+- inputText: ${output.helper.code}
+- extendedWaitUntil: { visible: { id: 'signIn.password' }, timeout: 30000 }
+- waitForAnimationToEnd
+- assertVisible: '{{t:signIn.codeTimedOutTitle}}\. {{t:signIn.endedBody}}'
+- assertVisible: { id: 'signIn.email', text: '${EMAIL}' }
+- takeScreenshot: lift-timed-out
+- tapOn: { id: 'signIn.password' }
+- eraseText: 120
+- inputText: ${PASSWORD}
+- pressKey: Enter
+- extendedWaitUntil: { visible: { id: 'twoFactor.code' }, timeout: 30000 }
+- runScript: { file: ../batch/helper.js, env: { ASK: /code } }
+- tapOn: { id: 'twoFactor.code' }
+- inputText: ${output.helper.code}
+- extendedWaitUntil: { notVisible: { id: 'twoFactor.code' }, timeout: 30000 }
+- waitForAnimationToEnd
+- assertNotVisible: { id: 'signIn.password' }
+- takeScreenshot: lift-signed-in

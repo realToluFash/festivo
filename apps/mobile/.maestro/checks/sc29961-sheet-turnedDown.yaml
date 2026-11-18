@@ -1,0 +1,13 @@
+# sc-29961: an answer (turnedDown) arriving while Cancel your request? is open closes the sheet and shows it. The answer is made from the shell (.qa/sc29961/answer.py).
+appId: host.exp.Exponent
+---
+- runFlow: ../sign-out.yaml
+- runFlow: ../sc29961-to-waiting.yaml
+- tapOn: { id: 'lostTwoFactor.cancel' }
+- extendedWaitUntil: { visible: '{{t:lostTwoFactor.cancelTitle}}', timeout: 10000 }
+- waitForAnimationToEnd
+- takeScreenshot: sheet-open
+- extendedWaitUntil: { visible: '{{t:lostTwoFactor.turnedDownTitle}}', timeout: 90000 }
+- waitForAnimationToEnd
+- assertNotVisible: '{{t:lostTwoFactor.cancelTitle}}'
+- takeScreenshot: answered

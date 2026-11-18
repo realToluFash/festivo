@@ -1,0 +1,21 @@
+# sc-29961: on the iPad, Lost your authenticator opened after the sign-in ran out (expire.sh age) goes to Sign in saying so, Email kept; portrait, then turned to landscape.
+appId: host.exp.Exponent
+---
+- setOrientation: PORTRAIT
+- runFlow: ../sign-out.yaml
+- runFlow: ../sc33828-to-code-signed-out.yaml
+- runFlow: ../sc29072-close-code-pad.yaml
+- extendedWaitUntil: { visible: 'zz-never-on-screen-zz', timeout: 35000, optional: true }
+- scrollUntilVisible: { element: { id: 'twoFactor.lostBoth' } }
+- tapOn: { id: 'twoFactor.lostBoth' }
+- extendedWaitUntil: { visible: { id: 'signIn.password' }, timeout: 30000 }
+- waitForAnimationToEnd
+- assertVisible: '{{t:signIn.codeTimedOutTitle}}\. {{t:signIn.endedBody}}'
+- assertVisible: { id: 'signIn.email', text: '${EMAIL}' }
+- extendedWaitUntil: { visible: 'zz-never-on-screen-zz', timeout: 5000, optional: true }
+- takeScreenshot: timed-out-portrait
+- setOrientation: LANDSCAPE_LEFT
+- waitForAnimationToEnd
+- assertVisible: '{{t:signIn.codeTimedOutTitle}}\. {{t:signIn.endedBody}}'
+- takeScreenshot: timed-out-landscape
+- setOrientation: PORTRAIT

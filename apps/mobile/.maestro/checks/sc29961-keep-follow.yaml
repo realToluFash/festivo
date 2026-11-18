@@ -1,0 +1,18 @@
+# sc-29961: after Keep waiting and a tap outside, the screen goes on following the request: an approval made now shows within 20 seconds (made from the shell, .qa/sc29961/answer.py).
+appId: host.exp.Exponent
+---
+- runFlow: ../sign-out.yaml
+- runFlow: ../sc29961-to-waiting.yaml
+- tapOn: { id: 'lostTwoFactor.cancel' }
+- extendedWaitUntil: { visible: '{{t:lostTwoFactor.cancelTitle}}', timeout: 10000 }
+- waitForAnimationToEnd
+- tapOn: { id: 'lostTwoFactor.cancelNo' }
+- tapOn: { id: 'lostTwoFactor.cancel' }
+- extendedWaitUntil: { visible: '{{t:lostTwoFactor.cancelTitle}}', timeout: 10000 }
+- waitForAnimationToEnd
+- tapOn: { point: '50%,12%' }
+- extendedWaitUntil: { notVisible: '{{t:lostTwoFactor.cancelTitle}}', timeout: 10000 }
+- takeScreenshot: closed
+- extendedWaitUntil: { visible: '{{t:lostTwoFactor.approvedTitle}}', timeout: 120000 }
+- runScript: { file: ../sc29961-stamp.js }
+- takeScreenshot: approved
