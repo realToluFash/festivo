@@ -145,7 +145,6 @@
     "staff.shift_end_before": "The end must be after the start.",
     "staff.shift_too_long": "A shift can’t be longer than 24 hours. Check the dates.",
     "staff.shift_needed_range": "Enter a number from 1 to {max}.",
-    "staff.shift_needed_below": "{n} people are on this shift. Unassign some first, or keep {n} or more.",
     "staff.shift_full": "Every place on this shift is filled. Unassign someone to make room.",
     "staff.works_as": "{name} works as {job} on this event.",
     "staff.shift_overlap": "{name} is on {job} from {when}.",
