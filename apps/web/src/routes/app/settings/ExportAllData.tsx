@@ -166,6 +166,10 @@ function Loaded({
     t('exportAllData.holdsMembers'),
     t('exportAllData.holdsEvents'),
     t('exportAllData.holdsGuests'),
+    t('exportAllData.holdsSeating'),
+    t('exportAllData.holdsMenu'),
+    t('exportAllData.holdsRunOfShow'),
+    t('exportAllData.holdsStaff'),
   ];
 
   return (

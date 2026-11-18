@@ -26,7 +26,7 @@ import { DATA_AND_CONTROL } from './ExportAllData.tsx';
 import { useOrganisationExport } from './useOrganisationExport.ts';
 import '../../../components/SettingsParts.css';
 
-/** Settings › Data and control at a desk, in B · One place (sc-612): the soonest step that asks something of the reader, then a row per job. */
+/** Settings › Data and control at a desk, in B · One place (sc-612): a card with the soonest step that asks something of the reader, or that nothing does (ux #68069), then a row per job. */
 export function DataAndControl() {
   const session = useSession();
   const organisation = session.organisation;
@@ -98,19 +98,25 @@ function Loaded({
 
   return (
     <>
-      {asks && (
-        <Card>
-          <div ref={said} className="desk-said-lines" tabIndex={-1} aria-live="polite">
-            <Says>{t('exportAllData.readySays')}</Says>
-            <OnCard>{t('dataControl.cardReadyLine', { when: exported.expires })}</OnCard>
-          </div>
+      <Card>
+        <div ref={said} className="desk-said-lines" tabIndex={-1} aria-live="polite">
+          {asks ? (
+            <>
+              <Says>{t('exportAllData.readySays')}</Says>
+              <OnCard>{t('dataControl.cardReadyLine', { when: exported.expires })}</OnCard>
+            </>
+          ) : (
+            <Says>{t('dataControl.nothingAsks')}</Says>
+          )}
+        </div>
+        {asks && (
           <CardStep
             label={t('exportAllData.download')}
             busy={busy}
             onClick={() => void download(exported.id, exported.askedAt)}
           />
-        </Card>
-      )}
+        )}
+      </Card>
       <section className="desk-block">
         <Head title={t('dataControl.data')} />
         <ul className="desk-rows dc-led">

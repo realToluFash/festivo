@@ -43,9 +43,10 @@ function signedIn(organisation = membership()): void {
 function exported(
   state: NonNullable<OrganisationExportPage['export']>['state'],
   mine = true,
+  owner = mine,
 ): OrganisationExportPage {
   return {
-    owner: mine,
+    owner,
     export: {
       id: 'ex_1',
       state,
@@ -247,6 +248,107 @@ describe('Data and control › Export all data (sc-612)', () => {
       ),
     ).toBeDefined();
     expect(screen.queryByRole('button', { name: 'Download' })).toBeNull();
+    expect(screen.queryByText(/The next export can start/)).toBeNull();
+  });
+
+  it('shows another owner the organisation’s Preparing with the next export, and no step', async () => {
+    signedIn();
+    answering({ [PAGE]: () => json(exported('preparing', false, true)) });
+    open();
+
+    expect(await screen.findByText('Preparing Ìrè Events’s export')).toBeDefined();
+    expect(
+      screen.getByText(
+        'Asked by Folake Adeyemi, Saturday 17 Oct at 14:30 WAT. Only they can download it.',
+      ),
+    ).toBeDefined();
+    expect(
+      screen.getByText('The next export can start on Sunday 18 Oct at 14:30 WAT.'),
+    ).toBeDefined();
+    expect(screen.queryByRole('button', { name: 'Export all data' })).toBeNull();
+  });
+
+  it('shows another owner a downloaded export with who asked and the next export', async () => {
+    signedIn();
+    answering({ [PAGE]: () => json(exported('used', false, true)) });
+    open();
+
+    expect(await screen.findByText('Ìrè Events’s export was downloaded')).toBeDefined();
+    expect(
+      screen.getByText('Asked by Folake Adeyemi, downloaded Saturday 17 Oct at 15:05 WAT.'),
+    ).toBeDefined();
+    expect(
+      screen.getByText('The next export can start on Sunday 18 Oct at 14:30 WAT.'),
+    ).toBeDefined();
+    expect(screen.queryByRole('button', { name: 'Export all data' })).toBeNull();
+  });
+
+  it('lets another owner try again when someone else’s export did not finish', async () => {
+    signedIn();
+    const sent = answering({
+      [PAGE]: () =>
+        json({ ...exported('failed', false, true), nextAllowedAt: null, nextAllowed: null }),
+      [ASK]: () => json(exported('preparing'), 202),
+    });
+    open();
+
+    expect(await screen.findByText('Ìrè Events’s export did not finish')).toBeDefined();
+    fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
+
+    expect(await screen.findByText('Preparing your export')).toBeDefined();
+    expect(sent.filter((line) => line === ASK)).toHaveLength(1);
+  });
+
+  it('lets another owner export again when someone else’s link ended unused', async () => {
+    signedIn();
+    answering({
+      [PAGE]: () =>
+        json({ ...exported('expired', false, true), nextAllowedAt: null, nextAllowed: null }),
+    });
+    open();
+
+    expect(await screen.findByText('Ìrè Events’s export ended')).toBeDefined();
+    expect(
+      screen.getByText(`Its link ended on ${EXPIRES} without a download. You can export again.`),
+    ).toBeDefined();
+    expect(screen.getByRole('button', { name: 'Export all data' })).toBeDefined();
+  });
+
+  it('names an owner where an owner’s card says “you can”, and gives an admin no step', async () => {
+    signedIn(ADMIN);
+    answering({ [PAGE]: () => json(exported('expired', false)) });
+    open();
+
+    expect(await screen.findByText('Ìrè Events’s export ended')).toBeDefined();
+    expect(
+      screen.getByText(
+        `Its link ended on ${EXPIRES} without a download. An owner can export again.`,
+      ),
+    ).toBeDefined();
+    expect(screen.queryByRole('button', { name: 'Export all data' })).toBeNull();
+    expect(screen.queryByText(/The next export can start/)).toBeNull();
+  });
+
+  it('gives an admin no Try again on an export that did not finish', async () => {
+    signedIn(ADMIN);
+    answering({ [PAGE]: () => json(exported('failed', false)) });
+    open();
+
+    expect(await screen.findByText('Ìrè Events’s export did not finish')).toBeDefined();
+    expect(screen.queryByRole('button', { name: 'Try again' })).toBeNull();
+  });
+
+  it('lists the areas built since among what the archive holds', async () => {
+    signedIn();
+    answering({ [PAGE]: () => json(NOTHING) });
+    open();
+
+    expect(await screen.findByText(/^Each event’s seating:/)).toBeDefined();
+    expect(screen.getByText(/^Each event’s menu:/)).toBeDefined();
+    expect(screen.getByText(/^Each event’s run of show:/)).toBeDefined();
+    expect(screen.getByText(/^Each event’s staff:/)).toBeDefined();
+    expect(screen.getByText(/guest group and needs/)).toBeDefined();
+    expect(screen.getByText(/except a course’s served time/)).toBeDefined();
   });
 
   it('gives an admin no Export all data', async () => {
@@ -299,5 +401,31 @@ describe('Data and control (sc-612)', () => {
     await waitFor(() =>
       expect(screen.getByText('Everything Ìrè Events holds, in one archive')).toBeDefined(),
     );
+    expect(screen.getByText('Nothing needs your attention')).toBeDefined();
+    expect(screen.queryByRole('button', { name: 'Download' })).toBeNull();
+  });
+
+  it.each([
+    ['the asker’s Preparing', exported('preparing'), 'Preparing · we’ll email you'],
+    [
+      'someone else’s Preparing',
+      exported('preparing', false, true),
+      'Preparing · asked by Folake Adeyemi',
+    ],
+    ['an export that did not finish', exported('failed'), 'Didn’t finish'],
+    ['a downloaded export', exported('used', false, true), 'Downloaded'],
+    [
+      'a link that ended unused',
+      exported('expired'),
+      'Everything Ìrè Events holds, in one archive',
+    ],
+  ])('keeps the card and gives the row its line for %s, with no Ready', async (_, page, line) => {
+    signedIn();
+    answering({ [PAGE]: () => json(page) });
+    open('/app/settings/data-and-control');
+
+    expect(await screen.findByText(line)).toBeDefined();
+    expect(screen.getByText('Nothing needs your attention')).toBeDefined();
+    expect(screen.queryByText('Ready')).toBeNull();
   });
 });

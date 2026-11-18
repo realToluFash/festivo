@@ -133,7 +133,7 @@
     "organisationExport.subject": "Your export of {organisation} is ready",
     "organisationExport.body": "The archive of everything {organisation} holds, which you asked for on {when}, is ready. It downloads once, until {deadline}, and only for you, signed in.",
     "organisationExport.download": "Download it: {link}",
-    "organisationExport.footer": "You're getting this because you asked to export the data of {organisation}.",
+    "organisationExport.footer": "You're getting this because you asked to export {organisation}'s data.",
     "ownershipTransferred.subject": "Changement de propriétaire pour {organisation}",
     "ownershipTransferred.youGaveIt": "Vous avez transféré la propriété de {organisation} à {to}. Vous avez désormais le rôle Administrateur : vous pouvez toujours gérer l’organisation au quotidien, mais plus la céder ni la supprimer.",
     "ownershipTransferred.youHaveIt": "{from} vous a transféré la propriété de {organisation}. Vous pouvez désormais modifier la facturation, les membres et les paramètres de l’organisation, et la supprimer. {from} a désormais le rôle Administrateur.",
