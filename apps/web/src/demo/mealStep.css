@@ -142,3 +142,79 @@
 .ms-done:focus {
   outline: none;
 }
+
+.ms-close,
+.mx-close {
+  display: flex;
+  align-items: center;
+  gap: var(--spaceXs);
+}
+
+.mx-rows {
+  display: grid;
+  gap: var(--spaceSm);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.mx-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--spaceSm) var(--spaceLg);
+  padding: var(--spaceMd) var(--spaceLg);
+  border: 1px solid var(--colorBorder);
+  border-radius: var(--radiusRow);
+  background: var(--colorCard);
+}
+
+.mx-row.is-closed {
+  background: var(--colorNeutralFill);
+}
+
+.mx-words {
+  display: grid;
+  flex: 1 1 220px;
+  gap: 2px;
+  min-width: 0;
+}
+
+.mx-words p {
+  margin: 0;
+}
+
+.mx-course {
+  color: var(--colorInkSecondary);
+  font: 600 13px/1.4 var(--fontFamily);
+}
+
+.mx-pick {
+  color: var(--colorInk);
+  font: 600 16px/1.35 var(--fontFamily);
+}
+
+.mx-pending {
+  color: var(--colorAttentionText);
+  font: 600 13px/1.4 var(--fontFamily);
+}
+
+.mx-close {
+  color: var(--colorInkSecondary);
+  font: 400 14px/1.4 var(--fontFamily);
+}
+
+.mx-words .ms-refused {
+  margin-top: var(--spaceXs);
+}
+
+.mx-told p {
+  margin: 0;
+  color: var(--colorInk);
+  font: 400 15px/1.45 var(--fontFamily);
+}
+
+.mx-told:focus {
+  outline: none;
+}
