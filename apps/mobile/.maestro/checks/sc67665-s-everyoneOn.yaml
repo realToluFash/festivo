@@ -3,6 +3,6 @@ appId: host.exp.Exponent
 ---
 - setOrientation: ${ORIENT}
 - openLink: ${METRO_URL}/--/demo/people?state=everyoneOn
-- extendedWaitUntil: { visible: '.*People.*', timeout: 30000 }
+- extendedWaitUntil: { visible: '.*is on this event already.*', timeout: 30000 }
 - waitForAnimationToEnd: { timeout: 8000 }
 - takeScreenshot: d

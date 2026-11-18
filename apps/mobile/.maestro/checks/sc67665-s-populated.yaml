@@ -3,6 +3,9 @@ appId: host.exp.Exponent
 ---
 - setOrientation: ${ORIENT}
 - openLink: ${METRO_URL}/--/demo/people
-- extendedWaitUntil: { visible: '.*People.*', timeout: 30000 }
+- extendedWaitUntil: { visible: '.*On this event.*', timeout: 30000 }
+- assertVisible: { id: 'people.add.open' }
+- assertNotVisible: '.*Only owners, admins and the lead change.*'
+- assertNotVisible: '.*Lead.*You.*'
 - waitForAnimationToEnd: { timeout: 8000 }
 - takeScreenshot: d

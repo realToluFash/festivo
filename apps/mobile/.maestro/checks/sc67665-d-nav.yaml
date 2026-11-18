@@ -1,4 +1,4 @@
-# sc-67665: from the Events demo's evt-wed-4, People by the pill (upright) or the sidebar (on its side), then another area, People again, and back to Events; then People from Overview's People card.
+# sc-67665: from the Events demo's evt-wed-4, People by the pill (upright) or the sidebar (on its side), then another area, People again, and back to Events; then People from Overview's People card. Set PREFIX=event.area. (PORTRAIT, the pills) or event.side. (LANDSCAPE_LEFT, the sidebar).
 appId: host.exp.Exponent
 ---
 - setOrientation: ${ORIENT}

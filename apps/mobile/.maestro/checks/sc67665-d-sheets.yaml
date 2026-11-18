@@ -1,4 +1,4 @@
-# sc-67665: from the People demo in the event's frame on the iPad, Add people and a person's role sheet, each in the 540 sheet.
+# sc-67665: from the People demo in the event's frame on the iPad, Add people, in the 540 sheet.
 appId: host.exp.Exponent
 ---
 - setOrientation: ${ORIENT}

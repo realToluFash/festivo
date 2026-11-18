@@ -4,5 +4,5 @@ appId: host.exp.Exponent
 - setOrientation: ${ORIENT}
 - openLink: ${METRO_URL}/--/events/${EVENT_ID}?area=budget
 - waitForAnimationToEnd: { timeout: 8000 }
-- extendedWaitUntil: { visible: '.*Events.*', timeout: 30000 }
+- extendedWaitUntil: { visible: '.*{{t:eventsScreen.title}}.*', timeout: 30000 }
 - takeScreenshot: p-budget
