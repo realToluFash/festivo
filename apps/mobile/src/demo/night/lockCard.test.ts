@@ -176,6 +176,24 @@ describe('the card at each board state', () => {
       'Não há mais nada previsto em Foyer.',
       'Atualizado à 01:10',
     ]);
+    expect(cardOf(late, foyer, 'es-ES', at('01:10')).lines).toEqual([
+      'Carriages · desde la 01:10',
+      'No hay nada más previsto en Foyer.',
+      'Actualizado a la 01:10',
+    ]);
+
+    const barOn = sceneNight({
+      name: '',
+      clock: '01:10',
+      foyer: { ...FOYER_RUN, bar: ['00:20'] },
+      hall: DANCED,
+    });
+
+    expect(cardOf(barOn, barOn.tracks[1]!, 'es-ES', at('00:20')).lines).toEqual([
+      'Late bar · desde las 00:20',
+      'A continuación: Carriages · hacia la 01:20',
+      'Actualizado a las 00:20',
+    ]);
   });
 
   it('puts up no card with Event day push off', () => {
