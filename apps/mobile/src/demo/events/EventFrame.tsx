@@ -12,7 +12,9 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Sheet } from '../../components/Sheet.tsx';
-import { Text } from '../../components/Text.tsx';
+import { Text, TitleCap } from '../../components/Text.tsx';
+import { PageTitleDrawn, useTitleCap } from '../../components/Title.tsx';
+import { PAGE_TITLE } from '../../components/topTitle.ts';
 import { tokens } from '../../theme/tokens.ts';
 import { Glyph, type GlyphName } from '../../components/Glyph.tsx';
 import { PHONE_TAB_BAR, TabBar, TabBarFade } from '../../components/TodayCover.tsx';
@@ -141,6 +143,13 @@ export function EventFrame({
   const shell = useShell();
   const insets = useSafeAreaInsets();
   const phone = shell.layout === 'phone';
+  const titleCap = useTitleCap(`${shell.layout}|${area}`, PAGE_TITLE);
+  // As the product's frame: an area is capped only once its body's title says the size it drew at (sc-67338, sc-67659).
+  const capped = (node: ReactNode) => (
+    <PageTitleDrawn.Provider value={titleCap.onDrawn}>
+      <TitleCap.Provider value={titleCap.drawn ? titleCap.cap : null}>{node}</TitleCap.Provider>
+    </PageTitleDrawn.Provider>
+  );
   const foot = Math.max(insets.bottom - tokens.spaceXxs, tokens.spaceLg);
   const toastBottom = phone
     ? foot + PHONE_TAB_BAR + tokens.spaceXl + tokens.spaceHair
@@ -182,18 +191,20 @@ export function EventFrame({
         <PaneBellAt.Provider
           value={{ bell: <Bell tell={shell.tell} onPress={onBell} ref={bellRef} /> }}
         >
-          {fill ? (
-            <View style={styles.grow}>{children}</View>
-          ) : (
-            <ScrollView
-              ref={scrollRef}
-              style={styles.grow}
-              contentContainerStyle={styles.pane}
-              keyboardShouldPersistTaps="handled"
-              showsVerticalScrollIndicator={false}
-            >
-              {children}
-            </ScrollView>
+          {capped(
+            fill ? (
+              <View style={styles.grow}>{children}</View>
+            ) : (
+              <ScrollView
+                ref={scrollRef}
+                style={styles.grow}
+                contentContainerStyle={styles.pane}
+                keyboardShouldPersistTaps="handled"
+                showsVerticalScrollIndicator={false}
+              >
+                {children}
+              </ScrollView>
+            ),
           )}
         </PaneBellAt.Provider>
       </Landscape>
@@ -218,35 +229,37 @@ export function EventFrame({
             : { paddingTop: insets.top + tokens.spaceMd, paddingHorizontal: tokens.space5xl },
         ]}
       >
-        <Back label={back.label} onPress={back.onPress} />
+        {capped(<Back label={back.label} onPress={back.onPress} />)}
         <View style={styles.grow} />
         <Bell tell={shell.tell} onPress={onBell} ref={bellRef} />
       </View>
       {!phone && <AreaPills area={area} onArea={onArea} badge={badge} without={without} />}
-      {fill ? (
-        <View style={styles.grow}>{children}</View>
-      ) : (
-        <ScrollView
-          ref={scrollRef}
-          style={styles.grow}
-          contentContainerStyle={[
-            styles.blocks,
-            phone
-              ? {
-                  paddingHorizontal: tokens.spaceXxl,
-                  paddingBottom: foot + PHONE_TAB_BAR + tokens.space6xl * 2,
-                }
-              : {
-                  paddingTop: tokens.space3xl,
-                  paddingHorizontal: tokens.space5xl,
-                  paddingBottom: insets.bottom + tokens.space6xl * 2,
-                },
-          ]}
-          keyboardShouldPersistTaps="handled"
-          showsVerticalScrollIndicator={false}
-        >
-          {children}
-        </ScrollView>
+      {capped(
+        fill ? (
+          <View style={styles.grow}>{children}</View>
+        ) : (
+          <ScrollView
+            ref={scrollRef}
+            style={styles.grow}
+            contentContainerStyle={[
+              styles.blocks,
+              phone
+                ? {
+                    paddingHorizontal: tokens.spaceXxl,
+                    paddingBottom: foot + PHONE_TAB_BAR + tokens.space6xl * 2,
+                  }
+                : {
+                    paddingTop: tokens.space3xl,
+                    paddingHorizontal: tokens.space5xl,
+                    paddingBottom: insets.bottom + tokens.space6xl * 2,
+                  },
+            ]}
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
+          >
+            {children}
+          </ScrollView>
+        ),
       )}
       {phone && (
         <>
