@@ -17,6 +17,7 @@ import {
   tastingCourses,
   withDishes,
 } from './menuCourses.ts';
+import { libraryJollof } from './dishVariants.ts';
 import { type DishAllergen, type LibDish, SAMPLE_DISHES } from './menuLibrary.ts';
 
 const main = (): EvCourse => sampleCourses()[1] as EvCourse;
@@ -103,6 +104,17 @@ describe('the event’s copy of a library dish', () => {
     expect(copy.contains).toEqual(['eggs']);
     expect(copy.name).toBe('Moi moi');
     expect(copy.libraryId).toBe('d-moimoi');
+  });
+
+  it('gives each copy its own variant ids, so two courses never share one', () => {
+    const jollof: LibDish = { ...moiMoi(), variants: libraryJollof('EUR') };
+    const ids = (dish: { variants?: readonly { id: string }[] }) =>
+      (dish.variants ?? []).map((one) => one.id);
+    const main = ids(copyOf(jollof));
+    const late = ids(copyOf(jollof));
+
+    expect(main).toHaveLength(3);
+    expect(main.filter((id) => late.includes(id))).toEqual([]);
   });
 });
 

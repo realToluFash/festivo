@@ -6,6 +6,7 @@ namespace App\Domain\Event;
 
 use App\Audit\Auditor;
 use App\Domain\Event\Interfaces\ActiveEventsLimitInterface;
+use App\Domain\Event\Interfaces\EventEndedInterface;
 use App\Domain\Event\Model\EventTransition;
 use App\Domain\Messaging\EventChanges\EventChangeRecorder;
 use App\Domain\Messaging\Model\EventDetails;
@@ -23,6 +24,7 @@ use DateTimeImmutable;
 use Doctrine\DBAL\LockMode;
 use Doctrine\ORM\EntityManagerInterface;
 use Psr\Clock\ClockInterface;
+use Symfony\Component\DependencyInjection\Attribute\AutowireIterator;
 use Symfony\Contracts\Translation\TranslatorInterface;
 
 /** Moves an event between its stored states by /event-states.json's `transitions`, each move in the audit log (sc-3584). */
@@ -36,6 +38,7 @@ final readonly class EventLifecycle
 
     public const string RESUMED = 'event.resumed';
 
+    /** @param iterable<EventEndedInterface> $endedListeners */
     public function __construct(
         private EntityManagerInterface $entityManager,
         private ActiveEventsLimitInterface $activeEventsLimit,
@@ -43,6 +46,9 @@ final readonly class EventLifecycle
         private ClockInterface $clock,
         private TranslatorInterface $translator,
         private EventChangeRecorder $eventChangeRecorder,
+        private ThankYouEditor $thankYouEditor,
+        #[AutowireIterator(EventEndedInterface::TAG)]
+        private iterable $endedListeners,
     ) {
     }
 
@@ -51,10 +57,28 @@ final readonly class EventLifecycle
         return $this->move($event, EventAction::MakeLive, self::MADE_LIVE, $by, static fn (Event $event, DateTimeImmutable $now) => $event->makeLive($now));
     }
 
-    /** Before the start this calls the event off, and after it ends it early: one action, refused once the end has passed (sc-3585). */
-    public function end(Event $event, User $by): Event
+    /** Before the start this calls the event off, and after it ends it early: one action, refused once the end has passed (sc-3585); a call-off takes no thank-you. Whatever listens hears once it is saved (sc-62588). */
+    public function end(Event $event, User $by, ?string $thankYou = null): Event
     {
-        return $this->move($event, EventAction::End, self::ENDED, $by, static fn (Event $event, DateTimeImmutable $now) => $event->end($now));
+        $line = $this->thankYouEditor->clean($thankYou);
+
+        $ended = $this->move($event, EventAction::End, self::ENDED, $by, function (Event $event, DateTimeImmutable $now) use ($line, $by): void {
+            if (null !== $line && EventPhase::calledOff($now, $event->getStartsAt())) {
+                throw $this->stateInvalid($event, $now);
+            }
+
+            $event->end($now);
+
+            if (null !== $line) {
+                $event->setThankYou($line);
+                $this->auditor->record(ThankYouEditor::SAVED, 'Event', $event->getId(), Actor::User, $by->getId(), $by->getName(), []);
+            }
+        });
+        foreach ($this->endedListeners as $listener) {
+            $listener->ended($ended);
+        }
+
+        return $ended;
     }
 
     /** Refused while it is Finished, as Resume is: a pause stops guests and keeps everything (sc-3586). */

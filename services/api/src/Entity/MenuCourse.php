@@ -22,6 +22,8 @@ class MenuCourse
 
     public const int PER_EVENT_MAXIMUM = 10;
 
+    public const int OWN_ITEMS_MAXIMUM = 3;
+
     #[ORM\Id]
     #[ORM\Column(type: 'uuid')]
     private Uuid $id;
@@ -46,6 +48,10 @@ class MenuCourse
 
     #[ORM\Column(type: Types::BOOLEAN)]
     private bool $skippable = false;
+
+    /** @var list<string> Served with this course: on every plate of it, after the dish's items (sc-34230) */
+    #[ORM\Column(type: Types::JSON, options: ['default' => '[]'])]
+    private array $ownItems = [];
 
     public function __construct(Event $event, string $name, ?string $servedAt, int $position)
     {
@@ -110,5 +116,17 @@ class MenuCourse
     public function setSkippable(bool $skippable): void
     {
         $this->skippable = $skippable;
+    }
+
+    /** @return list<string> */
+    public function getOwnItems(): array
+    {
+        return $this->ownItems;
+    }
+
+    /** @param list<string> $items */
+    public function listOwnItems(array $items): void
+    {
+        $this->ownItems = $items;
     }
 }

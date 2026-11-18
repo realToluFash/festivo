@@ -6,6 +6,7 @@ namespace App\Domain\Seating\Controller;
 
 use App\Domain\Seating\Http\SeatingSerialiser;
 use App\Domain\Seating\SeatingPlanEditor;
+use App\Domain\Seating\TableSharer;
 use App\Entity\Event;
 use App\Entity\SeatingPlan;
 use App\Entity\SeatingRow;
@@ -17,6 +18,7 @@ use App\Enum\ErrorCode;
 use App\Enum\Permission;
 use App\Enum\SectionColour;
 use App\Enum\TableShape;
+use App\Http\Access\Interfaces\MembershipDirectoryInterface;
 use App\Http\Access\InThisEvent;
 use App\Http\Access\Policy\InEvent;
 use App\Http\EntityTag;
@@ -42,6 +44,8 @@ final readonly class SeatingPlanController
         private SeatingPlanEditor $seatingPlanEditor,
         private SeatingSerialiser $seatingSerialiser,
         private SubscriberTokenIssuer $subscriberTokenIssuer,
+        private MembershipDirectoryInterface $membershipDirectory,
+        private TableSharer $tableSharer,
     ) {
     }
 
@@ -85,6 +89,23 @@ final readonly class SeatingPlanController
         ]));
 
         $plan = $this->seatingPlanEditor->change($event, $this->plan($event), $request->headers->get('If-Match'), $this->user(), $body);
+
+        return $this->seating($event, $plan);
+    }
+
+    /** Share tables with guests or stop (`shared`), and the day to share them by (`shareBy`, a day or null), either or both (sc-4022). No If-Match: neither touches the room. Refused 422 on `shareBy`. */
+    #[Route('/api/events/{eventId}/seating-plan/sharing', name: 'seating_plan_sharing', methods: ['PATCH'])]
+    #[InEvent(Permission::SeatingManage)]
+    public function share(Request $request, string $eventId): JsonResponse
+    {
+        $event = $this->event($eventId);
+        $plan = $this->plan($event);
+        $body = Input::body($request, Type\shape([
+            'shared' => Type\optional(Type\bool()),
+            'shareBy' => Type\optional(Type\nullable(Type\string())),
+        ]));
+
+        $this->tableSharer->change($event, $plan, $body, $this->user());
 
         return $this->seating($event, $plan);
     }
@@ -369,19 +390,23 @@ final readonly class SeatingPlanController
         return $this->seating($event, $plan, Response::HTTP_CREATED, ['chosen' => $copies]);
     }
 
-    /** Deletes the chosen items in one step, all or nothing (sc-4717). */
+    /** Deletes the chosen items and frees whoever sits in them, in one step, all or nothing (sc-4717, sc-57680); `moves` are the freed guests', to send back with Undo. `emptyOnly` refuses with 409 while anybody sits in one. */
     #[Route('/api/events/{eventId}/seating-plan/furniture/delete', name: 'seating_furniture_delete', methods: ['POST'])]
     #[InEvent(Permission::SeatingManage)]
     public function deleteFurniture(Request $request, string $eventId): JsonResponse
     {
         $event = $this->event($eventId);
         $plan = $this->plan($event);
-        $this->seatingPlanEditor->deleteFurniture($event, $plan, $this->user(), $this->chosenItems($request));
+        $body = Input::body($request, Type\shape([
+            'items' => self::chosen(),
+            'emptyOnly' => Type\optional(Type\bool()),
+        ]));
+        $freed = $this->seatingPlanEditor->deleteFurniture($event, $plan, $this->user(), $body['items'], $body['emptyOnly'] ?? false);
 
-        return $this->seating($event, $plan);
+        return $this->seating($event, $plan, Response::HTTP_OK, ['moves' => $freed]);
     }
 
-    /** Puts deleted items back, each with its `kind`, `name` (a row's label), `sectionId`, place and layout as the plan served them: the Undo of sc-4717's Delete. `chosen` lists their new ids in the order sent. */
+    /** Puts deleted items back, each with its `kind`, `name` (a row's label), `sectionId`, place and layout as the plan served them, and `guests` back in the chairs they had: the Undo of sc-4717's Delete. `chosen` lists their new ids in the order sent. */
     #[Route('/api/events/{eventId}/seating-plan/furniture/restore', name: 'seating_furniture_restore', methods: ['POST'])]
     #[InEvent(Permission::SeatingManage)]
     public function restore(Request $request, string $eventId): JsonResponse
@@ -403,6 +428,10 @@ final readonly class SeatingPlanController
                 'spacingCm' => Type\optional(Type\int()),
                 'unusableSeats' => Type\optional(Type\vec(Type\int())),
                 'unusable' => Type\optional(Type\bool()),
+                'guests' => Type\optional(Type\vec(Type\shape([
+                    'guestId' => Type\string(),
+                    'seat' => Type\int(),
+                ]))),
             ])),
         ]));
         $plan = $this->plan($event);
@@ -412,12 +441,15 @@ final readonly class SeatingPlanController
         return $this->seating($event, $plan, Response::HTTP_CREATED, ['chosen' => $restored]);
     }
 
-    /** A hub token for this event's seating alone; every change to the plan is published there whole. */
+    /** A hub token for this event's seating alone: every change to the plan, published there whole, what its editors have chosen, and who else has it open (sc-4719). */
     #[Route('/api/events/{eventId}/seating-plan/subscriptions', name: 'seating_plan_subscribe', methods: ['POST'])]
     #[InEvent(Permission::SeatingRead)]
     public function subscribe(string $eventId): JsonResponse
     {
-        $issued = $this->subscriberTokenIssuer->issueForEventSeating($this->event($eventId)->getId());
+        $event = $this->event($eventId);
+        $user = $this->user();
+        $editor = $this->membershipDirectory->grantsOnEvent($user, $event->getOrganisation()->getId(), $event->getId())?->allows(Permission::SeatingManage) ?? false;
+        $issued = $this->subscriberTokenIssuer->issueForEventSeating($event->getId(), $user, $editor);
 
         return new JsonResponse([
             'token' => $issued->token,
@@ -425,7 +457,36 @@ final readonly class SeatingPlanController
         ]);
     }
 
-    /** @param array<string, string|list<string>> $chosen a table's, row's or seat's id as `tableId`, `rowId` or `seatId`, so a client opens the one it added, or the ids it should choose as `chosen` */
+    /** What an editor has chosen, a table, row or seat, with `chair` for one of a table's chairs, or null for nothing; told to everyone with the plan open and kept nowhere (sc-4719). A viewer's choice is not shared, so this is refused them. */
+    #[Route('/api/events/{eventId}/seating-plan/chosen', name: 'seating_plan_choose', methods: ['PUT'])]
+    #[InEvent(Permission::SeatingManage)]
+    public function choose(Request $request, string $eventId): Response
+    {
+        $event = $this->event($eventId);
+        $body = Input::body($request, Type\shape([
+            'chosen' => Type\nullable(Type\shape([
+                'kind' => self::kind(),
+                'id' => Type\string(),
+                'chair' => Type\optional(Type\nullable(Type\uint())),
+            ])),
+        ]));
+
+        $this->seatingPlanEditor->announceChoice($event, $this->plan($event), $this->user(), $body['chosen']);
+
+        return new Response(status: Response::HTTP_NO_CONTENT);
+    }
+
+    /** Someone with the plan open, editor or viewer, saying so every few seconds; told to everyone with it open and kept nowhere (sc-4719). */
+    #[Route('/api/events/{eventId}/seating-plan/here', name: 'seating_plan_here', methods: ['POST'])]
+    #[InEvent(Permission::SeatingRead)]
+    public function here(string $eventId): Response
+    {
+        $this->seatingPlanEditor->announceHere($this->event($eventId), $this->user());
+
+        return new Response(status: Response::HTTP_NO_CONTENT);
+    }
+
+    /** @param array<string, string|list<string>|list<array<string, mixed>>> $chosen a table's, row's or seat's id as `tableId`, `rowId` or `seatId`, so a client opens the one it added, the ids it should choose as `chosen`, or the guests a delete freed as `moves` */
     private function seating(Event $event, ?SeatingPlan $plan, int $status = Response::HTTP_OK, array $chosen = []): JsonResponse
     {
         return new JsonResponse(
@@ -438,13 +499,17 @@ final readonly class SeatingPlanController
     /** @return list<array{kind: 'table'|'row'|'seat', id: string, version: int}> */
     private function chosenItems(Request $request): array
     {
-        return Input::body($request, Type\shape([
-            'items' => Type\vec(Type\shape([
-                'kind' => self::kind(),
-                'id' => Type\string(),
-                'version' => Type\int(),
-            ])),
-        ]))['items'];
+        return Input::body($request, Type\shape(['items' => self::chosen()]))['items'];
+    }
+
+    /** @return Type\TypeInterface<list<array{kind: 'table'|'row'|'seat', id: string, version: int}>> */
+    private static function chosen(): Type\TypeInterface
+    {
+        return Type\vec(Type\shape([
+            'kind' => self::kind(),
+            'id' => Type\string(),
+            'version' => Type\int(),
+        ]));
     }
 
     /** @return Type\TypeInterface<'table'|'row'|'seat'> */

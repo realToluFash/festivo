@@ -26,6 +26,8 @@ export interface OfflineWatch {
   /** Every load of the screen goes through here, or the band never learns that Soirely answered again. */
   watch<T>(load: Promise<T>): Promise<T>;
   retry(): void;
+  /** The screen shows what an earlier load kept, because this one never reached Soirely (sc-65646): stale as of that load, until one answers. */
+  keep(at: Date): void;
   /** Something new happened, so a screen under the band loads once; a load out is joined, and one that ends unanswered is not followed by another (sc-27673). */
   askAgain(): void;
   /** The screen's own reason to load, band or no band: coming back to it, or to the foreground. A load out is joined. */
@@ -114,6 +116,9 @@ export function createOfflineWatch({
       pressed = true;
       // A press while a load is out joins it: no second load, and its 20 s keep counting from the first.
       freshen();
+    },
+    keep(at) {
+      if (state.at == null) set({ at, stale: true });
     },
     askAgain,
     freshen,

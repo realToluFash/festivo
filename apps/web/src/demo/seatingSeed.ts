@@ -1,4 +1,5 @@
 import {
+  type Chair,
   type Colour,
   type Item,
   type Kind,
@@ -6,6 +7,8 @@ import {
   type Person,
   type Plan,
   type Point,
+  type Presence,
+  type Rings,
   type SeatingState,
   COLOURS,
   PRIYA,
@@ -27,7 +30,9 @@ import {
   sideBySide,
   usable,
   filled,
+  freedFrom,
 } from './seating.ts';
+import { NOT_SHARED, SHARE_STATES, type Share, isShareState, shareOf } from './shareTables.ts';
 import {
   type Fold,
   type Rect,
@@ -35,6 +40,7 @@ import {
   copiesOf,
   gridOf,
   outsider,
+  seatedOf,
   thingsOf,
   tooBig,
   withMoved,
@@ -102,9 +108,9 @@ export interface Ui {
   snap: boolean;
   save: SaveState;
   people: Person[];
-  presence: 'chips' | 'overflow' | 'reconnecting';
+  presence: Presence;
   onPlanOpen: boolean;
-  rings: Record<string, Person>;
+  rings: Rings;
   bar: Bar | null;
   asking: Asking | null;
   seed: FieldSeed | null;
@@ -118,12 +124,15 @@ export interface Ui {
   sectionsRefused: boolean;
   print: { open: boolean; paper: 'A4' | 'Letter'; docs: Record<Doc, DocState> };
   picked: string | null;
+  moving: { table: string; chair: number } | null;
+  hoverChair: number | null;
   unsure: boolean;
   search: string;
   groups: string[];
   hover: string | null;
+  chairLabel: { id: string; i: number } | null;
   pop: Pop | null;
-  undo: { plan: Plan; tray: Party[] } | null;
+  undo: { plan: Plan; tray: Party[]; chosen?: string[]; stale?: boolean } | null;
   tablesSection: string | null;
   listTab: ListTab | null;
   listOpen: string | null;
@@ -147,6 +156,8 @@ export interface Ui {
   refused: string | null;
   renumber: { start: string; error: string | null };
   sectionPick: string;
+  /** sc-4022: sharing the tables with guests, the card at the top of the panel. */
+  share: Share;
 }
 
 const NO_DOCS: Record<Doc, DocState> = {
@@ -190,10 +201,13 @@ export function freshUi(): Ui {
     sectionsRefused: false,
     print: { open: false, paper: 'A4', docs: { ...NO_DOCS } },
     picked: null,
+    moving: null,
+    hoverChair: null,
     unsure: false,
     search: '',
     groups: [],
     hover: null,
+    chairLabel: null,
     pop: null,
     undo: null,
     tablesSection: null,
@@ -214,6 +228,7 @@ export function freshUi(): Ui {
     refused: null,
     renumber: { start: '1', error: null },
     sectionPick: '',
+    share: NOT_SHARED,
   };
 }
 
@@ -264,6 +279,61 @@ export function seated(
   };
 }
 
+/** `picked` while the guest picked is already seated (sc-4013): their chair is `moving`. */
+export const MOVING = 'seated-guest';
+
+type At = { table: string; chair: number };
+
+/** Moves one seated guest, and only them, to a chosen empty chair or the table's first free one; null when there is none. */
+export function movedSeat(
+  plan: Plan,
+  from: At,
+  tableId: string,
+  chair?: number,
+): { plan: Plan; name: string } | null {
+  const was = byId(plan, from.table).chairs[from.chair];
+  const target = byId(plan, tableId);
+  const to = chair ?? firstFree(target, 1)[0];
+
+  if (was?.state !== 'taken' || to == null || target.chairs[to]?.state !== 'empty') return null;
+  return {
+    plan: withChairs(plan, [
+      [from, { state: 'empty' }],
+      [{ table: tableId, chair: to }, was],
+    ]),
+    name: was.who ?? '',
+  };
+}
+
+/** Two seated guests change chairs (sc-4013). */
+export function swappedSeats(plan: Plan, a: At, b: At): Plan {
+  const one = byId(plan, a.table).chairs[a.chair];
+  const two = byId(plan, b.table).chairs[b.chair];
+
+  if (one == null || two == null) return plan;
+  return withChairs(plan, [
+    [a, two],
+    [b, one],
+  ]);
+}
+
+function withChairs(plan: Plan, changes: readonly (readonly [At, Chair])[]): Plan {
+  return {
+    ...plan,
+    items: plan.items.map((item) =>
+      changes.some(([at]) => at.table === item.id)
+        ? {
+            ...item,
+            chairs: item.chairs.map(
+              (chair, index) =>
+                changes.find(([at]) => at.table === item.id && at.chair === index)?.[1] ?? chair,
+            ),
+          }
+        : item,
+    ),
+  };
+}
+
 export function seatedWords(party: Party, table: string, apart: boolean): string {
   const others = peopleIn(party) - 1;
 
@@ -286,6 +356,17 @@ export function seedOf(state: SeatingState | null): Ui {
   const ui = freshUi();
   const plan = ui.plan;
   const at = (s: number, cx: number, cy: number) => ({ s, cx, cy });
+
+  if (isShareState(state)) {
+    const start = SHARE_STATES[state];
+
+    return {
+      ...ui,
+      share: shareOf(state),
+      readOnly: 'readOnly' in start,
+      tray: 'allSeated' in start ? ui.tray.filter((party) => party.reply !== 'coming') : ui.tray,
+    };
+  }
 
   switch (state) {
     case null:
@@ -606,7 +687,7 @@ export function seedOf(state: SeatingState | null): Ui {
       return {
         ...ui,
         chosen: ['t7'],
-        rings: { t7: PRIYA },
+        rings: { t7: [{ who: PRIYA }] },
         people: [PRIYA, SADE],
         notice: { tone: 'amber', words: say(SW.tableChanged, { name: PRIYA.name }) },
       };
@@ -618,7 +699,7 @@ export function seedOf(state: SeatingState | null): Ui {
       return {
         ...ui,
         chosen: [id],
-        rings: { [id]: PRIYA },
+        rings: { [id]: [{ who: PRIYA }] },
         people: [PRIYA, SADE],
         notice: { tone: 'amber', words: say(words, { name: PRIYA.name }) },
       };
@@ -764,7 +845,7 @@ export function seedOf(state: SeatingState | null): Ui {
         ...ui,
         plan: next,
         chosen: ['t6', 't7', 't8'],
-        rings: { t7: PRIYA },
+        rings: { t7: [{ who: PRIYA }] },
         people: [PRIYA, SADE],
         bar: { kind: 'amber', words: say(SW.moved, { name: PRIYA.name, table: 'Table 7' }) },
       };
@@ -782,12 +863,12 @@ export function seedOf(state: SeatingState | null): Ui {
     case 'screenReader':
       return { ...ui, focus: 'item:top' };
     case 'presenceChose':
-      return { ...ui, rings: { t7: PRIYA } };
+      return { ...ui, rings: { t7: [{ who: PRIYA }] } };
     case 'presenceBoth':
       return {
         ...ui,
         chosen: ['t7'],
-        rings: { t7: PRIYA },
+        rings: { t7: [{ who: PRIYA }] },
         people: [PRIYA, SADE],
         contest: { id: 't7', at: [810, 1120], by: PRIYA.name },
       };
@@ -797,12 +878,49 @@ export function seedOf(state: SeatingState | null): Ui {
         people: [...SIX],
         presence: 'overflow',
         onPlanOpen: true,
-        rings: { t7: PRIYA, t2: SIX[2]!, t9: SIX[3]! },
+        rings: {
+          t7: [{ who: PRIYA }, { who: SIX[2]! }],
+          t2: [{ who: SIX[5]! }],
+          t9: [{ who: SIX[3]!, seat: 1 }],
+        },
+      };
+    case 'presenceSeatTables':
+    case 'presenceSeatList':
+      return {
+        ...ui,
+        people: [PRIYA, SIX[3]!],
+        rings: { t9: [{ who: SIX[3]!, seat: 1 }] },
+        ...(state === 'presenceSeatTables'
+          ? { view: 'tables' as const }
+          : { view: 'list' as const, listTab: 'all' as const, listOpen: 't9' }),
+      };
+    case 'presenceTwoTables':
+    case 'presenceTwoList':
+      return {
+        ...ui,
+        people: [...SIX],
+        presence: 'overflow',
+        rings: {
+          t7: [{ who: PRIYA }, { who: SIX[2]! }],
+          t4: [{ who: SIX[3]! }, { who: SIX[5]! }, { who: PRIYA }],
+          t2: [{ who: SADE }],
+        },
+        ...(state === 'presenceTwoTables'
+          ? { view: 'tables' as const }
+          : { view: 'list' as const, listTab: 'all' as const }),
+      };
+    case 'presenceBothTables':
+      return {
+        ...ui,
+        view: 'tables',
+        chosen: ['t7'],
+        rings: { t7: [{ who: PRIYA }] },
+        people: [PRIYA, SADE],
       };
     case 'presenceViewer':
       return { ...ui, people: [PRIYA, SADE] };
     case 'reconnecting':
-      return { ...ui, people: [], presence: 'reconnecting' };
+      return { ...ui, people: [], presence: 'reconnecting', rings: { t7: [{ who: PRIYA }] } };
     case 'left':
       return { ...ui, people: [SADE], spoken: say(SW.left, { name: PRIYA.name }) };
     case 'arriving':
@@ -815,6 +933,41 @@ export function seedOf(state: SeatingState | null): Ui {
         tab: 'seat',
         picked: 'kwame',
         hover: 't8',
+        bar: { kind: 'tint', words: pickWords(ui.tray[0]!), does: 'pick' },
+      };
+    case 'pickedOut':
+      return {
+        ...ui,
+        tab: 'seat',
+        picked: 'kwame',
+        hover: 't8',
+        camera: at(0.2, 1200, 1100),
+        bar: { kind: 'tint', words: pickWords(ui.tray[0]!), does: 'pick' },
+      };
+    case 'pickedTight': {
+      const closer = (id: string, y: number) => (now: Plan) => moved(now, id, { y });
+      const tight = [
+        ...['t6', 't7', 't8', 't9', 't10'].map((id) => closer(id, 900)),
+        closer('rowA', 1090),
+      ].reduce((now, step) => step(now), plan);
+
+      return {
+        ...ui,
+        plan: tight,
+        tab: 'seat',
+        picked: 'kwame',
+        hover: 't8',
+        bar: { kind: 'tint', words: pickWords(ui.tray[0]!), does: 'pick' },
+      };
+    }
+    case 'chairLabel':
+      return {
+        ...ui,
+        tab: 'seat',
+        picked: 'kwame',
+        hover: 't9',
+        camera: at(0.75, 1590, 1020),
+        chairLabel: { id: 't9', i: 0 },
         bar: { kind: 'tint', words: pickWords(ui.tray[0]!), does: 'pick' },
       };
     case 'seated':
@@ -911,6 +1064,30 @@ export function seedOf(state: SeatingState | null): Ui {
         hover: 't10',
         pop: { kind: 'moveAll', table: 't4' },
       };
+    case 'moveAllNone': {
+      const t10 = byId(plan, 't10');
+      const six = [
+        'Ada Obi',
+        'Tomás Silva',
+        'Chloé Martin',
+        'Femi Bello',
+        'Rui Costa',
+        'Lea Klein',
+      ];
+
+      return {
+        ...ui,
+        tab: 'seat',
+        plan: moved(plan, 't10', {
+          chairs: t10.chairs.map((chair, index) =>
+            index < six.length ? { state: 'taken', who: six[index]! } : chair,
+          ),
+        }),
+        chosen: ['t1'],
+        hover: 't1',
+        pop: { kind: 'moveAll', table: 't1' },
+      };
+    }
     case 'emptyTable':
       return { ...ui, tab: 'seat', chosen: ['t10'] };
     case 'everyoneSeated': {
@@ -957,6 +1134,56 @@ export function seedOf(state: SeatingState | null): Ui {
         hover: 't8',
         bar: { kind: 'tint', words: pickWords(ui.tray[0]!), does: 'pick' },
       };
+    case 'tablesChair':
+      return {
+        ...ui,
+        tab: 'seat',
+        view: 'tables',
+        picked: 'kwame',
+        hover: 't8',
+        hoverChair: 7,
+        bar: { kind: 'tint', words: pickWords(ui.tray[0]!), does: 'pick' },
+      };
+    case 'tablesSwap':
+      return {
+        ...ui,
+        tab: 'seat',
+        view: 'tables',
+        picked: 'lucia',
+        hover: 't4',
+        hoverChair: 2,
+        pop: { kind: 'swap', table: 't4', chair: 2, party: 'lucia' },
+        bar: { kind: 'tint', words: pickWords(ui.tray[2]!), does: 'pick' },
+      };
+    case 'tablesMoving': {
+      const name = byId(plan, 't4').chairs[2]?.who ?? '';
+
+      return {
+        ...ui,
+        tab: 'seat',
+        view: 'tables',
+        picked: MOVING,
+        moving: { table: 't4', chair: 2 },
+        bar: { kind: 'tint', words: say(SW.pickOne, { name }), does: 'pick' },
+      };
+    }
+    case 'tablesMoved': {
+      const next = movedSeat(plan, { table: 't4', chair: 2 }, 't8');
+
+      return {
+        ...ui,
+        tab: 'seat',
+        view: 'tables',
+        plan: next?.plan ?? plan,
+        hover: 't8',
+        undo: { plan, tray: ui.tray },
+        bar: {
+          kind: 'undo',
+          words: say(SW.seatedOne, { name: next?.name ?? '', table: byId(plan, 't8').name }),
+          does: 'undo',
+        },
+      };
+    }
     case 'list':
       return { ...ui, tab: 'seat', view: 'list' };
     case 'listOpen':
@@ -1155,6 +1382,27 @@ function choosingSeed(state: SeatingState, ui: Ui): Ui {
 
       return { ...ui, chosen: ids, asking: { kind: 'deleteItems', ids } };
     }
+    case 'deleteManyChanged': {
+      const doomed = plan.items.filter((item) => SIX_TABLES.includes(item.id));
+      const freed = freedFrom(doomed);
+      const after = { ...plan, items: plan.items.filter((item) => !SIX_TABLES.includes(item.id)) };
+      const since = seated(after, [...ui.tray, ...freed], freed[0]!.id, 't8');
+
+      return {
+        ...ui,
+        plan: since.plan,
+        tray: since.tray,
+        chosen: [],
+        rings: { t8: [{ who: PRIYA }] },
+        people: [PRIYA, SADE],
+        undo: { plan, tray: ui.tray, chosen: SIX_TABLES, stale: true },
+        bar: {
+          kind: 'undo',
+          words: many('deletedMany', seatedOf(doomed), { things: thingsOf(doomed) }),
+          does: 'undo',
+        },
+      };
+    }
     case 'toolChanged': {
       const chosen = ['t1', 't2', 't3', 't4', 't5'];
 
@@ -1162,7 +1410,7 @@ function choosingSeed(state: SeatingState, ui: Ui): Ui {
         ...ui,
         plan: moved(plan, 't5', { y: 660 }),
         chosen,
-        rings: { t5: PRIYA },
+        rings: { t5: [{ who: PRIYA }] },
         people: [PRIYA, SADE],
         bar: {
           kind: 'amber',

@@ -868,7 +868,7 @@ describe('Finding a guest (sc-3772)', () => {
     ).toBeDefined();
     fireEvent.click(within(card).getByRole('button', { name: 'Make live' }));
 
-    expect(await screen.findByRole('dialog')).toBeDefined();
+    expect(await screen.findByRole('alertdialog')).toBeDefined();
   });
 
   it.each([
@@ -1910,6 +1910,84 @@ describe('A guest’s details, and correcting them (sc-3773)', () => {
     expect(screen.getByText('0 of 0 named')).toBeDefined();
   });
 
+  it('asks before removing a companion with a seat, and takes them out only on Remove (sc-4013)', async () => {
+    const seated = (seat: unknown) => ({
+      'GET /api/events/ev_1/guests/g_1': () =>
+        tagged(
+          {
+            ...DETAILS,
+            companions: [
+              {
+                id: 'c_1',
+                fullName: 'Obi Eze',
+                state: 'coming',
+                coming: true,
+                namedByGuest: false,
+                seat,
+              },
+            ],
+          },
+          '"1"',
+        ),
+    });
+    await editNgozi(seated({ kind: 'table', name: 'Table 4' }));
+
+    fireEvent.click(screen.getByRole('button', { name: 'Remove Obi Eze' }));
+    const ask = await screen.findByRole('alertdialog', { name: 'Remove Obi Eze?' });
+
+    expect(
+      within(ask).getByText(
+        'Obi Eze has a seat at Table 4. Removing this companion frees the seat.',
+      ),
+    ).toBeDefined();
+    expect(
+      within(ask)
+        .getAllByRole('button')
+        .map((one) => one.textContent),
+    ).toEqual(['Cancel', 'Remove']);
+    fireEvent.click(within(ask).getByRole('button', { name: 'Cancel' }));
+    expect(screen.queryByText('0 of 0 named')).toBeNull();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Remove Obi Eze' }));
+    fireEvent.click(
+      within(await screen.findByRole('alertdialog', { name: 'Remove Obi Eze?' })).getByRole(
+        'button',
+        { name: 'Remove' },
+      ),
+    );
+    expect(await screen.findByText('Obi Eze removed. Save to keep the change.')).toBeDefined();
+    expect(screen.getByText('0 of 0 named')).toBeDefined();
+  });
+
+  it('names a row by its label when a seated companion is in one (sc-4013)', async () => {
+    await editNgozi({
+      'GET /api/events/ev_1/guests/g_1': () =>
+        tagged(
+          {
+            ...DETAILS,
+            companions: [
+              {
+                id: 'c_1',
+                fullName: 'Obi Eze',
+                state: 'coming',
+                coming: true,
+                namedByGuest: false,
+                seat: { kind: 'row', name: 'B' },
+              },
+            ],
+          },
+          '"1"',
+        ),
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Remove Obi Eze' }));
+    expect(
+      await screen.findByText(
+        'Obi Eze has a seat at Row B. Removing this companion frees the seat.',
+      ),
+    ).toBeDefined();
+  });
+
   it('names an unnamed companion’s Remove as the guest’s guest, as the add form does (sc-43267)', async () => {
     await editNgozi({
       'GET /api/events/ev_1/guests/g_1': () =>
@@ -2239,6 +2317,17 @@ describe('a guest’s column at 320 (sc-3773)', () => {
     expect(cssRule('.gs-column', GUESTS_CSS)).toContain('min-width: 0;');
   });
 });
+describe('Guests from 1241 px (sc-61150)', () => {
+  it('sets the list and the guest beside each other at 520 and 380, the guest in view, from 1241 px', () => {
+    const beside = GUESTS_CSS.slice(GUESTS_CSS.indexOf('(width > 77.5rem)'));
+
+    expect(cssRule('.gs-column', beside)).toContain('position: sticky;');
+    expect(cssRule('.gs-cols', beside)).toContain(
+      'grid-template-columns: var(--gsList) var(--gsGuest);',
+    );
+  });
+});
+
 describe('the Guests top at 320 (sc-3773, ux #44604)', () => {
   it('wraps the title only at spaces, with Add guest dropping to its own row', () => {
     expect(cssRule('.gs-top', GUESTS_CSS)).toContain('flex-wrap: wrap;');
@@ -4906,7 +4995,7 @@ describe('Nobody on the list yet, in each phase (sc-50409)', () => {
     expect(within(header()).queryByRole('button', { name: 'Add guest' })).toBeNull();
 
     fireEvent.click(within(card).getByRole('button', { name: 'Make live' }));
-    expect(await screen.findByRole('dialog')).toBeDefined();
+    expect(await screen.findByRole('alertdialog')).toBeDefined();
   });
 
   it('returns focus to Make live, not Add guest, when its question is put off', async () => {
@@ -4915,7 +5004,7 @@ describe('Nobody on the list yet, in each phase (sc-50409)', () => {
 
     fireEvent.click(makeLive);
     fireEvent.click(
-      within(await screen.findByRole('dialog')).getByRole('button', { name: 'Not yet' }),
+      within(await screen.findByRole('alertdialog')).getByRole('button', { name: 'Not yet' }),
     );
 
     await waitFor(() => expect(document.activeElement).toBe(makeLive));
@@ -5081,6 +5170,160 @@ describe('Nobody on the list yet, in each phase (sc-50409)', () => {
       expect(adds()).toHaveLength(1);
     } finally {
       vi.useRealTimers();
+    }
+  });
+});
+
+describe('Export (sc-3784)', () => {
+  const ZOE = guest('g_3', 'Zoë Martin');
+  const LISTED = { 'GET /api/events/ev_1/guests': () => json(listOf([NGOZI, AMAKA, ZOE])) };
+
+  beforeEach(() => {
+    vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:export');
+    vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => undefined);
+    vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => undefined);
+  });
+
+  async function exportOpened(answers: Record<string, Answer>, at = '') {
+    signedIn();
+    const sent = await onGuests({ ...LISTED, ...answers }, OWNER_PERMISSIONS, at);
+    fireEvent.click(await screen.findByRole('button', { name: 'Export' }));
+
+    return { sent, dialog: await screen.findByRole('dialog', { name: 'Export guests' }) };
+  }
+
+  it('offers This view and All guests in people, companions included, then the format, the file and its columns', async () => {
+    const { dialog } = await exportOpened({}, '?filter=coming');
+
+    expect(within(dialog).getByRole('radio', { name: /^This view \(4 people\)/u })).toHaveProperty(
+      'checked',
+      true,
+    );
+    expect(within(dialog).getByText('Filter: Coming')).toBeDefined();
+    expect(within(dialog).getByRole('radio', { name: /^All guests \(6 people\)/u })).toBeDefined();
+    expect(within(dialog).getByRole('radio', { name: 'Excel (.xlsx)' })).toHaveProperty(
+      'checked',
+      true,
+    );
+    expect(
+      within(dialog).getByText(/^Adaeze and Tunde – guests – \d{4}-\d{2}-\d{2}\.xlsx$/u),
+    ).toBeDefined();
+    expect(
+      within(dialog)
+        .getAllByRole('listitem')
+        .slice(-12)
+        .map((one) => one.textContent),
+    ).toEqual([
+      'Full name',
+      'Guest of',
+      'Group',
+      'Reply',
+      'Replied on',
+      'Email',
+      'Mobile number',
+      'Allergies',
+      'Diet',
+      'Access',
+      'Places',
+      'Added on',
+    ]);
+    expect(
+      within(dialog).getByText(
+        'This file has guests’ personal details. Keep it somewhere safe, and delete it when you’re done.',
+      ),
+    ).toBeDefined();
+  });
+
+  it('sends the people in view in the list’s order, each companion after their guest, and says where the file went', async () => {
+    const { sent, dialog } = await exportOpened(
+      {
+        'POST /api/events/ev_1/guests/export': () =>
+          new Response(new Uint8Array([80, 75]), {
+            headers: { 'Content-Type': 'text/csv; charset=UTF-8' },
+          }),
+      },
+      '?filter=coming',
+    );
+
+    fireEvent.click(within(dialog).getByRole('radio', { name: 'CSV' }));
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Download' }));
+
+    expect(
+      await screen.findByText(
+        /^Your file is ready\. Look in your downloads for Adaeze and Tunde – guests – .*\.csv\.$/u,
+      ),
+    ).toBeDefined();
+    expect(screen.queryByRole('dialog', { name: 'Export guests' })).toBeNull();
+    expect(sent.find((one) => one.line === 'POST /api/events/ev_1/guests/export')?.body).toEqual({
+      format: 'csv',
+      scope: 'view',
+      people: ['g_1', 'c_1', 'c_2', 'c_3'],
+    });
+  });
+
+  it('keeps the dialog open with the failure line when the API fails, and Download tries again', async () => {
+    const { sent, dialog } = await exportOpened({
+      'POST /api/events/ev_1/guests/export': () => problem('internal', 500),
+    });
+
+    fireEvent.click(within(dialog).getByRole('radio', { name: /^All guests/u }));
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Download' }));
+
+    expect(
+      await within(dialog).findByText(
+        'The file could not be made, so nothing was downloaded. Try again.',
+      ),
+    ).toBeDefined();
+    expect(URL.createObjectURL).not.toHaveBeenCalled();
+    expect(sent.find((one) => one.line === 'POST /api/events/ev_1/guests/export')?.body).toEqual({
+      format: 'xlsx',
+      scope: 'all',
+      people: ['g_2', 'g_1', 'c_1', 'c_2', 'c_3', 'g_3'],
+    });
+  });
+
+  it('disables This view on an empty view and chooses All guests', async () => {
+    const { dialog } = await exportOpened({}, '?filter=notComing');
+
+    const view = within(dialog).getByRole('radio', { name: /^This view \(0 people\)/u });
+    expect(view).toHaveProperty('disabled', true);
+    expect(within(dialog).getByText('Nothing in this view to export.')).toBeDefined();
+    expect(within(dialog).getByRole('radio', { name: /^All guests/u })).toHaveProperty(
+      'checked',
+      true,
+    );
+  });
+
+  it('leaves the needs columns out and says why without guests.manage', async () => {
+    signedIn();
+    await onGuests(
+      LISTED,
+      OWNER_PERMISSIONS.filter((one) => one !== 'guests.manage'),
+    );
+    fireEvent.click(await screen.findByRole('button', { name: 'Export' }));
+    const dialog = await screen.findByRole('dialog', { name: 'Export guests' });
+
+    expect(within(dialog).queryByText('Allergies')).toBeNull();
+    expect(
+      within(dialog).getByText(
+        'Allergies, diet and access aren’t in this file, because seeing them needs permission to manage guests.',
+      ),
+    ).toBeDefined();
+  });
+
+  it('shows no Export to Can view or Can check guests in', async () => {
+    for (const role of ['can_view', 'can_check_in']) {
+      signedIn();
+      await onGuests({
+        ...LISTED,
+        'GET /api/events/ev_1': () =>
+          json({ event: { ...EVENT, permissions: ['guests.read'], roleOnEvent: role } }),
+      });
+
+      expect(await screen.findByText('Zoë Martin')).toBeDefined();
+      expect(screen.queryByRole('button', { name: 'Export' })).toBeNull();
+      cleanup();
+      vi.mocked(globalThis.fetch).mockRestore();
     }
   });
 });

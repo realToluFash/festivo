@@ -36,6 +36,7 @@ function event(name: string, rest: Partial<ListedEvent> = {}): ListedEvent {
     venue: { name: 'The Landmark', address: null },
     arrivalNote: null,
     hosts: [],
+    thankYou: null,
     madeLiveAt: '2026-10-01T00:00:00Z',
     pausedAt: null,
     concludedAt: null,
@@ -97,6 +98,7 @@ describe('todayMoment', () => {
           owner: 'automatic',
           area: 'guests',
           action: null,
+          done: false,
         },
       ],
     });

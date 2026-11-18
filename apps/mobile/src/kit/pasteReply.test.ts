@@ -3,7 +3,14 @@ import { createInstance } from 'i18next';
 import { describe, expect, it } from 'vitest';
 
 import en from '../i18n/locales/en.json';
-import { hasText, pasteShown, whoseRows } from './pasteReply.ts';
+import {
+  QUOTE_LINES,
+  clipQuote,
+  hasText,
+  pasteBeside,
+  pasteShown,
+  whoseRows,
+} from './pasteReply.ts';
 
 const i18n = createInstance();
 void i18n.init({
@@ -92,5 +99,42 @@ describe('Whose reply is this?', () => {
       ['Zara Okon', 'No reply · Invited, WhatsApp, 12 Nov'],
     ]);
     expect(rows([bisi], 'bisi')).toEqual([]);
+  });
+});
+
+describe('Their message, clipped (sc-54450)', () => {
+  it('ends in … however its sixth line ends', () => {
+    const mid = ['one ', 'two ', 'three ', 'four ', 'five ', 'six and ', 'seven'];
+    expect(clipQuote(mid)).toBe('one two three four five six and…');
+    const atBreak = ['one\n', 'two\n', 'three\n', 'four\n', 'five\n', 'six\n', 'seven'];
+    expect(clipQuote(atBreak)).toBe('one\ntwo\nthree\nfour\nfive\nsix…');
+  });
+
+  it('puts the … after the last words when the sixth line is blank', () => {
+    const blank = ['one\n', 'two\n', 'three\n', 'four\n', 'five\n', '\n', 'seven'];
+    expect(clipQuote(blank)).toBe('one\ntwo\nthree\nfour\nfive…');
+  });
+
+  it('leaves a quote that fits whole', () => {
+    expect(
+      clipQuote(['one', 'two', 'three', 'four', 'five', 'six'].slice(0, QUOTE_LINES)),
+    ).toBeNull();
+  });
+});
+
+describe('pasteBeside', () => {
+  it('keeps Paste beside Find a guest on an upright iPad below AX1', () => {
+    expect(pasteBeside('tabletPortrait', 1)).toBe(true);
+    expect(pasteBeside('tabletPortrait', 1.5)).toBe(true);
+  });
+
+  it('moves Paste to a row of its own on an upright iPad from AX1 on', () => {
+    expect(pasteBeside('tabletPortrait', 2)).toBe(false);
+    expect(pasteBeside('tabletPortrait', 3.1)).toBe(false);
+  });
+
+  it('never puts Paste beside on a phone or an iPad on its side', () => {
+    expect(pasteBeside('phone', 1)).toBe(false);
+    expect(pasteBeside('tabletLandscape', 1)).toBe(false);
   });
 });

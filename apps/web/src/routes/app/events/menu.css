@@ -1,4 +1,11 @@
 /* The event's Menu (sc-3902), as the web demo's Menu draws it (apps/web/src/demo/menuCourses.css, and the course rules of demo/menu.css). */
+.mc .mn-page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceLg);
+  min-height: 0;
+}
+
 .mn-head {
   display: flex;
   flex: 1;
@@ -239,8 +246,28 @@
   list-style: none;
 }
 
+.mc-course.desk-card {
+  overflow: visible;
+}
+
 .mc-course-top {
+  flex-wrap: wrap;
   align-items: flex-start;
+}
+
+/* A title or dish name keeps 12rem beside the panel (sc-3902, 961 to 1279 px); short of it, the actions go under. */
+.mc-course-top > .mn-course-names,
+.mc-dish .mn-dish-words {
+  flex-basis: 12rem;
+}
+
+.mc-dish .mn-dish-top {
+  flex-wrap: wrap;
+}
+
+.mc-acts,
+.mc-dish .lib-acts {
+  margin-left: auto;
 }
 
 .mc-course.is-dragging {
@@ -458,7 +485,7 @@
 
 .mc .lib-tags,
 .mc .lib-contains {
-  overflow-wrap: anywhere;
+  overflow-wrap: break-word;
 }
 
 @media (prefers-reduced-motion: no-preference) {
@@ -480,8 +507,31 @@
   }
 }
 
+/* 961 to 1199 px: docked, the panel leaves a course card under 26rem, so it stacks above the menu. */
+@media (60rem < width < 75rem) {
+  .mc-split:has(> .mc-panel) {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .mc-split > .mc-panel {
+    position: static;
+    order: -1;
+    width: auto;
+    max-height: none;
+  }
+
+  .mc-split > .mc-panel .mn-panel-body {
+    overflow: visible;
+  }
+}
+
 /* Up to 40rem (390 and 320 px windows, WCAG 2.2 1.4.10): one column, and an open form in the menu's place. */
 @media (width <= 40rem) {
+  .shell-content:has(.mc.desk-page) {
+    padding-inline: var(--spaceSm);
+  }
+
   .mc.desk-page {
     padding: var(--spaceLg) var(--spaceMd) var(--space3xl);
     overflow: visible;
@@ -551,17 +601,9 @@
     margin: var(--spaceLg) var(--spaceXl) 0;
   }
 
-  .mc-course-top {
-    flex-wrap: wrap;
-  }
-
   .mc-acts {
     flex: 1 0 100%;
     justify-content: flex-start;
-  }
-
-  .mc-dish .mn-dish-top {
-    flex-wrap: wrap;
   }
 
   .mc-pick {
@@ -577,4 +619,240 @@
   .mc-panel {
     animation: mc-push 200ms ease-out;
   }
+}
+
+/* A dish's items and a course's own (sc-34230), as the demo draws them. */
+.mn-course-facts {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceXs);
+  margin: 0;
+  padding: var(--spaceMd) var(--spaceLg);
+  border: 1px solid var(--colorInsetBorder);
+  border-radius: var(--radiusInset);
+  background: var(--colorInset);
+  color: var(--colorInk);
+  font: 400 14px/1.45 var(--fontFamily);
+}
+
+.mn-course-facts div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spaceXs) var(--spaceSm);
+}
+
+.mn-course-facts dt {
+  color: var(--colorInkSecondary);
+  font-weight: 600;
+}
+
+.mn-course-facts dd {
+  margin: 0;
+}
+
+.mn-item-chips,
+.mn-item-rows {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.mn-item-rows {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceSm);
+}
+
+.mn-items-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--spaceSm);
+  margin-left: var(--spaceXl);
+}
+
+.mn-items-head {
+  margin: 0;
+  color: var(--colorInkSecondary);
+  font: 600 12px/1.4 var(--fontFamily);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.mn-item-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spaceXs);
+  counter-reset: item;
+}
+
+.mn-item-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spaceXxs);
+  min-height: 28px;
+  padding: 0 var(--spaceMd);
+  border: 1px solid var(--colorInsetBorder);
+  border-radius: var(--radiusPill);
+  background: var(--colorInset);
+  color: var(--colorInk);
+  font: 600 13px/1.3 var(--fontFamily);
+  counter-increment: item;
+}
+
+.mn-item-chip::before {
+  color: var(--colorInkSecondary);
+  content: counter(item) ' ·';
+}
+
+.mn-item-chip.is-draft,
+.mn-choice-item.is-draft {
+  border-style: dashed;
+  border-color: var(--colorAttention);
+}
+
+.mn-items {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceSm);
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.mn-items legend {
+  display: flex;
+  align-items: center;
+  gap: var(--spaceSm);
+  padding: 0;
+  margin-bottom: var(--spaceXs);
+}
+
+.mn-moved {
+  margin: 0;
+  color: var(--colorInkSecondary);
+  font: 600 13px/1.4 var(--fontFamily);
+}
+
+.mn-item-row {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--spaceSm);
+}
+
+.mn-item-n {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 20px;
+  height: var(--sizeHit);
+  color: var(--colorInkSecondary);
+  font: 600 14px/1 var(--fontFamily);
+  font-variant-numeric: tabular-nums;
+}
+
+.mn-item-main {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: var(--spaceXxs);
+  min-width: 0;
+}
+
+.mn-item-acts {
+  display: flex;
+  flex: none;
+  gap: var(--spaceXxs);
+}
+
+.mn-choice-item {
+  display: flex;
+  align-items: center;
+  gap: var(--spaceSm);
+  box-sizing: border-box;
+  min-height: var(--sizeHit);
+  margin: 0;
+  padding: 0 var(--spaceMd);
+  border: 1px solid var(--colorInsetBorder);
+  border-radius: var(--radiusField);
+  background: var(--colorInset);
+  font: 600 14px/1.3 var(--fontFamily);
+}
+
+.mn-choice-item-name {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.mn-tag {
+  padding: 2px var(--spaceSm);
+  border-radius: var(--radiusPill);
+  background: var(--colorNeutralFill);
+  color: var(--colorInkSecondary);
+  font: 600 12px/1.3 var(--fontFamily);
+}
+
+.mn-add-row {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceXxs);
+}
+
+.mn-offer {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceXs);
+}
+
+.mn-offer-head {
+  margin: 0;
+  color: var(--colorInkSecondary);
+  font: 600 13px/1.4 var(--fontFamily);
+}
+
+.mn-offer-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spaceSm);
+}
+
+.mn-offer-button {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spaceXxs);
+  min-height: var(--sizeHit);
+  padding: 0 var(--spaceLg);
+  border: 1px solid var(--colorControlBorder);
+  border-radius: var(--radiusPill);
+  background: var(--colorCard);
+  color: var(--colorInk);
+  font: 600 14px/1.25 var(--fontFamily);
+}
+
+.mn-offer-button:hover {
+  background: var(--colorRowHover);
+}
+
+.mn-contains-box {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceXs);
+}
+
+.mn-contains-box .desk-label {
+  margin: 0;
+}
+
+.mn-moved:empty {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+}
+
+.mn-offer-button .mn-tag {
+  margin-left: var(--spaceXxs);
 }

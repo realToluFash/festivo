@@ -2939,6 +2939,7 @@ describe('events (sc-1486)', () => {
     venue: null,
     arrivalNote: null,
     hosts: ['Funmi Adeyemi', 'Tayo Adeyemi'],
+    thankYou: null,
     madeLiveAt: null,
     pausedAt: null,
     phase: 'draft',
@@ -2946,6 +2947,7 @@ describe('events (sc-1486)', () => {
     deleteRefusedBecause: null,
     createdAt: '2026-10-21T09:00:00+00:00',
     permissions: ['events.read', 'events.manage'],
+    roleOnEvent: null,
   };
 
   function client(response: () => Response, sent: { line: string; body: unknown }[] = []) {
@@ -2975,6 +2977,7 @@ describe('events (sc-1486)', () => {
       owner: 'event',
       area: 'events',
       action: null,
+      done: false,
     };
     const WEDDING_GUESTS = { invited: 142, coming: 96, notReplied: 25 };
     const later = { ...EVENT, id: 'e2', name: 'Later', milestones: [] };
@@ -3230,6 +3233,7 @@ describe('events (sc-1486)', () => {
           owner: 'event',
           area: 'events',
           action: null,
+          done: false,
         },
         {
           at: '2026-10-26T02:00:00+01:00',
@@ -3238,6 +3242,7 @@ describe('events (sc-1486)', () => {
           owner: 'you',
           area: 'budget',
           action: { label: 'Open the budget', link: '/app/events/e1/budget' },
+          done: true,
         },
       ],
     };
@@ -3256,6 +3261,11 @@ describe('events (sc-1486)', () => {
       client(() =>
         json({ ...timeline, milestones: [{ ...first, action: { label: 'Open' } }] }),
       ).api.eventTimeline('e1'),
+    ).rejects.toThrow(/EventTimelineController/);
+    await expect(
+      client(() => json({ ...timeline, milestones: [{ ...first, done: 'no' }] })).api.eventTimeline(
+        'e1',
+      ),
     ).rejects.toThrow(/EventTimelineController/);
     await expect(client(() => json({ milestones: [] })).api.eventTimeline('e1')).rejects.toThrow(
       /EventTimelineController/,
@@ -3279,6 +3289,17 @@ describe('events (sc-1486)', () => {
     ).rejects.toThrow(/events controller/);
     await expect(
       client(() => json({ event: { ...EVENT, type: undefined } })).api.event('e1'),
+    ).rejects.toThrow(/events controller/);
+  });
+
+  test("a Member's role on the event comes with it, and a role the client does not know is refused (sc-59617)", async () => {
+    const member = { ...EVENT, permissions: ['events.read'], roleOnEvent: 'can_check_in' };
+
+    expect((await client(() => json({ event: member })).api.event('e1')).roleOnEvent).toBe(
+      'can_check_in',
+    );
+    await expect(
+      client(() => json({ event: { ...EVENT, roleOnEvent: 'usher' } })).api.event('e1'),
     ).rejects.toThrow(/events controller/);
   });
 
@@ -3351,6 +3372,46 @@ describe('events (sc-1486)', () => {
 
     expect(await api.endEvent(EVENT.id)).toEqual({ event: ended, tag: '"4"' });
     expect(sent).toEqual([{ line: `POST /api/events/${EVENT.id}/end`, body: null }]);
+  });
+
+  test('a thank-you goes with End now, and is saved or removed by its own PUT (sc-6476)', async () => {
+    const thanked = {
+      ...EVENT,
+      status: 'ended',
+      phase: 'finished',
+      concludedAt: '2026-11-13T10:00:00+01:00',
+      thankYou: 'Thank you for coming.',
+    };
+    const sent: { line: string; body: unknown }[] = [];
+    const api = new ApiClient({
+      baseUrl: () => 'http://api.test',
+      fetch: async (url, init) => {
+        sent.push({
+          line: `${init?.method ?? 'GET'} ${new URL(String(url)).pathname}`,
+          body: init?.body ?? null,
+        });
+
+        return new Response(JSON.stringify({ event: thanked }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json', ETag: '"5"' },
+        });
+      },
+    });
+
+    expect(await api.endEvent(EVENT.id, 'Thank you for coming.')).toEqual({
+      event: thanked,
+      tag: '"5"',
+    });
+    await api.endEvent(EVENT.id, '   ');
+    await api.setThankYou(EVENT.id, '');
+    expect(sent).toEqual([
+      {
+        line: `POST /api/events/${EVENT.id}/end`,
+        body: JSON.stringify({ thankYou: 'Thank you for coming.' }),
+      },
+      { line: `POST /api/events/${EVENT.id}/end`, body: null },
+      { line: `PUT /api/events/${EVENT.id}/thank-you`, body: JSON.stringify({ thankYou: '' }) },
+    ]);
   });
 
   test.each([
@@ -3589,6 +3650,7 @@ describe("an event's venue (sc-3589)", () => {
     cover: null,
     arrivalNote: null,
     hosts: [],
+    thankYou: null,
     madeLiveAt: null,
     pausedAt: null,
     phase: 'draft',
@@ -3864,6 +3926,7 @@ describe("the guest's calendar on their page (sc-3627)", () => {
       type: 'party',
       cover: null,
       hosts: ['Funmi'],
+      thankYou: null,
       startsAt: '2030-11-14T16:00:00+01:00',
       timeZone: 'Africa/Lagos',
       venue: null,

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { EVENT_AREA, FROM_HAPPENING_NOW } from './eventNav.ts';
-import { SHOWN_EVENT, areaParams, upToEvent } from './upToEvent.ts';
+import { ASKS_END, SHOWN_EVENT, areaParams, goToEndNow, upToEvent } from './upToEvent.ts';
 
 const home = { params: {} };
 const showing = (eventId: string | undefined) => ({ params: { [SHOWN_EVENT]: eventId } });
@@ -101,5 +101,37 @@ describe('a menu area from All dates or Edit details (sc-22103)', () => {
       id: 'ev-1',
       [EVENT_AREA]: 'guests',
     });
+  });
+});
+
+describe('the night’s End now (sc-3895)', () => {
+  it('pops back to the event’s Overview, asking it to open End now', () => {
+    const went: unknown[] = [];
+
+    goToEndNow(
+      {
+        getState: () => ({
+          routes: [
+            { params: { id: 'ev-1', [SHOWN_EVENT]: 'ev-1', [EVENT_AREA]: 'schedule' } },
+            home,
+          ],
+          index: 1,
+        }),
+      },
+      { dismissTo: (href) => went.push(href) },
+      'ev-1',
+    );
+
+    expect(went).toEqual([
+      {
+        pathname: '/events/[id]',
+        params: {
+          id: 'ev-1',
+          [SHOWN_EVENT]: 'ev-1',
+          [EVENT_AREA]: 'overview',
+          [ASKS_END]: 'endNow',
+        },
+      },
+    ]);
   });
 });

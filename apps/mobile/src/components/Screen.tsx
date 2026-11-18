@@ -1177,7 +1177,7 @@ function HeldScroll({
   return <ScrollView {...props} ref={bothRefs(held, ref)} />;
 }
 
-function bothRefs<T>(held: RefObject<T | null>, ref: Ref<T> | undefined): RefCallback<T> {
+export function bothRefs<T>(held: RefObject<T | null>, ref: Ref<T> | undefined): RefCallback<T> {
   return (view) => {
     held.current = view;
     if (typeof ref === 'function') ref(view);

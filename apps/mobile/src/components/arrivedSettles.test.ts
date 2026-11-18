@@ -9,18 +9,22 @@ const arrived = skeleton.slice(
   skeleton.indexOf('function usePulse('),
 );
 
-describe('Arrived lets go of its fade once it has ended (sc-48600)', () => {
-  it('settles from the fade’s end', () => {
-    expect(arrived).toContain('const still = reduced || settled;');
-    expect(arrived).toContain('run.start(() => setSettled(true));');
+describe('Arrived lets go of its fade only once it has reached 1 (sc-48600)', () => {
+  it('settles from a run that finished, never from one that was stopped', () => {
+    expect(arrived).toMatch(
+      /run\.start\(\(\{ finished \}\) => \{\s+if \(finished\) setSettled\(true\);/u,
+    );
+    expect(arrived).not.toContain('run.start(() => setSettled(true));');
   });
 
-  it('passes the fade’s opacity only while it runs', () => {
-    expect(arrived).toContain('!still && { opacity: shown }');
-    expect(arrived).not.toMatch(/style=\{\[style, \{ opacity: shown \}\]\}/u);
+  it('keeps the opacity bound until it has settled, whatever the motion setting', () => {
+    expect(arrived).toContain('!settled && { opacity: shown }');
+    expect(arrived).not.toMatch(/reduced \|\| settled/u);
   });
 
-  it('holds the content seen when less motion is asked for', () => {
-    expect(arrived).toMatch(/if \(still\) \{\s+shown\.setValue\(1\);\s+return;/u);
+  it('carries less motion to 1 through a run of its own, so reduced turning on mid-fade still ends at 1', () => {
+    expect(arrived).toContain('duration: reduced ? 0 : tokens.motionBase,');
+    expect(arrived).toContain('}, [settled, reduced, shown]);');
+    expect(arrived).not.toMatch(/shown\.setValue\(1\)/u);
   });
 });

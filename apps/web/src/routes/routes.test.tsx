@@ -12,7 +12,7 @@ import { __setSessionState, type Session } from '../session.ts';
 import { routes } from './index.tsx';
 import { membership } from '../test-memberships.ts';
 import { STYLES, cssRule, stylesheet } from '../test-styles.ts';
-import { atStackedWidth } from '../test-widths.ts';
+import { atPhoneWidth } from '../test-widths.ts';
 
 const MEMBERSHIP = membership({ id: 'org_1', name: 'Okonkwo Events' });
 
@@ -434,29 +434,20 @@ describe('the application tree', () => {
     }
   });
 
-  it("stacks the sidebar and the band from a tablet's width down only as tall as what they hold (sc-17608, sc-26270)", () => {
-    const stacked = /@media \(width <= 60rem\) \{[^@]*?\n {2}\.shell \{([^}]*)\}/u.exec(
+  it('keeps the sidebar beside the page as its card from 641 px, stacking it only at a phone (sc-60699)', () => {
+    const card = STYLES.slice(STYLES.indexOf('@media (width > 40rem)'));
+    const phone = /@media \(width <= 40rem\) \{[^@]*?\n {2}\.shell-sidebar \{([^}]*)\}/u.exec(
       STYLES,
     )?.[1];
 
-    expect(stacked).toMatch(/grid-template-columns: minmax\(0, 1fr\);/u);
-    expect(stacked).toMatch(/grid-template-rows: auto auto 1fr;/u);
+    expect(cssRule('.shell-content.is-card', card)).toContain('overflow-y: auto;');
+    expect(phone).toContain('position: static;');
+    expect(STYLES).not.toMatch(/@media \(width <= 60rem\) \{[^@]*?\n {2}\.shell(-sidebar)? \{/u);
   });
 
-  describe("the band's crumb (sc-26270)", () => {
+  describe('the band (sc-26270)', () => {
     beforeEach(() => {
       vi.spyOn(globalThis, 'fetch').mockReturnValue(new Promise(() => {}));
-    });
-
-    function crumb(): string | null | undefined {
-      return document.querySelector('.shell-crumb')?.textContent;
-    }
-
-    it('names the organisation and the page between a phone and a desk', () => {
-      atStackedWidth();
-      at('/app/events/new');
-
-      expect(crumb()).toBe('Okonkwo Events / Events');
     });
 
     it.each([
@@ -467,10 +458,11 @@ describe('the application tree', () => {
       '/app/calendar',
       '/app/settings',
       '/app/account',
-    ])('is not above %s at a desk (sc-39471, sc-39509)', (place) => {
+    ])('is not above %s wider than a phone (sc-39471, sc-39509, sc-60699)', (place) => {
       at(place);
 
       expect(document.querySelector('header.shell-band')).toBeNull();
+      expect(document.querySelector('.shell-content.is-card')).toBeTruthy();
       expect(document.querySelector('.language-pill')).toBeNull();
     });
 
@@ -531,42 +523,55 @@ describe('the application tree', () => {
       },
     );
 
-    it.each(['/app/events', '/app/calendar', '/app/settings'])(
-      'stays above %s, with the bell, between a phone and a desk (sc-39471)',
+    it.each(['/app/events', '/app/calendar'])(
+      "puts the bell in %s's title row under the phone's bar, with no band (sc-57468)",
       async (place) => {
-        atStackedWidth();
+        atPhoneWidth();
         at(place);
 
-        expect(crumb()).toMatch(/^Okonkwo Events/u);
-        expect(document.querySelector('.shell-content.is-card')).toBeNull();
         const bell = await screen.findByRole('button', { name: /^Notifications/ });
-        expect(bell.closest('.shell-band')).toBeTruthy();
+        expect(bell.closest('header.desk-top')?.querySelector('h1')).toBeTruthy();
+        expect(document.querySelector('header.shell-band')).toBeNull();
+        expect(document.querySelector('.shell.fits-phone')).toBeTruthy();
+        expect(screen.getAllByRole('button', { name: /^Notifications/ })).toHaveLength(1);
       },
     );
 
-    it("names Today at the sidebar's Today between a phone and a desk", () => {
-      atStackedWidth();
+    it("draws no band above Today under the phone's bar, and puts the bell in its banner (sc-57468)", async () => {
+      vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) =>
+        new URL(String(input)).pathname === '/api/orgs/org_1/events'
+          ? new Response(JSON.stringify({ events: [], total: 0 }), {
+              headers: { 'Content-Type': 'application/json' },
+            })
+          : new Promise<Response>(() => {}),
+      );
+      atPhoneWidth();
       at('/app');
 
-      expect(crumb()).toBe('Okonkwo Events / Today');
+      const bell = await screen.findByRole('button', { name: /^Notifications/ });
+      expect(bell.closest('.today-actions')).toBeTruthy();
+      expect(document.querySelector('header.shell-band')).toBeNull();
+      expect(document.querySelector('.shell.fits-phone')).toBeTruthy();
+      expect(screen.getAllByRole('button', { name: /^Notifications/ })).toHaveLength(1);
     });
 
-    it('holds only the organisation while the overdue screen stands in, between a phone and a desk', () => {
-      atStackedWidth();
-      __setSessionState({ status: 'signedIn', session: overdueSession() });
+    it.each(['/app/settings', '/app/account', '/app/events/new'])(
+      'keeps the band with the bell above %s at a phone (sc-13413)',
+      async (place) => {
+        atPhoneWidth();
+        at(place);
 
-      at('/app');
+        const bell = await screen.findByRole('button', { name: /^Notifications/ });
+        expect(bell.closest('.shell-band')).toBeTruthy();
+        expect(document.querySelector('.shell.fits-phone')).toBeNull();
+      },
+    );
 
-      expect(crumb()).toBe('Okonkwo Events');
-    });
-
-    it('holds only the organisation while a paused one stands in, between a phone and a desk', () => {
-      atStackedWidth();
+    it('names the person in the sidebar while a paused organisation stands in', () => {
       __setSessionState({ status: 'signedIn', session: pausedSession() });
 
       at('/app');
 
-      expect(crumb()).toBe('Lagos Weddings');
       const person = document.querySelector<HTMLAnchorElement>('a.today-person');
       expect(person?.getAttribute('aria-label')).toBe('Ada Okonkwo');
       expect(person?.querySelector('.today-avatar')?.textContent).toBe('AO');
@@ -865,6 +870,15 @@ describe('the application tree', () => {
   it('lets Seating fill its card at a desk, as its demo does (sc-58064)', () => {
     expect(cssRule('.shell-content.is-card:has(> .st)')).toMatch(/padding: 0;/u);
     expect(cssRule('.shell-content.is-card > .st .st-main')).toMatch(/min-height: 0;/u);
+    expect(
+      cssRule(
+        [
+          '.shell-content.is-card:has(> .st)',
+          '    > :not(.st):first-child:not(:has(> .visually-hidden:only-child)),',
+          '  .shell-content.is-card:has(> .st) > :first-child:has(> .visually-hidden:only-child) + :not(.st)',
+        ].join('\n'),
+      ),
+    ).toMatch(/margin-top: var\(--space3xl\);/u);
   });
 
   it('keeps the shell usable when a screen throws', () => {

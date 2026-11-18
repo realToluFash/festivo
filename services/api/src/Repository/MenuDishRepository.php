@@ -60,4 +60,19 @@ final class MenuDishRepository extends ServiceEntityRepository implements EventS
     {
         return $this->findBy(['course' => $course], ['position' => 'ASC', 'id' => 'ASC']);
     }
+
+    public function anyCostOnEvent(Event $event): bool
+    {
+        $found = $this->createQueryBuilder('dish')
+            ->select('1')
+            ->join('dish.course', 'course')
+            ->where('course.event = :event')
+            ->andWhere('dish.costMinor IS NOT NULL')
+            ->setParameter('event', $event->getId(), 'uuid')
+            ->setMaxResults(1)
+            ->getQuery()
+            ->getOneOrNullResult();
+
+        return null !== $found;
+    }
 }

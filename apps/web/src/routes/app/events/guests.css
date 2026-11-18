@@ -120,8 +120,13 @@
   gap: var(--spaceXl);
 }
 
-/* The form stays in view while the list scrolls, only when the two sit side by side. */
-@media (width > 60rem) {
+/* From 1241 px the list and the guest sit side by side at 520 and 380, as the demo's grid, and the form stays in view while the list scrolls. */
+@media (width > 77.5rem) {
+  .gs-cols {
+    display: grid;
+    grid-template-columns: var(--gsList) var(--gsGuest);
+  }
+
   .gs-column {
     position: sticky;
     top: 0;

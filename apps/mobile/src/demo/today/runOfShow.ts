@@ -1,6 +1,9 @@
+import { todayRailWindow } from '@soirely/domain';
+
 import type { Moment, Now } from '../../kit/today.ts';
 import type { Say } from '../today.ts';
 import type { Figure } from './arrived.ts';
+import type { RunNow, RunStop } from '../../kit/todayRun.ts';
 
 /** One item of a track, as sc-3895's presses leave it. Times are `18:00` in the event's zone. */
 export interface RunItem {
@@ -11,24 +14,6 @@ export interface RunItem {
   phase: 'waiting' | 'now' | 'done' | 'skipped';
   started?: string;
   ended?: string;
-}
-
-export interface RunStop {
-  time: string;
-  title: string;
-  state: 'done' | 'now' | 'next' | 'later';
-}
-
-export interface RunNow {
-  happening: boolean;
-  headline: string;
-  /** "until 17:30", "12 min over", or null for an item with no length and when nothing is Now. */
-  until: string | null;
-  figure: { words: string; said: string } | null;
-  next: { time: string; title: string } | null;
-  rail: RunStop[];
-  railSaid: string;
-  band: string;
 }
 
 export const RUN_STATES = [
@@ -43,8 +28,6 @@ export const RUN_STATES = [
 ] as const;
 
 export type RunState = (typeof RUN_STATES)[number];
-
-export const RAIL_STOPS = 6;
 
 export const LONG_TITLE =
   'Drinks reception on the garden terrace with the string quartet, canapés from the Lagos kitchen and the first photographs';
@@ -84,32 +67,6 @@ export function expectedStarts(items: readonly RunItem[], clock: string): Map<Ru
   return starts;
 }
 
-/** Up to six stops, from the one before the anchor, with earlier ones filling in near the end. */
-export function railWindow<T>(stops: readonly T[], anchor: number): T[] {
-  const from = Math.max(0, Math.min(anchor - 1, stops.length - RAIL_STOPS));
-
-  return stops.slice(from, from + RAIL_STOPS);
-}
-
-/** Each stop's label box on a rail `width` wide: centred on its stop, at most `widest`, pushed in so none overlap. */
-export function railLabels(
-  count: number,
-  width: number,
-  widest: number,
-  apart: number,
-): { left: number; width: number }[] {
-  const box = Math.min(widest, (width - (count - 1) * apart) / count);
-  const step = count > 1 ? width / (count - 1) : 0;
-
-  return Array.from({ length: count }, (_, index) => ({
-    left: Math.min(
-      Math.max(index * step - box / 2, index * (box + apart)),
-      width - (count - index) * box - (count - 1 - index) * apart,
-    ),
-    width: box,
-  }));
-}
-
 const STATE_SAID: Record<RunStop['state'], string> = {
   done: 'done',
   now: 'now',
@@ -126,7 +83,7 @@ export function runNowOf(name: string, items: readonly RunItem[], clock: string,
   const expected = next == null ? undefined : expectedStarts(byPlan, clock).get(next);
   const shown = byPlan.filter((item) => item.phase !== 'skipped');
   const anchor = now ?? next;
-  const window = railWindow(shown, anchor == null ? shown.length : shown.indexOf(anchor));
+  const window = todayRailWindow(shown, anchor == null ? shown.length : shown.indexOf(anchor));
   const rail = window.map<RunStop>((item) => ({
     time: say.hour(item.planned),
     title: item.title,

@@ -1,4 +1,12 @@
-import { calendarDays, eventDayWords, weekLanes } from '@soirely/domain';
+import {
+  calendarDays,
+  eventDayWords,
+  type Milestone,
+  levelOf,
+  milestoneDistance,
+  wallDay,
+  weekLanes,
+} from '@soirely/domain';
 
 import type {
   DayRange,
@@ -12,6 +20,7 @@ import type {
 import { writtenTime } from './clock.ts';
 import { TODAY_IDS as IDS } from './events.ts';
 import { type Guests, SAMPLE_GUESTS } from './guestCounts.ts';
+import { KW, kitchenAt } from './kitchen.ts';
 
 export type EventKey = 'wed' | 'ireti' | 'party' | 'draft';
 export type MomentName = 'plan' | 'planNow' | 'day' | 'dayNow' | 'quiet' | 'first';
@@ -81,6 +90,8 @@ export interface Say {
   day(date: string, withYear?: boolean): string;
   weekday(date: string): string;
   weekdayLong(date: string): string;
+  /** CLDR's narrow weekday, one letter, which This week writes at 360 px and narrower (sc-61548). */
+  weekdayNarrow(date: string): string;
   number(date: string): string;
   clock(time: string): string;
   hour(time: string): string;
@@ -94,6 +105,7 @@ export function sayIn(locale: string, thisYear = 2026): Say {
   const dayAndYear = format({ weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
   const weekday = format({ weekday: 'short' });
   const weekdayLong = format({ weekday: 'long' });
+  const weekdayNarrow = format({ weekday: 'narrow' });
   const number = format({ day: 'numeric' });
   const at = (date: string) => new Date(`${date}T00:00Z`);
 
@@ -104,6 +116,7 @@ export function sayIn(locale: string, thisYear = 2026): Say {
       (withYear ? dayAndYear : day).format(at(date)),
     weekday: (date) => weekday.format(at(date)),
     weekdayLong: (date) => weekdayLong.format(at(date)),
+    weekdayNarrow: (date) => weekdayNarrow.format(at(date)),
     number: (date) => number.format(at(date)),
     clock: (hhmm) => writtenTime(hhmm, locale),
     hour: (hhmm) => writtenTime(hhmm, locale),
@@ -124,31 +137,80 @@ export function howFar(today: string, date: string): string {
   return days === 1 ? 'tomorrow' : `in ${days} days`;
 }
 
-export function dueWords(today: string, due: string, say: Say): { words: string; late: boolean } {
-  const days = daysFrom(today, due);
+/** Calendar days in the event's zone, whatever zone the reader is in (sc-29884). */
+export function dueWords(
+  at: string,
+  timeZone: string,
+  now: Date,
+  say: Say,
+): { words: string; late: boolean } {
+  const distance = milestoneDistance(at, timeZone, now);
+  const dueDay = wallDay(at, timeZone);
 
-  if (days < 0) return { words: `${-days} ${days === -1 ? 'day' : 'days'} late`, late: true };
-  if (days === 0) return { words: 'Due today', late: false };
-  if (days === 1) return { words: 'Due tomorrow', late: false };
-
-  return { words: `Due ${say.day(due)}`, late: false };
+  switch (distance.kind) {
+    case 'now':
+      return { words: 'Overdue', late: true };
+    case 'daysAgo':
+      return {
+        words: distance.count === 1 ? '1 day overdue' : `${distance.count} days overdue`,
+        late: true,
+      };
+    case 'today':
+      return { words: 'Due today', late: false };
+    case 'inDays':
+      return {
+        words:
+          distance.count === 1
+            ? 'Due tomorrow'
+            : `Due ${say.day(dueDay, dueDay.slice(0, 4) !== wallDay(now, timeZone).slice(0, 4))}`,
+        late: false,
+      };
+  }
 }
 
 export interface Need {
-  event: EventKey;
+  event: ShownEvent;
   title: string;
   due: string;
   late: boolean;
-  action: string;
+  action: Milestone['action'];
 }
 
-/** The product's Today, and what only the demo draws: Needs you (sc-29884). */
+export function headWords(count: number): string {
+  return count === 1 ? 'Needs you, 1 thing' : `Needs you, ${count} things`;
+}
+
+export function rowWords({ title, event, due }: Need): string {
+  return `${title}, ${event.name}, ${due}`;
+}
+
+export function actionWords({ action, event }: Need): string | null {
+  return action == null ? null : `${action.label}, ${event.name}`;
+}
+
+/** The product's Today, and Needs you (sc-29884, sc-61015). */
 export interface Moment extends Shown {
   name: MomentName;
   time: string;
-  /** Null when the product has nothing to say yet; empty when nothing needs you. */
+  /** Null on a first run, where Needs you has no section; empty when nothing needs you. */
   needs: Need[] | null;
+  days: WeekDay[];
   bars: StripBar[];
+}
+
+/** A day of This week, with the date its words are written from. */
+export interface WeekDay extends StripDay {
+  date: string;
+}
+
+/** The sample is written in English; This week's weekdays follow the page's language, so the strip reads as the product's does in it. */
+export function weekIn(days: readonly WeekDay[], say: Say): WeekDay[] {
+  return days.map((day) => ({
+    ...day,
+    weekday: say.weekday(day.date),
+    narrow: say.weekdayNarrow(day.date),
+    spoken: say.weekdayLong(day.date),
+  }));
 }
 
 /** A sample event as the product's parts draw it: its colour is its key. */
@@ -395,7 +457,7 @@ function week(
   agenda: readonly (readonly [string, Item[]])[],
   say: Say,
   sample: Sample,
-): { days: StripDay[]; bars: StripBar[] } {
+): { days: WeekDay[]; bars: StripBar[] } {
   const last = addDays(today, 6);
   const keys = (Object.keys(sample) as EventKey[]).filter((key) => {
     const event = sample[key];
@@ -434,7 +496,10 @@ function week(
     );
 
     return {
+      date,
       weekday: say.weekday(date),
+      narrow: say.weekdayNarrow(date),
+      spoken: say.weekdayLong(date),
       number: say.number(date),
       today: index === 0,
       dots: dots.map(shown),
@@ -453,62 +518,111 @@ const TODAY: Record<MomentName, { date: string; time: string }> = {
   first: { date: '2026-11-03', time: '09:41' },
 };
 
+export const NEEDS_STATES = ['one', 'overdue', 'none'] as const;
+
+export type NeedsState = (typeof NEEDS_STATES)[number];
+
+export function isNeedsState(state: string | null): state is NeedsState {
+  return NEEDS_STATES.some((one) => one === state);
+}
+
+const KITCHEN = 'Give final numbers to the kitchen';
+
+type Owed = readonly [event: EventKey, due: string, other?: readonly [area: string, title: string]];
+
+/** No area but the kitchen's returns a You milestone yet: this one stands in for a row with no action. */
+const BAND: Owed[2] = ['budget', 'Pay the band’s balance'];
+
+/** The app's sample (sc-29884), so the two demos list the same rows; the planning day adds the stand-in. */
+const OWED: Record<'plan' | 'day' | 'rows' | NeedsState, readonly Owed[]> = {
+  plan: [
+    ['party', '2026-10-31'],
+    ['wed', '2026-11-04'],
+    ['wed', '2026-11-04', BAND],
+    ['ireti', '2026-11-06'],
+    ['draft', '2027-01-04'],
+  ],
+  day: [
+    ['ireti', '2026-11-12'],
+    ['party', '2026-11-06'],
+  ],
+  rows: [
+    ['party', '2026-10-31'],
+    ['wed', '2026-11-03'],
+    ['ireti', '2026-11-04'],
+  ],
+  one: [['wed', '2026-11-03']],
+  overdue: [
+    ['party', '2026-11-01'],
+    ['ireti', '2026-11-02'],
+    ['draft', '2026-11-03'],
+    ['wed', '2026-11-04'],
+    ['wed', '2026-11-05', BAND],
+  ],
+  none: [],
+};
+
+const SAMPLE_ZONE = 'Europe/London';
+
+const MANAGES = ['menu.manage', 'budget.manage'];
+
+const DUE_DAY_LAST_MINUTE = { date: '2026-11-03', time: '23:59' };
+
+function milestoneOf([key, due, other]: Owed): Milestone {
+  const at = `${due}T23:59:00Z`;
+
+  return other == null
+    ? {
+        at,
+        title: KITCHEN,
+        note: null,
+        owner: 'you',
+        area: 'menu',
+        action: { label: KW.openSheet, link: kitchenAt(IDS[key]) },
+      }
+    : { at, title: other[1], note: null, owner: 'you', area: other[0], action: null };
+}
+
+function needOrder(
+  a: { at: string; key: EventKey; title: string },
+  b: { at: string; key: EventKey; title: string },
+): number {
+  return (
+    Date.parse(a.at) - Date.parse(b.at) ||
+    EVENTS[a.key].first.localeCompare(EVENTS[b.key].first) ||
+    EVENTS[a.key].name.localeCompare(EVENTS[b.key].name) ||
+    a.title.localeCompare(b.title)
+  );
+}
+
 function needs(
   name: MomentName,
-  today: string,
+  { date, time }: { date: string; time: string },
   say: Say,
-  guests: GuestsOf,
-  rows: boolean,
+  state: NeedsState | 'rows' | undefined,
 ): Need[] | null {
-  const row = (event: EventKey, title: string, due: string, action: string): Need => {
-    const { words, late } = dueWords(today, due, say);
+  const owed =
+    name === 'plan'
+      ? OWED[state ?? 'plan']
+      : name === 'day'
+        ? OWED.day
+        : name === 'quiet'
+          ? []
+          : null;
+  // Half a minute into the minute, so a milestone at 23:59 has passed at the demo's 23:59.
+  const now = new Date(`${date}T${time}:30Z`);
 
-    return { event, title, due: words, late, action };
-  };
-  const party =
-    guests[IDS.party]?.invited === 0
-      ? row('party', 'Send the invitations', '2026-10-31', 'Send')
-      : row('party', `Chase ${owedOf('party', guests)} replies`, '2026-10-31', 'Chase');
+  return owed == null
+    ? null
+    : owed
+        .map((one) => ({ key: one[0], ...milestoneOf(one) }))
+        .filter(({ owner, area }) => owner === 'you' && levelOf(MANAGES, area) === 'change')
+        .sort(needOrder)
+        .map(({ key, at, title, action }) => {
+          const { words, late } = dueWords(at, SAMPLE_ZONE, now, say);
 
-  if (rows)
-    return [
-      party,
-      row('wed', 'Final numbers to the caterer', today, 'Review'),
-      {
-        event: 'ireti',
-        title: `Chase ${owedOf('ireti', guests)} replies`,
-        due: `Replies close ${say.day('2026-11-04')}`,
-        late: false,
-        action: 'Chase',
-      },
-    ];
-
-  if (name === 'plan')
-    return [
-      party,
-      row('wed', 'Final numbers to the caterer', '2026-11-04', 'Review'),
-      row('wed', 'Seat the last 12 guests', '2026-11-05', 'Seat'),
-      {
-        event: 'ireti',
-        title: `Chase ${owedOf('ireti', guests)} replies`,
-        due: `Replies close ${say.day('2026-11-06')}`,
-        late: false,
-        action: 'Chase',
-      },
-    ];
-  if (name === 'day')
-    return [
-      {
-        event: 'wed',
-        title: 'Choose meals for 3 guests',
-        due: `Before dinner at ${say.clock('18:00')}`,
-        late: false,
-        action: 'Choose',
-      },
-      row('wed', 'Pay the band’s balance', today, 'Pay'),
-    ];
-
-  return name === 'quiet' ? [] : null;
+          return { event: shown(key), title, due: words, late, action };
+        });
 }
 
 function now(today: string, time: string, say: Say): Now {
@@ -576,7 +690,7 @@ const ROWS_AGENDA: readonly (readonly [string, Item[]])[] = [
   ['2026-11-07', [['19:00', 'The party starts', 'party', 'Day 1 of 3']]],
 ];
 
-/** `guests` gives the events other guests, as `?invites=none` does; `later` draws `?starts=later`; `rows` draws `?week=rows`. */
+/** `guests` gives the events other guests, as `?invites=none` does; `later` draws `?starts=later`; `rows` draws `?week=rows`; `needing` draws `?needs=`. */
 export function momentOf(
   name: MomentName,
   say: Say,
@@ -585,17 +699,24 @@ export function momentOf(
     first = 'Folake',
     later = false,
     rows = false,
+    needing,
   }: {
     guests?: GuestsOf | undefined;
     first?: string | undefined;
     later?: boolean;
     rows?: boolean;
+    needing?: NeedsState | undefined;
   } = {},
 ): Moment {
   const starting = later && name === 'plan';
   const stacked = rows && name === 'plan' && !starting;
   const sample = stacked ? ROWS : EVENTS;
-  const { date: today, time } = starting ? STARTS_LATER : TODAY[name];
+  const at = starting
+    ? STARTS_LATER
+    : name === 'plan' && needing === 'overdue' && !stacked
+      ? DUE_DAY_LAST_MINUTE
+      : TODAY[name];
+  const { date: today, time } = at;
   const kind = name === 'planNow' ? 'plan' : name === 'dayNow' ? 'day' : (name as Moment['kind']);
   const full = name !== 'planNow' && name !== 'dayNow';
   const agenda = starting
@@ -606,7 +727,7 @@ export function momentOf(
         ? []
         : AGENDA[name];
   const { days, bars } = week(today, agenda, say, sample);
-  const waiting = starting ? [] : needs(name, today, say, guests, stacked);
+  const waiting = starting ? [] : needs(name, at, say, stacked ? 'rows' : needing);
   const wedding = EVENTS.wed.first;
   const party = EVENTS.party;
 
@@ -629,7 +750,7 @@ export function momentOf(
           : stacked
             ? `The wedding starts today at ${say.clock(ROWS_START)}.`
             : name === 'quiet'
-              ? 'Nothing needs you this week.'
+              ? `${party.name} starts on ${say.day(party.first)}.`
               : `The wedding starts on ${say.weekdayLong(wedding)}.`,
     needs: waiting,
     days,

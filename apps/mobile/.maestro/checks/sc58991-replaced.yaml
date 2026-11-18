@@ -1,0 +1,27 @@
+# sc-58991: Replace link… → Replace link on the open guest, then Link replaced {date} and its line at the top of Invitation. Pass METRO_URL, EVENT_ID, GUEST_ID (the replaced guest), ORIENT.
+appId: host.exp.Exponent
+---
+- runFlow: ../checks/sc58991/open-guest.yaml
+- scrollUntilVisible:
+    element:
+      id: 'guest.replace'
+    timeout: 20000
+- tapOn:
+    id: 'guest.replace'
+- tapOn:
+    id: 'guest.replace.do'
+- extendedWaitUntil:
+    visible:
+      id: 'guest.replaced'
+    timeout: 15000
+- scrollUntilVisible:
+    element:
+      id: 'guest.invitation'
+    direction: UP
+    timeout: 5000
+- scrollUntilVisible:
+    element:
+      id: 'guest.replace'
+    timeout: 5000
+- waitForAnimationToEnd
+- takeScreenshot: replaced

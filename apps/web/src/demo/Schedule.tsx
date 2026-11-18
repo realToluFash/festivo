@@ -1,13 +1,16 @@
-import { type KeyboardEvent, useEffect, useRef, useState } from 'react';
+import { Fragment, type KeyboardEvent, useEffect, useRef, useState } from 'react';
 import { Link, Navigate, useParams, useSearchParams } from 'react-router';
 
 import { Glyph } from '../components/Glyph.tsx';
-import type { Tell } from '../components/SettingsParts.tsx';
+import { type Tell, TextAction } from '../components/SettingsParts.tsx';
 import { Toast } from '../components/Toast.tsx';
 import { DemoBell } from './DemoBell.tsx';
 import { EventsShell } from './EventParts.tsx';
 import { EventSidebar } from './EventSidebar.tsx';
-import { type SampleEvent, sampleEvent } from './events.ts';
+import { EVENT_WORDS, type SampleEvent, sampleEvent } from './events.ts';
+import { EventNotLoaded, KeptBox } from './KeptOffline.tsx';
+import { NW, nightAtUrl } from './night.ts';
+import { type Kept, clockWords, tabNow, tabStartOf, useKept } from './tabKept.ts';
 import { Pill } from './GuestsParts.tsx';
 import { clockOfKitchen } from './kitchen.ts';
 import { Wrong } from './MenuServed.tsx';
@@ -21,7 +24,6 @@ import {
   type Panel,
   type Reader,
   type ScheduleStart,
-  DAYS,
   EARLIEST,
   LATEST,
   MAIN,
@@ -31,6 +33,7 @@ import {
   TITLE_MAX,
   blankForm,
   check,
+  dayCount,
   dayName,
   dayOf,
   differences,
@@ -54,12 +57,15 @@ import {
   zoneNamed,
 } from './schedule.ts';
 import { RW as RUN_WORDS, runViewAt } from './runView.ts';
+import { SHOW_WORDS } from './roomScreen.ts';
+import { ShowOnScreen } from './ShowOnScreen.tsx';
 import { useSwitcherStart } from './switcher.ts';
 import './guests.css';
 import './menu.css';
 import './stations.css';
 import './dataControl.css';
 import './schedule.css';
+import './night.css';
 
 /** /demo/events/evt-wed-4/schedule (sc-3893): the event's Schedule at 1280 × 800 and at 40rem and under, by ?state=, ?locale= and ?zone=. */
 export function SchedulePage() {
@@ -75,6 +81,7 @@ export function SchedulePage() {
       key={`${id ?? ''}|${raw ?? ''}|${locale ?? ''}|${zone ?? ''}`}
       id={id}
       raw={raw}
+      tab={params.get('tab')}
       reader={readerOf(locale, zone)}
     />
   );
@@ -83,18 +90,28 @@ export function SchedulePage() {
 function ScheduleAt({
   id,
   raw,
+  tab,
   reader,
 }: {
   id: string | undefined;
   raw: string | null;
+  tab: string | null;
   reader: Reader;
 }) {
   const [event] = useState(() => sampleEvent(id));
   const [first] = useState(() => scheduleStart(raw));
+  const kept = useKept(
+    id ?? '',
+    'schedule',
+    clockWords(clockOfKitchen(), event?.timeZone ?? 'UTC'),
+    tabStartOf(raw, tab),
+  );
 
   if (event == null) return <Navigate to="/demo/events" replace />;
   if (event.id !== SCHEDULE_EVENT)
     return <Navigate to={`/demo/events/${event.id}?area=schedule`} replace />;
+  if (kept.offline && kept.asOf == null)
+    return <EventNotLoaded id={event.id} onRetry={kept.retry} />;
 
   return (
     <EventsShell
@@ -109,7 +126,13 @@ function ScheduleAt({
         />
       )}
     >
-      {(tell) => <ScheduleView first={first} event={event} reader={reader} tell={tell} />}
+      {(tell) =>
+        kept.offline && !kept.areaKept ? (
+          <ScheduleNotKept event={event} kept={kept} tell={tell} />
+        ) : (
+          <ScheduleView first={first} event={event} reader={reader} tell={tell} kept={kept} />
+        )
+      }
     </EventsShell>
   );
 }
@@ -126,16 +149,71 @@ const FIELD_IDS: Record<Field, string> = {
 
 let added = 0;
 
+/** The crumb row; on the night, once this tab has loaded it, with the switch back to the Run of show (sc-65646). */
+function ScheduleCrumbs({ event, tell }: { event: SampleEvent; tell: Tell }) {
+  return (
+    <div className="ev-crumb-row ro-chrome">
+      <nav className="ev-crumb" aria-label="Breadcrumb">
+        <ol>
+          <li className="ev-crumb-part">
+            <Link to="/demo/events">Events</Link>
+          </li>
+          <li className="ev-crumb-part">
+            <Glyph name="chevron" size={15} weight={2.4} className="desk-chevron" />
+            <Link className="ev-crumb-name" to={`/demo/events/${event.id}`}>
+              {event.name}
+            </Link>
+          </li>
+          <li className="ev-crumb-part" aria-current="page">
+            <Glyph name="chevron" size={15} weight={2.4} className="desk-chevron" />
+            <span className="ev-crumb-name">{RW.title}</span>
+          </li>
+        </ol>
+      </nav>
+      {tabNow().night != null && (
+        <nav className="nt-switch" aria-label="Schedule or run of show">
+          <span aria-current="page">{NW.schedule}</span>
+          <Link to={nightAtUrl()}>{NW.title}</Link>
+        </nav>
+      )}
+      <DemoBell tell={tell} />
+    </div>
+  );
+}
+
+/** Offline, a Schedule this tab never loaded: the kept event under the box, and the area's own failure line. */
+function ScheduleNotKept({ event, kept, tell }: { event: SampleEvent; kept: Kept; tell: Tell }) {
+  return (
+    <div className="desk-page ev-page gs mn sn ro">
+      <div className="ev-wide mn-page">
+        <KeptBox kept={kept} />
+        <ScheduleCrumbs event={event} tell={tell} />
+        <header className="gs-top ro-chrome ro-top">
+          <div className="mn-head">
+            <h1 className="gs-title">{RW.title}</h1>
+          </div>
+        </header>
+        <div className="desk-failed" role="alert">
+          <p className="desk-line">{RW.failed}</p>
+          <TextAction label={EVENT_WORDS.retry} onClick={kept.retry} />
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function ScheduleView({
   first,
   event,
   reader,
   tell,
+  kept,
 }: {
   first: ScheduleStart;
   event: SampleEvent;
   reader: Reader;
   tell: Tell;
+  kept: Kept;
 }) {
   const [items, setItems] = useState<Item[]>(first.items);
   const [day, setDay] = useState(first.day);
@@ -152,8 +230,10 @@ function ScheduleView({
   const [failed, setFailed] = useState(first.failed);
   const [picked, setPicked] = useState<string | null>(null);
   const [said, setSaid] = useState('');
+  const [screens, setScreens] = useState(first.screens);
   const focusAfter = useRef<string | null>(null);
   const manage = first.manage;
+  const days = first.days;
 
   useEffect(() => {
     const at =
@@ -296,7 +376,7 @@ function ScheduleView({
     const by = change.key === 'ArrowRight' ? 1 : change.key === 'ArrowLeft' ? -1 : 0;
     if (by === 0) return;
     change.preventDefault();
-    const next = DAYS[(at + by + DAYS.length) % DAYS.length] as string;
+    const next = days[(at + by + days.length) % days.length] as string;
     setDay(next);
     setPicked(null);
     focusAfter.current = `ro-day-${next}`;
@@ -309,26 +389,8 @@ function ScheduleView({
         .join(' ')}
     >
       <div className="ev-wide mn-page">
-        <div className="ev-crumb-row ro-chrome">
-          <nav className="ev-crumb" aria-label="Breadcrumb">
-            <ol>
-              <li className="ev-crumb-part">
-                <Link to="/demo/events">Events</Link>
-              </li>
-              <li className="ev-crumb-part">
-                <Glyph name="chevron" size={15} weight={2.4} className="desk-chevron" />
-                <Link className="ev-crumb-name" to={`/demo/events/${event.id}`}>
-                  {event.name}
-                </Link>
-              </li>
-              <li className="ev-crumb-part" aria-current="page">
-                <Glyph name="chevron" size={15} weight={2.4} className="desk-chevron" />
-                <span className="ev-crumb-name">{RW.title}</span>
-              </li>
-            </ol>
-          </nav>
-          <DemoBell tell={tell} />
-        </div>
+        <KeptBox kept={kept} />
+        <ScheduleCrumbs event={event} tell={tell} />
         <header className="gs-top ro-chrome ro-top">
           <div className="mn-head">
             <h1 className="gs-title">{`${RW.title} · ${dayWord}`}</h1>
@@ -339,6 +401,17 @@ function ScheduleView({
               <Glyph name="clock" size={17} weight={2.2} />
               {RUN_WORDS.openRun}
             </Link>
+          )}
+          {manage && items.length > 0 && (
+            <button
+              id="ro-screens"
+              type="button"
+              className="gs-pill is-secondary ro-run"
+              onClick={() => setScreens('list')}
+            >
+              <Glyph name="device" size={17} weight={2.2} />
+              {SHOW_WORDS.open}
+            </button>
           )}
           {manage && (
             <button
@@ -353,7 +426,7 @@ function ScheduleView({
           )}
         </header>
         <div className="sn-tabs ro-days ro-chrome" role="tablist" aria-label={RW.days}>
-          {DAYS.map((one, at) => {
+          {days.map((one, at) => {
             const on = one === day;
             const count = itemsOn(items, one).length;
             return (
@@ -375,7 +448,7 @@ function ScheduleView({
               >
                 <span>{dayName(one, reader)}</span>
                 <span className="ro-day-sep">{' · '}</span>
-                <span className="ro-day-count">{RW.items(count)}</span>
+                <span className="ro-day-count">{dayCount(count, reader.locale)}</span>
               </button>
             );
           })}
@@ -477,6 +550,15 @@ function ScheduleView({
           )}
         </div>
       </div>
+      {screens != null && (
+        <ShowOnScreen
+          start={screens}
+          onClose={() => {
+            setScreens(null);
+            focusAfter.current = 'ro-screens';
+          }}
+        />
+      )}
       {deleted != null && (
         <Toast
           key={deleted.id}
@@ -577,74 +659,94 @@ function PlaceTable({
         </h2>
         <p className="mn-sub ro-place-count">{RW.items(items.length)}</p>
       </div>
-      <table className="ro-table" aria-labelledby={id}>
-        <thead>
-          <tr>
-            <th scope="col" className="ro-starts">
-              {RW.starts}
-            </th>
-            <th scope="col" className="ro-wide ro-lasts">
-              {RW.lasts}
-            </th>
-            <th scope="col">{RW.item}</th>
-            <th scope="col" className="ro-wide ro-owner">
-              {RW.owner}
-            </th>
-          </tr>
-        </thead>
-        <tbody>
-          {items.map((one) => (
-            <tr key={one.id} className={lit === one.id ? 'is-lit' : undefined}>
-              <td className="ro-starts">{startsCell(one, day, reader)}</td>
-              <td className="ro-wide ro-lasts">{lastsCell(one)}</td>
-              <td>
-                <div className="ro-item">
-                  {manage ? (
-                    <button
-                      id={`ro-open-${one.id}`}
-                      type="button"
-                      className="ro-open"
-                      onClick={() => onOpen(one)}
-                    >
-                      {one.title}
-                    </button>
-                  ) : (
-                    <span className="ro-plain">{one.title}</span>
-                  )}
-                  <span className="ro-under">{underLine(one)}</span>
-                  {(one.fixed || one.guests) && (
-                    <span className="ro-pills">
-                      {one.fixed && (
-                        <span className="ro-pill">
-                          <Glyph name="lock" size={13} weight={2.4} />
-                          {RW.fixed}
-                        </span>
-                      )}
-                      {one.guests && (
-                        <span className="ro-pill">
-                          <Glyph name="eye" size={13} weight={2.4} />
-                          {RW.shown}
-                        </span>
-                      )}
-                    </span>
-                  )}
-                </div>
-              </td>
-              <td className="ro-wide ro-owner">
-                {one.owner == null ? (
-                  <span className="ro-quiet">{RW.noOwner}</span>
-                ) : (
-                  <>
-                    <span className="ro-owner-name">{one.owner}</span>
-                    {one.role != null && <span className="ro-quiet">{one.role}</span>}
-                  </>
-                )}
-              </td>
+      <div className="ro-fit">
+        <table className="ro-table" aria-labelledby={id}>
+          <thead>
+            <tr>
+              <th scope="col" className="ro-starts">
+                {RW.starts}
+              </th>
+              <th scope="col" className="ro-wide ro-lasts">
+                {RW.lasts}
+              </th>
+              <th scope="col">{RW.item}</th>
+              <th scope="col" className="ro-wide ro-owner">
+                {RW.owner}
+              </th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {items.map((one) => (
+              <tr key={one.id} className={lit === one.id ? 'is-lit' : undefined}>
+                <td className="ro-starts">{startsCell(one, day, reader)}</td>
+                <td className="ro-wide ro-lasts">{lastsCell(one)}</td>
+                <td>
+                  <div className="ro-item">
+                    {manage ? (
+                      <button
+                        id={`ro-open-${one.id}`}
+                        type="button"
+                        className="ro-open"
+                        onClick={() => onOpen(one)}
+                      >
+                        {one.title}
+                      </button>
+                    ) : (
+                      <span className="ro-plain">{one.title}</span>
+                    )}
+                    <span className="ro-under">
+                      <Words text={underLine(one)} />
+                    </span>
+                    {(one.fixed || one.guests) && (
+                      <span className="ro-pills">
+                        {one.fixed && (
+                          <span className="ro-pill">
+                            <Glyph name="lock" size={13} weight={2.4} />
+                            {RW.fixed}
+                          </span>
+                        )}
+                        {one.guests && (
+                          <span className="ro-pill">
+                            <Glyph name="eye" size={13} weight={2.4} />
+                            {RW.shown}
+                          </span>
+                        )}
+                      </span>
+                    )}
+                  </div>
+                </td>
+                <td className="ro-wide ro-owner">
+                  {one.owner == null ? (
+                    <span className="ro-quiet">{RW.noOwner}</span>
+                  ) : (
+                    <>
+                      <span className="ro-owner-name">
+                        <Words text={one.owner} />
+                      </span>
+                      {one.role != null && <span className="ro-quiet">{one.role}</span>}
+                    </>
+                  )}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </section>
+  );
+}
+
+/** Each word of an owner's name on one line, wrapping at its spaces only: "Okonkwo-Williams" is one word (sc-63743). */
+function Words({ text }: { text: string }) {
+  return (
+    <>
+      {text.split(' ').map((word, at) => (
+        <Fragment key={at}>
+          {at > 0 && ' '}
+          <span className="ro-word">{word}</span>
+        </Fragment>
+      ))}
+    </>
   );
 }
 

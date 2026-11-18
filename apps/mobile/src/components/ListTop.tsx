@@ -21,6 +21,7 @@ export function ListTop({
   beside,
   primary,
   under,
+  untitled = false,
   style,
   rowStyle,
 }: {
@@ -33,6 +34,8 @@ export function ListTop({
   beside?: ReactNode;
   primary?: TopPrimaryProps | undefined;
   under?: ReactNode;
+  /** The page in front names itself, so the top draws no title (sc-37693). */
+  untitled?: boolean;
   style?: StyleProp<ViewStyle>;
   /** The title's row, as Settings' column draws it shorter. */
   rowStyle?: StyleProp<ViewStyle>;
@@ -62,7 +65,7 @@ export function ListTop({
   return (
     <View style={style}>
       {kind === 'phone' && <PillRow pill={pill} bell={bell} />}
-      {titleRow}
+      {!untitled && titleRow}
       {under}
     </View>
   );

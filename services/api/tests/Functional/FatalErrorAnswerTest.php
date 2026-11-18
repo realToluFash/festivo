@@ -19,8 +19,6 @@ final class FatalErrorAnswerTest extends TestCase
 {
     private const string API = __DIR__ . '/../..';
 
-    private const string LOG = self::API . '/var/log/test.log';
-
     /** @var resource|null */
     private $server;
 
@@ -77,12 +75,13 @@ final class FatalErrorAnswerTest extends TestCase
     public function aCrashIsLoggedWithPhpsMessageAndWhere(string $path, string $phpMessage, bool $debug): void
     {
         $this->serve($debug);
+        $log = self::API . '/var/log/test-' . \date('Y-m-d') . '.log';
         \clearstatcache();
-        $before = \is_file(self::LOG) ? (int) \filesize(self::LOG) : 0;
+        $before = \is_file($log) ? (int) \filesize($log) : 0;
 
         $this->get($path, 'en');
 
-        $logged = (string) \file_get_contents(self::LOG, offset: $before);
+        $logged = (string) \file_get_contents($log, offset: $before);
         self::assertStringContainsString($phpMessage, $logged);
         self::assertMatchesRegularExpression('~ at /app/\S+\.php:\d+~', $logged);
     }

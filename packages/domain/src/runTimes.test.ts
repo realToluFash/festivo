@@ -111,6 +111,25 @@ describe('expected times on a track (sc-1404)', () => {
     ).toEqual({ kind: 'done' });
   });
 
+  it('takes no time for a skipped item, so the next continues from the one before (sc-3895)', () => {
+    const items = hall(SERVED).map((item) =>
+      item.id === 'dinner' ? { ...item, skipped: true } : item,
+    );
+    const track = runTrack(items, wall('18:50'));
+
+    expect(expectedOf(track, 'speeches')).toBeNull();
+    expect(track.next?.item.id).toBe('speeches');
+    expect(track.figure).toEqual({ kind: 'onTime' });
+    expect(track.rows.find((row) => row.item.id === 'dinner')?.phase).toBe('skipped');
+  });
+
+  it('is finished once every item is done or skipped (sc-3895)', () => {
+    const items = hall({}).map((item) => ({ ...item, skipped: true }));
+
+    expect(runTrack(items, wall('00:40')).figure).toEqual({ kind: 'done' });
+    expect(runTrack(items, wall('00:40')).next).toBeNull();
+  });
+
   it('runs across midnight on one track', () => {
     const track = runTrack(hall({ ...DANCED, dancing: ['22:20'] }), wall('00:18'));
 

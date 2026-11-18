@@ -20,7 +20,7 @@ import {
 import { pageTakesBack } from '../kit/systemBack.ts';
 import { tokens } from '../theme/tokens.ts';
 import { FrameTop } from './AppFrame.tsx';
-import { LIST_EDGES, SETTINGS_COLUMN } from './listFrame.ts';
+import { LIST_EDGES, SETTINGS_COLUMN, titleFoot } from './listFrame.ts';
 import { COLUMN } from './Summary.tsx';
 import { bodyEdges } from './bodyEdges.ts';
 import { QuietButton } from './Buttons.tsx';
@@ -39,6 +39,8 @@ export interface ListAndPageSpacing {
   between: number;
   /** On its side, the two columns meet at a rule rather than a gap, each padded inside its own scroll, as Guests' demo draws them. */
   ruled?: { list: StyleProp<ViewStyle>; page: StyleProp<ViewStyle> };
+  /** The scrolled top is a Settings page's title, 16 above the first block whatever the gap (sc-49170). */
+  settingsTitle?: true;
 }
 
 export interface ListAndPageProps<Item = never> {
@@ -51,6 +53,8 @@ export interface ListAndPageProps<Item = never> {
   /** Rows under the list, mounted only near the screen, for a list as long as an organisation (sc-49170). */
   listRows?: ColumnRows<Item> | undefined;
   page: ReactNode;
+  /** In the page's place while none is open, filling the pane without the column's padding or scroll, as the demo's pane holds it. */
+  nothingOpen?: ReactNode;
   /** Changes with the page, so a page opened after a longer one shows from its top. */
   pageKey: string;
   /** Wherever the two show one at a time, whether the page shows in place of the list. */
@@ -99,6 +103,7 @@ export function ListAndPage<Item = never>({
   listRefresh,
   listRows,
   page,
+  nothingOpen,
   pageKey,
   pageInFront,
   pageless = false,
@@ -126,6 +131,7 @@ export function ListAndPage<Item = never>({
     : kind === 'phone'
       ? spacing.phone
       : spacing.tabletPortrait;
+  const topStyle = spacing.settingsTitle ? titleFoot(column) : undefined;
 
   return (
     <Screen
@@ -155,7 +161,7 @@ export function ListAndPage<Item = never>({
             away={!landscape && pageInFront}
             rows={listRows}
           >
-            {(landscape ? pageless : !pageInFront) && <FrameTop />}
+            {(landscape ? pageless : !pageInFront) && <FrameTop style={topStyle} />}
             {!headingAbove && heading}
             {list}
           </ScrollColumn>
@@ -168,21 +174,25 @@ export function ListAndPage<Item = never>({
             swipe.taking && { transform: [{ translateX: swipe.shift }] },
           ]}
         >
-          <ScrollColumn
-            key={pageKey}
-            style={styles.fill}
-            contentContainerStyle={
-              inColumn ? [LIST_EDGES.tabletLandscape, column] : (ruled?.page ?? column)
-            }
-          >
-            {!landscape && pageInFront && <FrameTop />}
-            {kind === 'tabletPortrait' && !backInFrame && (
-              <View style={styles.start}>
-                <QuietButton label={back.label} onPress={back.onPress} testID={back.testID} />
-              </View>
-            )}
-            {page}
-          </ScrollColumn>
+          {page == null && nothingOpen != null ? (
+            <View style={styles.fill}>{nothingOpen}</View>
+          ) : (
+            <ScrollColumn
+              key={pageKey}
+              style={styles.fill}
+              contentContainerStyle={
+                inColumn ? [LIST_EDGES.tabletLandscape, column] : (ruled?.page ?? column)
+              }
+            >
+              {!landscape && pageInFront && <FrameTop style={topStyle} />}
+              {kind === 'tabletPortrait' && !backInFrame && (
+                <View style={styles.start}>
+                  <QuietButton label={back.label} onPress={back.onPress} testID={back.testID} />
+                </View>
+              )}
+              {page}
+            </ScrollColumn>
+          )}
         </Animated.View>
       </View>
     </Screen>

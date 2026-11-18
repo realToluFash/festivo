@@ -226,6 +226,7 @@ export function SearchField({
   onSearch,
   onClear,
   label,
+  height,
   testID = 'events.search',
   ref,
 }: {
@@ -236,6 +237,7 @@ export function SearchField({
   onSearch: () => void;
   onClear: () => void;
   label?: string;
+  height?: number;
   testID?: string;
   ref?: Ref<TextInputInstance>;
 }) {
@@ -248,6 +250,7 @@ export function SearchField({
       <View
         style={[
           styles.search,
+          height != null && { height },
           typed !== '' && styles.searchTyped,
           off && styles.searchOff,
           focused && styles.searchFocused,

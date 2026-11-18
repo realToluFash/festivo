@@ -102,7 +102,7 @@ final readonly class RecoveryView
     /** @return array{askedAt: ?string, asked: ?string, expiresAt: ?string, expires: ?string} */
     private function times(TwoFactorRecovery $recovery, User $reader): array
     {
-        $locale = $this->userMailer->shownLocaleFor($reader);
+        $locale = $this->userMailer->formattingLocaleFor($reader);
         $written = fn (?DateTimeImmutable $at): ?string => null === $at ? null : $this->userMailer->deadline($at, $reader, $locale);
 
         return [

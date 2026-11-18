@@ -86,6 +86,7 @@ function item(
     startsAt,
     startedAt: null,
     endedAt: null,
+    skipped: false,
     day,
     lengthMinutes: null,
     place: null,
@@ -211,6 +212,44 @@ describe('The event’s Schedule (sc-3893)', () => {
     expect(main.textContent).toContain('Shown to guests');
   });
 
+  it('keeps each word of an owner whole, wrapping at its spaces only, on the column and the line under the title (sc-63743)', async () => {
+    const SEATED = item('it_seated', 'Guests seated', '2030-11-15T20:00:00+00:00', '2030-11-15', {
+      ownerName: 'Chief Mrs Folasade Okonkwo-Williams',
+      ownerRole: 'Aunt',
+    });
+    await onSchedule({
+      'GET /api/events/ev_1/schedule': () => json({ schedule: schedule([SEATED]) }),
+    });
+
+    const main = await screen.findByRole('table', { name: 'Main' });
+    expect(main.closest('.ro-fit')).not.toBeNull();
+    const owner = main.querySelector('.ro-owner-name') as HTMLElement;
+    expect(owner.textContent).toBe('Chief Mrs Folasade Okonkwo-Williams');
+    expect([...owner.querySelectorAll('.ro-word')].map((one) => one.textContent)).toEqual([
+      'Chief',
+      'Mrs',
+      'Folasade',
+      'Okonkwo-Williams',
+    ]);
+    const under = main.querySelector('.ro-under') as HTMLElement;
+    expect(under.querySelectorAll('.ro-word').length).toBeGreaterThan(1);
+    expect([...under.querySelectorAll('.ro-word')].map((one) => one.textContent)).toContain(
+      'Okonkwo-Williams',
+    );
+
+    expect(cssRule('.ro-owner-name', SCHEDULE_CSS)).not.toContain('overflow-wrap');
+    const word = cssRule('.ro-word', SCHEDULE_CSS);
+    expect(word).toContain('display: inline-block;');
+    expect(word).toContain('max-width: var(--roWordCap);');
+    expect(word).toContain('overflow-wrap: anywhere;');
+    expect(cssRule('.ro-fit', SCHEDULE_CSS)).toContain(
+      '--roWordCap: calc(100cqw - 136px - 2 * var(--spaceMd) - 5.5rem);',
+    );
+    expect(
+      cssRule('.ro-fit', SCHEDULE_CSS.slice(SCHEDULE_CSS.indexOf('(width <= 720px)'))),
+    ).toContain('--roWordCap: calc(100cqw - 72px - var(--spaceMd));');
+  });
+
   it("sits inside the desk's button and field resets, and gives the narrow page its own padding", async () => {
     await onSchedule({
       'GET /api/events/ev_1/schedule': () => json({ schedule: schedule([DRINKS, BRUNCH]) }),
@@ -231,8 +270,27 @@ describe('The event’s Schedule (sc-3893)', () => {
     const tab = (await screen.findAllByRole('tab'))[0] as HTMLElement;
     expect(tab.closest('.shell-content .ev-page.desk-page')).not.toBeNull();
     expect(
-      cssRule('.shell-content.is-card .desk-page', STYLES.slice(STYLES.indexOf('(width > 60rem)'))),
+      cssRule('.shell-content.is-card .desk-page', STYLES.slice(STYLES.indexOf('(width > 40rem)'))),
     ).toContain('padding: 0;');
+  });
+
+  it('keeps a day tab’s words whole, wrapping the tabs to another row rather than breaking them (sc-64803)', () => {
+    const days = cssRule('.ro .ro-days', SCHEDULE_CSS);
+    expect(days).toContain('flex-wrap: wrap;');
+    expect(days).toContain('max-width: 100%;');
+    expect(days).toContain('border-radius: calc(var(--sizeHit) / 2 + var(--spaceHair));');
+    const tab = cssRule('.ro .ro-day', SCHEDULE_CSS);
+    expect(tab).toContain('flex: 1 0 auto;');
+    expect(tab).toContain('overflow-wrap: normal;');
+    expect(tab).toContain('border-radius: calc(var(--sizeHit) / 2);');
+    expect(cssRule('.ro-day > span', SCHEDULE_CSS)).toContain('overflow-wrap: normal;');
+    const narrow = SCHEDULE_CSS.slice(SCHEDULE_CSS.indexOf('(width <= 720px)'));
+    expect(cssRule('.ro .ro-days', narrow)).toContain(
+      'border-radius: calc(var(--roDayStack) / 2 + var(--spaceHair));',
+    );
+    const stacked = cssRule('.ro .ro-day', narrow);
+    expect(stacked).toContain('min-height: var(--roDayStack);');
+    expect(stacked).toContain('border-radius: calc(var(--roDayStack) / 2);');
   });
 
   it('moves between days with the arrow keys', async () => {
@@ -697,5 +755,185 @@ describe('The Schedule’s form, while the hub moves the items (sc-3893)', () =>
     expect(
       sent.filter(({ line }) => line.startsWith('POST /api/events/ev_1/schedule/items')),
     ).toEqual([]);
+  });
+});
+
+describe('Show on a screen (sc-3897)', () => {
+  const LINKS = {
+    links: [
+      { place: null, token: 'tok_main', replacedAt: null },
+      { place: 'Garden', token: 'tok_garden', replacedAt: null },
+    ],
+  };
+  const withLinks = (more: Record<string, Answer> = {}) => ({
+    'GET /api/events/ev_1/schedule': () => json({ schedule: schedule([DRINKS, PHOTOS]) }),
+    'GET /api/events/ev_1/screen-links': () => json(LINKS),
+    ...more,
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  const said = () => document.querySelector('.ss-said')?.textContent;
+  const rowsOf = () =>
+    within(screen.getByRole('dialog', { name: 'Show on a screen' })).findAllByRole('listitem');
+
+  it('is offered only to those who manage the run of show', async () => {
+    await onSchedule(
+      withLinks(),
+      OWNER_PERMISSIONS.filter((one) => one !== 'run_of_show.manage'),
+    );
+    await screen.findByRole('link', { name: 'Run view' });
+
+    expect(screen.queryByRole('button', { name: 'Show on a screen' })).toBeNull();
+  });
+
+  it('lists a link for each place, Main first, with its three actions', async () => {
+    await onSchedule(withLinks());
+    fireEvent.click(await screen.findByRole('button', { name: 'Show on a screen' }));
+
+    const dialog = screen.getByRole('dialog', { name: 'Show on a screen' });
+    await within(dialog).findByText(`${window.location.origin}/s/tok_garden`);
+    expect(document.activeElement?.id).toBe('ss-title');
+    const rows = within(dialog).getAllByRole('listitem');
+    expect(rows.map((row) => within(row).getByRole('heading').textContent)).toEqual([
+      'Main',
+      'Garden',
+    ]);
+    expect(within(rows[1]!).getByRole('link', { name: 'Open here' }).getAttribute('href')).toBe(
+      `${window.location.origin}/s/tok_garden`,
+    );
+    expect(within(rows[1]!).getByRole('button', { name: 'Copy screen link' })).toBeDefined();
+    expect(within(rows[1]!).getByRole('button', { name: 'Replace link' })).toBeDefined();
+  });
+
+  it('says the link was copied only once the clipboard took it', async () => {
+    const writeText = vi.fn(() => Promise.resolve());
+    vi.stubGlobal('navigator', { ...navigator, clipboard: { writeText } });
+    await onSchedule(withLinks());
+    fireEvent.click(await screen.findByRole('button', { name: 'Show on a screen' }));
+    const row = (await rowsOf())[1]!;
+
+    fireEvent.click(within(row).getByRole('button', { name: 'Copy screen link' }));
+
+    await waitFor(() => expect(said()).toBe('Screen link for Garden copied.'));
+    expect(writeText).toHaveBeenCalledWith(`${window.location.origin}/s/tok_garden`);
+  });
+
+  it('selects the link when the browser refuses to copy', async () => {
+    vi.stubGlobal('navigator', {
+      ...navigator,
+      clipboard: { writeText: () => Promise.reject(new Error('denied')) },
+    });
+    await onSchedule(withLinks());
+    fireEvent.click(await screen.findByRole('button', { name: 'Show on a screen' }));
+    const row = (await rowsOf())[1]!;
+
+    fireEvent.click(within(row).getByRole('button', { name: 'Copy screen link' }));
+
+    await waitFor(() =>
+      expect(said()).toBe(
+        'Could not copy here. The link for Garden is selected: press Ctrl+C or Command+C.',
+      ),
+    );
+    expect(window.getSelection()?.toString()).toBe(`${window.location.origin}/s/tok_garden`);
+  });
+
+  it('asks in the row before replacing, then shows the new link and when it was replaced', async () => {
+    const sent = await onSchedule(
+      withLinks({
+        'POST /api/events/ev_1/screen-links/replace': () =>
+          json({
+            links: [
+              LINKS.links[0],
+              { place: 'Garden', token: 'tok_new', replacedAt: '2030-11-15T17:25:00+00:00' },
+            ],
+          }),
+      }),
+    );
+    fireEvent.click(await screen.findByRole('button', { name: 'Show on a screen' }));
+    const row = (await rowsOf())[1]!;
+
+    fireEvent.click(within(row).getByRole('button', { name: 'Replace link' }));
+
+    const ask = within(row).getByRole('group', { name: 'Replace the screen link for Garden?' });
+    expect(document.activeElement?.textContent).toBe('Keep this link');
+    fireEvent.click(within(ask).getByRole('button', { name: 'Replace link' }));
+
+    await within(row).findByText(`${window.location.origin}/s/tok_new`);
+    expect(within(row).getByText('Replaced at 17:25. The old link shows nothing.')).toBeDefined();
+    expect(said()).toBe('Screen link for Garden replaced.');
+    expect(sent.find(({ line }) => line.endsWith('/replace'))?.body).toEqual({ place: 'Garden' });
+    expect(document.activeElement).toBe(within(row).getByRole('button', { name: 'Replace link' }));
+  });
+
+  it('holds three rows and says so while the links load', async () => {
+    await onSchedule(
+      withLinks({ 'GET /api/events/ev_1/screen-links': () => new Promise(() => {}) }),
+    );
+    fireEvent.click(await screen.findByRole('button', { name: 'Show on a screen' }));
+
+    const dialog = screen.getByRole('dialog', { name: 'Show on a screen' });
+    expect(within(dialog).queryAllByRole('listitem')).toHaveLength(0);
+    expect(dialog.querySelectorAll('.skeleton-row')).toHaveLength(3);
+    expect(within(dialog).getByRole('status').textContent).toBe('Loading the screen links…');
+  });
+
+  it('says the links did not load, and Try again loads them', async () => {
+    let asks = 0;
+    await onSchedule(
+      withLinks({
+        'GET /api/events/ev_1/screen-links': () =>
+          ++asks === 1 ? problem('internal', 500) : json(LINKS),
+      }),
+    );
+    fireEvent.click(await screen.findByRole('button', { name: 'Show on a screen' }));
+    const dialog = screen.getByRole('dialog', { name: 'Show on a screen' });
+
+    await waitFor(() =>
+      expect(within(dialog).getByRole('status').textContent).toBe('The screen links did not load.'),
+    );
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Try again' }));
+
+    expect(within(dialog).getByRole('status').textContent).toBe('Loading the screen links…');
+    expect(await rowsOf()).toHaveLength(2);
+  });
+
+  it('keeps the old link when Replace link fails, back on that row’s Replace link', async () => {
+    await onSchedule(
+      withLinks({
+        'POST /api/events/ev_1/screen-links/replace': () => problem('internal', 500),
+      }),
+    );
+    fireEvent.click(await screen.findByRole('button', { name: 'Show on a screen' }));
+    const row = (await rowsOf())[1]!;
+
+    fireEvent.click(within(row).getByRole('button', { name: 'Replace link' }));
+    const ask = within(row).getByRole('group', { name: 'Replace the screen link for Garden?' });
+    fireEvent.click(within(ask).getByRole('button', { name: 'Replace link' }));
+
+    await waitFor(() =>
+      expect(said()).toBe(
+        'The link for Garden was not replaced, so the old link still works. Try again.',
+      ),
+    );
+    expect(within(row).queryByRole('group')).toBeNull();
+    expect(within(row).getByText(`${window.location.origin}/s/tok_garden`)).toBeDefined();
+    expect(within(row).queryByText(/Replaced at/)).toBeNull();
+    expect(document.activeElement).toBe(within(row).getByRole('button', { name: 'Replace link' }));
+  });
+
+  it('keeps the link when Keep this link is pressed, back on that row’s Replace link', async () => {
+    const sent = await onSchedule(withLinks());
+    fireEvent.click(await screen.findByRole('button', { name: 'Show on a screen' }));
+    const row = (await rowsOf())[0]!;
+
+    fireEvent.click(within(row).getByRole('button', { name: 'Replace link' }));
+    fireEvent.click(within(row).getByRole('button', { name: 'Keep this link' }));
+
+    expect(within(row).getByRole('button', { name: 'Copy screen link' })).toBeDefined();
+    expect(document.activeElement).toBe(within(row).getByRole('button', { name: 'Replace link' }));
+    expect(sent.some(({ line }) => line.endsWith('/replace'))).toBe(false);
   });
 });

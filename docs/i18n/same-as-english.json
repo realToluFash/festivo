@@ -33,7 +33,16 @@
     "mobile:runView.minutes_other",
     "web:seating.keyShiftUs",
     "web:seating.keyName.esc",
-    "web:seating.keyName.ctrl"
+    "web:seating.keyName.ctrl",
+    "web:night.minutes_one",
+    "web:night.minutes_other",
+    "web:night.hoursMinutes",
+    "web:guestExport.excel",
+    "web:guestExport.csv",
+    "mobile:guestExport.excel",
+    "mobile:guestExport.csv",
+    "messagesCounts:guest_export.diet.halal",
+    "messagesCounts:guest_export.diet.kosher"
   ],
   "fr": [
     "web:nav.menu",
@@ -146,7 +155,27 @@
     "web:seating.tableNumbered",
     "web:eventMenu.title",
     "web:eventMenu.suggestions",
-    "web:eventMenu.dessert"
+    "web:eventMenu.dessert",
+    "web:night.minutes_one",
+    "web:night.minutes_other",
+    "web:night.hoursMinutes",
+    "web:dishChoices.options",
+    "web:dishChoices.option",
+    "web:seating.tablesView",
+    "web:guestExport.format",
+    "web:guestExport.excel",
+    "web:guestExport.csv",
+    "web:guestExport.column.allergies",
+    "web:guestExport.column.places",
+    "mobile:guestExport.format",
+    "mobile:guestExport.excel",
+    "mobile:guestExport.csv",
+    "mobile:guestExport.column.allergies",
+    "mobile:guestExport.column.places",
+    "messagesCounts:guest_export.column.allergies",
+    "messagesCounts:guest_export.column.places",
+    "messagesCounts:guest_export.allergen.lupin",
+    "messagesCounts:guest_export.diet.halal"
   ],
   "pt": [
     "web:seating.shapeCocktailShort",
@@ -185,6 +214,15 @@
     "web:seating.keyName.delete",
     "web:seating.keyName.esc",
     "web:seating.keyName.ctrl",
-    "web:eventMenu.title"
+    "web:eventMenu.title",
+    "web:night.minutes_one",
+    "web:night.minutes_other",
+    "web:night.hoursMinutes",
+    "web:guestExport.excel",
+    "web:guestExport.csv",
+    "mobile:guestExport.excel",
+    "mobile:guestExport.csv",
+    "messagesCounts:guest_export.diet.halal",
+    "messagesCounts:guest_export.diet.kosher"
   ]
 }

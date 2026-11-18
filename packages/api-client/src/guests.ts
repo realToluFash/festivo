@@ -125,6 +125,13 @@ export interface Companion {
   namedByGuest: boolean;
   /** Sent only with guests.manage; null for anyone else. */
   needs?: GuestNeeds | null;
+  /** Where they sit (sc-4013): a table or a single seat by its name, a row by its label. */
+  seat?: CompanionSeat | null;
+}
+
+export interface CompanionSeat {
+  kind: 'table' | 'row' | 'seat';
+  name: string;
 }
 
 /** A named companion as the guest's own page shows them, with what the guest last chose for them. */
@@ -319,6 +326,8 @@ export interface GuestPage {
     cover: EventCover | null;
     /** The names guests read, in order (sc-6713). */
     hosts: string[];
+    /** The hosts' own words, never translated; only once it is Finished (sc-6476). */
+    thankYou: string | null;
     /** With the event's own offset. */
     startsAt: string;
     timeZone: string;
@@ -341,6 +350,53 @@ export interface GuestPage {
   calendar: GuestCalendarLink | null;
   /** The items the hosts show to guests, by the time shown (sc-3899); none once called off. */
   programme: GuestProgrammeItem[];
+  /** Only while the hosts share the tables and this guest is Coming with a seat (sc-4022). */
+  seating: GuestSeating | null;
+}
+
+/** A table by its name, a row by its label and the seat in it, a single seat by its name; each with its section's name. */
+export type GuestSeat =
+  | { kind: 'table'; name: string; section: string | null }
+  | { kind: 'row'; name: string; seat: number; section: string | null }
+  | { kind: 'seat'; name: string; section: string | null };
+
+/** The guest's own place, and each companion's who sits somewhere else; never who else is at the table. */
+export interface GuestSeating {
+  seat: GuestSeat;
+  /** A companion with no name has a null `name`. */
+  elsewhere: { name: string | null; seat: GuestSeat }[];
+}
+
+function asGuestSeat(value: unknown): GuestSeat | null {
+  if (value == null || typeof value !== 'object') return null;
+  const one = value as Record<string, unknown>;
+  const name = text(one.name);
+  const section = typeof one.section === 'string' ? one.section : null;
+
+  if (name == null) return null;
+  if (one.kind === 'table' || one.kind === 'seat') return { kind: one.kind, name, section };
+  if (one.kind === 'row' && typeof one.seat === 'number')
+    return { kind: 'row', name, seat: one.seat, section };
+  return null;
+}
+
+/** Null for a page with no seating field, or one in a shape this client does not know. */
+export function asGuestSeating(value: unknown): GuestSeating | null {
+  if (value == null || typeof value !== 'object') return null;
+  const raw = value as Record<string, unknown>;
+  const seat = asGuestSeat(raw.seat);
+  const elsewhere = Array.isArray(raw.elsewhere)
+    ? raw.elsewhere.map((each: unknown) => {
+        if (each == null || typeof each !== 'object') return null;
+        const one = each as Record<string, unknown>;
+        const theirs = asGuestSeat(one.seat);
+
+        return theirs == null ? null : { name: text(one.name), seat: theirs };
+      })
+    : [];
+
+  if (seat == null) return null;
+  return { seat, elsewhere: elsewhere.filter((one) => one != null) };
 }
 
 /** Planned, or while the event happens its expected start rounded down to 5 minutes, with the event zone's offset. `day` is the event day it is planned on. */
@@ -496,7 +552,16 @@ function asCompanion(value: unknown): Companion | null {
     coming: row.coming,
     namedByGuest: row.namedByGuest === true,
     needs: asNeeds(row.needs),
+    seat: asCompanionSeat(row.seat),
   };
+}
+
+function asCompanionSeat(value: unknown): CompanionSeat | null {
+  if (typeof value !== 'object' || value == null) return null;
+  const { kind, name } = value as Record<string, unknown>;
+  if ((kind !== 'table' && kind !== 'row' && kind !== 'seat') || typeof name !== 'string')
+    return null;
+  return { kind, name };
 }
 
 export function asGuestPageCompanion(value: unknown): GuestPageCompanion | null {

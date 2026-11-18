@@ -12,6 +12,7 @@ import {
   shownPhase,
   stepAwaitsMilestones,
   takesCardStep,
+  takesThankYou,
   wallDay,
 } from '@soirely/domain';
 import { Fragment, type ReactNode, type RefObject, useEffect, useRef, useState } from 'react';
@@ -20,6 +21,7 @@ import { useTranslation } from 'react-i18next';
 import { useLocation, useNavigate } from 'react-router';
 
 import {
+  Broken,
   Crumb,
   Lead,
   ManageItem,
@@ -28,8 +30,7 @@ import {
 } from '../../../components/EventPageParts.tsx';
 import { type ButtonStep, EventCard } from '../../../components/EventCard.tsx';
 import { Glyph } from '../../../components/Glyph.tsx';
-import { ArrivalNotice } from '../../../components/PageArrival.tsx';
-import { Ask, Head } from '../../../components/SettingsParts.tsx';
+import { Ask, Head, TextAction } from '../../../components/SettingsParts.tsx';
 import { Toast } from '../../../components/Toast.tsx';
 import { useDeskTop } from '../../../deskTop.ts';
 import { listEventOf, shownEvent } from '../../../eventsList.ts';
@@ -55,13 +56,14 @@ import {
 import { useMakeLive } from './MakeLive.tsx';
 import { ReplyByPart } from './ReplyByPart.tsx';
 import { closesAtClock } from '../../../replyBy.ts';
-import { arrivingPart } from './openInPlace.ts';
+import { arrivingPart, asksEndNow } from './openInPlace.ts';
 import { PHASE_WORD } from './eventWords.ts';
 import { typeLabel } from './eventTypes.ts';
 import { GuestNumbers } from './GuestNumbers.tsx';
 import { MuteEvent } from './MuteEvent.tsx';
 import { OutcomeLine } from './OutcomeLine.tsx';
 import { PauseButton, useResume } from './PauseEvent.tsx';
+import { ThankYouCard } from './ThankYou.tsx';
 import { ComingUp, useTimeline } from './Timeline.tsx';
 import { useLeaveGuard } from './useLeaveGuard.tsx';
 
@@ -126,8 +128,7 @@ export function Overview({
   const { t } = useTranslation();
   const location = useLocation();
   const navigate = useNavigate();
-  const [coverRefused] = useState(() => coverRefusal(location.state));
-  const coverLine = useRef<HTMLParagraphElement>(null);
+  const [coverRefused, setCoverRefused] = useState(() => coverRefusal(location.state));
   const [ended, setEnded] = useState(false);
   const [paused, setPaused] = useState(false);
   const [dirty, setDirty] = useState(false);
@@ -169,10 +170,15 @@ export function Overview({
   useEffect(() => rememberTabHolding(event.organisationId, phase), [event.organisationId, phase]);
 
   useEffect(() => {
+    if (asksEndNow(location.state)) askEnd.current?.();
+  }, [location.state]);
+
+  useEffect(() => {
     if (
       arrivingPart(location.state) == null &&
       coverRefusal(location.state) == null &&
-      !wasDuplicated(location.state)
+      !wasDuplicated(location.state) &&
+      !asksEndNow(location.state)
     )
       return;
 
@@ -266,18 +272,26 @@ export function Overview({
       {resumed && <OutcomeLine words={t('eventPause.resumed', { name: event.name })} />}
       {ended && <OutcomeLine words={t(PHASE_WORD.finished)} />}
       {paused && <OutcomeLine words={t('eventPause.paused', { name: event.name })} />}
-      {coverRefused != null && (
-        <ArrivalNotice
-          role="alert"
-          line={t('eventCover.createdWithout', { reason: coverRefused })}
-          lineRef={coverLine}
-          focusable={false}
-          retry={t('eventEdit.open')}
-          onRetry={() => open('cover')}
-        />
-      )}
       <div className="ev-columns">
         <div className="ev-left">
+          {coverRefused != null && (
+            <Broken
+              action={
+                <TextAction
+                  label={t('eventCover.upload')}
+                  onClick={() => {
+                    setCoverRefused(null);
+                    open('cover');
+                  }}
+                />
+              }
+            >
+              {t('eventCover.createdWithout', { reason: coverRefused })}
+            </Broken>
+          )}
+          {takesThankYou(event, phase) && (
+            <ThankYouCard event={event} manages={manages} onChange={onChange} onSaid={setToast} />
+          )}
           <Details
             event={event}
             phase={phase}
@@ -320,7 +334,10 @@ export function Overview({
                     inManage
                     askRef={askEnd}
                     onChange={onChange}
-                    onEnded={() => setEnded(true)}
+                    onEnded={(thanked) => {
+                      setEnded(true);
+                      if (thanked) setToast(t('thankYou.onEveryPage'));
+                    }}
                   />
                 </>
               )}

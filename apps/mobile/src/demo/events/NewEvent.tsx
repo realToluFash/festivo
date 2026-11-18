@@ -1,4 +1,11 @@
-import { type EventFormField, endMovedLine, skippedLine, startMoved } from '@soirely/domain';
+import {
+  COVER_DESCRIPTION_MAXIMUM,
+  type EventFormField,
+  endMovedLine,
+  skippedLine,
+  startMoved,
+  visibleLength,
+} from '@soirely/domain';
 import { type ReactNode, type RefObject, useEffect, useRef, useState } from 'react';
 import {
   ScrollView,
@@ -10,8 +17,10 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { ArrivalNoteField, CoverPhotoFields } from '../../components/EventEdits.tsx';
 import { EventNotice } from '../../components/EventNotice.tsx';
 import { focusChecked } from '../../components/Field.tsx';
+import { DoneLine, Legend, SheetBody, SheetLayer } from '../../components/FormLayers.tsx';
 import { BoxField, type Picking, PickerLayer, pick } from '../../components/MomentPick.tsx';
 import { useReadOut } from '../../components/ReadOut.tsx';
 import {
@@ -19,11 +28,9 @@ import {
   moveScreenReaderFocus,
 } from '../../components/screenReaderFocus.ts';
 import { Pill } from '../../components/SettingsParts.tsx';
-import { type AskProps, FocusedScreen, TextAction } from '../../components/Summary.tsx';
+import { type AskProps, FocusedScreen } from '../../components/Summary.tsx';
 import { Text } from '../../components/Text.tsx';
 import { tokens } from '../../theme/tokens.ts';
-import { DoneLine } from '../guests/GuestsParts.tsx';
-import { Legend, SheetBody, SheetLayer } from '../guests/GuestEdit.tsx';
 import {
   ASK_WIDTH,
   AlertLine,
@@ -113,6 +120,8 @@ export function NewEventScreen({
   const nameRef = useRef<TextInputInstance>(null);
   const venueNameRef = useRef<TextInputInstance>(null);
   const addressRef = useRef<TextInputInstance>(null);
+  const noteRef = useRef<TextInputInstance>(null);
+  const describeRef = useRef<TextInputInstance>(null);
   const typeRef = useRef<ViewInstance>(null);
   const startRef = useRef<ViewInstance>(null);
   const endRef = useRef<ViewInstance>(null);
@@ -141,10 +150,15 @@ export function NewEventScreen({
       if (input != null) focusChecked({ current: input });
       return;
     }
+    if ('cover' in target) {
+      focusChecked(describeRef);
+      return;
+    }
     const typedIn: Partial<Record<EventFormField, RefObject<TextInputInstance | null>>> = {
       name: nameRef,
       venueName: venueNameRef,
       venueAddress: addressRef,
+      arrivalNote: noteRef,
     };
     const picker: Partial<Record<EventFormField, RefObject<ViewInstance | null>>> = {
       type: typeRef,
@@ -374,10 +388,11 @@ export function NewEventScreen({
 
         <Part head={W.coverPhoto}>
           <CoverPart
-            photo={typed.photo}
-            meshKey={typed.type === '' ? 'new-event' : typed.type}
+            typed={typed}
             off={busy}
-            onPhoto={(photo) => change({ photo })}
+            error={tried ? check.cover : null}
+            describeRef={describeRef}
+            onCover={(cover) => change(cover)}
           />
         </Part>
 
@@ -441,6 +456,14 @@ export function NewEventScreen({
             off={busy}
             testID="events.new.venue"
           />
+          <ArrivalNoteField
+            note={typed.note}
+            onNote={(note) => !busy && change({ note })}
+            error={shown.arrivalNote ?? null}
+            noteRef={noteRef}
+            off={busy}
+            testID="events.new.venue.note"
+          />
         </Part>
 
         <Part head={W.zoneHeading}>
@@ -490,12 +513,12 @@ export function NewEventScreen({
   );
 }
 
-type Target = { field: EventFormField } | { host: number };
+type Target = { field: EventFormField } | { host: number } | { cover: true };
 
 /** The first refusal in the form's order, a host by its row's key; a new object each time, so each press of Create moves focus. */
 function targetOf(typed: NewTyped, server: Refusals): Target | null {
   const now = checkOf(typed);
-  const first = firstRefused({ ...now.refusals, ...server }, now.hosts);
+  const first = firstRefused({ ...now.refusals, ...server }, now.hosts, now.cover);
   if (first == null) return null;
   if (!('host' in first)) return { ...first };
   const row = typed.hosts[first.host];
@@ -516,36 +539,51 @@ function Part({ head, children }: { head: string; children: ReactNode }) {
   );
 }
 
-/** Cover: Soirely's cover in the type's colours until a photo is chosen; the photo goes up once the draft exists. */
+const NO_PHOTO = { photo: false, position: 'middle', described: '' } as const;
+const CHOSEN = { photo: true, position: 'middle', described: '' } as const;
+
+type Cover = Pick<NewTyped, 'photo' | 'position' | 'described'>;
+
+/** Cover: Soirely's cover in the type's colours until a photo is chosen, then the cover edit's own Position and Description; all of it goes up once the draft exists. */
 function CoverPart({
-  photo,
-  meshKey,
+  typed,
   off,
-  onPhoto,
+  error,
+  describeRef,
+  onCover,
 }: {
-  photo: boolean;
-  meshKey: string;
+  typed: NewTyped;
   off: boolean;
-  onPhoto: (photo: boolean) => void;
+  error: string | null;
+  describeRef: RefObject<TextInputInstance | null>;
+  onCover: (cover: Partial<Cover>) => void;
 }) {
   return (
     <>
-      <CoverPreview photo={photo} meshKey={meshKey} id="new-event-cover" />
-      {photo ? (
-        !off && (
-          <TextAction
-            label={W.removePhoto}
-            removes
-            consequence={W.removePhotoLine}
-            onPress={() => onPhoto(false)}
-            testID="events.new.cover.remove"
-          />
-        )
+      <CoverPreview
+        photo={typed.photo}
+        meshKey={typed.type === '' ? 'new-event' : typed.type}
+        id="new-event-cover"
+      />
+      {typed.photo ? (
+        <CoverPhotoFields
+          position={typed.position}
+          onPosition={(position) => onCover({ position })}
+          described={typed.described}
+          onDescribed={(described) => !off && onCover({ described })}
+          count={visibleLength(typed.described)}
+          most={COVER_DESCRIPTION_MAXIMUM}
+          describeError={error}
+          describeRef={describeRef}
+          onChange={() => onCover(CHOSEN)}
+          onRemove={() => onCover(NO_PHOTO)}
+          off={off}
+        />
       ) : (
         <CoverUpload
           off={off}
           kind="secondary"
-          onUpload={() => onPhoto(true)}
+          onUpload={() => onCover(CHOSEN)}
           testID="events.new.cover.upload"
         />
       )}
@@ -554,7 +592,7 @@ function CoverPart({
 }
 
 const styles = StyleSheet.create({
-  fill: { flex: 1 },
+  fill: { flexGrow: 1, flexShrink: 1 },
   body: {
     gap: tokens.space3xl,
     paddingTop: tokens.spaceXl,

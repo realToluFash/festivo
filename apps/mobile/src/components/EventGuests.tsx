@@ -28,6 +28,9 @@ import {
   rowWords,
   shownReply,
   viewOf,
+  exportNarrowing,
+  exportsGuests,
+  peopleInView,
 } from '@soirely/domain';
 import {
   type ReactNode,
@@ -43,6 +46,7 @@ import {
   RefreshControl,
   StyleSheet,
   View,
+  useWindowDimensions,
   type TextInputInstance,
   type ViewInstance,
 } from 'react-native';
@@ -51,6 +55,7 @@ import { useTranslation } from 'react-i18next';
 
 import { api } from '../api.ts';
 import { followReadingAgain } from '../followTopic.ts';
+import { ExportPanel, ExportSheet } from './GuestExport.tsx';
 import { dateLocale } from '../i18n/index.ts';
 import type { Shown } from '../kit/eventsList.ts';
 import { sidebarCardOf } from '../kit/eventTop.ts';
@@ -61,7 +66,7 @@ import {
   markOf,
   phaseCardOf,
 } from '../kit/guestRows.ts';
-import { pasteShown, waiting, whoseRows } from '../kit/pasteReply.ts';
+import { pasteBeside, pasteShown, waiting, whoseRows } from '../kit/pasteReply.ts';
 import { type GuestReplies, guestRepliesOf, guestReplyBy } from '../kit/replyBy.ts';
 import { type ScreenOffline, useHandOffline, useOffline } from '../offline.ts';
 import { useSignedIn } from '../signedIn.ts';
@@ -87,6 +92,7 @@ import {
   PasteRow,
   WhoseReply,
   usePaste,
+  usePasteHeight,
 } from './PasteReply.tsx';
 import { MarkSlot } from './ReplyMark.tsx';
 import { FailedBlock, type StepProps } from './Summary.tsx';
@@ -134,6 +140,8 @@ const CHOICE_KEY: Record<Choice, string> = {
 /** What Guests puts in the frame's top: Add guest at the end of the title row, and on a phone the ‹ back to the list from a guest's details. */
 export interface GuestsTop {
   add: (() => void) | null;
+  /** Export, once someone is on the list and the person may take a copy of it (sc-3784). */
+  exports: (() => void) | null;
   back: (() => void) | null;
   toSearch: boolean;
 }
@@ -148,6 +156,7 @@ export function EventGuests({
   now,
   heading,
   addRef,
+  exportRef,
   onTop,
   onOffline,
   onEventChange,
@@ -167,6 +176,8 @@ export function EventGuests({
   heading: ReactNode;
   /** The frame's Add guest, where focus goes back once the form closes. */
   addRef: RefObject<ViewInstance | null>;
+  /** The frame's Export, where focus goes back once the dialog closes. */
+  exportRef: RefObject<ViewInstance | null>;
   onTop: (top: GuestsTop) => void;
   onOffline: (offline: ScreenOffline) => void;
   onEventChange: (event: OrganisationEvent) => void;
@@ -208,6 +219,8 @@ export function EventGuests({
   const [replacedOn, setReplacedOn] = useState<Readonly<Record<string, string>>>({});
   const [asking, setAsking] = useState(false);
   const [replacing, setReplacing] = useState(false);
+  const [exporting, setExporting] = useState(false);
+  const [exportRound, setExportRound] = useState(0);
   const copying = useRef(false);
   const openNow = useRef(open);
   const offeredFor = useRef<string | null>(null);
@@ -345,6 +358,7 @@ export function EventGuests({
     setDone(null);
     setNotice(null);
     forgetLink();
+    setExporting(false);
     setOpen(guestId);
     readGuest(guestId, false);
   };
@@ -358,10 +372,12 @@ export function EventGuests({
   const openWhose = useCallback((quote: string) => {
     setOpen(null);
     setDone(null);
+    setExporting(false);
     setPasted({ quote, all: false, typed: '' });
     setTimeout(() => moveScreenReaderFocus(whoseTitle.current), FOCUS_AFTER_MS);
   }, []);
   const paste = usePaste(openWhose);
+  const beside = pasteBeside(kind, useWindowDimensions().fontScale);
   const closeWhose = useCallback(() => {
     setPasted(null);
     setTimeout(() => moveScreenReaderFocus(searchField.current), FOCUS_AFTER_MS);
@@ -526,16 +542,25 @@ export function EventGuests({
   const guestBack = leavesFromGuest ? leaveGuest : closeGuest;
   const back = pasted != null ? closeWhose : guestBack;
   const adds = manages && loaded && !empty && !guestInFront;
+  const exports = loaded && !empty && !guestInFront && exportsGuests(event);
+  const openExport = useCallback(() => {
+    setExportRound((was) => was + 1);
+    setExporting(true);
+  }, []);
   const shown = sidebarCardOf(event, phase);
 
   useLayoutEffect(() => {
     onTop({
       add: adds ? add : null,
+      exports: exports ? openExport : null,
       back: guestInFront ? back : null,
       toSearch: guestInFront && leavesFromGuest,
     });
-  }, [onTop, adds, add, guestInFront, back, leavesFromGuest]);
-  useLayoutEffect(() => () => onTop({ add: null, back: null, toSearch: false }), [onTop]);
+  }, [onTop, adds, add, exports, openExport, guestInFront, back, leavesFromGuest]);
+  useLayoutEffect(
+    () => () => onTop({ add: null, exports: null, back: null, toSearch: false }),
+    [onTop],
+  );
 
   const timeZone = event.timeZone;
   const locale = dateLocale();
@@ -621,9 +646,9 @@ export function EventGuests({
         locale={locale}
         manages={manages}
         replies={replies}
-        pasteInRow={kind === 'tabletPortrait' ? <PasteButton onText={paste.onText} inRow /> : null}
+        pasteInRow={beside ? <PasteButton onText={paste.onText} inRow /> : null}
         pasteUnder={
-          kind === 'tabletPortrait' ? (
+          beside ? (
             paste.nothing ? (
               <PasteNotice />
             ) : null
@@ -641,8 +666,30 @@ export function EventGuests({
     </>
   );
 
+  const docked = kind === 'tabletLandscape';
+  const closeExport = useCallback(() => {
+    setExporting(false);
+    // The sheet hands focus back itself; the docked panel is not a sheet.
+    if (docked) setTimeout(() => moveScreenReaderFocus(exportRef.current), FOCUS_AFTER_MS);
+  }, [docked, exportRef]);
+  const exportProps =
+    load.kind === 'loaded'
+      ? {
+          event,
+          now,
+          inView: peopleInView(load.list.guests, choice, typed).map((one) => one.id),
+          everyone: peopleInView(load.list.guests, 'all', '').map((one) => one.id),
+          narrowing: exportNarrowing(t, t(CHOICE_KEY[choice]), typed, []),
+          needs: manages,
+          offline: stale != null,
+          onShare: () => setExporting(false),
+        }
+      : null;
+
   const page =
-    pasted != null && loaded ? (
+    exporting && docked && exportProps != null ? (
+      <ExportPanel key={`export.${exportRound}`} {...exportProps} onClose={closeExport} />
+    ) : pasted != null && loaded ? (
       <WhoseReply
         kind={kind}
         quote={pasted.quote}
@@ -747,7 +794,7 @@ export function EventGuests({
           ) : undefined
         }
         page={page}
-        pageKey={pasted != null ? 'paste' : (open ?? '')}
+        pageKey={exporting && docked ? 'export' : pasted != null ? 'paste' : (open ?? '')}
         pageInFront={pageOpen}
         pageless={!loaded || empty}
         back={{
@@ -759,6 +806,15 @@ export function EventGuests({
         headingInList
         spacing={SPACING}
       />
+      {!docked && exportProps != null && (
+        <ExportSheet
+          key={`export.${exportRound}`}
+          open={exporting}
+          opener={exportRef}
+          {...exportProps}
+          onClose={closeExport}
+        />
+      )}
       {open != null && (
         <MarkInvited
           key={`mark.${marking.round}`}
@@ -922,7 +978,7 @@ function GuestRows({
   /** The allergy mark is for people who manage guests (sc-3777). */
   manages: boolean;
   replies: GuestReplies;
-  /** sc-54450's Paste a reply: in the search row on an upright iPad, under it on a phone and in the list pane. */
+  /** sc-54450's Paste a reply: in the search row on an upright iPad below AX1, under it otherwise. */
   pasteInRow: ReactNode;
   pasteUnder: ReactNode;
 }) {
@@ -935,6 +991,7 @@ function GuestRows({
     onChoice('all');
   };
   const pastes = pasteShown(manages, replies.closedOn, counts.invited);
+  const fieldHeight = usePasteHeight();
   const says =
     counts.invited === 0 || phaseCard?.onList === true
       ? t('guestList.onTheList', { count: counts.all })
@@ -1018,6 +1075,7 @@ function GuestRows({
           onSearch={() => undefined}
           onClear={() => onTyped('')}
           label={t('guestList.find')}
+          height={fieldHeight}
           testID="guests.search"
           ref={searchRef}
         />

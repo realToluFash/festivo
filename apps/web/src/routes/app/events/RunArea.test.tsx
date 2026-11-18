@@ -74,6 +74,7 @@ function item(id: string, title: string, at: string, more: Record<string, unknow
     startsAt: `2030-11-15T${at}:00+00:00`,
     startedAt: null,
     endedAt: null,
+    skipped: false,
     day: '2030-11-15',
     lengthMinutes: null,
     place: null,
@@ -178,14 +179,14 @@ describe('The run view (sc-1404)', () => {
   it('marks an item started and shows the schedule the API answers', async () => {
     const started = { ...SPEECHES, startedAt: '2030-11-15T19:20:00+00:00' };
     const sent = await onRun([DINNER, SPEECHES], OWNER_PERMISSIONS, {
-      'POST /api/events/ev_1/schedule/items/it_speeches/start': () =>
+      'POST /api/events/ev_1/schedule/items/it_speeches/presses': () =>
         json({ schedule: schedule([DINNER, started]), itemId: 'it_speeches' }),
     });
 
     fireEvent.click(screen.getByRole('button', { name: 'Start Speeches' }));
 
     expect(await screen.findByRole('button', { name: 'Finish Speeches' })).toBeDefined();
-    expect(sent).toContain('POST /api/events/ev_1/schedule/items/it_speeches/start');
+    expect(sent).toContain('POST /api/events/ev_1/schedule/items/it_speeches/presses');
     expect(screen.getByText('Main, last item under way')).toBeDefined();
   });
 
@@ -193,7 +194,7 @@ describe('The run view (sc-1404)', () => {
     const started = { ...SPEECHES, startedAt: '2030-11-15T19:20:00+00:00' };
     let marked = false;
     await onRun([DINNER, SPEECHES], OWNER_PERMISSIONS, {
-      'POST /api/events/ev_1/schedule/items/it_speeches/start': () => {
+      'POST /api/events/ev_1/schedule/items/it_speeches/presses': () => {
         marked = true;
 
         return new Response(
@@ -249,7 +250,7 @@ describe('The run view (sc-1404)', () => {
     expect(cssRule('.ev-column,\n.ev-wide', EVENTS_DESK_CSS)).toContain(
       'max-width: var(--evWide);',
     );
-    expect(cssRule('.ev', EVENTS_DESK_CSS)).toContain('--evWide: 938px;');
+    expect(cssRule('.ev,\n.event-page', EVENTS_DESK_CSS)).toContain('--evWide: 938px;');
   });
 
   it('goes back up to the Schedule from the breadcrumb', async () => {

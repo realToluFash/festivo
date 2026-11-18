@@ -58,6 +58,7 @@ import { type ListAndPageSpacing, ListAndPage, useListAndPageLayout } from './Li
 import { phoneTabBarClearance } from './TodayCover.tsx';
 import { LIST_EDGES, LIST_GAP } from './listFrame.ts';
 import { moveScreenReaderFocus } from './screenReaderFocus.ts';
+import { NewEventScreen } from './NewEvent.tsx';
 import { Text, type TextHandle } from './Text.tsx';
 import { Arrived } from './Skeleton.tsx';
 import {
@@ -99,7 +100,14 @@ const LOADING: Load = { kind: 'loading' };
 
 /** Events, `EventsHome-*` (sc-1593): the organisation's events; an event's page is pushed over it (sc-22103). The search and Filter stay while the person stays in Events (sc-30302). */
 /** `searched` is the term it opens searched for, as Search's Show all opens it (sc-39534). */
-export function EventsScreen({ searched: opened = '' }: { searched?: string | undefined } = {}) {
+export function EventsScreen({
+  searched: opened = '',
+  opensNew = false,
+}: {
+  searched?: string | undefined;
+  /** Opened at /events/new: New event over the list (sc-48607). */
+  opensNew?: boolean;
+} = {}) {
   const { t } = useTranslation();
   const { kind } = useListAndPageLayout(SPACING, 'nothing');
   const insets = useSafeAreaInsets();
@@ -109,6 +117,9 @@ export function EventsScreen({ searched: opened = '' }: { searched?: string | un
   const reads = organisation != null;
   const creates = organisation != null && roleHolds(organisation, 'events.create');
   const [deleted, setDeleted] = useState<string | null>(null);
+  const [newOpen, setNewOpen] = useState(opensNew);
+  const [newKey, setNewKey] = useState(0);
+  const newOpener = useRef<ViewInstance>(null);
 
   const [held, setHeld] = useState<{ in: string | undefined; load: Load }>({
     in: organisationId,
@@ -353,7 +364,19 @@ export function EventsScreen({ searched: opened = '' }: { searched?: string | un
     return <Redirect href={DESTINATION_HREF.home} />;
   }
 
-  const newEvent = () => router.push('/events/new');
+  const newEvent = () => {
+    setNewKey((was) => was + 1);
+    setNewOpen(true);
+  };
+  const closeNew = () => {
+    setNewOpen(false);
+    if (opensNew && router.canGoBack()) router.back();
+  };
+  const createdNew = (eventId: string) => {
+    setNewOpen(false);
+    if (opensNew) router.replace(eventHref(eventId));
+    else router.push(eventHref(eventId));
+  };
   const openEvent = (id: string, fromHappeningNow: boolean) => {
     setDeleted(null);
     router.push(eventHref(id, fromHappeningNow));
@@ -501,7 +524,12 @@ export function EventsScreen({ searched: opened = '' }: { searched?: string | un
       underTitle={underTitle}
       primary={
         creates
-          ? { label: t('eventsScreen.newEvent'), onPress: newEvent, testID: 'events.new' }
+          ? {
+              label: t('eventsScreen.newEvent'),
+              onPress: newEvent,
+              testID: 'events.new',
+              ref: newOpener,
+            }
           : undefined
       }
       listUnderTabs
@@ -532,6 +560,16 @@ export function EventsScreen({ searched: opened = '' }: { searched?: string | un
                 ? Math.max(insets.bottom, tokens.spaceLg) - Math.max(insets.bottom, tokens.spaceMd)
                 : Math.max(insets.bottom, tokens.spaceLg)
           }
+        />
+      )}
+      {organisation != null && creates && (
+        <NewEventScreen
+          key={`${organisation.id}:${newKey}`}
+          open={newOpen}
+          organisation={organisation}
+          opener={newOpener}
+          onClose={closeNew}
+          onCreated={createdNew}
         />
       )}
     </AppFrame>

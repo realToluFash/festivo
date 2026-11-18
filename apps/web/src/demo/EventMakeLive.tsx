@@ -1,10 +1,8 @@
-import { useContext, useEffect, useId, useRef, useState } from 'react';
-import { createPortal } from 'react-dom';
+import { useEffect, useId, useRef, useState } from 'react';
 
-import { ActionPair } from '../components/ActionPair.tsx';
 import { Glyph } from '../components/Glyph.tsx';
-import { LayersContext, useDeskDialog } from '../layers.ts';
-import { offButton } from '../offButton.ts';
+import { HostOneField } from '../components/HostOneField.tsx';
+import { Ask, AskAlert } from '../components/SettingsParts.tsx';
 import type { SampleEvent } from './events.ts';
 import { type Offer, type Phase, LW, costOf, hostTyped, lw } from './makeLive.ts';
 import './messagesWaits.css';
@@ -25,14 +23,8 @@ export interface MakeLiveProps {
   onChangeDates: () => void;
 }
 
-/** Make live in A's 400 dialog (sc-3971): the question, then, once the event is live, the same dialog turned into the offer to send the invitations. */
-export function MakeLiveAsk(props: MakeLiveProps) {
-  const { host } = useContext(LayersContext);
-
-  return host == null ? null : createPortal(<MakeLiveBox {...props} />, host);
-}
-
-function MakeLiveBox({
+/** Make live in the product's dialog (sc-3971): the question, then, once the event is live, the same dialog turned into the offer to send the invitations. */
+export function MakeLiveAsk({
   event,
   phase: first,
   offer,
@@ -43,9 +35,6 @@ function MakeLiveBox({
   onChangeDates,
 }: MakeLiveProps) {
   const id = useId();
-  const box = useRef<HTMLDivElement>(null);
-  const heading = useRef<HTMLHeadingElement>(null);
-  const keep = useRef<HTMLButtonElement>(null);
   const field = useRef<HTMLInputElement>(null);
   const timer = useRef<number | undefined>(undefined);
   const [phase, setPhase] = useState<Phase>(first);
@@ -56,12 +45,6 @@ function MakeLiveBox({
   const told = phase.at === 'told' ? phase.why : null;
   const busy = phase.at === 'making' || phase.at === 'sending';
   const turned = !asking && told == null;
-
-  useDeskDialog(box, turned ? heading : asksHost && asking ? field : keep, onClose, busy);
-
-  useEffect(() => {
-    if (turned) heading.current?.focus();
-  }, [turned]);
 
   useEffect(() => () => window.clearTimeout(timer.current), []);
 
@@ -103,6 +86,14 @@ function MakeLiveBox({
           : phase.at === 'cannot'
             ? lw.many('cannotTitle', count)
             : lw.many('offerTitle', count);
+  const line =
+    told === 'endPassed'
+      ? LW.endPassed
+      : told === 'changed'
+        ? LW.nowLive
+        : asking
+          ? LW.confirmLine
+          : lw.filled(LW.isLive, { name: event.name });
   const cost = offer == null ? null : costOf(offer);
   const failed = (phase.at === 'ask' || phase.at === 'offer') && phase.failed;
   const verb =
@@ -110,133 +101,65 @@ function MakeLiveBox({
   const busyWord = phase.at === 'making' ? LW.making : LW.sending;
   const closes = phase.at === 'cannot' || told != null;
   const confirms = phase.at !== 'cannot' && told !== 'changed';
-  const describedBy = [`${id}-line`, asksHost && asking ? `${id}-help` : null]
-    .filter(Boolean)
-    .join(' ');
 
   return (
-    <>
-      <div className="dialog-scrim is-over" aria-hidden="true" />
-      <div
-        ref={box}
-        className="desk-ask ml-ask"
-        role="alertdialog"
-        aria-modal="true"
-        aria-labelledby={`${id}-title`}
-        aria-describedby={describedBy}
-      >
-        <h2 ref={heading} id={`${id}-title`} tabIndex={turned ? -1 : undefined}>
-          {title}
-        </h2>
-        {told != null ? (
-          <Alert id={`${id}-line`}>{told === 'endPassed' ? LW.endPassed : LW.nowLive}</Alert>
-        ) : asking ? (
-          <>
-            <p id={`${id}-line`}>{LW.confirmLine}</p>
-            {asksHost && (
-              <div className="desk-field">
-                <label htmlFor={`${id}-host`} className="desk-label">
-                  {LW.host}
-                </label>
-                <div className={blank ? 'desk-box is-wrong' : 'desk-box'}>
-                  <input
-                    ref={field}
-                    id={`${id}-host`}
-                    type="text"
-                    value={typed}
-                    autoComplete="off"
-                    aria-invalid={blank}
-                    aria-describedby={`${id}-help`}
-                    readOnly={busy}
-                    onChange={(change) => {
-                      setTyped(change.target.value.replaceAll(/[\r\n]+/gu, ' '));
-                      setBlank(false);
-                    }}
-                    onKeyDown={(key) => {
-                      if (key.key === 'Enter') makeLive();
-                    }}
-                  />
-                </div>
-                {blank ? (
-                  <p id={`${id}-help`} className="desk-error" role="alert">
-                    <Glyph name="alert" size={18} weight={2.2} />
-                    {LW.hostEmpty}
-                  </p>
-                ) : (
-                  <p id={`${id}-help`} className="desk-help">
-                    {LW.hostExplainer}
-                  </p>
-                )}
-              </div>
-            )}
-            {failed && <Alert>{LW.failed}</Alert>}
-          </>
+    <Ask
+      title={title}
+      line={line}
+      told={told != null}
+      red={false}
+      titleFirst={turned}
+      flat={!turned}
+      first={asksHost && asking ? field : undefined}
+      keepFirst
+      describedBy={asksHost && asking ? `${id}-help` : undefined}
+      failed={failed ? (asking ? LW.failed : LW.notSent) : undefined}
+      keep={closes ? LW.close : LW.notYet}
+      go={confirms ? verb : undefined}
+      busy={busy ? busyWord : undefined}
+      onKeep={onClose}
+      onGo={told === 'endPassed' ? onChangeDates : asking ? makeLive : send}
+    >
+      {turned &&
+        (phase.at === 'cannot' ? (
+          <AskAlert>{phase.why === 'forbidden' ? LW.forbidden : lw.many('nobody', count)}</AskAlert>
         ) : (
-          <div className="desk-ask-body">
-            <p id={`${id}-line`}>{lw.filled(LW.isLive, { name: event.name })}</p>
-            {phase.at === 'cannot' ? (
-              <Alert>{phase.why === 'forbidden' ? LW.forbidden : lw.many('nobody', count)}</Alert>
-            ) : (
-              cost != null && (
-                <div className="ml-cost">
-                  {cost.credits != null && <p className="ml-credits">{cost.credits}</p>}
-                  {cost.either != null && (
-                    <p className="mg-waits-either">
-                      <Glyph name="mail" size={15} weight={2} />
-                      {cost.either}
-                    </p>
-                  )}
-                  {cost.waits != null && (
-                    <p className="mg-waits-line">
-                      <Glyph name="clock" size={15} weight={2.2} />
-                      {cost.waits}
-                    </p>
-                  )}
-                </div>
-              )
-            )}
-            {failed && <Alert>{LW.notSent}</Alert>}
-          </div>
-        )}
-        <ActionPair
-          className="desk-ask-pair"
-          stacks={false}
-          dismiss={
-            <button
-              ref={keep}
-              type="button"
-              className={busy ? 'desk-text desk-ask-keep is-waits' : 'desk-text desk-ask-keep'}
-              {...offButton(busy, { dim: false })}
-              onClick={onClose}
-            >
-              {closes ? LW.close : LW.notYet}
-            </button>
-          }
-          confirm={
-            confirms && (
-              <button
-                type="button"
-                className={busy ? 'desk-text is-busy' : 'desk-text'}
-                aria-busy={busy || undefined}
-                {...offButton(busy, { dim: false })}
-                onClick={told === 'endPassed' ? onChangeDates : asking ? makeLive : send}
-              >
-                {busy && <span className="pending-spinner desk-turning" aria-hidden="true" />}
-                {busy ? busyWord : verb}
-              </button>
-            )
-          }
+          cost != null && (
+            <div className="ml-cost">
+              {cost.credits != null && <p className="ml-credits">{cost.credits}</p>}
+              {cost.either != null && (
+                <p className="mg-waits-either">
+                  <Glyph name="mail" size={15} weight={2} />
+                  {cost.either}
+                </p>
+              )}
+              {cost.waits != null && (
+                <p className="mg-waits-line">
+                  <Glyph name="clock" size={15} weight={2.2} />
+                  {cost.waits}
+                </p>
+              )}
+            </div>
+          )
+        ))}
+      {asksHost && asking && (
+        <HostOneField
+          id={id}
+          host={{
+            label: LW.host,
+            value: typed,
+            wrong: blank ? LW.hostEmpty : null,
+            help: LW.hostExplainer,
+            onType: (value) => {
+              setTyped(value);
+              setBlank(false);
+            },
+          }}
+          field={field}
+          readOnly={busy}
+          onGo={makeLive}
         />
-      </div>
-    </>
-  );
-}
-
-function Alert({ id, children }: { id?: string; children: string }) {
-  return (
-    <p id={id} className="desk-ask-alert" role="alert">
-      <Glyph name="alert" size={18} weight={2.2} />
-      {children}
-    </p>
+      )}
+    </Ask>
   );
 }

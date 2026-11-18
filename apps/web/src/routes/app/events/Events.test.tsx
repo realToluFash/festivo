@@ -9,6 +9,11 @@ import { __setSessionState, type Session, switchOrganisation } from '../../../se
 import { OWNER_PERMISSIONS, membership } from '../../../test-memberships.ts';
 import { breaksAnywhere } from '../../../test-wrapping.ts';
 import { routes } from '../../index.tsx';
+import { endingNow } from './openInPlace.ts';
+import { cssRule, stylesheet } from '../../../test-styles.ts';
+
+const EVENTS_DESK_CSS = stylesheet(import.meta.dirname, '../../../components/eventsDesk.css');
+const EVENT_PAGE_CSS = stylesheet(import.meta.dirname, '../../../components/eventPage.css');
 
 const IRE = membership({ id: 'org_1', name: 'Ìrè Events' });
 
@@ -35,6 +40,7 @@ function event(overrides: Record<string, unknown> = {}) {
     venue: null,
     arrivalNote: null,
     hosts: ['Funmi Adeyemi'],
+    thankYou: null,
     madeLiveAt: null,
     pausedAt: null,
     phase: 'draft',
@@ -308,7 +314,7 @@ describe('Events Home (sc-3594)', () => {
   }
 
   function starts(title: string, at: string) {
-    return { at, title, note: null, owner: 'event', area: 'events', action: null };
+    return { at, title, note: null, owner: 'event', area: 'events', action: null, done: false };
   }
 
   function finished(count: number) {
@@ -849,6 +855,10 @@ describe('New event', () => {
     await screen.findByRole('heading', { level: 1, name: 'New event' });
   }
 
+  function summary(): string {
+    return document.querySelector('.ev-new-foot .desk-error')?.textContent ?? '';
+  }
+
   function errorUnder(id: string): string {
     const input = document.getElementById(id)!;
     const ids = (input.getAttribute('aria-describedby') ?? '').split(' ');
@@ -879,6 +889,7 @@ describe('New event', () => {
     expect(fields).toEqual([
       'event-name',
       'event-type',
+      'event-host-0',
       'cover-file',
       'event-start-date',
       'event-start-time',
@@ -973,7 +984,7 @@ describe('New event', () => {
       (document.getElementById('event-end-date') as HTMLInputElement).value,
       (document.getElementById('event-end-time') as HTMLInputElement).value,
     ]).toEqual(['2026-11-15', '03:30']);
-    expect(screen.getByRole('status').textContent).toBe(
+    expect(document.getElementById('event-end-help')!.textContent).toBe(
       'Ends moved with the start, to Sun, Nov 15, 03:30.',
     );
   });
@@ -1008,14 +1019,12 @@ describe('New event', () => {
     fill('event-type', 'party');
     fill('event-start-time', '17:30');
     create();
-    expect(screen.getByRole('status').textContent).toBe(
-      '1 field needs fixing, so nothing was sent.',
-    );
+    expect(summary()).toBe('1 field needs fixing, so nothing was sent.');
 
     fill('event-name', 'Launch night');
     create();
 
-    expect(screen.getByRole('status').textContent).toBe('');
+    expect(summary()).toBe('');
   });
 
   it('sends nothing for a blank name, says so beside it and moves focus to it', async () => {
@@ -1033,11 +1042,9 @@ describe('New event', () => {
     const name = document.getElementById('event-name')!;
     await waitFor(() => expect(document.activeElement).toBe(name));
     expect(name.getAttribute('aria-invalid')).toBe('true');
-    expect(name.className).toContain('input-wrong');
+    expect(name.closest('.desk-box')!.className).toContain('is-wrong');
     expect(errorUnder('event-name')).toContain('Give the event a name.');
-    expect(screen.getByRole('status').textContent).toBe(
-      '1 field needs fixing, so nothing was sent.',
-    );
+    expect(summary()).toBe('1 field needs fixing, so nothing was sent.');
     expect(sent.filter(({ line }) => line.startsWith('POST'))).toEqual([]);
   });
 
@@ -1055,9 +1062,7 @@ describe('New event', () => {
     expect(errorUnder('event-type')).toContain('Choose what kind of event it is.');
     expect(errorUnder('event-start-date')).toContain('Choose when the event starts.');
     expect(errorUnder('event-end-date')).toContain('Choose when the event ends.');
-    expect(screen.getByRole('status').textContent).toBe(
-      '3 fields need fixing, so nothing was sent.',
-    );
+    expect(summary()).toBe('3 fields need fixing, so nothing was sent.');
     expect(sent.filter(({ line }) => line.startsWith('POST'))).toEqual([]);
   });
 
@@ -1082,9 +1087,7 @@ describe('New event', () => {
 
     await waitFor(() => expect(document.activeElement).toBe(currency));
     expect(errorUnder('event-currency')).toContain('Choose a currency.');
-    expect(screen.getByRole('status').textContent).toBe(
-      '1 field needs fixing, so nothing was sent.',
-    );
+    expect(summary()).toBe('1 field needs fixing, so nothing was sent.');
     expect(sent.filter(({ line }) => line.startsWith('POST'))).toEqual([]);
   });
 
@@ -1313,13 +1316,10 @@ describe('New event', () => {
         ),
       ).toBeDefined();
 
-      fireEvent.click(within(hosts()).getByRole('button', { name: 'Remove Host 1' }));
+      fill('event-host-0', 'Funmi Adeyemi');
+      fireEvent.click(within(hosts()).getByRole('button', { name: 'Remove Funmi Adeyemi' }));
 
-      expect(
-        within(hosts()).getByText(
-          'No hosts yet. The event can be made live once it has at least one.',
-        ),
-      ).toBeDefined();
+      expect(within(hosts()).getByLabelText<HTMLInputElement>('Host 1').value).toBe('');
     });
 
     it('creates the event with its hosts, cleaned and in their order, in one request', async () => {
@@ -1332,7 +1332,7 @@ describe('New event', () => {
 
       fill('event-name', 'Gala');
       fillWhen();
-      fill('event-host-0', '  Funmi\nAdeyemi ');
+      fill('event-host-0', '  Funmi Adeyemi ');
       fireEvent.click(within(hosts()).getByRole('button', { name: 'Add a host' }));
       fill('event-host-1', 'Tayo Adeyemi');
       create();
@@ -1392,7 +1392,7 @@ describe('New event', () => {
       const second = document.getElementById('event-host-1')!;
       await waitFor(() => expect(document.activeElement).toBe(second));
       expect(errorUnder('event-host-1')).toContain('Refused by the server.');
-      expect((second as HTMLTextAreaElement).value).toBe('Tayo Adeyemi');
+      expect((second as HTMLInputElement).value).toBe('Tayo Adeyemi');
     });
   });
 
@@ -1432,7 +1432,7 @@ describe('A time the clocks skip, in New event (sc-10638)', () => {
     await form();
 
     const region = document.getElementById('event-start-gap')!;
-    const starts = region.closest('fieldset')!;
+    const starts = document.getElementById('event-start-date')!;
     expect(region.getAttribute('aria-live')).toBe('polite');
     expect(region.textContent).toBe('');
     expect(starts.hasAttribute('aria-describedby')).toBe(false);
@@ -1457,8 +1457,8 @@ describe('A time the clocks skip, in New event (sc-10638)', () => {
     answering({});
     await form();
 
-    const ends = document.getElementById('event-end-gap')!.closest('fieldset')!;
-    expect(ends.hasAttribute('aria-describedby')).toBe(false);
+    const ends = document.getElementById('event-end-date')!;
+    expect(described(ends)).not.toContain('It will be saved');
 
     fill('event-start-date', '2027-03-28');
     fill('event-start-time', '02:00');
@@ -1473,7 +1473,7 @@ describe('A time the clocks skip, in New event (sc-10638)', () => {
 
     fill('event-end-time', '04:00');
     expect(gapLine('event-end-gap')).toBe('');
-    expect(ends.hasAttribute('aria-describedby')).toBe(false);
+    expect(described(ends)).not.toContain('It will be saved');
   });
 
   it("writes the night in the browser's regional order, as the event's page does", async () => {
@@ -2050,7 +2050,7 @@ describe("A request one test leaves unanswered, in the next test's 20 s (sc-2811
 
     await act(() => vi.advanceTimersByTimeAsync(20_000));
     fireEvent.click(screen.getByRole('button', { name: 'Make live' }));
-    const dialog = await screen.findByRole('dialog', { name: 'Make Adaeze and Tunde live?' });
+    const dialog = await screen.findByRole('alertdialog', { name: 'Make Adaeze and Tunde live?' });
     fireEvent.click(within(dialog).getByRole('button', { name: 'Make live' }));
     await waitFor(() => expect(screen.getByRole('status').textContent).toBe('✓ Live'));
 
@@ -2182,6 +2182,28 @@ describe("An event's page", () => {
 
     expect(elsewhere.closest('.event-page')!.innerHTML).toBe(missingPage);
     expect(screen.queryByText('Not yours')).toBeNull();
+  });
+
+  it.each(['dates', 'people', 'messages', 'budget', 'reports'])(
+    'ends where Overview ends at a wide desk, on /%s (sc-59375)',
+    async (area) => {
+      signedIn();
+      answering({ 'GET /api/events/ev_1': () => json({ event: event() }) });
+      at(`/app/events/ev_1/${area}`);
+
+      const heading = await screen.findByRole('heading', { level: 1, name: 'Adaeze and Tunde' });
+
+      expect(heading.closest('.event-page')).not.toBeNull();
+      expect(heading.closest('.ev')).toBeNull();
+      expect(EVENTS_DESK_CSS).toContain('\n.event-page {\n  max-width: var(--evWide);\n}');
+      expect(cssRule('.ev,\n.event-page', EVENTS_DESK_CSS)).toContain('--evWide: 938px;');
+      expect(cssRule('.event-page')).not.toContain('max-width');
+      expect(cssRule('.event-form-page')).toContain('max-width: 72rem;');
+    },
+  );
+
+  it('gives way at its name in the crumb, never at Events (sc-60699, QA #63079)', () => {
+    expect(cssRule('.ev-crumb-part:first-child', EVENT_PAGE_CSS)).toContain('flex-shrink: 0;');
   });
 });
 
@@ -2403,7 +2425,7 @@ describe("An event's venue in New event (sc-3589)", () => {
   }
 
   function address(): HTMLInputElement {
-    return screen.getByRole('combobox', { name: 'Address' });
+    return screen.getByRole('combobox', { name: /^Address/u });
   }
 
   async function creating(): Promise<void> {
@@ -2441,14 +2463,14 @@ describe("An event's venue in New event (sc-3589)", () => {
     expect(headings).toEqual([
       'About the event',
       'Hosted by',
-      'Cover',
+      'Cover photo',
       'When',
       'Venue',
       'Time zone and currency',
     ]);
     expect(screen.getByLabelText(/Venue name/u)).toBeDefined();
     expect(address().getAttribute('aria-expanded')).toBe('false');
-    expect(document.getElementById('event-venue-address-hint')?.textContent).toBe(
+    expect(document.getElementById('event-venue-address-help')?.textContent).toBe(
       'Type at least 3 characters to see suggestions. You can also type any address.',
     );
   });
@@ -2516,7 +2538,10 @@ describe("An event's venue in New event (sc-3589)", () => {
         "Suggestions aren't available right now. Type the address in full and it will be saved as you typed it.",
       ),
     ).toBeDefined();
-    expect(address().getAttribute('aria-describedby')).toContain('event-venue-lookup-down');
+    const help = address().getAttribute('aria-describedby')!;
+    expect(document.getElementById(help)?.textContent).toContain(
+      "Suggestions aren't available right now.",
+    );
 
     expect((await create(sent)).venue).toEqual({ name: null, address: '12 Bode Thomas Street' });
   });
@@ -2704,10 +2729,10 @@ describe('Change dates opens Dates in place, and Edit details is gone (sc-48602)
     });
     from('/app/events/ev_1');
     fireEvent.click(await screen.findByRole('button', { name: 'Make live' }));
-    const dialog = await screen.findByRole('dialog', { name: 'Make Adaeze and Tunde live?' });
+    const dialog = await screen.findByRole('alertdialog', { name: 'Make Adaeze and Tunde live?' });
     fireEvent.click(within(dialog).getByRole('button', { name: 'Make live' }));
     const refused = await screen.findByRole('alertdialog', { name: /^Not made live\./u });
-    fireEvent.click(within(refused).getByRole('link', { name: 'Change dates' }));
+    fireEvent.click(within(refused).getByRole('button', { name: 'Change dates' }));
 
     await waitFor(() => expect(screen.queryByRole('alertdialog')).toBeNull());
     await datesOpened();
@@ -2725,10 +2750,10 @@ describe('Change dates opens Dates in place, and Edit details is gone (sc-48602)
     fireEvent.click(within(details).getByRole('button', { name: /^.*Dates/u }));
     await screen.findByRole('group', { name: 'Starts' });
     fireEvent.click(screen.getByRole('button', { name: 'Make live' }));
-    const dialog = await screen.findByRole('dialog', { name: 'Make Adaeze and Tunde live?' });
+    const dialog = await screen.findByRole('alertdialog', { name: 'Make Adaeze and Tunde live?' });
     fireEvent.click(within(dialog).getByRole('button', { name: 'Make live' }));
     const refused = await screen.findByRole('alertdialog', { name: /^Not made live\./u });
-    fireEvent.click(within(refused).getByRole('link', { name: 'Change dates' }));
+    fireEvent.click(within(refused).getByRole('button', { name: 'Change dates' }));
 
     await waitFor(() => expect(screen.queryByRole('alertdialog')).toBeNull());
     await datesOpened();
@@ -2756,10 +2781,10 @@ describe('Change dates opens Dates in place, and Edit details is gone (sc-48602)
     });
     from('/app/events/ev_1/guests');
     fireEvent.click(await screen.findByRole('button', { name: 'Make live' }));
-    const dialog = await screen.findByRole('dialog', { name: 'Make Adaeze and Tunde live?' });
+    const dialog = await screen.findByRole('alertdialog', { name: 'Make Adaeze and Tunde live?' });
     fireEvent.click(within(dialog).getByRole('button', { name: 'Make live' }));
     const refused = await screen.findByRole('alertdialog', { name: /^Not made live\./u });
-    fireEvent.click(within(refused).getByRole('link', { name: 'Change dates' }));
+    fireEvent.click(within(refused).getByRole('button', { name: 'Change dates' }));
 
     await datesOpened();
     await act(() => router.navigate(-1));
@@ -2873,7 +2898,7 @@ describe('Make live (sc-3584)', () => {
 
     return {
       sent,
-      dialog: await screen.findByRole('dialog', { name: 'Make Adaeze and Tunde live?' }),
+      dialog: await screen.findByRole('alertdialog', { name: 'Make Adaeze and Tunde live?' }),
     };
   }
 
@@ -2898,11 +2923,14 @@ describe('Make live (sc-3584)', () => {
     signedIn();
     const { sent, dialog } = await confirming();
 
-    expect(within(dialog).getByText('Guests can be invited, and they can see it.')).toBeDefined();
-    expect(within(dialog).getByText("It can't go back to being a draft.")).toBeDefined();
+    expect(
+      within(dialog).getByText(
+        "Guests can be invited, and they can see it. It can't go back to being a draft.",
+      ),
+    ).toBeDefined();
     fireEvent.click(within(dialog).getByRole('button', { name: 'Not yet' }));
 
-    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(screen.queryByRole('alertdialog')).toBeNull();
     await waitFor(() =>
       expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Make live' })),
     );
@@ -2917,7 +2945,7 @@ describe('Make live (sc-3584)', () => {
 
     fireEvent.click(within(dialog).getByRole('button', { name: 'Make live' }));
 
-    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+    await waitFor(() => expect(screen.queryByRole('alertdialog')).toBeNull());
     expect(screen.getByText('Live')).toBeDefined();
     await waitFor(() => expect(screen.getByRole('status').textContent).toBe('✓ Live'));
     expect(screen.queryByRole('button', { name: 'Make live' })).toBeNull();
@@ -2964,6 +2992,7 @@ describe('Make live (sc-3584)', () => {
         'This event stays a draft. Finish or call off another event, or change plan.',
       ),
     ).toBeDefined();
+    expect(within(refused).queryByRole('button', { name: 'Change dates' })).toBeNull();
     fireEvent.click(within(refused).getByRole('button', { name: 'Close' }));
     expect(screen.getByText('Draft')).toBeDefined();
   });
@@ -3134,15 +3163,17 @@ describe('The phase, End now and Call off (sc-3585)', () => {
     const sent = await onThePage(live());
 
     fireEvent.click(screen.getByRole('button', { name: 'Call off…' }));
-    const dialog = await screen.findByRole('dialog', { name: 'Call off Adaeze and Tunde?' });
+    const dialog = await screen.findByRole('alertdialog', { name: 'Call off Adaeze and Tunde?' });
 
+    expect(within(dialog).getByRole('button', { name: 'Call off' }).className).toContain('is-red');
     expect(
-      within(dialog).getByText("It won't go ahead. Guests following their link will be told."),
+      within(dialog).getByText(
+        "It won't go ahead. Guests following their link will be told. You can't undo this.",
+      ),
     ).toBeDefined();
-    expect(within(dialog).getByText("You can't undo this.")).toBeDefined();
     fireEvent.click(within(dialog).getByRole('button', { name: 'Keep it on' }));
 
-    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(screen.queryByRole('alertdialog')).toBeNull();
     await waitFor(() =>
       expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Call off…' })),
     );
@@ -3163,10 +3194,10 @@ describe('The phase, End now and Call off (sc-3585)', () => {
     });
 
     fireEvent.click(screen.getByRole('button', { name: 'Call off…' }));
-    const dialog = await screen.findByRole('dialog', { name: 'Call off Adaeze and Tunde?' });
+    const dialog = await screen.findByRole('alertdialog', { name: 'Call off Adaeze and Tunde?' });
     fireEvent.click(within(dialog).getByRole('button', { name: 'Call off' }));
 
-    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+    await waitFor(() => expect(screen.queryByRole('alertdialog')).toBeNull());
     expect(screen.getByText('Called off', { selector: '.desk-glass' })).toBeDefined();
     await waitFor(() => expect(screen.getByRole('status').textContent).toBe('Finished'));
     expect(screen.getAllByText(/^Called off on .*Oct 13, 2030, before it started\./)).toHaveLength(
@@ -3175,6 +3206,23 @@ describe('The phase, End now and Call off (sc-3585)', () => {
     expect(screen.queryByRole('button', { name: 'Call off…' })).toBeNull();
     expect(screen.queryByRole('button', { name: 'End now…' })).toBeNull();
     expect(sent.filter(({ line }) => line === 'POST /api/events/ev_1/end')).toHaveLength(1);
+  });
+
+  it('opens End now’s confirmation at once when the night’s end card leads here (sc-3895)', async () => {
+    signedIn();
+    answering({
+      'GET /api/events/ev_1': () => json({ event: live({ ...HAPPENING, phase: 'happening_now' }) }),
+    });
+    const { to, state } = endingNow('ev_1');
+    render(
+      <RouterProvider
+        router={createMemoryRouter(routes, { initialEntries: [{ pathname: to, state }] })}
+      />,
+    );
+
+    expect(
+      await screen.findByRole('alertdialog', { name: 'End Adaeze and Tunde now?' }),
+    ).toBeDefined();
   });
 
   it('ends it early once it is happening', async () => {
@@ -3192,8 +3240,13 @@ describe('The phase, End now and Call off (sc-3585)', () => {
     });
 
     fireEvent.click(screen.getByRole('button', { name: 'End now…' }));
-    const dialog = await screen.findByRole('dialog', { name: 'End Adaeze and Tunde now?' });
-    expect(within(dialog).getByText('It will be over for everybody.')).toBeDefined();
+    const dialog = await screen.findByRole('alertdialog', { name: 'End Adaeze and Tunde now?' });
+    expect(
+      within(dialog).getByText("It will be over for everybody. You can't undo this."),
+    ).toBeDefined();
+    expect(within(dialog).getByRole('button', { name: 'End now' }).className).not.toContain(
+      'is-red',
+    );
     fireEvent.click(within(dialog).getByRole('button', { name: 'End now' }));
 
     await waitFor(() =>
@@ -3217,13 +3270,14 @@ describe('The phase, End now and Call off (sc-3585)', () => {
     });
 
     fireEvent.click(screen.getByRole('button', { name: 'Call off…' }));
-    const dialog = await screen.findByRole('dialog', { name: 'Call off Adaeze and Tunde?' });
+    const dialog = await screen.findByRole('alertdialog', { name: 'Call off Adaeze and Tunde?' });
     fireEvent.click(within(dialog).getByRole('button', { name: 'Call off' }));
 
-    await waitFor(() =>
-      expect(within(dialog).getByRole('status').textContent).toBe('Calling off…'),
-    );
-    expect(within(dialog).getByRole('button', { name: 'Calling off…' })).toBeDefined();
+    expect(
+      (await within(dialog).findByRole('button', { name: 'Calling off…' })).getAttribute(
+        'aria-busy',
+      ),
+    ).toBe('true');
 
     fail(problem(500, 'internal'));
 
@@ -3243,7 +3297,7 @@ describe('The phase, End now and Call off (sc-3585)', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Call off…' }));
     fireEvent.click(
-      within(await screen.findByRole('dialog')).getByRole('button', { name: 'Call off' }),
+      within(await screen.findByRole('alertdialog')).getByRole('button', { name: 'Call off' }),
     );
 
     const refused = await screen.findByRole('alertdialog', { name: 'Not ended.' });
@@ -3267,7 +3321,7 @@ describe('The phase, End now and Call off (sc-3585)', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Call off…' }));
     fireEvent.click(
-      within(await screen.findByRole('dialog')).getByRole('button', { name: 'Call off' }),
+      within(await screen.findByRole('alertdialog')).getByRole('button', { name: 'Call off' }),
     );
 
     const refused = await screen.findByRole('alertdialog', {
@@ -3289,6 +3343,200 @@ describe('The phase, End now and Call off (sc-3585)', () => {
 
     expect(screen.queryByRole('button', { name: 'Call off…' })).toBeNull();
     expect(screen.queryByRole('button', { name: 'End now…' })).toBeNull();
+  });
+});
+
+describe("The hosts' thank-you (sc-6476)", () => {
+  const OVER = { startsAt: '2020-11-14T16:00:00+01:00', endsAt: '2020-11-15T02:00:00+01:00' };
+  const HAPPENING = { startsAt: '2020-11-14T16:00:00+01:00', endsAt: '2030-11-15T02:00:00+01:00' };
+  const LINE = 'Thank you for dancing with us.';
+
+  function finished(overrides: Record<string, unknown> = {}) {
+    return event({
+      ...OVER,
+      status: 'ended',
+      phase: 'finished',
+      concludedAt: OVER.endsAt,
+      ...overrides,
+    });
+  }
+
+  async function onThePage(served: unknown, answers: Record<string, Answer> = {}) {
+    const sent = answering({ 'GET /api/events/ev_1': () => json({ event: served }), ...answers });
+    at('/app/events/ev_1');
+    await screen.findByRole('heading', { level: 1, name: 'Adaeze and Tunde' });
+
+    return sent;
+  }
+
+  function card(): HTMLElement {
+    return screen.getByRole('region', { name: 'A thank-you for your guests' });
+  }
+
+  function typed(where: HTMLElement, value: string): HTMLElement {
+    const box = within(where).getByRole('textbox');
+    fireEvent.change(box, { target: { value } });
+
+    return box;
+  }
+
+  function puts(sent: { line: string; body: unknown }[]): unknown[] {
+    return sent
+      .filter(({ line }) => line === 'PUT /api/events/ev_1/thank-you')
+      .map(({ body }) => body);
+  }
+
+  it('adds a line from Add, sending it cleaned, then shows it signed with Edit', async () => {
+    signedIn();
+    const sent = await onThePage(finished(), {
+      'PUT /api/events/ev_1/thank-you': () => json({ event: finished({ thankYou: LINE }) }),
+    });
+
+    expect(
+      within(card()).getByText('Every guest sees it on their page, signed with the hosts’ names.'),
+    ).toBeDefined();
+    fireEvent.click(within(card()).getByRole('button', { name: 'Add a thank-you' }));
+    typed(card(), `  Thank you for\n\n dancing with us.  `);
+    fireEvent.click(within(card()).getByRole('button', { name: 'Save' }));
+
+    expect(await within(card()).findByText(LINE)).toBeDefined();
+    expect(puts(sent)).toEqual([{ thankYou: LINE }]);
+    expect(within(card()).getByText('Funmi Adeyemi')).toBeDefined();
+    expect(within(card()).getByRole('button', { name: 'Edit thank-you' })).toBeDefined();
+    expect(await screen.findByText('Thank-you saved.')).toBeDefined();
+  });
+
+  it('keeps the field open and says the line is too long when the API refuses it 422', async () => {
+    signedIn();
+    await onThePage(finished({ thankYou: LINE }), {
+      'PUT /api/events/ev_1/thank-you': () =>
+        problem(422, 'validation_failed', { violations: [{ propertyPath: 'thankYou' }] }),
+    });
+
+    fireEvent.click(within(card()).getByRole('button', { name: 'Edit thank-you' }));
+    const box = typed(card(), 'Thanks again.');
+    fireEvent.click(within(card()).getByRole('button', { name: 'Save' }));
+
+    expect(
+      await within(card()).findByText('A thank-you can be at most 280 characters.'),
+    ).toBeDefined();
+    expect(box.getAttribute('aria-invalid')).toBe('true');
+    expect((box as HTMLTextAreaElement).value).toBe('Thanks again.');
+  });
+
+  it('Cancel on a changed line asks first, and Discard keeps the line and focuses Edit', async () => {
+    signedIn();
+    // jsdom focuses inside an `[inert]` subtree; a browser does not.
+    const focus = HTMLElement.prototype.focus;
+    vi.spyOn(HTMLElement.prototype, 'focus').mockImplementation(function (
+      this: HTMLElement,
+      options?: FocusOptions,
+    ) {
+      if (this.closest('[inert]') == null) focus.call(this, options);
+    });
+    const sent = await onThePage(finished({ thankYou: LINE }));
+
+    fireEvent.click(within(card()).getByRole('button', { name: 'Edit thank-you' }));
+    typed(card(), 'Thanks again.');
+    fireEvent.click(within(card()).getByRole('button', { name: 'Cancel' }));
+    const ask = await screen.findByRole('alertdialog', { name: 'Discard your change?' });
+    fireEvent.click(within(ask).getByRole('button', { name: 'Discard' }));
+
+    expect(await within(card()).findByText(LINE)).toBeDefined();
+    expect(puts(sent)).toEqual([]);
+    await waitFor(() =>
+      expect(document.activeElement).toBe(
+        within(card()).getByRole('button', { name: 'Edit thank-you' }),
+      ),
+    );
+  });
+
+  it('sends nothing for a line over the limit, and says so under the field', async () => {
+    signedIn();
+    const sent = await onThePage(finished());
+
+    fireEvent.click(within(card()).getByRole('button', { name: 'Add a thank-you' }));
+    typed(card(), 'a'.repeat(281));
+    fireEvent.click(within(card()).getByRole('button', { name: 'Save' }));
+
+    expect(within(card()).getByText('A thank-you can be at most 280 characters.')).toBeDefined();
+    expect(puts(sent)).toEqual([]);
+  });
+
+  it('shows the line with no Edit to a member without events.manage, and no card without a line', async () => {
+    signedIn(READER);
+    await onThePage(finished({ thankYou: LINE, permissions: READER.permissions }));
+
+    expect(within(card()).getByText(LINE)).toBeDefined();
+    expect(within(card()).queryByRole('button')).toBeNull();
+
+    cleanup();
+    await onThePage(finished({ permissions: READER.permissions }));
+
+    expect(screen.queryByRole('region', { name: 'A thank-you for your guests' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Add a thank-you' })).toBeNull();
+  });
+
+  it('offers no card on a called-off event', async () => {
+    signedIn();
+    await onThePage(finished({ concludedAt: '2020-11-13T09:00:00+01:00' }));
+
+    expect(screen.queryByRole('region', { name: 'A thank-you for your guests' })).toBeNull();
+  });
+
+  it.each([
+    [
+      'with a line',
+      'Thanks for coming.',
+      'Not ended. Check your connection and try again. Your thank-you is still here.',
+    ],
+    ['with none', '', 'Not ended. Try again in a moment.'],
+  ])('says End now failed %s under the field, marked, above the actions', async (_, line, said) => {
+    signedIn();
+    await onThePage(event({ ...HAPPENING, status: 'live', phase: 'happening_now' }), {
+      'POST /api/events/ev_1/end': () => problem(500, 'internal'),
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'End now…' }));
+    const dialog = await screen.findByRole('alertdialog', { name: 'End Adaeze and Tunde now?' });
+    const box = typed(dialog, line);
+    fireEvent.click(within(dialog).getByRole('button', { name: 'End now' }));
+
+    const alert = await within(dialog).findByRole('alert');
+    expect(alert.textContent).toBe(said);
+    expect(alert.querySelector('svg')).not.toBeNull();
+    expect(box.compareDocumentPosition(alert) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(
+      alert.compareDocumentPosition(within(dialog).getByRole('button', { name: 'Keep it on' })) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    expect(within(dialog).getAllByText(said)).toHaveLength(1);
+  });
+
+  it("keeps End now's dialog open over the limit, sending nothing, and sends the cleaned line once it fits", async () => {
+    signedIn();
+    const sent = await onThePage(event({ ...HAPPENING, status: 'live', phase: 'happening_now' }), {
+      'POST /api/events/ev_1/end': () =>
+        json({ event: finished({ ...HAPPENING, thankYou: LINE }) }),
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'End now…' }));
+    const dialog = await screen.findByRole('alertdialog', { name: 'End Adaeze and Tunde now?' });
+    const box = typed(dialog, 'a'.repeat(281));
+    fireEvent.click(within(dialog).getByRole('button', { name: 'End now' }));
+
+    expect(within(dialog).getByText('A thank-you can be at most 280 characters.')).toBeDefined();
+    expect(box.getAttribute('aria-invalid')).toBe('true');
+    expect(document.activeElement).toBe(box);
+    expect(sent.filter(({ line }) => line === 'POST /api/events/ev_1/end')).toEqual([]);
+
+    typed(dialog, `  Thank you for\n dancing with us. `);
+    fireEvent.click(within(dialog).getByRole('button', { name: 'End now' }));
+
+    expect(await screen.findByText('Your thank-you is on every guest’s page.')).toBeDefined();
+    expect(sent.filter(({ line }) => line === 'POST /api/events/ev_1/end')).toEqual([
+      { line: 'POST /api/events/ev_1/end', body: { thankYou: LINE } },
+    ]);
   });
 });
 
@@ -3328,16 +3576,15 @@ describe('Pause and Resume (sc-3586)', () => {
     const sent = await onThePage(served);
 
     fireEvent.click(screen.getByRole('button', { name: 'Pause' }));
-    const dialog = await screen.findByRole('dialog', { name: 'Pause Adaeze and Tunde?' });
+    const dialog = await screen.findByRole('alertdialog', { name: 'Pause Adaeze and Tunde?' });
     expect(
-      within(dialog).getByText("Guests can't reply or change anything until you resume it."),
-    ).toBeDefined();
-    expect(
-      within(dialog).getByText('Nothing is lost. Check-in and service keep working.'),
+      within(dialog).getByText(
+        "Guests can't reply or change anything until you resume it. Nothing is lost. Check-in and service keep working.",
+      ),
     ).toBeDefined();
     fireEvent.click(within(dialog).getByRole('button', { name: 'Keep it live' }));
 
-    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(screen.queryByRole('alertdialog')).toBeNull();
     expect(sent.some(({ line }) => line.startsWith('POST'))).toBe(false);
     await waitFor(() =>
       expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Pause' })),
@@ -3352,7 +3599,7 @@ describe('Pause and Resume (sc-3586)', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Pause' }));
     fireEvent.click(
-      within(await screen.findByRole('dialog')).getByRole('button', { name: 'Pause' }),
+      within(await screen.findByRole('alertdialog')).getByRole('button', { name: 'Pause' }),
     );
 
     await waitFor(() =>
@@ -3366,6 +3613,11 @@ describe('Pause and Resume (sc-3586)', () => {
     expect(screen.queryByRole('button', { name: 'Pause' })).toBeNull();
     await waitFor(() =>
       expect(screen.getByRole('status').textContent).toBe('Adaeze and Tunde is paused.'),
+    );
+    await waitFor(() =>
+      expect(document.activeElement).toBe(
+        screen.getByRole('heading', { level: 1, name: 'Adaeze and Tunde' }),
+      ),
     );
   });
 
@@ -3381,7 +3633,7 @@ describe('Pause and Resume (sc-3586)', () => {
     await waitFor(() =>
       expect(screen.getByText('Happening now', { selector: '.desk-glass' })).toBeDefined(),
     );
-    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(screen.queryByRole('alertdialog')).toBeNull();
     expect(sent.filter(({ line }) => line === 'POST /api/events/ev_1/resume')).toHaveLength(1);
     expect(screen.queryByText(/^Paused\. Guests/)).toBeNull();
     expect(screen.getByRole('button', { name: 'Pause' })).toBeDefined();
@@ -3444,7 +3696,7 @@ describe('Pause and Resume (sc-3586)', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Pause' }));
     fireEvent.click(
-      within(await screen.findByRole('dialog')).getByRole('button', { name: 'Pause' }),
+      within(await screen.findByRole('alertdialog')).getByRole('button', { name: 'Pause' }),
     );
 
     const refused = await screen.findByRole('alertdialog', {
@@ -3470,7 +3722,7 @@ describe('Pause and Resume (sc-3586)', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Pause' }));
     fireEvent.click(
-      within(await screen.findByRole('dialog')).getByRole('button', { name: 'Pause' }),
+      within(await screen.findByRole('alertdialog')).getByRole('button', { name: 'Pause' }),
     );
 
     const refused = await screen.findByRole('alertdialog', {
@@ -3567,7 +3819,7 @@ describe('An older copy never replaces the change the page made (sc-28121)', () 
 
   function confirm(opener: string, button: string): void {
     fireEvent.click(screen.getByRole('button', { name: opener }));
-    fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: button }));
+    fireEvent.click(within(screen.getByRole('alertdialog')).getByRole('button', { name: button }));
   }
 
   it.each([
@@ -3626,12 +3878,12 @@ describe('An older copy never replaces the change the page made (sc-28121)', () 
       await waitFor(() =>
         expect(screen.getByText(shown, { selector: '.desk-glass' })).toBeDefined(),
       );
-      expect(document.querySelector('.offline-band')).not.toBeNull();
+      expect(document.querySelector('.offline-box .ev-offline')).not.toBeNull();
       await release(tagged({ event: before }, '"1"'));
 
       expect(screen.getByText(shown, { selector: '.desk-glass' })).toBeDefined();
       expect(screen.queryByRole('button', { name: gone })).toBeNull();
-      await waitFor(() => expect(document.querySelector('.offline-band')).toBeNull());
+      await waitFor(() => expect(document.querySelector('.offline-box .ev-offline')).toBeNull());
     },
   );
 
@@ -3793,18 +4045,20 @@ describe('The cover (sc-3590)', () => {
     vi.unstubAllGlobals();
   });
 
-  it("shows the type's default in New event, the general default before a type is chosen", async () => {
+  it("shows Soirely's cover in the type's colours in New event, another before a type is chosen", async () => {
     signedIn();
     answering({});
     at('/app/events/new');
     await screen.findByRole('heading', { level: 1, name: 'New event' });
 
-    expect(screen.getByTestId('cover-default').className).toContain('cover-default-other');
+    const preview = document.querySelector('.ev-new-cover')!;
+    expect(preview.className).toContain('today-cover');
+    const before = preview.className;
 
     fireEvent.change(document.getElementById('event-type')!, { target: { value: 'baby_shower' } });
 
-    expect(screen.getByTestId('cover-default').className).toContain('cover-default-baby-shower');
-    expect(screen.queryByRole('button', { name: /Change photo/ })).toBeNull();
+    expect(document.querySelector('.ev-new-cover')!.className).not.toBe(before);
+    expect(document.querySelector('.ev-new-cover img')).toBeNull();
     expect(screen.getByRole('button', { name: 'Upload a photo' })).toBeDefined();
   });
 
@@ -3838,7 +4092,7 @@ describe('The cover (sc-3590)', () => {
     expect(screen.queryByRole('img')).toBeNull();
   });
 
-  it('a new event sends its staged photo once it is created', async () => {
+  it('a new event sends its photo once the draft exists, at the middle with no description', async () => {
     signedIn();
     const sent = serving(null, {
       'POST /api/orgs/org_1/events': () => json({ event: event() }, 201),
@@ -3847,10 +4101,9 @@ describe('The cover (sc-3590)', () => {
     await screen.findByRole('heading', { level: 1, name: 'New event' });
 
     choose(file());
-    const dialog = await screen.findByRole('dialog', { name: 'Cover photo' });
-    await waitFor(() => expect(sent.map(({ line }) => line)).toContain('PUT /upload/1'));
-    fireEvent.click(within(dialog).getByRole('button', { name: 'Use this photo' }));
-    await screen.findByRole('button', { name: 'Change photo' });
+    await screen.findByRole('button', { name: 'Remove photo' });
+    expect(document.querySelector('.ev-new-cover img')?.getAttribute('src')).toBe('blob:arch.jpg');
+    expect(sent.map(({ line }) => line)).not.toContain('POST /api/orgs/org_1/event-cover-uploads');
 
     fireEvent.change(document.getElementById('event-name')!, { target: { value: 'Owambe' } });
     fireEvent.change(document.getElementById('event-type')!, { target: { value: 'wedding' } });
@@ -3871,17 +4124,74 @@ describe('The cover (sc-3590)', () => {
     );
   });
 
-  it('a new event left without saving discards the photo it staged (sc-22147)', async () => {
+  function filledNewEvent(): void {
+    fireEvent.change(document.getElementById('event-name')!, { target: { value: 'Owambe' } });
+    fireEvent.change(document.getElementById('event-type')!, { target: { value: 'wedding' } });
+    for (const [id, value] of [
+      ['event-start-date', '2026-11-14'],
+      ['event-start-time', '16:00'],
+      ['event-end-time', '23:00'],
+    ] as const)
+      fireEvent.change(document.getElementById(id)!, { target: { value } });
+  }
+
+  it('a new event sends the position and description the host chose with its photo (sc-48607)', async () => {
+    signedIn();
+    const sent = serving(null, {
+      'POST /api/orgs/org_1/events': () => json({ event: event() }, 201),
+    });
+    at('/app/events/new');
+    await screen.findByRole('heading', { level: 1, name: 'New event' });
+
+    choose(file());
+    fireEvent.change(await screen.findByRole('slider', { name: 'Photo position' }), {
+      target: { value: '10' },
+    });
+    fireEvent.change(screen.getByLabelText(/Describe the image/u), {
+      target: { value: '  Adaeze under the arch  ' },
+    });
+    expect(screen.getByRole('button', { name: 'Change photo' })).toBeTruthy();
+    filledNewEvent();
+    fireEvent.click(screen.getByRole('button', { name: 'Create event' }));
+
+    await waitFor(() =>
+      expect(sent.find(({ line }) => line === 'PUT /api/events/ev_1/cover')?.body).toEqual({
+        uploadKey: 'event_cover/org_1/2026/10/one.jpg',
+        position: 10,
+        description: 'Adaeze under the arch',
+      }),
+    );
+  });
+
+  it('a new event refuses a description over 250 characters before anything is created (sc-48607)', async () => {
     signedIn();
     const sent = serving(null);
     at('/app/events/new');
     await screen.findByRole('heading', { level: 1, name: 'New event' });
 
     choose(file());
-    const dialog = await screen.findByRole('dialog', { name: 'Cover photo' });
-    await waitFor(() => expect(sent.map(({ line }) => line)).toContain('PUT /upload/1'));
-    fireEvent.click(within(dialog).getByRole('button', { name: 'Use this photo' }));
-    await screen.findByRole('button', { name: 'Change photo' });
+    const describe = await screen.findByLabelText(/Describe the image/u);
+    fireEvent.change(describe, { target: { value: 'a'.repeat(251) } });
+    filledNewEvent();
+    fireEvent.click(screen.getByRole('button', { name: 'Create event' }));
+
+    expect(
+      await screen.findByText('Shorten the description to 250 characters or fewer.'),
+    ).toBeTruthy();
+    await waitFor(() => expect(document.activeElement).toBe(describe));
+    expect(sent.map(({ line }) => line)).not.toContain('POST /api/orgs/org_1/events');
+  });
+
+  it('a new event left without saving has uploaded nothing (sc-22147)', async () => {
+    signedIn();
+    const sent = serving(null);
+    at('/app/events/new');
+    await screen.findByRole('heading', { level: 1, name: 'New event' });
+
+    choose(file());
+    await screen.findByRole('button', { name: 'Remove photo' });
+    expect(document.querySelector('.ev-new-cover img')?.getAttribute('src')).toBe('blob:arch.jpg');
+    expect(sent.map(({ line }) => line)).not.toContain('POST /api/orgs/org_1/event-cover-uploads');
 
     fireEvent.click(document.querySelector('.ev-crumb a')!);
     fireEvent.click(
@@ -3892,10 +4202,9 @@ describe('The cover (sc-3590)', () => {
     );
 
     await waitFor(() =>
-      expect(
-        sent.find(({ line }) => line === 'DELETE /api/orgs/org_1/event-cover-uploads')?.body,
-      ).toEqual({ uploadKey: 'event_cover/org_1/2026/10/one.jpg' }),
+      expect(screen.queryByRole('heading', { level: 1, name: 'New event' })).toBeNull(),
     );
+    expect(sent.map(({ line }) => line)).not.toContain('POST /api/orgs/org_1/event-cover-uploads');
   });
 
   it('a new event whose staged photo is refused says so on its page', async () => {
@@ -3918,10 +4227,9 @@ describe('The cover (sc-3590)', () => {
     await screen.findByRole('heading', { level: 1, name: 'New event' });
 
     choose(file());
-    const dialog = await screen.findByRole('dialog', { name: 'Cover photo' });
-    await waitFor(() => expect(sent.map(({ line }) => line)).toContain('PUT /upload/1'));
-    fireEvent.click(within(dialog).getByRole('button', { name: 'Use this photo' }));
-    await screen.findByRole('button', { name: 'Change photo' });
+    await screen.findByRole('button', { name: 'Remove photo' });
+    expect(document.querySelector('.ev-new-cover img')?.getAttribute('src')).toBe('blob:arch.jpg');
+    expect(sent.map(({ line }) => line)).not.toContain('POST /api/orgs/org_1/event-cover-uploads');
 
     fireEvent.change(document.getElementById('event-name')!, { target: { value: 'Owambe' } });
     fireEvent.change(document.getElementById('event-type')!, { target: { value: 'wedding' } });
@@ -3939,8 +4247,13 @@ describe('The cover (sc-3590)', () => {
       ),
     ).toBeDefined();
     expect(screen.getByRole('heading', { level: 1, name: 'Adaeze and Tunde' })).toBeDefined();
+    const notice = screen
+      .getByText(/The event is saved without its photo/)
+      .closest<HTMLElement>('[role="alert"]')!;
+    expect(notice.closest('.ev-left')).not.toBeNull();
 
-    fireEvent.click(screen.getByRole('button', { name: 'Edit details' }));
+    fireEvent.click(within(notice).getByRole('button', { name: 'Upload a photo' }));
+    expect(screen.queryByText(/The event is saved without its photo/)).toBeNull();
     const opened = screen.getByRole('group', { name: 'Cover' });
     expect(within(opened).getByRole('button', { name: 'Upload a photo' })).toBeDefined();
     expect(screen.queryByRole('dialog')).toBeNull();
@@ -4199,13 +4512,6 @@ describe('A HEIC the browser cannot show, and a cover that will not load (sc-138
   const COPY = 'data:image/webp;base64,UklGRg==';
   const PREVIEW = 'POST /api/orgs/org_1/event-cover-uploads/preview';
 
-  function refusedWith(message: string): Answer {
-    return () =>
-      problem(422, 'validation_failed', {
-        violations: [{ propertyPath: 'file', message, code: 'validation_failed' }],
-      });
-  }
-
   function serving(cover: unknown, answers: Record<string, Answer> = {}) {
     const sent: { line: string; body: unknown }[] = [];
     let held = event({ cover });
@@ -4267,38 +4573,367 @@ describe('A HEIC the browser cannot show, and a cover that will not load (sc-138
     vi.unstubAllGlobals();
   });
 
-  it('a HEIC refused in New event never creates an event without its photo', async () => {
+  it("shows the server's copy of a HEIC in New event, and attaches that upload once the draft exists (sc-48607)", async () => {
     signedIn();
     const sent = serving(null, {
-      [PREVIEW]: refusedWith(
-        'That photo is smaller than 1200 × 675 pixels, so it would look blurred. Choose a larger one.',
-      ),
+      'POST /api/orgs/org_1/events': () => json({ event: event() }, 201),
     });
     at('/app/events/new');
     await screen.findByRole('heading', { level: 1, name: 'New event' });
 
     chooseHeic();
-    const dialog = await screen.findByRole('dialog', { name: 'Cover photo' });
-    await within(dialog).findByText(/smaller than 1200 × 675/);
-    fireEvent.click(within(dialog).getByRole('button', { name: 'Use this photo' }));
 
-    expect(screen.getByRole('dialog', { name: 'Cover photo' })).toBeDefined();
-    expect(sent.map(({ line }) => line)).not.toContain('POST /api/orgs/org_1/events');
+    await screen.findByRole('slider', { name: 'Photo position' });
+    expect(document.querySelector('.ev-new-cover img')?.getAttribute('src')).toBe(COPY);
+    expect(sent.map(({ line }) => line)).toContain(PREVIEW);
+
+    fireEvent.change(document.getElementById('event-name')!, { target: { value: 'Owambe' } });
+    fireEvent.change(document.getElementById('event-type')!, { target: { value: 'wedding' } });
+    for (const [id, value] of [
+      ['event-start-date', '2026-11-14'],
+      ['event-start-time', '16:00'],
+      ['event-end-time', '23:00'],
+    ] as const)
+      fireEvent.change(document.getElementById(id)!, { target: { value } });
+    fireEvent.click(screen.getByRole('button', { name: 'Create event' }));
+
+    await waitFor(() =>
+      expect(sent.find(({ line }) => line === 'PUT /api/events/ev_1/cover')?.body).toEqual({
+        uploadKey: 'event_cover/org_1/2026/10/one.heic',
+        position: 50,
+        description: null,
+      }),
+    );
+    const lines = sent.map(({ line }) => line);
+    expect(
+      lines.filter((line) => line === 'POST /api/orgs/org_1/event-cover-uploads'),
+    ).toHaveLength(1);
+    expect(lines).not.toContain('DELETE /api/orgs/org_1/event-cover-uploads');
   });
 
-  it('shows the HEIC in New event’s Cover section before the event is created', async () => {
+  it('discards the HEIC sent for its copy when the host removes it from New event (sc-48607)', async () => {
     signedIn();
-    serving(null);
+    const sent = serving(null);
     at('/app/events/new');
     await screen.findByRole('heading', { level: 1, name: 'New event' });
 
     chooseHeic();
-    const dialog = await screen.findByRole('dialog', { name: 'Cover photo' });
-    await waitFor(() => expect(dialog.querySelector('.cover-frame img')).not.toBeNull());
-    fireEvent.click(within(dialog).getByRole('button', { name: 'Use this photo' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Remove photo' }));
 
-    const cover = await screen.findByRole('button', { name: 'Change photo' });
-    expect(cover.querySelector('img')?.getAttribute('src')).toBe(COPY);
+    await waitFor(() =>
+      expect(
+        sent.find(({ line }) => line === 'DELETE /api/orgs/org_1/event-cover-uploads')?.body,
+      ).toEqual({ uploadKey: 'event_cover/org_1/2026/10/one.heic' }),
+    );
+  });
+
+  describe('while its copy is on its way (sc-60915)', () => {
+    const SIGN = 'POST /api/orgs/org_1/event-cover-uploads';
+    const DISCARD = 'DELETE /api/orgs/org_1/event-cover-uploads';
+
+    /** Each HEIC gets its own key, and its copy waits until the test lets it land or fail. */
+    function slowCopies(answers: Record<string, Answer> = {}) {
+      const copies: { land: () => void; fail: () => void }[] = [];
+      let signed = 0;
+      const sent = serving(null, {
+        [SIGN]: () => {
+          signed += 1;
+
+          return json(
+            {
+              upload: {
+                url: 'http://store.test/upload/1',
+                key: `event_cover/org_1/2026/10/${signed}.heic`,
+                content_type: 'image/heic',
+              },
+            },
+            201,
+          );
+        },
+        [PREVIEW]: (body) =>
+          new Promise<Response>((resolve) => {
+            const key = (body as { uploadKey: string }).uploadKey;
+            copies.push({
+              land: () => resolve(json({ preview: `${COPY}#${key}` })),
+              fail: () => resolve(new Response(null, { status: 500 })),
+            });
+          }),
+        ...answers,
+      });
+
+      return { sent, copies };
+    }
+
+    async function waiting(answers: Record<string, Answer> = {}) {
+      signedIn();
+      const held = slowCopies(answers);
+      at('/app/events/new');
+      await screen.findByRole('heading', { level: 1, name: 'New event' });
+      chooseHeic();
+      await waitFor(() => expect(held.copies).toHaveLength(1));
+
+      return held;
+    }
+
+    function fillIn(): void {
+      fireEvent.change(document.getElementById('event-name')!, { target: { value: 'Owambe' } });
+      fireEvent.change(document.getElementById('event-type')!, { target: { value: 'wedding' } });
+      for (const [id, value] of [
+        ['event-start-date', '2026-11-14'],
+        ['event-start-time', '16:00'],
+        ['event-end-time', '23:00'],
+      ] as const)
+        fireEvent.change(document.getElementById(id)!, { target: { value } });
+    }
+
+    const discarded = (sent: { line: string; body: unknown }[]) =>
+      sent.filter(({ line }) => line === DISCARD).map(({ body }) => body);
+
+    it('shows Uploading… over the default cover with Change photo and Remove photo, then the photo with all its fields', async () => {
+      const { copies } = await waiting();
+
+      expect(screen.getByText('Uploading…').getAttribute('role')).toBe('status');
+      expect(document.querySelector('.ev-new-cover img')).toBeNull();
+      expect(screen.getByRole('button', { name: 'Change photo' })).toBeDefined();
+      expect(screen.getByText('The default cover comes back.')).toBeDefined();
+      expect(screen.queryByRole('slider', { name: 'Photo position' })).toBeNull();
+      expect(screen.queryByLabelText(/Describe the image/u)).toBeNull();
+      expect(screen.queryByRole('button', { name: 'Upload a photo' })).toBeNull();
+
+      await act(async () => copies[0]!.land());
+
+      await screen.findByRole('slider', { name: 'Photo position' });
+      expect(screen.queryByText('Uploading…')).toBeNull();
+      expect(document.querySelector('.ev-new-cover img')?.getAttribute('src')).toBe(
+        `${COPY}#event_cover/org_1/2026/10/1.heic`,
+      );
+      expect(screen.getByRole('slider', { name: 'Photo position' })).toHaveProperty('value', '50');
+      expect(screen.getByLabelText(/Describe the image/u)).toBeDefined();
+      expect(screen.getByRole('button', { name: 'Remove photo' })).toBeDefined();
+    });
+
+    it('holds Create event until the copy lands, then makes it the cover and opens the event', async () => {
+      const { sent, copies } = await waiting({
+        'POST /api/orgs/org_1/events': () => json({ event: event() }, 201),
+      });
+      fillIn();
+      fireEvent.click(screen.getByRole('button', { name: 'Create event' }));
+
+      await waitFor(() =>
+        expect(sent.map(({ line }) => line)).toContain('POST /api/orgs/org_1/events'),
+      );
+      await screen.findByRole('button', { name: 'Creating…' });
+      expect(screen.getByRole('button', { name: 'Change photo' })).toHaveProperty('disabled', true);
+      expect(screen.queryByRole('button', { name: 'Remove photo' })).toBeNull();
+      expect(screen.getByText('Uploading…')).toBeDefined();
+      expect(screen.getByRole('heading', { level: 1, name: 'New event' })).toBeDefined();
+      expect(sent.map(({ line }) => line)).not.toContain('PUT /api/events/ev_1/cover');
+
+      await act(async () => copies[0]!.land());
+
+      await waitFor(() =>
+        expect(sent.map(({ line }) => line)).toContain('PUT /api/events/ev_1/cover'),
+      );
+      expect(await screen.findByText('Created. Opening the event.')).toBeDefined();
+      await act(async () => new Promise((done) => setTimeout(done, 1000)));
+      expect(screen.getByText('Created. Opening the event.')).toBeDefined();
+      expect(screen.getByRole('heading', { level: 1, name: 'New event' })).toBeDefined();
+
+      expect(
+        await screen.findByRole('heading', { level: 1, name: 'Adaeze and Tunde' }),
+      ).toBeDefined();
+      expect(sent.find(({ line }) => line === 'PUT /api/events/ev_1/cover')?.body).toEqual({
+        uploadKey: 'event_cover/org_1/2026/10/1.heic',
+        position: 50,
+        description: null,
+      });
+      expect(discarded(sent)).toEqual([]);
+    });
+
+    it('opens the event without its photo when the copy fails after Create event', async () => {
+      const { sent, copies } = await waiting({
+        'POST /api/orgs/org_1/events': () => json({ event: event() }, 201),
+      });
+      fillIn();
+      fireEvent.click(screen.getByRole('button', { name: 'Create event' }));
+      await screen.findByRole('button', { name: 'Creating…' });
+
+      await act(async () => copies[0]!.fail());
+
+      expect(
+        await screen.findByText(
+          'The event is saved without its photo. The photo did not upload. Try again.',
+        ),
+      ).toBeDefined();
+      expect(sent.map(({ line }) => line)).not.toContain('PUT /api/events/ev_1/cover');
+    });
+
+    it('says the photo did not upload when the copy fails before Create event, and creates without it', async () => {
+      const { sent, copies } = await waiting({
+        'POST /api/orgs/org_1/events': () => json({ event: event() }, 201),
+      });
+
+      await act(async () => copies[0]!.fail());
+
+      expect(await screen.findByText('The photo did not upload. Try again.')).toBeDefined();
+      expect(screen.getByRole('button', { name: 'Upload a photo' })).toBeDefined();
+      expect(document.querySelector('.ev-new-cover img')).toBeNull();
+
+      fillIn();
+      fireEvent.click(screen.getByRole('button', { name: 'Create event' }));
+
+      expect(
+        await screen.findByRole('heading', { level: 1, name: 'Adaeze and Tunde' }),
+      ).toBeDefined();
+      expect(sent.map(({ line }) => line)).not.toContain('PUT /api/events/ev_1/cover');
+    });
+
+    it('gives the frame to the last photo picked and discards the earlier copy, whichever lands first', async () => {
+      const { sent, copies } = await waiting();
+
+      fireEvent.click(screen.getByRole('button', { name: 'Change photo' }));
+      chooseHeic();
+      await waitFor(() => expect(copies).toHaveLength(2));
+
+      await act(async () => copies[1]!.land());
+      await screen.findByRole('slider', { name: 'Photo position' });
+      await act(async () => copies[0]!.land());
+
+      await waitFor(() =>
+        expect(discarded(sent)).toEqual([{ uploadKey: 'event_cover/org_1/2026/10/1.heic' }]),
+      );
+      expect(document.querySelector('.ev-new-cover img')?.getAttribute('src')).toBe(
+        `${COPY}#event_cover/org_1/2026/10/2.heic`,
+      );
+    });
+
+    it('keeps the default cover after Remove photo, discards the copy when it lands, and creates without a photo', async () => {
+      const { sent, copies } = await waiting({
+        'POST /api/orgs/org_1/events': () => json({ event: event() }, 201),
+      });
+
+      fireEvent.click(screen.getByRole('button', { name: 'Remove photo' }));
+      expect(screen.queryByText('Uploading…')).toBeNull();
+      expect(screen.getByRole('button', { name: 'Upload a photo' })).toBeDefined();
+
+      await act(async () => copies[0]!.land());
+
+      await waitFor(() =>
+        expect(discarded(sent)).toEqual([{ uploadKey: 'event_cover/org_1/2026/10/1.heic' }]),
+      );
+      expect(document.querySelector('.ev-new-cover img')).toBeNull();
+
+      fillIn();
+      fireEvent.click(screen.getByRole('button', { name: 'Create event' }));
+      expect(
+        await screen.findByRole('heading', { level: 1, name: 'Adaeze and Tunde' }),
+      ).toBeDefined();
+      expect(sent.map(({ line }) => line)).not.toContain('PUT /api/events/ev_1/cover');
+    });
+
+    it('a pick refused during the wait is not a pick: its reason shows and the HEIC still lands', async () => {
+      const { copies } = await waiting();
+
+      fireEvent.click(screen.getByRole('button', { name: 'Change photo' }));
+      fireEvent.change(document.getElementById('cover-file')!, {
+        target: { files: [new File(['x'], 'notes.txt', { type: 'text/plain' })] },
+      });
+
+      expect(
+        await screen.findByText(
+          'That file is not a photo we can use. Choose a JPEG, PNG, WebP or HEIC.',
+        ),
+      ).toBeDefined();
+      expect(screen.getByText('Uploading…')).toBeDefined();
+
+      await act(async () => copies[0]!.land());
+
+      await screen.findByRole('slider', { name: 'Photo position' });
+      expect(document.querySelector('.ev-new-cover img')?.getAttribute('src')).toBe(
+        `${COPY}#event_cover/org_1/2026/10/1.heic`,
+      );
+    });
+
+    it('asks before leaving with only a photo on its way, and discards the copy that lands after leaving', async () => {
+      const { sent, copies } = await waiting();
+
+      fireEvent.click(document.querySelector('.ev-crumb a')!);
+      const dialog = await screen.findByRole('alertdialog', { name: 'Leave without saving?' });
+      expect(within(dialog).getByText('What you typed for this event will be lost.')).toBeDefined();
+      fireEvent.click(within(dialog).getByRole('button', { name: 'Leave without saving' }));
+      await waitFor(() =>
+        expect(screen.queryByRole('heading', { level: 1, name: 'New event' })).toBeNull(),
+      );
+
+      await act(async () => copies[0]!.land());
+
+      await waitFor(() =>
+        expect(discarded(sent)).toEqual([{ uploadKey: 'event_cover/org_1/2026/10/1.heic' }]),
+      );
+    });
+
+    it('asks before going back with only a photo on its way', async () => {
+      signedIn();
+      slowCopies();
+      const router = createMemoryRouter(routes, {
+        initialEntries: ['/app/events', '/app/events/new'],
+        initialIndex: 1,
+      });
+      render(<RouterProvider router={router} />);
+      await screen.findByRole('heading', { level: 1, name: 'New event' });
+      chooseHeic();
+      await screen.findByText('Uploading…');
+
+      await act(() => router.navigate(-1));
+
+      const dialog = await screen.findByRole('alertdialog', { name: 'Leave without saving?' });
+      expect(within(dialog).getByText('What you typed for this event will be lost.')).toBeDefined();
+      expect(router.state.location.pathname).toBe('/app/events/new');
+    });
+
+    it('sends nothing for a HEIC picked just before leaving, while its pick check is still running', async () => {
+      signedIn();
+      const { sent } = slowCopies();
+      at('/app/events/new');
+      await screen.findByRole('heading', { level: 1, name: 'New event' });
+
+      chooseHeic();
+      fireEvent.click(document.querySelector('.ev-crumb a')!);
+      await waitFor(() =>
+        expect(screen.queryByRole('heading', { level: 1, name: 'New event' })).toBeNull(),
+      );
+      await act(async () => new Promise((settle) => setTimeout(settle, 0)));
+
+      expect(sent.map(({ line }) => line)).not.toContain(SIGN);
+    });
+
+    it('discards the copy when setting it as the cover is refused after Create event', async () => {
+      const { sent, copies } = await waiting({
+        'POST /api/orgs/org_1/events': () => json({ event: event() }, 201),
+        'PUT /api/events/ev_1/cover': () =>
+          problem(422, 'validation_failed', {
+            violations: [
+              {
+                propertyPath: 'uploadKey',
+                message: 'The photo did not upload. Try again.',
+                code: 'validation_failed',
+              },
+            ],
+          }),
+      });
+      fillIn();
+      fireEvent.click(screen.getByRole('button', { name: 'Create event' }));
+      await screen.findByRole('button', { name: 'Creating…' });
+
+      await act(async () => copies[0]!.land());
+
+      expect(
+        await screen.findByText(
+          'The event is saved without its photo. The photo did not upload. Try again.',
+        ),
+      ).toBeDefined();
+      expect(discarded(sent)).toEqual([{ uploadKey: 'event_cover/org_1/2026/10/1.heic' }]);
+    });
   });
 });
 
@@ -4319,7 +4954,7 @@ describe('Make live asks for a missing host (sc-22143)', () => {
     at('/app/events/ev_1');
     await screen.findByRole('heading', { level: 1, name: 'Adaeze and Tunde' });
     fireEvent.click(screen.getByRole('button', { name: 'Make live' }));
-    const dialog = await screen.findByRole('dialog', { name: 'Make Adaeze and Tunde live?' });
+    const dialog = await screen.findByRole('alertdialog', { name: 'Make Adaeze and Tunde live?' });
 
     return { sent, dialog, host: within(dialog).getByLabelText<HTMLTextAreaElement>('Host 1') };
   }
@@ -4368,7 +5003,7 @@ describe('Make live asks for a missing host (sc-22143)', () => {
     fireEvent.change(host, { target: { value: ' Funmi Adeyemi ' } });
     press(dialog);
 
-    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+    await waitFor(() => expect(screen.queryByRole('alertdialog')).toBeNull());
     expect(linesOf(sent)).toEqual([SAVE, LIVE]);
     expect(sent.find(({ line }) => line === SAVE)?.body).toEqual({ hosts: ['Funmi Adeyemi'] });
     await waitFor(() => expect(screen.getByRole('status').textContent).toBe('✓ Live'));
@@ -4397,7 +5032,9 @@ describe('Make live asks for a missing host (sc-22143)', () => {
     await waitFor(() => expect(document.activeElement).toBe(host));
     expect(within(dialog).getByText('Enter who is hosting to make this event live.')).toBeDefined();
     expect(host.getAttribute('aria-invalid')).toBe('true');
-    expect(host.getAttribute('aria-describedby')).toBe('make-live-host-error make-live-host-help');
+    expect(document.getElementById(host.getAttribute('aria-describedby')!)?.textContent).toBe(
+      'Enter who is hosting to make this event live.',
+    );
     expect(linesOf(sent)).toEqual([]);
     expect(screen.getByText('Draft')).toBeDefined();
   });
@@ -4435,7 +5072,7 @@ describe('Make live asks for a missing host (sc-22143)', () => {
     expect(linesOf(sent)).toEqual([SAVE, LIVE]);
 
     fireEvent.click(screen.getByRole('button', { name: 'Make live' }));
-    const again = await screen.findByRole('dialog', { name: 'Make Adaeze and Tunde live?' });
+    const again = await screen.findByRole('alertdialog', { name: 'Make Adaeze and Tunde live?' });
     expect(within(again).queryByLabelText('Host 1')).toBeNull();
   });
 
@@ -4464,7 +5101,7 @@ describe('Make live asks for a missing host (sc-22143)', () => {
     );
     press(dialog);
 
-    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+    await waitFor(() => expect(screen.queryByRole('alertdialog')).toBeNull());
     expect(linesOf(sent)).toEqual([SAVE, LIVE, LIVE]);
   });
 
@@ -4504,7 +5141,7 @@ describe('Make live asks for a missing host (sc-22143)', () => {
 
       press(dialog);
 
-      await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+      await waitFor(() => expect(screen.queryByRole('alertdialog')).toBeNull());
       expect(linesOf(sent)).toEqual([SAVE, SAVE, LIVE]);
     });
 
@@ -4533,7 +5170,7 @@ describe('Make live asks for a missing host (sc-22143)', () => {
 
       press(dialog);
 
-      await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+      await waitFor(() => expect(screen.queryByRole('alertdialog')).toBeNull());
       expect(linesOf(sent)).toEqual([SAVE, LIVE]);
     });
 
@@ -4565,7 +5202,7 @@ describe('Make live asks for a missing host (sc-22143)', () => {
     at('/app/events/ev_1');
     await screen.findByRole('heading', { level: 1, name: 'Adaeze and Tunde' });
     fireEvent.click(screen.getByRole('button', { name: 'Make live' }));
-    const dialog = await screen.findByRole('dialog', { name: 'Make Adaeze and Tunde live?' });
+    const dialog = await screen.findByRole('alertdialog', { name: 'Make Adaeze and Tunde live?' });
     expect(within(dialog).queryByLabelText('Host 1')).toBeNull();
 
     press(dialog);
@@ -4576,7 +5213,7 @@ describe('Make live asks for a missing host (sc-22143)', () => {
 
 describe("An event's timeline: Coming up and All dates (sc-3624)", () => {
   function milestone(at: string, title: string, owner = 'event') {
-    return { at, title, note: null, owner, area: 'events', action: null };
+    return { at, title, note: null, owner, area: 'events', action: null, done: false };
   }
 
   const MADRID = {
@@ -4833,7 +5470,7 @@ describe("An event's timeline: Coming up and All dates (sc-3624)", () => {
 
     vi.setSystemTime(new Date('2030-10-13T09:00:04.200Z'));
     fireEvent.click(screen.getByRole('button', { name: 'Call off…' }));
-    const dialog = await screen.findByRole('dialog', { name: 'Call off Adaeze and Tunde?' });
+    const dialog = await screen.findByRole('alertdialog', { name: 'Call off Adaeze and Tunde?' });
     fireEvent.click(within(dialog).getByRole('button', { name: 'Call off' }));
     // The ended event offers nothing from the first read, so the empty text shows before the second goes out.
     await waitFor(() => expect(read).toHaveBeenCalledTimes(2));
@@ -5029,6 +5666,59 @@ describe('Someone who can only view an event is never told to change its dates o
 
       await screen.findByRole('heading', { level: 1, name: 'Adaeze and Tunde' });
       expect(screen.getByText('Guests can’t be invited until this event is live.')).toBeDefined();
+    },
+  );
+});
+
+describe('Make live, Pause, Call off and End now keep the keyboard in their dialog (sc-48603)', () => {
+  const AHEAD = { startsAt: '2030-11-14T16:00:00+01:00', endsAt: '2030-11-15T02:00:00+01:00' };
+  const HAPPENING = { startsAt: '2020-11-14T16:00:00+01:00', endsAt: '2030-11-15T02:00:00+01:00' };
+
+  it.each([
+    ['Make live', event(AHEAD), 'Make live', 'Make Adaeze and Tunde live?'],
+    [
+      'Pause',
+      event({ ...AHEAD, status: 'live', phase: 'live' }),
+      'Pause',
+      'Pause Adaeze and Tunde?',
+    ],
+    [
+      'Call off',
+      event({ ...AHEAD, status: 'live', phase: 'live' }),
+      'Call off…',
+      'Call off Adaeze and Tunde?',
+    ],
+    [
+      'End now',
+      event({ ...HAPPENING, status: 'live', phase: 'happening_now' }),
+      'End now…',
+      'End Adaeze and Tunde now?',
+    ],
+  ])(
+    '%s takes focus, keeps Tab inside, and Escape closes it, sending nothing, back on its opener',
+    async (_, served, opens, title) => {
+      signedIn();
+      const sent = answering({ 'GET /api/events/ev_1': () => json({ event: served }) });
+      at('/app/events/ev_1');
+      await screen.findByRole('heading', { level: 1, name: 'Adaeze and Tunde' });
+
+      const opener = screen.getByRole('button', { name: opens });
+      opener.focus();
+      fireEvent.click(opener);
+      const dialog = await screen.findByRole('alertdialog', { name: title });
+      await waitFor(() => expect(dialog.contains(document.activeElement)).toBe(true));
+
+      const buttons = within(dialog).getAllByRole('button');
+      const last = buttons[buttons.length - 1]!;
+      last.focus();
+      fireEvent.keyDown(last, { key: 'Tab' });
+      expect(document.activeElement).not.toBe(last);
+      expect(dialog.contains(document.activeElement)).toBe(true);
+
+      fireEvent.keyDown(document.activeElement!, { key: 'Escape' });
+      await waitFor(() => expect(screen.queryByRole('alertdialog')).toBeNull());
+      await waitFor(() => expect(document.activeElement).toBe(opener));
+      expect(sent.some(({ line }) => line.startsWith('POST'))).toBe(false);
     },
   );
 });

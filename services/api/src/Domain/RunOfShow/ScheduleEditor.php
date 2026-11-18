@@ -7,22 +7,30 @@ namespace App\Domain\RunOfShow;
 use App\Audit\Auditor;
 use App\Domain\RunOfShow\Http\ScheduleSerialiser;
 use App\Domain\RunOfShow\Model\ItemDetails;
+use App\Domain\RunOfShow\Model\PressLoss;
+use App\Domain\RunOfShow\Model\Replayed;
+use App\Domain\RunOfShow\Screen\ScreenSignal;
 use App\Entity\Event;
 use App\Entity\ScheduleItem;
+use App\Entity\SchedulePress;
 use App\Entity\User;
 use App\Enum\Actor;
 use App\Enum\ErrorCode;
+use App\Enum\PressKind;
 use App\Enum\RealtimeTopic;
 use App\Http\EntityTag;
 use App\Http\Exception\ApiException;
 use App\Realtime\RealtimePublisher;
 use App\Repository\ScheduleItemRepository;
+use App\Repository\SchedulePressRepository;
+use DateTimeImmutable;
+use DateTimeZone;
 use Doctrine\DBAL\LockMode;
 use Doctrine\ORM\EntityManagerInterface;
 use Psl\Str;
 use Psr\Clock\ClockInterface;
 
-/** Each change runs under a lock on the event's row, so two adds sent together cannot both pass the limit, and is published whole to the event's schedule topic (sc-3893). */
+/** Each change runs under a lock on the event's row, so two adds sent together cannot both pass the limit, and is published whole to the event's schedule topic (sc-3893), with a bare signal to its room screens to ask again (sc-3897). */
 final readonly class ScheduleEditor
 {
     public const string ADDED = 'run_of_show.item_added';
@@ -31,16 +39,23 @@ final readonly class ScheduleEditor
 
     public const string DELETED = 'run_of_show.item_deleted';
 
-    public const string STARTED = 'run_of_show.item_started';
+    public const array PRESSED = [
+        'start' => 'run_of_show.item_started',
+        'done' => 'run_of_show.item_finished',
+        'skip' => 'run_of_show.item_skipped',
+    ];
 
-    public const string FINISHED = 'run_of_show.item_finished';
+    /** A press timed later than this past the server's clock is taken as pressed now. */
+    private const string AHEAD_AT_MOST = '+5 seconds';
 
     public function __construct(
         private ScheduleItemRepository $scheduleItemRepository,
+        private SchedulePressRepository $schedulePressRepository,
         private ScheduleSerialiser $scheduleSerialiser,
         private EntityManagerInterface $entityManager,
         private Auditor $auditor,
         private RealtimePublisher $realtimePublisher,
+        private ScreenSignal $screenSignal,
         private ClockInterface $clock,
     ) {
     }
@@ -96,41 +111,64 @@ final readonly class ScheduleEditor
         return $item;
     }
 
-    /** Records the moment it was marked; its planned start stays as it was (sc-1404). Started again is 409 `item_started`. */
-    public function start(Event $event, ScheduleItem $item, User $by): void
+    /** A press that changes nothing is still kept, so a late earlier press can make it count, unless it would have changed another item on its track; the same key answers as the first time (sc-3895). */
+    public function press(Event $event, ScheduleItem $item, PressKind $kind, DateTimeImmutable $pressedAt, string $key, string $fingerprint, User $by): void
     {
-        $this->locked($event, function () use ($item, $by): void {
-            $this->entityManager->refresh($item);
+        $loss = $this->locked($event, function () use ($event, $item, $kind, $pressedAt, $key, $fingerprint, $by): ?PressLoss {
+            $sent = $this->schedulePressRepository->findOneByKey($by, $key);
 
-            if (null !== $item->getStartedAt()) {
-                throw new ApiException(ErrorCode::ItemStarted, 'run_of_show.item_started');
+            if (null !== $sent) {
+                if ($sent->getFingerprint() !== $fingerprint) {
+                    throw new ApiException(ErrorCode::IdempotencyKeyReused, 'run_of_show.idempotency_key_reused');
+                }
+
+                if ($sent->isSetAside()) {
+                    return new PressLoss(ErrorCode::TrackBusy, $sent->getSetAsideFor());
+                }
+
+                return $this->replayed($event)->losses[$sent->getId()->toRfc4122()] ?? self::answered($sent);
             }
 
-            $item->start($this->clock->now(), $by);
-            $this->auditor->record(self::STARTED, 'ScheduleItem', $item->getId(), Actor::User, $by->getId(), $by->getName(), []);
+            $press = new SchedulePress($event, $item, $kind, $this->clamped($event, $pressedAt), $key, $fingerprint, $by, $by->getName());
+            $this->entityManager->persist($press);
+            $this->entityManager->flush();
+
+            $overreach = PressReplay::overreach($this->scheduleItemRepository->findOnEvent($event), $this->schedulePressRepository->findStandingOnEvent($event), $press);
+
+            if (null !== $overreach) {
+                $press->setAside($overreach->to);
+                $press->setAnswer($overreach->code->value);
+
+                return $overreach;
+            }
+
+            $replayed = $this->replayed($event);
+            $loss = $replayed->losses[$press->getId()->toRfc4122()] ?? null;
+            $press->setAnswer($loss?->code->value);
+
+            if (null === $loss) {
+                $this->auditor->record(self::PRESSED[$kind->value], 'ScheduleItem', $item->getId(), Actor::User, $by->getId(), $by->getName(), ['pressedAt' => [null, $press->getPressedAt()->format(\DATE_ATOM)]]);
+            }
+
+            return $loss;
         });
 
         $this->published($event);
-    }
 
-    /** Done before started is 409 `item_not_started`; done twice, 409 `item_finished`. */
-    public function finish(Event $event, ScheduleItem $item, User $by): void
-    {
-        $this->locked($event, function () use ($item, $by): void {
-            $this->entityManager->refresh($item);
+        if (null !== $loss) {
+            $zone = new DateTimeZone($event->getTimeZone());
+            $to = $loss->to;
 
-            if (null === $item->getStartedAt()) {
-                throw new ApiException(ErrorCode::ItemNotStarted, 'run_of_show.item_not_started');
-            }
-            if (null !== $item->getEndedAt()) {
-                throw new ApiException(ErrorCode::ItemFinished, 'run_of_show.item_finished');
-            }
-
-            $item->finish($this->clock->now(), $by);
-            $this->auditor->record(self::FINISHED, 'ScheduleItem', $item->getId(), Actor::User, $by->getId(), $by->getName(), []);
-        });
-
-        $this->published($event);
+            throw new ApiException($loss->code, match ($loss->code) {
+                ErrorCode::ItemFinished => 'run_of_show.item_finished',
+                ErrorCode::ItemStarted => 'run_of_show.item_started',
+                ErrorCode::TrackBusy => 'run_of_show.track_busy',
+                default => 'run_of_show.item_not_started',
+            }, members: null === $to ? [] : ['superseded_by' => [
+                'name' => $to->getPressedByName(),
+                'at' => $to->getPressedAt()->setTimezone($zone)->format(\DATE_ATOM),
+            ]]);
+        }
     }
 
     public function delete(Event $event, ScheduleItem $item, User $by): void
@@ -166,9 +204,44 @@ final readonly class ScheduleEditor
         });
     }
 
+    /** No later than the server's clock and a few seconds, and no earlier than the event's start (sc-3895). */
+    private function clamped(Event $event, DateTimeImmutable $pressedAt): DateTimeImmutable
+    {
+        $latest = $this->clock->now()->modify(self::AHEAD_AT_MOST);
+        $earliest = $event->getStartsAt();
+        $at = $pressedAt > $latest ? $latest : $pressedAt;
+
+        return ($at < $earliest ? $earliest : $at)->setTimezone(new DateTimeZone('UTC'));
+    }
+
+    /** Writes each item's state as the event's presses now leave it. */
+    private function replayed(Event $event): Replayed
+    {
+        $items = $this->scheduleItemRepository->findOnEvent($event);
+        $replayed = PressReplay::of($items, $this->schedulePressRepository->findStandingOnEvent($event));
+
+        foreach ($items as $item) {
+            $run = $replayed->runs[$item->getId()->toRfc4122()];
+            $item->setStartedAt($run->startedAt);
+            $item->setEndedAt($run->endedAt);
+            $item->setSkipped($run->skipped);
+        }
+
+        return $replayed;
+    }
+
+    /** A press sent again whose state the replay no longer refuses keeps the answer it was given the first time. */
+    private static function answered(SchedulePress $press): ?PressLoss
+    {
+        $code = $press->getAnswer();
+
+        return null === $code ? null : new PressLoss(ErrorCode::from($code), null);
+    }
+
     private function published(Event $event): void
     {
         $this->realtimePublisher->publish(RealtimeTopic::EventSchedule, $event->getId()->toRfc4122(), $this->scheduleSerialiser->schedule($event));
+        $this->screenSignal->send($event);
     }
 
     /** @return array<string, mixed> */

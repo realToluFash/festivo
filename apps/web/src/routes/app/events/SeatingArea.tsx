@@ -11,11 +11,22 @@ import {
   type SeatingRow,
   type SeatingTable,
   type SeatingWithChosen,
+  type SeatingMove,
+  type SeatingMoved,
+  type SeatingPlaceKind,
   type SectionColour,
   type SectionContents,
   type SingleSeat,
+  asColleagueChoice,
+  asPlanBeat,
+  asPlanSubscriber,
+  asPlanSubscribers,
   asSeating,
+  type ColleagueChoice,
+  type PlanSubscriber,
   realtimeTopic,
+  subscribersTopic,
+  subscribersUrl,
 } from '@soirely/api-client';
 import {
   ROOM_MAXIMUM_CM,
@@ -42,6 +53,7 @@ import {
   useEffect,
   useEffectEvent,
   useId,
+  useLayoutEffect,
   useRef,
   useState,
 } from 'react';
@@ -49,6 +61,7 @@ import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router';
 
 import { api } from '../../../api.ts';
+import { keptKeys, keptLoad, useAnsweredAgain, useKeptAsShown } from '../../../tabKept.ts';
 import { useDeskTop } from '../../../deskTop.ts';
 import { config } from '../../../config.ts';
 import { Glyph } from '../../../components/Glyph.tsx';
@@ -64,6 +77,7 @@ import { currentLocale } from '../../../i18n/index.ts';
 import { LayersContext, focusWhenFree, useDeskLayers } from '../../../layers.ts';
 import { pageTitle, usePageTitle } from '../../../pageTitle.ts';
 import { canOn, useSession } from '../../../session.ts';
+import { steadyTicks } from '../../../steadyTicks.ts';
 import {
   type Asking,
   BackHead,
@@ -75,6 +89,7 @@ import {
   type PlanApi,
   Refused,
   Said,
+  Swatch,
   type TableNote,
 } from './SeatingParts.tsx';
 import {
@@ -84,7 +99,15 @@ import {
   SingleSeatPanel,
   useAddRowAndSeat,
 } from './SeatingRows.tsx';
-import { AddTable, ChairPanel, TableDrawing, TablePanel } from './SeatingTables.tsx';
+import {
+  AddTable,
+  ChairPanel,
+  type ChairTip,
+  ChairTipDrawing,
+  FreeTag,
+  TableDrawing,
+  TablePanel,
+} from './SeatingTables.tsx';
 import {
   KeysStrip,
   PlacingBars,
@@ -108,6 +131,29 @@ import {
   withPlacements,
 } from './seatingItems.ts';
 import { fitOf, intoView, useCamera } from './seatingCamera.ts';
+import { type TrayFilter, pickedParty, seatedAt } from './seatingGuests.ts';
+import { type SeatingView, TablesView, ViewSwitch } from './SeatingCards.tsx';
+import { MoveAllPop, PlaceGuests, SeatChoicePop, SeatTray } from './SeatingSeat.tsx';
+import { Presence } from './SeatingPresence.tsx';
+import {
+  BEAT_MS,
+  type ColleagueRing,
+  NOBODY_ELSE,
+  type OwnChoice,
+  LEAVING_HOLD_MS,
+  type PresenceState,
+  RingsContext,
+  SILENT_MS,
+  beat,
+  changed,
+  chose,
+  colleaguesOf,
+  departed,
+  listed,
+  quieted,
+  ringsOf,
+  woke,
+} from './seatingPresence.ts';
 import {
   type Fold,
   type GridDraft,
@@ -115,12 +161,15 @@ import {
   type StepBar,
   ChooseBar,
   DeleteItemsAsk,
+  focusField,
   RulesStrip,
   SelectionPanel,
   StepLine,
 } from './SeatingSelection.tsx';
+import { ShareTables } from './SeatingShare.tsx';
 import {
   COLUMNS_MAX,
+  boxOf,
   gridOf,
   inReadingOrder,
   onlyTables,
@@ -128,11 +177,19 @@ import {
   readGap,
   readWhole,
   rectOf,
-  restoredOf,
+  restoredWith,
   seatingIn,
   touchedBy,
 } from './seatingSelection.ts';
-import { SMALL_MAP_FROM_SCALE, f, percentOf, sectionOf, turned } from './seatingDraw.ts';
+import {
+  CHAIRS_FROM_SCALE,
+  SMALL_MAP_FROM_SCALE,
+  f,
+  percentOf,
+  sectionOf,
+  turned,
+} from './seatingDraw.ts';
+import { freeTags, freeTagWords } from './seatingFreeTags.ts';
 import { lengthField, lengthWords, tableSizeWords } from './seatingUnits.ts';
 import '../../../components/SettingsParts.css';
 import './seating.css';
@@ -140,11 +197,14 @@ import './seating.css';
 type Load = { kind: 'loading' } | { kind: 'failed' } | { kind: 'loaded'; seating: Seating };
 
 const RETRY_MS = 5_000;
+const WATCH_MS = 1_000;
 const RENEW_BEFORE_MS = 60_000;
 const PAN_FROM_PX = 4;
 const STEP_TRIES = 3;
 const STEP_RETRY_MS = 1_000;
 const SIZE_STEP_CM = 10;
+const ITEM_ATTRIBUTES = ['data-table', 'data-row', 'data-seat'];
+const ITEM = ITEM_ATTRIBUTES.map((attribute) => `[${attribute}]`).join(', ');
 
 type Drag =
   | {
@@ -159,53 +219,102 @@ type Drag =
   | { kind: 'resize'; table: Table; handle: Handle; pointer: number; last: Placement | null };
 const WHEEL_ZOOM = 300;
 
-/** The room as the API holds it, published to every page open on it (sc-3998). */
-function useLiveSeating(eventId: string, onSeating: (seating: Seating) => void, onGap: () => void) {
-  const latest = useRef({ onSeating, onGap });
+interface LiveHandlers {
+  onSeating: (seating: Seating) => void;
+  onGap: () => void;
+  onSubscribers: (list: PlanSubscriber[]) => void;
+  onSubscriber: (tab: PlanSubscriber) => void;
+  onChoice: (choice: ColleagueChoice) => void;
+  onBeat: (userId: string) => void;
+  onLost: () => void;
+}
+
+/** The room as the API holds it, published to every page open on it (sc-3998), with who else has it open and what its editors have chosen (sc-4719). */
+function useLiveSeating(eventId: string, handlers: LiveHandlers) {
+  const latest = useRef(handlers);
 
   useEffect(() => {
-    latest.current = { onSeating, onGap };
+    latest.current = handlers;
   });
 
   useEffect(() => {
     const hub = config().mercureUrl;
     if (hub === '') return;
 
+    const topic = realtimeTopic('EventSeating', eventId);
     let source: EventSource | null = null;
     let timer: ReturnType<typeof setTimeout> | undefined;
+    let listing: ReturnType<typeof setTimeout> | undefined;
     let stopped = false;
+    let heardAt = Date.now();
+    let open = false;
 
     const connect = async (): Promise<void> => {
       let subscription;
       try {
         subscription = await api.seatingSubscription(eventId);
       } catch {
+        latest.current.onLost();
         if (!stopped) timer = setTimeout(() => void connect(), RETRY_MS);
         return;
       }
       if (stopped) return;
 
       const url = new URL(hub);
-      url.searchParams.append('topic', realtimeTopic('EventSeating', eventId));
+      url.searchParams.append('topic', topic);
+      url.searchParams.append('topic', realtimeTopic('EventSeatingChoices', eventId));
+      url.searchParams.append('topic', subscribersTopic(topic));
       url.searchParams.append('authorization', subscription.token);
+      const token = subscription.token;
 
       source?.close();
+      clearTimeout(listing);
       source = new EventSource(url);
-      source.onopen = () => latest.current.onGap();
+      heardAt = Date.now();
+      open = false;
+      const opened = source;
+      const list = (): void => {
+        clearTimeout(listing);
+        fetch(subscribersUrl(hub, topic), { headers: { Authorization: `Bearer ${token}` } })
+          .then((response) => (response.ok ? response.json() : Promise.reject(new Error())))
+          .then(
+            (body: unknown) =>
+              !stopped && latest.current.onSubscribers(asPlanSubscribers(body, topic)),
+            () => {
+              if (stopped || source !== opened) return;
+              latest.current.onLost();
+              listing = setTimeout(list, RETRY_MS);
+            },
+          );
+      };
+      source.onopen = () => {
+        heardAt = Date.now();
+        open = true;
+        sayHere();
+        latest.current.onGap();
+        list();
+      };
       source.onmessage = (message: MessageEvent<string>) => {
-        let seating: Seating | null = null;
+        heardAt = Date.now();
+        let data: unknown = null;
         try {
-          seating = asSeating(JSON.parse(message.data));
+          data = JSON.parse(message.data);
         } catch {
-          seating = null;
+          data = null;
         }
+        const tab = asPlanSubscriber(data, topic);
+        if (tab != null) return latest.current.onSubscriber(tab);
+        const here = asPlanBeat(data);
+        if (here != null) return latest.current.onBeat(here);
+        const choice = asColleagueChoice(data);
+        if (choice != null) return latest.current.onChoice(choice);
+        const seating = asSeating(data);
         if (seating == null) latest.current.onGap();
         else latest.current.onSeating(seating);
       };
       source.onerror = () => {
-        if (source?.readyState !== EventSource.CLOSED || stopped) return;
-        clearTimeout(timer);
-        timer = setTimeout(() => void connect(), RETRY_MS);
+        if (stopped || source !== opened) return;
+        dropped();
       };
 
       const lapses = Date.parse(subscription.expiresAt) - Date.now() - RENEW_BEFORE_MS;
@@ -213,14 +322,120 @@ function useLiveSeating(eventId: string, onSeating: (seating: Seating) => void, 
       timer = setTimeout(() => void connect(), Math.max(lapses, RETRY_MS));
     };
 
+    /** Closed rather than left to the browser's retry, which would present a token that may have lapsed with the reader's access. */
+    const dropped = (): void => {
+      latest.current.onLost();
+      open = false;
+      source?.close();
+      source = null;
+      clearTimeout(listing);
+      clearTimeout(timer);
+      timer = setTimeout(() => void connect(), RETRY_MS);
+    };
+    const sayHere = (): void => {
+      if (open) api.sayHereOnPlan(eventId).catch(() => undefined);
+    };
+    let watchedAt = Date.now();
+    const stopBeating = steadyTicks(BEAT_MS, sayHere);
+    /** A page held back past a beat, by sleep or a hidden tab without a worker, says it is here and waits to be heard again rather than reconnecting. */
+    const stopWatching = steadyTicks(WATCH_MS, () => {
+      const now = Date.now();
+      const heldBack = now - watchedAt > BEAT_MS;
+      watchedAt = now;
+      if (source == null) return;
+      if (heldBack) {
+        heardAt = now;
+        sayHere();
+      } else if (now - heardAt > SILENT_MS) dropped();
+    });
+
     void connect();
 
     return () => {
       stopped = true;
       clearTimeout(timer);
+      clearTimeout(listing);
+      stopBeating();
+      stopWatching();
       source?.close();
     };
   }, [eventId]);
+}
+
+/** Who else has the plan open, and telling them what you have chosen: when it changes, when you (re)connect, and when someone arrives. */
+function usePresence(event: OrganisationEvent) {
+  const { t } = useTranslation();
+  const me = useSession().userId;
+  const editor = canOn(event, 'seating.manage');
+  const [presence, setPresence] = useState<PresenceState>(NOBODY_ELSE);
+  const mine = useRef<OwnChoice | null>(null);
+  const told = useRef<string>('null');
+  const holds = useRef<ReturnType<typeof setTimeout>[]>([]);
+
+  useEffect(() => {
+    const pending = holds.current;
+    return () => pending.forEach(clearTimeout);
+  }, []);
+
+  useEffect(() => {
+    const say = (key: 'joinedPlan' | 'leftPlan', name: string) => t(`seating.${key}`, { name });
+    let tickedAt = Date.now();
+    return steadyTicks(WATCH_MS, () => {
+      const now = Date.now();
+      const heldBack = now - tickedAt > BEAT_MS;
+      tickedAt = now;
+      setPresence((was) => (heldBack ? woke(was, now) : quieted(was, now, me, say)));
+    });
+  }, [me, t]);
+
+  const tell = useCallback(
+    (chosen: OwnChoice | null, again = false) => {
+      mine.current = chosen;
+      const key = JSON.stringify(chosen);
+      if (!editor || (!again && key === told.current)) return;
+      told.current = key;
+      api.chooseOnPlan(event.id, chosen).catch(() => {
+        told.current = 'unsent';
+      });
+    },
+    [editor, event.id],
+  );
+  const say = (key: 'joinedPlan' | 'leftPlan', name: string) => t(`seating.${key}`, { name });
+
+  const handlers: Omit<LiveHandlers, 'onSeating' | 'onGap'> = {
+    onSubscribers: (list) => {
+      setPresence((was) => listed(was, list, Date.now()));
+      if (mine.current != null) tell(mine.current, true);
+    },
+    onSubscriber: (tab) => {
+      setPresence((was) => changed(was, tab, me, say, Date.now()));
+      if (!tab.active)
+        holds.current.push(
+          setTimeout(
+            () => setPresence((was) => departed(was, tab.subscriber, me, say)),
+            LEAVING_HOLD_MS,
+          ),
+        );
+      if (tab.active && tab.userId !== me && mine.current != null) tell(mine.current, true);
+    },
+    onChoice: (choice) => {
+      if (choice.userId !== me) setPresence((was) => chose(was, choice));
+    },
+    onBeat: (userId) => {
+      if (userId !== me) setPresence((was) => beat(was, userId, Date.now(), say));
+    },
+    onLost: () =>
+      setPresence((was) => (was.connection === 'lost' ? was : { ...was, connection: 'lost' })),
+  };
+
+  return {
+    handlers,
+    tell,
+    people: colleaguesOf(presence, me),
+    rings: ringsOf(presence, me),
+    lost: presence.connection === 'lost',
+    spoken: presence.spoken,
+  };
 }
 
 const LOADING_ROOM = { w: 2400, l: 1800 } as const;
@@ -273,6 +488,50 @@ function LoadingRoom({ label }: { label: string }) {
   );
 }
 
+/** Where the bar floating over the room covers it, in the room's own pixels, so a chair's label can keep clear of it (sc-5030). */
+function useCover(): [(node: HTMLDivElement | null) => void, FloorBox | null] {
+  const [node, setNode] = useState<HTMLDivElement | null>(null);
+  const [cover, setCover] = useState<FloorBox | null>(null);
+
+  useLayoutEffect(() => {
+    if (node == null) return;
+    const measure = () => {
+      const room = node.parentElement?.getBoundingClientRect();
+      const box = node.getBoundingClientRect();
+      const next =
+        room == null || box.height === 0
+          ? null
+          : {
+              x0: box.left - room.left,
+              y0: box.top - room.top,
+              x1: box.right - room.left,
+              y1: box.bottom - room.top,
+            };
+
+      setCover((now) =>
+        now != null &&
+        next != null &&
+        now.x0 === next.x0 &&
+        now.y0 === next.y0 &&
+        now.x1 === next.x1 &&
+        now.y1 === next.y1
+          ? now
+          : next,
+      );
+    };
+
+    measure();
+    if (typeof ResizeObserver === 'undefined') return;
+    const watch = new ResizeObserver(measure);
+
+    watch.observe(node);
+    if (node.parentElement != null) watch.observe(node.parentElement);
+    return () => watch.disconnect();
+  }, [node]);
+
+  return [setNode, cover];
+}
+
 function useCanvasSize(): [(node: HTMLDivElement | null) => void, { w: number; h: number }] {
   const [size, setSize] = useState({ w: 718, h: 719 });
   const observer = useRef<ResizeObserver | null>(null);
@@ -294,13 +553,14 @@ export function SeatingArea({ event }: { event: OrganisationEvent }) {
   const desk = useDeskTop();
   const [load, setLoad] = useState<Load>({ kind: 'loading' });
   const [attempt, setAttempt] = useState(0);
+  const answeredAgain = useAnsweredAgain();
 
   usePageTitle(pageTitle(t, [t('seating.area'), event.name]));
 
   useEffect(() => {
     let current = true;
 
-    api.seating(event.id).then(
+    keptLoad(keptKeys.seating(event.id), api.seating(event.id)).then(
       (seating) => current && setLoad({ kind: 'loaded', seating }),
       () => current && setLoad((was) => (was.kind === 'loaded' ? was : { kind: 'failed' })),
     );
@@ -308,13 +568,17 @@ export function SeatingArea({ event }: { event: OrganisationEvent }) {
     return () => {
       current = false;
     };
-  }, [event.id, attempt]);
+  }, [event.id, attempt, answeredAgain]);
 
-  useLiveSeating(
-    event.id,
-    (seating) => setLoad({ kind: 'loaded', seating }),
-    () => setAttempt((n) => n + 1),
-  );
+  useKeptAsShown(keptKeys.seating(event.id), load.kind === 'loaded' ? load.seating : null);
+
+  const presence = usePresence(event);
+
+  useLiveSeating(event.id, {
+    onSeating: (seating) => setLoad({ kind: 'loaded', seating }),
+    onGap: () => setAttempt((n) => n + 1),
+    ...presence.handlers,
+  });
 
   const crumb = (
     <header className="st-top">
@@ -335,6 +599,7 @@ export function SeatingArea({ event }: { event: OrganisationEvent }) {
           </li>
         </ol>
       </nav>
+      <Presence people={presence.people} lost={presence.lost} spoken={presence.spoken} />
       {desk.bell}
     </header>
   );
@@ -388,6 +653,8 @@ export function SeatingArea({ event }: { event: OrganisationEvent }) {
         seating={load.seating}
         onSeating={(seating) => setLoad({ kind: 'loaded', seating })}
         reload={() => setAttempt((n) => n + 1)}
+        rings={presence.rings}
+        onChosen={presence.tell}
       />
     </div>
   );
@@ -398,11 +665,15 @@ function Plan({
   seating,
   onSeating,
   reload,
+  rings,
+  onChosen,
 }: {
   event: OrganisationEvent;
   seating: Seating;
   onSeating: (seating: Seating) => void;
   reload: () => void;
+  rings: Record<string, ColleagueRing[]>;
+  onChosen: (chosen: OwnChoice | null) => void;
 }) {
   const { t } = useTranslation();
   const { layers, covered, setHost } = useDeskLayers();
@@ -410,6 +681,8 @@ function Plan({
   const opener = useRef<string | null>(null);
   const newest = useRef(seating.plan);
   const queue = useRef<Promise<unknown>>(Promise.resolve());
+  const pressedStep = useRef(0);
+  const runningStep = useRef(0);
   const [asking, setAsking] = useState<Asking | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [note, setNote] = useState<TableNote | null>(null);
@@ -428,7 +701,13 @@ function Plan({
     size,
   );
   const canvasNode = useRef<HTMLDivElement | null>(null);
-  const press = useRef<{ from: [number, number]; moved: boolean; pointer: number } | null>(null);
+  const [placeFloat, cover] = useCover();
+  const press = useRef<{
+    from: [number, number];
+    moved: boolean;
+    fingers: boolean;
+    pointer: number;
+  } | null>(null);
   const panned = useRef(false);
   const [several, setSeveral] = useState<string[]>([]);
   const [placements, setPlacements] = useState<Record<string, Placement>>({});
@@ -452,16 +731,72 @@ function Plan({
   const [fold, setFold] = useState<Fold | null>(null);
   const [grid, setGrid] = useState<GridDraft>({ columns: '3', gap: '1' });
   const [bar, setBar] = useState<StepBar | null>(null);
+  const [tab, setTab] = useState<'arrange' | 'seat'>('arrange');
+  const [pickedGuest, setPickedGuest] = useState<string | null>(null);
+  const [pointedAt, setPointedAt] = useState<string | null>(null);
+  const [choice, setChoice] = useState<SeatChoice | null>(null);
+  const choiceFrom = useRef<Element | null>(null);
+  const [focusBack, setFocusBack] = useState<{ from: SVGElement; at: string } | null>(null);
+  const [chairTip, setChairTip] = useState<{ pick: string; tip: ChairTip } | null>(null);
+  const [moveFrom, setMoveFrom] = useState<string | null>(null);
+  const [seatingView, setSeatingView] = useState<SeatingView>('plan');
+  const [cardSection, setCardSection] = useState<string | null>(null);
+  const [tray, setTray] = useState<TrayFilter>({ unsure: false, search: '', groups: [] });
+  const party = plan == null || readOnly ? null : pickedParty(plan, pickedGuest);
+  const dropChoice = () => {
+    choiceFrom.current = null;
+    setChoice(null);
+  };
+  const closeChoice = () => {
+    const back = choiceFrom.current;
+    const at = choice == null ? null : `.st-room [${choice.attribute}="${choice.id}"]`;
+
+    dropChoice();
+    focusWhenFree(() =>
+      back instanceof SVGElement && back.closest('.st-room') != null
+        ? back
+        : at == null
+          ? null
+          : document.querySelector<SVGElement>(at),
+    );
+  };
+  const movingFrom = party?.lead.seat ?? null;
+  /** A chair that takes the keyboard but not the pointer is drawn only while a guest is picked, so focus on it waits for the render that drops the pick before choosing between it and its place. */
+  const focusAfterPick = (from: Element | null, at: string | null) => {
+    if (!(from instanceof SVGElement) || from.closest('.st-room') == null || at == null) return;
+    setFocusBack({ from, at });
+  };
+  useEffect(() => {
+    if (focusBack == null) return;
+    focusWhenFree(() =>
+      focusBack.from.isConnected
+        ? focusBack.from
+        : document.querySelector<SVGElement>(focusBack.at),
+    );
+  }, [focusBack]);
+  const dropPick = () => {
+    const from = document.activeElement;
+    const place = from?.closest(ITEM);
+    const attribute = ITEM_ATTRIBUTES.find((one) => place?.hasAttribute(one));
+
+    if (place !== from && attribute != null)
+      focusAfterPick(from, `.st-room [${attribute}="${place?.getAttribute(attribute)}"]`);
+    setChoice(null);
+    setPickedGuest(null);
+    setBar((was) => (was?.tone === 'undo' ? was : null));
+  };
   const [boxDrawn, setBoxDrawn] = useState<FloorBox | null>(null);
   const boxing = useRef<{
     from: [number, number];
     at: [number, number];
     base: string[];
+    before: { panel: Panel | null; several: string[] };
     moved: boolean;
     pointer: number;
   } | null>(null);
   const spaceHeld = useRef(false);
   const spacePanned = useRef(false);
+  const spaceOn = useRef<{ id: string; shift: boolean } | null>(null);
   const touches = useRef(new Set<number>());
 
   useEffect(() => {
@@ -490,6 +825,18 @@ function Plan({
   const itemOf = (id: string, from: SeatingPlan | null = shown): FloorItem | null =>
     from == null ? null : (floorItems(from).find((item) => item.one.id === id) ?? null);
   const chosenItems = several.length > 1 ? several.flatMap((id) => itemOf(id) ?? []) : [];
+  const ownLead = shownPanel?.kind === 'chair' ? null : (chosenIds[0] ?? null);
+  const ownKind = ownLead == null ? null : (itemOf(ownLead)?.kind ?? null);
+  const ownChoice: OwnChoice | null =
+    shownPanel?.kind === 'chair'
+      ? { kind: 'table', id: shownPanel.id, chair: shownPanel.seat }
+      : ownLead == null || ownKind == null
+        ? null
+        : { kind: ownKind, id: ownLead, chair: null };
+  const ownKey = JSON.stringify(ownChoice);
+  const tellChosen = useEffectEvent(() => onChosen(ownChoice));
+
+  useEffect(() => tellChosen(), [ownKey]);
 
   const dropRefusal = () => setBar((was) => (was?.tone === 'amber' ? null : was));
   const open = (next: Panel | null, onItem = false) => {
@@ -569,23 +916,14 @@ function Plan({
     return () => node.removeEventListener('wheel', wheel);
   }, [hasRoom, zoomTo, panBy, view]);
 
-  useEffect(() => {
-    const node = canvasNode.current;
+  const keepClear = useCallback(
+    (target: Element) => {
+      const node = canvasNode.current;
 
-    if (node == null || !hasRoom) return;
-    let byKey = false;
-    const key = (event: KeyboardEvent) => {
-      byKey = event.key === 'Tab';
-    };
-    const point = () => {
-      byKey = false;
-    };
-    const follow = (event: FocusEvent) => {
-      const target = event.target;
-
-      if (!byKey || !(target instanceof Element) || target.closest('.st-room') == null) return;
+      if (node == null) return;
       const box = node.getBoundingClientRect();
       const at = target.getBoundingClientRect();
+
       const [dx, dy] = intoView(
         {
           x0: at.left - box.left,
@@ -608,6 +946,104 @@ function Plan({
       );
 
       if (dx !== 0 || dy !== 0) panBy(-dx, -dy);
+    },
+    [panBy, view],
+  );
+
+  const keyed = useRef<string | null>(null);
+  const keysShown =
+    keyboard && focusId != null && chosenIds.includes(focusId) && !readOnly && !adding;
+  const focusedItem = useCallback((): Element | null => {
+    const active = document.activeElement;
+
+    return active != null &&
+      canvasNode.current?.contains(active) === true &&
+      active.matches('[data-table], [data-row], [data-seat]')
+      ? active
+      : null;
+  }, []);
+
+  useLayoutEffect(() => {
+    const id = keyed.current;
+
+    keyed.current = null;
+    if (id == null) return;
+    const target = focusedItem();
+
+    if (target == null) return;
+    if (['data-table', 'data-row', 'data-seat'].some((one) => target.getAttribute(one) === id))
+      keepClear(target);
+  });
+
+  useLayoutEffect(() => {
+    const target = keysShown ? focusedItem() : null;
+
+    if (target != null) keepClear(target);
+  }, [keysShown, focusedItem, keepClear]);
+
+  const keyFocus = keyboard && focusId != null;
+
+  useEffect(() => {
+    const node = canvasNode.current;
+
+    if (!keyFocus || node == null || typeof ResizeObserver === 'undefined') return;
+    const tall = new WeakMap<Element, number>();
+    let frame = 0;
+    const clearSettled = () => {
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(() => {
+        const target = focusedItem();
+
+        if (target != null) keepClear(target);
+      });
+    };
+    const grows = new ResizeObserver((entries) => {
+      const grew = entries.some((entry) => {
+        const was = tall.get(entry.target);
+        const now = entry.target.getBoundingClientRect().height;
+
+        tall.set(entry.target, now);
+        return was != null && now > was;
+      });
+
+      if (grew) clearSettled();
+    });
+    const watch = () =>
+      node.querySelectorAll(`:scope > ${BY_KEYS_BAR}`).forEach((bar) => grows.observe(bar));
+    const shows = new MutationObserver((changes) => {
+      watch();
+      const shown = changes.some((change) =>
+        [...change.addedNodes].some((one) => one instanceof Element && one.matches(BY_KEYS_BAR)),
+      );
+
+      if (shown) clearSettled();
+    });
+
+    watch();
+    shows.observe(node, { childList: true });
+    return () => {
+      cancelAnimationFrame(frame);
+      grows.disconnect();
+      shows.disconnect();
+    };
+  }, [keyFocus, focusedItem, keepClear]);
+
+  useEffect(() => {
+    const node = canvasNode.current;
+
+    if (node == null || !hasRoom) return;
+    let byKey = false;
+    const key = (event: KeyboardEvent) => {
+      byKey = event.key === 'Tab';
+    };
+    const point = () => {
+      byKey = false;
+    };
+    const follow = (event: FocusEvent) => {
+      const target = event.target;
+
+      if (!byKey || !(target instanceof Element) || target.closest('.st-room') == null) return;
+      keepClear(target);
     };
 
     window.addEventListener('keydown', key, true);
@@ -618,7 +1054,7 @@ function Plan({
       window.removeEventListener('pointerdown', point, true);
       node.removeEventListener('focusin', follow);
     };
-  }, [hasRoom, panBy, view]);
+  }, [hasRoom, keepClear]);
 
   useEffect(() => {
     const move = (event: PointerEvent) => {
@@ -642,7 +1078,7 @@ function Plan({
     };
     const up = (event: PointerEvent) => {
       if (press.current?.pointer !== event.pointerId) return;
-      panned.current = event.type === 'pointerup' && press.current.moved;
+      panned.current = event.type === 'pointerup' && (press.current.moved || press.current.fingers);
       press.current = null;
     };
 
@@ -676,7 +1112,16 @@ function Plan({
       return;
     }
     if (event.key !== 'Escape') return;
-    if (placing != null) {
+    if (choice != null) {
+      event.preventDefault();
+      closeChoice();
+    } else if (moveFrom != null) {
+      event.preventDefault();
+      setMoveFrom(null);
+    } else if (pickedGuest != null) {
+      event.preventDefault();
+      dropPick();
+    } else if (placing != null) {
       event.preventDefault();
       setPlacing(null);
     } else if (kindMenu) {
@@ -694,24 +1139,6 @@ function Plan({
       open(null);
     }
   });
-
-  useEffect(() => {
-    const keys = (event: KeyboardEvent) => onKey(event);
-    const lift = (event: KeyboardEvent) => {
-      if (event.key !== ' ') return;
-      if (spacePanned.current || (spaceHeld.current && !control(event.target)))
-        event.preventDefault();
-      spaceHeld.current = false;
-      spacePanned.current = false;
-    };
-
-    window.addEventListener('keydown', keys);
-    window.addEventListener('keyup', lift);
-    return () => {
-      window.removeEventListener('keydown', keys);
-      window.removeEventListener('keyup', lift);
-    };
-  }, []);
 
   const attempt = <A,>(
     change: () => Promise<A>,
@@ -757,6 +1184,13 @@ function Plan({
       const said = error instanceof ApiError ? (refusal?.(error) ?? null) : null;
 
       if (said != null) return { refused: said };
+      if (error instanceof ApiError && error.is('seating_guests_seated')) {
+        const line = error.problem.detail ?? t('seating.notSaved');
+
+        if (field != null) return { refused: line };
+        setNotice(line);
+        return { refused: null };
+      }
       if (error instanceof ApiError && field != null) {
         const refused = error.fieldErrors()[field];
 
@@ -819,7 +1253,11 @@ function Plan({
     return version;
   };
 
-  const sendStep = async (items: Placement[], tool: boolean): Promise<void> => {
+  const sendStep = async (
+    items: Placement[],
+    tool: boolean,
+    onSaved?: () => void,
+  ): Promise<void> => {
     const versioned = items.map((item) => ({ ...item, version: baseOf(item) }));
 
     for (let tries = 1; ; tries += 1) {
@@ -837,6 +1275,7 @@ function Plan({
         settle(items);
         setNote((was) => (was != null && items.some((item) => item.id === was.id) ? null : was));
         setSave('saved');
+        onSaved?.();
         return;
       } catch (error) {
         if (error instanceof ApiError && error.status === 412 && tool) {
@@ -882,13 +1321,19 @@ function Plan({
     }
   };
 
-  const arrange = (items: Placement[], tool = false) => {
+  const arrange = (items: Placement[], tool = false, onSaved?: () => void) => {
     if (items.length === 0) return;
     setPlacements((was) => ({ ...was, ...Object.fromEntries(items.map((one) => [one.id, one])) }));
     unsaved.current = null;
     setSave('saving');
-    dropRefusal();
-    queue.current = queue.current.then(() => sendStep(items, tool));
+    if (tool) setBar(null);
+    else dropRefusal();
+    const mine = tool ? (pressedStep.current += 1) : 0;
+
+    queue.current = queue.current.then(() => {
+      runningStep.current = mine;
+      return sendStep(items, tool, onSaved);
+    });
   };
 
   const tryAgain = () => {
@@ -912,20 +1357,247 @@ function Plan({
     }
   };
 
+  const onSpaceUp = useEffectEvent((event: KeyboardEvent) => {
+    const on = spaceOn.current;
+
+    spaceOn.current = null;
+    if (on == null || spacePanned.current) return;
+    const focused = document.activeElement;
+
+    if (!ITEM_ATTRIBUTES.some((attribute) => focused?.getAttribute(attribute) === on.id)) return;
+    const item = itemOf(on.id);
+
+    if (item == null) return;
+    if ((on.shift || event.shiftKey || adding) && !readOnly) toggle(on.id);
+    else open({ kind: item.kind, id: on.id }, true);
+  });
+
+  useEffect(() => {
+    const keys = (event: KeyboardEvent) => onKey(event);
+    const lift = (event: KeyboardEvent) => {
+      if (event.key !== ' ') return;
+      if (spacePanned.current || (spaceHeld.current && !control(event.target)))
+        event.preventDefault();
+      onSpaceUp(event);
+      spaceHeld.current = false;
+      spacePanned.current = false;
+    };
+
+    window.addEventListener('keydown', keys);
+    window.addEventListener('keyup', lift);
+    return () => {
+      window.removeEventListener('keydown', keys);
+      window.removeEventListener('keyup', lift);
+    };
+  }, []);
+
   const versionNow = (id: string): number => itemOf(id, newest.current)?.one.version ?? 0;
   const refNow = (kind: FloorItem['kind'], id: string) => ({ kind, id, version: versionNow(id) });
 
   const stepDone = (words: string, undo: () => void) => {
-    setBar({ tone: 'undo', words, undo });
+    if (runningStep.current === pressedStep.current) setBar({ tone: 'undo', words, undo });
     setHeard(words);
   };
-  const refuseStep = (words: string) => setBar({ tone: 'amber', words });
+  const refuseStep = (words: string) => {
+    setBar({ tone: 'amber', words });
+    setHeard('');
+  };
   const undone = () => setHeard(t('seating.undone'));
   const undo = () => {
     const back = bar?.undo;
 
     setBar(null);
     back?.();
+  };
+
+  const pickGuest = (id: string | null) => {
+    setPickedGuest(id);
+    setMoveFrom(null);
+    setBar(null);
+  };
+  /** In Seat, a guest on a chair is picked from it, to move them; true when there was one. */
+  const pickFrom = (item: FloorItem, seat: number): boolean => {
+    const there =
+      tab === 'seat' && !readOnly && plan != null ? seatedAt(plan, item.one.id, seat) : null;
+
+    if (there == null) return false;
+    pickGuest(there.id);
+    return true;
+  };
+  /** On Tables, a taken chair picks who sits there with nothing picked; their own chair again drops them. */
+  const pickSeated = (item: FloorItem, seat: number) => {
+    const there = readOnly || plan == null ? null : seatedAt(plan, item.one.id, seat);
+
+    if (there == null) return;
+    setTab('seat');
+    if (pickedGuest === there.id) dropPick();
+    else pickGuest(there.id);
+  };
+  const unseatAll = (item: FloorItem) => {
+    const place = itemName(t, item);
+
+    setBar(null);
+    api.unseatGuests(event.id, { kind: item.kind, placeId: item.one.id }).then(
+      (moved) => {
+        onSeating(moved.seating);
+        stepDone(t('seating.tableEmpty', { table: place }), () => undoMoves(moved.moves));
+      },
+      () => refuseStep(t('seating.notSaved')),
+    );
+  };
+  const rename = (item: FloorItem) => {
+    setTab('arrange');
+    open({ kind: item.kind, id: item.one.id }, true);
+    focusField(item.kind === 'row' ? 'label' : 'name');
+  };
+  const moveAll = (from: FloorItem, to: FloorItem) => {
+    const place = itemName(t, to);
+
+    setMoveFrom(null);
+    setBar(null);
+    api
+      .moveEveryone(
+        event.id,
+        { kind: from.kind, id: from.one.id },
+        { kind: to.kind, id: to.one.id },
+      )
+      .then(
+        (moved) => {
+          onSeating(moved.seating);
+          stepDone(t('seating.movedAll', { count: moved.moves.length, table: place }), () =>
+            undoMoves(moved.moves),
+          );
+        },
+        (error: unknown) =>
+          refuseStep(
+            error instanceof ApiError && error.is('seating_table_full')
+              ? t('seating.tableFull', { table: place })
+              : t('seating.notSaved'),
+          ),
+      );
+  };
+  const undoMoves = (moves: SeatingMove[]) => {
+    api.undoSeating(event.id, moves).then(
+      (moved) => {
+        onSeating(moved.seating);
+        undone();
+      },
+      (error: unknown) =>
+        refuseStep(
+          error instanceof ApiError && error.is('seating_undo_stale')
+            ? t('seating.undoRefused')
+            : t('seating.notSaved'),
+        ),
+    );
+  };
+  const seatedWords = (name: string, others: number, apart: boolean, place: string) =>
+    others === 0
+      ? t('seating.seatedOne', { name, table: place })
+      : t(apart ? 'seating.seatedApart' : 'seating.seatedParty', {
+          name,
+          count: others,
+          table: place,
+        });
+  const focusAfterSeat = (item: FloorItem, from: Element | null) =>
+    focusAfterPick(from, `.st-room [${itemAttribute(item.kind) ?? 'data-table'}="${item.one.id}"]`);
+  const seatAt = (item: FloorItem, seat: number | null = null, justGuest = false): void => {
+    if (party == null || plan == null) return;
+    const from = (choice == null ? null : choiceFrom.current) ?? document.activeElement;
+
+    choiceFrom.current = null;
+    const lead = party.lead;
+    const name = lead.fullName ?? '';
+    const place = itemName(t, item);
+    const kind: SeatingPlaceKind = item.kind;
+    const there = seat == null ? null : seatedAt(plan, item.one.id, seat);
+    const ask = (kind: SeatChoice['kind'], words: string, go: SeatChoice['go']) => {
+      if (seatingView === 'tables') {
+        const cancel = { label: t('seating.cancel'), run: () => setBar(null) };
+        const yes = {
+          ...go,
+          run: () => {
+            setBar(null);
+            go.run();
+          },
+        };
+
+        setBar({
+          tone: kind === 'short' ? 'amber' : 'pick',
+          words,
+          acts: kind === 'short' ? [cancel, yes] : [yes, cancel],
+        });
+        return;
+      }
+      choiceFrom.current = document.activeElement;
+      setChoice({
+        kind,
+        id: item.one.id,
+        attribute: itemAttribute(item.kind) ?? 'data-table',
+        name: place,
+        words,
+        go: {
+          ...go,
+          run: () => {
+            dropChoice();
+            go.run();
+          },
+        },
+      });
+    };
+
+    if (there?.id === lead.id) {
+      dropPick();
+      return;
+    }
+    if (there != null) {
+      const theirs = there.fullName ?? '';
+
+      ask('swap', t('seating.swapLine', { table: place, n: seat, name: theirs }), {
+        label: t('seating.swapWith', { name: theirs }),
+        run: () =>
+          api.swapGuests(event.id, lead.id, there.id).then(
+            (moved) => {
+              onSeating(moved.seating);
+              setPickedGuest(null);
+              stepDone(seatedWords(name, 0, false, place), () => undoMoves(moved.moves));
+              focusAfterSeat(item, from);
+            },
+            () => refuseStep(t('seating.race', { name })),
+          ),
+      });
+      return;
+    }
+    setBar(null);
+    dropChoice();
+    api.seatGuest(event.id, lead.id, { kind, id: item.one.id }, { seat, justGuest }).then(
+      (moved) => {
+        onSeating(moved.seating);
+        setPickedGuest(null);
+        const words = seatedWords(name, moved.moves.length - 1, moved.apart, place);
+
+        setBar({ tone: 'undo', words, undo: () => undoMoves(moved.moves), lit: item.one.id });
+        setHeard(words);
+        focusAfterSeat(item, from);
+      },
+      (error: unknown) => {
+        if (!(error instanceof ApiError)) refuseStep(t('seating.notSaved'));
+        else if (error.is('seating_table_full'))
+          refuseStep(t('seating.tableFull', { table: place }));
+        else if (error.is('seating_table_short'))
+          ask(
+            'short',
+            t('seating.tableShort', {
+              table: place,
+              count: error.problem.free ?? 0,
+              name,
+              party: error.problem.party ?? party.companions.length + 1,
+            }),
+            { label: t('seating.seatJust', { name }), run: () => seatAt(item, seat, true) },
+          );
+        else if (error.is('seating_seat_taken')) refuseStep(t('seating.race', { name }));
+        else refuseStep(t('seating.notSaved'));
+      },
+    );
   };
 
   const staleStep = (error: ApiError) => {
@@ -942,15 +1614,28 @@ function Plan({
     reload();
   };
 
-  /** One step through the queue, all or nothing; a 412 keeps the choice and says who changed what. */
-  const runStep = <A extends Seating | SeatingWithChosen>(
-    change: () => Promise<A>,
+  /** One step through the queue, all or nothing; a 412 keeps the choice and says who changed what.
+   *  Queuing it takes the last step's Undo down, which would otherwise act on a plan this step changes,
+   *  and an earlier step saved while this one waits puts no Undo up. */
+  const runStep = <A extends Seating | SeatingWithChosen | SeatingMoved>(
+    change: () => Promise<A> | null,
     done: (answer: A) => void,
+    refused?: () => void,
   ) => {
     setSave('saving');
+    setBar(null);
+    const mine = (pressedStep.current += 1);
+
     queue.current = queue.current.then(async () => {
+      runningStep.current = mine;
       try {
-        const answer = await change();
+        const sending = change();
+
+        if (sending == null) {
+          setSave('saved');
+          return;
+        }
+        const answer = await sending;
         const now = seatingIn(answer);
 
         newest.current = now.plan;
@@ -960,12 +1645,16 @@ function Plan({
       } catch (error) {
         setSave('saved');
         if (error instanceof ApiError && error.status === 412) staleStep(error);
-        else
+        else {
           refuseStep(
-            error instanceof ApiError
-              ? (Object.values(error.fieldErrors())[0] ?? t('seating.notSaved'))
-              : t('seating.notSaved'),
+            error instanceof ApiError && error.is('seating_undo_stale')
+              ? t('seating.undoRefused')
+              : error instanceof ApiError
+                ? (Object.values(error.fieldErrors())[0] ?? t('seating.notSaved'))
+                : t('seating.notSaved'),
           );
+          refused?.();
+        }
       }
     });
   };
@@ -977,11 +1666,7 @@ function Plan({
       return item == null ? [] : [placementOf(item)];
     });
 
-    arrange(moved, true);
-    stepDone(words, () => {
-      arrange(back, true);
-      undone();
-    });
+    arrange(moved, true, () => stepDone(words, () => arrange(back, true, undone)));
   };
 
   const renameStep = (names: { id: string; name: string }[], words: string) => {
@@ -1025,6 +1710,9 @@ function Plan({
     );
   };
 
+  const focusRefusal = () =>
+    focusWhenFree(() => document.querySelector<HTMLElement>('.st-bar [data-said="bar"]'));
+
   const duplicateStep = () => {
     const items = chosenItems;
 
@@ -1038,19 +1726,20 @@ function Plan({
         pick(answer.chosen);
         stepDone(t('seating.duplicatedMany', { count: answer.chosen.length }), () =>
           runStep(
-            () =>
-              api.deleteSeatingItems(
-                event.id,
-                answer.chosen.flatMap((id) => {
-                  const copy = itemOf(id, newest.current);
+            () => {
+              const copies = answer.chosen.flatMap((id) => {
+                const copy = itemOf(id, newest.current);
 
-                  return copy == null ? [] : [refNow(copy.kind, id)];
-                }),
-              ),
+                return copy == null ? [] : [refNow(copy.kind, id)];
+              });
+
+              return copies.length === 0 ? null : api.deleteSeatingItems(event.id, copies, true);
+            },
             () => {
               pick(items.map((item) => item.one.id));
               undone();
             },
+            focusRefusal,
           ),
         );
       },
@@ -1058,29 +1747,48 @@ function Plan({
   };
 
   const deleteStep = (items: FloorItem[]) => {
-    const restored = items.map(restoredOf);
-
     runStep(
       () =>
         api.deleteSeatingItems(
           event.id,
           items.map((item) => refNow(item.kind, item.one.id)),
         ),
-      () => {
+      (answer) => {
+        const freed = answer.moves;
+        const tables = onlyTables(items);
+
         pick([]);
         stepDone(
-          t(onlyTables(items) ? 'seating.deletedEmptyTables' : 'seating.deletedEmptyItems', {
-            count: items.length,
-          }),
+          [
+            t(tables ? 'seating.deletedEmptyTables' : 'seating.deletedEmptyItems', {
+              count: items.length,
+            }),
+            ...(freed.length === 0 ? [] : [t('seating.movedToTrayDone', { count: freed.length })]),
+          ].join(' '),
           () =>
             runStep(
-              () => api.restoreSeatingItems(event.id, restored),
-              (answer) => {
-                pick(answer.chosen);
+              () =>
+                api.restoreSeatingItems(
+                  event.id,
+                  items.map((item) => restoredWith(item, freed)),
+                ),
+              (back) => {
+                pick(back.chosen);
                 undone();
+                focusWhenFree(
+                  () =>
+                    [...document.querySelectorAll<SVGElement>(`.st-room :is(${ITEM})`)].find(
+                      (item) =>
+                        ITEM_ATTRIBUTES.some((name) =>
+                          back.chosen.includes(item.getAttribute(name) ?? ''),
+                        ),
+                    ) ?? null,
+                );
               },
+              focusRefusal,
             ),
         );
+        focusWhenFree(() => document.querySelector<HTMLButtonElement>('.st-bar [data-act="undo"]'));
       },
     );
   };
@@ -1156,7 +1864,7 @@ function Plan({
     if (readOnly || plan == null) return;
     const target = event.target as Element;
 
-    if (!target.matches('[data-table], [data-row], [data-seat]')) return;
+    if (!target.matches(ITEM)) return;
     const id = item.one.id;
     const chosen = chosenIds.includes(id);
     const arrows: Record<string, [number, number]> = {
@@ -1167,6 +1875,22 @@ function Plan({
     };
     const arrow = arrows[event.key];
 
+    if (arrow != null && party != null) {
+      event.preventDefault();
+      const order = inReadingOrder(floorItems(plan));
+      const back = arrow[0] + arrow[1] < 0;
+      const at = order.findIndex((one) => one.one.id === id);
+      const next =
+        at < 0
+          ? order.at(back ? -1 : 0)
+          : order[(at + (back ? -1 : 1) + order.length) % order.length];
+
+      if (next != null)
+        document
+          .querySelector<SVGElement>(`.st-room [${itemAttribute(next.kind)}="${next.one.id}"]`)
+          ?.focus();
+      return;
+    }
     if (arrow != null) {
       if (!chosen) return;
       event.preventDefault();
@@ -1177,7 +1901,11 @@ function Plan({
         arrow[1] * step,
       ]);
 
-      if (mx === 0 && my === 0) return;
+      if (mx === 0 && my === 0) {
+        keepClear(target);
+        return;
+      }
+      keyed.current = id;
       arrange(
         moving.map((one) => ({
           ...placementOf(one),
@@ -1202,8 +1930,10 @@ function Plan({
 
       if (!insideRoom({ ...footprintOf(item), rotation }, plan)) {
         setNotice(t('seating.outside', { name: itemName(t, item) }));
+        keepClear(target);
         return;
       }
+      keyed.current = id;
       arrange([{ ...placementOf(item), rotation }]);
       setHeard(t('seating.turnedTo', { name: itemName(t, item), degrees: rotation }));
       return;
@@ -1229,8 +1959,36 @@ function Plan({
     }
   };
 
+  const panWith = (event: ReactPointerEvent<Element>) => {
+    const box = boxing.current;
+    const fingers = touches.current.size > 1;
+
+    if (box != null && fingers) {
+      boxing.current = null;
+      setBoxDrawn(null);
+      setPanel(box.before.panel);
+      setSeveral(box.before.several);
+    }
+    press.current = {
+      from: [event.clientX, event.clientY],
+      moved: false,
+      fingers,
+      pointer: event.pointerId,
+    };
+  };
+
+  const joinsBox = (event: ReactPointerEvent<Element>) => {
+    if (event.pointerType !== 'touch' || boxing.current == null || touches.current.size === 0)
+      return false;
+    touches.current.add(event.pointerId);
+    dragged.current = true;
+    panWith(event);
+    return true;
+  };
+
   const onItemDown = (event: ReactPointerEvent<Element>, item: FloorItem) => {
-    if (readOnly || placing != null || event.button !== 0) return;
+    if (joinsBox(event)) return;
+    if (readOnly || placing != null || pickedGuest != null || event.button !== 0) return;
     dragged.current = false;
     const id = item.one.id;
     const ids = chosenIds.includes(id) && !event.shiftKey && !adding ? chosenIds : [id];
@@ -1251,7 +2009,7 @@ function Plan({
     table: Table,
     pressed: Handle,
   ) => {
-    if (event.button !== 0) return;
+    if (joinsBox(event) || event.button !== 0) return;
     const at = toCm(event.clientX, event.clientY);
     const handle =
       at == null
@@ -1447,6 +2205,7 @@ function Plan({
   const { addRow, addSeat } = useAddRowAndSeat(ctx);
 
   let canvas: ReactNode = null;
+  let cards: ReactNode = null;
 
   if (plan != null) {
     const { s, ox, oy } = camera;
@@ -1483,7 +2242,7 @@ function Plan({
     const empty = plan.counts.tables + plan.counts.rows + plan.counts.singleSeats === 0;
     const drawn = shown ?? plan;
     const handled =
-      !readOnly && shownPanel?.kind === 'table' && several.length < 2
+      !readOnly && tab === 'arrange' && shownPanel?.kind === 'table' && several.length < 2
         ? (drawn.tables.find((one) => one.id === shownPanel.id) ?? null)
         : null;
     const tipped = tip == null ? null : itemOf(tip.id, drawn);
@@ -1494,6 +2253,57 @@ function Plan({
         ? outlinesOf(drawn, chosenItems, gridOf(chosenItems, columns, gap).moved)
         : [];
 
+    const showChairTip = (shownTip: ChairTip | null) =>
+      setChairTip(
+        party == null || shownTip == null ? null : { pick: party.lead.id, tip: shownTip },
+      );
+    const pickBar: StepBar | null =
+      party == null
+        ? null
+        : {
+            tone: 'pick',
+            words:
+              party.companions.length === 0
+                ? t('seating.pickOne', { name: party.lead.fullName ?? '' })
+                : t('seating.pickParty', {
+                    name: party.lead.fullName ?? '',
+                    count: party.companions.length,
+                  }),
+            acts: [{ label: t('seating.cancel'), run: dropPick }],
+          };
+    const shownBar = bar ?? pickBar;
+
+    cards = (
+      <>
+        <div className="st-view-wrap">
+          {shownBar != null && <StepLine bar={shownBar} onUndo={undo} />}
+          <TablesView
+            plan={plan}
+            section={cardSection}
+            onSection={setCardSection}
+            lit={(item) => chosenIds.includes(item.one.id) || shownBar?.lit === item.one.id}
+            picking={party != null}
+            moving={movingFrom}
+            readOnly={readOnly}
+            onCard={(item) =>
+              party != null
+                ? seatAt(item, item.kind === 'seat' ? 1 : null)
+                : open({ kind: item.kind, id: item.one.id }, true)
+            }
+            onChair={(item, seat) => (party != null ? seatAt(item, seat) : pickSeated(item, seat))}
+          />
+        </div>
+        {!readOnly && <SaveLine state={save} onTryAgain={tryAgain} />}
+        {moveFrom != null && itemOf(moveFrom) != null && (
+          <MoveAllPop
+            plan={plan}
+            from={itemOf(moveFrom)!}
+            onMove={(to) => moveAll(itemOf(moveFrom)!, to)}
+          />
+        )}
+      </>
+    );
+
     canvas = (
       <>
         {empty && !readOnly && placing == null && bar == null ? (
@@ -1502,8 +2312,8 @@ function Plan({
             <p>{t('seating.firstItem')}</p>
           </div>
         ) : (
-          <div className="st-float st-under-views">
-            {!readOnly && !empty && placing == null && (
+          <div className="st-float st-under-views" ref={placeFloat}>
+            {!readOnly && !empty && placing == null && party == null && (
               <ChooseBar
                 plan={plan}
                 adding={adding}
@@ -1516,8 +2326,26 @@ function Plan({
                 onKindMenu={setKindMenu}
               />
             )}
-            {bar != null && <StepLine bar={bar} onUndo={undo} />}
+            {shownBar != null && <StepLine bar={shownBar} onUndo={undo} />}
           </div>
+        )}
+        {moveFrom != null && itemOf(moveFrom) != null && (
+          <MoveAllPop
+            plan={plan}
+            from={itemOf(moveFrom)!}
+            onMove={(to) => moveAll(itemOf(moveFrom)!, to)}
+          />
+        )}
+        {party != null && choice != null && itemOf(choice.id) != null && (
+          <SeatChoicePop
+            kind={choice.kind}
+            name={choice.name}
+            words={choice.words}
+            go={choice.go}
+            left={Math.max(16, ox + itemOf(choice.id)!.one.xCm * s - 165)}
+            top={oy + boxOf(itemOf(choice.id)!).y1 * s + 12}
+            onCancel={closeChoice}
+          />
         )}
         <svg
           className="st-room"
@@ -1525,6 +2353,9 @@ function Plan({
           height={size.h}
           viewBox={`0 0 ${size.w} ${size.h}`}
           role="group"
+          onMouseDown={(event) => {
+            if (spaceHeld.current) event.preventDefault();
+          }}
           onPointerDown={(event) => {
             panned.current = false;
             if (event.button !== 0 || !isFloor(event.target)) return;
@@ -1535,13 +2366,6 @@ function Plan({
               return;
             }
             if (event.pointerType === 'touch') touches.current.add(event.pointerId);
-            const box = boxing.current;
-
-            if (box != null && touches.current.size > 1) {
-              boxing.current = null;
-              setBoxDrawn(null);
-              if (box.moved) pick(box.base);
-            }
             const at = toCm(event.clientX, event.clientY);
 
             if (!readOnly && !spaceHeld.current && touches.current.size < 2 && at != null) {
@@ -1549,16 +2373,13 @@ function Plan({
                 from: at,
                 at: [event.clientX, event.clientY],
                 base: event.shiftKey || adding ? chosenIds : [],
+                before: { panel, several },
                 moved: false,
                 pointer: event.pointerId,
               };
               return;
             }
-            press.current = {
-              from: [event.clientX, event.clientY],
-              moved: false,
-              pointer: event.pointerId,
-            };
+            panWith(event);
           }}
           aria-label={
             plan.roomName == null
@@ -1623,8 +2444,17 @@ function Plan({
                     shownPanel?.kind === 'chair' && shownPanel.id === id ? shownPanel.seat : null
                   }
                   outside={outlined}
-                  onChoose={() => open({ kind: 'table', id }, true)}
-                  onChair={(seat) => open({ kind: 'chair', id, seat })}
+                  picking={party != null}
+                  tinted={party != null && pointedAt === id}
+                  onChairTip={showChairTip}
+                  onChoose={() =>
+                    party != null ? seatAt(item) : open({ kind: 'table', id }, true)
+                  }
+                  onChair={(seat) =>
+                    party != null
+                      ? seatAt(item, seat)
+                      : pickFrom(item, seat) || open({ kind: 'chair', id, seat })
+                  }
                 />
               ) : item.kind === 'row' ? (
                 <RowDrawing
@@ -1640,8 +2470,15 @@ function Plan({
                       : null
                   }
                   outside={outlined}
-                  onChoose={() => open({ kind: 'row', id }, true)}
-                  onChair={(seat) => open({ kind: 'row', id, seat })}
+                  picking={party != null}
+                  tinted={party != null && pointedAt === id}
+                  onChairTip={showChairTip}
+                  onChoose={() => (party != null ? seatAt(item) : open({ kind: 'row', id }, true))}
+                  onChair={(seat) =>
+                    party != null
+                      ? seatAt(item, seat)
+                      : pickFrom(item, seat) || open({ kind: 'row', id, seat })
+                  }
                 />
               ) : (
                 <SingleSeatDrawing
@@ -1652,7 +2489,11 @@ function Plan({
                   oy={oy}
                   chosen={lit}
                   outside={outlined}
-                  onChoose={() => open({ kind: 'seat', id }, true)}
+                  onChoose={() =>
+                    party != null
+                      ? seatAt(item, 1)
+                      : pickFrom(item, 1) || open({ kind: 'seat', id }, true)
+                  }
                 />
               );
 
@@ -1661,6 +2502,8 @@ function Plan({
                 key={id}
                 className={readOnly ? undefined : 'st-movable'}
                 onPointerDown={(event) => onItemDown(event, item)}
+                onPointerEnter={() => setPointedAt(id)}
+                onPointerLeave={() => setPointedAt((now) => (now === id ? null : now))}
                 onClickCapture={(event) => {
                   if (dragged.current) {
                     dragged.current = false;
@@ -1672,8 +2515,14 @@ function Plan({
                 }}
                 onKeyDownCapture={(event) => {
                   if (event.key !== 'Enter' && event.key !== ' ') return;
-                  if (!(event.target as Element).matches('[data-table], [data-row], [data-seat]'))
+                  if (!(event.target as Element).matches(ITEM)) return;
+                  if (event.key === ' ') {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    spaceHeld.current = true;
+                    if (!event.repeat) spaceOn.current = { id, shift: event.shiftKey };
                     return;
+                  }
                   if ((event.shiftKey || adding) && !readOnly) {
                     event.preventDefault();
                     event.stopPropagation();
@@ -1682,8 +2531,7 @@ function Plan({
                 }}
                 onKeyDown={(event) => onItemKey(event, item)}
                 onFocus={(event) => {
-                  if ((event.target as Element).matches('[data-table], [data-row], [data-seat]'))
-                    setFocusId(id);
+                  if ((event.target as Element).matches(ITEM)) setFocusId(id);
                 }}
                 onBlur={() => setFocusId(null)}
               >
@@ -1721,6 +2569,13 @@ function Plan({
               onDown={(event, handle) => onHandleDown(event, handled, handle)}
             />
           )}
+          {party != null &&
+            freeTags(drawn, floorItems(drawn), s, ox, oy, (n) => freeTagWords(t, n)).map((tag) => (
+              <FreeTag key={`free-${tag.id}`} x={tag.x} y={tag.y} n={tag.n} />
+            ))}
+          {party != null && chairTip?.pick === party.lead.id && s >= CHAIRS_FROM_SCALE && (
+            <ChairTipDrawing tip={chairTip.tip} cover={cover} />
+          )}
           {tipped != null && tip != null && (
             <Tip
               x={ox + tipped.one.xCm * s + 26}
@@ -1750,14 +2605,20 @@ function Plan({
             onStop={() => setPlacing(null)}
           />
         )}
-        {keyboard && focusId != null && chosenIds.includes(focusId) && !readOnly && !adding && (
-          <KeysStrip system={system} />
-        )}
+        {keysShown && <KeysStrip system={system} />}
         {adding && !readOnly && <RulesStrip />}
         <p className="visually-hidden" aria-live="polite">
           {heard}
         </p>
-        {!readOnly && <AddTable ctx={ctx} floor={size.w} onRow={addRow} onSeat={addSeat} />}
+        {!readOnly && (
+          <AddTable
+            ctx={ctx}
+            floor={size.w}
+            placing={placing != null}
+            onRow={addRow}
+            onSeat={addSeat}
+          />
+        )}
         <ZoomControls camera={camera} />
         {s >= SMALL_MAP_FROM_SCALE - 1e-9 && (
           <SmallMap plan={plan} view={{ x: -ox / s, y: -oy / s, w: size.w / s, h: size.h / s }} />
@@ -1901,6 +2762,7 @@ function Plan({
     body = (
       <>
         <RoomHead ctx={ctx} plan={plan} />
+        <ShareTables ctx={ctx} plan={plan} />
         {notice != null && <Said>{notice}</Said>}
         {readOnly ? (
           <Line>{t('seating.readOnly')}</Line>
@@ -1916,47 +2778,137 @@ function Plan({
       </>
     );
 
+  function seatBody(plan: SeatingPlan) {
+    const trayOf = (chips: boolean) => (
+      <SeatTray
+        plan={plan}
+        filter={tray}
+        onFilter={setTray}
+        picked={pickedGuest}
+        onPick={pickGuest}
+        readOnly={readOnly}
+        chips={chips}
+      />
+    );
+    const shownPlace =
+      party == null &&
+      (shownPanel?.kind === 'table' || shownPanel?.kind === 'chair' || shownPanel?.kind === 'row')
+        ? shownPanel.id
+        : null;
+    const item = itemOf(movingFrom?.id ?? shownPlace ?? '');
+
+    if (item == null || item.kind === 'seat') return trayOf(true);
+    return (
+      <PlaceGuests
+        plan={plan}
+        item={item}
+        readOnly={readOnly}
+        movingSeat={movingFrom?.seat ?? null}
+        onPickSeated={pickSeated}
+        tray={trayOf(false)}
+        onUnseatAll={unseatAll}
+        onMoveAll={(from) => setMoveFrom(from.one.id)}
+        onRename={rename}
+      />
+    );
+  }
+
   return (
     <LayersContext value={layers}>
-      <div className="st-main" inert={covered}>
-        <div
-          className="st-canvas is-plan"
-          ref={(node) => {
-            canvasNode.current = node;
-            placeCanvas(node);
-          }}
-        >
-          {canvas}
+      <RingsContext value={rings}>
+        <div className="st-main" inert={covered}>
+          <div
+            className={
+              seatingView === 'tables' && plan != null ? 'st-canvas is-tables' : 'st-canvas is-plan'
+            }
+            ref={(node) => {
+              canvasNode.current = node;
+              placeCanvas(node);
+            }}
+          >
+            {seatingView === 'tables' && plan != null ? cards : canvas}
+            {plan != null && (
+              <ViewSwitch
+                view={seatingView}
+                onView={(view) => {
+                  dropChoice();
+                  setSeatingView(view);
+                }}
+              />
+            )}
+          </div>
+          <aside className="st-panel" aria-label={t('seating.panel')}>
+            {plan != null && shownPanel?.kind !== 'start' && (
+              <div className="st-tabs" role="tablist" aria-label={t('seating.panel')}>
+                {(['arrange', 'seat'] as const).map((one) => (
+                  <button
+                    key={one}
+                    type="button"
+                    role="tab"
+                    id={`st-tab-${one}`}
+                    aria-selected={tab === one}
+                    aria-controls="st-panel-body"
+                    className={tab === one ? 'st-tab is-on' : 'st-tab'}
+                    onClick={() => {
+                      setTab(one);
+                      if (one === 'arrange') dropPick();
+                    }}
+                  >
+                    {t(one === 'arrange' ? 'seating.arrangeTab' : 'seating.seatTab')}
+                  </button>
+                ))}
+              </div>
+            )}
+            <div
+              className="st-panel-body"
+              id="st-panel-body"
+              role={plan != null && shownPanel?.kind !== 'start' ? 'tabpanel' : undefined}
+              aria-labelledby={
+                plan != null && shownPanel?.kind !== 'start' ? `st-tab-${tab}` : undefined
+              }
+            >
+              {tab === 'seat' && plan != null && shownPanel?.kind !== 'start'
+                ? seatBody(plan)
+                : body}
+            </div>
+          </aside>
         </div>
-        <aside className="st-panel" aria-label={t('seating.panel')}>
-          <div className="st-panel-body">{body}</div>
-        </aside>
-      </div>
-      <div ref={setHost} className="desk-layers" />
-      {asking?.kind === 'deleteItems' && plan != null && (
-        <DeleteItemsAsk
-          items={asking.ids.flatMap((id) => itemOf(id) ?? [])}
-          onKeep={() => setAsking(null)}
-          onGo={(items) => {
-            setAsking(null);
-            deleteStep(items);
-          }}
-        />
-      )}
-      {asking != null && asking.kind !== 'deleteItems' && plan != null && (
-        <AskFor
-          ctx={ctx}
-          plan={plan}
-          asking={asking}
-          onDone={() => {
-            setAsking(null);
-            open(null);
-          }}
-          onKeep={() => setAsking(null)}
-        />
-      )}
+        <div ref={setHost} className="desk-layers" />
+        {asking?.kind === 'deleteItems' && plan != null && (
+          <DeleteItemsAsk
+            items={asking.ids.flatMap((id) => itemOf(id) ?? [])}
+            onKeep={() => setAsking(null)}
+            onGo={(items) => {
+              setAsking(null);
+              deleteStep(items);
+            }}
+          />
+        )}
+        {asking != null && asking.kind !== 'deleteItems' && plan != null && (
+          <AskFor
+            ctx={ctx}
+            plan={plan}
+            asking={asking}
+            onDone={() => {
+              setAsking(null);
+              open(null);
+            }}
+            onKeep={() => setAsking(null)}
+          />
+        )}
+      </RingsContext>
     </LayersContext>
   );
+}
+
+/** A short party or a taken chair waiting on the host's answer under its table (sc-5030). */
+interface SeatChoice {
+  kind: 'short' | 'swap';
+  id: string;
+  attribute: string;
+  name: string;
+  words: string;
+  go: { label: string; run: () => void };
 }
 
 function itemAttribute(kind: Panel['kind']): string | null {
@@ -2030,6 +2982,9 @@ function ZoomControls({ camera }: { camera: ReturnType<typeof useCamera> }) {
     </div>
   );
 }
+
+/** The bars whose showing or growing pans the plan for a focused item: the small map comes only with a zoom, and a zoom never pans (sc-61042). */
+const BY_KEYS_BAR = '.st-float:not(.st-minimap)';
 
 const SMALL_MAP_WIDTH = 160;
 const SMALL_MAP_SEAT_CM = 44;
@@ -2143,17 +3098,6 @@ function placedIn(answer: Placed): { id: string; name: string; seats: number } |
 /** A panel's buttons are drawn again as it closes, so the one that opened it is found again by its name. */
 function nameOf(element: Element): string {
   return element.getAttribute('aria-label') ?? element.textContent ?? '';
-}
-
-function Swatch({ colour, size = 20 }: { colour: SectionColour | null; size?: 16 | 20 }) {
-  return (
-    <span
-      className={
-        colour == null ? `st-swatch is-none is-${size}` : `st-swatch is-${colour} is-${size}`
-      }
-      aria-hidden="true"
-    />
-  );
 }
 
 /** Blank, unreadable or out of range, said beside the field in the organisation's units. */
@@ -2781,6 +3725,16 @@ export function deletePlanWords(
   return `${t('seating.deletePlanDeletes', { counts: listed })} ${guests}`;
 }
 
+/** What a delete does to the guests seated in what it deletes (sc-4013). */
+function seatedHereWords(
+  t: ReturnType<typeof useTranslation>['t'],
+  seated: readonly { guestId: string }[],
+): string {
+  return seated.length === 0
+    ? t('seating.nobodyHere')
+    : t('seating.seatedHereGoBack', { count: seated.length });
+}
+
 function AskFor({
   ctx,
   plan,
@@ -2823,7 +3777,7 @@ function AskFor({
     return (
       <Ask
         title={t('seating.deleteNamed', { name: table.name })}
-        line={t('seating.nobodyHere')}
+        line={seatedHereWords(t, table.seated)}
         keep={t('seating.keepIt')}
         go={t('seating.deleteNamedGo', { name: table.name })}
         busy={busy ? t('seating.deleteNamedGo', { name: table.name }) : undefined}
@@ -2849,7 +3803,7 @@ function AskFor({
     return (
       <Ask
         title={t('seating.deleteNamed', { name })}
-        line={t('seating.nobodyHere')}
+        line={seatedHereWords(t, (row ?? seat)?.seated ?? [])}
         keep={t('seating.keepIt')}
         go={t('seating.deleteNamedGo', { name })}
         busy={busy ? t('seating.deleteNamedGo', { name }) : undefined}

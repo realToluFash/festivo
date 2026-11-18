@@ -615,20 +615,26 @@ interface AskProps {
   line?: string | undefined;
   keep: string;
   /** None once nothing is left to decide: the line is an alert, and keep is the one action. */
-  go?: string;
+  go?: string | undefined;
   red?: boolean;
+  /** The line answers rather than asks while a verb is still offered, as Make live's end-passed refusal with Change dates does: an alert, and the title takes the focus when the dialog turns into it while open. False keeps the line plain with no verb, as Make live's offer that cannot send does. */
+  told?: boolean | undefined;
   /** Grey until what the verb needs is there, as Delete is before the name matches; pressing it still calls onGo, to say what is missing. */
   off?: boolean;
   /** The verb's words while its answer is on its way: it turns and is off, and the way back and Escape wait. */
   busy?: string | undefined;
   /** Why the answer did not go, under the line and any body; the verb tries again. */
   failed?: string | undefined;
-  /** Where the focus starts, when not on the way back. */
+  /** Where the focus starts, when not on the way back. When it leaves the dialog while the focus is outside it, the focus goes to the verb. */
   first?: RefObject<HTMLElement | null> | undefined;
-  /** The focus starts on the title, as a dialog that has turned into another question does. */
+  /** The focus starts on the way back even when the dialog opens failed or going, as Make live's does. */
+  keepFirst?: boolean | undefined;
+  /** The focus starts on the title, as a dialog that has turned into another question does, and moves there when it turns while open. */
   titleFirst?: boolean | undefined;
   /** More of the body under the line, which stays its description. */
   children?: ReactNode;
+  /** The body sits at the dialog's own gap rather than its wider one, as Make live's question with Host 1 does. */
+  flat?: boolean | undefined;
   /** Ids in that body that describe the dialog too, after the line, as Delete event's list and restore window do. */
   describedBy?: string | undefined;
   onKeep: () => void;
@@ -649,12 +655,15 @@ function AskBox(props: AskProps) {
     keep,
     go,
     red = true,
+    told,
     off = false,
     busy,
     failed,
     first,
+    keepFirst = false,
     titleFirst = false,
     children,
+    flat = false,
     describedBy,
     onKeep,
     onGo,
@@ -664,10 +673,10 @@ function AskBox(props: AskProps) {
   const heading = useRef<HTMLHeadingElement>(null);
   const keepButton = useRef<HTMLButtonElement>(null);
   const goButton = useRef<HTMLButtonElement>(null);
-  const [onVerb] = useState(busy != null || failed != null);
+  const [onVerb] = useState(!keepFirst && (busy != null || failed != null));
   const waits = busy != null;
   const said =
-    line == null ? null : go == null ? (
+    line == null ? null : (told ?? go == null) ? (
       <AskAlert id={`${id}-line`}>{line}</AskAlert>
     ) : (
       <p id={`${id}-line`}>{line}</p>
@@ -680,6 +689,24 @@ function AskBox(props: AskProps) {
     onKeep,
     waits,
   );
+
+  const titled = titleFirst || told === true;
+  const [titledOpening] = useState(titled);
+
+  useEffect(() => {
+    if (titled && !titledOpening) heading.current?.focus();
+  }, [titled, titledOpening]);
+
+  const leads = first != null;
+  const led = useRef(leads);
+
+  useEffect(() => {
+    const left = led.current && !leads;
+    led.current = leads;
+    if (left && !(box.current?.contains(document.activeElement) ?? true)) {
+      goButton.current?.focus();
+    }
+  }, [leads]);
 
   return (
     <>
@@ -694,12 +721,13 @@ function AskBox(props: AskProps) {
           [line == null ? null : `${id}-line`, describedBy].filter(Boolean).join(' ') || undefined
         }
       >
-        <h2 ref={heading} id={`${id}-title`} tabIndex={titleFirst ? -1 : undefined}>
+        <h2 ref={heading} id={`${id}-title`} tabIndex={titled ? -1 : undefined}>
           {title}
         </h2>
-        {children == null ? (
+        {children == null || flat ? (
           <>
             {said}
+            {children}
             {alert}
           </>
         ) : (
@@ -753,7 +781,7 @@ function AskBox(props: AskProps) {
   );
 }
 
-function AskAlert({ id, children }: { id?: string; children: ReactNode }) {
+export function AskAlert({ id, children }: { id?: string; children: ReactNode }) {
   return (
     <p id={id} className="desk-ask-alert" role="alert">
       <Glyph name="alert" size={18} weight={2.2} />

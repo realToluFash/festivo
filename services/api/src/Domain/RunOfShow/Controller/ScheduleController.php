@@ -9,16 +9,22 @@ use App\Domain\RunOfShow\ScheduleEditor;
 use App\Domain\RunOfShow\ScheduleRules;
 use App\Entity\Event;
 use App\Entity\ScheduleItem;
+use App\Entity\SchedulePress;
 use App\Entity\User;
 use App\Enum\ErrorCode;
 use App\Enum\Permission;
+use App\Enum\PressKind;
 use App\Http\Access\InThisEvent;
 use App\Http\Access\Policy\InEvent;
 use App\Http\Exception\ApiException;
 use App\Http\Input;
 use App\Realtime\SubscriberTokenIssuer;
 use App\Repository\EventRepository;
+use DateTimeImmutable;
+use Psl\Hash;
+use Psl\Str;
 use Psl\Type;
+use Psr\Clock\ClockInterface;
 use Symfony\Bundle\SecurityBundle\Security;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
@@ -35,6 +41,7 @@ final readonly class ScheduleController
         private ScheduleEditor $scheduleEditor,
         private ScheduleSerialiser $scheduleSerialiser,
         private SubscriberTokenIssuer $subscriberTokenIssuer,
+        private ClockInterface $clock,
     ) {
     }
 
@@ -69,23 +76,27 @@ final readonly class ScheduleController
         return $this->schedule($event, Response::HTTP_OK, $item);
     }
 
-    /** Marks it started now, by the server's clock; its planned start does not move (sc-1404). */
-    #[Route('/api/events/{eventId}/schedule/items/{itemId}/start', name: 'schedule_items_start', methods: ['POST'])]
+    /** Night-screen presses (sc-3895): `pressedAt` is the presser's corrected clock, now when absent; 409 with `superseded_by` when it changes nothing. */
+    #[Route('/api/events/{eventId}/schedule/items/{itemId}/presses', name: 'schedule_items_press', methods: ['POST'])]
     #[InEvent(Permission::RunOfShowManage)]
-    public function start(string $eventId, #[InThisEvent('itemId')] ScheduleItem $item): JsonResponse
+    public function press(Request $request, string $eventId, #[InThisEvent('itemId')] ScheduleItem $item): JsonResponse
     {
         $event = $this->event($eventId);
-        $this->scheduleEditor->start($event, $item, $this->user());
+        $key = Str\trim($request->headers->get('Idempotency-Key') ?? '');
 
-        return $this->schedule($event, Response::HTTP_OK, $item);
-    }
+        if ('' === $key || Str\length($key) > SchedulePress::KEY_MAXIMUM) {
+            throw new ApiException(ErrorCode::IdempotencyKeyRequired, 'run_of_show.idempotency_key_required');
+        }
 
-    #[Route('/api/events/{eventId}/schedule/items/{itemId}/finish', name: 'schedule_items_finish', methods: ['POST'])]
-    #[InEvent(Permission::RunOfShowManage)]
-    public function finish(string $eventId, #[InThisEvent('itemId')] ScheduleItem $item): JsonResponse
-    {
-        $event = $this->event($eventId);
-        $this->scheduleEditor->finish($event, $item, $this->user());
+        $body = Input::body($request, Type\shape([
+            'kind' => Type\backed_enum(PressKind::class),
+            'pressedAt' => Type\optional(Type\nullable(Type\string())),
+        ]));
+        $sentAt = $body['pressedAt'] ?? null;
+        $pressedAt = null === $sentAt ? $this->clock->now() : (DateTimeImmutable::createFromFormat(\DATE_RFC3339_EXTENDED, $sentAt) ?: DateTimeImmutable::createFromFormat(\DATE_ATOM, $sentAt) ?: throw new ApiException(ErrorCode::BadRequest, 'run_of_show.pressed_at_invalid'));
+        $fingerprint = Hash\hash($item->getId()->toRfc4122() . "\0" . $body['kind']->value . "\0" . ($sentAt ?? ''), Hash\Algorithm::Sha256);
+
+        $this->scheduleEditor->press($event, $item, $body['kind'], $pressedAt, $key, $fingerprint, $this->user());
 
         return $this->schedule($event, Response::HTTP_OK, $item);
     }

@@ -6,14 +6,24 @@ import {
   type GuestCalendarLink,
   type GuestPage,
   type GuestPagePhase,
+  realtimeTopic,
 } from '@soirely/api-client';
 import { formatEventClock, hostsLine, listFormat, wallDay } from '@soirely/domain';
-import { type ReactNode, useEffect, useId, useLayoutEffect, useRef, useState } from 'react';
+import {
+  type ReactNode,
+  useEffect,
+  useId,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import { useOutletContext } from 'react-router';
 
 import { api } from '../../api.ts';
 import { Glyph } from '../../components/Glyph.tsx';
+import { Thanks } from '../../components/Thanks.tsx';
 import { currentLocale, dateLocale } from '../../i18n/index.ts';
 import { meshFor } from '../../mesh.ts';
 import { offButton } from '../../offButton.ts';
@@ -22,6 +32,8 @@ import { useServerNow } from '../../serverNow.ts';
 import { Filled, Notice, TextAction, dayOf, format, readerZone, wallDayOf } from './GuestParts.tsx';
 import { InvalidInvitation } from './InvalidInvitation.tsx';
 import { Programme } from './Programme.tsx';
+import { YourTable } from './YourTable.tsx';
+import { useHubTopics } from '../app/events/useHubTopics.ts';
 import { KITCHEN_SAVED_ID, KitchenCheck, KitchenSaved, KitchenStep } from './Kitchen.tsx';
 import { openIn, saveAgain, useGuestLanguage } from './guestLanguage.ts';
 import {
@@ -318,22 +330,28 @@ function Card({ token, first }: { token: string; first: GuestPage }) {
     setHeld(had);
   }
 
+  function askAgain(): void {
+    const asked = sends.current;
+    api.guestPage(token).then(
+      (next) => {
+        if (asked === sends.current) refreshed(next);
+      },
+      (error: unknown) => {
+        if (error instanceof ApiError && error.status === 404) setGone(true);
+      },
+    );
+  }
+
   useEffect(() => {
-    const timer = setInterval(() => {
-      const asked = sends.current;
-      api.guestPage(token).then(
-        (next) => {
-          if (asked === sends.current) refreshed(next);
-        },
-        (error: unknown) => {
-          if (error instanceof ApiError && error.status === 404) setGone(true);
-        },
-      );
-    }, REFRESH_MS);
+    const timer = setInterval(askAgain, REFRESH_MS);
 
     return () => clearInterval(timer);
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- refreshed reads only setters and refs
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- askAgain reads only the token, setters and refs
   }, [token]);
+
+  const topics = useMemo(() => [realtimeTopic('EventGuestPages', page.event.id)], [page.event.id]);
+
+  useHubTopics(topics, () => api.guestPageSubscription(token), askAgain, askAgain);
 
   function send(answer: GuestAnswer, onFail: (refused: boolean) => void): void {
     sends.current += 1;
@@ -628,6 +646,9 @@ function Card({ token, first }: { token: string; first: GuestPage }) {
               focus('change');
             }}
           />
+        )}
+        {tell.kind === 'card' && (view.kind === 'recorded' || view.kind === 'closed') && (
+          <YourTable page={page} />
         )}
         {tell.kind === 'card' && forTheDay(page, view) && page.calendar != null && (
           <AddToCalendar calendar={page.calendar} />
@@ -1015,6 +1036,13 @@ function Shown({
       if (page.phase === 'finished') {
         return (
           <div className="gp-ended">
+            {page.event.thankYou != null && (
+              <Thanks
+                line={page.event.thankYou}
+                hosts={page.event.hosts}
+                locale={currentLocale()}
+              />
+            )}
             <p className="gp-sub">{said}</p>
           </div>
         );

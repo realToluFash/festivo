@@ -10,7 +10,7 @@ import {
 } from './timeline.ts';
 
 function milestone(at: string, title: string, owner: Milestone['owner'] = 'event'): Milestone {
-  return { at, title, note: null, owner, area: 'events', action: null };
+  return { at, title, note: null, owner, area: 'events', action: null, done: false };
 }
 
 const KITCHEN = milestone('2026-10-12T12:00:00+02:00', 'Send final numbers to the kitchen', 'you');
@@ -35,6 +35,14 @@ describe('Next up', () => {
 
     expect(nextUp([STARTS, KITCHEN, SEATING], now)).toBe(KITCHEN);
     expect(nextUp([STARTS, SEATING], now)).toBe(STARTS);
+  });
+
+  it('passes a "You" milestone its area marks done, so it is neither overdue nor Next up', () => {
+    const now = new Date('2026-10-15T00:00:00Z');
+    const shared = { ...KITCHEN, title: 'Tables shared', done: true };
+
+    expect(nextUp([STARTS, shared], now)).toBe(STARTS);
+    expect(markedMilestones([shared], now).map(({ standing }) => standing)).toEqual(['passed']);
   });
 
   it('is nothing once every milestone has passed', () => {

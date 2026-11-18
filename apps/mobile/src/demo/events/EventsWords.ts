@@ -351,6 +351,8 @@ const KEYED: Record<string, (values: Record<string, string | number>) => string>
     `There is no ${String(v.time)} on ${String(v.day)} in ${String(v.zone)}: the clocks go forward that night. It will be saved as ${String(v.savedAs)}.`,
   'eventForm.clocksSkipNextDay': (v) =>
     `There is no ${String(v.time)} on ${String(v.day)} in ${String(v.zone)}: the clocks go forward that night. It will be saved as ${String(v.savedAs)} on ${String(v.savedDay)}.`,
+  'eventHosts.blank': () => W.hostBlank,
+  'eventHosts.duplicate': (v) => say.hostDuplicate(String(v.name)),
   'eventHosts.tooLong': (v) =>
     `A host’s name can be at most ${String(v.most)} characters. This one has ${String(v.length)}.`,
 };

@@ -19,7 +19,7 @@ vi.mock('expo-network', () => ({
 }));
 vi.mock('./appAgent.ts', () => ({ appAgent: 'Soirely/test' }));
 vi.mock('./config.ts', () => ({ config: { apiBaseUrl: 'http://api.test' } }));
-vi.mock('./i18n/index.ts', () => ({ currentLocale: () => 'en' }));
+vi.mock('./i18n/index.ts', () => ({ currentLocale: () => 'en', dateLocale: () => 'en' }));
 vi.mock('./installId.ts', () => ({ installId: () => 'the-install' }));
 
 const B: Account = {

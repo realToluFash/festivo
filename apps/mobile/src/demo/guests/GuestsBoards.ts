@@ -153,7 +153,7 @@ const GUESTS: Record<GuestsState, Board> = {
   groupNew: ['Edit, Group, a new group', 'Family is a new group. It’s made when you save.'],
   groupTaken: [
     'Edit, Group, taken on Save',
-    'There’s already a group called Family. Nothing saved',
+    'There is already a group called Family. Nothing saved',
   ],
   groupLimit: ['Edit, Group, 50 groups', 'Choose one, or use Soirely on the web to delete one'],
   needsEmpty: ['Edit, Needs, none recorded', 'The section closed: None recorded'],
@@ -309,6 +309,16 @@ export const GUESTS_BOARDS: readonly { title: string; what: string; href: string
     title: 'Scan a code · offline, nothing waiting',
     what: 'Offline since 18:31 alone',
     href: '/demo/guests/scan?state=offline&waiting=0',
+  },
+  {
+    title: 'Check-in · nobody seated yet',
+    what: 'No seat line on any row, as before seating (sc-60684)',
+    href: '/demo/guests/check-in?state=door&seats=none',
+  },
+  {
+    title: 'Scan a code · nobody seated yet',
+    what: 'Inês and Rui with no seat line (sc-60684)',
+    href: '/demo/guests/scan?state=valid&seats=none',
   },
   ...EVENTS.map(([state, title, what]) => ({ title, what, href: `/demo/events?state=${state}` })),
 ];

@@ -85,7 +85,7 @@ function openerNow(): Element | null {
   return active == null || active === document.body ? (pressed ?? active) : active;
 }
 
-/** Focus goes in and comes back to the opener, or to the page's title when the opener has gone; only the top layer hears Escape and Tab. */
+/** Focus goes in and comes back to the opener, or to the page's title when the opener has gone, unless what the dialog did has already put it somewhere; only the top layer hears Escape and Tab. */
 export function useDeskDialog(
   dialog: RefObject<HTMLElement | null>,
   first: RefObject<HTMLElement | null>,
@@ -120,8 +120,9 @@ export function useDeskDialog(
       const to = opener.current;
       if (open.current) return;
       const lost = document.activeElement == null || document.activeElement === document.body;
+      if (!lost) return;
       if (!(to instanceof HTMLElement || to instanceof SVGElement) || !to.isConnected) {
-        if (lost) document.querySelector<HTMLElement>('.desk-main h1')?.focus();
+        document.querySelector<HTMLElement>('.desk-main h1')?.focus();
       } else if (to.closest('[inert]') == null) to.focus();
       else if (tries > 0) window.requestAnimationFrame(() => back(tries - 1));
     };

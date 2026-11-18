@@ -54,6 +54,13 @@ export function checkInStateOf(value: string | null): CheckInState {
   return CHECK_IN_STATES.find((one) => one === value) ?? 'list';
 }
 
+/** sc-60684: whether anyone on the event has a taken seat; until then no row carries a seat line. */
+export type Seating = 'seated' | 'none';
+
+export function seatingOf(value: string | null): Seating {
+  return value === 'none' ? 'none' : 'seated';
+}
+
 export function holderOf(value: string | null): Holder {
   return value === 'code' ? 'code' : 'shift';
 }
@@ -162,7 +169,23 @@ export const CW = {
     signOutLater: 'Signing out has its own design (sc-4235).',
   },
   connectionBack: 'Demo: the connection is back',
+  noSeat: 'No seat yet',
 } as const;
+
+/** Taken seats, in sc-4022's words with the host's own names; the held companions, the unseated and walk-ins read No seat yet. */
+const SEATS: Readonly<Record<string, string>> = {
+  adaeze: 'Row C, seat 14 · Upper balcony east',
+  bisi: 'Table 4 · Main hall',
+  kemi: 'Table 4 · Main hall',
+  folasade: 'Table 2',
+  marie: 'Seat 3 · By the bar',
+  tunde: 'Table 1 · Main hall',
+  zainab: 'Table 2',
+};
+
+export function seatOf(id: string, seating: Seating): string | null {
+  return seating === 'none' ? null : (SEATS[id] ?? CW.noSeat);
+}
 
 const ARRIVED_BEFORE: Readonly<Record<string, [string, string]>> = {
   bisi: ['19:31', OTHER],
@@ -466,6 +489,7 @@ export const CHECK_IN_PAGES: readonly { name: string; states: readonly DemoLink[
       at('not_recorded', 'Not recorded'),
       at('live', 'Another device’s arrival, not announced'),
       at('empty', 'Nobody on the list yet'),
+      { to: '/demo/check-in?state=list&seats=none', name: 'Nobody seated yet: no seat line' },
     ],
   },
   {

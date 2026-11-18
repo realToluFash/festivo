@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { RouterProvider, createMemoryRouter } from 'react-router';
 import { beforeEach, describe, expect, it } from 'vitest';
 
@@ -126,6 +126,52 @@ describe('the event Menu (sc-3902)', () => {
     ).toBeTruthy();
   });
 
+  it('says the library is loading, and quotes no search, before it has loaded', SLOW, async () => {
+    await menu('addDishLoading');
+
+    expect(document.getElementById('mc-found')?.textContent).toBe(CW.libraryLoading);
+    expect(within(panel()).queryByText(CW.noMatch(''))).toBeNull();
+    expect(within(panel()).queryByRole('button', { name: CW.startNew('') })).toBeNull();
+  });
+
+  it('says a library that did not load did not, and loads it again', SLOW, async () => {
+    await menu('addDishLibraryFailed');
+
+    expect(document.getElementById('mc-found')?.textContent).toBe(CW.libraryFailed);
+    expect(within(panel()).queryByText(CW.libraryEmpty)).toBeNull();
+    expect(within(panel()).queryByRole('button', { name: CW.startNewBlank })).toBeNull();
+    fireEvent.click(within(panel()).getByRole('button', { name: CW.tryAgain }));
+    expect(document.getElementById('mc-found')?.textContent).toBe(CW.libraryLoading);
+    expect(document.activeElement?.id).toBe('mc-find');
+    expect(within(panel()).queryByRole('button', { name: CW.tryAgain })).toBeNull();
+    await waitFor(() => {
+      expect(document.getElementById('mc-found')?.textContent).toMatch(/ in the menu library$/);
+    }, WAIT);
+  });
+
+  it('comes back to did-not-load when Try again fails again', SLOW, async () => {
+    await menu('addDishLibraryFailsAgain');
+
+    fireEvent.click(within(panel()).getByRole('button', { name: CW.tryAgain }));
+    expect(document.getElementById('mc-found')?.textContent).toBe(CW.libraryLoading);
+    await within(panel()).findByRole('button', { name: CW.tryAgain }, WAIT);
+    expect(document.getElementById('mc-found')?.textContent).toBe(CW.libraryFailed);
+    expect(within(panel()).queryByRole('button', { name: CW.startNewBlank })).toBeNull();
+    fireEvent.click(within(panel()).getByRole('button', { name: CW.tryAgain }));
+    await waitFor(() => {
+      expect(document.getElementById('mc-found')?.textContent).toMatch(/ in the menu library$/);
+    }, WAIT);
+  });
+
+  it('says an empty library has no dishes, and starts a new dish', SLOW, async () => {
+    await menu('addDishEmptyLibrary');
+
+    expect(within(panel()).getByText(CW.libraryEmpty)).toBeTruthy();
+    expect(within(panel()).queryByText(CW.noMatch(''))).toBeNull();
+    fireEvent.click(within(panel()).getByRole('button', { name: CW.startNewBlank }));
+    expect(within(panel()).getByLabelText(LW.name)).toHaveProperty('value', '');
+  });
+
   it('finds nothing and starts a new dish with the name', SLOW, async () => {
     await menu('addDishNoMatch');
 
@@ -212,6 +258,22 @@ describe('the event Menu (sc-3902)', () => {
     expect(screen.queryByRole('button', { name: /^(Move|Edit|Delete|Remove) /u })).toBeNull();
     expect(within(card('Starter')).getByText(CW.same)).toBeTruthy();
     expect(within(card('Dessert')).getByText(CW.skip)).toBeTruthy();
+  });
+
+  it.each([
+    ['readOnlyCanView', 'Can view'],
+    ['readOnlyCheckIn', 'Can check guests in'],
+  ] as const)('names a Member’s role on the event in %s', SLOW, async (state, role) => {
+    await menu(state);
+
+    expect(
+      screen.getByText(
+        `Your role on this event, ${role}, can see this menu but not change it. Someone whose role can change Menu can.`,
+      ),
+    ).toBeTruthy();
+    expect(screen.queryByText(CW.lock)).toBeNull();
+    expect(screen.queryByRole('button', { name: CW.addCourse })).toBeNull();
+    expect(screen.queryByRole('button', { name: /^(Move|Edit|Delete|Remove) /u })).toBeNull();
   });
 
   it('says No menu yet, with Add course only for a manager', SLOW, async () => {

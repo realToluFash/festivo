@@ -25,11 +25,9 @@ export interface NightTrack {
   items: readonly NightItem[];
 }
 
-export interface Lost {
-  title: string;
-  by: string;
-  at: number;
-}
+/** A losing replay: who won and when, from the 409's `superseded_by`, or, when it names nobody, the 409's own words. */
+export type Lost =
+  { title: string; by: string; at: number } | { title: string; by: null; said: string };
 
 export interface Night {
   clock: number;
@@ -67,6 +65,8 @@ export const NW = {
   everything: 'That’s everything.',
   endNow: 'End now',
   tryNow: 'Try now',
+  failed: 'The run of show did not load.',
+  tryAgain: 'Try again',
   dismiss: 'Dismiss',
   viewOnly: 'View only',
   viewOnlyLine: 'You can follow the night here, not change it.',
@@ -569,6 +569,16 @@ export const NIGHT_STATES = {
     hall: { ...GAP, dance: ['20:31'] },
     lost: { title: 'First dance', by: 'Ifeoma Nduka', at: at('20:31') },
   },
+  replay_lost_unnamed: {
+    name: 'A losing replay that names nobody: the 409’s own words',
+    clock: '20:06',
+    hall: SPEAKING,
+    lost: {
+      title: 'First dance',
+      by: null,
+      said: 'This item has not started yet, so it cannot be done.',
+    },
+  },
   read_only: {
     name: 'View only (run_of_show.read)',
     clock: '20:02',
@@ -721,6 +731,27 @@ export const NIGHT_PAGES: readonly { name: string; states: readonly DemoLink[] }
       {
         to: nightAtUrl('end_behind', 'as=no-events-manage'),
         name: 'end_behind without events.manage: no End now',
+      },
+    ],
+  },
+];
+
+/** sc-65646: offline, moving to another area keeps the event this tab loaded, and coming back keeps the night and its count. */
+export const NIGHT_KEPT_PAGES: readonly { name: string; states: readonly DemoLink[] }[] = [
+  {
+    name: 'Offline, another area keeps the event, and the night keeps its count',
+    states: [
+      {
+        to: nightAtUrl(undefined, 'tab=fresh'),
+        name: 'Online: Lose the connection, press Done, open Guests, then Schedule > Run of show. Guests shows its list if it loaded first in this tab, its own failure line if not',
+      },
+      {
+        to: nightAtUrl('offline'),
+        name: 'Loaded, then offline with 2 presses waiting: open Overview or Guests, come back',
+      },
+      {
+        to: `/demo/events/${NIGHT_EVENT}?tab=offline`,
+        name: 'A link opened offline, never loaded in this tab: The event did not load',
       },
     ],
   },

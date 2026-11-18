@@ -13,6 +13,7 @@ import { Navigate, useParams } from 'react-router';
 import { api } from '../../../api.ts';
 import { Refreshing } from '../../../components/OfflineBand.tsx';
 import { keepsWhatLoaded, useOffline } from '../../../offline.ts';
+import { keepLoaded, keptFor, keptKeys, rekeep } from '../../../tabKept.ts';
 import { dateLocale } from '../../../i18n/index.ts';
 import { ArrivalNotice } from '../../../components/PageArrival.tsx';
 import { pageTitle, usePageTitle } from '../../../pageTitle.ts';
@@ -28,7 +29,7 @@ import { EventPeople } from './EventPeople.tsx';
 import { GuestsArea, GuestsGone } from './GuestsArea.tsx';
 import { RunArea } from './RunArea.tsx';
 import { MenuArea } from './MenuArea.tsx';
-import { ScheduleArea } from './ScheduleArea.tsx';
+import { ScheduleOrNight } from './NightArea.tsx';
 import { SeatingArea } from './SeatingArea.tsx';
 import { RosterArea } from './RosterArea.tsx';
 import { PAGE_NEEDS } from './handoff.ts';
@@ -38,6 +39,7 @@ import { EventCrumb, Overview, PhaseChange } from './EventOverview.tsx';
 import { useGoneEvent, useShowEvent } from './EventNav.tsx';
 import { Arrived, Skeleton } from '../../../components/Skeleton.tsx';
 import { NotFound } from '../../public/NotFound.tsx';
+import '../../../components/eventsDesk.css';
 
 type Load =
   | { kind: 'loading' }
@@ -128,7 +130,8 @@ function EventOf({
   const heading = useRef<HTMLHeadingElement>(null);
   const failedLine = useRef<HTMLParagraphElement>(null);
   const land = useFocusOnceShown();
-  const { watch, refreshing } = useOffline({
+  const answered = useRef<Date | null>(null);
+  const { watch, keep, refreshing } = useOffline({
     loaded: load.kind === 'loaded',
     reload: () => setRefresh((n) => n + 1),
     title: heading,
@@ -138,8 +141,9 @@ function EventOf({
     let current = true;
 
     watch(api.taggedEvent(eventId)).then(
-      ({ event, tag }) =>
-        current &&
+      ({ event, tag }) => {
+        if (!current) return;
+        answered.current = new Date();
         setLoad((was) => {
           if (event.organisationId !== organisationId) return { kind: 'notFound' };
 
@@ -150,22 +154,43 @@ function EventOf({
           } catch {
             return { kind: 'failed' };
           }
-        }),
-      (error: unknown) =>
-        current &&
+        });
+      },
+      (error: unknown) => {
+        if (!current) return;
+        const found = keepsWhatLoaded(error)
+          ? keptFor<{ event: OrganisationEvent; tag: string }>(keptKeys.event(eventId), error)
+          : null;
+        const kept = found?.value.event.organisationId === organisationId ? found : null;
+
+        if (kept != null) keep(kept.at);
         setLoad((was) =>
           was.kind === 'loaded' && keepsWhatLoaded(error)
             ? was
-            : error instanceof ApiError && error.status === 404
-              ? { kind: 'notFound' }
-              : { kind: 'failed' },
-        ),
+            : kept != null
+              ? { kind: 'loaded', ...kept.value }
+              : error instanceof ApiError && error.status === 404
+                ? { kind: 'notFound' }
+                : { kind: 'failed' },
+        );
+      },
     );
 
     return () => {
       current = false;
     };
-  }, [organisationId, eventId, attempt, refresh, watch]);
+  }, [organisationId, eventId, attempt, refresh, watch, keep]);
+
+  useEffect(() => {
+    if (load.kind !== 'loaded') return;
+
+    const shown = { event: load.event, tag: load.tag };
+    const key = keptKeys.event(eventId);
+
+    if (answered.current == null) rekeep(key, shown);
+    else keepLoaded(key, shown, answered.current);
+    answered.current = null;
+  }, [load, eventId]);
   useShowEvent(eventId, load.kind === 'loaded' ? load.event : undefined);
   useGoneEvent(eventId, page === 'guests' && load.kind === 'notFound');
 
@@ -188,7 +213,7 @@ function EventOf({
 
   if (page === 'schedule' && load.kind === 'loaded')
     return canOn(load.event, PAGE_NEEDS.schedule) ? (
-      <ScheduleArea event={load.event} />
+      <ScheduleOrNight event={load.event} />
     ) : (
       <Withheld />
     );
@@ -275,30 +300,34 @@ function EventOf({
     );
 
   return (
-    <div className="event-page">
-      <EventCrumb name={load.kind === 'loaded' ? load.event.name : null}>
-        {refreshing && <Refreshing />}
-      </EventCrumb>
+    <AskHost>
+      {(covered) => (
+        <div className="event-page" inert={covered}>
+          <EventCrumb name={load.kind === 'loaded' ? load.event.name : null}>
+            {refreshing && <Refreshing />}
+          </EventCrumb>
 
-      {states}
+          {states}
 
-      {load.kind === 'loaded' && (
-        <Arrived>
-          <EventTop
-            event={load.event}
-            tag={load.tag}
-            heading={heading}
-            onChange={(event, tag) => setLoad({ kind: 'loaded', event, tag })}
-          />
-          {page === 'dates' && <AllDatesPage event={load.event} heading={heading} />}
-          {page === 'people' && <PeoplePage event={load.event} />}
-          {isPlaceholderEventArea(page) &&
-            page !== 'menu' &&
-            page !== 'seating' &&
-            page !== 'schedule' && <AreaComing event={load.event} area={page} />}
-        </Arrived>
+          {load.kind === 'loaded' && (
+            <Arrived>
+              <EventTop
+                event={load.event}
+                tag={load.tag}
+                heading={heading}
+                onChange={(event, tag) => setLoad({ kind: 'loaded', event, tag })}
+              />
+              {page === 'dates' && <AllDatesPage event={load.event} heading={heading} />}
+              {page === 'people' && <PeoplePage event={load.event} />}
+              {isPlaceholderEventArea(page) &&
+                page !== 'menu' &&
+                page !== 'seating' &&
+                page !== 'schedule' && <AreaComing event={load.event} area={page} />}
+            </Arrived>
+          )}
+        </div>
       )}
-    </div>
+    </AskHost>
   );
 }
 
@@ -447,6 +476,18 @@ function EventDesk({ children }: { children: (covered: boolean) => ReactNode }) 
         {children(covered)}
         <div ref={setHost} className="desk-layers" />
       </div>
+    </LayersContext>
+  );
+}
+
+/** Where Make live asks from the row heading an area (sc-48603): the desk's dialog over a page that keeps its own look. */
+function AskHost({ children }: { children: (covered: boolean) => ReactNode }) {
+  const { layers, covered, setHost } = useDeskLayers();
+
+  return (
+    <LayersContext value={layers}>
+      {children(covered)}
+      <div ref={setHost} className="desk desk-layers" />
     </LayersContext>
   );
 }

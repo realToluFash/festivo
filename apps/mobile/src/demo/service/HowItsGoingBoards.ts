@@ -17,6 +17,18 @@ const TITLE: Record<ServiceStateName, string> = {
   offline: 'No connection',
   notStarted: 'Before service starts',
   noManage: 'Without service.manage',
+  runOutAlert: 'Chicken has run out',
+  runOutPanel: 'Run out · the choice panel',
+  runOutConfirm: 'Run out · Serve Beef to 4 guests?',
+  runOutConfirmLater: 'Run out · for guests still to come',
+  runOutStands: 'Run out · Serve Beef stands',
+  runOutWithout: 'Run out · Serve without Chicken',
+  runOutChooseFor: 'Run out · Choose for Funke Adeyemi',
+  runOutChanged: 'Run out · already changed',
+  runOutAvailable: 'Run out · available again',
+  runOutNoManage: 'Run out · without service.manage',
+  runOutOffline: 'Run out · no connection',
+  runOutEarlier: 'Run out · an earlier course’s item',
 };
 
 export const SERVICE_BOARDS = SERVICE_STATES.map((state) => ({

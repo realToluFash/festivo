@@ -29,6 +29,7 @@ import {
   asGuestPageCompanion,
   asGuestPagePlace,
   asGuestProgrammeItem,
+  asGuestSeating,
   asPageNeeds,
   asHeadcount,
   asMarkedTogether,
@@ -58,6 +59,10 @@ import {
 import { ApiError, ApiUnreachableError, type Problem, toProblem } from './problem.ts';
 import {
   asSeating,
+  asSeatingMoved,
+  type SeatingMove,
+  type SeatingMoved,
+  type SeatingPlaceKind,
   type Seating,
   type SeatingArrangement,
   type SeatingItemRef,
@@ -78,21 +83,34 @@ import {
   asStaffEntry,
   asStaffRoster,
 } from './staff.ts';
-import { type Dish, type DishDetails, type DishLibrary, asDish, asDishLibrary } from './dishes.ts';
 import {
+  type Dish,
+  type DishDetails,
+  type DishLibrary,
+  type VariantDetails,
+  asDish,
+  asDishLibrary,
+} from './dishes.ts';
+import {
+  type ChoiceDetails,
   type EventMenu,
   type MenuAnswer,
   type MenuChange,
   type MenuCourseDetails,
+  type MenuItem,
   asEventMenu,
+  asUnwarnedOptions,
   asUnwarnedPickers,
 } from './menu.ts';
 import {
   type Schedule,
   type ScheduleItemDetails,
   type ScheduleWithItem,
+  type ScheduleItemPress,
+  type PressSent,
   asSchedule,
 } from './schedule.ts';
+import { type RoomScreen, type ScreenLink, asRoomScreen, asScreenLinks } from './screens.ts';
 
 /** A table call's answer: the plan whole, and the table it added or changed. */
 export interface SeatingWithTable {
@@ -503,6 +521,8 @@ export interface OrganisationEvent {
   arrivalNote: string | null;
   /** The names guests read, in order; none until somebody adds one, and Make live waits for one (sc-6713). */
   hosts: string[];
+  /** The hosts' thank-you, in their own words; null until one is saved on the Finished event (sc-6476). */
+  thankYou: string | null;
   /** Null while it is a Draft. */
   madeLiveAt: string | null;
   /** Null unless its phase is Paused (sc-3586). */
@@ -522,6 +542,8 @@ export interface OrganisationEvent {
   createdAt: string;
   /** What the caller may do on this event: a Member's follow their role on it, not the organisation's (sc-29915). */
   permissions: string[];
+  /** A Member's role on this event, where their `permissions` come from; null for every other organisation role, and absent reads as null (sc-59617). */
+  roleOnEvent?: EventRole | null;
 }
 
 /** The tiles' measure on Events (sc-23284), which each event's guest line adds up to: `notReplied` is the guests who owe an answer and the companions held behind them. */
@@ -981,7 +1003,7 @@ export interface ClientOptions {
   baseUrl: () => string;
   tokens?: TokenStore;
   refreshTokenIn?: RefreshTokenDelivery;
-  /** The reader's language, for the API's own locale negotiation. */
+  /** The reader's language, with the device's region while the device speaks it, which the dates the API writes for a screen follow (sc-65714). */
   locale?: () => string | null;
   /** The device's IANA zone, which sets an account's own until it has one (sc-868). */
   timeZone?: () => string | null;
@@ -998,6 +1020,13 @@ export interface ClientOptions {
   fetch?: typeof fetch;
   /** Fed every response's `Date` header; the shared one unless a test gives its own (sc-3585). */
   clock?: ServerClock;
+}
+
+/** Who is in an exported file and how it is written (sc-3784); `scope` is the dialog's choice, for the audit entry. */
+export interface GuestExportRequest {
+  format: 'xlsx' | 'csv';
+  scope: 'view' | 'all';
+  people: readonly string[];
 }
 
 export interface RequestOptions {
@@ -1032,6 +1061,15 @@ export class ApiClient {
     path: string,
     init: RequestOptions,
   ): Promise<{ body: T; response: Response }> {
+    const response = await this.answered(path, init);
+
+    if (response.status === 204) return { body: undefined as T, response };
+
+    return { body: (await response.json()) as T, response };
+  }
+
+  /** A successful answer, after the one refresh a 401 earns; anything else is thrown as the ApiError it is. */
+  private async answered(path: string, init: RequestOptions): Promise<Response> {
     const session = this.session;
     let response = await this.send(path, init);
 
@@ -1059,9 +1097,7 @@ export class ApiClient {
       throw error;
     }
 
-    if (response.status === 204) return { body: undefined as T, response };
-
-    return { body: (await response.json()) as T, response };
+    return response;
   }
 
   get<T>(path: string, init?: Omit<RequestOptions, 'method' | 'body'>): Promise<T> {
@@ -2218,6 +2254,16 @@ export class ApiClient {
     );
   }
 
+  /** Share tables with guests or stop, and the day to share by, either or both (sc-4022). Refused `validation_failed` on `shareBy`, and 403 without seating.manage. */
+  async changeTableSharing(
+    eventId: string,
+    changes: { shared?: boolean; shareBy?: string | null },
+  ): Promise<Seating> {
+    return this.seatingOf(
+      await this.patch<{ seating?: unknown }>(`${this.seatingPath(eventId)}/sharing`, changes),
+    );
+  }
+
   async deleteSeatingPlan(eventId: string): Promise<Seating> {
     return this.seatingOf(await this.delete<{ seating?: unknown }>(this.seatingPath(eventId)));
   }
@@ -2300,11 +2346,16 @@ export class ApiClient {
     );
   }
 
-  /** Deletes in one step, all or nothing (sc-4717). */
-  async deleteSeatingItems(eventId: string, items: SeatingItemRef[]): Promise<Seating> {
-    return this.seatingOf(
-      await this.post<{ seating?: unknown }>(`${this.seatingPath(eventId)}/furniture/delete`, {
+  /** Deletes in one step, all or nothing, freeing whoever sits in them: `moves` are theirs, to Without a seat (sc-4717, sc-57680). `emptyOnly` is refused 409 while anybody sits in one. */
+  async deleteSeatingItems(
+    eventId: string,
+    items: SeatingItemRef[],
+    emptyOnly = false,
+  ): Promise<SeatingMoved> {
+    return this.movedOf(
+      await this.post(`${this.seatingPath(eventId)}/furniture/delete`, {
         items,
+        ...(emptyOnly ? { emptyOnly } : {}),
       }),
     );
   }
@@ -2467,7 +2518,20 @@ export class ApiClient {
     );
   }
 
-  /** A hub token for this event's seating topic alone. */
+  /** Tells everyone with the plan open what you have chosen, or `null` for nothing; refused 403 to a viewer, whose choice is not shared (sc-4719). */
+  async chooseOnPlan(
+    eventId: string,
+    chosen: { kind: 'table' | 'row' | 'seat'; id: string; chair?: number | null } | null,
+  ): Promise<void> {
+    await this.put<undefined>(`${this.seatingPath(eventId)}/chosen`, { chosen });
+  }
+
+  /** Tells everyone with the plan open that you still have it open, editor or viewer (sc-4719). */
+  async sayHereOnPlan(eventId: string): Promise<void> {
+    await this.post<undefined>(`${this.seatingPath(eventId)}/here`);
+  }
+
+  /** A hub token for this event's seating, its editors' choices and who else has it open (sc-4719). */
   async seatingSubscription(eventId: string): Promise<RealtimeSubscription> {
     const body = await this.post<{ token?: unknown; expiresAt?: unknown }>(
       `${this.seatingPath(eventId)}/subscriptions`,
@@ -2573,6 +2637,44 @@ export class ApiClient {
     await this.delete<unknown>(this.dishPath(organisationId, dishId));
   }
 
+  /** Two at once on a dish without variants, then one at a time; refused `validation_failed` under `variants.{n}.`, and 409 `variant_limit` past six (sc-3903). */
+  async addDishVariants(
+    organisationId: string,
+    dishId: string,
+    variants: VariantDetails[],
+  ): Promise<Dish> {
+    return this.dishOf(
+      await this.post<unknown>(`${this.dishPath(organisationId, dishId)}/variants`, { variants }),
+    );
+  }
+
+  /** Without `lastPrice` the price stays as it was. */
+  async editDishVariant(
+    organisationId: string,
+    dishId: string,
+    variantId: string,
+    details: VariantDetails,
+  ): Promise<Dish> {
+    return this.dishOf(
+      await this.put<unknown>(this.dishVariantPath(organisationId, dishId, variantId), details),
+    );
+  }
+
+  /** From two, the one left folds into the dish; refused 409 `variant_last_everyone` for the only one for Everyone. */
+  async removeDishVariant(
+    organisationId: string,
+    dishId: string,
+    variantId: string,
+  ): Promise<Dish> {
+    return this.dishOf(
+      await this.delete<unknown>(this.dishVariantPath(organisationId, dishId, variantId)),
+    );
+  }
+
+  private dishVariantPath(organisationId: string, dishId: string, variantId: string): string {
+    return `${this.dishPath(organisationId, dishId)}/variants/${encodeURIComponent(variantId)}`;
+  }
+
   private dishOf(body: unknown): Dish {
     const dish = asDish(
       typeof body === 'object' && body != null ? (body as { dish?: unknown }).dish : null,
@@ -2605,7 +2707,7 @@ export class ApiClient {
   async changeMenuCourse(
     eventId: string,
     courseId: string,
-    details: MenuCourseDetails & { answer: MenuAnswer; skippable: boolean },
+    details: MenuCourseDetails & { answer: MenuAnswer; skippable: boolean; ownItems?: string[] },
   ): Promise<MenuChange> {
     return this.menuOf(await this.put<unknown>(this.menuCoursePath(eventId, courseId), details));
   }
@@ -2621,7 +2723,7 @@ export class ApiClient {
     return this.menuOf(await this.delete<unknown>(this.menuCoursePath(eventId, courseId)));
   }
 
-  /** A library dish copied as it is now, or a new dish: saved to the library too, and refused as `addDish` is, unless `onlyForEvent`. */
+  /** A library dish copied as it is now, refused 409 `menu_dish_on_course` when the course holds a copy of it, or a new dish: saved to the library too, and refused as `addDish` is, unless `onlyForEvent`. */
   async addMenuDish(
     eventId: string,
     courseId: string,
@@ -2636,7 +2738,7 @@ export class ApiClient {
   async changeMenuDish(
     eventId: string,
     dishId: string,
-    details: Omit<DishDetails, 'lastPrice' | 'allowShared'>,
+    details: Omit<DishDetails, 'lastPrice' | 'allowShared'> & { items?: MenuItem[] },
   ): Promise<MenuChange> {
     return this.menuOf(await this.put<unknown>(this.menuDishPath(eventId, dishId), details));
   }
@@ -2644,6 +2746,64 @@ export class ApiClient {
   /** Refused 409 `menu_dish_picked` once a guest has picked it. */
   async removeMenuDish(eventId: string, dishId: string): Promise<MenuChange> {
     return this.menuOf(await this.delete<unknown>(this.menuDishPath(eventId, dishId)));
+  }
+
+  /** Two at once on a dish without variants, then one at a time; refused as `addDishVariants`, and 409 `menu_dish_picked` on a picked dish without variants (sc-3903). */
+  async addMenuVariants(
+    eventId: string,
+    dishId: string,
+    variants: VariantDetails[],
+  ): Promise<MenuChange> {
+    return this.menuOf(
+      await this.post<unknown>(`${this.menuDishPath(eventId, dishId)}/variants`, { variants }),
+    );
+  }
+
+  /** Never refused for picks; `unwarned` as for a dish. Without `cost` the cost stays as it was. */
+  async changeMenuVariant(
+    eventId: string,
+    variantId: string,
+    details: VariantDetails,
+  ): Promise<MenuChange> {
+    return this.menuOf(await this.put<unknown>(this.menuVariantPath(eventId, variantId), details));
+  }
+
+  /** From two, the one left folds into the dish; refused 409 `variant_picked`, and 409 `variant_last_everyone`. */
+  async removeMenuVariant(eventId: string, variantId: string): Promise<MenuChange> {
+    return this.menuOf(await this.delete<unknown>(this.menuVariantPath(eventId, variantId)));
+  }
+
+  private menuVariantPath(eventId: string, variantId: string): string {
+    return `${this.menuPath(eventId)}/variants/${encodeURIComponent(variantId)}`;
+  }
+
+  /** A question inside the dish (sc-3904), saved as a draft while unfinished; refused 409 `choice_limit` at 3, and `menu_dish_picked` on a picked dish until sc-3913. */
+  async addMenuChoice(
+    eventId: string,
+    dishId: string,
+    details: ChoiceDetails,
+  ): Promise<MenuChange> {
+    return this.menuOf(
+      await this.post<unknown>(`${this.menuDishPath(eventId, dishId)}/choices`, details),
+    );
+  }
+
+  /** On an answered choice, refused under `pick`, `required` and `draft`, and 409 `choice_option_picked` for a picked option left out; `unwarnedOptions` has a line per picked option given an allergen. */
+  async changeMenuChoice(
+    eventId: string,
+    choiceId: string,
+    details: ChoiceDetails,
+  ): Promise<MenuChange> {
+    return this.menuOf(await this.put<unknown>(this.menuChoicePath(eventId, choiceId), details));
+  }
+
+  /** Refused 409 `choice_answered` once guests have answered it. */
+  async removeMenuChoice(eventId: string, choiceId: string): Promise<MenuChange> {
+    return this.menuOf(await this.delete<unknown>(this.menuChoicePath(eventId, choiceId)));
+  }
+
+  private menuChoicePath(eventId: string, choiceId: string): string {
+    return `${this.menuPath(eventId)}/choices/${encodeURIComponent(choiceId)}`;
   }
 
   /** A hub token for this event's menu topic alone. */
@@ -2672,7 +2832,9 @@ export class ApiClient {
       menu,
       courseId: typeof record.courseId === 'string' ? record.courseId : null,
       dishId: typeof record.dishId === 'string' ? record.dishId : null,
+      choiceId: typeof record.choiceId === 'string' ? record.choiceId : null,
       unwarned: asUnwarnedPickers(record.unwarned),
+      unwarnedOptions: asUnwarnedOptions(record.unwarnedOptions),
     };
   }
 
@@ -2724,16 +2886,18 @@ export class ApiClient {
     );
   }
 
-  /** Marks the item started or done now, by the server's clock (sc-1404). 409 `item_started`, `item_not_started` or `item_finished` when it is not in a state to. */
-  async markScheduleItem(
+  /** The same key again answers as the first time (sc-3895); 409 with `superseded_by` when it changes nothing, 422 for the key with another press. */
+  async pressScheduleItem(
     eventId: string,
     itemId: string,
-    mark: 'start' | 'finish',
+    kind: ScheduleItemPress,
+    sent: PressSent,
   ): Promise<Schedule> {
     return this.scheduleOf(
       await this.post<unknown>(
-        `${this.schedulePath(eventId)}/items/${encodeURIComponent(itemId)}/${mark}`,
-        {},
+        `${this.schedulePath(eventId)}/items/${encodeURIComponent(itemId)}/presses`,
+        { kind, pressedAt: sent.pressedAt },
+        { headers: { 'Idempotency-Key': sent.key } },
       ),
     );
   }
@@ -2748,6 +2912,80 @@ export class ApiClient {
       token: typeof body.token === 'string' ? body.token : '',
       expiresAt: typeof body.expiresAt === 'string' ? body.expiresAt : '',
     };
+  }
+
+  /** A link for each place, Main first; refused 403 without run_of_show.manage (sc-3897). */
+  async screenLinks(eventId: string): Promise<ScreenLink[]> {
+    return this.screenLinksOf(
+      await this.get<unknown>(`/api/events/${encodeURIComponent(eventId)}/screen-links`),
+    );
+  }
+
+  /** The place's old link answers that it was replaced from now on; `place` is null for Main. */
+  async replaceScreenLink(eventId: string, place: string | null): Promise<ScreenLink[]> {
+    return this.screenLinksOf(
+      await this.post<unknown>(`/api/events/${encodeURIComponent(eventId)}/screen-links/replace`, {
+        place,
+      }),
+    );
+  }
+
+  /** The token is a credential, so it travels in the body. Refused `not_found` for a token never issued or a deleted event's. */
+  async roomScreen(token: string, { signal }: { signal?: AbortSignal } = {}): Promise<RoomScreen> {
+    const screen = asRoomScreen(
+      await this.post<unknown>(
+        '/api/screen-links/screen',
+        { token },
+        signal == null ? { anonymous: true } : { anonymous: true, signal },
+      ),
+    );
+
+    if (screen == null) {
+      throw new Error(
+        'The API answered the room screen in a shape this client does not know. Check RoomScreen in services/api.',
+      );
+    }
+
+    return screen;
+  }
+
+  /** A hub token for the event's bare signal to ask again; refused `not_found` once the link is replaced. */
+  async roomScreenSubscription(token: string): Promise<RealtimeSubscription> {
+    const body = await this.post<{ token?: unknown; expiresAt?: unknown }>(
+      '/api/screen-links/subscriptions',
+      { token },
+      { anonymous: true },
+    );
+
+    return {
+      token: typeof body.token === 'string' ? body.token : '',
+      expiresAt: typeof body.expiresAt === 'string' ? body.expiresAt : '',
+    };
+  }
+
+  /** A hub token for the event's bare signal to ask again (sc-4022). Refused `not_found` as the page is. */
+  async guestPageSubscription(token: string): Promise<RealtimeSubscription> {
+    const body = await this.post<{ token?: unknown; expiresAt?: unknown }>(
+      '/api/guest-links/subscriptions',
+      { token },
+      { anonymous: true },
+    );
+
+    return {
+      token: typeof body.token === 'string' ? body.token : '',
+      expiresAt: typeof body.expiresAt === 'string' ? body.expiresAt : '',
+    };
+  }
+
+  private screenLinksOf(body: unknown): ScreenLink[] {
+    return (
+      asScreenLinks(body) ??
+      (() => {
+        throw new Error(
+          'The API answered the screen links in a shape this client does not know. Check ScreenLinkController in services/api.',
+        );
+      })()
+    );
   }
 
   private scheduleOf(body: unknown): Schedule {
@@ -2784,6 +3022,19 @@ export class ApiClient {
 
   private staffPath(eventId: string): string {
     return `/api/events/${encodeURIComponent(eventId)}/staff`;
+  }
+
+  /** sc-3784: the people named, in their order, as a spreadsheet the API builds from the list as it is now. */
+  async exportGuests(
+    eventId: string,
+    request: GuestExportRequest,
+  ): Promise<Uint8Array<ArrayBuffer>> {
+    const response = await this.answered(`${this.guestsPath(eventId)}/export`, {
+      method: 'POST',
+      body: request,
+    });
+
+    return new Uint8Array(await response.arrayBuffer());
   }
 
   async guests(eventId: string): Promise<GuestList> {
@@ -3227,6 +3478,67 @@ export class ApiClient {
     return { seating: this.seatingOf(body), chosen };
   }
 
+  /** Seats a guest at a table, a row or a single seat, in `seat` when given, with their party unless `justGuest` (sc-4013). Refused 409 `seating_table_full`, `seating_table_short` (with `free` and `party`), `seating_seat_taken` or `seating_guest_not_waiting`. */
+  async seatGuest(
+    eventId: string,
+    guestId: string,
+    place: { kind: SeatingPlaceKind; id: string },
+    options: { seat?: number | null; justGuest?: boolean } = {},
+  ): Promise<SeatingMoved> {
+    return this.movedOf(
+      await this.post(`${this.seatingPath(eventId)}/guests/seat`, {
+        guestId,
+        kind: place.kind,
+        placeId: place.id,
+        seat: options.seat ?? null,
+        justGuest: options.justGuest ?? false,
+      }),
+    );
+  }
+
+  /** `guestId` takes `withGuestId`'s chair; they take `guestId`'s, or go to Without a seat. */
+  async swapGuests(eventId: string, guestId: string, withGuestId: string): Promise<SeatingMoved> {
+    return this.movedOf(
+      await this.post(`${this.seatingPath(eventId)}/guests/swap`, { guestId, withGuestId }),
+    );
+  }
+
+  /** Back to Without a seat: the guests named, or everyone at a place (Unseat everyone). */
+  async unseatGuests(
+    eventId: string,
+    who: { guestIds: string[] } | { kind: SeatingPlaceKind; placeId: string },
+  ): Promise<SeatingMoved> {
+    return this.movedOf(await this.post(`${this.seatingPath(eventId)}/guests/unseat`, who));
+  }
+
+  /** Move everyone to…: refused 409 unless `to` has room for all. */
+  async moveEveryone(
+    eventId: string,
+    from: { kind: SeatingPlaceKind; id: string },
+    to: { kind: SeatingPlaceKind; id: string },
+  ): Promise<SeatingMoved> {
+    return this.movedOf(
+      await this.post(`${this.seatingPath(eventId)}/guests/move-everyone`, { from, to }),
+    );
+  }
+
+  /** Puts back an action's moves, all or nothing; refused 409 `seating_undo_stale` when the seats changed since. */
+  async undoSeating(eventId: string, moves: SeatingMove[]): Promise<SeatingMoved> {
+    return this.movedOf(await this.post(`${this.seatingPath(eventId)}/guests/undo`, { moves }));
+  }
+
+  private movedOf(body: unknown): SeatingMoved {
+    const moved = asSeatingMoved(body);
+
+    if (moved == null) {
+      throw new Error(
+        'The API answered a seating action in a shape this client does not know. Check SeatingGuestsController in services/api.',
+      );
+    }
+
+    return moved;
+  }
+
   private seatingOf(body: { seating?: unknown } | null | undefined): Seating {
     const seating = asSeating(body?.seating);
 
@@ -3339,12 +3651,23 @@ export class ApiClient {
     );
   }
 
-  /** Calls it off before its start, ends it after: refused 409 `event_state_invalid` unless Live or Paused, and 409 `event_concluded` once its end has passed. */
-  async endEvent(eventId: string): Promise<TaggedEvent> {
+  /** Calls it off before its start, ends it after: refused 409 `event_state_invalid` unless Live or Paused, or on a call-off with a `thankYou`, and 409 `event_concluded` once its end has passed. */
+  async endEvent(eventId: string, thankYou?: string): Promise<TaggedEvent> {
     return this.tagged(
       await this.exchange<{ event?: unknown }>(`/api/events/${encodeURIComponent(eventId)}/end`, {
         method: 'POST',
+        ...(thankYou == null || thankYou.trim() === '' ? {} : { body: { thankYou } }),
       }),
+    );
+  }
+
+  /** Saved empty, the line is removed (sc-6476). Refused 409 `event_state_invalid` unless Finished and not called off, and 422 `validation_failed` on `thankYou` over 280 characters. */
+  async setThankYou(eventId: string, thankYou: string): Promise<TaggedEvent> {
+    return this.tagged(
+      await this.exchange<{ event?: unknown }>(
+        `/api/events/${encodeURIComponent(eventId)}/thank-you`,
+        { method: 'PUT', body: { thankYou } },
+      ),
     );
   }
 
@@ -4526,7 +4849,7 @@ function asEventTimeline(raw: unknown): EventTimeline | null {
 function asMilestone(raw: unknown): Milestone | null {
   if (typeof raw !== 'object' || raw == null) return null;
 
-  const { at, title, note, owner, area, action } = raw as Record<string, unknown>;
+  const { at, title, note, owner, area, action, done } = raw as Record<string, unknown>;
   const known = oneOf(owner, MILESTONE_OWNERS);
   const link =
     action === null
@@ -4546,12 +4869,13 @@ function asMilestone(raw: unknown): Milestone | null {
     !isStringOrNull(note) ||
     typeof area !== 'string' ||
     known == null ||
-    link === undefined
+    link === undefined ||
+    typeof done !== 'boolean'
   ) {
     return null;
   }
 
-  return { at, title, note, owner: known, area, action: link };
+  return { at, title, note, owner: known, area, action: link, done };
 }
 
 function asListedEvent(raw: unknown): ListedEvent | null {
@@ -4600,6 +4924,7 @@ function asOrganisationEvent(raw: unknown): OrganisationEvent | null {
   const venue = candidate.venue === null ? null : asEventVenue(candidate.venue);
   const arrivalNote = candidate.arrivalNote;
   const hosts = candidate.hosts;
+  const thankYou = candidate.thankYou ?? null;
   const madeLiveAt = candidate.madeLiveAt;
   const pausedAt = candidate.pausedAt;
   const phase = oneOf(candidate.phase, EVENT_PHASES);
@@ -4609,13 +4934,17 @@ function asOrganisationEvent(raw: unknown): OrganisationEvent | null {
   const replyBy = candidate.replyBy ?? null;
   const repliesCloseAt = candidate.repliesCloseAt ?? null;
   const repliesClosedOn = candidate.repliesClosedOn ?? null;
+  const roleOnEvent =
+    candidate.roleOnEvent == null ? null : (oneOf(candidate.roleOnEvent, EVENT_ROLES) ?? undefined);
 
   if (
     status == null ||
     permissions == null ||
+    roleOnEvent === undefined ||
     phase == null ||
     !isStringOrNull(concludedAt) ||
     deleteRefusedBecause === undefined ||
+    !isStringOrNull(thankYou) ||
     !isStringOrNull(madeLiveAt) ||
     !isStringOrNull(pausedAt) ||
     type == null ||
@@ -4649,6 +4978,7 @@ function asOrganisationEvent(raw: unknown): OrganisationEvent | null {
     venue,
     arrivalNote,
     hosts: hosts as string[],
+    thankYou,
     madeLiveAt,
     pausedAt,
     phase,
@@ -4659,6 +4989,7 @@ function asOrganisationEvent(raw: unknown): OrganisationEvent | null {
     ...(candidate.repliesClosedOn === undefined ? {} : { repliesClosedOn }),
     createdAt: candidate.createdAt as string,
     permissions,
+    ...(candidate.roleOnEvent === undefined ? {} : { roleOnEvent }),
   };
 }
 
@@ -4695,8 +5026,17 @@ function asEventCover(raw: unknown): EventCover | undefined {
 
 function asGuestPage(raw: unknown): GuestPage | null {
   if (typeof raw !== 'object' || raw == null) return null;
-  const { guest, event, phase, started, answersOpen, answersClosedOn, language, programme } =
-    raw as Record<string, unknown>;
+  const {
+    guest,
+    event,
+    phase,
+    started,
+    answersOpen,
+    answersClosedOn,
+    language,
+    programme,
+    seating,
+  } = raw as Record<string, unknown>;
   const shown = GUEST_PAGE_PHASES.find((known) => known === phase);
   if (typeof guest !== 'object' || guest == null || typeof event !== 'object' || event == null)
     return null;
@@ -4763,6 +5103,7 @@ function asGuestPage(raw: unknown): GuestPage | null {
       hosts: Array.isArray(what.hosts)
         ? what.hosts.filter((host): host is string => typeof host === 'string')
         : [],
+      thankYou: typeof what.thankYou === 'string' ? what.thankYou : null,
       startsAt: what.startsAt,
       timeZone: what.timeZone,
       venue:
@@ -4781,6 +5122,7 @@ function asGuestPage(raw: unknown): GuestPage | null {
     answersOpen,
     calendar: null,
     programme: items.filter((one) => one != null),
+    seating: asGuestSeating(seating),
   };
 }
 

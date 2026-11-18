@@ -1,10 +1,31 @@
 /** How it's going (sc-34107, HowItsGoing.dc.html on page 35): the floor lead's view of the current course, on the API's service summary read. */
 
+import {
+  type RunOut,
+  askBulk,
+  chooseFor,
+  confirmBulk,
+  markAvailable,
+  offlineLine,
+  openChoose,
+  openPanel,
+  runOutSample,
+  SMALL_CHOPS,
+} from './runOut.ts';
+
 export type SectionId = 'A' | 'B' | 'C' | 'D' | 'E';
 export type TrayStage = 'Dishing' | 'Checked' | 'On its way';
 export type AlertKind =
-  'allergy' | 'paused' | 'leftBehind' | 'heldUp' | 'behind' | 'station' | 'request' | 'nobody';
-export type AlertButton = 'Team' | 'Go to table' | 'Give to…';
+  | 'allergy'
+  | 'paused'
+  | 'leftBehind'
+  | 'heldUp'
+  | 'behind'
+  | 'station'
+  | 'request'
+  | 'nobody'
+  | 'runOut';
+export type AlertButton = 'Team' | 'Go to table' | 'Give to…' | 'Choose';
 
 export interface Tray {
   table: string;
@@ -34,6 +55,7 @@ export interface Section {
 
 export interface KitchenItem {
   item: string;
+  course?: string | undefined;
   station: string | null;
   people: string;
   state: 'Ready' | 'Preparing' | null;
@@ -61,6 +83,7 @@ export interface Course {
   kitchen: number;
   toServe: number;
   notHere: number;
+  choice?: number;
 }
 
 export interface Earlier {
@@ -95,6 +118,7 @@ export interface ServiceState {
   give: GiveSheet | null;
   refused: string;
   say: string;
+  runOut: RunOut | null;
 }
 
 export const LEAD = 'Ifeoma Nduka';
@@ -339,6 +363,7 @@ export function fresh(): ServiceState {
     give: null,
     refused: '',
     say: '',
+    runOut: null,
   };
 }
 
@@ -511,6 +536,19 @@ export const SERVICE_STATES = [
   'offline',
   'notStarted',
   'noManage',
+  'runOutAlert',
+  'runOutPanel',
+  'runOutConfirm',
+  'runOutConfirmLater',
+  'runOutStands',
+  'runOutWithout',
+  'runOutChooseFor',
+  'runOutChanged',
+  'runOutAvailable',
+  'runOutPlan',
+  'runOutNoManage',
+  'runOutOffline',
+  'runOutEarlier',
 ] as const;
 
 export type ServiceStateName = (typeof SERVICE_STATES)[number];
@@ -530,10 +568,111 @@ export const SERVICE_STATE_WHAT: Record<ServiceStateName, string> = {
   offline: 'No connection · as of 20:22: the figures as last read, Pause and Give to… refused',
   notStarted: 'Before service starts: sc-4009’s not-started state and nothing else',
   noManage: 'Without service.manage: no How it’s going, Service opens on Plan',
+  runOutAlert:
+    'Run out (sc-59384): Chicken has run out with Choose, Waiting for a choice first, the kitchen line',
+  runOutPanel:
+    'Run out: the choice panel from Choose, flagged guests first, guests already changed',
+  runOutConfirm: 'Run out: Serve Beef pressed, “Serve Beef to 4 guests instead of Chicken?”',
+  runOutConfirmLater:
+    'Run out: only flagged guests wait, Serve Grilled fish confirms for guests still to come',
+  runOutStands:
+    'Run out: Serve Beef stands, a line reading “Applies to guests still to come”, not a button',
+  runOutWithout: 'Run out: after Serve without Chicken, Bayo Ojo still listed for his own choice',
+  runOutChooseFor:
+    'Run out: Choose for Funke Adeyemi, Beef and Grilled fish not for her · Fish allergy',
+  runOutChanged:
+    'Run out: guests already changed, Sola Martins with Choose for, and the 409 when Dishing wins',
+  runOutAvailable:
+    'Run out: after Mark available again, Chicken Ready, alert and count gone, changes kept',
+  runOutPlan: 'Run out: Plan and List, tables 9, 12, 14 and 3 read Waiting for a choice',
+  runOutNoManage:
+    'Run out without service.manage: no alert, no panel, Plan, a choice by link refused (403)',
+  runOutOffline: 'Run out with no connection: Choose pressed, refused, nothing kept',
+  runOutEarlier:
+    'Run out: Starter · Small chops run out at the Fryer too, its line after the Fryer’s Plantain',
 };
 
+export type OpeningView = 'going' | 'plan';
+
+export function openingView(name: ServiceStateName): OpeningView {
+  return name === 'noManage' || name === 'runOutNoManage' || name === 'runOutPlan'
+    ? 'plan'
+    : 'going';
+}
+
+const LEAD_ACCESS = { online: true, manage: true };
+
+const FISH_READY_TO_SERVE: Readonly<Record<string, number>> = { A: 5, B: 5, D: 4 };
+
+/** The run-out sample matches RunOutChoice: Grilled fish is Ready, so its guests are To serve and nothing is Held up. */
+export function grilledFishReady(summary: Summary): Summary {
+  const fish = summary.kitchen.find((k) => k.item === 'Grilled fish');
+  if (fish == null || fish.state === 'Ready') return summary;
+  const moved = fish.waiting;
+  return {
+    ...summary,
+    course: {
+      ...summary.course,
+      kitchen: summary.course.kitchen - moved,
+      toServe: summary.course.toServe + moved,
+    },
+    sections: summary.sections.map((sec) => ({
+      ...sec,
+      toServe: sec.toServe + (FISH_READY_TO_SERVE[sec.id] ?? 0),
+    })),
+    kitchen: summary.kitchen.map((k) =>
+      k === fish
+        ? { ...k, state: 'Ready' as const, readyIn: null, heldUpMin: null, waiting: 0 }
+        : k,
+    ),
+    alerts: summary.alerts.filter((a) => !(a.kind === 'heldUp' && a.title.startsWith(fish.item))),
+  };
+}
+
+function runOutSeed(name: ServiceStateName): RunOut | null {
+  const base = runOutSample();
+  const open = (ro: RunOut) => openPanel(ro, 'choose', LEAD_ACCESS);
+  const settle = (ro: RunOut): RunOut => ({ ...ro, say: '' });
+  const serveBeef = (ro: RunOut) =>
+    confirmBulk(askBulk(ro, { kind: 'serve', item: 'Beef' }, LEAD_ACCESS), LEAD_ACCESS);
+  switch (name) {
+    case 'runOutAlert':
+    case 'runOutPlan':
+    case 'runOutNoManage':
+      return base;
+    case 'runOutEarlier':
+      return { ...base, earlier: SMALL_CHOPS };
+    case 'runOutPanel':
+      return open(base);
+    case 'runOutConfirm':
+      return askBulk(open(base), { kind: 'serve', item: 'Beef' }, LEAD_ACCESS);
+    case 'runOutConfirmLater': {
+      const chosen = chooseFor(serveBeef(open(base)), 'mb', 'Grilled fish', LEAD_ACCESS);
+      return settle(askBulk(chosen, { kind: 'serve', item: 'Grilled fish' }, LEAD_ACCESS));
+    }
+    case 'runOutStands':
+      return settle(serveBeef(open(base)));
+    case 'runOutWithout':
+      return settle(
+        confirmBulk(askBulk(open(base), { kind: 'without' }, LEAD_ACCESS), LEAD_ACCESS),
+      );
+    case 'runOutChooseFor':
+      return openChoose(open(base), 'fa', LEAD_ACCESS);
+    case 'runOutChanged':
+      return { ...open(base), race: 'sm' };
+    case 'runOutAvailable':
+      return settle(markAvailable(serveBeef(open(base)), LEAD_ACCESS));
+    case 'runOutOffline':
+      return { ...base, refused: offlineLine('choose') };
+    default:
+      return null;
+  }
+}
+
 export function seed(name: ServiceStateName): ServiceState {
-  const s = fresh();
+  const runOut = runOutSeed(name);
+  const start = fresh();
+  const s = runOut == null ? start : { ...start, summary: grilledFishReady(start.summary), runOut };
   const settle = (x: ServiceState): ServiceState => ({ ...x, say: '' });
   switch (name) {
     case 'populated':
@@ -555,7 +694,12 @@ export function seed(name: ServiceStateName): ServiceState {
     case 'notStarted':
       return { ...s, started: false };
     case 'noManage':
+    case 'runOutNoManage':
       return { ...s, manage: false };
+    case 'runOutOffline':
+      return { ...s, online: false };
+    default:
+      return s;
   }
 }
 

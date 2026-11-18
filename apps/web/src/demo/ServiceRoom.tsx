@@ -3,6 +3,7 @@ import { Link, useSearchParams } from 'react-router';
 
 import { Glyph } from './HowItsGoing.tsx';
 import {
+  BAN_GLYPH,
   BEHIND_GLYPH,
   FLAG_GLYPH,
   INFO_GLYPH,
@@ -325,7 +326,7 @@ function NotStarted() {
   );
 }
 
-function Sections({ r }: { r: Room }) {
+export function Sections({ r }: { r: Room }) {
   return (
     <ul className="sr-sections" aria-label="Sections">
       {SECTIONS.map((sec) => (
@@ -361,6 +362,7 @@ function SectionCard({ sec, r }: { sec: Section; r: Room }) {
 
 function Shape({ word }: { word: Word | 'request' }) {
   if (word === 'behind') return <Glyph paths={BEHIND_GLYPH} size={14} />;
+  if (word === 'choice') return <Glyph paths={BAN_GLYPH} size={14} />;
   if (word === 'request') return <Glyph paths={REQUEST_GLYPH} size={14} />;
   return <span className="sr-shape" data-word={word} aria-hidden="true" />;
 }
@@ -396,7 +398,7 @@ function Extras({ t }: { t: RoomTable }) {
   );
 }
 
-function Plan({ r, act }: { r: Room; act: (next: Room, focus?: string) => void }) {
+export function Plan({ r, act }: { r: Room; act: (next: Room, focus?: string) => void }) {
   const order = planOrder(r.tables);
   const stop = planStop(order, r.open, r.last);
   const move = (from: number, key: string): boolean => {
@@ -475,7 +477,7 @@ function Key() {
   );
 }
 
-function List({ r, act }: { r: Room; act: (next: Room, focus?: string) => void }) {
+export function List({ r, act }: { r: Room; act: (next: Room, focus?: string) => void }) {
   const head = (key: SortKey, word: string) => (
     <th scope="col" aria-sort={ariaSort(r.sort, key)}>
       <button
@@ -565,7 +567,7 @@ function Alerts({ r, act }: { r: Room; act: (next: Room, focus?: string) => void
   );
 }
 
-function AlertRow({ a, onGo }: { a: Alert; onGo: () => void }) {
+export function AlertRow({ a, onGo }: { a: Alert; onGo: () => void }) {
   return (
     <li className="hig-alert sr-alert">
       <span className="hig-alert-icon" data-kind={a.kind} aria-hidden="true">
@@ -598,7 +600,7 @@ const SEAT_SHAPE: Partial<Record<SeatState, Word>> = {
   'Not here yet': 'notHere',
 };
 
-function Panel({
+export function Panel({
   r,
   t,
   act,

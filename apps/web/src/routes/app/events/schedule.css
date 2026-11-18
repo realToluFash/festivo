@@ -281,8 +281,25 @@
   text-decoration: none;
 }
 
-.ro-day {
+/* A day tab's words are never broken, cut or ended with an ellipsis (sc-64803). A tab is never narrower than its words; tabs that do not fit go to another row and share its width, the row's corners concentric with the tabs'. */
+.ro .ro-days {
+  flex-wrap: wrap;
+  max-width: 100%;
+  border-radius: calc(var(--sizeHit) / 2 + var(--spaceHair));
+}
+
+.ro .ro-day {
+  flex: 1 0 auto;
+  flex-wrap: wrap;
+  border-radius: calc(var(--sizeHit) / 2);
   gap: var(--spaceXxs);
+  max-width: 100%;
+  overflow-wrap: normal;
+  text-align: center;
+}
+
+.ro-day > span {
+  overflow-wrap: normal;
 }
 
 .ro-day[aria-selected='true'] {
@@ -451,7 +468,22 @@
 
 .ro-owner-name {
   display: block;
+}
+
+/* The cap is what Starts (64), Lasts (72), two cell paddings and 5.5rem kept for the title leave a word (sc-63743). */
+.ro-fit {
+  --roWordCap: calc(100cqw - 136px - 2 * var(--spaceMd) - 5.5rem);
+
+  container-type: inline-size;
+}
+
+/* One box per word, so a name never breaks at a hyphen unless the word is wider than the cap (sc-63743). */
+.ro-word {
+  display: inline-block;
+  width: max-content;
+  max-width: var(--roWordCap);
   overflow-wrap: anywhere;
+  vertical-align: top;
 }
 
 .ro-quiet {
@@ -639,8 +671,21 @@
   margin-top: var(--spaceSm);
 }
 
+.ro-acts {
+  flex-wrap: wrap;
+}
+
 .ro-acts .ro-delete {
   margin-right: auto;
+}
+
+.ro-acts-end {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  align-items: center;
+  gap: var(--spaceMd);
+  margin-left: auto;
 }
 
 .ro-ask {
@@ -668,7 +713,56 @@
   width: 100%;
 }
 
-/* At 40rem and under (WCAG 2.2 1.4.10): one column, one place at a time, the table folded to Starts and Item, the form as its own page. */
+/* At 720px and under the page beside the sidebar is narrower than a phone's, so the day tabs stack and the table folds to Starts and Item (sc-60699). */
+@media (width <= 720px) {
+  .ro .ro-days {
+    --roDayStack: 56px;
+
+    align-self: stretch;
+    border-radius: calc(var(--roDayStack) / 2 + var(--spaceHair));
+  }
+
+  .ro .ro-day {
+    flex: 1;
+    flex-direction: column;
+    min-height: var(--roDayStack);
+    padding: var(--spaceXs) var(--spaceSm);
+    border-radius: calc(var(--roDayStack) / 2);
+    line-height: 1.25;
+  }
+
+  .ro-day-sep {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+  }
+
+  .ro-day-count {
+    font-weight: 400;
+  }
+
+  .ro-table .ro-wide {
+    display: none;
+  }
+
+  .ro-table .ro-starts {
+    width: 72px;
+    padding-left: var(--spaceXs);
+  }
+
+  .ro-under {
+    display: block;
+  }
+
+  /* The owner is on the line under the title, so a word may take the whole Item column. */
+  .ro-fit {
+    --roWordCap: calc(100cqw - 72px - var(--spaceMd));
+  }
+}
+
+/* At 40rem and under (WCAG 2.2 1.4.10): one column, one place at a time, the form as its own page. */
 @media (width <= 40rem) {
   .ro.desk-page {
     padding: var(--spaceLg) var(--spaceMd) var(--space3xl);
@@ -702,30 +796,6 @@
     height: 48px;
   }
 
-  .ro-days {
-    align-self: stretch;
-  }
-
-  .ro-day {
-    flex: 1;
-    flex-direction: column;
-    min-height: 56px;
-    padding: var(--spaceXs) var(--spaceSm);
-    line-height: 1.25;
-  }
-
-  .ro-day-sep {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    overflow: hidden;
-    clip-path: inset(50%);
-  }
-
-  .ro-day-count {
-    font-weight: 400;
-  }
-
   .ro-picker {
     display: block;
   }
@@ -745,19 +815,6 @@
     overflow: hidden;
     clip-path: inset(50%);
     white-space: nowrap;
-  }
-
-  .ro-table .ro-wide {
-    display: none;
-  }
-
-  .ro-table .ro-starts {
-    width: 72px;
-    padding-left: var(--spaceXs);
-  }
-
-  .ro-under {
-    display: block;
   }
 
   .ro.is-form .ro-chrome,
@@ -799,9 +856,20 @@
   }
 
   .ro-acts,
+  .ro-acts-end,
   .ro-ask-acts {
     flex-direction: column-reverse;
     align-items: stretch;
+  }
+
+  .ro-acts,
+  .ro-acts-end {
+    flex-wrap: nowrap;
+  }
+
+  .ro-acts-end {
+    align-self: stretch;
+    margin-left: 0;
   }
 
   .ro-acts .gs-pill,

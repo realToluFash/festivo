@@ -50,6 +50,13 @@ export interface Problem {
   stale?: string[];
   /** On `seating_items_outside`: the tables the refused room size would leave outside it (sc-4000). */
   outside?: string[];
+  /** On `seating_table_short`: the place's free chairs and the party's size (sc-4013). */
+  free?: number;
+  party?: number;
+  /** On `seating_seat_taken` for a chosen chair: who sits in it now. */
+  takenBy?: string;
+  /** On `seating_guests_seated`: the field the refusal belongs beside, `seats`, `unusableSeats` or `unusable`. */
+  field?: string;
   /** On `guest_replied`: the reply that keeps them invited and when, in the event's zone (sc-3788). */
   reply?: string;
   repliedAt?: string;
@@ -59,6 +66,8 @@ export interface Problem {
   archived?: boolean;
   /** On a schedule item's `precondition_failed`: the item as it is stored now, which `asScheduleItem` reads (sc-3893). */
   current?: unknown;
+  /** On a night-screen press that changed nothing: the earlier press it lost to, its presser's name and when, in the event's zone (sc-3895). */
+  superseded_by?: { name: string; at: string };
 }
 
 /**

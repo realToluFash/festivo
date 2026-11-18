@@ -163,7 +163,7 @@ export function DoorArea({
       {codes.length === 0 ? (
         <div className="dc-card is-none" data-index="0">
           <Card size="page">
-            <div className="dc-none">
+            <div className="dc-none-words">
               <p className="desk-says">{W.noneSays}</p>
               <p className="desk-on-card">{W.noneLine}</p>
             </div>
@@ -176,7 +176,7 @@ export function DoorArea({
       ) : (
         <div className="dc-codes">
           {codes.map((code, index) => (
-            <div key={code.code} className="dc-code">
+            <div key={code.code} className="dc-code-item">
               <CodeCard code={code} index={index} onStep={() => step(code, index)} />
               <CodeActions
                 code={code}

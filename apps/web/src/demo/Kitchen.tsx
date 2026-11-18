@@ -6,6 +6,8 @@ import { Ask, CardStep, Head, RowWords, TextAction } from '../components/Setting
 import type { Tell } from '../components/SettingsParts.tsx';
 import { DemoBell } from './DemoBell.tsx';
 import { Opened } from '../components/EventPageParts.tsx';
+import { KeptArea, KeptHere } from './KeptOffline.tsx';
+import { clockWords } from './tabKept.ts';
 import { EventsShell } from './EventParts.tsx';
 import { EventSidebar } from './EventSidebar.tsx';
 import { type SampleEvent, localDay, sampleEvent } from './events.ts';
@@ -89,21 +91,27 @@ function KitchenAt({ id, raw }: { id: string | undefined; raw: string | null }) 
     );
 
   return (
-    <EventsShell
-      told={first.told}
-      renderSide={(tell, covered) => (
-        <EventSidebar
-          event={event}
-          area="menu"
-          now={first.clock ?? clockOfKitchen()}
-          tell={tell}
-          inert={covered}
-          waiting={waitingLine(keptInbox())}
-        />
-      )}
+    <KeptArea
+      eventId={event.id}
+      area="menu"
+      at={clockWords(first.clock ?? clockOfKitchen(), event.timeZone)}
     >
-      {(tell) => <Kitchen first={first} event={event} tell={tell} />}
-    </EventsShell>
+      <EventsShell
+        told={first.told}
+        renderSide={(tell, covered) => (
+          <EventSidebar
+            event={event}
+            area="menu"
+            now={first.clock ?? clockOfKitchen()}
+            tell={tell}
+            inert={covered}
+            waiting={waitingLine(keptInbox())}
+          />
+        )}
+      >
+        {(tell) => <Kitchen first={first} event={event} tell={tell} />}
+      </EventsShell>
+    </KeptArea>
   );
 }
 
@@ -161,6 +169,7 @@ function Kitchen({ first, event, tell }: { first: KitchenStart; event: SampleEve
   return (
     <div className="desk-page ev-page gs kitchen">
       <div className="ev-wide gs-page">
+        <KeptHere />
         <div className="ev-crumb-row">
           <nav className="ev-crumb" aria-label={KW.crumb}>
             <ol>

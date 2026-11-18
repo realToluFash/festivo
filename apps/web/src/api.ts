@@ -10,7 +10,7 @@ import { ApiClient } from '@soirely/api-client';
 import { connection } from '@soirely/domain';
 
 import { config } from './config.ts';
-import { currentLocale } from './i18n/index.ts';
+import { dateLocale } from './i18n/index.ts';
 import { dropRegistration } from './pendingRegistration.ts';
 import { tokens } from './tokens.ts';
 
@@ -21,7 +21,7 @@ export const GATED = 'soirely:gated';
 
 export const api = new ApiClient({
   baseUrl: () => config().apiBaseUrl,
-  locale: () => currentLocale(),
+  locale: () => dateLocale(),
   timeZone: () => Intl.DateTimeFormat().resolvedOptions().timeZone,
   tokens,
   refreshTokenIn: 'cookie',

@@ -8,11 +8,11 @@ appId: host.exp.Exponent
     timeout: 30000
 - scrollUntilVisible:
     element:
-      id: 'eventForm.venueName'
+      id: 'eventForm.venue.name'
     direction: DOWN
     centerElement: true
 - tapOn:
-    id: 'eventForm.venueName'
+    id: 'eventForm.venue.name'
 - inputText: 'Held venue hall'
 - hideKeyboard
 - scrollUntilVisible:

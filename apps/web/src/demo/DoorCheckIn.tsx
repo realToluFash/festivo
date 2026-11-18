@@ -12,6 +12,7 @@ import {
   type DoorPerson,
   type Gone,
   type Holder,
+  type Seating,
   CW,
   JOB,
   NOW,
@@ -30,6 +31,8 @@ import {
   meOf,
   nameProblem,
   sameName,
+  seatOf,
+  seatingOf,
   shownName,
   shownPeople,
   undo,
@@ -44,13 +47,27 @@ export function DoorCheckIn() {
   const [params] = useSearchParams();
   const state = checkInStateOf(params.get('state'));
   const holder = holderOf(params.get('holder'));
+  const seating = seatingOf(params.get('seats'));
 
   return (
-    <CheckInAt key={`${state}|${holder}`} start={checkInStart(state, holder)} holder={holder} />
+    <CheckInAt
+      key={`${state}|${holder}|${seating}`}
+      start={checkInStart(state, holder)}
+      holder={holder}
+      seating={seating}
+    />
   );
 }
 
-function CheckInAt({ start, holder }: { start: CheckInStart; holder: Holder }) {
+function CheckInAt({
+  start,
+  holder,
+  seating,
+}: {
+  start: CheckInStart;
+  holder: Holder;
+  seating: Seating;
+}) {
   if (start.signedOut) return <NotSignedIn />;
   if (start.gone === 'level_view')
     return (
@@ -65,7 +82,7 @@ function CheckInAt({ start, holder }: { start: CheckInStart; holder: Holder }) {
     );
   if (start.gone != null) return <LinkPage gone={start.gone} />;
 
-  return <CheckInPage start={start} holder={holder} />;
+  return <CheckInPage start={start} holder={holder} seating={seating} />;
 }
 
 function Bar({ back }: { back: { to: string; words: string } | null }) {
@@ -102,7 +119,15 @@ function Page({
   );
 }
 
-function CheckInPage({ start, holder }: { start: CheckInStart; holder: Holder }) {
+function CheckInPage({
+  start,
+  holder,
+  seating,
+}: {
+  start: CheckInStart;
+  holder: Holder;
+  seating: Seating;
+}) {
   const me = meOf(holder);
   const [people, setPeople] = useState(start.people);
   const [typed, setTyped] = useState(start.typed);
@@ -250,6 +275,7 @@ function CheckInPage({ start, holder }: { start: CheckInStart; holder: Holder })
                   key={one.id}
                   one={one}
                   name={shownName(one, people)}
+                  seat={seatOf(one.id, seating)}
                   open={open}
                   failed={failed === one.id}
                   fresh={fresh.includes(one.id)}
@@ -341,6 +367,7 @@ function Search({ typed, onType }: { typed: string; onType: (typed: string) => v
 function Row({
   one,
   name,
+  seat,
   open,
   failed,
   fresh,
@@ -349,6 +376,7 @@ function Row({
 }: {
   one: DoorPerson;
   name: string;
+  seat: string | null;
   open: boolean;
   failed: boolean;
   fresh: boolean;
@@ -364,6 +392,7 @@ function Row({
     <li className={classes}>
       <div className="ci-who">
         <p className="ci-name">{name}</p>
+        {seat != null && <p className="ci-seat">{seat}</p>}
         <p className="ci-reply">
           <ReplyMark reply={one.reply} size={16} />
           {CW.reply[one.reply]}

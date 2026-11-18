@@ -2,7 +2,7 @@ import { type ReactNode, useEffect, useRef } from 'react';
 import { StyleSheet, View, type ViewInstance } from 'react-native';
 
 import { FieldError } from './Field.tsx';
-import { fieldFocused, fieldLeft } from './focusedField.ts';
+import { fieldFocused, fieldLeft, fieldReshaped } from './focusedField.ts';
 import { Text } from './Text.tsx';
 import { tokens } from '../theme/tokens.ts';
 
@@ -12,6 +12,7 @@ export function EventField({
   optional,
   error = null,
   help,
+  linesQuiet = false,
   children,
 }: {
   label: string;
@@ -19,6 +20,8 @@ export function EventField({
   optional?: string | undefined;
   error?: string | null;
   help?: string | undefined;
+  /** The error and help lines are out of TalkBack's reach while focus moves to the field (sc-43907). */
+  linesQuiet?: boolean;
   children: ReactNode;
 }) {
   const field = useRef<ViewInstance>(null);
@@ -27,12 +30,16 @@ export function EventField({
 
     return () => fieldLeft(mounted);
   }, []);
+  useEffect(() => {
+    if (error != null) fieldReshaped(field.current);
+  }, [error]);
 
   return (
     <View
       ref={field}
       onFocus={() => fieldFocused(field.current)}
       onBlur={() => fieldLeft(field.current)}
+      onLayout={() => fieldReshaped(field.current)}
       style={styles.labelled}
     >
       <View
@@ -50,15 +57,17 @@ export function EventField({
         )}
       </View>
       {children}
-      {error != null ? (
-        <FieldError message={error} />
-      ) : (
-        help != null && (
-          <Text size={13.5} weight="medium" style={[styles.secondary, styles.hint]}>
-            {help}
-          </Text>
-        )
-      )}
+      <View importantForAccessibility={linesQuiet ? 'no-hide-descendants' : 'auto'}>
+        {error != null ? (
+          <FieldError message={error} />
+        ) : (
+          help != null && (
+            <Text size={13.5} weight="medium" style={[styles.secondary, styles.hint]}>
+              {help}
+            </Text>
+          )
+        )}
+      </View>
     </View>
   );
 }

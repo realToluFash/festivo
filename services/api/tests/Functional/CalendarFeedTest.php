@@ -17,6 +17,7 @@ use App\Enum\MembershipStatus;
 use App\Enum\MilestoneOwner;
 use App\Enum\PermissionArea;
 use App\Enum\SeededRole;
+use App\Http\LinkTokens;
 use App\Tests\ApiTestCase;
 use App\Tests\Double\RefusingRateLimiterFactory;
 use App\Tests\Double\ScriptedMilestones;
@@ -310,7 +311,7 @@ final class CalendarFeedTest extends ApiTestCase
         self::getContainer()->set('limiter.calendar_feed_token', $limits);
         $path = $this->link($this->owner);
         $other = $this->link($this->member('planner@ire.events'));
-        $limits->spent = FeedLinkIssuer::hash(Str\strip_suffix(Str\strip_prefix($path, FeedLinkIssuer::PATH), FeedLinkIssuer::SUFFIX));
+        $limits->spent = LinkTokens::hash(Str\strip_suffix(Str\strip_prefix($path, FeedLinkIssuer::PATH), FeedLinkIssuer::SUFFIX));
 
         $this->fetch($path);
         self::assertSame(429, $this->statusCode());

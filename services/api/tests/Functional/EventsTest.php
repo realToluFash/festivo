@@ -449,7 +449,7 @@ final class EventsTest extends ApiTestCase
 
         $listed = self::page($this->as($this->owner, 'GET', $this->path('events')))['events'];
 
-        self::assertSame([['at' => '2030-11-14T16:00:00+01:00', 'title' => 'Owambe starts', 'note' => null, 'owner' => 'event', 'area' => 'events', 'action' => null]], $listed[0]['milestones']);
+        self::assertSame([['at' => '2030-11-14T16:00:00+01:00', 'title' => 'Owambe starts', 'note' => null, 'owner' => 'event', 'area' => 'events', 'action' => null, 'done' => false]], $listed[0]['milestones']);
     }
 
     /** @return iterable<string, array{SeededRole, ?EventRole, bool}> */
@@ -2010,7 +2010,7 @@ final class EventsTest extends ApiTestCase
     /**
      * Made live while its end is ahead, then moved to `$startsAt` and `$endsAt` in the database, as time would.
      *
-     * @return array{id: string, organisationId: string, name: string, type: string, status: string, startsAt: string, endsAt: string, timeZone: string, dayCount: int, currency: string, cover: null, venue: mixed, arrivalNote: ?string, replyBy: ?string, repliesCloseAt: ?string, repliesClosedOn: ?string, hosts: list<string>, madeLiveAt: ?string, pausedAt: ?string, phase: string, concludedAt: ?string, deleteRefusedBecause: ?string, createdAt: string, permissions: list<string>}
+     * @return array{id: string, organisationId: string, name: string, type: string, status: string, startsAt: string, endsAt: string, timeZone: string, dayCount: int, currency: string, cover: null, venue: mixed, arrivalNote: ?string, replyBy: ?string, repliesCloseAt: ?string, repliesClosedOn: ?string, hosts: list<string>, thankYou: ?string, madeLiveAt: ?string, pausedAt: ?string, phase: string, concludedAt: ?string, deleteRefusedBecause: ?string, createdAt: string, permissions: list<string>, roleOnEvent: ?string}
      */
     private function live(string $startsAt, string $endsAt): array
     {
@@ -2066,7 +2066,7 @@ final class EventsTest extends ApiTestCase
     /**
      * @param array<string, mixed> $body
      *
-     * @return array{id: string, organisationId: string, name: string, type: string, status: string, startsAt: string, endsAt: string, timeZone: string, dayCount: int, currency: string, cover: null, venue: mixed, arrivalNote: ?string, replyBy: ?string, repliesCloseAt: ?string, repliesClosedOn: ?string, hosts: list<string>, madeLiveAt: ?string, pausedAt: ?string, phase: string, concludedAt: ?string, deleteRefusedBecause: ?string, createdAt: string, permissions: list<string>}
+     * @return array{id: string, organisationId: string, name: string, type: string, status: string, startsAt: string, endsAt: string, timeZone: string, dayCount: int, currency: string, cover: null, venue: mixed, arrivalNote: ?string, replyBy: ?string, repliesCloseAt: ?string, repliesClosedOn: ?string, hosts: list<string>, thankYou: ?string, madeLiveAt: ?string, pausedAt: ?string, phase: string, concludedAt: ?string, deleteRefusedBecause: ?string, createdAt: string, permissions: list<string>, roleOnEvent: ?string}
      */
     private function event(array $body): array
     {
@@ -2088,6 +2088,7 @@ final class EventsTest extends ApiTestCase
             'repliesCloseAt' => Type\nullable(Type\string()),
             'repliesClosedOn' => Type\nullable(Type\string()),
             'hosts' => Type\vec(Type\string()),
+            'thankYou' => Type\nullable(Type\string()),
             'madeLiveAt' => Type\nullable(Type\string()),
             'pausedAt' => Type\nullable(Type\string()),
             'phase' => Type\string(),
@@ -2095,6 +2096,7 @@ final class EventsTest extends ApiTestCase
             'deleteRefusedBecause' => Type\nullable(Type\string()),
             'createdAt' => Type\string(),
             'permissions' => Type\vec(Type\string()),
+            'roleOnEvent' => Type\nullable(Type\string()),
         ])->assert($body['event'] ?? null);
     }
 

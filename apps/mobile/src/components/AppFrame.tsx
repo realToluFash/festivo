@@ -261,7 +261,7 @@ export function AppFrame({
   besideBack?: ReactNode;
   /** Inside an event, its areas take the navigation's place. */
   inEvent?: InsideEvent | undefined;
-  /** Inside an event, the body names the page itself (an Overview's card, an area's heading upright), so the frame draws no title (sc-30413). */
+  /** The body names the page itself (an event's Overview card, a member's own card in front of the list), so the frame draws no title (sc-30413, sc-37693). */
   untitled?: boolean;
   title: string;
   /** The title on a phone, where it stands for the page's own heading. */
@@ -467,6 +467,8 @@ export function AppFrame({
     floatingTabs && listUnderTabs && standIn == null ? phoneTabBarClearance(insets.bottom) : 0;
   // A top that stays sits outside any Screen, so it and the body under it clear the side bars here, as a Screen does for Events (sc-52423).
   const sides = ownTop && top === 'stays' ? sideInsets(kind, insets) : null;
+  // A phone's header sits outside the body's Screen, so its back, pill and bell clear the side bars here, where Events' do (sc-54891).
+  const headerSides = kind === 'phone' ? sideInsets(kind, insets) : null;
   const switchedRead = created?.takesFocus !== true;
   // A body with its own top, as Today, draws it where its demo does, under its cover, while the frame says it once whatever the body shows (sc-44087, sc-46032).
   const inBody = !framed;
@@ -543,7 +545,11 @@ export function AppFrame({
             />
           )}
           <View style={[styles.column, sidebar && side.card]}>
-            {framed && !ownTop && <FrameHeader {...header} />}
+            {framed && !ownTop && (
+              <View style={headerSides}>
+                <FrameHeader {...header} />
+              </View>
+            )}
             {ownTop && <FixedTop {...header} />}
             {ownTop && top === 'stays' && (
               <View style={sides}>
@@ -706,7 +712,7 @@ interface FrameHeaderProps {
   pill: Ref<ViewInstance>;
   /** "Now working in …", under the title of a screen with its own top (sc-39471). */
   switched: ReactNode;
-  /** Inside an event, a page whose body names it (an Overview's card, an area's own heading upright), so the frame draws no title. */
+  /** A page whose body names it (an event's Overview card, a member's own card in front of the list), so the frame draws no title. */
   untitled: boolean;
 }
 
@@ -786,6 +792,7 @@ function ScreenTop({
   besideTitle,
   besideBack,
   switched,
+  untitled,
   stays = false,
   style,
   rowStyle,
@@ -833,6 +840,7 @@ function ScreenTop({
         beside={besideTitle}
         primary={primary}
         under={under}
+        untitled={untitled}
         style={[staysStyle, style]}
         rowStyle={rowStyle}
       />
@@ -859,7 +867,7 @@ function ScreenTop({
           <View style={styles.fill}>{backView}</View>
           <BellButton />
         </View>
-        {titleRow}
+        {!untitled && titleRow}
         {under}
       </View>
     );
@@ -867,7 +875,7 @@ function ScreenTop({
   return (
     <View style={[staysStyle, style]}>
       {kind === 'tabletPortrait' && backView}
-      {titleRow}
+      {!untitled && titleRow}
       {under}
     </View>
   );

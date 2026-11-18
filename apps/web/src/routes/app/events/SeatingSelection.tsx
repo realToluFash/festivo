@@ -32,6 +32,7 @@ import {
   readWhole,
   renumbered,
   spaced,
+  seatedIn,
   summaryOf,
 } from './seatingSelection.ts';
 import { lengthWords } from './seatingUnits.ts';
@@ -45,9 +46,13 @@ export interface GridDraft {
 
 /** What the status line says after a step: Undo while it can be undone, amber when the step was refused. */
 export interface StepBar {
-  tone: 'undo' | 'amber';
+  tone: 'undo' | 'amber' | 'pick';
   words: string;
   undo?: () => void;
+  /** Choices said beside the words, such as Seat just {name} and Cancel (sc-4013). */
+  acts?: { label: string; run: () => void }[];
+  /** The place the step seated, lit on Tables while its message stands. */
+  lit?: string;
 }
 
 const EDGE_GLYPHS: Record<Edge, GlyphName> = {
@@ -244,16 +249,35 @@ export function StepLine({ bar, onUndo }: { bar: StepBar; onUndo: () => void }) 
   const { t } = useTranslation();
 
   return (
-    <div className={`st-bar is-inline is-${bar.tone}`} role="status" aria-live="polite">
-      <Glyph name={bar.tone === 'undo' ? 'tick' : 'alert'} size={17} weight={2.2} />
-      <p>{bar.words}</p>
-      {bar.undo != null && (
-        <span className="st-bar-acts">
-          <button type="button" className="desk-text" onClick={onUndo}>
-            {t('seating.undo')}
-          </button>
-        </span>
-      )}
+    <div
+      className={`st-bar is-inline is-${bar.tone === 'pick' ? 'tint' : bar.tone}`}
+      role="status"
+      aria-live="polite"
+    >
+      <Glyph
+        name={bar.tone === 'undo' ? 'tick' : bar.tone === 'pick' ? 'info' : 'alert'}
+        size={17}
+        weight={2.2}
+      />
+      <div className="st-bar-body">
+        <p tabIndex={-1} data-said="bar">
+          {bar.words}
+        </p>
+        {(bar.undo != null || (bar.acts?.length ?? 0) > 0) && (
+          <span className="st-bar-acts">
+            {bar.acts?.map((act) => (
+              <button key={act.label} type="button" className="desk-text" onClick={act.run}>
+                {act.label}
+              </button>
+            ))}
+            {bar.undo != null && (
+              <button type="button" className="desk-text" data-act="undo" onClick={onUndo}>
+                {t('seating.undo')}
+              </button>
+            )}
+          </span>
+        )}
+      </div>
     </div>
   );
 }
@@ -316,7 +340,7 @@ function PressField({
   );
 }
 
-function focusField(key: string): void {
+export function focusField(key: string): void {
   focusWhenFree(() => document.querySelector(`.st-panel [data-focus="${key}"]`));
 }
 
@@ -706,7 +730,6 @@ export function SelectionPanel({
   );
 }
 
-/** Nobody can be seated until sc-4013, so the ask always says nobody is in them. */
 export function DeleteItemsAsk({
   items,
   onKeep,
@@ -719,14 +742,16 @@ export function DeleteItemsAsk({
   const { t } = useTranslation();
   const tables = items.every((item) => item.kind === 'table');
   const count = items.length;
+  const seated = seatedIn(items);
 
   if (count === 0) return null;
   return (
     <Ask
       title={t(tables ? 'seating.deleteTablesAsk' : 'seating.deleteItemsAsk', { count })}
-      line={t('seating.nobodyInThem')}
+      line={seated === 0 ? t('seating.nobodyInThem') : t('seating.movedToTray', { count: seated })}
       keep={t('seating.keepThem')}
       go={t(tables ? 'seating.deleteTablesGo' : 'seating.deleteItemsGo', { count })}
+      red={false}
       onKeep={onKeep}
       onGo={() => onGo(items)}
     />

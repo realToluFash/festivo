@@ -8,7 +8,7 @@ appId: host.exp.Exponent
     timeout: 30000
 - scrollUntilVisible:
     element:
-      id: 'eventForm.start.date'
+      id: 'eventForm.startDate'
     direction: DOWN
     centerElement: true
 - swipe:
@@ -16,26 +16,26 @@ appId: host.exp.Exponent
     end: 50%, 57%
 - waitForAnimationToEnd
 - assertVisible:
-    id: 'eventForm.start.date'
+    id: 'eventForm.startDate'
 - assertNotVisible:
-    id: 'eventForm.start.date'
+    id: 'eventForm.startDate'
     text: '.*\b${DAY}\b.*'
 - takeScreenshot: before
 - tapOn:
-    id: 'eventForm.start.date'
+    id: 'eventForm.startDate'
 - extendedWaitUntil:
     visible:
-      id: 'eventForm.start.done'
+      id: 'events.pick.done'
     timeout: 10000
 - tapOn:
     text: '${DAY}'
 - takeScreenshot: picked
 - tapOn:
-    id: 'eventForm.start.done'
+    id: 'events.pick.done'
 - waitForAnimationToEnd
 - assertNotVisible:
-    id: 'eventForm.start.done'
+    id: 'events.pick.done'
 - assertVisible:
-    id: 'eventForm.start.date'
+    id: 'eventForm.startDate'
     text: '.*\b${DAY}\b.*'
 - takeScreenshot: kept

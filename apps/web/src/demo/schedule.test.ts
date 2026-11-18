@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
 
+import en from '../i18n/locales/en.json';
+import es from '../i18n/locales/es.json';
+import fr from '../i18n/locales/fr.json';
+import pt from '../i18n/locales/pt.json';
+
 import {
   DAYS,
   HOME_READER,
@@ -12,6 +17,7 @@ import {
   atLimit,
   blankForm,
   check,
+  dayCount,
   dayOf,
   differences,
   firstWrong,
@@ -22,6 +28,7 @@ import {
   placeHelp,
   readerOf,
   sampleItems,
+  sevenDayItems,
   scheduleAt,
   startsCell,
   tablesOn,
@@ -147,5 +154,24 @@ describe('the schedule’s rules (sc-3893)', () => {
   it('links every state from the demo’s home', () => {
     const linked = SCHEDULE_PAGES.flatMap((page) => page.states.map((one) => one.to));
     for (const state of SCHEDULE_STATES) expect(linked).toContain(scheduleAt(state));
+  });
+});
+
+describe('the day tabs’ words (sc-64803)', () => {
+  it('counts a day in each of the four languages with the product’s own schedule.items', () => {
+    const product = { en, es, fr, pt };
+    for (const [lang, words] of Object.entries(product)) {
+      const one = words.schedule.items_one.replace('{{count, number}}', '1');
+      const other = words.schedule.items_other.replace('{{count, number}}', '12');
+      expect([1, 12].map((n) => dayCount(n, lang))).toEqual([one, other]);
+    }
+  });
+
+  it('gives the seven-day event a day of 1 item and a day of 12', () => {
+    const counts = new Map<string, number>();
+    for (const one of sevenDayItems())
+      counts.set(dayOf(one.starts), (counts.get(dayOf(one.starts)) ?? 0) + 1);
+    expect(counts.get('2026-11-07')).toBe(1);
+    expect(counts.get('2026-11-08')).toBe(12);
   });
 });

@@ -7,6 +7,7 @@ namespace App\Domain\Menu;
 use App\Audit\Auditor;
 use App\Domain\Menu\Model\DishDetails;
 use App\Entity\Dish;
+use App\Entity\DishVariant;
 use App\Entity\Organisation;
 use App\Entity\User;
 use App\Enum\Actor;
@@ -14,9 +15,11 @@ use App\Enum\ErrorCode;
 use App\Http\Exception\ApiException;
 use App\Locale\NameNormaliser;
 use App\Repository\DishRepository;
+use App\Repository\DishVariantRepository;
 use Doctrine\DBAL\LockMode;
 use Doctrine\ORM\EntityManagerInterface;
 use Psl\Iter;
+use Psl\Math;
 use Psl\Vec;
 use Psr\Clock\ClockInterface;
 use Symfony\Contracts\Translation\TranslatorInterface;
@@ -34,9 +37,19 @@ final readonly class DishLibrary
 
     public const string DELETED = 'dish.deleted';
 
+    public const string VARIANT_ADDED = 'dish.variant_added';
+
+    public const string VARIANT_EDITED = 'dish.variant_edited';
+
+    public const string VARIANT_REMOVED = 'dish.variant_removed';
+
+    public const string FOLDED = 'dish.folded';
+
     public function __construct(
         private EntityManagerInterface $entityManager,
         private DishRepository $dishRepository,
+        private DishVariantRepository $dishVariantRepository,
+        private VariantRules $variantRules,
         private Auditor $auditor,
         private TranslatorInterface $translator,
         private ClockInterface $clock,
@@ -75,6 +88,14 @@ final readonly class DishLibrary
 
             $dish->setName($details->name);
             $dish->setDescription($details->description);
+
+            if ([] !== $this->dishVariantRepository->findOnDish($dish)) {
+                $this->audit(self::EDITED, $dish, $by);
+                $this->entityManager->flush();
+
+                return $dish;
+            }
+
             $dish->setAllergens($details->allergens);
             $dish->setDiets($details->diets);
 
@@ -86,6 +107,78 @@ final readonly class DishLibrary
             $this->entityManager->flush();
 
             return $dish;
+        });
+    }
+
+    /** @param list<array{name: string, for: 'everyone'|'children', allergens?: list<string>, containsNone?: bool, diets?: list<string>, cost?: ?string, lastPrice?: ?array{amount: string, currency: string}}> $sent */
+    public function addVariants(Dish $dish, array $sent, User $by): void
+    {
+        $this->entityManager->wrapInTransaction(function () use ($dish, $sent, $by): void {
+            $this->entityManager->refresh($dish->getOrganisation(), LockMode::PESSIMISTIC_WRITE);
+            $variants = $this->dishVariantRepository->findOnDish($dish);
+            $this->variantRules->refuseCount(Iter\count($variants), Iter\count($sent));
+            $details = $this->variantRules->details($sent, $variants, null);
+            $next = [] === $variants ? 0 : Math\max(Vec\map($variants, static fn (DishVariant $one): int => $one->getPosition())) + 1;
+            $added = [];
+
+            foreach ($details as $at => $one) {
+                $variant = new DishVariant($dish, $one->name, $one->forChildren, $one->allergens, $one->diets, $next + $at);
+                $variant->setLastPrice($one->price?->minor, $one->price?->currency);
+                $this->entityManager->persist($variant);
+                $added[] = $variant;
+            }
+
+            $this->variantAudit(self::VARIANT_ADDED, $dish, $by, Vec\map($added, static fn (DishVariant $one): string => $one->getName()));
+            $this->entityManager->flush();
+        });
+    }
+
+    /** @param array{name: string, for: 'everyone'|'children', allergens?: list<string>, containsNone?: bool, diets?: list<string>, cost?: ?string, lastPrice?: ?array{amount: string, currency: string}} $sent */
+    public function editVariant(DishVariant $variant, array $sent, bool $withPrice, User $by): DishVariant
+    {
+        return $this->entityManager->wrapInTransaction(function () use ($variant, $sent, $withPrice, $by): DishVariant {
+            $dish = $variant->getDish();
+            $this->entityManager->refresh($dish->getOrganisation(), LockMode::PESSIMISTIC_WRITE);
+            $others = Vec\filter($this->dishVariantRepository->findOnDish($dish), static fn (DishVariant $one): bool => $one !== $variant);
+            $details = $this->variantRules->details([$sent], Vec\values($others), null, $variant->getLastPriceCurrency())[0];
+            $variant->describe($details->name, $details->forChildren, $details->allergens, $details->diets);
+
+            if ($withPrice) {
+                $variant->setLastPrice($details->price?->minor, $details->price?->currency);
+            }
+
+            $this->variantAudit(self::VARIANT_EDITED, $dish, $by, [$variant->getName()]);
+            $this->entityManager->flush();
+
+            return $variant;
+        });
+    }
+
+    /** Removing one of two folds the other into the dish, with its last price. */
+    public function removeVariant(DishVariant $variant, User $by): void
+    {
+        $this->entityManager->wrapInTransaction(function () use ($variant, $by): void {
+            $dish = $variant->getDish();
+            $this->entityManager->refresh($dish->getOrganisation(), LockMode::PESSIMISTIC_WRITE);
+            $left = Vec\values(Vec\filter($this->dishVariantRepository->findOnDish($dish), static fn (DishVariant $one): bool => $one !== $variant));
+
+            if (Iter\count($left) >= 2 && !$variant->isForChildren() && Iter\all($left, static fn (DishVariant $one): bool => $one->isForChildren())) {
+                throw new ApiException(ErrorCode::VariantLastEveryone, 'menu.variant_last_everyone', parameters: ['{variant}' => $variant->getName()]);
+            }
+
+            $this->variantAudit(self::VARIANT_REMOVED, $dish, $by, [$variant->getName()]);
+            $this->entityManager->remove($variant);
+
+            if (1 === Iter\count($left)) {
+                $staying = $left[0];
+                $dish->setAllergens($staying->getAllergens());
+                $dish->setDiets($staying->getDiets());
+                $dish->setLastPrice($staying->getLastPriceMinor(), $staying->getLastPriceCurrency());
+                $this->variantAudit(self::FOLDED, $dish, $by, [$staying->getName()]);
+                $this->entityManager->remove($staying);
+            }
+
+            $this->entityManager->flush();
         });
     }
 
@@ -148,5 +241,11 @@ final readonly class DishLibrary
     private function audit(string $action, Dish $dish, User $by): void
     {
         $this->auditor->record($action, 'Dish', $dish->getId(), Actor::User, $by->getId(), $by->getName());
+    }
+
+    /** @param list<string> $variants */
+    private function variantAudit(string $action, Dish $dish, User $by, array $variants): void
+    {
+        $this->auditor->record($action, 'Dish', $dish->getId(), Actor::User, $by->getId(), $by->getName(), ['variants' => [null, $variants]]);
     }
 }

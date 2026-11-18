@@ -1536,21 +1536,36 @@ describe('Today at a desk (sc-29092)', () => {
   beforeEach(() => inEnvironment('development'));
 
   async function today(moment: string) {
-    at(`/demo/today?moment=${moment}`);
+    const router = at(`/demo/today?moment=${moment}`);
     await screen.findByRole('navigation', { name: 'Soirely' });
+
+    return router;
   }
 
-  it('opens a planning day with Needs you first, its late item in words, and one filled button', async () => {
+  it('opens a planning day with Needs you first, its overdue row in words, and a button only where a row has an action', async () => {
     await today('plan');
 
     expect(screen.getByRole('heading', { level: 1, name: 'Good morning, Folake' })).toBeDefined();
-    expect(screen.getByText('4 things need you.')).toBeDefined();
+    expect(screen.getByText('5 things need you.')).toBeDefined();
     const needs = screen.getByRole('region', { name: 'Needs you' });
+    expect(within(needs).getByRole('heading', { name: 'Needs you, 5 things' })).toBeDefined();
     const rows = within(needs).getAllByRole('listitem');
-    expect(rows).toHaveLength(4);
-    expect(within(rows[0] as HTMLElement).getByText('3 days late')).toBeDefined();
+    expect(rows).toHaveLength(5);
+    expect(within(rows[0] as HTMLElement).getByText('3 days overdue')).toBeDefined();
     expect(needs.querySelectorAll('.today-act.is-primary')).toHaveLength(1);
-    expect(screen.getByRole('button', { name: 'Chase, Chase 19 replies' })).toBeDefined();
+    expect(within(needs).getAllByRole('link')).toHaveLength(4);
+    expect(
+      within(needs)
+        .getByRole('link', { name: 'Open the kitchen sheet, Ire Events end-of-year party' })
+        .getAttribute('href'),
+    ).toBe('/demo/events/evt-party-2/kitchen');
+    const band = rows.find((row) => within(row).queryByText('Pay the band’s balance') != null);
+    expect(band && within(band).queryByRole('link')).toBeNull();
+    expect(
+      within(needs).getByRole('button', {
+        name: 'Give final numbers to the kitchen, Ire Events end-of-year party, 3 days overdue',
+      }),
+    ).toBeDefined();
     expect(screen.getByRole('button', { name: 'New event' })).toBeDefined();
     expect(screen.getByRole('button', { name: 'Today' }).getAttribute('aria-current')).toBe('page');
   });
@@ -1567,8 +1582,7 @@ describe('Today at a desk (sc-29092)', () => {
     await today('plan&invites=none');
 
     expect(screen.getByText('Invitations not sent')).toBeDefined();
-    expect(screen.getByRole('button', { name: 'Send, Send the invitations' })).toBeDefined();
-    expect(screen.queryByRole('button', { name: 'Chase, Chase 19 replies' })).toBeNull();
+    expect(screen.queryByText('Send the invitations')).toBeNull();
   });
 
   it('opens an event starting later today as a planning day, from the demo home', async () => {
@@ -1611,13 +1625,59 @@ describe('Today at a desk (sc-29092)', () => {
   it('says what a press opens, and ⌘K opens search', async () => {
     await today('plan');
 
-    fireEvent.click(screen.getByRole('button', { name: 'Review, Final numbers to the caterer' }));
-    expect(
-      screen.getByText('Review opens in Adaeze & Tunde’s wedding, which has its own design.'),
-    ).toBeDefined();
+    fireEvent.click(screen.getByRole('button', { name: /^New event/ }));
+    expect(screen.getByText('Create an event has its own design.')).toBeDefined();
 
     fireEvent.keyDown(window, { key: 'k', metaKey: true });
     expect(screen.getByRole('dialog', { name: 'Search' })).toBeDefined();
+  });
+
+  it('opens a row’s event from the row (sc-61015)', async () => {
+    const router = at('/demo/today?moment=plan&needs=one');
+    await screen.findByRole('navigation', { name: 'Soirely' });
+
+    expect(screen.getByText('1 thing needs you.')).toBeDefined();
+    const needs = screen.getByRole('region', { name: 'Needs you' });
+    expect(within(needs).getByRole('heading', { name: 'Needs you, 1 thing' })).toBeDefined();
+    fireEvent.click(
+      within(needs).getByRole('button', {
+        name: 'Give final numbers to the kitchen, Adaeze & Tunde’s wedding, Due today',
+      }),
+    );
+    await waitFor(() => expect(router.state.location.pathname).toBe('/demo/events/evt-wed-4'));
+  });
+
+  it('opens Kitchen sheet from a row’s button (sc-61015)', async () => {
+    const router = at('/demo/today?moment=plan&needs=one');
+    await screen.findByRole('navigation', { name: 'Soirely' });
+
+    fireEvent.click(
+      screen.getByRole('link', { name: 'Open the kitchen sheet, Adaeze & Tunde’s wedding' }),
+    );
+    await waitFor(() =>
+      expect(router.state.location.pathname).toBe('/demo/events/evt-wed-4/kitchen'),
+    );
+  });
+
+  it('leads with the overdue rows in every form (sc-61015)', async () => {
+    await today('plan&needs=overdue');
+
+    const rows = within(screen.getByRole('region', { name: 'Needs you' })).getAllByRole('listitem');
+    expect(rows.map((row) => row.querySelector('.today-due')?.textContent)).toEqual([
+      '2 days overdue',
+      '1 day overdue',
+      'Overdue',
+      'Due tomorrow',
+      'Due Thu, Nov 5',
+    ]);
+  });
+
+  it('shows the tick and no cover line when nothing needs you (sc-61015)', async () => {
+    await today('plan&needs=none');
+
+    expect(screen.getByText('Nothing needs you')).toBeDefined();
+    expect(screen.getByText('You’re up to date on every event.')).toBeDefined();
+    expect(screen.queryByText(/needs? you\./)).toBeNull();
   });
 
   it('shows only what the product can say, built now', async () => {
@@ -1628,14 +1688,75 @@ describe('Today at a desk (sc-29092)', () => {
     expect(screen.queryByText(/replied/)).toBeNull();
   });
 
-  it('makes the banner Now on the event day, with the run of show', async () => {
+  it('makes the banner Now on the event day, with the run of show and Next alone', async () => {
     await today('day');
 
     expect(screen.getByRole('heading', { level: 1, name: 'Drinks reception' })).toBeDefined();
     expect(screen.getByText('Live now')).toBeDefined();
-    expect(screen.getByRole('img', { name: '87 of 99 arrived' })).toBeDefined();
-    expect(screen.getByRole('img', { name: /^14:00 Ceremony, 15:00 Photos/ })).toBeDefined();
+    expect(screen.getByText('until 17:30')).toBeDefined();
+    expect(document.querySelector('.tn-figure')?.textContent).toBe(
+      '10 min behind10 minutes behind',
+    );
+    expect(
+      screen.getByText('Guests take their seats', { selector: '.today-next-what' }),
+    ).toBeDefined();
+    expect(document.querySelector('.today-now .today-arrived')).toBeNull();
+    expect(
+      screen.getByRole('img', {
+        name: '15:00 Photos, done; 16:00 Drinks reception, now; 17:20 Guests take their seats, next; 18:00 Dinner is served, still to come; 19:30 Speeches, still to come; 21:00 Cake cutting, still to come',
+      }),
+    ).toBeDefined();
     expect(screen.getByRole('button', { name: 'Open run of show' })).toBeDefined();
+  });
+
+  it.each([
+    ['over', 'Drinks reception', '12 min over', '22 min behind'],
+    ['open', 'Speeches', null, 'On time'],
+    ['last', 'First dance', 'until 22:05', 'Last item under way'],
+    ['between', 'Nothing is on', null, '18 min behind'],
+    ['before', 'Nothing is on', null, 'On time'],
+    ['done', 'That’s everything.', null, null],
+  ])('draws Now %s', async (state, headline, until, figure) => {
+    await today(`day&now=${state}`);
+    const now = document.querySelector('.today-now');
+
+    expect(screen.getByRole('heading', { level: 1, name: headline })).toBeDefined();
+    const line = now?.querySelector('.today-now-until');
+
+    expect((line?.querySelector('[aria-hidden]') ?? line)?.textContent ?? null).toBe(until);
+    expect(now?.querySelector('.tn-figure [aria-hidden]')?.textContent ?? null).toBe(figure);
+    expect(now?.querySelector('.tn-next') == null).toBe(state === 'last' || state === 'done');
+    expect(screen.getByRole('button', { name: 'Open run of show' })).toBeDefined();
+  });
+
+  it('says the minutes over in full to a screen reader', async () => {
+    await today('day&now=over');
+
+    expect(document.querySelector('.today-now-until .visually-hidden')?.textContent).toBe(
+      '12 minutes over',
+    );
+  });
+
+  it('draws Now long, the 120-character title whole in the heading', async () => {
+    await today('day&now=long');
+
+    expect(
+      screen.getByRole('heading', {
+        level: 1,
+        name: 'Drinks reception on the garden terrace with the string quartet, canapés from the Lagos kitchen and the first photographs',
+      }),
+    ).toBeDefined();
+    expect(screen.getByRole('button', { name: 'Open run of show' })).toBeDefined();
+  });
+
+  it('opens the run of show from Now on the event day', async () => {
+    const router = await today('day');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Open run of show' }));
+
+    await waitFor(() =>
+      expect(router.state.location.pathname).toMatch(/^\/demo\/events\/[^/]+\/night$/),
+    );
   });
 
   it('opens the event from Now, built now', async () => {

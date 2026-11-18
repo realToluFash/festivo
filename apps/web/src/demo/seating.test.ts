@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  chairSaid,
+  chairWord,
+  chairsTakePointer,
   type Item,
   type Point,
   keepsClear,
@@ -16,18 +19,22 @@ import {
   SEATING_STATES,
   SW,
   bounds,
+  chairsFit,
   chairsOf,
   deletePlanWords,
   extent,
   feet,
   filled,
   fitOf,
+  freedFrom,
   focusReach,
   intoView,
   inside,
   keepSeats,
+  marksOf,
   leastUsed,
   many,
+  seatChosenWords,
   metres,
   nearestFree,
   nextName,
@@ -57,6 +64,7 @@ import {
   usable,
   detailOf,
   endsLine,
+  isTable,
 } from './seating.ts';
 import { seedOf } from './seatingSeed.ts';
 
@@ -267,11 +275,27 @@ describe('the room to scale (sc-4007)', () => {
     expect(focusReach({ ...row, rot: 45 })).toBeCloseTo(20 * Math.SQRT2);
   });
 
-  it('draws outlines under 50%, chairs from 50%, and 44 targets from 150%', () => {
+  it('draws outlines under 50%, chairs from 50%, and their numbers from 150%', () => {
     expect(detailOf(0.2)).toBe('out');
     expect(detailOf(0.25)).toBe('fit');
     expect(detailOf(0.5)).toBe('fit');
     expect(detailOf(0.75)).toBe('near');
+  });
+
+  it('adds the reply only to the chair on the picture (sc-5030)', () => {
+    const chair = { state: 'taken' as const, who: 'Chidi Obi' };
+
+    expect(chairWord(chair)).toBe('Chidi Obi');
+    expect(chairSaid(chair)).toBe('Chidi Obi, Coming');
+    expect(chairSaid({ ...chair, reply: 'notSure' as const })).toBe('Chidi Obi, Not sure yet');
+    expect(chairSaid({ state: 'empty' })).toBe(chairWord({ state: 'empty' }));
+  });
+
+  it('gives a chair the pointer only once it is a 44 target, table by table', () => {
+    expect(chairsTakePointer(byId('t1'), 0.5)).toBe(false);
+    expect(chairsTakePointer(byId('t1'), 0.75)).toBe(true);
+    expect(chairsTakePointer(byId('rowA'), 0.75)).toBe(false);
+    expect(chairsTakePointer(byId('rowA'), 1)).toBe(true);
   });
 
   it('puts seat 1 at the top of a round table and goes clockwise', () => {
@@ -544,10 +568,10 @@ describe('dates on paper (sc-4024)', () => {
 });
 
 describe('the states (§6)', () => {
-  it('links every state from the demo’s home, in nine groups', () => {
+  it('links every state from the demo’s home, in ten groups', () => {
     const links = SEATING_PAGES.flatMap((page) => page.states);
 
-    expect(SEATING_PAGES).toHaveLength(9);
+    expect(SEATING_PAGES).toHaveLength(10);
     expect(links).toHaveLength(SEATING_STATES.length);
     expect(links[0]?.to).toBe('/demo/events/evt-wed-4/seating');
   });
@@ -579,5 +603,52 @@ describe('the breadcrumb (sc-55300)', () => {
       events: 'Événements',
       area: 'Plan de table',
     });
+  });
+});
+
+describe('a colleague’s marks on Tables and the List (sc-60717)', () => {
+  const ana = { name: 'Ana Souza', initials: 'AS', tone: 2, viewer: false };
+  const sade = { name: 'Sade Bello', initials: 'SB', tone: 1, viewer: true };
+  const rings = { t7: [{ who: sade }, { who: ana, seat: 2 }] };
+
+  it('never marks a viewer’s choice, and marks nothing while reconnecting', () => {
+    expect(marksOf(rings, 'chips', 't7').map((one) => one.who.name)).toEqual(['Ana Souza']);
+    expect(marksOf(rings, 'reconnecting', 't7')).toEqual([]);
+    expect(marksOf(rings, 'chips', 'nothing')).toEqual([]);
+  });
+
+  it('names who chose a chair, and nobody on another', () => {
+    const marks = marksOf(rings, 'chips', 't7');
+
+    expect(seatChosenWords(marks, 2)).toBe(', chosen by Ana Souza');
+    expect(seatChosenWords(marks, 0)).toBe('');
+  });
+});
+
+describe('the guests a deleted or emptied item frees', () => {
+  it('sends each taken chair back to Without a seat on their own, coming, and skips held or empty chairs', () => {
+    const table: Item = {
+      ...newItem('round', [], [0, 0]),
+      chairs: [
+        { state: 'taken', who: 'Ines Duarte', party: 'p1' },
+        { state: 'held', who: 'Musa Bello' },
+        { state: 'empty' },
+        { state: 'taken', who: 'Kofi Mensah' },
+      ],
+    };
+
+    expect(freedFrom([table])).toEqual([
+      { id: 'back-Ines Duarte', name: 'Ines Duarte', companions: [], group: null, reply: 'coming' },
+      { id: 'back-Kofi Mensah', name: 'Kofi Mensah', companions: [], group: null, reply: 'coming' },
+    ]);
+  });
+});
+
+describe('a Tables card’s chairs (sc-4013)', () => {
+  it('gives each chair a 24 px target where the card leaves room, and a long row none', () => {
+    const tight = samplePlan().items.filter((item) => !chairsFit(item));
+
+    expect(tight.map((item) => item.name)).toEqual(['Row A']);
+    expect(samplePlan().items.filter(isTable).every(chairsFit)).toBe(true);
   });
 });

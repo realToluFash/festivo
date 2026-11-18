@@ -1,8 +1,8 @@
 import type { OrganisationEvent } from '@soirely/api-client';
-import { type Choice, changedWords } from '@soirely/domain';
+import { type Choice, changedWords, takesThankYou } from '@soirely/domain';
 import { router } from 'expo-router';
 import type { TFunction } from 'i18next';
-import { type Ref, type RefObject, useEffect, useRef } from 'react';
+import { type ReactNode, type Ref, type RefObject, useEffect, useRef, useState } from 'react';
 import { StyleSheet, View, type ViewInstance } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
@@ -46,6 +46,7 @@ import { useShownPhase } from './Events.tsx';
 import { useMakeLive } from './MakeLive.tsx';
 import { useEventMute } from './MuteEventCard.tsx';
 import { useResume } from './PauseEvent.tsx';
+import { ThankYouCard, ThankYouScreen } from './ThankYou.tsx';
 import { readOut } from './ReadOut.tsx';
 import type { ScreenReaderTarget } from './screenReaderFocus.ts';
 import type { TextHandle } from './Text.tsx';
@@ -66,6 +67,9 @@ export function EventPage({
   onDeleted,
   onGuests,
   tell,
+  opensEndNow = false,
+  onEndNowOpened,
+  notice,
 }: {
   kind: LayoutKind;
   event: OrganisationEvent;
@@ -87,6 +91,11 @@ export function EventPage({
   onDeleted?: ((event: OrganisationEvent) => void) | undefined;
   /** Says a toast at the foot of the page. */
   tell?: ((words: string) => void) | undefined;
+  /** Arrived from the night's End now: End now's confirmation opens over the page, where it is offered (sc-3895). */
+  opensEndNow?: boolean;
+  onEndNowOpened?: () => void;
+  /** A notice about the event as it was saved, first under its card. */
+  notice?: ReactNode;
 }) {
   const { t } = useTranslation();
   const locale = dateLocale();
@@ -101,6 +110,8 @@ export function EventPage({
   const endOpener = useRef<ViewInstance>(null);
   const deleteOpener = useRef<ViewInstance>(null);
   const duplicateOpener = useRef<ViewInstance>(null);
+  const thankYouOpener = useRef<ViewInstance>(null);
+  const [thanking, setThanking] = useState(false);
   const makeLive = useMakeLive({
     event,
     onChange,
@@ -113,6 +124,7 @@ export function EventPage({
     event,
     onChange,
     openers: { pause: pauseOpener, end: endOpener },
+    onThanked: () => tell?.(t('thankYou.done')),
   });
   const deletion = useDeleteEvent({
     event,
@@ -160,6 +172,16 @@ export function EventPage({
   const offered = manageOf(event, phase, now).filter((key) =>
     key === 'duplicate' ? onDuplicate != null : key === 'delete' ? onDeleted != null : manages,
   );
+  const endsNow = opensEndNow && offered.includes('endNow');
+  const askedEnd = useRef(false);
+
+  useEffect(() => {
+    if (!endsNow || askedEnd.current) return;
+    askedEnd.current = true;
+    askEnd('endNow');
+    onEndNowOpened?.();
+  }, [endsNow, askEnd, onEndNowOpened]);
+
   const resumeSays =
     resume.state === 'failed'
       ? t('eventPause.resumeFailed')
@@ -270,6 +292,14 @@ export function EventPage({
       ]}
     />
   );
+  const thankYou = takesThankYou(event, phase) && (
+    <ThankYouCard
+      event={event}
+      manages={manages}
+      opener={thankYouOpener}
+      onOpen={() => setThanking(true)}
+    />
+  );
   const numbers = <EventGuestNumbers event={event} onOpen={onGuests} />;
   const forYou = (
     <JustForYou
@@ -325,6 +355,8 @@ export function EventPage({
         card={card}
         left={
           <>
+            {notice}
+            {thankYou}
             {details}
             {comingUp}
             {nameCover}
@@ -339,6 +371,8 @@ export function EventPage({
         }
         stacked={
           <>
+            {notice}
+            {thankYou}
             {numbers}
             {details}
             {comingUp}
@@ -351,6 +385,16 @@ export function EventPage({
       {makeLive.sheet}
       {asks}
       {deletion.sheet}
+      {manages && takesThankYou(event, phase) && (
+        <ThankYouScreen
+          event={event}
+          open={thanking}
+          opener={thankYouOpener}
+          onClose={() => setThanking(false)}
+          onChange={onChange}
+          onSaid={(words) => tell?.(words)}
+        />
+      )}
     </View>
   );
 }

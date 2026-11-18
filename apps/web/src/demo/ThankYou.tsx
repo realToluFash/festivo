@@ -259,6 +259,7 @@ export function EndNowAsk({
       line={W.endLine}
       keep={W.keepItOn}
       go={W.endNow}
+      red={false}
       busy={field.busy ? TY_WORDS.ending : undefined}
       failed={
         field.failed

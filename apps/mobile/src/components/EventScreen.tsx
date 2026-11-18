@@ -44,7 +44,7 @@ import {
 } from '../kit/eventNav.ts';
 import { markDeleted, takeCoverRefused } from '../kit/eventSaved.ts';
 import { type Opened, openedOf, openedWithoutAsking } from '../kit/eventsOpen.ts';
-import { SHOWN_EVENT, goUpToEvent } from '../kit/upToEvent.ts';
+import { ASKS_END, SHOWN_EVENT, goUpToEvent } from '../kit/upToEvent.ts';
 import { useServerNow } from '../kit/serverNow.ts';
 import { useLayout } from '../layout/useLayout.ts';
 import { useSignedIn } from '../signedIn.ts';
@@ -54,16 +54,17 @@ import { bodyEdges } from './bodyEdges.ts';
 import { SecondaryButton } from './Buttons.tsx';
 import { cardFrame } from './cardFrame.ts';
 import { DuplicateEvent } from './DuplicateEvent.tsx';
+import { EventNotice } from './EventNotice.tsx';
 import { EventPage } from './EventPage.tsx';
 import { EDIT_PARTS } from './EventEdits.tsx';
 import { EventEditScreen } from './EventPartEdits.tsx';
 import { EventGuests, type GuestsTop } from './EventGuests.tsx';
+import { ExportButton } from './GuestExport.tsx';
 import { EventPeople } from './EventPeople.tsx';
 import { EventNotFound, EventTop, EventsFailed, usePhaseOf } from './Events.tsx';
-import { Notice } from './Notice.tsx';
 import { Refreshing } from './Refreshing.tsx';
 import { Screen } from './Screen.tsx';
-import { LoadingBlock, PageToast } from './Summary.tsx';
+import { LoadingBlock, PageToast, TextAction } from './Summary.tsx';
 import type { ToastAction } from './Toast.tsx';
 import { phoneTabBarClearance } from './TodayCover.tsx';
 import { Arrived } from './Skeleton.tsx';
@@ -88,6 +89,7 @@ export function EventScreen({
   editLeaves = false,
   keepsTab,
   opensGuest,
+  opensEndNow = false,
 }: {
   eventId: string;
   area: EventPlace;
@@ -105,6 +107,8 @@ export function EventScreen({
   keepsTab: boolean;
   /** The guest whose details Guests opens on, as a match in Search opens them (sc-39534). */
   opensGuest?: string | undefined;
+  /** Opened by the night's End now, so End now's confirmation is over the page as it opens (sc-3895). */
+  opensEndNow?: boolean;
 }) {
   const { t } = useTranslation();
   const { kind } = useLayout();
@@ -119,6 +123,7 @@ export function EventScreen({
       [DUPLICATING]?: string | undefined;
       [EDIT_AT_PARAM]?: string | undefined;
       [EDIT_LEAVES]?: string | undefined;
+      [ASKS_END]?: string | undefined;
     }): void;
     getState(): { routes: readonly { params?: unknown }[]; index: number } | undefined;
   }>();
@@ -136,14 +141,15 @@ export function EventScreen({
         RefObject<ViewInstance | null>
       >,
   );
-  const coverNotice = useRef<ViewInstance>(null);
   const [guestsOffline, setGuestsOffline] = useState<ScreenOffline>(NOT_OFFLINE);
   const [guestsTop, setGuestsTop] = useState<GuestsTop>({
     add: null,
+    exports: null,
     back: null,
     toSearch: false,
   });
   const guestsAdd = useRef<ViewInstance>(null);
+  const guestsExport = useRef<ViewInstance>(null);
   const [toast, setToast] = useState<{
     eventId: string;
     area: EventPlace;
@@ -287,25 +293,30 @@ export function EventScreen({
             onDuplicate={onDuplicate}
             onDeleted={onDeleted}
             tell={(words) => setToast({ eventId, area, words })}
-          />
-          {coverRefused?.eventId === eventId && (
-            <View style={styles.stack}>
-              <Notice
-                tone="broken"
-                mark={tokens.marks.broken.glyph}
-                body={t('eventCover.createdWithout', { reason: coverRefused.reason })}
-                announce
-              />
-              {onEdit != null && (
-                <SecondaryButton
-                  ref={coverNotice}
-                  label={t('eventEdit.open')}
-                  onPress={() => onEdit('cover', coverNotice)}
-                  testID="events.page.coverRefused.edit"
+            opensEndNow={opensEndNow}
+            onEndNowOpened={() => navigation.setParams({ [ASKS_END]: undefined })}
+            notice={
+              coverRefused?.eventId === eventId ? (
+                <EventNotice
+                  tone="broken"
+                  words={t('eventCover.createdWithout', { reason: coverRefused.reason })}
+                  actions={
+                    onEdit == null ? null : (
+                      <TextAction
+                        label={t('eventCover.upload')}
+                        glyph="camera"
+                        onPress={() => {
+                          setCoverRefused(null);
+                          onEdit('cover', partRef('cover'));
+                        }}
+                        testID="events.page.coverRefused.upload"
+                      />
+                    )
+                  }
                 />
-              )}
-            </View>
-          )}
+              ) : null
+            }
+          />
         </Arrived>
       ) : area === 'people' ? (
         <EventPeople
@@ -316,7 +327,11 @@ export function EventScreen({
       ) : (
         <PlaceholderArea
           area={area}
-          action={area === 'schedule' ? <RunViewEntry event={event} /> : null}
+          action={
+            area === 'schedule' ? (
+              <RunViewEntry event={event} happening={phase === 'happening_now'} />
+            ) : null
+          }
         >
           <EventTop
             kind={kind}
@@ -367,6 +382,15 @@ export function EventScreen({
         onPress={guestsTop.add}
         wide={guestsLabel.wide}
         testID="guests.add"
+      />
+    ) : null;
+  const exportGuests =
+    guests && guestsTop.exports != null ? (
+      <ExportButton
+        ref={guestsExport}
+        kind={kind}
+        offline={guestsOffline.stale != null}
+        onPress={guestsTop.exports}
       />
     ) : null;
   const guestBack = guests ? guestsTop.back : null;
@@ -422,6 +446,7 @@ export function EventScreen({
           onEventChange={change}
           onEventStale={reload}
           addRef={guestsAdd}
+          exportRef={guestsExport}
           tell={(words, action) => setToast({ eventId, area, words, action })}
           withdrawAction={withdrawToastAction}
           onTop={setGuestsTop}
@@ -439,6 +464,7 @@ export function EventScreen({
                 </Title>
               </View>
               {!phone && refreshing}
+              {exportGuests}
               {addGuest}
             </View>
           }
@@ -560,8 +586,8 @@ function PlaceholderArea({
   );
 }
 
-/** The Schedule's way into the run view (sc-1404), for anyone who can read the run of show once it holds an item. */
-function RunViewEntry({ event }: { event: OrganisationEvent }) {
+/** The Schedule's way into the run view (sc-1404), for anyone who can read the run of show once it holds an item, and into Run of show while the event is happening (sc-3895). */
+function RunViewEntry({ event, happening }: { event: OrganisationEvent; happening: boolean }) {
   const { t } = useTranslation();
   const reads = event.permissions.includes('run_of_show.read');
   const [items, setItems] = useState<{ for: string; count: number } | null>(null);
@@ -580,16 +606,27 @@ function RunViewEntry({ event }: { event: OrganisationEvent }) {
     };
   }, [event.id, reads]);
 
-  if (!reads || items?.for !== event.id || items.count === 0) return null;
+  if (!reads || items?.for !== event.id) return null;
+  if (items.count === 0 && !happening) return null;
 
   return (
     <View style={styles.runEntry}>
-      <SecondaryButton
-        label={t('runView.open')}
-        link
-        onPress={() => router.push({ pathname: '/events/[id]/run', params: { id: event.id } })}
-        testID="events.schedule.run"
-      />
+      {happening && (
+        <SecondaryButton
+          label={t('night.open')}
+          link
+          onPress={() => router.push({ pathname: '/events/[id]/night', params: { id: event.id } })}
+          testID="events.schedule.night"
+        />
+      )}
+      {items.count > 0 && (
+        <SecondaryButton
+          label={t('runView.open')}
+          link
+          onPress={() => router.push({ pathname: '/events/[id]/run', params: { id: event.id } })}
+          testID="events.schedule.run"
+        />
+      )}
     </View>
   );
 }
@@ -670,7 +707,7 @@ function useOpened(
 
 const styles = StyleSheet.create({
   stack: { gap: tokens.spaceMd },
-  runEntry: { paddingTop: tokens.spaceMd, alignItems: 'flex-start' },
+  runEntry: { paddingTop: tokens.spaceMd, alignItems: 'flex-start', gap: tokens.spaceSm },
   secondary: { color: tokens.colorInkSecondary },
   fill: { flex: 1 },
   titleRow: { flexDirection: 'row', alignItems: 'center', gap: tokens.spaceSm },

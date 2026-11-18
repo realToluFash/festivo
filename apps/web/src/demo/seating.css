@@ -989,8 +989,10 @@
 
 .st-bar-acts {
   display: flex;
-  flex: none;
-  gap: 18px;
+  flex: 0 1 auto;
+  flex-wrap: wrap;
+  gap: 0 18px;
+  min-width: 0;
 }
 
 .st-keys {
@@ -1927,6 +1929,12 @@
   background: var(--colorAccentTint);
 }
 
+.st-party.is-seat {
+  gap: 10px;
+  min-height: var(--sizeHit);
+  padding: 2px 10px;
+}
+
 .st-party:disabled {
   cursor: default;
 }
@@ -1950,13 +1958,29 @@
 
 .st-view-wrap {
   position: absolute;
-  inset: 0;
+  inset: 72px 0 0;
   display: flex;
   flex-direction: column;
   gap: 12px;
   box-sizing: border-box;
-  padding: 72px var(--spaceLg) var(--spaceLg);
+  padding: 0 var(--spaceLg) var(--spaceLg);
   overflow-y: auto;
+}
+
+/* sc-4013: the cards scroll under the view switch, and the step's message, with a choice it asks for (Seat just, Swap with, Move everyone to…), stays at the top of what is shown, so a card tapped far down the grid never scrolls its answer away. */
+.st-view-top {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.st-view-top > .st-bar.is-inline {
+  align-self: stretch;
 }
 
 .st-canvas.is-list {
@@ -1971,30 +1995,148 @@
 
 .st-cards {
   display: grid;
-  grid-template-columns: repeat(auto-fill, 212px);
-  gap: 12px;
+  grid-template-columns: repeat(auto-fill, 242px);
+  gap: 6px;
   margin: 0;
   padding: 0;
   list-style: none;
 }
 
 .st-card {
+  position: relative;
   display: flex;
   flex-direction: column;
   gap: 6px;
   width: 212px;
   box-sizing: border-box;
   padding: 12px;
-  border: 0;
   border-radius: 20px;
   background: var(--colorCard);
   box-shadow: 0 0 0 1px var(--colorBorder);
+}
+
+/* sc-4013: the card's name is its button and reaches over the whole card, so a press anywhere but a chair is the table's; the chairs sit above it as targets of their own, never inside it. */
+.st-card-hit {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
   text-align: left;
   cursor: pointer;
 }
 
+.st-card-hit::after {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  content: '';
+}
+
+.st-card-hit:focus-visible {
+  outline: none;
+}
+
+.st-card-hit:focus-visible::after {
+  outline: 2px solid var(--colorAccent);
+  outline-offset: 2px;
+  border-radius: 20px;
+}
+
+.st-card-art .st-chair-hit.is-card {
+  pointer-events: auto;
+}
+
+.st-card-art .st-chair-hit.is-card:hover,
+.st-card-art .st-chair-hit.is-card[aria-pressed='true'] {
+  stroke: var(--colorAccent);
+  stroke-width: 2;
+}
+
 .st-card.is-lit {
   background: var(--colorAccentTint);
+}
+
+.st-whos {
+  display: inline-flex;
+  gap: 4px;
+}
+
+.st-who {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  min-width: 30px;
+  height: 22px;
+  padding: 0 6px;
+  border-radius: 11px;
+  background: var(--ring);
+  color: var(--colorInkOnDark);
+  font: 700 12px/1 var(--fontFamily);
+}
+
+/* sc-60717: a colleague's ring outside the card, as on the plan: 2 px white, then 3 px in their colour, each further colleague 5 px out. Every slot reserves three rings and their pills, as on the iPad, so a live choice only paints. */
+.st-card-slot {
+  position: relative;
+  padding: 27px 15px 15px;
+}
+
+.st-card.is-marked .st-card-hit:focus-visible::after {
+  outline-offset: -6px;
+}
+
+.st-card-ring {
+  position: absolute;
+  inset: calc(27px - var(--out)) calc(15px - var(--out)) calc(15px - var(--out));
+  border: 3px solid var(--ring);
+  box-shadow: inset 0 0 0 2px var(--colorCard);
+  pointer-events: none;
+}
+
+.st-card-ring.is-k0 {
+  --out: 5px;
+
+  border-radius: 25px;
+}
+
+.st-card-ring.is-k1 {
+  --out: 10px;
+
+  border-radius: 30px;
+}
+
+.st-card-ring.is-k2 {
+  --out: 15px;
+
+  border-radius: 35px;
+}
+
+.st-card-ring.is-k3 {
+  --out: 20px;
+
+  border-radius: 40px;
+}
+
+.st-card-ring .st-who {
+  position: absolute;
+  top: -12px;
+}
+
+.st-card-ring.is-k0 .st-who {
+  left: 14px;
+}
+
+.st-card-ring.is-k1 .st-who {
+  left: 58px;
+}
+
+.st-card-ring.is-k2 .st-who {
+  left: 102px;
+}
+
+.st-card-ring.is-k3 .st-who {
+  left: 146px;
 }
 
 .st-card-top {
@@ -2031,7 +2173,11 @@
 }
 
 .st-card-art {
+  position: relative;
+  z-index: 1;
   display: block;
+  overflow: visible;
+  pointer-events: none;
 }
 
 .st-seg.is-list {
@@ -2073,7 +2219,7 @@
   display: flex;
   align-items: center;
   gap: 10px;
-  width: 180px;
+  min-width: 180px;
   min-height: 56px;
   padding: 0;
   border: 0;
@@ -2627,8 +2773,19 @@
   pointer-events: none;
 }
 
+.st-align-one:nth-child(3n + 1) .st-tooltip {
+  left: 0;
+  transform: none;
+}
+
+.st-align-one:nth-child(3n) .st-tooltip {
+  right: 0;
+  left: auto;
+  transform: none;
+}
+
 .st-align-one:hover .st-tooltip,
-.st-align-one:focus-within .st-tooltip {
+.st-align-one:has(:focus-visible) .st-tooltip {
   display: block;
 }
 
@@ -2787,5 +2944,43 @@
 }
 
 .is-row-down .st-view-wrap {
-  padding-top: 132px;
+  top: 132px;
+}
+
+/* sc-5030: while a guest is picked, every table says whether it has room, by outline and by word. */
+.st-room-for {
+  fill: none;
+  stroke: var(--deskGreen);
+  stroke-width: 2;
+  stroke-dasharray: 6 4;
+  pointer-events: none;
+}
+
+.st-room-for.is-full {
+  stroke: var(--colorInkTertiary);
+}
+
+.st-free {
+  pointer-events: none;
+}
+
+.st-free rect {
+  fill: color-mix(in srgb, var(--deskGreen) 12%, var(--colorCard));
+  stroke: var(--deskGreen);
+}
+
+.st-free text {
+  fill: var(--colorInk);
+  font: 600 12px var(--fontFamily);
+  font-variant-numeric: tabular-nums;
+}
+
+.st-free.is-full rect {
+  fill: var(--stSunk);
+  stroke: var(--colorInkTertiary);
+}
+
+.st-kept {
+  flex: none;
+  padding: var(--spaceMd) var(--spaceLg) 0 24px;
 }

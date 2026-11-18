@@ -1,6 +1,7 @@
 import type { OrganisationEvent } from '@soirely/api-client';
-import { changedWords } from '@soirely/domain';
-import type { RefObject } from 'react';
+import { changedWords, cleanThankYou, thankYouOver } from '@soirely/domain';
+import { type RefObject, useState } from 'react';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 
 import { api } from '../api.ts';
@@ -11,6 +12,8 @@ import {
   pauseRefusalOf,
 } from '../kit/makeLive.ts';
 import { useLifecycleAction } from './LifecycleSheet.tsx';
+import { ThankYouField } from './ThankYou.tsx';
+import { tokens } from '../theme/tokens.ts';
 import { Ask, ASK_WIDTH } from './Summary.tsx';
 import type { ScreenReaderTarget } from './screenReaderFocus.ts';
 
@@ -22,11 +25,16 @@ export function useManageAsks({
   event,
   onChange,
   openers,
+  onThanked,
 }: {
   event: OrganisationEvent;
   onChange: (event: OrganisationEvent) => void;
   openers: { pause: Opener; end: Opener };
+  /** End now went with a thank-you (sc-6476). */
+  onThanked?: () => void;
 }) {
+  const [draft, setDraft] = useState('');
+  const [tried, setTried] = useState(false);
   const pause = useLifecycleAction<object, PauseRefusal>({
     event,
     onChange,
@@ -36,15 +44,33 @@ export function useManageAsks({
     event,
     onChange,
     refusalOf: endRefusalOf,
+    onDone: () => {
+      if (cleanThankYou(draft) !== '') onThanked?.();
+    },
   });
 
   return {
     askPause: () => pause.ask({}),
-    askEnd: (label: End) => end.ask({ label }),
+    askEnd: (label: End) => {
+      setDraft('');
+      setTried(false);
+      end.ask({ label });
+    },
     asks: (
       <>
         <PauseAsk event={event} action={pause} opener={openers.pause} />
-        <EndAsk event={event} action={end} opener={openers.end} />
+        <EndAsk
+          event={event}
+          action={end}
+          opener={openers.end}
+          draft={draft}
+          tried={tried}
+          onType={(typed) => {
+            setDraft(typed);
+            setTried((was) => was && thankYouOver(typed));
+          }}
+          onOver={() => setTried(true)}
+        />
       </>
     ),
   };
@@ -113,15 +139,27 @@ function EndAsk({
   event,
   action,
   opener,
+  draft,
+  tried,
+  onType,
+  onOver,
 }: {
   event: OrganisationEvent;
   action: EndAction;
   opener: Opener;
+  draft: string;
+  tried: boolean;
+  onType: (typed: string) => void;
+  onOver: () => void;
 }) {
   const { t } = useTranslation();
+  const insets = useSafeAreaInsets();
+  const [typing, setTyping] = useState(false);
   const changed = useChangedLine(event);
   const { asking, go, close } = action;
   const callOff = asking?.kind === 'confirm' && asking.label === 'callOff';
+  const thanks = asking?.kind === 'confirm' && !callOff;
+  const thanked = cleanThankYou(draft) !== '';
 
   return (
     <Ask
@@ -130,7 +168,14 @@ function EndAsk({
       width={ASK_WIDTH}
       onKeep={close}
       onConfirm={() => {
-        if (asking?.kind === 'confirm') go({ label: asking.label }, () => api.endEvent(event.id));
+        if (asking?.kind !== 'confirm') return;
+        if (thanks && thankYouOver(draft)) {
+          onOver();
+          return;
+        }
+        go({ label: asking.label }, () =>
+          thanks ? api.endEvent(event.id, cleanThankYou(draft)) : api.endEvent(event.id),
+        );
       }}
       testID="events.endSheet"
       {...(asking == null || asking.kind === 'confirm'
@@ -153,8 +198,28 @@ function EndAsk({
             },
             failed:
               asking?.failed === true
-                ? t(callOff ? 'eventEnd.callOffFailed' : 'eventEnd.failed')
+                ? t(
+                    callOff
+                      ? 'eventEnd.callOffFailed'
+                      : thanked
+                        ? 'thankYou.notEnded'
+                        : 'eventEnd.failed',
+                  )
                 : null,
+            body: thanks ? (
+              <ThankYouField
+                draft={draft}
+                tried={tried}
+                help={t('thankYou.hint')}
+                optional
+                autoFocus={false}
+                onType={onType}
+                onFocus={() => setTyping(true)}
+                onBlur={() => setTyping(false)}
+                testID="events.endThankYou"
+              />
+            ) : undefined,
+            top: thanks && typing ? insets.top + tokens.spaceLg : null,
           }
         : {
             title: t('eventEnd.notEnded'),

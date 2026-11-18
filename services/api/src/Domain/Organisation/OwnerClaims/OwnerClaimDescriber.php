@@ -107,7 +107,7 @@ final readonly class OwnerClaimDescriber
     /** @return Closure(?DateTimeImmutable): ?array{at: string, written: string} */
     private function writer(User $reader): Closure
     {
-        $locale = $this->userMailer->shownLocaleFor($reader);
+        $locale = $this->userMailer->formattingLocaleFor($reader);
 
         return fn (?DateTimeImmutable $at): ?array => null === $at ? null : [
             'at' => $at->format(DateTimeInterface::ATOM),

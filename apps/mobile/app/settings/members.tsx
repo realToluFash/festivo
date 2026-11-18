@@ -66,6 +66,7 @@ import {
   membersCard,
   membersCounts,
   membersShown,
+  personInFront,
   waitingToJoin,
 } from '../../src/kit/membersSummary.ts';
 import {
@@ -331,7 +332,7 @@ export default function MembersScreen() {
   const recovery = load.kind === 'loaded' && manages ? load.recovery : [];
   const recoveryAsked =
     recoveryAsk == null ? null : (recovery.find((one) => one.id === recoveryAsk.id) ?? null);
-  const listBehind = !landscape && member != null;
+  const listBehind = personInFront(kind, member != null);
   const day = (at: string) => formatDay(at, dateLocale());
 
   function moveOn(): void {
@@ -600,6 +601,7 @@ export default function MembersScreen() {
           listed={listed}
           counts={membersCounts(load.kind === 'loaded' ? load.list : EMPTY)}
           filter={current.filter}
+          switching={switchTo != null}
           organisation={organisation.name}
           onFilter={(filter) => {
             moveOn();
@@ -648,6 +650,7 @@ export default function MembersScreen() {
       listUnderTabs
       offline={stale}
       besideTitle={alone ? refreshingWords : undefined}
+      untitled={listBehind}
       title={
         phone
           ? listBehind
@@ -682,7 +685,8 @@ export default function MembersScreen() {
             heading={heading}
             list={list}
             listRows={people}
-            page={page ?? (landscape && load.kind === 'loaded' && <NobodyPicked />)}
+            page={page || undefined}
+            nothingOpen={landscape && load.kind === 'loaded' ? <NobodyPicked /> : undefined}
             pageKey={member?.id ?? ''}
             pageInFront={listBehind}
             back={{
@@ -756,4 +760,5 @@ const SPACING: ListAndPageSpacing = {
   column: styles.column,
   listWidth: SETTINGS_LIST_WIDTH,
   between: 0,
+  settingsTitle: true,
 };

@@ -1,19 +1,45 @@
 import {
+  CHOICES_PER_DISH_MAXIMUM,
   type Dish,
   type DishDiet,
   MENU_COURSE_NAME_MAXIMUM,
   type MenuAnswer,
   type MenuCourse,
   type MenuDish,
+  type MenuDishChoice,
+  VARIANTS_PER_DISH_MAXIMUM,
 } from '@soirely/api-client';
-import { type DishForm, type DishProblems, type MoneyLanguage, shownDishes } from '@soirely/domain';
+import {
+  type DishForm,
+  type DishProblems,
+  type MoneyLanguage,
+  guestsAnswerItsChoices,
+  type FixedRow,
+  type ItemProblems,
+  type ItemRow,
+  guestsPickTheWay,
+  isItem,
+  shownDishes,
+} from '@soirely/domain';
 import { useTranslation } from 'react-i18next';
 
 import { Switch } from '../../../components/GeneralParts.tsx';
 import { Glyph } from '../../../components/Glyph.tsx';
 import { HintButton } from '../../../components/HintButton.tsx';
-import { ActionGlyph, ContainsMark, DishFields, Wrong } from '../menu/DishParts.tsx';
+import { ActionGlyph, ContainsMark, DishFields } from '../menu/DishParts.tsx';
+import { Wrong } from '../menu/MenuFields.tsx';
+import {
+  AddVariantButton,
+  NameDescFields,
+  RowLine,
+  type ShownVariant,
+  type VariantAsk,
+  VariantInsets,
+} from '../menu/VariantParts.tsx';
+import { shownVariants } from '../menu/variants.ts';
+import { AddChoiceButton, type ChoiceAsk, ChoiceInsets, NotOffered } from './ChoiceParts.tsx';
 import { describedBy } from './eventFieldOrder.ts';
+import { DishItemsField, ItemsLine, OwnItemsField, OwnItemsFacts } from './ItemParts.tsx';
 import {
   type CourseForm,
   type CourseProblems,
@@ -23,10 +49,34 @@ import {
   onCourse,
 } from './menuArea.ts';
 
+export interface VariantHandlers {
+  prices: boolean;
+  language: MoneyLanguage;
+  ask: VariantAsk | null;
+  addRefused: { dishId: string; outcome: 'limit' | 'picked' } | null;
+  lit: string | null;
+  onAdd: (dish: MenuDish) => void;
+  onEdit: (dish: MenuDish, variant: ShownVariant) => void;
+  onRemove: (dish: MenuDish, variant: ShownVariant) => void;
+  onKeep: (variant: ShownVariant) => void;
+  onConfirm: (dish: MenuDish, variant: ShownVariant) => void;
+}
+
+export interface ChoiceHandlers {
+  ask: ChoiceAsk | null;
+  addRefused: { dishId: string; outcome: 'limit' | 'picked' } | null;
+  lit: string | null;
+  onAdd: (dish: MenuDish) => void;
+  onEdit: (dish: MenuDish, choice: MenuDishChoice) => void;
+  onRemove: (dish: MenuDish, choice: MenuDishChoice) => void;
+  onKeep: (choice: MenuDishChoice) => void;
+  onConfirm: (dish: MenuDish, choice: MenuDishChoice) => void;
+}
+
 export interface Told {
   words: string;
-  /** A second line under it, beside the amber ring: who picked a dish and has an allergen just added. */
-  more?: string | null;
+  /** Lines under it, beside the amber ring: who picked a dish or an option and has an allergen just added. */
+  more?: string | readonly string[] | null;
   tone?: 'done' | 'fail';
 }
 
@@ -40,14 +90,14 @@ export function Said({ said }: { said: Told | null }) {
             <Glyph name={said.tone === 'fail' ? 'alert' : 'tick'} size={17} weight={2.6} />
             {said.words}
           </p>
-          {said.more != null && (
-            <p className="mc-said-more">
+          {(typeof said.more === 'string' ? [said.more] : (said.more ?? [])).map((line) => (
+            <p key={line} className="mc-said-more">
               <span className="mc-ring is-warn" aria-hidden="true">
                 !
               </span>
-              {said.more}
+              {line}
             </p>
-          )}
+          ))}
         </>
       )}
     </div>
@@ -161,6 +211,8 @@ export function CourseCard({
   onEditDish,
   onAskRemove,
   onRemove,
+  variants,
+  choices,
 }: {
   course: MenuCourse;
   index: number;
@@ -186,9 +238,20 @@ export function CourseCard({
   onEditDish: (dish: MenuDish) => void;
   onAskRemove: (dish: MenuDish) => void;
   onRemove: (dish: MenuDish) => void;
+  variants: VariantHandlers;
+  choices: ChoiceHandlers;
 }) {
   const { t, i18n } = useTranslation();
   const ready = isReady(course);
+  const only = course.dishes[0]?.name ?? '';
+  const pickTheWay =
+    course.answer !== 'same'
+      ? null
+      : guestsPickTheWay(course.dishes)
+        ? t('dishVariants.guestsPickTheWay', { dish: only })
+        : guestsAnswerItsChoices(course.dishes)
+          ? t('dishChoices.answerChoices', { dish: only })
+          : null;
   const sameOk = canSame(course);
   const name = course.name;
   const line =
@@ -234,7 +297,11 @@ export function CourseCard({
             <span className={ready ? 'mc-ring is-ready' : 'mc-ring is-empty'} aria-hidden="true">
               {ready && <Glyph name="tick" size={12} weight={3} />}
             </span>
-            {ready ? t('eventMenu.readyTag') : t('eventMenu.emptyTag')}
+            {ready
+              ? t('eventMenu.readyTag')
+              : course.dishes.length > 0
+                ? t('dishChoices.noFinishedDish')
+                : t('eventMenu.emptyTag')}
           </p>
         </div>
         {manage && (
@@ -284,6 +351,7 @@ export function CourseCard({
           </div>
         )}
       </div>
+      <OwnItemsFacts course={course} />
       {refused === 'course' && <Refused words={t('eventMenu.coursePicked')} />}
       {asking === 'course' && (
         <div className="mn-ask">
@@ -325,6 +393,8 @@ export function CourseCard({
               onAskRemove={() => onAskRemove(dish)}
               onKeep={() => onKeep(`mc-remove-${dish.id}`)}
               onRemove={() => onRemove(dish)}
+              variants={variants}
+              choices={choices}
             />
           ))}
         </ul>
@@ -362,6 +432,11 @@ export function CourseCard({
                 {t('eventMenu.sameNeedsOne')}
               </p>
             )}
+            {pickTheWay != null && (
+              <p className="desk-help mc-same-note" role="status">
+                {pickTheWay}
+              </p>
+            )}
           </fieldset>
           <div className="mc-skip">
             <span className="mc-skip-label" id={`mc-skip-${course.id}`}>
@@ -383,7 +458,10 @@ export function CourseCard({
         </div>
       ) : (
         <ul className="mc-settings-read">
-          <li>{course.answer === 'same' ? t('eventMenu.same') : t('eventMenu.choose')}</li>
+          <li>
+            {course.answer === 'same' ? t('eventMenu.same') : t('eventMenu.choose')}
+            {pickTheWay != null && <span className="mc-hint-read"> {pickTheWay}</span>}
+          </li>
           {course.skippable && <li>{t('eventMenu.skip')}</li>}
         </ul>
       )}
@@ -416,6 +494,8 @@ function DishRow({
   onAskRemove,
   onKeep,
   onRemove,
+  variants,
+  choices,
 }: {
   dish: MenuDish;
   course: MenuCourse;
@@ -428,21 +508,45 @@ function DishRow({
   onAskRemove: () => void;
   onKeep: () => void;
   onRemove: () => void;
+  variants: VariantHandlers;
+  choices: ChoiceHandlers;
 }) {
   const { t } = useTranslation();
   const name = dish.name;
+  const ways = dish.variants.length > 0;
+  const asks = dish.choices.length > 0;
+  const addRefused = variants.addRefused?.dishId === dish.id ? variants.addRefused.outcome : null;
+  const choiceRefused = choices.addRefused?.dishId === dish.id ? choices.addRefused.outcome : null;
 
   return (
     <li className={lit ? 'mn-dish mc-dish is-lit' : 'mn-dish mc-dish'}>
       <div className="mn-dish-top">
         <div className="mn-dish-words">
-          <h3>{name}</h3>
+          <h3>
+            {ways ? t('dishVariants.ways', { dish: name, count: dish.variants.length }) : name}
+          </h3>
+          {!dish.offered && <NotOffered variants={dish.variants.length} />}
           {dish.description != null && <p className="mn-quiet">{dish.description}</p>}
-          <ContainsMark dish={dish} />
-          <Tags dish={dish} />
+          {!ways && <ContainsMark dish={dish} />}
+          {!ways && <Tags dish={dish} />}
+          {asks && (
+            <p className="mn-quiet">
+              {ways ? t('dishChoices.plusVariantOptions') : t('dishChoices.plusOptions')}
+            </p>
+          )}
         </div>
         {manage && (
           <div className="lib-acts" role="group" aria-label={t('eventMenu.actionsFor', { name })}>
+            <AddVariantButton
+              id={`mc-addv-${dish.id}`}
+              dish={name}
+              onClick={() => variants.onAdd(dish)}
+            />
+            <AddChoiceButton
+              id={`mc-addch-${dish.id}`}
+              dish={name}
+              onClick={() => choices.onAdd(dish)}
+            />
             <HintButton
               id={`mc-edit-${dish.id}`}
               label={t('eventMenu.editAria', { name })}
@@ -464,6 +568,58 @@ function DishRow({
           </div>
         )}
       </div>
+      {addRefused != null && (
+        <RowLine
+          id={`mc-vrow-${dish.id}`}
+          words={[
+            addRefused === 'limit'
+              ? t('dishVariants.limit', { most: VARIANTS_PER_DISH_MAXIMUM })
+              : t('dishVariants.dishPicked'),
+          ]}
+        />
+      )}
+      {choiceRefused != null && (
+        <RowLine
+          id={`mc-chrow-${dish.id}`}
+          words={[
+            choiceRefused === 'limit'
+              ? t('dishChoices.choicesLimit', { most: CHOICES_PER_DISH_MAXIMUM })
+              : t('dishChoices.dishPicked'),
+          ]}
+        />
+      )}
+      {ways && asks && <p className="ch-head">{t('dishChoices.variantsHead')}</p>}
+      {ways && (
+        <VariantInsets
+          dish={name}
+          variants={shownVariants(dish)}
+          where="event"
+          ids="mc"
+          manage={manage}
+          prices={variants.prices}
+          language={variants.language}
+          asking={variants.ask}
+          lit={variants.lit}
+          onEdit={(variant) => variants.onEdit(dish, variant)}
+          onRemove={(variant) => variants.onRemove(dish, variant)}
+          onKeep={variants.onKeep}
+          onConfirm={(variant) => variants.onConfirm(dish, variant)}
+          foldItem={isItem(dish, null) ? t('dishItems.variantsAreItem', { dish: name }) : null}
+        />
+      )}
+      <ItemsLine dish={dish} />
+      {asks && (
+        <ChoiceInsets
+          dish={dish}
+          manage={manage}
+          asking={choices.ask}
+          lit={choices.lit}
+          onEdit={(choice) => choices.onEdit(dish, choice)}
+          onRemove={(choice) => choices.onRemove(dish, choice)}
+          onKeep={choices.onKeep}
+          onConfirm={(choice) => choices.onConfirm(dish, choice)}
+        />
+      )}
       {refused && <Refused words={t('eventMenu.dishPicked')} />}
       {asking && (
         <div className="mn-ask">
@@ -496,12 +652,18 @@ export function CourseFields({
   adding,
   problems,
   zone,
+  own,
+  ownProblems,
+  onOwn,
   onPatch,
 }: {
   form: CourseForm;
   adding: boolean;
   problems: CourseProblems | null;
   zone: string;
+  own: FixedRow[];
+  ownProblems: ItemProblems | null;
+  onOwn: (rows: FixedRow[]) => void;
   onPatch: (next: Partial<CourseForm>) => void;
 }) {
   const { t } = useTranslation();
@@ -582,6 +744,7 @@ export function CourseFields({
           <Wrong id="mc-served-error">{t('eventMenu.timeWrong')}</Wrong>
         )}
       </div>
+      {!adding && <OwnItemsField rows={own} problems={ownProblems} onRows={onOwn} />}
       {adding && <p className="desk-help">{t('eventMenu.goesLast')}</p>}
     </>
   );
@@ -595,9 +758,12 @@ export function AddDishPanel({
   onlyEvent,
   course,
   library,
+  loading,
+  failed,
   problems,
   prices,
   language,
+  onRetry,
   onTab,
   onFind,
   onAdd,
@@ -612,9 +778,12 @@ export function AddDishPanel({
   onlyEvent: boolean;
   course: MenuCourse;
   library: readonly Dish[];
+  loading: boolean;
+  failed: boolean;
   problems: DishProblems | null;
   prices: boolean;
   language: MoneyLanguage;
+  onRetry: () => void;
   onTab: (tab: 'library' | 'new') => void;
   onFind: (query: string) => void;
   onAdd: (dish: Dish) => void;
@@ -663,9 +832,13 @@ export function AddDishPanel({
                 />
               </div>
               <p id="mc-found" className="desk-help" role="status">
-                {looking
-                  ? t('eventMenu.foundOf', { shown: shown.length, count: library.length })
-                  : t('eventMenu.inLibrary', { count: library.length })}
+                {loading
+                  ? t('menuLibrary.loading')
+                  : failed
+                    ? t('eventMenu.libraryFailed')
+                    : looking
+                      ? t('eventMenu.foundOf', { shown: shown.length, count: library.length })
+                      : t('eventMenu.inLibrary', { count: library.length })}
               </p>
             </div>
             <p className="mc-added" role="status">
@@ -676,15 +849,34 @@ export function AddDishPanel({
                 </>
               )}
             </p>
-            {shown.length === 0 ? (
+            {loading ? (
+              <div className="lib-loading" aria-busy="true">
+                {[0, 1, 2].map((one) => (
+                  <div key={one} className="lib-bone" aria-hidden="true" />
+                ))}
+              </div>
+            ) : failed ? (
               <div className="mc-no-match">
-                <p>{t('eventMenu.noMatch', { query: query.trim() })}</p>
+                <p>{t('eventMenu.libraryFailedBody')}</p>
+                <button type="button" className="gs-pill is-secondary" onClick={onRetry}>
+                  {t('eventMenu.tryAgain')}
+                </button>
+              </div>
+            ) : shown.length === 0 ? (
+              <div className="mc-no-match">
+                <p>
+                  {looking
+                    ? t('eventMenu.noMatch', { query: query.trim() })
+                    : t('eventMenu.libraryEmpty')}
+                </p>
                 <button
                   type="button"
                   className="gs-pill is-secondary"
                   onClick={() => onStartNew(query.trim())}
                 >
-                  {t('eventMenu.startNew', { query: query.trim() })}
+                  {looking
+                    ? t('eventMenu.startNew', { query: query.trim() })
+                    : t('eventMenu.startNewBlank')}
                 </button>
               </div>
             ) : (
@@ -692,9 +884,19 @@ export function AddDishPanel({
                 {shown.map((dish) => (
                   <li key={dish.id} className="mc-pick">
                     <div className="mc-pick-words">
-                      <h3>{dish.name}</h3>
-                      <ContainsMark dish={dish} />
-                      <Tags dish={dish} />
+                      <h3>
+                        {dish.variants.length > 0
+                          ? t('dishVariants.ways', { dish: dish.name, count: dish.variants.length })
+                          : dish.name}
+                      </h3>
+                      {dish.variants.length > 0 ? (
+                        <p className="mn-quiet">{t('dishVariants.eachOwn')}</p>
+                      ) : (
+                        <>
+                          <ContainsMark dish={dish} />
+                          <Tags dish={dish} />
+                        </>
+                      )}
                     </div>
                     {onCourse(course, dish.id) ? (
                       <p className="mc-on-course">
@@ -755,27 +957,41 @@ export function EditDishFields({
   dish,
   problems,
   language,
+  items,
+  itemProblems,
+  onItems,
   onPatch,
 }: {
   form: DishForm;
   dish: MenuDish | null;
   problems: DishProblems | null;
   language: MoneyLanguage;
+  items: ItemRow[];
+  itemProblems: ItemProblems | null;
+  onItems: (rows: ItemRow[]) => void;
   onPatch: (next: Partial<DishForm>) => void;
 }) {
   const { t } = useTranslation();
 
   return (
     <>
-      <DishFields
-        form={form}
-        problems={problems}
-        notStated={dish?.allergens == null}
-        editing={null}
-        prices={false}
-        language={language}
-        onPatch={onPatch}
-      />
+      {dish != null && dish.variants.length > 0 ? (
+        <NameDescFields form={form} problems={problems} onPatch={onPatch} />
+      ) : (
+        <DishFields
+          form={form}
+          problems={problems}
+          notStated={dish?.allergens == null}
+          editing={null}
+          prices={false}
+          language={language}
+          containsHelp={`${t('menuLibrary.containsHelp')} ${t('dishItems.containsStays')}`}
+          onPatch={onPatch}
+        />
+      )}
+      {dish != null && (
+        <DishItemsField dish={dish} rows={items} problems={itemProblems} onRows={onItems} />
+      )}
       <p className="lib-own-copy">
         {dish?.libraryDishId == null ? t('eventMenu.eventOnly') : t('eventMenu.copyOnly')}
       </p>

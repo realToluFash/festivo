@@ -4,8 +4,9 @@ import { type RefObject, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { api } from '../../../api.ts';
+import { focusWhenFree } from '../../../layers.ts';
 import { offButton } from '../../../offButton.ts';
-import { InManage, LifecycleDialog } from './LifecycleDialog.tsx';
+import { InManage, LifecycleAsk } from './LifecycleAsk.tsx';
 import { useLifecycleAction } from './useLifecycleAction.ts';
 
 /** `Lifecycle` (tweak: Pause): a secondary button beside Call off or End now, so it is never where a stray tap lands first. */
@@ -51,16 +52,15 @@ export function PauseButton({
       )}
       {asking != null && (
         <InManage on={inManage}>
-          <LifecycleDialog
-            id="pause-event"
+          <LifecycleAsk
             asking={asking}
             title={t('eventPause.title', { name: event.name })}
-            lines={[t('eventPause.body'), t('eventPause.nothingLost')]}
+            line={`${t('eventPause.body')} ${t('eventPause.nothingLost')}`}
             failed={t('eventPause.failed')}
             keep={t('eventPause.keepItLive')}
             confirm={t('eventPause.pause')}
             sending={t('eventPause.pausing')}
-            tone="primary"
+            red={false}
             onGo={() => go({}, () => api.pauseEvent(event.id))}
             onClose={close}
           />
@@ -94,7 +94,7 @@ export function useResume({
         setState('idle');
         onChange(resumed.event, resumed.tag);
         onResumed();
-        window.setTimeout(() => heading.current?.focus(), 0);
+        focusWhenFree(() => heading.current);
       },
       (error: unknown) => {
         if (!(error instanceof ApiError && error.is('event_state_invalid'))) {
@@ -108,7 +108,7 @@ export function useResume({
             setState('idle');
             setChangedTo(latest.event.status);
             onChange(latest.event, latest.tag);
-            window.setTimeout(() => heading.current?.focus(), 0);
+            focusWhenFree(() => heading.current);
           },
           () => setState('failed'),
         );

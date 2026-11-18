@@ -17,6 +17,8 @@ final class ExpectedStarts
 {
     private const int MINUTE = 60;
 
+    private const int ROUNDED_TO_MINUTES = 5;
+
     /**
      * @param list<ScheduleItem> $items
      *
@@ -39,6 +41,15 @@ final class ExpectedStarts
         }
 
         return $starts;
+    }
+
+    /** By the event's own clock, so 17:24 reads 17:20 in a zone whose offset is not whole hours too; the guest's page and the room screen both round so. */
+    public static function roundedDown(DateTimeImmutable $moment, DateTimeZone $zone): DateTimeImmutable
+    {
+        $zoned = $moment->setTimezone($zone);
+        $over = ((int) $zoned->format('i')) % self::ROUNDED_TO_MINUTES * 60 + (int) $zoned->format('s');
+
+        return $zoned->setTimestamp($zoned->getTimestamp() - $over);
     }
 
     public static function planned(ScheduleItem $item, DateTimeZone $zone): DateTimeImmutable
@@ -71,6 +82,10 @@ final class ExpectedStarts
             $length = $item->getLengthMinutes() ?? 0;
             $startedAt = $item->getStartedAt();
             $endedAt = $item->getEndedAt();
+
+            if ($item->isSkipped()) {
+                continue;
+            }
 
             if (null !== $endedAt) {
                 $end = self::minutes($endedAt);

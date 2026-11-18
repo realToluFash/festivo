@@ -1,5 +1,12 @@
 import { type Account, type ListedEvent, type Membership } from '@soirely/api-client';
-import { firstName, followedIds, roleHolds, roleName, serverClock } from '@soirely/domain';
+import {
+  firstName,
+  followedIds,
+  roleHolds,
+  roleName,
+  serverClock,
+  todayView,
+} from '@soirely/domain';
 import { router } from 'expo-router';
 import { type ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -9,11 +16,13 @@ import { api } from '../api.ts';
 import type { Tab } from './TodayCover.tsx';
 import { followTodayFigures } from './todayFigures.ts';
 import { TodayScreen } from './TodayScreen.tsx';
+import { useRunSchedule } from './todayRunSchedule.ts';
 import { type Opens, type TodayShell, TodayShellProvider } from './todayShell.ts';
 import { dateLocale } from '../i18n/index.ts';
 import { DESTINATION_HREF, SECTION_HREF } from '../kit/appNav.ts';
 import { SEARCH_HREF } from '../kit/searchLinks.ts';
 import { todayMoment } from '../kit/todayMoment.ts';
+import { asOfWords, runNowOf } from '../kit/todayRun.ts';
 import { SKELETON_AFTER_MS } from '../kit/skeleton.ts';
 import { useLayout } from '../layout/useLayout.ts';
 import { publishSidebarEvents } from '../sidebarEvents.ts';
@@ -107,6 +116,12 @@ export function TodayLanding({
       case 'event':
         router.push(`/events/${opens.id}`);
         return;
+      case 'runOfShow':
+        router.push({
+          pathname: '/events/[id]/night',
+          params: opens.track == null ? { id: opens.id } : { id: opens.id, track: opens.track },
+        });
+        return;
       case 'calendar':
       case 'events':
         router.navigate(DESTINATION_HREF[opens.to]);
@@ -137,6 +152,13 @@ export function TodayLanding({
     }),
     [account.name, organisation, unread, open, t],
   );
+  const reader = {
+    timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+    locale: dateLocale(),
+  };
+  const underWay =
+    load.kind === 'loaded' ? (todayView(load, serverClock.now(), reader).now?.event ?? null) : null;
+  const { schedule, asOf } = useRunSchedule(underWay, refresh);
   const onTab = useCallback((tab: Tab) => {
     if (tab !== 'Today') router.navigate(TAB_HREF[tab]);
   }, []);
@@ -161,13 +183,16 @@ export function TodayLanding({
       </View>
     );
 
-  const moment = todayMoment(
-    load,
-    serverClock.now(),
-    { timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone, locale: dateLocale() },
-    firstName(account.name),
-    t,
-  );
+  const at = serverClock.now();
+  const shown = todayMoment(load, at, reader, firstName(account.name), t);
+  const moment =
+    shown.now == null || schedule == null
+      ? shown
+      : {
+          ...shown,
+          run: runNowOf(shown.now.name, schedule, at, reader.locale, t),
+          asOf: asOfWords(asOf, at, schedule.timeZone, reader.locale, t),
+        };
 
   return (
     <TodayShellProvider value={shell}>

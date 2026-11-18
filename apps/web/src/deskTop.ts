@@ -23,3 +23,8 @@ export function placesItsNotices(pathname: string): boolean {
     )
   );
 }
+
+/** The pages that fit a phone's window under the shell's bar, the bell in their own top (sc-57468); every other page has the band there. */
+export function fitsPhone(pathname: string): boolean {
+  return pathname === '/app' || pathname === '/app/events' || pathname === '/app/calendar';
+}
