@@ -1,4 +1,5 @@
 # sc-19104, iPad on its side: each Settings section chosen shows beside the Settings list, its row lit there.
+# Members is the exception: its own list takes the Settings list's place (SummaryColumn), and its back returns to Settings.
 # Upright, Settings is its own screen (sc-30412).
 appId: host.exp.Exponent
 ---
@@ -50,12 +51,19 @@ appId: host.exp.Exponent
 - tapOn:
     id: 'settings.members'
 - waitForAnimationToEnd
-- assertVisible:
+- extendedWaitUntil:
+    visible:
+      id: 'members.card'
+    timeout: 15000
+- assertNotVisible:
     id: 'settings.members'
-    selected: true
-- assertVisible:
-    id: 'members.card'
-- takeScreenshot: members-beside
+- takeScreenshot: members-own-pane
+- tapOn: '.+ {{t:settings.title}}'
+- waitForAnimationToEnd
+- extendedWaitUntil:
+    visible:
+      id: 'settings.members'
+    timeout: 15000
 - scrollUntilVisible:
     element:
       id: 'settings.signInRules'
