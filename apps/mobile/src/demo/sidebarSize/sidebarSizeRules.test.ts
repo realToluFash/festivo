@@ -18,13 +18,31 @@ function oneWord(width: number, letters = 0): Widths {
 }
 
 describe('the sidebar at the largest text sizes', () => {
-  it('draws as on main through the ninth step', () => {
+  it('draws rows, glyphs and names as on main through the ninth step', () => {
     const scale = sidebarScale('ninth', 1);
 
     expect(atLargest(scale)).toBe(false);
-    expect(sideTextSize(ROOMS.place, scale, oneWord(500))).toBe(14.5 * scale);
+    expect(sideTextSize(ROOMS.event, scale, oneWord(500), 'line')).toBe(14 * scale);
+    expect(sideTextSize(ROOMS.cardName, scale, oneWord(500), 'lines')).toBe(14 * scale);
     expect(glyphSide(ROOMS.place, scale, 30)).toBe(18);
     expect(rowPad(scale)).toBe(0);
+  });
+
+  it('keeps a label at its size on main below the tenth step while its widest word fits beside the glyph', () => {
+    const scale = sidebarScale('ninth', 1);
+
+    expect(sideTextSize(ROOMS.place, scale, oneWord(ROOMS.place.inside - 18))).toBe(14.5 * scale);
+  });
+
+  it('steps a label down alone at the ninth step where its widest word would break beside main’s glyph', () => {
+    const scale = sidebarScale('ninth', 1);
+    const start = 14.5 * scale;
+    const evenements = 183;
+    const size = sideTextSize(ROOMS.place, scale, oneWord(evenements));
+
+    expect(size).toBe(28);
+    expect((evenements / start) * size + 18).toBeLessThanOrEqual(ROOMS.place.inside);
+    expect(sideTextSize(ROOMS.place, sidebarScale('default', 1), oneWord(5000))).toBe(14.5);
   });
 
   it('keeps a label at its full size from the tenth step while its word and glyph fit', () => {
@@ -62,8 +80,8 @@ describe('the sidebar at the largest text sizes', () => {
       whole: { width: 400, letters: 0 },
     };
 
-    expect(sideTextSize(ROOMS.org, scale, widths, true)).toBeLessThan(
-      sideTextSize(ROOMS.org, scale, widths),
+    expect(sideTextSize(ROOMS.org, scale, widths, 'line')).toBeLessThan(
+      sideTextSize(ROOMS.org, scale, widths, 'lines'),
     );
   });
 

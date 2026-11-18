@@ -1,4 +1,4 @@
-import { besideGlyph } from '../../layout/textSize.ts';
+import { besideGlyph, fitWidest } from '../../layout/textSize.ts';
 import { tokens } from '../../theme/tokens.ts';
 
 export type SidebarSize = 'device' | 'default' | 'ninth' | 'tenth' | 'eleventh' | 'twelfth';
@@ -108,27 +108,29 @@ export function lettersIn(text: string): number {
   return Array.from(text).length;
 }
 
-// A one-line name fits whole, not just its widest word, before it may end in "…" (sc-68441).
+/** A label, a name kept to one line, or a name over two lines. */
+export type SideFit = 'label' | 'line' | 'lines';
+
+// Below the largest sizes only a label whose widest word would break beside main's glyph steps down; a name draws as on main (sc-68441).
 export function sideTextSize(
   room: SideRoom,
   scale: number,
   widths: Widths | null,
-  oneLine = false,
+  fit: SideFit = 'label',
 ): number {
   const start = room.size * scale;
-  const texts = oneLine ? (widths == null ? [] : [widths.whole]) : (widths?.words ?? []);
-  if (!atLargest(scale) || texts.length === 0) return start;
+  const largest = atLargest(scale);
+  const texts = fit === 'line' ? (widths == null ? [] : [widths.whole]) : (widths?.words ?? []);
+  if (texts.length === 0 || (!largest && fit !== 'label')) return start;
 
   return Math.min(
-    ...texts.map(({ width, letters }) =>
-      besideGlyph(
-        room.size,
-        start,
-        width,
-        room.glyph / room.size,
-        room.inside - letters * (room.tracking ?? 0),
-      ),
-    ),
+    ...texts.map(({ width, letters }) => {
+      const inside = room.inside - letters * (room.tracking ?? 0);
+
+      return largest
+        ? besideGlyph(room.size, start, width, room.glyph / room.size, inside)
+        : fitWidest(room.size, start, width, inside - room.glyph);
+    }),
   );
 }
 

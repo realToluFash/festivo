@@ -12,8 +12,8 @@ export const SIDEBAR_SIZE_BOARDS: readonly SidebarSizeBoard[] = [
     href: '/demo/sidebar-size?size=default&lang=en&at=members',
   },
   {
-    title: 'Barre latérale · ninth step',
-    what: 'As on main through the ninth step',
+    title: 'Barre latérale · ninth step (AX2)',
+    what: 'Événements steps down alone; rows, glyphs and names as on main',
     href: '/demo/sidebar-size?size=ninth&lang=fr&at=members',
   },
   {
