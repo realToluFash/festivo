@@ -41,6 +41,7 @@ import { DeskSearch } from './Search.tsx';
 import { reachOfRole } from './search.ts';
 import { usePaused, useSwitcherStart } from './switcher.ts';
 import './today.css';
+import './phone.css';
 import '../components/SettingsParts.css';
 
 const TILES: Record<
@@ -88,10 +89,11 @@ export function Settings({
   const [host, setHost] = useState<HTMLDivElement | null>(null);
   const layers = useMemo(() => ({ stack, push, pop, host }), [stack, push, pop, host]);
   const covered = stack.length > 0;
+  const fit = open === 'vendors' && !reminders;
 
   return (
     <LayersContext value={layers}>
-      <div className="today desk">
+      <div className={fit ? 'today desk dp-fit' : 'today desk'}>
         <DeskSearch reach={reachOfRole(viewer.role)} tell={tell}>
           <TodaySidebar
             events={SIDEBAR_EVENTS}
@@ -99,6 +101,7 @@ export function Settings({
             settings
             person={seen}
             inert={covered}
+            phone={fit}
           />
           <main id="content" className="desk-main" inert={covered}>
             <>

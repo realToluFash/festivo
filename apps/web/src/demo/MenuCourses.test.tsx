@@ -352,3 +352,164 @@ describe('when picks close, on the Menu (sc-3905)', () => {
     expect(screen.getByText('picks close Friday, Oct 23')).toBeTruthy();
   });
 });
+
+describe('a default and a choose-by date (sc-1362)', () => {
+  const group = (): HTMLElement =>
+    within(panel()).getByRole('region', { name: /Default and choose-by date/ });
+  const save = (): void => {
+    fireEvent.click(within(panel()).getByRole('button', { name: CW.saveChanges }));
+  };
+  const chooseBy = (): HTMLInputElement => within(panel()).getByLabelText('Choose by');
+
+  it('sets the pair in Edit course, and the card says when it is given', SLOW, async () => {
+    await menu('defaultUnset');
+    expect(within(group()).getByRole('radio', { name: 'No default' })).toHaveProperty(
+      'checked',
+      true,
+    );
+    fireEvent.click(within(group()).getByRole('radio', { name: 'Canapé selection' }));
+    save();
+    expect(document.activeElement?.id).toBe('mc-choose-by');
+    expect(
+      within(panel()).getByText('Enter a choose-by date, or set the default to No default.'),
+    ).toBeTruthy();
+    expect(chooseBy().getAttribute('aria-invalid')).toBe('true');
+    fireEvent.change(chooseBy(), { target: { value: '2026-10-16' } });
+    save();
+    expect(said()).toBe('Starter saved.');
+    expect(
+      within(card('Starter')).getByText(
+        '[Default: Canapé selection. Given on Friday, Oct 16 to anyone coming who hasn’t answered.]',
+      ),
+    ).toBeTruthy();
+  });
+
+  it('refuses a date alone, naming Default, once the pair is cleared', SLOW, async () => {
+    await menu('defaultSet');
+    fireEvent.click(within(group()).getByRole('button', { name: 'Clear the default and date' }));
+    expect(chooseBy().value).toBe('');
+    fireEvent.change(chooseBy(), { target: { value: '2026-10-16' } });
+    save();
+    expect(document.activeElement?.id).toBe('mc-def-none');
+    expect(
+      within(panel()).getByText('Choose a default dish, or clear the choose-by date.'),
+    ).toBeTruthy();
+  });
+
+  it('opens pressed states with focus on the first refusal', SLOW, async () => {
+    await menu('defaultAfterEvent');
+    expect(
+      within(panel()).getByText('Choose a date before the event, Saturday, Nov 14.'),
+    ).toBeTruthy();
+    expect(document.activeElement?.id).toBe('mc-choose-by');
+
+    await menu('defaultPast');
+    expect(
+      within(panel()).getByText('That date has passed. Choose today, Wednesday, Oct 14, or later.'),
+    ).toBeTruthy();
+
+    await menu('defaultChoiceUnanswered');
+    expect(within(panel()).getByText('Answer “And a side?” for the default.')).toBeTruthy();
+    expect(document.activeElement?.id).toBe('mc-def-o-c-side-c-side-plantain');
+    fireEvent.click(within(group()).getByRole('radio', { name: 'Plantain' }));
+    expect(within(panel()).queryByText('Answer “And a side?” for the default.')).toBeNull();
+  });
+
+  it('asks a whole pick: Everyone variants, and checkboxes for two', SLOW, async () => {
+    await menu('defaultWholePick');
+    expect(within(group()).getByRole('radio', { name: 'Chicken' })).toHaveProperty('checked', true);
+    expect(within(group()).queryByRole('radio', { name: 'Children’s portion' })).toBeNull();
+    expect(
+      within(group()).getByText('[Children only variants can’t be the default.]'),
+    ).toBeTruthy();
+    fireEvent.click(within(group()).getByRole('radio', { name: 'Jollof rice' }));
+    fireEvent.click(within(group()).getByRole('checkbox', { name: 'Plantain' }));
+    save();
+    expect(within(panel()).getByText('Choose 2 for “Two sides?”.')).toBeTruthy();
+    fireEvent.click(within(group()).getByRole('checkbox', { name: 'Moi moi' }));
+    save();
+    expect(said()).toBe('Main saved.');
+    expect(
+      within(card('Main')).getByText(/Default: Jollof rice, Plantain, Moi moi\./),
+    ).toBeTruthy();
+  });
+
+  it('locks the date after it passes and asks before moving guests', SLOW, async () => {
+    await menu('defaultAfterDate');
+    expect(within(group()).queryByRole('radio', { name: 'No default' })).toBeNull();
+    expect(
+      within(group()).getByText('[Friday, Oct 16 has passed, so the date is locked.]'),
+    ).toBeTruthy();
+    expect(within(panel()).queryByLabelText('Choose by')).toBeNull();
+    expect(
+      within(group()).queryByRole('button', { name: 'Clear the default and date' }),
+    ).toBeNull();
+    expect(within(card('Starter')).getByText(/to 23 guests who hadn’t answered/)).toBeTruthy();
+
+    await menu('defaultMove');
+    const dialog = screen.getByRole('alertdialog', {
+      name: 'Move 21 guests to Beef suya skewers?',
+    });
+    expect(document.activeElement?.textContent).toBe('Cancel');
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Cancel' }));
+    expect(screen.queryByRole('alertdialog')).toBeNull();
+    expect(within(group()).getByRole('radio', { name: 'Beef suya skewers' })).toHaveProperty(
+      'checked',
+      true,
+    );
+    expect(within(card('Starter')).getByText(/Default: Canapé selection\./)).toBeTruthy();
+    save();
+    fireEvent.click(
+      within(screen.getByRole('alertdialog')).getByRole('button', { name: 'Move 21 guests' }),
+    );
+    expect(said()).toBe('[21 guests moved to Beef suya skewers. 2 are back to not chosen.]');
+    expect(
+      within(card('Starter')).getByText(
+        '[Default: Beef suya skewers. Given on Friday, Oct 16 to 21 guests who hadn’t answered.]',
+      ),
+    ).toBeTruthy();
+
+    await menu('defaultMoveNone');
+    expect(screen.queryByRole('alertdialog', { name: /Move 0 guests/ })).toBeNull();
+    const none = screen.getByRole('alertdialog', {
+      name: '[Change the default to Beef suya skewers?]',
+    });
+    fireEvent.click(within(none).getByRole('button', { name: '[Change the default]' }));
+    expect(said()).toBe('[The default is now Beef suya skewers. 4 are back to not chosen.]');
+    expect(
+      within(card('Starter')).getByText(
+        '[Default: Beef suya skewers. Nobody who hadn’t answered by Friday, Oct 16 has it.]',
+      ),
+    ).toBeTruthy();
+  });
+
+  it('refuses Remove… on the default’s dish, variant and option', SLOW, async () => {
+    await menu('defaultRemoveDish');
+    expect(
+      within(card('Starter')).getByText(
+        '[Canapé selection is Starter’s default. Choose another default first, in Edit course.]',
+      ),
+    ).toBeTruthy();
+
+    await menu('defaultRemoveVariant');
+    expect(
+      within(card('Main')).getByText(
+        '[Chicken is Main’s default variant. Choose another default first, in Edit course.]',
+      ),
+    ).toBeTruthy();
+
+    await menu('defaultRemoveOption');
+    expect(
+      within(panel()).getByText(
+        '[Plantain is part of Main’s default. Choose another default first, in Edit course.]',
+      ),
+    ).toBeTruthy();
+  });
+
+  it('shows no group on a course that asks nothing', SLOW, async () => {
+    await menu('defaultAsksNothing');
+    expect(
+      within(panel()).queryByRole('region', { name: /Default and choose-by date/ }),
+    ).toBeNull();
+  });
+});

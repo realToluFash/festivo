@@ -47,6 +47,7 @@ import { useMakeLive } from './MakeLive.tsx';
 import { useEventMute } from './MuteEventCard.tsx';
 import { useResume } from './PauseEvent.tsx';
 import { ThankYouCard, ThankYouScreen } from './ThankYou.tsx';
+import { BellRow } from './BellButton.tsx';
 import { readOut } from './ReadOut.tsx';
 import type { ScreenReaderTarget } from './screenReaderFocus.ts';
 import type { TextHandle } from './Text.tsx';
@@ -352,7 +353,7 @@ export function EventPage({
     <View style={styles.page} testID="events.page">
       <OverviewColumns
         landscape={kind === 'tabletLandscape'}
-        card={card}
+        card={<BellRow>{card}</BellRow>}
         left={
           <>
             {notice}

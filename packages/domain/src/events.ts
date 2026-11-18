@@ -90,6 +90,13 @@ export function savedWallClock(date: string, time: string, timeZone: string): st
   return resolved(typed, timeZone)?.wallClock ?? typed;
 }
 
+/** The instant the API's LocalTimeResolver stores a date and time in a zone at, or null when either is blank or the zone is not one. */
+export function resolvedInstant(date: string, time: string, timeZone: string): number | null {
+  const typed = localDateTime(date, time);
+
+  return typed == null ? null : (resolved(typed, timeZone)?.instant ?? null);
+}
+
 export function skippedTime(
   date: string,
   time: string,
@@ -149,7 +156,8 @@ function resolved(typed: string, timeZone: string): { instant: number; wallClock
   return { instant, wallClock: new Date(instant + offsetAt(instant)).toISOString().slice(0, 16) };
 }
 
-function zoneOffsets(timeZone: string): ((instant: number) => number) | null {
+/** The zone's offset from UTC at an instant, in milliseconds; null when the zone is not one. */
+export function zoneOffsets(timeZone: string): ((instant: number) => number) | null {
   let format: Intl.DateTimeFormat;
 
   try {

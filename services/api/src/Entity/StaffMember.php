@@ -45,6 +45,11 @@ class StaffMember
     #[ORM\JoinColumn(nullable: true, onDelete: 'SET NULL')]
     private ?User $member;
 
+    /** One job on the event (sc-3908), and every shift of theirs is of it; kept through the erasure. */
+    #[ORM\ManyToOne(targetEntity: StaffJob::class)]
+    #[ORM\JoinColumn(nullable: true, onDelete: 'SET NULL')]
+    private ?StaffJob $job = null;
+
     /** Set 30 days after the event finishes, when the mobile number, email and member link go. */
     #[ORM\Column(type: Types::DATETIME_IMMUTABLE, nullable: true)]
     private ?DateTimeImmutable $contactsErasedAt = null;
@@ -87,6 +92,16 @@ class StaffMember
     public function getMember(): ?User
     {
         return $this->member;
+    }
+
+    public function getJob(): ?StaffJob
+    {
+        return $this->job;
+    }
+
+    public function setJob(?StaffJob $job): void
+    {
+        $this->job = $job;
     }
 
     public function getContactsErasedAt(): ?DateTimeImmutable

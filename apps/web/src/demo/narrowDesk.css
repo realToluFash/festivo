@@ -1,4 +1,4 @@
-/* 641 to 960 px only (sc-60699): 961 and up, and 640 and down, stay as on main. What runs on past 960 is in wideDesk.css. */
+/* 641 to 960 px only (sc-60699), but for Settings' stack at the end: 961 and up, and 640 and down, stay as on main. What runs on past 960 is in wideDesk.css. */
 @media (40rem < width <= 60rem) {
   .today.desk .desk-page {
     padding-inline: var(--spaceXxl);
@@ -12,22 +12,8 @@
     flex: 1 1 auto;
   }
 
-  /* Mirrors the product's Settings, which stacks its list above the page up to 60rem. */
   .today.desk .desk-main:has(> .desk-list) {
-    flex-direction: column;
     overflow-y: auto;
-  }
-
-  .today.desk .desk-main > .desk-list {
-    width: auto;
-    overflow: visible;
-    border-right: 0;
-    border-bottom: 1px solid var(--colorBorder);
-  }
-
-  .today.desk .desk-main > .desk-list ~ .desk-page {
-    flex: none;
-    overflow: visible;
   }
 
   .today.desk .ev-search {
@@ -133,5 +119,26 @@
 
   :root .today.desk .lib-top-acts {
     margin-left: auto;
+  }
+}
+
+/* Mirrors the product's Settings, which stacks its list above the page up to 60rem (styles.css), a phone's window included. */
+@media (width <= 60rem) {
+  .today.desk .desk-main:has(> .desk-list) {
+    flex-direction: column;
+  }
+
+  .today.desk .desk-main > .desk-list {
+    width: auto;
+    padding-bottom: var(--spaceLg);
+    overflow: visible;
+    border-right: 0;
+    border-bottom: 1px solid var(--colorBorder);
+  }
+
+  .today.desk .desk-main > .desk-list ~ .desk-page {
+    flex: none;
+    min-width: 0;
+    overflow: visible;
   }
 }

@@ -34,6 +34,7 @@ import {
   SIDEBAR_SIZES,
   SIDEBAR_WIDTH,
   HEADING_TRACKING,
+  type SideFit,
   type SideRoom,
   lettersIn,
   type SidebarAt,
@@ -83,7 +84,7 @@ export function SidebarSizeScreen({ start }: { start: SidebarSizeStart }) {
         style={styles.page}
         contentContainerStyle={[styles.pageBody, { paddingTop: insets.top + tokens.space3xl }]}
       >
-        <DemoOnly title="Stand-ins for the iPad’s own text size and language, and the page beside the sidebar. The sidebar is main’s 252 column at every size. Through the ninth step it draws as on main; from the tenth each row grows to hold its words and each label steps down only where its widest word would break beside its glyph, never below its size on main. Each place opens here what it opens in the app; the organisation pill and the person open nothing in this board.">
+        <DemoOnly title="Stand-ins for the iPad’s own text size and language, and the page beside the sidebar. The sidebar is main’s 252 column at every size. Below the tenth step it draws as on main, except that a label whose widest word would break beside main’s glyph steps down alone, as Événements does at the ninth step in French. From the tenth each row grows to hold its words and each label steps down only where its widest word would break beside its glyph, never below its size on main. Each place opens here what it opens in the app; the organisation pill and the person open nothing in this board.">
           <Choices
             heading="Text size"
             options={SIDEBAR_SIZES}
@@ -188,7 +189,13 @@ function Sidebar({
 }
 
 /** A text's size in the sidebar, from its words measured hidden at its full size. */
-function useFit(text: string, room: SideRoom, scale: number, weight: WeightName, oneLine = false) {
+function useFit(
+  text: string,
+  room: SideRoom,
+  scale: number,
+  weight: WeightName,
+  fit: SideFit = 'label',
+) {
   const start = room.size * scale;
   const words = wordsIn([text]);
   const key = `${start}|${weight}|${text}`;
@@ -208,7 +215,7 @@ function useFit(text: string, room: SideRoom, scale: number, weight: WeightName,
           whole: { width: whole, letters: lettersIn(text) },
         }
       : null,
-    oneLine,
+    fit,
   );
   const keep = (name: string, width: number) =>
     setMeasured((now) => {
@@ -289,7 +296,7 @@ function Place({
 }
 
 function Org({ scale }: { scale: number }) {
-  const { size, measure } = useFit(SAMPLE.organisation, ROOMS.org, scale, 'semibold', true);
+  const { size, measure } = useFit(SAMPLE.organisation, ROOMS.org, scale, 'semibold', 'line');
 
   return (
     <Pressable
@@ -387,7 +394,7 @@ function EventRow({
   scale: number;
   onOpen: () => void;
 }) {
-  const { size, measure } = useFit(event.name, ROOMS.event, scale, 'medium', true);
+  const { size, measure } = useFit(event.name, ROOMS.event, scale, 'medium', 'line');
 
   return (
     <Pressable
@@ -480,7 +487,7 @@ function Card({ scale, t }: { scale: number; t: TFunction }) {
       : cardTags(event, now, t)
           .map((tag) => tag.word)
           .join(' · ');
-  const name = useFit(event?.name ?? '', ROOMS.cardName, scale, 'bold');
+  const name = useFit(event?.name ?? '', ROOMS.cardName, scale, 'bold', 'lines');
   const tagged = useFit(tags, ROOMS.cardTags, scale, 'medium');
   if (event == null) return null;
 
@@ -515,7 +522,7 @@ function Card({ scale, t }: { scale: number; t: TFunction }) {
 
 function Person({ scale, role, label }: { scale: number; role: string; label: string }) {
   const lines = nameLines(scale);
-  const name = useFit(SAMPLE.name, ROOMS.person, scale, 'semibold', lines === 1);
+  const name = useFit(SAMPLE.name, ROOMS.person, scale, 'semibold', lines === 1 ? 'line' : 'lines');
   const roleFit = useFit(role, ROOMS.role, scale, 'medium');
 
   return (
