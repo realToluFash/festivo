@@ -2,13 +2,15 @@
 #
 # Sign out can stop under the iPhone's tab bar, which Maestro counts as visible, so
 # scrollUntilVisible leaves it there. Sign out is the list's last row, so one more scroll
-# brings it to rest whole above the tab bar.
+# brings it to rest whole above the tab bar. At the largest text sizes the scroll never counts
+# the tall button whole, so half of it is enough to stop on. sc-67202.
 appId: host.exp.Exponent
 ---
 - scrollUntilVisible:
     element:
       id: 'settings.signOut'
     direction: DOWN
+    visibilityPercentage: 50
     timeout: 30000
 - scroll
 - waitForAnimationToEnd
