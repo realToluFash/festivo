@@ -5,6 +5,7 @@ onFlowComplete:
       file: ../batch/helper.js
       env:
         ASK: /api?to=up
+  - setAirplaneMode: disabled
 ---
 # organisation.card is drawn before the read answers, so only the band proves the screen had
 # loaded. A try that went offline too early leaves no band and nothing reads again, so each
@@ -35,10 +36,11 @@ onFlowComplete:
       - inputText: 'Offline Org Name'
       - hideKeyboard
       - setAirplaneMode: enabled
+      # As sc63653-export-offline: an emulator can take well over 8s to report the network gone.
       - extendedWaitUntil:
           visible:
             id: 'offline.band'
-          timeout: 8000
+          timeout: 45000
 - runScript:
     file: ../batch/helper.js
     env:

@@ -17,9 +17,10 @@ onFlowComplete:
     timeout: 20000
 - tapOn:
     id: 'tab-calendar|frame\.calendar'
+# Alpha has no events, so Calendar draws the first-run card and no Today button.
 - extendedWaitUntil:
     visible:
-      id: 'calendar.today'
+      id: 'calendar\.today|events\.firstRun'
     timeout: 30000
 - runScript:
     file: ../batch/helper.js
