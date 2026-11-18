@@ -231,7 +231,7 @@ describe('What it will cost, the planning tier (sc-89)', () => {
       {
         label: 'Per head, if all come',
         figure: '£173',
-        sub: 'for 133: everybody who said yes or is still to answer',
+        sub: 'for 133: everybody who said yes, is still to answer or is held',
       },
     ]);
   });

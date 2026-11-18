@@ -55,7 +55,7 @@ export const PLAN_WORDS = {
   perHeadSettled: 'Per head, settled',
   perHeadIfAll: 'Per head, if all come',
   forSaidYes: (count: number) => `for the ${count} who said yes`,
-  forAll: (count: number) => `for ${count}: everybody who said yes or is still to answer`,
+  forAll: (count: number) => `for ${count}: everybody who said yes, is still to answer or is held`,
   costsByCategory: 'Costs',
   trackTitle: 'Track what is agreed and what is paid',
   trackLine:
@@ -63,5 +63,6 @@ export const PLAN_WORDS = {
   seePlans: 'See the plans',
   plansTold: 'Plans have their own design.',
   sheetTitle: (event: string) => `${event} · the budget against plan`,
+  planningSheetTitle: (event: string) => `${event} · what it will cost`,
   printed: (day: string, time: string) => `Printed ${day} at ${time} · client figures only`,
 } as const;

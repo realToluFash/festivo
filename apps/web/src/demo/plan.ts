@@ -50,6 +50,7 @@ export const PLANNING_STATES: readonly string[] = [
   'planning_loading',
   'planning_failed',
   'planning_not_live',
+  'planning_print',
 ];
 
 export const PLAN_PAGES: readonly DemoGroup[] = [
@@ -108,6 +109,10 @@ export const PLAN_PAGES: readonly DemoGroup[] = [
       {
         to: budgetAt('planning', { as: 'kemi' }),
         name: 'Can edit, by a direct link: not available (as Kemi)',
+      },
+      {
+        to: budgetAt('planning_print'),
+        name: 'Printed on one A4 sheet, without the tracking card (planning_print)',
       },
     ],
   },

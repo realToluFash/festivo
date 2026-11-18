@@ -135,10 +135,18 @@ describe('Against plan at a desk (sc-89)', () => {
       const savour = across.getByRole('link', { name: /^Savour Kitchen/u });
       expect(savour.textContent).toContain('Catering · Staffing · Hire');
       expect(savour.textContent).toContain('Not known · 1 cost not priced yet');
+      const opens = across.getByRole('button', { name: 'Savour Kitchen’s costs' });
+      expect(opens.getAttribute('aria-expanded')).toBe('false');
+      expect(across.queryByRole('list', { name: 'Savour Kitchen’s costs' })).toBeNull();
+      fireEvent.click(opens);
+      expect(opens.getAttribute('aria-expanded')).toBe('true');
       expect(across.getByRole('list', { name: 'Savour Kitchen’s costs' }).textContent).toContain(
         'Hire · No price yet',
       );
+      fireEvent.click(opens);
+      expect(across.queryByRole('list', { name: 'Savour Kitchen’s costs' })).toBeNull();
       expect(across.queryByRole('link', { name: /^Glow Lighting/u })).toBeNull();
+      expect(across.queryByRole('button', { name: 'Glow Lighting’s costs' })).toBeNull();
       expect(across.getByText('Covers no budget line')).toBeDefined();
       expect(across.getByText('Nothing planned')).toBeDefined();
       expect(within(block('By category · planned')).queryByText('Catering')).toBeNull();
@@ -253,6 +261,33 @@ describe('What it will cost, the planning tier (sc-89)', () => {
       expect(within(card).getByText('No figure yet')).toBeDefined();
     },
   );
+
+  it('prints one A4 sheet without the tracking card, and nothing to press', SLOW, async () => {
+    await open('planning_print');
+
+    expect(
+      screen.getByRole('heading', {
+        level: 1,
+        name: 'Adaeze & Tunde’s wedding · what it will cost',
+      }),
+    ).toBeDefined();
+    const sheet = screen.getByRole('main');
+    expect(sheet.textContent).toContain('everybody who said yes, is still to answer or is held');
+    expect(within(sheet).queryByText('Track what is agreed and what is paid')).toBeNull();
+    expect(within(sheet).queryAllByRole('link')).toHaveLength(0);
+    expect(within(sheet).queryAllByRole('button')).toHaveLength(0);
+  });
+
+  it('prints the sheet from Print in the header', SLOW, async () => {
+    const print = vi.spyOn(window, 'print').mockImplementation(() => {});
+    await open('planning');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Print' }));
+    expect(print).toHaveBeenCalledOnce();
+    expect(document.body.querySelector(':scope > .plan-print')?.textContent).toContain(
+      'what it will cost',
+    );
+  });
 
   it('with no costs, never reads £0 to £0', SLOW, async () => {
     await open('planning_empty');

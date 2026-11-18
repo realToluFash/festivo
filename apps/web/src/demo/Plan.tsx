@@ -1,7 +1,8 @@
-import { type ReactNode, useEffect, useState } from 'react';
-import { createPortal, flushSync } from 'react-dom';
+import { type ReactNode, useId, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router';
 
+import { Glyph } from '../components/Glyph.tsx';
 import { CardStep, OnCard, Says, TextAction } from '../components/SettingsParts.tsx';
 import {
   Amount,
@@ -43,6 +44,7 @@ import {
   shownOf,
 } from './plan.ts';
 import { PLAN_WORDS as W } from './planWords.ts';
+import { usePrint } from './usePrint.ts';
 import './plan.css';
 
 const BUSY_MS = 900;
@@ -146,28 +148,28 @@ export function PlanAround({
   );
 }
 
+export function PrintAction({ onPrint }: { onPrint: () => void }) {
+  return (
+    <button type="button" className="desk-text" onClick={onPrint}>
+      <PrintMark size={17} />
+      {W.print}
+    </button>
+  );
+}
+
+export function OnPaper({ children }: { children: ReactNode }) {
+  return createPortal(
+    <div className="plan-print" aria-hidden="true">
+      {children}
+    </div>,
+    document.body,
+  );
+}
+
 function PlanBody({ event, state }: { event: SampleEvent; state: string }) {
   const kind = kindOf(state);
   const sample = sampleOf(state);
-  const [printing, setPrinting] = useState(false);
-
-  useEffect(() => {
-    const before = () => flushSync(() => setPrinting(true));
-    const after = () => setPrinting(false);
-
-    window.addEventListener('beforeprint', before);
-    window.addEventListener('afterprint', after);
-
-    return () => {
-      window.removeEventListener('beforeprint', before);
-      window.removeEventListener('afterprint', after);
-    };
-  }, []);
-
-  function print(): void {
-    flushSync(() => setPrinting(true));
-    window.print();
-  }
+  const { printing, print } = usePrint();
 
   const pairs =
     kind === 'after'
@@ -183,12 +185,7 @@ function PlanBody({ event, state }: { event: SampleEvent; state: string }) {
       words={{ loading: W.loading, failed: W.failed }}
       event={event}
       emptyLine={W.emptyLine}
-      actions={
-        <button type="button" className="desk-text" onClick={print}>
-          <PrintMark size={17} />
-          {W.print}
-        </button>
-      }
+      actions={<PrintAction onPrint={print} />}
     >
       {kind === 'unrecorded' && <InfoLine>{W.unrecorded}</InfoLine>}
       <div className="plan-card">
@@ -217,13 +214,11 @@ function PlanBody({ event, state }: { event: SampleEvent; state: string }) {
           </Rows>
         }
       />
-      {printing &&
-        createPortal(
-          <div className="plan-print" aria-hidden="true">
-            <PrintSheet event={event} sample={sample} />
-          </div>,
-          document.body,
-        )}
+      {printing && (
+        <OnPaper>
+          <PrintSheet event={event} sample={sample} />
+        </OnPaper>
+      )}
     </PlanAround>
   );
 }
@@ -296,7 +291,18 @@ function acrossEnd(row: AcrossRow): ReactNode {
 
 /** A quote over costs in two or more categories, or over none: a row of its own, by vendor name, in no category. */
 function Across({ rows, paper = false }: { rows: readonly AcrossRow[]; paper?: boolean }) {
+  const [opened, setOpened] = useState<ReadonlySet<string>>(new Set());
+  const id = useId();
+
   if (rows.length === 0) return null;
+
+  function flip(vendorId: string): void {
+    setOpened((was) => {
+      const next = new Set(was);
+      if (!next.delete(vendorId)) next.add(vendorId);
+      return next;
+    });
+  }
 
   return (
     <Block title={W.across}>
@@ -315,15 +321,33 @@ function Across({ rows, paper = false }: { rows: readonly AcrossRow[]; paper?: b
             end: acrossEnd(row),
           };
 
+          const opens = row.costs.length > 0;
+          const open = paper || opened.has(row.vendorId);
+          const costsId = `${id}-${row.vendorId}`;
+
           return (
             <li key={row.vendorId}>
-              {paper || !QUOTED.has(row.vendorId) ? (
-                <BudgetRow {...said} />
-              ) : (
-                <BudgetRow {...said} to={budgetAt(undefined, { vendor: row.vendorId })} />
-              )}
-              {row.costs.length > 0 && (
-                <div className="plan-costs">
+              <div className="plan-quote">
+                {paper || !QUOTED.has(row.vendorId) ? (
+                  <BudgetRow {...said} />
+                ) : (
+                  <BudgetRow {...said} to={budgetAt(undefined, { vendor: row.vendorId })} />
+                )}
+                {opens && !paper && (
+                  <button
+                    type="button"
+                    className="plan-open"
+                    aria-label={W.costsOf(row.vendor)}
+                    aria-expanded={open}
+                    aria-controls={costsId}
+                    onClick={() => flip(row.vendorId)}
+                  >
+                    <Glyph name={open ? 'chevup' : 'chevdown'} size={18} weight={2.3} />
+                  </button>
+                )}
+              </div>
+              {opens && open && (
+                <div id={costsId} className="plan-costs">
                   <Rows label={W.costsOf(row.vendor)}>
                     {row.costs.map((cost) => (
                       <li key={cost.id}>
