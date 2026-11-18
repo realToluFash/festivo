@@ -1781,10 +1781,6 @@ export const COURSES_PAGES: readonly { name: string; states: readonly DemoLink[]
         'picksAllClosed',
         'picksAllClosedReadOnly',
         'picksDateChanged',
-        'setCourseWay',
-        'setCourseChoices',
-        'setCourseChildren',
-        'courseOfDrafts',
       ] as const
     ).map(link),
   },
