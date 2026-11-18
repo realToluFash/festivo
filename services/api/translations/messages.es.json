@@ -358,5 +358,9 @@
     "validation.share_by_invalid": "Elija una fecha válida.",
     "validation.share_by_past": "Elija hoy o una fecha posterior.",
     "validation.share_by_not_before_event": "Elija una fecha anterior al evento.",
-    "access.plan_required": "Available on Enterprise. Contact Soirely about Enterprise to change this."
+    "validation.vendor_name_required": "Enter the vendor's name.",
+    "validation.vendor_category_required": "Choose the category.",
+    "validation.vendor_website_scheme": "Enter a web address that starts with https:// or http://, or leave that part off.",
+    "validation.vendor_phone_invalid": "That is not a phone number for {country}. Check it and try again.",
+    "access.plan_required": "Disponible con Enterprise. Para cambiar esto, consulte a Soirely sobre Enterprise."
 }

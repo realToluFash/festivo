@@ -1,9 +1,5 @@
 /* Settings › Vendors at a desk in A · Summary first (Budget-A-Vendors, page e81). */
 
-.desk-tile.is-vendors {
-  background: var(--optionGreen);
-}
-
 /* The count's live region is unseen until a search: positioned here, so it stays inside the page. */
 .vd-column {
   position: relative;

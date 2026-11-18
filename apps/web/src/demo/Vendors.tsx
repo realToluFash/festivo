@@ -63,39 +63,10 @@ import {
 } from './vendors.ts';
 import { CATEGORY_WORDS, VW } from './vendorsWords.ts';
 import '../components/AccountParts.css';
-import './vendors.css';
+import '../routes/app/settings/vendors.css';
 
 const BUSY_MS = 900;
 const RETRY_MS = 1200;
-
-const STOREFRONT = [
-  'M3 9l1.5-5h15L21 9',
-  'M3 9a3 3 0 0 0 6 0a3 3 0 0 0 6 0a3 3 0 0 0 6 0',
-  'M5 12v8h14v-8',
-  'M10 20v-5h4v5',
-];
-
-/** #1418's storefront, drawn in the demo for Vendors' tile in the Settings list; the developer moves it into the product's glyphs. */
-export function StorefrontGlyph({ size = 18 }: { size?: number }) {
-  return (
-    <svg
-      width={size}
-      height={size}
-      viewBox="0 0 24 24"
-      aria-hidden="true"
-      focusable="false"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth={2}
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      {STOREFRONT.map((d) => (
-        <path key={d} d={d} />
-      ))}
-    </svg>
-  );
-}
 
 /** The old address keeps working: Vendors is a section of Settings now (A · Summary first). */
 export function VendorsMoved() {

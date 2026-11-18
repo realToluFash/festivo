@@ -28,6 +28,7 @@ import { ExportAllData } from './app/settings/ExportAllData.tsx';
 import { General } from './app/settings/General.tsx';
 import { Members } from './app/settings/Members.tsx';
 import { SignInRules } from './app/settings/SignInRules.tsx';
+import { Vendors } from './app/settings/Vendors.tsx';
 import { SettingsDesk } from './app/SettingsDesk.tsx';
 import { SignedInHome } from './app/Today.tsx';
 import { GuestLayout } from './guest/GuestLayout.tsx';
@@ -117,6 +118,7 @@ export const routes = [
               { path: 'settings', element: <General /> },
               { path: 'settings/members', element: <Members /> },
               { path: 'settings/sign-in-rules', element: <SignInRules /> },
+              { path: 'settings/vendors', element: <Vendors /> },
               { path: 'settings/data-and-control', element: <DataAndControl /> },
               { path: 'settings/data-and-control/export', element: <ExportAllData /> },
             ],

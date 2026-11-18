@@ -24,6 +24,7 @@ import { FieldLine, InsideField } from '../src/steps/InsideField.tsx';
 import { Heading, Says } from '../src/steps/Lines.tsx';
 import { NavBar, StepScreen } from '../src/steps/StepScreen.tsx';
 import { tokens } from '../src/theme/tokens.ts';
+import { signInOver } from '../src/steps/signInOver.ts';
 
 type Which = 'name' | 'email' | 'password';
 
@@ -134,7 +135,14 @@ export default function Register() {
     <StepScreen
       nav={
         <NavBar
-          onLeft={() => (router.canGoBack() ? router.back() : router.replace('/sign-in'))}
+          onLeft={() => {
+            if (router.canGoBack()) {
+              router.back();
+              return;
+            }
+            signInOver(false);
+            router.replace('/sign-in');
+          }}
           step={[1, 4]}
           testID="register"
         />

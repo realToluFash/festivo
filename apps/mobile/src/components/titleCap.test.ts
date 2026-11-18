@@ -18,6 +18,7 @@ const rows = readFileSync(join('src', 'components', 'SummaryRows.tsx'), 'utf8');
 const event = readFileSync(join('src', 'components', 'EventScreen.tsx'), 'utf8');
 const settings = readFileSync(join('src', 'components', 'SettingsHome.tsx'), 'utf8');
 const demoFrame = readFileSync(join('src', 'demo', 'settings', 'Frame.tsx'), 'utf8');
+const demoMembers = readFileSync(join('src', 'demo', 'settings', 'MembersParts.tsx'), 'utf8');
 
 const HEAD = 18;
 const AX5 = 3.12;
@@ -53,6 +54,12 @@ describe('nothing under a page title draws larger than the title (sc-67338)', ()
   it('caps the demo’s Settings column at the title’s size, as the app’s frame does', () => {
     expect(demoFrame).toMatch(
       /<TitleCap\.Provider value=\{titleSize\(PAGE_TITLE, fontScale\)\}>\{column\}<\/TitleCap\.Provider>/u,
+    );
+  });
+
+  it('caps the demo’s landscape Members pane at the title’s size, beside the column', () => {
+    expect(demoMembers).toMatch(
+      /export function NobodyPicked\(\) \{[^]*?<TitleCap\.Provider value=\{titleSize\(PAGE_TITLE, fontScale\)\}>\s+<View style=\{styles\.nobody\}>/u,
     );
   });
 

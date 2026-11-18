@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { RouterProvider, createMemoryRouter } from 'react-router';
 import { beforeEach, describe, expect, it } from 'vitest';
 
@@ -24,7 +24,28 @@ describe('Data and control › Export all data (sc-612)', () => {
     expect(screen.getByText('Take everything Ire Events holds')).toBeDefined();
     expect(screen.getByRole('heading', { level: 2, name: 'What the archive holds' })).toBeDefined();
     expect(screen.getByText('Events with their People')).toBeDefined();
-    expect(screen.getByText(/^One \.zip: a JSON file of everything/u)).toBeDefined();
+    expect(
+      within(
+        screen
+          .getByRole('heading', { level: 2, name: 'What the archive holds' })
+          .closest('section') as HTMLElement,
+      )
+        .getAllByRole('listitem')
+        .map((row) => row.textContent?.split(':')[0]),
+    ).toEqual([
+      'The organisation',
+      'Members with their role, state and when they joined; invitations and requests to join',
+      'Events with their People',
+      'Each event’s guests and companions',
+      'Each event’s seating',
+      'Each event’s menu',
+      'Each event’s run of show',
+      'Each event’s staff',
+      'Each event’s cost lines',
+    ]);
+    expect(screen.getByText(/^One \.zip: a JSON file of everything/u).textContent).toContain(
+      'notification deliveries; the assistant’s log; photos; each event’s change history; and the audit log, which Audit log exports.',
+    );
   });
 
   it('exports, prepares, is ready, and is used up by its one download', async () => {

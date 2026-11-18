@@ -119,6 +119,10 @@
   background: color-mix(in srgb, var(--optionRose) 55%, var(--optionAmber));
 }
 
+.desk-tile.is-vendors {
+  background: var(--optionGreen);
+}
+
 .desk-tile.is-data {
   background: color-mix(in srgb, var(--optionBlue) 55%, var(--optionTeal));
 }

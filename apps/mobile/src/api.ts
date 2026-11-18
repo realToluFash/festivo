@@ -26,8 +26,12 @@ import { ruleRefusal, signInRoute } from './kit/signInRules.ts';
 import { dropRegistration } from './pendingRegistration.ts';
 import { signedOutHold } from './signedOutHold.ts';
 import { tokens } from './tokens.ts';
+import { signInOver } from './steps/signInOver.ts';
 
-const hold = signedOutHold((why) => router.replace(signInRoute(ruleRefusal(why), true)));
+const hold = signedOutHold((why) => {
+  signInOver(false);
+  router.replace(signInRoute(ruleRefusal(why), true));
+});
 
 export const api = new ApiClient({
   baseUrl: () => config.apiBaseUrl,

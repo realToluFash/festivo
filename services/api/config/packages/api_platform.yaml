@@ -53,3 +53,8 @@ api_platform:
         include_type: true
 
     use_symfony_listeners: true
+
+    # The resources, each beside the scope that owns it.
+    mapping:
+        paths:
+            - '%kernel.project_dir%/src/Domain/Budget/Http'

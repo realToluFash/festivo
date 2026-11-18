@@ -44,13 +44,15 @@ export function SectionTile({ look, children }: { look: string; children: ReactN
   );
 }
 
-/** Your account's sections, then the organisation's, as the demo's Settings list draws them; Members only for a role that can read them, and Data and control for an Owner or an Admin. */
+/** Your account's sections, then the organisation's, as the demo's Settings list draws them; Members and Vendors only for a role that can read them, and Data and control for an Owner or an Admin. */
 export function SettingsList() {
   const { t } = useTranslation();
   const session = useSession();
   const { pathname } = useLocation();
   const organisation = session.organisation;
-  const glyph = (name: 'shield' | 'bell' | 'users' | 'lock') => <Glyph name={name} size={17} />;
+  const glyph = (name: 'shield' | 'bell' | 'users' | 'lock' | 'storefront') => (
+    <Glyph name={name} size={17} />
+  );
 
   const groups: Group[] = [
     {
@@ -107,6 +109,15 @@ export function SettingsList() {
           label: t('settings.sectionSignInRules'),
           tile: <SectionTile look="sign-in-rules">{glyph('lock')}</SectionTile>,
         },
+        ...(can(session, 'vendors.read')
+          ? [
+              {
+                to: '/app/settings/vendors',
+                label: t('settings.sectionVendors'),
+                tile: <SectionTile look="vendors">{glyph('storefront')}</SectionTile>,
+              },
+            ]
+          : []),
         ...(can(session, 'organisation.manage')
           ? [
               {

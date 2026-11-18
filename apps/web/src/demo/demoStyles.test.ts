@@ -76,7 +76,6 @@ const SHARED: readonly Family[] = [
       'shareTables.css',
       'stations.css',
       'thankYou.css',
-      'vendors.css',
       WIDE,
     ],
     part: 'the desk (desk-row, desk-ask, desk-dialog) every desk board is built from',

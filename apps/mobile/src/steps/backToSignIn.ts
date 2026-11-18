@@ -20,6 +20,7 @@ export function backToSignIn(): void {
   }
 
   if (challengeBeganAlone()) {
+    signInOver(false);
     router.replace('/sign-in');
     return;
   }
