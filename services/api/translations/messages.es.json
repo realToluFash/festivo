@@ -350,8 +350,8 @@
     "timeline.event_ends": "Termina {name}",
     "timeline.event_called_off": "Se cancela {name}",
     "timeline.replies_close": "Fin del plazo de respuesta",
-    "timeline.picks_close": "Picks close",
-    "timeline.open_menu": "Open the menu",
+    "timeline.picks_close": "Fin del plazo de elección",
+    "timeline.open_menu": "Abrir el menú",
     "calendar_feed.status.draft": "Borrador",
     "calendar_feed.status.live": "Publicado",
     "calendar_feed.status.paused": "En pausa",
@@ -389,5 +389,6 @@
     "validation.vendor_category_required": "Elija la categoría.",
     "validation.vendor_website_scheme": "Introduzca una dirección web que empiece por https:// o http://, o deje esa parte sin poner.",
     "validation.vendor_phone_invalid": "Ese número de teléfono no es válido en este país: {country}. Compruébelo y vuelva a intentarlo.",
+    "vendors.archived_read_only": "This vendor is archived, so your changes were not saved. To edit it, restore it under Archived.",
     "access.plan_required": "Disponible con Enterprise. Para cambiar esto, consulte a Soirely sobre Enterprise."
 }
