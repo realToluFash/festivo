@@ -1,0 +1,17 @@
+# sc-29961: on the iPad, Waiting for your organisation with its asked line, portrait then landscape. A request already waiting opens straight to Waiting.
+appId: host.exp.Exponent
+---
+- setOrientation: PORTRAIT
+- runFlow: ../sign-out.yaml
+- runFlow: ../sc33828-to-code-signed-out.yaml
+- runFlow: ../sc29072-close-code-pad.yaml
+- scrollUntilVisible: { element: { id: 'twoFactor.lostBoth' } }
+- tapOn: { id: 'twoFactor.lostBoth' }
+- extendedWaitUntil: { visible: { id: 'lostTwoFactor.cancel' }, timeout: 30000 }
+- waitForAnimationToEnd
+- assertVisible: 'Asked .*'
+- takeScreenshot: waiting-portrait
+- setOrientation: LANDSCAPE_LEFT
+- waitForAnimationToEnd
+- takeScreenshot: waiting-landscape
+- setOrientation: PORTRAIT
