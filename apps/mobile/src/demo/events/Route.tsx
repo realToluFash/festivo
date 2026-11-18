@@ -26,6 +26,7 @@ import { budgetStateOf } from '../budget/BudgetModel.ts';
 import { cardStateOf } from '../people/PeopleCardModel.ts';
 import { areaOf, sampleEvent } from './EventsSample.ts';
 import { say } from './EventsWords.ts';
+import { originStateOf } from '../enquiries/EnquiryToEventModel.ts';
 import {
   type Looking,
   type Shell,
@@ -124,7 +125,7 @@ export function EventsRoute() {
   );
 }
 
-/** /demo/events/[id]: one event, with ?state= for each phase, edit and question, and ?area= for an area, ?people= for Overview's People card; with ?area=messages, ?state= is Messages'. */
+/** /demo/events/[id]: one event, with ?state= for each phase, edit and question, or the draft made from an enquiry (sc-31232), and ?area= for an area, ?people= for Overview's People card; with ?area=messages, ?state= is Messages'. */
 export function EventRoute() {
   const params = useLocalSearchParams<{
     id?: string;
@@ -145,6 +146,7 @@ export function EventRoute() {
   const state = noBudget ? 'more' : eventStateOf(params.state);
   const guests = area === 'guests' ? guestsStateOf(params.state) : null;
   const people = cardStateOf(params.people);
+  const origin = originStateOf(params.state);
 
   if (area === 'guests' && params.state === 'eventDeleted')
     return (
@@ -161,7 +163,7 @@ export function EventRoute() {
         : {})}
     >
       <EventScreen
-        key={`${params.id ?? ''}:${state ?? ''}:${area ?? ''}:${messages ?? ''}:${seating ?? ''}:${guests ?? ''}:${budget ?? ''}:${people ?? ''}:${from ?? ''}`}
+        key={`${params.id ?? ''}:${state ?? ''}:${area ?? ''}:${messages ?? ''}:${seating ?? ''}:${guests ?? ''}:${budget ?? ''}:${people ?? ''}:${from ?? ''}:${origin ?? ''}`}
         id={params.id}
         state={state}
         area={noBudget ? null : area}
@@ -172,6 +174,7 @@ export function EventRoute() {
         people={people}
         guestsFrom={from}
         without={noBudget ? 'budget' : undefined}
+        origin={origin}
       />
     </EventsShell>
   );
