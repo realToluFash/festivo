@@ -27,6 +27,7 @@ import { keysStayDown } from '../src/components/Field.tsx';
 import { LifecycleSheet } from '../src/components/LifecycleSheet.tsx';
 import { Notice } from '../src/components/Notice.tsx';
 import { leaveTimedOutSignIn } from '../src/steps/leaveTimedOutSignIn.ts';
+import { signInOver } from '../src/steps/signInOver.ts';
 import { Pending } from '../src/components/Pending.tsx';
 import { readOut } from '../src/components/ReadOut.tsx';
 import { useFocusOnAnswer } from '../src/components/Screen.tsx';
@@ -226,6 +227,7 @@ function BackToCode({ step }: { step?: readonly [number, number] }) {
 }
 
 function toSignIn(email?: string): void {
+  signInOver(router.canGoBack());
   router.replace(email == null ? '/sign-in' : { pathname: '/sign-in', params: { email } });
 }
 
