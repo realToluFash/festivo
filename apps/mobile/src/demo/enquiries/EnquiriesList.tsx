@@ -5,6 +5,7 @@ import { type ReactNode, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Pressable, StyleSheet, type TextInputInstance, View } from 'react-native';
 
+import { BackButton } from '../../components/AppFrame.tsx';
 import { PrimaryButton } from '../../components/Buttons.tsx';
 import { SearchField, SearchRow } from '../../components/EventsSearch.tsx';
 import { Glyph } from '../../components/Glyph.tsx';
@@ -15,6 +16,7 @@ import { kindOf, useShell } from '../../components/settingsShell.ts';
 import { HeadCount, Row, RowList, SectionHead, TextAction } from '../../components/Summary.tsx';
 import { Text } from '../../components/Text.tsx';
 import { tokens } from '../../theme/tokens.ts';
+import { backToEvents } from '../events/EventFrame.tsx';
 import { OfflineBand } from '../events/EventsList.tsx';
 import { Bell, OrgPill } from '../settings/Frame.tsx';
 import { EnquiriesFrame } from './EnquiriesFrame.tsx';
@@ -118,17 +120,24 @@ export function EnquiriesList({ state }: { state: EnquiryState }) {
   };
 
   const top = (
-    <ListTop
-      kind={kindOf(shell.layout)}
-      title={W.enquiries}
-      pill={<OrgPill />}
-      bell={<Bell tell={shell.tell} />}
-      primary={{
-        label: W.newEnquiry,
-        onPress: () => shell.tell(W.ownDesign(W.newEnquiry)),
-        testID: 'enquiries.new',
-      }}
-    />
+    <>
+      <BackButton
+        label={t('todayScreen.tab.events')}
+        onPress={backToEvents}
+        testID="enquiries.back"
+      />
+      <ListTop
+        kind={kindOf(shell.layout)}
+        title={W.enquiries}
+        pill={<OrgPill />}
+        bell={<Bell tell={shell.tell} />}
+        primary={{
+          label: W.newEnquiry,
+          onPress: () => shell.tell(W.ownDesign(W.newEnquiry)),
+          testID: 'enquiries.new',
+        }}
+      />
+    </>
   );
 
   if (listFailed)

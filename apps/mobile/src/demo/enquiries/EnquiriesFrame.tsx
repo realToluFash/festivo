@@ -1,16 +1,15 @@
-import { router } from 'expo-router';
 import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import type { GlyphName } from '../../components/Glyph.tsx';
 import { PortraitTop as ProductPortraitTop } from '../../components/ListTop.tsx';
 import { LIST_EDGES, LIST_GAP } from '../../components/listFrame.ts';
 import { sideInsets } from '../../components/bodyEdges.ts';
 import { useShell } from '../../components/settingsShell.ts';
 import {
   PHONE_TAB_BAR,
+  TABS,
   type Tab,
   TabBar,
   TabBarFade,
@@ -30,38 +29,15 @@ import { demoShell } from '../demoShell.ts';
 import { openSearch, SearchButton } from '../search/SearchHeader.tsx';
 import { Bell, Landscape, OrgPill } from '../settings/Frame.tsx';
 import { SIDEBAR_EVENTS } from '../sideEvents.ts';
-import { W } from './EnquiriesWords.ts';
 
-export type Place = Tab | 'Enquiries';
-
-/** Enquiries beside Events, for an Enterprise organisation only: a fifth place in the bar, the capsule and the sidebar (sc-31226 leaves where to the designer). */
-export const PLACES: readonly (readonly [Place, GlyphName])[] = [
-  ['Today', 'today'],
-  ['Events', 'events'],
-  ['Enquiries', 'chat'],
-  ['Calendar', 'calendar'],
-  ['Settings', 'settings'],
-];
-
-export function backToEnquiries(): void {
-  router.dismissTo('/demo/enquiries');
-}
-
-function useGo(): (place: Place) => void {
-  const shell = useShell();
-
-  return (place) => (place === 'Enquiries' ? backToEnquiries() : shell.onTab(place));
-}
-
-function useSay(): (place: Place, glyph: GlyphName) => string {
+function useSay(): (tab: Tab, glyph: string) => string {
   const { t } = useTranslation();
 
-  return (place, glyph) => (place === 'Enquiries' ? W.enquiries : t(`todayScreen.tab.${glyph}`));
+  return (_tab, glyph) => t(`todayScreen.tab.${glyph}`);
 }
 
 function EnquiriesSidebar() {
   const shell = useShell();
-  const go = useGo();
   const say = useSay();
 
   return (
@@ -74,19 +50,19 @@ function EnquiriesSidebar() {
       <SidebarColumn>
         <SidebarHead />
         <SidebarPlaces>
-          {PLACES.filter(([place]) => place !== 'Settings').map(([place, glyph]) => (
+          {TABS.filter(([tab]) => tab !== 'Settings').map(([tab, glyph]) => (
             <SidebarPlace
-              key={place}
-              label={say(place, glyph)}
+              key={tab}
+              label={say(tab, glyph)}
               glyph={glyph}
-              on={place === 'Enquiries'}
-              onPress={() => go(place)}
-              testID={`enquiries.place.${place}`}
+              on={tab === 'Events'}
+              onPress={() => shell.onTab(tab)}
+              testID={`enquiries.place.${tab}`}
             />
           ))}
         </SidebarPlaces>
         <SidebarEvents events={SIDEBAR_EVENTS} />
-        <SidebarFoot onTab={(tab) => go(tab)} at={null} />
+        <SidebarFoot onTab={shell.onTab} at={null} />
       </SidebarColumn>
     </TodayShellProvider>
   );
@@ -94,7 +70,6 @@ function EnquiriesSidebar() {
 
 function EnquiriesPortraitTop() {
   const shell = useShell();
-  const go = useGo();
   const say = useSay();
 
   return (
@@ -106,19 +81,18 @@ function EnquiriesPortraitTop() {
           <Bell tell={shell.tell} />
         </View>
       }
-      tabLabels={PLACES.map(([place, glyph]) => say(place, glyph))}
+      tabLabels={TABS.map(([tab, glyph]) => say(tab, glyph))}
       renderTabs={(labelSize) => (
-        <WhiteCapsule tabs={PLACES} at="Enquiries" onTab={go} say={say} labelSize={labelSize} />
+        <WhiteCapsule tabs={TABS} at="Events" onTab={shell.onTab} say={say} labelSize={labelSize} />
       )}
     />
   );
 }
 
-/** The list in its frame: the bar on the phone, the capsule upright, the sidebar on its side, as Events' list has them. */
+/** Enquiries is pushed from Events, not a fifth tab (pm, sc-31226 #66918): the bar, capsule and sidebar keep four, with Events selected. */
 export function EnquiriesFrame({ band, children }: { band: ReactNode; children: ReactNode }) {
   const shell = useShell();
   const insets = useSafeAreaInsets();
-  const go = useGo();
   const say = useSay();
 
   if (shell.layout === 'landscape')
@@ -161,7 +135,7 @@ export function EnquiriesFrame({ band, children }: { band: ReactNode; children: 
       {phone && (
         <>
           <TabBarFade />
-          <TabBar tabs={PLACES} bottom={foot} onTab={go} at="Enquiries" say={say} />
+          <TabBar tabs={TABS} bottom={foot} onTab={shell.onTab} at="Events" say={say} />
         </>
       )}
     </View>
