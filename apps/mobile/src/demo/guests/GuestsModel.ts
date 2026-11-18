@@ -1445,6 +1445,12 @@ export function guestOf(state: GuestsState | null): string | null {
   }
 }
 
+/** The language the title row speaks, and whether Export sits in it: titlePt hides it, as sc-51444 drew it (sc-67659). */
+export function titleRowOf(state: GuestsState | null): { locale: 'en' | 'pt'; export: boolean } {
+  if (state === 'titlePt') return { locale: 'pt', export: false };
+  return { locale: state === 'exportPt' || state === 'offlinePt' ? 'pt' : 'en', export: true };
+}
+
 export function areaStart(state: GuestsState | null): AreaStart {
   const open = guestOf(state);
   const base = { ...QUIET, open };

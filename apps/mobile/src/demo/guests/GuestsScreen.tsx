@@ -57,10 +57,11 @@ import {
   filterCount,
   filterWord,
   inViewOf,
+  titleRowOf,
 } from './GuestsModel.ts';
 import { changesSince, lastLooked, takeLook } from './ChangedSince.ts';
 import { ExportButton, ExportPanel, ExportSheet, ShareStandIn } from './GuestExport.tsx';
-import { exportDay, exportStart, fileName, narrowing } from './GuestExportModel.ts';
+import { exportDay, exportStart, exportWordsIn, fileName, narrowing } from './GuestExportModel.ts';
 import { GuestsFailed, GuestsLoading, GuestsRows } from './GuestsList.tsx';
 import { GuestToast, GuestsCard, GuestsTitle, type Layout } from './GuestsParts.tsx';
 import { type SampleGuest, TODAY, WEDDING } from './GuestsSample.ts';
@@ -128,7 +129,8 @@ export function GuestsScreen({
   const pasted = useMemo(() => pasteStart(state), [state]);
   const [paste, setPaste] = useState<PasteFlow | null>(pasted.flow);
   const { t, i18n } = useTranslation();
-  const inPortuguese = state === 'titlePt' || state === 'exportPt' || state === 'offlinePt';
+  const titleRow = titleRowOf(state);
+  const inPortuguese = titleRow.locale === 'pt';
   const portuguese = useMemo(() => i18n.getFixedT('pt'), [i18n]);
   const [guests, setGuests] = useState(opening.guests);
   const [added, setAdded] = useState(opening.added);
@@ -393,19 +395,12 @@ export function GuestsScreen({
         plus={owner && phase !== 'loading' && !empty}
         onPlus={() => show('add', 'plus')}
         extra={
-          owner && phase === 'ok' && !empty && state !== 'titlePt' ? (
+          owner && phase === 'ok' && !empty && titleRow.export ? (
             <ExportButton
               ref={refFor('export')}
               layout={layout}
               offline={offline}
-              words={
-                inPortuguese
-                  ? {
-                      export: portuguese('guestExport.export'),
-                      needsConnection: portuguese('guestExport.needsConnection'),
-                    }
-                  : undefined
-              }
+              words={inPortuguese ? exportWordsIn(portuguese) : undefined}
               onPress={openExport}
             />
           ) : null

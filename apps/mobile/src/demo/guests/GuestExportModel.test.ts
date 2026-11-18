@@ -1,3 +1,6 @@
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
+
 import { describe, expect, it } from 'vitest';
 
 import {
@@ -7,12 +10,13 @@ import {
   columnsFor,
   exportDay,
   exportStart,
+  exportWordsIn,
   fileName,
   narrowing,
   scopeFor,
 } from './GuestExportModel.ts';
 import { GUESTS_BOARDS } from './GuestsBoards.ts';
-import { areaStart, guestsStateOf, inViewOf, roleOf } from './GuestsModel.ts';
+import { areaStart, guestsStateOf, inViewOf, roleOf, titleRowOf } from './GuestsModel.ts';
 
 describe('the app’s guest export (sc-3784)', () => {
   it('names the file by the event and today in the event’s zone', () => {
@@ -92,5 +96,33 @@ describe('the app’s guest export (sc-3784)', () => {
       expect(guestsStateOf(state)).toBe(state);
       expect(GUESTS_BOARDS.some((b) => b.href === `/demo/guests?state=${state}`)).toBe(true);
     }
+  });
+
+  it('shows Export in Portuguese beside Convidados, online and offline, and hides it only in titlePt', () => {
+    const pt = JSON.parse(
+      readFileSync(join(import.meta.dirname, '../../i18n/locales/pt.json'), 'utf8'),
+    ) as { guestExport: Record<string, string> };
+    const words = exportWordsIn((key) => pt.guestExport[key.split('.')[1] as string] as string);
+
+    expect(titleRowOf('exportPt')).toEqual({ locale: 'pt', export: true });
+    expect(titleRowOf('offlinePt')).toEqual({ locale: 'pt', export: true });
+    expect(titleRowOf('titlePt')).toEqual({ locale: 'pt', export: false });
+    expect(titleRowOf('inUse')).toEqual({ locale: 'en', export: true });
+    expect(words).toEqual({
+      export: 'Exportar',
+      needsConnection: 'É preciso Internet para exportar',
+    });
+  });
+
+  it('hands the title row’s Portuguese words to the header’s Export', () => {
+    const screen = readFileSync(join(import.meta.dirname, 'GuestsScreen.tsx'), 'utf8');
+    const button = screen.slice(
+      screen.indexOf('<ExportButton'),
+      screen.indexOf('/>', screen.indexOf('<ExportButton')),
+    );
+
+    expect(screen).toMatch(/inPortuguese = titleRow\.locale === 'pt'/);
+    expect(screen).toMatch(/&& titleRow\.export \? \(\s*<ExportButton/);
+    expect(button).toMatch(/words=\{inPortuguese \? exportWordsIn\(portuguese\) : undefined\}/);
   });
 });
