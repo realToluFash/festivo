@@ -120,21 +120,6 @@
   cursor: default;
 }
 
-.vd-refused {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: var(--spaceSm);
-}
-
-.vd-refused .desk-text {
-  gap: var(--spaceXxs);
-}
-
-.vd-refused .desk-text:not(:hover) {
-  text-decoration: none;
-}
-
 /* The vendor's form is the 700 dialog (spec §4), the product's 540 widened from the demo. */
 .desk-dialog:has(.vd-wide) {
   width: 700px;

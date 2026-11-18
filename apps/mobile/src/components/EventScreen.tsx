@@ -75,7 +75,7 @@ import { TopPrimary, usePrimaryLabel } from './TopPrimary.tsx';
 import { COLUMN_TITLE, PAGE_TITLE, columnTitle, pageTitle } from './topTitle.ts';
 import { useSidebarCard } from './sidebarCard.ts';
 import { eventTop } from '../kit/eventTop.ts';
-import { useEdgeSwipeBack } from './useEdgeSwipeBack.ts';
+import { EdgeSwipeBack } from './useEdgeSwipeBack.ts';
 import { useSystemBack } from './useSystemBack.ts';
 
 /** An event's page, a screen of its own pushed over Events, Happening now or Calendar (sc-22103). */
@@ -229,7 +229,6 @@ export function EventScreen({
         : t('eventsScreen.title');
 
   useSystemBack(true, back);
-  useEdgeSwipeBack(area !== 'overview', back);
 
   const partRef = (part: EditPart): RefObject<ViewInstance | null> => partRows[part];
   const openEdit = (
@@ -434,6 +433,7 @@ export function EventScreen({
       }
       underTitle={titledInList ? undefined : underTitle}
     >
+      <EdgeSwipeBack active={area !== 'overview' && guestBack == null} onBack={back} />
       {guests ? (
         <EventGuests
           key={`${event.id}.${filter}`}

@@ -36,9 +36,11 @@ import {
   READ_ONLY,
   removedToast,
   rowLine,
+  seenBy,
   seesEveryEvent,
   withAdded,
   without,
+  withOutside,
   withRole,
 } from './PeopleSample.ts';
 import { AddBox, PeopleLoading } from '../../components/PeopleParts.tsx';
@@ -166,7 +168,7 @@ function PeopleScreen({ start, door }: { start: PeopleStart; door: DoorStart | n
       </PeoplePage>
     );
 
-  const shown = listed(onEvent);
+  const shown = listed(seenBy(onEvent, canChange));
 
   return (
     <>
@@ -292,14 +294,23 @@ function PeopleScreen({ start, door }: { start: PeopleStart; door: DoorStart | n
           viewer={viewer}
           organisation={world.organisation}
           opener={focusBack}
+          country={world.country}
           refuses={start.addRefuses}
+          startTyped={start.addTyped}
+          startRole={start.addRole}
           onClose={() => setAdding((was) => ({ ...was, open: false }))}
-          onAdd={(role, added, finished) => {
-            const next = withAdded(onEvent, role, added);
-            setOnEvent(next.onEvent);
+          onAdd={(added, finished) => {
+            const next = withAdded(onEvent, added.role, added.members);
+            const all =
+              added.outside == null
+                ? next.onEvent
+                : withOutside(next.onEvent, added.role, added.outside.address, added.outside.job);
+            setOnEvent(all);
             if (!finished) return;
             setAdding((was) => ({ ...was, open: false }));
-            setToast(addedToast(next.names, role));
+            const names =
+              added.outside == null ? next.names : [...next.names, added.outside.address.shown];
+            setToast(addedToast(names, added.role));
           }}
         />
       )}

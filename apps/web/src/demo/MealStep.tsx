@@ -7,6 +7,10 @@ import { useMatches } from '../phoneWidth.ts';
 import { LAYOUT_MEDIA, layoutOf, startOf, twoColumns, wordsFor } from './guest.ts';
 import { Cover, Filled, Notice, TextAction } from './GuestParts.tsx';
 import { AllergyMark } from './GuestNeeds.tsx';
+import { DishScreen, Refused } from './MealParts.tsx';
+import { Summary } from './MealSummary.tsx';
+import { GUEST_PICKS } from './mealClose.ts';
+import { PCW, closeOf, dayWords } from './picksClose.ts';
 import {
   type MealAnswer,
   type MealCourse,
@@ -17,7 +21,6 @@ import {
   MW,
   PERSON,
   allergenList,
-  cardLines,
   containsLine,
   dishOf,
   isMealState,
@@ -50,6 +53,7 @@ export function MealStepPage() {
   });
   const visit = useMemo(() => startOf(null), []);
   const words = useMemo(() => wordsFor('en'), []);
+  const summary = mealStart(state).summary ?? null;
 
   return (
     <>
@@ -61,12 +65,16 @@ export function MealStepPage() {
           <div className="gp-columns">
             <Cover visit={visit} words={words} ended={false} />
             <div className="gp-under">
-              <Flow
-                key={`${state}|${lang}`}
-                first={mealStart(state)}
-                again={lang === 'en' ? mealAt(state) : `${mealAt(state)}&format=${lang}`}
-                lang={lang}
-              />
+              {summary != null ? (
+                <Summary key={`${state}|${lang}`} first={summary} lang={lang} />
+              ) : (
+                <Flow
+                  key={`${state}|${lang}`}
+                  first={mealStart(state)}
+                  again={lang === 'en' ? mealAt(state) : `${mealAt(state)}&format=${lang}`}
+                  lang={lang}
+                />
+              )}
             </div>
           </div>
         </main>
@@ -145,7 +153,12 @@ function Flow({ first, again, lang }: { first: MealStart; again: string; lang: L
       <p className="gk-label ms-who">
         {[PERSON, course.name, MW.of(first.n, first.total)].join(' · ')}
       </p>
-      {first.closes && <p className="gk-text is-quiet">{MW.picksClose}</p>}
+      {first.closes && (
+        <p id="ms-close" className="gk-text is-quiet ms-close">
+          <Glyph name="clock" size={15} weight={2.4} />
+          {PCW.line(dayWords(closeOf('main', GUEST_PICKS).on, lang))}
+        </p>
+      )}
     </div>
   );
 
@@ -184,6 +197,7 @@ function Flow({ first, again, lang }: { first: MealStart; again: string; lang: L
           answer={answer}
           lang={lang}
           refusal={refusal}
+          closeId={first.closes ? 'ms-close' : undefined}
           onPick={(id) => choose((was) => ({ ...was, dishId: id, way: 'chosen' }))}
         />
       ) : (
@@ -195,6 +209,7 @@ function Flow({ first, again, lang }: { first: MealStart; again: string; lang: L
           allergies={allergies}
           lang={lang}
           firstOfSet={firstOfSet}
+          closes={first.closes}
           safe={safe}
           refusal={refusal}
           onAnswer={choose}
@@ -207,76 +222,6 @@ function Flow({ first, again, lang }: { first: MealStart; again: string; lang: L
   );
 }
 
-function Refused({ words }: { words: string }) {
-  return (
-    <p id="ms-refused" className="desk-error ms-refused" role="alert">
-      <Glyph name="alert" size={16} weight={2.2} />
-      {words}
-    </p>
-  );
-}
-
-function DishScreen({
-  course,
-  answer,
-  lang,
-  refusal,
-  onPick,
-}: {
-  course: MealCourse;
-  answer: MealAnswer;
-  lang: Lang;
-  refusal: string | null;
-  onPick: (id: string) => void;
-}) {
-  return (
-    <fieldset className="ms-set" aria-describedby={refusal == null ? undefined : 'ms-refused'}>
-      <legend className="ms-legend">
-        <h2 id="ms-h" className="gp-h2 gk-h2" tabIndex={-1}>
-          {course.name}
-        </h2>
-        <span className="gk-text is-quiet">{MW.chooseDish}</span>
-      </legend>
-      {refusal != null && <Refused words={refusal} />}
-      <div className={refusal == null ? 'ms-options' : 'ms-options is-wrong'}>
-        {course.dishes.map((dish) => {
-          const card = cardLines(dish, answer, lang);
-
-          return (
-            <label key={dish.id} className="ms-option">
-              <input
-                type="radio"
-                className="desk-radio"
-                name="ms-dish"
-                checked={answer.dishId === dish.id}
-                onChange={() => onPick(dish.id)}
-              />
-              <span className="ms-option-words">
-                <span className="ms-option-name">{dish.name}</span>
-                <span className="ms-quiet">{dish.desc}</span>
-                {card != null ? (
-                  <>
-                    <span className="ms-contains">{card.contains}</span>
-                    {card.sources.map((one) => (
-                      <span key={one} className="ms-quiet">
-                        {one}
-                      </span>
-                    ))}
-                  </>
-                ) : dish.ways.length >= 2 ? (
-                  <span className="ms-quiet">{MW.pickWayNext}</span>
-                ) : (
-                  <span className="ms-contains">{containsLine(dish.contains, lang)}</span>
-                )}
-              </span>
-            </label>
-          );
-        })}
-      </div>
-    </fieldset>
-  );
-}
-
 function Question({
   screen,
   course,
@@ -285,6 +230,7 @@ function Question({
   allergies,
   lang,
   firstOfSet,
+  closes,
   safe,
   refusal,
   onAnswer,
@@ -296,6 +242,7 @@ function Question({
   allergies: MealStart['allergies'];
   lang: Lang;
   firstOfSet: boolean;
+  closes: boolean;
   safe: boolean;
   refusal: string | null;
   onAnswer: (change: (was: MealAnswer) => MealAnswer) => void;
@@ -349,7 +296,12 @@ function Question({
       <fieldset
         className="ms-set"
         aria-describedby={
-          [refusal != null && 'ms-refused', !safe && 'ms-unsafe', anyOut && 'ms-host']
+          [
+            refusal != null && 'ms-refused',
+            !safe && 'ms-unsafe',
+            anyOut && 'ms-host',
+            closes && 'ms-close',
+          ]
             .filter(Boolean)
             .join(' ') || undefined
         }

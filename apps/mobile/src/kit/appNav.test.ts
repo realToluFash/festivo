@@ -385,3 +385,11 @@ describe('The bell in [fd] (sc-23233)', () => {
     );
   });
 });
+
+describe("iPad Sign in's scroll view stays out of the sheet's reach (sc-67589)", () => {
+  it('is presented as the (sign-in) group, which renders a Stack of its own', () => {
+    expect(source(join(APP, '_layout.tsx'))).toMatch(/<Stack\.Screen\s+name="\(sign-in\)"/u);
+    expect(readdirSync(APP)).not.toContain('sign-in.tsx');
+    expect(source(join(APP, '(sign-in)', '_layout.tsx'))).toMatch(/return \(\s*<Stack\b/u);
+  });
+});
