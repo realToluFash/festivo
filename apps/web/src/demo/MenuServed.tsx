@@ -31,7 +31,7 @@ import {
   canAdd,
   checkItems,
   checkOwn,
-  foldLine,
+  foldItemLine,
   hasErrors,
   isDraftItem,
   itemName,
@@ -46,11 +46,14 @@ import {
   withoutChoice,
 } from './menuServed.ts';
 import { CoursesAt } from './MenuCourses.tsx';
+import { VariantInsets } from './DishVariants.tsx';
+import { type Variant, VW, removeOutcome, stayingAfter } from './dishVariants.ts';
 import { type CoursesStateName, coursesStart, isCoursesState } from './menuCourses.ts';
 import { type Lang, LANGS } from './menuLibrary.ts';
 import { useSwitcherStart } from './switcher.ts';
 import './guests.css';
 import './menu.css';
+import './menuLibrary.css';
 
 /** The event's Menu at a desk (board MenuServing, page e32): sc-3902's course cards and docked panel, with sc-34230's Items on every course's dishes and Served with this course. */
 export function MenuPage() {
@@ -74,7 +77,15 @@ export function MenuPage() {
     );
   }
 
-  return <MenuAt key={`${id ?? ''}|${raw ?? ''}`} id={id} raw={raw} />;
+  return (
+    <MenuAt
+      key={`${id ?? ''}|${raw ?? ''}|${lang}|${String(budget)}`}
+      id={id}
+      raw={raw}
+      lang={lang}
+      budget={budget}
+    />
+  );
 }
 
 function CoursesStarted({
@@ -98,7 +109,17 @@ function CoursesStarted({
   return <CoursesAt event={event} first={first} lang={lang} budget={budget} />;
 }
 
-function MenuAt({ id, raw }: { id: string | undefined; raw: string | null }) {
+function MenuAt({
+  id,
+  raw,
+  lang,
+  budget,
+}: {
+  id: string | undefined;
+  raw: string | null;
+  lang: Lang;
+  budget: boolean;
+}) {
   const [event] = useState(() => sampleEvent(id));
   const [first] = useState(() => menuStart(raw));
 
@@ -120,7 +141,7 @@ function MenuAt({ id, raw }: { id: string | undefined; raw: string | null }) {
           />
         )}
       >
-        {(tell) => <Menu first={first} event={event} tell={tell} />}
+        {(tell) => <Menu first={first} event={event} lang={lang} budget={budget} tell={tell} />}
       </EventsShell>
     </KeptArea>
   );
@@ -190,7 +211,19 @@ function findDish(courses: readonly Course[], dishId: string): Dish | undefined 
   return courses.flatMap((one) => one.dishes).find((one) => one.id === dishId);
 }
 
-function Menu({ first, event, tell }: { first: MenuStart; event: SampleEvent; tell: Tell }) {
+function Menu({
+  first,
+  event,
+  lang,
+  budget,
+  tell,
+}: {
+  first: MenuStart;
+  event: SampleEvent;
+  lang: Lang;
+  budget: boolean;
+  tell: Tell;
+}) {
   const [courses, setCourses] = useState(first.courses);
   const [panel, setPanel] = useState<Panel | null>(first.panel);
   const [form, setForm] = useState<Form | null>(() =>
@@ -403,21 +436,32 @@ function Menu({ first, event, tell }: { first: MenuStart; event: SampleEvent; te
     setSaid(removedLine(target, choice));
   }
 
-  function removeVariant(dishId: string, name: string) {
-    setAsking({ dishId, kind: 'variant', name });
-    focusAfter.current = `mn-ask-v-${dishId}`;
+  function askVariant(dish: Dish, variant: Variant) {
+    const outcome = removeOutcome(variantsDish(dish), variant, 'event');
+    setAsking({ dishId: dish.id, kind: 'variant', ask: { variantId: variant.id, ...outcome } });
+    focusAfter.current = `${variantIds(dish.id)}-${outcome.kind === 'refused' ? 'vline' : 'vask'}-${variant.id}`;
   }
 
-  function makeSingle(dishId: string) {
-    const target = findDish(courses, dishId);
-    const gone = asking?.kind === 'variant' ? asking.name : null;
-    const stays = target?.variants.find((name) => name !== gone);
-    if (target == null || stays == null) return;
-
-    setCourses(mapDish(courses, dishId, asSingleDish));
-    changeOpenDish(dishId, asSingleDish);
+  function removeVariant(dish: Dish, variant: Variant) {
+    setCourses(
+      mapDish(courses, dish.id, (d) => ({
+        ...d,
+        variants: d.variants.filter((one) => one.id !== variant.id),
+      })),
+    );
     setAsking(null);
-    setSaid(mw(MW.folded, { dish: target.name, variant: stays }));
+    setSaid(VW.removed(variant.name, dish.name));
+    focusAfter.current = 'mn-said';
+  }
+
+  function makeSingle(dish: Dish, variant: Variant) {
+    const stays = stayingAfter(variantsDish(dish), variant);
+    if (stays == null) return;
+
+    setCourses(mapDish(courses, dish.id, asSingleDish));
+    changeOpenDish(dish.id, asSingleDish);
+    setAsking(null);
+    setSaid(VW.folded(dish.name, stays.name, budget ? 'event' : null));
     focusAfter.current = 'mn-said';
   }
 
@@ -489,8 +533,14 @@ function Menu({ first, event, tell }: { first: MenuStart; event: SampleEvent; te
                   focusAfter.current = back;
                 }}
                 onRemove={removeChoice}
-                onRemoveVariant={removeVariant}
-                onMakeSingle={makeSingle}
+                variants={{
+                  lang,
+                  budget,
+                  onEdit: () => tell('Editing a variant is sc-3903’s, drawn on the Menu board.'),
+                  onRemove: askVariant,
+                  onConfirmRemove: removeVariant,
+                  onConfirmFold: makeSingle,
+                }}
                 onAddDish={() => tell('Add dish is sc-3902’s, drawn on the Menu board.')}
               />
             ))}
@@ -621,8 +671,7 @@ function CourseCard({
   onAsk,
   onKeep,
   onRemove,
-  onRemoveVariant,
-  onMakeSingle,
+  variants,
   onAddDish,
 }: {
   course: Course;
@@ -634,8 +683,7 @@ function CourseCard({
   onAsk: (dishId: string, choiceId: string) => void;
   onKeep: (back: string) => void;
   onRemove: (dishId: string, choiceId: string) => void;
-  onRemoveVariant: (dishId: string, name: string) => void;
-  onMakeSingle: (dishId: string) => void;
+  variants: VariantActions;
   onAddDish: () => void;
 }) {
   const lit = editing?.kind === 'course' && editing.courseId === course.id;
@@ -683,8 +731,7 @@ function CourseCard({
             onAsk={(choiceId) => onAsk(dish.id, choiceId)}
             onKeep={onKeep}
             onRemove={(choiceId) => onRemove(dish.id, choiceId)}
-            onRemoveVariant={(name) => onRemoveVariant(dish.id, name)}
-            onMakeSingle={() => onMakeSingle(dish.id)}
+            variants={variants}
           />
         ))}
       </ul>
@@ -700,8 +747,24 @@ function CourseCard({
   );
 }
 
-const variantKey = (dishId: string, name: string): string =>
-  `mn-rmv-${dishId}-${name.toLowerCase().replace(/\W+/gu, '-')}`;
+interface VariantActions {
+  lang: Lang;
+  budget: boolean;
+  onEdit: () => void;
+  onRemove: (dish: Dish, variant: Variant) => void;
+  onConfirmRemove: (dish: Dish, variant: Variant) => void;
+  onConfirmFold: (dish: Dish, variant: Variant) => void;
+}
+
+const variantIds = (dishId: string): string => `mn-${dishId}`;
+
+/** The dish as sc-3903's variant cards read it: its name and its variants. */
+const variantsDish = (dish: Dish) => ({
+  name: dish.name,
+  contains: null,
+  diets: [],
+  variants: dish.variants,
+});
 
 function DishRow({
   dish,
@@ -712,8 +775,7 @@ function DishRow({
   onAsk,
   onKeep,
   onRemove,
-  onRemoveVariant,
-  onMakeSingle,
+  variants,
 }: {
   dish: Dish;
   manage: boolean;
@@ -723,8 +785,7 @@ function DishRow({
   onAsk: (choiceId: string) => void;
   onKeep: (back: string) => void;
   onRemove: (choiceId: string) => void;
-  onRemoveVariant: (name: string) => void;
-  onMakeSingle: () => void;
+  variants: VariantActions;
 }) {
   return (
     <li className={lit ? 'mn-dish is-lit' : 'mn-dish'}>
@@ -738,9 +799,6 @@ function DishRow({
             </span>
             {`${MW.contains} ${dish.contains.join(', ')}`}
           </p>
-          {dish.variants.length > 0 && !manage && (
-            <p className="mn-quiet">{`${MW.variants}: ${dish.variants.join(' · ')}`}</p>
-          )}
         </div>
         {manage && (
           <IconButton
@@ -752,41 +810,23 @@ function DishRow({
           />
         )}
       </div>
-      {dish.variants.length > 0 && manage && (
-        <div className="mn-variants-box">
-          <p className="mn-items-head">{MW.variants}</p>
-          <ul className="mn-variants" aria-label={`${MW.variants} · ${dish.name}`}>
-            {dish.variants.map((name) => (
-              <li key={name} className="mn-variant">
-                <span>{name}</span>
-                <IconButton
-                  id={variantKey(dish.id, name)}
-                  glyph="clear"
-                  label={mw(MW.removeVariantAria, { name })}
-                  hint={MW.remove}
-                  onClick={() => onRemoveVariant(name)}
-                />
-              </li>
-            ))}
-          </ul>
-          {asking?.kind === 'variant' && (
-            <div className="mn-ask">
-              <p id={`mn-ask-v-${dish.id}`} tabIndex={-1}>
-                {foldLine(dish)}
-              </p>
-              <div className="mn-ask-acts">
-                <button
-                  type="button"
-                  className="desk-text"
-                  onClick={() => onKeep(variantKey(dish.id, asking.name))}
-                >
-                  {MW.keepVariants}
-                </button>
-                <Pill label={MW.makeSingle} onClick={onMakeSingle} />
-              </div>
-            </div>
-          )}
-        </div>
+      {dish.variants.length > 0 && (
+        <VariantInsets
+          dish={variantsDish(dish)}
+          where="event"
+          ids={variantIds(dish.id)}
+          manage={manage}
+          budget={variants.budget}
+          lang={variants.lang}
+          asking={asking?.kind === 'variant' ? asking.ask : null}
+          lit={null}
+          onEdit={variants.onEdit}
+          onRemove={(variant) => variants.onRemove(dish, variant)}
+          onKeep={(variant) => onKeep(`${variantIds(dish.id)}-vremove-${variant.id}`)}
+          onConfirmRemove={(variant) => variants.onConfirmRemove(dish, variant)}
+          onConfirmFold={(variant) => variants.onConfirmFold(dish, variant)}
+          foldItem={foldItemLine(dish)}
+        />
       )}
       {dish.items.length > 0 && <ItemsLine dish={dish} />}
       {dish.choices.length > 0 && (
