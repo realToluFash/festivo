@@ -14,7 +14,7 @@ export function UnderWay() {
   return (
     <View style={styles.pill} {...hidden} testID="outside.underWay">
       <View style={styles.dot} />
-      <Text size={12.5} weight="semibold" style={styles.ink}>
+      <Text size={12.5} weight="semibold" style={styles.ink} accessible={false}>
         {WORDS.underWay}
       </Text>
     </View>
@@ -25,7 +25,7 @@ export function YoureHere() {
   return (
     <View style={styles.here} {...hidden} testID="outside.here">
       <Glyph name="tick" size={14} ink={tokens.colorAccentText} weight={2.8} />
-      <Text size={12.5} weight="semibold" style={styles.ink}>
+      <Text size={12.5} weight="semibold" style={styles.ink} accessible={false}>
         {WORDS.here}
       </Text>
     </View>

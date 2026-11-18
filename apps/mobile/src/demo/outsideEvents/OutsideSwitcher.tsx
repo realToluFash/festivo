@@ -9,6 +9,7 @@ import { Row, RowList, SectionHead } from '../../components/Summary.tsx';
 import { Text } from '../../components/Text.tsx';
 import { meshFor } from '../../kit/today.ts';
 import { tokens } from '../../theme/tokens.ts';
+import { useModalOpen } from '../../updateRequired.ts';
 import {
   CELL_GAP,
   cellWidth,
@@ -72,6 +73,7 @@ export function OutsideSwitcher({
     else if (tile.current) onClose();
     else onPlace(tile.place);
   };
+  const open = useModalOpen(true);
   const grid = (tiles: readonly Tile[]) =>
     rowsOf(tiles, across).map((row, index) => (
       <View key={row.map(keyOf).join(':')} style={[styles.row, index > 0 && styles.rowGap]}>
@@ -82,7 +84,7 @@ export function OutsideSwitcher({
     ));
 
   return (
-    <Modal visible transparent animationType="none" onRequestClose={onClose}>
+    <Modal visible={open} transparent animationType="none" onRequestClose={onClose}>
       <Pressable
         style={StyleSheet.absoluteFill}
         onPress={onClose}
@@ -257,7 +259,11 @@ function Face({ tile, ground }: { tile: Tile; ground: string }) {
 
   return (
     <View style={styles.face}>
-      <View style={[styles.tile, styles.dashed]} {...hidden}>
+      <View
+        style={[styles.tile, styles.dashed]}
+        accessibilityElementsHidden
+        importantForAccessibility="no-hide-descendants"
+      >
         <Initials name={tile.invite.name} size={20} weight="bold" style={styles.secondary} />
       </View>
       <View style={[badge, styles.badgeInvited]} {...hidden}>
