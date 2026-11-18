@@ -28,13 +28,13 @@ class Vendor
     #[ORM\JoinColumn(nullable: false, onDelete: 'CASCADE')]
     private Organisation $organisation;
 
-    #[ORM\Column(type: Types::STRING, length: 100)]
+    #[ORM\Column(type: Types::STRING, length: 400)]
     private string $name;
 
     #[ORM\Column(type: Types::STRING, length: 20, enumType: VendorCategory::class)]
     private VendorCategory $category;
 
-    #[ORM\Column(type: Types::STRING, length: 100, nullable: true)]
+    #[ORM\Column(type: Types::STRING, length: 400, nullable: true)]
     private ?string $contactName = null;
 
     #[ORM\Column(type: Types::STRING, length: 254, nullable: true)]
@@ -47,13 +47,13 @@ class Vendor
     #[ORM\Column(type: Types::STRING, length: 2, nullable: true)]
     private ?string $phoneCountryCode = null;
 
-    #[ORM\Column(type: Types::STRING, length: 2048, nullable: true)]
+    #[ORM\Column(type: Types::STRING, length: 8192, nullable: true)]
     private ?string $website = null;
 
-    #[ORM\Column(type: Types::STRING, length: 300, nullable: true)]
+    #[ORM\Column(type: Types::STRING, length: 1200, nullable: true)]
     private ?string $address = null;
 
-    #[ORM\Column(type: Types::STRING, length: 1000, nullable: true)]
+    #[ORM\Column(type: Types::STRING, length: 4000, nullable: true)]
     private ?string $note = null;
 
     #[ORM\Column(type: Types::DATETIME_IMMUTABLE, nullable: true)]

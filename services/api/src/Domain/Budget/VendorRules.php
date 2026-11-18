@@ -23,7 +23,7 @@ use Symfony\Contracts\Translation\TranslatorInterface;
  */
 final readonly class VendorRules
 {
-    /** The longest each field may be, in characters; the email address's is RFC 5321 §4.5.3.1's. */
+    /** The longest each field may be, in characters; the email address's is RFC 5321 §4.5.3.1's, the website's is held once its scheme is added. */
     public const array LIMITS = [
         'name' => 100,
         'contactName' => 100,
@@ -58,7 +58,7 @@ final readonly class VendorRules
             $value = Str\trim($typed[$field] ?? '');
             $trimmed[$field] = $value;
 
-            if (VisibleText::tooLong($value, $most)) {
+            if ('website' !== $field && VisibleText::tooLong($value, $most)) {
                 $violations[$field] = $this->violation($field, self::TOO_LONG[$field], ['{count}' => $most]);
             }
         }
@@ -79,8 +79,10 @@ final readonly class VendorRules
 
         $website = $this->website($trimmed['website']);
 
-        if (!isset($violations['website']) && null === $website) {
+        if (null === $website) {
             $violations['website'] = $this->violation('website', 'validation.vendor_website_scheme');
+        } elseif (VisibleText::tooLong($website, self::LIMITS['website'])) {
+            $violations['website'] = $this->violation('website', self::TOO_LONG['website'], ['{count}' => self::LIMITS['website']]);
         }
 
         $phone = null;

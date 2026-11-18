@@ -39,7 +39,7 @@ export type Problems = Partial<Record<keyof Draft, string>>;
 
 type Limited = 'name' | 'contact' | 'email' | 'website' | 'address' | 'note';
 
-/** The longest each field may be, in characters (decided 17 Oct); the API holds the same. */
+/** The longest each field may be, in characters (decided 17 Oct), the website's with its scheme; the API holds the same. */
 export const LIMITS: Record<Limited, number> = {
   name: 100,
   contact: 100,
@@ -107,6 +107,13 @@ export function schemeOf(typed: string): string | null {
   return found?.[1]?.toLowerCase() ?? null;
 }
 
+/** The website as the API holds it: `https://` added when no scheme was typed. */
+function websiteHeld(typed: string): string {
+  const trimmed = typed.trim();
+
+  return trimmed === '' || schemeOf(trimmed) != null ? trimmed : `https://${trimmed}`;
+}
+
 /** Each field checked as the form checks it before anything is sent; the API checks them again. */
 export function draftProblems(draft: Draft, t: TFunction): Problems {
   const problems: Problems = {};
@@ -115,7 +122,8 @@ export function draftProblems(draft: Draft, t: TFunction): Problems {
   if (draft.category === '') problems.category = t('vendors.categoryBlank');
 
   for (const field of Object.keys(LIMITS) as Limited[]) {
-    if (problems[field] == null && visibleLength(draft[field].trim()) > LIMITS[field])
+    const held = field === 'website' ? websiteHeld(draft.website) : draft[field].trim();
+    if (problems[field] == null && visibleLength(held) > LIMITS[field])
       problems[field] = t(TOO_LONG[field], { count: LIMITS[field] });
   }
 

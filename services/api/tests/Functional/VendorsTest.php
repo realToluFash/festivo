@@ -95,6 +95,7 @@ final class VendorsTest extends ApiTestCase
             [['name' => Str\repeat('a', 101), 'category' => 'venue'], 'name', 'Shorten the name to 100 characters or fewer.'],
             [['name' => 'Bloom', 'category' => 'venue', 'note' => Str\repeat('a', 1001)], 'note', 'Shorten the note to 1,000 characters or fewer.'],
             [['name' => 'Bloom', 'category' => 'venue', 'emailAddress' => 'sam@'], 'emailAddress', 'That does not look like an email address. Check it has an @ and a domain.'],
+            [['name' => 'Bloom', 'category' => 'venue', 'website' => Str\repeat('a', 2041)], 'website', 'Shorten the website to 2,048 characters or fewer.'],
             [['name' => 'Bloom', 'category' => 'venue', 'website' => 'ftp://bloom.co'], 'website', 'Enter a web address that starts with https:// or http://, or leave that part off.'],
             [['name' => 'Bloom', 'category' => 'venue', 'phoneCountryCode' => 'GB', 'phoneNumber' => '000 000 0000'], 'phoneNumber', 'That is not a phone number for United Kingdom. Check it and try again.'],
             [['name' => 'Bloom', 'category' => 'venue', 'phoneCountryCode' => 'GB', 'phoneNumber' => '020'], 'phoneNumber', 'That number looks too short for United Kingdom. Check it and try again.'],
@@ -109,6 +110,24 @@ final class VendorsTest extends ApiTestCase
         }
 
         self::assertSame(0, $this->list()['total'], 'nothing refused was saved');
+    }
+
+    #[Test]
+    public function eachLimitIsInVisibleCharactersHoweverManyCodePointsEachTakes(): void
+    {
+        $letter = "e\u{0323}\u{0300}";
+        $vendor = $this->add([
+            'name' => Str\repeat($letter, 100),
+            'category' => 'catering',
+            'contactName' => Str\repeat($letter, 100),
+            'website' => Str\repeat('a', 2040),
+            'address' => Str\repeat($letter, 300),
+            'note' => Str\repeat($letter, 1000),
+        ]);
+
+        self::assertSame(Str\repeat($letter, 100), $vendor['name']);
+        self::assertSame('https://' . Str\repeat('a', 2040), $vendor['website'], 'the limit holds the scheme added');
+        self::assertSame(Str\repeat($letter, 1000), $vendor['note']);
     }
 
     #[Test]
@@ -205,7 +224,7 @@ final class VendorsTest extends ApiTestCase
         $this->client->request('POST', Str\format('/api/orgs/%s/vendors', $elsewhere->getId()->toRfc4122()), server: $this->bearer($theirs), content: Json\encode(['name' => 'Theirs', 'category' => 'venue']));
         $id = Type\string()->coerce(Type\shape(['vendor' => Type\shape(['id' => Type\string()], true)], true)->coerce(Json\decode((string) $this->client->getResponse()->getContent()))['vendor']['id']);
 
-        foreach (['PUT' => "/{$id}", 'POST' => "/{$id}/archive"] as $method => $path) {
+        foreach ([['PUT', "/{$id}"], ['POST', "/{$id}/archive"], ['POST', "/{$id}/restore"]] as [$method, $path]) {
             $body = $this->send($method, $path, ['name' => 'Mine now', 'category' => 'venue'], 404);
 
             self::assertSame('https://soirely.com/errors/not_found', $body['type']);
