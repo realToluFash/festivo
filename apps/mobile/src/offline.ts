@@ -1,5 +1,12 @@
 import { connection, createOfflineWatch } from '@soirely/domain';
-import { useEffect, useLayoutEffect, useMemo, useState, useSyncExternalStore } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useState,
+  useSyncExternalStore,
+} from 'react';
 import { AppState } from 'react-native';
 
 import { rereadOrganisations } from './signedIn.ts';
@@ -86,4 +93,24 @@ export function useHandOffline(
   }, [onOffline, stale, refreshing]);
 
   useLayoutEffect(() => () => onOffline(NOT_OFFLINE), [onOffline]);
+}
+
+/** Spins only for a pull: on iOS a spinner turned on from code moves the list without its touch areas (sc-67659). */
+export function usePullToRefresh(
+  refreshing: boolean,
+  refresh: () => void,
+): { refreshing: boolean; onRefresh: () => void } {
+  const [pulled, setPulled] = useState(false);
+  const [was, setWas] = useState(refreshing);
+  if (was !== refreshing) {
+    setWas(refreshing);
+    if (!refreshing) setPulled(false);
+  }
+
+  const onRefresh = useCallback(() => {
+    setPulled(true);
+    refresh();
+  }, [refresh]);
+
+  return { refreshing: pulled && refreshing, onRefresh };
 }
