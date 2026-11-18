@@ -166,7 +166,13 @@ export function AskLayer({
   );
   const content = (
     <>
-      <Title ref={heading} size={18} accessibilityRole="header" style={styles.askTitle}>
+      <Title
+        ref={heading}
+        size={18}
+        room={widths.room}
+        accessibilityRole="header"
+        style={styles.askTitle}
+      >
         {title}
       </Title>
       {body == null ? (
