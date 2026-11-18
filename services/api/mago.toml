@@ -159,6 +159,7 @@ domain_guest = ["App\\Domain\\Guest\\**"]
 domain_staff = ["App\\Domain\\Staff\\**"]
 domain_menu = ["App\\Domain\\Menu\\**"]
 domain_run_of_show = ["App\\Domain\\RunOfShow\\**"]
+domain_budget = ["App\\Domain\\Budget\\**"]
 
 # Capabilities. Each is its own layer so an edge between two of them has to be
 # declared below rather than appearing by accident.
@@ -376,6 +377,27 @@ permit = [
     "@layer:domain_event",
     "@layer:domain_organisation",
     "@layer:domain_guest",
+    "@layer:repository",
+    "@layer:audit",
+    "@layer:realtime",
+    "@layer:locale",
+]
+
+# Budget & costs: an event's cost lines (sc-83). A line's quantity is read from what the
+# event already knows, accepted guests (sc-99), tables in the seating plan and the event's
+# days, so it reads the guest headcount and the event's day count; a price is parsed and
+# written at the currency's minor unit as the menu's costs are. A line holds the event's
+# currency (sc-98); each change is audited and published.
+[[guard.perimeter.rules]]
+namespace = "App\\Domain\\Budget\\"
+permit = [
+    "@layer:native",
+    "@layer:external",
+    "@layer:shared",
+    "@layer:domain_budget",
+    "@layer:domain_event",
+    "@layer:domain_guest",
+    "@layer:domain_menu",
     "@layer:repository",
     "@layer:audit",
     "@layer:realtime",

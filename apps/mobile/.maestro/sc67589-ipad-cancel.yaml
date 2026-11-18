@@ -4,16 +4,28 @@
 #   node .qa/bin/qa-env.mjs maestro sc67589-ipad-cancel
 appId: host.exp.Exponent
 ---
-- runFlow:
-    file: sign-in-screen-language.yaml
-    env:
-      LANGUAGE: Español
+# Welcome reached by a link has nothing under Sign in, which then opens full screen with the chevron: sign out to reach it.
+- runFlow: welcome-signed-out.yaml
+- tapOn:
+    id: 'language.open'
+- tapOn:
+    id: 'language\.(en|es|fr|pt)'
+    text: 'Español'
+- tapOn:
+    id: 'welcome.email'
+- extendedWaitUntil:
+    visible:
+      id: 'signIn.email'
+    timeout: 20000
 - assertVisible:
     id: 'signIn.left'
     text: 'Cancelar'
 - assertNotVisible:
     id: 'signIn.back'
-- assertVisible: 'Iniciar sesión'
+- assertVisible:
+    text: 'Iniciar sesión'
+    below:
+      id: 'signIn.left'
 - takeScreenshot: sc67589-ipad-sheet-cancel
 - tapOn:
     id: 'signIn.left'
