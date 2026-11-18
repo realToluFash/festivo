@@ -6,7 +6,8 @@ appId: host.exp.Exponent
 - waitForAnimationToEnd: { timeout: 4000 }
 - takeScreenshot: d-door-code-open
 - openLink: ${METRO_URL}/--/demo/people?code=blank
-- extendedWaitUntil: { visible: { id: 'door.make.cap' }, timeout: 20000 }
+- extendedWaitUntil:
+    { visible: { text: 'Enter how many people can use this code.' }, timeout: 20000 }
 - waitForAnimationToEnd: { timeout: 4000 }
 - takeScreenshot: d-door-code-blank
 - openLink: ${METRO_URL}/--/demo/people?show=open
