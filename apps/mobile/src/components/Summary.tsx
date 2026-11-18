@@ -9,6 +9,7 @@ import {
   StyleSheet,
   View,
   type ViewInstance,
+  useWindowDimensions,
 } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { moreChip } from '@soirely/domain';
@@ -30,7 +31,8 @@ import { TextAction } from './SummaryRows.tsx';
 import { useShell } from './settingsShell.ts';
 import { Avatar, Back } from './SettingsParts.tsx';
 import { TitleFocus } from './SummaryOverlays.tsx';
-import { capInDisc } from '../layout/textSize.ts';
+import { capChipInDisc } from '../layout/textSize.ts';
+import { WholeWords } from './Title.tsx';
 
 export {
   bringIntoView,
@@ -286,11 +288,14 @@ export function CardSays({
   accessible?: boolean | undefined;
   ref?: Ref<TextHandle> | undefined;
 }) {
+  const { fontScale } = useWindowDimensions();
+
   return (
-    <Text
+    <WholeWords
       ref={ref}
       accessible={accessible}
       size={size}
+      start={size * fontScale}
       weight="bold"
       accessibilityRole={heading ? 'header' : undefined}
       style={[
@@ -300,30 +305,7 @@ export function CardSays({
       ]}
     >
       {text}
-    </Text>
-  );
-}
-
-export function CardCounts({
-  counts,
-  label,
-}: {
-  counts: readonly { value: number; word: string }[];
-  label: string;
-}) {
-  return (
-    <View style={styles.counts} accessible accessibilityLabel={label}>
-      {counts.map(({ value, word }) => (
-        <View key={word} style={styles.count}>
-          <Text size={30} weight="bold" accessible={false} style={[styles.white, styles.number]}>
-            {String(value)}
-          </Text>
-          <Text size={13} weight="semibold" accessible={false} style={styles.white}>
-            {word}
-          </Text>
-        </View>
-      ))}
-    </View>
+    </WholeWords>
   );
 }
 
@@ -381,7 +363,8 @@ export function Faces({
               weight="bold"
               accessible={false}
               numberOfLines={1}
-              maxFontSizeMultiplier={capInDisc(side, MORE_SIZE)}
+              maxFontSizeMultiplier={capChipInDisc(side, MORE_SIZE, moreChip(more).length)}
+              adjustsFontSizeToFit
               style={styles.accent}
             >
               {moreChip(more)}
@@ -605,9 +588,6 @@ const styles = StyleSheet.create({
   white: { color: tokens.colorInkOnDark },
   says: { maxWidth: '80%' },
   onCard: { lineHeight: 14.5 * 1.4 },
-  counts: { flexDirection: 'row', flexWrap: 'wrap', gap: 26 },
-  count: { flexShrink: 0 },
-  number: { lineHeight: 33, fontVariant: ['tabular-nums'] },
   accent: { color: tokens.colorAccentText },
   secondary: { color: tokens.colorInkSecondary },
   pressed: { opacity: tokens.opacityPressed },

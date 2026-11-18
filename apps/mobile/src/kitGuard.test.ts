@@ -1940,6 +1940,15 @@ describe('the faces’ chip writes its count through moreChip (sc-48825)', () =>
   });
 });
 
+describe('a card’s sentence steps down rather than break a word (sc-37693)', () => {
+  it('in CardSays, so 7 people never reads peopl / e at the largest text', () => {
+    const summary = readFileSync(join(__dirname, 'components', 'Summary.tsx'), 'utf8');
+    const says = summary.slice(summary.indexOf('export function CardSays('));
+
+    expect(says.slice(0, says.indexOf('\n}\n'))).toContain('<WholeWords');
+  });
+});
+
 describe('a screen still reading says so in words (sc-23279)', () => {
   it.each([
     ['app/lost-two-factor.tsx', "view.kind === 'loading'"],
