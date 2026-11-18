@@ -2865,6 +2865,18 @@
     "doneNext": "{{title}} done. Next: {{next}}.",
     "sent": "Connected. Presses sent."
   },
+  "runOfShowCard": {
+    "title": "{{event}} · {{place}}",
+    "next": "Next: {{title}} · about {{time}}",
+    "next_hour1": "Next: {{title}} · about {{time}}",
+    "asOf": "As of {{time}}",
+    "asOf_hour1": "As of {{time}}",
+    "asOfWaiting_one": "As of {{time}} · {{count, number}} press waiting to send",
+    "asOfWaiting_other": "As of {{time}} · {{count, number}} presses waiting to send",
+    "asOfWaiting_hour1_one": "As of {{time}} · {{count, number}} press waiting to send",
+    "asOfWaiting_hour1_other": "As of {{time}} · {{count, number}} presses waiting to send",
+    "channel": "Run of show"
+  },
   "guestExport": {
     "export": "Export",
     "title": "Export guests",

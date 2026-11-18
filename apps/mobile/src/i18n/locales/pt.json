@@ -2977,6 +2977,20 @@
     "doneNext": "Concluído: «{{title}}». A seguir: «{{next}}».",
     "sent": "Ligação restabelecida. Ações enviadas."
   },
+  "runOfShowCard": {
+    "title": "{{event}} · {{place}}",
+    "next": "A seguir: {{title}} · por volta das {{time}}",
+    "next_hour1": "A seguir: {{title}} · por volta da {{time}}",
+    "asOf": "Atualizado às {{time}}",
+    "asOf_hour1": "Atualizado à {{time}}",
+    "asOfWaiting_one": "Atualizado às {{time}} · {{count, number}} ação por enviar",
+    "asOfWaiting_other": "Atualizado às {{time}} · {{count, number}} ações por enviar",
+    "asOfWaiting_many": "Atualizado às {{time}} · {{count, number}} ações por enviar",
+    "asOfWaiting_hour1_one": "Atualizado à {{time}} · {{count, number}} ação por enviar",
+    "asOfWaiting_hour1_other": "Atualizado à {{time}} · {{count, number}} ações por enviar",
+    "asOfWaiting_hour1_many": "Atualizado à {{time}} · {{count, number}} ações por enviar",
+    "channel": "Alinhamento"
+  },
   "guestExport": {
     "export": "Exportar",
     "title": "Exportar convidados",

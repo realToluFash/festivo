@@ -2977,6 +2977,20 @@
     "doneNext": "Terminado: «{{title}}». A continuación: «{{next}}».",
     "sent": "Conexión restablecida. Acciones enviadas."
   },
+  "runOfShowCard": {
+    "title": "{{event}} · {{place}}",
+    "next": "A continuación: {{title}} · hacia las {{time}}",
+    "next_hour1": "A continuación: {{title}} · hacia la {{time}}",
+    "asOf": "Actualizado a las {{time}}",
+    "asOf_hour1": "Actualizado a la {{time}}",
+    "asOfWaiting_one": "Actualizado a las {{time}} · {{count, number}} acción pendiente de enviar",
+    "asOfWaiting_other": "Actualizado a las {{time}} · {{count, number}} acciones pendientes de enviar",
+    "asOfWaiting_many": "Actualizado a las {{time}} · {{count, number}} acciones pendientes de enviar",
+    "asOfWaiting_hour1_one": "Actualizado a la {{time}} · {{count, number}} acción pendiente de enviar",
+    "asOfWaiting_hour1_other": "Actualizado a la {{time}} · {{count, number}} acciones pendientes de enviar",
+    "asOfWaiting_hour1_many": "Actualizado a la {{time}} · {{count, number}} acciones pendientes de enviar",
+    "channel": "Escaleta"
+  },
   "guestExport": {
     "export": "Exportar",
     "title": "Exportar invitados",

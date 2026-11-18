@@ -52,6 +52,8 @@ export type ScheduleItemPress = 'start' | 'done' | 'skip';
 export interface PressSent {
   key: string;
   pressedAt: string;
+  /** Made on a night opened by a tap on a run-of-show card, settled at the press (sc-66580). */
+  fromCard?: boolean;
 }
 
 /** A moment as the API reads a press's `pressedAt`: RFC 3339 to the millisecond, in UTC, so two presses in one second keep their order. */
