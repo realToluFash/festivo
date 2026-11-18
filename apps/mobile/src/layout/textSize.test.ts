@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   bandPlace,
   breakableEmail,
+  capChipInDisc,
   capInDisc,
   capUnderTitle,
   drawnLine,
@@ -89,6 +90,28 @@ describe('capInDisc', () => {
 
   it('never asks for less than the default size', () => {
     expect(capInDisc(20, 12)).toBe(1);
+  });
+});
+
+describe('capChipInDisc', () => {
+  it.each([1, 2, 3])(
+    'keeps a chip of %i characters inside a 34 disc at every scale (sc-37693)',
+    (characters) => {
+      for (const scale of [1, AX1, AX2, 3.1]) {
+        const drawn = 13 * Math.min(scale, capChipInDisc(34, 13, characters));
+
+        expect(drawn * characters * 0.62).toBeLessThan(34 * 0.8 + 0.01);
+        expect(drawn).toBeLessThanOrEqual(34 * 0.5);
+      }
+    },
+  );
+
+  it('lets +5 grow as far as its height allows', () => {
+    expect(capChipInDisc(34, 13, 2)).toBe(capInDisc(34, 13));
+  });
+
+  it('holds 99+ under what its height alone would allow', () => {
+    expect(capChipInDisc(34, 13, 3)).toBeLessThan(capInDisc(34, 13));
   });
 });
 
