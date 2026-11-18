@@ -1,9 +1,20 @@
 import { type KeyboardEvent, useEffect, useEffectEvent, useId, useRef, useState } from 'react';
 
 import { Glyph } from '../components/Glyph.tsx';
-import { inWithLine } from './doorCode.ts';
+import { inWithLine, jobHelp, LABEL_MOST, W } from './doorCode.ts';
 import {
+  type Address,
+  addedToast,
   EVENT_ROLES,
+  FIND_LABEL,
+  fromOutside,
+  leadForMembers,
+  NAME_LABEL,
+  onAlreadyLine,
+  outsideRefusal,
+  outsideView,
+  PICK_ANOTHER,
+  UNUSABLE,
   everyoneOn,
   type EventRole,
   FIRST_ROLE,
@@ -246,12 +257,20 @@ function SavingTag({ saving }: { saving: Saving }) {
   );
 }
 
-/** Add people offers members of the organisation, by name only; someone from outside is sc-71's. */
+export interface Added {
+  role: EventRole;
+  members: OrgMember[];
+  outside: { address: Address; job: string } | null;
+}
+
+/** Add people: members found by name, and someone from outside by email address or mobile number (sc-71). */
 export function AddDialog({
   members,
   onEvent,
   viewer,
   organisation,
+  country,
+  start,
   onClose,
   onAdd,
 }: {
@@ -259,19 +278,45 @@ export function AddDialog({
   onEvent: readonly OnEvent[];
   viewer: PeopleViewer;
   organisation?: string;
+  country: string;
+  start?: { typed: string; role: EventRole } | undefined;
   onClose: () => void;
-  onAdd: (role: EventRole, added: OrgMember[]) => void;
+  onAdd: (added: Added, finished: boolean) => void;
 }) {
-  const [role, setRole] = useState<EventRole>(FIRST_ROLE);
-  const [typed, setTyped] = useState('');
+  const [role, setRole] = useState<EventRole>(start?.role ?? FIRST_ROLE);
+  const [typed, setTyped] = useState(start?.typed ?? '');
   const [ticked, setTicked] = useState<readonly string[]>([]);
+  const [outsideOn, setOutsideOn] = useState(true);
+  const [job, setJob] = useState('');
+  const [refused, setRefused] = useState<string | null>(null);
   const [asking, setAsking] = useState(false);
   const nameBox = useRef<HTMLInputElement>(null);
   const offered = offeredMembers(members, onEvent, viewer, typed, ticked);
-  const changed = ticked.length > 0 || role !== FIRST_ROLE;
+  const outside = outsideView(typed, country, role, onEvent);
+  const address = outside.kind === 'offer' ? outside.address : null;
+  const sendsOutside = address != null && outsideOn;
+  const canAdd = ticked.length > 0 || sendsOutside;
+  const changed = ticked.length > 0 || role !== FIRST_ROLE || typed.trim() !== '';
+  const quiet = outside.kind === 'offer' || outside.kind === 'leadOff';
 
   function tick(id: string): void {
     setTicked((was) => (was.includes(id) ? was.filter((one) => one !== id) : [...was, id]));
+  }
+
+  function add(): void {
+    if (!canAdd) return;
+    const adding = members.filter((one) => ticked.includes(one.id));
+    const said = sendsOutside ? outsideRefusal(address, members) : null;
+    if (said == null) {
+      onAdd({ role, members: adding, outside: sendsOutside ? { address, job } : null }, true);
+      return;
+    }
+    if (adding.length > 0) {
+      onAdd({ role, members: adding, outside: null }, false);
+      setTicked([]);
+    }
+    const went = adding.map((one) => one.name);
+    setRefused(went.length === 0 ? said : `${addedToast(went, role)} ${said}`);
   }
 
   return (
@@ -279,18 +324,20 @@ export function AddDialog({
       <Dialog
         title="Add people"
         verb="Add"
-        on={ticked.length > 0}
+        on={canAdd}
         first={nameBox}
         onDismiss={() => (changed ? setAsking(true) : onClose())}
-        onConfirm={() =>
-          ticked.length > 0 &&
-          onAdd(
-            role,
-            members.filter((one) => ticked.includes(one.id)),
-          )
-        }
+        onConfirm={add}
       >
         <div className="people-add-body">
+          <div role="status">
+            {refused != null && (
+              <p className="people-outside-notice">
+                <Glyph name="alert" size={18} weight={2.3} />
+                <span>{refused}</span>
+              </p>
+            )}
+          </div>
           <Choices
             legend="Their role"
             choices={EVENT_ROLES.map((one) => ({ name: one, line: ROLE_LINES[one] }))}
@@ -298,9 +345,12 @@ export function AddDialog({
             onPick={(one) => setRole(EVENT_ROLES.find((each) => each === one) ?? FIRST_ROLE)}
           />
           <Field
-            label="Name"
+            label={role === 'Lead' ? NAME_LABEL : FIND_LABEL}
             value={typed}
-            onChange={setTyped}
+            onChange={(value) => {
+              setTyped(value);
+              setOutsideOn(true);
+            }}
             inputRef={nameBox}
             autoComplete="off"
           />
@@ -325,15 +375,55 @@ export function AddDialog({
               </ul>
             )}
             <div role="status">
-              {offered.length === 0 && (
+              {offered.length === 0 && !quiet && (
                 <p className="desk-line">
                   {typed.trim() === ''
                     ? everyoneOn(organisation)
                     : noMatchLine(typed, organisation)}
                 </p>
               )}
+              {outside.kind === 'unusable' && <p className="desk-line">{UNUSABLE}</p>}
+              {outside.kind === 'onEvent' && (
+                <p className="desk-line">{onAlreadyLine(outside.name)}</p>
+              )}
+              {outside.kind === 'leadOff' && (
+                <>
+                  <p className="desk-empty-title">{leadForMembers(organisation)}</p>
+                  <p className="desk-line">{PICK_ANOTHER}</p>
+                </>
+              )}
             </div>
           </section>
+          {address != null && (
+            <section className="desk-block" aria-label={fromOutside(organisation)}>
+              <Head title={fromOutside(organisation)} level={3} />
+              <ul className="desk-rows has-lead">
+                <li>
+                  <label className={outsideOn ? 'desk-row is-picked' : 'desk-row'}>
+                    <span className="people-outside-face" aria-hidden="true">
+                      <Glyph name={address.kind === 'email' ? 'mail' : 'phone'} size={18} />
+                    </span>
+                    <RowWords title={address.shown} lines={[]} />
+                    <input
+                      type="checkbox"
+                      className="people-check"
+                      checked={outsideOn}
+                      onChange={() => setOutsideOn((was) => !was)}
+                    />
+                  </label>
+                </li>
+              </ul>
+              {outsideOn && (
+                <Field
+                  label={W.jobLabel}
+                  value={job}
+                  help={jobHelp(job)}
+                  autoComplete="off"
+                  onChange={(value) => setJob(Array.from(value).slice(0, LABEL_MOST).join(''))}
+                />
+              )}
+            </section>
+          )}
         </div>
       </Dialog>
       {asking && (
