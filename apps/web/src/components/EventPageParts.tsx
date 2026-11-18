@@ -26,7 +26,8 @@ export function Crumb({
   name,
   children,
 }: {
-  to: string;
+  /** None for an account with no organisation, which has no list to go back to (sc-71). */
+  to: string | null;
   back: string;
   name: string | null;
   children?: ReactNode;
@@ -37,12 +38,16 @@ export function Crumb({
     <div className="ev-crumb-row">
       <nav className="ev-crumb" aria-label={t('eventPage.crumb')}>
         <ol>
-          <li className="ev-crumb-part">
-            <Link to={to}>{back}</Link>
-          </li>
+          {to != null && (
+            <li className="ev-crumb-part">
+              <Link to={to}>{back}</Link>
+            </li>
+          )}
           {name != null && (
             <li className="ev-crumb-part" aria-current="page">
-              <Glyph name="chevron" size={15} weight={2.4} className="desk-chevron" />
+              {to != null && (
+                <Glyph name="chevron" size={15} weight={2.4} className="desk-chevron" />
+              )}
               <span className="ev-crumb-name">{name}</span>
             </li>
           )}

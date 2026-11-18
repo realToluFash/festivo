@@ -22,6 +22,7 @@
     "calendar": "Calendario",
     "settings": "Configuración",
     "account": "Su cuenta",
+    "signOut": "Cerrar sesión",
     "person": "{{name}}, {{role}}",
     "menu": "Menú",
     "closeMenu": "Cerrar el menú",
@@ -2702,6 +2703,13 @@
     "budgetComing": "El presupuesto de este evento llegará pronto.",
     "reportsComing": "Los informes de este evento llegarán pronto.",
     "people": "Personas"
+  },
+  "outsideEvent": {
+    "until": "until {{when}}",
+    "guestsLine": "Names and replies only, no contact details",
+    "onEvent_one": "{{count, number}} person on this event",
+    "onEvent_other": "{{count, number}} people on this event",
+    "onEvent_many": "{{count, number}} people on this event"
   },
   "seating": {
     "area": "Mesas",

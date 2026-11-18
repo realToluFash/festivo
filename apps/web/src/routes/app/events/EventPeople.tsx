@@ -36,7 +36,7 @@ import { Skeleton } from '../../../components/Skeleton.tsx';
 import { Toast } from '../../../components/Toast.tsx';
 import { currentLocale } from '../../../i18n/index.ts';
 import { focusWhenFree, LayersContext, useDeskLayers } from '../../../layers.ts';
-import { canOn, useSession } from '../../../session.ts';
+import { canOn, outsideOn, useSession } from '../../../session.ts';
 import { keptKeys, keptLoad, useAnsweredAgain, useKeptAsShown } from '../../../tabKept.ts';
 import '../../../components/SettingsParts.css';
 import { faceOf, outsideView, shownAddress } from './outside.ts';
@@ -68,7 +68,8 @@ export function EventPeople({ event }: { event: OrganisationEvent }) {
   const { t } = useTranslation();
   const session = useSession();
   const { layers, covered, setHost } = useDeskLayers();
-  const organisationName = session.organisation?.name ?? '';
+  const organisationName =
+    session.organisation?.name ?? outsideOn(session, event.id)?.organisationName ?? '';
   const country = session.organisation?.countryCode ?? '';
   const [load, setLoad] = useState<Load>({ kind: 'loading' });
   const [attempt, setAttempt] = useState(0);

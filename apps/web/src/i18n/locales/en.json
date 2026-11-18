@@ -22,6 +22,7 @@
     "calendar": "Calendar",
     "settings": "Settings",
     "account": "Your account",
+    "signOut": "Sign out",
     "person": "{{name}}, {{role}}",
     "menu": "Menu",
     "closeMenu": "Close menu",
@@ -2619,6 +2620,12 @@
     "budgetComing": "The budget for this event is coming.",
     "reportsComing": "Reports for this event are coming.",
     "people": "People"
+  },
+  "outsideEvent": {
+    "until": "until {{when}}",
+    "guestsLine": "Names and replies only, no contact details",
+    "onEvent_one": "{{count, number}} person on this event",
+    "onEvent_other": "{{count, number}} people on this event"
   },
   "seating": {
     "area": "Seating",
