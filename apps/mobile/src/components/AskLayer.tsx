@@ -14,6 +14,7 @@ import { useReadOut, useSendingWords } from './ReadOut.tsx';
 import { SETTLED_MS } from './Screen.tsx';
 import { moveScreenReaderFocus } from './screenReaderFocus.ts';
 import { type TextHandle, Text } from './Text.tsx';
+import { Title, useWholeWords } from './Title.tsx';
 import { useLayout } from '../layout/useLayout.ts';
 import { tokens } from '../theme/tokens.ts';
 import { TextAction, TurningMark } from './SummaryRows.tsx';
@@ -42,7 +43,7 @@ export interface AskProps {
   onPlaced?: (top: number) => void;
 }
 
-/** B's one question: what happens, in words, then the way back first and the verb last, red when it removes. Two actions too wide for one line stack with the verb on top (sc-22092). Too tall for the screen, as at the largest text, it scrolls as a whole (sc-614, sc-30894). */
+/** B's one question: what happens, in words, then the way back first and the verb last, red when it removes. Two actions too wide for one line stack with the verb on top (sc-22092). The title and the two actions each step down to keep every word whole; the line keeps the person's size (sc-66727). Too tall for the screen, as at the largest text, it scrolls as a whole (sc-614, sc-30894). */
 export function AskLayer({
   title,
   line,
@@ -65,6 +66,13 @@ export function AskLayer({
   const heading = useRef<TextHandle>(null);
   const [widths, setWidths] = useState({ room: 0, keep: 0, confirm: 0 });
   const [inside, setInside] = useState(0);
+  const actionWords = useWholeWords(
+    ACTION,
+    ACTION * frame.fontScale,
+    [keep.label, confirm?.label, confirm?.busy].filter((label) => label != null),
+    { weight: 'semibold' },
+  );
+  const actionScale = actionWords.maxFontSizeMultiplier;
   const measured = widths.room > 0 && widths.keep > 0 && (confirm == null || widths.confirm > 0);
   const stacked =
     measured && confirm != null && widths.keep + tokens.space3xl + widths.confirm > widths.room;
@@ -83,6 +91,7 @@ export function AskLayer({
         label={keep.label}
         onPress={onKeep}
         off={keep.off ?? false}
+        maxFontSizeMultiplier={actionScale}
         testID={keep.testID}
       />
     </View>
@@ -94,6 +103,7 @@ export function AskLayer({
           label={confirm.label}
           onPress={() => onConfirm?.()}
           removes={confirm.removes ?? false}
+          maxFontSizeMultiplier={actionScale}
           testID={confirm.testID}
         />
       ) : (
@@ -106,7 +116,13 @@ export function AskLayer({
           testID={confirm.testID}
         >
           <TurningMark side={14} />
-          <Text size={15} weight="semibold" accessible={false} style={styles.secondary}>
+          <Text
+            size={ACTION}
+            weight="semibold"
+            accessible={false}
+            maxFontSizeMultiplier={actionScale}
+            style={styles.secondary}
+          >
             {confirm.busy}
           </Text>
         </Pressable>
@@ -135,15 +151,9 @@ export function AskLayer({
   );
   const content = (
     <>
-      <Text
-        ref={heading}
-        size={18}
-        weight="bold"
-        accessibilityRole="header"
-        style={styles.askTitle}
-      >
+      <Title ref={heading} size={18} accessibilityRole="header" style={styles.askTitle}>
         {title}
-      </Text>
+      </Title>
       {body == null ? (
         lineText
       ) : (
@@ -154,8 +164,12 @@ export function AskLayer({
       )}
       <View
         style={[stacked ? styles.askStack : styles.askActions, !measured && styles.unmeasured]}
-        onLayout={laid('room')}
+        onLayout={(event) => {
+          laid('room')(event);
+          actionWords.room(event.nativeEvent.layout.width);
+        }}
       >
+        {actionWords.measure}
         {stacked ? [confirmAction, keepAction] : [keepAction, confirmAction]}
       </View>
     </>
@@ -202,6 +216,8 @@ export function AskLayer({
     </View>
   );
 }
+
+const ACTION = 15;
 
 function AlertLine({ words }: { words: string }) {
   return (
