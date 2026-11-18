@@ -775,11 +775,6 @@ describe('moving to another area of an event while offline (sc-65646)', () => {
     expect(await screen.findByText('The event did not load. Try again in a moment.')).toBeDefined();
     expect(screen.getAllByRole('link', { name: 'Calendar' }).length).toBeGreaterThan(0);
     expect(screen.queryByRole('link', { name: 'Overview' })).toBeNull();
-    expect(
-      screen.getByText('The event did not load. Try again in a moment.').closest('.desk-failed'),
-    ).not.toBeNull();
-    expect(screen.getByRole('button', { name: 'Try again' }).className).toBe('desk-text');
-    expect(document.querySelector('.ev-crumb-row, .notifications-bell')).toBeNull();
   });
 
   it('says when the event last loaded, not when the Menu it moves to did', async () => {

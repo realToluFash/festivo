@@ -13,7 +13,6 @@ import {
 import { retitle } from '../pageTitle.ts';
 import { SkipLinkSlot } from '../skipLinkSlot.ts';
 import { ReleaseBand } from './ReleaseBand.tsx';
-import { TextAction } from './SettingsParts.tsx';
 
 /** Focus goes where an opened page begins (WCAG 2.2 SC 2.4.3), and the tab names the page (SC 2.4.2). */
 export function PageArrival() {
@@ -93,7 +92,6 @@ export function ArrivalNotice({
   focusable,
   retry,
   onRetry,
-  plain = false,
 }: {
   role: 'alert' | undefined;
   line: string;
@@ -101,25 +99,9 @@ export function ArrivalNotice({
   focusable: boolean;
   retry: string;
   onRetry: () => void;
-  plain?: boolean;
 }) {
   const arriving = useContext(Arriving);
   const [taking] = useState(arriving);
-
-  if (plain)
-    return (
-      <div className="desk-failed" role={taking ? undefined : role}>
-        <p
-          ref={lineRef}
-          className="desk-line"
-          tabIndex={taking || focusable ? -1 : undefined}
-          data-page-focus={taking ? '' : undefined}
-        >
-          {line}
-        </p>
-        <TextAction label={retry} onClick={onRetry} />
-      </div>
-    );
 
   return (
     <div className="notice notice-broken" role={taking ? undefined : role}>
