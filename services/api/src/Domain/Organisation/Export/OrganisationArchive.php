@@ -21,11 +21,7 @@ use Psr\Clock\ClockInterface;
 use RuntimeException;
 use ZipArchive;
 
-/**
- * Everything an organisation holds, as one .zip: `archive.json` with every record, and a CSV file per table (sc-612).
- * A person's own account gives only their name and the address they belong by (sc-611's rule), and every time is UTC.
- * An area built later adds its table here.
- */
+/** Everything an organisation holds as one .zip (sc-612); a person's account gives only their name and address, as sc-611 rules. */
 final readonly class OrganisationArchive
 {
     /** Each table's file name, and the query whose columns are its headings, in order. */
