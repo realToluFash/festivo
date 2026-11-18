@@ -1924,6 +1924,7 @@ describe('who is signed in', () => {
       organisationName: 'Ìrè Events',
       role: 'can_view',
       jobLabel: 'Kitchen',
+      startsAt: '2030-11-14T16:00:00+01:00',
       endsAt: '2030-11-14T15:00:00+00:00',
     };
     const account = await client(

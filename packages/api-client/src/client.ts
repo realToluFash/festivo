@@ -4819,7 +4819,10 @@ function asAccount(raw: unknown): Account | null {
 function asOutsideEvent(raw: unknown): OutsideEvent[] {
   if (typeof raw !== 'object' || raw == null) return [];
 
-  const { id, name, organisationName, role, jobLabel, startsAt, endsAt } = raw as Record<string, unknown>;
+  const { id, name, organisationName, role, jobLabel, startsAt, endsAt } = raw as Record<
+    string,
+    unknown
+  >;
 
   if (
     typeof id !== 'string' ||
