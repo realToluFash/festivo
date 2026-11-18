@@ -1,6 +1,7 @@
 import { router } from 'expo-router';
 
 import { challengeBeganAlone, challengeTypedEmail } from '../challenge.ts';
+import { pushSignIn } from './signInBelow.ts';
 
 /** Back from the code step to Sign in: the one typed on, holding its address, or after Google or Apple the one under it, else a fresh one over welcome, or alone where the sign-in began alone (sc-67709, sc-67828). */
 export function backToSignIn(): void {
@@ -23,5 +24,5 @@ export function backToSignIn(): void {
   }
 
   router.replace('/welcome');
-  router.push('/sign-in');
+  pushSignIn('/sign-in');
 }

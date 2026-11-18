@@ -1,6 +1,6 @@
 import { ApiError } from '@soirely/api-client';
 import { formatTimeOfDay, listFormat, lockLiftsAt } from '@soirely/domain';
-import { router, useLocalSearchParams, useNavigation } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Animated, StyleSheet, type TextInputInstance, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
@@ -15,6 +15,7 @@ import { tap } from '../../src/steps/haptics.ts';
 import { InsideField } from '../../src/steps/InsideField.tsx';
 import { Heading, Says } from '../../src/steps/Lines.tsx';
 import { useShake } from '../../src/steps/shake.ts';
+import { useSignInBelow } from '../../src/steps/signInBelow.ts';
 import { InSheet, NavBar, StepScreen, useStepsInSheet } from '../../src/steps/StepScreen.tsx';
 import { currentLocale, dateLocale } from '../../src/i18n/index.ts';
 import { emailMessage, useFormChecks } from '../../src/kit/formChecks.ts';
@@ -43,8 +44,7 @@ type Status =
 /** Email sign-in, its own step after welcome: no logo, no Google or Apple, and no "or" (sc-29076). */
 export default function SignIn() {
   const { t } = useTranslation();
-  const navigation = useNavigation();
-  const [below] = useState(() => navigation.canGoBack());
+  const below = useSignInBelow();
   const sheet = useStepsInSheet() && below;
   const params = useLocalSearchParams<{
     rule?: string;

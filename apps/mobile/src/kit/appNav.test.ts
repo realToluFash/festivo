@@ -390,6 +390,29 @@ describe("iPad Sign in's scroll view stays out of the sheet's reach (sc-67589)",
   it('is presented as the (sign-in) group, which renders a Stack of its own', () => {
     expect(source(join(APP, '_layout.tsx'))).toMatch(/<Stack\.Screen\s+name="\(sign-in\)"/u);
     expect(readdirSync(APP)).not.toContain('sign-in.tsx');
-    expect(source(join(APP, '(sign-in)', '_layout.tsx'))).toMatch(/return \(\s*<Stack\b/u);
+    expect(source(join(APP, '(sign-in)', '_layout.tsx'))).toMatch(
+      /return \(\s*<SignInBelow value=\{[^}]+\}>\s*<Stack\b/u,
+    );
+  });
+});
+
+describe('Sign in pushed over welcome knows welcome is under it (sc-67709)', () => {
+  it('is pushed by every push that opens it over welcome, never by router.push alone', () => {
+    for (const file of [
+      '../components/Welcome.tsx',
+      '../steps/backToSignIn.ts',
+      '../steps/leaveTimedOutSignIn.ts',
+    ]) {
+      const text = source(join(import.meta.dirname, file));
+      expect(text).toMatch(/pushSignIn\(/u);
+      expect(text).not.toMatch(
+        /router\.push\(\s*(\{\s*pathname: '\/sign-in'|'\/sign-in'|signIn\))/u,
+      );
+    }
+  });
+
+  it('is not read from the stack while Sign in is drawn, which expo-router hands over as it was before the push', () => {
+    expect(source(join(APP, '(sign-in)', 'sign-in.tsx'))).not.toMatch(/navigation\.canGoBack\(\)/u);
+    expect(source(join(APP, '_layout.tsx'))).toMatch(/settleSignInBelow\(route\.key\b/u);
   });
 });
