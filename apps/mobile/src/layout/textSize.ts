@@ -68,6 +68,17 @@ export function fitWidest(size: number, start: number, widest: number, slot: num
   return Math.max(size, Math.floor((start * slot) / widest));
 }
 
+/** A label beside a glyph that grows with it, `glyph` per unit of the label's size: `start` while the widest word and the glyph fit `inside`, never below `size` (sc-13496). */
+export function besideGlyph(
+  size: number,
+  start: number,
+  widest: number,
+  glyph: number,
+  inside: number,
+): number {
+  return fitWidest(size, start, widest + glyph * start, inside);
+}
+
 export interface WordsRoom {
   /** The width a text drawn at the start wrapped at, when it wrapped. */
   wrapped: number | null;

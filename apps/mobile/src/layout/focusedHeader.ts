@@ -1,6 +1,6 @@
 import { titleFitsBeside } from '@soirely/domain';
 
-import { capUnderTitle, fitWidest } from './textSize.ts';
+import { besideGlyph, capUnderTitle, fitWidest } from './textSize.ts';
 import { tokens } from '../theme/tokens.ts';
 
 /** (a) one row, as main; (b) Cancel and the verb on a row, the title under them; (c) Cancel, the title and the verb each on a row. */
@@ -69,17 +69,15 @@ export function titleOnItsRow(scale: number, widest: number, width: number): num
   return fitWidest(HEADER_TEXT, HEADER_TEXT * scale, widest, width - 2 * TITLE_ROW_SIDE);
 }
 
-export function pillWidth(size: number, word: number, full: number): number {
-  return PILL_LEFT + (PILL_GLYPH / PILL_TEXT) * size + PILL_GAP + (word * size) / full + PILL_RIGHT;
-}
-
 /** The pill's word at its full size unless the pill would be wider than its room, then the size that fits; never below 15. */
 export function pillTextSize(scale: number, word: number, room: number): number {
-  const full = PILL_TEXT * scale;
-  if (pillWidth(full, word, full) <= room) return full;
-  const per = PILL_GLYPH / PILL_TEXT + word / full;
-
-  return Math.max(PILL_TEXT, Math.floor((room - PILL_LEFT - PILL_GAP - PILL_RIGHT) / per));
+  return besideGlyph(
+    PILL_TEXT,
+    PILL_TEXT * scale,
+    word,
+    PILL_GLYPH / PILL_TEXT,
+    room - PILL_LEFT - PILL_GAP - PILL_RIGHT,
+  );
 }
 
 /** How much a back's word grows: with the text, and no further than a title drawn at `titleCap` (sc-28812). */
