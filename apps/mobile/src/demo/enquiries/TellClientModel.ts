@@ -49,7 +49,6 @@ export function asBooked(consultation: Consultation): AsBooked {
 /** A link or a Where added where there was none isn't a change; changing or removing it afterwards is (pm, 18 Nov). */
 const ADDABLE: readonly (keyof AsBooked)[] = ['where', 'link'];
 
-/** The start is an instant: a saved form writes it with milliseconds, the sample without. */
 function same(key: keyof AsBooked, now: AsBooked, booked: AsBooked): boolean {
   return key === 'startsAt'
     ? Date.parse(now.startsAt) === Date.parse(booked.startsAt)
@@ -173,7 +172,7 @@ interface Words {
   subjectCancelled: (p: Parts) => string;
 }
 
-/** Working copy: en from the AC, es, fr and pt proposed for [l10n], who settle all four. Each of the eleven written whole, one key each in the build. */
+/** Working copy: en from the AC, es, fr and pt proposed for [l10n], who settle all four. One key per message in the build. */
 const WORDS: Record<Language, Words> = {
   en: {
     booked: {
