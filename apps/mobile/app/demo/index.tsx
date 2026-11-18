@@ -22,6 +22,7 @@ import { TELL_BOARDS } from '../../src/demo/enquiries/TellClientModel.ts';
 import { ENQUIRY_EVENT_BOARDS } from '../../src/demo/enquiries/EnquiryEventBoards.ts';
 import { FOCUSED_HEADER_BOARDS } from '../../src/demo/focusedHeader/FocusedHeaderBoards.ts';
 import { SIGN_OUT_SIZE_BOARDS } from '../../src/demo/signOutSize/SignOutSizeBoards.ts';
+import { SIDEBAR_SIZE_BOARDS } from '../../src/demo/sidebarSize/SidebarSizeBoards.ts';
 import { SWITCHER_BOARDS } from '../../src/demo/OrgSwitcherBoards.ts';
 import { Heading } from '../../src/steps/Lines.tsx';
 import { SAMPLE } from '../../src/demo/samples.ts';
@@ -125,6 +126,14 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
   {
     page: 'Settings · Sign out at the largest text sizes (sc-66900)',
     boards: SIGN_OUT_SIZE_BOARDS.map(({ title, what, href }) => ({
+      title,
+      what,
+      href: href as Href,
+    })),
+  },
+  {
+    page: 'Text size · the iPad sidebar on its side at the largest sizes (sc-68441)',
+    boards: SIDEBAR_SIZE_BOARDS.map(({ title, what, href }) => ({
       title,
       what,
       href: href as Href,
