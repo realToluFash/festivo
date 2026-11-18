@@ -33,6 +33,7 @@ import { dateLocale } from '../../src/i18n/index.ts';
 import { useFormChecks } from '../../src/kit/formChecks.ts';
 import { Heading, Plain, stepTitle, useStepTitleSize } from '../../src/steps/Lines.tsx';
 import { MessageBox } from '../../src/steps/MessageBox.tsx';
+import { signInOver } from '../../src/steps/signInOver.ts';
 import { NavBar, StepScreen } from '../../src/steps/StepScreen.tsx';
 import { tokens } from '../../src/theme/tokens.ts';
 import { unreachableFrom } from '../../src/unreachable.ts';
@@ -138,6 +139,7 @@ function SignedOut({ token, organisation }: { token: string; organisation: strin
 
   async function go(to: '/sign-in' | '/register'): Promise<void> {
     await holdLink(token);
+    if (to === '/sign-in') signInOver(true);
     router.push(to);
   }
 
