@@ -353,5 +353,5 @@
     "validation.share_by_invalid": "Escolha uma data válida.",
     "validation.share_by_past": "Escolha hoje ou uma data posterior.",
     "validation.share_by_not_before_event": "Escolha uma data anterior ao evento.",
-    "access.plan_required": "Available on Enterprise. Contact Soirely about Enterprise to change this."
+    "access.plan_required": "Disponível no plano Enterprise. Para alterar esta definição, contacte a Soirely sobre o plano Enterprise."
 }
