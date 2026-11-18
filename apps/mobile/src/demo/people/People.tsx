@@ -54,14 +54,17 @@ interface Opened {
   visit: number;
 }
 
-/** People on an event in A, one list with the role in a sheet, on sample data. */
-export function PeopleSection() {
-  const { state, code, show, hold } = useLocalSearchParams<{
-    state?: string;
-    code?: string;
-    show?: string;
-    hold?: string;
-  }>();
+export type PeopleParams = {
+  state?: string;
+  code?: string;
+  show?: string;
+  hold?: string;
+};
+
+/** People on an event in A, one list with the role in a sheet, on sample data; `params` in place of the route's, as the event page's own query is not People's. */
+export function PeopleSection({ params }: { params?: PeopleParams }) {
+  const route = useLocalSearchParams<PeopleParams>();
+  const { state, code, show, hold } = params ?? route;
   const shown = show ?? hold;
   const door = useMemo(() => doorStartOf(state, code, shown), [state, code, shown]);
   const name = peopleStateOf(state);

@@ -1,4 +1,4 @@
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { useCallback, useMemo, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -12,12 +12,31 @@ import { useCoverStatusBar } from '../Welcome.tsx';
 import { layoutOf } from '../../components/settingsShell.ts';
 import { settingsHref } from '../settings/Route.tsx';
 import { lookingAs } from '../settings/sample.ts';
-import { PeopleSection } from './People.tsx';
+import { type PeopleParams, PeopleSection } from './People.tsx';
+import { doorStartOf } from '../doorCode/DoorCodeModel.ts';
+import { EventsShell } from '../events/Route.tsx';
+import { EventScreen } from '../events/EventPage.tsx';
+import { SAMPLE_EVENT_ID } from '../messages/MessagesSample.ts';
 import { type Shell, ShellContext, type ShellSection } from '../../components/settingsShell.ts';
 import { PageToast } from '../../components/Summary.tsx';
 
-/** People on an event, drawn with no event around it: Settings' kit, with Today and Settings a tab away. */
+/** /demo/people: on the iPad, People in its event's frame as every area is (sc-67665); on the phone, and for the door code's own event, its own page with Today and Settings a tab away. */
 export function PeopleRoute() {
+  const layout = layoutOf(useLayout().kind);
+  const params = useLocalSearchParams<PeopleParams>();
+  const door = doorStartOf(params.state, params.code, params.show ?? params.hold);
+
+  if (layout !== 'phone' && door == null)
+    return (
+      <EventsShell>
+        <EventScreen id={SAMPLE_EVENT_ID} state={null} area="people" peopleParams={params} />
+      </EventsShell>
+    );
+
+  return <PeopleAlone />;
+}
+
+function PeopleAlone() {
   const layout = layoutOf(useLayout().kind);
   const insets = useSafeAreaInsets();
   const [told, setTold] = useState<string>();

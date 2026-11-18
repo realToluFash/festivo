@@ -111,6 +111,8 @@ import { SeatingScreen } from '../seating/SeatingScreen.tsx';
 import { GuestNumbers } from '../guests/GuestNumbers.tsx';
 import { PeopleCard } from '../people/PeopleCard.tsx';
 import type { CardState } from '../people/PeopleCardModel.ts';
+import { type PeopleParams, PeopleSection } from '../people/People.tsx';
+import { PeopleInEvent } from '../people/PeopleFrame.tsx';
 import {
   type FilterKey,
   type ListFilter,
@@ -202,6 +204,7 @@ export function EventScreen({
   guests = null,
   budget = null,
   people = null,
+  peopleParams,
   guestsFrom: figureOpens = null,
   without,
   origin = null,
@@ -216,6 +219,8 @@ export function EventScreen({
   budget?: BudgetState | null;
   /** The People card's state on Overview (sc-29914); none is the populated card. */
   people?: CardState | null;
+  /** People's own query, when People opens in this frame from its own page (sc-67665). */
+  peopleParams?: PeopleParams | undefined;
   /** A figure on Events opens the event's Guests with its choice in the filter menu (sc-3786). */
   guestsFrom?: FilterKey | null;
   without?: AreaKey | undefined;
@@ -247,13 +252,14 @@ export function EventScreen({
           ? 'overview'
           : 'guests'
         : area == null ||
-            area === 'people' ||
+            (area === 'people' && shell.layout === 'phone') ||
             messages === 'tell' ||
             messages === 'tellPlace' ||
             (isTellKind(messages) && !TELL_IN_MESSAGES.includes(messages))
           ? 'overview'
           : area;
   });
+  const [peopleAt, setPeopleAt] = useState<PeopleParams>(peopleParams ?? {});
   const [guestsFrom, setGuestsFrom] = useState<ListFilter | null>(figureOpens);
   const [sinceFrom, setSinceFrom] = useState<string | null>(null);
   const [m, dispatch] = useReducer(reduceReach, null, () => {
@@ -514,7 +520,19 @@ export function EventScreen({
       onOpen={openGuests}
     />
   );
-  const peopleCard = <PeopleCard state={people} />;
+  const peopleCard = (
+    <PeopleCard
+      state={people}
+      onOpen={
+        shell.layout === 'phone'
+          ? undefined
+          : (params) => {
+              setPeopleAt(params);
+              setAt('people');
+            }
+      }
+    />
+  );
   const guestsPage = (
     <GuestsPage
       write={write}
@@ -660,6 +678,23 @@ export function EventScreen({
       >
         <LoadingBlock words={W.loadingEvent} />
       </EventFrame>
+    );
+
+  if (at === 'people' && shell.layout !== 'phone')
+    return (
+      <PeopleInEvent.Provider
+        value={{
+          event: shown,
+          now,
+          onArea: setAt,
+          more,
+          onMore: setMore,
+          badge: messagesHere && messagesSeen ? badgeFor(m) : null,
+          without,
+        }}
+      >
+        <PeopleSection params={peopleAt} />
+      </PeopleInEvent.Provider>
     );
 
   if (at === 'seating' && messagesHere)
