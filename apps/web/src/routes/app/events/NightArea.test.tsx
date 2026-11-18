@@ -753,6 +753,19 @@ describe('moving to another area of an event while offline (sc-65646)', () => {
     expect(screen.queryByText('Adaeze and Tunde')).toBeNull();
   });
 
+  it('keeps the box on an area with no load of its own after the Menu, whose load also failed', async () => {
+    const { go } = await loadedThenOffline();
+
+    await go('/app/events/ev_1/menu');
+    await screen.findByText(/^The menu did not load\./);
+    await go('/app/events/ev_1/messages');
+
+    await waitFor(() => expect(screen.queryByText(/^The menu did not load\./)).toBeNull());
+    expect(
+      screen.getByText(/^Offline · as of \d\d:\d\d$/, { selector: '.ev-offline-words' }),
+    ).toBeDefined();
+  });
+
   it('still says the event did not load for one this tab never loaded', async () => {
     const { go } = await loadedThenOffline();
 
