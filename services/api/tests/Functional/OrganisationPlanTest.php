@@ -108,6 +108,8 @@ final class OrganisationPlanTest extends ApiTestCase
     #[Test]
     public function aDowngradeSwitchesConfiguredSettingsOffKeepsThemAndEmailsTheAdministrators(): void
     {
+        $this->owner->setTimezone('Africa/Lagos');
+        self::service(EntityManagerInterface::class)->flush();
         $domains = new ConfiguredEnterpriseSetting(PlanFeature::EmailDomains, 'ire.events');
         $auditLog = new ConfiguredEnterpriseSetting(PlanFeature::AuditLog);
         $settings = new EnterpriseSettings([$domains, $auditLog]);
@@ -124,6 +126,7 @@ final class OrganisationPlanTest extends ApiTestCase
         $mails = $this->mails();
         self::assertCount(1, $mails);
         self::assertStringContainsString('These were switched off on', $mails[0]);
+        self::assertStringContainsString(' WAT and kept as they were:', $mails[0], "the day in the owner's own zone");
         self::assertStringContainsString('- Email domains', $mails[0]);
         self::assertStringNotContainsString('Audit log', $mails[0], 'only what was configured');
         self::assertStringContainsString('They come back on as they were with Enterprise. Contact Soirely about Enterprise.', $mails[0]);
