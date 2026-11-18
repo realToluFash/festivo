@@ -1,7 +1,7 @@
 import type { Allergen } from './guestKitchenWords.ts';
 import { type DishAllergen, type Lang, DISH_ALLERGENS, allergenName } from './menuLibrary.ts';
 import type { DemoLink } from './settings.ts';
-import { EARLIER, type SummaryStart } from './mealClose.ts';
+import { EARLIER, type Person, type Saved, type SummaryStart } from './mealClose.ts';
 
 /** sc-3904's questions inside a dish on the guest's meal step (board MealStep, page e32): the way, then each choice, one per screen. */
 export type MealContains = readonly DishAllergen[] | 'none';
@@ -496,7 +496,7 @@ const CLOSE_STATES = {
   refusedNoPick: () =>
     back({
       name: 'Refused: Starter had no pick',
-      note: 'As Refused, but Chidi had no starter before the send: the row reads [Not chosen yet]. sc-1362’s default with the never-chose sentence is built with that story.',
+      note: 'As Refused, but Chidi had no starter before the send. After the 409 the row shows Starter’s default, Canapé selection, with “You had not chosen by then, so this is your starter.”',
       today: '2026-10-15',
       saved: { ...EARLIER, starter: null },
       changed: { starter: 'pepper', main: 'croaker' },
@@ -527,11 +527,59 @@ const CLOSE_STATES = {
     }),
 } satisfies Record<string, () => MealStart>;
 
+const UNANSWERED: Saved = { ...EARLIER, starter: null };
+const SESAME: Person = { name: PERSON, companion: false, allergies: ['sesame'], diets: [] };
+
+const DEFAULT_STATES = {
+  chooseByBefore: () =>
+    back({
+      name: 'Choose by, before the date',
+      note: 'Today is Wednesday, Oct 14 and Chidi has not answered Starter, whose default is Canapé selection: its screen says the default will be waiting. Choosing a dish brings back “Picks close Friday, Oct 16.”',
+      saved: UNANSWERED,
+      screen: 'starter',
+    }),
+  chooseByBack: () =>
+    back({
+      name: 'Choose by, coming back',
+      note: 'The rows on coming back: Starter’s row carries the choose-by line until Chidi answers it. Change, pick and send to see it go back to sc-3905’s line.',
+      saved: UNANSWERED,
+    }),
+  chooseByCompanion: () =>
+    back({
+      name: 'Choose by, a companion',
+      note: 'Kofi, covered by Chidi’s reply: the line names Kofi, with no pronoun.',
+      saved: UNANSWERED,
+      person: { name: 'Kofi', companion: true, allergies: [], diets: [] },
+    }),
+  excludedBefore: () =>
+    back({
+      name: 'Excluded, before the date',
+      note: 'Chidi has a sesame allergy recorded, so is never given the default: Starter’s row says only “Picks close Friday, Oct 16.”',
+      saved: UNANSWERED,
+      person: SESAME,
+    }),
+  excludedAfter: () =>
+    back({
+      name: 'Excluded, after the date',
+      note: 'Today is Saturday, Oct 17, the allergy recorded and Starter never answered: read-only with the padlock, no dish, no Change, and the host will be in touch.',
+      today: '2026-10-17',
+      saved: UNANSWERED,
+      person: SESAME,
+    }),
+  defaulted: () =>
+    back({
+      name: 'Defaulted',
+      note: 'Today is Saturday, Oct 17 and Chidi never answered Starter: the row shows the default, Canapé selection, and “You had not chosen by then, so this is your starter.” Main is still open.',
+      today: '2026-10-17',
+      saved: UNANSWERED,
+    }),
+} satisfies Record<string, () => MealStart>;
+
 export type MealStateName = keyof typeof STATES;
 
-export type CloseStateName = keyof typeof CLOSE_STATES;
+export type CloseStateName = keyof typeof CLOSE_STATES | keyof typeof DEFAULT_STATES;
 
-const ALL = { ...STATES, ...CLOSE_STATES };
+const ALL = { ...STATES, ...CLOSE_STATES, ...DEFAULT_STATES };
 
 export const isMealState = (raw: string | null): raw is MealStateName | CloseStateName =>
   raw != null && Object.hasOwn(ALL, raw);
@@ -551,9 +599,16 @@ export const MEAL_PAGES: readonly { name: string; states: readonly DemoLink[] }[
   },
   {
     name: 'When picks close (sc-3905)',
-    states: (Object.keys(CLOSE_STATES) as CloseStateName[]).map((state) => ({
+    states: (Object.keys(CLOSE_STATES) as (keyof typeof CLOSE_STATES)[]).map((state) => ({
       to: mealAt(state),
       name: CLOSE_STATES[state]().name,
+    })),
+  },
+  {
+    name: 'A default and a choose-by date (sc-1362)',
+    states: (Object.keys(DEFAULT_STATES) as (keyof typeof DEFAULT_STATES)[]).map((state) => ({
+      to: mealAt(state),
+      name: DEFAULT_STATES[state]().name,
     })),
   },
 ];
