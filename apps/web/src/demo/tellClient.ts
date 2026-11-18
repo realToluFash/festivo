@@ -4,12 +4,9 @@ import { CW, type Consultation, type How, started } from './consultations.ts';
 import { type Enquiry, PEOPLE, type Person } from './enquiries.ts';
 import type { DemoLink } from './settings.ts';
 
-/** sc-37133: Tell {client}. Soirely sends nothing: it writes the message and hands it to the planner's own app. */
-
 export type Language = 'en' | 'es' | 'fr' | 'pt';
 export const LANGUAGES: readonly Language[] = ['en', 'es', 'fr', 'pt'];
 
-/** English, Español, Français, Português: each in its own name, from the one declaration. */
 export function languageName(language: Language): string {
   return LOCALES.find((one) => one.code === language)?.nativeName ?? language;
 }
@@ -24,7 +21,6 @@ export type Way = 'whatsApp' | 'email' | 'copy';
 export type Best = 'phoneCall' | 'whatsApp' | 'textMessage' | 'email';
 export type Said = 'booked' | 'changed' | 'cancelled';
 
-/** sc-31226's contacts: each optional, at least one present, and Best way to reach them. */
 export interface Reach {
   phone: string | null;
   email: string | null;
@@ -58,7 +54,6 @@ export function hasChanged(consultation: Consultation, booked: AsBooked): boolea
   return (Object.keys(now) as (keyof AsBooked)[]).some((key) => now[key] !== booked[key]);
 }
 
-/** Which message Tell {client} writes, or null where it isn't offered: Held, or cancelled with its start passed. */
 export function saidOf(consultation: Consultation, booked: AsBooked, now: string): Said | null {
   if (started(consultation, now)) return null;
   if (consultation.cancelled) return 'cancelled';
@@ -74,7 +69,6 @@ const ORDER: Record<Best | 'none', readonly Way[]> = {
   none: ['whatsApp', 'email', 'copy'],
 };
 
-/** Best way first; a way not offered is left out and the rest keep their order. */
 export function waysOf(reach: Reach, device: Device): Way[] {
   return ORDER[reach.best ?? 'none'].filter((way) =>
     way === 'whatsApp'
@@ -85,7 +79,6 @@ export function waysOf(reach: Reach, device: Device): Way[] {
   );
 }
 
-/** The demo's fixed table, the same values the build reads from CLDR's exemplar cities (dev, #66949). */
 const CITIES: Readonly<Record<string, Record<Language, string>>> = {
   'Europe/Lisbon': { en: 'Lisbon', es: 'Lisboa', fr: 'Lisbonne', pt: 'Lisboa' },
   'Europe/London': { en: 'London', es: 'Londres', fr: 'Londres', pt: 'Londres' },
@@ -105,7 +98,6 @@ function yearIn(instant: string, timeZone: string): string {
   return new Intl.DateTimeFormat('en', { year: 'numeric', timeZone }).format(new Date(instant));
 }
 
-/** The weekday comes from the consultation's own zone; the year shows only when it isn't this year. */
 export function dayOf(consultation: Consultation, language: Language, now: string): string {
   const zone = consultation.timeZone;
   const year =
@@ -246,7 +238,6 @@ export interface Message {
   subject: string;
 }
 
-/** The message as it will be written: nothing but the client, the organisation and the consultation. */
 export function messageOf(
   consultation: Consultation,
   said: Said,
@@ -339,7 +330,6 @@ export const TW = {
     'Every word is a proposal for [l10n]: en from the AC, es, fr and pt for them to settle.',
 } as const;
 
-/** The sample: a Lisbon planner's enquiry, on Tuesday 10 Nov 2026, 10:00 in Lisbon. */
 export const TELL_NOW = '2026-11-10T10:00:00Z';
 export const ORG = 'Casa Lume';
 
@@ -440,7 +430,6 @@ export const TOLD = {
   },
 } as const satisfies Record<string, Consultation>;
 
-/** A consultation moved from Wednesday to Thursday since it was booked. */
 const MOVED_FROM: AsBooked = { ...asBooked(TOLD.video), startsAt: '2026-11-11T15:00:00Z' };
 
 export const TELL_STATES = [
@@ -496,7 +485,6 @@ export interface TellStart {
   language: Language | null;
   copied: boolean;
   free: boolean;
-  /** The row a notification opened the page at, and the notification's words. */
   arrived: { id: string; words: string } | null;
   note: string | null;
 }
@@ -698,7 +686,6 @@ const OFFER: readonly TellState[] = [
   'notification-cancelled',
 ];
 
-/** Page 31221 · Enquiries, sc-37133's states, each a ?state= of /demo/tell-client. The iOS simulator's is the app's alone. */
 export const TELL_PAGES: readonly { name: string; states: readonly DemoLink[] }[] = [
   { name: 'Tell {client} on a consultation’s row', states: ROW.map(at) },
   {
