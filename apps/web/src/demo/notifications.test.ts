@@ -2,6 +2,7 @@ import { NOTIFICATION_CATEGORY_ORDER, quietHoursIn, settingFlipped } from '@soir
 import { describe, expect, it } from 'vitest';
 
 import {
+  EVENT_DAY_NOTE,
   NEVER_SAVED,
   NOTIFICATIONS_PAGES,
   NOTIFICATIONS_STATES,
@@ -108,10 +109,20 @@ describe('Notification settings at a desk, the model (sc-30243)', () => {
       'saved',
       'loading',
       'failed',
+      'eventDay',
+      'eventDayPushOff',
     ]);
     for (const state of [...NOTIFICATIONS_STATES, ...WEB_MOMENTS])
       expect(notificationsStart(state), state).not.toEqual(rest);
     expect(notificationsStart('nonsense')).toEqual(rest);
+  });
+
+  it('opens Event day with its description naming the run-of-show card, and with its push off', () => {
+    expect(categoryNote('event_day', L)).toBe(EVENT_DAY_NOTE);
+    expect(EVENT_DAY_NOTE).toMatch(/Now and Next/);
+    expect(notificationsStart('eventDay').open).toBe('event_day');
+    const off = notificationsStart('eventDayPushOff');
+    expect(off.settings.find((row) => row.category === 'event_day')?.push.on).toBe(false);
   });
 
   it('refuses one switch’s save, and only once a save has failed', () => {
