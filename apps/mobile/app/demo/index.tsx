@@ -12,8 +12,13 @@ import { TABLET_TABS_BOARDS } from '../../src/demo/tabletTabs/TabletTabsBoards.t
 import { TEXT_SIZE_BOARDS } from '../../src/demo/textSize/TextSizeBoards.ts';
 import { DATA_BOARDS } from '../../src/demo/settings/DataBoards.ts';
 import { CONSULTATION_BOARDS } from '../../src/demo/enquiries/ConsultationsModel.ts';
+import {
+  ENQUIRIES_BOARDS,
+  ENQUIRY_PAGE_BOARDS,
+  NEW_ENQUIRY_BOARDS,
+  WAY_IN_BOARDS,
+} from '../../src/demo/enquiries/EnquiriesBoards.ts';
 import { TELL_BOARDS } from '../../src/demo/enquiries/TellClientModel.ts';
-import { ENQUIRIES_BOARDS } from '../../src/demo/enquiries/EnquiriesBoards.ts';
 import { ENQUIRY_EVENT_BOARDS } from '../../src/demo/enquiries/EnquiryEventBoards.ts';
 import { FOCUSED_HEADER_BOARDS } from '../../src/demo/focusedHeader/FocusedHeaderBoards.ts';
 import { SIGN_OUT_SIZE_BOARDS } from '../../src/demo/signOutSize/SignOutSizeBoards.ts';
@@ -56,6 +61,30 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
   {
     page: '31221 · Enquiries · the list and its search (sc-31226, sc-42749)',
     boards: ENQUIRIES_BOARDS.map(({ title, what, href }) => ({ title, what, href: href as Href })),
+  },
+  {
+    page: '31221 · Enquiries · New enquiry (sc-31226)',
+    boards: NEW_ENQUIRY_BOARDS.map(({ title, what, href }) => ({
+      title,
+      what,
+      href: href as Href,
+    })),
+  },
+  {
+    page: '31221 · Enquiries · an enquiry’s page (sc-31226)',
+    boards: ENQUIRY_PAGE_BOARDS.map(({ title, what, href }) => ({
+      title,
+      what,
+      href: href as Href,
+    })),
+  },
+  {
+    page: '31221 · Enquiries · the way in from Events (sc-31226)',
+    boards: WAY_IN_BOARDS.map(({ title, what, href }) => ({
+      title,
+      what,
+      href: href as Href,
+    })),
   },
   {
     page: '31221 · Enquiries · Consultations (sc-31228)',

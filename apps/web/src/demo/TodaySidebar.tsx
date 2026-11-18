@@ -50,6 +50,7 @@ export function TodaySidebar({
   inert = false,
   phone = false,
   enquiries = false,
+  free = false,
 }: {
   events: readonly EventKey[];
   tell: Tell;
@@ -63,11 +64,14 @@ export function TodaySidebar({
   inert?: boolean;
   /** At 40rem and under the sidebar is the phone's bar: the switcher and Menu (sc-13413), as on Today, Events and Calendar (sc-57468). */
   phone?: boolean;
-  /** On Enquiries, which an Enterprise organisation has under Events (sc-31226). */
+  /** On Enquiries, which an Enterprise organisation has right after Events (sc-31226). */
   enquiries?: boolean;
+  /** A Free organisation has no Enquiries; every other screen of the sample is Enterprise and lists it, and `?plan=free` shows any of them as Free (sc-31226). */
+  free?: boolean;
 }) {
   const [params] = useSearchParams();
   const listed = sideEvents(events, params.get('sidebar'));
+  const places = free || params.get('plan') === 'free' ? PLACES : WITH_ENQUIRIES;
 
   return (
     <DeskSidebar
@@ -115,7 +119,7 @@ export function TodaySidebar({
       )}
       <SearchRow />
       <ul className="today-places">
-        {(enquiries ? WITH_ENQUIRIES : PLACES)
+        {places
           .filter(([label]) => !hideLibrary || label !== 'Menu library')
           .map(([label, glyph]) => (
             <li key={label}>
@@ -129,7 +133,11 @@ export function TodaySidebar({
                   {label}
                 </Link>
               ) : label === 'Enquiries' ? (
-                <Link className="today-place is-on" to="/demo/enquiries" aria-current="page">
+                <Link
+                  className={enquiries ? 'today-place is-on' : 'today-place'}
+                  to="/demo/enquiries"
+                  aria-current={enquiries ? 'page' : undefined}
+                >
                   <Glyph name={glyph} />
                   {label}
                 </Link>

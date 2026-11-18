@@ -20,6 +20,38 @@ export const PEOPLE = {
   tunde: { id: 'tunde', name: 'Tunde Bakare', role: 'member' },
 } as const satisfies Record<string, Person>;
 
+export const BEST_WAYS = ['phone', 'whatsapp', 'text', 'email'] as const;
+export type BestWay = (typeof BEST_WAYS)[number];
+
+export const FOUND_VIA = [
+  'phone',
+  'whatsapp',
+  'instagram',
+  'referral',
+  'website',
+  'fair',
+  'other',
+] as const;
+export type FoundVia = (typeof FOUND_VIA)[number];
+
+export const LOST_REASONS = [
+  'elsewhere',
+  'budget',
+  'date',
+  'silent',
+  'notGoingAhead',
+  'other',
+] as const;
+export type LostReason = (typeof LOST_REASONS)[number];
+
+export interface Note {
+  id: string;
+  author: string;
+  at: string;
+  text: string;
+  edited: boolean;
+}
+
 export interface Enquiry {
   id: string;
   client: string;
@@ -30,8 +62,14 @@ export interface Enquiry {
   changedAt: string;
   phone: string | null;
   email: string | null;
-  /** Never searched (sc-42749, Decided 12 Nov). */
-  notes: string;
+  bestWay: BestWay | null;
+  guests: number | null;
+  where: string | null;
+  budget: { amount: string; currency: string } | null;
+  foundVia: FoundVia | null;
+  lost: { reason: LostReason; line: string | null } | null;
+  /** Newest first. Never searched (sc-42749, Decided 12 Nov). */
+  notesList: Note[];
 }
 
 /** The sample's clock: Wednesday 18 Nov 2026, 10:00 in London. */
@@ -39,7 +77,18 @@ export const NOW = '2026-11-18T10:00:00Z';
 
 export const ORG_DIAL = '44';
 
+export const ORG_COUNTRY = 'GB';
+
+export const ORG_CURRENCY = 'GBP';
+
+/** The time zone on the viewer's own account, which decides whether a date has passed: never the organisation's, and UTC while their account has none. */
+export const VIEWER_ZONE = 'Europe/London';
+
 export const LONG_CLIENT = 'Anne-Sophie de La Rochefoucauld-Montmorency';
+
+function note(id: string, author: string, at: string, text: string): Note {
+  return { id, author, at, text, edited: false };
+}
 
 export const ENQUIRIES: readonly Enquiry[] = [
   {
@@ -52,7 +101,28 @@ export const ENQUIRIES: readonly Enquiry[] = [
     changedAt: '2026-11-18T08:15:00Z',
     phone: '+447400123456',
     email: 'ada@example.com',
-    notes: 'Garden ceremony, about 120 guests, budget around £30,000.',
+    bestWay: 'whatsapp',
+    guests: 120,
+    where: 'Hampton Manor, Solihull',
+    budget: { amount: '30000', currency: 'GBP' },
+    foundVia: 'instagram',
+    lost: null,
+    notesList: [
+      {
+        id: 'n2',
+        author: 'kemi',
+        at: '2026-11-18T09:40:00Z',
+        text: 'Called back: she would like a Saturday in June. Sending the garden photos.',
+        edited: true,
+      },
+      {
+        id: 'n1',
+        author: 'folake',
+        at: '2026-11-18T08:15:00Z',
+        text: 'Garden ceremony, about 120 guests, budget around £30,000.',
+        edited: false,
+      },
+    ],
   },
   {
     id: 'enq-femi',
@@ -64,7 +134,13 @@ export const ENQUIRIES: readonly Enquiry[] = [
     changedAt: '2026-11-17T16:40:00Z',
     phone: '+447700900123',
     email: null,
-    notes: 'Fiftieth, a surprise for his wife.',
+    bestWay: 'phone',
+    guests: 40,
+    where: null,
+    budget: null,
+    foundVia: 'referral',
+    lost: null,
+    notesList: [note('n1', 'tunde', '2026-11-17T16:40:00Z', 'Fiftieth, a surprise for his wife.')],
   },
   {
     id: 'enq-lucia',
@@ -76,7 +152,15 @@ export const ENQUIRIES: readonly Enquiry[] = [
     changedAt: '2026-11-16T11:05:00Z',
     phone: null,
     email: 'lucia.fernandez@example.es',
-    notes: 'Company dinner after the Madrid conference.',
+    bestWay: 'email',
+    guests: 60,
+    where: 'Madrid',
+    budget: { amount: '12000', currency: 'EUR' },
+    foundVia: 'website',
+    lost: null,
+    notesList: [
+      note('n1', 'kemi', '2026-11-16T11:05:00Z', 'Company dinner after the Madrid conference.'),
+    ],
   },
   {
     id: 'enq-long',
@@ -88,7 +172,13 @@ export const ENQUIRIES: readonly Enquiry[] = [
     changedAt: '2026-11-15T09:30:00Z',
     phone: '+33612345678',
     email: null,
-    notes: 'Wants the château in Chantilly.',
+    bestWay: 'phone',
+    guests: 80,
+    where: 'Château de Chantilly',
+    budget: { amount: '45000', currency: 'EUR' },
+    foundVia: 'referral',
+    lost: null,
+    notesList: [note('n1', 'kemi', '2026-11-15T09:30:00Z', 'Wants the château in Chantilly.')],
   },
   {
     id: 'enq-chinedu',
@@ -100,7 +190,13 @@ export const ENQUIRIES: readonly Enquiry[] = [
     changedAt: '2026-11-14T17:20:00Z',
     phone: null,
     email: 'chinedu.eze@example.com',
-    notes: 'Called about the hall, nothing more yet.',
+    bestWay: null,
+    guests: null,
+    where: null,
+    budget: null,
+    foundVia: null,
+    lost: null,
+    notesList: [],
   },
   {
     id: 'enq-bisi',
@@ -112,7 +208,13 @@ export const ENQUIRIES: readonly Enquiry[] = [
     changedAt: '2026-11-10T13:00:00Z',
     phone: '+2348035550199',
     email: null,
-    notes: 'Twenty-fifth, in Lagos.',
+    bestWay: 'text',
+    guests: 30,
+    where: 'Lagos',
+    budget: { amount: '2500000', currency: 'NGN' },
+    foundVia: 'fair',
+    lost: null,
+    notesList: [note('n1', 'tunde', '2026-11-10T13:00:00Z', 'Twenty-fifth, in Lagos.')],
   },
   {
     id: 'enq-ada-lost',
@@ -124,7 +226,15 @@ export const ENQUIRIES: readonly Enquiry[] = [
     changedAt: '2026-10-02T15:45:00Z',
     phone: null,
     email: 'ada.okafor@example.com',
-    notes: 'Budget. Might come back for the wedding.',
+    bestWay: null,
+    guests: null,
+    where: null,
+    budget: null,
+    foundVia: null,
+    lost: { reason: 'budget', line: 'Might come back for the wedding.' },
+    notesList: [
+      note('n1', 'tunde', '2026-10-02T15:45:00Z', 'Engagement party for about 50, in December.'),
+    ],
   },
   {
     id: 'enq-ngozi',
@@ -136,7 +246,15 @@ export const ENQUIRIES: readonly Enquiry[] = [
     changedAt: '2026-09-01T10:10:00Z',
     phone: '+2348035550142',
     email: null,
-    notes: 'Chose someone else.',
+    bestWay: null,
+    guests: null,
+    where: null,
+    budget: null,
+    foundVia: null,
+    lost: { reason: 'elsewhere', line: null },
+    notesList: [
+      note('n1', 'kemi', '2026-09-01T10:10:00Z', 'Wedding in September, garden or hall.'),
+    ],
   },
 ];
 
@@ -233,6 +351,11 @@ export const ENQUIRY_STATES = [
   'offline',
   'failed',
   'longNames',
+  'lostEmpty',
+  'loading',
+  'refreshing',
+  'mine',
+  'memberList',
 ] as const;
 export type EnquiryState = (typeof ENQUIRY_STATES)[number];
 
@@ -248,6 +371,8 @@ export interface Start {
   offline: boolean;
   listFailed: boolean;
   searchFailed: boolean;
+  loading: boolean;
+  refreshing: boolean;
   enquiries: readonly Enquiry[];
 }
 
@@ -260,6 +385,8 @@ export function startOf(state: EnquiryState): Start {
     offline: false,
     listFailed: false,
     searchFailed: false,
+    loading: false,
+    refreshing: false,
     enquiries: ENQUIRIES,
   };
 
@@ -294,6 +421,20 @@ export function startOf(state: EnquiryState): Start {
       return { ...start, typed: 'oka', searchFailed: true };
     case 'longNames':
       return { ...start, typed: 'rochefoucauld' };
+    case 'lostEmpty':
+      return {
+        ...start,
+        tab: 'lost',
+        enquiries: ENQUIRIES.filter((enquiry) => enquiry.tab !== 'lost'),
+      };
+    case 'loading':
+      return { ...start, loading: true };
+    case 'refreshing':
+      return { ...start, refreshing: true };
+    case 'mine':
+      return { ...start, viewer: { person: PEOPLE.folake, mine: true } };
+    case 'memberList':
+      return { ...start, viewer: { person: PEOPLE.tunde, mine: false } };
     default:
       return start;
   }
@@ -339,10 +480,17 @@ export function whatLine(
   return type == null ? date : `${type} · ${date}`;
 }
 
-export function assignedWords(enquiry: Enquiry, notAssigned: string): string {
-  const person = Object.values(PEOPLE).find((one) => one.id === enquiry.assignedTo);
+export function personOf(id: string | null): Person | null {
+  return Object.values(PEOPLE).find((one) => one.id === id) ?? null;
+}
 
-  return person?.name ?? notAssigned;
+export function assignedWords(enquiry: Enquiry, notAssigned: string): string {
+  return personOf(enquiry.assignedTo)?.name ?? notAssigned;
+}
+
+/** A Member sees only the enquiries assigned to them, by id too. */
+export function canSee(enquiry: Enquiry, person: Person): boolean {
+  return person.role !== 'member' || enquiry.assignedTo === person.id;
 }
 
 export const ENQUIRY_WORDS = {
@@ -371,15 +519,23 @@ export const ENQUIRY_WORDS = {
   noMatch: 'No enquiries match',
   searched: (q: string) => `You searched for “${q}”.`,
   listFailed: 'The enquiries did not load. Try again in a moment.',
+  ownDesign: (what: string) => `${what} works on the enquiry’s own page, not in this state.`,
   searchFailed: 'The search did not load. Try again in a moment.',
-  ownDesign: (what: string) => `${what} is drawn for sc-31226, not here.`,
-  pageDrawnElsewhere:
-    'An enquiry’s page is drawn for sc-31226. Back returns to the same search and results.',
 } as const;
 
 function at(state: EnquiryState, name: string): DemoLink {
   return { to: state === 'idle' ? '/demo/enquiries' : `/demo/enquiries?state=${state}`, name };
 }
+
+const form = (state: string, name: string): DemoLink => ({
+  to: `/demo/enquiries/new?state=${state}`,
+  name,
+});
+
+const page = (id: string, state: string, name: string): DemoLink => ({
+  to: `/demo/enquiries/${id}?state=${state}`,
+  name,
+});
 
 export const ENQUIRIES_PAGES: readonly { name: string; states: readonly DemoLink[] }[] = [
   {
@@ -390,6 +546,62 @@ export const ENQUIRIES_PAGES: readonly { name: string; states: readonly DemoLink
       at('lost', 'Lost'),
       at('emptyOpen', 'Nothing open, with New enquiry'),
       at('listFailed', 'The enquiries did not load'),
+      at('lostEmpty', 'Lost, nothing lost'),
+      at('loading', 'Loading, Events’ skeleton rows'),
+      at('refreshing', 'Refreshing, the rows stay'),
+      at('mine', 'Assigned to me on, no search'),
+      at('memberList', 'A Member’s list: no Assigned to me'),
+    ],
+  },
+  {
+    name: 'New enquiry (sc-31226)',
+    states: [
+      form('blank', 'Blank, as an Owner'),
+      form('nameAndPhone', 'Ama Mensah and a phone: Save works'),
+      form('fixedLine', 'A fixed line, 020 7946 0018: accepted'),
+      form('invalidContact', 'Neither a phone nor an email'),
+      form('invalidPhone', 'A phone that is not a number'),
+      form('phoneTooShort', 'A phone too short, 0770 090'),
+      form('phoneTooLong', 'A phone too long, 07700 900456 789'),
+      form('invalidEmail', 'An email without its domain, ama@'),
+      form('invalidName', 'A name of 101 characters'),
+      form('invalidNote', 'What they have in mind, 5,001 characters'),
+      form('invalidDate', 'A date that has passed, 10 Nov 2026'),
+      form('invalidGuests', 'Guests: 0'),
+      form('invalidWhere', 'Where, 201 characters'),
+      form('invalidBudget', 'Budget 120.555 GBP: GBP takes 2 decimal places'),
+      form('duplicateAdmin', 'The same client: an Owner sees who has it'),
+      form('duplicateMember', 'The same client: a Member sees no name'),
+      form('noConnection', 'No connection: nothing saved, all kept'),
+      form('member', 'A Member: no Assigned to'),
+      form('saving', 'Saving, the fields read only'),
+    ],
+  },
+  {
+    name: 'An enquiry’s page (sc-31226)',
+    states: [
+      page('enq-ada', 'open', 'Open, as an Owner'),
+      page('enq-femi', 'openMember', 'Open, as its Member'),
+      page('enq-ada', 'withNotes', 'Two notes, one Edited'),
+      page('enq-ada', 'editNote', 'Editing your own note'),
+      page('enq-ada', 'whatsapp', 'Best way WhatsApp: the WhatsApp button'),
+      page('enq-chinedu', 'notAssigned', 'Not assigned, nothing more given'),
+      page('enq-ada', 'closeAsLost', 'Close as lost, docked'),
+      page('enq-ada', 'closeAsLostTooLong', 'Close as lost, a line of 201 characters'),
+      page('enq-ada-lost', 'lost', 'Lost · Budget, with Reopen'),
+      page('enq-ngozi', 'lostNoLine', 'Lost · Chose someone else, no line'),
+      page('enq-bisi', 'datePassed', 'A date that has gone by, shown plainly'),
+      page('enq-ada', 'notFound', 'A Member opening another’s: not here'),
+      page('enq-ada', 'loadFailed', 'The enquiry did not load'),
+    ],
+  },
+  {
+    name: 'Enquiries in the navigation (sc-31226)',
+    states: [
+      { to: '/demo/today', name: 'Enterprise: Enquiries right after Events, on Today' },
+      { to: '/demo/calendar', name: 'Enterprise: on the Calendar' },
+      { to: '/demo/today?plan=free', name: 'Free: no Enquiries, on Today' },
+      { to: '/demo/events?plan=free', name: 'Free: no Enquiries, on Events' },
     ],
   },
   {

@@ -407,6 +407,21 @@ export const ANA: Enquiry = {
   phone: '+351912345678',
   email: 'ana.ferreira@example.pt',
   notes: 'Quinta in Sintra, about 90 guests.',
+  bestWay: 'whatsapp',
+  guests: 90,
+  where: 'Sintra',
+  budget: null,
+  foundVia: null,
+  lost: null,
+  notesList: [
+    {
+      id: 'n-ana',
+      author: 'folake',
+      at: '2026-11-09T16:00:00Z',
+      text: 'Quinta in Sintra, about 90 guests.',
+      edited: false,
+    },
+  ],
 };
 
 export const REACH: Reach = { phone: ANA.phone, email: ANA.email, best: 'whatsApp' };

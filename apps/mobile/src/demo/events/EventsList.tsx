@@ -114,9 +114,11 @@ export function stepFrom(
 export function EventsList({
   state,
   deleted,
+  wayIn = null,
 }: {
   state: ListState | null;
   deleted: string | null;
+  wayIn?: ReactNode;
 }) {
   const shell = useShell();
   const locale = formattingLocale('en', getLocales()[0]?.languageTag);
@@ -263,6 +265,7 @@ export function EventsList({
         }
         under={summary != null && <EventsSummaryLine words={summary} />}
       />
+      {wayIn}
       {!first && !loading && !failed && reads && (
         <GuestTiles
           counts={guests}

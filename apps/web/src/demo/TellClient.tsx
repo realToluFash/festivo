@@ -67,6 +67,7 @@ export function TellClient() {
           events={[]}
           tell={tell}
           enquiries={!start.free}
+          free={start.free}
           calendar={false}
           settings={false}
           inert={covered}
