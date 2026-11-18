@@ -43,7 +43,6 @@ export interface EventEnquiry {
   assignedTo: Assignee | null;
 }
 
-/** Whoever the enquiry is assigned to; `left` once their membership is no longer active. */
 export type Assignee = Person & { left?: true };
 
 export type CurrencyFrom = 'budget' | 'organisation';
