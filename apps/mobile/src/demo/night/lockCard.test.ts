@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import {
   CARD_STATES,
@@ -124,6 +124,22 @@ describe('the card at each board state', () => {
     expect(cardTitle(`${'é'.repeat(38)}👍🏽👍🏽x`)).toBe(`${'é'.repeat(38)}👍🏽…`);
   });
 
+  describe('on a runtime without Intl.Segmenter, as Hermes on the phones', () => {
+    afterEach(() => {
+      vi.unstubAllGlobals();
+    });
+
+    it('cuts on whole clusters, as VisibleText counts them', () => {
+      vi.stubGlobal('Intl', { ...Intl, Segmenter: undefined });
+
+      expect(typeof Intl.Segmenter).toBe('undefined');
+      expect(cardTitle('a'.repeat(40))).toBe('a'.repeat(40));
+      expect(cardTitle(`${'é'.repeat(38)}👍🏽👍🏽x`)).toBe(`${'é'.repeat(38)}👍🏽…`);
+      expect(cardTitle(`${'e\u0301'.repeat(38)}🇳🇬🇳🇬x`)).toBe(`${'e\u0301'.repeat(38)}🇳🇬…`);
+      expect(cardTitle(`${'e\u0301'.repeat(40)}`)).toBe('e\u0301'.repeat(40));
+    });
+  });
+
   it('writes each line as one key in es, fr and pt, with the hour-is-1 article', () => {
     const night = sceneNight({
       name: '',
@@ -132,7 +148,7 @@ describe('the card at each board state', () => {
     });
     const hall = night.tracks[0]!;
 
-    expect(cardOf(night, hall, 'es-ES', at('01:15'), 1).lines).toEqual(['Eso es todo.']);
+    expect(cardOf(night, hall, 'es-ES', at('01:15'), true).lines).toEqual(['Eso es todo.']);
     expect(cardScene('offline_two', 'es-ES').cards[0]?.lines[2]).toBe(
       'Actualizado a las 20:31 · 2 acciones pendientes de enviar',
     );
@@ -185,7 +201,7 @@ describe('presses on this device', () => {
   it('starts with a card for each track pressed on, as of its last press', () => {
     const { night } = nightAt('populated');
 
-    expect(heldAtStart(night)).toEqual({ hall: { asOf: at('19:50'), waiting: 0 } });
+    expect(heldAtStart(night)).toEqual({ hall: { asOf: at('19:50'), waiting: false } });
   });
 
   it('replaces the track’s card at once, with the queue’s count offline, and one card after five presses', () => {
@@ -197,7 +213,7 @@ describe('presses on this device', () => {
     held = afterPress(held, 'hall', offline, done);
     night = done;
 
-    expect(held.hall).toEqual({ asOf: at('20:02'), waiting: 1 });
+    expect(held.hall).toEqual({ asOf: at('20:02'), waiting: true });
     expect(cardsOf(night, held, 'en-US')).toHaveLength(1);
     expect(cardsOf(night, held, 'en-US')[0]?.lines).toEqual([
       'Nothing is on',
@@ -215,7 +231,25 @@ describe('presses on this device', () => {
     }
 
     expect(cardsOf(night, held, 'en-US')).toHaveLength(1);
-    expect(held.hall?.waiting).toBe(5);
+    expect(cardsOf(night, held, 'en-US')[0]?.lines[2]).toBe(
+      'As of 20:06 · 5 presses waiting to send',
+    );
+  });
+
+  it('counts the night’s queue on every waiting card, a press on another track included', () => {
+    const offline = { ...nightAt('populated').night, online: false };
+    let held = heldAtStart(offline);
+    const hallDone = pressDone(offline, 'hall', 'speeches');
+    held = afterPress(held, 'hall', offline, hallDone);
+    const foyerPressed = pressStart(hallDone, 'foyer', 'booth');
+    held = afterPress(held, 'foyer', hallDone, foyerPressed);
+    const waiting = cardsOf(foyerPressed, held, 'en-US').map((card) => card.lines.at(-1));
+
+    expect(foyerPressed.queued).toBe(2);
+    expect(waiting).toEqual([
+      'As of 20:02 · 2 presses waiting to send',
+      'As of 20:03 · 2 presses waiting to send',
+    ]);
   });
 
   it('changes nothing for a press the night refused', () => {
@@ -229,8 +263,11 @@ describe('presses on this device', () => {
     const { night } = nightAt('offline');
     const held = heldAtStart(night);
 
-    expect(held.hall?.waiting).toBe(2);
-    expect(afterSend(held, tryNow(night).clock).hall).toEqual({ asOf: at('20:02'), waiting: 0 });
+    expect(held.hall?.waiting).toBe(true);
+    expect(afterSend(held, tryNow(night).clock).hall).toEqual({
+      asOf: at('20:02'),
+      waiting: false,
+    });
   });
 });
 

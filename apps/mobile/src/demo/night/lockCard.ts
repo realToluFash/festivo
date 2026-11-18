@@ -1,4 +1,4 @@
-import { hourContext } from '@soirely/domain';
+import { hourContext, visibleLength } from '@soirely/domain';
 
 import {
   DANCED,
@@ -105,16 +105,20 @@ export const CW = {
 /** The longest title the card shows whole; a longer one keeps its first 39 and "…", counted as the title field counts (VisibleText). */
 export const CARD_TITLE_MAX = 40;
 
-function clustersOf(text: string): string[] {
-  return typeof Intl.Segmenter === 'function'
-    ? Array.from(new Intl.Segmenter().segment(text), (part) => part.segment)
-    : Array.from(text);
-}
-
 export function cardTitle(title: string): string {
-  const parts = clustersOf(title);
+  const total = visibleLength(title);
+  if (total <= CARD_TITLE_MAX) return title;
 
-  return parts.length > CARD_TITLE_MAX ? `${parts.slice(0, CARD_TITLE_MAX - 1).join('')}…` : title;
+  let cut = 0;
+  let end = 0;
+  for (const point of title) {
+    end += point.length;
+    const head = visibleLength(title.slice(0, end));
+    if (head > CARD_TITLE_MAX - 1) break;
+    if (head + visibleLength(title.slice(end)) === total) cut = end;
+  }
+
+  return `${title.slice(0, cut)}…`;
 }
 
 export interface RunCard {
@@ -130,7 +134,7 @@ export function cardOf(
   track: NightTrack,
   locale: string,
   asOf: number,
-  waiting = 0,
+  waiting = false,
 ): RunCard {
   const ordered = inOrder(track.items);
   const now =
@@ -159,12 +163,12 @@ export function cardOf(
                 cardTitle(next.title),
                 ...shown(expectedStarts(track.items, asOf).get(next.id) ?? next.planned),
               ),
-          waiting > 0
+          waiting && night.queued > 0
             ? words.waiting(
                 asOfTime,
-                waiting,
+                night.queued,
                 asOfOne,
-                new Intl.NumberFormat(locale).format(waiting),
+                new Intl.NumberFormat(locale).format(night.queued),
               )
             : words.asOf(asOfTime, asOfOne),
         ];
@@ -179,7 +183,7 @@ export function cardOf(
 
 export interface Held {
   asOf: number;
-  waiting: number;
+  waiting: boolean;
 }
 
 export type HeldCards = Readonly<Record<string, Held>>;
@@ -192,7 +196,7 @@ export function heldAtStart(night: Night): HeldCards {
       .flatMap((item) => [item.started, item.ended])
       .filter((t) => t != null);
     if (times.length > 0)
-      held[track.id] = { asOf: Math.max(...times), waiting: night.online ? 0 : night.queued };
+      held[track.id] = { asOf: Math.max(...times), waiting: !night.online && night.queued > 0 };
   }
 
   return held;
@@ -207,14 +211,17 @@ export function afterPress(
 ): HeldCards {
   if (after === before) return held;
 
-  return { ...held, [trackId]: { asOf: before.clock, waiting: after.online ? 0 : after.queued } };
+  return {
+    ...held,
+    [trackId]: { asOf: before.clock, waiting: !after.online && after.queued > 0 },
+  };
 }
 
 export function afterSend(held: HeldCards, sentAt: number): HeldCards {
   return Object.fromEntries(
     Object.entries(held).map(([id, card]) => [
       id,
-      card.waiting > 0 ? { asOf: sentAt, waiting: 0 } : card,
+      card.waiting ? { asOf: sentAt, waiting: false } : card,
     ]),
   );
 }
@@ -253,7 +260,7 @@ type Track = 'hall' | 'foyer';
 interface CardState {
   name: string;
   night: () => Night;
-  cards: readonly { track: Track; asOf: string; waiting?: number }[];
+  cards: readonly { track: Track; asOf: string; waiting?: true }[];
   pushOff?: boolean;
   locale?: string;
 }
@@ -299,7 +306,7 @@ export const CARD_STATES = {
   offline_one: {
     name: 'This device offline: 1 press waiting to send',
     night: () => sceneNight({ ...SPEAKING_LATE, online: false, queued: 1 }),
-    cards: [{ track: 'hall', asOf: '20:27', waiting: 1 }],
+    cards: [{ track: 'hall', asOf: '20:27', waiting: true }],
   },
   offline_two: {
     name: 'This device offline: 2 presses waiting to send',
@@ -311,7 +318,7 @@ export const CARD_STATES = {
         online: false,
         queued: 2,
       }),
-    cards: [{ track: 'hall', asOf: '20:31', waiting: 2 }],
+    cards: [{ track: 'hall', asOf: '20:31', waiting: true }],
   },
   server_replaced: {
     name: 'Signal back, phone still locked: someone else’s press at 20:32 replaces this device’s card, the server’s Now and Next, without this device’s waiting Done and with no count',
@@ -403,7 +410,7 @@ export function cardScene(name: CardStateName, asked?: string) {
   const cards = state.cards.flatMap(({ track, asOf, waiting }) => {
     const one = night.tracks.find((t) => t.id === track);
 
-    return one == null ? [] : [cardOf(night, one, locale, at(asOf, day), waiting ?? 0)];
+    return one == null ? [] : [cardOf(night, one, locale, at(asOf, day), waiting ?? false)];
   });
 
   return {

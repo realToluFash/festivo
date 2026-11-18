@@ -81,7 +81,12 @@ export function RunCardView({
         )}
       </View>
       <View style={android ? styles.wordsAndroid : styles.wordsIos} {...hidden}>
-        <Text accessible={false} size={15} weight="semibold">
+        <Text
+          accessible={false}
+          size={15}
+          weight="semibold"
+          numberOfLines={collapsed ? 1 : undefined}
+        >
           {card.title}
         </Text>
         {collapsed ? (
