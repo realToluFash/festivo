@@ -4463,6 +4463,7 @@
     "noMatchIn": "No vendor matches “{{typed}}” in {{category}}.",
     "noneIn": "No vendors in {{category}}.",
     "noneArchivedIn": "No archived vendors in {{category}}.",
+    "noneArchived": "No archived vendors.",
     "everyCategory": "Show every category",
     "pages": "Pages",
     "page": "{{from, number}} to {{to, number}} of {{total, number}}, A to Z",
