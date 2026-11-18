@@ -68,8 +68,11 @@ export function AskLayer({
   const measured = widths.room > 0 && widths.keep > 0 && (confirm == null || widths.confirm > 0);
   const stacked =
     measured && confirm != null && widths.keep + tokens.space3xl + widths.confirm > widths.room;
-  const fits = frame.height - insets.top - tokens.spaceLg - insets.bottom;
-  const tall = inside > fits;
+  const tallTop = insets.top + tokens.spaceLg;
+  const tallBottom = Math.max(insets.bottom, tokens.spaceXxl);
+  const placedRoom = frame.height - (top ?? tokens.spaceXxl) - tokens.spaceXxl;
+  const tallRoom = frame.height - tallTop - tallBottom;
+  const tall = inside > Math.min(placedRoom, tallRoom);
   const laid = (part: keyof typeof widths) => (event: LayoutChangeEvent) => {
     const width = event.nativeEvent.layout.width;
     setWidths((now) => (now[part] === width ? now : { ...now, [part]: width }));
@@ -158,7 +161,7 @@ export function AskLayer({
     </>
   );
   const placed = tall
-    ? { justifyContent: 'flex-start' as const, paddingTop: insets.top + tokens.spaceLg }
+    ? { justifyContent: 'flex-start' as const, paddingTop: tallTop }
     : top == null
       ? null
       : { justifyContent: 'flex-start' as const, paddingTop: top };
@@ -169,7 +172,7 @@ export function AskLayer({
         StyleSheet.absoluteFill,
         styles.askScrim,
         placed,
-        tall && { paddingBottom: Math.max(insets.bottom, tokens.spaceXxl) },
+        tall && { paddingBottom: tallBottom },
       ]}
     >
       <View
