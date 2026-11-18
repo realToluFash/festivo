@@ -12,6 +12,7 @@ export function leaveTimedOutSignIn(): void {
   if (router.canDismiss()) router.dismissAll();
 
   if (alone) {
+    signInOver(false);
     router.replace(signIn);
     return;
   }
