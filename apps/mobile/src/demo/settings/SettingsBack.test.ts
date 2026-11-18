@@ -3,8 +3,6 @@ import { join } from 'node:path';
 
 import { describe, expect, it } from 'vitest';
 
-import { backScale, PILL_TEXT } from '../../layout/focusedHeader.ts';
-
 const here = join('src', 'demo', 'settings');
 const read = (...path: string[]) => readFileSync(join(...path), 'utf8');
 const summaryPage = read(here, 'SummaryPage.tsx');
@@ -57,13 +55,15 @@ describe('a demo settings page’s back draws no larger than its title (sc-67471
     );
   });
 
-  it('draws ‹ Settings at 43 over a 43 title at AX5, not about 53', () => {
-    const ax5 = 53 / PILL_TEXT;
-    expect(PILL_TEXT * backScale(ax5, null)).toBeCloseTo(53);
-    expect(PILL_TEXT * backScale(ax5, 43)).toBeCloseTo(43);
+  it('caps the back over a Data and control page’s title on a tablet on its side', () => {
+    expect(read(here, 'DataParts.tsx')).toMatch(
+      /<TitleCap\.Provider value=\{cap\}>\s*<View style=\{styles\.paneHead\}>\s*<Back \{\.\.\.back\} \/>\s*<Title/u,
+    );
   });
 
-  it('leaves the back as it was below the accessibility sizes', () => {
-    expect(backScale(1.35, 34 * 1.35)).toBe(1.35);
+  it('caps the back over People’s title', () => {
+    expect(read('src', 'demo', 'people', 'PeopleFrame.tsx')).toMatch(
+      /<TitleCap\.Provider value=\{cap\}>\s*<View style=\{styles\.top\}>\s*<Back /u,
+    );
   });
 });
