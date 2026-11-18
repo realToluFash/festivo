@@ -2,6 +2,7 @@ import {
   COVER_DESCRIPTION_MAXIMUM,
   type EventFormField,
   endMovedLine,
+  eventNameLength,
   skippedLine,
   startMoved,
   visibleLength,
@@ -62,6 +63,8 @@ import {
 } from './NewEventModel.ts';
 import { hostErrorWords } from './hostErrors.ts';
 import { openEvent } from './openEvent.ts';
+import type { FromEnquiry } from '../enquiries/EnquiryToEventModel.ts';
+import { useFromEnquiry } from '../enquiries/FromEnquiryParts.tsx';
 
 type Opener = RefObject<ScreenReaderTarget | null>;
 type Status = 'editing' | 'creating' | 'failed' | 'created';
@@ -86,16 +89,19 @@ export function NewEventScreen({
   locale,
   opener,
   onClose,
+  from,
 }: {
   open: boolean;
   start: NewState | null;
   locale: string;
   opener: Opener;
   onClose: () => void;
+  from?: FromEnquiry | undefined;
 }) {
   const insets = useSafeAreaInsets();
   const gap = useEditGap();
-  const [typed, setTyped] = useState<NewTyped>(() => typedFor(start));
+  const [opened] = useState<NewTyped>(() => from?.typed ?? typedFor(start));
+  const [typed, setTyped] = useState<NewTyped>(opened);
   const [tried, setTried] = useState(start === 'newRefused');
   const [status, setStatus] = useState<Status>(() => statusOf(start));
   const [server, setServer] = useState<Refusals>(
@@ -112,10 +118,10 @@ export function NewEventScreen({
   const [leaving, setLeaving] = useState(start === 'newLeave');
   const [said, setSaid] = useState<string | null>(null);
   const [summary, setSummary] = useState<string | null>(() =>
-    start === 'newRefused' ? checkOf(typedFor(start)).summary : null,
+    start === 'newRefused' ? checkOf(opened).summary : null,
   );
   const [target, setTarget] = useState<Target | null>(() =>
-    start === 'newRefused' ? targetOf(typedFor(start), {}) : null,
+    start === 'newRefused' ? targetOf(opened, {}) : null,
   );
   const nameRef = useRef<TextInputInstance>(null);
   const venueNameRef = useRef<TextInputInstance>(null);
@@ -134,6 +140,11 @@ export function NewEventScreen({
   const shown: Refusals = { ...(tried ? check.refusals : {}), ...server };
   const hostErrors = tried ? check.hosts : hostErrorWords(names(typed.hosts), false);
   const skipped = skippedLine(typed.start.date, typed.start.time, typed.timeZone, locale, t);
+  const enquiry = useFromEnquiry(from, {
+    busy,
+    currency: typed.currency,
+    scroll: scrollRef,
+  });
 
   useReadOut(said);
 
@@ -174,7 +185,10 @@ export function NewEventScreen({
 
   useEffect(() => {
     if (status === 'creating' && start !== 'newCreating') {
-      const later = setTimeout(() => setStatus('created'), CREATING_MS);
+      const later = setTimeout(
+        () => setStatus(enquiry.refuses ? 'failed' : 'created'),
+        CREATING_MS,
+      );
 
       return () => clearTimeout(later);
     }
@@ -183,14 +197,14 @@ export function NewEventScreen({
         onClose();
         openEvent(
           CREATED_ID,
-          start === 'newPhotoRefused' ? { state: 'createdNoPhoto' } : undefined,
+          enquiry.opens ?? (start === 'newPhotoRefused' ? { state: 'createdNoPhoto' } : undefined),
         );
       }, OPENING_MS);
 
       return () => clearTimeout(later);
     }
     return undefined;
-  }, [status, start, onClose]);
+  }, [status, start, onClose, enquiry.refuses, enquiry.opens]);
 
   const create = () => {
     if (busy) return;
@@ -321,7 +335,7 @@ export function NewEventScreen({
             ),
             onClose: closeList,
           }
-        : null;
+        : enquiry.over;
 
   return (
     <FocusedScreen
@@ -344,11 +358,12 @@ export function NewEventScreen({
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
+        {enquiry.notice}
         <Part head={W.aboutHeading}>
           <EventField
             label={W.eventName}
             error={shown.name ?? null}
-            help={say.nameCount([...typed.name.trim()].length)}
+            help={say.nameCount(eventNameLength(typed.name))}
           >
             <BoxField
               ref={nameRef}
@@ -385,6 +400,7 @@ export function NewEventScreen({
             testID="events.new.hosts"
           />
         </Part>
+        {enquiry.lead}
 
         <Part head={W.coverPhoto}>
           <CoverPart
@@ -484,7 +500,7 @@ export function NewEventScreen({
           <EventField
             label={W.currency}
             error={shown.currency ?? null}
-            help={say.defaultsHint(ORGANISATION)}
+            help={enquiry.currencyHelp ?? say.defaultsHint(ORGANISATION)}
           >
             <SelectBox
               ref={currencyRef}
@@ -499,7 +515,9 @@ export function NewEventScreen({
         </Part>
       </ScrollView>
       <View style={[styles.foot, { paddingBottom: Math.max(12, insets.bottom > 0 ? 12 : 34) }]}>
-        {status === 'failed' && <EventNotice tone="broken" words={W.notCreated} interrupts />}
+        {status === 'failed' && (
+          <EventNotice tone="broken" words={enquiry.notCreated ?? W.notCreated} interrupts />
+        )}
         {summary != null && <AlertLine text={summary} />}
         {status === 'created' && <DoneLine text={W.newCreated} size={14.5} />}
         <Pill

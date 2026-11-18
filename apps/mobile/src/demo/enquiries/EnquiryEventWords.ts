@@ -1,0 +1,35 @@
+/** The board's English for sc-31232, proposals for [l10n]: the developer puts them in the four locales when the screen is built. */
+export const W = {
+  enquiries: 'Enquiries',
+  open: 'Open',
+  won: 'Won',
+  createEvent: 'Create event',
+  closeAsLost: 'Close as lost…',
+  memberLine: 'An owner or admin creates the event from this enquiry.',
+  became: (event: string) => `Became ${event}`,
+  lost: 'Lost · Budget',
+  reopen: 'Reopen',
+  notReopened: 'Not reopened. This enquiry became an event meanwhile, so it stays Won.',
+  eventDeleted: 'The event made from this enquiry was deleted.',
+  pressReopen: 'Press Reopen on the stale page',
+  staleDemo: 'The page as a tab opened before the event was made still shows it Lost.',
+  restOfPage:
+    'The rest of the page (Reach them, About the event, Assigned to, Notes) is sc-31226’s.',
+  notInSample: 'This enquiry is not in the sample.',
+  ownDesign: (what: string) => `${what} is drawn for sc-31226, not here.`,
+  filled: (client: string) =>
+    `Filled in from ${client}’s enquiry. Check each field before you create the event.`,
+  fromBudget: 'From the budget in the enquiry.',
+  lead: 'Lead',
+  leadLine: 'They get the event role Lead when you create the event.',
+  leadLabel: (member: string) => `Lead: ${member}`,
+  change: 'Change',
+  remove: 'Remove',
+  noLead: 'No lead',
+  notGiven: (member: string) => `${member} won’t be given a role on this event.`,
+  chooseLead: 'Choose a lead',
+  notOpen:
+    'Not created. This enquiry was closed while you were filling this in, so no event was made from it.',
+  forbidden: 'Not created. Only an owner or admin can create an event from an enquiry.',
+  fromEnquiry: (client: string) => `From an enquiry · ${client}`,
+} as const;
