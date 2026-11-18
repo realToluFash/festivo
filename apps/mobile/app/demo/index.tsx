@@ -12,6 +12,7 @@ import { TABLET_TABS_BOARDS } from '../../src/demo/tabletTabs/TabletTabsBoards.t
 import { TEXT_SIZE_BOARDS } from '../../src/demo/textSize/TextSizeBoards.ts';
 import { DATA_BOARDS } from '../../src/demo/settings/DataBoards.ts';
 import { CONSULTATION_BOARDS } from '../../src/demo/enquiries/ConsultationsModel.ts';
+import { TELL_BOARDS } from '../../src/demo/enquiries/TellClientModel.ts';
 import { ENQUIRIES_BOARDS } from '../../src/demo/enquiries/EnquiriesBoards.ts';
 import { ENQUIRY_EVENT_BOARDS } from '../../src/demo/enquiries/EnquiryEventBoards.ts';
 import { FOCUSED_HEADER_BOARDS } from '../../src/demo/focusedHeader/FocusedHeaderBoards.ts';
@@ -63,6 +64,10 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
       what,
       href: href as Href,
     })),
+  },
+  {
+    page: '31221 · Enquiries · Tell the client (sc-37133)',
+    boards: TELL_BOARDS.map(({ title, what, href }) => ({ title, what, href: href as Href })),
   },
   {
     page: '31221 · Enquiries · An enquiry becomes an event (sc-31232)',
