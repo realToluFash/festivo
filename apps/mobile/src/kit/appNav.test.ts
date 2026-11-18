@@ -398,25 +398,38 @@ describe("iPad Sign in's scroll view stays out of the sheet's reach (sc-67589)",
 
 describe('Sign in pushed over welcome knows welcome is under it (sc-67709)', () => {
   it('is opened only where its opener says what stays under it, wherever under app/ and src/ a push or a replace reaches it', () => {
-    const opensSignIn = (text: string): boolean =>
-      [...text.matchAll(/router\.(?:push|replace|navigate)\(\s*(\{[^}]*\}|[^,)]+)/gu)].some(
-        ([, to = '']) =>
+    const SIGN_IN = /'\/sign-in[?']|timedOutSignIn\(|signInRoute\(/u;
+    const openers = (text: string): number[] =>
+      [...text.matchAll(/router\.(?:push|replace|navigate)\(\s*(\{[^}]*\}|[^,)]+)/gu)]
+        .filter(([, to = '']) =>
           /^\w+$/u.test(to)
-            ? /'\/sign-in[?']/u.test(text)
-            : /'\/sign-in[?']|timedOutSignIn\(|signInRoute\(/u.test(to),
+            ? new RegExp(`\\b${to}\\s*=[^;]*(?:${SIGN_IN.source})`, 'u').test(text)
+            : SIGN_IN.test(to),
+        )
+        .map(({ index }) => text.slice(0, index).split('\n').length);
+    const unsaid = (text: string): number[] =>
+      openers(text).filter(
+        (line) =>
+          !/signInOver\(/u.test(
+            text
+              .split('\n')
+              .slice(Math.max(0, line - 3), line - 1)
+              .join('\n'),
+          ),
       );
-    const openers = [APP, SRC]
-      .flatMap((root) =>
-        readdirSync(root, { recursive: true, encoding: 'utf8' })
-          .filter((path) => /\.tsx?$/u.test(path) && !/\.test\.tsx?$/u.test(path))
-          .map((path) => join(root, path)),
-      )
-      .filter((file) => opensSignIn(source(file)));
-
-    expect(openers.map((file) => file.slice(join(APP, '..').length + 1))).toContain(
-      'src/components/Welcome.tsx',
+    const files = [APP, SRC].flatMap((root) =>
+      readdirSync(root, { recursive: true, encoding: 'utf8' })
+        .filter((path) => /\.tsx?$/u.test(path) && !/\.test\.tsx?$/u.test(path))
+        .map((path) => join(root, path)),
     );
-    expect(openers.filter((file) => !/signInOver\(/u.test(source(file)))).toEqual([]);
+    const named = (file: string): string => file.slice(join(APP, '..').length + 1);
+
+    expect(files.filter((file) => openers(source(file)).length > 0).map(named)).toEqual(
+      expect.arrayContaining(['src/components/Welcome.tsx', 'src/steps/leaveTimedOutSignIn.ts']),
+    );
+    expect(
+      files.flatMap((file) => unsaid(source(file)).map((line) => `${named(file)}:${line}`)),
+    ).toEqual([]);
   });
 
   it('is not read from the stack while Sign in is drawn, which expo-router hands over as it was before the push', () => {
