@@ -19,7 +19,7 @@ import { tokens } from '../../theme/tokens.ts';
 import { PAGE_TITLE, PANE_TITLE, pageTitle, paneTitle } from '../../components/topTitle.ts';
 import { Bell, Landscape, OrgPill, PortraitTop, SettingsTabBar } from './Frame.tsx';
 
-/** A section page in B, summary first: back and the bell on top, the title, then the card and the lists. */
+/** A section page in B, summary first: back and the bell on top, the title, then the card and the lists. Back draws no larger than the title (sc-67471). */
 export function SummaryPage({
   title,
   back,
@@ -99,7 +99,11 @@ export function SummaryPage({
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.top}>
-          {backTo != null && <Back {...backTo} />}
+          {backTo != null && (
+            <TitleCap.Provider value={cap}>
+              <Back {...backTo} />
+            </TitleCap.Provider>
+          )}
           {phone && backTo == null && <OrgPill />}
           <View style={styles.grow} />
           {phone && <Bell tell={shell.tell} />}

@@ -3,6 +3,8 @@ import { join } from 'node:path';
 
 import { describe, expect, it } from 'vitest';
 
+import { backScale, PILL_TEXT } from '../../layout/focusedHeader.ts';
+
 const here = join('src', 'demo', 'settings');
 const read = (...path: string[]) => readFileSync(join(...path), 'utf8');
 const summaryPage = read(here, 'SummaryPage.tsx');
@@ -45,5 +47,23 @@ describe('a demo settings page’s back speaks its locale (sc-30410, #33288)', (
       expect(read).toContain(place);
     }
     expect(backTo('fr', catalogue('fr').settings.title)).toBe('Retour à Paramètres');
+  });
+});
+
+describe('a demo settings page’s back draws no larger than its title (sc-67471)', () => {
+  it('puts the back under the title’s cap, as the signed-out screens do', () => {
+    expect(summaryPage).toMatch(
+      /<TitleCap\.Provider value=\{cap\}>\s*<Back \{\.\.\.backTo\} \/>\s*<\/TitleCap\.Provider>/u,
+    );
+  });
+
+  it('draws ‹ Settings at 43 over a 43 title at AX5, not about 53', () => {
+    const ax5 = 53 / PILL_TEXT;
+    expect(PILL_TEXT * backScale(ax5, null)).toBeCloseTo(53);
+    expect(PILL_TEXT * backScale(ax5, 43)).toBeCloseTo(43);
+  });
+
+  it('leaves the back as it was below the accessibility sizes', () => {
+    expect(backScale(1.35, 34 * 1.35)).toBe(1.35);
   });
 });
