@@ -2399,7 +2399,17 @@
     "discardTitle": "Descartar as alterações?",
     "discardLine": "Ninguém vai ser adicionado a este evento.",
     "discardKeep": "Continuar a editar",
-    "discard": "Descartar"
+    "discard": "Descartar",
+    "card": {
+      "count_one": "{{count, number}} pessoa neste evento",
+      "count_many": "{{count, number}} de pessoas neste evento",
+      "count_other": "{{count, number}} pessoas neste evento",
+      "held": "neste evento",
+      "lead": "Responsável · {{name}}",
+      "failed": "Não foi possível carregar quem está neste evento.",
+      "opens": "Abre Pessoas.",
+      "leadSaid": "Responsável, {{name}}."
+    }
   },
   "recoveryRequests": {
     "cardTitle": "Pedidos para voltar a entrar",
