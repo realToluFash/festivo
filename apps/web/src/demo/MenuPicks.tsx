@@ -36,7 +36,9 @@ export function DishPicks({ id }: { id: string }) {
   if (figure == null) return null;
 
   return (
-    <p className="pk-row-picks">{SW.menuPicks(numberIn(figure.count), numberIn(figure.share))}</p>
+    <p className="pk-row-picks">
+      {SW.menuPicks(figure.count, numberIn(figure.count), numberIn(figure.share))}
+    </p>
   );
 }
 

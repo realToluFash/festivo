@@ -46,6 +46,7 @@ describe('See picks (sc-3909)', () => {
         within(region('Starter')).getByText(SW.asksNothing('Catfish pepper soup')),
       ).toBeTruthy();
       expect(within(region('Main')).getAllByRole('table')).toHaveLength(2);
+      expect(within(region('Main')).queryByRole('columnheader', { name: SW.defaulted })).toBeNull();
       expect(
         within(region(SW.whoHasnt)).getByText('Replied by Bea Mensah · 3 people'),
       ).toBeTruthy();
@@ -69,6 +70,17 @@ describe('See picks (sc-3909)', () => {
       expect(screen.queryByRole('region', { name: SW.whoHasnt })).toBeNull();
     },
   );
+
+  it('shows Defaulted only on a course where someone was defaulted', SLOW, async () => {
+    await picks('picksAllIn');
+    expect(screen.getByText(SW.allIn)).toBeTruthy();
+    expect(
+      within(region('Dessert')).getByRole('columnheader', { name: SW.defaulted }),
+    ).toBeTruthy();
+    expect(
+      within(region('Starter')).queryByRole('columnheader', { name: SW.defaulted }),
+    ).toBeNull();
+  });
 
   it('refuses Save with nothing picked, in place', SLOW, async () => {
     await picks('chooseForBlank');

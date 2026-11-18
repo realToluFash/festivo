@@ -108,7 +108,7 @@ export const SW = {
   noSkip: 'This course can’t be skipped.',
   perPick: 'Options are counted per pick, so they add up to the dish, not to the room.',
   asksNothing: (dish: string) =>
-    `Guests are asked nothing on this course. Everyone coming gets ${dish}, except the people you give a children’s variant, and anyone whose allergies rule it out, who wait for you under Needs the host.`,
+    `Guests are asked nothing on this course. Everyone coming gets ${dish}, except the people you give a children’s variant and anyone it rules out, who wait under Needs the host.`,
   chooseWho: 'Choose who gets it',
   chooseWhoAria: (variant: string, dish: string) => `Choose who gets ${variant}, ${dish}`,
   whoHasnt: 'Who hasn’t picked',
@@ -169,7 +169,8 @@ export const SW = {
   demoNobody: 'Nobody left to send',
   summaryTitle: 'Picks',
   closes: 'Picks close Monday, Oct 19.',
-  menuPicks: (n: string, share: string) => `${n} picks · ${share}% of the room`,
+  menuPicks: (count: number, n: string, share: string) =>
+    `${n} ${count === 1 ? 'pick' : 'picks'} · ${share}% of the room`,
 } as const;
 
 function people(n: number): string {

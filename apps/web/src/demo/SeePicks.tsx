@@ -414,6 +414,7 @@ function CourseCard({
   const { course } = figures;
   const titleId = `pk-course-${course.id}`;
   const options = figures.rows.some((row) => row.kind === 'option');
+  const defaults = figures.rows.some((row) => row.defaulted > 0);
   const dish = course.dishes[0] as EvDish;
 
   return (
@@ -434,7 +435,7 @@ function CourseCard({
             <tr>
               <th scope="col">{SW.dish}</th>
               <th scope="col">{SW.chosen}</th>
-              <th scope="col">{SW.defaulted}</th>
+              {defaults && <th scope="col">{SW.defaulted}</th>}
             </tr>
           </thead>
           <tbody>
@@ -462,7 +463,7 @@ function CourseCard({
                   </div>
                 </th>
                 <td>{numberIn(row.chosen)}</td>
-                <td>{numberIn(row.defaulted)}</td>
+                {defaults && <td>{numberIn(row.defaulted)}</td>}
               </tr>
             ))}
           </tbody>
