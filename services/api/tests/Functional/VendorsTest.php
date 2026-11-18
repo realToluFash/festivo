@@ -153,6 +153,16 @@ final class VendorsTest extends ApiTestCase
     }
 
     #[Test]
+    public function anAccentedNameSortsWithItsPlainLetter(): void
+    {
+        foreach (['zeta Hire', 'Ómega Music', 'Marquee Masters', 'Éclat Catering', 'Àbẹ̀ní Flowers', 'bloom & Co'] as $name) {
+            $this->add(['name' => $name, 'category' => 'other']);
+        }
+
+        self::assertSame(['Àbẹ̀ní Flowers', 'bloom & Co', 'Éclat Catering', 'Marquee Masters', 'Ómega Music', 'zeta Hire'], $this->names($this->list()));
+    }
+
+    #[Test]
     public function searchMatchesANameContainingItIgnoringCaseWithAccentsAsTyped(): void
     {
         $this->add(['name' => 'Éclat Catering', 'category' => 'catering']);
