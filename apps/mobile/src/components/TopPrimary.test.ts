@@ -15,7 +15,7 @@ describe('the title row’s pills at the largest text sizes (sc-67659)', () => {
 
   it('chooses the words or the round + from the pill at one line and 44 tall, as on main', () => {
     expect(primary).toMatch(
-      /<Pill label=\{label\} glyph="plus" height=\{tokens\.sizeHit\} full=\{false\} \/>/u,
+      /<Pill label=\{label\} glyph="plus" height=\{tokens\.sizeHit\} full=\{false\} grows \/>/u,
     );
   });
 
