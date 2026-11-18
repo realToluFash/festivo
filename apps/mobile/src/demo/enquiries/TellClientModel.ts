@@ -49,11 +49,18 @@ export function asBooked(consultation: Consultation): AsBooked {
 /** A link or a Where added where there was none isn't a change; changing or removing it afterwards is (pm, 18 Nov). */
 const ADDABLE: readonly (keyof AsBooked)[] = ['where', 'link'];
 
+/** The start is an instant: a saved form writes it with milliseconds, the sample without. */
+function same(key: keyof AsBooked, now: AsBooked, booked: AsBooked): boolean {
+  return key === 'startsAt'
+    ? Date.parse(now.startsAt) === Date.parse(booked.startsAt)
+    : now[key] === booked[key];
+}
+
 export function hasChanged(consultation: Consultation, booked: AsBooked): boolean {
   const now = asBooked(consultation);
 
   return (Object.keys(now) as (keyof AsBooked)[]).some(
-    (key) => now[key] !== booked[key] && !(ADDABLE.includes(key) && booked[key] == null),
+    (key) => !same(key, now, booked) && !(ADDABLE.includes(key) && booked[key] == null),
   );
 }
 
@@ -159,86 +166,132 @@ interface Parts {
 }
 
 interface Words {
-  when: (p: Parts) => string;
-  booked: (p: Parts) => string;
-  changed: (p: Parts) => string;
+  booked: Record<Variant, (p: Parts) => string>;
+  changed: Record<Variant, (p: Parts) => string>;
   cancelled: (p: Parts) => string;
-  how: Record<Variant, (p: Parts) => string>;
   subject: (p: Parts) => string;
   subjectCancelled: (p: Parts) => string;
 }
 
-/** Working copy: en from the AC, es, fr and pt proposed for [l10n], who settle all four. One key per message, never stitched, in the build. */
+/** Working copy: en from the AC, es, fr and pt proposed for [l10n], who settle all four. Each of the eleven written whole, one key each in the build. */
 const WORDS: Record<Language, Words> = {
   en: {
-    when: (p) => `${p.day} at ${p.time} ${p.city} time`,
-    booked: (p) =>
-      `Hello ${p.client}, this is ${p.org}, confirming our consultation: ${WORDS.en.when(p)}, for ${p.minutes} minutes,`,
-    changed: (p) =>
-      `Hello ${p.client}, this is ${p.org}. Our consultation has changed. It is now ${WORDS.en.when(p)}, for ${p.minutes} minutes,`,
-    cancelled: (p) =>
-      `Hello ${p.client}, this is ${p.org}. Our consultation on ${WORDS.en.when(p)} is cancelled.`,
-    how: {
-      video: (p) => `by video call. The link: ${p.link}`,
-      videoNoLink: () => 'by video call.',
-      inPerson: (p) => `in person at ${p.where}.`,
-      inPersonNoWhere: () => 'in person.',
-      phone: () => 'by phone. We’ll call you.',
+    booked: {
+      video: (p) =>
+        `Hello ${p.client}, this is ${p.org}, confirming our consultation: ${p.day} at ${p.time} ${p.city} time, for ${p.minutes} minutes, by video call. The link: ${p.link}`,
+      videoNoLink: (p) =>
+        `Hello ${p.client}, this is ${p.org}, confirming our consultation: ${p.day} at ${p.time} ${p.city} time, for ${p.minutes} minutes, by video call.`,
+      inPerson: (p) =>
+        `Hello ${p.client}, this is ${p.org}, confirming our consultation: ${p.day} at ${p.time} ${p.city} time, for ${p.minutes} minutes, in person at ${p.where}.`,
+      inPersonNoWhere: (p) =>
+        `Hello ${p.client}, this is ${p.org}, confirming our consultation: ${p.day} at ${p.time} ${p.city} time, for ${p.minutes} minutes, in person.`,
+      phone: (p) =>
+        `Hello ${p.client}, this is ${p.org}, confirming our consultation: ${p.day} at ${p.time} ${p.city} time, for ${p.minutes} minutes, by phone. We’ll call you.`,
     },
+    changed: {
+      video: (p) =>
+        `Hello ${p.client}, this is ${p.org}. Our consultation has changed. It is now ${p.day} at ${p.time} ${p.city} time, for ${p.minutes} minutes, by video call. The link: ${p.link}`,
+      videoNoLink: (p) =>
+        `Hello ${p.client}, this is ${p.org}. Our consultation has changed. It is now ${p.day} at ${p.time} ${p.city} time, for ${p.minutes} minutes, by video call.`,
+      inPerson: (p) =>
+        `Hello ${p.client}, this is ${p.org}. Our consultation has changed. It is now ${p.day} at ${p.time} ${p.city} time, for ${p.minutes} minutes, in person at ${p.where}.`,
+      inPersonNoWhere: (p) =>
+        `Hello ${p.client}, this is ${p.org}. Our consultation has changed. It is now ${p.day} at ${p.time} ${p.city} time, for ${p.minutes} minutes, in person.`,
+      phone: (p) =>
+        `Hello ${p.client}, this is ${p.org}. Our consultation has changed. It is now ${p.day} at ${p.time} ${p.city} time, for ${p.minutes} minutes, by phone. We’ll call you.`,
+    },
+    cancelled: (p) =>
+      `Hello ${p.client}, this is ${p.org}. Our consultation on ${p.day} at ${p.time} ${p.city} time is cancelled.`,
     subject: (p) => `Consultation with ${p.org}, ${p.day}`,
     subjectCancelled: (p) => `Consultation cancelled, ${p.day}`,
   },
   es: {
-    when: (p) => `${p.day}, ${p.hour === 1 ? 'a la' : 'a las'} ${p.time}, hora de ${p.city}`,
-    booked: (p) =>
-      `Hola ${p.client}, le escribe ${p.org} para confirmar nuestra consulta: ${WORDS.es.when(p)}, durante ${p.minutes} minutos,`,
-    changed: (p) =>
-      `Hola ${p.client}, le escribe ${p.org}. Nuestra consulta ha cambiado. Ahora es el ${WORDS.es.when(p)}, durante ${p.minutes} minutos,`,
-    cancelled: (p) =>
-      `Hola ${p.client}, le escribe ${p.org}. Nuestra consulta del ${WORDS.es.when(p)} queda cancelada.`,
-    how: {
-      video: (p) => `por videollamada. El enlace: ${p.link}`,
-      videoNoLink: () => 'por videollamada.',
-      inPerson: (p) => `en persona, en ${p.where}.`,
-      inPersonNoWhere: () => 'en persona.',
-      phone: () => 'por teléfono. Le llamaremos.',
+    booked: {
+      video: (p) =>
+        `Hola ${p.client}, le escribe ${p.org} para confirmar nuestra consulta: ${p.day}, ${p.hour === 1 ? 'a la' : 'a las'} ${p.time}, hora de ${p.city}, durante ${p.minutes} minutos, por videollamada. El enlace: ${p.link}`,
+      videoNoLink: (p) =>
+        `Hola ${p.client}, le escribe ${p.org} para confirmar nuestra consulta: ${p.day}, ${p.hour === 1 ? 'a la' : 'a las'} ${p.time}, hora de ${p.city}, durante ${p.minutes} minutos, por videollamada.`,
+      inPerson: (p) =>
+        `Hola ${p.client}, le escribe ${p.org} para confirmar nuestra consulta: ${p.day}, ${p.hour === 1 ? 'a la' : 'a las'} ${p.time}, hora de ${p.city}, durante ${p.minutes} minutos, en persona, en ${p.where}.`,
+      inPersonNoWhere: (p) =>
+        `Hola ${p.client}, le escribe ${p.org} para confirmar nuestra consulta: ${p.day}, ${p.hour === 1 ? 'a la' : 'a las'} ${p.time}, hora de ${p.city}, durante ${p.minutes} minutos, en persona.`,
+      phone: (p) =>
+        `Hola ${p.client}, le escribe ${p.org} para confirmar nuestra consulta: ${p.day}, ${p.hour === 1 ? 'a la' : 'a las'} ${p.time}, hora de ${p.city}, durante ${p.minutes} minutos, por teléfono. Le llamaremos.`,
     },
+    changed: {
+      video: (p) =>
+        `Hola ${p.client}, le escribe ${p.org}. Nuestra consulta ha cambiado. Ahora es el ${p.day}, ${p.hour === 1 ? 'a la' : 'a las'} ${p.time}, hora de ${p.city}, durante ${p.minutes} minutos, por videollamada. El enlace: ${p.link}`,
+      videoNoLink: (p) =>
+        `Hola ${p.client}, le escribe ${p.org}. Nuestra consulta ha cambiado. Ahora es el ${p.day}, ${p.hour === 1 ? 'a la' : 'a las'} ${p.time}, hora de ${p.city}, durante ${p.minutes} minutos, por videollamada.`,
+      inPerson: (p) =>
+        `Hola ${p.client}, le escribe ${p.org}. Nuestra consulta ha cambiado. Ahora es el ${p.day}, ${p.hour === 1 ? 'a la' : 'a las'} ${p.time}, hora de ${p.city}, durante ${p.minutes} minutos, en persona, en ${p.where}.`,
+      inPersonNoWhere: (p) =>
+        `Hola ${p.client}, le escribe ${p.org}. Nuestra consulta ha cambiado. Ahora es el ${p.day}, ${p.hour === 1 ? 'a la' : 'a las'} ${p.time}, hora de ${p.city}, durante ${p.minutes} minutos, en persona.`,
+      phone: (p) =>
+        `Hola ${p.client}, le escribe ${p.org}. Nuestra consulta ha cambiado. Ahora es el ${p.day}, ${p.hour === 1 ? 'a la' : 'a las'} ${p.time}, hora de ${p.city}, durante ${p.minutes} minutos, por teléfono. Le llamaremos.`,
+    },
+    cancelled: (p) =>
+      `Hola ${p.client}, le escribe ${p.org}. Nuestra consulta del ${p.day}, ${p.hour === 1 ? 'a la' : 'a las'} ${p.time}, hora de ${p.city} queda cancelada.`,
     subject: (p) => `Consulta con ${p.org}, ${p.day}`,
     subjectCancelled: (p) => `Consulta cancelada, ${p.day}`,
   },
   fr: {
-    when: (p) => `${p.day} à ${p.time}, heure de ${p.city}`,
-    booked: (p) =>
-      `Bonjour ${p.client}, ici ${p.org}, pour confirmer notre consultation : ${WORDS.fr.when(p)}, pendant ${p.minutes} minutes,`,
-    changed: (p) =>
-      `Bonjour ${p.client}, ici ${p.org}. Notre consultation a changé. Elle aura lieu ${WORDS.fr.when(p)}, pendant ${p.minutes} minutes,`,
-    cancelled: (p) =>
-      `Bonjour ${p.client}, ici ${p.org}. Notre consultation du ${WORDS.fr.when(p)} est annulée.`,
-    how: {
-      video: (p) => `en visioconférence. Le lien : ${p.link}`,
-      videoNoLink: () => 'en visioconférence.',
-      inPerson: (p) => `en personne, ${p.where}.`,
-      inPersonNoWhere: () => 'en personne.',
-      phone: () => 'par téléphone. Nous vous appellerons.',
+    booked: {
+      video: (p) =>
+        `Bonjour ${p.client}, ici ${p.org}, pour confirmer notre consultation : ${p.day} à ${p.time}, heure de ${p.city}, pendant ${p.minutes} minutes, en visioconférence. Le lien : ${p.link}`,
+      videoNoLink: (p) =>
+        `Bonjour ${p.client}, ici ${p.org}, pour confirmer notre consultation : ${p.day} à ${p.time}, heure de ${p.city}, pendant ${p.minutes} minutes, en visioconférence.`,
+      inPerson: (p) =>
+        `Bonjour ${p.client}, ici ${p.org}, pour confirmer notre consultation : ${p.day} à ${p.time}, heure de ${p.city}, pendant ${p.minutes} minutes, en personne, ${p.where}.`,
+      inPersonNoWhere: (p) =>
+        `Bonjour ${p.client}, ici ${p.org}, pour confirmer notre consultation : ${p.day} à ${p.time}, heure de ${p.city}, pendant ${p.minutes} minutes, en personne.`,
+      phone: (p) =>
+        `Bonjour ${p.client}, ici ${p.org}, pour confirmer notre consultation : ${p.day} à ${p.time}, heure de ${p.city}, pendant ${p.minutes} minutes, par téléphone. Nous vous appellerons.`,
     },
+    changed: {
+      video: (p) =>
+        `Bonjour ${p.client}, ici ${p.org}. Notre consultation a changé. Elle aura lieu ${p.day} à ${p.time}, heure de ${p.city}, pendant ${p.minutes} minutes, en visioconférence. Le lien : ${p.link}`,
+      videoNoLink: (p) =>
+        `Bonjour ${p.client}, ici ${p.org}. Notre consultation a changé. Elle aura lieu ${p.day} à ${p.time}, heure de ${p.city}, pendant ${p.minutes} minutes, en visioconférence.`,
+      inPerson: (p) =>
+        `Bonjour ${p.client}, ici ${p.org}. Notre consultation a changé. Elle aura lieu ${p.day} à ${p.time}, heure de ${p.city}, pendant ${p.minutes} minutes, en personne, ${p.where}.`,
+      inPersonNoWhere: (p) =>
+        `Bonjour ${p.client}, ici ${p.org}. Notre consultation a changé. Elle aura lieu ${p.day} à ${p.time}, heure de ${p.city}, pendant ${p.minutes} minutes, en personne.`,
+      phone: (p) =>
+        `Bonjour ${p.client}, ici ${p.org}. Notre consultation a changé. Elle aura lieu ${p.day} à ${p.time}, heure de ${p.city}, pendant ${p.minutes} minutes, par téléphone. Nous vous appellerons.`,
+    },
+    cancelled: (p) =>
+      `Bonjour ${p.client}, ici ${p.org}. Notre consultation du ${p.day} à ${p.time}, heure de ${p.city} est annulée.`,
     subject: (p) => `Consultation avec ${p.org}, ${p.day}`,
     subjectCancelled: (p) => `Consultation annulée, ${p.day}`,
   },
   pt: {
-    when: (p) => `${p.day}, ${p.hour === 1 ? 'à' : 'às'} ${p.time}, hora de ${p.city}`,
-    booked: (p) =>
-      `Olá ${p.client}, escreve-lhe ${p.org} para confirmar a nossa consulta: ${WORDS.pt.when(p)}, durante ${p.minutes} minutos,`,
-    changed: (p) =>
-      `Olá ${p.client}, escreve-lhe ${p.org}. A nossa consulta mudou. Passa a ser ${WORDS.pt.when(p)}, durante ${p.minutes} minutos,`,
-    cancelled: (p) =>
-      `Olá ${p.client}, escreve-lhe ${p.org}. A nossa consulta de ${WORDS.pt.when(p)} foi cancelada.`,
-    how: {
-      video: (p) => `por videochamada. O link: ${p.link}`,
-      videoNoLink: () => 'por videochamada.',
-      inPerson: (p) => `presencialmente, em ${p.where}.`,
-      inPersonNoWhere: () => 'presencialmente.',
-      phone: () => 'por telefone. Nós ligamos-lhe.',
+    booked: {
+      video: (p) =>
+        `Olá ${p.client}, escreve-lhe ${p.org} para confirmar a nossa consulta: ${p.day}, ${p.hour === 1 ? 'à' : 'às'} ${p.time}, hora de ${p.city}, durante ${p.minutes} minutos, por videochamada. O link: ${p.link}`,
+      videoNoLink: (p) =>
+        `Olá ${p.client}, escreve-lhe ${p.org} para confirmar a nossa consulta: ${p.day}, ${p.hour === 1 ? 'à' : 'às'} ${p.time}, hora de ${p.city}, durante ${p.minutes} minutos, por videochamada.`,
+      inPerson: (p) =>
+        `Olá ${p.client}, escreve-lhe ${p.org} para confirmar a nossa consulta: ${p.day}, ${p.hour === 1 ? 'à' : 'às'} ${p.time}, hora de ${p.city}, durante ${p.minutes} minutos, presencialmente, em ${p.where}.`,
+      inPersonNoWhere: (p) =>
+        `Olá ${p.client}, escreve-lhe ${p.org} para confirmar a nossa consulta: ${p.day}, ${p.hour === 1 ? 'à' : 'às'} ${p.time}, hora de ${p.city}, durante ${p.minutes} minutos, presencialmente.`,
+      phone: (p) =>
+        `Olá ${p.client}, escreve-lhe ${p.org} para confirmar a nossa consulta: ${p.day}, ${p.hour === 1 ? 'à' : 'às'} ${p.time}, hora de ${p.city}, durante ${p.minutes} minutos, por telefone. Nós ligamos-lhe.`,
     },
+    changed: {
+      video: (p) =>
+        `Olá ${p.client}, escreve-lhe ${p.org}. A nossa consulta mudou. Passa a ser ${p.day}, ${p.hour === 1 ? 'à' : 'às'} ${p.time}, hora de ${p.city}, durante ${p.minutes} minutos, por videochamada. O link: ${p.link}`,
+      videoNoLink: (p) =>
+        `Olá ${p.client}, escreve-lhe ${p.org}. A nossa consulta mudou. Passa a ser ${p.day}, ${p.hour === 1 ? 'à' : 'às'} ${p.time}, hora de ${p.city}, durante ${p.minutes} minutos, por videochamada.`,
+      inPerson: (p) =>
+        `Olá ${p.client}, escreve-lhe ${p.org}. A nossa consulta mudou. Passa a ser ${p.day}, ${p.hour === 1 ? 'à' : 'às'} ${p.time}, hora de ${p.city}, durante ${p.minutes} minutos, presencialmente, em ${p.where}.`,
+      inPersonNoWhere: (p) =>
+        `Olá ${p.client}, escreve-lhe ${p.org}. A nossa consulta mudou. Passa a ser ${p.day}, ${p.hour === 1 ? 'à' : 'às'} ${p.time}, hora de ${p.city}, durante ${p.minutes} minutos, presencialmente.`,
+      phone: (p) =>
+        `Olá ${p.client}, escreve-lhe ${p.org}. A nossa consulta mudou. Passa a ser ${p.day}, ${p.hour === 1 ? 'à' : 'às'} ${p.time}, hora de ${p.city}, durante ${p.minutes} minutos, por telefone. Nós ligamos-lhe.`,
+    },
+    cancelled: (p) =>
+      `Olá ${p.client}, escreve-lhe ${p.org}. A nossa consulta de ${p.day}, ${p.hour === 1 ? 'à' : 'às'} ${p.time}, hora de ${p.city} foi cancelada.`,
     subject: (p) => `Consulta com ${p.org}, ${p.day}`,
     subjectCancelled: (p) => `Consulta cancelada, ${p.day}`,
   },
@@ -274,10 +327,8 @@ export function messageOf(
   if (said === 'cancelled')
     return { body: words.cancelled(parts), subject: words.subjectCancelled(parts) };
 
-  const opening = said === 'changed' ? words.changed(parts) : words.booked(parts);
-
   return {
-    body: `${opening} ${words.how[variantOf(consultation)](parts)}`,
+    body: words[said][variantOf(consultation)](parts),
     subject: words.subject(parts),
   };
 }

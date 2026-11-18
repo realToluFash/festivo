@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
+import { type Draft, consultationOf, draftOf } from './consultations.ts';
+import { PEOPLE } from './enquiries.ts';
 import {
   ANA,
   EVERY_WAY,
@@ -140,6 +142,24 @@ describe('which message is offered', () => {
 
   it('ignores Led by', () => {
     expect(saidOf({ ...TOLD.video, ledBy: 'kemi' }, asBooked(TOLD.video), TELL_NOW)).toBe('booked');
+  });
+
+  it('counts a change saved from the form only when the consultation moved', () => {
+    const saved = (patch: Partial<Draft>) => {
+      const made = consultationOf(
+        { ...draftOf(TOLD.video, ANA, PEOPLE.folake), ...patch },
+        TOLD.video.id,
+      );
+
+      if (made == null) throw new Error('the form did not save');
+
+      return saidOf(made, rebooked(asBooked(TOLD.video), made), TELL_NOW);
+    };
+
+    expect(saved({})).toBe('booked');
+    expect(saved({ ledBy: 'kemi' })).toBe('booked');
+    expect(saved({ time: '16:00' })).toBe('changed');
+    expect(saved({ minutes: 30 })).toBe('changed');
   });
 });
 
