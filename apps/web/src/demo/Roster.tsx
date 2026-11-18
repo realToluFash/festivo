@@ -31,6 +31,7 @@ import {
   draftOf,
   entryFrom,
   firstWrong,
+  jobLocked,
   jobOf,
   linkOf,
   memberOf,
@@ -38,7 +39,7 @@ import {
   problemsOf,
   rosterStart,
   sharesNumber,
-  shiftLine,
+  shiftLines,
   sorted,
 } from './roster.ts';
 import { COUNTRIES, codeChoice } from './rules.ts';
@@ -115,11 +116,21 @@ function RosterView({
   const { manage, finished, erased } = first;
 
   useEffect(() => {
-    if (first.warning != null) document.getElementById('rs-warning')?.focus();
-    else if (first.pressed) {
-      const wrong = firstWrong(problemsOf(first.draft, !first.erased));
-      if (wrong != null) document.getElementById(FIELD_IDS[wrong])?.focus();
+    if (first.warning != null) {
+      document.getElementById('rs-warning')?.focus();
+      return;
     }
+    if (!first.pressed) return;
+    const wrong = firstWrong(problemsOf(first.draft, !first.erased));
+    if (wrong != null) {
+      document.getElementById(FIELD_IDS[wrong])?.focus();
+      return;
+    }
+    const was =
+      first.panel?.kind === 'edit'
+        ? (first.entries.find((one) => one.id === (first.panel as { id: string }).id) ?? null)
+        : null;
+    if (jobLocked(was, first.draft) != null) document.getElementById('rs-f-job')?.focus();
   }, [first]);
 
   useEffect(() => {
@@ -178,6 +189,12 @@ function RosterView({
       focusAfter.current = FIELD_IDS[wrong];
       return;
     }
+    if (jobLocked(editing, draft) != null) {
+      setPressed(true);
+      setWarning(null);
+      focusAfter.current = 'rs-f-job';
+      return;
+    }
     const shared = anyway || !contact ? null : sharesNumber(entries, draft, editing);
     if (shared != null) {
       setWarning(shared.name);
@@ -212,7 +229,7 @@ function RosterView({
     const gone = shown(id);
     setEntries(entries.filter((one) => one.id !== id));
     setPanel(null);
-    say([RW.removed(gone.name)]);
+    say([RW.removed(gone.name, shiftLines(gone).length)]);
     focusAfter.current = 'rs-roster';
   }
 
@@ -344,6 +361,9 @@ function RosterView({
                           </td>
                           <td className={one.shift == null ? 'rs-quiet' : 'rs-shift'}>
                             {one.shift ?? RW.noShift}
+                            {one.more.length > 0 && (
+                              <span className="rs-more">{RW.more(one.more.length)}</span>
+                            )}
                           </td>
                           <td>
                             <LinkWord state={linkOf(one, erased)} />
@@ -389,6 +409,7 @@ function RosterView({
                   warning={warning}
                   failed={failed}
                   editing={editing != null}
+                  locked={pressed ? jobLocked(editing, draft) : null}
                   onChange={change}
                   onSubmit={() => submit(false)}
                   onAnyway={() => submit(true)}
@@ -460,7 +481,13 @@ function Details({
         <dl className="rs-facts">
           <div>
             <dt>{RW.shift}</dt>
-            <dd>{shiftLine(entry)}</dd>
+            <dd>
+              <ul className="rs-shifts">
+                {shiftLines(entry).map((line) => (
+                  <li key={line}>{line}</li>
+                ))}
+              </ul>
+            </dd>
           </div>
           <div>
             <dt>{RW.station}</dt>
@@ -545,7 +572,13 @@ function RemoveAsk({
         </div>
       </div>
       <div className="mn-panel-body">
-        <p className="rs-ask-shift">{shiftLine(entry)}</p>
+        <ul className="rs-shifts">
+          {shiftLines(entry).map((line) => (
+            <li key={line} className="rs-ask-shift">
+              {line}
+            </li>
+          ))}
+        </ul>
         <p className="mn-quiet">{RW.stopsWorking}</p>
       </div>
       <div className="mn-panel-foot">
@@ -570,6 +603,7 @@ function PersonForm({
   warning,
   failed,
   editing,
+  locked,
   onChange,
   onSubmit,
   onAnyway,
@@ -583,6 +617,7 @@ function PersonForm({
   warning: string | null;
   failed: string | null;
   editing: boolean;
+  locked: string | null;
   onChange: (next: Partial<Draft>) => void;
   onSubmit: () => void;
   onAnyway: () => void;
@@ -722,12 +757,22 @@ function PersonForm({
             id="rs-f-job"
             value={draft.job}
             shown={draft.job === '' ? RW.noJob : draft.job}
+            wrong={locked != null}
+            describedBy={locked == null ? undefined : 'rs-f-job-error rs-f-job-help'}
             onChange={(value) => onChange({ job: value, shift: jobOf(value)?.shifts[0] ?? '' })}
             options={[
               { value: '', label: RW.noJob },
               ...JOBS.map((one) => ({ value: one.job, label: one.job })),
             ]}
           />
+          {locked != null && (
+            <>
+              <Wrong id="rs-f-job-error">{locked}</Wrong>
+              <p id="rs-f-job-help" className="desk-help">
+                {RW.jobLockedHelp}
+              </p>
+            </>
+          )}
         </div>
         {job != null && (
           <div className="desk-field">

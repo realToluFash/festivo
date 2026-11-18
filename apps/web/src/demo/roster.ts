@@ -17,6 +17,7 @@ export interface Entry {
   job: string | null;
   station: string | null;
   shift: string | null;
+  more: readonly string[];
   mobile: string | null;
   email: string | null;
   link: 'opened' | 'sent' | 'copied' | 'none';
@@ -81,7 +82,11 @@ export const RW = {
   added: (name: string) => `${name} added to the roster.`,
   member: (name: string) =>
     `${name} is a member of ${ORGANISATION}. Their shift will appear in their app.`,
-  removed: (name: string) => `[${name} removed from the event. Their shift is unassigned.]`,
+  removed: (name: string, shifts: number) =>
+    `[${name} removed from the event. ${shifts > 1 ? 'Their shifts are' : 'Their shift is'} unassigned.]`,
+  more: (n: number) => `+${n} more`,
+  jobLocked: (name: string) => `Unassign ${name} from their shifts first.`,
+  jobLockedHelp: 'Their job can change once they are on no shift.',
   notAdded: (name: string) => `[${name} was not added.]`,
   removeAsk: (name: string) => `Remove ${name} from the event?`,
   editTitle: (name: string) => `Edit ${name}`,
@@ -174,6 +179,21 @@ export function shiftLine(entry: Entry): string {
   return entry.job == null || entry.shift == null ? RW.noShift : `${entry.job} · ${entry.shift}`;
 }
 
+/** Every shift by start, each by job and times: the details and Remove's question. */
+export function shiftLines(entry: Entry): string[] {
+  if (entry.job == null || entry.shift == null) return [RW.noShift];
+
+  return [entry.shift, ...entry.more].map((one) => `${entry.job} · ${one}`);
+}
+
+/** A person has one job on the event: it changes only while they are on no shift (Decided, 18 Nov 2026). */
+export function jobLocked(editing: Entry | null, draft: Draft): string | null {
+  if (editing == null || editing.shift == null) return null;
+  if ((draft.job === '' ? null : draft.job) === editing.job) return null;
+
+  return RW.jobLocked(editing.name);
+}
+
 export function nextLine(entries: readonly Entry[], finished: boolean): string | null {
   if (finished) return RW.nextHours;
   const unsent = entries.some(
@@ -255,6 +275,7 @@ export function entryFrom(draft: Draft, before: Entry | null): Entry {
     station:
       before != null && before.job === job ? before.station : (jobOf(draft.job)?.station ?? null),
     shift: job == null || draft.shift === '' ? null : draft.shift,
+    more: before != null && before.job === job && before.shift === draft.shift ? before.more : [],
     mobile,
     email: draft.email.trim() === '' ? null : draft.email.trim(),
     link: before != null && before.mobile === mobile ? before.link : 'none',
@@ -283,7 +304,7 @@ const entry = (
   mobile: string | null,
   link: Entry['link'],
   email: string | null = null,
-): Entry => ({ id, name, job, station, shift, mobile, email, link });
+): Entry => ({ id, name, job, station, shift, more: [], mobile, email, link });
 
 export function sample(): Entry[] {
   return [
@@ -300,7 +321,10 @@ export function sample(): Entry[] {
       'opened',
     ),
     entry('sade', 'Sade Lawal', 'Bar', 'Bar', '16:00 to 01:00', '+2348031110006', 'sent'),
-    entry('tolu', 'Tolu Bello', 'Door', 'Door', '16:30 to 21:00', '+2348031110007', 'none'),
+    {
+      ...entry('tolu', 'Tolu Bello', 'Door', 'Door', '16:30 to 21:00', '+2348031110007', 'none'),
+      more: ['23:00 to 02:00'],
+    },
     entry(
       'amina',
       'Amina Yusuf',
@@ -428,6 +452,7 @@ const STATES = {
           job: 'Waiter',
           station: null,
           shift: '17:00 to 00:00',
+          more: [],
           mobile: '+2348031110013',
           email: null,
           link: 'none',
@@ -447,6 +472,7 @@ const STATES = {
           job: 'Door',
           station: 'Door',
           shift: '16:30 to 21:00',
+          more: [],
           mobile: '+2348035550142',
           email: null,
           link: 'none',
@@ -481,6 +507,26 @@ const STATES = {
       name: 'Remove, the question',
       note: 'Their shift by job and times, and Keep them.',
       panel: { kind: 'remove', id: 'kunle' },
+    }),
+  removeTwoShifts: () =>
+    start({
+      name: 'Remove, someone on two shifts',
+      note: 'Tolu Bello: each shift named by job and times; each place is left open.',
+      panel: { kind: 'remove', id: 'tolu' },
+    }),
+  detailsShifts: () =>
+    start({
+      name: 'Details, every shift',
+      note: 'Tolu Bello is on two Door shifts: the row reads +1 more, the details list both by start.',
+      panel: { kind: 'details', id: 'tolu' },
+    }),
+  editJobOnShift: () =>
+    start({
+      name: 'Edit, the job changed while on a shift',
+      note: 'Kunle Ajayi from Waiter to Bar: refused until he is on no shift.',
+      panel: { kind: 'edit', id: 'kunle' },
+      draft: { ...draftOf(byId('kunle')), job: 'Bar', shift: '16:00 to 01:00' },
+      pressed: true,
     }),
   finishedEvent: () =>
     start({
@@ -539,7 +585,15 @@ export const ROSTER_PAGES: readonly { name: string; states: readonly DemoLink[] 
   {
     name: 'The roster, and a person’s details',
     states: (
-      ['populated', 'empty', 'details', 'readOnly', 'finishedEvent', 'finishedErased'] as const
+      [
+        'populated',
+        'empty',
+        'details',
+        'detailsShifts',
+        'readOnly',
+        'finishedEvent',
+        'finishedErased',
+      ] as const
     ).map(link),
   },
   {
@@ -559,6 +613,8 @@ export const ROSTER_PAGES: readonly { name: string; states: readonly DemoLink[] 
   },
   {
     name: 'Editing and removing',
-    states: (['edit', 'editDuplicateNumber', 'removeAsk'] as const).map(link),
+    states: (
+      ['edit', 'editJobOnShift', 'editDuplicateNumber', 'removeAsk', 'removeTwoShifts'] as const
+    ).map(link),
   },
 ];
