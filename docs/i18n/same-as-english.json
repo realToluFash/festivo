@@ -176,7 +176,8 @@
     "messagesCounts:guest_export.column.allergies",
     "messagesCounts:guest_export.column.places",
     "messagesCounts:guest_export.allergen.lupin",
-    "messagesCounts:guest_export.diet.halal"
+    "messagesCounts:guest_export.diet.halal",
+    "web:vendors.categories.transport"
   ],
   "pt": [
     "web:seating.shapeCocktailShort",
