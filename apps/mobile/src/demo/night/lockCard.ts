@@ -313,6 +313,16 @@ export const CARD_STATES = {
       }),
     cards: [{ track: 'hall', asOf: '20:31', waiting: 2 }],
   },
+  server_replaced: {
+    name: 'Signal back, phone still locked: someone else’s press at 20:32 replaces this device’s card, the server’s Now and Next, without this device’s waiting Done and with no count',
+    night: () =>
+      pressSkip(
+        sceneNight({ ...SPEAKING_LATE, clock: '20:32', online: false, queued: 1 }),
+        'hall',
+        'cake',
+      ),
+    cards: [{ track: 'hall', asOf: '20:32' }],
+  },
   end: {
     name: 'The end: That’s everything. only',
     night: () =>

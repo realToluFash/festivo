@@ -60,6 +60,14 @@ describe('the card at each board state', () => {
     ]);
   });
 
+  it('takes the server’s card over this device’s own once signal is back, with no count', () => {
+    const lines = shown('server_replaced')[0] ?? [];
+
+    expect(lines[1]).toBe('Speeches · since 20:27');
+    expect(lines[2]).toMatch(/^Next: First dance · about /);
+    expect(lines[3]).toBe('As of 20:32');
+  });
+
   it('ends on That’s everything. alone', () => {
     expect(shown('end')).toEqual([[TITLE, 'That’s everything.']]);
   });
