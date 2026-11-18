@@ -30,6 +30,7 @@ import { TextAction } from './SummaryRows.tsx';
 import { useShell } from './settingsShell.ts';
 import { Avatar, Back } from './SettingsParts.tsx';
 import { TitleFocus } from './SummaryOverlays.tsx';
+import { capInDisc } from '../layout/textSize.ts';
 
 export {
   bringIntoView,
@@ -313,7 +314,7 @@ export function CardCounts({
   return (
     <View style={styles.counts} accessible accessibilityLabel={label}>
       {counts.map(({ value, word }) => (
-        <View key={word}>
+        <View key={word} style={styles.count}>
           <Text size={30} weight="bold" accessible={false} style={[styles.white, styles.number]}>
             {String(value)}
           </Text>
@@ -376,11 +377,11 @@ export function Faces({
         <View style={[styles.ring, ringed, styles.overlap]}>
           <View style={[styles.more, { width: side, height: side, borderRadius: side / 2 }]}>
             <Text
-              size={13}
+              size={MORE_SIZE}
               weight="bold"
               accessible={false}
               numberOfLines={1}
-              maxFontSizeMultiplier={1}
+              maxFontSizeMultiplier={capInDisc(side, MORE_SIZE)}
               style={styles.accent}
             >
               {moreChip(more)}
@@ -391,6 +392,8 @@ export function Faces({
     </View>
   );
 }
+
+const MORE_SIZE = 13;
 
 /** A person's initials as a white disc on Confetti, as on the Settings card. */
 export function CardFace({ name, side }: { name: string; side: number }) {
@@ -602,7 +605,8 @@ const styles = StyleSheet.create({
   white: { color: tokens.colorInkOnDark },
   says: { maxWidth: '80%' },
   onCard: { lineHeight: 14.5 * 1.4 },
-  counts: { flexDirection: 'row', gap: 26 },
+  counts: { flexDirection: 'row', flexWrap: 'wrap', gap: 26 },
+  count: { flexShrink: 0 },
   number: { lineHeight: 33, fontVariant: ['tabular-nums'] },
   accent: { color: tokens.colorAccentText },
   secondary: { color: tokens.colorInkSecondary },

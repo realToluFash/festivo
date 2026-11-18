@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   bandPlace,
   breakableEmail,
+  capInDisc,
   capUnderTitle,
   drawnLine,
   fitWidest,
@@ -65,6 +66,29 @@ describe('capUnderTitle', () => {
 
   it('never asks for less than the default size', () => {
     expect(capUnderTitle(26, 28)).toBe(1);
+  });
+});
+
+describe('capInDisc', () => {
+  it('never lets initials draw past half the disc, at any scale (sc-37693)', () => {
+    for (const [side, size] of [
+      [40, 14],
+      [34, 12],
+      [34, 13],
+      [56, 20],
+    ] as const) {
+      for (const scale of [1, AX1, AX2, 3.1]) {
+        expect(size * Math.min(scale, capInDisc(side, size))).toBeLessThanOrEqual(side * 0.5);
+      }
+    }
+  });
+
+  it("lets a 40 disc's initials grow to 20", () => {
+    expect(14 * capInDisc(40, 14)).toBeCloseTo(20);
+  });
+
+  it('never asks for less than the default size', () => {
+    expect(capInDisc(20, 12)).toBe(1);
   });
 });
 

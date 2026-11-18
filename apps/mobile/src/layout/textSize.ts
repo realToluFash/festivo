@@ -30,6 +30,11 @@ export function capUnderTitle(title: number, size: number, own?: number): number
   return Math.max(1, Math.min(own ?? Infinity, title / size));
 }
 
+/** The most a disc's initials of `size` may grow: to half the disc's side, which keeps its size at every text size (sc-37693). */
+export function capInDisc(side: number, size: number): number {
+  return Math.max(1, (side * 0.5) / size);
+}
+
 // An iPhone SE or mini is 375 across; an iPhone 17 Pro, 402.
 const COMPACT_PHONE_SIDE = 390;
 
