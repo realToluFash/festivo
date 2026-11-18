@@ -171,10 +171,10 @@
     "run_of_show.card.nothing_else": "Plus rien n’est prévu dans l’espace {place}.",
     "run_of_show.card.as_of": "Mise à jour : {hour, plural, other {{time}}}",
     "run_of_show.card.everything": "C’est tout.",
-    "validation.vendor_name_too_long": "Shorten the name to {count, number, ::group-auto} characters or fewer.",
-    "validation.vendor_contact_name_too_long": "Shorten the contact name to {count, number, ::group-auto} characters or fewer.",
-    "validation.vendor_email_too_long": "Shorten the email address to {count, number, ::group-auto} characters or fewer.",
-    "validation.vendor_website_too_long": "Shorten the website to {count, number, ::group-auto} characters or fewer.",
-    "validation.vendor_address_too_long": "Shorten the address to {count, number, ::group-auto} characters or fewer.",
-    "validation.vendor_note_too_long": "Shorten the note to {count, number, ::group-auto} characters or fewer."
+    "validation.vendor_name_too_long": "Raccourcissez le nom à {count, number, ::group-auto} caractères maximum.",
+    "validation.vendor_contact_name_too_long": "Raccourcissez le nom du contact à {count, number, ::group-auto} caractères maximum.",
+    "validation.vendor_email_too_long": "Raccourcissez l’adresse e-mail à {count, number, ::group-auto} caractères maximum.",
+    "validation.vendor_website_too_long": "Raccourcissez l’adresse du site web à {count, number, ::group-auto} caractères maximum.",
+    "validation.vendor_address_too_long": "Raccourcissez l’adresse à {count, number, ::group-auto} caractères maximum.",
+    "validation.vendor_note_too_long": "Raccourcissez la remarque à {count, number, ::group-auto} caractères maximum."
 }
