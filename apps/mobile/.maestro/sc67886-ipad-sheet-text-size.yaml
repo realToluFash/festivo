@@ -6,7 +6,9 @@
 #
 # Set the size and turn the iPad to landscape first: the flow relaunches Expo Go, so the sheet shows at that size.
 # Each field, the eye and Forgot your password? are tapped at their foot, where Sign in drew over them (QA #67877):
-# a tap there that reaches Sign in instead leaves the typed text out of the field, or shows a refusal.
+# a tap there that reaches Sign in instead leaves the typed text out of the field, or shows a refusal. The password is
+# tapped again once the keys have gone down (QA #68774), and Forgot your password? is reached after the refusal.
+# The keys go down by the iPad's hide key, never hideKeyboard, which stops the flow on an iPad.
 appId: host.exp.Exponent
 ---
 # Welcome reached by a link has nothing under Sign in, which then opens full screen: sign out to reach it.
@@ -17,9 +19,7 @@ appId: host.exp.Exponent
     visible:
       id: 'signIn.email'
     timeout: 20000
-- hideKeyboard
-- waitForAnimationToEnd:
-    timeout: 3000
+- runFlow: keys-down-ipad-sheet.yaml
 - takeScreenshot: sc67886-ipad-sheet-top
 - tapOn:
     id: 'signIn.email'
@@ -30,9 +30,7 @@ appId: host.exp.Exponent
     id: 'signIn.email'
     text: 'qa-sc67886@example.com'
 - assertNotVisible: 'Enter your password.'
-- hideKeyboard
-- waitForAnimationToEnd:
-    timeout: 3000
+- runFlow: keys-down-ipad-sheet.yaml
 - takeScreenshot: sc67886-ipad-sheet-typed
 - scrollUntilVisible:
     element:
@@ -52,7 +50,24 @@ appId: host.exp.Exponent
     text: 'not-the-password'
 - assertNotVisible: 'That email and password do not match. Check both, or reset your password.'
 - takeScreenshot: sc67886-ipad-sheet-keys-up
-- hideKeyboard
+- runFlow: keys-down-ipad-sheet.yaml
+- takeScreenshot: sc67886-ipad-sheet-keys-down-again
+- scrollUntilVisible:
+    element:
+      id: 'signIn.password'
+    centerElement: true
+- tapOn:
+    id: 'signIn.password'
+    point: '50%,92%'
+- inputText: '-again'
+- assertVisible:
+    id: 'signIn.password'
+    text: 'not-the-password-again'
+- pressKey: Enter
+- extendedWaitUntil:
+    visible: 'That email and password do not match. Check both, or reset your password.'
+    timeout: 10000
+- runFlow: keys-down-ipad-sheet.yaml
 - scrollUntilVisible:
     element:
       id: 'signIn.forgot'

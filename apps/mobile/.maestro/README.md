@@ -270,6 +270,10 @@ link, which in Expo Go lands on Home (sc-22740): each starts from Home or from a
   `tapOn: point: '2%,45%'`, since `hideKeyboard` hangs there. That point is for a phone only: on a
   tablet it lands in the settings split list and opens another section. Their Android copies,
   `sc9674-a-*`, press `pressKey: back` instead.
+- **On an iPad, the keys go down by their hide key, never `hideKeyboard`**, which stops the
+  flow there too with "Couldn't hide the keyboard". Tap the key at `point: '97%,97%'`, as
+  `keys-down-ipad.yaml` and `keys-down-ipad-sheet.yaml` do, and only while a field has focus:
+  with the keys already down that point lands outside a sheet and closes it (sc-67886).
 - **On Android, `hideKeyboard` presses Back.** With the keys already down it leaves the screen,
   and on a form with unsaved changes that opens Discard your changes?. Put the keys away on a
   form only while they are up, through `keys-away.yaml`, and never as a precaution before a tap.
