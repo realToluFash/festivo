@@ -25,6 +25,7 @@ use Doctrine\DBAL\Exception\DriverException;
 use Lexik\Bundle\JWTAuthenticationBundle\Services\JWTTokenManagerInterface;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
+use Psl\Dict;
 use Psl\Json;
 use Psl\Str;
 use Psl\Type;
@@ -316,10 +317,10 @@ final class BudgetLinesTest extends ApiTestCase
         $line = $this->add(self::CATERING);
         $topic = 'events/' . $this->eventId . '/budget';
 
-        self::assertSame([$line['id']], $this->published($topic));
+        self::assertSame([$line['id'] => '48.00'], $this->published($topic));
 
         $this->as($this->owner, 'PUT', $this->lines($line['id']), [...self::CATERING, 'rate' => '50']);
-        self::assertSame([$line['id']], $this->published($topic));
+        self::assertSame([$line['id'] => '50.00'], $this->published($topic));
 
         $this->as($this->owner, 'DELETE', $this->lines($line['id']));
         self::assertSame([], $this->published($topic));
@@ -419,14 +420,16 @@ final class BudgetLinesTest extends ApiTestCase
         }
     }
 
-    /** @return list<string> */
+    /** @return array<string, ?string> */
     private function published(string $topic): array
     {
         $update = self::service(RecordingHub::class)->lastOn($topic) ?? self::fail('nothing published');
         self::assertSame([$topic], $update->getTopics());
         self::assertTrue($update->isPrivate());
 
-        return Vec\map(Type\shape(['lines' => Type\vec(Type\shape(['id' => Type\string()], true))], true)->coerce(Json\decode($update->getData()))['lines'], static fn (array $one): string => $one['id']);
+        $lines = Type\shape(['lines' => Type\vec(Type\shape(['id' => Type\string(), 'rate' => Type\nullable(Type\string())], true))], true)->coerce(Json\decode($update->getData()))['lines'];
+
+        return Dict\pull($lines, static fn (array $one): ?string => $one['rate'], static fn (array $one): string => $one['id']);
     }
 
     private function changeCurrency(string $currency): int
