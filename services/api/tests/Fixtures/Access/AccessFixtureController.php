@@ -31,6 +31,13 @@ final class AccessFixtureController
         return new JsonResponse(['reached' => true]);
     }
 
+    #[Route('/api/_access/organisations/{organisationId}/enterprise-on-an-event', name: 'access_fixture_enterprise_on_an_event', methods: ['PUT'])]
+    #[InOrganisation(Permission::MenuManage, orOnAnEvent: true, feature: PlanFeature::EmailDomains)]
+    public function enterpriseOnAnEvent(): JsonResponse
+    {
+        return new JsonResponse(['reached' => true]);
+    }
+
     #[Route('/api/_access/events/{eventId}/tables/{tableId}', name: 'access_fixture_table', methods: ['GET'])]
     #[InEvent(Permission::OrganisationManage)]
     public function table(#[InThisEvent('tableId')] FixtureTable $table): JsonResponse

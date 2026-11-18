@@ -6,6 +6,7 @@ namespace App\Tests\Functional;
 
 use App\Audit\Auditor;
 use App\Domain\Organisation\OrganisationFounder;
+use App\Domain\Organisation\Plan\EnterpriseSettings;
 use App\Domain\Organisation\Plan\PlanChanger;
 use App\Domain\Organisation\Plan\PlanDowngradeMailer;
 use App\Domain\User\UserRegistrar;
@@ -13,6 +14,7 @@ use App\Entity\AuditEntry;
 use App\Entity\Organisation;
 use App\Entity\User;
 use App\Enum\Actor;
+use App\Enum\ErrorCode;
 use App\Enum\Plan;
 use App\Enum\PlanFeature;
 use App\Tests\ApiTestCase;
@@ -108,14 +110,16 @@ final class OrganisationPlanTest extends ApiTestCase
     {
         $domains = new ConfiguredEnterpriseSetting(PlanFeature::EmailDomains, 'ire.events');
         $auditLog = new ConfiguredEnterpriseSetting(PlanFeature::AuditLog);
-        $changer = $this->changer([$domains, $auditLog]);
+        $settings = new EnterpriseSettings([$domains, $auditLog]);
+        $changer = $this->changer($settings);
         $changer->change($this->organisation, Plan::Enterprise, 'Ada at Soirely');
-        self::assertSame('ire.events', $domains->inForce($this->organisation));
+        self::assertTrue($settings->inForce($this->organisation, PlanFeature::EmailDomains));
+        self::assertFalse($settings->inForce($this->organisation, PlanFeature::AuditLog), 'unlocked, and nothing configured to apply');
         self::assertSame([], $this->mails(), 'an upgrade emails nobody');
 
         self::assertSame([PlanFeature::EmailDomains], $changer->change($this->organisation, Plan::Free, 'Ada at Soirely'));
 
-        self::assertNull($domains->inForce($this->organisation), 'switched off');
+        self::assertFalse($settings->inForce($this->organisation, PlanFeature::EmailDomains), 'switched off');
         self::assertSame('ire.events', $domains->value, 'and kept as it was');
         $mails = $this->mails();
         self::assertCount(1, $mails);
@@ -128,20 +132,20 @@ final class OrganisationPlanTest extends ApiTestCase
     #[Test]
     public function anUpgradeSwitchesThemBackOnAsTheyWere(): void
     {
-        $domains = new ConfiguredEnterpriseSetting(PlanFeature::EmailDomains, 'ire.events');
-        $changer = $this->changer([$domains]);
+        $settings = new EnterpriseSettings([new ConfiguredEnterpriseSetting(PlanFeature::EmailDomains, 'ire.events')]);
+        $changer = $this->changer($settings);
         $changer->change($this->organisation, Plan::Enterprise, 'Ada at Soirely');
         $changer->change($this->organisation, Plan::Free, 'Ada at Soirely');
 
         $changer->change($this->organisation, Plan::Enterprise, 'Ada at Soirely');
 
-        self::assertSame('ire.events', $domains->inForce($this->organisation));
+        self::assertTrue($settings->inForce($this->organisation, PlanFeature::EmailDomains));
     }
 
     #[Test]
     public function aDowngradeWithNothingConfiguredEmailsNobody(): void
     {
-        $changer = $this->changer([new ConfiguredEnterpriseSetting(PlanFeature::EmailDomains)]);
+        $changer = $this->changer(new EnterpriseSettings([new ConfiguredEnterpriseSetting(PlanFeature::EmailDomains)]));
         $changer->change($this->organisation, Plan::Enterprise, 'Ada at Soirely');
 
         self::assertSame([], $changer->change($this->organisation, Plan::Free, 'Ada at Soirely'));
@@ -151,7 +155,7 @@ final class OrganisationPlanTest extends ApiTestCase
     #[Test]
     public function thePlanToItselfIsNoChangeAndNotAudited(): void
     {
-        self::assertSame([], $this->changer([])->change($this->organisation, Plan::Free, 'Ada at Soirely'));
+        self::assertSame([], $this->changer(new EnterpriseSettings([]))->change($this->organisation, Plan::Free, 'Ada at Soirely'));
         self::assertNull(self::service(EntityManagerInterface::class)->getRepository(AuditEntry::class)->findOneBy(['action' => PlanChanger::CHANGED, 'subjectId' => $this->organisation->getId()]));
     }
 
@@ -160,7 +164,33 @@ final class OrganisationPlanTest extends ApiTestCase
     {
         $this->expectException(RuntimeException::class);
 
-        $this->changer([])->change($this->organisation, Plan::Enterprise, '  ');
+        $this->changer(new EnterpriseSettings([]))->change($this->organisation, Plan::Enterprise, '  ');
+    }
+
+    /** Through the real directory: the organisation's plan reaches the grants the access check reads, on both of its paths. */
+    #[Test]
+    public function theOwnerChangesAnEnterpriseSettingOnlyWhileTheOrganisationIsOnEnterprise(): void
+    {
+        $this->client->setServerParameter('HTTP_AUTHORIZATION', 'Bearer ' . self::service(JWTTokenManagerInterface::class)->create($this->owner));
+        $organisationId = $this->organisation->getId()->toRfc4122();
+
+        $this->moveTo(Plan::Enterprise);
+
+        foreach (['enterprise', 'enterprise-on-an-event'] as $route) {
+            $this->client->request('PUT', '/api/_access/organisations/' . $organisationId . '/' . $route);
+            self::assertResponseIsSuccessful($route);
+        }
+
+        $this->moveTo(Plan::Free);
+
+        foreach (['enterprise', 'enterprise-on-an-event'] as $route) {
+            $this->client->request('PUT', '/api/_access/organisations/' . $organisationId . '/' . $route);
+            $body = Json\typed((string) $this->client->getResponse()->getContent(), Type\shape(['type' => Type\string(), 'feature' => Type\string()], true));
+
+            self::assertResponseStatusCodeSame(403, $route);
+            self::assertSame(ErrorCode::PlanRequired->type(), $body['type'], $route);
+            self::assertSame(PlanFeature::EmailDomains->value, $body['feature'], $route);
+        }
     }
 
     /** Regression: everything not on the list is open on both plans, and everything on it only on Enterprise. */
@@ -173,8 +203,14 @@ final class OrganisationPlanTest extends ApiTestCase
         }
     }
 
-    /** @param list<ConfiguredEnterpriseSetting> $settings */
-    private function changer(array $settings): PlanChanger
+    /** The production changer, on the organisation as the container now holds it: a request reboots the kernel and clears what was loaded before it. */
+    private function moveTo(Plan $plan): void
+    {
+        $organisation = self::service(EntityManagerInterface::class)->find(Organisation::class, $this->organisation->getId()) ?? self::fail('gone');
+        self::service(PlanChanger::class)->change($organisation, $plan, 'Ada at Soirely');
+    }
+
+    private function changer(EnterpriseSettings $settings): PlanChanger
     {
         return new PlanChanger(
             self::service(Auditor::class),

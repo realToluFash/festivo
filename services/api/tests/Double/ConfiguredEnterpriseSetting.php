@@ -26,10 +26,4 @@ final class ConfiguredEnterpriseSetting implements EnterpriseSettingInterface
     {
         return null !== $this->value;
     }
-
-    /** What the organisation is held to: the value, only while its plan unlocks the setting. */
-    public function inForce(Organisation $organisation): ?string
-    {
-        return $organisation->getPlan()->unlocks($this->feature) ? $this->value : null;
-    }
 }

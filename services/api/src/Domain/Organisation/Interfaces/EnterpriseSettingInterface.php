@@ -8,7 +8,7 @@ use App\Entity\Organisation;
 use App\Enum\PlanFeature;
 use Symfony\Component\DependencyInjection\Attribute\AutoconfigureTag;
 
-/** A setting a plan unlocks, which says whether the organisation has configured it, so a downgrade can name what it switched off (sc-581). */
+/** A setting a plan unlocks, which says only whether the organisation has configured it: its rule is applied after asking `EnterpriseSettings::inForce()`, never this, so a downgrade switches it off (sc-581). */
 #[AutoconfigureTag(self::TAG)]
 interface EnterpriseSettingInterface
 {
