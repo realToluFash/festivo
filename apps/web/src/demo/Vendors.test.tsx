@@ -402,9 +402,10 @@ describe('Settings › Vendors in A · Summary first (sc-82)', () => {
       );
       expect(within(list()).queryByRole('link', { name: 'Vendors' })).toBeNull();
       expect(within(list()).queryByRole('link', { name: 'Members' })).toBeNull();
-      expect(
-        within(main()).getByRole('link', { name: 'Back to Settings' }).getAttribute('href'),
-      ).toBe('/demo/settings/account?as=ana');
+      expect(within(main()).getByRole('alert').textContent).toContain(
+        'Your account does not have permission for this page.',
+      );
+      expect(within(main()).getByRole('button', { name: 'Back to the dashboard' })).toBeDefined();
       expect(within(main()).queryByRole('heading', { name: 'Vendors' })).toBeNull();
       cleanup();
     }
