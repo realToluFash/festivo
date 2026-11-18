@@ -23,6 +23,7 @@ import {
 import type { GuestsCardWords } from './GuestsModel.ts';
 import { W, say } from './GuestsWords.ts';
 import { labelFits } from '../../layout/titleFit.ts';
+import { actionsUnder } from './titleStack.ts';
 import { type MarkKind, ReplyMark } from '../../components/ReplyMark.tsx';
 import { DoneLine } from '../../components/FormLayers.tsx';
 import { PaneBell, useBellInPane } from '../events/EventFrame.tsx';
@@ -363,7 +364,7 @@ function besideTitle(extra: number, bell: number, gap: number): number {
   return extra > 0 && bell > 0 ? extra + gap + bell : extra + bell;
 }
 
-/** The title: "Guests" with the round plus on the phone; on an iPad Add guest beside it when both fit on one line, else the round plus (sc-51444). */
+/** The title: "Guests" with the round plus on the phone; on an iPad Add guest beside it when both fit on one line, else the round plus (sc-51444). Where even the round plus and Export leave the title no room to stand whole, they go together to a row under it (sc-68417). */
 export function GuestsTitle({
   layout,
   title = W.guests,
@@ -386,30 +387,45 @@ export function GuestsTitle({
   const [titleWidth, setTitleWidth] = useState(0);
   const [labelledWidth, setLabelledWidth] = useState(0);
   const titleStyle = { lineHeight: size * 1.12, letterSpacing: size * -0.02 };
+  const shownExtra = extra == null ? 0 : extraWidth;
+  const under = actionsUnder({
+    room,
+    title: titleWidth,
+    extra: shownExtra,
+    plus: plus ? tokens.sizeHit : 0,
+    bell: bell ? tokens.sizeHit : 0,
+    gap: tokens.spaceMd,
+  });
   const round =
     layout === 'phone' ||
+    under ||
     !labelFits({
       room,
       title: titleWidth,
-      extra: besideTitle(extra == null ? 0 : extraWidth, bell ? tokens.sizeHit : 0, tokens.spaceMd),
+      extra: besideTitle(shownExtra, bell ? tokens.sizeHit : 0, tokens.spaceMd),
       labelled: labelledWidth,
       gap: tokens.spaceMd,
     });
   const widthOf = (set: (width: number) => void) => (event: LayoutChangeEvent) =>
     set(Math.ceil(event.nativeEvent.layout.width));
-
-  return (
-    <View style={styles.titleRow} onLayout={widthOf(setRoom)} testID="guests.titleRow">
-      <Text
-        size={size}
-        weight="bold"
-        accessibilityRole="header"
-        style={[styles.grow, titleStyle]}
-        testID="guests.title"
-      >
-        {title}
-      </Text>
-      {extra != null && <View onLayout={widthOf(setExtraWidth)}>{extra}</View>}
+  const heading = (
+    <Text
+      size={size}
+      weight="bold"
+      accessibilityRole="header"
+      style={[styles.grow, titleStyle]}
+      testID="guests.title"
+    >
+      {title}
+    </Text>
+  );
+  const actions = (
+    <>
+      {extra != null && (
+        <View style={under && styles.shrink} onLayout={widthOf(setExtraWidth)}>
+          {extra}
+        </View>
+      )}
       {plus &&
         (round ? (
           <Pressable
@@ -432,16 +448,39 @@ export function GuestsTitle({
             testID="guests.add"
           />
         ))}
-      <PaneBell />
-      {layout !== 'phone' && (
-        <MeasuredWords
-          words={[title]}
-          size={size}
-          weight="bold"
-          style={titleStyle}
-          onWidth={(_, width) => setTitleWidth(Math.ceil(width))}
-        />
+    </>
+  );
+
+  return (
+    <View
+      style={under ? styles.titleStack : styles.titleRow}
+      onLayout={widthOf(setRoom)}
+      testID="guests.titleRow"
+    >
+      {under ? (
+        <>
+          <View style={styles.titleRow}>
+            {heading}
+            <PaneBell />
+          </View>
+          <View style={styles.actionsRow} testID="guests.actionsRow">
+            {actions}
+          </View>
+        </>
+      ) : (
+        <>
+          {heading}
+          {actions}
+          <PaneBell />
+        </>
       )}
+      <MeasuredWords
+        words={[title]}
+        size={size}
+        weight="bold"
+        style={titleStyle}
+        onWidth={(_, width) => setTitleWidth(Math.ceil(width))}
+      />
       {layout !== 'phone' && plus && (
         <View
           style={styles.measure}
@@ -546,6 +585,9 @@ const styles = StyleSheet.create({
   headTitle: { letterSpacing: -0.18, lineHeight: 18 * 1.25 },
   shown: { minHeight: tokens.sizeHit, flexDirection: 'row', alignItems: 'center', gap: 10 },
   titleRow: { minHeight: 48, flexDirection: 'row', alignItems: 'center', gap: tokens.spaceMd },
+  titleStack: { gap: tokens.spaceSm },
+  actionsRow: { flexDirection: 'row', alignItems: 'center', gap: tokens.spaceMd },
+  shrink: { flexShrink: 1 },
   measure: { position: 'absolute', top: 0, left: 0, opacity: 0 },
   plus: {
     width: tokens.sizeHit,
