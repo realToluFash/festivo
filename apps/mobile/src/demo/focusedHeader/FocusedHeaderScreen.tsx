@@ -220,18 +220,21 @@ const FIELDS = {
   picker: 'orgGeneral.searchCurrency',
 } as const;
 
-function Choices<Key extends string>({
+/** A demo's stand-in chooser, one dashed pill per option; each test id is `<prefix>.<id>.<key>`. */
+export function Choices<Key extends string>({
   heading,
   options,
   chosen,
   onChoose,
   id,
+  prefix = 'demo.header',
 }: {
   heading: string;
   options: readonly { key: Key; label: string }[];
   chosen: Key;
   onChoose: (key: Key) => void;
   id: string;
+  prefix?: string;
 }) {
   return (
     <View style={styles.choices}>
@@ -253,7 +256,7 @@ function Choices<Key extends string>({
               ]}
               accessibilityRole="radio"
               accessibilityState={{ checked: on }}
-              testID={`demo.header.${id}.${option.key}`}
+              testID={`${prefix}.${id}.${option.key}`}
             >
               <Text size={tokens.typeSmall.size} weight="semibold">
                 {option.label}
