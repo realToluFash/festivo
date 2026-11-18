@@ -119,6 +119,8 @@ export function leaderOf(consultation: Consultation): Person | null {
   return Object.values(PEOPLE).find((one) => one.id === consultation.ledBy) ?? null;
 }
 
+const DAY = 86_400_000;
+
 /** Turns a wall clock in a zone into the instant it names: a skipped time moves past the jump, a repeated one is the first. */
 export function instantOf(date: string, time: string, timeZone: string): string | null {
   const saved = savedWallClock(date, time, timeZone);
@@ -126,7 +128,7 @@ export function instantOf(date: string, time: string, timeZone: string): string 
   if (saved == null) return null;
 
   const wall = Date.parse(`${saved}Z`);
-  const offsets = [wall - 3 * 3_600_000, wall + 3 * 3_600_000].map((at) => offsetAt(at, timeZone));
+  const offsets = [wall - DAY, wall + DAY].map((at) => offsetAt(at, timeZone));
   const fits = offsets
     .map((offset) => wall - offset)
     .filter((instant) => wall === instant + offsetAt(instant, timeZone));
@@ -172,6 +174,7 @@ export function problemsOf(
   draft: Draft,
   startTouched: boolean,
   now: string = NOW,
+  choosesLeader: boolean = true,
 ): Partial<Record<Field, string>> {
   const problems: Partial<Record<Field, string>> = {};
 
@@ -186,7 +189,7 @@ export function problemsOf(
     problems.where = CW.whereTooLong;
   if (draft.how === 'video' && draft.link.trim() !== '' && !isHttps(draft.link))
     problems.link = CW.linkNotHttps;
-  if (draft.ledBy == null) problems.ledBy = CW.ledByMissing;
+  if (choosesLeader && draft.ledBy == null) problems.ledBy = CW.ledByMissing;
 
   return problems;
 }
@@ -261,6 +264,13 @@ export function consultationOf(draft: Draft, id: string): Consultation | null {
       };
 }
 
+/** What a Member reads in Led by: they lead what they book, and a change keeps whoever leads it. */
+export function fixedLeaderWords(draft: Draft, viewer: Person): string {
+  if (draft.ledBy === viewer.id) return CW.ledByYou(viewer.name);
+
+  return Object.values(PEOPLE).find((one) => one.id === draft.ledBy)?.name ?? CW.nobodyLeading;
+}
+
 /** Who may book, change and cancel: whoever may edit the enquiry. A Member who only leads one reads the page. */
 export function mayEdit(enquiry: Enquiry, viewer: Person): boolean {
   return viewer.role !== 'member' || enquiry.assignedTo === viewer.id;
@@ -321,6 +331,7 @@ export const CW = {
   ledByLabel: 'Led by',
   ledByYou: (name: string) => `You, ${name}`,
   ledByMemberLine: 'You lead the consultations you book.',
+  ledByKeptLine: 'Only Owners and Admins change who leads it.',
   chooseLeader: 'Choose who leads it',
   dateMissing: 'Choose the date it starts.',
   timeMissing: 'Choose the time it starts.',

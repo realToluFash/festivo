@@ -1,5 +1,6 @@
 import { timezoneLabel } from '@soirely/domain';
 import { type ReactNode, useEffect, useId, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Link, useSearchParams } from 'react-router';
 
 import { ActionPair } from '../components/ActionPair.tsx';
@@ -30,6 +31,7 @@ import {
   consultationStateOf,
   dayWords,
   draftOf,
+  fixedLeaderWords,
   earliestFirst,
   leaderOf,
   mayEdit,
@@ -38,7 +40,7 @@ import {
   standingOf,
   timesWords,
 } from './consultations.ts';
-import { PEOPLE } from './enquiries.ts';
+import { NOW, PEOPLE } from './enquiries.ts';
 import { TodaySidebar } from './TodaySidebar.tsx';
 import './consultations.css';
 
@@ -400,14 +402,15 @@ function BookPanel({
   onClose: () => void;
   onBook: (draft: Draft, change: Consultation | null) => void;
 }) {
+  const { t } = useTranslation();
   const id = useId();
   const [draft, setDraft] = useState<Draft>(panel.draft);
   const [touched, setTouched] = useState(panel.touched);
   const [pressed, setPressed] = useState(panel.pressed);
   const title = useRef<HTMLHeadingElement>(null);
-  const problems = pressed ? problemsOf(draft, touched) : {};
-  const skip = skipWords(draft, LOCALE);
   const member = start.viewer.role === 'member';
+  const problems = pressed ? problemsOf(draft, touched, NOW, !member) : {};
+  const skip = skipWords(draft, LOCALE);
   const people = Object.values(PEOPLE);
   const change = panel.change;
 
@@ -420,7 +423,7 @@ function BookPanel({
 
   function press(): void {
     setPressed(true);
-    const found = problemsOf(draft, touched);
+    const found = problemsOf(draft, touched, NOW, !member);
     const first = FIELD_ORDER.find((field) => found[field] != null);
 
     if (first != null) {
@@ -452,7 +455,7 @@ function BookPanel({
       </div>
       <p className="con-panel-for">
         {start.enquiry.client}
-        {start.enquiry.type != null && ' · Corporate event'}
+        {start.enquiry.type != null && ` · ${t(`eventTypes.${start.enquiry.type}`)}`}
       </p>
       <div className="con-panel-body">
         {save === 'failed' && (
@@ -596,8 +599,8 @@ function BookPanel({
         {member ? (
           <div className="field">
             <p className="con-label">{CW.ledByLabel}</p>
-            <p className="con-fixed">{CW.ledByYou(start.viewer.name)}</p>
-            <p className="desk-note">{CW.ledByMemberLine}</p>
+            <p className="con-fixed">{fixedLeaderWords(draft, start.viewer)}</p>
+            <p className="desk-note">{change == null ? CW.ledByMemberLine : CW.ledByKeptLine}</p>
           </div>
         ) : (
           <div className="field">

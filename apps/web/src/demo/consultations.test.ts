@@ -8,7 +8,9 @@ import {
   cancelledByLost,
   changeable,
   consultationStart,
+  draftOf,
   earliestFirst,
+  fixedLeaderWords,
   instantOf,
   isHttps,
   mayEdit,
@@ -146,6 +148,17 @@ describe('the clocks', () => {
   it('takes the first of a time the clocks pass twice', () => {
     expect(instantOf('2026-10-25', '01:30', 'Europe/London')).toBe('2026-10-25T00:30:00.000Z');
   });
+
+  it('moves a skipped start past a jump outside London', () => {
+    expect(instantOf('2027-03-14', '02:30', 'America/New_York')).toBe('2027-03-14T07:30:00.000Z');
+    expect(instantOf('2027-03-14', '02:30', 'America/Los_Angeles')).toBe(
+      '2027-03-14T10:30:00.000Z',
+    );
+  });
+
+  it('takes the first of a repeated time outside London', () => {
+    expect(instantOf('2026-04-05', '02:30', 'Australia/Sydney')).toBe('2026-04-04T15:30:00.000Z');
+  });
 });
 
 describe('who may change them', () => {
@@ -164,5 +177,17 @@ describe('who may change them', () => {
     expect(member.panel.kind === 'book' && member.panel.draft.ledBy).toBe('tunde');
     expect(owner.panel.kind === 'book' && owner.panel.draft.ledBy).toBe('kemi');
     expect(unassigned.panel.kind === 'book' && unassigned.panel.draft.ledBy).toBeNull();
+  });
+
+  it('keeps Led by when a Member changes one an Owner gave to someone else', () => {
+    const changed = draftOf(SAMPLE.next, ENQUIRIES[0]!, PEOPLE.tunde);
+
+    expect(changed.ledBy).toBe('kemi');
+    expect(fixedLeaderWords(changed, PEOPLE.tunde)).toBe('Kemi Ojo');
+    expect(fixedLeaderWords({ ...changed, ledBy: 'tunde' }, PEOPLE.tunde)).toBe(
+      CW.ledByYou('Tunde Bakare'),
+    );
+    expect(fixedLeaderWords({ ...changed, ledBy: null }, PEOPLE.tunde)).toBe(CW.nobodyLeading);
+    expect(problemsOf({ ...changed, ledBy: null }, false, NOW, false).ledBy).toBeUndefined();
   });
 });

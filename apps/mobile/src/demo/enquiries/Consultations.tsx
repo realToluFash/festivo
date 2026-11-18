@@ -35,6 +35,7 @@ import {
   consultationStart,
   dayWords,
   draftOf,
+  fixedLeaderWords,
   earliestFirst,
   leaderOf,
   mayEdit,
@@ -43,7 +44,7 @@ import {
   standingOf,
   timesWords,
 } from './ConsultationsModel.ts';
-import { PEOPLE } from './EnquiriesModel.ts';
+import { NOW, PEOPLE } from './EnquiriesModel.ts';
 
 const SAVE_MS = 700;
 const ZONES = [READER_ZONE, 'Europe/Madrid', 'Europe/Paris', 'Africa/Lagos', 'America/New_York'];
@@ -388,10 +389,10 @@ function BookForm({
   const [touched, setTouched] = useState(panel.touched);
   const [pressed, setPressed] = useState(panel.pressed);
   const [picking, setPicking] = useState<Picking | null>(null);
-  const problems = pressed ? problemsOf(draft, touched) : {};
+  const member = start.viewer.role === 'member';
+  const problems = pressed ? problemsOf(draft, touched, NOW, !member) : {};
   const skip = skipWords(draft, locale);
   const change = panel.change;
-  const member = start.viewer.role === 'member';
 
   const set = (patch: Partial<Draft>, moves = false) => {
     setDraft((now) => ({ ...now, ...patch }));
@@ -399,7 +400,7 @@ function BookForm({
   };
   const press = () => {
     setPressed(true);
-    if (Object.keys(problemsOf(draft, touched)).length === 0) onBook(draft, change);
+    if (Object.keys(problemsOf(draft, touched, NOW, !member)).length === 0) onBook(draft, change);
   };
   const moment = (mode: 'date' | 'time') =>
     pick(
@@ -523,9 +524,12 @@ function BookForm({
           </Text>
         )}
         {member ? (
-          <Field label={CW.ledByLabel} help={CW.ledByMemberLine}>
+          <Field
+            label={CW.ledByLabel}
+            help={change == null ? CW.ledByMemberLine : CW.ledByKeptLine}
+          >
             <Text size={16} weight="semibold">
-              {CW.ledByYou(start.viewer.name)}
+              {fixedLeaderWords(draft, start.viewer)}
             </Text>
           </Field>
         ) : (
