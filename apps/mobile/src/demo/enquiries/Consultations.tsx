@@ -267,7 +267,7 @@ function Count({ n }: { n: number }) {
   );
 }
 
-function ConsultationRow({
+export function ConsultationRow({
   consultation,
   list,
   first,
@@ -276,6 +276,8 @@ function ConsultationRow({
   manages,
   onChange,
   onCancel,
+  now = NOW,
+  tell = null,
 }: {
   consultation: Consultation;
   list: readonly Consultation[];
@@ -285,11 +287,14 @@ function ConsultationRow({
   manages: boolean;
   onChange: () => void;
   onCancel: () => void;
+  now?: string;
+  /** sc-37133's Tell {client}, which shows whether or not this viewer edits. */
+  tell?: ReactNode;
 }) {
-  const standing = standingOf(consultation, list);
+  const standing = standingOf(consultation, list, now);
   const leader = leaderOf(consultation);
   const quiet = standing === 'cancelled';
-  const goes = edits && changeable(consultation);
+  const goes = edits && changeable(consultation, now);
 
   return (
     <View style={[styles.row, !first && styles.rule]}>
@@ -348,6 +353,7 @@ function ConsultationRow({
           />
         </View>
       )}
+      {tell}
     </View>
   );
 }
@@ -371,18 +377,20 @@ function StandingTag({ standing }: { standing: 'next' | 'held' | 'cancelled' }) 
   );
 }
 
-function BookForm({
+export function BookForm({
   panel,
   start,
   save,
   onClose,
   onBook,
+  now = NOW,
 }: {
   panel: Extract<Panel, { kind: 'book' }>;
-  start: ConsultationStart;
+  start: Pick<ConsultationStart, 'enquiry' | 'viewer'>;
   save: Save;
   onClose: () => void;
   onBook: (draft: Draft, change: Consultation | null) => void;
+  now?: string;
 }) {
   const locale = useLocale();
   const [draft, setDraft] = useState<Draft>(panel.draft);
@@ -390,7 +398,7 @@ function BookForm({
   const [pressed, setPressed] = useState(panel.pressed);
   const [picking, setPicking] = useState<Picking | null>(null);
   const member = start.viewer.role === 'member';
-  const problems = pressed ? problemsOf(draft, touched, NOW, !member) : {};
+  const problems = pressed ? problemsOf(draft, touched, now, !member) : {};
   const skip = skipWords(draft, locale);
   const change = panel.change;
 
@@ -400,7 +408,7 @@ function BookForm({
   };
   const press = () => {
     setPressed(true);
-    if (Object.keys(problemsOf(draft, touched, NOW, !member)).length === 0) onBook(draft, change);
+    if (Object.keys(problemsOf(draft, touched, now, !member)).length === 0) onBook(draft, change);
   };
   const moment = (mode: 'date' | 'time') =>
     pick(
@@ -566,7 +574,7 @@ function BookForm({
   );
 }
 
-function Chips<Key extends string>({
+export function Chips<Key extends string>({
   items,
   on,
   onPick,
