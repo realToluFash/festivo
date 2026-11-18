@@ -8,7 +8,6 @@ import {
   useRef,
   useState,
 } from 'react';
-import { useTranslation } from 'react-i18next';
 import { Link, Navigate, useLocation, useSearchParams } from 'react-router';
 
 import { offButton } from '../offButton.ts';
@@ -19,7 +18,6 @@ import { DemoBell } from './DemoBell.tsx';
 import { owedBy, usedOn } from './quotes.ts';
 import { QW } from './quotesWords.ts';
 import { COUNTRIES, codeChoice } from './rules.ts';
-import { type Viewer, settingsPath } from './settings.ts';
 import {
   Ask,
   Card,
@@ -78,29 +76,7 @@ export function VendorsMoved() {
 }
 
 /** Settings › Vendors in A · Summary first (Budget-A-Vendors, page e81): the card, the directory, its form, every state, on sample data. */
-export function Vendors({ viewer, state, tell }: { viewer: Viewer; state: string; tell: Tell }) {
-  return viewer.manages ? <Directory state={state} tell={tell} /> : <Refused viewer={viewer} />;
-}
-
-function Refused({ viewer }: { viewer: Viewer }) {
-  const { t } = useTranslation();
-
-  return (
-    <Page>
-      <div className="vd-refused" role="alert">
-        <h1 className="desk-title" tabIndex={-1}>
-          {t('forbidden.title')}
-        </h1>
-        <Link className="desk-text" to={settingsPath('account', viewer)}>
-          <Glyph name="back" size={16} weight={2.4} />
-          {VW.backToSettings}
-        </Link>
-      </div>
-    </Page>
-  );
-}
-
-function Directory({ state, tell }: { state: string; tell: Tell }) {
+export function Vendors({ state, tell }: { state: string; tell: Tell }) {
   const [params] = useSearchParams();
   const [locale] = useState(() => formattingLocale('en', navigator.language));
   const [start] = useState(() => vendorsStart(state, params.get('vendor')));
