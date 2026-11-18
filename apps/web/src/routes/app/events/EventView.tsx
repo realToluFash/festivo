@@ -199,6 +199,22 @@ function EventOf({
       (load.kind === 'failed' && load.offline === true),
   );
 
+  const failed = (
+    <ArrivalNotice
+      role={attempt > 0 ? undefined : 'alert'}
+      line={t('eventPage.failed')}
+      lineRef={failedLine}
+      focusable
+      retry={t('events.retry')}
+      plain={load.kind === 'failed' && load.offline === true}
+      onRetry={() => {
+        setLoad({ kind: 'loading' });
+        setAttempt((n) => n + 1);
+        land(() => heading.current ?? failedLine.current);
+      }}
+    />
+  );
+
   if (page === 'guests' && load.kind === 'notFound')
     return (
       <GuestsGone heading={heading}>
@@ -241,6 +257,13 @@ function EventOf({
       <Withheld />
     );
 
+  if (load.kind === 'failed' && load.offline === true)
+    return (
+      <div className="desk-page">
+        <div className="ev-wide">{failed}</div>
+      </div>
+    );
+
   const states = (
     <>
       {load.kind === 'loading' &&
@@ -255,20 +278,7 @@ function EventOf({
           <Skeleton words={t('eventPage.loading')} shape="rows" rowHeight={56} />
         ))}
 
-      {load.kind === 'failed' && (
-        <ArrivalNotice
-          role={attempt > 0 ? undefined : 'alert'}
-          line={t('eventPage.failed')}
-          lineRef={failedLine}
-          focusable
-          retry={t('events.retry')}
-          onRetry={() => {
-            setLoad({ kind: 'loading' });
-            setAttempt((n) => n + 1);
-            land(() => heading.current ?? failedLine.current);
-          }}
-        />
-      )}
+      {load.kind === 'failed' && failed}
 
       {load.kind === 'notFound' && (
         <section className="card">
