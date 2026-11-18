@@ -159,6 +159,7 @@ domain_guest = ["App\\Domain\\Guest\\**"]
 domain_staff = ["App\\Domain\\Staff\\**"]
 domain_menu = ["App\\Domain\\Menu\\**"]
 domain_run_of_show = ["App\\Domain\\RunOfShow\\**"]
+domain_budget = ["App\\Domain\\Budget\\**"]
 
 # Capabilities. Each is its own layer so an edge between two of them has to be
 # declared below rather than appearing by accident.
@@ -379,6 +380,20 @@ permit = [
     "@layer:repository",
     "@layer:audit",
     "@layer:realtime",
+    "@layer:locale",
+]
+
+# Budget & costs: the organisation's vendors (sc-82). A vendor's number is checked by
+# the account's parser, as a guest's is.
+[[guard.perimeter.rules]]
+namespace = "App\\Domain\\Budget\\"
+permit = [
+    "@layer:native",
+    "@layer:external",
+    "@layer:shared",
+    "@layer:domain_budget",
+    "@layer:domain_user",
+    "@layer:repository",
     "@layer:locale",
 ]
 
