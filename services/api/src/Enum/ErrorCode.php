@@ -88,6 +88,9 @@ enum ErrorCode: string
     case JoinRequestCoolingOff = 'join_request_cooling_off';
     case JoinRequestAnswered = 'join_request_answered';
     case OrganisationDeleted = 'organisation_deleted';
+    case ExportNotReady = 'export_not_ready';
+    case ExportUsed = 'export_used';
+    case ExportExpired = 'export_expired';
     case RestoreNeedsAddress = 'restore_needs_address';
     case OwnerClaimAddress = 'owner_claim_address';
     case OwnerClaimManaged = 'owner_claim_managed';
@@ -160,6 +163,8 @@ enum ErrorCode: string
             self::JoinRequestWaiting, self::JoinRequestCoolingOff, self::JoinRequestAnswered => 409,
             self::OwnerClaimAddress, self::OwnerClaimManaged, self::OwnerClaimOpen, self::OwnerClaimClosed, self::OwnerClaimEnded, self::OwnerClaimUnavailable, self::OwnerClaimOwn => 409,
             self::InvitationExpired, self::InvitationRevoked, self::OrganisationDeleted => 410,
+            self::ExportNotReady => 409,
+            self::ExportUsed, self::ExportExpired => 410,
             self::InvitationNotYours => 403,
             self::UnsupportedMediaType => 415,
             self::PreconditionFailed => 412,

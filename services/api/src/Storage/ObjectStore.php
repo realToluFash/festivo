@@ -102,6 +102,17 @@ final readonly class ObjectStore
         $this->delete($this->bucketFor($purpose), $key);
     }
 
+    /** Written by the server into the private bucket, and read back only by the server. */
+    public function keep(string $key, string $bytes, string $contentType): void
+    {
+        $this->s3->putObject(['Bucket' => $this->privateBucket, 'Key' => $key, 'Body' => $bytes, 'ContentType' => $contentType]);
+    }
+
+    public function readKept(string $key): string
+    {
+        return $this->s3->getObject(['Bucket' => $this->privateBucket, 'Key' => $key])->getBody()->getContentAsString();
+    }
+
     /** Written by the server, readable by anyone at publicUrl(). */
     public function publish(string $key, string $bytes, string $contentType): void
     {
