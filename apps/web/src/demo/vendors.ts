@@ -211,6 +211,8 @@ export function noMatchLine(looking: Looking): string {
   const q = looking.q.trim();
   const category = looking.category === 'all' ? null : CATEGORY_WORDS[looking.category];
 
+  if (q === '' && category == null && looking.view === 'archived') return VW.noneArchived;
+
   return q === '' && category != null
     ? VW.noneIn(category, looking.view === 'archived')
     : VW.noMatch(q, category);
@@ -455,6 +457,12 @@ export function vendorsStart(state: string, vendor: string | null = null): Vendo
       return { ...start, looking: { ...NOT_LOOKING, q: 'eclat', category: 'catering' } };
     case 'archived':
       return { ...start, looking: { ...NOT_LOOKING, view: 'archived' } };
+    case 'none_archived':
+      return {
+        ...start,
+        vendors: vendors.map((one) => ({ ...one, archivedOn: null })),
+        looking: { ...NOT_LOOKING, view: 'archived' },
+      };
     case 'add':
       return { ...start, dialog: { kind: 'add', draft: BLANK, problems: {} } };
     case 'add_blank':
@@ -536,6 +544,7 @@ export const VENDORS_PAGES: readonly { name: string; states: readonly DemoLink[]
     name: 'Archived, added, edited',
     states: [
       { to: at('archived'), name: 'In use · 28 set to Archived · 2 (archived)' },
+      { to: at('none_archived'), name: 'Archived · 0: No archived vendors (none_archived)' },
       { to: at('add'), name: 'Add a vendor (add)' },
       { to: at('add_blank'), name: 'Add, nothing typed (add_blank)' },
       { to: at('add_invalid'), name: 'Add, refused at three fields (add_invalid)' },

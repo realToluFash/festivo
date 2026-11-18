@@ -38,6 +38,7 @@ const STATES = [
   'category_menu',
   'empty',
   'archived',
+  'none_archived',
   'add_blank',
   'add_invalid',
   'edit',
@@ -155,6 +156,8 @@ describe('the vendor directory’s rules (sc-82)', () => {
     expect(noMatchLine({ view: 'archived', q: '', category: 'flowers' })).toBe(
       'No archived vendors in Flowers.',
     );
+    expect(noMatchLine({ view: 'archived', q: '', category: 'all' })).toBe('No archived vendors.');
+    expect(noMatchLine({ view: 'inUse', q: '', category: 'all' })).toBe('No vendor matches “”.');
   });
 
   it('counts the card as Members does, and says what an empty directory is for', () => {
@@ -278,6 +281,12 @@ describe('the vendor directory’s rules (sc-82)', () => {
     expect(vendorsStart('archived_toast').vendors.find((one) => one.id === 'v3')?.archivedOn).toBe(
       '2026-11-03',
     );
+    expect(vendorsStart('none_archived')).toMatchObject({
+      looking: { view: 'archived', q: '', category: 'all' },
+    });
+    expect(
+      shown(vendorsStart('none_archived').vendors, { ...NOT_LOOKING, view: 'archived' }),
+    ).toEqual([]);
     expect(vendorsViewerKey(null, 'member')).toBe('ana');
     expect(vendorsViewerKey('julien', 'populated')).toBe('julien');
   });
