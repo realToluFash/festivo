@@ -25,7 +25,7 @@ export interface TopPrimaryProps {
   ref?: Ref<ViewInstance>;
 }
 
-/** The primary at the end of a top's title row, as the demos draw it: the round violet + on a phone, the + and its label wider (sc-39471). */
+/** The primary at the end of a top's title row, as the demos draw it: the round violet + on a phone, the + and its label wider (sc-39471), as tall as its words (sc-67659). */
 export function TopPrimary({
   label,
   onPress,
@@ -41,6 +41,7 @@ export function TopPrimary({
         glyph="plus"
         height={tokens.sizeHit}
         full={false}
+        grows
         onPress={onPress}
         testID={testID}
       />

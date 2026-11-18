@@ -20,6 +20,7 @@ import { AlertLine } from './AlertLine.tsx';
 import { RadioMark } from './RadioMark.tsx';
 import { moveScreenReaderFocus, type ScreenReaderTarget } from './screenReaderFocus.ts';
 import { Pill } from './SettingsParts.tsx';
+import { CappedWholeWords } from './Title.tsx';
 import { Sheet } from './Sheet.tsx';
 import { TextAction } from './SummaryRows.tsx';
 import { Text, type TextHandle } from './Text.tsx';
@@ -28,7 +29,7 @@ type Making = 'ready' | 'preparing' | 'failed';
 
 const SETTLED_MS = 450;
 
-/** Export in the Guests header: a secondary pill, or offline the words and the no-signal mark in its place, as `/demo/guests?state=exportOffline` draws it. */
+/** Export in the Guests header: a secondary pill as tall as its word, or offline the words and the no-signal mark in its place, each word whole (sc-67659), as `/demo/guests?state=exportOffline` draws it. */
 export function ExportButton({
   kind,
   offline,
@@ -51,9 +52,13 @@ export function ExportButton({
         testID="guests.export.offline"
       >
         <NoSignal />
-        <Text size={13.5} weight="semibold" style={[styles.secondary, styles.offlineWords]}>
+        <CappedWholeWords
+          size={13.5}
+          weight="semibold"
+          style={[styles.secondary, styles.offlineWords]}
+        >
           {t('guestExport.needsConnection')}
-        </Text>
+        </CappedWholeWords>
       </View>
     );
 
@@ -64,6 +69,7 @@ export function ExportButton({
       kind="secondary"
       height={tokens.sizeHit}
       full={false}
+      grows
       onPress={onPress}
       testID="guests.export"
     />
