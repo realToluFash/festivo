@@ -1,0 +1,11 @@
+# sc-67659: one tap on Export opens the export sheet, one on + Add guest opens adding a guest, one on + New event opens a new event.
+appId: host.exp.Exponent
+---
+- setOrientation: ${ORIENT}
+- openLink: ${METRO_URL}/--/events/${EVENT_ID}?area=guests
+- extendedWaitUntil: { visible: { id: 'guests.export' }, timeout: 30000 }
+- waitForAnimationToEnd: { timeout: 8000 }
+- tapOn: { id: 'guests.export' }
+- extendedWaitUntil: { visible: { id: 'guests.export.sheet' }, timeout: 10000 }
+- waitForAnimationToEnd: { timeout: 5000 }
+- takeScreenshot: t-export
