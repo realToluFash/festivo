@@ -22,6 +22,7 @@ import {
   backScale,
 } from '../layout/focusedHeader.ts';
 import { tokens } from '../theme/tokens.ts';
+import { capInDisc } from '../layout/textSize.ts';
 import { Glyph, type GlyphName } from './Glyph.tsx';
 import type { ShellSection } from './settingsShell.ts';
 import { TurningMark } from './SummaryRows.tsx';
@@ -353,6 +354,7 @@ export function Avatar({
   glyph?: GlyphName | undefined;
 }) {
   const look = AVATAR_TONES[tone % AVATAR_TONES.length] ?? AVATAR_TONES[0];
+  const size = Math.max(12, Math.round(side * 0.36));
 
   return (
     <View
@@ -365,9 +367,10 @@ export function Avatar({
     >
       {glyph == null ? (
         <Text
-          size={Math.max(12, Math.round(side * 0.36))}
+          size={size}
           weight="bold"
           accessible={false}
+          maxFontSizeMultiplier={capInDisc(side, size)}
           style={{ color: look.ink }}
         >
           {initials}

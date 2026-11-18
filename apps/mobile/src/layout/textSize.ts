@@ -30,6 +30,22 @@ export function capUnderTitle(title: number, size: number, own?: number): number
   return Math.max(1, Math.min(own ?? Infinity, title / size));
 }
 
+/** The most a disc's initials of `size` may grow: to half the disc's side, which keeps its size at every text size (sc-37693). */
+export function capInDisc(side: number, size: number): number {
+  return Math.max(1, (side * 0.5) / size);
+}
+
+// A bold digit, a plus and a space in the faces' chip are each at most this share of their size wide.
+const CHIP_CHARACTER = 0.62;
+const CHIP_ROOM = 0.8;
+
+/** The most a chip of `characters` in a disc may grow: as `capInDisc`, and no wider than the disc's middle, so 99+ is never cut (sc-37693). */
+export function capChipInDisc(side: number, size: number, characters: number): number {
+  const across = (side * CHIP_ROOM) / (size * characters * CHIP_CHARACTER);
+
+  return Math.max(1, Math.min(capInDisc(side, size), across));
+}
+
 // An iPhone SE or mini is 375 across; an iPhone 17 Pro, 402.
 const COMPACT_PHONE_SIDE = 390;
 
