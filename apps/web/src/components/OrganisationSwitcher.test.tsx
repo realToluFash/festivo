@@ -196,6 +196,7 @@ describe('switching organisation', () => {
       providers: [],
       emailAddresses: [{ id: 'a1', address: 'folake@ire.events', verified: true, primary: true }],
       phoneNumbers: [],
+      outsideEvents: [],
     });
     at('/app');
 

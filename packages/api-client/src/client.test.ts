@@ -1891,6 +1891,7 @@ const ACCOUNT = {
   twoFactorSetupPrompt: false,
   colourScheme: null,
   waitingFor: null,
+  outsideEvents: [],
   providers: [],
   emailAddresses: [
     { id: 'a1', address: 'folake@ire.events', verified: true, primary: true },
@@ -1914,6 +1915,49 @@ describe('who is signed in', () => {
     expect(account.name).toBe('Folake Ire');
     expect(account.businessName).toBe('Ire Events');
     expect(account.emailAddresses).toHaveLength(2);
+  });
+
+  test('reads the events the account is on from outside its organisations (sc-71)', async () => {
+    const outside = {
+      id: 'e1',
+      name: 'Owambe',
+      organisationName: 'Ìrè Events',
+      role: 'can_view',
+      jobLabel: 'Kitchen',
+      endsAt: '2030-11-14T15:00:00+00:00',
+    };
+    const account = await client(
+      json({ ...ACCOUNT, outsideEvents: [outside, { id: 'e2', role: 'lead' }] }),
+    ).me();
+
+    expect(account.outsideEvents).toEqual([outside]);
+  });
+
+  test('reads someone not joined yet on People, with or without their address (sc-71)', async () => {
+    const pending = {
+      id: 'p1',
+      membershipId: null,
+      user: null,
+      role: 'can_view',
+      jobLabel: null,
+      outside: true,
+      endsAt: '2030-11-14T15:00:00+00:00',
+    };
+    const people = await client(
+      json({
+        people: [
+          { ...pending, address: '+2348035550142', addressKind: 'mobile' },
+          { ...pending, id: 'p2', address: null, addressKind: null },
+        ],
+        owners: [],
+        admins: [],
+      }),
+    ).eventPeople('e1');
+
+    expect(people.people.map((one) => [one.user, one.address, one.addressKind])).toEqual([
+      [null, '+2348035550142', 'mobile'],
+      [null, null, null],
+    ]);
   });
 
   test('the primary address is the one identified by its flag', () => {
