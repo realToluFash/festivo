@@ -63,6 +63,25 @@
     box-shadow: none;
   }
 
+  /* Settings › Vendors (sc-82): the list above the page, as the product's Settings stacks it up to 60rem. */
+  .dp-fit .desk-main:has(> .desk-list) {
+    flex-direction: column;
+  }
+
+  .dp-fit .desk-main > .desk-list {
+    width: auto;
+    padding-bottom: var(--spaceLg);
+    overflow: visible;
+    border-right: 0;
+    border-bottom: 1px solid var(--colorBorder);
+  }
+
+  .dp-fit .desk-main > .desk-list ~ .desk-page {
+    flex: none;
+    min-width: 0;
+    overflow: visible;
+  }
+
   /* Calendar keeps the window's height, so its weeks scroll inside the page and the month's name follows them. */
   .dp-fit.today:has(.cal-page) {
     height: 100dvh;
