@@ -16,6 +16,8 @@ import { BoardPage, OrLine, Providers } from './BoardPage.tsx';
 import { Calendar } from './Calendar.tsx';
 import { Consultations } from './Consultations.tsx';
 import { CONSULTATION_PAGES } from './consultations.ts';
+import { TellClient } from './TellClient.tsx';
+import { TELL_PAGES } from './tellClient.ts';
 import { CALENDAR_PAGES } from './calendar.ts';
 import { CREATE_PAGES } from './createOrg.ts';
 import { DOOR_PAGES } from './doorCode.ts';
@@ -268,6 +270,7 @@ export default function Demo() {
       <Route path="handoff" element={<HandoffPage />} />
       <Route path="calendar" element={<Calendar />} />
       <Route path="consultations" element={<Consultations />} />
+      <Route path="tell-client" element={<TellClient />} />
       <Route path="menu-library" element={<MenuLibraryPage />} />
       <Route path="settings" element={<Settings />} />
       <Route path="settings/members" element={<Settings />} />
@@ -363,6 +366,8 @@ function DemoHome({ from }: { from: string }) {
         <BoardPages pages={ENQUIRIES_PAGES} />
         <h3>Consultations on an enquiry (sc-31228) · desktop, and 320 px</h3>
         <BoardPages pages={CONSULTATION_PAGES} />
+        <h3>Tell the client (sc-37133) · desktop, and 320 px</h3>
+        <BoardPages pages={TELL_PAGES} />
       </section>
 
       <section className="demo-home-page" aria-labelledby="demo-page-29">
