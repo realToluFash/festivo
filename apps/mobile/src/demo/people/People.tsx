@@ -44,7 +44,6 @@ import {
   withRole,
 } from './PeopleSample.ts';
 import { AddBox, PeopleLoading } from '../../components/PeopleParts.tsx';
-import { useShell } from '../../components/settingsShell.ts';
 import { FailedBlock, Line, Row, RowList, SectionHead } from '../../components/Summary.tsx';
 
 const LIT_MS = 2000;
@@ -84,7 +83,6 @@ function openedAtStart(start: PeopleStart): Opened | null {
 }
 
 function PeopleScreen({ start, door }: { start: PeopleStart; door: DoorStart | null }) {
-  const { layout } = useShell();
   const { load, retry } = useLoad(start.load);
   const viewer = start.viewer;
   const [world] = useState(() => start.world ?? ireWorld());
@@ -148,7 +146,7 @@ function PeopleScreen({ start, door }: { start: PeopleStart; door: DoorStart | n
   }
 
   const back = {
-    label: layout === 'phone' ? 'More' : 'Overview',
+    label: 'Overview',
     onPress: () => (router.canGoBack() ? router.back() : router.replace('/demo')),
   };
 

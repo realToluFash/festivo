@@ -126,5 +126,5 @@
     "track_busy": "Un autre élément est en cours dans cet espace. Terminez-le d’abord.",
     "idempotency_key_required": "Envoyez l’en-tête Idempotency-Key à chaque appui.",
     "idempotency_key_reused": "Cette Idempotency-Key a déjà été envoyée avec un autre appui.",
-    "plan_required": "Le forfait de l'organisation ne comprend pas cela."
+    "plan_required": "Le forfait de l’organisation n’inclut pas cette fonctionnalité."
 }
