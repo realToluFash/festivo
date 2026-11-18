@@ -296,6 +296,28 @@ describe('Settings › Vendors at a desk (sc-82)', () => {
     expect(screen.queryByText('Bloom & Co')).toBeNull();
   });
 
+  it('trying a failed search again puts the person back in the search box', async () => {
+    signedIn(membership());
+    let reachable = false;
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) =>
+      new URL(String(input)).search.includes('q=') && !reachable
+        ? Promise.reject(new TypeError('Failed to fetch'))
+        : new Response(JSON.stringify(pageOf([BLOOM, DELTA])), { status: 200 }),
+    );
+    open();
+
+    fireEvent.change(await screen.findByRole('searchbox', { name: 'Search vendors' }), {
+      target: { value: 'tulip' },
+    });
+    const again = await screen.findByRole('button', { name: 'Try again' });
+    reachable = true;
+    fireEvent.click(again);
+
+    const box = await screen.findByRole('searchbox', { name: 'Search vendors' });
+    await waitFor(() => expect(document.activeElement).toBe(box));
+    expect((box as HTMLInputElement).value).toBe('tulip');
+  });
+
   it('saving a vendor archived elsewhere shows the API’s words and keeps the form', async () => {
     signedIn(membership());
     const words =

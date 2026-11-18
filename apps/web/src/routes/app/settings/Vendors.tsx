@@ -113,6 +113,7 @@ function Directory({
   const [told, setTold] = useState<string | null>(null);
   const search = useRef<HTMLInputElement>(null);
   const asked = useRef(0);
+  const backToSearch = useRef(false);
 
   useEffect(() => {
     const ask = ++asked.current;
@@ -132,6 +133,12 @@ function Directory({
         },
       );
   }, [organisationId, looking, attempt]);
+
+  useEffect(() => {
+    if (load.kind !== 'loaded' || !backToSearch.current) return;
+    backToSearch.current = false;
+    search.current?.focus();
+  }, [load]);
 
   const look = (next: Omit<Looking, 'page'>) => setLooking({ ...next, page: 1 });
   const turn = (page: number) => {
@@ -153,6 +160,7 @@ function Directory({
             {load.kind === 'failed' && (
               <Failed
                 onRetry={() => {
+                  backToSearch.current = looking.q !== '';
                   setLoad({ kind: 'loading' });
                   reread();
                 }}
