@@ -218,7 +218,17 @@ describe('switching organisation', () => {
 
 describe('switching away from a paused organisation (sc-564)', () => {
   function pausedInLagos(organisations: Membership[]): void {
-    const { id, name, countryCode, currency, timezone, contactAddress, locale, plan } = membership({
+    const {
+      id,
+      name,
+      countryCode,
+      currency,
+      timezone,
+      contactAddress,
+      locale,
+      plan,
+      subscription,
+    } = membership({
       id: 'org_3',
       name: 'Lagos Weddings',
     });
@@ -247,6 +257,7 @@ describe('switching away from a paused organisation (sc-564)', () => {
           timezone,
           contactAddress,
           plan,
+          subscription,
           locale,
           suspension: {
             reason: 'address_gone',

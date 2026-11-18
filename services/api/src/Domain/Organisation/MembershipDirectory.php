@@ -4,9 +4,11 @@ declare(strict_types=1);
 
 namespace App\Domain\Organisation;
 
+use App\Domain\Billing\Entitlements;
 use App\Domain\Organisation\SignInRules\SignInRules;
 use App\Entity\Membership;
 use App\Entity\User;
+use App\Enum\Plan;
 use App\Enum\SeededRole;
 use App\Http\Access\EventScope;
 use App\Http\Access\Grants;
@@ -23,6 +25,7 @@ final readonly class MembershipDirectory implements MembershipDirectoryInterface
         private EventPersonRepository $eventPersonRepository,
         private SignInRules $signInRules,
         private ClockInterface $clock,
+        private Entitlements $entitlements,
     ) {
     }
 
@@ -31,7 +34,7 @@ final readonly class MembershipDirectory implements MembershipDirectoryInterface
     {
         $membership = $this->membershipRepository->findActive($user, $organisationId);
 
-        return null === $membership ? null : $this->signInRules->narrow(self::grantsOf($membership), $membership);
+        return null === $membership ? null : $this->signInRules->narrow($this->grantsOf($membership), $membership);
     }
 
     /** Read on every request, so a change applies on the next one. A member reaches the event through the membership alone, never a grant from outside (sc-71). */
@@ -46,12 +49,12 @@ final readonly class MembershipDirectory implements MembershipDirectoryInterface
         }
 
         if (SeededRole::Member !== $membership->getRole()->getSeededAs()) {
-            return $this->signInRules->narrow(self::grantsOf($membership), $membership);
+            return $this->signInRules->narrow($this->grantsOf($membership), $membership);
         }
 
         $person = $this->eventPersonRepository->findOneOn($eventId, $membership);
 
-        return null === $person ? null : $this->signInRules->narrow(Grants::onEvent($person->getRole())->onPlan($membership->getOrganisation()->getPlan()), $membership);
+        return null === $person ? null : $this->signInRules->narrow(Grants::onEvent($person->getRole())->onPlan($this->planOf($membership)), $membership);
     }
 
     /** Null unless an active member; for a Member, their roles on events in one query rather than one per event. */
@@ -63,25 +66,31 @@ final readonly class MembershipDirectory implements MembershipDirectoryInterface
             return null;
         }
 
-        $grants = $this->signInRules->narrow(self::grantsOf($membership), $membership);
+        $grants = $this->signInRules->narrow($this->grantsOf($membership), $membership);
 
         if (SeededRole::Member !== $membership->getRole()->getSeededAs()) {
             return new EventScope(null, $grants);
         }
 
         $byEvent = [];
+        $plan = $this->planOf($membership);
 
         foreach ($this->eventPersonRepository->findFor($membership) as $person) {
-            $byEvent[$person->getEvent()->getId()->toRfc4122()] = $this->signInRules->narrow(Grants::onEvent($person->getRole())->onPlan($membership->getOrganisation()->getPlan()), $membership);
+            $byEvent[$person->getEvent()->getId()->toRfc4122()] = $this->signInRules->narrow(Grants::onEvent($person->getRole())->onPlan($plan), $membership);
         }
 
         return new EventScope($membership, $grants, $byEvent);
     }
 
-    private static function grantsOf(Membership $membership): Grants
+    private function planOf(Membership $membership): Plan
+    {
+        return $this->entitlements->of($membership->getOrganisation()->getId())->plan;
+    }
+
+    private function grantsOf(Membership $membership): Grants
     {
         $role = $membership->getRole();
 
-        return ($role->isOwner() ? Grants::everything() : Grants::only($role->getPermissions()))->onPlan($membership->getOrganisation()->getPlan());
+        return ($role->isOwner() ? Grants::everything() : Grants::only($role->getPermissions()))->onPlan($this->planOf($membership));
     }
 }

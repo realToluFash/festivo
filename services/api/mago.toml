@@ -160,6 +160,7 @@ domain_staff = ["App\\Domain\\Staff\\**"]
 domain_menu = ["App\\Domain\\Menu\\**"]
 domain_run_of_show = ["App\\Domain\\RunOfShow\\**"]
 domain_budget = ["App\\Domain\\Budget\\**"]
+domain_billing = ["App\\Domain\\Billing\\**"]
 
 # Capabilities. Each is its own layer so an edge between two of them has to be
 # declared below rather than appearing by accident.
@@ -273,11 +274,20 @@ permit = [
     "@layer:domain_organisation",
     "@layer:domain_user",
     "@layer:domain_messaging",
+    "@layer:domain_billing",
     "@layer:repository",
     "@layer:audit",
     "@layer:deletion",
     "@layer:locale",
 ]
+
+# Plans & billing (sc-3927): the subscription, who pays for it, and the one
+# entitlement answer. The organisation scope founds a subscription and asks for
+# the answer; billing never reaches back. A purge takes a billing account
+# nothing is paid for by any more.
+[[guard.perimeter.rules]]
+namespace = "App\\Domain\\Billing\\"
+permit = ["@layer:native", "@layer:external", "@layer:shared", "@layer:domain_billing", "@layer:repository", "@layer:deletion"]
 
 # Events check their zone and currency as an organisation's are checked (Regions,
 # AccountTimeZone), and each create goes to the audit trail (sc-1486). A venue's

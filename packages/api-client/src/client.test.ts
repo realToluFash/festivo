@@ -995,6 +995,35 @@ describe('a browser never holds the refresh token', () => {
     expect(saved.name).toBe('Ìrè Events Ltd');
   });
 
+  test("an organisation carries its subscription's status and period end (sc-3927)", async () => {
+    const client = new ApiClient({
+      baseUrl: () => 'http://api.test',
+      tokens: store('good', null),
+      fetch: async () =>
+        new Response(
+          JSON.stringify({
+            id: 'org_1',
+            name: 'Ìrè Events',
+            countryCode: 'NG',
+            currency: 'NGN',
+            timezone: 'Africa/Lagos',
+            contactAddress: 'hello@ire.events',
+            locale: 'en',
+            plan: 'enterprise',
+            subscription: { status: 'past_due', periodEnd: '2026-12-18T00:00:00+00:00' },
+          }),
+          { status: 200 },
+        ),
+    });
+
+    const saved = await client.updateOrganisation('org_1', { name: 'Ìrè Events' });
+
+    expect([saved.plan, saved.subscription]).toEqual([
+      'enterprise',
+      { status: 'past_due', periodEnd: '2026-12-18T00:00:00+00:00' },
+    ]);
+  });
+
   test('an organisation is created with its name, country and the device timezone', async () => {
     let sent: { method: string | undefined; path: string; body: unknown } | null = null;
 

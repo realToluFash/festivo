@@ -75,13 +75,16 @@ import { Refreshing } from '../../../components/OfflineBand.tsx';
 import { useDeskTop } from '../../../deskTop.ts';
 import { keepsWhatLoaded, useOffline } from '../../../offline.ts';
 import { pageTitle, usePageTitle } from '../../../pageTitle.ts';
+import { dateLocale } from '../../../i18n/index.ts';
 import { canOn, useSession } from '../../../session.ts';
 import {
   type CourseForm,
   canAddCourse,
+  closeDay,
   courseProblems,
   coursePicked,
   firstCourseProblem,
+  menuClose,
   menuCounts,
   moveTarget,
   servedTime,
@@ -375,6 +378,23 @@ function Courses({
   const focusAfter = useRef<string | null>(null);
   const counts = menuCounts(courses);
   useShowMenuReady(event.id, counts.ready, counts.courses);
+  const headClose = menuClose(courses);
+  const closeAt = headClose?.at ?? null;
+  const closeSource = headClose?.source ?? null;
+  const [closeSeen, setCloseSeen] = useState({ at: closeAt, source: closeSource });
+  const [closeMoved, setCloseMoved] = useState<{ at: string; was: string } | null>(null);
+  if (closeSeen.at !== closeAt || closeSeen.source !== closeSource) {
+    setCloseSeen({ at: closeAt, source: closeSource });
+    setCloseMoved(
+      closeSeen.at != null &&
+        closeAt != null &&
+        closeSeen.source === 'replyBy' &&
+        closeSource === 'replyBy'
+        ? { at: closeAt, was: closeSeen.at }
+        : null,
+    );
+  }
+  const closeWords = (at: string): string => closeDay(at, event.timeZone, dateLocale());
   const openCourse =
     open == null || open.courseId == null
       ? null
@@ -1337,6 +1357,14 @@ function Courses({
                 {t('eventMenu.ready', { ready: counts.ready, count: counts.courses })}
               </span>
             )}
+            {headClose != null && (
+              <span className="mc-picks-head">
+                <Glyph name={headClose.closed ? 'lock' : 'clock'} size={15} weight={2.4} />
+                {headClose.closed
+                  ? t('eventMenu.picksHeadClosed', { date: closeWords(headClose.at) })
+                  : t('eventMenu.picksHead', { date: closeWords(headClose.at) })}
+              </span>
+            )}
             {refreshing && <Refreshing />}
           </p>
         </div>
@@ -1367,6 +1395,17 @@ function Courses({
         </p>
       )}
       <Said said={said} />
+      <div className="mc-picks-said" role="status">
+        {closeMoved != null && (
+          <p className="mc-said-line">
+            <Glyph name="clock" size={17} weight={2.4} />
+            {t('eventMenu.picksMoved', {
+              date: closeWords(closeMoved.at),
+              was: closeWords(closeMoved.was),
+            })}
+          </p>
+        )}
+      </div>
       <div className={open == null ? 'mn-split mc-split' : 'mn-split mc-split is-open'}>
         <div className="mn-list mc-list">
           {courses.length === 0 ? (
@@ -1396,6 +1435,7 @@ function Courses({
                   index={index}
                   all={courses.length}
                   manage={manage}
+                  timeZone={event.timeZone}
                   lit={open?.courseId === course.id}
                   litDish={open?.kind === 'editDish' ? open.dishId : null}
                   asking={

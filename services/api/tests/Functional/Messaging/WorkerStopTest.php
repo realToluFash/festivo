@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Tests\Functional\Messaging;
 
+use App\Domain\Billing\UnpaidForAccountRemover;
 use App\Domain\Messaging\Command\WorkNotificationsCommand;
 use App\Domain\Messaging\Model\Audience;
 use App\Domain\Messaging\Model\Trigger;
@@ -116,6 +117,7 @@ final class WorkerStopTest extends MessagingTestCase
             self::connection()->executeStatement('DELETE FROM scheduled_notifications WHERE id = :id', ['id' => $scheduled->toRfc4122()]);
             self::connection()->executeStatement('DELETE FROM organisations WHERE id = :id', ['id' => $this->organisation->getId()->toRfc4122()]);
             self::connection()->executeStatement('DELETE FROM users WHERE id = :id', ['id' => $this->owner->getId()->toRfc4122()]);
+            self::service(UnpaidForAccountRemover::class)->remove();
         }
     }
 
@@ -128,6 +130,8 @@ final class WorkerStopTest extends MessagingTestCase
             self::connection()->executeStatement('DELETE FROM organisations WHERE id = :id', ['id' => $organisation]);
             self::connection()->executeStatement('DELETE FROM users WHERE id IN (:ids)', ['ids' => $users], ['ids' => ArrayParameterType::STRING]);
         }
+
+        self::service(UnpaidForAccountRemover::class)->remove();
 
         self::connection()->executeStatement("DELETE FROM scheduled_notifications WHERE cancellation_key LIKE 'stop-mid-send-%'");
     }

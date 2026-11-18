@@ -6,7 +6,6 @@ namespace App\Domain\Menu;
 
 use App\Audit\Auditor;
 use App\Domain\Guest\GuestNeedsRecord;
-use App\Domain\Menu\Http\MenuSerialiser;
 use App\Domain\Menu\Interfaces\MenuPicksInterface;
 use App\Domain\Menu\Model\ChoiceAnswers;
 use App\Domain\Menu\Model\CourseDetails;
@@ -28,9 +27,7 @@ use App\Entity\User;
 use App\Enum\Actor;
 use App\Enum\ErrorCode;
 use App\Enum\NeedKind;
-use App\Enum\RealtimeTopic;
 use App\Http\Exception\ApiException;
-use App\Realtime\RealtimePublisher;
 use App\Repository\DishVariantRepository;
 use App\Repository\MenuChoiceOptionRepository;
 use App\Repository\MenuCourseRepository;
@@ -87,12 +84,11 @@ final readonly class MenuEditor
         private DishVariantRepository $dishVariantRepository,
         private VariantRules $variantRules,
         private MenuPicksInterface $menuPicks,
-        private MenuSerialiser $menuSerialiser,
+        private MenuPublisher $menuPublisher,
         private GuestNeedsRecord $guestNeedsRecord,
         private DishLibrary $dishLibrary,
         private EntityManagerInterface $entityManager,
         private Auditor $auditor,
-        private RealtimePublisher $realtimePublisher,
     ) {
     }
 
@@ -112,7 +108,7 @@ final readonly class MenuEditor
             return $course;
         });
 
-        $this->published($event);
+        $this->menuPublisher->published($event);
 
         return $course;
     }
@@ -143,7 +139,7 @@ final readonly class MenuEditor
             }
         });
 
-        $this->published($event);
+        $this->menuPublisher->published($event);
     }
 
     public function moveCourse(Event $event, MenuCourse $course, int $to, User $by): void
@@ -163,7 +159,7 @@ final readonly class MenuEditor
             }
         });
 
-        $this->published($event);
+        $this->menuPublisher->published($event);
     }
 
     /** Refused 409 `menu_course_picked` once anyone has picked from it, until sc-3913. Its dishes go with it. */
@@ -189,7 +185,7 @@ final readonly class MenuEditor
             }
         });
 
-        $this->published($event);
+        $this->menuPublisher->published($event);
     }
 
     /** Marks the library dish used, so the library archives it rather than deleting it. */
@@ -254,7 +250,7 @@ final readonly class MenuEditor
             return [] === $added ? null : $this->unwarned($this->menuPicks->pickersOf($dish), $added);
         });
 
-        $this->published($event);
+        $this->menuPublisher->published($event);
 
         return $unwarned;
     }
@@ -273,7 +269,7 @@ final readonly class MenuEditor
             self::keepAnswerHonest($course, Iter\count($this->menuDishRepository->findOnCourse($course)));
         });
 
-        $this->published($event);
+        $this->menuPublisher->published($event);
     }
 
     /** @param list<array{name: string, for: 'everyone'|'children', allergens?: list<string>, containsNone?: bool, diets?: list<string>, cost?: ?string, lastPrice?: ?array{amount: string, currency: string}}> $sent */
@@ -304,7 +300,7 @@ final readonly class MenuEditor
             }
         });
 
-        $this->published($event);
+        $this->menuPublisher->published($event);
     }
 
     /** @param array{name: string, for: 'everyone'|'children', allergens?: list<string>, containsNone?: bool, diets?: list<string>, cost?: ?string, lastPrice?: ?array{amount: string, currency: string}} $sent */
@@ -331,7 +327,7 @@ final readonly class MenuEditor
             return [] === $added ? null : $this->unwarned($this->menuPicks->pickersOfVariant($variant), $added);
         });
 
-        $this->published($event);
+        $this->menuPublisher->published($event);
 
         return $unwarned;
     }
@@ -367,7 +363,7 @@ final readonly class MenuEditor
             }
         });
 
-        $this->published($event);
+        $this->menuPublisher->published($event);
     }
 
     /** @param array{question: string, options: list<array{id?: string, name: string, allergens?: list<string>, containsNone?: bool}>, pick: int, required: bool} $sent refused 409 `choice_limit` at 3, and `menu_dish_picked` on a picked dish until sc-3913 */
@@ -399,7 +395,7 @@ final readonly class MenuEditor
             return $choice;
         });
 
-        $this->published($event);
+        $this->menuPublisher->published($event);
 
         return $choice;
     }
@@ -455,7 +451,7 @@ final readonly class MenuEditor
             return $lines;
         });
 
-        $this->published($event);
+        $this->menuPublisher->published($event);
 
         return $unwarned;
     }
@@ -483,7 +479,7 @@ final readonly class MenuEditor
             $this->entityManager->remove($choice);
         });
 
-        $this->published($event);
+        $this->menuPublisher->published($event);
     }
 
     /** @param list<MenuChoiceOption> $options */
@@ -516,7 +512,7 @@ final readonly class MenuEditor
             return $dish;
         });
 
-        $this->published($event);
+        $this->menuPublisher->published($event);
 
         return $dish;
     }
@@ -566,11 +562,6 @@ final readonly class MenuEditor
 
             return $changed;
         });
-    }
-
-    private function published(Event $event): void
-    {
-        $this->realtimePublisher->publish(RealtimeTopic::EventMenu, $event->getId()->toRfc4122(), $this->menuSerialiser->menu($event));
     }
 
     /** @return array<string, mixed> */

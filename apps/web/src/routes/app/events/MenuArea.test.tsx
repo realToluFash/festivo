@@ -560,6 +560,45 @@ describe('The event’s Menu (sc-3902)', () => {
     expect(sent.some((one) => one.line === 'GET /api/events/ev_1/menu')).toBe(false);
   });
 
+  describe('when picks close (sc-3905)', () => {
+    const byReplyBy = { at: '2026-10-19T23:59:59+01:00', source: 'replyBy', closed: false };
+
+    it('heads the Menu with the close, and gives each course that asks guests its pill and where the date comes from', async () => {
+      await onMenu({
+        'GET /api/events/ev_1/menu': menuOf(
+          { ...STARTER, picksClose: null },
+          { ...MAIN, picksClose: byReplyBy },
+          LATE,
+        ),
+      });
+
+      const cards = await screen.findAllByRole('listitem', { name: /Starter|Main|Late-night/ });
+      expect(screen.getByText('picks close Monday, Oct 19')).toBeDefined();
+      expect(cards[1]?.textContent).toContain('Picks close Monday, Oct 19');
+      expect(cards[1]?.textContent).toContain(
+        'Set by the event’s reply-by date. Closes at 23:59, Lagos time.',
+      );
+      expect(cards[0]?.textContent).not.toContain('Picks close');
+      expect(cards[2]?.textContent).not.toContain('Picks close');
+      expect(cards[1]?.textContent).not.toContain('can no longer change');
+    });
+
+    it('says picks closed on the date once every course has closed, and that guests can no longer change theirs', async () => {
+      await onMenu({
+        'GET /api/events/ev_1/menu': menuOf({
+          ...MAIN,
+          picksClose: { at: '2026-11-14T16:00:00+01:00', source: 'start', closed: true },
+        }),
+      });
+
+      const card = await screen.findByRole('listitem', { name: 'Main' });
+      expect(screen.getByText('picks closed on Saturday, Nov 14')).toBeDefined();
+      expect(card.textContent).toContain('Picks closed on Saturday, Nov 14');
+      expect(card.textContent).toContain('Set by the event’s start. Closed at 16:00, Lagos time.');
+      expect(card.textContent).toContain('Guests can no longer change their main pick.');
+    });
+  });
+
   describe('variants of a dish (sc-3903)', () => {
     const variant = (id: string, name: string, chosen: 'everyone' | 'children') => ({
       id,
