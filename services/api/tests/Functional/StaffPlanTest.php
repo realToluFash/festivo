@@ -273,6 +273,19 @@ final class StaffPlanTest extends ApiTestCase
     }
 
     #[Test]
+    public function overASpanOfExactly24HoursTheOverlapNamesItsDays(): void
+    {
+        $first = $this->shift('Bar', '2027-03-06T16:00', '2027-03-07T16:00');
+        $second = $this->shift('Bar', '2027-03-06T20:00', '2027-03-06T21:00');
+        $sade = $this->person('Sade Lawal');
+        $this->assign($first, $sade);
+
+        $this->assign($second, $sade);
+
+        self::assertSame('Sade Lawal is on Bar from Sat 6 Mar, 16:00 to Sun 7 Mar, 16:00.', $this->last()['detail'] ?? null);
+    }
+
+    #[Test]
     public function shiftsThatOnlyTouchDoNotOverlap(): void
     {
         $tolu = $this->person('Tolu Bello');
