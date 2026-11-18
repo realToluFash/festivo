@@ -9,6 +9,7 @@ import {
 
 import { type WeightName } from '../theme/fonts.ts';
 import {
+  capUnderTitle,
   type DrawnTitle,
   fitWidest,
   reportTitle,
@@ -169,6 +170,19 @@ export function WholeWords({
         {children}
       </Text>
     </>
+  );
+}
+
+/** Grows with the text up to a title's cap, as any text under it, then steps down rather than break a word, never below `size` (sc-67338). */
+export function CappedWholeWords(props: WholeWordsProps) {
+  const { fontScale } = useWindowDimensions();
+  const cap = useContext(TitleCap);
+
+  return (
+    <WholeWords
+      {...props}
+      start={props.size * capUnderTitle(cap ?? Infinity, props.size, fontScale)}
+    />
   );
 }
 

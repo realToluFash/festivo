@@ -16,6 +16,7 @@ import { SchemeTile } from './SchemeParts.tsx';
 import { Pill, Tile, TYPE } from './SettingsParts.tsx';
 import { SELECTED_ROW } from './SummaryRows.tsx';
 import { Text } from './Text.tsx';
+import { CappedWholeWords } from './Title.tsx';
 import { Glass } from './TodayCover.tsx';
 
 /** Who the card at the top of Settings is: no role outside an organisation. */
@@ -143,9 +144,9 @@ export function PersonCard({
           </Text>
           {role != null && (
             <Glass height={28} grows style={styles.roleChip}>
-              <Text size={13} weight="semibold" accessible={false} style={styles.white}>
+              <CappedWholeWords size={13} weight="semibold" accessible={false} style={styles.white}>
                 {t('settings.personRole', role)}
-              </Text>
+              </CappedWholeWords>
             </Glass>
           )}
         </View>

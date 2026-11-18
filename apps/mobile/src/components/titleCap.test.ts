@@ -16,6 +16,8 @@ import { PAGE_TITLE } from './topTitle.ts';
 const frame = readFileSync(join('src', 'components', 'AppFrame.tsx'), 'utf8');
 const rows = readFileSync(join('src', 'components', 'SummaryRows.tsx'), 'utf8');
 const event = readFileSync(join('src', 'components', 'EventScreen.tsx'), 'utf8');
+const settings = readFileSync(join('src', 'components', 'SettingsHome.tsx'), 'utf8');
+const demoFrame = readFileSync(join('src', 'demo', 'settings', 'Frame.tsx'), 'utf8');
 
 const HEAD = 18;
 const AX5 = 3.12;
@@ -38,15 +40,19 @@ describe('nothing under a page title draws larger than the title (sc-67338)', ()
   });
 
   it('starts the heading from the cap, so it steps down by whole words from there', () => {
-    expect(rows).toMatch(
-      /start=\{HEAD_SIZE \* capUnderTitle\(cap \?\? Infinity, HEAD_SIZE, fontScale\)\}/u,
-    );
+    expect(rows).toMatch(/<CappedWholeWords\s+size=\{HEAD_SIZE\}/u);
   });
 
   it('caps the frame’s body at the title’s size, and only where a title is drawn', () => {
     expect(frame).toMatch(/<TitleCap\.Provider value=\{cap\}>\s+\{!ownTop && switchedNotice\}/u);
     expect(frame).toMatch(
       /const cap = framed && \(titleCap\.drawn \|\| !untitled\) \? titleCap\.cap : null;/u,
+    );
+  });
+
+  it('caps the demo’s Settings column at the title’s size, as the app’s frame does', () => {
+    expect(demoFrame).toMatch(
+      /<TitleCap\.Provider value=\{titleSize\(PAGE_TITLE, fontScale\)\}>\{column\}<\/TitleCap\.Provider>/u,
     );
   });
 
@@ -115,5 +121,17 @@ describe('the cap a page’s title reported holds for that page and text size on
     expect(reportTitle(drawn, guests, 30)).toBe(drawn);
     expect(reportTitle(drawn, guests, 28)).toEqual({ key: guests, size: 28 });
     expect(reportTitle(drawn, overview, 30)).toEqual({ key: overview, size: 30 });
+  });
+});
+
+describe('every line under the cap wraps whole, and nothing is cut (sc-67338)', () => {
+  it('steps the account card’s role down by whole words, so a long organisation is never broken', () => {
+    expect(settings).toMatch(
+      /<CappedWholeWords[^>]*>\s+\{t\('settings\.personRole', role\)\}\s+<\/CappedWholeWords>/u,
+    );
+  });
+
+  it('wraps a row’s tag at the accessibility sizes rather than cut it', () => {
+    expect(rows).toMatch(/const wraps = wrapsAlways \|\| atAccessibilitySizes\(fontScale\);/u);
   });
 });
