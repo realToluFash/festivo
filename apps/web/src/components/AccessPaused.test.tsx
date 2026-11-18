@@ -7,7 +7,7 @@ import { membership } from '../test-memberships.ts';
 import { AccessPaused } from './AccessPaused.tsx';
 
 function paused(reason: PausedOrganisation['suspension']['reason']): PausedOrganisation {
-  const { id, name, countryCode, currency, timezone, contactAddress, locale } = membership({
+  const { id, name, countryCode, currency, timezone, contactAddress, locale, plan } = membership({
     id: 'org_1',
     name: 'Ìrè Events',
   });
@@ -19,6 +19,7 @@ function paused(reason: PausedOrganisation['suspension']['reason']): PausedOrgan
     currency,
     timezone,
     contactAddress,
+    plan,
     locale,
     suspension: {
       reason,

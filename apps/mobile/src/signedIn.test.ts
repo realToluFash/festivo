@@ -53,6 +53,7 @@ const organisation = {
   countryCode: 'NG',
   contactAddress: 'hello@ire.events',
   locale: 'en',
+  plan: 'free' as const,
   currency: 'NGN',
   timezone: 'Africa/Lagos',
   role: { id: 'role_1', seededAs: 'owner', name: null },

@@ -821,6 +821,7 @@ function PeoplePanel({
 export function StaffTabs({ on, eventId, tell }: { on: string; eventId: string; tell: Tell }) {
   const pages: Record<string, string> = {
     Roster: `/demo/events/${eventId}/staff/roster`,
+    'Jobs and shifts': `/demo/events/${eventId}/staff/jobs`,
     Stations: `/demo/events/${eventId}/staff/stations`,
   };
 
@@ -846,7 +847,7 @@ export function StaffTabs({ on, eventId, tell }: { on: string; eventId: string; 
             key={tab}
             type="button"
             className="sn-tab"
-            onClick={() => tell(`${tab} has its own design (sc-3908, sc-101).`)}
+            onClick={() => tell(`${tab} has its own design (sc-101).`)}
           >
             {tab}
           </button>
