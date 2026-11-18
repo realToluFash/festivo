@@ -2070,6 +2070,7 @@
   "steps": {
     "back": "Back",
     "close": "Close",
+    "cancel": "Cancel",
     "stepOf": "Step {{step, number}} of {{steps, number}}",
     "skip": "Skip",
     "signOut": "Sign out",

@@ -1,0 +1,25 @@
+# On an iPad, Sign in over welcome is a sheet whose bar says Cancelar, above Iniciar sesión, and Cancel closes it onto welcome
+# with the language held. iPad only: a phone keeps the back chevron. sc-67589.
+#
+#   node .qa/bin/qa-env.mjs maestro sc67589-ipad-cancel
+appId: host.exp.Exponent
+---
+- runFlow:
+    file: sign-in-screen-language.yaml
+    env:
+      LANGUAGE: Español
+- assertVisible:
+    id: 'signIn.left'
+    text: 'Cancelar'
+- assertNotVisible:
+    id: 'signIn.back'
+- assertVisible: 'Iniciar sesión'
+- takeScreenshot: sc67589-ipad-sheet-cancel
+- tapOn:
+    id: 'signIn.left'
+- extendedWaitUntil:
+    visible:
+      id: 'welcome.email'
+    timeout: 10000
+- assertVisible: 'Español'
+- takeScreenshot: sc67589-ipad-cancel-welcome
