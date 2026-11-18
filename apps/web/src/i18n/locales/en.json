@@ -4600,6 +4600,7 @@
     "shiftCount_other": "{{count, number}} shifts",
     "short": "Short {{count, number}}",
     "gap": "{{short}} · {{when}}",
+    "summaryShort_zero": "Every job is covered at all times.",
     "summaryShort_one": "{{count, number}} job is short at some point, {{covered, number}} covered.",
     "summaryShort_other": "{{count, number}} jobs are short at some point, {{covered, number}} covered.",
     "range": "{{start}} to {{end}}",

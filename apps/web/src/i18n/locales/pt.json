@@ -4844,6 +4844,7 @@
     "shiftCount_many": "{{count, number}} de turnos",
     "short": "Por preencher: {{count, number}}",
     "gap": "{{short}} · {{when}}",
+    "summaryShort_zero": "Todas as funções estão sempre cobertas.",
     "summaryShort_one": "{{count, number}} função fica com falta de pessoas a certa altura. Cobertas: {{covered, number}}.",
     "summaryShort_other": "{{count, number}} funções ficam com falta de pessoas a certa altura. Cobertas: {{covered, number}}.",
     "summaryShort_many": "{{count, number}} de funções ficam com falta de pessoas a certa altura. Cobertas: {{covered, number}}.",
