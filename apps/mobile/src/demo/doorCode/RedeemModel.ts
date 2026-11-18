@@ -1,4 +1,5 @@
-import { BAR, type CodeRole, EVENT, type Redeemable } from './DoorCodeModel.ts';
+import { type EventPlace, EVENT_PLACES } from '../../kit/eventNav.ts';
+import { BAR, type CodeChoice, type CodeRole, EVENT, type Redeemable } from './DoorCodeModel.ts';
 import { tooShortFor, W } from './DoorCodeWords.ts';
 
 export const REDEEM_STATES = [
@@ -199,17 +200,19 @@ export function refusalOf(
   }
 }
 
-export type InsideArea = 'checkIn' | 'overview' | 'guests' | 'schedule' | 'seating' | 'people';
+export type InsideArea = 'checkIn' | EventPlace;
 const SEEN: readonly InsideArea[] = ['overview', 'guests', 'schedule', 'seating', 'people'];
 /** The phone's tabs; every other area the role sees is in More. */
 export const PHONE_AREAS: readonly InsideArea[] = ['overview', 'guests'];
 
-/** What a door-code joiner reaches inside the event, by role (pm, 7 Nov, sc-72): never Budget, Menu, Messages, Staff or Reports. */
-export function areasFor(role: CodeRole): InsideArea[] {
+/** What a level reaches inside the event (pm, 7 Nov, sc-72; sc-71): Can view and Can check guests in never Budget, Menu, Messages, Staff or Reports; Can edit every area but Budget, in the member sidebar's order. */
+export function areasFor(role: CodeChoice): InsideArea[] {
+  if (role === 'Can edit') return EVENT_PLACES.filter((place) => place !== 'budget');
+
   return role === 'Can check guests in' ? ['checkIn', ...SEEN] : [...SEEN];
 }
 
-export function moreAreas(role: CodeRole, phone: boolean): InsideArea[] {
+export function moreAreas(role: CodeChoice, phone: boolean): InsideArea[] {
   return phone ? areasFor(role).filter((area) => !PHONE_AREAS.includes(area)) : [];
 }
 
@@ -220,4 +223,9 @@ export const AREA_WORDS: Record<InsideArea, string> = {
   schedule: W.schedule,
   seating: W.seating,
   people: W.people,
+  menu: 'Menu',
+  messages: 'Messages',
+  staff: 'Staff',
+  budget: 'Budget',
+  reports: 'Reports',
 };
