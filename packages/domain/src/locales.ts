@@ -47,16 +47,21 @@ export function narrowLocale(locale: string | null | undefined): LocaleCode {
   return LOCALE_CODES.includes(lang) ? lang : DEFAULT_LOCALE;
 }
 
-/** A region refines the shown language's dates, never replaces it: en-GB on an English screen, plain `es` on a Spanish one. */
+/** A region refines the shown language's dates, never replaces it: en-US on an American phone, plain `es` on a Spanish screen, and English with no region is the copy's own en-GB. */
 export function formattingLocale(shown: LocaleCode, deviceTag: string | null | undefined): string {
-  if (deviceTag == null || deviceTag.trim() === '' || language(deviceTag) !== shown) return shown;
+  const alone = shown === 'en' ? 'en-GB' : shown;
+  if (deviceTag == null || deviceTag.trim() === '' || language(deviceTag) !== shown) return alone;
 
   try {
-    return Intl.DateTimeFormat.supportedLocalesOf(deviceTag.trim().replace(/_/g, '-'))[0] ?? shown;
+    const tag = Intl.DateTimeFormat.supportedLocalesOf(deviceTag.trim().replace(/_/g, '-'))[0];
+
+    return tag != null && REGION.test(tag) ? tag : alone;
   } catch {
-    return shown;
+    return alone;
   }
 }
+
+const REGION = /^[a-z]{2,3}(-[a-z]{4})?-([a-z]{2}|\d{3})(-|$)/i;
 
 /** The tag a locale's copy is written for, whose plural rule and numbers it follows: `pt` is Portugal's, where 0 is plural and a million is «1 000 000». */
 export function pluralLocale(locale: LocaleCode): string {
