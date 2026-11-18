@@ -208,7 +208,6 @@ export function ClaimScreen({
         testID: 'ownerClaim.check',
       }}
       onCancel={owner.close}
-      cancelLabel={t('ownerClaim.close')}
       cancelTestID="ownerClaim.cancel"
       opener={opener}
       ask={owner.asking?.kind === 'stop' ? null : claimAsk(t, owner, organisation)}

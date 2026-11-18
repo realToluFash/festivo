@@ -1451,7 +1451,6 @@
     "withdrawYes": "Withdraw",
     "withdrawNo": "Keep my claim",
     "withdrawing": "Withdrawing",
-    "close": "Close",
     "withdrawEnded": "This claim has already ended.",
     "withdrawNotClaimant": "Only the person who started this claim can withdraw it.",
     "passesToYou": "Ownership passes to you on {{when}}.",
