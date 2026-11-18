@@ -42,7 +42,8 @@
     "mobile:guestExport.excel",
     "mobile:guestExport.csv",
     "messagesCounts:guest_export.diet.halal",
-    "messagesCounts:guest_export.diet.kosher"
+    "messagesCounts:guest_export.diet.kosher",
+    "web:vendors.categories.catering"
   ],
   "fr": [
     "web:nav.menu",
