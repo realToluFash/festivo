@@ -2399,7 +2399,17 @@
     "discardTitle": "Abandonner vos modifications ?",
     "discardLine": "Aucune personne ne sera ajoutée à cet événement.",
     "discardKeep": "Continuer à modifier",
-    "discard": "Abandonner"
+    "discard": "Abandonner",
+    "card": {
+      "count_one": "{{count, number}} personne sur cet événement",
+      "count_many": "{{count, number}} de personnes sur cet événement",
+      "count_other": "{{count, number}} personnes sur cet événement",
+      "held": "sur cet événement",
+      "lead": "Responsable · {{name}}",
+      "failed": "Impossible de charger les personnes de cet événement.",
+      "opens": "Ouvre Personnes.",
+      "leadSaid": "Responsable, {{name}}."
+    }
   },
   "recoveryRequests": {
     "cardTitle": "Demandes pour revenir",
