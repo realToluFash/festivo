@@ -36,7 +36,7 @@ describe('Data and control › Audit log (sc-611)', () => {
         .map((heading) => heading.textContent),
     ).toEqual(['Today · Monday, Oct 19', 'Saturday, Oct 17', 'Friday, Oct 16', 'Tuesday, Oct 6']);
     expect(
-      screen.getByRole('button', { name: /^10:05 ?Downloaded Ire Events’ data/u }),
+      screen.getByRole('button', { name: /^10:05 ?Downloaded Ire Events’s data/u }),
     ).toBeDefined();
     expect(screen.getByText('Priya Shah · Event access')).toBeDefined();
     expect(

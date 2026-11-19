@@ -85,7 +85,7 @@ export function exportCard(state: ExportState, locale: string, zone: ReaderZone)
       };
     case 'ex_ready_other':
       return {
-        says: `${ORG}’ export is ready`,
+        says: `${ORG}’s export is ready`,
         lines: [
           `Asked by ${ASKER.name}, ${when(CLOCK.asked, locale, zone)}. Only they can download it, until ${when(LINK_UNTIL, locale, zone)}.`,
         ],
@@ -115,7 +115,7 @@ export function exportCard(state: ExportState, locale: string, zone: ReaderZone)
       };
     case 'not_owner':
       return {
-        says: `Only an owner exports ${ORG}’ data`,
+        says: `Only an owner exports ${ORG}’s data`,
         lines: [`An owner can take everything ${ORG} holds in one archive.`],
         step: null,
       };
