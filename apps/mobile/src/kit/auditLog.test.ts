@@ -70,12 +70,13 @@ describe('grouping by day', () => {
     const days = byDay(
       t,
       [
-        entry({ id: 'a', at: '2026-10-19T09:05:18Z', day: 'Monday, Oct 19' }),
-        entry({ id: 'b', at: '2026-10-19T07:15:41Z', day: 'Monday, Oct 19' }),
-        entry({ id: 'c', at: '2026-10-17T13:20:09Z', day: 'Saturday, Oct 17' }),
+        entry({ id: 'a', at: '2026-10-19T09:05:18Z', day: '2026-10-19' }),
+        entry({ id: 'b', at: '2026-10-19T07:15:41Z', day: '2026-10-19' }),
+        entry({ id: 'c', at: '2026-10-17T13:20:09Z', day: '2026-10-17' }),
       ],
       now,
       'Africa/Lagos',
+      'en-US',
     );
 
     expect(days.map((day) => [day.heading, day.entries.map((one) => one.id)])).toEqual([
@@ -85,10 +86,12 @@ describe('grouping by day', () => {
   });
 
   it('reads the day in the reader’s zone, UTC when the account has none', () => {
-    const late = entry({ id: 'late', at: '2026-10-18T23:30:00Z', day: 'Monday, Oct 19' });
+    const late = entry({ id: 'late', at: '2026-10-18T23:30:00Z', day: '2026-10-19' });
 
-    expect(byDay(t, [late], now, 'Africa/Lagos')[0]?.heading).toBe('Today · Monday, Oct 19');
-    expect(byDay(t, [late], now, null)[0]?.key).toBe('2026-10-18');
+    expect(byDay(t, [late], now, 'Africa/Lagos', 'en-US')[0]?.heading).toBe(
+      'Today · Monday, Oct 19',
+    );
+    expect(byDay(t, [late], now, null, 'en-US')[0]?.key).toBe('2026-10-18');
   });
 });
 
@@ -193,7 +196,7 @@ describe('the date range', () => {
 
 describe('an entry', () => {
   it('names support and the System in the client’s words', () => {
-    const base = { id: 'x', at: '2026-10-19T09:05:18Z', day: 'Monday, Oct 19' };
+    const base = { id: 'x', at: '2026-10-19T09:05:18Z', day: '2026-10-19' };
 
     expect(entryLine(t, entry(base))).toBe('Folake Adeyemi · Events');
     expect(
@@ -210,7 +213,7 @@ describe('an entry', () => {
   it('shows when, who with their address, what, on as a link, type and action, reference', () => {
     const rows = detailRows(
       t,
-      entry({ id: 'live', at: '2026-10-17T08:12:44Z', day: 'Saturday, Oct 17' }),
+      entry({ id: 'live', at: '2026-10-17T08:12:44Z', day: '2026-10-17' }),
     );
 
     expect(rows.map((row) => row.key)).toEqual(['when', 'who', 'what', 'on', 'kind', 'reference']);
@@ -270,8 +273,8 @@ describe('an entry', () => {
   });
 
   it('hands a phone’s entry page the entry it opened, and only that one', () => {
-    const one = entry({ id: 'one', at: '2026-10-19T09:05:18Z', day: 'Monday, Oct 19' });
-    const two = entry({ id: 'two', at: '2026-10-19T09:05:18Z', day: 'Monday, Oct 19' });
+    const one = entry({ id: 'one', at: '2026-10-19T09:05:18Z', day: '2026-10-19' });
+    const two = entry({ id: 'two', at: '2026-10-19T09:05:18Z', day: '2026-10-19' });
 
     rememberEntry(one);
     expect(rememberedEntry('one')).toBe(one);
@@ -318,7 +321,7 @@ describe('the page', () => {
   });
 
   it('adds the next page after the shown one, once each', () => {
-    const a = entry({ id: 'a', at: '2026-10-19T09:05:18Z', day: 'Monday, Oct 19' });
+    const a = entry({ id: 'a', at: '2026-10-19T09:05:18Z', day: '2026-10-19' });
     const b = entry({ id: 'b', at: '2026-10-18T09:05:18Z', day: 'Sunday, Oct 18' });
     const page = {
       organisation: 'Ire Events',
