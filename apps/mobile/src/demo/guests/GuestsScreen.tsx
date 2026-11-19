@@ -1,4 +1,4 @@
-import { formattingLocale } from '@soirely/domain';
+import { exportFileName, exportNarrowing, formattingLocale } from '@soirely/domain';
 import { getLocales } from 'expo-localization';
 import { type Href, router } from 'expo-router';
 import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -64,7 +64,15 @@ import {
 import { RefreshingWords } from './RefreshingWords.tsx';
 import { changesSince, lastLooked, takeLook } from './ChangedSince.ts';
 import { ExportButton, ExportPanel, ExportSheet, ShareStandIn } from './GuestExport.tsx';
-import { exportDay, exportStart, exportWordsIn, fileName, narrowing } from './GuestExportModel.ts';
+import {
+  ENGLISH_SHEET,
+  exportDay,
+  exportStart,
+  exportWordsIn,
+  fileName,
+  narrowing,
+  sheetWordsIn,
+} from './GuestExportModel.ts';
 import { GuestsFailed, GuestsLoading, GuestsRows } from './GuestsList.tsx';
 import { GuestToast, GuestsCard, GuestsTitle, type Layout } from './GuestsParts.tsx';
 import { type SampleGuest, TODAY, WEDDING } from './GuestsSample.ts';
@@ -85,6 +93,17 @@ import {
   whoseRows,
 } from './PasteReplyModel.ts';
 
+/** The Portuguese catalogue's word for a filter, for the Export sheet's Filtro line (sc-72136). */
+const PT_FILTER: Partial<Record<string, string>> = {
+  all: 'guestList.all',
+  invited: 'guestList.invited',
+  coming: 'guestList.reply.coming',
+  maybe: 'guestList.reply.maybe',
+  notcoming: 'guestList.reply.notComing',
+  held: 'guestList.reply.held',
+  noreply: 'guestList.reply.noReply',
+  notyet: 'guestList.reply.notYetInvited',
+};
 const SEARCH_PAUSE_MS = 300;
 const FOCUS_AFTER_MS = 450;
 // As the product's Guests list on a tablet on its side, widened at the accessibility sizes (sc-67659).
@@ -183,7 +202,10 @@ export function GuestsScreen({
   const [exporting, setExporting] = useState(exported.open);
   const [exportRound, setExportRound] = useState(0);
   const day = exportDay(now, event.timeZone);
-  const fileFor = (format: 'xlsx' | 'csv') => fileName(event.name, day, format);
+  const fileFor = (format: 'xlsx' | 'csv') =>
+    inPortuguese
+      ? exportFileName(portuguese, event, now, format)
+      : fileName(event.name, day, format);
   const [sharing, setSharing] = useState<string | null>(exported.share ? fileFor('xlsx') : null);
   const refs = useRef<Partial<Record<string, ViewInstance | null>>>({});
   const from = useRef<string>(start.focus ?? 'card');
@@ -340,11 +362,20 @@ export function GuestsScreen({
     setExportRound((count) => count + 1);
     setExporting(true);
   };
+  const choicePt = PT_FILTER[filter];
   const exportProps = {
+    words: inPortuguese ? sheetWordsIn(portuguese) : ENGLISH_SHEET,
     file: fileFor,
     inView,
     everyone: total,
-    narrowed: narrowing(filterWord(filter), searched),
+    narrowed: inPortuguese
+      ? exportNarrowing(
+          portuguese,
+          choicePt == null ? filterWord(filter) : portuguese(choicePt),
+          searched,
+          [],
+        )
+      : narrowing(filterWord(filter), searched),
     needs: exported.needs,
     offline,
     format: exported.format,

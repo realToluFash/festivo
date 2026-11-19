@@ -1451,7 +1451,13 @@ export function guestOf(state: GuestsState | null): string | null {
 export function titleRowOf(state: GuestsState | null): { locale: 'en' | 'pt'; export: boolean } {
   if (state === 'titlePt') return { locale: 'pt', export: false };
   return {
-    locale: state === 'exportPt' || state === 'offlinePt' || state === 'refreshingPt' ? 'pt' : 'en',
+    locale:
+      state === 'exportPt' ||
+      state === 'offlinePt' ||
+      state === 'refreshingPt' ||
+      state === 'exportSearchedPt'
+        ? 'pt'
+        : 'en',
     export: true,
   };
 }
@@ -1482,6 +1488,8 @@ export function areaStart(state: GuestsState | null): AreaStart {
     case 'filtered':
       return { ...base, filter: 'noreply' };
     case 'search':
+    case 'exportSearched':
+    case 'exportSearchedPt':
       return { ...base, typed: 'okon' };
     case 'searchNone':
       return { ...base, typed: 'kofi' };
