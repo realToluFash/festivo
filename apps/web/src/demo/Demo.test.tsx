@@ -2004,6 +2004,23 @@ describe('People on an event at a desk (sc-29915)', () => {
     });
   }
 
+  it('opens under the crumb row with the bell at its end, and People as its only title (sc-69635)', async () => {
+    await people();
+
+    const crumb = screen.getByRole('navigation', { name: 'Breadcrumb' });
+    expect(within(crumb).getByRole('link', { name: 'Events' }).getAttribute('href')).toBe(
+      '/demo/events',
+    );
+    expect(
+      within(crumb).getByRole('link', { name: 'Adaeze & Tunde’s wedding' }).getAttribute('href'),
+    ).toBe('/demo/events/evt-wed-4');
+    expect(crumb.querySelector('[aria-current="page"]')?.textContent).toBe('People');
+    expect(crumb.parentElement?.querySelector(':scope > .desk-bell')).not.toBeNull();
+    expect(screen.getAllByRole('heading', { level: 1 }).map((one) => one.textContent)).toEqual([
+      'People',
+    ]);
+  });
+
   it('saves a role as it is picked, and says so', async () => {
     vi.useFakeTimers({ shouldAdvanceTime: true });
     await people();
