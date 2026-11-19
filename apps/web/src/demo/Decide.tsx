@@ -71,7 +71,7 @@ function GuestsHead({
   }
 
   return (
-    <div className="gs" ref={head}>
+    <div className="gs dec-page" ref={head}>
       <PageTitle title={GW.title}>
         <TextAction
           label={GW.addGuest}
@@ -82,7 +82,7 @@ function GuestsHead({
           }}
         />
       </PageTitle>
-      <div className="gs-cols">
+      <div className="gs-cols dec-cols">
         <section className="gs-list" aria-label={GW.title}>
           <Rows>
             {BACKDROP.map((guest) => (
@@ -96,7 +96,7 @@ function GuestsHead({
             ))}
           </Rows>
         </section>
-        <section className="gs-column" aria-label={GW.addGuest}>
+        <section className="gs-column dec-column" aria-label={GW.addGuest}>
           {open && <AddGuest key={round} kind={kind} lang={lang} onDone={done} />}
         </section>
       </div>

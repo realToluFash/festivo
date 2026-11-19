@@ -126,3 +126,17 @@
   white-space: normal;
   text-align: end;
 }
+
+/* sc-72618, at 320 CSS px (400% zoom, WCAG 2.2 SC 1.4.10): Add guest stacks under the list at the full width, so nothing scrolls sideways. */
+@media (width <= 40rem) {
+  .dec-page .dec-cols {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .dec-page .dec-column {
+    position: static;
+    max-height: none;
+    margin: 0;
+    padding-inline: 0;
+  }
+}

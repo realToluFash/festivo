@@ -193,7 +193,7 @@ describe('What a decision costs, in Add guest (sc-86)', () => {
         '£99,999,999,999,999,999 → £100,999,999,999,999,999 · 100 → 101 if all come',
       );
       expect(answer.querySelector('.bud-amount')?.textContent).toBe('+£1,000,000,000,000,000');
-      expect(answer.querySelectorAll('.dec-figure').length).toBe(5);
+      expect(answer.querySelectorAll('.dec-figure').length).toBe(6);
       for (const figure of answer.querySelectorAll('.dec-figure'))
         for (const group of figure.childNodes)
           if (group.nodeType === Node.TEXT_NODE)
