@@ -34,6 +34,7 @@ export interface RowTag {
   kind: TagKind;
   word: string;
   turning?: boolean;
+  wraps?: boolean;
 }
 
 const TAGS: Record<TagKind, { fill: string; ink: string; ring?: string }> = {
@@ -131,7 +132,7 @@ export function Tag({
   word: string;
   turning?: boolean | undefined;
   /** Wraps at every text size, not only at the accessibility sizes, where a tag always wraps rather than be cut (sc-67338). */
-  wraps?: boolean;
+  wraps?: boolean | undefined;
 }) {
   const look = TAGS[kind];
   const { fontScale } = useWindowDimensions();
@@ -312,7 +313,11 @@ export function Row({
               {titleWithInkRoom(title, Platform.OS, selectable)}
             </Text>
           }
-          tag={tag != null && <Tag kind={tag.kind} word={tag.word} turning={tag.turning} />}
+          tag={
+            tag != null && (
+              <Tag kind={tag.kind} word={tag.word} turning={tag.turning} wraps={tag.wraps} />
+            )
+          }
         />
         {line != null && (
           <Text
