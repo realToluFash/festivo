@@ -154,7 +154,7 @@ final readonly class QuoteRules
         if ('' === $description) {
             $violations[] = $this->violation('description', 'validation.payment_description_required');
         } elseif (VisibleText::tooLong($description, ScheduledPayment::DESCRIPTION_MAXIMUM)) {
-            $violations[] = $this->violation('description', 'validation.payment_description_too_long', ['{count}' => (string) ScheduledPayment::DESCRIPTION_MAXIMUM]);
+            $violations[] = $this->violation('description', 'validation.payment_description_too_long', ['{max}' => (string) ScheduledPayment::DESCRIPTION_MAXIMUM]);
         }
 
         $amountMinor = $this->amountChecked($sent['amount'] ?? '', $sent['currency'] ?? '', $event, $violations);
@@ -199,13 +199,13 @@ final readonly class QuoteRules
         if ('' === $covers) {
             $violations[] = $this->violation('covers', 'validation.quote_covers_required');
         } elseif (VisibleText::tooLong($covers, Quote::COVERS_MAXIMUM)) {
-            $violations[] = $this->violation('covers', 'validation.quote_covers_too_long', ['{count}' => (string) Quote::COVERS_MAXIMUM]);
+            $violations[] = $this->violation('covers', 'validation.quote_covers_too_long', ['{max}' => (string) Quote::COVERS_MAXIMUM]);
         }
 
         $reference = Str\trim($reference);
 
         if (VisibleText::tooLong($reference, Quote::REFERENCE_MAXIMUM)) {
-            $violations[] = $this->violation('reference', 'validation.quote_reference_too_long', ['{count}' => (string) Quote::REFERENCE_MAXIMUM]);
+            $violations[] = $this->violation('reference', 'validation.quote_reference_too_long', ['{max}' => (string) Quote::REFERENCE_MAXIMUM]);
         }
 
         return new QuoteWording($covers, '' === $reference ? null : $reference, $lineIds);
