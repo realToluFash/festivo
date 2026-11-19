@@ -21,12 +21,13 @@ appId: host.exp.Exponent
 - scrollUntilVisible:
     element:
       id: audit.entry.${E_SYSTEM}
+    centerElement: true
     timeout: 30000
 - tapOn:
     id: audit.entry.${E_SYSTEM}
 - extendedWaitUntil:
     visible:
-      id: audit.entrySheet
+      id: audit.detail.when
     timeout: 10000
 - waitForAnimationToEnd:
     timeout: 5000
