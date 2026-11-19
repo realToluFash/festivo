@@ -1,4 +1,4 @@
-# sc-71: an account with no organisation, on the event it holds, for the pair beside the demo's more-in.
+# sc-71: an account with no organisation, on the event it holds, for the pair beside the demo's more-in. Needs ${ORIENT}, ${METRO_URL}.
 appId: host.exp.Exponent
 ---
 - setOrientation: ${ORIENT}

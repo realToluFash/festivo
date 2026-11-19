@@ -1,4 +1,4 @@
-# sc-71: People's Add sheet with an outside email address typed, for the pair beside the demo's addOutside.
+# sc-71: People's Add sheet with an outside email address typed, for the pair beside the demo's addOutside. Needs ${ORIENT}, ${METRO_URL}, ${EVENT_ID}.
 appId: host.exp.Exponent
 ---
 - setOrientation: ${ORIENT}
@@ -8,5 +8,6 @@ appId: host.exp.Exponent
 - waitForAnimationToEnd: { timeout: 4000 }
 - tapOn: { id: 'people.add.who' }
 - inputText: 'bisi.two@lagoslights.example'
+- extendedWaitUntil: { visible: { id: 'people.add.outside' }, timeout: 10000 }
 - waitForAnimationToEnd: { timeout: 4000 }
 - takeScreenshot: addOutside

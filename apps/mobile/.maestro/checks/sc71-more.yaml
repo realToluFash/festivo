@@ -1,9 +1,11 @@
-# sc-71: More inside the event for an account with no organisation (Your account, Sign out).
+# sc-71: More inside the event for an account with no organisation (Your account, Sign out). Phone only: on a tablet More is the sidebar's person. Needs ${ORIENT}, ${METRO_URL}.
 appId: host.exp.Exponent
 ---
 - setOrientation: ${ORIENT}
 - openLink: ${METRO_URL}/--/
 - extendedWaitUntil: { visible: { id: 'outside.overview' }, timeout: 30000 }
-- tapOn: { id: 'event.nav.more', optional: true }
+- tapOn: { id: 'event.nav.more' }
+- extendedWaitUntil: { visible: { id: 'event.nav.more.account' }, timeout: 10000 }
+- assertVisible: { id: 'event.nav.more.signOut' }
 - waitForAnimationToEnd: { timeout: 4000 }
 - takeScreenshot: more
