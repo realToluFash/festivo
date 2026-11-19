@@ -68,7 +68,11 @@ final readonly class AuditEntryView
                 'what' => Type\string()->coerce($facts['what']),
                 'who' => $this->whoName($who['kind'], $who['name'], $locale),
                 'who_email' => $who['email'],
-                'on' => null === $on ? null : ($on['gone'] ? $this->translator->trans('audit.gone', ['name' => $on['name']], 'messages', $locale) : $on['name']),
+                'on' => match (true) {
+                    null === $on => null,
+                    $on['gone'] => $this->translator->trans('audit.gone', ['name' => $on['name']], 'messages', $locale),
+                    default => $on['name'],
+                },
                 'changes' => Str\join(Type\vec(Type\string())->coerce($facts['changes']), '; '),
                 'network_address' => Type\nullable(Type\string())->coerce($facts['address']),
                 'device' => Type\nullable(Type\string())->coerce($facts['device']),
