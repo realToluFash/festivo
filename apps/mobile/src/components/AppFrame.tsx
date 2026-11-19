@@ -1143,12 +1143,11 @@ export function BackButton({
   const { fontScale } = useWindowDimensions();
   const scale = backScale(fontScale, useContext(TitleCap));
   const body = tokens.typeBodyPhone.size;
-  const word = useBackWord(label, {
-    full: body * scale,
-    least: body,
-    glyph: tokens.sizeMark,
-    sides: 3 * tokens.spaceXs,
-  });
+  const word = useBackWord(
+    label,
+    { full: body * scale, least: body, glyph: tokens.sizeMark, sides: 3 * tokens.spaceXs },
+    beside != null,
+  );
   const mark = (tokens.sizeMark / body) * word.size;
   const button = (
     <>
