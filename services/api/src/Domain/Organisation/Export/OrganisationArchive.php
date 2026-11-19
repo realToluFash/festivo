@@ -74,13 +74,17 @@ final readonly class OrganisationArchive
              ORDER BY ev.starts_at_utc, ev.id
             SQL,
         'event_people' => <<<'SQL'
-            SELECT p.event_id, p.membership_id AS member_id, u.name, p.role, p.job_label
+            SELECT p.event_id,
+                   CASE WHEN p.membership_id IS NOT NULL THEN 'member'
+                        WHEN p.user_id IS NOT NULL THEN 'account'
+                        ELSE 'address' END AS held_by,
+                   p.membership_id AS member_id, u.name, p.address, p.address_kind, p.role, p.job_label
               FROM event_people p
               JOIN events ev ON ev.id = p.event_id
-              JOIN memberships m ON m.id = p.membership_id
-              JOIN users u ON u.id = m.user_id
+              LEFT JOIN memberships m ON m.id = p.membership_id
+              LEFT JOIN users u ON u.id = COALESCE(m.user_id, p.user_id)
              WHERE ev.organisation_id = :organisation AND ev.deleted_at IS NULL
-             ORDER BY ev.starts_at_utc, p.event_id, u.name, p.id
+             ORDER BY ev.starts_at_utc, p.event_id, u.name NULLS LAST, p.address, p.id
             SQL,
         'guests' => <<<'SQL'
             SELECT g.id, g.event_id, g.host_id, g.full_name, g.email, g.mobile,

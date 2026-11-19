@@ -11,12 +11,15 @@ use App\Domain\User\Mail\AccountLanguage;
 use App\Domain\User\Mail\UserMailer;
 use App\Domain\User\UserRegistrar;
 use App\Entity\AuditEntry;
+use App\Entity\Event;
+use App\Entity\EventPerson;
 use App\Entity\Membership;
 use App\Entity\Organisation;
 use App\Entity\OrganisationDomain;
 use App\Entity\OrganisationExport;
 use App\Entity\Role;
 use App\Entity\User;
+use App\Enum\ContactKind;
 use App\Enum\ErrorCode;
 use App\Enum\EventRole;
 use App\Enum\MembershipStatus;
@@ -72,7 +75,7 @@ final class OrganisationExportTest extends ApiTestCase
         'invitations' => ['id', 'email', 'role', 'status', 'invited_by', 'created_at', 'expires_at', 'accepted_at', 'declined_at', 'revoked_at'],
         'requests_to_join' => ['id', 'name', 'email', 'message', 'asked_at', 'expires_at'],
         'events' => ['id', 'name', 'type', 'status', 'starts_at', 'ends_at', 'time_zone', 'currency', 'venue_name', 'venue_address', 'reply_by', 'created_at'],
-        'event_people' => ['event_id', 'member_id', 'name', 'role', 'job_label'],
+        'event_people' => ['event_id', 'held_by', 'member_id', 'name', 'address', 'address_kind', 'role', 'job_label'],
         'guests' => ['id', 'event_id', 'host_id', 'full_name', 'email', 'mobile', 'reply', 'replied_at', 'guest_group_id', 'allergens', 'diets', 'access_needs', 'needs_note', 'created_at'],
         'guest_groups' => ['id', 'event_id', 'name', 'created_at'],
         'seating_plans' => ['id', 'event_id', 'room_name', 'width_cm', 'length_cm', 'shared_at', 'share_by', 'created_at'],
@@ -124,6 +127,11 @@ final class OrganisationExportTest extends ApiTestCase
         self::invitationTo('priya@ire.events', $this->fresh(), SeededRole::Member);
         $eventId = $this->newEvent();
         self::onEvent($admin, $eventId, EventRole::Lead);
+        $event = self::em()->find(Event::class, $eventId) ?? self::fail('no event');
+        $caterer = $this->account('kemi@caterers.example', 'Kemi Bello', 'Africa/Lagos');
+        self::em()->persist(EventPerson::outside($event, $caterer, EventRole::CanView, null, $this->owner));
+        self::em()->persist(EventPerson::pending($event, 'lights@example.com', ContactKind::Email, EventRole::CanView, null, $this->owner));
+        self::em()->flush();
         $this->as($this->owner, 'POST', "/api/events/{$eventId}/guests", [
             'fullName' => 'Bísí Adéwálé',
             'email' => 'bisi@example.com',
@@ -145,7 +153,14 @@ final class OrganisationExportTest extends ApiTestCase
         self::assertSame(['priya@ire.events', 'Member', 'pending'], [$invitations[0]['email'], $invitations[0]['role'], $invitations[0]['status']]);
         self::assertSame(['Ada Obi', 'ada@ire.events'], [$requests[0]['name'], $requests[0]['email']]);
         self::assertSame(['Owambe', '2026-11-14T15:00:00Z'], [$events[0]['name'], $events[0]['starts_at']]);
-        self::assertSame([$eventId, 'Julien Moreau', 'lead'], [$people[0]['event_id'], $people[0]['name'], $people[0]['role']]);
+        self::assertSame(
+            [
+                [$eventId, 'member', 'Julien Moreau', null, null, 'lead'],
+                [$eventId, 'account', 'Kemi Bello', null, null, 'can_view'],
+                [$eventId, 'address', null, 'lights@example.com', 'email', 'can_view'],
+            ],
+            Vec\map($people, static fn (array $row): array => [$row['event_id'], $row['held_by'], $row['name'], $row['address'], $row['address_kind'], $row['role']]),
+        );
         self::assertSame(
             [['Bísí Adéwálé', 'bisi@example.com', '+2348031234567', null, 'noReply'], ['Tunde Adéwálé', null, null, $guests[0]['id'], 'noReply']],
             Vec\map($guests, static fn (array $row): array => [$row['full_name'], $row['email'], $row['mobile'], $row['host_id'], $row['reply']]),
