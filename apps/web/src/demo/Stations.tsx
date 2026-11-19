@@ -16,6 +16,7 @@ import { keptInbox, waitingLine } from './messages.ts';
 import {
   type Changed,
   type Panel,
+  type Person,
   type Station,
   type Stations,
   type StationsStart,
@@ -47,6 +48,7 @@ import {
   toggle,
   dishesLine,
   inService,
+  clockMinutes,
   onNow,
   tonightSub,
 } from './stations.ts';
@@ -268,7 +270,7 @@ function StationsView({
               </div>
             )}
             {inService(event, clock) && (
-              <Tonight state={state} at={clockWords(clock, event.timeZone)} />
+              <Tonight state={state} clock={clock} timeZone={event.timeZone} />
             )}
             <FloorCard state={state} manage={manage} onOpen={() => open({ kind: 'floor' })} />
             <section className="sn-card" aria-labelledby="sn-places">
@@ -447,17 +449,19 @@ function StationsView({
   );
 }
 
-function Tonight({ state, at }: { state: Stations; at: string }) {
+function Tonight({ state, clock, timeZone }: { state: Stations; clock: Date; timeZone: string }) {
+  const now = clockMinutes(clock, timeZone);
+
   return (
     <section className="sn-card" aria-labelledby="sn-tonight">
       <div className="sn-card-names">
         <h2 id="sn-tonight">{SW.tonight}</h2>
-        <p className="mn-sub">{tonightSub(at)}</p>
+        <p className="mn-sub">{tonightSub(clockWords(clock, timeZone))}</p>
       </div>
       <ul className="sn-rows">
         {state.stations.map((station) => {
           const label = labelOf(station);
-          const on = onNow(station, at);
+          const on = onNow(station, now);
 
           return (
             <li key={station.id} className="sn-row">
@@ -465,11 +469,7 @@ function Tonight({ state, at }: { state: Stations; at: string }) {
               {on.length > 0 ? (
                 <ul className="sn-people" aria-label={`On ${label} now`}>
                   {on.map((one) => (
-                    <li key={one.id} className="sn-person">
-                      <span className="sn-person-name">{one.name}</span>
-                      <span className="sn-time">{shiftOf(one)}</span>
-                      {station.lead === one.id && <span className="sn-lead">{SW.lead}</span>}
-                    </li>
+                    <PersonLine key={one.id} person={one} lead={station.lead === one.id} />
                   ))}
                 </ul>
               ) : (
@@ -484,6 +484,16 @@ function Tonight({ state, at }: { state: Stations; at: string }) {
       </ul>
       <p className="sn-foot">{SW.tonightFoot}</p>
     </section>
+  );
+}
+
+function PersonLine({ person, lead }: { person: Person; lead: boolean }) {
+  return (
+    <li className="sn-person">
+      <span className="sn-person-name">{person.name}</span>
+      <span className="sn-time">{shiftOf(person)}</span>
+      {lead && <span className="sn-lead">{SW.lead}</span>}
+    </li>
   );
 }
 
@@ -597,17 +607,9 @@ function StationRow({
       </div>
       {station.people.length > 0 ? (
         <ul className="sn-people" aria-label={`People on ${label}`}>
-          {station.people.map((id) => {
-            const one = personById(id);
-
-            return (
-              <li key={id} className="sn-person">
-                <span className="sn-person-name">{one.name}</span>
-                <span className="sn-time">{shiftOf(one)}</span>
-                {station.lead === id && <span className="sn-lead">{SW.lead}</span>}
-              </li>
-            );
-          })}
+          {station.people.map((id) => (
+            <PersonLine key={id} person={personById(id)} lead={station.lead === id} />
+          ))}
         </ul>
       ) : (
         <p className="sn-nobody">

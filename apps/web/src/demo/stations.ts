@@ -335,18 +335,31 @@ function minutesOf(time: string): number {
   return Number(hours) * 60 + Number(minutes);
 }
 
+/** Minutes past midnight on the event's clock, kept apart from how the time is worded. */
+export function clockMinutes(when: Date, timeZone: string): number {
+  const parts = new Intl.DateTimeFormat('en-GB', {
+    hour: 'numeric',
+    minute: 'numeric',
+    hourCycle: 'h23',
+    timeZone,
+  }).formatToParts(when);
+  const part = (type: 'hour' | 'minute') =>
+    Number(parts.find((one) => one.type === type)?.value ?? 0);
+
+  return part('hour') * 60 + part('minute');
+}
+
 /** A shift that ends at or before its start runs past midnight. */
-export function onShiftAt(person: Person, at: string): boolean {
+export function onShiftAt(person: Person, now: number): boolean {
   const from = minutesOf(person.from);
   const end = minutesOf(person.to);
   const to = end <= from ? end + 1440 : end;
-  const now = minutesOf(at);
 
   return [now, now + 1440].some((one) => one >= from && one < to);
 }
 
-export function onNow(station: Station, at: string): Person[] {
-  return station.people.map(personById).filter((one) => onShiftAt(one, at));
+export function onNow(station: Station, now: number): Person[] {
+  return station.people.map(personById).filter((one) => onShiftAt(one, now));
 }
 
 /** Stations tonight shows from the event's start to its end. */

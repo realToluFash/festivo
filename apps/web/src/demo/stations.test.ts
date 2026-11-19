@@ -5,6 +5,7 @@ import {
   STATIONS_PAGES,
   STATIONS_STATES,
   checkName,
+  clockMinutes,
   dishedAt,
   dishesLine,
   inService,
@@ -138,20 +139,26 @@ describe('stations (sc-3910)', () => {
 
   it('counts a shift as on from its start until its end, past midnight too', () => {
     const tolu = personById('tolu');
-    expect(onShiftAt(tolu, '16:30')).toBe(true);
-    expect(onShiftAt(tolu, '21:00')).toBe(false);
+    expect(onShiftAt(tolu, 16 * 60 + 30)).toBe(true);
+    expect(onShiftAt(tolu, 21 * 60)).toBe(false);
     const sade = personById('sade');
-    expect(onShiftAt(sade, '00:30')).toBe(true);
-    expect(onShiftAt(sade, '01:00')).toBe(false);
-    expect(onShiftAt(sade, '15:59')).toBe(false);
+    expect(onShiftAt(sade, 30)).toBe(true);
+    expect(onShiftAt(sade, 60)).toBe(false);
+    expect(onShiftAt(sade, 15 * 60 + 59)).toBe(false);
+  });
+
+  it('reads the clock as minutes on the event’s time zone, midnight as 0', () => {
+    expect(clockMinutes(new Date('2026-11-06T21:30:00Z'), 'Europe/London')).toBe(21 * 60 + 30);
+    expect(clockMinutes(new Date('2026-11-07T00:05:00Z'), 'Europe/London')).toBe(5);
+    expect(clockMinutes(new Date('2026-07-06T21:30:00Z'), 'Europe/London')).toBe(22 * 60 + 30);
   });
 
   it('puts nobody on a station whose people are off shift', () => {
     const state = populated();
     const door = stationById(state, 'door');
     expect(door?.people).toEqual(['tolu']);
-    expect(onNow(door!, '21:30')).toEqual([]);
-    expect(onNow(stationById(state, 'bar')!, '21:30').map((one) => one.id)).toEqual([
+    expect(onNow(door!, 21 * 60 + 30)).toEqual([]);
+    expect(onNow(stationById(state, 'bar')!, 21 * 60 + 30).map((one) => one.id)).toEqual([
       'sade',
       'bola',
     ]);
