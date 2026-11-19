@@ -12,10 +12,7 @@ use Psl\Iter;
 use Psl\Math;
 use Psl\Vec;
 
-/**
- * An event's budget as two figures, never one (sc-84): `confirmed` at today's settled count, `potential` if everybody who has not said Not coming comes.
- * Only a per-head line differs between them; every other basis has one answer from the resolver.
- */
+/** Two figures, never one (sc-84): only a per-head line differs between them, priced at `ifAllCome` for `potential`. */
 final readonly class BudgetRange
 {
     /** @param list<LineCost> $lines */
