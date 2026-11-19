@@ -236,7 +236,6 @@ final readonly class EmailDomains
         return true;
     }
 
-    /** Proved now: every other organisation whose joining listing of it stops is told, once. */
     /** Locks the row, and the name for every organisation, so two can never prove one name at once. */
     private function lockName(EmailDomain $domain): void
     {
@@ -244,6 +243,7 @@ final readonly class EmailDomains
         $this->entityManager->refresh($domain, LockMode::PESSIMISTIC_WRITE);
     }
 
+    /** Proved now: every other organisation whose joining listing of it stops is told, once. */
     private function found(EmailDomain $domain, DateTimeImmutable $now, ?User $by): void
     {
         $wasProved = $domain->isProved();
