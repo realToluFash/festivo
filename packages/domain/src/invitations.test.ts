@@ -30,6 +30,16 @@ describe('invitations waiting in the product', () => {
     expect(waitingInvitations(two, { kbc: { kind: 'declined' } })).toBe(1);
   });
 
+  it('stops counting one refused because the address is managed, as the pill says after Accept and join (sc-73032)', () => {
+    const managed: InvitationOutcome = {
+      kind: 'managed',
+      organisation: 'Ìrè Events',
+      message: 'Your address is managed by Ìrè Events.',
+    };
+
+    expect(waitingInvitations(two, { adw: managed })).toBe(1);
+  });
+
   it('holds a save while any accept or decline is in flight, and only then', () => {
     expect(answeringInvitation({})).toBe(false);
     expect(
