@@ -19,10 +19,16 @@ import {
 
 import { type LayoutKind } from '../layout/classify.ts';
 import { titleSize } from '../layout/textSize.ts';
-import { actionsUnder, brokeOn, statusFits, titleRowKey } from '../layout/titleFit.ts';
+import {
+  actionsUnder,
+  brokeOn,
+  statusFits,
+  titleRoomBeside,
+  titleRowKey,
+} from '../layout/titleFit.ts';
 import { tokens } from '../theme/tokens.ts';
 import { BellInPane, PaneBell } from './BellButton.tsx';
-import { type TextHandle } from './Text.tsx';
+import { type TextHandle, TitleCap } from './Text.tsx';
 import { BodyTitle, MeasuredWords, PageTitleDrawn, usePageTitleDrawn } from './Title.tsx';
 import { TopPrimary, usePrimaryLabel } from './TopPrimary.tsx';
 import { COLUMN_TITLE, PAGE_TITLE, columnTitle, pageTitle } from './topTitle.ts';
@@ -33,6 +39,7 @@ export function GuestsHeading({
   titleRef,
   refreshing,
   exports,
+  exportsWidest,
   onAdd,
   addRef,
 }: {
@@ -41,6 +48,8 @@ export function GuestsHeading({
   /** Refreshing… while it shows and is the heading's to place: on a phone, only where it had no room beside Back. */
   refreshing: ReactNode;
   exports: ReactNode;
+  /** Export again, drawn hidden and never pressed, measured at its widest. */
+  exportsWidest: ReactNode;
   onAdd: (() => void) | null;
   addRef: Ref<ViewInstance>;
 }) {
@@ -63,6 +72,7 @@ export function GuestsHeading({
   const [slot, setSlot] = useState(0);
   const [titleWidth, setTitleWidth] = useState(0);
   const [exportWidth, setExportWidth] = useState(0);
+  const [exportWidest, setExportWidest] = useState(0);
   const [plusWidth, setPlusWidth] = useState(0);
   const [statusWidth, setStatusWidth] = useState(0);
   const [titleDrawn, setTitleDrawn] = useState(0);
@@ -75,7 +85,7 @@ export function GuestsHeading({
     actionsUnder({
       room,
       title: titleWidth,
-      extra: exports == null ? 0 : exportWidth,
+      extra: exports == null ? 0 : exportWidest || exportWidth,
       plus: onAdd == null ? 0 : tokens.sizeHit,
       bell: bell ? tokens.sizeHit : 0,
       gap: tokens.spaceMd,
@@ -95,6 +105,11 @@ export function GuestsHeading({
       status: statusWidth,
       gap: tokens.spaceMd,
     });
+  const titleRoom = titleRoomBeside({
+    slot,
+    extra: exports == null || under ? 0 : exportWidth,
+    widest: exportWidest,
+  });
   // On its side, with Export and the + under it, the title keeps its default size and so caps the card and the sidebar there (sc-67659).
   const keepsDefault = kind === 'tabletLandscape' && under;
   const onDrawn = useCallback(
@@ -117,7 +132,7 @@ export function GuestsHeading({
         drawn: drawn.current || start,
         start,
         size,
-        slot,
+        slot: titleRoom,
         title: titleWidth,
       }),
     );
@@ -140,7 +155,7 @@ export function GuestsHeading({
           accessibilityRole="header"
           ref={titleRef}
           style={style}
-          room={slot}
+          room={titleRoom}
           grows={!keepsDefault}
           onTextLayout={onTitleLines}
         >
@@ -157,6 +172,18 @@ export function GuestsHeading({
       importantForAccessibility="no-hide-descendants"
     >
       <View onLayout={widthOf(setStatusWidth)}>{refreshing}</View>
+    </View>
+  );
+  const widest = exportsWidest != null && (
+    <View
+      style={styles.measure}
+      pointerEvents="none"
+      accessibilityElementsHidden
+      importantForAccessibility="no-hide-descendants"
+    >
+      <TitleCap.Provider value={titleSize(size, fontScale)}>
+        <View onLayout={widthOf(setExportWidest)}>{exportsWidest}</View>
+      </TitleCap.Provider>
     </View>
   );
   const ownLine = refreshing != null && !onRow && (
@@ -200,6 +227,7 @@ export function GuestsHeading({
         onWidth={(_, width) => setTitleWidth(Math.ceil(width))}
       />
       {measure}
+      {widest}
       {under ? (
         <>
           <View style={styles.row}>
