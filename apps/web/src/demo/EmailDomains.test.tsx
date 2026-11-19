@@ -252,6 +252,9 @@ describe('Data and control › Email domains (sc-560, sc-563)', () => {
     expect(screen.getByText('Switched off')).toBeDefined();
     expect(screen.queryByRole('button', { name: 'Contact Soirely about Enterprise' })).toBeNull();
     expect(within(row('ire.events')).getByText('Kept')).toBeDefined();
+    expect(within(row('ireevents.com')).getByText('Kept')).toBeDefined();
+    expect(within(row('ireevents.com')).getByText('Not proved')).toBeDefined();
+    expect(screen.queryByText(/We check every hour/u)).toBeNull();
     expect(
       within(onlyRow()).getByText('Kept as it was. It comes back on with Enterprise.'),
     ).toBeDefined();

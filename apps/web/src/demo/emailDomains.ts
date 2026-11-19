@@ -131,6 +131,15 @@ export function domainLine(domain: Domain, locale: string, zone: ReaderZone): st
   }
 }
 
+/** After leaving Enterprise nothing is checked, so a kept row names only when it was proved. */
+export function keptLine(domain: Domain, locale: string, zone: ReaderZone): string {
+  if (domain.status === 'proved') return `Proved ${when(domain.at, locale, zone)}`;
+  if (domain.status === 'missing' && domain.provedAt != null)
+    return `Proved ${when(domain.provedAt, locale, zone)}`;
+
+  return DOMAIN_WORDS.failed;
+}
+
 /** The record's own last line: the hourly check, or where its row says it stands. */
 export function recordFoot(domain: Domain, locale: string, zone: ReaderZone): string {
   const line = domainLine(domain, locale, zone);
@@ -496,7 +505,7 @@ export function domainsStart(state: string): DomainsStart {
     case 'ed_locked':
       return { ...base, view: { plan: 'free', domains: [], said: null } };
     case 'ed_downgraded':
-      return { ...base, view: { plan: 'left', domains: [IRE], said: null } };
+      return { ...base, view: { plan: 'left', domains: [IRE, IRE_COM], said: null } };
     case 'oo_off':
       return alone;
     case 'oo_confirm':

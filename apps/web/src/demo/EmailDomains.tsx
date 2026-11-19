@@ -39,6 +39,7 @@ import {
   domainsCard,
   domainsStart,
   isProved,
+  keptLine,
   onlyLine,
   onlyOff,
   recordFoot,
@@ -262,7 +263,11 @@ function DomainRow({
       <span className="dc-lead" aria-hidden="true">
         <Glyph name="globe" size={22} />
       </span>
-      <RowWords title={domain.name} tag={tag} lines={[domainLine(domain, locale, zone)]} />
+      <RowWords
+        title={domain.name}
+        tag={tag}
+        lines={[kept ? keptLine(domain, locale, zone) : domainLine(domain, locale, zone)]}
+      />
       {!kept && (
         <span className="dc-actions">
           {domain.status !== 'proved' && (
