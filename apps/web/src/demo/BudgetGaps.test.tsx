@@ -128,7 +128,11 @@ describe('the states Budget A still lacked (sc-85, sc-88, sc-90, sc-91, sc-92, s
       await screen.findByText('This would take Catering over its ceiling.', {}, SLOW),
     ).toBeTruthy();
     expect(
-      screen.getByText('If everyone comes, it would be £12,240 against £12,000.'),
+      screen.getByText(
+        (_, line) =>
+          line?.className === 'dec-ceiling-line' &&
+          line.textContent === 'If everyone comes, it would be £12,240 against £12,000.',
+      ),
     ).toBeTruthy();
     expect(screen.queryByText('This would take the event over its ceiling.')).toBeNull();
   });
