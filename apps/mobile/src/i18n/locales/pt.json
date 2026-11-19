@@ -3056,5 +3056,12 @@
     "failed": "Não foi possível criar o ficheiro, por isso nada foi partilhado. Tente novamente.",
     "needsConnection": "É preciso Internet para exportar",
     "dropped": "É preciso Internet para exportar. Nada foi exportado."
+  },
+  "outsideEvent": {
+    "until": "until {{when}}",
+    "guestsLine": "Names and replies only, no contact details",
+    "onEvent_one": "{{count, number}} person on this event",
+    "onEvent_other": "{{count, number}} people on this event",
+    "onEvent_many": "{{count, number}} people on this event"
   }
 }

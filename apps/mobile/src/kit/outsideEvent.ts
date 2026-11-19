@@ -1,4 +1,5 @@
 import type { OutsideEvent } from '@soirely/api-client';
+import type { TFunction } from 'i18next';
 
 import { EVENT_PLACES, type EventPlace } from './eventNav.ts';
 
@@ -43,4 +44,34 @@ export function outsideLanding({ account, organisation, pausedIn }: Held): Outsi
   if (organisation != null || pausedIn != null) return null;
 
   return account?.outsideEvents[0] ?? null;
+}
+
+/** At Can view and Can check guests in, Overview is the `no-org` demo's own: the event's card with the level line, then Guests and People. Can edit opens the member's. */
+export function readsOverview(role: OutsideEvent['role']): boolean {
+  return role !== 'can_edit';
+}
+
+/** The card's level line, "Can view · Cloakroom · until Sat 15 Nov, 02:00", in the event's own time zone. */
+export function levelLine(
+  t: TFunction,
+  held: Pick<OutsideEvent, 'role' | 'jobLabel'>,
+  event: { endsAt: string; timeZone: string },
+  locale: string,
+): string {
+  const until = new Intl.DateTimeFormat(locale, {
+    weekday: 'short',
+    day: 'numeric',
+    month: 'short',
+    hour: '2-digit',
+    minute: '2-digit',
+    timeZone: event.timeZone,
+  }).format(new Date(event.endsAt));
+
+  return [
+    t(`eventPeople.role.${held.role}`),
+    held.jobLabel,
+    t('outsideEvent.until', { when: until }),
+  ]
+    .filter((part) => part != null && part !== '')
+    .join(' · ');
 }

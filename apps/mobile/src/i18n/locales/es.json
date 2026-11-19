@@ -3056,5 +3056,12 @@
     "failed": "No se ha podido crear el archivo, así que no se ha compartido nada. Inténtelo de nuevo.",
     "needsConnection": "Para exportar se necesita conexión",
     "dropped": "Para exportar se necesita conexión. No se ha exportado nada."
+  },
+  "outsideEvent": {
+    "until": "until {{when}}",
+    "guestsLine": "Names and replies only, no contact details",
+    "onEvent_one": "{{count, number}} person on this event",
+    "onEvent_other": "{{count, number}} people on this event",
+    "onEvent_many": "{{count, number}} people on this event"
   }
 }

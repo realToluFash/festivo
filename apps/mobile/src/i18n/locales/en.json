@@ -2939,5 +2939,11 @@
     "failed": "The file could not be made, so nothing was shared. Try again.",
     "needsConnection": "Export needs a connection",
     "dropped": "Export needs a connection. Nothing was exported."
+  },
+  "outsideEvent": {
+    "until": "until {{when}}",
+    "guestsLine": "Names and replies only, no contact details",
+    "onEvent_one": "{{count, number}} person on this event",
+    "onEvent_other": "{{count, number}} people on this event"
   }
 }

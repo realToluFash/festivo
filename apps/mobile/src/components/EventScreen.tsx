@@ -43,7 +43,7 @@ import {
   areaBack,
 } from '../kit/eventNav.ts';
 import { markDeleted, takeCoverRefused } from '../kit/eventSaved.ts';
-import { outsideOn, outsidePlaces } from '../kit/outsideEvent.ts';
+import { outsideOn, outsidePlaces, readsOverview } from '../kit/outsideEvent.ts';
 import { type Opened, openedOf, openedWithoutAsking } from '../kit/eventsOpen.ts';
 import { ASKS_END, SHOWN_EVENT, goUpToEvent } from '../kit/upToEvent.ts';
 import { useServerNow } from '../kit/serverNow.ts';
@@ -58,6 +58,7 @@ import { cardFrame } from './cardFrame.ts';
 import { DuplicateEvent } from './DuplicateEvent.tsx';
 import { EventNotice } from './EventNotice.tsx';
 import { EventPage } from './EventPage.tsx';
+import { OutsideOverview } from './OutsideOverview.tsx';
 import { EDIT_PARTS } from './EventEdits.tsx';
 import { EventEditScreen } from './EventPartEdits.tsx';
 import { EventGuests, type GuestsTop } from './EventGuests.tsx';
@@ -285,7 +286,18 @@ export function EventScreen({
 
   const body =
     event != null ? (
-      area === 'overview' ? (
+      area === 'overview' && outside != null && readsOverview(outside.role) ? (
+        <Arrived style={styles.stack}>
+          <OutsideOverview
+            event={event}
+            held={outside}
+            you={kind === 'tabletLandscape' ? null : { name: account?.name ?? '' }}
+            nameRef={cardNamed ? cardName : undefined}
+            onGuests={() => chooseArea('guests')}
+            onPeople={() => chooseArea('people')}
+          />
+        </Arrived>
+      ) : area === 'overview' ? (
         <Arrived style={styles.stack}>
           <EventPage
             kind={kind}
