@@ -234,6 +234,7 @@
     "messagesCounts:guest_export.diet.kosher",
     "web:vendors.categories.catering",
     "messages:staff.job_suggested.runner",
-    "messages:staff.job_suggested.bar"
+    "messages:staff.job_suggested.bar",
+    "messages:stations.place_suggested.bar"
   ]
 }
