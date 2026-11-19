@@ -177,8 +177,3 @@
   background: var(--colorNeutralFill);
   color: var(--colorInkSecondary);
 }
-
-/* The crumb row stands as far above People's title as above Guests' (sc-69635). */
-.event-page:has(.event-people) {
-  gap: 18px;
-}

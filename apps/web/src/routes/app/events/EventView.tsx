@@ -334,7 +334,7 @@ function EventOf({
   return (
     <AskHost>
       {(covered) => (
-        <div className="event-page" inert={covered}>
+        <div className={page === 'people' ? 'event-page is-people' : 'event-page'} inert={covered}>
           <EventCrumb
             name={load.kind === 'loaded' ? load.event.name : null}
             area={
