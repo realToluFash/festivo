@@ -7,6 +7,7 @@ namespace App\Tests\Functional;
 use App\Audit\Auditor;
 use App\Domain\Organisation\AuditLog\AuditExports;
 use App\Domain\Organisation\EmailDomains\ManagedAccounts;
+use App\Domain\Organisation\Export\PreparedFiles;
 use App\Domain\Organisation\Members\MembershipMachine;
 use App\Domain\Organisation\OrganisationFounder;
 use App\Domain\Organisation\Plan\PlanChanger;
@@ -25,7 +26,6 @@ use App\Enum\MembershipStatus;
 use App\Enum\Plan;
 use App\Enum\SeededRole;
 use App\Repository\AuditFilter;
-use App\Storage\PreparedFiles;
 use App\Tests\ApiTestCase;
 use App\Tests\Traits\InvitesPeople;
 use App\Tests\Traits\OnboardsAccounts;
@@ -38,11 +38,13 @@ use Psl\Json;
 use Psl\Str;
 use Psl\Type;
 use Psl\Vec;
+use Symfony\Component\Clock\Test\ClockSensitiveTrait;
 use Symfony\Component\Mime\Email;
 use Symfony\Component\Uid\Uuid;
 
 final class AuditLogTest extends ApiTestCase
 {
+    use ClockSensitiveTrait;
     use InvitesPeople;
     use OnboardsAccounts;
 
@@ -122,6 +124,18 @@ final class AuditLogTest extends ApiTestCase
         self::assertSame(['name' => 'Ada’s Wedding', 'eventId' => null, 'gone' => true], $removed['on']);
         self::assertSame(['kind' => 'person', 'name' => 'Julien Moreau', 'email' => 'julien@ire.events'], $removed['who']);
         self::assertSame('event_access', $removed['type']);
+    }
+
+    #[Test]
+    public function theDownloadIsNamedForTheOrganisationWithAnySlashOrQuoteTakenOut(): void
+    {
+        self::mockTime(new DateTimeImmutable('2026-10-19T10:00:00Z'));
+        [$owner, $organisation] = $this->enterprise('folake@ire.events', 'Ìrè / Events "Lagos"');
+        $this->signIn($owner);
+
+        $this->export($organisation, 'csv');
+
+        self::assertSame("attachment; filename=audit-log.csv; filename*=utf-8''%C3%8Cr%C3%A8%20-%20Events%20Lagos%20audit%20log%202026-10-19.csv", $this->client->getResponse()->headers->get('Content-Disposition'));
     }
 
     #[Test]

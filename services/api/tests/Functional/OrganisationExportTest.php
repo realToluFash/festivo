@@ -421,6 +421,19 @@ final class OrganisationExportTest extends ApiTestCase
     }
 
     #[Test]
+    public function theDownloadIsNamedForTheOrganisationWithAnySlashOrQuoteTakenOut(): void
+    {
+        $this->organisation->setName('Ìrè / Events "Lagos"');
+        self::em()->flush();
+        $this->as($this->owner, 'POST', $this->path(''));
+
+        $this->download($this->owner, $this->latest()->getId()->toRfc4122());
+
+        self::assertSame(200, $this->statusCode());
+        self::assertSame("attachment; filename=export.zip; filename*=utf-8''%C3%8Cr%C3%A8%20-%20Events%20Lagos%202026-10-17.zip", $this->client->getResponse()->headers->get('Content-Disposition'));
+    }
+
+    #[Test]
     public function theDownloadWorksOnceForTheOwnerWhoAsked(): void
     {
         $this->as($this->owner, 'POST', $this->path(''));
