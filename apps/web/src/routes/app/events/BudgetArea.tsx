@@ -344,7 +344,12 @@ export function BudgetArea({ event }: { event: OrganisationEvent }) {
                         const was = shown.current;
                         try {
                           await api.addBudgetLine(event.id, typedOf(removed.line));
-                        } catch {
+                        } catch (error) {
+                          const staff =
+                            error instanceof ApiError && error.fieldErrors()['basis'] != null;
+                          const words = t(staff ? 'budget.notBackStaff' : 'budget.notBack');
+                          setRemoved({ line: removed.line, words });
+                          setHeard(words);
                           return;
                         }
                         const now = await readOwn();
