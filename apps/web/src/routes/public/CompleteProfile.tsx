@@ -496,9 +496,11 @@ function Details({
               <p className="join-offers-heading" id="join-offers-heading">
                 {t('domainJoining.heading')}
               </p>
-              <p className="field-help">
-                {t('domainJoining.intro', { domain: offered?.domain ?? '' })}
-              </p>
+              {managed == null && (
+                <p className="field-help">
+                  {t('domainJoining.intro', { domain: offered?.domain ?? '' })}
+                </p>
+              )}
             </div>
             {offers.map((offer) => (
               <div className="join-offer" key={offer.id}>

@@ -9,12 +9,15 @@ export function ManagedBanner({
   organisation,
   message,
   onChange,
+  way = true,
   testID,
 }: {
   organisation: string;
   /** The API's sentence, in the reader's language. */
   message: string;
   onChange?: () => void;
+  /** False behind the onboarding gate, where Account settings cannot be reached yet. */
+  way?: boolean;
   testID: string;
 }) {
   const { t } = useTranslation();
@@ -28,11 +31,13 @@ export function ManagedBanner({
       detail={t('managed.single')}
       announce
       actions={
-        <TextAction
-          label={t('managed.change')}
-          onPress={onChange ?? (() => router.push('/settings/account'))}
-          testID={`${testID}.change`}
-        />
+        way ? (
+          <TextAction
+            label={t('managed.change')}
+            onPress={onChange ?? (() => router.push('/settings/account'))}
+            testID={`${testID}.change`}
+          />
+        ) : undefined
       }
     />
   );

@@ -93,6 +93,8 @@ export interface OrganisationStepInput {
   offers: number;
   own: boolean;
   joined: boolean;
+  /** The account's address is managed by its home organisation (sc-563), so it may found none. */
+  managed: boolean;
 }
 
 export interface OrganisationStep {
@@ -103,6 +105,8 @@ export interface OrganisationStep {
   showsOffers: boolean;
   singleOffer: boolean;
   asksForOrganisation: boolean;
+  /** A managed account: the banner stands where the organisation fields would, and Continue completes it with none. */
+  managedInstead: boolean;
   heading: 'invited' | 'offers' | 'organisation';
 }
 
@@ -114,7 +118,8 @@ export function organisationStep(input: OrganisationStepInput): OrganisationStep
   // The rows, and the outcome each answer left, stay until the person starts their own.
   const showsSingleInvitation = invitations === 1 && !own;
   const listsInvitations = invitations > 1 && !own;
-  const showsOffers = needsOne && !invited && offers > 0 && !own;
+  const showsOffers = needsOne && !invited && offers > 0 && (!own || input.managed);
+  const instead = needsOne && !invited && !showsOffers;
 
   return {
     invited,
@@ -122,7 +127,8 @@ export function organisationStep(input: OrganisationStepInput): OrganisationStep
     listsInvitations,
     showsOffers,
     singleOffer: showsOffers && offers === 1,
-    asksForOrganisation: needsOne && !invited && !showsOffers,
+    asksForOrganisation: instead && !input.managed,
+    managedInstead: instead && input.managed,
     heading: invited || joined ? 'invited' : showsOffers ? 'offers' : 'organisation',
   };
 }
