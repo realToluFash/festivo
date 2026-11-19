@@ -3064,12 +3064,12 @@
     "onEvent_one": "{{count, number}} pessoa neste evento",
     "onEvent_other": "{{count, number}} pessoas neste evento",
     "onEvent_many": "{{count, number}} de pessoas neste evento",
-    "yourEvents": "Your events",
-    "fromOutside": "Events from outside",
-    "yourOrganisations": "Your organisations",
-    "underWay": "Under way",
-    "here": "You’re here",
-    "backTo": "Back to {{name}}",
-    "continue": "Continue"
+    "yourEvents": "Os seus eventos",
+    "fromOutside": "Eventos externos",
+    "yourOrganisations": "As suas organizações",
+    "underWay": "A decorrer",
+    "here": "Está aqui",
+    "backTo": "Voltar a {{name}}",
+    "continue": "Continuar"
   }
 }
