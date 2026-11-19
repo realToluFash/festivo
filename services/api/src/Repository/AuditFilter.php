@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Domain\Organisation\AuditLog;
+namespace App\Repository;
 
 use App\Enum\AuditType;
 use DateTimeImmutable;

@@ -18,6 +18,7 @@ use App\Http\AfterResponse;
 use App\Http\Exception\ApiException;
 use App\Repository\AuditEntryRepository;
 use App\Repository\AuditExportRepository;
+use App\Repository\AuditFilter;
 use App\Storage\ObjectStore;
 use DateInterval;
 use Doctrine\ORM\EntityManagerInterface;

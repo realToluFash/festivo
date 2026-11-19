@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Repository;
 
-use App\Domain\Organisation\AuditLog\AuditFilter;
 use App\Entity\AuditEntry;
 use App\Enum\AuditType;
 use DateTimeImmutable;
