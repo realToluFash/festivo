@@ -829,7 +829,7 @@ function OpenedCost({
       ? t('budget.openedNote.notPriced')
       : line.basis === 'per_head' && line.quantity.count > 0
         ? t('budget.openedNote.per_head', {
-            count: numberFormat(locale).format(line.quantity.count),
+            quantity: numberFormat(locale).format(line.quantity.count),
             ifAll: numberFormat(locale).format(budget.perHead.potential.heads),
           })
         : fixed

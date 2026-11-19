@@ -143,7 +143,7 @@ export function rowLine(t: TFunction, line: BudgetLine, locale: string): string 
     ? t('budget.staffLine', { count: line.quantity.count, hours: count })
     : t('budget.quantityLine', {
         rate: rate ?? '',
-        count,
+        quantity: count,
         source: t(`budget.source.${line.quantity.source}`),
       });
 }
@@ -166,7 +166,7 @@ export function basisLine(
   if (quantity.count === 0) return reasonWords(t, quantity.reason);
   if (basis === 'per_head')
     return t('budget.basisLine.per_head', {
-      count,
+      quantity: count,
       ifAll: numberFormat(locale).format(budget.perHead.potential.heads),
     });
 
@@ -236,14 +236,15 @@ export function liveWords(
             ? 'budget.live.priced'
             : 'budget.live.changed';
 
-    return `${t(key, { name: one.label, rate: rateWords(t, one, locale) ?? '', total })}${count}`;
+    return `${t(key, { name: one.label, rate: rateWords(t, one, locale) ?? '', change: total })}${count}`;
   }
-  if (lines > 1) return `${t('budget.live.several', { count: lines, total })}${count}`;
+  if (lines > 1) return `${t('budget.live.several', { count: lines, change: total })}${count}`;
 
   const heads = now.perHead.confirmed.heads - was.perHead.confirmed.heads;
-  if (heads > 0) return t('budget.live.moreHeads', { count: heads, total });
-  if (heads < 0) return t('budget.live.fewerHeads', { count: -heads, total });
-  if (moved !== 0 || now.potential !== was.potential) return t('budget.live.counts', { total });
+  if (heads > 0) return t('budget.live.moreHeads', { count: heads, change: total });
+  if (heads < 0) return t('budget.live.fewerHeads', { count: -heads, change: total });
+  if (moved !== 0 || now.potential !== was.potential)
+    return t('budget.live.counts', { change: total });
 
   return null;
 }

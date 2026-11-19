@@ -4965,7 +4965,7 @@
     "rate": "Rate",
     "quantity": "Quantity",
     "settled": "Settled",
-    "quantityLine": "{{rate}} × {{count}} · {{source}}",
+    "quantityLine": "{{rate}} × {{quantity}} · {{source}}",
     "staffLine_one": "{{hours}} staff hour · from Staff rates",
     "staffLine_other": "{{hours}} staff hours · from Staff rates",
     "unit": {
@@ -5017,7 +5017,7 @@
     "rateButton": "Rate for {{name}}: {{rate}}",
     "openedNote": {
       "notPriced": "Not priced yet. Saving 0 leaves it not priced.",
-      "per_head": "× {{count}} · said yes, from the guest list. Up to {{ifAll}} if all come.",
+      "per_head": "× {{quantity}} · said yes, from the guest list. Up to {{ifAll}} if all come.",
       "fixed": "A fixed amount, counted once"
     },
     "cancel": "Cancel",
@@ -5042,18 +5042,18 @@
       "same": "so the total is the same",
       "up": "so the settled total went up by {{amount}}",
       "down": "so the settled total went down by {{amount}}",
-      "added": "{{name}} was added in another tab, {{total}}.",
-      "addedNoPrice": "{{name}} was added in another tab with no price yet, {{total}}.",
-      "removed": "{{name}} was removed in another tab, {{total}}.",
-      "priced": "{{name}} was priced in another tab at {{rate}}, {{total}}.",
-      "changed": "{{name}} was changed in another tab, {{total}}.",
-      "several_one": "{{count, number}} cost changed in another tab, {{total}}.",
-      "several_other": "{{count, number}} costs changed in another tab, {{total}}.",
-      "moreHeads_one": "{{count, number}} more guest said yes, {{total}}.",
-      "moreHeads_other": "{{count, number}} more guests said yes, {{total}}.",
-      "fewerHeads_one": "{{count, number}} fewer guest is coming, {{total}}.",
-      "fewerHeads_other": "{{count, number}} fewer guests are coming, {{total}}.",
-      "counts": "The guest counts changed, {{total}}."
+      "added": "{{name}} was added in another tab, {{change}}.",
+      "addedNoPrice": "{{name}} was added in another tab with no price yet, {{change}}.",
+      "removed": "{{name}} was removed in another tab, {{change}}.",
+      "priced": "{{name}} was priced in another tab at {{rate}}, {{change}}.",
+      "changed": "{{name}} was changed in another tab, {{change}}.",
+      "several_one": "{{count, number}} cost changed in another tab, {{change}}.",
+      "several_other": "{{count, number}} costs changed in another tab, {{change}}.",
+      "moreHeads_one": "{{count, number}} more guest said yes, {{change}}.",
+      "moreHeads_other": "{{count, number}} more guests said yes, {{change}}.",
+      "fewerHeads_one": "{{count, number}} fewer guest is coming, {{change}}.",
+      "fewerHeads_other": "{{count, number}} fewer guests are coming, {{change}}.",
+      "counts": "The guest counts changed, {{change}}."
     },
     "form": {
       "title": "Add a cost",
@@ -5084,7 +5084,7 @@
       "fixed": "A fixed amount"
     },
     "basisLine": {
-      "per_head": "{{count}} said yes now, up to {{ifAll}} if all come · from the guest list",
+      "per_head": "{{quantity}} said yes now, up to {{ifAll}} if all come · from the guest list",
       "per_table_one": "{{shown}} table, from the seating plan",
       "per_table_other": "{{shown}} tables, from the seating plan",
       "per_day_one": "{{shown}} day, from the event's dates",
