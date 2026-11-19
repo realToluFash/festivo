@@ -30,6 +30,7 @@ use App\Enum\Suspension;
 use App\Repository\MembershipRepository;
 use App\Tests\ApiTestCase;
 use App\Tests\Traits\OnboardsAccounts;
+use App\Tests\Traits\ProvesDomains;
 use DateInterval;
 use DateTimeImmutable;
 use Doctrine\ORM\EntityManagerInterface;
@@ -46,6 +47,7 @@ use Symfony\Component\Mime\Email;
 final class DomainSuspensionTest extends ApiTestCase
 {
     use OnboardsAccounts;
+    use ProvesDomains;
 
     /** @mago-expect lint:no-literal-password */
     private const string PASSWORD = 'a decent passphrase';
@@ -141,11 +143,10 @@ final class DomainSuspensionTest extends ApiTestCase
         [, $prover] = $this->organisation('bisi@ire.events', 'Ìrè Group');
         $tunde = $this->domainMember($organisation, 'tunde@ire.events');
         $kemi = $this->domainMember($prover, 'kemi@ire.events');
-        $proved = $this->list($prover, 'ire.events');
-        $proved->setProvedAt(new DateTimeImmutable());
+        self::proveDomain($prover, 'ire.events');
 
-        self::service(EntityManagerInterface::class)->wrapInTransaction(static function () use ($proved): void {
-            self::service(DomainSuspender::class)->domainProved($proved);
+        self::service(EntityManagerInterface::class)->wrapInTransaction(static function () use ($prover): void {
+            self::service(DomainSuspender::class)->domainProved($prover, 'ire.events');
             self::service(EntityManagerInterface::class)->flush();
         });
 

@@ -77,6 +77,7 @@ final readonly class CompanyDomainsController
                 fn (OrganisationDomain $listing): array => [
                     'domain' => $listing->getDomain(),
                     'stopped' => $this->companyDomainEditor->isStopped($listing),
+                    'proved' => $this->companyDomainEditor->isProvedHere($listing),
                 ],
             ),
             'most' => CompanyDomainEditor::MOST,

@@ -29,6 +29,7 @@ use App\Repository\MembershipRepository;
 use App\Repository\OwnerClaimRepository;
 use App\Tests\ApiTestCase;
 use App\Tests\Traits\OnboardsAccounts;
+use App\Tests\Traits\ProvesDomains;
 use DateInterval;
 use DateTimeImmutable;
 use DateTimeZone;
@@ -46,6 +47,7 @@ use Symfony\Component\Mime\Email;
 final class OwnerClaimTest extends ApiTestCase
 {
     use OnboardsAccounts;
+    use ProvesDomains;
 
     /** @mago-expect lint:no-literal-password */
     private const string PASSWORD = 'a decent passphrase';
@@ -101,7 +103,7 @@ final class OwnerClaimTest extends ApiTestCase
     {
         [, $organisation, $administrator] = $this->onlyOwnerSuspended();
         $prover = self::service(OrganisationFounder::class)->found($this->member('bisi.group@ire.events'), 'Ìrè Group', 'NG', 'Africa/Lagos');
-        $this->list($prover, 'ire.events')->setProvedAt(new DateTimeImmutable());
+        self::proveDomain($prover, 'ire.events');
         $this->signIn($administrator);
 
         $body = $this->send('POST', $this->claimPath($organisation));

@@ -134,5 +134,6 @@
     "track_busy": "Ya hay otro elemento en curso en este espacio. Termínelo primero.",
     "idempotency_key_required": "Envíe la cabecera Idempotency-Key con cada pulsación.",
     "idempotency_key_reused": "Esta Idempotency-Key ya se envió con otra pulsación.",
-    "plan_required": "El plan de la organización no incluye esta función."
+    "plan_required": "El plan de la organización no incluye esta función.",
+    "email_domain_taken": "Otra organización ya ha verificado este dominio."
 }

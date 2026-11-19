@@ -393,5 +393,7 @@
     "validation.vendor_website_scheme": "Introduzca una dirección web que empiece por https:// o http://, o deje esa parte sin poner.",
     "validation.vendor_phone_invalid": "Ese número de teléfono no es válido en este país: {country}. Compruébelo y vuelva a intentarlo.",
     "vendors.archived_read_only": "Este proveedor está archivado, así que no se han guardado los cambios. Para editarlo, restáurelo en Archivados.",
-    "access.plan_required": "Disponible con Enterprise. Para cambiar esto, consulte a Soirely sobre Enterprise."
+    "access.plan_required": "Disponible con Enterprise. Para cambiar esto, consulte a Soirely sobre Enterprise.",
+    "email_domains.not_listed": "That domain is not on the list.",
+    "email_domains.taken": "Another organisation has already proved this domain. Contact Soirely support if it is yours."
 }

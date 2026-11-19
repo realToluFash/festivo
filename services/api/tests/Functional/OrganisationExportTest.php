@@ -32,6 +32,7 @@ use App\Tests\ApiTestCase;
 use App\Tests\Double\S3ClientWithAnotherTryFirst;
 use App\Tests\Traits\InvitesPeople;
 use App\Tests\Traits\OnboardsAccounts;
+use App\Tests\Traits\ProvesDomains;
 use App\Tests\Traits\PutsPeopleOnEvents;
 use AsyncAws\Core\Configuration;
 use DateTimeImmutable;
@@ -63,6 +64,7 @@ final class OrganisationExportTest extends ApiTestCase
     use ClockSensitiveTrait;
     use InvitesPeople;
     use OnboardsAccounts;
+    use ProvesDomains;
     use PutsPeopleOnEvents;
 
     /** @mago-expect lint:no-literal-password */
@@ -166,10 +168,9 @@ final class OrganisationExportTest extends ApiTestCase
     {
         $admin = $this->member('julien@ire.events', 'Julien Moreau', SeededRole::Admin);
         $this->member('ada@ire.events', 'Ada Obi', SeededRole::Member, status: MembershipStatus::PendingApproval);
-        $domain = new OrganisationDomain($this->fresh(), 'ire.events');
-        $domain->setProvedAt(new DateTimeImmutable('2026-10-06T10:02:00+00:00'));
-        self::em()->persist($domain);
+        self::em()->persist(new OrganisationDomain($this->fresh(), 'ire.events'));
         self::em()->flush();
+        self::proveDomain($this->fresh(), 'ire.events', new DateTimeImmutable('2026-10-06T10:02:00+00:00'));
         self::invitationTo('priya@ire.events', $this->fresh(), SeededRole::Member);
         $eventId = $this->newEvent();
         self::onEvent($admin, $eventId, EventRole::Lead);

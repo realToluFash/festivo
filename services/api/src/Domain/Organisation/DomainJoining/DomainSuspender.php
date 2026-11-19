@@ -9,7 +9,6 @@ use App\Domain\Organisation\Members\MembershipMachine;
 use App\Domain\Organisation\Members\MemberSuspension;
 use App\Entity\Membership;
 use App\Entity\Organisation;
-use App\Entity\OrganisationDomain;
 use App\Entity\User;
 use App\Enum\Actor;
 use App\Enum\MembershipChannel;
@@ -57,9 +56,9 @@ final readonly class DomainSuspender
     }
 
     /** Another organisation proved the domain on Enterprise (sc-560): every other organisation's domain members pause. */
-    public function domainProved(OrganisationDomain $proved): void
+    public function domainProved(Organisation $prover, string $domain): void
     {
-        foreach ($this->membershipRepository->findActiveAtDomain($proved->getDomain(), $proved->getOrganisation(), elsewhere: true) as $membership) {
+        foreach ($this->membershipRepository->findActiveAtDomain($domain, $prover, elsewhere: true) as $membership) {
             $this->suspend($membership, Suspension::DomainManagedElsewhere, null);
         }
     }
