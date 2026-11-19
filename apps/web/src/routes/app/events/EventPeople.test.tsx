@@ -988,6 +988,45 @@ describe('People opens on its own title under the crumb, as Guests does (sc-6963
     expect(screen.queryByRole('heading', { name: EVENT.name })).toBeNull();
   });
 
+  it('keeps focus on the People title once the list arrives, coming from the sidebar', async () => {
+    signedIn();
+    let release = (): void => undefined;
+    const held = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
+      const line = `${init?.method ?? 'GET'} ${new URL(String(input)).pathname}`;
+      if (line === 'GET /api/events/ev_1') return json({ event: EVENT });
+      if (line === 'GET /api/events/ev_1/people') {
+        await held;
+        return json({ people: [TOM], owners: ['Folake Adeyemi'], admins: [] });
+      }
+      if (line === 'GET /api/events/ev_1/people/addable') return json({ members: [] });
+
+      return json({});
+    });
+    render(
+      <RouterProvider
+        router={createMemoryRouter(routes, { initialEntries: ['/app/events/ev_1/guests'] })}
+      />,
+    );
+    await screen.findByRole('heading', { level: 1, name: 'Guests' });
+
+    fireEvent.click(
+      within(document.querySelector<HTMLElement>('.shell-sidebar')!).getByRole('link', {
+        name: 'People',
+      }),
+    );
+    const title = await screen.findByRole('heading', { level: 1, name: 'People' });
+    await waitFor(() => expect(document.activeElement).toBe(title));
+
+    await act(async () => release());
+    await peopleShown();
+
+    expect(document.activeElement).toBe(screen.getByRole('heading', { level: 1, name: 'People' }));
+    expect(title.isConnected).toBe(true);
+  });
+
   it('starts the crumb at the event for an account with no organisation (sc-71)', async () => {
     reader = IRE;
     __setSessionState({

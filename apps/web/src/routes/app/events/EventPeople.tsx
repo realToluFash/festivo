@@ -135,32 +135,36 @@ export function EventPeople({ event }: { event: OrganisationEvent }) {
 
   if (load.kind === 'loading')
     return (
-      <div className="desk event-people-desk">
-        <div className="desk-column event-people">
-          {top}
-          <Skeleton words={t('eventPeople.loading')} shape="rows" rowHeight={60} />
+      <LayersContext value={layers}>
+        <div className="desk event-people-desk">
+          <div className="desk-column event-people" inert={covered}>
+            {top}
+            <Skeleton words={t('eventPeople.loading')} shape="rows" rowHeight={60} />
+          </div>
         </div>
-      </div>
+      </LayersContext>
     );
 
   if (load.kind === 'failed')
     return (
-      <div className="desk event-people-desk">
-        <div className="desk-column event-people">
-          {top}
-          <ArrivalNotice
-            role={attempt > 0 ? undefined : 'alert'}
-            line={t('eventPeople.failed')}
-            lineRef={failedLine}
-            focusable
-            retry={t('eventPeople.retry')}
-            onRetry={() => {
-              setLoad({ kind: 'loading' });
-              setAttempt((n) => n + 1);
-            }}
-          />
+      <LayersContext value={layers}>
+        <div className="desk event-people-desk">
+          <div className="desk-column event-people" inert={covered}>
+            {top}
+            <ArrivalNotice
+              role={attempt > 0 ? undefined : 'alert'}
+              line={t('eventPeople.failed')}
+              lineRef={failedLine}
+              focusable
+              retry={t('eventPeople.retry')}
+              onRetry={() => {
+                setLoad({ kind: 'loading' });
+                setAttempt((n) => n + 1);
+              }}
+            />
+          </div>
         </div>
-      </div>
+      </LayersContext>
     );
 
   const loaded = load;
