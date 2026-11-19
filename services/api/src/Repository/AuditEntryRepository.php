@@ -8,6 +8,7 @@ use App\Entity\AuditEntry;
 use App\Enum\AuditType;
 use DateTimeImmutable;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
+use Doctrine\DBAL\ArrayParameterType;
 use Doctrine\ORM\QueryBuilder;
 use Doctrine\Persistence\ManagerRegistry;
 use Psl\Type;
@@ -67,8 +68,9 @@ final class AuditEntryRepository extends ServiceEntityRepository
               AND  occurred_at >= :since
               AND  actor_type = 'user'
               AND  actor_id IS NOT NULL
+              AND  action IN (:actions)
             ORDER  BY actor_id, occurred_at DESC
-            SQL, ['organisation' => $filter->organisationId->toRfc4122(), 'since' => $filter->since->format('Y-m-d H:i:s')]));
+            SQL, $this->menuParameters($filter), ['actions' => ArrayParameterType::STRING]));
     }
 
     /** @return list<array{id: string, name: string}> each event the log names, under the name it last had */
@@ -80,8 +82,15 @@ final class AuditEntryRepository extends ServiceEntityRepository
             WHERE  organisation_id = :organisation
               AND  occurred_at >= :since
               AND  event_id IS NOT NULL
+              AND  action IN (:actions)
             ORDER  BY event_id, occurred_at DESC
-            SQL, ['organisation' => $filter->organisationId->toRfc4122(), 'since' => $filter->since->format('Y-m-d H:i:s')]));
+            SQL, $this->menuParameters($filter), ['actions' => ArrayParameterType::STRING]));
+    }
+
+    /** @return array{organisation: string, since: string, actions: list<string>} */
+    private function menuParameters(AuditFilter $filter): array
+    {
+        return ['organisation' => $filter->organisationId->toRfc4122(), 'since' => $filter->since->format('Y-m-d H:i:s'), 'actions' => AuditType::actions()];
     }
 
     private function filtered(AuditFilter $filter): QueryBuilder
