@@ -87,7 +87,7 @@
     "domain_joining.domain_invalid": "Saisissez un domaine avec un point et sans espace, par exemple {example}.",
     "domain_joining.domain_listed": "{domain} figure déjà dans la liste.",
     "domain_joining.domain_not_yours": "Ajoutez le domaine de votre propre adresse.",
-    "domain_joining.domain_proved_elsewhere": "Une autre organisation a prouvé avec l’offre Enterprise que {domain} lui appartient, donc seule sa liste compte.",
+    "domain_joining.domain_proved_elsewhere": "Une autre organisation a prouvé avec le forfait Enterprise que le domaine {domain} lui appartient, donc seule sa liste compte.",
     "domain_joining.domain_public": "Vous ne pouvez pas utiliser un domaine de messagerie public.",
     "domain_joining.not_listed": "Ce domaine ne figure pas dans la liste.",
     "domain_joining.unavailable": "Vous ne pouvez pas demander à rejoindre cette organisation. Créez la vôtre, ou demandez à une personne de cette organisation de vous inviter.",
@@ -272,6 +272,7 @@
     "validation.guest_need_other_too_long": "Raccourcissez le texte à {otherMax} caractères maximum.",
     "validation.guest_need_note_too_long": "Raccourcissez la note à {noteMax} caractères maximum.",
     "event.currency_in_use": "La devise ne peut plus changer une fois que des montants sont enregistrés pour cet événement.",
+    "budget.currency_changed": "La devise de l’événement a changé depuis le retrait de ce coût.",
     "event.state_invalid": "L’état actuel de cet événement ne le permet pas.",
     "event.concluded": "Cet événement est déjà terminé, il ne peut donc pas être publié. Modifiez d’abord ses dates.",
     "event.host_required": "Indiquez les hôtes avant d’inviter qui que ce soit.",
@@ -410,5 +411,8 @@
     "vendors.archived_read_only": "Ce prestataire est archivé : vos modifications n’ont pas été enregistrées. Pour le modifier, restaurez-le depuis Archivés.",
     "access.plan_required": "Disponible avec le forfait Enterprise. Pour modifier ce réglage, contactez Soirely au sujet du forfait Enterprise.",
     "email_domains.not_listed": "Ce domaine ne figure pas dans la liste.",
-    "email_domains.taken": "Une autre organisation a déjà vérifié ce domaine. S’il vous appartient, contactez l’assistance Soirely."
+    "email_domains.taken": "Une autre organisation a déjà vérifié ce domaine. S’il vous appartient, contactez l’assistance Soirely.",
+    "email_domains.managed": "Votre adresse du domaine {domain} est gérée par {organisation} : vous ne pouvez être membre que de cette organisation.",
+    "email_domains.only_ours_owner": "Seule une personne ayant le rôle Propriétaire peut modifier ce réglage.",
+    "email_domains.only_ours_unproved": "« Réservé à notre organisation » nécessite un domaine vérifié par cette organisation."
 }

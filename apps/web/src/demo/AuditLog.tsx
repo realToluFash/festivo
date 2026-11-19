@@ -31,6 +31,8 @@ import {
   NO_FILTERS,
   PEOPLE,
   TYPES,
+  TYPE_WORDS,
+  type TypeLang,
   auditStart,
   byDay,
   datesFault,
@@ -42,9 +44,11 @@ import {
   rangeWords,
   timeOf,
 } from './auditLog.ts';
-import { SHARED_WORDS as S, zoneFor } from './dataControl.ts';
+import { zoneFor } from './dataControl.ts';
 import type { ReaderZone } from './dataSettings.ts';
 import { PageFailed, PageLoading, StatusLine, SubPage } from './DataControlParts.tsx';
+import { pageStateOf } from './enterpriseAsk.ts';
+import { EnterpriseStep } from './EnterpriseStep.tsx';
 import { useLoad } from './useDataControl.ts';
 import type { Viewer } from './settings.ts';
 
@@ -57,7 +61,7 @@ interface MenuChoice {
 export function AuditLog({ viewer, state, tell }: { viewer: Viewer; state: string; tell: Tell }) {
   const locale = useMemo(() => formattingLocale('en', navigator.language), []);
   const zone = zoneFor(viewer);
-  const [start] = useState(() => auditStart(state));
+  const [start] = useState(() => auditStart(pageStateOf('auditLog', state)));
   const [load, retry] = useLoad(start.load);
   const [filters, setFilters] = useState<Filters>(start.filters);
   const [menu, setMenu] = useState<AuditMenu | null>(start.menu);
@@ -90,7 +94,7 @@ export function AuditLog({ viewer, state, tell }: { viewer: Viewer; state: strin
         <Card>
           <Says>{W.locked}</Says>
           <OnCard>{W.lockedLine}</OnCard>
-          <CardStep label={S.contact} onClick={() => tell(S.contactTold)} />
+          <EnterpriseStep viewer={viewer} state={state} tell={tell} />
         </Card>
       </SubPage>
     );
@@ -108,7 +112,7 @@ export function AuditLog({ viewer, state, tell }: { viewer: Viewer; state: strin
   ];
   const types: MenuChoice[] = [
     { key: '', word: W.allTypes },
-    ...TYPES.map((one) => ({ key: one, word: one })),
+    ...TYPES.map((one) => ({ key: one, word: TYPE_WORDS[start.lang][one] })),
   ];
   const events: MenuChoice[] = [
     { key: '', word: W.allEvents },
@@ -187,7 +191,10 @@ export function AuditLog({ viewer, state, tell }: { viewer: Viewer; state: strin
                     onClick={() => setDetail(one.id)}
                   >
                     <span className="dc-time">{timeOf(one, locale, zone)}</span>
-                    <RowWords title={one.what} lines={[`${one.who} · ${one.type}`]} />
+                    <RowWords
+                      title={one.what}
+                      lines={[`${one.who} · ${TYPE_WORDS[start.lang][one.type]}`]}
+                    />
                     <Chevron />
                   </button>
                 </li>
@@ -217,7 +224,13 @@ export function AuditLog({ viewer, state, tell }: { viewer: Viewer; state: strin
         />
       )}
       {entry != null && (
-        <EntryDialog entry={entry} locale={locale} zone={zone} onDone={() => setDetail(null)} />
+        <EntryDialog
+          entry={entry}
+          locale={locale}
+          zone={zone}
+          lang={start.lang}
+          onDone={() => setDetail(null)}
+        />
       )}
       {exporting != null && (
         <ExportDialog
@@ -470,17 +483,19 @@ function EntryDialog({
   entry,
   locale,
   zone,
+  lang,
   onDone,
 }: {
   entry: Entry;
   locale: string;
   zone: ReaderZone;
+  lang: TypeLang;
   onDone: () => void;
 }) {
   return (
     <Dialog title={W.entry} verb={W.done} cancel={false} onDismiss={onDone} onConfirm={onDone}>
       <dl className="desk-rows dc-facts">
-        {factsOf(entry, locale, zone).map((fact) => (
+        {factsOf(entry, locale, zone, lang).map((fact) => (
           <div key={fact.label} className="desk-row is-plain">
             <dt className="desk-row-line">{fact.label}</dt>
             <dd className={fact.code === true ? 'desk-row-name dc-code' : 'desk-row-name'}>

@@ -96,6 +96,7 @@ function DemoTodayScreen() {
     needs?: string;
     starts?: string;
     reads?: string;
+    state?: string;
   }>();
   const place = useCurrentPlace();
   // An organisation made in the walk has no events yet.
@@ -191,7 +192,7 @@ function DemoTodayScreen() {
   return (
     <OrgSwitcherProvider
       // A deep link to another state starts it afresh, as opening it from the index does.
-      key={[params.switcher, params.create, params.orgs].join('|')}
+      key={[params.switcher, params.create, params.orgs, params.state].join('|')}
       state={switcherStateOf(params.switcher)}
       create={createStateOf(params.create)}
       none={params.orgs === 'none'}
@@ -201,7 +202,7 @@ function DemoTodayScreen() {
       <TodayShellProvider value={shell}>
         <View style={styles.fill}>
           {place == null ? (
-            <NoOrganisation tell={tell} />
+            <NoOrganisation tell={tell} managed={params.state === 'managed'} />
           ) : shownRun != null ? (
             <RunTodayScreen moment={shownRun} onTab={onTab} notices={notices} />
           ) : arrived != null ? (

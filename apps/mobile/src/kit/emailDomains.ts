@@ -4,7 +4,8 @@ import type { TFunction } from 'i18next';
 
 export type TagWord = { kind: 'yes' | 'waiting' | 'no' | 'kept'; word: string };
 
-export type DataGo = { kind: 'record'; domain: string } | { kind: 'prove' };
+export type DataGo =
+  { kind: 'record'; domain: string } | { kind: 'prove' } | { kind: 'only'; domain: string };
 
 export interface DataCard {
   /** Null where the demo's heading needs the day the organisation left Enterprise, which the API does not give. */
@@ -14,7 +15,9 @@ export interface DataCard {
 }
 
 export type DomainsSaid =
-  { kind: 'proved'; domain: string; at: string } | { kind: 'removed'; domain: string };
+  | { kind: 'proved'; domain: string; at: string }
+  | { kind: 'removed'; domain: string }
+  | { kind: 'cancelled' | 'turnedOff'; domain: string };
 
 interface DomainAsk {
   status: 'waiting' | 'missing' | 'failed';
@@ -96,7 +99,12 @@ export function hubCard(
 ): DataCard {
   if (page.plan === 'free')
     return { says: t('dataAndControl.locked'), line: t('dataAndControl.lockedLine'), step: null };
-  if (page.plan === 'left') return { says: null, line: t('dataAndControl.leftLine'), step: null };
+  if (page.plan === 'left')
+    return {
+      says: t('dataAndControl.leftSays', { organisation }),
+      line: t('dataAndControl.leftLine'),
+      step: null,
+    };
   if (page.domains.length === 0)
     return {
       says: t('dataAndControl.nothingSet'),
@@ -140,12 +148,38 @@ export function domainsCard(
       step: null,
     };
   if (page.plan === 'left')
-    return { says: null, line: t('emailDomains.card.offLine', { organisation }), step: null };
+    return {
+      says: t('emailDomains.card.off'),
+      line: t('emailDomains.card.offLine', { organisation }),
+      step: null,
+    };
   const asks = controlAsks(t, page.domains);
+  // Only our organisation is the Owner's alone (sc-563).
+  const keep = (domain: string): DataCard['step'] =>
+    page.ownerChanges
+      ? {
+          label: t('emailDomains.card.keep', { domain, organisation }),
+          go: { kind: 'only', domain },
+        }
+      : null;
   if (said?.kind === 'proved')
     return {
       says: t('emailDomains.card.proved', { domain: said.domain }),
       line: t('emailDomains.card.provedLine', { at: said.at }),
+      step: page.domains.some((one) => one.domain === said.domain && one.onlyOurs === 'off')
+        ? keep(said.domain)
+        : null,
+    };
+  if (said?.kind === 'cancelled')
+    return {
+      says: t('emailDomains.card.cancelled'),
+      line: t('emailDomains.card.cancelledLine', { domain: said.domain }),
+      step: null,
+    };
+  if (said?.kind === 'turnedOff')
+    return {
+      says: t('emailDomains.card.turnedOff'),
+      line: t('emailDomains.card.turnedOffLine', { domain: said.domain }),
       step: null,
     };
   if (said?.kind === 'removed') {
@@ -168,9 +202,32 @@ export function domainsCard(
     asks.find((one) => one.status === 'failed') ??
     soonest(asks);
 
-  return ask == null
+  if (ask != null) return { says: ask.says, line: ask.line, step: seeRecord(t, ask.domain) };
+  const scheduled = page.domains.find((domain) => domain.onlyOurs === 'scheduled');
+  if (scheduled != null)
+    return {
+      says: t('emailDomains.card.scheduled', { at: scheduled.onlyOursFrom ?? '' }),
+      line: page.ownerChanges
+        ? t('emailDomains.card.scheduledLine', { domain: scheduled.domain })
+        : t('emailDomains.card.scheduledAdmin'),
+      step: null,
+    };
+  const open = page.domains.find((domain) => isProved(domain) && domain.onlyOurs === 'off');
+  if (open != null)
+    return {
+      says: t('emailDomains.card.proved', { domain: open.domain }),
+      line: t('emailDomains.onlyOff', { domain: open.domain }),
+      step: keep(open.domain),
+    };
+  const on = page.domains.find((domain) => domain.onlyOurs === 'on');
+
+  return on == null
     ? nothing(t, page, locale)
-    : { says: ask.says, line: ask.line, step: seeRecord(t, ask.domain) };
+    : {
+        says: t('emailDomains.card.on', { domain: on.domain, organisation }),
+        line: t('emailDomains.card.onLine'),
+        step: null,
+      };
 }
 
 export function isProved(domain: EmailDomain): boolean {
@@ -183,9 +240,39 @@ export interface DomainRow {
   line: string;
   /** A proved domain's Remove… asks first; any other opens its record, Remove at its foot. */
   action: 'remove' | 'record' | null;
+  /** Under a proved domain (sc-563): the Owner's switch, or Cancel while scheduled; anyone else reads it. */
+  only: { line: string; control: 'switch' | 'cancel' | null; on: boolean } | null;
 }
 
-export function domainRows(t: TFunction, page: EmailDomainsPage): DomainRow[] {
+function onlyRow(
+  t: TFunction,
+  page: EmailDomainsPage,
+  domain: EmailDomain,
+  day: (at: string) => string,
+): DomainRow['only'] {
+  const on = domain.onlyOurs === 'on';
+  if (page.plan === 'left') return { line: t('emailDomains.onlyKept'), control: null, on };
+  const line =
+    domain.onlyOurs === 'scheduled'
+      ? t('emailDomains.onlyStarts', { at: domain.onlyOursFrom ?? '' })
+      : on && domain.onlyOursFromAt != null
+        ? t('emailDomains.onlySince', { day: day(domain.onlyOursFromAt) })
+        : t('emailDomains.onlyOff', { domain: domain.domain });
+
+  return page.ownerChanges
+    ? { line, control: domain.onlyOurs === 'scheduled' ? 'cancel' : 'switch', on }
+    : {
+        line: `${line.endsWith('.') ? line : `${line}.`} ${t('emailDomains.ownerOnly')}`,
+        control: null,
+        on,
+      };
+}
+
+export function domainRows(
+  t: TFunction,
+  page: EmailDomainsPage,
+  day: (at: string) => string,
+): DomainRow[] {
   const kept = page.plan === 'left';
 
   return page.domains.map((domain) => {
@@ -210,6 +297,7 @@ export function domainRows(t: TFunction, page: EmailDomainsPage): DomainRow[] {
       tag,
       line,
       action: kept ? null : domain.status === 'proved' ? 'remove' : 'record',
+      only: isProved(domain) ? onlyRow(t, page, domain, day) : null,
     };
   });
 }

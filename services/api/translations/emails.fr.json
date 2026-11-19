@@ -199,12 +199,18 @@
     "planDowngraded.comeBack": "Avec le forfait Enterprise, elles sont réactivées telles quelles. Contactez Soirely au sujet du forfait Enterprise.",
     "planDowngraded.footer": "Vous recevez ce message parce que vous êtes propriétaire ou administrateur de l’organisation {organisation}.",
     "domainListingStopped.subject": "{domain} ne permet plus de rejoindre l’organisation {organisation}",
-    "domainListingStopped.body": "L’organisation {prover} a vérifié que {domain} lui appartient : les personnes de {domain} ne peuvent donc plus demander à rejoindre l’organisation {organisation} par l’adhésion par domaine d’entreprise.",
+    "domainListingStopped.body": "L’organisation {prover} a vérifié que le domaine {domain} lui appartient : les personnes du domaine {domain} ne peuvent donc plus demander à rejoindre l’organisation {organisation} par l’adhésion par domaine d’entreprise.",
     "domainListingStopped.members": "Les membres déjà dans l’organisation {organisation} restent tels quels.",
     "domainListingStopped.footer": "Vous recevez ce message parce que vous êtes propriétaire ou administrateur de l’organisation {organisation}.",
-    "domainRecordGone.subject": "L’enregistrement de {domain} est absent",
-    "domainRecordGone.body": "Nous n’avons pas trouvé l’enregistrement DNS qui prouve que {domain} appartient à l’organisation {organisation}. Remettez-le avant le {deadline}, sinon {domain} ne sera plus vérifié.",
+    "domainRecordGone.subject": "L’enregistrement du domaine {domain} est absent",
+    "domainRecordGone.body": "Nous n’avons pas trouvé l’enregistrement DNS qui prouve que le domaine {domain} appartient à l’organisation {organisation}. Remettez-le avant le {deadline}, sinon {domain} ne sera plus vérifié.",
     "domainRecordGone.name": "Nom : {name}",
     "domainRecordGone.type": "Type : TXT",
-    "domainRecordGone.footer": "Vous recevez ce message parce que vous êtes propriétaire ou administrateur de l’organisation {organisation}."
+    "domainRecordGone.value": "Value: {value}",
+    "domainRecordGone.footer": "Vous recevez ce message parce que vous êtes propriétaire ou administrateur de l’organisation {organisation}.",
+    "managedNotice.subject": "L’organisation {organisation} gère les comptes Soirely du domaine {domain}",
+    "managedNotice.body": "L’organisation {organisation} gère les comptes Soirely du domaine {domain}. À partir du {deadline}, votre compte ne pourra être membre que de l’organisation {organisation}. Si ce compte est le vôtre et non celui de l’entreprise, modifiez votre adresse e-mail principale avant cette date.",
+    "managedNotice.from": "Date d’effet : {deadline}",
+    "managedNotice.events": "L’accès à un événement précis reste possible.",
+    "managedNotice.footer": "Vous recevez ce message parce que votre adresse e-mail principale appartient au domaine {domain}."
 }

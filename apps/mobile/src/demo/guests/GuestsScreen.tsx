@@ -1,4 +1,4 @@
-import { formattingLocale } from '@soirely/domain';
+import { exportFileName, exportNarrowing, formattingLocale } from '@soirely/domain';
 import { getLocales } from 'expo-localization';
 import { type Href, router } from 'expo-router';
 import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -58,11 +58,22 @@ import {
   filterCount,
   filterWord,
   inViewOf,
+  refreshingAt,
   titleRowOf,
 } from './GuestsModel.ts';
+import { RefreshingWords } from './RefreshingWords.tsx';
 import { changesSince, lastLooked, takeLook } from './ChangedSince.ts';
 import { ExportButton, ExportPanel, ExportSheet, ShareStandIn } from './GuestExport.tsx';
-import { exportDay, exportStart, exportWordsIn, fileName, narrowing } from './GuestExportModel.ts';
+import {
+  ENGLISH_SHEET,
+  exportDay,
+  exportStart,
+  exportWordsIn,
+  exportedName,
+  fileName,
+  narrowing,
+  sheetWordsIn,
+} from './GuestExportModel.ts';
 import { GuestsFailed, GuestsLoading, GuestsRows } from './GuestsList.tsx';
 import { GuestToast, GuestsCard, GuestsTitle, type Layout } from './GuestsParts.tsx';
 import { type SampleGuest, TODAY, WEDDING } from './GuestsSample.ts';
@@ -83,6 +94,17 @@ import {
   whoseRows,
 } from './PasteReplyModel.ts';
 
+/** The Portuguese catalogue's word for a filter, for the Export sheet's Filtro line (sc-72136). */
+const PT_FILTER: Partial<Record<string, string>> = {
+  all: 'guestList.all',
+  invited: 'guestList.invited',
+  coming: 'guestList.reply.coming',
+  maybe: 'guestList.reply.maybe',
+  notcoming: 'guestList.reply.notComing',
+  held: 'guestList.reply.held',
+  noreply: 'guestList.reply.noReply',
+  notyet: 'guestList.reply.notYetInvited',
+};
 const SEARCH_PAUSE_MS = 300;
 const FOCUS_AFTER_MS = 450;
 // As the product's Guests list on a tablet on its side, widened at the accessibility sizes (sc-67659).
@@ -136,6 +158,14 @@ export function GuestsScreen({
   const titleRow = titleRowOf(state);
   const inPortuguese = titleRow.locale === 'pt';
   const portuguese = useMemo(() => i18n.getFixedT('pt'), [i18n]);
+  // sc-71821: on the phone Refreshing… keeps main's place beside Back where the pill stays whole, else it takes its own line under the heading.
+  const [besideBack, setBesideBack] = useState(false);
+  const refreshing = refreshingAt(state) ? (
+    <RefreshingWords
+      words={inPortuguese ? portuguese('eventsScreen.refreshing') : t('eventsScreen.refreshing')}
+      testID="guests.refreshing"
+    />
+  ) : null;
   const [guests, setGuests] = useState(opening.guests);
   const [added, setAdded] = useState(opening.added);
   const [filter, setFilter] = useState<ListFilter>(filterFrom ?? start.filter);
@@ -173,7 +203,10 @@ export function GuestsScreen({
   const [exporting, setExporting] = useState(exported.open);
   const [exportRound, setExportRound] = useState(0);
   const day = exportDay(now, event.timeZone);
-  const fileFor = (format: 'xlsx' | 'csv') => fileName(event.name, day, format);
+  const fileFor = (format: 'xlsx' | 'csv') =>
+    inPortuguese
+      ? exportFileName(portuguese, { ...event, name: exportedName(state, event.name) }, now, format)
+      : fileName(exportedName(state, event.name), day, format);
   const [sharing, setSharing] = useState<string | null>(exported.share ? fileFor('xlsx') : null);
   const refs = useRef<Partial<Record<string, ViewInstance | null>>>({});
   const from = useRef<string>(start.focus ?? 'card');
@@ -330,11 +363,20 @@ export function GuestsScreen({
     setExportRound((count) => count + 1);
     setExporting(true);
   };
+  const choicePt = PT_FILTER[filter];
   const exportProps = {
+    words: inPortuguese ? sheetWordsIn(portuguese) : ENGLISH_SHEET,
     file: fileFor,
     inView,
     everyone: total,
-    narrowed: narrowing(filterWord(filter), searched),
+    narrowed: inPortuguese
+      ? exportNarrowing(
+          portuguese,
+          choicePt == null ? filterWord(filter) : portuguese(choicePt),
+          searched,
+          [],
+        )
+      : narrowing(filterWord(filter), searched),
     needs: exported.needs,
     offline,
     format: exported.format,
@@ -408,6 +450,11 @@ export function GuestsScreen({
               onPress={openExport}
             />
           ) : null
+        }
+        refreshing={
+          refreshing == null || (layout === 'phone' && besideBack)
+            ? null
+            : { node: refreshing, row: layout !== 'phone' }
         }
       />
       {phase === 'loading' ? (
@@ -748,6 +795,16 @@ export function GuestsScreen({
           : page != null
             ? { label: W.guests, onPress: closeGuest }
             : null
+      }
+      phoneBack={
+        refreshing != null && inPortuguese
+          ? { label: portuguese('eventNav.overview'), onPress: () => onArea('overview') }
+          : undefined
+      }
+      besideBack={
+        refreshing != null && layout === 'phone' && whose == null && page == null
+          ? { node: refreshing, onPlaced: setBesideBack }
+          : undefined
       }
       overlay={overlays}
     >

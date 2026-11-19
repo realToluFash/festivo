@@ -39,7 +39,18 @@ const record = (domain: string) => ({
   value: 'k7q2m9x4c8rt5bn3wd6jp1hz0ys5gfa',
 });
 
+const OFF = {
+  onlyOurs: 'off' as const,
+  onlyOursFromAt: null,
+  onlyOursFrom: null,
+  onlyOursIfNowAt: null,
+  onlyOursIfNow: null,
+};
+
+const day = (at: string) => `the day of ${at}`;
+
 const PROVED: EmailDomain = {
+  ...OFF,
   domain: 'ire.events',
   status: 'proved',
   record: record('ire.events'),
@@ -54,6 +65,7 @@ const PROVED: EmailDomain = {
 };
 
 const WAITING: EmailDomain = {
+  ...OFF,
   domain: 'ireevents.com',
   status: 'waiting',
   record: record('ireevents.com'),
@@ -68,6 +80,7 @@ const WAITING: EmailDomain = {
 };
 
 const FAILED: EmailDomain = {
+  ...OFF,
   ...WAITING,
   domain: 'ire.co',
   status: 'failed',
@@ -77,6 +90,7 @@ const FAILED: EmailDomain = {
 };
 
 const MISSING: EmailDomain = {
+  ...OFF,
   ...PROVED,
   status: 'missing',
   putBackByAt: '2026-10-31T13:20:00Z',
@@ -86,48 +100,66 @@ const MISSING: EmailDomain = {
 const page = (
   domains: EmailDomain[],
   plan: EmailDomainsPage['plan'] = 'enterprise',
-): EmailDomainsPage => ({ plan, domains });
+  ownerChanges = true,
+): EmailDomainsPage => ({ plan, ownerChanges, domains });
 
 describe('Email domains’ rows by status, with the instants as the server wrote them (sc-560)', () => {
   it('tags each status and dates its line in the reader’s own zone', () => {
-    expect(domainRows(t, page([PROVED, WAITING, FAILED]))).toEqual([
+    expect(domainRows(t, page([PROVED, WAITING, FAILED]), day)).toEqual([
       {
         domain: 'ire.events',
         tag: { kind: 'yes', word: 'Proved' },
         line: 'Proved Tuesday 6 Oct at 11:02 WAT',
         action: 'remove',
+        only: {
+          line: 'People at ire.events can still be members of other organisations.',
+          control: 'switch',
+          on: false,
+        },
       },
       {
         domain: 'ireevents.com',
         tag: { kind: 'waiting', word: 'Waiting for the record' },
         line: 'We check every hour until Friday 23 Oct at 16:45 WAT',
         action: 'record',
+        only: null,
       },
       {
         domain: 'ire.co',
         tag: { kind: 'no', word: 'Not proved' },
         line: 'We stopped checking on Monday 12 Oct at 09:30 WAT. Verify still works.',
         action: 'record',
+        only: null,
       },
     ]);
   });
 
   it('opens a missing record’s record, asking to put it back by its day', () => {
-    expect(domainRows(t, page([MISSING]))[0]).toEqual({
+    expect(domainRows(t, page([MISSING]), day)[0]).toEqual({
       domain: 'ire.events',
       tag: { kind: 'waiting', word: 'Record missing' },
       line: 'Put it back by Saturday 31 Oct at 14:20 WAT',
       action: 'record',
+      only: {
+        line: 'People at ire.events can still be members of other organisations.',
+        control: 'switch',
+        on: false,
+      },
     });
   });
 
   it('keeps a proved domain read only, tagged Kept, once the organisation left Enterprise', () => {
-    expect(domainRows(t, page([PROVED], 'left'))).toEqual([
+    expect(domainRows(t, page([PROVED], 'left'), day)).toEqual([
       {
         domain: 'ire.events',
         tag: { kind: 'kept', word: 'Kept' },
         line: 'Proved Tuesday 6 Oct at 11:02 WAT',
         action: null,
+        only: {
+          line: 'Kept as it was. It comes back on with Enterprise.',
+          control: null,
+          on: false,
+        },
       },
     ]);
   });
@@ -145,7 +177,7 @@ describe('Email domains’ card', () => {
   it('puts a missing record before a failed one, and a failed one before a wait', () => {
     expect(domainsCard(t, page([WAITING, FAILED, MISSING]), null, ORG, 'en')).toEqual({
       says: 'The record for ire.events is missing',
-      line: 'Put it back by Saturday 31 Oct at 14:20 WAT, or ire.events stops being proved.',
+      line: 'Put it back by Saturday 31 Oct at 14:20 WAT, or ire.events stops being proved and Only our organisation stops with it.',
       step: { label: 'See the record', go: { kind: 'record', domain: 'ire.events' } },
     });
     expect(domainsCard(t, page([WAITING, FAILED]), null, ORG, 'en').says).toBe(
@@ -173,7 +205,10 @@ describe('Email domains’ card', () => {
     ).toEqual({
       says: 'ire.events is proved',
       line: 'Proved Tuesday 6 Oct at 11:02 WAT.',
-      step: null,
+      step: {
+        label: 'Limit ire.events accounts to Ire Events',
+        go: { kind: 'only', domain: 'ire.events' },
+      },
     });
   });
 
@@ -194,7 +229,7 @@ describe('Email domains’ card', () => {
       step: null,
     });
     expect(domainsCard(t, page([PROVED], 'left'), null, ORG, 'en')).toEqual({
-      says: null,
+      says: 'Switched off',
       line: 'Ire Events left Enterprise. Its domains are kept as they were, and come back on with Enterprise.',
       step: null,
     });
@@ -236,9 +271,11 @@ describe('Data and control’s hub', () => {
       line: 'Email domains and the audit log.',
       step: null,
     });
-    expect(hubCard(t, page([PROVED], 'left'), ORG, 'en').line).toBe(
-      'Email domains, the audit log and deleting guest data are switched off and kept as they were. They come back on with Enterprise.',
-    );
+    expect(hubCard(t, page([PROVED], 'left'), ORG, 'en')).toEqual({
+      says: 'Ire Events left Enterprise',
+      line: 'Email domains, the audit log and deleting guest data are switched off and kept as they were. They come back on with Enterprise.',
+      step: null,
+    });
     expect(hubDomainsLine(t, page([PROVED], 'left'), ORG)).toBe('ire.events kept as it was');
     expect(hubDomainsLine(t, page([], 'free'), ORG)).toBe(
       'Prove your domain and limit its accounts to Ire Events',
@@ -357,5 +394,67 @@ describe('Organisation’s Company domain joining (sc-560)', () => {
     expect(joining).toMatch(
       /tag=\{\s*proved \? \{ kind: 'yes', word: t\('companyDomains\.proved'\) \} : null\s*\}/u,
     );
+  });
+});
+
+describe('Only our organisation under a proved domain (sc-563)', () => {
+  const SCHEDULED: EmailDomain = {
+    ...PROVED,
+    onlyOurs: 'scheduled',
+    onlyOursFromAt: '2026-10-31T13:20:00Z',
+    onlyOursFrom: 'Saturday 31 Oct at 14:20 WAT',
+  };
+  const ON: EmailDomain = { ...SCHEDULED, onlyOurs: 'on' };
+
+  it('gives the Owner a switch, Cancel while it is scheduled, and the instant it starts', () => {
+    expect(domainRows(t, page([SCHEDULED]), day)[0]?.only).toEqual({
+      line: 'Starts Saturday 31 Oct at 14:20 WAT',
+      control: 'cancel',
+      on: false,
+    });
+    expect(domainRows(t, page([ON]), day)[0]?.only).toEqual({
+      line: 'On since the day of 2026-10-31T13:20:00Z',
+      control: 'switch',
+      on: true,
+    });
+    expect(domainsCard(t, page([SCHEDULED]), null, ORG, 'en')).toEqual({
+      says: 'Only our organisation starts on Saturday 31 Oct at 14:20 WAT',
+      line: 'Everyone at ire.events was emailed. You can cancel until then.',
+      step: null,
+    });
+    expect(domainsCard(t, page([ON]), null, ORG, 'en')).toEqual({
+      says: 'Accounts at ire.events belong to Ire Events',
+      line: 'They can still be given access to another organisation’s event.',
+      step: null,
+    });
+  });
+
+  it('gives an admin its state and that only an owner can change it, with no control', () => {
+    expect(domainRows(t, page([SCHEDULED], 'enterprise', false), day)[0]?.only).toEqual({
+      line: 'Starts Saturday 31 Oct at 14:20 WAT. Only an owner can change this.',
+      control: null,
+      on: false,
+    });
+    expect(domainsCard(t, page([SCHEDULED], 'enterprise', false), null, ORG, 'en').line).toBe(
+      'Only an owner can cancel it.',
+    );
+    expect(domainsCard(t, page([PROVED], 'enterprise', false), null, ORG, 'en').step).toBeNull();
+  });
+
+  it('says a cancel and a switch off', () => {
+    expect(
+      domainsCard(t, page([PROVED]), { kind: 'cancelled', domain: 'ire.events' }, ORG, 'en'),
+    ).toEqual({
+      says: 'Only our organisation was cancelled',
+      line: 'Nothing changes for the accounts at ire.events.',
+      step: null,
+    });
+    expect(
+      domainsCard(t, page([PROVED]), { kind: 'turnedOff', domain: 'ire.events' }, ORG, 'en'),
+    ).toEqual({
+      says: 'Only our organisation is off',
+      line: 'Accounts at ire.events can be members of other organisations again.',
+      step: null,
+    });
   });
 });

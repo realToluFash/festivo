@@ -1378,7 +1378,10 @@
       "loading": "A carregar mais pessoas…",
       "failedTitle": "Não foi possível carregar mais pessoas.",
       "failedLine": "Verifique a ligação e tente novamente."
-    }
+    },
+    "alsoMemberOf_one": "Também é membro de outra organização",
+    "alsoMemberOf_many": "Também é membro de mais {{count, number}} de organizações",
+    "alsoMemberOf_other": "Também é membro de mais {{count, number}} organizações"
   },
   "accessPaused": {
     "badge": "Em pausa",
@@ -3091,6 +3094,7 @@
     "locked": "Incluídos no plano Enterprise",
     "lockedLine": "Domínios de e-mail e registo de auditoria.",
     "leftLine": "Os domínios de e-mail, o registo de auditoria e a eliminação dos dados dos convidados estão desativados e mantêm-se como estavam. Voltam a ficar ativos com o plano Enterprise.",
+    "leftSays": "{{organisation}} left Enterprise",
     "rows": {
       "domains": "Domínios de e-mail",
       "noDomains": "Ainda não há domínios",
@@ -3151,17 +3155,48 @@
       "failed": "{{domain}} não foi verificado",
       "failedLine": "Deixámos de verificar ({{at}}). Adicione o registo e, depois, toque em Verificar.",
       "missing": "O registo de {{domain}} está em falta",
-      "missingLine": "Volte a adicioná-lo até {{at}} ou {{domain}} deixa de estar verificado.",
+      "missingLine": "Volte a adicioná-lo até {{at}}; caso contrário, {{domain}} deixa de estar verificado e «Só a nossa organização» deixa de se aplicar.",
       "removed": "{{domain}} foi removido",
       "removedLine": "Já não está verificado.",
       "locked": "Disponível no plano Enterprise",
       "lockedLine": "Verifique que o domínio pertence a {{organisation}} e, depois, limite as contas desse domínio a {{organisation}}.",
-      "offLine": "{{organisation}} deixou o plano Enterprise. Os domínios mantêm-se como estavam e voltam a ficar ativos com o plano Enterprise."
+      "offLine": "{{organisation}} deixou o plano Enterprise. Os domínios mantêm-se como estavam e voltam a ficar ativos com o plano Enterprise.",
+      "off": "Switched off",
+      "keep": "Limitar as contas de {{domain}} a {{organisation}}",
+      "scheduled": "«Só a nossa organização» a partir de {{at}}",
+      "scheduledLine": "Enviámos um e-mail a todas as pessoas de {{domain}}. Pode cancelar até lá.",
+      "scheduledAdmin": "Só alguém com a função Proprietário pode cancelar.",
+      "cancelled": "«Só a nossa organização» foi cancelada",
+      "cancelledLine": "Nada muda para as contas de {{domain}}.",
+      "on": "As contas de {{domain}} pertencem a {{organisation}}",
+      "onLine": "Continuam a poder receber acesso a eventos de outras organizações.",
+      "turnedOff": "«Só a nossa organização» está desativada",
+      "turnedOffLine": "As contas de {{domain}} podem voltar a ser membros de outras organizações."
     },
     "removeAsk": {
       "title": "Remover {{domain}}?",
-      "line": "Deixa de estar verificado. A Adesão por domínio da empresa mantém a sua própria lista.",
+      "line": "Deixa de estar verificado e «Só a nossa organização» deixa de se aplicar a ele. A Adesão por domínio da empresa mantém a sua própria lista.",
       "keep": "Manter"
+    },
+    "only": "Só a nossa organização",
+    "onlyOff": "Quem usa {{domain}} pode continuar a ser membro de outras organizações.",
+    "onlyStarts": "Início: {{at}}",
+    "onlySince": "Ativada desde {{day}}",
+    "onlyKept": "Mantida como estava. Volta a ficar ativa com o plano Enterprise.",
+    "ownerOnly": "Só alguém com a função Proprietário pode alterar esta definição.",
+    "onlyFor": "Só a nossa organização, {{domain}}",
+    "cancel": "Cancelar",
+    "cancelOnlyFor": "Cancelar «Só a nossa organização», {{domain}}",
+    "onlyAsk": {
+      "title": "Limitar as contas de {{domain}} a {{organisation}}?",
+      "line": "A partir de {{at}}, daqui a 14 dias, uma conta cujo endereço de e-mail principal seja de {{domain}} só poderá ser membro de {{organisation}}.",
+      "more": "Enviamos já um e-mail a todas as pessoas de {{domain}}. O acesso a eventos específicos mantém-se. Pode cancelar até lá.",
+      "schedule": "Agendar"
     }
+  },
+  "managed": {
+    "title": "Conta gerida por {{organisation}}",
+    "single": "O acesso a eventos específicos mantém-se.",
+    "change": "Alterar o seu endereço de e-mail principal"
   }
 }

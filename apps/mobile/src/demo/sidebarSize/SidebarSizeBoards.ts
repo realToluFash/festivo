@@ -4,12 +4,22 @@ export interface SidebarSizeBoard {
   href: string;
 }
 
-/** iPad landscape's sidebar at each size sc-68441 asks for, in English and in French. */
+/** iPad landscape's sidebar at each size sc-68441 and sc-72307 ask for, in English and in French. */
 export const SIDEBAR_SIZE_BOARDS: readonly SidebarSizeBoard[] = [
   {
     title: 'Sidebar · default size',
     what: 'As on main: 44 rows in the 252 column',
     href: '/demo/sidebar-size?size=default&lang=en&at=members',
+  },
+  {
+    title: 'Sidebar · eighth step (AX1), Today',
+    what: 'QA Organisation steps down in its pill to read whole on one line, where main’s size would cut it',
+    href: '/demo/sidebar-size?size=eighth&lang=en&at=today&org=qa',
+  },
+  {
+    title: 'Sidebar · eighth step (AX1), Members',
+    what: 'The same name in the pill on Settings › Members',
+    href: '/demo/sidebar-size?size=eighth&lang=en&at=members&org=qa',
   },
   {
     title: 'Barre latérale · ninth step (AX2)',

@@ -5,6 +5,9 @@ export type EmailDomainStatus = 'waiting' | 'proved' | 'failed' | 'missing';
 /** `left`: the organisation had Enterprise, and its domains are kept as they were, read only (sc-581). */
 export type EmailDomainsPlan = 'enterprise' | 'free' | 'left';
 
+/** Only our organisation on a proved domain (sc-563): `scheduled` until its instant, 14 days after it was switched on. */
+export type OnlyOurs = 'off' | 'scheduled' | 'on';
+
 export interface EmailDomain {
   domain: string;
   status: EmailDomainStatus;
@@ -18,15 +21,25 @@ export interface EmailDomain {
   checksEnd: string;
   putBackByAt: string | null;
   putBackBy: string | null;
+  onlyOurs: OnlyOurs;
+  /** When Only our organisation starts or started. */
+  onlyOursFromAt: string | null;
+  onlyOursFrom: string | null;
+  /** Off on a proved domain: when it would start if switched on now, for the Owner's confirm. */
+  onlyOursIfNowAt: string | null;
+  onlyOursIfNow: string | null;
 }
 
 export interface EmailDomainsPage {
   plan: EmailDomainsPlan;
+  /** The caller is an Owner, the only one who changes Only our organisation. */
+  ownerChanges: boolean;
   domains: EmailDomain[];
 }
 
 const STATUSES: readonly EmailDomainStatus[] = ['waiting', 'proved', 'failed', 'missing'];
 const PLANS: readonly EmailDomainsPlan[] = ['enterprise', 'free', 'left'];
+const ONLY_OURS: readonly OnlyOurs[] = ['off', 'scheduled', 'on'];
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value != null && !Array.isArray(value);
@@ -38,10 +51,12 @@ const text = (value: unknown): value is string | null =>
 function asEmailDomain(raw: unknown): EmailDomain | null {
   if (!isRecord(raw) || !isRecord(raw.record)) return null;
   const status = STATUSES.find((one) => one === raw.status);
+  const onlyOurs = ONLY_OURS.find((one) => one === raw.onlyOurs);
   const record = raw.record;
 
   if (
     status == null ||
+    onlyOurs == null ||
     typeof raw.domain !== 'string' ||
     record.type !== 'TXT' ||
     typeof record.name !== 'string' ||
@@ -53,7 +68,11 @@ function asEmailDomain(raw: unknown): EmailDomain | null {
     !text(raw.provedAt) ||
     !text(raw.proved) ||
     !text(raw.putBackByAt) ||
-    !text(raw.putBackBy)
+    !text(raw.putBackBy) ||
+    !text(raw.onlyOursFromAt) ||
+    !text(raw.onlyOursFrom) ||
+    !text(raw.onlyOursIfNowAt) ||
+    !text(raw.onlyOursIfNow)
   )
     return null;
 
@@ -69,6 +88,11 @@ function asEmailDomain(raw: unknown): EmailDomain | null {
     checksEnd: raw.checksEnd,
     putBackByAt: raw.putBackByAt,
     putBackBy: raw.putBackBy,
+    onlyOurs,
+    onlyOursFromAt: raw.onlyOursFromAt,
+    onlyOursFrom: raw.onlyOursFrom,
+    onlyOursIfNowAt: raw.onlyOursIfNowAt,
+    onlyOursIfNow: raw.onlyOursIfNow,
   };
 }
 
@@ -79,5 +103,9 @@ export function asEmailDomainsPage(raw: unknown): EmailDomainsPage | null {
 
   if (plan == null || domains.some((one) => one == null)) return null;
 
-  return { plan, domains: domains.filter((one): one is EmailDomain => one != null) };
+  return {
+    plan,
+    ownerChanges: raw.ownerChanges === true,
+    domains: domains.filter((one): one is EmailDomain => one != null),
+  };
 }

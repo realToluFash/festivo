@@ -17,11 +17,13 @@ use Symfony\Component\Uid\Uuid;
 #[ORM\UniqueConstraint(name: 'uniq_email_domain_proved', columns: ['domain'], options: ['where' => '(proved_at IS NOT NULL)'])]
 #[ORM\Index(name: 'idx_email_domain_organisation', columns: ['organisation_id'])]
 #[ORM\Index(name: 'idx_email_domain_domain', columns: ['domain'])]
+#[ORM\Index(name: 'idx_email_domain_only_ours', columns: ['only_ours_from'], options: ['where' => '(only_ours_from IS NOT NULL)'])]
 class EmailDomain
 {
     public const string CHECKS_FOR = 'P7D';
     public const string RECHECK_EVERY = 'P30D';
     public const string PUT_BACK_WITHIN = 'P14D';
+    public const string ONLY_OURS_NOTICE = 'P14D';
 
     #[ORM\Id]
     #[ORM\Column(type: 'uuid')]
@@ -57,6 +59,17 @@ class EmailDomain
     /** Its checks ended, or its proof lapsed; Verify still proves it. */
     #[ORM\Column(type: Types::DATETIME_IMMUTABLE, nullable: true)]
     private ?DateTimeImmutable $failedAt = null;
+
+    /** Only our organisation (sc-563): switched on here, and applying from the notice's end. */
+    #[ORM\Column(type: Types::DATETIME_IMMUTABLE, nullable: true)]
+    private ?DateTimeImmutable $onlyOursSwitchedOnAt = null;
+
+    #[ORM\Column(type: Types::DATETIME_IMMUTABLE, nullable: true)]
+    private ?DateTimeImmutable $onlyOursFrom = null;
+
+    /** Set once its applying is audited, at the instant it applied. */
+    #[ORM\Column(type: Types::DATETIME_IMMUTABLE, nullable: true)]
+    private ?DateTimeImmutable $onlyOursAppliedAt = null;
 
     public function __construct(Organisation $organisation, string $domain, string $recordValue, DateTimeImmutable $addedAt)
     {
@@ -171,5 +184,42 @@ class EmailDomain
         $this->provedAt = null;
         $this->foundAt = null;
         $this->missingSince = null;
+    }
+
+    public function getOnlyOursSwitchedOnAt(): ?DateTimeImmutable
+    {
+        return $this->onlyOursSwitchedOnAt;
+    }
+
+    public function getOnlyOursFrom(): ?DateTimeImmutable
+    {
+        return $this->onlyOursFrom;
+    }
+
+    public function getOnlyOursAppliedAt(): ?DateTimeImmutable
+    {
+        return $this->onlyOursAppliedAt;
+    }
+
+    /** The instant plus 14 × 24 hours. */
+    public function switchOnlyOursOn(DateTimeImmutable $at): DateTimeImmutable
+    {
+        $this->onlyOursSwitchedOnAt = $at;
+        $this->onlyOursFrom = $at->add(new DateInterval(self::ONLY_OURS_NOTICE));
+        $this->onlyOursAppliedAt = null;
+
+        return $this->onlyOursFrom;
+    }
+
+    public function switchOnlyOursOff(): void
+    {
+        $this->onlyOursSwitchedOnAt = null;
+        $this->onlyOursFrom = null;
+        $this->onlyOursAppliedAt = null;
+    }
+
+    public function onlyOursApplied(DateTimeImmutable $at): void
+    {
+        $this->onlyOursAppliedAt = $at;
     }
 }

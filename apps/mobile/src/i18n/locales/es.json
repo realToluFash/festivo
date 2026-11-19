@@ -1378,7 +1378,10 @@
       "loading": "Cargando más personas…",
       "failedTitle": "No se han podido cargar más personas.",
       "failedLine": "Compruebe la conexión y vuelva a intentarlo."
-    }
+    },
+    "alsoMemberOf_one": "También es miembro de otra organización",
+    "alsoMemberOf_many": "También es miembro de {{count, number}} de organizaciones más",
+    "alsoMemberOf_other": "También es miembro de {{count, number}} organizaciones más"
   },
   "accessPaused": {
     "badge": "En pausa",
@@ -3091,6 +3094,7 @@
     "locked": "Se incluyen con Enterprise",
     "lockedLine": "Dominios de correo y registro de auditoría.",
     "leftLine": "Los dominios de correo, el registro de auditoría y la eliminación de los datos de invitados están desactivados y se conservan tal cual. Vuelven a activarse con Enterprise.",
+    "leftSays": "{{organisation}} left Enterprise",
     "rows": {
       "domains": "Dominios de correo",
       "noDomains": "Aún no hay dominios",
@@ -3151,17 +3155,48 @@
       "failed": "No se ha verificado {{domain}}",
       "failedLine": "Dejamos de comprobarlo el {{at}}. Añada el registro y pulse Verificar.",
       "missing": "Falta el registro de {{domain}}",
-      "missingLine": "Vuelva a añadirlo antes del {{at}} o {{domain}} dejará de estar verificado.",
+      "missingLine": "Vuelva a añadirlo antes del {{at}}; si no, {{domain}} dejará de estar verificado y «Solo nuestra organización» dejará de aplicarse.",
       "removed": "Se ha quitado {{domain}}",
       "removedLine": "Ya no está verificado.",
       "locked": "Disponible con Enterprise",
       "lockedLine": "Verifique que el dominio pertenece a {{organisation}} y limite sus cuentas a {{organisation}}.",
-      "offLine": "{{organisation}} ha dejado Enterprise. Sus dominios se conservan tal cual y vuelven a activarse con Enterprise."
+      "offLine": "{{organisation}} ha dejado Enterprise. Sus dominios se conservan tal cual y vuelven a activarse con Enterprise.",
+      "off": "Switched off",
+      "keep": "Limitar las cuentas de {{domain}} a {{organisation}}",
+      "scheduled": "«Solo nuestra organización» empieza el {{at}}",
+      "scheduledLine": "Hemos avisado por correo a todas las personas de {{domain}}. Puede cancelarlo hasta entonces.",
+      "scheduledAdmin": "Solo alguien con el rol Propietario puede cancelarlo.",
+      "cancelled": "Se ha cancelado «Solo nuestra organización»",
+      "cancelledLine": "No cambia nada para las cuentas de {{domain}}.",
+      "on": "Las cuentas de {{domain}} pertenecen a {{organisation}}",
+      "onLine": "Pueden seguir recibiendo acceso a eventos de otras organizaciones.",
+      "turnedOff": "«Solo nuestra organización» está desactivado",
+      "turnedOffLine": "Las cuentas de {{domain}} pueden volver a ser miembros de otras organizaciones."
     },
     "removeAsk": {
       "title": "¿Quitar {{domain}}?",
-      "line": "Dejará de estar verificado. Unirse por dominio de empresa conserva su propia lista.",
+      "line": "Deja de estar verificado y «Solo nuestra organización» deja de aplicarse a él. Unirse por dominio de empresa conserva su propia lista.",
       "keep": "Conservarlo"
+    },
+    "only": "Solo nuestra organización",
+    "onlyOff": "Quienes usen {{domain}} pueden seguir siendo miembros de otras organizaciones.",
+    "onlyStarts": "Empieza el {{at}}",
+    "onlySince": "Activado desde el {{day}}",
+    "onlyKept": "Se conserva tal cual y vuelve a activarse con Enterprise.",
+    "ownerOnly": "Solo alguien con el rol Propietario puede cambiarlo.",
+    "onlyFor": "Solo nuestra organización, {{domain}}",
+    "cancel": "Cancelar",
+    "cancelOnlyFor": "Cancelar «Solo nuestra organización», {{domain}}",
+    "onlyAsk": {
+      "title": "¿Limitar las cuentas de {{domain}} a {{organisation}}?",
+      "line": "A partir del {{at}}, dentro de 14 días, las cuentas cuya dirección de correo electrónico principal sea de {{domain}} solo podrán ser miembros de {{organisation}}.",
+      "more": "Ahora avisamos por correo a todas las personas de {{domain}}. El acceso a eventos concretos se mantiene. Puede cancelarlo hasta entonces.",
+      "schedule": "Programarlo"
     }
+  },
+  "managed": {
+    "title": "Cuenta gestionada por {{organisation}}",
+    "single": "El acceso a eventos concretos se mantiene.",
+    "change": "Cambiar su dirección de correo principal"
   }
 }

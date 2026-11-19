@@ -63,6 +63,24 @@ describe('Data and control, the hub (sc-560, enterprise-b-spec §4)', () => {
     );
   });
 
+  it('puts a ready export before the standing line, on every plan (#72630)', () => {
+    const ready = {
+      says: 'Your export is ready',
+      line: 'It downloads once, until Tuesday, Oct 20 at 09:52 WAT, and only for you, signed in.',
+      step: 'download',
+    };
+
+    expect(hubCard(view('locked_ready'), VIEWERS.folake, LOCALE)).toEqual(ready);
+    expect(hubCard({ ...view('downgraded'), exported: 'ready' }, VIEWERS.folake, LOCALE)).toEqual(
+      ready,
+    );
+    expect(hubCard({ ...view('new'), exported: 'ready' }, VIEWERS.folake, LOCALE)).toEqual(ready);
+    expect(hubCard(view('locked_ready'), VIEWERS.julien, LOCALE).says).toBe(
+      'These come with Enterprise',
+    );
+    expect(asksOf(view('locked_ready'))).toHaveLength(1);
+  });
+
   it('goes on to the run once nothing sooner asks, and to nothing after it', () => {
     const asks = asksOf(view('hub'));
     const run = asks.filter((ask) => ask.at === RUN_AT);
@@ -91,8 +109,8 @@ describe('Data and control, the hub (sc-560, enterprise-b-spec §4)', () => {
       step: 'contact',
     });
     expect(hubCard(view('downgraded'), VIEWERS.julien, LOCALE)).toMatchObject({
-      says: 'Ire Events left Enterprise on Sunday, Oct 18',
-      step: 'contact',
+      says: 'Ire Events left Enterprise',
+      step: null,
     });
   });
 

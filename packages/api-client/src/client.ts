@@ -65,6 +65,7 @@ import {
   asVendorsPage,
   vendorsQuery,
 } from './vendors.ts';
+import { type WhatIf, type WhatIfChange, asWhatIf } from './budget.ts';
 import { ApiError, ApiUnreachableError, type Problem, toProblem } from './problem.ts';
 import { type EmailDomainsPage, asEmailDomainsPage } from './emailDomains.ts';
 import { type OrganisationExportPage, asOrganisationExportPage } from './organisationExport.ts';
@@ -126,6 +127,7 @@ import {
   asSchedule,
 } from './schedule.ts';
 import { type RoomScreen, type ScreenLink, asRoomScreen, asScreenLinks } from './screens.ts';
+import { type BudgetLineTyped, type EventBudget, asEventBudget } from './budget.ts';
 
 /** A table call's answer: the plan whole, and the table it added or changed. */
 export interface SeatingWithTable {
@@ -425,6 +427,16 @@ export interface JoinOffers {
   offers: JoinOffer[];
   /** A request still waiting, while which nothing else is offered. */
   request: JoinRequest | null;
+  /** The account is managed (sc-563): shown in place of Start my own organisation. */
+  managed: ManagedAccount | null;
+}
+
+/** An account whose main address is at a domain its home organisation keeps to itself (sc-563); every other way in is refused `domain_managed`. */
+export interface ManagedAccount {
+  domain: string;
+  organisation: { id: string; name: string };
+  /** "Your {domain} address is managed by {organisation}, so you can only be a member there." */
+  message: string;
 }
 
 /** Settings > General's Requests to join (sc-562): the link in full while it is on. */
@@ -448,6 +460,8 @@ export interface RequestLinkPreview {
   standing: RequestStanding | null;
   /** While cooling off, when they may ask again. */
   askAgainFrom: string | null;
+  /** Signed in with an account another organisation manages (sc-563): asking is refused. */
+  managed: ManagedAccount | null;
 }
 
 /** Settings > General's Company domain joining (sc-561): `stopped` for one another organisation proved, `proved` for one this one proved under Email domains (sc-560). */
@@ -940,6 +954,8 @@ export interface OrganisationMember {
   self: boolean;
   history: MembershipStep[];
   suspension: Suspension | null;
+  /** For the owners and admins of the organisation that manages this person (sc-563): how many other organisations they belong to, never which. */
+  alsoMemberOf: number | null;
 }
 
 export type SentInvitationStatus = 'pending' | 'accepted' | 'declined' | 'revoked' | 'expired';
@@ -1941,6 +1957,24 @@ export class ApiClient {
     return this.readEmailDomains(
       await this.delete<unknown>(
         `/api/orgs/${encodeURIComponent(organisationId)}/email-domains/${encodeURIComponent(domain)}`,
+      ),
+    );
+  }
+
+  /** Only our organisation (sc-563): the Owner's alone, `owner_required` to anyone else; it starts 14 days on and everyone at the domain is emailed now. */
+  async switchOnlyOursOn(organisationId: string, domain: string): Promise<EmailDomainsPage> {
+    return this.readEmailDomains(
+      await this.post<unknown>(
+        `/api/orgs/${encodeURIComponent(organisationId)}/email-domains/${encodeURIComponent(domain)}/only-ours`,
+      ),
+    );
+  }
+
+  /** Cancels it while it is scheduled, and switches it off once it has started. */
+  async switchOnlyOursOff(organisationId: string, domain: string): Promise<EmailDomainsPage> {
+    return this.readEmailDomains(
+      await this.delete<unknown>(
+        `/api/orgs/${encodeURIComponent(organisationId)}/email-domains/${encodeURIComponent(domain)}/only-ours`,
       ),
     );
   }
@@ -3559,6 +3593,51 @@ export class ApiClient {
     return group;
   }
 
+  /** The range, per head, the count not priced, what each basis counts today and every line with its cost (sc-84, sc-85); 403 without budget.read. */
+  async budget(eventId: string): Promise<EventBudget> {
+    return asEventBudget(await this.get<unknown>(this.budgetPath(eventId)));
+  }
+
+  /** Refused `validation_failed` beside each field at once, `basis` for a second staff-time line. */
+  async addBudgetLine(eventId: string, typed: BudgetLineTyped): Promise<void> {
+    await this.post<unknown>(`${this.budgetPath(eventId)}/lines`, typed);
+  }
+
+  /** The whole line, checked as Add checks it. */
+  async changeBudgetLine(eventId: string, lineId: string, typed: BudgetLineTyped): Promise<void> {
+    await this.put<unknown>(this.budgetLinePath(eventId, lineId), typed);
+  }
+
+  /** Kept a day for `putBackBudgetLine`, and out of every figure meanwhile. */
+  async removeBudgetLine(eventId: string, lineId: string): Promise<void> {
+    await this.delete<unknown>(this.budgetLinePath(eventId, lineId));
+  }
+
+  /** Undo: the same line in its place. 404 once erased, a day after its removal; 410 `budget_line_currency_changed` once the event's currency changed; `basis` refused when another staff-time line holds it. */
+  async putBackBudgetLine(eventId: string, lineId: string): Promise<void> {
+    await this.delete<unknown>(`${this.budgetLinePath(eventId, lineId)}/removal`);
+  }
+
+  /** A hub token for this event's budget lines and its headcount, which moves the range. */
+  async budgetSubscription(eventId: string): Promise<RealtimeSubscription> {
+    const body = await this.post<{ token?: unknown; expiresAt?: unknown }>(
+      `${this.budgetPath(eventId)}/subscriptions`,
+    );
+
+    return {
+      token: typeof body.token === 'string' ? body.token : '',
+      expiresAt: typeof body.expiresAt === 'string' ? body.expiresAt : '',
+    };
+  }
+
+  private budgetPath(eventId: string): string {
+    return `/api/events/${encodeURIComponent(eventId)}/budget`;
+  }
+
+  private budgetLinePath(eventId: string, lineId: string): string {
+    return `${this.budgetPath(eventId)}/lines/${encodeURIComponent(lineId)}`;
+  }
+
   /** Needs guests.read on the event (sc-99). */
   async headcount(eventId: string): Promise<Headcount> {
     const body = await this.get<{ headcount?: unknown }>(
@@ -4355,6 +4434,7 @@ export class ApiClient {
       organisation: { name: organisation.name },
       standing: oneOf(raw.standing, REQUEST_STANDINGS),
       askAgainFrom: stringOrNull(raw.askAgainFrom),
+      managed: asManagedAccount(raw.managed),
     };
   }
 
@@ -4449,6 +4529,7 @@ export class ApiClient {
       domain: typeof raw.domain === 'string' ? raw.domain : null,
       offers: offers as JoinOffer[],
       request: asJoinRequest(raw.request),
+      managed: asManagedAccount(raw.managed),
     };
   }
 
@@ -4475,6 +4556,29 @@ export class ApiClient {
 
   async withdrawJoinRequest(): Promise<void> {
     await this.delete<unknown>('/api/join-offers/request');
+  }
+
+  /** What the changes would cost (sc-86); writes nothing. Refused 403 `permission_required` without budget.read. */
+  async whatIf(
+    eventId: string,
+    changes: readonly { change: WhatIfChange; by: number }[],
+    { signal }: { signal?: AbortSignal } = {},
+  ): Promise<WhatIf> {
+    const answer = asWhatIf(
+      await this.post<unknown>(
+        `/api/events/${encodeURIComponent(eventId)}/budget/what-if`,
+        { changes },
+        signal == null ? undefined : { signal },
+      ),
+    );
+
+    if (answer == null) {
+      throw new Error(
+        'The API answered /api/events/{id}/budget/what-if in a shape this client does not know. Check BudgetSerialiser in services/api.',
+      );
+    }
+
+    return answer;
   }
 
   async vendors(
@@ -5864,7 +5968,24 @@ function asOrganisationMember(raw: unknown): OrganisationMember | null {
     self: member.self === true,
     history: history as MembershipStep[],
     suspension: asSuspension(member.suspension),
+    alsoMemberOf: typeof member.alsoMemberOf === 'number' ? member.alsoMemberOf : null,
   };
+}
+
+function asManagedAccount(raw: unknown): ManagedAccount | null {
+  const managed = raw as Record<string, unknown> | null | undefined;
+  const organisation = managed?.organisation as Record<string, unknown> | null | undefined;
+
+  return typeof managed?.domain === 'string' &&
+    typeof managed.message === 'string' &&
+    typeof organisation?.id === 'string' &&
+    typeof organisation.name === 'string'
+    ? {
+        domain: managed.domain,
+        organisation: { id: organisation.id, name: organisation.name },
+        message: managed.message,
+      }
+    : null;
 }
 
 function asDeadline(raw: unknown): { at: string; written: string } | null {

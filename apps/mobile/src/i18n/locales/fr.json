@@ -1172,11 +1172,11 @@
     "listLabel": "Domaines de la liste",
     "working": "Ouvert aux demandes",
     "stopped": "Sans effet",
-    "stoppedBody": "Une autre organisation a prouvé avec l’offre Enterprise que {{domain}} lui appartient, donc seule sa liste compte. Retirez {{domain}} de cette liste.",
+    "stoppedBody": "Une autre organisation a prouvé avec le forfait Enterprise que le domaine {{domain}} lui appartient, donc seule sa liste compte. Retirez {{domain}} de cette liste.",
     "remove": "Retirer…",
     "removeLabel": "Retirer {{domain}}",
     "removeTitle": "Retirer {{domain}} ?",
-    "removeBody": "Les personnes de {{domain}} ne pourront plus demander à rejoindre l’organisation de cette façon.",
+    "removeBody": "Les personnes du domaine {{domain}} ne pourront plus demander à rejoindre l’organisation de cette façon.",
     "keep": "Le garder",
     "addLabel": "Ajouter un domaine",
     "add": "Ajouter le domaine",
@@ -1378,7 +1378,10 @@
       "loading": "Chargement d’autres personnes…",
       "failedTitle": "Les personnes suivantes n’ont pas pu être chargées.",
       "failedLine": "Vérifiez votre connexion et réessayez."
-    }
+    },
+    "alsoMemberOf_one": "Également membre d’une autre organisation",
+    "alsoMemberOf_many": "Également membre de {{count, number}} d’autres organisations",
+    "alsoMemberOf_other": "Également membre de {{count, number}} autres organisations"
   },
   "accessPaused": {
     "badge": "En pause",
@@ -3091,6 +3094,7 @@
     "locked": "Inclus dans le forfait Enterprise",
     "lockedLine": "Domaines de messagerie et journal d’audit.",
     "leftLine": "Les domaines de messagerie, le journal d’audit et la suppression des données des invités sont désactivés et conservés tels quels. Ils se réactivent avec le forfait Enterprise.",
+    "leftSays": "{{organisation}} left Enterprise",
     "rows": {
       "domains": "Domaines de messagerie",
       "noDomains": "Aucun domaine pour l’instant",
@@ -3130,7 +3134,7 @@
       "close": "Fermer",
       "verify": "Vérifier",
       "verifying": "Vérification…",
-      "lead": "Ajoutez cet enregistrement là où le DNS de {{domain}} est géré, puis appuyez sur Vérifier.",
+      "lead": "Ajoutez cet enregistrement là où le DNS du domaine {{domain}} est géré, puis appuyez sur Vérifier.",
       "notFound": "Nous n’avons pas encore trouvé l’enregistrement. Les modifications DNS peuvent prendre jusqu’à 48 heures.",
       "putBack": "Remettez-le avant le {{at}}."
     },
@@ -3150,18 +3154,49 @@
       "provedLine": "Vérifié le {{at}}.",
       "failed": "{{domain}} n’a pas été vérifié",
       "failedLine": "Nous avons cessé de vérifier le {{at}}. Ajoutez l’enregistrement, puis appuyez sur Vérifier.",
-      "missing": "L’enregistrement de {{domain}} est absent",
-      "missingLine": "Remettez-le avant le {{at}}, sinon {{domain}} ne sera plus vérifié.",
+      "missing": "L’enregistrement du domaine {{domain}} est absent",
+      "missingLine": "Remettez-le avant le {{at}}, sinon le domaine {{domain}} ne sera plus vérifié et « Réservé à notre organisation » cessera de s’appliquer.",
       "removed": "{{domain}} a été retiré",
       "removedLine": "Il n’est plus vérifié.",
       "locked": "Disponible avec le forfait Enterprise",
       "lockedLine": "Vérifiez que le domaine appartient à l’organisation {{organisation}}, puis réservez ses comptes à l’organisation {{organisation}}.",
-      "offLine": "L’organisation {{organisation}} n’a plus le forfait Enterprise. Ses domaines sont conservés tels quels et se réactivent avec le forfait Enterprise."
+      "offLine": "L’organisation {{organisation}} n’a plus le forfait Enterprise. Ses domaines sont conservés tels quels et se réactivent avec le forfait Enterprise.",
+      "off": "Switched off",
+      "keep": "Réserver les comptes {{domain}} à l’organisation {{organisation}}",
+      "scheduled": "« Réservé à notre organisation » commence le {{at}}",
+      "scheduledLine": "Toutes les personnes du domaine {{domain}} ont reçu un e-mail. Vous pouvez annuler jusque-là.",
+      "scheduledAdmin": "Seule une personne ayant le rôle Propriétaire peut l’annuler.",
+      "cancelled": "« Réservé à notre organisation » a été annulé",
+      "cancelledLine": "Rien ne change pour les comptes du domaine {{domain}}.",
+      "on": "Les comptes du domaine {{domain}} appartiennent à l’organisation {{organisation}}",
+      "onLine": "Ils peuvent toujours recevoir l’accès à un événement d’une autre organisation.",
+      "turnedOff": "« Réservé à notre organisation » est désactivé",
+      "turnedOffLine": "Les comptes du domaine {{domain}} peuvent de nouveau être membres d’autres organisations."
     },
     "removeAsk": {
       "title": "Retirer {{domain}} ?",
-      "line": "Il ne sera plus vérifié. L’adhésion par domaine d’entreprise garde sa propre liste.",
+      "line": "Il n’est plus vérifié, et « Réservé à notre organisation » cesse de s’y appliquer. L’adhésion par domaine d’entreprise garde sa propre liste.",
       "keep": "Le garder"
+    },
+    "only": "Réservé à notre organisation",
+    "onlyOff": "Les personnes du domaine {{domain}} peuvent toujours être membres d’autres organisations.",
+    "onlyStarts": "Commence le {{at}}",
+    "onlySince": "Activé depuis le {{day}}",
+    "onlyKept": "Conservé tel quel. Il se réactive avec le forfait Enterprise.",
+    "ownerOnly": "Seule une personne ayant le rôle Propriétaire peut modifier ce réglage.",
+    "onlyFor": "Réservé à notre organisation, {{domain}}",
+    "cancel": "Annuler",
+    "cancelOnlyFor": "Annuler « Réservé à notre organisation », {{domain}}",
+    "onlyAsk": {
+      "title": "Réserver les comptes {{domain}} à l’organisation {{organisation}} ?",
+      "line": "À partir du {{at}}, dans 14 jours, un compte dont l’adresse e-mail principale appartient au domaine {{domain}} ne pourra être membre que de l’organisation {{organisation}}.",
+      "more": "Toutes les personnes du domaine {{domain}} reçoivent un e-mail dès maintenant. L’accès à un événement précis reste possible. Vous pouvez annuler jusque-là.",
+      "schedule": "Programmer"
     }
+  },
+  "managed": {
+    "title": "Compte géré par {{organisation}}",
+    "single": "L’accès à un événement précis reste possible.",
+    "change": "Modifier votre adresse e-mail principale"
   }
 }

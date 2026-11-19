@@ -374,6 +374,11 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
         href: '/demo/today?orgs=none',
       },
       {
+        title: 'The way in · no organisation, managed',
+        what: 'Managed by Ire Events in place of Start your own',
+        href: '/demo/today?orgs=none&state=managed',
+      },
+      {
         title: 'Step 1 · nothing typed',
         what: 'The dashed plus, the keys up',
         href: '/demo/today?create=name',
@@ -2526,6 +2531,16 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
         title: 'Your organisation · no country',
         what: 'The device names none: Choose a country.',
         href: '/demo/organisation?region=none',
+      },
+      {
+        title: 'Your organisation · managed, nothing to join',
+        what: 'The banner where the fields were; Continue, no organisation',
+        href: '/demo/organisation?state=managed',
+      },
+      {
+        title: 'Your organisation · managed, Ire Events listed',
+        what: 'Ask to join, and the banner for Start my own',
+        href: '/demo/organisation?state=managedOffer',
       },
       {
         title: 'Your mobile number · no code',

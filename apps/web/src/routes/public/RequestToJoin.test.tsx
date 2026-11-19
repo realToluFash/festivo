@@ -13,6 +13,7 @@ const PREVIEW = {
   organisation: { name: 'Ìrè Events' },
   standing: null,
   askAgainFrom: null,
+  managed: null,
 };
 
 function json(body: unknown, status = 200, headers: Record<string, string> = {}): Response {
@@ -202,6 +203,33 @@ describe('a request link (sc-562)', () => {
     open();
 
     expect(await screen.findByText('You already belong to Ìrè Events.')).toBeDefined();
+    expect(screen.queryByRole('button', { name: 'Ask to join' })).toBeNull();
+  });
+
+  it('refuses a managed account in place of asking (sc-563)', async () => {
+    signedIn();
+    answering({
+      [LINK]: () =>
+        json({
+          ...PREVIEW,
+          organisation: { name: 'Lumen Feiras' },
+          managed: {
+            domain: 'ire.events',
+            organisation: { id: 'org_1', name: 'Ìrè Events' },
+            message:
+              'Your ire.events address is managed by Ìrè Events, so you can only be a member there.',
+          },
+        }),
+    });
+    open();
+
+    expect(await screen.findByRole('alert')).toBeDefined();
+    expect(screen.getByRole('heading', { name: 'Managed by Ìrè Events' })).toBeDefined();
+    expect(
+      screen.getByText(
+        'Your ire.events address is managed by Ìrè Events, so you can only be a member there.',
+      ),
+    ).toBeDefined();
     expect(screen.queryByRole('button', { name: 'Ask to join' })).toBeNull();
   });
 

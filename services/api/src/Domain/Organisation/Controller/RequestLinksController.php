@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\Organisation\Controller;
 
+use App\Domain\Organisation\EmailDomains\ManagedAccounts;
 use App\Domain\Organisation\Http\JoinRequestSerialiser;
 use App\Domain\Organisation\RequestLink\LinkRequester;
 use App\Domain\Organisation\RequestLink\RequestStanding;
@@ -29,6 +30,7 @@ final readonly class RequestLinksController
     public function __construct(
         private Security $security,
         private LinkRequester $linkRequester,
+        private ManagedAccounts $managedAccounts,
         private JoinRequestSerialiser $joinRequestSerialiser,
         private TranslatorInterface $translator,
     ) {
@@ -50,6 +52,7 @@ final readonly class RequestLinksController
             'askAgainFrom' => RequestStanding::CoolingOff === $standing && $user instanceof User
                 ? $this->linkRequester->coolingOffUntil($user, $organisation)?->format(\DATE_ATOM)
                 : null,
+            'managed' => $user instanceof User ? $this->managedAccounts->describeFor($user, $organisation) : null,
         ]);
     }
 

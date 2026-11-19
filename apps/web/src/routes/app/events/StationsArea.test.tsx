@@ -285,7 +285,7 @@ describe('Stations on the Staff page (sc-3910)', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Move up, Grill' }));
 
-    expect(await screen.findByText('Grill moved to stop 2 of 4')).toBeDefined();
+    expect(await screen.findByText('Grill moved to stop 2 of 4.')).toBeDefined();
     expect(
       sent.find((one) => one.line === 'PUT /api/events/ev_1/stations/walking-order')?.body,
     ).toEqual({ order: ['grill', 'kitchen', 'pastry'] });
@@ -472,6 +472,29 @@ describe('Stations on the Staff page (sc-3910)', () => {
     expect(
       sent.find((one) => one.line === 'PUT /api/events/ev_1/stations/people/emeka')?.body,
     ).toEqual({ station: 'grill' });
+  });
+
+  it('names a section with its tables only in a heading, and plainly in every sentence', async () => {
+    signedIn();
+    await onStations({
+      'PUT /api/events/ev_1/stations/people/grace': () => json(PLAN),
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'People and lead for Section C' }));
+    expect(
+      screen.getByRole('heading', { level: 2, name: 'Section C · No tables yet' }),
+    ).toBeDefined();
+    expect(screen.getByRole('button', { name: 'Put Emeka Obi on Section C' })).toBeDefined();
+    expect(screen.getByText(/On Section A$/)).toBeDefined();
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Move Grace Udo from Section A to Section C' }),
+    );
+
+    expect(
+      await screen.findByText(
+        'Grace Udo moved from Section A to Section C. Section A has no lead now.',
+      ),
+    ).toBeDefined();
   });
 
   it('says when a section was removed from the seating plan, naming who was on it', async () => {

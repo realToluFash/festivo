@@ -16,27 +16,29 @@ import {
   FORMAT_WORDS,
   type Range,
 } from './AuditModel.ts';
-import type { AuditEntry } from './AuditSample.ts';
+import type { AuditEntry, TypeLang } from './AuditSample.ts';
 import { Code } from './DataParts.tsx';
 import type { DataSay } from './DataSample.ts';
 import { AUDIT_WORDS as A } from './DataWords.ts';
 
 type Opener = RefObject<ScreenReaderTarget | null>;
 
-/** An entry's record: each label over its value, the event a link while it exists, and that nobody can change it. */
+/** An entry's record: each label over its value, what it was done to a link while it exists, and that nobody can change it. */
 export function EntryRows({
   entry,
   say,
+  lang,
   onEvent,
 }: {
   entry: AuditEntry;
   say: DataSay;
-  onEvent: (id: string) => void;
+  lang: TypeLang;
+  onEvent: (href: string) => void;
 }) {
   return (
     <View style={styles.entry}>
       <RowList
-        items={detailRows(entry, say).map((row) => ({
+        items={detailRows(entry, say, lang).map((row) => ({
           key: row.label,
           row: <DetailLine row={row} onEvent={onEvent} />,
         }))}
@@ -54,8 +56,8 @@ function DetailLine({ row, onEvent }: { row: DetailRow; onEvent: (id: string) =>
   );
   const said = [row.value, row.code].filter((part) => part != null && part !== '').join(' ');
 
-  if (row.eventId != null) {
-    const id = row.eventId;
+  if (row.href != null) {
+    const id = row.href;
 
     return (
       <Pressable
@@ -92,14 +94,16 @@ function DetailLine({ row, onEvent }: { row: DetailRow; onEvent: (id: string) =>
 export function EntrySheet({
   entry,
   say,
+  lang,
   opener,
   onEvent,
   onClose,
 }: {
   entry: AuditEntry | null;
   say: DataSay;
+  lang: TypeLang;
   opener: Opener;
-  onEvent: (id: string) => void;
+  onEvent: (href: string) => void;
   onClose: () => void;
 }) {
   const [shown, setShown] = useState(entry);
@@ -115,7 +119,7 @@ export function EntrySheet({
       opener={opener}
       testID="audit.entrySheet"
     >
-      {shown != null && <EntryRows entry={shown} say={say} onEvent={onEvent} />}
+      {shown != null && <EntryRows entry={shown} say={say} lang={lang} onEvent={onEvent} />}
     </FocusedScreen>
   );
 }

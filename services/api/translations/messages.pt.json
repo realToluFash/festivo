@@ -272,6 +272,7 @@
     "validation.guest_need_other_too_long": "Encurte o texto para um máximo de {otherMax} caracteres.",
     "validation.guest_need_note_too_long": "Encurte a nota para um máximo de {noteMax} caracteres.",
     "event.currency_in_use": "A moeda não pode ser alterada depois de haver montantes registados neste evento.",
+    "budget.currency_changed": "A moeda do evento mudou desde que este custo foi removido.",
     "event.state_invalid": "O estado atual deste evento não o permite.",
     "event.concluded": "Este evento já terminou, por isso não pode ser publicado. Altere primeiro as datas.",
     "event.host_required": "Indique os anfitriões antes de convidar alguém.",
@@ -410,5 +411,8 @@
     "vendors.archived_read_only": "Este fornecedor está arquivado, por isso as alterações não foram guardadas. Para o editar, reponha-o em Arquivados.",
     "access.plan_required": "Disponível no plano Enterprise. Para alterar esta definição, contacte a Soirely sobre o plano Enterprise.",
     "email_domains.not_listed": "Esse domínio não está na lista.",
-    "email_domains.taken": "Outra organização já verificou este domínio. Se for seu, contacte o apoio ao cliente da Soirely."
+    "email_domains.taken": "Outra organização já verificou este domínio. Se for seu, contacte o apoio ao cliente da Soirely.",
+    "email_domains.managed": "O seu endereço de {domain} é gerido por {organisation}, por isso só pode ser membro dessa organização.",
+    "email_domains.only_ours_owner": "Só alguém com a função Proprietário pode alterar esta definição.",
+    "email_domains.only_ours_unproved": "«Só a nossa organização» exige um domínio verificado por esta organização."
 }
