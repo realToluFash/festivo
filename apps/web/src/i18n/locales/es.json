@@ -5498,6 +5498,7 @@
       },
       "chargedAt": "Charged at",
       "costHelp": "Cost {{cost}}",
+      "costHelpPriced": "Cost {{cost}}. Leave it empty to charge by the markup.",
       "belowCost": "Below cost: margin {{margin}}.",
       "priceNumber": "Enter a price of {{min}} or more, in numbers only.",
       "priceDecimals": "That has too many decimal places for this event’s currency. Enter the price like {{example}}.",
@@ -5520,6 +5521,7 @@
         "costLabel": "Cost",
         "field": "Markup",
         "help": "A share of cost: {{cost}} at {{markup}} is charged at {{charged}}.",
+        "helpSet": "A share of cost: {{cost}} at {{markup}} is charged at {{charged}}. Leave it empty to remove it.",
         "note": "Margin is a share of the client price: {{markup}} markup is a {{margin}} margin.",
         "saved": "Markup saved."
       },

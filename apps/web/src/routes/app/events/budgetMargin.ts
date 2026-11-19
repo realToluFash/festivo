@@ -26,11 +26,15 @@ export function sentMarkup(typed: string, language: MoneyLanguage): string | nul
   return text === '' ? null : text.replace(DECIMAL[language], '.');
 }
 
-/** Refused at the field, with nothing sent (sc-92's Conventions): blank is no problem, since it clears. */
-export function markupProblem(typed: string, language: MoneyLanguage): MarkupProblem | null {
+/** Refused at the field, with nothing sent (sc-92's Conventions): blank clears a markup that is set, and is refused where none is. */
+export function markupProblem(
+  typed: string,
+  language: MoneyLanguage,
+  removable = false,
+): MarkupProblem | null {
   const text = typed.trim();
 
-  if (text === '') return null;
+  if (text === '') return removable ? null : 'number';
   if (/^[-−]/u.test(text)) return 'negative';
   const mark = DECIMAL[language] === '.' ? '\\.' : DECIMAL[language];
   const found = new RegExp(`^(\\d{1,6})(?:${mark}(\\d+))?$`, 'u').exec(text);

@@ -967,6 +967,35 @@ describe('the margin face, for margin readers on a plan with margin (sc-92)', ()
     expect(await screen.findByText('Markup saved.')).toBeTruthy();
   });
 
+  it('takes an emptied markup as a removal only where one is set', async () => {
+    signedIn();
+    const sent = serve({
+      'GET /api/events/ev_1/budget/margin': () => json(margin()),
+      'PUT /api/events/ev_1/budget/markup': () =>
+        json(margin({ markups: { event: null, categories: {} } })),
+    });
+
+    fireEvent.click(await screen.findByRole('button', { name: 'See margin' }));
+    fireEvent.click(screen.getByRole('button', { name: /^Whole event/u }));
+    expect(screen.getByText(/Leave it empty to remove it\./u)).toBeTruthy();
+    fireEvent.click(screen.getByRole('radio', { name: /^A category/u }));
+    const field = screen.getByRole('textbox', { name: 'Markup' });
+    expect((field as HTMLInputElement).value).toBe('');
+    expect(screen.queryByText(/Leave it empty/u)).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+    expect(screen.getByText('Enter the markup as a number, like 12.5.')).toBeTruthy();
+    expect(sent.some((one) => one.line.startsWith('PUT'))).toBe(false);
+
+    fireEvent.click(screen.getByRole('radio', { name: /^The whole event/u }));
+    fireEvent.change(screen.getByRole('textbox', { name: 'Markup' }), { target: { value: '' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+    await waitFor(() =>
+      expect(sent.find((one) => one.line === 'PUT /api/events/ev_1/budget/markup')?.body).toEqual({
+        markup: null,
+      }),
+    );
+  });
+
   it('says a price below cost beside the field, with its margin, and still saves it', async () => {
     signedIn();
     const sent = serve({

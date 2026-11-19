@@ -12,9 +12,13 @@ describe('a typed markup (sc-92)', () => {
     ['999.9', 'en', null],
     ['12,5', 'fr', null],
     ['12.5', 'fr', 'number'],
-    ['', 'en', null],
   ] as const)('%s in %s is %s', (typed, language, problem) => {
     expect(markupProblem(typed, language)).toBe(problem);
+  });
+
+  it('takes blank as a removal only where a markup is set', () => {
+    expect(markupProblem(' ', 'en', true)).toBeNull();
+    expect(markupProblem(' ', 'en')).toBe('number');
   });
 
   it('is sent with a point, and blank takes the markup away', () => {

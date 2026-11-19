@@ -200,8 +200,9 @@ function OpenedCharge({
   const keyed = useRef<(key: KeyboardEvent) => void>(() => undefined);
 
   useEffect(() => field.current?.focus(), []);
+  const ownPrice = line.source === 'price';
   const check = (text: string): string | null => {
-    if (text.trim() === '') return null;
+    if (text.trim() === '' && ownPrice) return null;
     const found = priceProblem(text, language, currency);
     if (found === 'decimals')
       return t('budget.margin.priceDecimals', { example: amountExample(language, currency) });
@@ -271,7 +272,7 @@ function OpenedCharge({
           label={t('budget.margin.chargedAt')}
           value={typed}
           sign={currencySign(currency, locale)}
-          help={t('budget.margin.costHelp', {
+          help={t(ownPrice ? 'budget.margin.costHelpPriced' : 'budget.margin.costHelp', {
             cost: minorMoney(line.cost.confirmed, currency, locale),
           })}
           error={problem}
@@ -329,13 +330,14 @@ export function MarkupBlock({
     Number(markup) === 0
       ? t('budget.margin.atCostChosen')
       : t('budget.margin.markupIs', { markup: percentWords(markup, locale) });
-  const rows: { name: string; how: string; opening: MarkupOpening }[] = [
+  const rows: { name: string; how: string; key: string; opening: MarkupOpening | null }[] = [
     {
       name: t('budget.margin.wholeEvent'),
       how:
         margin.markups.event == null
           ? t('budget.margin.noMarkupSet')
           : t('budget.margin.markupIs', { markup: percentWords(margin.markups.event, locale) }),
+      key: 'event',
       opening: { scope: 'event', key: '' },
     },
     ...VENDOR_CATEGORIES.flatMap((category) => {
@@ -347,6 +349,7 @@ export function MarkupBlock({
             {
               name: t(`vendors.categories.${category}`),
               how: markupIs(markup),
+              key: `category-${category}`,
               opening: { scope: 'category' as const, key: category },
             },
           ];
@@ -357,6 +360,7 @@ export function MarkupBlock({
             {
               name: line.label,
               how: markupIs(line.markup),
+              key: `cost-${line.id}`,
               opening: { scope: 'cost' as const, key: line.id },
             },
           ]
@@ -365,7 +369,8 @@ export function MarkupBlock({
               {
                 name: line.label,
                 how: t('budget.margin.itsOwnPrice'),
-                opening: { scope: 'cost' as const, key: line.id },
+                key: `price-${line.id}`,
+                opening: null,
               },
             ]
           : [],
@@ -376,12 +381,18 @@ export function MarkupBlock({
     <section className="desk-block bt-block" aria-labelledby={id}>
       <Head title={<span id={id}>{t('budget.margin.markups')}</span>} />
       <ul className="desk-rows bt-rows">
-        {rows.map((row) => (
-          <li key={`${row.opening.scope}-${row.opening.key}`}>
-            <button type="button" className="desk-row bt-row" onClick={() => onOpen(row.opening)}>
-              <RowWords title={row.name} lines={[row.how]} />
-              <Chevron />
-            </button>
+        {rows.map(({ name, how, key, opening }) => (
+          <li key={key}>
+            {opening == null ? (
+              <div className="desk-row bt-row">
+                <RowWords title={name} lines={[how]} />
+              </div>
+            ) : (
+              <button type="button" className="desk-row bt-row" onClick={() => onOpen(opening)}>
+                <RowWords title={name} lines={[how]} />
+                <Chevron />
+              </button>
+            )}
           </li>
         ))}
       </ul>
@@ -429,7 +440,7 @@ export function MarkupDialog({
   const [failed, setFailed] = useState(false);
   const [busy, setBusy] = useState(false);
   const field = useRef<HTMLInputElement>(null);
-  const found = markupProblem(shown, language);
+  const found = markupProblem(shown, language, held != null);
   const problem = (tried && found != null ? markupProblemWords(t, found, locale) : null) ?? server;
   const example = (amount: number) => wholeMoney(String(amount), margin.currency, locale);
 
@@ -491,6 +502,7 @@ export function MarkupDialog({
                   onChange={() => {
                     setScope(one);
                     setTyped(null);
+                    setTried(false);
                     setServer(null);
                   }}
                 />
@@ -516,6 +528,7 @@ export function MarkupDialog({
               onChange={(change) => {
                 setCategory(change.target.value as VendorCategory);
                 setTyped(null);
+                setTried(false);
               }}
             >
               {VENDOR_CATEGORIES.map((one) => (
@@ -540,6 +553,7 @@ export function MarkupDialog({
               onChange={(change) => {
                 setCost(change.target.value);
                 setTyped(null);
+                setTried(false);
               }}
             >
               {margin.lines.map((one) => (
@@ -556,7 +570,7 @@ export function MarkupDialog({
         value={shown}
         sign=""
         unit="%"
-        help={t('budget.margin.dialog.help', {
+        help={t(held == null ? 'budget.margin.dialog.help' : 'budget.margin.dialog.helpSet', {
           cost: example(1000),
           markup: percentWords(25, locale),
           charged: example(1250),
