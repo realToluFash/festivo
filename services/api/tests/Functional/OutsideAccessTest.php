@@ -46,7 +46,7 @@ final class OutsideAccessTest extends ApiTestCase
     /** @mago-expect lint:no-literal-password */
     private const string PASSWORD = 'a decent passphrase';
 
-    private const string UNUSABLE = 'That isn’t an email address or a mobile number we can use.';
+    private const string UNUSABLE = 'That is not an email address or a mobile number we can use.';
 
     private User $owner;
 

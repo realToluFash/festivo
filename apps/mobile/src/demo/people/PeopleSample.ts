@@ -57,7 +57,7 @@ export const BY_CODE = 'Door code';
 /** Under Lead the field finds members only, as Lead is for members (sc-71). */
 export const NAME_LABEL = 'Name';
 export const FIND_LABEL = 'Name, email or mobile number';
-export const UNUSABLE = 'That isn’t an email address or a mobile number we can use.';
+export const UNUSABLE = 'That is not an email address or a mobile number we can use.';
 export const PICK_ANOTHER = 'Pick another role to add someone from outside.';
 export const NOT_JOINED = 'Not joined yet';
 export const LOADING_WORDS = 'Loading the people on this event…';
