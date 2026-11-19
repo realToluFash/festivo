@@ -25,6 +25,9 @@ final class AuditTypeTest extends TestCase
     /** The areas whose actions are about an organisation, by sc-73's code. */
     private const string ORGANISATION_CODE = '/^(event|event_person|invitation|request_link|domain_join|membership|owner_claim|sign_in_rules|organisation_domain|email_domain|organisation|audit_log)\.[a-z_]+$/';
 
+    /** Codes in those areas that name something other than an audited action. */
+    private const array NOT_ACTIONS = ['sign_in_rules.notice' => 'a notification type'];
+
     #[Test]
     public function everyActionRecordedAboutAnOrganisationIsInExactlyOneType(): void
     {
@@ -97,6 +100,6 @@ final class AuditTypeTest extends TestCase
             }
         }
 
-        return Vec\values(Dict\diff(Dict\unique($codes), $keys));
+        return Vec\values(Dict\diff(Dict\unique($codes), [...$keys, ...Vec\keys(self::NOT_ACTIONS)]));
     }
 }
