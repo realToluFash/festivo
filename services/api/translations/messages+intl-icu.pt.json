@@ -266,5 +266,6 @@
     "validation.what_if_not_whole": "Indique um número inteiro para {change}.",
     "validation.what_if_too_large": "A alteração de {change} não pode ultrapassar {most, number, ::group-auto} no total.",
     "validation.what_if_guests_below_one": "Adicione 1 convidado ou mais. Não é possível calcular aqui a remoção de convidados.",
-    "validation.what_if_below_zero": "Isso deixaria {change} abaixo de 0. O evento tem agora {count, number, ::group-auto}."
+    "validation.what_if_below_zero": "Isso deixaria {change} abaixo de 0. O evento tem agora {count, number, ::group-auto}.",
+    "audit.export_too_many": "As entradas correspondentes ultrapassam o limite de {most, number, ::group-auto}. Restrinja os filtros e exporte novamente."
 }

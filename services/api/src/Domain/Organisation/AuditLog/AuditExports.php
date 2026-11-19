@@ -71,7 +71,7 @@ final readonly class AuditExports
         $count = $this->auditEntryRepository->countMatching($filter);
 
         if ($count > self::AT_MOST) {
-            throw new ApiException(ErrorCode::AuditExportTooMany, 'audit.export_too_many', [], null, [], ['count' => $count, 'most' => self::AT_MOST]);
+            throw new ApiException(ErrorCode::AuditExportTooMany, 'audit.export_too_many', [], null, [], ['count' => $count, 'most' => self::AT_MOST], ['{most}' => self::AT_MOST]);
         }
 
         if ($count <= self::AT_ONCE) {

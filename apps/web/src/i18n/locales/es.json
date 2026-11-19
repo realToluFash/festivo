@@ -4895,11 +4895,11 @@
       "jsonl": "JSON Lines"
     },
     "export": "Exportar",
-    "exportLine": "Se descargan hasta 10.000 entradas a la vez. Si hay más, las preparamos y le enviamos un enlace por correo.",
+    "exportLine": "Se descargan hasta {{atOnce, number}} entradas a la vez. Si hay más, las preparamos y le enviamos un enlace por correo.",
     "downloading": "Descargando el registro de auditoría en {{format}}.",
     "preparing": "Preparando su exportación",
     "preparingLine": "Enviaremos un enlace a {{email}} cuando esté lista. Funciona una sola vez, durante 24 horas.",
-    "tooMany": "Las entradas que coinciden superan el límite de 1.000.000. Acote los filtros y vuelva a exportar.",
+    "tooMany": "Las entradas que coinciden superan el límite de {{most, number}}. Acote los filtros y vuelva a exportar.",
     "linkEnded": "Este enlace de descarga ha caducado. Vuelva a exportar las entradas.",
     "locked": "Disponible con Enterprise",
     "lockedLine": "Vea quién hizo qué en {{organisation}}, durante 365 días, y expórtelo.",

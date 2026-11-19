@@ -412,7 +412,6 @@
     "access.plan_required": "Disponível no plano Enterprise. Para alterar esta definição, contacte a Soirely sobre o plano Enterprise.",
     "email_domains.not_listed": "Esse domínio não está na lista.",
     "email_domains.taken": "Outra organização já verificou este domínio. Se for seu, contacte o apoio ao cliente da Soirely.",
-    "audit.export_too_many": "As entradas correspondentes ultrapassam o limite de 1 000 000. Restrinja os filtros e exporte novamente.",
     "audit.export_expired": "A transferência desta exportação terminou. Pode exportar novamente.",
     "audit.dates_backwards": "A data de início tem de ser igual ou anterior à data de fim.",
     "audit.invalid_filter": "O registo de auditoria não oferece este filtro.",
