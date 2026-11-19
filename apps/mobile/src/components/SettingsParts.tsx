@@ -285,11 +285,11 @@ export function Pair({
   );
 }
 
-/** A back's word sized by `backWordSize`, measured, as adjustsFontSizeToFit drew it above the ‹ on Android (sc-68778). */
-export function useBackWord(word: string, back: BackSizing) {
+/** A back's word sized by `backWordSize`, measured; the room is relearned when Refreshing… comes or goes beside it (sc-68778). */
+export function useBackWord(word: string, back: BackSizing, besideShown = false) {
   const { width: windowWidth } = useWindowDimensions();
   const key = `${back.full}|${word}`;
-  const roomKey = `${key}|${windowWidth}`;
+  const roomKey = `${key}|${windowWidth}|${besideShown}`;
   const [width, setWidth] = useState<{ key: string; width: number } | null>(null);
   const [room, setRoom] = useState<{ key: string; width: number } | null>(null);
   const measured = width?.key === key ? width.width : null;
@@ -321,11 +321,13 @@ export function Back({
   label,
   onPress,
   off = false,
+  besideShown = false,
   testID,
 }: {
   label?: string;
   onPress: () => void;
   off?: boolean | undefined;
+  besideShown?: boolean;
   testID?: string;
 }) {
   const { t } = useTranslation();
@@ -333,7 +335,7 @@ export function Back({
   const scale = backScale(fontScale, useContext(TitleCap));
   const place = label ?? t('settings.title');
   const back = pillBack(scale);
-  const word = useBackWord(place, back);
+  const word = useBackWord(place, back, besideShown);
 
   return (
     <>

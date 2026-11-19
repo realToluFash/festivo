@@ -279,7 +279,7 @@ export function rulesCard(rules: readonly RuleRow[], role: Role, hold: Hold): Ru
 
   if (first == null)
     return {
-      says: `You meet ${ORGANISATION}’ rules`,
+      says: `You meet ${ORGANISATION}’s rules`,
       line:
         hold == null
           ? `As ${role === 'Owner' ? 'an owner' : 'an admin'}, you can change them below.`

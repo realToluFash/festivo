@@ -110,7 +110,14 @@ export const SW = {
   moveDown: 'Move down',
   removedTitle: 'Section D was removed from the seating plan.',
   close: 'Close',
+  tonight: 'Stations tonight',
+  tonightFoot:
+    'Shows from the event’s start to its end. Somebody whose shift has not started or has ended is not counted.',
 };
+
+export function tonightSub(at: string): string {
+  return `Who is on shift at each station now, ${at}.`;
+}
 
 export function stationsWord(n: number, one: string, many: string): string {
   return `${n} ${n === 1 ? one : many}`;
@@ -319,6 +326,47 @@ export function shiftOf(person: Person): string {
   return `${person.from} to ${person.to}`;
 }
 
+/** 21:30 on the wedding's second night, London. */
+export const TONIGHT = new Date('2026-11-06T21:30:00Z');
+
+function minutesOf(time: string): number {
+  const [hours = '0', minutes = '0'] = time.split(':');
+
+  return Number(hours) * 60 + Number(minutes);
+}
+
+/** Minutes past midnight on the event's clock, kept apart from how the time is worded. */
+export function clockMinutes(when: Date, timeZone: string): number {
+  const parts = new Intl.DateTimeFormat('en-GB', {
+    hour: 'numeric',
+    minute: 'numeric',
+    hourCycle: 'h23',
+    timeZone,
+  }).formatToParts(when);
+  const part = (type: 'hour' | 'minute') =>
+    Number(parts.find((one) => one.type === type)?.value ?? 0);
+
+  return part('hour') * 60 + part('minute');
+}
+
+/** A shift that ends at or before its start runs past midnight. */
+export function onShiftAt(person: Person, now: number): boolean {
+  const from = minutesOf(person.from);
+  const end = minutesOf(person.to);
+  const to = end <= from ? end + 1440 : end;
+
+  return [now, now + 1440].some((one) => one >= from && one < to);
+}
+
+export function onNow(station: Station, now: number): Person[] {
+  return station.people.map(personById).filter((one) => onShiftAt(one, now));
+}
+
+/** Stations tonight shows from the event's start to its end. */
+export function inService(event: { startsAt: string; endsAt: string }, clock: Date): boolean {
+  return clock >= new Date(event.startsAt) && clock < new Date(event.endsAt);
+}
+
 /** Puts someone on a station, or takes them off it; a lead who leaves stops being its lead. */
 export function toggle(state: Stations, personId: string, stationId: string): Changed {
   const person = personById(personId);
@@ -480,6 +528,7 @@ export interface StationsStart {
   pressed: boolean;
   scroll: 'dishes' | 'walk' | null;
   removed: boolean;
+  clock: Date | null;
 }
 
 function start(o: Partial<StationsStart> & Pick<StationsStart, 'name' | 'note'>): StationsStart {
@@ -493,6 +542,7 @@ function start(o: Partial<StationsStart> & Pick<StationsStart, 'name' | 'note'>)
     pressed: false,
     scroll: null,
     removed: false,
+    clock: null,
     ...o,
   };
 }
@@ -506,6 +556,19 @@ const STATES = {
     start({
       name: 'Populated',
       note: 'Places with the Pass first, sections with their table count, who is on each, and what each station serves.',
+    }),
+  tonight: () =>
+    start({
+      name: 'Stations tonight, during service',
+      note: '21:30 on the night. Tolu Bello’s Door shift ended at 21:00, so nobody is on Door now, though Tolu is still given it.',
+      clock: TONIGHT,
+    }),
+  tonightPeople: () =>
+    start({
+      name: 'Stations tonight, changing who is on Door',
+      note: 'Put somebody on Door from People and lead: Stations tonight shows them at once.',
+      clock: TONIGHT,
+      panel: { kind: 'people', id: 'door' },
     }),
   people: () =>
     start({
@@ -665,6 +728,10 @@ export const STATIONS_PAGES: readonly { name: string; states: readonly DemoLink[
         'sectionRemoved',
       ] as const
     ).map(link),
+  },
+  {
+    name: 'Stations tonight, during service',
+    states: (['tonight', 'tonightPeople'] as const).map(link),
   },
   {
     name: 'What each station dishes, and the walking order',

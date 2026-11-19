@@ -12,7 +12,7 @@ const PEOPLE: Record<PeopleDoorState | Shared, readonly [string, string]> = {
   'code-stopped': ['People · stopped', '14 people came in and keep their access'],
   'code-expired': ['People · expired', 'Ended at 15:00, its step a new code'],
   'code-made': ['People · made', 'The new card, Door code made.'],
-  loading: ['People · loading, People’s own', 'Ire Events’ sample, as People built it'],
+  loading: ['People · loading, People’s own', 'Ire Events’s sample, as People built it'],
   failed: ['People · failed, People’s own', 'Try again loads again'],
   readOnly: ['People · read only, People’s own', 'No card, no Add, nothing opens'],
   'code-person': ['People · João’s sheet', 'Joined with the door code, Lead off'],

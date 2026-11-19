@@ -39,7 +39,9 @@ import {
   peopleStateOf,
   READ_ONLY,
   removedToast,
+  NOT_SIGNED_IN,
   rowLine,
+  staffLinkTitle,
   seesEveryEvent,
   withAdded,
   without,
@@ -323,6 +325,27 @@ function PersonRow({
   onOpen: (() => void) | null;
 }) {
   const line = rowLine(person, viewer);
+  const staffLink = staffLinkTitle(person);
+  if (staffLink != null)
+    return (
+      <div className="desk-row">
+        <span className="people-outside-face" aria-hidden="true">
+          <Glyph name="link" size={18} />
+        </span>
+        <RowWords
+          title={staffLink}
+          tag={
+            person.staffLink?.signedIn === false && (
+              <span className="desk-tag people-not-signed">
+                <span className="people-not-signed-mark" aria-hidden="true" />
+                {NOT_SIGNED_IN}
+              </span>
+            )
+          }
+          lines={[line]}
+        />
+      </div>
+    );
   const words = (
     <>
       {person.initials === '' ? (

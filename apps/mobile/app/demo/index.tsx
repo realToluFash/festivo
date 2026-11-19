@@ -47,6 +47,7 @@ import { LOCK_CARD_BOARDS } from '../../src/demo/night/lockCard.ts';
 import { NIGHT_BOARDS } from '../../src/demo/night/nightModel.ts';
 import { STATION_BOARDS } from '../../src/demo/station/StationBoards.ts';
 import { MOVED_BOARDS, TEAM_BOARDS } from '../../src/demo/team/TeamBoards.ts';
+import { STAFF_LINK_BOARDS } from '../../src/demo/staffLink/StaffLinkBoards.ts';
 import { tokens } from '../../src/theme/tokens.ts';
 
 interface Board {
@@ -2270,6 +2271,10 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
       what,
       href: href as Href,
     })),
+  },
+  {
+    page: 'Staffing · one person’s own link, Share link first (sc-3912) · phone, tablet portrait and landscape',
+    boards: STAFF_LINK_BOARDS.map(({ title, what, href }) => ({ title, what, href: href as Href })),
   },
   {
     page: 'Service · the pass’s print controls (sc-4018) · tablet landscape',

@@ -18,9 +18,9 @@ appId: host.exp.Exponent
 - runFlow:
     file: developer-menu.yaml
     env:
-      SETTLED: '{{t:any:home.signedInTo}}|{{t:any:todayScreen.tab.today}}|{{t:any:noOrganisation.title}}|{{t:any:status.title}}|{{t:any:signIn.title}}|{{t:any:welcome.withEmail}}|{{t:any:signInRules.overdueTitle}}|{{t:any:steps.organisationTitle}}|{{t:any:steps.invitedTitle}}'
+      SETTLED: '{{t:any:home.signedInTo}}|{{t:any:todayScreen.tab.today}}|{{t:any:noOrganisation.title}}|{{t:any:eventNav.more}}|{{t:any:eventNav.overview}}|{{t:any:status.title}}|{{t:any:signIn.title}}|{{t:any:welcome.withEmail}}|{{t:any:signInRules.overdueTitle}}|{{t:any:steps.organisationTitle}}|{{t:any:steps.invitedTitle}}'
 - extendedWaitUntil:
-    visible: '{{t:any:home.signedInTo}}|{{t:any:todayScreen.tab.today}}|{{t:any:noOrganisation.title}}|{{t:any:status.title}}|{{t:any:signIn.title}}|{{t:any:welcome.withEmail}}|{{t:any:signInRules.overdueTitle}}|{{t:any:steps.organisationTitle}}|{{t:any:steps.invitedTitle}}'
+    visible: '{{t:any:home.signedInTo}}|{{t:any:todayScreen.tab.today}}|{{t:any:noOrganisation.title}}|{{t:any:eventNav.more}}|{{t:any:eventNav.overview}}|{{t:any:status.title}}|{{t:any:signIn.title}}|{{t:any:welcome.withEmail}}|{{t:any:signInRules.overdueTitle}}|{{t:any:steps.organisationTitle}}|{{t:any:steps.invitedTitle}}'
     timeout: 60000
     optional: true
 # The two-factor overdue screen names no account, so the batch signs out there and back in. sc-28435.
@@ -37,8 +37,15 @@ appId: host.exp.Exponent
 # The reload before this can crash an Expo Go that has only just opened.
 - runFlow:
     when:
-      notVisible: '{{t:any:home.signedInTo}}|{{t:any:todayScreen.tab.today}}|{{t:any:noOrganisation.title}}|{{t:any:status.title}}|{{t:any:signIn.title}}|{{t:any:welcome.withEmail}}|{{t:any:signInRules.overdueTitle}}|{{t:any:steps.organisationTitle}}|{{t:any:steps.invitedTitle}}'
+      notVisible: '{{t:any:home.signedInTo}}|{{t:any:todayScreen.tab.today}}|{{t:any:noOrganisation.title}}|{{t:any:eventNav.more}}|{{t:any:eventNav.overview}}|{{t:any:status.title}}|{{t:any:signIn.title}}|{{t:any:welcome.withEmail}}|{{t:any:signInRules.overdueTitle}}|{{t:any:steps.organisationTitle}}|{{t:any:steps.invitedTitle}}'
     file: reopen.yaml
+# An account in no organisation that holds an event from outside lands inside it, which names
+# no account: Settings does. sc-68438.
+- runFlow:
+    when:
+      visible:
+        id: 'event\.nav\..*'
+    file: to-settings.yaml
 # Today names no account, so whose session it is is read in Settings. sc-30091.
 - runFlow:
     when:

@@ -20,13 +20,12 @@ import { SAMPLE_EVENT_ID } from '../messages/MessagesSample.ts';
 import { type Shell, ShellContext, type ShellSection } from '../../components/settingsShell.ts';
 import { PageToast } from '../../components/Summary.tsx';
 
-/** /demo/people: on the iPad, People in its event's frame as every area is (sc-67665); on the phone, and for the door code's own event, its own page with Today and Settings a tab away. */
+/** /demo/people: People in its event's frame as every area is, on the iPad (sc-67665) and the phone (sc-70351); for the door code's own event, its own page with Today and Settings a tab away. */
 export function PeopleRoute() {
-  const layout = layoutOf(useLayout().kind);
   const params = useLocalSearchParams<PeopleParams>();
   const door = doorStartOf(params.state, params.code, params.show ?? params.hold);
 
-  if (layout !== 'phone' && door == null)
+  if (door == null)
     return (
       <EventsShell>
         <EventScreen id={SAMPLE_EVENT_ID} state={null} area="people" peopleParams={params} />
