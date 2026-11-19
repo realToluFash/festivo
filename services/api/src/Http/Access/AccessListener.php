@@ -74,7 +74,7 @@ final readonly class AccessListener
             return;
         }
 
-        $this->require($request, $user, $organisationId, $policy->permission, $policy->feature);
+        $this->require($request, $user, $organisationId, $policy->permission, $policy->feature, $policy->featureLocksReading);
     }
 
     /** The event is found first, then the caller's grants on it: a Member with no role on it gets the same 404 as an event that does not exist (sc-29912). */
@@ -91,12 +91,12 @@ final readonly class AccessListener
     }
 
     /** Not a member reads as not found: a 403 would confirm the organisation exists. */
-    private function require(Request $request, User $user, Uuid $organisationId, ?Permission $permission, ?PlanFeature $feature = null): void
+    private function require(Request $request, User $user, Uuid $organisationId, ?Permission $permission, ?PlanFeature $feature = null, bool $featureLocksReading = false): void
     {
-        $this->check($request, $this->membershipDirectory->grantsIn($user, $organisationId) ?? throw self::notFound(), $permission, $feature);
+        $this->check($request, $this->membershipDirectory->grantsIn($user, $organisationId) ?? throw self::notFound(), $permission, $feature, $featureLocksReading);
     }
 
-    private function check(Request $request, Grants $grants, ?Permission $permission, ?PlanFeature $feature = null): void
+    private function check(Request $request, Grants $grants, ?Permission $permission, ?PlanFeature $feature = null, bool $featureLocksReading = false): void
     {
         if ($grants->isHeldForTwoFactor()) {
             throw new ApiException(ErrorCode::OrganisationTwoFactorOverdue, 'access.two_factor_overdue');
@@ -110,7 +110,7 @@ final readonly class AccessListener
             $grants->require($permission);
         }
 
-        if (null !== $feature && !$request->isMethodSafe()) {
+        if (null !== $feature && ($featureLocksReading || !$request->isMethodSafe())) {
             $grants->requirePlanFor($feature);
         }
     }

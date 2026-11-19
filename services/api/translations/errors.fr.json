@@ -135,5 +135,6 @@
     "idempotency_key_required": "Envoyez l’en-tête Idempotency-Key à chaque appui.",
     "idempotency_key_reused": "Cette Idempotency-Key a déjà été envoyée avec un autre appui.",
     "plan_required": "Le forfait de l’organisation n’inclut pas cette fonctionnalité.",
-    "email_domain_taken": "Une autre organisation a déjà vérifié ce domaine."
+    "email_domain_taken": "Une autre organisation a déjà vérifié ce domaine.",
+    "audit_export_too_many": "Too many entries to export."
 }

@@ -30,6 +30,7 @@ enum AccountMail: string
     case DomainSuspended = 'domain_suspended';
     case OwnerClaim = 'owner_claim';
     case OrganisationExport = 'organisation_export';
+    case AuditExportReady = 'audit_export_ready';
     case PlanDowngraded = 'plan_downgraded';
     case DomainListingStopped = 'domain_listing_stopped';
     case DomainRecordGone = 'domain_record_gone';

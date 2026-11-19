@@ -106,6 +106,7 @@ enum ErrorCode: string
     case OwnerClaimUnavailable = 'owner_claim_unavailable';
     case OwnerClaimOwn = 'owner_claim_own';
     case EmailDomainTaken = 'email_domain_taken';
+    case AuditExportTooMany = 'audit_export_too_many';
 
     case Unauthenticated = 'unauthenticated';
     case InvalidCredentials = 'invalid_credentials';
@@ -191,6 +192,7 @@ enum ErrorCode: string
             self::AssistantUnavailable, self::AssistantBusy => 503,
 
             self::AssistantRefused, self::IdempotencyKeyReused => 422,
+            self::AuditExportTooMany => 422,
         };
     }
 
