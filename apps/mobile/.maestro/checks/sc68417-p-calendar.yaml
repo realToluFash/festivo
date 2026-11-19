@@ -1,0 +1,8 @@
+# sc-68417: the top of Calendar, unchanged at every size.
+appId: host.exp.Exponent
+---
+- setOrientation: ${ORIENT}
+- openLink: ${METRO_URL}/--/calendar
+- waitForAnimationToEnd: { timeout: 8000 }
+- takeScreenshot: p-calendar
+- assertVisible: { id: 'calendar.today' }
