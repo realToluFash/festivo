@@ -50,7 +50,7 @@ import { useLayout } from '../layout/useLayout.ts';
 import { useSignedIn } from '../signedIn.ts';
 import { tokens } from '../theme/tokens.ts';
 import { AppFrame, BackButton } from './AppFrame.tsx';
-import { BellRow, PaneBell } from './BellButton.tsx';
+import { BellRow } from './BellButton.tsx';
 import { bodyEdges } from './bodyEdges.ts';
 import { SecondaryButton } from './Buttons.tsx';
 import { cardFrame } from './cardFrame.ts';
@@ -61,6 +61,7 @@ import { EDIT_PARTS } from './EventEdits.tsx';
 import { EventEditScreen } from './EventPartEdits.tsx';
 import { EventGuests, type GuestsTop } from './EventGuests.tsx';
 import { ExportButton } from './GuestExport.tsx';
+import { GuestsHeading } from './GuestsHeading.tsx';
 import { EventPeople } from './EventPeople.tsx';
 import { EventNotFound, EventTop, EventsFailed, usePhaseOf } from './Events.tsx';
 import { Refreshing } from './Refreshing.tsx';
@@ -72,8 +73,7 @@ import { Arrived } from './Skeleton.tsx';
 import { type ScreenReaderTarget, moveScreenReaderFocus } from './screenReaderFocus.ts';
 import { Text, type TextHandle } from './Text.tsx';
 import { BodyTitle } from './Title.tsx';
-import { TopPrimary, usePrimaryLabel } from './TopPrimary.tsx';
-import { COLUMN_TITLE, PAGE_TITLE, columnTitle, pageTitle } from './topTitle.ts';
+import { PAGE_TITLE, pageTitle } from './topTitle.ts';
 import { useSidebarCard } from './sidebarCard.ts';
 import { eventTop } from '../kit/eventTop.ts';
 import { EdgeSwipeBack } from './useEdgeSwipeBack.ts';
@@ -284,6 +284,7 @@ export function EventScreen({
             kind={kind}
             event={event}
             onGuests={(choice) => chooseArea('guests', choice)}
+            onPeople={() => chooseArea('people')}
             nameRef={cardNamed ? cardName : undefined}
             manages={manages}
             takes={(action) => takesCardStep(event, action)}
@@ -364,26 +365,6 @@ export function EventScreen({
         {event.name}
       </Text>
     ) : undefined;
-  const guestsTitleSize = kind === 'tabletLandscape' ? COLUMN_TITLE : PAGE_TITLE;
-  const guestsTitleStyle = kind === 'tabletLandscape' ? columnTitle : pageTitle;
-  const guestsLabel = usePrimaryLabel({
-    title: t('eventNav.guests'),
-    size: guestsTitleSize,
-    style: guestsTitleStyle,
-    label: guests && guestsTop.add != null ? t('guestList.addGuest') : undefined,
-    gap: tokens.spaceSm,
-    labelled: !phone,
-  });
-  const addGuest =
-    guests && guestsTop.add != null ? (
-      <TopPrimary
-        ref={guestsAdd}
-        label={t('guestList.addGuest')}
-        onPress={guestsTop.add}
-        wide={guestsLabel.wide}
-        testID="guests.add"
-      />
-    ) : null;
   const exportGuests =
     guests && guestsTop.exports != null ? (
       <ExportButton
@@ -452,23 +433,14 @@ export function EventScreen({
           withdrawAction={withdrawToastAction}
           onTop={setGuestsTop}
           heading={
-            <View style={styles.titleRow}>
-              <View style={styles.fill} onLayout={guestsLabel.onSlot}>
-                {guestsLabel.measure}
-                <BodyTitle
-                  size={guestsTitleSize}
-                  accessibilityRole="header"
-                  ref={title}
-                  style={guestsTitleStyle}
-                >
-                  {t('eventNav.guests')}
-                </BodyTitle>
-              </View>
-              {!phone && refreshing}
-              {exportGuests}
-              {addGuest}
-              <PaneBell />
-            </View>
+            <GuestsHeading
+              kind={kind}
+              titleRef={title}
+              refreshing={refreshing}
+              exports={exportGuests}
+              onAdd={guestsTop.add ?? null}
+              addRef={guestsAdd}
+            />
           }
           onOffline={setGuestsOffline}
         />

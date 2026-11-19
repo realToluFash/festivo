@@ -6,6 +6,7 @@ import { describe, expect, it } from 'vitest';
 const frame = readFileSync(join('src', 'components', 'AppFrame.tsx'), 'utf8');
 const screen = readFileSync(join('src', 'components', 'EventScreen.tsx'), 'utf8');
 const page = readFileSync(join('src', 'components', 'EventPage.tsx'), 'utf8');
+const guests = readFileSync(join('src', 'components', 'GuestsHeading.tsx'), 'utf8');
 
 describe('the sidebar on an iPad on its side (sc-68052)', () => {
   it('draws no Search inside an event', () => {
@@ -26,7 +27,8 @@ describe('the bell on an iPad on its side (sc-68052)', () => {
 
   it('ends the title row of every area the event leaves untitled', () => {
     expect(screen).toMatch(/untitled=\{cardNamed \|\| titledInList\}/u);
-    expect(screen).toMatch(/<PaneBell \/>/u);
+    expect(screen).toMatch(/<GuestsHeading\b/u);
+    expect(guests.match(/<PaneBell \/>/gu)).toHaveLength(2);
     expect(screen).toMatch(/\{cardNamed && event == null && <BellRow \/>\}/u);
     expect(page).toMatch(/card=\{<BellRow>\{card\}<\/BellRow>\}/u);
   });

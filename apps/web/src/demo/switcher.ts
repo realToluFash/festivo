@@ -3,6 +3,7 @@ import { useState, useSyncExternalStore } from 'react';
 import { useLocation, useSearchParams } from 'react-router';
 
 import { type CreateState, NEW_ORG, isCreateState } from './createOrg.ts';
+import { E1, E2, E3, type OutsideEvent } from './outsideEvents.ts';
 import type { DemoLink } from './settings.ts';
 
 export type Role = 'Owner' | 'Admin' | 'Member';
@@ -32,6 +33,8 @@ export interface Where {
   opens: number;
   fresh: readonly string[];
   arrived: string | null;
+  /** The account's live grants on other organisations' events (sc-68438). */
+  outside: readonly OutsideEvent[];
 }
 
 export const SWITCHER_STATES = [
@@ -53,6 +56,8 @@ export const SWITCHER_STATES = [
   'withdrawn',
   'managed',
   'paused',
+  'outside',
+  'outside-one-org',
 ] as const;
 
 export type SwitcherState = (typeof SWITCHER_STATES)[number];
@@ -135,12 +140,12 @@ export function whereOf(state: SwitcherState | null): Where {
             ? { [CELEBRACIONES]: 'managed' }
             : {};
   const many = state === 'many' || state === 'search' || state === 'no-match';
-  const alone = state === 'one' || many || state === 'paused';
+  const alone = state === 'one' || many || state === 'paused' || state === 'outside-one-org';
 
   return {
     places: many
       ? MANY
-      : state === 'one'
+      : state === 'one' || state === 'outside-one-org'
         ? [IRE]
         : state === 'joined'
           ? [...POPULATED, joinedPlace(CELEBRACIONES_INVITATION)]
@@ -161,6 +166,7 @@ export function whereOf(state: SwitcherState | null): Where {
     opens: 0,
     fresh: [],
     arrived: null,
+    outside: state === 'outside' ? [E1, E2, E3] : state === 'outside-one-org' ? [E2] : [],
   };
 }
 
@@ -368,4 +374,17 @@ export const SWITCHER_PAGES: readonly { name: string; states: readonly DemoLink[
     ],
   },
   { name: 'Access paused', states: [switcherLink('paused', 'Access paused, none current')] },
+  {
+    name: 'Events from outside (sc-68438)',
+    states: [
+      {
+        to: '/demo/today?switcher=outside',
+        name: 'Three organisations, three events from outside, one under way',
+      },
+      {
+        to: '/demo/today?switcher=outside-one-org',
+        name: 'One organisation, one event from outside',
+      },
+    ],
+  },
 ];

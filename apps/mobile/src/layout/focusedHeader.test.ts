@@ -1,11 +1,13 @@
 import { describe, expect, it } from 'vitest';
 
 import {
-  backLeast,
+  backRoomIsLaid,
   backScale,
+  backWordSize,
   backWidth,
   buttonWidth,
   headerForm,
+  pillBack,
   pillTextSize,
   titleOnItsRow,
   titleSlot,
@@ -143,9 +145,25 @@ describe('a back’s word', () => {
   it('grows no larger than a title drawn above it', () => {
     expect(backScale(3.12, 30)).toBe(2);
   });
+});
 
-  it('steps down to 15 at the least', () => {
-    expect(backLeast(3.12) * 15 * 3.12).toBeCloseTo(15, 5);
-    expect(backLeast(1)).toBe(1);
+describe('a back’s size and room', () => {
+  const back = pillBack(3.12);
+
+  it('keeps its full size when it fits, and a point of slack keeps it there', () => {
+    expect(backWordSize(back, 259.6, 362)).toBeCloseTo(46.8, 1);
+    expect(backWordSize(back, 259.6, 344.8)).toBeCloseTo(46.8, 1);
+    expect(backWordSize(back, 259.6, 343.7)).toBeLessThan(46.8);
+    expect(backRoomIsLaid(back, 259.6, back.full, 362)).toBe(true);
+  });
+
+  it('steps down only when squeezed narrower than its words', () => {
+    expect(backWordSize(back, 278.2, 318)).toBe(40);
+    expect(backRoomIsLaid(back, 278.2, 40, 315.8)).toBe(false);
+    expect(backRoomIsLaid(back, 278.2, 40, 300)).toBe(true);
+  });
+
+  it('stops at 15 for a word wider than the window', () => {
+    expect(backWordSize(back, 2780, 318)).toBe(15);
   });
 });
