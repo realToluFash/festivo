@@ -113,6 +113,17 @@ import { REDEEM_PAGES } from './redeem.ts';
 import { Settings } from './Settings.tsx';
 import { SETTINGS_PAGES } from './settings.ts';
 import { SIGN_IN_RULES_PAGES } from './signInRules.ts';
+import {
+  BREAK_GLASS_PATH,
+  SIGN_IN_SSO,
+  SIGN_IN_SSO_PAGES,
+  SSO_PAGES,
+  refusedUnderRequired,
+  ssoDomainOf,
+  ssoSignInOf,
+} from './singleSignOn.ts';
+import { BreakGlass } from './BreakGlass.tsx';
+import { BreakGlassControl, SsoHandoff, SsoRefusedStep } from './SignInSso.tsx';
 import { SWITCHER_PAGES } from './switcher.ts';
 import { QUOTES_PAGES, forgetBudget } from './quotes.ts';
 import { BUDGET_PAGES } from './budgetPages.ts';
@@ -250,6 +261,7 @@ export default function Demo() {
       <Route path="get-back-in" element={<GetBackInBoard />} />
       <Route path="two-factor" element={<TwoFactorBoard />} />
       <Route path="ways-in" element={<WaysInBoard />} />
+      <Route path={BREAK_GLASS_PATH.replace('/demo/', '')} element={<BreakGlass />} />
       <Route path="terms" element={<LegalPage doc="terms" />} />
       <Route path="privacy" element={<LegalPage doc="privacy" />} />
       {/* Kept so a link to /demo/signed-in opens Today rather than the not-found page. */}
@@ -291,6 +303,10 @@ export default function Demo() {
       <Route path="settings/personalisation" element={<Settings open="personalisation" />} />
       <Route path="settings/general" element={<Settings open="general" />} />
       <Route path="settings/sign-in-rules" element={<Settings open="signInRules" />} />
+      <Route
+        path="settings/sign-in-rules/single-sign-on"
+        element={<Settings open="signInRules" sso />}
+      />
       <Route
         path="settings/data"
         element={<KeepQuery to="settings/data-and-control/delete-guest-data" />}
@@ -585,6 +601,8 @@ function DemoHome({ from }: { from: string }) {
         <BoardPages pages={GENERAL_PAGES} />
         <h3>Sign-in rules in B · Where you stand · desktop</h3>
         <BoardPages pages={SIGN_IN_RULES_PAGES} />
+        <h3>Single sign-on in B · Where you stand · desktop (sc-610)</h3>
+        <BoardPages pages={SSO_PAGES} />
         <h3>Data and control in B · One place · desktop</h3>
         <BoardPages pages={DATA_CONTROL_PAGES} />
         <h3>People on an event · desktop</h3>
@@ -612,6 +630,9 @@ function DemoHome({ from }: { from: string }) {
             </li>
           ))}
         </ul>
+
+        <h3>Single sign-on at sign-in, and its email · desktop (sc-610)</h3>
+        <BoardPages pages={SIGN_IN_SSO_PAGES} />
 
         <h3>Create an account · desktop</h3>
         <BoardPages pages={NEW_ACCOUNT_PAGES} />
@@ -781,8 +802,15 @@ function SignInForm({ state }: { state: string }) {
   const email = useRef<HTMLInputElement>(null);
   const password = useRef<HTMLInputElement>(null);
   const pending = useRef<number | undefined>(undefined);
-  const knownEmail = drawn?.fillsEmail ? SAMPLE.email : arrival.email;
+  const sso = ssoSignInOf(state);
+  const knownEmail =
+    sso != null ? SIGN_IN_SSO.sample : drawn?.fillsEmail ? SAMPLE.email : arrival.email;
   const locked = liftsAt != null;
+  const [address, setAddress] = useState(knownEmail ?? '');
+  const [another, setAnother] = useState(sso === 'required');
+  const [gone, setGone] = useState(false);
+  const [ssoRefused, setSsoRefused] = useState(sso === 'required');
+  const handoff = sso != null && !another && ssoDomainOf(address);
 
   useEffect(() => () => window.clearTimeout(pending.current), []);
 
@@ -812,6 +840,10 @@ function SignInForm({ state }: { state: string }) {
   function submit(event: FormEvent<HTMLFormElement>): void {
     event.preventDefault();
     if (busy || locked) return;
+    if (handoff) {
+      setGone(true);
+      return;
+    }
 
     const typed = { email: email.current?.value ?? '', password: password.current?.value ?? '' };
     const found = fieldLines(typed.email, typed.password);
@@ -825,6 +857,10 @@ function SignInForm({ state }: { state: string }) {
 
     setRevealed(false);
     after(() => {
+      if (sso === 'required' && refusedUnderRequired(typed.email)) {
+        setSsoRefused(true);
+        return;
+      }
       if (samplePair(typed.email, typed.password)) {
         if (arrival.recovered === true) void navigate(twoFactorAt('setup'));
         else void navigate(twoFactor ? twoFactorAt('code') : '/demo/today');
@@ -854,7 +890,10 @@ function SignInForm({ state }: { state: string }) {
   function provider(): void {
     if (busy) return;
 
-    after(() => void navigate('/demo/today'));
+    after(() => {
+      if (sso === 'required' && refusedUnderRequired(address)) setSsoRefused(true);
+      else void navigate('/demo/today');
+    });
   }
 
   const until = liftsAt == null ? null : timeOfDay(liftsAt);
@@ -864,15 +903,18 @@ function SignInForm({ state }: { state: string }) {
   return (
     <BoardPage
       controls={
-        <label className="demo-switch">
-          <input
-            type="checkbox"
-            role="switch"
-            checked={twoFactor}
-            onChange={(event) => setTwoFactor(event.target.checked)}
-          />
-          Demo: this account uses two-factor
-        </label>
+        <>
+          {sso === 'required' && <BreakGlassControl />}
+          <label className="demo-switch">
+            <input
+              type="checkbox"
+              role="switch"
+              checked={twoFactor}
+              onChange={(event) => setTwoFactor(event.target.checked)}
+            />
+            Demo: this account uses two-factor
+          </label>
+        </>
       }
     >
       <div className="demo-heading">
@@ -884,7 +926,9 @@ function SignInForm({ state }: { state: string }) {
             alert={locked || state.endsWith('failed')}
           />
         )}
+        {ssoRefused && <Notice title={SIGN_IN_SSO.notice} alert />}
       </div>
+      {ssoRefused && <SsoRefusedStep gone={gone} onGo={() => setGone(true)} />}
 
       {providerOnly ? (
         <>
@@ -926,7 +970,11 @@ function SignInForm({ state }: { state: string }) {
                   {...offField(busy)}
                   aria-invalid={lines.email != null}
                   aria-describedby={lines.email == null ? undefined : 'email-line'}
-                  onChange={() => edited('email')}
+                  onChange={(event) => {
+                    edited('email');
+                    setAddress(event.target.value);
+                    setGone(false);
+                  }}
                 />
                 {lines.email != null && (
                   <p className="demo-line" id="email-line">
@@ -935,71 +983,85 @@ function SignInForm({ state }: { state: string }) {
                 )}
               </div>
 
-              <div
-                className={lines.password == null ? 'demo-field' : 'demo-field demo-field-wrong'}
-              >
-                <div className="demo-label-row">
-                  <label htmlFor="password">Password</label>
-                  <Link
-                    className="link-button demo-link"
-                    to={backIn('reset')}
-                    onClick={(event) => {
-                      event.preventDefault();
-                      void navigate(backIn('reset'), {
-                        state: {
-                          email: email.current?.value ?? '',
-                          back: `/demo/sign-in?state=${state}`,
-                        },
-                      });
-                    }}
-                  >
-                    Forgot your password?
-                  </Link>
+              {!handoff && (
+                <div
+                  className={lines.password == null ? 'demo-field' : 'demo-field demo-field-wrong'}
+                >
+                  <div className="demo-label-row">
+                    <label htmlFor="password">Password</label>
+                    <Link
+                      className="link-button demo-link"
+                      to={backIn('reset')}
+                      onClick={(event) => {
+                        event.preventDefault();
+                        void navigate(backIn('reset'), {
+                          state: {
+                            email: email.current?.value ?? '',
+                            back: `/demo/sign-in?state=${state}`,
+                          },
+                        });
+                      }}
+                    >
+                      Forgot your password?
+                    </Link>
+                  </div>
+                  <div className="demo-reveal">
+                    <input
+                      ref={password}
+                      className="demo-input"
+                      id="password"
+                      name="password"
+                      type={revealed ? 'text' : 'password'}
+                      autoComplete="current-password"
+                      {...offField(busy)}
+                      aria-invalid={lines.password != null}
+                      aria-describedby={
+                        lines.password != null || refused ? 'password-line' : undefined
+                      }
+                      onChange={() => edited('password')}
+                    />
+                    <button
+                      className="demo-reveal-button"
+                      type="button"
+                      aria-pressed={revealed}
+                      onClick={() => setRevealed((was) => !was)}
+                    >
+                      {revealed ? 'Hide' : 'Show'}
+                    </button>
+                  </div>
+                  {(lines.password != null || refused) && (
+                    <p
+                      className="demo-line"
+                      id="password-line"
+                      role={refused ? 'alert' : undefined}
+                    >
+                      {lines.password ?? 'That email and password do not match.'}
+                    </p>
+                  )}
                 </div>
-                <div className="demo-reveal">
-                  <input
-                    ref={password}
-                    className="demo-input"
-                    id="password"
-                    name="password"
-                    type={revealed ? 'text' : 'password'}
-                    autoComplete="current-password"
-                    {...offField(busy)}
-                    aria-invalid={lines.password != null}
-                    aria-describedby={
-                      lines.password != null || refused ? 'password-line' : undefined
-                    }
-                    onChange={() => edited('password')}
-                  />
-                  <button
-                    className="demo-reveal-button"
-                    type="button"
-                    aria-pressed={revealed}
-                    onClick={() => setRevealed((was) => !was)}
-                  >
-                    {revealed ? 'Hide' : 'Show'}
-                  </button>
-                </div>
-                {(lines.password != null || refused) && (
-                  <p className="demo-line" id="password-line" role={refused ? 'alert' : undefined}>
-                    {lines.password ?? 'That email and password do not match.'}
-                  </p>
-                )}
-              </div>
+              )}
             </div>
 
-            <button
-              className="button button-primary demo-wide"
-              type="submit"
-              aria-busy={busy}
-              {...offButton(locked)}
-            >
-              {until != null ? `Try again at ${until}` : busy ? 'Signing in…' : 'Sign in'}
-            </button>
+            {handoff ? (
+              <SsoHandoff busy={busy} gone={gone} onAnother={() => setAnother(true)} />
+            ) : (
+              <button
+                className="button button-primary demo-wide"
+                type="submit"
+                aria-busy={busy}
+                {...offButton(locked)}
+              >
+                {until != null ? `Try again at ${until}` : busy ? 'Signing in…' : 'Sign in'}
+              </button>
+            )}
           </form>
 
-          <OrLine />
-          <Providers busy={busy} onChoose={provider} />
+          {!handoff && (
+            <>
+              <OrLine />
+              <Providers busy={busy} onChoose={provider} />
+            </>
+          )}
         </>
       )}
     </BoardPage>

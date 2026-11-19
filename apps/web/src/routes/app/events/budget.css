@@ -479,3 +479,11 @@
     font-size: 26px;
   }
 }
+
+/* At a phone the shell already pads the page 16 px, as Budget A's narrow frames do, so Settings' 40 px desk-page padding is not added to it (sc-85). */
+@media (width <= 40rem) {
+  .bt.desk-page {
+    padding: 0;
+    overflow: visible;
+  }
+}
