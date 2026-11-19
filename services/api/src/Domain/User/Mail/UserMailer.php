@@ -128,21 +128,37 @@ final readonly class UserMailer
         return $this->dateAt($local, $label, $locale);
     }
 
+    /** To the second, with the year and the zone, as an audit entry's detail states it (sc-611): "Thursday 5 Nov 2026 at 14:20:07 WAT". */
+    public function stamp(DateTimeImmutable $at, User $user, string $locale): string
+    {
+        [$local, $label] = self::local($at, $user);
+
+        return $this->dateAt($local, $label, $locale, 'EEEEyMMMd', 'H:i:s');
+    }
+
+    /** The reader's own day and 24-hour time for an instant, in their zone or UTC (sc-868). @return array{0: string, 1: string} */
+    public static function dayAndTime(DateTimeImmutable $at, User $user): array
+    {
+        [$local] = self::local($at, $user);
+
+        return [$local->format('Y-m-d'), $local->format('H:i')];
+    }
+
     /** The same words in UTC, for a `detail` read raw from anywhere (sc-12379): "Monday 26 Oct at 16:32 UTC". */
     public function deadlineInUtc(DateTimeImmutable $at, string $locale): string
     {
         return $this->dateAt($at->setTimezone(new DateTimeZone('UTC')), 'UTC', $locale);
     }
 
-    private function dateAt(DateTimeImmutable $local, string $label, string $locale): string
+    private function dateAt(DateTimeImmutable $local, string $label, string $locale, string $skeleton = 'EEEEMMMd', string $time = 'H:i'): string
     {
         $dates = SupportedLocales::dates($locale);
-        $pattern = new IntlDatePatternGenerator($dates)->getBestPattern('EEEEMMMd') ?: 'EEEE d MMM';
+        $pattern = new IntlDatePatternGenerator($dates)->getBestPattern($skeleton) ?: 'EEEE d MMM';
         $formatter = IntlDateFormatter::create($dates, IntlDateFormatter::NONE, IntlDateFormatter::NONE, $local->getTimezone()->getName(), null, $pattern);
 
         return $this->line('time.dateAt', SupportedLocales::narrow($locale), [
             '{date}' => $formatter?->format($local) ?: $local->format('Y-m-d'),
-            '{time}' => $local->format('H:i'),
+            '{time}' => $local->format($time),
             '{hour}' => (int) $local->format('G'),
             '{zone}' => $label,
         ]);

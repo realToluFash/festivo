@@ -70,6 +70,14 @@ import { ApiError, ApiUnreachableError, type Problem, toProblem } from './proble
 import { type EmailDomainsPage, asEmailDomainsPage } from './emailDomains.ts';
 import { type OrganisationExportPage, asOrganisationExportPage } from './organisationExport.ts';
 import {
+  type AuditExportOutcome,
+  type AuditFilters,
+  type AuditFormat,
+  type AuditLogPage,
+  asAuditLogPage,
+  auditQuery,
+} from './auditLog.ts';
+import {
   asSeating,
   asSeatingMoved,
   type SeatingMove,
@@ -1921,6 +1929,76 @@ export class ApiClient {
     );
 
     return new Uint8Array(await response.arrayBuffer());
+  }
+
+  /** Data and control › Audit log (sc-611): an Owner's or an Admin's, refused `plan_required` off Enterprise and `permission_required` to a Member. */
+  async auditLog(
+    organisationId: string,
+    filters: AuditFilters = {},
+    before: string | null = null,
+  ): Promise<AuditLogPage> {
+    const raw = await this.get<unknown>(
+      `/api/orgs/${encodeURIComponent(organisationId)}/audit-log`,
+      { query: { ...auditQuery(filters), ...(before == null ? {} : { before }) } },
+    );
+    const page = asAuditLogPage(raw);
+
+    if (page == null) {
+      throw new Error(
+        'The API answered /api/orgs/{id}/audit-log in a shape this client does not know. Check AuditLogController in services/api.',
+      );
+    }
+
+    return page;
+  }
+
+  /** Opening the log is itself audited, once per opening; filtering and loading more are not. */
+  async auditLogViewed(organisationId: string): Promise<void> {
+    await this.post<unknown>(`/api/orgs/${encodeURIComponent(organisationId)}/audit-log/views`);
+  }
+
+  /** The filtered entries: up to 10,000 as the file itself, more prepared and emailed; over 1,000,000 refused `audit_export_too_many`. */
+  async exportAuditLog(
+    organisationId: string,
+    format: AuditFormat,
+    filters: AuditFilters = {},
+  ): Promise<AuditExportOutcome> {
+    const response = await this.answered(
+      `/api/orgs/${encodeURIComponent(organisationId)}/audit-log/exports`,
+      { method: 'POST', body: { format, ...auditQuery(filters) } },
+    );
+
+    if (response.status === 202) {
+      const raw = (await response.json()) as Record<string, unknown> | null;
+
+      return {
+        kind: 'preparing',
+        count: typeof raw?.count === 'number' ? raw.count : 0,
+        email: typeof raw?.email === 'string' ? raw.email : '',
+      };
+    }
+
+    return {
+      kind: 'file',
+      type: response.headers.get('Content-Type') ?? 'application/octet-stream',
+      bytes: new Uint8Array(await response.arrayBuffer()),
+    };
+  }
+
+  /** A prepared export, for the person who asked, signed in, within 24 hours of its being ready: 404 for anyone else, `export_expired` after. */
+  async downloadAuditExport(
+    organisationId: string,
+    exportId: string,
+  ): Promise<{ type: string; bytes: Uint8Array<ArrayBuffer> }> {
+    const response = await this.answered(
+      `/api/orgs/${encodeURIComponent(organisationId)}/audit-log/exports/${encodeURIComponent(exportId)}/download`,
+      { method: 'POST' },
+    );
+
+    return {
+      type: response.headers.get('Content-Type') ?? 'application/octet-stream',
+      bytes: new Uint8Array(await response.arrayBuffer()),
+    };
   }
 
   /** Data and control › Email domains (sc-560): an Owner's or an Admin's; a Member is refused, and a change off Enterprise `plan_required`. */

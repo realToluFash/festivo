@@ -9,6 +9,7 @@ import { Text } from '../../components/Text.tsx';
 import type { Tell } from '../../components/TodayParts.tsx';
 import { useLayout } from '../../layout/useLayout.ts';
 import { tokens } from '../../theme/tokens.ts';
+import { ManagedBanner } from '../Managed.tsx';
 import { useStartWalk } from '../OrgSwitcher.tsx';
 import { VIEWER } from '../OrgSwitcherModel.ts';
 import { DraftTile } from '../../components/DraftTile.tsx';
@@ -17,8 +18,8 @@ import { TextAction } from '../../components/SummaryRows.tsx';
 
 const COLUMN = 560;
 
-/** Main's NoOrganisation, its words and order, in B's parts: no tab bar and no switcher, as nothing here belongs to an organisation. */
-export function NoOrganisation({ tell }: { tell: Tell }) {
+/** Main's NoOrganisation, its words and order, in B's parts: no tab bar and no switcher, as nothing here belongs to an organisation. A managed account reads sc-563's banner where Start your own was. */
+export function NoOrganisation({ tell, managed = false }: { tell: Tell; managed?: boolean }) {
   const { t } = useTranslation();
   const { kind } = useLayout();
   const insets = useSafeAreaInsets();
@@ -55,23 +56,27 @@ export function NoOrganisation({ tell }: { tell: Tell }) {
         <Text size={16} weight="medium" muted style={styles.body}>
           {t('noOrganisation.wayOn', { email })}
         </Text>
-        <View style={styles.own}>
-          <DraftTile name="" side={48} radius={16} initials={18} />
-          <View style={styles.ownWords}>
-            <Text size={20} weight="bold" accessibilityRole="header" style={styles.ownTitle}>
-              {t('noOrganisation.startTitle')}
-            </Text>
-            <Text size={15} weight="medium" muted style={styles.ownBody}>
-              {t('noOrganisation.startBody')}
-            </Text>
+        {managed ? (
+          <ManagedBanner testID="noOrganisation.managed" />
+        ) : (
+          <View style={styles.own}>
+            <DraftTile name="" side={48} radius={16} initials={18} />
+            <View style={styles.ownWords}>
+              <Text size={20} weight="bold" accessibilityRole="header" style={styles.ownTitle}>
+                {t('noOrganisation.startTitle')}
+              </Text>
+              <Text size={15} weight="medium" muted style={styles.ownBody}>
+                {t('noOrganisation.startBody')}
+              </Text>
+            </View>
+            <Pill
+              ref={start}
+              label={t('noOrganisation.start')}
+              onPress={startWalk}
+              testID="noOrganisation.start"
+            />
           </View>
-          <Pill
-            ref={start}
-            label={t('noOrganisation.start')}
-            onPress={startWalk}
-            testID="noOrganisation.start"
-          />
-        </View>
+        )}
         <View style={styles.signedIn}>
           <Text size={14} weight="medium" muted style={styles.ownBody}>
             {t('noOrganisation.signedInAs', { email })}

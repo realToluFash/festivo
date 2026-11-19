@@ -236,7 +236,7 @@ describe('signing in, for real', () => {
   });
 
   it('comes back to a product link opened signed out, its query kept (sc-612)', async () => {
-    __setSessionState({ status: 'signedOut', ended: false });
+    __setSessionState({ status: 'signedOut', ended: false, arrived: true });
     const sent = answering({
       'POST /api/auth/login': () => json({ ...ISSUED, account: ACCOUNT }),
       'GET /api/orgs': () => json({ organisations: [ORGANISATION] }),
@@ -260,8 +260,41 @@ describe('signing in, for real', () => {
     expect(sent.map((request) => request.path)).toContain('/api/auth/login');
   });
 
+  it('comes back to the link in a browser with no session, after the API refuses it (sc-612)', async () => {
+    sessionStorage.clear();
+    __setSessionState({ status: 'unknown' });
+    const refused = {
+      type: 'https://soirely.com/errors/unauthenticated',
+      title: 'No.',
+      status: 401,
+    };
+    answering({
+      'GET /api/auth/me': () => json(refused, 401),
+      'POST /api/auth/refresh': () => json(refused, 401),
+      'POST /api/auth/login': () => json({ ...ISSUED, account: ACCOUNT }),
+      'GET /api/orgs': () => json({ organisations: [ORGANISATION] }),
+      'GET /api/invitations': () => json({ invitations: [] }),
+    });
+    const router = createMemoryRouter(routes, {
+      initialEntries: ['/app/settings/data-and-control/export?download=ex_1'],
+    });
+    render(<RouterProvider router={router} />);
+
+    await waitFor(() =>
+      expect(screen.getByRole('heading', { level: 1, name: 'Sign in' })).toBeDefined(),
+    );
+    expect(screen.getByText(/You were signed out/)).toBeDefined();
+    fillIn();
+
+    await waitFor(() =>
+      expect(`${router.state.location.pathname}${router.state.location.search}`).toBe(
+        '/app/settings/data-and-control/export?download=ex_1',
+      ),
+    );
+  });
+
   it('lands on the product, not the last page, after signing out on purpose', async () => {
-    __setSessionState({ status: 'signedOut', ended: true });
+    __setSessionState({ status: 'signedOut', ended: false });
     answering({
       'POST /api/auth/login': () => json({ ...ISSUED, account: ACCOUNT }),
       'GET /api/orgs': () => json({ organisations: [ORGANISATION] }),

@@ -5,6 +5,7 @@ import { SIGNED_OUT, api } from './api.ts';
 import { SCHEME_KEY, __resetColourScheme, startColourScheme } from './colourScheme.ts';
 import { setLanguage } from './i18n/index.ts';
 import {
+  type Session,
   __setSessionState,
   adoptAccount,
   forgetSession,
@@ -15,7 +16,29 @@ import {
 import { membership } from './test-memberships.ts';
 import { act, renderHook, waitFor } from '@testing-library/react';
 
-function signedOutBy(detail: unknown) {
+const SIGNED_IN: Session = {
+  userId: 'u1',
+  name: 'Folake Adeyemi',
+  email: 'folake@ire.events',
+  verified: true,
+  complete: true,
+  awaiting: null,
+  providers: [],
+  hasPassword: true,
+  needsOrganisation: false,
+  organisations: [],
+  organisationCountry: null,
+  timezone: null,
+  waitingFor: null,
+  outsideEvents: [],
+  organisation: null,
+  pausedIn: null,
+};
+
+function signedOutBy(detail: unknown, before: 'signedIn' | 'checking' = 'signedIn') {
+  __setSessionState(
+    before === 'signedIn' ? { status: 'signedIn', session: SIGNED_IN } : { status: 'checking' },
+  );
   window.dispatchEvent(new CustomEvent(SIGNED_OUT, { detail }));
 
   return renderHook(() => useSessionState()).result.current;
@@ -73,6 +96,38 @@ describe('a session the API ended', () => {
       }),
     ).toEqual({ status: 'signedOut', ended: true });
     expect(signedOutBy(undefined)).toEqual({ status: 'signedOut', ended: true });
+  });
+});
+
+describe('a tab that never held a session (sc-612)', () => {
+  it('arrived signed out when the API refuses its refresh, and still says the session ended', () => {
+    expect(
+      signedOutBy(
+        { type: 'https://soirely.com/errors/unauthenticated', title: 'No.', status: 401 },
+        'checking',
+      ),
+    ).toEqual({ status: 'signedOut', ended: true, arrived: true });
+  });
+
+  it('still says which rule ended the session its cookie held', () => {
+    expect(
+      signedOutBy(
+        {
+          type: 'https://soirely.com/errors/session_timed_out',
+          title: 'Signed out.',
+          status: 401,
+          organisation: 'Ìrè Events',
+          days: 7,
+          email: 'folake@ire.events',
+        },
+        'checking',
+      ),
+    ).toEqual({
+      status: 'signedOut',
+      ended: true,
+      arrived: true,
+      timedOut: { organisation: 'Ìrè Events', days: 7, email: 'folake@ire.events' },
+    });
   });
 });
 

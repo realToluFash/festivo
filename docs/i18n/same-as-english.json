@@ -119,6 +119,8 @@
     "mobile:eventNav.messages",
     "web:eventNav.budget",
     "mobile:eventNav.budget",
+    "web:budget.title",
+    "web:budget.card",
     "web:auth.copyright",
     "mobile:todayScreen.notifications",
     "web:today.notifications",

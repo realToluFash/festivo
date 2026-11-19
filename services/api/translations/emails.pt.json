@@ -134,6 +134,10 @@
     "organisationExport.body": "O arquivo com tudo o que {organisation} guarda está pronto (data do pedido: {when}). Transfere-se uma só vez, até {deadline}, e apenas por si, com sessão iniciada.",
     "organisationExport.download": "Transfira-o: {link}",
     "organisationExport.footer": "Está a receber esta mensagem porque pediu para exportar os dados de {organisation}.",
+    "auditExportReady.subject": "Your export of {organisation}'s audit log is ready",
+    "auditExportReady.body": "The audit log export you asked for on {when} is ready. It downloads only for you, signed in, until {deadline}.",
+    "auditExportReady.download": "Download it: {link}",
+    "auditExportReady.footer": "You're getting this because you exported {organisation}'s audit log.",
     "ownershipTransferred.subject": "{organisation} mudou de proprietário",
     "ownershipTransferred.youGaveIt": "Transferiu para {to} a propriedade de {organisation}. Tem agora a função Administrador: pode continuar a geri-la no dia a dia, mas não a pode ceder nem eliminar.",
     "ownershipTransferred.youHaveIt": "{from} transferiu-lhe a propriedade de {organisation}. Pode agora alterar a faturação, os membros e as definições da organização, e eliminá-la. {from} tem agora a função Administrador.",
@@ -208,9 +212,9 @@
     "domainRecordGone.type": "Tipo: TXT",
     "domainRecordGone.value": "Value: {value}",
     "domainRecordGone.footer": "Está a receber isto porque é proprietário ou administrador de {organisation}.",
-    "managedNotice.subject": "{organisation} manages Soirely accounts at {domain}",
-    "managedNotice.body": "{organisation} manages Soirely accounts at {domain}. From {deadline}, your account can only be a member of {organisation}. If this account is your own and not the company's, change your main email address before then.",
-    "managedNotice.from": "Applies from: {deadline}",
-    "managedNotice.events": "Access to a single event still works.",
-    "managedNotice.footer": "You're getting this because your main email address is at {domain}."
+    "managedNotice.subject": "{organisation} gere as contas Soirely de {domain}",
+    "managedNotice.body": "{organisation} gere as contas Soirely de {domain}. A partir de {deadline}, a sua conta só poderá ser membro de {organisation}. Se esta conta for sua e não da empresa, altere o seu endereço de e-mail principal antes dessa data.",
+    "managedNotice.from": "Data de início: {deadline}",
+    "managedNotice.events": "O acesso a eventos específicos mantém-se.",
+    "managedNotice.footer": "Está a receber esta mensagem porque o seu endereço de e-mail principal é de {domain}."
 }

@@ -50,7 +50,8 @@ describe('a managed account, wherever a membership path ends (sc-563, enterprise
     const session = sessionFor('managed');
     expect(session.expanded).toBe('org-celebraciones-alameda');
     expect(session.managed).toBe('org-celebraciones-alameda');
-    expect(waitingOf(session)).toBe(2);
+    expect(session.outcomes['org-celebraciones-alameda']?.kind).toBe('managed');
+    expect(waitingOf(session)).toBe(1);
     expect(read('src', 'components', 'OrgDropDown.tsx')).toMatch(
       /managed=\{session\.managed === opened\.invite\.id \? managed : undefined\}/u,
     );
@@ -85,7 +86,7 @@ describe('a managed account, wherever a membership path ends (sc-563, enterprise
 
     expect(signUpLanding(signUpEndOf(end))).toEqual({
       pathname: '/demo/today',
-      params: { orgs: 'none' },
+      params: { orgs: 'none', state: 'managed' },
     });
   });
 
@@ -96,9 +97,16 @@ describe('a managed account, wherever a membership path ends (sc-563, enterprise
       pathname: '/demo/today',
       params: {
         orgs: 'none',
+        state: 'managed',
         toast: 'Asked to join Ire Events. We’ll email you when they answer.',
       },
     });
+  });
+
+  it('puts the banner in place of Start your own on You are not in an organisation', () => {
+    const none = read('src', 'demo', 'createOrg', 'NoOrganisation.tsx');
+    expect(none).toMatch(/managed \? \(\s*<ManagedBanner testID="noOrganisation\.managed" \/>/u);
+    expect(read('app', 'demo', 'today.tsx')).toMatch(/managed=\{params\.state === 'managed'\}/u);
   });
 
   it('ends any other sign-up at Home, as before', () => {

@@ -412,6 +412,15 @@ export function EventScreen({
         onPress={guestsTop.exports}
       />
     ) : null;
+  const exportWidest =
+    guests && guestsTop.exports != null ? (
+      <ExportButton
+        kind={kind}
+        offline={guestsOffline.stale != null}
+        onPress={guestsTop.exports}
+        measured
+      />
+    ) : null;
   const guestBack = guests ? guestsTop.back : null;
   // On Guests' list on a phone, Refreshing… stays beside Back only where the pill stays whole, else it takes its own line under the heading (sc-71821).
   const besideBackRow = backRow({ phone, guestsList: guests && guestBack == null, cardNamed });
@@ -506,6 +515,7 @@ export function EventScreen({
               titleRef={title}
               refreshing={besideBackRow === 'givingWay' && refreshingBesideBack ? null : refreshing}
               exports={exportGuests}
+              exportsWidest={exportWidest}
               onAdd={guestsTop.add ?? null}
               addRef={guestsAdd}
             />
