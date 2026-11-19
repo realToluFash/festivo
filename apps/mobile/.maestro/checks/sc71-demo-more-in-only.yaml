@@ -1,0 +1,9 @@
+# sc-71: the app demo's more-in alone, remounted through another route so no sheet is left over it. Needs ${ORIENT}, ${METRO_URL}.
+appId: host.exp.Exponent
+---
+- setOrientation: ${ORIENT}
+- openLink: ${METRO_URL}/--/demo/people
+- waitForAnimationToEnd: { timeout: 4000 }
+- openLink: ${METRO_URL}/--/demo/redeem?state=more-in
+- waitForAnimationToEnd: { timeout: 8000 }
+- takeScreenshot: more-in
