@@ -633,6 +633,7 @@ describe('the Budget while others change it (sc-85)', () => {
     expect(topics).toEqual([
       realtimeTopic('EventBudget', 'ev_1'),
       realtimeTopic('EventHeadcount', 'ev_1'),
+      realtimeTopic('EventQuotes', 'ev_1'),
     ]);
 
     return one;

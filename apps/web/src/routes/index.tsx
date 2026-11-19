@@ -13,6 +13,7 @@ import { MenuLibrary } from './app/menu/MenuLibrary.tsx';
 import { EditRedirect } from './app/events/EditRedirect.tsx';
 import {
   EventAreaPage,
+  EventBudget,
   EventGuests,
   EventDates,
   EventPeoplePage,
@@ -110,6 +111,7 @@ export const routes = [
           { path: 'events/:eventId/staff/jobs', element: <EventJobsShifts /> },
           { path: 'events/:eventId/staff/stations', element: <EventStations /> },
           { path: 'events/:eventId/run', element: <EventRun /> },
+          { path: 'events/:eventId/budget/*', element: <EventBudget /> },
           { path: 'events/:eventId/:area', element: <EventAreaPage /> },
           { path: 'calendar', element: <Calendar /> },
           { path: 'menu-library', element: <MenuLibrary /> },

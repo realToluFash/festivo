@@ -5,7 +5,10 @@ import {
   COST_BASES,
   type CostBasis,
   type EventBudget,
+  type EventQuote,
+  type EventQuotes,
   type OrganisationEvent,
+  type ScheduledPayment,
   VENDOR_CATEGORIES,
   type VendorCategory,
   linePrice,
@@ -19,18 +22,9 @@ import {
   typedAmount,
 } from '@soirely/domain';
 import type { TFunction } from 'i18next';
-import {
-  type ReactNode,
-  type RefObject,
-  useCallback,
-  useEffect,
-  useId,
-  useMemo,
-  useRef,
-  useState,
-} from 'react';
+import { type RefObject, useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link } from 'react-router';
+import { Link, Navigate, useParams } from 'react-router';
 
 import { api } from '../../../api.ts';
 import { Glyph } from '../../../components/Glyph.tsx';
@@ -48,9 +42,10 @@ import {
 import { useDeskTop } from '../../../deskTop.ts';
 import { dateLocale } from '../../../i18n/index.ts';
 import { LayersContext, useDeskLayers } from '../../../layers.ts';
-import { meshFor } from '../../../mesh.ts';
 import { useOwnOfflineNotice } from '../../../offline.ts';
 import { pageTitle, usePageTitle } from '../../../pageTitle.ts';
+import { can, canOn, useSession } from '../../../session.ts';
+import { Toast } from '../../../components/Toast.tsx';
 import { keptKeys, keptLoad, useAnsweredAgain, useKeptAsShown } from '../../../tabKept.ts';
 import {
   NOTE_MAX,
@@ -68,19 +63,38 @@ import {
   removedWords,
   rowLine,
   sentPrice,
+  minorMoney,
   wholeMoney,
 } from './budgetArea.ts';
+import { PaymentDialog, QuoteDialog } from './QuoteForms.tsx';
+import {
+  type Amending,
+  CoverCard,
+  DueNext,
+  EverythingDue,
+  ReadOnlyLine,
+  VendorPage,
+  VendorsQuoted,
+} from './QuoteParts.tsx';
+import { type QuoteForm, budgetPath, budgetView, vendorPagePath } from './quotesArea.ts';
 import { useHubTopics } from './useHubTopics.ts';
 import '../../../components/SettingsParts.css';
 import '../../../components/eventsDesk.css';
 import '../../../components/eventPage.css';
 import './budget.css';
 
-const PIECES = [1, 2, 3, 4, 5, 6];
 const WASH_MS = 1600;
 const MINUTE_MS = 60_000;
 
 type Load = { kind: 'loading' } | { kind: 'failed' } | { kind: 'loaded'; budget: EventBudget };
+
+type QuotesLoad =
+  { kind: 'loading' } | { kind: 'failed' } | { kind: 'loaded'; quotes: EventQuotes };
+
+interface Quoting {
+  form: QuoteForm;
+  quote: EventQuote | null;
+}
 
 interface Said {
   id: string;
@@ -118,8 +132,62 @@ export function BudgetArea({ event }: { event: OrganisationEvent }) {
   const shown = useRef<EventBudget | null>(null);
   const known = useRef(new Set<string>());
   const own = useRef(0);
+  const session = useSession();
+  const { '*': rest = '' } = useParams();
+  const view = budgetView(rest);
+  const viewKey = view.kind === 'vendor' ? `vendor:${view.vendorId}` : view.kind;
+  const [quotesLoad, setQuotesLoad] = useState<QuotesLoad>({ kind: 'loading' });
+  const [quoting, setQuoting] = useState<Quoting | null>(null);
+  const [paying, setPaying] = useState<EventQuote | null>(null);
+  const [amending, setAmending] = useState<Amending | null>(null);
+  const [removing, setRemoving] = useState<string | null>(null);
+  const [earlier, setEarlier] = useState(false);
+  const [told, setTold] = useState<string | null>(null);
+  const viewed = useRef(false);
+  const quotes = quotesLoad.kind === 'loaded' ? quotesLoad.quotes : null;
+  const shownQuote =
+    view.kind === 'vendor'
+      ? (quotes?.quotes.find((one) => one.vendor.id === view.vendorId) ?? null)
+      : null;
+  const sub =
+    view.kind === 'due'
+      ? t('quotes.everythingDueTitle')
+      : view.kind === 'vendor'
+        ? (shownQuote?.vendor.name ?? null)
+        : null;
 
-  usePageTitle(pageTitle(t, [t('budget.title'), event.name]));
+  usePageTitle(
+    pageTitle(
+      t,
+      sub == null ? [t('budget.title'), event.name] : [sub, t('budget.title'), event.name],
+    ),
+  );
+
+  useEffect(() => {
+    let current = true;
+
+    api.quotes(event.id).then(
+      (found) => current && setQuotesLoad({ kind: 'loaded', quotes: found }),
+      () => current && setQuotesLoad((was) => (was.kind === 'loaded' ? was : { kind: 'failed' })),
+    );
+
+    return () => {
+      current = false;
+    };
+  }, [event.id, attempt, answeredAgain]);
+
+  const [seenView, setSeenView] = useState(viewKey);
+  if (seenView !== viewKey) {
+    setSeenView(viewKey);
+    setAmending(null);
+    setRemoving(null);
+    setEarlier(false);
+  }
+
+  useEffect(() => {
+    if (viewed.current) title.current?.focus();
+    viewed.current = true;
+  }, [viewKey]);
 
   useEffect(() => {
     let current = true;
@@ -185,7 +253,16 @@ export function BudgetArea({ event }: { event: OrganisationEvent }) {
     }
   }, [adopt, event.id]);
 
+  const readQuotes = useCallback(async (): Promise<void> => {
+    try {
+      setQuotesLoad({ kind: 'loaded', quotes: await api.quotes(event.id) });
+    } catch {
+      return;
+    }
+  }, [event.id]);
+
   const readLive = useCallback(() => {
+    void readQuotes();
     api.budget(event.id).then(
       (budget) => {
         const was = shown.current;
@@ -197,15 +274,24 @@ export function BudgetArea({ event }: { event: OrganisationEvent }) {
       },
       () => undefined,
     );
-  }, [adopt, event.id, locale, t]);
+  }, [adopt, event.id, locale, readQuotes, t]);
 
   const topics = useMemo(
-    () => [realtimeTopic('EventBudget', event.id), realtimeTopic('EventHeadcount', event.id)],
+    () => [
+      realtimeTopic('EventBudget', event.id),
+      realtimeTopic('EventHeadcount', event.id),
+      realtimeTopic('EventQuotes', event.id),
+    ],
     [event.id],
   );
   useHubTopics(topics, () => api.budgetSubscription(event.id), readLive, readLive);
 
   const budget = load.kind === 'loaded' ? load.budget : null;
+  const home = budgetPath(event.id);
+  const vendorAt = (vendorId: string) => vendorPagePath(event.id, vendorId);
+  const writes = quotes != null && quotes.entitled && canOn(event, 'budget.manage');
+  const readOnly = quotes != null && !quotes.entitled;
+  const tell = (words: string) => setTold(words);
 
   const crumb = (
     <div className="ev-crumb-row">
@@ -220,10 +306,25 @@ export function BudgetArea({ event }: { event: OrganisationEvent }) {
               {event.name}
             </Link>
           </li>
-          <li className="ev-crumb-part" aria-current="page">
-            <Glyph name="chevron" size={15} weight={2.4} className="desk-chevron" />
-            <span className="ev-crumb-name">{t('budget.title')}</span>
-          </li>
+          {sub == null ? (
+            <li className="ev-crumb-part" aria-current="page">
+              <Glyph name="chevron" size={15} weight={2.4} className="desk-chevron" />
+              <span className="ev-crumb-name">{t('budget.title')}</span>
+            </li>
+          ) : (
+            <>
+              <li className="ev-crumb-part">
+                <Glyph name="chevron" size={15} weight={2.4} className="desk-chevron" />
+                <Link className="ev-crumb-name" to={home}>
+                  {t('budget.title')}
+                </Link>
+              </li>
+              <li className="ev-crumb-part" aria-current="page">
+                <Glyph name="chevron" size={15} weight={2.4} className="desk-chevron" />
+                <span className="ev-crumb-name">{sub}</span>
+              </li>
+            </>
+          )}
         </ol>
       </nav>
       {desk.bell}
@@ -235,41 +336,105 @@ export function BudgetArea({ event }: { event: OrganisationEvent }) {
     setLive(null);
   };
 
+  if (view.kind === 'unknown' || (view.kind === 'vendor' && quotes != null && shownQuote == null))
+    return <Navigate replace to={home} />;
+
+  const failed = load.kind === 'failed' || (view.kind !== 'home' && quotesLoad.kind === 'failed');
+  const waiting =
+    !failed && (load.kind === 'loading' || (view.kind !== 'home' && quotesLoad.kind === 'loading'));
+  const retry = () => {
+    setLoad((was) => (was.kind === 'failed' ? { kind: 'loading' } : was));
+    setQuotesLoad((was) => (was.kind === 'failed' ? { kind: 'loading' } : was));
+    setAttempt((n) => n + 1);
+  };
+  const afterQuote = async (words: string, revised: boolean) => {
+    await readQuotes();
+    setQuoting(null);
+    if (revised) setEarlier(false);
+    tell(words);
+  };
+  const removePayment = async (payment: ScheduledPayment) => {
+    if (quotes == null) return;
+    try {
+      await api.removePayment(event.id, payment.id);
+    } catch {
+      tell(t('budget.notRemoved'));
+      return;
+    }
+    await readQuotes();
+    setRemoving(null);
+    title.current?.focus();
+    tell(
+      t('quotes.paymentRemoved', {
+        what: payment.description,
+        amount: minorMoney(payment.amount, quotes.currency, locale),
+      }),
+    );
+  };
+
   return (
     <LayersContext value={layers}>
       <div className="desk ev desk-page ev-page bt">
         <div className="ev-wide bt-page" inert={covered}>
           {crumb}
-          <div className="bt-title-row">
-            <h1 ref={title} className="bt-title" tabIndex={-1}>
-              {t('budget.title')}
-            </h1>
-            {budget != null && (
-              <div className="bt-title-actions">
-                <TextAction label={t('budget.addCost')} before="plus" onClick={openAdd} />
-              </div>
-            )}
-          </div>
+          {view.kind === 'home' && (
+            <div className="bt-title-row">
+              <h1 ref={title} className="bt-title" tabIndex={-1}>
+                {t('budget.title')}
+              </h1>
+              {budget != null && (
+                <div className="bt-title-actions">
+                  <TextAction label={t('budget.addCost')} before="plus" onClick={openAdd} />
+                </div>
+              )}
+            </div>
+          )}
           <div aria-live="polite" aria-atomic="true" className="visually-hidden">
             {heard}
           </div>
-          {load.kind === 'loading' && <Loading />}
-          {load.kind === 'failed' && (
+          {waiting && <Loading />}
+          {failed && (
             <>
               <p className="desk-line is-ink">{t('budget.failed')}</p>
-              <TextAction
-                label={t('budget.tryAgain')}
-                onClick={() => {
-                  setLoad({ kind: 'loading' });
-                  setAttempt((n) => n + 1);
-                }}
-              />
+              <TextAction label={t('budget.tryAgain')} onClick={retry} />
             </>
           )}
-          {budget != null && (
+          {!waiting && !failed && view.kind === 'due' && quotes != null && (
+            <EverythingDue quotes={quotes} back={home} vendorAt={vendorAt} titleRef={title} />
+          )}
+          {!waiting && !failed && shownQuote != null && quotes != null && (
+            <VendorPage
+              eventId={event.id}
+              quote={shownQuote}
+              quotes={quotes}
+              writes={writes}
+              readOnly={readOnly}
+              directory={can(session, 'vendors.read') ? '/app/settings/vendors' : null}
+              event={event}
+              back={home}
+              titleRef={title}
+              amending={amending}
+              removing={removing}
+              earlier={earlier}
+              onEarlier={setEarlier}
+              onQuote={(form) => setQuoting({ form, quote: shownQuote })}
+              onAddPayment={() => setPaying(shownQuote)}
+              onAmending={setAmending}
+              onAmended={(words) => {
+                void readQuotes().then(() => {
+                  setAmending(null);
+                  tell(words);
+                });
+              }}
+              onRemoving={setRemoving}
+              onRemove={(payment) => void removePayment(payment)}
+            />
+          )}
+          {view.kind === 'home' && budget != null && (
             <>
               {live != null && stale == null && <LiveLine words={live} />}
               {stale != null && <NotLive at={stale.at} onTry={stale.retry} />}
+              {readOnly && <ReadOnlyLine />}
               {budget.lines.length === 0 ? (
                 <FirstCard event={event} budget={budget} onAdd={openAdd} />
               ) : (
@@ -374,11 +539,48 @@ export function BudgetArea({ event }: { event: OrganisationEvent }) {
                       }}
                     />
                   </div>
+                  {quotes != null && (
+                    <div className="ev-right">
+                      <DueNext quotes={quotes} more={`${home}/due`} />
+                      <VendorsQuoted
+                        quotes={quotes}
+                        vendorAt={vendorAt}
+                        onAdd={writes ? () => setQuoting({ form: 'add', quote: null }) : null}
+                      />
+                    </div>
+                  )}
                 </div>
               )}
             </>
           )}
         </div>
+        {quoting != null && quotes != null && budget != null && (
+          <QuoteDialog
+            eventId={event.id}
+            form={quoting.form}
+            quotes={quotes}
+            current={quoting.quote}
+            lines={budget.lines}
+            readsVendors={can(session, 'vendors.read')}
+            onClose={() => setQuoting(null)}
+            onSaved={(words) => void afterQuote(words, quoting.form === 'revise')}
+          />
+        )}
+        {paying != null && quotes != null && (
+          <PaymentDialog
+            eventId={event.id}
+            quote={paying}
+            quotes={quotes}
+            onClose={() => setPaying(null)}
+            onSaved={(words) => {
+              void readQuotes().then(() => {
+                setPaying(null);
+                tell(words);
+              });
+            }}
+          />
+        )}
+        {told != null && <Toast key={told} words={told} onClose={() => setTold(null)} />}
         {adding && budget != null && (
           <AddCostDialog
             eventId={event.id}
@@ -459,23 +661,6 @@ function NotLive({ at, onTry }: { at: Date; onTry: () => void }) {
       </span>
       <TextAction label={t('budget.tryNow')} onClick={onTry} />
     </div>
-  );
-}
-
-function CoverCard({ event, children }: { event: OrganisationEvent; children: ReactNode }) {
-  const { t } = useTranslation();
-
-  return (
-    <section
-      className={`ev-card today-cover bt-card is-${meshFor(event.id)}`}
-      aria-label={t('budget.card')}
-    >
-      <span className="ev-scrim" aria-hidden="true" />
-      {PIECES.map((piece) => (
-        <span key={piece} className={`desk-piece p${piece}`} aria-hidden="true" />
-      ))}
-      <div className="ev-card-inner bt-card-inner">{children}</div>
-    </section>
   );
 }
 
