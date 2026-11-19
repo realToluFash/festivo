@@ -23,13 +23,19 @@
     background: var(--colorCard);
   }
 
-  .dp-fit .today-side > :not(.sw, .dp-menu) {
+  .dp-fit .today-side > :not(.sw, .dp-menu, .desk-bell) {
     display: none;
   }
 
   .dp-fit .today-side > .sw {
     flex: 1;
     min-width: 0;
+  }
+
+  .dp-fit .today-side .sw-opener-name {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   .dp-fit .dp-menu {
@@ -61,6 +67,11 @@
     border: 0;
     border-radius: 0;
     box-shadow: none;
+  }
+
+  /* Settings keeps the product shell's phone gutter, where Today, Events and Calendar keep theirs. */
+  .dp-fit .desk-main:has(> .desk-list) {
+    padding-inline: var(--spaceXl);
   }
 
   /* Calendar keeps the window's height, so its weeks scroll inside the page and the month's name follows them. */

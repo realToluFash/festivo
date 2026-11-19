@@ -29,7 +29,7 @@ import { api } from '../../../api.ts';
 import { Glyph } from '../../../components/Glyph.tsx';
 import { Skeleton } from '../../../components/Skeleton.tsx';
 import { useDeskTop } from '../../../deskTop.ts';
-import { currentLocale } from '../../../i18n/index.ts';
+import { dateLocale } from '../../../i18n/index.ts';
 import { pageTitle, usePageTitle } from '../../../pageTitle.ts';
 import { canOn } from '../../../session.ts';
 import { FieldWrong } from './GuestFields.tsx';
@@ -248,9 +248,8 @@ function JobsShifts({
   onPlan: (plan: StaffPlan) => void;
 }) {
   const { t } = useTranslation();
-  const locale = currentLocale();
   const manage = canOn(event, 'staff.manage');
-  const times = staffTimes(event, plan.shifts, locale);
+  const times = staffTimes(event, plan.shifts, dateLocale());
   const [view, setView] = useState<'strip' | 'table'>('strip');
   const [panel, setPanel] = useState<Panel>(null);
   const [jobDraft, setJobDraft] = useState<JobDraft>({ name: '', access: 'view' });
@@ -1114,7 +1113,7 @@ function ShiftRow({
         )}
       </div>
       <Places shift={shift} names={names} manage={manage} onDrop={onDrop} />
-      {full && <p className="mn-quiet js-full">{t('jobs.full')}</p>}
+      {full && manage && <p className="mn-quiet js-full">{t('jobs.full')}</p>}
     </li>
   );
 }

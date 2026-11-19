@@ -39,11 +39,10 @@ export const PCW = {
 
     return `[Set by ${by}. ${closed ? 'Closed' : 'Closes'} at ${time}, ${zone} time.]`;
   },
-  closedCourse: (course: string) =>
-    `[Guests can no longer change their ${course.toLocaleLowerCase('en')} pick.`,
+  closedCourse: (course: string) => `[Guests can no longer change their ${course} pick.`,
   canStillChoose: 'You still can choose for any guest.]',
   whoHasnt: 'Who hasn’t picked',
-  whoHasntAria: (course: string) => `Who hasn’t picked ${course.toLocaleLowerCase('en')}`,
+  whoHasntAria: (course: string) => `Who hasn’t picked ${course}`,
   whoHasntSaid: (course: string) =>
     `Who hasn’t picked opens sc-3909’s panel for ${course}, which is built with that story.`,
   moved: (date: string, was: string) =>

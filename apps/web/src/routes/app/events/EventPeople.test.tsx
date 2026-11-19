@@ -884,7 +884,7 @@ describe('People from outside the organisation (sc-71)', () => {
     fireEvent.change(find, { target: { value: 'kemi@' } });
 
     expect(
-      within(dialog).getByText('That isn’t an email address or a mobile number we can use.'),
+      within(dialog).getByText('That is not an email address or a mobile number we can use.'),
     ).toBeDefined();
   });
 

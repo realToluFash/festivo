@@ -4021,11 +4021,9 @@
     "linkErased": "Datos de contacto eliminados tras el evento",
     "noJobOption": "Aún sin puesto",
     "noShiftOption": "Aún sin turno",
-    "shiftHelp": "Turnos de este puesto con alguna plaza libre, por hora de inicio.",
     "onShifts": "Quite primero a {{name}} de sus turnos.",
     "onShiftsHint": "Su puesto podrá cambiar cuando no esté en ningún turno.",
-    "moreShifts": "{{first}} +{{count, number}} más",
-    "removeShifts": "Sus plazas en estos turnos quedarán libres:"
+    "moreShifts": "{{first}} <more>+{{count, number}} más</more>"
   },
   "schedule": {
     "crumb": "Ruta de navegación",

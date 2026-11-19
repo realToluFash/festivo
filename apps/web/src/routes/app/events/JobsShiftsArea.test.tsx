@@ -268,7 +268,7 @@ describe('Jobs and shifts on the Staff page (sc-3908)', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Add' }));
 
     expect(
-      await screen.findByText('A shift can’t be longer than 24 hours. Check the dates.'),
+      await screen.findByText('A shift cannot be longer than 24 hours. Check the dates.'),
     ).toBeDefined();
   });
 
@@ -312,5 +312,9 @@ describe('Jobs and shifts on the Staff page (sc-3908)', () => {
       ),
     ).toBeDefined();
     expect(screen.queryByRole('button', { name: 'Add a job' })).toBeNull();
+    expect(screen.getByText('1 of 1 place filled')).toBeDefined();
+    expect(
+      screen.queryByText('Every place on this shift is filled. Unassign someone to make room.'),
+    ).toBeNull();
   });
 });

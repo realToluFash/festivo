@@ -2004,6 +2004,34 @@ describe('People on an event at a desk (sc-29915)', () => {
     });
   }
 
+  for (const [state, event, id] of [
+    [undefined, 'Adaeze & Tunde’s wedding', 'evt-wed-4'],
+    ['loading', 'Adaeze & Tunde’s wedding', 'evt-wed-4'],
+    ['failed', 'Adaeze & Tunde’s wedding', 'evt-wed-4'],
+    ['readOnly', 'Adaeze & Tunde’s wedding', 'evt-wed-4'],
+    ['nobody', 'Adaeze & Tunde’s wedding', 'evt-wed-4'],
+    ['code', 'Joana & Rui’s wedding', 'evt-joana-rui-2'],
+  ] as const) {
+    it(`opens ${state ?? 'populated'} under the crumb row with the bell at its end, and People as its only title (sc-69635)`, async () => {
+      await people(state);
+
+      const crumb = screen.getByRole('navigation', { name: 'Breadcrumb' });
+      expect(within(crumb).getByRole('link', { name: 'Events' }).getAttribute('href')).toBe(
+        '/demo/events',
+      );
+      expect(within(crumb).getByRole('link', { name: event }).getAttribute('href')).toBe(
+        `/demo/events/${id}`,
+      );
+      expect(crumb.querySelector('[aria-current="page"]')?.textContent).toBe('People');
+      expect(crumb.parentElement?.querySelector(':scope > .desk-bell')).not.toBeNull();
+      expect(
+        within(screen.getByRole('main'))
+          .getAllByRole('heading', { level: 1 })
+          .map((one) => one.textContent),
+      ).toEqual(['People']);
+    });
+  }
+
   it('saves a role as it is picked, and says so', async () => {
     vi.useFakeTimers({ shouldAdvanceTime: true });
     await people();
@@ -2204,7 +2232,7 @@ describe('People on an event at a desk (sc-29915)', () => {
     const add = within(screen.getByRole('dialog', { name: 'Add people' }));
     expect(add.getByText('Nobody in Ire Events matches “bisi@lagos”.')).toBeDefined();
     expect(
-      add.getByText('That isn’t an email address or a mobile number we can use.'),
+      add.getByText('That is not an email address or a mobile number we can use.'),
     ).toBeDefined();
     expect(add.getByRole('button', { name: 'Add' }).getAttribute('aria-disabled')).toBe('true');
   });

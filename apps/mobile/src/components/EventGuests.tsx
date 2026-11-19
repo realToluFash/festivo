@@ -68,7 +68,7 @@ import {
 } from '../kit/guestRows.ts';
 import { pasteBeside, pasteShown, waiting, whoseRows } from '../kit/pasteReply.ts';
 import { type GuestReplies, guestRepliesOf, guestReplyBy } from '../kit/replyBy.ts';
-import { type ScreenOffline, useHandOffline, useOffline } from '../offline.ts';
+import { type ScreenOffline, useHandOffline, useOffline, usePullToRefresh } from '../offline.ts';
 import { useSignedIn } from '../signedIn.ts';
 import { tokens } from '../theme/tokens.ts';
 import { SearchField } from './EventsSearch.tsx';
@@ -282,6 +282,7 @@ export function EventGuests({
     focusTitle: () => title.current?.focus?.(),
   });
   const { watch, freshen, stale, refreshing } = offline;
+  const pull = usePullToRefresh(refreshing, stale?.retry ?? freshen);
 
   const askGuest = useCallback(
     (guestId: string, quiet: boolean) => {
@@ -788,11 +789,7 @@ export function EventGuests({
         kind={kind}
         heading={heading}
         list={list}
-        listRefresh={
-          loaded ? (
-            <RefreshControl refreshing={refreshing} onRefresh={stale?.retry ?? freshen} />
-          ) : undefined
-        }
+        listRefresh={loaded ? <RefreshControl {...pull} /> : undefined}
         page={page}
         pageKey={exporting && docked ? 'export' : pasted != null ? 'paste' : (open ?? '')}
         pageInFront={pageOpen}
