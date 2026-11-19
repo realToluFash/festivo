@@ -71,6 +71,8 @@
   right: auto;
   left: 0;
   width: 260px;
+  max-height: 70vh;
+  overflow-y: auto;
 }
 
 .dc-filters .desk-text {
