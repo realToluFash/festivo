@@ -21,7 +21,6 @@ use App\Http\Exception\ApiException;
 use App\Repository\EmailDomainRepository;
 use App\Repository\OrganisationDomainRepository;
 use DateTimeImmutable;
-use Doctrine\DBAL\Exception\UniqueConstraintViolationException;
 use Doctrine\DBAL\LockMode;
 use Doctrine\ORM\EntityManagerInterface;
 use Psl\Iter;
@@ -123,13 +122,20 @@ final readonly class EmailDomains
             return false;
         }
 
-        try {
-            $this->entityManager->wrapInTransaction(function () use ($emailDomain, $now, $by): void {
-                $this->entityManager->refresh($emailDomain, LockMode::PESSIMISTIC_WRITE);
-                $this->found($emailDomain, $now, $by);
-                $this->entityManager->flush();
-            });
-        } catch (UniqueConstraintViolationException) {
+        $held = $this->entityManager->wrapInTransaction(function () use ($emailDomain, $now, $by): bool {
+            $this->lockName($emailDomain);
+
+            if ($this->provedDomains->isHeldElsewhere($emailDomain->getDomain(), $emailDomain->getOrganisation())) {
+                return true;
+            }
+
+            $this->found($emailDomain, $now, $by);
+            $this->entityManager->flush();
+
+            return false;
+        });
+
+        if ($held) {
             throw $this->taken();
         }
 
@@ -161,7 +167,7 @@ final readonly class EmailDomains
 
             $published = $this->isPublished($due);
             $moved += $this->entityManager->wrapInTransaction(function () use ($due, $published): int {
-                $this->entityManager->refresh($due, LockMode::PESSIMISTIC_WRITE);
+                $this->lockName($due);
                 $changed = $this->settle($due, $published, $this->clock->now());
                 $this->entityManager->flush();
 
@@ -231,6 +237,13 @@ final readonly class EmailDomains
     }
 
     /** Proved now: every other organisation whose joining listing of it stops is told, once. */
+    /** Locks the row, and the name for every organisation, so two can never prove one name at once. */
+    private function lockName(EmailDomain $domain): void
+    {
+        $this->entityManager->getConnection()->executeStatement('SELECT pg_advisory_xact_lock(hashtextextended(:key, 0))', ['key' => 'email-domain:' . $domain->getDomain()]);
+        $this->entityManager->refresh($domain, LockMode::PESSIMISTIC_WRITE);
+    }
+
     private function found(EmailDomain $domain, DateTimeImmutable $now, ?User $by): void
     {
         $wasProved = $domain->isProved();
