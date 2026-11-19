@@ -12,7 +12,9 @@ a.sn-tab {
   overflow-x: auto;
 }
 
-.rs-frame:focus-visible {
+/* One ring for both scrolling frames on the Staff page, Roster's and Coverage's: JobsShifts loads this file too (sc-70540). */
+.rs-frame:focus-visible,
+.js-frame:focus-visible {
   outline: 2px solid var(--colorAccent);
   outline-offset: 2px;
 }

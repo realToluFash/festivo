@@ -228,18 +228,38 @@ describe('/demo/events/evt-wed-4/staff/roster (sc-3906)', () => {
     ]);
   });
 
-  it('lets the keyboard reach the table frame, the one region named Roster, just before the first name (sc-70540)', async () => {
-    await open('readOnly');
-    const frame = screen.getByRole('region', { name: 'Roster' });
-    expect(frame.tabIndex).toBe(0);
-    expect(frame.classList.contains('rs-frame')).toBe(true);
-    expect(frame.contains(screen.getByRole('table', { name: 'Roster' }))).toBe(true);
-    const first = within(frame).getAllByRole('rowheader')[0]?.querySelector('button');
-    const reachable = [...document.querySelectorAll<HTMLElement>('button, [tabindex="0"]')];
-    expect(reachable[reachable.indexOf(frame) + 1]).toBe(first);
-    expect(cssRule('.rs-frame:focus-visible', ROSTER_CSS)).toContain(
+  it.each(['populated', 'readOnly'])(
+    'lets the keyboard reach the table frame, the one region named Roster, just before the first name, in %s (sc-70540)',
+    async (state) => {
+      await open(state);
+      const frame = screen.getByRole('region', { name: 'Roster' });
+      expect(frame.tabIndex).toBe(0);
+      expect(frame.classList.contains('rs-frame')).toBe(true);
+      expect(frame.contains(screen.getByRole('table', { name: 'Roster' }))).toBe(true);
+      const first = within(frame).getAllByRole('rowheader')[0]?.querySelector('button');
+      const reachable = [...document.querySelectorAll<HTMLElement>('button, [tabindex="0"]')];
+      expect(reachable[reachable.indexOf(frame) + 1]).toBe(first);
+      if (state === 'populated') {
+        expect(reachable[reachable.indexOf(frame) - 1]).toBe(button('Add a person'));
+      }
+    },
+  );
+
+  it('draws the Roster frame’s focus ring with the Coverage frame’s one rule (sc-70540)', () => {
+    expect(cssRule('.rs-frame:focus-visible,\n.js-frame:focus-visible', ROSTER_CSS)).toContain(
       'outline: 2px solid var(--colorAccent);',
     );
+  });
+
+  it('keeps whole words in the table below 720 px, the frame scrolling instead (sc-70540)', () => {
+    const narrow = ROSTER_CSS.slice(ROSTER_CSS.indexOf('(width <= 720px)'));
+    expect(cssRule('.rs-table :is(th, td),\n  .rs-table :is(th, td) *', narrow)).toContain(
+      'overflow-wrap: normal;',
+    );
+    expect(
+      cssRule('.rs-table thead th:nth-child(2),\n  .rs-table thead th:nth-child(3)', narrow),
+    ).toContain('min-width: 128px;');
+    expect(cssRule('.rs-table thead th:nth-child(5)', narrow)).toContain('min-width: 168px;');
   });
 
   it('keeps the card heading 12rem wide below 720 px, as the product does', () => {
