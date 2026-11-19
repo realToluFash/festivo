@@ -262,7 +262,7 @@ final readonly class OrganisationArchive
              ORDER BY ev.starts_at_utc, s.event_id, s.starts_at, s.id
             SQL,
         'staff' => <<<'SQL'
-            SELECT s.id, s.event_id, s.full_name, s.mobile, s.email, m.id AS member_id, s.job_id
+            SELECT s.id, s.event_id, s.full_name, s.mobile, s.email, m.id AS member_id, s.job_id, s.station_id, s.as_well_station_id, s.floor_lead
               FROM staff_members s
               JOIN events ev ON ev.id = s.event_id
               LEFT JOIN memberships m ON m.user_id = s.member_id AND m.organisation_id = ev.organisation_id
@@ -293,6 +293,21 @@ final readonly class OrganisationArchive
               JOIN events ev ON ev.id = j.event_id
              WHERE ev.organisation_id = :organisation AND ev.deleted_at IS NULL
              ORDER BY ev.starts_at_utc, j.event_id, j.position, s.starts_at, s.id, p.staff_member_id
+            SQL,
+        'staff_stations' => <<<'SQL'
+            SELECT t.id, t.event_id, t.kind, t.name, t.section_id, t.lead_id, t.position, t.walk_position
+              FROM staff_stations t
+              JOIN events ev ON ev.id = t.event_id
+             WHERE ev.organisation_id = :organisation AND ev.deleted_at IS NULL
+             ORDER BY ev.starts_at_utc, t.event_id, t.position, t.id
+            SQL,
+        'staff_item_stations' => <<<'SQL'
+            SELECT i.course_id, i.item_key, i.station_id
+              FROM staff_item_stations i
+              JOIN staff_stations t ON t.id = i.station_id
+              JOIN events ev ON ev.id = t.event_id
+             WHERE ev.organisation_id = :organisation AND ev.deleted_at IS NULL
+             ORDER BY ev.starts_at_utc, t.event_id, i.course_id, i.item_key
             SQL,
         'cost_lines' => <<<'SQL'
             SELECT b.id, b.event_id, b.label, b.category, b.basis, b.price_minor,

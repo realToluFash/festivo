@@ -339,7 +339,7 @@ With no MCP, fall back to a script — `npx playwright` with a `page.goto`,
 
 ```sh
 node .qa/bin/qa-env.mjs ios [--ipad | --se]              # the bundler, in Expo Go, on the QA phone (or iPad, iPhone SE); shuts the others
-node .qa/bin/qa-env.mjs release [--offline] [--ipad | --se] # a release build of the commit on the simulator, on its first launch
+node .qa/bin/qa-env.mjs release [--offline] [--ipad | --se] [--link <url>] # a release build of the commit on the simulator, on its first launch
 node .qa/bin/qa-env.mjs maestro sign-in EMAIL=… PASSWORD=…        # one flow, on the phone
 node .qa/bin/qa-env.mjs maestro sign-in --ipad EMAIL=… PASSWORD=… # on the tablet
 node .qa/bin/qa-env.mjs hierarchy [--ipad | --se | --android]    # what is on screen, for writing a flow
