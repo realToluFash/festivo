@@ -5184,9 +5184,9 @@
     "saidDished": "{{item}} sale de {{name}}.",
     "saidJoins": "{{name}} se suma al recorrido en la parada {{stop, number}}.",
     "saidLeaves": "{{name}} deja el recorrido.",
-    "saidMoved_one": "{{name}} pasa a la parada {{stop, number}} de {{count, number}}",
-    "saidMoved_many": "{{name}} pasa a la parada {{stop, number}} de {{count, number}}",
-    "saidMoved_other": "{{name}} pasa a la parada {{stop, number}} de {{count, number}}",
+    "saidMoved_one": "{{name}} pasa a la parada {{stop, number}} de {{count, number}}.",
+    "saidMoved_many": "{{name}} pasa a la parada {{stop, number}} de {{count, number}}.",
+    "saidMoved_other": "{{name}} pasa a la parada {{stop, number}} de {{count, number}}.",
     "saidOn": "{{name}} está en {{station}}.",
     "saidOff": "{{name}} ya no tiene zona.",
     "saidOffLead": "{{name}} ha dejado {{station}}, que ahora no tiene responsable.",
@@ -5365,5 +5365,20 @@
       "per_staff_hour": "Its cost comes from Staff rates, so it takes no rate here",
       "fixed": "Counted once"
     }
+  },
+  "decisionAnswer": {
+    "head": "Lo que costaría añadirlos",
+    "rise": "+{{amount}} si vienen todos",
+    "upperOnly": "Solo sube la cifra máxima, que pasa a {{upper}}. Los nuevos invitados aún no han respondido, así que la cifra confirmada sigue en {{settled}}.",
+    "moved": "{{from}} → {{to}} · {{headsFrom, number}} → {{headsTo, number}} si vienen todos",
+    "plus": "+{{amount}}",
+    "notKnown": "Desconocido",
+    "notKnownIfAll": "Coste desconocido si vienen todos",
+    "notPricedYet": "Aún sin precio, así que se desconoce su coste",
+    "fullNotKnown_one": "Coste total desconocido: {{count, number}} de los costes afectados aún no tiene precio.",
+    "fullNotKnown_other": "Coste total desconocido: {{count, number}} de los costes afectados aún no tienen precio.",
+    "fullNotKnown_many": "Coste total desconocido: {{count, number}} de los costes afectados aún no tienen precio.",
+    "noChange": "Sin cambios",
+    "nothingPerGuest": "Nada en este presupuesto se calcula por invitado."
   }
 }

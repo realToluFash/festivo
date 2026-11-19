@@ -226,7 +226,7 @@ describe('Stations on the Staff page (sc-3910)', () => {
     const places = screen.getByRole('heading', { level: 2, name: 'Places' }).closest('section');
     const names = [...(places?.querySelectorAll('h3') ?? [])].map((one) => one.textContent);
     expect(names).toEqual(['PassFixed', 'Bar', 'Kitchen', 'Stage', 'Floor', 'Grill', 'Pastry']);
-    expect(screen.getByText('2 people · Dishes 2 items')).toBeDefined();
+    expect(screen.getByText('2 people · Serves 2 items')).toBeDefined();
     expect(screen.getByText('Nobody on Stage')).toBeDefined();
     expect(screen.queryByRole('button', { name: 'Rename Pass' })).toBeNull();
     expect(screen.getByRole('button', { name: 'Rename Grill' })).toBeDefined();
@@ -242,7 +242,7 @@ describe('Stations on the Staff page (sc-3910)', () => {
     expect(screen.queryByRole('button', { name: /^Rename Section/ })).toBeNull();
 
     expect(screen.getByText('Course 2')).toBeDefined();
-    const chicken = screen.getByRole('combobox', { name: 'Dished at, Chicken, Main' });
+    const chicken = screen.getByRole('combobox', { name: 'Served from, Chicken, Main' });
     expect((chicken as HTMLSelectElement).value).toBe('grill');
     expect([...chicken.querySelectorAll('option')].map((one) => one.textContent)).toEqual([
       'Pass',
@@ -285,7 +285,7 @@ describe('Stations on the Staff page (sc-3910)', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Move up, Grill' }));
 
-    expect(await screen.findByText('Grill moved to stop 2 of 4')).toBeDefined();
+    expect(await screen.findByText('Grill moved to stop 2 of 4.')).toBeDefined();
     expect(
       sent.find((one) => one.line === 'PUT /api/events/ev_1/stations/walking-order')?.body,
     ).toEqual({ order: ['grill', 'kitchen', 'pastry'] });
@@ -314,11 +314,11 @@ describe('Stations on the Staff page (sc-3910)', () => {
         }),
     });
 
-    fireEvent.change(screen.getByRole('combobox', { name: 'Dished at, Rice, Main' }), {
+    fireEvent.change(screen.getByRole('combobox', { name: 'Served from, Rice, Main' }), {
       target: { value: 'grill' },
     });
 
-    expect(await screen.findByText('Rice is dished at Grill.')).toBeDefined();
+    expect(await screen.findByText('Rice is served from Grill.')).toBeDefined();
     expect(
       sent.find((one) => one.line === 'PUT /api/events/ev_1/stations/courses/c2/dished-at')?.body,
     ).toEqual({ item: 'Rice', place: 'grill' });
@@ -511,6 +511,6 @@ describe('Stations on the Staff page (sc-3910)', () => {
     expect(screen.queryByRole('button', { name: 'Change' })).toBeNull();
     expect(screen.queryByRole('combobox')).toBeNull();
     const chicken = screen.getByText('Chicken').closest('li');
-    expect(chicken?.textContent).toBe('ChickenDished atGrill');
+    expect(chicken?.textContent).toBe('ChickenServed fromGrill');
   });
 });

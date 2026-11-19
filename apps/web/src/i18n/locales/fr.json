@@ -5184,9 +5184,9 @@
     "saidDished": "{{item}} part désormais du poste {{name}}.",
     "saidJoins": "{{name}} rejoint l’ordre de passage à l’étape {{stop, number}}.",
     "saidLeaves": "{{name}} quitte l’ordre de passage.",
-    "saidMoved_one": "{{name}} passe à l’étape {{stop, number}} sur {{count, number}}",
-    "saidMoved_many": "{{name}} passe à l’étape {{stop, number}} sur {{count, number}}",
-    "saidMoved_other": "{{name}} passe à l’étape {{stop, number}} sur {{count, number}}",
+    "saidMoved_one": "{{name}} passe à l’étape {{stop, number}} sur {{count, number}}.",
+    "saidMoved_many": "{{name}} passe à l’étape {{stop, number}} sur {{count, number}}.",
+    "saidMoved_other": "{{name}} passe à l’étape {{stop, number}} sur {{count, number}}.",
     "saidOn": "{{name}} est au poste {{station}}.",
     "saidOff": "{{name}} n’a plus de poste.",
     "saidOffLead": "{{name}} a quitté le poste {{station}}, qui n’a plus de responsable.",
@@ -5365,5 +5365,20 @@
       "per_staff_hour": "Its cost comes from Staff rates, so it takes no rate here",
       "fixed": "Counted once"
     }
+  },
+  "decisionAnswer": {
+    "head": "Ce que coûterait cet ajout",
+    "rise": "+{{amount}} si tous viennent",
+    "upperOnly": "Seul le montant maximal augmente, à {{upper}} désormais. Les nouveaux invités n’ont pas encore répondu : le montant confirmé reste donc à {{settled}}.",
+    "moved": "{{from}} → {{to}} · {{headsFrom, number}} → {{headsTo, number}} si tous viennent",
+    "plus": "+{{amount}}",
+    "notKnown": "Inconnu",
+    "notKnownIfAll": "Coût inconnu si tous viennent",
+    "notPricedYet": "Pas encore de prix, son coût est donc inconnu",
+    "fullNotKnown_one": "Coût total inconnu : {{count, number}} des coûts concernés n’a pas encore de prix.",
+    "fullNotKnown_other": "Coût total inconnu : {{count, number}} des coûts concernés n’ont pas encore de prix.",
+    "fullNotKnown_many": "Coût total inconnu : {{count, number}} des coûts concernés n’ont pas encore de prix.",
+    "noChange": "Aucun changement",
+    "nothingPerGuest": "Rien dans ce budget n’est calculé par invité."
   }
 }

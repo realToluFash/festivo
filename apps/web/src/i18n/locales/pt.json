@@ -5184,9 +5184,9 @@
     "saidDished": "{{item}} passa a sair do posto {{name}}.",
     "saidJoins": "{{name}} entra no percurso na paragem {{stop, number}}.",
     "saidLeaves": "{{name}} sai do percurso.",
-    "saidMoved_one": "{{name}} passa para a paragem {{stop, number}} de {{count, number}}",
-    "saidMoved_many": "{{name}} passa para a paragem {{stop, number}} de {{count, number}}",
-    "saidMoved_other": "{{name}} passa para a paragem {{stop, number}} de {{count, number}}",
+    "saidMoved_one": "{{name}} passa para a paragem {{stop, number}} de {{count, number}}.",
+    "saidMoved_many": "{{name}} passa para a paragem {{stop, number}} de {{count, number}}.",
+    "saidMoved_other": "{{name}} passa para a paragem {{stop, number}} de {{count, number}}.",
     "saidOn": "{{name}} está no posto {{station}}.",
     "saidOff": "{{name}} ficou sem posto.",
     "saidOffLead": "{{name}} saiu do posto {{station}}, que fica sem responsável.",
@@ -5365,5 +5365,20 @@
       "per_staff_hour": "Its cost comes from Staff rates, so it takes no rate here",
       "fixed": "Counted once"
     }
+  },
+  "decisionAnswer": {
+    "head": "O que custaria adicioná-los",
+    "rise": "+{{amount}} se vierem todos",
+    "upperOnly": "Só sobe o valor máximo, que passa a {{upper}}. Os novos convidados ainda não responderam, por isso o valor confirmado mantém-se em {{settled}}.",
+    "moved": "{{from}} → {{to}} · {{headsFrom, number}} → {{headsTo, number}} se vierem todos",
+    "plus": "+{{amount}}",
+    "notKnown": "Desconhecido",
+    "notKnownIfAll": "Custo desconhecido se vierem todos",
+    "notPricedYet": "Ainda sem preço, por isso o custo é desconhecido",
+    "fullNotKnown_one": "Custo total desconhecido: {{count, number}} dos custos afetados ainda não tem preço.",
+    "fullNotKnown_other": "Custo total desconhecido: {{count, number}} dos custos afetados ainda não têm preço.",
+    "fullNotKnown_many": "Custo total desconhecido: {{count, number}} dos custos afetados ainda não têm preço.",
+    "noChange": "Sem alterações",
+    "nothingPerGuest": "Nada neste orçamento é calculado por convidado."
   }
 }

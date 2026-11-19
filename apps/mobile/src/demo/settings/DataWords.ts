@@ -19,7 +19,7 @@ export const DATA_WORDS = {
   nothingSetLine: `Start by proving the email domain of ${ORG}.`,
   locked: 'These come with Enterprise',
   lockedLine: 'Email domains and the audit log.',
-  left: (day: string) => `${ORG} left Enterprise on ${day}`,
+  left: `${ORG} left Enterprise`,
   leftLine:
     'Email domains, the audit log and deleting guest data are switched off and kept as they were. They come back on with Enterprise.',
   rows: {
@@ -99,7 +99,7 @@ export const DOMAINS_WORDS = {
     removedLine: 'It is no longer proved.',
     locked: 'Available on Enterprise',
     lockedLine: `Prove that ${ORG} owns its domain, then limit the accounts at it to ${ORG}.`,
-    off: (day: string) => `Switched off on ${day}`,
+    off: 'Switched off',
     offLine: `${ORG} left Enterprise. Its domains are kept as they were, and come back on with Enterprise.`,
     onlyProved: (domain: string) => `${domain} is proved`,
     scheduled: (at: string) => `Only our organisation starts on ${at}`,

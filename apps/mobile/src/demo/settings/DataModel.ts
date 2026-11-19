@@ -2,7 +2,6 @@ import { companyDomainProblem, normaliseDomain } from '@soirely/domain';
 
 import { DOMAIN_WORDS } from './OrganisationWords.ts';
 import {
-  AT,
   type DataSay,
   DERIVED,
   type Domain,
@@ -143,8 +142,7 @@ export function hubStart(state: HubState): HubStart {
 /** The hub's card in the app: the soonest instant among Control's items, or where Ire Events stands. */
 export function hubCard(start: HubStart, say: DataSay): CardWords {
   if (start.plan === 'locked') return { says: H.locked, line: H.lockedLine, step: CONTACT };
-  if (start.plan === 'downgraded')
-    return { says: H.left(say.day(AT.leftEnterprise)), line: H.leftLine, step: CONTACT };
+  if (start.plan === 'downgraded') return { says: H.left, line: H.leftLine, step: null };
   if (start.domains.length === 0)
     return {
       says: H.nothingSet,
@@ -363,8 +361,7 @@ export function domainsOwns(state: DomainsState, viewer: DataViewer): boolean {
 export function domainsCard(model: DomainsModel, owns: boolean, say: DataSay): CardWords {
   const C = D.card;
   if (model.plan === 'locked') return { says: C.locked, line: C.lockedLine, step: CONTACT };
-  if (model.plan === 'downgraded')
-    return { says: C.off(say.day(AT.leftEnterprise)), line: C.offLine, step: CONTACT };
+  if (model.plan === 'downgraded') return { says: C.off, line: C.offLine, step: null };
   const keep = (domain: string) =>
     owns ? { label: C.keep(domain), go: { kind: 'only', domain } as Go } : null;
   const said = model.said;

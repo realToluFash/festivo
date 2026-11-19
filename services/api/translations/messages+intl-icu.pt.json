@@ -177,5 +177,10 @@
     "validation.vendor_website_too_long": "Encurte o endereço do site para um máximo de {count, number, ::group-auto} caracteres.",
     "validation.vendor_address_too_long": "Encurte a morada para um máximo de {count, number, ::group-auto} caracteres.",
     "validation.vendor_note_too_long": "Encurte a nota para um máximo de {count, number, ::group-auto} caracteres.",
-    "staff.shift_needed_below": "{n, plural, one {Está {n, number, ::group-auto} pessoa neste turno. Retire-a primeiro ou mantenha {n, number, ::group-auto} ou mais.} many {Estão {n, number, ::group-auto} de pessoas neste turno. Retire algumas primeiro ou mantenha {n, number, ::group-auto} ou mais.} other {Estão {n, number, ::group-auto} pessoas neste turno. Retire algumas primeiro ou mantenha {n, number, ::group-auto} ou mais.}}"
+    "staff.shift_needed_below": "{n, plural, one {Está {n, number, ::group-auto} pessoa neste turno. Retire-a primeiro ou mantenha {n, number, ::group-auto} ou mais.} many {Estão {n, number, ::group-auto} de pessoas neste turno. Retire algumas primeiro ou mantenha {n, number, ::group-auto} ou mais.} other {Estão {n, number, ::group-auto} pessoas neste turno. Retire algumas primeiro ou mantenha {n, number, ::group-auto} ou mais.}}",
+    "validation.what_if_change_unknown": "«{change}» não é uma alteração que um orçamento possa calcular. Indique guests, tables, staff_hours ou days.",
+    "validation.what_if_not_whole": "Indique um número inteiro para {change}.",
+    "validation.what_if_too_large": "A alteração de {change} não pode ultrapassar {most, number, ::group-auto} no total.",
+    "validation.what_if_guests_below_one": "Adicione 1 convidado ou mais. Não é possível calcular aqui a remoção de convidados.",
+    "validation.what_if_below_zero": "Isso deixaria {change} abaixo de 0. O evento tem agora {count, number, ::group-auto}."
 }
