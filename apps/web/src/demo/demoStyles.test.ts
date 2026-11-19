@@ -206,6 +206,11 @@ const SHARED: readonly Family[] = [
     part: 'the Schedule (Schedule) at both desk widths',
   },
   {
+    prefix: 'rs',
+    sheets: ['roster.css', WIDE],
+    part: 'the Roster (Roster) from 961 to 1279 px',
+  },
+  {
     prefix: 'sn',
     sheets: ['roster.css', 'schedule.css', 'stations.css'],
     part: 'Stations (Stations), whose cards the Roster and Schedule reuse',

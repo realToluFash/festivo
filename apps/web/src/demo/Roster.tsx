@@ -25,9 +25,7 @@ import {
   type RosterStart,
   BAR_MS,
   JOBS,
-  LINK_WORDS,
   NAME_MAX,
-  RW,
   STATION_GROUPS,
   detailsNext,
   draftOf,
@@ -48,15 +46,19 @@ import { COUNTRIES, codeChoice } from './rules.ts';
 import {
   type CopyOutcome,
   ISSUE_MS,
-  LW,
   SAMPLE_LINK,
   afterCopy,
   afterMark,
   afterReplace,
   copyIssued,
   plainItem,
-  trailLine,
 } from './staffLink.ts';
+import {
+  type RosterWords,
+  ROSTER_WORDS,
+  RosterWordsContext,
+  useRosterWords,
+} from './rosterWords.ts';
 import { STATIONS_EVENT } from './stations.ts';
 import { PanelFoot, PanelTop, Select, StaffTabs } from './Stations.tsx';
 import { useSwitcherStart } from './switcher.ts';
@@ -103,7 +105,11 @@ function RosterAt({ id, raw }: { id: string | undefined; raw: string | null }) {
           />
         )}
       >
-        {(tell) => <RosterView first={first} event={event} tell={tell} />}
+        {(tell) => (
+          <RosterWordsContext value={ROSTER_WORDS[first.lang]}>
+            <RosterView first={first} event={event} tell={tell} />
+          </RosterWordsContext>
+        )}
       </EventsShell>
     </KeptArea>
   );
@@ -118,13 +124,14 @@ function RosterView({
   event: SampleEvent;
   tell: Tell;
 }) {
+  const { rw: RW, lw: LW, tabs, events, crumb } = useRosterWords();
   const [entries, setEntries] = useState<Entry[]>(first.entries);
   const [panel, setPanel] = useState<Panel>(first.panel);
   const [draft, setDraft] = useState<Draft>(first.draft);
   const [pressed, setPressed] = useState(first.pressed);
   const [warning, setWarning] = useState<string | null>(first.warning);
   const [bar, setBar] = useState<string[] | null>(first.bar);
-  const [live, setLive] = useState({ text: firstSaid(first), said: 0 });
+  const [live, setLive] = useState({ text: firstSaid(first, LW), said: 0 });
   const [failed, setFailed] = useState<string | null>(first.failed);
   const [busy, setBusy] = useState<string | null>(null);
   const [held, setHeld] = useState(first.held);
@@ -144,7 +151,7 @@ function RosterView({
       return;
     }
     if (!first.pressed) return;
-    const wrong = firstWrong(problemsOf(first.draft, !first.erased));
+    const wrong = firstWrong(problemsOf(first.draft, !first.erased, RW));
     if (wrong != null) {
       document.getElementById(FIELD_IDS[wrong])?.focus();
       return;
@@ -153,8 +160,8 @@ function RosterView({
       first.panel?.kind === 'edit'
         ? (first.entries.find((one) => one.id === (first.panel as { id: string }).id) ?? null)
         : null;
-    if (jobLocked(was, first.draft) != null) document.getElementById('rs-f-job')?.focus();
-  }, [first]);
+    if (jobLocked(was, first.draft, RW) != null) document.getElementById('rs-f-job')?.focus();
+  }, [first, RW]);
 
   useEffect(() => {
     if (focusAfter.current == null) return;
@@ -178,7 +185,7 @@ function RosterView({
   const shown = (id: string) => entries.find((one) => one.id === id) as Entry;
   const editing = panel?.kind === 'edit' ? shown(panel.id) : null;
   const contact = !erased;
-  const problems: Problems = pressed ? problemsOf(draft, contact) : {};
+  const problems: Problems = pressed ? problemsOf(draft, contact, RW) : {};
   const lit = panel != null && panel.kind !== 'add' ? panel.id : null;
 
   function open(next: Panel) {
@@ -205,14 +212,14 @@ function RosterView({
   }
 
   function submit(anyway: boolean) {
-    const wrong = firstWrong(problemsOf(draft, contact));
+    const wrong = firstWrong(problemsOf(draft, contact, RW));
     if (wrong != null) {
       setPressed(true);
       setWarning(null);
       focusAfter.current = FIELD_IDS[wrong];
       return;
     }
-    if (jobLocked(editing, draft) != null) {
+    if (jobLocked(editing, draft, RW) != null) {
       setPressed(true);
       setWarning(null);
       focusAfter.current = 'rs-f-job';
@@ -252,7 +259,7 @@ function RosterView({
     const gone = shown(id);
     setEntries(entries.filter((one) => one.id !== id));
     setPanel(null);
-    say([RW.removed(gone.name, shiftLines(gone).length)]);
+    say([RW.removed(gone.name, shiftLines(gone, RW).length)]);
     focusAfter.current = 'rs-roster';
   }
 
@@ -335,17 +342,17 @@ function RosterView({
   }
 
   const acts = manage && !finished && !erased;
-  const next = nextLine(entries, finished);
+  const next = nextLine(entries, finished, RW);
 
   return (
     <div className="desk-page ev-page gs mn sn rs">
       <div className="ev-wide mn-page">
         <KeptHere />
         <div className="ev-crumb-row">
-          <nav className="ev-crumb" aria-label="Breadcrumb">
+          <nav className="ev-crumb" aria-label={crumb}>
             <ol>
               <li className="ev-crumb-part">
-                <Link to="/demo/events">Events</Link>
+                <Link to="/demo/events">{events}</Link>
               </li>
               <li className="ev-crumb-part">
                 <Glyph name="chevron" size={15} weight={2.4} className="desk-chevron" />
@@ -367,7 +374,7 @@ function RosterView({
             <p className="mn-sub">{RW.sub}</p>
           </div>
         </header>
-        <StaffTabs on="Roster" eventId={event.id} tell={tell} />
+        <StaffTabs on="Roster" eventId={event.id} tell={tell} words={tabs} />
         {!manage && (
           <p className="mn-lock">
             <Glyph name="lock" size={16} weight={2.2} />
@@ -520,7 +527,7 @@ function RosterView({
                   warning={warning}
                   failed={failed}
                   editing={editing != null}
-                  locked={pressed ? jobLocked(editing, draft) : null}
+                  locked={pressed ? jobLocked(editing, draft, RW) : null}
                   onChange={change}
                   onSubmit={() => submit(false)}
                   onAnyway={() => submit(true)}
@@ -565,7 +572,7 @@ function RosterView({
   );
 }
 
-function firstSaid(first: RosterStart): string {
+function firstSaid(first: RosterStart, LW: RosterWords['lw']): string {
   if (first.held != null) return LW.refused;
   if (first.missed != null) return LW.notIssued;
 
@@ -573,13 +580,15 @@ function firstSaid(first: RosterStart): string {
 }
 
 export function LinkWord({ state }: { state: LinkState }) {
+  const { links } = useRosterWords();
+
   return (
     <span className="rs-link">
       <span
         className={`rs-mark is-${state === 'noMobile' ? 'no-mobile' : state}`}
         aria-hidden="true"
       />
-      {LINK_WORDS[state]}
+      {links[state]}
     </span>
   );
 }
@@ -590,6 +599,8 @@ function withoutGone({ gone: _gone, ...one }: Entry): Entry {
 
 /** sc-3910: a person whose section the seating plan removed reads No station, and why, with the alert mark beside the words. */
 function Gone({ section }: { section: string }) {
+  const { rw: RW } = useRosterWords();
+
   return (
     <span className="rs-gone">
       <span className="rs-gone-now">{RW.noStationNow}</span>
@@ -599,6 +610,8 @@ function Gone({ section }: { section: string }) {
 }
 
 function GoneWhy({ section, id }: { section: string; id?: string }) {
+  const { rw: RW } = useRosterWords();
+
   return (
     <span className="rs-gone-why" id={id}>
       <Glyph name="alert" size={14} weight={2.4} />
@@ -628,19 +641,20 @@ function Details({
   onStation: (station: string) => void;
   onReplace: (() => void) | null;
 }) {
+  const { rw: RW, lw: LW, trail: trailLine, close } = useRosterWords();
   const trail = erased ? null : trailLine(entry.link, entry.trail ?? null);
-  const next = detailsNext(entry, finished, erased);
+  const next = detailsNext(entry, finished, erased, RW);
 
   return (
     <>
-      <PanelTop title={entry.name} eyebrow={RW.roster} onClose={onClose} />
+      <PanelTop title={entry.name} eyebrow={RW.roster} close={close} onClose={onClose} />
       <div className="mn-panel-body">
         <dl className="rs-facts">
           <div>
             <dt>{RW.shift}</dt>
             <dd>
               <ul className="rs-shifts">
-                {shiftLines(entry).map((line) => (
+                {shiftLines(entry, RW).map((line) => (
                   <li key={line}>{line}</li>
                 ))}
               </ul>
@@ -745,6 +759,7 @@ function LinkCell({
   onCopy: () => void;
   onMark: () => void;
 }) {
+  const { lw: LW, trail: trailLine } = useRosterWords();
   const state = linkOf(entry, erased);
   const trail = erased ? null : trailLine(entry.link, entry.trail ?? null);
   const offered = acts && entry.mobile != null;
@@ -791,6 +806,7 @@ function LinkCell({
 
 /** A link the browser would not copy, shown to copy by hand; the field is named for whose link it is. */
 function HeldLink({ entry, url }: { entry: Entry; url: string }) {
+  const { lw: LW } = useRosterWords();
   const id = `rs-held-${entry.id}`;
 
   return (
@@ -823,6 +839,8 @@ function RemoveAsk({
   onKeep: () => void;
   onRemove: () => void;
 }) {
+  const { rw: RW } = useRosterWords();
+
   return (
     <>
       <div className="mn-panel-top">
@@ -834,7 +852,7 @@ function RemoveAsk({
       </div>
       <div className="mn-panel-body">
         <ul className="rs-shifts">
-          {shiftLines(entry).map((line) => (
+          {shiftLines(entry, RW).map((line) => (
             <li key={line} className="rs-ask-shift">
               {line}
             </li>
@@ -885,6 +903,7 @@ function PersonForm({
   onCancelWarning: () => void;
   onCancel: () => void;
 }) {
+  const { rw: RW, close, cancel } = useRosterWords();
   const job = jobOf(draft.job);
   const told = (id: string, error: string | undefined, help?: boolean) =>
     [error == null ? null : `${id}-error`, help === true ? `${id}-help` : null]
@@ -893,7 +912,7 @@ function PersonForm({
 
   return (
     <>
-      <PanelTop title={title} onClose={onCancel} />
+      <PanelTop title={title} close={close} onClose={onCancel} />
       <div className="mn-panel-body">
         {failed != null && (
           <p className="mn-failed" role="alert">
@@ -1060,7 +1079,12 @@ function PersonForm({
           </div>
         )}
       </div>
-      <PanelFoot cta={editing ? RW.saveChanges : RW.addCta} onSave={onSubmit} onCancel={onCancel} />
+      <PanelFoot
+        cta={editing ? RW.saveChanges : RW.addCta}
+        cancel={cancel}
+        onSave={onSubmit}
+        onCancel={onCancel}
+      />
     </>
   );
 }
