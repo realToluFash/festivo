@@ -188,52 +188,61 @@ export function shiftLine(entry: Entry): string {
 }
 
 /** Every shift by start, each by job and times: the details and Remove's question. */
-export function shiftLines(entry: Entry): string[] {
-  if (entry.job == null || entry.shift == null) return [RW.noShift];
+export function shiftLines(entry: Entry, rw: typeof RW = RW): string[] {
+  if (entry.job == null || entry.shift == null) return [rw.noShift];
 
   return [entry.shift, ...entry.more].map((one) => `${entry.job} · ${one}`);
 }
 
 /** A person has one job on the event: it changes only while they are on no shift (Decided, 18 Nov 2026). */
-export function jobLocked(editing: Entry | null, draft: Draft): string | null {
+export function jobLocked(editing: Entry | null, draft: Draft, rw: typeof RW = RW): string | null {
   if (editing == null || editing.shift == null) return null;
   if ((draft.job === '' ? null : draft.job) === editing.job) return null;
 
-  return RW.jobLocked(editing.name);
+  return rw.jobLocked(editing.name);
 }
 
-export function nextLine(entries: readonly Entry[], finished: boolean): string | null {
-  if (finished) return RW.nextHours;
+export function nextLine(
+  entries: readonly Entry[],
+  finished: boolean,
+  rw: typeof RW = RW,
+): string | null {
+  if (finished) return rw.nextHours;
   const unsent = entries.some(
     (one) => one.mobile != null && (one.link === 'none' || one.link === 'copied'),
   );
 
-  return unsent ? RW.nextSend : null;
+  return unsent ? rw.nextSend : null;
 }
 
-export function detailsNext(entry: Entry, finished: boolean, erased: boolean): string | null {
+export function detailsNext(
+  entry: Entry,
+  finished: boolean,
+  erased: boolean,
+  rw: typeof RW = RW,
+): string | null {
   if (erased) return null;
-  if (finished) return RW.nextErasing;
+  if (finished) return rw.nextErasing;
 
-  return linkOf(entry, false) === 'copied' ? RW.nextCopied : null;
+  return linkOf(entry, false) === 'copied' ? rw.nextCopied : null;
 }
 
 export type Problems = { name?: string; number?: string; email?: string };
 
 /** A blank name, a number the wrong length for its country, an email with no @ and domain; in the form's order. */
-export function problemsOf(draft: Draft, contact: boolean): Problems {
+export function problemsOf(draft: Draft, contact: boolean, rw: typeof RW = RW): Problems {
   const problems: Problems = {};
-  if (draft.name.trim() === '') problems.name = RW.blank;
+  if (draft.name.trim() === '') problems.name = rw.blank;
   if (!contact) return problems;
 
   const length = phoneLengthProblem(draft.number, draft.country);
   if (length === 'tooShort' || length === 'tooLong')
-    problems.number = RW.phoneLength(
+    problems.number = rw.phoneLength(
       length === 'tooShort' ? 'short' : 'long',
       countryName(draft.country),
     );
   if (draft.email.trim() !== '' && emailProblem(draft.email) === 'shape')
-    problems.email = RW.emailShape;
+    problems.email = rw.emailShape;
 
   return problems;
 }
@@ -437,6 +446,8 @@ export interface RosterStart {
   replacing: string | null;
   /** The words of a Shift cell with no shift: the product's French, to measure the longest at 400% zoom (sc-71607). */
   noShift: string;
+  /** The language of the Roster's words; French to measure the longest from 961 to 1279 px (sc-73291). */
+  lang: 'en' | 'fr';
 }
 
 function start(o: Partial<RosterStart> & Pick<RosterStart, 'name' | 'note'>): RosterStart {
@@ -456,9 +467,12 @@ function start(o: Partial<RosterStart> & Pick<RosterStart, 'name' | 'note'>): Ro
     missed: null,
     replacing: null,
     noShift: RW.noShift,
+    lang: 'en',
     ...o,
   };
 }
+
+const FRENCH = { lang: 'fr', noShift: 'Aucun service pour l’instant' } as const;
 
 const typed = (o: Partial<Draft>): Draft => ({ ...draftOf(null), ...o });
 const byId = (id: string) => sample().find((one) => one.id === id) as Entry;
@@ -729,6 +743,41 @@ const STATES = {
       entries: weddingSample(),
       panel: { kind: 'remove', id: 'tolu' },
     }),
+  add: () =>
+    start({
+      name: 'Add a person, the form open',
+      note: 'Open it at 1000 × 800: the form comes before the Roster, which keeps its width.',
+      panel: { kind: 'add' },
+    }),
+  addEmpty: () =>
+    start({
+      name: 'Add a person, on an empty roster',
+      note: 'Open it at 1000 × 800: the form before Nobody on the staff yet.',
+      entries: [],
+      panel: { kind: 'add' },
+    }),
+  detailsFrench: () =>
+    start({
+      name: 'Details, Amina Yusuf, in French',
+      note: 'The product’s French, [bracketed] where l10n has not written it. Open it at 1000 × 800.',
+      panel: { kind: 'details', id: 'amina' },
+      ...FRENCH,
+    }),
+  addFrench: () =>
+    start({
+      name: 'Add a person, the form open, in French',
+      note: 'Open it at 1000 × 800: the form comes before the Roster.',
+      panel: { kind: 'add' },
+      ...FRENCH,
+    }),
+  addEmptyFrench: () =>
+    start({
+      name: 'Add a person, on an empty roster, in French',
+      note: 'Open it at 1000 × 800: the form before the empty Roster.',
+      entries: [],
+      panel: { kind: 'add' },
+      ...FRENCH,
+    }),
 } satisfies Record<string, () => RosterStart>;
 
 export type RosterStateName = keyof typeof STATES;
@@ -799,5 +848,11 @@ export const ROSTER_PAGES: readonly { name: string; states: readonly DemoLink[] 
     states: (['linkCopied', 'linkNotIssued', 'linkRefused', 'replaceAsk', 'replaced'] as const).map(
       link,
     ),
+  },
+  {
+    name: 'A desk window from 961 to 1279 px, an open person before the Roster (sc-73291)',
+    states: (
+      ['details', 'detailsFrench', 'add', 'addFrench', 'addEmpty', 'addEmptyFrench'] as const
+    ).map(link),
   },
 ];

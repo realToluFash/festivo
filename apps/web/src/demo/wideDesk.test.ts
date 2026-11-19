@@ -18,3 +18,17 @@ describe("the demo's desk window from 641 px up (sc-61150)", () => {
     );
   });
 });
+
+describe("the demo's Roster from 961 to 1279 px (sc-73291)", () => {
+  const roster = WIDE.slice(WIDE.indexOf('(60rem < width < 80rem)'));
+
+  it('puts an open person or form before the Roster, at the card’s width, until 1280', () => {
+    expect(WIDE).toContain('@media (60rem < width < 80rem)');
+    expect(cssRule('.today.desk .rs .mn-split:has(> .mn-panel)', roster)).toContain(
+      'flex-direction: column;',
+    );
+    expect(cssRule('.today.desk .rs .mn-split > .mn-panel', roster)).toMatch(
+      /position: static;\s+order: -1;\s+width: auto;/u,
+    );
+  });
+});
