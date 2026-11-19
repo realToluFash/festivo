@@ -625,7 +625,6 @@ const RULES_STATE: Record<Standing, string | null> = {
   free: 'ssoFree',
 };
 
-/** Back to Sign-in rules, its row standing where the page left it. */
 export function rulesHref(standing: Standing): string {
   const state = RULES_STATE[standing];
 
