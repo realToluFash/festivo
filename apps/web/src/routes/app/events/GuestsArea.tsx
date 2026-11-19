@@ -145,6 +145,8 @@ import '../../../components/EventsSearch.css';
 import '../../../components/eventsDesk.css';
 import '../../../components/EventsList.css';
 import '../../../components/eventPage.css';
+import { DecisionAnswer } from './DecisionAnswer.tsx';
+import { useWhatAddingCosts } from './whatAddingCosts.ts';
 import './guests.css';
 
 type Load = { kind: 'loading' } | { kind: 'failed' } | { kind: 'loaded'; list: GuestList };
@@ -1262,6 +1264,7 @@ export function GuestsArea({
                     <section className="gs-column" aria-label={t('guestList.addGuest')}>
                       <AddForm
                         eventId={event.id}
+                        prices={canOn(event, 'budget.read')}
                         guests={guests}
                         groups={load.kind === 'loaded' ? load.list.groups : []}
                         country={country}
@@ -1802,6 +1805,7 @@ function needsByWho(typed: AddTyped): Record<string, NeedsProblems> {
 /** Add guest in place beside the list: it stays open after each guest, cleared, focus back on Full name. */
 function AddForm({
   eventId,
+  prices,
   guests,
   groups,
   country,
@@ -1810,6 +1814,7 @@ function AddForm({
   onDone,
 }: {
   eventId: string;
+  prices: boolean;
   guests: readonly Guest[];
   groups: readonly GuestGroup[];
   country: string;
@@ -1839,6 +1844,7 @@ function AddForm({
   const problems: Problems = { ...(tried ? problemsOf(values) : {}), ...refused };
   const [needsRefused, setNeedsRefused] = useState<Record<string, NeedsProblems>>({});
   const opened = useNeedsOpen();
+  const costs = useWhatAddingCosts(eventId, 1 + typed.companions.length, prices);
   const needsProblems: Record<string, NeedsProblems> = {
     ...(tried ? needsByWho(typed) : {}),
     ...needsRefused,
@@ -2080,6 +2086,7 @@ function AddForm({
           onChange={(companions) => change({ companions })}
         />
       </div>
+      <DecisionAnswer asked={costs} />
       <button
         type="button"
         className="gs-pill is-primary is-tall"

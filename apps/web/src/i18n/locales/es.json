@@ -5130,5 +5130,19 @@
     "saidLead": "{{name}} es responsable de {{station}}.",
     "saidNoLead": "{{station}} no tiene responsable.",
     "stationChange": "Cambiar zona, {{name}}"
+  },
+  "decisionAnswer": {
+    "head": "What adding them would cost",
+    "rise": "+{{amount}} if all come",
+    "upperOnly": "On the upper figure only, now {{total}}. New guests have not replied, so the settled {{settled}} stays.",
+    "moved": "{{from}} → {{to}} · {{headsFrom, number}} → {{headsTo, number}} if all come",
+    "plus": "+{{amount}}",
+    "notKnown": "Not known",
+    "notPricedYet": "Not priced yet, so its cost is not known",
+    "fullNotKnown_one": "Full cost not known: {{count, number}} cost it moves has no price yet.",
+    "fullNotKnown_other": "Full cost not known: {{count, number}} costs it moves have no price yet.",
+    "fullNotKnown_many": "Full cost not known: {{count, number}} costs it moves have no price yet.",
+    "noChange": "No change",
+    "nothingPerGuest": "Nothing in this budget is counted per guest."
   }
 }
