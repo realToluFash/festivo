@@ -104,6 +104,7 @@ describe("the account's colours at sign-in (sc-30441)", () => {
       providers: [],
       emailAddresses: [],
       phoneNumbers: [],
+      outsideEvents: [],
     });
 
     expect(document.documentElement.dataset.scheme).toBe('garden');
@@ -141,6 +142,7 @@ describe('a sign-out while the account is still being read', () => {
       providers: [],
       emailAddresses: [],
       phoneNumbers: [],
+      outsideEvents: [],
     });
     await refreshing;
 
@@ -199,6 +201,7 @@ describe('the organisations after a language change (sc-9267)', () => {
       providers: [],
       emailAddresses: [],
       phoneNumbers: [],
+      outsideEvents: [],
       ...overrides,
     };
   }
