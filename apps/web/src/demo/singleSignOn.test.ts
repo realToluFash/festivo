@@ -6,6 +6,7 @@ import {
   OKTA,
   SSO_STATES,
   type Sso,
+  askWords,
   emptyDraft,
   faultsOf,
   refusalOf,
@@ -15,6 +16,7 @@ import {
   ssoDomainOf,
   ssoStart,
   ssoStatus,
+  standingOf,
   switched,
   withFault,
 } from './singleSignOn.ts';
@@ -93,6 +95,19 @@ describe('single sign-on’s rules (sc-610)', () => {
       on: true,
       staying: null,
     });
+  });
+
+  it('keeps the provider people sign in through across a second change in a row', () => {
+    const on = { ...base, test: 'passed' as const, on: true, required: true };
+    const corrected = { ...GOOGLE, name: 'Google Workspace, corrected' };
+    const twice = saved(saved(on, GOOGLE, true), corrected, true);
+
+    expect(twice).toMatchObject({ provider: corrected, on: false, staying: OKTA, required: true });
+    expect(standingOf(twice)).toBe('required');
+    expect(askWords('change', twice).lines[0]).toContain(`through ${OKTA.name} until`);
+    expect(askWords('change', twice).keep).toBe(`Keep ${OKTA.name}`);
+    expect(standingOf(saved({ ...on, required: false }, GOOGLE, true))).toBe('on');
+    expect(standingOf(saved({ ...base, provider: null }, OKTA, false))).toBe('saved');
   });
 
   it('removes everything, required included', () => {

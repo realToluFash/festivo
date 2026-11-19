@@ -32,6 +32,7 @@ import {
   askWords,
   clockOf,
   emptyDraft,
+  liveOf,
   ourValues,
   providerLine,
   providerTitle,
@@ -69,6 +70,7 @@ export function SingleSignOn({
   const [ask, setAsk] = useState<AskKind | null>(start.ask);
   const [refusal, setRefusal] = useState<Refusal | null>(start.refusal);
   const status = ssoStatus(sso);
+  const live = liveOf(sso);
 
   useEffect(() => {
     if (start.told != null) tell(start.told);
@@ -154,9 +156,7 @@ export function SingleSignOn({
         <SsoForm
           key={opened}
           start={shownForm}
-          note={
-            shownForm.changing && sso.on && sso.provider != null ? stayingNote(sso.provider) : null
-          }
+          note={shownForm.changing && live != null ? stayingNote(live) : null}
           tell={tell}
           onCancel={() => open(null)}
           onSaved={(provider) => {
@@ -179,6 +179,13 @@ export function SingleSignOn({
     setRefusal(null);
     if (sso.required) setSso({ ...sso, required: false });
     else setAsk('required');
+  };
+  const startChange = () =>
+    open({ draft: emptyDraft(), pressed: false, refused: null, changing: true });
+  const pressChange = () => {
+    setRefusal(null);
+    if (live == null) startChange();
+    else setAsk('change');
   };
   const pressRemove = () => {
     if (sso.required) setRefusal('removeRequired');
@@ -260,7 +267,7 @@ export function SingleSignOn({
           )}
         </ul>
         <div className="sso-buttons is-start">
-          <TextAction label={W.change} onClick={() => setAsk('change')} />
+          <TextAction label={W.change} onClick={pressChange} />
           <button type="button" className="button" onClick={pressRemove}>
             {removeLabel(sso)}
           </button>
@@ -284,8 +291,7 @@ export function SingleSignOn({
           onGo={() => {
             setAsk(null);
             if (ask === 'required') setSso({ ...sso, required: true });
-            else if (ask === 'change')
-              open({ draft: emptyDraft(), pressed: false, refused: null, changing: true });
+            else if (ask === 'change') startChange();
             else {
               setSso(removed(sso));
               open(null);

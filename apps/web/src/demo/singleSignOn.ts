@@ -338,6 +338,11 @@ export function ssoStatus(sso: Sso): Status | null {
   }
 }
 
+/** The provider people sign in through now: the new one once on, the old one while a change waits. */
+export function liveOf(sso: Sso): Provider | null {
+  return sso.on ? sso.provider : sso.staying;
+}
+
 export function stayingNote(staying: Provider): string {
   return `${staying.name} stays on until the new provider is tested and switched on.`;
 }
@@ -366,6 +371,7 @@ export function askWords(
   sso: Sso,
 ): { title: string; lines: string[]; keep: string; go: string } {
   const name = sso.provider?.name ?? '';
+  const live = (liveOf(sso) ?? sso.provider)?.name ?? '';
   const domain = sso.domain ?? PROVED_DOMAIN;
 
   switch (ask) {
@@ -383,9 +389,9 @@ export function askWords(
       return {
         title: 'Change the identity provider?',
         lines: [
-          `People keep signing in through ${name} until the new provider has passed Test sign-on and you switch it on.`,
+          `People keep signing in through ${live} until the new provider has passed Test sign-on and you switch it on.`,
         ],
-        keep: `Keep ${name}`,
+        keep: `Keep ${live}`,
         go: 'Change provider',
       };
     case 'remove':
@@ -422,7 +428,7 @@ export function switched(sso: Sso): { sso: Sso; refusal: Refusal | null } {
 }
 
 export function saved(sso: Sso, provider: Provider, changing: boolean): Sso {
-  const staying = changing && sso.on ? (sso.staying ?? sso.provider) : null;
+  const staying = changing ? liveOf(sso) : null;
 
   return {
     ...sso,
@@ -457,10 +463,10 @@ export type Standing = 'none' | 'saved' | 'on' | 'required' | 'free';
 
 export function standingOf(sso: Sso): Standing {
   if (sso.plan === 'free') return 'free';
-  if (sso.provider == null || sso.domain == null) return 'none';
-  if (sso.on) return sso.required ? 'required' : 'on';
+  if (sso.domain == null) return 'none';
+  if (liveOf(sso) != null) return sso.required ? 'required' : 'on';
 
-  return 'saved';
+  return sso.provider == null ? 'none' : 'saved';
 }
 
 export type RowMark = 'grey' | 'on' | 'lock';
