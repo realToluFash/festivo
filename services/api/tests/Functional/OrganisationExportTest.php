@@ -23,10 +23,13 @@ use App\Enum\MembershipStatus;
 use App\Enum\OrganisationExportStatus;
 use App\Enum\SeededRole;
 use App\Repository\OrganisationExportRepository;
+use App\Storage\ObjectStore;
 use App\Tests\ApiTestCase;
+use App\Tests\Double\S3ClientWithAnotherTryFirst;
 use App\Tests\Traits\InvitesPeople;
 use App\Tests\Traits\OnboardsAccounts;
 use App\Tests\Traits\PutsPeopleOnEvents;
+use AsyncAws\Core\Configuration;
 use DateTimeImmutable;
 use Doctrine\DBAL\ParameterType;
 use Lexik\Bundle\JWTAuthenticationBundle\Services\JWTTokenManagerInterface;
@@ -473,6 +476,37 @@ final class OrganisationExportTest extends ApiTestCase
 
         self::assertSame(OrganisationExportStatus::Ready, $this->latest()->getStatus());
         self::assertEquals($ready, [$this->latest()->getArchiveKey(), $this->latest()->getReadyAt()]);
+    }
+
+    #[Test]
+    public function aTryThatLosesToAnotherDiscardsItsOwnArchiveAndLeavesTheWinners(): void
+    {
+        $export = new OrganisationExport($this->fresh(), $this->freshUser($this->owner), new DateTimeImmutable(self::ASKED_AT));
+        $export->attempting(new DateTimeImmutable(self::ASKED_AT));
+        self::em()->persist($export);
+        self::em()->flush();
+        $store = null;
+        $key = static fn (int $attempt): string => Str\format('organisation-exports/%s/%s-%d.zip', $export->getOrganisation()->getId()->toRfc4122(), $export->getId()->toRfc4122(), $attempt);
+        $winner = static function () use (&$store, $export, $key): void {
+            $store?->keep($key(1), 'the first try', 'application/zip');
+            self::service(OrganisationExportRepository::class)->claimReady($export, $key(1), new DateTimeImmutable('2026-10-17T13:25:00+00:00'));
+        };
+        $env = static fn (string $name): string => Type\string()->coerce($_SERVER[$name]);
+        $slow = new S3ClientWithAnotherTryFirst(Configuration::create([
+            'endpoint' => $env('STORAGE_ENDPOINT'),
+            'region' => $env('STORAGE_REGION'),
+            'accessKeyId' => $env('STORAGE_KEY'),
+            'accessKeySecret' => $env('STORAGE_SECRET'),
+            'pathStyleEndpoint' => 'true',
+        ]), $winner);
+        $store = new ObjectStore($slow, $env('STORAGE_BUCKET_PRIVATE'), $env('STORAGE_BUCKET_PUBLIC'), $env('STORAGE_PUBLIC_ENDPOINT'));
+        self::getContainer()->set(ObjectStore::class, $store);
+        self::mockTime(new DateTimeImmutable('2026-10-17T13:25:00+00:00'));
+
+        self::assertSame(1, self::service(OrganisationExports::class)->prepareDue());
+
+        self::assertSame([OrganisationExportStatus::Ready, $key(1)], [$this->latest()->getStatus(), $this->latest()->getArchiveKey()]);
+        self::assertSame([true, false], [$store->exists($env('STORAGE_BUCKET_PRIVATE'), $key(1)), $store->exists($env('STORAGE_BUCKET_PRIVATE'), $key(2))]);
     }
 
     #[Test]
