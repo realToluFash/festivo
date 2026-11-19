@@ -44,7 +44,11 @@
     "messagesCounts:guest_export.diet.halal",
     "messagesCounts:guest_export.diet.kosher",
     "web:vendors.categories.catering",
-    "messages:staff.job_suggested.runner"
+    "messages:staff.job_suggested.runner",
+    "web:dataControl.control",
+    "mobile:dataAndControl.control",
+    "web:dataControl.enterprise",
+    "mobile:dataAndControl.enterprise"
   ],
   "fr": [
     "web:nav.menu",
@@ -183,7 +187,9 @@
     "messages:staff.job_suggested.bar",
     "web:stations.sectionTables_one",
     "web:stations.sectionTables_other",
-    "messages:stations.place_suggested.bar"
+    "messages:stations.place_suggested.bar",
+    "web:dataControl.enterprise",
+    "mobile:dataAndControl.enterprise"
   ],
   "pt": [
     "web:seating.shapeCocktailShort",
@@ -235,6 +241,8 @@
     "web:vendors.categories.catering",
     "messages:staff.job_suggested.runner",
     "messages:staff.job_suggested.bar",
-    "messages:stations.place_suggested.bar"
+    "messages:stations.place_suggested.bar",
+    "web:dataControl.enterprise",
+    "mobile:dataAndControl.enterprise"
   ]
 }

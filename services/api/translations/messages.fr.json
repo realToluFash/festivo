@@ -409,6 +409,6 @@
     "validation.vendor_phone_invalid": "Ce numéro de téléphone n’est pas valide dans ce pays : {country}. Vérifiez-le et réessayez.",
     "vendors.archived_read_only": "Ce prestataire est archivé : vos modifications n’ont pas été enregistrées. Pour le modifier, restaurez-le depuis Archivés.",
     "access.plan_required": "Disponible avec le forfait Enterprise. Pour modifier ce réglage, contactez Soirely au sujet du forfait Enterprise.",
-    "email_domains.not_listed": "That domain is not on the list.",
-    "email_domains.taken": "Another organisation has already proved this domain. Contact Soirely support if it is yours."
+    "email_domains.not_listed": "Ce domaine ne figure pas dans la liste.",
+    "email_domains.taken": "Une autre organisation a déjà vérifié ce domaine. S’il vous appartient, contactez l’assistance Soirely."
 }
