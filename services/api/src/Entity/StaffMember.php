@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Entity;
 
 use App\Doctrine\Traits\Timestampable;
+use App\Enum\StaffLinkStatus;
 use DateTimeImmutable;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
@@ -67,6 +68,18 @@ class StaffMember
 
     #[ORM\Column(type: Types::BOOLEAN, options: ['default' => false])]
     private bool $floorLead = false;
+
+    /** Their own link (sc-3912): the person, never a token, carries how far it got. */
+    #[ORM\Column(type: Types::STRING, length: 16, enumType: StaffLinkStatus::class, options: ['default' => 'none'])]
+    private StaffLinkStatus $linkStatus = StaffLinkStatus::None;
+
+    /** Who copied, shared or marked it as sent; never set for Opened. */
+    #[ORM\ManyToOne(targetEntity: User::class)]
+    #[ORM\JoinColumn(nullable: true, onDelete: 'SET NULL')]
+    private ?User $linkBy = null;
+
+    #[ORM\Column(type: Types::DATETIME_IMMUTABLE, nullable: true)]
+    private ?DateTimeImmutable $linkAt = null;
 
     public function __construct(Event $event, string $fullName, ?string $mobile, ?string $email, ?User $member)
     {
@@ -171,5 +184,27 @@ class StaffMember
     public function setFloorLead(bool $floorLead): void
     {
         $this->floorLead = $floorLead;
+    }
+
+    public function getLinkStatus(): StaffLinkStatus
+    {
+        return $this->linkStatus;
+    }
+
+    public function getLinkBy(): ?User
+    {
+        return $this->linkBy;
+    }
+
+    public function getLinkAt(): ?DateTimeImmutable
+    {
+        return $this->linkAt;
+    }
+
+    public function linkMoved(StaffLinkStatus $status, ?User $by, ?DateTimeImmutable $at): void
+    {
+        $this->linkStatus = $status;
+        $this->linkBy = $by;
+        $this->linkAt = $at;
     }
 }

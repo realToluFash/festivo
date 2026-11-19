@@ -14,9 +14,10 @@ use App\Entity\StaffShift;
 use App\Repository\StaffJobRepository;
 use App\Repository\StaffMemberRepository;
 use App\Repository\StaffShiftRepository;
+use DateTimeZone;
 use Psl\Vec;
 
-/** `link` says only `none`, `no_mobile` or `erased` until sc-3912 sends links. Every time is the instant, with the event's offset. */
+/** `link` is how far the person's own link got (sc-3912), or `no_mobile` or `erased` when none can be given; `linkBy` and `linkAt` say who moved it and when. Every time is the instant, with the event's offset. */
 final readonly class StaffSerialiser
 {
     public function __construct(
@@ -79,8 +80,10 @@ final readonly class StaffSerialiser
             'link' => match (true) {
                 null !== $entry->getContactsErasedAt() => 'erased',
                 null === $entry->getMobile() => 'no_mobile',
-                default => 'none',
+                default => $entry->getLinkStatus()->value,
             },
+            'linkBy' => $entry->getLinkBy()?->getName(),
+            'linkAt' => $entry->getLinkAt()?->setTimezone(new DateTimeZone($event->getTimeZone()))->format(\DATE_ATOM),
             'contactsErased' => null !== $entry->getContactsErasedAt(),
         ];
     }

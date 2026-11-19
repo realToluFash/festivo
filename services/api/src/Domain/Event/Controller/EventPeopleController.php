@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domain\Event\Controller;
 
 use App\Domain\Event\People\EventPeople;
+use App\Domain\Staff\Link\StaffLinks;
 use App\Entity\Event;
 use App\Entity\EventPerson;
 use App\Entity\Membership;
@@ -21,6 +22,8 @@ use App\Http\Input;
 use App\Repository\EventPersonRepository;
 use App\Repository\EventRepository;
 use App\Repository\MembershipRepository;
+use App\Repository\StaffMemberRepository;
+use DateTimeZone;
 use Psl\Iter;
 use Psl\Type;
 use Psl\Vec;
@@ -40,6 +43,8 @@ final readonly class EventPeopleController
         private EventPeople $eventPeople,
         private MembershipRepository $membershipRepository,
         private MembershipDirectoryInterface $membershipDirectory,
+        private StaffMemberRepository $staffMemberRepository,
+        private StaffLinks $staffLinks,
     ) {
     }
 
@@ -53,6 +58,7 @@ final readonly class EventPeopleController
 
         return new JsonResponse([
             'people' => Vec\map($this->eventPersonRepository->findOnEvent($event->getId()), static fn (EventPerson $person): array => self::person($person, $seesAddresses)),
+            'staffLinks' => $this->staffLinks($event),
             // Named to every member, so a Member knows whom to ask (sc-29915); someone from outside learns no member beyond the event (sc-71).
             ...($member ? $this->administrators($event) : ['owners' => [], 'admins' => []]),
         ]);
@@ -136,6 +142,31 @@ final readonly class EventPeopleController
             'addressKind' => null === $shown ? null : $person->getAddressKind()?->value,
             'endsAt' => $person->isOutside() ? $person->getEvent()->getClosesAt()?->format(\DATE_ATOM) : null,
         ];
+    }
+
+    /**
+     * Each person holding a staff link not yet ended (sc-3912), shown to whoever may read the roster; `signedIn` stays false until sc-4235 signs them in.
+     *
+     * @return list<array{id: string, name: string, job: ?string, endsAt: string, signedIn: bool}>
+     */
+    private function staffLinks(Event $event): array
+    {
+        if (true !== $this->membershipDirectory->grantsOnEvent($this->user(), $event->getOrganisation()->getId(), $event->getId())?->holds(Permission::StaffRead)) {
+            return [];
+        }
+
+        $zone = new DateTimeZone($event->getTimeZone());
+
+        return Vec\map(
+            $this->staffLinks->live($event, $this->staffMemberRepository->findOnEvent($event)),
+            static fn (array $live): array => [
+                'id' => $live['entry']->getId()->toRfc4122(),
+                'name' => $live['entry']->getFullName(),
+                'job' => $live['entry']->getJob()?->getName(),
+                'endsAt' => $live['until']->setTimezone($zone)->format(\DATE_ATOM),
+                'signedIn' => false,
+            ],
+        );
     }
 
     private function managesPeople(Event $event): bool

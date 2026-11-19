@@ -266,5 +266,6 @@
     "validation.what_if_not_whole": "Indique un número entero para {change}.",
     "validation.what_if_too_large": "El cambio de {change} no puede superar {most, number, ::group-auto} en total.",
     "validation.what_if_guests_below_one": "Añada 1 invitado o más. Quitar invitados no es algo que se pueda calcular aquí.",
-    "validation.what_if_below_zero": "Eso dejaría {change} por debajo de 0. El evento tiene ahora {count, number, ::group-auto}."
+    "validation.what_if_below_zero": "Eso dejaría {change} por debajo de 0. El evento tiene ahora {count, number, ::group-auto}.",
+    "limits.staff_links": "This link has been opened too often. Try again {hour, plural, other {at {time}}}."
 }

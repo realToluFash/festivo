@@ -418,5 +418,6 @@
     "audit.invalid_filter": "Le journal d’audit ne propose pas ce filtre.",
     "email_domains.managed": "Votre adresse du domaine {domain} est gérée par {organisation} : vous ne pouvez être membre que de cette organisation.",
     "email_domains.only_ours_owner": "Seule une personne ayant le rôle Propriétaire peut modifier ce réglage.",
-    "email_domains.only_ours_unproved": "« Réservé à notre organisation » nécessite un domaine vérifié par cette organisation."
+    "email_domains.only_ours_unproved": "« Réservé à notre organisation » nécessite un domaine vérifié par cette organisation.",
+    "staff.link_needs_mobile": "Add a mobile number to send a link."
 }

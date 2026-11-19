@@ -266,5 +266,6 @@
     "validation.what_if_not_whole": "Change {change} by a whole number.",
     "validation.what_if_too_large": "Change {change} by {most, number, ::group-auto} or fewer in total.",
     "validation.what_if_guests_below_one": "Add 1 guest or more. Removing a guest is not something this can price.",
-    "validation.what_if_below_zero": "That would take {change} below 0. The event has {count, number, ::group-auto} now."
+    "validation.what_if_below_zero": "That would take {change} below 0. The event has {count, number, ::group-auto} now.",
+    "limits.staff_links": "This link has been opened too often. Try again {hour, plural, other {at {time}}}."
 }
