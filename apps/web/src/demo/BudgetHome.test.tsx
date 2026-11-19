@@ -165,7 +165,7 @@ describe('the Budget page at a desk in A (sc-31779)', () => {
 
     for (let left = 20; left > 0; left--) {
       if (screen.queryByText('No costs yet') != null) break;
-      const row = within(section('Costs')).getAllByRole('button', { name: /,/ })[0];
+      const row = within(section('Costs')).getAllByRole('button', { name: /,/ })[0] as HTMLElement;
       fireEvent.click(row);
       fireEvent.click(within(section('Costs')).getByRole('button', { name: /^Remove/ }));
     }
