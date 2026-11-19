@@ -20,6 +20,7 @@ import {
   wordsIn,
   wordsRoomKey,
   wholeLineHeight,
+  wordsPending,
   wordsSlot,
 } from '../layout/textSize.ts';
 import { Text, TitleCap, type TextProps } from './Text.tsx';
@@ -152,8 +153,7 @@ export function useWholeWords(
     measure,
     drawnAtStart: drawn === start,
     maxFontSizeMultiplier: drawn / size,
-    /** A room is coming and the text is not sized to it yet, so a frame drawn now would cut a word (sc-69816). */
-    pending: look.room !== undefined && (slot === 0 || widths.length < words.length),
+    pending: wordsPending(look.room, slot, widths.length, words.length),
     // A box rounded a fraction short of its last line has iOS draw that line's words clipped on the line above (sc-69816).
     lineHeight: wholeLineHeight(size, drawn),
     /** The width each of the texts has, whatever the texts say, for as long as the window keeps its width. */

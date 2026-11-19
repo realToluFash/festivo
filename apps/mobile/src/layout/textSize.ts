@@ -137,9 +137,19 @@ export function besideGlyph(
 
 export const LABEL_LINE = 1.22;
 
-/** The line height to give a text of `size` drawn at `drawn`, so that once scaled each line is whole points and a box of n lines rounds to n lines (sc-69816). */
+/** The line height to give a text of `size` drawn at `drawn`, so that once scaled each line is whole points and a box of n lines rounds to n lines (sc-69816). `drawn` must be the size iOS draws at: under a `TitleCap` that lowers it, pass the capped size, or the line is a fraction again. */
 export function wholeLineHeight(size: number, drawn: number): number {
   return (Math.ceil(drawn * LABEL_LINE) * size) / drawn;
+}
+
+/** A text given a `room` is not drawn until that room is reported and every word is measured, so no frame cuts a word; one given no room never waits (sc-69816). */
+export function wordsPending(
+  room: number | undefined,
+  slot: number,
+  measured: number,
+  words: number,
+): boolean {
+  return room !== undefined && (slot === 0 || measured < words);
 }
 
 /** 12 above and below a growing pill's words, or what main's height leaves around them at the default size, so a tablet on its side keeps 44 (sc-66900). */

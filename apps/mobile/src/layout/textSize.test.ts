@@ -26,6 +26,7 @@ import {
   wordsRoomKey,
   wordsSlot,
   wholeLineHeight,
+  wordsPending,
 } from './textSize.ts';
 
 const AX1 = 1.786;
@@ -452,5 +453,21 @@ describe('wholeLineHeight', () => {
 
   it('keeps four lines of a stepped-down row line at four whole lines', () => {
     expect(4 * wholeLineHeight(13, 40) * (40 / 13)).toBeCloseTo(196, 9);
+  });
+});
+
+describe('wordsPending', () => {
+  it('never holds a text given no room', () => {
+    expect(wordsPending(undefined, 0, 0, 3)).toBe(false);
+  });
+
+  it('holds a text whose room is not reported yet', () => {
+    expect(wordsPending(0, 0, 3, 3)).toBe(true);
+    expect(wordsPending(120, 0, 3, 3)).toBe(true);
+  });
+
+  it('holds a text until every word is measured, then draws it', () => {
+    expect(wordsPending(120, 120, 2, 3)).toBe(true);
+    expect(wordsPending(120, 120, 3, 3)).toBe(false);
   });
 });
