@@ -1284,7 +1284,7 @@ function BesideBack({ beside, children }: { beside: BesideBackNode; children: Re
   );
 }
 
-/** Back laid out as if the status were not there, the status measured hidden, and drawn beside the pill only in the room left; the bell is outside this row (sc-71821). */
+/** Back laid out as if the status were not there, the status measured hidden, and drawn beside the pill only in the room left; the bell is outside this row. It stays mounted while the status comes and goes, keeping the status's last width, so where it goes is known again the frame it returns (sc-71821). */
 function GivingWay({ beside, children }: { beside: GivesWay; children: ReactNode }) {
   const [slot, setSlot] = useState(0);
   const [back, setBack] = useState(0);
@@ -1308,7 +1308,7 @@ function GivingWay({ beside, children }: { beside: GivesWay; children: ReactNode
         accessibilityElementsHidden
         importantForAccessibility="no-hide-descendants"
       >
-        <View onLayout={widthOf(setStatus)}>{beside.status}</View>
+        {beside.status != null && <View onLayout={widthOf(setStatus)}>{beside.status}</View>}
       </View>
       {fits && beside.status}
     </View>

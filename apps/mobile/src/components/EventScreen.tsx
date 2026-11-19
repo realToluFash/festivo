@@ -48,6 +48,7 @@ import { outsideOn, outsidePlaces, readsOverview, wayBack } from '../kit/outside
 import { type Opened, openedOf, openedWithoutAsking } from '../kit/eventsOpen.ts';
 import { ASKS_END, SHOWN_EVENT, goUpToEvent } from '../kit/upToEvent.ts';
 import { useServerNow } from '../kit/serverNow.ts';
+import { backRow } from '../layout/backRow.ts';
 import { useLayout } from '../layout/useLayout.ts';
 import { rereadAccount, useSignedIn } from '../signedIn.ts';
 import { tokens } from '../theme/tokens.ts';
@@ -413,7 +414,7 @@ export function EventScreen({
     ) : null;
   const guestBack = guests ? guestsTop.back : null;
   // On Guests' list on a phone, Refreshing… stays beside Back only where the pill stays whole, else it takes its own line under the heading (sc-71821).
-  const givesWay = phone && guests && guestBack == null && refreshing != null;
+  const besideBackRow = backRow({ phone, guestsList: guests && guestBack == null, cardNamed });
   const titledInList = areaTitled || guests;
   const frameBack = !backs
     ? undefined
@@ -458,9 +459,9 @@ export function EventScreen({
       untitled={cardNamed || titledInList}
       offline={guests ? (guestsOffline.stale ?? opened.stale) : opened.stale}
       besideBack={
-        givesWay
+        besideBackRow === 'givingWay'
           ? { status: refreshing, onPlaced: setRefreshingBesideBack }
-          : phone || cardNamed
+          : besideBackRow === 'beside'
             ? refreshing
             : undefined
       }
@@ -503,7 +504,7 @@ export function EventScreen({
             <GuestsHeading
               kind={kind}
               titleRef={title}
-              refreshing={givesWay && refreshingBesideBack ? null : refreshing}
+              refreshing={besideBackRow === 'givingWay' && refreshingBesideBack ? null : refreshing}
               exports={exportGuests}
               onAdd={guestsTop.add ?? null}
               addRef={guestsAdd}
