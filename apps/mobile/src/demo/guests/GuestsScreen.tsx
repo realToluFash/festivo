@@ -69,6 +69,7 @@ import {
   exportDay,
   exportStart,
   exportWordsIn,
+  exportedName,
   fileName,
   narrowing,
   sheetWordsIn,
@@ -204,8 +205,8 @@ export function GuestsScreen({
   const day = exportDay(now, event.timeZone);
   const fileFor = (format: 'xlsx' | 'csv') =>
     inPortuguese
-      ? exportFileName(portuguese, event, now, format)
-      : fileName(event.name, day, format);
+      ? exportFileName(portuguese, { ...event, name: exportedName(state, event.name) }, now, format)
+      : fileName(exportedName(state, event.name), day, format);
   const [sharing, setSharing] = useState<string | null>(exported.share ? fileFor('xlsx') : null);
   const refs = useRef<Partial<Record<string, ViewInstance | null>>>({});
   const from = useRef<string>(start.focus ?? 'card');

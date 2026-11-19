@@ -239,6 +239,14 @@ const GUESTS: Record<GuestsState, Board> = {
     'Exportar after a search, in Portuguese',
     'sc-72136: as exportSearched, in Portuguese: Exportar convidados whole, Cancelar under it at the largest sizes, Filtro: Todos · pesquisa «okon»',
   ],
+  exportLongName: [
+    'Export, an event named with one long word',
+    'sc-72136: #AdeolaAndKwameForever2026 in the file name continues on the next line at the largest sizes, never cut',
+  ],
+  exportLongNamePt: [
+    'Exportar, an event named with one long word, in Portuguese',
+    'sc-72136: as exportLongName, in Portuguese: the file name wraps inside the word, nothing cut',
+  ],
   paste: [
     'Paste a reply',
     'sc-54450: iOS’s Paste, or Paste a reply on Android, under Find a guest',

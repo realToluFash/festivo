@@ -1455,7 +1455,8 @@ export function titleRowOf(state: GuestsState | null): { locale: 'en' | 'pt'; ex
       state === 'exportPt' ||
       state === 'offlinePt' ||
       state === 'refreshingPt' ||
-      state === 'exportSearchedPt'
+      state === 'exportSearchedPt' ||
+      state === 'exportLongNamePt'
         ? 'pt'
         : 'en',
     export: true,

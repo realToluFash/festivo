@@ -7,12 +7,14 @@ import {
   COLUMNS,
   EXPORT_STATES,
   ENGLISH_SHEET,
+  LONG_ONE_WORD_NAME,
   XW,
   cancelUnder,
   columnsFor,
   exportDay,
   exportStart,
   exportWordsIn,
+  exportedName,
   fileName,
   narrowing,
   scopeFor,
@@ -156,6 +158,17 @@ describe('the Export sheet at the largest text sizes (sc-72136)', () => {
     }
     expect(titleRowOf('exportSearched').locale).toBe('en');
     expect(titleRowOf('exportSearchedPt').locale).toBe('pt');
+  });
+
+  it('opens the sheet for an event named with one word wider than the row, in English and in Portuguese', () => {
+    for (const state of ['exportLongName', 'exportLongNamePt'] as const) {
+      expect(exportStart(state).open).toBe(true);
+      expect(exportedName(state, 'Adeola & Kwame')).toBe(LONG_ONE_WORD_NAME);
+    }
+    expect(LONG_ONE_WORD_NAME).not.toMatch(/\s/);
+    expect(exportedName('exportSearched', 'Adeola & Kwame')).toBe('Adeola & Kwame');
+    expect(titleRowOf('exportLongName').locale).toBe('en');
+    expect(titleRowOf('exportLongNamePt').locale).toBe('pt');
   });
 
   it('speaks Portuguese from the catalogue, and English as XW has it', () => {

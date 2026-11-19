@@ -19,6 +19,8 @@ export const EXPORT_STATES = [
   'exportGrantView',
   'exportSearched',
   'exportSearchedPt',
+  'exportLongName',
+  'exportLongNamePt',
 ] as const;
 
 export type ExportState = (typeof EXPORT_STATES)[number];
@@ -48,6 +50,8 @@ export function exportStart(state: string | null): ExportStart {
     case 'exportEmpty':
     case 'exportSearched':
     case 'exportSearchedPt':
+    case 'exportLongName':
+    case 'exportLongNamePt':
       return { ...CLOSED, open: true };
     case 'exportCsv':
       return { ...CLOSED, open: true, format: 'csv' };
@@ -100,6 +104,14 @@ export function exportDay(now: Date, timeZone: string): string {
     parts.find((one) => one.type === type)?.value ?? '';
 
   return `${part('year')}-${part('month')}-${part('day')}`;
+}
+
+/** An event named with one word wider than the iPhone's row at the twelfth step, so its file name must continue on the next line (sc-72136). */
+export const LONG_ONE_WORD_NAME = '#AdeolaAndKwameForever2026';
+
+/** The event's name as the file carries it: the long one-word name in the states that show it. */
+export function exportedName(state: string | null, name: string): string {
+  return state === 'exportLongName' || state === 'exportLongNamePt' ? LONG_ONE_WORD_NAME : name;
 }
 
 export function fileName(event: string, day: string, format: Format): string {
