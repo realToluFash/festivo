@@ -4,7 +4,7 @@ appId: host.exp.Exponent
 - openLink: ${METRO_URL}/--/settings/data-and-control
 - extendedWaitUntil:
     visible:
-      text: 'Email domains'
+      id: dataAndControl.emailDomains
     timeout: 20000
 - waitForAnimationToEnd:
     timeout: 8000

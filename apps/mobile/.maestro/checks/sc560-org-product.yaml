@@ -10,7 +10,7 @@ appId: host.exp.Exponent
     timeout: 8000
 - scrollUntilVisible:
     element:
-      text: 'Company domain joining'
+      text: '(?:Company domain joining|Unirse por dominio de empresa|Adhésion par domaine d’entreprise|Adesão por domínio da empresa)'
     direction: DOWN
     timeout: 15000
 - takeScreenshot: sc560-org-product
