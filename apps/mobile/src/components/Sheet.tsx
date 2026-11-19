@@ -444,6 +444,9 @@ function useSheetDrag(now: SheetDragNow) {
 /** Every modal window in the app, wherever it is drawn: iOS has one stack of them, not one per SheetsAtRoot. */
 const appWindows = sheetWindows();
 
+/** Settles once every sheet's window has gone: the system share sheet presented over a window still leaving goes with it. */
+export const sheetsGone = (): Promise<void> => appWindows.cleared();
+
 /** iOS cannot put a window up while another is going, so a modal waits its turn; `gone` is its onDismiss (sc-23267). */
 export function useWindowTurn(wanted: boolean): { shown: boolean; gone: () => void } {
   const id = useId();
