@@ -9,6 +9,7 @@ import {
 } from '@soirely/api-client';
 import { callingCode, countryChoices, formatEventDate, formatPhone } from '@soirely/domain';
 import {
+  type FocusEvent,
   type ReactNode,
   type RefObject,
   useCallback,
@@ -19,7 +20,7 @@ import {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link } from 'react-router';
+import { Link, useSearchParams } from 'react-router';
 
 import { api } from '../../../api.ts';
 import { Glyph } from '../../../components/Glyph.tsx';
@@ -67,9 +68,10 @@ interface Looking {
   q: string;
   category: VendorCategory | 'all';
   page: number;
+  vendor: string | null;
 }
 
-const NOT_LOOKING: Looking = { view: 'inUse', q: '', category: 'all', page: 1 };
+const NOT_LOOKING: Looking = { view: 'inUse', q: '', category: 'all', page: 1, vendor: null };
 
 /** Once the directory has shown, a read that fails keeps its page and fails only where the rows are. */
 type Rows = 'shown' | 'failed' | 'rereading';
@@ -87,14 +89,17 @@ const title = () => document.querySelector<HTMLElement>('.vd-desk h1');
 export function Vendors() {
   const session = useSession();
   const organisation = session.organisation;
+  const [params] = useSearchParams();
+  const landing = params.get('vendor');
 
   if (organisation == null) return null;
   if (!can(session, 'vendors.read')) return <Forbidden />;
 
   return (
     <Directory
-      key={organisation.id}
+      key={`${organisation.id}:${landing ?? ''}`}
       organisationId={organisation.id}
+      landing={landing}
       named={organisation.name}
       manages={can(session, 'vendors.manage')}
     />
@@ -103,17 +108,21 @@ export function Vendors() {
 
 function Directory({
   organisationId,
+  landing,
   named,
   manages,
 }: {
   organisationId: string;
+  landing: string | null;
   named: string;
   manages: boolean;
 }) {
   const { t } = useTranslation();
   const desk = useDeskTop();
   const { layers, covered, setHost } = useDeskLayers();
-  const [looking, setLooking] = useState<Looking>(NOT_LOOKING);
+  const [looking, setLooking] = useState<Looking>({ ...NOT_LOOKING, vendor: landing });
+  const [lit, setLit] = useState(landing);
+  const landed = useRef(landing == null);
   const [typed, setTyped] = useState('');
   const [load, setLoad] = useState<Load>({ kind: 'loading' });
   const [attempt, setAttempt] = useState(0);
@@ -134,6 +143,7 @@ function Directory({
           q: looking.q,
           category: looking.category === 'all' ? null : looking.category,
           page: looking.page,
+          vendor: looking.vendor,
         },
         { signal: stop.signal },
       )
@@ -173,12 +183,20 @@ function Directory({
     (search.current != null && search.current.value !== '' ? search.current : title())?.focus();
   }, [load]);
 
-  const look = (next: Omit<Looking, 'page'>) => {
+  useEffect(() => {
+    if (load.kind !== 'loaded' || landed.current) return;
+    landed.current = true;
+    focusWhenFree(() => document.getElementById(`vendor-${lit}`));
+  }, [load, lit]);
+
+  const look = (next: Omit<Looking, 'page' | 'vendor'>) => {
     setTyped(next.q);
-    setLooking({ ...next, page: 1 });
+    setLooking({ ...next, page: 1, vendor: null });
+    setLit(null);
   };
   const turn = (page: number) => {
-    setLooking((was) => ({ ...was, page }));
+    setLooking((was) => ({ ...was, page, vendor: null }));
+    setLit(null);
     title()?.focus();
   };
   const reread = () => setAttempt((n) => n + 1);
@@ -217,6 +235,7 @@ function Directory({
                 typed={typed}
                 named={named}
                 manages={manages}
+                lit={lit}
                 menu={menu}
                 search={search}
                 onLook={look}
@@ -225,6 +244,7 @@ function Directory({
                 onMenu={setMenu}
                 onCloseMenu={closeMenu}
                 onRetry={retry}
+                onMoveOn={() => setLit(null)}
                 onAdd={() => setEditing({ kind: 'add' })}
                 onOpen={(vendor) => setEditing({ kind: 'edit', vendor })}
                 onRestore={(vendor) => {
@@ -274,6 +294,7 @@ function Loaded({
   typed,
   named,
   manages,
+  lit,
   menu,
   search,
   onLook,
@@ -282,6 +303,7 @@ function Loaded({
   onMenu,
   onCloseMenu,
   onRetry,
+  onMoveOn,
   onAdd,
   onOpen,
   onRestore,
@@ -292,14 +314,16 @@ function Loaded({
   typed: string;
   named: string;
   manages: boolean;
+  lit: string | null;
   menu: 'category' | 'filter' | null;
   search: RefObject<HTMLInputElement | null>;
-  onLook: (next: Omit<Looking, 'page'>) => void;
+  onLook: (next: Omit<Looking, 'page' | 'vendor'>) => void;
   onType: (typed: string) => void;
   onTurn: (page: number) => void;
   onMenu: (menu: 'category' | 'filter') => void;
   onCloseMenu: () => void;
   onRetry: () => void;
+  onMoveOn: () => void;
   onAdd: () => void;
   onOpen: (vendor: Vendor) => void;
   onRestore: (vendor: Vendor) => void;
@@ -307,7 +331,7 @@ function Loaded({
   const { t } = useTranslation();
   const locale = dateLocale();
   const readerZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-  const { page: _page, ...settled } = looking;
+  const { page: _page, vendor: _vendor, ...settled } = looking;
   const kept = { ...settled, q: typed };
   const searching = looking.q.trim() !== '' || looking.category !== 'all';
   const counted = searching && page.total > 0 && rows === 'shown';
@@ -446,6 +470,8 @@ function Loaded({
                         .filter((part) => part != null && part !== '')
                         .join(' · ')}
                       manages={manages}
+                      lit={one.id === lit}
+                      onMoveOn={onMoveOn}
                       onOpen={() => onOpen(one)}
                       onRestore={() => onRestore(one)}
                     />
@@ -526,10 +552,10 @@ function NoMatch({
   looking: Looking;
   typed: string;
   categoryWord: (key: VendorCategory) => string;
-  onLook: (next: Omit<Looking, 'page'>) => void;
+  onLook: (next: Omit<Looking, 'page' | 'vendor'>) => void;
 }) {
   const { t } = useTranslation();
-  const { page: _page, ...settled } = looking;
+  const { page: _page, vendor: _vendor, ...settled } = looking;
   const kept = { ...settled, q: inBox };
   const typed = looking.q.trim();
   const category = looking.category === 'all' ? null : categoryWord(looking.category);
@@ -565,21 +591,34 @@ function VendorRow({
   vendor,
   line,
   manages,
+  lit,
+  onMoveOn,
   onOpen,
   onRestore,
 }: {
   vendor: Vendor;
   line: string;
   manages: boolean;
+  lit: boolean;
+  onMoveOn: () => void;
   onOpen: () => void;
   onRestore: () => void;
 }) {
   const { t } = useTranslation();
   const words = <RowWords title={vendor.name} lines={line === '' ? [] : [line]} />;
+  const className = lit ? 'desk-row is-on' : 'desk-row';
+  const onBlur = (event: FocusEvent) => {
+    const to = event.relatedTarget;
+    if (lit && !(to instanceof Element && to.closest('.desk-layers') != null)) onMoveOn();
+  };
 
   if (vendor.archivedAt != null || !manages)
     return (
-      <div className="desk-row">
+      <div
+        id={`vendor-${vendor.id}`}
+        className={className}
+        {...(lit ? { tabIndex: -1, onBlur } : {})}
+      >
         {words}
         {vendor.archivedAt != null && manages && (
           <TextAction label={t('vendors.restore')} onClick={onRestore} />
@@ -588,7 +627,13 @@ function VendorRow({
     );
 
   return (
-    <button id={`vendor-${vendor.id}`} type="button" className="desk-row" onClick={onOpen}>
+    <button
+      id={`vendor-${vendor.id}`}
+      type="button"
+      className={className}
+      onClick={onOpen}
+      onBlur={onBlur}
+    >
       {words}
       <Chevron />
     </button>

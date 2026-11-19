@@ -51,6 +51,8 @@ export interface VendorsLooking {
   q: string;
   category: VendorCategory | null;
   page: number;
+  /** Opens the page holding this vendor instead, when nothing is searched. */
+  vendor?: string | null;
 }
 
 /** A page, with the counts the card and the menus show: the whole view's, whatever is searched. */
@@ -134,6 +136,7 @@ export function vendorsQuery(looking: VendorsLooking): string {
   if (looking.q.trim() !== '') query.set('q', looking.q.trim());
   if (looking.category != null) query.set('category', looking.category);
   if (looking.page > 1) query.set('page', String(looking.page));
+  if (looking.vendor != null) query.set('vendor', looking.vendor);
   const search = query.toString();
 
   return search === '' ? '' : `?${search}`;
