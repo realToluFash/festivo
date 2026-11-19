@@ -6,5 +6,6 @@ appId: host.exp.Exponent
 - tapOn: 'Sign out'
 - waitForAnimationToEnd: { timeout: 4000 }
 - tapOn: { text: 'Sign out', optional: true }
+- extendedWaitUntil: { notVisible: 'Sign out', timeout: 15000 }
 - waitForAnimationToEnd: { timeout: 4000 }
 - takeScreenshot: signedOut

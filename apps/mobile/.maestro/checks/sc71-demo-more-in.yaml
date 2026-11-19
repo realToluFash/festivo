@@ -6,11 +6,16 @@ appId: host.exp.Exponent
 - waitForAnimationToEnd: { timeout: 8000 }
 - takeScreenshot: more-in
 - tapOn: { text: 'More', optional: true }
+- extendedWaitUntil: { visible: { id: 'inside.more.account' }, timeout: 30000 }
+- assertVisible: { id: 'inside.more.signOut' }
 - waitForAnimationToEnd: { timeout: 4000 }
 - takeScreenshot: more-in-more
 - openLink: ${METRO_URL}/--/demo/people?state=addOutside
+- extendedWaitUntil: { visible: { id: 'people.add.outside' }, timeout: 30000 }
 - waitForAnimationToEnd: { timeout: 8000 }
 - takeScreenshot: addOutside
 - openLink: ${METRO_URL}/--/demo/people
+- extendedWaitUntil: { visible: { id: 'people.row.*' }, timeout: 30000 }
+- assertNotVisible: { id: 'people.add' }
 - waitForAnimationToEnd: { timeout: 8000 }
 - takeScreenshot: people
