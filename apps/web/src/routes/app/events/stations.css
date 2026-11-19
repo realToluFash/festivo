@@ -6,7 +6,7 @@
   gap: var(--spaceMd);
 }
 
-.sn-floor {
+.sn .sn-card.sn-floor {
   flex-direction: row;
   align-items: center;
 }
@@ -324,4 +324,29 @@
 
 .sn .mn-quiet.is-here {
   color: var(--colorAccentText);
+}
+
+/* At 400% zoom (320 CSS px) a row's buttons wrap under its name and a Served from select drops under its item, as sc-3910's Design says; the demo does not reflow. */
+@media (width <= 720px) {
+  .sn .sn-row-top,
+  .sn .sn-item {
+    flex-wrap: wrap;
+  }
+
+  .sn .sn-row-names,
+  .sn .sn-item-name {
+    flex-basis: 100%;
+  }
+
+  .sn .sn-acts {
+    justify-content: flex-start;
+  }
+
+  .sn .sn-item {
+    padding-block: var(--spaceSm);
+  }
+
+  .sn .desk-box.sn-select.is-dense {
+    width: 100%;
+  }
 }

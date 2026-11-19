@@ -528,7 +528,7 @@ describe('The Roster on the Staff page (sc-3906)', () => {
     expect(sheetsLeadingWithRs()).toEqual([]);
   });
 
-  it('writes each station in the Station column, a section with its tables and a lead in words (sc-3910)', async () => {
+  it('writes each station in the Station column, a section by its plain name and a lead in words (sc-3910)', async () => {
     signedIn();
     const grill = { id: 'grill', name: 'Grill', kind: 'place', tables: [] };
     const sectionA = { id: 'sa', name: 'Section A', kind: 'section', tables: tablesOf(6) };
@@ -549,7 +549,7 @@ describe('The Roster on the Staff page (sc-3906)', () => {
 
     const rows = (await screen.findByRole('table')).querySelectorAll('tbody tr');
     expect(rows[0]?.querySelectorAll('td')[1]?.textContent).toBe('Grill Lead');
-    expect(rows[1]?.querySelectorAll('td')[1]?.textContent).toBe('Section A · 6 tables');
+    expect(rows[1]?.querySelectorAll('td')[1]?.textContent).toBe('Section A');
     expect(rows[2]?.querySelectorAll('td')[1]?.textContent).toBe('No station yet');
     const gone = rows[3]?.querySelectorAll('td')[1] as HTMLElement;
     expect(within(gone).getByText('No station')).toBeTruthy();
@@ -610,7 +610,7 @@ describe('The Roster on the Staff page (sc-3906)', () => {
       'No station yet',
       'Pass',
       'Bar',
-      'Section B · 1 table',
+      'Section B',
     ]);
     expect(
       [...select.querySelectorAll('optgroup')].map((group) => [
@@ -619,13 +619,11 @@ describe('The Roster on the Staff page (sc-3906)', () => {
       ]),
     ).toEqual([
       ['Places', ['Pass', 'Bar']],
-      ['Seating sections', ['Section B · 1 table']],
+      ['Seating sections', ['Section B']],
     ]);
     fireEvent.change(select, { target: { value: 'sb' } });
 
-    expect(await screen.findAllByText('Funmi Bakare is on Section B · 1 table.')).not.toHaveLength(
-      0,
-    );
+    expect(await screen.findAllByText('Funmi Bakare is on Section B.')).not.toHaveLength(0);
     expect(
       sent.find((one) => one.line === 'PUT /api/events/ev_1/stations/people/st_1')?.body,
     ).toEqual({ station: 'sb' });

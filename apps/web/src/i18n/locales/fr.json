@@ -5226,5 +5226,20 @@
     "single": "Access to a single event still works.",
     "way": "Change your main email address",
     "close": "Close"
+  },
+  "decisionAnswer": {
+    "head": "Ce que coûterait cet ajout",
+    "rise": "+{{amount}} si tous viennent",
+    "upperOnly": "Seul le montant maximal augmente, à {{upper}} désormais. Les nouveaux invités n’ont pas encore répondu : le montant confirmé reste donc à {{settled}}.",
+    "moved": "{{from}} → {{to}} · {{headsFrom, number}} → {{headsTo, number}} si tous viennent",
+    "plus": "+{{amount}}",
+    "notKnown": "Inconnu",
+    "notKnownIfAll": "Coût inconnu si tous viennent",
+    "notPricedYet": "Pas encore de prix, son coût est donc inconnu",
+    "fullNotKnown_one": "Coût total inconnu : {{count, number}} des coûts concernés n’a pas encore de prix.",
+    "fullNotKnown_other": "Coût total inconnu : {{count, number}} des coûts concernés n’ont pas encore de prix.",
+    "fullNotKnown_many": "Coût total inconnu : {{count, number}} des coûts concernés n’ont pas encore de prix.",
+    "noChange": "Aucun changement",
+    "nothingPerGuest": "Rien dans ce budget n’est calculé par invité."
   }
 }

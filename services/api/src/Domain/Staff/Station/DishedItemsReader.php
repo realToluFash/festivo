@@ -64,6 +64,22 @@ final readonly class DishedItemsReader
         return $counts;
     }
 
+    /** @param list<array{course: MenuCourse, items: list<array{name: string, key: string, station: ?StaffStation}>}> $courses */
+    public static function atThePass(array $courses): int
+    {
+        $count = 0;
+
+        foreach ($courses as $course) {
+            foreach ($course['items'] as $item) {
+                if (null === $item['station']) {
+                    ++$count;
+                }
+            }
+        }
+
+        return $count;
+    }
+
     /**
      * @param list<StaffStation> $places
      * @param array<string, int> $counts
