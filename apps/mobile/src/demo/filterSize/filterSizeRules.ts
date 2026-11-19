@@ -1,12 +1,6 @@
 import { picksShown } from '@soirely/domain';
 
-import {
-  atAccessibilitySizes,
-  fitWidest,
-  frameTitleSize,
-  labelStart,
-  titleSize,
-} from '../../layout/textSize.ts';
+import { atAccessibilitySizes, fitWidest, labelStart } from '../../layout/textSize.ts';
 
 export type FilterSize = 'device' | 'default' | 'seventh' | 'ax1' | 'ax2' | 'ax3' | 'ax4' | 'ax5';
 export type FilterLanguage = 'en' | 'fr';
@@ -58,10 +52,6 @@ export function keyOf<Key extends string>(
 }
 
 export const ROW_TYPE = { title: 16, value: 15 } as const;
-
-export function eventsTitleCap(scale: number, tablet: boolean, shortSide: number): number {
-  return titleSize(frameTitleSize(tablet, shortSide), scale);
-}
 
 export function rowStarts(scale: number, cap: number): { title: number; value: number } {
   return {
@@ -126,5 +116,5 @@ export function rowDrawn(row: RowMeasure): RowDrawn {
 
 /** "+N more" with its spaces unbreakable, so it moves to the next line whole rather than splitting. */
 export function keptWhole(tail: string): string {
-  return tail.replace(/ /gu, ' ');
+  return tail.replace(/ /gu, '\u00a0');
 }

@@ -50,12 +50,12 @@ import {
   type FilterLanguage,
   type FilterPicks,
   type FilterSize,
-  eventsTitleCap,
   filterScale,
   keptWhole,
   rowDrawn,
   rowStarts,
 } from './filterSizeRules.ts';
+import { frameTitleCap } from '../frameTitleCap.ts';
 
 export interface FilterSizeStart {
   size: FilterSize;
@@ -95,7 +95,7 @@ export function FilterSizeScreen({ start }: { start: FilterSizeStart }) {
     [i18n, language],
   );
   const scale = filterScale(size, fontScale);
-  const cap = eventsTitleCap(scale, isTablet(layout.kind), Math.min(layout.width, layout.height));
+  const cap = frameTitleCap(isTablet(layout.kind), Math.min(layout.width, layout.height), scale);
 
   useEffect(() => {
     const wait = setTimeout(() => anchorUnder(filterRef, setMenuAt), MENU_AFTER_MS);

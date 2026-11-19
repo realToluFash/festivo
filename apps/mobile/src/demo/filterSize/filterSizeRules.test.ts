@@ -1,25 +1,18 @@
 import { describe, expect, it } from 'vitest';
 
-import {
-  type RowMeasure,
-  eventsTitleCap,
-  filterScale,
-  keptWhole,
-  rowDrawn,
-  rowStarts,
-} from './filterSizeRules.ts';
+import { type RowMeasure, filterScale, keptWhole, rowDrawn, rowStarts } from './filterSizeRules.ts';
+import { frameTitleCap } from '../frameTitleCap.ts';
 
 const AX1 = filterScale('ax1', 1);
 const AX5 = filterScale('ax5', 1);
 const PHONE = 402;
-const IPAD = 820;
 
 const row = (over: Partial<RowMeasure>): RowMeasure => {
   const scale = over.scale ?? AX5;
 
   return {
     scale,
-    cap: eventsTitleCap(scale, false, PHONE),
+    cap: frameTitleCap(false, PHONE, scale),
     room: 220,
     gap: 12,
     title: 120,
@@ -32,22 +25,13 @@ const row = (over: Partial<RowMeasure>): RowMeasure => {
   };
 };
 
-describe('eventsTitleCap', () => {
-  it('is the Events title’s size: 38 at AX1 and 43 from AX2, on the phone and the iPad', () => {
-    expect(eventsTitleCap(AX1, false, PHONE)).toBe(38);
-    expect(eventsTitleCap(AX1, true, IPAD)).toBe(38);
-    expect(eventsTitleCap(filterScale('ax2', 1), false, PHONE)).toBe(43);
-    expect(eventsTitleCap(AX5, true, IPAD)).toBe(43);
-  });
-});
-
 describe('rowStarts', () => {
   it('stops the title and the value at the Events title, both at 43 at AX5', () => {
-    expect(rowStarts(AX5, eventsTitleCap(AX5, false, PHONE))).toEqual({ title: 43, value: 43 });
+    expect(rowStarts(AX5, frameTitleCap(false, PHONE, AX5))).toEqual({ title: 43, value: 43 });
   });
 
   it('leaves the words under the cap at the person’s size at AX1', () => {
-    const starts = rowStarts(AX1, eventsTitleCap(AX1, false, PHONE));
+    const starts = rowStarts(AX1, frameTitleCap(false, PHONE, AX1));
 
     expect(starts.title).toBeCloseTo(16 * AX1);
     expect(starts.value).toBeCloseTo(15 * AX1);
@@ -55,7 +39,7 @@ describe('rowStarts', () => {
 
   it('caps nothing at the standard sizes', () => {
     const seventh = filterScale('seventh', 1);
-    const starts = rowStarts(seventh, eventsTitleCap(seventh, false, PHONE));
+    const starts = rowStarts(seventh, frameTitleCap(false, PHONE, seventh));
 
     expect(starts.title).toBeCloseTo(16 * seventh);
     expect(starts.value).toBeCloseTo(15 * seventh);
@@ -147,6 +131,6 @@ describe('rowDrawn at the accessibility sizes', () => {
 
 describe('keptWhole', () => {
   it('keeps "+N more" on one line', () => {
-    expect(keptWhole('+1 autre')).toBe('+1 autre');
+    expect(keptWhole('+1 autre')).toBe('+1\u00a0autre');
   });
 });
