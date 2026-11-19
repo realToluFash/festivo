@@ -4,7 +4,7 @@ export const DECIDE_WORDS = {
   head: 'What adding them would cost',
   rise: (amount: string) => `+${amount} if all come`,
   upperOnly: (total: string, settled: string) =>
-    `On the upper figure only, now ${total}. New guests have not replied, so the settled ${settled} stays.`,
+    `On the upper figure once they're invited, taking it to ${total}. The settled ${settled} stays until they reply.`,
   moved: (from: string, to: string, headsFrom: number, headsTo: number) =>
     `${from} → ${to} · ${headsFrom} → ${headsTo} if all come`,
   plus: (amount: string) => `+${amount}`,
