@@ -1379,6 +1379,7 @@
       "failedTitle": "No se han podido cargar más personas.",
       "failedLine": "Compruebe la conexión y vuelva a intentarlo."
     },
+    "alsoMemberOf_zero": "No es miembro de ninguna otra organización",
     "alsoMemberOf_one": "También es miembro de otra organización",
     "alsoMemberOf_many": "También es miembro de {{count, number}} de organizaciones más",
     "alsoMemberOf_other": "También es miembro de {{count, number}} organizaciones más"

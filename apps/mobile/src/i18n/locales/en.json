@@ -1335,6 +1335,7 @@
       "failedTitle": "More people did not load.",
       "failedLine": "Check your connection and try again."
     },
+    "alsoMemberOf_zero": "Not a member of any other organisation",
     "alsoMemberOf_one": "Also a member of 1 other organisation",
     "alsoMemberOf_other": "Also a member of {{count, number}} other organisations"
   },
