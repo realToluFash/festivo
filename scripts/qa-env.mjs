@@ -2160,13 +2160,19 @@ function unitState(unit) {
 }
 
 // adbd can still be settling once boot completes, and a reverse made then is dropped without an error (sc-35453).
-async function reversePorts(tools) {
-  let missing = reversedPorts(CONFIG.ports);
+// The emulator dropping offline for a moment loses them too, so a batch puts them back before each run (sc-71513).
+export async function restoreReverses(adb, ports, { wait = pause } = {}) {
+  let missing = unreversed(adb(['reverse', '--list']), ports);
   for (let i = 0; i < 10 && missing.length; i++) {
-    if (i) await pause(1000);
-    for (const port of missing) adbOut(tools, ['reverse', `tcp:${port}`, `tcp:${port}`]);
-    missing = unreversed(adbOut(tools, ['reverse', '--list']), reversedPorts(CONFIG.ports));
+    if (i) await wait(1000);
+    for (const port of missing) adb(['reverse', `tcp:${port}`, `tcp:${port}`]);
+    missing = unreversed(adb(['reverse', '--list']), ports);
   }
+  return missing;
+}
+
+async function reversePorts(tools) {
+  const missing = await restoreReverses((args) => adbOut(tools, args), reversedPorts(CONFIG.ports));
   if (missing.length) {
     throw new Error(
       `${emulatorSerial()} still has ${missing.join(', ')} unreversed after ten seconds`,
@@ -4041,13 +4047,6 @@ async function batch(args) {
   });
 
   const apiState = composeApi(root, onAndroid);
-  // A batch killed inside withoutReverse left the API's port unreversed.
-  if (onAndroid)
-    adbOut(androidTools(), [
-      'reverse',
-      `tcp:${CONFIG.ports.API_PORT}`,
-      `tcp:${CONFIG.ports.API_PORT}`,
-    ]);
   await apiState.move('up');
   const named = languages[0] !== 'any';
   const signedIn = named ? apiSession(email, password, secret) : null;
@@ -4102,6 +4101,8 @@ async function batch(args) {
   };
   const test = async (flow, held) => {
     await apiState.move('up');
+    // A batch killed inside withoutReverse, or an emulator that went offline, left ports unreversed.
+    if (onAndroid) await reversePorts(androidTools());
     const since = Date.now();
     let failed = true;
     try {
