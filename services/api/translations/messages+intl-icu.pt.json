@@ -177,5 +177,10 @@
     "validation.vendor_website_too_long": "Encurte o endereço do site para um máximo de {count, number, ::group-auto} caracteres.",
     "validation.vendor_address_too_long": "Encurte a morada para um máximo de {count, number, ::group-auto} caracteres.",
     "validation.vendor_note_too_long": "Encurte a nota para um máximo de {count, number, ::group-auto} caracteres.",
-    "staff.shift_needed_below": "{n, plural, one {Está {n, number, ::group-auto} pessoa neste turno. Retire-a primeiro ou mantenha {n, number, ::group-auto} ou mais.} many {Estão {n, number, ::group-auto} de pessoas neste turno. Retire algumas primeiro ou mantenha {n, number, ::group-auto} ou mais.} other {Estão {n, number, ::group-auto} pessoas neste turno. Retire algumas primeiro ou mantenha {n, number, ::group-auto} ou mais.}}"
+    "staff.shift_needed_below": "{n, plural, one {Está {n, number, ::group-auto} pessoa neste turno. Retire-a primeiro ou mantenha {n, number, ::group-auto} ou mais.} many {Estão {n, number, ::group-auto} de pessoas neste turno. Retire algumas primeiro ou mantenha {n, number, ::group-auto} ou mais.} other {Estão {n, number, ::group-auto} pessoas neste turno. Retire algumas primeiro ou mantenha {n, number, ::group-auto} ou mais.}}",
+    "validation.what_if_change_unknown": "“{change}” is not a change a budget can price. Ask about guests, tables, staff_hours or days.",
+    "validation.what_if_not_whole": "Change {change} by a whole number.",
+    "validation.what_if_too_large": "Change {change} by {most, number, ::group-auto} or fewer.",
+    "validation.what_if_guests_below_one": "Add 1 guest or more. Removing a guest is not something this can price.",
+    "validation.what_if_below_zero": "That would take {change} below 0. The event has {count, number, ::group-auto} now."
 }
