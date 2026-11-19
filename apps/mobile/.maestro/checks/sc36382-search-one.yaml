@@ -1,0 +1,23 @@
+# One organisation matches a search; the clear control is labelled. sc-36382.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/
+- tapOn:
+    id: 'tab-today|frame.home'
+    optional: true
+- tapOn:
+    id: 'frame.organisation|home.switchOrganisation'
+- extendedWaitUntil:
+    visible:
+      id: 'switcher.heading'
+    timeout: 10000
+- waitForAnimationToEnd:
+    timeout: 5000
+- tapOn:
+    id: 'switcher.search'
+- inputText: 'Gala'
+- waitForAnimationToEnd:
+    timeout: 3000
+- assertVisible:
+    id: 'switcher.search.clear'
+- takeScreenshot: one

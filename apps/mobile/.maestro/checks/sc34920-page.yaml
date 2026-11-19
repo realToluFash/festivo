@@ -1,0 +1,11 @@
+# sc-34920: Settings › Personalisation, its card and its two lines.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/settings/personalisation
+- extendedWaitUntil:
+    visible:
+      id: personalisation.card
+    timeout: 30000
+- runFlow: ../developer-menu-close.yaml
+- waitForAnimationToEnd
+- takeScreenshot: page

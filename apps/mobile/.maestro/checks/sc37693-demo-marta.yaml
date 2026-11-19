@@ -1,0 +1,12 @@
+# sc-37693: demo-marta.
+appId: host.exp.Exponent
+---
+- setOrientation: ${ORIENT}
+- openLink: ${METRO_URL}/--/demo/settings/members?state=marta
+- extendedWaitUntil: { visible: '.*(Members|Cancel|Settings|Remove).*', timeout: 30000 }
+- waitForAnimationToEnd: { timeout: 8000 }
+- takeScreenshot: demo-marta-top
+- scroll
+- scroll
+- waitForAnimationToEnd
+- takeScreenshot: demo-marta-foot

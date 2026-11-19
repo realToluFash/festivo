@@ -1,0 +1,31 @@
+# sc-52862 regression, upright: ${EVENT_ID}'s Venue row still opens its edit, and Dates' row its own. Needs ${METRO_URL}, ${EVENT_ID}.
+appId: host.exp.Exponent
+---
+- setOrientation: LANDSCAPE_LEFT
+- waitForAnimationToEnd
+- openLink: ${METRO_URL}/--/events/${EVENT_ID}
+- extendedWaitUntil:
+    visible:
+      id: 'events.page'
+    timeout: 60000
+- scrollUntilVisible:
+    element:
+      id: 'events.details.venue'
+    centerElement: true
+    timeout: 20000
+- tapOn:
+    id: 'events.details.venue'
+- waitForAnimationToEnd
+- takeScreenshot: venue-edit
+- back
+- waitForAnimationToEnd
+- scrollUntilVisible:
+    element:
+      id: 'events.details.dates'
+    direction: UP
+    centerElement: true
+    timeout: 20000
+- tapOn:
+    id: 'events.details.dates'
+- waitForAnimationToEnd
+- takeScreenshot: dates-edit

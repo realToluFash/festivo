@@ -1,0 +1,21 @@
+# sc-36126: the Delete {{organisation}} screen and its verb, left by cancel.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/settings/organisation
+- extendedWaitUntil:
+    visible:
+      id: organisation.card
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: organisation.ownership.delete
+- tapOn:
+    id: organisation.ownership.delete
+- extendedWaitUntil:
+    visible:
+      id: organisation.delete.name
+    timeout: 30000
+- waitForAnimationToEnd
+- takeScreenshot: delete-screen
+- tapOn:
+    id: organisation.delete.cancel

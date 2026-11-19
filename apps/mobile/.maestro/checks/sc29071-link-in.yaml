@@ -1,0 +1,17 @@
+# Signed in: Close on Set a new password and on a dead link goes back to the app. sc-29071.
+appId: host.exp.Exponent
+---
+- runFlow: ../return-home.yaml
+- openLink: ${METRO_URL}/--/reset-password?token=${TOKEN_LINK}
+- extendedWaitUntil: { visible: { id: 'recovery.password' }, timeout: 30000 }
+- takeScreenshot: in-01-new-password-signed-in
+- hideKeyboard
+- tapOn: { id: 'recovery.close' }
+- extendedWaitUntil: { visible: { id: 'home.openSettings' }, timeout: 20000 }
+- takeScreenshot: in-02-closed-to-app
+- openLink: ${METRO_URL}/--/reset-password?token=${TOKEN_EXP}
+- extendedWaitUntil: { visible: '{{t:recovery.expiredTitle}}', timeout: 30000 }
+- takeScreenshot: in-03-expired-signed-in
+- tapOn: { id: 'recovery.close' }
+- extendedWaitUntil: { visible: { id: 'home.openSettings' }, timeout: 20000 }
+- takeScreenshot: in-04-dead-closed-to-app

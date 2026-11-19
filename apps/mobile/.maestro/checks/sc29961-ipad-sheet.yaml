@@ -1,0 +1,24 @@
+# sc-29961: on the iPad, Waiting and its Cancel your request? sheet in portrait, then in landscape; Keep waiting closes it each time.
+appId: host.exp.Exponent
+---
+- setOrientation: PORTRAIT
+- runFlow: ../sign-out.yaml
+- runFlow: ../sc29961-to-waiting.yaml
+- takeScreenshot: waiting-portrait
+- tapOn: { id: 'lostTwoFactor.cancel' }
+- extendedWaitUntil: { visible: '{{t:lostTwoFactor.cancelTitle}}', timeout: 10000 }
+- waitForAnimationToEnd
+- takeScreenshot: sheet-portrait
+- tapOn: { id: 'lostTwoFactor.cancelNo' }
+- extendedWaitUntil: { notVisible: '{{t:lostTwoFactor.cancelTitle}}', timeout: 10000 }
+- setOrientation: LANDSCAPE_LEFT
+- waitForAnimationToEnd
+- takeScreenshot: waiting-landscape
+- tapOn: { id: 'lostTwoFactor.cancel' }
+- extendedWaitUntil: { visible: '{{t:lostTwoFactor.cancelTitle}}', timeout: 10000 }
+- waitForAnimationToEnd
+- takeScreenshot: sheet-landscape
+- tapOn: { point: '50%,8%' }
+- extendedWaitUntil: { notVisible: '{{t:lostTwoFactor.cancelTitle}}', timeout: 10000 }
+- takeScreenshot: scrim-closed-landscape
+- setOrientation: PORTRAIT

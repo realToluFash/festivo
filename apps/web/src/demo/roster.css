@@ -1,0 +1,312 @@
+/* The Roster on the event's Staff page at a desk (sc-3906, Staffing.dc.html on page e34): Stations' card and docked panel, a real table, colours from tokens. */
+a.sn-tab {
+  text-decoration: none;
+}
+
+/* The page column is taller than its content at 1280 × 800, so without this the header shrinks to its 44px floor and the tabs touch the subtitle (sc-3908). */
+.rs .gs-top {
+  flex: none;
+}
+
+.rs-frame {
+  overflow-x: auto;
+}
+
+.rs-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-variant-numeric: tabular-nums;
+}
+
+.rs-table thead th {
+  padding: 0 var(--spaceLg) var(--spaceXs) 0;
+  color: var(--colorInkSecondary);
+  font: 600 13px/1.3 var(--fontFamily);
+  text-align: left;
+}
+
+.rs-table tbody th,
+.rs-table tbody td {
+  padding: var(--spaceSm) var(--spaceLg) var(--spaceSm) 0;
+  border-top: 1px solid var(--colorBorder);
+  color: var(--colorInk);
+  font: var(--typeBody);
+  text-align: left;
+  vertical-align: middle;
+}
+
+.rs-table tbody tr.is-lit {
+  background: var(--colorRowSelected);
+}
+
+.rs-table tbody th {
+  min-width: 120px;
+  overflow-wrap: break-word;
+  word-break: normal;
+}
+
+.rs-table td.rs-shift {
+  white-space: nowrap;
+}
+
+.rs-table tbody td.rs-quiet {
+  color: var(--colorInkSecondary);
+}
+
+.rs-name {
+  min-height: var(--sizeHit);
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--colorInk);
+  font: var(--typeRowTitle);
+  text-align: left;
+  cursor: pointer;
+}
+
+.rs-name:hover,
+.rs-name[aria-current] {
+  color: var(--colorAccentText);
+  text-decoration: underline;
+}
+
+.rs-link {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spaceSm);
+}
+
+.rs-mark {
+  position: relative;
+  flex: none;
+  width: 14px;
+  height: 14px;
+  border: 2px solid var(--colorAccent);
+  border-radius: var(--radiusPill);
+}
+
+.rs-mark.is-opened {
+  border-color: var(--optionGreen);
+  background: var(--optionGreen);
+}
+
+.rs-mark.is-copied {
+  background: linear-gradient(90deg, var(--colorAccent) 50%, transparent 50%);
+}
+
+.rs-mark.is-none {
+  border-style: dashed;
+  border-color: var(--colorInkSecondary);
+}
+
+.rs-mark.is-no-mobile {
+  border-color: var(--colorAttention);
+}
+
+.rs-mark.is-erased {
+  border-color: var(--colorInkTertiary);
+}
+
+.rs-mark.is-erased::after {
+  position: absolute;
+  top: 50%;
+  left: -3px;
+  width: 16px;
+  height: 2px;
+  background: var(--colorInkTertiary);
+  content: '';
+  transform: rotate(-45deg);
+}
+
+.rs-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--spaceSm);
+  padding: var(--spaceXxl) var(--spaceXl);
+  color: var(--colorInkSecondary);
+  text-align: center;
+}
+
+.rs-empty-title {
+  margin: 0;
+  color: var(--colorInk);
+  font: var(--typeTitleSection);
+}
+
+.rs-facts {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceMd);
+  margin: 0;
+}
+
+.rs-facts > div {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceXxs);
+}
+
+.rs-facts dt {
+  color: var(--colorInkSecondary);
+  font: 600 13px/1.3 var(--fontFamily);
+}
+
+.rs-facts dd {
+  margin: 0;
+  color: var(--colorInk);
+  font: var(--typeBody);
+}
+
+.rs-next {
+  margin: 0;
+  color: var(--colorAccentText);
+  font: 600 14px/1.45 var(--fontFamily);
+}
+
+.rs-ask-shift {
+  margin: 0;
+  color: var(--colorInk);
+  font: var(--typeRowTitle);
+}
+
+.rs-danger {
+  color: var(--colorBrokenText);
+}
+
+.gs-pill.rs-remove-go {
+  border-color: var(--colorBroken);
+  background: var(--colorBroken);
+}
+
+.rs-label-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spaceSm);
+}
+
+.rs-warning {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceSm);
+  padding: var(--spaceMd);
+  border: 1px solid var(--colorAttentionBorder);
+  border-radius: var(--radiusField);
+  background: var(--colorAttentionTint);
+  color: var(--colorAttentionText);
+}
+
+.rs-warning:focus-visible {
+  outline: 2px solid var(--colorAccent);
+  outline-offset: 2px;
+}
+
+.rs-warning p {
+  display: flex;
+  align-items: center;
+  gap: var(--spaceSm);
+  margin: 0;
+  font: 600 14px/1.45 var(--fontFamily);
+}
+
+.rs-warning-acts {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--spaceSm);
+}
+
+.rs-bar {
+  position: sticky;
+  bottom: var(--spaceLg);
+  display: flex;
+  align-items: center;
+  gap: var(--spaceMd);
+  align-self: center;
+  max-width: 640px;
+  margin-top: auto;
+  padding: var(--spaceMd) var(--spaceLg);
+  border-radius: var(--radiusField);
+  background: var(--colorDark);
+  box-shadow: var(--shadowPopover);
+  color: var(--colorInkOnDark);
+}
+
+.rs-bar-lines {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: var(--spaceXxs);
+}
+
+.rs-bar-lines p {
+  margin: 0;
+  font: 600 14px/1.45 var(--fontFamily);
+}
+
+.rs-bar .desk-text.rs-bar-dismiss {
+  min-height: var(--sizeHit);
+  color: var(--colorInkOnDark);
+}
+
+/* Below about 920 px the panel drops under the table; at 400% zoom (320 CSS px) the desk is one column and only the table scrolls sideways (WCAG 2.2 1.4.10). */
+@media (width <= 920px) {
+  .rs .mn-split {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .rs .mn-panel {
+    position: static;
+    width: auto;
+    max-height: none;
+  }
+}
+
+@media (width <= 720px) {
+  .today.desk:has(.rs) {
+    flex-direction: column;
+    height: auto;
+    min-height: 100vh;
+  }
+
+  .today.desk:has(.rs) .today-side {
+    width: auto;
+    height: auto;
+    overflow: visible;
+  }
+
+  .today.desk:has(.rs) .desk-main {
+    min-width: 0;
+    margin: 0 var(--spaceMd) var(--spaceMd);
+    overflow: visible;
+  }
+
+  .rs.desk-page {
+    padding: var(--spaceXl) var(--spaceLg) var(--space3xl);
+    overflow: visible;
+  }
+
+  .rs .ev-crumb ol,
+  .rs .gs-top,
+  .rs .sn-card-top,
+  .rs .mn-panel-acts {
+    flex-wrap: wrap;
+  }
+
+  .rs .sn-card-names {
+    flex-basis: 12rem;
+  }
+}
+
+.rs-more {
+  margin-left: var(--spaceXs);
+  color: var(--colorInkSecondary);
+  font: var(--typeSmallStrong);
+}
+
+.rs-shifts {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}

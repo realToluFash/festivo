@@ -1,0 +1,27 @@
+# Getting back in on a tablet in landscape: Reset your password, Check your email, Set a new password, a dead link. sc-29071.
+appId: host.exp.Exponent
+---
+- runFlow: ../sign-out.yaml
+- setOrientation: LANDSCAPE_LEFT
+- openLink: ${METRO_URL}/--/sign-in
+- extendedWaitUntil: { visible: { id: 'signIn.email' }, timeout: 30000 }
+- tapOn: { id: 'signIn.email' }
+- eraseText: 80
+- inputText: '${CARRY}'
+- hideKeyboard
+- tapOn: { id: 'signIn.forgot' }
+- extendedWaitUntil: { visible: { id: 'recovery.email' }, timeout: 15000 }
+- takeScreenshot: land-01-reset
+- tapOn: { id: 'recovery.send' }
+- extendedWaitUntil: { visible: { id: 'recovery.sendAgain' }, timeout: 15000 }
+- takeScreenshot: land-02-sent
+- openLink: ${METRO_URL}/--/reset-password?token=${TOKEN_LINK}
+- extendedWaitUntil: { visible: { id: 'recovery.password' }, timeout: 30000 }
+- waitForAnimationToEnd
+- takeScreenshot: land-03-new-password
+- hideKeyboard
+- takeScreenshot: land-04-new-password-keys-down
+- openLink: ${METRO_URL}/--/reset-password?token=${TOKEN_USED}
+- extendedWaitUntil: { visible: { id: 'recovery.sendNew' }, timeout: 30000 }
+- takeScreenshot: land-05-used
+- setOrientation: PORTRAIT

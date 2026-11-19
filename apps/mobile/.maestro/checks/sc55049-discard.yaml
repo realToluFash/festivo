@@ -1,0 +1,39 @@
+# sc-55049: a freshly uploaded cover discarded with Cancel then Discard; screenshots up to 15 s on the event's page, for the store check. Needs ${METRO_URL}, ${EVENT_ID}.
+appId: host.exp.Exponent
+---
+- runFlow: ../checks/sc52652/open.yaml
+- scrollUntilVisible:
+    element:
+      id: 'event.edit.cover.upload'
+    direction: DOWN
+- tapOn:
+    id: 'event.edit.cover.upload'
+- extendedWaitUntil:
+    visible: 'Photos'
+    timeout: 15000
+- tapOn:
+    point: '16%,25%'
+- extendedWaitUntil:
+    visible: 'never.there'
+    timeout: 12000
+    optional: true
+- takeScreenshot: uploaded
+- tapOn:
+    id: 'event.edit.cover.cancel'
+- extendedWaitUntil:
+    visible:
+      id: 'event.edit.cover.discard'
+    timeout: 10000
+- takeScreenshot: discard-ask
+- tapOn:
+    id: 'event.edit.cover.discard'
+- extendedWaitUntil:
+    visible:
+      id: 'events.page'
+    timeout: 10000
+- takeScreenshot: discarded
+- extendedWaitUntil:
+    visible: 'never.there'
+    timeout: 15000
+    optional: true
+- takeScreenshot: page-15s

@@ -1,0 +1,13 @@
+# sc-56935, phone: the More sheet's close button is a button whose name VoiceOver reads is eventNav.closeMore (Close More) in the account's language. Pass EVENT_ID, an event the signed-in host owns; run with --lang en,es,fr,pt.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/${EVENT_ID}
+- extendedWaitUntil: { visible: { id: 'event.nav.more' }, timeout: 30000 }
+- runFlow: ../developer-menu-close.yaml
+- tapOn: { id: 'event.nav.more' }
+- extendedWaitUntil: { visible: { id: 'event.nav.moreSheet.close' }, timeout: 10000 }
+- waitForAnimationToEnd: { timeout: 5000 }
+- assertVisible: { id: 'event.nav.moreSheet.close', text: '{{t:eventNav.closeMore}}' }
+- takeScreenshot: sheet
+- tapOn: { id: 'event.nav.moreSheet.close' }
+- extendedWaitUntil: { notVisible: { id: 'event.nav.moreSheet.close' }, timeout: 10000 }
