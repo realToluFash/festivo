@@ -19,7 +19,7 @@ import {
 
 import { type LayoutKind } from '../layout/classify.ts';
 import { titleSize } from '../layout/textSize.ts';
-import { actionsUnder, brokeOn, titleRowKey } from '../layout/titleFit.ts';
+import { actionsUnder, brokeOn, heldPlace, titleRowKey } from '../layout/titleFit.ts';
 import { tokens } from '../theme/tokens.ts';
 import { BellInPane, PaneBell } from './BellButton.tsx';
 import { type TextHandle } from './Text.tsx';
@@ -68,7 +68,8 @@ export function GuestsHeading({
   const drawn = useRef(0);
   const [broke, setBroke] = useState<string | null>(null);
   const rowKey = titleRowKey({ room, title, fontScale, spinning });
-  const under =
+  const [held, setHeld] = useState<boolean | null>(null);
+  const fits =
     broke === rowKey ||
     actionsUnder({
       room,
@@ -79,6 +80,9 @@ export function GuestsHeading({
       refreshing: spinning ? spinnerWidth : 0,
       gap: tokens.spaceMd,
     });
+  const under = heldPlace(held, fits);
+  const hold = () => setHeld(under);
+  const release = () => setHeld(null);
   const onDrawn = useCallback(
     (next: number) => {
       drawn.current = next;
@@ -149,7 +153,14 @@ export function GuestsHeading({
   );
 
   return (
-    <View style={under && styles.stack} onLayout={widthOf(setRoom)} testID="guests.titleRow">
+    <View
+      style={under && styles.stack}
+      onLayout={widthOf(setRoom)}
+      onTouchStart={hold}
+      onTouchEnd={release}
+      onTouchCancel={release}
+      testID="guests.titleRow"
+    >
       <MeasuredWords
         words={[title]}
         size={size}

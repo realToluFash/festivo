@@ -104,6 +104,11 @@ export function titleRowKey({
   return `${room}|${title}|${fontScale}|${spinning ? 'spinning' : 'still'}`;
 }
 
+/** Where Guests' actions are drawn: where they were when a finger came down on the row, until it lifts. Moving them mid-tap draws Export and the + afresh in another row, and the tap they were taking opens nothing (sc-67659). */
+export function heldPlace(held: boolean | null, under: boolean): boolean {
+  return held ?? under;
+}
+
 function unmeasured(...widths: number[]): boolean {
   return widths.some((width) => width <= 0);
 }

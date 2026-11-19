@@ -3,7 +3,15 @@ import { join } from 'node:path';
 
 import { describe, expect, it } from 'vitest';
 
-import { actionsUnder, brokeInWord, brokeOn, labelFits, rowRoom, titleRowKey } from './titleFit.ts';
+import {
+  actionsUnder,
+  brokeInWord,
+  brokeOn,
+  heldPlace,
+  labelFits,
+  rowRoom,
+  titleRowKey,
+} from './titleFit.ts';
 
 const guests = readFileSync(join('src', 'components', 'GuestsHeading.tsx'), 'utf8');
 
@@ -261,5 +269,23 @@ describe('Guests on an iPad on its side, the spinner then none (sc-68417)', () =
     expect(guests).toMatch(
       /const rowKey = titleRowKey\(\{ room, title, fontScale, spinning \}\);/u,
     );
+  });
+});
+
+describe("Guests' actions under a finger", () => {
+  it('stay where the finger found them while it is down', () => {
+    expect(heldPlace(true, false)).toBe(true);
+    expect(heldPlace(false, true)).toBe(false);
+  });
+
+  it('go where the row now has them once it lifts', () => {
+    expect(heldPlace(null, false)).toBe(false);
+    expect(heldPlace(null, true)).toBe(true);
+  });
+
+  it('are held by any touch on the title row, and let go when it ends or is cancelled', () => {
+    expect(guests).toMatch(/onTouchStart=\{hold\}/u);
+    expect(guests).toMatch(/onTouchEnd=\{release\}/u);
+    expect(guests).toMatch(/onTouchCancel=\{release\}/u);
   });
 });
