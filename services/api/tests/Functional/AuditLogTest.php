@@ -25,6 +25,7 @@ use App\Enum\MembershipStatus;
 use App\Enum\Plan;
 use App\Enum\SeededRole;
 use App\Repository\AuditFilter;
+use App\Storage\PreparedFiles;
 use App\Tests\ApiTestCase;
 use App\Tests\Traits\InvitesPeople;
 use App\Tests\Traits\OnboardsAccounts;
@@ -275,15 +276,17 @@ final class AuditLogTest extends ApiTestCase
     }
 
     #[Test]
-    public function aPreparedExportsMemoryDoesNotGrowWithItsRows(): void
+    public function aPreparedExportsMemoryToPrepareAndToDownloadDoesNotGrowWithItsRows(): void
     {
         [$owner, $organisation] = $this->enterprise('folake@ire.events', 'Ìrè Events');
         $this->bulk($organisation, $owner, 1_000, 'a long note ' . Str\repeat('x', 2_000));
-        $small = $this->preparedPeak($organisation, $owner);
+        [$small, $smallDownloaded] = $this->preparedPeak($organisation, $owner);
         $this->bulk($organisation, $owner, 14_000, 'a long note ' . Str\repeat('x', 2_000));
-        $large = $this->preparedPeak($organisation, $owner);
+        [$large, $largeDownloaded] = $this->preparedPeak($organisation, $owner);
 
         self::assertLessThan(4 * 1024 * 1024, $large - $small, 'a file some 30 MB larger, and no more than 4 MB more memory at the peak');
+        self::assertGreaterThan(25 * 1024 * 1024, $largeDownloaded['bytes'] - $smallDownloaded['bytes']);
+        self::assertLessThan(4 * 1024 * 1024, $largeDownloaded['peak'] - $smallDownloaded['peak'], 'and no more than 4 MB more to download it');
     }
 
     #[Test]
@@ -378,7 +381,8 @@ final class AuditLogTest extends ApiTestCase
             SQL, ['actor' => $by->getId()->toRfc4122(), 'label' => $by->getName(), 'organisation' => $organisation->getId()->toRfc4122(), 'count' => $count, 'note' => $note]);
     }
 
-    private function preparedPeak(Organisation $organisation, User $by): int
+    /** @return array{int, array{peak: int, bytes: int}} the memory to prepare the file, then to download it whole */
+    private function preparedPeak(Organisation $organisation, User $by): array
     {
         $entityManager = self::service(EntityManagerInterface::class);
         $organisation = $entityManager->find(Organisation::class, $organisation->getId()) ?? self::fail('gone');
@@ -395,7 +399,17 @@ final class AuditLogTest extends ApiTestCase
 
         self::assertSame(AuditExportStatus::Ready, $export->getStatus());
 
-        return $peak;
+        \gc_collect_cycles();
+        $before = \memory_get_usage();
+        \memory_reset_peak_usage();
+        $files = self::service(PreparedFiles::class);
+        $bytes = 0;
+
+        foreach ($files->chunks(self::service(AuditExports::class)->download($organisation, $export->getId()->toRfc4122(), $by)) as $chunk) {
+            $bytes += Str\Byte\length($chunk);
+        }
+
+        return [$peak, ['peak' => \memory_get_peak_usage() - $before, 'bytes' => $bytes]];
     }
 
     private function listedCount(Organisation $organisation): int
