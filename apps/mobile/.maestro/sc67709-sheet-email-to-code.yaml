@@ -1,14 +1,11 @@
-# sc-67709: signed out on the iPad, Google onto Enter your code, Back to the Sign in sheet, then an email sign-in from the sheet onto Enter your code again. Leaves the app there, for a time-out test.
+# sc-67709: signed out first (whoever an earlier flow left signed in), Google onto Enter your code, Back to the Sign in sheet, then an email sign-in from the sheet onto Enter your code again. Leaves the app there, for a time-out test.
 appId: host.exp.Exponent
 ---
-- launchApp:
-    appId: host.exp.Exponent
-    stopApp: true
-- openLink: ${METRO_URL}/--/
+- runFlow: welcome-signed-out.yaml
 - extendedWaitUntil:
     visible:
       id: 'welcome.email'
-    timeout: 90000
+    timeout: 30000
 - tapOn:
     id: 'signIn.google'
 - extendedWaitUntil:
