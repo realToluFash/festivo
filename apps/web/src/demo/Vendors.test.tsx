@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { __setConfig, config } from '../config.ts';
 import { routes } from '../routes/index.tsx';
+import { atPhoneWidth } from '../test-widths.ts';
 
 const tested = config();
 const SLOW = { timeout: 20000 };
@@ -87,14 +88,7 @@ describe('Settings › Vendors in A · Summary first (sc-82)', () => {
     'keeps its bell in the bar beside Menu at a phone’s width, as the product’s shell does',
     SLOW,
     async () => {
-      const plain = window.matchMedia;
-      window.matchMedia = (query: string) =>
-        ({
-          matches: query === '(width <= 40rem)',
-          media: query,
-          addEventListener() {},
-          removeEventListener() {},
-        }) as never;
+      atPhoneWidth();
 
       try {
         await open('/demo/settings/vendors');
@@ -104,7 +98,7 @@ describe('Settings › Vendors in A · Summary first (sc-82)', () => {
         expect(within(bar).getByRole('button', { name: /notification/iu })).toBeTruthy();
         expect(within(main()).queryByRole('button', { name: /notification/iu })).toBeNull();
       } finally {
-        window.matchMedia = plain;
+        vi.restoreAllMocks();
       }
     },
   );

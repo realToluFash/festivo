@@ -92,7 +92,6 @@ export function Settings({
   const covered = stack.length > 0;
   const fit = open === 'vendors' && !reminders;
   const atPhone = usePhoneWidth();
-  // Settings is not a page that carries its own bell at a phone's width: the product's bar holds it beside Menu.
   const barBell = fit && atPhone;
 
   return (
