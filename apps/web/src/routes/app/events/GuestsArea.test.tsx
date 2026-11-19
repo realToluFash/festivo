@@ -5551,14 +5551,18 @@ describe('What adding them would cost (sc-86)', () => {
     });
 
     await waitFor(() =>
-      expect(within(answer()).getByText(new RegExp(`now ${naira(705000)}`, 'u'))).toBeDefined(),
+      expect(
+        within(answer()).getByText(new RegExp(`it would be ${naira(705000)}`, 'u')),
+      ).toBeDefined(),
     );
     const asked = sent.filter((one) => one.line === ASK).length;
     type('Full name', 'Ana Silva');
     fireEvent.click(addButton());
 
     await waitFor(() =>
-      expect(within(answer()).getByText(new RegExp(`now ${naira(710000)}`, 'u'))).toBeDefined(),
+      expect(
+        within(answer()).getByText(new RegExp(`it would be ${naira(710000)}`, 'u')),
+      ).toBeDefined(),
     );
     expect(sent.filter((one) => one.line === ASK).length).toBeGreaterThan(asked);
   });
