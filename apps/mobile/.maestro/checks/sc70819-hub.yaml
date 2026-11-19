@@ -1,0 +1,20 @@
+# sc-70819: Settings › Data and control, in the account's language, top and foot.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/settings/data-and-control
+- extendedWaitUntil:
+    visible:
+      id: dataAndControl.emailDomains
+    timeout: 20000
+- extendedWaitUntil:
+    visible:
+      text: '.+'
+    timeout: 20000
+- waitForAnimationToEnd:
+    timeout: 8000
+- takeScreenshot: sc70819-hub
+- scrollUntilVisible:
+    element:
+      id: dataAndControl.emailDomains
+    direction: DOWN
+- takeScreenshot: sc70819-hub-foot
