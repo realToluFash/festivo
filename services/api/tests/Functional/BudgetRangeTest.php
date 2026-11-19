@@ -136,20 +136,29 @@ final class BudgetRangeTest extends ApiTestCase
         self::assertSame(0, $this->budget()['notPriced'] ?? null);
     }
 
-    #[Test]
-    public function perHeadIsRoundedHalfUpToTheCurrencysMinorUnit(): void
+    /** @return iterable<string, array{string, string, int, string}> */
+    public static function divisions(): iterable
     {
+        yield 'below a half, down' => ['GBP', '1000', 3, '333.33'];
+        yield 'exactly a half, up' => ['GBP', '0.01', 2, '0.01'];
+        yield 'above a half, up' => ['GBP', '1000.01', 3, '333.34'];
+        yield 'a half in whole yen, up' => ['JPY', '1001', 2, '501'];
+        yield 'a half in the third decimal, up' => ['KWD', '0.001', 2, '0.001'];
+        yield 'above a half in the third decimal, up' => ['KWD', '0.002', 3, '0.001'];
+    }
+
+    #[Test]
+    #[DataProvider('divisions')]
+    public function perHeadIsRoundedHalfUpToTheCurrencysMinorUnit(string $currency, string $amount, int $heads, string $perHead): void
+    {
+        $this->eventId = $this->newEvent($currency);
         $this->live();
-        foreach (['Ada', 'Bisi', 'Chidi'] as $name) {
-            $this->answer($this->guest($name), 'coming');
+        foreach (Vec\range(1, $heads) as $number) {
+            $this->answer($this->guest('Guest ' . $number), 'coming');
         }
-        $this->add([...self::VENUE, 'amount' => '1000']);
+        $this->add([...self::VENUE, 'amount' => $amount, 'currency' => $currency]);
 
-        self::assertSame(['amount' => '333.33', 'heads' => 3], $this->budget()['perHead']['confirmed'] ?? null);
-
-        $this->add([...self::VENUE, 'label' => 'Cake', 'amount' => '0.02']);
-
-        self::assertSame(['amount' => '333.34', 'heads' => 3], $this->budget()['perHead']['confirmed'] ?? null);
+        self::assertSame(['amount' => $perHead, 'heads' => $heads], $this->budget()['perHead']['confirmed'] ?? null);
     }
 
     #[Test]
