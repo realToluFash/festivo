@@ -1380,8 +1380,8 @@
       "failedLine": "Verifique a ligação e tente novamente."
     },
     "alsoMemberOf_one": "Also a member of 1 other organisation",
-    "alsoMemberOf_many": "Also a member of {{count}} other organisations",
-    "alsoMemberOf_other": "Also a member of {{count}} other organisations"
+    "alsoMemberOf_many": "Also a member of {{count, number}} other organisations",
+    "alsoMemberOf_other": "Also a member of {{count, number}} other organisations"
   },
   "accessPaused": {
     "badge": "Em pausa",

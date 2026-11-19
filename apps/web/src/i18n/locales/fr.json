@@ -1855,8 +1855,8 @@
       "failed": "Les personnes suivantes n’ont pas pu être chargées. Vérifiez votre connexion et réessayez."
     },
     "alsoMemberOf_one": "Also a member of 1 other organisation",
-    "alsoMemberOf_other": "Also a member of {{count}} other organisations",
-    "alsoMemberOf_many": "Also a member of {{count}} other organisations"
+    "alsoMemberOf_other": "Also a member of {{count, number}} other organisations",
+    "alsoMemberOf_many": "Also a member of {{count, number}} other organisations"
   },
   "contacts": {
     "emailsTitle": "Adresses e-mail",

@@ -1855,8 +1855,8 @@
       "failed": "No se han podido cargar más personas. Compruebe la conexión y vuelva a intentarlo."
     },
     "alsoMemberOf_one": "Also a member of 1 other organisation",
-    "alsoMemberOf_other": "Also a member of {{count}} other organisations",
-    "alsoMemberOf_many": "Also a member of {{count}} other organisations"
+    "alsoMemberOf_other": "Also a member of {{count, number}} other organisations",
+    "alsoMemberOf_many": "Also a member of {{count, number}} other organisations"
   },
   "contacts": {
     "emailsTitle": "Direcciones de correo electrónico",

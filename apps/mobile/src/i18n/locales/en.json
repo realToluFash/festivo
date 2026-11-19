@@ -1336,7 +1336,7 @@
       "failedLine": "Check your connection and try again."
     },
     "alsoMemberOf_one": "Also a member of 1 other organisation",
-    "alsoMemberOf_other": "Also a member of {{count}} other organisations"
+    "alsoMemberOf_other": "Also a member of {{count, number}} other organisations"
   },
   "accessPaused": {
     "badge": "Paused",
