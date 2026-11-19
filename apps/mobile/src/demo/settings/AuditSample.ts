@@ -96,8 +96,13 @@ export const TOLA = 'Tola & Seun’s wedding';
 export const BISI = 'Bisi & Kola’s engagement';
 const WEDDING_ID = 'evt-wed-4';
 /** As eventHref writes them, kept here so the sample needs nothing from the events demo. */
-const eventHref = (id: string, query: { area?: string } = {}) =>
-  query.area == null ? `/demo/events/${id}` : `/demo/events/${id}?area=${query.area}`;
+const eventHref = (id: string, query: { area?: string; state?: string } = {}) => {
+  const search = Object.entries(query)
+    .map(([key, value]) => `${key}=${value}`)
+    .join('&');
+
+  return search === '' ? `/demo/events/${id}` : `/demo/events/${id}?${search}`;
+};
 const section = (type: AuditType, area: string) => ({
   name: `${WEDDING} · ${type}`,
   href: eventHref(WEDDING_ID, { area }),
@@ -185,7 +190,11 @@ export const ENTRIES: readonly AuditEntry[] = [
     what: 'Moved Dr Emeka Nwosu to Table 4',
     type: 'Seating',
     action: 'seating.guest_moved',
-    on: { name: 'Dr Emeka Nwosu', href: eventHref(WEDDING_ID, { area: 'guests' }), gone: false },
+    on: {
+      name: 'Dr Emeka Nwosu',
+      href: eventHref(WEDDING_ID, { area: 'guests', state: 'guest' }),
+      gone: false,
+    },
     event: WEDDING,
     changes: 'Table: Table 2 → Table 4',
     reference: '0e6b9c3a-5f12-4d7e-8a49-c3d1f7b2e586',

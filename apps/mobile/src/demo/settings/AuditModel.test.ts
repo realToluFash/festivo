@@ -17,6 +17,7 @@ import {
   NO_FILTERS,
   SAMPLE_RANGE,
 } from './AuditModel.ts';
+import { guestOf, guestsStateOf } from '../guests/GuestsModel.ts';
 import { AUDIT_TYPES, type AuditType, ENTRIES } from './AuditSample.ts';
 import { DATA_BOARDS } from './DataBoards.ts';
 import { dataHref } from './DataModel.ts';
@@ -246,7 +247,8 @@ describe('the audit log’s states (sc-611)', () => {
     expect(href('guestRemoved')).toBe('/demo/events/evt-wed-4?area=guests');
     expect(href('skipped')).toBe('/demo/events/evt-wed-4?area=schedule');
     expect(href('floorLead')).toBe('/demo/events/evt-wed-4?area=staff');
-    expect(href('seatMoved')).toBe('/demo/events/evt-wed-4?area=guests');
+    expect(href('seatMoved')).toBe('/demo/events/evt-wed-4?area=guests&state=guest');
+    expect(guestOf(guestsStateOf('guest'))).toBe('emeka');
     expect(href('dish')).toBeUndefined();
     expect(detail('detail_skipped')['Type and action']).toBe('Schedule · run_of_show.item_skipped');
     expect(detail('detail_dish').On).toBe('Jollof rice');

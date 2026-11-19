@@ -194,7 +194,7 @@ export const ENTRIES: readonly Entry[] = [
     type: 'Seating',
     action: 'seating.guest_moved',
     reference: '0e6b9c3a-5f12-4d7e-8a49-c3d1f7b2e586',
-    on: { name: 'Dr Emeka Nwosu', link: guestsAt(WEDDING_ID) },
+    on: { name: 'Dr Emeka Nwosu', link: guestsAt(WEDDING_ID, { guest: 'emeka' }) },
     event: WEDDING,
     changes: 'Table: Table 2 → Table 4',
   },

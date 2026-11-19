@@ -17,6 +17,7 @@ import {
   timeOf,
 } from './auditLog.ts';
 import { DATA_CONTROL_PAGES } from './dataControlPages.ts';
+import { guestsStart } from './guests.ts';
 
 const LOCALE = 'en-US';
 const LAGOS = 'Africa/Lagos';
@@ -182,7 +183,11 @@ describe('Audit log (sc-611)', () => {
     expect(link('skipped')).toBe('/demo/events/evt-wed-4/schedule');
     expect(link('floorLead')).toBe('/demo/events/evt-wed-4/staff');
     expect(link('guestRemoved')).toBe('/demo/guests');
-    expect(link('seatMoved')).toBe('/demo/guests');
+    expect(link('seatMoved')).toBe('/demo/guests?guest=emeka');
+    expect(guestsStart(null, new URLSearchParams(link('seatMoved')?.split('?')[1])).pane).toEqual({
+      kind: 'guest',
+      id: 'emeka',
+    });
     expect(link('dish')).toBe('/demo/menu-library');
     expect(facts('skipped')['Type and action']).toBe('Schedule · run_of_show.item_skipped');
     expect(facts('dish').On).toBe('Jollof rice');
