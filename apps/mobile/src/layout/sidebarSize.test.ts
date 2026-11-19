@@ -11,7 +11,10 @@ import {
   sideTextSize,
 } from './sidebarSize.ts';
 
-// React Native's fontScale on iOS at the eighth, ninth, tenth and twelfth steps of Larger Text.
+// React Native's fontScale on iOS at the fifth through the tenth and the twelfth steps of Larger Text.
+const FIFTH = 1.118;
+const SIXTH = 1.235;
+const SEVENTH = 1.353;
 const EIGHTH = 1.786;
 const NINTH = 2.143;
 const TENTH = 2.643;
@@ -30,9 +33,52 @@ describe('the sidebar at the largest text sizes', () => {
     expect(rowPad(scale)).toBe(0);
   });
 
-  it('draws names as on main through the eighth step', () => {
-    expect(sideTextSize(ROOMS.org, EIGHTH, oneWord(500), 'line')).toBe(15 * EIGHTH);
-    expect(sideTextSize(ROOMS.cardName, EIGHTH, oneWord(500), 'lines')).toBe(14 * EIGHTH);
+  it('draws names as on main at the default size and below', () => {
+    expect(sideTextSize(ROOMS.org, 1, oneWord(500), 'line')).toBe(15);
+    expect(sideTextSize(ROOMS.cardName, 0.882, oneWord(500), 'lines')).toBe(14 * 0.882);
+  });
+
+  it.each([FIFTH, SIXTH, SEVENTH, EIGHTH])(
+    'steps a one-line name down at fontScale %s until it fits its line whole',
+    (scale) => {
+      const start = 15 * scale;
+      const name = 1.05 * ROOMS.org.inside;
+      const size = sideTextSize(ROOMS.org, scale, oneWord(name), 'line');
+
+      expect(size).toBeLessThan(start);
+      expect(size).toBeGreaterThanOrEqual(15);
+      expect((name / start) * size).toBeLessThanOrEqual(ROOMS.org.inside);
+    },
+  );
+
+  it.each([FIFTH, SIXTH, SEVENTH, EIGHTH])(
+    'steps a two-line name down at fontScale %s until its widest word fits a line',
+    (scale) => {
+      const start = 14 * scale;
+      const widest = 1.05 * ROOMS.cardName.inside;
+      const size = sideTextSize(ROOMS.cardName, scale, oneWord(widest), 'lines');
+
+      expect(size).toBeLessThan(start);
+      expect(size).toBeGreaterThanOrEqual(14);
+      expect((widest / start) * size).toBeLessThanOrEqual(ROOMS.cardName.inside);
+    },
+  );
+
+  it('keeps a name at its size on main at the eighth step while it fits', () => {
+    expect(sideTextSize(ROOMS.org, EIGHTH, oneWord(ROOMS.org.inside), 'line')).toBe(15 * EIGHTH);
+  });
+
+  it('never draws a name smaller than at the default size, even when it is still cut there', () => {
+    expect(sideTextSize(ROOMS.org, EIGHTH, oneWord(5000), 'line')).toBe(15);
+  });
+
+  it('draws a name no smaller at a larger step once it fits whole', () => {
+    const widthAt = (scale: number) => 7.894 * 15 * scale;
+    const sizes = [FIFTH, SIXTH, SEVENTH, EIGHTH, NINTH].map((scale) =>
+      sideTextSize(ROOMS.org, scale, oneWord(widthAt(scale)), 'line'),
+    );
+
+    sizes.slice(1).forEach((size, at) => expect(size).toBeGreaterThanOrEqual(sizes[at] ?? 0));
   });
 
   it('steps a one-line name down at the ninth step until it fits its line whole', () => {
