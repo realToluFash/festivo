@@ -142,6 +142,7 @@ function EventOf({
   const session = useSession();
   const outside = outsideOn(session, eventId);
   const noOrganisation = session.organisation == null && session.pausedIn == null;
+  const looking = outside != null && outside.role !== 'can_edit' ? outside : null;
   const [load, setLoad] = useState<Load>({ kind: 'loading' });
   const [attempt, setAttempt] = useState(0);
   const [refresh, setRefresh] = useState(0);
@@ -313,14 +314,18 @@ function EventOf({
       <EventDesk>
         {(covered) => (
           <div className="event-page ev-wide" inert={covered}>
-            <EventCrumb name={load.kind === 'loaded' ? load.event.name : null}>
-              {refreshing && <Refreshing />}
-            </EventCrumb>
+            {looking != null ? (
+              refreshing && <Refreshing />
+            ) : (
+              <EventCrumb name={load.kind === 'loaded' ? load.event.name : null}>
+                {refreshing && <Refreshing />}
+              </EventCrumb>
+            )}
             {states}
             {load.kind === 'loaded' && (
               <Arrived>
-                {outside != null && outside.role !== 'can_edit' ? (
-                  <OutsideOverview event={load.event} held={outside} heading={heading} />
+                {looking != null ? (
+                  <OutsideOverview event={load.event} held={looking} heading={heading} />
                 ) : (
                   <Overview
                     event={load.event}
