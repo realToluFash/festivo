@@ -1,10 +1,22 @@
 .outside-person {
   position: relative;
+  display: flex;
+  flex-direction: column;
 }
 
 .outside-menu {
   inset: auto auto calc(100% + var(--spaceXxs)) 0;
   width: 100%;
+  margin: 0;
+  list-style: none;
+}
+
+:where(.outside-menu) .desk-menu-item {
+  border: 0;
+  background: none;
+  color: inherit;
+  text-align: start;
+  cursor: pointer;
 }
 
 .outside-lead {

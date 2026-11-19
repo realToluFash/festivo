@@ -1,5 +1,5 @@
 import type { OrganisationEvent, OutsideEvent } from '@soirely/api-client';
-import { formatEventRange } from '@soirely/domain';
+import { formatEventClock, formatEventDate, formatEventMoment } from '@soirely/domain';
 import { type RefObject, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router';
@@ -29,14 +29,17 @@ export function OutsideOverview({
   const { t } = useTranslation();
   const onEvent = usePeopleCount(event.id);
   const place = event.venue?.name ?? event.venue?.address?.formatted ?? null;
-  const until = new Intl.DateTimeFormat(dateLocale(), {
-    weekday: 'short',
-    day: 'numeric',
-    month: 'short',
-    hour: '2-digit',
-    minute: '2-digit',
-    timeZone: event.timeZone,
-  }).format(new Date(event.endsAt));
+  const locale = dateLocale();
+  const day = formatEventDate(event.startsAt, event.timeZone, locale, false);
+  const when = t('outsideEvent.when', {
+    day,
+    start: formatEventClock(event.startsAt, event.timeZone, locale),
+    end:
+      formatEventDate(event.endsAt, event.timeZone, locale, false) === day
+        ? formatEventClock(event.endsAt, event.timeZone, locale)
+        : formatEventMoment(event.endsAt, event.timeZone, locale),
+  });
+  const until = formatEventMoment(event.endsAt, event.timeZone, locale);
   const level = [
     t(`eventPeople.role.${held.role}`),
     held.jobLabel,
@@ -50,9 +53,7 @@ export function OutsideOverview({
           <span key={piece} className={`desk-piece p${piece}`} aria-hidden="true" />
         ))}
         <div className="ev-card-inner">
-          <p className="desk-on-card">
-            {formatEventRange(event.startsAt, event.endsAt, event.timeZone, dateLocale())}
-          </p>
+          <p className="desk-on-card">{when}</p>
           <h1 id="outside-event-name" ref={heading} className="ev-card-name" tabIndex={-1}>
             {event.name}
           </h1>
