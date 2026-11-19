@@ -1,0 +1,16 @@
+# sc-71: the app demo's more-in, its Overview and then its More, for the pairs beside an account with no organisation. Needs ${ORIENT}, ${METRO_URL}.
+appId: host.exp.Exponent
+---
+- setOrientation: ${ORIENT}
+- openLink: ${METRO_URL}/--/demo/redeem?state=more-in
+- waitForAnimationToEnd: { timeout: 8000 }
+- takeScreenshot: more-in
+- tapOn: { text: 'More', optional: true }
+- waitForAnimationToEnd: { timeout: 4000 }
+- takeScreenshot: more-in-more
+- openLink: ${METRO_URL}/--/demo/people?state=addOutside
+- waitForAnimationToEnd: { timeout: 8000 }
+- takeScreenshot: addOutside
+- openLink: ${METRO_URL}/--/demo/people
+- waitForAnimationToEnd: { timeout: 8000 }
+- takeScreenshot: people
