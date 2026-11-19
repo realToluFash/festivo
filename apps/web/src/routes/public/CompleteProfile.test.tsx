@@ -534,6 +534,15 @@ describe('an organisation at the domain of the address (sc-561)', () => {
       expect(screen.queryByText('Change your main email address')).toBeNull();
     });
 
+    it('marks the offer with the organisation’s tile, and asks for no mobile number', async () => {
+      answering({ 'GET /api/join-offers': () => json({ ...OFFERS, managed: MANAGED }) });
+      at('/complete-profile', ADA);
+
+      const title = await screen.findByText('Ìrè Events uses Soirely');
+      expect(title.closest('.join-offer')?.querySelector('.org-tile')?.textContent).toBe('ÌE');
+      expect(screen.queryByLabelText(/Mobile number/u)).toBeNull();
+    });
+
     it('with nothing to join, saves the name alone, with no organisation', async () => {
       const sent = answering({
         'GET /api/join-offers': () => json({ ...OFFERS, offers: [], managed: MANAGED }),
