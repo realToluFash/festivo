@@ -9,10 +9,12 @@ use App\Domain\Billing\Entitlements;
 use App\Domain\Organisation\DomainJoining\DomainNameNormaliser;
 use App\Domain\Organisation\DomainJoining\JoinOfferFinder;
 use App\Entity\EmailDomain;
+use App\Entity\Invitation;
 use App\Entity\Organisation;
 use App\Entity\User;
 use App\Enum\Actor;
 use App\Enum\ErrorCode;
+use App\Enum\MembershipChannel;
 use App\Enum\PlanFeature;
 use App\Http\Exception\ApiException;
 use App\Repository\EmailDomainRepository;
@@ -20,6 +22,7 @@ use App\Repository\MembershipRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use Psl\Dict;
 use Psl\Iter;
+use Psl\Type;
 use Psl\Vec;
 use Psr\Clock\ClockInterface;
 use Symfony\Contracts\Translation\TranslatorInterface;
@@ -72,6 +75,26 @@ final readonly class ManagedAccounts
             'path' => [null, $path],
             'domain' => [null, $managing->getDomain()],
             'organisation' => [null, $into?->getId()->toRfc4122()],
+        ]);
+        $this->entityManager->flush();
+
+        throw $this->refusal($managing);
+    }
+
+    /** Before any account exists the refusal is recorded about the invitation, which belongs to the inviting organisation and never to the home one. */
+    public function refuseInvitedAddress(Invitation $invitation, string $name): void
+    {
+        $managing = $this->managingAddress($invitation->getEmail());
+        $into = Type\instance_of(Organisation::class)->coerce($invitation->getOrganisation());
+
+        if (null === $managing || $this->isHome($managing, $into)) {
+            return;
+        }
+
+        $this->auditor->record(self::REFUSED, 'Invitation', $invitation->getId(), Actor::User, null, $name, [
+            'path' => [null, MembershipChannel::Invitation->value],
+            'domain' => [null, $managing->getDomain()],
+            'organisation' => [null, $into->getId()->toRfc4122()],
         ]);
         $this->entityManager->flush();
 

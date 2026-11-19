@@ -31,6 +31,7 @@ use App\Enum\SeededRole;
 use App\Http\Exception\ApiException;
 use App\Repository\EmailDomainRepository;
 use App\Tests\ApiTestCase;
+use App\Tests\Traits\InvitesPeople;
 use App\Tests\Traits\OnboardsAccounts;
 use DateInterval;
 use DateTimeImmutable;
@@ -48,6 +49,7 @@ use Symfony\Component\Mime\Email;
 
 final class ManagedAccountsTest extends ApiTestCase
 {
+    use InvitesPeople;
     use OnboardsAccounts;
 
     /** @mago-expect lint:no-literal-password */
@@ -358,6 +360,50 @@ final class ManagedAccountsTest extends ApiTestCase
         $this->createOrganisation($kemi);
         self::assertResponseStatusCodeSame(201);
         self::assertNull($this->send('GET', '/api/join-offers')['managed']);
+    }
+
+    #[Test]
+    public function registeringFromAnotherOrganisationsInvitationIsRefusedAndRecordedAboutTheInvitation(): void
+    {
+        [$owner, $organisation] = $this->proved();
+        [, $lumen] = $this->organisation('ada@lumen.pt', 'Lumen');
+        [$invitation, $token] = self::invitationTo('bayo@ire.events', $this->reload($lumen));
+        $this->switchOn($owner, $organisation);
+        $this->applied();
+        $this->client->setServerParameter('HTTP_AUTHORIZATION', '');
+
+        $refused = $this->send('POST', '/api/auth/register', ['email' => 'bayo@ire.events', 'name' => 'Bayo', 'password' => self::PASSWORD, 'invitationToken' => $token]);
+
+        self::assertResponseStatusCodeSame(409);
+        self::assertSame(self::MANAGED, $refused['detail']);
+        $entry = Type\instance_of(AuditEntry::class)->coerce(
+            $this->entityManager()->getRepository(AuditEntry::class)->findOneBy(['action' => ManagedAccounts::REFUSED, 'subjectId' => $invitation->getId()]),
+        );
+        self::assertSame('Invitation', $entry->getSubjectType());
+        self::assertSame([null, $lumen->getId()->toRfc4122()], $entry->getChanges()['organisation']);
+    }
+
+    #[Test]
+    public function onceAppliedAManagedAccountIsStillGrantedAnotherOrganisationsEventAndReachesIt(): void
+    {
+        [$owner, $organisation] = $this->proved();
+        [$lumenOwner, $lumen] = $this->organisation('ada@lumen.pt', 'Lumen');
+        $kemi = $this->member('kemi@ire.events', 'Kemi');
+        $this->switchOn($owner, $organisation);
+        $this->applied();
+        $this->signIn($lumenOwner);
+        $event = $this->send('POST', Str\format('/api/orgs/%s/events', $lumen->getId()->toRfc4122()), [
+            'name' => 'Owambe', 'type' => 'wedding', 'startsAt' => '2030-11-14T16:00', 'endsAt' => '2030-11-14T16:00', 'timeZone' => 'Africa/Lagos', 'currency' => 'NGN',
+        ]);
+        self::assertResponseStatusCodeSame(201);
+        $eventId = Type\shape(['id' => Type\string()], true)->coerce($event['event'])['id'];
+
+        $this->send('POST', '/api/events/' . $eventId . '/people', ['address' => 'kemi@ire.events', 'role' => 'can_view', 'jobLabel' => null]);
+        self::assertResponseStatusCodeSame(201);
+        $this->signIn($kemi);
+        $this->send('GET', '/api/events/' . $eventId);
+
+        self::assertResponseStatusCodeSame(200);
     }
 
     /** @return array{User, Organisation} an Enterprise organisation that has proved ire.events */

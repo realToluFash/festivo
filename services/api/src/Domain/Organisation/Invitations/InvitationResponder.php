@@ -120,11 +120,7 @@ final readonly class InvitationResponder
             throw new ApiException(ErrorCode::EmailTaken, $this->translator->trans('invitations.email_taken'));
         }
 
-        $managing = $this->managedAccounts->managingAddress($invitation->getEmail());
-
-        if (null !== $managing && !$this->managedAccounts->isHome($managing, Type\instance_of(Organisation::class)->coerce($invitation->getOrganisation()))) {
-            throw $this->managedAccounts->refusal($managing);
-        }
+        $this->managedAccounts->refuseInvitedAddress($invitation, $name);
 
         return $this->entityManager->wrapInTransaction(function () use ($invitation, $name, $password, $request): RegistrationResult {
             $result = $this->userRegistrar->registerFromInvitation($invitation, $name, $password, $request);
