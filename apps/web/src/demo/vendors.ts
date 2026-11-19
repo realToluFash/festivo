@@ -1,4 +1,10 @@
-import { emailProblem, phoneLengthProblem } from '@soirely/domain';
+import {
+  emailProblem,
+  formatPhone,
+  phoneE164,
+  phoneFields,
+  phoneLengthProblem,
+} from '@soirely/domain';
 
 import { SAMPLE, countryName, fullNumber } from './rules.ts';
 import { CATEGORY_WORDS, VW } from './vendorsWords.ts';
@@ -37,7 +43,7 @@ export interface Vendor {
 
 type Seed = [id: string, name: string, category: Category, contact: string, reach: string];
 
-/** Budget-A-Vendors' directory: v1 to v9 are the boards' (shared with sc-87's quotes), the rest fill it to 28 in use. A reach that starts with a digit is a number in the United Kingdom. */
+/** Budget-A-Vendors' directory: v1 to v9 are the boards' (shared with sc-87's quotes), the rest fill it to 28 in use. A reach that starts with a digit is a number in the United Kingdom, written as Edit vendor shows it, and one the API saves. */
 const IN_USE: readonly Seed[] = [
   ['v1', 'Àbẹ̀ní Flowers', 'flowers', 'Àbẹ̀ní Oyelaran', 'hello@abeni.flowers'],
   ['v2', 'Beat Collective', 'music', 'Ade Ojo', 'bookings@beatcollective.co.uk'],
@@ -45,26 +51,26 @@ const IN_USE: readonly Seed[] = [
   ['v4', 'Savour Kitchen', 'catering', 'Kofi Mensah', 'kofi@savourkitchen.co.uk'],
   ['v5', 'The Landmark', 'venue', 'Priya Shah', 'events@thelandmark.co.uk'],
   ['v6', 'Lens & Light', 'photography', 'Marco Rossi', 'marco@lensandlight.com'],
-  ['v7', 'Delta Frames', 'photography', 'Tolu Ade', '20 7946 0321'],
+  ['v7', 'Delta Frames', 'photography', 'Tolu Ade', '020 7946 0321'],
   ['v8', 'Golden Spoon', 'catering', 'Ama Owusu', 'events@goldenspoon.co.uk'],
-  ['v9', 'Harbour Boats', 'transport', 'Sam Okafor', '7700 900877'],
+  ['v9', 'Harbour Boats', 'transport', 'Sam Okafor', '0117 496 0877'],
   ['v10', 'Sesame & Saffron', 'catering', 'Leila Haddad', 'leila@sesameandsaffron.co.uk'],
   ['v11', 'Silver Strings Quartet', 'music', 'Anna Kowalski', 'anna@silverstrings.co.uk'],
   ['v12', 'Stem & Petal', 'flowers', 'Chloé Dubois', 'chloe@stemandpetal.co.uk'],
   ['v13', 'Studio Kaito', 'photography', 'Kaito Tanaka', 'kaito@studiokaito.com'],
   ['v14', 'Swift Coaches', 'transport', 'Raj Patel', 'bookings@swiftcoaches.co.uk'],
   ['v15', 'Tavola Catering', 'catering', 'Giulia Bianchi', 'giulia@tavolacatering.co.uk'],
-  ['v16', 'Tempo Brass', 'music', 'Daniel Osei', '7700 900412'],
+  ['v16', 'Tempo Brass', 'music', 'Daniel Osei', '0161 496 0412'],
   ['v17', 'Tent & Table Hire', 'hire', 'Oliver Grant', 'hire@tentandtable.co.uk'],
   ['v18', 'The Long Table', 'catering', 'Hannah Clarke', 'hello@thelongtable.co.uk'],
   ['v19', 'The Orangery', 'venue', 'Sofia Almeida', 'events@theorangery.co.uk'],
-  ['v20', 'Town & Country Cars', 'transport', 'Liam Byrne', '7700 900653'],
+  ['v20', 'Town & Country Cars', 'transport', 'Liam Byrne', '0113 496 0653'],
   ['v21', 'Tulip Lane', 'flowers', 'Emma Novak', 'emma@tuliplane.co.uk'],
   ['v22', 'Umami Kitchen', 'catering', 'Kenji Watanabe', 'kenji@umamikitchen.co.uk'],
   ['v23', 'Vela Films', 'photography', 'Lucas Ferreira', 'lucas@velafilms.com'],
   ['v24', 'Velvet Rope Ushers', 'staffing', 'Bimpe Ojo', 'bimpe@velvetrope.co.uk'],
   ['v25', 'Victoria Rooms', 'venue', 'James Whitfield', 'bookings@victoriarooms.co.uk'],
-  ['v26', 'Waterside Hall', 'venue', 'Aisha Rahman', '20 7946 0412'],
+  ['v26', 'Waterside Hall', 'venue', 'Aisha Rahman', '020 7946 0412'],
   ['v27', 'Wild Meadow Flowers', 'flowers', 'Rosa Mendes', 'rosa@wildmeadowflowers.co.uk'],
   ['v28', 'Wura Gele', 'other', 'Wura Lawal', 'wura@wuragele.co.uk'],
 ];
@@ -74,7 +80,7 @@ const ARCHIVED: readonly (readonly [Seed, string])[] = [
     ['v29', 'Éclat Catering', 'catering', 'Claire Martin', 'claire@eclat-traiteur.fr'],
     '2026-10-12',
   ],
-  [['v30', 'Marquee Masters', 'hire', 'Chuka Obi', '7700 900150'], '2026-10-12'],
+  [['v30', 'Marquee Masters', 'hire', 'Chuka Obi', '0118 496 0150'], '2026-10-12'],
 ];
 
 const BLOOM = 'v3';
@@ -104,7 +110,7 @@ export function sampleVendors(): Vendor[] {
   const bloom = kept.find((one) => one.id === BLOOM);
   if (bloom != null) {
     bloom.country = 'GB';
-    bloom.phone = '20 7946 0958';
+    bloom.phone = '020 7946 0958';
     bloom.website = 'https://bloomandco.co.uk';
   }
 
@@ -183,8 +189,9 @@ export function pageOf(vendors: readonly Vendor[], id: string): number {
 export function reachOf(vendor: Pick<Vendor, 'email' | 'phone' | 'country'>): string | null {
   if (vendor.email !== '') return vendor.email;
   if (vendor.phone === '') return null;
+  const e164 = phoneE164(vendor.phone, vendor.country);
 
-  return fullNumber(vendor.phone, vendor.country);
+  return e164 == null ? fullNumber(vendor.phone, vendor.country) : formatPhone(e164);
 }
 
 export function archivedDay(day: string, locale: string): string {
@@ -350,13 +357,19 @@ export function notANumberFor(country: string): string {
   return VW.notANumber(countryName(country));
 }
 
-/** The demo's stand-in for the API refusing a number its country does not use: all zeros, as `?state=add_invalid` types. */
+/** The API's refusal of a number its country does not use, by the same library's rules: 07700 900877 is refused, 0117 496 0877 saved. */
 export function refusedPhone(draft: Draft): Problems {
-  const digits = draft.phone.replace(/\D/g, '');
+  if (draft.country === '' || draft.phone.trim() === '') return {};
+  const e164 = phoneE164(draft.phone, draft.country);
 
-  return draft.country !== '' && digits !== '' && /^0+$/.test(digits)
-    ? { phone: notANumberFor(draft.country) }
-    : {};
+  return e164 == null || phoneFields(e164) == null ? { phone: notANumberFor(draft.country) } : {};
+}
+
+/** The number as Edit vendor reads it back from the API: "020 7946 0958", with its national 0. */
+function storedPhone(draft: Draft): string {
+  const e164 = phoneE164(draft.phone, draft.country);
+
+  return (e164 == null ? null : phoneFields(e164)?.number) ?? draft.phone.trim();
 }
 
 export function savedVendor(draft: Draft, id: string): Vendor {
@@ -367,7 +380,7 @@ export function savedVendor(draft: Draft, id: string): Vendor {
     contact: draft.contact.trim(),
     email: draft.email.trim(),
     country: draft.phone.trim() === '' ? '' : draft.country,
-    phone: draft.phone.trim(),
+    phone: draft.phone.trim() === '' ? '' : storedPhone(draft),
     website: savedWebsite(draft.website),
     address: draft.address.trim(),
     note: draft.note.trim(),
@@ -473,7 +486,16 @@ export function vendorsStart(state: string, vendor: string | null = null): Vendo
         dialog: {
           kind: 'add',
           draft: REFUSED,
-          problems: { ...draftProblems(REFUSED), phone: notANumberFor('GB') },
+          problems: draftProblems(REFUSED),
+        },
+      };
+    case 'add_refused':
+      return {
+        ...start,
+        dialog: {
+          kind: 'add',
+          draft: { ...REFUSED, email: 'sam@harbourboats.co.uk', website: 'harbourboats.co.uk' },
+          problems: refusedPhone(REFUSED),
         },
       };
     case 'too_long': {
@@ -547,7 +569,8 @@ export const VENDORS_PAGES: readonly { name: string; states: readonly DemoLink[]
       { to: at('none_archived'), name: 'Archived · 0: No archived vendors (none_archived)' },
       { to: at('add'), name: 'Add a vendor (add)' },
       { to: at('add_blank'), name: 'Add, nothing typed (add_blank)' },
-      { to: at('add_invalid'), name: 'Add, refused at three fields (add_invalid)' },
+      { to: at('add_invalid'), name: 'Add, two fields wrong, nothing sent (add_invalid)' },
+      { to: at('add_refused'), name: 'Add, the number refused once sent (add_refused)' },
       { to: at('too_long'), name: 'A name over 100 characters (too_long)' },
       { to: at('edit'), name: 'Edit Bloom & Co, with Archive this vendor (edit)' },
       { to: at('archived_toast'), name: 'Bloom & Co archived (archived_toast)' },
