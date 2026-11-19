@@ -11,6 +11,7 @@ use App\Domain\Billing\Catalogue\Model\PlanCatalogue;
 use App\Domain\Billing\Catalogue\Model\PlanTerms;
 use App\Domain\Billing\Catalogue\Model\Price;
 use App\Domain\Billing\Catalogue\Model\UnitCosts;
+use App\Domain\Organisation\Regions;
 use App\Enum\CatalogueLimit;
 use App\Enum\CataloguePart;
 use App\Enum\LimitKind;
@@ -31,6 +32,9 @@ use Symfony\Component\Uid\Uuid;
 /** The one reader of a catalogue document: every plan, limit, currency and country is checked whole before anything uses it, so a version that is published always reads (sc-3928). */
 final readonly class CatalogueParser
 {
+    /** ISO 3166-1's reserved and user-assigned codes that ICU still lists as regions: none is an assigned country. */
+    private const array NOT_ASSIGNED = ['AC', 'CP', 'CQ', 'DG', 'EA', 'IC', 'TA', 'XK'];
+
     public static function plans(Uuid $versionId, string $name, mixed $terms): PlanCatalogue
     {
         return new PlanCatalogue($versionId, $name, self::planTerms($terms));
@@ -58,6 +62,8 @@ final readonly class CatalogueParser
     /** @throws CatalogueRefused naming what is wrong */
     public static function check(CataloguePart $part, mixed $terms): void
     {
+        self::wholeNumbers($terms);
+
         match ($part) {
             CataloguePart::Plans => self::planTerms($terms),
             CataloguePart::UnitCosts => self::unitCostTerms($terms),
@@ -105,7 +111,15 @@ final readonly class CatalogueParser
                 throw new CatalogueRefused(Str\format('The %s plan has no %s.', $key, Str\join(Vec\map($absent, static fn (CatalogueLimit $limit): string => $limit->value), ', ')));
             }
 
-            self::currencies(Vec\keys($plan['prices']));
+            foreach ($plan['limits'] as $limit => $line) {
+                $expected = CatalogueLimit::from($limit)->kind();
+
+                if ($expected !== $line['kind']) {
+                    throw new CatalogueRefused(Str\format('The %s plan gives %s the kind %s, but %s is %s.', $key, $limit, $line['kind']->value, $limit, $expected->value));
+                }
+            }
+
+            self::billedIn($key, Vec\map(Vec\keys($plan['prices']), static fn (int|string $code): string => (string) $code));
 
             $read[$key] = new PlanTerms(
                 Plan::from($key),
@@ -153,6 +167,20 @@ final readonly class CatalogueParser
         return $terms;
     }
 
+    /** Psl's integer types coerce 249.0 to 249, and the document is stored as sent, so a float that reads whole would be kept as a float. */
+    private static function wholeNumbers(mixed $terms): void
+    {
+        if (\is_float($terms)) {
+            throw new CatalogueRefused(Str\format('%s is written with a decimal point: every amount in the catalogue is an integer.', \var_export($terms, true)));
+        }
+
+        if (\is_array($terms)) {
+            foreach ($terms as $value) {
+                self::wholeNumbers($value);
+            }
+        }
+    }
+
     private static function unreadable(CoercionException $e): CatalogueRefused
     {
         return new CatalogueRefused('The catalogue document does not read: ' . $e->getMessage(), previous: $e);
@@ -162,6 +190,22 @@ final readonly class CatalogueParser
     {
         if (!$isKnown) {
             throw new CatalogueRefused(Str\format('"%s" is not a %s the catalogue knows.', $value, $what));
+        }
+    }
+
+    /** @param list<string> $codes */
+    private static function billedIn(string $plan, array $codes): void
+    {
+        foreach (Price::CURRENCIES as $currency) {
+            if (!Iter\contains($codes, $currency)) {
+                throw new CatalogueRefused(Str\format('The %s plan has no %s price: every plan is priced in exactly %s.', $plan, $currency, Str\join(Price::CURRENCIES, ', ')));
+            }
+        }
+
+        foreach ($codes as $code) {
+            if (!Iter\contains(Price::CURRENCIES, $code)) {
+                throw new CatalogueRefused(Str\format('The %s plan has a %s price, which Soirely does not bill in: every plan is priced in exactly %s.', $plan, $code, Str\join(Price::CURRENCIES, ', ')));
+            }
         }
     }
 
@@ -179,8 +223,8 @@ final readonly class CatalogueParser
     private static function countries(array $codes): void
     {
         foreach ($codes as $code) {
-            if (!Regex\matches((string) $code, '/^[A-Z]{2}$/')) {
-                throw new CatalogueRefused(Str\format('"%s" is not an ISO 3166-1 alpha-2 country code.', (string) $code));
+            if (!Regions::isCountry((string) $code) || Iter\contains(self::NOT_ASSIGNED, (string) $code)) {
+                throw new CatalogueRefused(Str\format('"%s" is not an assigned ISO 3166-1 alpha-2 country code.', (string) $code));
             }
         }
     }
