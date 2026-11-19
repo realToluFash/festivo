@@ -26,7 +26,7 @@ import {
   whatIf,
 } from './decide.ts';
 import { DECIDE_WORDS as W } from './decideWords.ts';
-import { GW } from './guestsWords.ts';
+import { GW, REPLY_WORDS } from './guestsWords.ts';
 import { type SampleEvent } from './events.ts';
 import { ColumnHead, Verb } from './GuestForms.tsx';
 import { OkLine, Pill } from './GuestsParts.tsx';
@@ -186,7 +186,7 @@ function AddGuest({ kind, onDone }: { kind: DecideKind; onDone: () => void }) {
                   />
                 ) : (
                   <div className="desk-row bud-row">
-                    <RowWords title={one.name} lines={[GW.noReply]} />
+                    <RowWords title={one.name} lines={[REPLY_WORDS.noReply]} />
                     {removal}
                   </div>
                 )}
