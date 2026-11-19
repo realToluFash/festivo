@@ -187,7 +187,7 @@ describe('What a decision costs, in Add guest (sc-86)', () => {
 
       expect(answer.textContent).toContain('+£1,000,000,000,000,000 if all come');
       expect(answer.textContent).toContain(
-        'If everyone comes, it would be £100,999,999,999,999,999. Settled, it stays £99,999,999,999,999,999',
+        'Once they are invited, it would be £100,999,999,999,999,999 if everyone comes. Settled, it stays £99,999,999,999,999,999 until they reply.',
       );
       expect(answer.textContent).toContain(
         '£99,999,999,999,999,999 → £100,999,999,999,999,999 · 100 → 101 if all come',
