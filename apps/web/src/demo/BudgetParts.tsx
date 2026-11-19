@@ -423,14 +423,36 @@ export function OpenedActions({
 }
 
 /** What left and what it changed, with Undo; no timer (WCAG 2.2 2.2.1). */
-export function UndoBar({ words, onUndo }: { words: string; onUndo: () => void }) {
+export function UndoBar({
+  words,
+  onUndo,
+  refused = false,
+  focus = false,
+}: {
+  words: string;
+  onUndo: () => void;
+  refused?: boolean;
+  focus?: boolean;
+}) {
+  const bar = useRef<HTMLDivElement>(null);
+  const undo = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    // Refused, the bar's only button is gone, so focus would fall to the page.
+    if (refused) bar.current?.focus();
+    else if (focus) undo.current?.focus();
+  }, [refused, focus]);
+
   return (
-    <div className="bud-undo" role="status">
+    <div ref={bar} className="bud-undo" role="status" tabIndex={refused ? -1 : undefined}>
+      {refused && <Glyph name="clear" size={16} weight={2.6} />}
       <span className="bud-undo-words">{words}</span>
-      <button type="button" className="bud-undo-do" onClick={onUndo}>
-        <Glyph name="undo" size={16} weight={2.4} />
-        {W.undo}
-      </button>
+      {!refused && (
+        <button ref={undo} type="button" className="bud-undo-do" onClick={onUndo}>
+          <Glyph name="undo" size={16} weight={2.4} />
+          {W.undo}
+        </button>
+      )}
     </div>
   );
 }
