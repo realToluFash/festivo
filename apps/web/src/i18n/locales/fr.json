@@ -5230,7 +5230,7 @@
   "decisionAnswer": {
     "head": "Ce que coûterait cet ajout",
     "rise": "+{{amount}} si tous viennent",
-    "upperOnly": "Si tous viennent, ce serait {{upper}}. Le montant confirmé reste à {{settled}}, car les nouveaux invités n’ont pas encore répondu.",
+    "upperOnly": "Une fois l’invitation enregistrée, ce serait {{upper}} si tous viennent. Le montant confirmé reste à {{settled}} jusqu’à leur réponse.",
     "moved": "{{from}} → {{to}} · {{headsFrom, number}} → {{headsTo, number}} si tous viennent",
     "plus": "+{{amount}}",
     "notKnown": "Inconnu",
