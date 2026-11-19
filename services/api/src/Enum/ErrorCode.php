@@ -35,6 +35,7 @@ enum ErrorCode: string
     case EventPaused = 'event_paused';
     case EventHostRequired = 'event_host_required';
     case EventCallOffFirst = 'event_call_off_first';
+    case BudgetLineCurrencyChanged = 'budget_line_currency_changed';
     case PlanLimit = 'plan_limit';
     case PlanRequired = 'plan_required';
     case SeatingPlanExists = 'seating_plan_exists';
@@ -170,7 +171,7 @@ enum ErrorCode: string
             self::InvitationNotFound, self::RequestLinkDead => 404,
             self::JoinRequestWaiting, self::JoinRequestCoolingOff, self::JoinRequestAnswered => 409,
             self::OwnerClaimAddress, self::OwnerClaimManaged, self::OwnerClaimOpen, self::OwnerClaimClosed, self::OwnerClaimEnded, self::OwnerClaimUnavailable, self::OwnerClaimOwn, self::EmailDomainTaken, self::DomainManaged => 409,
-            self::InvitationExpired, self::InvitationRevoked, self::OrganisationDeleted => 410,
+            self::InvitationExpired, self::InvitationRevoked, self::OrganisationDeleted, self::BudgetLineCurrencyChanged => 410,
             self::ExportNotReady => 409,
             self::ExportUsed, self::ExportExpired => 410,
             self::InvitationNotYours => 403,

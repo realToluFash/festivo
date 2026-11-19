@@ -127,6 +127,7 @@ import {
   asSchedule,
 } from './schedule.ts';
 import { type RoomScreen, type ScreenLink, asRoomScreen, asScreenLinks } from './screens.ts';
+import { type BudgetLineTyped, type EventBudget, asEventBudget } from './budget.ts';
 
 /** A table call's answer: the plan whole, and the table it added or changed. */
 export interface SeatingWithTable {
@@ -3590,6 +3591,51 @@ export class ApiClient {
     }
 
     return group;
+  }
+
+  /** The range, per head, the count not priced, what each basis counts today and every line with its cost (sc-84, sc-85); 403 without budget.read. */
+  async budget(eventId: string): Promise<EventBudget> {
+    return asEventBudget(await this.get<unknown>(this.budgetPath(eventId)));
+  }
+
+  /** Refused `validation_failed` beside each field at once, `basis` for a second staff-time line. */
+  async addBudgetLine(eventId: string, typed: BudgetLineTyped): Promise<void> {
+    await this.post<unknown>(`${this.budgetPath(eventId)}/lines`, typed);
+  }
+
+  /** The whole line, checked as Add checks it. */
+  async changeBudgetLine(eventId: string, lineId: string, typed: BudgetLineTyped): Promise<void> {
+    await this.put<unknown>(this.budgetLinePath(eventId, lineId), typed);
+  }
+
+  /** Kept a day for `putBackBudgetLine`, and out of every figure meanwhile. */
+  async removeBudgetLine(eventId: string, lineId: string): Promise<void> {
+    await this.delete<unknown>(this.budgetLinePath(eventId, lineId));
+  }
+
+  /** Undo: the same line in its place. 404 once erased, a day after its removal; 410 `budget_line_currency_changed` once the event's currency changed; `basis` refused when another staff-time line holds it. */
+  async putBackBudgetLine(eventId: string, lineId: string): Promise<void> {
+    await this.delete<unknown>(`${this.budgetLinePath(eventId, lineId)}/removal`);
+  }
+
+  /** A hub token for this event's budget lines and its headcount, which moves the range. */
+  async budgetSubscription(eventId: string): Promise<RealtimeSubscription> {
+    const body = await this.post<{ token?: unknown; expiresAt?: unknown }>(
+      `${this.budgetPath(eventId)}/subscriptions`,
+    );
+
+    return {
+      token: typeof body.token === 'string' ? body.token : '',
+      expiresAt: typeof body.expiresAt === 'string' ? body.expiresAt : '',
+    };
+  }
+
+  private budgetPath(eventId: string): string {
+    return `/api/events/${encodeURIComponent(eventId)}/budget`;
+  }
+
+  private budgetLinePath(eventId: string, lineId: string): string {
+    return `${this.budgetPath(eventId)}/lines/${encodeURIComponent(lineId)}`;
   }
 
   /** Needs guests.read on the event (sc-99). */

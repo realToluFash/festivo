@@ -28,6 +28,7 @@ import { OutcomeLine } from './OutcomeLine.tsx';
 import { EventPeople } from './EventPeople.tsx';
 import { GuestsArea, GuestsGone } from './GuestsArea.tsx';
 import { RunArea } from './RunArea.tsx';
+import { BudgetArea } from './BudgetArea.tsx';
 import { MenuArea } from './MenuArea.tsx';
 import { ScheduleOrNight } from './NightArea.tsx';
 import { SeatingArea } from './SeatingArea.tsx';
@@ -142,6 +143,20 @@ function Withheld() {
   );
 }
 
+/** Without budget.read, as an event of another organisation reads (sc-85): it never says what it is hiding. */
+function EventNotFound() {
+  const { t } = useTranslation();
+
+  return (
+    <div className="event-page">
+      <EventCrumb name={null} />
+      <section className="card">
+        <h1 tabIndex={-1}>{t('eventPage.notFound')}</h1>
+      </section>
+    </div>
+  );
+}
+
 function EventOf({
   organisationId,
   eventId,
@@ -225,7 +240,9 @@ function EventOf({
     else keepLoaded(key, shown, answered.current);
     answered.current = null;
   }, [load, eventId]);
-  useShowEvent(eventId, load.kind === 'loaded' ? load.event : undefined);
+  const budgetUnseen =
+    page === 'budget' && load.kind === 'loaded' && !canOn(load.event, PAGE_NEEDS.budget);
+  useShowEvent(eventId, load.kind === 'loaded' && !budgetUnseen ? load.event : undefined);
   useGoneEvent(
     eventId,
     (page === 'guests' && load.kind === 'notFound') ||
@@ -250,6 +267,9 @@ function EventOf({
 
   if (page === 'menu' && load.kind === 'loaded')
     return canOn(load.event, PAGE_NEEDS.menu) ? <MenuArea event={load.event} /> : <Withheld />;
+
+  if (page === 'budget' && load.kind === 'loaded')
+    return budgetUnseen ? <EventNotFound /> : <BudgetArea event={load.event} />;
 
   if (page === 'schedule' && load.kind === 'loaded')
     return canOn(load.event, PAGE_NEEDS.schedule) ? (

@@ -9,6 +9,8 @@ import { Glyph } from '../../../components/Glyph.tsx';
 import { SIDE_AREAS, SIDE_AREA_GLYPHS, type SideArea } from '../../../components/eventSideAreas.ts';
 import { cardTags, listEventOf, shownEvent } from '../../../eventsList.ts';
 import { useLoadedAt, useServerNow } from '../../../serverNow.ts';
+import { canOn } from '../../../session.ts';
+import { PAGE_NEEDS } from './handoff.ts';
 
 export interface InsideEvent {
   eventId: string;
@@ -188,41 +190,48 @@ export function EventNav({
         {card ?? (event != null && <SideCard event={event} />)}
       </div>
       <ul className="today-places">
-        {areas.map((area) => {
-          const current = area === inside.area;
-          const sub =
-            area === 'menu' && menuLine != null
-              ? t('eventNav.menuReady', { ready: menuLine.ready, count: menuLine.courses })
-              : null;
+        {areas
+          .filter((area) => area !== 'budget' || seesBudget(event))
+          .map((area) => {
+            const current = area === inside.area;
+            const sub =
+              area === 'menu' && menuLine != null
+                ? t('eventNav.menuReady', { ready: menuLine.ready, count: menuLine.courses })
+                : null;
 
-          return (
-            <li key={area}>
-              <Link
-                to={eventAreaPath(inside.eventId, area)}
-                className={['today-place', current && 'is-on', sub != null && 'has-line']
-                  .filter(Boolean)
-                  .join(' ')}
-                aria-current={current ? 'page' : undefined}
-                replace={current || (!inside.onPage && !(area === 'overview' && cameFromPage))}
-                state={inside.onPage || cameFromPage ? { fromEventPage: true } : undefined}
-                onClick={area === 'overview' && !inside.onPage ? backToPage : onFollow}
-              >
-                <Glyph name={SIDE_AREA_GLYPHS[area]} />
-                {sub != null ? (
-                  <span className="ev-side-two">
-                    <span>{t(`eventNav.${area}`)}</span>
-                    <span className="ev-side-sub">{sub}</span>
-                  </span>
-                ) : (
-                  t(`eventNav.${area}`)
-                )}
-              </Link>
-            </li>
-          );
-        })}
+            return (
+              <li key={area}>
+                <Link
+                  to={eventAreaPath(inside.eventId, area)}
+                  className={['today-place', current && 'is-on', sub != null && 'has-line']
+                    .filter(Boolean)
+                    .join(' ')}
+                  aria-current={current ? 'page' : undefined}
+                  replace={current || (!inside.onPage && !(area === 'overview' && cameFromPage))}
+                  state={inside.onPage || cameFromPage ? { fromEventPage: true } : undefined}
+                  onClick={area === 'overview' && !inside.onPage ? backToPage : onFollow}
+                >
+                  <Glyph name={SIDE_AREA_GLYPHS[area]} />
+                  {sub != null ? (
+                    <span className="ev-side-two">
+                      <span>{t(`eventNav.${area}`)}</span>
+                      <span className="ev-side-sub">{sub}</span>
+                    </span>
+                  ) : (
+                    t(`eventNav.${area}`)
+                  )}
+                </Link>
+              </li>
+            );
+          })}
       </ul>
     </nav>
   );
+}
+
+/** Without budget.read the event's Budget is not in its navigation (sc-85); until the event has loaded, nobody is known to hold it. */
+function seesBudget(event: OrganisationEvent | undefined): boolean {
+  return event != null && canOn(event, PAGE_NEEDS.budget);
 }
 
 /** Its phase and how soon, in the words of its card on Events. */

@@ -8,6 +8,7 @@ use App\Domain\Budget\BudgetRange;
 use App\Domain\Budget\BudgetWhatIf;
 use App\Domain\Budget\Model\LineCost;
 use App\Domain\Budget\Model\LineMove;
+use App\Domain\Budget\Model\Quantity;
 use App\Domain\Budget\Model\QuantityFacts;
 use App\Domain\Budget\Model\WhatIfChanges;
 use App\Domain\Budget\QuantityResolver;
@@ -17,13 +18,15 @@ use App\Enum\CostBasis;
 use App\Locale\Money;
 use App\Repository\BudgetLineRepository;
 use BcMath\Number;
+use Psl\Dict;
 use Psl\Vec;
 
 /**
  * @phpstan-type Line array{id: string, label: string, category: string, basis: string, rate: ?string, amount: ?string, currency: string, note: ?string, quantity: array{count: int, source: string, reason: ?string}, createdAt: string, updatedAt: string}
  * @phpstan-type CostedLine array{id: string, label: string, category: string, basis: string, rate: ?string, amount: ?string, currency: string, note: ?string, quantity: array{count: int, source: string, reason: ?string}, createdAt: string, updatedAt: string, cost: array{confirmed: string, potential: string}}
  * @phpstan-type PerHead array{amount: ?string, heads: int}
- * @phpstan-type Range array{currency: string, confirmed: string, potential: string, perHead: array{confirmed: PerHead, potential: PerHead}, notPriced: int, lines: list<CostedLine>}
+ * @phpstan-type Counted array{count: int, source: string, reason: ?string}
+ * @phpstan-type Range array{currency: string, confirmed: string, potential: string, perHead: array{confirmed: PerHead, potential: PerHead}, notPriced: int, quantities: array<string, Counted>, lines: list<CostedLine>}
  * @phpstan-type Moved array{from: string, to: string, delta: string}
  * @phpstan-type MovedLine array{id: string, label: string, category: string, basis: string, quantity: array{confirmed: array{from: int, to: int}, potential: array{from: int, to: int}, reason: ?string}, known: bool, cost: array{confirmed: Moved, potential: Moved}|null}
  * @phpstan-type WhatIf array{currency: string, confirmed: Moved, potential: Moved, fullCostKnown: bool, lines: list<MovedLine>}
@@ -48,7 +51,7 @@ final readonly class BudgetSerialiser
     }
 
     /**
-     * The range and cost per head (sc-84), worked out on every read because an RSVP moves them.
+     * The range and cost per head (sc-84), worked out on every read because an RSVP moves them, with what each basis counts today so Add a cost asks for no number (sc-85).
      *
      * @return Range
      */
@@ -68,6 +71,7 @@ final readonly class BudgetSerialiser
                 'potential' => ['amount' => $money($range->potentialPerHead()), 'heads' => $range->potentialHeads],
             ],
             'notPriced' => $range->notPriced,
+            'quantities' => Dict\from_entries(Vec\map(CostBasis::cases(), static fn (CostBasis $basis): array => [$basis->value, self::counted(QuantityResolver::resolve($basis, $facts))])),
             'lines' => Vec\map($range->lines, static fn (LineCost $cost): array => [
                 ...self::line($cost->line, $facts),
                 'cost' => ['confirmed' => Money::written($cost->confirmedMinor, $currency), 'potential' => Money::written($cost->potentialMinor, $currency)],
@@ -122,7 +126,7 @@ final readonly class BudgetSerialiser
         $currency = $line->getEvent()->getCurrency();
         $price = $line->getPriceMinor();
         $written = null === $price ? null : Money::written($price, $currency);
-        $quantity = QuantityResolver::resolve($line->getBasis(), $facts);
+        $quantity = self::counted(QuantityResolver::resolve($line->getBasis(), $facts));
 
         return [
             'id' => $line->getId()->toRfc4122(),
@@ -133,9 +137,15 @@ final readonly class BudgetSerialiser
             'amount' => CostBasis::Fixed === $line->getBasis() ? $written : null,
             'currency' => $currency,
             'note' => $line->getNote(),
-            'quantity' => ['count' => $quantity->count, 'source' => $quantity->source->value, 'reason' => $quantity->reason],
+            'quantity' => $quantity,
             'createdAt' => $line->getCreatedAt()->format(\DATE_ATOM),
             'updatedAt' => $line->getUpdatedAt()->format(\DATE_ATOM),
         ];
+    }
+
+    /** @return Counted */
+    private static function counted(Quantity $quantity): array
+    {
+        return ['count' => $quantity->count, 'source' => $quantity->source->value, 'reason' => $quantity->reason];
     }
 }
