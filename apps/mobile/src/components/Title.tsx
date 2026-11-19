@@ -19,6 +19,8 @@ import {
   titleSize,
   wordsIn,
   wordsRoomKey,
+  wholeLineHeight,
+  wordsPending,
   wordsSlot,
 } from '../layout/textSize.ts';
 import { Text, TitleCap, type TextProps } from './Text.tsx';
@@ -151,6 +153,9 @@ export function useWholeWords(
     measure,
     drawnAtStart: drawn === start,
     maxFontSizeMultiplier: drawn / size,
+    pending: wordsPending(look.room, slot, widths.length, words.length),
+    // A box rounded a fraction short of its last line has iOS draw that line's words clipped on the line above (sc-69816).
+    lineHeight: wholeLineHeight(size, drawn),
     /** The width each of the texts has, whatever the texts say, for as long as the window keeps its width. */
     room: (width: number) =>
       setReported((current) =>
@@ -198,6 +203,7 @@ export function WholeWords({
         key={drawnSize}
         size={size}
         maxFontSizeMultiplier={words.maxFontSizeMultiplier}
+        style={[{ lineHeight: words.lineHeight }, rest.style, words.pending && styles.pending]}
         onLayout={(event) => {
           onLayout?.(event);
           if (words.drawnAtStart) words.seen(event.nativeEvent.layout.width);
@@ -287,4 +293,5 @@ const styles = StyleSheet.create({
   },
   // A caller's stretch or flex would make a word as wide as the box above, and every text would step down to its floor (sc-37693).
   word: { flex: 0, alignSelf: 'flex-start' },
+  pending: { opacity: 0 },
 });
