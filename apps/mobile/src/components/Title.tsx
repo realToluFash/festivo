@@ -18,6 +18,7 @@ import {
   titleCapOn,
   titleSize,
   wordsIn,
+  wordsRoomKey,
   wordsSlot,
 } from '../layout/textSize.ts';
 import { Text, TitleCap, type TextProps } from './Text.tsx';
@@ -77,7 +78,8 @@ export function useWholeWords(
 ) {
   const { width: windowWidth } = useWindowDimensions();
   const words = look.breakAfterHyphens ? piecesIn(texts) : wordsIn(texts);
-  const roomKey = `${start}|${windowWidth}`;
+  const given = look.room != null && look.room > 0 ? look.room : undefined;
+  const roomKey = wordsRoomKey(start, windowWidth, given);
   const seenKey = `${roomKey}|${texts.join('\n')}`;
   const [measured, setMeasured] = useState<Readonly<Record<string, number>>>({});
   const [room, setRoom] = useState<{ key: string; width: number } | null>(null);
@@ -92,10 +94,11 @@ export function useWholeWords(
     {
       wrapped: wrapped ? seen.width : null,
       kept: room,
-      reported: look.room != null && look.room > 0 ? { windowWidth, width: look.room } : reported,
+      reported: given == null ? reported : { windowWidth, width: given },
     },
     start,
     windowWidth,
+    given,
   );
   const drawn =
     slot > 0 && widths.length === words.length
