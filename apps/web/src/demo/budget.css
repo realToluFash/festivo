@@ -483,6 +483,12 @@ a.desk-row.bud-row:hover {
   margin-inline: 0;
 }
 
+.bud-ask .bud-ask-problem {
+  flex: 1 0 100%;
+  color: var(--colorBroken);
+  font: 500 13.5px/1.4 var(--fontFamily);
+}
+
 .desk-dialog:has(.bud-width.is-700) {
   width: min(700px, calc(100vw - 32px));
 }

@@ -596,6 +596,41 @@ describe('Quotes and what is due on the wedding’s Budget, in A (sc-87, sc-88)'
     ).toBeDefined();
   });
 
+  it('keeps the row and says so in it when Remove fails, and removes it on the second try', async () => {
+    await open(`${SAVOUR}&state=remove_failed`);
+    const ask = within(rowOf('Second instalment')).getByRole('group', {
+      name: 'Remove this payment?',
+    });
+    fireEvent.click(within(ask).getByRole('button', { name: 'Remove' }));
+    expect(within(ask).getByRole('alert').textContent).toBe(
+      'Not removed. Check your connection and try again.',
+    );
+    expect(document.activeElement?.textContent).toBe('Remove');
+    expect(within(section('Schedule')).getByText('Second instalment')).toBeDefined();
+    fireEvent.click(within(ask).getByRole('button', { name: 'Remove' }));
+    expect(within(section('Schedule')).queryByText('Second instalment')).toBeNull();
+  });
+
+  it('keeps Due next and Vendors quoted in place when the quotes did not load, with Try again', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    await open(`${BUDGET}&state=quotes_failed`);
+    for (const name of ['Due next', 'Vendors quoted'])
+      expect(
+        within(section(name)).getByText(
+          'Quotes and payments did not load. Check your connection and try again.',
+        ),
+      ).toBeDefined();
+    expect(
+      within(section('Vendors quoted')).queryByRole('button', { name: 'Add a quote' }),
+    ).toBeNull();
+    fireEvent.click(within(section('Due next')).getByRole('button', { name: 'Try again' }));
+    expect(
+      within(section('Due next')).getByRole('button', { name: 'Trying again…' }),
+    ).toBeDefined();
+    await settle();
+    expect(within(section('Vendors quoted')).getByText('Savour Kitchen')).toBeDefined();
+  });
+
   it(
     'stays closed after Cancel, and keeps its marks after Add, once the vendor field blurs',
     SLOW,

@@ -211,7 +211,7 @@ export function QuoteDialog({
     <MoneyField
       label={QW.amount}
       value={draft.amount}
-      help={QW.inPounds}
+      help={QW.inCurrency}
       error={problems.amount ?? null}
       {...(form === 'revise' ? { inputRef: first } : {})}
       onChange={(next) => set({ amount: next })}
@@ -776,7 +776,7 @@ function PaymentFields({
         <MoneyField
           label={QW.amount}
           value={draft.amount}
-          help={QW.inPounds}
+          help={QW.inCurrency}
           error={problems.amount ?? null}
           onChange={(amount) => onSet({ amount })}
         />

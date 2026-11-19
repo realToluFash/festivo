@@ -24,7 +24,13 @@ import { type Payment, TODAY, longDay, money, overdue, shortDay, whole } from '.
 import { BUDGET_WORDS as BW } from './budgetWords.ts';
 import { NotBuilt } from './EventParts.tsx';
 import { EVENT_WORDS, type SampleEvent } from './events.ts';
-import { AmendInPlace, MarkPaidDialog, PaymentDialog, QuoteDialog } from './QuoteForms.tsx';
+import {
+  AmendInPlace,
+  BUSY_MS,
+  MarkPaidDialog,
+  PaymentDialog,
+  QuoteDialog,
+} from './QuoteForms.tsx';
 import { BinMark, CancelDialog, CancelledMark, MadeDialog } from './Payments.tsx';
 import {
   type Cancelling,
@@ -136,6 +142,10 @@ function QuotesBody({
   const [payment, setPayment] = useState<PaymentOpen | null>(start.payment);
   const [amending, setAmending] = useState<Amending | null>(start.amending);
   const [removing, setRemoving] = useState<string | null>(start.removing);
+  const [removeFails, setRemoveFails] = useState(state === 'remove_failed');
+  const [notRemoved, setNotRemoved] = useState(false);
+  const [quotesFailed, setQuotesFailed] = useState(state === 'quotes_failed');
+  const [retrying, setRetrying] = useState(false);
   const [earlier, setEarlier] = useState(start.earlier);
   const [marking, setMarking] = useState<Marking | null>(start.marking);
   const [marked, setMarked] = useState<string | null>(start.marked);
@@ -168,6 +178,16 @@ function QuotesBody({
           { label: BW.budget, to: at.home },
           { label: page === 'due' ? BW.everythingDueTitle : (open?.vendor.name ?? BW.budget) },
         ];
+
+  function retry() {
+    if (retrying) return;
+    setRetrying(true);
+    window.setTimeout(() => {
+      setRetrying(false);
+      setQuotesFailed(false);
+      title.current?.focus();
+    }, BUSY_MS);
+  }
 
   useEffect(() => {
     if (opened.current) title.current?.focus();
@@ -233,6 +253,7 @@ function QuotesBody({
               earlier={earlier}
               amending={amending}
               removing={removing}
+              notRemoved={notRemoved}
               marked={marked}
               addedPaid={addedPaid}
               deleted={deleted}
@@ -286,8 +307,17 @@ function QuotesBody({
                 setAmending(null);
                 tell(QW.paymentChanged(draft.what.trim(), money(amount), longDay(draft.dueOn)));
               }}
-              onRemoving={setRemoving}
+              onRemoving={(id) => {
+                setRemoving(id);
+                setNotRemoved(false);
+              }}
               onRemove={(id) => {
+                if (removeFails) {
+                  setRemoveFails(false);
+                  setNotRemoved(true);
+                  return;
+                }
+                setNotRemoved(false);
                 const gone = budget.payments.find((one) => one.id === id);
                 setBudget((now) => ({
                   ...now,
@@ -314,30 +344,38 @@ function QuotesBody({
               payments={budget.payments}
               onMark={readOnly ? undefined : markPaid}
               dueNext={
-                <DueNext
-                  due={everythingDue(budget)}
-                  more={at.due}
-                  marked={homeMarked}
-                  {...(readOnly ? {} : { onMark: markPaid, onUndo: undo })}
-                />
+                quotesFailed ? (
+                  <QuotesNotLoaded title={BW.dueNext} busy={retrying} onRetry={retry} />
+                ) : (
+                  <DueNext
+                    due={everythingDue(budget)}
+                    more={at.due}
+                    marked={homeMarked}
+                    {...(readOnly ? {} : { onMark: markPaid, onUndo: undo })}
+                  />
+                )
               }
               vendorsQuoted={
-                <VendorsQuoted
-                  budget={budget}
-                  vendorAt={at.vendor}
-                  onAdd={
-                    readOnly
-                      ? undefined
-                      : () =>
-                          setQuote({
-                            form: 'add',
-                            draft: BLANK_QUOTE,
-                            problems: {},
-                            refusal: null,
-                            list: false,
-                          })
-                  }
-                />
+                quotesFailed ? (
+                  <QuotesNotLoaded title={BW.vendorsQuoted} busy={retrying} onRetry={retry} />
+                ) : (
+                  <VendorsQuoted
+                    budget={budget}
+                    vendorAt={at.vendor}
+                    onAdd={
+                      readOnly
+                        ? undefined
+                        : () =>
+                            setQuote({
+                              form: 'add',
+                              draft: BLANK_QUOTE,
+                              problems: {},
+                              refusal: null,
+                              list: false,
+                            })
+                    }
+                  />
+                )
               }
             />
           )}
@@ -475,6 +513,24 @@ function CostsComing() {
         <NotBuilt words={EVENT_WORDS.notBuilt('sc-85')} />
       </div>
     </div>
+  );
+}
+
+/** Due next or Vendors quoted when the event's quotes and payments did not load: the block keeps its place, says so and offers Try again. */
+function QuotesNotLoaded({
+  title,
+  busy,
+  onRetry,
+}: {
+  title: string;
+  busy: boolean;
+  onRetry: () => void;
+}) {
+  return (
+    <Block title={title}>
+      <p className="desk-line is-ink">{QW.quotesNotLoaded}</p>
+      <TextAction label={busy ? QW.trying : QW.tryAgain} onClick={onRetry} />
+    </Block>
   );
 }
 
@@ -739,6 +795,7 @@ export function VendorPage({
   earlier,
   amending,
   removing,
+  notRemoved,
   marked,
   addedPaid,
   deleted,
@@ -766,6 +823,7 @@ export function VendorPage({
   earlier: boolean;
   amending: Amending | null;
   removing: string | null;
+  notRemoved: boolean;
   marked: string | null;
   addedPaid: readonly string[];
   deleted: string | null;
@@ -856,6 +914,7 @@ export function VendorPage({
                       readOnly={readOnly}
                       amending={amending?.id === one.id ? amending : null}
                       removing={removing === one.id}
+                      notRemoved={removing === one.id && notRemoved}
                       lit={marked === one.id}
                       added={addedPaid.includes(one.id)}
                       reader={viewer.name}
@@ -947,6 +1006,7 @@ function ScheduleRow({
   readOnly,
   amending,
   removing,
+  notRemoved,
   lit,
   added,
   reader,
@@ -965,6 +1025,7 @@ function ScheduleRow({
   readOnly: boolean;
   amending: Amending | null;
   removing: boolean;
+  notRemoved: boolean;
   lit: boolean;
   added: boolean;
   reader: string;
@@ -1066,6 +1127,7 @@ function ScheduleRow({
       {readOnly ? null : removing ? (
         <AskInRow
           question={QW.removeAsk}
+          problem={notRemoved ? QW.notRemoved : null}
           onKeep={() => {
             onRemoving(false);
             backToChange();

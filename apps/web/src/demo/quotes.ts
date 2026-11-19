@@ -518,6 +518,7 @@ export const VENDOR_STATES: readonly string[] = [
   'payment_blank',
   'amend',
   'remove',
+  'remove_failed',
 ];
 
 export const QUOTES_STATES: readonly string[] = [
@@ -537,6 +538,7 @@ export const QUOTES_STATES: readonly string[] = [
   'second_quote',
   'vendor_gone',
   'line_taken',
+  'quotes_failed',
 ];
 
 export function pageVendor(state: string, vendor: string | null): string | null {
@@ -710,6 +712,7 @@ export function quotesStart(
             },
           };
     case 'remove':
+    case 'remove_failed':
       return { ...start, removing: lastOwed?.id ?? null };
     default:
       return start;
@@ -768,6 +771,7 @@ export const QUOTES_PAGES: readonly { name: string; states: readonly DemoLink[] 
       { to: `${at()}&view=due`, name: 'Everything due · 5, the whole list' },
       { to: at('no_quotes'), name: 'No quotes yet (no_quotes)' },
       { to: at('nothing_due'), name: 'Quotes, and nothing is due (nothing_due)' },
+      { to: at('quotes_failed'), name: 'Quotes and payments did not load (quotes_failed)' },
       { to: at('vendor', SAVOUR), name: 'Savour Kitchen, £1,500.00 not scheduled (vendor)' },
       { to: at(undefined, BLOOM), name: 'Bloom & Co, the balance overdue, with Mark paid' },
       { to: at('no_payments', SAVOUR), name: 'No payments scheduled yet (no_payments)' },
@@ -819,6 +823,10 @@ export const QUOTES_PAGES: readonly { name: string; states: readonly DemoLink[] 
       { to: at('payment_blank', SAVOUR), name: 'Sent blank (payment_blank)' },
       { to: at('amend', SAVOUR), name: 'Change a payment, in place (amend)' },
       { to: at('remove', SAVOUR), name: 'Remove, asked in the row (remove)' },
+      {
+        to: at('remove_failed', SAVOUR),
+        name: 'Remove fails once, said in the row (remove_failed)',
+      },
     ],
   },
 ];
