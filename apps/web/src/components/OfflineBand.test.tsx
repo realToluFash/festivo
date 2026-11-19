@@ -586,6 +586,8 @@ describe("an event's area under the box (sc-65646)", () => {
   }
 
   it("says when the event last loaded, though its area's list is older", () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true, toFake: ['Date'] });
+    vi.setSystemTime(new Date(2026, 10, 18, 10, 30));
     const retry = () => {};
     render(
       <OfflineProvider>
