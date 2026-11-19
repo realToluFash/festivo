@@ -26,9 +26,7 @@ describe('the tab bar’s labels at twice the text size (sc-37298)', () => {
 
 describe('the event’s bar on a phone (sc-71148)', () => {
   it('measures every word in SemiBold at the start and draws all five at exactly the size that fits', () => {
-    expect(cover).toMatch(
-      /<MeasuredWords\s+words=\{words\}\s+size=\{start\}\s+weight="semibold"\s+allowFontScaling=\{false\}/u,
-    );
+    expect(cover).toMatch(/useMeasuredAt\(start, wordsIn\(tabLabels\(props\)\)\)/u);
     expect(cover).toMatch(
       /size: eventBarLabelSize\(fontScale, widest, slot\),\s+allowFontScaling: false,/u,
     );

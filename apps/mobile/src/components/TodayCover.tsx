@@ -13,7 +13,7 @@ import Svg, { Circle, Defs, LinearGradient, Rect, Stop } from 'react-native-svg'
 
 import { coverRowSides, pastSides, sidePadding, tabBarSides } from './bodyEdges.ts';
 import { Text, type TextProps } from './Text.tsx';
-import { MeasuredWords, useWholeWords } from './Title.tsx';
+import { useMeasuredAt, useWholeWords } from './Title.tsx';
 import { TAB_LABEL, eventBarLabelSize, tabLabelStart } from '../layout/tabLabel.ts';
 import { wordsIn } from '../layout/textSize.ts';
 import { CAPSULE_HEIGHT, CAPSULE_LABEL } from '../layout/capsuleFit.ts';
@@ -870,29 +870,16 @@ function DefaultTabBar<T extends string>(props: TabBarProps<T>) {
 /** The five labels at one size, measured at semibold so selecting a tab never moves it, and drawn at exactly that size (sc-71148). */
 function SteppedTabBar<T extends string>(props: TabBarProps<T>) {
   const { fontScale } = useWindowDimensions();
-  const [measured, setMeasured] = useState<Readonly<Record<string, number>>>({});
   const [slot, setSlot] = useState(0);
   const start = tabLabelStart(fontScale);
-  const words = wordsIn(tabLabels(props));
-  const widths = words.map((word) => measured[`${start}|${word}`]);
+  const { widths, measure } = useMeasuredAt(start, wordsIn(tabLabels(props)));
   const widest = widths.every((width) => width != null) ? Math.max(...widths.map(Number)) : 0;
 
   return (
     <TabRow
       {...props}
       words={{
-        measure: (
-          <MeasuredWords
-            words={words}
-            size={start}
-            weight="semibold"
-            allowFontScaling={false}
-            onWidth={(word, width) => {
-              const key = `${start}|${word}`;
-              setMeasured((now) => (now[key] === width ? now : { ...now, [key]: width }));
-            }}
-          />
-        ),
+        measure,
         room: (width) => setSlot((now) => (now === width ? now : width)),
         label: {
           size: eventBarLabelSize(fontScale, widest, slot),
