@@ -182,6 +182,7 @@ import {
   renderQaEnv,
   reversedPorts,
   unreversed,
+  restoreReverses,
   simulatorFor,
   TESTERS,
   testerOf,
@@ -881,6 +882,40 @@ describe('the reversed ports read back', () => {
 
   it('counts every port missing when adb answers nothing', () => {
     expect(unreversed(null, [18081, 18000])).toEqual([18081, 18000]);
+  });
+});
+
+describe('the reverses a batch puts back', () => {
+  const emulator = (held) => {
+    const added = [];
+    const adb = (args) => {
+      if (args[1] === '--list')
+        return held.map((p) => `emulator-5578 tcp:${p} tcp:${p}`).join('\n');
+      added.push(Number(args[1].slice(4)));
+      held.push(Number(args[1].slice(4)));
+      return '';
+    };
+    return { adb, added };
+  };
+
+  it('adds back only the ports a reconnect lost', async () => {
+    const { adb, added } = emulator([13180]);
+    expect(await restoreReverses(adb, [13180, 13181, 13189])).toEqual([]);
+    expect(added).toEqual([13181, 13189]);
+  });
+
+  it('adds nothing when every port is held', async () => {
+    const { adb, added } = emulator([13180, 13181]);
+    expect(await restoreReverses(adb, [13180, 13181])).toEqual([]);
+    expect(added).toEqual([]);
+  });
+
+  it('names the ports adb still drops after ten tries', async () => {
+    const tries = [];
+    const adb = (args) => (args[1] === '--list' ? '' : tries.push(args[1]));
+    const missing = await restoreReverses(adb, [13181], { wait: async () => {} });
+    expect(missing).toEqual([13181]);
+    expect(tries).toHaveLength(10);
   });
 });
 

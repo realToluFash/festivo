@@ -772,7 +772,9 @@
     "signInRules": "Règles de connexion",
     "signInRulesLine": "Moyens de connexion et durée des sessions",
     "members": "Membres",
-    "membersLine": "Qui en fait partie, et avec quel rôle"
+    "membersLine": "Qui en fait partie, et avec quel rôle",
+    "dataAndControl": "Données et contrôle",
+    "dataAndControlLine": "Domaines de messagerie et journal d’audit"
   },
   "switcher": {
     "asks": "Où travaillez-vous ?",
@@ -3064,12 +3066,102 @@
     "onEvent_one": "{{count, number}} personne sur cet événement",
     "onEvent_other": "{{count, number}} personnes sur cet événement",
     "onEvent_many": "{{count, number}} de personnes sur cet événement",
-    "yourEvents": "Your events",
-    "fromOutside": "Events from outside",
-    "yourOrganisations": "Your organisations",
-    "underWay": "Under way",
-    "here": "You’re here",
-    "backTo": "Back to {{name}}",
-    "continue": "Continue"
+    "yourEvents": "Vos événements",
+    "fromOutside": "Événements externes",
+    "yourOrganisations": "Vos organisations",
+    "underWay": "En cours",
+    "here": "Vous êtes ici",
+    "backTo": "Retour à {{name}}",
+    "continue": "Continuer"
+  },
+  "dataAndControl": {
+    "title": "Données et contrôle",
+    "control": "Contrôle",
+    "onTheWeb": "L’exportation de toutes les données, la suppression des données des invités après un événement et la réponse à la demande d’un invité se font sur le web.",
+    "loading": "Chargement de Données et contrôle…",
+    "failed": "Impossible de charger Données et contrôle.",
+    "tryLine": "Vérifiez votre connexion et réessayez.",
+    "enterprise": "Enterprise",
+    "nothing": "Rien ne demande votre attention",
+    "nothingLine_one": "{{domains}} est vérifié.",
+    "nothingLine_many": "{{domains}} sont vérifiés.",
+    "nothingLine_other": "{{domains}} sont vérifiés.",
+    "nothingSet": "Rien n’est encore configuré",
+    "nothingSetLine": "Commencez par vérifier le domaine de messagerie de l’organisation {{organisation}}.",
+    "locked": "Inclus dans le forfait Enterprise",
+    "lockedLine": "Domaines de messagerie et journal d’audit.",
+    "leftLine": "Les domaines de messagerie, le journal d’audit et la suppression des données des invités sont désactivés et conservés tels quels. Ils se réactivent avec le forfait Enterprise.",
+    "rows": {
+      "domains": "Domaines de messagerie",
+      "noDomains": "Aucun domaine pour l’instant",
+      "lockedDomains": "Vérifiez votre domaine et réservez ses comptes à l’organisation {{organisation}}"
+    },
+    "standing": {
+      "proved": "{{domain}} vérifié",
+      "waiting": "{{domain}} en attente de l’enregistrement",
+      "failed": "{{domain}} non vérifié",
+      "missing": "{{domain}} : enregistrement absent",
+      "kept": "{{domain}} conservé tel quel"
+    }
+  },
+  "emailDomains": {
+    "title": "Domaines de messagerie",
+    "block": "Domaines",
+    "prove": "Vérifier un domaine",
+    "foot": "Vérifier un domaine ne permet à personne de rejoindre l’organisation. L’adhésion par domaine d’entreprise a sa propre liste, dans Organisation.",
+    "none": "Aucun domaine pour l’instant.",
+    "loading": "Chargement de Domaines de messagerie…",
+    "failed": "Impossible de charger Domaines de messagerie.",
+    "proved": "Vérifié",
+    "waiting": "En attente de l’enregistrement",
+    "notProved": "Non vérifié",
+    "missing": "Enregistrement absent",
+    "kept": "Conservé",
+    "provedOn": "Vérifié le {{at}}",
+    "checksUntil": "Nous vérifions toutes les heures jusqu’au {{at}}",
+    "stopped": "Nous avons cessé de vérifier le {{at}}. Le bouton Vérifier fonctionne toujours.",
+    "putBack": "Remettez-le avant le {{at}}",
+    "remove": "Retirer",
+    "removeAsks": "Retirer…",
+    "removeLabel": "Retirer {{domain}}",
+    "removed": "{{domain}} a été retiré.",
+    "record": {
+      "title": "Vérifier {{domain}}",
+      "close": "Fermer",
+      "verify": "Vérifier",
+      "verifying": "Vérification…",
+      "lead": "Ajoutez cet enregistrement là où le DNS de {{domain}} est géré, puis appuyez sur Vérifier.",
+      "notFound": "Nous n’avons pas encore trouvé l’enregistrement. Les modifications DNS peuvent prendre jusqu’à 48 heures.",
+      "putBack": "Remettez-le avant le {{at}}."
+    },
+    "add": {
+      "title": "Nouveau domaine",
+      "verb": "Ajouter",
+      "field": "Domaine",
+      "help": "Par exemple, {{example}}. Chaque sous-domaine s’ajoute séparément."
+    },
+    "card": {
+      "waiting": "{{domain}} attend son enregistrement",
+      "waitingLine": "Nous vérifions toutes les heures jusqu’au {{at}}.",
+      "seeRecord": "Voir l’enregistrement",
+      "empty": "Vérifiez le domaine de messagerie de l’organisation {{organisation}}",
+      "emptyLine": "Ajoutez un enregistrement DNS là où votre domaine est géré. Une fois le domaine vérifié, vous pourrez réserver ses comptes à l’organisation {{organisation}}.",
+      "proved": "{{domain}} est vérifié",
+      "provedLine": "Vérifié le {{at}}.",
+      "failed": "{{domain}} n’a pas été vérifié",
+      "failedLine": "Nous avons cessé de vérifier le {{at}}. Ajoutez l’enregistrement, puis appuyez sur Vérifier.",
+      "missing": "L’enregistrement de {{domain}} est absent",
+      "missingLine": "Remettez-le avant le {{at}}, sinon {{domain}} ne sera plus vérifié.",
+      "removed": "{{domain}} a été retiré",
+      "removedLine": "Il n’est plus vérifié.",
+      "locked": "Disponible avec le forfait Enterprise",
+      "lockedLine": "Vérifiez que le domaine appartient à l’organisation {{organisation}}, puis réservez ses comptes à l’organisation {{organisation}}.",
+      "offLine": "L’organisation {{organisation}} n’a plus le forfait Enterprise. Ses domaines sont conservés tels quels et se réactivent avec le forfait Enterprise."
+    },
+    "removeAsk": {
+      "title": "Retirer {{domain}} ?",
+      "line": "Il ne sera plus vérifié. L’adhésion par domaine d’entreprise garde sa propre liste.",
+      "keep": "Le garder"
+    }
   }
 }

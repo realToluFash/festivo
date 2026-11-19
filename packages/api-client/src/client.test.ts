@@ -1626,13 +1626,13 @@ describe('company domain joining (sc-561)', () => {
 
   test('reads the list of domains, and escapes the one removed', async () => {
     const { client, sent } = answering({
-      domains: [{ domain: 'ire.events', stopped: true }],
+      domains: [{ domain: 'ire.events', stopped: true, proved: true }],
       most: 5,
       ownAddress: 'folake@ire.events',
     });
 
     expect(await client.removeCompanyDomain('org_1', 'ire.events')).toEqual({
-      domains: [{ domain: 'ire.events', stopped: true }],
+      domains: [{ domain: 'ire.events', stopped: true, proved: true }],
       most: 5,
       ownAddress: 'folake@ire.events',
     });

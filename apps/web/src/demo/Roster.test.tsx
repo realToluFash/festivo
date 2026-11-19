@@ -302,6 +302,35 @@ describe('/demo/events/evt-wed-4/staff/roster (sc-3906)', () => {
     expect(cssRule('.rs-table thead th:nth-child(5)', narrow)).toContain('min-width: 168px;');
   });
 
+  it.each([
+    ['nobodyOnShift', 'Not on a shift yet'],
+    ['nobodyOnShiftFrench', 'Aucun service pour l’instant'],
+  ])(
+    'keeps each Shift cell with no shift on one line, in the paler grey, in %s (sc-71607)',
+    async (state, words) => {
+      await open(state);
+      const cells = within(screen.getByRole('table', { name: 'Roster' }))
+        .getAllByRole('row')
+        .slice(1)
+        .map((row) => row.querySelectorAll('td')[2] as HTMLElement);
+      expect(cells.length).toBeGreaterThan(1);
+      for (const cell of cells) {
+        expect(cell.textContent).toBe(words);
+        expect([...cell.classList]).toEqual(['rs-shift', 'rs-quiet']);
+      }
+    },
+  );
+
+  it('keeps a Shift cell with no shift on one line beside ones with a shift (sc-71607)', async () => {
+    await open('populated');
+    const cell = screen.getByText('Not on a shift yet', { selector: 'td' });
+    expect([...cell.classList]).toEqual(['rs-shift', 'rs-quiet']);
+    expect(cssRule('.rs-table td.rs-shift', ROSTER_CSS)).toContain('white-space: nowrap;');
+    expect(cssRule('.rs-table tbody td.rs-quiet', ROSTER_CSS)).toContain(
+      'color: var(--colorInkSecondary);',
+    );
+  });
+
   it('keeps the card heading 12rem wide below 720 px, as the product does', () => {
     expect(
       cssRule('.rs .sn-card-names', ROSTER_CSS.slice(ROSTER_CSS.indexOf('(width <= 720px)'))),

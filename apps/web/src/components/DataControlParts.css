@@ -73,3 +73,40 @@ a.desk-row.dc-row:hover {
   flex: none;
   box-sizing: border-box;
 }
+
+.dc-none {
+  padding-top: var(--spaceXs);
+}
+
+.desk-tag.dc-tag-no {
+  background: var(--colorBrokenTint);
+  color: var(--colorBrokenText);
+}
+
+.dc-mark-no {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--colorBroken);
+}
+
+.dc-mark-no path {
+  stroke: var(--colorInkOnDark);
+  stroke-width: 1.8;
+  stroke-linecap: round;
+}
+
+.dc-actions {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: var(--space3xl);
+}
+
+.dc-actions .desk-text {
+  margin-inline: 0;
+}

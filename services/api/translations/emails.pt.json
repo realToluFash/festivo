@@ -197,5 +197,14 @@
     "planDowngraded.setting.audit_log": "Registo de auditoria",
     "planDowngraded.setting.guest_data_deletion": "Eliminação dos dados dos convidados após cada evento",
     "planDowngraded.comeBack": "Com o plano Enterprise, voltam a ficar ativas tal como estavam. Contacte a Soirely sobre o plano Enterprise.",
-    "planDowngraded.footer": "Está a receber isto porque é proprietário ou administrador de {organisation}."
+    "planDowngraded.footer": "Está a receber isto porque é proprietário ou administrador de {organisation}.",
+    "domainListingStopped.subject": "{domain} já não permite aderir a {organisation}",
+    "domainListingStopped.body": "{prover} verificou que {domain} lhe pertence, por isso quem usa {domain} já não pode pedir para aderir a {organisation} através da Adesão por domínio da empresa.",
+    "domainListingStopped.members": "Os membros que já estão em {organisation} mantêm-se como estão.",
+    "domainListingStopped.footer": "Está a receber isto porque é proprietário ou administrador de {organisation}.",
+    "domainRecordGone.subject": "O registo de {domain} está em falta",
+    "domainRecordGone.body": "Não encontrámos o registo DNS que prova que {domain} pertence a {organisation}. Volte a adicioná-lo até {deadline} ou {domain} deixa de estar verificado.",
+    "domainRecordGone.name": "Nome: {name}",
+    "domainRecordGone.type": "Tipo: TXT",
+    "domainRecordGone.footer": "Está a receber isto porque é proprietário ou administrador de {organisation}."
 }

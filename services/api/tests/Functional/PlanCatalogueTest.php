@@ -29,6 +29,7 @@ use Doctrine\DBAL\Exception as DbalException;
 use Doctrine\ORM\EntityManagerInterface;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
+use Psl\Str;
 use Psl\Type;
 use Psl\Vec;
 use Psr\Clock\ClockInterface;
@@ -238,12 +239,24 @@ final class PlanCatalogueTest extends FunctionalTestCase
     }
 
     #[Test]
-    public function theNoticeNamesTheNextRiseWhenTwoArePending(): void
+    public function aSecondUnitCostVersionIsRefusedWhileOneIsPending(): void
     {
-        $this->publishUnitCosts('2026-12-01', ['sms_per_segment', 'GB'], 10);
-        $this->publishUnitCosts('2026-12-08', ['sms_per_segment', 'GB'], 11);
+        $pending = $this->publishUnitCosts('2026-12-01', ['sms_per_segment', 'GB'], 10);
 
-        self::assertSame('2026-12-01', $this->catalogue->upcomingUnitCosts()?->name);
+        $this->expectExceptionMessage('Unit costs 2026-12-01 are pending and apply from ' . $pending->getEffectiveFrom()->format('j M Y'));
+        $this->publishUnitCosts('2026-12-08', ['sms_per_segment', 'GB'], 8);
+    }
+
+    #[Test]
+    public function onceThePendingVersionIsWithdrawnTheNextIsComparedWithTheCostsInForce(): void
+    {
+        $pending = $this->publishUnitCosts('2026-12-01', ['sms_per_segment', 'GB'], 10);
+        $this->keeper->withdraw($pending, 'Folding into one version', 'Ada at Soirely');
+
+        $fall = $this->publishUnitCosts('2026-12-08', ['sms_per_segment', 'GB'], 8);
+
+        self::assertEquals($fall->getPublishedAt(), $fall->getEffectiveFrom());
+        self::assertSame(8, $this->catalogue->unitCosts()->smsPerSegment('GB'));
     }
 
     #[Test]
@@ -269,6 +282,24 @@ final class PlanCatalogueTest extends FunctionalTestCase
     }
 
     #[Test]
+    public function aWholeNumberWrittenAsAFloatIsNeverPublished(): void
+    {
+        $terms = self::with($this->termsOf(CataloguePart::Plans), ['enterprise', 'prices', 'USD', 'month'], 249.0);
+
+        $this->expectExceptionMessage('249.0 is written with a decimal point');
+        $this->keeper->publish(CataloguePart::Plans, '2026-12-01', $terms, 'Broken', 'Ada at Soirely');
+    }
+
+    #[Test]
+    public function aUnitCostWrittenAsAFloatIsNeverPublished(): void
+    {
+        $terms = self::with($this->termsOf(CataloguePart::UnitCosts), ['sms_per_segment', 'GB'], 10.0);
+
+        $this->expectExceptionMessage('10.0 is written with a decimal point');
+        $this->keeper->publish(CataloguePart::UnitCosts, '2026-12-01', $terms, 'Broken', 'Ada at Soirely');
+    }
+
+    #[Test]
     #[DataProvider('brokenPlans')]
     public function aDocumentThatDoesNotReadIsNeverPublished(array $terms): void
     {
@@ -286,12 +317,67 @@ final class PlanCatalogueTest extends FunctionalTestCase
     }
 
     #[Test]
-    public function aPriceInSomethingOtherThanACurrencyCodeIsNeverPublished(): void
+    public function aPlanWithoutAPriceInEveryCurrencySoirelyBillsInIsNeverPublished(): void
     {
-        $terms = self::with($this->termsOf(CataloguePart::Plans), ['enterprise', 'prices', 'dollars'], ['month' => 1, 'year' => 1]);
+        $terms = self::with($this->termsOf(CataloguePart::Plans), ['free', 'prices', 'GBP'], null);
 
-        $this->expectExceptionMessage('ISO 4217');
+        $this->expectExceptionMessage('The free plan has no GBP price: every plan is priced in exactly USD, EUR, GBP.');
         $this->keeper->publish(CataloguePart::Plans, '2026-12-01', $terms, 'Broken', 'Ada at Soirely');
+    }
+
+    #[Test]
+    public function aPriceInACurrencySoirelyDoesNotBillInIsNeverPublished(): void
+    {
+        $terms = self::with($this->termsOf(CataloguePart::Plans), ['enterprise', 'prices', 'NGN'], ['month' => 1, 'year' => 1]);
+
+        $this->expectExceptionMessage('The enterprise plan has a NGN price, which Soirely does not bill in');
+        $this->keeper->publish(CataloguePart::Plans, '2026-12-01', $terms, 'Broken', 'Ada at Soirely');
+    }
+
+    #[Test]
+    public function aLimitGivenAnotherKindIsNeverPublished(): void
+    {
+        $terms = self::with($this->termsOf(CataloguePart::Plans), ['free', 'limits', 'team_seats', 'kind'], 'metered');
+
+        $this->expectExceptionMessage('The free plan gives team_seats the kind metered, but team_seats is hard.');
+        $this->keeper->publish(CataloguePart::Plans, '2026-12-01', $terms, 'Broken', 'Ada at Soirely');
+    }
+
+    /** @return iterable<string, array{string}> */
+    public static function providerUnassignedCountries(): iterable
+    {
+        yield 'reserved, unknown to ICU' => ['UK'];
+        yield 'reserved, known to ICU' => ['IC'];
+        yield 'user-assigned, known to ICU' => ['XK'];
+    }
+
+    #[Test]
+    #[DataProvider('providerUnassignedCountries')]
+    public function aCountryCodeThatIsNotAssignedIsNeverPublished(string $code): void
+    {
+        $terms = self::with($this->termsOf(CataloguePart::UnitCosts), ['sms_per_segment', $code], 9);
+
+        $this->expectExceptionMessage(Str\format('"%s" is not an assigned ISO 3166-1 alpha-2 country code.', $code));
+        $this->keeper->publish(CataloguePart::UnitCosts, '2026-12-01', $terms, 'Broken', 'Ada at Soirely');
+    }
+
+    #[Test]
+    public function aRefusedVersionStoresNothingAndAuditsNothing(): void
+    {
+        $entityManager = self::service(EntityManagerInterface::class);
+        $count = static fn (): array => [
+            $entityManager->getRepository(CatalogueVersion::class)->count([]),
+            $entityManager->getRepository(AuditEntry::class)->count(['action' => CatalogueKeeper::PUBLISHED]),
+        ];
+        $before = $count();
+
+        try {
+            $this->keeper->publish(CataloguePart::Plans, '2026-12-01', self::with($this->termsOf(CataloguePart::Plans), ['free', 'limits', 'team_seats', 'kind'], 'metered'), 'Broken', 'Ada at Soirely');
+            self::fail('The version was published.');
+        } catch (CatalogueRefused) {
+        }
+
+        self::assertSame($before, $count());
     }
 
     #[Test]

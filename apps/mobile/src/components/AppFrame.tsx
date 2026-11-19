@@ -1380,6 +1380,7 @@ function TabBar({ inEvent }: { inEvent: InsideEvent }) {
         ids={PHONE_EVENT_IDS}
         refs={{ more: moreTab }}
         onTab={(tab) => (tab === 'more' ? setMore(true) : inEvent.onArea(tab))}
+        stepsBelowDefault
       />
       <Sheet
         open={more}

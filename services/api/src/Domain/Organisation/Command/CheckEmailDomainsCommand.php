@@ -1,0 +1,28 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Domain\Organisation\Command;
+
+use App\Domain\Organisation\EmailDomains\EmailDomains;
+use Psl\Str;
+use Symfony\Component\Console\Attribute\AsCommand;
+use Symfony\Component\Console\Command\Command;
+use Symfony\Component\Console\Style\SymfonyStyle;
+
+/** Run every minute: each email domain due a look is looked up, and fails or lapses as of its own instant. */
+#[AsCommand(name: 'app:email-domains:check', description: 'Look up the DNS record of each email domain that is due, and fail or lapse each whose time has come')]
+final readonly class CheckEmailDomainsCommand
+{
+    public function __construct(
+        private EmailDomains $emailDomains,
+    ) {
+    }
+
+    public function __invoke(SymfonyStyle $io): int
+    {
+        $io->writeln(Str\format('Checked %d email domains.', $this->emailDomains->checkDue()));
+
+        return Command::SUCCESS;
+    }
+}

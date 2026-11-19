@@ -772,7 +772,9 @@
     "signInRules": "Regras de início de sessão",
     "signInRulesLine": "Como se inicia sessão e durante quanto tempo",
     "members": "Membros",
-    "membersLine": "Quem faz parte e com que função"
+    "membersLine": "Quem faz parte e com que função",
+    "dataAndControl": "Dados e controlo",
+    "dataAndControlLine": "Domínios de e-mail e registo de auditoria"
   },
   "switcher": {
     "asks": "Onde está a trabalhar?",
@@ -3064,12 +3066,102 @@
     "onEvent_one": "{{count, number}} pessoa neste evento",
     "onEvent_other": "{{count, number}} pessoas neste evento",
     "onEvent_many": "{{count, number}} de pessoas neste evento",
-    "yourEvents": "Your events",
-    "fromOutside": "Events from outside",
-    "yourOrganisations": "Your organisations",
-    "underWay": "Under way",
-    "here": "You’re here",
-    "backTo": "Back to {{name}}",
-    "continue": "Continue"
+    "yourEvents": "Os seus eventos",
+    "fromOutside": "Eventos externos",
+    "yourOrganisations": "As suas organizações",
+    "underWay": "A decorrer",
+    "here": "Está aqui",
+    "backTo": "Voltar a {{name}}",
+    "continue": "Continuar"
+  },
+  "dataAndControl": {
+    "title": "Dados e controlo",
+    "control": "Controlo",
+    "onTheWeb": "Exportar todos os dados, eliminar os dados dos convidados após um evento e responder ao pedido de um convidado faz-se na web.",
+    "loading": "A carregar Dados e controlo…",
+    "failed": "Não foi possível carregar Dados e controlo.",
+    "tryLine": "Verifique a ligação e tente novamente.",
+    "enterprise": "Enterprise",
+    "nothing": "Nada precisa da sua atenção",
+    "nothingLine_one": "{{domains}} está verificado.",
+    "nothingLine_many": "{{domains}} estão verificados.",
+    "nothingLine_other": "{{domains}} estão verificados.",
+    "nothingSet": "Ainda não há nada configurado",
+    "nothingSetLine": "Comece por verificar o domínio de e-mail de {{organisation}}.",
+    "locked": "Incluídos no plano Enterprise",
+    "lockedLine": "Domínios de e-mail e registo de auditoria.",
+    "leftLine": "Os domínios de e-mail, o registo de auditoria e a eliminação dos dados dos convidados estão desativados e mantêm-se como estavam. Voltam a ficar ativos com o plano Enterprise.",
+    "rows": {
+      "domains": "Domínios de e-mail",
+      "noDomains": "Ainda não há domínios",
+      "lockedDomains": "Verifique o seu domínio e limite as contas desse domínio a {{organisation}}"
+    },
+    "standing": {
+      "proved": "{{domain}} verificado",
+      "waiting": "{{domain}} à espera do registo",
+      "failed": "{{domain}} não verificado",
+      "missing": "{{domain}}: registo em falta",
+      "kept": "{{domain}} mantido como estava"
+    }
+  },
+  "emailDomains": {
+    "title": "Domínios de e-mail",
+    "block": "Domínios",
+    "prove": "Verificar um domínio",
+    "foot": "Verificar um domínio não permite que ninguém adira. A Adesão por domínio da empresa tem a sua própria lista, em Organização.",
+    "none": "Ainda não há domínios.",
+    "loading": "A carregar Domínios de e-mail…",
+    "failed": "Não foi possível carregar Domínios de e-mail.",
+    "proved": "Verificado",
+    "waiting": "À espera do registo",
+    "notProved": "Não verificado",
+    "missing": "Registo em falta",
+    "kept": "Mantido",
+    "provedOn": "Verificado: {{at}}",
+    "checksUntil": "Verificamos de hora a hora até {{at}}",
+    "stopped": "Deixámos de verificar ({{at}}). Verificar continua a funcionar.",
+    "putBack": "Volte a adicioná-lo até {{at}}",
+    "remove": "Remover",
+    "removeAsks": "Remover…",
+    "removeLabel": "Remover {{domain}}",
+    "removed": "{{domain}} foi removido.",
+    "record": {
+      "title": "Verificar {{domain}}",
+      "close": "Fechar",
+      "verify": "Verificar",
+      "verifying": "A verificar…",
+      "lead": "Adicione este registo onde é gerido o DNS de {{domain}} e, depois, toque em Verificar.",
+      "notFound": "Ainda não encontrámos o registo. As alterações de DNS podem demorar até 48 horas.",
+      "putBack": "Volte a adicioná-lo até {{at}}."
+    },
+    "add": {
+      "title": "Novo domínio",
+      "verb": "Adicionar",
+      "field": "Domínio",
+      "help": "Por exemplo, {{example}}. Cada subdomínio é adicionado à parte."
+    },
+    "card": {
+      "waiting": "{{domain}} está à espera do registo",
+      "waitingLine": "Verificamos de hora a hora até {{at}}.",
+      "seeRecord": "Ver o registo",
+      "empty": "Verifique o domínio de e-mail de {{organisation}}",
+      "emptyLine": "Adicione um registo DNS onde o seu domínio é gerido. Depois de verificado, pode limitar as contas desse domínio a {{organisation}}.",
+      "proved": "{{domain}} está verificado",
+      "provedLine": "Verificado: {{at}}.",
+      "failed": "{{domain}} não foi verificado",
+      "failedLine": "Deixámos de verificar ({{at}}). Adicione o registo e, depois, toque em Verificar.",
+      "missing": "O registo de {{domain}} está em falta",
+      "missingLine": "Volte a adicioná-lo até {{at}} ou {{domain}} deixa de estar verificado.",
+      "removed": "{{domain}} foi removido",
+      "removedLine": "Já não está verificado.",
+      "locked": "Disponível no plano Enterprise",
+      "lockedLine": "Verifique que o domínio pertence a {{organisation}} e, depois, limite as contas desse domínio a {{organisation}}.",
+      "offLine": "{{organisation}} deixou o plano Enterprise. Os domínios mantêm-se como estavam e voltam a ficar ativos com o plano Enterprise."
+    },
+    "removeAsk": {
+      "title": "Remover {{domain}}?",
+      "line": "Deixa de estar verificado. A Adesão por domínio da empresa mantém a sua própria lista.",
+      "keep": "Manter"
+    }
   }
 }

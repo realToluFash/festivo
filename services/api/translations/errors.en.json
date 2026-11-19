@@ -134,5 +134,6 @@
     "track_busy": "Another item on this track is on. Finish it first.",
     "idempotency_key_required": "Send an Idempotency-Key with each press.",
     "idempotency_key_reused": "This Idempotency-Key was sent with a different press.",
-    "plan_required": "The organisation's plan does not include this."
+    "plan_required": "The organisation's plan does not include this.",
+    "email_domain_taken": "Another organisation has already proved this domain."
 }

@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useEffect, useState } from 'react';
+import { createContext, type ReactNode, useCallback, useContext, useEffect, useState } from 'react';
 import {
   type StyleProp,
   StyleSheet,
@@ -67,6 +67,30 @@ export function MeasuredWords({
       </View>
     </TitleCap.Provider>
   );
+}
+
+/** Each of `words` measured hidden in SemiBold at exactly `start`, unscaled: its width, or undefined until it has been laid out. */
+export function useMeasuredAt(
+  start: number,
+  words: readonly string[],
+): { widths: (number | undefined)[]; measure: ReactNode } {
+  const [measured, setMeasured] = useState<Readonly<Record<string, number>>>({});
+
+  return {
+    widths: words.map((word) => measured[`${start}|${word}`]),
+    measure: (
+      <MeasuredWords
+        words={words}
+        size={start}
+        weight="semibold"
+        allowFontScaling={false}
+        onWidth={(word, width) => {
+          const key = `${start}|${word}`;
+          setMeasured((now) => (now[key] === width ? now : { ...now, [key]: width }));
+        }}
+      />
+    ),
+  };
 }
 
 /** One size for several texts, from their words measured hidden at `start`, never below `size` (sc-13496). */

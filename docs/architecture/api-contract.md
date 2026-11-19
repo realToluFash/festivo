@@ -340,6 +340,27 @@ else `GET /api/orgs/{id}/members` leaves them out entirely.
   check settle a due claim first. The record is asked of DNS over HTTPS at
   `DNS_TXT_ENDPOINT` (smocker in the local stack).
 
+### Email domains (sc-560)
+
+An Owner or an Admin proves the organisation owns a domain; a Member gets `403
+permission_required` on every route, and a change off Enterprise `403 plan_required`.
+
+- `GET /api/orgs/{id}/email-domains` answers `{plan, domains}`, `plan` one of `enterprise`,
+  `free` and `left` (had Enterprise, domains kept read only). Each domain carries `status`
+  (`waiting`, `proved`, `failed`, `missing`), `record` (`{type, name, value}`, the TXT record
+  at `_soirely-verify.<domain>`), and each instant as `…At` and written in the caller's zone:
+  `added`, `proved`, `checksEnd` (added + 7 × 24 h) and `putBackBy` (first missing + 14 × 24 h).
+- `POST …/email-domains` with `{domain}` answers `201`, or `422` on `domain`: `domain_blank`,
+  `domain_invalid`, `domain_public`, `domain_listed`, `domain_taken`.
+- `POST …/email-domains/{domain}/verify` looks the record up at once and answers the page with
+  `found`; `409 email_domain_taken` once another organisation has proved it.
+  `DELETE …/email-domains/{domain}` removes it, proved or not.
+- `app:email-domains:check` (every minute) looks a waiting domain up hourly and fails it at
+  `checksEnd`, re-checks a proved one every 30 days, and lapses a missing one at `putBackBy`.
+  It leaves an organisation off Enterprise as it was. Proving stops every other
+  organisation's joining listing of the domain (`/domains` rows say `stopped`, and this
+  organisation's own row `proved`); it never adds a listing.
+
 ## Authentication
 
 A bearer access token on every request, renewed from a refresh token the client keeps.

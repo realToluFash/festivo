@@ -197,5 +197,14 @@
     "planDowngraded.setting.audit_log": "Registro de auditoría",
     "planDowngraded.setting.guest_data_deletion": "Eliminación de los datos de invitados tras cada evento",
     "planDowngraded.comeBack": "Con Enterprise vuelven a activarse tal como estaban. Consulte a Soirely sobre Enterprise.",
-    "planDowngraded.footer": "Recibe este correo porque es propietario o administrador de {organisation}."
+    "planDowngraded.footer": "Recibe este correo porque es propietario o administrador de {organisation}.",
+    "domainListingStopped.subject": "{domain} ya no sirve para unirse a {organisation}",
+    "domainListingStopped.body": "{prover} ha verificado que {domain} es suyo, así que quienes usen {domain} ya no pueden solicitar unirse a {organisation} con Unirse por dominio de empresa.",
+    "domainListingStopped.members": "Los miembros que ya están en {organisation} siguen como están.",
+    "domainListingStopped.footer": "Recibe este correo porque es propietario o administrador de {organisation}.",
+    "domainRecordGone.subject": "Falta el registro de {domain}",
+    "domainRecordGone.body": "No hemos encontrado el registro DNS que demuestra que {domain} es de {organisation}. Vuelva a añadirlo antes del {deadline} o {domain} dejará de estar verificado.",
+    "domainRecordGone.name": "Nombre: {name}",
+    "domainRecordGone.type": "Tipo: TXT",
+    "domainRecordGone.footer": "Recibe este correo porque es propietario o administrador de {organisation}."
 }
