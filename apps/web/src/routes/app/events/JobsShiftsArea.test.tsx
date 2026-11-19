@@ -5,6 +5,9 @@ import { RouterProvider, createMemoryRouter } from 'react-router';
 import { __setSessionState, type Session } from '../../../session.ts';
 import { OWNER_PERMISSIONS, membership } from '../../../test-memberships.ts';
 import { routes } from '../../index.tsx';
+import { cssRule, stylesheet } from '../../../test-styles.ts';
+
+const JOBS_CSS = stylesheet(import.meta.dirname, 'jobsShifts.css');
 
 const IRE = membership({ id: 'org_1', name: 'Ìrè Events' });
 
@@ -316,5 +319,17 @@ describe('Jobs and shifts on the Staff page (sc-3908)', () => {
     expect(
       screen.queryByText('Every place on this shift is filled. Unassign someone to make room.'),
     ).toBeNull();
+  });
+
+  it('starts a gap line under the name in a frame too narrow for it, whole words only (sc-70959)', () => {
+    expect(cssRule('.js-frame', JOBS_CSS)).toContain('container: js-frame / inline-size;');
+    expect(cssRule('.js-gaps', JOBS_CSS)).toContain('overflow-wrap: normal;');
+    const narrow = cssRule(
+      '.js-gaps',
+      JOBS_CSS.slice(JOBS_CSS.indexOf('@container js-frame (width < 29.5rem)')),
+    );
+    expect(narrow).toContain('grid-column: 1 / -1;');
+    expect(narrow).toContain('left: 0;');
+    expect(narrow).toContain('max-width: 100cqi;');
   });
 });
