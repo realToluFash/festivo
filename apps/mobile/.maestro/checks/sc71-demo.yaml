@@ -1,0 +1,13 @@
+# sc-71: the app demo's states for the pairs: more-in, People with someone from outside, and the add sheet.
+appId: host.exp.Exponent
+---
+- setOrientation: ${ORIENT}
+- openLink: ${METRO_URL}/--/demo/redeem?state=more-in
+- waitForAnimationToEnd: { timeout: 8000 }
+- takeScreenshot: more-in
+- openLink: ${METRO_URL}/--/demo/people?state=addOutside
+- waitForAnimationToEnd: { timeout: 8000 }
+- takeScreenshot: addOutside
+- openLink: ${METRO_URL}/--/demo/people
+- waitForAnimationToEnd: { timeout: 8000 }
+- takeScreenshot: people

@@ -1,0 +1,9 @@
+# sc-71: More inside the event for an account with no organisation (Your account, Sign out).
+appId: host.exp.Exponent
+---
+- setOrientation: ${ORIENT}
+- openLink: ${METRO_URL}/--/
+- extendedWaitUntil: { visible: { id: 'outside.overview' }, timeout: 30000 }
+- tapOn: { id: 'event.nav.more', optional: true }
+- waitForAnimationToEnd: { timeout: 4000 }
+- takeScreenshot: more

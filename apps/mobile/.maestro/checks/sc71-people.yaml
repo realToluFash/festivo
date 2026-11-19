@@ -1,0 +1,14 @@
+# sc-71: People on the event, the outside tag and the pending rows, then the outsider's role sheet.
+appId: host.exp.Exponent
+---
+- setOrientation: ${ORIENT}
+- openLink: ${METRO_URL}/--/events/${EVENT_ID}?area=people
+- extendedWaitUntil: { visible: 'ade.new@soirely.test|bisi@lagoslights.example', timeout: 30000 }
+- waitForAnimationToEnd: { timeout: 8000 }
+- takeScreenshot: people
+- tapOn: 'bisi@lagoslights.example'
+- waitForAnimationToEnd: { timeout: 4000 }
+- takeScreenshot: roleSheet
+- tapOn: { id: 'people.remove' }
+- waitForAnimationToEnd: { timeout: 4000 }
+- takeScreenshot: remove
