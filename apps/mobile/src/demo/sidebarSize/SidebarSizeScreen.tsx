@@ -85,7 +85,7 @@ export function SidebarSizeScreen({ start }: { start: SidebarSizeStart }) {
         ]}
         showsVerticalScrollIndicator={false}
       >
-        <Sidebar scale={scale} at={at} onAt={setAt} org={sidebarOrgName(org)} t={t} />
+        <Sidebar scale={scale} at={at} onAt={setAt} org={org} t={t} />
       </ScrollView>
       <ScrollView
         style={styles.page}
@@ -140,7 +140,7 @@ function Sidebar({
   scale: number;
   at: SidebarAt;
   onAt: (at: SidebarAt) => void;
-  org: string;
+  org: SidebarOrg;
   t: TFunction;
 }) {
   const inEvent = at === 'event';
@@ -160,7 +160,7 @@ function Sidebar({
       <View style={styles.logo}>
         <Brand lockup height={24} />
       </View>
-      <Org scale={scale} name={org} />
+      <Org scale={scale} org={org} />
       {inEvent ? (
         <TitleCap.Provider
           value={atAccessibilitySizes(scale) ? titleSize(PANE_TITLE, scale) : null}
@@ -257,7 +257,8 @@ function Place({
   );
 }
 
-function Org({ scale, name }: { scale: number; name: string }) {
+function Org({ scale, org }: { scale: number; org: SidebarOrg }) {
+  const name = sidebarOrgName(org);
   const { size, measure } = useSideFit(name, ROOMS.org, scale, 'semibold', 'line');
 
   return (
@@ -272,7 +273,7 @@ function Org({ scale, name }: { scale: number; name: string }) {
       testID="demo.sidebar.org"
     >
       {measure}
-      <OrgMark id="ire" name={name} side={ORG_MARK} />
+      <OrgMark id={org} name={name} side={ORG_MARK} />
       <Text
         size={size}
         weight="semibold"
