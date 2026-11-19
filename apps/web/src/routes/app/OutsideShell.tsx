@@ -40,9 +40,12 @@ export interface MemberWay {
 export function OutsideShell({
   events,
   member = null,
+  shown = [],
 }: {
   events: readonly OutsideEvent[];
   member?: MemberWay | null;
+  /** Events the account held when the page was opened, for the shell around a not-found once none is left. */
+  shown?: readonly OutsideEvent[];
 }) {
   const { t } = useTranslation();
   const { pathname, state } = useLocation();
@@ -54,7 +57,13 @@ export function OutsideShell({
   const gone = !atAccount && routedId != null && held == null;
   const from = openedFrom(state);
   const landing = outsideEventsInOrder(events, now)[0] ?? null;
-  const event = held ?? (gone ? events.find((one) => one.id === from) : null) ?? landing;
+  const event =
+    held ??
+    (gone
+      ? (events.find((one) => one.id === from) ?? shown.find((one) => one.id === from))
+      : null) ??
+    landing ??
+    (gone ? (shown[0] ?? null) : null);
   const heldId = held?.id;
 
   useEffect(() => {

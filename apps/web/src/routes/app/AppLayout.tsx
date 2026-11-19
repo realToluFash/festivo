@@ -1,3 +1,4 @@
+import type { OutsideEvent } from '@soirely/api-client';
 import { initials, roleName } from '@soirely/domain';
 import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -243,8 +244,22 @@ function Shell() {
   );
 
   const [landing, ...others] = session.outsideEvents ?? [];
+  const [lastHeld, setLastHeld] = useState<readonly OutsideEvent[]>([]);
+  if (session.outsideEvents != null && landing != null && session.outsideEvents !== lastHeld)
+    setLastHeld(session.outsideEvents);
   if (organisation == null && session.pausedIn == null && landing != null) {
     return <OutsideShell events={[landing, ...others]} />;
+  }
+
+  // The last grant gone while its event was open: the not-found page still stands in the shell it was opened from, its way on Continue (sc-68438).
+  if (
+    organisation == null &&
+    session.pausedIn == null &&
+    routedEvent != null &&
+    !atAccount &&
+    lastHeld.length > 0
+  ) {
+    return <OutsideShell events={[]} shown={lastHeld} />;
   }
 
   // A member inside another organisation's event they hold from outside sees none of either organisation's places beside it (sc-68438).
