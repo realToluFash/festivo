@@ -62,6 +62,8 @@ export interface Measured {
 export interface Widths {
   words: readonly Measured[];
   whole: Measured;
+  /** Each word in its order, as the pieces a line may break between, and the space between two words, all at the start size. */
+  wrap?: { pieces: readonly (readonly number[])[]; space: number };
 }
 
 export function lettersIn(text: string): number {
@@ -89,7 +91,7 @@ export function sideTextSize(
   const texts = fit === 'line' ? (widths == null ? [] : [widths.whole]) : (widths?.words ?? []);
   if (texts.length === 0 || (scale <= 1 && fit !== 'label')) return start;
 
-  return Math.min(
+  const widest = Math.min(
     ...texts.map(({ width, letters }) => {
       const inside = room.inside - letters * (room.tracking ?? 0);
 
@@ -98,6 +100,39 @@ export function sideTextSize(
         : fitWidest(room.size, start, width, inside - room.glyph);
     }),
   );
+  const wrap = fit === 'lines' ? widths?.wrap : undefined;
+
+  return wrap == null ? widest : Math.min(widest, inTwoLines(room, start, wrap));
+}
+
+function linesAt(
+  inside: number,
+  { pieces, space }: NonNullable<Widths['wrap']>,
+  shrink: number,
+): number {
+  let lines = 0;
+  let line = Infinity;
+  pieces.forEach((word) =>
+    word.forEach((piece, at) => {
+      const gap = at === 0 ? space : 0;
+      if (line + (gap + piece) * shrink <= inside) line += (gap + piece) * shrink;
+      else {
+        lines += 1;
+        line = piece * shrink;
+      }
+    }),
+  );
+
+  return lines;
+}
+
+/** The largest whole size from `start` down at which the words, broken after a space or a hyphen, take two lines; never below the room's size. */
+function inTwoLines(room: SideRoom, start: number, wrap: NonNullable<Widths['wrap']>): number {
+  const fits = (size: number) => linesAt(room.inside - room.glyph, wrap, size / start) <= 2;
+  if (fits(start)) return start;
+  for (let size = Math.floor(start); size > room.size; size -= 1) if (fits(size)) return size;
+
+  return room.size;
 }
 
 export function glyphSide(room: SideRoom, scale: number, drawn: number): number {

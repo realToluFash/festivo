@@ -64,6 +64,52 @@ describe('the sidebar at the largest text sizes', () => {
     },
   );
 
+  function inWords(pieces: number[][], space: number): Widths {
+    const words = pieces.map((word) => word.reduce((sum, piece) => sum + piece, 0));
+    const whole = words.reduce((sum, word) => sum + word, 0) + space * (words.length - 1);
+
+    return {
+      words: words.map((width) => ({ width, letters: 0 })),
+      whole: { width: whole, letters: 0 },
+      wrap: { pieces, space },
+    };
+  }
+
+  it.each([FIFTH, SIXTH, SEVENTH, EIGHTH])(
+    'steps a two-line name down at fontScale %s until all its words fit two lines, not only its widest',
+    (scale) => {
+      const start = 14 * scale;
+      const third = 0.33 * ROOMS.cardName.inside * scale;
+      const widths = inWords([[third], [third], [third], [third], [third]], 0);
+      const size = sideTextSize(ROOMS.cardName, scale, widths, 'lines');
+
+      expect(size).toBeLessThan(start);
+      expect(size).toBeGreaterThanOrEqual(14);
+      expect((3 * third * size) / start).toBeLessThanOrEqual(ROOMS.cardName.inside);
+    },
+  );
+
+  it('keeps a two-line name at its size on main while its words take two lines', () => {
+    const half = 0.45 * ROOMS.cardName.inside;
+    const widths = inWords([[half], [half], [half], [half]], 4);
+
+    expect(sideTextSize(ROOMS.cardName, EIGHTH, widths, 'lines')).toBe(14 * EIGHTH);
+  });
+
+  it('breaks a two-line name after a hyphen, as the line does', () => {
+    const piece = 0.3 * ROOMS.cardName.inside;
+    const widths = inWords([[piece], [piece, piece, piece], [piece]], 0);
+
+    expect(sideTextSize(ROOMS.cardName, EIGHTH, widths, 'lines')).toBe(14 * EIGHTH);
+  });
+
+  it('draws a two-line name at the default size when it still runs past two lines there', () => {
+    const word = 0.9 * ROOMS.cardName.inside;
+    const widths = inWords([[word], [word], [word], [word]], 4);
+
+    expect(sideTextSize(ROOMS.cardName, EIGHTH, widths, 'lines')).toBe(14);
+  });
+
   it('keeps a name at its size on main at the eighth step while it fits', () => {
     expect(sideTextSize(ROOMS.org, EIGHTH, oneWord(ROOMS.org.inside), 'line')).toBe(15 * EIGHTH);
   });
