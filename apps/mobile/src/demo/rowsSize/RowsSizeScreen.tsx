@@ -12,6 +12,7 @@ import { Caps, Tile } from '../../components/SettingsParts.tsx';
 import { Text } from '../../components/Text.tsx';
 import { MeasuredWords } from '../../components/Title.tsx';
 import { useShellLayout } from '../../components/settingsShell.ts';
+import { piecesIn } from '../../layout/textSize.ts';
 import { DemoOnly } from '../../steps/Lines.tsx';
 import { defaultScheme, tokens } from '../../theme/tokens.ts';
 import { Choices } from '../focusedHeader/FocusedHeaderScreen.tsx';
@@ -25,7 +26,6 @@ import {
   labelSize,
   labelStart,
   lineStart,
-  piecesIn,
   rowType,
   rowsScale,
   settingsCap,
@@ -240,7 +240,7 @@ function DemoLabel({
     widths: {},
   });
   const key = `${start}|${text}`;
-  const each = piecesIn(text);
+  const each = piecesIn([text]);
   const widths = measured.key === key ? measured.widths : {};
   const widest = each.every((word) => widths[word] != null)
     ? Math.max(...each.map((word) => widths[word] ?? 0))

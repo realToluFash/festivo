@@ -89,6 +89,20 @@ export function wordsIn(texts: readonly string[]): string[] {
   return [...new Set(texts.flatMap((text) => text.split(/\s+/u)).filter((word) => word !== ''))];
 }
 
+/** Every distinct piece a line may wrap between: each word, split after a hyphen it already has, the hyphen kept on the first part (sc-69816). */
+export function piecesIn(texts: readonly string[]): string[] {
+  return [
+    ...new Set(
+      wordsIn(texts).flatMap((word) =>
+        word
+          .replace(/([-\u2010])/gu, '$1\n')
+          .split('\n')
+          .filter((piece) => piece !== ''),
+      ),
+    ),
+  ];
+}
+
 /** The one size for labels whose widest word, drawn at `start`, measures `widest` in a slot `slot` wide: `start` when it fits, never below `size`. */
 export function fitWidest(size: number, start: number, widest: number, slot: number): number {
   if (widest <= slot) return start;

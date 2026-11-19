@@ -4,7 +4,6 @@ import {
   labelSize,
   labelStart,
   lineStart,
-  piecesIn,
   rowType,
   rowsScale,
   settingsCap,
@@ -60,22 +59,5 @@ describe('lineStart', () => {
 
   it('keeps main’s line at the default size', () => {
     expect(lineStart(13.5, 1, 34, 16)).toBe(13.5);
-  });
-});
-
-describe('piecesIn', () => {
-  it('splits a word after the hyphen it already has, keeping the hyphen on the first part', () => {
-    expect(piecesIn('Password, two-factor, signed-in devices')).toEqual([
-      'Password,',
-      'two-',
-      'factor,',
-      'signed-',
-      'in',
-      'devices',
-    ]);
-  });
-
-  it('keeps a word with no hyphen whole', () => {
-    expect(piecesIn('Notifications')).toEqual(['Notifications']);
   });
 });

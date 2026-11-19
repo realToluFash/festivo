@@ -18,6 +18,7 @@ import {
   rowsFloor,
   sideListWidth,
   TITLE_LINE,
+  piecesIn,
   titleSize,
   wordsIn,
   wordsSlot,
@@ -140,6 +141,27 @@ describe('wordsIn', () => {
       'sans',
       'votre',
       'application',
+    ]);
+  });
+});
+
+describe('piecesIn', () => {
+  it('splits a word after the hyphen it already has, keeping the hyphen on the first part', () => {
+    expect(piecesIn(['Password, two-factor, signed-in devices'])).toEqual([
+      'Password,',
+      'two-',
+      'factor,',
+      'signed-',
+      'in',
+      'devices',
+    ]);
+  });
+
+  it('keeps a word with no hyphen whole, and lists each piece once across the texts', () => {
+    expect(piecesIn(['Notifications', 'e-mail Notifications'])).toEqual([
+      'Notifications',
+      'e-',
+      'mail',
     ]);
   });
 });
