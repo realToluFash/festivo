@@ -2,6 +2,8 @@
 appId: host.exp.Exponent
 ---
 - extendedWaitUntil:
-    visible: '{{t:any:todayScreen.tab.today}}'
+    visible:
+      id: 'tab-today|frame.home'
+      selected: true
     timeout: 30000
 - takeScreenshot: sc70416-org-today
