@@ -1,5 +1,5 @@
 /* sc-3897's room screen, as its demo draws it (src/demo/roomScreen.css): Soirely's neutral dark, 64 · 30 · 20 at 1080p, scaling with the screen's width. */
-.rs-room {
+.room-room {
   position: relative;
   display: grid;
   place-items: center;
@@ -11,13 +11,13 @@
   font-family: var(--fontFamily);
 }
 
-.rs-stage {
+.room-stage {
   width: 100%;
   height: 100%;
   container-type: size;
 }
 
-.rs-fill {
+.room-fill {
   --rsBig: max(12px, calc(64cqw / 19.2));
   --rsMid: max(12px, calc(30cqw / 19.2));
   --rsLabel: max(12px, calc(20cqw / 19.2));
@@ -32,15 +32,15 @@
   padding: var(--rsEdge);
 }
 
-.rs-fill > * {
+.room-fill > * {
   font-size: var(--rsMid);
 }
 
-.rs-event {
+.room-event {
   margin: 0;
 }
 
-.rs-name {
+.room-name {
   margin: 0;
   color: var(--colorInkOnDarkSecondary);
   font-size: var(--rsMid);
@@ -48,7 +48,7 @@
   line-height: 1.2;
 }
 
-.rs-label {
+.room-label {
   margin: 0 0 calc(var(--rsLabel) * 0.8);
   color: var(--colorInkOnDarkSecondary);
   font-size: var(--rsLabel);
@@ -58,7 +58,7 @@
   text-transform: uppercase;
 }
 
-.rs-big {
+.room-big {
   margin: 0;
   color: var(--colorInkOnDark);
   font-size: var(--rsBig);
@@ -67,7 +67,7 @@
   overflow-wrap: anywhere;
 }
 
-.rs-body {
+.room-body {
   display: grid;
   flex: 1;
   grid-template-columns: 3fr 2fr;
@@ -76,18 +76,18 @@
   align-items: start;
 }
 
-.rs-body.is-between {
+.room-body.is-between {
   grid-template-columns: 1fr;
 }
 
 @container (max-aspect-ratio: 3 / 2) {
-  .rs-body {
+  .room-body {
     grid-template-columns: 1fr;
     align-content: center;
   }
 }
 
-.rs-list {
+.room-list {
   display: flex;
   flex-direction: column;
   gap: calc(var(--rsMid) * 0.9);
@@ -96,7 +96,7 @@
   list-style: none;
 }
 
-.rs-item {
+.room-item {
   display: grid;
   grid-template-columns: 4.2em 1fr;
   gap: calc(var(--rsMid) * 0.8);
@@ -105,18 +105,18 @@
   line-height: 1.2;
 }
 
-.rs-time {
+.room-time {
   color: var(--colorInkOnDarkSecondary);
   font-variant-numeric: tabular-nums;
 }
 
-.rs-title {
+.room-title {
   color: var(--colorInkOnDark);
   font-weight: 600;
   overflow-wrap: anywhere;
 }
 
-.rs-centre {
+.room-centre {
   display: flex;
   flex: 1;
   flex-direction: column;
@@ -126,14 +126,14 @@
   text-align: center;
 }
 
-.rs-said {
+.room-said {
   margin: 0;
   color: var(--colorInkOnDarkSecondary);
   font-size: var(--rsMid);
   font-weight: 600;
 }
 
-.rs-asof {
+.room-asof {
   position: absolute;
   right: var(--rsEdge);
   bottom: calc(var(--rsEdge) / 2);
@@ -145,14 +145,14 @@
   font-size: var(--rsLabel);
 }
 
-.rs-dot {
+.room-dot {
   width: calc(var(--rsLabel) * 0.6);
   height: calc(var(--rsLabel) * 0.6);
   border-radius: 50%;
   background: var(--colorAttentionOnDark);
 }
 
-.rs-full {
+.room-full {
   position: absolute;
   top: calc(var(--rsEdge) / 2);
   right: calc(var(--rsEdge) / 2);
@@ -170,12 +170,12 @@
   cursor: pointer;
 }
 
-.rs-full:focus-visible {
+.room-full:focus-visible {
   outline: 2px solid var(--colorInkOnDark);
   outline-offset: 2px;
 }
 
-.rs-full-icon {
+.room-full-icon {
   width: 18px;
   height: 18px;
   fill: none;
@@ -185,11 +185,11 @@
   stroke-width: 2.2;
 }
 
-.rs-change {
-  animation: rs-arrive 320ms cubic-bezier(0.2, 0, 0, 1);
+.room-change {
+  animation: room-arrive 320ms cubic-bezier(0.2, 0, 0, 1);
 }
 
-@keyframes rs-arrive {
+@keyframes room-arrive {
   from {
     opacity: 0;
   }
@@ -200,7 +200,7 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .rs-change {
+  .room-change {
     animation: none;
   }
 }
