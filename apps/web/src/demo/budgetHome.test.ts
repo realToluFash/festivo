@@ -132,6 +132,10 @@ describe('the Budget home’s states (spec §9)', () => {
       'That has too many decimal places for this event’s currency. Enter the price like 12.50.',
     );
     expect(priceProblem('0')).toBeNull();
+    expect(priceProblem('')).toBe('Enter a price of 0 or more, in numbers only.');
+    expect(priceProblem('', 'GBP', true)).toBeNull();
+    expect(markupProblem('')).toBe('Enter the markup as a number, like 12.5.');
+    expect(markupProblem('', true)).toBeNull();
   });
 
   it('refuses what a cost is over 100 and a note over 500, and words the server’s 422 (sc-85)', () => {
