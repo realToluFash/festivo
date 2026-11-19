@@ -206,6 +206,7 @@
     "domainRecordGone.body": "Nous n’avons pas trouvé l’enregistrement DNS qui prouve que le domaine {domain} appartient à l’organisation {organisation}. Remettez-le avant le {deadline}, sinon {domain} ne sera plus vérifié.",
     "domainRecordGone.name": "Nom : {name}",
     "domainRecordGone.type": "Type : TXT",
+    "domainRecordGone.value": "Value: {value}",
     "domainRecordGone.footer": "Vous recevez ce message parce que vous êtes propriétaire ou administrateur de l’organisation {organisation}.",
     "managedNotice.subject": "L’organisation {organisation} gère les comptes Soirely du domaine {domain}",
     "managedNotice.body": "L’organisation {organisation} gère les comptes Soirely du domaine {domain}. À partir du {deadline}, votre compte ne pourra être membre que de l’organisation {organisation}. Si ce compte est le vôtre et non celui de l’entreprise, modifiez votre adresse e-mail principale avant cette date.",

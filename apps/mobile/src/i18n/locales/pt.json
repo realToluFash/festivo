@@ -3094,6 +3094,7 @@
     "locked": "Incluídos no plano Enterprise",
     "lockedLine": "Domínios de e-mail e registo de auditoria.",
     "leftLine": "Os domínios de e-mail, o registo de auditoria e a eliminação dos dados dos convidados estão desativados e mantêm-se como estavam. Voltam a ficar ativos com o plano Enterprise.",
+    "leftSays": "{{organisation}} left Enterprise",
     "rows": {
       "domains": "Domínios de e-mail",
       "noDomains": "Ainda não há domínios",
@@ -3160,6 +3161,7 @@
       "locked": "Disponível no plano Enterprise",
       "lockedLine": "Verifique que o domínio pertence a {{organisation}} e, depois, limite as contas desse domínio a {{organisation}}.",
       "offLine": "{{organisation}} deixou o plano Enterprise. Os domínios mantêm-se como estavam e voltam a ficar ativos com o plano Enterprise.",
+      "off": "Switched off",
       "keep": "Limitar as contas de {{domain}} a {{organisation}}",
       "scheduled": "«Só a nossa organização» a partir de {{at}}",
       "scheduledLine": "Enviámos um e-mail a todas as pessoas de {{domain}}. Pode cancelar até lá.",

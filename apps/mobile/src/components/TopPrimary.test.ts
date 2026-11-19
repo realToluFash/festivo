@@ -56,3 +56,11 @@ describe('Export’s title at the largest text sizes (sc-72136)', () => {
     ).toHaveLength(2);
   });
 });
+
+describe('Export’s Share at the largest text sizes (sc-72136, QA #72920)', () => {
+  it('hands the file to the share sheet only once every sheet’s window is down', () => {
+    expect(exporting).toMatch(
+      /props\.onShare\(\);\s+await sheetsGone\(\);[^]*?\s+hand\(\)\.catch\(/u,
+    );
+  });
+});

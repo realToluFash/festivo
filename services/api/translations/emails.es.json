@@ -206,6 +206,7 @@
     "domainRecordGone.body": "No hemos encontrado el registro DNS que demuestra que {domain} es de {organisation}. Vuelva a añadirlo antes del {deadline} o {domain} dejará de estar verificado.",
     "domainRecordGone.name": "Nombre: {name}",
     "domainRecordGone.type": "Tipo: TXT",
+    "domainRecordGone.value": "Value: {value}",
     "domainRecordGone.footer": "Recibe este correo porque es propietario o administrador de {organisation}.",
     "managedNotice.subject": "{organisation} gestiona las cuentas de Soirely de {domain}",
     "managedNotice.body": "{organisation} gestiona las cuentas de Soirely de {domain}. A partir del {deadline}, su cuenta solo podrá ser miembro de {organisation}. Si esta cuenta es personal y no de la empresa, cambie su dirección de correo electrónico principal antes de esa fecha.",

@@ -229,7 +229,7 @@ describe('Email domains’ card', () => {
       step: null,
     });
     expect(domainsCard(t, page([PROVED], 'left'), null, ORG, 'en')).toEqual({
-      says: null,
+      says: 'Switched off',
       line: 'Ire Events left Enterprise. Its domains are kept as they were, and come back on with Enterprise.',
       step: null,
     });
@@ -271,9 +271,11 @@ describe('Data and control’s hub', () => {
       line: 'Email domains and the audit log.',
       step: null,
     });
-    expect(hubCard(t, page([PROVED], 'left'), ORG, 'en').line).toBe(
-      'Email domains, the audit log and deleting guest data are switched off and kept as they were. They come back on with Enterprise.',
-    );
+    expect(hubCard(t, page([PROVED], 'left'), ORG, 'en')).toEqual({
+      says: 'Ire Events left Enterprise',
+      line: 'Email domains, the audit log and deleting guest data are switched off and kept as they were. They come back on with Enterprise.',
+      step: null,
+    });
     expect(hubDomainsLine(t, page([PROVED], 'left'), ORG)).toBe('ire.events kept as it was');
     expect(hubDomainsLine(t, page([], 'free'), ORG)).toBe(
       'Prove your domain and limit its accounts to Ire Events',
