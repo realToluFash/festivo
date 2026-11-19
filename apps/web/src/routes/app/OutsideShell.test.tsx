@@ -300,6 +300,37 @@ describe('an account with no organisation on two or more events (sc-68438)', () 
     await waitFor(() => expect(router.state.location.pathname).toBe('/app/events/ev_1'));
   });
 
+  it('keeps the card of the event it stands in at the head of the sidebar, the page in the desk column', async () => {
+    outside([WEDDING, LAUNCH]);
+    answering();
+    app('/app/events/ev_9');
+
+    const heading = await screen.findByRole('heading', {
+      level: 1,
+      name: 'This event is not available',
+    });
+    const nav = screen.getByRole('navigation', { name: 'Event' });
+    expect(within(nav).getByText('Adaeze and Tunde')).toBeDefined();
+    expect(within(nav).getByText(/^\S+ \S+ \S+ · 16:00$/u)).toBeDefined();
+    expect(heading.closest('.desk-column')).not.toBeNull();
+  });
+
+  it('keeps the card of an event under way as Under way until its end', async () => {
+    const underWay = {
+      ...WEDDING,
+      startsAt: '2020-01-01T16:00:00+00:00',
+      endsAt: '2099-01-01T23:30:00+00:00',
+    };
+    outside([underWay, LAUNCH]);
+    answering([underWay, LAUNCH]);
+    app('/app/events/ev_9');
+
+    await screen.findByRole('heading', { level: 1, name: 'This event is not available' });
+    const nav = screen.getByRole('navigation', { name: 'Event' });
+    expect(within(nav).getByText('Adaeze and Tunde')).toBeDefined();
+    expect(within(nav).getByText('Under way · until 23:30')).toBeDefined();
+  });
+
   it('with no live grant left, reads Continue', async () => {
     outside([WEDDING]);
     answering([]);
