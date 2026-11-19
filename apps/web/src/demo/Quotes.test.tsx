@@ -205,12 +205,12 @@ describe('Quotes and what is due on the wedding’s Budget, in A (sc-87, sc-88)'
     );
   });
 
-  it('reads only after a downgrade, with See plans only for billing.manage', SLOW, async () => {
+  it('reads only after a downgrade, with no See plans for anyone', SLOW, async () => {
     const line =
       'Quotes and payment schedules are read-only because this organisation’s plan no longer includes them. Nothing has been removed.';
     await open(`${SAVOUR}&state=read_only`);
     expect(within(main()).getByText(line)).toBeDefined();
-    expect(within(main()).getByRole('button', { name: 'See plans' })).toBeDefined();
+    expect(within(main()).queryByRole('button', { name: 'See plans' })).toBeNull();
     for (const verb of ['Add a payment', 'Mark paid', 'Change', 'Remove', 'Revise the quote'])
       expect(within(main()).queryByRole('button', { name: verb })).toBeNull();
     cleanup();

@@ -494,11 +494,10 @@ export function InfoLine({ children }: { children: ReactNode }) {
   );
 }
 
-export function ReadOnlyLine({ onPlans }: { onPlans?: () => void }) {
+export function ReadOnlyLine() {
   return (
     <div className="bud-plan-line" role="status">
       <p>{W.readOnlyLine}</p>
-      {onPlans != null && <TextAction label={W.seePlans} onClick={onPlans} />}
     </div>
   );
 }

@@ -2,7 +2,7 @@ import { type ReactNode, type RefObject, useEffect, useRef, useState } from 'rea
 import { Link, useSearchParams } from 'react-router';
 
 import { Glyph } from '../components/Glyph.tsx';
-import { CardStep, OnCard, TextAction, type Tell } from '../components/SettingsParts.tsx';
+import { CardStep, OnCard, TextAction } from '../components/SettingsParts.tsx';
 import {
   Amount,
   AskInRow,
@@ -259,7 +259,6 @@ function QuotesBody({
               deleted={deleted}
               back={at.home}
               titleRef={title}
-              tell={tell}
               onEarlier={setEarlier}
               onQuote={(form) =>
                 setQuote({
@@ -537,11 +536,9 @@ function QuotesNotLoaded({
 /** Budget's home as far as sc-87 goes: the title, then the costs at the left, Due next and Vendors quoted at the right. */
 export function BudgetHome({
   budget,
-  viewer,
   readOnly,
   titleRef,
   at,
-  tell,
   left = <CostsComing />,
   marked = null,
   onAdd,
@@ -549,11 +546,9 @@ export function BudgetHome({
   onUndo,
 }: {
   budget: Budget;
-  viewer: BudgetViewer;
   readOnly: boolean;
   titleRef: RefObject<HTMLHeadingElement | null>;
   at: BudgetAddresses;
-  tell: Tell;
   left?: ReactNode;
   marked?: { payment: Payment; vendor: string } | null;
   onAdd: () => void;
@@ -563,11 +558,7 @@ export function BudgetHome({
   return (
     <>
       <PageTitle title={BW.budget} titleRef={titleRef} />
-      {readOnly && (
-        <ReadOnlyLine
-          {...(viewer.managesBilling ? { onPlans: () => tell(QW.plansElsewhere) } : {})}
-        />
-      )}
+      {readOnly && <ReadOnlyLine />}
       <Columns
         left={left}
         right={
@@ -801,7 +792,6 @@ export function VendorPage({
   deleted,
   back,
   titleRef,
-  tell,
   onEarlier,
   onQuote,
   onAddPayment,
@@ -829,7 +819,6 @@ export function VendorPage({
   deleted: string | null;
   back: string;
   titleRef: RefObject<HTMLHeadingElement | null>;
-  tell: Tell;
   onEarlier: (open: boolean) => void;
   onQuote: (form: 'revise' | 'correct') => void;
   onAddPayment: () => void;
@@ -863,11 +852,7 @@ export function VendorPage({
         </h1>
         <p className="desk-line">{QW.vendorLine(vendor.category, vendor.contact)}</p>
       </div>
-      {readOnly && (
-        <ReadOnlyLine
-          {...(viewer.managesBilling ? { onPlans: () => tell(QW.plansElsewhere) } : {})}
-        />
-      )}
+      {readOnly && <ReadOnlyLine />}
       <BudgetCard event={event} label={vendor.name}>
         <GlassTags tags={[{ word: vendor.category }, { word: vendor.contact }]} />
         <OnCard>{QW.quoted}</OnCard>

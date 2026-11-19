@@ -96,7 +96,6 @@ export const QW = {
   paymentChanged: (what: string, amount: string, day: string) =>
     `Payment changed: ${what}, ${amount}, due on ${day}.`,
   paymentRemoved: (what: string, amount: string) => `Payment removed: ${what}, ${amount}.`,
-  plansElsewhere: 'Plans have their own design.',
   markPaidAbout: (vendor: string, what: string, event: string) => `${vendor} · ${what} · ${event}`,
   scheduled: 'Scheduled',
   amountPaid: 'Amount paid',

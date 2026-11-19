@@ -30,7 +30,6 @@ export interface BudgetViewer {
   name: string;
   role: 'Owner' | 'Admin' | 'Lead';
   readsVendors: boolean;
-  managesBilling: boolean;
 }
 
 export const BUDGET_VIEWERS: Record<BudgetViewerKey, BudgetViewer> = {
@@ -39,16 +38,14 @@ export const BUDGET_VIEWERS: Record<BudgetViewerKey, BudgetViewer> = {
     name: READER,
     role: 'Owner',
     readsVendors: true,
-    managesBilling: true,
   },
   julien: {
     key: 'julien',
     name: 'Julien Moreau',
     role: 'Admin',
     readsVendors: true,
-    managesBilling: false,
   },
-  ana: { key: 'ana', name: 'Ana Souza', role: 'Lead', readsVendors: false, managesBilling: false },
+  ana: { key: 'ana', name: 'Ana Souza', role: 'Lead', readsVendors: false },
 };
 
 export function budgetViewerOf(as: string | null, state = ''): BudgetViewer {

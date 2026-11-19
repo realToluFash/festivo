@@ -114,7 +114,6 @@ import {
   ceilingSentence,
   noPayer,
   planOf,
-  viewerOf,
 } from './budgetSample.ts';
 import { BUDGET_WORDS as W } from './budgetWords.ts';
 import { type SampleEvent } from './events.ts';
@@ -259,7 +258,6 @@ export function BudgetHomeContent({
 }) {
   const [params] = useSearchParams();
   const navigate = useNavigate();
-  const viewer = viewerOf(params.get('as'));
   const enterprise = planOf(params.get('plan')) === 'enterprise';
   const currency = params.get('currency') ?? CURRENCY;
   const [state, setState] = useState(first);
@@ -400,13 +398,7 @@ export function BudgetHomeContent({
           onTry={() => void navigate(budgetAt('populated'))}
         />
       )}
-      {readOnly && (
-        <ReadOnlyLine
-          {...(viewer.key === 'folake'
-            ? { onPlans: () => tell('Plans have their own design.') }
-            : {})}
-        />
-      )}
+      {readOnly && <ReadOnlyLine />}
       {empty && removed != null && (
         <UndoBar
           words={removed.words}
