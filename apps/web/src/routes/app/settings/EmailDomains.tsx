@@ -83,10 +83,11 @@ function DomainsDesk({
   const [search, setSearch] = useSearchParams();
   const { load, show, reload } = useEmailDomains(organisation.id);
   const [record, setRecord] = useState<string | null>(() => search.get('record'));
+  const [proving] = useState(() => search.has('prove'));
   const [told, setTold] = useState<string | null>(null);
 
   useEffect(() => {
-    if (search.has('record')) setSearch({}, { replace: true });
+    if (search.has('record') || search.has('prove')) setSearch({}, { replace: true });
   }, [search, setSearch]);
 
   return (
@@ -97,7 +98,7 @@ function DomainsDesk({
           onBack={() => void navigate(DATA_AND_CONTROL)}
           bell={desk.bell}
         />
-        <TitleRow title={t('emailDomains.title')} />
+        <TitleRow title={t('emailDomains.title')} underBack />
         {load.kind === 'loading' && <PageLoading words={t('emailDomains.loading')} />}
         {load.kind === 'failed' && (
           <div className="desk-failed" role="alert">
@@ -112,6 +113,7 @@ function DomainsDesk({
             organisation={organisation}
             example={example}
             record={record}
+            proving={proving}
             onRecord={setRecord}
             onPage={show}
             tell={setTold}
@@ -137,6 +139,7 @@ function Loaded({
   organisation,
   example,
   record,
+  proving,
   onRecord,
   onPage,
   tell,
@@ -146,6 +149,7 @@ function Loaded({
   organisation: Membership;
   example: string;
   record: string | null;
+  proving: boolean;
   onRecord: (domain: string | null) => void;
   onPage: (page: EmailDomainsPage) => void;
   tell: (words: string) => void;
@@ -153,7 +157,7 @@ function Loaded({
 }) {
   const { t } = useTranslation();
   const [said, setSaid] = useState<DomainsSaid>(null);
-  const [adding, setAdding] = useState(false);
+  const [adding, setAdding] = useState(proving && page.plan === 'enterprise');
   const [removing, setRemoving] = useState<string | null>(null);
   const [confirming, setConfirming] = useState<string | null>(null);
   const saidLines = useRef<HTMLDivElement>(null);
@@ -186,7 +190,7 @@ function Loaded({
     <>
       <Card>
         <div ref={saidLines} className="desk-said-lines" tabIndex={-1} aria-live="polite">
-          {card.says != null && <Says>{card.says}</Says>}
+          <Says>{card.says}</Says>
           <OnCard>{card.line}</OnCard>
         </div>
         {card.record != null && (
@@ -194,6 +198,9 @@ function Loaded({
             label={t('emailDomains.seeRecord')}
             onClick={() => card.record != null && onRecord(card.record)}
           />
+        )}
+        {card.prove === true && enterprise && (
+          <CardStep label={t('emailDomains.prove')} onClick={() => setAdding(true)} />
         )}
         {card.keep != null && (
           <CardStep

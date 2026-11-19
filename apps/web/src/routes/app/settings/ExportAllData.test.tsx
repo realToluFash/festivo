@@ -432,7 +432,7 @@ describe('Data and control (sc-612)', () => {
     await waitFor(() =>
       expect(screen.getByText('Everything Ìrè Events holds, in one archive')).toBeDefined(),
     );
-    expect(screen.getByText('Nothing needs your attention')).toBeDefined();
+    expect(screen.getByText('Nothing is set up yet')).toBeDefined();
     expect(screen.queryByRole('button', { name: 'Download' })).toBeNull();
   });
 
@@ -456,7 +456,7 @@ describe('Data and control (sc-612)', () => {
     open('/app/settings/data-and-control');
 
     expect(await screen.findByText(line)).toBeDefined();
-    expect(screen.getByText('Nothing needs your attention')).toBeDefined();
+    expect(screen.getByText('Nothing is set up yet')).toBeDefined();
     expect(screen.queryByText('Ready')).toBeNull();
   });
 });

@@ -99,7 +99,12 @@ export function hubCard(
 ): DataCard {
   if (page.plan === 'free')
     return { says: t('dataAndControl.locked'), line: t('dataAndControl.lockedLine'), step: null };
-  if (page.plan === 'left') return { says: null, line: t('dataAndControl.leftLine'), step: null };
+  if (page.plan === 'left')
+    return {
+      says: t('dataAndControl.leftSays', { organisation }),
+      line: t('dataAndControl.leftLine'),
+      step: null,
+    };
   if (page.domains.length === 0)
     return {
       says: t('dataAndControl.nothingSet'),
@@ -143,7 +148,11 @@ export function domainsCard(
       step: null,
     };
   if (page.plan === 'left')
-    return { says: null, line: t('emailDomains.card.offLine', { organisation }), step: null };
+    return {
+      says: t('emailDomains.card.off'),
+      line: t('emailDomains.card.offLine', { organisation }),
+      step: null,
+    };
   const asks = controlAsks(t, page.domains);
   // Only our organisation is the Owner's alone (sc-563).
   const keep = (domain: string): DataCard['step'] =>
