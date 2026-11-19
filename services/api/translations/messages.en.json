@@ -17,7 +17,7 @@
     "organisation.owner_required": "Only an owner can delete the organisation.",
     "organisation.transfer_owner_required": "Only an owner can transfer ownership.",
     "organisation.export_owner_required": "Only an owner can export the organisation's data.",
-    "organisation.export_not_ready": "This export isn't ready yet.",
+    "organisation.export_not_ready": "This export is not ready yet.",
     "organisation.export_used": "This export has already been downloaded. It downloads nothing now.",
     "organisation.export_expired": "This export's download has ended. You can export again.",
     "organisation.delete_name_mismatch": "Type {name} exactly as shown to delete it.",
