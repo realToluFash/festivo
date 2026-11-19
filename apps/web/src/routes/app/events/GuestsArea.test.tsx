@@ -5462,6 +5462,41 @@ describe('What adding them would cost (sc-86)', () => {
     expect(within(answer()).getByText('Not known')).toBeDefined();
   });
 
+  it('lists the priced costs it moves before the ones with no price, whatever their order', async () => {
+    const priced = whatIf(1).lines[0];
+    await opened({
+      [ASK]: () =>
+        json(
+          whatIf(1, {
+            fullCostKnown: false,
+            lines: [
+              {
+                id: 'line_2',
+                label: 'Drinks package',
+                category: 'catering',
+                basis: 'per_head',
+                quantity: {
+                  confirmed: { from: 100, to: 100 },
+                  potential: { from: 140, to: 141 },
+                  reason: null,
+                },
+                known: false,
+                cost: null,
+              },
+              priced,
+            ],
+          }),
+        ),
+    });
+
+    await waitFor(() => expect(within(answer()).getByText('Not known')).toBeDefined());
+    const rows = within(answer())
+      .getAllByRole('listitem')
+      .map((row) => row.textContent ?? '');
+    expect(rows[0]).toContain('Catering');
+    expect(rows[1]).toContain('Drinks package');
+  });
+
   it('reads Not known if all come when every cost it moves has no price, never +0', async () => {
     await opened({
       [ASK]: () =>

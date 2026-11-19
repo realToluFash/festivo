@@ -53,6 +53,7 @@ function Answered({ answer }: { answer: WhatIf }) {
   const locale = currentLocale();
   const money = (amount: string) => shown(amount, answer.currency, locale);
   const unknown = answer.lines.filter((line) => !line.known);
+  const rows = [...answer.lines.filter((line) => line.known), ...unknown];
 
   if (answer.lines.length === 0)
     return (
@@ -90,7 +91,7 @@ function Answered({ answer }: { answer: WhatIf }) {
         </p>
       )}
       <ul className="desk-rows da-rows">
-        {answer.lines.map((line) => (
+        {rows.map((line) => (
           <li key={line.id}>
             <div className="desk-row da-row">
               {line.cost == null ? (
