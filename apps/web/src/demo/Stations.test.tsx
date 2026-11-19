@@ -135,4 +135,13 @@ describe('/demo/events/evt-wed-4/staff/stations (sc-3910)', () => {
     const door = within(tonight).getByRole('list', { name: 'On Door now' });
     expect(within(door).getByText('Emeka Obi')).toBeTruthy();
   });
+
+  it('keeps a section’s table count on its heading and names it plainly in a sentence', async () => {
+    await open('populated');
+    fireEvent.click(button('People and lead for Section A') as HTMLElement);
+    expect(screen.getAllByText('Section A · 6 tables').length).toBeGreaterThan(1);
+    expect(screen.getAllByText('Waiter · 17:00 to 00:00 · On Section A').length).toBeGreaterThan(0);
+    fireEvent.click(button('Move Tolu Bello from Door to Section A') as HTMLElement);
+    expect(status()?.textContent).toBe('Tolu Bello moved from Door to Section A.');
+  });
 });

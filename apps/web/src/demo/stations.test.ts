@@ -19,6 +19,7 @@ import {
   removePlace,
   sectionLabel,
   setDishedAt,
+  setLead,
   stationById,
   stationsStart,
   toggle,
@@ -129,6 +130,14 @@ describe('stations (sc-3910)', () => {
     expect(moved.state.stations.find((one) => one.id === 'grill')?.lead).toBeNull();
     expect(moved.said).toBe('Tayo Bamidele moved from Grill to Kitchen. Grill has no lead now.');
     expect(moved.state.stations.filter((one) => one.people.includes('tayo'))).toHaveLength(1);
+  });
+
+  it('names a section without its table count in a sentence', () => {
+    expect(toggle(populated(), 'grace', 'bar').said).toBe(
+      'Grace Udo moved from Section A to Bar. Section A has no lead now.',
+    );
+    expect(toggle(populated(), 'tolu', 'sb').said).toBe('Tolu Bello moved from Door to Section B.');
+    expect(setLead(populated(), 'sb', 'funmi').said).toBe('Funmi Bakare leads Section B.');
   });
 
   it('links every state from the demo’s home', () => {
