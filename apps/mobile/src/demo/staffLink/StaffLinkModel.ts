@@ -14,6 +14,7 @@ export const W = {
   markSent: 'Mark as sent',
   notYet: 'Not yet',
   replace: 'Replace link',
+  replaceOpen: 'Replace link…',
   keep: 'Keep this link',
   replaceTitle: (first: string) => `Replace ${first}’s link?`,
   replaceLine: 'Their current link stops working now.',
@@ -85,6 +86,11 @@ export function notIssued(s: LinkState): LinkState {
 
 export function copiedNow(s: LinkState): LinkState {
   return { ...s, ...delivered(s, 'copied'), busy: null, toast: W.copied, say: W.copied };
+}
+
+/** Issued but the clipboard refused it: the copy is still recorded, as on the web, and nothing says Link copied. */
+export function copyRefused(s: LinkState): LinkState {
+  return { ...s, ...delivered(s, 'copied'), busy: null, failed: true, say: W.notIssued };
 }
 
 /** Back from the share sheet: it says nothing about whether it went, so Mark as sent is asked. */

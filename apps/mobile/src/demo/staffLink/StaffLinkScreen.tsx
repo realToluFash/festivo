@@ -10,6 +10,7 @@ import {
   QuietButton,
   SecondaryButton,
 } from '../../components/Buttons.tsx';
+import { Spinner } from '../../components/CalendarControls.tsx';
 import { Glyph } from '../../components/Glyph.tsx';
 import { readOut } from '../../components/ReadOut.tsx';
 import { Sheet, SheetActions } from '../../components/Sheet.tsx';
@@ -31,6 +32,7 @@ import {
   askReplace,
   backFromShare,
   copiedNow,
+  copyRefused,
   linkStateOf,
   markSent,
   notIssued,
@@ -95,13 +97,18 @@ function StaffLink({ start }: { start: ReturnType<typeof linkStateOf> }) {
     if (s.busy != null) return;
     const busy = pressed(s, 'copy');
     apply(busy);
+    let url: string;
     try {
-      await setStringAsync(await issue(s.issueFails));
+      url = await issue(s.issueFails);
     } catch {
       apply(notIssued(busy));
       return;
     }
-    apply(copiedNow(busy));
+    const held = await setStringAsync(url).then(
+      () => false,
+      () => true,
+    );
+    apply(held ? copyRefused(busy) : copiedNow(busy));
   }
 
   const person = (
@@ -177,12 +184,19 @@ function StaffLink({ start }: { start: ReturnType<typeof linkStateOf> }) {
         onPress={() => void share()}
         testID="staffLink.share"
       />
-      <SecondaryButton
-        label={W.copy}
-        off={s.busy === 'copy'}
-        onPress={() => void copy()}
-        testID="staffLink.copy"
-      />
+      <View>
+        <SecondaryButton
+          label={W.copy}
+          off={s.busy === 'copy'}
+          onPress={() => void copy()}
+          testID="staffLink.copy"
+        />
+        {s.busy === 'copy' && (
+          <View style={styles.issuing} pointerEvents="none" testID="staffLink.copy.spinner">
+            <Spinner />
+          </View>
+        )}
+      </View>
       {offersMarkSent(s) && (
         <SecondaryButton
           label={W.markSent}
@@ -193,7 +207,7 @@ function StaffLink({ start }: { start: ReturnType<typeof linkStateOf> }) {
       {offersReplace(s) && (
         <QuietButton
           ref={replaceOpener}
-          label={W.replace}
+          label={W.replaceOpen}
           onPress={() => apply(askReplace(s, true))}
           testID="staffLink.replace"
         />
@@ -361,6 +375,13 @@ const styles = StyleSheet.create({
     borderColor: tokens.colorInkSecondary,
   },
   actions: { gap: tokens.spaceMd },
+  issuing: {
+    position: 'absolute',
+    top: 0,
+    bottom: 0,
+    left: tokens.spaceLg,
+    justifyContent: 'center',
+  },
   failed: { flexDirection: 'row', alignItems: 'flex-start', gap: tokens.spaceSm },
   ask: {
     gap: tokens.spaceSm,

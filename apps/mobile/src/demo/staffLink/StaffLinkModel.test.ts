@@ -8,6 +8,7 @@ import {
   askReplace,
   backFromShare,
   copiedNow,
+  copyRefused,
   linkStateOf,
   markSent,
   notIssued,
@@ -43,6 +44,19 @@ describe('one person’s link in the app (sc-3912)', () => {
     expect(s.status).toBe('copied');
     expect(s.say).toBe(W.copied);
     expect(offersMarkSent(s)).toBe(true);
+  });
+
+  it('still records a copy the clipboard refused, without saying Link copied.', () => {
+    const s = copyRefused(pressed(seed('none'), 'copy'));
+    expect(s.status).toBe('copied');
+    expect(s.busy).toBeNull();
+    expect(s.say).not.toBe(W.copied);
+    expect(offersMarkSent(s)).toBe(true);
+  });
+
+  it('opens Replace link with an ellipsis, since it asks first', () => {
+    expect(W.replaceOpen).toBe('Replace link…');
+    expect(W.replaceTitle('Ada')).toBe('Replace Ada’s link?');
   });
 
   it('records nothing when no link is issued, and keeps the status', () => {

@@ -15,6 +15,7 @@ export const LW = {
   copy: 'Copy link',
   markSent: 'Mark as sent',
   replace: 'Replace link',
+  replaceOpen: 'Replace link…',
   copied: 'Link copied.',
   notIssued: 'That did not work. Try again in a moment.',
   refused: 'The link could not be copied. Copy it from the link field.',

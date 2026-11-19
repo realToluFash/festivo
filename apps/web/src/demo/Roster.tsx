@@ -13,6 +13,7 @@ import { EventSidebar } from './EventSidebar.tsx';
 import { CLOCKS, type SampleEvent, sampleEvent } from './events.ts';
 import { Pill } from './GuestsParts.tsx';
 import { clockOfKitchen } from './kitchen.ts';
+import { firstName } from './members.ts';
 import { Wrong } from './MenuServed.tsx';
 import { keptInbox, waitingLine } from './messages.ts';
 import {
@@ -528,7 +529,7 @@ function RosterView({
       {replacing != null && (
         <ConfirmDialog
           id="rs-replace"
-          title={LW.replaceTitle(shown(replacing).name)}
+          title={LW.replaceTitle(firstName(shown(replacing).name))}
           keep={LW.keep}
           go={LW.replace}
           pending={false}
@@ -655,10 +656,10 @@ function Details({
                 <button
                   id="rs-replace-open"
                   type="button"
-                  className="desk-text rs-danger"
+                  className="gs-pill is-secondary"
                   onClick={onReplace}
                 >
-                  {LW.replace}
+                  {LW.replaceOpen}
                 </button>
               )}
             </dd>
@@ -724,12 +725,13 @@ function LinkCell({
           <button
             id={`rs-copy-${entry.id}`}
             type="button"
-            className="desk-text"
+            className={busy ? 'desk-text is-busy' : 'desk-text'}
             aria-label={`${LW.copy}: ${entry.name}`}
             aria-disabled={busy || undefined}
             aria-busy={busy || undefined}
             onClick={onCopy}
           >
+            {busy && <span className="pending-spinner desk-turning" aria-hidden="true" />}
             {LW.copy}
           </button>
           {entry.link === 'copied' && (

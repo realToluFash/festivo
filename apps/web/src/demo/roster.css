@@ -331,11 +331,6 @@ a.sn-tab {
   gap: var(--spaceXxs) var(--spaceMd);
 }
 
-.rs-link-acts .desk-text[aria-busy] {
-  color: var(--colorInkSecondary);
-  cursor: progress;
-}
-
 .rs-missed,
 .rs-held-says {
   display: inline-flex;

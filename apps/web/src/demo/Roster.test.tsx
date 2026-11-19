@@ -247,6 +247,9 @@ describe('a person’s own link on the roster (sc-3912)', () => {
     await open('populated');
     press('Copy link: Emeka Obi');
     expect(live()?.textContent).not.toBe('Link copied.');
+    const issuing = button('Copy link: Emeka Obi');
+    expect(issuing?.getAttribute('aria-busy')).toBe('true');
+    expect(issuing?.querySelector('.pending-spinner')).toBeTruthy();
     await screen.findByText('Copied by Amara Nwosu · 19:12 · not marked as sent', {}, SLOW);
     expect(writeText).toHaveBeenCalledWith('https://soirely.com/s/7Gk2pQ9xVb4mT1sR8nLw3c');
     expect(live()?.textContent).toBe('Link copied.');
@@ -277,25 +280,29 @@ describe('a person’s own link on the roster (sc-3912)', () => {
 
   it('asks before Replace link, and puts the row back to No link yet', async () => {
     await open('replaceAsk');
-    const dialog = screen.getByRole('alertdialog', { name: 'Replace Grace Udo’s link?' });
+    const dialog = screen.getByRole('alertdialog', { name: 'Replace Grace’s link?' });
     expect(within(dialog).getByText('Their current link stops working now.')).toBeTruthy();
     fireEvent.click(within(dialog).getByRole('button', { name: 'Replace link' }));
     expect(screen.queryByRole('alertdialog')).toBeNull();
     const panel = screen.getByRole('complementary');
     expect(within(panel).getByText('No link yet')).toBeTruthy();
-    expect(within(panel).queryByRole('button', { name: 'Replace link' })).toBeNull();
+    expect(within(panel).queryByRole('button', { name: 'Replace link…' })).toBeNull();
   });
 
   it('keeps the link on Keep this link', async () => {
     await open('replaceAsk');
     press('Keep this link');
     expect(screen.queryByRole('alertdialog')).toBeNull();
-    expect(within(screen.getByRole('complementary')).getByText('Link opened')).toBeTruthy();
+    const panel = screen.getByRole('complementary');
+    expect(within(panel).getByText('Link opened')).toBeTruthy();
+    expect(within(panel).getByRole('button', { name: 'Replace link…' }).className).toBe(
+      'gs-pill is-secondary',
+    );
   });
 
   it('offers no link actions without staff.manage, nor on a finished event', async () => {
     await open('readOnly');
     expect(button('Copy link: Emeka Obi')).toBeNull();
-    expect(button('Replace link')).toBeNull();
+    expect(button('Replace link…')).toBeNull();
   });
 });
