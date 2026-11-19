@@ -278,7 +278,8 @@ function Loaded({
   const { t } = useTranslation();
   const locale = dateLocale();
   const readerZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-  const { page: _page, ...kept } = looking;
+  const { page: _page, ...settled } = looking;
+  const kept = { ...settled, q: typed };
   const searching = looking.q.trim() !== '' || looking.category !== 'all';
   const here = looking.view === 'archived' ? page.archived : page.inUse;
   const nothingInUse = page.inUse === 0 && looking.view === 'inUse' && !searching;
@@ -387,6 +388,7 @@ function Loaded({
             !nothingInUse && (
               <NoMatch
                 looking={looking}
+                typed={typed}
                 categoryWord={categoryWord}
                 onLook={(next) => onLook(next)}
               />
@@ -471,15 +473,18 @@ function Failed({ onRetry }: { onRetry: () => void }) {
 /** What was looked for, and a way back for whichever narrowed it; never the empty directory. */
 function NoMatch({
   looking,
+  typed: inBox,
   categoryWord,
   onLook,
 }: {
   looking: Looking;
+  typed: string;
   categoryWord: (key: VendorCategory) => string;
   onLook: (next: Omit<Looking, 'page'>) => void;
 }) {
   const { t } = useTranslation();
-  const { page: _page, ...kept } = looking;
+  const { page: _page, ...settled } = looking;
+  const kept = { ...settled, q: inBox };
   const typed = looking.q.trim();
   const category = looking.category === 'all' ? null : categoryWord(looking.category);
   const line =

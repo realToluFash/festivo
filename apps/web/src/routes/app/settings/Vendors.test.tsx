@@ -347,6 +347,26 @@ describe('Settings › Vendors at a desk (sc-82)', () => {
     expect(searched).toEqual(['tulip', 'tulip']);
   });
 
+  it('a category picked straight after typing keeps the letters in the box and the search', async () => {
+    signedIn(membership());
+    const asked: { q: string | null; category: string | null }[] = [];
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
+      const params = new URL(String(input)).searchParams;
+      asked.push({ q: params.get('q'), category: params.get('category') });
+      return new Response(JSON.stringify(pageOf([BLOOM, DELTA])), { status: 200 });
+    });
+    open();
+
+    const box = await screen.findByRole('searchbox', { name: 'Search vendors' });
+    fireEvent.change(box, { target: { value: 'tul' } });
+    fireEvent.click(screen.getByRole('button', { name: /All categories/ }));
+    fireEvent.click(await screen.findByRole('menuitemradio', { name: /Flowers/ }));
+
+    await waitFor(() => expect(asked).toContainEqual({ q: 'tul', category: 'flowers' }));
+    const after = screen.getByRole('searchbox', { name: 'Search vendors' });
+    expect((after as HTMLInputElement).value).toBe('tul');
+  });
+
   it('an older list answer arriving after a newer one is dropped, and its request stopped', async () => {
     signedIn(membership());
     let photography: ((answer: Response) => void) | null = null;
