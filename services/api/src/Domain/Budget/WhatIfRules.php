@@ -73,7 +73,9 @@ final readonly class WhatIfRules
         $now = ['guests' => $facts->onList, 'tables' => $facts->seatingTables ?? 0, 'staff_hours' => $facts->staffHours ?? 0, 'days' => $facts->eventDays];
 
         foreach ($totals as $change => $by) {
-            if ($now[$change] + $by < 0) {
+            if (Math\abs($by) > self::MOST) {
+                $violations[] = $this->violation(($firstAt[$change] ?? 'changes') . '.by', 'validation.what_if_too_large', ['change' => $change, 'most' => self::MOST]);
+            } elseif ($now[$change] + $by < 0) {
                 $violations[] = $this->violation(($firstAt[$change] ?? 'changes') . '.by', 'validation.what_if_below_zero', ['change' => $change, 'count' => $now[$change]]);
             }
         }

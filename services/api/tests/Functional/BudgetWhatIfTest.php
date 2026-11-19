@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Tests\Functional;
 
 use App\Domain\Budget\QuantityResolver;
+use App\Domain\Budget\WhatIfRules;
 use App\Domain\Organisation\OrganisationFounder;
 use App\Domain\User\UserRegistrar;
 use App\Entity\Membership;
@@ -155,6 +156,9 @@ final class BudgetWhatIfTest extends ApiTestCase
         yield 'not a whole number' => [[['change' => 'tables', 'by' => 1.5]], 'changes.0.by'];
         yield 'a number as text' => [[['change' => 'tables', 'by' => '1']], 'changes.0.by'];
         yield 'past the most' => [[['change' => 'staff_hours', 'by' => 100001]], 'changes.0.by'];
+        yield 'guests past the most' => [[['change' => 'guests', 'by' => 100001]], 'changes.0.by'];
+        yield 'tables past the most below' => [[['change' => 'tables', 'by' => -100001]], 'changes.0.by'];
+        yield 'guests past the most together' => [[['change' => 'guests', 'by' => 60000], ['change' => 'guests', 'by' => 60000]], 'changes.0.by'];
     }
 
     #[Test]
@@ -179,6 +183,14 @@ final class BudgetWhatIfTest extends ApiTestCase
             ['Change staff_hours by 100,000 or fewer.', 'That would take days below 0. The event has 2 now.'],
             Vec\map(Type\vec(Type\shape(['message' => Type\string()], true))->coerce($body['violations'] ?? null), static fn (array $one): string => $one['message']),
         );
+    }
+
+    #[Test]
+    public function theMostGuestsAreAnswered(): void
+    {
+        $this->add(self::CATERING);
+
+        self::assertSame('5000000.00', $this->whatIf('guests', WhatIfRules::MOST)['potential']['delta'] ?? null);
     }
 
     #[Test]

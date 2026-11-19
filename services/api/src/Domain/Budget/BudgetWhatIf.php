@@ -52,16 +52,6 @@ final readonly class BudgetWhatIf
         return Iter\all($this->moves, static fn (LineMove $move): bool => $move->known);
     }
 
-    public function confirmedDelta(): int
-    {
-        return $this->then->confirmedMinor - $this->now->confirmedMinor;
-    }
-
-    public function potentialDelta(): int
-    {
-        return $this->then->potentialMinor - $this->now->potentialMinor;
-    }
-
     private static function potentialCount(LineCost $cost, QuantityFacts $facts): int
     {
         return CostBasis::PerHead === $cost->line->getBasis() ? $facts->ifAllCome : $cost->quantity->count;
