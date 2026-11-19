@@ -305,7 +305,7 @@ describe('Settings › Vendors in A · Summary first (sc-82)', () => {
   });
 
   it(
-    'refuses the three fields of add_invalid, and the number each time it is sent',
+    'refuses two fields of add_invalid before sending, and the number once it is sent',
     SLOW,
     async () => {
       vi.useFakeTimers({ shouldAdvanceTime: true });
@@ -314,7 +314,7 @@ describe('Settings › Vendors in A · Summary first (sc-82)', () => {
       const email = within(dialog).getByLabelText('Email address', { exact: false });
 
       expect(within(dialog).getByRole('alert').textContent).toBe(
-        '3 fields need fixing, so nothing was sent.',
+        '2 fields need fixing, so nothing was sent.',
       );
       expect(
         within(dialog).getByText(
@@ -326,7 +326,7 @@ describe('Settings › Vendors in A · Summary first (sc-82)', () => {
           'Enter a web address that starts with https:// or http://, or leave that part off.',
         ),
       ).toBeDefined();
-      expect(within(dialog).getByText(REFUSED)).toBeDefined();
+      expect(within(dialog).queryByText(REFUSED)).toBeNull();
       await waitFor(() => expect(document.activeElement).toBe(email));
 
       fireEvent.change(email, { target: { value: 'sam@harbourboats.co.uk' } });
@@ -343,7 +343,7 @@ describe('Settings › Vendors in A · Summary first (sc-82)', () => {
       );
 
       fireEvent.change(within(dialog).getByLabelText('Phone number', { exact: false }), {
-        target: { value: '7700 900123' },
+        target: { value: '0117 496 0123' },
       });
 
       expect(within(dialog).queryByText(REFUSED)).toBeNull();
@@ -356,7 +356,7 @@ describe('Settings › Vendors in A · Summary first (sc-82)', () => {
     const dialog = screen.getByRole('dialog', { name: 'Add a vendor' });
     const phone = within(dialog).getByLabelText('Phone number', { exact: false });
 
-    fireEvent.change(phone, { target: { value: '7700 900877' } });
+    fireEvent.change(phone, { target: { value: '0117 496 0877' } });
     fireEvent.click(within(dialog).getByRole('button', { name: 'Add' }));
 
     expect(within(dialog).getByText('Choose a country.')).toBeDefined();
