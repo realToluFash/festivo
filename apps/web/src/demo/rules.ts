@@ -345,6 +345,7 @@ export const WAYS_IN_PAGES: { name: string; states: { name: string; to: string }
       { name: 'An invitation waiting', to: way('details', 'invitation') },
       { name: 'Waiting for Ire Events', to: way('waiting') },
       { name: 'Managed by Ire Events: no Start my own', to: way('details', 'managed') },
+      { name: 'Managed by Ire Events: nothing to join', to: way('details', 'managedNone') },
     ],
   },
   {

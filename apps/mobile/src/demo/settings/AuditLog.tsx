@@ -24,7 +24,6 @@ import {
 } from '../../components/Summary.tsx';
 import { Text } from '../../components/Text.tsx';
 import { tokens } from '../../theme/tokens.ts';
-import { eventHref } from '../events/EventsModel.ts';
 import {
   type AuditStart,
   auditStart,
@@ -45,7 +44,7 @@ import {
   type Range,
   SAMPLE_RANGE,
 } from './AuditModel.ts';
-import type { AuditEntry } from './AuditSample.ts';
+import type { AuditEntry, TypeLang } from './AuditSample.ts';
 import { DatesScreen, EntryRows, EntrySheet, ExportScreen } from './AuditScreens.tsx';
 import { DATA_PEOPLE } from './DataModel.ts';
 import { DataSubPage, useDataNav } from './DataParts.tsx';
@@ -113,17 +112,17 @@ function AuditPage({ start }: { start: AuditStart }) {
     );
 
   const entry = entryOf(open);
-  const openEvent = (id: string) => router.push(eventHref(id) as Href);
+  const openEvent = (href: string) => router.push(href as Href);
 
   if (phone && entry != null)
     return (
       <SummaryPage title={A.entry} back={{ label: A.back, onPress: () => setOpen(null) }}>
-        <EntryRows entry={entry} say={say} onEvent={openEvent} />
+        <EntryRows entry={entry} say={say} lang={start.lang} onEvent={openEvent} />
       </SummaryPage>
     );
 
   const shown = matching(filters, undefined, zone);
-  const words = buttonWords(filters, locale);
+  const words = buttonWords(filters, locale, start.lang);
   const card = start.locked
     ? { says: A.locked, line: A.lockedLine, step: H.contact }
     : preparing
@@ -165,6 +164,7 @@ function AuditPage({ start }: { start: AuditStart }) {
                   which={which}
                   word={words[which]}
                   filters={filters}
+                  lang={start.lang}
                   open={menu === which}
                   onOpen={() => setMenu(which)}
                   onClose={() => setMenu(null)}
@@ -195,6 +195,7 @@ function AuditPage({ start }: { start: AuditStart }) {
               <Days
                 entries={shown}
                 say={say}
+                lang={start.lang}
                 onOpen={(id, view) => {
                   opener.current = view;
                   setOpen(id);
@@ -208,6 +209,7 @@ function AuditPage({ start }: { start: AuditStart }) {
         <EntrySheet
           entry={entry}
           say={say}
+          lang={start.lang}
           opener={opener}
           onEvent={(id) => {
             setOpen(null);
@@ -252,10 +254,12 @@ function AuditPage({ start }: { start: AuditStart }) {
 function Days({
   entries,
   say,
+  lang,
   onOpen,
 }: {
   entries: readonly AuditEntry[];
   say: DataSay;
+  lang: TypeLang;
   onOpen: (id: string, view: ViewInstance | null) => void;
 }) {
   const rows = useRef<Record<string, ViewInstance | null>>({});
@@ -279,10 +283,10 @@ function Days({
                     </Text>
                   }
                   title={entry.what}
-                  line={entryLine(entry)}
+                  line={entryLine(entry, lang)}
                   opens
                   onPress={() => onOpen(entry.id, rows.current[entry.id] ?? null)}
-                  accessibilityLabel={`${say.time(entry.at)}. ${entry.what}. ${entryLine(entry)}`}
+                  accessibilityLabel={`${say.time(entry.at)}. ${entry.what}. ${entryLine(entry, lang)}`}
                   testID={`audit.entry.${entry.id}`}
                 />
               ),
@@ -300,6 +304,7 @@ function MenuButton({
   which,
   word,
   filters,
+  lang,
   open,
   onOpen,
   onClose,
@@ -308,6 +313,7 @@ function MenuButton({
   which: Menu;
   word: string;
   filters: Filters;
+  lang: TypeLang;
   open: boolean;
   onOpen: () => void;
   onClose: () => void;
@@ -350,7 +356,7 @@ function MenuButton({
         width={260}
         testID={`audit.menu.${which}`}
       >
-        {menuChoices(which).map((choice) => (
+        {menuChoices(which, lang).map((choice) => (
           <MenuRow
             key={choice.word}
             word={choice.word}

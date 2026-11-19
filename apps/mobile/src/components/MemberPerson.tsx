@@ -209,6 +209,9 @@ export function PersonBody({
           <OnCard key={line} text={line} />
         ))}
       </SummaryCard>
+      {member.alsoMemberOf != null && (
+        <Line text={t('membersScreen.alsoMemberOf', { count: member.alsoMemberOf })} />
+      )}
       {refused?.on === 'restore' && (
         <View accessibilityRole="alert">
           <FieldError message={refused.words} />

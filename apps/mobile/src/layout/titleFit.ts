@@ -35,6 +35,23 @@ export function actionsUnder({ room, title, extra, plus, bell, gap }: TitleActio
   return title + beside > room;
 }
 
+/** sc-72136: a dialog's Cancel stays beside its title only where the title's longest word, at the size the title draws alone, the gap and Cancel fit the row; the title's size never depends on Cancel. */
+export function cancelUnder({
+  room,
+  widest,
+  cancel,
+  gap,
+}: {
+  room: number;
+  widest: number;
+  cancel: number;
+  gap: number;
+}): boolean {
+  if (unmeasured(room, widest, cancel)) return false;
+
+  return widest + gap + cancel > room;
+}
+
 /** sc-68417: a title laid out beside its actions broke inside a word once it could step down no further, so the sum above, from widths measured hidden, left it less room than it needs. A break at its start size is not one: it steps down next. Nor is one in a slot narrower than the title measured: that is the row's first layout, before the primary gives way, and the sum already answers it. Nor is one whose lines together fit the slot: they were laid out in a narrower box than the slot last measured, a frame the row passes through while it loads, and its slot catches up next. */
 export function brokeInWord({
   lines,

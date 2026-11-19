@@ -123,7 +123,16 @@ export interface HubCard {
   step: HubStep | null;
 }
 
-export const HUB_STATES = ['hub', 'quiet', 'new', 'locked', 'downgraded', 'loading', 'failed'];
+export const HUB_STATES = [
+  'hub',
+  'quiet',
+  'new',
+  'locked',
+  'locked_ready',
+  'downgraded',
+  'loading',
+  'failed',
+];
 
 export function hubStart(state: string): { load: 'loaded' | 'loading' | 'failed'; view: HubView } {
   const live: HubView = { plan: 'enterprise', setup: 'live', exported: 'ready' };
@@ -135,6 +144,8 @@ export function hubStart(state: string): { load: 'loaded' | 'loading' | 'failed'
       return { load: 'loaded', view: { ...live, setup: 'new', exported: 'none' } };
     case 'locked':
       return { load: 'loaded', view: { plan: 'free', setup: 'new', exported: 'none' } };
+    case 'locked_ready':
+      return { load: 'loaded', view: { plan: 'free', setup: 'new', exported: 'ready' } };
     case 'downgraded':
       return { load: 'loaded', view: { ...live, plan: 'left', exported: 'none' } };
     case 'loading':
@@ -157,8 +168,6 @@ interface Ask {
 
 /** What asks something of somebody now, each at the instant it stops waiting. */
 export function asksOf(view: HubView): Ask[] {
-  if (view.plan !== 'enterprise' || view.setup !== 'live') return [];
-
   const download: Ask = {
     at: LINK_UNTIL,
     mayAct: (viewer) => viewer.key === ASKER.key,
@@ -187,7 +196,10 @@ export function asksOf(view: HubView): Ask[] {
     }),
   };
 
-  return [...(view.exported === 'ready' ? [download] : []), record, run];
+  return [
+    ...(view.exported === 'ready' ? [download] : []),
+    ...(view.plan === 'enterprise' && view.setup === 'live' ? [record, run] : []),
+  ];
 }
 
 export function soonestAsk(
@@ -201,12 +213,15 @@ export function soonestAsk(
   );
 }
 
-/** The hub's card: the soonest instant that asks something of the person looking, on the web. */
+/** The hub's card: the soonest instant that asks something of the person looking, or else where the organisation stands. */
 export function hubCard(
   view: HubView,
   viewer: Pick<Viewer, 'key' | 'manages'>,
   locale: string,
 ): HubCard {
+  const ask = soonestAsk(asksOf(view), viewer);
+
+  if (ask) return ask.card(locale, zoneFor(viewer));
   if (view.plan === 'free')
     return {
       says: 'These come with Enterprise',
@@ -226,15 +241,11 @@ export function hubCard(
       step: 'prove',
     };
 
-  const ask = soonestAsk(asksOf(view), viewer);
-
-  return (
-    ask?.card(locale, zoneFor(viewer)) ?? {
-      says: 'Nothing needs your attention',
-      line: `${PROVED_DOMAIN} is proved. Deleting guest data is off.`,
-      step: null,
-    }
-  );
+  return {
+    says: 'Nothing needs your attention',
+    line: `${PROVED_DOMAIN} is proved. Deleting guest data is off.`,
+    step: null,
+  };
 }
 
 export interface HubRow {

@@ -20,15 +20,16 @@ use Psl\Vec;
 final readonly class MemberSerialiser
 {
     /**
-     * @param list<MembershipTransition>         $history    this membership's, oldest first
-     * @param list<Invitation>                   $accepted   invitations this member accepted here
-     * @param Closure(DateTimeImmutable): string $written    a deadline as the caller reads it (sc-868)
-     * @param array<string, mixed>|null          $suspension MemberSuspension::describe(), for the caller
-     * @param array<string, DateTimeImmutable>   $sentAt     InvitationDeliveries::sentAt(), by invitation id
+     * @param list<MembershipTransition>         $history      this membership's, oldest first
+     * @param list<Invitation>                   $accepted     invitations this member accepted here
+     * @param Closure(DateTimeImmutable): string $written      a deadline as the caller reads it (sc-868)
+     * @param array<string, mixed>|null          $suspension   MemberSuspension::describe(), for the caller
+     * @param array<string, DateTimeImmutable>   $sentAt       InvitationDeliveries::sentAt(), by invitation id
+     * @param ?int                               $alsoMemberOf how many other organisations a person this one manages belongs to (sc-563), for its owners and admins only
      *
      * @return array<string, mixed>
      */
-    public static function member(Membership $membership, array $history, array $accepted, User $caller, Closure $written, ?array $suspension = null, array $sentAt = []): array
+    public static function member(Membership $membership, array $history, array $accepted, User $caller, Closure $written, ?array $suspension = null, array $sentAt = [], ?int $alsoMemberOf = null): array
     {
         $user = $membership->getUser();
         $last = Iter\last($history);
@@ -54,6 +55,7 @@ final readonly class MemberSerialiser
             'invitedBy' => null === $invitation ? null : self::person($invitation->getInvitedBy()),
             'invitedAt' => self::at(null === $invitation ? null : $sentAt[$invitation->getId()->toRfc4122()] ?? $invitation->getCreatedAt()),
             'self' => $user->getId()->equals($caller->getId()),
+            'alsoMemberOf' => $alsoMemberOf,
             'history' => Vec\map($history, static fn (MembershipTransition $step): array => [
                 'from' => $step->getFromStatus()?->value,
                 'to' => $step->getToStatus()->value,

@@ -308,6 +308,9 @@ export function MemberPage({
         </div>
         {step != null && <CardStep label={step.label} onClick={step.onClick} />}
       </Card>
+      {member.alsoMemberOf != null && (
+        <Note>{t('membersScreen.alsoMemberOf', { count: member.alsoMemberOf })}</Note>
+      )}
       {refusal != null && (
         <div className="desk-refusal" role="alert">
           {refusal.kind === 'seats' ? (

@@ -231,6 +231,22 @@ const GUESTS: Record<GuestsState, Board> = {
   exportOffline: ['Export offline', 'Export needs a connection in its place'],
   exportDropped: ['Export, the connection dropped', 'Share refused: Nothing was exported.'],
   exportGrantView: ['Export, Can view grant', 'No Export, no Add guest'],
+  exportSearched: [
+    'Export after a search, at any size',
+    'sc-72136: Export guests whole at its title size, Cancel beside it only where its longest word fits, else under it; from the eighth step the note and Share scroll',
+  ],
+  exportSearchedPt: [
+    'Exportar after a search, in Portuguese',
+    'sc-72136: as exportSearched, in Portuguese: Exportar convidados whole, Cancelar under it at the largest sizes, Filtro: Todos · pesquisa «okon»',
+  ],
+  exportLongName: [
+    'Export, an event named with one long word',
+    'sc-72136: #AdeolaAndKwameForever2026 in the file name continues on the next line at the largest sizes, never cut',
+  ],
+  exportLongNamePt: [
+    'Exportar, an event named with one long word, in Portuguese',
+    'sc-72136: as exportLongName, in Portuguese: the file name wraps inside the word, nothing cut',
+  ],
   paste: [
     'Paste a reply',
     'sc-54450: iOS’s Paste, or Paste a reply on Android, under Find a guest',

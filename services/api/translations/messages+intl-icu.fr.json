@@ -178,9 +178,9 @@
     "validation.vendor_address_too_long": "Raccourcissez l’adresse à {count, number, ::group-auto} caractères maximum.",
     "validation.vendor_note_too_long": "Raccourcissez la remarque à {count, number, ::group-auto} caractères maximum.",
     "staff.shift_needed_below": "{n, plural, one {{n, number, ::group-auto} personne est sur ce service. Retirez-la d’abord, ou gardez-en {n, number, ::group-auto} ou plus.} many {{n, number, ::group-auto} de personnes sont sur ce service. Retirez-en d’abord, ou gardez-en {n, number, ::group-auto} ou plus.} other {{n, number, ::group-auto} personnes sont sur ce service. Retirez-en d’abord, ou gardez-en {n, number, ::group-auto} ou plus.}}",
-    "validation.what_if_change_unknown": "“{change}” is not a change a budget can price. Ask about guests, tables, staff_hours or days.",
-    "validation.what_if_not_whole": "Change {change} by a whole number.",
-    "validation.what_if_too_large": "Change {change} by {most, number, ::group-auto} or fewer.",
-    "validation.what_if_guests_below_one": "Add 1 guest or more. Removing a guest is not something this can price.",
-    "validation.what_if_below_zero": "That would take {change} below 0. The event has {count, number, ::group-auto} now."
+    "validation.what_if_change_unknown": "« {change} » n’est pas un changement qu’un budget peut chiffrer. Indiquez guests, tables, staff_hours ou days.",
+    "validation.what_if_not_whole": "Indiquez un nombre entier pour {change}.",
+    "validation.what_if_too_large": "Le changement de {change} ne peut pas dépasser {most, number, ::group-auto} au total.",
+    "validation.what_if_guests_below_one": "Ajoutez 1 invité ou plus. Le retrait d’un invité ne peut pas être chiffré ici.",
+    "validation.what_if_below_zero": "Cela ferait passer {change} sous 0. L’événement en compte actuellement {count, number, ::group-auto}."
 }

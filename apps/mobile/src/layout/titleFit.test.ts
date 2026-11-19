@@ -4,6 +4,7 @@ import {
   actionsUnder,
   brokeInWord,
   brokeOn,
+  cancelUnder,
   labelFits,
   rowRoom,
   statusFits,
@@ -251,5 +252,25 @@ describe('Refreshing… gives way (sc-71821)', () => {
     expect(statusFits({ room: 800, lead: 0, ends: [44], status: 90, gap: 10 })).toBe(false);
     expect(statusFits({ room: 800, lead: 100, ends: [0], status: 90, gap: 10 })).toBe(false);
     expect(statusFits({ room: 800, lead: 100, ends: [44], status: 0, gap: 10 })).toBe(false);
+  });
+});
+
+describe('Cancel beside a dialog’s title (sc-72136)', () => {
+  const gap = 10;
+
+  it('stays beside the title while its longest word and Cancel fit the row', () => {
+    expect(cancelUnder({ room: 354, widest: 140, cancel: 175, gap })).toBe(false);
+    expect(cancelUnder({ room: 354, widest: 169, cancel: 175, gap })).toBe(false);
+  });
+
+  it('takes the row under the title where they do not, or where the word alone fills the row', () => {
+    expect(cancelUnder({ room: 354, widest: 222, cancel: 206, gap })).toBe(true);
+    expect(cancelUnder({ room: 354, widest: 400, cancel: 60, gap })).toBe(true);
+  });
+
+  it('leaves the row as on main until the row, the word and Cancel are measured', () => {
+    expect(cancelUnder({ room: 0, widest: 222, cancel: 206, gap })).toBe(false);
+    expect(cancelUnder({ room: 354, widest: 0, cancel: 206, gap })).toBe(false);
+    expect(cancelUnder({ room: 354, widest: 222, cancel: 0, gap })).toBe(false);
   });
 });
