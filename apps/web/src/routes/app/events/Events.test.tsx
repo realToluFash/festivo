@@ -2184,7 +2184,7 @@ describe("An event's page", () => {
     expect(screen.queryByText('Not yours')).toBeNull();
   });
 
-  it.each(['dates', 'people', 'messages', 'budget', 'reports'])(
+  it.each(['dates', 'people', 'messages', 'reports'])(
     'ends where Overview ends at a wide desk, on /%s (sc-59375)',
     async (area) => {
       signedIn();

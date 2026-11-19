@@ -469,7 +469,7 @@ export type Offer = 'company' | 'invitation';
 const DOMAIN = SAMPLE.email.split('@')[1] ?? '';
 
 /** sc-68's "You are not in an organisation", where a managed sign-up with nothing to join ends. */
-const NO_ORGANISATION = '/demo/today?orgs=none';
+const NO_ORGANISATION = '/demo/today?orgs=none&state=managed';
 
 export function Details({
   state,
