@@ -477,4 +477,51 @@ describe('Settings › Vendors in A · Summary first (sc-82)', () => {
 
     expect(await screen.findByText('28 vendors', {}, WAIT)).toBeDefined();
   });
+
+  it(
+    'keeps the card, Search and its focus through a search that got no answer (search_failed)',
+    SLOW,
+    async () => {
+      await open('/demo/settings/vendors?state=search_failed');
+      const search = within(main()).getByRole('searchbox', { name: 'Search vendors' });
+
+      expect(document.activeElement).toBe(search);
+      expect((search as HTMLInputElement).value).toBe('tulip');
+      expect(within(main()).getByText('28 vendors')).toBeDefined();
+      expect(filter(/In use/)).toBeDefined();
+      expect(filter(/All categories/)).toBeDefined();
+      expect(within(main()).getByText('We could not load the vendors.')).toBeDefined();
+      expect(within(main()).getByText('Check your connection and try again.')).toBeDefined();
+      expect(within(main()).queryByRole('list', { name: 'Vendors' })).toBeNull();
+
+      fireEvent.change(search, { target: { value: 'tulip l' } });
+
+      expect(document.activeElement).toBe(search);
+      expect((search as HTMLInputElement).value).toBe('tulip l');
+      expect(within(main()).getByText('We could not load the vendors.')).toBeDefined();
+
+      fireEvent.click(within(main()).getByRole('button', { name: 'Try again' }));
+
+      await waitFor(() => expect(rows()).toHaveLength(1), WAIT);
+      expect(within(main()).queryByText('We could not load the vendors.')).toBeNull();
+      expect(within(main()).getByText('1 vendor')).toBeDefined();
+      await waitFor(() => expect(document.activeElement).toBe(search), WAIT);
+    },
+  );
+
+  it('puts the focus on the heading after Try again with nothing in Search', SLOW, async () => {
+    await open('/demo/settings/vendors?state=search_failed');
+
+    fireEvent.click(within(main()).getAllByRole('button', { name: 'Clear the search' })[0]!);
+    fireEvent.click(within(main()).getByRole('button', { name: 'Try again' }));
+
+    await waitFor(() => expect(rows()).toHaveLength(25), WAIT);
+    await waitFor(
+      () =>
+        expect(document.activeElement).toBe(
+          screen.getByRole('heading', { level: 1, name: 'Vendors' }),
+        ),
+      WAIT,
+    );
+  });
 });
