@@ -59,6 +59,10 @@ import {
   STAFF_REFUSED,
   whatProblem,
   removedWords,
+  LAST_REMOVED,
+  UNDO_REFUSED,
+  type UndoRefusal,
+  undoRefusalOf,
   sumLines,
   WELCOME_DRINKS,
   type Markups,
@@ -139,6 +143,9 @@ interface Removed {
   line: CostLine;
   index: number;
   words: string;
+  refuse?: UndoRefusal;
+  refused?: boolean;
+  fresh?: boolean;
 }
 
 function dialogOf(state: string): Dialog {
@@ -177,6 +184,19 @@ const LISTED = ['ceiling_saved', 'ceiling_categories_only', 'ceiling_cleared_one
 const MARGIN_HOME = ['margin', 'margin_zero_price', 'price_negative', 'price_decimals'];
 
 function removedOf(state: string, heads: Heads): Removed | null {
+  if (LAST_REMOVED.includes(state)) {
+    const only = linesOf('populated')[0];
+    const refuse = undoRefusalOf(state);
+    const refused = refuse != null && state.startsWith('undo_refused');
+    if (only == null) return null;
+
+    return {
+      line: only,
+      index: 0,
+      words: refused ? UNDO_REFUSED[refuse] : removedWords(only, lineAmounts(only, heads).settled),
+      ...(refuse == null ? {} : { refuse, refused }),
+    };
+  }
   const id = { removed_priced: 'dj', removed_not_priced: 'arch', removed_nothing_yet: 'centre' }[
     state as 'removed_priced'
   ];
@@ -331,6 +351,20 @@ export function BudgetHomeContent({
       </>
     );
 
+  const undo = () => {
+    if (removed == null) return;
+    if (removed.refuse != null) {
+      setRemoved({ ...removed, words: UNDO_REFUSED[removed.refuse], refused: true });
+      return;
+    }
+    setLines((now) => {
+      const back = [...now];
+      back.splice(removed.index, 0, removed.line);
+      return back;
+    });
+    setLit(removed.line.id);
+    setRemoved(null);
+  };
   const sum = sumLines(lines, heads);
   const wholeCeiling =
     ceilings.whole == null ? null : ceilingOf('whole', ceilings.whole, lines, heads);
@@ -371,6 +405,14 @@ export function BudgetHomeContent({
           {...(viewer.key === 'folake'
             ? { onPlans: () => tell('Plans have their own design.') }
             : {})}
+        />
+      )}
+      {empty && removed != null && (
+        <UndoBar
+          words={removed.words}
+          onUndo={undo}
+          refused={removed.refused === true}
+          focus={removed.fresh === true}
         />
       )}
       {empty ? (
@@ -485,16 +527,7 @@ export function BudgetHomeContent({
                   setOpened(null);
                   setRemoved(gone);
                 }}
-                onUndo={() => {
-                  if (removed == null) return;
-                  setLines((now) => {
-                    const back = [...now];
-                    back.splice(removed.index, 0, removed.line);
-                    return back;
-                  });
-                  setLit(removed.line.id);
-                  setRemoved(null);
-                }}
+                onUndo={undo}
               />
             )
           }
@@ -534,6 +567,7 @@ export function BudgetHomeContent({
           onDismiss={() => setDialog(null)}
           onAdded={(added) => {
             setLines((now) => [...now, added]);
+            setRemoved(null);
             setDialog(null);
             setLit(added.id);
             setLine({ id: added.id, words: 'Saved.', ok: true });
@@ -866,7 +900,9 @@ function Costs({
 
   return (
     <Block title={W.costs}>
-      {removed != null && <UndoBar words={removed.words} onUndo={onUndo} />}
+      {removed != null && (
+        <UndoBar words={removed.words} onUndo={onUndo} refused={removed.refused === true} />
+      )}
       {categories.map((category) => (
         <div key={category} className="bud-cat">
           <CategoryHead
@@ -892,6 +928,7 @@ function Costs({
                           line: one,
                           index: lines.indexOf(one),
                           words: removedWords(one, lineAmounts(one, heads).settled),
+                          fresh: true,
                         })
                       }
                     />
