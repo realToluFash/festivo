@@ -1293,7 +1293,6 @@ const PHONE_EVENT_IDS: Record<PhoneEventTab, string> = {
 function TabBar({ inEvent }: { inEvent: InsideEvent }) {
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
-  const { account } = useSignedIn();
   const [more, setMore] = useState(false);
   const moreTab = useRef<ViewInstance>(null);
   const { outside } = inEvent;
@@ -1370,43 +1369,101 @@ function TabBar({ inEvent }: { inEvent: InsideEvent }) {
             />
           </View>
           {outside != null && (
-            <>
-              <RowList
-                items={[
-                  {
-                    key: 'account',
-                    inset: 40,
-                    row: (
-                      <Row
-                        title={t('settings.yourAccount')}
-                        line={account?.name}
-                        lead={<MoreGlyph name="user" on={false} />}
-                        opens
-                        onPress={() => {
-                          setMore(false);
-                          router.navigate(SECTION_HREF.account);
-                        }}
-                        testID="event.nav.more.account"
-                      />
-                    ),
-                  },
-                ]}
-              />
-              <TextAction
-                label={t('settings.signOut')}
-                plain
-                glyph="signOut"
-                onPress={() => {
-                  setMore(false);
-                  signOutHere();
-                }}
-                testID="event.nav.more.signOut"
-              />
-            </>
+            <OutsideYou onLeave={() => setMore(false)} idPrefix="event.nav.more" />
           )}
         </View>
       </Sheet>
     </>
+  );
+}
+
+/** Held from outside an organisation (sc-71), the account's own two: Your account and Sign out, in the phone's More and behind the sidebar's person button. */
+function OutsideYou({ onLeave, idPrefix }: { onLeave: () => void; idPrefix: string }) {
+  const { t } = useTranslation();
+  const { account } = useSignedIn();
+
+  return (
+    <>
+      <RowList
+        items={[
+          {
+            key: 'account',
+            inset: 40,
+            row: (
+              <Row
+                title={t('settings.yourAccount')}
+                line={account?.name}
+                lead={<MoreGlyph name="user" on={false} />}
+                opens
+                onPress={() => {
+                  onLeave();
+                  router.navigate(SECTION_HREF.account);
+                }}
+                testID={`${idPrefix}.account`}
+              />
+            ),
+          },
+        ]}
+      />
+      <TextAction
+        label={t('settings.signOut')}
+        plain
+        glyph="signOut"
+        onPress={() => {
+          onLeave();
+          signOutHere();
+        }}
+        testID={`${idPrefix}.signOut`}
+      />
+    </>
+  );
+}
+
+/** On its side, held from outside, the sidebar person button's sheet: the person's name over Your account and Sign out, as the demo's MoreSheet draws it there. */
+function OutsideYouSheet({
+  open,
+  opener,
+  name,
+  onClose,
+}: {
+  open: boolean;
+  opener: RefObject<ViewInstance | null>;
+  name: string;
+  onClose: () => void;
+}) {
+  const { t } = useTranslation();
+
+  return (
+    <Sheet
+      open={open}
+      onClose={onClose}
+      scrimLabel={t('eventNav.closeMore')}
+      opener={opener}
+      testID="frame.side.you"
+    >
+      <View style={styles.moreSheet}>
+        <View style={styles.moreHead}>
+          <Text
+            size={22}
+            weight="bold"
+            accessibilityRole="header"
+            style={[styles.fill, styles.moreTitle]}
+          >
+            {name}
+          </Text>
+          <Pressable
+            onPress={onClose}
+            style={({ pressed }) => [styles.moreClose, pressed && styles.closePressed]}
+            accessibilityRole="button"
+            accessibilityLabel={t('eventNav.closeMore')}
+            testID="frame.side.you.close"
+          >
+            <Glyph name="x" size={18} ink={tokens.colorInk} weight={2.4} />
+          </Pressable>
+        </View>
+        <OutsideYou onLeave={onClose} idPrefix="frame.side.you" />
+      </View>
+    </Sheet>
   );
 }
 
@@ -1513,6 +1570,8 @@ function FrameSidebar({
   const { account } = useSignedIn();
   const events = useSidebarEvents(account?.id, inEvent ? undefined : organisation?.id);
   const tabs = useFrameTabs(current, organisation);
+  const [you, setYou] = useState(false);
+  const youOpener = useRef<ViewInstance>(null);
   const name = account?.name ?? '';
   const role = organisation == null ? null : roleName(t, organisation.role);
   const person = useMemo(() => ({ name, role }), [name, role]);
@@ -1587,8 +1646,19 @@ function FrameSidebar({
             at={inEvent ? null : tabs.at}
             person={person}
             settingsID={TAB_IDS.Settings}
+            settings={!outside}
+            onPerson={outside ? () => setYou(true) : undefined}
+            personRef={outside ? youOpener : undefined}
           />
         </SidebarColumn>
+        {outside && (
+          <OutsideYouSheet
+            open={you}
+            opener={youOpener}
+            name={name}
+            onClose={() => setYou(false)}
+          />
+        )}
       </TitleCap.Provider>
     </TodayShellProvider>
   );
