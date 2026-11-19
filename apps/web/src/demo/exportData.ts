@@ -40,7 +40,7 @@ export const EXPORT_WORDS = {
     'Each event’s seating: its plan, sections, tables, rows and seats, who sits where, and when its tables were shared',
     'Each event’s menu: its courses with their served time, and their dishes with variants, choices and options; and the dish library, archived dishes too',
     'Each event’s run of show: each item’s title, time, length, place, owner and note, whether guests see it, and when it started and ended',
-    'Each event’s staff: name, mobile number, email address and the member they are',
+    'Each event’s staff: name, mobile number, email address, the member they are and their job; and each event’s jobs, with each shift’s times, how many it needs and who fills it',
     'Each event’s cost lines: what each is, its category, basis, rate or amount, and note',
     'The organisation’s vendors: each one’s name, category, contact, email address, phone number, website, address and note, archived vendors too',
   ],
