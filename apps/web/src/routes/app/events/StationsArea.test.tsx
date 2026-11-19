@@ -285,7 +285,7 @@ describe('Stations on the Staff page (sc-3910)', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Move up, Grill' }));
 
-    expect(await screen.findByText('Grill moved to stop 2 of 4')).toBeDefined();
+    expect(await screen.findByText('Grill moved to stop 2 of 4.')).toBeDefined();
     expect(
       sent.find((one) => one.line === 'PUT /api/events/ev_1/stations/walking-order')?.body,
     ).toEqual({ order: ['grill', 'kitchen', 'pastry'] });
