@@ -46,6 +46,28 @@ describe('the sidebar at the largest text sizes', () => {
     expect((qaOrganisation / start) * size).toBeLessThanOrEqual(ROOMS.org.inside);
   });
 
+  it('steps a two-line name down at the ninth step until its widest word fits a line', () => {
+    const scale = NINTH;
+    const start = 14 * scale;
+    const widest = 1.5 * ROOMS.cardName.inside;
+    const size = sideTextSize(ROOMS.cardName, scale, oneWord(widest), 'lines');
+
+    expect(size).toBeLessThan(start);
+    expect(size).toBeGreaterThanOrEqual(14);
+    expect((widest / start) * size).toBeLessThanOrEqual(ROOMS.cardName.inside);
+  });
+
+  it('steps an event’s name under Your events down at the ninth step until it fits its line', () => {
+    const scale = NINTH;
+    const start = 14 * scale;
+    const name = 1.5 * ROOMS.event.inside;
+    const size = sideTextSize(ROOMS.event, scale, oneWord(name), 'line');
+
+    expect(size).toBeLessThan(start);
+    expect(size).toBeGreaterThanOrEqual(14);
+    expect((name / start) * size).toBeLessThanOrEqual(ROOMS.event.inside);
+  });
+
   it('keeps a name at its size on main at the ninth step while it fits', () => {
     const scale = NINTH;
 
