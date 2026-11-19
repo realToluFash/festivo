@@ -56,7 +56,7 @@ describe('/demo/events/evt-wed-4/staff/stations (sc-3910)', () => {
     expect(button('Move up, Kitchen')).toBeNull();
     expect(button('Move down, Pastry')).toBeNull();
     fireEvent.click(button('Move up, Grill') as HTMLElement);
-    expect(status()?.textContent).toBe('Grill moved to stop 2 of 4');
+    expect(status()?.textContent).toBe('Grill moved to stop 2 of 4.');
     expect(document.activeElement).toBe(button('Move down, Grill'));
   });
 
