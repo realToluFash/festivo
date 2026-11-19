@@ -78,6 +78,11 @@ final readonly class OnlyOurOrganisation
         $now = $this->clock->now();
         $this->entityManager->wrapInTransaction(function () use ($emailDomain, $by, $now): void {
             $this->entityManager->refresh($emailDomain, LockMode::PESSIMISTIC_WRITE);
+
+            if (null !== $emailDomain->getOnlyOursFrom()) {
+                return;
+            }
+
             $from = $emailDomain->switchOnlyOursOn($now);
             $this->record(self::SWITCHED_ON, $emailDomain, $by, ['onlyOurs' => ['off', 'scheduled'], 'from' => [null, $from->format(\DATE_ATOM)]], $now);
             $sent = $this->managedNoticeMailer->send($emailDomain, $from);
