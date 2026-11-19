@@ -2709,7 +2709,14 @@
     "guestsLine": "Names and replies only, no contact details",
     "onEvent_one": "{{count, number}} person on this event",
     "onEvent_other": "{{count, number}} people on this event",
-    "onEvent_many": "{{count, number}} people on this event"
+    "onEvent_many": "{{count, number}} people on this event",
+    "yourEvents": "Your events",
+    "fromOutside": "Events from outside",
+    "yourOrganisations": "Your organisations",
+    "underWay": "Under way",
+    "here": "You’re here",
+    "backTo": "Back to {{name}}",
+    "continue": "Continue"
   },
   "seating": {
     "area": "Plan de table",

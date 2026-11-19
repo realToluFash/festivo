@@ -116,9 +116,12 @@ export function canOn(event: { permissions: readonly string[] }, permission: str
   return event.permissions.includes(permission);
 }
 
-/** In no organisation, the event it holds from outside at this id; null for any other, and for anyone in an organisation (sc-71). */
-export function outsideOn(session: Session, eventId: string | undefined): OutsideEvent | null {
-  if (session.organisation != null || session.pausedIn != null) return null;
+/** The event the account holds from outside an organisation at this id, a member's of another organisation's event as much as a no-organisation account's (sc-71, sc-68438); null for any other. */
+export function outsideOn(
+  session: Session,
+  eventId: string | null | undefined,
+): OutsideEvent | null {
+  if (session.pausedIn != null) return null;
 
   return session.outsideEvents?.find((one) => one.id === eventId) ?? null;
 }
@@ -174,6 +177,15 @@ export async function adoptAccount(account: Account, asked = generation): Promis
 /** After a gate has been passed, or the API says one has closed: the account read afresh. */
 export async function refreshAccount(): Promise<void> {
   await askForAccount();
+}
+
+/** The events held from outside, read again: one whose grant ended or was revoked is gone from the list (sc-68438). */
+export async function rereadOutsideEvents(): Promise<void> {
+  const asked = generation;
+  const { outsideEvents } = await api.me();
+  if (generation !== asked || state.status !== 'signedIn') return;
+
+  set({ status: 'signedIn', session: { ...state.session, outsideEvents } });
 }
 
 /** The password and linked providers, read again; a failed read rejects and leaves the page where it is. */

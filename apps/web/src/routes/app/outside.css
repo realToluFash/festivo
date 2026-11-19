@@ -18,3 +18,11 @@
   background: var(--colorInset);
   color: var(--colorInkSecondary);
 }
+
+.outside-menu.is-wide {
+  position: fixed;
+  inset: auto;
+  width: 320px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}

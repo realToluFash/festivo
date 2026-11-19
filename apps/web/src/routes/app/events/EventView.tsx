@@ -38,6 +38,7 @@ import { typeLabel } from './eventTypes.ts';
 import { AllDates } from './Timeline.tsx';
 import { EventCrumb, Overview, PhaseChange } from './EventOverview.tsx';
 import { OutsideOverview } from './OutsideOverview.tsx';
+import { OutsideGone } from '../OutsideShell.tsx';
 import { useGoneEvent, useShowEvent } from './EventNav.tsx';
 import { Arrived, Skeleton } from '../../../components/Skeleton.tsx';
 import { NotFound } from '../../public/NotFound.tsx';
@@ -98,7 +99,7 @@ function ForEvent({ page }: { page: Page }) {
   const session = useSession();
   const { eventId = '' } = useParams();
   const outside = outsideOn(session, eventId);
-  const organisationId = session.organisation?.id ?? (outside == null ? null : OUTSIDE);
+  const organisationId = outside == null ? (session.organisation?.id ?? null) : OUTSIDE;
 
   if (organisationId == null) return null;
 
@@ -112,7 +113,7 @@ function ForEvent({ page }: { page: Page }) {
   );
 }
 
-/** Held from outside an organisation (sc-71): the event is the account's whichever organisation it belongs to. */
+/** Held from outside an organisation (sc-71), by a member of another as much as by an account in none (sc-68438): the event is the account's whichever organisation it belongs to. */
 const OUTSIDE = 'outside';
 
 function ofOrganisation(event: OrganisationEvent, organisationId: string): boolean {
@@ -138,7 +139,9 @@ function EventOf({
   page: Page;
 }) {
   const { t } = useTranslation();
-  const outside = outsideOn(useSession(), eventId);
+  const session = useSession();
+  const outside = outsideOn(session, eventId);
+  const noOrganisation = session.organisation == null && session.pausedIn == null;
   const [load, setLoad] = useState<Load>({ kind: 'loading' });
   const [attempt, setAttempt] = useState(0);
   const [refresh, setRefresh] = useState(0);
@@ -214,6 +217,8 @@ function EventOf({
     (page === 'guests' && load.kind === 'notFound') ||
       (load.kind === 'failed' && load.offline === true),
   );
+
+  if (noOrganisation && load.kind === 'notFound') return <OutsideGone eventId={eventId} />;
 
   if (page === 'guests' && load.kind === 'notFound')
     return (

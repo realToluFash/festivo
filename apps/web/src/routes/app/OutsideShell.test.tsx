@@ -85,11 +85,21 @@ function json(body: unknown, status = 200): Response {
   });
 }
 
-function answering(): void {
+function answering(live: readonly OutsideEvent[] = [WEDDING, LAUNCH]): void {
   vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
     const path = new URL(String(input)).pathname;
-    const held = [WEDDING, LAUNCH].find((one) => path === `/api/events/${one.id}`);
+    if (path === '/api/auth/me')
+      return json({
+        id: 'u_bisi',
+        name: 'Bisi Adebayo',
+        emailAddresses: [],
+        phoneNumbers: [],
+        outsideEvents: live,
+      });
+    const held = live.find((one) => path === `/api/events/${one.id}`);
     if (held != null) return json({ event: event(held) });
+    if (path.startsWith('/api/events/') && path.split('/').length === 4)
+      return json({ type: 'not_found', status: 404 }, 404);
     if (path.endsWith('/people'))
       return json({
         people: [1, 2, 3].map((n) => ({
@@ -178,19 +188,17 @@ describe('an account with no organisation, inside an event it holds (sc-71)', ()
     expect(screen.queryByText(/Delete/u)).toBeNull();
   });
 
-  it('sends an event it does not hold, and an area its level does not open, to the event it lands on', async () => {
+  it('sends an area its level does not open to the event’s Overview', async () => {
     outside([WEDDING, LAUNCH]);
     answering();
-    const router = app('/app/events/ev_9/guests');
+    const router = app('/app/events/ev_1/budget');
 
-    await waitFor(() => expect(router.state.location.pathname).toBe('/app/events/ev_1'));
-    await router.navigate('/app/events/ev_1/budget');
     await waitFor(() => expect(router.state.location.pathname).toBe('/app/events/ev_1'));
   });
 
   it('reaches Your account and Sign out from the person at the sidebar’s foot', async () => {
     outside([WEDDING]);
-    answering();
+    answering([WEDDING]);
     const router = app('/app/events/ev_1');
 
     fireEvent.click(await screen.findByRole('button', { name: 'Bisi Adebayo, Can view' }));
@@ -203,5 +211,91 @@ describe('an account with no organisation, inside an event it holds (sc-71)', ()
 
     fireEvent.click(within(menu).getByRole('menuitem', { name: 'Your account' }));
     await waitFor(() => expect(router.state.location.pathname).toBe('/app/account'));
+  });
+});
+
+describe('an account with no organisation on two or more events (sc-68438)', () => {
+  function rows(group: string): string[] {
+    return within(screen.getByRole('group', { name: group }))
+      .getAllByRole('menuitem')
+      .map((row) => row.getAttribute('aria-label') ?? '');
+  }
+
+  it('lists Your events above Your account and Sign out, the event it is in marked You’re here in its place', async () => {
+    outside([WEDDING, LAUNCH]);
+    answering();
+    app('/app/events/ev_1');
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Bisi Adebayo, Can view' }));
+    expect(rows('Your events')).toEqual([
+      'Adaeze and Tunde. Ìrè Events · Thu, Nov 14 · 16:00. You’re here',
+      'Studio launch. Ayo Events · Thu, Dec 5 · 16:00',
+    ]);
+    expect(
+      within(screen.getByRole('menu'))
+        .getAllByRole('menuitem')
+        .map((item) => item.textContent)
+        .slice(-2),
+    ).toEqual(['Your account', 'Sign out']);
+  });
+
+  it('shows nothing new with a single event', async () => {
+    outside([WEDDING]);
+    answering([WEDDING]);
+    app('/app/events/ev_1');
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Bisi Adebayo, Can view' }));
+    expect(screen.queryByRole('group', { name: 'Your events' })).toBeNull();
+  });
+
+  it('opens another at its level, and choosing the one it is in only closes the list', async () => {
+    outside([WEDDING, LAUNCH]);
+    answering();
+    const router = app('/app/events/ev_1');
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Bisi Adebayo, Can view' }));
+    fireEvent.click(screen.getByRole('menuitem', { name: /^Adaeze and Tunde\./u }));
+    expect(screen.queryByRole('menu')).toBeNull();
+    expect(router.state.location.pathname).toBe('/app/events/ev_1');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Bisi Adebayo, Can view' }));
+    fireEvent.click(screen.getByRole('menuitem', { name: /^Studio launch\./u }));
+    await waitFor(() => expect(router.state.location.pathname).toBe('/app/events/ev_2'));
+    await waitFor(() => expect(areas()).toContain('Menu'));
+  });
+
+  it('answers an event revoked while the list was open as one that does not exist, and goes back to the event it came from', async () => {
+    const live = [WEDDING, LAUNCH];
+    outside([...live]);
+    answering(live);
+    const router = app('/app/events/ev_1');
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Bisi Adebayo, Can view' }));
+    live.pop();
+    fireEvent.click(screen.getByRole('menuitem', { name: /^Studio launch\./u }));
+
+    await screen.findByRole('heading', { level: 1, name: 'This event is not available' });
+    fireEvent.click(await screen.findByRole('button', { name: 'Back to Adaeze and Tunde' }));
+    await waitFor(() => expect(router.state.location.pathname).toBe('/app/events/ev_1'));
+    fireEvent.click(await screen.findByRole('button', { name: 'Bisi Adebayo, Can view' }));
+    expect(screen.queryByRole('group', { name: 'Your events' })).toBeNull();
+  });
+
+  it('opened from its address with no event before it, goes back to the one it lands on', async () => {
+    outside([WEDDING, LAUNCH]);
+    answering();
+    const router = app('/app/events/ev_9');
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Back to Adaeze and Tunde' }));
+    await waitFor(() => expect(router.state.location.pathname).toBe('/app/events/ev_1'));
+  });
+
+  it('with no live grant left, reads Continue', async () => {
+    outside([WEDDING]);
+    answering([]);
+    app('/app/events/ev_9');
+
+    await screen.findByRole('heading', { level: 1, name: 'This event is not available' });
+    expect(await screen.findByRole('button', { name: 'Continue' })).toBeDefined();
   });
 });
