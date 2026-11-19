@@ -3,7 +3,8 @@ appId: host.exp.Exponent
 ---
 - setOrientation: ${ORIENT}
 - openLink: ${METRO_URL}/--/demo/redeem?state=more-in
-- extendedWaitUntil: { visible: { id: 'event.nav.more.account' }, timeout: 30000 }
+- extendedWaitUntil: { visible: { id: 'inside.more.account' }, timeout: 30000 }
+- assertVisible: { id: 'inside.more.signOut' }
 - waitForAnimationToEnd: { timeout: 8000 }
 - takeScreenshot: more-in
 - openLink: ${METRO_URL}/--/demo/people?state=addOutside
