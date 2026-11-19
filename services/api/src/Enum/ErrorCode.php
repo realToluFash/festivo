@@ -106,6 +106,7 @@ enum ErrorCode: string
     case OwnerClaimUnavailable = 'owner_claim_unavailable';
     case OwnerClaimOwn = 'owner_claim_own';
     case EmailDomainTaken = 'email_domain_taken';
+    case DomainManaged = 'domain_managed';
 
     case Unauthenticated = 'unauthenticated';
     case InvalidCredentials = 'invalid_credentials';
@@ -168,7 +169,7 @@ enum ErrorCode: string
             self::AlreadyAMember, self::EmailTaken, self::InvitationAccepted, self::InvitationDeclined, self::JoinOfferUnavailable, self::RestoreNeedsAddress, self::TeamSeatsInUse => 409,
             self::InvitationNotFound, self::RequestLinkDead => 404,
             self::JoinRequestWaiting, self::JoinRequestCoolingOff, self::JoinRequestAnswered => 409,
-            self::OwnerClaimAddress, self::OwnerClaimManaged, self::OwnerClaimOpen, self::OwnerClaimClosed, self::OwnerClaimEnded, self::OwnerClaimUnavailable, self::OwnerClaimOwn, self::EmailDomainTaken => 409,
+            self::OwnerClaimAddress, self::OwnerClaimManaged, self::OwnerClaimOpen, self::OwnerClaimClosed, self::OwnerClaimEnded, self::OwnerClaimUnavailable, self::OwnerClaimOwn, self::EmailDomainTaken, self::DomainManaged => 409,
             self::InvitationExpired, self::InvitationRevoked, self::OrganisationDeleted => 410,
             self::ExportNotReady => 409,
             self::ExportUsed, self::ExportExpired => 410,
