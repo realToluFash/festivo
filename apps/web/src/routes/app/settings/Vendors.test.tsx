@@ -296,7 +296,7 @@ describe('Settings › Vendors at a desk (sc-82)', () => {
     expect(screen.getByRole('button', { name: /Archived/ })).toBeDefined();
   });
 
-  it('a search the API does not answer shows the failed state, not the list it had', async () => {
+  it('a search the API does not answer fails where the rows were, keeping the card, Search and its focus', async () => {
     signedIn(membership());
     vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) =>
       new URL(String(input)).search.includes('q=')
@@ -305,12 +305,79 @@ describe('Settings › Vendors at a desk (sc-82)', () => {
     );
     open();
 
-    fireEvent.change(await screen.findByRole('searchbox', { name: 'Search vendors' }), {
-      target: { value: 'tulip' },
-    });
+    const box = await screen.findByRole('searchbox', { name: 'Search vendors' });
+    box.focus();
+    fireEvent.change(box, { target: { value: 't' } });
 
     expect(await screen.findByText('We could not load the vendors.')).toBeDefined();
     expect(screen.queryByText('Bloom & Co')).toBeNull();
+    expect(screen.getByText('2 vendors')).toBeDefined();
+    expect(screen.getByRole('button', { name: /All categories/ })).toBeDefined();
+    expect(screen.getByRole('button', { name: /In use/ })).toBeDefined();
+    expect(screen.getByRole('searchbox', { name: 'Search vendors' })).toBe(box);
+    expect(document.activeElement).toBe(box);
+
+    fireEvent.change(box, { target: { value: 'tu' } });
+    await act(async () => {
+      await new Promise((done) => setTimeout(done, 400));
+    });
+    expect(screen.getByRole('searchbox', { name: 'Search vendors' })).toBe(box);
+    expect((box as HTMLInputElement).value).toBe('tu');
+    expect(document.activeElement).toBe(box);
+  });
+
+  it('a later search that answers replaces the failure with its rows', async () => {
+    signedIn(membership());
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) =>
+      new URL(String(input)).searchParams.get('q') === 'tulip'
+        ? Promise.reject(new TypeError('Failed to fetch'))
+        : new Response(JSON.stringify(pageOf([BLOOM])), { status: 200 }),
+    );
+    open();
+
+    const box = await screen.findByRole('searchbox', { name: 'Search vendors' });
+    fireEvent.change(box, { target: { value: 'tulip' } });
+    await screen.findByText('We could not load the vendors.');
+    fireEvent.change(box, { target: { value: 'bloom' } });
+
+    expect(await screen.findByText('Bloom & Co')).toBeDefined();
+    expect(screen.queryByText('We could not load the vendors.')).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Try again' })).toBeNull();
+  });
+
+  it('a failed category read keeps the menus, and Try again with nothing typed puts the focus on the heading', async () => {
+    signedIn(membership());
+    let reachable = true;
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async () =>
+      reachable
+        ? new Response(JSON.stringify(pageOf([BLOOM, DELTA])), { status: 200 })
+        : Promise.reject(new TypeError('Failed to fetch')),
+    );
+    open();
+
+    fireEvent.click(await screen.findByRole('button', { name: /All categories/ }));
+    reachable = false;
+    fireEvent.click(await screen.findByRole('menuitemradio', { name: /Flowers/ }));
+    const again = await screen.findByRole('button', { name: 'Try again' });
+    expect(screen.getByRole('searchbox', { name: 'Search vendors' })).toBeDefined();
+    expect(screen.getByRole('button', { name: /Flowers/ })).toBeDefined();
+
+    reachable = true;
+    fireEvent.click(again);
+
+    expect(await screen.findByText('Bloom & Co')).toBeDefined();
+    await waitFor(() =>
+      expect(document.activeElement).toBe(screen.getByRole('heading', { name: 'Vendors' })),
+    );
+  });
+
+  it('a first load the API does not answer takes the whole page', async () => {
+    signedIn(membership());
+    vi.spyOn(globalThis, 'fetch').mockRejectedValue(new TypeError('Failed to fetch'));
+    open();
+
+    expect(await screen.findByText('We could not load the vendors.')).toBeDefined();
+    expect(screen.queryByRole('searchbox', { name: 'Search vendors' })).toBeNull();
   });
 
   it('trying a failed search again puts the person back in the search box', async () => {

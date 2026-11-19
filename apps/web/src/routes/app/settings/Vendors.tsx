@@ -68,7 +68,11 @@ interface Looking {
 
 const NOT_LOOKING: Looking = { view: 'inUse', q: '', category: 'all', page: 1 };
 
-type Load = { kind: 'loading' } | { kind: 'failed' } | { kind: 'loaded'; page: VendorsPage };
+/** Once the directory has shown, a read that fails keeps its page and fails only where the rows are. */
+type Rows = 'shown' | 'failed' | 'rereading';
+
+type Load =
+  { kind: 'loading' } | { kind: 'failed' } | { kind: 'loaded'; page: VendorsPage; rows: Rows };
 
 type Editing = { kind: 'add' } | { kind: 'edit'; vendor: Vendor };
 
@@ -115,6 +119,7 @@ function Directory({
   const [told, setTold] = useState<string | null>(null);
   const search = useRef<HTMLInputElement>(null);
   const backToSearch = useRef(false);
+  const retried = useRef(false);
 
   useEffect(() => {
     const stop = new AbortController();
@@ -131,10 +136,13 @@ function Directory({
       )
       .then(
         (page) => {
-          if (!stop.signal.aborted) setLoad({ kind: 'loaded', page });
+          if (!stop.signal.aborted) setLoad({ kind: 'loaded', page, rows: 'shown' });
         },
         () => {
-          if (!stop.signal.aborted) setLoad({ kind: 'failed' });
+          if (!stop.signal.aborted)
+            setLoad((was) =>
+              was.kind === 'loaded' ? { ...was, rows: 'failed' } : { kind: 'failed' },
+            );
         },
       );
 
@@ -156,6 +164,12 @@ function Directory({
     search.current?.focus();
   }, [load]);
 
+  useEffect(() => {
+    if (load.kind !== 'loaded' || load.rows === 'rereading' || !retried.current) return;
+    retried.current = false;
+    (search.current != null && search.current.value !== '' ? search.current : title())?.focus();
+  }, [load]);
+
   const look = (next: Omit<Looking, 'page'>) => {
     setTyped(next.q);
     setLooking({ ...next, page: 1 });
@@ -165,6 +179,12 @@ function Directory({
     title()?.focus();
   };
   const reread = () => setAttempt((n) => n + 1);
+  const retry = () => {
+    retried.current = true;
+    setLoad((was) => (was.kind === 'loaded' ? { ...was, rows: 'rereading' } : was));
+    setLooking((was) => (was.q === typed ? was : { ...was, q: typed, page: 1 }));
+    reread();
+  };
   const close = useCallback(() => setEditing(null), []);
   const closeMenu = useCallback(() => setMenu(null), []);
   const tell = (words: string) => setTold(words);
@@ -189,6 +209,7 @@ function Directory({
             {load.kind === 'loaded' && (
               <Loaded
                 page={load.page}
+                rows={load.rows}
                 looking={looking}
                 typed={typed}
                 named={named}
@@ -200,6 +221,7 @@ function Directory({
                 onTurn={turn}
                 onMenu={setMenu}
                 onCloseMenu={closeMenu}
+                onRetry={retry}
                 onAdd={() => setEditing({ kind: 'add' })}
                 onOpen={(vendor) => setEditing({ kind: 'edit', vendor })}
                 onRestore={(vendor) => {
@@ -244,6 +266,7 @@ function Directory({
 
 function Loaded({
   page,
+  rows,
   looking,
   typed,
   named,
@@ -255,11 +278,13 @@ function Loaded({
   onTurn,
   onMenu,
   onCloseMenu,
+  onRetry,
   onAdd,
   onOpen,
   onRestore,
 }: {
   page: VendorsPage;
+  rows: Rows;
   looking: Looking;
   typed: string;
   named: string;
@@ -271,6 +296,7 @@ function Loaded({
   onTurn: (page: number) => void;
   onMenu: (menu: 'category' | 'filter') => void;
   onCloseMenu: () => void;
+  onRetry: () => void;
   onAdd: () => void;
   onOpen: (vendor: Vendor) => void;
   onRestore: (vendor: Vendor) => void;
@@ -281,6 +307,7 @@ function Loaded({
   const { page: _page, ...settled } = looking;
   const kept = { ...settled, q: typed };
   const searching = looking.q.trim() !== '' || looking.category !== 'all';
+  const counted = searching && page.total > 0 && rows === 'shown';
   const here = looking.view === 'archived' ? page.archived : page.inUse;
   const nothingInUse = page.inUse === 0 && looking.view === 'inUse' && !searching;
   const pages = Math.max(1, Math.ceil(page.total / PAGE_SIZE));
@@ -381,10 +408,10 @@ function Loaded({
               onPick={(key) => onLook({ ...kept, view: key as VendorView })}
             />
           </div>
-          <p className={searching && page.total > 0 ? 'vd-count' : 'desk-unseen'} role="status">
-            {searching && page.total > 0 ? t('vendors.vendors', { count: page.total }) : ''}
+          <p className={counted ? 'vd-count' : 'desk-unseen'} role="status">
+            {counted ? t('vendors.vendors', { count: page.total }) : ''}
           </p>
-          {page.total === 0 ? (
+          {rows !== 'shown' ? null : page.total === 0 ? (
             !nothingInUse && (
               <NoMatch
                 looking={looking}
@@ -433,6 +460,13 @@ function Loaded({
           )}
         </>
       )}
+      {rows === 'failed' && <Failed onRetry={onRetry} />}
+      {rows === 'rereading' && (
+        <div className="desk-loading" role="status" aria-label={t('vendors.loading')}>
+          <span className="desk-unseen">{t('vendors.loading')}</span>
+          <RowBones />
+        </div>
+      )}
     </>
   );
 }
@@ -444,17 +478,23 @@ function Loading() {
     <div className="desk-loading" role="status" aria-label={t('vendors.loading')}>
       <span className="desk-unseen">{t('vendors.loading')}</span>
       <span className="desk-sunk is-card" aria-hidden="true" />
-      <ul className="desk-rows" aria-hidden="true">
-        {[1, 2, 3, 4].map((bar) => (
-          <li key={bar} className="desk-row is-bones">
-            <span className="desk-row-words">
-              <span className={`desk-sunk is-title b${bar}`} />
-              <span className={`desk-sunk is-line b${bar}`} />
-            </span>
-          </li>
-        ))}
-      </ul>
+      <RowBones />
     </div>
+  );
+}
+
+function RowBones() {
+  return (
+    <ul className="desk-rows" aria-hidden="true">
+      {[1, 2, 3, 4].map((bar) => (
+        <li key={bar} className="desk-row is-bones">
+          <span className="desk-row-words">
+            <span className={`desk-sunk is-title b${bar}`} />
+            <span className={`desk-sunk is-line b${bar}`} />
+          </span>
+        </li>
+      ))}
+    </ul>
   );
 }
 
