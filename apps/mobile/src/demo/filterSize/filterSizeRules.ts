@@ -59,12 +59,10 @@ export function keyOf<Key extends string>(
 
 export const ROW_TYPE = { title: 16, value: 15 } as const;
 
-/** The size the Events title above the menu draws at, which the menu's words grow to and no further (sc-67338): 38 at AX1, 43 from AX2. */
 export function eventsTitleCap(scale: number, tablet: boolean, shortSide: number): number {
   return titleSize(frameTitleSize(tablet, shortSide), scale);
 }
 
-/** Where a row's title and value start before a word steps them down: the person's size, no larger than the Events title. */
 export function rowStarts(scale: number, cap: number): { title: number; value: number } {
   return {
     title: labelStart(ROW_TYPE.title, scale, cap),
@@ -74,7 +72,6 @@ export function rowStarts(scale: number, cap: number): { title: number; value: n
 
 export interface RowMeasure {
   scale: number;
-  /** The Events title's drawn size, from `eventsTitleCap`. */
   cap: number;
   /** The row's width for its words: the menu less its side padding, the gap and the ›. */
   room: number;
@@ -83,7 +80,6 @@ export interface RowMeasure {
   titleWidest: number;
   /** The widest piece of the first `shown` picks, and of the "+N more" drawn after them, at the value's start. */
   valueWidestAt: (shown: number) => number;
-  /** How many picks the value has; nothing chosen is the one "Any" word. */
   count: number;
   /** The line beside the title with the first `shown` picks, then "+N more" when any are left: its two texts measured apart and added up, as main's `usePicksFit`. */
   besideAt: (shown: number) => number;
@@ -98,14 +94,12 @@ export interface RowDrawn {
   valueSize: number;
 }
 
-/** How many picks show whole in `room` on one line; 0 when even the first does not. */
 function wholeIn(count: number, widthAt: (shown: number) => number, room: number): number {
   const shown = picksShown(count, (each) => widthAt(each) <= room);
 
   return widthAt(shown) <= room ? shown : 0;
 }
 
-/** sc-73933: at the accessibility sizes, a value that cannot sit whole beside its title takes the line under it; at the standard sizes, main's one line (sc-39348). */
 export function rowDrawn(row: RowMeasure): RowDrawn {
   const starts = rowStarts(row.scale, row.cap);
   const beside = row.room - row.title - row.gap;
