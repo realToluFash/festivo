@@ -12,7 +12,7 @@ appId: host.exp.Exponent
 - tapOn: { id: 'event.nav.more.budget' }
 - extendedWaitUntil: { visible: { id: 'frame.back' }, timeout: 15000 }
 - waitForAnimationToEnd: { timeout: 5000 }
-- assertVisible: '.*(Overview|Aperçu|Resumen|Visão geral).*'
+- assertVisible: { id: 'frame.back', text: '.*(Overview|Aperçu|Resumen|Vista geral).*' }
 - takeScreenshot: phone-budget-from-more
 - tapOn: { id: 'frame.back' }
 - extendedWaitUntil: { visible: { id: 'overview.guests.open' }, timeout: 15000 }
@@ -23,6 +23,7 @@ appId: host.exp.Exponent
 - tapOn: { id: 'overview.guests.open' }
 - extendedWaitUntil: { visible: { id: 'frame.back' }, timeout: 15000 }
 - waitForAnimationToEnd: { timeout: 5000 }
+- assertVisible: { id: 'frame.back', text: '.*(Overview|Aperçu|Resumen|Vista geral).*' }
 - takeScreenshot: phone-guests-from-card
 - tapOn: { id: 'frame.back' }
 - extendedWaitUntil: { visible: { id: 'overview.guests.open' }, timeout: 15000 }
