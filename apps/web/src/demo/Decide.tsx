@@ -271,14 +271,13 @@ function Woven({ text, figures }: { text: string; figures: readonly string[] }) 
   const out: ReactNode[] = [];
   let rest = text;
 
-  figures.forEach((figure, index) => {
-    const found = rest.indexOf(figure);
-    if (found < 0) return;
+  for (let next = firstOf(rest, figures); next; next = firstOf(rest, figures)) {
+    const { found, figure } = next;
     const at = found > 0 && '+−'.includes(rest[found - 1] ?? '') ? found - 1 : found;
     const whole = rest.slice(at, found + figure.length);
     out.push(rest.slice(0, at));
     out.push(
-      <span key={index} className="dec-figure">
+      <span key={out.length} className="dec-figure">
         {groupsOf(whole).map((group, part) => (
           <Fragment key={part}>
             {part > 0 && <wbr />}
@@ -288,10 +287,26 @@ function Woven({ text, figures }: { text: string; figures: readonly string[] }) 
       </span>,
     );
     rest = rest.slice(found + figure.length);
-  });
+  }
   out.push(rest);
 
   return <>{out}</>;
+}
+
+/** Whichever figure comes first in the text, the longer at a tie, so a sentence may order its placeholders as its language needs. */
+function firstOf(text: string, figures: readonly string[]) {
+  let first: { found: number; figure: string } | undefined;
+  for (const figure of figures) {
+    const found = figure === '' ? -1 : text.indexOf(figure);
+    if (found < 0) continue;
+    if (
+      !first ||
+      found < first.found ||
+      (found === first.found && figure.length > first.figure.length)
+    )
+      first = { found, figure };
+  }
+  return first;
 }
 
 /** A status message (WCAG 2.2 SC 4.1.3): the new answer is announced once it arrives; updating is not. */
@@ -398,7 +413,10 @@ function AnswerPanel<A>({
               <p>
                 <span className="dec-ceiling-head">{W.overCeiling}</span>
                 <span className="dec-ceiling-line">
-                  {W.ifEveryone(shown.whole(answer.ifAll), shown.whole(answer.ceiling))}
+                  <Woven
+                    text={W.ifEveryone(shown.whole(answer.ifAll), shown.whole(answer.ceiling))}
+                    figures={[shown.whole(answer.ifAll), shown.whole(answer.ceiling)]}
+                  />
                 </span>
               </p>
             </div>
@@ -409,7 +427,10 @@ function AnswerPanel<A>({
               <p>
                 <span className="dec-ceiling-head">{W.overCategory(one.name)}</span>
                 <span className="dec-ceiling-line">
-                  {W.ifEveryone(shown.whole(one.ifAll), shown.whole(one.ceiling))}
+                  <Woven
+                    text={W.ifEveryone(shown.whole(one.ifAll), shown.whole(one.ceiling))}
+                    figures={[shown.whole(one.ifAll), shown.whole(one.ceiling)]}
+                  />
                 </span>
               </p>
             </div>

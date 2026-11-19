@@ -194,10 +194,7 @@ describe('What a decision costs, in Add guest (sc-86)', () => {
       );
       expect(answer.querySelector('.bud-amount')?.textContent).toBe('+£1,000,000,000,000,000');
       expect(answer.querySelectorAll('.dec-figure').length).toBe(6);
-      for (const figure of answer.querySelectorAll('.dec-figure'))
-        for (const group of figure.childNodes)
-          if (group.nodeType === Node.TEXT_NODE)
-            expect(group.textContent).toMatch(/^[+]?£?\d{1,3}[,]?$/u);
+      expectWholeGroups(answer);
       cleanup();
 
       const spanish = within(await open('decide_huge&lang=es')).getByRole('status');
@@ -208,6 +205,16 @@ describe('What a decision costs, in Add guest (sc-86)', () => {
       expect(spanish.textContent).toContain('99.999.999.999.999.999\u00a0GBP');
       expect(spanish.textContent).not.toContain('100.000.000.000.000.000');
       expect(spanish.textContent).not.toContain('101.000.000.000.000.000');
+      expect(spanish.querySelectorAll('.dec-figure').length).toBe(6);
+      expectWholeGroups(spanish);
     },
   );
 });
+
+/** Every figure's text nodes are single digit groups, so a line can break only at the <wbr> between them. */
+function expectWholeGroups(answer: HTMLElement) {
+  for (const figure of answer.querySelectorAll('.dec-figure'))
+    for (const group of figure.childNodes)
+      if (group.nodeType === Node.TEXT_NODE)
+        expect(group.textContent).toMatch(/^\+?£?\d{1,3}(?:[,.]|\u00a0GBP)?$/u);
+}
