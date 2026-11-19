@@ -53,7 +53,7 @@ final class AuditTypeTest extends TestCase
     }
 
     /**
-     * The codes passed to the Auditor: every quoted code in a file that uses it, less the translation keys those files also quote, and each kind of deletion's restored and purged.
+     * The codes passed to the Auditor: every quoted code in a file that uses it and every code a class constant names, less the translation keys those files also quote, and each kind of deletion's restored and purged.
      *
      * @return list<string>
      */
@@ -80,7 +80,15 @@ final class AuditTypeTest extends TestCase
 
             $source = File\read($file->getPathname());
 
-            if (!Str\contains($source, 'Audit\\Auditor;') || Str\ends_with($file->getPathname(), 'Enum/AuditType.php')) {
+            if (Str\ends_with($file->getPathname(), 'Enum/AuditType.php')) {
+                continue;
+            }
+
+            foreach (Regex\every_match($source, "/const string [A-Z_]+ = '([a-z_]+\\.[a-z_]+)';/") ?? [] as $match) {
+                $codes[] = $match[1];
+            }
+
+            if (!Str\contains($source, 'Audit\\Auditor;')) {
                 continue;
             }
 
