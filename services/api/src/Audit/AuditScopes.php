@@ -14,10 +14,7 @@ use Doctrine\ORM\EntityManagerInterface;
 use Psl\Type;
 use Symfony\Component\Uid\Uuid;
 
-/**
- * The organisation an entry is about, read when it is recorded, so the log still finds it once its subject is deleted (sc-611).
- * Only the subjects the AC counts as the organisation's are scoped: the organisation, its members, invitations and owner claims, and its events and the people on them.
- */
+/** Read when an entry is recorded, so the log still finds an entry whose subject is deleted later. */
 final readonly class AuditScopes
 {
     public function __construct(

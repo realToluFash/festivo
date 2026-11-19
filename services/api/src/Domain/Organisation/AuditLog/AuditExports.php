@@ -109,7 +109,7 @@ final readonly class AuditExports
         $this->entityManager->flush();
 
         try {
-            $this->auditExportMailer->ready($export);
+            $this->entityManager->getConnection()->transactional(fn () => $this->auditExportMailer->ready($export));
         } catch (Throwable $e) {
             $this->logger->error('An audit log export is ready but its email failed.', ['export' => $export->getId()->toRfc4122(), 'exception' => $e::class]);
         }
@@ -167,7 +167,7 @@ final readonly class AuditExports
         do {
             $entries = $this->auditEntryRepository->findPage($filter, $after, self::BATCH);
 
-            foreach ($this->auditEntryView->exported($entries, $locale) as $row) {
+            foreach ($this->auditEntryView->exported($locale, ...$entries) as $row) {
                 if ('csv' === $format) {
                     \fputcsv($stream, Vec\map($columns, static fn (string $column): string => CsvCell::safe($row[$column] ?? '')), ',', '"', '', "\r\n");
                 } else {

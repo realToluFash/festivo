@@ -20,10 +20,8 @@ use Psl\Type;
 use Psl\Vec;
 use Symfony\Contracts\Translation\TranslatorInterface;
 
-/** An entry as the reader is shown it, in their language and zone, and as the export writes it (sc-611). */
 final readonly class AuditEntryView
 {
-    /** Ids and references the words already carry, or that mean nothing to a reader. */
     private const array UNSHOWN_FIELDS = ['export', 'eventId', 'membershipId', 'invitationId', 'userId', 'organisationId', 'claimId'];
 
     public function __construct(
@@ -33,14 +31,10 @@ final readonly class AuditEntryView
     ) {
     }
 
-    /**
-     * @param list<AuditEntry> $entries
-     *
-     * @return list<array<string, mixed>>
-     */
-    public function shown(array $entries, User $reader, string $locale): array
+    /** @return list<array<string, mixed>> */
+    public function shown(User $reader, string $locale, AuditEntry ...$entries): array
     {
-        $context = $this->context($entries);
+        $context = $this->context(...$entries);
 
         return Vec\map($entries, function (AuditEntry $entry) use ($context, $reader, $locale): array {
             [$day, $time] = UserMailer::dayAndTime($entry->getOccurredAt(), $reader);
@@ -56,16 +50,10 @@ final readonly class AuditEntryView
         });
     }
 
-    /**
-     * One row of the export: the instant in UTC as ISO 8601, sc-73's code, and the words in the exporter's language.
-     *
-     * @param list<AuditEntry> $entries
-     *
-     * @return list<array<string, ?string>>
-     */
-    public function exported(array $entries, string $locale): array
+    /** @return list<array<string, ?string>> */
+    public function exported(string $locale, AuditEntry ...$entries): array
     {
-        $context = $this->context($entries);
+        $context = $this->context(...$entries);
 
         return Vec\map($entries, function (AuditEntry $entry) use ($context, $locale): array {
             $facts = $this->facts($entry, $context, $locale);
@@ -188,14 +176,8 @@ final readonly class AuditEntryView
         };
     }
 
-    /**
-     * Each person's current address, none for an account deleted since, and which events still exist.
-     *
-     * @param list<AuditEntry> $entries
-     *
-     * @return array{emails: array<string, ?string>, live: array<string, true>}
-     */
-    private function context(array $entries): array
+    /** @return array{emails: array<string, ?string>, live: array<string, true>} */
+    private function context(AuditEntry ...$entries): array
     {
         $actors = Vec\unique(Vec\filter_nulls(Vec\map($entries, static fn (AuditEntry $entry): ?string => Actor::User === $entry->getActorType() ? $entry->getActorId()?->toRfc4122() : null)));
         $events = Vec\unique(Vec\filter_nulls(Vec\map($entries, static fn (AuditEntry $entry): ?string => $entry->getEventId()?->toRfc4122())));

@@ -69,7 +69,6 @@ final readonly class AuditLogController
     ) {
     }
 
-    /** One page of entries, newest first, with who and which events the filters can offer. Filtering and loading more make no entry. */
     #[Route('/api/orgs/{organisationId}/audit-log', name: 'orgs_audit_log', methods: ['GET'])]
     public function list(Request $request, string $organisationId): JsonResponse
     {
@@ -93,7 +92,7 @@ final readonly class AuditLogController
         return new JsonResponse([
             'organisation' => $organisation->getName(),
             'zone' => $user->getTimezone(),
-            'entries' => $this->auditEntryView->shown($entries, $user, $this->userMailer->formattingLocaleFor($user)),
+            'entries' => $this->auditEntryView->shown($user, $this->userMailer->formattingLocaleFor($user), ...$entries),
             'next' => $more && $last instanceof AuditEntry ? Str\format('%s_%s', $last->getOccurredAt()->format('Y-m-d\TH:i:s'), $last->getId()->toRfc4122()) : null,
             'people' => $this->people($organisation, $everything),
             'events' => $this->events($everything),
@@ -101,7 +100,6 @@ final readonly class AuditLogController
         ]);
     }
 
-    /** Opening the log is one Audit log entry. */
     #[Route('/api/orgs/{organisationId}/audit-log/views', name: 'orgs_audit_log_viewed', methods: ['POST'])]
     public function viewed(string $organisationId): Response
     {
@@ -113,7 +111,6 @@ final readonly class AuditLogController
         return new Response(null, Response::HTTP_NO_CONTENT);
     }
 
-    /** Up to 10,000 entries answer as the file; up to 1,000,000 are prepared and emailed (202); more are refused 422 `audit_export_too_many`. */
     #[Route('/api/orgs/{organisationId}/audit-log/exports', name: 'orgs_audit_log_export', methods: ['POST'])]
     public function export(Request $request, string $organisationId): Response
     {
@@ -143,7 +140,6 @@ final readonly class AuditLogController
         ], Response::HTTP_ACCEPTED);
     }
 
-    /** The prepared file, for the person who asked, within 24 hours: 404 for anyone else, `export_expired` after. */
     #[Route('/api/orgs/{organisationId}/audit-log/exports/{exportId}/download', name: 'orgs_audit_log_export_download', methods: ['POST'])]
     public function download(string $organisationId, string $exportId): Response
     {
@@ -164,11 +160,7 @@ final readonly class AuditLogController
         ]);
     }
 
-    /**
-     * The dates are whole days in the reader's own zone, or UTC for an account with none; 422 on `to` for a start after the end.
-     *
-     * @param array<string, string> $asked person, type, event, from, to and before, each as asked
-     */
+    /** @param array<string, string> $asked person, type, event, from, to and before; the dates are days in the reader's zone */
     private function filter(Organisation $organisation, User $user, array $asked): AuditFilter
     {
         $zone = new DateTimeZone($user->getTimezone() ?? 'UTC');

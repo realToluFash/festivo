@@ -21,17 +21,13 @@ export const AUDIT_AT_ONCE = 10_000;
 export const AUDIT_AT_MOST = 1_000_000;
 
 export interface AuditWho {
-  /** `support` reads "Soirely support" and `system` "System"; the client words both. */
   kind: 'person' | 'support' | 'system';
-  /** The name recorded with the entry; null for support and the System. */
   name: string | null;
-  /** The person's current address; null once their account is deleted. */
   email: string | null;
 }
 
 export interface AuditOn {
   name: string;
-  /** Linked while it exists, to the event's own page. */
   eventId: string | null;
   gone: boolean;
 }
@@ -39,18 +35,15 @@ export interface AuditOn {
 export interface AuditEntry {
   id: string;
   at: string;
-  /** In the reader's own zone, or UTC for an account with none (sc-868): the day it falls on, its time, and the detail's stamp to the second. */
+  /** `day` (YYYY-MM-DD), `time` (HH:mm) and `when` are in the reader's zone, or UTC for an account with none. */
   day: string;
   time: string;
   when: string;
   who: AuditWho;
-  /** In the reader's language: "Removed Ada Obi from Ada's Wedding". */
   what: string;
   on: AuditOn | null;
-  /** One line per field that changed: "Everyone needs two-factor: Off → On". */
   changes: string[];
   type: AuditType;
-  /** sc-73's code, `membership.role_changed`. */
   action: string;
   /** Sign-in and security entries only. */
   address: string | null;
@@ -75,17 +68,14 @@ export interface AuditFilters {
   person?: string | null;
   type?: AuditType | null;
   event?: string | null;
-  /** YYYY-MM-DD, in the reader's zone. */
   from?: string | null;
   to?: string | null;
 }
 
 export interface AuditLogPage {
   organisation: string;
-  /** The reader's zone, or null when the times are UTC. */
   zone: string | null;
   entries: AuditEntry[];
-  /** Passed back as `before` for the next page; null at the end. */
   next: string | null;
   people: AuditPerson[];
   events: AuditEvent[];

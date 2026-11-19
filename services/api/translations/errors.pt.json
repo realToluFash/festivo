@@ -136,5 +136,5 @@
     "idempotency_key_reused": "Esta Idempotency-Key já foi enviada com outra ação.",
     "plan_required": "O plano da organização não inclui esta funcionalidade.",
     "email_domain_taken": "Outra organização já verificou este domínio.",
-    "audit_export_too_many": "Too many entries to export."
+    "audit_export_too_many": "Há demasiados registos para exportar."
 }
