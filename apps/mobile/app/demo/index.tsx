@@ -373,6 +373,11 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
         href: '/demo/today?orgs=none',
       },
       {
+        title: 'The way in · no organisation, managed',
+        what: 'Managed by Ire Events in place of Start your own',
+        href: '/demo/today?orgs=none&state=managed',
+      },
+      {
         title: 'Step 1 · nothing typed',
         what: 'The dashed plus, the keys up',
         href: '/demo/today?create=name',
