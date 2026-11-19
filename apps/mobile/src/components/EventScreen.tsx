@@ -245,6 +245,7 @@ export function EventScreen({
   const back = !fromSearch && areaBack(area) === 'overview' ? () => chooseArea('overview') : leave;
   // Held from outside, Overview is the account's whole app: nothing behind it to go back to (sc-71).
   const backs = outside == null || area !== 'overview';
+  const bare = area === 'overview' && outside != null && readsOverview(outside.role);
   const backLabel = fromSearch
     ? t('todayScreen.search')
     : area !== 'overview'
@@ -466,6 +467,7 @@ export function EventScreen({
               up:
                 original != null ? { label: t('timeline.backToEvent'), onPress: leave } : undefined,
               outside: outside == null ? undefined : { id: outside.id, role: outside.role },
+              bare,
             }
           : undefined
       }
@@ -516,7 +518,7 @@ export function EventScreen({
           }
         >
           {kind === 'tabletLandscape' && cardNamed && refreshing}
-          {cardNamed && event == null && <BellRow />}
+          {cardNamed && event == null && !bare && <BellRow />}
           {top.bodyBack && backs && (
             <BackButton label={backLabel} onPress={back} testID="events.back" />
           )}

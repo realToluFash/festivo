@@ -3058,6 +3058,7 @@
     "dropped": "É preciso Internet para exportar. Nada foi exportado."
   },
   "outsideEvent": {
+    "when": "{{day}} · {{start}} to {{end}}",
     "until": "até {{when}}",
     "guestsLine": "Só nomes e respostas, sem contactos",
     "onEvent_one": "{{count, number}} pessoa neste evento",

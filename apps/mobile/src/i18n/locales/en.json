@@ -2941,6 +2941,7 @@
     "dropped": "Export needs a connection. Nothing was exported."
   },
   "outsideEvent": {
+    "when": "{{day}} · {{start}} to {{end}}",
     "until": "until {{when}}",
     "guestsLine": "Names and replies only, no contact details",
     "onEvent_one": "{{count, number}} person on this event",
