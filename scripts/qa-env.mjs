@@ -982,6 +982,30 @@ export function branchForStory(id, remoteBranches) {
 // and the api answers 500 or never boots.
 export const CACHE_CLEARER = 'busybox:1.36';
 
+// A running api or worker rewrites the cache while it is emptied, and rm fails on a directory
+// that filled again (sc-72307). The stack is brought up again further on.
+export function servicesMountingApi(services, root) {
+  const api = resolve(root, 'services/api');
+  return Object.entries(services ?? {})
+    .filter(([, service]) =>
+      (service.volumes ?? []).some(
+        (volume) => volume.type === 'bind' && resolve(root, volume.source ?? '') === api,
+      ),
+    )
+    .map(([name]) => name);
+}
+
+function stopApiMounts(root) {
+  let services;
+  try {
+    services = composeServices(root);
+  } catch {
+    return;
+  }
+  const names = servicesMountingApi(services, root);
+  if (names.length > 0) run('docker', ['compose', 'stop', ...names], { cwd: root, optional: true });
+}
+
 export function clearApiCache(root, exec = run) {
   const cache = join(root, 'services/api/var/cache');
   if (!existsSync(cache)) return;
@@ -1434,6 +1458,7 @@ function checkout(args) {
     ref = `origin/${name}`;
     label = name;
   }
+  stopApiMounts(root);
   git(['checkout', '--quiet', '--detach', ref], root);
   const head = git(['rev-parse', '--short', 'HEAD'], root);
   console.log(`  ${label} at ${head}`);
@@ -4015,6 +4040,19 @@ export async function clearForBatch(
   await reset(onAndroid, device);
 }
 
+// A batch that reuses a name keeps the last run beside it, so a name typed twice costs no
+// re-shoot (sc-72307).
+export function freshBatchDir(root, name) {
+  const out = join(root, '.qa', name);
+  const previous = `${out}.previous`;
+  if (existsSync(out)) {
+    rmSync(previous, { recursive: true, force: true });
+    renameSync(out, previous);
+  }
+  mkdirSync(out, { recursive: true });
+  return out;
+}
+
 async function batch(args) {
   const root = qaWorktree();
   const onAndroid = args.includes('--android');
@@ -4036,9 +4074,7 @@ async function batch(args) {
   await clearForBatch(onAndroid, device);
   if (onAndroid) warnUnauthorized(androidTools());
 
-  const out = join(root, '.qa', name);
-  rmSync(out, { recursive: true, force: true });
-  mkdirSync(out, { recursive: true });
+  const out = freshBatchDir(root, name);
   const flows = join(root, '.qa/.batch', name);
   composeBatch(source, flows, {
     checks,

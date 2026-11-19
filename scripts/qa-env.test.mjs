@@ -94,6 +94,8 @@ import {
   branchForStory,
   CACHE_CLEARER,
   clearApiCache,
+  freshBatchDir,
+  servicesMountingApi,
   execOutput,
   staleInContainer,
   defaultNetwork,
@@ -1998,6 +2000,20 @@ describe('the API cache a checkout leaves behind', () => {
     clearApiCache(mkdtempSync(join(tmpdir(), 'qa-cache-')), exec);
 
     expect(seen).toEqual([]);
+  });
+
+  it('stops first every service that mounts services/api, and only those', () => {
+    const root = '/work/soirely-qa5';
+    const api = { type: 'bind', source: '/work/soirely-qa5/services/api', target: '/app' };
+    const services = {
+      api: { volumes: [api] },
+      'notification-worker': { volumes: [api] },
+      web: { volumes: [{ type: 'bind', source: '/work/soirely-qa5/apps/web', target: '/app' }] },
+      postgres: { volumes: [{ type: 'volume', source: 'postgres-data', target: '/data' }] },
+      mailpit: {},
+    };
+
+    expect(servicesMountingApi(services, root)).toEqual(['api', 'notification-worker']);
   });
 
   it('pins the image it clears with', () => {
@@ -4701,5 +4717,31 @@ describe("a Maestro run's debug logs", () => {
 
   it('ask nothing of a run that left no folder', () => {
     expect(() => trimMaestroLogs(join(tmpdir(), 'no-such-maestro-run'))).not.toThrow();
+  });
+});
+
+describe('a batch folder', () => {
+  it('keeps the last run of the same name beside the new one', () => {
+    const root = mkdtempSync(join(tmpdir(), 'qa-batch-'));
+    mkdirSync(join(root, '.qa/shots'), { recursive: true });
+    writeFileSync(join(root, '.qa/shots/first.png'), '');
+
+    const out = freshBatchDir(root, 'shots');
+
+    expect(out).toBe(join(root, '.qa/shots'));
+    expect(readdirSync(out)).toEqual([]);
+    expect(readdirSync(join(root, '.qa/shots.previous'))).toEqual(['first.png']);
+  });
+
+  it('keeps only one run back', () => {
+    const root = mkdtempSync(join(tmpdir(), 'qa-batch-'));
+    mkdirSync(join(root, '.qa/shots.previous'), { recursive: true });
+    writeFileSync(join(root, '.qa/shots.previous/oldest.png'), '');
+    mkdirSync(join(root, '.qa/shots'));
+    writeFileSync(join(root, '.qa/shots/second.png'), '');
+
+    freshBatchDir(root, 'shots');
+
+    expect(readdirSync(join(root, '.qa/shots.previous'))).toEqual(['second.png']);
   });
 });
