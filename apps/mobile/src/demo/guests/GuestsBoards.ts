@@ -22,6 +22,14 @@ const GUESTS: Record<GuestsState, Board> = {
     'offline in Portuguese',
     'sc-67659, sc-68417: É preciso Internet para exportar in Exportar’s place, each word whole; with the + under Convidados where they do not fit beside it',
   ],
+  refreshing: [
+    'Refreshing… at the largest sizes',
+    'sc-71821: Refreshing… held on screen; it keeps main’s place only where it fits once the controls are placed, else its own line under the heading',
+  ],
+  refreshingPt: [
+    'A atualizar… in Portuguese',
+    'sc-71821: as refreshing, in Portuguese: ‹ Vista geral whole, A atualizar… on its own line where the row has no room',
+  ],
   filterOpen: ['the filter menu', 'All, Invited, the five replies and Not yet invited'],
   filtered: ['after a filter', 'No reply · 21: 21 of 156 shown, and Clear'],
   search: ['a search', '“okon”: 2 of 156 shown, the card aside'],
