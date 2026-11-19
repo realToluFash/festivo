@@ -49,8 +49,16 @@ import { backRowHiding } from '../kit/backRow.ts';
 import { type Currencies, freshWalk } from '../kit/createWalk.ts';
 import { phonePillAlone } from '../kit/frameBand.ts';
 import { EDGE_SWIPE_WIDTH, headerDrawsBack, stackSwipes } from '../kit/systemBack.ts';
-import { EVENT_PLACES, type EventPlace, MORE_PLACES } from '../kit/eventNav.ts';
-import { OUTSIDE_TABS, outsideMore, outsidePlaces } from '../kit/outsideEvent.ts';
+import { EVENT_PLACES, type EventPlace, MORE_PLACES, eventHref } from '../kit/eventNav.ts';
+import { useServerNow } from '../kit/serverNow.ts';
+import {
+  OUTSIDE_TABS,
+  outsideGroups,
+  outsideHref,
+  outsideMore,
+  outsidePlaces,
+  switcherOutside,
+} from '../kit/outsideEvent.ts';
 import { leaveThen } from '../leaveHeld.ts';
 import { frameTitleSize } from '../layout/textSize.ts';
 import { backScale } from '../layout/focusedHeader.ts';
@@ -114,6 +122,7 @@ import { OrgDropDown } from './OrgDropDown.tsx';
 import { AREA_GLYPH } from './areaGlyph.ts';
 import { ReadOut } from './ReadOut.tsx';
 import { Row, RowList, TextAction } from './SummaryRows.tsx';
+import { OutsideEventsGroup, YourOrganisationsGroup } from './OutsideRows.tsx';
 import { Back, useBackWord } from './SettingsParts.tsx';
 import { SETTLED_MS, useFocusOnAnswer, useWindowOrigin } from './Screen.tsx';
 import type { ScreenReaderTarget } from './screenReaderFocus.ts';
@@ -208,8 +217,8 @@ export interface InsideEvent {
   card: { event: Shown | null; now: Date };
   /** The landscape sidebar's ‹ when it goes somewhere other than Events, as a copy's ‹ Event up to its original. */
   up?: { label: string; onPress: () => void } | undefined;
-  /** Held from outside an organisation (sc-71): its level's areas, no way back to Events, and Your account and Sign out in More. */
-  outside?: { role: OutsideEvent['role'] } | undefined;
+  /** Held from outside an organisation (sc-71): its level's areas, no way back to Events, and in More the account's other events, a member's organisations (sc-68438), Your account and Sign out. */
+  outside?: { id: string; role: OutsideEvent['role'] } | undefined;
 }
 
 interface NavEntry {
@@ -344,6 +353,7 @@ export function AppFrame({
   useEffect(() => navigation.setOptions({ gestureEnabled: stackSwipe }), [navigation, stackSwipe]);
   const signedIn = useSignedIn();
   usePushTaps(signedIn.account?.id);
+  const now = useServerNow();
   const entries =
     inEvent == null
       ? []
@@ -551,7 +561,7 @@ export function AppFrame({
               inEvent={inEvent != null}
               card={inEvent?.card}
               up={inEvent?.up}
-              outside={inEvent?.outside != null}
+              outside={inEvent?.outside?.id ?? null}
               organisation={signedIn.organisation}
               waiting={count}
               onSwitch={switchFromPill}
@@ -653,6 +663,11 @@ export function AppFrame({
               open={choosing}
               back={switcherOpener}
               email={email}
+              events={switcherOutside(signedIn, now)}
+              onEvent={(eventId) => {
+                closeSwitcher();
+                router.push(eventHref(eventId));
+              }}
               onClose={closeSwitcher}
               onPick={(id) => {
                 closeSwitcher();
@@ -1369,7 +1384,11 @@ function TabBar({ inEvent }: { inEvent: InsideEvent }) {
             />
           </View>
           {outside != null && (
-            <OutsideYou onLeave={() => setMore(false)} idPrefix="event.nav.more" />
+            <OutsideYou
+              here={outside.id}
+              onLeave={() => setMore(false)}
+              idPrefix="event.nav.more"
+            />
           )}
         </View>
       </Sheet>
@@ -1378,12 +1397,45 @@ function TabBar({ inEvent }: { inEvent: InsideEvent }) {
 }
 
 /** Held from outside an organisation (sc-71), the account's own two: Your account and Sign out, in the phone's More and behind the sidebar's person button. */
-function OutsideYou({ onLeave, idPrefix }: { onLeave: () => void; idPrefix: string }) {
+function OutsideYou({
+  here,
+  onLeave,
+  idPrefix,
+}: {
+  here: string;
+  onLeave: () => void;
+  idPrefix: string;
+}) {
   const { t } = useTranslation();
-  const { account } = useSignedIn();
+  const held = useSignedIn();
+  const { account } = held;
+  const groups = outsideGroups(held);
 
   return (
     <>
+      {groups.organisations && (
+        <YourOrganisationsGroup
+          organisations={held.organisations}
+          idPrefix={`${idPrefix}.organisations`}
+          onOrganisation={(organisation) => {
+            onLeave();
+            if (organisation.id !== held.organisation?.id) switchByTap(organisation.id);
+            goTo('home');
+          }}
+        />
+      )}
+      {groups.events && account != null && (
+        <OutsideEventsGroup
+          title={t('outsideEvent.yourEvents')}
+          events={account.outsideEvents}
+          here={here}
+          idPrefix={`${idPrefix}.events`}
+          onEvent={(event) => {
+            onLeave();
+            if (event.id !== here) router.replace(outsideHref(event.id, here));
+          }}
+        />
+      )}
       <RowList
         items={[
           {
@@ -1421,11 +1473,13 @@ function OutsideYou({ onLeave, idPrefix }: { onLeave: () => void; idPrefix: stri
 
 /** On its side, held from outside, the sidebar person button's sheet: the person's name over Your account and Sign out, as the demo's MoreSheet draws it there. */
 function OutsideYouSheet({
+  here,
   open,
   opener,
   name,
   onClose,
 }: {
+  here: string;
   open: boolean;
   opener: RefObject<ViewInstance | null>;
   name: string;
@@ -1461,7 +1515,7 @@ function OutsideYouSheet({
             <Glyph name="x" size={18} ink={tokens.colorInk} weight={2.4} />
           </Pressable>
         </View>
-        <OutsideYou onLeave={onClose} idPrefix="frame.side.you" />
+        <OutsideYou here={here} onLeave={onClose} idPrefix="frame.side.you" />
       </View>
     </Sheet>
   );
@@ -1557,7 +1611,8 @@ function FrameSidebar({
   inEvent: boolean;
   card: InsideEvent['card'] | undefined;
   up: InsideEvent['up'];
-  outside: boolean;
+  /** The event held from outside, when it is one. */
+  outside: string | null;
   organisation: Membership | null;
   waiting: number;
   onSwitch: (() => void) | undefined;
@@ -1620,7 +1675,7 @@ function FrameSidebar({
       <TitleCap.Provider value={inEvent && large ? cap : null}>
         <SidebarColumn>
           <SidebarHead>
-            {organisation != null && (
+            {organisation != null && outside == null && (
               <OrgPill
                 organisation={organisation}
                 waiting={waiting}
@@ -1630,7 +1685,7 @@ function FrameSidebar({
               />
             )}
           </SidebarHead>
-          {inEvent && !outside && (
+          {inEvent && outside == null && (
             <SidebarBack
               label={up?.label ?? t('todayScreen.tab.events')}
               heard={up?.label ?? t('eventsScreen.backToEvents')}
@@ -1646,13 +1701,14 @@ function FrameSidebar({
             at={inEvent ? null : tabs.at}
             person={person}
             settingsID={TAB_IDS.Settings}
-            settings={!outside}
-            onPerson={outside ? () => setYou(true) : undefined}
-            personRef={outside ? youOpener : undefined}
+            settings={outside == null}
+            onPerson={outside != null ? () => setYou(true) : undefined}
+            personRef={outside != null ? youOpener : undefined}
           />
         </SidebarColumn>
-        {outside && (
+        {outside != null && (
           <OutsideYouSheet
+            here={outside}
             open={you}
             opener={youOpener}
             name={name}
