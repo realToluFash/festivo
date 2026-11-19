@@ -357,7 +357,12 @@ describe('The Roster on the Staff page (sc-3906)', () => {
       await onRoster(
         {
           'GET /api/events/ev_1/staff': () =>
-            json({ staff: [entry('st_1', 'Amaka Eze')], jobs: [], shifts: [] }),
+            json({
+              staff: [entry('st_1', 'Amaka Eze')],
+              jobs: [],
+              shifts: [],
+              stations: NO_STATIONS,
+            }),
         },
         permissions,
       );
