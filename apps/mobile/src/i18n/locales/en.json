@@ -1334,7 +1334,9 @@
       "loading": "Loading more people…",
       "failedTitle": "More people did not load.",
       "failedLine": "Check your connection and try again."
-    }
+    },
+    "alsoMemberOf_one": "Also a member of 1 other organisation",
+    "alsoMemberOf_other": "Also a member of {{count, number}} other organisations"
   },
   "accessPaused": {
     "badge": "Paused",
@@ -3032,17 +3034,47 @@
       "failed": "{{domain}} was not proved",
       "failedLine": "We stopped checking on {{at}}. Add the record, then Verify.",
       "missing": "The record for {{domain}} is missing",
-      "missingLine": "Put it back by {{at}}, or {{domain}} stops being proved.",
+      "missingLine": "Put it back by {{at}}, or {{domain}} stops being proved and Only our organisation stops with it.",
       "removed": "{{domain}} was removed",
       "removedLine": "It is no longer proved.",
       "locked": "Available on Enterprise",
       "lockedLine": "Prove that {{organisation}} owns its domain, then limit the accounts at it to {{organisation}}.",
-      "offLine": "{{organisation}} left Enterprise. Its domains are kept as they were, and come back on with Enterprise."
+      "offLine": "{{organisation}} left Enterprise. Its domains are kept as they were, and come back on with Enterprise.",
+      "keep": "Limit {{domain}} accounts to {{organisation}}",
+      "scheduled": "Only our organisation starts on {{at}}",
+      "scheduledLine": "Everyone at {{domain}} was emailed. You can cancel until then.",
+      "scheduledAdmin": "Only an owner can cancel it.",
+      "cancelled": "Only our organisation was cancelled",
+      "cancelledLine": "Nothing changes for the accounts at {{domain}}.",
+      "on": "Accounts at {{domain}} belong to {{organisation}}",
+      "onLine": "They can still be given access to another organisation’s event.",
+      "turnedOff": "Only our organisation is off",
+      "turnedOffLine": "Accounts at {{domain}} can be members of other organisations again."
     },
     "removeAsk": {
       "title": "Remove {{domain}}?",
-      "line": "It stops being proved. Company domain joining keeps its own list.",
+      "line": "It stops being proved, and Only our organisation stops for it. Company domain joining keeps its own list.",
       "keep": "Keep it"
+    },
+    "only": "Only our organisation",
+    "onlyOff": "People at {{domain}} can still be members of other organisations.",
+    "onlyStarts": "Starts {{at}}",
+    "onlySince": "On since {{day}}",
+    "onlyKept": "Kept as it was. It comes back on with Enterprise.",
+    "ownerOnly": "Only an owner can change this.",
+    "onlyFor": "Only our organisation, {{domain}}",
+    "cancel": "Cancel",
+    "cancelOnlyFor": "Cancel Only our organisation, {{domain}}",
+    "onlyAsk": {
+      "title": "Limit {{domain}} accounts to {{organisation}}?",
+      "line": "From {{at}}, 14 days from now, an account whose main email address is at {{domain}} can only be a member of {{organisation}}.",
+      "more": "Everyone at {{domain}} is emailed now. Access to a single event still works. You can cancel until then.",
+      "schedule": "Schedule it"
     }
+  },
+  "managed": {
+    "title": "Managed by {{organisation}}",
+    "single": "Access to a single event still works.",
+    "change": "Change your main email address"
   }
 }

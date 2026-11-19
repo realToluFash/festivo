@@ -206,5 +206,10 @@
     "domainRecordGone.body": "No hemos encontrado el registro DNS que demuestra que {domain} es de {organisation}. Vuelva a añadirlo antes del {deadline} o {domain} dejará de estar verificado.",
     "domainRecordGone.name": "Nombre: {name}",
     "domainRecordGone.type": "Tipo: TXT",
-    "domainRecordGone.footer": "Recibe este correo porque es propietario o administrador de {organisation}."
+    "domainRecordGone.footer": "Recibe este correo porque es propietario o administrador de {organisation}.",
+    "managedNotice.subject": "{organisation} manages Soirely accounts at {domain}",
+    "managedNotice.body": "{organisation} manages Soirely accounts at {domain}. From {deadline}, your account can only be a member of {organisation}. If this account is your own and not the company's, change your main email address before then.",
+    "managedNotice.from": "Applies from: {deadline}",
+    "managedNotice.events": "Access to a single event still works.",
+    "managedNotice.footer": "You're getting this because your main email address is at {domain}."
 }

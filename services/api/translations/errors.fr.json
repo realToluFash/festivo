@@ -114,6 +114,7 @@
     "join_request_answered": "Cette demande a déjà reçu une réponse ou a été retirée.",
     "owner_claim_address": "Pour devenir propriétaire, votre adresse principale doit appartenir au domaine de l’organisation.",
     "owner_claim_managed": "Ce domaine est géré par une autre organisation. Veuillez contacter l’assistance Soirely.",
+    "domain_managed": "Votre adresse est gérée par une organisation : vous ne pouvez être membre que de celle-ci.",
     "owner_claim_open": "Une autre personne est déjà en train de devenir propriétaire de cette organisation.",
     "owner_claim_closed": "Seule l’assistance Soirely peut rétablir la propriété.",
     "owner_claim_ended": "Cette demande a déjà pris fin.",
