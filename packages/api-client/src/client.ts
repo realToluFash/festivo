@@ -405,6 +405,8 @@ export interface Account {
   phoneNumbers: LinkedPhone[];
   /** An account in no organisation that asked to join one at its domain (sc-561), until somebody answers. */
   waitingFor: JoinRequest | null;
+  /** The events this account is on from outside their organisations (sc-71), soonest first. */
+  outsideEvents: OutsideEvent[];
 }
 
 export interface JoinOffer {
@@ -505,14 +507,31 @@ export const EVENT_ROLES = ['lead', 'can_edit', 'can_view', 'can_check_in'] as c
 
 export type EventRole = (typeof EVENT_ROLES)[number];
 
-/** Somebody with a role on an event; `outside` waits on sc-71, so it is false for now. */
+/** Somebody with a role on an event: a member, or someone from outside the organisation (sc-71). */
 export interface EventPerson {
   id: string;
-  membershipId: string;
-  user: { id: string; name: string };
+  membershipId: string | null;
+  /** Null until someone added by an address has an account: "Not joined yet" to anyone not given `address`. */
+  user: { id: string; name: string } | null;
   role: EventRole;
   jobLabel: string | null;
   outside: boolean;
+  /** Only to an Owner, an Admin or the event's Lead, and only until an account claims it (pm #67966). */
+  address: string | null;
+  addressKind: 'email' | 'mobile' | null;
+  /** When the event concludes, for someone from outside; null for a member. */
+  endsAt: string | null;
+}
+
+/** An event someone in no organisation of its own reaches from outside (sc-71). */
+export interface OutsideEvent {
+  id: string;
+  name: string;
+  organisationName: string;
+  role: EventRole;
+  jobLabel: string | null;
+  startsAt: string;
+  endsAt: string | null;
 }
 
 export interface EventPeople {
@@ -2276,6 +2295,22 @@ export class ApiClient {
         `/api/events/${encodeURIComponent(eventId)}/people/${encodeURIComponent(personId)}`,
         { role },
       ),
+    );
+  }
+
+  /** By email address or mobile number, at any role but Lead (sc-71); a member is refused `already_a_member`. */
+  async addEventPersonFromOutside(
+    eventId: string,
+    address: string,
+    role: EventRole,
+    jobLabel: string | null,
+  ): Promise<EventPerson> {
+    return eventPersonOf(
+      await this.post<{ person?: unknown }>(`/api/events/${encodeURIComponent(eventId)}/people`, {
+        address,
+        role,
+        jobLabel,
+      }),
     );
   }
 
@@ -4847,26 +4882,28 @@ function asAddableMember(raw: unknown): AddableMember | null {
 function asEventPerson(raw: unknown): EventPerson | null {
   if (typeof raw !== 'object' || raw == null) return null;
 
-  const { id, membershipId, user, role, jobLabel, outside } = raw as Record<string, unknown>;
+  const { id, membershipId, user, role, jobLabel, outside, address, addressKind, endsAt } =
+    raw as Record<string, unknown>;
   const named = typeof user === 'object' && user != null ? (user as Record<string, unknown>) : null;
 
   if (
     typeof id !== 'string' ||
-    typeof membershipId !== 'string' ||
-    named == null ||
-    typeof named.id !== 'string' ||
-    typeof named.name !== 'string' ||
+    (membershipId != null && typeof membershipId !== 'string') ||
+    (named != null && (typeof named.id !== 'string' || typeof named.name !== 'string')) ||
     !(EVENT_ROLES as readonly unknown[]).includes(role)
   )
     return null;
 
   return {
     id,
-    membershipId,
-    user: { id: named.id, name: named.name },
+    membershipId: typeof membershipId === 'string' ? membershipId : null,
+    user: named == null ? null : { id: named.id as string, name: named.name as string },
     role: role as EventRole,
     jobLabel: typeof jobLabel === 'string' ? jobLabel : null,
     outside: outside === true,
+    address: typeof address === 'string' ? address : null,
+    addressKind: addressKind === 'email' || addressKind === 'mobile' ? addressKind : null,
+    endsAt: typeof endsAt === 'string' ? endsAt : null,
   };
 }
 
@@ -4972,7 +5009,40 @@ function asAccount(raw: unknown): Account | null {
     emailAddresses,
     phoneNumbers,
     waitingFor: asJoinRequest(candidate.waitingFor),
+    outsideEvents: Array.isArray(candidate.outsideEvents)
+      ? candidate.outsideEvents.flatMap(asOutsideEvent)
+      : [],
   };
+}
+
+function asOutsideEvent(raw: unknown): OutsideEvent[] {
+  if (typeof raw !== 'object' || raw == null) return [];
+
+  const { id, name, organisationName, role, jobLabel, startsAt, endsAt } = raw as Record<
+    string,
+    unknown
+  >;
+
+  if (
+    typeof id !== 'string' ||
+    typeof name !== 'string' ||
+    typeof organisationName !== 'string' ||
+    typeof startsAt !== 'string' ||
+    !(EVENT_ROLES as readonly unknown[]).includes(role)
+  )
+    return [];
+
+  return [
+    {
+      id,
+      name,
+      organisationName,
+      role: role as EventRole,
+      jobLabel: typeof jobLabel === 'string' ? jobLabel : null,
+      startsAt,
+      endsAt: typeof endsAt === 'string' ? endsAt : null,
+    },
+  ];
 }
 
 function asLinkedProvider(raw: unknown): LinkedProvider[] {

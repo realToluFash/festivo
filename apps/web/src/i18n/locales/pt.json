@@ -22,6 +22,7 @@
     "calendar": "Calendário",
     "settings": "Definições",
     "account": "A sua conta",
+    "signOut": "Encerrar sessão",
     "person": "{{name}}, {{role}}",
     "menu": "Menu",
     "closeMenu": "Fechar o menu",
@@ -2704,6 +2705,13 @@
     "reportsComing": "Os relatórios deste evento estarão disponíveis em breve.",
     "people": "Pessoas"
   },
+  "outsideEvent": {
+    "until": "until {{when}}",
+    "guestsLine": "Names and replies only, no contact details",
+    "onEvent_one": "{{count, number}} person on this event",
+    "onEvent_other": "{{count, number}} people on this event",
+    "onEvent_many": "{{count, number}} people on this event"
+  },
   "seating": {
     "area": "Mesas",
     "events": "Eventos",
@@ -3327,7 +3335,19 @@
       "can_check_in_one": "{{count, number}} pessoa pode agora registar entradas.",
       "can_check_in_many": "{{count, number}} de pessoas podem agora registar entradas.",
       "can_check_in_other": "{{count, number}} pessoas podem agora registar entradas."
-    }
+    },
+    "notJoined": "Not joined yet",
+    "outsideTag": "Outside {{organisation}}",
+    "outsideEnds": "Their access ends when the event does.",
+    "leadOff": "For members of {{organisation}} only.",
+    "removeOutsideLine": "Their access ends on their next request.",
+    "findAny": "Name, email or mobile number",
+    "fromOutside": "From outside {{organisation}}",
+    "unusable": "That isn’t an email address or a mobile number we can use.",
+    "onAlready": "{{name}} is on this event already.",
+    "pickAnother": "Pick another role to add someone from outside.",
+    "jobLabel": "Job label (optional)",
+    "jobHelp": "What they’re there for, shown beside their name. It grants nothing. {{length, number}} of {{most, number}}."
   },
   "guestList": {
     "addGuest": "Adicionar convidado",

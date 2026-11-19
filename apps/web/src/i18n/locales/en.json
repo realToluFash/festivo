@@ -22,6 +22,7 @@
     "calendar": "Calendar",
     "settings": "Settings",
     "account": "Your account",
+    "signOut": "Sign out",
     "person": "{{name}}, {{role}}",
     "menu": "Menu",
     "closeMenu": "Close menu",
@@ -2621,6 +2622,12 @@
     "reportsComing": "Reports for this event are coming.",
     "people": "People"
   },
+  "outsideEvent": {
+    "until": "until {{when}}",
+    "guestsLine": "Names and replies only, no contact details",
+    "onEvent_one": "{{count, number}} person on this event",
+    "onEvent_other": "{{count, number}} people on this event"
+  },
   "seating": {
     "area": "Seating",
     "events": "Events",
@@ -3104,7 +3111,7 @@
     "loading": "Loading the people on this event…",
     "failed": "We could not load the people on this event. Check your connection and try again.",
     "retry": "Try again",
-    "addPrompt": "Add by name",
+    "addPrompt": "Add by name, email or mobile",
     "onEvent": "On this event",
     "you": "You",
     "nobody": "Nobody is on this event yet.",
@@ -3174,7 +3181,19 @@
       "can_view_other": "{{count, number}} people can view now.",
       "can_check_in_one": "{{count, number}} person can check guests in now.",
       "can_check_in_other": "{{count, number}} people can check guests in now."
-    }
+    },
+    "notJoined": "Not joined yet",
+    "outsideTag": "Outside {{organisation}}",
+    "outsideEnds": "Their access ends when the event does.",
+    "leadOff": "For members of {{organisation}} only.",
+    "removeOutsideLine": "Their access ends on their next request.",
+    "findAny": "Name, email or mobile number",
+    "fromOutside": "From outside {{organisation}}",
+    "unusable": "That isn’t an email address or a mobile number we can use.",
+    "onAlready": "{{name}} is on this event already.",
+    "pickAnother": "Pick another role to add someone from outside.",
+    "jobLabel": "Job label (optional)",
+    "jobHelp": "What they’re there for, shown beside their name. It grants nothing. {{length, number}} of {{most, number}}."
   },
   "guestList": {
     "addGuest": "Add guest",

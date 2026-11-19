@@ -37,6 +37,7 @@ const B: Account = {
   twoFactorSetupPrompt: false,
   colourScheme: null,
   waitingFor: null,
+  outsideEvents: [],
   providers: [],
   emailAddresses: [],
   phoneNumbers: [],
