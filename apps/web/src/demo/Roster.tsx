@@ -291,7 +291,7 @@ function RosterView({
         </p>
         <div className="mn-split">
           <div className="mn-list">
-            <section className="sn-card" aria-labelledby="rs-roster">
+            <section className="sn-card">
               <div className="sn-card-top">
                 <div className="sn-card-names">
                   <h2 id="rs-roster" tabIndex={-1}>

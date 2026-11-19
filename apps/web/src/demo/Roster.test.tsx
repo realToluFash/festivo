@@ -228,11 +228,10 @@ describe('/demo/events/evt-wed-4/staff/roster (sc-3906)', () => {
     ]);
   });
 
-  it('lets the keyboard reach the table frame, a region named Roster, just before the first name (sc-70540)', async () => {
+  it('lets the keyboard reach the table frame, the one region named Roster, just before the first name (sc-70540)', async () => {
     await open('readOnly');
-    const frame = screen
-      .getAllByRole('region', { name: 'Roster' })
-      .find((one) => one.tabIndex === 0) as HTMLElement;
+    const frame = screen.getByRole('region', { name: 'Roster' });
+    expect(frame.tabIndex).toBe(0);
     expect(frame.classList.contains('rs-frame')).toBe(true);
     expect(frame.contains(screen.getByRole('table', { name: 'Roster' }))).toBe(true);
     const first = within(frame).getAllByRole('rowheader')[0]?.querySelector('button');
