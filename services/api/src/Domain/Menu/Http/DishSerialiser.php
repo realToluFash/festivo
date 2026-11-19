@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace App\Domain\Menu\Http;
 
-use App\Domain\Menu\DishRules;
 use App\Entity\Dish;
 use App\Entity\DishVariant;
+use App\Locale\Money;
 use DateTimeInterface;
 use Psl\Vec;
 
@@ -43,6 +43,6 @@ final class DishSerialiser
     /** @return ?array{amount: string, currency: string} */
     private static function price(?int $minor, ?string $currency): ?array
     {
-        return null === $minor || null === $currency ? null : ['amount' => DishRules::written($minor, $currency), 'currency' => $currency];
+        return null === $minor || null === $currency ? null : ['amount' => Money::written($minor, $currency), 'currency' => $currency];
     }
 }

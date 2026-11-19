@@ -22,6 +22,7 @@
     "calendar": "Calendar",
     "settings": "Settings",
     "account": "Your account",
+    "signOut": "Sign out",
     "person": "{{name}}, {{role}}",
     "menu": "Menu",
     "closeMenu": "Close menu",
@@ -2620,6 +2621,12 @@
     "reportsComing": "Reports for this event are coming.",
     "people": "People"
   },
+  "outsideEvent": {
+    "until": "until {{when}}",
+    "guestsLine": "Names and replies only, no contact details",
+    "onEvent_one": "{{count, number}} person on this event",
+    "onEvent_other": "{{count, number}} people on this event"
+  },
   "seating": {
     "area": "Seating",
     "events": "Events",
@@ -3103,7 +3110,7 @@
     "loading": "Loading the people on this event…",
     "failed": "We could not load the people on this event. Check your connection and try again.",
     "retry": "Try again",
-    "addPrompt": "Add by name",
+    "addPrompt": "Add by name, email or mobile",
     "onEvent": "On this event",
     "you": "You",
     "nobody": "Nobody is on this event yet.",
@@ -3173,7 +3180,19 @@
       "can_view_other": "{{count, number}} people can view now.",
       "can_check_in_one": "{{count, number}} person can check guests in now.",
       "can_check_in_other": "{{count, number}} people can check guests in now."
-    }
+    },
+    "notJoined": "Not joined yet",
+    "outsideTag": "Outside {{organisation}}",
+    "outsideEnds": "Their access ends when the event does.",
+    "leadOff": "For members of {{organisation}} only.",
+    "removeOutsideLine": "Their access ends on their next request.",
+    "findAny": "Name, email or mobile number",
+    "fromOutside": "From outside {{organisation}}",
+    "unusable": "That is not an email address or a mobile number we can use.",
+    "onAlready": "{{name}} is on this event already.",
+    "pickAnother": "Pick another role to add someone from outside.",
+    "jobLabel": "Job label (optional)",
+    "jobHelp": "What they’re there for, shown beside their name. It grants nothing. {{length, number}} of {{most, number}}."
   },
   "guestList": {
     "addGuest": "Add guest",
@@ -3789,7 +3808,7 @@
     "shiftHelp": "Shifts of this job with an open place, by start.",
     "onShifts": "Unassign {{name}} from their shifts first.",
     "onShiftsHint": "Their job can change once they are on no shift.",
-    "moreShifts": "{{first}} +{{count, number}} more",
+    "moreShifts": "{{first}} <more>+{{count, number}} more</more>",
     "removeShifts": "Their places on these shifts are left open:"
   },
   "schedule": {
@@ -4473,6 +4492,7 @@
     "noMatchIn": "No vendor matches “{{typed}}” in {{category}}.",
     "noneIn": "No vendors in {{category}}.",
     "noneArchivedIn": "No archived vendors in {{category}}.",
+    "noneArchived": "No archived vendors.",
     "everyCategory": "Show every category",
     "pages": "Pages",
     "page": "{{from, number}} to {{to, number}} of {{total, number}}, A to Z",
@@ -4600,6 +4620,7 @@
     "shiftCount_other": "{{count, number}} shifts",
     "short": "Short {{count, number}}",
     "gap": "{{short}} · {{when}}",
+    "summaryShort_zero": "Every job is covered at all times.",
     "summaryShort_one": "{{count, number}} job is short at some point, {{covered, number}} covered.",
     "summaryShort_other": "{{count, number}} jobs are short at some point, {{covered, number}} covered.",
     "range": "{{start}} to {{end}}",

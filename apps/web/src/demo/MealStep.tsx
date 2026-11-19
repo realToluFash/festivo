@@ -7,6 +7,8 @@ import { useMatches } from '../phoneWidth.ts';
 import { LAYOUT_MEDIA, layoutOf, startOf, twoColumns, wordsFor } from './guest.ts';
 import { Cover, Filled, Notice, TextAction } from './GuestParts.tsx';
 import { AllergyMark } from './GuestNeeds.tsx';
+import { MealParty, PreviewBand } from './MealParty.tsx';
+import { isPartyState, partyStart } from './mealParty.ts';
 import { DishScreen, Refused } from './MealParts.tsx';
 import { Summary } from './MealSummary.tsx';
 import { GUEST_PICKS } from './mealClose.ts';
@@ -24,7 +26,6 @@ import {
   containsLine,
   dishOf,
   isMealState,
-  mealAt,
   mealStart,
   nothingSafe,
   recordedOf,
@@ -42,7 +43,9 @@ import './mealStep.css';
 export function MealStepPage() {
   const [params] = useSearchParams();
   const raw = params.get('state');
+  const party = isPartyState(raw) ? raw : null;
   const state = isMealState(raw) ? raw : 'variant';
+  const preview = party != null && params.get('preview') === '1';
   const format = params.get('format');
   const lang: Lang = LANGS.includes(format as Lang) ? (format as Lang) : 'en';
   const layout = layoutOf({
@@ -53,7 +56,8 @@ export function MealStepPage() {
   });
   const visit = useMemo(() => startOf(null), []);
   const words = useMemo(() => wordsFor('en'), []);
-  const summary = mealStart(state).summary ?? null;
+  const summary = party == null ? (mealStart(state).summary ?? null) : null;
+  const again = `/demo/guest/meal?state=${party ?? state}${preview ? '&preview=1' : ''}${lang === 'en' ? '' : `&format=${lang}`}`;
 
   return (
     <>
@@ -61,19 +65,23 @@ export function MealStepPage() {
         <header className="gp-header">
           <img className="gp-lockup" src={lockupUrl} alt="Soirely" />
         </header>
+        {preview && <PreviewBand />}
         <main id="content" className={twoColumns(layout) ? 'gp-main is-two' : 'gp-main is-one'}>
           <div className="gp-columns">
             <Cover visit={visit} words={words} ended={false} />
             <div className="gp-under">
-              {summary != null ? (
+              {party != null ? (
+                <MealParty
+                  key={`${party}|${lang}|${preview}`}
+                  first={partyStart(party)}
+                  lang={lang}
+                  preview={preview}
+                  again={again}
+                />
+              ) : summary != null ? (
                 <Summary key={`${state}|${lang}`} first={summary} lang={lang} />
               ) : (
-                <Flow
-                  key={`${state}|${lang}`}
-                  first={mealStart(state)}
-                  again={lang === 'en' ? mealAt(state) : `${mealAt(state)}&format=${lang}`}
-                  lang={lang}
-                />
+                <Flow key={`${state}|${lang}`} first={mealStart(state)} again={again} lang={lang} />
               )}
             </div>
           </div>

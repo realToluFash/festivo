@@ -38,6 +38,7 @@ import { DemoBell } from './DemoBell.tsx';
 import { DemoOffline } from './DemoOffline.tsx';
 import { TodaySidebar } from './TodaySidebar.tsx';
 import { DeskSearch } from './Search.tsx';
+import { usePhoneWidth } from '../phoneWidth.ts';
 import { reachOfRole } from './search.ts';
 import { usePaused, useSwitcherStart } from './switcher.ts';
 import './today.css';
@@ -90,6 +91,8 @@ export function Settings({
   const layers = useMemo(() => ({ stack, push, pop, host }), [stack, push, pop, host]);
   const covered = stack.length > 0;
   const fit = open === 'vendors' && !reminders;
+  const atPhone = usePhoneWidth();
+  const barBell = fit && atPhone;
 
   return (
     <LayersContext value={layers}>
@@ -102,6 +105,7 @@ export function Settings({
             person={seen}
             inert={covered}
             phone={fit}
+            bell={barBell && <DemoBell tell={tell} />}
           />
           <main id="content" className="desk-main" inert={covered}>
             <>
@@ -155,6 +159,7 @@ export function Settings({
                   key={`${viewer.key}:${state}:${params.get('vendor') ?? ''}`}
                   state={state}
                   tell={tell}
+                  bell={!barBell}
                 />
               ) : viewer.manages ? (
                 <Members

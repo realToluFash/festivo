@@ -6,7 +6,7 @@ import {
   type VendorsPage,
   VENDOR_CATEGORIES,
 } from '@soirely/api-client';
-import { callingCode, countryChoices, formatDay, formatPhone } from '@soirely/domain';
+import { callingCode, countryChoices, formatEventDate, formatPhone } from '@soirely/domain';
 import {
   type ReactNode,
   type RefObject,
@@ -113,6 +113,7 @@ function Directory({
   const [told, setTold] = useState<string | null>(null);
   const search = useRef<HTMLInputElement>(null);
   const asked = useRef(0);
+  const backToSearch = useRef(false);
 
   useEffect(() => {
     const ask = ++asked.current;
@@ -128,11 +129,16 @@ function Directory({
           if (ask === asked.current) setLoad({ kind: 'loaded', page });
         },
         () => {
-          if (ask === asked.current)
-            setLoad((was) => (was.kind === 'loaded' ? was : { kind: 'failed' }));
+          if (ask === asked.current) setLoad({ kind: 'failed' });
         },
       );
   }, [organisationId, looking, attempt]);
+
+  useEffect(() => {
+    if (load.kind !== 'loaded' || !backToSearch.current) return;
+    backToSearch.current = false;
+    search.current?.focus();
+  }, [load]);
 
   const look = (next: Omit<Looking, 'page'>) => setLooking({ ...next, page: 1 });
   const turn = (page: number) => {
@@ -154,6 +160,7 @@ function Directory({
             {load.kind === 'failed' && (
               <Failed
                 onRetry={() => {
+                  backToSearch.current = looking.q !== '';
                   setLoad({ kind: 'loading' });
                   reread();
                 }}
@@ -244,6 +251,7 @@ function Loaded({
 }) {
   const { t } = useTranslation();
   const locale = dateLocale();
+  const readerZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
   const { page: _page, ...kept } = looking;
   const searching = looking.q.trim() !== '' || looking.category !== 'all';
   const here = looking.view === 'archived' ? page.archived : page.inUse;
@@ -368,7 +376,9 @@ function Loaded({
                         one.contactName,
                         categoryWord(one.category),
                         one.archivedAt != null
-                          ? t('vendors.archivedOn', { date: formatDay(one.archivedAt, locale) })
+                          ? t('vendors.archivedOn', {
+                              date: formatEventDate(one.archivedAt, readerZone, locale, false),
+                            })
                           : (one.emailAddress ??
                             (one.phoneNumber == null ? null : formatPhone(one.phoneNumber))),
                       ]
@@ -447,11 +457,13 @@ function NoMatch({
   const typed = looking.q.trim();
   const category = looking.category === 'all' ? null : categoryWord(looking.category);
   const line =
-    typed === '' && category != null
-      ? t(looking.view === 'archived' ? 'vendors.noneArchivedIn' : 'vendors.noneIn', { category })
-      : category == null
-        ? t('vendors.noMatch', { typed })
-        : t('vendors.noMatchIn', { typed, category });
+    typed === '' && category == null && looking.view === 'archived'
+      ? t('vendors.noneArchived')
+      : typed === '' && category != null
+        ? t(looking.view === 'archived' ? 'vendors.noneArchivedIn' : 'vendors.noneIn', { category })
+        : category == null
+          ? t('vendors.noMatch', { typed })
+          : t('vendors.noMatchIn', { typed, category });
 
   return (
     <div className="vd-none" role="status">
@@ -572,7 +584,7 @@ function VendorForm({
   const [problems, setProblems] = useState<Problems>({});
   const [busy, setBusy] = useState(false);
   const [asking, setAsking] = useState(false);
-  const [failed, setFailed] = useState(false);
+  const [failed, setFailed] = useState<string | null>(null);
   const name = useRef<HTMLInputElement>(null);
   const toFix = fieldsToFix(problems);
 
@@ -595,7 +607,11 @@ function VendorForm({
     const found =
       error instanceof ApiError ? refusedAt(error.problem.violations ?? []) : ({} as Problems);
     if (Object.keys(found).length === 0) {
-      setFailed(true);
+      setFailed(
+        error instanceof ApiError && error.code === 'conflict' && error.problem.detail
+          ? error.problem.detail
+          : t('vendors.failedLine'),
+      );
       return;
     }
     setProblems(found);
@@ -605,7 +621,7 @@ function VendorForm({
     if (busy) return;
     const found = draftProblems(draft, t);
     setProblems(found);
-    setFailed(false);
+    setFailed(null);
     if (Object.keys(found).length > 0) {
       firstProblem();
       return;
@@ -651,10 +667,10 @@ function VendorForm({
               {t('vendors.toFix', { count: toFix })}
             </p>
           )}
-          {failed && (
+          {failed != null && (
             <p className="desk-error vd-to-fix" role="alert">
               <Glyph name="alert" size={15} weight={2.2} />
-              {t('vendors.failedLine')}
+              {failed}
             </p>
           )}
           <div className="vd-columns">

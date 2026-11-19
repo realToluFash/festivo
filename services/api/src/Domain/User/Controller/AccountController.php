@@ -7,6 +7,7 @@ namespace App\Domain\User\Controller;
 use App\Domain\User\AccountName;
 use App\Domain\User\CallerSession;
 use App\Domain\User\Http\AccountSerialiser;
+use App\Domain\User\Interfaces\AddressClaimsInterface;
 use App\Domain\User\SignOutEverywhereElse;
 use App\Domain\User\TimeZone\AccountTimeZone;
 use App\Domain\User\TimeZone\TimeZoneList;
@@ -46,13 +47,18 @@ final class AccountController
         private readonly SignOutEverywhereElse $signOutEverywhereElse,
         private readonly CallerSession $callerSession,
         private readonly AccountName $accountName,
+        private readonly AddressClaimsInterface $addressClaims,
     ) {
     }
 
     #[Route('/api/auth/me', name: 'auth_me', methods: ['GET'])]
     public function me(): JsonResponse
     {
-        return new JsonResponse($this->accountSerialiser->serialise($this->user()));
+        $user = $this->user();
+        // Every client reads this on opening, which is how an address proved since being added to an event takes its grant (sc-71).
+        $this->addressClaims->claimFor($user);
+
+        return new JsonResponse($this->accountSerialiser->serialise($user));
     }
 
     /** The language switcher, signed in: the account's language, which every device and every email then follow. */

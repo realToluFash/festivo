@@ -22,6 +22,7 @@
     "calendar": "Calendario",
     "settings": "Configuración",
     "account": "Su cuenta",
+    "signOut": "Cerrar sesión",
     "person": "{{name}}, {{role}}",
     "menu": "Menú",
     "closeMenu": "Cerrar el menú",
@@ -2703,6 +2704,13 @@
     "reportsComing": "Los informes de este evento llegarán pronto.",
     "people": "Personas"
   },
+  "outsideEvent": {
+    "until": "until {{when}}",
+    "guestsLine": "Names and replies only, no contact details",
+    "onEvent_one": "{{count, number}} person on this event",
+    "onEvent_other": "{{count, number}} people on this event",
+    "onEvent_many": "{{count, number}} people on this event"
+  },
   "seating": {
     "area": "Mesas",
     "events": "Eventos",
@@ -3249,7 +3257,7 @@
     "loading": "Cargando las personas de este evento…",
     "failed": "No se han podido cargar las personas de este evento. Compruebe la conexión y vuelva a intentarlo.",
     "retry": "Reintentar",
-    "addPrompt": "Añadir por nombre",
+    "addPrompt": "Añadir por nombre, correo o móvil",
     "onEvent": "En este evento",
     "you": "Usted",
     "nobody": "Todavía no hay nadie en este evento.",
@@ -3326,7 +3334,19 @@
       "can_check_in_one": "Ahora {{count, number}} persona puede registrar llegadas.",
       "can_check_in_many": "Ahora {{count, number}} de personas pueden registrar llegadas.",
       "can_check_in_other": "Ahora {{count, number}} personas pueden registrar llegadas."
-    }
+    },
+    "notJoined": "Aún no se ha unido",
+    "outsideTag": "Fuera de {{organisation}}",
+    "outsideEnds": "Su acceso termina con el evento.",
+    "leadOff": "Solo para miembros de {{organisation}}.",
+    "removeOutsideLine": "Esta persona perderá el acceso en su próxima acción.",
+    "findAny": "Nombre, correo electrónico o número de móvil",
+    "fromOutside": "De fuera de {{organisation}}",
+    "unusable": "No es un correo electrónico ni un número de móvil que podamos usar.",
+    "onAlready": "{{name}} ya está en este evento.",
+    "pickAnother": "Elija otro rol para añadir a alguien de fuera.",
+    "jobLabel": "Puesto (opcional)",
+    "jobHelp": "Lo que hace en el evento. Aparece junto a su nombre y no da ningún acceso. {{length, number}} de {{most, number}}."
   },
   "guestList": {
     "addGuest": "Añadir invitado",
@@ -3997,7 +4017,7 @@
     "shiftHelp": "Turnos de este puesto con alguna plaza libre, por hora de inicio.",
     "onShifts": "Quite primero a {{name}} de sus turnos.",
     "onShiftsHint": "Su puesto podrá cambiar cuando no esté en ningún turno.",
-    "moreShifts": "{{first}} +{{count, number}} más",
+    "moreShifts": "{{first}} <more>+{{count, number}} más</more>",
     "removeShifts": "Sus plazas en estos turnos quedarán libres:"
   },
   "schedule": {
@@ -4712,6 +4732,7 @@
     "noMatchIn": "Ningún proveedor coincide con «{{typed}}» en la categoría {{category}}.",
     "noneIn": "No hay proveedores en la categoría {{category}}.",
     "noneArchivedIn": "No hay proveedores archivados en la categoría {{category}}.",
+    "noneArchived": "No hay proveedores archivados.",
     "everyCategory": "Mostrar todas las categorías",
     "pages": "Páginas",
     "page": "Del {{from, number}} al {{to, number}} de {{total, number}}, de la A a la Z",
@@ -4844,6 +4865,7 @@
     "shiftCount_many": "{{count, number}} de turnos",
     "short": "Por cubrir: {{count, number}}",
     "gap": "{{short}} · {{when}}",
+    "summaryShort_zero": "Todos los puestos están cubiertos en todo momento.",
     "summaryShort_one": "A {{count, number}} puesto le falta personal en algún momento. Cubiertos: {{covered, number}}.",
     "summaryShort_other": "A {{count, number}} puestos les falta personal en algún momento. Cubiertos: {{covered, number}}.",
     "summaryShort_many": "A {{count, number}} de puestos les falta personal en algún momento. Cubiertos: {{covered, number}}.",

@@ -22,6 +22,7 @@ import { CALENDAR_PAGES } from './calendar.ts';
 import { CREATE_PAGES } from './createOrg.ts';
 import { DOOR_PAGES } from './doorCode.ts';
 import { NO_ORG_PAGE } from './noOrg.ts';
+import { OUTSIDE_MEMBER_PAGE, OUTSIDE_PAGE } from './outsideEvents.ts';
 import { EventPage } from './EventPage.tsx';
 import { Events } from './Events.tsx';
 import { NewEventTop } from './NewEventTop.tsx';
@@ -68,6 +69,7 @@ import { MenuPage } from './MenuServed.tsx';
 import { MENU_PAGES } from './menuServed.ts';
 import { COURSES_PAGES } from './menuCourses.ts';
 import { PICKS_PAGES } from './seePicks.ts';
+import { PARTY_PAGES } from './mealParty.ts';
 import { MEAL_PAGES } from './mealStep.ts';
 import { MenuLibraryPage } from './MenuLibrary.tsx';
 import { LIBRARY_PAGES } from './menuLibrary.ts';
@@ -464,6 +466,11 @@ function DemoHome({ from }: { from: string }) {
         <BoardPages pages={PICKS_PAGES} />
         <h3>The guest’s questions inside a dish · sc-3904 · phone, tablet and desk</h3>
         <BoardPages pages={MEAL_PAGES} />
+        <h3>
+          A meal for each person coming · sc-3907 · phone, tablet and desk, from 320 px (tweak:
+          &amp;preview=1 for Preview as guest)
+        </h3>
+        <BoardPages pages={PARTY_PAGES} />
         <h3>How a course is served, and a dish’s parts · sc-34230 · desktop</h3>
         <BoardPages pages={MENU_PAGES} />
       </section>
@@ -583,7 +590,7 @@ function DemoHome({ from }: { from: string }) {
         <h3>People on an event · desktop</h3>
         <BoardPages pages={PEOPLE_PAGES} />
         <h3>Working an event without joining in A · The door code · desktop</h3>
-        <BoardPages pages={[...DOOR_PAGES, NO_ORG_PAGE]} />
+        <BoardPages pages={[...DOOR_PAGES, NO_ORG_PAGE, OUTSIDE_PAGE, OUTSIDE_MEMBER_PAGE]} />
         <h3>The door code’s redeem pages, signed out · phone, tablet and desk</h3>
         <BoardPages pages={REDEEM_PAGES} />
         <h3>

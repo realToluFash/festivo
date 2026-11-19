@@ -27,7 +27,7 @@ final class VendorRepository extends ServiceEntityRepository
     }
 
     /**
-     * A to Z ignoring case; a name containing the typed text, ignoring case, with accents as typed.
+     * A to Z ignoring case and accents; a name containing the typed text, ignoring case, with accents as typed.
      *
      * @return array{vendors: list<Vendor>, total: int} the total is every match, not only this page's
      */
@@ -47,7 +47,9 @@ final class VendorRepository extends ServiceEntityRepository
 
         return [
             'vendors' => Type\vec(Type\instance_of(Vendor::class))->coerce($matching
-                ->orderBy('LOWER(v.name)', 'ASC')
+                ->addSelect('FOLDED(v.name) AS HIDDEN folded')
+                ->orderBy('folded', 'ASC')
+                ->addOrderBy('LOWER(v.name)', 'ASC')
                 ->addOrderBy('v.id', 'ASC')
                 ->setFirstResult($first)
                 ->setMaxResults($most)

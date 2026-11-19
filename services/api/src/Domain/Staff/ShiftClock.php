@@ -62,21 +62,29 @@ final readonly class ShiftClock
     }
 
     /**
-     * Longer than 24 hours from the earlier of the event's start and its first shift's to the later of their ends.
+     * 24 hours or more on the event's clock, from the earlier of the event's start and its first shift's to the later of their ends: a spring clock change's 23 h 30 still counts.
      *
      * @param list<StaffShift> $shifts
      */
     public static function isLong(Event $event, array $shifts): bool
     {
-        $first = $event->getStartsAt()->getTimestamp();
-        $last = $event->getEndsAt()->getTimestamp();
+        $first = self::wallOf($event->getStartsAt(), $event)->getTimestamp();
+        $last = self::wallOf($event->getEndsAt(), $event)->getTimestamp();
 
         foreach ($shifts as $shift) {
-            $first = Math\minva($first, self::instant($shift->getStartsAt(), $event)->getTimestamp());
-            $last = Math\maxva($last, self::instant($shift->getEndsAt(), $event)->getTimestamp());
+            $first = Math\minva($first, $shift->getStartsAt()->getTimestamp());
+            $last = Math\maxva($last, $shift->getEndsAt()->getTimestamp());
         }
 
-        return $last - $first > self::DAY;
+        return $last - $first >= self::DAY;
+    }
+
+    /** The wall-clock time an instant reads in the event's zone, as if in UTC, as a shift's times are kept. */
+    private static function wallOf(DateTimeImmutable $instant, Event $event): DateTimeImmutable
+    {
+        $local = $instant->setTimezone(new DateTimeZone($event->getTimeZone()))->format('Y-m-d\TH:i:s');
+
+        return new DateTimeImmutable($local, new DateTimeZone('UTC'));
     }
 
     /** "16:00 to 01:00"; when `long`, "Fri 6 Nov, 16:00 to Sat 7 Nov, 01:00", the end's date left out on the start's date. */

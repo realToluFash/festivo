@@ -1,0 +1,16 @@
+# sc-67708: upright on the iPad, a guest opened from Guests opens as its own page with ‹ Guests, which goes back to the list.
+appId: host.exp.Exponent
+---
+- setOrientation: PORTRAIT
+- openLink: ${METRO_URL}/--/events/${EVENT_ID}?area=guests
+- extendedWaitUntil: { visible: { id: 'guests.row.${GUEST_ID}' }, timeout: 30000 }
+- runFlow: ../developer-menu-close.yaml
+- tapOn: { id: 'guests.row.${GUEST_ID}' }
+- waitForAnimationToEnd: { timeout: 8000 }
+- takeScreenshot: upright-guest-page
+- assertVisible: { id: 'guest.${GUEST_ID}' }
+- assertNotVisible: { id: 'guests.row.${GUEST_ID}' }
+- tapOn: { id: 'guest.back' }
+- waitForAnimationToEnd: { timeout: 8000 }
+- takeScreenshot: upright-after-guests-back
+- assertVisible: { id: 'guests.row.${GUEST_ID}' }

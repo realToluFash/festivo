@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { type CoverageShift, coverageWindow, jobCoverage } from './staffCoverage.ts';
+import { type CoverageShift, coverageWindow, jobCoverage, spansADay } from './staffCoverage.ts';
 
 const at = (iso: string) => Date.parse(iso);
 
@@ -74,6 +74,40 @@ describe('coverageWindow', () => {
 
     expect(window.long).toBe(true);
     expect(window.steps).toHaveLength(94);
+  });
+
+  it('is long at exactly 24 hours', () => {
+    const window = coverageWindow(
+      { startsAt: at('2026-11-06T10:00:00+01:00'), endsAt: at('2026-11-07T10:00:00+01:00') },
+      [],
+      'Africa/Lagos',
+    );
+
+    expect(window.long).toBe(true);
+  });
+
+  it('is not long at a minute under 24 hours', () => {
+    const window = coverageWindow(
+      { startsAt: at('2026-11-06T10:00:00+01:00'), endsAt: at('2026-11-07T09:59:00+01:00') },
+      [],
+      'Africa/Lagos',
+    );
+
+    expect(window.long).toBe(false);
+  });
+});
+
+describe('spansADay', () => {
+  it('counts the clock, not the hours, across the spring clock change', () => {
+    expect(
+      spansADay(at('2027-03-27T10:00:00+00:00'), at('2027-03-28T10:30:00+01:00'), 'Europe/London'),
+    ).toBe(true);
+  });
+
+  it('counts the clock, not the hours, across the autumn clock change', () => {
+    expect(
+      spansADay(at('2027-10-30T10:00:00+01:00'), at('2027-10-31T09:30:00+00:00'), 'Europe/London'),
+    ).toBe(false);
   });
 });
 

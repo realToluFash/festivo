@@ -322,6 +322,9 @@
     "people.not_a_member": "Escolha um membro ativo desta organização.",
     "people.own_role": "Não pode alterar nem remover a sua própria função num evento. Peça a alguém com a função Proprietário ou Administrador, ou à pessoa responsável pelo evento.",
     "people.already_on_event": "Esta pessoa já tem uma função neste evento. Altere essa função em vez de adicionar outra.",
+    "people.address_required": "Introduza o e-mail ou o número de telemóvel desta pessoa.",
+    "people.address_unusable": "Não é um e-mail nem um número de telemóvel que possamos usar.",
+    "people.lead_members_only": "Só para membros de {organisation}.",
     "roles.replacement_invalid": "Escolha outra função desta organização.",
     "roles.not_in_organisation": "Essa função não existe nesta organização.",
     "assistant.refused": "O assistente não quis responder a isso.",
@@ -384,5 +387,6 @@
     "validation.vendor_category_required": "Escolha a categoria.",
     "validation.vendor_website_scheme": "Introduza um endereço web que comece por https:// ou http://, ou omita essa parte.",
     "validation.vendor_phone_invalid": "Esse número de telefone não é válido neste país: {country}. Verifique-o e tente novamente.",
+    "vendors.archived_read_only": "Este fornecedor está arquivado, por isso as alterações não foram guardadas. Para o editar, reponha-o em Arquivados.",
     "access.plan_required": "Disponível no plano Enterprise. Para alterar esta definição, contacte a Soirely sobre o plano Enterprise."
 }

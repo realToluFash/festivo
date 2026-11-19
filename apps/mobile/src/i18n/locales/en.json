@@ -2244,7 +2244,7 @@
     "title": "People",
     "loading": "Loading the people on this event…",
     "retry": "Try again",
-    "addPrompt": "Add by name",
+    "addPrompt": "Add by name, email or mobile",
     "onEvent": "On this event",
     "you": "You",
     "nobody": "Nobody is on this event yet.",
@@ -2271,6 +2271,11 @@
       "can_check_in": "Checks guests in on the day. Names only, no contact details."
     },
     "memberOf": "Member of {{organisation}}",
+    "fromOutside": "From outside {{organisation}}",
+    "outsideTag": "Outside {{organisation}}",
+    "leadOff": "For members of {{organisation}} only.",
+    "outsideEnds": "Their access ends when the event does.",
+    "notJoined": "Not joined yet",
     "roleFor": "{{name}}’s role on this event",
     "roleTitle": "Role on this event",
     "saving": "Saving…",
@@ -2281,6 +2286,7 @@
     "remove": "Remove from this event…",
     "removeTitle": "Remove {{name}} from this event?",
     "removeLine": "They lose this event on their next request. They stay in {{organisation}}.",
+    "removeLineOutside": "Their access ends on their next request.",
     "keep": "Keep {{name}}",
     "removeConfirm": "Remove",
     "removing": "Removing…",
@@ -2289,8 +2295,14 @@
     "addTitle": "Add people",
     "theirRole": "Their role",
     "find": "Name",
+    "findAnyone": "Name, email or mobile number",
     "inOrganisation": "In {{organisation}}",
     "noMatch": "Nobody in {{organisation}} matches “{{typed}}”.",
+    "unusable": "That is not an email address or a mobile number we can use.",
+    "onAlready": "{{name}} is on this event already.",
+    "pickAnother": "Pick another role to add someone from outside.",
+    "jobLabel": "Job label (optional)",
+    "jobHelp": "What they’re there for, shown beside their name. It grants nothing. {{length, number}} of {{most, number}}.",
     "everyoneOn": "Everyone in {{organisation}} is on this event already.",
     "cancel": "Cancel",
     "addConfirm": "Add",
@@ -2319,7 +2331,16 @@
     "discardTitle": "Discard your changes?",
     "discardLine": "Nobody is added to this event.",
     "discardKeep": "Keep editing",
-    "discard": "Discard"
+    "discard": "Discard",
+    "card": {
+      "count_one": "{{count, number}} on this event",
+      "count_other": "{{count, number}} on this event",
+      "held": "on this event",
+      "lead": "Lead · {{name}}",
+      "failed": "We could not load who is on this event.",
+      "opens": "Opens People.",
+      "leadSaid": "Lead, {{name}}."
+    }
   },
   "recoveryRequests": {
     "cardTitle": "Requests to get back in",
@@ -2918,5 +2939,11 @@
     "failed": "The file could not be made, so nothing was shared. Try again.",
     "needsConnection": "Export needs a connection",
     "dropped": "Export needs a connection. Nothing was exported."
+  },
+  "outsideEvent": {
+    "until": "until {{when}}",
+    "guestsLine": "Names and replies only, no contact details",
+    "onEvent_one": "{{count, number}} person on this event",
+    "onEvent_other": "{{count, number}} people on this event"
   }
 }

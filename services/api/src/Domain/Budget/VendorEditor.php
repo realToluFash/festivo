@@ -7,8 +7,11 @@ namespace App\Domain\Budget;
 use App\Domain\Budget\Model\VendorFields;
 use App\Entity\Organisation;
 use App\Entity\Vendor;
+use App\Enum\ErrorCode;
+use App\Http\Exception\ApiException;
 use Doctrine\ORM\EntityManagerInterface;
 use Psr\Clock\ClockInterface;
+use Symfony\Contracts\Translation\TranslatorInterface;
 
 /** Adds, edits, archives and restores a vendor (sc-82). Archive is the only way out of the directory, and Restore puts it back as it was. */
 final readonly class VendorEditor
@@ -16,6 +19,7 @@ final readonly class VendorEditor
     public function __construct(
         private EntityManagerInterface $entityManager,
         private ClockInterface $clock,
+        private TranslatorInterface $translator,
     ) {
     }
 
@@ -29,8 +33,13 @@ final readonly class VendorEditor
         return $vendor;
     }
 
+    /** An archived vendor is read only, so Restore puts it back as it was (pm, 18 Nov). */
     public function edit(Vendor $vendor, VendorFields $fields): void
     {
+        if (null !== $vendor->getArchivedAt()) {
+            throw new ApiException(ErrorCode::Conflict, $this->translator->trans('vendors.archived_read_only'));
+        }
+
         $vendor->setName($fields->name);
         $vendor->setCategory($fields->category);
         $this->write($vendor, $fields);

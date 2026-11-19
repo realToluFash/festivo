@@ -9,6 +9,7 @@
 50 3 * * * php /app/bin/console app:erase-staff-contacts --no-interaction
 */5 * * * * php /app/bin/console app:erase-removed-guests --no-interaction
 */5 * * * * php /app/bin/console app:sign-in-rules:record-two-factor-holds --no-interaction
+*/5 * * * * php /app/bin/console app:outside-access:end --no-interaction
 * * * * * php /app/bin/console app:join-requests:run --no-interaction
 * * * * * php /app/bin/console app:owner-claims:run --no-interaction
 * * * * * php /app/bin/console app:notifications:check --no-interaction

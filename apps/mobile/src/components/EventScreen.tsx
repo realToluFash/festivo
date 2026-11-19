@@ -43,6 +43,7 @@ import {
   areaBack,
 } from '../kit/eventNav.ts';
 import { markDeleted, takeCoverRefused } from '../kit/eventSaved.ts';
+import { outsideOn, outsidePlaces, readsOverview } from '../kit/outsideEvent.ts';
 import { type Opened, openedOf, openedWithoutAsking } from '../kit/eventsOpen.ts';
 import { ASKS_END, SHOWN_EVENT, goUpToEvent } from '../kit/upToEvent.ts';
 import { useServerNow } from '../kit/serverNow.ts';
@@ -50,17 +51,19 @@ import { useLayout } from '../layout/useLayout.ts';
 import { useSignedIn } from '../signedIn.ts';
 import { tokens } from '../theme/tokens.ts';
 import { AppFrame, BackButton } from './AppFrame.tsx';
-import { BellRow, PaneBell } from './BellButton.tsx';
+import { BellRow } from './BellButton.tsx';
 import { bodyEdges } from './bodyEdges.ts';
 import { SecondaryButton } from './Buttons.tsx';
 import { cardFrame } from './cardFrame.ts';
 import { DuplicateEvent } from './DuplicateEvent.tsx';
 import { EventNotice } from './EventNotice.tsx';
 import { EventPage } from './EventPage.tsx';
+import { OutsideOverview } from './OutsideOverview.tsx';
 import { EDIT_PARTS } from './EventEdits.tsx';
 import { EventEditScreen } from './EventPartEdits.tsx';
 import { EventGuests, type GuestsTop } from './EventGuests.tsx';
 import { ExportButton } from './GuestExport.tsx';
+import { GuestsHeading } from './GuestsHeading.tsx';
 import { EventPeople } from './EventPeople.tsx';
 import { EventNotFound, EventTop, EventsFailed, usePhaseOf } from './Events.tsx';
 import { Refreshing } from './Refreshing.tsx';
@@ -72,8 +75,7 @@ import { Arrived } from './Skeleton.tsx';
 import { type ScreenReaderTarget, moveScreenReaderFocus } from './screenReaderFocus.ts';
 import { Text, type TextHandle } from './Text.tsx';
 import { BodyTitle } from './Title.tsx';
-import { TopPrimary, usePrimaryLabel } from './TopPrimary.tsx';
-import { COLUMN_TITLE, PAGE_TITLE, columnTitle, pageTitle } from './topTitle.ts';
+import { PAGE_TITLE, pageTitle } from './topTitle.ts';
 import { useSidebarCard } from './sidebarCard.ts';
 import { eventTop } from '../kit/eventTop.ts';
 import { EdgeSwipeBack } from './useEdgeSwipeBack.ts';
@@ -82,7 +84,7 @@ import { useSystemBack } from './useSystemBack.ts';
 /** An event's page, a screen of its own pushed over Events, Happening now or Calendar (sc-22103). */
 export function EventScreen({
   eventId,
-  area,
+  area: asked,
   filter = 'all',
   copiedFrom,
   opensDuplicate = false,
@@ -113,7 +115,8 @@ export function EventScreen({
 }) {
   const { t } = useTranslation();
   const { kind } = useLayout();
-  const { account, organisation } = useSignedIn();
+  const signedIn = useSignedIn();
+  const { account, organisation } = signedIn;
   const organisationId = organisation?.id;
   const phone = kind === 'phone';
   const navigation = useNavigation<{
@@ -172,7 +175,10 @@ export function EventScreen({
   );
   const title = useRef<TextHandle>(null);
   const cardName = useRef<TextHandle>(null);
-  const opened = useOpened(eventId, account != null, organisation, () =>
+  const outside = outsideOn(signedIn, eventId);
+  const outsideAt = outside == null ? null : outsidePlaces(outside.role);
+  const area = outsideAt == null || outsideAt.includes(asked) ? asked : 'overview';
+  const opened = useOpened(eventId, account != null, organisation, outside != null, () =>
     moveScreenReaderFocus(cardName.current ?? title.current),
   );
   const { reload, freshen, change } = opened;
@@ -221,6 +227,8 @@ export function EventScreen({
   };
   const fromSearch = phone && opensGuest != null;
   const back = !fromSearch && areaBack(area) === 'overview' ? () => chooseArea('overview') : leave;
+  // Held from outside, Overview is the account's whole app: nothing behind it to go back to (sc-71).
+  const backs = outside == null || area !== 'overview';
   const backLabel = fromSearch
     ? t('todayScreen.search')
     : area !== 'overview'
@@ -229,7 +237,7 @@ export function EventScreen({
         ? t('timeline.backToEvent')
         : t('eventsScreen.title');
 
-  useSystemBack(true, back);
+  useSystemBack(backs, back);
 
   const partRef = (part: EditPart): RefObject<ViewInstance | null> => partRows[part];
   const openEdit = (
@@ -278,12 +286,24 @@ export function EventScreen({
 
   const body =
     event != null ? (
-      area === 'overview' ? (
+      area === 'overview' && outside != null && readsOverview(outside.role) ? (
+        <Arrived style={styles.stack}>
+          <OutsideOverview
+            event={event}
+            held={outside}
+            you={kind === 'tabletLandscape' ? null : { name: account?.name ?? '' }}
+            nameRef={cardNamed ? cardName : undefined}
+            onGuests={() => chooseArea('guests')}
+            onPeople={() => chooseArea('people')}
+          />
+        </Arrived>
+      ) : area === 'overview' ? (
         <Arrived style={styles.stack}>
           <EventPage
             kind={kind}
             event={event}
             onGuests={(choice) => chooseArea('guests', choice)}
+            onPeople={() => chooseArea('people')}
             nameRef={cardNamed ? cardName : undefined}
             manages={manages}
             takes={(action) => takesCardStep(event, action)}
@@ -364,26 +384,6 @@ export function EventScreen({
         {event.name}
       </Text>
     ) : undefined;
-  const guestsTitleSize = kind === 'tabletLandscape' ? COLUMN_TITLE : PAGE_TITLE;
-  const guestsTitleStyle = kind === 'tabletLandscape' ? columnTitle : pageTitle;
-  const guestsLabel = usePrimaryLabel({
-    title: t('eventNav.guests'),
-    size: guestsTitleSize,
-    style: guestsTitleStyle,
-    label: guests && guestsTop.add != null ? t('guestList.addGuest') : undefined,
-    gap: tokens.spaceSm,
-    labelled: !phone,
-  });
-  const addGuest =
-    guests && guestsTop.add != null ? (
-      <TopPrimary
-        ref={guestsAdd}
-        label={t('guestList.addGuest')}
-        onPress={guestsTop.add}
-        wide={guestsLabel.wide}
-        testID="guests.add"
-      />
-    ) : null;
   const exportGuests =
     guests && guestsTop.exports != null ? (
       <ExportButton
@@ -395,15 +395,16 @@ export function EventScreen({
     ) : null;
   const guestBack = guests ? guestsTop.back : null;
   const titledInList = areaTitled || guests;
-  const frameBack =
-    guestBack != null
+  const frameBack = !backs
+    ? undefined
+    : guestBack != null
       ? {
           label: guestsTop.toSearch ? t('todayScreen.search') : t('eventNav.guests'),
           onPress: guestBack,
         }
       : top.frameBack === 'area'
         ? { label: backLabel, onPress: back }
-        : top.frameBack === 'events'
+        : top.frameBack === 'events' && outside == null
           ? {
               label: original != null ? t('timeline.backToEvent') : t('eventsScreen.title'),
               onPress: leave,
@@ -429,6 +430,7 @@ export function EventScreen({
               card,
               up:
                 original != null ? { label: t('timeline.backToEvent'), onPress: leave } : undefined,
+              outside: outside == null ? undefined : { role: outside.role },
             }
           : undefined
       }
@@ -452,23 +454,14 @@ export function EventScreen({
           withdrawAction={withdrawToastAction}
           onTop={setGuestsTop}
           heading={
-            <View style={styles.titleRow}>
-              <View style={styles.fill} onLayout={guestsLabel.onSlot}>
-                {guestsLabel.measure}
-                <BodyTitle
-                  size={guestsTitleSize}
-                  accessibilityRole="header"
-                  ref={title}
-                  style={guestsTitleStyle}
-                >
-                  {t('eventNav.guests')}
-                </BodyTitle>
-              </View>
-              {!phone && refreshing}
-              {exportGuests}
-              {addGuest}
-              <PaneBell />
-            </View>
+            <GuestsHeading
+              kind={kind}
+              titleRef={title}
+              refreshing={refreshing}
+              exports={exportGuests}
+              onAdd={guestsTop.add ?? null}
+              addRef={guestsAdd}
+            />
           }
           onOffline={setGuestsOffline}
         />
@@ -489,7 +482,9 @@ export function EventScreen({
         >
           {kind === 'tabletLandscape' && cardNamed && refreshing}
           {cardNamed && event == null && <BellRow />}
-          {top.bodyBack && <BackButton label={backLabel} onPress={back} testID="events.back" />}
+          {top.bodyBack && backs && (
+            <BackButton label={backLabel} onPress={back} testID="events.back" />
+          )}
           {areaTitled && (
             <View style={styles.areaTop}>
               <View style={styles.titleRow}>
@@ -640,6 +635,7 @@ function useOpened(
   eventId: string,
   accountLoaded: boolean,
   organisation: Membership | null,
+  outside: boolean,
   focusTitle: () => void,
 ): Opened & {
   retry: () => void;
@@ -650,7 +646,7 @@ function useOpened(
   refreshing: boolean;
 } {
   const organisationId = organisation?.id;
-  const settled = openedWithoutAsking(accountLoaded, organisation);
+  const settled = openedWithoutAsking(accountLoaded, organisation, outside);
   const asks = settled == null;
   const [held, setHeld] = useState<{ for: string | null; opened: Opened }>({
     for: null,
@@ -676,24 +672,25 @@ function useOpened(
   });
 
   useEffect(() => {
-    if (eventId === '' || organisationId == null || !asks) return;
+    if (eventId === '' || (organisationId == null && !outside) || !asks) return;
     let live = true;
+    const holder = outside ? null : (organisationId ?? null);
 
     watch(api.event(eventId)).then(
-      (event) => live && setHeld({ for: key, opened: openedOf({ event }, organisationId) }),
+      (event) => live && setHeld({ for: key, opened: openedOf({ event }, holder) }),
       (error: unknown) =>
         live &&
         setHeld((before) =>
           before.for === key && before.opened.kind === 'loaded' && keepsWhatLoaded(error)
             ? before
-            : { for: key, opened: openedOf({ error }, organisationId) },
+            : { for: key, opened: openedOf({ error }, holder) },
         ),
     );
 
     return () => {
       live = false;
     };
-  }, [eventId, organisationId, asks, key, attempt, watch]);
+  }, [eventId, organisationId, outside, asks, key, attempt, watch]);
 
   if (settled != null)
     return { ...settled, retry, reload, freshen, change, stale: null, refreshing: false };

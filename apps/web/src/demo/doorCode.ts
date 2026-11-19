@@ -20,6 +20,7 @@ export const DOOR_PLACE: EventPlace = {
   organisation: DOOR_ORG,
   initials: 'LF',
   event: DOOR_EVENT,
+  eventId: DOOR_EVENT_ID,
   when: 'Live · in 7 days',
 };
 

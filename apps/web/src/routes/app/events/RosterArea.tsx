@@ -18,14 +18,14 @@ import {
 } from '@soirely/domain';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { TFunction } from 'i18next';
-import { useTranslation } from 'react-i18next';
+import { Trans, useTranslation } from 'react-i18next';
 import { Link } from 'react-router';
 
 import { api } from '../../../api.ts';
 import { keptKeys, keptLoad, useAnsweredAgain, useKeptAsShown } from '../../../tabKept.ts';
 import { Glyph } from '../../../components/Glyph.tsx';
 import { Skeleton } from '../../../components/Skeleton.tsx';
-import { currentLocale } from '../../../i18n/index.ts';
+import { currentLocale, dateLocale } from '../../../i18n/index.ts';
 import { pageTitle, usePageTitle } from '../../../pageTitle.ts';
 import { codeChoice, phoneProblemMessage } from '../../../phoneProblem.ts';
 import { canOn, useSession } from '../../../session.ts';
@@ -216,7 +216,7 @@ function Roster({
 }) {
   const { t } = useTranslation();
   const { staff } = plan;
-  const times = staffTimes(event, plan.shifts, currentLocale());
+  const times = staffTimes(event, plan.shifts, dateLocale());
   const session = useSession();
   const manage = canOn(event, 'staff.manage');
   const finished = event.phase === 'finished';
@@ -600,9 +600,15 @@ function ShiftCell({ entry, times }: { entry: StaffEntry; times: StaffTimes }) {
 
   return (
     <>
-      {rangeWords(first.startsAt, first.endsAt, times, t)}
-      {more.length > 0 && (
-        <span className="rs-more">{t('roster.moreShifts', { count: more.length })}</span>
+      {more.length > 0 ? (
+        <Trans
+          i18nKey="roster.moreShifts"
+          values={{ first: rangeWords(first.startsAt, first.endsAt, times, t) }}
+          count={more.length}
+          components={{ more: <span className="rs-more" /> }}
+        />
+      ) : (
+        rangeWords(first.startsAt, first.endsAt, times, t)
       )}
     </>
   );

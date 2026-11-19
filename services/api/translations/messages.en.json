@@ -322,6 +322,9 @@
     "people.not_a_member": "Choose an active member of this organisation.",
     "people.own_role": "You cannot change or remove your own role on an event. Ask an owner, an admin or the event's lead.",
     "people.already_on_event": "They already have a role on this event. Change it instead.",
+    "people.address_required": "Enter their email address or mobile number.",
+    "people.address_unusable": "That is not an email address or a mobile number we can use.",
+    "people.lead_members_only": "For members of {organisation} only.",
     "roles.replacement_invalid": "Choose another role in this organisation.",
     "roles.not_in_organisation": "That role is not in this organisation.",
     "assistant.refused": "The assistant would not answer that.",
@@ -384,5 +387,6 @@
     "validation.vendor_category_required": "Choose the category.",
     "validation.vendor_website_scheme": "Enter a web address that starts with https:// or http://, or leave that part off.",
     "validation.vendor_phone_invalid": "That is not a phone number for {country}. Check it and try again.",
+    "vendors.archived_read_only": "This vendor is archived, so your changes were not saved. To edit it, restore it under Archived.",
     "access.plan_required": "Available on Enterprise. Contact Soirely about Enterprise to change this."
 }
