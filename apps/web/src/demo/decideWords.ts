@@ -2,7 +2,8 @@
 export const DECIDE_WORDS = {
   guests: 'Guests',
   addGuest: 'Add guest',
-  name: 'Name',
+  name: 'Full name',
+  done: 'Done',
   companions: 'Companions',
   noReply: 'No reply',
   remove: 'Remove',

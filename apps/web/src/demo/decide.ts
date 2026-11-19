@@ -65,7 +65,7 @@ export function decideKindOf(state: string, as: string | null, fetch: string | n
   );
 }
 
-/** The Guests page's head behind the dialog (sc-1468, drawn on page 30), as the board draws it. */
+/** The Guests list beside the Add guest column (sc-1468, drawn on page 30), as the board draws it. */
 export const BACKDROP: readonly { name: string; line: string }[] = [
   { name: 'Inês Duarte', line: 'Coming · with 1 companion' },
   { name: 'Kwame Mensah', line: 'Not sure yet' },

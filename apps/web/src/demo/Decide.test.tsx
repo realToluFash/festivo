@@ -14,7 +14,7 @@ async function open(state: string) {
   render(<RouterProvider router={router} />);
   await screen.findByRole('heading', { level: 1 }, SLOW);
 
-  return screen.getByRole('dialog', { name: 'Add guest' });
+  return screen.getByRole('region', { name: 'Add guest' });
 }
 
 describe('What a decision costs, in Add guest (sc-86)', () => {
@@ -28,21 +28,23 @@ describe('What a decision costs, in Add guest (sc-86)', () => {
   });
 
   it(
-    'opens over the Guests page, Guests lit, with the answer beside the change',
+    'opens in the column beside the list, Guests lit, the answer under Companions and above Add guest',
     SLOW,
     async () => {
-      const dialog = await open('decide_rise');
+      const column = await open('decide_rise');
 
       expect(screen.getByRole('heading', { level: 1, name: 'Guests' })).toBeDefined();
       const crumb = screen.getByRole('navigation', { name: 'Breadcrumb' });
       expect(within(crumb).getByText('Guests')).toBeDefined();
-      expect(within(dialog).getByRole('textbox', { name: 'Name' })).toHaveProperty(
+      expect(within(column).getByRole('textbox', { name: 'Full name' })).toHaveProperty(
         'value',
         'Marta Silva',
       );
-      expect(document.activeElement).toBe(within(dialog).getByRole('textbox', { name: 'Name' }));
+      expect(document.activeElement).toBe(
+        within(column).getByRole('textbox', { name: 'Full name' }),
+      );
 
-      const answer = within(dialog).getByRole('status');
+      const answer = within(column).getByRole('status');
       expect(answer.getAttribute('aria-busy')).toBe('false');
       expect(answer.textContent).toContain('+£270 if all come');
       expect(answer.textContent).toContain(
@@ -59,11 +61,11 @@ describe('What a decision costs, in Add guest (sc-86)', () => {
   );
 
   it('goes through updating to the new answer when a companion leaves or joins', SLOW, async () => {
-    const dialog = await open('decide_rise');
+    const column = await open('decide_rise');
     vi.useFakeTimers();
 
-    fireEvent.click(within(dialog).getByRole('button', { name: 'Remove Rui Silva' }));
-    const answer = within(dialog).getByRole('status');
+    fireEvent.click(within(column).getByRole('button', { name: 'Remove Rui Silva' }));
+    const answer = within(column).getByRole('status');
     expect(answer.getAttribute('aria-busy')).toBe('true');
     expect(answer.textContent).toBe('What adding them would cost');
 
@@ -72,12 +74,12 @@ describe('What a decision costs, in Add guest (sc-86)', () => {
     expect(answer.textContent).toContain('+£180 if all come');
     expect(answer.textContent).toContain('133 → 135 if all come');
 
-    fireEvent.click(within(dialog).getByRole('button', { name: 'Add a companion' }));
+    fireEvent.click(within(column).getByRole('button', { name: 'Add a companion' }));
     expect(answer.getAttribute('aria-busy')).toBe('true');
     act(() => vi.advanceTimersByTime(1000));
     expect(answer.textContent).toContain('+£270 if all come');
     expect(document.activeElement).toBe(
-      within(dialog).getByRole('textbox', { name: 'Companion’s full name, 2 of 2' }),
+      within(column).getByRole('textbox', { name: 'Companion’s full name, 2 of 2' }),
     );
   });
 
@@ -110,23 +112,30 @@ describe('What a decision costs, in Add guest (sc-86)', () => {
     SLOW,
     async () => {
       for (const state of ['decide_none', 'decide_rise&as=kemi', 'decide_rise&fetch=failed']) {
-        const dialog = await open(state);
-        expect(within(dialog).queryByRole('status')).toBeNull();
-        expect(within(dialog).queryByText('What adding them would cost')).toBeNull();
-        expect(within(dialog).getByRole('button', { name: 'Remove Rui Silva' })).toBeDefined();
+        const column = await open(state);
+        expect(within(column).queryByRole('status')).toBeNull();
+        expect(within(column).queryByText('What adding them would cost')).toBeNull();
+        expect(within(column).getByRole('button', { name: 'Remove Rui Silva' })).toBeDefined();
         cleanup();
       }
     },
   );
 
-  it('closes on Add guest and says nothing, and opens again from the page', SLOW, async () => {
-    const dialog = await open('decide_rise');
+  it(
+    'closes on Add guest or Done and says nothing, and opens again from the page',
+    SLOW,
+    async () => {
+      for (const verb of ['Add guest', 'Done']) {
+        const column = await open('decide_rise');
 
-    fireEvent.click(within(dialog).getByRole('button', { name: 'Add guest' }));
-    expect(screen.queryByRole('dialog')).toBeNull();
-    expect(screen.queryByRole('status')).toBeNull();
+        fireEvent.click(within(column).getByRole('button', { name: verb }));
+        expect(within(column).queryByRole('textbox', { name: 'Full name' })).toBeNull();
+        expect(screen.queryByRole('status')).toBeNull();
 
-    fireEvent.click(screen.getByRole('button', { name: 'Add guest' }));
-    expect(screen.getByRole('dialog', { name: 'Add guest' })).toBeDefined();
-  });
+        fireEvent.click(screen.getByRole('button', { name: 'Add guest' }));
+        expect(within(column).getByRole('textbox', { name: 'Full name' })).toBeDefined();
+        cleanup();
+      }
+    },
+  );
 });

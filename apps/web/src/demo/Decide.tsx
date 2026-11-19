@@ -4,7 +4,6 @@ import { useSearchParams } from 'react-router';
 import { Field, RowWords, TextAction } from '../components/SettingsParts.tsx';
 import {
   Amount,
-  BudgetDialog,
   BudgetRow,
   BudgetShell,
   DashedMark,
@@ -28,11 +27,14 @@ import {
 } from './decide.ts';
 import { DECIDE_WORDS as W } from './decideWords.ts';
 import { type SampleEvent } from './events.ts';
+import { ColumnHead, Verb } from './GuestForms.tsx';
+import { Pill } from './GuestsParts.tsx';
+import './guests.css';
 import './decide.css';
 
 const UPDATE_MS = 900;
 
-/** sc-86 in Guests' Add guest (sc-1468): the Guests page's head behind it, the answer beside the change. */
+/** sc-86 in Guests' Add guest (sc-1468): the column beside the list at 380, the answer under Companions and above Add guest. */
 export function DecidePage({ event, state }: { event: SampleEvent; state: string }) {
   const [params] = useSearchParams();
   const kind = decideKindOf(state, params.get('as'), params.get('fetch'));
@@ -49,7 +51,7 @@ function GuestsHead({ event, kind }: { event: SampleEvent; kind: DecideKind }) {
   const [round, setRound] = useState(0);
 
   return (
-    <>
+    <div className="gs">
       <PageTitle title={W.guests}>
         <TextAction
           label={W.addGuest}
@@ -60,19 +62,25 @@ function GuestsHead({ event, kind }: { event: SampleEvent; kind: DecideKind }) {
           }}
         />
       </PageTitle>
-      <Rows>
-        {BACKDROP.map((guest) => (
-          <li key={guest.name}>
-            <BudgetRow
-              title={guest.name}
-              lines={[guest.line]}
-              to={`/demo/events/${event.id}?area=guests`}
-            />
-          </li>
-        ))}
-      </Rows>
-      {open && <AddGuest key={round} kind={kind} onClose={() => setOpen(false)} />}
-    </>
+      <div className="gs-cols">
+        <section className="gs-list" aria-label={W.guests}>
+          <Rows>
+            {BACKDROP.map((guest) => (
+              <li key={guest.name}>
+                <BudgetRow
+                  title={guest.name}
+                  lines={[guest.line]}
+                  to={`/demo/events/${event.id}?area=guests`}
+                />
+              </li>
+            ))}
+          </Rows>
+        </section>
+        <section className="gs-column" aria-label={W.addGuest}>
+          {open && <AddGuest key={round} kind={kind} onClose={() => setOpen(false)} />}
+        </section>
+      </div>
+    </div>
   );
 }
 
@@ -96,7 +104,10 @@ function AddGuest({ kind, onClose }: { kind: DecideKind; onClose: () => void }) 
   const toAdded = useRef(false);
   const answer = whatIf(1 + companions.length, linesFor(kind), ceilingsFor(kind));
 
-  useEffect(() => () => window.clearTimeout(timer.current), []);
+  useEffect(() => {
+    first.current?.focus();
+    return () => window.clearTimeout(timer.current);
+  }, []);
 
   useEffect(() => {
     if (!toAdded.current) return;
@@ -118,75 +129,66 @@ function AddGuest({ kind, onClose }: { kind: DecideKind; onClose: () => void }) 
   }
 
   return (
-    <BudgetDialog
-      width={762}
-      title={W.addGuest}
-      verb={W.addGuest}
-      first={first}
-      onDismiss={onClose}
-      onConfirm={onClose}
-    >
-      <div className="dec-cols">
-        <div className="dec-form">
-          <Field label={W.name} value={name} onChange={setName} inputRef={first} />
-          <div className="dec-companions" role="group" aria-labelledby={companionsId}>
-            <p id={companionsId} className="desk-label">
-              {W.companions}
-            </p>
-            <ul className="desk-rows bud-rows">
-              {companions.map((one, index) => {
-                const label = W.companionName(index + 1, companions.length);
-                const removal = (
-                  <button type="button" className="desk-text" onClick={() => remove(one.key)}>
-                    {W.remove}
-                    <span className="desk-unseen"> {one.name === '' ? label : one.name}</span>
-                  </button>
-                );
+    <div className="gs-form dec-form">
+      <ColumnHead title={W.addGuest}>
+        <Verb label={W.done} onClick={onClose} />
+      </ColumnHead>
+      <Field label={W.name} value={name} onChange={setName} inputRef={first} />
+      <div className="dec-companions" role="group" aria-labelledby={companionsId}>
+        <p id={companionsId} className="desk-label">
+          {W.companions}
+        </p>
+        <ul className="desk-rows bud-rows">
+          {companions.map((one, index) => {
+            const label = W.companionName(index + 1, companions.length);
+            const removal = (
+              <button type="button" className="desk-text" onClick={() => remove(one.key)}>
+                {W.remove}
+                <span className="desk-unseen"> {one.name === '' ? label : one.name}</span>
+              </button>
+            );
 
-                return (
-                  <li key={one.key}>
-                    {one.typed ? (
-                      <Field
-                        label={label}
-                        value={one.name}
-                        {...(index === companions.length - 1 ? { inputRef: added } : {})}
-                        action={removal}
-                        onChange={(typed) =>
-                          setCompanions((now) =>
-                            now.map((other) =>
-                              other.key === one.key ? { ...other, name: typed } : other,
-                            ),
-                          )
-                        }
-                      />
-                    ) : (
-                      <div className="desk-row bud-row">
-                        <RowWords title={one.name} lines={[W.noReply]} />
-                        {removal}
-                      </div>
-                    )}
-                  </li>
-                );
-              })}
-            </ul>
-            <div ref={adder}>
-              <TextAction
-                label={W.addCompanion}
-                before="plus"
-                onClick={() => {
-                  const key = Math.max(-1, ...companions.map((one) => one.key)) + 1;
-                  changed([...companions, { key, name: '', typed: true }]);
-                  toAdded.current = true;
-                }}
-              />
-            </div>
-          </div>
-        </div>
-        <div className="dec-side">
-          {kind !== 'none' && <AnswerPanel answer={answer} updating={updating} />}
+            return (
+              <li key={one.key}>
+                {one.typed ? (
+                  <Field
+                    label={label}
+                    value={one.name}
+                    {...(index === companions.length - 1 ? { inputRef: added } : {})}
+                    action={removal}
+                    onChange={(typed) =>
+                      setCompanions((now) =>
+                        now.map((other) =>
+                          other.key === one.key ? { ...other, name: typed } : other,
+                        ),
+                      )
+                    }
+                  />
+                ) : (
+                  <div className="desk-row bud-row">
+                    <RowWords title={one.name} lines={[W.noReply]} />
+                    {removal}
+                  </div>
+                )}
+              </li>
+            );
+          })}
+        </ul>
+        <div ref={adder}>
+          <TextAction
+            label={W.addCompanion}
+            before="plus"
+            onClick={() => {
+              const key = Math.max(-1, ...companions.map((one) => one.key)) + 1;
+              changed([...companions, { key, name: '', typed: true }]);
+              toAdded.current = true;
+            }}
+          />
         </div>
       </div>
-    </BudgetDialog>
+      {kind !== 'none' && <AnswerPanel answer={answer} updating={updating} />}
+      <Pill primary tall label={W.addGuest} onClick={onClose} />
+    </div>
   );
 }
 
