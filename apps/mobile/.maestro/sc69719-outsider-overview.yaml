@@ -1,0 +1,25 @@
+# sc-69719: an outsider's event Overview at one, two and 1,250 people, already signed in. Needs ${METRO_URL}, ${ORIENT}, ${TAG}, ${EVENT_ID_ONE}, ${EVENT_ID_TWO}, ${EVENT_ID_MANY}.
+appId: host.exp.Exponent
+---
+- setOrientation: ${ORIENT}
+- openLink: ${METRO_URL}/--/events/${EVENT_ID_ONE}
+- extendedWaitUntil: { visible: { id: 'outside.overview' }, timeout: 60000 }
+- extendedWaitUntil:
+    visible: '.*[0-9].*(people|person|personas?|personnes?|pessoas?) .*'
+    timeout: 30000
+- waitForAnimationToEnd: { timeout: 6000 }
+- takeScreenshot: ${TAG}-one
+- openLink: ${METRO_URL}/--/events/${EVENT_ID_TWO}
+- extendedWaitUntil: { visible: { id: 'outside.overview' }, timeout: 30000 }
+- extendedWaitUntil:
+    visible: '.*[0-9].*(people|person|personas?|personnes?|pessoas?) .*'
+    timeout: 30000
+- waitForAnimationToEnd: { timeout: 6000 }
+- takeScreenshot: ${TAG}-two
+- openLink: ${METRO_URL}/--/events/${EVENT_ID_MANY}
+- extendedWaitUntil: { visible: { id: 'outside.overview' }, timeout: 30000 }
+- extendedWaitUntil:
+    visible: '.*[0-9].*(people|person|personas?|personnes?|pessoas?) .*'
+    timeout: 30000
+- waitForAnimationToEnd: { timeout: 6000 }
+- takeScreenshot: ${TAG}-many
