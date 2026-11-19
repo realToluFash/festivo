@@ -229,7 +229,8 @@ final class AuditLogTest extends ApiTestCase
 
         self::assertResponseStatusCodeSame(422);
         self::assertSame(ErrorCode::AuditExportTooMany->type(), $body['type']);
-        self::assertSame([], Vec\filter($this->entries($organisation), static fn (AuditEntry $entry): bool => AuditType::EXPORTED === $entry->getAction()), 'nothing started, nothing recorded');
+        self::assertSame(0, self::service(EntityManagerInterface::class)->getConnection()->fetchOne('SELECT COUNT(*) FROM audit_entries WHERE action = :action', ['action' => AuditType::EXPORTED]), 'nothing started, nothing recorded');
+        self::assertSame(0, self::service(EntityManagerInterface::class)->getConnection()->fetchOne('SELECT COUNT(*) FROM audit_exports'));
     }
 
     #[Test]
