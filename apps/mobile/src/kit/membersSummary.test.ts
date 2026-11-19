@@ -42,6 +42,7 @@ function member(
     self: false,
     history: [],
     suspension: null,
+    alsoMemberOf: null,
     ...more,
   };
 }

@@ -36,7 +36,7 @@ import { useTranslation } from 'react-i18next';
 
 import { api } from '../api.ts';
 import { usePushTaps } from '../appPush.ts';
-import { useWaitingInvitations } from '../invitations.ts';
+import { type WaitingInvitations, useWaitingInvitations } from '../invitations.ts';
 import { useDomainOffer } from '../joinOffers.ts';
 import {
   DESTINATION_HREF,
@@ -118,6 +118,7 @@ import {
   type TodayShell,
   TodayShellProvider,
 } from './todayShell.ts';
+import { ManagedBanner } from './ManagedBanner.tsx';
 import { OrgDropDown } from './OrgDropDown.tsx';
 import { AREA_GLYPH } from './areaGlyph.ts';
 import { ReadOut } from './ReadOut.tsx';
@@ -485,7 +486,7 @@ export function AppFrame({
     walkBack.current = opener;
     setWalking((last) => ({
       visit: (last?.visit ?? 0) + 1,
-      walk: freshWalk(deviceNow()),
+      walk: { ...freshWalk(deviceNow()), managed: offer.managed != null },
       focus: 'name',
       toPick: false,
       opener: walkOpener,
@@ -701,6 +702,10 @@ export function AppFrame({
               open={choosing}
               back={switcherOpener}
               email={email}
+              managed={managedRefusal(waiting, () => {
+                closeSwitcher();
+                setTimeout(() => router.push('/settings/account'), SETTLED_MS);
+              })}
               events={switcherOutside(signedIn, now)}
               onEvent={(eventId) => {
                 closeSwitcher();
@@ -746,6 +751,19 @@ export function AppFrame({
               email={email}
               statusBar="dark"
               currencies={currencies}
+              managedBanner={
+                offer.managed == null ? undefined : (
+                  <ManagedBanner
+                    organisation={offer.managed.organisation.name}
+                    message={offer.managed.message}
+                    onChange={() => {
+                      setCreating(false);
+                      setTimeout(() => router.push('/settings/account'), SETTLED_MS);
+                    }}
+                    testID="createWalk.managed"
+                  />
+                )
+              }
               create={(walk) =>
                 createNewOrganisation((organisation) => api.createOrganisation(organisation), walk)
               }
@@ -1957,4 +1975,18 @@ function useCountryCurrencies(open: boolean): Currencies | null {
   }, [open]);
 
   return currencies ?? currenciesRead;
+}
+
+/** sc-563's banner for the invitation whose Join the API refused as managed. */
+function managedRefusal(waiting: WaitingInvitations, onChange: () => void) {
+  const outcome = Object.values(waiting.outcomes).find((one) => one.kind === 'managed');
+
+  return outcome?.kind === 'managed' ? (
+    <ManagedBanner
+      organisation={outcome.organisation}
+      message={outcome.message}
+      onChange={onChange}
+      testID="switcher.invitation.managed"
+    />
+  ) : undefined;
 }
