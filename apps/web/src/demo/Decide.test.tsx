@@ -122,20 +122,42 @@ describe('What a decision costs, in Add guest (sc-86)', () => {
   );
 
   it(
-    'closes on Add guest or Done and says nothing, and opens again from the page',
+    'closes on Done, the focus back on the page’s Add guest, and opens again from there',
     SLOW,
     async () => {
-      for (const verb of ['Add guest', 'Done']) {
-        const column = await open('decide_rise');
+      const column = await open('decide_rise');
 
-        fireEvent.click(within(column).getByRole('button', { name: verb }));
-        expect(within(column).queryByRole('textbox', { name: 'Full name' })).toBeNull();
-        expect(screen.queryByRole('status')).toBeNull();
+      fireEvent.click(within(column).getByRole('button', { name: 'Done' }));
+      expect(within(column).queryByRole('textbox', { name: 'Full name' })).toBeNull();
+      expect(screen.queryByRole('status')).toBeNull();
+      const again = screen.getByRole('button', { name: 'Add guest' });
+      expect(document.activeElement).toBe(again);
 
-        fireEvent.click(screen.getByRole('button', { name: 'Add guest' }));
-        expect(within(column).getByRole('textbox', { name: 'Full name' })).toBeDefined();
-        cleanup();
-      }
+      fireEvent.click(again);
+      expect(within(column).getByRole('textbox', { name: 'Full name' })).toBeDefined();
+    },
+  );
+
+  it(
+    'keeps the column on Add guest, as sc-1468 does: the guest said, the form cleared, the answer for one guest',
+    SLOW,
+    async () => {
+      const column = await open('decide_rise');
+      vi.useFakeTimers();
+
+      fireEvent.click(within(column).getByRole('button', { name: 'Add guest' }));
+      const name = within(column).getByRole('textbox', { name: 'Full name' });
+      expect(within(column).getByText('Marta Silva added.')).toBeDefined();
+      expect(name).toHaveProperty('value', '');
+      expect(document.activeElement).toBe(name);
+      expect(within(column).queryByRole('button', { name: /^Remove / })).toBeNull();
+
+      const answer = within(column).getByRole('status', { name: 'What adding them would cost' });
+      expect(answer.getAttribute('aria-busy')).toBe('true');
+      act(() => vi.advanceTimersByTime(1000));
+      expect(answer.getAttribute('aria-busy')).toBe('false');
+      expect(answer.textContent).toContain('+£90 if all come');
+      expect(answer.textContent).toContain('133 → 134 if all come');
     },
   );
 });

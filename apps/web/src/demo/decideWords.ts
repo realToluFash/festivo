@@ -4,6 +4,7 @@ export const DECIDE_WORDS = {
   addGuest: 'Add guest',
   name: 'Full name',
   done: 'Done',
+  justAdded: (name: string) => `${name} added.`,
   companions: 'Companions',
   noReply: 'No reply',
   remove: 'Remove',

@@ -28,7 +28,7 @@ import {
 import { DECIDE_WORDS as W } from './decideWords.ts';
 import { type SampleEvent } from './events.ts';
 import { ColumnHead, Verb } from './GuestForms.tsx';
-import { Pill } from './GuestsParts.tsx';
+import { OkLine, Pill } from './GuestsParts.tsx';
 import './guests.css';
 import './decide.css';
 
@@ -49,9 +49,15 @@ export function DecidePage({ event, state }: { event: SampleEvent; state: string
 function GuestsHead({ event, kind }: { event: SampleEvent; kind: DecideKind }) {
   const [open, setOpen] = useState(true);
   const [round, setRound] = useState(0);
+  const head = useRef<HTMLDivElement>(null);
+
+  function done(): void {
+    setOpen(false);
+    head.current?.querySelector<HTMLButtonElement>('.bud-title-actions button')?.focus();
+  }
 
   return (
-    <div className="gs">
+    <div className="gs" ref={head}>
       <PageTitle title={W.guests}>
         <TextAction
           label={W.addGuest}
@@ -77,7 +83,7 @@ function GuestsHead({ event, kind }: { event: SampleEvent; kind: DecideKind }) {
           </Rows>
         </section>
         <section className="gs-column" aria-label={W.addGuest}>
-          {open && <AddGuest key={round} kind={kind} onClose={() => setOpen(false)} />}
+          {open && <AddGuest key={round} kind={kind} onDone={done} />}
         </section>
       </div>
     </div>
@@ -90,7 +96,8 @@ interface Companion {
   typed: boolean;
 }
 
-function AddGuest({ kind, onClose }: { kind: DecideKind; onClose: () => void }) {
+/** As sc-1468's AddForm: Add guest keeps the column open, says who was added and clears the form; only Done closes it. */
+function AddGuest({ kind, onDone }: { kind: DecideKind; onDone: () => void }) {
   const first = useRef<HTMLInputElement>(null);
   const added = useRef<HTMLInputElement>(null);
   const adder = useRef<HTMLDivElement>(null);
@@ -101,6 +108,7 @@ function AddGuest({ kind, onClose }: { kind: DecideKind; onClose: () => void }) 
     COMPANIONS.map((one, key) => ({ key, name: one, typed: false })),
   );
   const [updating, setUpdating] = useState(kind === 'updating');
+  const [said, setSaid] = useState<string | null>(null);
   const toAdded = useRef(false);
   const answer = whatIf(1 + companions.length, linesFor(kind), ceilingsFor(kind));
 
@@ -123,6 +131,16 @@ function AddGuest({ kind, onClose }: { kind: DecideKind; onClose: () => void }) 
     timer.current = window.setTimeout(() => setUpdating(false), UPDATE_MS);
   }
 
+  function add(): void {
+    const who = name.trim();
+    if (who !== '') {
+      setSaid(W.justAdded(who));
+      setName('');
+      changed([]);
+    }
+    first.current?.focus();
+  }
+
   function remove(key: number): void {
     changed(companions.filter((one) => one.key !== key));
     adder.current?.querySelector('button')?.focus();
@@ -131,8 +149,9 @@ function AddGuest({ kind, onClose }: { kind: DecideKind; onClose: () => void }) 
   return (
     <div className="gs-form dec-form">
       <ColumnHead title={W.addGuest}>
-        <Verb label={W.done} onClick={onClose} />
+        <Verb label={W.done} onClick={onDone} />
       </ColumnHead>
+      {said != null && <OkLine>{said}</OkLine>}
       <Field label={W.name} value={name} onChange={setName} inputRef={first} />
       <div className="dec-companions" role="group" aria-labelledby={companionsId}>
         <p id={companionsId} className="desk-label">
@@ -187,7 +206,7 @@ function AddGuest({ kind, onClose }: { kind: DecideKind; onClose: () => void }) 
         </div>
       </div>
       {kind !== 'none' && <AnswerPanel answer={answer} updating={updating} />}
-      <Pill primary tall label={W.addGuest} onClick={onClose} />
+      <Pill primary tall label={W.addGuest} onClick={add} />
     </div>
   );
 }
