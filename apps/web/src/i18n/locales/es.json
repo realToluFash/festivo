@@ -2712,13 +2712,13 @@
     "onEvent_one": "{{count, number}} persona en este evento",
     "onEvent_other": "{{count, number}} personas en este evento",
     "onEvent_many": "{{count, number}} de personas en este evento",
-    "yourEvents": "Your events",
-    "fromOutside": "Events from outside",
-    "yourOrganisations": "Your organisations",
-    "underWay": "Under way",
-    "here": "You’re here",
-    "backTo": "Back to {{name}}",
-    "continue": "Continue"
+    "yourEvents": "Sus eventos",
+    "fromOutside": "Eventos externos",
+    "yourOrganisations": "Sus organizaciones",
+    "underWay": "En curso",
+    "here": "Está aquí",
+    "backTo": "Volver a {{name}}",
+    "continue": "Continuar"
   },
   "seating": {
     "area": "Mesas",
