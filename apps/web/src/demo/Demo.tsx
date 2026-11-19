@@ -69,6 +69,7 @@ import { MenuPage } from './MenuServed.tsx';
 import { MENU_PAGES } from './menuServed.ts';
 import { COURSES_PAGES } from './menuCourses.ts';
 import { PICKS_PAGES } from './seePicks.ts';
+import { PARTY_PAGES } from './mealParty.ts';
 import { MEAL_PAGES } from './mealStep.ts';
 import { MenuLibraryPage } from './MenuLibrary.tsx';
 import { LIBRARY_PAGES } from './menuLibrary.ts';
@@ -465,6 +466,11 @@ function DemoHome({ from }: { from: string }) {
         <BoardPages pages={PICKS_PAGES} />
         <h3>The guest’s questions inside a dish · sc-3904 · phone, tablet and desk</h3>
         <BoardPages pages={MEAL_PAGES} />
+        <h3>
+          A meal for each person coming · sc-3907 · phone, tablet and desk, from 320 px (tweak:
+          &amp;preview=1 for Preview as guest)
+        </h3>
+        <BoardPages pages={PARTY_PAGES} />
         <h3>How a course is served, and a dish’s parts · sc-34230 · desktop</h3>
         <BoardPages pages={MENU_PAGES} />
       </section>
