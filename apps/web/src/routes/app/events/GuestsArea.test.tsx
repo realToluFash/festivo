@@ -5462,7 +5462,7 @@ describe('What adding them would cost (sc-86)', () => {
     expect(within(answer()).getByText('Not known')).toBeDefined();
   });
 
-  it('shows no figure when every cost it moves has no price, never +0', async () => {
+  it('reads Not known if all come when every cost it moves has no price, never +0', async () => {
     await opened({
       [ASK]: () =>
         json(
@@ -5494,6 +5494,7 @@ describe('What adding them would cost (sc-86)', () => {
         within(answer()).getByText('Full cost not known: 1 cost it moves has no price yet.'),
       ).toBeDefined(),
     );
+    expect(within(answer()).getByText('Not known if all come')).toBeDefined();
     expect(answer().textContent).not.toMatch(/0 if all come/u);
     expect(answer().querySelector('.da-up')).toBeNull();
   });

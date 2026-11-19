@@ -5138,6 +5138,7 @@
     "moved": "{{from}} → {{to}} · {{headsFrom, number}} → {{headsTo, number}} if all come",
     "plus": "+{{amount}}",
     "notKnown": "Not known",
+    "notKnownIfAll": "Not known if all come",
     "notPricedYet": "Not priced yet, so its cost is not known",
     "fullNotKnown_one": "Full cost not known: {{count, number}} cost it moves has no price yet.",
     "fullNotKnown_other": "Full cost not known: {{count, number}} costs it moves have no price yet.",

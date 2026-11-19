@@ -64,7 +64,14 @@ function Answered({ answer }: { answer: WhatIf }) {
 
   return (
     <>
-      {unknown.length < answer.lines.length && (
+      {unknown.length === answer.lines.length ? (
+        <p className="da-big">
+          <span className="da-mark-word">
+            <span className="da-dashed" aria-hidden="true" />
+            {t('decisionAnswer.notKnownIfAll')}
+          </span>
+        </p>
+      ) : (
         <p className="da-big">
           <UpMark />
           {t('decisionAnswer.rise', { amount: money(answer.potential.delta) })}
