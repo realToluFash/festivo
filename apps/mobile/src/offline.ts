@@ -101,11 +101,7 @@ export function usePullToRefresh(
   refresh: () => void,
 ): { refreshing: boolean; onRefresh: () => void } {
   const [pulled, setPulled] = useState(false);
-  const [was, setWas] = useState(refreshing);
-  if (was !== refreshing) {
-    setWas(refreshing);
-    if (!refreshing) setPulled(false);
-  }
+  if (pulled && !refreshing) setPulled(false);
 
   const onRefresh = useCallback(() => {
     setPulled(true);
