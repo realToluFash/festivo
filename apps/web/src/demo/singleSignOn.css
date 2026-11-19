@@ -137,13 +137,13 @@
   white-space: nowrap;
 }
 
+.sso-file-label {
+  cursor: pointer;
+}
+
 .sso-file-input:focus-visible + .sso-file-label {
   outline: 2px solid var(--colorAccent);
   outline-offset: 2px;
-}
-
-.sso-file-label {
-  cursor: pointer;
 }
 
 .sso-file-name {
