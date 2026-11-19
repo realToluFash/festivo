@@ -13,7 +13,7 @@ export const SIDEBAR_SIZE_BOARDS: readonly SidebarSizeBoard[] = [
   },
   {
     title: 'Sidebar · eighth step (AX1), Today',
-    what: 'QA Organisation is cut in its pill as the app draws it today; it steps down to read whole on one line once the app takes sc-72307',
+    what: 'QA Organisation steps down in its pill to read whole on one line, where main’s size would cut it',
     href: '/demo/sidebar-size?size=eighth&lang=en&at=today&org=qa',
   },
   {
