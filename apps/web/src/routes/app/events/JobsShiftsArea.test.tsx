@@ -95,11 +95,17 @@ function person(id: string, fullName: string, job: string | null, shifts: string
     email: null,
     job: job == null ? null : { id: job, name: JOBS.find((one) => one.id === job)?.name ?? '' },
     station: null,
+    stations: [],
+    stationRemoved: null,
+    leads: false,
+    floorLead: false,
     shifts: shifts.map(([sid, startsAt, endsAt]) => ({ id: sid, startsAt, endsAt })),
     link: 'no_mobile',
     contactsErased: false,
   };
 }
+
+const NO_STATIONS = { places: [], sections: [], floorLead: null, courses: [], walk: [] };
 
 const PLAN = {
   staff: [
@@ -110,6 +116,7 @@ const PLAN = {
     person('st_ada', 'Ada Nnaji', null),
   ],
   jobs: JOBS,
+  stations: NO_STATIONS,
   shifts: [
     {
       id: 'sh_bar',
@@ -167,7 +174,7 @@ describe('Jobs and shifts on the Staff page (sc-3908)', () => {
     signedIn();
     await onJobs({});
 
-    const tabs = screen.getByRole('navigation', { name: 'Staff pages' });
+    const tabs = screen.getByRole('navigation', { name: 'Staff' });
     expect(tabs.querySelector('[aria-current="page"]')?.textContent).toBe('Jobs and shifts');
     expect(screen.getByRole('link', { name: 'Roster' }).getAttribute('href')).toBe(
       '/app/events/ev_1/staff/roster',
