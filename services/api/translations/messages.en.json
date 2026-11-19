@@ -414,5 +414,5 @@
     "email_domains.taken": "Another organisation has already proved this domain. Contact Soirely support if it is yours.",
     "email_domains.managed": "Your {domain} address is managed by {organisation}, so you can only be a member there.",
     "email_domains.only_ours_owner": "Only an owner can change this.",
-    "email_domains.only_ours_unproved": "Only our organisation is for a domain this organisation has proved."
+    "email_domains.only_ours_unproved": "Only our organisation needs a domain this organisation has proved."
 }
