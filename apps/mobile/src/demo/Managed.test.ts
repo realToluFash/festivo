@@ -50,7 +50,8 @@ describe('a managed account, wherever a membership path ends (sc-563, enterprise
     const session = sessionFor('managed');
     expect(session.expanded).toBe('org-celebraciones-alameda');
     expect(session.managed).toBe('org-celebraciones-alameda');
-    expect(waitingOf(session)).toBe(2);
+    expect(session.outcomes['org-celebraciones-alameda']?.kind).toBe('managed');
+    expect(waitingOf(session)).toBe(1);
     expect(read('src', 'components', 'OrgDropDown.tsx')).toMatch(
       /managed=\{session\.managed === opened\.invite\.id \? managed : undefined\}/u,
     );
