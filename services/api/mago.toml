@@ -412,7 +412,8 @@ permit = [
 # days, so it reads the guest headcount and the event's day count; a price is parsed and
 # written at the currency's minor unit by Locale's Money, as the menu's costs are
 # (sc-68066). A line holds the event's currency (sc-98); each change is audited and
-# published.
+# published. The margin is published only to an organisation whose plan unlocks it,
+# asked of billing's one entitlement answer (sc-92).
 [[guard.perimeter.rules]]
 namespace = "App\\Domain\\Budget\\"
 permit = [
@@ -420,6 +421,7 @@ permit = [
     "@layer:external",
     "@layer:shared",
     "@layer:domain_budget",
+    "@layer:domain_billing",
     "@layer:domain_event",
     "@layer:domain_guest",
     "@layer:domain_user",

@@ -11,6 +11,7 @@ export const REALTIME_TOPICS = {
   EventScreens: 'events/{id}/screens',
   EventGuestPages: 'events/{id}/guest-pages',
   EventBudget: 'events/{id}/budget',
+  EventBudgetMargin: 'events/{id}/budget/margin',
 } as const;
 
 export type RealtimeTopicName = keyof typeof REALTIME_TOPICS;

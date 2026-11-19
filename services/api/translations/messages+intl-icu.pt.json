@@ -182,5 +182,12 @@
     "validation.what_if_not_whole": "Indique um número inteiro para {change}.",
     "validation.what_if_too_large": "A alteração de {change} não pode ultrapassar {most, number, ::group-auto} no total.",
     "validation.what_if_guests_below_one": "Adicione 1 convidado ou mais. Não é possível calcular aqui a remoção de convidados.",
-    "validation.what_if_below_zero": "Isso deixaria {change} abaixo de 0. O evento tem agora {count, number, ::group-auto}."
+    "validation.what_if_below_zero": "Isso deixaria {change} abaixo de 0. O evento tem agora {count, number, ::group-auto}.",
+    "validation.budget_markup_negative": "A markup cannot be below {min}. To sell below cost, enter the price instead.",
+    "validation.budget_markup_invalid": "Enter the markup as a number, like {example}.",
+    "validation.budget_markup_too_many_decimals": "Enter a markup with at most {places, plural, one {# decimal place} other {# decimal places}}.",
+    "validation.budget_markup_too_high": "Enter a markup of {max} or less.",
+    "validation.budget_markup_with_price": "Enter a markup or a price, not both.",
+    "validation.budget_client_price_invalid": "Enter a price of {min} or more, in numbers only.",
+    "validation.budget_client_price_too_many_decimals": "That has too many decimal places for this event’s currency. Enter the price like {example}."
 }

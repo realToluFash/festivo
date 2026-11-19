@@ -87,6 +87,10 @@ final readonly class AccessListener
         $grants = $this->membershipDirectory->grantsOnEvent($user, $organisationId, $eventId) ?? throw self::notFound();
         $this->check($request, $grants, $policy->permission);
 
+        if (null !== $policy->feature) {
+            $grants->requirePlanFor($policy->feature);
+        }
+
         $request->attributes->set(self::EVENT, $eventId);
     }
 
