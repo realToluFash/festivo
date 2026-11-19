@@ -61,19 +61,10 @@ export function levelLine(
   event: { endsAt: string; timeZone: string },
   locale: string,
 ): string {
-  const until = new Intl.DateTimeFormat(locale, {
-    weekday: 'short',
-    day: 'numeric',
-    month: 'short',
-    hour: '2-digit',
-    minute: '2-digit',
-    timeZone: event.timeZone,
-  }).format(new Date(event.endsAt));
-
   return [
     t(`eventPeople.role.${held.role}`),
     held.jobLabel,
-    t('outsideEvent.until', { when: until }),
+    t('outsideEvent.until', { when: formatEventMoment(event.endsAt, event.timeZone, locale) }),
   ]
     .filter((part) => part != null && part !== '')
     .join(' · ');

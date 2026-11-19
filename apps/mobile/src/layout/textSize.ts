@@ -8,6 +8,10 @@ export function atAccessibilitySizes(fontScale: number): boolean {
   return fontScale >= ACCESSIBILITY_SCALE;
 }
 
+export function fromNinthStep(fontScale: number): boolean {
+  return fontScale >= NINTH_STEP_SCALE;
+}
+
 // iOS's Title 1 and Title 3 at the eighth and the ninth steps (Apple HIG, Typography, Dynamic Type sizes).
 const TITLE_STEPS: Readonly<Record<number, readonly [number, number]>> = {
   20: [31, 37],
@@ -22,7 +26,7 @@ export function titleSize(size: number, fontScale: number): number {
   const steps = TITLE_STEPS[size];
   if (steps == null || !atAccessibilitySizes(fontScale)) return size * fontScale;
 
-  return fontScale >= NINTH_STEP_SCALE ? steps[1] : steps[0];
+  return fromNinthStep(fontScale) ? steps[1] : steps[0];
 }
 
 /** A page's title as it reported the size it drew at, for the page and text size `key` it drew on. */

@@ -507,7 +507,7 @@ function DemoHome({ from }: { from: string }) {
         <BoardPages pages={ROSTER_PAGES} />
         <h3>Jobs and shifts, and where it’s short-handed (sc-3908) · desktop</h3>
         <BoardPages pages={JOBS_PAGES} />
-        <h3>Stations and leads, what each station dishes, the walking order (sc-3910) · desktop</h3>
+        <h3>Stations and leads, what each station serves, the walking order (sc-3910) · desktop</h3>
         <BoardPages pages={STATIONS_PAGES} />
       </section>
 

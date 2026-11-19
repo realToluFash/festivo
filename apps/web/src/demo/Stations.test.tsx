@@ -32,12 +32,12 @@ describe('/demo/events/evt-wed-4/staff/stations (sc-3910)', () => {
     expect(screen.getByText('Section A · 6 tables')).toBeTruthy();
     expect(screen.getByText('Section B · 1 table')).toBeTruthy();
     expect(screen.getByText('Section C · No tables yet')).toBeTruthy();
-    expect(screen.getByText('2 people · Dishes 3 items')).toBeTruthy();
+    expect(screen.getByText('2 people · Serves 3 items')).toBeTruthy();
   });
 
-  it('offers places only for Dished at, the Pass first, and joins the walking order', async () => {
+  it('offers places only for Served from, the Pass first, and joins the walking order', async () => {
     await open('populated');
-    const select = screen.getByRole('combobox', { name: 'Dished at, Salad, Main' });
+    const select = screen.getByRole('combobox', { name: 'Served from, Salad, Main' });
     const options = within(select)
       .getAllByRole('option')
       .map((one) => one.textContent);
@@ -45,7 +45,7 @@ describe('/demo/events/evt-wed-4/staff/stations (sc-3910)', () => {
     expect(options.some((one) => one?.startsWith('Section'))).toBe(false);
     fireEvent.change(select, { target: { value: 'stage' } });
     expect(status()?.textContent).toBe(
-      'Salad is dished at Stage. Stage joins the walking order at stop 5.',
+      'Salad is served from Stage. Stage joins the walking order at stop 5.',
     );
     const walk = screen.getByRole('list', { name: 'Walking order' });
     expect(within(walk).getAllByRole('listitem').at(-1)?.textContent).toContain('Stage');
@@ -68,7 +68,7 @@ describe('/demo/events/evt-wed-4/staff/stations (sc-3910)', () => {
   it('reads a menu with no courses and a walking order of the Pass alone', async () => {
     await open('noCourses');
     expect(screen.getByText('This event’s menu has no courses yet.')).toBeTruthy();
-    expect(screen.getByText('Every item is dished at the Pass.')).toBeTruthy();
+    expect(screen.getByText('Every item is served from the Pass.')).toBeTruthy();
   });
 
   it('asks before removing a place and sends its items to the Pass', async () => {
@@ -81,7 +81,7 @@ describe('/demo/events/evt-wed-4/staff/stations (sc-3910)', () => {
     fireEvent.click(button('Remove Grill') as HTMLElement);
     expect(status()?.textContent).toBe('Grill removed. 2 people have no station now.');
     expect(
-      (screen.getByRole('combobox', { name: 'Dished at, Chicken, Main' }) as HTMLSelectElement)
+      (screen.getByRole('combobox', { name: 'Served from, Chicken, Main' }) as HTMLSelectElement)
         .value,
     ).toBe('pass');
   });

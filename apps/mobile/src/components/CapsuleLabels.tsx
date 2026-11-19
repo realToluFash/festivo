@@ -1,4 +1,4 @@
-import { type ReactNode, useState } from 'react';
+import { type ReactNode } from 'react';
 import { useWindowDimensions } from 'react-native';
 
 import {
@@ -7,7 +7,7 @@ import {
   capsuleRoom,
   pillGivesWay,
 } from '../layout/capsuleFit.ts';
-import { MeasuredWords } from './Title.tsx';
+import { useMeasuredAt } from './Title.tsx';
 
 export interface CapsuleLabels {
   /** The one size the capsule's labels are drawn at. */
@@ -21,9 +21,8 @@ export interface CapsuleLabels {
 /** The size an upright tablet's capsule draws `labels` at in a row `rowWidth` wide from the tile's edge to the bell's (sc-40401). */
 export function useCapsuleLabels(labels: readonly string[], rowWidth: number): CapsuleLabels {
   const { fontScale } = useWindowDimensions();
-  const [measured, setMeasured] = useState<Readonly<Record<string, number>>>({});
   const start = CAPSULE_LABEL * fontScale;
-  const widths = labels.map((label) => measured[`${start}|${label}`]);
+  const { widths, measure } = useMeasuredAt(start, labels);
   const total = widths.every((width) => width != null)
     ? widths.reduce<number>((sum, width) => sum + (width ?? 0), 0)
     : 0;
@@ -37,18 +36,7 @@ export function useCapsuleLabels(labels: readonly string[], rowWidth: number): C
   return {
     labelSize,
     givesWay: pillGivesWay(fontScale, labelSize),
-    measure: (
-      <MeasuredWords
-        words={labels}
-        size={start}
-        weight="semibold"
-        allowFontScaling={false}
-        onWidth={(label, width) => {
-          const key = `${start}|${label}`;
-          setMeasured((now) => (now[key] === width ? now : { ...now, [key]: width }));
-        }}
-      />
-    ),
+    measure,
   };
 }
 

@@ -86,7 +86,7 @@ export function SidebarSizeScreen({ start }: { start: SidebarSizeStart }) {
         style={styles.page}
         contentContainerStyle={[styles.pageBody, { paddingTop: insets.top + tokens.space3xl }]}
       >
-        <DemoOnly title="Stand-ins for the iPad’s own text size and language, and the page beside the sidebar. The sidebar is main’s 252 column at every size. Below the tenth step it draws as on main, except that a label whose widest word would break beside main’s glyph steps down alone, as Événements does at the ninth step in French. From the tenth each row grows to hold its words and each label steps down only where its widest word would break beside its glyph, never below its size on main. Each place opens here what it opens in the app; the organisation pill and the person open nothing in this board.">
+        <DemoOnly title="Stand-ins for the iPad’s own text size and language, and the page beside the sidebar. The sidebar is main’s 252 column at every size. Below the tenth step it draws as on main, except that a label whose widest word would break beside main’s glyph steps down alone, as Événements does at the ninth step in French, and from the ninth step a name main’s size would cut steps down until it fits its lines, as the organisation’s does. From the tenth each row grows to hold its words and each label steps down only where its widest word would break beside its glyph, never below its size on main. Each place opens here what it opens in the app; the organisation pill and the person open nothing in this board.">
           <Choices
             heading="Text size"
             options={SIDEBAR_SIZES}

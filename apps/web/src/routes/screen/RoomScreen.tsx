@@ -140,9 +140,9 @@ function RoomScreen({ token, asked }: { token: string; asked: string | null }) {
   if (load.kind === 'gone') return <NotFound />;
 
   return (
-    <main className="rs-room">
-      <div className="rs-stage">
-        <div className="rs-fill" data-testid="room-screen">
+    <main className="room-room">
+      <div className="room-stage">
+        <div className="room-fill" data-testid="room-screen">
           {load.kind === 'shown' && <Shown screen={load.screen} offline={load.offline} />}
           {!replaced && <FullScreen />}
         </div>
@@ -156,51 +156,51 @@ function Shown({ screen, offline }: { screen: Screen; offline: boolean }) {
 
   if (screen.kind === 'replaced')
     return (
-      <div className="rs-centre">
-        <p className="rs-said">{t('roomScreen.replaced')}</p>
+      <div className="room-centre">
+        <p className="room-said">{t('roomScreen.replaced')}</p>
       </div>
     );
   if (screen.kind === 'finished')
     return (
-      <div className="rs-centre">
-        <h1 className="rs-big">{t('roomScreen.thanks')}</h1>
-        <p className="rs-name">{screen.event}</p>
+      <div className="room-centre">
+        <h1 className="room-big">{t('roomScreen.thanks')}</h1>
+        <p className="room-name">{screen.event}</p>
       </div>
     );
   if (screen.kind === 'nothingLeft')
     return (
-      <div className="rs-centre">
-        <h1 className="rs-big">{screen.event}</h1>
+      <div className="room-centre">
+        <h1 className="room-big">{screen.event}</h1>
         {offline && <AsOf at={screen.at} />}
       </div>
     );
 
   return (
     <>
-      <h1 className="rs-name rs-event">{screen.event}</h1>
-      <div className={screen.now == null ? 'rs-body is-between' : 'rs-body'}>
+      <h1 className="room-name room-event">{screen.event}</h1>
+      <div className={screen.now == null ? 'room-body is-between' : 'room-body'}>
         {screen.now != null && (
-          <section className="rs-now" aria-labelledby="rs-now-h">
-            <h2 id="rs-now-h" className="rs-label">
+          <section className="room-now" aria-labelledby="room-now-h">
+            <h2 id="room-now-h" className="room-label">
               {t('roomScreen.now')}
             </h2>
-            <p key={screen.now.id} className="rs-big rs-change" dir="auto">
+            <p key={screen.now.id} className="room-big room-change" dir="auto">
               {screen.now.title}
             </p>
           </section>
         )}
         {screen.coming.length > 0 && (
-          <section className="rs-coming" aria-labelledby="rs-coming-h">
-            <h2 id="rs-coming-h" className="rs-label">
+          <section className="room-coming" aria-labelledby="room-coming-h">
+            <h2 id="room-coming-h" className="room-label">
               {t('roomScreen.comingUp')}
             </h2>
-            <ol className="rs-list">
+            <ol className="room-list">
               {screen.coming.map((one) => (
-                <li key={one.id} className="rs-item rs-change">
-                  <time className="rs-time" dateTime={one.startsAt}>
+                <li key={one.id} className="room-item room-change">
+                  <time className="room-time" dateTime={one.startsAt}>
                     {screenTime(one.startsAt, dateLocale())}
                   </time>
-                  <span className="rs-title" dir="auto">
+                  <span className="room-title" dir="auto">
                     {one.title}
                   </span>
                 </li>
@@ -218,8 +218,8 @@ function AsOf({ at }: { at: string }) {
   const { t } = useTranslation();
 
   return (
-    <p className="rs-asof" role="status">
-      <span className="rs-dot" aria-hidden="true" />
+    <p className="room-asof" role="status">
+      <span className="room-dot" aria-hidden="true" />
       {t('roomScreen.asOf', { time: screenTime(at, dateLocale()) })}
     </p>
   );
@@ -243,10 +243,10 @@ function FullScreen() {
   return (
     <button
       type="button"
-      className="rs-full"
+      className="room-full"
       onClick={() => void document.documentElement.requestFullscreen?.().catch(() => undefined)}
     >
-      <svg viewBox="0 0 24 24" aria-hidden="true" className="rs-full-icon">
+      <svg viewBox="0 0 24 24" aria-hidden="true" className="room-full-icon">
         <path d="M4 9V4h5M15 4h5v5M20 15v5h-5M9 20H4v-5" />
       </svg>
       {t('roomScreen.fullScreen')}

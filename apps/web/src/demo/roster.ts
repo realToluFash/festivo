@@ -435,6 +435,8 @@ export interface RosterStart {
   held: { id: string; url: string } | null;
   missed: string | null;
   replacing: string | null;
+  /** The words of a Shift cell with no shift: the product's French, to measure the longest at 400% zoom (sc-71607). */
+  noShift: string;
 }
 
 function start(o: Partial<RosterStart> & Pick<RosterStart, 'name' | 'note'>): RosterStart {
@@ -453,6 +455,7 @@ function start(o: Partial<RosterStart> & Pick<RosterStart, 'name' | 'note'>): Ro
     held: null,
     missed: null,
     replacing: null,
+    noShift: RW.noShift,
     ...o,
   };
 }
@@ -622,6 +625,19 @@ const STATES = {
       panel: { kind: 'edit', id: 'kunle' },
       draft: { ...draftOf(byId('kunle')), number: '', email: '' },
     }),
+  nobodyOnShift: () =>
+    start({
+      name: 'Nobody on a shift yet',
+      note: 'Before shifts are handed out: every Shift cell reads Not on a shift yet, on one line at 400% zoom.',
+      entries: sample().map((one) => ({ ...one, shift: null, more: [] })),
+    }),
+  nobodyOnShiftFrench: () =>
+    start({
+      name: 'Nobody on a shift yet, the French words',
+      note: 'Each Shift cell holds the product’s French, Aucun service pour l’instant, still on one line at 400% zoom.',
+      entries: sample().map((one) => ({ ...one, shift: null, more: [] })),
+      noShift: 'Aucun service pour l’instant',
+    }),
   sectionRemoved: () =>
     start({
       name: 'A section removed from the seating plan',
@@ -741,6 +757,8 @@ export const ROSTER_PAGES: readonly { name: string; states: readonly DemoLink[] 
       [
         'populated',
         'empty',
+        'nobodyOnShift',
+        'nobodyOnShiftFrench',
         'details',
         'detailsShifts',
         'sectionRemoved',

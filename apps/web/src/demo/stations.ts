@@ -2,7 +2,7 @@ import { type Course, courseItems, servedCourses } from './menuServed.ts';
 import { andList } from './queue.ts';
 import type { DemoLink } from './settings.ts';
 
-/** Stations on the event's Staff page (sc-3910, Stations-Desktop.dc.html on page e34): places and sections, who is on each, what each place dishes, and the walking order. */
+/** Stations on the event's Staff page (sc-3910, Stations-Desktop.dc.html on page e34): places and sections, who is on each, what each place serves, and the walking order. */
 export const STATIONS_EVENT = 'evt-wed-4';
 export const PASS = 'pass';
 export const NAME_MAX = 60;
@@ -56,17 +56,17 @@ export const SW = {
     'From the seating plan, in its order. A table moved to another section takes its waiters with it.',
   sectionsFoot: 'Sections are added, renamed and removed in the seating plan.',
   noSections: 'No sections yet. Once the seating plan has sections, each one appears here.',
-  dishes: 'What each station dishes',
+  dishes: 'What each station serves',
   dishesSub:
-    'Each course’s items, as the menu lists them. An item with no station is dished at the Pass.',
-  dishedAt: 'Dished at',
+    'Each course’s items, as the menu lists them. An item with no station is served from the Pass.',
+  dishedAt: 'Served from',
   noDishes: 'No dishes on this course yet.',
   noCourses: 'This event’s menu has no courses yet.',
   walk: 'Walking order',
   walkSub:
     'The order a waiter walks the kitchen stations from the Pass, the same for every course.',
   walkPass: 'Every tray starts here',
-  walkEmpty: 'Every item is dished at the Pass.',
+  walkEmpty: 'Every item is served from the Pass.',
   walkFoot: 'A place joins the end when it gets its first item, and leaves when it loses its last.',
   noStation: 'No station',
   everyone: 'Everybody on tonight’s roster has a station.',
@@ -99,7 +99,7 @@ export const SW = {
   cancel: 'Cancel',
   name: 'Name',
   nameHelp: 'At most 60 characters. Each station on this event has its own name.',
-  addNote: 'It starts with nobody on it and dishes nothing.',
+  addNote: 'It starts with nobody on it and serves nothing.',
   renameNote: 'The new name shows on the roster, on each person’s shift and on every tray.',
   addCta: 'Add place',
   saveName: 'Save name',
@@ -175,9 +175,9 @@ export function itemsAt(state: Stations, placeId: string): number {
   );
 }
 
-/** A place's row says how many items it dishes, and nothing when it dishes none. */
+/** A place's row says how many items it serves, and nothing when it serves none. */
 export function dishesLine(n: number): string | null {
-  return n === 0 ? null : `Dishes ${stationsWord(n, 'item', 'items')}`;
+  return n === 0 ? null : `Serves ${stationsWord(n, 'item', 'items')}`;
 }
 
 export function stopLine(name: string, to: number, of: number): string {
@@ -207,7 +207,7 @@ export function setDishedAt(
   const joins = placeId !== PASS && !kept.includes(placeId);
   const walk = joins ? [...kept, placeId] : kept;
   const name = stationById(state, placeId)?.name ?? '';
-  const words = [`${item} is dished at ${name}.`];
+  const words = [`${item} is served from ${name}.`];
   if (joins) words.push(`${name} joins the walking order at stop ${walk.length + 1}.`);
   if (before !== PASS && !walk.includes(before))
     words.push(`${stationById(state, before)?.name ?? ''} leaves the walking order.`);
@@ -579,7 +579,7 @@ const STATES = {
   allPass: () =>
     start({
       name: 'Every item at the Pass',
-      note: 'A new menu: each Dished at reads Pass, and no place says it dishes anything.',
+      note: 'A new menu: each Served from reads Pass, and no place says it serves anything.',
       state: allAtPass(),
       scroll: 'dishes',
     }),
@@ -607,7 +607,7 @@ const STATES = {
   walkEmpty: () =>
     start({
       name: 'Walking order, the Pass alone',
-      note: 'With no kitchen station but the Pass, the walking order says every item is dished there.',
+      note: 'With no kitchen station but the Pass, the walking order says every item is served from there.',
       state: allAtPass(),
       scroll: 'walk',
     }),
@@ -626,7 +626,7 @@ const STATES = {
       asking: 'grill',
     }),
   removePeople: () =>
-    start({ name: 'Remove a place with people only', note: 'Bar dishes nothing.', asking: 'bar' }),
+    start({ name: 'Remove a place with people only', note: 'Bar serves nothing.', asking: 'bar' }),
   removeItems: () =>
     start({
       name: 'Remove a place with items only',
@@ -636,7 +636,7 @@ const STATES = {
   removeEmpty: () =>
     start({
       name: 'Remove a place with neither',
-      note: 'Nobody on Stage and nothing dished there: still asked first.',
+      note: 'Nobody on Stage and nothing served from there: still asked first.',
       asking: 'stage',
     }),
   readOnly: () =>
@@ -734,7 +734,7 @@ export const STATIONS_PAGES: readonly { name: string; states: readonly DemoLink[
     states: (['tonight', 'tonightPeople'] as const).map(link),
   },
   {
-    name: 'What each station dishes, and the walking order',
+    name: 'What each station serves, and the walking order',
     states: (['allPass', 'courseEmpty', 'noCourses', 'walkEmpty', 'moved'] as const).map(link),
   },
   {
