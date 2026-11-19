@@ -2346,6 +2346,11 @@
       "can_check_in": "Registra la llegada de los invitados el día del evento. Solo los nombres, sin datos de contacto."
     },
     "memberOf": "Miembro de {{organisation}}",
+    "fromOutside": "From outside {{organisation}}",
+    "outsideTag": "Outside {{organisation}}",
+    "leadOff": "For members of {{organisation}} only.",
+    "outsideEnds": "Their access ends when the event does.",
+    "notJoined": "Not joined yet",
     "roleFor": "Rol de {{name}} en este evento",
     "roleTitle": "Rol en este evento",
     "saving": "Guardando…",
@@ -2356,6 +2361,7 @@
     "remove": "Quitar de este evento…",
     "removeTitle": "¿Quitar a {{name}} de este evento?",
     "removeLine": "Esta persona perderá el acceso a este evento en su próxima acción. Seguirá en {{organisation}}.",
+    "removeLineOutside": "Their access ends on their next request.",
     "keep": "Mantener a {{name}}",
     "removeConfirm": "Quitar",
     "removing": "Quitando…",
@@ -2364,8 +2370,14 @@
     "addTitle": "Añadir personas",
     "theirRole": "Rol en el evento",
     "find": "Nombre",
+    "findAnyone": "Name, email or mobile number",
     "inOrganisation": "En {{organisation}}",
     "noMatch": "Nadie en {{organisation}} coincide con «{{typed}}».",
+    "unusable": "That isn’t an email address or a mobile number we can use.",
+    "onAlready": "{{name}} is on this event already.",
+    "pickAnother": "Pick another role to add someone from outside.",
+    "jobLabel": "Job label (optional)",
+    "jobHelp": "What they’re there for, shown beside their name. It grants nothing. {{length, number}} of {{most, number}}.",
     "everyoneOn": "Todas las personas de {{organisation}} ya están en este evento.",
     "cancel": "Cancelar",
     "addConfirm": "Añadir",
@@ -3044,5 +3056,12 @@
     "failed": "No se ha podido crear el archivo, así que no se ha compartido nada. Inténtelo de nuevo.",
     "needsConnection": "Para exportar se necesita conexión",
     "dropped": "Para exportar se necesita conexión. No se ha exportado nada."
+  },
+  "outsideEvent": {
+    "until": "until {{when}}",
+    "guestsLine": "Names and replies only, no contact details",
+    "onEvent_one": "{{count, number}} person on this event",
+    "onEvent_other": "{{count, number}} people on this event",
+    "onEvent_many": "{{count, number}} people on this event"
   }
 }

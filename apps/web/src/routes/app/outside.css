@@ -1,0 +1,20 @@
+.outside-person {
+  position: relative;
+}
+
+.outside-menu {
+  inset: auto auto calc(100% + var(--spaceXxs)) 0;
+  width: 100%;
+}
+
+.outside-lead {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: var(--colorInset);
+  color: var(--colorInkSecondary);
+}
