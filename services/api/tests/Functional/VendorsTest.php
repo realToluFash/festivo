@@ -223,7 +223,7 @@ final class VendorsTest extends ApiTestCase
 
         self::assertSame('https://soirely.com/errors/conflict', $refused['type']);
         self::assertSame('This vendor is archived, so your changes were not saved. To edit it, restore it under Archived.', $refused['detail']);
-        self::assertSame([$archived], Type\vec(Type\mixed())->coerce($this->list('?view=archived')['vendors']));
+        self::assertSame([[...$archived, 'events' => 0]], Type\vec(Type\mixed())->coerce($this->list('?view=archived')['vendors']));
 
         $this->send('POST', "/{$id}/restore");
         $edited = Type\dict(Type\string(), Type\mixed())->coerce($this->send('PUT', "/{$id}", $change)['vendor']);
