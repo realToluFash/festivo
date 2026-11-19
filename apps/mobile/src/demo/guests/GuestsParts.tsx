@@ -389,6 +389,8 @@ export function GuestsTitle({
   const [room, setRoom] = useState(0);
   const [extraWidth, setExtraWidth] = useState(0);
   const [titleWidth, setTitleWidth] = useState(0);
+  // The title steps down from its slot's width rather than from a wrap it must first see; beside Export on Android it drew at its start and broke (sc-68417).
+  const [slot, setSlot] = useState(0);
   const under = actionsUnder({
     room,
     title: titleWidth,
@@ -401,9 +403,21 @@ export function GuestsTitle({
   const widthOf = (set: (width: number) => void) => (event: LayoutChangeEvent) =>
     set(Math.ceil(event.nativeEvent.layout.width));
   const heading = (
-    <View style={styles.grow} onLayout={label.onSlot}>
+    <View
+      style={styles.grow}
+      onLayout={(event) => {
+        label.onSlot(event);
+        setSlot(Math.floor(event.nativeEvent.layout.width));
+      }}
+    >
       {label.measure}
-      <BodyTitle size={size} accessibilityRole="header" style={titleStyle} testID="guests.title">
+      <BodyTitle
+        size={size}
+        accessibilityRole="header"
+        style={titleStyle}
+        room={slot}
+        testID="guests.title"
+      >
         {title}
       </BodyTitle>
     </View>
