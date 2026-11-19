@@ -1,10 +1,11 @@
-import { fireEvent, render, screen, within } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { RouterProvider, createMemoryRouter } from 'react-router';
 import { beforeEach, describe, expect, it } from 'vitest';
 
 import { __setConfig, config } from '../config.ts';
 import { routes } from '../routes/index.tsx';
 import { resetSample } from './events.ts';
+import { SAMPLE } from './rules.ts';
 import { startSwitcher } from './switcher.ts';
 
 const tested = config();
@@ -18,6 +19,10 @@ function open(path: string) {
   render(<RouterProvider router={router} />);
 
   return router;
+}
+
+function landed(router: ReturnType<typeof open>): string {
+  return `${router.state.location.pathname}${router.state.location.search}`;
 }
 
 function banner(): HTMLElement {
@@ -102,6 +107,42 @@ describe('an account its home organisation manages, outside Settings (sc-563)', 
       expect(screen.getByRole('button', { name: 'Save and continue' })).toBeDefined();
     },
   );
+
+  it(
+    'ends a managed sign-up with nothing to join at You are not in an organisation, with no number',
+    SLOW,
+    async () => {
+      const router = open('/demo/ways-in?page=details&state=managedNone');
+      await screen.findByRole('heading', { level: 1, name: 'A few details' }, WAIT);
+
+      fireEvent.click(screen.getByRole('button', { name: 'Save and continue' }));
+
+      await waitFor(() => expect(landed(router)).toBe('/demo/today?orgs=none'), WAIT);
+    },
+  );
+
+  it('ends it there after the number too, verified or carried on without', SLOW, async () => {
+    const router = open('/demo/ways-in?page=details&state=managedNone');
+    await screen.findByRole('heading', { level: 1, name: 'A few details' }, WAIT);
+
+    fireEvent.change(screen.getByLabelText('Mobile number'), {
+      target: { value: SAMPLE.number },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Save and continue' }));
+    await screen.findByRole('heading', { name: 'Check your messages' }, WAIT);
+
+    expect(screen.getByRole('link', { name: 'Carry on without it' }).getAttribute('href')).toBe(
+      '/demo/today?orgs=none',
+    );
+
+    fireEvent.change(screen.getByLabelText('Code from WhatsApp'), {
+      target: { value: SAMPLE.code },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Verify number' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Continue to Soirely' }, WAIT));
+
+    await waitFor(() => expect(landed(router)).toBe('/demo/today?orgs=none'), WAIT);
+  });
 
   it(
     'says under Priya’s card that she is also a member of 2 other organisations, no names',

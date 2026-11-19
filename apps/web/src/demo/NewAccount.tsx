@@ -36,7 +36,13 @@ import {
 } from './rules.ts';
 
 /** What one page hands the next: who is signing up, and the number being checked. */
-export type Flow = { name: string; email: string; phone: string };
+export type Flow = {
+  name: string;
+  email: string;
+  phone: string;
+  /** Where the sign-up ends: a managed account with nothing to join has no organisation (sc-563). */
+  landing?: string;
+};
 
 const SAMPLE_FLOW: Flow = {
   name: SAMPLE.name,
@@ -328,7 +334,7 @@ function PhoneCode({ state, flow }: { state: string; flow: Flow }) {
           title="Number verified"
           body={`Soirely can reach you on ${flow.phone} if something goes wrong on the day.`}
           action="Continue to Soirely"
-          onContinue={() => void navigate('/demo/today')}
+          onContinue={() => void navigate(flow.landing ?? '/demo/today')}
         />
       </BoardPage>
     );
@@ -375,7 +381,7 @@ function PhoneCode({ state, flow }: { state: string; flow: Flow }) {
         </p>
         <p className="demo-aside">
           <span>Can’t get texts on this number?</span>
-          <Link className="link-button demo-link" to="/demo/today">
+          <Link className="link-button demo-link" to={flow.landing ?? '/demo/today'}>
             Carry on without it
           </Link>
         </p>
@@ -462,6 +468,9 @@ export type Offer = 'company' | 'invitation';
 
 const DOMAIN = SAMPLE.email.split('@')[1] ?? '';
 
+/** sc-68's "You are not in an organisation", where a managed sign-up with nothing to join ends. */
+const NO_ORGANISATION = '/demo/today?orgs=none';
+
 export function Details({
   state,
   flow,
@@ -545,14 +554,15 @@ export function Details({
       return;
     }
 
+    const landing = managed ? NO_ORGANISATION : undefined;
     after(() => {
       if (number.trim() === '') {
-        void navigate('/demo/today');
+        void navigate(landing ?? '/demo/today');
         return;
       }
 
       void navigate(at('phone'), {
-        state: { ...flow, name, phone: fullNumber(number, phone.code) },
+        state: { ...flow, name, phone: fullNumber(number, phone.code), landing },
       });
     });
   }
