@@ -3066,13 +3066,13 @@
     "onEvent_one": "{{count, number}} personne sur cet événement",
     "onEvent_other": "{{count, number}} personnes sur cet événement",
     "onEvent_many": "{{count, number}} de personnes sur cet événement",
-    "yourEvents": "Your events",
-    "fromOutside": "Events from outside",
-    "yourOrganisations": "Your organisations",
-    "underWay": "Under way",
-    "here": "You’re here",
-    "backTo": "Back to {{name}}",
-    "continue": "Continue"
+    "yourEvents": "Vos événements",
+    "fromOutside": "Événements externes",
+    "yourOrganisations": "Vos organisations",
+    "underWay": "En cours",
+    "here": "Vous êtes ici",
+    "backTo": "Retour à {{name}}",
+    "continue": "Continuer"
   },
   "dataAndControl": {
     "title": "Data and control",
