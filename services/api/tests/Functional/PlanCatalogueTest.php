@@ -238,6 +238,15 @@ final class PlanCatalogueTest extends FunctionalTestCase
     }
 
     #[Test]
+    public function theNoticeNamesTheNextRiseWhenTwoArePending(): void
+    {
+        $this->publishUnitCosts('2026-12-01', ['sms_per_segment', 'GB'], 10);
+        $this->publishUnitCosts('2026-12-08', ['sms_per_segment', 'GB'], 11);
+
+        self::assertSame('2026-12-01', $this->catalogue->upcomingUnitCosts()?->name);
+    }
+
+    #[Test]
     public function aMomentBeforeTheFirstVersionIsAnsweredByIt(): void
     {
         self::assertSame('2026-10-19', $this->catalogue->unitCosts(new DateTimeImmutable('2020-01-01'))->name);

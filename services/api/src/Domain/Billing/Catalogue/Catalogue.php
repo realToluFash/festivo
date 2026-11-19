@@ -65,13 +65,13 @@ final class Catalogue
         return $this->costs($versionId->toRfc4122());
     }
 
-    /** A published rise not yet in force, for the notice on Plan and billing (sc-3934). */
+    /** The next published rise not yet in force, for the notice on Plan and billing (sc-3934). */
     public function upcomingUnitCosts(): ?UnitCosts
     {
         $now = $this->clock->now()->getTimestamp();
         $later = Vec\filter($this->versions(), static fn (array $version): bool => CataloguePart::UnitCosts->value === $version['part'] && $version['effectiveFrom'] > $now);
 
-        $next = Iter\last($later);
+        $next = Iter\first($later);
 
         return null === $next ? null : $this->costs($next['id']);
     }
