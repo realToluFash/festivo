@@ -4,7 +4,7 @@ appId: host.exp.Exponent
 - openLink: ${METRO_URL}/--/settings/data-and-control/email-domains
 - extendedWaitUntil:
     visible:
-      id: emailDomains.prove
+      id: emailDomains.card
     timeout: 20000
 - scrollUntilVisible:
     element:
@@ -14,7 +14,7 @@ appId: host.exp.Exponent
     id: emailDomains.${DOMAIN}.remove
 - extendedWaitUntil:
     visible:
-      text: '.+'
+      id: emailDomains.remove.confirm
     timeout: 20000
 - waitForAnimationToEnd:
     timeout: 8000

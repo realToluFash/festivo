@@ -13,8 +13,7 @@ appId: host.exp.Exponent
 - waitForAnimationToEnd:
     timeout: 8000
 - takeScreenshot: sc70819-hub
-- scrollUntilVisible:
-    element:
-      id: dataAndControl.emailDomains
-    direction: DOWN
+- scroll
+- waitForAnimationToEnd:
+    timeout: 8000
 - takeScreenshot: sc70819-hub-foot

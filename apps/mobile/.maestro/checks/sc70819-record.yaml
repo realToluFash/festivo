@@ -10,7 +10,7 @@ appId: host.exp.Exponent
     id: emailDomains.${DOMAIN}
 - extendedWaitUntil:
     visible:
-      text: '.+'
+      id: emailDomains.record.verify
     timeout: 20000
 - waitForAnimationToEnd:
     timeout: 8000
