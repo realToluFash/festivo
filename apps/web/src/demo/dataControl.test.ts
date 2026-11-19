@@ -155,7 +155,7 @@ describe('Data and control, the hub (sc-560, enterprise-b-spec §4)', () => {
     ]);
     expect(locked.control[0]?.line).toBe('Prove your domain and limit its accounts to Ire Events');
     expect(left.control[0]).toMatchObject({
-      line: 'ire.events kept as it was',
+      line: 'ire.events kept as it was · ireevents.com kept as it was',
       state: 'ed_downgraded',
     });
     expect(left.data[1]?.line).toBe('90 days and 1 held event, kept as they were');

@@ -105,16 +105,15 @@ export function wordsIn(texts: readonly string[]): string[] {
 
 /** Every distinct piece a line may wrap between: each word, split after a hyphen it already has, the hyphen kept on the first part (sc-69816). */
 export function piecesIn(texts: readonly string[]): string[] {
-  return [
-    ...new Set(
-      wordsIn(texts).flatMap((word) =>
-        word
-          .replace(/([-\u2010])/gu, '$1\n')
-          .split('\n')
-          .filter((piece) => piece !== ''),
-      ),
-    ),
-  ];
+  return [...new Set(wordsIn(texts).flatMap(piecesOf))];
+}
+
+/** A word's pieces in order, repeats kept. */
+export function piecesOf(word: string): string[] {
+  return word
+    .replace(/([-\u2010])/gu, '$1\n')
+    .split('\n')
+    .filter((piece) => piece !== '');
 }
 
 /** The one size for labels whose widest word, drawn at `start`, measures `widest` in a slot `slot` wide: `start` when it fits, never below `size`. */

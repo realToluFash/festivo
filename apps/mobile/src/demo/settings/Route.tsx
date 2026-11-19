@@ -31,6 +31,7 @@ import { SecuritySection } from './Security.tsx';
 import { heldOf } from './Held.tsx';
 import { SettingsColumn, SettingsHome, sectionsFor } from './SettingsHome.tsx';
 import { SignInRulesSection } from './SignInRules.tsx';
+import { SingleSignOnSection } from './SingleSignOn.tsx';
 import {
   layoutOf,
   type Shell,
@@ -81,9 +82,11 @@ export function settingsHref(viewer: Viewer, section: ShellSection | null, state
 export function SettingsRoute({
   section,
   data = null,
+  sso = false,
 }: {
   section: ShellSection | null;
   data?: DataPage | null;
+  sso?: boolean;
 }) {
   const params = useLocalSearchParams<{
     as?: string;
@@ -154,7 +157,14 @@ export function SettingsRoute({
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [layout, viewer, shown, openSection, toSettings, tell, onTab, handlers, bold, saved],
   );
-  const Page = dataShown != null ? DATA_PAGES[dataShown] : shown == null ? null : PAGES[shown];
+  const Page =
+    dataShown != null
+      ? DATA_PAGES[dataShown]
+      : shown == null
+        ? null
+        : sso && shown === 'signInRules'
+          ? SingleSignOnSection
+          : PAGES[shown];
   const home = <SettingsHome {...handlers} held={heldOf(params.held)} />;
 
   return (

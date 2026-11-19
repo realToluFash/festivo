@@ -1,5 +1,5 @@
 import { tokens } from '../theme/tokens.ts';
-import { SIDEBAR_WIDTH, besideGlyph, fitWidest } from './textSize.ts';
+import { SIDEBAR_WIDTH, besideGlyph, fitWidest, piecesOf } from './textSize.ts';
 
 const LARGEST_SCALE = 2.4;
 
@@ -62,10 +62,28 @@ export interface Measured {
 export interface Widths {
   words: readonly Measured[];
   whole: Measured;
+  /** Each word in its order, as the pieces a line may break between, and the space between two words, all at the start size. */
+  wrap?: { pieces: readonly (readonly number[])[]; space: number };
 }
 
 export function lettersIn(text: string): number {
   return Array.from(text).length;
+}
+
+/** A text's words in order as their measured pieces, and the space between two words: what the whole measures beyond its words, spread over the gaps. */
+export function wrapOf(
+  text: string,
+  widths: Readonly<Record<string, number>>,
+  whole: number,
+): NonNullable<Widths['wrap']> {
+  const words = text.split(/\s+/u).filter((word) => word !== '');
+  const width = (piece: string) => widths[piece] ?? 0;
+  const gaps = Math.max(1, words.length - 1);
+
+  return {
+    pieces: words.map((word) => piecesOf(word).map(width)),
+    space: Math.max(0, whole - words.reduce((sum, word) => sum + width(word), 0)) / gaps,
+  };
 }
 
 /** A label, a name kept to one line, or a name over two lines. */
@@ -89,7 +107,7 @@ export function sideTextSize(
   const texts = fit === 'line' ? (widths == null ? [] : [widths.whole]) : (widths?.words ?? []);
   if (texts.length === 0 || (scale <= 1 && fit !== 'label')) return start;
 
-  return Math.min(
+  const widest = Math.min(
     ...texts.map(({ width, letters }) => {
       const inside = room.inside - letters * (room.tracking ?? 0);
 
@@ -98,6 +116,39 @@ export function sideTextSize(
         : fitWidest(room.size, start, width, inside - room.glyph);
     }),
   );
+  const wrap = fit === 'lines' ? widths?.wrap : undefined;
+
+  return wrap == null ? widest : Math.min(widest, inTwoLines(room, start, wrap));
+}
+
+function linesAt(
+  inside: number,
+  { pieces, space }: NonNullable<Widths['wrap']>,
+  shrink: number,
+): number {
+  let lines = 0;
+  let line = Infinity;
+  pieces.forEach((word) =>
+    word.forEach((piece, at) => {
+      const gap = at === 0 ? space : 0;
+      if (line + (gap + piece) * shrink < inside - 0.5) line += (gap + piece) * shrink;
+      else {
+        lines += 1;
+        line = piece * shrink;
+      }
+    }),
+  );
+
+  return lines;
+}
+
+/** The largest whole size from `start` down at which the words, broken after a space or a hyphen, take two lines; never below the room's size. */
+function inTwoLines(room: SideRoom, start: number, wrap: NonNullable<Widths['wrap']>): number {
+  const fits = (size: number) => linesAt(room.inside - room.glyph, wrap, size / start) <= 2;
+  if (fits(start)) return start;
+  for (let size = Math.floor(start); size > room.size; size -= 1) if (fits(size)) return size;
+
+  return room.size;
 }
 
 export function glyphSide(room: SideRoom, scale: number, drawn: number): number {

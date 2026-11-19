@@ -3,6 +3,7 @@ import type { Load } from './members.ts';
 import type { Mark } from '../components/SignInRulesParts.tsx';
 import type { Choice } from '../components/SettingsParts.tsx';
 import { HELD_STEPS, type HeldStep } from './security.ts';
+import { EXEMPT_LINE, type Plan, type Standing, standingOfRules } from './singleSignOn.ts';
 import { type DemoLink, type Viewer, VIEWERS, settingsPath } from './settings.ts';
 
 export const ORGANISATION = 'Ire Events';
@@ -57,6 +58,7 @@ export interface RulesPage extends Rules {
   withoutTwoFactor: People;
   seen: string | null;
   changes: readonly Change[];
+  sso: Standing;
 }
 
 /** Who a rule leaves short: named up to three, counted past that (sc-18317). */
@@ -93,6 +95,7 @@ export interface RuleRow {
   title: string;
   line: string;
   more?: string;
+  exempt?: string;
   ask: { consequence: string; step: HeldStep } | null;
 }
 
@@ -185,10 +188,12 @@ function twoFactor(page: RulesPage, role: Role, locale: string, thisYear: number
   if (page.everyoneNeedsTwoFactor) {
     const by = dayIn(page.twoFactorDeadline, locale, thisYear, true);
     const without = page.withoutTwoFactor.count;
+    const exempt = page.sso === 'on' || page.sso === 'required' ? { exempt: EXEMPT_LINE } : {};
     const more =
       without === 0
-        ? {}
+        ? exempt
         : {
+            ...exempt,
             more:
               without === 1
                 ? `1 person doesn’t have two-factor yet. They see a banner until their deadline, then can’t open anything in ${ORGANISATION} until they turn it on.`
@@ -197,12 +202,15 @@ function twoFactor(page: RulesPage, role: Role, locale: string, thisYear: number
 
     return on
       ? { ...row('met', 'Two-factor for everyone', 'Yours is on.'), ...more }
-      : row(
-          'needs',
-          'Two-factor for everyone',
-          `Not on yet. Turn it on by ${by}.`,
-          `Turn it on by ${by}, or you can’t open ${ORGANISATION} after that.`,
-        );
+      : {
+          ...row(
+            'needs',
+            'Two-factor for everyone',
+            `Not on yet. Turn it on by ${by}.`,
+            `Turn it on by ${by}, or you can’t open ${ORGANISATION} after that.`,
+          ),
+          ...exempt,
+        };
   }
   if (page.administratorsNeedTwoFactor) {
     if (role === 'Member')
@@ -587,6 +595,7 @@ const RULES: RulesPage = {
   withoutTwoFactor: named(),
   seen: '2026-10-28T15:12',
   changes: CHANGES,
+  sso: 'none',
 };
 
 const ONLY_HERE = { organisation: ORGANISATION, days: 30 };
@@ -633,10 +642,16 @@ export interface SignInRulesStart {
 }
 
 /** `now` is the reader's wall clock, for a change saved today. */
-export function signInRulesStart(state: string, by: string, now: string): SignInRulesStart {
+export function signInRulesStart(
+  state: string,
+  by: string,
+  now: string,
+  plan: Plan = 'enterprise',
+): SignInRulesStart {
+  const sso = plan === 'free' ? 'free' : standingOfRules(state);
   const start = (page: Partial<RulesPage> = {}, edit: Edit | null = null): SignInRulesStart => ({
     load: 'loaded',
-    page: { ...RULES, ...page },
+    page: { ...RULES, sso, ...page },
     edit,
   });
   const edit = (key: RuleKey, picked: string, ask = false): Edit => ({ key, picked, ask });
@@ -685,6 +700,8 @@ export function signInRulesStart(state: string, by: string, now: string): SignIn
       return start({}, { ...edit('limit', '7 days'), saving: true });
     case 'limitSaveFailed':
       return start({}, { ...edit('limit', '7 days'), failed: true });
+    case 'everyoneSso':
+      return start({ everyoneNeedsTwoFactor: true, changes: [EVERYONE, ...CHANGES] });
     case 'everyoneWithout':
       return start({
         everyoneNeedsTwoFactor: true,
