@@ -6,8 +6,9 @@ import {
   lettersIn,
   sideStart,
   sideTextSize,
+  wrapOf,
 } from '../layout/sidebarSize.ts';
-import { piecesIn, piecesOf, wordsIn } from '../layout/textSize.ts';
+import { piecesIn, wordsIn } from '../layout/textSize.ts';
 import type { WeightName } from '../theme/fonts.ts';
 import { TitleCap } from './Text.tsx';
 import { MeasuredWords } from './Title.tsx';
@@ -23,7 +24,6 @@ export function useSideFit(
   const cap = useContext(TitleCap);
   const start = sideStart(room, scale, cap);
   const words = wordsIn([text]);
-  const inOrder = fit === 'lines' ? text.split(/\s+/u).filter((word) => word !== '') : [];
   const pieces = fit === 'lines' ? piecesIn([text]) : [];
   const key = `${start}|${weight}|${text}`;
   const [measured, setMeasured] = useState<{ key: string; widths: Record<string, number> }>({
@@ -33,8 +33,6 @@ export function useSideFit(
   const widths = measured.key === key ? measured.widths : {};
   const whole = widths[`\n${text}`];
   const known = whole != null && [...words, ...pieces].every((piece) => widths[piece] != null);
-  const width = (piece: string) => widths[piece] ?? 0;
-  const spaces = Math.max(1, inOrder.length - 1);
   const size = sideTextSize(
     room,
     scale,
@@ -42,11 +40,7 @@ export function useSideFit(
       ? {
           words: words.map((word) => ({ width: widths[word] ?? 0, letters: lettersIn(word) })),
           whole: { width: whole, letters: lettersIn(text) },
-          wrap: {
-            pieces: inOrder.map((word) => piecesOf(word).map(width)),
-            space:
-              Math.max(0, whole - inOrder.reduce((sum, word) => sum + width(word), 0)) / spaces,
-          },
+          ...(fit === 'lines' ? { wrap: wrapOf(text, widths, whole) } : {}),
         }
       : null,
     fit,

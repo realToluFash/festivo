@@ -1,5 +1,5 @@
 import { tokens } from '../theme/tokens.ts';
-import { SIDEBAR_WIDTH, besideGlyph, fitWidest } from './textSize.ts';
+import { SIDEBAR_WIDTH, besideGlyph, fitWidest, piecesOf } from './textSize.ts';
 
 const LARGEST_SCALE = 2.4;
 
@@ -70,6 +70,22 @@ export function lettersIn(text: string): number {
   return Array.from(text).length;
 }
 
+/** A text's words in order as their measured pieces, and the space between two words: what the whole measures beyond its words, spread over the gaps. */
+export function wrapOf(
+  text: string,
+  widths: Readonly<Record<string, number>>,
+  whole: number,
+): NonNullable<Widths['wrap']> {
+  const words = text.split(/\s+/u).filter((word) => word !== '');
+  const width = (piece: string) => widths[piece] ?? 0;
+  const gaps = Math.max(1, words.length - 1);
+
+  return {
+    pieces: words.map((word) => piecesOf(word).map(width)),
+    space: Math.max(0, whole - words.reduce((sum, word) => sum + width(word), 0)) / gaps,
+  };
+}
+
 /** A label, a name kept to one line, or a name over two lines. */
 export type SideFit = 'label' | 'line' | 'lines';
 
@@ -115,7 +131,7 @@ function linesAt(
   pieces.forEach((word) =>
     word.forEach((piece, at) => {
       const gap = at === 0 ? space : 0;
-      if (line + (gap + piece) * shrink <= inside) line += (gap + piece) * shrink;
+      if (line + (gap + piece) * shrink < inside - 0.5) line += (gap + piece) * shrink;
       else {
         lines += 1;
         line = piece * shrink;

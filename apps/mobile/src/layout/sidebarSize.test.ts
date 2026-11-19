@@ -9,6 +9,7 @@ import {
   rowPad,
   sideStart,
   sideTextSize,
+  wrapOf,
 } from './sidebarSize.ts';
 
 // React Native's fontScale on iOS at the fifth through the tenth and the twelfth steps of Larger Text.
@@ -101,6 +102,27 @@ describe('the sidebar at the largest text sizes', () => {
     const widths = inWords([[piece], [piece, piece, piece], [piece]], 0);
 
     expect(sideTextSize(ROOMS.cardName, EIGHTH, widths, 'lines')).toBe(14 * EIGHTH);
+  });
+
+  it('wraps a measured name as its words in order, broken after their hyphens, with the space left over spread between them', () => {
+    const widths = {
+      Ire: 20,
+      Events: 45,
+      'end-of-year': 70,
+      'end-': 28,
+      'of-': 16,
+      year: 26,
+      party: 35,
+    };
+
+    expect(wrapOf('Ire Events end-of-year party', widths, 182)).toEqual({
+      pieces: [[20], [45], [28, 16, 26], [35]],
+      space: 4,
+    });
+  });
+
+  it('gives a one-word name no space', () => {
+    expect(wrapOf('Gala', { Gala: 30 }, 30)).toEqual({ pieces: [[30]], space: 0 });
   });
 
   it('draws a two-line name at the default size when it still runs past two lines there', () => {
