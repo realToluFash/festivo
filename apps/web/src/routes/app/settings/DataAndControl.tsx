@@ -27,7 +27,7 @@ import { focusWhenFree, useDeskLayers } from '../../../layers.ts';
 import { can, useSession } from '../../../session.ts';
 import { Forbidden } from '../Forbidden.tsx';
 import { AUDIT_LOG } from './AuditLog.tsx';
-import { domainsRow, soonestAsk } from './emailDomains.ts';
+import { domainsRow, hubCard } from './emailDomains.ts';
 import { EMAIL_DOMAINS } from './EmailDomains.tsx';
 import { exportRow, saveArchive } from './exportAllData.ts';
 import { DATA_AND_CONTROL } from './ExportAllData.tsx';
@@ -102,7 +102,7 @@ function Loaded({
   const row = exportRow(t, page, organisation.name);
   const domainsLine = domainsRow(t, domains);
   const exported = page.export;
-  const ask = soonestAsk(t, page, domains);
+  const ask = hubCard(t, page, domains, organisation.name);
 
   async function download(exportId: string, askedAt: string): Promise<void> {
     setBusy(true);
@@ -126,23 +126,23 @@ function Loaded({
     <>
       <Card>
         <div ref={said} className="desk-said-lines" tabIndex={-1} aria-live="polite">
-          {ask != null ? (
-            <>
-              <Says>{ask.says}</Says>
-              <OnCard>{ask.line}</OnCard>
-            </>
-          ) : (
-            <Says>{t('dataControl.nothingAsks')}</Says>
-          )}
+          <Says>{ask.says}</Says>
+          {ask.line != null && <OnCard>{ask.line}</OnCard>}
         </div>
-        {ask?.does === 'download' && exported != null && (
+        {ask.does === 'download' && exported != null && (
           <CardStep
             label={t('exportAllData.download')}
             busy={busy}
             onClick={() => void download(exported.id, exported.askedAt)}
           />
         )}
-        {ask?.does === 'record' && (
+        {ask.does === 'prove' && (
+          <CardStep
+            label={t('emailDomains.prove')}
+            onClick={() => void navigate(`${EMAIL_DOMAINS}?prove`)}
+          />
+        )}
+        {ask.does === 'record' && (
           <CardStep
             label={t('emailDomains.seeRecord')}
             onClick={() =>

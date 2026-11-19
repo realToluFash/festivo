@@ -30,7 +30,7 @@ import { RadioMark } from './RadioMark.tsx';
 import { moveScreenReaderFocus, type ScreenReaderTarget } from './screenReaderFocus.ts';
 import { Pill } from './SettingsParts.tsx';
 import { CappedWholeWords, MeasuredWords, Title } from './Title.tsx';
-import { Sheet } from './Sheet.tsx';
+import { Sheet, sheetsGone } from './Sheet.tsx';
 import { TextAction } from './SummaryRows.tsx';
 import { Text, TitleCap, type TextHandle } from './Text.tsx';
 
@@ -112,7 +112,7 @@ export interface ExportProps {
   needs: boolean;
   offline: boolean;
   onClose: () => void;
-  /** The file is written: the dialog closes as the share sheet opens. */
+  /** The file is written: the dialog closes, and the share sheet opens once its window has gone. */
   onShare: () => void;
 }
 
@@ -149,6 +149,7 @@ function useExport(props: ExportProps) {
       return;
     }
     props.onShare();
+    await sheetsGone();
     // The share sheet says nothing back the app can trust, so whatever it does, nothing is shown.
     hand().catch(() => undefined);
   };

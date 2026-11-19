@@ -211,6 +211,19 @@ describe('Data and control › Email domains (sc-560)', () => {
 
     expect(await screen.findByText('Prove the email domain of Ìrè Events')).toBeDefined();
     expect(screen.getByText('No domains yet.')).toBeDefined();
+    const [step] = screen.getAllByRole('button', { name: 'Prove a domain' });
+    fireEvent.click(step!);
+
+    expect(await screen.findByRole('dialog', { name: 'Prove a domain' })).toBeDefined();
+  });
+
+  it('has one Notifications button, in the row with the way back', async () => {
+    signedIn();
+    answering({ [PAGE]: () => json(page([])) });
+    open();
+
+    await screen.findByText('Prove the email domain of Ìrè Events');
+    expect(screen.getAllByRole('button', { name: 'Notifications' })).toHaveLength(1);
   });
 
   it('checks the field before sending, then shows each refusal of the server under it', async () => {
@@ -219,7 +232,7 @@ describe('Data and control › Email domains (sc-560)', () => {
     const sent = answering({ [PAGE]: () => json(page([])), [ADD]: () => answer });
     open();
 
-    fireEvent.click(await screen.findByRole('button', { name: 'Prove a domain' }));
+    fireEvent.click((await screen.findAllByRole('button', { name: 'Prove a domain' })).at(-1)!);
     const dialog = await screen.findByRole('dialog', { name: 'Prove a domain' });
     const field = within(dialog).getByLabelText('Domain');
     expect(
@@ -265,7 +278,7 @@ describe('Data and control › Email domains (sc-560)', () => {
     answering({ [PAGE]: () => json(page([IRE])), [ADD]: () => json(page([IRE, IRE_COM]), 201) });
     open();
 
-    fireEvent.click(await screen.findByRole('button', { name: 'Prove a domain' }));
+    fireEvent.click((await screen.findAllByRole('button', { name: 'Prove a domain' })).at(-1)!);
     const dialog = await screen.findByRole('dialog', { name: 'Prove a domain' });
     fireEvent.change(within(dialog).getByLabelText('Domain'), {
       target: { value: 'IreEvents.com' },
@@ -408,8 +421,9 @@ describe('Data and control › Email domains (sc-560)', () => {
     answering({ [PAGE]: () => json(page([IRE], 'left')) });
     open();
 
+    expect(await screen.findByText('Switched off')).toBeDefined();
     expect(
-      await screen.findByText(
+      screen.getByText(
         'Ìrè Events left Enterprise. Its domains are kept as they were, and come back on with Enterprise.',
       ),
     ).toBeDefined();
@@ -460,6 +474,24 @@ const NO_EXPORT: OrganisationExportPage = {
   nextAllowed: null,
 };
 
+const READY: OrganisationExportPage = {
+  owner: true,
+  export: {
+    id: 'ex_1',
+    state: 'ready',
+    mine: true,
+    askedBy: 'Folake Adeyemi',
+    askedAt: '2026-10-17T13:30:00+00:00',
+    asked: 'Saturday 17 Oct at 14:30 WAT',
+    expiresAt: '2026-10-18T13:52:00+00:00',
+    expires: 'Sunday 18 Oct at 14:52 WAT',
+    downloadedAt: null,
+    downloaded: null,
+  },
+  nextAllowedAt: null,
+  nextAllowed: null,
+};
+
 describe('Data and control’s Email domains row and card (sc-560)', () => {
   it('lists Email domains under Control with each domain and where it stands', async () => {
     signedIn();
@@ -487,24 +519,7 @@ describe('Data and control’s Email domains row and card (sc-560)', () => {
 
   it('puts the soonest step first: a ready export ending before the checks stop', async () => {
     signedIn();
-    const ready: OrganisationExportPage = {
-      owner: true,
-      export: {
-        id: 'ex_1',
-        state: 'ready',
-        mine: true,
-        askedBy: 'Folake Adeyemi',
-        askedAt: '2026-10-17T13:30:00+00:00',
-        asked: 'Saturday 17 Oct at 14:30 WAT',
-        expiresAt: '2026-10-18T13:52:00+00:00',
-        expires: 'Sunday 18 Oct at 14:52 WAT',
-        downloadedAt: null,
-        downloaded: null,
-      },
-      nextAllowedAt: null,
-      nextAllowed: null,
-    };
-    answering({ [EXPORT]: () => json(ready), [PAGE]: () => json(page([IRE, IRE_COM])) });
+    answering({ [EXPORT]: () => json(READY), [PAGE]: () => json(page([IRE, IRE_COM])) });
     open('/app/settings/data-and-control');
 
     expect(await screen.findByText('Your export is ready')).toBeDefined();
@@ -548,7 +563,47 @@ describe('Data and control’s Email domains row and card (sc-560)', () => {
     open('/app/settings/data-and-control');
 
     expect(await screen.findByText('ireevents.com kept as it was')).toBeDefined();
-    await waitFor(() => expect(screen.getByText('Nothing needs your attention')).toBeDefined());
+    await waitFor(() => expect(screen.getByText('Ìrè Events left Enterprise')).toBeDefined());
+    expect(
+      screen.getByText(
+        'Email domains, the audit log and deleting guest data are switched off and kept as they were. They come back on with Enterprise.',
+      ),
+    ).toBeDefined();
+  });
+
+  it('puts a ready export before what comes with Enterprise on a free organisation’s hub', async () => {
+    signedIn();
+    answering({ [EXPORT]: () => json(READY), [PAGE]: () => json(page([], 'free')) });
+    open('/app/settings/data-and-control');
+
+    expect(await screen.findByText('Your export is ready')).toBeDefined();
+    expect(screen.getByRole('button', { name: 'Download' })).toBeDefined();
+    expect(screen.queryByText('These come with Enterprise')).toBeNull();
+  });
+
+  it('says what comes with Enterprise on the hub of a free organisation', async () => {
+    signedIn();
+    answering({ [EXPORT]: () => json(NO_EXPORT), [PAGE]: () => json(page([], 'free')) });
+    open('/app/settings/data-and-control');
+
+    expect(await screen.findByText('These come with Enterprise')).toBeDefined();
+    expect(
+      screen.getByText(
+        'Email domains, the audit log and deleting guest data after an event. Export all data and a guest’s request are on every plan.',
+      ),
+    ).toBeDefined();
+  });
+
+  it('starts with Prove a domain when nothing is set up, and opens the field on Email domains', async () => {
+    signedIn();
+    answering({ [EXPORT]: () => json(NO_EXPORT), [PAGE]: () => json(page([])) });
+    open('/app/settings/data-and-control');
+
+    expect(await screen.findByText('Nothing is set up yet')).toBeDefined();
+    expect(screen.getByText('Start by proving the email domain of Ìrè Events.')).toBeDefined();
+    fireEvent.click(screen.getByRole('button', { name: 'Prove a domain' }));
+
+    expect(await screen.findByRole('textbox', { name: 'Domain' })).toBeDefined();
   });
 });
 

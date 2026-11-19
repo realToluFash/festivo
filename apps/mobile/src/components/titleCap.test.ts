@@ -95,7 +95,9 @@ describe('the Back pill over a page title draws no larger than the title (sc-674
     );
     expect(frame.match(/<Back\b/gu)).toHaveLength(1);
     expect(
-      frame.match(/<FrameBack back=\{back\} cap=\{cap\} besideShown=\{besideBack != null\} \/>/gu),
+      frame.match(
+        /<FrameBack back=\{back\} cap=\{cap\} besideShown=\{shownBeside\(besideBack\)\} \/>/gu,
+      ),
     ).toHaveLength(4);
   });
 });

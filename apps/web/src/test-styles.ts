@@ -15,3 +15,21 @@ export function cssRule(selector: string, sheet: string = STYLES): string {
 
   return new RegExp(`(?:^|\\n)[ \\t]*${escaped} \\{([^}]*)\\}`, 'u').exec(sheet)?.[1] ?? '';
 }
+
+/** The body of the `@media <query>` block in `sheet`, up to its own closing brace, or '' when there is none. */
+export function mediaBlock(query: string, sheet: string = STYLES): string {
+  const head = sheet.indexOf(`@media ${query} {`);
+  if (head === -1) {
+    return '';
+  }
+  const start = sheet.indexOf('{', head) + 1;
+  let depth = 1;
+  for (let at = start; at < sheet.length; at += 1) {
+    depth += sheet[at] === '{' ? 1 : sheet[at] === '}' ? -1 : 0;
+    if (depth === 0) {
+      return sheet.slice(start, at);
+    }
+  }
+
+  return '';
+}
