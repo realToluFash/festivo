@@ -412,7 +412,6 @@
     "access.plan_required": "Disponible con Enterprise. Para cambiar esto, consulte a Soirely sobre Enterprise.",
     "email_domains.not_listed": "Ese dominio no está en la lista.",
     "email_domains.taken": "Otra organización ya ha verificado este dominio. Si es suyo, contacte con el servicio de asistencia de Soirely.",
-    "audit.export_too_many": "Las entradas que coinciden superan el límite de 1.000.000. Acote los filtros y vuelva a exportar.",
     "audit.export_expired": "La descarga de esta exportación ha terminado. Puede volver a exportar.",
     "audit.dates_backwards": "La fecha de inicio debe ser igual o anterior a la fecha de fin.",
     "audit.invalid_filter": "El registro de auditoría no ofrece este filtro.",

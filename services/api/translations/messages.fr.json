@@ -412,7 +412,6 @@
     "access.plan_required": "Disponible avec le forfait Enterprise. Pour modifier ce réglage, contactez Soirely au sujet du forfait Enterprise.",
     "email_domains.not_listed": "Ce domaine ne figure pas dans la liste.",
     "email_domains.taken": "Une autre organisation a déjà vérifié ce domaine. S’il vous appartient, contactez l’assistance Soirely.",
-    "audit.export_too_many": "Les entrées correspondantes dépassent la limite de 1 000 000. Affinez les filtres, puis exportez à nouveau.",
     "audit.export_expired": "Le téléchargement de cette exportation a pris fin. Vous pouvez exporter à nouveau.",
     "audit.dates_backwards": "La date de début doit être identique ou antérieure à la date de fin.",
     "audit.invalid_filter": "Le journal d’audit ne propose pas ce filtre.",

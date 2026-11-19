@@ -4654,11 +4654,11 @@
       "jsonl": "JSON Lines"
     },
     "export": "Export",
-    "exportLine": "Up to 10,000 entries download at once. More are prepared, and we email you a link.",
+    "exportLine": "Up to {{atOnce, number}} entries download at once. More are prepared, and we email you a link.",
     "downloading": "Downloading the audit log as {{format}}.",
     "preparing": "Preparing your export",
     "preparingLine": "We’ll email {{email}} a link when it’s ready. It works once, for 24 hours.",
-    "tooMany": "More than 1,000,000 entries match. Narrow the filters, then export again.",
+    "tooMany": "More than {{most, number}} entries match. Narrow the filters, then export again.",
     "linkEnded": "This download link has ended. Export the entries again.",
     "locked": "Available on Enterprise",
     "lockedLine": "See who did what in {{organisation}}, for 365 days, and export it.",

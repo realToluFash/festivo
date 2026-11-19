@@ -314,6 +314,7 @@ final class AuditLogTest extends ApiTestCase
 
         self::assertResponseStatusCodeSame(422);
         self::assertSame(ErrorCode::AuditExportTooMany->type(), $body['type']);
+        self::assertSame('More than 1,000,000 entries match. Narrow the filters, then export again.', $body['detail'] ?? null);
         self::assertSame(0, self::service(EntityManagerInterface::class)->getConnection()->fetchOne('SELECT COUNT(*) FROM audit_entries WHERE action = :action', ['action' => AuditType::EXPORTED]), 'nothing started, nothing recorded');
         self::assertSame(0, self::service(EntityManagerInterface::class)->getConnection()->fetchOne('SELECT COUNT(*) FROM audit_exports'));
     }
