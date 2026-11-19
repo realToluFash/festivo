@@ -32,6 +32,9 @@ use Symfony\Component\Uid\Uuid;
 /** The one reader of a catalogue document: every plan, limit, currency and country is checked whole before anything uses it, so a version that is published always reads (sc-3928). */
 final readonly class CatalogueParser
 {
+    /** ISO 3166-1's reserved and user-assigned codes that ICU still lists as regions: none is an assigned country. */
+    private const array NOT_ASSIGNED = ['AC', 'CP', 'CQ', 'DG', 'EA', 'IC', 'TA', 'XK'];
+
     public static function plans(Uuid $versionId, string $name, mixed $terms): PlanCatalogue
     {
         return new PlanCatalogue($versionId, $name, self::planTerms($terms));
@@ -220,7 +223,7 @@ final readonly class CatalogueParser
     private static function countries(array $codes): void
     {
         foreach ($codes as $code) {
-            if (!Regions::isCountry((string) $code)) {
+            if (!Regions::isCountry((string) $code) || Iter\contains(self::NOT_ASSIGNED, (string) $code)) {
                 throw new CatalogueRefused(Str\format('"%s" is not an assigned ISO 3166-1 alpha-2 country code.', (string) $code));
             }
         }

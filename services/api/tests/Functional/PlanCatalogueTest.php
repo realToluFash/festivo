@@ -29,6 +29,7 @@ use Doctrine\DBAL\Exception as DbalException;
 use Doctrine\ORM\EntityManagerInterface;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
+use Psl\Str;
 use Psl\Type;
 use Psl\Vec;
 use Psr\Clock\ClockInterface;
@@ -342,12 +343,21 @@ final class PlanCatalogueTest extends FunctionalTestCase
         $this->keeper->publish(CataloguePart::Plans, '2026-12-01', $terms, 'Broken', 'Ada at Soirely');
     }
 
-    #[Test]
-    public function aCountryCodeThatIsNotAssignedIsNeverPublished(): void
+    /** @return iterable<string, array{string}> */
+    public static function providerUnassignedCountries(): iterable
     {
-        $terms = self::with($this->termsOf(CataloguePart::UnitCosts), ['sms_per_segment', 'UK'], 9);
+        yield 'reserved, unknown to ICU' => ['UK'];
+        yield 'reserved, known to ICU' => ['IC'];
+        yield 'user-assigned, known to ICU' => ['XK'];
+    }
 
-        $this->expectExceptionMessage('"UK" is not an assigned ISO 3166-1 alpha-2 country code.');
+    #[Test]
+    #[DataProvider('providerUnassignedCountries')]
+    public function aCountryCodeThatIsNotAssignedIsNeverPublished(string $code): void
+    {
+        $terms = self::with($this->termsOf(CataloguePart::UnitCosts), ['sms_per_segment', $code], 9);
+
+        $this->expectExceptionMessage(Str\format('"%s" is not an assigned ISO 3166-1 alpha-2 country code.', $code));
         $this->keeper->publish(CataloguePart::UnitCosts, '2026-12-01', $terms, 'Broken', 'Ada at Soirely');
     }
 
