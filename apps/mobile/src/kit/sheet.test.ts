@@ -101,6 +101,25 @@ describe('one sheet window at a time', () => {
     expect(windows.waits('create')).toBe(false);
   });
 
+  it('is clear at once with no window up', async () => {
+    await expect(sheetWindows().cleared()).resolves.toBeUndefined();
+  });
+
+  it('is clear only once the last window up has gone (sc-72136)', async () => {
+    const windows = sheetWindows();
+    let clear = false;
+    windows.raise('export');
+    windows.raise('switcher');
+    void windows.cleared().then(() => (clear = true));
+
+    windows.lower('switcher');
+    await Promise.resolve();
+    expect(clear).toBe(false);
+    windows.lower('export');
+    await Promise.resolve();
+    expect(clear).toBe(true);
+  });
+
   it('tells its listeners only when a window comes or goes', () => {
     const windows = sheetWindows();
     let heard = 0;
