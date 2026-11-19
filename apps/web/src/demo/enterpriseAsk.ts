@@ -1,3 +1,4 @@
+import { ORG } from './dataControl.ts';
 import { VIEWERS, type Viewer } from './settings.ts';
 
 /** The four locked pages a step can be pressed on, by the name the owners' email gives each. */
@@ -131,9 +132,9 @@ export const ASK_WORDS = {
   freeLine: 'Its limits and what it includes, as the plans list them.',
   enterprise: 'Enterprise',
   soldBy: 'Sold by contract.',
-  changes: 'What changes for Ire Events',
+  changes: `What changes for ${ORG}`,
   changesLine: 'Email domains, the audit log and deleting guest data after an event come on.',
-  talkLine: 'Talk to us sends Soirely Ire Events, your name and email, and this summary.',
+  talkLine: `Talk to us sends Soirely ${ORG}, your name and email, and this summary.`,
   talk: 'Talk to us',
   talkTold: 'Talk to us has its own design (sc-3935).',
 } as const;

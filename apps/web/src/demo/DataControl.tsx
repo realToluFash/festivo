@@ -53,11 +53,10 @@ const LEADS: Record<HubRow['page'], DrawnName | 'globe' | 'users'> = {
   guestRequest: 'users',
 };
 
-const STEP_WORDS: Record<HubStep, string> = {
+const STEP_WORDS: Record<Exclude<HubStep, 'contact'>, string> = {
   download: W.download,
   seeRecord: W.seeRecord,
   prove: W.prove,
-  contact: S.contact,
   checkRun: W.checkRun(RUN_COUNT),
 };
 
@@ -116,16 +115,16 @@ function Hub({ viewer, state, tell }: { viewer: Viewer; state: string; tell: Tel
       </SubPage>
     );
 
-  const onStep = (step: HubStep) => {
+  const onStep = (step: Exclude<HubStep, 'contact'>) => {
     if (step === 'download') {
       setView((now) => ({ ...now, exported: 'used' }));
       focusWhenFree(() => said.current);
     } else if (step === 'seeRecord') open('emailDomains', 'ed_record');
     else if (step === 'prove') open('emailDomains', 'ed_add');
-    else if (step === 'checkRun') open('deleteGuestData', 'rt_held');
-    else tell(S.contactTold);
+    else open('deleteGuestData', 'rt_held');
   };
   const card = hubCard(view, viewer, locale);
+  const shown = card.step;
   const rows = hubRows(view, viewer, locale);
 
   return (
@@ -135,15 +134,10 @@ function Hub({ viewer, state, tell }: { viewer: Viewer; state: string; tell: Tel
           <Says>{card.says}</Says>
           <OnCard>{card.line}</OnCard>
         </div>
-        {card.step === 'contact' ? (
+        {shown === 'contact' ? (
           <EnterpriseStep viewer={viewer} state={state} tell={tell} />
         ) : (
-          card.step != null && (
-            <CardStep
-              label={STEP_WORDS[card.step]}
-              onClick={() => card.step && onStep(card.step)}
-            />
-          )
+          shown != null && <CardStep label={STEP_WORDS[shown]} onClick={() => onStep(shown)} />
         )}
       </Card>
       <HubGroup title={W.control} rows={rows.control} viewer={viewer} />

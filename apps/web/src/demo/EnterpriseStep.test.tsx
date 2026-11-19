@@ -1,6 +1,6 @@
-import { act, cleanup, fireEvent, render, screen, within } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { RouterProvider, createMemoryRouter } from 'react-router';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it } from 'vitest';
 
 import { __setConfig, config } from '../config.ts';
 import { routes } from '../routes/index.tsx';
@@ -25,7 +25,6 @@ describe('the step on a locked Enterprise card (sc-72241)', () => {
     __setConfig({ ...tested, environment: 'development' });
     forgetAsks();
   });
-  afterEach(() => vi.useRealTimers());
 
   it.each([
     ['', 'Data and control'],
@@ -36,6 +35,11 @@ describe('the step on a locked Enterprise card (sc-72241)', () => {
     await open(`${path}?state=owner_web`, title);
     expect(screen.getByRole('button', { name: CONTACT })).toBeDefined();
     expect(screen.queryByRole('button', { name: ASK })).toBeNull();
+
+    cleanup();
+    await open(`${path}?state=admin&as=julien`, title);
+    expect(screen.getByRole('button', { name: ASK })).toBeDefined();
+    expect(screen.queryByRole('button', { name: CONTACT })).toBeNull();
   });
 
   it('opens Compare plans with Enterprise in view, and Close puts the focus back on Contact', async () => {
@@ -49,18 +53,17 @@ describe('the step on a locked Enterprise card (sc-72241)', () => {
 
     fireEvent.click(within(dialog).getByRole('button', { name: 'Close' }));
     expect(screen.queryByRole('dialog', { name: 'Compare plans' })).toBeNull();
-    await vi.waitFor(() => expect(document.activeElement).toBe(contact));
+    await waitFor(() => expect(document.activeElement).toBe(contact));
   });
 
   it('sends once, then says the owner was asked when another page asks again', async () => {
-    vi.useFakeTimers({ shouldAdvanceTime: true });
     await open('/audit-log?state=admin&as=julien', 'Audit log');
     const ask = screen.getByRole('button', { name: ASK });
 
     fireEvent.click(ask);
     expect(ask.getAttribute('aria-busy')).toBe('true');
     fireEvent.click(ask);
-    await act(() => vi.advanceTimersByTimeAsync(800));
+    await waitFor(() => expect(screen.queryByRole('button', { name: ASK })).toBeNull());
 
     expect(screen.queryByRole('button', { name: ASK })).toBeNull();
     expect(
@@ -68,11 +71,18 @@ describe('the step on a locked Enterprise card (sc-72241)', () => {
         'The owner has been sent the link to Compare plans.',
       ),
     ).toBeDefined();
+    await waitFor(() =>
+      expect(document.activeElement).toBe(
+        within(screen.getByRole('status')).getByText(
+          'The owner has been sent the link to Compare plans.',
+        ),
+      ),
+    );
 
     cleanup();
     await open('/email-domains?state=admin&as=julien', 'Email domains');
     fireEvent.click(screen.getByRole('button', { name: ASK }));
-    await act(() => vi.advanceTimersByTimeAsync(800));
+    await waitFor(() => expect(screen.queryByRole('button', { name: ASK })).toBeNull());
 
     expect(screen.queryByRole('button', { name: ASK })).toBeNull();
     expect(
@@ -80,6 +90,13 @@ describe('the step on a locked Enterprise card (sc-72241)', () => {
         'The owner was asked about Enterprise in the last 24 hours.',
       ),
     ).toBeDefined();
+    await waitFor(() =>
+      expect(document.activeElement).toBe(
+        within(screen.getByRole('alert')).getByText(
+          'The owner was asked about Enterprise in the last 24 hours.',
+        ),
+      ),
+    );
   });
 
   it('keeps the button after Not sent, with the line under it', async () => {

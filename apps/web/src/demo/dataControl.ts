@@ -80,7 +80,6 @@ export function dayOf(at: string, locale: string, zone: ReaderZone, year = false
 export const SHARED_WORDS = {
   back: 'Data and control',
   contact: 'Contact Soirely about Enterprise',
-  contactTold: 'Contacting Soirely has its own design.',
   enterprise: 'Enterprise',
   failedLine: 'Check your connection and try again.',
   tryAgain: 'Try again',

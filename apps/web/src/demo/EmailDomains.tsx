@@ -18,7 +18,7 @@ import {
   TextAction,
 } from '../components/SettingsParts.tsx';
 import { focusWhenFree } from '../layers.ts';
-import { SHARED_WORDS as S, zoneFor } from './dataControl.ts';
+import { zoneFor } from './dataControl.ts';
 import type { ReaderZone } from './dataSettings.ts';
 import { NoTag, PageFailed, PageLoading, StatusLine, SubPage } from './DataControlParts.tsx';
 import { useLoad } from './useDataControl.ts';
@@ -51,6 +51,8 @@ import { RecordRows } from './RecordRows.tsx';
 import type { Viewer } from './settings.ts';
 
 const CHECK_MS = 1200;
+
+type Pressed = Exclude<Step, { does: 'contact' }>;
 
 /** Data and control › Email domains (sc-560, sc-563): prove a domain, then limit its accounts to Ire Events. */
 export function EmailDomains({
@@ -87,18 +89,16 @@ export function EmailDomains({
     );
 
   const card = domainsCard(view, viewer, locale);
+  const shown = card.step;
   const enterprise = view.plan === 'enterprise';
-  const stepWords = (step: Step) =>
-    step.does === 'contact'
-      ? S.contact
-      : step.does === 'prove'
-        ? W.prove
-        : step.does === 'record'
-          ? W.seeRecord
-          : W.keepAccounts(step.domain);
-  const onStep = (step: Step) => {
-    if (step.does === 'contact') tell(S.contactTold);
-    else if (step.does === 'prove') setAdding({ typed: '', pressed: false });
+  const stepWords = (step: Pressed) =>
+    step.does === 'prove'
+      ? W.prove
+      : step.does === 'record'
+        ? W.seeRecord
+        : W.keepAccounts(step.domain);
+  const onStep = (step: Pressed) => {
+    if (step.does === 'prove') setAdding({ typed: '', pressed: false });
     else if (step.does === 'record') setRecord(step.domain);
     else setConfirming(step.domain);
   };
@@ -111,12 +111,10 @@ export function EmailDomains({
           <Says>{card.says}</Says>
           <OnCard>{card.line}</OnCard>
         </div>
-        {card.step?.does === 'contact' ? (
+        {shown?.does === 'contact' ? (
           <EnterpriseStep viewer={viewer} state={state} tell={tell} />
         ) : (
-          card.step != null && (
-            <CardStep label={stepWords(card.step)} onClick={() => card.step && onStep(card.step)} />
-          )
+          shown != null && <CardStep label={stepWords(shown)} onClick={() => onStep(shown)} />
         )}
       </Card>
       {view.plan !== 'free' && (
