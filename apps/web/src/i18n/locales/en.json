@@ -3189,7 +3189,7 @@
     "removeOutsideLine": "Their access ends on their next request.",
     "findAny": "Name, email or mobile number",
     "fromOutside": "From outside {{organisation}}",
-    "unusable": "That isn’t an email address or a mobile number we can use.",
+    "unusable": "That is not an email address or a mobile number we can use.",
     "onAlready": "{{name}} is on this event already.",
     "pickAnother": "Pick another role to add someone from outside.",
     "jobLabel": "Job label (optional)",
@@ -3809,7 +3809,7 @@
     "shiftHelp": "Shifts of this job with an open place, by start.",
     "onShifts": "Unassign {{name}} from their shifts first.",
     "onShiftsHint": "Their job can change once they are on no shift.",
-    "moreShifts": "{{first}} +{{count, number}} more",
+    "moreShifts": "{{first}} <more>+{{count, number}} more</more>",
     "removeShifts": "Their places on these shifts are left open:"
   },
   "schedule": {

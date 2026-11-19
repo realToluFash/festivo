@@ -3,6 +3,11 @@ a.sn-tab {
   text-decoration: none;
 }
 
+/* The page column is taller than its content at 1280 × 800, so without this the header shrinks to its 44px floor and the tabs touch the subtitle (sc-3908). */
+.rs .gs-top {
+  flex: none;
+}
+
 .rs-frame {
   overflow-x: auto;
 }

@@ -583,7 +583,7 @@ describe('The event’s Menu (sc-3902)', () => {
       expect(cards[1]?.textContent).not.toContain('can no longer change');
     });
 
-    it('says picks closed on the date once every course has closed, and that guests can no longer change theirs', async () => {
+    it('says picks closed on the date once every course has closed, and that guests can no longer change theirs, the course named as typed', async () => {
       await onMenu({
         'GET /api/events/ev_1/menu': menuOf({
           ...MAIN,
@@ -595,7 +595,7 @@ describe('The event’s Menu (sc-3902)', () => {
       expect(screen.getByText('picks closed on Saturday, Nov 14')).toBeDefined();
       expect(card.textContent).toContain('Picks closed on Saturday, Nov 14');
       expect(card.textContent).toContain('Set by the event’s start. Closed at 16:00, Lagos time.');
-      expect(card.textContent).toContain('Guests can no longer change their main pick.');
+      expect(card.textContent).toContain('Guests can no longer change their Main pick.');
     });
   });
 

@@ -1,9 +1,21 @@
-import { type ReactNode, type Ref, useEffect, useRef, useState } from 'react';
-import { type LayoutChangeEvent, Pressable, StyleSheet, View } from 'react-native';
+import { type ReactNode, type Ref, useCallback, useEffect, useRef, useState } from 'react';
+import {
+  type LayoutChangeEvent,
+  Pressable,
+  StyleSheet,
+  type TextLayoutEvent,
+  View,
+  useWindowDimensions,
+} from 'react-native';
 
 import { eventColour } from '../../components/EventMesh.tsx';
 import { Glyph } from '../../components/Glyph.tsx';
-import { BodyTitle, MeasuredWords } from '../../components/Title.tsx';
+import {
+  BodyTitle,
+  MeasuredWords,
+  PageTitleDrawn,
+  usePageTitleDrawn,
+} from '../../components/Title.tsx';
 import { TopPrimary, usePrimaryLabel } from '../../components/TopPrimary.tsx';
 import { useReadOut } from '../../components/ReadOut.tsx';
 import { type TextHandle, Text } from '../../components/Text.tsx';
@@ -27,6 +39,8 @@ import { type MarkKind, ReplyMark } from '../../components/ReplyMark.tsx';
 import { DoneLine } from '../../components/FormLayers.tsx';
 import { PaneBell, useBellInPane } from '../events/EventFrame.tsx';
 import { actionsUnder } from '../../layout/titleFit.ts';
+import { titleSize } from '../../layout/textSize.ts';
+import { brokeOn } from './titleBreak.ts';
 
 export type Layout = 'phone' | 'portrait' | 'landscape';
 
@@ -359,7 +373,7 @@ export function ShownLine({
   );
 }
 
-/** The title row as the product draws it: the title keeps its words whole under its cap, and the + keeps its label only where the title and the labelled + both fit beside what is there (sc-67338, sc-51444, sc-67659). Where the title at its default size has no room beside Export and the round +, those two go together to a row under it (sc-68417). */
+/** The title row as the product draws it: the title keeps its words whole under its cap, and the + keeps its label only where the title and the labelled + both fit beside what is there (sc-67338, sc-51444, sc-67659). Where the title at its default size has no room beside Export and the round +, or broke beside them all the same, those two go together to a row under it (sc-68417). */
 export function GuestsTitle({
   layout,
   title = W.guests,
@@ -389,23 +403,69 @@ export function GuestsTitle({
   const [room, setRoom] = useState(0);
   const [extraWidth, setExtraWidth] = useState(0);
   const [titleWidth, setTitleWidth] = useState(0);
-  const under = actionsUnder({
-    room,
-    title: titleWidth,
-    extra: extra == null ? 0 : extraWidth,
-    plus: plus ? tokens.sizeHit : 0,
-    bell: bell ? tokens.sizeHit : 0,
-    refreshing: 0,
-    gap: tokens.spaceMd,
-  });
+  // The title steps down from its slot's width rather than from a wrap it must first see.
+  const [slot, setSlot] = useState(0);
+  const { fontScale } = useWindowDimensions();
+  const pageDrawn = usePageTitleDrawn();
+  const drawn = useRef(0);
+  const [broke, setBroke] = useState<string | null>(null);
+  const row = `${room}|${title}|${fontScale}`;
+  const under =
+    broke === row ||
+    actionsUnder({
+      room,
+      title: titleWidth,
+      extra: extra == null ? 0 : extraWidth,
+      plus: plus ? tokens.sizeHit : 0,
+      bell: bell ? tokens.sizeHit : 0,
+      refreshing: 0,
+      gap: tokens.spaceMd,
+    });
+  const onDrawn = useCallback(
+    (next: number) => {
+      drawn.current = next;
+      pageDrawn?.(next);
+    },
+    [pageDrawn],
+  );
+  // Where the device lays the title out wider than it measured hidden, it can break at its floor though the sum says it fits; then the actions go under (sc-68417).
+  const onTitleLines = (event: TextLayoutEvent) => {
+    const start = titleSize(size, fontScale);
+    setBroke((was) =>
+      brokeOn({
+        broke: was,
+        row,
+        under,
+        lines: event.nativeEvent.lines,
+        drawn: drawn.current || start,
+        start,
+        size,
+      }),
+    );
+  };
   const widthOf = (set: (width: number) => void) => (event: LayoutChangeEvent) =>
     set(Math.ceil(event.nativeEvent.layout.width));
   const heading = (
-    <View style={styles.grow} onLayout={label.onSlot}>
+    <View
+      style={styles.grow}
+      onLayout={(event) => {
+        label.onSlot(event);
+        setSlot(Math.floor(event.nativeEvent.layout.width));
+      }}
+    >
       {label.measure}
-      <BodyTitle size={size} accessibilityRole="header" style={titleStyle} testID="guests.title">
-        {title}
-      </BodyTitle>
+      <PageTitleDrawn.Provider value={onDrawn}>
+        <BodyTitle
+          size={size}
+          accessibilityRole="header"
+          style={titleStyle}
+          room={slot}
+          onTextLayout={onTitleLines}
+          testID="guests.title"
+        >
+          {title}
+        </BodyTitle>
+      </PageTitleDrawn.Provider>
     </View>
   );
   const actions = (

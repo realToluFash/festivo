@@ -76,7 +76,7 @@ export function VendorsMoved() {
 }
 
 /** Settings › Vendors in A · Summary first (Budget-A-Vendors, page e81): the card, the directory, its form, every state, on sample data. */
-export function Vendors({ state, tell }: { state: string; tell: Tell }) {
+export function Vendors({ state, tell, bell }: { state: string; tell: Tell; bell: boolean }) {
   const [params] = useSearchParams();
   const [locale] = useState(() => formattingLocale('en', navigator.language));
   const [start] = useState(() => vendorsStart(state, params.get('vendor')));
@@ -118,7 +118,7 @@ export function Vendors({ state, tell }: { state: string; tell: Tell }) {
   if (load !== 'loaded')
     return (
       <Page>
-        <TitleRow title={VW.title} bell={<DemoBell tell={tell} />} />
+        <TitleRow title={VW.title} bell={bell && <DemoBell tell={tell} />} />
         {load === 'failed' ? <Failed onRetry={() => setLoad('retrying')} /> : <Loading />}
       </Page>
     );
@@ -136,7 +136,7 @@ export function Vendors({ state, tell }: { state: string; tell: Tell }) {
 
   return (
     <Page>
-      <TitleRow title={VW.title} bell={<DemoBell tell={tell} />} />
+      <TitleRow title={VW.title} bell={bell && <DemoBell tell={tell} />} />
       <Card>
         {card.tags.length > 0 && (
           <ul className="desk-glass-tags">

@@ -50,7 +50,15 @@ function toStep(moment: number, timeZone: string, round: (n: number) => number):
   return round((moment + offset) / COVERAGE_STEP_MS) * COVERAGE_STEP_MS - offset;
 }
 
-/** From the earlier of the event's start and its first shift's start to the later of their ends, in steps on the event's hour and half hour; `long` past 24 hours. */
+/** 24 hours or more on the zone's clock: the last moment on a later date at the first's clock time or after, so a spring clock change's 23 h 30 still counts. */
+export function spansADay(first: number, last: number, timeZone: string): boolean {
+  const offset = zoneOffsets(timeZone);
+  if (offset == null) return last - first >= DAY_MS;
+
+  return last + offset(last) - (first + offset(first)) >= DAY_MS;
+}
+
+/** From the earlier of the event's start and its first shift's start to the later of their ends, in steps on the event's hour and half hour; `long` at 24 hours or more on its clock. */
 export function coverageWindow(
   event: { startsAt: number; endsAt: number },
   shifts: readonly Pick<CoverageShift, 'startsAt' | 'endsAt'>[],
@@ -63,7 +71,7 @@ export function coverageWindow(
   const steps: number[] = [];
   for (let at = start; at < end; at += COVERAGE_STEP_MS) steps.push(at);
 
-  return { start, end, steps, long: last - first > DAY_MS };
+  return { start, end, steps, long: spansADay(first, last, timeZone) };
 }
 
 function countAt(shifts: readonly CoverageShift[], moment: number): CoverageCount {

@@ -3258,7 +3258,7 @@
     "loading": "Chargement des personnes de cet événement…",
     "failed": "Impossible de charger les personnes de cet événement. Vérifiez votre connexion et réessayez.",
     "retry": "Réessayer",
-    "addPrompt": "Ajouter par nom",
+    "addPrompt": "Ajouter par nom, e-mail ou portable",
     "onEvent": "Sur cet événement",
     "you": "Vous",
     "nobody": "Aucune personne n’a encore été ajoutée à cet événement.",
@@ -3336,18 +3336,18 @@
       "can_check_in_many": "{{count, number}} de personnes peuvent désormais accueillir les invités.",
       "can_check_in_other": "{{count, number}} personnes peuvent désormais accueillir les invités."
     },
-    "notJoined": "Not joined yet",
-    "outsideTag": "Outside {{organisation}}",
-    "outsideEnds": "Their access ends when the event does.",
-    "leadOff": "For members of {{organisation}} only.",
-    "removeOutsideLine": "Their access ends on their next request.",
-    "findAny": "Name, email or mobile number",
-    "fromOutside": "From outside {{organisation}}",
-    "unusable": "That isn’t an email address or a mobile number we can use.",
-    "onAlready": "{{name}} is on this event already.",
-    "pickAnother": "Pick another role to add someone from outside.",
-    "jobLabel": "Job label (optional)",
-    "jobHelp": "What they’re there for, shown beside their name. It grants nothing. {{length, number}} of {{most, number}}."
+    "notJoined": "Invitation en attente",
+    "outsideTag": "Externe à {{organisation}}",
+    "outsideEnds": "Son accès prend fin avec l’événement.",
+    "leadOff": "Réservé aux membres de {{organisation}}.",
+    "removeOutsideLine": "Cette personne perdra l’accès à sa prochaine action.",
+    "findAny": "Nom, adresse e-mail ou numéro de portable",
+    "fromOutside": "En dehors de {{organisation}}",
+    "unusable": "Ce n’est ni une adresse e-mail ni un numéro de portable que nous pouvons utiliser.",
+    "onAlready": "{{name}} participe déjà à cet événement.",
+    "pickAnother": "Choisissez un autre rôle pour ajouter une personne externe.",
+    "jobLabel": "Fonction (facultatif)",
+    "jobHelp": "Ce que cette personne vient faire, affiché à côté de son nom. Ne donne aucun accès. {{length, number}} sur {{most, number}}."
   },
   "guestList": {
     "addGuest": "Ajouter un invité",
@@ -4018,7 +4018,7 @@
     "shiftHelp": "Services de cette fonction où une place est libre, par heure de début.",
     "onShifts": "Retirez d’abord {{name}} de ses services.",
     "onShiftsHint": "Sa fonction pourra changer quand aucun service ne sera plus à son nom.",
-    "moreShifts": "{{first}} et {{count, number}} de plus",
+    "moreShifts": "{{first}} <more>et {{count, number}} de plus</more>",
     "removeShifts": "Ses places sur ces services resteront libres :"
   },
   "schedule": {

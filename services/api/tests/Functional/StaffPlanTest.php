@@ -273,6 +273,33 @@ final class StaffPlanTest extends ApiTestCase
     }
 
     #[Test]
+    public function overASpanOfExactly24HoursTheOverlapNamesItsDays(): void
+    {
+        $first = $this->shift('Bar', '2027-03-06T16:00', '2027-03-07T16:00');
+        $second = $this->shift('Bar', '2027-03-06T20:00', '2027-03-06T21:00');
+        $sade = $this->person('Sade Lawal');
+        $this->assign($first, $sade);
+
+        $this->assign($second, $sade);
+
+        self::assertSame('Sade Lawal is on Bar from Sat 6 Mar, 16:00 to Sun 7 Mar, 16:00.', $this->last()['detail'] ?? null);
+    }
+
+    #[Test]
+    public function acrossASpringClockChangeAnEventOf24HoursOnItsClockNamesItsDays(): void
+    {
+        $this->eventId = $this->newEvent('2027-03-27T10:00', '2027-03-28T10:30', 'Europe/London');
+        $first = $this->shift('Bar', '2027-03-27T10:00', '2027-03-27T20:00');
+        $second = $this->shift('Bar', '2027-03-27T18:00', '2027-03-27T21:00');
+        $sade = $this->person('Sade Lawal');
+        $this->assign($first, $sade);
+
+        $this->assign($second, $sade);
+
+        self::assertSame('Sade Lawal is on Bar from Sat 27 Mar, 10:00 to 20:00.', $this->last()['detail'] ?? null);
+    }
+
+    #[Test]
     public function shiftsThatOnlyTouchDoNotOverlap(): void
     {
         $tolu = $this->person('Tolu Bello');
@@ -564,13 +591,14 @@ final class StaffPlanTest extends ApiTestCase
         ]))->coerce($raw);
     }
 
-    private function newEvent(): string
+    private function newEvent(string $startsAt = '2027-03-06T16:00', string $endsAt = '2027-03-07T02:00', ?string $timeZone = null): string
     {
         $body = $this->as($this->owner, 'POST', '/api/orgs/' . $this->organisation->getId()->toRfc4122() . '/events', [
             'name' => 'Owambe',
             'type' => 'wedding',
-            'startsAt' => '2027-03-06T16:00',
-            'endsAt' => '2027-03-07T02:00',
+            'startsAt' => $startsAt,
+            'endsAt' => $endsAt,
+            ...(null === $timeZone ? [] : ['timeZone' => $timeZone]),
         ]);
         self::assertSame(201, $this->statusCode(), Json\encode($body));
 

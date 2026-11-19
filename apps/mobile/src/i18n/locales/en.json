@@ -2298,7 +2298,7 @@
     "findAnyone": "Name, email or mobile number",
     "inOrganisation": "In {{organisation}}",
     "noMatch": "Nobody in {{organisation}} matches “{{typed}}”.",
-    "unusable": "That isn’t an email address or a mobile number we can use.",
+    "unusable": "That is not an email address or a mobile number we can use.",
     "onAlready": "{{name}} is on this event already.",
     "pickAnother": "Pick another role to add someone from outside.",
     "jobLabel": "Job label (optional)",

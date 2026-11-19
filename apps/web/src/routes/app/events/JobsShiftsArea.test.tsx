@@ -312,5 +312,9 @@ describe('Jobs and shifts on the Staff page (sc-3908)', () => {
       ),
     ).toBeDefined();
     expect(screen.queryByRole('button', { name: 'Add a job' })).toBeNull();
+    expect(screen.getByText('1 of 1 place filled')).toBeDefined();
+    expect(
+      screen.queryByText('Every place on this shift is filled. Unassign someone to make room.'),
+    ).toBeNull();
   });
 });
