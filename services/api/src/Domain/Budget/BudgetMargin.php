@@ -18,6 +18,8 @@ use RoundingMode;
 /** Client price = cost × (1 + markup), half away from zero per line (sc-92); a share is of summed totals, never an average of the lines'. */
 final readonly class BudgetMargin
 {
+    private const int TENTHS_IN_WHOLE = 1000;
+
     /**
      * @param list<LineCharge>             $lines
      * @param array<string, MarginFigures> $categories by CostCategory value, only those with a line
@@ -83,9 +85,9 @@ final readonly class BudgetMargin
         );
     }
 
-    private static function markedUp(Number $costMinor, int $tenths): Number
+    private static function markedUp(Number $minor, int $tenths): Number
     {
-        return $costMinor->mul(1000 + $tenths)->div(1000, 3)->round(0, RoundingMode::HalfAwayFromZero);
+        return $minor->mul(self::TENTHS_IN_WHOLE + $tenths)->div(self::TENTHS_IN_WHOLE, 3)->round(0, RoundingMode::HalfAwayFromZero);
     }
 
     /** @param list<LineCharge> $lines */
