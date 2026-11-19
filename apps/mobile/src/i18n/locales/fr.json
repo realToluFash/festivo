@@ -2346,6 +2346,11 @@
       "can_check_in": "Accueille les invités le jour de l’événement. Les noms seulement, aucune coordonnée."
     },
     "memberOf": "Membre de {{organisation}}",
+    "fromOutside": "From outside {{organisation}}",
+    "outsideTag": "Outside {{organisation}}",
+    "leadOff": "For members of {{organisation}} only.",
+    "outsideEnds": "Their access ends when the event does.",
+    "notJoined": "Not joined yet",
     "roleFor": "Rôle de {{name}} sur cet événement",
     "roleTitle": "Rôle sur cet événement",
     "saving": "Enregistrement…",
@@ -2356,6 +2361,7 @@
     "remove": "Retirer de cet événement…",
     "removeTitle": "Retirer {{name}} de cet événement ?",
     "removeLine": "Cette personne perdra l’accès à cet événement à sa prochaine action. Elle reste dans {{organisation}}.",
+    "removeLineOutside": "Their access ends on their next request.",
     "keep": "Garder {{name}}",
     "removeConfirm": "Retirer",
     "removing": "Retrait en cours…",
@@ -2364,8 +2370,14 @@
     "addTitle": "Ajouter des personnes",
     "theirRole": "Rôle sur l’événement",
     "find": "Nom",
+    "findAnyone": "Name, email or mobile number",
     "inOrganisation": "Dans {{organisation}}",
     "noMatch": "Aucune personne de {{organisation}} ne correspond à « {{typed}} ».",
+    "unusable": "That isn’t an email address or a mobile number we can use.",
+    "onAlready": "{{name}} is on this event already.",
+    "pickAnother": "Pick another role to add someone from outside.",
+    "jobLabel": "Job label (optional)",
+    "jobHelp": "What they’re there for, shown beside their name. It grants nothing. {{length, number}} of {{most, number}}.",
     "everyoneOn": "Toutes les personnes de {{organisation}} participent déjà à cet événement.",
     "cancel": "Annuler",
     "addConfirm": "Ajouter",
@@ -2399,7 +2411,17 @@
     "discardTitle": "Abandonner vos modifications ?",
     "discardLine": "Aucune personne ne sera ajoutée à cet événement.",
     "discardKeep": "Continuer à modifier",
-    "discard": "Abandonner"
+    "discard": "Abandonner",
+    "card": {
+      "count_one": "{{count, number}} personne sur cet événement",
+      "count_many": "{{count, number}} de personnes sur cet événement",
+      "count_other": "{{count, number}} personnes sur cet événement",
+      "held": "sur cet événement",
+      "lead": "Responsable · {{name}}",
+      "failed": "Impossible de charger les personnes de cet événement.",
+      "opens": "Ouvre Personnes.",
+      "leadSaid": "Responsable, {{name}}."
+    }
   },
   "recoveryRequests": {
     "cardTitle": "Demandes pour revenir",
@@ -3034,5 +3056,12 @@
     "failed": "Le fichier n’a pas pu être créé, donc rien n’a été partagé. Réessayez.",
     "needsConnection": "Connexion requise pour exporter",
     "dropped": "Connexion requise pour exporter. Rien n’a été exporté."
+  },
+  "outsideEvent": {
+    "until": "until {{when}}",
+    "guestsLine": "Names and replies only, no contact details",
+    "onEvent_one": "{{count, number}} person on this event",
+    "onEvent_other": "{{count, number}} people on this event",
+    "onEvent_many": "{{count, number}} people on this event"
   }
 }

@@ -322,6 +322,9 @@
     "people.not_a_member": "Elija a un miembro activo de esta organización.",
     "people.own_role": "No puede cambiar ni quitar su propio rol en un evento. Pídaselo a alguien con el rol Propietario o Administrador, o a la persona responsable del evento.",
     "people.already_on_event": "Esta persona ya tiene un rol en este evento. Cambie ese rol en lugar de añadir otro.",
+    "people.address_required": "Enter their email address or mobile number.",
+    "people.address_unusable": "That isn’t an email address or a mobile number we can use.",
+    "people.lead_members_only": "For members of {organisation} only.",
     "roles.replacement_invalid": "Elija otro rol de esta organización.",
     "roles.not_in_organisation": "Ese rol no existe en esta organización.",
     "assistant.refused": "El asistente no ha querido responder a eso.",
@@ -384,6 +387,6 @@
     "validation.vendor_category_required": "Elija la categoría.",
     "validation.vendor_website_scheme": "Introduzca una dirección web que empiece por https:// o http://, o deje esa parte sin poner.",
     "validation.vendor_phone_invalid": "Ese número de teléfono no es válido en este país: {country}. Compruébelo y vuelva a intentarlo.",
-    "vendors.archived_read_only": "This vendor is archived, so your changes were not saved. To edit it, restore it under Archived.",
+    "vendors.archived_read_only": "Este proveedor está archivado, así que no se han guardado los cambios. Para editarlo, restáurelo en Archivados.",
     "access.plan_required": "Disponible con Enterprise. Para cambiar esto, consulte a Soirely sobre Enterprise."
 }

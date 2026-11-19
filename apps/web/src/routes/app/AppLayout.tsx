@@ -39,6 +39,7 @@ import { useWaitingInvitations } from '../../invitations.ts';
 import { UNASKED } from '../../pageArrival.ts';
 import { useDomainOffer } from '../../joinOffers.ts';
 import { NoOrganisation } from './NoOrganisation.tsx';
+import { OutsideShell } from './OutsideShell.tsx';
 import { heldRegistration } from '../../pendingRegistration.ts';
 import { useTwoFactorStanding } from '../../twoFactorStanding.ts';
 import { useDialogKeys } from '../../dialogFocus.ts';
@@ -237,6 +238,11 @@ function Shell() {
   const said = switched != null && switched.at === pathname && switched.id === organisation?.id && (
     <Switched name={switched.name} takesFocus={switched.takesFocus === true} />
   );
+
+  const [landing, ...others] = session.outsideEvents ?? [];
+  if (organisation == null && session.pausedIn == null && landing != null) {
+    return <OutsideShell events={[landing, ...others]} />;
+  }
 
   // Every product page would open this page again, so it stands alone: only what works without an organisation, the account pages under the same header.
   if (organisation == null && session.pausedIn == null) {

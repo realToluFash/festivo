@@ -50,7 +50,10 @@ export interface NoOrgStart {
   onEvent: number;
 }
 
-const JOINED = { lara: ['Lara Monteiro', 'LM', 0], joao: ['João Pereira', 'JP', 4] } as const;
+export const JOINED = {
+  lara: ['Lara Monteiro', 'LM', 0],
+  joao: ['João Pereira', 'JP', 4],
+} as const;
 
 export function noOrgStart(state: NoOrgState): NoOrgStart {
   const checkIn = state === 'no-org-check-in';
