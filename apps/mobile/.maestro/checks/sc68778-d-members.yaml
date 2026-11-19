@@ -1,0 +1,7 @@
+# sc-68778: the demo's Members, beside the product's.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/demo/settings/members?state=list
+- extendedWaitUntil: { visible: '.*Members.*|.*Membros.*', timeout: 30000 }
+- waitForAnimationToEnd: { timeout: 8000 }
+- takeScreenshot: d-members
