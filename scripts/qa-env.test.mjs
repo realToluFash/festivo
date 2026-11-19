@@ -172,7 +172,8 @@ import {
   releaseApp,
   releasePlatform,
   releaseLink,
-  DEFAULT_TEXT_SIZE,
+  bootCommands,
+  shutCommands,
   simulatorArch,
   staleBuilds,
   iosBuildEnv,
@@ -1079,8 +1080,10 @@ describe('a release build', () => {
     expect(() => releaseLink(['--link', 'soirely://sign-in'], 'android')).toThrow(/iOS only/);
   });
 
-  it('puts the simulator back at the default text size', () => {
-    expect(DEFAULT_TEXT_SIZE('UDID')).toEqual(['simctl', 'ui', 'UDID', 'content_size', 'large']);
+  it('leaves every simulator it opens or shuts at the default text size', () => {
+    const reset = ['simctl', 'ui', 'UDID', 'content_size', 'large'];
+    expect(bootCommands('UDID')).toEqual([['simctl', 'bootstatus', 'UDID', '-b'], reset]);
+    expect(shutCommands('UDID')).toEqual([reset, ['simctl', 'shutdown', 'UDID']]);
   });
 
   it("builds for the Mac's own simulator architecture", () => {
