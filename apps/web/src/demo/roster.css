@@ -12,6 +12,11 @@ a.sn-tab {
   overflow-x: auto;
 }
 
+.rs-frame:focus-visible {
+  outline: 2px solid var(--colorAccent);
+  outline-offset: 2px;
+}
+
 .rs-table {
   width: 100%;
   border-collapse: collapse;

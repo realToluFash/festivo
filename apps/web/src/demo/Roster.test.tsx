@@ -228,6 +228,21 @@ describe('/demo/events/evt-wed-4/staff/roster (sc-3906)', () => {
     ]);
   });
 
+  it('lets the keyboard reach the table frame, a region named Roster, just before the first name (sc-70540)', async () => {
+    await open('readOnly');
+    const frame = screen
+      .getAllByRole('region', { name: 'Roster' })
+      .find((one) => one.tabIndex === 0) as HTMLElement;
+    expect(frame.classList.contains('rs-frame')).toBe(true);
+    expect(frame.contains(screen.getByRole('table', { name: 'Roster' }))).toBe(true);
+    const first = within(frame).getAllByRole('rowheader')[0]?.querySelector('button');
+    const reachable = [...document.querySelectorAll<HTMLElement>('button, [tabindex="0"]')];
+    expect(reachable[reachable.indexOf(frame) + 1]).toBe(first);
+    expect(cssRule('.rs-frame:focus-visible', ROSTER_CSS)).toContain(
+      'outline: 2px solid var(--colorAccent);',
+    );
+  });
+
   it('keeps the card heading 12rem wide below 720 px, as the product does', () => {
     expect(
       cssRule('.rs .sn-card-names', ROSTER_CSS.slice(ROSTER_CSS.indexOf('(width <= 720px)'))),

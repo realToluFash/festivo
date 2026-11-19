@@ -328,7 +328,8 @@ function RosterView({
                   )}
                 </div>
               ) : (
-                <div className="rs-frame">
+                // eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- it scrolls sideways, so a keyboard has to reach it (WCAG 2.2 §2.1.1).
+                <div className="rs-frame" tabIndex={0} role="region" aria-labelledby="rs-roster">
                   <table className="rs-table" aria-labelledby="rs-roster">
                     <thead>
                       <tr>
