@@ -72,9 +72,17 @@
   overflow-wrap: anywhere;
 }
 
+/* The demo's mark, dashed as the app's DemoOnly box is: it never reaches the product. */
 .pc-standin {
+  display: flex;
   flex-direction: column;
   align-items: flex-start;
+  gap: 8px;
+  padding: 12px 16px;
+  border: var(--borderAdd);
+  border-radius: var(--radiusRow);
+  color: var(--colorInkSecondary);
+  font: var(--typeSmall);
 }
 
 .pc-standin p {

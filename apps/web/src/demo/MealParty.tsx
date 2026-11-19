@@ -332,7 +332,7 @@ function KitchenStandIn({
       <h2 id="pk-h" className="gp-h2 gk-h2" tabIndex={-1}>
         {PW.kitchenTitle}
       </h2>
-      <div className="gp-prog-demo pc-standin">
+      <div className="pc-standin">
         <p>{PW.kitchenStandIn}</p>
         <p className="pc-standin-label">{PW.kitchenDemo}</p>
         <div className="pc-standin-chips">
