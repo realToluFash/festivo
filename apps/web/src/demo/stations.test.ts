@@ -7,13 +7,18 @@ import {
   checkName,
   dishedAt,
   dishesLine,
+  inService,
   itemsAt,
+  onNow,
+  onShiftAt,
+  personById,
   moveStop,
   placesOf,
   removeLine,
   removePlace,
   sectionLabel,
   setDishedAt,
+  stationById,
   stationsStart,
   toggle,
 } from './stations.ts';
@@ -129,5 +134,33 @@ describe('stations (sc-3910)', () => {
     const linked = STATIONS_PAGES.flatMap((page) => page.states.map((one) => one.to));
     for (const state of STATIONS_STATES)
       expect(linked).toContain(`/demo/events/evt-wed-4/staff/stations?state=${state}`);
+  });
+
+  it('counts a shift as on from its start until its end, past midnight too', () => {
+    const tolu = personById('tolu');
+    expect(onShiftAt(tolu, '16:30')).toBe(true);
+    expect(onShiftAt(tolu, '21:00')).toBe(false);
+    const sade = personById('sade');
+    expect(onShiftAt(sade, '00:30')).toBe(true);
+    expect(onShiftAt(sade, '01:00')).toBe(false);
+    expect(onShiftAt(sade, '15:59')).toBe(false);
+  });
+
+  it('puts nobody on a station whose people are off shift', () => {
+    const state = populated();
+    const door = stationById(state, 'door');
+    expect(door?.people).toEqual(['tolu']);
+    expect(onNow(door!, '21:30')).toEqual([]);
+    expect(onNow(stationById(state, 'bar')!, '21:30').map((one) => one.id)).toEqual([
+      'sade',
+      'bola',
+    ]);
+  });
+
+  it('shows Stations tonight from the event’s start to its end only', () => {
+    const event = { startsAt: '2026-11-05T18:00:00Z', endsAt: '2026-11-07T15:00:00Z' };
+    expect(inService(event, new Date('2026-11-05T17:59:00Z'))).toBe(false);
+    expect(inService(event, new Date('2026-11-05T18:00:00Z'))).toBe(true);
+    expect(inService(event, new Date('2026-11-07T15:00:00Z'))).toBe(false);
   });
 });
