@@ -22,7 +22,11 @@
   color: var(--colorInk);
   font: 700 24px/1.2 var(--fontFamily);
   font-variant-numeric: tabular-nums;
-  overflow-wrap: anywhere;
+  overflow-wrap: break-word;
+}
+
+.da-big-words {
+  min-width: 0;
 }
 
 .da-up {
@@ -89,10 +93,31 @@
   border-radius: 50%;
 }
 
+.da-rows .da-row {
+  flex-wrap: wrap;
+  row-gap: var(--spaceXs);
+}
+
+.da-row .desk-row-words {
+  flex: 1 1 12rem;
+}
+
+.da-row .desk-row-line {
+  overflow-wrap: break-word;
+}
+
+/* sc-72618: beside the row's words while both fit, under them at the row's end when they do not. */
 .da-amount {
-  flex: none;
+  flex: 0 1 auto;
+  max-width: 100%;
+  margin-inline-start: auto;
   color: var(--colorInk);
   font: 600 15px/1.3 var(--fontFamily);
   font-variant-numeric: tabular-nums;
+  text-align: end;
+}
+
+/* A figure breaks only at its <wbr>s, between digit groups, never inside one. */
+.da-group {
   white-space: nowrap;
 }
