@@ -439,6 +439,8 @@ export function GuestsTitle({
         drawn: drawn.current || start,
         start,
         size,
+        slot,
+        title: titleWidth,
       }),
     );
   };

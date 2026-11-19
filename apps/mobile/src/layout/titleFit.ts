@@ -44,18 +44,23 @@ export function actionsUnder({
   return title + beside > room;
 }
 
-/** sc-68417: a title laid out beside its actions broke inside a word once it could step down no further, so the sum above, from widths measured hidden, left it less room than it needs. A break at its start size is not one: it steps down next. */
+/** sc-68417: a title laid out beside its actions broke inside a word once it could step down no further, so the sum above, from widths measured hidden, left it less room than it needs. A break at its start size is not one: it steps down next. Nor is one in a slot narrower than the title measured: that is the row's first layout, before the primary gives way, and the sum already answers it. */
 export function brokeInWord({
   lines,
   drawn,
   start,
   size,
+  slot,
+  title,
 }: {
   lines: readonly { text: string }[];
   drawn: number;
   start: number;
   size: number;
+  slot: number;
+  title: number;
 }): boolean {
+  if (unmeasured(slot, title) || slot + 1 < title) return false;
   if (drawn >= start && drawn > size) return false;
 
   return lines.slice(0, -1).some((line) => !/\s$/.test(line.text));
@@ -75,6 +80,8 @@ export function brokeOn({
   drawn: number;
   start: number;
   size: number;
+  slot: number;
+  title: number;
 }): string | null {
   if (under) return broke;
 

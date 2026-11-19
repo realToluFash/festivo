@@ -94,37 +94,46 @@ describe('Export and the + under the title (sc-68417)', () => {
   });
 });
 
+const inSlot = { slot: 180, title: 180 };
+
 describe('a title that broke beside its actions all the same (sc-68417)', () => {
   const broken = [{ text: 'Convidad' }, { text: 'os' }];
   const whole = [{ text: 'Convidados' }];
 
   it('broke where it is at its default size and still wraps inside its word', () => {
-    expect(brokeInWord({ lines: broken, drawn: 30, start: 43, size: 30 })).toBe(true);
+    expect(brokeInWord({ lines: broken, drawn: 30, start: 43, size: 30, ...inSlot })).toBe(true);
   });
 
   it('broke where it stepped down part way and still wraps, as it steps no further', () => {
-    expect(brokeInWord({ lines: broken, drawn: 34, start: 43, size: 30 })).toBe(true);
+    expect(brokeInWord({ lines: broken, drawn: 34, start: 43, size: 30, ...inSlot })).toBe(true);
   });
 
   it('did not break while it is still at its start size, as it steps down next', () => {
-    expect(brokeInWord({ lines: broken, drawn: 43, start: 43, size: 30 })).toBe(false);
+    expect(brokeInWord({ lines: broken, drawn: 43, start: 43, size: 30, ...inSlot })).toBe(false);
   });
 
   it('broke at the default text size, where its start is its default size', () => {
-    expect(brokeInWord({ lines: broken, drawn: 30, start: 30, size: 30 })).toBe(true);
+    expect(brokeInWord({ lines: broken, drawn: 30, start: 30, size: 30, ...inSlot })).toBe(true);
   });
 
   it('did not break on one line, or between words', () => {
-    expect(brokeInWord({ lines: whole, drawn: 30, start: 43, size: 30 })).toBe(false);
+    expect(brokeInWord({ lines: whole, drawn: 30, start: 43, size: 30, ...inSlot })).toBe(false);
     const between = [{ text: 'Lista de ' }, { text: 'convidados' }];
-    expect(brokeInWord({ lines: between, drawn: 30, start: 43, size: 30 })).toBe(false);
+    expect(brokeInWord({ lines: between, drawn: 30, start: 43, size: 30, ...inSlot })).toBe(false);
+  });
+
+  it('did not break in a slot narrower than the title, as the row is still laying out', () => {
+    const atDefault = { lines: broken, drawn: 30, start: 30, size: 30 };
+    expect(brokeInWord({ ...atDefault, slot: 120, title: 180 })).toBe(false);
+    expect(brokeInWord({ ...atDefault, slot: 0, title: 180 })).toBe(false);
+    expect(brokeInWord({ ...atDefault, slot: 179, title: 180 })).toBe(true);
   });
 });
 
 describe('the row the title broke on (sc-68417)', () => {
   const broken = [{ text: 'Convidad' }, { text: 'os' }];
   const whole = [{ text: 'Convidados' }];
-  const atFloor = { drawn: 30, start: 43, size: 30 };
+  const atFloor = { drawn: 30, start: 43, size: 30, ...inSlot };
 
   it('is this row once the title breaks beside its actions', () => {
     expect(brokeOn({ broke: null, row: '370|pt', under: false, lines: broken, ...atFloor })).toBe(
@@ -144,8 +153,24 @@ describe('the row the title broke on (sc-68417)', () => {
     ).toBe('360|pt');
   });
 
+  it('is not this row where the title broke while its slot was still narrower than it (sc-68417, iPad on its side)', () => {
+    expect(
+      brokeOn({
+        broke: null,
+        row: '700|Guests',
+        under: false,
+        lines: [{ text: 'Gue' }, { text: 'sts' }],
+        drawn: 26,
+        start: 26,
+        size: 26,
+        slot: 60,
+        title: 92,
+      }),
+    ).toBeNull();
+  });
+
   it('is not yet this row at the start size, where the title steps down next', () => {
-    const atStart = { drawn: 43, start: 43, size: 30 };
+    const atStart = { drawn: 43, start: 43, size: 30, ...inSlot };
     expect(
       brokeOn({ broke: null, row: '370|pt', under: false, lines: broken, ...atStart }),
     ).toBeNull();
