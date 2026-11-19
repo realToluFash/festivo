@@ -37,6 +37,7 @@ import { Forbidden } from '../Forbidden.tsx';
 import {
   type DomainsSaid,
   domainLine,
+  keptLine,
   domainsCard,
   isProved,
   onlyLine,
@@ -345,7 +346,11 @@ function DomainRow({
       <span className="dc-lead" aria-hidden="true">
         <Glyph name="globe" size={22} />
       </span>
-      <RowWords title={name} tag={tag} lines={[domainLine(t, domain)]} />
+      <RowWords
+        title={name}
+        tag={tag}
+        lines={[kept ? keptLine(t, domain) : domainLine(t, domain)]}
+      />
       {!kept && (
         <span className="dc-actions">
           {domain.status !== 'proved' && (
