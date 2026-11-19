@@ -310,3 +310,70 @@ a.sn-tab {
   padding: 0;
   list-style: none;
 }
+
+/* A person's own link (sc-3912): the word, who and when, Copy link and Mark as sent in the row, and the link to copy by hand under it. */
+.rs-link-cell,
+.rs-link-fact {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--spaceXxs);
+}
+
+.rs-trail {
+  color: var(--colorInkSecondary);
+  font: 500 13px/1.4 var(--fontFamily);
+}
+
+.rs-link-acts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spaceXxs) var(--spaceMd);
+}
+
+.rs-link-acts .desk-text[aria-busy] {
+  color: var(--colorInkSecondary);
+  cursor: progress;
+}
+
+.rs-missed,
+.rs-held-says {
+  display: inline-flex;
+  align-items: flex-start;
+  gap: var(--spaceXs);
+  margin: 0;
+  color: var(--colorBrokenText);
+  font: 600 14px/1.45 var(--fontFamily);
+}
+
+.rs-table tbody tr.rs-held-row td {
+  padding-top: 0;
+  border-top: 0;
+}
+
+.rs-held {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceXs);
+  padding: var(--spaceMd);
+  border: 1px solid var(--colorInsetBorder);
+  border-radius: var(--radiusField);
+  background: var(--colorInset);
+}
+
+.rs-held-label {
+  color: var(--colorInk);
+  font: 600 14px/1.4 var(--fontFamily);
+}
+
+.rs-held-field {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: var(--sizeHit);
+  padding: 0 var(--spaceMd);
+  border: 1px solid var(--colorFieldBorder);
+  border-radius: var(--radiusField);
+  background: var(--colorCard);
+  color: var(--colorInk);
+  font: var(--typeBody);
+}
