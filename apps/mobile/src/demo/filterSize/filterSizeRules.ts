@@ -1,6 +1,12 @@
 import { picksShown } from '@soirely/domain';
 
-import { atAccessibilitySizes, fitWidest } from '../../layout/textSize.ts';
+import {
+  atAccessibilitySizes,
+  fitWidest,
+  frameTitleSize,
+  labelStart,
+  titleSize,
+} from '../../layout/textSize.ts';
 
 export type FilterSize = 'device' | 'default' | 'seventh' | 'ax1' | 'ax2' | 'ax3' | 'ax4' | 'ax5';
 export type FilterLanguage = 'en' | 'fr';
@@ -53,19 +59,36 @@ export function keyOf<Key extends string>(
 
 export const ROW_TYPE = { title: 16, value: 15 } as const;
 
+/** The size the Events title above the menu draws at, which the menu's words grow to and no further (sc-67338): 38 at AX1, 43 from AX2. */
+export function eventsTitleCap(scale: number, tablet: boolean, shortSide: number): number {
+  return titleSize(frameTitleSize(tablet, shortSide), scale);
+}
+
+/** Where a row's title and value start before a word steps them down: the person's size, no larger than the Events title. */
+export function rowStarts(scale: number, cap: number): { title: number; value: number } {
+  return {
+    title: labelStart(ROW_TYPE.title, scale, cap),
+    value: labelStart(ROW_TYPE.value, scale, cap),
+  };
+}
+
 export interface RowMeasure {
   scale: number;
+  /** The Events title's drawn size, from `eventsTitleCap`. */
+  cap: number;
   /** The row's width for its words: the menu less its side padding, the gap and the ›. */
   room: number;
   gap: number;
   title: number;
   titleWidest: number;
-  /** The widest piece a value line may wrap between, "+N more" whole, at the value's start. */
-  valueWidest: number;
+  /** The widest piece of the first `shown` picks, and of the "+N more" drawn after them, at the value's start. */
+  valueWidestAt: (shown: number) => number;
   /** How many picks the value has; nothing chosen is the one "Any" word. */
   count: number;
-  /** The line with the first `shown` picks, then "+N more" when any are left, at the value's start. */
-  widthAt: (shown: number) => number;
+  /** The line beside the title with the first `shown` picks, then "+N more" when any are left: its two texts measured apart and added up, as main's `usePicksFit`. */
+  besideAt: (shown: number) => number;
+  /** The same line as the one text the value under the title draws as. */
+  underAt: (shown: number) => number;
 }
 
 export interface RowDrawn {
@@ -84,29 +107,26 @@ function wholeIn(count: number, widthAt: (shown: number) => number, room: number
 
 /** sc-73933: at the accessibility sizes, a value that cannot sit whole beside its title takes the line under it; at the standard sizes, main's one line (sc-39348). */
 export function rowDrawn(row: RowMeasure): RowDrawn {
-  const titleStart = ROW_TYPE.title * row.scale;
-  const valueStart = ROW_TYPE.value * row.scale;
+  const starts = rowStarts(row.scale, row.cap);
   const beside = row.room - row.title - row.gap;
-  const oneLine = { stacked: false, titleSize: titleStart, valueSize: valueStart };
+  const oneLine = { stacked: false, titleSize: starts.title, valueSize: starts.value };
 
   if (!atAccessibilitySizes(row.scale))
-    return { ...oneLine, shown: picksShown(row.count, (each) => row.widthAt(each) <= beside) };
+    return { ...oneLine, shown: picksShown(row.count, (each) => row.besideAt(each) <= beside) };
 
-  const besideShown = wholeIn(row.count, row.widthAt, beside);
-  const valueSize = fitWidest(ROW_TYPE.value, valueStart, row.valueWidest, row.room);
-  const under = wholeIn(
-    row.count,
-    (each) => (row.widthAt(each) * valueSize) / valueStart,
-    row.room,
-  );
+  const besideShown = wholeIn(row.count, row.besideAt, beside);
+  const under = wholeIn(row.count, row.underAt, row.room);
 
   if (besideShown > 0 && besideShown >= under) return { ...oneLine, shown: besideShown };
 
+  // Only a line that shows a word wider than the row steps down: picks that fit whole on one line already fit.
+  const shown = Math.max(under, 1);
+
   return {
     stacked: true,
-    shown: Math.max(under, 1),
-    titleSize: fitWidest(ROW_TYPE.title, titleStart, row.titleWidest, row.room),
-    valueSize,
+    shown,
+    titleSize: fitWidest(ROW_TYPE.title, starts.title, row.titleWidest, row.room),
+    valueSize: fitWidest(ROW_TYPE.value, starts.value, row.valueWidestAt(shown), row.room),
   };
 }
 

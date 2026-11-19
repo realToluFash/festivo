@@ -1,63 +1,143 @@
 import { describe, expect, it } from 'vitest';
 
-import { type RowMeasure, filterScale, keptWhole, rowDrawn } from './filterSizeRules.ts';
+import {
+  type RowMeasure,
+  eventsTitleCap,
+  filterScale,
+  keptWhole,
+  rowDrawn,
+  rowStarts,
+} from './filterSizeRules.ts';
 
+const AX1 = filterScale('ax1', 1);
 const AX5 = filterScale('ax5', 1);
+const PHONE = 402;
+const IPAD = 820;
 
-const row = (over: Partial<RowMeasure>): RowMeasure => ({
-  scale: AX5,
-  room: 220,
-  gap: 12,
-  title: 120,
-  titleWidest: 120,
-  valueWidest: 150,
-  count: 1,
-  widthAt: () => 200,
-  ...over,
+const row = (over: Partial<RowMeasure>): RowMeasure => {
+  const scale = over.scale ?? AX5;
+
+  return {
+    scale,
+    cap: eventsTitleCap(scale, false, PHONE),
+    room: 220,
+    gap: 12,
+    title: 120,
+    titleWidest: 120,
+    valueWidestAt: () => 150,
+    count: 1,
+    besideAt: () => 200,
+    underAt: () => 200,
+    ...over,
+  };
+};
+
+describe('eventsTitleCap', () => {
+  it('is the Events title’s size: 38 at AX1 and 43 from AX2, on the phone and the iPad', () => {
+    expect(eventsTitleCap(AX1, false, PHONE)).toBe(38);
+    expect(eventsTitleCap(AX1, true, IPAD)).toBe(38);
+    expect(eventsTitleCap(filterScale('ax2', 1), false, PHONE)).toBe(43);
+    expect(eventsTitleCap(AX5, true, IPAD)).toBe(43);
+  });
+});
+
+describe('rowStarts', () => {
+  it('stops the title and the value at the Events title, both at 43 at AX5', () => {
+    expect(rowStarts(AX5, eventsTitleCap(AX5, false, PHONE))).toEqual({ title: 43, value: 43 });
+  });
+
+  it('leaves the words under the cap at the person’s size at AX1', () => {
+    const starts = rowStarts(AX1, eventsTitleCap(AX1, false, PHONE));
+
+    expect(starts.title).toBeCloseTo(16 * AX1);
+    expect(starts.value).toBeCloseTo(15 * AX1);
+  });
+
+  it('caps nothing at the standard sizes', () => {
+    const seventh = filterScale('seventh', 1);
+    const starts = rowStarts(seventh, eventsTitleCap(seventh, false, PHONE));
+
+    expect(starts.title).toBeCloseTo(16 * seventh);
+    expect(starts.value).toBeCloseTo(15 * seventh);
+  });
 });
 
 describe('rowDrawn at the standard sizes', () => {
   it('keeps main’s one line, its first pick allowed to end in "…"', () => {
-    const drawn = rowDrawn(row({ scale: 1, title: 40, widthAt: () => 500 }));
+    const drawn = rowDrawn(row({ scale: 1, title: 40, besideAt: () => 500 }));
 
     expect(drawn).toEqual({ stacked: false, shown: 1, titleSize: 16, valueSize: 15 });
   });
 
   it('stays on one line at the seventh step', () => {
-    expect(rowDrawn(row({ scale: filterScale('seventh', 1), widthAt: () => 500 })).stacked).toBe(
+    expect(rowDrawn(row({ scale: filterScale('seventh', 1), besideAt: () => 500 })).stacked).toBe(
       false,
     );
+  });
+
+  it('counts the picks beside the title by the line measured as its two texts', () => {
+    const drawn = rowDrawn(
+      row({
+        scale: 1,
+        title: 40,
+        count: 2,
+        besideAt: (shown) => (shown === 1 ? 169 : 300),
+        underAt: () => 100,
+      }),
+    );
+
+    expect(drawn.shown).toBe(1);
   });
 });
 
 describe('rowDrawn at the accessibility sizes', () => {
   it('keeps the row on one line while its value fits whole beside its title', () => {
-    expect(rowDrawn(row({ widthAt: () => 80 }))).toMatchObject({ stacked: false, shown: 1 });
+    expect(rowDrawn(row({ besideAt: () => 80 }))).toMatchObject({
+      stacked: false,
+      shown: 1,
+      titleSize: 43,
+      valueSize: 43,
+    });
   });
 
-  it('puts a value that cannot fit beside its title on the line under it, at its start', () => {
-    const drawn = rowDrawn(row({ widthAt: () => 200 }));
+  it('puts a value that cannot fit beside its title on the line under it, at the cap', () => {
+    const drawn = rowDrawn(row({ besideAt: () => 200 }));
 
-    expect(drawn.stacked).toBe(true);
-    expect(drawn.valueSize).toBeCloseTo(15 * AX5);
+    expect(drawn).toMatchObject({ stacked: true, titleSize: 43, valueSize: 43 });
   });
 
   it('stacks when the line under shows more whole picks than beside', () => {
     const widths = [0, 60, 150, 230];
-    const drawn = rowDrawn(row({ count: 3, widthAt: (shown) => widths[shown] ?? 0 }));
+    const at = (shown: number) => widths[shown] ?? 0;
+    const drawn = rowDrawn(row({ count: 3, besideAt: at, underAt: at }));
 
     expect(drawn).toMatchObject({ stacked: true, shown: 2 });
   });
 
   it('shows the first pick alone, to wrap, when even it does not fit on one line', () => {
-    const drawn = rowDrawn(row({ count: 2, widthAt: (shown) => (shown === 1 ? 420 : 380) }));
+    const at = (shown: number) => (shown === 1 ? 420 : 380);
+    const drawn = rowDrawn(row({ count: 2, besideAt: at, underAt: at }));
 
     expect(drawn).toMatchObject({ stacked: true, shown: 1 });
   });
 
-  it('steps a word wider than the line down to the largest size it fits, never under 15', () => {
-    expect(rowDrawn(row({ valueWidest: 440 })).valueSize).toBe(26);
-    expect(rowDrawn(row({ valueWidest: 4000 })).valueSize).toBe(15);
+  it('steps a word wider than the line down from the cap to the largest size it fits, never under 15', () => {
+    expect(rowDrawn(row({ valueWidestAt: () => 440 })).valueSize).toBe(21);
+    expect(rowDrawn(row({ valueWidestAt: () => 4000 })).valueSize).toBe(15);
+  });
+
+  it('steps down only for the picks the line shows, not for a hidden pick’s long word', () => {
+    const at = (shown: number) => (shown === 1 ? 210 : 400);
+    const drawn = rowDrawn(
+      row({
+        count: 2,
+        besideAt: at,
+        underAt: at,
+        valueWidestAt: (shown) => (shown === 1 ? 150 : 600),
+      }),
+    );
+
+    expect(drawn).toMatchObject({ stacked: true, shown: 1, valueSize: 43 });
   });
 
   it('steps a title word wider than the line down the same way, never under 16', () => {
@@ -67,6 +147,6 @@ describe('rowDrawn at the accessibility sizes', () => {
 
 describe('keptWhole', () => {
   it('keeps "+N more" on one line', () => {
-    expect(keptWhole('+1 autre')).toBe('+1\u00A0autre');
+    expect(keptWhole('+1 autre')).toBe('+1 autre');
   });
 });

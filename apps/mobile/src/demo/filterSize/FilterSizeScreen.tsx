@@ -35,7 +35,9 @@ import { Glyph } from '../../components/Glyph.tsx';
 import { type Anchor, AnchoredMenu, anchorUnder } from '../../components/Summary.tsx';
 import { Text } from '../../components/Text.tsx';
 import { MeasuredWords } from '../../components/Title.tsx';
+import { isTablet } from '../../layout/classify.ts';
 import { piecesIn } from '../../layout/textSize.ts';
+import { useLayout } from '../../layout/useLayout.ts';
 import { DemoOnly } from '../../steps/Lines.tsx';
 import { tokens } from '../../theme/tokens.ts';
 import { NavBar } from '../DemoScreen.tsx';
@@ -48,10 +50,11 @@ import {
   type FilterLanguage,
   type FilterPicks,
   type FilterSize,
-  ROW_TYPE,
+  eventsTitleCap,
   filterScale,
   keptWhole,
   rowDrawn,
+  rowStarts,
 } from './filterSizeRules.ts';
 
 export interface FilterSizeStart {
@@ -81,6 +84,7 @@ export function FilterSizeScreen({ start }: { start: FilterSizeStart }) {
   const { i18n } = useTranslation();
   const insets = useSafeAreaInsets();
   const { fontScale } = useWindowDimensions();
+  const layout = useLayout();
   const [size, setSize] = useState(start.size);
   const [language, setLanguage] = useState(start.language);
   const [filters, setFilters] = useState(() => filtersOf(start.picks));
@@ -91,6 +95,7 @@ export function FilterSizeScreen({ start }: { start: FilterSizeStart }) {
     [i18n, language],
   );
   const scale = filterScale(size, fontScale);
+  const cap = eventsTitleCap(scale, isTablet(layout.kind), Math.min(layout.width, layout.height));
 
   useEffect(() => {
     const wait = setTimeout(() => anchorUnder(filterRef, setMenuAt), MENU_AFTER_MS);
@@ -120,6 +125,7 @@ export function FilterSizeScreen({ start }: { start: FilterSizeStart }) {
               filters={filters}
               onFilters={setFilters}
               scale={scale}
+              cap={cap}
               locale={language}
             />
           </View>
@@ -192,6 +198,7 @@ function Menu({
   filters,
   onFilters,
   scale,
+  cap,
   locale,
 }: {
   at: Anchor | null;
@@ -200,6 +207,7 @@ function Menu({
   filters: EventsFilters;
   onFilters: (filters: EventsFilters) => void;
   scale: number;
+  cap: number;
   locale: string;
 }) {
   const { t } = useTranslation();
@@ -234,6 +242,7 @@ function Menu({
             picks={types}
             value={types.length === 0 ? t('eventsSearch.anyType') : listed(types)}
             scale={scale}
+            cap={cap}
             onPress={() => setLevel('type')}
             testID="demo.filterSize.type"
           />
@@ -242,6 +251,7 @@ function Menu({
             picks={[whenWord]}
             value={whenWord}
             scale={scale}
+            cap={cap}
             onPress={() => setLevel('when')}
             testID="demo.filterSize.when"
           />
@@ -250,6 +260,7 @@ function Menu({
             picks={filters.hosts}
             value={filters.hosts.length === 0 ? t('eventsSearch.anyone') : listed(filters.hosts)}
             scale={scale}
+            cap={cap}
             onPress={() => setLevel('hosts')}
             testID="demo.filterSize.hosts"
           />
@@ -264,7 +275,7 @@ function Menu({
                 testID="demo.filterSize.clear"
               >
                 <Text
-                  size={ROW_TYPE.title * scale}
+                  size={rowStarts(scale, cap).title}
                   weight="medium"
                   allowFontScaling={false}
                   accessible={false}
@@ -324,6 +335,7 @@ function TopRow({
   picks,
   value,
   scale,
+  cap,
   onPress,
   testID,
 }: {
@@ -332,6 +344,7 @@ function TopRow({
   picks: readonly string[];
   value: string;
   scale: number;
+  cap: number;
   onPress: () => void;
   testID: string;
 }) {
@@ -341,34 +354,50 @@ function TopRow({
   const tail = (rest: number) => keptWhole(t('calendar.moreItems', { count: rest }));
   const read = (shown: number) =>
     shown === count ? value : `${picksLead(shownPicks, shown)} ${tail(count - shown)}`;
+  // Beside its title the line draws as two texts, so it is measured as two: as one string it comes out narrower on Android (main's usePicksFit).
+  const parts = (shown: number) =>
+    shown === count ? [value] : [picksLead(shownPicks, shown), ` ${tail(count - shown)}`];
   const reads = shownPicks.map((_, index) => read(index + 1));
+  const besides = shownPicks.flatMap((_, index) => parts(index + 1));
   const tails = shownPicks.slice(1).map((_, index) => tail(index + 1));
   const valuePieces = [...piecesIn(shownPicks), ...tails];
-  const titleStart = ROW_TYPE.title * scale;
-  const valueStart = ROW_TYPE.value * scale;
+  const starts = rowStarts(scale, cap);
   const [widths, setWidths] = useState<Readonly<Record<string, number>>>({});
   const [room, setRoom] = useState(0);
-  const titleKey = (text: string) => `t|${titleStart}|${text}`;
-  const valueKey = (text: string) => `v|${valueStart}|${text}`;
+  const titleKey = (text: string) => `t|${starts.title}|${text}`;
+  const valueKey = (text: string) => `v|${starts.value}|${text}`;
   const titlePieces = piecesIn([title]);
   const keys = [
     titleKey(title),
     ...titlePieces.map(titleKey),
     ...reads.map(valueKey),
+    ...besides.map(valueKey),
     ...valuePieces.map(valueKey),
   ];
   const ready = room > 0 && keys.every((key) => widths[key] != null);
   const widthOf = (key: string) => widths[key] ?? 0;
+  const widestOf = (texts: readonly string[], key: (text: string) => string) =>
+    Math.max(...texts.map((text) => widthOf(key(text))));
   const drawn = ready
     ? rowDrawn({
         scale,
+        cap,
         room,
         gap: tokens.spaceMd,
         title: widthOf(titleKey(title)),
-        titleWidest: Math.max(...titlePieces.map((piece) => widthOf(titleKey(piece)))),
-        valueWidest: Math.max(...valuePieces.map((piece) => widthOf(valueKey(piece)))),
+        titleWidest: widestOf(titlePieces, titleKey),
+        valueWidestAt: (shown) =>
+          widestOf(
+            [
+              ...piecesIn(shownPicks.slice(0, shown)),
+              ...(shown < count ? [tail(count - shown)] : []),
+            ],
+            valueKey,
+          ),
         count,
-        widthAt: (shown) => widthOf(valueKey(read(shown))),
+        besideAt: (shown) =>
+          parts(shown).reduce((sum, text) => sum + Math.ceil(widthOf(valueKey(text))), 0),
+        underAt: (shown) => widthOf(valueKey(read(shown))),
       })
     : null;
   const shown = drawn?.shown ?? count;
@@ -392,14 +421,14 @@ function TopRow({
     >
       <MeasuredWords
         words={[title, ...titlePieces]}
-        size={titleStart}
+        size={starts.title}
         weight="medium"
         allowFontScaling={false}
         onWidth={measured(titleKey)}
       />
       <MeasuredWords
-        words={[...reads, ...valuePieces]}
-        size={valueStart}
+        words={[...new Set([...reads, ...besides, ...valuePieces])]}
+        size={starts.value}
         weight="medium"
         allowFontScaling={false}
         onWidth={measured(valueKey)}
@@ -431,7 +460,7 @@ function TopRow({
         ) : (
           <>
             <Text
-              size={titleStart}
+              size={starts.title}
               weight="medium"
               allowFontScaling={false}
               numberOfLines={1}
@@ -442,7 +471,7 @@ function TopRow({
             </Text>
             <View style={styles.value}>
               <Text
-                size={valueStart}
+                size={starts.value}
                 weight="medium"
                 allowFontScaling={false}
                 numberOfLines={1}
@@ -453,7 +482,7 @@ function TopRow({
               </Text>
               {rest > 0 && (
                 <Text
-                  size={valueStart}
+                  size={starts.value}
                   weight="medium"
                   allowFontScaling={false}
                   numberOfLines={1}
