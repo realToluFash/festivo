@@ -393,6 +393,13 @@ describe('Email domains: each state’s card and rows (sc-560, sc-563)', () => {
           on: false,
         },
       },
+      {
+        name: 'ireevents.com',
+        tag: { kind: 'kept', word: 'Kept' },
+        line: 'Not proved',
+        action: null,
+        only: null,
+      },
     ]);
   });
 

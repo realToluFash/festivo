@@ -335,7 +335,11 @@ export function domainsStart(state: DomainsState, owns: boolean): DomainsModel {
     case 'ed_locked':
       return { ...empty, plan: 'locked' };
     case 'ed_downgraded':
-      return { ...base, plan: 'downgraded', domains: [{ ...PROVED_IRE, status: 'kept' }] };
+      return {
+        ...base,
+        plan: 'downgraded',
+        domains: [{ ...PROVED_IRE, status: 'kept' }, WAITING_IRE_EVENTS],
+      };
     case 'oo_off':
       return alone;
     case 'oo_confirm':
@@ -421,21 +425,26 @@ export function domainRows(model: DomainsModel, owns: boolean, say: DataSay): Do
   const kept = model.plan === 'downgraded';
 
   return model.domains.map((domain) => {
-    const tag: TagWord = {
-      proved: { kind: 'yes', word: D.proved },
-      waiting: { kind: 'waiting', word: D.waiting },
-      failed: { kind: 'no', word: D.notProved },
-      missing: { kind: 'waiting', word: D.missing },
-      kept: { kind: 'kept', word: D.kept },
-    }[domain.status] as TagWord;
+    const tag: TagWord = kept
+      ? { kind: 'kept', word: D.kept }
+      : ({
+          proved: { kind: 'yes', word: D.proved },
+          waiting: { kind: 'waiting', word: D.waiting },
+          failed: { kind: 'no', word: D.notProved },
+          missing: { kind: 'waiting', word: D.missing },
+          kept: { kind: 'kept', word: D.kept },
+        }[domain.status] as TagWord);
     const at = (iso: string | null) => say.at(iso ?? NOW);
-    const line = {
-      proved: D.provedOn(at(domain.provedAt)),
-      kept: D.provedOn(at(domain.provedAt)),
-      waiting: D.checksUntil(at(domain.deadline)),
-      failed: D.stopped(at(domain.deadline)),
-      missing: D.putBack(at(domain.deadline)),
-    }[domain.status];
+    const keptLine = domain.provedAt == null ? D.notProved : D.provedOn(at(domain.provedAt));
+    const line = kept
+      ? keptLine
+      : {
+          proved: D.provedOn(at(domain.provedAt)),
+          kept: D.provedOn(at(domain.provedAt)),
+          waiting: D.checksUntil(at(domain.deadline)),
+          failed: D.stopped(at(domain.deadline)),
+          missing: D.putBack(at(domain.deadline)),
+        }[domain.status];
 
     return {
       name: domain.name,
