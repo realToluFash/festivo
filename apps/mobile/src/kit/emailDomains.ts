@@ -57,13 +57,18 @@ export function controlAsks(t: TFunction, domains: readonly EmailDomain[]): Doma
           status: 'failed',
           at: Infinity,
           says: t('emailDomains.card.failed', { domain: name }),
-          line: t('emailDomains.card.failedLine', { at: domain.checksEnd }),
+          line: t('emailDomains.card.failedLine', { at: stoppedOn(domain) }),
           domain: name,
         },
       ];
 
     return [];
   });
+}
+
+/** When the checks stopped; the hourly job sets it, so until then the day they were due to. */
+function stoppedOn(domain: EmailDomain): string {
+  return domain.failed ?? domain.checksEnd;
 }
 
 function soonest<T extends { at: number }>(asks: readonly T[]): T | null {
@@ -130,7 +135,7 @@ export function hubDomainsLine(t: TFunction, page: EmailDomainsPage, organisatio
 }
 
 function standing(page: EmailDomainsPage, domain: EmailDomain): EmailDomain['status'] | 'kept' {
-  return page.plan === 'left' && isProved(domain) ? 'kept' : domain.status;
+  return page.plan === 'left' ? 'kept' : domain.status;
 }
 
 /** Email domains' card: what was just done, then a missing record, a failed one, the soonest wait. */
@@ -286,9 +291,13 @@ export function domainRows(
     }[shown] as TagWord;
     const line = {
       proved: () => t('emailDomains.provedOn', { at: domain.proved ?? '' }),
-      kept: () => t('emailDomains.provedOn', { at: domain.proved ?? '' }),
+      // Nothing is checked off Enterprise, so a row never proved names no instant.
+      kept: () =>
+        isProved(domain)
+          ? t('emailDomains.provedOn', { at: domain.proved ?? '' })
+          : t('emailDomains.notProved'),
       waiting: () => t('emailDomains.checksUntil', { at: domain.checksEnd }),
-      failed: () => t('emailDomains.stopped', { at: domain.checksEnd }),
+      failed: () => t('emailDomains.stopped', { at: stoppedOn(domain) }),
       missing: () => t('emailDomains.putBack', { at: domain.putBackBy ?? '' }),
     }[shown]();
 
@@ -303,7 +312,7 @@ export function domainRows(
 }
 
 export function recordFoot(t: TFunction, domain: EmailDomain): string {
-  if (domain.status === 'failed') return t('emailDomains.stopped', { at: domain.checksEnd });
+  if (domain.status === 'failed') return t('emailDomains.stopped', { at: stoppedOn(domain) });
   if (domain.status === 'missing')
     return t('emailDomains.record.putBack', { at: domain.putBackBy ?? '' });
 

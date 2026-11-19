@@ -1,4 +1,5 @@
 import type { EmailDomain, EmailDomainsPage, OrganisationExportPage } from '@soirely/api-client';
+import { listFormat } from '@soirely/domain';
 import type { TFunction } from 'i18next';
 
 import { cardStateOf } from './exportAllData.ts';
@@ -15,10 +16,22 @@ export function domainLine(t: TFunction, domain: EmailDomain): string {
     case 'waiting':
       return t('emailDomains.waitingLine', { when: domain.checksEnd });
     case 'failed':
-      return t('emailDomains.failedLine', { when: domain.checksEnd });
+      return t('emailDomains.failedLine', { when: stoppedOn(domain) });
     case 'missing':
       return t('emailDomains.missingLine', { when: domain.putBackBy });
   }
+}
+
+/** When the checks stopped; the hourly job sets it, so until then the day they were due to. */
+function stoppedOn(domain: EmailDomain): string {
+  return domain.failed ?? domain.checksEnd;
+}
+
+/** A row once the organisation left Enterprise: nothing is checked, so no instant still to come. */
+export function keptLine(t: TFunction, domain: EmailDomain): string {
+  return isProved(domain)
+    ? t('emailDomains.provedLine', { when: domain.proved })
+    : t('emailDomains.notProved');
 }
 
 /** The record's own last line: where its row says it stands, as a sentence. */
@@ -183,7 +196,7 @@ export function domainsCard(
   if (failed != null)
     return {
       says: t('emailDomains.failedSays', { domain: failed.domain }),
-      line: t('emailDomains.failedCardLine', { when: failed.checksEnd }),
+      line: t('emailDomains.failedCardLine', { when: stoppedOn(failed) }),
       record: failed.domain,
       keep: null,
     };
@@ -275,6 +288,7 @@ export function hubCard(
   exported: OrganisationExportPage,
   domains: EmailDomainsPage,
   organisation: string,
+  locale: string,
 ): HubCard {
   const ask = soonestAsk(t, exported, domains);
 
@@ -294,5 +308,17 @@ export function hubCard(
       line: t('dataControl.newLine', { organisation }),
     };
 
-  return { does: null, says: t('dataControl.nothingAsks'), line: null };
+  const proved = domains.domains.filter(isProved).map((domain) => domain.domain);
+
+  return {
+    does: null,
+    says: t('dataControl.nothingAsks'),
+    line:
+      proved.length === 0
+        ? null
+        : t('dataControl.nothingLine', {
+            count: proved.length,
+            domains: listFormat(locale, { type: 'conjunction' }).format(proved),
+          }),
+  };
 }

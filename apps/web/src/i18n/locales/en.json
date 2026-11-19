@@ -4493,6 +4493,8 @@
     "ready": "Ready",
     "cardReadyLine": "It downloads once, until {{when}}, and only for you, signed in.",
     "nothingAsks": "Nothing needs your attention",
+    "nothingLine_one": "{{domains}} is proved.",
+    "nothingLine_other": "{{domains}} are proved.",
     "newSays": "Nothing is set up yet",
     "newLine": "Start by proving the email domain of {{organisation}}.",
     "lockedSays": "These come with Enterprise",

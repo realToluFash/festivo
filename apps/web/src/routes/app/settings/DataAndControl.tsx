@@ -23,6 +23,7 @@ import {
   TextAction,
   TitleRow,
 } from '../../../components/SettingsParts.tsx';
+import { currentLocale } from '../../../i18n/index.ts';
 import { focusWhenFree, useDeskLayers } from '../../../layers.ts';
 import { can, useSession } from '../../../session.ts';
 import { Forbidden } from '../Forbidden.tsx';
@@ -102,7 +103,7 @@ function Loaded({
   const row = exportRow(t, page, organisation.name);
   const domainsLine = domainsRow(t, domains);
   const exported = page.export;
-  const ask = hubCard(t, page, domains, organisation.name);
+  const ask = hubCard(t, page, domains, organisation.name, currentLocale());
 
   async function download(exportId: string, askedAt: string): Promise<void> {
     setBusy(true);
