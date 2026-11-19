@@ -83,6 +83,44 @@ describe('Settings › Vendors in A · Summary first (sc-82)', () => {
     },
   );
 
+  it(
+    'keeps its bell in the bar beside Menu at a phone’s width, as the product’s shell does',
+    SLOW,
+    async () => {
+      const plain = window.matchMedia;
+      window.matchMedia = (query: string) =>
+        ({
+          matches: query === '(width <= 40rem)',
+          media: query,
+          addEventListener() {},
+          removeEventListener() {},
+        }) as never;
+
+      try {
+        await open('/demo/settings/vendors');
+        await screen.findByRole('heading', { level: 1, name: 'Vendors' }, WAIT);
+        const bar = screen.getByRole('navigation', { name: 'Soirely' });
+
+        expect(within(bar).getByRole('button', { name: /notification/iu })).toBeTruthy();
+        expect(within(main()).queryByRole('button', { name: /notification/iu })).toBeNull();
+      } finally {
+        window.matchMedia = plain;
+      }
+    },
+  );
+
+  it('keeps its bell beside the title at a desk', SLOW, async () => {
+    await open('/demo/settings/vendors');
+    await screen.findByRole('heading', { level: 1, name: 'Vendors' }, WAIT);
+
+    expect(within(main()).getByRole('button', { name: /notification/iu })).toBeTruthy();
+    expect(
+      within(screen.getByRole('navigation', { name: 'Soirely' })).queryByRole('button', {
+        name: /notification/iu,
+      }),
+    ).toBeNull();
+  });
+
   it('keeps the old address, and its query, on the new one', SLOW, async () => {
     const router = await open('/demo/vendors?state=archived');
 
