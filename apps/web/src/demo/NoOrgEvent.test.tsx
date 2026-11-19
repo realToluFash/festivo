@@ -54,20 +54,11 @@ describe('inside the event with no organisation, at a desk (sc-71, sc-31775)', (
     expect(sidebar().getByRole('button', { name: 'Lara Monteiro, Can view' })).toBeDefined();
   });
 
-  it('puts Check guests in first at Can check guests in, and on the card', async () => {
+  it('offers no Check guests in at a desk, on the sidebar or the card (sc-1454)', async () => {
     await inside('no-org-check-in');
 
-    expect(areas()).toEqual([
-      'Check guests in',
-      'Overview',
-      'Guests',
-      'Schedule',
-      'Seating',
-      'People',
-    ]);
-    expect(
-      within(screen.getByRole('main')).getByRole('button', { name: 'Check guests in' }),
-    ).toBeDefined();
+    expect(areas()).toEqual(['Overview', 'Guests', 'Schedule', 'Seating', 'People']);
+    expect(screen.queryByRole('button', { name: /Check guests in/u })).toBeNull();
     expect(
       screen.getByText('Can check guests in · Bar and drinks · until Sat, Nov 14, 23:30'),
     ).toBeDefined();

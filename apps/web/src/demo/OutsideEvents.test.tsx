@@ -233,7 +233,7 @@ describe('Events from outside in the switcher (sc-68438)', () => {
     fireEvent.click(within(menu).getByRole('button', { name: new RegExp(`^${E1.name}`, 'u') }));
     await screen.findByRole('heading', { level: 1, name: E1.name });
 
-    expect(areas(E1.name)[0]).toBe('Check guests in');
+    expect(areas(E1.name)).not.toContain('Check guests in');
     expect(screen.queryByRole('button', { name: /Switch organisation/u })).toBeNull();
     fireEvent.click(screen.getByRole('button', { name: /^Folake/u }));
     expect(
