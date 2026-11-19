@@ -44,6 +44,23 @@ export function actionsUnder({
   return title + beside > room;
 }
 
+/** sc-68417: a title laid out beside its actions broke inside a word once it could step down no further, so the sum above, from widths measured hidden, left it less room than it needs. A break at its start size is not one: it steps down next. */
+export function brokeInWord({
+  lines,
+  drawn,
+  start,
+  size,
+}: {
+  lines: readonly { text: string }[];
+  drawn: number;
+  start: number;
+  size: number;
+}): boolean {
+  if (drawn >= start && drawn > size) return false;
+
+  return lines.slice(0, -1).some((line) => !/\s$/.test(line.text));
+}
+
 function unmeasured(...widths: number[]): boolean {
   return widths.some((width) => width <= 0);
 }

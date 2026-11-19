@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { actionsUnder, labelFits, rowRoom } from './titleFit.ts';
+import { actionsUnder, brokeInWord, labelFits, rowRoom } from './titleFit.ts';
 
 const row = { room: 400, title: 140, extra: 0, labelled: 170, gap: 16 };
 
@@ -91,5 +91,32 @@ describe('Export and the + under the title (sc-68417)', () => {
   it('stay beside it until the row and the title are measured', () => {
     expect(actionsUnder({ ...actions, extra: 400, room: 0 })).toBe(false);
     expect(actionsUnder({ ...actions, extra: 400, title: 0 })).toBe(false);
+  });
+});
+
+describe('a title that broke beside its actions all the same (sc-68417)', () => {
+  const broken = [{ text: 'Convidad' }, { text: 'os' }];
+  const whole = [{ text: 'Convidados' }];
+
+  it('broke where it is at its default size and still wraps inside its word', () => {
+    expect(brokeInWord({ lines: broken, drawn: 30, start: 43, size: 30 })).toBe(true);
+  });
+
+  it('broke where it stepped down part way and still wraps, as it steps no further', () => {
+    expect(brokeInWord({ lines: broken, drawn: 34, start: 43, size: 30 })).toBe(true);
+  });
+
+  it('did not break while it is still at its start size, as it steps down next', () => {
+    expect(brokeInWord({ lines: broken, drawn: 43, start: 43, size: 30 })).toBe(false);
+  });
+
+  it('broke at the default text size, where its start is its default size', () => {
+    expect(brokeInWord({ lines: broken, drawn: 30, start: 30, size: 30 })).toBe(true);
+  });
+
+  it('did not break on one line, or between words', () => {
+    expect(brokeInWord({ lines: whole, drawn: 30, start: 43, size: 30 })).toBe(false);
+    const between = [{ text: 'Lista de ' }, { text: 'convidados' }];
+    expect(brokeInWord({ lines: between, drawn: 30, start: 43, size: 30 })).toBe(false);
   });
 });
