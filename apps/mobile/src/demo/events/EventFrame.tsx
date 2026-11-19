@@ -1,5 +1,13 @@
 import { router } from 'expo-router';
-import { type ReactNode, type Ref, createContext, useContext, useEffect, useRef } from 'react';
+import {
+  type ReactNode,
+  type Ref,
+  createContext,
+  useContext,
+  useEffect,
+  useRef,
+  useState,
+} from 'react';
 import {
   type LayoutChangeEvent,
   Pressable,
@@ -8,16 +16,20 @@ import {
   StyleSheet,
   View,
   type ViewInstance,
+  useWindowDimensions,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Sheet } from '../../components/Sheet.tsx';
 import { Text, TitleCap } from '../../components/Text.tsx';
-import { PageTitleDrawn, useTitleCap } from '../../components/Title.tsx';
+import { MeasuredWords, PageTitleDrawn, useTitleCap } from '../../components/Title.tsx';
 import { PAGE_TITLE } from '../../components/topTitle.ts';
 import { tokens } from '../../theme/tokens.ts';
 import { Glyph, type GlyphName } from '../../components/Glyph.tsx';
-import { PHONE_TAB_BAR, TabBar, TabBarFade } from '../../components/TodayCover.tsx';
+import { PHONE_TAB_BAR, TabBarFade } from '../../components/TodayCover.tsx';
+import { tabBarSides } from '../../components/bodyEdges.ts';
+import { wordsIn } from '../../layout/textSize.ts';
+import { eventBarLabelSize, eventBarStart } from './eventBarSize.ts';
 import {
   SidebarBack,
   SidebarColumn,
@@ -257,25 +269,12 @@ export function EventFrame({
       {phone && (
         <>
           <TabBarFade />
-          {badge == null ? (
-            <TabBar
-              tabs={PHONE_BAR}
-              bottom={foot}
-              at={at}
-              onTab={(label) => {
-                const chosen = PHONE_TABS.find((one) => AREA_WORDS[one] === label);
-                if (chosen == null) onMore(true);
-                else onArea(chosen);
-              }}
-            />
-          ) : (
-            <BadgedTabBar
-              bottom={foot}
-              at={at}
-              badge={badge}
-              onTab={(chosen) => (chosen == null ? onMore(true) : onArea(chosen))}
-            />
-          )}
+          <EventBar
+            bottom={foot}
+            at={at}
+            badge={badge}
+            onTab={(chosen) => (chosen == null ? onMore(true) : onArea(chosen))}
+          />
           <MoreSheet
             open={more}
             onClose={() => onMore(false)}
@@ -374,8 +373,8 @@ function MoreGlyph({ name, on }: { name: GlyphName; on: boolean }) {
   );
 }
 
-/** The event's tab bar as TabBar draws it, with Messages' count on its tab and its name in words. */
-function BadgedTabBar({
+/** The event's tab bar, its five labels at one size, stepped down to 10 where that keeps every word whole, and Messages' count on its tab (sc-71148). */
+function EventBar({
   bottom,
   at,
   badge,
@@ -383,15 +382,35 @@ function BadgedTabBar({
 }: {
   bottom: number;
   at: string;
-  badge: AreaBadge;
+  badge: AreaBadge | null;
   onTab: (area: AreaKey | null) => void;
 }) {
+  const insets = useSafeAreaInsets();
+  const { fontScale } = useWindowDimensions();
+  const [measured, setMeasured] = useState<Readonly<Record<string, number>>>({});
+  const [slot, setSlot] = useState(0);
+  const start = eventBarStart(fontScale);
+  const words = wordsIn(PHONE_BAR.map(([label]) => label));
+  const widths = words.map((word) => measured[`${start}|${word}`]);
+  const widest = widths.every((width) => width != null) ? Math.max(...widths.map(Number)) : 0;
+  const size = eventBarLabelSize(fontScale, widest, slot);
+
   return (
-    <View style={[styles.tabBar, { bottom }]} accessibilityRole="tablist">
-      {PHONE_BAR.map(([label, glyph]) => {
+    <View style={[styles.tabBar, tabBarSides(insets), { bottom }]} accessibilityRole="tablist">
+      <MeasuredWords
+        words={words}
+        size={start}
+        weight="semibold"
+        allowFontScaling={false}
+        onWidth={(word, width) => {
+          const key = `${start}|${word}`;
+          setMeasured((now) => (now[key] === width ? now : { ...now, [key]: width }));
+        }}
+      />
+      {PHONE_BAR.map(([label, glyph], index) => {
         const on = label === at;
         const ink = on ? tokens.colorAccent : tokens.colorInkSecondary;
-        const counted = label === AREA_WORDS.messages;
+        const counted = badge != null && label === AREA_WORDS.messages;
 
         return (
           <Pressable
@@ -402,13 +421,22 @@ function BadgedTabBar({
             accessibilityState={{ selected: on }}
             accessibilityLabel={counted ? badge.name : label}
             testID={`tab-${label.toLowerCase()}`}
+            onLayout={
+              index === 0
+                ? (event) => {
+                    const width = event.nativeEvent.layout.width;
+                    setSlot((now) => (now === width ? now : width));
+                  }
+                : undefined
+            }
           >
             <Glyph name={glyph} size={22} ink={ink} />
             <Text
-              size={12}
+              size={size}
               weight={on ? 'semibold' : 'medium'}
+              allowFontScaling={false}
               accessible={false}
-              style={{ color: ink }}
+              style={[styles.tabLabel, { color: ink }]}
             >
               {label}
             </Text>
@@ -681,9 +709,7 @@ const styles = StyleSheet.create({
   figures: { fontVariant: ['tabular-nums'] },
   tabBar: {
     position: 'absolute',
-    left: 18,
-    right: 18,
-    height: 64,
+    height: PHONE_TAB_BAR,
     padding: 5,
     borderRadius: tokens.space5xl,
     backgroundColor: tokens.colorCard,
@@ -703,6 +729,7 @@ const styles = StyleSheet.create({
     gap: 3,
   },
   tabOn: { backgroundColor: tokens.colorAccentTint },
+  tabLabel: { textAlign: 'center' },
   badge: {
     position: 'absolute',
     left: '50%',
