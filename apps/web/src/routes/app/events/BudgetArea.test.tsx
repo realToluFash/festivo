@@ -1,7 +1,9 @@
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { connection } from '@soirely/domain';
 import { RouterProvider, createMemoryRouter } from 'react-router';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { __setConfig, config } from '../../../config.ts';
 import { __setSessionState, type Session } from '../../../session.ts';
 import { OWNER_PERMISSIONS, membership } from '../../../test-memberships.ts';
 import { routes } from '../../index.tsx';
@@ -560,5 +562,241 @@ describe('Add a cost (sc-85, decided 6 Nov)', () => {
       rate: '12.00',
       currency: 'GBP',
     });
+  });
+});
+
+class StubSource {
+  static readonly CLOSED = 2;
+  static made: StubSource[] = [];
+
+  readyState = 0;
+  onopen: (() => void) | null = null;
+  onmessage: ((message: { data: string }) => void) | null = null;
+  onerror: (() => void) | null = null;
+
+  readonly url: string;
+
+  constructor(url: string | URL) {
+    this.url = String(url);
+    StubSource.made.push(this);
+  }
+
+  close(): void {
+    this.readyState = StubSource.CLOSED;
+  }
+
+  publish(): void {
+    act(() => this.onmessage?.({ data: '{}' }));
+  }
+}
+
+function deferred(): { promise: Promise<void>; open: () => void } {
+  let open = () => {};
+  const promise = new Promise<void>((resolve) => {
+    open = resolve;
+  });
+
+  return { promise, open };
+}
+
+describe('the Budget while others change it (sc-85)', () => {
+  const before = config();
+  const CAKE = costed(
+    'cake',
+    'Cake',
+    { category: 'other', basis: 'fixed', amount: '450.00', quantity: QUANTITIES.fixed },
+    '450.00',
+  );
+  const hub = () =>
+    json({ token: 'tok', expiresAt: new Date(Date.now() + 3_600_000).toISOString() });
+
+  beforeEach(() => {
+    __setConfig({ ...before, mercureUrl: 'http://hub.test/.well-known/mercure' });
+    StubSource.made = [];
+    vi.stubGlobal('EventSource', StubSource);
+  });
+
+  afterEach(() => {
+    __setConfig(before);
+    vi.unstubAllGlobals();
+    vi.useRealTimers();
+    act(() => connection.deviceOnline());
+  });
+
+  async function source(): Promise<StubSource> {
+    const budgeted = () => StubSource.made.filter((one) => one.url.includes('budget'));
+    await waitFor(() => expect(budgeted()).toHaveLength(1));
+    const one = budgeted()[0]!;
+    const topics = new URL(one.url).searchParams.getAll('topic');
+    expect(topics).toEqual(['events/ev_1/budget', 'events/ev_1/headcount']);
+
+    return one;
+  }
+
+  it('says a cost another tab added, with how the settled total moved', async () => {
+    signedIn();
+    let now = budget();
+    serve({
+      'GET /api/events/ev_1/budget': () => json(now),
+      'POST /api/events/ev_1/budget/subscriptions': hub,
+    });
+    await screen.findByRole('button', { name: /^Dinner\./u });
+    const hubbed = await source();
+
+    now = budget({ confirmed: '6978.00', lines: [DINNER, ARCH, CENTRE, CAKE] });
+    hubbed.publish();
+
+    expect(
+      await screen.findByText(
+        'Cake was added in another tab, so the settled total went up by £450.',
+      ),
+    ).toBeTruthy();
+    expect(screen.getByRole('button', { name: /^Cake\./u })).toBeTruthy();
+  });
+
+  it('says how many more guests said yes when the headcount moves', async () => {
+    signedIn();
+    let now = budget();
+    serve({
+      'GET /api/events/ev_1/budget': () => json(now),
+      'POST /api/events/ev_1/budget/subscriptions': hub,
+    });
+    await screen.findByRole('button', { name: /^Dinner\./u });
+    const hubbed = await source();
+
+    now = budget({
+      confirmed: '6664.00',
+      perHead: {
+        confirmed: { amount: '68.00', heads: 98 },
+        potential: { amount: '68.00', heads: 133 },
+      },
+    });
+    hubbed.publish();
+
+    expect(
+      await screen.findByText('2 more guests said yes, so the settled total went up by £136.'),
+    ).toBeTruthy();
+  });
+
+  it('never tells the reader their own removal came from another tab', async () => {
+    signedIn();
+    let lines = [DINNER, ARCH, CENTRE];
+    const held: ReturnType<typeof deferred>[] = [];
+    let holding = false;
+    serve({
+      'GET /api/events/ev_1/budget': async () => {
+        const answer = budget({ lines, confirmed: lines.includes(DINNER) ? '6528.00' : '0.00' });
+        if (!holding) return json(answer);
+        const gate = deferred();
+        held.push(gate);
+        await gate.promise;
+
+        return json(answer);
+      },
+      'POST /api/events/ev_1/budget/subscriptions': hub,
+      'DELETE /api/events/ev_1/budget/lines/dinner': () => {
+        lines = [ARCH, CENTRE];
+        holding = true;
+        return new Response(null, { status: 204 });
+      },
+    });
+    fireEvent.click(await screen.findByRole('button', { name: /^Dinner\./u }));
+    const hubbed = await source();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Remove' }));
+    await waitFor(() => expect(held).toHaveLength(1));
+    hubbed.publish();
+    await waitFor(() => expect(held).toHaveLength(2));
+    await act(async () => {
+      held[1]!.open();
+      await held[1]!.promise;
+    });
+    await act(async () => {
+      held[0]!.open();
+      await held[0]!.promise;
+    });
+
+    expect(
+      await screen.findByText('Dinner removed. The settled total fell by £6,528.'),
+    ).toBeTruthy();
+    await waitFor(() => expect(screen.queryByRole('button', { name: /^Dinner\./u })).toBeNull());
+    expect(screen.queryByText(/in another tab/u)).toBeNull();
+  });
+
+  it('says it is not live, as of when, hides the live line, and Try now asks again', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true, toFake: ['Date'] });
+    vi.setSystemTime(new Date(2030, 10, 15, 14, 32));
+    signedIn();
+    let online = true;
+    let now = budget();
+    const sent = serve({
+      'GET /api/events/ev_1/budget': () => {
+        if (!online) throw new TypeError('Failed to fetch');
+        return json(now);
+      },
+      'GET /api/events/ev_1': () => {
+        if (!online) throw new TypeError('Failed to fetch');
+        return json({ event: EVENT });
+      },
+      'POST /api/events/ev_1/budget/subscriptions': hub,
+    });
+    await screen.findByRole('button', { name: /^Dinner\./u });
+    const hubbed = await source();
+    now = budget({ confirmed: '6978.00', lines: [DINNER, ARCH, CENTRE, CAKE] });
+    hubbed.publish();
+    const live = 'Cake was added in another tab, so the settled total went up by £450.';
+    expect(await screen.findByText(live)).toBeTruthy();
+
+    vi.setSystemTime(new Date(2030, 10, 15, 14, 38));
+    online = false;
+    act(() => connection.deviceOffline());
+
+    expect(await screen.findByText('Not live. Figures as of 14:32, 6 minutes ago.')).toBeTruthy();
+    expect(screen.queryByText(live)).toBeNull();
+    const asked = sent.filter(({ line }) => line === 'GET /api/events/ev_1').length;
+
+    online = true;
+    fireEvent.click(screen.getByRole('button', { name: 'Try now' }));
+
+    await waitFor(() =>
+      expect(sent.filter(({ line }) => line === 'GET /api/events/ev_1').length).toBeGreaterThan(
+        asked,
+      ),
+    );
+  });
+});
+
+describe('a failed Undo (sc-85)', () => {
+  it.each([
+    [new TypeError('Failed to fetch'), 'Not put back. Check your connection and try again.'],
+    [
+      problem(422, 'validation_failed', [
+        { propertyPath: 'basis', message: 'The budget already has a staff-time cost.' },
+      ]),
+      'Not put back. The budget already has a staff-time cost.',
+    ],
+  ])('says the line is not back, and keeps Undo', async (failure, words) => {
+    signedIn();
+    let lines = [DINNER, ARCH, CENTRE];
+    serve({
+      'GET /api/events/ev_1/budget': () => json(budget({ lines })),
+      'DELETE /api/events/ev_1/budget/lines/dinner': () => {
+        lines = [ARCH, CENTRE];
+        return new Response(null, { status: 204 });
+      },
+      'POST /api/events/ev_1/budget/lines': () => {
+        if (failure instanceof Response) return failure;
+        throw failure;
+      },
+    });
+
+    fireEvent.click(await screen.findByRole('button', { name: /^Dinner\./u }));
+    fireEvent.click(screen.getByRole('button', { name: 'Remove' }));
+    await screen.findByText('Dinner removed. The settled total fell by £6,528.');
+    fireEvent.click(screen.getByRole('button', { name: 'Undo' }));
+
+    expect(await screen.findByText(words, { selector: '.bt-undo-words' })).toBeTruthy();
+    expect(screen.queryByText('Dinner removed. The settled total fell by £6,528.')).toBeNull();
+    expect(screen.getByRole('button', { name: 'Undo' })).toBeTruthy();
   });
 });
