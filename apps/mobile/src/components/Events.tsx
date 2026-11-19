@@ -181,6 +181,27 @@ export function EventNotFound({ onBack }: { onBack: () => void }) {
   );
 }
 
+/** The not-found for an account with no organisation (sc-68438): no Events to go back to, so back to an event, or Continue. */
+export function OutsideNotFound({ back, onBack }: { back: string | null; onBack: () => void }) {
+  const { t } = useTranslation();
+
+  return (
+    <View style={styles.stack} testID="outside.notFound">
+      <Notice
+        tone="quiet"
+        mark={tokens.marks.info.glyph}
+        title={t('eventsScreen.notFound')}
+        heading
+      />
+      <SecondaryButton
+        label={back == null ? t('outsideEvent.continue') : t('outsideEvent.backTo', { name: back })}
+        onPress={onBack}
+        testID="outside.notFound.back"
+      />
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
   stack: { gap: tokens.spaceMd },
   pageHead: { gap: tokens.spaceXs },

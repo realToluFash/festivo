@@ -12,6 +12,7 @@ import {
 } from '../../../src/kit/eventNav.ts';
 import { OPENED_GUEST } from '../../../src/kit/searchLinks.ts';
 import { ASKS_END } from '../../../src/kit/upToEvent.ts';
+import { CAME_FROM } from '../../../src/kit/outsideEvent.ts';
 
 /** An event's page, pushed over whatever opened it; from a copy, back leads to its original. */
 export default function EventPage() {
@@ -24,6 +25,7 @@ export default function EventPage() {
     [DUPLICATING]: duplicating,
     [OPENED_GUEST]: guest,
     [ASKS_END]: asks,
+    [CAME_FROM]: cameFrom,
   } = useLocalSearchParams<{
     id?: string;
     [COPIED_FROM]?: string;
@@ -33,6 +35,7 @@ export default function EventPage() {
     [DUPLICATING]?: string;
     [OPENED_GUEST]?: string;
     [ASKS_END]?: string;
+    [CAME_FROM]?: string;
   }>();
 
   return (
@@ -45,6 +48,7 @@ export default function EventPage() {
       keepsTab={now != null}
       opensGuest={guest}
       opensEndNow={asks === 'endNow'}
+      cameFrom={cameFrom}
     />
   );
 }

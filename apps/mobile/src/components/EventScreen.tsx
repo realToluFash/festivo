@@ -41,14 +41,15 @@ import {
   type EventPlace,
   GUESTS_FILTER,
   areaBack,
+  eventHref,
 } from '../kit/eventNav.ts';
 import { markDeleted, takeCoverRefused } from '../kit/eventSaved.ts';
-import { outsideOn, outsidePlaces, readsOverview } from '../kit/outsideEvent.ts';
+import { outsideOn, outsidePlaces, readsOverview, wayBack } from '../kit/outsideEvent.ts';
 import { type Opened, openedOf, openedWithoutAsking } from '../kit/eventsOpen.ts';
 import { ASKS_END, SHOWN_EVENT, goUpToEvent } from '../kit/upToEvent.ts';
 import { useServerNow } from '../kit/serverNow.ts';
 import { useLayout } from '../layout/useLayout.ts';
-import { useSignedIn } from '../signedIn.ts';
+import { rereadAccount, useSignedIn } from '../signedIn.ts';
 import { tokens } from '../theme/tokens.ts';
 import { AppFrame, BackButton } from './AppFrame.tsx';
 import { BellRow } from './BellButton.tsx';
@@ -65,7 +66,7 @@ import { EventGuests, type GuestsTop } from './EventGuests.tsx';
 import { ExportButton } from './GuestExport.tsx';
 import { GuestsHeading } from './GuestsHeading.tsx';
 import { EventPeople } from './EventPeople.tsx';
-import { EventNotFound, EventTop, EventsFailed, usePhaseOf } from './Events.tsx';
+import { EventNotFound, EventTop, EventsFailed, OutsideNotFound, usePhaseOf } from './Events.tsx';
 import { Refreshing } from './Refreshing.tsx';
 import { Screen } from './Screen.tsx';
 import { LoadingBlock, PageToast, TextAction } from './Summary.tsx';
@@ -93,6 +94,7 @@ export function EventScreen({
   keepsTab,
   opensGuest,
   opensEndNow = false,
+  cameFrom,
 }: {
   eventId: string;
   area: EventPlace;
@@ -112,6 +114,8 @@ export function EventScreen({
   opensGuest?: string | undefined;
   /** Opened by the night's End now, so End now's confirmation is over the page as it opens (sc-3895). */
   opensEndNow?: boolean;
+  /** Chosen from the list of events held from outside, in this event: the way back if it has gone (sc-68438). */
+  cameFrom?: string | undefined;
 }) {
   const { t } = useTranslation();
   const { kind } = useLayout();
@@ -192,16 +196,27 @@ export function EventScreen({
   const phase = usePhaseOf(event, now);
   const card = useSidebarCard(event);
   const original = backToOriginal(eventId, eventId, copiedFrom);
+  const gone =
+    account != null &&
+    organisation == null &&
+    signedIn.pausedIn == null &&
+    (opened.kind === 'notFound' || outside == null);
+  const away = gone ? wayBack(signedIn, eventId, cameFrom, now) : null;
+  const listsGone = opened.kind === 'notFound' && outside != null;
+
+  useEffect(() => {
+    if (listsGone) void rereadAccount().catch(() => undefined);
+  }, [listsGone]);
 
   useEffect(() => {
     navigation.setParams({ [SHOWN_EVENT]: eventId });
   }, [navigation, eventId]);
 
   useEffect(() => {
-    if (organisationId != null && phase != null && !keepsTab) {
+    if (organisationId != null && outside == null && phase != null && !keepsTab) {
       rememberTabHolding(organisationId, phase);
     }
-  }, [organisationId, phase, keepsTab]);
+  }, [organisationId, outside, phase, keepsTab]);
 
   useFocusEffect(
     useCallback(() => {
@@ -365,6 +380,19 @@ export function EventScreen({
           />
         </PlaceholderArea>
       )
+    ) : away != null ? (
+      <OutsideNotFound
+        back={away.kind === 'event' ? away.event.name : null}
+        onBack={() => {
+          void rereadAccount()
+            .catch(() => undefined)
+            .then(() =>
+              away.kind === 'event'
+                ? router.replace(eventHref(away.event.id))
+                : router.replace('/'),
+            );
+        }}
+      />
     ) : opened.kind === 'notFound' ? (
       <EventNotFound onBack={leave} />
     ) : opened.kind === 'failed' ? (
@@ -430,7 +458,7 @@ export function EventScreen({
               card,
               up:
                 original != null ? { label: t('timeline.backToEvent'), onPress: leave } : undefined,
-              outside: outside == null ? undefined : { role: outside.role },
+              outside: outside == null ? undefined : { id: outside.id, role: outside.role },
             }
           : undefined
       }
