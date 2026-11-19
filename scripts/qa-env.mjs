@@ -1482,8 +1482,9 @@ function checkout(args) {
   run('docker', [...console_, 'lexik:jwt:generate-keypair', '--skip-if-exists'], { cwd: root });
 
   step(keepData ? 'The database, migrated' : 'The database, from nothing');
-  const afterMigrations = servicesAfterMigrations(composeServices(root));
-  for (const args of databaseCommands(console_, afterMigrations, keepData)) {
+  const services = composeServices(root);
+  const afterMigrations = servicesAfterMigrations(services);
+  for (const args of databaseCommands(console_, afterMigrations, keepData, 'redis' in services)) {
     run('docker', args, { cwd: root });
   }
 
@@ -1510,8 +1511,9 @@ export function dependencySteps(npmUnchanged, composerUnchanged) {
 }
 
 // With no names, compose stop and up act on the whole stack, so an old commit with no
-// worker skips both.
-export function databaseCommands(console_, afterMigrations, keepData) {
+// worker skips both. Redis is emptied with the database: a cached row, such as the catalogue
+// versions, names ids the new database no longer has, and the API answers 500 (sc-46032).
+export function databaseCommands(console_, afterMigrations, keepData, redis = false) {
   const waiting = afterMigrations.length > 0;
   return [
     // From nothing: an edited unreleased migration leaves a migrated database wrong.
@@ -1522,6 +1524,7 @@ export function databaseCommands(console_, afterMigrations, keepData) {
           ...(waiting ? [['compose', 'stop', ...afterMigrations]] : []),
           [...console_, 'doctrine:database:drop', '--if-exists', '--force'],
           [...console_, 'doctrine:database:create'],
+          ...(redis ? [['compose', 'exec', '-T', 'redis', 'redis-cli', 'FLUSHALL']] : []),
         ]),
     [...console_, 'doctrine:migrations:migrate', '-n', '--allow-no-migration'],
     // Recreated, so a health check failed while waiting for the schema does not end --wait at once.

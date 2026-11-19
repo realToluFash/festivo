@@ -4,7 +4,7 @@ appId: host.exp.Exponent
 - runFlow:
     file: ../checks/sc46032/pick.yaml
     env:
-      FROM: frame.home
+      FROM: 'tab-today|frame.home'
 - extendedWaitUntil:
     visible: '{{t:switcher.switched}}'
     timeout: 20000
@@ -13,7 +13,7 @@ appId: host.exp.Exponent
     timeout: 3000
 - takeScreenshot: today-picked
 - tapOn:
-    id: 'frame.events'
+    id: 'tab-events|frame.events'
 - waitForAnimationToEnd:
     timeout: 5000
 - assertNotVisible: '{{t:switcher.switched}}'
