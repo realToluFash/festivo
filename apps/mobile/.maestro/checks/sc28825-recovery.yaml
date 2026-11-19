@@ -1,0 +1,33 @@
+# A recovery code typed in capitals with no dash is shaped vtxp-rh7y and accepted; a wrong one is refused.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/demo/recovery
+- extendedWaitUntil:
+    visible:
+      id: 'demo.recoveryCode'
+    timeout: 20000
+- tapOn:
+    id: 'demo.recoveryCode'
+- inputText: 'AAAABBBB'
+- assertVisible: 'aaaa-bbbb'
+- hideKeyboard
+- tapOn:
+    id: 'demo.use'
+- extendedWaitUntil:
+    visible: 'That code is not one of your recovery codes, or it has been used.'
+    timeout: 5000
+- takeScreenshot: recovery-wrong
+- tapOn:
+    id: 'demo.recoveryCode'
+- eraseText: 20
+- inputText: 'VTXPRH7Y'
+- assertVisible: 'vtxp-rh7y'
+- takeScreenshot: recovery-shaped
+- hideKeyboard
+- tapOn:
+    id: 'demo.use'
+- extendedWaitUntil:
+    notVisible:
+      id: 'demo.recoveryCode'
+    timeout: 5000
+- takeScreenshot: recovery-accepted

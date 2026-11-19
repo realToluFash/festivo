@@ -1,0 +1,28 @@
+# sc-49170: on Members at 12,345, All then Former under Show, recorded; Former's people must show with no empty state before them.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/settings
+- scrollUntilVisible:
+    element: { id: 'settings.members' }
+    direction: DOWN
+    timeout: 30000
+    centerElement: true
+- tapOn: { id: 'settings.members' }
+- extendedWaitUntil:
+    visible: { id: 'members.card' }
+    timeout: 60000
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 2000, optional: true }
+- scrollUntilVisible:
+    element: { id: 'members.filter' }
+    direction: DOWN
+    timeout: 20000
+    centerElement: true
+- startRecording: show-former
+- tapOn: { id: 'members.filter' }
+- tapOn: { id: 'members.filter.former' }
+- extendedWaitUntil:
+    visible: 'Person 12348.*'
+    timeout: 30000
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 1000, optional: true }
+- stopRecording
+- takeScreenshot: former-listed

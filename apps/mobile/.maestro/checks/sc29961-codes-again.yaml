@@ -1,0 +1,25 @@
+# sc-29961: back on a codes step already open (its count long over), the resend reads its ready words; pressed, it counts again from 1:00, then is ready again. With a phone, Text it to me instead stays under it.
+appId: host.exp.Exponent
+---
+- runFlow: ../sign-out.yaml
+- runFlow: ../sc33828-to-code-signed-out.yaml
+- runFlow: ../sc29072-close-code-pad.yaml
+- scrollUntilVisible: { element: { id: 'twoFactor.lostBoth' } }
+- tapOn: { id: 'twoFactor.lostBoth' }
+- extendedWaitUntil:
+    { visible: { id: 'lostTwoFactor\.send|lostTwoFactor\.resend' }, timeout: 30000 }
+- runFlow:
+    when: { visible: { id: 'lostTwoFactor.send' } }
+    commands:
+      - tapOn: { id: 'lostTwoFactor.send' }
+      - extendedWaitUntil: { visible: 'zz-never-on-screen-zz', timeout: 62000, optional: true }
+- tapOn: '{{t:lostTwoFactor.codesTitle}}|{{t:lostTwoFactor.codesTitleEmailOnly}}'
+- scrollUntilVisible: { element: { id: 'lostTwoFactor.resend' }, centerElement: true }
+- takeScreenshot: ready
+- tapOn: { id: 'lostTwoFactor.resend' }
+- extendedWaitUntil: { visible: 'zz-never-on-screen-zz', timeout: 2000, optional: true }
+- scrollUntilVisible: { element: { id: 'lostTwoFactor.resend' }, centerElement: true }
+- takeScreenshot: counting
+- extendedWaitUntil: { visible: 'zz-never-on-screen-zz', timeout: 62000, optional: true }
+- scrollUntilVisible: { element: { id: 'lostTwoFactor.resend' }, centerElement: true }
+- takeScreenshot: ready-again

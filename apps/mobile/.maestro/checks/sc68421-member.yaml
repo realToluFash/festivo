@@ -1,0 +1,10 @@
+# sc-68421: a member who sees no contact details reads someone from outside as Not joined yet, with the Outside tag, in each locale.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/${EV}?area=people
+- extendedWaitUntil:
+    visible:
+      id: 'people.row.${PERSON}'
+    timeout: 30000
+- waitForAnimationToEnd: { timeout: 5000 }
+- takeScreenshot: list

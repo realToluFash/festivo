@@ -1,0 +1,105 @@
+# sc-35661: the Add an email address sheet's title, then the Verify sheet's (verifyEmail.title), each screenshotted in the header. The check adds one unverified address, opens Verify from that address's own row, and removes it before it ends, so it re-runs on one account.
+appId: host.exp.Exponent
+onFlowComplete:
+  - runFlow:
+      when:
+        true: ${output.removed != true}
+      commands:
+        - runFlow:
+            when:
+              visible:
+                id: 'account.verify.cancel'
+            commands:
+              - tapOn:
+                  id: 'account.verify.cancel'
+              - waitForAnimationToEnd
+        - runFlow:
+            when:
+              visible:
+                id: 'account.email.add.cancel'
+            commands:
+              - tapOn:
+                  id: 'account.email.add.cancel'
+              - waitForAnimationToEnd
+        - runFlow:
+            when:
+              visible:
+                id: 'account.email.add.discard'
+            commands:
+              - tapOn:
+                  id: 'account.email.add.discard'
+              - waitForAnimationToEnd
+        - openLink: ${METRO_URL}/--/settings/account
+        - extendedWaitUntil:
+            visible: '{{t:account.title}}'
+            timeout: 30000
+            optional: true
+        - scrollUntilVisible:
+            element:
+              text: '${output.email}.*'
+            timeout: 15000
+            centerElement: true
+            optional: true
+        - waitForAnimationToEnd
+        - runFlow:
+            when:
+              visible: '${output.email}.*'
+            commands:
+              - tapOn: '${output.email}.*'
+              - runFlow:
+                  file: ../scroll-tap.yaml
+                  env:
+                    ID: 'account\..+\.remove'
+---
+- evalScript: '${output.removed = false}'
+- evalScript: "${output.email = 'sc35661.' + Date.now() + '@soirely.test'}"
+- openLink: ${METRO_URL}/--/settings/account
+- extendedWaitUntil:
+    visible: '{{t:account.title}}'
+    timeout: 30000
+- runFlow:
+    file: ../scroll-tap.yaml
+    env:
+      ID: 'account.email.add'
+- extendedWaitUntil:
+    visible:
+      id: 'account.email.add.field'
+    timeout: 15000
+- waitForAnimationToEnd
+- takeScreenshot: add-email-sheet
+- assertVisible: '{{t:contacts.addEmail}}'
+- tapOn:
+    id: 'account.email.add.field'
+- inputText: ${output.email}
+- tapOn:
+    id: 'account.email.add.submit'
+- scrollUntilVisible:
+    element:
+      text: '${output.email}.*'
+    timeout: 15000
+    centerElement: true
+- waitForAnimationToEnd
+- tapOn:
+    text: '${output.email}.*'
+- runFlow:
+    file: ../scroll-tap.yaml
+    env:
+      ID: 'account\..+\.send'
+- extendedWaitUntil:
+    visible:
+      id: 'account.verify.code'
+    timeout: 15000
+- waitForAnimationToEnd
+- takeScreenshot: verify-email-sheet
+- assertVisible: '{{t:verifyEmail.title}}'
+- tapOn:
+    id: 'account.verify.cancel'
+- waitForAnimationToEnd
+- runFlow:
+    file: ../scroll-tap.yaml
+    env:
+      ID: 'account\..+\.remove'
+- extendedWaitUntil:
+    notVisible: '${output.email}(\. .*)?'
+    timeout: 15000
+- evalScript: '${output.removed = true}'

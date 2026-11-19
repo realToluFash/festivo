@@ -1,0 +1,31 @@
+# sc-48600: Change dates on an Events card opens the Dates edit, and Cancel returns to Events, not the event's page. Needs ${METRO_URL}; the account holds a draft whose end has passed.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events
+- extendedWaitUntil:
+    visible:
+      id: 'events.new'
+    timeout: 30000
+- tapOn:
+    id: 'events.tab.drafts'
+- scrollUntilVisible:
+    element: '{{t:eventLive.changeDates}}'
+    direction: DOWN
+    centerElement: true
+    timeout: 20000
+- takeScreenshot: card-change-dates
+- tapOn: '{{t:eventLive.changeDates}}'
+- extendedWaitUntil:
+    visible:
+      id: 'event.edit.dates.save'
+    timeout: 20000
+- assertNotVisible: '.*ShellContext.*'
+- takeScreenshot: card-dates-open
+- tapOn:
+    id: 'event.edit.dates.cancel'
+- extendedWaitUntil:
+    visible: '{{t:eventsScreen.nextChangeDates}}'
+    timeout: 10000
+- assertNotVisible:
+    id: 'events.page'
+- takeScreenshot: card-dates-cancel-back-on-events

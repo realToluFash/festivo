@@ -1,0 +1,28 @@
+# sc-29961: on Enter a recovery code, a recovery code (RCODE) typed after the sign-in ran out goes to Sign in, saying so, Email kept.
+appId: host.exp.Exponent
+---
+- runFlow: ../sign-out.yaml
+- runFlow: ../sc33828-to-code-signed-out.yaml
+- runFlow: ../sc29072-close-code-pad.yaml
+- tapOn: { id: 'twoFactor.switch' }
+- extendedWaitUntil: { visible: { id: 'twoFactor.code' }, timeout: 10000 }
+- waitForAnimationToEnd
+- takeScreenshot: recovery-step
+- extendedWaitUntil: { visible: 'zz-never-on-screen-zz', timeout: 35000, optional: true }
+- tapOn: { id: 'twoFactor.code' }
+- inputText: ${RCODE}
+- runFlow:
+    when: { visible: { id: 'twoFactor.verify' } }
+    commands:
+      - hideKeyboard
+      - tapOn: { id: 'twoFactor.verify' }
+- extendedWaitUntil:
+    visible:
+      id: 'signIn.password'
+    timeout: 30000
+- waitForAnimationToEnd
+- assertVisible: '{{t:signIn.codeTimedOutTitle}}\. {{t:signIn.endedBody}}'
+- assertVisible:
+    id: 'signIn.email'
+    text: '${EMAIL}'
+- takeScreenshot: timed-out

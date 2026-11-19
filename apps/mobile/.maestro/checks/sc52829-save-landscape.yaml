@@ -1,0 +1,9 @@
+# sc-52829 tablet landscape: sc52829-save, with the tablet turned on its side first (setOrientation, as /landscape turns only Android).
+appId: host.exp.Exponent
+onFlowComplete:
+  - setOrientation: PORTRAIT
+---
+- setOrientation: LANDSCAPE_LEFT
+- waitForAnimationToEnd:
+    timeout: 3000
+- runFlow: sc52829-save.yaml

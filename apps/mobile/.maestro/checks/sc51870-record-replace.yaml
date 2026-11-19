@@ -1,0 +1,46 @@
+# sc-51870: Record a reply over ${SELF_ID}'s own reply in ${EVENT_ID}: the replace question, then Keep their reply.
+appId: host.exp.Exponent
+---
+- setOrientation: ${ORIENT}
+- openLink: ${METRO_URL}/--/events/${EVENT_ID}?area=guests
+- extendedWaitUntil:
+    visible:
+      id: 'guests.search'
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: 'guests.row.${SELF_ID}'
+    direction: DOWN
+    timeout: 15000
+- tapOn:
+    id: 'guests.row.${SELF_ID}'
+- scrollUntilVisible:
+    element:
+      id: 'guest.record'
+    direction: DOWN
+    timeout: 20000
+- tapOn:
+    id: 'guest.record'
+- extendedWaitUntil:
+    visible:
+      id: 'guest.record.save'
+    timeout: 10000
+- tapOn:
+    id: 'guest.record.notComing'
+- tapOn:
+    id: 'guest.record.how.phone'
+- tapOn:
+    id: 'guest.record.save'
+- extendedWaitUntil:
+    visible:
+      id: 'guest.record.replace'
+    timeout: 10000
+- takeScreenshot: replace
+- scrollUntilVisible:
+    element:
+      id: 'guest.record.keep'
+    direction: DOWN
+    timeout: 5000
+- takeScreenshot: replace-buttons
+- tapOn:
+    id: 'guest.record.keep'

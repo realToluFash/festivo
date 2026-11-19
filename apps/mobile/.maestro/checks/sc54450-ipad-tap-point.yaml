@@ -1,0 +1,24 @@
+# sc-54450 on a tablet upright: Paste pressed by point, left of centre and centre, to tell the control from the tap.
+appId: host.exp.Exponent
+---
+- setOrientation: PORTRAIT
+- openLink: ${METRO_URL}/--/events/${EVENT_ID}?area=guests
+- extendedWaitUntil:
+    visible:
+      id: 'guests.paste'
+    timeout: 30000
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 3000, optional: true }
+- tapOn:
+    point: '720,445'
+- extendedWaitUntil:
+    visible:
+      id: 'paste.whose'
+    timeout: 6000
+    optional: true
+- takeScreenshot: after-left
+- tapOn:
+    point: '833,445'
+- extendedWaitUntil:
+    visible:
+      id: 'paste.whose'
+    timeout: 6000

@@ -1,0 +1,81 @@
+/* From 641 px (sc-60699, sc-61150), each arrangement in one rule: none changes a page that already fits, so 1440 stays as on main. */
+@media (width > 40rem) {
+  .today.desk :is(.desk-top, .gs-top) {
+    flex-wrap: wrap;
+    row-gap: var(--spaceLg);
+  }
+
+  .today.desk :is(.desk-title, .gs-title) {
+    min-width: auto;
+  }
+
+  .today.desk .gs-top > .mn-head {
+    min-width: auto;
+  }
+
+  .today.desk :is(.desk-title, .desk-title *, .gs-title, .gs-title *) {
+    overflow-wrap: normal;
+  }
+}
+
+/* Up to 1200 px the Schedule's open item, and up to 1120 px Menu library's open dish, come before the list. */
+@media (40rem < width <= 75rem) {
+  .today.desk .ro .mn-split:has(> .mn-panel) {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .today.desk .ro .mn-split > .mn-panel {
+    position: static;
+    order: -1;
+    width: auto;
+    max-height: none;
+  }
+
+  .today.desk .ro .mn-split > .mn-panel .mn-panel-body {
+    overflow: visible;
+  }
+}
+
+@media (40rem < width <= 70rem) {
+  .today.desk .lib-split.is-docked {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .today.desk .lib-split.is-docked .lib-panel {
+    position: static;
+    order: -1;
+    width: auto;
+    max-height: none;
+  }
+
+  .today.desk .lib-split.is-docked .lib-panel .mn-panel-body {
+    overflow: visible;
+  }
+}
+
+/* Up to 1240 px, until the list and the guest fit at their 520 and 380, an open guest or form comes before the list, each still at its 520 or 380. */
+@media (40rem < width <= 77.5rem) {
+  .today.desk .gs-cols {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .today.desk .gs-list {
+    max-width: var(--gsList);
+  }
+
+  .today.desk .gs-column {
+    position: static;
+    order: -1;
+    max-width: var(--gsGuest);
+    max-height: none;
+    margin: 0;
+    padding: 0;
+    overflow: visible;
+  }
+
+  .today.desk .gs-column:has(> .gs-pick) {
+    display: none;
+  }
+}
