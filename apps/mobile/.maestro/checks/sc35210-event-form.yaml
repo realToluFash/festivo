@@ -1,0 +1,15 @@
+# sc-35210: New event's name counter under the name field, empty then with a name.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/new
+- extendedWaitUntil:
+    visible:
+      id: 'eventForm.name'
+    timeout: 30000
+- waitForAnimationToEnd
+- takeScreenshot: sc35210-event-form-empty
+- tapOn:
+    id: 'eventForm.name'
+- inputText: Mariage de Adébáyọ̀ et Oluwaseun
+- hideKeyboard
+- takeScreenshot: sc35210-event-form-typed

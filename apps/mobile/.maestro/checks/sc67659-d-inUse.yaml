@@ -1,0 +1,7 @@
+# sc-67659: the Guests demo, state inUse.
+appId: host.exp.Exponent
+---
+- setOrientation: ${ORIENT}
+- openLink: ${METRO_URL}/--/demo/guests?state=inUse
+- waitForAnimationToEnd: { timeout: 8000 }
+- takeScreenshot: d-inUse

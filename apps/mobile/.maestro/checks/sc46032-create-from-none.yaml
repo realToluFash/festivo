@@ -1,0 +1,53 @@
+# sc-46032: in no organisation, Create an organisation; the new organisation's Today shows Now working in ‹name›. under Today's cover, clear of the status bar.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/
+- extendedWaitUntil:
+    visible:
+      id: 'noOrganisation.start'
+    timeout: 30000
+- takeScreenshot: none
+- tapOn:
+    id: 'noOrganisation.start'
+- extendedWaitUntil:
+    visible:
+      id: 'createWalk.name'
+    timeout: 10000
+- tapOn:
+    id: 'createWalk.name'
+- inputText: Gamma
+- pressKey: Enter
+- extendedWaitUntil:
+    visible:
+      id: 'createWalk.search'
+    timeout: 5000
+- tapOn:
+    id: 'createWalk.search'
+- inputText: Nig
+- hideKeyboard:
+    optional: true
+- scrollUntilVisible:
+    element:
+      id: 'createWalk.country.NG'
+    direction: DOWN
+    timeout: 10000
+- tapOn:
+    id: 'createWalk.country.NG'
+- tapOn:
+    id: 'createWalk.primary'
+- extendedWaitUntil:
+    visible: '.*Africa/Lagos.*'
+    timeout: 5000
+- tapOn:
+    id: 'createWalk.primary'
+- extendedWaitUntil:
+    notVisible:
+      id: 'createWalk'
+    timeout: 15000
+- extendedWaitUntil:
+    visible: '{{t:switcher.switched}}'
+    timeout: 20000
+- assertVisible: '.*Gamma.*'
+- waitForAnimationToEnd:
+    timeout: 3000
+- takeScreenshot: landed

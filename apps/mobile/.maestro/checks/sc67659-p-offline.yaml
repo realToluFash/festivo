@@ -1,0 +1,17 @@
+# sc-67659: Guests with the list loaded, then the API stopped from outside (docker compose stop api): Export's offline words in its place.
+appId: host.exp.Exponent
+---
+- setOrientation: ${ORIENT}
+- openLink: ${METRO_URL}/--/events/${EVENT_ID}?area=guests
+- extendedWaitUntil: { visible: { id: 'guests.export' }, timeout: 30000 }
+- waitForAnimationToEnd: { timeout: 8000 }
+- takeScreenshot: o-loaded
+- repeat:
+    times: 30
+    while: { notVisible: { id: 'guests.export.offline' } }
+    commands:
+      - swipe: { start: '50%,45%', end: '50%,85%', duration: 600 }
+      - waitForAnimationToEnd: { timeout: 4000 }
+- waitForAnimationToEnd: { timeout: 5000 }
+- scrollUntilVisible: { element: { id: 'guests.export.offline' }, direction: UP, timeout: 10000 }
+- takeScreenshot: o-offline

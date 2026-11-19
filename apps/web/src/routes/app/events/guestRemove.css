@@ -1,0 +1,23 @@
+/* sc-3774: Remove from the list at the foot of the details, and the question naming what goes. */
+.gr-foot {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--spaceSm);
+  padding-top: var(--spaceMd);
+}
+
+.desk-ask .gr-goes {
+  margin: 0;
+  padding: 0;
+}
+
+/* At 320 CSS px (400% zoom) the question sits at the foot of the screen, and a refusal takes its place there. */
+@media (width <= 40rem) {
+  .desk-ask:has(.gr-ask) {
+    inset: auto 0 0;
+    width: 100%;
+    max-width: 100%;
+    border-radius: var(--space3xl) var(--space3xl) 0 0;
+  }
+}

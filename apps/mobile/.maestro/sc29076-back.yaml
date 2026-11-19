@@ -1,0 +1,67 @@
+# Every way back from email sign-in lands on welcome, with the language chosen there held. sc-29076.
+# Back pushed over welcome, Android's back gesture or iOS's edge swipe, and Back on a cold /sign-in link,
+# which replaces itself with welcome rather than leaving an empty stack.
+#
+#   node .qa/bin/qa-env.mjs maestro sc29076-back [--android]
+appId: host.exp.Exponent
+---
+- runFlow:
+    file: sign-in-screen-language.yaml
+    env:
+      LANGUAGE: Français
+# Back, over welcome
+- tapOn:
+    id: 'signIn.back'
+- extendedWaitUntil:
+    visible:
+      id: 'welcome.email'
+    timeout: 10000
+- assertNotVisible:
+    id: 'signIn.email'
+- assertVisible: 'Français'
+- takeScreenshot: sc29076-back-pushed
+# The platform's own way back
+- tapOn:
+    id: 'welcome.email'
+- extendedWaitUntil:
+    visible:
+      id: 'signIn.email'
+    timeout: 10000
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      - hideKeyboard
+      - back
+- runFlow:
+    when:
+      platform: iOS
+    commands:
+      - hideKeyboard
+      - swipe:
+          start: '1%,50%'
+          end: '90%,50%'
+- extendedWaitUntil:
+    visible:
+      id: 'welcome.email'
+    timeout: 10000
+- assertVisible: 'Français'
+- takeScreenshot: sc29076-back-gesture
+# Cold, so sign-in opens with nothing behind it and Back takes the replace branch.
+- launchApp:
+    appId: host.exp.Exponent
+    stopApp: true
+- openLink: ${METRO_URL}/--/sign-in
+- extendedWaitUntil:
+    visible:
+      id: 'signIn.email'
+    timeout: 60000
+- tapOn:
+    id: 'signIn.back'
+- extendedWaitUntil:
+    visible:
+      id: 'welcome.email'
+    timeout: 10000
+- assertVisible: 'Français'
+- takeScreenshot: sc29076-back-linked
+- runFlow: sign-in-screen-english.yaml

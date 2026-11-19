@@ -1,0 +1,150 @@
+/* Terms and Privacy (sc-28982), in the signed-out frame. Measurements are the board's (Terms.dc.html, page 27). */
+
+/* A reading measure: 680 holds about 75 characters of 17 px text. */
+.legal-column {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space3xl);
+  width: 100%;
+  max-width: 680px;
+  min-width: 0;
+}
+
+.legal-heading {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceSm);
+}
+
+.legal-heading h1 {
+  margin: 0;
+  font: var(--typeTitlePage);
+  letter-spacing: var(--typeTitlePageTracking);
+  overflow-wrap: anywhere;
+}
+
+.legal-updated {
+  margin: 0;
+  font: var(--typeBody);
+  color: var(--colorInkSecondary);
+}
+
+/* The demo's mark, dashed as the app's DemoOnly box is: it never reaches the product. */
+.legal-sample {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceHair);
+  padding: var(--spaceLg) var(--spaceXl);
+  border: 1.5px dashed var(--colorFieldBorder);
+  border-radius: var(--radiusInset);
+  font: var(--typeSmall);
+  color: var(--colorInkSecondary);
+}
+
+.legal-sample p {
+  margin: 0;
+}
+
+.legal-sample .legal-sample-title {
+  font-weight: 600;
+  color: var(--colorInk);
+}
+
+.legal-body {
+  font: var(--typeBodyGuest);
+  color: var(--colorInk);
+  overflow-wrap: break-word;
+}
+
+.legal-body h2 {
+  margin: var(--space6xl) 0 var(--spaceLg);
+  font: var(--typeTitleDialog);
+  letter-spacing: var(--typeTitleDialogTracking);
+  scroll-margin-top: var(--space3xl);
+}
+
+.legal-body h2:first-child {
+  margin-top: 0;
+}
+
+/* One level down: the body's size in bold, so the levels differ by size and spacing, not colour. */
+.legal-body h3 {
+  margin: var(--space4xl) 0 var(--spaceSm);
+  font: var(--typeBodyGuest);
+  font-weight: 700;
+}
+
+.legal-body p {
+  margin: 0 0 var(--spaceXl);
+}
+
+.legal-body :is(ul, ol) {
+  margin: 0 0 var(--spaceXl);
+  padding-left: var(--space3xl);
+}
+
+.legal-body li + li {
+  margin-top: var(--spaceSm);
+}
+
+.legal-body > :last-child {
+  margin-bottom: 0;
+}
+
+/* Underlined, so a link is never told by its colour alone (WCAG 1.4.1). */
+.legal-link {
+  color: var(--colorAccentText);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.legal-link:hover {
+  text-decoration-thickness: 2px;
+}
+
+/* A phone's width, from Google's consent screen or the App Store: one column, nothing sideways at 320 (WCAG 1.4.10). */
+@media (width <= 40rem) {
+  .demo-legal .demo-page-header {
+    padding: 0 var(--spaceXl);
+  }
+
+  .demo-legal .demo-page-new > span:first-child {
+    display: none;
+  }
+
+  .demo-legal .demo-page-main {
+    padding: var(--space5xl) var(--spaceXl) var(--space3xl);
+  }
+
+  .legal-heading h1 {
+    font: var(--typeTitlePhone);
+    letter-spacing: var(--typeTitlePhoneTracking);
+  }
+
+  .legal-body h2 {
+    margin-top: var(--space5xl);
+  }
+
+  /* The copyright on its own line, then Terms, Privacy and the language, each 44 high for a thumb. */
+  .demo-legal .demo-page-footer {
+    flex-direction: column;
+    align-items: stretch;
+    gap: var(--spaceXxs);
+    height: auto;
+    padding: var(--spaceLg) var(--spaceXl) var(--spaceXl);
+  }
+
+  .demo-legal .demo-page-links {
+    flex-wrap: wrap;
+    column-gap: var(--spaceXl);
+  }
+
+  .demo-legal .demo-page-links .demo-link,
+  .demo-legal .language-menu-button {
+    min-height: var(--sizeHit);
+  }
+
+  .demo-legal .language-menu {
+    margin-left: auto;
+  }
+}
