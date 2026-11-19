@@ -151,6 +151,8 @@ export function useWholeWords(
     measure,
     drawnAtStart: drawn === start,
     maxFontSizeMultiplier: drawn / size,
+    /** A room is coming and the text is not sized to it yet, so a frame drawn now would cut a word (sc-69816). */
+    pending: look.room !== undefined && (slot === 0 || widths.length < words.length),
     /** The width each of the texts has, whatever the texts say, for as long as the window keeps its width. */
     room: (width: number) =>
       setReported((current) =>
@@ -198,6 +200,7 @@ export function WholeWords({
         key={drawnSize}
         size={size}
         maxFontSizeMultiplier={words.maxFontSizeMultiplier}
+        style={[rest.style, words.pending && styles.pending]}
         onLayout={(event) => {
           onLayout?.(event);
           if (words.drawnAtStart) words.seen(event.nativeEvent.layout.width);
@@ -287,4 +290,5 @@ const styles = StyleSheet.create({
   },
   // A caller's stretch or flex would make a word as wide as the box above, and every text would step down to its floor (sc-37693).
   word: { flex: 0, alignSelf: 'flex-start' },
+  pending: { opacity: 0 },
 });
