@@ -3820,6 +3820,20 @@ describe('the database, from a checkout', () => {
     expect(commands).toHaveLength(6);
   });
 
+  it('empties Redis with the database it drops, and never when keeping the data', () => {
+    const flushes = (keepData) =>
+      databaseCommands(console_, ['notification-worker'], keepData, true).filter((args) =>
+        args.includes('FLUSHALL'),
+      );
+    expect(flushes(false)).toEqual([['compose', 'exec', '-T', 'redis', 'redis-cli', 'FLUSHALL']]);
+    expect(verbs(databaseCommands(console_, [], false, true)).slice(0, 3)).toEqual([
+      'console doctrine:database:drop',
+      'console doctrine:database:create',
+      'compose exec',
+    ]);
+    expect(flushes(true)).toEqual([]);
+  });
+
   it('rebuilds the test database from nothing, even keeping the data', () => {
     for (const keepData of [false, true]) {
       const test = databaseCommands(console_, [], keepData).filter((args) =>

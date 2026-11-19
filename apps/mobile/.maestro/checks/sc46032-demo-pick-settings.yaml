@@ -6,7 +6,7 @@ appId: host.exp.Exponent
     timeout: 8000
 - runFlow: ../developer-menu-close.yaml
 - tapOn:
-    id: 'frame.organisation|home.switchOrganisation'
+    id: 'org.switch|frame.organisation|home.switchOrganisation'
 - extendedWaitUntil:
     visible:
       id: 'switcher.heading'
