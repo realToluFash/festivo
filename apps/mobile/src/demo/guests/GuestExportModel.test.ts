@@ -126,7 +126,8 @@ describe('the app’s guest export (sc-3784)', () => {
     );
 
     expect(screen).toMatch(/inPortuguese = titleRow\.locale === 'pt'/);
-    expect(screen).toMatch(/&& titleRow\.export \? \(\s*<ExportButton/);
+    expect(screen).toMatch(/exportShown = [^;]*&& titleRow\.export;/);
+    expect(screen).toMatch(/exportShown \? \(\s*<ExportButton/);
     expect(button).toMatch(/words=\{inPortuguese \? exportWordsIn\(portuguese\) : undefined\}/);
   });
 });

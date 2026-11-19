@@ -45,12 +45,15 @@ export function ExportButton({
   words = { export: XW.export, needsConnection: XW.needsConnection },
   onPress,
   ref,
+  measured = false,
 }: {
   layout: Layout;
   offline: boolean;
   words?: { export: string; needsConnection: string } | undefined;
   onPress: () => void;
-  ref: Ref<ViewInstance>;
+  ref?: Ref<ViewInstance> | undefined;
+  /** A hidden copy that is only measured, so it carries no test ids (sc-71821). */
+  measured?: boolean;
 }) {
   if (offline)
     return (
@@ -58,7 +61,7 @@ export function ExportButton({
         style={[styles.offline, layout === 'phone' && styles.offlinePhone]}
         accessible
         accessibilityLabel={words.needsConnection}
-        testID="guests.export.offline"
+        testID={measured ? undefined : 'guests.export.offline'}
       >
         <NoSignal />
         <CappedWholeWords
@@ -80,7 +83,7 @@ export function ExportButton({
       full={false}
       grows
       onPress={onPress}
-      testID="guests.export"
+      {...(measured ? {} : { testID: 'guests.export' })}
     />
   );
 }
