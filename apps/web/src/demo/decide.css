@@ -100,3 +100,29 @@
   color: var(--colorInk);
   font: 500 14px/1.45 var(--fontFamily);
 }
+
+/* sc-72618: a figure wider than its line breaks only between digit groups (<wbr>), never inside one, and keeps its sign or code. */
+.dec-big > span {
+  min-width: 0;
+}
+
+.dec-answer .desk-row-line {
+  overflow-wrap: break-word;
+}
+
+.dec-answer .bud-row {
+  flex-wrap: wrap;
+  row-gap: var(--spaceXs);
+}
+
+.dec-answer .bud-row .desk-row-words {
+  flex: 1 1 12rem;
+}
+
+.dec-answer .bud-row > .bud-amount {
+  flex: 0 1 auto;
+  max-width: 100%;
+  margin-inline-start: auto;
+  white-space: normal;
+  text-align: end;
+}
