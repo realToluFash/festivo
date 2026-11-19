@@ -17,6 +17,12 @@ export async function landAfterSignIn(
 
   await adoptAccount(outcome.account);
 
+  // Two-factor was turned off to let them back in (sc-509): asked to set it up again before anything else.
+  if (outcome.account.twoFactorSetupPrompt) {
+    navigate('/two-factor/again', { replace: true });
+    return;
+  }
+
   const landing = landingFor(awaiting(outcome.account));
   const invitation = heldInvitation();
   // An address still to verify cannot answer an invitation, so that gate comes first.
@@ -27,6 +33,5 @@ export async function landAfterSignIn(
         ? (takeHeldReturn() ?? landing)
         : landing;
 
-  // Two-factor was turned off to let them back in (sc-509): asked to set it up again before anything else.
-  navigate(outcome.account.twoFactorSetupPrompt ? '/two-factor/again' : next, { replace: true });
+  navigate(next, { replace: true });
 }
