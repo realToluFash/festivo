@@ -1791,6 +1791,7 @@ export const GUESTS_STATES = [
   { key: 'editCompanions', name: 'Companions: named, one removed' },
   { key: 'editMax', name: 'Ten companions, the most' },
   { key: 'editSeated', name: 'Removing a companion with a seat and a meal' },
+  { key: 'editMeal', name: 'Removing a companion with a meal chosen (sc-3907)' },
   { key: 'editDiscard', name: 'Cancel with a change' },
   { key: 'edit412', name: 'A colleague’s change (412)' },
   { key: 'editNotSaved', name: 'Save failed' },
@@ -2238,6 +2239,16 @@ export function guestsStart(state: GuestsState | null, params: URLSearchParams):
       });
     case 'editSeated':
       return { ...edit('ines', { removing: 'ines-c1' }), choice: 'coming' };
+    case 'editMeal':
+      return {
+        ...edit('sophie', { removing: 'sophie-c1' }),
+        choice: 'coming',
+        list: start.list.map((one) =>
+          one.id === 'sophie'
+            ? { ...one, companions: one.companions.map((each) => ({ ...each, meal: true })) }
+            : one,
+        ),
+      };
     case 'editDiscard':
       return edit('kwame', { values: { email: 'kwame@mensah.co.uk' }, discard: true });
     case 'edit412':
@@ -2825,6 +2836,7 @@ export const GUESTS_PAGES: readonly { name: string; states: readonly DemoLink[] 
     'editCompanions',
     'editMax',
     'editSeated',
+    'editMeal',
     'editDiscard',
     'edit412',
     'editNotSaved',

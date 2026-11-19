@@ -567,6 +567,20 @@ describe('Guests, Edit in place (sc-3773)', () => {
     expect(companions()).toHaveLength(0);
   });
 
+  it('asks before removing a companion with a meal chosen (sc-3907)', SLOW, async () => {
+    await guests('editMeal');
+    const ask = await screen.findByRole('alertdialog', { name: 'Remove Marc Laurent?' });
+
+    expect(
+      within(ask).getByText(
+        'Marc Laurent has a meal chosen. Removing this companion drops the meal.',
+      ),
+    ).toBeDefined();
+    fireEvent.click(within(ask).getByRole('button', { name: 'Remove' }));
+
+    expect(screen.getByText('Marc Laurent removed. Save to keep the change.')).toBeDefined();
+  });
+
   it('asks before throwing a change away', SLOW, async () => {
     await guests('edit');
 
