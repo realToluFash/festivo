@@ -26,6 +26,7 @@ import type { Shown } from '../events/EventsModel.ts';
 import type { AreaKey } from '../events/EventsSample.ts';
 import { useShell } from '../../components/settingsShell.ts';
 import { PHONE_TAB_BAR } from '../../components/TodayCover.tsx';
+import { useSideListWidth } from '../../layout/useLayout.ts';
 import { Ask } from '../../components/Summary.tsx';
 import { AddGuest, ChoosePeople, ReviewList } from './GuestAdd.tsx';
 import { EditGuest, MarkInvited, RecordReply } from './GuestEdit.tsx';
@@ -84,6 +85,8 @@ import {
 
 const SEARCH_PAUSE_MS = 300;
 const FOCUS_AFTER_MS = 450;
+// As the product's Guests list on a tablet on its side, widened at the accessibility sizes (sc-67659).
+const LIST_WIDTH = 400;
 
 /** Where the door opens from each day state: before 16:00 it says when it opens; from then it checks in. */
 function doorFrom(state: GuestsState | null): string {
@@ -122,6 +125,7 @@ export function GuestsScreen({
 }) {
   const shell = useShell();
   const layout: Layout = shell.layout;
+  const listWidth = useSideListWidth(LIST_WIDTH);
   const insets = useSafeAreaInsets();
   const locale = formattingLocale('en', getLocales()[0]?.languageTag);
   const opening = useMemo(() => guestsOpening(given, event.id, locale), [given, event.id, locale]);
@@ -706,7 +710,7 @@ export function GuestsScreen({
         <View style={styles.panes}>
           <ScrollView
             ref={scroll}
-            style={styles.listPane}
+            style={[styles.listPane, { width: listWidth }]}
             contentContainerStyle={styles.listBody}
             keyboardShouldPersistTaps="handled"
             showsVerticalScrollIndicator={false}
@@ -782,7 +786,7 @@ const styles = StyleSheet.create({
   grow: { flex: 1, minWidth: 0 },
   secondary: { color: tokens.colorInkSecondary },
   panes: { flex: 1, flexDirection: 'row' },
-  listPane: { width: 400, flexGrow: 0, borderRightWidth: 1, borderRightColor: tokens.colorBorder },
+  listPane: { flexGrow: 0, borderRightWidth: 1, borderRightColor: tokens.colorBorder },
   listBody: { paddingTop: 22, paddingHorizontal: 20, paddingBottom: tokens.space6xl * 2, gap: 18 },
   guestBody: { paddingTop: 22, paddingHorizontal: 32, paddingBottom: tokens.space6xl * 2, gap: 18 },
   bandPhone: { marginHorizontal: -tokens.spaceXxl },

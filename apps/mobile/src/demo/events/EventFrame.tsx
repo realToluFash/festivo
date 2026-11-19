@@ -16,6 +16,7 @@ import { Text, TitleCap } from '../../components/Text.tsx';
 import { PageTitleDrawn, useTitleCap } from '../../components/Title.tsx';
 import { PAGE_TITLE } from '../../components/topTitle.ts';
 import { tokens } from '../../theme/tokens.ts';
+import { useAccessibilitySizes } from '../../layout/useLayout.ts';
 import { Glyph, type GlyphName } from '../../components/Glyph.tsx';
 import { PHONE_TAB_BAR, TabBar, TabBarFade } from '../../components/TodayCover.tsx';
 import {
@@ -135,6 +136,7 @@ export function EventFrame({
 }) {
   const shell = useShell();
   const insets = useSafeAreaInsets();
+  const large = useAccessibilitySizes();
   const phone = shell.layout === 'phone';
   const titleCap = useTitleCap(`${shell.layout}|${area}`, PAGE_TITLE);
   // As the product's frame: an area is capped only once its body's title says the size it drew at (sc-67338, sc-67659).
@@ -164,15 +166,18 @@ export function EventFrame({
       <Landscape
         column={null}
         sidebar={
-          <EventSidebar
-            event={event}
-            now={now}
-            area={area}
-            onArea={onArea}
-            badge={badge}
-            without={without}
-            loading={loading}
-          />
+          // As the product's sidebar in an event: nothing in it outgrows the area's title at the accessibility sizes (sc-68052, sc-67659).
+          <TitleCap.Provider value={large ? titleCap.cap : null}>
+            <EventSidebar
+              event={event}
+              now={now}
+              area={area}
+              onArea={onArea}
+              badge={badge}
+              without={without}
+              loading={loading}
+            />
+          </TitleCap.Provider>
         }
         overlay={
           <>
