@@ -262,12 +262,37 @@ final readonly class OrganisationArchive
              ORDER BY ev.starts_at_utc, s.event_id, s.starts_at, s.id
             SQL,
         'staff' => <<<'SQL'
-            SELECT s.id, s.event_id, s.full_name, s.mobile, s.email, m.id AS member_id
+            SELECT s.id, s.event_id, s.full_name, s.mobile, s.email, m.id AS member_id, s.job_id
               FROM staff_members s
               JOIN events ev ON ev.id = s.event_id
               LEFT JOIN memberships m ON m.user_id = s.member_id AND m.organisation_id = ev.organisation_id
              WHERE ev.organisation_id = :organisation AND ev.deleted_at IS NULL
              ORDER BY ev.starts_at_utc, s.event_id, s.full_name, s.id
+            SQL,
+        'staff_jobs' => <<<'SQL'
+            SELECT j.id, j.event_id, j.name, j.access, j.position, j.created_at
+              FROM staff_jobs j
+              JOIN events ev ON ev.id = j.event_id
+             WHERE ev.organisation_id = :organisation AND ev.deleted_at IS NULL
+             ORDER BY ev.starts_at_utc, j.event_id, j.position, j.id
+            SQL,
+        'staff_shifts' => <<<'SQL'
+            SELECT s.id, s.job_id, (s.starts_at AT TIME ZONE ev.time_zone) AT TIME ZONE 'UTC' AS starts_at,
+                   (s.ends_at AT TIME ZONE ev.time_zone) AT TIME ZONE 'UTC' AS ends_at, s.needed
+              FROM staff_shifts s
+              JOIN staff_jobs j ON j.id = s.job_id
+              JOIN events ev ON ev.id = j.event_id
+             WHERE ev.organisation_id = :organisation AND ev.deleted_at IS NULL
+             ORDER BY ev.starts_at_utc, j.event_id, j.position, s.starts_at, s.id
+            SQL,
+        'staff_shift_people' => <<<'SQL'
+            SELECT p.shift_id, p.staff_member_id AS staff_id
+              FROM staff_shift_people p
+              JOIN staff_shifts s ON s.id = p.shift_id
+              JOIN staff_jobs j ON j.id = s.job_id
+              JOIN events ev ON ev.id = j.event_id
+             WHERE ev.organisation_id = :organisation AND ev.deleted_at IS NULL
+             ORDER BY ev.starts_at_utc, j.event_id, j.position, s.starts_at, s.id, p.staff_member_id
             SQL,
         'cost_lines' => <<<'SQL'
             SELECT b.id, b.event_id, b.label, b.category, b.basis, b.price_minor,

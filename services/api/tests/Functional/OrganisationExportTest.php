@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Tests\Functional;
 
+use App\Domain\Organisation\Export\OrganisationArchive;
 use App\Domain\Organisation\Export\OrganisationExportMailer;
 use App\Domain\Organisation\Export\OrganisationExports;
 use App\Domain\Organisation\OrganisationFounder;
@@ -48,6 +49,7 @@ use Psl\Str;
 use Psl\Type;
 use Psl\Vec;
 use Psr\Clock\ClockInterface;
+use ReflectionClassConstant;
 use RuntimeException;
 use Symfony\Component\Clock\Test\ClockSensitiveTrait;
 use Symfony\Component\Mime\Email;
@@ -95,11 +97,55 @@ final class OrganisationExportTest extends ApiTestCase
         'dish_library_variants' => ['id', 'dish_id', 'position', 'name', 'for_children', 'allergens', 'diets', 'last_price_minor', 'last_price_currency'],
         'vendors' => ['id', 'name', 'category', 'contact_name', 'email_address', 'phone_country_code', 'phone_number', 'website', 'address', 'note', 'archived_at', 'created_at'],
         'run_of_show' => ['id', 'event_id', 'title', 'starts_at', 'length_minutes', 'place', 'owner_name', 'owner_role', 'note', 'show_to_guests', 'skipped', 'started_at', 'ended_at'],
-        'staff' => ['id', 'event_id', 'full_name', 'mobile', 'email', 'member_id'],
+        'staff' => ['id', 'event_id', 'full_name', 'mobile', 'email', 'member_id', 'job_id'],
+        'staff_jobs' => ['id', 'event_id', 'name', 'access', 'position', 'created_at'],
+        'staff_shifts' => ['id', 'job_id', 'starts_at', 'ends_at', 'needed'],
+        'staff_shift_people' => ['shift_id', 'staff_id'],
         'cost_lines' => ['id', 'event_id', 'label', 'category', 'basis', 'price_minor', 'price_currency', 'note', 'created_at', 'updated_at'],
     ];
 
-    private const array NEVER = ['calendar_feeds', 'screen_links', 'event_mutes', 'notification_preferences', 'event_changes', 'notification_deliveries', 'assistant_interactions', 'covers', 'photos'];
+    /** Every table the archive does not read, and why: a new table fails the test below until it is in one or the other. */
+    private const array NEVER = [
+        'apple_app_attempts' => "sign-in credentials (sc-611's rule)",
+        'assistant_interactions' => "the assistant's interaction log",
+        'audit_entries' => 'the audit log, which Settings > Audit log exports (sc-611)',
+        'billing_accounts' => 'billing: [pm] to settle on sc-612',
+        'calendar_feeds' => 'a link that opens without signing in',
+        'doctrine_migration_versions' => "Soirely's own records",
+        'email_suppressions' => "Soirely's own records",
+        'event_changes' => 'change history',
+        'event_covers' => 'photos',
+        'event_mutes' => "notifications: one person's, or deliveries",
+        'join_offer_dismissals' => "a person's own account (sc-611's rule)",
+        'known_devices' => "sign-in credentials (sc-611's rule)",
+        'membership_transitions' => 'change history',
+        'notification_deliveries' => "notifications: one person's, or deliveries",
+        'notification_items' => "notifications: one person's, or deliveries",
+        'notification_preferences' => "notifications: one person's, or deliveries",
+        'organisation_exports' => "Soirely's own records",
+        'owner_claims' => 'change history',
+        'password_reset_tokens' => "sign-in credentials (sc-611's rule)",
+        'password_set_codes' => "sign-in credentials (sc-611's rule)",
+        'pending_registrations' => "a person's own account (sc-611's rule)",
+        'phone_code_deliveries' => "sign-in credentials (sc-611's rule)",
+        'phone_numbers' => "a person's own account (sc-611's rule)",
+        'provider_identities' => "sign-in credentials (sc-611's rule)",
+        'push_targets' => "notifications: one person's, or deliveries",
+        'recovery_codes' => "sign-in credentials (sc-611's rule)",
+        'refresh_tokens' => "sign-in credentials (sc-611's rule)",
+        'schedule_presses' => "change history: the run of show's presses",
+        'scheduled_notifications' => "notifications: one person's, or deliveries",
+        'schema_probes' => "Soirely's own records",
+        'screen_links' => 'a link that opens without signing in',
+        'sign_in_proofs' => "sign-in credentials (sc-611's rule)",
+        'subscription_changes' => 'billing: [pm] to settle on sc-612',
+        'subscriptions' => 'billing: [pm] to settle on sc-612',
+        'two_factor_challenges' => "sign-in credentials (sc-611's rule)",
+        'two_factor_factors' => "sign-in credentials (sc-611's rule)",
+        'two_factor_recoveries' => "sign-in credentials (sc-611's rule)",
+        'two_factor_recovery_handles' => "sign-in credentials (sc-611's rule)",
+        'verification_challenges' => "sign-in credentials (sc-611's rule)",
+    ];
 
     private User $owner;
 
@@ -210,7 +256,10 @@ final class OrganisationExportTest extends ApiTestCase
         $this->row('menu_choice_options', ['choice_id' => $choice, 'name' => 'Pepper sauce', 'allergens' => '["celery"]', 'position' => 1, ...$stamps]);
 
         $this->row('schedule_items', ['event_id' => $eventId, 'title' => 'First dance', 'starts_at' => '2026-11-14 18:30:00', 'length_minutes' => 10, 'show_to_guests' => true, 'started_at' => '2026-11-14 17:34:00', 'ended_at' => '2026-11-14 17:45:00', ...$stamps]);
-        $this->row('staff_members', ['event_id' => $eventId, 'full_name' => 'Kemi Bello', 'mobile' => '+2348030000001', 'email' => 'kemi@example.com', 'member_id' => $this->owner->getId()->toRfc4122(), ...$stamps]);
+        $job = $this->row('staff_jobs', ['event_id' => $eventId, 'name' => 'Usher', 'name_key' => 'usher', 'access' => 'check_in', 'position' => 9, ...$stamps]);
+        $staff = $this->row('staff_members', ['event_id' => $eventId, 'full_name' => 'Kemi Bello', 'mobile' => '+2348030000001', 'email' => 'kemi@example.com', 'member_id' => $this->owner->getId()->toRfc4122(), 'job_id' => $job, ...$stamps]);
+        $shift = $this->row('staff_shifts', ['job_id' => $job, 'starts_at' => '2026-11-14 16:00:00', 'ends_at' => '2026-11-14 23:30:00', 'needed' => 3, ...$stamps]);
+        $connection->insert('staff_shift_people', ['shift_id' => $shift, 'staff_member_id' => $staff]);
         $this->row('budget_lines', ['event_id' => $eventId, 'label' => 'Catering', 'category' => 'catering', 'basis' => 'per_head', 'price_minor' => 4800, 'note' => 'Three courses', 'created_at' => $at, 'updated_at' => '2026-10-16 10:00:00']);
         $this->row('budget_lines', ['event_id' => $eventId, 'label' => 'Staff', 'category' => 'staffing', 'basis' => 'per_staff_hour', 'price_minor' => null, 'note' => null, ...$stamps]);
         $currency = Type\string()->coerce($connection->fetchOne('SELECT currency FROM events WHERE id = ?', [$eventId]));
@@ -247,7 +296,11 @@ final class OrganisationExportTest extends ApiTestCase
             [$table('run_of_show')[0]['title'], $table('run_of_show')[0]['starts_at'], $table('run_of_show')[0]['started_at'], $table('run_of_show')[0]['ended_at'], $table('run_of_show')[0]['show_to_guests']],
         );
         $owner = Type\string()->coerce($connection->fetchOne('SELECT id FROM memberships WHERE user_id = ?', [$this->owner->getId()->toRfc4122()]));
-        self::assertSame(['Kemi Bello', '+2348030000001', 'kemi@example.com', $owner], [$table('staff')[0]['full_name'], $table('staff')[0]['mobile'], $table('staff')[0]['email'], $table('staff')[0]['member_id']]);
+        self::assertSame([$staff, 'Kemi Bello', '+2348030000001', 'kemi@example.com', $owner, $job], [$table('staff')[0]['id'], $table('staff')[0]['full_name'], $table('staff')[0]['mobile'], $table('staff')[0]['email'], $table('staff')[0]['member_id'], $table('staff')[0]['job_id']]);
+        $usher = Vec\values(Dict\filter($table('staff_jobs'), static fn (array $row): bool => $job === $row['id']));
+        self::assertSame([[$job, $eventId, 'Usher', 'check_in', 9, '2026-10-16T09:00:00Z']], Vec\map($usher, static fn (array $row): array => Vec\values($row)));
+        self::assertSame([[$shift, $job, '2026-11-14T15:00:00Z', '2026-11-14T22:30:00Z', 3]], Vec\map($table('staff_shifts'), static fn (array $row): array => Vec\values($row)));
+        self::assertSame([[$shift, $staff]], Vec\map($table('staff_shift_people'), static fn (array $row): array => Vec\values($row)));
 
         self::assertSame(
             [['Catering', 'catering', 'per_head', 4800, $currency, 'Three courses', '2026-10-16T09:00:00Z', '2026-10-16T10:00:00Z'], ['Staff', 'staffing', 'per_staff_hour', null, null, null, '2026-10-16T09:00:00Z', '2026-10-16T09:00:00Z']],
@@ -259,11 +312,22 @@ final class OrganisationExportTest extends ApiTestCase
             self::assertSame(Str\join($columns, ','), $lines[0], $name);
             self::assertCount(Iter\count($table($name)) + 1, $lines, $name);
         }
+    }
 
-        foreach (self::NEVER as $kept) {
-            self::assertArrayNotHasKey($kept, $json);
-            self::assertArrayNotHasKey($kept . '.csv', $files);
-        }
+    #[Test]
+    public function everyTableIsEitherReadByTheArchiveOrNamedWithTheReasonItIsLeftOut(): void
+    {
+        $sql = Str\join(Vec\values(Type\dict(Type\string(), Type\string())->coerce(new ReflectionClassConstant(OrganisationArchive::class, 'TABLES')->getValue())), "\n");
+        $read = Vec\map(Regex\every_match($sql, '/\b(?:FROM|JOIN)\s+(\w+)/') ?? [], static fn (array $match): string => $match[1]);
+        $tables = Type\vec(Type\string())->coerce(self::em()->getConnection()->fetchFirstColumn(<<<'SQL'
+            SELECT table_name FROM information_schema.tables
+             WHERE table_schema = current_schema() AND table_type = 'BASE TABLE'
+             ORDER BY table_name
+            SQL));
+
+        self::assertSame([], Vec\values(Dict\diff($tables, $read, Vec\keys(self::NEVER))), 'a table neither in the archive nor in NEVER');
+        self::assertSame([], Vec\values(Dict\intersect($read, Vec\keys(self::NEVER))), 'a table both in the archive and in NEVER');
+        self::assertSame([], Vec\values(Dict\diff(Vec\keys(self::NEVER), $tables)), 'a table in NEVER that no longer exists');
     }
 
     #[Test]
