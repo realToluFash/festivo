@@ -30,7 +30,6 @@ use App\Enum\Suspension;
 use App\Repository\MembershipRepository;
 use App\Tests\ApiTestCase;
 use App\Tests\Traits\OnboardsAccounts;
-use App\Tests\Traits\ProvesDomains;
 use DateInterval;
 use DateTimeImmutable;
 use Doctrine\ORM\EntityManagerInterface;
@@ -47,7 +46,6 @@ use Symfony\Component\Mime\Email;
 final class DomainSuspensionTest extends ApiTestCase
 {
     use OnboardsAccounts;
-    use ProvesDomains;
 
     /** @mago-expect lint:no-literal-password */
     private const string PASSWORD = 'a decent passphrase';
@@ -134,24 +132,6 @@ final class DomainSuspensionTest extends ApiTestCase
         $this->send('POST', $this->restorePath($organisation, $tunde));
         self::assertResponseStatusCodeSame(204);
         self::assertSame(MembershipStatus::Active, $this->membershipOf($tunde, $organisation)->getStatus());
-    }
-
-    #[Test]
-    public function anotherOrganisationProvingTheDomainSuspendsEveryOtherOrganisationsDomainMembers(): void
-    {
-        [, $organisation] = $this->organisation('folake@ire.events', 'Ìrè Events');
-        [, $prover] = $this->organisation('bisi@ire.events', 'Ìrè Group');
-        $tunde = $this->domainMember($organisation, 'tunde@ire.events');
-        $kemi = $this->domainMember($prover, 'kemi@ire.events');
-        self::proveDomain($prover, 'ire.events');
-
-        self::service(EntityManagerInterface::class)->wrapInTransaction(static function () use ($prover): void {
-            self::service(DomainSuspender::class)->domainProved($prover, 'ire.events');
-            self::service(EntityManagerInterface::class)->flush();
-        });
-
-        self::assertSame(Suspension::DomainManagedElsewhere, $this->membershipOf($tunde, $organisation)->getSuspension());
-        self::assertSame(MembershipStatus::Active, $this->membershipOf($kemi, $prover)->getStatus(), 'the organisation that proved it keeps its own');
     }
 
     #[Test]

@@ -55,14 +55,6 @@ final readonly class DomainSuspender
         }
     }
 
-    /** Another organisation proved the domain on Enterprise (sc-560): every other organisation's domain members pause. */
-    public function domainProved(Organisation $prover, string $domain): void
-    {
-        foreach ($this->membershipRepository->findActiveAtDomain($domain, $prover, elsewhere: true) as $membership) {
-            $this->suspend($membership, Suspension::DomainManagedElsewhere, null);
-        }
-    }
-
     /** @return int how many were removed, each as of its own instant rather than this run, as JoinRequests::expireDue does a request */
     public function removeExpired(?Organisation $organisation = null, ?User $user = null): int
     {

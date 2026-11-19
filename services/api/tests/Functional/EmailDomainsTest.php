@@ -144,6 +144,8 @@ final class EmailDomainsTest extends ApiTestCase
         $admin = $this->member('rui@casalumen.pt', 'Rui');
         $this->join($listing, $admin, SeededRole::Admin);
         $this->list($listing, 'ire.events');
+        $joined = $this->member('tunde@ire.events', 'Tunde');
+        $this->join($listing, $joined, SeededRole::Member, MembershipChannel::Domain);
         $colleague = $this->member('kemi@ire.events', 'Kemi');
         self::assertCount(1, self::service(JoinOfferFinder::class)->offersFor($colleague));
 
@@ -155,6 +157,11 @@ final class EmailDomainsTest extends ApiTestCase
         self::assertSame([], self::service(JoinOfferFinder::class)->offersFor($colleague));
         $this->signIn($lister);
         self::assertSame([['domain' => 'ire.events', 'stopped' => true, 'proved' => false]], $this->send('GET', $this->joiningPath($listing))['domains']);
+        $membership = self::service(MembershipRepository::class)->findActive($joined, $listing->getId()) ?? self::fail('the domain member was paused');
+        self::assertSame(MembershipStatus::Active, $membership->getStatus());
+        self::assertNull($membership->getSuspension());
+        $this->signIn($joined);
+        self::assertSame([], $this->send('GET', '/api/orgs')['paused']);
 
         $this->prove($this->fresh($this->emailDomain($prover, 'ire.events')));
         self::service(EmailDomains::class)->checkDue();
@@ -486,12 +493,12 @@ final class EmailDomainsTest extends ApiTestCase
         return $user;
     }
 
-    private function join(Organisation $organisation, User $user, SeededRole $as): void
+    private function join(Organisation $organisation, User $user, SeededRole $as, MembershipChannel $channel = MembershipChannel::Invitation): void
     {
         $role = Type\instance_of(Role::class)->coerce(
             self::service(EntityManagerInterface::class)->getRepository(Role::class)->findOneBy(['organisation' => $organisation, 'seededAs' => $as]),
         );
-        self::service(MembershipMachine::class)->join($organisation, $user, $role, MembershipStatus::Active, MembershipChannel::Invitation, $user);
+        self::service(MembershipMachine::class)->join($organisation, $user, $role, MembershipStatus::Active, $channel, $user);
         self::service(EntityManagerInterface::class)->flush();
     }
 
