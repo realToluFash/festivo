@@ -77,12 +77,14 @@ a.sn-tab:hover {
   min-width: 0;
 }
 
-.sn-row-top {
-  flex-wrap: wrap;
-}
+@media (width <= 40rem) {
+  .sn-row-top {
+    flex-wrap: wrap;
+  }
 
-.sn-row-names {
-  flex-basis: 12rem;
+  .sn-row-names {
+    flex-basis: 12rem;
+  }
 }
 
 .sn-floor {
