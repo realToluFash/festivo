@@ -5197,18 +5197,18 @@
     "stationChange": "Cambiar zona, {{name}}"
   },
   "decisionAnswer": {
-    "head": "What adding them would cost",
-    "rise": "+{{amount}} if all come",
-    "upperOnly": "On the upper figure only, now {{upper}}. New guests have not replied, so the settled {{settled}} stays.",
-    "moved": "{{from}} → {{to}} · {{headsFrom, number}} → {{headsTo, number}} if all come",
+    "head": "Lo que costaría añadirlos",
+    "rise": "+{{amount}} si vienen todos",
+    "upperOnly": "Solo sube la cifra máxima, que pasa a {{upper}}. Los nuevos invitados aún no han respondido, así que la cifra confirmada sigue en {{settled}}.",
+    "moved": "{{from}} → {{to}} · {{headsFrom, number}} → {{headsTo, number}} si vienen todos",
     "plus": "+{{amount}}",
-    "notKnown": "Not known",
-    "notKnownIfAll": "Not known if all come",
-    "notPricedYet": "Not priced yet, so its cost is not known",
-    "fullNotKnown_one": "Full cost not known: {{count, number}} cost it moves has no price yet.",
-    "fullNotKnown_other": "Full cost not known: {{count, number}} costs it moves have no price yet.",
-    "fullNotKnown_many": "Full cost not known: {{count, number}} costs it moves have no price yet.",
-    "noChange": "No change",
-    "nothingPerGuest": "Nothing in this budget is counted per guest."
+    "notKnown": "Desconocido",
+    "notKnownIfAll": "Coste desconocido si vienen todos",
+    "notPricedYet": "Aún sin precio, así que se desconoce su coste",
+    "fullNotKnown_one": "Coste total desconocido: {{count, number}} de los costes afectados aún no tiene precio.",
+    "fullNotKnown_other": "Coste total desconocido: {{count, number}} de los costes afectados aún no tienen precio.",
+    "fullNotKnown_many": "Coste total desconocido: {{count, number}} de los costes afectados aún no tienen precio.",
+    "noChange": "Sin cambios",
+    "nothingPerGuest": "Nada en este presupuesto se calcula por invitado."
   }
 }
