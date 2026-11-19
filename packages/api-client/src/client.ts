@@ -426,6 +426,16 @@ export interface JoinOffers {
   offers: JoinOffer[];
   /** A request still waiting, while which nothing else is offered. */
   request: JoinRequest | null;
+  /** The account is managed (sc-563): shown in place of Start my own organisation. */
+  managed: ManagedAccount | null;
+}
+
+/** An account whose main address is at a domain its home organisation keeps to itself (sc-563); every other way in is refused `domain_managed`. */
+export interface ManagedAccount {
+  domain: string;
+  organisation: { id: string; name: string };
+  /** "Your {domain} address is managed by {organisation}, so you can only be a member there." */
+  message: string;
 }
 
 /** Settings > General's Requests to join (sc-562): the link in full while it is on. */
@@ -449,6 +459,8 @@ export interface RequestLinkPreview {
   standing: RequestStanding | null;
   /** While cooling off, when they may ask again. */
   askAgainFrom: string | null;
+  /** Signed in with an account another organisation manages (sc-563): asking is refused. */
+  managed: ManagedAccount | null;
 }
 
 /** Settings > General's Company domain joining (sc-561): `stopped` for one another organisation proved, `proved` for one this one proved under Email domains (sc-560). */
@@ -941,6 +953,8 @@ export interface OrganisationMember {
   self: boolean;
   history: MembershipStep[];
   suspension: Suspension | null;
+  /** For the owners and admins of the organisation that manages this person (sc-563): how many other organisations they belong to, never which. */
+  alsoMemberOf: number | null;
 }
 
 export type SentInvitationStatus = 'pending' | 'accepted' | 'declined' | 'revoked' | 'expired';
@@ -1942,6 +1956,24 @@ export class ApiClient {
     return this.readEmailDomains(
       await this.delete<unknown>(
         `/api/orgs/${encodeURIComponent(organisationId)}/email-domains/${encodeURIComponent(domain)}`,
+      ),
+    );
+  }
+
+  /** Only our organisation (sc-563): the Owner's alone, `owner_required` to anyone else; it starts 14 days on and everyone at the domain is emailed now. */
+  async switchOnlyOursOn(organisationId: string, domain: string): Promise<EmailDomainsPage> {
+    return this.readEmailDomains(
+      await this.post<unknown>(
+        `/api/orgs/${encodeURIComponent(organisationId)}/email-domains/${encodeURIComponent(domain)}/only-ours`,
+      ),
+    );
+  }
+
+  /** Cancels it while it is scheduled, and switches it off once it has started. */
+  async switchOnlyOursOff(organisationId: string, domain: string): Promise<EmailDomainsPage> {
+    return this.readEmailDomains(
+      await this.delete<unknown>(
+        `/api/orgs/${encodeURIComponent(organisationId)}/email-domains/${encodeURIComponent(domain)}/only-ours`,
       ),
     );
   }
@@ -4356,6 +4388,7 @@ export class ApiClient {
       organisation: { name: organisation.name },
       standing: oneOf(raw.standing, REQUEST_STANDINGS),
       askAgainFrom: stringOrNull(raw.askAgainFrom),
+      managed: asManagedAccount(raw.managed),
     };
   }
 
@@ -4450,6 +4483,7 @@ export class ApiClient {
       domain: typeof raw.domain === 'string' ? raw.domain : null,
       offers: offers as JoinOffer[],
       request: asJoinRequest(raw.request),
+      managed: asManagedAccount(raw.managed),
     };
   }
 
@@ -5888,7 +5922,24 @@ function asOrganisationMember(raw: unknown): OrganisationMember | null {
     self: member.self === true,
     history: history as MembershipStep[],
     suspension: asSuspension(member.suspension),
+    alsoMemberOf: typeof member.alsoMemberOf === 'number' ? member.alsoMemberOf : null,
   };
+}
+
+function asManagedAccount(raw: unknown): ManagedAccount | null {
+  const managed = raw as Record<string, unknown> | null | undefined;
+  const organisation = managed?.organisation as Record<string, unknown> | null | undefined;
+
+  return typeof managed?.domain === 'string' &&
+    typeof managed.message === 'string' &&
+    typeof organisation?.id === 'string' &&
+    typeof organisation.name === 'string'
+    ? {
+        domain: managed.domain,
+        organisation: { id: organisation.id, name: organisation.name },
+        message: managed.message,
+      }
+    : null;
 }
 
 function asDeadline(raw: unknown): { at: string; written: string } | null {

@@ -410,5 +410,8 @@
     "vendors.archived_read_only": "Ce prestataire est archivé : vos modifications n’ont pas été enregistrées. Pour le modifier, restaurez-le depuis Archivés.",
     "access.plan_required": "Disponible avec le forfait Enterprise. Pour modifier ce réglage, contactez Soirely au sujet du forfait Enterprise.",
     "email_domains.not_listed": "Ce domaine ne figure pas dans la liste.",
-    "email_domains.taken": "Une autre organisation a déjà vérifié ce domaine. S’il vous appartient, contactez l’assistance Soirely."
+    "email_domains.taken": "Une autre organisation a déjà vérifié ce domaine. S’il vous appartient, contactez l’assistance Soirely.",
+    "email_domains.managed": "Your {domain} address is managed by {organisation}, so you can only be a member there.",
+    "email_domains.only_ours_owner": "Only an owner can change this.",
+    "email_domains.only_ours_unproved": "Only our organisation is for a domain this organisation has proved."
 }

@@ -1,10 +1,13 @@
-export type SidebarSize = 'device' | 'default' | 'ninth' | 'tenth' | 'eleventh' | 'twelfth';
+export type SidebarSize =
+  'device' | 'default' | 'eighth' | 'ninth' | 'tenth' | 'eleventh' | 'twelfth';
 export type SidebarLanguage = 'en' | 'fr';
 export type SidebarAt = 'today' | 'events' | 'calendar' | 'members' | 'event';
+export type SidebarOrg = 'ire' | 'qa';
 
 export const SIDEBAR_SIZES: readonly { key: SidebarSize; label: string }[] = [
   { key: 'device', label: 'This iPad' },
   { key: 'default', label: 'Default' },
+  { key: 'eighth', label: 'Eighth step (AX1)' },
   { key: 'ninth', label: 'Ninth step (AX2)' },
   { key: 'tenth', label: 'Tenth step (AX3)' },
   { key: 'eleventh', label: 'Eleventh step (AX4)' },
@@ -24,9 +27,16 @@ export const SIDEBAR_PLACES: readonly { key: SidebarAt; label: string }[] = [
   { key: 'event', label: 'An event' },
 ];
 
+// Ire Events fits the pill at main's size at the eighth step, so the board needs a longer name there to show one stepped down (sc-72307).
+export const SIDEBAR_ORGS: readonly { key: SidebarOrg; label: string }[] = [
+  { key: 'ire', label: 'Ire Events' },
+  { key: 'qa', label: 'QA Organisation' },
+];
+
 // React Native's fontScale on iOS at each step, so the board draws what the app draws.
 const SCALES: Readonly<Record<Exclude<SidebarSize, 'device'>, number>> = {
   default: 1,
+  eighth: 1.786,
   ninth: 2.143,
   tenth: 2.643,
   eleventh: 3.143,
@@ -47,4 +57,12 @@ export function sidebarLanguageOf(name: string | undefined): SidebarLanguage {
 
 export function sidebarAtOf(name: string | undefined): SidebarAt {
   return SIDEBAR_PLACES.find((place) => place.key === name)?.key ?? 'members';
+}
+
+export function sidebarOrgOf(name: string | undefined): SidebarOrg {
+  return SIDEBAR_ORGS.find((org) => org.key === name)?.key ?? 'ire';
+}
+
+export function sidebarOrgName(org: SidebarOrg): string {
+  return SIDEBAR_ORGS.find((one) => one.key === org)?.label ?? 'Ire Events';
 }

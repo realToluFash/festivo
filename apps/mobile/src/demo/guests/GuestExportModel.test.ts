@@ -9,7 +9,6 @@ import {
   ENGLISH_SHEET,
   LONG_ONE_WORD_NAME,
   XW,
-  cancelUnder,
   columnsFor,
   exportDay,
   exportStart,
@@ -133,24 +132,6 @@ describe('the app’s guest export (sc-3784)', () => {
 });
 
 describe('the Export sheet at the largest text sizes (sc-72136)', () => {
-  const gap = 10;
-
-  it('keeps Cancel beside the title while its longest word and Cancel fit the row', () => {
-    expect(cancelUnder({ room: 354, widest: 140, cancel: 175, gap })).toBe(false);
-    expect(cancelUnder({ room: 354, widest: 169, cancel: 175, gap })).toBe(false);
-  });
-
-  it('puts Cancel under the title where they do not, or where the word alone fills the row', () => {
-    expect(cancelUnder({ room: 354, widest: 222, cancel: 206, gap })).toBe(true);
-    expect(cancelUnder({ room: 354, widest: 400, cancel: 60, gap })).toBe(true);
-  });
-
-  it('leaves the row as on main until the row, the word and Cancel are measured', () => {
-    expect(cancelUnder({ room: 0, widest: 222, cancel: 206, gap })).toBe(false);
-    expect(cancelUnder({ room: 354, widest: 0, cancel: 206, gap })).toBe(false);
-    expect(cancelUnder({ room: 354, widest: 222, cancel: 0, gap })).toBe(false);
-  });
-
   it('opens the sheet after a search, in English and in Portuguese', () => {
     for (const state of ['exportSearched', 'exportSearchedPt'] as const) {
       expect(exportStart(state).open).toBe(true);

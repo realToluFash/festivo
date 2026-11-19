@@ -6,6 +6,7 @@ namespace App\Domain\Organisation\Controller;
 
 use App\Domain\Organisation\DomainJoining\JoinOfferFinder;
 use App\Domain\Organisation\DomainJoining\JoinRequester;
+use App\Domain\Organisation\EmailDomains\ManagedAccounts;
 use App\Domain\Organisation\Http\JoinRequestSerialiser;
 use App\Entity\Organisation;
 use App\Entity\User;
@@ -31,6 +32,7 @@ final readonly class JoinOffersController
         private OrganisationRepository $organisationRepository,
         private JoinOfferFinder $joinOfferFinder,
         private JoinRequester $joinRequester,
+        private ManagedAccounts $managedAccounts,
         private JoinRequestSerialiser $joinRequestSerialiser,
         private EntityManagerInterface $entityManager,
         private TranslatorInterface $translator,
@@ -48,6 +50,8 @@ final readonly class JoinOffersController
             'domain' => JoinOfferFinder::domainFor($user),
             'offers' => Vec\map($this->joinOfferFinder->offersFor($user), JoinRequestSerialiser::organisation(...)),
             'request' => null === $pending ? null : $this->joinRequestSerialiser->request($pending),
+            // "A few details" shows the refusal in place of Start my own organisation (sc-563).
+            'managed' => $this->managedAccounts->describe($user),
         ]);
     }
 

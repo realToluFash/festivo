@@ -143,7 +143,7 @@ final class RequestLinkTest extends ApiTestCase
         $body = $this->send('POST', '/api/request-links/link', ['token' => $token]);
 
         self::assertResponseStatusCodeSame(200);
-        self::assertSame(['organisation' => ['name' => 'Ìrè Events'], 'standing' => null, 'askAgainFrom' => null], $body);
+        self::assertSame(['organisation' => ['name' => 'Ìrè Events'], 'standing' => null, 'askAgainFrom' => null, 'managed' => null], $body);
 
         $this->send('POST', '/api/request-links/ask', ['token' => $token]);
         self::assertResponseStatusCodeSame(401);

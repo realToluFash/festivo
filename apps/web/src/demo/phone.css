@@ -27,6 +27,17 @@
     display: none;
   }
 
+  /* The bar's bell is the product shell's: the card's colour on the bar, not the title row's grey. */
+  .dp-fit .today-side > .desk-bell {
+    border-radius: var(--radiusNav);
+    background: var(--colorCard);
+    color: var(--colorInk);
+  }
+
+  .dp-fit .today-side > .desk-bell:hover {
+    background: var(--colorInset);
+  }
+
   .dp-fit .today-side > .sw {
     flex: 1;
     min-width: 0;

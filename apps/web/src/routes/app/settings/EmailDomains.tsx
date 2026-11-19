@@ -34,7 +34,14 @@ import { useDeskTop } from '../../../deskTop.ts';
 import { focusWhenFree, useDeskLayers } from '../../../layers.ts';
 import { can, useSession } from '../../../session.ts';
 import { Forbidden } from '../Forbidden.tsx';
-import { type DomainsSaid, domainLine, domainsCard, isProved, recordFoot } from './emailDomains.ts';
+import {
+  type DomainsSaid,
+  domainLine,
+  domainsCard,
+  isProved,
+  onlyLine,
+  recordFoot,
+} from './emailDomains.ts';
 import { DATA_AND_CONTROL } from './ExportAllData.tsx';
 import { RecordRows } from './RecordRows.tsx';
 import { useEmailDomains } from './useEmailDomains.ts';
@@ -42,7 +49,7 @@ import '../../../components/SettingsParts.css';
 
 export const EMAIL_DOMAINS = `${DATA_AND_CONTROL}/email-domains`;
 
-/** Data and control › Email domains at a desk (sc-560), as the design demo's /demo/settings/data-and-control/email-domains draws it. */
+/** Data and control › Email domains at a desk (sc-560, sc-563), as the design demo's /demo/settings/data-and-control/email-domains draws it. */
 export function EmailDomains() {
   const session = useSession();
   const organisation = session.organisation;
@@ -55,12 +62,21 @@ export function EmailDomains() {
       key={organisation.id}
       organisation={organisation}
       example={domainOf(session.email) ?? 'example.com'}
+      zone={session.timezone}
     />
   );
 }
 
-function DomainsDesk({ organisation, example }: { organisation: Membership; example: string }) {
-  const { t } = useTranslation();
+function DomainsDesk({
+  organisation,
+  example,
+  zone,
+}: {
+  organisation: Membership;
+  example: string;
+  zone: string | null;
+}) {
+  const { t, i18n } = useTranslation();
   const navigate = useNavigate();
   const desk = useDeskTop();
   const { layers, covered, setHost } = useDeskLayers();
@@ -99,6 +115,14 @@ function DomainsDesk({ organisation, example }: { organisation: Membership; exam
             onRecord={setRecord}
             onPage={show}
             tell={setTold}
+            day={(at) =>
+              new Intl.DateTimeFormat(i18n.language, {
+                weekday: 'long',
+                month: 'short',
+                day: 'numeric',
+                timeZone: zone ?? 'UTC',
+              }).format(new Date(at))
+            }
           />
         )}
       </div>
@@ -116,6 +140,7 @@ function Loaded({
   onRecord,
   onPage,
   tell,
+  day,
 }: {
   page: EmailDomainsPage;
   organisation: Membership;
@@ -124,16 +149,28 @@ function Loaded({
   onRecord: (domain: string | null) => void;
   onPage: (page: EmailDomainsPage) => void;
   tell: (words: string) => void;
+  day: (at: string) => string;
 }) {
   const { t } = useTranslation();
   const [said, setSaid] = useState<DomainsSaid>(null);
   const [adding, setAdding] = useState(false);
   const [removing, setRemoving] = useState<string | null>(null);
+  const [confirming, setConfirming] = useState<string | null>(null);
   const saidLines = useRef<HTMLDivElement>(null);
   const toSaid = () => focusWhenFree(() => saidLines.current);
   const card = domainsCard(t, page, said, organisation.name);
   const enterprise = page.plan === 'enterprise';
   const recordOf = enterprise ? (page.domains.find((one) => one.domain === record) ?? null) : null;
+
+  async function onlyOff(domain: string, kind: 'cancelled' | 'turnedOff'): Promise<void> {
+    try {
+      onPage(await api.switchOnlyOursOff(organisation.id, domain));
+      setSaid({ kind, domain });
+      toSaid();
+    } catch {
+      tell(t('dataControl.failedLine'));
+    }
+  }
 
   async function removeUnproved(domain: string): Promise<void> {
     try {
@@ -158,6 +195,15 @@ function Loaded({
             onClick={() => card.record != null && onRecord(card.record)}
           />
         )}
+        {card.keep != null && (
+          <CardStep
+            label={t('emailDomains.keepAccounts', {
+              domain: card.keep,
+              organisation: organisation.name,
+            })}
+            onClick={() => setConfirming(card.keep)}
+          />
+        )}
       </Card>
       {page.plan !== 'free' && (
         <section className="desk-block">
@@ -174,7 +220,7 @@ function Loaded({
             <p className="desk-line dc-none">{t('emailDomains.none')}</p>
           ) : (
             <ul className="desk-rows dc-led">
-              {page.domains.map((domain) => (
+              {page.domains.flatMap((domain) => [
                 <DomainRow
                   key={domain.domain}
                   domain={domain}
@@ -184,8 +230,20 @@ function Loaded({
                     if (isProved(domain)) setRemoving(domain.domain);
                     else void removeUnproved(domain.domain);
                   }}
-                />
-              ))}
+                />,
+                ...(isProved(domain)
+                  ? [
+                      <OnlyRow
+                        key={`${domain.domain}:only`}
+                        domain={domain}
+                        page={page}
+                        day={day}
+                        onSwitchOn={() => setConfirming(domain.domain)}
+                        onOff={(kind) => void onlyOff(domain.domain, kind)}
+                      />,
+                    ]
+                  : []),
+              ])}
             </ul>
           )}
           <p className="desk-foot">{t('emailDomains.foot')}</p>
@@ -215,6 +273,20 @@ function Loaded({
             setSaid(null);
             setAdding(false);
             onRecord(domain);
+          }}
+        />
+      )}
+      {confirming != null && (
+        <ConfirmAsk
+          organisationId={organisation.id}
+          organisation={organisation.name}
+          domain={page.domains.find((one) => one.domain === confirming) ?? null}
+          onKeep={() => setConfirming(null)}
+          onScheduled={(answer) => {
+            onPage(answer);
+            setSaid({ kind: 'scheduled', domain: confirming });
+            setConfirming(null);
+            toSaid();
           }}
         />
       )}
@@ -290,6 +362,110 @@ function DomainRow({
         </span>
       )}
     </li>
+  );
+}
+
+/** Under a proved domain: the Owner's switch, or Cancel while it is scheduled; anybody else reads it. */
+function OnlyRow({
+  domain,
+  page,
+  day,
+  onSwitchOn,
+  onOff,
+}: {
+  domain: EmailDomain;
+  page: EmailDomainsPage;
+  day: (at: string) => string;
+  onSwitchOn: () => void;
+  onOff: (kind: 'cancelled' | 'turnedOff') => void;
+}) {
+  const { t } = useTranslation();
+  const changes = page.ownerChanges && page.plan === 'enterprise';
+  const label = t('emailDomains.onlyFor', { domain: domain.domain });
+
+  return (
+    <li className="desk-row dc-only">
+      <RowWords title={t('emailDomains.only')} lines={[onlyLine(t, domain, page, day)]} />
+      {changes && domain.onlyOurs === 'scheduled' && (
+        <button
+          type="button"
+          className="desk-text"
+          aria-label={t('emailDomains.cancelOnlyFor', { domain: domain.domain })}
+          onClick={() => onOff('cancelled')}
+        >
+          {t('emailDomains.cancel')}
+        </button>
+      )}
+      {changes && domain.onlyOurs !== 'scheduled' && (
+        <button
+          type="button"
+          role="switch"
+          className="dc-switch"
+          aria-checked={domain.onlyOurs === 'on'}
+          aria-label={label}
+          onClick={() => (domain.onlyOurs === 'on' ? onOff('turnedOff') : onSwitchOn())}
+        >
+          <span className="dc-switch-track" aria-hidden="true">
+            <span className="dc-switch-knob" />
+          </span>
+        </button>
+      )}
+    </li>
+  );
+}
+
+/** Switching it on asks once, with the instant it starts; Cancel and switching off ask nothing, as neither takes anything away. */
+function ConfirmAsk({
+  organisationId,
+  organisation,
+  domain,
+  onKeep,
+  onScheduled,
+}: {
+  organisationId: string;
+  organisation: string;
+  domain: EmailDomain | null;
+  onKeep: () => void;
+  onScheduled: (page: EmailDomainsPage) => void;
+}) {
+  const { t } = useTranslation();
+  const [busy, setBusy] = useState(false);
+  const [failed, setFailed] = useState(false);
+
+  if (domain == null) return null;
+  const name = domain.domain;
+
+  async function schedule(): Promise<void> {
+    if (busy) return;
+    setBusy(true);
+    setFailed(false);
+
+    try {
+      onScheduled(await api.switchOnlyOursOn(organisationId, name));
+    } catch {
+      setFailed(true);
+      setBusy(false);
+    }
+  }
+
+  return (
+    <Ask
+      title={t('emailDomains.confirmTitle', { domain: name, organisation })}
+      line={t('emailDomains.confirmLine', {
+        when: domain.onlyOursIfNow,
+        domain: name,
+        organisation,
+      })}
+      keep={t('emailDomains.cancel')}
+      go={t('emailDomains.schedule')}
+      red={false}
+      busy={busy ? t('emailDomains.schedule') : undefined}
+      failed={failed ? t('dataControl.failedLine') : undefined}
+      onKeep={onKeep}
+      onGo={() => void schedule()}
+    >
+      <p>{t('emailDomains.confirmMore', { domain: name })}</p>
+    </Ask>
   );
 }
 

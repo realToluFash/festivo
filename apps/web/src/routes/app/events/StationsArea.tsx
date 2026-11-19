@@ -392,7 +392,7 @@ function Stations({
     const wasLead = from?.lead === personId;
     const next = await sent(() => api.putOnStation(event.id, personId, off ? null : station.id));
     if (next == null) return;
-    const to = labelOf(station);
+    const to = station.name;
     if (off)
       setSaid(
         wasLead
@@ -404,7 +404,7 @@ function Stations({
       setSaid(
         t(wasLead ? 'stations.saidFromLead' : 'stations.saidFrom', {
           name,
-          from: labelOf(from),
+          from: from.name,
           to,
         }),
       );
@@ -413,7 +413,7 @@ function Stations({
   async function lead(station: Station, personId: string | null) {
     const next = await sent(() => api.setStationLead(event.id, station.id, personId));
     if (next == null) return;
-    const label = labelOf(station);
+    const label = station.name;
     setSaid(
       personId == null
         ? t('stations.saidNoLead', { station: label })
@@ -483,7 +483,7 @@ function Stations({
                 id={`sn-people-${station.id}`}
                 type="button"
                 className="sn-act"
-                aria-label={t('stations.peopleAndLeadFor', { name: label })}
+                aria-label={t('stations.peopleAndLeadFor', { name: station.name })}
                 onClick={() => open({ kind: 'people', id: station.id })}
               >
                 {t('stations.peopleAndLead')}
@@ -517,7 +517,7 @@ function Stations({
           )}
         </div>
         {station.people.length > 0 ? (
-          <ul className="sn-people" aria-label={t('stations.peopleOn', { name: label })}>
+          <ul className="sn-people" aria-label={t('stations.peopleOn', { name: station.name })}>
             {station.people.map((id) => {
               const one = personById(id);
 
@@ -633,7 +633,10 @@ function Stations({
                     <li key={station.id} className="sn-row">
                       <h3>{label}</h3>
                       {on.length > 0 ? (
-                        <ul className="sn-people" aria-label={t('stations.onNow', { name: label })}>
+                        <ul
+                          className="sn-people"
+                          aria-label={t('stations.onNow', { name: station.name })}
+                        >
                           {on.map(({ entry, shift }) => (
                             <li key={entry.id} className="sn-person">
                               <span className="sn-person-name">{entry.fullName}</span>
@@ -895,13 +898,13 @@ function Stations({
                   </div>
                   <ul className="sn-roster" aria-label={t('stations.rosterLabel')}>
                     {plan.staff.map((one) => {
-                      const label = labelOf(peopleStation);
+                      const label = peopleStation.name;
                       const at = stationOf(one.id);
                       const here = at?.id === peopleStation.id;
                       const where =
                         at == null
                           ? t('stations.noStation')
-                          : t('stations.onStation', { name: labelOf(at) });
+                          : t('stations.onStation', { name: at.name });
                       const cta = here
                         ? t('stations.takeOff')
                         : at == null
@@ -913,7 +916,7 @@ function Stations({
                           ? t('stations.putOnName', { name: one.fullName, station: label })
                           : t('stations.moveHereName', {
                               name: one.fullName,
-                              from: labelOf(at),
+                              from: at.name,
                               to: label,
                             });
 

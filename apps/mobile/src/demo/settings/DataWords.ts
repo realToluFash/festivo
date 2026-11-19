@@ -10,8 +10,6 @@ export const DATA_WORDS = {
   loading: 'Loading Data and control…',
   failed: 'We could not load Data and control.',
   tryLine: 'Check your connection and try again.',
-  contact: 'Contact Soirely about Enterprise',
-  contacting: 'Contacting Soirely has its own design.',
   enterprise: 'Enterprise',
   nothing: 'Nothing needs your attention',
   nothingLine: 'ire.events is proved.',
@@ -190,4 +188,19 @@ export const MANAGED_WORDS = {
   change: 'Change your main email address',
   alsoMember: (count: number) =>
     `Also a member of ${count} other ${count === 1 ? 'organisation' : 'organisations'}`,
+} as const;
+
+/** The step on a locked Enterprise card (sc-72241). The app says nothing of the web, a website or upgrading. */
+export const ASK_WORDS = {
+  appLine: 'The plan cannot be changed in the app.',
+  ask: 'Ask an owner',
+  sent: {
+    one: 'The owner has been sent the link to Compare plans.',
+    several: 'The owners have been sent the link to Compare plans.',
+  },
+  asked: {
+    one: 'The owner was asked about Enterprise in the last 24 hours.',
+    several: 'The owners were asked about Enterprise in the last 24 hours.',
+  },
+  notSent: 'Not sent. Try again in a moment.',
 } as const;

@@ -312,6 +312,11 @@ a.sn-tab {
   .rs-table thead th:nth-child(5) {
     min-width: 168px;
   }
+
+  /* Only here, as in the product: with the panel docked at 1280 px, a one-line empty Shift cell would squeeze Link until its words break letter by letter (sc-71607). */
+  .rs-table td.rs-no-shift {
+    white-space: nowrap;
+  }
 }
 
 .rs-more {

@@ -5396,7 +5396,7 @@ describe('What adding them would cost (sc-86)', () => {
     );
     expect(
       within(answer()).getByText(
-        `If everyone comes, it would be ${naira(705000)}. Settled, it stays ${naira(500000)}, because new guests have not replied.`,
+        `Once they are invited, it would be ${naira(705000)} if everyone comes. Settled, it stays ${naira(500000)} until they reply.`,
       ),
     ).toBeDefined();
     expect(
@@ -5552,7 +5552,9 @@ describe('What adding them would cost (sc-86)', () => {
 
     await waitFor(() =>
       expect(
-        within(answer()).getByText(new RegExp(`it would be ${naira(705000)}`, 'u')),
+        within(answer()).getByText(
+          new RegExp(`Once they are invited, it would be ${naira(705000)}`, 'u'),
+        ),
       ).toBeDefined(),
     );
     const asked = sent.filter((one) => one.line === ASK).length;
@@ -5561,7 +5563,9 @@ describe('What adding them would cost (sc-86)', () => {
 
     await waitFor(() =>
       expect(
-        within(answer()).getByText(new RegExp(`it would be ${naira(710000)}`, 'u')),
+        within(answer()).getByText(
+          new RegExp(`Once they are invited, it would be ${naira(710000)}`, 'u'),
+        ),
       ).toBeDefined(),
     );
     expect(sent.filter((one) => one.line === ASK).length).toBeGreaterThan(asked);
