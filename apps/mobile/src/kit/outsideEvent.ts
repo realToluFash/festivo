@@ -1,5 +1,5 @@
 import type { OutsideEvent } from '@soirely/api-client';
-import { outsideEventLine, outsideEventsInOrder } from '@soirely/domain';
+import { outsideEventsInOrder } from '@soirely/domain';
 import type { TFunction } from 'i18next';
 
 import { EVENT_PLACES, type EventPlace, eventHref } from './eventNav.ts';
@@ -113,21 +113,4 @@ export function wayBack(
   const back = live.find((one) => one.id === from) ?? outsideEventsInOrder(live, now)[0];
 
   return back == null ? { kind: 'continue' } : { kind: 'event', event: back };
-}
-
-/** A row read as one: its name, its line, then Under way and You're here where they show. */
-export function outsideRowLabel(
-  t: TFunction,
-  event: OutsideEvent,
-  locale: string,
-  marks: { underWay: boolean; here: boolean },
-): string {
-  return [
-    event.name,
-    outsideEventLine(event, locale),
-    marks.underWay ? t('outsideEvent.underWay') : null,
-    marks.here ? t('outsideEvent.here') : null,
-  ]
-    .filter((part) => part != null)
-    .join('. ');
 }

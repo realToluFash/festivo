@@ -12,7 +12,6 @@ import {
   outsideMore,
   outsideOn,
   outsidePlaces,
-  outsideRowLabel,
   readsOverview,
   switcherOutside,
   wayBack,
@@ -185,14 +184,5 @@ describe('reaching each event held from outside (sc-68438)', () => {
         NOW,
       ),
     ).toEqual({ kind: 'events' });
-  });
-
-  it('reads a row as one: name, line, then its marks', () => {
-    expect(outsideRowLabel(t, GALA, 'en-GB', { underWay: false, here: true })).toBe(
-      'Gala. Les Salons · Thu 21 Nov · 19:30. You’re here',
-    );
-    expect(outsideRowLabel(t, WEDDING, 'en-GB', { underWay: true, here: false })).toBe(
-      'Adaeze and Tunde. Ìrè Events · Thu 14 Nov · 16:00. Under way',
-    );
   });
 });

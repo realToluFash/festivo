@@ -49,3 +49,14 @@ export function outsideEventLine(event: ListedOutsideEvent, locale: string): str
 
   return `${event.organisationName} · ${date} · ${start}`;
 }
+
+/** A row read as one, on every client: its name, its line, then the translated Under way and You're here where they show. */
+export function outsideRowLabel(
+  event: ListedOutsideEvent & { name: string },
+  locale: string,
+  marks: { underWay: string | null; here: string | null },
+): string {
+  return [event.name, outsideEventLine(event, locale), marks.underWay, marks.here]
+    .filter((part) => part != null)
+    .join('. ');
+}

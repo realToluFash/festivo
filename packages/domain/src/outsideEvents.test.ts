@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest';
 
-import { isUnderWay, outsideEventLine, outsideEventsInOrder } from './outsideEvents.ts';
+import {
+  isUnderWay,
+  outsideEventLine,
+  outsideEventsInOrder,
+  outsideRowLabel,
+} from './outsideEvents.ts';
 
 const congress = {
   id: 'e1',
@@ -50,5 +55,19 @@ describe('outsideEventLine', () => {
   it('writes the date and start in the event’s own zone, in the reader’s locale', () => {
     expect(outsideEventLine(gala, 'en-GB')).toBe('Les Salons · Sat 21 Nov · 19:30');
     expect(outsideEventLine(gala, 'fr-FR')).toBe('Les Salons · sam. 21 nov. · 19:30');
+  });
+});
+
+describe('outsideRowLabel', () => {
+  it('reads a row as one: name, line, then the marks that show', () => {
+    expect(
+      outsideRowLabel({ ...gala, name: 'Gala' }, 'en-GB', { underWay: null, here: 'You’re here' }),
+    ).toBe('Gala. Les Salons · Sat 21 Nov · 19:30. You’re here');
+    expect(
+      outsideRowLabel({ ...wedding, name: 'Adaeze and Tunde' }, 'en-GB', {
+        underWay: 'Under way',
+        here: null,
+      }),
+    ).toBe('Adaeze and Tunde. Lumen Feiras · Sat 14 Nov · 15:00. Under way');
   });
 });

@@ -1,5 +1,5 @@
 import type { OutsideEvent } from '@soirely/api-client';
-import { initials, isUnderWay, outsideEventLine } from '@soirely/domain';
+import { initials, isUnderWay, outsideEventLine, outsideRowLabel } from '@soirely/domain';
 import { useId, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 
@@ -27,14 +27,10 @@ export function OutsideEventRow({
   const { t } = useTranslation();
   const line = outsideEventLine(event, dateLocale());
   const under = isUnderWay(event, now);
-  const label = [
-    event.name,
-    line,
-    under ? t('outsideEvent.underWay') : null,
-    here ? t('outsideEvent.here') : null,
-  ]
-    .filter((part) => part != null)
-    .join('. ');
+  const label = outsideRowLabel(event, dateLocale(), {
+    underWay: under ? t('outsideEvent.underWay') : null,
+    here: here ? t('outsideEvent.here') : null,
+  });
 
   return (
     <button

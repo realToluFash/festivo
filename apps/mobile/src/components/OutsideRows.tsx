@@ -1,10 +1,15 @@
 import type { Membership, OutsideEvent } from '@soirely/api-client';
-import { isUnderWay, outsideEventLine, outsideEventsInOrder, roleName } from '@soirely/domain';
+import {
+  isUnderWay,
+  outsideEventLine,
+  outsideEventsInOrder,
+  outsideRowLabel,
+  roleName,
+} from '@soirely/domain';
 import { useTranslation } from 'react-i18next';
 import { StyleSheet, View } from 'react-native';
 
 import { dateLocale } from '../i18n/index.ts';
-import { outsideRowLabel } from '../kit/outsideEvent.ts';
 import { useServerNow } from '../kit/serverNow.ts';
 import { meshFor } from '../kit/today.ts';
 import { tokens } from '../theme/tokens.ts';
@@ -86,7 +91,10 @@ export function OutsideEventsGroup({
                   />
                 }
                 onPress={() => onEvent(event)}
-                accessibilityLabel={outsideRowLabel(t, event, locale, marks)}
+                accessibilityLabel={outsideRowLabel(event, locale, {
+                  underWay: marks.underWay ? t('outsideEvent.underWay') : null,
+                  here: marks.here ? t('outsideEvent.here') : null,
+                })}
                 testID={`${idPrefix}.${event.id}`}
               />
             ),
