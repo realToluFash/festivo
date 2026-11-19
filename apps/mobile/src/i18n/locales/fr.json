@@ -1379,6 +1379,7 @@
       "failedTitle": "Les personnes suivantes n’ont pas pu être chargées.",
       "failedLine": "Vérifiez votre connexion et réessayez."
     },
+    "alsoMemberOf_zero": "Membre d’aucune autre organisation",
     "alsoMemberOf_one": "Également membre d’une autre organisation",
     "alsoMemberOf_many": "Également membre de {{count, number}} d’autres organisations",
     "alsoMemberOf_other": "Également membre de {{count, number}} autres organisations"
