@@ -87,7 +87,7 @@ final readonly class SubscriberTokenIssuer
     /** One event's budget lines and its headcount, which moves the range, for someone the route has already found holds budget.read on it (sc-83, sc-85). */
     public function issueForEventBudget(Uuid $eventId): IssuedSubscriberToken
     {
-        return $this->issue([RealtimeTopic::EventBudget->for($eventId->toRfc4122()), RealtimeTopic::EventHeadcount->for($eventId->toRfc4122())]);
+        return $this->issue([RealtimeTopic::EventBudget->for($eventId->toRfc4122()), RealtimeTopic::EventQuotes->for($eventId->toRfc4122()), RealtimeTopic::EventHeadcount->for($eventId->toRfc4122())]);
     }
 
     /** One event's guest list and its headcount, for someone the route has already found holds guests.read on it (sc-1468, sc-99). */

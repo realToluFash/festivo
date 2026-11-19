@@ -491,14 +491,14 @@ final class BudgetLinesTest extends ApiTestCase
     }
 
     #[Test]
-    public function aBudgetReaderIsGivenATokenForTheBudgetAndTheHeadcountThatMovesIt(): void
+    public function aBudgetReaderIsGivenATokenForTheBudgetItsQuotesAndTheHeadcountThatMovesIt(): void
     {
         $body = $this->as($this->owner, 'POST', $this->subscriptions());
 
         self::assertSame(200, $this->statusCode());
         $payload = Str\split(Type\string()->coerce($body['token'] ?? null), '.')[1] ?? self::fail('not a token');
         $claims = Type\shape(['mercure' => Type\shape(['subscribe' => Type\vec(Type\string())], true)], true)->coerce(Json\decode((string) \base64_decode(Str\replace_every($payload, ['-' => '+', '_' => '/']), true)));
-        self::assertSame(['events/' . $this->eventId . '/budget', 'events/' . $this->eventId . '/headcount'], $claims['mercure']['subscribe']);
+        self::assertSame(['events/' . $this->eventId . '/budget', 'events/' . $this->eventId . '/budget/quotes', 'events/' . $this->eventId . '/headcount'], $claims['mercure']['subscribe']);
     }
 
     /** @return iterable<string, array{SeededRole, ?EventRole}> */
