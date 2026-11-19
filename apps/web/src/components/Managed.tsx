@@ -16,10 +16,13 @@ export function ManagedBanner({
   managed,
   alert = false,
   level = 2,
+  way = true,
 }: {
   managed: Pick<ManagedAccount, 'message'> & { organisation: { name: string } };
   alert?: boolean;
   level?: 2 | 3;
+  /** Off on A few details, where Account settings is still behind the onboarding gate. */
+  way?: boolean;
 }) {
   const { t } = useTranslation();
   const id = useId();
@@ -36,9 +39,11 @@ export function ManagedBanner({
         </Heading>
         <p>{managed.message}</p>
         <p>{t('managed.single')}</p>
-        <Link className="managed-way" to="/app/account">
-          {t('managed.way')}
-        </Link>
+        {way && (
+          <Link className="managed-way" to="/app/account">
+            {t('managed.way')}
+          </Link>
+        )}
       </div>
     </section>
   );

@@ -521,7 +521,7 @@ function Details({
               </div>
             ))}
             {managed != null ? (
-              <ManagedBanner managed={managed} level={3} />
+              <ManagedBanner managed={managed} level={3} way={false} />
             ) : (
               <button
                 ref={startOwnButton}
@@ -540,7 +540,7 @@ function Details({
         )}
 
         {asksForOrganisation && !showOffers && managed != null && (
-          <ManagedBanner managed={managed} level={3} />
+          <ManagedBanner managed={managed} level={3} way={false} />
         )}
 
         {asksForOrganisation && offers.length > 0 && own && (
