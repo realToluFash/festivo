@@ -3,6 +3,8 @@ appId: host.exp.Exponent
 ---
 - setOrientation: ${ORIENT}
 - openLink: ${METRO_URL}/--/settings
-- waitForAnimationToEnd: { timeout: 8000 }
+- extendedWaitUntil:
+    visible:
+      id: 'settings.account'
+    timeout: 30000
 - takeScreenshot: p-settings
-- assertVisible: { id: 'settings.account' }

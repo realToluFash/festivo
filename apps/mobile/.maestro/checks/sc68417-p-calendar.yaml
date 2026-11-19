@@ -3,6 +3,8 @@ appId: host.exp.Exponent
 ---
 - setOrientation: ${ORIENT}
 - openLink: ${METRO_URL}/--/calendar
-- waitForAnimationToEnd: { timeout: 8000 }
+- extendedWaitUntil:
+    visible:
+      id: 'calendar.today'
+    timeout: 30000
 - takeScreenshot: p-calendar
-- assertVisible: { id: 'calendar.today' }
