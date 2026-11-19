@@ -96,6 +96,7 @@ import {
   clearApiCache,
   freshBatchDir,
   servicesMountingApi,
+  withApiStopped,
   execOutput,
   staleInContainer,
   defaultNetwork,
@@ -2014,6 +2015,29 @@ describe('the API cache a checkout leaves behind', () => {
     };
 
     expect(servicesMountingApi(services, root)).toEqual(['api', 'notification-worker']);
+  });
+
+  it('starts the stopped services again when the checkout fails', () => {
+    const started = [];
+    const failing = () => {
+      throw new Error('checkout failed');
+    };
+
+    expect(() =>
+      withApiStopped(failing, {
+        stop: () => ['api', 'notification-worker'],
+        start: (names) => started.push(...names),
+      }),
+    ).toThrow('checkout failed');
+    expect(started).toEqual(['api', 'notification-worker']);
+  });
+
+  it('leaves them stopped when the checkout succeeds', () => {
+    const started = [];
+
+    withApiStopped(() => 'ok', { stop: () => ['api'], start: (names) => started.push(...names) });
+
+    expect(started).toEqual([]);
   });
 
   it('pins the image it clears with', () => {

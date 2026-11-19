@@ -1004,6 +1004,18 @@ function stopApiMounts(root) {
   }
   const names = servicesMountingApi(services, root);
   if (names.length > 0) run('docker', ['compose', 'stop', ...names], { cwd: root, optional: true });
+  return names;
+}
+
+// A checkout that fails would leave the tester's api stopped with nothing to bring it back.
+export function withApiStopped(checkout, { stop, start }) {
+  const stopped = stop() ?? [];
+  try {
+    return checkout();
+  } catch (error) {
+    if (stopped.length > 0) start(stopped);
+    throw error;
+  }
 }
 
 export function clearApiCache(root, exec = run) {
@@ -1458,8 +1470,13 @@ function checkout(args) {
     ref = `origin/${name}`;
     label = name;
   }
-  stopApiMounts(root);
-  git(['checkout', '--quiet', '--detach', ref], root);
+  if (!capture('git', ['rev-parse', '--verify', '--quiet', `${ref}^{commit}`], { cwd: root })) {
+    throw new Error(`${label} names no commit in the QA worktree`);
+  }
+  withApiStopped(() => git(['checkout', '--quiet', '--detach', ref], root), {
+    stop: () => stopApiMounts(root),
+    start: (names) => run('docker', ['compose', 'start', ...names], { cwd: root, optional: true }),
+  });
   const head = git(['rev-parse', '--short', 'HEAD'], root);
   console.log(`  ${label} at ${head}`);
   clearApiCache(root);
