@@ -111,6 +111,7 @@ final class OrganisationExportTest extends ApiTestCase
         'audit_entries' => 'the audit log, which Settings > Audit log exports (sc-611)',
         'billing_accounts' => "billing: Soirely's own records, the terms it sells on (pm, 19 Nov)",
         'calendar_feeds' => 'a link that opens without signing in',
+        'catalogue_versions' => "billing: Soirely's own records, the terms it sells on (pm, 19 Nov)",
         'doctrine_migration_versions' => "Soirely's own records",
         'email_suppressions' => "Soirely's own records",
         'event_changes' => 'change history',
