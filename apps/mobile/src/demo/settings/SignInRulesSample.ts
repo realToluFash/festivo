@@ -1,5 +1,6 @@
 import type { Area, Change, StandRules, StandViewer } from '../../kit/whereYouStand.ts';
 import type { Load } from './RolesSample.ts';
+import type { Standing } from './SingleSignOnModel.ts';
 import { YOU } from './sample.ts';
 
 export const ORG = YOU.organisation;
@@ -145,6 +146,11 @@ export const SIGN_IN_RULES_STATES = [
   'noChanges',
   'loading',
   'failed',
+  'ssoSaved',
+  'ssoOn',
+  'ssoRequired',
+  'ssoFree',
+  'ssoExempt',
 ] as const;
 
 export type SignInRulesState = (typeof SIGN_IN_RULES_STATES)[number];
@@ -157,16 +163,19 @@ export interface SignInRulesStart {
   load: Load;
   page: RulesPage;
   viewer: RulesViewer;
+  sso: Standing;
 }
 
 export function signInRulesStart(state: SignInRulesState): SignInRulesStart {
   const start = (
     page: Partial<RulesPage> = {},
     viewer: RulesViewer = JULIEN,
+    sso: Standing = 'notSetUp',
   ): SignInRulesStart => ({
     load: 'loaded',
     page: { ...RULES, ...page },
     viewer,
+    sso,
   });
 
   switch (state) {
@@ -196,6 +205,20 @@ export function signInRulesStart(state: SignInRulesState): SignInRulesStart {
       return start(
         { inactivityTimeoutDays: null, administratorsNeedTwoFactor: false, changes: [] },
         { ...JULIEN, seen: null },
+      );
+    case 'ssoSaved':
+      return start({}, JULIEN, 'saved');
+    case 'ssoOn':
+      return start({}, JULIEN, 'on');
+    case 'ssoRequired':
+      return start({}, JULIEN, 'required');
+    case 'ssoFree':
+      return start({}, JULIEN, 'free');
+    case 'ssoExempt':
+      return start(
+        { everyoneNeedsTwoFactor: true, ownTwoFactor: false, changes: [EVERYONE, ...CHANGES] },
+        JULIEN,
+        'on',
       );
     case 'loading':
     case 'failed':
