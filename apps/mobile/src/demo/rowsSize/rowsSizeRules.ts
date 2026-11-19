@@ -1,5 +1,4 @@
-import { fitWidest, titleSize } from '../../layout/textSize.ts';
-import { tokens } from '../../theme/tokens.ts';
+import { fitWidest } from '../../layout/textSize.ts';
 
 export type RowsSize = 'device' | 'default' | 'ninth' | 'tenth' | 'eleventh' | 'twelfth';
 export type RowsLanguage = 'en' | 'fr';
@@ -49,11 +48,6 @@ const ROW_DENSE = { title: 15.5, line: 13 };
 /** A row's title and its line as main draws them. */
 export function rowType(dense: boolean): { title: number; line: number } {
   return dense ? ROW_DENSE : ROW;
-}
-
-/** The page title Settings draws at this scale, which caps everything under it (sc-67338): 43 from the ninth step on. */
-export function settingsCap(tablet: boolean, scale: number): number {
-  return titleSize(tablet ? tokens.typeTitleFrameCompact.size : tokens.typeTitleFrame.size, scale);
 }
 
 /** A label's size: its start while its widest word, measured at the start, fits `room`; else the largest at which that word fits, never under `size`. */
