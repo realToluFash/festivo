@@ -4014,11 +4014,9 @@
     "linkErased": "Contactos apagados depois do evento",
     "noJobOption": "Ainda sem função",
     "noShiftOption": "Ainda sem turno",
-    "shiftHelp": "Turnos desta função com alguma vaga livre, por hora de início.",
     "onShifts": "Retire primeiro {{name}} dos seus turnos.",
     "onShiftsHint": "A função pode mudar quando esta pessoa já não estiver em nenhum turno.",
-    "moreShifts": "{{first}} <more>+{{count, number}} mais</more>",
-    "removeShifts": "As suas vagas nestes turnos ficam livres:"
+    "moreShifts": "{{first}} <more>+{{count, number}} mais</more>"
   },
   "schedule": {
     "crumb": "Navegação estrutural",

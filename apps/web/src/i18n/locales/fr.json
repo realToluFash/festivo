@@ -4014,11 +4014,9 @@
     "linkErased": "Coordonnées effacées après l’événement",
     "noJobOption": "Aucune fonction pour l’instant",
     "noShiftOption": "Sur aucun service pour l’instant",
-    "shiftHelp": "Services de cette fonction où une place est libre, par heure de début.",
     "onShifts": "Retirez d’abord {{name}} de ses services.",
     "onShiftsHint": "Sa fonction pourra changer quand aucun service ne sera plus à son nom.",
-    "moreShifts": "{{first}} <more>et {{count, number}} de plus</more>",
-    "removeShifts": "Ses places sur ces services resteront libres :"
+    "moreShifts": "{{first}} <more>et {{count, number}} de plus</more>"
   },
   "schedule": {
     "crumb": "Fil d’Ariane",

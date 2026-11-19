@@ -111,7 +111,7 @@ export const JW = {
   startBlank: 'Enter the date and time the shift starts.',
   endBlank: 'Enter the date and time the shift ends.',
   endBefore: 'The end must be after the start.',
-  tooLong: 'A shift can’t be longer than 24 hours. Check the dates.',
+  tooLong: 'A shift cannot be longer than 24 hours. Check the dates.',
   neededRange: 'Enter a number from 1 to 50.',
   neededBelow: (n: number) =>
     `${n} people are on this shift. Unassign some first, or keep ${n} or more.`,
