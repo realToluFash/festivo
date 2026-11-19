@@ -8,7 +8,7 @@ import { RouterProvider, createMemoryRouter } from 'react-router';
 import { __setSessionState, type Session } from '../../../session.ts';
 import { OWNER_PERMISSIONS, membership } from '../../../test-memberships.ts';
 import { routes } from '../../index.tsx';
-import { cssRule, stylesheet } from '../../../test-styles.ts';
+import { cssRule, mediaBlock, stylesheet } from '../../../test-styles.ts';
 
 const tablesOf = (count: number) =>
   Array.from({ length: count }, (_, n) => ({ id: `t${n + 1}`, name: `T${n + 1}` }));
@@ -363,7 +363,7 @@ describe('The Roster on the Staff page (sc-3906)', () => {
     expect(more?.parentElement?.textContent).toBe('16:30 to 21:00 +1 more');
   });
 
-  it('keeps a Shift cell with no shift on one line, in the paler grey, beside one with a shift (sc-71607)', async () => {
+  it('keeps a Shift cell with no shift on one line below 720 px only, in the paler grey, beside one with a shift (sc-71607)', async () => {
     signedIn();
     await onRoster({
       'GET /api/events/ev_1/staff': () =>
@@ -393,9 +393,14 @@ describe('The Roster on the Staff page (sc-3906)', () => {
       .map((row) => row.querySelectorAll('td')[2] as HTMLElement);
     expect(cells.map((cell) => [cell.textContent, [...cell.classList]])).toEqual([
       ['16:30 to 21:00', ['rs-shift']],
-      ['Not on a shift yet', ['rs-shift', 'rs-quiet']],
+      ['Not on a shift yet', ['rs-no-shift', 'rs-quiet']],
     ]);
     expect(cssRule('.rs-table td.rs-shift', ROSTER_CSS)).toContain('white-space: nowrap;');
+    const narrow = mediaBlock('(width <= 720px)', ROSTER_CSS);
+    expect(ROSTER_CSS.replace(narrow, '')).not.toContain('rs-no-shift');
+    expect(cssRule('.rs-frame > .rs-table td.rs-no-shift', narrow)).toContain(
+      'white-space: nowrap;',
+    );
     expect(cssRule('.rs-table tbody td.rs-quiet', ROSTER_CSS)).toContain(
       'color: var(--colorInkSecondary);',
     );
