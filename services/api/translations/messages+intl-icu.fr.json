@@ -201,6 +201,7 @@
     "audit.what.event_person.expired": "Access to {event} for {target} ended",
     "audit.what.invitation.sent": "Invited {target}",
     "audit.what.invitation.revoked": "Cancelled the invitation to {target}",
+    "audit.what.managed_account.refused": "The invitation to {target} was refused: another organisation manages the address",
     "audit.what.request_link.turned_on": "Turned on the link to ask to join {target}",
     "audit.what.request_link.turned_off": "Turned off the link to ask to join {target}",
     "audit.what.request_link.replaced": "Replaced the link to ask to join {target}",

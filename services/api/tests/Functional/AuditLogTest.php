@@ -6,6 +6,7 @@ namespace App\Tests\Functional;
 
 use App\Audit\Auditor;
 use App\Domain\Organisation\AuditLog\AuditExports;
+use App\Domain\Organisation\EmailDomains\ManagedAccounts;
 use App\Domain\Organisation\Members\MembershipMachine;
 use App\Domain\Organisation\OrganisationFounder;
 use App\Domain\Organisation\Plan\PlanChanger;
@@ -25,6 +26,7 @@ use App\Enum\Plan;
 use App\Enum\SeededRole;
 use App\Repository\AuditFilter;
 use App\Tests\ApiTestCase;
+use App\Tests\Traits\InvitesPeople;
 use App\Tests\Traits\OnboardsAccounts;
 use DateTimeImmutable;
 use Doctrine\ORM\EntityManagerInterface;
@@ -40,6 +42,7 @@ use Symfony\Component\Uid\Uuid;
 
 final class AuditLogTest extends ApiTestCase
 {
+    use InvitesPeople;
     use OnboardsAccounts;
 
     /** @mago-expect lint:no-literal-password */
@@ -156,6 +159,19 @@ final class AuditLogTest extends ApiTestCase
         self::assertStringContainsString('Within the year', $csv);
         self::assertStringNotContainsString('Long ago', $csv);
         self::assertStringNotContainsString('name.changed', $csv);
+    }
+
+    #[Test]
+    public function anInvitationRefusedBecauseAnotherOrganisationManagesTheAddressShowsInTheInvitingOrganisationsLog(): void
+    {
+        [$owner, $organisation] = $this->enterprise('folake@ire.events', 'Ìrè Events');
+        [$invitation] = self::invitationTo('bayo@acme.com', self::service(EntityManagerInterface::class)->find(Organisation::class, $organisation->getId()));
+        self::service(Auditor::class)->record(ManagedAccounts::REFUSED, 'Invitation', $invitation->getId(), Actor::User, null, 'Bayo', ['path' => [null, MembershipChannel::Invitation->value], 'domain' => [null, 'acme.com']]);
+        self::service(EntityManagerInterface::class)->flush();
+        $this->signIn($owner);
+
+        self::assertContains(ManagedAccounts::REFUSED, $this->actions($this->list($organisation, ['type' => AuditType::Members->value])));
+        self::assertStringContainsString('The invitation to bayo@acme.com was refused', $this->export($organisation, 'csv'));
     }
 
     #[Test]

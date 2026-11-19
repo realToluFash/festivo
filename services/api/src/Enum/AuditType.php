@@ -47,6 +47,7 @@ enum AuditType: string
         'event_person.expired' => self::EventAccess,
         'invitation.sent' => self::Members,
         'invitation.revoked' => self::Members,
+        'managed_account.refused' => self::Members,
         'request_link.turned_on' => self::Members,
         'request_link.turned_off' => self::Members,
         'request_link.replaced' => self::Members,

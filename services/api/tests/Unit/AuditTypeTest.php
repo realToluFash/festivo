@@ -26,7 +26,7 @@ final class AuditTypeTest extends TestCase
     private const array LEFT_OUT = ['guest', 'guests', 'guest_group', 'menu', 'dish', 'seating', 'run_of_show', 'staff', 'stations', 'budget_line'];
 
     /** Areas about a person's own account, which the log never shows. */
-    private const array PERSONAL = ['name', 'email', 'phone', 'provider', 'sessions', 'two_factor_recovery', 'managed_account'];
+    private const array PERSONAL = ['name', 'email', 'phone', 'provider', 'sessions', 'two_factor_recovery'];
 
     /** Areas about Soirely itself rather than an organisation. */
     private const array NOT_AN_ORGANISATION = ['catalogue'];
