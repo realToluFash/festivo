@@ -26,6 +26,7 @@ import {
 import { focusWhenFree, useDeskLayers } from '../../../layers.ts';
 import { can, useSession } from '../../../session.ts';
 import { Forbidden } from '../Forbidden.tsx';
+import { AUDIT_LOG } from './AuditLog.tsx';
 import { domainsRow, soonestAsk } from './emailDomains.ts';
 import { EMAIL_DOMAINS } from './EmailDomains.tsx';
 import { exportRow, saveArchive } from './exportAllData.ts';
@@ -162,6 +163,21 @@ function Loaded({
                 title={t('emailDomains.title')}
                 tag={domainsLine.locked && <LockTag word={t('dataControl.enterprise')} />}
                 lines={[domainsLine.line]}
+              />
+              <Chevron />
+            </Link>
+          </li>
+          <li>
+            <Link className="desk-row dc-row" to={AUDIT_LOG}>
+              <span className="dc-lead" aria-hidden="true">
+                <DrawnGlyph name="history" />
+              </span>
+              <RowWords
+                title={t('auditLog.title')}
+                tag={
+                  domains.plan !== 'enterprise' && <LockTag word={t('dataControl.enterprise')} />
+                }
+                lines={[t('dataControl.auditLine')]}
               />
               <Chevron />
             </Link>
