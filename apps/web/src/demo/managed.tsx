@@ -15,7 +15,15 @@ const MANAGED_WORDS = {
 } as const;
 
 /** sc-563's refusal wherever a membership path ends for an account its home organisation manages: an "i" on Surf, and the way out. */
-export function ManagedBanner({ alert = false, level = 2 }: { alert?: boolean; level?: 2 | 3 }) {
+export function ManagedBanner({
+  alert = false,
+  level = 2,
+  way = true,
+}: {
+  alert?: boolean;
+  level?: 2 | 3;
+  way?: boolean;
+}) {
   const id = useId();
   const Heading = level === 2 ? 'h2' : 'h3';
 
@@ -30,9 +38,11 @@ export function ManagedBanner({ alert = false, level = 2 }: { alert?: boolean; l
         </Heading>
         <p>{MANAGED_WORDS.body}</p>
         <p>{MANAGED_WORDS.single}</p>
-        <Link className="managed-way" to="/demo/settings/account">
-          {MANAGED_WORDS.way}
-        </Link>
+        {way && (
+          <Link className="managed-way" to="/demo/settings/account">
+            {MANAGED_WORDS.way}
+          </Link>
+        )}
       </div>
     </section>
   );

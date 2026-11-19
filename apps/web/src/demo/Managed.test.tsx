@@ -80,10 +80,28 @@ describe('an account its home organisation manages, outside Settings (sc-563)', 
     open('/demo/ways-in?page=details&state=managed');
     await screen.findByRole('heading', { level: 1, name: 'A few details' }, WAIT);
 
-    saysManaged();
+    expect(within(banner()).getByText(BODY)).toBeDefined();
+    expect(within(banner()).queryByRole('link')).toBeNull();
+    expect(screen.queryByText(/or start your own/u)).toBeNull();
     expect(screen.getByRole('button', { name: 'Ask to join Ire Events' })).toBeDefined();
     expect(screen.queryByRole('button', { name: 'Start my own organisation' })).toBeNull();
   });
+
+  it(
+    'puts the banner in A few details where the organisation fields were, with nothing to join',
+    SLOW,
+    async () => {
+      open('/demo/ways-in?page=details&state=managedNone');
+      await screen.findByRole('heading', { level: 1, name: 'A few details' }, WAIT);
+
+      expect(within(banner()).getByText('Access to a single event still works.')).toBeDefined();
+      expect(within(banner()).queryByRole('link')).toBeNull();
+      expect(screen.queryByLabelText('Organisation name')).toBeNull();
+      expect(screen.queryByLabelText('Country')).toBeNull();
+      expect(screen.getByLabelText('Full name')).toBeDefined();
+      expect(screen.getByRole('button', { name: 'Save and continue' })).toBeDefined();
+    },
+  );
 
   it(
     'says under Priya’s card that she is also a member of 2 other organisations, no names',

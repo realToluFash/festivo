@@ -530,7 +530,7 @@ export function Details({
     event.preventDefault();
     if (busy || offer === 'company') return;
 
-    const found = detailsLines(name, organisation, number, phone.code);
+    const found = detailsLines(name, managed ? null : organisation, number, phone.code);
     setLines(found);
     const first =
       found.name != null
@@ -612,50 +612,56 @@ export function Details({
                 </p>
               )}
 
-              <div className={fieldClass(lines.organisation != null)}>
-                <label htmlFor="organisation">Organisation name</label>
-                <input
-                  ref={organisationField}
-                  className="demo-input"
-                  id="organisation"
-                  autoComplete="organization"
-                  value={organisation}
-                  {...offField(busy)}
-                  aria-invalid={lines.organisation != null}
-                  aria-describedby={
-                    lines.organisation == null ? 'organisation-help' : 'organisation-line'
-                  }
-                  onChange={(event) => setOrganisation(event.target.value)}
-                />
-                {lines.organisation == null ? (
-                  <p className="demo-help" id="organisation-help">
-                    Your events belong to it. You can rename it later.
-                  </p>
-                ) : (
-                  <p className="demo-line" id="organisation-line">
-                    {lines.organisation}
-                  </p>
-                )}
-              </div>
+              {managed ? (
+                <ManagedBanner level={3} way={false} />
+              ) : (
+                <>
+                  <div className={fieldClass(lines.organisation != null)}>
+                    <label htmlFor="organisation">Organisation name</label>
+                    <input
+                      ref={organisationField}
+                      className="demo-input"
+                      id="organisation"
+                      autoComplete="organization"
+                      value={organisation}
+                      {...offField(busy)}
+                      aria-invalid={lines.organisation != null}
+                      aria-describedby={
+                        lines.organisation == null ? 'organisation-help' : 'organisation-line'
+                      }
+                      onChange={(event) => setOrganisation(event.target.value)}
+                    />
+                    {lines.organisation == null ? (
+                      <p className="demo-help" id="organisation-help">
+                        Your events belong to it. You can rename it later.
+                      </p>
+                    ) : (
+                      <p className="demo-line" id="organisation-line">
+                        {lines.organisation}
+                      </p>
+                    )}
+                  </div>
 
-              <div className="demo-field">
-                <label htmlFor="country">Country</label>
-                <select
-                  className="demo-input demo-select"
-                  id="country"
-                  value={country}
-                  onChange={(event) => {
-                    setCountry(event.target.value);
-                    setPhone((was) => followCountry(was, event.target.value));
-                  }}
-                >
-                  {COUNTRIES.map((each) => (
-                    <option key={each.code} value={each.code}>
-                      {each.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
+                  <div className="demo-field">
+                    <label htmlFor="country">Country</label>
+                    <select
+                      className="demo-input demo-select"
+                      id="country"
+                      value={country}
+                      onChange={(event) => {
+                        setCountry(event.target.value);
+                        setPhone((was) => followCountry(was, event.target.value));
+                      }}
+                    >
+                      {COUNTRIES.map((each) => (
+                        <option key={each.code} value={each.code}>
+                          {each.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </>
+              )}
 
               <NumberRow
                 code={phone.code}
@@ -710,9 +716,11 @@ function DomainOffer({
     <section className="demo-offer" aria-labelledby="offer-heading">
       <div className="demo-offer-intro">
         <h2 id="offer-heading">Your organisation</h2>
-        <p className="demo-muted">
-          Your address is at {DOMAIN}. Ask to join your company’s organisation, or start your own.
-        </p>
+        {!managed && (
+          <p className="demo-muted">
+            Your address is at {DOMAIN}. Ask to join your company’s organisation, or start your own.
+          </p>
+        )}
       </div>
       <div className="demo-offer-row">
         <Organisation
@@ -730,7 +738,7 @@ function DomainOffer({
         </button>
       </div>
       {managed ? (
-        <ManagedBanner level={3} />
+        <ManagedBanner level={3} way={false} />
       ) : (
         <button
           className="button demo-wide"
@@ -778,7 +786,7 @@ function WaitingInvitation({
 
 function detailsLines(
   name: string,
-  organisation: string,
+  organisation: string | null,
   number: string,
   code: string,
 ): { name?: string; organisation?: string; number?: string } {
@@ -786,7 +794,7 @@ function detailsLines(
 
   return {
     ...(name.trim() === '' && { name: 'Enter your full name.' }),
-    ...(organisation.trim() === '' && {
+    ...(organisation?.trim() === '' && {
       organisation: 'Add your organisation’s name to carry on.',
     }),
     ...(numberProblem != null && { number: numberProblem }),
