@@ -72,6 +72,44 @@ describe('an account its home organisation manages, outside Settings (sc-563)', 
     expect(within(panel).queryByRole('button', { name: /^Accept and join/u })).toBeNull();
   });
 
+  it('counts no invitation on the button when none can be accepted (sc-73668)', SLOW, async () => {
+    open('/demo/events?switcher=managed-closed');
+    const button = await screen.findByRole(
+      'button',
+      { name: 'Organisation: Ire Events, your role Owner. Switch organisation' },
+      WAIT,
+    );
+
+    expect(button.getAttribute('aria-expanded')).toBe('false');
+    expect(button.textContent).not.toMatch(/invitation/u);
+  });
+
+  it(
+    'lists both invitations, each with the banner in place of its answers (sc-73668)',
+    SLOW,
+    async () => {
+      open('/demo/events?switcher=managed-listed');
+      const button = await screen.findByRole(
+        'button',
+        { name: /^Organisation: Ire Events/u },
+        WAIT,
+      );
+
+      expect(button.textContent).not.toMatch(/invitation/u);
+      for (const [name, role] of [
+        ['Celebraciones Alameda', 'Member'],
+        ['Bluebird Gatherings', 'Admin'],
+      ] as const) {
+        fireEvent.click(screen.getByRole('button', { name: `${name}, Invitation · ${role}` }));
+        const panel = screen.getByRole('group', { name });
+
+        saysManaged();
+        expect(within(panel).queryByRole('button', { name: /^Accept and join/u })).toBeNull();
+        expect(within(panel).queryByRole('button', { name: /^Decline/u })).toBeNull();
+      }
+    },
+  );
+
   it('refuses a request link’s Ask to join with the banner', SLOW, async () => {
     open('/demo/ways-in?page=ask&state=managed');
     await screen.findByRole('heading', { level: 1, name: 'Ask to join Lumen Feiras' }, WAIT);

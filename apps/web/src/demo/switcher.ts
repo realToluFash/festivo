@@ -55,6 +55,8 @@ export const SWITCHER_STATES = [
   'expired',
   'withdrawn',
   'managed',
+  'managed-closed',
+  'managed-listed',
   'paused',
   'outside',
   'outside-one-org',
@@ -138,7 +140,9 @@ export function whereOf(state: SwitcherState | null): Where {
           ? { [BLUEBIRD]: state }
           : state === 'managed'
             ? { [CELEBRACIONES]: 'managed' }
-            : {};
+            : state === 'managed-closed' || state === 'managed-listed'
+              ? { [CELEBRACIONES]: 'managed', [BLUEBIRD]: 'managed' }
+              : {};
   const many = state === 'many' || state === 'search' || state === 'no-match';
   const alone = state === 'one' || many || state === 'paused' || state === 'outside-one-org';
 
@@ -213,11 +217,12 @@ function joinedPlace(invitation: Invitation): Place {
   return { id: invitation.id, name: invitation.name, role: invitation.role };
 }
 
+/** sc-73668: one a managed account cannot accept has no answer left to give, so it is listed and never counted. */
 export function waiting(where: Where): readonly Invitation[] {
   return where.invitations.filter((one) => {
     const answer = where.answers[one.id];
 
-    return answer == null || answer === 'failed' || answer === 'busy' || answer === 'managed';
+    return answer == null || answer === 'failed' || answer === 'busy';
   });
 }
 
@@ -371,6 +376,11 @@ export const SWITCHER_PAGES: readonly { name: string; states: readonly DemoLink[
       switcherLink('expired', 'An invitation, refused: expired'),
       switcherLink('withdrawn', 'An invitation, refused: withdrawn'),
       switcherLink('managed', 'An invitation, managed by Ire Events: refused'),
+      switcherLink('managed-closed', 'Managed by Ire Events, 2 invitations: no count'),
+      switcherLink(
+        'managed-listed',
+        'Managed by Ire Events, 2 invitations listed, none answerable',
+      ),
     ],
   },
   { name: 'Access paused', states: [switcherLink('paused', 'Access paused, none current')] },

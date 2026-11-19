@@ -19,6 +19,7 @@ const BOARDS: Record<SwitcherState, readonly [string, string]> = {
   withdrawn: ['an invitation, withdrawn', 'Bluebird Gatherings, Withdrawn'],
   large: ['at accessibility sizes', 'Rows, names capped at 2 lines'],
   managed: ['an invitation, managed', 'Celebraciones Alameda, managed by Ire Events'],
+  'managed-listed': ['managed, two invitations', 'Both listed, none counted, each with the banner'],
 };
 
 export const SWITCHER_BOARDS = SWITCHER_STATES.map((state) => ({
