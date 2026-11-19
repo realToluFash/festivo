@@ -1,7 +1,7 @@
 import { type ReactNode, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router';
 
-import { Glyph } from '../components/Glyph.tsx';
+import { LockTag as ProductLockTag } from '../components/DataControlParts.tsx';
 import { BackRow, type Tell, TextAction, TitleRow } from '../components/SettingsParts.tsx';
 import { DemoBell } from './DemoBell.tsx';
 import { type DataControlPage, SHARED_WORDS as S, dataControlPath } from './dataControl.ts';
@@ -11,31 +11,13 @@ import './dataControl.css';
 export {
   DrawnGlyph,
   type DrawnName,
+  NoTag,
   PageLoading,
   StatusLine,
 } from '../components/DataControlParts.tsx';
 
 export function LockTag() {
-  return (
-    <span className="desk-tag">
-      <Glyph name="lock" size={13} weight={2.4} />
-      {S.enterprise}
-    </span>
-  );
-}
-
-/** Not proved: red, a circle with a cross, and the word. */
-export function NoTag({ word }: { word: string }) {
-  return (
-    <span className="desk-tag dc-tag-no">
-      <span className="dc-mark-no" aria-hidden="true">
-        <svg width="8" height="8" viewBox="0 0 8 8" focusable="false">
-          <path d="M2 2l4 4M6 2 2 6" />
-        </svg>
-      </span>
-      {word}
-    </span>
-  );
+  return <ProductLockTag word={S.enterprise} />;
 }
 
 export function Turning({ words }: { words: string }) {

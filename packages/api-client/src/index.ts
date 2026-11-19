@@ -17,6 +17,7 @@ export * from './seatingPresence.ts';
 export * from './guests.ts';
 export * from './vendors.ts';
 export * from './staff.ts';
+export * from './emailDomains.ts';
 export * from './organisationExport.ts';
 export * from './dishes.ts';
 export * from './menu.ts';

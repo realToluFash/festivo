@@ -16,6 +16,7 @@ import {
   WAITING_IRE_EVENTS,
 } from './DataSample.ts';
 import { DATA_WORDS as H, DOMAINS_WORDS as D } from './DataWords.ts';
+import type { TagWord } from '../../kit/emailDomains.ts';
 import type { Load } from './RolesSample.ts';
 
 export type DataPage = 'hub' | 'emailDomains' | 'auditLog';
@@ -410,7 +411,7 @@ export function isProved(domain: Domain): boolean {
   return domain.status === 'proved' || domain.status === 'missing' || domain.status === 'kept';
 }
 
-export type TagWord = { kind: 'yes' | 'waiting' | 'no' | 'kept'; word: string };
+export type { TagWord } from '../../kit/emailDomains.ts';
 
 export interface DomainRow {
   name: string;
