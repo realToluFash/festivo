@@ -393,6 +393,7 @@ final class BudgetLinesTest extends ApiTestCase
             'a negative rate' => ['category' => 'other', 'basis' => 'per_head', 'price_minor' => -1],
             'a basis outside the five' => ['category' => 'other', 'basis' => 'per_guest', 'price_minor' => 1],
             'a category outside the nine' => ['category' => 'cake', 'basis' => 'per_head', 'price_minor' => 1],
+            'words kept past a currency change' => ['category' => 'other', 'basis' => 'per_head', 'price_minor' => 1, 'removed_at' => '2027-03-01 10:00:00', 'currency_changed' => 'true'],
         ] as $case => $wrong) {
             $connection->executeStatement('SAVEPOINT wrong_line');
 
@@ -430,9 +431,17 @@ final class BudgetLinesTest extends ApiTestCase
     #[Test]
     public function aLineRemovedBeforeACurrencyChangeIsNotPutBackEvenOnceTheCurrencyIsBack(): void
     {
-        $before = $this->add(self::CATERING);
+        $before = $this->add([...self::CATERING, 'note' => 'Deposit paid by card ending 4421']);
         $this->as($this->owner, 'DELETE', $this->lines($before['id']));
         $this->changeCurrency('EUR');
+
+        $stored = self::em()->getConnection()->fetchAssociative('SELECT * FROM budget_lines WHERE id = ?', [$before['id']]);
+        self::assertIsArray($stored);
+        self::assertSame(
+            ['label' => null, 'category' => 'catering', 'basis' => 'per_head', 'price_minor' => null, 'note' => null, 'currency_changed' => true],
+            Dict\select_keys($stored, ['label', 'category', 'basis', 'price_minor', 'note', 'currency_changed']),
+        );
+        self::assertNotNull($stored['removed_at']);
         $after = $this->add([...self::CATERING, 'currency' => 'EUR']);
         $this->as($this->owner, 'DELETE', $this->lines($after['id']));
         self::assertSame(200, $this->changeCurrency('GBP'));

@@ -63,11 +63,11 @@ final class BudgetLineRepository extends ServiceEntityRepository implements Even
         return null !== $this->findOneBy(['event' => $event, 'removedAt' => null]);
     }
 
-    /** Their prices are in the currency the event had, so their Undo is refused from now on. */
+    /** Their prices are in the currency the event had, so their Undo is refused from now on, and nothing written or priced on them is kept (sc-85, decided 19 Nov, #72947). */
     public function markRemovedPastCurrency(Event $event): void
     {
         $this->getEntityManager()
-            ->createQuery('UPDATE App\\Entity\\BudgetLine b SET b.currencyChanged = true WHERE b.event = :event AND b.removedAt IS NOT NULL')
+            ->createQuery('UPDATE App\\Entity\\BudgetLine b SET b.currencyChanged = true, b.label = NULL, b.priceMinor = NULL, b.note = NULL WHERE b.event = :event AND b.removedAt IS NOT NULL')
             ->setParameter('event', $event->getId(), 'uuid')
             ->execute();
     }
