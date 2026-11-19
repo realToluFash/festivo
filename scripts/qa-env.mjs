@@ -707,6 +707,21 @@ export function releasePlatform(args, platform = process.platform) {
   return platform === 'darwin' && !args.includes('--android') ? 'ios' : 'android';
 }
 
+// The first launch after the fresh install is this link rather than the app's icon.
+export function releaseLink(args, platform = releasePlatform(args)) {
+  const at = args.indexOf('--link');
+  if (at === -1) return null;
+  if (platform !== 'ios')
+    throw new Error('--link is iOS only: release on Android launches the app');
+  const url = args[at + 1] ?? '';
+  if (!/^[a-z][a-z0-9+.-]*:\S/i.test(url))
+    throw new Error(`--link needs a URL with a scheme, such as soirely://sign-in, not "${url}"`);
+  return url;
+}
+
+// An accessibility pass can leave a simulator at its largest text size.
+export const DEFAULT_TEXT_SIZE = (udid) => ['simctl', 'ui', udid, 'content_size', 'large'];
+
 export function simulatorArch(arch = process.arch) {
   return arch === 'arm64' ? 'arm64' : 'x86_64';
 }
@@ -1793,6 +1808,7 @@ async function ios(args) {
     if (!udid) throw new Error(`no ${CONFIG.simulators[key].name} simulator — run setup`);
     withoutPasswordAutoFill(udid);
     bootIos(udid);
+    run('xcrun', DEFAULT_TEXT_SIZE(udid), { optional: true });
     // The record stays: only a later boot that finds the app gone says the uninstall held.
     uninstallIos(udid, id);
     if (!(await ensureExpoGo(udid, expo)))
@@ -2754,6 +2770,7 @@ function releaseCommit(root) {
 }
 
 function release(args) {
+  releaseLink(args);
   return releasePlatform(args) === 'ios' ? releaseIos(args) : releaseAndroid(args);
 }
 
@@ -2925,6 +2942,7 @@ async function releaseIos(args) {
   const sha = releaseCommit(root);
   const { open, shut } = simulatorFor(args);
   const offline = args.includes('--offline');
+  const link = releaseLink(args, 'ios');
 
   const app = releaseApp(root, sha);
   if (existsSync(app) && !args.includes('--rebuild')) {
@@ -2940,6 +2958,7 @@ async function releaseIos(args) {
   if (!udid) throw new Error(`no ${CONFIG.simulators[open].name} simulator — run setup`);
   withoutPasswordAutoFill(udid);
   bootIos(udid);
+  run('xcrun', DEFAULT_TEXT_SIZE(udid), { optional: true });
   run('open', ['-a', 'Simulator'], { optional: true });
   // A fresh install every time, so the launch below is the app's first, with no cache.
   uninstallIos(udid, id);
@@ -2952,10 +2971,11 @@ async function releaseIos(args) {
   const recording = recordSimulator(udid, video);
   await recording.started;
   await pause(1000);
-  run('xcrun', ['simctl', 'launch', udid, id]);
+  run('xcrun', link ? ['simctl', 'openurl', udid, link] : ['simctl', 'launch', udid, id]);
   await recording.stop();
   console.log(
     `\nSoirely ${sha.slice(0, 12)}, a release build, on its first launch on the ${open}` +
+      (link ? `, opened by ${link}` : '') +
       `, ${offline ? `offline: ${APP_SERVICES.join(', ')} stopped` : 'online'}.` +
       `\n${existsSync(video) ? `Its first 15 seconds: ${video}` : 'The launch was not recorded.'}` +
       `\nThe next \`ios\` removes it and starts the stack again.` +

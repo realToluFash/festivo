@@ -171,6 +171,8 @@ import {
   releaseApk,
   releaseApp,
   releasePlatform,
+  releaseLink,
+  DEFAULT_TEXT_SIZE,
   simulatorArch,
   staleBuilds,
   iosBuildEnv,
@@ -1060,6 +1062,25 @@ describe('a release build', () => {
     expect(releasePlatform(['--ipad', '--offline'], 'darwin')).toBe('ios');
     expect(releasePlatform(['--android'], 'darwin')).toBe('android');
     expect(releasePlatform(['--ipad'], 'linux')).toBe('android');
+  });
+
+  it('opens the first launch with --link, a URL, on iOS only', () => {
+    expect(releaseLink(['--ipad'], 'ios')).toBeNull();
+    expect(releaseLink(['--ipad', '--link', 'soirely://sign-in'], 'ios')).toBe('soirely://sign-in');
+    expect(releaseLink(['--link', 'https://example.test/e/1', '--offline'], 'ios')).toBe(
+      'https://example.test/e/1',
+    );
+    expect(() => releaseLink(['--link', 'sign-in'], 'ios')).toThrow(/--link needs a URL/);
+    expect(() => releaseLink(['--link'], 'ios')).toThrow(/--link needs a URL/);
+    expect(() => releaseLink(['--link', '--ipad'], 'ios')).toThrow(/--link needs a URL/);
+    expect(() => releaseLink(['--android', '--link', 'soirely://sign-in'])).toThrow(
+      /--link is iOS only/,
+    );
+    expect(() => releaseLink(['--link', 'soirely://sign-in'], 'android')).toThrow(/iOS only/);
+  });
+
+  it('puts the simulator back at the default text size', () => {
+    expect(DEFAULT_TEXT_SIZE('UDID')).toEqual(['simctl', 'ui', 'UDID', 'content_size', 'large']);
   });
 
   it("builds for the Mac's own simulator architecture", () => {
