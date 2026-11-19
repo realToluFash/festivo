@@ -259,6 +259,41 @@ final class PlanCatalogueTest extends FunctionalTestCase
         self::assertSame(8, $this->catalogue->unitCosts()->smsPerSegment('GB'));
     }
 
+    /** @return iterable<string, array{non-empty-list<string>, ?int, bool}> */
+    public static function unitCostChanges(): iterable
+    {
+        yield 'pricing a country the formula priced' => [['sms_per_segment', 'AQ'], 1, true];
+        yield 'pricing a category the formula priced in a country' => [['whatsapp', 'marketing', 'DE'], 1, true];
+        yield 'leaving a priced country to the formula' => [['sms_per_segment', 'NG'], null, true];
+        yield 'lowering the divisor' => [['provider_micro_dollars_per_credit'], 6000, true];
+        yield 'raising the divisor' => [['provider_micro_dollars_per_credit'], 6500, false];
+        yield 'lowering a priced cell' => [['sms_per_segment', 'DE'], 17, false];
+        yield 'raising email' => [['email'], 1, true];
+        yield 'raising an AI proposal' => [['ai', 'proposal'], 14, true];
+        yield 'raising an AI question' => [['ai', 'question'], 1, true];
+        yield 'lowering an AI proposal' => [['ai', 'proposal'], 12, false];
+    }
+
+    /** @param non-empty-list<string> $path */
+    #[Test]
+    #[DataProvider('unitCostChanges')]
+    public function aUnitCostVersionWaitsForTheNoticeOnlyWhenItMayChargeMore(array $path, ?int $value, bool $waits): void
+    {
+        $terms = self::with($this->termsOf(CataloguePart::UnitCosts), $path, $value);
+        $version = $this->keeper->publish(CataloguePart::UnitCosts, '2026-12-01', $terms, 'Twilio repriced', 'Ada at Soirely');
+
+        self::assertEquals($waits ? $version->getPublishedAt()->modify('+14 days') : $version->getPublishedAt(), $version->getEffectiveFrom());
+    }
+
+    #[Test]
+    public function aPendingVersionThatPricesACountryTheFormulaPricedRefusesTheNext(): void
+    {
+        $pending = $this->publishUnitCosts('2026-12-01', ['sms_per_segment', 'AQ'], 1);
+
+        $this->expectExceptionMessage('Unit costs 2026-12-01 are pending and apply from ' . $pending->getEffectiveFrom()->format('j M Y'));
+        $this->publishUnitCosts('2026-12-08', ['sms_per_segment', 'GB'], 8);
+    }
+
     #[Test]
     public function aMomentBeforeTheFirstVersionIsAnsweredByIt(): void
     {

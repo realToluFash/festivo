@@ -1,5 +1,5 @@
 import { tokens } from '../theme/tokens.ts';
-import { SIDEBAR_WIDTH, besideGlyph, fitWidest } from './textSize.ts';
+import { SIDEBAR_WIDTH, besideGlyph, fitWidest, fromNinthStep } from './textSize.ts';
 
 const LARGEST_SCALE = 2.4;
 
@@ -76,7 +76,7 @@ export function sideStart(room: SideRoom, scale: number, cap: number | null = nu
   return Math.min(room.size * scale, Math.max(room.size, cap ?? Infinity));
 }
 
-// Below the largest sizes only a label whose widest word would break beside main's glyph steps down; a name draws as on main (sc-68441).
+// Below the largest sizes only a label whose widest word would break beside main's glyph steps down, and from the ninth step a name main's size would cut; below the ninth a name draws as on main (sc-68441).
 export function sideTextSize(
   room: SideRoom,
   scale: number,
@@ -87,7 +87,7 @@ export function sideTextSize(
   const start = sideStart(room, scale, cap);
   const largest = atLargest(scale);
   const texts = fit === 'line' ? (widths == null ? [] : [widths.whole]) : (widths?.words ?? []);
-  if (texts.length === 0 || (!largest && fit !== 'label')) return start;
+  if (texts.length === 0 || (!fromNinthStep(scale) && fit !== 'label')) return start;
 
   return Math.min(
     ...texts.map(({ width, letters }) => {

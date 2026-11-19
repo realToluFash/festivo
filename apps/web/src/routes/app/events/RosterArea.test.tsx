@@ -363,6 +363,44 @@ describe('The Roster on the Staff page (sc-3906)', () => {
     expect(more?.parentElement?.textContent).toBe('16:30 to 21:00 +1 more');
   });
 
+  it('keeps a Shift cell with no shift on one line, in the paler grey, beside one with a shift (sc-71607)', async () => {
+    signedIn();
+    await onRoster({
+      'GET /api/events/ev_1/staff': () =>
+        json({
+          staff: [
+            entry('st_1', 'Amaka Eze', {
+              shifts: [
+                {
+                  id: 'sh_1',
+                  startsAt: '2030-11-14T16:30:00+01:00',
+                  endsAt: '2030-11-14T21:00:00+01:00',
+                },
+              ],
+            }),
+            entry('st_2', 'Bayo Ade'),
+          ],
+          jobs: [],
+          shifts: [],
+          stations: NO_STATIONS,
+        }),
+    });
+
+    await screen.findByRole('button', { name: 'Bayo Ade' });
+    const cells = within(screen.getByRole('table', { name: 'Roster' }))
+      .getAllByRole('row')
+      .slice(1)
+      .map((row) => row.querySelectorAll('td')[2] as HTMLElement);
+    expect(cells.map((cell) => [cell.textContent, [...cell.classList]])).toEqual([
+      ['16:30 to 21:00', ['rs-shift']],
+      ['Not on a shift yet', ['rs-shift', 'rs-quiet']],
+    ]);
+    expect(cssRule('.rs-table td.rs-shift', ROSTER_CSS)).toContain('white-space: nowrap;');
+    expect(cssRule('.rs-table tbody td.rs-quiet', ROSTER_CSS)).toContain(
+      'color: var(--colorInkSecondary);',
+    );
+  });
+
   it.each([
     ['with Add', OWNER_PERMISSIONS],
     ['without Add', OWNER_PERMISSIONS.filter((one) => one !== 'staff.manage')],

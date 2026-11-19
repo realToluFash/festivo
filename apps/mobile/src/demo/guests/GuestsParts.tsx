@@ -1,4 +1,12 @@
-import { type ReactNode, type Ref, useCallback, useEffect, useRef, useState } from 'react';
+import {
+  type ReactNode,
+  type Ref,
+  useCallback,
+  useContext,
+  useEffect,
+  useRef,
+  useState,
+} from 'react';
 import {
   type LayoutChangeEvent,
   Pressable,
@@ -18,7 +26,7 @@ import {
 } from '../../components/Title.tsx';
 import { TopPrimary, usePrimaryLabel } from '../../components/TopPrimary.tsx';
 import { useReadOut } from '../../components/ReadOut.tsx';
-import { type TextHandle, Text } from '../../components/Text.tsx';
+import { type TextHandle, Text, TitleCap } from '../../components/Text.tsx';
 import { tokens } from '../../theme/tokens.ts';
 import { CardBackdrop, PhaseShape } from '../../components/EventCard.tsx';
 import type { Shown } from '../events/EventsModel.ts';
@@ -413,6 +421,7 @@ export function GuestsTitle({
   const [slot, setSlot] = useState(0);
   const { fontScale } = useWindowDimensions();
   const pageDrawn = usePageTitleDrawn();
+  const capOver = useContext(TitleCap);
   const drawn = useRef(0);
   const [broke, setBroke] = useState<string | null>(null);
   const row = titleRowKey({ room, title, fontScale, spinning: false });
@@ -444,12 +453,13 @@ export function GuestsTitle({
       gap: tokens.spaceMd,
     });
   const line = refreshing != null && !onRow;
+  const keepsDefault = layout === 'landscape' && under;
   const onDrawn = useCallback(
     (next: number) => {
       drawn.current = next;
-      pageDrawn?.(next);
+      pageDrawn?.(keepsDefault ? Math.min(next, size) : next);
     },
-    [pageDrawn],
+    [pageDrawn, keepsDefault, size],
   );
   // Where the device lays the title out wider than it measured hidden, it can break at its floor though the sum says it fits; then the actions go under (sc-68417).
   const onTitleLines = (event: TextLayoutEvent) => {
@@ -482,16 +492,19 @@ export function GuestsTitle({
     >
       {label.measure}
       <PageTitleDrawn.Provider value={onDrawn}>
-        <BodyTitle
-          size={size}
-          accessibilityRole="header"
-          style={titleStyle}
-          room={slot}
-          onTextLayout={onTitleLines}
-          testID="guests.title"
-        >
-          {title}
-        </BodyTitle>
+        {/* As the product on a tablet on its side: with Export and the + under it, the title keeps its default size, and so caps the card and the sidebar there (sc-67659). */}
+        <TitleCap.Provider value={keepsDefault ? size : capOver}>
+          <BodyTitle
+            size={size}
+            accessibilityRole="header"
+            style={titleStyle}
+            room={slot}
+            onTextLayout={onTitleLines}
+            testID="guests.title"
+          >
+            {title}
+          </BodyTitle>
+        </TitleCap.Provider>
       </PageTitleDrawn.Provider>
     </View>
   );
