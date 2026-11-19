@@ -1,13 +1,13 @@
-# sc-563: a managed account opens another organisation's invitation in the switcher, then accepts it.
+# sc-563: a managed account opens another organisation's invitation in the switcher, then accepts it. Pass ORG_NAME: the name of an organisation, not the managed account's own, that has invited it.
 appId: host.exp.Exponent
 ---
 - runFlow: ../open-switcher.yaml
 - scrollUntilVisible:
     element:
-      text: 'Lumen Studio'
+      text: '${ORG_NAME}'
     direction: UP
     timeout: 15000
-- tapOn: 'Lumen Studio'
+- tapOn: '${ORG_NAME}'
 - waitForAnimationToEnd:
     timeout: 5000
 - takeScreenshot: sc563-switcher-before
