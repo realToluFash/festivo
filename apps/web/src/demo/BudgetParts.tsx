@@ -494,11 +494,10 @@ export function InfoLine({ children }: { children: ReactNode }) {
   );
 }
 
-export function ReadOnlyLine({ onPlans }: { onPlans?: () => void }) {
+export function ReadOnlyLine() {
   return (
     <div className="bud-plan-line" role="status">
       <p>{W.readOnlyLine}</p>
-      {onPlans != null && <TextAction label={W.seePlans} onClick={onPlans} />}
     </div>
   );
 }
@@ -508,18 +507,24 @@ export function AskInRow({
   question,
   keep = W.keep,
   go = W.remove,
+  problem = null,
   onKeep,
   onGo,
 }: {
   question: string;
   keep?: string;
   go?: string;
+  problem?: string | null;
   onKeep: () => void;
   onGo: () => void;
 }) {
   const first = useRef<HTMLButtonElement>(null);
+  const goRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => first.current?.focus(), []);
+  useEffect(() => {
+    if (problem != null) goRef.current?.focus();
+  }, [problem]);
 
   return (
     <div className="bud-ask" role="group" aria-label={question}>
@@ -527,9 +532,15 @@ export function AskInRow({
       <button ref={first} type="button" className="desk-text" onClick={onKeep}>
         {keep}
       </button>
-      <button type="button" className="desk-text is-red" onClick={onGo}>
+      <button ref={goRef} type="button" className="desk-text is-red" onClick={onGo}>
         {go}
       </button>
+      {problem != null && (
+        <p className="desk-error bud-ask-problem" role="alert">
+          <Glyph name="alert" size={15} weight={2.2} />
+          {problem}
+        </p>
+      )}
     </div>
   );
 }
