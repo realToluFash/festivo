@@ -1,6 +1,6 @@
 import { primaryEmailAddress } from '@soirely/api-client';
 import { initials, roleName } from '@soirely/domain';
-import { router, useLocalSearchParams } from 'expo-router';
+import { router, useLocalSearchParams, usePathname } from 'expo-router';
 import { type ReactNode, useRef } from 'react';
 import {
   type LayoutRectangle,
@@ -14,9 +14,12 @@ import {
 import { useTranslation } from 'react-i18next';
 
 import {
+  DATA_AND_CONTROL,
+  DATA_HREF,
+  dataAndControlListed,
   DESTINATION_HREF,
   SECTION_HREF,
-  type SettingsSection,
+  type SettingsOpen,
   settingsGroups,
 } from '../kit/appNav.ts';
 import { OPENED_IN_PLACE_OF_SETTINGS, sectionTakesBack } from '../kit/systemBack.ts';
@@ -32,6 +35,7 @@ import {
 import { signOutHere, useSignedIn } from '../signedIn.ts';
 import { tokens } from '../theme/tokens.ts';
 import { FrameTop } from './AppFrame.tsx';
+import { DataTile } from './DataParts.tsx';
 import { SETTINGS_COLUMN } from './listFrame.ts';
 import { Caps } from './SettingsParts.tsx';
 import {
@@ -52,7 +56,7 @@ export function SettingsSplit({
   givesWay = false,
   children,
 }: {
-  open: SettingsSection | null;
+  open: SettingsOpen | null;
   /** The section's own list takes the Settings list's place. */
   givesWay?: boolean;
   children: ReactNode;
@@ -68,13 +72,14 @@ export function SettingsSplit({
   );
 }
 
-export function SettingsList({ kind, open }: { kind: LayoutKind; open: SettingsSection | null }) {
+export function SettingsList({ kind, open }: { kind: LayoutKind; open: SettingsOpen | null }) {
   const { t } = useTranslation();
   const { account, organisation } = useSignedIn();
   const width = useSideListWidth(SETTINGS_LIST_WIDTH);
   const alone = !settingsListBeside(kind);
   const size = kind === 'phone' ? 'phone' : alone ? 'portrait' : 'column';
   const rowOf = useSectionRows(organisation?.name ?? null);
+  const pathname = usePathname();
   const person: SettingsPerson = {
     name: account?.name ?? '',
     initials: initials(account?.name ?? ''),
@@ -82,28 +87,39 @@ export function SettingsList({ kind, open }: { kind: LayoutKind; open: SettingsS
     role: organisation == null ? null : roleName(t, organisation.role),
     organisation: organisation?.name ?? null,
   };
-  const go = (section: SettingsSection) => {
-    if (open === section) return;
-    if (alone) router.push(SECTION_HREF[section]);
-    else
-      router.replace({
-        pathname: SECTION_HREF[section],
-        params: { from: OPENED_IN_PLACE_OF_SETTINGS },
-      });
+  const go = (section: SettingsOpen) => {
+    const href = section === DATA_AND_CONTROL ? DATA_HREF.hub : SECTION_HREF[section];
+    // Data and control stays lit one level down, where its row goes back up to the hub.
+    if (open === section && (section !== DATA_AND_CONTROL || pathname === href)) return;
+    if (alone) router.push(href);
+    else router.replace({ pathname: href, params: { from: OPENED_IN_PLACE_OF_SETTINGS } });
   };
-  const groups = settingsGroups(organisation).map(({ heading, sections }) => ({
-    heading: t(`settings.${heading}`),
-    rows: sections
+  const dataRow: SettingsRow = {
+    key: DATA_AND_CONTROL,
+    title: t('settings.dataAndControl'),
+    line: t('settings.dataAndControlLine'),
+    tile: <DataTile side={rowSide(size === 'column')} />,
+  };
+  const groups = settingsGroups(organisation).map(({ heading, sections }) => {
+    const rows = sections
       .filter((section): section is ListedSection => section !== 'account')
-      .map((section) => rowOf(section, rowSide(size === 'column'))),
-  }));
+      .map((section) => rowOf(section, rowSide(size === 'column')));
+
+    return {
+      heading: t(`settings.${heading}`),
+      rows:
+        heading === 'organisationHeading' && dataAndControlListed(organisation)
+          ? [...rows, dataRow]
+          : rows,
+    };
+  });
 
   return (
     <SettingsListBody
       size={size}
       groups={groups}
       open={open}
-      onOpen={(key) => go(key as SettingsSection)}
+      onOpen={(key) => go(key as SettingsOpen)}
       renderCard={(cardSize) => (
         <PersonCard
           person={person}

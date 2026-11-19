@@ -772,7 +772,9 @@
     "signInRules": "Normas de inicio de sesión",
     "signInRulesLine": "Cómo se inicia sesión y durante cuánto tiempo",
     "members": "Miembros",
-    "membersLine": "Quién forma parte y con qué rol"
+    "membersLine": "Quién forma parte y con qué rol",
+    "dataAndControl": "Data and control",
+    "dataAndControlLine": "Email domains and the audit log"
   },
   "switcher": {
     "asks": "¿Dónde trabaja?",
@@ -3071,5 +3073,95 @@
     "here": "You’re here",
     "backTo": "Back to {{name}}",
     "continue": "Continue"
+  },
+  "dataAndControl": {
+    "title": "Data and control",
+    "control": "Control",
+    "onTheWeb": "Export all data, deleting guest data after an event and a guest’s request are on the web.",
+    "loading": "Loading Data and control…",
+    "failed": "We could not load Data and control.",
+    "tryLine": "Check your connection and try again.",
+    "enterprise": "Enterprise",
+    "nothing": "Nothing needs your attention",
+    "nothingLine_one": "{{domains}} is proved.",
+    "nothingLine_many": "{{domains}} are proved.",
+    "nothingLine_other": "{{domains}} are proved.",
+    "nothingSet": "Nothing is set up yet",
+    "nothingSetLine": "Start by proving the email domain of {{organisation}}.",
+    "locked": "These come with Enterprise",
+    "lockedLine": "Email domains and the audit log.",
+    "leftLine": "Email domains, the audit log and deleting guest data are switched off and kept as they were. They come back on with Enterprise.",
+    "rows": {
+      "domains": "Email domains",
+      "noDomains": "No domains yet",
+      "lockedDomains": "Prove your domain and limit its accounts to {{organisation}}"
+    },
+    "standing": {
+      "proved": "{{domain}} proved",
+      "waiting": "{{domain}} waiting for the record",
+      "failed": "{{domain}} not proved",
+      "missing": "{{domain}} record missing",
+      "kept": "{{domain}} kept as it was"
+    }
+  },
+  "emailDomains": {
+    "title": "Email domains",
+    "block": "Domains",
+    "prove": "Prove a domain",
+    "foot": "Proving a domain does not let anyone join. Company domain joining is its own list, in Organisation.",
+    "none": "No domains yet.",
+    "loading": "Loading Email domains…",
+    "failed": "We could not load Email domains.",
+    "proved": "Proved",
+    "waiting": "Waiting for the record",
+    "notProved": "Not proved",
+    "missing": "Record missing",
+    "kept": "Kept",
+    "provedOn": "Proved {{at}}",
+    "checksUntil": "We check every hour until {{at}}",
+    "stopped": "We stopped checking on {{at}}. Verify still works.",
+    "putBack": "Put it back by {{at}}",
+    "remove": "Remove",
+    "removeAsks": "Remove…",
+    "removeLabel": "Remove {{domain}}",
+    "removed": "{{domain}} removed.",
+    "record": {
+      "title": "Prove {{domain}}",
+      "close": "Close",
+      "verify": "Verify",
+      "verifying": "Verifying…",
+      "lead": "Add this record where the DNS for {{domain}} is managed, then press Verify.",
+      "notFound": "We could not find the record yet. DNS changes can take up to 48 hours.",
+      "putBack": "Put it back by {{at}}."
+    },
+    "add": {
+      "title": "Prove a domain",
+      "verb": "Add",
+      "field": "Domain",
+      "help": "For example, {{example}}. A subdomain needs adding on its own."
+    },
+    "card": {
+      "waiting": "{{domain}} is waiting for its record",
+      "waitingLine": "We check every hour until {{at}}.",
+      "seeRecord": "See the record",
+      "empty": "Prove the email domain of {{organisation}}",
+      "emptyLine": "Add a DNS record where your domain is managed. Once it is proved, you can limit the accounts at it to {{organisation}}.",
+      "proved": "{{domain}} is proved",
+      "provedLine": "Proved {{at}}.",
+      "failed": "{{domain}} was not proved",
+      "failedLine": "We stopped checking on {{at}}. Add the record, then Verify.",
+      "missing": "The record for {{domain}} is missing",
+      "missingLine": "Put it back by {{at}}, or {{domain}} stops being proved.",
+      "removed": "{{domain}} was removed",
+      "removedLine": "It is no longer proved.",
+      "locked": "Available on Enterprise",
+      "lockedLine": "Prove that {{organisation}} owns its domain, then limit the accounts at it to {{organisation}}.",
+      "offLine": "{{organisation}} left Enterprise. Its domains are kept as they were, and come back on with Enterprise."
+    },
+    "removeAsk": {
+      "title": "Remove {{domain}}?",
+      "line": "It stops being proved. Company domain joining keeps its own list.",
+      "keep": "Keep it"
+    }
   }
 }

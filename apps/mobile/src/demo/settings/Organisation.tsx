@@ -124,7 +124,6 @@ function OrganisationPage({ start, manages }: { start: OrganisationStart; manage
           <DomainsSection
             organisation={ORGANISATION}
             calls={calls}
-            proved={start.proved}
             opening={
               start.screen === 'addDomain'
                 ? 'addDomain'

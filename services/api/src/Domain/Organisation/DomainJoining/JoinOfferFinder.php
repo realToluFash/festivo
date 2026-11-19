@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\Organisation\DomainJoining;
 
+use App\Domain\Organisation\EmailDomains\ProvedDomains;
 use App\Entity\Membership;
 use App\Entity\MembershipTransition;
 use App\Entity\Organisation;
@@ -30,6 +31,7 @@ final readonly class JoinOfferFinder
         private MembershipRepository $membershipRepository,
         private MembershipTransitionRepository $membershipTransitionRepository,
         private JoinOfferDismissalRepository $joinOfferDismissalRepository,
+        private ProvedDomains $provedDomains,
         private ClockInterface $clock,
     ) {
     }
@@ -43,17 +45,18 @@ final readonly class JoinOfferFinder
     }
 
     /**
-     * A domain an organisation has proved (sc-560) is listed by that organisation alone; otherwise every listing works.
+     * A domain an organisation has proved under Email domains (sc-560) works only on that organisation's listing; otherwise every listing works.
      *
-     * @param list<OrganisationDomain> $listings
+     * @param list<OrganisationDomain> $listings of one domain
      *
      * @return list<OrganisationDomain>
      */
-    public static function working(array $listings): array
+    public function working(array $listings): array
     {
-        $proved = Vec\filter($listings, static fn (OrganisationDomain $listing): bool => null !== $listing->getProvedAt());
+        $first = Iter\first($listings);
+        $prover = null === $first ? null : $this->provedDomains->provedBy($first->getDomain());
 
-        return [] === $proved ? $listings : $proved;
+        return null === $prover ? $listings : Vec\filter($listings, static fn (OrganisationDomain $listing): bool => $listing->getOrganisation()->getId()->equals($prover->getId()));
     }
 
     /** @return list<Organisation> none while a request is waiting anywhere, so nobody is approved in two places */
@@ -78,7 +81,7 @@ final readonly class JoinOfferFinder
         $excluded = [...$held, ...$coolingOff, ...$dismissed];
 
         return Vec\filter(
-            Vec\map(self::working($this->organisationDomainRepository->findListings($domain)), static fn (OrganisationDomain $listing): Organisation => $listing->getOrganisation()),
+            Vec\map($this->working($this->organisationDomainRepository->findListings($domain)), static fn (OrganisationDomain $listing): Organisation => $listing->getOrganisation()),
             static fn (Organisation $organisation): bool => !Iter\contains($excluded, $organisation->getId()->toRfc4122()),
         );
     }
