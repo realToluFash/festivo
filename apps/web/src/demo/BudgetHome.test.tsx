@@ -131,6 +131,20 @@ describe('the Budget page at a desk in A (sc-31779)', () => {
     },
   );
 
+  it(
+    'puts focus on Undo when Dinner is removed again after Undo on removed_last',
+    SLOW,
+    async () => {
+      await open(at('removed_last'));
+
+      fireEvent.click(screen.getByRole('button', { name: 'Undo' }));
+      fireEvent.click(within(section('Costs')).getByRole('button', { name: /^Dinner/ }));
+      fireEvent.click(within(section('Costs')).getByRole('button', { name: /^Remove/ }));
+      expect(screen.getByText('No costs yet')).toBeTruthy();
+      expect(screen.getByRole('button', { name: 'Undo' })).toBe(document.activeElement);
+    },
+  );
+
   it.each([
     [
       'removed_last_currency',

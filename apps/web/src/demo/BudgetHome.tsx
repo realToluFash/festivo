@@ -142,6 +142,7 @@ interface Removed {
   words: string;
   refuse?: UndoRefusal;
   refused?: boolean;
+  fresh?: boolean;
 }
 
 function dialogOf(state: string): Dialog {
@@ -392,7 +393,7 @@ export function BudgetHomeContent({
           words={removed.words}
           onUndo={undo}
           refused={removed.refused === true}
-          focus={!LAST_REMOVED.includes(first)}
+          focus={removed.fresh === true}
         />
       )}
       {empty ? (
@@ -888,6 +889,7 @@ function Costs({
                           line: one,
                           index: lines.indexOf(one),
                           words: removedWords(one, lineAmounts(one, heads).settled),
+                          fresh: true,
                         })
                       }
                     />
