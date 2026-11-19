@@ -11,6 +11,7 @@ use App\Domain\Billing\Catalogue\Model\PlanCatalogue;
 use App\Domain\Billing\Catalogue\Model\PlanTerms;
 use App\Domain\Billing\Catalogue\Model\Price;
 use App\Domain\Billing\Catalogue\Model\UnitCosts;
+use App\Domain\Organisation\Regions;
 use App\Enum\CatalogueLimit;
 use App\Enum\CataloguePart;
 use App\Enum\LimitKind;
@@ -107,7 +108,15 @@ final readonly class CatalogueParser
                 throw new CatalogueRefused(Str\format('The %s plan has no %s.', $key, Str\join(Vec\map($absent, static fn (CatalogueLimit $limit): string => $limit->value), ', ')));
             }
 
-            self::currencies(Vec\keys($plan['prices']));
+            foreach ($plan['limits'] as $limit => $line) {
+                $expected = CatalogueLimit::from($limit)->kind();
+
+                if ($expected !== $line['kind']) {
+                    throw new CatalogueRefused(Str\format('The %s plan gives %s the kind %s, but %s is %s.', $key, $limit, $line['kind']->value, $limit, $expected->value));
+                }
+            }
+
+            self::billedIn($key, Vec\map(Vec\keys($plan['prices']), static fn (int|string $code): string => (string) $code));
 
             $read[$key] = new PlanTerms(
                 Plan::from($key),
@@ -181,6 +190,22 @@ final readonly class CatalogueParser
         }
     }
 
+    /** @param list<string> $codes */
+    private static function billedIn(string $plan, array $codes): void
+    {
+        foreach (Price::CURRENCIES as $currency) {
+            if (!Iter\contains($codes, $currency)) {
+                throw new CatalogueRefused(Str\format('The %s plan has no %s price: every plan is priced in exactly %s.', $plan, $currency, Str\join(Price::CURRENCIES, ', ')));
+            }
+        }
+
+        foreach ($codes as $code) {
+            if (!Iter\contains(Price::CURRENCIES, $code)) {
+                throw new CatalogueRefused(Str\format('The %s plan has a %s price, which Soirely does not bill in: every plan is priced in exactly %s.', $plan, $code, Str\join(Price::CURRENCIES, ', ')));
+            }
+        }
+    }
+
     /** @param list<array-key> $codes */
     private static function currencies(array $codes): void
     {
@@ -195,8 +220,8 @@ final readonly class CatalogueParser
     private static function countries(array $codes): void
     {
         foreach ($codes as $code) {
-            if (!Regex\matches((string) $code, '/^[A-Z]{2}$/')) {
-                throw new CatalogueRefused(Str\format('"%s" is not an ISO 3166-1 alpha-2 country code.', (string) $code));
+            if (!Regions::isCountry((string) $code)) {
+                throw new CatalogueRefused(Str\format('"%s" is not an assigned ISO 3166-1 alpha-2 country code.', (string) $code));
             }
         }
     }

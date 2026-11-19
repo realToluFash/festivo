@@ -59,6 +59,12 @@ final readonly class CatalogueKeeper
         CatalogueParser::check($part, $terms);
 
         $now = $this->clock->now();
+        $pending = CataloguePart::UnitCosts === $part ? $this->catalogueVersionRepository->findPendingUnitCosts($now) : null;
+
+        if (null !== $pending) {
+            throw new CatalogueRefused(Str\format('Unit costs %s are pending and apply from %s. Withdraw them first, then publish one version holding every change.', $pending->getName(), $pending->getEffectiveFrom()->format('j M Y')));
+        }
+
         $effectiveFrom = CataloguePart::UnitCosts === $part && $this->rises($terms) ? $now->modify(self::RISE_NOTICE) : $now;
         $version = new CatalogueVersion($part, $name, $terms, $note, $agent, $now, $effectiveFrom);
 
