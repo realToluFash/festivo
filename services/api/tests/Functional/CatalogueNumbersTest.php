@@ -25,7 +25,6 @@ final class CatalogueNumbersTest extends FunctionalTestCase
     /** Words about the plan beside the limits' own: an identifier is read as words, so `FREE_GUESTS_PER_EVENT` and `$creditsPerSms` both speak. */
     private const array PLAN_WORDS = ['credit', 'price', 'cost', 'proposal', 'quota', 'allowance', 'included', 'enterprise', 'catalogue', 'review level', 'member', 'limit', 'max', 'maximum', 'cap', 'free'];
 
-    /** A limit's words that say nothing about the plan alone. */
     private const array LIMIT_FILLER = ['per', 'live', 'team', 'bytes'];
 
     /** Lines that name a number the catalogue happens to hold, for a reason that is not the plan: a field's length, a table's size, a retry cap. */
@@ -94,7 +93,6 @@ final class CatalogueNumbersTest extends FunctionalTestCase
         yield 'a number in a comment' => ['// the Free plan allows 100 guests per event', false];
     }
 
-    /** The guard's own test: it has to find what it exists to find, and only that. */
     #[Test]
     #[DataProvider('sources')]
     public function theGuardFindsAPlanNumberAndNothingElse(string $line, bool $found): void
@@ -147,11 +145,7 @@ final class CatalogueNumbersTest extends FunctionalTestCase
         return $found;
     }
 
-    /**
-     * The limits' words come from the catalogue's own list, so a limit added there is guarded without touching this test.
-     *
-     * @return non-empty-string
-     */
+    /** @return non-empty-string the limits' words from CatalogueLimit itself, so a new limit is guarded with no change here */
     private static function aboutThePlan(): string
     {
         $words = Vec\map(CatalogueLimit::cases(), static fn (CatalogueLimit $limit): array => Str\split($limit->value, '_'));
