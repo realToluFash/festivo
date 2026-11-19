@@ -54,7 +54,7 @@ export const ENTRIES: readonly Entry[] = [
   {
     id: 'download',
     at: '2026-10-19T10:05:31+01:00',
-    what: `Downloaded ${ORG}’ data`,
+    what: `Downloaded ${ORG}’s data`,
     who: FOLAKE,
     type: 'Organisation',
     action: 'organisation.export_downloaded',
@@ -63,7 +63,7 @@ export const ENTRIES: readonly Entry[] = [
   {
     id: 'asked',
     at: '2026-10-19T09:30:08+01:00',
-    what: `Asked for an export of ${ORG}’ data`,
+    what: `Asked for an export of ${ORG}’s data`,
     who: FOLAKE,
     type: 'Organisation',
     action: 'organisation.export_requested',
@@ -117,7 +117,7 @@ export const ENTRIES: readonly Entry[] = [
     type: 'Sign-in and security',
     action: 'sign_in_rules.changed',
     reference: '0c9f2b18-4e6a-4d73-b25e-8a1f7d3c6e09',
-    on: { name: `${ORG}’ sign-in rules` },
+    on: { name: `${ORG}’s sign-in rules` },
     changes: 'Everyone needs two-factor: Off → On',
     address: ADDRESS,
     device: 'Safari on macOS',

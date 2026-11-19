@@ -143,6 +143,25 @@ export const BISI: OnEvent = {
   label: 'Lighting',
 };
 
+function outsiderBy(id: string, name: string, tone: number, label: string): OnEvent {
+  return { id, name, initials: null, tone, role: 'Can view', outside: true, label };
+}
+
+export const AMAKA = 'amaka.outside@soirely.test';
+export const DOTTED = 'fundacao.comunitaria.de.oyo.e.artes@soirely.test';
+export const UNBROKEN = 'fundacaocomunitariadeoyoeartescontemporaneas@soirely.test';
+export const LONG_MOBILE = '+2348031234567';
+
+/** sc-70353: addresses wider than the phone sheet's heading, with the AC's own examples. */
+export function longOutsiders(): OnEvent[] {
+  return [
+    outsiderBy(AMAKA, AMAKA, 5, 'Photography'),
+    outsiderBy(DOTTED, DOTTED, 6, 'Decor'),
+    outsiderBy(UNBROKEN, UNBROKEN, 7, 'Music'),
+    outsiderBy(LONG_MOBILE, '+234 803 123 4567', 8, 'Transport'),
+  ];
+}
+
 export function sampleOnEvent(): OnEvent[] {
   return [
     onEventAs(PRIYA, 'Lead'),
@@ -442,6 +461,11 @@ export const PEOPLE_STATES = [
   'addUnusable',
   'addLeadOutside',
   'addMemberAddress',
+  'longAddress',
+  'longAddressDots',
+  'longAddressUnbroken',
+  'longMobile',
+  'longAddressRemove',
   'loading',
   'failed',
 ] as const;
@@ -489,6 +513,14 @@ export interface PeopleStart {
   toast?: string;
 }
 
+const LONG_OPENS = {
+  longAddress: AMAKA,
+  longAddressDots: DOTTED,
+  longAddressUnbroken: UNBROKEN,
+  longMobile: LONG_MOBILE,
+  longAddressRemove: AMAKA,
+} as const;
+
 export function peopleStart(state: PeopleState): PeopleStart {
   const base: PeopleStart = {
     viewer: PEOPLE_VIEWERS.julien,
@@ -522,6 +554,16 @@ export function peopleStart(state: PeopleState): PeopleStart {
       return { ...base, adding: true, addTyped: 'bisi@lagoslights.example', addRole: 'Lead' };
     case 'addMemberAddress':
       return { ...base, adding: true, addTyped: 'kofi@ire.events' };
+    case 'longAddress':
+    case 'longAddressDots':
+    case 'longAddressUnbroken':
+    case 'longMobile':
+    case 'longAddressRemove':
+      return {
+        ...base,
+        onEvent: [...base.onEvent, ...longOutsiders()],
+        opened: { id: LONG_OPENS[state], removing: state === 'longAddressRemove' ? 'ask' : null },
+      };
     case 'loading':
     case 'failed':
       return { ...base, load: state };

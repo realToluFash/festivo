@@ -1,4 +1,4 @@
-import { capUnderTitle, fitWidest, titleSize } from '../../layout/textSize.ts';
+import { fitWidest, titleSize } from '../../layout/textSize.ts';
 import { tokens } from '../../theme/tokens.ts';
 
 export type RowsSize = 'device' | 'default' | 'ninth' | 'tenth' | 'eleventh' | 'twelfth';
@@ -56,29 +56,7 @@ export function settingsCap(tablet: boolean, scale: number): number {
   return titleSize(tablet ? tokens.typeTitleFrameCompact.size : tokens.typeTitleFrame.size, scale);
 }
 
-/** Where a label starts before its words are fitted: `size × scale`, no larger than `cap`, never under `size`. */
-export function labelStart(size: number, scale: number, cap: number): number {
-  return size * capUnderTitle(cap, size, scale);
-}
-
 /** A label's size: its start while its widest word, measured at the start, fits `room`; else the largest at which that word fits, never under `size`. */
 export function labelSize(size: number, start: number, widest: number, room: number): number {
   return fitWidest(size, start, widest, room);
-}
-
-/** The line under a title starts no larger than the title draws, so a stepped-down title never has a larger line under it. */
-export function lineStart(line: number, scale: number, cap: number, title: number): number {
-  return labelStart(line, scale, Math.min(cap, title));
-}
-
-/** The pieces a label may wrap between: its words, each split after a hyphen it already has, so `two-factor,` is `two-` and `factor,` (the AC: a break after a hyphen is not a break inside a word). */
-export function piecesIn(text: string): string[] {
-  return [
-    ...new Set(
-      text
-        .split(/\s+/u)
-        .flatMap((word) => word.replace(/([-\u2010])/gu, '$1\n').split('\n'))
-        .filter((piece) => piece !== ''),
-    ),
-  ];
 }

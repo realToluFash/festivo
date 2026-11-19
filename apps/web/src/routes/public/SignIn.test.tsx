@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { RouterProvider, createMemoryRouter } from 'react-router';
 
 import { routes } from '../index.tsx';
+import { __setSessionState } from '../../session.ts';
 
 function at(path: string) {
   return render(<RouterProvider router={createMemoryRouter(routes, { initialEntries: [path] })} />);
@@ -232,6 +233,50 @@ describe('signing in, for real', () => {
         '/api/notifications',
       ]),
     );
+  });
+
+  it('comes back to a product link opened signed out, its query kept (sc-612)', async () => {
+    __setSessionState({ status: 'signedOut', ended: false });
+    const sent = answering({
+      'POST /api/auth/login': () => json({ ...ISSUED, account: ACCOUNT }),
+      'GET /api/orgs': () => json({ organisations: [ORGANISATION] }),
+      'GET /api/invitations': () => json({ invitations: [] }),
+    });
+    const router = createMemoryRouter(routes, {
+      initialEntries: ['/app/settings/data-and-control/export?download=ex_1'],
+    });
+    render(<RouterProvider router={router} />);
+
+    await waitFor(() =>
+      expect(screen.getByRole('heading', { level: 1, name: 'Sign in' })).toBeDefined(),
+    );
+    fillIn();
+
+    await waitFor(() =>
+      expect(`${router.state.location.pathname}${router.state.location.search}`).toBe(
+        '/app/settings/data-and-control/export?download=ex_1',
+      ),
+    );
+    expect(sent.map((request) => request.path)).toContain('/api/auth/login');
+  });
+
+  it('lands on the product, not the last page, after signing out on purpose', async () => {
+    __setSessionState({ status: 'signedOut', ended: true });
+    answering({
+      'POST /api/auth/login': () => json({ ...ISSUED, account: ACCOUNT }),
+      'GET /api/orgs': () => json({ organisations: [ORGANISATION] }),
+      'GET /api/orgs/org_1/events': () => json({ events: [], total: 0 }),
+      'GET /api/invitations': () => json({ invitations: [] }),
+    });
+    const router = createMemoryRouter(routes, { initialEntries: ['/app/settings'] });
+    render(<RouterProvider router={router} />);
+
+    await waitFor(() =>
+      expect(screen.getByRole('heading', { level: 1, name: 'Sign in' })).toBeDefined(),
+    );
+    fillIn();
+
+    await waitFor(() => expect(router.state.location.pathname).toBe('/app'));
   });
 
   it('sends an unverified account to the verification screen instead', async () => {

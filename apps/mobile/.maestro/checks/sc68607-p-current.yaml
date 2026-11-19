@@ -1,0 +1,37 @@
+# sc-68607: removing someone, then the Lead, in People, and back to Overview: the card counts and names anew without a pull to refresh.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/${EV_LONG}?area=overview
+- extendedWaitUntil: { visible: { id: 'overview.people.open' }, timeout: 30000 }
+- scrollUntilVisible:
+    { element: { id: 'overview.people.open' }, centerElement: true, timeout: 20000 }
+- assertVisible: '5 on this event.*'
+- tapOn: { id: 'overview.people.open' }
+- extendedWaitUntil: { visible: { id: 'people.row.${TOM}' }, timeout: 15000 }
+- tapOn: { id: 'people.row.${TOM}' }
+- extendedWaitUntil: { visible: { id: 'people.remove' }, timeout: 10000 }
+- tapOn: { id: 'people.remove' }
+- extendedWaitUntil: { visible: { id: 'people.remove.confirm' }, timeout: 10000 }
+- tapOn: { id: 'people.remove.confirm' }
+- extendedWaitUntil: { notVisible: { id: 'people.row.${TOM}' }, timeout: 15000 }
+- tapOn: '(Back to|Voltar a|Volver a|Retour à) Overview'
+- extendedWaitUntil: { visible: { id: 'overview.people.open' }, timeout: 15000 }
+- scrollUntilVisible:
+    { element: { id: 'overview.people.open' }, centerElement: true, timeout: 20000 }
+- extendedWaitUntil: { visible: '4 on this event.*', timeout: 10000 }
+- takeScreenshot: after-remove
+- tapOn: { id: 'overview.people.open' }
+- extendedWaitUntil: { visible: { id: 'people.row.${LEAD}' }, timeout: 15000 }
+- tapOn: { id: 'people.row.${LEAD}' }
+- extendedWaitUntil: { visible: { id: 'people.remove' }, timeout: 10000 }
+- tapOn: { id: 'people.remove' }
+- extendedWaitUntil: { visible: { id: 'people.remove.confirm' }, timeout: 10000 }
+- tapOn: { id: 'people.remove.confirm' }
+- extendedWaitUntil: { notVisible: { id: 'people.row.${LEAD}' }, timeout: 15000 }
+- tapOn: '(Back to|Voltar a|Volver a|Retour à) Overview'
+- extendedWaitUntil: { visible: { id: 'overview.people.open' }, timeout: 15000 }
+- scrollUntilVisible:
+    { element: { id: 'overview.people.open' }, centerElement: true, timeout: 20000 }
+- extendedWaitUntil: { visible: '3 on this event.*', timeout: 10000 }
+- assertNotVisible: '.*Lead, .*'
+- takeScreenshot: after-lead

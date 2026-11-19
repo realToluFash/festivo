@@ -63,8 +63,8 @@ describe('the audit log’s states (sc-611)', () => {
     expect(
       days[0]?.entries.map((entry) => [say.time(entry.at), entry.what, entryLine(entry)]),
     ).toEqual([
-      ['10:05', 'Downloaded Ire Events’ data', 'Folake Adeyemi · Organisation'],
-      ['09:30', 'Asked for an export of Ire Events’ data', 'Folake Adeyemi · Organisation'],
+      ['10:05', 'Downloaded Ire Events’s data', 'Folake Adeyemi · Organisation'],
+      ['09:30', 'Asked for an export of Ire Events’s data', 'Folake Adeyemi · Organisation'],
       [
         '08:15',
         'Added Tom Becker to Adaeze & Tunde’s wedding as Can check guests in',
@@ -163,7 +163,7 @@ describe('the audit log’s states (sc-611)', () => {
 
   it('records the network address and device on sign-in and security, none before or by System', () => {
     expect(detail('detail_signin')).toMatchObject({
-      On: 'Ire Events’ sign-in rules',
+      On: 'Ire Events’s sign-in rules',
       Changes: 'Everyone needs two-factor: Off → On',
       'Type and action': 'Sign-in and security · sign_in_rules.changed',
       'Network address': '203.0.113.17',

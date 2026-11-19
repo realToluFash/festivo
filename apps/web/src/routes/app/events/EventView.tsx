@@ -360,8 +360,18 @@ function EventOf({
   return (
     <AskHost>
       {(covered) => (
-        <div className="event-page" inert={covered}>
-          <EventCrumb name={load.kind === 'loaded' ? load.event.name : null}>
+        <div className={page === 'people' ? 'event-page is-people' : 'event-page'} inert={covered}>
+          <EventCrumb
+            name={load.kind === 'loaded' ? load.event.name : null}
+            area={
+              page === 'people'
+                ? {
+                    label: t('eventPeople.title'),
+                    event: `/app/events/${encodeURIComponent(eventId)}`,
+                  }
+                : undefined
+            }
+          >
             {refreshing && <Refreshing />}
           </EventCrumb>
 
@@ -369,12 +379,14 @@ function EventOf({
 
           {load.kind === 'loaded' && (
             <Arrived>
-              <EventTop
-                event={load.event}
-                tag={load.tag}
-                heading={heading}
-                onChange={(event, tag) => setLoad({ kind: 'loaded', event, tag })}
-              />
+              {page !== 'people' && (
+                <EventTop
+                  event={load.event}
+                  tag={load.tag}
+                  heading={heading}
+                  onChange={(event, tag) => setLoad({ kind: 'loaded', event, tag })}
+                />
+              )}
               {page === 'dates' && <AllDatesPage event={load.event} heading={heading} />}
               {page === 'people' && <PeoplePage event={load.event} />}
               {isPlaceholderEventArea(page) &&
@@ -389,7 +401,7 @@ function EventOf({
   );
 }
 
-/** Above every area but Overview, whose cover card is its top: the name, the phase, the dates, the venue, and the phase's one primary (sc-22103). */
+/** Above every area but Overview, whose cover card is its top, and People, which opens on its own title (sc-69635): the name, the phase, the dates, the venue, and the phase's one primary (sc-22103). */
 function EventTop({
   event,
   tag,

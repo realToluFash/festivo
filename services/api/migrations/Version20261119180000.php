@@ -11,107 +11,137 @@ final class Version20261119180000 extends AbstractMigration
 {
     public function getDescription(): string
     {
-        return 'Stations on an event (sc-3910): places and sections, each person\'s station, the floor lead, which place dishes each item, and the walking order; every event starts with the suggested places in its organisation\'s language.';
+        return 'The plan catalogue, versioned: the owner\'s plans and unit costs of 19 Oct as its first versions, every subscription on that plans version, and no version ever updated in place (sc-3928).';
     }
 
     public function up(Schema $schema): void
     {
         $this->addSql(<<<'SQL'
-            CREATE TABLE staff_stations (
-                id             UUID NOT NULL,
-                event_id       UUID NOT NULL,
-                kind           VARCHAR(16) NOT NULL,
-                name           VARCHAR(240) NOT NULL,
-                name_key       VARCHAR(240) NOT NULL,
-                section_id     UUID DEFAULT NULL,
-                lead_id        UUID DEFAULT NULL,
-                position       INT NOT NULL,
-                walk_position  INT DEFAULT NULL,
-                created_at     TIMESTAMP(0) WITHOUT TIME ZONE NOT NULL,
-                updated_at     TIMESTAMP(0) WITHOUT TIME ZONE NOT NULL,
+            CREATE TABLE catalogue_versions (
+                id              UUID NOT NULL,
+                part            VARCHAR(20) NOT NULL,
+                name            VARCHAR(40) NOT NULL,
+                terms           JSONB NOT NULL,
+                note            VARCHAR(2000) NOT NULL,
+                published_by    VARCHAR(255) NOT NULL,
+                published_at    TIMESTAMP(0) WITHOUT TIME ZONE NOT NULL,
+                effective_from  TIMESTAMP(0) WITHOUT TIME ZONE NOT NULL,
                 PRIMARY KEY (id)
             )
             SQL);
-        $this->addSql('CREATE UNIQUE INDEX uniq_staff_station_section ON staff_stations (section_id)');
-        $this->addSql('CREATE INDEX IDX_85A9D54771F7E88B ON staff_stations (event_id)');
-        $this->addSql('CREATE INDEX IDX_85A9D54755458D ON staff_stations (lead_id)');
-        $this->addSql('ALTER TABLE staff_stations ADD CONSTRAINT FK_85A9D54771F7E88B FOREIGN KEY (event_id) REFERENCES events (id) ON DELETE CASCADE NOT DEFERRABLE');
-        $this->addSql('ALTER TABLE staff_stations ADD CONSTRAINT FK_85A9D547D823E37A FOREIGN KEY (section_id) REFERENCES seating_sections (id) ON DELETE SET NULL NOT DEFERRABLE');
-        $this->addSql('ALTER TABLE staff_stations ADD CONSTRAINT FK_85A9D54755458D FOREIGN KEY (lead_id) REFERENCES staff_members (id) ON DELETE SET NULL NOT DEFERRABLE');
+        $this->addSql('CREATE UNIQUE INDEX uniq_catalogue_version_name ON catalogue_versions (part, name)');
+
         $this->addSql(<<<'SQL'
-            CREATE TABLE staff_item_stations (
-                id          UUID NOT NULL,
-                course_id   UUID NOT NULL,
-                item_key    VARCHAR(240) NOT NULL,
-                station_id  UUID NOT NULL,
-                created_at  TIMESTAMP(0) WITHOUT TIME ZONE NOT NULL,
-                updated_at  TIMESTAMP(0) WITHOUT TIME ZONE NOT NULL,
-                PRIMARY KEY (id)
+            CREATE FUNCTION catalogue_version_unchanged() RETURNS trigger AS $$
+            BEGIN
+                RAISE EXCEPTION 'A catalogue version is never edited: publish a new one (sc-3928).';
+            END $$ LANGUAGE plpgsql
+            SQL);
+        $this->addSql(<<<'SQL'
+            CREATE TRIGGER catalogue_version_unchanged
+            BEFORE UPDATE ON catalogue_versions
+            FOR EACH ROW EXECUTE FUNCTION catalogue_version_unchanged()
+            SQL);
+
+        $this->addSql(<<<'SQL'
+            INSERT INTO catalogue_versions (id, part, name, terms, note, published_by, published_at, effective_from)
+            VALUES (
+                gen_random_uuid(),
+                'plans',
+                '2026-10-19',
+                '{
+                    "free": {
+                        "sales": "self_serve",
+                        "limits": {
+                            "live_events":      {"kind": "hard", "amount": 2},
+                            "guests_per_event": {"kind": "hard", "amount": 100},
+                            "team_seats":       {"kind": "hard", "amount": 3},
+                            "email":            {"kind": "included", "amount": 2500},
+                            "sms":              {"kind": "metered", "amount": 0},
+                            "whatsapp":         {"kind": "metered", "amount": 0},
+                            "ai_requests":      {"kind": "metered", "amount": 5},
+                            "storage_bytes":    {"kind": "metered", "amount": 2000000000},
+                            "credits":          {"kind": "credits", "amount": 50}
+                        },
+                        "prices": {
+                            "USD": {"month": 0, "year": 0},
+                            "EUR": {"month": 0, "year": 0},
+                            "GBP": {"month": 0, "year": 0}
+                        },
+                        "features": ["service_floor", "guest_list", "seating", "invitations", "budget", "vendors", "sms_channel", "whatsapp_channel", "assistant"]
+                    },
+                    "enterprise": {
+                        "sales": "contract",
+                        "limits": {
+                            "live_events":      {"kind": "hard", "amount": "unlimited"},
+                            "guests_per_event": {"kind": "hard", "amount": "unlimited"},
+                            "team_seats":       {"kind": "hard", "amount": "unlimited"},
+                            "email":            {"kind": "included", "amount": 100000},
+                            "sms":              {"kind": "metered", "amount": 0},
+                            "whatsapp":         {"kind": "metered", "amount": 0},
+                            "ai_requests":      {"kind": "metered", "amount": 100},
+                            "storage_bytes":    {"kind": "metered", "amount": 100000000000},
+                            "credits":          {"kind": "credits", "amount": 3000}
+                        },
+                        "prices": {
+                            "USD": {"month": 24900, "year": 249000},
+                            "EUR": {"month": 22900, "year": 229000},
+                            "GBP": {"month": 19900, "year": 199000}
+                        },
+                        "features": ["service_floor", "guest_list", "seating", "invitations", "budget", "vendors", "sms_channel", "whatsapp_channel", "assistant", "email_domains", "audit_log", "guest_data_deletion", "margin", "branding", "api"]
+                    }
+                }'::jsonb,
+                'The owner''s limits, included amounts, prices and feature map of 19 Oct 2026 (sc-3928 #4229, #4613).',
+                'The owner, on bm''s memos',
+                '2026-10-19 00:00:00',
+                '2026-10-19 00:00:00'
+            ),
+            (
+                gen_random_uuid(),
+                'unit_costs',
+                '2026-10-19',
+                '{
+                    "credit_price": {"USD": 1},
+                    "provider_micro_dollars_per_credit": 6300,
+                    "email": 0,
+                    "ai": {"model": "claude-opus-5-5", "proposal": 13, "question": 0},
+                    "sms_per_segment": {
+                        "US": 2, "GB": 9, "DE": 18, "FR": 13, "ES": 14, "PT": 8,
+                        "BR": 10, "MX": 29, "CO": 10, "ZA": 22, "NG": 62
+                    },
+                    "whatsapp": {
+                        "utility": {
+                            "US": 1, "GB": 5, "DE": 9, "FR": 5, "ES": 4, "PT": 3,
+                            "BR": 2, "MX": 2, "CO": 1, "ZA": 2, "NG": 2
+                        },
+                        "marketing": {"GB": 12, "BR": 12, "NG": 10}
+                    }
+                }'::jsonb,
+                'The owner''s credits per unit of 19 Oct 2026: SMS per segment and WhatsApp per message by destination, AI per delivered proposal on claude-opus-5-5 (sc-3928 #4131, #4215).',
+                'The owner, on bm''s memos',
+                '2026-10-19 00:00:00',
+                '2026-10-19 00:00:00'
             )
             SQL);
-        $this->addSql('CREATE UNIQUE INDEX uniq_staff_item_station ON staff_item_stations (course_id, item_key)');
-        $this->addSql('CREATE INDEX IDX_8816C04A591CC992 ON staff_item_stations (course_id)');
-        $this->addSql('CREATE INDEX IDX_8816C04A21BDB235 ON staff_item_stations (station_id)');
-        $this->addSql('ALTER TABLE staff_item_stations ADD CONSTRAINT FK_8816C04A591CC992 FOREIGN KEY (course_id) REFERENCES menu_courses (id) ON DELETE CASCADE NOT DEFERRABLE');
-        $this->addSql('ALTER TABLE staff_item_stations ADD CONSTRAINT FK_8816C04A21BDB235 FOREIGN KEY (station_id) REFERENCES staff_stations (id) ON DELETE CASCADE NOT DEFERRABLE');
-        $this->addSql('ALTER TABLE staff_members ADD station_id UUID DEFAULT NULL');
-        $this->addSql('ALTER TABLE staff_members ADD as_well_station_id UUID DEFAULT NULL');
-        $this->addSql('ALTER TABLE staff_members ADD floor_lead BOOLEAN DEFAULT false NOT NULL');
-        $this->addSql('CREATE INDEX IDX_1916C54921BDB235 ON staff_members (station_id)');
-        $this->addSql('CREATE INDEX IDX_1916C5491B5C0E2A ON staff_members (as_well_station_id)');
-        $this->addSql('CREATE UNIQUE INDEX uniq_staff_floor_lead ON staff_members (event_id) WHERE floor_lead');
-        $this->addSql('ALTER TABLE staff_members ADD CONSTRAINT FK_1916C54921BDB235 FOREIGN KEY (station_id) REFERENCES staff_stations (id) ON DELETE SET NULL NOT DEFERRABLE');
-        $this->addSql('ALTER TABLE staff_members ADD CONSTRAINT FK_1916C5491B5C0E2A FOREIGN KEY (as_well_station_id) REFERENCES staff_stations (id) ON DELETE SET NULL NOT DEFERRABLE');
+
+        $this->addSql('ALTER TABLE subscriptions ADD catalogue_version_id UUID DEFAULT NULL');
         $this->addSql(<<<'SQL'
-            INSERT INTO staff_stations (id, event_id, kind, name, name_key, position, created_at, updated_at)
-            SELECT gen_random_uuid(), e.id, s.kind, s.name, s.name_key, s.position, NOW(), NOW()
-            FROM   events e
-            JOIN   organisations o ON o.id = e.organisation_id
-            JOIN   (VALUES
-                ('en', 'pass',  'Pass',      'pass',      0),
-                ('en', 'place', 'Door',      'door',      1),
-                ('en', 'place', 'Bar',       'bar',       2),
-                ('en', 'place', 'Kitchen',   'kitchen',   3),
-                ('en', 'place', 'Stage',     'stage',     4),
-                ('en', 'place', 'Floor',     'floor',     5),
-                ('es', 'pass',  'Pase',      'pase',      0),
-                ('es', 'place', 'Puerta',    'puerta',    1),
-                ('es', 'place', 'Barra',     'barra',     2),
-                ('es', 'place', 'Cocina',    'cocina',    3),
-                ('es', 'place', 'Escenario', 'escenario', 4),
-                ('es', 'place', 'Sala',      'sala',      5),
-                ('fr', 'pass',  'Passe',     'passe',     0),
-                ('fr', 'place', 'Accueil',   'accueil',   1),
-                ('fr', 'place', 'Bar',       'bar',       2),
-                ('fr', 'place', 'Cuisine',   'cuisine',   3),
-                ('fr', 'place', 'Scène',     'scene',     4),
-                ('fr', 'place', 'Salle',     'salle',     5),
-                ('pt', 'pass',  'Passe',     'passe',     0),
-                ('pt', 'place', 'Entrada',   'entrada',   1),
-                ('pt', 'place', 'Bar',       'bar',       2),
-                ('pt', 'place', 'Cozinha',   'cozinha',   3),
-                ('pt', 'place', 'Palco',     'palco',     4),
-                ('pt', 'place', 'Sala',      'sala',      5)
-            ) AS s (locale, kind, name, name_key, position)
-                   ON s.locale = CASE
-                       WHEN split_part(lower(replace(o.locale, '_', '-')), '-', 1) IN ('es', 'fr', 'pt')
-                       THEN split_part(lower(replace(o.locale, '_', '-')), '-', 1)
-                       ELSE 'en'
-                   END
+            UPDATE subscriptions
+            SET    catalogue_version_id = (SELECT id FROM catalogue_versions WHERE part = 'plans' AND name = '2026-10-19')
             SQL);
+        $this->addSql('ALTER TABLE subscriptions ALTER catalogue_version_id SET NOT NULL');
+        $this->addSql('ALTER TABLE subscriptions DROP catalogue_version');
+        $this->addSql('ALTER TABLE subscriptions ADD CONSTRAINT FK_4778A01300AACFB FOREIGN KEY (catalogue_version_id) REFERENCES catalogue_versions (id) ON DELETE RESTRICT NOT DEFERRABLE');
+        $this->addSql('CREATE INDEX IDX_4778A01300AACFB ON subscriptions (catalogue_version_id)');
     }
 
     public function down(Schema $schema): void
     {
-        $this->addSql('ALTER TABLE staff_members DROP CONSTRAINT FK_1916C54921BDB235');
-        $this->addSql('ALTER TABLE staff_members DROP CONSTRAINT FK_1916C5491B5C0E2A');
-        $this->addSql('DROP INDEX uniq_staff_floor_lead');
-        $this->addSql('DROP INDEX IDX_1916C54921BDB235');
-        $this->addSql('DROP INDEX IDX_1916C5491B5C0E2A');
-        $this->addSql('ALTER TABLE staff_members DROP floor_lead');
-        $this->addSql('ALTER TABLE staff_members DROP station_id');
-        $this->addSql('ALTER TABLE staff_members DROP as_well_station_id');
-        $this->addSql('DROP TABLE staff_item_stations');
-        $this->addSql('DROP TABLE staff_stations');
+        $this->addSql('ALTER TABLE subscriptions DROP CONSTRAINT FK_4778A01300AACFB');
+        $this->addSql('DROP INDEX IDX_4778A01300AACFB');
+        $this->addSql('ALTER TABLE subscriptions ADD catalogue_version VARCHAR(40) DEFAULT NULL');
+        $this->addSql('ALTER TABLE subscriptions DROP catalogue_version_id');
+        $this->addSql('DROP TABLE catalogue_versions');
+        $this->addSql('DROP FUNCTION catalogue_version_unchanged()');
     }
 }

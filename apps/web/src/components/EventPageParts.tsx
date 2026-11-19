@@ -19,17 +19,19 @@ import './eventsDesk.css';
 import './eventPage.css';
 import './arrivalNote.css';
 
-/** The page's way back: Events, then the event's name as where you are once it has loaded. */
+/** The page's way back: Events, then the event's name as where you are once it has loaded; under an area, the name opens the event and the area is where you are. */
 export function Crumb({
   to,
   back,
   name,
+  area,
   children,
 }: {
   /** None for an account with no organisation, which has no list to go back to (sc-71). */
   to: string | null;
   back: string;
   name: string | null;
+  area?: { label: string; event: string } | undefined;
   children?: ReactNode;
 }) {
   const { t } = useTranslation();
@@ -44,11 +46,25 @@ export function Crumb({
             </li>
           )}
           {name != null && (
-            <li className="ev-crumb-part" aria-current="page">
+            <li className="ev-crumb-part" aria-current={area == null ? 'page' : undefined}>
               {to != null && (
                 <Glyph name="chevron" size={15} weight={2.4} className="desk-chevron" />
               )}
-              <span className="ev-crumb-name">{name}</span>
+              {area == null ? (
+                <span className="ev-crumb-name">{name}</span>
+              ) : (
+                <Link className="ev-crumb-name" to={area.event}>
+                  {name}
+                </Link>
+              )}
+            </li>
+          )}
+          {area != null && (
+            <li className="ev-crumb-part" aria-current="page">
+              {(to != null || name != null) && (
+                <Glyph name="chevron" size={15} weight={2.4} className="desk-chevron" />
+              )}
+              <span className="ev-crumb-name">{area.label}</span>
             </li>
           )}
         </ol>

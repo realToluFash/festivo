@@ -113,6 +113,7 @@ final class OrganisationExportTest extends ApiTestCase
         'audit_entries' => 'the audit log, which Settings > Audit log exports (sc-611)',
         'billing_accounts' => "billing: Soirely's own records, the terms it sells on (pm, 19 Nov)",
         'calendar_feeds' => 'a link that opens without signing in',
+        'catalogue_versions' => "billing: Soirely's own records, the terms it sells on (pm, 19 Nov)",
         'doctrine_migration_versions' => "Soirely's own records",
         'email_suppressions' => "Soirely's own records",
         'event_changes' => 'change history',
@@ -407,10 +408,11 @@ final class OrganisationExportTest extends ApiTestCase
         $body = $this->as($this->owner, 'GET', $this->path(''));
         $shown = Type\dict(Type\string(), Type\mixed())->coerce($body['export']);
         self::assertSame(['ready', true, 'Folake Adeyemi', 'Sunday 18 Oct at 14:20 WAT'], [$shown['state'], $shown['mine'], $shown['askedBy'], $shown['expires']]);
-        self::assertSame(['2026-10-18T13:20:00+00:00', 'Sunday 18 Oct at 14:20 WAT'], [$body['nextAllowedAt'], $body['nextAllowed']]);
+        self::assertSame(['2026-10-18T13:20:00+00:00', 'Sunday 18 Oct at 14:21 WAT'], [$body['nextAllowedAt'], $body['nextAllowed']]);
 
         $mail = $this->mailTo('folake@ire.events');
         self::assertSame('Your export of Ìrè Events is ready', $mail->getSubject());
+        self::assertStringContainsString('which you asked for on Saturday 17 Oct at 14:20 WAT, is ready.', (string) $mail->getTextBody());
         self::assertStringContainsString('It downloads once, until Sunday 18 Oct at 14:20 WAT, and only for you, signed in.', (string) $mail->getTextBody());
         self::assertStringContainsString('/app/settings/data-and-control/export?download=' . $export->getId()->toRfc4122(), (string) $mail->getTextBody());
     }
@@ -477,6 +479,7 @@ final class OrganisationExportTest extends ApiTestCase
         self::assertSame('Sunday 18 Oct at 14:21 WAT', $this->last()['retryAt'] ?? null);
         self::assertGreaterThan(0, Str\to_int((string) $this->client->getResponse()->headers->get('Retry-After')));
         self::assertCount(1, self::em()->getRepository(OrganisationExport::class)->findAll());
+        self::assertSame('Sunday 18 Oct at 14:21 WAT', $this->as($this->owner, 'GET', $this->path(''))['nextAllowed']);
 
         self::mockTime(new DateTimeImmutable('2026-10-18T13:20:00+00:00'));
         $this->as($this->owner, 'POST', $this->path(''));

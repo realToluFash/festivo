@@ -38,9 +38,10 @@ class Subscription
     #[ORM\Column(type: Types::STRING, length: 20, enumType: Plan::class)]
     private Plan $plan;
 
-    /** Empty until the plan catalogue exists (sc-3928). */
-    #[ORM\Column(type: Types::STRING, length: 40, nullable: true)]
-    private ?string $catalogueVersion = null;
+    /** The plans version it was sold on, whose terms it keeps until staff move it (sc-3928). */
+    #[ORM\ManyToOne(targetEntity: CatalogueVersion::class)]
+    #[ORM\JoinColumn(nullable: false, onDelete: 'RESTRICT')]
+    private CatalogueVersion $catalogueVersion;
 
     #[ORM\Column(type: Types::DATETIME_IMMUTABLE)]
     private DateTimeImmutable $periodStart;
@@ -62,6 +63,7 @@ class Subscription
         Organisation $organisation,
         BillingAccount $billingAccount,
         Plan $plan,
+        CatalogueVersion $catalogueVersion,
         SubscriptionStatus $status,
         SubscriptionSource $source,
         DateTimeImmutable $periodStart,
@@ -70,6 +72,7 @@ class Subscription
         $this->organisation = $organisation;
         $this->billingAccount = $billingAccount;
         $this->plan = $plan;
+        $this->catalogueVersion = $catalogueVersion;
         $this->status = $status;
         $this->source = $source;
         $this->periodStart = $periodStart;
@@ -102,9 +105,15 @@ class Subscription
         $this->source = $source;
     }
 
-    public function getCatalogueVersion(): ?string
+    public function getCatalogueVersion(): CatalogueVersion
     {
         return $this->catalogueVersion;
+    }
+
+    /** Only `SubscriptionChanger` calls this, so the move is recorded in the history. */
+    public function setCatalogueVersion(CatalogueVersion $catalogueVersion): void
+    {
+        $this->catalogueVersion = $catalogueVersion;
     }
 
     public function getPeriodStart(): DateTimeImmutable

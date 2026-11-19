@@ -1,6 +1,6 @@
-import { fireEvent, render, screen, within } from '@testing-library/react';
+import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import { RouterProvider, createMemoryRouter } from 'react-router';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { __setConfig, config } from '../config.ts';
 import { routes } from '../routes/index.tsx';
@@ -228,9 +228,115 @@ describe('/demo/events/evt-wed-4/staff/roster (sc-3906)', () => {
     ]);
   });
 
+  it.each(['populated', 'readOnly'])(
+    'lets the keyboard reach the table frame, the one region named Roster, just before the first name, in %s (sc-70540)',
+    async (state) => {
+      await open(state);
+      const frame = screen.getByRole('region', { name: 'Roster' });
+      expect(frame.tabIndex).toBe(0);
+      expect(frame.classList.contains('rs-frame')).toBe(true);
+      expect(frame.contains(screen.getByRole('table', { name: 'Roster' }))).toBe(true);
+      const first = within(frame).getAllByRole('rowheader')[0]?.querySelector('button');
+      const reachable = [...document.querySelectorAll<HTMLElement>('button, [tabindex="0"]')];
+      expect(reachable[reachable.indexOf(frame) + 1]).toBe(first);
+      if (state === 'populated') {
+        expect(reachable[reachable.indexOf(frame) - 1]).toBe(button('Add a person'));
+      }
+    },
+  );
+
+  it('draws a focus ring on the Roster frame (sc-70540)', () => {
+    expect(cssRule('.rs-frame:focus-visible', ROSTER_CSS)).toContain(
+      'outline: 2px solid var(--colorAccent);',
+    );
+  });
+
+  it('keeps whole words in the table below 720 px, the frame scrolling instead (sc-70540)', () => {
+    const narrow = ROSTER_CSS.slice(ROSTER_CSS.indexOf('(width <= 720px)'));
+    expect(cssRule('.rs-table :is(th, td),\n  .rs-table :is(th, td) *', narrow)).toContain(
+      'overflow-wrap: normal;',
+    );
+    expect(
+      cssRule('.rs-table thead th:nth-child(2),\n  .rs-table thead th:nth-child(3)', narrow),
+    ).toContain('min-width: 128px;');
+    expect(cssRule('.rs-table thead th:nth-child(5)', narrow)).toContain('min-width: 168px;');
+  });
+
   it('keeps the card heading 12rem wide below 720 px, as the product does', () => {
     expect(
       cssRule('.rs .sn-card-names', ROSTER_CSS.slice(ROSTER_CSS.indexOf('(width <= 720px)'))),
     ).toContain('flex-basis: 12rem;');
+  });
+});
+
+describe('a person’s own link on the roster (sc-3912)', () => {
+  const SLOW = { timeout: 4000 };
+
+  afterEach(() => vi.unstubAllGlobals());
+
+  it('says Link copied. only once the clipboard has it, and offers Mark as sent', async () => {
+    const writeText = vi.fn(() => Promise.resolve());
+    vi.stubGlobal('navigator', { ...navigator, clipboard: { writeText } });
+    vi.stubGlobal('ClipboardItem', undefined);
+    await open('populated');
+    press('Copy link: Emeka Obi');
+    expect(live()?.textContent).not.toBe('Link copied.');
+    const issuing = button('Copy link: Emeka Obi');
+    expect(issuing?.getAttribute('aria-busy')).toBe('true');
+    expect(issuing?.querySelector('.pending-spinner')).toBeTruthy();
+    await screen.findByText('Copied by Amara Nwosu · 19:12 · not marked as sent', {}, SLOW);
+    expect(writeText).toHaveBeenCalledWith('https://soirely.com/s/7Gk2pQ9xVb4mT1sR8nLw3c');
+    expect(live()?.textContent).toBe('Link copied.');
+    press('Mark as sent: Emeka Obi');
+    expect(screen.getAllByText('Marked as sent by Amara Nwosu · 19:12').length).toBeGreaterThan(0);
+    expect(button('Mark as sent: Emeka Obi')).toBeNull();
+  });
+
+  it('records nothing when no link is issued, and says so', async () => {
+    await open('linkNotIssued');
+    const table = screen.getByRole('table', { name: 'Roster' });
+    expect(within(table).getByText('That did not work. Try again in a moment.')).toBeTruthy();
+    expect(live()?.textContent).toBe('That did not work. Try again in a moment.');
+    press('Copy link: Emeka Obi');
+    await act(() => new Promise((done) => setTimeout(done, 800)));
+    expect(screen.queryByText(/Copied by Amara Nwosu · 19:12/)).toBeNull();
+  });
+
+  it('shows a refused link to copy by hand, named for whose it is, and records the copy', async () => {
+    await open('linkRefused');
+    const field = screen.getByLabelText('Link for Emeka Obi') as HTMLInputElement;
+    expect(field.readOnly).toBe(true);
+    expect(field.value).toBe('https://soirely.com/s/7Gk2pQ9xVb4mT1sR8nLw3c');
+    expect(live()?.textContent).toBe('The link could not be copied. Copy it from the link field.');
+    expect(button('Mark as sent: Emeka Obi')).toBeTruthy();
+    expect(screen.queryByText('Link copied.')).toBeNull();
+  });
+
+  it('asks before Replace link, and puts the row back to No link yet', async () => {
+    await open('replaceAsk');
+    const dialog = screen.getByRole('alertdialog', { name: 'Replace Grace’s link?' });
+    expect(within(dialog).getByText('Their current link stops working now.')).toBeTruthy();
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Replace link' }));
+    expect(screen.queryByRole('alertdialog')).toBeNull();
+    const panel = screen.getByRole('complementary');
+    expect(within(panel).getByText('No link yet')).toBeTruthy();
+    expect(within(panel).queryByRole('button', { name: 'Replace link…' })).toBeNull();
+  });
+
+  it('keeps the link on Keep this link', async () => {
+    await open('replaceAsk');
+    press('Keep this link');
+    expect(screen.queryByRole('alertdialog')).toBeNull();
+    const panel = screen.getByRole('complementary');
+    expect(within(panel).getByText('Link opened')).toBeTruthy();
+    expect(within(panel).getByRole('button', { name: 'Replace link…' }).className).toBe(
+      'gs-pill is-secondary',
+    );
+  });
+
+  it('offers no link actions without staff.manage, nor on a finished event', async () => {
+    await open('readOnly');
+    expect(button('Copy link: Emeka Obi')).toBeNull();
+    expect(button('Replace link…')).toBeNull();
   });
 });

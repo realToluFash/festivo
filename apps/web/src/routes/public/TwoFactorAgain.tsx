@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { Link, Navigate, useNavigate } from 'react-router';
 
 import { api } from '../../api.ts';
+import { takeHeldReturn } from '../../heldReturn.ts';
 import { AuthPage } from '../../components/AuthPage.tsx';
 import { SignedInAs } from '../../components/Onboarding.tsx';
 import { PendingPage } from '../../components/Pending.tsx';
@@ -31,7 +32,7 @@ export function TwoFactorAgain() {
     setSkipping(true);
     await api.dismissTwoFactorPrompt().catch(() => {});
     await refreshAccount();
-    navigate('/app', { replace: true });
+    navigate(takeHeldReturn() ?? '/app', { replace: true });
   }
 
   return (

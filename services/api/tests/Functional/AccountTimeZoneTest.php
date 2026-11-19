@@ -64,6 +64,18 @@ final class AccountTimeZoneTest extends ApiTestCase
         self::assertSame('17 October 2026 at 13:05 UTC', $this->moment($this->registered('nobody@example.com', null), 'en'));
     }
 
+    /** The clock is two-digit in every locale, as a deadline beside it is: Spanish's own pattern writes "4:05". */
+    #[Test]
+    public function anEarlyHourKeepsItsLeadingZeroInEveryLocale(): void
+    {
+        $user = $this->registered('early@example.com', null);
+
+        foreach (['en', 'es', 'fr', 'pt'] as $locale) {
+            $moment = self::service(UserMailer::class)->moment(new DateTimeImmutable('2026-10-17 04:05:00 UTC'), $user, $locale);
+            self::assertStringContainsString('04:05 UTC', $moment, $locale);
+        }
+    }
+
     #[Test]
     public function changingItInSettingsChangesTheNextEmail(): void
     {

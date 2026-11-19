@@ -19,7 +19,7 @@ import {
 
 import { type LayoutKind } from '../layout/classify.ts';
 import { titleSize } from '../layout/textSize.ts';
-import { actionsUnder, brokeOn } from '../layout/titleFit.ts';
+import { actionsUnder, brokeOn, titleRowKey } from '../layout/titleFit.ts';
 import { tokens } from '../theme/tokens.ts';
 import { BellInPane, PaneBell } from './BellButton.tsx';
 import { type TextHandle } from './Text.tsx';
@@ -67,7 +67,7 @@ export function GuestsHeading({
   const pageDrawn = usePageTitleDrawn();
   const drawn = useRef(0);
   const [broke, setBroke] = useState<string | null>(null);
-  const rowKey = `${room}|${title}|${fontScale}`;
+  const rowKey = titleRowKey({ room, title, fontScale, spinning });
   const under =
     broke === rowKey ||
     actionsUnder({
@@ -97,6 +97,8 @@ export function GuestsHeading({
         drawn: drawn.current || start,
         start,
         size,
+        slot,
+        title: titleWidth,
       }),
     );
   };

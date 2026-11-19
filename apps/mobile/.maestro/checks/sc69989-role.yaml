@@ -1,0 +1,16 @@
+# sc-69989 regression: an outsider's role sheet opens from People, and Remove asks before it removes.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/${EVENT_ID}?area=people
+- extendedWaitUntil: { visible: { id: 'people.row.${PERSON}' }, timeout: 30000 }
+- tapOn: { id: 'people.row.${PERSON}' }
+- extendedWaitUntil: { visible: { id: 'people.remove' }, timeout: 10000 }
+- waitForAnimationToEnd: { timeout: 5000 }
+- takeScreenshot: role-sheet
+- tapOn: { id: 'people.remove' }
+- extendedWaitUntil: { visible: { id: 'people.remove.${CHOICE}' }, timeout: 10000 }
+- waitForAnimationToEnd: { timeout: 5000 }
+- takeScreenshot: remove-ask
+- tapOn: { id: 'people.remove.${CHOICE}' }
+- waitForAnimationToEnd: { timeout: 8000 }
+- takeScreenshot: after-remove

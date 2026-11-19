@@ -44,19 +44,25 @@ export function actionsUnder({
   return title + beside > room;
 }
 
-/** sc-68417: a title laid out beside its actions broke inside a word once it could step down no further, so the sum above, from widths measured hidden, left it less room than it needs. A break at its start size is not one: it steps down next. */
+/** sc-68417: a title laid out beside its actions broke inside a word once it could step down no further, so the sum above, from widths measured hidden, left it less room than it needs. A break at its start size is not one: it steps down next. Nor is one in a slot narrower than the title measured: that is the row's first layout, before the primary gives way, and the sum already answers it. Nor is one whose lines together fit the slot: they were laid out in a narrower box than the slot last measured, a frame the row passes through while it loads, and its slot catches up next. */
 export function brokeInWord({
   lines,
   drawn,
   start,
   size,
+  slot,
+  title,
 }: {
-  lines: readonly { text: string }[];
+  lines: readonly { text: string; width: number }[];
   drawn: number;
   start: number;
   size: number;
+  slot: number;
+  title: number;
 }): boolean {
+  if (unmeasured(slot, title) || slot + 1 < title) return false;
   if (drawn >= start && drawn > size) return false;
+  if (lines.reduce((sum, line) => sum + line.width, 0) <= slot) return false;
 
   return lines.slice(0, -1).some((line) => !/\s$/.test(line.text));
 }
@@ -71,14 +77,31 @@ export function brokeOn({
   broke: string | null;
   row: string;
   under: boolean;
-  lines: readonly { text: string }[];
+  lines: readonly { text: string; width: number }[];
   drawn: number;
   start: number;
   size: number;
+  slot: number;
+  title: number;
 }): string | null {
   if (under) return broke;
 
   return brokeInWord(laidOut) ? row : broke;
+}
+
+/** The row a break latches on: its width, the title, the text size, and whether a tablet's refresh spinner shares it, so the actions come back beside the title once the spinner goes (sc-68417). */
+export function titleRowKey({
+  room,
+  title,
+  fontScale,
+  spinning,
+}: {
+  room: number;
+  title: string;
+  fontScale: number;
+  spinning: boolean;
+}): string {
+  return `${room}|${title}|${fontScale}|${spinning ? 'spinning' : 'still'}`;
 }
 
 function unmeasured(...widths: number[]): boolean {

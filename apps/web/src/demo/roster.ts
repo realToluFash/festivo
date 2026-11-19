@@ -2,6 +2,7 @@ import { emailProblem, phoneE164, phoneFields, phoneLengthProblem } from '@soire
 
 import { countryName } from './rules.ts';
 import type { DemoLink } from './settings.ts';
+import { type Trail, SAMPLE_LINK } from './staffLink.ts';
 import { STATIONS_EVENT } from './stations.ts';
 
 /** The Roster on the event's Staff page (sc-3906, Staffing.dc.html on page e34): who works the event, without making them members. */
@@ -21,6 +22,7 @@ export interface Entry {
   mobile: string | null;
   email: string | null;
   link: 'opened' | 'sent' | 'copied' | 'none';
+  trail?: Trail | null;
 }
 
 export interface Draft {
@@ -41,7 +43,7 @@ export type Panel =
 
 export const RW = {
   title: 'Staff',
-  sub: 'Who works the event, where they work, and what each place dishes.',
+  sub: 'Who works the event, where they work, and what each station serves.',
   tabs: ['Roster', 'Jobs and shifts', 'Stations', 'Hours worked'],
   roster: 'Roster',
   add: 'Add a person',
@@ -94,7 +96,6 @@ export const RW = {
   nextHours: 'Next: check the hours on Hours worked before the budget closes.',
   nextCopied: 'Next: once you have sent them the copied link, mark it as sent.',
   nextErasing: 'Next: nothing. Their mobile number and email are removed 30 days after the event.',
-  linksThere: '[Copy link, Mark as sent and Replace link are on Roster links.]',
   lock: 'You can see the roster. Changing it needs permission to manage staff.',
   stationChange: 'Change station',
 };
@@ -315,7 +316,22 @@ const entry = (
   email: string | null = null,
 ): Entry => ({ id, name, job, station, shift, more: [], mobile, email, link });
 
+const TRAILS: Record<string, Trail> = {
+  bisi: { by: '', at: '18:20' },
+  tayo: { by: 'Amara Nwosu', at: '17:58' },
+  ifeoma: { by: '', at: '17:41' },
+  sade: { by: 'Amara Nwosu', at: '18:02' },
+  amina: { by: 'Amara Nwosu', at: '18:44' },
+  grace: { by: '', at: '19:05' },
+  kunle: { by: 'Amara Nwosu', at: '18:44' },
+  ronke: { by: '', at: '18:31' },
+};
+
 export function sample(): Entry[] {
+  return listed().map((one) => ({ ...one, trail: TRAILS[one.id] ?? null }));
+}
+
+function listed(): Entry[] {
   return [
     entry('bisi', 'Bisi Okon', 'Cook', 'Kitchen', '15:00 to 23:00', '+2348031110002', 'opened'),
     entry('tayo', 'Tayo Bamidele', 'Cook', 'Grill', '15:00 to 23:00', '+2348031110003', 'sent'),
@@ -416,6 +432,11 @@ export interface RosterStart {
   warning: string | null;
   bar: string[] | null;
   failed: string | null;
+  /** What the demo's Copy link gets back: a link on the clipboard, no link issued, or a link the browser would not copy. */
+  copy: 'works' | 'notIssued' | 'refused';
+  held: { id: string; url: string } | null;
+  missed: string | null;
+  replacing: string | null;
 }
 
 function start(o: Partial<RosterStart> & Pick<RosterStart, 'name' | 'note'>): RosterStart {
@@ -430,6 +451,10 @@ function start(o: Partial<RosterStart> & Pick<RosterStart, 'name' | 'note'>): Ro
     warning: null,
     bar: null,
     failed: null,
+    copy: 'works',
+    held: null,
+    missed: null,
+    replacing: null,
     ...o,
   };
 }
@@ -527,7 +552,7 @@ const STATES = {
   details: () =>
     start({
       name: 'Details, Amina Yusuf',
-      note: 'Copied: the next step points to Roster links.',
+      note: 'Copied: the next step says to mark it as sent; Replace link under the Link.',
       panel: { kind: 'details', id: 'amina' },
     }),
   edit: () =>
@@ -611,6 +636,53 @@ const STATES = {
       entries: weddingSample(),
       panel: { kind: 'details', id: 'tolu' },
     }),
+  linkCopied: () =>
+    start({
+      name: 'Copy link, copied',
+      note: 'Emeka Obi: Copied by Amara Nwosu, Mark as sent, and Link copied. said once the clipboard has it.',
+      entries: sample().map((one) =>
+        one.id === 'emeka'
+          ? { ...one, link: 'copied', trail: { by: 'Amara Nwosu', at: '19:12' } }
+          : one,
+      ),
+      bar: ['Link copied.'],
+    }),
+  linkNotIssued: () =>
+    start({
+      name: 'Copy link, no link issued',
+      note: 'No connection or a server error: nothing copied or recorded, Emeka’s row keeps No link yet. Copy link fails again in Play.',
+      copy: 'notIssued',
+      missed: 'emeka',
+    }),
+  linkRefused: () =>
+    start({
+      name: 'Copy link, the browser refuses the clipboard',
+      note: 'A link issued and shown to copy by hand, labelled Link for Emeka Obi; it counts as a copy. Copy link is refused again in Play.',
+      copy: 'refused',
+      entries: sample().map((one) =>
+        one.id === 'emeka'
+          ? { ...one, link: 'copied', trail: { by: 'Amara Nwosu', at: '19:12' } }
+          : one,
+      ),
+      held: { id: 'emeka', url: SAMPLE_LINK },
+    }),
+  replaceAsk: () =>
+    start({
+      name: 'Replace link, the question',
+      note: 'Grace Udo’s details, the centred dialog over them: Replace link or Keep this link.',
+      panel: { kind: 'details', id: 'grace' },
+      replacing: 'grace',
+    }),
+  replaced: () =>
+    start({
+      name: 'Replace link, replaced',
+      note: 'Every link Grace Udo was given has stopped working; her row is back to No link yet.',
+      entries: sample().map((one) =>
+        one.id === 'grace' ? { ...one, link: 'none', trail: null } : one,
+      ),
+      panel: { kind: 'details', id: 'grace' },
+      bar: ['[Grace Udo’s link is replaced. Copy link gives them a new one to send.]'],
+    }),
   longEventRemove: () =>
     start({
       name: 'An event over 24 hours, Remove from the event',
@@ -678,5 +750,11 @@ export const ROSTER_PAGES: readonly { name: string; states: readonly DemoLink[] 
   {
     name: 'An event over 24 hours',
     states: (['longEvent', 'longEventRemove'] as const).map(link),
+  },
+  {
+    name: 'A person’s own link (sc-3912)',
+    states: (['linkCopied', 'linkNotIssued', 'linkRefused', 'replaceAsk', 'replaced'] as const).map(
+      link,
+    ),
   },
 ];

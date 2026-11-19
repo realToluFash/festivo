@@ -305,7 +305,7 @@ describe('Settings › Vendors in A · Summary first (sc-82)', () => {
   });
 
   it(
-    'refuses the three fields of add_invalid, and the number each time it is sent',
+    'refuses two fields of add_invalid before sending, and the number once it is sent',
     SLOW,
     async () => {
       vi.useFakeTimers({ shouldAdvanceTime: true });
@@ -314,7 +314,7 @@ describe('Settings › Vendors in A · Summary first (sc-82)', () => {
       const email = within(dialog).getByLabelText('Email address', { exact: false });
 
       expect(within(dialog).getByRole('alert').textContent).toBe(
-        '3 fields need fixing, so nothing was sent.',
+        '2 fields need fixing, so nothing was sent.',
       );
       expect(
         within(dialog).getByText(
@@ -326,7 +326,7 @@ describe('Settings › Vendors in A · Summary first (sc-82)', () => {
           'Enter a web address that starts with https:// or http://, or leave that part off.',
         ),
       ).toBeDefined();
-      expect(within(dialog).getByText(REFUSED)).toBeDefined();
+      expect(within(dialog).queryByText(REFUSED)).toBeNull();
       await waitFor(() => expect(document.activeElement).toBe(email));
 
       fireEvent.change(email, { target: { value: 'sam@harbourboats.co.uk' } });
@@ -343,7 +343,7 @@ describe('Settings › Vendors in A · Summary first (sc-82)', () => {
       );
 
       fireEvent.change(within(dialog).getByLabelText('Phone number', { exact: false }), {
-        target: { value: '7700 900123' },
+        target: { value: '0117 496 0123' },
       });
 
       expect(within(dialog).queryByText(REFUSED)).toBeNull();
@@ -356,7 +356,7 @@ describe('Settings › Vendors in A · Summary first (sc-82)', () => {
     const dialog = screen.getByRole('dialog', { name: 'Add a vendor' });
     const phone = within(dialog).getByLabelText('Phone number', { exact: false });
 
-    fireEvent.change(phone, { target: { value: '7700 900877' } });
+    fireEvent.change(phone, { target: { value: '0117 496 0877' } });
     fireEvent.click(within(dialog).getByRole('button', { name: 'Add' }));
 
     expect(within(dialog).getByText('Choose a country.')).toBeDefined();
@@ -476,5 +476,52 @@ describe('Settings › Vendors in A · Summary first (sc-82)', () => {
     fireEvent.click(within(main()).getByRole('button', { name: 'Try again' }));
 
     expect(await screen.findByText('28 vendors', {}, WAIT)).toBeDefined();
+  });
+
+  it(
+    'keeps the card, Search and its focus through a search that got no answer (search_failed)',
+    SLOW,
+    async () => {
+      await open('/demo/settings/vendors?state=search_failed');
+      const search = within(main()).getByRole('searchbox', { name: 'Search vendors' });
+
+      expect(document.activeElement).toBe(search);
+      expect((search as HTMLInputElement).value).toBe('tulip');
+      expect(within(main()).getByText('28 vendors')).toBeDefined();
+      expect(filter(/In use/)).toBeDefined();
+      expect(filter(/All categories/)).toBeDefined();
+      expect(within(main()).getByText('We could not load the vendors.')).toBeDefined();
+      expect(within(main()).getByText('Check your connection and try again.')).toBeDefined();
+      expect(within(main()).queryByRole('list', { name: 'Vendors' })).toBeNull();
+
+      fireEvent.change(search, { target: { value: 'tulip l' } });
+
+      expect(document.activeElement).toBe(search);
+      expect((search as HTMLInputElement).value).toBe('tulip l');
+      expect(within(main()).getByText('We could not load the vendors.')).toBeDefined();
+
+      fireEvent.click(within(main()).getByRole('button', { name: 'Try again' }));
+
+      await waitFor(() => expect(rows()).toHaveLength(1), WAIT);
+      expect(within(main()).queryByText('We could not load the vendors.')).toBeNull();
+      expect(within(main()).getByText('1 vendor')).toBeDefined();
+      await waitFor(() => expect(document.activeElement).toBe(search), WAIT);
+    },
+  );
+
+  it('puts the focus on the heading after Try again with nothing in Search', SLOW, async () => {
+    await open('/demo/settings/vendors?state=search_failed');
+
+    fireEvent.click(within(main()).getAllByRole('button', { name: 'Clear the search' })[0]!);
+    fireEvent.click(within(main()).getByRole('button', { name: 'Try again' }));
+
+    await waitFor(() => expect(rows()).toHaveLength(25), WAIT);
+    await waitFor(
+      () =>
+        expect(document.activeElement).toBe(
+          screen.getByRole('heading', { level: 1, name: 'Vendors' }),
+        ),
+      WAIT,
+    );
   });
 });

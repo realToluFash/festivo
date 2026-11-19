@@ -57,7 +57,7 @@ const LATER = {
   invitation: 'Invitations have their own design.',
   create: 'Create organisation has its own design.',
   place: 'Switching organisation has its own design.',
-  today: 'The demo’s Today has Ire Events’ sample only.',
+  today: 'The demo’s Today has Ire Events’s sample only.',
 };
 
 export function OutsideEventsRoute() {

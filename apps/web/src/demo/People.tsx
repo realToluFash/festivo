@@ -39,7 +39,9 @@ import {
   peopleStateOf,
   READ_ONLY,
   removedToast,
+  NOT_SIGNED_IN,
   rowLine,
+  staffLinkTitle,
   seesEveryEvent,
   withAdded,
   without,
@@ -52,6 +54,7 @@ import type { Tell } from '../components/SettingsParts.tsx';
 import './today.css';
 import '../components/SettingsParts.css';
 import '../components/eventPage.css';
+import '../components/eventsDesk.css';
 import '../routes/app/events/people.css';
 import './people.css';
 import { DeskSearch, SearchRow } from './Search.tsx';
@@ -71,7 +74,7 @@ const AREAS: readonly (readonly [string, GlyphName])[] = [
   ['Reports', 'reports'],
 ];
 
-/** People on an event at a desk (Web-People.dc.html, page 28), under the crumb row as Guests is (sc-69635): one list, the role in a dialog, on sample data; the door code's states add its card (Access-A-Web, page e28). */
+/** People on an event at a desk (Web-People.dc.html, page 28), under a crumb row as wide as the event page, as Guests is (sc-69635): one list, the role in a dialog, on sample data; the door code's states add its card (Access-A-Web, page e28). */
 export function People() {
   const [params] = useSearchParams();
   const door = doorStartOf({
@@ -218,7 +221,7 @@ function PeopleScreen({ start, door }: { start: PeopleStart; door: DoorStart | n
           <EventSidebar viewer={viewer} place={place} tell={tell} inert={covered} />
           <main id="content" className="desk-main" inert={covered}>
             <div className="desk-page">
-              <div className="desk-column">
+              <div className="event-page is-people">
                 <div className="ev-crumb-row">
                   <nav className="ev-crumb" aria-label="Breadcrumb">
                     <ol>
@@ -239,12 +242,14 @@ function PeopleScreen({ start, door }: { start: PeopleStart; door: DoorStart | n
                   </nav>
                   <DemoBell tell={tell} />
                 </div>
-                <header className="desk-top">
-                  <h1 className="desk-title" tabIndex={-1}>
-                    People
-                  </h1>
-                </header>
-                {page}
+                <div className="desk-column">
+                  <header className="desk-top">
+                    <h1 className="desk-title" tabIndex={-1}>
+                      People
+                    </h1>
+                  </header>
+                  {page}
+                </div>
               </div>
             </div>
           </main>
@@ -323,6 +328,27 @@ function PersonRow({
   onOpen: (() => void) | null;
 }) {
   const line = rowLine(person, viewer);
+  const staffLink = staffLinkTitle(person);
+  if (staffLink != null)
+    return (
+      <div className="desk-row">
+        <span className="people-outside-face" aria-hidden="true">
+          <Glyph name="link" size={18} />
+        </span>
+        <RowWords
+          title={staffLink}
+          tag={
+            person.staffLink?.signedIn === false && (
+              <span className="desk-tag people-not-signed">
+                <span className="people-not-signed-mark" aria-hidden="true" />
+                {NOT_SIGNED_IN}
+              </span>
+            )
+          }
+          lines={[line]}
+        />
+      </div>
+    );
   const words = (
     <>
       {person.initials === '' ? (

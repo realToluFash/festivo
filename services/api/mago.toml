@@ -287,11 +287,12 @@ permit = [
 
 # Plans & billing (sc-3927): the subscription, who pays for it, and the one
 # entitlement answer. The organisation scope founds a subscription and asks for
-# the answer; billing never reaches back. A purge takes a billing account
+# the answer; billing never reaches back. Staff actions on the plan catalogue
+# are audited (sc-3928). A purge takes a billing account
 # nothing is paid for by any more.
 [[guard.perimeter.rules]]
 namespace = "App\\Domain\\Billing\\"
-permit = ["@layer:native", "@layer:external", "@layer:shared", "@layer:domain_billing", "@layer:repository", "@layer:deletion"]
+permit = ["@layer:native", "@layer:external", "@layer:shared", "@layer:domain_billing", "@layer:repository", "@layer:deletion", "@layer:audit"]
 
 # Events check their zone and currency as an organisation's are checked (Regions,
 # AccountTimeZone), and each create goes to the audit trail (sc-1486). A venue's
