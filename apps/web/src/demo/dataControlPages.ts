@@ -105,7 +105,7 @@ export const DATA_CONTROL_PAGES: PageLinks = [
       exported('ex_used_link', 'The emailed link, used'),
       exported('ex_expired', 'The link ended'),
       exported('ex_limited', 'Pressed again on a stale page: refused'),
-      exported('ex_failed', 'Didn’t finish'),
+      exported('ex_failed', 'Did not finish'),
       exported('not_owner', 'An admin, nothing asked', VIEWERS.julien),
       exported('loading', 'Loading'),
       exported('failed', 'Failed'),

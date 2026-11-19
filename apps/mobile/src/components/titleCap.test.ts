@@ -140,6 +140,15 @@ describe('every line under the cap wraps whole, and nothing is cut (sc-67338)', 
     );
   });
 
+  it('starts a Settings row’s line no larger than its title draws, both split after a hyphen (sc-69816)', () => {
+    expect(settings).toMatch(
+      /<CappedWholeWords[^>]*\bonDrawn=\{setTitle\}[^>]*\bbreakAfterHyphens\s*>\s+\{row\.title\}/u,
+    );
+    expect(settings).toMatch(
+      /<CappedWholeWords[^>]*\bunder=\{title\}[^>]*\bbreakAfterHyphens\s*>\s+\{row\.line\}/u,
+    );
+  });
+
   it('wraps a row’s tag at the accessibility sizes rather than cut it', () => {
     expect(rows).toMatch(/const wraps = wrapsAlways \|\| atAccessibilitySizes\(fontScale\);/u);
   });

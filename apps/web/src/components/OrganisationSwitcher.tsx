@@ -1,4 +1,4 @@
-import type { InvitationPreview, Membership } from '@soirely/api-client';
+import type { InvitationPreview, Membership, OutsideEvent } from '@soirely/api-client';
 import {
   formatDay,
   invitationWording,
@@ -36,7 +36,9 @@ export function OrganisationSwitcher({
   email = '',
   paused = false,
   opened = 0,
+  outside = [],
   onSwitch,
+  onOutside = () => undefined,
   onCreate,
 }: {
   current: Membership;
@@ -48,7 +50,10 @@ export function OrganisationSwitcher({
   paused?: boolean;
   /** Each change opens the menu from outside it: the paused screen's Switch organisation (sc-564). */
   opened?: number;
+  /** The events the account holds on other organisations' events, each opening at its level (sc-68438). */
+  outside?: readonly OutsideEvent[];
   onSwitch: (organisation: Membership) => void;
+  onOutside?: (eventId: string) => void;
   onCreate: () => void;
 }) {
   const { t } = useTranslation();
@@ -239,6 +244,11 @@ export function OrganisationSwitcher({
           into={into}
           answer={answer}
           onPick={(place) => pick(place.id)}
+          outside={outside}
+          onOutside={(id) => {
+            closeTo(null);
+            onOutside(id);
+          }}
           onCreate={() => {
             closeTo(null);
             // The dialog hands focus back to whatever opened it, and this tile goes with the menu.

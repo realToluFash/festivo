@@ -97,6 +97,8 @@ export function GuestsHeading({
         drawn: drawn.current || start,
         start,
         size,
+        slot,
+        title: titleWidth,
       }),
     );
   };

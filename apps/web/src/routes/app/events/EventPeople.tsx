@@ -70,7 +70,7 @@ export function EventPeople({ event }: { event: OrganisationEvent }) {
   const session = useSession();
   const { layers, covered, setHost } = useDeskLayers();
   const organisationName =
-    session.organisation?.name ?? outsideOn(session, event.id)?.organisationName ?? '';
+    outsideOn(session, event.id)?.organisationName ?? session.organisation?.name ?? '';
   const country = session.organisation?.countryCode ?? '';
   const [load, setLoad] = useState<Load>({ kind: 'loading' });
   const [attempt, setAttempt] = useState(0);

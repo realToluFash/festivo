@@ -1011,3 +1011,60 @@ describe('more than 15 organisations (sc-30412)', () => {
     expect(screen.getByRole('heading', { level: 2, name: 'Where are you working?' })).toBeDefined();
   });
 });
+
+describe('events from outside in the switcher (sc-68438)', () => {
+  it('lists them under the organisations, under way first, and opens the one chosen', () => {
+    const opened = vi.fn();
+    const waiting = {
+      invitations: [],
+      outcomes: {},
+      firstJoined: null,
+      answer: vi.fn(),
+    } as unknown as WaitingInvitations;
+    const gala = {
+      id: 'ev_gala',
+      name: 'Gala',
+      organisationName: 'Les Salons',
+      role: 'can_view' as const,
+      jobLabel: null,
+      startsAt: '2099-11-21T19:30:00+01:00',
+      endsAt: '2099-11-22T01:00:00+01:00',
+    };
+    const congress = {
+      ...gala,
+      id: 'ev_congress',
+      name: 'Congress',
+      organisationName: 'Congressos',
+      startsAt: '2020-11-07T08:30:00+00:00',
+      endsAt: '2099-11-07T19:00:00+00:00',
+    };
+    render(
+      <MemoryRouter>
+        <OrganisationSwitcher
+          current={IRE}
+          organisations={[IRE]}
+          waiting={waiting}
+          outside={[gala, congress]}
+          onSwitch={() => {}}
+          onOutside={opened}
+          onCreate={() => {}}
+        />
+      </MemoryRouter>,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: /^Organisation: Ìrè Events/u }));
+    const group = screen.getByRole('region', { name: 'Events from outside' });
+    expect(
+      within(group)
+        .getAllByRole('button')
+        .map((row) => row.getAttribute('aria-label')),
+    ).toEqual([
+      'Congress. Congressos · Sat, Nov 7 · 08:30. Under way',
+      'Gala. Les Salons · Sat, Nov 21 · 19:30',
+    ]);
+    expect(within(group).queryByText('You’re here')).toBeNull();
+
+    fireEvent.click(within(group).getByRole('button', { name: /^Gala\./u }));
+    expect(opened).toHaveBeenCalledWith('ev_gala');
+  });
+});

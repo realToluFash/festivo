@@ -169,6 +169,9 @@ services:
     App\Domain\Organisation\Invitations\InvitationMailer:
         arguments:
             $webOrigin: '%env(CORS_WEB_ORIGIN)%'
+    App\Domain\Organisation\Export\OrganisationExportMailer:
+        arguments:
+            $webOrigin: '%env(CORS_WEB_ORIGIN)%'
     App\Domain\Guest\Link\InvitationLinks:
         arguments:
             $webOrigin: '%env(CORS_WEB_ORIGIN)%'

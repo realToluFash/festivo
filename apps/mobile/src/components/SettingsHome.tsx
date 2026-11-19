@@ -1,5 +1,5 @@
 import { initials } from '@soirely/domain';
-import { type ReactNode } from 'react';
+import { type ReactNode, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
@@ -224,6 +224,9 @@ function Row({
   open: boolean;
   onPress: () => void;
 }) {
+  const [room, setRoom] = useState(0);
+  const [title, setTitle] = useState(Infinity);
+
   return (
     <Pressable
       onPress={onPress}
@@ -242,23 +245,29 @@ function Row({
         <View style={[styles.rule, { left: tokens.spaceXl + rowSide(dense) + 12 }]} />
       )}
       {row.tile}
-      <View style={styles.rowWords}>
-        <Text
+      <View style={styles.rowWords} onLayout={(event) => setRoom(event.nativeEvent.layout.width)}>
+        <CappedWholeWords
           size={dense ? 15.5 : TYPE.row}
           weight="semibold"
           accessible={false}
           style={open ? styles.accent : undefined}
+          room={room}
+          onDrawn={setTitle}
+          breakAfterHyphens
         >
           {row.title}
-        </Text>
-        <Text
+        </CappedWholeWords>
+        <CappedWholeWords
           size={dense ? 13 : TYPE.small}
           weight="medium"
           accessible={false}
           style={styles.secondary}
+          room={room}
+          under={title}
+          breakAfterHyphens
         >
           {row.line}
-        </Text>
+        </CappedWholeWords>
       </View>
       <Glyph
         name="chevron"

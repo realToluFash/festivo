@@ -36,7 +36,8 @@ import { useDeskTop } from '../../../deskTop.ts';
 import { listEventOf, shownEvent } from '../../../eventsList.ts';
 import { currentLocale, dateLocale } from '../../../i18n/index.ts';
 import { useLoadedAt, useServerNow } from '../../../serverNow.ts';
-import { canOn, useSessionState } from '../../../session.ts';
+import { canOn, outsideOn, useSessionState } from '../../../session.ts';
+import { useRoutedEventId } from '../outsideRoute.ts';
 import { DeleteEvent } from './DeleteEvent.tsx';
 import { DuplicateDialog, DuplicateEvent } from './DuplicateEvent.tsx';
 import { guestsCopied, wasDuplicated } from './duplicated.ts';
@@ -83,10 +84,11 @@ export function EventCrumb({
   const { t } = useTranslation();
   const { bell } = useDeskTop();
   const state = useSessionState();
+  const routed = useRoutedEventId();
   const outside =
     state.status === 'signedIn' &&
-    state.session.organisation == null &&
-    state.session.pausedIn == null;
+    state.session.pausedIn == null &&
+    (state.session.organisation == null || outsideOn(state.session, routed) != null);
 
   return (
     <Crumb to={outside ? null : '/app/events'} back={t('events.title')} name={name} area={area}>

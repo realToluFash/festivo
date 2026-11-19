@@ -1,9 +1,5 @@
 /* Settings > Data at a desk, in B · Summary first: what the page reads when it isn't the Owner's to change. */
 
-.desk-tile.is-data {
-  background: color-mix(in srgb, var(--optionBlue) 55%, var(--optionTeal));
-}
-
 .data-value {
   flex: none;
   color: var(--colorInk);

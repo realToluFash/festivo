@@ -318,6 +318,88 @@ describe('Settings › Vendors at a desk (sc-82)', () => {
     expect((box as HTMLInputElement).value).toBe('tulip');
   });
 
+  it('a search typed while the API is unreachable keeps every letter for Try again', async () => {
+    signedIn(membership());
+    let reachable = true;
+    const searched: string[] = [];
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
+      const q = new URL(String(input)).searchParams.get('q');
+      if (q != null) searched.push(q);
+      return reachable
+        ? new Response(JSON.stringify(pageOf([BLOOM, DELTA])), { status: 200 })
+        : Promise.reject(new TypeError('Failed to fetch'));
+    });
+    open();
+
+    const box = await screen.findByRole('searchbox', { name: 'Search vendors' });
+    reachable = false;
+    for (const typed of ['t', 'tu', 'tul', 'tuli', 'tulip']) {
+      fireEvent.change(box, { target: { value: typed } });
+    }
+    const again = await screen.findByRole('button', { name: 'Try again' });
+    expect(searched).toEqual(['tulip']);
+
+    reachable = true;
+    fireEvent.click(again);
+
+    const back = await screen.findByRole('searchbox', { name: 'Search vendors' });
+    expect((back as HTMLInputElement).value).toBe('tulip');
+    expect(searched).toEqual(['tulip', 'tulip']);
+  });
+
+  it('a category picked straight after typing keeps the letters in the box and the search', async () => {
+    signedIn(membership());
+    const asked: { q: string | null; category: string | null }[] = [];
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
+      const params = new URL(String(input)).searchParams;
+      asked.push({ q: params.get('q'), category: params.get('category') });
+      return new Response(JSON.stringify(pageOf([BLOOM, DELTA])), { status: 200 });
+    });
+    open();
+
+    const box = await screen.findByRole('searchbox', { name: 'Search vendors' });
+    fireEvent.change(box, { target: { value: 'tul' } });
+    fireEvent.click(screen.getByRole('button', { name: /All categories/ }));
+    fireEvent.click(await screen.findByRole('menuitemradio', { name: /Flowers/ }));
+
+    await waitFor(() => expect(asked).toContainEqual({ q: 'tul', category: 'flowers' }));
+    const after = screen.getByRole('searchbox', { name: 'Search vendors' });
+    expect((after as HTMLInputElement).value).toBe('tul');
+  });
+
+  it('an older list answer arriving after a newer one is dropped, and its request stopped', async () => {
+    signedIn(membership());
+    let photography: ((answer: Response) => void) | null = null;
+    let photographySignal: AbortSignal | null = null;
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
+      const category = new URL(String(input)).searchParams.get('category');
+      if (category === 'photography') {
+        photographySignal = init?.signal ?? null;
+        return new Promise<Response>((resolve) => {
+          photography = resolve;
+        });
+      }
+      const shown = category === 'flowers' ? [BLOOM] : [BLOOM, DELTA];
+      return new Response(JSON.stringify(pageOf(shown)), { status: 200 });
+    });
+    open();
+
+    fireEvent.click(await screen.findByRole('button', { name: /All categories/ }));
+    fireEvent.click(await screen.findByRole('menuitemradio', { name: /Photography/ }));
+    await waitFor(() => expect(photography).not.toBeNull());
+    fireEvent.click(screen.getByRole('button', { name: /^Photography/ }));
+    fireEvent.click(await screen.findByRole('menuitemradio', { name: /Flowers/ }));
+    await waitFor(() => expect(screen.queryByText('Delta Frames')).toBeNull());
+
+    await act(async () => {
+      photography?.(new Response(JSON.stringify(pageOf([DELTA])), { status: 200 }));
+    });
+
+    expect(screen.getByText('Bloom & Co')).toBeDefined();
+    expect(screen.queryByText('Delta Frames')).toBeNull();
+    expect((photographySignal as AbortSignal | null)?.aborted).toBe(true);
+  });
+
   it('saving a vendor archived elsewhere shows the API’s words and keeps the form', async () => {
     signedIn(membership());
     const words =

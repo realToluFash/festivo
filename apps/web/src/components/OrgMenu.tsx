@@ -1,4 +1,10 @@
-import { type InvitationRefusalCode, initials, refusalBody } from '@soirely/domain';
+import type { OutsideEvent } from '@soirely/api-client';
+import {
+  type InvitationRefusalCode,
+  initials,
+  outsideEventsInOrder,
+  refusalBody,
+} from '@soirely/domain';
 import {
   type KeyboardEvent,
   type ReactNode,
@@ -13,6 +19,7 @@ import {
 import { useTranslation } from 'react-i18next';
 
 import { meshFor } from '../mesh.ts';
+import { OutsideEventRow } from './OutsideRows.tsx';
 import { offButton } from '../offButton.ts';
 import { useFocusOnceShown } from '../stepFocus.ts';
 import { Glyph } from './Glyph.tsx';
@@ -53,6 +60,8 @@ export function OrgMenu({
   into,
   answer,
   onPick,
+  outside = [],
+  onOutside = () => undefined,
   onCreate,
 }: {
   menu: RefObject<HTMLDivElement | null>;
@@ -65,10 +74,14 @@ export function OrgMenu({
   into: boolean;
   answer: (tile: MenuTile, tools: PanelTools) => ReactNode;
   onPick: (place: MenuPlace) => void;
+  /** Events from outside (sc-68438), under the places, in the order the API gave with those under way first. */
+  outside?: readonly OutsideEvent[];
+  onOutside?: (eventId: string) => void;
   onCreate: () => void;
 }) {
   const { t } = useTranslation();
   const id = useId();
+  const [now] = useState(() => new Date());
   const [query, setQuery] = useState(start?.query ?? '');
   const [panel, setPanel] = useState<string | null>(start?.panel ?? null);
   const [at, setAt] = useState<number | null>(null);
@@ -89,7 +102,11 @@ export function OrgMenu({
     ...listed.map((place): MenuTile => ({ kind: 'place', id: place.id, place })),
     ...others.filter((tile) => tile.kind !== 'place' && holds(tile.name, typed)),
   ];
-  const found = tiles.length;
+  const fromOutside = outsideEventsInOrder(
+    outside.filter((event) => holds(event.name, typed)),
+    now,
+  );
+  const found = tiles.length + fromOutside.length;
   const nothing = typed.trim() !== '' && found === 0;
   const across = columnsOf(Math.min(WIDEST, wide - 2 * EDGE) - 2 - 2 * EDGE);
   const chosen = listed.findIndex((place) => place.id === current);
@@ -368,6 +385,23 @@ export function OrgMenu({
                 );
               })}
             </div>
+          )}
+          {fromOutside.length > 0 && (
+            <section className="oe-switch" aria-labelledby={`${id}-outside`}>
+              <h3 id={`${id}-outside`} className="oe-heading">
+                {t('outsideEvent.fromOutside')}
+              </h3>
+              {fromOutside.map((event) => (
+                <OutsideEventRow
+                  key={event.id}
+                  event={event}
+                  here={false}
+                  now={now}
+                  className="oe-row"
+                  onChoose={() => onOutside(event.id)}
+                />
+              ))}
+            </section>
           )}
           <div id={`${id}-more`} className="sw-more">
             {more}
