@@ -16,6 +16,7 @@ import { PAGE_TITLE } from './topTitle.ts';
 const frame = readFileSync(join('src', 'components', 'AppFrame.tsx'), 'utf8');
 const rows = readFileSync(join('src', 'components', 'SummaryRows.tsx'), 'utf8');
 const event = readFileSync(join('src', 'components', 'EventScreen.tsx'), 'utf8');
+const guests = readFileSync(join('src', 'components', 'GuestsHeading.tsx'), 'utf8');
 const settings = readFileSync(join('src', 'components', 'SettingsHome.tsx'), 'utf8');
 const demoFrame = readFileSync(join('src', 'demo', 'settings', 'Frame.tsx'), 'utf8');
 const demoMembers = readFileSync(join('src', 'demo', 'settings', 'MembersParts.tsx'), 'utf8');
@@ -70,7 +71,8 @@ describe('nothing under a page title draws larger than the title (sc-67338)', ()
   });
 
   it('caps an event area under the title its body draws', () => {
-    expect(event.match(/<BodyTitle\b/gu)).toHaveLength(2);
+    expect(event.match(/<BodyTitle\b/gu)).toHaveLength(1);
+    expect(guests.match(/<BodyTitle\b/gu)).toHaveLength(1);
   });
 });
 

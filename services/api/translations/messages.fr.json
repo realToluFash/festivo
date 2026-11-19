@@ -389,6 +389,6 @@
     "validation.vendor_category_required": "Choisissez la catégorie.",
     "validation.vendor_website_scheme": "Saisissez une adresse web qui commence par https:// ou http://, ou omettez cette partie.",
     "validation.vendor_phone_invalid": "Ce numéro de téléphone n’est pas valide dans ce pays : {country}. Vérifiez-le et réessayez.",
-    "vendors.archived_read_only": "This vendor is archived, so your changes were not saved. To edit it, restore it under Archived.",
+    "vendors.archived_read_only": "Ce prestataire est archivé : vos modifications n’ont pas été enregistrées. Pour le modifier, restaurez-le depuis Archivés.",
     "access.plan_required": "Disponible avec le forfait Enterprise. Pour modifier ce réglage, contactez Soirely au sujet du forfait Enterprise."
 }
