@@ -75,7 +75,7 @@ function Answered({ answer }: { answer: WhatIf }) {
       ) : (
         <p className="da-line">
           {t('decisionAnswer.upperOnly', {
-            total: money(answer.potential.to),
+            upper: money(answer.potential.to),
             settled: money(answer.confirmed.to),
           })}
         </p>

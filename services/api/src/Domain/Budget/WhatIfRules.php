@@ -51,7 +51,7 @@ final readonly class WhatIfRules
             $path = 'changes.' . $at;
 
             if (!\is_string($change) || !Iter\contains(self::CHANGES, $change)) {
-                $violations[] = $this->violation($path . '.change', 'validation.what_if_change_unknown', ['{change}' => \is_scalar($change) ? (string) $change : '']);
+                $violations[] = $this->violation($path . '.change', 'validation.what_if_change_unknown', ['change' => \is_scalar($change) ? (string) $change : '']);
 
                 continue;
             }
@@ -59,9 +59,9 @@ final readonly class WhatIfRules
             $whole = self::whole($by);
 
             if (null === $whole) {
-                $violations[] = $this->violation($path . '.by', 'validation.what_if_not_whole', ['{change}' => $change]);
+                $violations[] = $this->violation($path . '.by', 'validation.what_if_not_whole', ['change' => $change]);
             } elseif (Math\abs($whole) > self::MOST) {
-                $violations[] = $this->violation($path . '.by', 'validation.what_if_too_large', ['{change}' => $change, '{most}' => (string) self::MOST]);
+                $violations[] = $this->violation($path . '.by', 'validation.what_if_too_large', ['change' => $change, 'most' => self::MOST]);
             } elseif ('guests' === $change && $whole < 1) {
                 $violations[] = $this->violation($path . '.by', 'validation.what_if_guests_below_one');
             } else {
@@ -74,7 +74,7 @@ final readonly class WhatIfRules
 
         foreach ($totals as $change => $by) {
             if ($now[$change] + $by < 0) {
-                $violations[] = $this->violation(($firstAt[$change] ?? 'changes') . '.by', 'validation.what_if_below_zero', ['{change}' => $change, '{count}' => (string) $now[$change]]);
+                $violations[] = $this->violation(($firstAt[$change] ?? 'changes') . '.by', 'validation.what_if_below_zero', ['change' => $change, 'count' => $now[$change]]);
             }
         }
 
@@ -96,7 +96,7 @@ final readonly class WhatIfRules
     }
 
     /**
-     * @param array<string, string> $parameters
+     * @param array<string, int|string> $parameters
      *
      * @return array{propertyPath: string, message: string, code: string}
      */
