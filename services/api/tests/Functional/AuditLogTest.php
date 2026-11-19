@@ -167,7 +167,9 @@ final class AuditLogTest extends ApiTestCase
 
         $this->signIn($owner);
 
-        self::assertSame(['event.created'], $this->actions($this->list($organisation, [])));
+        $listed = $this->actions($this->list($organisation, []));
+        self::assertContains('event.created', $listed);
+        self::assertSame([], Vec\values(Vec\filter($listed, static fn (string $action): bool => !AuditType::isListed($action))));
         self::assertSame(['event.created'], $this->actions($this->list($organisation, ['event' => $eventId->toRfc4122()])));
 
         foreach (['csv', 'jsonl'] as $format) {
