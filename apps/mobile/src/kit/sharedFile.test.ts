@@ -27,6 +27,7 @@ vi.mock('expo-sharing', () => ({ shareAsync: share }));
 const { writeToShare } = await import('./sharedFile.ts');
 
 const bytes = new Uint8Array(new ArrayBuffer(1));
+const CSV = { mimeType: 'text/csv', UTI: 'public.comma-separated-values-text' };
 
 describe('writeToShare', () => {
   beforeEach(() => {
@@ -38,7 +39,7 @@ describe('writeToShare', () => {
     share.mockResolvedValue();
 
     await (
-      await writeToShare(bytes, 'guests.csv', 'csv')
+      await writeToShare(bytes, 'guests.csv', CSV)
     )();
 
     expect(disk).toMatchObject({ exists: false, deleted: 1 });
@@ -46,7 +47,7 @@ describe('writeToShare', () => {
 
   it('deletes the file when the share sheet fails', async () => {
     share.mockRejectedValue(new Error('no sheet'));
-    const hand = await writeToShare(bytes, 'guests.csv', 'csv');
+    const hand = await writeToShare(bytes, 'guests.csv', CSV);
 
     await expect(hand()).rejects.toThrow('no sheet');
     expect(disk).toMatchObject({ exists: false, deleted: 1 });
@@ -55,7 +56,7 @@ describe('writeToShare', () => {
   it('deletes the file when writing it fails', async () => {
     disk.writeFails = true;
 
-    await expect(writeToShare(bytes, 'guests.csv', 'csv')).rejects.toThrow('disk full');
+    await expect(writeToShare(bytes, 'guests.csv', CSV)).rejects.toThrow('disk full');
     expect(disk).toMatchObject({ exists: false, deleted: 1 });
     expect(share).not.toHaveBeenCalled();
   });

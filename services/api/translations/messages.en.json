@@ -412,6 +412,10 @@
     "access.plan_required": "Available on Enterprise. Contact Soirely about Enterprise to change this.",
     "email_domains.not_listed": "That domain is not on the list.",
     "email_domains.taken": "Another organisation has already proved this domain. Contact Soirely support if it is yours.",
+    "audit.export_too_many": "More than 1,000,000 entries match. Narrow the filters, then export again.",
+    "audit.export_expired": "This export's download has ended. You can export again.",
+    "audit.dates_backwards": "The start date must be on or before the end date.",
+    "audit.invalid_filter": "This filter is not one the audit log offers.",
     "email_domains.managed": "Your {domain} address is managed by {organisation}, so you can only be a member there.",
     "email_domains.only_ours_owner": "Only an owner can change this.",
     "email_domains.only_ours_unproved": "Only our organisation needs a domain this organisation has proved."

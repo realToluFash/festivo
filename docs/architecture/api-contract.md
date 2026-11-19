@@ -361,6 +361,31 @@ permission_required` on every route, and a change off Enterprise `403 plan_requi
   organisation's joining listing of the domain (`/domains` rows say `stopped`, and this
   organisation's own row `proved`); it never adds a listing.
 
+### Audit log (sc-611)
+
+An Owner or an Admin reads, filters and exports the organisation's log; a Member gets `403
+permission_required`, and an organisation off Enterprise `403 plan_required` on every route,
+reading included. Entries are recorded on every plan.
+
+- `GET /api/orgs/{id}/audit-log` with `person`, `type` (`events`, `event_access`, `members`,
+  `security`, `organisation`, `audit_log`), `event`, `from`, `to` (days in the caller's zone)
+  and `before` (the last page's `next`) answers `{organisation, zone, entries, next, people,
+events, preparing}`: 50 entries a page, newest first, from the last 365 days. Each entry
+  carries `at` (UTC), `day` (`YYYY-MM-DD`) and `time` (`HH:mm`) in the caller's zone, `who`
+  (`{kind: person|support|system, name, email}`), `what` in words, `on` (`{name, eventId,
+gone}`, `eventId` null once the event is gone), `changes`, `type`, `action` (sc-73's code),
+  and `address` and `device` on Sign-in and security entries only. A start after the end is
+  `422` on `to`, `dates_backwards`.
+- `POST …/audit-log/views` records the log being opened (`204`); the client sends it once per
+  opening, not per filter or page.
+- `POST …/audit-log/exports` with `{format: csv|jsonl}` and the filters: up to 10,000 entries
+  answer the file (`200`); up to 1,000,000 answer `202 {id, count, email}`, prepared after the
+  response and emailed (`audit_export_ready`) to the person who asked only; more is `422
+audit_export_too_many` before anything starts. Each export is an entry of its own.
+- `POST …/audit-log/exports/{exportId}/download` hands the prepared file to the person who
+  asked, signed in, for 24 hours from its being ready: `404` for anyone else, `410
+export_expired` after.
+
 ## Authentication
 
 A bearer access token on every request, renewed from a refresh token the client keeps.

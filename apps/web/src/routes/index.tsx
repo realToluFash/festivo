@@ -25,6 +25,7 @@ import {
 } from './app/events/EventView.tsx';
 import { Events } from './app/events/Events.tsx';
 import { NewEvent } from './app/events/NewEvent.tsx';
+import { AuditLog } from './app/settings/AuditLog.tsx';
 import { DataAndControl } from './app/settings/DataAndControl.tsx';
 import { EmailDomains } from './app/settings/EmailDomains.tsx';
 import { ExportAllData } from './app/settings/ExportAllData.tsx';
@@ -127,6 +128,7 @@ export const routes = [
               { path: 'settings/data-and-control', element: <DataAndControl /> },
               { path: 'settings/data-and-control/export', element: <ExportAllData /> },
               { path: 'settings/data-and-control/email-domains', element: <EmailDomains /> },
+              { path: 'settings/data-and-control/audit-log', element: <AuditLog /> },
             ],
           },
         ],

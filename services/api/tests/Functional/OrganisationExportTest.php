@@ -113,6 +113,7 @@ final class OrganisationExportTest extends ApiTestCase
         'apple_app_attempts' => "sign-in credentials (sc-611's rule)",
         'assistant_interactions' => "the assistant's interaction log",
         'audit_entries' => 'the audit log, which Settings > Audit log exports (sc-611)',
+        'audit_exports' => "Soirely's own records",
         'billing_accounts' => "billing: Soirely's own records, the terms it sells on (pm, 19 Nov)",
         'calendar_feeds' => 'a link that opens without signing in',
         'catalogue_versions' => "billing: Soirely's own records, the terms it sells on (pm, 19 Nov)",
