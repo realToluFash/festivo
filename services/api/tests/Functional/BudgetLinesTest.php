@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Tests\Functional;
 
+use App\Domain\Budget\BudgetEditor;
 use App\Domain\Budget\LineRules;
 use App\Domain\Budget\QuantityResolver;
 use App\Domain\Organisation\OrganisationFounder;
@@ -32,7 +33,9 @@ use Psl\Type;
 use Psl\Vec;
 use SensitiveParameter;
 use stdClass;
+use Symfony\Bundle\FrameworkBundle\Console\Application;
 use Symfony\Component\Clock\Test\ClockSensitiveTrait;
+use Symfony\Component\Console\Tester\CommandTester;
 use Symfony\Component\Uid\Uuid;
 use Symfony\Contracts\Translation\TranslatorInterface;
 
@@ -187,6 +190,100 @@ final class BudgetLinesTest extends ApiTestCase
         self::assertSame([], $this->budget());
     }
 
+    #[Test]
+    public function aRemovedLineAppearsInNoRouteReadOrFigure(): void
+    {
+        $this->guest('Ada Obi');
+        $kept = $this->add(self::CATERING);
+        $whatIf = ['changes' => [['change' => 'guests', 'by' => 2]]];
+        $read = $this->as($this->owner, 'GET', $this->read());
+        $asked = $this->as($this->owner, 'POST', $this->read() . '/what-if', $whatIf);
+        $removed = $this->add([...self::CATERING, 'label' => 'Canapés', 'rate' => '0']);
+        $staff = $this->add(self::STAFF);
+
+        $this->as($this->owner, 'DELETE', $this->lines($removed['id']));
+        $this->as($this->owner, 'DELETE', $this->lines($staff['id']));
+
+        self::assertSame([$kept['id']], Vec\map($this->budget(), static fn (array $one): string => $one['id']));
+        self::assertSame($read, $this->as($this->owner, 'GET', $this->read()));
+        self::assertSame($asked, $this->as($this->owner, 'POST', $this->read() . '/what-if', $whatIf));
+
+        foreach (['GET', 'PUT', 'DELETE'] as $method) {
+            $this->as($this->owner, $method, $this->lines($removed['id']), 'PUT' === $method ? self::CATERING : null);
+            self::assertSame(404, $this->statusCode(), $method);
+        }
+
+        $this->add([...self::STAFF, 'label' => 'More staff']);
+    }
+
+    #[Test]
+    public function undoPutsBackTheSameLineInItsPlaceWithEveryField(): void
+    {
+        $dinner = $this->add([...self::CATERING, 'label' => 'Dinner', 'note' => 'Three courses']);
+        $centrepieces = $this->add([...self::CATERING, 'label' => 'Centrepieces', 'rate' => '12.50']);
+        $topic = 'events/' . $this->eventId . '/budget';
+
+        $this->as($this->owner, 'DELETE', $this->lines($dinner['id']));
+        $back = $this->line($this->as($this->owner, 'DELETE', $this->removal($dinner['id'])));
+
+        self::assertSame(200, $this->statusCode());
+        self::assertSame($dinner, $back);
+        self::assertSame([$dinner, $centrepieces], $this->budget());
+        self::assertSame([$dinner['id'] => '48.00', $centrepieces['id'] => '12.50'], $this->published($topic));
+    }
+
+    #[Test]
+    public function aLineNotRemovedOrOnAnotherEventIsNotPutBack(): void
+    {
+        $line = $this->add(self::CATERING);
+
+        foreach ([$line['id'], Uuid::v7()->toRfc4122(), 'not-an-id'] as $id) {
+            $this->as($this->owner, 'DELETE', $this->removal($id));
+            self::assertSame(404, $this->statusCode(), $id);
+        }
+
+        $this->as($this->owner, 'DELETE', $this->lines($line['id']));
+        $this->eventId = $this->newEvent('GBP');
+        $this->as($this->owner, 'DELETE', $this->removal($line['id']));
+        self::assertSame(404, $this->statusCode());
+    }
+
+    #[Test]
+    public function aRemovedStaffTimeLineIsNotPutBackOnceAnotherHoldsTheBasis(): void
+    {
+        $old = $this->add(self::STAFF);
+        $this->as($this->owner, 'DELETE', $this->lines($old['id']));
+        $new = $this->add([...self::STAFF, 'label' => 'More staff']);
+
+        $this->as($this->owner, 'DELETE', $this->removal($old['id']));
+
+        self::assertSame(422, $this->statusCode());
+        self::assertNotNull($this->violation('basis'));
+        self::assertSame([$new['id']], Vec\map($this->budget(), static fn (array $one): string => $one['id']));
+    }
+
+    #[Test]
+    public function aLineNobodyPutBackIsErasedADayAfterItsRemoval(): void
+    {
+        $lapsed = $this->add(self::CATERING);
+        $this->as($this->owner, 'DELETE', $this->lines($lapsed['id']));
+        self::mockTime(new DateTimeImmutable('2027-03-01T12:00:00Z'));
+        $recent = $this->add([...self::VENUE, 'amount' => '650']);
+        $this->as($this->owner, 'DELETE', $this->lines($recent['id']));
+        self::mockTime(new DateTimeImmutable('2027-03-02T10:00:00Z'));
+
+        $tester = new CommandTester(new Application(self::$kernel ?? self::fail('no kernel'))->find('app:erase-removed-budget-lines'));
+        $tester->execute([]);
+        $tester->assertCommandIsSuccessful();
+
+        self::assertSame("Erased 1 removed budget lines.\n", $tester->getDisplay());
+        self::assertSame([$recent['id']], Type\vec(Type\string())->coerce(self::em()->getConnection()->fetchFirstColumn('SELECT id FROM budget_lines')));
+        $this->as($this->owner, 'DELETE', $this->removal($lapsed['id']));
+        self::assertSame(404, $this->statusCode());
+        $this->as($this->owner, 'DELETE', $this->removal($recent['id']));
+        self::assertSame(200, $this->statusCode());
+    }
+
     /** @return iterable<string, array{array<string, mixed>, string, string, array<string, string>}> */
     public static function refused(): iterable
     {
@@ -312,7 +409,7 @@ final class BudgetLinesTest extends ApiTestCase
     }
 
     #[Test]
-    public function anyLineHoldsTheEventsCurrencyUntilTheLastIsRemoved(): void
+    public function anyLineHoldsTheEventsCurrencyUntilTheLastIsErased(): void
     {
         $line = $this->add([...self::CATERING, 'rate' => '0']);
 
@@ -321,6 +418,10 @@ final class BudgetLinesTest extends ApiTestCase
         self::assertSame('GBP', $this->as($this->owner, 'GET', $this->lines())['currency'] ?? null);
 
         $this->as($this->owner, 'DELETE', $this->lines($line['id']));
+        self::assertSame(409, $this->changeCurrency('EUR'));
+
+        self::mockTime(new DateTimeImmutable('2027-03-02T10:00:00Z'));
+        self::service(BudgetEditor::class)->eraseLapsed();
         self::assertSame(200, $this->changeCurrency('EUR'));
     }
 
@@ -406,6 +507,7 @@ final class BudgetLinesTest extends ApiTestCase
             ['POST', $this->lines(), self::CATERING],
             ['PUT', $this->lines($line['id']), self::CATERING],
             ['DELETE', $this->lines($line['id']), null],
+            ['DELETE', $this->removal($line['id']), null],
             ['POST', $this->subscriptions(), null],
         ] as [$method, $path, $body]) {
             $this->as($member, $method, $path, $body);
@@ -552,6 +654,16 @@ final class BudgetLinesTest extends ApiTestCase
     private function lines(?string $id = null): string
     {
         return '/api/events/' . $this->eventId . '/budget/lines' . (null === $id ? '' : '/' . $id);
+    }
+
+    private function removal(string $id): string
+    {
+        return $this->lines($id) . '/removal';
+    }
+
+    private function read(): string
+    {
+        return '/api/events/' . $this->eventId . '/budget';
     }
 
     private function subscriptions(): string

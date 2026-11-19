@@ -70,6 +70,7 @@ final readonly class BudgetLinesController
         return new JsonResponse(['line' => $this->budgetSerialiser->one($changed)]);
     }
 
+    /** Off the budget and every figure at once, kept a day for `removal`'s Undo. */
     #[Route('/api/events/{eventId}/budget/lines/{lineId}', name: 'budget_lines_remove', methods: ['DELETE'])]
     #[InEvent(Permission::BudgetManage)]
     public function remove(#[InThisEvent('lineId')] BudgetLine $line): Response
@@ -77,6 +78,16 @@ final readonly class BudgetLinesController
         $this->budgetEditor->remove($line, $this->user());
 
         return new Response(null, Response::HTTP_NO_CONTENT);
+    }
+
+    /** Undo: the removed line back as it was. 404 once erased, as for a line never on this event. */
+    #[Route('/api/events/{eventId}/budget/lines/{lineId}/removal', name: 'budget_lines_put_back', methods: ['DELETE'])]
+    #[InEvent(Permission::BudgetManage)]
+    public function putBack(string $eventId, string $lineId): JsonResponse
+    {
+        $line = $this->budgetEditor->putBack($this->event($eventId), $lineId, $this->user());
+
+        return new JsonResponse(['line' => $this->budgetSerialiser->one($line)]);
     }
 
     /** A hub token for this event's budget; every change publishes all its lines there. */

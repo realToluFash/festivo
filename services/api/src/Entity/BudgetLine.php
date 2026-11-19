@@ -7,6 +7,7 @@ namespace App\Entity;
 use App\Doctrine\Traits\Timestampable;
 use App\Enum\CostBasis;
 use App\Enum\CostCategory;
+use DateTimeImmutable;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Uid\Uuid;
@@ -16,7 +17,7 @@ use Symfony\Component\Uid\Uuid;
 #[ORM\HasLifecycleCallbacks]
 #[ORM\Table(name: 'budget_lines')]
 #[ORM\Index(name: 'idx_budget_line_event', columns: ['event_id'])]
-#[ORM\UniqueConstraint(name: 'uniq_budget_staff_line', columns: ['event_id'], options: ['where' => "((basis)::text = 'per_staff_hour'::text)"])]
+#[ORM\UniqueConstraint(name: 'uniq_budget_staff_line', columns: ['event_id'], options: ['where' => "(((basis)::text = 'per_staff_hour'::text) AND (removed_at IS NULL))"])]
 class BudgetLine
 {
     use Timestampable;
@@ -48,6 +49,10 @@ class BudgetLine
 
     #[ORM\Column(type: Types::TEXT, nullable: true)]
     private ?string $note;
+
+    /** Removed and waiting for its Undo (sc-85, decided 19 Nov): in no figure and no read, until BudgetEditor erases it a day after. */
+    #[ORM\Column(type: Types::DATETIME_IMMUTABLE, nullable: true)]
+    private ?DateTimeImmutable $removedAt = null;
 
     public function __construct(Event $event, string $label, CostCategory $category, CostBasis $basis, ?int $priceMinor, ?string $note)
     {
@@ -118,5 +123,25 @@ class BudgetLine
     public function setNote(?string $note): void
     {
         $this->note = $note;
+    }
+
+    public function isRemoved(): bool
+    {
+        return null !== $this->removedAt;
+    }
+
+    public function getRemovedAt(): ?DateTimeImmutable
+    {
+        return $this->removedAt;
+    }
+
+    public function remove(DateTimeImmutable $at): void
+    {
+        $this->removedAt = $at;
+    }
+
+    public function putBack(): void
+    {
+        $this->removedAt = null;
     }
 }

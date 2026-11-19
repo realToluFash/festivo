@@ -315,7 +315,7 @@ final readonly class OrganisationArchive
                    CASE WHEN b.price_minor IS NOT NULL THEN ev.currency END AS price_currency, b.note, b.created_at, b.updated_at
               FROM budget_lines b
               JOIN events ev ON ev.id = b.event_id
-             WHERE ev.organisation_id = :organisation AND ev.deleted_at IS NULL
+             WHERE ev.organisation_id = :organisation AND ev.deleted_at IS NULL AND b.removed_at IS NULL
              ORDER BY ev.starts_at_utc, b.event_id, b.id
             SQL,
     ];
