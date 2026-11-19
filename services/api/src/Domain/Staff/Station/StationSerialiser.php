@@ -50,7 +50,7 @@ final readonly class StationSerialiser
 
         $tables = $this->tables($event);
         $people = static fn (StaffStation $station): array => Vec\map(
-            Vec\filter($staff, static fn (StaffMember $person): bool => $person->getStation() === $station),
+            Vec\filter($staff, static fn (StaffMember $person): bool => $person->getStation() === $station || $person->getAsWellStation() === $station),
             static fn (StaffMember $person): string => $person->getId()->toRfc4122(),
         );
         $floorLead = null;

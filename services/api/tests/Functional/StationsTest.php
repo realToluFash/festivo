@@ -179,6 +179,8 @@ final class StationsTest extends ApiTestCase
         $entry = $this->staffEntry($grace);
         self::assertSame(['Door'], [$entry['station']['name'] ?? null]);
         self::assertSame(['Door', 'Bar'], Vec\map($entry['stations'], static fn (mixed $one): mixed => Type\shape(['name' => Type\string()], true)->coerce($one)['name']));
+        self::assertSame([$grace], $this->placeRow('Bar')['people']);
+        self::assertSame([$grace], $this->placeRow('Door')['people']);
 
         $this->as($this->owner, 'DELETE', $this->path('places/' . $bar));
         self::assertSame(['Door'], Vec\map($this->staffEntry($grace)['stations'], static fn (mixed $one): mixed => Type\shape(['name' => Type\string()], true)->coerce($one)['name']));
