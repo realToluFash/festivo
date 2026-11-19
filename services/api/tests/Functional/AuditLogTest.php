@@ -5,21 +5,25 @@ declare(strict_types=1);
 namespace App\Tests\Functional;
 
 use App\Audit\Auditor;
+use App\Domain\Organisation\AuditLog\AuditExports;
 use App\Domain\Organisation\Members\MembershipMachine;
 use App\Domain\Organisation\OrganisationFounder;
 use App\Domain\Organisation\Plan\PlanChanger;
 use App\Domain\User\UserRegistrar;
 use App\Entity\AuditEntry;
+use App\Entity\AuditExport;
 use App\Entity\Organisation;
 use App\Entity\Role;
 use App\Entity\User;
 use App\Enum\Actor;
+use App\Enum\AuditExportStatus;
 use App\Enum\AuditType;
 use App\Enum\ErrorCode;
 use App\Enum\MembershipChannel;
 use App\Enum\MembershipStatus;
 use App\Enum\Plan;
 use App\Enum\SeededRole;
+use App\Repository\AuditFilter;
 use App\Tests\ApiTestCase;
 use App\Tests\Traits\OnboardsAccounts;
 use DateTimeImmutable;
@@ -161,13 +165,21 @@ final class AuditLogTest extends ApiTestCase
         $eventId = Uuid::v7();
         $this->entry($organisation, 'event.created', $owner, '-2 hours', $eventId, 'Ada\'s Wedding');
 
+        $planner = $this->member('tobi@ire.events', 'Tobi Planner');
+        $seatingOnly = Uuid::v7();
+
         foreach (['guests.marked_invited', 'guest.removed', 'run_of_show.item_skipped', 'staff.contacts_erased', 'stations.walk_ordered', 'budget_line.added', 'seating.table_added', 'dish.added'] as $action) {
             $this->entry($organisation, $action, $owner, '-1 hour', $eventId, 'Ada\'s Wedding');
+            $this->entry($organisation, $action, $planner, '-1 hour', $seatingOnly, 'Bola\'s Birthday');
         }
 
         $this->signIn($owner);
 
-        $listed = $this->actions($this->list($organisation, []));
+        $body = $this->list($organisation, []);
+        self::assertSame([$owner->getId()->toRfc4122()], Vec\map(Type\vec(Type\shape(['id' => Type\string()], true))->coerce($body['people']), static fn (array $person): string => $person['id']));
+        self::assertSame([$eventId->toRfc4122()], Vec\map(Type\vec(Type\shape(['id' => Type\string()], true))->coerce($body['events']), static fn (array $event): string => $event['id']));
+
+        $listed = $this->actions($body);
         self::assertContains('event.created', $listed);
         self::assertSame([], Vec\values(Vec\filter($listed, static fn (string $action): bool => !AuditType::isListed($action))));
         self::assertSame(['event.created'], $this->actions($this->list($organisation, ['event' => $eventId->toRfc4122()])));
@@ -233,7 +245,7 @@ final class AuditLogTest extends ApiTestCase
         $this->signIn($owner);
         $this->client->request('POST', $this->path($organisation, 'exports/' . $answered['id'] . '/download'));
         self::assertResponseStatusCodeSame(200);
-        self::assertSame(10_001, Iter\count(Str\split(Str\trim((string) $this->client->getResponse()->getContent()), "\n")));
+        self::assertSame(10_001, Iter\count(Str\split(Str\trim($this->client->getInternalResponse()->getContent()), "\n")));
 
         $admin = $this->member('julien@ire.events', 'Julien Moreau');
         $this->join($organisation, $admin, SeededRole::Admin);
@@ -244,6 +256,18 @@ final class AuditLogTest extends ApiTestCase
         $exported = Vec\filter($this->entries($organisation), static fn (AuditEntry $entry): bool => AuditType::EXPORTED === $entry->getAction());
         self::assertCount(2, $exported);
         self::assertSame([null, 10_001], Iter\last($exported)?->getChanges()['rows']);
+    }
+
+    #[Test]
+    public function aPreparedExportsMemoryDoesNotGrowWithItsRows(): void
+    {
+        [$owner, $organisation] = $this->enterprise('folake@ire.events', 'Ìrè Events');
+        $this->bulk($organisation, $owner, 1_000, 'a long note ' . Str\repeat('x', 2_000));
+        $small = $this->preparedPeak($organisation, $owner);
+        $this->bulk($organisation, $owner, 14_000, 'a long note ' . Str\repeat('x', 2_000));
+        $large = $this->preparedPeak($organisation, $owner);
+
+        self::assertLessThan(4 * 1024 * 1024, $large - $small, 'a file some 30 MB larger, and no more than 4 MB more memory at the peak');
     }
 
     #[Test]
@@ -328,13 +352,34 @@ final class AuditLogTest extends ApiTestCase
         $entityManager->flush();
     }
 
-    private function bulk(Organisation $organisation, User $by, int $count): void
+    private function bulk(Organisation $organisation, User $by, int $count, ?string $note = null): void
     {
         self::service(EntityManagerInterface::class)->getConnection()->executeStatement(<<<'SQL'
             INSERT INTO audit_entries (id, occurred_at, actor_type, actor_id, actor_label, subject_type, subject_id, action, changes, organisation_id, target)
-            SELECT gen_random_uuid(), NOW() - (n || ' seconds')::interval - INTERVAL '1 hour', 'user', :actor, :label, 'Organisation', :organisation, 'event.updated', '{}', :organisation, 'Bulk'
+            SELECT gen_random_uuid(), NOW() - (n || ' seconds')::interval - INTERVAL '1 hour', 'user', :actor, :label, 'Organisation', :organisation, 'event.updated',
+                   CASE WHEN CAST(:note AS text) IS NULL THEN '{}'::jsonb ELSE jsonb_build_object('note', jsonb_build_array(NULL, CAST(:note AS text))) END, :organisation, 'Bulk'
             FROM   generate_series(1, :count) AS n
-            SQL, ['actor' => $by->getId()->toRfc4122(), 'label' => $by->getName(), 'organisation' => $organisation->getId()->toRfc4122(), 'count' => $count]);
+            SQL, ['actor' => $by->getId()->toRfc4122(), 'label' => $by->getName(), 'organisation' => $organisation->getId()->toRfc4122(), 'count' => $count, 'note' => $note]);
+    }
+
+    private function preparedPeak(Organisation $organisation, User $by): int
+    {
+        $entityManager = self::service(EntityManagerInterface::class);
+        $organisation = $entityManager->find(Organisation::class, $organisation->getId()) ?? self::fail('gone');
+        $by = $entityManager->find(User::class, $by->getId()) ?? self::fail('gone');
+        $export = new AuditExport($organisation, $by, new DateTimeImmutable(), 'csv', [], 0, 'en');
+        $entityManager->persist($export);
+        $entityManager->flush();
+
+        \gc_collect_cycles();
+        $before = \memory_get_usage();
+        \memory_reset_peak_usage();
+        self::service(AuditExports::class)->prepare($export, new AuditFilter($organisation->getId(), new DateTimeImmutable('-1 year')));
+        $peak = \memory_get_peak_usage() - $before;
+
+        self::assertSame(AuditExportStatus::Ready, $export->getStatus());
+
+        return $peak;
     }
 
     private function listedCount(Organisation $organisation): int

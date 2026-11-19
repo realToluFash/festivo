@@ -37,10 +37,12 @@ use Psl\Str;
 use Psl\Type;
 use Psl\Vec;
 use Psr\Clock\ClockInterface;
+use RuntimeException;
 use Symfony\Bundle\SecurityBundle\Security;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Uid\Uuid;
 
@@ -146,18 +148,37 @@ final readonly class AuditLogController
         $organisation = $this->organisation($organisationId);
         $export = $this->auditExports->download($organisation, $exportId, $this->user());
 
-        return $this->file($this->auditExports->bytes($export), $export->getFormat(), $organisation);
+        $chunks = $this->auditExports->chunks($export);
+        $response = new StreamedResponse(static function () use ($chunks): void {
+            $output = \fopen('php://output', 'wb') ?: throw new RuntimeException('No output for the audit log export.');
+
+            foreach ($chunks as $chunk) {
+                \fwrite($output, $chunk);
+                \flush();
+            }
+
+            \fclose($output);
+        });
+        $response->headers->add($this->fileHeaders($export->getFormat(), $organisation));
+
+        return $response;
     }
 
     private function file(string $bytes, string $format, Organisation $organisation): Response
     {
+        return new Response($bytes, Response::HTTP_OK, $this->fileHeaders($format, $organisation));
+    }
+
+    /** @return array<string, string> */
+    private function fileHeaders(string $format, Organisation $organisation): array
+    {
         $name = Str\format('%s audit log %s.%s', Str\replace_every($organisation->getName(), ['/' => '-', '\\' => '-', '"' => '']), $this->clock->now()->format('Y-m-d'), $format);
 
-        return new Response($bytes, Response::HTTP_OK, [
+        return [
             'Content-Type' => AuditExports::contentType($format),
             'Content-Disposition' => Str\format('attachment; filename="audit-log.%s"; filename*=UTF-8\'\'%s', $format, \rawurlencode($name)),
             'Cache-Control' => 'no-store',
-        ]);
+        ];
     }
 
     /** @param array<string, string> $asked person, type, event, from, to and before; the dates are days in the reader's zone */

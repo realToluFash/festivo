@@ -95,7 +95,15 @@ final readonly class AuditExports
     {
         try {
             $key = Str\format('audit-exports/%s/%s.%s', $export->getOrganisation()->getId()->toRfc4122(), $export->getId()->toRfc4122(), $export->getFormat());
-            $this->objectStore->keep($key, $this->file($filter, $export->getFormat(), $export->getLocale()), self::contentType($export->getFormat()));
+            $file = \tmpfile() ?: throw new RuntimeException('No temporary file for the audit log export.');
+
+            try {
+                $this->write($file, $filter, $export->getFormat(), $export->getLocale());
+                \rewind($file);
+                $this->objectStore->keepFile($key, $file, self::contentType($export->getFormat()));
+            } finally {
+                \fclose($file);
+            }
         } catch (Throwable $e) {
             $this->logger->error('An audit log export failed to prepare.', ['export' => $export->getId()->toRfc4122(), 'exception' => $e::class]);
             $export->setStatus(AuditExportStatus::Failed);
@@ -138,9 +146,10 @@ final readonly class AuditExports
         return $export;
     }
 
-    public function bytes(AuditExport $export): string
+    /** @return iterable<string> */
+    public function chunks(AuditExport $export): iterable
     {
-        return $this->objectStore->readKept($export->getFileKey() ?? throw new RuntimeException('The export has no file.'));
+        return $this->objectStore->streamKept($export->getFileKey() ?? throw new RuntimeException('The export has no file.'));
     }
 
     /** @param array<string, string> $filters */
@@ -156,6 +165,17 @@ final readonly class AuditExports
     private function file(AuditFilter $filter, string $format, string $locale): string
     {
         $stream = \fopen('php://temp', 'r+') ?: throw new RuntimeException('No memory stream for the audit log export.');
+        $this->write($stream, $filter, $format, $locale);
+        \rewind($stream);
+        $written = \stream_get_contents($stream);
+        \fclose($stream);
+
+        return false === $written ? '' : $written;
+    }
+
+    /** @param resource $stream */
+    private function write($stream, AuditFilter $filter, string $format, string $locale): void
+    {
         $columns = AuditEntryView::columns();
 
         if ('csv' === $format) {
@@ -183,11 +203,5 @@ final readonly class AuditExports
                 $this->entityManager->detach($entry);
             }
         } while (self::BATCH === Iter\count($entries));
-
-        \rewind($stream);
-        $written = \stream_get_contents($stream);
-        \fclose($stream);
-
-        return false === $written ? '' : $written;
     }
 }
