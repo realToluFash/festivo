@@ -3,6 +3,8 @@ import { describe, expect, it } from 'vitest';
 import {
   LINK_STATES,
   NOW,
+  PERSON,
+  SAMPLE_LINK,
   YOU,
   W,
   askReplace,
@@ -46,12 +48,23 @@ describe('one person’s link in the app (sc-3912)', () => {
     expect(offersMarkSent(s)).toBe(true);
   });
 
-  it('still records a copy the clipboard refused, without saying Link copied.', () => {
-    const s = copyRefused(pressed(seed('none'), 'copy'));
+  it('records a copy the clipboard refused and holds the link in a field, as the AC says', () => {
+    const s = copyRefused(pressed(seed('none'), 'copy'), SAMPLE_LINK);
     expect(s.status).toBe('copied');
     expect(s.busy).toBeNull();
-    expect(s.say).not.toBe(W.copied);
+    expect(s.failed).toBe(false);
+    expect(s.held).toBe(SAMPLE_LINK);
+    expect(s.say).toBe('The link could not be copied. Copy it from the link field.');
+    expect(W.linkFor(PERSON.name)).toBe('Link for Ada Obi');
     expect(offersMarkSent(s)).toBe(true);
+  });
+
+  it('lets the held link go once it is marked as sent, replaced or pressed again', () => {
+    const s = seed('refused');
+    expect(s.held).toBe(SAMPLE_LINK);
+    expect(markSent(s).held).toBeNull();
+    expect(replace(s).held).toBeNull();
+    expect(pressed(s, 'copy').held).toBeNull();
   });
 
   it('opens Replace link with an ellipsis, since it asks first', () => {

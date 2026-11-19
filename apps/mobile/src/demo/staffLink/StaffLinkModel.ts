@@ -22,6 +22,8 @@ export const W = {
   didYouSendLine: 'The share sheet cannot tell whether it went.',
   copied: 'Link copied.',
   notIssued: 'That did not work. Try again in a moment.',
+  refused: 'The link could not be copied. Copy it from the link field.',
+  linkFor: (name: string) => `Link for ${name}`,
   replaced: (first: string) => `[${first}’s link is replaced. Share link gives them a new one.]`,
   marked: (first: string) => `[Marked as sent to ${first}.]`,
   help: 'It opens their own shift, from 12 hours before it starts.',
@@ -48,8 +50,12 @@ export interface LinkState {
   replacing: boolean;
   busy: 'share' | 'copy' | null;
   failed: boolean;
+  /** The link the clipboard refused, shown in a read-only field to copy by hand. */
+  held: string | null;
   /** The demo's switch: no link is issued, as with no connection or a server error. */
   issueFails: boolean;
+  /** The demo's switch: the link is issued but the clipboard refuses it. */
+  clipFails: boolean;
   toast: string;
   say: string;
 }
@@ -76,7 +82,7 @@ function delivered(s: LinkState, as: 'shared' | 'copied'): Pick<LinkState, 'stat
 export function pressed(s: LinkState, what: 'share' | 'copy'): LinkState {
   if (s.busy != null) return s;
 
-  return { ...s, busy: what, failed: false, asking: false, say: '', toast: '' };
+  return { ...s, busy: what, failed: false, held: null, asking: false, say: '', toast: '' };
 }
 
 /** No link issued: nothing shared, copied or recorded, and the row keeps its status. */
@@ -88,9 +94,9 @@ export function copiedNow(s: LinkState): LinkState {
   return { ...s, ...delivered(s, 'copied'), busy: null, toast: W.copied, say: W.copied };
 }
 
-/** Issued but the clipboard refused it: the copy is still recorded, as on the web, and nothing says Link copied. */
-export function copyRefused(s: LinkState): LinkState {
-  return { ...s, ...delivered(s, 'copied'), busy: null, failed: true, say: W.notIssued };
+/** Issued but the clipboard refused it: the copy is still recorded, as on the web, and the link waits in a field to copy by hand. */
+export function copyRefused(s: LinkState, url: string): LinkState {
+  return { ...s, ...delivered(s, 'copied'), busy: null, held: url, say: W.refused };
 }
 
 /** Back from the share sheet: it says nothing about whether it went, so Mark as sent is asked. */
@@ -108,6 +114,7 @@ export function markSent(s: LinkState): LinkState {
     status: 'sent',
     trail: mine(),
     asking: false,
+    held: null,
     toast: W.marked(PERSON.first),
     say: W.marked(PERSON.first),
   };
@@ -132,6 +139,7 @@ export function replace(s: LinkState): LinkState {
     asking: false,
     replacing: false,
     failed: false,
+    held: null,
     toast,
     say: toast,
   };
@@ -153,6 +161,7 @@ export const LINK_STATES = [
   'sent',
   'opened',
   'notIssued',
+  'refused',
   'replaceAsk',
   'replaced',
 ] as const;
@@ -170,7 +179,9 @@ const fresh = (): LinkState => ({
   replacing: false,
   busy: null,
   failed: false,
+  held: null,
   issueFails: false,
+  clipFails: false,
   toast: '',
   say: '',
 });
@@ -191,6 +202,8 @@ export function seed(name: LinkStateName): LinkState {
       return opened;
     case 'notIssued':
       return { ...notIssued(s), issueFails: true, say: '' };
+    case 'refused':
+      return { ...copyRefused(s, SAMPLE_LINK), clipFails: true, say: '' };
     case 'replaceAsk':
       return askReplace(opened, true);
     case 'replaced':

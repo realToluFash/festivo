@@ -8,6 +8,10 @@ const LEAD: Record<LinkStateName, readonly [string, string]> = {
   sent: ['Link sent', 'Marked as sent by Amara Nwosu · 18:44'],
   opened: ['Link opened', 'Opened 19:05; Replace link offered'],
   notIssued: ['No link issued', 'That did not work. Try again in a moment. The status kept'],
+  refused: [
+    'Copy link, the clipboard refused',
+    'The link in a read-only field to copy by hand; Copied kept',
+  ],
   replaceAsk: ['Replace link, the question', 'A bottom sheet on a phone, docked on its side'],
   replaced: ['Replace link, replaced', 'Back to No link yet; the next Share gives a new one'],
 };

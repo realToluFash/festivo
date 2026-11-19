@@ -11,6 +11,7 @@ import {
   SecondaryButton,
 } from '../../components/Buttons.tsx';
 import { Spinner } from '../../components/CalendarControls.tsx';
+import { Field, TextField } from '../../components/Field.tsx';
 import { Glyph } from '../../components/Glyph.tsx';
 import { readOut } from '../../components/ReadOut.tsx';
 import { Sheet, SheetActions } from '../../components/Sheet.tsx';
@@ -104,11 +105,13 @@ function StaffLink({ start }: { start: ReturnType<typeof linkStateOf> }) {
       apply(notIssued(busy));
       return;
     }
-    const held = await setStringAsync(url).then(
-      () => false,
-      () => true,
-    );
-    apply(held ? copyRefused(busy) : copiedNow(busy));
+    const refused =
+      s.clipFails ||
+      (await setStringAsync(url).then(
+        () => false,
+        () => true,
+      ));
+    apply(refused ? copyRefused(busy, url) : copiedNow(busy));
   }
 
   const person = (
@@ -152,6 +155,25 @@ function StaffLink({ start }: { start: ReturnType<typeof linkStateOf> }) {
           <Text size={16} weight="semibold" style={styles.broken}>
             {W.notIssued}
           </Text>
+        </View>
+      )}
+      {s.held != null && (
+        <View style={styles.held} testID="staffLink.held">
+          <View style={styles.failed} accessibilityRole="alert">
+            <Glyph name="alert" size={18} ink={tokens.colorBrokenText} />
+            <Text size={16} weight="semibold" style={styles.broken}>
+              {W.refused}
+            </Text>
+          </View>
+          <Field label={W.linkFor(PERSON.name)}>
+            <TextField
+              value={s.held}
+              accessibilityLabel={W.linkFor(PERSON.name)}
+              submitting
+              selectTextOnFocus
+              testID="staffLink.held.field"
+            />
+          </Field>
         </View>
       )}
       {s.asking && (
@@ -260,6 +282,11 @@ function StaffLink({ start }: { start: ReturnType<typeof linkStateOf> }) {
               label={s.issueFails ? 'No link is issued · on' : 'No link is issued (no connection)'}
               onPress={() => setS({ ...s, issueFails: !s.issueFails })}
               testID="staffLink.demo.fails"
+            />
+            <SecondaryButton
+              label={s.clipFails ? 'The clipboard refuses · on' : 'The clipboard refuses the copy'}
+              onPress={() => setS({ ...s, clipFails: !s.clipFails })}
+              testID="staffLink.demo.clipFails"
             />
             <SecondaryButton
               label="Ada opens the link"
@@ -382,6 +409,7 @@ const styles = StyleSheet.create({
     left: tokens.spaceLg,
     justifyContent: 'center',
   },
+  held: { gap: tokens.spaceSm },
   failed: { flexDirection: 'row', alignItems: 'flex-start', gap: tokens.spaceSm },
   ask: {
     gap: tokens.spaceSm,
