@@ -403,7 +403,7 @@ export function GuestsTitle({
   const [room, setRoom] = useState(0);
   const [extraWidth, setExtraWidth] = useState(0);
   const [titleWidth, setTitleWidth] = useState(0);
-  // The title steps down from its slot's width rather than from a wrap it must first see; beside Export on Android it drew at its start and broke (sc-68417).
+  // The title steps down from its slot's width rather than from a wrap it must first see.
   const [slot, setSlot] = useState(0);
   const { fontScale } = useWindowDimensions();
   const pageDrawn = usePageTitleDrawn();
