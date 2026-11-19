@@ -363,6 +363,10 @@
   .js-shift-top .js-job-acts {
     margin-left: 0;
   }
+
+  .js-when-pair {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }
 
 .sn-tabs {
