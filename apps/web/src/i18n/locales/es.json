@@ -5230,7 +5230,7 @@
   "decisionAnswer": {
     "head": "Lo que costaría añadirlos",
     "rise": "+{{amount}} si vienen todos",
-    "upperOnly": "Solo sube la cifra máxima, que pasa a {{upper}}. Los nuevos invitados aún no han respondido, así que la cifra confirmada sigue en {{settled}}.",
+    "upperOnly": "Si vienen todos, sería {{upper}}. La cifra confirmada sigue en {{settled}}, porque los nuevos invitados aún no han respondido.",
     "moved": "{{from}} → {{to}} · {{headsFrom, number}} → {{headsTo, number}} si vienen todos",
     "plus": "+{{amount}}",
     "notKnown": "Desconocido",

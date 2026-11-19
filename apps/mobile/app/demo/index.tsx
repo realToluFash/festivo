@@ -2523,6 +2523,16 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
         href: '/demo/organisation?region=none',
       },
       {
+        title: 'Your organisation · managed, nothing to join',
+        what: 'The banner where the fields were; Continue, no organisation',
+        href: '/demo/organisation?state=managed',
+      },
+      {
+        title: 'Your organisation · managed, Ire Events listed',
+        what: 'Ask to join, and the banner for Start my own',
+        href: '/demo/organisation?state=managedOffer',
+      },
+      {
         title: 'Your mobile number · no code',
         what: 'The device names none: Choose a country.',
         href: '/demo/mobile?region=none',

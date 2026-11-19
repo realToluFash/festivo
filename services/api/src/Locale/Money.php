@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Locale;
 
+use BcMath\Number;
 use NumberFormatter;
 use Psl\Math;
 use Psl\Regex;
@@ -45,17 +46,12 @@ final readonly class Money
         return Type\uint()->coerce(new NumberFormatter('en@currency=' . $currency, NumberFormatter::CURRENCY)->getAttribute(NumberFormatter::FRACTION_DIGITS));
     }
 
-    public static function written(int $minor, string $currency): string
+    /** Exact at any size, in plain digits: a budget's sums run past what an int holds (sc-71226). */
+    public static function written(int|Number $minor, string $currency): string
     {
         $digits = self::minorDigits($currency);
 
-        if (0 === $digits) {
-            return (string) $minor;
-        }
-
-        $scale = (int) Math\round(10 ** $digits);
-
-        return Str\format('%d.%s', Math\div($minor, $scale), Str\pad_left((string) ($minor % $scale), $digits, '0'));
+        return (string) ($minor instanceof Number ? $minor : new Number($minor))->div((int) Math\round(10 ** $digits), $digits);
     }
 
     /** "12.50" in the reader's locale (CLDR), at the currency's minor unit, for a refusal to show. */
