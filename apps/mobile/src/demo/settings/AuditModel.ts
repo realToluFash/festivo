@@ -5,6 +5,8 @@ import {
   AUDIT_PEOPLE,
   AUDIT_TYPES,
   ENTRIES,
+  TYPE_WORDS,
+  type TypeLang,
 } from './AuditSample.ts';
 import { type DataSay, type DataZone, NOW, plusDays, ZONE } from './DataSample.ts';
 import { AUDIT_WORDS as A } from './DataWords.ts';
@@ -14,6 +16,9 @@ export const AUDIT_STATES = [
   'list',
   'filter_person',
   'filter_type',
+  'filter_type_es',
+  'filter_type_fr',
+  'filter_type_pt',
   'filter_event',
   'dates',
   'date_invalid',
@@ -24,6 +29,11 @@ export const AUDIT_STATES = [
   'detail_signin',
   'detail_old',
   'detail_system',
+  'detail_guest_removed',
+  'detail_guest_gone',
+  'detail_skipped',
+  'detail_section',
+  'detail_dish',
   'export',
   'export_small',
   'export_preparing',
@@ -78,6 +88,8 @@ export interface AuditStart {
   preparing: boolean;
   toast: string | null;
   scale: Scale;
+  /** The language the types are named in; the rest of the demo is English. */
+  lang: TypeLang;
 }
 
 export const SAMPLE_RANGE: Range = { from: '2026-10-01', to: '2026-10-19' };
@@ -94,6 +106,7 @@ export function auditStart(state: AuditState): AuditStart {
     preparing: false,
     toast: null,
     scale: 'small',
+    lang: 'en',
   };
   const detail = (id: string) => ({ ...base, open: id });
 
@@ -109,6 +122,12 @@ export function auditStart(state: AuditState): AuditStart {
       return { ...base, menu: 'person' };
     case 'filter_type':
       return { ...base, menu: 'type' };
+    case 'filter_type_es':
+      return { ...base, menu: 'type', lang: 'es' };
+    case 'filter_type_fr':
+      return { ...base, menu: 'type', lang: 'fr' };
+    case 'filter_type_pt':
+      return { ...base, menu: 'type', lang: 'pt' };
     case 'filter_event':
       return { ...base, menu: 'event' };
     case 'dates':
@@ -129,6 +148,16 @@ export function auditStart(state: AuditState): AuditStart {
       return detail('added');
     case 'detail_system':
       return detail('proved');
+    case 'detail_guest_removed':
+      return detail('guestRemoved');
+    case 'detail_guest_gone':
+      return detail('guestGone');
+    case 'detail_skipped':
+      return detail('skipped');
+    case 'detail_section':
+      return detail('floorLead');
+    case 'detail_dish':
+      return detail('dish');
     case 'export':
       return { ...base, exporting: { format: 'csv', refused: false } };
     case 'export_small':
@@ -196,8 +225,8 @@ export function byDay(entries: readonly AuditEntry[], say: DataSay): Day[] {
   return days;
 }
 
-export function entryLine(entry: AuditEntry): string {
-  return `${entry.who} · ${entry.type}`;
+export function entryLine(entry: AuditEntry, lang: TypeLang = 'en'): string {
+  return `${entry.who} · ${TYPE_WORDS[lang][entry.type]}`;
 }
 
 export interface Choice {
@@ -205,7 +234,7 @@ export interface Choice {
   word: string;
 }
 
-export function menuChoices(menu: Menu): Choice[] {
+export function menuChoices(menu: Menu, lang: TypeLang = 'en'): Choice[] {
   if (menu === 'person')
     return [
       { value: null, word: A.anyone },
@@ -214,7 +243,7 @@ export function menuChoices(menu: Menu): Choice[] {
   if (menu === 'type')
     return [
       { value: null, word: A.allTypes },
-      ...AUDIT_TYPES.map((type) => ({ value: type, word: type })),
+      ...AUDIT_TYPES.map((type) => ({ value: type, word: TYPE_WORDS[lang][type] })),
     ];
 
   return [
@@ -237,10 +266,14 @@ export function rangeWords(range: Range | null, locale: string): string {
 }
 
 /** What each menu button reads: its resting words, or what is picked. */
-export function buttonWords(filters: Filters, locale: string): Record<Menu | 'dates', string> {
+export function buttonWords(
+  filters: Filters,
+  locale: string,
+  lang: TypeLang = 'en',
+): Record<Menu | 'dates', string> {
   return {
     person: filters.person ?? A.anyone,
-    type: filters.type ?? A.allTypes,
+    type: filters.type == null ? A.allTypes : TYPE_WORDS[lang][filters.type],
     event: filters.event ?? A.allEvents,
     dates: rangeWords(filters.range, locale),
   };
@@ -262,12 +295,12 @@ export interface DetailRow {
   label: string;
   value: string;
   code?: string;
-  /** An event that still exists opens from here. */
-  eventId?: string;
+  /** Where what it was done to is seen, while it exists. */
+  href?: string;
   codeOnly?: boolean;
 }
 
-export function detailRows(entry: AuditEntry, say: DataSay): DetailRow[] {
+export function detailRows(entry: AuditEntry, say: DataSay, lang: TypeLang = 'en'): DetailRow[] {
   const L = A.labels;
   const rows: (DetailRow | null)[] = [
     { label: L.when, value: say.exact(entry.at) },
@@ -279,10 +312,10 @@ export function detailRows(entry: AuditEntry, say: DataSay): DetailRow[] {
     {
       label: L.on,
       value: entry.on.gone ? A.gone(entry.on.name) : entry.on.name,
-      ...(entry.on.eventId == null ? {} : { eventId: entry.on.eventId }),
+      ...(entry.on.href == null || entry.on.gone ? {} : { href: entry.on.href }),
     },
     entry.changes == null ? null : { label: L.changes, value: entry.changes },
-    { label: L.kind, value: `${entry.type} ·`, code: entry.action },
+    { label: L.kind, value: `${TYPE_WORDS[lang][entry.type]} ·`, code: entry.action },
     entry.address == null
       ? null
       : { label: L.address, value: '', code: entry.address, codeOnly: true },

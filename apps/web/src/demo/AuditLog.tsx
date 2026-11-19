@@ -32,6 +32,7 @@ import {
   NO_FILTERS,
   PEOPLE,
   TYPES,
+  TYPE_WORDS,
   auditStart,
   byDay,
   datesFault,
@@ -112,7 +113,7 @@ export function AuditLog({ viewer, state, tell }: { viewer: Viewer; state: strin
   ];
   const types: MenuChoice[] = [
     { key: '', word: W.allTypes },
-    ...TYPES.map((one) => ({ key: one, word: one })),
+    ...TYPES.map((one) => ({ key: one, word: TYPE_WORDS[start.lang][one] })),
   ];
   const events: MenuChoice[] = [
     { key: '', word: W.allEvents },
@@ -191,7 +192,10 @@ export function AuditLog({ viewer, state, tell }: { viewer: Viewer; state: strin
                     onClick={() => setDetail(one.id)}
                   >
                     <span className="dc-time">{timeOf(one, locale, zone)}</span>
-                    <RowWords title={one.what} lines={[`${one.who} · ${one.type}`]} />
+                    <RowWords
+                      title={one.what}
+                      lines={[`${one.who} · ${TYPE_WORDS[start.lang][one.type]}`]}
+                    />
                     <Chevron />
                   </button>
                 </li>
@@ -226,7 +230,7 @@ export function AuditLog({ viewer, state, tell }: { viewer: Viewer; state: strin
         <EntryDialog
           title={W.entry}
           done={W.done}
-          facts={factsOf(entry, locale, zone)}
+          facts={factsOf(entry, locale, zone, start.lang)}
           fixed={W.fixed}
           onDone={() => setDetail(null)}
         />
