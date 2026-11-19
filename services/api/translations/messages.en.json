@@ -323,7 +323,7 @@
     "people.own_role": "You cannot change or remove your own role on an event. Ask an owner, an admin or the event's lead.",
     "people.already_on_event": "They already have a role on this event. Change it instead.",
     "people.address_required": "Enter their email address or mobile number.",
-    "people.address_unusable": "That isn’t an email address or a mobile number we can use.",
+    "people.address_unusable": "That is not an email address or a mobile number we can use.",
     "people.lead_members_only": "For members of {organisation} only.",
     "roles.replacement_invalid": "Choose another role in this organisation.",
     "roles.not_in_organisation": "That role is not in this organisation.",

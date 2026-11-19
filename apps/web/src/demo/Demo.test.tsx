@@ -2204,7 +2204,7 @@ describe('People on an event at a desk (sc-29915)', () => {
     const add = within(screen.getByRole('dialog', { name: 'Add people' }));
     expect(add.getByText('Nobody in Ire Events matches “bisi@lagos”.')).toBeDefined();
     expect(
-      add.getByText('That isn’t an email address or a mobile number we can use.'),
+      add.getByText('That is not an email address or a mobile number we can use.'),
     ).toBeDefined();
     expect(add.getByRole('button', { name: 'Add' }).getAttribute('aria-disabled')).toBe('true');
   });

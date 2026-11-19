@@ -290,7 +290,7 @@ export function offeredMembers(
 
 export const FIND_LABEL = 'Name, email or mobile number';
 export const NAME_LABEL = 'Name';
-export const UNUSABLE = 'That isn’t an email address or a mobile number we can use.';
+export const UNUSABLE = 'That is not an email address or a mobile number we can use.';
 export const PICK_ANOTHER = 'Pick another role to add someone from outside.';
 export const fromOutside = (org: string = ORGANISATION) => `From outside ${org}`;
 export const ALREADY_A_MEMBER = 'That person is already a member of this organisation.';
