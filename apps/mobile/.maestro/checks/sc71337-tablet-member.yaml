@@ -4,7 +4,8 @@ appId: host.exp.Exponent
 - runFlow: ../open-switcher.yaml
 - extendedWaitUntil: { visible: { id: never.there }, timeout: 4000, optional: true }
 - takeScreenshot: switcher
-- tapOn: { text: 'Joana & Rui.*' }
+- scrollUntilVisible: { element: { id: 'switcher.outside.${TO}' }, timeout: 10000 }
+- tapOn: { id: 'switcher.outside.${TO}' }
 - extendedWaitUntil: { visible: { id: never.there }, timeout: 6000, optional: true }
 - waitForAnimationToEnd
 - swipe: { start: '90%, 9%', end: '10%, 9%' }
