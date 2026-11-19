@@ -181,7 +181,7 @@ final readonly class AuditExports
             foreach ($entries as $entry) {
                 $this->entityManager->detach($entry);
             }
-        } while (Iter\count($entries) === self::BATCH);
+        } while (self::BATCH === Iter\count($entries));
 
         \rewind($stream);
         $written = \stream_get_contents($stream);
