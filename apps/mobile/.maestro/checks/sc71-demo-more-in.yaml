@@ -1,12 +1,15 @@
-# sc-71: the app demo's states for the pairs: more-in, People with someone from outside, and the add sheet. Phone only: on a tablet More is the sidebar's person. Needs ${ORIENT}, ${METRO_URL}.
+# sc-71: the app demo's more-in, its Overview and then its More, for the pairs beside an account with no organisation. Needs ${ORIENT}, ${METRO_URL}.
 appId: host.exp.Exponent
 ---
 - setOrientation: ${ORIENT}
 - openLink: ${METRO_URL}/--/demo/redeem?state=more-in
-- extendedWaitUntil: { visible: { id: 'inside.more.account' }, timeout: 30000 }
-- assertVisible: { id: 'inside.more.signOut' }
 - waitForAnimationToEnd: { timeout: 8000 }
 - takeScreenshot: more-in
+- tapOn: { text: 'More', optional: true }
+- extendedWaitUntil: { visible: { id: 'inside.more.account' }, timeout: 30000 }
+- assertVisible: { id: 'inside.more.signOut' }
+- waitForAnimationToEnd: { timeout: 4000 }
+- takeScreenshot: more-in-more
 - openLink: ${METRO_URL}/--/demo/people?state=addOutside
 - extendedWaitUntil: { visible: { id: 'people.add.outside' }, timeout: 30000 }
 - waitForAnimationToEnd: { timeout: 8000 }
