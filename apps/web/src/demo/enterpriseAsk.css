@@ -1,0 +1,124 @@
+.ea-step {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--spaceMd);
+  max-width: 100%;
+  margin-top: auto;
+}
+
+.ea-step .desk-step {
+  height: auto;
+  min-height: var(--sizeHit);
+  max-width: 100%;
+  margin-top: 0;
+  padding-block: var(--spaceSm);
+  line-height: 1.25;
+  text-align: left;
+  white-space: normal;
+}
+
+.ea-said-region {
+  display: flex;
+  flex-direction: column;
+  align-self: stretch;
+}
+
+.ea-said-region:empty {
+  display: none;
+}
+
+.ea-said {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--spaceMd);
+  margin: 0;
+  padding: var(--spaceMd) var(--spacePillEnd);
+  border-radius: var(--radiusInset);
+  background: var(--colorCard);
+  color: var(--colorInk);
+  font: 600 14.5px/1.4 var(--fontFamily);
+}
+
+.ea-said svg {
+  flex: none;
+  margin-top: 1px;
+}
+
+.ea-said.is-broken {
+  color: var(--colorBrokenText);
+}
+
+.ea-said.is-asked svg {
+  color: var(--colorInkSecondary);
+}
+
+.ea-said.is-sent svg {
+  color: var(--colorAccent);
+}
+
+.ea-plan {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceSm);
+  padding: var(--spaceXxl);
+  border: var(--borderCard);
+  border-radius: var(--radiusCardDesktop);
+  background: var(--colorCard);
+}
+
+.ea-plan + .ea-plan {
+  margin-top: var(--spaceXl);
+}
+
+.ea-plan.is-asked {
+  border: var(--borderSelected);
+}
+
+.ea-plan-name {
+  display: flex;
+  align-items: center;
+  gap: var(--spaceSm);
+  margin: 0;
+  color: var(--colorInk);
+  font: 700 20px/1.2 var(--fontFamily);
+}
+
+.ea-plan-name:focus {
+  outline: none;
+}
+
+.ea-plan-now {
+  padding: var(--spaceHair) var(--spaceMd);
+  border-radius: var(--radiusPill);
+  background: var(--colorAccentTint);
+  color: var(--colorAccentText);
+  font: 600 13px/20px var(--fontFamily);
+}
+
+.ea-plan-changes {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceXxs);
+  padding: var(--spaceLg) var(--spacePillEnd);
+  border: var(--borderInset);
+  border-radius: var(--radiusRow);
+  background: var(--colorInset);
+}
+
+.ea-talk {
+  align-self: flex-start;
+  min-height: var(--sizeHit);
+  padding: 0 var(--spaceXxl);
+  border: 0;
+  border-radius: var(--radiusPill);
+  background: var(--colorAccent);
+  color: var(--colorCard);
+  font: 600 15px/1 var(--fontFamily);
+}
+
+@media (width <= 480px) {
+  .ea-talk {
+    align-self: stretch;
+  }
+}

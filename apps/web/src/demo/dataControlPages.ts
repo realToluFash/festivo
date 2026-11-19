@@ -1,6 +1,7 @@
 import { type PageLinks, linkTo } from './dataControl.ts';
 import { type DemoLink, VIEWERS, settingsPath } from './settings.ts';
 import { way } from './rules.ts';
+import { LOCK_PAGE_NAMES, LOCK_STATES, type LockPage } from './enterpriseAsk.ts';
 
 const hub = (state: string | undefined, name: string, viewer = VIEWERS.folake) =>
   linkTo('hub', state, name, viewer);
@@ -12,6 +13,27 @@ const exported = (state: string, name: string, viewer = VIEWERS.folake) =>
 const retention = (state: string | undefined, name: string, viewer = VIEWERS.folake) =>
   linkTo('deleteGuestData', state, name, viewer);
 const request = (state: string, name: string) => linkTo('guestRequest', state, name);
+
+const LOCK_STATE_NAMES: Record<(typeof LOCK_STATES)[number], string> = {
+  owner_web: 'An owner: Contact Soirely about Enterprise, Compare plans',
+  admin: 'An admin: Ask an owner',
+  admin_sending: 'Ask an owner, sending',
+  admin_sent_one: 'Sent, one owner',
+  admin_sent_several: 'Sent, several owners',
+  admin_not_sent: 'Not sent, try again',
+  admin_asked_one: 'Asked in the last 24 hours, one owner',
+  admin_asked_several: 'Asked in the last 24 hours, several owners',
+};
+
+const asked = (page: LockPage) =>
+  LOCK_STATES.map((state) =>
+    linkTo(
+      page,
+      state,
+      `${LOCK_PAGE_NAMES[page]}: ${LOCK_STATE_NAMES[state]}`,
+      state === 'owner_web' ? VIEWERS.folake : VIEWERS.julien,
+    ),
+  );
 
 /** Their data at the foot of Dr Emeka Nwosu's details in Guests A: `state=guest` opens him, `data=` its state. */
 export function theirDataPath(data: string): string {
@@ -203,5 +225,9 @@ export const DATA_CONTROL_PAGES: PageLinks = [
         name: 'Members: Priya, also a member of 2 others',
       },
     ],
+  },
+  {
+    name: 'The lock cards’ step (sc-72241), never on Enterprise',
+    states: (['hub', 'emailDomains', 'auditLog', 'deleteGuestData'] as const).flatMap(asked),
   },
 ];
