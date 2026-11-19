@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { __setConfig, config } from '../config.ts';
 import { routes } from '../routes/index.tsx';
+import { answerWordsFor } from './decideWords.ts';
 
 const tested = config();
 const SLOW = { timeout: 15000 };
@@ -187,7 +188,7 @@ describe('What a decision costs, in Add guest (sc-86)', () => {
 
       expect(answer.textContent).toContain('+£1,000,000,000,000,000 if all come');
       expect(answer.textContent).toContain(
-        'Once they are invited, it would be £100,999,999,999,999,999 if everyone comes. Settled, it stays £99,999,999,999,999,999 until they reply.',
+        answerWordsFor('en').upperOnly('£100,999,999,999,999,999', '£99,999,999,999,999,999'),
       );
       expect(answer.textContent).toContain(
         '£99,999,999,999,999,999 → £100,999,999,999,999,999 · 100 → 101 if all come',
@@ -200,9 +201,11 @@ describe('What a decision costs, in Add guest (sc-86)', () => {
       const spanish = within(await open('decide_huge&lang=es')).getByRole('status');
       expect(spanish.textContent).toContain('+1.000.000.000.000.000\u00a0GBP si vienen todos');
       expect(spanish.textContent).toContain(
-        'Si vienen todos, sería 100.999.999.999.999.999\u00a0GBP.',
+        answerWordsFor('es').upperOnly(
+          '100.999.999.999.999.999\u00a0GBP',
+          '99.999.999.999.999.999\u00a0GBP',
+        ),
       );
-      expect(spanish.textContent).toContain('99.999.999.999.999.999\u00a0GBP');
       expect(spanish.textContent).not.toContain('100.000.000.000.000.000');
       expect(spanish.textContent).not.toContain('101.000.000.000.000.000');
       expect(spanish.querySelectorAll('.dec-figure').length).toBe(6);
