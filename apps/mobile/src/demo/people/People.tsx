@@ -232,7 +232,9 @@ function PeopleScreen({ start, door }: { start: PeopleStart; door: DoorStart | n
                         line={line}
                         lead={<Face person={one} side={40} />}
                         tag={
-                          one.outside ? { kind: 'now', word: outsideTag(world.organisation) } : null
+                          one.outside
+                            ? { kind: 'now', word: outsideTag(world.organisation), wraps: true }
+                            : null
                         }
                         trail={
                           opensRow ? (
