@@ -1379,9 +1379,9 @@
       "failedTitle": "Les personnes suivantes n’ont pas pu être chargées.",
       "failedLine": "Vérifiez votre connexion et réessayez."
     },
-    "alsoMemberOf_one": "Also a member of 1 other organisation",
-    "alsoMemberOf_many": "Also a member of {{count, number}} other organisations",
-    "alsoMemberOf_other": "Also a member of {{count, number}} other organisations"
+    "alsoMemberOf_one": "Également membre d’une autre organisation",
+    "alsoMemberOf_many": "Également membre de {{count, number}} d’autres organisations",
+    "alsoMemberOf_other": "Également membre de {{count, number}} autres organisations"
   },
   "accessPaused": {
     "badge": "En pause",
@@ -3157,43 +3157,43 @@
       "failed": "{{domain}} n’a pas été vérifié",
       "failedLine": "Nous avons cessé de vérifier le {{at}}. Ajoutez l’enregistrement, puis appuyez sur Vérifier.",
       "missing": "L’enregistrement du domaine {{domain}} est absent",
-      "missingLine": "Put it back by {{at}}, or {{domain}} stops being proved and Only our organisation stops with it.",
+      "missingLine": "Remettez-le avant le {{at}}, sinon le domaine {{domain}} ne sera plus vérifié et « Réservé à notre organisation » cessera de s’appliquer.",
       "removed": "{{domain}} a été retiré",
       "removedLine": "Il n’est plus vérifié.",
       "locked": "Disponible avec le forfait Enterprise",
       "lockedLine": "Vérifiez que le domaine appartient à l’organisation {{organisation}}, puis réservez ses comptes à l’organisation {{organisation}}.",
       "offLine": "L’organisation {{organisation}} n’a plus le forfait Enterprise. Ses domaines sont conservés tels quels et se réactivent avec le forfait Enterprise.",
       "off": "Switched off",
-      "keep": "Limit {{domain}} accounts to {{organisation}}",
-      "scheduled": "Only our organisation starts on {{at}}",
-      "scheduledLine": "Everyone at {{domain}} was emailed. You can cancel until then.",
-      "scheduledAdmin": "Only an owner can cancel it.",
-      "cancelled": "Only our organisation was cancelled",
-      "cancelledLine": "Nothing changes for the accounts at {{domain}}.",
-      "on": "Accounts at {{domain}} belong to {{organisation}}",
-      "onLine": "They can still be given access to another organisation’s event.",
-      "turnedOff": "Only our organisation is off",
-      "turnedOffLine": "Accounts at {{domain}} can be members of other organisations again."
+      "keep": "Réserver les comptes {{domain}} à l’organisation {{organisation}}",
+      "scheduled": "« Réservé à notre organisation » commence le {{at}}",
+      "scheduledLine": "Toutes les personnes du domaine {{domain}} ont reçu un e-mail. Vous pouvez annuler jusque-là.",
+      "scheduledAdmin": "Seule une personne ayant le rôle Propriétaire peut l’annuler.",
+      "cancelled": "« Réservé à notre organisation » a été annulé",
+      "cancelledLine": "Rien ne change pour les comptes du domaine {{domain}}.",
+      "on": "Les comptes du domaine {{domain}} appartiennent à l’organisation {{organisation}}",
+      "onLine": "Ils peuvent toujours recevoir l’accès à un événement d’une autre organisation.",
+      "turnedOff": "« Réservé à notre organisation » est désactivé",
+      "turnedOffLine": "Les comptes du domaine {{domain}} peuvent de nouveau être membres d’autres organisations."
     },
     "removeAsk": {
       "title": "Retirer {{domain}} ?",
-      "line": "It stops being proved, and Only our organisation stops for it. Company domain joining keeps its own list.",
+      "line": "Il n’est plus vérifié, et « Réservé à notre organisation » cesse de s’y appliquer. L’adhésion par domaine d’entreprise garde sa propre liste.",
       "keep": "Le garder"
     },
-    "only": "Only our organisation",
-    "onlyOff": "People at {{domain}} can still be members of other organisations.",
-    "onlyStarts": "Starts {{at}}",
-    "onlySince": "On since {{day}}",
-    "onlyKept": "Kept as it was. It comes back on with Enterprise.",
-    "ownerOnly": "Only an owner can change this.",
-    "onlyFor": "Only our organisation, {{domain}}",
-    "cancel": "Cancel",
-    "cancelOnlyFor": "Cancel Only our organisation, {{domain}}",
+    "only": "Réservé à notre organisation",
+    "onlyOff": "Les personnes du domaine {{domain}} peuvent toujours être membres d’autres organisations.",
+    "onlyStarts": "Commence le {{at}}",
+    "onlySince": "Activé depuis le {{day}}",
+    "onlyKept": "Conservé tel quel. Il se réactive avec le forfait Enterprise.",
+    "ownerOnly": "Seule une personne ayant le rôle Propriétaire peut modifier ce réglage.",
+    "onlyFor": "Réservé à notre organisation, {{domain}}",
+    "cancel": "Annuler",
+    "cancelOnlyFor": "Annuler « Réservé à notre organisation », {{domain}}",
     "onlyAsk": {
-      "title": "Limit {{domain}} accounts to {{organisation}}?",
-      "line": "From {{at}}, 14 days from now, an account whose main email address is at {{domain}} can only be a member of {{organisation}}.",
-      "more": "Everyone at {{domain}} is emailed now. Access to a single event still works. You can cancel until then.",
-      "schedule": "Schedule it"
+      "title": "Réserver les comptes {{domain}} à l’organisation {{organisation}} ?",
+      "line": "À partir du {{at}}, dans 14 jours, un compte dont l’adresse e-mail principale appartient au domaine {{domain}} ne pourra être membre que de l’organisation {{organisation}}.",
+      "more": "Toutes les personnes du domaine {{domain}} reçoivent un e-mail dès maintenant. L’accès à un événement précis reste possible. Vous pouvez annuler jusque-là.",
+      "schedule": "Programmer"
     }
   },
   "auditLog": {
@@ -3267,8 +3267,8 @@
     "moreFailed": "More entries did not load. Check your connection and try again."
   },
   "managed": {
-    "title": "Managed by {{organisation}}",
-    "single": "Access to a single event still works.",
-    "change": "Change your main email address"
+    "title": "Compte géré par {{organisation}}",
+    "single": "L’accès à un événement précis reste possible.",
+    "change": "Modifier votre adresse e-mail principale"
   }
 }

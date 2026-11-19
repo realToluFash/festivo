@@ -416,7 +416,7 @@
     "audit.export_expired": "This export's download has ended. You can export again.",
     "audit.dates_backwards": "The start date must be on or before the end date.",
     "audit.invalid_filter": "This filter is not one the audit log offers.",
-    "email_domains.managed": "Your {domain} address is managed by {organisation}, so you can only be a member there.",
-    "email_domains.only_ours_owner": "Only an owner can change this.",
-    "email_domains.only_ours_unproved": "Only our organisation is for a domain this organisation has proved."
+    "email_domains.managed": "Votre adresse du domaine {domain} est gérée par {organisation} : vous ne pouvez être membre que de cette organisation.",
+    "email_domains.only_ours_owner": "Seule une personne ayant le rôle Propriétaire peut modifier ce réglage.",
+    "email_domains.only_ours_unproved": "« Réservé à notre organisation » nécessite un domaine vérifié par cette organisation."
 }
