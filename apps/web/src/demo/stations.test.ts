@@ -81,7 +81,7 @@ describe('stations (sc-3910)', () => {
   it('moves a stop and announces it, never past the ends', () => {
     const moved = moveStop(populated(), 'grill', -1);
     expect(moved?.state.walk).toEqual(['grill', 'kitchen', 'pastry']);
-    expect(moved?.said).toBe('Grill moved to stop 2 of 4');
+    expect(moved?.said).toBe('Grill moved to stop 2 of 4.');
     expect(moveStop(populated(), 'kitchen', -1)).toBeNull();
     expect(moveStop(populated(), 'pastry', 1)).toBeNull();
   });

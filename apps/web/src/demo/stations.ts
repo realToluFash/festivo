@@ -181,7 +181,7 @@ export function dishesLine(n: number): string | null {
 }
 
 export function stopLine(name: string, to: number, of: number): string {
-  return `${name} moved to stop ${to} of ${of}`;
+  return `${name} moved to stop ${to} of ${of}.`;
 }
 
 export interface Changed {
