@@ -15,6 +15,7 @@ import { CATEGORY_WORDS } from './vendorsWords.ts';
 export const DECIDE_STATES: readonly string[] = [
   'decide_rise',
   'decide_unknown',
+  'decide_unpriced',
   'decide_nochange',
   'decide_updating',
   'decide_none',
@@ -32,6 +33,10 @@ export const DECIDE_PAGES: readonly DemoGroup[] = [
       {
         to: budgetAt('decide_unknown'),
         name: 'A cost it moves has no price: Not known (decide_unknown)',
+      },
+      {
+        to: budgetAt('decide_unpriced'),
+        name: 'No cost it moves has a price: Not known if all come (decide_unpriced)',
       },
       {
         to: budgetAt('decide_nochange'),
@@ -52,20 +57,21 @@ export const DECIDE_PAGES: readonly DemoGroup[] = [
   },
 ];
 
-export type DecideKind = 'rise' | 'unknown' | 'nochange' | 'updating' | 'none' | 'category';
+export type DecideKind =
+  'rise' | 'unknown' | 'unpriced' | 'nochange' | 'updating' | 'none' | 'category';
 
 export function decideKindOf(state: string, as: string | null, fetch: string | null): DecideKind {
   if (as === 'kemi' || fetch === 'failed') return 'none';
   const kind = state.replace(/^decide_/u, '');
 
   return (
-    (['rise', 'unknown', 'nochange', 'updating', 'none', 'category'] as const).find(
+    (['rise', 'unknown', 'unpriced', 'nochange', 'updating', 'none', 'category'] as const).find(
       (one) => one === kind,
     ) ?? 'rise'
   );
 }
 
-/** The Guests page's head behind the dialog (sc-1468, drawn on page 30), as the board draws it. */
+/** The Guests list beside the Add guest column (sc-1468, drawn on page 30), as the board draws it. */
 export const BACKDROP: readonly { name: string; line: string }[] = [
   { name: 'Inês Duarte', line: 'Coming · with 1 companion' },
   { name: 'Kwame Mensah', line: 'Not sure yet' },
@@ -76,8 +82,10 @@ export const BACKDROP: readonly { name: string; line: string }[] = [
 export const GUEST = 'Marta Silva';
 export const COMPANIONS: readonly string[] = ['Rui Silva', 'Inês Silva'];
 
-/** Each state's budget: the wedding's, with Drinks package unpriced, or with nothing counted per guest. */
+/** Each state's budget: the wedding's, with Drinks package unpriced, with no per-guest cost priced, or with nothing counted per guest. */
 export function linesFor(kind: DecideKind): readonly CostLine[] {
+  if (kind === 'unpriced')
+    return COST_LINES.map((line) => (line.basis === 'perHead' ? { ...line, rate: null } : line));
   if (kind === 'unknown')
     return COST_LINES.map((line) => (line.id === 'drinks' ? { ...line, rate: null } : line));
   if (kind === 'nochange') return COST_LINES.filter((line) => line.basis !== 'perHead');

@@ -1,13 +1,6 @@
-/** What a decision costs (sc-86) in Guests' Add guest: the board's proposals for [en], with Guests A's own words. */
+/** What a decision costs (sc-86): the answer's words, the board's proposals for [en]. Add guest's own words are Guests A's, in `GW`. */
 export const DECIDE_WORDS = {
-  guests: 'Guests',
-  addGuest: 'Add guest',
-  name: 'Name',
-  companions: 'Companions',
-  noReply: 'No reply',
-  remove: 'Remove',
   addCompanion: 'Add a companion',
-  companionName: (nth: number, count: number) => `Companion’s full name, ${nth} of ${count}`,
   head: 'What adding them would cost',
   rise: (amount: string) => `+${amount} if all come`,
   upperOnly: (total: string, settled: string) =>
@@ -16,6 +9,7 @@ export const DECIDE_WORDS = {
     `${from} → ${to} · ${headsFrom} → ${headsTo} if all come`,
   plus: (amount: string) => `+${amount}`,
   notKnown: 'Not known',
+  notKnownIfAll: 'Not known if all come',
   notPricedYet: 'Not priced yet, so its cost is not known',
   fullNotKnown: (count: number) =>
     count === 1
