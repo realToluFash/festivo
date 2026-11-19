@@ -151,7 +151,9 @@ describe('an account with no organisation, inside an event it holds (sc-71)', ()
     app('/app/events/ev_1');
 
     await screen.findByRole('heading', { level: 1, name: 'Adaeze and Tunde' });
-    expect(screen.getByText(/^Can view · Cloakroom · until /u)).toBeDefined();
+    expect(screen.getByText('Thu, Nov 14 · 16:00 to Fri, Nov 15, 02:00')).toBeDefined();
+    expect(screen.getByText('Can view · Cloakroom · until Fri, Nov 15, 02:00')).toBeDefined();
+    expect(screen.queryByRole('navigation', { name: 'Breadcrumb' })).toBeNull();
     expect(screen.getByText('Names and replies only, no contact details')).toBeDefined();
     expect(await screen.findByText('3 people on this event')).toBeDefined();
     expect(screen.queryByRole('button', { name: /Edit details/u })).toBeNull();

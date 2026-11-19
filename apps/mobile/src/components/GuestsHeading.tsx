@@ -1,17 +1,33 @@
-import { type ReactNode, type Ref, type RefObject, useContext, useState } from 'react';
+import {
+  type ReactNode,
+  type Ref,
+  type RefObject,
+  useCallback,
+  useContext,
+  useRef,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
-import { type LayoutChangeEvent, StyleSheet, View, type ViewInstance } from 'react-native';
+import {
+  type LayoutChangeEvent,
+  StyleSheet,
+  type TextLayoutEvent,
+  View,
+  type ViewInstance,
+  useWindowDimensions,
+} from 'react-native';
 
 import { type LayoutKind } from '../layout/classify.ts';
-import { actionsUnder } from '../layout/titleFit.ts';
+import { titleSize } from '../layout/textSize.ts';
+import { actionsUnder, brokeOn } from '../layout/titleFit.ts';
 import { tokens } from '../theme/tokens.ts';
 import { BellInPane, PaneBell } from './BellButton.tsx';
 import { type TextHandle } from './Text.tsx';
-import { BodyTitle, MeasuredWords } from './Title.tsx';
+import { BodyTitle, MeasuredWords, PageTitleDrawn, usePageTitleDrawn } from './Title.tsx';
 import { TopPrimary, usePrimaryLabel } from './TopPrimary.tsx';
 import { COLUMN_TITLE, PAGE_TITLE, columnTitle, pageTitle } from './topTitle.ts';
 
-/** Guests' title row as `/demo/guests` draws it: the title whole, then Export, the + and on its side the bell; where the title at its default size has no room beside them, Export and the + go together to a row under it, the bell staying on the title's row (sc-51444, sc-67659, sc-68417). */
+/** Guests' title row as `/demo/guests` draws it: the title whole, stepping down from its slot's width, then Export, the + and on its side the bell; where the title at its default size has no room beside them, or broke there all the same, Export and the + go together to a row under it, the bell staying on the title's row (sc-51444, sc-67659, sc-68417). */
 export function GuestsHeading({
   kind,
   titleRef,
@@ -41,29 +57,73 @@ export function GuestsHeading({
     labelled: !phone,
   });
   const bell = useContext(BellInPane);
+  const { fontScale } = useWindowDimensions();
   const [room, setRoom] = useState(0);
+  const [slot, setSlot] = useState(0);
   const [titleWidth, setTitleWidth] = useState(0);
   const [exportWidth, setExportWidth] = useState(0);
   const [spinnerWidth, setSpinnerWidth] = useState(0);
   const spinning = !phone && refreshing != null;
-  const under = actionsUnder({
-    room,
-    title: titleWidth,
-    extra: exports == null ? 0 : exportWidth,
-    plus: onAdd == null ? 0 : tokens.sizeHit,
-    bell: bell ? tokens.sizeHit : 0,
-    refreshing: spinning ? spinnerWidth : 0,
-    gap: tokens.spaceMd,
-  });
+  const pageDrawn = usePageTitleDrawn();
+  const drawn = useRef(0);
+  const [broke, setBroke] = useState<string | null>(null);
+  const rowKey = `${room}|${title}|${fontScale}`;
+  const under =
+    broke === rowKey ||
+    actionsUnder({
+      room,
+      title: titleWidth,
+      extra: exports == null ? 0 : exportWidth,
+      plus: onAdd == null ? 0 : tokens.sizeHit,
+      bell: bell ? tokens.sizeHit : 0,
+      refreshing: spinning ? spinnerWidth : 0,
+      gap: tokens.spaceMd,
+    });
+  const onDrawn = useCallback(
+    (next: number) => {
+      drawn.current = next;
+      pageDrawn?.(next);
+    },
+    [pageDrawn],
+  );
+  const onTitleLines = (event: TextLayoutEvent) => {
+    const start = titleSize(size, fontScale);
+    setBroke((was) =>
+      brokeOn({
+        broke: was,
+        row: rowKey,
+        under,
+        lines: event.nativeEvent.lines,
+        drawn: drawn.current || start,
+        start,
+        size,
+      }),
+    );
+  };
   const widthOf = (set: (width: number) => void) => (event: LayoutChangeEvent) =>
     set(Math.ceil(event.nativeEvent.layout.width));
 
   const heading = (
-    <View style={styles.fill} onLayout={label.onSlot}>
+    <View
+      style={styles.fill}
+      onLayout={(event) => {
+        label.onSlot(event);
+        setSlot(Math.floor(event.nativeEvent.layout.width));
+      }}
+    >
       {label.measure}
-      <BodyTitle size={size} accessibilityRole="header" ref={titleRef} style={style}>
-        {title}
-      </BodyTitle>
+      <PageTitleDrawn.Provider value={onDrawn}>
+        <BodyTitle
+          size={size}
+          accessibilityRole="header"
+          ref={titleRef}
+          style={style}
+          room={slot}
+          onTextLayout={onTitleLines}
+        >
+          {title}
+        </BodyTitle>
+      </PageTitleDrawn.Provider>
     </View>
   );
   const spinner = spinning && <View onLayout={widthOf(setSpinnerWidth)}>{refreshing}</View>;

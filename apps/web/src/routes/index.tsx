@@ -24,6 +24,8 @@ import {
 } from './app/events/EventView.tsx';
 import { Events } from './app/events/Events.tsx';
 import { NewEvent } from './app/events/NewEvent.tsx';
+import { DataAndControl } from './app/settings/DataAndControl.tsx';
+import { ExportAllData } from './app/settings/ExportAllData.tsx';
 import { General } from './app/settings/General.tsx';
 import { Members } from './app/settings/Members.tsx';
 import { SignInRules } from './app/settings/SignInRules.tsx';
@@ -119,6 +121,8 @@ export const routes = [
               { path: 'settings/members', element: <Members /> },
               { path: 'settings/sign-in-rules', element: <SignInRules /> },
               { path: 'settings/vendors', element: <Vendors /> },
+              { path: 'settings/data-and-control', element: <DataAndControl /> },
+              { path: 'settings/data-and-control/export', element: <ExportAllData /> },
             ],
           },
         ],

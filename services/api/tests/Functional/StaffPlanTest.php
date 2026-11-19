@@ -182,7 +182,7 @@ final class StaffPlanTest extends ApiTestCase
         yield 'no end' => [['endsAt' => '2027-03-07'], 'endsAt', 'Enter the date and time the shift ends.'];
         yield 'an end before the start' => [['endsAt' => '2027-03-06T15:00'], 'endsAt', 'The end must be after the start.'];
         yield 'an end at the start' => [['endsAt' => '2027-03-06T16:00'], 'endsAt', 'The end must be after the start.'];
-        yield 'over 24 hours' => [['endsAt' => '2027-03-07T16:30'], 'endsAt', 'A shift can’t be longer than 24 hours. Check the dates.'];
+        yield 'over 24 hours' => [['endsAt' => '2027-03-07T16:30'], 'endsAt', 'A shift cannot be longer than 24 hours. Check the dates.'];
         yield 'nobody needed' => [['needed' => 0], 'needed', 'Enter a number from 1 to 50.'];
         yield 'over 50 needed' => [['needed' => 51], 'needed', 'Enter a number from 1 to 50.'];
     }

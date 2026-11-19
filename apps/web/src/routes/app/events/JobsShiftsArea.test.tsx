@@ -268,7 +268,7 @@ describe('Jobs and shifts on the Staff page (sc-3908)', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Add' }));
 
     expect(
-      await screen.findByText('A shift can’t be longer than 24 hours. Check the dates.'),
+      await screen.findByText('A shift cannot be longer than 24 hours. Check the dates.'),
     ).toBeDefined();
   });
 

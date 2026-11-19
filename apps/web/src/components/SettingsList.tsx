@@ -5,6 +5,7 @@ import { Link, useLocation } from 'react-router';
 
 import { pageTitle, usePageTitle } from '../pageTitle.ts';
 import { can, useSession } from '../session.ts';
+import { DrawnGlyph } from './DataControlParts.tsx';
 import { Glyph } from './Glyph.tsx';
 import { PersonalTile } from './SchemeArt.tsx';
 import './SettingsParts.css';
@@ -43,7 +44,7 @@ export function SectionTile({ look, children }: { look: string; children: ReactN
   );
 }
 
-/** Your account's sections, then the organisation's, as the demo's Settings list draws them; Members and Vendors only for a role that can read them. */
+/** Your account's sections, then the organisation's, as the demo's Settings list draws them; Members and Vendors only for a role that can read them, and Data and control for an Owner or an Admin. */
 export function SettingsList() {
   const { t } = useTranslation();
   const session = useSession();
@@ -114,6 +115,19 @@ export function SettingsList() {
                 to: '/app/settings/vendors',
                 label: t('settings.sectionVendors'),
                 tile: <SectionTile look="vendors">{glyph('storefront')}</SectionTile>,
+              },
+            ]
+          : []),
+        ...(can(session, 'organisation.manage')
+          ? [
+              {
+                to: '/app/settings/data-and-control',
+                label: t('settings.sectionDataAndControl'),
+                tile: (
+                  <SectionTile look="data">
+                    <DrawnGlyph name="data" size={17} />
+                  </SectionTile>
+                ),
               },
             ]
           : []),

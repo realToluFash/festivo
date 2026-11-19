@@ -32,7 +32,7 @@ import { DUPLICATING } from '../kit/eventDuplicate.ts';
 import { takeDeleted } from '../kit/eventSaved.ts';
 import { hasNoEvents } from '../kit/eventsOpen.ts';
 import { useServerNow } from '../kit/serverNow.ts';
-import { useOffline } from '../offline.ts';
+import { useOffline, usePullToRefresh } from '../offline.ts';
 import { afterFailedLoad } from '../offlineLoad.ts';
 import { useSignedIn } from '../signedIn.ts';
 import { tokens } from '../theme/tokens.ts';
@@ -169,6 +169,7 @@ export function EventsScreen({
     reload,
     focusTitle: () => moveScreenReaderFocus(title.current),
   });
+  const pull = usePullToRefresh(load.kind === 'loaded' && load.refreshing, stale?.retry ?? freshen);
 
   const searchOff = stale != null;
   const search = searchOff
@@ -537,11 +538,7 @@ export function EventsScreen({
       <ListAndPage
         kind={kind}
         list={list}
-        listRefresh={
-          reads && load.kind === 'loaded' ? (
-            <RefreshControl refreshing={load.refreshing} onRefresh={stale?.retry ?? freshen} />
-          ) : undefined
-        }
+        listRefresh={reads && load.kind === 'loaded' ? <RefreshControl {...pull} /> : undefined}
         page={null}
         pageInFront={false}
         pageless

@@ -87,6 +87,7 @@ export interface EventPlace {
   country: string;
   initials: string;
   event: string;
+  eventId: string;
   when: string;
 }
 
@@ -95,6 +96,7 @@ export const IRE_PLACE: EventPlace = {
   country: 'NG',
   initials: 'IE',
   event: EVENT,
+  eventId: 'evt-wed-4',
   when: 'Live · in 3 days',
 };
 
