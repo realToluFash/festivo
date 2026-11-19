@@ -1,4 +1,3 @@
-/** One person's own link on the roster, in the app (sc-3912): Share link first, Copy link, Mark as sent and Replace link, on sample data. */
 export type LinkStatus = 'none' | 'shared' | 'copied' | 'sent' | 'opened';
 
 export const PERSON = { name: 'Ada Obi', first: 'Ada', job: 'Waiter', shift: '17:00 to 00:00' };
@@ -45,7 +44,6 @@ export interface Trail {
 export interface LinkState {
   status: LinkStatus;
   trail: Trail | null;
-  /** Back from the share sheet, asking whether it went. */
   asking: boolean;
   replacing: boolean;
   busy: 'share' | 'copy' | null;
