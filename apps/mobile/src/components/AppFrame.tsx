@@ -354,12 +354,35 @@ export function AppFrame({
   const signedIn = useSignedIn();
   usePushTaps(signedIn.account?.id);
   const now = useServerNow();
+  const [outsideMoreOpen, setOutsideMoreOpen] = useState(false);
+  const noOpener = useRef<ViewInstance>(null);
+  const outsideHere = inEvent?.outside?.id;
+  const heldGroups = outsideGroups(signedIn);
+  // Upright on a tablet, held from outside, the capsule's More holds the account's groups, as the demo's Inside draws it (sc-68438).
+  const uprightMore =
+    kind === 'tabletPortrait' &&
+    outsideHere != null &&
+    (heldGroups.organisations || heldGroups.events);
   const entries =
     inEvent == null
       ? []
-      : (inEvent.outside == null ? EVENT_PLACES : outsidePlaces(inEvent.outside.role)).map((area) =>
-          areaEntry(t, inEvent, area),
-        );
+      : [
+          ...(inEvent.outside == null ? EVENT_PLACES : outsidePlaces(inEvent.outside.role)).map(
+            (area) => areaEntry(t, inEvent, area),
+          ),
+          ...(uprightMore
+            ? [
+                {
+                  key: 'more',
+                  label: t('eventNav.more'),
+                  glyph: 'dots' as const,
+                  on: false,
+                  onPress: () => setOutsideMoreOpen(true),
+                  testID: 'event.nav.more',
+                },
+              ]
+            : []),
+        ];
   const waiting = useWaitingInvitations();
   const offer = useDomainOffer();
   const count = waitingInvitations(waiting.invitations, waiting.outcomes);
@@ -644,6 +667,15 @@ export function AppFrame({
               accessibilityElementsHidden
               importantForAccessibility="no-hide-descendants"
               {...edgeSwipe}
+            />
+          )}
+          {uprightMore && outsideHere != null && (
+            <OutsideYouSheet
+              here={outsideHere}
+              open={outsideMoreOpen}
+              opener={noOpener}
+              name={t('eventNav.more')}
+              onClose={() => setOutsideMoreOpen(false)}
             />
           )}
           {drop != null && (
