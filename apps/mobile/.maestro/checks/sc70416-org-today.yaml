@@ -1,0 +1,7 @@
+# sc-70416: an account owning an organisation still lands on Today in a batch.
+appId: host.exp.Exponent
+---
+- extendedWaitUntil:
+    visible: '{{t:any:todayScreen.tab.today}}'
+    timeout: 30000
+- takeScreenshot: sc70416-org-today
