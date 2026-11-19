@@ -128,7 +128,7 @@ final readonly class AuditLogController
             'to' => Type\optional(Type\string()),
         ]));
         $format = $body['format'];
-        $asked = Dict\filter_keys(Dict\filter_nulls($body), static fn (string $key): bool => 'format' !== $key);
+        $asked = Dict\filter_nulls(['person' => $body['person'] ?? null, 'type' => $body['type'] ?? null, 'event' => $body['event'] ?? null, 'from' => $body['from'] ?? null, 'to' => $body['to'] ?? null]);
         $filter = $this->filter($organisation, $user, $asked);
         $exported = $this->auditExports->export($organisation, $user, $filter, $asked, $format, $this->userMailer->localeFor($user, $request->getLocale()));
 

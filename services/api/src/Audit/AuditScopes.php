@@ -94,7 +94,7 @@ final readonly class AuditScopes
 
         $row = $this->row('SELECT organisation_id, name FROM events WHERE id = :id', $id);
 
-        return null === $row ? new AuditScope(eventId: $id) : new AuditScope(Uuid::fromString($row['organisation_id']), $id, $row['name'], $row['name']);
+        return null === $row ? new AuditScope(eventId: $id) : new AuditScope(self::uuid($row['organisation_id']), $id, $row['name'], $row['name']);
     }
 
     private function eventPerson(Uuid $id): AuditScope
@@ -109,7 +109,7 @@ final readonly class AuditScopes
 
         $row = $this->row('SELECT e.organisation_id, e.id AS event_id, e.name AS event_name, COALESCE(u.name, p.address) AS name FROM event_people p JOIN events e ON e.id = p.event_id LEFT JOIN users u ON u.id = p.user_id WHERE p.id = :id', $id);
 
-        return null === $row ? new AuditScope() : new AuditScope(Uuid::fromString($row['organisation_id']), Uuid::fromString($row['event_id']), $row['event_name'], $row['name']);
+        return null === $row ? new AuditScope() : new AuditScope(self::uuid($row['organisation_id']), self::uuid($row['event_id']), $row['event_name'], $row['name']);
     }
 
     /** @param class-string $class */
@@ -125,6 +125,11 @@ final readonly class AuditScopes
         $row = $this->row($sql, $id);
 
         return null === $row || null === $row['organisation_id'] ? new AuditScope() : new AuditScope(Uuid::fromString($row['organisation_id']), target: $row['name']);
+    }
+
+    private static function uuid(?string $id): ?Uuid
+    {
+        return null === $id ? null : Uuid::fromString($id);
     }
 
     /** @return ?array<string, ?string> read past the soft-delete filter, for a subject deleted in this same request */

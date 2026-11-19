@@ -266,7 +266,11 @@ final class AuditLogTest extends ApiTestCase
         }
     }
 
-    /** @param array<string, string> $query */
+    /**
+     * @param array<string, string> $query
+     *
+     * @return array<string, mixed>
+     */
     private function list(Organisation $organisation, array $query): array
     {
         $body = $this->send('GET', $this->path($organisation) . ([] === $query ? '' : '?' . \http_build_query($query)));

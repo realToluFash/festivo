@@ -81,7 +81,7 @@ final class AuditTypeTest extends TestCase
                 continue;
             }
 
-            $source = File\read($file->getPathname());
+            $source = File\read(Type\non_empty_string()->coerce($file->getPathname()));
 
             if (Str\ends_with($file->getPathname(), 'Enum/AuditType.php')) {
                 continue;

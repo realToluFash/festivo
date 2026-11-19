@@ -6,6 +6,7 @@ namespace App\Enum;
 
 use Psl\Dict;
 use Psl\Iter;
+use Psl\Type;
 use Psl\Vec;
 
 /** The audit log's six action types (sc-611): every action recorded about an organisation is in exactly one. A story that audits a new area adds its type here. */
@@ -98,7 +99,7 @@ enum AuditType: string
     /** @return list<string> */
     public static function actions(?self $type = null): array
     {
-        return Vec\keys(null === $type ? self::ACTIONS : Dict\filter(self::ACTIONS, static fn (self $one): bool => $one === $type));
+        return Type\vec(Type\string())->coerce(Vec\keys(null === $type ? self::ACTIONS : Dict\filter(self::ACTIONS, static fn (self $one): bool => $one === $type)));
     }
 
     /** Only these show a network address and a device, on screen and in the export. */
