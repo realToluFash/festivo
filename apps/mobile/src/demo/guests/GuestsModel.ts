@@ -37,6 +37,8 @@ export const LIST_STATES = [
   'titlePt',
   'exportPt',
   'offlinePt',
+  'refreshing',
+  'refreshingPt',
   'filterOpen',
   'filtered',
   'search',
@@ -1448,7 +1450,15 @@ export function guestOf(state: GuestsState | null): string | null {
 /** The language the title row speaks, and whether Export sits in it: titlePt hides it, as sc-51444 drew it (sc-67659). */
 export function titleRowOf(state: GuestsState | null): { locale: 'en' | 'pt'; export: boolean } {
   if (state === 'titlePt') return { locale: 'pt', export: false };
-  return { locale: state === 'exportPt' || state === 'offlinePt' ? 'pt' : 'en', export: true };
+  return {
+    locale: state === 'exportPt' || state === 'offlinePt' || state === 'refreshingPt' ? 'pt' : 'en',
+    export: true,
+  };
+}
+
+/** Whether Refreshing… is held on screen, as a cold or warm reload of a loaded list shows it (sc-71821). */
+export function refreshingAt(state: GuestsState | null): boolean {
+  return state === 'refreshing' || state === 'refreshingPt';
 }
 
 export function areaStart(state: GuestsState | null): AreaStart {

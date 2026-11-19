@@ -48,6 +48,7 @@ import { DoneLine } from '../../components/FormLayers.tsx';
 import { PaneBell, useBellInPane } from '../events/EventFrame.tsx';
 import { actionsUnder, brokeOn, titleRowKey } from '../../layout/titleFit.ts';
 import { titleSize } from '../../layout/textSize.ts';
+import { statusFits } from './RefreshingPlace.ts';
 
 export type Layout = 'phone' | 'portrait' | 'landscape';
 
@@ -388,6 +389,7 @@ export function GuestsTitle({
   onPlus,
   plusLabel = W.addGuest,
   extra = null,
+  refreshing = null,
 }: {
   layout: Layout;
   title?: string;
@@ -395,6 +397,8 @@ export function GuestsTitle({
   onPlus: () => void;
   plusLabel?: string;
   extra?: ReactNode;
+  /** Refreshing… while it shows; `row` where main draws it on this row, a tablet's (sc-71821). */
+  refreshing?: { node: ReactNode; row: boolean } | null;
 }) {
   const size = layout === 'landscape' ? 26 : 30;
   const titleStyle = { lineHeight: size * 1.12, letterSpacing: size * -0.02 };
@@ -410,6 +414,9 @@ export function GuestsTitle({
   const [room, setRoom] = useState(0);
   const [extraWidth, setExtraWidth] = useState(0);
   const [titleWidth, setTitleWidth] = useState(0);
+  const [plusWidth, setPlusWidth] = useState(0);
+  const [statusWidth, setStatusWidth] = useState(0);
+  const [titleDrawn, setTitleDrawn] = useState(0);
   // The title steps down from its slot's width rather than from a wrap it must first see.
   const [slot, setSlot] = useState(0);
   const { fontScale } = useWindowDimensions();
@@ -429,6 +436,23 @@ export function GuestsTitle({
       refreshing: 0,
       gap: tokens.spaceMd,
     });
+  // Refreshing… counts toward nothing above: it stays on the row only in what the title as drawn, Export, the + and the bell leave it (sc-71821).
+  const onRow =
+    refreshing != null &&
+    refreshing.row &&
+    !under &&
+    statusFits({
+      room,
+      lead: titleDrawn,
+      ends: [
+        ...(extra == null ? [] : [extraWidth]),
+        ...(plus ? [plusWidth] : []),
+        ...(bell ? [tokens.sizeHit] : []),
+      ],
+      status: statusWidth,
+      gap: tokens.spaceMd,
+    });
+  const line = refreshing != null && !onRow;
   const keepsDefault = layout === 'landscape' && under;
   const onDrawn = useCallback(
     (next: number) => {
@@ -440,6 +464,8 @@ export function GuestsTitle({
   // Where the device lays the title out wider than it measured hidden, it can break at its floor though the sum says it fits; then the actions go under (sc-68417).
   const onTitleLines = (event: TextLayoutEvent) => {
     const start = titleSize(size, fontScale);
+    const lines = event.nativeEvent.lines;
+    setTitleDrawn(Math.ceil(Math.max(0, ...lines.map((one) => one.width))));
     setBroke((was) =>
       brokeOn({
         broke: was,
@@ -490,19 +516,36 @@ export function GuestsTitle({
         </View>
       )}
       {plus && (
-        <TopPrimary
-          label={plusLabel}
-          onPress={onPlus}
-          wide={label.wide && !under}
-          testID="guests.add"
-        />
+        <View onLayout={widthOf(setPlusWidth)}>
+          <TopPrimary
+            label={plusLabel}
+            onPress={onPlus}
+            wide={label.wide && !under}
+            testID="guests.add"
+          />
+        </View>
       )}
     </>
+  );
+  const status = refreshing != null && (
+    <View
+      style={styles.measure}
+      pointerEvents="none"
+      accessibilityElementsHidden
+      importantForAccessibility="no-hide-descendants"
+    >
+      <View onLayout={widthOf(setStatusWidth)}>{refreshing.node}</View>
+    </View>
+  );
+  const ownLine = refreshing != null && line && (
+    <View style={styles.statusLine} testID="guests.refreshingLine">
+      {refreshing.node}
+    </View>
   );
 
   return (
     <View
-      style={under ? styles.titleStack : styles.titleRow}
+      style={under || line ? styles.titleStack : styles.titleRow}
       onLayout={widthOf(setRoom)}
       testID="guests.titleRow"
     >
@@ -514,6 +557,7 @@ export function GuestsTitle({
         maxFontSizeMultiplier={1}
         onWidth={(_, width) => setTitleWidth(Math.ceil(width))}
       />
+      {status}
       {under ? (
         <>
           <View style={styles.titleRow}>
@@ -524,13 +568,21 @@ export function GuestsTitle({
             {actions}
           </View>
         </>
+      ) : line ? (
+        <View style={styles.titleRow}>
+          {heading}
+          {actions}
+          <PaneBell />
+        </View>
       ) : (
         <>
           {heading}
+          {onRow && refreshing?.node}
           {actions}
           <PaneBell />
         </>
       )}
+      {ownLine}
     </View>
   );
 }
@@ -621,4 +673,6 @@ const styles = StyleSheet.create({
   titleStack: { gap: tokens.spaceSm },
   actionsRow: { flexDirection: 'row', alignItems: 'center', gap: tokens.spaceMd },
   shrink: { flexShrink: 1 },
+  measure: { position: 'absolute', opacity: 0 },
+  statusLine: { flexDirection: 'row' },
 });
