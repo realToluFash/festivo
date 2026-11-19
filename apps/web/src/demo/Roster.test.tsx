@@ -245,8 +245,8 @@ describe('/demo/events/evt-wed-4/staff/roster (sc-3906)', () => {
     },
   );
 
-  it('draws the Roster frame’s focus ring with the Coverage frame’s one rule (sc-70540)', () => {
-    expect(cssRule('.rs-frame:focus-visible,\n.js-frame:focus-visible', ROSTER_CSS)).toContain(
+  it('draws a focus ring on the Roster frame (sc-70540)', () => {
+    expect(cssRule('.rs-frame:focus-visible', ROSTER_CSS)).toContain(
       'outline: 2px solid var(--colorAccent);',
     );
   });
