@@ -13,7 +13,7 @@ appId: host.exp.Exponent
     timeout: 3000
 - takeScreenshot: calendar-picked
 - tapOn:
-    id: 'tab-settings|frame.settings'
+    id: 'tab-settings|home.openSettings|frame.settings'
 - waitForAnimationToEnd:
     timeout: 5000
 - assertNotVisible: '{{t:switcher.switched}}'

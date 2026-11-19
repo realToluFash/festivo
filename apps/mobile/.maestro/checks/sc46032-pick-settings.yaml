@@ -4,7 +4,7 @@ appId: host.exp.Exponent
 - runFlow:
     file: ../checks/sc46032/pick.yaml
     env:
-      FROM: 'tab-settings|frame.settings'
+      FROM: 'tab-settings|home.openSettings|frame.settings'
 - extendedWaitUntil:
     visible: '{{t:switcher.switched}}'
     timeout: 20000
