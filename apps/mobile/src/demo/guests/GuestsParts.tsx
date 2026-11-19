@@ -46,9 +46,8 @@ import { W, say } from './GuestsWords.ts';
 import { type MarkKind, ReplyMark } from '../../components/ReplyMark.tsx';
 import { DoneLine } from '../../components/FormLayers.tsx';
 import { PaneBell, useBellInPane } from '../events/EventFrame.tsx';
-import { actionsUnder, brokeOn, titleRowKey } from '../../layout/titleFit.ts';
+import { actionsUnder, brokeOn, statusFits, titleRowKey } from '../../layout/titleFit.ts';
 import { titleSize } from '../../layout/textSize.ts';
-import { statusFits } from './RefreshingPlace.ts';
 
 export type Layout = 'phone' | 'portrait' | 'landscape';
 
@@ -424,7 +423,7 @@ export function GuestsTitle({
   const capOver = useContext(TitleCap);
   const drawn = useRef(0);
   const [broke, setBroke] = useState<string | null>(null);
-  const row = titleRowKey({ room, title, fontScale, spinning: false });
+  const row = titleRowKey({ room, title, fontScale });
   const under =
     broke === row ||
     actionsUnder({
@@ -433,7 +432,6 @@ export function GuestsTitle({
       extra: extra == null ? 0 : extraWidth,
       plus: plus ? tokens.sizeHit : 0,
       bell: bell ? tokens.sizeHit : 0,
-      refreshing: 0,
       gap: tokens.spaceMd,
     });
   // Refreshing… counts toward nothing above: it stays on the row only in what the title as drawn, Export, the + and the bell leave it (sc-71821).

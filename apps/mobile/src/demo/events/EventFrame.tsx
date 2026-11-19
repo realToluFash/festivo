@@ -31,7 +31,7 @@ import { PHONE_TAB_BAR, TabBarFade } from '../../components/TodayCover.tsx';
 import { tabBarSides } from '../../components/bodyEdges.ts';
 import { wordsIn } from '../../layout/textSize.ts';
 import { eventBarLabelSize, eventBarStart } from './eventBarSize.ts';
-import { statusFits } from '../guests/RefreshingPlace.ts';
+import { statusFits } from '../../layout/titleFit.ts';
 import {
   SidebarBack,
   SidebarColumn,
