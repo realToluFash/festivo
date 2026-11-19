@@ -4,7 +4,7 @@ appId: host.exp.Exponent
 - openLink: ${METRO_URL}/--/demo/settings/organisation?state=domainBoth
 - extendedWaitUntil:
     visible:
-      text: '.+'
+      id: organisation.card
     timeout: 20000
 - waitForAnimationToEnd:
     timeout: 8000

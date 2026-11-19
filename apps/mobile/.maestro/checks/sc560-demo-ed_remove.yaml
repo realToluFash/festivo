@@ -4,7 +4,7 @@ appId: host.exp.Exponent
 - openLink: ${METRO_URL}/--/demo/settings/data-and-control/email-domains?state=ed_remove
 - extendedWaitUntil:
     visible:
-      text: '.+'
+      id: domains.card
     timeout: 20000
 - waitForAnimationToEnd:
     timeout: 8000

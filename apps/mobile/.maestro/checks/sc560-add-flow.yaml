@@ -1,4 +1,4 @@
-# sc-560: prove a domain in the app: blank, a public domain, then a new one, then Verify with no record.
+# sc-560: prove a domain in the app: blank, a public domain, then a new one, then Verify with no record. DOMAIN must be a domain not yet on any organisation's list, or Add stops on domain_taken.
 appId: host.exp.Exponent
 ---
 - openLink: ${METRO_URL}/--/settings/data-and-control/email-domains
@@ -26,7 +26,7 @@ appId: host.exp.Exponent
     id: emailDomains.prove.add
 - extendedWaitUntil:
     visible:
-      text: 'You cannot use a public email domain.*'
+      text: '(?:You cannot use a public email domain|No puede usar un dominio de correo electrónico público|Vous ne pouvez pas utiliser un domaine de messagerie public|Não pode usar um domínio de e-mail público).*'
     timeout: 10000
 - takeScreenshot: sc560-public
 - eraseText: 40
@@ -42,6 +42,6 @@ appId: host.exp.Exponent
     id: emailDomains.record.verify
 - extendedWaitUntil:
     visible:
-      text: 'We could not find the record yet.*'
+      text: '(?:We could not find the record yet|Todavía no hemos encontrado el registro|Nous n’avons pas encore trouvé l’enregistrement|Ainda não encontrámos o registo).*'
     timeout: 10000
 - takeScreenshot: sc560-not-found
