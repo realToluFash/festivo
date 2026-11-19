@@ -297,6 +297,21 @@ a.sn-tab {
   .rs .sn-card-names {
     flex-basis: 12rem;
   }
+
+  /* At 400% zoom a cell breaks only between words and the frame scrolls further (sc-70540); the global overflow-wrap: anywhere on span and button would let a column shrink to one letter. */
+  .rs-table :is(th, td),
+  .rs-table :is(th, td) * {
+    overflow-wrap: normal;
+  }
+
+  .rs-table thead th:nth-child(2),
+  .rs-table thead th:nth-child(3) {
+    min-width: 128px;
+  }
+
+  .rs-table thead th:nth-child(5) {
+    min-width: 168px;
+  }
 }
 
 .rs-more {
