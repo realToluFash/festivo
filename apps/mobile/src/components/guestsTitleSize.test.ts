@@ -14,6 +14,9 @@ describe('Guests’ title takes one size, whatever Export draws at (sc-71821)', 
 
   it('sizes the title and places the actions from Export at its widest', () => {
     expect(guests).toMatch(/room=\{titleRoom\}/u);
+    expect(guests).toMatch(
+      /const titleRoom = titleRoomBeside\(\{\s*slot,\s*extra: exports == null \|\| under \? 0 : exportWidth,\s*widest: exportWidest,\s*\}\);/u,
+    );
     expect(guests).toMatch(/extra: exports == null \? 0 : exportWidest \|\| exportWidth,/u);
   });
 });
