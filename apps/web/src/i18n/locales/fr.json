@@ -22,6 +22,7 @@
     "calendar": "Calendrier",
     "settings": "Paramètres",
     "account": "Votre compte",
+    "signOut": "Se déconnecter",
     "person": "{{name}}, {{role}}",
     "menu": "Menu",
     "closeMenu": "Fermer le menu",
@@ -2703,6 +2704,13 @@
     "reportsComing": "Les rapports de cet événement arrivent bientôt.",
     "people": "Personnes"
   },
+  "outsideEvent": {
+    "until": "until {{when}}",
+    "guestsLine": "Names and replies only, no contact details",
+    "onEvent_one": "{{count, number}} person on this event",
+    "onEvent_other": "{{count, number}} people on this event",
+    "onEvent_many": "{{count, number}} people on this event"
+  },
   "seating": {
     "area": "Plan de table",
     "events": "Événements",
@@ -3249,7 +3257,7 @@
     "loading": "Chargement des personnes de cet événement…",
     "failed": "Impossible de charger les personnes de cet événement. Vérifiez votre connexion et réessayez.",
     "retry": "Réessayer",
-    "addPrompt": "Ajouter par nom",
+    "addPrompt": "Ajouter par nom, e-mail ou portable",
     "onEvent": "Sur cet événement",
     "you": "Vous",
     "nobody": "Aucune personne n’a encore été ajoutée à cet événement.",
@@ -3326,7 +3334,19 @@
       "can_check_in_one": "{{count, number}} personne peut désormais accueillir les invités.",
       "can_check_in_many": "{{count, number}} de personnes peuvent désormais accueillir les invités.",
       "can_check_in_other": "{{count, number}} personnes peuvent désormais accueillir les invités."
-    }
+    },
+    "notJoined": "Invitation en attente",
+    "outsideTag": "Externe à {{organisation}}",
+    "outsideEnds": "Son accès prend fin avec l’événement.",
+    "leadOff": "Réservé aux membres de {{organisation}}.",
+    "removeOutsideLine": "Cette personne perdra l’accès à sa prochaine action.",
+    "findAny": "Nom, adresse e-mail ou numéro de portable",
+    "fromOutside": "En dehors de {{organisation}}",
+    "unusable": "Ce n’est ni une adresse e-mail ni un numéro de portable que nous pouvons utiliser.",
+    "onAlready": "{{name}} participe déjà à cet événement.",
+    "pickAnother": "Choisissez un autre rôle pour ajouter une personne externe.",
+    "jobLabel": "Fonction (facultatif)",
+    "jobHelp": "Ce que cette personne vient faire, affiché à côté de son nom. Ne donne aucun accès. {{length, number}} sur {{most, number}}."
   },
   "guestList": {
     "addGuest": "Ajouter un invité",

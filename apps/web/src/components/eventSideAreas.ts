@@ -1,3 +1,4 @@
+import type { EventRole } from '@soirely/api-client';
 import { EVENT_AREAS, type EventArea } from '@soirely/domain';
 
 import type { GlyphName } from './Glyph.tsx';
@@ -24,3 +25,10 @@ export const SIDE_AREA_GLYPHS: Record<SideArea, GlyphName> = {
   budget: 'budget',
   reports: 'reports',
 };
+
+const READING_AREAS: readonly SideArea[] = ['overview', 'guests', 'schedule', 'seating', 'people'];
+
+/** What a level held from outside an organisation opens (sc-71): the reading levels the event's own screens, Can edit every area but Budget. */
+export function outsideAreas(role: EventRole): readonly SideArea[] {
+  return role === 'can_edit' ? SIDE_AREAS.filter((area) => area !== 'budget') : READING_AREAS;
+}

@@ -9,13 +9,16 @@ use App\Domain\Organisation\DomainJoining\JoinOfferFinder;
 use App\Domain\Organisation\Http\JoinRequestSerialiser;
 use App\Domain\User\Onboarding\AccountCompleteness;
 use App\Entity\EmailAddress;
+use App\Entity\EventPerson;
 use App\Entity\PhoneNumber;
 use App\Entity\ProviderIdentity;
 use App\Entity\User;
+use App\Repository\EventPersonRepository;
 use App\Repository\MembershipRepository;
 use App\Repository\ProviderIdentityRepository;
 use Psl\Iter;
 use Psl\Vec;
+use Psr\Clock\ClockInterface;
 
 final readonly class AccountSerialiser
 {
@@ -26,6 +29,8 @@ final readonly class AccountSerialiser
         private JoinOfferFinder $joinOfferFinder,
         private JoinRequestSerialiser $joinRequestSerialiser,
         private EmailSuppressions $emailSuppressions,
+        private EventPersonRepository $eventPersonRepository,
+        private ClockInterface $clock,
     ) {
     }
 
@@ -33,6 +38,7 @@ final readonly class AccountSerialiser
     public function serialise(User $user): array
     {
         $memberships = $this->membershipRepository->findActiveFor($user);
+        $outside = $this->eventPersonRepository->findLiveOutsideFor($user, $this->clock->now());
         $pending = [] === $memberships ? $this->joinOfferFinder->pendingRequestFor($user) : null;
         $emails = $user->getEmailAddresses();
         $suppressed = $this->emailSuppressions->suppressedAmong(Vec\map($emails, static fn (EmailAddress $address): string => $address->getAddress()));
@@ -51,7 +57,18 @@ final readonly class AccountSerialiser
             'verified' => $user->isVerified(),
             'complete' => $this->accountCompleteness->isComplete($user),
             'hasPassword' => null !== $user->getPassword(),
-            'needsOrganisation' => $this->accountCompleteness->needsOrganisation($user),
+            // An account on an event from outside lands inside it, and is never asked to start an organisation (sc-71).
+            'needsOrganisation' => [] === $outside && $this->accountCompleteness->needsOrganisation($user),
+            // Each organisation's event shown with its own name only: the account's grants elsewhere are not the organisation's business.
+            'outsideEvents' => Vec\map($outside, static fn (EventPerson $person): array => [
+                'id' => $person->getEvent()->getId()->toRfc4122(),
+                'name' => $person->getEvent()->getName(),
+                'organisationName' => $person->getEvent()->getOrganisation()->getName(),
+                'role' => $person->getRole()->value,
+                'jobLabel' => $person->getJobLabel(),
+                'startsAt' => $person->getEvent()->getStartsAt()->format(\DATE_ATOM),
+                'endsAt' => $person->getEvent()->getClosesAt()?->format(\DATE_ATOM),
+            ]),
             // In no organisation and asked to join one (sc-561): the details screen says whom it is waiting for.
             'waitingFor' => null === $pending ? null : $this->joinRequestSerialiser->request($pending),
             // Only ever the person's own: nobody else in an organisation learns whether their mail bounced (sc-44949).

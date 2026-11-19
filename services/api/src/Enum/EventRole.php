@@ -31,6 +31,15 @@ enum EventRole: string
         };
     }
 
+    /** @return list<PermissionArea> what the level opens held from outside an organisation (sc-71): Can edit every area but Budget, the reading levels Overview, Guests, Schedule, Seating and People */
+    public function areasFromOutside(): array
+    {
+        return match ($this) {
+            self::Lead, self::CanEdit => Vec\filter(PermissionArea::cases(), static fn (PermissionArea $area): bool => PermissionArea::Budget !== $area),
+            self::CanView, self::CanCheckIn => [PermissionArea::Events, PermissionArea::Guests, PermissionArea::RunOfShow, PermissionArea::Seating, PermissionArea::People],
+        };
+    }
+
     /** @return list<self> the roles holding it */
     public static function holding(Permission $permission): array
     {

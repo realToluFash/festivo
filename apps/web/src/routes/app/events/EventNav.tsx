@@ -149,9 +149,14 @@ function useRoutedEvent(): InsideEvent | null {
 export function EventNav({
   inside,
   onFollow,
+  areas = SIDE_AREAS,
+  back = true,
 }: {
   inside: Omit<InsideEvent, 'area'> & { area: SideArea | null };
   onFollow: (() => void) | undefined;
+  /** An account with no organisation sees its level's areas and has no Events to go back to (sc-71). */
+  areas?: readonly SideArea[];
+  back?: boolean;
 }) {
   const { t } = useTranslation();
   const location = useLocation();
@@ -171,14 +176,16 @@ export function EventNav({
   return (
     <nav className="ev-side-nav" aria-label={t('eventNav.label')}>
       <div className="ev-side-event">
-        <Link className="today-place ev-side-back" to="/app/events" onClick={onFollow}>
-          <Glyph name="back" size={17} weight={2.4} />
-          {t('nav.events')}
-        </Link>
+        {back && (
+          <Link className="today-place ev-side-back" to="/app/events" onClick={onFollow}>
+            <Glyph name="back" size={17} weight={2.4} />
+            {t('nav.events')}
+          </Link>
+        )}
         {event != null && <SideCard event={event} />}
       </div>
       <ul className="today-places">
-        {SIDE_AREAS.map((area) => {
+        {areas.map((area) => {
           const current = area === inside.area;
           const sub =
             area === 'menu' && menuLine != null

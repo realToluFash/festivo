@@ -21,13 +21,13 @@ export type Opened =
   | { kind: 'notFound' }
   | { kind: 'loaded'; event: OrganisationEvent };
 
-/** Another organisation's event, one outside the role's grants and one that does not exist all read as not found. */
+/** Another organisation's event, one outside the role's grants and one that does not exist all read as not found; held from outside (null), the event is the account's whichever organisation holds it (sc-71). */
 export function openedOf(
   answer: { event: OrganisationEvent } | { error: unknown },
-  organisationId: string,
+  organisationId: string | null,
 ): Opened {
   if ('event' in answer) {
-    return answer.event.organisationId === organisationId
+    return organisationId == null || answer.event.organisationId === organisationId
       ? { kind: 'loaded', event: answer.event }
       : { kind: 'notFound' };
   }
@@ -42,9 +42,10 @@ export function openedOf(
 export function openedWithoutAsking(
   accountLoaded: boolean,
   organisation: { permissions: readonly string[] } | null,
+  outside = false,
 ): Opened | null {
   if (!accountLoaded) return { kind: 'loading' };
-  return organisation == null ? { kind: 'notFound' } : null;
+  return organisation == null && !outside ? { kind: 'notFound' } : null;
 }
 
 /** What the Events list shows in place of its rows, as far as the pane beside it is concerned. */

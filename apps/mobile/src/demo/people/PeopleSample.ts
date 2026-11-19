@@ -1,13 +1,17 @@
-import {
-  emailProblem,
-  formatPhone,
-  formatWallDay,
-  phoneE164,
-  phoneLengthProblem,
-} from '@soirely/domain';
+import { formatWallDay } from '@soirely/domain';
 
 import type { AddWords, RoleSheetWords, RoleWords } from '../../components/PeopleParts.tsx';
-import { everyEventLine, inRoleOrder, joinedLine, opensRow } from '../../kit/eventPeople.ts';
+import {
+  type Address,
+  everyEventLine,
+  inRoleOrder,
+  joinedLine,
+  opensRow,
+  type OutsideView,
+  outsideView as outsideViewOf,
+  readTyped,
+  type Typed,
+} from '../../kit/eventPeople.ts';
 import { writtenTime } from '../clock.ts';
 import { ORGANISATION } from '../settings/MembersSample.ts';
 import type { Load } from '../settings/RolesSample.ts';
@@ -335,34 +339,7 @@ export function addView(
   return { kind: 'members', offered };
 }
 
-export type Address =
-  | { kind: 'email'; address: string; shown: string }
-  | { kind: 'mobile'; address: string; shown: string };
-
-export type Typed = { kind: 'name' } | { kind: 'address'; address: Address } | { kind: 'unusable' };
-
-/** sc-71's form checks: a value with an @ is an email address; digits, with or without a + code, a mobile number by the country's lengths; letters alone, a name to find. */
-export function readTyped(typed: string, country: string): Typed {
-  const text = typed.trim();
-  if (text === '') return { kind: 'name' };
-  if (text.includes('@'))
-    return emailProblem(text) == null
-      ? { kind: 'address', address: { kind: 'email', address: text, shown: text } }
-      : { kind: 'unusable' };
-  if (/\p{L}/u.test(text) || !/\d/u.test(text)) return { kind: 'name' };
-  const e164 = phoneLengthProblem(text, country) == null ? phoneE164(text, country) : null;
-
-  return e164 == null
-    ? { kind: 'unusable' }
-    : { kind: 'address', address: { kind: 'mobile', address: e164, shown: formatPhone(e164) } };
-}
-
-export type OutsideView =
-  | { kind: 'none' }
-  | { kind: 'offer'; address: Address }
-  | { kind: 'unusable' }
-  | { kind: 'leadOff' }
-  | { kind: 'onEvent'; name: string };
+export { type Address, readTyped, type OutsideView, type Typed };
 
 /** What Add shows for someone from outside: the address to tick, the line for half of one, Lead's refusal, or that they are on already. */
 export function outsideView(
@@ -371,13 +348,11 @@ export function outsideView(
   role: EventRole,
   onEvent: readonly OnEvent[] = [],
 ): OutsideView {
-  const read = readTyped(typed, country);
-  if (read.kind === 'name') return { kind: 'none' };
-  if (read.kind === 'unusable') return { kind: 'unusable' };
-  const there = onEvent.find((one) => one.id.toLowerCase() === read.address.address.toLowerCase());
-  if (there != null) return { kind: 'onEvent', name: there.name };
+  return outsideViewOf(typed, country, role === 'Lead', (address) => {
+    const wanted = address.address.toLowerCase();
 
-  return role === 'Lead' ? { kind: 'leadOff' } : { kind: 'offer', address: read.address };
+    return onEvent.find((one) => one.id.toLowerCase() === wanted)?.name ?? null;
+  });
 }
 
 export function onAlreadyLine(name: string): string {
