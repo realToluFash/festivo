@@ -114,7 +114,7 @@
     "join_request_answered": "Este pedido já foi respondido ou foi removido.",
     "owner_claim_address": "Para assumir a propriedade, o seu endereço principal tem de pertencer ao domínio da organização.",
     "owner_claim_managed": "Esse domínio é gerido por outra organização. Contacte o apoio ao cliente da Soirely.",
-    "domain_managed": "Your address is managed by an organisation, so you can only be a member there.",
+    "domain_managed": "O seu endereço é gerido por uma organização, por isso só pode ser membro dessa organização.",
     "owner_claim_open": "Outra pessoa já pediu para assumir a propriedade desta organização.",
     "owner_claim_closed": "Só o apoio ao cliente da Soirely pode repor a propriedade.",
     "owner_claim_ended": "Este pedido já terminou.",
