@@ -122,8 +122,8 @@ class ApiException extends RuntimeException
         );
     }
 
-    /** Rounded up, as the clients round it: told 22:46, whoever tries at 22:46:01 gets in. */
-    private static function statedMinute(DateTimeImmutable $windowEnd): DateTimeImmutable
+    /** Rounded up, as the clients round it: told 22:46, whoever tries at 22:46:01 gets in. A screen naming the same window's end writes this minute too. */
+    public static function statedMinute(DateTimeImmutable $windowEnd): DateTimeImmutable
     {
         $lifts = $windowEnd->getTimestamp() + 1;
 
