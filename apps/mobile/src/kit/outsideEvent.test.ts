@@ -1,4 +1,5 @@
 import type { OutsideEvent } from '@soirely/api-client';
+import { formatEventMoment } from '@soirely/domain';
 import { init, t } from 'i18next';
 import { beforeAll, describe, expect, it } from 'vitest';
 
@@ -125,6 +126,25 @@ describe('Overview held from outside', () => {
     expect(levelLine(t, { role: 'can_check_in', jobLabel: null }, ENDS, 'en-GB')).toBe(
       'Can check guests in · until Fri 15 Nov, 02:00',
     );
+  });
+
+  it('reads the level’s end on the 24-hour clock in every locale, as the web does (sc-71636)', () => {
+    const EARLY = { endsAt: '2030-11-15T03:00:00+01:00', timeZone: 'Africa/Lagos' };
+    const LATE = { endsAt: '2030-11-14T23:30:00+01:00', timeZone: 'Africa/Lagos' };
+
+    expect(levelLine(t, WEDDING, EARLY, 'en-US')).toBe(
+      'Can view · Cloakroom · until Fri, Nov 15, 03:00',
+    );
+    expect(levelLine(t, WEDDING, LATE, 'en-US')).toBe(
+      'Can view · Cloakroom · until Thu, Nov 14, 23:30',
+    );
+    for (const locale of ['es', 'fr', 'pt']) {
+      expect(levelLine(t, WEDDING, EARLY, locale)).toContain(
+        formatEventMoment(EARLY.endsAt, EARLY.timeZone, locale),
+      );
+      expect(levelLine(t, WEDDING, EARLY, locale)).toMatch(/03:00/u);
+      expect(levelLine(t, WEDDING, LATE, locale)).toMatch(/23:30/u);
+    }
   });
 
   it('heads the card with the day, then its start to its end, as the demo writes it', () => {
