@@ -167,7 +167,7 @@ final readonly class AuditLogController
     /**
      * The dates are whole days in the reader's own zone, or UTC for an account with none; 422 on `to` for a start after the end.
      *
-     * @param array{person?: string, type?: string, event?: string, from?: string, to?: string, before?: string} $asked
+     * @param array<string, string> $asked person, type, event, from, to and before, each as asked
      */
     private function filter(Organisation $organisation, User $user, array $asked): AuditFilter
     {
