@@ -30,6 +30,7 @@ export const DATA_CONTROL_PAGES: PageLinks = [
       hub('quiet', 'Nothing needs your attention'),
       hub('new', 'Nothing set up yet: Prove a domain'),
       hub('locked', 'Never on Enterprise: these locked'),
+      hub('locked_ready', 'Never on Enterprise, your export ready: Download'),
       hub('downgraded', 'Left Enterprise: kept as they were'),
       hub(undefined, 'A member: no Data and control', VIEWERS.ana),
       hub('loading', 'Loading'),
