@@ -28,6 +28,7 @@ import { OutcomeLine } from './OutcomeLine.tsx';
 import { EventPeople } from './EventPeople.tsx';
 import { GuestsArea, GuestsGone } from './GuestsArea.tsx';
 import { RunArea } from './RunArea.tsx';
+import { BudgetArea } from './BudgetArea.tsx';
 import { MenuArea } from './MenuArea.tsx';
 import { ScheduleOrNight } from './NightArea.tsx';
 import { SeatingArea } from './SeatingArea.tsx';
@@ -250,6 +251,9 @@ function EventOf({
 
   if (page === 'menu' && load.kind === 'loaded')
     return canOn(load.event, PAGE_NEEDS.menu) ? <MenuArea event={load.event} /> : <Withheld />;
+
+  if (page === 'budget' && load.kind === 'loaded')
+    return canOn(load.event, PAGE_NEEDS.budget) ? <BudgetArea event={load.event} /> : <Withheld />;
 
   if (page === 'schedule' && load.kind === 'loaded')
     return canOn(load.event, PAGE_NEEDS.schedule) ? (
