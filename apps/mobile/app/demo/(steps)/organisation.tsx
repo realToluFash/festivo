@@ -9,25 +9,18 @@ import { Text } from '../../../src/components/Text.tsx';
 import { DemoScreen, NavBar, closeFlow } from '../../../src/demo/DemoScreen.tsx';
 import { ManagedBanner } from '../../../src/demo/Managed.tsx';
 import { SAMPLE } from '../../../src/demo/samples.ts';
+import { managedStateOf, managedStep } from '../../../src/demo/signUpEnd.ts';
 import { InsideField } from '../../../src/steps/InsideField.tsx';
 import { Heading, Plain, Says } from '../../../src/steps/Lines.tsx';
 import { SelectRow } from '../../../src/demo/SelectRow.tsx';
 import { COUNTRY_BLANK, startCountry } from '../../../src/demo/signUpChecks.ts';
 import { tokens } from '../../../src/theme/tokens.ts';
 
-const MANAGED_STATES = ['managed', 'managedOffer'] as const;
-type ManagedState = (typeof MANAGED_STATES)[number];
-
-function managedStateOf(state: string | undefined): ManagedState | null {
-  return MANAGED_STATES.find((known) => known === state) ?? null;
-}
-
 export default function Organisation() {
   const { state, via } = useLocalSearchParams<{ state?: string; via?: string }>();
   const managed = managedStateOf(state);
 
-  if (managed != null)
-    return <Managed offer={managed === 'managedOffer'} short={via === 'google'} />;
+  if (managed != null) return <Managed step={managedStep(managed)} short={via === 'google'} />;
 
   return <OwnOrganisation />;
 }
@@ -107,9 +100,13 @@ function OwnOrganisation() {
 }
 
 /** No Change your main email address here: Account settings is behind the onboarding gate (sc-563). */
-function Managed({ offer, short }: { offer: boolean; short: boolean }) {
+function Managed({ step, short }: { step: ReturnType<typeof managedStep>; short: boolean }) {
+  const { offer } = step;
   const next = () =>
-    router.push({ pathname: '/demo/mobile', params: { via: short ? 'google' : 'email' } });
+    router.push({
+      pathname: '/demo/mobile',
+      params: { via: short ? 'google' : 'email', end: step.end },
+    });
 
   return (
     <DemoScreen
@@ -120,15 +117,11 @@ function Managed({ offer, short }: { offer: boolean; short: boolean }) {
         />
       }
       foot={
-        offer ? (
-          <PrimaryButton
-            label={`Ask to join ${SAMPLE.organisation}`}
-            onPress={next}
-            testID="organisation.managed.ask"
-          />
-        ) : (
-          <PrimaryButton label="Continue" onPress={next} testID="demo.continue" />
-        )
+        <PrimaryButton
+          label={step.action}
+          onPress={next}
+          testID={offer ? 'organisation.managed.ask' : 'demo.continue'}
+        />
       }
     >
       <Heading title="Your organisation" />
@@ -146,7 +139,7 @@ function Managed({ offer, short }: { offer: boolean; short: boolean }) {
             </View>
           </View>
         )}
-        <ManagedBanner way={false} testID="organisation.managed" />
+        <ManagedBanner way={step.way} testID="organisation.managed" />
       </View>
     </DemoScreen>
   );
