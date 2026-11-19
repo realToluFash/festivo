@@ -406,6 +406,8 @@ export interface VendorsStart {
   lit: string | null;
   told: string | null;
   searching: boolean;
+  /** The API stops answering after the directory has shown: each read fails until Try again reaches it. */
+  unreachable: boolean;
 }
 
 function bloomDraft(vendors: readonly Vendor[]): Draft {
@@ -439,6 +441,7 @@ export function vendorsStart(state: string, vendor: string | null = null): Vendo
     lit,
     told: null,
     searching: false,
+    unreachable: false,
   };
 
   switch (state) {
@@ -449,6 +452,13 @@ export function vendorsStart(state: string, vendor: string | null = null): Vendo
       return { ...start, page: 2 };
     case 'searched':
       return { ...start, looking: { ...NOT_LOOKING, q: 'bloom' }, searching: true };
+    case 'search_failed':
+      return {
+        ...start,
+        looking: { ...NOT_LOOKING, q: 'tulip' },
+        searching: true,
+        unreachable: true,
+      };
     case 'filtered':
       return { ...start, looking: { ...NOT_LOOKING, category: 'flowers' } };
     case 'category_menu':
@@ -538,6 +548,10 @@ export const VENDORS_PAGES: readonly { name: string; states: readonly DemoLink[]
       { to: at('empty'), name: 'No vendors yet (empty)' },
       { to: at('loading'), name: 'Loading (loading)' },
       { to: at('failed'), name: 'Failed (failed)' },
+      {
+        to: at('search_failed'),
+        name: 'A search for “tulip” that got no answer, Search kept (search_failed)',
+      },
     ],
   },
   {
