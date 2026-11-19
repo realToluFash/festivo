@@ -16,4 +16,15 @@ enum CatalogueLimit: string
     case AiRequests = 'ai_requests';
     case StorageBytes = 'storage_bytes';
     case Credits = 'credits';
+
+    /** Which code enforces it, so a version cannot change it: that takes a story building the new enforcement. */
+    public function kind(): LimitKind
+    {
+        return match ($this) {
+            self::LiveEvents, self::GuestsPerEvent, self::TeamSeats => LimitKind::Hard,
+            self::Email => LimitKind::Included,
+            self::Sms, self::WhatsApp, self::AiRequests, self::StorageBytes => LimitKind::Metered,
+            self::Credits => LimitKind::Credits,
+        };
+    }
 }
