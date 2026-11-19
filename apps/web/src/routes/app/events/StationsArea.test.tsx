@@ -1,6 +1,7 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { RouterProvider, createMemoryRouter } from 'react-router';
+import { serverClock } from '@soirely/domain';
 
 import { __setSessionState, type Session } from '../../../session.ts';
 import { OWNER_PERMISSIONS, membership } from '../../../test-memberships.ts';
@@ -200,6 +201,7 @@ async function onStations(
 
 afterEach(() => {
   vi.restoreAllMocks();
+  vi.useRealTimers();
 });
 
 describe('Stations on the Staff page (sc-3910)', () => {
@@ -353,6 +355,41 @@ describe('Stations on the Staff page (sc-3910)', () => {
 
     expect(await screen.findByText('Stage removed.')).toBeDefined();
     expect(screen.queryByText('Nobody on Stage')).toBeNull();
+  });
+
+  it('shows who is on shift at each station now during the event, and not while planning', async () => {
+    const shift = (startsAt: string, endsAt: string) => ({ id: startsAt, startsAt, endsAt });
+    const staff = STAFF.map((one) =>
+      one.id === 'tayo'
+        ? { ...one, shifts: [shift('2030-11-14T16:00:00+01:00', '2030-11-15T01:00:00+01:00')] }
+        : one.id === 'gbenga'
+          ? { ...one, shifts: [shift('2030-11-14T16:00:00+01:00', '2030-11-14T21:00:00+01:00')] }
+          : one.id === 'sade'
+            ? { ...one, shifts: [shift('2030-11-14T22:00:00+01:00', '2030-11-15T02:00:00+01:00')] }
+            : one,
+    );
+    const now = new Date('2030-11-14T21:30:00+01:00');
+    vi.useFakeTimers({ shouldAdvanceTime: true, toFake: ['Date'] });
+    vi.setSystemTime(now);
+    serverClock.observe(now.toUTCString());
+    signedIn();
+    await onStations({ 'GET /api/events/ev_1/staff': () => json({ ...PLAN, staff }) });
+
+    const card = screen.getByRole('region', { name: 'Stations tonight' });
+    expect(card.textContent).toContain('Who is on shift at each station now, 21:30.');
+    const grill = screen.getByRole('list', { name: 'On Grill now' });
+    expect(grill.textContent).toBe('Tayo Bamidele16:00 to 01:00Lead');
+    expect(card.textContent).toContain('Nobody on Bar');
+    expect(card.textContent).not.toContain('Gbenga Salami');
+    expect(card.textContent).not.toContain('Sade Lawal');
+    expect(screen.queryByRole('list', { name: 'On Bar now' })).toBeNull();
+  });
+
+  it('has no Stations tonight card while planning', async () => {
+    signedIn();
+    await onStations({});
+
+    expect(screen.queryByRole('region', { name: 'Stations tonight' })).toBeNull();
   });
 
   it('asks in one sentence when one person and an item go with a place', async () => {

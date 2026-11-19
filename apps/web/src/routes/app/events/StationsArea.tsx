@@ -22,12 +22,13 @@ import { HintButton } from '../../../components/HintButton.tsx';
 import { Skeleton } from '../../../components/Skeleton.tsx';
 import { dateLocale } from '../../../i18n/index.ts';
 import { pageTitle, usePageTitle } from '../../../pageTitle.ts';
+import { useServerNow } from '../../../serverNow.ts';
 import { canOn } from '../../../session.ts';
 import { useDeskTop } from '../../../deskTop.ts';
 import { FieldWrong } from './GuestFields.tsx';
 import { StaffTabs } from './StaffTabs.tsx';
 import { stationLabel } from './stationWords.ts';
-import { rangeWords, staffTimes } from './staffTimes.ts';
+import { clockWords, rangeWords, staffTimes } from './staffTimes.ts';
 import { useHubTopics } from './useHubTopics.ts';
 import '../../../components/SettingsParts.css';
 import '../../../components/eventsDesk.css';
@@ -179,6 +180,7 @@ function Stations({
   const { t, i18n } = useTranslation();
   const manage = canOn(event, 'staff.manage');
   const times = staffTimes(event, plan.shifts, dateLocale());
+  const now = useServerNow();
   const [panel, setPanel] = useState<Panel>(null);
   const [said, setSaid] = useState('');
   const [asking, setAsking] = useState<string | null>(null);
@@ -211,6 +213,17 @@ function Stations({
     return first == null ? t('roster.noShift') : rangeWords(first.startsAt, first.endsAt, times, t);
   };
   const floor = floorLead == null ? null : (personById(floorLead) ?? null);
+  const at = now.getTime();
+  const inService = at >= Date.parse(event.startsAt) && at < Date.parse(event.endsAt);
+  const onShiftNow = (station: Station) =>
+    station.people.flatMap((id) => {
+      const entry = personById(id);
+      const shift = entry?.shifts.find(
+        (one) => Date.parse(one.startsAt) <= at && at < Date.parse(one.endsAt),
+      );
+
+      return entry == null || shift == null ? [] : [{ entry, shift }];
+    });
 
   async function write(change: () => Promise<StaffPlan>): Promise<StaffPlan | null> {
     if (busy) return null;
@@ -603,6 +616,49 @@ function Stations({
               </button>
             </div>
           ))}
+          {inService && (
+            <section className="sn-card" aria-labelledby="sn-tonight">
+              <div className="sn-card-names">
+                <h2 id="sn-tonight">{t('stations.tonight')}</h2>
+                <p className="mn-sub">
+                  {t('stations.tonightSub', { time: clockWords(now.getTime(), times) })}
+                </p>
+              </div>
+              <ul className="sn-rows">
+                {stations.map((station) => {
+                  const label = labelOf(station);
+                  const on = onShiftNow(station);
+
+                  return (
+                    <li key={station.id} className="sn-row">
+                      <h3>{label}</h3>
+                      {on.length > 0 ? (
+                        <ul className="sn-people" aria-label={t('stations.onNow', { name: label })}>
+                          {on.map(({ entry, shift }) => (
+                            <li key={entry.id} className="sn-person">
+                              <span className="sn-person-name">{entry.fullName}</span>
+                              <span className="sn-time">
+                                {rangeWords(shift.startsAt, shift.endsAt, times, t)}
+                              </span>
+                              {station.lead === entry.id && (
+                                <span className="sn-lead">{t('stations.lead')}</span>
+                              )}
+                            </li>
+                          ))}
+                        </ul>
+                      ) : (
+                        <p className="sn-nobody">
+                          <span className="sn-nobody-mark" aria-hidden="true" />
+                          {t('stations.nobodyOn', { name: station.name })}
+                        </p>
+                      )}
+                    </li>
+                  );
+                })}
+              </ul>
+              <p className="sn-foot">{t('stations.tonightFoot')}</p>
+            </section>
+          )}
           <section className="sn-card sn-floor" aria-labelledby="sn-floor-title">
             <div className="sn-card-names">
               <h2 id="sn-floor-title" className="sn-eyebrow">
