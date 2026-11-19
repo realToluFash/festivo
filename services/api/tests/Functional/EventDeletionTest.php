@@ -16,11 +16,14 @@ use App\Entity\Membership;
 use App\Entity\Organisation;
 use App\Entity\Role;
 use App\Entity\User;
+use App\Enum\AuditType;
 use App\Enum\DeletedKind;
 use App\Enum\ErrorCode;
 use App\Enum\EventRole;
 use App\Enum\MembershipStatus;
 use App\Enum\SeededRole;
+use App\Repository\AuditEntryRepository;
+use App\Repository\AuditFilter;
 use App\Storage\ObjectStore;
 use App\Tests\ApiTestCase;
 use App\Tests\Traits\OnboardsAccounts;
@@ -220,6 +223,11 @@ final class EventDeletionTest extends ApiTestCase
 
         $purged = $this->entry('event.purged', $id) ?? self::fail('no purge entry');
         self::assertSame([], $purged->getChanges());
+
+        $filter = new AuditFilter($this->organisation->getId(), new DateTimeImmutable('2026-01-01T00:00:00+00:00'), type: AuditType::Events, event: Uuid::fromString($id));
+        $listed = Vec\map(self::service(AuditEntryRepository::class)->findPage($filter, null, 50), static fn (AuditEntry $entry): string => $entry->getAction());
+        self::assertContains('event.purged', $listed);
+        self::assertContains(['id' => $id, 'name' => self::NAME], self::service(AuditEntryRepository::class)->findEvents($filter));
     }
 
     #[Test]
