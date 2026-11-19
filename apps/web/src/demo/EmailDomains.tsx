@@ -22,6 +22,8 @@ import { SHARED_WORDS as S, zoneFor } from './dataControl.ts';
 import type { ReaderZone } from './dataSettings.ts';
 import { NoTag, PageFailed, PageLoading, StatusLine, SubPage } from './DataControlParts.tsx';
 import { useLoad } from './useDataControl.ts';
+import { pageStateOf } from './enterpriseAsk.ts';
+import { EnterpriseStep } from './EnterpriseStep.tsx';
 import {
   type CardStep as Step,
   DOMAIN_WORDS as W,
@@ -62,7 +64,7 @@ export function EmailDomains({
 }) {
   const locale = useMemo(() => formattingLocale('en', navigator.language), []);
   const zone = zoneFor(viewer);
-  const [start] = useState(() => domainsStart(state));
+  const [start] = useState(() => domainsStart(pageStateOf('emailDomains', state)));
   const [load, retry] = useLoad(start.load);
   const [view, setView] = useState<DomainsView>(start.view);
   const [record, setRecord] = useState(start.record);
@@ -109,8 +111,12 @@ export function EmailDomains({
           <Says>{card.says}</Says>
           <OnCard>{card.line}</OnCard>
         </div>
-        {card.step != null && (
-          <CardStep label={stepWords(card.step)} onClick={() => card.step && onStep(card.step)} />
+        {card.step?.does === 'contact' ? (
+          <EnterpriseStep viewer={viewer} state={state} tell={tell} />
+        ) : (
+          card.step != null && (
+            <CardStep label={stepWords(card.step)} onClick={() => card.step && onStep(card.step)} />
+          )
         )}
       </Card>
       {view.plan !== 'free' && (

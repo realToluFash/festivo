@@ -37,6 +37,8 @@ import {
   SubPage,
 } from './DataControlParts.tsx';
 import { useLoad, useOpen } from './useDataControl.ts';
+import { pageStateOf } from './enterpriseAsk.ts';
+import { EnterpriseStep } from './EnterpriseStep.tsx';
 import { DataSettings } from './DataSettings.tsx';
 import { EmailDomains } from './EmailDomains.tsx';
 import { ExportData } from './ExportData.tsx';
@@ -97,7 +99,7 @@ export function DataControl({
 
 function Hub({ viewer, state, tell }: { viewer: Viewer; state: string; tell: Tell }) {
   const locale = useMemo(() => formattingLocale('en', navigator.language), []);
-  const [start] = useState(() => hubStart(state));
+  const [start] = useState(() => hubStart(pageStateOf('hub', state)));
   const [load, retry] = useLoad(start.load);
   const [view, setView] = useState(start.view);
   const said = useRef<HTMLDivElement>(null);
@@ -133,8 +135,15 @@ function Hub({ viewer, state, tell }: { viewer: Viewer; state: string; tell: Tel
           <Says>{card.says}</Says>
           <OnCard>{card.line}</OnCard>
         </div>
-        {card.step != null && (
-          <CardStep label={STEP_WORDS[card.step]} onClick={() => card.step && onStep(card.step)} />
+        {card.step === 'contact' ? (
+          <EnterpriseStep viewer={viewer} state={state} tell={tell} />
+        ) : (
+          card.step != null && (
+            <CardStep
+              label={STEP_WORDS[card.step]}
+              onClick={() => card.step && onStep(card.step)}
+            />
+          )
         )}
       </Card>
       <HubGroup title={W.control} rows={rows.control} viewer={viewer} />
