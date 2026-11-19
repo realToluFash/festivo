@@ -199,7 +199,15 @@
     "web:auditLog.formats.csv",
     "web:auditLog.formats.jsonl",
     "mobile:auditLog.csv",
-    "mobile:auditLog.jsonLines"
+    "mobile:auditLog.jsonLines",
+    "web:auditLog.type",
+    "web:auditLog.dates",
+    "web:auditLog.types.organisation",
+    "web:auditLog.format",
+    "mobile:auditLog.type",
+    "mobile:auditLog.dates",
+    "mobile:auditLog.types.organisation",
+    "messagesCounts:audit.type.organisation"
   ],
   "pt": [
     "web:seating.shapeCocktailShort",
