@@ -98,7 +98,7 @@ final readonly class StationSerialiser
     /**
      * @param ?array<string, list<array{id: string, name: string}>> $tables
      *
-     * @return array{station: ?array<string, mixed>, stations: list<array<string, mixed>>, stationRemoved: ?string, leads: bool, floorLead: bool}
+     * @return array{station: ?array<array-key, mixed>, stations: list<array<array-key, mixed>>, stationRemoved: ?string, leads: bool, floorLead: bool}
      */
     public function person(StaffMember $person, ?array $tables = null): array
     {
@@ -117,7 +117,7 @@ final readonly class StationSerialiser
         ];
     }
 
-    /** @return array<string, list<array{id: string, name: string}>> each seating section's tables, in the plan's order */
+    /** @return array<string, list<array{id: string, name: string}>> */
     public function tables(Event $event): array
     {
         $plan = $this->seatingPlanRepository->findOneForEvent($event);
@@ -142,11 +142,7 @@ final readonly class StationSerialiser
         return null === $plan ? [] : $this->seatingSectionRepository->findInPlan($plan);
     }
 
-    /**
-     * @param array<string, list<array{id: string, name: string}>> $tables
-     *
-     * @return ?array{id: string, name: string, kind: string, tables: list<array{id: string, name: string}>}
-     */
+    /** @param array<string, list<array{id: string, name: string}>> $tables */
     private function ref(?StaffStation $row, array $tables): ?array
     {
         $section = $row?->getSection();
