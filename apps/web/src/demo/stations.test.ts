@@ -60,19 +60,19 @@ describe('stations (sc-3910)', () => {
   });
 
   it('says how many items a place dishes, and nothing for none', () => {
-    expect(dishesLine(3)).toBe('Dishes 3 items');
-    expect(dishesLine(1)).toBe('Dishes 1 item');
+    expect(dishesLine(3)).toBe('Serves 3 items');
+    expect(dishesLine(1)).toBe('Serves 1 item');
     expect(dishesLine(0)).toBeNull();
   });
 
   it('adds a place to the walking order’s end on its first item, and drops it on its last', () => {
     const joined = setDishedAt(populated(), 'c2', 'Salad', 'bar');
     expect(joined.state.walk).toEqual(['kitchen', 'grill', 'pastry', 'bar']);
-    expect(joined.said).toBe('Salad is dished at Bar. Bar joins the walking order at stop 5.');
+    expect(joined.said).toBe('Salad is served from Bar. Bar joins the walking order at stop 5.');
 
     const left = setDishedAt(populated(), 'c3', 'Ice cream', PASS);
     expect(left.state.walk).toEqual(['kitchen', 'grill']);
-    expect(left.said).toBe('Ice cream is dished at Pass. Pastry leaves the walking order.');
+    expect(left.said).toBe('Ice cream is served from Pass. Pastry leaves the walking order.');
 
     const back = setDishedAt(left.state, 'c3', 'Wafer', 'pastry');
     expect(back.state.walk).toEqual(['kitchen', 'grill', 'pastry']);

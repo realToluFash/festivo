@@ -83,6 +83,29 @@ export function StatusLine({
   );
 }
 
+export function LockTag({ word }: { word: string }) {
+  return (
+    <span className="desk-tag">
+      <Glyph name="lock" size={13} weight={2.4} />
+      {word}
+    </span>
+  );
+}
+
+/** Not proved: red, a circle with a cross, and the word. */
+export function NoTag({ word }: { word: string }) {
+  return (
+    <span className="desk-tag dc-tag-no">
+      <span className="dc-mark-no" aria-hidden="true">
+        <svg width="8" height="8" viewBox="0 0 8 8" focusable="false">
+          <path d="M2 2l4 4M6 2 2 6" />
+        </svg>
+      </span>
+      {word}
+    </span>
+  );
+}
+
 export function PageLoading({ words }: { words: string }) {
   return (
     <p className="dc-loading" role="status">

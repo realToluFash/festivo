@@ -31,6 +31,8 @@ enum AccountMail: string
     case OwnerClaim = 'owner_claim';
     case OrganisationExport = 'organisation_export';
     case PlanDowngraded = 'plan_downgraded';
+    case DomainListingStopped = 'domain_listing_stopped';
+    case DomainRecordGone = 'domain_record_gone';
 
     public function typeName(): string
     {

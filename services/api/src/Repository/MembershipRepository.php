@@ -192,16 +192,16 @@ final class MembershipRepository extends ServiceEntityRepository
     }
 
     /**
-     * The active members tied to a domain (sc-564), in one organisation or in every other.
+     * The active members tied to a domain (sc-564) in one organisation.
      *
      * @return list<Membership>
      */
-    public function findActiveAtDomain(string $domain, Organisation $organisation, bool $elsewhere = false): array
+    public function findActiveAtDomain(string $domain, Organisation $organisation): array
     {
         /** @var list<Membership> */
         return $this->active()
             ->andWhere('m.domain = :domain')
-            ->andWhere($elsewhere ? 'm.organisation <> :organisation' : 'm.organisation = :organisation')
+            ->andWhere('m.organisation = :organisation')
             ->setParameter('domain', $domain)
             ->setParameter('organisation', $organisation)
             ->orderBy('m.createdAt', 'ASC')

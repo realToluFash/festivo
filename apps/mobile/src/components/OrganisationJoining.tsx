@@ -87,14 +87,11 @@ const readLink = (calls: OrganisationCalls, id: string) => calls.requestLink(id)
 export function DomainsSection({
   organisation,
   calls,
-  proved = [],
   opening = null,
   onToast,
 }: {
   organisation: { id: string; name: string };
   calls: OrganisationCalls;
-  /** Domains also proved in Email domains (sc-560), tagged Proved. */
-  proved?: readonly string[];
   /** Where a demo state opens it. */
   opening?: 'addDomain' | 'removeDomain' | null;
   onToast: (words: string) => void;
@@ -181,16 +178,12 @@ export function DomainsSection({
           </View>
         ) : (
           <RowList
-            items={list.domains.map(({ domain, stopped }) => ({
+            items={list.domains.map(({ domain, stopped, proved }) => ({
               key: domain,
               row: (
                 <Row
                   title={domain}
-                  tag={
-                    proved.includes(domain)
-                      ? { kind: 'yes', word: t('companyDomains.proved') }
-                      : null
-                  }
+                  tag={proved ? { kind: 'yes', word: t('companyDomains.proved') } : null}
                   line={
                     stopped
                       ? undefined

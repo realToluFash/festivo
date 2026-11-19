@@ -56,7 +56,7 @@ describe('a demo settings page’s back draws no larger than its title (sc-67471
   });
 
   it('caps the back over a Data and control page’s title on a tablet on its side', () => {
-    expect(read(here, 'DataParts.tsx')).toMatch(
+    expect(read('src', 'components', 'DataParts.tsx')).toMatch(
       /<TitleCap\.Provider value=\{cap\}>\s*<View style=\{styles\.paneHead\}>\s*<Back \{\.\.\.back\} \/>\s*<Title/u,
     );
   });

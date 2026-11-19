@@ -130,7 +130,7 @@ describe('A screen in the room (sc-3897)', () => {
     await open([() => json(live('19:40', null, [['20:00', 'Dinner']]))]);
     await screen.findByText('Dinner');
     expect(screen.queryByRole('heading', { name: 'Now' })).toBeNull();
-    expect(document.querySelector('.rs-body.is-between')).not.toBeNull();
+    expect(document.querySelector('.room-body.is-between')).not.toBeNull();
   });
 
   it('shows the event’s name alone with nothing left to show', async () => {
@@ -351,7 +351,7 @@ describe('The room screen’s look', () => {
   };
 
   it('holds every word at 7:1 or more on its dark field (WCAG 2.2 §1.4.6)', () => {
-    expect(cssRule('.rs-room', sheet)).toContain('background: var(--colorDark)');
+    expect(cssRule('.room-room', sheet)).toContain('background: var(--colorDark)');
     for (const ink of ['colorInkOnDark', 'colorInkOnDarkSecondary']) {
       expect(contrast(token(ink), token('colorDark'))).toBeGreaterThanOrEqual(7);
     }
@@ -361,9 +361,9 @@ describe('The room screen’s look', () => {
     const animated = [...sheet.matchAll(/^\.([\w-]+)[^{]*\{[^}]*animation:/gmu)].map(
       (rule) => rule[1],
     );
-    expect(animated).toEqual(['rs-change']);
+    expect(animated).toEqual(['room-change']);
     expect(sheet).toMatch(
-      /@media \(prefers-reduced-motion: reduce\) \{\s*\.rs-change \{\s*animation: none;/u,
+      /@media \(prefers-reduced-motion: reduce\) \{\s*\.room-change \{\s*animation: none;/u,
     );
   });
 });
