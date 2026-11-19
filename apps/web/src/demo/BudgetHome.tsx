@@ -259,6 +259,7 @@ export function BudgetHomeContent({
   const [opened, setOpened] = useState<string | null>(() => openedOf(first));
   const [removed, setRemoved] = useState<Removed | null>(() => removedOf(first, heads));
   const [dialog, setDialog] = useState<Dialog>(() => dialogOf(first));
+  const [markupStart, setMarkupStart] = useState<MarkupStart>({ scope: 'event', key: '' });
   const addedId = first === 'add_cost_added' ? WELCOME_DRINKS.id : null;
   const [lit, setLit] = useState<string | null>(first === 'rate_saved' ? 'dinner' : addedId);
   const [line, setLine] = useState<{ id: string; words: string; ok: boolean } | null>(() =>
@@ -499,7 +500,14 @@ export function BudgetHomeContent({
           }
           right={
             margin ? (
-              <MarginBlocks markups={markups} lines={lines} />
+              <MarginBlocks
+                markups={markups}
+                lines={lines}
+                onMarkup={(start) => {
+                  setMarkupStart(start);
+                  setDialog('markup');
+                }}
+              />
             ) : (
               <>
                 {dueNext}
@@ -557,6 +565,8 @@ export function BudgetHomeContent({
         <MarkupDialog
           first={first}
           lines={lines}
+          markups={markups}
+          start={markupStart}
           onDismiss={() => setDialog(null)}
           onSaved={(scope, key, percent) => {
             setMarkups((now) =>
@@ -1194,13 +1204,18 @@ function MarginCosts({
                               ? `Cost ${money(cost)}`
                               : `Cost ${money(cost)}. Leave it empty to charge by the markup.`
                           }
-                          error={chargedTried ? priceProblem(charged) : null}
+                          error={
+                            chargedTried
+                              ? priceProblem(charged, CURRENCY, markups.prices[one.id] != null)
+                              : null
+                          }
                           inputRef={chargedField}
                           onChange={setCharged}
                         />
                         {charged.trim() !== '' &&
                           minorOf(charged) < cost &&
-                          priceProblem(charged) == null && (
+                          priceProblem(charged, CURRENCY, markups.prices[one.id] != null) ==
+                            null && (
                             <p className="bud-below" role="status">
                               <DownArrow />
                               Below cost: margin {whole(minorOf(charged) - cost)}.
@@ -1212,7 +1227,10 @@ function MarginCosts({
                             label={W.save}
                             onClick={() => {
                               setChargedTried(true);
-                              if (priceProblem(charged) != null)
+                              if (
+                                priceProblem(charged, CURRENCY, markups.prices[one.id] != null) !=
+                                null
+                              )
                                 return chargedField.current?.focus();
                               onPrice(one.id, charged.trim() === '' ? null : minorOf(charged));
                               setOpened(null);
@@ -1256,33 +1274,53 @@ function MarginCosts({
   );
 }
 
-function MarginBlocks({ markups, lines }: { markups: Markups; lines: readonly CostLine[] }) {
-  const rows: [string, string][] = [
-    ['Whole event', markups.event == null ? 'No markup set' : `${markups.event}% markup`],
+function MarginBlocks({
+  markups,
+  lines,
+  onMarkup,
+}: {
+  markups: Markups;
+  lines: readonly CostLine[];
+  onMarkup: (start: MarkupStart) => void;
+}) {
+  const shown = (percent: number) => (percent === 0 ? 'At cost, chosen' : `${percent}% markup`);
+  const rows: [string, string, MarkupStart | null][] = [
+    [
+      'Whole event',
+      markups.event == null ? 'No markup set' : `${markups.event}% markup`,
+      { scope: 'event', key: '' },
+    ],
     ...(Object.entries(markups.categories) as [Category, number][]).map(
-      ([category, percent]): [string, string] => [
+      ([category, percent]): [string, string, MarkupStart] => [
         CATEGORY_WORDS[category],
-        percent === 0 ? 'At cost, chosen' : `${percent}% markup`,
+        shown(percent),
+        { scope: 'category', key: category },
       ],
     ),
-    ...Object.entries(markups.costs).map(([id, percent]): [string, string] => [
+    ...Object.entries(markups.costs).map(([id, percent]): [string, string, MarkupStart] => [
       lines.find((one) => one.id === id)?.name ?? id,
-      percent === 0 ? 'At cost, chosen' : `${percent}% markup`,
+      shown(percent),
+      { scope: 'cost', key: id },
     ]),
-    ...Object.keys(markups.prices).map((id): [string, string] => [
+    ...Object.keys(markups.prices).map((id): [string, string, null] => [
       lines.find((one) => one.id === id)?.name ?? id,
       'Its own price',
+      null,
     ]),
-    ['Planning fee', 'Its own price'],
+    ['Planning fee', 'Its own price', null],
   ];
 
   return (
     <>
       <Block title="Markup">
         <Rows>
-          {rows.map(([name, how]) => (
+          {rows.map(([name, how, start]) => (
             <li key={name}>
-              <BudgetRow title={name} lines={[how]} to={budgetAt('markup')} />
+              <BudgetRow
+                title={name}
+                lines={[how]}
+                {...(start == null ? {} : { onOpen: () => onMarkup(start) })}
+              />
             </li>
           ))}
         </Rows>
@@ -1843,30 +1881,59 @@ const SCOPES = [
   { key: 'cost', word: 'One cost', line: 'Overrides both, or set at cost' },
 ] as const;
 
+type MarkupScope = 'event' | 'category' | 'cost';
+
+interface MarkupStart {
+  scope: MarkupScope;
+  key: string;
+}
+
+function markupSet(markups: Markups, scope: MarkupScope, key: string): number | null {
+  if (scope === 'event') return markups.event;
+
+  return (scope === 'category' ? markups.categories[key as Category] : markups.costs[key]) ?? null;
+}
+
 function MarkupDialog({
   first,
   lines,
+  markups,
+  start,
   onDismiss,
   onSaved,
 }: {
   first: string;
   lines: readonly CostLine[];
+  markups: Markups;
+  start: MarkupStart;
   onDismiss: () => void;
-  onSaved: (scope: 'event' | 'category' | 'cost', key: string, percent: number | null) => void;
+  onSaved: (scope: MarkupScope, key: string, percent: number | null) => void;
 }) {
-  const [scope, setScope] = useState<'event' | 'category' | 'cost'>('event');
+  const [scope, setScope] = useState<MarkupScope>(start.scope);
   const priced = lines.filter((one) => lineState(one) === 'priced');
-  const [category, setCategory] = useState<Category>('catering');
-  const [cost, setCost] = useState<string>(priced[0]?.id ?? '');
+  const [category, setCategory] = useState<Category>(
+    start.scope === 'category' ? (start.key as Category) : 'catering',
+  );
+  const [cost, setCost] = useState<string>(
+    start.scope === 'cost' ? start.key : (priced[0]?.id ?? ''),
+  );
+  const keyOf = (one: MarkupScope) => (one === 'category' ? category : one === 'cost' ? cost : '');
+  const setNow = markupSet(markups, scope, keyOf(scope));
+  const typedOf = (percent: number | null) => (percent == null ? '' : String(percent));
   const [typed, setTyped] = useState(
     { markup_negative: '−5', markup_cap: '1200', markup_decimals: '20.25', markup_nan: 'twenty' }[
       first as 'markup_cap'
-    ] ?? '20',
+    ] ?? typedOf(markupSet(markups, start.scope, start.key)),
   );
-  const [tried, setTried] = useState(first !== 'markup');
+  const [tried, setTried] = useState(first.startsWith('markup_'));
   const field = useRef<HTMLInputElement>(null);
   const id = useId();
-  const problem = tried ? markupProblem(typed) : null;
+  const removable = setNow != null;
+  const problem = tried ? markupProblem(typed, removable) : null;
+  const pick = (next: MarkupScope, key: string) => {
+    setTyped(typedOf(markupSet(markups, next, key)));
+    setTried(false);
+  };
 
   return (
     <BudgetDialog
@@ -1875,12 +1942,8 @@ function MarkupDialog({
       onDismiss={onDismiss}
       onConfirm={() => {
         setTried(true);
-        if (markupProblem(typed) != null) return field.current?.focus();
-        onSaved(
-          scope,
-          scope === 'category' ? category : scope === 'cost' ? cost : '',
-          typed.trim() === '' ? null : Number(typed.trim()),
-        );
+        if (markupProblem(typed, removable) != null) return field.current?.focus();
+        onSaved(scope, keyOf(scope), typed.trim() === '' ? null : Number(typed.trim()));
       }}
     >
       <fieldset className="bud-bases">
@@ -1894,7 +1957,10 @@ function MarkupDialog({
                   className="desk-radio"
                   name={`${id}-scope`}
                   checked={scope === one.key}
-                  onChange={() => setScope(one.key)}
+                  onChange={() => {
+                    setScope(one.key);
+                    pick(one.key, keyOf(one.key));
+                  }}
                 />
                 <RowWords title={one.word} lines={[one.line]} />
               </label>
@@ -1912,7 +1978,10 @@ function MarkupDialog({
               id={`${id}-category`}
               className="bud-select"
               value={category}
-              onChange={(event) => setCategory(event.target.value as Category)}
+              onChange={(event) => {
+                setCategory(event.target.value as Category);
+                pick('category', event.target.value);
+              }}
             >
               {(Object.keys(CATEGORY_WORDS) as Category[]).map((one) => (
                 <option key={one} value={one}>
@@ -1933,7 +2002,10 @@ function MarkupDialog({
               id={`${id}-cost`}
               className="bud-select"
               value={cost}
-              onChange={(event) => setCost(event.target.value)}
+              onChange={(event) => {
+                setCost(event.target.value);
+                pick('cost', event.target.value);
+              }}
             >
               {priced.map((one) => (
                 <option key={one.id} value={one.id}>
@@ -1951,7 +2023,11 @@ function MarkupDialog({
         value={typed}
         error={problem}
         inputRef={field}
-        help="A share of cost: £1,000 at 25% is charged at £1,250. Leave it empty to remove it."
+        help={
+          removable
+            ? 'A share of cost: £1,000 at 25% is charged at £1,250. Leave it empty to remove it.'
+            : 'A share of cost: £1,000 at 25% is charged at £1,250.'
+        }
         onChange={(value) => {
           setTyped(value);
         }}

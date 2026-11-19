@@ -207,6 +207,45 @@ describe('the states Budget A still lacked (sc-85, sc-88, sc-90, sc-91, sc-92, s
   );
 
   it(
+    'opens the markup editor in place from its row, and refuses an empty field with nothing to remove',
+    SLOW,
+    async () => {
+      await open(at('margin_unset'));
+      const markup = () => section('Markup');
+      fireEvent.click(within(markup()).getByRole('button', { name: /^Whole event/ }));
+      let dialog = screen.getByRole('dialog', { name: 'Markup' });
+      expect((within(dialog).getByLabelText('Markup') as HTMLInputElement).value).toBe('');
+      expect(within(dialog).queryByText(/Leave it empty to remove it/)).toBeNull();
+      fireEvent.click(within(dialog).getByRole('button', { name: 'Save' }));
+      expect(within(dialog).getByText('Enter the markup as a number, like 12.5.')).toBeTruthy();
+      expect(screen.queryByText('Markup removed.')).toBeNull();
+      fireEvent.click(within(dialog).getByRole('button', { name: 'Cancel' }));
+      expect(screen.queryByRole('dialog', { name: 'Markup' })).toBeNull();
+      expect(markup().textContent).toContain('No markup set');
+      expect(section('Costs').textContent).toContain('no markup set0.0%');
+      expect(screen.getByRole('region', { name: 'Budget' }).textContent).toContain(
+        'Margin after payments£2,290',
+      );
+
+      fireEvent.click(within(section('Costs')).getByRole('button', { name: /^DJ/ }));
+      fireEvent.change(screen.getByLabelText('Charged at'), { target: { value: '' } });
+      fireEvent.click(within(section('Costs')).getByRole('button', { name: 'Save' }));
+      expect(screen.getByText('Enter a price of 0 or more, in numbers only.')).toBeTruthy();
+      expect(screen.queryByText('Price removed.')).toBeNull();
+      cleanup();
+
+      await open(at('margin'));
+      fireEvent.click(within(section('Markup')).getByRole('button', { name: /^Photography/ }));
+      dialog = screen.getByRole('dialog', { name: 'Markup' });
+      expect(
+        (within(dialog).getByRole('radio', { name: /^A category/ }) as HTMLInputElement).checked,
+      ).toBe(true);
+      expect((within(dialog).getByLabelText('Markup') as HTMLInputElement).value).toBe('15');
+      expect(within(dialog).getByText(/Leave it empty to remove it/)).toBeTruthy();
+    },
+  );
+
+  it(
     'refuses Mark paid by the server and at the date, and words added and deleted payments',
     SLOW,
     async () => {

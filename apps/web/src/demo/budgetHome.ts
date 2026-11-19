@@ -248,10 +248,10 @@ export function rateProblem(
 }
 
 /** A client price (sc-92): 0 or more, sc-83's decimals key; never a markup's words. */
-export function priceProblem(typed: string, currency = CURRENCY): string | null {
+export function priceProblem(typed: string, currency = CURRENCY, removable = false): string | null {
   const found = typedMinor(typed, currency);
 
-  if ('minor' in found || found.wrong === 'blank') return null;
+  if ('minor' in found || (removable && found.wrong === 'blank')) return null;
   if (found.wrong === 'decimals')
     return `That has too many decimal places for this event’s currency. Enter the price like ${exampleIn(12, currency)}.`;
 
@@ -307,10 +307,10 @@ function decimalsOf(typed: string): number {
   return typed.includes('.') ? (typed.split('.')[1]?.length ?? 0) : 0;
 }
 
-export function markupProblem(typed: string): string | null {
+export function markupProblem(typed: string, removable = false): string | null {
   const text = typed.trim();
 
-  if (text === '') return null;
+  if (removable && text === '') return null;
   if (/^[-−]/.test(text))
     return 'A markup cannot be below 0. To sell below cost, enter the price instead.';
   if (!/^\d+(\.\d+)?$/.test(text)) return 'Enter the markup as a number, like 12.5.';
