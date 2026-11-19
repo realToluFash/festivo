@@ -21,7 +21,9 @@ export type InvitationOutcome =
   | { kind: 'failed' }
   | { kind: 'accepted'; organisationId: string }
   | { kind: 'declined' }
-  | { kind: 'refused'; refusal: InvitationRefusalCode };
+  | { kind: 'refused'; refusal: InvitationRefusalCode }
+  /** The account's address is managed by another organisation (sc-563): the API's sentence, and whose. */
+  | { kind: 'managed'; organisation: string; message: string };
 
 /** Still to be answered: nothing pressed yet, a press in flight, or one that did not reach the API. */
 export function isWaiting(outcome: InvitationOutcome | undefined): boolean {
