@@ -6,6 +6,7 @@ import {
   followCountry,
   formatDay,
   formatTimeOfDay,
+  initials,
   phoneLengthProblem,
   pickPhoneCountry,
   startingPhoneCountry,
@@ -504,6 +505,9 @@ function Details({
             </div>
             {offers.map((offer) => (
               <div className="join-offer" key={offer.id}>
+                <span className="org-tile" aria-hidden="true">
+                  {initials(offer.name)}
+                </span>
                 <div className="join-offer-text">
                   <p className="join-offer-title">
                     {t('domainJoining.usesSoirely', { organisation: offer.name })}
@@ -618,25 +622,27 @@ function Details({
           </>
         )}
 
-        <PhoneEntry
-          label={
-            <span className="auth-label-row">
-              {t('verifyPhone.numberLabel')}
-              <span className="auth-optional">{t('completeProfile.optional')}</span>
-            </span>
-          }
-          country={values.phoneCountryCode}
-          number={values.phoneNumber}
-          error={errors.phoneNumber ?? errors.phoneCountryCode ?? null}
-          disabled={saving}
-          help={t('completeProfile.mobileHelp')}
-          inputRef={phoneInput}
-          onCountry={(code) => {
-            setPhonePicked(pickPhoneCountry(code).picked);
-            change('phoneCountryCode', code);
-          }}
-          onNumber={(typed) => change('phoneNumber', typed)}
-        />
+        {!showOffers && (
+          <PhoneEntry
+            label={
+              <span className="auth-label-row">
+                {t('verifyPhone.numberLabel')}
+                <span className="auth-optional">{t('completeProfile.optional')}</span>
+              </span>
+            }
+            country={values.phoneCountryCode}
+            number={values.phoneNumber}
+            error={errors.phoneNumber ?? errors.phoneCountryCode ?? null}
+            disabled={saving}
+            help={t('completeProfile.mobileHelp')}
+            inputRef={phoneInput}
+            onCountry={(code) => {
+              setPhonePicked(pickPhoneCountry(code).picked);
+              change('phoneCountryCode', code);
+            }}
+            onNumber={(typed) => change('phoneNumber', typed)}
+          />
+        )}
       </div>
 
       {!showOffers && (

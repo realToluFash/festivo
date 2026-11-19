@@ -938,6 +938,47 @@ describe('an invitation in the switcher, answered in its panel (sc-30412)', () =
     ).toBeDefined();
   });
 
+  it('reads a managed refusal in the panel, and keeps it in the next menu (sc-563)', async () => {
+    const message =
+      'Your ire.events address is managed by Ìrè Events, so you can only be a member there.';
+    answering((path) =>
+      path === '/api/invitations/inv_1/accept'
+        ? new Response(
+            JSON.stringify({
+              type: 'https://soirely.com/errors/domain_managed',
+              title: 'Managed.',
+              status: 409,
+              detail: message,
+              organisation: 'Ìrè Events',
+            }),
+            { status: 409, headers: { 'Content-Type': 'application/problem+json' } },
+          )
+        : null,
+    );
+    inTwo();
+    at('/app');
+
+    const panel = await openInvitation();
+    fireEvent.click(within(panel).getByRole('button', { name: 'Accept and join Adunni Weddings' }));
+
+    expect(
+      await within(panel).findByRole('heading', { name: 'Managed by Ìrè Events' }),
+    ).toBeDefined();
+    expect(within(panel).getByText(message)).toBeDefined();
+    expect(within(panel).getByText('Access to a single event still works.')).toBeDefined();
+    expect(
+      within(panel).getByRole('link', { name: 'Change your main email address' }),
+    ).toBeDefined();
+    expect(within(panel).queryByRole('button', { name: /^Accept and join/ })).toBeNull();
+
+    fireEvent.keyDown(document.activeElement ?? document.body, { key: 'Escape' });
+    fireEvent.click(screen.getByRole('button', { name: /Switch organisation/ }));
+
+    expect(
+      await screen.findByRole('button', { name: /^Adunni Weddings, Invitation · / }),
+    ).toBeDefined();
+  });
+
   it('says when the answer did not reach us, and keeps both answers', async () => {
     answering((path) => (path === '/api/invitations/inv_1/accept' ? json({}, 500) : null));
     inTwo();
