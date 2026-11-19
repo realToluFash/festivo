@@ -7,6 +7,8 @@ import en from '../i18n/locales/en.json';
 import {
   addRefused,
   holderOf,
+  cardFacts,
+  cardWords,
   inListOrder,
   managesPeople,
   nowCan,
@@ -228,5 +230,40 @@ describe('Someone from outside the organisation', () => {
   it('opens a row with no account yet, and lines it with role and job label', () => {
     expect(opensRow(null, true, 'u_priya')).toBe(true);
     expect(rowLine(t, WITHHELD, 'u_priya')).toBe('Can check guests in · Lighting');
+  });
+});
+
+describe("Overview's People card", () => {
+  it('counts everyone People lists and names the Lead', () => {
+    const words = cardWords(
+      t,
+      cardFacts([TOM, PRIYA, ANA, BEN, person('jo', 'Jo Lin', 'can_view')], 'u_tom'),
+    );
+
+    expect(words).toEqual({
+      title: '5 on this event',
+      line: 'Lead · Priya Shah',
+      label: '5 on this event. Lead, Priya Shah. Opens People.',
+    });
+  });
+
+  it('says You when the viewer holds Lead', () => {
+    expect(cardWords(t, cardFacts([PRIYA], 'u_priya')).line).toBe('Lead · You');
+  });
+
+  it('has no Lead line when nobody holds Lead', () => {
+    expect(cardWords(t, cardFacts([TOM, ANA], 'u_tom'))).toEqual({
+      title: '2 on this event',
+      line: undefined,
+      label: '2 on this event. Opens People.',
+    });
+  });
+
+  it('says nobody is on it, and still opens People', () => {
+    expect(cardWords(t, cardFacts([], 'u_tom'))).toEqual({
+      title: 'Nobody is on this event yet.',
+      line: undefined,
+      label: 'Nobody is on this event yet. Opens People.',
+    });
   });
 });

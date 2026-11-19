@@ -1,6 +1,7 @@
 import { type ReactElement, type ReactNode, type Ref, useContext, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
+  type LayoutChangeEvent,
   Pressable,
   type StyleProp,
   StyleSheet,
@@ -12,14 +13,15 @@ import {
 
 import { Text, TitleCap } from './Text.tsx';
 import {
+  type BackSizing,
   PILL_ABOVE,
   PILL_GAP,
-  PILL_GLYPH,
   PILL_LEFT,
   PILL_RIGHT,
-  PILL_TEXT,
-  backLeast,
+  backRoomIsLaid,
   backScale,
+  backWordSize,
+  pillBack,
 } from '../layout/focusedHeader.ts';
 import { tokens } from '../theme/tokens.ts';
 import { besideGlyph, capInDisc, capUnderTitle, grownPad, wordsIn } from '../layout/textSize.ts';
@@ -283,6 +285,37 @@ export function Pair({
   );
 }
 
+/** A back's word sized by `backWordSize`, measured, as adjustsFontSizeToFit drew it above the ‹ on Android (sc-68778). */
+export function useBackWord(word: string, back: BackSizing) {
+  const { width: windowWidth } = useWindowDimensions();
+  const key = `${back.full}|${word}`;
+  const roomKey = `${key}|${windowWidth}`;
+  const [width, setWidth] = useState<{ key: string; width: number } | null>(null);
+  const [room, setRoom] = useState<{ key: string; width: number } | null>(null);
+  const measured = width?.key === key ? width.width : null;
+  const known = room?.key === roomKey ? room.width : null;
+  const size = measured == null || known == null ? back.full : backWordSize(back, measured, known);
+
+  return {
+    size,
+    measure: (
+      <MeasuredWords
+        words={[word]}
+        size={back.full}
+        weight="semibold"
+        allowFontScaling={false}
+        onWidth={(_, drawn) => setWidth({ key, width: drawn })}
+      />
+    ),
+    onLayout: (event: LayoutChangeEvent) => {
+      const laid = event.nativeEvent.layout.width;
+
+      if (size === back.full || (measured != null && backRoomIsLaid(back, measured, size, laid)))
+        setRoom({ key: roomKey, width: laid });
+    },
+  };
+}
+
 /** At least 44, a capsule as tall as its word, the ‹ growing with it; a word wider than its room steps down to fit, never below 15 (sc-37903). */
 export function Back({
   label,
@@ -299,37 +332,40 @@ export function Back({
   const { fontScale } = useWindowDimensions();
   const scale = backScale(fontScale, useContext(TitleCap));
   const place = label ?? t('settings.title');
-  const size = PILL_TEXT * scale;
+  const back = pillBack(scale);
+  const word = useBackWord(place, back);
 
   return (
-    <Pressable
-      onPress={onPress}
-      disabled={off}
-      style={({ pressed }) => [styles.back, pressed && styles.pressed]}
-      accessibilityRole="button"
-      accessibilityLabel={t('frame.backTo', { place })}
-      accessibilityState={{ disabled: off }}
-      testID={testID}
-    >
-      <Glyph
-        name="back"
-        size={PILL_GLYPH * scale}
-        ink={off ? tokens.colorInkSecondary : tokens.colorInk}
-        weight={2.4}
-      />
-      <Text
-        size={size}
-        weight="semibold"
-        muted={off}
-        allowFontScaling={false}
-        numberOfLines={1}
-        adjustsFontSizeToFit
-        minimumFontScale={backLeast(scale)}
-        accessible={false}
+    <>
+      {word.measure}
+      <Pressable
+        onPress={onPress}
+        onLayout={word.onLayout}
+        disabled={off}
+        style={({ pressed }) => [styles.back, pressed && styles.pressed]}
+        accessibilityRole="button"
+        accessibilityLabel={t('frame.backTo', { place })}
+        accessibilityState={{ disabled: off }}
+        testID={testID}
       >
-        {place}
-      </Text>
-    </Pressable>
+        <Glyph
+          name="back"
+          size={(back.glyph / back.least) * word.size}
+          ink={off ? tokens.colorInkSecondary : tokens.colorInk}
+          weight={2.4}
+        />
+        <Text
+          size={word.size}
+          weight="semibold"
+          muted={off}
+          allowFontScaling={false}
+          numberOfLines={1}
+          accessible={false}
+        >
+          {place}
+        </Text>
+      </Pressable>
+    </>
   );
 }
 

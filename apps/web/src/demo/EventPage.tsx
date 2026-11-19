@@ -129,7 +129,8 @@ import { MessagesPage } from './Messages.tsx';
 import { DOOR_EVENT_ID } from './doorCode.ts';
 import { repliesOpen } from './replyClose.ts';
 import { noOrgStateOf } from './noOrg.ts';
-import { NoOrgEvent } from './NoOrgEvent.tsx';
+import { NoOrgEvent, OutsideEventPage } from './NoOrgEvent.tsx';
+import { isOutsideId, outsidePageOf } from './outsideEvents.ts';
 import { TellDialog, UntoldCard } from './MessagesTell.tsx';
 import { Ask, Head, RowWords, TextAction } from '../components/SettingsParts.tsx';
 import {
@@ -252,6 +253,18 @@ export function EventPage({
   const tabStart = params.get('tab');
   useSwitcherStart();
   const noOrg = noOrgStateOf(raw);
+  const outside = outsidePageOf(raw);
+
+  if (outside != null && id != null && isOutsideId(id))
+    return (
+      <OutsideEventPage
+        key={`${id}|${raw ?? ''}`}
+        id={id}
+        page={outside}
+        from={params.get('from')}
+        menu={params.get('menu') === 'open'}
+      />
+    );
 
   if (noOrg != null && id === DOOR_EVENT_ID) return <NoOrgEvent key={noOrg} state={noOrg} />;
 

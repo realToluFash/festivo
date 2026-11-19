@@ -2331,7 +2331,16 @@
     "discardTitle": "Discard your changes?",
     "discardLine": "Nobody is added to this event.",
     "discardKeep": "Keep editing",
-    "discard": "Discard"
+    "discard": "Discard",
+    "card": {
+      "count_one": "{{count, number}} on this event",
+      "count_other": "{{count, number}} on this event",
+      "held": "on this event",
+      "lead": "Lead · {{name}}",
+      "failed": "We could not load who is on this event.",
+      "opens": "Opens People.",
+      "leadSaid": "Lead, {{name}}."
+    }
   },
   "recoveryRequests": {
     "cardTitle": "Requests to get back in",

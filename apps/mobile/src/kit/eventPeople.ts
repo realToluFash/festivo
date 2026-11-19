@@ -215,3 +215,46 @@ export function holderOf(
 
   return shown.kind === 'notJoined' ? notJoined : shown.name;
 }
+
+/** Overview's People card (sc-68607): how many People lists under On this event, and who holds Lead, `you` when it is the viewer. */
+export function cardFacts(
+  people: readonly EventPerson[],
+  viewerId: string | null,
+): { count: number; lead: { name: string; you: boolean } | null } {
+  const lead = people.find((one) => one.role === 'lead');
+
+  return {
+    count: people.length,
+    lead: lead?.user == null ? null : { name: lead.user.name, you: lead.user.id === viewerId },
+  };
+}
+
+/** The card's row: its count, its Lead line, and the one sentence VoiceOver reads for the row. */
+export function cardWords(
+  t: TFunction,
+  facts: ReturnType<typeof cardFacts>,
+): { title: string; line: string | undefined; label: string } {
+  const opens = t('eventPeople.card.opens');
+
+  if (facts.count === 0) {
+    const title = t('eventPeople.nobody');
+
+    return { title, line: undefined, label: `${title} ${opens}` };
+  }
+
+  const title = t('eventPeople.card.count', { count: facts.count });
+  const name = facts.lead == null ? null : facts.lead.you ? t('eventPeople.you') : facts.lead.name;
+
+  return {
+    title,
+    line: name == null ? undefined : t('eventPeople.card.lead', { name }),
+    label: joinedSaid([
+      `${title}.`,
+      name == null ? null : t('eventPeople.card.leadSaid', { name }),
+      opens,
+    ]),
+  };
+}
+
+const joinedSaid = (parts: readonly (string | null)[]) =>
+  parts.filter((part) => part != null).join(' ');

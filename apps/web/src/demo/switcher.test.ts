@@ -20,7 +20,13 @@ describe('the organisation switcher’s sample (sc-30323)', () => {
   it('knows every state the demo home links to, and nothing else', () => {
     const linked = SWITCHER_PAGES.flatMap((group) => group.states.map((state) => state.to));
 
-    expect(linked).toEqual(SWITCHER_STATES.map((state) => `/demo/events?switcher=${state}`));
+    expect(linked).toEqual(
+      SWITCHER_STATES.map((state) =>
+        state.startsWith('outside')
+          ? `/demo/today?switcher=${state}`
+          : `/demo/events?switcher=${state}`,
+      ),
+    );
     expect(isSwitcherState('populated')).toBe(true);
     expect(isSwitcherState('everything')).toBe(false);
     expect(isSwitcherState(null)).toBe(false);

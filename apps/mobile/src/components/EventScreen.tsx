@@ -291,6 +291,7 @@ export function EventScreen({
             kind={kind}
             event={event}
             onGuests={(choice) => chooseArea('guests', choice)}
+            onPeople={() => chooseArea('people')}
             nameRef={cardNamed ? cardName : undefined}
             manages={manages}
             takes={(action) => takesCardStep(event, action)}
