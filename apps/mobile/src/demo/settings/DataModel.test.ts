@@ -191,7 +191,7 @@ describe('the hub in the app: Control only, its card the soonest instant that as
     expect(hubCard(hubStart('locked'), say)).toMatchObject({
       says: 'These come with Enterprise',
       line: 'Email domains and the audit log.',
-      step: { label: 'Contact Soirely about Enterprise', go: { kind: 'contact' } },
+      step: null,
     });
     expect(hubRows(hubStart('locked'), 'locked')).toMatchObject([
       {
@@ -374,7 +374,7 @@ describe('Email domains: each state’s card and rows (sc-560, sc-563)', () => {
     expect(card('ed_locked')).toMatchObject({
       says: 'Available on Enterprise',
       line: 'Prove that Ire Events owns its domain, then limit the accounts at it to Ire Events.',
-      step: { label: 'Contact Soirely about Enterprise' },
+      step: null,
     });
     expect(card('ed_downgraded')).toMatchObject({
       says: 'Switched off',
