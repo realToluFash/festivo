@@ -12,11 +12,10 @@ use App\Entity\OrganisationExport;
 use App\Entity\User;
 use App\Enum\Actor;
 use App\Enum\ErrorCode;
-use App\Enum\OrganisationExportStatus;
 use App\Http\AfterResponse;
 use App\Http\Exception\ApiException;
 use App\Repository\OrganisationExportRepository;
-use App\Storage\ObjectStore;
+use App\Storage\PreparedFiles;
 use DateInterval;
 use DateTimeImmutable;
 use Doctrine\DBAL\LockMode;
@@ -39,14 +38,14 @@ final readonly class OrganisationExports
     /** A try still running is left alone this long before the next run tries again. */
     public const string RETRY_AFTER = 'PT5M';
 
-    private const string CONTENT_TYPE = 'application/zip';
+    public const string CONTENT_TYPE = 'application/zip';
 
     public function __construct(
         private OrganisationExportRepository $organisationExportRepository,
         private OrganisationArchive $organisationArchive,
         private OrganisationExportMailer $organisationExportMailer,
         private OwnerCheck $ownerCheck,
-        private ObjectStore $objectStore,
+        private PreparedFiles $preparedFiles,
         private Auditor $auditor,
         private EntityManagerInterface $entityManager,
         private AfterResponse $afterResponse,
@@ -102,7 +101,7 @@ final readonly class OrganisationExports
 
         try {
             $key = Str\format('organisation-exports/%s/%s-%d.zip', $export->getOrganisation()->getId()->toRfc4122(), $export->getId()->toRfc4122(), $export->getAttempts());
-            $this->objectStore->keep($key, $this->organisationArchive->of($export->getOrganisation()), self::CONTENT_TYPE);
+            $this->preparedFiles->keep($key, self::CONTENT_TYPE, fn ($file) => $this->organisationArchive->write($export->getOrganisation(), $file));
         } catch (Throwable $e) {
             $this->logger->error('An organisation export failed to prepare.', ['export' => $export->getId()->toRfc4122(), 'attempt' => $export->getAttempts(), 'exception' => $e::class]);
             $this->organisationExportRepository->claimFailed($export, $this->clock->now());
@@ -111,7 +110,7 @@ final readonly class OrganisationExports
         }
 
         if (!$this->organisationExportRepository->claimReady($export, $key, $this->clock->now())) {
-            $this->objectStore->discardKept($key);
+            $this->preparedFiles->discard($key);
 
             return;
         }
@@ -139,31 +138,16 @@ final readonly class OrganisationExports
     public function download(Organisation $organisation, string $exportId, User $by): DownloadedArchive
     {
         $export = $this->organisationExportRepository->findOneIn($organisation, $exportId);
-
-        if (null === $export || !$export->isAskedBy($by) || !$this->ownerCheck->holds($organisation, $by)) {
-            throw ApiException::notFound('access.not_found');
-        }
-
-        $key = $export->getArchiveKey();
-        $expiresAt = $export->expiresAt();
-
-        if (OrganisationExportStatus::Ready !== $export->getStatus() || null === $key || null === $expiresAt) {
-            throw new ApiException(ErrorCode::ExportNotReady, 'organisation.export_not_ready');
-        }
+        $export = $this->preparedFiles->ready(null !== $export && $this->ownerCheck->holds($organisation, $by) ? $export : null, $by);
 
         if (null !== $export->getDownloadedAt()) {
             throw new ApiException(ErrorCode::ExportUsed, 'organisation.export_used');
         }
 
-        $now = $this->clock->now();
+        $this->preparedFiles->unexpired($export, 'organisation.export_expired');
+        $chunks = $this->preparedFiles->chunks($export);
 
-        if ($now >= $expiresAt) {
-            throw new ApiException(ErrorCode::ExportExpired, 'organisation.export_expired');
-        }
-
-        $bytes = $this->objectStore->readKept($key);
-
-        if (!$this->organisationExportRepository->claimDownload($export, $now)) {
+        if (!$this->organisationExportRepository->claimDownload($export, $this->clock->now())) {
             throw new ApiException(ErrorCode::ExportUsed, 'organisation.export_used');
         }
 
@@ -172,9 +156,6 @@ final readonly class OrganisationExports
         ]);
         $this->entityManager->flush();
 
-        return new DownloadedArchive(
-            Str\format('%s %s.zip', $organisation->getName(), $export->getAskedAt()->format('Y-m-d')),
-            $bytes,
-        );
+        return new DownloadedArchive(Str\format('%s %s.zip', $organisation->getName(), $export->getAskedAt()->format('Y-m-d')), $chunks);
     }
 }

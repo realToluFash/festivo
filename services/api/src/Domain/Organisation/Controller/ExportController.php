@@ -17,10 +17,10 @@ use App\Http\Access\Policy\InOrganisation;
 use App\Http\Exception\ApiException;
 use App\Repository\OrganisationExportRepository;
 use App\Repository\OrganisationRepository;
+use App\Storage\PreparedFiles;
 use DateTimeImmutable;
 use Psr\Clock\ClockInterface;
 use Symfony\Bundle\SecurityBundle\Security;
-use Symfony\Component\HttpFoundation\HeaderUtils;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -34,6 +34,7 @@ final readonly class ExportController
         private OrganisationRepository $organisationRepository,
         private OrganisationExportRepository $organisationExportRepository,
         private OrganisationExports $organisationExports,
+        private PreparedFiles $preparedFiles,
         private OwnerCheck $ownerCheck,
         private UserMailer $userMailer,
         private ClockInterface $clock,
@@ -69,11 +70,7 @@ final readonly class ExportController
     {
         $archive = $this->organisationExports->download($this->organisation($organisationId), $exportId, $this->user());
 
-        return new Response($archive->bytes, Response::HTTP_OK, [
-            'Content-Type' => 'application/zip',
-            'Content-Disposition' => HeaderUtils::makeDisposition(HeaderUtils::DISPOSITION_ATTACHMENT, $archive->name, 'export.zip'),
-            'Cache-Control' => 'no-store',
-        ]);
+        return $this->preparedFiles->response($archive->chunks, OrganisationExports::CONTENT_TYPE, $archive->name, 'export.zip');
     }
 
     /** @return array<string, mixed> */

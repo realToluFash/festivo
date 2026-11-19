@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Domain\Organisation\AuditLog;
 
 use App\Audit\Auditor;
-use App\Domain\Guest\Export\CsvCell;
+use App\Domain\Guest\Export\CsvFile;
 use App\Entity\AuditEntry;
 use App\Entity\AuditExport;
 use App\Entity\Organisation;
@@ -19,8 +19,7 @@ use App\Http\Exception\ApiException;
 use App\Repository\AuditEntryRepository;
 use App\Repository\AuditExportRepository;
 use App\Repository\AuditFilter;
-use App\Storage\ObjectStore;
-use DateInterval;
+use App\Storage\PreparedFiles;
 use Doctrine\ORM\EntityManagerInterface;
 use Psl\Iter;
 use Psl\Json;
@@ -47,7 +46,7 @@ final readonly class AuditExports
         private AuditExportRepository $auditExportRepository,
         private AuditEntryView $auditEntryView,
         private AuditExportMailer $auditExportMailer,
-        private ObjectStore $objectStore,
+        private PreparedFiles $preparedFiles,
         private Auditor $auditor,
         private EntityManagerInterface $entityManager,
         private AfterResponse $afterResponse,
@@ -95,15 +94,7 @@ final readonly class AuditExports
     {
         try {
             $key = Str\format('audit-exports/%s/%s.%s', $export->getOrganisation()->getId()->toRfc4122(), $export->getId()->toRfc4122(), $export->getFormat());
-            $file = \tmpfile() ?: throw new RuntimeException('No temporary file for the audit log export.');
-
-            try {
-                $this->write($file, $filter, $export->getFormat(), $export->getLocale());
-                \rewind($file);
-                $this->objectStore->keepFile($key, $file, self::contentType($export->getFormat()));
-            } finally {
-                \fclose($file);
-            }
+            $this->preparedFiles->keep($key, self::contentType($export->getFormat()), fn ($file) => $this->write($file, $filter, $export->getFormat(), $export->getLocale()));
         } catch (Throwable $e) {
             $this->logger->error('An audit log export failed to prepare.', ['export' => $export->getId()->toRfc4122(), 'exception' => $e::class]);
             $export->setStatus(AuditExportStatus::Failed);
@@ -127,29 +118,10 @@ final readonly class AuditExports
     /** The prepared file, for the person who asked, signed in, while they still read the log and for 24 hours from its being ready; anyone else is told it isn't there. */
     public function download(Organisation $organisation, string $exportId, User $by): AuditExport
     {
-        $export = $this->auditExportRepository->findOneIn($organisation, $exportId);
-
-        if (null === $export || !$export->getAskedBy()->getId()->equals($by->getId())) {
-            throw ApiException::notFound('access.not_found');
-        }
-
-        $readyAt = $export->getReadyAt();
-
-        if (AuditExportStatus::Ready !== $export->getStatus() || null === $readyAt || null === $export->getFileKey()) {
-            throw new ApiException(ErrorCode::ExportNotReady, 'organisation.export_not_ready');
-        }
-
-        if ($this->clock->now() >= $readyAt->add(new DateInterval(AuditExport::LINK_LIFETIME))) {
-            throw new ApiException(ErrorCode::ExportExpired, 'audit.export_expired');
-        }
+        $export = $this->preparedFiles->ready($this->auditExportRepository->findOneIn($organisation, $exportId), $by);
+        $this->preparedFiles->unexpired($export, 'audit.export_expired');
 
         return $export;
-    }
-
-    /** @return iterable<string> */
-    public function chunks(AuditExport $export): iterable
-    {
-        return $this->objectStore->streamKept($export->getFileKey() ?? throw new RuntimeException('The export has no file.'));
     }
 
     /** @param array<string, string> $filters */
@@ -179,7 +151,7 @@ final readonly class AuditExports
         $columns = AuditEntryView::columns();
 
         if ('csv' === $format) {
-            \fwrite($stream, "\u{FEFF}");
+            CsvFile::start($stream);
             \fputcsv($stream, $columns, ',', '"', '', "\r\n");
         }
 
@@ -190,7 +162,7 @@ final readonly class AuditExports
 
             foreach ($this->auditEntryView->exported($locale, ...$entries) as $row) {
                 if ('csv' === $format) {
-                    \fputcsv($stream, Vec\map($columns, static fn (string $column): string => CsvCell::safe($row[$column] ?? '')), ',', '"', '', "\r\n");
+                    CsvFile::row($stream, Vec\map($columns, static fn (string $column): string => $row[$column] ?? ''));
                 } else {
                     \fwrite($stream, Json\encode($row) . "\n");
                 }

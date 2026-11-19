@@ -550,7 +550,7 @@ final class OrganisationExportTest extends ApiTestCase
         self::em()->flush();
         self::mockTime(new DateTimeImmutable('2026-10-17T13:25:00+00:00'));
         self::service(OrganisationExports::class)->prepareDue();
-        $ready = [$this->latest()->getArchiveKey(), $this->latest()->getReadyAt()];
+        $ready = [$this->latest()->getFileKey(), $this->latest()->getReadyAt()];
         self::assertStringEndsWith(Str\format('%s-2.zip', $export->getId()->toRfc4122()), (string) $ready[0]);
 
         self::em()->getConnection()->executeStatement('UPDATE organisation_exports SET attempts = 3 WHERE id = ?', [$export->getId()->toRfc4122()]);
@@ -561,7 +561,7 @@ final class OrganisationExportTest extends ApiTestCase
         self::assertFalse($repository->claimFailed($export, new DateTimeImmutable('2026-10-17T13:31:00+00:00')));
 
         self::assertSame(OrganisationExportStatus::Ready, $this->latest()->getStatus());
-        self::assertEquals($ready, [$this->latest()->getArchiveKey(), $this->latest()->getReadyAt()]);
+        self::assertEquals($ready, [$this->latest()->getFileKey(), $this->latest()->getReadyAt()]);
     }
 
     #[Test]
@@ -591,7 +591,7 @@ final class OrganisationExportTest extends ApiTestCase
 
         self::assertSame(1, self::service(OrganisationExports::class)->prepareDue());
 
-        self::assertSame([OrganisationExportStatus::Ready, $key(1)], [$this->latest()->getStatus(), $this->latest()->getArchiveKey()]);
+        self::assertSame([OrganisationExportStatus::Ready, $key(1)], [$this->latest()->getStatus(), $this->latest()->getFileKey()]);
         self::assertSame([true, false], [$store->exists($env('STORAGE_BUCKET_PRIVATE'), $key(1)), $store->exists($env('STORAGE_BUCKET_PRIVATE'), $key(2))]);
     }
 
@@ -694,7 +694,7 @@ final class OrganisationExportTest extends ApiTestCase
         $path = Filesystem\create_temporary_file(prefix: 'organisation-export-test-');
 
         try {
-            File\write($path, (string) $this->client->getResponse()->getContent(), File\WriteMode::Truncate);
+            File\write($path, $this->client->getInternalResponse()->getContent(), File\WriteMode::Truncate);
             $zip = new ZipArchive();
             self::assertTrue($zip->open($path));
             $files = [];
