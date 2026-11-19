@@ -3094,7 +3094,7 @@
     "locked": "Inclus dans le forfait Enterprise",
     "lockedLine": "Domaines de messagerie et journal d’audit.",
     "leftLine": "Les domaines de messagerie, le journal d’audit et la suppression des données des invités sont désactivés et conservés tels quels. Ils se réactivent avec le forfait Enterprise.",
-    "leftSays": "{{organisation}} left Enterprise",
+    "leftSays": "L’organisation {{organisation}} n’a plus le forfait Enterprise",
     "rows": {
       "domains": "Domaines de messagerie",
       "audit": "Journal d’audit",
@@ -3163,7 +3163,7 @@
       "locked": "Disponible avec le forfait Enterprise",
       "lockedLine": "Vérifiez que le domaine appartient à l’organisation {{organisation}}, puis réservez ses comptes à l’organisation {{organisation}}.",
       "offLine": "L’organisation {{organisation}} n’a plus le forfait Enterprise. Ses domaines sont conservés tels quels et se réactivent avec le forfait Enterprise.",
-      "off": "Switched off",
+      "off": "Désactivés",
       "keep": "Réserver les comptes {{domain}} à l’organisation {{organisation}}",
       "scheduled": "« Réservé à notre organisation » commence le {{at}}",
       "scheduledLine": "Toutes les personnes du domaine {{domain}} ont reçu un e-mail. Vous pouvez annuler jusque-là.",
