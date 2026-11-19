@@ -11,7 +11,8 @@ import {
   sideTextSize,
 } from './sidebarSize.ts';
 
-// React Native's fontScale on iOS at the ninth, tenth and twelfth steps of Larger Text.
+// React Native's fontScale on iOS at the eighth, ninth, tenth and twelfth steps of Larger Text.
+const EIGHTH = 1.786;
 const NINTH = 2.143;
 const TENTH = 2.643;
 const TWELFTH = 3.571;
@@ -21,14 +22,37 @@ function oneWord(width: number, letters = 0): Widths {
 }
 
 describe('the sidebar at the largest text sizes', () => {
-  it('draws rows, glyphs and names as on main through the ninth step', () => {
+  it('draws rows and glyphs as on main through the ninth step', () => {
     const scale = NINTH;
 
     expect(atLargest(scale)).toBe(false);
-    expect(sideTextSize(ROOMS.event, scale, oneWord(500), 'line')).toBe(14 * scale);
-    expect(sideTextSize(ROOMS.cardName, scale, oneWord(500), 'lines')).toBe(14 * scale);
     expect(glyphSide(ROOMS.place, scale, 30)).toBe(18);
     expect(rowPad(scale)).toBe(0);
+  });
+
+  it('draws names as on main through the eighth step', () => {
+    expect(sideTextSize(ROOMS.org, EIGHTH, oneWord(500), 'line')).toBe(15 * EIGHTH);
+    expect(sideTextSize(ROOMS.cardName, EIGHTH, oneWord(500), 'lines')).toBe(14 * EIGHTH);
+  });
+
+  it('steps a one-line name down at the ninth step until it fits its line whole', () => {
+    const scale = NINTH;
+    const start = 15 * scale;
+    const qaOrganisation = 1.5 * ROOMS.org.inside;
+    const size = sideTextSize(ROOMS.org, scale, oneWord(qaOrganisation), 'line');
+
+    expect(size).toBeLessThan(start);
+    expect(size).toBeGreaterThanOrEqual(15);
+    expect((qaOrganisation / start) * size).toBeLessThanOrEqual(ROOMS.org.inside);
+  });
+
+  it('keeps a name at its size on main at the ninth step while it fits', () => {
+    const scale = NINTH;
+
+    expect(sideTextSize(ROOMS.org, scale, oneWord(ROOMS.org.inside), 'line')).toBe(15 * scale);
+    expect(sideTextSize(ROOMS.cardName, scale, oneWord(ROOMS.cardName.inside), 'lines')).toBe(
+      14 * scale,
+    );
   });
 
   it('keeps a label at its size on main below the tenth step while its widest word fits beside the glyph', () => {
