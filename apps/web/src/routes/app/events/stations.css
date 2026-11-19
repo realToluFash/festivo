@@ -326,7 +326,7 @@
   color: var(--colorAccentText);
 }
 
-/* At 400% zoom (320 CSS px) a row's buttons wrap under its name and a Dished at select drops under its item, as sc-3910's Design says; the demo does not reflow. */
+/* At 400% zoom (320 CSS px) a row's buttons wrap under its name and a Served from select drops under its item, as sc-3910's Design says; the demo does not reflow. */
 @media (width <= 720px) {
   .sn .sn-row-top,
   .sn .sn-item {
