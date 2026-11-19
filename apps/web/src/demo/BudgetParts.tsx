@@ -263,7 +263,7 @@ export function MarkWord({ mark, word }: { mark: ReactNode; word: string }) {
   );
 }
 
-export function Amount({ value, line }: { value: string; line?: ReactNode }) {
+export function Amount({ value, line }: { value: ReactNode; line?: ReactNode }) {
   return (
     <span className="bud-amount">
       <span className="bud-amount-value">{value}</span>
