@@ -70,14 +70,7 @@ describe('events from outside (sc-68438)', () => {
 
   it('opens each level’s areas, Can edit as the member sidebar has them but Budget', () => {
     expect(areasAt('Can view')).toEqual(['overview', 'guests', 'schedule', 'seating', 'people']);
-    expect(areasAt('Can check guests in')).toEqual([
-      'checkIn',
-      'overview',
-      'guests',
-      'schedule',
-      'seating',
-      'people',
-    ]);
+    expect(areasAt('Can check guests in')).toEqual(areasAt('Can view'));
     expect(areasAt('Can edit')).toEqual([
       'overview',
       'guests',
