@@ -1,7 +1,8 @@
-import { type RefObject, useRef, useState } from 'react';
+import { type ReactNode, type RefObject, useRef, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, View, type ViewInstance } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { AREA_GLYPH as EVENT_GLYPH } from '../../components/areaGlyph.ts';
 import { CARD_PIECES, Confetti } from '../../components/Cover.tsx';
 import { EventMesh } from '../../components/EventMesh.tsx';
 import { Glyph, type GlyphName } from '../../components/Glyph.tsx';
@@ -39,7 +40,7 @@ import {
   TextAction,
 } from '../../components/Summary.tsx';
 import {
-  type CodeRole,
+  type CodeChoice,
   atWords,
   clockWords,
   dayWords,
@@ -48,21 +49,14 @@ import {
   endMoment,
   EVENT,
   JOAO_ID,
-  ON_THE_DAY,
+  type Moment,
   ORGANISATION,
   type Redeemable,
 } from './DoorCodeModel.ts';
 import { onEventCount, signedInAs, W } from './DoorCodeWords.ts';
 import { AREA_WORDS, areasFor, type InsideArea, moreAreas } from './RedeemModel.ts';
 
-const AREA_GLYPH: Record<InsideArea, GlyphName> = {
-  checkIn: 'tick',
-  overview: 'overview',
-  guests: 'users',
-  schedule: 'clock',
-  seating: 'seating',
-  people: 'people',
-};
+const AREA_GLYPH: Record<InsideArea, GlyphName> = { ...EVENT_GLYPH, checkIn: 'tick' };
 const TABS = [
   [W.overview, 'overview'],
   [W.guests, 'users'],
@@ -74,6 +68,45 @@ const JOAO: PeopleViewer = { id: JOAO_ID, role: 'Member' };
 const CHECK_IN_LATER = 'Check-in has its own design.';
 const TAB_BAR = 64;
 
+export interface Shown {
+  id: string;
+  name: string;
+  day: string;
+  starts: string;
+  ends: Moment;
+  venue: string;
+  job: string | null;
+}
+
+export interface MoreRow {
+  key: string;
+  title: string;
+  line: string;
+  lead: ReactNode;
+  below?: ReactNode;
+  label: string;
+  /** What it does, or the words told in its place. */
+  onPress: () => string | null;
+}
+
+export interface MoreGroup {
+  key: string;
+  title: string;
+  rows: readonly MoreRow[];
+}
+
+function doorEvent(code: Redeemable | undefined): Shown {
+  return {
+    id: EVENT.id,
+    name: EVENT.name,
+    day: EVENT.day,
+    starts: EVENT.starts,
+    ends: endMoment({ kind: 'event' }),
+    venue: EVENT.venue,
+    job: code?.job ?? null,
+  };
+}
+
 /** An account with no organisation, inside the event it joined and nothing else: its tabs, no Today, Events or switcher (pm, 7 Nov). */
 export function InsideEvent({
   at,
@@ -82,6 +115,8 @@ export function InsideEvent({
   who,
   locale,
   moreAtStart = false,
+  shown = doorEvent(code),
+  groups = [],
   onAt,
   onSignOut,
   onAccount,
@@ -89,8 +124,10 @@ export function InsideEvent({
   at: 'overview' | 'people';
   locale: string;
   moreAtStart?: boolean;
-  code: Redeemable;
-  role: CodeRole;
+  code?: Redeemable;
+  role: CodeChoice;
+  shown?: Shown;
+  groups?: readonly MoreGroup[];
   who: string;
   onAt: (at: 'overview' | 'people') => void;
   onSignOut: () => void;
@@ -116,7 +153,7 @@ export function InsideEvent({
   const page =
     at === 'overview' ? (
       <Overview
-        code={code}
+        shown={shown}
         role={role}
         who={who}
         locale={locale}
@@ -126,7 +163,7 @@ export function InsideEvent({
         tell={tell}
       />
     ) : (
-      <PeopleIn onBack={() => onAt('overview')} />
+      <PeopleIn name={shown.name} onBack={() => onAt('overview')} />
     );
 
   const sheet = (
@@ -136,7 +173,13 @@ export function InsideEvent({
       who={who}
       title={side ? who : W.more}
       areas={moreAreas(role, phone)}
+      groups={groups}
       onClose={() => setMore(false)}
+      onRow={(row) => {
+        setMore(false);
+        const said = row.onPress();
+        if (said != null) tell(said);
+      }}
       onArea={(area) => {
         setMore(false);
         go(area);
@@ -163,6 +206,7 @@ export function InsideEvent({
     return (
       <View style={[styles.chrome, { paddingTop: insets.top }]}>
         <SideBar
+          shown={shown}
           areas={areasFor(role)}
           at={at}
           who={who}
@@ -228,6 +272,7 @@ export function InsideEvent({
 
 /** On its side, the event's sidebar: its level's areas only, and at its foot the person, whose button holds Your account and Sign out (pm and ux, 8 Nov). */
 function SideBar({
+  shown,
   areas,
   at,
   who,
@@ -237,31 +282,32 @@ function SideBar({
   onArea,
   onPerson,
 }: {
+  shown: Shown;
   areas: readonly InsideArea[];
   at: 'overview' | 'people';
   who: string;
-  role: CodeRole;
+  role: CodeChoice;
   locale: string;
   personRef: RefObject<ViewInstance | null>;
   onArea: (area: InsideArea) => void;
   onPerson: () => void;
 }) {
-  const day = dayWords(EVENT.day, locale);
+  const day = dayWords(shown.day, locale);
 
   return (
     <SidebarColumn>
       <View style={styles.logo}>
         <Brand lockup height={24} />
       </View>
-      <View style={styles.sideCard} accessible accessibilityLabel={`${EVENT.name}. ${day}`}>
+      <View style={styles.sideCard} accessible accessibilityLabel={`${shown.name}. ${day}`}>
         <EventThumb
-          event={{ id: EVENT.id, mesh: meshFor(EVENT.id), photo: null }}
+          event={{ id: shown.id, mesh: meshFor(shown.id), photo: null }}
           side={40}
           radius={12}
         />
         <View style={styles.grow}>
           <Text size={14} weight="bold" numberOfLines={2} accessible={false}>
-            {EVENT.name}
+            {shown.name}
           </Text>
           <Text size={12.5} weight="medium" accessible={false} style={styles.secondary}>
             {day}
@@ -311,7 +357,7 @@ function SideBar({
 }
 
 function Overview({
-  code,
+  shown,
   role,
   who,
   locale,
@@ -320,8 +366,8 @@ function Overview({
   onSignOut,
   tell,
 }: {
-  code: Redeemable;
-  role: CodeRole;
+  shown: Shown;
+  role: CodeChoice;
   who: string;
   locale: string;
   /** Signed in as and Sign out at the foot; on its side the person button holds them. */
@@ -330,7 +376,7 @@ function Overview({
   onSignOut: () => void;
   tell: (words: string) => void;
 }) {
-  const until = atWords(endMoment({ kind: 'event' }), locale, ON_THE_DAY.date);
+  const until = atWords(shown.ends, locale, shown.day);
   const checks = role === 'Can check guests in';
 
   return (
@@ -340,7 +386,7 @@ function Overview({
         gap={8}
         backdrop={
           <>
-            <EventMesh event={{ mesh: meshFor(EVENT.id), photo: null }} shade="side" />
+            <EventMesh event={{ mesh: meshFor(shown.id), photo: null }} shade="side" />
             <Confetti pieces={CARD_PIECES} />
           </>
         }
@@ -356,12 +402,12 @@ function Overview({
         testID="inside.card"
       >
         <OnCard
-          text={`${dayWords(EVENT.day, locale)} · ${clockWords(EVENT.starts, locale)} to ${until}`}
+          text={`${dayWords(shown.day, locale)} · ${clockWords(shown.starts, locale)} to ${until}`}
         />
-        <CardSays text={EVENT.name} heading />
-        <OnCard text={EVENT.venue} />
+        <CardSays text={shown.name} heading />
+        <OnCard text={shown.venue} />
         <OnCard
-          text={[role, code.job, `until ${until}`].filter((part) => part != null).join(' · ')}
+          text={[role, shown.job, `until ${until}`].filter((part) => part != null).join(' · ')}
           strong
         />
       </SummaryCard>
@@ -420,7 +466,7 @@ export function You({ who, onSignOut }: { who: string; onSignOut: () => void }) 
 }
 
 /** People as anyone on the event reads it: the one list, no card, no Add, nothing opens. */
-function PeopleIn({ onBack }: { onBack: () => void }) {
+function PeopleIn({ name, onBack }: { name: string; onBack: () => void }) {
   const shown = listed(everyone());
   const tag = outsideTag(ORGANISATION);
 
@@ -433,7 +479,7 @@ function PeopleIn({ onBack }: { onBack: () => void }) {
             {W.people}
           </Text>
           <Text size={15} weight="medium" style={styles.secondary}>
-            {EVENT.name}
+            {name}
           </Text>
         </View>
       </View>
@@ -484,8 +530,10 @@ function MoreSheet({
   who,
   title,
   areas,
+  groups,
   onClose,
   onArea,
+  onRow,
   onAccount,
   onSignOut,
 }: {
@@ -494,11 +542,28 @@ function MoreSheet({
   who: string;
   title: string;
   areas: readonly InsideArea[];
+  groups: readonly MoreGroup[];
   onClose: () => void;
   onArea: (area: InsideArea) => void;
+  onRow: (row: MoreRow) => void;
   onAccount: () => void;
   onSignOut: () => void;
 }) {
+  const account = {
+    key: 'account',
+    inset: 40,
+    row: (
+      <Row
+        title={W.yourAccount}
+        line={who}
+        lead={<LineIcon name="user" />}
+        opens
+        onPress={onAccount}
+        testID="inside.more.account"
+      />
+    ),
+  };
+
   return (
     <Sheet
       open={open}
@@ -523,44 +588,60 @@ function MoreSheet({
             <Glyph name="x" size={18} ink={tokens.colorInk} weight={2.4} />
           </Pressable>
         </View>
-        <RowList
-          items={[
-            ...areas.map((area) => ({
-              key: area,
-              inset: 40,
-              row: (
-                <Row
-                  title={AREA_WORDS[area]}
-                  lead={<LineIcon name={AREA_GLYPH[area]} />}
-                  opens
-                  onPress={() => onArea(area)}
-                  testID={`inside.more.${area}`}
-                />
-              ),
-            })),
-            {
-              key: 'account',
-              inset: 40,
-              row: (
-                <Row
-                  title={W.yourAccount}
-                  line={who}
-                  lead={<LineIcon name="user" />}
-                  opens
-                  onPress={onAccount}
-                  testID="inside.more.account"
-                />
-              ),
-            },
-          ]}
-        />
-        <TextAction
-          label={W.signOut}
-          plain
-          glyph="signOut"
-          onPress={onSignOut}
-          testID="inside.more.signOut"
-        />
+        <ScrollView
+          style={styles.moreScroll}
+          contentContainerStyle={styles.moreBody}
+          showsVerticalScrollIndicator={false}
+        >
+          <RowList
+            items={[
+              ...areas.map((area) => ({
+                key: area,
+                inset: 40,
+                row: (
+                  <Row
+                    title={AREA_WORDS[area]}
+                    lead={<LineIcon name={AREA_GLYPH[area]} />}
+                    opens
+                    onPress={() => onArea(area)}
+                    testID={`inside.more.${area}`}
+                  />
+                ),
+              })),
+              ...(groups.length === 0 ? [account] : []),
+            ]}
+          />
+          {groups.map((group) => (
+            <View key={group.key} testID={`inside.more.${group.key}`}>
+              <SectionHead title={group.title} />
+              <RowList
+                items={group.rows.map((row) => ({
+                  key: row.key,
+                  inset: 40 + tokens.spaceLg,
+                  row: (
+                    <Row
+                      title={row.title}
+                      line={row.line}
+                      below={row.below}
+                      lead={row.lead}
+                      onPress={() => onRow(row)}
+                      accessibilityLabel={row.label}
+                      testID={`inside.more.${group.key}.${row.key}`}
+                    />
+                  ),
+                }))}
+              />
+            </View>
+          ))}
+          {groups.length > 0 && <RowList items={[account]} />}
+          <TextAction
+            label={W.signOut}
+            plain
+            glyph="signOut"
+            onPress={onSignOut}
+            testID="inside.more.signOut"
+          />
+        </ScrollView>
       </View>
     </Sheet>
   );
@@ -669,11 +750,14 @@ const styles = StyleSheet.create({
   titleText: { letterSpacing: 30 * -0.02 },
   foot: { gap: tokens.spaceSm },
   more: {
+    flexShrink: 1,
     gap: tokens.spaceXl,
     paddingHorizontal: tokens.spaceXxl,
     paddingTop: 31,
     paddingBottom: tokens.space6xl,
   },
+  moreScroll: { flexGrow: 0, flexShrink: 1 },
+  moreBody: { gap: tokens.spaceXl },
   moreHead: { minHeight: tokens.sizeHit, flexDirection: 'row', alignItems: 'center' },
   close: {
     width: tokens.sizeHit,

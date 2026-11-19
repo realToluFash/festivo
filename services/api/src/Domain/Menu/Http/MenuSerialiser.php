@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Domain\Menu\Http;
 
 use App\Domain\Menu\ChoiceRules;
-use App\Domain\Menu\DishRules;
 use App\Domain\Menu\Interfaces\MenuPicksInterface;
 use App\Domain\Menu\Model\PicksClose;
 use App\Entity\Event;
@@ -14,6 +13,7 @@ use App\Entity\MenuCourse;
 use App\Entity\MenuDish;
 use App\Entity\MenuDishChoice;
 use App\Entity\MenuDishVariant;
+use App\Locale\Money;
 use App\Locale\NameNormaliser;
 use App\Repository\MenuChoiceOptionRepository;
 use App\Repository\MenuCourseRepository;
@@ -211,6 +211,6 @@ final readonly class MenuSerialiser
     /** @return ?array{amount: string, currency: string} */
     private static function money(?int $minor, string $currency): ?array
     {
-        return null === $minor ? null : ['amount' => DishRules::written($minor, $currency), 'currency' => $currency];
+        return null === $minor ? null : ['amount' => Money::written($minor, $currency), 'currency' => $currency];
     }
 }

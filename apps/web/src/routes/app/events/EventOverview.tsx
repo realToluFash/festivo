@@ -36,7 +36,7 @@ import { useDeskTop } from '../../../deskTop.ts';
 import { listEventOf, shownEvent } from '../../../eventsList.ts';
 import { currentLocale, dateLocale } from '../../../i18n/index.ts';
 import { useLoadedAt, useServerNow } from '../../../serverNow.ts';
-import { canOn } from '../../../session.ts';
+import { canOn, useSessionState } from '../../../session.ts';
 import { DeleteEvent } from './DeleteEvent.tsx';
 import { DuplicateDialog, DuplicateEvent } from './DuplicateEvent.tsx';
 import { guestsCopied, wasDuplicated } from './duplicated.ts';
@@ -74,9 +74,14 @@ import '../../../components/eventPage.css';
 export function EventCrumb({ name, children }: { name: string | null; children?: ReactNode }) {
   const { t } = useTranslation();
   const { bell } = useDeskTop();
+  const state = useSessionState();
+  const outside =
+    state.status === 'signedIn' &&
+    state.session.organisation == null &&
+    state.session.pausedIn == null;
 
   return (
-    <Crumb to="/app/events" back={t('events.title')} name={name}>
+    <Crumb to={outside ? null : '/app/events'} back={t('events.title')} name={name}>
       {children}
       {bell}
     </Crumb>

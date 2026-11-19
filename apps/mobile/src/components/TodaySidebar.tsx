@@ -1,4 +1,4 @@
-import { type ReactNode, useRef } from 'react';
+import { type ReactNode, type Ref, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Pressable, ScrollView, StyleSheet, View, type ViewInstance } from 'react-native';
 
@@ -153,12 +153,17 @@ export function SidebarFoot({
   onPerson,
   person: shown,
   settingsID,
+  settings = true,
+  personRef,
 }: {
   onTab: (tab: Tab) => void;
   at: Tab | null;
   onPerson?: (() => void) | undefined;
   person?: TodayShell['person'] | undefined;
   settingsID?: string | undefined;
+  /** Held from outside an organisation there is no Settings to go to (sc-71). */
+  settings?: boolean;
+  personRef?: Ref<ViewInstance> | undefined;
 }) {
   const { t } = useTranslation();
   const shell = useTodayShell();
@@ -167,8 +172,11 @@ export function SidebarFoot({
 
   return (
     <>
-      <Place tab="Settings" glyph="settings" onTab={onTab} at={at} testID={settingsID} />
+      {settings && (
+        <Place tab="Settings" glyph="settings" onTab={onTab} at={at} testID={settingsID} />
+      )}
       <Pressable
+        ref={personRef}
         onPress={onPerson ?? (() => shell.open({ to: 'account' }))}
         style={styles.person}
         accessibilityRole="button"

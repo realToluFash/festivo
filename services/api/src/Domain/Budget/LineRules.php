@@ -5,12 +5,12 @@ declare(strict_types=1);
 namespace App\Domain\Budget;
 
 use App\Domain\Budget\Model\LineDetails;
-use App\Domain\Menu\DishRules;
 use App\Entity\BudgetLine;
 use App\Enum\CostBasis;
 use App\Enum\CostCategory;
 use App\Enum\ErrorCode;
 use App\Http\Exception\ApiException;
+use App\Locale\Money;
 use App\Locale\VisibleText;
 use Psl\Regex;
 use Psl\Str;
@@ -30,7 +30,7 @@ final readonly class LineRules
 
     public function __construct(
         private TranslatorInterface $translator,
-        private DishRules $dishRules,
+        private Money $money,
     ) {
     }
 
@@ -99,7 +99,7 @@ final readonly class LineRules
                 if ('' === $price) {
                     $violations[] = $this->violation($field, 'rate' === $field ? 'validation.budget_rate_required' : 'validation.budget_amount_required');
                 } else {
-                    $priceMinor = DishRules::minorOf($price, $eventCurrency);
+                    $priceMinor = Money::minorOf($price, $eventCurrency);
 
                     if (null === $priceMinor) {
                         $violations[] = $this->priceRefusal($field, $price, $eventCurrency);
@@ -146,7 +146,7 @@ final readonly class LineRules
             return $this->violation($field, 'rate' === $field ? 'validation.budget_rate_negative' : 'validation.budget_amount_negative', code: self::PRICE_NEGATIVE);
         }
 
-        $example = ['{example}' => $this->dishRules->example($currency)];
+        $example = ['{example}' => $this->money->example($currency)];
 
         if (Regex\matches($price, '/^\d{1,15}\.\d+$/')) {
             return $this->violation($field, 'rate' === $field ? 'validation.budget_rate_too_many_decimals' : 'validation.budget_amount_too_many_decimals', $example);

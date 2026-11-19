@@ -11,6 +11,7 @@ use App\Entity\DishVariant;
 use App\Entity\MenuDishVariant;
 use App\Enum\ErrorCode;
 use App\Http\Exception\ApiException;
+use App\Locale\Money;
 use App\Locale\NameNormaliser;
 use App\Locale\VisibleText;
 use Psl\Iter;
@@ -25,7 +26,7 @@ final readonly class VariantRules
 {
     public function __construct(
         private TranslatorInterface $translator,
-        private DishRules $dishRules,
+        private Money $money,
     ) {
     }
 
@@ -96,10 +97,10 @@ final readonly class VariantRules
                 $cost = Str\trim($one['cost'] ?? '');
 
                 if ('' !== $cost) {
-                    $minor = DishRules::minorOf($cost, $eventCurrency);
+                    $minor = Money::minorOf($cost, $eventCurrency);
 
                     if (null === $minor) {
-                        $violations[] = $this->violation($path . 'cost', 'validation.variant_cost_invalid', ['{example}' => $this->dishRules->example($eventCurrency)]);
+                        $violations[] = $this->violation($path . 'cost', 'validation.variant_cost_invalid', ['{example}' => $this->money->example($eventCurrency)]);
                     } else {
                         $price = new LastPrice($minor, $eventCurrency);
                     }
@@ -110,10 +111,10 @@ final readonly class VariantRules
                 if (!Regions::isCurrency($currency) && $currency !== $heldCurrency) {
                     $violations[] = $this->violation($path . 'lastPrice.currency', 'validation.currency_invalid');
                 } else {
-                    $minor = DishRules::minorOf(Str\trim($one['lastPrice']['amount']), $currency);
+                    $minor = Money::minorOf(Str\trim($one['lastPrice']['amount']), $currency);
 
                     if (null === $minor) {
-                        $violations[] = $this->violation($path . 'lastPrice.amount', 'validation.dish_price_invalid', ['{example}' => $this->dishRules->example($currency)]);
+                        $violations[] = $this->violation($path . 'lastPrice.amount', 'validation.dish_price_invalid', ['{example}' => $this->money->example($currency)]);
                     } else {
                         $price = new LastPrice($minor, $currency);
                     }

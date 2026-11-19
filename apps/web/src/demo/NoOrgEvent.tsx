@@ -1,166 +1,504 @@
-import { type KeyboardEvent, useCallback, useEffect, useId, useRef, useState } from 'react';
-import { useNavigate } from 'react-router';
+import {
+  type KeyboardEvent,
+  type ReactNode,
+  useCallback,
+  useEffect,
+  useId,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from 'react';
+import { Link, useNavigate } from 'react-router';
 
 import { Brand } from '../components/Brand.tsx';
+import { SIDE_AREA_GLYPHS } from '../components/eventSideAreas.ts';
 import { Glyph, type GlyphName } from '../components/Glyph.tsx';
 import { Avatar, Chevron, RowWords, type Tell } from '../components/SettingsParts.tsx';
 import { Toast } from '../components/Toast.tsx';
 import { DOOR_EVENT, DOOR_PLACE } from './doorCode.ts';
 import {
+  JOINED,
   NO_ORG,
   NO_ORG_VENUE,
-  type NoOrgArea,
   type NoOrgState,
-  levelLine,
+  levelLine as doorLevelLine,
   noOrgStart,
-  whenLine,
+  whenLine as doorWhenLine,
 } from './noOrg.ts';
+import {
+  NO_ORG_HOME,
+  OUTSIDE,
+  type Outside,
+  type OutsideArea,
+  type OutsideEvent,
+  type OutsidePage,
+  VENUES,
+  type WayBack,
+  areasAt,
+  askAgain,
+  coverOf,
+  inOrder,
+  levelLine,
+  onEventOf,
+  openingOf,
+  outsideEvent,
+  rowLabel,
+  startOutside,
+  underWay,
+  useOutside,
+  wallClock,
+  wallDay,
+  wayBack,
+  whenLine,
+} from './outsideEvents.ts';
+import { EventRowWords, PlaceRowWords } from './OutsideRows.tsx';
+import { SAMPLE } from './rules.ts';
+import { switchTo, useWhere } from './switcher.ts';
 import './today.css';
 import '../components/SettingsParts.css';
+import '../components/eventPage.css';
 import './events.css';
 import './people.css';
 import './doorCode.css';
+import './outsideEvents.css';
 
-const GLYPHS: Record<NoOrgArea, GlyphName> = {
-  checkIn: 'tick',
-  overview: 'overview',
-  guests: 'users',
-  schedule: 'clock',
-  seating: 'seating',
-  people: 'people',
+const WORDS: Record<OutsideArea, string> = {
+  checkIn: NO_ORG.checkIn,
+  overview: NO_ORG.overview,
+  guests: NO_ORG.guests,
+  menu: 'Menu',
+  seating: NO_ORG.seating,
+  messages: 'Messages',
+  schedule: NO_ORG.schedule,
+  staff: 'Staff',
+  people: NO_ORG.people,
+  reports: 'Reports',
 };
 
+const GLYPHS: Record<OutsideArea, GlyphName> = { ...SIDE_AREA_GLYPHS, checkIn: 'tick' };
+
 const PIECES = [1, 2, 3, 4, 5, 6];
+
+const EDGE = 12;
+
+interface Person {
+  name: string;
+  initials: string;
+  tone: number;
+  role: string;
+}
+
+type Groups = ((close: (back: boolean) => void) => ReactNode) | null;
+
+function MenuGroups({
+  groups,
+  close,
+}: {
+  groups: NonNullable<Groups>;
+  close: (back: boolean) => void;
+}) {
+  return groups(close);
+}
+
+function useTell(): [string | null, Tell, () => void] {
+  const [told, setTold] = useState<string | null>(null);
+  const tell = useCallback<Tell>((words) => setTold(words), []);
+
+  return [told, tell, () => setTold(null)];
+}
 
 /** Inside the event it joined, at a desk, for an account with no organisation: its level's areas only, and Your account and Sign out from the person button (sc-71). */
 export function NoOrgEvent({ state }: { state: NoOrgState }) {
   const [start] = useState(() => noOrgStart(state));
-  const [told, setTold] = useState<string | null>(null);
-  const tell = useCallback<Tell>((words) => setTold(words), []);
-  const checkIn = start.areas.includes('checkIn');
+  const [told, tell, clear] = useTell();
 
   return (
+    <Shell
+      card={{ name: DOOR_EVENT, when: DOOR_PLACE.when, cover: 'wed' }}
+      areas={start.areas}
+      current="overview"
+      person={{ ...start, role: start.code.role }}
+      opening={start.menu}
+      groups={null}
+      tell={tell}
+      told={told}
+      onToastClose={clear}
+    >
+      <EventMain
+        name={DOOR_EVENT}
+        cover="wed"
+        when={doorWhenLine()}
+        venue={NO_ORG_VENUE}
+        level={doorLevelLine(start.code)}
+        checkIn={start.areas.includes('checkIn')}
+        guests={NO_ORG.guestsLine}
+        onEvent={start.onEvent}
+        tell={tell}
+      />
+    </Shell>
+  );
+}
+
+function shellOf(now: Outside, way: WayBack | null, from: string | null): string | undefined {
+  if (way?.kind === 'event') return way.event.id;
+
+  return from != null && !now.gone.includes(from) ? from : undefined;
+}
+
+/** An event joined from outside (sc-68438): the person menu lists the account's other events, and a member's organisations. */
+export function OutsideEventPage({
+  id,
+  page,
+  from,
+  menu,
+}: {
+  id: string;
+  page: OutsidePage;
+  from: string | null;
+  menu: boolean;
+}) {
+  const [opening] = useState(() => {
+    if (page === 'outside-gone-page' && from == null) startOutside('outside-several');
+    if (page === 'outside-in' || page === 'outside-gone-page') return menu;
+
+    startOutside(page);
+    return true;
+  });
+  const outside = useOutside();
+  const where = useWhere();
+  const navigate = useNavigate();
+  const [told, tell, clear] = useTell();
+  const gone = page === 'outside-gone-page';
+  const way = gone ? wayBack(outside, id, from) : null;
+  const event = outsideEvent(gone ? shellOf(outside, way, from) : id);
+  const [name, initials, tone] = JOINED.joao;
+  const person: Person = outside.member
+    ? { name: SAMPLE.name, initials: 'FA', tone: 1, role: event.role }
+    : { name, initials, tone, role: event.role };
+  const listed = outside.held.length > 1;
+
+  const groups: Groups =
+    !outside.member && !listed
+      ? null
+      : (close) => (
+          <>
+            {outside.member && (
+              <Group heading={OUTSIDE.yourOrganisations}>
+                {where.places.map((place) => (
+                  <button
+                    key={place.id}
+                    type="button"
+                    role="menuitem"
+                    tabIndex={-1}
+                    className="desk-menu-item oe-row"
+                    aria-label={`${place.name}. ${place.role}`}
+                    onClick={() => {
+                      switchTo(place, '/demo/today');
+                      void navigate('/demo/today');
+                    }}
+                  >
+                    <PlaceRowWords id={place.id} name={place.name} role={place.role} />
+                  </button>
+                ))}
+              </Group>
+            )}
+            {listed && (
+              <Group heading={OUTSIDE.yourEvents}>
+                {inOrder(outside.held).map((one) => {
+                  const here = one.id === event.id;
+
+                  return (
+                    <button
+                      key={one.id}
+                      type="button"
+                      role="menuitem"
+                      tabIndex={-1}
+                      className="desk-menu-item oe-row"
+                      aria-label={rowLabel(one, { now: underWay(one), here })}
+                      onClick={() => {
+                        close(here);
+                        if (!here) void navigate(openingOf(one, event.id, outside));
+                      }}
+                    >
+                      <EventRowWords event={one} here={here} />
+                    </button>
+                  );
+                })}
+              </Group>
+            )}
+          </>
+        );
+
+  return (
+    <Shell
+      card={{ name: event.name, when: shortWhen(event), cover: coverOf(event) }}
+      areas={areasAt(event.role)}
+      current={gone ? null : 'overview'}
+      person={person}
+      opening={opening}
+      groups={groups}
+      tell={tell}
+      told={told}
+      onToastClose={clear}
+    >
+      {way != null ? (
+        <NotFound
+          way={way}
+          onBack={() => {
+            askAgain(id);
+            if (way.kind === 'event')
+              void navigate(`/demo/events/${way.event.id}?state=outside-in&menu=open`);
+            else if (way.kind === 'continue') void navigate(NO_ORG_HOME);
+          }}
+        />
+      ) : (
+        <EventMain
+          name={event.name}
+          cover={coverOf(event)}
+          when={whenLine(event)}
+          venue={VENUES[event.id] ?? NO_ORG_VENUE}
+          level={levelLine(event)}
+          checkIn={event.role === 'Can check guests in'}
+          guests={event.role === 'Can edit' ? null : NO_ORG.guestsLine}
+          onEvent={onEventOf(event.id)}
+          tell={tell}
+        />
+      )}
+    </Shell>
+  );
+}
+
+function shortWhen(event: OutsideEvent): string {
+  return underWay(event)
+    ? `${OUTSIDE.underWay} · until ${wallClock(event.endsAt)}`
+    : `${wallDay(event.startsAt)} · ${wallClock(event.startsAt)}`;
+}
+
+function Group({ heading, children }: { heading: string; children: ReactNode }) {
+  const id = useId();
+
+  return (
+    <div role="group" aria-labelledby={id} className="oe-group">
+      <span id={id} className="oe-heading">
+        {heading}
+      </span>
+      {children}
+    </div>
+  );
+}
+
+function Shell({
+  card,
+  areas,
+  current,
+  person,
+  opening,
+  groups,
+  tell,
+  told,
+  onToastClose,
+  children,
+}: {
+  card: { name: string; when: string; cover: string };
+  areas: readonly OutsideArea[];
+  current: OutsideArea | null;
+  person: Person;
+  opening: boolean;
+  groups: Groups;
+  tell: Tell;
+  told: string | null;
+  onToastClose: () => void;
+  children: ReactNode;
+}) {
+  return (
     <div className="today desk">
-      <nav className="today-side people-side" aria-label={DOOR_EVENT}>
+      <nav className="today-side people-side" aria-label={card.name}>
         <div className="today-logo">
           <Brand lockup />
         </div>
         <div className="people-event">
           <div className="people-event-card">
-            <span className="today-cover is-wed people-event-cover" aria-hidden="true" />
+            <span
+              className={`today-cover is-${card.cover} people-event-cover`}
+              aria-hidden="true"
+            />
             <span className="today-grow">
-              <span className="people-event-name">{DOOR_EVENT}</span>
-              <span className="people-event-when">{DOOR_PLACE.when}</span>
+              <span className="people-event-name">{card.name}</span>
+              <span className="people-event-when">{card.when}</span>
             </span>
           </div>
         </div>
         <ul className="today-places">
-          {start.areas.map((area) => (
+          {areas.map((area) => (
             <li key={area}>
               <button
                 type="button"
-                className={area === 'overview' ? 'today-place is-on' : 'today-place'}
-                aria-current={area === 'overview' ? 'page' : undefined}
-                onClick={() => area !== 'overview' && tell(NO_ORG.later(NO_ORG[area]))}
+                className={area === current ? 'today-place is-on' : 'today-place'}
+                aria-current={area === current ? 'page' : undefined}
+                onClick={() => area !== current && tell(NO_ORG.later(WORDS[area]))}
               >
                 <Glyph name={GLYPHS[area]} />
-                {NO_ORG[area]}
+                {WORDS[area]}
               </button>
             </li>
           ))}
         </ul>
         <div className="today-grow" />
-        <PersonMenu
-          name={start.name}
-          initials={start.initials}
-          tone={start.tone}
-          role={start.code.role}
-          opening={start.menu}
-          tell={tell}
-        />
+        <PersonMenu person={person} opening={opening} groups={groups} tell={tell} />
       </nav>
       <main id="content" className="desk-main">
         <div className="desk-page">
-          <div className="desk-column">
-            <section className="ev-card today-cover is-wed" aria-labelledby="no-org-event">
-              {PIECES.map((piece) => (
-                <span key={piece} className={`desk-piece p${piece}`} aria-hidden="true" />
-              ))}
-              <div className="ev-card-inner">
-                <p className="desk-on-card">{whenLine()}</p>
-                <h1 id="no-org-event" className="ev-card-name" tabIndex={-1}>
-                  {DOOR_EVENT}
-                </h1>
-                <p className="desk-on-card">{NO_ORG_VENUE}</p>
-                <p className="desk-on-card">{levelLine(start.code)}</p>
-                {checkIn && (
-                  <button
-                    type="button"
-                    className="desk-step"
-                    onClick={() => tell(NO_ORG.later(NO_ORG.checkIn))}
-                  >
-                    {NO_ORG.checkIn}
-                    <Glyph name="arrow" size={16} weight={2.4} />
-                  </button>
-                )}
-              </div>
-            </section>
-            <ul className="desk-rows has-lead">
-              {(
-                [
-                  ['guests', NO_ORG.guestsLine],
-                  ['people', NO_ORG.onEvent(start.onEvent)],
-                ] as const
-              ).map(([area, line]) => (
-                <li key={area}>
-                  <button
-                    type="button"
-                    className="desk-row"
-                    onClick={() => tell(NO_ORG.later(NO_ORG[area]))}
-                  >
-                    <span className="no-org-lead" aria-hidden="true">
-                      <Glyph name={GLYPHS[area]} size={20} />
-                    </span>
-                    <RowWords title={NO_ORG[area]} lines={[line]} />
-                    <Chevron />
-                  </button>
-                </li>
-              ))}
-            </ul>
-          </div>
+          <div className="desk-column">{children}</div>
         </div>
       </main>
-      {told != null && <Toast key={told} words={told} onClose={() => setTold(null)} />}
+      {told != null && <Toast key={told} words={told} onClose={onToastClose} />}
     </div>
   );
 }
 
-/** The person button at the sidebar's foot, the desk's version of the app's More: Your account and Sign out, as a menu. */
-function PersonMenu({
+function EventMain({
   name,
-  initials,
-  tone,
-  role,
-  opening,
+  cover,
+  when,
+  venue,
+  level,
+  checkIn,
+  guests,
+  onEvent,
   tell,
 }: {
   name: string;
-  initials: string;
-  tone: number;
-  role: string;
+  cover: string;
+  when: string;
+  venue: string;
+  level: string;
+  checkIn: boolean;
+  guests: string | null;
+  onEvent: number;
+  tell: Tell;
+}) {
+  return (
+    <>
+      <section className={`ev-card today-cover is-${cover}`} aria-labelledby="no-org-event">
+        {PIECES.map((piece) => (
+          <span key={piece} className={`desk-piece p${piece}`} aria-hidden="true" />
+        ))}
+        <div className="ev-card-inner">
+          <p className="desk-on-card">{when}</p>
+          <h1 id="no-org-event" className="ev-card-name" tabIndex={-1}>
+            {name}
+          </h1>
+          <p className="desk-on-card">{venue}</p>
+          <p className="desk-on-card">{level}</p>
+          {checkIn && (
+            <button
+              type="button"
+              className="desk-step"
+              onClick={() => tell(NO_ORG.later(NO_ORG.checkIn))}
+            >
+              {NO_ORG.checkIn}
+              <Glyph name="arrow" size={16} weight={2.4} />
+            </button>
+          )}
+        </div>
+      </section>
+      <ul className="desk-rows has-lead">
+        {(
+          [
+            ['guests', guests],
+            ['people', NO_ORG.onEvent(onEvent)],
+          ] as const
+        ).map(([area, line]) => (
+          <li key={area}>
+            <button
+              type="button"
+              className="desk-row"
+              onClick={() => tell(NO_ORG.later(NO_ORG[area]))}
+            >
+              <span className="no-org-lead" aria-hidden="true">
+                <Glyph name={GLYPHS[area]} size={20} />
+              </span>
+              <RowWords title={NO_ORG[area]} lines={line == null ? [] : [line]} />
+              <Chevron />
+            </button>
+          </li>
+        ))}
+      </ul>
+    </>
+  );
+}
+
+/** The web's event not-found: a member keeps the Events crumb; with no organisation there is no Events, so it goes back to an event, or on to the no-organisation home. */
+function NotFound({ way, onBack }: { way: WayBack; onBack: () => void }) {
+  const heading = useRef<HTMLHeadingElement>(null);
+
+  useEffect(() => heading.current?.focus(), []);
+
+  return (
+    <section className="card oe-gone">
+      {way.kind === 'events' && (
+        <nav className="ev-crumb" aria-label={OUTSIDE.events}>
+          <ol>
+            <li className="ev-crumb-part">
+              <Link to="/demo/events" onClick={onBack}>
+                {OUTSIDE.events}
+              </Link>
+            </li>
+          </ol>
+        </nav>
+      )}
+      <h1 ref={heading} tabIndex={-1}>
+        {OUTSIDE.notFound}
+      </h1>
+      {way.kind !== 'events' && (
+        <button type="button" className="button" onClick={onBack}>
+          {way.kind === 'event' ? OUTSIDE.backTo(way.event.name) : OUTSIDE.continue}
+        </button>
+      )}
+    </section>
+  );
+}
+
+/** The person button at the sidebar's foot, the desk's version of the app's More: the account's groups, then Your account and Sign out, as a menu. */
+function PersonMenu({
+  person,
+  opening,
+  groups,
+  tell,
+}: {
+  person: Person;
   opening: boolean;
+  groups: Groups;
   tell: Tell;
 }) {
   const id = useId();
   const navigate = useNavigate();
   const [open, setOpen] = useState(opening);
   const button = useRef<HTMLButtonElement>(null);
-  const menu = useRef<HTMLUListElement>(null);
+  const menu = useRef<HTMLDivElement>(null);
+  const wide = groups != null;
   const items = () => [...(menu.current?.querySelectorAll<HTMLElement>('[role=menuitem]') ?? [])];
   const close = useCallback((back: boolean) => {
     setOpen(false);
     if (back) button.current?.focus();
   }, []);
+
+  useLayoutEffect(() => {
+    const drop = menu.current;
+    const opener = button.current;
+    if (!open || !wide || drop == null || opener == null) return;
+
+    const place = (): void => {
+      const box = opener.getBoundingClientRect();
+      drop.style.setProperty('left', `${box.left}px`);
+      drop.style.setProperty('bottom', `${window.innerHeight - box.top + 4}px`);
+      drop.style.setProperty('max-height', `${Math.max(0, box.top - EDGE)}px`);
+    };
+    place();
+    window.addEventListener('resize', place);
+
+    return () => window.removeEventListener('resize', place);
+  }, [open, wide]);
 
   useEffect(() => {
     if (!open) return;
@@ -194,15 +532,17 @@ function PersonMenu({
   return (
     <div className="today-places no-org-person">
       {open && (
-        <ul
+        <div
           ref={menu}
           id={`${id}-menu`}
-          className="desk-menu no-org-menu"
+          className={wide ? 'desk-menu no-org-menu is-wide' : 'desk-menu no-org-menu'}
           role="menu"
+          tabIndex={-1}
           aria-labelledby={`${id}-button`}
           onKeyDown={keys}
         >
-          <li role="none">
+          {groups != null && <MenuGroups groups={groups} close={close} />}
+          <div role="none" className="oe-group">
             <button
               type="button"
               role="menuitem"
@@ -218,8 +558,6 @@ function PersonMenu({
               </span>
               {NO_ORG.yourAccount}
             </button>
-          </li>
-          <li role="none">
             <button
               type="button"
               role="menuitem"
@@ -232,24 +570,24 @@ function PersonMenu({
               </span>
               {NO_ORG.signOut}
             </button>
-          </li>
-        </ul>
+          </div>
+        </div>
       )}
       <button
         ref={button}
         id={`${id}-button`}
         type="button"
         className="today-person"
-        aria-label={`${name}, ${role}`}
+        aria-label={`${person.name}, ${person.role}`}
         aria-haspopup="menu"
         aria-expanded={open}
         aria-controls={open ? `${id}-menu` : undefined}
         onClick={() => (open ? close(false) : setOpen(true))}
       >
-        <Avatar initials={initials} tone={tone} size="small" />
+        <Avatar initials={person.initials} tone={person.tone} size="small" />
         <span className="today-grow today-person-words" aria-hidden="true">
-          <span className="today-person-name">{name}</span>
-          <span className="today-person-role">{role}</span>
+          <span className="today-person-name">{person.name}</span>
+          <span className="today-person-role">{person.role}</span>
         </span>
         <Glyph name="updown" size={15} />
       </button>

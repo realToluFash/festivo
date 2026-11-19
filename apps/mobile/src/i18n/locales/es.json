@@ -2316,7 +2316,7 @@
     "title": "Personas",
     "loading": "Cargando las personas de este evento…",
     "retry": "Reintentar",
-    "addPrompt": "Añadir por nombre",
+    "addPrompt": "Añadir por nombre, correo o móvil",
     "onEvent": "En este evento",
     "you": "Usted",
     "nobody": "Todavía no hay nadie en este evento.",
@@ -2346,6 +2346,11 @@
       "can_check_in": "Registra la llegada de los invitados el día del evento. Solo los nombres, sin datos de contacto."
     },
     "memberOf": "Miembro de {{organisation}}",
+    "fromOutside": "De fuera de {{organisation}}",
+    "outsideTag": "Fuera de {{organisation}}",
+    "leadOff": "Solo para miembros de {{organisation}}.",
+    "outsideEnds": "Su acceso termina con el evento.",
+    "notJoined": "Aún no se ha unido",
     "roleFor": "Rol de {{name}} en este evento",
     "roleTitle": "Rol en este evento",
     "saving": "Guardando…",
@@ -2356,6 +2361,7 @@
     "remove": "Quitar de este evento…",
     "removeTitle": "¿Quitar a {{name}} de este evento?",
     "removeLine": "Esta persona perderá el acceso a este evento en su próxima acción. Seguirá en {{organisation}}.",
+    "removeLineOutside": "Esta persona perderá el acceso en su próxima acción.",
     "keep": "Mantener a {{name}}",
     "removeConfirm": "Quitar",
     "removing": "Quitando…",
@@ -2364,8 +2370,14 @@
     "addTitle": "Añadir personas",
     "theirRole": "Rol en el evento",
     "find": "Nombre",
+    "findAnyone": "Nombre, correo electrónico o número de móvil",
     "inOrganisation": "En {{organisation}}",
     "noMatch": "Nadie en {{organisation}} coincide con «{{typed}}».",
+    "unusable": "No es un correo electrónico ni un número de móvil que podamos usar.",
+    "onAlready": "{{name}} ya está en este evento.",
+    "pickAnother": "Elija otro rol para añadir a alguien de fuera.",
+    "jobLabel": "Puesto (opcional)",
+    "jobHelp": "Lo que hace en el evento. Aparece junto a su nombre y no da ningún acceso. {{length, number}} de {{most, number}}.",
     "everyoneOn": "Todas las personas de {{organisation}} ya están en este evento.",
     "cancel": "Cancelar",
     "addConfirm": "Añadir",
@@ -2399,7 +2411,17 @@
     "discardTitle": "¿Descartar los cambios?",
     "discardLine": "No se añadirá a nadie a este evento.",
     "discardKeep": "Seguir editando",
-    "discard": "Descartar"
+    "discard": "Descartar",
+    "card": {
+      "count_one": "{{count, number}} persona en este evento",
+      "count_many": "{{count, number}} de personas en este evento",
+      "count_other": "{{count, number}} personas en este evento",
+      "held": "en este evento",
+      "lead": "Responsable · {{name}}",
+      "failed": "No se ha podido cargar quién está en este evento.",
+      "opens": "Abre Personas.",
+      "leadSaid": "Responsable, {{name}}."
+    }
   },
   "recoveryRequests": {
     "cardTitle": "Solicitudes para volver a entrar",
@@ -3034,5 +3056,12 @@
     "failed": "No se ha podido crear el archivo, así que no se ha compartido nada. Inténtelo de nuevo.",
     "needsConnection": "Para exportar se necesita conexión",
     "dropped": "Para exportar se necesita conexión. No se ha exportado nada."
+  },
+  "outsideEvent": {
+    "until": "until {{when}}",
+    "guestsLine": "Names and replies only, no contact details",
+    "onEvent_one": "{{count, number}} person on this event",
+    "onEvent_other": "{{count, number}} people on this event",
+    "onEvent_many": "{{count, number}} people on this event"
   }
 }

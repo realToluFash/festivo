@@ -28,7 +28,7 @@ final readonly class EventTimeline
 
         foreach ($this->sources as $source) {
             foreach ($source->milestones($event) as $milestone) {
-                if ($grants->holds($milestone->area->reading())) {
+                if ($grants->opens($milestone->area)) {
                     $milestones[] = $milestone;
                 }
             }
