@@ -11,10 +11,6 @@
   flex-shrink: 0;
 }
 
-.people-side .today-place.is-on {
-  color: var(--colorAccent);
-}
-
 .people-back {
   gap: var(--spaceSm);
   font: 600 14px/1 var(--fontFamily);
