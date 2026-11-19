@@ -4564,7 +4564,7 @@
     "picksByReplyByClosed": "Fecha fijada por el plazo de respuesta del evento. Cierre: {{time}}, hora de {{zone}}.",
     "picksByStart": "Fecha fijada por el inicio del evento. Cierre: {{time}}, hora de {{zone}}.",
     "picksByStartClosed": "Fecha fijada por el inicio del evento. Cierre: {{time}}, hora de {{zone}}.",
-    "picksClosedCourse": "Los invitados ya no pueden cambiar su elección de {{course}}.",
+    "picksClosedCourse": "Los invitados ya no pueden cambiar su elección en «{{course}}».",
     "picksMoved": "Ahora se elige hasta el {{date}}, porque el plazo de respuesta del evento ha cambiado. Antes era el {{was}}.",
     "emptyTag": "Vacío · los invitados no lo ven",
     "emptyCourse": "Aún no tiene platos. Los invitados no verán este pase hasta que tenga uno.",
