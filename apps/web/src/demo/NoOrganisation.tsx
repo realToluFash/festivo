@@ -9,21 +9,23 @@ import { CreateWalk } from './CreateOrg.tsx';
 import { NO_ORG_WORDS as W, type DemoWalk, freshWalk, isCreateState, walkOf } from './createOrg.ts';
 import { Glyph } from '../components/Glyph.tsx';
 import { LayersContext, focusWhenFree, useDeskLayers } from '../layers.ts';
+import { ManagedBanner } from './managed.tsx';
 import { SAMPLE } from './rules.ts';
 import { NEW_PLACE, create } from './switcher.ts';
 import '../components/SettingsParts.css';
 import './createOrg.css';
 
-/** main's NoOrganisation, alone under the public header in B's desk look with no card (CreateOrg-B-Walk-Web, page 29). */
+/** main's NoOrganisation, alone under the public header in B's desk look with no card (CreateOrg-B-Walk-Web, page 29); `?state=managed` has sc-563's banner where Start your own was. */
 export function NoOrganisation() {
   const { t } = useTranslation();
   const [params] = useSearchParams();
   const navigate = useNavigate();
   const { layers, covered, setHost } = useDeskLayers();
+  const managed = params.get('state') === 'managed';
   const [walk, setWalk] = useState<DemoWalk | null>(() => {
     const raw = params.get('create');
 
-    return isCreateState(raw) ? walkOf(raw, t) : null;
+    return isCreateState(raw) && !managed ? walkOf(raw, t) : null;
   });
   const [told, setTold] = useState<string | null>(null);
   const [opensOn] = useState(walk == null);
@@ -51,7 +53,11 @@ export function NoOrganisation() {
           <h1>{W.title}</h1>
           <p className="cw-none-body">{W.body}</p>
           <p className="cw-none-body is-quiet">{W.wayOn(SAMPLE.email)}</p>
-          <StartYourOwn button={start} onStart={() => setWalk(freshWalk())} />
+          {managed ? (
+            <ManagedBanner />
+          ) : (
+            <StartYourOwn button={start} onStart={() => setWalk(freshWalk())} />
+          )}
           <div className="cw-signed">
             <p>{W.signedInAs(SAMPLE.email)}</p>
             <div className="cw-signed-ways">
