@@ -3613,7 +3613,7 @@ export class ApiClient {
     await this.delete<unknown>(this.budgetLinePath(eventId, lineId));
   }
 
-  /** Undo: the same line in its place. 404 once erased, a day after its removal; `basis` refused when another staff-time line holds it. */
+  /** Undo: the same line in its place. 404 once erased, a day after its removal; 410 `budget_line_currency_changed` once the event's currency changed; `basis` refused when another staff-time line holds it. */
   async putBackBudgetLine(eventId: string, lineId: string): Promise<void> {
     await this.delete<unknown>(`${this.budgetLinePath(eventId, lineId)}/removal`);
   }

@@ -151,7 +151,7 @@ function serve(
 
 const problem = (status: number, type: string, violations: unknown[] = []) =>
   new Response(
-    JSON.stringify({ type: `https://soirely.app/errors/${type}`, title: type, status, violations }),
+    JSON.stringify({ type: `https://soirely.com/errors/${type}`, title: type, status, violations }),
     { status, headers: { 'Content-Type': 'application/problem+json' } },
   );
 
@@ -817,23 +817,28 @@ describe('a failed Undo (sc-85)', () => {
     expect(screen.getByRole('button', { name: 'Undo' })).toBeTruthy();
   });
 
-  it('says a line removed more than a day ago is not put back, and offers Undo no more (decided 19 Nov)', async () => {
-    signedIn();
-    removeDinner(problem(404, 'not_found'));
+  it.each([
+    [problem(404, 'not_found'), 'Not put back. It was removed more than a day ago.'],
+    [
+      problem(410, 'budget_line_currency_changed'),
+      "Not put back. The event's currency has changed since it was removed.",
+    ],
+  ])(
+    'says why a line past its Undo is not put back, and offers Undo no more (decided 19 Nov)',
+    async (failure, words) => {
+      signedIn();
+      removeDinner(failure);
 
-    fireEvent.click(await screen.findByRole('button', { name: /^Dinner\./u }));
-    fireEvent.click(screen.getByRole('button', { name: 'Remove' }));
-    await screen.findByText('Dinner removed. The settled total fell by £6,528.');
-    fireEvent.click(screen.getByRole('button', { name: 'Undo' }));
+      fireEvent.click(await screen.findByRole('button', { name: /^Dinner\./u }));
+      fireEvent.click(screen.getByRole('button', { name: 'Remove' }));
+      await screen.findByText('Dinner removed. The settled total fell by £6,528.');
+      fireEvent.click(screen.getByRole('button', { name: 'Undo' }));
 
-    expect(
-      await screen.findByText('Not put back. It was removed more than a day ago.', {
-        selector: '.bt-undo-words',
-      }),
-    ).toBeTruthy();
-    expect(screen.queryByRole('button', { name: 'Undo' })).toBeNull();
-    expect(screen.queryByRole('button', { name: /^Dinner\./u })).toBeNull();
-  });
+      expect(await screen.findByText(words, { selector: '.bt-undo-words' })).toBeTruthy();
+      expect(screen.queryByRole('button', { name: 'Undo' })).toBeNull();
+      expect(screen.queryByRole('button', { name: /^Dinner\./u })).toBeNull();
+    },
+  );
 
   function removeDinner(failure: unknown) {
     let lines = [DINNER, ARCH, CENTRE];

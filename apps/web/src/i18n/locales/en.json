@@ -5059,6 +5059,7 @@
     "notBack": "Not put back. Check your connection and try again.",
     "notBackStaff": "Not put back. The budget already has a staff-time cost.",
     "notBackGone": "Not put back. It was removed more than a day ago.",
+    "notBackCurrency": "Not put back. The event's currency has changed since it was removed.",
     "rateBlank": "Enter the rate.",
     "amountBlank": "Enter the amount.",
     "rateNumber": "Enter a rate of 0 or more, in numbers only.",

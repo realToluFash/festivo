@@ -347,15 +347,20 @@ export function BudgetArea({ event }: { event: OrganisationEvent }) {
                         try {
                           await api.putBackBudgetLine(event.id, removed.line.id);
                         } catch (error) {
-                          const gone = error instanceof ApiError && error.status === 404;
+                          const lapsed = error instanceof ApiError && error.status === 404;
+                          const currencyChanged =
+                            error instanceof ApiError && error.is('budget_line_currency_changed');
+                          const gone = lapsed || currencyChanged;
                           const staff =
                             error instanceof ApiError && error.fieldErrors()['basis'] != null;
                           const words = t(
-                            gone
-                              ? 'budget.notBackGone'
-                              : staff
-                                ? 'budget.notBackStaff'
-                                : 'budget.notBack',
+                            currencyChanged
+                              ? 'budget.notBackCurrency'
+                              : lapsed
+                                ? 'budget.notBackGone'
+                                : staff
+                                  ? 'budget.notBackStaff'
+                                  : 'budget.notBack',
                           );
                           setRemoved({ line: removed.line, words, gone });
                           setHeard(words);
