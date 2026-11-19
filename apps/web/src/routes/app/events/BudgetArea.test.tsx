@@ -1,4 +1,5 @@
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { realtimeTopic } from '@soirely/api-client';
 import { connection } from '@soirely/domain';
 import { RouterProvider, createMemoryRouter } from 'react-router';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -628,7 +629,10 @@ describe('the Budget while others change it (sc-85)', () => {
     await waitFor(() => expect(budgeted()).toHaveLength(1));
     const one = budgeted()[0]!;
     const topics = new URL(one.url).searchParams.getAll('topic');
-    expect(topics).toEqual(['events/ev_1/budget', 'events/ev_1/headcount']);
+    expect(topics).toEqual([
+      realtimeTopic('EventBudget', 'ev_1'),
+      realtimeTopic('EventHeadcount', 'ev_1'),
+    ]);
 
     return one;
   }
