@@ -1,0 +1,8 @@
+# sc-71337: an event from outside no longer reachable offers Back to the one left.
+appId: host.exp.Exponent
+---
+- setOrientation: ${ORIENT}
+- openLink: ${METRO_URL}/--/events/${EV}
+- extendedWaitUntil: { visible: { id: outside.notFound }, timeout: 15000, optional: true }
+- waitForAnimationToEnd
+- takeScreenshot: backto
