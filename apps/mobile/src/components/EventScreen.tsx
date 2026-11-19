@@ -69,6 +69,7 @@ import { EventPeople } from './EventPeople.tsx';
 import { EventNotFound, EventTop, EventsFailed, OutsideNotFound, usePhaseOf } from './Events.tsx';
 import { Refreshing } from './Refreshing.tsx';
 import { Screen } from './Screen.tsx';
+import { StepScreen } from '../steps/StepScreen.tsx';
 import { LoadingBlock, PageToast, TextAction } from './Summary.tsx';
 import type { ToastAction } from './Toast.tsx';
 import { phoneTabBarClearance } from './TodayCover.tsx';
@@ -380,19 +381,6 @@ export function EventScreen({
           />
         </PlaceholderArea>
       )
-    ) : away != null ? (
-      <OutsideNotFound
-        back={away.kind === 'event' ? away.event.name : null}
-        onBack={() => {
-          void rereadAccount()
-            .catch(() => undefined)
-            .then(() =>
-              away.kind === 'event'
-                ? router.replace(eventHref(away.event.id))
-                : router.replace('/'),
-            );
-        }}
-      />
     ) : opened.kind === 'notFound' ? (
       <EventNotFound onBack={leave} />
     ) : opened.kind === 'failed' ? (
@@ -438,6 +426,25 @@ export function EventScreen({
               onPress: leave,
             }
           : undefined;
+
+  // With no organisation there is no frame to stand in: no Events to go back to and no tabs, only the way on (sc-68438).
+  if (away != null)
+    return (
+      <StepScreen>
+        <OutsideNotFound
+          back={away.kind === 'event' ? away.event.name : null}
+          onBack={() => {
+            void rereadAccount()
+              .catch(() => undefined)
+              .then(() =>
+                away.kind === 'event'
+                  ? router.replace(eventHref(away.event.id))
+                  : router.replace('/'),
+              );
+          }}
+        />
+      </StepScreen>
+    );
 
   return (
     <AppFrame

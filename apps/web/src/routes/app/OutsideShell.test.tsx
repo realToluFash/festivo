@@ -308,6 +308,25 @@ describe('an account with no organisation on two or more events (sc-68438)', () 
     await screen.findByRole('heading', { level: 1, name: 'This event is not available' });
     expect(await screen.findByRole('button', { name: 'Continue' })).toBeDefined();
   });
+
+  it('chosen from a list open while every grant went, answers not found and reads Continue, on to the no-organisation home', async () => {
+    const live = [WEDDING, LAUNCH];
+    outside([...live]);
+    answering(live);
+    const router = app('/app/events/ev_1');
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Bisi Adebayo, Can view' }));
+    live.splice(0);
+    fireEvent.click(screen.getByRole('menuitem', { name: /^Studio launch\./u }));
+
+    await screen.findByRole('heading', { level: 1, name: 'This event is not available' });
+    expect(router.state.location.pathname).toBe('/app/events/ev_2');
+    fireEvent.click(await screen.findByRole('button', { name: 'Continue' }));
+    await waitFor(() => expect(router.state.location.pathname).toBe('/app'));
+    expect(
+      screen.queryByRole('heading', { level: 1, name: 'This event is not available' }),
+    ).toBeNull();
+  });
 });
 
 describe('a member inside another organisation’s event it holds from outside (sc-68438)', () => {
