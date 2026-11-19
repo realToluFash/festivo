@@ -606,7 +606,7 @@ function Details({
       ) : (
         <Heading title={t('steps.organisationTitle')} />
       )}
-      <View style={styles.form}>
+      <View style={[styles.form, styles.details]}>
         {children}
         {failed != null && (
           <Notice
@@ -862,6 +862,7 @@ function SingleInvitation({
 
 const styles = StyleSheet.create({
   form: { gap: tokens.space3xl },
+  details: { marginTop: tokens.space3xl },
   fields: { gap: tokens.spaceXl },
   invitations: { gap: tokens.spaceMd },
   offers: { gap: tokens.spaceMd },
