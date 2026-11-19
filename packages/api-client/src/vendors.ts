@@ -29,6 +29,8 @@ export interface Vendor {
   note: string | null;
   /** When it was archived; null while it is in use. */
   archivedAt: string | null;
+  /** How many of the organisation's events engage it, by a quote current or earlier (sc-87); the directory's rows carry it. */
+  events: number;
 }
 
 /** What the form sends, every field as typed: the API trims, checks and stores them. */
@@ -91,6 +93,7 @@ export function asVendor(raw: unknown): Vendor | null {
     address: text(row.address),
     note: text(row.note),
     archivedAt: text(row.archivedAt),
+    events: typeof row.events === 'number' ? row.events : 0,
   };
 }
 
