@@ -320,12 +320,31 @@ final readonly class OrganisationArchive
              WHERE ev.organisation_id = :organisation AND ev.deleted_at IS NULL AND b.removed_at IS NULL
              ORDER BY ev.starts_at_utc, b.event_id, b.id
             SQL,
+        'quotes' => <<<'SQL'
+            SELECT q.id, e.event_id, e.vendor_id, q.covers, q.amount_minor, ev.currency AS amount_currency,
+                   q.quoted_on, q.reference, q.superseded_at, q.created_at
+              FROM quotes q
+              JOIN vendor_engagements e ON e.id = q.engagement_id
+              JOIN events ev ON ev.id = e.event_id
+             WHERE ev.organisation_id = :organisation AND ev.deleted_at IS NULL
+             ORDER BY ev.starts_at_utc, e.event_id, e.vendor_id, q.superseded_at NULLS LAST, q.id
+            SQL,
+        'scheduled_payments' => <<<'SQL'
+            SELECT p.id, e.event_id, e.vendor_id, p.description, p.amount_minor, ev.currency AS amount_currency,
+                   p.due_on, p.created_at
+              FROM scheduled_payments p
+              JOIN vendor_engagements e ON e.id = p.engagement_id
+              JOIN events ev ON ev.id = e.event_id
+             WHERE ev.organisation_id = :organisation AND ev.deleted_at IS NULL
+             ORDER BY ev.starts_at_utc, e.event_id, p.due_on, p.id
+            SQL,
     ];
 
     /** Columns holding a date and time, written in UTC as `2026-11-05T14:20:07Z`. */
     private const array TIMES = [
         'created_at', 'proved_at', 'joined_at', 'expires_at', 'accepted_at', 'declined_at', 'revoked_at',
         'asked_at', 'starts_at', 'ends_at', 'replied_at', 'shared_at', 'archived_at', 'started_at', 'ended_at', 'updated_at',
+        'superseded_at',
     ];
 
     private const array ROLES = [
