@@ -68,6 +68,13 @@ final class BudgetRangeTest extends ApiTestCase
             'potential' => '0.00',
             'perHead' => ['confirmed' => ['amount' => null, 'heads' => 0], 'potential' => ['amount' => null, 'heads' => 0]],
             'notPriced' => 0,
+            'quantities' => [
+                'per_head' => ['count' => 0, 'source' => 'accepted', 'reason' => 'no_guests'],
+                'per_table' => ['count' => 0, 'source' => 'seating_tables', 'reason' => 'no_seating_plan'],
+                'per_staff_hour' => ['count' => 0, 'source' => 'staff_hours', 'reason' => 'no_staff_hours'],
+                'per_day' => ['count' => 2, 'source' => 'event_days', 'reason' => null],
+                'fixed' => ['count' => 1, 'source' => 'fixed', 'reason' => null],
+            ],
             'lines' => [],
         ], $this->budget());
         self::assertSame(200, $this->statusCode());
@@ -81,6 +88,7 @@ final class BudgetRangeTest extends ApiTestCase
 
         self::assertSame(['500.00', '700.00'], $this->range());
         self::assertSame(['confirmed' => ['amount' => '50.00', 'heads' => 10], 'potential' => ['amount' => '50.00', 'heads' => 14]], $this->budget()['perHead'] ?? null);
+        self::assertSame(['count' => 10, 'source' => 'accepted', 'reason' => null], Type\shape(['per_head' => Type\mixed()], true)->coerce($this->budget()['quantities'] ?? null)['per_head']);
 
         $this->answer($first, 'maybe');
         self::assertSame(['500.00', '700.00'], $this->range());
