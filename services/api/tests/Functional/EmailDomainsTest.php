@@ -219,7 +219,10 @@ final class EmailDomainsTest extends ApiTestCase
         self::assertSame('failed', EmailDomains::statusOf($lapsed, new DateTimeImmutable()));
         self::assertEquals($putBackBy, $this->audited(EmailDomains::LAPSED, $organisation)->getOccurredAt());
         $this->signIn($owner);
-        self::assertSame('failed', $this->row($this->send('GET', $this->path($organisation)), 'ire.events')['status']);
+        $row = $this->row($this->send('GET', $this->path($organisation)), 'ire.events');
+        self::assertSame('failed', $row['status']);
+        self::assertSame($putBackBy?->format(\DATE_ATOM), $row['failedAt']);
+        self::assertNotNull($row['failed']);
     }
 
     #[Test]

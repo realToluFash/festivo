@@ -21,6 +21,9 @@ export interface EmailDomain {
   checksEnd: string;
   putBackByAt: string | null;
   putBackBy: string | null;
+  /** When the checks stopped: 7 days after it was added, or when a missing record lapsed. */
+  failedAt: string | null;
+  failed: string | null;
   onlyOurs: OnlyOurs;
   /** When Only our organisation starts or started. */
   onlyOursFromAt: string | null;
@@ -69,6 +72,8 @@ function asEmailDomain(raw: unknown): EmailDomain | null {
     !text(raw.proved) ||
     !text(raw.putBackByAt) ||
     !text(raw.putBackBy) ||
+    !text(raw.failedAt) ||
+    !text(raw.failed) ||
     !text(raw.onlyOursFromAt) ||
     !text(raw.onlyOursFrom) ||
     !text(raw.onlyOursIfNowAt) ||
@@ -88,6 +93,8 @@ function asEmailDomain(raw: unknown): EmailDomain | null {
     checksEnd: raw.checksEnd,
     putBackByAt: raw.putBackByAt,
     putBackBy: raw.putBackBy,
+    failedAt: raw.failedAt,
+    failed: raw.failed,
     onlyOurs,
     onlyOursFromAt: raw.onlyOursFromAt,
     onlyOursFrom: raw.onlyOursFrom,

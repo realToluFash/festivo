@@ -53,6 +53,8 @@ function domain(name: string, status: EmailDomain['status']): EmailDomain {
     checksEnd: 'Friday 23 Oct at 16:45 WAT',
     putBackByAt: status === 'missing' ? '2026-10-31T13:20:00+00:00' : null,
     putBackBy: status === 'missing' ? 'Saturday 31 Oct at 14:20 WAT' : null,
+    failedAt: null,
+    failed: null,
     onlyOurs: 'off',
     onlyOursFromAt: null,
     onlyOursFrom: null,
@@ -432,6 +434,47 @@ describe('Data and control › Email domains (sc-560)', () => {
     expect(screen.queryByRole('button', { name: 'Prove a domain' })).toBeNull();
   });
 
+  it('tags every row Kept once the organisation left, never promising a check', async () => {
+    signedIn();
+    answering({
+      [PAGE]: () =>
+        json(page([domain('ire.co', 'missing'), IRE_COM, domain('ire.ng', 'failed')], 'left')),
+    });
+    open();
+
+    expect(await screen.findByText('Switched off')).toBeDefined();
+    expect(within(row('ire.co')).getByText('Kept')).toBeDefined();
+    expect(within(row('ire.co')).getByText('Proved Tuesday 6 Oct at 11:02 WAT')).toBeDefined();
+    for (const name of ['ireevents.com', 'ire.ng']) {
+      expect(within(row(name)).getByText('Kept')).toBeDefined();
+      expect(within(row(name)).getByText('Not proved')).toBeDefined();
+    }
+    expect(screen.queryByText(/We check every hour/u)).toBeNull();
+  });
+
+  it('names when the checks actually stopped on a failed row', async () => {
+    signedIn();
+    answering({
+      [PAGE]: () =>
+        json(
+          page([
+            {
+              ...domain('ire.ng', 'failed'),
+              failedAt: '2026-10-31T13:20:00+00:00',
+              failed: 'Saturday 31 Oct at 14:20 WAT',
+            },
+          ]),
+        ),
+    });
+    open();
+
+    expect(
+      await screen.findByText(
+        'We stopped checking on Saturday 31 Oct at 14:20 WAT. Verify still works.',
+      ),
+    ).toBeDefined();
+  });
+
   it('says the page did not load, with Try again', async () => {
     signedIn();
     let reads = 0;
@@ -546,6 +589,18 @@ describe('Data and control’s Email domains row and card (sc-560)', () => {
 
     expect(await screen.findByText('ire.events proved')).toBeDefined();
     expect(screen.getByText('Nothing needs your attention')).toBeDefined();
+    expect(screen.getByText('ire.events is proved.')).toBeDefined();
+  });
+
+  it('lists every proved domain under nothing needs attention', async () => {
+    signedIn();
+    answering({
+      [EXPORT]: () => json(NO_EXPORT),
+      [PAGE]: () => json(page([IRE, domain('ire.co', 'proved')])),
+    });
+    open('/app/settings/data-and-control');
+
+    expect(await screen.findByText('ire.events and ire.co are proved.')).toBeDefined();
   });
 
   it('locks the row off Enterprise, and keeps it once the organisation left', async () => {
