@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { __setConfig, config } from '../config.ts';
 import { routes } from '../routes/index.tsx';
+import { atPhoneWidth } from '../test-widths.ts';
 
 const tested = config();
 const SLOW = { timeout: 20000 };
@@ -82,6 +83,37 @@ describe('Settings › Vendors in A · Summary first (sc-82)', () => {
       expect(screen.queryByRole('button', { name: 'Menu' })).toBeNull();
     },
   );
+
+  it(
+    'keeps its bell in the bar beside Menu at a phone’s width, as the product’s shell does',
+    SLOW,
+    async () => {
+      atPhoneWidth();
+
+      try {
+        await open('/demo/settings/vendors');
+        await screen.findByRole('heading', { level: 1, name: 'Vendors' }, WAIT);
+        const bar = screen.getByRole('navigation', { name: 'Soirely' });
+
+        expect(within(bar).getByRole('button', { name: /notification/iu })).toBeTruthy();
+        expect(within(main()).queryByRole('button', { name: /notification/iu })).toBeNull();
+      } finally {
+        vi.restoreAllMocks();
+      }
+    },
+  );
+
+  it('keeps its bell beside the title at a desk', SLOW, async () => {
+    await open('/demo/settings/vendors');
+    await screen.findByRole('heading', { level: 1, name: 'Vendors' }, WAIT);
+
+    expect(within(main()).getByRole('button', { name: /notification/iu })).toBeTruthy();
+    expect(
+      within(screen.getByRole('navigation', { name: 'Soirely' })).queryByRole('button', {
+        name: /notification/iu,
+      }),
+    ).toBeNull();
+  });
 
   it('keeps the old address, and its query, on the new one', SLOW, async () => {
     const router = await open('/demo/vendors?state=archived');
