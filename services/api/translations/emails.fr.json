@@ -198,13 +198,13 @@
     "planDowngraded.setting.guest_data_deletion": "Suppression des données des invités après chaque événement",
     "planDowngraded.comeBack": "Avec le forfait Enterprise, elles sont réactivées telles quelles. Contactez Soirely au sujet du forfait Enterprise.",
     "planDowngraded.footer": "Vous recevez ce message parce que vous êtes propriétaire ou administrateur de l’organisation {organisation}.",
-    "domainListingStopped.subject": "{domain} is no longer listed for joining {organisation}",
-    "domainListingStopped.body": "{prover} has proved that it owns {domain}, so people at {domain} can no longer ask to join {organisation} through Company domain joining.",
-    "domainListingStopped.members": "Members already in {organisation} stay as they are.",
-    "domainListingStopped.footer": "You're getting this because you are an owner or an admin of {organisation}.",
-    "domainRecordGone.subject": "The record for {domain} is missing",
-    "domainRecordGone.body": "We could not find the DNS record that proves {organisation} owns {domain}. Put it back by {deadline}, or {domain} stops being proved.",
-    "domainRecordGone.name": "Name: {name}",
-    "domainRecordGone.type": "Type: TXT",
-    "domainRecordGone.footer": "You're getting this because you are an owner or an admin of {organisation}."
+    "domainListingStopped.subject": "{domain} ne permet plus de rejoindre l’organisation {organisation}",
+    "domainListingStopped.body": "L’organisation {prover} a vérifié que {domain} lui appartient : les personnes de {domain} ne peuvent donc plus demander à rejoindre l’organisation {organisation} par l’adhésion par domaine d’entreprise.",
+    "domainListingStopped.members": "Les membres déjà dans l’organisation {organisation} restent tels quels.",
+    "domainListingStopped.footer": "Vous recevez ce message parce que vous êtes propriétaire ou administrateur de l’organisation {organisation}.",
+    "domainRecordGone.subject": "L’enregistrement de {domain} est absent",
+    "domainRecordGone.body": "Nous n’avons pas trouvé l’enregistrement DNS qui prouve que {domain} appartient à l’organisation {organisation}. Remettez-le avant le {deadline}, sinon {domain} ne sera plus vérifié.",
+    "domainRecordGone.name": "Nom : {name}",
+    "domainRecordGone.type": "Type : TXT",
+    "domainRecordGone.footer": "Vous recevez ce message parce que vous êtes propriétaire ou administrateur de l’organisation {organisation}."
 }
