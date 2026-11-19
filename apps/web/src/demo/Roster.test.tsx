@@ -50,6 +50,16 @@ describe('/demo/events/evt-wed-4/staff/roster (sc-3906)', () => {
     expect(within(table).getByText('Not on a shift yet')).toBeTruthy();
   });
 
+  it('scrolls sideways in a frame a keyboard reaches, its Link words never breaking letter by letter (sc-68779)', async () => {
+    await open('populated');
+    const frame = screen.getByRole('region', { name: 'Roster table, scrolls sideways' });
+    expect(frame.tabIndex).toBe(0);
+    expect(within(frame).getByRole('table', { name: 'Roster' })).toBeTruthy();
+    expect(cssRule('.rs-frame', ROSTER_CSS)).toContain('overflow-x: auto');
+    expect(cssRule('.rs-link', ROSTER_CSS)).toContain('overflow-wrap: normal');
+    expect(cssRule('.rs-link', ROSTER_CSS)).toContain('min-width: 11rem');
+  });
+
   it('says Nobody on the staff yet, with Add a person', async () => {
     await open('empty');
     expect(screen.getByText('Nobody on the staff yet')).toBeTruthy();

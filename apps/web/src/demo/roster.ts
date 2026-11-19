@@ -44,6 +44,7 @@ export const RW = {
   sub: 'Who works the event, where they work, and what each station serves.',
   tabs: ['Roster', 'Jobs and shifts', 'Stations', 'Hours worked'],
   roster: 'Roster',
+  frame: 'Roster table, scrolls sideways',
   add: 'Add a person',
   empty: 'Nobody on the staff yet',
   emptySub: 'Add the people working this event. They are not made members of the organisation.',

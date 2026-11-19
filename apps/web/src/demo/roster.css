@@ -9,7 +9,13 @@ a.sn-tab {
 }
 
 .rs-frame {
+  max-width: 100%;
   overflow-x: auto;
+}
+
+.rs-frame:focus-visible {
+  outline: 2px solid var(--colorAccent);
+  outline-offset: 2px;
 }
 
 .rs-table {
@@ -74,6 +80,8 @@ a.sn-tab {
   display: inline-flex;
   align-items: center;
   gap: var(--spaceSm);
+  min-width: 11rem;
+  overflow-wrap: normal;
 }
 
 .rs-mark {
@@ -249,7 +257,7 @@ a.sn-tab {
   color: var(--colorInkOnDark);
 }
 
-/* Below about 920 px the panel drops under the table; at 400% zoom (320 CSS px) the desk is one column and only the table scrolls sideways (WCAG 2.2 1.4.10). */
+/* Below about 920 px the panel drops under the table; at 400% zoom (320 CSS px) the desk is one column and only the table scrolls sideways inside its frame (WCAG 2.2 1.4.10), its Link words breaking between words, never letters (sc-68779). */
 @media (width <= 920px) {
   .rs .mn-split {
     flex-direction: column;
