@@ -34,6 +34,7 @@ import {
   TextAction,
   TitleRow,
 } from '../../../components/SettingsParts.tsx';
+import { TYPING_PAUSE_MS } from '../../../components/ShellSearch.tsx';
 import { Toast } from '../../../components/Toast.tsx';
 import { useDeskTop } from '../../../deskTop.ts';
 import { currentLocale, dateLocale } from '../../../i18n/index.ts';
@@ -106,33 +107,48 @@ function Directory({
   const desk = useDeskTop();
   const { layers, covered, setHost } = useDeskLayers();
   const [looking, setLooking] = useState<Looking>(NOT_LOOKING);
+  const [typed, setTyped] = useState('');
   const [load, setLoad] = useState<Load>({ kind: 'loading' });
   const [attempt, setAttempt] = useState(0);
   const [menu, setMenu] = useState<'category' | 'filter' | null>(null);
   const [editing, setEditing] = useState<Editing | null>(null);
   const [told, setTold] = useState<string | null>(null);
   const search = useRef<HTMLInputElement>(null);
-  const asked = useRef(0);
   const backToSearch = useRef(false);
 
   useEffect(() => {
-    const ask = ++asked.current;
+    const stop = new AbortController();
     api
-      .vendors(organisationId, {
-        view: looking.view,
-        q: looking.q,
-        category: looking.category === 'all' ? null : looking.category,
-        page: looking.page,
-      })
+      .vendors(
+        organisationId,
+        {
+          view: looking.view,
+          q: looking.q,
+          category: looking.category === 'all' ? null : looking.category,
+          page: looking.page,
+        },
+        { signal: stop.signal },
+      )
       .then(
         (page) => {
-          if (ask === asked.current) setLoad({ kind: 'loaded', page });
+          if (!stop.signal.aborted) setLoad({ kind: 'loaded', page });
         },
         () => {
-          if (ask === asked.current) setLoad({ kind: 'failed' });
+          if (!stop.signal.aborted) setLoad({ kind: 'failed' });
         },
       );
+
+    return () => stop.abort();
   }, [organisationId, looking, attempt]);
+
+  useEffect(() => {
+    const wait = window.setTimeout(
+      () => setLooking((was) => (was.q === typed ? was : { ...was, q: typed, page: 1 })),
+      TYPING_PAUSE_MS,
+    );
+
+    return () => window.clearTimeout(wait);
+  }, [typed]);
 
   useEffect(() => {
     if (load.kind !== 'loaded' || !backToSearch.current) return;
@@ -140,7 +156,10 @@ function Directory({
     search.current?.focus();
   }, [load]);
 
-  const look = (next: Omit<Looking, 'page'>) => setLooking({ ...next, page: 1 });
+  const look = (next: Omit<Looking, 'page'>) => {
+    setTyped(next.q);
+    setLooking({ ...next, page: 1 });
+  };
   const turn = (page: number) => {
     setLooking((was) => ({ ...was, page }));
     title()?.focus();
@@ -160,8 +179,9 @@ function Directory({
             {load.kind === 'failed' && (
               <Failed
                 onRetry={() => {
-                  backToSearch.current = looking.q !== '';
+                  backToSearch.current = typed !== '';
                   setLoad({ kind: 'loading' });
+                  setLooking((was) => (was.q === typed ? was : { ...was, q: typed, page: 1 }));
                   reread();
                 }}
               />
@@ -170,11 +190,13 @@ function Directory({
               <Loaded
                 page={load.page}
                 looking={looking}
+                typed={typed}
                 named={named}
                 manages={manages}
                 menu={menu}
                 search={search}
                 onLook={look}
+                onType={setTyped}
                 onTurn={turn}
                 onMenu={setMenu}
                 onCloseMenu={closeMenu}
@@ -223,11 +245,13 @@ function Directory({
 function Loaded({
   page,
   looking,
+  typed,
   named,
   manages,
   menu,
   search,
   onLook,
+  onType,
   onTurn,
   onMenu,
   onCloseMenu,
@@ -237,11 +261,13 @@ function Loaded({
 }: {
   page: VendorsPage;
   looking: Looking;
+  typed: string;
   named: string;
   manages: boolean;
   menu: 'category' | 'filter' | null;
   search: RefObject<HTMLInputElement | null>;
   onLook: (next: Omit<Looking, 'page'>) => void;
+  onType: (typed: string) => void;
   onTurn: (page: number) => void;
   onMenu: (menu: 'category' | 'filter') => void;
   onCloseMenu: () => void;
@@ -303,17 +329,17 @@ function Loaded({
                 type="search"
                 aria-label={t('vendors.search')}
                 placeholder={t('vendors.search')}
-                value={looking.q}
+                value={typed}
                 spellCheck={false}
-                onChange={(event) => onLook({ ...kept, q: event.target.value })}
+                onChange={(event) => onType(event.target.value)}
                 onKeyDown={(event) => {
-                  if (event.key === 'Escape' && looking.q !== '') {
+                  if (event.key === 'Escape' && typed !== '') {
                     event.preventDefault();
                     onLook({ ...kept, q: '' });
                   }
                 }}
               />
-              {looking.q !== '' && (
+              {typed !== '' && (
                 <button
                   type="button"
                   className="vd-clear"

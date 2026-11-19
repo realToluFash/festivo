@@ -4301,10 +4301,15 @@ export class ApiClient {
     await this.delete<unknown>('/api/join-offers/request');
   }
 
-  async vendors(organisationId: string, looking: VendorsLooking): Promise<VendorsPage> {
+  async vendors(
+    organisationId: string,
+    looking: VendorsLooking,
+    { signal }: { signal?: AbortSignal } = {},
+  ): Promise<VendorsPage> {
     const page = asVendorsPage(
       await this.get<unknown>(
         `/api/orgs/${encodeURIComponent(organisationId)}/vendors${vendorsQuery(looking)}`,
+        signal == null ? undefined : { signal },
       ),
     );
 
