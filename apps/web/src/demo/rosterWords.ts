@@ -1,6 +1,7 @@
 import { createContext, useContext } from 'react';
 
 import fr from '../i18n/locales/fr.json';
+import { mw } from './menuServed.ts';
 import { LINK_WORDS, ORGANISATION, RW, type LinkState } from './roster.ts';
 import { SW } from './stations.ts';
 import { type Delivered, type Trail, LW, trailLine } from './staffLink.ts';
@@ -33,8 +34,7 @@ const EN: RosterWords = {
 };
 
 const R = fr.roster;
-const with_ = (line: string, values: Record<string, string>) =>
-  line.replace(/\{\{(\w+)\}\}/gu, (_all, key: string) => values[key] ?? '');
+const MORE = /<more>(.*)<\/more>/u.exec(R.moreShifts)?.[1] ?? R.moreShifts;
 
 const RW_FR: typeof RW = {
   title: R.title,
@@ -57,7 +57,7 @@ const RW_FR: typeof RW = {
   noStation: R.noStation,
   noShift: R.noShift,
   notBuilt: RW.notBuilt,
-  nameHelp: with_(R.nameHelp, { max: '200' }),
+  nameHelp: mw(R.nameHelp, { max: '200' }),
   mobileHelp: R.mobileHelp,
   addCta: R.addCta,
   addAnyway: R.addAnyway,
@@ -76,17 +76,17 @@ const RW_FR: typeof RW = {
     '[Cette adresse e-mail ne semble pas valide. Vérifiez qu’elle contient un @ et un domaine.]',
   phoneLength: (problem, country) =>
     `[Ce numéro semble trop ${problem === 'short' ? 'court' : 'long'} pour ${country}. Vérifiez-le et réessayez.]`,
-  uses: (name) => with_(R.uses, { name }),
-  added: (name) => with_(R.added, { name }),
-  member: (name) => with_(R.member, { name, organisation: ORGANISATION }),
+  uses: (name) => mw(R.uses, { name }),
+  added: (name) => mw(R.added, { name }),
+  member: (name) => mw(R.member, { name, organisation: ORGANISATION }),
   removed: (name, shifts) =>
-    `[${with_(R.removed, { name })} ${shifts > 1 ? 'Ses services ne sont plus attribués.' : 'Son service n’est plus attribué.'}]`,
-  more: (n) => `et ${n} de plus`,
-  jobLocked: (name) => with_(R.onShifts, { name }),
+    `[${mw(R.removed, { name })} ${shifts > 1 ? 'Ses services ne sont plus attribués.' : 'Son service n’est plus attribué.'}]`,
+  more: (n) => mw(MORE, { count: n }),
+  jobLocked: (name) => mw(R.onShifts, { name }),
   jobLockedHelp: R.onShiftsHint,
   notAdded: (name) => `[Impossible d’ajouter ${name}.]`,
-  removeAsk: (name) => with_(R.removeAsk, { name }),
-  editTitle: (name) => with_(R.editTitle, { name }),
+  removeAsk: (name) => mw(R.removeAsk, { name }),
+  editTitle: (name) => mw(R.editTitle, { name }),
   nextSend: R.nextSend,
   nextHours: R.nextHours,
   nextCopied: '[Étape suivante : une fois le lien copié envoyé, indiquez qu’il a été envoyé.]',
