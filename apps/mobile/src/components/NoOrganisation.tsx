@@ -6,6 +6,7 @@ import { useTranslation } from 'react-i18next';
 
 import { useWaitingInvitations } from '../invitations.ts';
 import { SECTION_HREF } from '../kit/appNav.ts';
+import { noOrganisationEnd } from '../kit/orgSwitcher.ts';
 import { useLayout } from '../layout/useLayout.ts';
 import { signOutHere, useSignedIn } from '../signedIn.ts';
 import { switchByTap } from '../tappedSwitch.ts';
@@ -33,6 +34,7 @@ export function NoOrganisation({
   const startButton = useRef<ViewInstance>(null);
   const email = account == null ? '' : (primaryEmailAddress(account) ?? '');
   const listed = waiting.invitations.length > 0;
+  const end = noOrganisationEnd(startOrganisation?.managed);
 
   return (
     <View style={[cardFrame(kind), styles.card]} testID="noOrganisation">
@@ -50,29 +52,28 @@ export function NoOrganisation({
       ) : (
         <Text size={tokens.typeBodyPhone.size}>{t('noOrganisation.wayOn', { email })}</Text>
       )}
-      {startOrganisation?.managed != null ? (
+      {end === 'managed' && startOrganisation?.managed != null && (
         <ManagedBanner
           organisation={startOrganisation.managed.organisation.name}
           message={startOrganisation.managed.message}
           testID="noOrganisation.managed"
         />
-      ) : (
-        startOrganisation?.managed === null && (
-          <View style={styles.start}>
-            <Text size={tokens.typeTitleSection.size} weight="bold" accessibilityRole="header">
-              {t('noOrganisation.startTitle')}
-            </Text>
-            <Text size={tokens.typeBodyPhone.size}>{t('noOrganisation.startBody')}</Text>
-            <View style={styles.startAction}>
-              <PrimaryButton
-                label={t('noOrganisation.start')}
-                onPress={() => startOrganisation.open(startButton)}
-                ref={startButton}
-                testID="noOrganisation.start"
-              />
-            </View>
+      )}
+      {end === 'start' && startOrganisation != null && (
+        <View style={styles.start}>
+          <Text size={tokens.typeTitleSection.size} weight="bold" accessibilityRole="header">
+            {t('noOrganisation.startTitle')}
+          </Text>
+          <Text size={tokens.typeBodyPhone.size}>{t('noOrganisation.startBody')}</Text>
+          <View style={styles.startAction}>
+            <PrimaryButton
+              label={t('noOrganisation.start')}
+              onPress={() => startOrganisation.open(startButton)}
+              ref={startButton}
+              testID="noOrganisation.start"
+            />
           </View>
-        )
+        </View>
       )}
       <View>
         <Footnote
