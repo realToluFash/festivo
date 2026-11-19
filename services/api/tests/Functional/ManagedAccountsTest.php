@@ -195,6 +195,32 @@ final class ManagedAccountsTest extends ApiTestCase
     }
 
     #[Test]
+    public function aManagedSignUpWithNothingToJoinCompletesTheDetailsWithNoOrganisationAndCannotNameOne(): void
+    {
+        [$owner, $organisation] = $this->proved();
+        $this->switchOn($owner, $organisation);
+        $this->applied();
+        $ada = self::service(UserRegistrar::class)->register('ada@ire.events', 'Ada', self::PASSWORD)->user;
+        $ada->getPrimaryEmailAddress()?->setVerifiedAt(new DateTimeImmutable());
+        $this->entityManager()->flush();
+        $this->signIn($ada);
+
+        $named = $this->send('PATCH', '/api/auth/complete-profile', ['name' => 'Ada Okeke', 'organisationName' => 'Ada Events', 'countryCode' => 'NG', 'timezone' => 'Africa/Lagos']);
+
+        self::assertResponseStatusCodeSame(409);
+        self::assertSame(ErrorCode::DomainManaged->type(), $named['type']);
+        self::assertFalse($this->reloadUser($ada)->hasSavedDetails(), 'nothing saved with the refusal');
+
+        $body = $this->send('PATCH', '/api/auth/complete-profile', ['name' => 'Ada Okeke']);
+
+        self::assertResponseStatusCodeSame(200);
+        $account = Type\dict(Type\string(), Type\mixed())->coerce($body['account']);
+        self::assertTrue($account['complete'], 'past the onboarding gate');
+        self::assertFalse($account['needsOrganisation']);
+        self::assertSame([], $this->entityManager()->getRepository(Membership::class)->findBy(['user' => $ada]));
+    }
+
+    #[Test]
     public function onceAppliedAnotherOrganisationsInvitationIsRefusedEvenOneSentBeforeAndTheHomeOrganisationsIsNot(): void
     {
         [$owner, $organisation] = $this->proved();
