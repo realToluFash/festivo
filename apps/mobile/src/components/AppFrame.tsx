@@ -219,6 +219,8 @@ export interface InsideEvent {
   up?: { label: string; onPress: () => void } | undefined;
   /** Held from outside an organisation (sc-71): its level's areas, no way back to Events, and in More the account's other events, a member's organisations (sc-68438), Your account and Sign out. */
   outside?: { id: string; role: OutsideEvent['role'] } | undefined;
+  /** Nothing above the body: held from outside at a reading level, Overview's card heads the page, as the demo's `more-in` draws it (sc-71). */
+  bare?: boolean | undefined;
 }
 
 interface NavEntry {
@@ -553,6 +555,7 @@ export function AppFrame({
     kind,
     entries,
     inEvent: inEvent != null,
+    bare: inEvent?.bare === true,
     title,
     titleRef: frameTitle,
     switchAnswer: bodyTakesSwitch || standIn != null ? undefined : switchAnswer,
@@ -789,6 +792,8 @@ interface FrameHeaderProps {
   switched: ReactNode;
   /** A page whose body names it (an event's Overview card, a member's own card in front of the list), so the frame draws no title. */
   untitled: boolean;
+  /** No title, back or bell above the body; upright, the area pills alone. */
+  bare: boolean;
   /** The size the title drew at, which nothing under it outgrows; null where nothing caps (sc-67338). */
   cap: number | null;
   onTitleDrawn: (size: number) => void;
@@ -891,7 +896,7 @@ function ScreenTop({
   const backView =
     back == null || backHidden ? null : (
       <BesideBack beside={besideBack}>
-        <FrameBack back={back} cap={cap} />
+        <FrameBack back={back} cap={cap} besideShown={besideBack != null} />
       </BesideBack>
     );
   const under = (
@@ -978,6 +983,7 @@ function FrameHeader({
   kind,
   entries,
   inEvent,
+  bare,
   title,
   titleRef,
   switchAnswer,
@@ -1034,7 +1040,7 @@ function FrameHeader({
   const backView =
     back == null || backHidden ? null : back.pill === true ? (
       <BesideBack beside={besideBack}>
-        <FrameBack back={back} cap={cap} />
+        <FrameBack back={back} cap={cap} besideShown={besideBack != null} />
       </BesideBack>
     ) : (
       <BackButton
@@ -1100,21 +1106,25 @@ function FrameHeader({
           untitled && styles.flushFoot,
         ]}
       >
-        <View style={styles.titleRow}>
-          <View style={styles.fill}>
-            {back != null && !backHidden && (
-              <BesideBack beside={besideBack}>
-                <FrameBack back={back} cap={cap} />
-              </BesideBack>
-            )}
+        {!bare && (
+          <View style={styles.titleRow}>
+            <View style={styles.fill}>
+              {back != null && !backHidden && (
+                <BesideBack beside={besideBack}>
+                  <FrameBack back={back} cap={cap} besideShown={besideBack != null} />
+                </BesideBack>
+              )}
+            </View>
+            <BellButton />
           </View>
-          <BellButton />
-        </View>
+        )}
         <Pills entries={entries} scrolls />
         {!untitled && titleRow()}
       </View>
     );
   }
+
+  if (bare) return <View style={{ paddingTop: insets.top + tokens.spaceLg }} />;
 
   // Inside an event, ‹ in its pill and the bell head the page; on Overview the event's card under them names it (sc-30413).
   if (inEvent && back != null) {
@@ -1124,7 +1134,7 @@ function FrameHeader({
           <View style={styles.fill}>
             {!backHidden && (
               <BesideBack beside={besideBack}>
-                <FrameBack back={back} cap={cap} />
+                <FrameBack back={back} cap={cap} besideShown={besideBack != null} />
               </BesideBack>
             )}
           </View>
@@ -1163,13 +1173,21 @@ function FrameHeader({
 function FrameBack({
   back,
   cap,
+  besideShown,
 }: {
   back: NonNullable<FrameHeaderProps['back']>;
   cap: number | null;
+  besideShown: boolean;
 }) {
   return (
     <TitleCap.Provider value={cap}>
-      <Back label={back.label} onPress={back.onPress} off={back.off} testID="frame.back" />
+      <Back
+        label={back.label}
+        onPress={back.onPress}
+        off={back.off}
+        besideShown={besideShown}
+        testID="frame.back"
+      />
     </TitleCap.Provider>
   );
 }
@@ -1193,12 +1211,11 @@ export function BackButton({
   const { fontScale } = useWindowDimensions();
   const scale = backScale(fontScale, useContext(TitleCap));
   const body = tokens.typeBodyPhone.size;
-  const word = useBackWord(label, {
-    full: body * scale,
-    least: body,
-    glyph: tokens.sizeMark,
-    sides: 3 * tokens.spaceXs,
-  });
+  const word = useBackWord(
+    label,
+    { full: body * scale, least: body, glyph: tokens.sizeMark, sides: 3 * tokens.spaceXs },
+    beside != null,
+  );
   const mark = (tokens.sizeMark / body) * word.size;
   const button = (
     <>

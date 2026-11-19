@@ -252,7 +252,6 @@ export function EventScreen({
           ? 'overview'
           : 'guests'
         : area == null ||
-            (area === 'people' && shell.layout === 'phone') ||
             messages === 'tell' ||
             messages === 'tellPlace' ||
             (isTellKind(messages) && !TELL_IN_MESSAGES.includes(messages))
@@ -523,14 +522,10 @@ export function EventScreen({
   const peopleCard = (
     <PeopleCard
       state={people}
-      onOpen={
-        shell.layout === 'phone'
-          ? undefined
-          : (params) => {
-              setPeopleAt(params);
-              setAt('people');
-            }
-      }
+      onOpen={(params) => {
+        setPeopleAt(params);
+        setAt('people');
+      }}
     />
   );
   const guestsPage = (
@@ -681,7 +676,7 @@ export function EventScreen({
       </EventFrame>
     );
 
-  if (at === 'people' && shell.layout !== 'phone')
+  if (at === 'people')
     return (
       <PeopleInEvent.Provider
         value={{
@@ -781,8 +776,7 @@ export function EventScreen({
     );
 
   let page: ReactNode;
-  if (at !== 'overview' && at !== 'people')
-    page = <AreaPage area={at} event={shown} locale={locale} />;
+  if (at !== 'overview') page = <AreaPage area={at} event={shown} locale={locale} />;
   else
     page = (
       <OverviewColumns

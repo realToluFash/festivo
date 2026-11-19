@@ -87,6 +87,8 @@ export function Vendors({ state, tell, bell }: { state: string; tell: Tell; bell
   const [menu, setMenu] = useState(start.menu);
   const [dialog, setDialog] = useState<VendorsDialog | null>(start.dialog);
   const [lit, setLit] = useState(start.lit);
+  const [unreachable, setUnreachable] = useState(start.unreachable);
+  const [rereading, setRereading] = useState(false);
   const search = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -95,6 +97,21 @@ export function Vendors({ state, tell, bell }: { state: string; tell: Tell; bell
 
     return () => clearTimeout(timer);
   }, [load]);
+
+  useEffect(() => {
+    if (!rereading) return;
+    const timer = setTimeout(() => {
+      setRereading(false);
+      setUnreachable(false);
+      focusWhenFree(() =>
+        search.current != null && search.current.value !== ''
+          ? search.current
+          : document.querySelector<HTMLElement>('.desk-main h1'),
+      );
+    }, RETRY_MS);
+
+    return () => clearTimeout(timer);
+  }, [rereading]);
 
   useEffect(() => {
     if (start.told != null) tell(start.told);
@@ -133,6 +150,7 @@ export function Vendors({ state, tell, bell }: { state: string; tell: Tell; bell
   const showing = paged(rows, page);
   const searching = isLooking(looking);
   const nothingInUse = counts.inUse === 0 && looking.view === 'inUse' && !searching;
+  const counted = searching && rows.length > 0 && !unreachable;
 
   return (
     <Page>
@@ -214,10 +232,19 @@ export function Vendors({ state, tell, bell }: { state: string; tell: Tell; bell
               onPick={(key) => look({ ...looking, view: key as View })}
             />
           </div>
-          <p className={searching && rows.length > 0 ? 'vd-count' : 'desk-unseen'} role="status">
-            {searching && rows.length > 0 ? VW.vendors(rows.length) : ''}
+          <p className={counted ? 'vd-count' : 'desk-unseen'} role="status">
+            {counted ? VW.vendors(rows.length) : ''}
           </p>
-          {rows.length === 0 ? (
+          {unreachable ? (
+            rereading ? (
+              <div className="desk-loading" role="status" aria-label={VW.loading}>
+                <span className="desk-unseen">{VW.loading}</span>
+                <RowBones />
+              </div>
+            ) : (
+              <Failed onRetry={() => setRereading(true)} />
+            )
+          ) : rows.length === 0 ? (
             !nothingInUse && <NoMatch looking={looking} onLooking={look} />
           ) : (
             <>
@@ -290,17 +317,23 @@ function Loading() {
     <div className="desk-loading" role="status" aria-label={VW.loading}>
       <span className="desk-unseen">{VW.loading}</span>
       <span className="desk-sunk is-card" aria-hidden="true" />
-      <ul className="desk-rows" aria-hidden="true">
-        {[1, 2, 3, 4].map((bar) => (
-          <li key={bar} className="desk-row is-bones">
-            <span className="desk-row-words">
-              <span className={`desk-sunk is-title b${bar}`} />
-              <span className={`desk-sunk is-line b${bar}`} />
-            </span>
-          </li>
-        ))}
-      </ul>
+      <RowBones />
     </div>
+  );
+}
+
+function RowBones() {
+  return (
+    <ul className="desk-rows" aria-hidden="true">
+      {[1, 2, 3, 4].map((bar) => (
+        <li key={bar} className="desk-row is-bones">
+          <span className="desk-row-words">
+            <span className={`desk-sunk is-title b${bar}`} />
+            <span className={`desk-sunk is-line b${bar}`} />
+          </span>
+        </li>
+      ))}
+    </ul>
   );
 }
 

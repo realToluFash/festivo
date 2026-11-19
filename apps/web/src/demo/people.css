@@ -11,10 +11,6 @@
   flex-shrink: 0;
 }
 
-.people-side .today-place.is-on {
-  color: var(--colorAccent);
-}
-
 .people-back {
   gap: var(--spaceSm);
   font: 600 14px/1 var(--fontFamily);
@@ -63,4 +59,19 @@
   flex: none;
   margin-top: var(--spaceHair);
   color: var(--colorAttention);
+}
+
+/* A staff link that nobody has signed in with yet (sc-3912): a dashed pill, its ring dashed too. */
+.desk-tag.people-not-signed {
+  border: 1px dashed var(--colorInkSecondary);
+  background: var(--colorCard);
+  color: var(--colorInkSecondary);
+}
+
+.people-not-signed-mark {
+  box-sizing: border-box;
+  width: 12px;
+  height: 12px;
+  border: 1.5px dashed var(--colorInkSecondary);
+  border-radius: var(--radiusPill);
 }

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Repository;
 
+use App\Entity\CatalogueVersion;
 use App\Entity\Subscription;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\Persistence\ManagerRegistry;
@@ -23,5 +24,26 @@ final class SubscriptionRepository extends ServiceEntityRepository
     {
         return $this->findOneBy(['organisation' => $organisationId])
             ?? throw new LogicException('An organisation has no subscription.');
+    }
+
+    public function countOn(CatalogueVersion $version): int
+    {
+        return $this->count(['catalogueVersion' => $version]);
+    }
+
+    /** @return list<Subscription> those not on `$to`, and only those on `$from` when it is given */
+    public function findToMove(CatalogueVersion $to, ?CatalogueVersion $from): array
+    {
+        $query = $this->createQueryBuilder('s')
+            ->andWhere('s.catalogueVersion != :to')
+            ->setParameter('to', $to->getId(), 'uuid')
+            ->orderBy('s.id', 'ASC');
+
+        if (null !== $from) {
+            $query->andWhere('s.catalogueVersion = :from')->setParameter('from', $from->getId(), 'uuid');
+        }
+
+        /** @var list<Subscription> */
+        return $query->getQuery()->getResult();
     }
 }

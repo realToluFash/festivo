@@ -112,7 +112,7 @@ function ExportDesk({ organisation, email }: { organisation: Membership; email: 
     <DeskPage layers={layers}>
       <div className="desk-column">
         <BackRow to={t('dataControl.title')} onBack={back} bell={desk.bell} />
-        <TitleRow title={t('exportAllData.title')} />
+        <TitleRow title={t('exportAllData.title')} underBack />
         {load.kind === 'loading' && <PageLoading words={t('exportAllData.loading')} />}
         {load.kind === 'failed' && (
           <div className="desk-failed" role="alert">

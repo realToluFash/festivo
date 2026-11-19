@@ -33,6 +33,7 @@ import { ScheduleOrNight } from './NightArea.tsx';
 import { SeatingArea } from './SeatingArea.tsx';
 import { JobsShiftsArea } from './JobsShiftsArea.tsx';
 import { RosterArea } from './RosterArea.tsx';
+import { StationsArea } from './StationsArea.tsx';
 import { PAGE_NEEDS } from './handoff.ts';
 import { typeLabel } from './eventTypes.ts';
 import { AllDates } from './Timeline.tsx';
@@ -50,7 +51,15 @@ type Load =
   | { kind: 'notFound' }
   | { kind: 'loaded'; event: OrganisationEvent; tag: string };
 
-type Page = 'event' | 'guests' | 'dates' | 'people' | 'run' | 'staffJobs' | PlaceholderEventArea;
+type Page =
+  | 'event'
+  | 'guests'
+  | 'dates'
+  | 'people'
+  | 'run'
+  | 'staffJobs'
+  | 'staffStations'
+  | PlaceholderEventArea;
 
 export function EventView() {
   return <ForEvent page="event" />;
@@ -79,6 +88,10 @@ export function EventRoster() {
 
 export function EventJobsShifts() {
   return <ForEvent page="staffJobs" />;
+}
+
+export function EventStations() {
+  return <ForEvent page="staffStations" />;
 }
 
 /** Staff opens its first tab, the Roster (sc-3906). */
@@ -258,6 +271,9 @@ function EventOf({
       <Withheld />
     );
 
+  if (page === 'staffStations' && load.kind === 'loaded')
+    return canOn(load.event, PAGE_NEEDS.staff) ? <StationsArea event={load.event} /> : <Withheld />;
+
   if (page === 'guests' && load.kind === 'loaded')
     return canOn(load.event, PAGE_NEEDS.guests) ? (
       <GuestsArea
@@ -344,8 +360,18 @@ function EventOf({
   return (
     <AskHost>
       {(covered) => (
-        <div className="event-page" inert={covered}>
-          <EventCrumb name={load.kind === 'loaded' ? load.event.name : null}>
+        <div className={page === 'people' ? 'event-page is-people' : 'event-page'} inert={covered}>
+          <EventCrumb
+            name={load.kind === 'loaded' ? load.event.name : null}
+            area={
+              page === 'people'
+                ? {
+                    label: t('eventPeople.title'),
+                    event: `/app/events/${encodeURIComponent(eventId)}`,
+                  }
+                : undefined
+            }
+          >
             {refreshing && <Refreshing />}
           </EventCrumb>
 
@@ -353,12 +379,14 @@ function EventOf({
 
           {load.kind === 'loaded' && (
             <Arrived>
-              <EventTop
-                event={load.event}
-                tag={load.tag}
-                heading={heading}
-                onChange={(event, tag) => setLoad({ kind: 'loaded', event, tag })}
-              />
+              {page !== 'people' && (
+                <EventTop
+                  event={load.event}
+                  tag={load.tag}
+                  heading={heading}
+                  onChange={(event, tag) => setLoad({ kind: 'loaded', event, tag })}
+                />
+              )}
               {page === 'dates' && <AllDatesPage event={load.event} heading={heading} />}
               {page === 'people' && <PeoplePage event={load.event} />}
               {isPlaceholderEventArea(page) &&
@@ -373,7 +401,7 @@ function EventOf({
   );
 }
 
-/** Above every area but Overview, whose cover card is its top: the name, the phase, the dates, the venue, and the phase's one primary (sc-22103). */
+/** Above every area but Overview, whose cover card is its top, and People, which opens on its own title (sc-69635): the name, the phase, the dates, the venue, and the phase's one primary (sc-22103). */
 function EventTop({
   event,
   tag,

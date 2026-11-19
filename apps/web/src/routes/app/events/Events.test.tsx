@@ -2191,7 +2191,10 @@ describe("An event's page", () => {
       answering({ 'GET /api/events/ev_1': () => json({ event: event() }) });
       at(`/app/events/ev_1/${area}`);
 
-      const heading = await screen.findByRole('heading', { level: 1, name: 'Adaeze and Tunde' });
+      const heading = await screen.findByRole('heading', {
+        level: 1,
+        name: area === 'people' ? 'People' : 'Adaeze and Tunde',
+      });
 
       expect(heading.closest('.event-page')).not.toBeNull();
       expect(heading.closest('.ev')).toBeNull();

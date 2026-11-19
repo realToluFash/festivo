@@ -15,7 +15,7 @@ import { tokens } from '../../src/theme/tokens.ts';
 const NOTICES = {
   signedOut: ['You were signed out', 'Sign in again to carry on.'],
   byRule: [
-    'Signed out by Ire Events’ rule',
+    'Signed out by Ire Events’s rule',
     'Ire Events signs people out after 30 days without use. Sign in again to carry on.',
   ],
 } as const;

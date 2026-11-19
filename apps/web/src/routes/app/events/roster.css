@@ -34,6 +34,33 @@
   font: 400 14px/1.45 var(--fontFamily);
 }
 
+.rs-gone {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceXxs);
+}
+
+.rs-gone-now {
+  color: var(--colorInkSecondary);
+}
+
+.rs-gone-why {
+  display: inline-flex;
+  align-items: flex-start;
+  gap: var(--spaceXs);
+  color: var(--colorAttentionText);
+  font: var(--typeSmallStrong);
+}
+
+.rs-gone-why > svg {
+  flex: none;
+  margin-top: 2px;
+}
+
+.rs-facts dd > .rs-gone-why {
+  margin-top: var(--spaceXs);
+}
+
 .rs .mn-lock svg {
   flex: none;
   margin-top: 2px;

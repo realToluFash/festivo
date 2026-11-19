@@ -1,6 +1,11 @@
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
+
 import { describe, expect, it } from 'vitest';
 
-import { actionsUnder, brokeInWord, brokeOn, labelFits, rowRoom } from './titleFit.ts';
+import { actionsUnder, brokeInWord, brokeOn, labelFits, rowRoom, titleRowKey } from './titleFit.ts';
+
+const guests = readFileSync(join('src', 'components', 'GuestsHeading.tsx'), 'utf8');
 
 const row = { room: 400, title: 140, extra: 0, labelled: 170, gap: 16 };
 
@@ -97,8 +102,11 @@ describe('Export and the + under the title (sc-68417)', () => {
 const inSlot = { slot: 180, title: 180 };
 
 describe('a title that broke beside its actions all the same (sc-68417)', () => {
-  const broken = [{ text: 'Convidad' }, { text: 'os' }];
-  const whole = [{ text: 'Convidados' }];
+  const broken = [
+    { text: 'Convidad', width: 150 },
+    { text: 'os', width: 40 },
+  ];
+  const whole = [{ text: 'Convidados', width: 175 }];
 
   it('broke where it is at its default size and still wraps inside its word', () => {
     expect(brokeInWord({ lines: broken, drawn: 30, start: 43, size: 30, ...inSlot })).toBe(true);
@@ -118,7 +126,10 @@ describe('a title that broke beside its actions all the same (sc-68417)', () => 
 
   it('did not break on one line, or between words', () => {
     expect(brokeInWord({ lines: whole, drawn: 30, start: 43, size: 30, ...inSlot })).toBe(false);
-    const between = [{ text: 'Lista de ' }, { text: 'convidados' }];
+    const between = [
+      { text: 'Lista de ', width: 120 },
+      { text: 'convidados', width: 170 },
+    ];
     expect(brokeInWord({ lines: between, drawn: 30, start: 43, size: 30, ...inSlot })).toBe(false);
   });
 
@@ -128,11 +139,25 @@ describe('a title that broke beside its actions all the same (sc-68417)', () => 
     expect(brokeInWord({ ...atDefault, slot: 0, title: 180 })).toBe(false);
     expect(brokeInWord({ ...atDefault, slot: 179, title: 180 })).toBe(true);
   });
+
+  it('did not break where its lines together fit the slot, as they were laid out in a narrower box than the slot last measured (sc-68417, iPad on its side at the default size)', () => {
+    const squeezed = [
+      { text: 'Gue', width: 50 },
+      { text: 'sts', width: 42 },
+    ];
+    const atDefault = { drawn: 26, start: 26, size: 26, title: 92 };
+    expect(brokeInWord({ ...atDefault, lines: squeezed, slot: 400 })).toBe(false);
+    expect(brokeInWord({ ...atDefault, lines: squeezed, slot: 92 })).toBe(false);
+    expect(brokeInWord({ ...atDefault, lines: squeezed, slot: 91 })).toBe(true);
+  });
 });
 
 describe('the row the title broke on (sc-68417)', () => {
-  const broken = [{ text: 'Convidad' }, { text: 'os' }];
-  const whole = [{ text: 'Convidados' }];
+  const broken = [
+    { text: 'Convidad', width: 150 },
+    { text: 'os', width: 40 },
+  ];
+  const whole = [{ text: 'Convidados', width: 175 }];
   const atFloor = { drawn: 30, start: 43, size: 30, ...inSlot };
 
   it('is this row once the title breaks beside its actions', () => {
@@ -159,11 +184,33 @@ describe('the row the title broke on (sc-68417)', () => {
         broke: null,
         row: '700|Guests',
         under: false,
-        lines: [{ text: 'Gue' }, { text: 'sts' }],
+        lines: [
+          { text: 'Gue', width: 50 },
+          { text: 'sts', width: 42 },
+        ],
         drawn: 26,
         start: 26,
         size: 26,
         slot: 60,
+        title: 92,
+      }),
+    ).toBeNull();
+  });
+
+  it('is not this row where the lines broke in a box narrower than the slot last measured (sc-68417, iPad on its side at the default size)', () => {
+    expect(
+      brokeOn({
+        broke: null,
+        row: '700|Guests',
+        under: false,
+        lines: [
+          { text: 'Gue', width: 50 },
+          { text: 'sts', width: 42 },
+        ],
+        drawn: 26,
+        start: 26,
+        size: 26,
+        slot: 400,
         title: 92,
       }),
     ).toBeNull();
@@ -174,5 +221,45 @@ describe('the row the title broke on (sc-68417)', () => {
     expect(
       brokeOn({ broke: null, row: '370|pt', under: false, lines: broken, ...atStart }),
     ).toBeNull();
+  });
+});
+
+describe('Guests on an iPad on its side, the spinner then none (sc-68417)', () => {
+  const row = { room: 404, title: 'Guests', fontScale: 1 };
+  const widths = { room: 404, title: 92, extra: 120, plus: 44, bell: 44, gap: 16 };
+  const broken = [
+    { text: 'Gue', width: 52 },
+    { text: 'sts', width: 43 },
+  ];
+
+  function under(broke: string | null, spinning: boolean): boolean {
+    return (
+      broke === titleRowKey({ ...row, spinning }) ||
+      actionsUnder({ ...widths, refreshing: spinning ? 40 : 0 })
+    );
+  }
+
+  it('puts the actions back beside the title once a break latched while the spinner was up goes with it', () => {
+    const latched = brokeOn({
+      broke: null,
+      row: titleRowKey({ ...row, spinning: true }),
+      under: under(null, true),
+      lines: broken,
+      drawn: 26,
+      start: 26,
+      size: 26,
+      slot: 92,
+      title: 92,
+    });
+
+    expect(latched).not.toBeNull();
+    expect(under(latched, true)).toBe(true);
+    expect(under(latched, false)).toBe(false);
+  });
+
+  it('latches the heading on the key that names the spinner', () => {
+    expect(guests).toMatch(
+      /const rowKey = titleRowKey\(\{ room, title, fontScale, spinning \}\);/u,
+    );
   });
 });

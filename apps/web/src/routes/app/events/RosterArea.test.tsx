@@ -1,7 +1,7 @@
 import { readFileSync, readdirSync } from 'node:fs';
 import { join, relative } from 'node:path';
 
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { RouterProvider, createMemoryRouter } from 'react-router';
 
@@ -9,6 +9,9 @@ import { __setSessionState, type Session } from '../../../session.ts';
 import { OWNER_PERMISSIONS, membership } from '../../../test-memberships.ts';
 import { routes } from '../../index.tsx';
 import { cssRule, stylesheet } from '../../../test-styles.ts';
+
+const tablesOf = (count: number) =>
+  Array.from({ length: count }, (_, n) => ({ id: `t${n + 1}`, name: `T${n + 1}` }));
 
 const ROSTER_CSS = stylesheet(import.meta.dirname, 'roster.css');
 
@@ -98,6 +101,8 @@ function problem(code: string, status: number, more: Record<string, unknown> = {
   );
 }
 
+const NO_STATIONS = { places: [], sections: [], floorLead: null, courses: [], walk: [] };
+
 type Answer = (body: unknown) => Response | Promise<Response>;
 
 function entry(id: string, fullName: string, more: Record<string, unknown> = {}) {
@@ -108,6 +113,10 @@ function entry(id: string, fullName: string, more: Record<string, unknown> = {})
     email: null,
     job: null,
     station: null,
+    stations: [],
+    stationRemoved: null,
+    leads: false,
+    floorLead: false,
     shifts: [],
     link: 'no_mobile',
     contactsErased: false,
@@ -200,7 +209,7 @@ describe('The Roster on the Staff page (sc-3906)', () => {
     vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) =>
       new URL(String(input)).pathname === '/api/events/ev_1'
         ? json({ event: { ...EVENT, permissions: OWNER_PERMISSIONS, phase: 'live' } })
-        : json({ staff: [], jobs: [], shifts: [] }),
+        : json({ staff: [], jobs: [], shifts: [], stations: NO_STATIONS }),
     );
     const router = createMemoryRouter(routes, { initialEntries: ['/app/events/ev_1/staff'] });
     render(<RouterProvider router={router} />);
@@ -208,7 +217,7 @@ describe('The Roster on the Staff page (sc-3906)', () => {
     expect(await screen.findByText('Nobody on the staff yet')).toBeDefined();
     expect(router.state.location.pathname).toBe('/app/events/ev_1/staff/roster');
     expect(router.state.historyAction).toBe('REPLACE');
-    const tabs = screen.getByRole('navigation', { name: 'Staff pages' });
+    const tabs = screen.getByRole('navigation', { name: 'Staff' });
     expect(tabs.querySelector('[aria-current="page"]')?.textContent).toBe('Roster');
     expect(screen.getByRole('link', { name: 'Jobs and shifts' }).getAttribute('href')).toBe(
       '/app/events/ev_1/staff/jobs',
@@ -220,7 +229,7 @@ describe('The Roster on the Staff page (sc-3906)', () => {
     vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) =>
       new URL(String(input)).pathname === '/api/events/ev_1'
         ? json({ event: { ...EVENT, permissions: OWNER_PERMISSIONS, phase: 'live' } })
-        : json({ staff: [], jobs: [], shifts: [] }),
+        : json({ staff: [], jobs: [], shifts: [], stations: NO_STATIONS }),
     );
     render(
       <RouterProvider
@@ -238,7 +247,8 @@ describe('The Roster on the Staff page (sc-3906)', () => {
   it("starts where the event's other pages do at a desk, inside the card's one padding", async () => {
     signedIn();
     await onRoster({
-      'GET /api/events/ev_1/staff': () => json({ staff: [], jobs: [], shifts: [] }),
+      'GET /api/events/ev_1/staff': () =>
+        json({ staff: [], jobs: [], shifts: [], stations: NO_STATIONS }),
     });
 
     const add = await screen.findByRole('button', { name: 'Add a person' });
@@ -248,7 +258,8 @@ describe('The Roster on the Staff page (sc-3906)', () => {
   it('adds a person by name alone, refusing a blank name beside its field', async () => {
     signedIn();
     const sent = await onRoster({
-      'GET /api/events/ev_1/staff': () => json({ staff: [], jobs: [], shifts: [] }),
+      'GET /api/events/ev_1/staff': () =>
+        json({ staff: [], jobs: [], shifts: [], stations: NO_STATIONS }),
       'POST /api/events/ev_1/staff': () =>
         json({ staff: entry('st_1', 'Chidi Okafor'), member: null }, 201),
     });
@@ -282,6 +293,7 @@ describe('The Roster on the Staff page (sc-3906)', () => {
           staff: [entry('st_1', 'Amaka Eze', { mobile: '+2348031234567', link: 'none' })],
           jobs: [],
           shifts: [],
+          stations: NO_STATIONS,
         }),
       'POST /api/events/ev_1/staff': (body) =>
         (body as { allowShared: boolean }).allowShared
@@ -341,6 +353,7 @@ describe('The Roster on the Staff page (sc-3906)', () => {
           ],
           jobs: [],
           shifts: [],
+          stations: NO_STATIONS,
         }),
     });
 
@@ -354,7 +367,7 @@ describe('The Roster on the Staff page (sc-3906)', () => {
     signedIn();
     const sent = await onRoster({
       'GET /api/events/ev_1/staff': () =>
-        json({ staff: [entry('st_1', 'Amaka Eze')], jobs: [], shifts: [] }),
+        json({ staff: [entry('st_1', 'Amaka Eze')], jobs: [], shifts: [], stations: NO_STATIONS }),
       'DELETE /api/events/ev_1/staff/st_1': () => new Response(null, { status: 204 }),
     });
 
@@ -374,7 +387,12 @@ describe('The Roster on the Staff page (sc-3906)', () => {
     await onRoster(
       {
         'GET /api/events/ev_1/staff': () =>
-          json({ staff: [entry('st_1', 'Amaka Eze')], jobs: [], shifts: [] }),
+          json({
+            staff: [entry('st_1', 'Amaka Eze')],
+            jobs: [],
+            shifts: [],
+            stations: NO_STATIONS,
+          }),
       },
       OWNER_PERMISSIONS,
       'finished',
@@ -390,7 +408,12 @@ describe('The Roster on the Staff page (sc-3906)', () => {
     await onRoster(
       {
         'GET /api/events/ev_1/staff': () =>
-          json({ staff: [entry('st_1', 'Amaka Eze')], jobs: [], shifts: [] }),
+          json({
+            staff: [entry('st_1', 'Amaka Eze')],
+            jobs: [],
+            shifts: [],
+            stations: NO_STATIONS,
+          }),
       },
       OWNER_PERMISSIONS.filter((one) => one !== 'staff.manage'),
     );
@@ -407,5 +430,129 @@ describe('The Roster on the Staff page (sc-3906)', () => {
 
   it("owns the rs- classes: no other product stylesheet leads with one, so the roster's names keep their ink", () => {
     expect(sheetsLeadingWithRs()).toEqual([]);
+  });
+
+  it('writes each station in the Station column, a section with its tables and a lead in words (sc-3910)', async () => {
+    signedIn();
+    const grill = { id: 'grill', name: 'Grill', kind: 'place', tables: [] };
+    const sectionA = { id: 'sa', name: 'Section A', kind: 'section', tables: tablesOf(6) };
+    await onRoster({
+      'GET /api/events/ev_1/staff': () =>
+        json({
+          staff: [
+            entry('st_1', 'Tayo Bamidele', { station: grill, stations: [grill], leads: true }),
+            entry('st_2', 'Grace Udo', { station: sectionA, stations: [sectionA] }),
+            entry('st_3', 'Emeka Obi'),
+            entry('st_4', 'Kunle Ajayi', { stationRemoved: 'Section D' }),
+          ],
+          jobs: [],
+          shifts: [],
+          stations: NO_STATIONS,
+        }),
+    });
+
+    const rows = (await screen.findByRole('table')).querySelectorAll('tbody tr');
+    expect(rows[0]?.querySelectorAll('td')[1]?.textContent).toBe('Grill Lead');
+    expect(rows[1]?.querySelectorAll('td')[1]?.textContent).toBe('Section A · 6 tables');
+    expect(rows[2]?.querySelectorAll('td')[1]?.textContent).toBe('No station yet');
+    const gone = rows[3]?.querySelectorAll('td')[1] as HTMLElement;
+    expect(within(gone).getByText('No station')).toBeTruthy();
+    expect(within(gone).getByText('Section D was removed from the seating plan.')).toBeTruthy();
+    expect(gone.querySelector('.rs-gone-why svg')).not.toBeNull();
+  });
+
+  it("says in the details that a person's section was removed from the seating plan (sc-3910)", async () => {
+    signedIn();
+    await onRoster({
+      'GET /api/events/ev_1/staff': () =>
+        json({
+          staff: [entry('st_1', 'Grace Udo', { stationRemoved: 'Section D' })],
+          jobs: [],
+          shifts: [],
+          stations: NO_STATIONS,
+        }),
+    });
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Grace Udo' }));
+    const select = screen.getByRole('combobox', { name: 'Change station, Grace Udo' });
+    expect(select.parentElement?.querySelector('[aria-hidden]')?.textContent).toBe('No station');
+    expect(select.getAttribute('aria-describedby')).toBe('rs-gone');
+    expect(document.getElementById('rs-gone')?.textContent).toBe(
+      'Section D was removed from the seating plan.',
+    );
+  });
+
+  it("changes a person's station from their details, places then sections (sc-3910)", async () => {
+    signedIn();
+    const sectionB = { id: 'sb', name: 'Section B', kind: 'section', tables: tablesOf(1) };
+    const stations = {
+      ...NO_STATIONS,
+      places: [
+        { id: 'pass', name: 'Pass', pass: true, people: [], lead: null, dishes: 0 },
+        { id: 'bar', name: 'Bar', pass: false, people: [], lead: null, dishes: 0 },
+      ],
+      sections: [{ id: 'sb', name: 'Section B', tables: tablesOf(1), people: [], lead: null }],
+    };
+    const sent = await onRoster({
+      'GET /api/events/ev_1/staff': () =>
+        json({ staff: [entry('st_1', 'Funmi Bakare')], jobs: [], shifts: [], stations }),
+      'PUT /api/events/ev_1/stations/people/st_1': () =>
+        json({
+          staff: [entry('st_1', 'Funmi Bakare', { station: sectionB, stations: [sectionB] })],
+          jobs: [],
+          shifts: [],
+          stations: {
+            ...stations,
+            sections: [{ ...stations.sections[0], people: ['st_1'] }],
+          },
+        }),
+    });
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Funmi Bakare' }));
+    const select = screen.getByRole('combobox', { name: 'Change station, Funmi Bakare' });
+    expect([...select.querySelectorAll('option')].map((one) => one.textContent)).toEqual([
+      'No station yet',
+      'Pass',
+      'Bar',
+      'Section B · 1 table',
+    ]);
+    expect(
+      [...select.querySelectorAll('optgroup')].map((group) => [
+        group.label,
+        [...group.querySelectorAll('option')].map((one) => one.textContent),
+      ]),
+    ).toEqual([
+      ['Places', ['Pass', 'Bar']],
+      ['Seating sections', ['Section B · 1 table']],
+    ]);
+    fireEvent.change(select, { target: { value: 'sb' } });
+
+    expect(await screen.findAllByText('Funmi Bakare is on Section B · 1 table.')).not.toHaveLength(
+      0,
+    );
+    expect(
+      sent.find((one) => one.line === 'PUT /api/events/ev_1/stations/people/st_1')?.body,
+    ).toEqual({ station: 'sb' });
+  });
+
+  it('shows the station as words, with no select, without permission to manage staff (sc-3910)', async () => {
+    signedIn();
+    const bar = { id: 'bar', name: 'Bar', kind: 'place', tables: [] };
+    await onRoster(
+      {
+        'GET /api/events/ev_1/staff': () =>
+          json({
+            staff: [entry('st_1', 'Sade Lawal', { station: bar, stations: [bar] })],
+            jobs: [],
+            shifts: [],
+            stations: NO_STATIONS,
+          }),
+      },
+      OWNER_PERMISSIONS.filter((one) => one !== 'staff.manage'),
+    );
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Sade Lawal' }));
+    expect(screen.queryByRole('combobox', { name: 'Change station, Sade Lawal' })).toBeNull();
+    expect(document.querySelector('.rs-facts')?.textContent).toContain('StationBar');
   });
 });

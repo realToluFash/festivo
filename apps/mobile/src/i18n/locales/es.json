@@ -3058,6 +3058,7 @@
     "dropped": "Para exportar se necesita conexión. No se ha exportado nada."
   },
   "outsideEvent": {
+    "when": "{{day}} · {{start}} a {{end}}",
     "until": "hasta {{when}}",
     "guestsLine": "Solo nombres y respuestas, sin datos de contacto",
     "onEvent_one": "{{count, number}} persona en este evento",

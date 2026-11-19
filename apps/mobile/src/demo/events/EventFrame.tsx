@@ -16,6 +16,7 @@ import { Text, TitleCap } from '../../components/Text.tsx';
 import { PageTitleDrawn, useTitleCap } from '../../components/Title.tsx';
 import { PAGE_TITLE } from '../../components/topTitle.ts';
 import { tokens } from '../../theme/tokens.ts';
+import { useAccessibilitySizes } from '../../layout/useLayout.ts';
 import { Glyph, type GlyphName } from '../../components/Glyph.tsx';
 import { PHONE_TAB_BAR, TabBar, TabBarFade } from '../../components/TodayCover.tsx';
 import {
@@ -47,13 +48,6 @@ const PHONE_BAR: readonly (readonly [string, GlyphName])[] = [
   ...PHONE_TABS.map((area) => [AREA_WORDS[area], AREA_GLYPH[area]] as const),
   [W.more, 'dots'],
 ];
-
-/** On the phone People opens its own page from More, its ‹ Overview landing on Overview whatever More was opened over (sc-68022); on the iPad it is an area in the frame like the other nine (sc-67665). */
-function toArea(area: AreaKey, onArea: (area: AreaKey) => void): void {
-  if (area !== 'people') return onArea(area);
-  onArea('overview');
-  router.push('/demo/people');
-}
 
 export function backToEvents(): void {
   router.dismissTo('/demo/events');
@@ -142,6 +136,7 @@ export function EventFrame({
 }) {
   const shell = useShell();
   const insets = useSafeAreaInsets();
+  const large = useAccessibilitySizes();
   const phone = shell.layout === 'phone';
   const titleCap = useTitleCap(`${shell.layout}|${area}`, PAGE_TITLE);
   // As the product's frame: an area is capped only once its body's title says the size it drew at (sc-67338, sc-67659).
@@ -171,15 +166,18 @@ export function EventFrame({
       <Landscape
         column={null}
         sidebar={
-          <EventSidebar
-            event={event}
-            now={now}
-            area={area}
-            onArea={onArea}
-            badge={badge}
-            without={without}
-            loading={loading}
-          />
+          // As the product's sidebar in an event: nothing in it outgrows the area's title at the accessibility sizes (sc-68052, sc-67659).
+          <TitleCap.Provider value={large ? titleCap.cap : null}>
+            <EventSidebar
+              event={event}
+              now={now}
+              area={area}
+              onArea={onArea}
+              badge={badge}
+              without={without}
+              loading={loading}
+            />
+          </TitleCap.Provider>
         }
         overlay={
           <>
@@ -355,7 +353,7 @@ function MoreSheet({
                 selected={one === area}
                 onPress={() => {
                   onClose();
-                  toArea(one, onArea);
+                  onArea(one);
                 }}
                 testID={`event.more.${one}`}
               />

@@ -4,7 +4,9 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import { __setConfig, config } from '../config.ts';
 import { routes } from '../routes/index.tsx';
+import { cssRule, stylesheet } from '../test-styles.ts';
 
+const JOBS_CSS = stylesheet(import.meta.dirname, 'jobsShifts.css');
 const tested = config();
 
 beforeEach(() => __setConfig({ ...tested, environment: 'development' }));
@@ -139,5 +141,17 @@ describe('/demo/events/evt-wed-4/staff/jobs (sc-3908)', () => {
     expect(
       screen.getByText('Sade Lawal is on Bar from Fri 6 Nov, 16:00 to Sat 7 Nov, 01:00.'),
     ).toBeTruthy();
+  });
+
+  it('starts a gap line under the name in a frame too narrow for it, whole words only (sc-70959)', () => {
+    expect(cssRule('.js-frame', JOBS_CSS)).toContain('container: js-frame / inline-size;');
+    expect(cssRule('.js-gaps', JOBS_CSS)).toContain('overflow-wrap: normal;');
+    const narrow = cssRule(
+      '.js-gaps',
+      JOBS_CSS.slice(JOBS_CSS.indexOf('@container js-frame (width < 29.5rem)')),
+    );
+    expect(narrow).toContain('grid-column: 1 / -1;');
+    expect(narrow).toContain('left: 0;');
+    expect(narrow).toContain('max-width: 100cqi;');
   });
 });

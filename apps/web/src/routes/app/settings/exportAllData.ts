@@ -56,6 +56,8 @@ export function exportCard(
     page.nextAllowed == null ? [] : [t('exportAllData.next', { when: page.nextAllowed })];
   const othersNext = page.owner ? next : [];
   const ownerStep = (step: ExportStep): ExportStep | null => (page.owner ? step : null);
+  // Once the daily limit has lifted, a downloaded export is no bar to the next one.
+  const againStep = page.nextAllowed == null ? ownerStep('export') : null;
 
   switch (state) {
     case 'preparing':
@@ -77,7 +79,7 @@ export function exportCard(
         state,
         says: t('exportAllData.usedSays'),
         lines: [t('exportAllData.usedLine', { when: exported?.downloaded }), ...next],
-        step: null,
+        step: againStep,
       };
     case 'expired':
       return {
@@ -125,7 +127,7 @@ export function exportCard(
           t('exportAllData.usedOtherLine', { name: exported?.askedBy, when: exported?.downloaded }),
           ...othersNext,
         ],
-        step: null,
+        step: againStep,
       };
     case 'expiredOther':
       return {

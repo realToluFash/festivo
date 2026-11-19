@@ -19,6 +19,7 @@ import {
   sampleMembers,
   sampleOnEvent,
   seesEveryEvent,
+  staffLinkTitle,
   withOutside,
 } from './people.ts';
 
@@ -148,5 +149,22 @@ describe('someone from outside at a desk (sc-71)', () => {
     expect(seenBy(start.onEvent, true).find((one) => one.initials === '')?.name).toBe(
       'bisi@lagoslights.example',
     );
+  });
+});
+
+describe('staff links on the access list (sc-3912)', () => {
+  const linked = peopleStart('staffLinks').onEvent.filter((one) => one.staffLink != null);
+
+  it('reads Staff link · name · job · ends, one row a person', () => {
+    expect(linked.map(staffLinkTitle)).toEqual([
+      'Staff link · Grace Okon · Waiter · ends 03:00 on Sunday, Oct 25',
+      'Staff link · Tolu Bello · Door · ends 23:00',
+    ]);
+    expect(linked.map((one) => one.staffLink?.signedIn)).toEqual([false, true]);
+  });
+
+  it('does not open the role dialog: a link is changed on the roster', () => {
+    const start = peopleStart('staffLinks');
+    expect(linked.some((one) => opens(one, start.viewer, start.onEvent))).toBe(false);
   });
 });

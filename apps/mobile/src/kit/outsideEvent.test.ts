@@ -5,6 +5,7 @@ import { beforeAll, describe, expect, it } from 'vitest';
 import en from '../i18n/locales/en.json';
 
 import {
+  cardWhen,
   levelLine,
   outsideGroups,
   outsideHref,
@@ -124,6 +125,23 @@ describe('Overview held from outside', () => {
     expect(levelLine(t, { role: 'can_check_in', jobLabel: null }, ENDS, 'en-GB')).toBe(
       'Can check guests in · until Fri 15 Nov, 02:00',
     );
+  });
+
+  it('heads the card with the day, then its start to its end, as the demo writes it', () => {
+    const SAME_DAY = {
+      startsAt: '2030-11-14T15:00:00+01:00',
+      endsAt: '2030-11-14T23:30:00+01:00',
+      timeZone: 'Africa/Lagos',
+    };
+
+    expect(cardWhen(t, SAME_DAY, 'en-GB')).toBe('Thu 14 Nov · 15:00 to 23:30');
+  });
+
+  it('keeps the end’s day when the event runs past midnight, in 24 hours in every locale', () => {
+    const LATE = { ...ENDS, startsAt: '2030-11-14T18:00:00Z' };
+
+    expect(cardWhen(t, LATE, 'en-GB')).toBe('Thu 14 Nov · 19:00 to Fri 15 Nov, 02:00');
+    expect(cardWhen(t, LATE, 'en-US')).toBe('Thu, Nov 14 · 19:00 to Fri, Nov 15, 02:00');
   });
 });
 

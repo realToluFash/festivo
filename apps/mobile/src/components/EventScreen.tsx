@@ -69,6 +69,7 @@ import { EventPeople } from './EventPeople.tsx';
 import { EventNotFound, EventTop, EventsFailed, OutsideNotFound, usePhaseOf } from './Events.tsx';
 import { Refreshing } from './Refreshing.tsx';
 import { Screen } from './Screen.tsx';
+import { StepScreen } from '../steps/StepScreen.tsx';
 import { LoadingBlock, PageToast, TextAction } from './Summary.tsx';
 import type { ToastAction } from './Toast.tsx';
 import { phoneTabBarClearance } from './TodayCover.tsx';
@@ -244,6 +245,7 @@ export function EventScreen({
   const back = !fromSearch && areaBack(area) === 'overview' ? () => chooseArea('overview') : leave;
   // Held from outside, Overview is the account's whole app: nothing behind it to go back to (sc-71).
   const backs = outside == null || area !== 'overview';
+  const bare = area === 'overview' && outside != null && readsOverview(outside.role);
   const backLabel = fromSearch
     ? t('todayScreen.search')
     : area !== 'overview'
@@ -380,19 +382,6 @@ export function EventScreen({
           />
         </PlaceholderArea>
       )
-    ) : away != null ? (
-      <OutsideNotFound
-        back={away.kind === 'event' ? away.event.name : null}
-        onBack={() => {
-          void rereadAccount()
-            .catch(() => undefined)
-            .then(() =>
-              away.kind === 'event'
-                ? router.replace(eventHref(away.event.id))
-                : router.replace('/'),
-            );
-        }}
-      />
     ) : opened.kind === 'notFound' ? (
       <EventNotFound onBack={leave} />
     ) : opened.kind === 'failed' ? (
@@ -439,6 +428,25 @@ export function EventScreen({
             }
           : undefined;
 
+  // With no organisation there is no frame to stand in: no Events to go back to and no tabs, only the way on (sc-68438).
+  if (away != null)
+    return (
+      <StepScreen>
+        <OutsideNotFound
+          back={away.kind === 'event' ? away.event.name : null}
+          onBack={() => {
+            void rereadAccount()
+              .catch(() => undefined)
+              .then(() =>
+                away.kind === 'event'
+                  ? router.replace(eventHref(away.event.id))
+                  : router.replace('/'),
+              );
+          }}
+        />
+      </StepScreen>
+    );
+
   return (
     <AppFrame
       current="events"
@@ -459,6 +467,7 @@ export function EventScreen({
               up:
                 original != null ? { label: t('timeline.backToEvent'), onPress: leave } : undefined,
               outside: outside == null ? undefined : { id: outside.id, role: outside.role },
+              bare,
             }
           : undefined
       }
@@ -509,7 +518,7 @@ export function EventScreen({
           }
         >
           {kind === 'tabletLandscape' && cardNamed && refreshing}
-          {cardNamed && event == null && <BellRow />}
+          {cardNamed && event == null && !bare && <BellRow />}
           {top.bodyBack && backs && (
             <BackButton label={backLabel} onPress={back} testID="events.back" />
           )}

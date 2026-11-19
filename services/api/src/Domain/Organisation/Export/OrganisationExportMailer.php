@@ -35,7 +35,7 @@ final readonly class OrganisationExportMailer
         $this->userMailer->send(AccountMail::OrganisationExport, $address, $locale, 'organisationExport.subject', [
             $this->userMailer->line('organisationExport.body', $locale, [
                 ...$named,
-                '{when}' => $this->userMailer->moment($export->getAskedAt(), $user, $locale),
+                '{when}' => $this->userMailer->deadline($export->getAskedAt(), $user, $locale),
                 '{deadline}' => $this->userMailer->deadline($expiresAt, $user, $locale),
             ]),
             $this->userMailer->line('organisationExport.download', $locale, ['{link}' => $link]),

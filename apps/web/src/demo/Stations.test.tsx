@@ -106,4 +106,33 @@ describe('/demo/events/evt-wed-4/staff/stations (sc-3910)', () => {
     expect(button('People and lead for Grill')).toBeNull();
     expect(button('Add a place')).toBeNull();
   });
+
+  it('has no Stations tonight while planning', async () => {
+    await open('populated');
+    expect(screen.queryByRole('region', { name: 'Stations tonight' })).toBeNull();
+  });
+
+  it('shows who is on each station during service, and Nobody on one with nobody on shift', async () => {
+    await open('tonight');
+    const tonight = screen.getByRole('region', { name: 'Stations tonight' });
+    expect(within(tonight).getByText('Who is on shift at each station now, 21:30.')).toBeTruthy();
+    expect(within(tonight).getByText('Nobody on Door')).toBeTruthy();
+    expect(within(tonight).getByText('Nobody on Section C')).toBeTruthy();
+    const bar = within(tonight).getByRole('list', { name: 'On Bar now' });
+    expect(within(bar).getByText('Sade Lawal')).toBeTruthy();
+    expect(within(bar).getAllByText('16:00 to 01:00')).toHaveLength(2);
+    expect(within(bar).getByText('Lead')).toBeTruthy();
+    const places = screen.getByRole('region', { name: 'Places' });
+    expect(within(places).queryByText('Nobody on Door')).toBeNull();
+  });
+
+  it('shows a person put on a station at once', async () => {
+    await open('tonightPeople');
+    const tonight = screen.getByRole('region', { name: 'Stations tonight' });
+    expect(within(tonight).getByText('Nobody on Door')).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Put Emeka Obi on Door' }));
+    expect(within(tonight).queryByText('Nobody on Door')).toBeNull();
+    const door = within(tonight).getByRole('list', { name: 'On Door now' });
+    expect(within(door).getByText('Emeka Obi')).toBeTruthy();
+  });
 });

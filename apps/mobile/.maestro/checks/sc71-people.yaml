@@ -6,7 +6,7 @@ appId: host.exp.Exponent
 - extendedWaitUntil: { visible: { id: 'people.row.*' }, timeout: 30000 }
 - waitForAnimationToEnd: { timeout: 8000 }
 - takeScreenshot: people
-- tapOn: 'bisi@lagoslights.example'
+- tapOn: { text: '.*bisi@lagoslights\.example.*' }
 - extendedWaitUntil: { visible: { id: 'people.roleSheet' }, timeout: 10000 }
 - waitForAnimationToEnd: { timeout: 4000 }
 - takeScreenshot: roleSheet

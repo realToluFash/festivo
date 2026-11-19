@@ -130,7 +130,7 @@
     "organisationDeleted.body": "{name} eliminó {organisation} el {when}. Desde ese momento, nadie puede acceder a la organización, a sus eventos ni a nada de lo que contienen.",
     "organisationDeleted.restore": "El servicio de asistencia de Soirely puede restaurarla hasta el {deadline}; después, desaparece para siempre.",
     "organisationDeleted.footer": "Recibe este correo porque era miembro de {organisation}.",
-    "organisationExport.subject": "Su exportación de {organisation} está lista",
+    "organisationExport.subject": "Su exportación está lista: {organisation}",
     "organisationExport.body": "El archivo con todo lo que guarda {organisation}, que solicitó el {when}, está listo. Se descarga una sola vez, hasta el {deadline}, y solo usted puede hacerlo, con su sesión iniciada.",
     "organisationExport.download": "Descárguelo: {link}",
     "organisationExport.footer": "Recibe este correo porque solicitó exportar los datos de {organisation}.",

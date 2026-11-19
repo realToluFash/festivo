@@ -171,15 +171,15 @@ final readonly class UserMailer
         }
     }
 
-    /** CLDR's date and wording for the locale, on a 24-hour clock: its short time is 12-hour in en. Quoted text is left alone. */
+    /** CLDR's date and wording for the locale, on a two-digit 24-hour clock: its short time is 12-hour in en and "H:mm" in es. Quoted text is left alone. */
     private static function twentyFourHour(string $pattern): string
     {
         return Str\trim(Regex\replace_with(
             $pattern,
-            '/\'[^\']*\'|[hK]+|[\s\x{00A0}\x{202F}]*a+/u',
+            '/\'[^\']*\'|[hHkK]+|[\s\x{00A0}\x{202F}]*a+/u',
             static fn (array $found): string => match (true) {
                 Str\starts_with($found[0], "'") => $found[0],
-                Regex\matches($found[0], '/^[hK]+$/') => 'HH',
+                Regex\matches($found[0], '/^[hHkK]+$/') => 'HH',
                 default => '',
             },
         ));
