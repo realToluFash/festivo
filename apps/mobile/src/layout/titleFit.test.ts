@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { labelFits, rowRoom } from './titleFit.ts';
+import { actionsUnder, labelFits, rowRoom } from './titleFit.ts';
 
 const row = { room: 400, title: 140, extra: 0, labelled: 170, gap: 16 };
 
@@ -54,5 +54,42 @@ describe('the row a title stands in', () => {
     const room = rowRoom({ ...sides, slot: 0, drawn: 'labelled' });
     expect(room).toBe(16 + 170);
     expect(labelFits({ room, title: 90, extra: 0, labelled: 170, gap: 16 })).toBe(false);
+  });
+});
+
+describe('Export and the + under the title (sc-68417)', () => {
+  const actions = { room: 370, title: 170, extra: 0, plus: 44, bell: 0, refreshing: 0, gap: 10 };
+
+  it('stay beside the title where all three fit', () => {
+    expect(actionsUnder({ ...actions, extra: 120 })).toBe(false);
+  });
+
+  it('go under it where the title would have to break', () => {
+    expect(actionsUnder({ ...actions, title: 215, extra: 200 })).toBe(true);
+  });
+
+  it('fit on exactly the width the row has', () => {
+    expect(actionsUnder({ ...actions, extra: 124, room: 170 + 10 + 124 + 10 + 44 })).toBe(false);
+    expect(actionsUnder({ ...actions, extra: 124, room: 170 + 10 + 124 + 10 + 44 - 1 })).toBe(true);
+  });
+
+  it('count the bell on its side, with its own gap', () => {
+    const room = 170 + 10 + 100 + 10 + 44 + 10 + 44;
+    expect(actionsUnder({ ...actions, extra: 100, bell: 44, room })).toBe(false);
+    expect(actionsUnder({ ...actions, extra: 100, bell: 44, room: room - 1 })).toBe(true);
+  });
+
+  it('count a refresh spinner while it shows, with its own gap', () => {
+    const room = 170 + 10 + 100 + 10 + 44 + 10 + 44;
+    expect(actionsUnder({ ...actions, extra: 100, bell: 44, room })).toBe(false);
+    expect(actionsUnder({ ...actions, extra: 100, bell: 44, refreshing: 20, room })).toBe(true);
+    expect(
+      actionsUnder({ ...actions, extra: 100, bell: 44, refreshing: 20, room: room + 30 }),
+    ).toBe(false);
+  });
+
+  it('stay beside it until the row and the title are measured', () => {
+    expect(actionsUnder({ ...actions, extra: 400, room: 0 })).toBe(false);
+    expect(actionsUnder({ ...actions, extra: 400, title: 0 })).toBe(false);
   });
 });
