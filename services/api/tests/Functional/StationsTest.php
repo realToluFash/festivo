@@ -209,6 +209,24 @@ final class StationsTest extends ApiTestCase
     }
 
     #[Test]
+    public function someoneOnAStationAsWellCanLeadIt(): void
+    {
+        $grace = $this->person('Grace Udo');
+        $door = $this->place('Door');
+        $bar = $this->place('Bar');
+        $this->station($grace, $door);
+
+        $person = self::em()->find(StaffMember::class, $grace) ?? self::fail('nobody');
+        $person->setAsWellStation(self::em()->find(StaffStation::class, $bar));
+        self::em()->flush();
+
+        $this->as($this->owner, 'PUT', $this->path($bar . '/lead'), ['lead' => $grace]);
+        self::assertSame(200, $this->statusCode());
+        self::assertSame($grace, $this->placeRow('Bar')['lead']);
+        self::assertTrue($this->staffEntry($grace)['leads']);
+    }
+
+    #[Test]
     public function theEventHasOneFloorLead(): void
     {
         $ifeoma = $this->person('Ifeoma Nduka');

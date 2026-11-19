@@ -112,7 +112,7 @@ final readonly class StationSerialiser
             'station' => $station,
             'stations' => Vec\filter_nulls([$station, $asWell]),
             'stationRemoved' => $removed ? $row->getName() : null,
-            'leads' => null !== $station && $row?->getLead() === $person,
+            'leads' => (null !== $station && $row?->getLead() === $person) || $person->getAsWellStation()?->getLead() === $person,
             'floorLead' => $person->isFloorLead(),
         ];
     }

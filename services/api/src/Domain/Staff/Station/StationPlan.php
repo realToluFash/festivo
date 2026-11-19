@@ -157,7 +157,7 @@ final readonly class StationPlan
         $this->changed($event, function () use ($event, $stationId, $lead, $by): null {
             $station = $this->station($event, $stationId);
 
-            if (null !== $lead && $lead->getStation() !== $station) {
+            if (null !== $lead && $lead->getStation() !== $station && $lead->getAsWellStation() !== $station) {
                 throw ApiException::validation([StationRules::violation('lead', 'stations.lead_not_on_station')]);
             }
 
