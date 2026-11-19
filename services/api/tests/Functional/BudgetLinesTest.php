@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Tests\Functional;
 
-use App\Domain\Budget\BudgetEditor;
 use App\Domain\Budget\LineRules;
 use App\Domain\Budget\QuantityResolver;
 use App\Domain\Organisation\OrganisationFounder;
@@ -409,20 +408,48 @@ final class BudgetLinesTest extends ApiTestCase
     }
 
     #[Test]
-    public function anyLineHoldsTheEventsCurrencyUntilTheLastIsErased(): void
+    public function anyLineOnTheBudgetHoldsTheEventsCurrency(): void
     {
-        $line = $this->add([...self::CATERING, 'rate' => '0']);
+        $this->add([...self::CATERING, 'rate' => '0']);
 
         self::assertSame(409, $this->changeCurrency('EUR'));
         self::assertSame(ErrorCode::EventCurrencyInUse->type(), $this->last()['type'] ?? null);
         self::assertSame('GBP', $this->as($this->owner, 'GET', $this->lines())['currency'] ?? null);
+    }
 
+    #[Test]
+    public function withOnlyRemovedLinesTheCurrencyChangesAtOnce(): void
+    {
+        $line = $this->add(self::CATERING);
         $this->as($this->owner, 'DELETE', $this->lines($line['id']));
-        self::assertSame(409, $this->changeCurrency('EUR'));
 
-        self::mockTime(new DateTimeImmutable('2027-03-02T10:00:00Z'));
-        self::service(BudgetEditor::class)->eraseLapsed();
         self::assertSame(200, $this->changeCurrency('EUR'));
+        self::assertSame('EUR', $this->as($this->owner, 'GET', $this->lines())['currency'] ?? null);
+    }
+
+    #[Test]
+    public function aLineRemovedBeforeACurrencyChangeIsNotPutBackEvenOnceTheCurrencyIsBack(): void
+    {
+        $before = $this->add(self::CATERING);
+        $this->as($this->owner, 'DELETE', $this->lines($before['id']));
+        $this->changeCurrency('EUR');
+        $after = $this->add([...self::CATERING, 'currency' => 'EUR']);
+        $this->as($this->owner, 'DELETE', $this->lines($after['id']));
+        self::assertSame(200, $this->changeCurrency('GBP'));
+
+        $this->as($this->owner, 'DELETE', $this->removal($before['id']));
+
+        self::assertSame(410, $this->statusCode());
+        self::assertSame(ErrorCode::BudgetLineCurrencyChanged->type(), $this->last()['type'] ?? null);
+        self::assertSame([], $this->budget());
+
+        $this->as($this->owner, 'DELETE', $this->removal($after['id']));
+        self::assertSame(410, $this->statusCode());
+
+        $kept = $this->add(self::CATERING);
+        $this->as($this->owner, 'DELETE', $this->lines($kept['id']));
+        $this->as($this->owner, 'DELETE', $this->removal($kept['id']));
+        self::assertSame(200, $this->statusCode());
     }
 
     #[Test]

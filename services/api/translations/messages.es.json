@@ -272,6 +272,7 @@
     "validation.guest_need_other_too_long": "Acórtelo a {otherMax} caracteres como máximo.",
     "validation.guest_need_note_too_long": "Acorte la nota a {noteMax} caracteres como máximo.",
     "event.currency_in_use": "La moneda no puede cambiar una vez que hay importes registrados en este evento.",
+    "budget.currency_changed": "La moneda del evento ha cambiado desde que se quitó este coste.",
     "event.state_invalid": "El estado actual de este evento no lo permite.",
     "event.concluded": "Este evento ya ha terminado, así que no se puede publicar. Cambie antes sus fechas.",
     "event.host_required": "Indique los anfitriones antes de invitar a nadie.",

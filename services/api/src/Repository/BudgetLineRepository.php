@@ -57,10 +57,19 @@ final class BudgetLineRepository extends ServiceEntityRepository implements Even
         return $this->findBy(['event' => $event, 'removedAt' => null], ['id' => 'ASC']);
     }
 
-    /** A removed line waiting for its Undo counts, since putting it back brings its price in the event's currency. */
+    /** A removed line counts in no figure, so it does not hold the event's currency (sc-85, decided 19 Nov, #72668). */
     public function anyOnEvent(Event $event): bool
     {
-        return null !== $this->findOneBy(['event' => $event]);
+        return null !== $this->findOneBy(['event' => $event, 'removedAt' => null]);
+    }
+
+    /** Their prices are in the currency the event had, so their Undo is refused from now on. */
+    public function markRemovedPastCurrency(Event $event): void
+    {
+        $this->getEntityManager()
+            ->createQuery('UPDATE App\\Entity\\BudgetLine b SET b.currencyChanged = true WHERE b.event = :event AND b.removedAt IS NOT NULL')
+            ->setParameter('event', $event->getId(), 'uuid')
+            ->execute();
     }
 
     public function findStaffLine(Event $event): ?BudgetLine

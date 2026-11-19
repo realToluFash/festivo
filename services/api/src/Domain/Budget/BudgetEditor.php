@@ -11,6 +11,7 @@ use App\Entity\Event;
 use App\Entity\User;
 use App\Enum\Actor;
 use App\Enum\CostBasis;
+use App\Enum\ErrorCode;
 use App\Http\Exception\ApiException;
 use App\Repository\BudgetLineRepository;
 use DateInterval;
@@ -95,11 +96,15 @@ final readonly class BudgetEditor
         $this->budgetPublisher->publish($event);
     }
 
-    /** The same line in its place, for Undo: refused 404 once erased, and as a second staff-time line when the budget has one again. */
+    /** The same line in its place, for Undo: refused 404 once erased, 410 once the event's currency changed, and as a second staff-time line when the budget has one again. */
     public function putBack(Event $event, string $lineId, User $by): BudgetLine
     {
         $line = $this->stored($event, function () use ($event, $lineId, $by): BudgetLine {
             $line = $this->budgetLineRepository->findRemovedInEvent($event, $lineId) ?? throw ApiException::notFound('access.not_found');
+
+            if ($line->isCurrencyChanged()) {
+                throw new ApiException(ErrorCode::BudgetLineCurrencyChanged, 'budget.currency_changed');
+            }
 
             if (CostBasis::PerStaffHour === $line->getBasis() && null !== $this->budgetLineRepository->findStaffLine($event)) {
                 throw ApiException::validation([$this->lineRules->staffLineTaken()]);

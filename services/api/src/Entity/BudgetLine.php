@@ -54,6 +54,10 @@ class BudgetLine
     #[ORM\Column(type: Types::DATETIME_IMMUTABLE, nullable: true)]
     private ?DateTimeImmutable $removedAt = null;
 
+    /** Removed before the event's currency changed: its price is in the old currency, so Undo can no longer put it back (sc-85, decided 19 Nov, #72668). */
+    #[ORM\Column(options: ['default' => false])]
+    private bool $currencyChanged = false;
+
     public function __construct(Event $event, string $label, CostCategory $category, CostBasis $basis, ?int $priceMinor, ?string $note)
     {
         $this->id = Uuid::v7();
@@ -143,5 +147,10 @@ class BudgetLine
     public function putBack(): void
     {
         $this->removedAt = null;
+    }
+
+    public function isCurrencyChanged(): bool
+    {
+        return $this->currencyChanged;
     }
 }

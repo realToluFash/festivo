@@ -87,8 +87,12 @@ final readonly class EventEditor
             ], $event->getCurrency(), EventVenue::of($event));
             $wasClosed = ReplyDeadline::of($event)?->passedAt($this->clock->now()) ?? false;
 
-            if ($checked['currency'] !== $event->getCurrency() && $this->eventAmounts->anyRecordedFor($event)) {
-                throw new ApiException(ErrorCode::EventCurrencyInUse, 'event.currency_in_use');
+            if ($checked['currency'] !== $event->getCurrency()) {
+                if ($this->eventAmounts->anyRecordedFor($event)) {
+                    throw new ApiException(ErrorCode::EventCurrencyInUse, 'event.currency_in_use');
+                }
+
+                $this->eventAmounts->currencyChanged($event);
             }
 
             $event->setName($checked['name']);

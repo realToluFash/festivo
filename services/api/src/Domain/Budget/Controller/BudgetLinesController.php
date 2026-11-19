@@ -80,7 +80,7 @@ final readonly class BudgetLinesController
         return new Response(null, Response::HTTP_NO_CONTENT);
     }
 
-    /** Undo: the removed line back as it was. 404 once erased, as for a line never on this event. */
+    /** Undo: the removed line back as it was. 404 once erased, as for a line never on this event; 410 once the event's currency changed. */
     #[Route('/api/events/{eventId}/budget/lines/{lineId}/removal', name: 'budget_lines_put_back', methods: ['DELETE'])]
     #[InEvent(Permission::BudgetManage)]
     public function putBack(string $eventId, string $lineId): JsonResponse

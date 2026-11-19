@@ -14,4 +14,7 @@ interface EventAmountsInterface
     public const string TAG = 'app.event_amounts';
 
     public function anyRecordedFor(Event $event): bool;
+
+    /** Called in the transaction that changes the event's currency, once anyRecordedFor has let it. */
+    public function currencyChanged(Event $event): void;
 }
