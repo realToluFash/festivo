@@ -5523,6 +5523,7 @@
       "markupNegative": "A markup cannot be below {{min}}. To sell below cost, enter the price instead.",
       "markupNumber": "Enter the markup as a number, like {{example}}.",
       "markupDecimals_one": "Enter a markup with at most {{places}} decimal place.",
+      "markupDecimals_many": "Enter a markup with at most {{places}} decimal places.",
       "markupDecimals_other": "Enter a markup with at most {{places}} decimal places.",
       "markupHigh": "Enter a markup of {{max}} or less."
     }

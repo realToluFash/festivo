@@ -269,7 +269,7 @@
     "validation.what_if_below_zero": "Cela ferait passer {change} sous 0. L’événement en compte actuellement {count, number, ::group-auto}.",
     "validation.budget_markup_negative": "A markup cannot be below {min}. To sell below cost, enter the price instead.",
     "validation.budget_markup_invalid": "Enter the markup as a number, like {example}.",
-    "validation.budget_markup_too_many_decimals": "Enter a markup with at most {places, plural, one {# decimal place} other {# decimal places}}.",
+    "validation.budget_markup_too_many_decimals": "Enter a markup with at most {places, plural, one {{places, number, ::group-auto} decimal place} other {{places, number, ::group-auto} decimal places}}.",
     "validation.budget_markup_too_high": "Enter a markup of {max} or less.",
     "validation.budget_markup_with_price": "Enter a markup or a price, not both.",
     "validation.budget_client_price_invalid": "Enter a price of {min} or more, in numbers only.",
