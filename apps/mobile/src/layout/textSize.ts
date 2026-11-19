@@ -58,6 +58,16 @@ export function capUnderTitle(title: number, size: number, own?: number): number
   return Math.max(1, Math.min(own ?? Infinity, title / size));
 }
 
+/** Where a label starts before its words are fitted: `size × scale`, no larger than `cap`, never under `size`. */
+export function labelStart(size: number, scale: number, cap: number): number {
+  return size * capUnderTitle(cap, size, scale);
+}
+
+/** The line under a title starts no larger than the title draws, so a stepped-down title never has a larger line under it. */
+export function lineStart(line: number, scale: number, cap: number, title: number): number {
+  return labelStart(line, scale, Math.min(cap, title));
+}
+
 /** The most a disc's initials of `size` may grow: to half the disc's side, which keeps its size at every text size (sc-37693). */
 export function capInDisc(side: number, size: number): number {
   return Math.max(1, (side * 0.5) / size);

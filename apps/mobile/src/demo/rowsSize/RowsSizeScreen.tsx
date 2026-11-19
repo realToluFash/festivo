@@ -12,7 +12,7 @@ import { Caps, Tile } from '../../components/SettingsParts.tsx';
 import { Text } from '../../components/Text.tsx';
 import { MeasuredWords } from '../../components/Title.tsx';
 import { useShellLayout } from '../../components/settingsShell.ts';
-import { piecesIn } from '../../layout/textSize.ts';
+import { labelStart, lineStart, piecesIn } from '../../layout/textSize.ts';
 import { DemoOnly } from '../../steps/Lines.tsx';
 import { defaultScheme, tokens } from '../../theme/tokens.ts';
 import { Choices } from '../focusedHeader/FocusedHeaderScreen.tsx';
@@ -24,8 +24,6 @@ import {
   ROWS_NAMES,
   ROWS_SIZES,
   labelSize,
-  labelStart,
-  lineStart,
   rowType,
   rowsScale,
   settingsCap,

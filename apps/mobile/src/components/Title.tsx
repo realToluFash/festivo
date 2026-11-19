@@ -9,9 +9,9 @@ import {
 
 import { type WeightName } from '../theme/fonts.ts';
 import {
-  capUnderTitle,
   type DrawnTitle,
   fitWidest,
+  lineStart,
   piecesIn,
   reportTitle,
   titleCapKey,
@@ -192,12 +192,7 @@ export function CappedWholeWords({
   const { fontScale } = useWindowDimensions();
   const cap = useContext(TitleCap);
 
-  return (
-    <WholeWords
-      {...props}
-      start={props.size * capUnderTitle(Math.min(cap ?? Infinity, under), props.size, fontScale)}
-    />
-  );
+  return <WholeWords {...props} start={lineStart(props.size, fontScale, cap ?? Infinity, under)} />;
 }
 
 /** Grows less than other text at the accessibility sizes, and steps down rather than break a word (sc-13496). */

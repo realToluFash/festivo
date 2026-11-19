@@ -10,6 +10,8 @@ import {
   besideGlyph,
   fitWidest,
   grownPad,
+  labelStart,
+  lineStart,
   LABEL_LINE,
   frameTitleSize,
   nameLines,
@@ -163,6 +165,31 @@ describe('piecesIn', () => {
       'e-',
       'mail',
     ]);
+  });
+});
+
+describe('labelStart', () => {
+  it('grows a title to the cap and no further', () => {
+    expect(labelStart(16, 3.571, 43)).toBe(43);
+  });
+
+  it('keeps main’s size below the cap', () => {
+    expect(labelStart(16, 1, 34)).toBe(16);
+    expect(labelStart(16, 2.143, 43)).toBeCloseTo(34.29, 2);
+  });
+});
+
+describe('lineStart', () => {
+  it('starts the line no larger than its title draws', () => {
+    expect(lineStart(13.5, 3.571, 43, 35)).toBe(35);
+  });
+
+  it('starts the line at the cap when its title draws at the cap', () => {
+    expect(lineStart(13.5, 3.571, 43, 43)).toBe(43);
+  });
+
+  it('keeps main’s line at the default size', () => {
+    expect(lineStart(13.5, 1, 34, 16)).toBe(13.5);
   });
 });
 
