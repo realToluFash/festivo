@@ -3704,7 +3704,7 @@
     "group": "Groupe",
     "noGroup": "Sans groupe",
     "newGroup": "Nouveau groupe",
-    "placeholder": "Par exemple, Côté mariée ou Travail",
+    "placeholder": "Ex. : Famille ou Travail",
     "createGroup": "Créer le groupe",
     "createNamed": "Créer « {{name}} »",
     "chooserHint": "Choisissez un groupe ou saisissez un nouveau nom.",
