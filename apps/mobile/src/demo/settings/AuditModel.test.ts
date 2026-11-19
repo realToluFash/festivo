@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
 
+import en from '../../i18n/locales/en.json';
+import es from '../../i18n/locales/es.json';
+import fr from '../../i18n/locales/fr.json';
+import pt from '../../i18n/locales/pt.json';
+
 import {
   auditStart,
   auditStateOf,
@@ -18,7 +23,7 @@ import {
   SAMPLE_RANGE,
 } from './AuditModel.ts';
 import { guestOf, guestsStateOf } from '../guests/GuestsModel.ts';
-import { AUDIT_TYPES, type AuditType, ENTRIES } from './AuditSample.ts';
+import { AUDIT_TYPES, type AuditType, ENTRIES, TYPE_WORDS } from './AuditSample.ts';
 import { DATA_BOARDS } from './DataBoards.ts';
 import { dataHref } from './DataModel.ts';
 import { dataSayIn } from './DataSample.ts';
@@ -118,6 +123,17 @@ describe('the audit log’s states (sc-611)', () => {
     expect(auditStart('filter_person').menu).toBe('person');
     expect(auditStart('filter_type').menu).toBe('type');
     expect(auditStart('filter_event').menu).toBe('event');
+  });
+
+  it('names the six event sections in every language as the event’s own tabs do (eventNav)', () => {
+    for (const [lang, catalogue] of Object.entries({ en, es, fr, pt })) {
+      const nav = catalogue.eventNav;
+      expect(
+        (['Guests', 'Menu', 'Seating', 'Schedule', 'Staff', 'Budget'] as const).map(
+          (type) => TYPE_WORDS[lang as keyof typeof TYPE_WORDS][type],
+        ),
+      ).toEqual([nav.guests, nav.menu, nav.seating, nav.schedule, nav.staff, nav.budget]);
+    }
   });
 
   it('filters to Sign-in and security’s three, with Clear filters', () => {

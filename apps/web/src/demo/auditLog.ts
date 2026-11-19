@@ -6,6 +6,10 @@ import { VIEWERS } from './settings.ts';
 import { areaPath } from './handoff.ts';
 import { guestsAt } from './guests.ts';
 import { LIBRARY_PATH } from './menuLibrary.ts';
+import en from '../i18n/locales/en.json';
+import es from '../i18n/locales/es.json';
+import fr from '../i18n/locales/fr.json';
+import pt from '../i18n/locales/pt.json';
 
 /** sc-611's six with sc-71986's six between them, in the AC's order. */
 export const TYPES = [
@@ -28,18 +32,28 @@ export type EntryType = (typeof TYPES)[number];
 export const TYPE_LANGS = ['en', 'es', 'fr', 'pt'] as const;
 export type TypeLang = (typeof TYPE_LANGS)[number];
 
-/** The six new types read as the event's sections do (eventNav); sc-611's six outside English are proposals for the linguist. */
+const SECTIONS = {
+  Guests: 'guests',
+  Menu: 'menu',
+  Seating: 'seating',
+  Schedule: 'schedule',
+  Staff: 'staff',
+  Budget: 'budget',
+} as const satisfies Partial<Record<EntryType, keyof typeof en.eventNav>>;
+
+const sectionWords = (nav: Record<(typeof SECTIONS)[keyof typeof SECTIONS], string>) =>
+  Object.fromEntries(Object.entries(SECTIONS).map(([type, key]) => [type, nav[key]])) as Record<
+    keyof typeof SECTIONS,
+    string
+  >;
+
+/** The six new types are the event's sections' own words (eventNav); sc-611's six outside English are proposals for the linguist. */
 export const TYPE_WORDS: Record<TypeLang, Record<EntryType, string>> = {
   en: Object.fromEntries(TYPES.map((type) => [type, type])) as Record<EntryType, string>,
   es: {
     Events: 'Eventos',
     'Event access': 'Acceso a eventos',
-    Guests: 'Invitados',
-    Menu: 'Menú',
-    Seating: 'Mesas',
-    Schedule: 'Programa',
-    Staff: 'Personal',
-    Budget: 'Presupuesto',
+    ...sectionWords(es.eventNav),
     'Members and invitations': 'Miembros e invitaciones',
     'Sign-in and security': 'Inicio de sesión y seguridad',
     Organisation: 'Organización',
@@ -48,12 +62,7 @@ export const TYPE_WORDS: Record<TypeLang, Record<EntryType, string>> = {
   fr: {
     Events: 'Événements',
     'Event access': 'Accès aux événements',
-    Guests: 'Invités',
-    Menu: 'Menu',
-    Seating: 'Plan de table',
-    Schedule: 'Programme',
-    Staff: 'Équipe',
-    Budget: 'Budget',
+    ...sectionWords(fr.eventNav),
     'Members and invitations': 'Membres et invitations',
     'Sign-in and security': 'Connexion et sécurité',
     Organisation: 'Organisation',
@@ -62,12 +71,7 @@ export const TYPE_WORDS: Record<TypeLang, Record<EntryType, string>> = {
   pt: {
     Events: 'Eventos',
     'Event access': 'Acesso a eventos',
-    Guests: 'Convidados',
-    Menu: 'Menu',
-    Seating: 'Mesas',
-    Schedule: 'Programa',
-    Staff: 'Equipa',
-    Budget: 'Orçamento',
+    ...sectionWords(pt.eventNav),
     'Members and invitations': 'Membros e convites',
     'Sign-in and security': 'Início de sessão e segurança',
     Organisation: 'Organização',

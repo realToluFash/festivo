@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
 
+import en from '../i18n/locales/en.json';
+import es from '../i18n/locales/es.json';
+import fr from '../i18n/locales/fr.json';
+import pt from '../i18n/locales/pt.json';
+
 import {
   AUDIT_STATES,
   TYPES,
@@ -129,11 +134,15 @@ describe('Audit log (sc-611)', () => {
       'Organisation',
       'Audit log',
     ]);
-    expect([TYPE_WORDS.fr.Seating, TYPE_WORDS.fr.Staff, TYPE_WORDS.es.Seating]).toEqual([
-      'Plan de table',
-      'Équipe',
-      'Mesas',
-    ]);
+    for (const [lang, nav] of Object.entries({ en, es, fr, pt }).map(
+      ([lang, catalogue]) => [lang as keyof typeof TYPE_WORDS, catalogue.eventNav] as const,
+    )) {
+      expect(
+        (['Guests', 'Menu', 'Seating', 'Schedule', 'Staff', 'Budget'] as const).map(
+          (type) => TYPE_WORDS[lang][type],
+        ),
+      ).toEqual([nav.guests, nav.menu, nav.seating, nav.schedule, nav.staff, nav.budget]);
+    }
     expect(auditStart('filter_type_fr')).toMatchObject({ menu: 'type', lang: 'fr' });
   });
 
