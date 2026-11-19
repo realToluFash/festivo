@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { RouterProvider, createMemoryRouter } from 'react-router';
 
@@ -435,9 +435,10 @@ describe('The Roster on the Staff page (sc-3906)', () => {
     expect(rows[0]?.querySelectorAll('td')[1]?.textContent).toBe('Grill Lead');
     expect(rows[1]?.querySelectorAll('td')[1]?.textContent).toBe('Section A · 6 tables');
     expect(rows[2]?.querySelectorAll('td')[1]?.textContent).toBe('No station yet');
-    expect(rows[3]?.querySelectorAll('td')[1]?.textContent).toBe(
-      'Section D was removed from the seating plan.',
-    );
+    const gone = rows[3]?.querySelectorAll('td')[1] as HTMLElement;
+    expect(within(gone).getByText('No station')).toBeTruthy();
+    expect(within(gone).getByText('Section D was removed from the seating plan.')).toBeTruthy();
+    expect(gone.querySelector('.rs-gone-why svg')).not.toBeNull();
   });
 
   it("says in the details that a person's section was removed from the seating plan (sc-3910)", async () => {
@@ -454,7 +455,9 @@ describe('The Roster on the Staff page (sc-3906)', () => {
 
     fireEvent.click(await screen.findByRole('button', { name: 'Grace Udo' }));
     const select = screen.getByRole('combobox', { name: 'Change station, Grace Udo' });
-    expect(select.parentElement?.textContent).toContain(
+    expect(select.parentElement?.querySelector('[aria-hidden]')?.textContent).toBe('No station');
+    expect(select.getAttribute('aria-describedby')).toBe('rs-gone');
+    expect(document.getElementById('rs-gone')?.textContent).toBe(
       'Section D was removed from the seating plan.',
     );
   });

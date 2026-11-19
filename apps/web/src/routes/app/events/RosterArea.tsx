@@ -701,8 +701,8 @@ function PanelTop({ title, onClose }: { title: string; onClose: () => void }) {
 
 function StationWords({ entry }: { entry: StaffEntry }) {
   const { t } = useTranslation();
-  if (entry.stationRemoved != null)
-    return <>{t('stations.removedTitle', { name: entry.stationRemoved })}</>;
+  if (entry.station == null && entry.stationRemoved != null)
+    return <Gone section={entry.stationRemoved} />;
   if (entry.station == null) return <>{t('roster.noStation')}</>;
 
   return (
@@ -715,6 +715,28 @@ function StationWords({ entry }: { entry: StaffEntry }) {
         </>
       )}
     </>
+  );
+}
+
+function Gone({ section }: { section: string }) {
+  const { t } = useTranslation();
+
+  return (
+    <span className="rs-gone">
+      <span className="rs-gone-now">{t('stations.noStation')}</span>
+      <GoneWhy section={section} />
+    </span>
+  );
+}
+
+function GoneWhy({ section, id }: { section: string; id?: string }) {
+  const { t } = useTranslation();
+
+  return (
+    <span className="rs-gone-why" id={id}>
+      <Glyph name="alert" size={14} weight={2.4} />
+      {t('stations.removedTitle', { name: section })}
+    </span>
   );
 }
 
@@ -780,12 +802,14 @@ function Details({
                   label={t('stations.stationChange', { name: entry.fullName })}
                   value={entry.station?.id ?? ''}
                   shown={
-                    entry.stationRemoved != null
-                      ? t('stations.removedTitle', { name: entry.stationRemoved })
-                      : entry.station == null
-                        ? t('roster.noStation')
-                        : stationLabel(entry.station, t)
+                    entry.station != null
+                      ? stationLabel(entry.station, t)
+                      : entry.stationRemoved != null
+                        ? t('stations.noStation')
+                        : t('roster.noStation')
                   }
+                  {...(entry.station == null &&
+                    entry.stationRemoved != null && { describedBy: 'rs-gone' })}
                   dense
                   onChange={onStation}
                   options={[{ value: '', label: t('roster.noStation') }]}
@@ -793,6 +817,9 @@ function Details({
                 />
               ) : (
                 <StationWords entry={entry} />
+              )}
+              {manage && entry.station == null && entry.stationRemoved != null && (
+                <GoneWhy section={entry.stationRemoved} id="rs-gone" />
               )}
             </dd>
           </div>
