@@ -1,0 +1,9 @@
+# sc-68441: at the largest sizes the organisation pill opens the switcher.
+appId: host.exp.Exponent
+---
+- setOrientation: ${ORIENT}
+- openLink: ${METRO_URL}/--/events
+- waitForAnimationToEnd: { timeout: 10000 }
+- tapOn: { text: '.*QA Organisation.*', index: 0 }
+- waitForAnimationToEnd
+- takeScreenshot: pill-switcher
