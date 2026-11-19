@@ -6,4 +6,5 @@ appId: host.exp.Exponent
 - tapOn: { id: 'frame.back' }
 - waitForAnimationToEnd: { timeout: 8000 }
 - assertNotVisible: { id: 'guests.export' }
+- extendedWaitUntil: { visible: { id: 'overview.guests' }, timeout: 15000 }
 - takeScreenshot: guests-back-tapped
