@@ -26,7 +26,7 @@ import {
   LINK_WORDS,
   NAME_MAX,
   RW,
-  STATIONS,
+  STATION_GROUPS,
   detailsNext,
   draftOf,
   entryFrom,
@@ -237,7 +237,11 @@ function RosterView({
     const person = shown(id);
     setEntries(
       entries.map((one) =>
-        one.id === id ? { ...one, station: station === '' ? null : station } : one,
+        one.id !== id
+          ? one
+          : station === ''
+            ? { ...one, station: null }
+            : withoutGone({ ...one, station }),
       ),
     );
     say([
@@ -357,7 +361,11 @@ function RosterView({
                             {one.job ?? RW.noJob}
                           </td>
                           <td className={one.station == null ? 'rs-quiet' : undefined}>
-                            {one.station ?? RW.noStation}
+                            {one.station == null && one.gone != null ? (
+                              <Gone section={one.gone} />
+                            ) : (
+                              (one.station ?? RW.noStation)
+                            )}
                           </td>
                           <td className={one.shift == null ? 'rs-quiet' : 'rs-shift'}>
                             {one.shift ?? RW.noShift}
@@ -453,6 +461,29 @@ export function LinkWord({ state }: { state: LinkState }) {
   );
 }
 
+function withoutGone({ gone: _gone, ...one }: Entry): Entry {
+  return one;
+}
+
+/** sc-3910: a person whose section the seating plan removed reads No station, and why, with the alert mark beside the words. */
+function Gone({ section }: { section: string }) {
+  return (
+    <span className="rs-gone">
+      <span className="rs-gone-now">{RW.noStationNow}</span>
+      <GoneWhy section={section} />
+    </span>
+  );
+}
+
+function GoneWhy({ section, id }: { section: string; id?: string }) {
+  return (
+    <span className="rs-gone-why" id={id}>
+      <Glyph name="alert" size={14} weight={2.4} />
+      {RW.sectionGone(section)}
+    </span>
+  );
+}
+
 function Details({
   entry,
   manage,
@@ -497,16 +528,23 @@ function Details({
                   id="rs-station"
                   label={`${RW.stationChange}, ${entry.name}`}
                   value={entry.station ?? ''}
-                  shown={entry.station ?? RW.noStation}
+                  shown={entry.station ?? (entry.gone != null ? RW.noStationNow : RW.noStation)}
+                  {...(entry.station == null && entry.gone != null && { describedBy: 'rs-gone' })}
                   dense
                   onChange={onStation}
-                  options={[
-                    { value: '', label: RW.noStation },
-                    ...STATIONS.map((one) => ({ value: one, label: one })),
-                  ]}
+                  options={[{ value: '', label: RW.noStation }]}
+                  groups={STATION_GROUPS.map((group) => ({
+                    label: group.label,
+                    options: group.stations.map((one) => ({ value: one, label: one })),
+                  }))}
                 />
+              ) : entry.station == null && entry.gone != null ? (
+                <Gone section={entry.gone} />
               ) : (
                 (entry.station ?? RW.noStation)
+              )}
+              {manage && entry.station == null && entry.gone != null && (
+                <GoneWhy section={entry.gone} id="rs-gone" />
               )}
             </dd>
           </div>

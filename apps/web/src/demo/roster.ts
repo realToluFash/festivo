@@ -16,6 +16,8 @@ export interface Entry {
   name: string;
   job: string | null;
   station: string | null;
+  /** The section the seating plan removed from under them, until they are given a station (sc-3910). */
+  gone?: string;
   shift: string | null;
   more: readonly string[];
   mobile: string | null;
@@ -97,6 +99,8 @@ export const RW = {
   linksThere: '[Copy link, Mark as sent and Replace link are on Roster links.]',
   lock: 'You can see the roster. Changing it needs permission to manage staff.',
   stationChange: 'Change station',
+  noStationNow: 'No station',
+  sectionGone: (section: string) => `${section} was removed from the seating plan.`,
 };
 
 export const LINK_WORDS: Record<LinkState, string> = {
@@ -118,19 +122,11 @@ export const JOBS: readonly { job: string; station: string | null; shifts: reado
   { job: 'Door', station: 'Door', shifts: ['16:30 to 21:00'] },
 ];
 
-export const STATIONS: readonly string[] = [
-  'Pass',
-  'Door',
-  'Bar',
-  'Kitchen',
-  'Floor',
-  'Grill',
-  'Pastry',
-  'Section A',
-  'Section B',
-  'Section C',
+/** sc-3910: the roster's Station picker is Stations' grouped list, Places then Seating sections. */
+export const STATION_GROUPS: readonly { label: string; stations: readonly string[] }[] = [
+  { label: 'Places', stations: ['Pass', 'Door', 'Bar', 'Kitchen', 'Floor', 'Grill', 'Pastry'] },
+  { label: 'Seating sections', stations: ['Section A', 'Section B', 'Section C'] },
 ];
-
 /** Members of the organisation the roster can link to by mobile number or email. */
 export const MEMBERS: readonly { name: string; mobile: string; email: string }[] = [
   { name: 'Amara Obi', mobile: '+2348035550142', email: 'amara.obi@ireevents.com' },
@@ -589,6 +585,27 @@ const STATES = {
       panel: { kind: 'edit', id: 'kunle' },
       draft: { ...draftOf(byId('kunle')), number: '', email: '' },
     }),
+  sectionRemoved: () =>
+    start({
+      name: 'A section removed from the seating plan',
+      note: 'Section D’s people have no station now; their rows and details say why.',
+      entries: [
+        ...sample().map((one) => (one.id === 'emeka' ? { ...one, gone: 'Section D' } : one)),
+        {
+          ...entry(
+            'chidi',
+            'Chidi Okafor',
+            'Waiter',
+            null,
+            '17:00 to 00:00',
+            '+2348031110014',
+            'sent',
+          ),
+          gone: 'Section D',
+        },
+      ],
+      panel: { kind: 'details', id: 'emeka' },
+    }),
   readOnly: () =>
     start({
       name: 'Without staff.manage',
@@ -648,6 +665,7 @@ export const ROSTER_PAGES: readonly { name: string; states: readonly DemoLink[] 
         'empty',
         'details',
         'detailsShifts',
+        'sectionRemoved',
         'readOnly',
         'finishedEvent',
         'finishedErased',

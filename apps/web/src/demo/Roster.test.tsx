@@ -228,6 +228,38 @@ describe('/demo/events/evt-wed-4/staff/roster (sc-3906)', () => {
     ]);
   });
 
+  it('says beside a name that its section was removed from the seating plan (sc-3910)', async () => {
+    await open('sectionRemoved');
+    const table = screen.getByRole('table', { name: 'Roster' });
+    const chidi = within(table).getByRole('rowheader', { name: 'Chidi Okafor' }).closest('tr');
+    expect(within(chidi as HTMLElement).getByText('No station')).toBeTruthy();
+    expect(within(table).getAllByText('Section D was removed from the seating plan.')).toHaveLength(
+      2,
+    );
+    const picker = screen.getByLabelText('Change station, Emeka Obi');
+    expect(picker.getAttribute('aria-describedby')).toBe('rs-gone');
+    fireEvent.change(picker, { target: { value: 'Section B' } });
+    const emeka = within(table).getByRole('rowheader', { name: 'Emeka Obi' }).closest('tr');
+    expect(within(emeka as HTMLElement).getByText('Section B')).toBeTruthy();
+    expect(within(table).getAllByText('Section D was removed from the seating plan.')).toHaveLength(
+      1,
+    );
+  });
+
+  it('groups the Station picker as Stations does, Places then Seating sections (sc-3910)', async () => {
+    await open('details');
+    const picker = screen.getByLabelText('Change station, Amina Yusuf');
+    const groups = [...picker.querySelectorAll('optgroup')].map((group) => [
+      group.label,
+      [...group.querySelectorAll('option')].map((one) => one.textContent),
+    ]);
+    expect(groups).toEqual([
+      ['Places', ['Pass', 'Door', 'Bar', 'Kitchen', 'Floor', 'Grill', 'Pastry']],
+      ['Seating sections', ['Section A', 'Section B', 'Section C']],
+    ]);
+    expect(picker.querySelector(':scope > option')?.textContent).toBe('No station yet');
+  });
+
   it('keeps the card heading 12rem wide below 720 px, as the product does', () => {
     expect(
       cssRule('.rs .sn-card-names', ROSTER_CSS.slice(ROSTER_CSS.indexOf('(width <= 720px)'))),
