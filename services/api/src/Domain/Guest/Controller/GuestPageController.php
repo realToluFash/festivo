@@ -13,6 +13,9 @@ use App\Domain\Guest\Http\GuestSerialiser;
 use App\Domain\Guest\Link\InvitationLinks;
 use App\Domain\Guest\Model\GuestNeeds;
 use App\Domain\Guest\Reply\GuestAnswers;
+use App\Domain\Menu\Pick\GuestMenu;
+use App\Domain\Menu\Pick\MealPicks;
+use App\Domain\Menu\Pick\ServedMeals;
 use App\Domain\RunOfShow\GuestProgramme;
 use App\Domain\Seating\SharedSeats;
 use App\Entity\Guest;
@@ -53,6 +56,9 @@ final readonly class GuestPageController
         private GuestProgramme $guestProgramme,
         private SharedSeats $sharedSeats,
         private SubscriberTokenIssuer $subscriberTokenIssuer,
+        private MealPicks $mealPicks,
+        private GuestMenu $guestMenu,
+        private ServedMeals $servedMeals,
     ) {
     }
 
@@ -122,6 +128,19 @@ final readonly class GuestPageController
         [$own, $companions, $unnamed] = $this->guestRules->kitchen($body['needs'] ?? null, $body['companions'] ?? [], $body['unnamed'] ?? []);
 
         $this->guestAnswers->kitchen($guest, $own, $companions, $unnamed);
+
+        return $this->answered($guest);
+    }
+
+    /** A meal for each person coming (sc-3907): the guest's and each named companion's answers, sent after the kitchen note so its allergens count. Refused 422 by MealPicks's rules with nothing saved, and 409 `meal_picks_closed` for a changed answer on a closed course, once the open ones are saved. Answers the page as it now stands. */
+    #[Route('/api/guest-links/meals', name: 'guest_links_meals', methods: ['POST'])]
+    #[PublicAccess]
+    public function meals(Request $request): JsonResponse
+    {
+        $body = Input::body($request, Type\shape(['token' => Type\string(), 'picks' => MealPicks::sent()]));
+        $guest = $this->invitationLinks->guestFor($body['token']) ?? throw ApiException::notFound('access.not_found');
+
+        $this->mealPicks->send($guest, $body['picks']);
 
         return $this->answered($guest);
     }
@@ -212,6 +231,10 @@ final readonly class GuestPageController
             'answersClosedOn' => $this->guestAnswers->closedOn($guest),
             'calendarFeed' => $this->calendarFeed($guest),
             'programme' => $this->guestProgramme->of($event, $phase),
+            'meals' => [
+                'courses' => $this->guestMenu->menu($event),
+                'answers' => $this->servedMeals->answersOf([$guest, ...$named]),
+            ],
             // Absent, not null, before the tables are shared (sc-4022).
             ...null === $seating ? [] : ['seating' => $seating],
         ], headers: ['Cache-Control' => 'no-store']);

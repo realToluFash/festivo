@@ -352,6 +352,77 @@ export interface GuestPage {
   programme: GuestProgrammeItem[];
   /** Only while the hosts share the tables and this guest is Coming with a seat (sc-4022). */
   seating: GuestSeating | null;
+  /** The courses that ask guests anything, and each person's answers (sc-3907); no courses is no meal step. */
+  meals: GuestMeals;
+}
+
+/** As a guest is offered it (sc-3907): only Everyone variants, finished choices, and no costs. */
+export interface MealOption {
+  id: string;
+  name: string;
+  allergens: string[];
+}
+
+export interface MealChoice {
+  id: string;
+  question: string;
+  pick: number;
+  required: boolean;
+  options: MealOption[];
+}
+
+export interface MealVariant {
+  id: string;
+  name: string;
+  allergens: string[];
+  diets: string[];
+}
+
+export interface MealDish {
+  id: string;
+  name: string;
+  description: string | null;
+  /** Null is Allergens not stated, empty is none of the 14. A dish with variants takes each variant's. */
+  allergens: string[] | null;
+  diets: string[];
+  variants: MealVariant[];
+  choices: MealChoice[];
+}
+
+export interface MealCourse {
+  id: string;
+  name: string;
+  /** `same` is Everyone gets the same: its one dish asks its way or a choice. */
+  answer: 'choose' | 'same';
+  skippable: boolean;
+  picksClose: { at: string; source: string; closed: boolean };
+  dishes: MealDish[];
+}
+
+/** Not answered is no answer; `defaulted` is set only by sc-1362. */
+export type MealAnswerKind = 'chosen' | 'chefsChoice' | 'skipped' | 'needsHost' | 'defaulted';
+
+export interface MealAnswer {
+  course: string;
+  /** As served: a chosen pick holding an allergen recorded since is `needsHost`, and still names the pick. */
+  answer: MealAnswerKind;
+  dish: string | null;
+  variant: string | null;
+  options: string[];
+}
+
+export interface GuestMeals {
+  courses: MealCourse[];
+  answers: Record<string, MealAnswer[]>;
+}
+
+export interface MealPick {
+  person: string;
+  course: string;
+  answer: Exclude<MealAnswerKind, 'defaulted'>;
+  dish?: string | null;
+  variant?: string | null;
+  options?: string[];
 }
 
 /** A table by its name, a row by its label and the seat in it, a single seat by its name; each with its section's name. */

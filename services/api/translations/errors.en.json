@@ -48,6 +48,7 @@
     "choice_limit": "A dish can have at most 3 choices.",
     "choice_answered": "Guests have answered this choice.",
     "choice_option_picked": "Guests have picked this option.",
+    "meal_picks_closed": "Picks for this course have closed.",
     "replies_closed": "Answers have closed.",
     "replies_open": "Replies are still open.",
     "reply_is_theirs": "They replied themselves. Confirm to replace their reply.",
