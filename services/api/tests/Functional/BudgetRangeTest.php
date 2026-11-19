@@ -176,6 +176,22 @@ final class BudgetRangeTest extends ApiTestCase
     }
 
     #[Test]
+    public function aBudgetPastTheLargestIntIsReadExactly(): void
+    {
+        $this->eventId = $this->newEvent('KWD');
+        $this->live();
+        foreach (['Ada', 'Bisi', 'Chidi'] as $name) {
+            $this->answer($this->guest($name), 'coming');
+        }
+        foreach (Vec\range(1, 10) as $_) {
+            $this->add([...self::VENUE, 'amount' => '999999999999999.999', 'currency' => 'KWD']);
+        }
+
+        self::assertSame(['9999999999999999.990', '9999999999999999.990'], $this->range());
+        self::assertSame(['amount' => '3333333333333333.330', 'heads' => 3], $this->budget()['perHead']['potential'] ?? null);
+    }
+
+    #[Test]
     public function readingTheBudgetChangesNoLine(): void
     {
         $this->add(self::CATERING);
