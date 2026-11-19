@@ -7,6 +7,7 @@ namespace App\Tests\Functional;
 use App\Audit\Auditor;
 use App\Domain\Organisation\AuditLog\AuditExports;
 use App\Domain\Organisation\EmailDomains\ManagedAccounts;
+use App\Domain\Organisation\Export\PreparedFiles;
 use App\Domain\Organisation\Members\MembershipMachine;
 use App\Domain\Organisation\OrganisationFounder;
 use App\Domain\Organisation\Plan\PlanChanger;
@@ -37,11 +38,13 @@ use Psl\Json;
 use Psl\Str;
 use Psl\Type;
 use Psl\Vec;
+use Symfony\Component\Clock\Test\ClockSensitiveTrait;
 use Symfony\Component\Mime\Email;
 use Symfony\Component\Uid\Uuid;
 
 final class AuditLogTest extends ApiTestCase
 {
+    use ClockSensitiveTrait;
     use InvitesPeople;
     use OnboardsAccounts;
 
@@ -121,6 +124,18 @@ final class AuditLogTest extends ApiTestCase
         self::assertSame(['name' => 'Ada’s Wedding', 'eventId' => null, 'gone' => true], $removed['on']);
         self::assertSame(['kind' => 'person', 'name' => 'Julien Moreau', 'email' => 'julien@ire.events'], $removed['who']);
         self::assertSame('event_access', $removed['type']);
+    }
+
+    #[Test]
+    public function theDownloadIsNamedForTheOrganisationWithAnySlashOrQuoteTakenOut(): void
+    {
+        self::mockTime(new DateTimeImmutable('2026-10-19T10:00:00Z'));
+        [$owner, $organisation] = $this->enterprise('folake@ire.events', 'Ìrè / Events "Lagos"');
+        $this->signIn($owner);
+
+        $this->export($organisation, 'csv');
+
+        self::assertSame("attachment; filename=audit-log.csv; filename*=utf-8''%C3%8Cr%C3%A8%20-%20Events%20Lagos%20audit%20log%202026-10-19.csv", $this->client->getResponse()->headers->get('Content-Disposition'));
     }
 
     #[Test]
@@ -275,15 +290,17 @@ final class AuditLogTest extends ApiTestCase
     }
 
     #[Test]
-    public function aPreparedExportsMemoryDoesNotGrowWithItsRows(): void
+    public function aPreparedExportsMemoryToPrepareAndToDownloadDoesNotGrowWithItsRows(): void
     {
         [$owner, $organisation] = $this->enterprise('folake@ire.events', 'Ìrè Events');
         $this->bulk($organisation, $owner, 1_000, 'a long note ' . Str\repeat('x', 2_000));
-        $small = $this->preparedPeak($organisation, $owner);
+        [$small, $smallDownloaded] = $this->preparedPeak($organisation, $owner);
         $this->bulk($organisation, $owner, 14_000, 'a long note ' . Str\repeat('x', 2_000));
-        $large = $this->preparedPeak($organisation, $owner);
+        [$large, $largeDownloaded] = $this->preparedPeak($organisation, $owner);
 
         self::assertLessThan(4 * 1024 * 1024, $large - $small, 'a file some 30 MB larger, and no more than 4 MB more memory at the peak');
+        self::assertGreaterThan(25 * 1024 * 1024, $largeDownloaded['bytes'] - $smallDownloaded['bytes']);
+        self::assertLessThan(4 * 1024 * 1024, $largeDownloaded['peak'] - $smallDownloaded['peak'], 'and no more than 4 MB more to download it');
     }
 
     #[Test]
@@ -378,7 +395,8 @@ final class AuditLogTest extends ApiTestCase
             SQL, ['actor' => $by->getId()->toRfc4122(), 'label' => $by->getName(), 'organisation' => $organisation->getId()->toRfc4122(), 'count' => $count, 'note' => $note]);
     }
 
-    private function preparedPeak(Organisation $organisation, User $by): int
+    /** @return array{int, array{peak: int, bytes: int}} the memory to prepare the file, then to download it whole */
+    private function preparedPeak(Organisation $organisation, User $by): array
     {
         $entityManager = self::service(EntityManagerInterface::class);
         $organisation = $entityManager->find(Organisation::class, $organisation->getId()) ?? self::fail('gone');
@@ -395,7 +413,17 @@ final class AuditLogTest extends ApiTestCase
 
         self::assertSame(AuditExportStatus::Ready, $export->getStatus());
 
-        return $peak;
+        \gc_collect_cycles();
+        $before = \memory_get_usage();
+        \memory_reset_peak_usage();
+        $files = self::service(PreparedFiles::class);
+        $bytes = 0;
+
+        foreach ($files->chunks(self::service(AuditExports::class)->download($organisation, $export->getId()->toRfc4122(), $by)) as $chunk) {
+            $bytes += Str\Byte\length($chunk);
+        }
+
+        return [$peak, ['peak' => \memory_get_peak_usage() - $before, 'bytes' => $bytes]];
     }
 
     private function listedCount(Organisation $organisation): int

@@ -6,6 +6,7 @@ namespace App\Entity;
 
 use App\Doctrine\Traits\Timestampable;
 use App\Enum\AuditExportStatus;
+use DateInterval;
 use DateTimeImmutable;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
@@ -17,11 +18,9 @@ use Symfony\Component\Uid\Uuid;
 #[ORM\Table(name: 'audit_exports')]
 #[ORM\Index(name: 'idx_audit_export_organisation', columns: ['organisation_id', 'asked_at'])]
 #[ORM\Index(name: 'idx_audit_export_asked_by', columns: ['asked_by_id'])]
-class AuditExport
+class AuditExport implements PreparedFile
 {
     use Timestampable;
-
-    public const string LINK_LIFETIME = 'PT24H';
 
     #[ORM\Id]
     #[ORM\Column(type: 'uuid')]
@@ -88,6 +87,11 @@ class AuditExport
         return $this->askedBy;
     }
 
+    public function isAskedBy(User $user): bool
+    {
+        return $this->askedBy->getId()->equals($user->getId());
+    }
+
     public function getAskedAt(): DateTimeImmutable
     {
         return $this->askedAt;
@@ -119,6 +123,11 @@ class AuditExport
         return $this->status;
     }
 
+    public function isReady(): bool
+    {
+        return AuditExportStatus::Ready === $this->status;
+    }
+
     public function setStatus(AuditExportStatus $status): void
     {
         $this->status = $status;
@@ -142,5 +151,10 @@ class AuditExport
     public function setReadyAt(?DateTimeImmutable $readyAt): void
     {
         $this->readyAt = $readyAt;
+    }
+
+    public function expiresAt(): ?DateTimeImmutable
+    {
+        return $this->readyAt?->add(new DateInterval(self::LINK_LIFETIME));
     }
 }

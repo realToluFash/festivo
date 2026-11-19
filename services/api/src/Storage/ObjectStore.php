@@ -114,11 +114,6 @@ final readonly class ObjectStore
         $this->s3->putObject(['Bucket' => $this->privateBucket, 'Key' => $key, 'Body' => $file, 'ContentType' => $contentType]);
     }
 
-    public function readKept(string $key): string
-    {
-        return $this->s3->getObject(['Bucket' => $this->privateBucket, 'Key' => $key])->getBody()->getContentAsString();
-    }
-
     /** @return iterable<string> the kept file in pieces, for a response that passes each on as it arrives */
     public function streamKept(string $key): iterable
     {

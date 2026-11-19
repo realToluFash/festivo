@@ -19,15 +19,12 @@ use Symfony\Component\Uid\Uuid;
 #[ORM\Index(name: 'idx_organisation_export_organisation', columns: ['organisation_id', 'asked_at'])]
 #[ORM\Index(name: 'idx_organisation_export_asked_by', columns: ['asked_by_id'])]
 #[ORM\Index(name: 'idx_organisation_export_preparing', columns: ['status'], options: ['where' => "(status = 'preparing')"])]
-class OrganisationExport
+class OrganisationExport implements PreparedFile
 {
     use Timestampable;
 
     /** One export per organisation in this long, counted from when the last one was asked for. */
     public const string LIMIT_WINDOW = 'PT24H';
-
-    /** The download works for this long from when the archive is ready. */
-    public const string LINK_LIFETIME = 'PT24H';
 
     /** Tries in the background before the export is Didn't finish. */
     public const int MOST_ATTEMPTS = 3;
@@ -99,6 +96,11 @@ class OrganisationExport
         return $this->status;
     }
 
+    public function isReady(): bool
+    {
+        return OrganisationExportStatus::Ready === $this->status;
+    }
+
     public function getAttempts(): int
     {
         return $this->attempts;
@@ -109,7 +111,7 @@ class OrganisationExport
         return $this->attemptedAt;
     }
 
-    public function getArchiveKey(): ?string
+    public function getFileKey(): ?string
     {
         return $this->archiveKey;
     }
