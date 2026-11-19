@@ -180,7 +180,7 @@
     "staff.shift_needed_below": "{n, plural, one {{n, number, ::group-auto} person is on this shift. Unassign them first, or keep {n, number, ::group-auto} or more.} other {{n, number, ::group-auto} people are on this shift. Unassign some first, or keep {n, number, ::group-auto} or more.}}",
     "validation.what_if_change_unknown": "“{change}” is not a change a budget can price. Ask about guests, tables, staff_hours or days.",
     "validation.what_if_not_whole": "Change {change} by a whole number.",
-    "validation.what_if_too_large": "Change {change} by {most, number, ::group-auto} or fewer.",
+    "validation.what_if_too_large": "Change {change} by {most, number, ::group-auto} or fewer in total.",
     "validation.what_if_guests_below_one": "Add 1 guest or more. Removing a guest is not something this can price.",
     "validation.what_if_below_zero": "That would take {change} below 0. The event has {count, number, ::group-auto} now."
 }

@@ -5396,7 +5396,7 @@ describe('What adding them would cost (sc-86)', () => {
     );
     expect(
       within(answer()).getByText(
-        `On the upper figure only, now ${naira(705000)}. New guests have not replied, so the settled ${naira(500000)} stays.`,
+        `If everyone comes, it would be ${naira(705000)}. Settled, it stays ${naira(500000)}, because new guests have not replied.`,
       ),
     ).toBeDefined();
     expect(

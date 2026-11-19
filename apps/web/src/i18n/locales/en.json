@@ -4940,7 +4940,7 @@
   "decisionAnswer": {
     "head": "What adding them would cost",
     "rise": "+{{amount}} if all come",
-    "upperOnly": "On the upper figure only, now {{upper}}. New guests have not replied, so the settled {{settled}} stays.",
+    "upperOnly": "If everyone comes, it would be {{upper}}. Settled, it stays {{settled}}, because new guests have not replied.",
     "moved": "{{from}} → {{to}} · {{headsFrom, number}} → {{headsTo, number}} if all come",
     "plus": "+{{amount}}",
     "notKnown": "Not known",
