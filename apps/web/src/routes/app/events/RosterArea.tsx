@@ -519,7 +519,7 @@ function Roster({
                         <td className={one.station == null ? 'rs-quiet' : undefined}>
                           <StationWords entry={one} />
                         </td>
-                        <td className={one.shifts.length === 0 ? 'rs-quiet' : 'rs-shift'}>
+                        <td className={one.shifts.length === 0 ? 'rs-shift rs-quiet' : 'rs-shift'}>
                           <ShiftCell entry={one} times={times} />
                         </td>
                         <td>
