@@ -9,7 +9,7 @@ import { tokens } from '../../theme/tokens.ts';
 const MARK = 16;
 const TURN_MS = 800;
 
-/** The product's Refreshing… (components/Refreshing.tsx) with its words handed in, so the demo can speak Portuguese: the turning mark beside the first word, the words whole, wrapping only between them where a line is too narrow (sc-71821). */
+/** The product's Refreshing… (components/Refreshing.tsx) with its words handed in, so the demo can speak Portuguese: the turning mark beside the first word, the words whole, wrapping only between them where a line is too narrow (sc-71821). The build folds `words`, the wrap and the first-line mark into components/Refreshing.tsx; the product keeps one Refreshing. */
 export function RefreshingWords({ words, testID }: { words: string; testID: string }) {
   const reduced = useReducedMotion();
   const [turn] = useState(() => new Animated.Value(0));

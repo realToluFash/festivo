@@ -348,9 +348,11 @@ function BackSlot({
         accessibilityElementsHidden
         importantForAccessibility="no-hide-descendants"
       >
-        <View onLayout={widthOf(setStatus)}>{capped(beside.node)}</View>
+        <View style={styles.offBell} onLayout={widthOf(setStatus)}>
+          {capped(beside.node)}
+        </View>
       </View>
-      {fits && capped(beside.node)}
+      {fits && <View style={styles.offBell}>{capped(beside.node)}</View>}
     </View>
   );
 }
@@ -838,8 +840,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     gap: tokens.spaceMd,
-    marginRight: tokens.spaceMd,
   },
+  offBell: { paddingRight: tokens.spaceMd },
   backWhole: { flexShrink: 1, minWidth: 0 },
   measure: { position: 'absolute', opacity: 0 },
   bellRow: { flexDirection: 'row', alignItems: 'flex-start', gap: tokens.spaceLg },
