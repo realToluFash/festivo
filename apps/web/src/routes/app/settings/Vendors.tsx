@@ -38,7 +38,7 @@ import { TYPING_PAUSE_MS } from '../../../components/ShellSearch.tsx';
 import { Toast } from '../../../components/Toast.tsx';
 import { useDeskTop } from '../../../deskTop.ts';
 import { currentLocale, dateLocale } from '../../../i18n/index.ts';
-import { LayersContext, useDeskLayers } from '../../../layers.ts';
+import { LayersContext, focusWhenFree, useDeskLayers } from '../../../layers.ts';
 import { offButton } from '../../../offButton.ts';
 import { codeChoice } from '../../../phoneProblem.ts';
 import { can, useSession } from '../../../session.ts';
@@ -233,7 +233,7 @@ function Directory({
               close();
               tell(t('vendors.archivedToast', { name: vendor.name }));
               reread();
-              title()?.focus();
+              focusWhenFree(title);
             }}
           />
         )}

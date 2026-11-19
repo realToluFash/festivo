@@ -222,21 +222,38 @@ describe('Settings › Vendors at a desk (sc-82)', () => {
     ).toBeDefined();
   });
 
-  it('archiving from Edit vendor says where it went', async () => {
+  it('archiving from Edit vendor says where it went, and puts the focus on the heading', async () => {
     signedIn(membership());
-    const sent = answering(() => pageOf([BLOOM]));
+    let archived = false;
+    const sent = answering(
+      () => (archived ? pageOf([DELTA], { archived: 1 }) : pageOf([BLOOM, DELTA])),
+      () => {
+        archived = true;
+        return new Response(JSON.stringify({ vendor: BLOOM }), { status: 200 });
+      },
+    );
     open();
 
     fireEvent.click(await screen.findByRole('button', { name: /Bloom & Co/ }));
     const form = within(await screen.findByRole('dialog'));
+    const freeFocus: boolean[] = [];
+    const focus = HTMLElement.prototype.focus;
+    vi.spyOn(HTMLElement.prototype, 'focus').mockImplementation(function (this: HTMLElement) {
+      if (this.tagName === 'H1') freeFocus.push(this.closest('[inert]') == null);
+      focus.call(this);
+    });
     await act(async () => {
       fireEvent.click(form.getByRole('button', { name: 'Archive this vendor' }));
     });
 
     expect(await screen.findByText('Bloom & Co is archived. It is under Archived.')).toBeDefined();
+    await waitFor(() => expect(freeFocus).toContain(true));
     expect(
       sent.some(({ method, path }) => method === 'POST' && path.endsWith('/vendors/v1/archive')),
     ).toBe(true);
+    await waitFor(() =>
+      expect(document.activeElement).toBe(screen.getByRole('heading', { name: 'Vendors' })),
+    );
   });
 
   it('an archived row reads its short date, and restoring the last one stays on Archived with its own line', async () => {
