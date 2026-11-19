@@ -29,7 +29,7 @@ describe('the bell on an iPad on its side (sc-68052)', () => {
     expect(screen).toMatch(/untitled=\{cardNamed \|\| titledInList\}/u);
     expect(screen).toMatch(/<GuestsHeading\b/u);
     expect(guests.match(/<PaneBell \/>/gu)).toHaveLength(2);
-    expect(screen).toMatch(/\{cardNamed && event == null && <BellRow \/>\}/u);
+    expect(screen).toMatch(/\{cardNamed && event == null && !bare && <BellRow \/>\}/u);
     expect(page).toMatch(/card=\{<BellRow>\{card\}<\/BellRow>\}/u);
   });
 });

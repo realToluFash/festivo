@@ -1,5 +1,10 @@
 import type { OutsideEvent } from '@soirely/api-client';
-import { outsideEventsInOrder } from '@soirely/domain';
+import {
+  formatEventClock,
+  formatEventDate,
+  formatEventMoment,
+  outsideEventsInOrder,
+} from '@soirely/domain';
 import type { TFunction } from 'i18next';
 
 import { EVENT_PLACES, type EventPlace, eventHref } from './eventNav.ts';
@@ -72,6 +77,24 @@ export function levelLine(
   ]
     .filter((part) => part != null && part !== '')
     .join(' · ');
+}
+
+/** The card's first line, "Sat 14 Nov · 15:00 to 23:30", the end's day kept when it is another, in the event's own time zone. */
+export function cardWhen(
+  t: TFunction,
+  event: { startsAt: string; endsAt: string; timeZone: string },
+  locale: string,
+): string {
+  const day = formatEventDate(event.startsAt, event.timeZone, locale, false);
+  const sameDay = formatEventDate(event.endsAt, event.timeZone, locale, false) === day;
+
+  return t('outsideEvent.when', {
+    day,
+    start: formatEventClock(event.startsAt, event.timeZone, locale),
+    end: sameDay
+      ? formatEventClock(event.endsAt, event.timeZone, locale)
+      : formatEventMoment(event.endsAt, event.timeZone, locale),
+  });
 }
 
 export const CAME_FROM = 'cameFrom';
