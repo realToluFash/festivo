@@ -296,16 +296,19 @@ final class StationsTest extends ApiTestCase
         $kitchen = $this->place('Kitchen');
 
         self::assertSame([['Jollof rice', $pass], ['Chicken', $pass]], $this->items('Main'));
+        self::assertSame(2, $this->placeRow('Pass')['dishes']);
 
         $this->dish($course, 'Jollof rice', $kitchen);
         self::assertSame([['Jollof rice', $kitchen], ['Chicken', $pass]], $this->items('Main'));
         self::assertSame(1, $this->placeRow('Kitchen')['dishes']);
+        self::assertSame(1, $this->placeRow('Pass')['dishes']);
 
         $this->addDish($course, 'Plantain');
         $this->renameDish($dish, 'Smoky jollof');
 
         self::assertSame([['Smoky jollof', $pass], ['Chicken', $pass], ['Plantain', $pass]], $this->items('Main'));
         self::assertSame(0, $this->placeRow('Kitchen')['dishes']);
+        self::assertSame(3, $this->placeRow('Pass')['dishes']);
         self::assertSame([], $this->stations()['walk']);
     }
 

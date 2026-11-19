@@ -258,9 +258,9 @@ export function domainsCard(
     };
   if (view.plan === 'left')
     return {
-      says: `Switched off on ${dayOf(CLOCK.left, locale, zoneFor(viewer))}`,
+      says: 'Switched off',
       line: `${ORG} left Enterprise. Its domains are kept as they were, and come back on with Enterprise.`,
-      step: { does: 'contact' },
+      step: null,
     };
 
   const said = view.said == null ? null : saidCard(view, view.said, viewer, locale);

@@ -249,7 +249,8 @@ describe('Data and control › Email domains (sc-560, sc-563)', () => {
   it('keeps ire.events as it was after Enterprise, with no actions', async () => {
     await domains('?state=ed_downgraded');
 
-    expect(screen.getByText('Switched off on Sunday, Oct 18')).toBeDefined();
+    expect(screen.getByText('Switched off')).toBeDefined();
+    expect(screen.queryByRole('button', { name: 'Contact Soirely about Enterprise' })).toBeNull();
     expect(within(row('ire.events')).getByText('Kept')).toBeDefined();
     expect(
       within(onlyRow()).getByText('Kept as it was. It comes back on with Enterprise.'),

@@ -255,5 +255,10 @@
     "audit.gone": "{name} · no longer exists",
     "audit.change": "{field}: {before} → {after}",
     "audit.value.on": "On",
-    "audit.value.off": "Off"
+    "audit.value.off": "Off",
+    "validation.what_if_change_unknown": "“{change}” is not a change a budget can price. Ask about guests, tables, staff_hours or days.",
+    "validation.what_if_not_whole": "Change {change} by a whole number.",
+    "validation.what_if_too_large": "Change {change} by {most, number, ::group-auto} or fewer.",
+    "validation.what_if_guests_below_one": "Add 1 guest or more. Removing a guest is not something this can price.",
+    "validation.what_if_below_zero": "That would take {change} below 0. The event has {count, number, ::group-auto} now."
 }

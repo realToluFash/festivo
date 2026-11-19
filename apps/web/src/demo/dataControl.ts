@@ -1,10 +1,4 @@
-import {
-  instantWords,
-  LEFT_ENTERPRISE_AT,
-  type ReaderZone,
-  runAfter,
-  zoneFor,
-} from './dataSettings.ts';
+import { instantWords, type ReaderZone, runAfter, zoneFor } from './dataSettings.ts';
 import { SAMPLE } from './rules.ts';
 import { type DemoLink, VIEWERS, type Viewer } from './settings.ts';
 
@@ -55,7 +49,6 @@ export const CLOCK = {
   used: '2026-10-19T10:05:00+01:00',
   expired: '2026-10-20T11:00:00+01:00',
   notice: '2026-10-17T14:20:00+01:00',
-  left: LEFT_ENTERPRISE_AT,
 } as const;
 
 export const CHECK_DAYS = 7;
@@ -222,9 +215,9 @@ export function hubCard(
     };
   if (view.plan === 'left')
     return {
-      says: `${ORG} left Enterprise on ${dayOf(CLOCK.left, locale, zoneFor(viewer))}`,
+      says: `${ORG} left Enterprise`,
       line: 'Email domains, the audit log and deleting guest data are switched off and kept as they were. They come back on with Enterprise.',
-      step: 'contact',
+      step: null,
     };
   if (view.setup === 'new')
     return {

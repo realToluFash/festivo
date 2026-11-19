@@ -6,7 +6,9 @@ namespace App\Domain\Billing\Catalogue\Model;
 
 use App\Enum\WhatsAppCategory;
 use DateTimeImmutable;
+use Psl\Dict;
 use Psl\Math;
+use Psl\Vec;
 use Symfony\Component\Uid\Uuid;
 
 /** One published version of what each unit costs in credits, for everyone from `effectiveFrom` (sc-3928). A country it does not price is priced from the provider's cost by the formula. */
@@ -51,23 +53,26 @@ final readonly class UnitCosts
         return Math\maxva(0, Math\div($providerMicroDollars + $this->providerMicroDollarsPerCredit - 1, $this->providerMicroDollarsPerCredit));
     }
 
-    /** Whether any unit costs more here than in `$was`, which takes the notice before it applies. A cell `$was` priced and this leaves to the formula counts as a rise, since the provider's price may be higher. */
+    /** Whether any unit costs more here than in `$was`, which takes the notice before it applies. A cell only one of the two prices counts as a rise either way, since nothing here shows what the formula charges for it. */
     public function risesFrom(self $was): bool
     {
         $pairs = [[$was->email, $this->email], [$was->aiProposal, $this->aiProposal], [$was->aiQuestion, $this->aiQuestion]];
 
-        foreach ($was->smsPerSegment as $country => $credits) {
-            $pairs[] = [$credits, $this->smsPerSegment[$country] ?? null];
+        foreach (Dict\unique([...Vec\keys($was->smsPerSegment), ...Vec\keys($this->smsPerSegment)]) as $country) {
+            $pairs[] = [$was->smsPerSegment[$country] ?? null, $this->smsPerSegment[$country] ?? null];
         }
 
-        foreach ($was->whatsApp as $category => $byCountry) {
-            foreach ($byCountry as $country => $credits) {
-                $pairs[] = [$credits, $this->whatsApp[$category][$country] ?? null];
+        foreach (WhatsAppCategory::cases() as $category) {
+            $before = $was->whatsApp[$category->value] ?? [];
+            $after = $this->whatsApp[$category->value] ?? [];
+
+            foreach (Dict\unique([...Vec\keys($before), ...Vec\keys($after)]) as $country) {
+                $pairs[] = [$before[$country] ?? null, $after[$country] ?? null];
             }
         }
 
         foreach ($pairs as [$before, $after]) {
-            if (null === $after || $after > $before) {
+            if (null === $before || null === $after || $after > $before) {
                 return true;
             }
         }

@@ -37,6 +37,7 @@ final readonly class StationSerialiser
         $places = $this->staffStationRepository->findPlaces($event);
         $courses = $this->dishedItemsReader->read($event);
         $counts = DishedItemsReader::counts($courses);
+        $atThePass = DishedItemsReader::atThePass($courses);
         $pass = $this->pass($places);
         $rows = [];
 
@@ -68,7 +69,7 @@ final readonly class StationSerialiser
                 'pass' => StationKind::Pass === $place->getKind(),
                 'people' => $people($place),
                 'lead' => $place->getLead()?->getId()->toRfc4122(),
-                'dishes' => StationKind::Pass === $place->getKind() ? 0 : $counts[$place->getId()->toRfc4122()] ?? 0,
+                'dishes' => StationKind::Pass === $place->getKind() ? $atThePass : $counts[$place->getId()->toRfc4122()] ?? 0,
             ]),
             'sections' => Vec\map($this->sections($event), static function (SeatingSection $section) use ($rows, $tables, $people): array {
                 $id = $section->getId()->toRfc4122();

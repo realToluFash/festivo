@@ -255,5 +255,10 @@
     "audit.gone": "{name} · no longer exists",
     "audit.change": "{field}: {before} → {after}",
     "audit.value.on": "On",
-    "audit.value.off": "Off"
+    "audit.value.off": "Off",
+    "validation.what_if_change_unknown": "«{change}» no es un cambio que un presupuesto pueda calcular. Indique guests, tables, staff_hours o days.",
+    "validation.what_if_not_whole": "Indique un número entero para {change}.",
+    "validation.what_if_too_large": "El cambio de {change} no puede superar {most, number, ::group-auto} en total.",
+    "validation.what_if_guests_below_one": "Añada 1 invitado o más. Quitar invitados no es algo que se pueda calcular aquí.",
+    "validation.what_if_below_zero": "Eso dejaría {change} por debajo de 0. El evento tiene ahora {count, number, ::group-auto}."
 }

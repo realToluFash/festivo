@@ -14,7 +14,7 @@ async function open(state: string) {
   render(<RouterProvider router={router} />);
   await screen.findByRole('heading', { level: 1 }, SLOW);
 
-  return screen.getByRole('dialog', { name: 'Add guest' });
+  return screen.getByRole('region', { name: 'Add guest' });
 }
 
 describe('What a decision costs, in Add guest (sc-86)', () => {
@@ -28,21 +28,23 @@ describe('What a decision costs, in Add guest (sc-86)', () => {
   });
 
   it(
-    'opens over the Guests page, Guests lit, with the answer beside the change',
+    'opens in the column beside the list, Guests lit, the answer under Companions and above Add guest',
     SLOW,
     async () => {
-      const dialog = await open('decide_rise');
+      const column = await open('decide_rise');
 
       expect(screen.getByRole('heading', { level: 1, name: 'Guests' })).toBeDefined();
       const crumb = screen.getByRole('navigation', { name: 'Breadcrumb' });
       expect(within(crumb).getByText('Guests')).toBeDefined();
-      expect(within(dialog).getByRole('textbox', { name: 'Name' })).toHaveProperty(
+      expect(within(column).getByRole('textbox', { name: 'Full name' })).toHaveProperty(
         'value',
         'Marta Silva',
       );
-      expect(document.activeElement).toBe(within(dialog).getByRole('textbox', { name: 'Name' }));
+      expect(document.activeElement).toBe(
+        within(column).getByRole('textbox', { name: 'Full name' }),
+      );
 
-      const answer = within(dialog).getByRole('status');
+      const answer = within(column).getByRole('status');
       expect(answer.getAttribute('aria-busy')).toBe('false');
       expect(answer.textContent).toContain('+£270 if all come');
       expect(answer.textContent).toContain(
@@ -59,11 +61,11 @@ describe('What a decision costs, in Add guest (sc-86)', () => {
   );
 
   it('goes through updating to the new answer when a companion leaves or joins', SLOW, async () => {
-    const dialog = await open('decide_rise');
+    const column = await open('decide_rise');
     vi.useFakeTimers();
 
-    fireEvent.click(within(dialog).getByRole('button', { name: 'Remove Rui Silva' }));
-    const answer = within(dialog).getByRole('status');
+    fireEvent.click(within(column).getByRole('button', { name: 'Remove Rui Silva' }));
+    const answer = within(column).getByRole('status');
     expect(answer.getAttribute('aria-busy')).toBe('true');
     expect(answer.textContent).toBe('What adding them would cost');
 
@@ -72,12 +74,12 @@ describe('What a decision costs, in Add guest (sc-86)', () => {
     expect(answer.textContent).toContain('+£180 if all come');
     expect(answer.textContent).toContain('133 → 135 if all come');
 
-    fireEvent.click(within(dialog).getByRole('button', { name: 'Add a companion' }));
+    fireEvent.click(within(column).getByRole('button', { name: 'Add a companion' }));
     expect(answer.getAttribute('aria-busy')).toBe('true');
     act(() => vi.advanceTimersByTime(1000));
     expect(answer.textContent).toContain('+£270 if all come');
     expect(document.activeElement).toBe(
-      within(dialog).getByRole('textbox', { name: 'Companion’s full name, 2 of 2' }),
+      within(column).getByRole('textbox', { name: 'Companion’s full name, 2 of 2' }),
     );
   });
 
@@ -90,6 +92,23 @@ describe('What a decision costs, in Add guest (sc-86)', () => {
     expect(answer.querySelector('.bud-dashed')).not.toBeNull();
     expect(answer.textContent).not.toContain('£0');
   });
+
+  it(
+    'says Not known if all come, with no figure, when no cost it moves has a price',
+    SLOW,
+    async () => {
+      const answer = within(await open('decide_unpriced')).getByRole('status');
+      const big = answer.querySelector('.dec-big');
+
+      expect(big?.textContent).toBe('Not known if all come');
+      expect(big?.querySelector('.bud-dashed')).not.toBeNull();
+      expect(big?.querySelector('.dec-up')).toBeNull();
+      expect(answer.textContent).toContain(
+        'Full cost not known: 2 costs it moves have no price yet.',
+      );
+      expect(answer.textContent).not.toMatch(/[+]£/u);
+    },
+  );
 
   it('says No change where nothing is counted per guest', SLOW, async () => {
     const answer = within(await open('decide_nochange')).getByRole('status');
@@ -110,23 +129,52 @@ describe('What a decision costs, in Add guest (sc-86)', () => {
     SLOW,
     async () => {
       for (const state of ['decide_none', 'decide_rise&as=kemi', 'decide_rise&fetch=failed']) {
-        const dialog = await open(state);
-        expect(within(dialog).queryByRole('status')).toBeNull();
-        expect(within(dialog).queryByText('What adding them would cost')).toBeNull();
-        expect(within(dialog).getByRole('button', { name: 'Remove Rui Silva' })).toBeDefined();
+        const column = await open(state);
+        expect(within(column).queryByRole('status')).toBeNull();
+        expect(within(column).queryByText('What adding them would cost')).toBeNull();
+        expect(within(column).getByRole('button', { name: 'Remove Rui Silva' })).toBeDefined();
         cleanup();
       }
     },
   );
 
-  it('closes on Add guest and says nothing, and opens again from the page', SLOW, async () => {
-    const dialog = await open('decide_rise');
+  it(
+    'closes on Done, the focus back on the page’s Add guest, and opens again from there',
+    SLOW,
+    async () => {
+      const column = await open('decide_rise');
 
-    fireEvent.click(within(dialog).getByRole('button', { name: 'Add guest' }));
-    expect(screen.queryByRole('dialog')).toBeNull();
-    expect(screen.queryByRole('status')).toBeNull();
+      fireEvent.click(within(column).getByRole('button', { name: 'Done' }));
+      expect(within(column).queryByRole('textbox', { name: 'Full name' })).toBeNull();
+      expect(screen.queryByRole('status')).toBeNull();
+      const again = screen.getByRole('button', { name: 'Add guest' });
+      expect(document.activeElement).toBe(again);
 
-    fireEvent.click(screen.getByRole('button', { name: 'Add guest' }));
-    expect(screen.getByRole('dialog', { name: 'Add guest' })).toBeDefined();
-  });
+      fireEvent.click(again);
+      expect(within(column).getByRole('textbox', { name: 'Full name' })).toBeDefined();
+    },
+  );
+
+  it(
+    'keeps the column on Add guest, as sc-1468 does: the guest said, the form cleared, the answer for one guest',
+    SLOW,
+    async () => {
+      const column = await open('decide_rise');
+      vi.useFakeTimers();
+
+      fireEvent.click(within(column).getByRole('button', { name: 'Add guest' }));
+      const name = within(column).getByRole('textbox', { name: 'Full name' });
+      expect(within(column).getByText('Marta Silva added.')).toBeDefined();
+      expect(name).toHaveProperty('value', '');
+      expect(document.activeElement).toBe(name);
+      expect(within(column).queryByRole('button', { name: /^Remove / })).toBeNull();
+
+      const answer = within(column).getByRole('status', { name: 'What adding them would cost' });
+      expect(answer.getAttribute('aria-busy')).toBe('true');
+      act(() => vi.advanceTimersByTime(1000));
+      expect(answer.getAttribute('aria-busy')).toBe('false');
+      expect(answer.textContent).toContain('+£90 if all come');
+      expect(answer.textContent).toContain('133 → 134 if all come');
+    },
+  );
 });

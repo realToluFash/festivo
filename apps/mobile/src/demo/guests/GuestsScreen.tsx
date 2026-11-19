@@ -58,8 +58,10 @@ import {
   filterCount,
   filterWord,
   inViewOf,
+  refreshingAt,
   titleRowOf,
 } from './GuestsModel.ts';
+import { RefreshingWords } from './RefreshingWords.tsx';
 import { changesSince, lastLooked, takeLook } from './ChangedSince.ts';
 import { ExportButton, ExportPanel, ExportSheet, ShareStandIn } from './GuestExport.tsx';
 import { exportDay, exportStart, exportWordsIn, fileName, narrowing } from './GuestExportModel.ts';
@@ -136,6 +138,14 @@ export function GuestsScreen({
   const titleRow = titleRowOf(state);
   const inPortuguese = titleRow.locale === 'pt';
   const portuguese = useMemo(() => i18n.getFixedT('pt'), [i18n]);
+  // sc-71821: on the phone Refreshing… keeps main's place beside Back where the pill stays whole, else it takes its own line under the heading.
+  const [besideBack, setBesideBack] = useState(false);
+  const refreshing = refreshingAt(state) ? (
+    <RefreshingWords
+      words={inPortuguese ? portuguese('eventsScreen.refreshing') : t('eventsScreen.refreshing')}
+      testID="guests.refreshing"
+    />
+  ) : null;
   const [guests, setGuests] = useState(opening.guests);
   const [added, setAdded] = useState(opening.added);
   const [filter, setFilter] = useState<ListFilter>(filterFrom ?? start.filter);
@@ -408,6 +418,11 @@ export function GuestsScreen({
               onPress={openExport}
             />
           ) : null
+        }
+        refreshing={
+          refreshing == null || (layout === 'phone' && besideBack)
+            ? null
+            : { node: refreshing, row: layout !== 'phone' }
         }
       />
       {phase === 'loading' ? (
@@ -748,6 +763,16 @@ export function GuestsScreen({
           : page != null
             ? { label: W.guests, onPress: closeGuest }
             : null
+      }
+      phoneBack={
+        refreshing != null && inPortuguese
+          ? { label: portuguese('eventNav.overview'), onPress: () => onArea('overview') }
+          : undefined
+      }
+      besideBack={
+        refreshing != null && layout === 'phone' && whose == null && page == null
+          ? { node: refreshing, onPlaced: setBesideBack }
+          : undefined
       }
       overlay={overlays}
     >

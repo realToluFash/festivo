@@ -5,8 +5,11 @@ declare(strict_types=1);
 namespace App\Domain\Budget\Http;
 
 use App\Domain\Budget\BudgetRange;
+use App\Domain\Budget\BudgetWhatIf;
 use App\Domain\Budget\Model\LineCost;
+use App\Domain\Budget\Model\LineMove;
 use App\Domain\Budget\Model\QuantityFacts;
+use App\Domain\Budget\Model\WhatIfChanges;
 use App\Domain\Budget\QuantityResolver;
 use App\Entity\BudgetLine;
 use App\Entity\Event;
@@ -20,6 +23,9 @@ use Psl\Vec;
  * @phpstan-type CostedLine array{id: string, label: string, category: string, basis: string, rate: ?string, amount: ?string, currency: string, note: ?string, quantity: array{count: int, source: string, reason: ?string}, createdAt: string, updatedAt: string, cost: array{confirmed: string, potential: string}}
  * @phpstan-type PerHead array{amount: ?string, heads: int}
  * @phpstan-type Range array{currency: string, confirmed: string, potential: string, perHead: array{confirmed: PerHead, potential: PerHead}, notPriced: int, lines: list<CostedLine>}
+ * @phpstan-type Moved array{from: string, to: string, delta: string}
+ * @phpstan-type MovedLine array{id: string, label: string, category: string, basis: string, quantity: array{confirmed: array{from: int, to: int}, potential: array{from: int, to: int}, reason: ?string}, known: bool, cost: array{confirmed: Moved, potential: Moved}|null}
+ * @phpstan-type WhatIf array{currency: string, confirmed: Moved, potential: Moved, fullCostKnown: bool, lines: list<MovedLine>}
  */
 final readonly class BudgetSerialiser
 {
@@ -64,6 +70,41 @@ final readonly class BudgetSerialiser
             'lines' => Vec\map($range->lines, static fn (LineCost $cost): array => [
                 ...self::line($cost->line, $facts),
                 'cost' => ['confirmed' => Money::written($cost->confirmedMinor, $currency), 'potential' => Money::written($cost->potentialMinor, $currency)],
+            ]),
+        ];
+    }
+
+    /** @return WhatIf */
+    public function whatIf(Event $event, QuantityFacts $facts, WhatIfChanges $changes): array
+    {
+        $currency = $event->getCurrency();
+        $answer = BudgetWhatIf::of($this->budgetLineRepository->findOnEvent($event), $facts, $changes);
+        $moved = static fn (int $from, int $to): array => [
+            'from' => Money::written($from, $currency),
+            'to' => Money::written($to, $currency),
+            'delta' => Money::written($to - $from, $currency),
+        ];
+
+        return [
+            'currency' => $currency,
+            'confirmed' => $moved($answer->now->confirmedMinor, $answer->then->confirmedMinor),
+            'potential' => $moved($answer->now->potentialMinor, $answer->then->potentialMinor),
+            'fullCostKnown' => $answer->fullyKnown(),
+            'lines' => Vec\map($answer->moves, static fn (LineMove $move): array => [
+                'id' => $move->now->line->getId()->toRfc4122(),
+                'label' => $move->now->line->getLabel(),
+                'category' => $move->now->line->getCategory()->value,
+                'basis' => $move->now->line->getBasis()->value,
+                'quantity' => [
+                    'confirmed' => ['from' => $move->now->quantity->count, 'to' => $move->then->quantity->count],
+                    'potential' => ['from' => $move->potentialCountNow, 'to' => $move->potentialCountThen],
+                    'reason' => $move->now->quantity->reason,
+                ],
+                'known' => $move->known,
+                'cost' => $move->known ? [
+                    'confirmed' => $moved($move->now->confirmedMinor, $move->then->confirmedMinor),
+                    'potential' => $moved($move->now->potentialMinor, $move->then->potentialMinor),
+                ] : null,
             ]),
         ];
     }

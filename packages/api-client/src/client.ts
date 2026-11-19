@@ -65,6 +65,7 @@ import {
   asVendorsPage,
   vendorsQuery,
 } from './vendors.ts';
+import { type WhatIf, type WhatIfChange, asWhatIf } from './budget.ts';
 import { ApiError, ApiUnreachableError, type Problem, toProblem } from './problem.ts';
 import { type EmailDomainsPage, asEmailDomainsPage } from './emailDomains.ts';
 import { type OrganisationExportPage, asOrganisationExportPage } from './organisationExport.ts';
@@ -4553,6 +4554,29 @@ export class ApiClient {
 
   async withdrawJoinRequest(): Promise<void> {
     await this.delete<unknown>('/api/join-offers/request');
+  }
+
+  /** What the changes would cost (sc-86); writes nothing. Refused 403 `permission_required` without budget.read. */
+  async whatIf(
+    eventId: string,
+    changes: readonly { change: WhatIfChange; by: number }[],
+    { signal }: { signal?: AbortSignal } = {},
+  ): Promise<WhatIf> {
+    const answer = asWhatIf(
+      await this.post<unknown>(
+        `/api/events/${encodeURIComponent(eventId)}/budget/what-if`,
+        { changes },
+        signal == null ? undefined : { signal },
+      ),
+    );
+
+    if (answer == null) {
+      throw new Error(
+        'The API answered /api/events/{id}/budget/what-if in a shape this client does not know. Check BudgetSerialiser in services/api.',
+      );
+    }
+
+    return answer;
   }
 
   async vendors(

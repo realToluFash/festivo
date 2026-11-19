@@ -31,6 +31,7 @@ import { PHONE_TAB_BAR, TabBarFade } from '../../components/TodayCover.tsx';
 import { tabBarSides } from '../../components/bodyEdges.ts';
 import { wordsIn } from '../../layout/textSize.ts';
 import { eventBarLabelSize, eventBarStart } from './eventBarSize.ts';
+import { statusFits } from '../guests/RefreshingPlace.ts';
 import {
   SidebarBack,
   SidebarColumn,
@@ -118,6 +119,7 @@ export function EventFrame({
   bellRef,
   back: pushed,
   phoneBack,
+  besideBack,
   without,
   loading = false,
   children,
@@ -140,6 +142,8 @@ export function EventFrame({
   back?: { label: string; onPress: () => void } | null;
   /** On the phone, a way back other than Overview, as Seating's ‹ Guests. */
   phoneBack?: { label: string; onPress: () => void } | undefined;
+  /** On the phone, a status beside Back, as Guests' Refreshing…; told whether it had room there (sc-71821). */
+  besideBack?: BesideBackStatus | undefined;
   /** An area this viewer has no part in, as Budget for Can edit: gone from More, the pills and the sidebar. */
   without?: AreaKey | undefined;
   /** While the event loads its top is already the loaded page's; only its card in the sidebar waits. */
@@ -239,8 +243,9 @@ export function EventFrame({
             : { paddingTop: insets.top + tokens.spaceMd, paddingHorizontal: tokens.space5xl },
         ]}
       >
-        {capped(<Back label={back.label} onPress={back.onPress} />)}
-        <View style={styles.grow} />
+        <BackSlot beside={phone ? besideBack : undefined} capped={capped}>
+          <Back label={back.label} onPress={back.onPress} />
+        </BackSlot>
         <Bell tell={shell.tell} onPress={onBell} ref={bellRef} />
       </View>
       {!phone && <AreaPills area={area} onArea={onArea} badge={badge} without={without} />}
@@ -291,6 +296,63 @@ export function EventFrame({
       )}
       {overlay}
       {told}
+    </View>
+  );
+}
+
+export interface BesideBackStatus {
+  node: ReactNode;
+  onPlaced: (beside: boolean) => void;
+}
+
+/** Back, and beside it a status only where the pill stays whole with it, as on main where it fits; else the area draws the status under its heading (sc-71821). */
+function BackSlot({
+  beside,
+  capped,
+  children,
+}: {
+  beside: BesideBackStatus | undefined;
+  capped: (node: ReactNode) => ReactNode;
+  children: ReactNode;
+}) {
+  const [slot, setSlot] = useState(0);
+  const [back, setBack] = useState(0);
+  const [status, setStatus] = useState(0);
+  const fits =
+    beside != null && statusFits({ room: slot, lead: back, ends: [], status, gap: tokens.spaceMd });
+  const placed = beside?.onPlaced;
+
+  useEffect(() => {
+    placed?.(fits);
+  }, [fits, placed]);
+
+  const widthOf = (set: (width: number) => void) => (event: LayoutChangeEvent) =>
+    set(Math.ceil(event.nativeEvent.layout.width));
+
+  if (beside == null)
+    return (
+      <>
+        {capped(children)}
+        <View style={styles.grow} />
+      </>
+    );
+
+  return (
+    <View style={styles.backSlot} onLayout={widthOf(setSlot)}>
+      <View style={styles.backWhole} onLayout={widthOf(setBack)}>
+        {capped(children)}
+      </View>
+      <View
+        style={styles.measure}
+        pointerEvents="none"
+        accessibilityElementsHidden
+        importantForAccessibility="no-hide-descendants"
+      >
+        <View style={styles.offBell} onLayout={widthOf(setStatus)}>
+          {capped(beside.node)}
+        </View>
+      </View>
+      {fits && <View style={styles.offBell}>{capped(beside.node)}</View>}
     </View>
   );
 }
@@ -771,6 +833,17 @@ const styles = StyleSheet.create({
   pressed: { opacity: tokens.opacityPressed },
   title: { letterSpacing: -0.6 },
   top: { flexDirection: 'row', alignItems: 'center' },
+  backSlot: {
+    flex: 1,
+    minWidth: 0,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: tokens.spaceMd,
+  },
+  offBell: { paddingRight: tokens.spaceMd },
+  backWhole: { flexShrink: 1, minWidth: 0 },
+  measure: { position: 'absolute', opacity: 0 },
   bellRow: { flexDirection: 'row', alignItems: 'flex-start', gap: tokens.spaceLg },
   besideBell: { flex: 1, minWidth: 0, minHeight: tokens.sizeHit, justifyContent: 'center' },
   blocks: { gap: 18 },
