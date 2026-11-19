@@ -5383,6 +5383,18 @@ describe('What adding them would cost (sc-86)', () => {
     return within(form()).getByRole('status', { name: 'What adding them would cost' });
   }
 
+  /** The innermost element reading the text whole, though its figures are split into digit groups (sc-72618). */
+  function reading(text: string | RegExp) {
+    const reads = (element: Element) => {
+      const shown = (element.textContent ?? '').replace(/\s+/gu, ' ');
+
+      return typeof text === 'string' ? shown === text : text.test(shown);
+    };
+
+    return (_: string, element: Element | null) =>
+      element != null && reads(element) && ![...element.children].some(reads);
+  }
+
   it('shows the rise on the upper figure for the guest before Add guest is pressed', async () => {
     const sent = await opened({
       [ASK]: (body) => json(whatIf((body as { changes: { by: number }[] }).changes[0]?.by ?? 0)),
@@ -5392,15 +5404,19 @@ describe('What adding them would cost (sc-86)', () => {
       changes: [{ change: 'guests', by: 1 }],
     });
     await waitFor(() =>
-      expect(within(answer()).getByText(`+${naira(5000)} if all come`)).toBeDefined(),
+      expect(within(answer()).getByText(reading(`+${naira(5000)} if all come`))).toBeDefined(),
     );
     expect(
       within(answer()).getByText(
-        `Once they are invited, that would make ${naira(705000)} in total. Settled, it stays ${naira(500000)} until they reply.`,
+        reading(
+          `Once they are invited, that would make ${naira(705000)} in total. Settled, it stays ${naira(500000)} until they reply.`,
+        ),
       ),
     ).toBeDefined();
     expect(
-      within(answer()).getByText(`${naira(700000)} → ${naira(705000)} · 140 → 141 if all come`),
+      within(answer()).getByText(
+        reading(`${naira(700000)} → ${naira(705000)} · 140 → 141 if all come`),
+      ),
     ).toBeDefined();
     expect(answer().getAttribute('aria-busy')).toBe('false');
   });
@@ -5421,12 +5437,12 @@ describe('What adding them would cost (sc-86)', () => {
     fireEvent.click(within(form()).getByRole('button', { name: 'More places' }));
 
     await waitFor(() =>
-      expect(within(answer()).getByText(`+${naira(10000)} if all come`)).toBeDefined(),
+      expect(within(answer()).getByText(reading(`+${naira(10000)} if all come`))).toBeDefined(),
     );
     await act(async () => waiting.forEach((resolve) => resolve(json(whatIf(1)))));
 
-    expect(within(answer()).getByText(`+${naira(10000)} if all come`)).toBeDefined();
-    expect(within(answer()).queryByText(`+${naira(5000)} if all come`)).toBeNull();
+    expect(within(answer()).getByText(reading(`+${naira(10000)} if all come`))).toBeDefined();
+    expect(within(answer()).queryByText(reading(`+${naira(5000)} if all come`))).toBeNull();
   });
 
   it('says the full cost is not known when a cost it moves has no price', async () => {
@@ -5553,7 +5569,7 @@ describe('What adding them would cost (sc-86)', () => {
     await waitFor(() =>
       expect(
         within(answer()).getByText(
-          new RegExp(`Once they are invited, that would make ${naira(705000)}`, 'u'),
+          reading(new RegExp(`Once they are invited, that would make ${naira(705000)}`, 'u')),
         ),
       ).toBeDefined(),
     );
@@ -5564,7 +5580,7 @@ describe('What adding them would cost (sc-86)', () => {
     await waitFor(() =>
       expect(
         within(answer()).getByText(
-          new RegExp(`Once they are invited, that would make ${naira(710000)}`, 'u'),
+          reading(new RegExp(`Once they are invited, that would make ${naira(710000)}`, 'u')),
         ),
       ).toBeDefined(),
     );
@@ -5599,7 +5615,90 @@ describe('What adding them would cost (sc-86)', () => {
         ),
     });
 
-    await waitFor(() => expect(within(answer()).getByText('+£0.40 if all come')).toBeDefined());
+    await waitFor(() =>
+      expect(within(answer()).getByText(reading('+£0.40 if all come'))).toBeDefined(),
+    );
+  });
+
+  /** sc-71226 bullet 5: 100 Coming, one per_head line at 999999999999999.99, one guest added. */
+  function huge() {
+    const rise = {
+      from: '99999999999999999.00',
+      to: '100999999999999998.99',
+      delta: '999999999999999.99',
+    };
+
+    return whatIf(1, {
+      currency: 'GBP',
+      confirmed: { from: '99999999999999999.00', to: '99999999999999999.00', delta: '0.00' },
+      potential: rise,
+      lines: [
+        {
+          ...whatIf(1).lines[0],
+          label: 'Dinner',
+          quantity: {
+            confirmed: { from: 100, to: 100 },
+            potential: { from: 100, to: 101 },
+            reason: null,
+          },
+          cost: { confirmed: { ...rise, to: rise.from, delta: '0.00' }, potential: rise },
+        },
+      ],
+    });
+  }
+
+  it('reads a huge figure exactly, in whole units, and breaks it only between digit groups (sc-72618)', async () => {
+    await opened({ [ASK]: () => json(huge()) });
+
+    await waitFor(() =>
+      expect(
+        within(answer()).getByText(reading('+£1,000,000,000,000,000 if all come')),
+      ).toBeDefined(),
+    );
+    expect(
+      within(answer()).getByText(
+        reading(
+          'Once they are invited, that would make £100,999,999,999,999,999 in total. Settled, it stays £99,999,999,999,999,999 until they reply.',
+        ),
+      ),
+    ).toBeDefined();
+    expect(
+      within(answer()).getByText(
+        reading('£99,999,999,999,999,999 → £100,999,999,999,999,999 · 100 → 101 if all come'),
+      ),
+    ).toBeDefined();
+    const plus = answer().querySelector('.da-amount');
+    expect(plus?.textContent).toBe('+£1,000,000,000,000,000');
+    expect([...(plus?.querySelectorAll('.da-group') ?? [])].map((one) => one.textContent)).toEqual([
+      '+£1,',
+      '000,',
+      '000,',
+      '000,',
+      '000,',
+      '000',
+    ]);
+    expect(plus?.querySelectorAll('wbr')).toHaveLength(5);
+  });
+
+  it('reads the huge figures exactly in Spanish, the code kept with its last group (sc-72618)', async () => {
+    await opened({ [ASK]: () => json(huge()) });
+    await waitFor(() => expect(answer().querySelector('.da-amount')).not.toBeNull());
+    const shown = answer();
+    await act(() => i18next.changeLanguage('es'));
+    try {
+      await waitFor(() =>
+        expect(shown.querySelector('.da-amount')?.textContent).toBe(
+          '+1.000.000.000.000.000\u00a0GBP',
+        ),
+      );
+      const groups = [...shown.querySelectorAll('.da-group')].map((one) => one.textContent);
+      expect(groups).toContain('999\u00a0GBP');
+      expect(shown.textContent).toContain('100.999.999.999.999.999\u00a0GBP');
+      expect(shown.textContent).toContain('99.999.999.999.999.999\u00a0GBP');
+      expect(shown.textContent).not.toContain('101.000.000.000.000.000');
+    } finally {
+      await i18next.changeLanguage('en');
+    }
   });
 
   it('shows no answer when it cannot be fetched, and the form still adds', async () => {

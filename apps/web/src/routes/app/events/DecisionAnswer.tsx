@@ -1,25 +1,12 @@
 import { type WhatIf } from '@soirely/api-client';
-import { minorDigits, numberFormat } from '@soirely/domain';
-import { useId } from 'react';
+import { Fragment, type ReactNode, useId } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { RowWords } from '../../../components/SettingsParts.tsx';
 import { currentLocale } from '../../../i18n/index.ts';
+import { figureGroups, wholeMoney } from './exactMoney.ts';
 import { type Asked } from './whatAddingCosts.ts';
 import './decisionAnswer.css';
-
-/** Whole units; a change under one unit in the minor unit, so a rise never reads +£0 (pm, 7 Nov). */
-function shown(amount: string, currency: string, locale: string): string {
-  const value = Number(amount);
-  const digits = value !== 0 && Math.abs(value) < 1 ? minorDigits(currency) : 0;
-
-  return numberFormat(locale, {
-    style: 'currency',
-    currency,
-    minimumFractionDigits: digits,
-    maximumFractionDigits: digits,
-  }).format(value);
-}
 
 /** A status message (WCAG 2.2 SC 4.1.3): the new answer is announced once it arrives; the wait is not. */
 export function DecisionAnswer({ asked }: { asked: Asked }) {
@@ -51,7 +38,7 @@ export function DecisionAnswer({ asked }: { asked: Asked }) {
 function Answered({ answer }: { answer: WhatIf }) {
   const { t } = useTranslation();
   const locale = currentLocale();
-  const money = (amount: string) => shown(amount, answer.currency, locale);
+  const money = (amount: string) => wholeMoney(amount, answer.currency, locale);
   const unknown = answer.lines.filter((line) => !line.known);
   const rows = [...answer.lines.filter((line) => line.known), ...unknown];
 
@@ -75,7 +62,12 @@ function Answered({ answer }: { answer: WhatIf }) {
       ) : (
         <p className="da-big">
           <UpMark />
-          {t('decisionAnswer.rise', { amount: money(answer.potential.delta) })}
+          <span className="da-big-words">
+            <Figured
+              text={t('decisionAnswer.rise', { amount: money(answer.potential.delta) })}
+              figures={[money(answer.potential.delta)]}
+            />
+          </span>
         </p>
       )}
       {unknown.length > 0 ? (
@@ -84,10 +76,13 @@ function Answered({ answer }: { answer: WhatIf }) {
         </p>
       ) : (
         <p className="da-line">
-          {t('decisionAnswer.upperOnly', {
-            upper: money(answer.potential.to),
-            settled: money(answer.confirmed.to),
-          })}
+          <Figured
+            text={t('decisionAnswer.upperOnly', {
+              upper: money(answer.potential.to),
+              settled: money(answer.confirmed.to),
+            })}
+            figures={[money(answer.potential.to), money(answer.confirmed.to)]}
+          />
         </p>
       )}
       <ul className="desk-rows da-rows">
@@ -107,16 +102,23 @@ function Answered({ answer }: { answer: WhatIf }) {
                   <RowWords
                     title={line.label}
                     lines={[
-                      t('decisionAnswer.moved', {
-                        from: money(line.cost.potential.from),
-                        to: money(line.cost.potential.to),
-                        headsFrom: line.quantity.potential.from,
-                        headsTo: line.quantity.potential.to,
-                      }),
+                      <Figured
+                        key="moved"
+                        text={t('decisionAnswer.moved', {
+                          from: money(line.cost.potential.from),
+                          to: money(line.cost.potential.to),
+                          headsFrom: line.quantity.potential.from,
+                          headsTo: line.quantity.potential.to,
+                        })}
+                        figures={[money(line.cost.potential.from), money(line.cost.potential.to)]}
+                      />,
                     ]}
                   />
                   <span className="da-amount">
-                    {t('decisionAnswer.plus', { amount: money(line.cost.potential.delta) })}
+                    <Figured
+                      text={t('decisionAnswer.plus', { amount: money(line.cost.potential.delta) })}
+                      figures={[money(line.cost.potential.delta)]}
+                    />
                   </span>
                 </>
               )}
@@ -126,6 +128,48 @@ function Answered({ answer }: { answer: WhatIf }) {
       </ul>
     </>
   );
+}
+
+/** A sentence whose figures break only between digit groups (sc-72618): a group never splits, nor leaves its sign or code. */
+function Figured({ text, figures }: { text: string; figures: readonly string[] }) {
+  const out: ReactNode[] = [];
+  let rest = text;
+
+  for (let next = firstOf(rest, figures); next != null; next = firstOf(rest, figures)) {
+    const { found, figure } = next;
+    const at = found > 0 && '+−'.includes(rest[found - 1] ?? '') ? found - 1 : found;
+    out.push(rest.slice(0, at));
+    out.push(
+      <span key={out.length} className="da-figure">
+        {figureGroups(rest.slice(at, found + figure.length)).map((group, part) => (
+          <Fragment key={part}>
+            {part > 0 && <wbr />}
+            <span className="da-group">{group}</span>
+          </Fragment>
+        ))}
+      </span>,
+    );
+    rest = rest.slice(found + figure.length);
+  }
+  out.push(rest);
+
+  return <>{out}</>;
+}
+
+/** Whichever figure comes first, the longer at a tie, so a language may order its placeholders as it needs. */
+function firstOf(text: string, figures: readonly string[]) {
+  let first: { found: number; figure: string } | undefined;
+  for (const figure of figures) {
+    const found = figure === '' ? -1 : text.indexOf(figure);
+    if (found < 0) continue;
+    if (
+      first == null ||
+      found < first.found ||
+      (found === first.found && figure.length > first.figure.length)
+    )
+      first = { found, figure };
+  }
+  return first;
 }
 
 /** An up arrow, drawn here as the board draws it: the product's icon set has none. */
