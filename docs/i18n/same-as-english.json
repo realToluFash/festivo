@@ -48,7 +48,11 @@
     "web:dataControl.control",
     "mobile:dataAndControl.control",
     "web:dataControl.enterprise",
-    "mobile:dataAndControl.enterprise"
+    "mobile:dataAndControl.enterprise",
+    "web:auditLog.formats.csv",
+    "web:auditLog.formats.jsonl",
+    "mobile:auditLog.csv",
+    "mobile:auditLog.jsonLines"
   ],
   "fr": [
     "web:nav.menu",
@@ -191,7 +195,11 @@
     "web:stations.sectionTables_other",
     "messages:stations.place_suggested.bar",
     "web:dataControl.enterprise",
-    "mobile:dataAndControl.enterprise"
+    "mobile:dataAndControl.enterprise",
+    "web:auditLog.formats.csv",
+    "web:auditLog.formats.jsonl",
+    "mobile:auditLog.csv",
+    "mobile:auditLog.jsonLines"
   ],
   "pt": [
     "web:seating.shapeCocktailShort",
@@ -245,6 +253,10 @@
     "messages:staff.job_suggested.bar",
     "messages:stations.place_suggested.bar",
     "web:dataControl.enterprise",
-    "mobile:dataAndControl.enterprise"
+    "mobile:dataAndControl.enterprise",
+    "web:auditLog.formats.csv",
+    "web:auditLog.formats.jsonl",
+    "mobile:auditLog.csv",
+    "mobile:auditLog.jsonLines"
   ]
 }
