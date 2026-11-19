@@ -60,7 +60,7 @@ final class Version20261119180000 extends AbstractMigration
                             "sms":              {"kind": "metered", "amount": 0},
                             "whatsapp":         {"kind": "metered", "amount": 0},
                             "ai_requests":      {"kind": "metered", "amount": 5},
-                            "storage_bytes":    {"kind": "metered", "amount": 2147483648},
+                            "storage_bytes":    {"kind": "metered", "amount": 2000000000},
                             "credits":          {"kind": "credits", "amount": 50}
                         },
                         "prices": {
@@ -80,7 +80,7 @@ final class Version20261119180000 extends AbstractMigration
                             "sms":              {"kind": "metered", "amount": 0},
                             "whatsapp":         {"kind": "metered", "amount": 0},
                             "ai_requests":      {"kind": "metered", "amount": 100},
-                            "storage_bytes":    {"kind": "metered", "amount": 107374182400},
+                            "storage_bytes":    {"kind": "metered", "amount": 100000000000},
                             "credits":          {"kind": "credits", "amount": 3000}
                         },
                         "prices": {

@@ -84,7 +84,7 @@ final class CatalogueNumbersTest extends FunctionalTestCase
         yield 'a price in minor units' => ['$enterprisePrice = 24900;', true];
         yield 'a guest count compared' => ['if ($guestCount >= 100) {', true];
         yield 'a guest cap with no plan in its name' => ['const MAX_GUESTS = 100;', true];
-        yield 'a storage limit in bytes' => ['$storageLimit = 2147483648;', true];
+        yield 'a storage limit in bytes' => ['$storageLimit = 2000000000;', true];
         yield 'a member count compared' => ['if (count($members) > 3) {', true];
         yield 'a seat cap' => ['const FREE_SEATS = 3;', true];
         yield 'an AI allowance' => ['$aiRequestsPerMonth = 5;', true];
@@ -97,7 +97,7 @@ final class CatalogueNumbersTest extends FunctionalTestCase
     #[DataProvider('sources')]
     public function theGuardFindsAPlanNumberAndNothingElse(string $line, bool $found): void
     {
-        self::assertSame($found, [] !== self::find("<?php\n" . $line, [2, 3, 5, 13, 100, 24900, 2147483648]));
+        self::assertSame($found, [] !== self::find("<?php\n" . $line, [2, 3, 5, 13, 100, 24900, 2000000000]));
     }
 
     /** @return list<int> every whole number in every version, past 1, which says nothing alone */
