@@ -6,6 +6,7 @@ import {
   type JoinRequest,
   type LinkedProvider,
   type Membership,
+  type OutsideEvent,
   type PausedOrganisation,
   type Problem,
   awaiting,
@@ -53,6 +54,8 @@ export interface Session {
   timezone: string | null;
   /** The request to join at its domain that an account in no organisation is waiting on (sc-561). */
   waitingFor: JoinRequest | null;
+  /** The events it holds from outside an organisation, the one it lands on first (sc-71). */
+  outsideEvents?: readonly OutsideEvent[];
 }
 
 export type SessionState =
@@ -111,6 +114,13 @@ export function canAnywhere(session: Session, permission: string): boolean {
 /** On one event, a Member holds what their role on it gives, not the organisation's: the event read says which (sc-29915). */
 export function canOn(event: { permissions: readonly string[] }, permission: string): boolean {
   return event.permissions.includes(permission);
+}
+
+/** In no organisation, the event it holds from outside at this id; null for any other, and for anyone in an organisation (sc-71). */
+export function outsideOn(session: Session, eventId: string | undefined): OutsideEvent | null {
+  if (session.organisation != null || session.pausedIn != null) return null;
+
+  return session.outsideEvents?.find((one) => one.id === eventId) ?? null;
 }
 
 export async function restoreSession(): Promise<void> {
@@ -364,6 +374,7 @@ function sessionFrom(
     organisationCountry: account.organisationCountry,
     timezone: account.timezone,
     waitingFor: account.waitingFor,
+    outsideEvents: account.outsideEvents,
     organisation: chooseOrganisation(organisations, remembered),
     pausedIn: choosePaused(paused, remembered, organisations.length),
   };

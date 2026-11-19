@@ -22,6 +22,7 @@
     "calendar": "Calendario",
     "settings": "Configuración",
     "account": "Su cuenta",
+    "signOut": "Cerrar sesión",
     "person": "{{name}}, {{role}}",
     "menu": "Menú",
     "closeMenu": "Cerrar el menú",
@@ -2703,6 +2704,13 @@
     "reportsComing": "Los informes de este evento llegarán pronto.",
     "people": "Personas"
   },
+  "outsideEvent": {
+    "until": "until {{when}}",
+    "guestsLine": "Names and replies only, no contact details",
+    "onEvent_one": "{{count, number}} person on this event",
+    "onEvent_other": "{{count, number}} people on this event",
+    "onEvent_many": "{{count, number}} people on this event"
+  },
   "seating": {
     "area": "Mesas",
     "events": "Eventos",
@@ -3249,7 +3257,7 @@
     "loading": "Cargando las personas de este evento…",
     "failed": "No se han podido cargar las personas de este evento. Compruebe la conexión y vuelva a intentarlo.",
     "retry": "Reintentar",
-    "addPrompt": "Añadir por nombre",
+    "addPrompt": "Añadir por nombre, correo o móvil",
     "onEvent": "En este evento",
     "you": "Usted",
     "nobody": "Todavía no hay nadie en este evento.",
@@ -3326,7 +3334,19 @@
       "can_check_in_one": "Ahora {{count, number}} persona puede registrar llegadas.",
       "can_check_in_many": "Ahora {{count, number}} de personas pueden registrar llegadas.",
       "can_check_in_other": "Ahora {{count, number}} personas pueden registrar llegadas."
-    }
+    },
+    "notJoined": "Aún no se ha unido",
+    "outsideTag": "Fuera de {{organisation}}",
+    "outsideEnds": "Su acceso termina con el evento.",
+    "leadOff": "Solo para miembros de {{organisation}}.",
+    "removeOutsideLine": "Esta persona perderá el acceso en su próxima acción.",
+    "findAny": "Nombre, correo electrónico o número de móvil",
+    "fromOutside": "De fuera de {{organisation}}",
+    "unusable": "No es un correo electrónico ni un número de móvil que podamos usar.",
+    "onAlready": "{{name}} ya está en este evento.",
+    "pickAnother": "Elija otro rol para añadir a alguien de fuera.",
+    "jobLabel": "Puesto (opcional)",
+    "jobHelp": "Lo que hace en el evento. Aparece junto a su nombre y no da ningún acceso. {{length, number}} de {{most, number}}."
   },
   "guestList": {
     "addGuest": "Añadir invitado",

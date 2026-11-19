@@ -1,4 +1,4 @@
-import { type Membership, primaryEmailAddress } from '@soirely/api-client';
+import { type Membership, type OutsideEvent, primaryEmailAddress } from '@soirely/api-client';
 import {
   PHONE_EVENT_TABS,
   createNewOrganisation,
@@ -50,6 +50,7 @@ import { type Currencies, freshWalk } from '../kit/createWalk.ts';
 import { phonePillAlone } from '../kit/frameBand.ts';
 import { EDGE_SWIPE_WIDTH, headerDrawsBack, stackSwipes } from '../kit/systemBack.ts';
 import { EVENT_PLACES, type EventPlace, MORE_PLACES } from '../kit/eventNav.ts';
+import { OUTSIDE_TABS, outsideMore, outsidePlaces } from '../kit/outsideEvent.ts';
 import { leaveThen } from '../leaveHeld.ts';
 import { frameTitleSize } from '../layout/textSize.ts';
 import { backScale } from '../layout/focusedHeader.ts';
@@ -112,7 +113,7 @@ import {
 import { OrgDropDown } from './OrgDropDown.tsx';
 import { AREA_GLYPH } from './areaGlyph.ts';
 import { ReadOut } from './ReadOut.tsx';
-import { Row, RowList } from './SummaryRows.tsx';
+import { Row, RowList, TextAction } from './SummaryRows.tsx';
 import { Back, useBackWord } from './SettingsParts.tsx';
 import { SETTLED_MS, useFocusOnAnswer, useWindowOrigin } from './Screen.tsx';
 import type { ScreenReaderTarget } from './screenReaderFocus.ts';
@@ -207,6 +208,8 @@ export interface InsideEvent {
   card: { event: Shown | null; now: Date };
   /** The landscape sidebar's ‹ when it goes somewhere other than Events, as a copy's ‹ Event up to its original. */
   up?: { label: string; onPress: () => void } | undefined;
+  /** Held from outside an organisation (sc-71): its level's areas, no way back to Events, and Your account and Sign out in More. */
+  outside?: { role: OutsideEvent['role'] } | undefined;
 }
 
 interface NavEntry {
@@ -341,7 +344,12 @@ export function AppFrame({
   useEffect(() => navigation.setOptions({ gestureEnabled: stackSwipe }), [navigation, stackSwipe]);
   const signedIn = useSignedIn();
   usePushTaps(signedIn.account?.id);
-  const entries = inEvent == null ? [] : EVENT_PLACES.map((area) => areaEntry(t, inEvent, area));
+  const entries =
+    inEvent == null
+      ? []
+      : (inEvent.outside == null ? EVENT_PLACES : outsidePlaces(inEvent.outside.role)).map((area) =>
+          areaEntry(t, inEvent, area),
+        );
   const waiting = useWaitingInvitations();
   const offer = useDomainOffer();
   const count = waitingInvitations(waiting.invitations, waiting.outcomes);
@@ -543,6 +551,7 @@ export function AppFrame({
               inEvent={inEvent != null}
               card={inEvent?.card}
               up={inEvent?.up}
+              outside={inEvent?.outside != null}
               organisation={signedIn.organisation}
               waiting={count}
               onSwitch={switchFromPill}
@@ -1265,6 +1274,13 @@ const PHONE_EVENT_BAR: readonly (readonly [PhoneEventTab, GlyphName])[] = [
   ['more', 'dots'],
 ];
 
+const OUTSIDE_BAR: readonly (readonly [PhoneEventTab, GlyphName])[] = [
+  ...(OUTSIDE_TABS as readonly PhoneEventTab[]).map(
+    (area) => [area, AREA_GLYPH[area as EventPlace]] as const,
+  ),
+  ['more', 'dots'],
+];
+
 const PHONE_EVENT_IDS: Record<PhoneEventTab, string> = {
   overview: 'event.nav.overview',
   guests: 'event.nav.guests',
@@ -1279,7 +1295,10 @@ function TabBar({ inEvent }: { inEvent: InsideEvent }) {
   const insets = useSafeAreaInsets();
   const [more, setMore] = useState(false);
   const moreTab = useRef<ViewInstance>(null);
-  const at: PhoneEventTab = (PHONE_EVENT_TABS as readonly EventPlace[]).includes(inEvent.area)
+  const { outside } = inEvent;
+  const tabs = outside == null ? PHONE_EVENT_BAR : OUTSIDE_BAR;
+  const inMore = outside == null ? MORE_PLACES : outsideMore(outside.role);
+  const at: PhoneEventTab = tabs.some(([tab]) => tab === inEvent.area)
     ? (inEvent.area as PhoneEventTab)
     : 'more';
 
@@ -1287,7 +1306,7 @@ function TabBar({ inEvent }: { inEvent: InsideEvent }) {
     <>
       <TabBarFade />
       <PhoneTabs
-        tabs={PHONE_EVENT_BAR}
+        tabs={tabs}
         bottom={tabBarFoot(insets.bottom)}
         at={at}
         say={(tab) => t(`eventNav.${tab}`)}
@@ -1324,7 +1343,7 @@ function TabBar({ inEvent }: { inEvent: InsideEvent }) {
           </View>
           <View accessibilityRole="tablist">
             <RowList
-              items={MORE_PLACES.map((area) => {
+              items={inMore.map((area) => {
                 const on = area === inEvent.area;
 
                 return {
@@ -1349,9 +1368,102 @@ function TabBar({ inEvent }: { inEvent: InsideEvent }) {
               })}
             />
           </View>
+          {outside != null && (
+            <OutsideYou onLeave={() => setMore(false)} idPrefix="event.nav.more" />
+          )}
         </View>
       </Sheet>
     </>
+  );
+}
+
+/** Held from outside an organisation (sc-71), the account's own two: Your account and Sign out, in the phone's More and behind the sidebar's person button. */
+function OutsideYou({ onLeave, idPrefix }: { onLeave: () => void; idPrefix: string }) {
+  const { t } = useTranslation();
+  const { account } = useSignedIn();
+
+  return (
+    <>
+      <RowList
+        items={[
+          {
+            key: 'account',
+            inset: 40,
+            row: (
+              <Row
+                title={t('settings.yourAccount')}
+                line={account?.name}
+                lead={<MoreGlyph name="user" on={false} />}
+                opens
+                onPress={() => {
+                  onLeave();
+                  router.navigate(SECTION_HREF.account);
+                }}
+                testID={`${idPrefix}.account`}
+              />
+            ),
+          },
+        ]}
+      />
+      <TextAction
+        label={t('settings.signOut')}
+        plain
+        glyph="signOut"
+        onPress={() => {
+          onLeave();
+          signOutHere();
+        }}
+        testID={`${idPrefix}.signOut`}
+      />
+    </>
+  );
+}
+
+/** On its side, held from outside, the sidebar person button's sheet: the person's name over Your account and Sign out, as the demo's MoreSheet draws it there. */
+function OutsideYouSheet({
+  open,
+  opener,
+  name,
+  onClose,
+}: {
+  open: boolean;
+  opener: RefObject<ViewInstance | null>;
+  name: string;
+  onClose: () => void;
+}) {
+  const { t } = useTranslation();
+
+  return (
+    <Sheet
+      open={open}
+      onClose={onClose}
+      scrimLabel={t('eventNav.closeMore')}
+      opener={opener}
+      testID="frame.side.you"
+    >
+      <View style={styles.moreSheet}>
+        <View style={styles.moreHead}>
+          <Text
+            size={22}
+            weight="bold"
+            accessibilityRole="header"
+            style={[styles.fill, styles.moreTitle]}
+          >
+            {name}
+          </Text>
+          <Pressable
+            onPress={onClose}
+            style={({ pressed }) => [styles.moreClose, pressed && styles.closePressed]}
+            accessibilityRole="button"
+            accessibilityLabel={t('eventNav.closeMore')}
+            testID="frame.side.you.close"
+          >
+            <Glyph name="x" size={18} ink={tokens.colorInk} weight={2.4} />
+          </Pressable>
+        </View>
+        <OutsideYou onLeave={onClose} idPrefix="frame.side.you" />
+      </View>
+    </Sheet>
   );
 }
 
@@ -1433,6 +1545,7 @@ function FrameSidebar({
   inEvent,
   card,
   up,
+  outside,
   organisation,
   waiting,
   onSwitch,
@@ -1444,6 +1557,7 @@ function FrameSidebar({
   inEvent: boolean;
   card: InsideEvent['card'] | undefined;
   up: InsideEvent['up'];
+  outside: boolean;
   organisation: Membership | null;
   waiting: number;
   onSwitch: (() => void) | undefined;
@@ -1456,6 +1570,8 @@ function FrameSidebar({
   const { account } = useSignedIn();
   const events = useSidebarEvents(account?.id, inEvent ? undefined : organisation?.id);
   const tabs = useFrameTabs(current, organisation);
+  const [you, setYou] = useState(false);
+  const youOpener = useRef<ViewInstance>(null);
   const name = account?.name ?? '';
   const role = organisation == null ? null : roleName(t, organisation.role);
   const person = useMemo(() => ({ name, role }), [name, role]);
@@ -1514,7 +1630,7 @@ function FrameSidebar({
               />
             )}
           </SidebarHead>
-          {inEvent && (
+          {inEvent && !outside && (
             <SidebarBack
               label={up?.label ?? t('todayScreen.tab.events')}
               heard={up?.label ?? t('eventsScreen.backToEvents')}
@@ -1530,8 +1646,19 @@ function FrameSidebar({
             at={inEvent ? null : tabs.at}
             person={person}
             settingsID={TAB_IDS.Settings}
+            settings={!outside}
+            onPerson={outside ? () => setYou(true) : undefined}
+            personRef={outside ? youOpener : undefined}
           />
         </SidebarColumn>
+        {outside && (
+          <OutsideYouSheet
+            open={you}
+            opener={youOpener}
+            name={name}
+            onClose={() => setYou(false)}
+          />
+        )}
       </TitleCap.Provider>
     </TodayShellProvider>
   );

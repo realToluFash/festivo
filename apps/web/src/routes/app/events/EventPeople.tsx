@@ -29,15 +29,17 @@ import {
   Field,
   Head,
   RowWords,
+  Tag,
   TextAction,
 } from '../../../components/SettingsParts.tsx';
 import { Skeleton } from '../../../components/Skeleton.tsx';
 import { Toast } from '../../../components/Toast.tsx';
 import { currentLocale } from '../../../i18n/index.ts';
 import { focusWhenFree, LayersContext, useDeskLayers } from '../../../layers.ts';
-import { canOn, useSession } from '../../../session.ts';
+import { canOn, outsideOn, useSession } from '../../../session.ts';
 import { keptKeys, keptLoad, useAnsweredAgain, useKeptAsShown } from '../../../tabKept.ts';
 import '../../../components/SettingsParts.css';
+import { faceOf, outsideView, shownAddress } from './outside.ts';
 import './people.css';
 
 /** `addable` is null for whoever may not change People: the API refuses them that list. */
@@ -59,13 +61,16 @@ const SETTLE_MS = 600;
 /** The row whose dialog closed stays lit this long, then its Tint fades. */
 const LIT_MS = 2000;
 const ARROWS = new Set(['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight']);
+const LABEL_MOST = 60;
 
 /** People on an event (sc-29915), as the People demo draws it at a desk: who has which of its four roles, changed by Owners, Admins and its Lead. */
 export function EventPeople({ event }: { event: OrganisationEvent }) {
   const { t } = useTranslation();
   const session = useSession();
   const { layers, covered, setHost } = useDeskLayers();
-  const organisationName = session.organisation?.name ?? '';
+  const organisationName =
+    session.organisation?.name ?? outsideOn(session, event.id)?.organisationName ?? '';
+  const country = session.organisation?.countryCode ?? '';
   const [load, setLoad] = useState<Load>({ kind: 'loading' });
   const [attempt, setAttempt] = useState(0);
   const answeredAgain = useAnsweredAgain();
@@ -140,7 +145,7 @@ export function EventPeople({ event }: { event: OrganisationEvent }) {
 
   const loaded = load;
   const people = inListOrder(loaded.people);
-  const own = people.find((person) => person.user.id === userId);
+  const own = people.find((person) => person.user?.id === userId);
   const addable = loaded.addable;
   const managers = [...loaded.owners, ...loaded.admins];
   const list = listFormat(currentLocale(), { type: 'conjunction' });
@@ -202,11 +207,26 @@ export function EventPeople({ event }: { event: OrganisationEvent }) {
               <ul className="desk-rows has-lead people-rows">
                 {people.map((person, tone) => {
                   const yours = person.id === own?.id;
+                  const face = faceOf(person);
                   const words = (
                     <>
-                      <Avatar initials={initials(person.user.name)} tone={tone} />
+                      {face == null ? (
+                        <Avatar initials={initials(nameOf(person, t))} tone={tone} />
+                      ) : (
+                        <span className="people-outside-face" aria-hidden="true">
+                          <Glyph name={face} size={18} />
+                        </span>
+                      )}
                       <RowWords
-                        title={person.user.name}
+                        title={nameOf(person, t)}
+                        tag={
+                          person.outside && (
+                            <Tag
+                              kind="now"
+                              word={t('eventPeople.outsideTag', { organisation: organisationName })}
+                            />
+                          )
+                        }
                         lines={[
                           [
                             t(`eventPeople.role.${person.role}`),
@@ -284,13 +304,13 @@ export function EventPeople({ event }: { event: OrganisationEvent }) {
                 ...loaded,
                 people: people.filter((one) => one.id !== opened.id),
                 addable:
-                  addable == null
-                    ? null
-                    : [...addable, { membershipId: opened.membershipId, name: opened.user.name }],
+                  addable == null || opened.membershipId == null
+                    ? addable
+                    : [...addable, { membershipId: opened.membershipId, name: nameOf(opened, t) }],
               });
               setOpen(null);
               setLit(null);
-              setToast(t('eventPeople.removed', { name: opened.user.name }));
+              setToast(t('eventPeople.removed', { name: nameOf(opened, t) }));
               // The row it came from has gone, so focus lands on Add once the dialogs have handed it back.
               focusWhenFree(() => addBox.current ?? title.current);
             }}
@@ -301,6 +321,8 @@ export function EventPeople({ event }: { event: OrganisationEvent }) {
           <AddDialog
             eventId={event.id}
             organisationName={organisationName}
+            country={country}
+            people={people}
             members={addable}
             onPartlyAdded={joined}
             onAdded={(added, role) => {
@@ -308,7 +330,7 @@ export function EventPeople({ event }: { event: OrganisationEvent }) {
               closeAdd();
               setToast(
                 added.length === 1
-                  ? t(`eventPeople.nowOne.${role}`, { name: added[0]?.user.name ?? '' })
+                  ? t(`eventPeople.nowOne.${role}`, { name: added[0] ? nameOf(added[0], t) : '' })
                   : t(`eventPeople.nowMany.${role}`, { count: added.length }),
               );
             }}
@@ -333,8 +355,16 @@ function inListOrder(people: readonly EventPerson[]): EventPerson[] {
   return [...people].sort(
     (a, b) =>
       EVENT_ROLES.indexOf(a.role) - EVENT_ROLES.indexOf(b.role) ||
-      a.user.name.localeCompare(b.user.name, currentLocale()),
+      (a.user?.name ?? a.address ?? '').localeCompare(
+        b.user?.name ?? b.address ?? '',
+        currentLocale(),
+      ),
   );
+}
+
+/** Someone added by an address goes by it until they join, and by 'Not joined yet' to whoever is not shown it. */
+function nameOf(person: EventPerson, t: (key: string) => string): string {
+  return person.user?.name ?? shownAddress(person) ?? t('eventPeople.notJoined');
 }
 
 function Lost({ words }: { words: string }) {
@@ -391,7 +421,7 @@ function RoleDialog({
   const [removing, setRemoving] = useState(false);
   const [refused, setRefused] = useState<string | null>(null);
   const [removingNow, setRemovingNow] = useState(false);
-  const name = person.user.name;
+  const name = nameOf(person, t);
   const held = useRef<EventRole>(person.role);
   const byArrow = useRef(false);
   const settle = useRef<{ timer: number; role: EventRole } | null>(null);
@@ -502,39 +532,52 @@ function RoleDialog({
             title={name}
             lines={[
               [
-                t('eventPeople.memberOf', { organisation: organisationName }),
+                t(person.outside ? 'eventPeople.fromOutside' : 'eventPeople.memberOf', {
+                  organisation: organisationName,
+                }),
                 ...(person.jobLabel == null ? [] : [person.jobLabel]),
               ].join(' · '),
             ]}
           />
         </div>
+        {person.outside && <p className="desk-line people-ends">{t('eventPeople.outsideEnds')}</p>}
         {failed != null && <Lost words={failed} />}
         <fieldset className="desk-choices">
           <legend className="desk-unseen">{t('eventPeople.roleFor', { name })}</legend>
           <ul className="desk-rows">
-            {EVENT_ROLES.map((role) => (
-              <li key={role}>
-                <label className={role === picked ? 'desk-row is-picked' : 'desk-row'}>
-                  <RowWords
-                    title={t(`eventPeople.role.${role}`)}
-                    tag={role === picked && <SavingTag saving={saving} />}
-                    lines={[t(`eventPeople.roleMeans.${role}`)]}
-                  />
-                  <input
-                    ref={role === picked ? pickedRadio : undefined}
-                    type="radio"
-                    className="desk-radio"
-                    name={radios}
-                    value={role}
-                    checked={role === picked}
-                    onKeyDown={(key: KeyboardEvent<HTMLInputElement>) => {
-                      byArrow.current = ARROWS.has(key.key);
-                    }}
-                    onChange={() => pick(role)}
-                  />
-                </label>
-              </li>
-            ))}
+            {EVENT_ROLES.map((role) => {
+              const off = person.outside && role === 'lead';
+              const rowClass = ['desk-row', role === picked && 'is-picked', off && 'is-off'];
+
+              return (
+                <li key={role}>
+                  <label className={rowClass.filter(Boolean).join(' ')}>
+                    <RowWords
+                      title={t(`eventPeople.role.${role}`)}
+                      tag={role === picked && <SavingTag saving={saving} />}
+                      lines={[
+                        off
+                          ? t('eventPeople.leadOff', { organisation: organisationName })
+                          : t(`eventPeople.roleMeans.${role}`),
+                      ]}
+                    />
+                    <input
+                      ref={role === picked ? pickedRadio : undefined}
+                      type="radio"
+                      className="desk-radio"
+                      name={radios}
+                      value={role}
+                      disabled={off}
+                      checked={role === picked}
+                      onKeyDown={(key: KeyboardEvent<HTMLInputElement>) => {
+                        byArrow.current = ARROWS.has(key.key);
+                      }}
+                      onChange={() => pick(role)}
+                    />
+                  </label>
+                </li>
+              );
+            })}
           </ul>
         </fieldset>
         <p className="desk-unseen" role="status">
@@ -553,7 +596,11 @@ function RoleDialog({
       {removing && (
         <Ask
           title={t('eventPeople.removeTitle', { name })}
-          line={t('eventPeople.removeLine', { organisation: organisationName })}
+          line={
+            person.outside
+              ? t('eventPeople.removeOutsideLine')
+              : t('eventPeople.removeLine', { organisation: organisationName })
+          }
           keep={t('eventPeople.keep', { name: firstName(name) })}
           go={t('eventPeople.removeConfirm')}
           busy={removingNow ? t('eventPeople.removing') : undefined}
@@ -569,10 +616,12 @@ function RoleDialog({
   );
 }
 
-/** Members of the organisation only: someone from outside waits on sc-71's grant. */
+/** Members found by name, and someone from outside by email address or mobile number (sc-71). */
 function AddDialog({
   eventId,
   organisationName,
+  country,
+  people,
   members,
   onPartlyAdded,
   onAdded,
@@ -580,6 +629,8 @@ function AddDialog({
 }: {
   eventId: string;
   organisationName: string;
+  country: string;
+  people: readonly EventPerson[];
   members: readonly AddableMember[];
   onPartlyAdded: (added: EventPerson[]) => void;
   onAdded: (added: EventPerson[], role: EventRole) => void;
@@ -593,6 +644,13 @@ function AddDialog({
   const [busy, setBusy] = useState(false);
   const [failed, setFailed] = useState<string | null>(null);
   const [discarding, setDiscarding] = useState(false);
+  const [outsideOn, setOutsideOn] = useState(true);
+  const [job, setJob] = useState('');
+  const outside = outsideView(typed, country, role, people);
+  const address = outside.kind === 'offer' ? outside.address : null;
+  const sendsOutside = address != null && outsideOn;
+  const quiet = outside.kind === 'offer' || outside.kind === 'leadOff';
+  const fromOutside = t('eventPeople.fromOutside', { organisation: organisationName });
   const wording = typed.trim().toLocaleLowerCase(currentLocale());
   const shown = [...members]
     .sort((a, b) => a.name.localeCompare(b.name, currentLocale()))
@@ -601,12 +659,12 @@ function AddDialog({
         ticked.includes(member.membershipId) ||
         member.name.toLocaleLowerCase(currentLocale()).includes(wording),
     );
-  const touched = ticked.length > 0 || role !== 'can_view';
+  const touched = ticked.length > 0 || role !== 'can_view' || sendsOutside;
   const cancel = useCallback(() => (touched ? setDiscarding(true) : onClose()), [touched, onClose]);
   const inOrganisation = t('eventPeople.inOrganisation', { organisation: organisationName });
 
   async function add(): Promise<void> {
-    if (busy || ticked.length === 0) return;
+    if (busy || (ticked.length === 0 && !sendsOutside)) return;
     setBusy(true);
     setFailed(null);
     const added: EventPerson[] = [];
@@ -614,6 +672,17 @@ function AddDialog({
     try {
       for (const membershipId of ticked) {
         added.push(await api.addEventPerson(eventId, membershipId, role));
+      }
+      if (sendsOutside) {
+        const label = job.trim();
+        added.push(
+          await api.addEventPersonFromOutside(
+            eventId,
+            address.address,
+            role,
+            label === '' ? null : label,
+          ),
+        );
       }
       onAdded(added, role);
     } catch (error) {
@@ -630,7 +699,7 @@ function AddDialog({
         title={t('eventPeople.addTitle')}
         verb={t('eventPeople.addConfirm')}
         dismiss={t('eventPeople.cancel')}
-        on={ticked.length > 0}
+        on={ticked.length > 0 || sendsOutside}
         locked={busy}
         first={nameBox}
         onDismiss={cancel}
@@ -650,9 +719,12 @@ function AddDialog({
             }
           />
           <Field
-            label={t('eventPeople.find')}
+            label={t(role === 'lead' ? 'eventPeople.find' : 'eventPeople.findAny')}
             value={typed}
-            onChange={setTyped}
+            onChange={(value) => {
+              setTyped(value);
+              setOutsideOn(true);
+            }}
             inputRef={nameBox}
             autoComplete="off"
           />
@@ -688,7 +760,7 @@ function AddDialog({
               </ul>
             )}
             <div role="status">
-              {shown.length === 0 && (
+              {shown.length === 0 && !quiet && (
                 <p className="desk-line">
                   {members.length === 0
                     ? t('eventPeople.everyoneOn', { organisation: organisationName })
@@ -698,8 +770,56 @@ function AddDialog({
                       })}
                 </p>
               )}
+              {outside.kind === 'unusable' && (
+                <p className="desk-line">{t('eventPeople.unusable')}</p>
+              )}
+              {outside.kind === 'onEvent' && (
+                <p className="desk-line">{t('eventPeople.onAlready', { name: outside.name })}</p>
+              )}
+              {outside.kind === 'leadOff' && (
+                <>
+                  <p className="desk-empty-title">
+                    {t('eventPeople.leadOff', { organisation: organisationName })}
+                  </p>
+                  <p className="desk-line">{t('eventPeople.pickAnother')}</p>
+                </>
+              )}
             </div>
           </section>
+          {address != null && (
+            <section className="desk-block" aria-label={fromOutside}>
+              <Head title={fromOutside} level={3} />
+              <ul className="desk-rows has-lead">
+                <li>
+                  <label className={outsideOn ? 'desk-row is-picked' : 'desk-row'}>
+                    <span className="people-outside-face" aria-hidden="true">
+                      <Glyph name={address.kind === 'email' ? 'mail' : 'phone'} size={18} />
+                    </span>
+                    <RowWords title={address.shown} lines={[]} />
+                    <input
+                      type="checkbox"
+                      className="people-check"
+                      checked={outsideOn}
+                      disabled={busy}
+                      onChange={() => setOutsideOn((was) => !was)}
+                    />
+                  </label>
+                </li>
+              </ul>
+              {outsideOn && (
+                <Field
+                  label={t('eventPeople.jobLabel')}
+                  value={job}
+                  help={t('eventPeople.jobHelp', {
+                    length: Array.from(job).length,
+                    most: LABEL_MOST,
+                  })}
+                  autoComplete="off"
+                  onChange={(value) => setJob(Array.from(value).slice(0, LABEL_MOST).join(''))}
+                />
+              )}
+            </section>
+          )}
         </div>
       </Dialog>
       {discarding && (

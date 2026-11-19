@@ -2316,7 +2316,7 @@
     "title": "Pessoas",
     "loading": "A carregar as pessoas deste evento…",
     "retry": "Tentar novamente",
-    "addPrompt": "Adicionar por nome",
+    "addPrompt": "Adicionar por nome, e-mail ou telemóvel",
     "onEvent": "Neste evento",
     "you": "A sua conta",
     "nobody": "Ainda não há ninguém neste evento.",
@@ -2346,6 +2346,11 @@
       "can_check_in": "Regista as entradas dos convidados no dia do evento. Só os nomes, sem dados de contacto."
     },
     "memberOf": "Membro de {{organisation}}",
+    "fromOutside": "De fora de {{organisation}}",
+    "outsideTag": "Fora de {{organisation}}",
+    "leadOff": "Só para membros de {{organisation}}.",
+    "outsideEnds": "O acesso termina com o evento.",
+    "notJoined": "Ainda não aderiu",
     "roleFor": "Função de {{name}} neste evento",
     "roleTitle": "Função neste evento",
     "saving": "A guardar…",
@@ -2356,6 +2361,7 @@
     "remove": "Remover deste evento…",
     "removeTitle": "Remover {{name}} deste evento?",
     "removeLine": "Esta pessoa perde o acesso a este evento na próxima ação que fizer. Continua em {{organisation}}.",
+    "removeLineOutside": "Esta pessoa perde o acesso na próxima ação que fizer.",
     "keep": "Manter {{name}}",
     "removeConfirm": "Remover",
     "removing": "A remover…",
@@ -2364,8 +2370,14 @@
     "addTitle": "Adicionar pessoas",
     "theirRole": "Função no evento",
     "find": "Nome",
+    "findAnyone": "Nome, e-mail ou número de telemóvel",
     "inOrganisation": "Em {{organisation}}",
     "noMatch": "Ninguém em {{organisation}} corresponde a \"{{typed}}\".",
+    "unusable": "Não é um e-mail nem um número de telemóvel que possamos usar.",
+    "onAlready": "{{name}} já está neste evento.",
+    "pickAnother": "Escolha outra função para adicionar alguém de fora.",
+    "jobLabel": "Cargo (opcional)",
+    "jobHelp": "O que vem fazer, mostrado junto ao nome. Não dá nenhum acesso. {{length, number}} de {{most, number}}.",
     "everyoneOn": "Todas as pessoas de {{organisation}} já estão neste evento.",
     "cancel": "Cancelar",
     "addConfirm": "Adicionar",
@@ -3044,5 +3056,12 @@
     "failed": "Não foi possível criar o ficheiro, por isso nada foi partilhado. Tente novamente.",
     "needsConnection": "É preciso Internet para exportar",
     "dropped": "É preciso Internet para exportar. Nada foi exportado."
+  },
+  "outsideEvent": {
+    "until": "until {{when}}",
+    "guestsLine": "Names and replies only, no contact details",
+    "onEvent_one": "{{count, number}} person on this event",
+    "onEvent_other": "{{count, number}} people on this event",
+    "onEvent_many": "{{count, number}} people on this event"
   }
 }

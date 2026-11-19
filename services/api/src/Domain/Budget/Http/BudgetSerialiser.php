@@ -6,10 +6,10 @@ namespace App\Domain\Budget\Http;
 
 use App\Domain\Budget\Model\QuantityFacts;
 use App\Domain\Budget\QuantityResolver;
-use App\Domain\Menu\DishRules;
 use App\Entity\BudgetLine;
 use App\Entity\Event;
 use App\Enum\CostBasis;
+use App\Locale\Money;
 use App\Repository\BudgetLineRepository;
 use Psl\Vec;
 
@@ -46,7 +46,7 @@ final readonly class BudgetSerialiser
     {
         $currency = $line->getEvent()->getCurrency();
         $price = $line->getPriceMinor();
-        $written = null === $price ? null : DishRules::written($price, $currency);
+        $written = null === $price ? null : Money::written($price, $currency);
         $quantity = QuantityResolver::resolve($line->getBasis(), $facts);
 
         return [

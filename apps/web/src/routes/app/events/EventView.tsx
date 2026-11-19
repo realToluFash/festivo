@@ -19,7 +19,7 @@ import { ArrivalNotice } from '../../../components/PageArrival.tsx';
 import { pageTitle, usePageTitle } from '../../../pageTitle.ts';
 import { LayersContext, useDeskLayers } from '../../../layers.ts';
 import { useLoadedAt, useServerNow } from '../../../serverNow.ts';
-import { canOn, useSession } from '../../../session.ts';
+import { canOn, outsideOn, useSession } from '../../../session.ts';
 import { useFocusOnceShown } from '../../../stepFocus.ts';
 import { DuplicateEvent } from './DuplicateEvent.tsx';
 import { DraftRow, StatusPill } from './MakeLive.tsx';
@@ -37,6 +37,7 @@ import { PAGE_NEEDS } from './handoff.ts';
 import { typeLabel } from './eventTypes.ts';
 import { AllDates } from './Timeline.tsx';
 import { EventCrumb, Overview, PhaseChange } from './EventOverview.tsx';
+import { OutsideOverview } from './OutsideOverview.tsx';
 import { useGoneEvent, useShowEvent } from './EventNav.tsx';
 import { Arrived, Skeleton } from '../../../components/Skeleton.tsx';
 import { NotFound } from '../../public/NotFound.tsx';
@@ -96,7 +97,8 @@ export function EventAreaPage() {
 function ForEvent({ page }: { page: Page }) {
   const session = useSession();
   const { eventId = '' } = useParams();
-  const organisationId = session.organisation?.id;
+  const outside = outsideOn(session, eventId);
+  const organisationId = session.organisation?.id ?? (outside == null ? null : OUTSIDE);
 
   if (organisationId == null) return null;
 
@@ -108,6 +110,13 @@ function ForEvent({ page }: { page: Page }) {
       page={page}
     />
   );
+}
+
+/** Held from outside an organisation (sc-71): the event is the account's whichever organisation it belongs to. */
+const OUTSIDE = 'outside';
+
+function ofOrganisation(event: OrganisationEvent, organisationId: string): boolean {
+  return organisationId === OUTSIDE || event.organisationId === organisationId;
 }
 
 function Withheld() {
@@ -129,6 +138,7 @@ function EventOf({
   page: Page;
 }) {
   const { t } = useTranslation();
+  const outside = outsideOn(useSession(), eventId);
   const [load, setLoad] = useState<Load>({ kind: 'loading' });
   const [attempt, setAttempt] = useState(0);
   const [refresh, setRefresh] = useState(0);
@@ -151,7 +161,7 @@ function EventOf({
         if (!current) return;
         answered.current = new Date();
         setLoad((was) => {
-          if (event.organisationId !== organisationId) return { kind: 'notFound' };
+          if (!ofOrganisation(event, organisationId)) return { kind: 'notFound' };
 
           try {
             return was.kind === 'loaded' && eventVersion(tag) < eventVersion(was.tag)
@@ -167,7 +177,8 @@ function EventOf({
         const found = keepsWhatLoaded(error)
           ? keptFor<{ event: OrganisationEvent; tag: string }>(keptKeys.event(eventId), error)
           : null;
-        const kept = found?.value.event.organisationId === organisationId ? found : null;
+        const kept =
+          found != null && ofOrganisation(found.value.event, organisationId) ? found : null;
 
         if (kept != null) keep(kept.at);
         setLoad((was) =>
@@ -303,12 +314,16 @@ function EventOf({
             {states}
             {load.kind === 'loaded' && (
               <Arrived>
-                <Overview
-                  event={load.event}
-                  tag={load.tag}
-                  heading={heading}
-                  onChange={(event, tag) => setLoad({ kind: 'loaded', event, tag })}
-                />
+                {outside != null && outside.role !== 'can_edit' ? (
+                  <OutsideOverview event={load.event} held={outside} heading={heading} />
+                ) : (
+                  <Overview
+                    event={load.event}
+                    tag={load.tag}
+                    heading={heading}
+                    onChange={(event, tag) => setLoad({ kind: 'loaded', event, tag })}
+                  />
+                )}
               </Arrived>
             )}
           </div>

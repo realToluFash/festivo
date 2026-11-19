@@ -402,8 +402,9 @@ permit = [
 # Budget & costs: an event's cost lines (sc-83). A line's quantity is read from what the
 # event already knows, accepted guests (sc-99), tables in the seating plan and the event's
 # days, so it reads the guest headcount and the event's day count; a price is parsed and
-# written at the currency's minor unit as the menu's costs are. A line holds the event's
-# currency (sc-98); each change is audited and published.
+# written at the currency's minor unit by Locale's Money, as the menu's costs are
+# (sc-68066). A line holds the event's currency (sc-98); each change is audited and
+# published.
 [[guard.perimeter.rules]]
 namespace = "App\\Domain\\Budget\\"
 permit = [
@@ -413,7 +414,6 @@ permit = [
     "@layer:domain_budget",
     "@layer:domain_event",
     "@layer:domain_guest",
-    "@layer:domain_menu",
     "@layer:domain_user",
     "@layer:repository",
     "@layer:audit",
