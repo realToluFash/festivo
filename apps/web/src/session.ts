@@ -346,8 +346,7 @@ export function forgetSession(ended = false, why?: Problem): void {
   forgetKept();
   set({
     status: 'signedOut',
-    // A refused refresh in a tab that never signed in ended nothing, unless a rule says why.
-    ended: arrived ? timedOut != null || providerOnly != null : ended,
+    ended,
     ...(arrived ? { arrived } : {}),
     ...(timedOut == null ? {} : { timedOut }),
     ...(providerOnly == null ? {} : { providerOnly }),

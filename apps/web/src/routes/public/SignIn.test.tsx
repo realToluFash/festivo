@@ -283,7 +283,7 @@ describe('signing in, for real', () => {
     await waitFor(() =>
       expect(screen.getByRole('heading', { level: 1, name: 'Sign in' })).toBeDefined(),
     );
-    expect(screen.queryByText(/You were signed out/)).toBeNull();
+    expect(screen.getByText(/You were signed out/)).toBeDefined();
     fillIn();
 
     await waitFor(() =>

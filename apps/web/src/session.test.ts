@@ -100,13 +100,13 @@ describe('a session the API ended', () => {
 });
 
 describe('a tab that never held a session (sc-612)', () => {
-  it('arrived signed out when the API refuses its refresh, and ended nothing', () => {
+  it('arrived signed out when the API refuses its refresh, and still says the session ended', () => {
     expect(
       signedOutBy(
         { type: 'https://soirely.com/errors/unauthenticated', title: 'No.', status: 401 },
         'checking',
       ),
-    ).toEqual({ status: 'signedOut', ended: false, arrived: true });
+    ).toEqual({ status: 'signedOut', ended: true, arrived: true });
   });
 
   it('still says which rule ended the session its cookie held', () => {
