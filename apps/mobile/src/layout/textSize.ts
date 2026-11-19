@@ -137,6 +137,11 @@ export function besideGlyph(
 
 export const LABEL_LINE = 1.22;
 
+/** The line height to give a text of `size` drawn at `drawn`, so that once scaled each line is whole points and a box of n lines rounds to n lines (sc-69816). */
+export function wholeLineHeight(size: number, drawn: number): number {
+  return (Math.ceil(drawn * LABEL_LINE) * size) / drawn;
+}
+
 /** 12 above and below a growing pill's words, or what main's height leaves around them at the default size, so a tablet on its side keeps 44 (sc-66900). */
 export function grownPad(height: number, size: number, ring: number): number {
   return Math.min(tokens.spaceLg, (height - 2 * ring - size * LABEL_LINE) / 2);

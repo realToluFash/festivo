@@ -25,6 +25,7 @@ import {
   wordsIn,
   wordsRoomKey,
   wordsSlot,
+  wholeLineHeight,
 } from './textSize.ts';
 
 const AX1 = 1.786;
@@ -439,5 +440,17 @@ describe('pasteHeight', () => {
   it('grows past the word Apple draws at the accessibility sizes', () => {
     expect(pasteHeight(45, AX1)).toBeGreaterThan(17 * AX1 * 1.2 + 14);
     expect(pasteHeight(45, 3.12)).toBeGreaterThan(17 * 3.12 * 1.2 + 14);
+  });
+});
+
+describe('wholeLineHeight', () => {
+  it('scales to whole points at the size a text is drawn at', () => {
+    expect(wholeLineHeight(13, 40) * (40 / 13)).toBeCloseTo(49, 9);
+    expect(wholeLineHeight(15.5, 43) * (43 / 15.5)).toBeCloseTo(53, 9);
+    expect(wholeLineHeight(13, 13)).toBe(16);
+  });
+
+  it('keeps four lines of a stepped-down row line at four whole lines', () => {
+    expect(4 * wholeLineHeight(13, 40) * (40 / 13)).toBeCloseTo(196, 9);
   });
 });
