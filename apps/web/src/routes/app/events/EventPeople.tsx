@@ -9,6 +9,7 @@ import {
 import { firstName, initials, listFormat, numberFormat } from '@soirely/domain';
 import {
   type KeyboardEvent,
+  type ReactNode,
   useCallback,
   useEffect,
   useId,
@@ -135,36 +136,26 @@ export function EventPeople({ event }: { event: OrganisationEvent }) {
 
   if (load.kind === 'loading')
     return (
-      <LayersContext value={layers}>
-        <div className="desk event-people-desk">
-          <div className="desk-column event-people" inert={covered}>
-            {top}
-            <Skeleton words={t('eventPeople.loading')} shape="rows" rowHeight={60} />
-          </div>
-        </div>
-      </LayersContext>
+      <PeopleDesk layers={layers} covered={covered} setHost={setHost} top={top}>
+        <Skeleton words={t('eventPeople.loading')} shape="rows" rowHeight={60} />
+      </PeopleDesk>
     );
 
   if (load.kind === 'failed')
     return (
-      <LayersContext value={layers}>
-        <div className="desk event-people-desk">
-          <div className="desk-column event-people" inert={covered}>
-            {top}
-            <ArrivalNotice
-              role={attempt > 0 ? undefined : 'alert'}
-              line={t('eventPeople.failed')}
-              lineRef={failedLine}
-              focusable
-              retry={t('eventPeople.retry')}
-              onRetry={() => {
-                setLoad({ kind: 'loading' });
-                setAttempt((n) => n + 1);
-              }}
-            />
-          </div>
-        </div>
-      </LayersContext>
+      <PeopleDesk layers={layers} covered={covered} setHost={setHost} top={top}>
+        <ArrivalNotice
+          role={attempt > 0 ? undefined : 'alert'}
+          line={t('eventPeople.failed')}
+          lineRef={failedLine}
+          focusable
+          retry={t('eventPeople.retry')}
+          onRetry={() => {
+            setLoad({ kind: 'loading' });
+            setAttempt((n) => n + 1);
+          }}
+        />
+      </PeopleDesk>
     );
 
   const loaded = load;
@@ -193,169 +184,204 @@ export function EventPeople({ event }: { event: OrganisationEvent }) {
   }
 
   return (
+    <PeopleDesk
+      layers={layers}
+      covered={covered}
+      setHost={setHost}
+      top={top}
+      beside={
+        <>
+          {opened != null && open?.kind === 'person' && (
+            <RoleDialog
+              key={open.visit}
+              eventId={event.id}
+              person={opened}
+              tone={people.indexOf(opened)}
+              organisationName={organisationName}
+              onChanged={replaced}
+              onRemoved={() => {
+                setLoad({
+                  ...loaded,
+                  people: people.filter((one) => one.id !== opened.id),
+                  addable:
+                    addable == null || opened.membershipId == null
+                      ? addable
+                      : [
+                          ...addable,
+                          { membershipId: opened.membershipId, name: nameOf(opened, t) },
+                        ],
+                });
+                setOpen(null);
+                setLit(null);
+                setToast(t('eventPeople.removed', { name: nameOf(opened, t) }));
+                // The row it came from has gone, so focus lands on Add once the dialogs have handed it back.
+                focusWhenFree(() => addBox.current ?? title.current);
+              }}
+              onClose={closeRole}
+            />
+          )}
+          {open?.kind === 'add' && addable != null && (
+            <AddDialog
+              eventId={event.id}
+              organisationName={organisationName}
+              country={country}
+              people={people}
+              members={addable}
+              onPartlyAdded={joined}
+              onAdded={(added, role) => {
+                joined(added);
+                closeAdd();
+                setToast(
+                  added.length === 1
+                    ? t(`eventPeople.nowOne.${role}`, { name: added[0] ? nameOf(added[0], t) : '' })
+                    : t(`eventPeople.nowMany.${role}`, { count: added.length }),
+                );
+              }}
+              onClose={closeAdd}
+            />
+          )}
+          {toast != null && <Toast key={toast} words={toast} onClose={() => setToast(null)} />}
+        </>
+      }
+    >
+      {adds && (
+        <button
+          ref={addBox}
+          type="button"
+          className="people-add"
+          onClick={() => {
+            setToast(null);
+            setOpen({ kind: 'add' });
+          }}
+        >
+          <Glyph name="plus" size={19} weight={2.4} />
+          {t('eventPeople.addPrompt')}
+        </button>
+      )}
+
+      {people.length === 0 ? (
+        <div className="people-nobody">
+          <p className="desk-empty-title">{t('eventPeople.nobody')}</p>
+          <p className="desk-line">{t('eventPeople.nobodyLine')}</p>
+        </div>
+      ) : (
+        <section className="desk-block" aria-labelledby="event-people-on">
+          <Head title={<span id="event-people-on">{t('eventPeople.onEvent')}</span>}>
+            <span className="people-count">{count.format(people.length)}</span>
+          </Head>
+          <ul className="desk-rows has-lead people-rows">
+            {people.map((person, tone) => {
+              const yours = person.id === own?.id;
+              const face = faceOf(person);
+              const words = (
+                <>
+                  {face == null ? (
+                    <Avatar initials={initials(nameOf(person, t))} tone={tone} />
+                  ) : (
+                    <span className="people-outside-face" aria-hidden="true">
+                      <Glyph name={face} size={18} />
+                    </span>
+                  )}
+                  <RowWords
+                    title={nameOf(person, t)}
+                    tag={
+                      person.outside && (
+                        <Tag
+                          kind="now"
+                          word={t('eventPeople.outsideTag', { organisation: organisationName })}
+                        />
+                      )
+                    }
+                    lines={[
+                      [
+                        t(`eventPeople.role.${person.role}`),
+                        ...(person.jobLabel == null ? [] : [person.jobLabel]),
+                        ...(yours ? [t('eventPeople.you')] : []),
+                      ].join(' · '),
+                    ]}
+                  />
+                </>
+              );
+
+              return (
+                <li key={person.id}>
+                  {manages && !yours ? (
+                    <button
+                      type="button"
+                      className={lit?.id === person.id ? 'desk-row is-on' : 'desk-row'}
+                      aria-haspopup="dialog"
+                      onClick={() => {
+                        setToast(null);
+                        setLit({ id: person.id, held: true });
+                        setOpen((was) => ({
+                          kind: 'person',
+                          id: person.id,
+                          visit: (was?.kind === 'person' ? was.visit : 0) + 1,
+                        }));
+                      }}
+                    >
+                      {words}
+                      <Glyph name="chevdown" size={18} weight={2.3} className="desk-chevron" />
+                    </button>
+                  ) : (
+                    <div className="desk-row">{words}</div>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
+        </section>
+      )}
+
+      <div className="people-foot">
+        {!manages && <p className="desk-foot">{t('eventPeople.readOnly')}</p>}
+        {managers.length > 0 && (
+          <p className="desk-foot">
+            {t('eventPeople.managers', {
+              count: managers.length,
+              names: list.format(managers),
+              roles: list.format(
+                (['owner', 'admin'] as const)
+                  .map((role) => ({ role, count: loaded[`${role}s`].length }))
+                  .filter(({ count: held }) => held > 0)
+                  .map(({ role, count: held }) =>
+                    t(`eventPeople.managerRole.${role}`, { count: held }),
+                  ),
+              ),
+              organisation: organisationName,
+            })}
+          </p>
+        )}
+      </div>
+    </PeopleDesk>
+  );
+}
+
+/** One desk around every state, so the title stays the same node and keeps focus as the list arrives. */
+function PeopleDesk({
+  layers,
+  covered,
+  setHost,
+  top,
+  beside,
+  children,
+}: {
+  layers: ReturnType<typeof useDeskLayers>['layers'];
+  covered: boolean;
+  setHost: (host: HTMLElement | null) => void;
+  top: ReactNode;
+  beside?: ReactNode;
+  children: ReactNode;
+}) {
+  return (
     <LayersContext value={layers}>
       <div className="desk event-people-desk">
         <div className="desk-column event-people" inert={covered}>
           {top}
-          {adds && (
-            <button
-              ref={addBox}
-              type="button"
-              className="people-add"
-              onClick={() => {
-                setToast(null);
-                setOpen({ kind: 'add' });
-              }}
-            >
-              <Glyph name="plus" size={19} weight={2.4} />
-              {t('eventPeople.addPrompt')}
-            </button>
-          )}
-
-          {people.length === 0 ? (
-            <div className="people-nobody">
-              <p className="desk-empty-title">{t('eventPeople.nobody')}</p>
-              <p className="desk-line">{t('eventPeople.nobodyLine')}</p>
-            </div>
-          ) : (
-            <section className="desk-block" aria-labelledby="event-people-on">
-              <Head title={<span id="event-people-on">{t('eventPeople.onEvent')}</span>}>
-                <span className="people-count">{count.format(people.length)}</span>
-              </Head>
-              <ul className="desk-rows has-lead people-rows">
-                {people.map((person, tone) => {
-                  const yours = person.id === own?.id;
-                  const face = faceOf(person);
-                  const words = (
-                    <>
-                      {face == null ? (
-                        <Avatar initials={initials(nameOf(person, t))} tone={tone} />
-                      ) : (
-                        <span className="people-outside-face" aria-hidden="true">
-                          <Glyph name={face} size={18} />
-                        </span>
-                      )}
-                      <RowWords
-                        title={nameOf(person, t)}
-                        tag={
-                          person.outside && (
-                            <Tag
-                              kind="now"
-                              word={t('eventPeople.outsideTag', { organisation: organisationName })}
-                            />
-                          )
-                        }
-                        lines={[
-                          [
-                            t(`eventPeople.role.${person.role}`),
-                            ...(person.jobLabel == null ? [] : [person.jobLabel]),
-                            ...(yours ? [t('eventPeople.you')] : []),
-                          ].join(' · '),
-                        ]}
-                      />
-                    </>
-                  );
-
-                  return (
-                    <li key={person.id}>
-                      {manages && !yours ? (
-                        <button
-                          type="button"
-                          className={lit?.id === person.id ? 'desk-row is-on' : 'desk-row'}
-                          aria-haspopup="dialog"
-                          onClick={() => {
-                            setToast(null);
-                            setLit({ id: person.id, held: true });
-                            setOpen((was) => ({
-                              kind: 'person',
-                              id: person.id,
-                              visit: (was?.kind === 'person' ? was.visit : 0) + 1,
-                            }));
-                          }}
-                        >
-                          {words}
-                          <Glyph name="chevdown" size={18} weight={2.3} className="desk-chevron" />
-                        </button>
-                      ) : (
-                        <div className="desk-row">{words}</div>
-                      )}
-                    </li>
-                  );
-                })}
-              </ul>
-            </section>
-          )}
-
-          <div className="people-foot">
-            {!manages && <p className="desk-foot">{t('eventPeople.readOnly')}</p>}
-            {managers.length > 0 && (
-              <p className="desk-foot">
-                {t('eventPeople.managers', {
-                  count: managers.length,
-                  names: list.format(managers),
-                  roles: list.format(
-                    (['owner', 'admin'] as const)
-                      .map((role) => ({ role, count: loaded[`${role}s`].length }))
-                      .filter(({ count: held }) => held > 0)
-                      .map(({ role, count: held }) =>
-                        t(`eventPeople.managerRole.${role}`, { count: held }),
-                      ),
-                  ),
-                  organisation: organisationName,
-                })}
-              </p>
-            )}
-          </div>
+          {children}
         </div>
         <div ref={setHost} className="desk-layers" />
-
-        {opened != null && open?.kind === 'person' && (
-          <RoleDialog
-            key={open.visit}
-            eventId={event.id}
-            person={opened}
-            tone={people.indexOf(opened)}
-            organisationName={organisationName}
-            onChanged={replaced}
-            onRemoved={() => {
-              setLoad({
-                ...loaded,
-                people: people.filter((one) => one.id !== opened.id),
-                addable:
-                  addable == null || opened.membershipId == null
-                    ? addable
-                    : [...addable, { membershipId: opened.membershipId, name: nameOf(opened, t) }],
-              });
-              setOpen(null);
-              setLit(null);
-              setToast(t('eventPeople.removed', { name: nameOf(opened, t) }));
-              // The row it came from has gone, so focus lands on Add once the dialogs have handed it back.
-              focusWhenFree(() => addBox.current ?? title.current);
-            }}
-            onClose={closeRole}
-          />
-        )}
-        {open?.kind === 'add' && addable != null && (
-          <AddDialog
-            eventId={event.id}
-            organisationName={organisationName}
-            country={country}
-            people={people}
-            members={addable}
-            onPartlyAdded={joined}
-            onAdded={(added, role) => {
-              joined(added);
-              closeAdd();
-              setToast(
-                added.length === 1
-                  ? t(`eventPeople.nowOne.${role}`, { name: added[0] ? nameOf(added[0], t) : '' })
-                  : t(`eventPeople.nowMany.${role}`, { count: added.length }),
-              );
-            }}
-            onClose={closeAdd}
-          />
-        )}
-        {toast != null && <Toast key={toast} words={toast} onClose={() => setToast(null)} />}
+        {beside}
       </div>
     </LayersContext>
   );
