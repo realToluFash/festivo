@@ -27,7 +27,7 @@ import {
   type Tile,
   cellWidth,
   columnsFor,
-  noneMatch,
+  foundBy,
   rowsOf,
   scrollToShow,
   searchable,
@@ -207,8 +207,7 @@ export function OrgDropDown({
 
   const query = searchable(session) ? typed : '';
   const tiles = tilesOf(session, query);
-  const none = noneMatch(session, query);
-  const count = tiles.length - 1;
+  const { held, none, count } = foundBy(session, events, query);
   const typedWords = query.trim();
   useReadOut(
     typedWords === ''
@@ -222,7 +221,7 @@ export function OrgDropDown({
   const across = large ? 1 : columnsFor(frame.width);
   const cell = large ? 0 : cellWidth(frame.width);
   const groups =
-    events.length === 0
+    held.length === 0
       ? [rowsOf(tiles, across)]
       : [
           rowsOf(
@@ -365,7 +364,7 @@ export function OrgDropDown({
                   <View style={styles.outside}>
                     <OutsideEventsGroup
                       title={t('outsideEvent.fromOutside')}
-                      events={events}
+                      events={held}
                       here={null}
                       idPrefix="switcher.outside"
                       onEvent={(event) => onEvent(event.id)}

@@ -1,4 +1,4 @@
-import type { Membership } from '@soirely/api-client';
+import type { Membership, OutsideEvent } from '@soirely/api-client';
 import { type InvitationOutcome, isWaiting, waitingInvitations } from '@soirely/domain';
 
 import type { WaitingInvitations } from '../invitations.ts';
@@ -122,6 +122,22 @@ export function tilesOf(session: Session, query: string): Tile[] {
 
 export function noneMatch(session: Session, query: string): boolean {
   return searchable(session) && query.trim() !== '' && tilesOf(session, query).length === 1;
+}
+
+/** What a search finds, the events from outside counted with the tiles, as the web's switcher counts them (sc-68438). */
+export function foundBy(
+  session: Session,
+  events: readonly OutsideEvent[],
+  query: string,
+): { held: OutsideEvent[]; none: boolean; count: number } {
+  const typed = searchable(session) ? query : '';
+  const held = events.filter((event) => matches(event.name, typed));
+
+  return {
+    held,
+    none: noneMatch(session, typed) && held.length === 0,
+    count: tilesOf(session, typed).length - 1 + held.length,
+  };
 }
 
 export function untilIn(locale: string, day: string): string {
