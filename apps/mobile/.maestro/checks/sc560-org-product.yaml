@@ -1,0 +1,16 @@
+# sc-560: Organisation, company domain joining, for the pair beside its demo.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/settings/organisation
+- extendedWaitUntil:
+    visible:
+      text: '.+'
+    timeout: 20000
+- waitForAnimationToEnd:
+    timeout: 8000
+- scrollUntilVisible:
+    element:
+      text: 'Company domain joining'
+    direction: DOWN
+    timeout: 15000
+- takeScreenshot: sc560-org-product

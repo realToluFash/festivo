@@ -1,0 +1,11 @@
+# sc-560: the app demo's Organisation in state domainBoth, for the pair beside the product.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/demo/settings/organisation?state=domainBoth
+- extendedWaitUntil:
+    visible:
+      text: '.+'
+    timeout: 20000
+- waitForAnimationToEnd:
+    timeout: 8000
+- takeScreenshot: sc560-demo-domainBoth

@@ -1,0 +1,47 @@
+# sc-560: prove a domain in the app: blank, a public domain, then a new one, then Verify with no record.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/settings/data-and-control/email-domains
+- extendedWaitUntil:
+    visible:
+      id: emailDomains.prove
+    timeout: 20000
+- tapOn:
+    id: emailDomains.prove
+- extendedWaitUntil:
+    visible:
+      id: emailDomains.prove.field
+    timeout: 10000
+- takeScreenshot: sc560-add
+- tapOn:
+    id: emailDomains.prove.add
+- waitForAnimationToEnd:
+    timeout: 3000
+- takeScreenshot: sc560-blank
+- tapOn:
+    id: emailDomains.prove.field
+- inputText: gmail.com
+- takeScreenshot: sc560-typing-keyboard
+- tapOn:
+    id: emailDomains.prove.add
+- extendedWaitUntil:
+    visible:
+      text: 'You cannot use a public email domain.*'
+    timeout: 10000
+- takeScreenshot: sc560-public
+- eraseText: 40
+- inputText: ${DOMAIN}
+- tapOn:
+    id: emailDomains.prove.add
+- extendedWaitUntil:
+    visible:
+      id: emailDomains.record.verify
+    timeout: 10000
+- takeScreenshot: sc560-record
+- tapOn:
+    id: emailDomains.record.verify
+- extendedWaitUntil:
+    visible:
+      text: 'We could not find the record yet.*'
+    timeout: 10000
+- takeScreenshot: sc560-not-found
