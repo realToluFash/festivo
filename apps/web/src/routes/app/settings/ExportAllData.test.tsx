@@ -315,6 +315,30 @@ describe('Data and control › Export all data (sc-612)', () => {
     expect(screen.getByRole('button', { name: 'Export all data' })).toBeDefined();
   });
 
+  it.each([
+    ['the owner who asked', exported('used'), 'Your export was downloaded'],
+    ['another owner', exported('used', false, true), 'Ìrè Events’s export was downloaded'],
+  ])(
+    'offers %s Export all data once a downloaded export is past its 24 hours',
+    async (_who, page, title) => {
+      signedIn();
+      answering({ [PAGE]: () => json({ ...page, nextAllowedAt: null, nextAllowed: null }) });
+      open();
+
+      expect(await screen.findByText(title)).toBeDefined();
+      expect(screen.getByRole('button', { name: 'Export all data' })).toBeDefined();
+    },
+  );
+
+  it('offers a downloaded export no step while its 24 hours hold', async () => {
+    signedIn();
+    answering({ [PAGE]: () => json(exported('used')) });
+    open();
+
+    expect(await screen.findByText('Your export was downloaded')).toBeDefined();
+    expect(screen.queryByRole('button', { name: 'Export all data' })).toBeNull();
+  });
+
   it('names an owner where an owner’s card says “you can”, and gives an admin no step', async () => {
     signedIn(ADMIN);
     answering({ [PAGE]: () => json(exported('expired', false)) });
