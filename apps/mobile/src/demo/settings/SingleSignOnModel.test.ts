@@ -40,7 +40,7 @@ import { atSsoDomain, signInSsoOf, ssoWayFor } from './SingleSignOnSignIn.ts';
 import { SSO_WORDS as W } from './SingleSignOnWords.ts';
 
 const AT = '10:42';
-const begin = (state: Parameters<typeof ssoStart>[0], owns = true, plan = 'enterprise' as const) =>
+const begin = (state: Parameters<typeof ssoStart>[0], owns = true, plan: 'enterprise' | 'free' = 'enterprise') =>
   ssoStart(state, { owns, plan, at: AT });
 
 describe('the single sign-on form’s checks', () => {
