@@ -24,7 +24,7 @@ import { settingsListBeside, useLayout } from '../../../src/layout/useLayout.ts'
 import { useSignedIn } from '../../../src/signedIn.ts';
 import { tokens } from '../../../src/theme/tokens.ts';
 
-/** Settings › Data and control as its demo draws it (sc-560): one card with the soonest step, Control's Email domains, and what is on the web. */
+/** Settings › Data and control as its demo draws it (sc-560, sc-611): one card with the soonest step, Control's Email domains and Audit log, and what is on the web. */
 export default function DataAndControl() {
   const { t } = useTranslation();
   const backToSettings = useBackToSettings();
@@ -45,6 +45,11 @@ export default function DataAndControl() {
     // On its side the list stays put, so the page changes beside it rather than stacking.
     if (settingsListBeside(kind)) router.replace(href);
     else router.push(href);
+  };
+
+  const openAuditLog = () => {
+    if (settingsListBeside(kind)) router.replace(DATA_HREF.auditLog);
+    else router.push(DATA_HREF.auditLog);
   };
 
   const body = (() => {
@@ -100,6 +105,25 @@ export default function DataAndControl() {
                       opens
                       onPress={() => open(null)}
                       testID="dataAndControl.emailDomains"
+                    />
+                  ),
+                },
+                {
+                  key: 'auditLog',
+                  inset: 28 + tokens.spaceLg,
+                  row: (
+                    <TagRow
+                      title={t('dataAndControl.rows.audit')}
+                      line={t('dataAndControl.rows.auditLine')}
+                      lead={<Lead glyph="history" />}
+                      tag={
+                        page.plan === 'enterprise'
+                          ? null
+                          : { kind: 'lock', word: t('dataAndControl.enterprise') }
+                      }
+                      opens
+                      onPress={openAuditLog}
+                      testID="dataAndControl.auditLog"
                     />
                   ),
                 },

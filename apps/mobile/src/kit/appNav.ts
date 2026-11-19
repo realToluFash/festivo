@@ -44,6 +44,8 @@ export const DATA_AND_CONTROL = 'dataAndControl';
 export const DATA_HREF = {
   hub: '/settings/data-and-control',
   emailDomains: '/settings/data-and-control/email-domains',
+  auditLog: '/settings/data-and-control/audit-log',
+  auditEntry: '/settings/data-and-control/audit-entry',
 } as const;
 
 export type SettingsOpen = SettingsSection | typeof DATA_AND_CONTROL;

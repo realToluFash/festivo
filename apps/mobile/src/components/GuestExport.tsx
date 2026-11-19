@@ -12,7 +12,7 @@ import { Pressable, ScrollView, StyleSheet, View, type ViewInstance } from 'reac
 import Svg, { Path } from 'react-native-svg';
 
 import { api } from '../api.ts';
-import { exportToShare } from '../kit/guestExport.ts';
+import { EXPORT_TYPES, exportToShare } from '../kit/guestExport.ts';
 import { writeToShare } from '../kit/sharedFile.ts';
 import type { LayoutKind } from '../layout/useLayout.ts';
 import { tokens } from '../theme/tokens.ts';
@@ -130,7 +130,7 @@ function useExport(props: ExportProps) {
           scope,
           people: scope === 'view' ? props.inView : props.everyone,
         }),
-      write: (bytes) => writeToShare(bytes, file, format),
+      write: (bytes) => writeToShare(bytes, file, EXPORT_TYPES[format]),
       unreachable: (error) => error instanceof ApiUnreachableError,
     });
 
