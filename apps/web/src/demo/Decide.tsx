@@ -26,6 +26,7 @@ import {
   whatIf,
 } from './decide.ts';
 import { DECIDE_WORDS as W } from './decideWords.ts';
+import { GW } from './guestsWords.ts';
 import { type SampleEvent } from './events.ts';
 import { ColumnHead, Verb } from './GuestForms.tsx';
 import { OkLine, Pill } from './GuestsParts.tsx';
@@ -40,7 +41,7 @@ export function DecidePage({ event, state }: { event: SampleEvent; state: string
   const kind = decideKindOf(state, params.get('as'), params.get('fetch'));
 
   return (
-    <BudgetShell event={event} area="guests" trail={[{ label: W.guests }]}>
+    <BudgetShell event={event} area="guests" trail={[{ label: GW.title }]}>
       {() => <GuestsHead event={event} kind={kind} />}
     </BudgetShell>
   );
@@ -58,9 +59,9 @@ function GuestsHead({ event, kind }: { event: SampleEvent; kind: DecideKind }) {
 
   return (
     <div className="gs" ref={head}>
-      <PageTitle title={W.guests}>
+      <PageTitle title={GW.title}>
         <TextAction
-          label={W.addGuest}
+          label={GW.addGuest}
           before="plus"
           onClick={() => {
             setRound((now) => now + 1);
@@ -69,7 +70,7 @@ function GuestsHead({ event, kind }: { event: SampleEvent; kind: DecideKind }) {
         />
       </PageTitle>
       <div className="gs-cols">
-        <section className="gs-list" aria-label={W.guests}>
+        <section className="gs-list" aria-label={GW.title}>
           <Rows>
             {BACKDROP.map((guest) => (
               <li key={guest.name}>
@@ -82,7 +83,7 @@ function GuestsHead({ event, kind }: { event: SampleEvent; kind: DecideKind }) {
             ))}
           </Rows>
         </section>
-        <section className="gs-column" aria-label={W.addGuest}>
+        <section className="gs-column" aria-label={GW.addGuest}>
           {open && <AddGuest key={round} kind={kind} onDone={done} />}
         </section>
       </div>
@@ -134,7 +135,7 @@ function AddGuest({ kind, onDone }: { kind: DecideKind; onDone: () => void }) {
   function add(): void {
     const who = name.trim();
     if (who !== '') {
-      setSaid(W.justAdded(who));
+      setSaid(GW.justAdded(who));
       setName('');
       changed([]);
     }
@@ -148,21 +149,21 @@ function AddGuest({ kind, onDone }: { kind: DecideKind; onDone: () => void }) {
 
   return (
     <div className="gs-form dec-form">
-      <ColumnHead title={W.addGuest}>
-        <Verb label={W.done} onClick={onDone} />
+      <ColumnHead title={GW.addGuest}>
+        <Verb label={GW.done} onClick={onDone} />
       </ColumnHead>
       {said != null && <OkLine>{said}</OkLine>}
-      <Field label={W.name} value={name} onChange={setName} inputRef={first} />
+      <Field label={GW.fullName} value={name} onChange={setName} inputRef={first} />
       <div className="dec-companions" role="group" aria-labelledby={companionsId}>
         <p id={companionsId} className="desk-label">
-          {W.companions}
+          {GW.companions}
         </p>
         <ul className="desk-rows bud-rows">
           {companions.map((one, index) => {
-            const label = W.companionName(index + 1, companions.length);
+            const label = GW.companionName(index + 1, companions.length);
             const removal = (
               <button type="button" className="desk-text" onClick={() => remove(one.key)}>
-                {W.remove}
+                {GW.remove}
                 <span className="desk-unseen"> {one.name === '' ? label : one.name}</span>
               </button>
             );
@@ -185,7 +186,7 @@ function AddGuest({ kind, onDone }: { kind: DecideKind; onDone: () => void }) {
                   />
                 ) : (
                   <div className="desk-row bud-row">
-                    <RowWords title={one.name} lines={[W.noReply]} />
+                    <RowWords title={one.name} lines={[GW.noReply]} />
                     {removal}
                   </div>
                 )}
@@ -206,7 +207,7 @@ function AddGuest({ kind, onDone }: { kind: DecideKind; onDone: () => void }) {
         </div>
       </div>
       {kind !== 'none' && <AnswerPanel answer={answer} updating={updating} />}
-      <Pill primary tall label={W.addGuest} onClick={add} />
+      <Pill primary tall label={GW.addGuest} onClick={add} />
     </div>
   );
 }
@@ -234,10 +235,16 @@ function AnswerPanel({ answer, updating }: { answer: Answer; updating: boolean }
         </>
       ) : (
         <>
-          <p className="dec-big">
-            <UpMark />
-            {W.rise(headline(answer.delta))}
-          </p>
+          {answer.moved.length === 0 ? (
+            <p className="dec-big">
+              <MarkWord mark={<DashedMark />} word={W.notKnownIfAll} />
+            </p>
+          ) : (
+            <p className="dec-big">
+              <UpMark />
+              {W.rise(headline(answer.delta))}
+            </p>
+          )}
           {answer.unknown.length > 0 ? (
             <p className="dec-line is-strong">{W.fullNotKnown(answer.unknown.length)}</p>
           ) : (

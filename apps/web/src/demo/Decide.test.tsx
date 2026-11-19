@@ -93,6 +93,23 @@ describe('What a decision costs, in Add guest (sc-86)', () => {
     expect(answer.textContent).not.toContain('£0');
   });
 
+  it(
+    'says Not known if all come, with no figure, when no cost it moves has a price',
+    SLOW,
+    async () => {
+      const answer = within(await open('decide_unpriced')).getByRole('status');
+      const big = answer.querySelector('.dec-big');
+
+      expect(big?.textContent).toBe('Not known if all come');
+      expect(big?.querySelector('.bud-dashed')).not.toBeNull();
+      expect(big?.querySelector('.dec-up')).toBeNull();
+      expect(answer.textContent).toContain(
+        'Full cost not known: 2 costs it moves have no price yet.',
+      );
+      expect(answer.textContent).not.toMatch(/[+]£/u);
+    },
+  );
+
   it('says No change where nothing is counted per guest', SLOW, async () => {
     const answer = within(await open('decide_nochange')).getByRole('status');
 
