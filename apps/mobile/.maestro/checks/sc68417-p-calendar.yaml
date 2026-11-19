@@ -7,4 +7,7 @@ appId: host.exp.Exponent
     visible:
       id: 'calendar.today'
     timeout: 30000
+- extendedWaitUntil:
+    notVisible: '{{t:calendar.loading}}'
+    timeout: 30000
 - takeScreenshot: p-calendar
