@@ -7,11 +7,12 @@ import { api } from '../api.ts';
 import { useDeskLayers } from '../layers.ts';
 import { CreateWalk } from './CreateWalk.tsx';
 import { type Currencies, freshWalk } from './createWalk.ts';
+import { ManagedWalk, useManaged } from './Managed.tsx';
 import { Glyph } from './Glyph.tsx';
 import { DeskPage } from './SettingsParts.tsx';
 import './SettingsParts.css';
 
-/** sc-390's Create an organisation as the walk (sc-30335): made by the caller as its Owner, with focus back on what opened it once it closes. */
+/** sc-390's Create an organisation as the walk (sc-30335): made by the caller as its Owner, with focus back on what opened it once it closes; a managed account reads sc-563's refusal instead. */
 export function CreateOrganisation({
   email,
   onCreated,
@@ -23,6 +24,7 @@ export function CreateOrganisation({
 }) {
   const { layers, setHost } = useDeskLayers();
   const currencies = useCountryCurrencies();
+  const managed = useManaged();
   // A browser exposes no Region setting, so its languages decide, and nothing named means none.
   const [start] = useState(() =>
     freshWalk({
@@ -41,14 +43,20 @@ export function CreateOrganisation({
 
   return (
     <DeskPage layers={layers}>
-      <CreateWalk
-        start={start}
-        email={email}
-        currencies={currencies}
-        create={(walk) => createNewOrganisation((made) => api.createOrganisation(made), walk)}
-        onClose={onCancel}
-        onCreated={onCreated}
-      />
+      {managed != null ? (
+        <ManagedWalk managed={managed} onClose={onCancel} />
+      ) : (
+        managed === null && (
+          <CreateWalk
+            start={start}
+            email={email}
+            currencies={currencies}
+            create={(walk) => createNewOrganisation((made) => api.createOrganisation(made), walk)}
+            onClose={onCancel}
+            onCreated={onCreated}
+          />
+        )
+      )}
       <div ref={setHost} className="desk-layers" />
     </DeskPage>
   );

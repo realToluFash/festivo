@@ -14,6 +14,7 @@ import {
 import { type FormEvent, type RefObject, useEffect, useMemo, useRef, useState } from 'react';
 import { flushSync } from 'react-dom';
 import { useTranslation } from 'react-i18next';
+import { ManagedBanner } from '../../components/Managed.tsx';
 import { Navigate, useNavigate } from 'react-router';
 
 import { api } from '../../api.ts';
@@ -285,8 +286,10 @@ function Details({
   }, [needsOrganisation]);
 
   const offers = offered?.offers ?? [];
-  const showOffers = asksForOrganisation && offers.length > 0 && !own;
-  const founding = asksForOrganisation && !showOffers;
+  // A managed account (sc-563) is never offered Start my own organisation: the refusal takes its place.
+  const managed = offered?.managed ?? null;
+  const showOffers = asksForOrganisation && offers.length > 0 && (!own || managed != null);
+  const founding = asksForOrganisation && !showOffers && managed == null;
 
   function change(field: Exclude<Field, 'timezone'>, value: string): void {
     setValues((previous) => {
@@ -517,19 +520,27 @@ function Details({
                 </button>
               </div>
             ))}
-            <button
-              ref={startOwnButton}
-              className="button"
-              type="button"
-              disabled={saving}
-              onClick={() => {
-                setOwn(true);
-                land(() => organisationInput.current);
-              }}
-            >
-              {t('domainJoining.startOwn')}
-            </button>
+            {managed != null ? (
+              <ManagedBanner managed={managed} level={3} />
+            ) : (
+              <button
+                ref={startOwnButton}
+                className="button"
+                type="button"
+                disabled={saving}
+                onClick={() => {
+                  setOwn(true);
+                  land(() => organisationInput.current);
+                }}
+              >
+                {t('domainJoining.startOwn')}
+              </button>
+            )}
           </div>
+        )}
+
+        {asksForOrganisation && !showOffers && managed != null && (
+          <ManagedBanner managed={managed} level={3} />
         )}
 
         {asksForOrganisation && offers.length > 0 && own && (

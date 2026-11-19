@@ -1853,7 +1853,10 @@
       "showing": "A mostrar {{shown, number}} de {{total, number}}",
       "loading": "A carregar mais pessoas…",
       "failed": "Não foi possível carregar mais pessoas. Verifique a ligação e tente novamente."
-    }
+    },
+    "alsoMemberOf_one": "Also a member of 1 other organisation",
+    "alsoMemberOf_other": "Also a member of {{count}} other organisations",
+    "alsoMemberOf_many": "Also a member of {{count}} other organisations"
   },
   "contacts": {
     "emailsTitle": "Endereços de e-mail",
@@ -4785,9 +4788,9 @@
     "recordTitle": "Verificar {{domain}}",
     "recordHowTo": "Adicione este registo onde é gerido o DNS de {{domain}} e, depois, prima Verificar.",
     "removeTitle": "Remover {{domain}}?",
-    "removeLine": "Deixa de estar verificado. A Adesão por domínio da empresa mantém a sua própria lista.",
+    "removeLine": "It stops being proved, and Only our organisation stops for it. Company domain joining keeps its own list.",
     "lockedSays": "Disponível no plano Enterprise",
-    "lockedLine": "Verifique que o domínio pertence a {{organisation}}.",
+    "lockedLine": "Prove that {{organisation}} owns its domain, then limit the accounts at it to {{organisation}}.",
     "leftLine": "{{organisation}} deixou o plano Enterprise. Os domínios mantêm-se como estavam e voltam a ficar ativos com o plano Enterprise.",
     "removedSays": "{{domain}} foi removido",
     "removedLine": "Já não está verificado.",
@@ -4795,12 +4798,34 @@
     "provedSaidLine": "Verificado: {{when}}.",
     "provedQuietLine": "Quem usa {{domain}} pode continuar a ser membro de outras organizações.",
     "missingSays": "O registo de {{domain}} está em falta",
-    "missingCardLine": "Volte a adicioná-lo até {{when}} ou {{domain}} deixa de estar verificado.",
+    "missingCardLine": "Put it back by {{when}}, or {{domain}} stops being proved and Only our organisation stops with it.",
     "failedSays": "{{domain}} não foi verificado",
     "failedCardLine": "Deixámos de verificar ({{when}}). Adicione o registo e, depois, prima Verificar.",
     "waitingSays": "{{domain}} está à espera do registo",
     "noneSays": "Verifique o domínio de e-mail de {{organisation}}",
-    "noneLine": "Adicione um registo DNS onde o seu domínio é gerido."
+    "noneLine": "Add a DNS record where your domain is managed. Once it is proved, you can limit the accounts at it to {{organisation}}.",
+    "only": "Only our organisation",
+    "onlyFor": "Only our organisation for {{domain}}",
+    "cancelOnlyFor": "Cancel Only our organisation for {{domain}}",
+    "ownerOnly": "Only an owner can change this.",
+    "keptOnly": "Kept as it was. It comes back on with Enterprise.",
+    "onlyStarts": "Starts {{when}}",
+    "onlyOnSince": "On since {{day}}",
+    "keepAccounts": "Limit {{domain}} accounts to {{organisation}}",
+    "schedule": "Schedule it",
+    "cancel": "Cancel",
+    "confirmTitle": "Limit {{domain}} accounts to {{organisation}}?",
+    "confirmLine": "From {{when}}, 14 days from now, an account whose main email address is at {{domain}} can only be a member of {{organisation}}.",
+    "confirmMore": "Everyone at {{domain}} is emailed now. Access to a single event still works. You can cancel until then.",
+    "scheduledSays": "Only our organisation starts on {{when}}",
+    "scheduledLine": "Everyone at {{domain}} was emailed. You can cancel until then.",
+    "scheduledOtherLine": "Only an owner can cancel it.",
+    "onSays": "Accounts at {{domain}} belong to {{organisation}}",
+    "onLine": "They can still be given access to another organisation’s event.",
+    "cancelledSays": "Only our organisation was cancelled",
+    "cancelledLine": "Nothing changes for the accounts at {{domain}}.",
+    "offSays": "Only our organisation is off",
+    "offLine": "Accounts at {{domain}} can be members of other organisations again."
   },
   "exportAllData": {
     "title": "Exportar todos os dados",
@@ -5195,5 +5220,11 @@
     "saidLead": "{{name}} é responsável pelo posto {{station}}.",
     "saidNoLead": "O posto {{station}} não tem responsável.",
     "stationChange": "Mudar de posto, {{name}}"
+  },
+  "managed": {
+    "title": "Managed by {{organisation}}",
+    "single": "Access to a single event still works.",
+    "way": "Change your main email address",
+    "close": "Close"
   }
 }
