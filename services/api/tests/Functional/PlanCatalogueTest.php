@@ -269,6 +269,24 @@ final class PlanCatalogueTest extends FunctionalTestCase
     }
 
     #[Test]
+    public function aWholeNumberWrittenAsAFloatIsNeverPublished(): void
+    {
+        $terms = self::with($this->termsOf(CataloguePart::Plans), ['enterprise', 'prices', 'USD', 'month'], 249.0);
+
+        $this->expectExceptionMessage('249.0 is written with a decimal point');
+        $this->keeper->publish(CataloguePart::Plans, '2026-12-01', $terms, 'Broken', 'Ada at Soirely');
+    }
+
+    #[Test]
+    public function aUnitCostWrittenAsAFloatIsNeverPublished(): void
+    {
+        $terms = self::with($this->termsOf(CataloguePart::UnitCosts), ['sms_per_segment', 'GB'], 10.0);
+
+        $this->expectExceptionMessage('10.0 is written with a decimal point');
+        $this->keeper->publish(CataloguePart::UnitCosts, '2026-12-01', $terms, 'Broken', 'Ada at Soirely');
+    }
+
+    #[Test]
     #[DataProvider('brokenPlans')]
     public function aDocumentThatDoesNotReadIsNeverPublished(array $terms): void
     {

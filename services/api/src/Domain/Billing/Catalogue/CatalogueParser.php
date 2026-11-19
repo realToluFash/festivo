@@ -58,6 +58,8 @@ final readonly class CatalogueParser
     /** @throws CatalogueRefused naming what is wrong */
     public static function check(CataloguePart $part, mixed $terms): void
     {
+        self::wholeNumbers($terms);
+
         match ($part) {
             CataloguePart::Plans => self::planTerms($terms),
             CataloguePart::UnitCosts => self::unitCostTerms($terms),
@@ -151,6 +153,20 @@ final readonly class CatalogueParser
         }
 
         return $terms;
+    }
+
+    /** Psl's integer types coerce 249.0 to 249, and the document is stored as sent, so a float that reads whole would be kept as a float. */
+    private static function wholeNumbers(mixed $terms): void
+    {
+        if (\is_float($terms)) {
+            throw new CatalogueRefused(Str\format('%s is written with a decimal point: every amount in the catalogue is an integer.', \var_export($terms, true)));
+        }
+
+        if (\is_array($terms)) {
+            foreach ($terms as $value) {
+                self::wholeNumbers($value);
+            }
+        }
     }
 
     private static function unreadable(CoercionException $e): CatalogueRefused
