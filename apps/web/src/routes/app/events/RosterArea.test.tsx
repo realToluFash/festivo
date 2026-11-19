@@ -363,6 +363,64 @@ describe('The Roster on the Staff page (sc-3906)', () => {
     expect(more?.parentElement?.textContent).toBe('16:30 to 21:00 +1 more');
   });
 
+  it.each([
+    ['with Add', OWNER_PERMISSIONS],
+    ['without Add', OWNER_PERMISSIONS.filter((one) => one !== 'staff.manage')],
+  ])(
+    'lets the keyboard reach the table frame, the one region named Roster, just before the first name, %s (sc-70540)',
+    async (_, permissions) => {
+      signedIn();
+      await onRoster(
+        {
+          'GET /api/events/ev_1/staff': () =>
+            json({
+              staff: [entry('st_1', 'Amaka Eze')],
+              jobs: [],
+              shifts: [],
+              stations: NO_STATIONS,
+            }),
+        },
+        permissions,
+      );
+
+      const first = await screen.findByRole('button', { name: 'Amaka Eze' });
+      const frame = screen.getByRole('region', { name: 'Roster' });
+      expect(frame.tabIndex).toBe(0);
+      expect(frame.classList.contains('rs-frame')).toBe(true);
+      expect(frame.contains(screen.getByRole('table', { name: 'Roster' }))).toBe(true);
+      expect(screen.getByRole('heading', { level: 2, name: 'Roster' }).tabIndex).toBe(-1);
+      const reachable = [...document.querySelectorAll<HTMLElement>('button, [tabindex="0"]')];
+      expect(reachable[reachable.indexOf(frame) + 1]).toBe(first);
+      if (permissions === OWNER_PERMISSIONS) {
+        expect(reachable[reachable.indexOf(frame) - 1]).toBe(
+          screen.getByRole('button', { name: 'Add a person' }),
+        );
+      }
+    },
+  );
+
+  it("draws the Coverage frame's focus ring on the Roster frame (sc-70540)", () => {
+    const ring = cssRule('.rs-frame:focus-visible', ROSTER_CSS);
+    expect(ring).toContain('outline: 2px solid var(--colorAccent);');
+    expect(ring).toContain('outline-offset: 2px;');
+  });
+
+  it('keeps whole words in the Roster table below 720 px, the frame scrolling instead (sc-70540)', () => {
+    const narrow = ROSTER_CSS.slice(ROSTER_CSS.indexOf('(width <= 720px)'));
+    expect(
+      cssRule('.rs-frame > .rs-table :is(th, td),\n  .rs-frame > .rs-table :is(th, td) *', narrow),
+    ).toContain('overflow-wrap: normal;');
+    expect(
+      cssRule(
+        '.rs-frame > .rs-table thead th:nth-child(2),\n  .rs-frame > .rs-table thead th:nth-child(3)',
+        narrow,
+      ),
+    ).toContain('min-width: 128px;');
+    expect(cssRule('.rs-frame > .rs-table thead th:nth-child(5)', narrow)).toContain(
+      'min-width: 168px;',
+    );
+  });
+
   it('removes a person after asking', async () => {
     signedIn();
     const sent = await onRoster({

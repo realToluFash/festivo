@@ -180,7 +180,10 @@
     "messagesCounts:guest_export.diet.halal",
     "web:vendors.categories.transport",
     "web:jobs.date",
-    "messages:staff.job_suggested.bar"
+    "messages:staff.job_suggested.bar",
+    "web:stations.sectionTables_one",
+    "web:stations.sectionTables_other",
+    "messages:stations.place_suggested.bar"
   ],
   "pt": [
     "web:seating.shapeCocktailShort",
@@ -231,6 +234,7 @@
     "messagesCounts:guest_export.diet.kosher",
     "web:vendors.categories.catering",
     "messages:staff.job_suggested.runner",
-    "messages:staff.job_suggested.bar"
+    "messages:staff.job_suggested.bar",
+    "messages:stations.place_suggested.bar"
   ]
 }

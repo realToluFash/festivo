@@ -9,6 +9,7 @@ use App\Domain\Billing\Catalogue\Exception\CatalogueRefused;
 use App\Enum\CataloguePart;
 use DateTimeInterface;
 use Psl\File;
+use Psl\File\Exception\ExceptionInterface as FileException;
 use Psl\Json;
 use Psl\Str;
 use Psl\Type;
@@ -54,7 +55,7 @@ final readonly class PublishCatalogueCommand
         try {
             $terms = Json\typed(File\read($file), Type\dict(Type\string(), Type\mixed()));
             $version = $this->catalogueKeeper->publish($which, $name, $terms, $note, $agent);
-        } catch (CatalogueRefused|RuntimeException $e) {
+        } catch (CatalogueRefused|FileException|RuntimeException $e) {
             $io->error($e->getMessage());
 
             return Command::FAILURE;

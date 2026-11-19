@@ -173,12 +173,12 @@
     "stations.name_required": "Saisissez un nom pour le poste.",
     "stations.name_too_long": "Le nom ne doit pas dépasser {max} caractères.",
     "stations.name_taken": "Cet événement a déjà un lieu nommé {name}.",
-    "stations.name_taken_section": "{name} est une section du plan de table de cet événement. Donnez un autre nom au lieu.",
-    "stations.pass_fixed": "Le passe est toujours là et garde son nom.",
+    "stations.name_taken_section": "{name} est une zone du plan de table de cet événement. Donnez un autre nom au lieu.",
+    "stations.pass_fixed": "Le passe est toujours présent et garde son nom.",
     "stations.lead_not_on_station": "Choisissez un responsable parmi les personnes de ce poste.",
     "stations.not_a_place": "Choisissez l’un des lieux de cet événement.",
-    "stations.item_not_on_course": "Cet élément n’est pas dans ce service.",
-    "stations.walk_not_the_stations": "L’ordre de passage doit citer une fois chaque poste de cuisine après le passe.",
+    "stations.item_not_on_course": "Ce plat ne fait pas partie de ce service.",
+    "stations.walk_not_the_stations": "L’ordre de passage doit citer chaque poste de cuisine une seule fois, après le passe.",
     "validation.dish_name_required": "Saisissez le nom du plat.",
     "validation.dish_name_too_long": "Raccourcissez le nom à {max} caractères maximum.",
     "validation.dish_description_too_long": "Raccourcissez la description à {max} caractères maximum.",
@@ -408,5 +408,7 @@
     "validation.vendor_website_scheme": "Saisissez une adresse web qui commence par https:// ou http://, ou omettez cette partie.",
     "validation.vendor_phone_invalid": "Ce numéro de téléphone n’est pas valide dans ce pays : {country}. Vérifiez-le et réessayez.",
     "vendors.archived_read_only": "Ce prestataire est archivé : vos modifications n’ont pas été enregistrées. Pour le modifier, restaurez-le depuis Archivés.",
-    "access.plan_required": "Disponible avec le forfait Enterprise. Pour modifier ce réglage, contactez Soirely au sujet du forfait Enterprise."
+    "access.plan_required": "Disponible avec le forfait Enterprise. Pour modifier ce réglage, contactez Soirely au sujet du forfait Enterprise.",
+    "email_domains.not_listed": "That domain is not on the list.",
+    "email_domains.taken": "Another organisation has already proved this domain. Contact Soirely support if it is yours."
 }

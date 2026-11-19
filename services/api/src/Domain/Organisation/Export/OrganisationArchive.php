@@ -34,8 +34,9 @@ final readonly class OrganisationArchive
              WHERE o.id = :organisation
             SQL,
         'company_domains' => <<<'SQL'
-            SELECT d.domain, d.proved_at, d.created_at
+            SELECT d.domain, e.proved_at, d.created_at
               FROM organisation_domains d
+              LEFT JOIN organisation_email_domains e ON e.organisation_id = d.organisation_id AND e.domain = d.domain
              WHERE d.organisation_id = :organisation
              ORDER BY d.domain
             SQL,

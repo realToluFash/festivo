@@ -78,8 +78,10 @@ describe('a managed account, wherever a membership path ends (sc-563, enterprise
     expect(organisationStart('domainBoth', 'Owner').proved).toEqual(['ire.events']);
     expect(organisationStart(null, 'Owner').proved).toEqual([]);
     expect(read('src', 'components', 'OrganisationJoining.tsx')).toMatch(
-      /proved\.includes\(domain\)\s*\? \{ kind: 'yes', word: t\('companyDomains\.proved'\) \}/u,
+      /proved \? \{ kind: 'yes', word: t\('companyDomains\.proved'\) \}/u,
     );
-    expect(read('src', 'demo', 'settings', 'Organisation.tsx')).toContain('proved={start.proved}');
+    expect(read('src', 'demo', 'settings', 'OrganisationCalls.ts')).toContain(
+      'proved: start.proved.includes(YOUR_DOMAIN)',
+    );
   });
 });
