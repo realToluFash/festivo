@@ -12,14 +12,14 @@ appId: host.exp.Exponent
 - openLink: ${METRO_URL}/--/events/${EVENT_ID_TWO}
 - extendedWaitUntil: { visible: { id: 'outside.overview' }, timeout: 30000 }
 - extendedWaitUntil:
-    visible: '.*[0-9].*(people|person|personas?|personnes?|pessoas?) .*'
+    visible: '(.*[^0-9])?2 (people|personas|personnes|pessoas) .*'
     timeout: 30000
 - waitForAnimationToEnd: { timeout: 6000 }
 - takeScreenshot: ${TAG}-two
 - openLink: ${METRO_URL}/--/events/${EVENT_ID_MANY}
 - extendedWaitUntil: { visible: { id: 'outside.overview' }, timeout: 30000 }
 - extendedWaitUntil:
-    visible: '.*[0-9].*(people|person|personas?|personnes?|pessoas?) .*'
+    visible: '(.*[^0-9])?1[,. \u00a0\u202f]?250 (de )?(people|personas|personnes|pessoas) .*'
     timeout: 30000
 - waitForAnimationToEnd: { timeout: 6000 }
 - takeScreenshot: ${TAG}-many
