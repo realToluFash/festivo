@@ -2,6 +2,7 @@ import { type InvitationOutcome, type InvitationRefusalCode, isWaiting } from '@
 
 import { meshFor, type MeshKey } from '../kit/today.ts';
 import type { Invite, Offer, OfferStatus, Place, Session } from '../kit/orgSwitcher.ts';
+import { MANAGED_WORDS } from './settings/DataWords.ts';
 
 export {
   CELL_GAP,
@@ -193,7 +194,18 @@ export function sessionFor(state: SwitcherState): Session {
     case 'large':
       return { ...populated, large: true };
     case 'managed':
-      return { ...populated, expanded: CELEBRACIONES, managed: CELEBRACIONES };
+      return {
+        ...populated,
+        outcomes: {
+          [CELEBRACIONES]: {
+            kind: 'managed',
+            organisation: IRE_EVENTS.name,
+            message: MANAGED_WORDS.body,
+          },
+        },
+        expanded: CELEBRACIONES,
+        managed: CELEBRACIONES,
+      };
     case 'populated':
       return populated;
   }

@@ -5396,7 +5396,7 @@ describe('What adding them would cost (sc-86)', () => {
     );
     expect(
       within(answer()).getByText(
-        `Once they are invited, it would be ${naira(705000)} if everyone comes. Settled, it stays ${naira(500000)} until they reply.`,
+        `Once they are invited, that would make ${naira(705000)} in total. Settled, it stays ${naira(500000)} until they reply.`,
       ),
     ).toBeDefined();
     expect(
@@ -5553,7 +5553,7 @@ describe('What adding them would cost (sc-86)', () => {
     await waitFor(() =>
       expect(
         within(answer()).getByText(
-          new RegExp(`Once they are invited, it would be ${naira(705000)}`, 'u'),
+          new RegExp(`Once they are invited, that would make ${naira(705000)}`, 'u'),
         ),
       ).toBeDefined(),
     );
@@ -5564,7 +5564,7 @@ describe('What adding them would cost (sc-86)', () => {
     await waitFor(() =>
       expect(
         within(answer()).getByText(
-          new RegExp(`Once they are invited, it would be ${naira(710000)}`, 'u'),
+          new RegExp(`Once they are invited, that would make ${naira(710000)}`, 'u'),
         ),
       ).toBeDefined(),
     );

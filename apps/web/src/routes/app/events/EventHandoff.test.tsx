@@ -185,41 +185,41 @@ describe('an event’s page at a phone’s width hands over to the app (sc-55397
 
   it('Show this page anyway shows the page, and every page after it in the tab', async () => {
     serving({ ev_1: event('ev_1') });
-    const router = open('/app/events/ev_1/budget');
+    const router = open('/app/events/ev_1/reports');
 
     await screen.findByRole('heading', { level: 1, name: NAME });
     fireEvent.click(anyway());
 
-    expect(await screen.findByText('The budget for this event is coming.')).toBeTruthy();
+    expect(await screen.findByText('Reports for this event are coming.')).toBeTruthy();
     expect(window.sessionStorage.getItem('soirely.showPageAnyway')).toBe('1');
 
-    await act(() => router.navigate('/app/events/ev_1/reports'));
-    expect(await screen.findByText('Reports for this event are coming.')).toBeTruthy();
+    await act(() => router.navigate('/app/events/ev_1/messages'));
+    expect(await screen.findByText('Messages for this event are coming.')).toBeTruthy();
     expect(screen.queryByRole('button', { name: 'Show this page anyway' })).toBeNull();
   });
 
   it('a widened window replaces the handoff with the page', async () => {
     serving({ ev_1: event('ev_1') });
-    open('/app/events/ev_1/budget');
+    open('/app/events/ev_1/reports');
 
     await screen.findByRole('heading', { level: 1, name: NAME });
     resize(false);
 
-    expect(await screen.findByText('The budget for this event is coming.')).toBeTruthy();
+    expect(await screen.findByText('Reports for this event are coming.')).toBeTruthy();
     resize(true);
-    expect(screen.getByText('The budget for this event is coming.')).toBeTruthy();
+    expect(screen.getByText('Reports for this event are coming.')).toBeTruthy();
   });
 
   it('a page opened wide stays when narrowed, and the next one hands over', async () => {
     phone = false;
     serving({ ev_1: event('ev_1') });
-    const router = open('/app/events/ev_1/budget');
+    const router = open('/app/events/ev_1/reports');
 
-    expect(await screen.findByText('The budget for this event is coming.')).toBeTruthy();
+    expect(await screen.findByText('Reports for this event are coming.')).toBeTruthy();
     resize(true);
-    expect(screen.getByText('The budget for this event is coming.')).toBeTruthy();
+    expect(screen.getByText('Reports for this event are coming.')).toBeTruthy();
 
-    await act(() => router.navigate('/app/events/ev_1/reports'));
+    await act(() => router.navigate('/app/events/ev_1/messages'));
     expect(await screen.findByRole('heading', { level: 1, name: NAME })).toBeTruthy();
   });
 
@@ -270,7 +270,11 @@ describe('which pages hand over', () => {
     ['/app/events/e1/run', { kind: 'event', eventId: 'e1', area: null, needs: 'run_of_show.read' }],
     ['/app/events/e1/staff', { kind: 'event', eventId: 'e1', area: 'staff', needs: 'staff.read' }],
     ['/app/events/e1/menu', { kind: 'event', eventId: 'e1', area: 'menu', needs: 'menu.read' }],
-    ['/app/events/e1/budget', { kind: 'event', eventId: 'e1', area: 'budget', needs: null }],
+    [
+      '/app/events/e1/budget',
+      { kind: 'event', eventId: 'e1', area: 'budget', needs: 'budget.read' },
+    ],
+    ['/app/events/e1/reports', { kind: 'event', eventId: 'e1', area: 'reports', needs: null }],
     ['/app/events/e1/nothing', null],
     ['/app/events/e1/staff/nothing', null],
     ['/app/events', null],

@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { __setConfig, config } from '../config.ts';
 import { routes } from '../routes/index.tsx';
+import { answerWordsFor } from './decideWords.ts';
 
 const tested = config();
 const SLOW = { timeout: 15000 };
@@ -177,4 +178,46 @@ describe('What a decision costs, in Add guest (sc-86)', () => {
       expect(answer.textContent).toContain('133 → 134 if all come');
     },
   );
+
+  it(
+    'reads the huge event exactly, in English and in Spanish, never splitting a group (sc-72618)',
+    SLOW,
+    async () => {
+      const column = await open('decide_huge');
+      const answer = within(column).getByRole('status');
+
+      expect(answer.textContent).toContain('+£1,000,000,000,000,000 if all come');
+      expect(answer.textContent).toContain(
+        answerWordsFor('en').upperOnly('£100,999,999,999,999,999', '£99,999,999,999,999,999'),
+      );
+      expect(answer.textContent).toContain(
+        '£99,999,999,999,999,999 → £100,999,999,999,999,999 · 100 → 101 if all come',
+      );
+      expect(answer.querySelector('.bud-amount')?.textContent).toBe('+£1,000,000,000,000,000');
+      expect(answer.querySelectorAll('.dec-figure').length).toBe(6);
+      expectWholeGroups(answer);
+      cleanup();
+
+      const spanish = within(await open('decide_huge&lang=es')).getByRole('status');
+      expect(spanish.textContent).toContain('+1.000.000.000.000.000\u00a0GBP si vienen todos');
+      expect(spanish.textContent).toContain(
+        answerWordsFor('es').upperOnly(
+          '100.999.999.999.999.999\u00a0GBP',
+          '99.999.999.999.999.999\u00a0GBP',
+        ),
+      );
+      expect(spanish.textContent).not.toContain('100.000.000.000.000.000');
+      expect(spanish.textContent).not.toContain('101.000.000.000.000.000');
+      expect(spanish.querySelectorAll('.dec-figure').length).toBe(6);
+      expectWholeGroups(spanish);
+    },
+  );
 });
+
+/** Every figure's text nodes are single digit groups, so a line can break only at the <wbr> between them. */
+function expectWholeGroups(answer: HTMLElement) {
+  for (const figure of answer.querySelectorAll('.dec-figure'))
+    for (const group of figure.childNodes)
+      if (group.nodeType === Node.TEXT_NODE)
+        expect(group.textContent).toMatch(/^\+?£?\d{1,3}(?:[,.]|\u00a0GBP)?$/u);
+}

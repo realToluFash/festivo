@@ -22,4 +22,8 @@ final class ScriptedEventAmounts implements EventAmountsInterface
     {
         return isset($this->recorded[$event->getId()->toRfc4122()]);
     }
+
+    public function currencyChanged(Event $event): void
+    {
+    }
 }

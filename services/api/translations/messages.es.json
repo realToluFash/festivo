@@ -272,6 +272,7 @@
     "validation.guest_need_other_too_long": "Acórtelo a {otherMax} caracteres como máximo.",
     "validation.guest_need_note_too_long": "Acorte la nota a {noteMax} caracteres como máximo.",
     "event.currency_in_use": "La moneda no puede cambiar una vez que hay importes registrados en este evento.",
+    "budget.currency_changed": "La moneda del evento ha cambiado desde que se quitó este coste.",
     "event.state_invalid": "El estado actual de este evento no lo permite.",
     "event.concluded": "Este evento ya ha terminado, así que no se puede publicar. Cambie antes sus fechas.",
     "event.host_required": "Indique los anfitriones antes de invitar a nadie.",
@@ -411,7 +412,7 @@
     "access.plan_required": "Disponible con Enterprise. Para cambiar esto, consulte a Soirely sobre Enterprise.",
     "email_domains.not_listed": "Ese dominio no está en la lista.",
     "email_domains.taken": "Otra organización ya ha verificado este dominio. Si es suyo, contacte con el servicio de asistencia de Soirely.",
-    "email_domains.managed": "Your {domain} address is managed by {organisation}, so you can only be a member there.",
-    "email_domains.only_ours_owner": "Only an owner can change this.",
-    "email_domains.only_ours_unproved": "Only our organisation is for a domain this organisation has proved."
+    "email_domains.managed": "Su dirección de {domain} la gestiona {organisation}, por lo que solo puede ser miembro de esa organización.",
+    "email_domains.only_ours_owner": "Solo alguien con el rol Propietario puede cambiarlo.",
+    "email_domains.only_ours_unproved": "«Solo nuestra organización» requiere un dominio verificado por esta organización."
 }

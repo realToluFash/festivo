@@ -2,7 +2,7 @@ import type { Href } from 'expo-router';
 
 import { SAMPLE } from './samples.ts';
 
-/** Where the sign-up's last step leaves the person: Home, or no organisation for a managed account (sc-563), told it asked when it did. */
+/** Where the sign-up's last step leaves the person: Home, or no organisation for a managed account (sc-563), its banner in place of Start your own, told it asked when it did. */
 export type SignUpEnd = 'home' | 'none' | 'asked';
 
 const ENDS: readonly SignUpEnd[] = ['home', 'none', 'asked'];
@@ -16,9 +16,9 @@ export const ASKED = `Asked to join ${SAMPLE.organisation}. We’ll email you wh
 export function signUpLanding(end: SignUpEnd): Href {
   switch (end) {
     case 'none':
-      return { pathname: '/demo/today', params: { orgs: 'none' } };
+      return { pathname: '/demo/today', params: { orgs: 'none', state: 'managed' } };
     case 'asked':
-      return { pathname: '/demo/today', params: { orgs: 'none', toast: ASKED } };
+      return { pathname: '/demo/today', params: { orgs: 'none', state: 'managed', toast: ASKED } };
     default:
       return '/demo/today';
   }

@@ -272,6 +272,7 @@
     "validation.guest_need_other_too_long": "Shorten it to {otherMax} characters or fewer.",
     "validation.guest_need_note_too_long": "Shorten the note to {noteMax} characters or fewer.",
     "event.currency_in_use": "The currency cannot change once amounts are recorded against this event.",
+    "budget.currency_changed": "The event's currency has changed since this cost was removed.",
     "event.state_invalid": "This event cannot do that in the state it is in now.",
     "event.concluded": "This event's end has passed, so it cannot be made live. Change its dates first.",
     "event.host_required": "Add who is hosting before guests are invited.",
@@ -413,5 +414,5 @@
     "email_domains.taken": "Another organisation has already proved this domain. Contact Soirely support if it is yours.",
     "email_domains.managed": "Your {domain} address is managed by {organisation}, so you can only be a member there.",
     "email_domains.only_ours_owner": "Only an owner can change this.",
-    "email_domains.only_ours_unproved": "Only our organisation is for a domain this organisation has proved."
+    "email_domains.only_ours_unproved": "Only our organisation needs a domain this organisation has proved."
 }

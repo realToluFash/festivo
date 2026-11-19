@@ -117,7 +117,7 @@ describe('an account its home organisation manages, outside Settings (sc-563)', 
 
       fireEvent.click(screen.getByRole('button', { name: 'Save and continue' }));
 
-      await waitFor(() => expect(landed(router)).toBe('/demo/today?orgs=none'), WAIT);
+      await waitFor(() => expect(landed(router)).toBe('/demo/today?orgs=none&state=managed'), WAIT);
     },
   );
 
@@ -132,7 +132,7 @@ describe('an account its home organisation manages, outside Settings (sc-563)', 
     await screen.findByRole('heading', { name: 'Check your messages' }, WAIT);
 
     expect(screen.getByRole('link', { name: 'Carry on without it' }).getAttribute('href')).toBe(
-      '/demo/today?orgs=none',
+      '/demo/today?orgs=none&state=managed',
     );
 
     fireEvent.change(screen.getByLabelText('Code from WhatsApp'), {
@@ -141,8 +141,25 @@ describe('an account its home organisation manages, outside Settings (sc-563)', 
     fireEvent.click(screen.getByRole('button', { name: 'Verify number' }));
     fireEvent.click(await screen.findByRole('button', { name: 'Continue to Soirely' }, WAIT));
 
-    await waitFor(() => expect(landed(router)).toBe('/demo/today?orgs=none'), WAIT);
+    await waitFor(() => expect(landed(router)).toBe('/demo/today?orgs=none&state=managed'), WAIT);
   });
+
+  it(
+    'puts the banner in place of Start your own on You are not in an organisation',
+    SLOW,
+    async () => {
+      open('/demo/today?orgs=none&state=managed');
+      await screen.findByRole(
+        'heading',
+        { level: 1, name: 'You are not in an organisation' },
+        WAIT,
+      );
+
+      saysManaged();
+      expect(screen.queryByRole('button', { name: 'Start organisation' })).toBeNull();
+      expect(screen.getByRole('link', { name: 'Your account' })).toBeDefined();
+    },
+  );
 
   it(
     'says under Priya’s card that she is also a member of 2 other organisations, no names',
