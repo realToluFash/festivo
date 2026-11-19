@@ -62,6 +62,8 @@ const PROVED: EmailDomain = {
   checksEnd: 'Tuesday 13 Oct at 10:00 WAT',
   putBackByAt: null,
   putBackBy: null,
+  failedAt: null,
+  failed: null,
 };
 
 const WAITING: EmailDomain = {
@@ -77,6 +79,8 @@ const WAITING: EmailDomain = {
   checksEnd: 'Friday 23 Oct at 16:45 WAT',
   putBackByAt: null,
   putBackBy: null,
+  failedAt: null,
+  failed: null,
 };
 
 const FAILED: EmailDomain = {
@@ -162,6 +166,36 @@ describe('Email domains’ rows by status, with the instants as the server wrote
         },
       },
     ]);
+  });
+
+  it('tags every row Kept once the organisation left, and names no instant still to come', () => {
+    const rows = domainRows(t, page([MISSING, WAITING, FAILED], 'left'), day);
+
+    expect(rows.map(({ tag, line, action }) => ({ tag, line, action }))).toEqual([
+      {
+        tag: { kind: 'kept', word: 'Kept' },
+        line: 'Proved Tuesday 6 Oct at 11:02 WAT',
+        action: null,
+      },
+      { tag: { kind: 'kept', word: 'Kept' }, line: 'Not proved', action: null },
+      { tag: { kind: 'kept', word: 'Kept' }, line: 'Not proved', action: null },
+    ]);
+    expect(hubDomainsLine(t, page([WAITING], 'left'), ORG)).toBe('ireevents.com kept as it was');
+  });
+
+  it('names when the checks actually stopped, once the hourly job has set it', () => {
+    const lapsed = {
+      ...FAILED,
+      failedAt: '2026-10-31T13:20:00Z',
+      failed: 'Saturday 31 Oct at 14:20 WAT',
+    };
+
+    expect(domainRows(t, page([lapsed]), day)[0]?.line).toBe(
+      'We stopped checking on Saturday 31 Oct at 14:20 WAT. Verify still works.',
+    );
+    expect(recordFoot(t, lapsed)).toBe(
+      'We stopped checking on Saturday 31 Oct at 14:20 WAT. Verify still works.',
+    );
   });
 
   it('dates the record’s foot by the checks’ end, their stop, or the put-back day', () => {
