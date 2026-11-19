@@ -467,7 +467,7 @@ function Tonight({ state, clock, timeZone }: { state: Stations; clock: Date; tim
             <li key={station.id} className="sn-row">
               <h3>{label}</h3>
               {on.length > 0 ? (
-                <ul className="sn-people" aria-label={`On ${label} now`}>
+                <ul className="sn-people" aria-label={`On ${station.name} now`}>
                   {on.map((one) => (
                     <PersonLine key={one.id} person={one} lead={station.lead === one.id} />
                   ))}
@@ -575,7 +575,7 @@ function StationRow({
               id={`sn-people-${station.id}`}
               type="button"
               className="sn-act"
-              aria-label={`${SW.peopleAndLead} for ${label}`}
+              aria-label={`${SW.peopleAndLead} for ${station.name}`}
               onClick={onPeople}
             >
               {SW.peopleAndLead}
@@ -606,7 +606,7 @@ function StationRow({
         )}
       </div>
       {station.people.length > 0 ? (
-        <ul className="sn-people" aria-label={`People on ${label}`}>
+        <ul className="sn-people" aria-label={`People on ${station.name}`}>
           {station.people.map((id) => (
             <PersonLine key={id} person={personById(id)} lead={station.lead === id} />
           ))}
@@ -614,7 +614,7 @@ function StationRow({
       ) : (
         <p className="sn-nobody">
           <span className="sn-nobody-mark" aria-hidden="true" />
-          Nobody on {station.kind === 'section' ? station.name : label}
+          Nobody on {station.name}
         </p>
       )}
       {station.people.length > 0 && station.lead == null && (
@@ -829,13 +829,13 @@ function PeoplePanel({
           {ROSTER.map((one) => {
             const at = stationOf(state, one.id);
             const here = at?.id === station.id;
-            const where = here ? `On ${label}` : at == null ? SW.noStation : `On ${labelOf(at)}`;
+            const where = here ? `On ${station.name}` : at == null ? SW.noStation : `On ${at.name}`;
             const cta = here ? 'Take off' : at == null ? 'Put on' : 'Move here';
             const aria = here
-              ? `Take ${one.name} off ${label}`
+              ? `Take ${one.name} off ${station.name}`
               : at == null
-                ? `Put ${one.name} on ${label}`
-                : `Move ${one.name} from ${labelOf(at)} to ${label}`;
+                ? `Put ${one.name} on ${station.name}`
+                : `Move ${one.name} from ${at.name} to ${station.name}`;
 
             return (
               <li key={one.id} className="sn-roster-row">
