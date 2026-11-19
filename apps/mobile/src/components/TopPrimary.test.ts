@@ -32,3 +32,27 @@ describe('the title row’s pills at the largest text sizes (sc-67659)', () => {
     );
   });
 });
+
+describe('Export’s title at the largest text sizes (sc-72136)', () => {
+  it('draws the title as a Title given the row’s room, reporting the size it drew', () => {
+    expect(exporting).toMatch(
+      /<Title\s+size=\{TITLE\}[^<]*\sroom=\{room > 0 [^<]*\sonDrawn=\{onDrawn\}\s*>\s+\{title\}\s+<\/Title>/u,
+    );
+  });
+
+  it('puts Cancel under the title by the shared rule', () => {
+    expect(exporting).toMatch(/import \{ cancelUnder \} from '\.\.\/layout\/titleFit\.ts';/u);
+    expect(exporting).toMatch(/const under = cancelUnder\(/u);
+  });
+
+  it('caps the sheet’s and the panel’s body at the title’s drawn size', () => {
+    expect(exporting.match(/<TitleCap\.Provider value=\{drawn\}>/gu)).toHaveLength(2);
+    expect(exporting.match(/onDrawn=\{setDrawn\}/gu)).toHaveLength(2);
+  });
+
+  it('scrolls the note and Share with the body in the sheet and the panel', () => {
+    expect(
+      exporting.match(/\{scrolls && <View style=\{styles\.footScrolled\}>\{foot\}<\/View>\}/gu),
+    ).toHaveLength(2);
+  });
+});
