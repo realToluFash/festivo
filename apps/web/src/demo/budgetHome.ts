@@ -93,6 +93,7 @@ export const MARGIN_STATES = [
   'price_negative',
   'price_decimals',
   'margin_live',
+  'margin_unset',
   'free',
 ] as const;
 
@@ -461,6 +462,8 @@ export const BUDGET_PAGES: readonly DemoGroup[] = [
       { to: at('price_negative'), name: 'A price refused: below 0' },
       { to: at('price_decimals'), name: 'A price refused: too many decimal places' },
       { to: at('margin_live'), name: 'Live: a markup changed in another tab' },
+      { to: at('margin_unset'), name: 'No markup set anywhere: each line at its cost' },
+      { to: at('populated'), name: 'The plain Budget, with See margin in the title row' },
       { to: at('free', { plan: 'free' }), name: 'A Free organisation: no margin' },
     ],
   },
@@ -471,7 +474,7 @@ export const BUDGET_PAGES: readonly DemoGroup[] = [
 ];
 
 export interface Markups {
-  event: number;
+  event: number | null;
   categories: Partial<Record<Category, number>>;
   costs: Readonly<Record<string, number>>;
   prices: Readonly<Record<string, number>>;
@@ -484,6 +487,9 @@ export const MARKUPS: Markups = {
   costs: {},
   prices: {},
 };
+
+/** sc-92, 19 Nov: nothing set on the event, a category or a line, so every line is charged at its cost. */
+export const NO_MARKUPS: Markups = { event: null, categories: {}, costs: {}, prices: {} };
 
 export const PLANNING_FEE = 300000;
 
@@ -499,7 +505,9 @@ export function markupWords(line: CostLine, markups: Markups): string {
       ? 'at cost, chosen'
       : `${percentWords(category)} markup, ${CATEGORY_WORDS[line.category]}’s`;
 
-  return `${percentWords(markups.event)} markup, the event’s`;
+  return markups.event == null
+    ? 'no markup set'
+    : `${percentWords(markups.event)} markup, the event’s`;
 }
 
 export function chargedOf(
@@ -509,7 +517,7 @@ export function chargedOf(
 ): { cost: readonly [number, number]; charged: readonly [number, number] } {
   const each = lineAmounts(line, heads);
   const price = markups.prices[line.id];
-  const percent = markups.costs[line.id] ?? markups.categories[line.category] ?? markups.event;
+  const percent = markups.costs[line.id] ?? markups.categories[line.category] ?? markups.event ?? 0;
   const up = (minor: number) => Math.round((minor * (1000 + percent * 10)) / 1000);
 
   return {

@@ -155,6 +155,25 @@ describe('the states Budget A still lacked (sc-85, sc-88, sc-90, sc-91, sc-92, s
     },
   );
 
+  it('opens on the plain Budget and turns to the margin face with See margin', SLOW, async () => {
+    await open(at('populated'));
+    expect(within(main()).queryByText('Client total')).toBeNull();
+    fireEvent.click(within(main()).getByRole('button', { name: 'See margin' }));
+    expect(within(main()).getByText('Client total')).toBeTruthy();
+    expect(section('Costs').textContent).toContain('Charged at');
+    fireEvent.click(within(main()).getByRole('button', { name: 'Hide margin' }));
+    expect(within(main()).queryByText('Client total')).toBeNull();
+    cleanup();
+
+    await open(at('populated', '&plan=free'));
+    expect(within(main()).queryByRole('button', { name: 'See margin' })).toBeNull();
+    cleanup();
+
+    await open(at('margin_unset'));
+    expect(section('Costs').textContent).toContain('no markup set0.0%');
+    expect(section('Markup').textContent).toContain('No markup set');
+  });
+
   it(
     'refuses Mark paid by the server and at the date, and words added and deleted payments',
     SLOW,

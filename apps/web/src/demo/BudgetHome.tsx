@@ -63,6 +63,7 @@ import {
   WELCOME_DRINKS,
   type Markups,
   MARKUPS,
+  NO_MARKUPS,
   PLANNING_FEE,
   chargedOf,
   marginOf,
@@ -247,7 +248,9 @@ export function BudgetHomeContent({
   const [markups, setMarkups] = useState<Markups>(() =>
     first === 'margin_live'
       ? { ...MARKUPS, categories: { ...MARKUPS.categories, photography: 25 } }
-      : MARKUPS,
+      : first === 'margin_unset'
+        ? NO_MARKUPS
+        : MARKUPS,
   );
   const fee = first === 'margin_zero_price' ? 0 : PLANNING_FEE;
   const ceilingLive = first.startsWith('ceiling_live');
@@ -282,9 +285,16 @@ export function BudgetHomeContent({
 
     return () => window.clearTimeout(timer);
   }, [toRow]);
-  const margin =
-    enterprise &&
-    (MARGIN_HOME.includes(first) || first.startsWith('markup') || first === 'margin_live');
+  // The page opens on the plain Budget every visit; See margin turns it to its margin face (sc-92, 19 Nov).
+  const [marginFace, setMarginFace] = useState(
+    () =>
+      MARGIN_HOME.includes(first) ||
+      first.startsWith('markup') ||
+      first === 'margin_live' ||
+      first === 'margin_unset' ||
+      first === 'margin_before_paid',
+  );
+  const margin = enterprise && marginFace;
 
   useEffect(() => {
     if (first === 'ceiling_cleared_one') tell('Ceiling saved.');
@@ -330,6 +340,12 @@ export function BudgetHomeContent({
         <TextAction label="Add a cost" before="plus" onClick={() => setDialog('addCost')} />
         {!empty && (
           <>
+            {enterprise && !readOnly && (
+              <TextAction
+                label={margin ? 'Hide margin' : 'See margin'}
+                onClick={() => setMarginFace((now) => !now)}
+              />
+            )}
             <Link className="desk-text" to={budgetAt('payers')}>
               Who is paying
             </Link>
@@ -361,7 +377,7 @@ export function BudgetHomeContent({
           onAdd={() => setDialog('addCost')}
           onStart={() => void navigate(budgetAt('start_from'))}
         />
-      ) : margin || (enterprise && first === 'margin_before_paid') ? (
+      ) : margin ? (
         <MarginCard
           event={event}
           paid={first !== 'margin_before_paid'}
@@ -1223,7 +1239,7 @@ function MarginCosts({
 
 function MarginBlocks({ markups, lines }: { markups: Markups; lines: readonly CostLine[] }) {
   const rows: [string, string][] = [
-    ['Whole event', `${markups.event}% markup`],
+    ['Whole event', markups.event == null ? 'No markup set' : `${markups.event}% markup`],
     ...(Object.entries(markups.categories) as [Category, number][]).map(
       ([category, percent]): [string, string] => [
         CATEGORY_WORDS[category],
