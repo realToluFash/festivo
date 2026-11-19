@@ -5370,7 +5370,7 @@
   "decisionAnswer": {
     "head": "Ce que coûterait cet ajout",
     "rise": "+{{amount}} si tous viennent",
-    "upperOnly": "Seul le montant maximal augmente, à {{upper}} désormais. Les nouveaux invités n’ont pas encore répondu : le montant confirmé reste donc à {{settled}}.",
+    "upperOnly": "Si tous viennent, ce serait {{upper}}. Le montant confirmé reste à {{settled}}, car les nouveaux invités n’ont pas encore répondu.",
     "moved": "{{from}} → {{to}} · {{headsFrom, number}} → {{headsTo, number}} si tous viennent",
     "plus": "+{{amount}}",
     "notKnown": "Inconnu",

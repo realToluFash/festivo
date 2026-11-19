@@ -194,6 +194,14 @@ final class BudgetWhatIfTest extends ApiTestCase
     }
 
     #[Test]
+    public function theMostGuestsOnTheLargestRateAreAnsweredExactly(): void
+    {
+        $this->add([...self::CATERING, 'rate' => '999999999999999.99']);
+
+        self::assertSame(['from' => '0.00', 'to' => '99999999999999999000.00', 'delta' => '99999999999999999000.00'], $this->whatIf('guests', WhatIfRules::MOST)['potential'] ?? null);
+    }
+
+    #[Test]
     public function aWholeNumberWrittenWithAPointIsAWholeNumber(): void
     {
         $this->add(self::CENTREPIECES);

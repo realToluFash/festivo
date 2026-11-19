@@ -17,6 +17,7 @@ use App\Entity\Event;
 use App\Enum\CostBasis;
 use App\Locale\Money;
 use App\Repository\BudgetLineRepository;
+use BcMath\Number;
 use Psl\Dict;
 use Psl\Vec;
 
@@ -59,7 +60,7 @@ final readonly class BudgetSerialiser
         $currency = $event->getCurrency();
         $facts = $this->quantityResolver->factsFor($event);
         $range = BudgetRange::of($this->budgetLineRepository->findOnEvent($event), $facts);
-        $money = static fn (?int $minor): ?string => null === $minor ? null : Money::written($minor, $currency);
+        $money = static fn (?Number $minor): ?string => null === $minor ? null : Money::written($minor, $currency);
 
         return [
             'currency' => $currency,
@@ -83,10 +84,10 @@ final readonly class BudgetSerialiser
     {
         $currency = $event->getCurrency();
         $answer = BudgetWhatIf::of($this->budgetLineRepository->findOnEvent($event), $facts, $changes);
-        $moved = static fn (int $from, int $to): array => [
+        $moved = static fn (Number $from, Number $to): array => [
             'from' => Money::written($from, $currency),
             'to' => Money::written($to, $currency),
-            'delta' => Money::written($to - $from, $currency),
+            'delta' => Money::written($to->sub($from), $currency),
         ];
 
         return [
