@@ -1,4 +1,4 @@
-# sc-563: Data and control > Email domains in the app, as the signed-in account sees it.
+# sc-563: Data and control > Email domains in the app, as the signed-in account sees it. Pass METRO_URL and DOMAIN: an email domain on the account's organisation, such as ire2-qa5.test on qa5's stack.
 appId: host.exp.Exponent
 ---
 - openLink: ${METRO_URL}/--/settings/data-and-control/email-domains
@@ -11,7 +11,7 @@ appId: host.exp.Exponent
 - takeScreenshot: sc563-domains-product
 - scrollUntilVisible:
     element:
-      id: emailDomains.ire2-qa5.test.only
+      id: emailDomains.${DOMAIN}.only
     direction: DOWN
     timeout: 15000
 - takeScreenshot: sc563-domains-product-ire2
