@@ -453,6 +453,24 @@ const NO_EXPORT: OrganisationExportPage = {
   nextAllowed: null,
 };
 
+const READY: OrganisationExportPage = {
+  owner: true,
+  export: {
+    id: 'ex_1',
+    state: 'ready',
+    mine: true,
+    askedBy: 'Folake Adeyemi',
+    askedAt: '2026-10-17T13:30:00+00:00',
+    asked: 'Saturday 17 Oct at 14:30 WAT',
+    expiresAt: '2026-10-18T13:52:00+00:00',
+    expires: 'Sunday 18 Oct at 14:52 WAT',
+    downloadedAt: null,
+    downloaded: null,
+  },
+  nextAllowedAt: null,
+  nextAllowed: null,
+};
+
 describe('Data and control’s Email domains row and card (sc-560)', () => {
   it('lists Email domains under Control with each domain and where it stands', async () => {
     signedIn();
@@ -480,24 +498,7 @@ describe('Data and control’s Email domains row and card (sc-560)', () => {
 
   it('puts the soonest step first: a ready export ending before the checks stop', async () => {
     signedIn();
-    const ready: OrganisationExportPage = {
-      owner: true,
-      export: {
-        id: 'ex_1',
-        state: 'ready',
-        mine: true,
-        askedBy: 'Folake Adeyemi',
-        askedAt: '2026-10-17T13:30:00+00:00',
-        asked: 'Saturday 17 Oct at 14:30 WAT',
-        expiresAt: '2026-10-18T13:52:00+00:00',
-        expires: 'Sunday 18 Oct at 14:52 WAT',
-        downloadedAt: null,
-        downloaded: null,
-      },
-      nextAllowedAt: null,
-      nextAllowed: null,
-    };
-    answering({ [EXPORT]: () => json(ready), [PAGE]: () => json(page([IRE, IRE_COM])) });
+    answering({ [EXPORT]: () => json(READY), [PAGE]: () => json(page([IRE, IRE_COM])) });
     open('/app/settings/data-and-control');
 
     expect(await screen.findByText('Your export is ready')).toBeDefined();
@@ -547,6 +548,16 @@ describe('Data and control’s Email domains row and card (sc-560)', () => {
         'Email domains, the audit log and deleting guest data are switched off and kept as they were. They come back on with Enterprise.',
       ),
     ).toBeDefined();
+  });
+
+  it('puts a ready export before what comes with Enterprise on a free organisation’s hub', async () => {
+    signedIn();
+    answering({ [EXPORT]: () => json(READY), [PAGE]: () => json(page([], 'free')) });
+    open('/app/settings/data-and-control');
+
+    expect(await screen.findByText('Your export is ready')).toBeDefined();
+    expect(screen.getByRole('button', { name: 'Download' })).toBeDefined();
+    expect(screen.queryByText('These come with Enterprise')).toBeNull();
   });
 
   it('says what comes with Enterprise on the hub of a free organisation', async () => {
