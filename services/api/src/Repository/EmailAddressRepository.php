@@ -21,4 +21,20 @@ final class EmailAddressRepository extends ServiceEntityRepository
     {
         return $this->findOneBy(['address' => EmailAddressNormaliser::normalise($address)]);
     }
+
+    /** @return list<EmailAddress> a hostname has no LIKE wildcard in it; each account's verified main address at the domain, the accounts with them */
+    public function findVerifiedPrimariesAt(string $domain): array
+    {
+        /** @var list<EmailAddress> */
+        return $this->createQueryBuilder('e')
+            ->select('e', 'u')
+            ->innerJoin('e.user', 'u')
+            ->where('e.isPrimary = true')
+            ->andWhere('e.verifiedAt IS NOT NULL')
+            ->andWhere('e.address LIKE :atDomain')
+            ->setParameter('atDomain', '%@' . $domain)
+            ->orderBy('e.id', 'ASC')
+            ->getQuery()
+            ->getResult();
+    }
 }

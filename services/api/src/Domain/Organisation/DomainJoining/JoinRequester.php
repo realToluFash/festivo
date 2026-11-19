@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domain\Organisation\DomainJoining;
 
 use App\Audit\Auditor;
+use App\Domain\Organisation\EmailDomains\ManagedAccounts;
 use App\Domain\Organisation\Members\MembershipMachine;
 use App\Entity\JoinOfferDismissal;
 use App\Entity\Membership;
@@ -28,6 +29,7 @@ final readonly class JoinRequester
     public function __construct(
         private JoinOfferFinder $joinOfferFinder,
         private MembershipMachine $membershipMachine,
+        private ManagedAccounts $managedAccounts,
         private JoinOfferDismissalRepository $joinOfferDismissalRepository,
         private EntityManagerInterface $entityManager,
         private Auditor $auditor,
@@ -38,6 +40,8 @@ final readonly class JoinRequester
 
     public function ask(User $user, Organisation $organisation): Membership
     {
+        $this->managedAccounts->refuseUnlessHome($user, $organisation, MembershipChannel::Domain->value);
+
         if (!$this->joinOfferFinder->isOffered($user, $organisation)) {
             throw new ApiException(ErrorCode::JoinOfferUnavailable, $this->translator->trans('domain_joining.unavailable'));
         }

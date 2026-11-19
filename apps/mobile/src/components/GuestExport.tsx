@@ -8,22 +8,31 @@ import {
 } from '@soirely/domain';
 import { type Ref, type RefObject, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Pressable, ScrollView, StyleSheet, View, type ViewInstance } from 'react-native';
+import {
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  View,
+  type ViewInstance,
+  useWindowDimensions,
+} from 'react-native';
 import Svg, { Path } from 'react-native-svg';
 
 import { api } from '../api.ts';
 import { EXPORT_TYPES, exportToShare } from '../kit/guestExport.ts';
 import { writeToShare } from '../kit/sharedFile.ts';
+import { atAccessibilitySizes, titleSize, wordsIn } from '../layout/textSize.ts';
+import { cancelUnder } from '../layout/titleFit.ts';
 import type { LayoutKind } from '../layout/useLayout.ts';
 import { tokens } from '../theme/tokens.ts';
 import { AlertLine } from './AlertLine.tsx';
 import { RadioMark } from './RadioMark.tsx';
 import { moveScreenReaderFocus, type ScreenReaderTarget } from './screenReaderFocus.ts';
 import { Pill } from './SettingsParts.tsx';
-import { CappedWholeWords } from './Title.tsx';
+import { CappedWholeWords, MeasuredWords, Title } from './Title.tsx';
 import { Sheet } from './Sheet.tsx';
 import { TextAction } from './SummaryRows.tsx';
-import { Text, type TextHandle } from './Text.tsx';
+import { Text, TitleCap, type TextHandle } from './Text.tsx';
 
 type Making = 'ready' | 'preparing' | 'failed';
 
@@ -222,6 +231,8 @@ export function ExportSheet({
 }: ExportProps & { open: boolean; opener: RefObject<ScreenReaderTarget | null> }) {
   const { t } = useTranslation();
   const { body, foot, held } = useExport(props);
+  const [drawn, setDrawn] = useState<number | null>(null);
+  const scrolls = atAccessibilitySizes(useWindowDimensions().fontScale);
 
   return (
     <Sheet
@@ -232,13 +243,16 @@ export function ExportSheet({
       held={held}
       testID="guests.export.sheet"
     >
-      <View style={styles.sheetHead}>
-        <Head onClose={props.onClose} off={held} />
-      </View>
-      <ScrollView style={styles.scroll} contentContainerStyle={styles.body} bounces={false}>
-        {body}
-      </ScrollView>
-      <View style={styles.sheetFoot}>{foot}</View>
+      <TitleCap.Provider value={drawn}>
+        <View style={styles.sheetHead}>
+          <Head onClose={props.onClose} off={held} onDrawn={setDrawn} />
+        </View>
+        <ScrollView style={styles.scroll} contentContainerStyle={styles.body} bounces={false}>
+          {body}
+          {scrolls && <View style={styles.footScrolled}>{foot}</View>}
+        </ScrollView>
+        {!scrolls && <View style={styles.sheetFoot}>{foot}</View>}
+      </TitleCap.Provider>
     </Sheet>
   );
 }
@@ -247,6 +261,8 @@ export function ExportSheet({
 export function ExportPanel(props: ExportProps) {
   const { body, foot, held } = useExport(props);
   const title = useRef<TextHandle>(null);
+  const [drawn, setDrawn] = useState<number | null>(null);
+  const scrolls = atAccessibilitySizes(useWindowDimensions().fontScale);
 
   useEffect(() => {
     const wait = setTimeout(() => moveScreenReaderFocus(title.current), SETTLED_MS);
@@ -255,39 +271,80 @@ export function ExportPanel(props: ExportProps) {
 
   return (
     <View style={styles.panel} testID="guests.export.panel">
-      <View style={styles.panelHead}>
-        <Head onClose={props.onClose} off={held} titleRef={title} />
-      </View>
-      <ScrollView style={styles.scroll} contentContainerStyle={styles.panelBody}>
-        {body}
-      </ScrollView>
-      <View style={styles.panelFoot}>{foot}</View>
+      <TitleCap.Provider value={drawn}>
+        <View style={styles.panelHead}>
+          <Head onClose={props.onClose} off={held} titleRef={title} onDrawn={setDrawn} />
+        </View>
+        <ScrollView style={styles.scroll} contentContainerStyle={styles.panelBody}>
+          {body}
+          {scrolls && <View style={styles.footScrolled}>{foot}</View>}
+        </ScrollView>
+        {!scrolls && <View style={styles.panelFoot}>{foot}</View>}
+      </TitleCap.Provider>
     </View>
   );
 }
 
+const TITLE = tokens.typeTitleDialog.size;
+
+/** sc-72136: the title at a title's steps, each word whole, never under its default size; Cancel beside it where its longest word and Cancel fit the row, else on the row under it at its end. Read in that order: the title, then Cancel. */
 function Head({
   onClose,
   off,
   titleRef,
+  onDrawn,
 }: {
   onClose: () => void;
   off: boolean;
   titleRef?: Ref<TextHandle>;
+  onDrawn: (size: number) => void;
 }) {
   const { t } = useTranslation();
+  const title = t('guestExport.title');
+  const start = titleSize(TITLE, useWindowDimensions().fontScale);
+  const titleWords = wordsIn([title]);
+  const [measured, setMeasured] = useState<Readonly<Record<string, number>>>({});
+  const [room, setRoom] = useState(0);
+  const [cancel, setCancel] = useState(0);
+  const widths = titleWords.map((word) => measured[`${start}|${word}`]);
+  const widest = widths.every((width) => width != null) ? Math.max(0, ...widths) : 0;
+  const under = cancelUnder({ room, widest, cancel, gap: tokens.spaceMd });
 
   return (
-    <View style={styles.head}>
-      <Text size={20} weight="bold" accessibilityRole="header" style={styles.grow} ref={titleRef}>
-        {t('guestExport.title')}
-      </Text>
-      <TextAction
-        label={t('guestList.cancel')}
-        off={off}
-        onPress={onClose}
-        testID="guests.export.close"
+    <View onLayout={(event) => setRoom(event.nativeEvent.layout.width)}>
+      <MeasuredWords
+        words={titleWords}
+        size={TITLE}
+        weight="bold"
+        maxFontSizeMultiplier={start / TITLE}
+        onWidth={(word, width) => {
+          const key = `${start}|${word}`;
+          setMeasured((now) => (now[key] === width ? now : { ...now, [key]: width }));
+        }}
       />
+      <View style={[styles.head, under && styles.headUnder]} testID="guests.export.head">
+        <Title
+          size={TITLE}
+          accessibilityRole="header"
+          style={under ? null : styles.grow}
+          ref={titleRef}
+          room={room > 0 ? (under ? room : room - tokens.spaceMd - cancel) : undefined}
+          onDrawn={onDrawn}
+        >
+          {title}
+        </Title>
+        <View
+          style={under ? styles.cancelUnder : styles.cancelBeside}
+          onLayout={(event) => setCancel(event.nativeEvent.layout.width)}
+        >
+          <TextAction
+            label={t('guestList.cancel')}
+            off={off}
+            onPress={onClose}
+            testID="guests.export.close"
+          />
+        </View>
+      </View>
     </View>
   );
 }
@@ -378,7 +435,16 @@ const styles = StyleSheet.create({
   },
   offlinePhone: { maxWidth: 132 },
   offlineWords: { flexShrink: 1, lineHeight: 13.5 * 1.3 },
-  head: { minHeight: tokens.sizeHit, flexDirection: 'row', alignItems: 'center' },
+  head: {
+    minHeight: tokens.sizeHit,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: tokens.spaceMd,
+  },
+  headUnder: { flexDirection: 'column', alignItems: 'stretch', gap: tokens.spaceSm },
+  cancelBeside: { flexShrink: 0 },
+  cancelUnder: { alignSelf: 'flex-end' },
+  footScrolled: { paddingBottom: 12 },
   scroll: { flexGrow: 0, flexShrink: 1 },
   sheetHead: { paddingHorizontal: tokens.spaceXxl, paddingTop: 20 },
   body: { gap: 18, paddingHorizontal: tokens.spaceXxl, paddingTop: 12, paddingBottom: 8 },

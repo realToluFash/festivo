@@ -180,7 +180,7 @@ final class BudgetWhatIfTest extends ApiTestCase
         $body = $this->as($this->owner, 'POST', $this->path(), ['changes' => [['change' => 'staff_hours', 'by' => 100001], ['change' => 'days', 'by' => -3]]]);
 
         self::assertSame(
-            ['Change staff_hours by 100,000 or fewer.', 'That would take days below 0. The event has 2 now.'],
+            ['Change staff_hours by 100,000 or fewer in total.', 'That would take days below 0. The event has 2 now.'],
             Vec\map(Type\vec(Type\shape(['message' => Type\string()], true))->coerce($body['violations'] ?? null), static fn (array $one): string => $one['message']),
         );
     }
@@ -191,6 +191,14 @@ final class BudgetWhatIfTest extends ApiTestCase
         $this->add(self::CATERING);
 
         self::assertSame('5000000.00', $this->whatIf('guests', WhatIfRules::MOST)['potential']['delta'] ?? null);
+    }
+
+    #[Test]
+    public function theMostGuestsOnTheLargestRateAreAnsweredExactly(): void
+    {
+        $this->add([...self::CATERING, 'rate' => '999999999999999.99']);
+
+        self::assertSame(['from' => '0.00', 'to' => '99999999999999999000.00', 'delta' => '99999999999999999000.00'], $this->whatIf('guests', WhatIfRules::MOST)['potential'] ?? null);
     }
 
     #[Test]

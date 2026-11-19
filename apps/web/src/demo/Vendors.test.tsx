@@ -1,3 +1,6 @@
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
+
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { RouterProvider, createMemoryRouter } from 'react-router';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -9,6 +12,8 @@ import { atPhoneWidth } from '../test-widths.ts';
 const tested = config();
 const SLOW = { timeout: 20000 };
 const WAIT = { timeout: 8000 };
+const PHONE_CSS = readFileSync(join(import.meta.dirname, 'phone.css'), 'utf8');
+const SHELL_CSS = readFileSync(join(import.meta.dirname, '../styles.css'), 'utf8');
 const REFUSED = 'That is not a phone number for United Kingdom. Check it and try again.';
 
 function main(): HTMLElement {
@@ -102,6 +107,16 @@ describe('Settings › Vendors in A · Summary first (sc-82)', () => {
       }
     },
   );
+
+  it('draws the bar’s bell as the product’s shell does, on the card’s colour with the nav’s corners', () => {
+    const shell = /\.notifications-bell \{[^}]*\}/u.exec(SHELL_CSS)?.[0] ?? '';
+    const bar = /\.dp-fit \.today-side > \.desk-bell \{[^}]*\}/u.exec(PHONE_CSS)?.[0] ?? '';
+
+    for (const rule of ['background: var(--colorCard);', 'border-radius: var(--radiusNav);']) {
+      expect(shell).toContain(rule);
+      expect(bar).toContain(rule);
+    }
+  });
 
   it('keeps its bell beside the title at a desk', SLOW, async () => {
     await open('/demo/settings/vendors');

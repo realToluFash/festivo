@@ -139,7 +139,7 @@ export function rowLabel(event: OutsideEvent, marks: { now: boolean; here: boole
     .join('. ');
 }
 
-export type OutsideArea = 'checkIn' | Exclude<SideArea, 'budget'>;
+export type OutsideArea = Exclude<SideArea, 'budget'>;
 
 const READS: readonly OutsideArea[] = ['overview', 'guests', 'schedule', 'seating', 'people'];
 
@@ -148,9 +148,7 @@ const EDITS: readonly OutsideArea[] = SIDE_AREAS.filter(
 );
 
 export function areasAt(level: Level): readonly OutsideArea[] {
-  if (level === 'Can edit') return EDITS;
-
-  return level === 'Can check guests in' ? ['checkIn', ...READS] : READS;
+  return level === 'Can edit' ? EDITS : READS;
 }
 
 export function whenLine(event: OutsideEvent): string {

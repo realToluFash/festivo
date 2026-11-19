@@ -33,6 +33,7 @@ const noOffer: DomainOffer = {
   organisation: null,
   domain: null,
   asked: false,
+  managed: null,
   ask: () => Promise.resolve(),
   dismiss: () => Promise.resolve(),
 };

@@ -38,7 +38,7 @@ appId: host.exp.Exponent
 - waitForAnimationToEnd:
     timeout: 5000
 - tapOn:
-    id: 'switcher.close'
+    point: '50%,80%'
 - extendedWaitUntil:
     notVisible:
       id: 'switcher.heading'

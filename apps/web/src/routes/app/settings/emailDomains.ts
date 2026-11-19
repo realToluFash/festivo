@@ -33,25 +33,84 @@ export function recordFoot(t: TFunction, domain: EmailDomain): string {
   }
 }
 
-export type DomainsSaid = { kind: 'proved' | 'removed'; domain: string } | null;
+export type DomainsSaid = {
+  kind: 'proved' | 'removed' | 'scheduled' | 'cancelled' | 'turnedOff';
+  domain: string;
+} | null;
 
+/** `record` opens a domain's record; `keep` asks to limit a domain's accounts, the Owner's alone. */
 export interface DomainsCard {
   says: string | null;
   line: string;
   record: string | null;
+  keep: string | null;
 }
 
-function askOf(t: TFunction, domain: EmailDomain): { says: string; line: string; record: string } {
+/** Only our organisation's line under a proved domain (sc-563); anyone but the Owner reads that only an owner changes it. */
+export function onlyLine(
+  t: TFunction,
+  domain: EmailDomain,
+  page: Pick<EmailDomainsPage, 'plan' | 'ownerChanges'>,
+  day: (at: string) => string,
+): string {
+  if (page.plan === 'left') return t('emailDomains.keptOnly');
+
+  const line =
+    domain.onlyOurs === 'scheduled' && domain.onlyOursFrom != null
+      ? t('emailDomains.onlyStarts', { when: domain.onlyOursFrom })
+      : domain.onlyOurs === 'on' && domain.onlyOursFromAt != null
+        ? t('emailDomains.onlyOnSince', { day: day(domain.onlyOursFromAt) })
+        : t('emailDomains.provedQuietLine', { domain: domain.domain });
+
+  return page.ownerChanges
+    ? line
+    : `${line}${line.endsWith('.') ? '' : '.'} ${t('emailDomains.ownerOnly')}`;
+}
+
+function onlyCard(
+  t: TFunction,
+  domain: EmailDomain,
+  owns: boolean,
+  organisation: string,
+): DomainsCard {
+  if (domain.onlyOurs === 'scheduled')
+    return {
+      says: t('emailDomains.scheduledSays', { when: domain.onlyOursFrom }),
+      line: owns
+        ? t('emailDomains.scheduledLine', { domain: domain.domain })
+        : t('emailDomains.scheduledOtherLine'),
+      record: null,
+      keep: null,
+    };
+  if (domain.onlyOurs === 'on')
+    return {
+      says: t('emailDomains.onSays', { domain: domain.domain, organisation }),
+      line: t('emailDomains.onLine'),
+      record: null,
+      keep: null,
+    };
+
+  return {
+    says: t('emailDomains.provedSays', { domain: domain.domain }),
+    line: t('emailDomains.provedQuietLine', { domain: domain.domain }),
+    record: null,
+    keep: owns ? domain.domain : null,
+  };
+}
+
+function askOf(t: TFunction, domain: EmailDomain): DomainsCard {
   return domain.status === 'missing'
     ? {
         says: t('emailDomains.missingSays', { domain: domain.domain }),
         line: t('emailDomains.missingCardLine', { domain: domain.domain, when: domain.putBackBy }),
         record: domain.domain,
+        keep: null,
       }
     : {
         says: t('emailDomains.waitingSays', { domain: domain.domain }),
         line: t('emailDomains.waitingFoot', { when: domain.checksEnd }),
         record: domain.domain,
+        keep: null,
       };
 }
 
@@ -67,28 +126,52 @@ export function domainsCard(
       says: t('emailDomains.lockedSays'),
       line: t('emailDomains.lockedLine', { organisation }),
       record: null,
+      keep: null,
     };
   if (page.plan === 'left')
-    return { says: null, line: t('emailDomains.leftLine', { organisation }), record: null };
+    return {
+      says: null,
+      line: t('emailDomains.leftLine', { organisation }),
+      record: null,
+      keep: null,
+    };
 
   const find = (status: EmailDomain['status']) => page.domains.find((one) => one.status === status);
   const waiting = find('waiting');
+
+  const owns = page.ownerChanges;
 
   if (said?.kind === 'removed')
     return {
       says: t('emailDomains.removedSays', { domain: said.domain }),
       line: t('emailDomains.removedLine'),
       record: waiting?.domain ?? null,
+      keep: null,
+    };
+  if (said?.kind === 'cancelled')
+    return {
+      says: t('emailDomains.cancelledSays'),
+      line: t('emailDomains.cancelledLine', { domain: said.domain }),
+      record: null,
+      keep: null,
+    };
+  if (said?.kind === 'turnedOff')
+    return {
+      says: t('emailDomains.offSays'),
+      line: t('emailDomains.offLine', { domain: said.domain }),
+      record: null,
+      keep: null,
     };
 
-  const justProved =
-    said?.kind === 'proved' ? page.domains.find((one) => one.domain === said.domain) : undefined;
+  const saidOf = page.domains.find((one) => one.domain === said?.domain);
 
-  if (justProved != null)
+  if (said?.kind === 'scheduled' && saidOf != null) return onlyCard(t, saidOf, owns, organisation);
+  if (said?.kind === 'proved' && saidOf != null)
     return {
-      says: t('emailDomains.provedSays', { domain: justProved.domain }),
-      line: t('emailDomains.provedSaidLine', { when: justProved.proved }),
+      says: t('emailDomains.provedSays', { domain: saidOf.domain }),
+      line: t('emailDomains.provedSaidLine', { when: saidOf.proved }),
       record: null,
+      keep: owns && saidOf.onlyOurs === 'off' ? saidOf.domain : null,
     };
 
   const missing = find('missing');
@@ -101,19 +184,16 @@ export function domainsCard(
       says: t('emailDomains.failedSays', { domain: failed.domain }),
       line: t('emailDomains.failedCardLine', { when: failed.checksEnd }),
       record: failed.domain,
+      keep: null,
     };
   if (waiting != null) return askOf(t, waiting);
-  if (proved != null)
-    return {
-      says: t('emailDomains.provedSays', { domain: proved.domain }),
-      line: t('emailDomains.provedQuietLine', { domain: proved.domain }),
-      record: null,
-    };
+  if (proved != null) return onlyCard(t, proved, owns, organisation);
 
   return {
     says: t('emailDomains.noneSays', { organisation }),
-    line: t('emailDomains.noneLine'),
+    line: t('emailDomains.noneLine', { organisation }),
     record: null,
+    keep: null,
   };
 }
 
@@ -177,7 +257,7 @@ export function soonestAsk(
         at,
         does: 'record',
         domain: domain.domain,
-        says: card.says,
+        says: card.says ?? '',
         line: card.line,
       });
     }

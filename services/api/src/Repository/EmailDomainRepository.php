@@ -71,6 +71,22 @@ final class EmailDomainRepository extends ServiceEntityRepository
             ->getResult();
     }
 
+    /** @return list<EmailDomain> proved, with Only our organisation due to apply and its applying not yet recorded */
+    public function findOnlyOursDue(DateTimeImmutable $now): array
+    {
+        /** @var list<EmailDomain> */
+        return $this->createQueryBuilder('d')
+            ->select('d', 'o')
+            ->innerJoin('d.organisation', 'o')
+            ->where('d.provedAt IS NOT NULL')
+            ->andWhere('d.onlyOursFrom <= :now')
+            ->andWhere('d.onlyOursAppliedAt IS NULL')
+            ->setParameter('now', $now)
+            ->orderBy('d.onlyOursFrom', 'ASC')
+            ->getQuery()
+            ->getResult();
+    }
+
     /** @return list<EmailDomain> */
     private function provedIn(Organisation $organisation): array
     {

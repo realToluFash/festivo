@@ -1621,7 +1621,20 @@ describe('company domain joining (sc-561)', () => {
       domain: 'ire.events',
       offers: [{ id: 'org_1', name: 'Ìrè Events' }],
       request: null,
+      managed: null,
     });
+  });
+
+  test('reads a managed account’s home organisation and the sentence to show (sc-563)', async () => {
+    const managed = {
+      domain: 'ire.events',
+      organisation: { id: 'org_1', name: 'Ìrè Events' },
+      message:
+        'Your ire.events address is managed by Ìrè Events, so you can only be a member there.',
+    };
+    const { client } = answering({ domain: 'ire.events', offers: [], request: null, managed });
+
+    expect((await client.joinOffers()).managed).toEqual(managed);
   });
 
   test('reads the list of domains, and escapes the one removed', async () => {
@@ -1715,6 +1728,7 @@ describe('requests to join (sc-562)', () => {
       organisation: { name: 'Ìrè Events' },
       standing: 'cooling_off',
       askAgainFrom: '2026-11-20T09:00:00+00:00',
+      managed: null,
     });
     expect(sent).toEqual([
       { url: 'http://api.test/api/request-links/link', method: 'POST', body: { token: 'ab12' } },

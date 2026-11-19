@@ -87,7 +87,7 @@
     "domain_joining.domain_invalid": "Saisissez un domaine avec un point et sans espace, par exemple {example}.",
     "domain_joining.domain_listed": "{domain} figure déjà dans la liste.",
     "domain_joining.domain_not_yours": "Ajoutez le domaine de votre propre adresse.",
-    "domain_joining.domain_proved_elsewhere": "Une autre organisation a prouvé avec l’offre Enterprise que {domain} lui appartient, donc seule sa liste compte.",
+    "domain_joining.domain_proved_elsewhere": "Une autre organisation a prouvé avec le forfait Enterprise que le domaine {domain} lui appartient, donc seule sa liste compte.",
     "domain_joining.domain_public": "Vous ne pouvez pas utiliser un domaine de messagerie public.",
     "domain_joining.not_listed": "Ce domaine ne figure pas dans la liste.",
     "domain_joining.unavailable": "Vous ne pouvez pas demander à rejoindre cette organisation. Créez la vôtre, ou demandez à une personne de cette organisation de vous inviter.",
@@ -414,5 +414,8 @@
     "audit.export_too_many": "More than 1,000,000 entries match. Narrow the filters, then export again.",
     "audit.export_expired": "This export's download has ended. You can export again.",
     "audit.dates_backwards": "The start date must be on or before the end date.",
-    "audit.invalid_filter": "This filter is not one the audit log offers."
+    "audit.invalid_filter": "This filter is not one the audit log offers.",
+    "email_domains.managed": "Your {domain} address is managed by {organisation}, so you can only be a member there.",
+    "email_domains.only_ours_owner": "Only an owner can change this.",
+    "email_domains.only_ours_unproved": "Only our organisation is for a domain this organisation has proved."
 }

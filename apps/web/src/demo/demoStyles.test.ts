@@ -141,6 +141,7 @@ const SHARED: readonly Family[] = [
       'roster.css',
       'schedule.css',
       'showOnScreen.css',
+      'stations.css',
       WIDE,
     ],
     part: 'the guest list (Guests, GuestsParts), whose rows and pills other lists reuse',

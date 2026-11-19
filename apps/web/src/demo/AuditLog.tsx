@@ -44,8 +44,10 @@ import {
   rangeWords,
   timeOf,
 } from './auditLog.ts';
-import { SHARED_WORDS as S, zoneFor } from './dataControl.ts';
+import { zoneFor } from './dataControl.ts';
 import { PageFailed, PageLoading, SubPage } from './DataControlParts.tsx';
+import { pageStateOf } from './enterpriseAsk.ts';
+import { EnterpriseStep } from './EnterpriseStep.tsx';
 import { useLoad } from './useDataControl.ts';
 import type { Viewer } from './settings.ts';
 
@@ -62,7 +64,7 @@ const EXPORT_FORMATS = FORMATS.map((name) => ({ id: name, name }));
 export function AuditLog({ viewer, state, tell }: { viewer: Viewer; state: string; tell: Tell }) {
   const locale = useMemo(() => formattingLocale('en', navigator.language), []);
   const zone = zoneFor(viewer);
-  const [start] = useState(() => auditStart(state));
+  const [start] = useState(() => auditStart(pageStateOf('auditLog', state)));
   const [load, retry] = useLoad(start.load);
   const [filters, setFilters] = useState<Filters>(start.filters);
   const [menu, setMenu] = useState<AuditMenu | null>(start.menu);
@@ -95,7 +97,7 @@ export function AuditLog({ viewer, state, tell }: { viewer: Viewer; state: strin
         <Card>
           <Says>{W.locked}</Says>
           <OnCard>{W.lockedLine}</OnCard>
-          <CardStep label={S.contact} onClick={() => tell(S.contactTold)} />
+          <EnterpriseStep viewer={viewer} state={state} tell={tell} />
         </Card>
       </SubPage>
     );

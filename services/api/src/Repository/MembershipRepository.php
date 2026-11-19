@@ -176,6 +176,42 @@ final class MembershipRepository extends ServiceEntityRepository
             ->getSingleScalarResult();
     }
 
+    /**
+     * Active or suspended memberships each account holds in organisations other than `$except`, in one query.
+     *
+     * @param list<User> $users
+     *
+     * @return array<string, int> by account id; an account with none is left out
+     */
+    public function countHeldElsewhere(array $users, Organisation $except): array
+    {
+        if ([] === $users) {
+            return [];
+        }
+
+        /** @var list<array{userId: Uuid, held: int|string}> $rows */
+        $rows = $this->createQueryBuilder('m')
+            ->select('IDENTITY(m.user) AS userId', 'COUNT(m.id) AS held')
+            ->innerJoin('m.organisation', 'o')
+            ->where('m.user IN (:users)')
+            ->andWhere('m.organisation <> :except')
+            ->andWhere('m.status IN (:held)')
+            ->setParameter('users', $users)
+            ->setParameter('except', $except)
+            ->setParameter('held', [MembershipStatus::Active, MembershipStatus::Suspended])
+            ->groupBy('m.user')
+            ->getQuery()
+            ->getArrayResult();
+
+        $counts = [];
+
+        foreach ($rows as $row) {
+            $counts[(string) $row['userId']] = (int) $row['held'];
+        }
+
+        return $counts;
+    }
+
     /** @return list<Membership> in every state, in organisations that still exist */
     public function findAllFor(User $user): array
     {

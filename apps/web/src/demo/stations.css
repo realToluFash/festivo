@@ -7,6 +7,11 @@
   min-height: 0;
 }
 
+/* The page column is taller than its content at 1280 × 800, so without this the header shrinks to its 44px floor and the tabs touch the subtitle (sc-3908, sc-3910). */
+.sn .gs-top {
+  flex: none;
+}
+
 .sn-tabs {
   display: flex;
   gap: var(--spaceHair);
@@ -70,6 +75,14 @@ a.sn-tab:hover {
   flex-direction: column;
   gap: var(--spaceXxs);
   min-width: 0;
+}
+
+.sn-row-top {
+  flex-wrap: wrap;
+}
+
+.sn-row-names {
+  flex-basis: 12rem;
 }
 
 .sn-floor {

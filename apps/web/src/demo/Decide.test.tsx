@@ -48,7 +48,7 @@ describe('What a decision costs, in Add guest (sc-86)', () => {
       expect(answer.getAttribute('aria-busy')).toBe('false');
       expect(answer.textContent).toContain('+£270 if all come');
       expect(answer.textContent).toContain(
-        'On the upper figure only, now £23,330. New guests have not replied, so the settled £19,730 stays.',
+        'Once they are invited, it would be £23,330 if everyone comes. Settled, it stays £19,730 until they reply.',
       );
       expect(answer.textContent).toContain('£9,044.00 → £9,248.00 · 133 → 136 if all come');
       expect(answer.textContent).toContain('+£204.00');

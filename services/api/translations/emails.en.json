@@ -210,5 +210,10 @@
     "domainRecordGone.body": "We could not find the DNS record that proves {organisation} owns {domain}. Put it back by {deadline}, or {domain} stops being proved.",
     "domainRecordGone.name": "Name: {name}",
     "domainRecordGone.type": "Type: TXT",
-    "domainRecordGone.footer": "You're getting this because you are an owner or an admin of {organisation}."
+    "domainRecordGone.footer": "You're getting this because you are an owner or an admin of {organisation}.",
+    "managedNotice.subject": "{organisation} manages Soirely accounts at {domain}",
+    "managedNotice.body": "{organisation} manages Soirely accounts at {domain}. From {deadline}, your account can only be a member of {organisation}. If this account is your own and not the company's, change your main email address before then.",
+    "managedNotice.from": "Applies from: {deadline}",
+    "managedNotice.events": "Access to a single event still works.",
+    "managedNotice.footer": "You're getting this because your main email address is at {domain}."
 }

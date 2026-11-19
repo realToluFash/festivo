@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domain\Organisation;
 
 use App\Domain\Billing\SubscriptionStarter;
+use App\Domain\Organisation\EmailDomains\ManagedAccounts;
 use App\Domain\Organisation\Members\MembershipMachine;
 use App\Domain\User\Mail\AccountLanguage;
 use App\Entity\Organisation;
@@ -22,6 +23,7 @@ use Psl\Vec;
 final readonly class OrganisationFounder
 {
     public function __construct(
+        private ManagedAccounts $managedAccounts,
         private OrganisationRules $organisationRules,
         private MembershipMachine $membershipMachine,
         private AccountLanguage $accountLanguage,
@@ -33,6 +35,8 @@ final readonly class OrganisationFounder
     /** Currency follows the country, the timezone is the device's, the contact address is the owner's. */
     public function found(User $owner, string $name, string $countryCode, string $timezone): Organisation
     {
+        $this->managedAccounts->refuseUnlessHome($owner, null, 'create');
+
         $contact = $owner->getPrimaryEmailAddress()?->getAddress()
             ?? throw new LogicException('An account with no primary address cannot found an organisation.');
 

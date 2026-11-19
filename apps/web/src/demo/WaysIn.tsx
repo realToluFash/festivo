@@ -430,6 +430,8 @@ function YourDetails({ state }: { state: string }) {
       return <Details state="" flow={FLOW} />;
     case 'managed':
       return <Details state="" flow={FLOW} offer="company" managed />;
+    case 'managedNone':
+      return <Details state="" flow={FLOW} managed />;
     default:
       return <Details state="" flow={FLOW} offer="company" />;
   }
