@@ -17,7 +17,7 @@ import {
   NO_FILTERS,
   SAMPLE_RANGE,
 } from './AuditModel.ts';
-import { ENTRIES } from './AuditSample.ts';
+import { AUDIT_TYPES, type AuditType, ENTRIES } from './AuditSample.ts';
 import { DATA_BOARDS } from './DataBoards.ts';
 import { dataHref } from './DataModel.ts';
 import { dataSayIn } from './DataSample.ts';
@@ -56,6 +56,7 @@ describe('the audit log’s states (sc-611)', () => {
 
     expect(days.map(({ heading, entries }) => [heading, entries.length])).toEqual([
       ['Today · Monday, Oct 19', 3],
+      ['Sunday, Oct 18', 7],
       ['Saturday, Oct 17', 2],
       ['Friday, Oct 16', 4],
       ['Tuesday, Oct 6', 2],
@@ -71,7 +72,7 @@ describe('the audit log’s states (sc-611)', () => {
         'Priya Shah · Event access',
       ],
     ]);
-    expect(days[3]?.entries.map((entry) => entryLine(entry))).toEqual([
+    expect(days[4]?.entries.map((entry) => entryLine(entry))).toEqual([
       'System · Sign-in and security',
       'Julien Moreau · Events',
     ]);
@@ -87,7 +88,7 @@ describe('the audit log’s states (sc-611)', () => {
     expect(filtered(NO_FILTERS)).toBe(false);
   });
 
-  it('offers each menu’s choices, Marta Silva marked as left and the six types exactly', () => {
+  it('offers each menu’s choices, Marta Silva marked as left and the twelve types exactly', () => {
     expect(menuChoices('person').map(({ word }) => word)).toEqual([
       'Anyone',
       'Folake Adeyemi',
@@ -101,6 +102,12 @@ describe('the audit log’s states (sc-611)', () => {
       'All types',
       'Events',
       'Event access',
+      'Guests',
+      'Menu',
+      'Seating',
+      'Schedule',
+      'Staff',
+      'Budget',
       'Members and invitations',
       'Sign-in and security',
       'Organisation',
@@ -150,7 +157,7 @@ describe('the audit log’s states (sc-611)', () => {
       Reference: 'c41e9a7b-2f6d-4b1e-9a53-7d0e6c2b8f14',
     });
     const on = detailRows(entryOf('live') ?? ENTRIES[0]!, say).find(({ label }) => label === 'On');
-    expect(on?.eventId).toBe('evt-ireti-2');
+    expect(on?.href).toBe('/demo/events/evt-ireti-2');
   });
 
   it('says an event that is gone, with no link', () => {
@@ -158,7 +165,7 @@ describe('the audit log’s states (sc-611)', () => {
     const on = detailRows(entryOf('deleted') ?? ENTRIES[0]!, say).find(
       ({ label }) => label === 'On',
     );
-    expect(on?.eventId).toBeUndefined();
+    expect(on?.href).toBeUndefined();
   });
 
   it('records the network address and device on sign-in and security, none before or by System', () => {
@@ -174,6 +181,81 @@ describe('the audit log’s states (sc-611)', () => {
     expect(detail('detail_system')).toMatchObject({ Who: 'System' });
     expect(detail('detail_system')).not.toHaveProperty('Network address');
     expect(detail('detail_system')).not.toHaveProperty('Device');
+  });
+
+  it('names the types in French and the others as the event’s sections do (sc-71986)', () => {
+    expect(auditStart('filter_type_fr')).toMatchObject({ menu: 'type', lang: 'fr' });
+    expect(
+      menuChoices('type', 'fr')
+        .slice(1)
+        .map(({ word }) => word),
+    ).toEqual([
+      'Événements',
+      'Accès aux événements',
+      'Invités',
+      'Menu',
+      'Plan de table',
+      'Programme',
+      'Équipe',
+      'Budget',
+      'Membres et invitations',
+      'Connexion et sécurité',
+      'Organisation',
+      'Journal d’audit',
+    ]);
+    expect(menuChoices('type', 'es').map(({ word }) => word)).toContain('Mesas');
+    expect(menuChoices('type', 'pt').map(({ word }) => word)).toContain('Equipa');
+    expect(buttonWords({ ...NO_FILTERS, type: 'Staff' }, 'fr-FR', 'fr').type).toBe('Équipe');
+  });
+
+  it('files each new entry under its type by its code, every entry in one type (sc-71986)', () => {
+    const ids = (type: AuditType) => matching({ ...NO_FILTERS, type }).map(({ id }) => id);
+
+    expect(ids('Guests')).toEqual(['guestRemoved', 'guestGone']);
+    expect(ids('Schedule')).toEqual(['skipped']);
+    expect(ids('Staff')).toEqual(['floorLead']);
+    expect(ids('Seating')).toEqual(['seatMoved']);
+    expect(ids('Menu')).toEqual(['dish']);
+    expect(ids('Budget')).toEqual(['budgetLine']);
+    expect(ids('Events')).toEqual(['live', 'deleted']);
+    for (const entry of ENTRIES) expect(AUDIT_TYPES).toContain(entry.type);
+  });
+
+  it('shows no organisation’s dish with an event picked', () => {
+    const wedding = matching({ ...NO_FILTERS, event: 'Adaeze & Tunde’s wedding' }).map(
+      ({ id }) => id,
+    );
+
+    expect(wedding).not.toContain('dish');
+    expect(wedding).toContain('guestRemoved');
+  });
+
+  it('says a guest once the guest is gone, and links the rest to where they are seen', () => {
+    expect(detail('detail_guest_removed')).toMatchObject({
+      What: 'Removed a guest',
+      On: 'Adaeze & Tunde’s wedding · Guests',
+      'Type and action': 'Guests · guest.removed',
+    });
+    expect(detail('detail_guest_gone')).toMatchObject({
+      What: 'Changed a guest’s needs',
+      On: 'A guest · no longer exists',
+    });
+    const href = (id: string) =>
+      detailRows(entryOf(id) ?? ENTRIES[0]!, say).find(({ label }) => label === 'On')?.href;
+    expect(href('guestGone')).toBeUndefined();
+    expect(href('guestRemoved')).toBe('/demo/events/evt-wed-4?area=guests');
+    expect(href('skipped')).toBe('/demo/events/evt-wed-4?area=schedule');
+    expect(href('floorLead')).toBe('/demo/events/evt-wed-4?area=staff');
+    expect(href('seatMoved')).toBe('/demo/events/evt-wed-4?area=guests');
+    expect(href('dish')).toBeUndefined();
+    expect(detail('detail_skipped')['Type and action']).toBe('Schedule · run_of_show.item_skipped');
+    expect(detail('detail_dish').On).toBe('Jollof rice');
+    for (const entry of ENTRIES.filter(({ type }) => type === 'Guests'))
+      expect(entry.what).not.toMatch(/Emeka|Nwosu/u);
+    for (const entry of ENTRIES.filter(({ type }) => type !== 'Sign-in and security')) {
+      expect(entry.address).toBeNull();
+      expect(entry.device).toBeNull();
+    }
   });
 
   it('exports on the iPad by how many match: a download, prepared and emailed, or refused', () => {
