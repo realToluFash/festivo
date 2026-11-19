@@ -22,6 +22,7 @@ import { TextAction } from '../../components/Summary.tsx';
 import { Text, TitleCap, type TextHandle } from '../../components/Text.tsx';
 import { CappedWholeWords, MeasuredWords, Title } from '../../components/Title.tsx';
 import { atAccessibilitySizes, titleSize, wordsIn } from '../../layout/textSize.ts';
+import { cancelUnder } from '../../layout/titleFit.ts';
 import { tokens } from '../../theme/tokens.ts';
 import { DemoOnly } from '../../steps/Lines.tsx';
 import {
@@ -30,7 +31,6 @@ import {
   type Scope,
   type SheetWords,
   XW,
-  cancelUnder,
   scopeFor,
 } from './GuestExportModel.ts';
 import type { Layout } from './GuestsParts.tsx';
