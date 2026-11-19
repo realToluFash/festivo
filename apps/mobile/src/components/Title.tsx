@@ -125,6 +125,17 @@ export function useWholeWords(
 
   return {
     measure,
+    probe: {
+      start,
+      given,
+      slot,
+      widest: widths.length ? Math.max(...widths) : null,
+      words: words.length,
+      measuredWords: widths.length,
+      wrapped: wrapped ? seen.width : null,
+      kept: room,
+      reported,
+    },
     drawnAtStart: drawn === start,
     maxFontSizeMultiplier: drawn / size,
     /** The width each of the texts has, whatever the texts say, for as long as the window keeps its width. */
@@ -148,13 +159,17 @@ export function WholeWords({
   onDrawn,
   room,
   breakAfterHyphens,
+  logAs,
   ...rest
 }: WholeWordsProps & {
   start: number;
   onDrawn?: ((size: number) => void) | undefined;
   room?: number | undefined;
   breakAfterHyphens?: boolean | undefined;
+  logAs?: string | undefined;
 }) {
+  const { fontScale } = useWindowDimensions();
+  const cap = useContext(TitleCap);
   const words = useWholeWords(size, start, [children], {
     weight: rest.weight,
     style: rest.style,
@@ -164,6 +179,20 @@ export function WholeWords({
   const drawnSize = words.maxFontSizeMultiplier * size;
 
   useEffect(() => onDrawn?.(drawnSize), [onDrawn, drawnSize]);
+  const log = (what: string, data: object) => {
+    if (logAs != null) console.log(`[sc-69816] ${logAs} ${what} ${JSON.stringify(data)}`);
+  };
+
+  useEffect(() => {
+    log('size', {
+      fontScale,
+      cap,
+      size,
+      drawnSize,
+      multiplier: words.maxFontSizeMultiplier,
+      ...words.probe,
+    });
+  });
 
   return (
     <>
@@ -177,6 +206,20 @@ export function WholeWords({
         onLayout={(event) => {
           onLayout?.(event);
           if (words.drawnAtStart) words.seen(event.nativeEvent.layout.width);
+          log('layout', { drawnSize, ...event.nativeEvent.layout });
+        }}
+        onTextLayout={(event) => {
+          rest.onTextLayout?.(event);
+          log('lines', {
+            drawnSize,
+            lines: event.nativeEvent.lines.map((line) => ({
+              text: line.text,
+              width: Math.round(line.width),
+              height: Math.round(line.height),
+              capHeight: Math.round(line.capHeight * 10) / 10,
+              ascender: Math.round(line.ascender * 10) / 10,
+            })),
+          });
         }}
       >
         {children}
@@ -194,6 +237,7 @@ export function CappedWholeWords({
   onDrawn?: ((size: number) => void) | undefined;
   room?: number | undefined;
   breakAfterHyphens?: boolean | undefined;
+  logAs?: string | undefined;
 }) {
   const { fontScale } = useWindowDimensions();
   const cap = useContext(TitleCap);

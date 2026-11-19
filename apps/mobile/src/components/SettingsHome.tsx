@@ -245,7 +245,13 @@ function Row({
         <View style={[styles.rule, { left: tokens.spaceXl + rowSide(dense) + 12 }]} />
       )}
       {row.tile}
-      <View style={styles.rowWords} onLayout={(event) => setRoom(event.nativeEvent.layout.width)}>
+      <View
+        style={styles.rowWords}
+        onLayout={(event) => {
+          console.log(`[sc-69816] ${row.key} room ${JSON.stringify(event.nativeEvent.layout)}`);
+          setRoom(event.nativeEvent.layout.width);
+        }}
+      >
         <CappedWholeWords
           size={dense ? 15.5 : TYPE.row}
           weight="semibold"
@@ -254,6 +260,7 @@ function Row({
           room={room}
           onDrawn={setTitle}
           breakAfterHyphens
+          logAs={`${row.key}.title`}
         >
           {row.title}
         </CappedWholeWords>
@@ -265,6 +272,7 @@ function Row({
           room={room}
           under={title}
           breakAfterHyphens
+          logAs={`${row.key}.line`}
         >
           {row.line}
         </CappedWholeWords>
