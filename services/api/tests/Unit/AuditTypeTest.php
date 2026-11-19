@@ -22,19 +22,28 @@ use SplFileInfo;
 
 final class AuditTypeTest extends TestCase
 {
-    /** The areas whose actions are about an organisation, by sc-73's code. */
-    private const string ORGANISATION_CODE = '/^(event|event_person|invitation|request_link|domain_join|membership|owner_claim|sign_in_rules|organisation_domain|email_domain|organisation|audit_log)\.[a-z_]+$/';
+    /** Areas about an event's guests, menu, seating, schedule, staff and budget: left out until sc-71986 gives them types (decided 19 Nov 2026). */
+    private const array LEFT_OUT = ['guest', 'guests', 'guest_group', 'menu', 'dish', 'seating', 'run_of_show', 'staff', 'stations', 'budget_line'];
 
-    /** Codes in those areas that name something other than an audited action. */
-    private const array NOT_ACTIONS = ['sign_in_rules.notice' => 'a notification type'];
+    /** Areas about a person's own account, which the log never shows. */
+    private const array PERSONAL = ['name', 'email', 'phone', 'provider', 'sessions', 'two_factor_recovery'];
+
+    /** Areas about Soirely itself rather than an organisation. */
+    private const array NOT_AN_ORGANISATION = ['catalogue'];
+
+    /** Codes and areas the scan finds that name something other than an audited action. */
+    private const array NOT_ACTIONS = ['sign_in_rules.notice', 'catalogue.versions', 'replies.close', 'example.com', 'group.id', 'group.name', 'event_changes', 'event_day', 'app'];
 
     #[Test]
-    public function everyActionRecordedAboutAnOrganisationIsInExactlyOneType(): void
+    public function everyRecordedActionIsInExactlyOneTypeOrInAnAreaTheLogLeavesOut(): void
     {
-        $recorded = Vec\filter($this->recordedCodes(), static fn (string $code): bool => Regex\matches($code, self::ORGANISATION_CODE));
+        $recorded = $this->recordedCodes();
+        $leftOut = [...self::LEFT_OUT, ...self::PERSONAL, ...self::NOT_AN_ORGANISATION];
 
-        self::assertNotEmpty($recorded);
-        self::assertSame([], Vec\values(Vec\filter($recorded, static fn (string $code): bool => null === AuditType::of($code))), 'an action recorded about an organisation that no type lists');
+        self::assertContains('guests.marked_invited', $recorded);
+        self::assertContains('run_of_show.item_skipped', $recorded);
+        self::assertSame([], Vec\values(Vec\filter($recorded, static fn (string $code): bool => null === AuditType::of($code) && !Iter\contains($leftOut, self::area($code)))), 'an action in no type and in no area the log leaves out');
+        self::assertSame([], Vec\values(Vec\filter($recorded, static fn (string $code): bool => null !== AuditType::of($code) && Iter\contains($leftOut, self::area($code)))), 'an action the log leaves out that a type lists');
 
         foreach (AuditType::actions() as $code) {
             self::assertCount(1, Vec\filter(AuditType::cases(), static fn (AuditType $type): bool => Iter\contains(AuditType::actions($type), $code)), $code);
@@ -53,6 +62,11 @@ final class AuditTypeTest extends TestCase
     public function onlySignInAndSecuritySaysWhereAnEntryCameFrom(): void
     {
         self::assertSame([AuditType::Security], Vec\filter(AuditType::cases(), static fn (AuditType $type): bool => $type->showsWhereFrom()));
+    }
+
+    private static function area(string $code): string
+    {
+        return Str\before($code, '.') ?? $code;
     }
 
     /**
@@ -100,6 +114,6 @@ final class AuditTypeTest extends TestCase
             }
         }
 
-        return Vec\values(Dict\diff(Dict\unique($codes), [...$keys, ...Vec\keys(self::NOT_ACTIONS)]));
+        return Vec\values(Vec\filter(Dict\diff(Dict\unique($codes), [...$keys, ...self::NOT_ACTIONS]), static fn (string $code): bool => !Iter\contains(self::NOT_ACTIONS, self::area($code))));
     }
 }

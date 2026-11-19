@@ -155,6 +155,32 @@ final class AuditLogTest extends ApiTestCase
     }
 
     #[Test]
+    public function entriesAboutAnEventsGuestsMenuSeatingScheduleStaffOrBudgetAreNeitherShownNorExported(): void
+    {
+        [$owner, $organisation] = $this->enterprise('folake@ire.events', 'Ìrè Events');
+        $eventId = Uuid::v7();
+        $this->entry($organisation, 'event.created', $owner, '-2 hours', $eventId, 'Ada\'s Wedding');
+
+        foreach (['guests.marked_invited', 'guest.removed', 'run_of_show.item_skipped', 'staff.contacts_erased', 'stations.walk_ordered', 'budget_line.added', 'seating.table_added', 'dish.added'] as $action) {
+            $this->entry($organisation, $action, $owner, '-1 hour', $eventId, 'Ada\'s Wedding');
+        }
+
+        $this->signIn($owner);
+
+        self::assertSame(['event.created'], $this->actions($this->list($organisation, [])));
+        self::assertSame(['event.created'], $this->actions($this->list($organisation, ['event' => $eventId->toRfc4122()])));
+
+        foreach (['csv', 'jsonl'] as $format) {
+            $export = $this->export($organisation, $format);
+            self::assertStringContainsString('event.created', $export);
+
+            foreach (['guests.', 'guest.', 'run_of_show.', 'staff.', 'stations.', 'budget_line.', 'seating.', 'dish.'] as $area) {
+                self::assertStringNotContainsString($area, $export, $format);
+            }
+        }
+    }
+
+    #[Test]
     public function bothFormatsCarryTheCodeTheWordsAndTheInstantInUtcAndOnlySecurityEntriesSayWhereFrom(): void
     {
         [$owner, $organisation] = $this->enterprise('folake@ire.events', 'Ìrè Events');
