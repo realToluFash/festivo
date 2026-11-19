@@ -5230,7 +5230,7 @@
   "decisionAnswer": {
     "head": "O que custaria adicioná-los",
     "rise": "+{{amount}} se vierem todos",
-    "upperOnly": "Com o convite registado, seria {{upper}} se vierem todos. O valor confirmado mantém-se em {{settled}} até haver resposta.",
+    "upperOnly": "Com o convite registado, o total seria de {{upper}}. O valor confirmado mantém-se em {{settled}} até haver resposta.",
     "moved": "{{from}} → {{to}} · {{headsFrom, number}} → {{headsTo, number}} se vierem todos",
     "plus": "+{{amount}}",
     "notKnown": "Desconhecido",
