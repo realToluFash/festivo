@@ -139,8 +139,8 @@ export const MARGIN = {
   cost: [1973000, 2306000],
   margin: [556600, 623200],
   marginShare: ['22.0%', '21.3%'],
-  after: [485600, 885200],
-  afterShare: ['19.2%', '30.2%'],
+  /** What the quotes cost and the planned cost of lines under no quote (sc-31468): after = client − spent. */
+  spent: 2044000,
 } as const;
 
 export type ViewerKey = 'folake' | 'julien' | 'ana' | 'kemi';

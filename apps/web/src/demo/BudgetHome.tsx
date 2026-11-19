@@ -65,6 +65,7 @@ import {
   MARKUPS,
   NO_MARKUPS,
   withoutChoice,
+  shareOf,
   PLANNING_FEE,
   chargedOf,
   marginOf,
@@ -751,6 +752,8 @@ function MarginCard({
   washed: boolean;
   figures: ReturnType<typeof marginOf>;
 }) {
+  const after = [figures.client[0] - MARGIN.spent, figures.client[1] - MARGIN.spent] as const;
+
   return (
     <BudgetCard event={event} label={W.budget}>
       <GlassTags
@@ -777,8 +780,8 @@ function MarginCard({
             ? [
                 {
                   label: 'Margin after payments',
-                  figure: wholeRange(...MARGIN.after),
-                  sub: `${MARGIN.afterShare[0]} to ${MARGIN.afterShare[1]}`,
+                  figure: wholeRange(...after),
+                  sub: `${shareOf(after[0], figures.client[0])} to ${shareOf(after[1], figures.client[1])}`,
                 },
               ]
             : []),

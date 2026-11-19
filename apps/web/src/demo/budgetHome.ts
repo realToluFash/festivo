@@ -544,7 +544,7 @@ export function chargedOf(
   };
 }
 
-const shareOf = (margin: number, client: number): string =>
+export const shareOf = (margin: number, client: number): string =>
   `${client === 0 ? '0.0' : ((margin / client) * 100).toFixed(1)}%`;
 
 export function marginOf(
