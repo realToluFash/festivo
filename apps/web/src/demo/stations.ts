@@ -45,7 +45,7 @@ export type Panel =
 
 export const SW = {
   title: 'Staff',
-  sub: 'Who works the event, where they work, and what each place dishes.',
+  sub: 'Who works the event, where they work, and what each station serves.',
   tabs: ['Roster', 'Jobs and shifts', 'Stations', 'Hours worked'],
   places: 'Places',
   placesSub: 'Where somebody works. Every tray starts at the Pass.',
@@ -505,7 +505,7 @@ const STATES = {
   populated: () =>
     start({
       name: 'Populated',
-      note: 'Places with the Pass first, sections with their table count, who is on each, and what each place dishes.',
+      note: 'Places with the Pass first, sections with their table count, who is on each, and what each station serves.',
     }),
   people: () =>
     start({
