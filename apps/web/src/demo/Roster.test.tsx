@@ -306,7 +306,7 @@ describe('/demo/events/evt-wed-4/staff/roster (sc-3906)', () => {
     ['nobodyOnShift', 'Not on a shift yet'],
     ['nobodyOnShiftFrench', 'Aucun service pour l’instant'],
   ])(
-    'keeps each Shift cell with no shift on one line, in the paler grey, in %s (sc-71607)',
+    'marks each Shift cell with no shift as one, in the paler grey, in %s (sc-71607)',
     async (state, words) => {
       await open(state);
       const cells = within(screen.getByRole('table', { name: 'Roster' }))
@@ -316,16 +316,21 @@ describe('/demo/events/evt-wed-4/staff/roster (sc-3906)', () => {
       expect(cells.length).toBeGreaterThan(1);
       for (const cell of cells) {
         expect(cell.textContent).toBe(words);
-        expect([...cell.classList]).toEqual(['rs-shift', 'rs-quiet']);
+        expect([...cell.classList]).toEqual(['rs-no-shift', 'rs-quiet']);
       }
     },
   );
 
-  it('keeps a Shift cell with no shift on one line beside ones with a shift (sc-71607)', async () => {
+  it('keeps a Shift cell with no shift on one line below 720 px only, beside ones with a shift (sc-71607)', async () => {
     await open('populated');
     const cell = screen.getByText('Not on a shift yet', { selector: 'td' });
-    expect([...cell.classList]).toEqual(['rs-shift', 'rs-quiet']);
+    expect([...cell.classList]).toEqual(['rs-no-shift', 'rs-quiet']);
     expect(cssRule('.rs-table td.rs-shift', ROSTER_CSS)).toContain('white-space: nowrap;');
+    const start = ROSTER_CSS.indexOf('@media (width <= 720px)');
+    const end = ROSTER_CSS.indexOf('\n}\n', start) + 3;
+    const narrow = ROSTER_CSS.slice(start, end);
+    expect(cssRule('.rs-table td.rs-no-shift', narrow)).toContain('white-space: nowrap;');
+    expect(ROSTER_CSS.slice(0, start) + ROSTER_CSS.slice(end)).not.toContain('rs-no-shift');
     expect(cssRule('.rs-table tbody td.rs-quiet', ROSTER_CSS)).toContain(
       'color: var(--colorInkSecondary);',
     );

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domain\Organisation\Controller;
 
 use App\Domain\Organisation\DomainJoining\DomainSuspender;
+use App\Domain\Organisation\EmailDomains\ManagedAccounts;
 use App\Domain\Organisation\Http\MemberSerialiser;
 use App\Domain\Organisation\Invitations\InvitationDeliveries;
 use App\Domain\Organisation\Invitations\InvitationSender;
@@ -24,6 +25,7 @@ use App\Entity\User;
 use App\Enum\ErrorCode;
 use App\Enum\MembershipStatus;
 use App\Enum\Permission;
+use App\Enum\SeededRole;
 use App\Http\Access\Interfaces\MembershipDirectoryInterface;
 use App\Http\Access\Policy\InOrganisation;
 use App\Http\Exception\ApiException;
@@ -70,6 +72,7 @@ final readonly class MembersController
         private Security $security,
         private OrganisationRepository $organisationRepository,
         private MembershipRepository $membershipRepository,
+        private ManagedAccounts $managedAccounts,
         private MembershipTransitionRepository $membershipTransitionRepository,
         private InvitationRepository $invitationRepository,
         private InvitationSender $invitationSender,
@@ -287,7 +290,9 @@ final readonly class MembersController
         $locale = $this->userMailer->formattingLocaleFor($caller);
         $written = fn (DateTimeImmutable $at): string => $this->userMailer->deadline($at, $caller, $locale);
 
-        return /** @param list<Membership> $memberships */ function (array $memberships) use ($organisation, $caller, $written): array {
+        $seesOthers = Iter\contains([SeededRole::Owner, SeededRole::Admin], $this->membershipRepository->findActive($caller, $organisation->getId())?->getRole()->getSeededAs());
+
+        return /** @param list<Membership> $memberships */ function (array $memberships) use ($organisation, $caller, $written, $seesOthers): array {
             // Who invited each of these, from their invitations only: an organisation grown by invitation has one per member.
             $invitations = $this->invitationRepository->findAcceptedBy($organisation, Vec\map($memberships, static fn (Membership $membership): User => $membership->getUser()));
             $accepted = Dict\group_by(
@@ -300,6 +305,8 @@ final readonly class MembersController
                 static fn (MembershipTransition $step): string => $step->getMembership()->getId()->toRfc4122(),
             );
 
+            $alsoMemberOf = $seesOthers ? $this->managedAccounts->otherMembershipsOf(Vec\map($memberships, static fn (Membership $membership): User => $membership->getUser()), $organisation) : [];
+
             return Vec\map($memberships, fn (Membership $membership): array => MemberSerialiser::member(
                 $membership,
                 $history[$membership->getId()->toRfc4122()] ?? [],
@@ -308,6 +315,7 @@ final readonly class MembersController
                 $written,
                 $this->memberSuspension->describe($membership, $caller),
                 $sentAt,
+                $alsoMemberOf[$membership->getUser()->getId()->toRfc4122()] ?? null,
             ));
         };
     }

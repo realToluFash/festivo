@@ -14,6 +14,7 @@ import {
   type RecordCheck,
   RecordScreen,
 } from '../../../src/components/EmailDomainsScreens.tsx';
+import { ConfettiSwitch } from '../../../src/components/ConfettiSwitch.tsx';
 import { readOut } from '../../../src/components/ReadOut.tsx';
 import { SETTLED_MS } from '../../../src/components/Screen.tsx';
 import type { ScreenReaderTarget } from '../../../src/components/screenReaderFocus.ts';
@@ -51,7 +52,7 @@ type From = 'card' | 'prove' | string;
 /** iOS shows one window at a time: the record waits for Prove a domain to go. */
 const AFTER_WINDOW_MS = SETTLED_MS * 2 + 100;
 
-/** Data and control › Email domains as its demo draws it (sc-560): prove a domain by its DNS record, Verify it, remove it. */
+/** Data and control › Email domains as its demo draws it (sc-560, sc-563): prove a domain by its DNS record, Verify it, remove it, and keep its accounts to the organisation. */
 export default function EmailDomains() {
   const { t } = useTranslation();
   const { kind } = useLayout();
@@ -71,6 +72,9 @@ export default function EmailDomains() {
   const [proveVisit, setProveVisit] = useState(0);
   const [recordVisit, setRecordVisit] = useState(0);
   const [asking, setAsking] = useState<string | null>(null);
+  const [limiting, setLimiting] = useState<string | null>(null);
+  const [scheduling, setScheduling] = useState(false);
+  const [scheduleFailed, setScheduleFailed] = useState<string | null>(null);
   const [removing, setRemoving] = useState(false);
   const [removeFailed, setRemoveFailed] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
@@ -122,8 +126,47 @@ export default function EmailDomains() {
   };
   const go = (to: DataGo) => {
     if (to.kind === 'prove') openProve('card');
-    else openRecord(to.domain, 'card');
+    else if (to.kind === 'only') {
+      from.current = 'card';
+      setScheduleFailed(null);
+      setLimiting(to.domain);
+    } else openRecord(to.domain, 'card');
   };
+  const day = (at: string) =>
+    new Intl.DateTimeFormat(dateLocale(), {
+      weekday: 'long',
+      month: 'short',
+      day: 'numeric',
+      timeZone: account?.timezone ?? 'UTC',
+    }).format(new Date(at));
+
+  async function schedule(domain: string): Promise<void> {
+    if (organisation == null || scheduling) return;
+    setScheduling(true);
+    setScheduleFailed(null);
+    try {
+      setPage(await api.switchOnlyOursOn(organisation.id, domain));
+      setSaid(null);
+      setLimiting(null);
+    } catch {
+      setScheduleFailed(t('companyDomains.failed'));
+    } finally {
+      setScheduling(false);
+    }
+  }
+
+  async function onlyOff(domain: string, kind: 'cancelled' | 'turnedOff'): Promise<void> {
+    if (organisation == null) return;
+    try {
+      setPage(await api.switchOnlyOursOff(organisation.id, domain));
+      setSaid({ kind, domain });
+      readOut(
+        t(kind === 'cancelled' ? 'emailDomains.card.cancelled' : 'emailDomains.card.turnedOff'),
+      );
+    } catch {
+      setToast(t('companyDomains.failed'));
+    }
+  }
 
   async function verify(domain: string): Promise<void> {
     if (organisation == null || check.kind === 'checking') return;
@@ -248,24 +291,56 @@ export default function EmailDomains() {
               </View>
             ) : (
               <RowList
-                items={domainRows(t, loaded).map((row) => ({
-                  key: row.domain,
-                  inset: 28 + tokens.spaceLg,
-                  row: (
-                    <DomainLine
-                      row={row}
-                      rowRef={(view) => {
-                        rows.current[row.domain] = view;
-                      }}
-                      onRemove={() => {
-                        from.current = row.domain;
-                        setRemoveFailed(null);
-                        setAsking(row.domain);
-                      }}
-                      onRecord={() => openRecord(row.domain, row.domain)}
-                    />
-                  ),
-                }))}
+                items={domainRows(t, loaded, day).flatMap((row) => {
+                  const only = row.only;
+                  const items = [
+                    {
+                      key: row.domain,
+                      inset: 28 + tokens.spaceLg,
+                      row: (
+                        <DomainLine
+                          row={row}
+                          rowRef={(view) => {
+                            rows.current[row.domain] = view;
+                          }}
+                          onRemove={() => {
+                            from.current = row.domain;
+                            setRemoveFailed(null);
+                            setAsking(row.domain);
+                          }}
+                          onRecord={() => openRecord(row.domain, row.domain)}
+                        />
+                      ),
+                    },
+                  ];
+                  if (only == null) return items;
+
+                  return [
+                    ...items,
+                    {
+                      key: `${row.domain}.only`,
+                      inset: ONLY_INDENT,
+                      row: (
+                        <OnlyLine
+                          domain={row.domain}
+                          only={only}
+                          phone={kind === 'phone'}
+                          rowRef={(view) => {
+                            rows.current[`${row.domain}.only`] = view;
+                          }}
+                          onSwitch={(next) => {
+                            from.current = `${row.domain}.only`;
+                            if (next) {
+                              setScheduleFailed(null);
+                              setLimiting(row.domain);
+                            } else void onlyOff(row.domain, 'turnedOff');
+                          }}
+                          onCancel={() => void onlyOff(row.domain, 'cancelled')}
+                        />
+                      ),
+                    },
+                  ];
+                })}
               />
             )}
           </Section>
@@ -338,6 +413,39 @@ export default function EmailDomains() {
             }}
             testID="emailDomains.remove"
           />
+          <Ask
+            open={limiting != null}
+            opener={opener}
+            title={t('emailDomains.onlyAsk.title', {
+              domain: limiting ?? '',
+              organisation: organisation?.name ?? '',
+            })}
+            line={t('emailDomains.onlyAsk.line', {
+              at: page?.domains.find((one) => one.domain === limiting)?.onlyOursIfNow ?? '',
+              domain: limiting ?? '',
+              organisation: organisation?.name ?? '',
+            })}
+            body={<Line text={t('emailDomains.onlyAsk.more', { domain: limiting ?? '' })} />}
+            keep={{
+              label: t('emailDomains.cancel'),
+              testID: 'emailDomains.only.cancel',
+              off: scheduling,
+            }}
+            confirm={{
+              label: t('emailDomains.onlyAsk.schedule'),
+              busy: scheduling ? t('emailDomains.onlyAsk.schedule') : undefined,
+              busyWords: t('emailDomains.onlyAsk.schedule'),
+              testID: 'emailDomains.only.schedule',
+            }}
+            failed={limiting != null ? scheduleFailed : null}
+            onKeep={() => {
+              if (!scheduling) setLimiting(null);
+            }}
+            onConfirm={() => {
+              if (limiting != null) void schedule(limiting);
+            }}
+            testID="emailDomains.only"
+          />
           {toast != null && (
             <PageToast
               words={toast}
@@ -404,6 +512,58 @@ function DomainLine({
   );
 }
 
+function OnlyLine({
+  domain,
+  only,
+  phone,
+  onSwitch,
+  onCancel,
+  rowRef,
+}: {
+  domain: string;
+  only: NonNullable<DomainRow['only']>;
+  phone: boolean;
+  onSwitch: (next: boolean) => void;
+  onCancel: () => void;
+  rowRef: (view: ViewInstance | null) => void;
+}) {
+  const { t } = useTranslation();
+
+  return (
+    <View style={styles.only}>
+      <TagRow
+        title={t('emailDomains.only')}
+        line={only.line}
+        trail={
+          only.control === 'switch' ? (
+            <View ref={rowRef}>
+              <ConfettiSwitch
+                on={only.on}
+                label={t('emailDomains.onlyFor', { domain })}
+                stacked={phone}
+                onChange={onSwitch}
+                testID={`emailDomains.${domain}.only`}
+              />
+            </View>
+          ) : only.control === 'cancel' ? (
+            <TextAction
+              ref={rowRef}
+              label={t('emailDomains.cancel')}
+              onPress={onCancel}
+              accessibilityLabel={t('emailDomains.cancelOnlyFor', { domain })}
+              testID={`emailDomains.${domain}.only.cancel`}
+            />
+          ) : undefined
+        }
+        testID={`emailDomains.${domain}.onlyRow`}
+      />
+    </View>
+  );
+}
+
+const ONLY_INDENT = 40;
+
 const styles = StyleSheet.create({
   none: { paddingVertical: tokens.spaceSm },
+  only: { paddingLeft: ONLY_INDENT },
 });

@@ -288,7 +288,7 @@ final class EmailDomainsTest extends ApiTestCase
         [$owner, $organisation] = $this->organisation('folake@ire.events', 'Ìrè Events');
         $this->signIn($owner);
 
-        self::assertSame(['plan' => 'free', 'domains' => []], $this->send('GET', $this->path($organisation)));
+        self::assertSame(['plan' => 'free', 'ownerChanges' => true, 'domains' => []], $this->send('GET', $this->path($organisation)));
 
         $body = $this->send('POST', $this->path($organisation), ['domain' => 'ire.events']);
         self::assertResponseStatusCodeSame(403);

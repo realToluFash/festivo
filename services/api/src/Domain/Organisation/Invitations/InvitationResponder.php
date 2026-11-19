@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\Organisation\Invitations;
 
+use App\Domain\Organisation\EmailDomains\ManagedAccounts;
 use App\Domain\Organisation\Members\MembershipMachine;
 use App\Domain\User\EmailAddressNormaliser;
 use App\Domain\User\Model\RegistrationResult;
@@ -34,6 +35,7 @@ final readonly class InvitationResponder
     public function __construct(
         private InvitationRepository $invitationRepository,
         private MembershipMachine $membershipMachine,
+        private ManagedAccounts $managedAccounts,
         private UserRegistrar $userRegistrar,
         private EntityManagerInterface $entityManager,
         private TranslatorInterface $translator,
@@ -76,6 +78,7 @@ final readonly class InvitationResponder
     public function accept(Invitation $invitation, User $user): Membership
     {
         $this->refuseUnless($invitation, $user);
+        $this->managedAccounts->refuseUnlessHome($user, $invitation->getOrganisation(), MembershipChannel::Invitation->value);
 
         return $this->entityManager->wrapInTransaction(function () use ($invitation, $user): Membership {
             $membership = $this->join($invitation, $user);
@@ -116,6 +119,8 @@ final readonly class InvitationResponder
         if ($this->userRegistrar->isTaken($invitation->getEmail())) {
             throw new ApiException(ErrorCode::EmailTaken, $this->translator->trans('invitations.email_taken'));
         }
+
+        $this->managedAccounts->refuseInvitedAddress($invitation, $name);
 
         return $this->entityManager->wrapInTransaction(function () use ($invitation, $name, $password, $request): RegistrationResult {
             $result = $this->userRegistrar->registerFromInvitation($invitation, $name, $password, $request);

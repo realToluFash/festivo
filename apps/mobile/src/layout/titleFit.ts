@@ -22,26 +22,34 @@ export interface TitleActions {
   extra: number;
   plus: number;
   bell: number;
-  refreshing: number;
   gap: number;
 }
 
-/** sc-68417: Export and the + go together to a row under the title only where the title at its default size, they and the bell cannot share one line. Unlike `labelFits`, the bell and a tablet's refresh spinner count: they stay on the title's row and take its room. */
-export function actionsUnder({
-  room,
-  title,
-  extra,
-  plus,
-  bell,
-  refreshing,
-  gap,
-}: TitleActions): boolean {
+/** sc-68417: Export and the + go together to a row under the title only where the title at its default size, they and the bell cannot share one line. Unlike `labelFits`, the bell counts: it stays on the title's row and takes its room. Refreshing… never counts: it gives way to them (sc-71821). */
+export function actionsUnder({ room, title, extra, plus, bell, gap }: TitleActions): boolean {
   if (unmeasured(room, title)) return false;
-  const beside = [refreshing, extra, plus, bell]
+  const beside = [extra, plus, bell]
     .filter((width) => width > 0)
     .reduce((sum, width) => sum + gap + width, 0);
 
   return title + beside > room;
+}
+
+/** sc-72136: a dialog's Cancel stays beside its title only where the title's longest word, at the size the title draws alone, the gap and Cancel fit the row; the title's size never depends on Cancel. */
+export function cancelUnder({
+  room,
+  widest,
+  cancel,
+  gap,
+}: {
+  room: number;
+  widest: number;
+  cancel: number;
+  gap: number;
+}): boolean {
+  if (unmeasured(room, widest, cancel)) return false;
+
+  return widest + gap + cancel > room;
 }
 
 /** sc-68417: a title laid out beside its actions broke inside a word once it could step down no further, so the sum above, from widths measured hidden, left it less room than it needs. A break at its start size is not one: it steps down next. Nor is one in a slot narrower than the title measured: that is the row's first layout, before the primary gives way, and the sum already answers it. Nor is one whose lines together fit the slot: they were laid out in a narrower box than the slot last measured, a frame the row passes through while it loads, and its slot catches up next. */
@@ -89,19 +97,35 @@ export function brokeOn({
   return brokeInWord(laidOut) ? row : broke;
 }
 
-/** The row a break latches on: its width, the title, the text size, and whether a tablet's refresh spinner shares it, so the actions come back beside the title once the spinner goes (sc-68417). */
+/** The row a break latches on: its width, the title and the text size. Refreshing… is not in it, so a status coming or going never latches a break (sc-68417, sc-71821). */
 export function titleRowKey({
   room,
   title,
   fontScale,
-  spinning,
 }: {
   room: number;
   title: string;
   fontScale: number;
-  spinning: boolean;
 }): string {
-  return `${room}|${title}|${fontScale}|${spinning ? 'spinning' : 'still'}`;
+  return `${room}|${title}|${fontScale}`;
+}
+
+/** Widths measured on a row as drawn without Refreshing…; zero until measured. */
+export interface StatusRow {
+  room: number;
+  /** What leads the row as drawn without the status: the title at the size it draws, or the Back pill whole. */
+  lead: number;
+  /** The controls after it, only those the row draws: Export, the +, the bell. */
+  ends: readonly number[];
+  status: number;
+  gap: number;
+}
+
+/** sc-71821: Refreshing… keeps its place on a row only in the room left once the row's lead and its controls are placed as if it were not there; until every width is measured it takes its own line, so it never takes room from them. */
+export function statusFits({ room, lead, ends, status, gap }: StatusRow): boolean {
+  if (unmeasured(room, lead, status, ...ends)) return false;
+
+  return lead + ends.reduce((sum, width) => sum + gap + width, 0) + gap + status <= room;
 }
 
 function unmeasured(...widths: number[]): boolean {

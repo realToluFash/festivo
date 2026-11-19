@@ -232,20 +232,3 @@ export function sheetWordsIn(t: Translate): SheetWords {
     dropped: t('guestExport.dropped'),
   };
 }
-
-/** sc-72136: Cancel shares the title's row only where the title's widest word, at the size the title draws alone, a gap and Cancel fit the row; otherwise it takes the row under the title. Until all three are measured it stays beside, as on main. */
-export function cancelUnder({
-  room,
-  widest,
-  cancel,
-  gap,
-}: {
-  room: number;
-  widest: number;
-  cancel: number;
-  gap: number;
-}): boolean {
-  if (room <= 0 || widest <= 0 || cancel <= 0) return false;
-
-  return widest + gap + cancel > room;
-}

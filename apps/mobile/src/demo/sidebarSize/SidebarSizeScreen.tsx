@@ -40,11 +40,14 @@ import {
 } from '../../layout/textSize.ts';
 import {
   SIDEBAR_LANGUAGES,
+  SIDEBAR_ORGS,
   SIDEBAR_PLACES,
   SIDEBAR_SIZES,
   type SidebarAt,
   type SidebarLanguage,
+  type SidebarOrg,
   type SidebarSize,
+  sidebarOrgName,
   sidebarScale,
 } from './sidebarSizeRules.ts';
 
@@ -52,6 +55,7 @@ export interface SidebarSizeStart {
   size: SidebarSize;
   language: SidebarLanguage;
   at: SidebarAt;
+  org: SidebarOrg;
 }
 
 /** iPad landscape's sidebar at a text size and language the board chooses: each row grows to hold its words, and each word stays whole in the 252 column. */
@@ -62,6 +66,7 @@ export function SidebarSizeScreen({ start }: { start: SidebarSizeStart }) {
   const [size, setSize] = useState(start.size);
   const [language, setLanguage] = useState(start.language);
   const [at, setAt] = useState(start.at);
+  const [org, setOrg] = useState(start.org);
   const words = useMemo(
     () => i18n.cloneInstance({ lng: language, initAsync: false }),
     [i18n, language],
@@ -80,13 +85,13 @@ export function SidebarSizeScreen({ start }: { start: SidebarSizeStart }) {
         ]}
         showsVerticalScrollIndicator={false}
       >
-        <Sidebar scale={scale} at={at} onAt={setAt} t={t} />
+        <Sidebar scale={scale} at={at} onAt={setAt} org={org} t={t} />
       </ScrollView>
       <ScrollView
         style={styles.page}
         contentContainerStyle={[styles.pageBody, { paddingTop: insets.top + tokens.space3xl }]}
       >
-        <DemoOnly title="Stand-ins for the iPad’s own text size and language, and the page beside the sidebar. The sidebar is main’s 252 column at every size. Below the tenth step it draws as on main, except that a label whose widest word would break beside main’s glyph steps down alone, as Événements does at the ninth step in French, and from the ninth step a name main’s size would cut steps down until it fits its lines, as the organisation’s does. From the tenth each row grows to hold its words and each label steps down only where its widest word would break beside its glyph, never below its size on main. Each place opens here what it opens in the app; the organisation pill and the person open nothing in this board.">
+        <DemoOnly title="Stand-ins for the iPad’s own text size and language, the organisation’s name, and the page beside the sidebar. The sidebar is main’s 252 column at every size. Below the tenth step it draws as on main, except that a label whose widest word would break beside main’s glyph steps down alone, as Événements does at the ninth step in French, and a name main’s size would cut steps down until it fits its lines, from the fifth step. Organisation chooses the pill’s name: Ire Events fits at main’s size at the eighth step, and QA Organisation steps down there to read whole on one line. From the tenth each row grows to hold its words and each label steps down only where its widest word would break beside its glyph, never below its size on main. Each place opens here what it opens in the app; the organisation pill and the person open nothing in this board.">
           <Choices
             heading="Text size"
             options={SIDEBAR_SIZES}
@@ -111,6 +116,14 @@ export function SidebarSizeScreen({ start }: { start: SidebarSizeStart }) {
             id="at"
             prefix="demo.sidebar"
           />
+          <Choices
+            heading="Organisation"
+            options={SIDEBAR_ORGS}
+            chosen={org}
+            onChoose={setOrg}
+            id="org"
+            prefix="demo.sidebar"
+          />
         </DemoOnly>
       </ScrollView>
     </View>
@@ -121,11 +134,13 @@ function Sidebar({
   scale,
   at,
   onAt,
+  org,
   t,
 }: {
   scale: number;
   at: SidebarAt;
   onAt: (at: SidebarAt) => void;
+  org: SidebarOrg;
   t: TFunction;
 }) {
   const inEvent = at === 'event';
@@ -145,7 +160,7 @@ function Sidebar({
       <View style={styles.logo}>
         <Brand lockup height={24} />
       </View>
-      <Org scale={scale} />
+      <Org scale={scale} org={org} />
       {inEvent ? (
         <TitleCap.Provider
           value={atAccessibilitySizes(scale) ? titleSize(PANE_TITLE, scale) : null}
@@ -242,8 +257,9 @@ function Place({
   );
 }
 
-function Org({ scale }: { scale: number }) {
-  const { size, measure } = useSideFit(SAMPLE.organisation, ROOMS.org, scale, 'semibold', 'line');
+function Org({ scale, org }: { scale: number; org: SidebarOrg }) {
+  const name = sidebarOrgName(org);
+  const { size, measure } = useSideFit(name, ROOMS.org, scale, 'semibold', 'line');
 
   return (
     <Pressable
@@ -253,11 +269,11 @@ function Org({ scale }: { scale: number }) {
         pressed && styles.orgOpen,
       ]}
       accessibilityRole="button"
-      accessibilityLabel={SAMPLE.organisation}
+      accessibilityLabel={name}
       testID="demo.sidebar.org"
     >
       {measure}
-      <OrgMark id="ire" name={SAMPLE.organisation} side={ORG_MARK} />
+      <OrgMark id={org} name={name} side={ORG_MARK} />
       <Text
         size={size}
         weight="semibold"
@@ -266,7 +282,7 @@ function Org({ scale }: { scale: number }) {
         accessible={false}
         style={styles.grow}
       >
-        {SAMPLE.organisation}
+        {name}
       </Text>
       <Glyph name="updown" size={OPENER_GLYPH} ink={tokens.colorInkSecondary} />
     </Pressable>

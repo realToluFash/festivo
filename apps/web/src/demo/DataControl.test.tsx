@@ -130,7 +130,7 @@ describe('Settings › Data and control at a desk (sc-560)', () => {
     expect(screen.getByText('These come with Enterprise')).toBeDefined();
     expect(screen.getAllByText('Enterprise')).toHaveLength(3);
     fireEvent.click(screen.getByRole('button', { name: 'Contact Soirely about Enterprise' }));
-    expect(screen.getByText('Contacting Soirely has its own design.')).toBeDefined();
+    expect(await screen.findByRole('dialog', { name: 'Compare plans' })).toBeDefined();
   });
 
   it('keeps the Enterprise jobs after Enterprise, with no date and no step', async () => {

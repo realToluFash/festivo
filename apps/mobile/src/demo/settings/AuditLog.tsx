@@ -54,6 +54,8 @@ import { SeenBy } from './Frame.tsx';
 import { useLoad } from './MembersLoading.tsx';
 import { memberLooking } from './sample.ts';
 import { SummaryPage } from './SummaryPage.tsx';
+import { pageStateOf } from './EnterpriseAsk.ts';
+import { EnterpriseStep } from './EnterpriseStep.tsx';
 
 /** A linked menu opens once the page has laid out, from its button. */
 const MENU_AFTER_MS = 600;
@@ -64,12 +66,12 @@ export function AuditLogSection() {
   const shell = useShell();
   const { viewer } = useDataNav();
   const phone = shell.layout === 'phone';
-  const name = auditStateOf(state, phone);
+  const name = auditStateOf(pageStateOf('auditLog', state), phone);
   const looking = useMemo(() => memberLooking(DATA_PEOPLE[viewer].email), [viewer]);
 
   return (
     <SeenBy looking={looking}>
-      <AuditPage key={`${name}:${String(phone)}`} start={auditStart(name)} />
+      <AuditPage key={`${name}:${String(phone)}:${state ?? ''}`} start={auditStart(name)} />
     </SeenBy>
   );
 }
@@ -124,15 +126,11 @@ function AuditPage({ start }: { start: AuditStart }) {
   const shown = matching(filters, undefined, zone);
   const words = buttonWords(filters, locale, start.lang);
   const card = start.locked
-    ? { says: A.locked, line: A.lockedLine, step: H.contact }
+    ? { says: A.locked, line: A.lockedLine, step: null }
     : preparing
       ? { says: A.preparing, line: A.preparingLine(shell.looking.email), step: null }
       : { says: A.says, line: A.line, step: phone ? null : A.export };
   const onStep = () => {
-    if (start.locked) {
-      shell.tell(H.contacting);
-      return;
-    }
     opener.current = cardStep.current;
     setExportVisit((count) => count + 1);
     setExporting({ format: 'csv', refused: false });
@@ -144,7 +142,7 @@ function AuditPage({ start }: { start: AuditStart }) {
       <DataSubPage title={A.title}>
         <SummaryCard
           size={shell.layout === 'portrait' ? 'wide' : 'page'}
-          height={card.step == null ? 170 : 210}
+          height={card.step == null && !start.locked ? 170 : 210}
           step={
             card.step == null
               ? null
@@ -154,6 +152,7 @@ function AuditPage({ start }: { start: AuditStart }) {
         >
           <CardSays text={card.says} size={pane ? 26 : 24} heading />
           <OnCard text={card.line} />
+          {start.locked && <EnterpriseStep testID="audit.enterprise" />}
         </SummaryCard>
         {!start.locked && (
           <>
