@@ -1,0 +1,9 @@
+# sc-68778: one tap on Members' Back pill reaches Settings.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/settings/members
+- extendedWaitUntil: { visible: { id: 'members.card' }, timeout: 30000 }
+- tapOn: { id: 'frame.back' }
+- waitForAnimationToEnd: { timeout: 8000 }
+- assertNotVisible: { id: 'members.card' }
+- takeScreenshot: members-back-tapped
