@@ -10,7 +10,7 @@ import { EventThumb } from '../../components/EventThumb.tsx';
 import { Glyph, type GlyphName } from '../../components/Glyph.tsx';
 import { Initials } from '../../components/Initials.tsx';
 import { OrgMark } from '../../components/OrgMark.tsx';
-import { Text } from '../../components/Text.tsx';
+import { Text, TitleCap } from '../../components/Text.tsx';
 import { AREA_GLYPH } from '../../components/areaGlyph.ts';
 import { cardTags } from '../../kit/eventsList.ts';
 import { DemoOnly } from '../../steps/Lines.tsx';
@@ -31,7 +31,13 @@ import {
   glyphSide,
   rowPad,
 } from '../../layout/sidebarSize.ts';
-import { SIDEBAR_WIDTH, nameLines } from '../../layout/textSize.ts';
+import { PANE_TITLE } from '../../components/topTitle.ts';
+import {
+  SIDEBAR_WIDTH,
+  atAccessibilitySizes,
+  nameLines,
+  titleSize,
+} from '../../layout/textSize.ts';
 import {
   SIDEBAR_LANGUAGES,
   SIDEBAR_PLACES,
@@ -141,7 +147,11 @@ function Sidebar({
       </View>
       <Org scale={scale} />
       {inEvent ? (
-        <InEvent scale={scale} onBack={() => onAt('events')} t={t} />
+        <TitleCap.Provider
+          value={atAccessibilitySizes(scale) ? titleSize(PANE_TITLE, scale) : null}
+        >
+          <InEvent scale={scale} onBack={() => onAt('events')} t={t} />
+        </TitleCap.Provider>
       ) : (
         <>
           <Search scale={scale} label={t('todayScreen.search')} />
