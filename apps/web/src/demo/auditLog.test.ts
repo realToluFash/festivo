@@ -89,7 +89,7 @@ describe('Audit log (sc-611)', () => {
       undefined,
     );
     expect(facts('signIn')).toMatchObject({
-      On: 'Ire Events’ sign-in rules',
+      On: 'Ire Events’s sign-in rules',
       Changes: 'Everyone needs two-factor: Off → On',
       'Type and action': 'Sign-in and security · sign_in_rules.changed',
       'Network address': '203.0.113.17',

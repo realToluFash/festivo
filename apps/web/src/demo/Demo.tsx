@@ -201,9 +201,9 @@ const SIGN_IN_STATES: { key: string; name: string; notice?: SignInNotice; fillsE
   },
   {
     key: 'rule',
-    name: 'Signed out by Ire Events’ rule',
+    name: 'Signed out by Ire Events’s rule',
     notice: {
-      title: 'Signed out by Ire Events’ rule',
+      title: 'Signed out by Ire Events’s rule',
       body: 'Ire Events signs people out after 30 days without use. Sign in again to carry on.',
     },
     fillsEmail: true,
