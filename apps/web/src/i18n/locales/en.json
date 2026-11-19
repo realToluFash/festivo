@@ -5137,7 +5137,7 @@
   "decisionAnswer": {
     "head": "What adding them would cost",
     "rise": "+{{amount}} if all come",
-    "upperOnly": "Once they are invited, it would be {{upper}} if everyone comes. Settled, it stays {{settled}} until they reply.",
+    "upperOnly": "Once they are invited, that would make {{upper}} in total. Settled, it stays {{settled}} until they reply.",
     "moved": "{{from}} → {{to}} · {{headsFrom, number}} → {{headsTo, number}} if all come",
     "plus": "+{{amount}}",
     "notKnown": "Not known",
