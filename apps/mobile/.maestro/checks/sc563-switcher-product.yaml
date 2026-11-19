@@ -1,0 +1,22 @@
+# sc-563: a managed account opens another organisation's invitation in the switcher, then accepts it.
+appId: host.exp.Exponent
+---
+- runFlow: ../open-switcher.yaml
+- scrollUntilVisible:
+    element:
+      text: 'Lumen Studio'
+    direction: UP
+    timeout: 15000
+- tapOn: 'Lumen Studio'
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: sc563-switcher-before
+- tapOn:
+    id: 'switcher\.invitation\..*\.accept'
+- waitForAnimationToEnd:
+    timeout: 8000
+- takeScreenshot: sc563-switcher-product
+- extendedWaitUntil:
+    visible:
+      text: 'Managed by.*'
+    timeout: 15000

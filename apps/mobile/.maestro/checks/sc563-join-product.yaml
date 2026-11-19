@@ -1,0 +1,11 @@
+# sc-563: a managed account opens another organisation's request link in the app.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/join/2443f341b10915681c2f0eacc19650b4
+- extendedWaitUntil:
+    visible:
+      id: join.managed
+    timeout: 30000
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: sc563-join-product

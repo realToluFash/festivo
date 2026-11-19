@@ -1,0 +1,17 @@
+# sc-563: Data and control > Email domains in the app, as the signed-in account sees it.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/settings/data-and-control/email-domains
+- extendedWaitUntil:
+    visible:
+      id: emailDomains.card
+    timeout: 30000
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: sc563-domains-product
+- scrollUntilVisible:
+    element:
+      id: emailDomains.ire2-qa5.test.only
+    direction: DOWN
+    timeout: 15000
+- takeScreenshot: sc563-domains-product-ire2
