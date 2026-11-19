@@ -89,6 +89,21 @@ export function brokeOn({
   return brokeInWord(laidOut) ? row : broke;
 }
 
+/** The row a break latches on: its width, the title, the text size, and whether a tablet's refresh spinner shares it, so the actions come back beside the title once the spinner goes (sc-68417). */
+export function titleRowKey({
+  room,
+  title,
+  fontScale,
+  spinning,
+}: {
+  room: number;
+  title: string;
+  fontScale: number;
+  spinning: boolean;
+}): string {
+  return `${room}|${title}|${fontScale}|${spinning ? 'spinning' : 'still'}`;
+}
+
 function unmeasured(...widths: number[]): boolean {
   return widths.some((width) => width <= 0);
 }

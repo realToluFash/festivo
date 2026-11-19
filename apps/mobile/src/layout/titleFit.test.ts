@@ -1,6 +1,11 @@
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
+
 import { describe, expect, it } from 'vitest';
 
-import { actionsUnder, brokeInWord, brokeOn, labelFits, rowRoom } from './titleFit.ts';
+import { actionsUnder, brokeInWord, brokeOn, labelFits, rowRoom, titleRowKey } from './titleFit.ts';
+
+const guests = readFileSync(join('src', 'components', 'GuestsHeading.tsx'), 'utf8');
 
 const row = { room: 400, title: 140, extra: 0, labelled: 170, gap: 16 };
 
@@ -216,5 +221,45 @@ describe('the row the title broke on (sc-68417)', () => {
     expect(
       brokeOn({ broke: null, row: '370|pt', under: false, lines: broken, ...atStart }),
     ).toBeNull();
+  });
+});
+
+describe('Guests on an iPad on its side, the spinner then none (sc-68417)', () => {
+  const row = { room: 404, title: 'Guests', fontScale: 1 };
+  const widths = { room: 404, title: 92, extra: 120, plus: 44, bell: 44, gap: 16 };
+  const broken = [
+    { text: 'Gue', width: 52 },
+    { text: 'sts', width: 43 },
+  ];
+
+  function under(broke: string | null, spinning: boolean): boolean {
+    return (
+      broke === titleRowKey({ ...row, spinning }) ||
+      actionsUnder({ ...widths, refreshing: spinning ? 40 : 0 })
+    );
+  }
+
+  it('puts the actions back beside the title once a break latched while the spinner was up goes with it', () => {
+    const latched = brokeOn({
+      broke: null,
+      row: titleRowKey({ ...row, spinning: true }),
+      under: under(null, true),
+      lines: broken,
+      drawn: 26,
+      start: 26,
+      size: 26,
+      slot: 92,
+      title: 92,
+    });
+
+    expect(latched).not.toBeNull();
+    expect(under(latched, true)).toBe(true);
+    expect(under(latched, false)).toBe(false);
+  });
+
+  it('latches the heading on the key that names the spinner', () => {
+    expect(guests).toMatch(
+      /const rowKey = titleRowKey\(\{ room, title, fontScale, spinning \}\);/u,
+    );
   });
 });
