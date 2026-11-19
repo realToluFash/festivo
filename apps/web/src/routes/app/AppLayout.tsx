@@ -81,8 +81,8 @@ export function AppLayout() {
   if (state.status === 'signedOut') {
     // A sign-up waiting on its code has no session yet: it goes back to its code, not to sign-in.
     if (heldRegistration() != null) return <Navigate to="/verify-email" replace />;
-    // A link opened signed out comes back after sign-in; signing out on purpose does not.
-    if (!state.ended) holdReturn(`${pathname}${search}`);
+    // A link opened signed out comes back after sign-in; a session left or ended here does not.
+    if (state.arrived) holdReturn(`${pathname}${search}`);
 
     return (
       <Navigate

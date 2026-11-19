@@ -298,11 +298,14 @@ describe('Data and control’s hub', () => {
     );
   });
 
-  it('holds only Email domains under Control, with no Audit log row (sc-611)', () => {
+  it('holds Email domains then Audit log under Control (sc-611)', () => {
     const hub = readFileSync(join('app', 'settings', 'data-and-control', 'index.tsx'), 'utf8');
 
-    expect(hub.match(/<TagRow/gu)).toHaveLength(1);
-    expect(hub).not.toMatch(/audit/iu);
+    expect(hub.match(/<TagRow/gu)).toHaveLength(2);
+    expect(hub.indexOf("'dataAndControl.rows.domains'")).toBeLessThan(
+      hub.indexOf("'dataAndControl.rows.audit'"),
+    );
+    expect(en.dataAndControl.rows.auditLine).toBe('Who did what, for 365 days');
   });
 });
 
@@ -325,7 +328,7 @@ describe('Data and control in Settings', () => {
   });
 
   it('sends a Member who opens either page back to Settings', () => {
-    for (const file of ['index.tsx', 'email-domains.tsx'])
+    for (const file of ['index.tsx', 'email-domains.tsx', 'audit-log.tsx'])
       expect(readFileSync(join('app', 'settings', 'data-and-control', file), 'utf8')).toMatch(
         /if \(organisation != null && !listed\)\s+return <Redirect href=\{DESTINATION_HREF\.settings\} \/>;/u,
       );

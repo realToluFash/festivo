@@ -63,7 +63,14 @@ export type SessionState =
   | { status: 'checking' }
   | { status: 'signedIn'; session: Session }
   | { status: 'unreachable'; retrying: boolean }
-  | { status: 'signedOut'; ended: boolean; timedOut?: TimedOut; providerOnly?: ProviderOnly };
+  | {
+      status: 'signedOut';
+      ended: boolean;
+      /** This tab never held a session, so the page it opened is where sign-in lands (sc-612). */
+      arrived?: true;
+      timedOut?: TimedOut;
+      providerOnly?: ProviderOnly;
+    };
 
 /** An organisation's inactivity rule ended the session (sc-69): sign-in names it and keeps the address. */
 export interface TimedOut {
@@ -152,7 +159,7 @@ async function askForAccount(): Promise<void> {
     set(
       error instanceof ApiUnreachableError
         ? { status: 'unreachable', retrying: false }
-        : { status: 'signedOut', ended: false },
+        : { status: 'signedOut', ended: false, arrived: true },
     );
   }
 }
@@ -333,12 +340,14 @@ export function replaceOrganisation(next: Membership): void {
 export function forgetSession(ended = false, why?: Problem): void {
   const timedOut = timedOutBy(why);
   const providerOnly = providerOnlyBy(why);
+  const arrived = ended && state.status !== 'signedIn';
 
   generation += 1;
   forgetKept();
   set({
     status: 'signedOut',
     ended,
+    ...(arrived ? { arrived } : {}),
     ...(timedOut == null ? {} : { timedOut }),
     ...(providerOnly == null ? {} : { providerOnly }),
   });

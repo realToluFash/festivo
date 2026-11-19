@@ -412,6 +412,10 @@
     "access.plan_required": "Disponible avec le forfait Enterprise. Pour modifier ce réglage, contactez Soirely au sujet du forfait Enterprise.",
     "email_domains.not_listed": "Ce domaine ne figure pas dans la liste.",
     "email_domains.taken": "Une autre organisation a déjà vérifié ce domaine. S’il vous appartient, contactez l’assistance Soirely.",
+    "audit.export_too_many": "More than 1,000,000 entries match. Narrow the filters, then export again.",
+    "audit.export_expired": "This export's download has ended. You can export again.",
+    "audit.dates_backwards": "The start date must be on or before the end date.",
+    "audit.invalid_filter": "This filter is not one the audit log offers.",
     "email_domains.managed": "Votre adresse du domaine {domain} est gérée par {organisation} : vous ne pouvez être membre que de cette organisation.",
     "email_domains.only_ours_owner": "Seule une personne ayant le rôle Propriétaire peut modifier ce réglage.",
     "email_domains.only_ours_unproved": "« Réservé à notre organisation » nécessite un domaine vérifié par cette organisation."

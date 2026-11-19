@@ -108,9 +108,21 @@ final readonly class ObjectStore
         $this->s3->putObject(['Bucket' => $this->privateBucket, 'Key' => $key, 'Body' => $bytes, 'ContentType' => $contentType]);
     }
 
+    /** @param resource $file read from where it stands to its end, in pieces, so a file of any size is never held in memory whole */
+    public function keepFile(string $key, $file, string $contentType): void
+    {
+        $this->s3->putObject(['Bucket' => $this->privateBucket, 'Key' => $key, 'Body' => $file, 'ContentType' => $contentType]);
+    }
+
     public function readKept(string $key): string
     {
         return $this->s3->getObject(['Bucket' => $this->privateBucket, 'Key' => $key])->getBody()->getContentAsString();
+    }
+
+    /** @return iterable<string> the kept file in pieces, for a response that passes each on as it arrives */
+    public function streamKept(string $key): iterable
+    {
+        return $this->s3->getObject(['Bucket' => $this->privateBucket, 'Key' => $key])->getBody()->getChunks();
     }
 
     public function discardKept(string $key): void
