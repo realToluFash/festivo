@@ -54,6 +54,7 @@ import type { Tell } from '../components/SettingsParts.tsx';
 import './today.css';
 import '../components/SettingsParts.css';
 import '../components/eventPage.css';
+import '../components/eventsDesk.css';
 import '../routes/app/events/people.css';
 import './people.css';
 import { DeskSearch, SearchRow } from './Search.tsx';
@@ -220,7 +221,7 @@ function PeopleScreen({ start, door }: { start: PeopleStart; door: DoorStart | n
           <EventSidebar viewer={viewer} place={place} tell={tell} inert={covered} />
           <main id="content" className="desk-main" inert={covered}>
             <div className="desk-page">
-              <div className="desk-column">
+              <div className="event-page is-people">
                 <div className="ev-crumb-row">
                   <nav className="ev-crumb" aria-label="Breadcrumb">
                     <ol>
@@ -241,12 +242,14 @@ function PeopleScreen({ start, door }: { start: PeopleStart; door: DoorStart | n
                   </nav>
                   <DemoBell tell={tell} />
                 </div>
-                <header className="desk-top">
-                  <h1 className="desk-title" tabIndex={-1}>
-                    People
-                  </h1>
-                </header>
-                {page}
+                <div className="desk-column">
+                  <header className="desk-top">
+                    <h1 className="desk-title" tabIndex={-1}>
+                      People
+                    </h1>
+                  </header>
+                  {page}
+                </div>
               </div>
             </div>
           </main>
