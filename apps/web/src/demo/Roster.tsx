@@ -453,8 +453,8 @@ function RosterView({
                                 (one.station ?? RW.noStation)
                               )}
                             </td>
-                            <td className={one.shift == null ? 'rs-quiet' : 'rs-shift'}>
-                              {one.shift ?? RW.noShift}
+                            <td className={one.shift == null ? 'rs-shift rs-quiet' : 'rs-shift'}>
+                              {one.shift ?? first.noShift}
                               {one.more.length > 0 && (
                                 <span className="rs-more">{RW.more(one.more.length)}</span>
                               )}
