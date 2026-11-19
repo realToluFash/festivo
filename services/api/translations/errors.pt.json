@@ -29,6 +29,8 @@
     "seating_plan_exists": "Este evento já tem um plano de mesas.",
     "seating_section_limit": "Um plano pode ter até 30 zonas. Elimine uma para adicionar outra.",
     "guest_already_listed": "Esse nome já está na lista.",
+    "guest_arrived": "Já chegou, por isso fica na lista.",
+    "check_in_closed": "Agora não é possível registar chegadas.",
     "staff_number_shared": "Esse número já está na lista da equipa.",
     "staff_job_staffed": "Há pessoas nos turnos desta função.",
     "staff_shift_full": "Todas as vagas deste turno estão preenchidas.",

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Tests\Unit;
 
 use App\Domain\Guest\Headcount\HeadcountCalculator;
+use App\Domain\Guest\Model\CountedPerson;
 use App\Enum\GuestReply;
 use App\Enum\GuestStanding;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -59,15 +60,40 @@ final class HeadcountTest extends TestCase
     #[Test]
     public function everyStandingIsCountedOnceSoTheCountsAddUp(): void
     {
-        $everyone = Vec\concat(GuestStanding::cases(), GuestStanding::cases());
+        $everyone = Vec\map(Vec\concat(GuestStanding::cases(), GuestStanding::cases()), static fn (GuestStanding $standing): CountedPerson => new CountedPerson($standing));
 
         $counts = HeadcountCalculator::counts(...$everyone);
 
-        self::assertSame(16, $counts['onList']);
+        self::assertSame(18, $counts['onList']);
         self::assertSame(2, $counts['notYetInvited']);
+        self::assertSame(2, $counts['walkIns']);
         self::assertSame($counts['invited'], $counts['accepted'] + $counts['maybe'] + $counts['awaitingReply'] + $counts['held'] + $counts['declined']);
-        self::assertSame($counts['onList'], $counts['invited'] + $counts['notYetInvited']);
+        self::assertSame($counts['onList'], $counts['invited'] + $counts['notYetInvited'] + $counts['walkIns']);
         self::assertSame($counts['held'], $counts['heldBy']['hostNoReply'] + $counts['heldBy']['hostMaybe'] + $counts['heldBy']['hostNotComing']);
         self::assertSame([2, 2, 2], [$counts['heldBy']['hostNoReply'], $counts['heldBy']['hostMaybe'], $counts['heldBy']['hostNotComing']]);
+    }
+
+    #[Test]
+    public function attendedIsEveryoneArrivedAndExpectedAddsThoseArrivedWhoWereNotComingSoTheFirstNeverExceedsTheSecond(): void
+    {
+        $counts = HeadcountCalculator::counts(
+            new CountedPerson(GuestStanding::Accepted, arrived: true),
+            new CountedPerson(GuestStanding::Accepted),
+            new CountedPerson(GuestStanding::Accepted),
+            new CountedPerson(GuestStanding::WalkIn, arrived: true),
+            new CountedPerson(GuestStanding::Declined, arrived: true),
+            new CountedPerson(GuestStanding::HeldHostNoReply, arrived: true),
+            new CountedPerson(GuestStanding::Maybe),
+        );
+
+        self::assertSame([4, 6], [$counts['attended'], $counts['expected']]);
+    }
+
+    #[Test]
+    public function withNobodyComingExpectedIsWhoeverArrived(): void
+    {
+        $counts = HeadcountCalculator::counts(new CountedPerson(GuestStanding::WalkIn, arrived: true), new CountedPerson(GuestStanding::AwaitingReply));
+
+        self::assertSame([0, 1, 1], [$counts['accepted'], $counts['attended'], $counts['expected']]);
     }
 }

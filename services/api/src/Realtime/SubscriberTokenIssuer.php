@@ -96,6 +96,12 @@ final readonly class SubscriberTokenIssuer
         return $this->issue([RealtimeTopic::EventGuests->for($eventId->toRfc4122()), RealtimeTopic::EventHeadcount->for($eventId->toRfc4122())]);
     }
 
+    /** One event's check-in signal, for someone the route has already found holds guests.check_in on it (sc-1454); its messages carry nothing else. */
+    public function issueForCheckIn(Uuid $eventId): IssuedSubscriberToken
+    {
+        return $this->issue([RealtimeTopic::EventCheckIn->for($eventId->toRfc4122())]);
+    }
+
     /**
      * Several events' headcounts, for someone the route has already found holds guests.read on each (sc-3786).
      *

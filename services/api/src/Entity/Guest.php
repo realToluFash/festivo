@@ -166,6 +166,18 @@ class Guest
     #[ORM\Column(type: 'uuid', nullable: true)]
     private ?Uuid $removalId = null;
 
+    /** Recorded at the door (sc-1454): once, with when and by whom, and never touching their reply, companions or details. */
+    #[ORM\Column(type: Types::DATETIME_IMMUTABLE, nullable: true)]
+    private ?DateTimeImmutable $arrivedAt = null;
+
+    #[ORM\ManyToOne(targetEntity: User::class)]
+    #[ORM\JoinColumn(nullable: true, onDelete: 'SET NULL')]
+    private ?User $arrivedBy = null;
+
+    /** Added at the door with a full name and nothing else (sc-1454): no reply, companions or link. */
+    #[ORM\Column(type: Types::BOOLEAN, options: ['default' => false])]
+    private bool $walkIn = false;
+
     private function __construct(Event $event, ?Guest $host, ?string $fullName, ?string $nameKey, ?string $email, ?string $mobile, ?GuestReply $reply, int $position, ?User $addedBy, #[SensitiveParameter] ?string $linkToken)
     {
         $this->id = Uuid::v7();
@@ -185,6 +197,15 @@ class Guest
     public static function listed(Event $event, string $fullName, string $nameKey, ?string $email, ?string $mobile, ?User $addedBy, #[SensitiveParameter] string $linkToken): self
     {
         return new self($event, null, $fullName, $nameKey, $email, $mobile, GuestReply::NoReply, 0, $addedBy, $linkToken);
+    }
+
+    public static function walkedIn(Event $event, string $fullName, string $nameKey, User $by, DateTimeImmutable $at): self
+    {
+        $guest = new self($event, null, $fullName, $nameKey, null, null, null, 0, $by, null);
+        $guest->walkIn = true;
+        $guest->arrive($at, $by);
+
+        return $guest;
     }
 
     public static function companionOf(self $host, ?string $fullName, ?string $nameKey, int $position, ?User $addedBy): self
@@ -535,5 +556,51 @@ class Guest
         $this->removedAt = null;
         $this->removedBy = null;
         $this->removalId = null;
+    }
+
+    public function isWalkIn(): bool
+    {
+        return $this->walkIn;
+    }
+
+    public function hasArrived(): bool
+    {
+        return null !== $this->arrivedAt;
+    }
+
+    public function getArrivedAt(): ?DateTimeImmutable
+    {
+        return $this->arrivedAt;
+    }
+
+    public function getArrivedBy(): ?User
+    {
+        return $this->arrivedBy;
+    }
+
+    /** The first arrival stands, so a second press of Arrived changes nothing. False when nothing changed. */
+    public function arrive(DateTimeImmutable $at, User $by): bool
+    {
+        if ($this->hasArrived()) {
+            return false;
+        }
+
+        $this->arrivedAt = $at;
+        $this->arrivedBy = $by;
+
+        return true;
+    }
+
+    /** False when they had not arrived. */
+    public function undoArrival(): bool
+    {
+        if (!$this->hasArrived()) {
+            return false;
+        }
+
+        $this->arrivedAt = null;
+        $this->arrivedBy = null;
+
+        return true;
     }
 }

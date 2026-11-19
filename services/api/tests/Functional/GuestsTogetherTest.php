@@ -308,7 +308,7 @@ final class GuestsTogetherTest extends ApiTestCase
 
         $removed = $this->as($this->owner, 'POST', $this->guests() . '/removals', ['guestIds' => [$companion]]);
 
-        self::assertSame(['removal' => null, 'guests' => 0, 'companions' => 0, 'gone' => 1], $removed);
+        self::assertSame(['removal' => null, 'guests' => 0, 'companions' => 0, 'gone' => 1, 'stayed' => []], $removed);
         self::assertSame(2, $this->counts()['onList']);
     }
 

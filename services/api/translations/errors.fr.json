@@ -29,6 +29,8 @@
     "seating_plan_exists": "Cet événement a déjà un plan de table.",
     "seating_section_limit": "Un plan peut comporter jusqu’à 30 zones. Supprimez-en une pour en ajouter une autre.",
     "guest_already_listed": "Ce nom est déjà sur la liste.",
+    "guest_arrived": "Cette personne est arrivée, elle reste donc sur la liste.",
+    "check_in_closed": "Les arrivées ne peuvent pas être enregistrées maintenant.",
     "staff_number_shared": "Ce numéro figure déjà dans la liste du personnel.",
     "staff_job_staffed": "Des personnes sont affectées aux services de cette fonction.",
     "staff_shift_full": "Toutes les places de ce service sont prises.",
