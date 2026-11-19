@@ -64,10 +64,12 @@ function Answered({ answer }: { answer: WhatIf }) {
 
   return (
     <>
-      <p className="da-big">
-        <UpMark />
-        {t('decisionAnswer.rise', { amount: money(answer.potential.delta) })}
-      </p>
+      {unknown.length < answer.lines.length && (
+        <p className="da-big">
+          <UpMark />
+          {t('decisionAnswer.rise', { amount: money(answer.potential.delta) })}
+        </p>
+      )}
       {unknown.length > 0 ? (
         <p className="da-line is-strong">
           {t('decisionAnswer.fullNotKnown', { count: unknown.length })}

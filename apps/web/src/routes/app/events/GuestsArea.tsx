@@ -1844,7 +1844,7 @@ function AddForm({
   const problems: Problems = { ...(tried ? problemsOf(values) : {}), ...refused };
   const [needsRefused, setNeedsRefused] = useState<Record<string, NeedsProblems>>({});
   const opened = useNeedsOpen();
-  const costs = useWhatAddingCosts(eventId, 1 + typed.companions.length, prices);
+  const costs = useWhatAddingCosts(eventId, 1 + typed.companions.length, round, prices);
   const needsProblems: Record<string, NeedsProblems> = {
     ...(tried ? needsByWho(typed) : {}),
     ...needsRefused,

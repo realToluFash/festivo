@@ -5462,6 +5462,71 @@ describe('What adding them would cost (sc-86)', () => {
     expect(within(answer()).getByText('Not known')).toBeDefined();
   });
 
+  it('shows no figure when every cost it moves has no price, never +0', async () => {
+    await opened({
+      [ASK]: () =>
+        json(
+          whatIf(1, {
+            fullCostKnown: false,
+            confirmed: { from: '0.00', to: '0.00', delta: '0.00' },
+            potential: { from: '0.00', to: '0.00', delta: '0.00' },
+            lines: [
+              {
+                id: 'line_2',
+                label: 'Catering',
+                category: 'catering',
+                basis: 'per_head',
+                quantity: {
+                  confirmed: { from: 0, to: 0 },
+                  potential: { from: 0, to: 1 },
+                  reason: null,
+                },
+                known: false,
+                cost: null,
+              },
+            ],
+          }),
+        ),
+    });
+
+    await waitFor(() =>
+      expect(
+        within(answer()).getByText('Full cost not known: 1 cost it moves has no price yet.'),
+      ).toBeDefined(),
+    );
+    expect(answer().textContent).not.toMatch(/0 if all come/u);
+    expect(answer().querySelector('.da-up')).toBeNull();
+  });
+
+  it('asks again after a guest is added, and shows the figure it now lands on', async () => {
+    let added = false;
+    const sent = await opened({
+      [ASK]: () =>
+        json(
+          added
+            ? whatIf(1, { potential: { from: '705000.00', to: '710000.00', delta: '5000.00' } })
+            : whatIf(1),
+        ),
+      'POST /api/events/ev_1/guests': () => {
+        added = true;
+
+        return json({ guest: guest('g_ana', 'Ana Silva') }, 201);
+      },
+    });
+
+    await waitFor(() =>
+      expect(within(answer()).getByText(new RegExp(`now ${naira(705000)}`, 'u'))).toBeDefined(),
+    );
+    const asked = sent.filter((one) => one.line === ASK).length;
+    type('Full name', 'Ana Silva');
+    fireEvent.click(addButton());
+
+    await waitFor(() =>
+      expect(within(answer()).getByText(new RegExp(`now ${naira(710000)}`, 'u'))).toBeDefined(),
+    );
+    expect(sent.filter((one) => one.line === ASK).length).toBeGreaterThan(asked);
+  });
+
   it('says No change when nothing is counted per guest', async () => {
     await opened({
       [ASK]: () =>
