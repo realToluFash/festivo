@@ -35,10 +35,12 @@ framework:
                 provider: Redis
                 default_lifetime: 60
             # Every version of the plan catalogue, so a request never reads it
-            # from the database; a publication clears it (sc-3928).
+            # from the database; a publication clears it, and the lifetime heals
+            # a read that lands just after the clearing (sc-3928).
             cache.catalogue:
                 adapter: cache.adapter.redis
                 provider: Redis
+                default_lifetime: 300
 
 when@test:
     framework:
