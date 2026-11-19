@@ -20,6 +20,7 @@ import {
   EventRoster,
   EventRun,
   EventStaff,
+  EventStations,
   EventView,
 } from './app/events/EventView.tsx';
 import { Events } from './app/events/Events.tsx';
@@ -105,6 +106,7 @@ export const routes = [
           { path: 'events/:eventId/staff', element: <EventStaff /> },
           { path: 'events/:eventId/staff/roster', element: <EventRoster /> },
           { path: 'events/:eventId/staff/jobs', element: <EventJobsShifts /> },
+          { path: 'events/:eventId/staff/stations', element: <EventStations /> },
           { path: 'events/:eventId/run', element: <EventRun /> },
           { path: 'events/:eventId/:area', element: <EventAreaPage /> },
           { path: 'calendar', element: <Calendar /> },

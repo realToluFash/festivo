@@ -6,6 +6,7 @@ namespace App\Domain\Event;
 
 use App\Audit\Auditor;
 use App\Domain\Staff\StaffPlan;
+use App\Domain\Staff\Station\StationPlan;
 use App\Entity\Event;
 use App\Entity\Organisation;
 use App\Entity\User;
@@ -21,6 +22,7 @@ final readonly class EventCreator
         private EntityManagerInterface $entityManager,
         private Auditor $auditor,
         private StaffPlan $staffPlan,
+        private StationPlan $stationPlan,
     ) {
     }
 
@@ -45,6 +47,7 @@ final readonly class EventCreator
         $event->setHosts($checked['hosts'] ?? []);
         $this->entityManager->persist($event);
         $this->staffPlan->suggest($event);
+        $this->stationPlan->suggest($event);
 
         $this->auditor->record(self::CREATED, 'Event', $event->getId(), Actor::User, $by->getId(), $by->getName(), self::recorded($event));
 
