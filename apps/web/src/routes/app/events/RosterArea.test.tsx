@@ -1,3 +1,6 @@
+import { readFileSync, readdirSync } from 'node:fs';
+import { join, relative } from 'node:path';
+
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { RouterProvider, createMemoryRouter } from 'react-router';
@@ -8,6 +11,19 @@ import { routes } from '../../index.tsx';
 import { cssRule, stylesheet } from '../../../test-styles.ts';
 
 const ROSTER_CSS = stylesheet(import.meta.dirname, 'roster.css');
+
+const WEB_SRC = join(import.meta.dirname, '../../..');
+
+function sheetsLeadingWithRs(): string[] {
+  return readdirSync(WEB_SRC, { recursive: true, encoding: 'utf8' })
+    .filter((file) => file.endsWith('.css') && !file.startsWith('demo/'))
+    .map((file) => join(WEB_SRC, file))
+    .filter((path) => path !== join(import.meta.dirname, 'roster.css'))
+    .filter((path) =>
+      /\.rs(?![\w])/u.test(readFileSync(path, 'utf8').replaceAll(/\/\*[\s\S]*?\*\//gu, '')),
+    )
+    .map((path) => relative(WEB_SRC, path));
+}
 
 const IRE = membership({ id: 'org_1', name: 'Ìrè Events' });
 
@@ -387,5 +403,9 @@ describe('The Roster on the Staff page (sc-3906)', () => {
     expect(screen.queryByRole('button', { name: 'Add a person' })).toBeNull();
     fireEvent.click(screen.getByRole('button', { name: 'Amaka Eze' }));
     expect(screen.queryByRole('button', { name: 'Edit' })).toBeNull();
+  });
+
+  it("owns the rs- classes: no other product stylesheet leads with one, so the roster's names keep their ink", () => {
+    expect(sheetsLeadingWithRs()).toEqual([]);
   });
 });

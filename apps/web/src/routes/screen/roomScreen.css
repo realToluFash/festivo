@@ -18,10 +18,10 @@
 }
 
 .room-fill {
-  --rsBig: max(12px, calc(64cqw / 19.2));
-  --rsMid: max(12px, calc(30cqw / 19.2));
-  --rsLabel: max(12px, calc(20cqw / 19.2));
-  --rsEdge: calc(96cqw / 19.2);
+  --roomBig: max(12px, calc(64cqw / 19.2));
+  --roomMid: max(12px, calc(30cqw / 19.2));
+  --roomLabel: max(12px, calc(20cqw / 19.2));
+  --roomEdge: calc(96cqw / 19.2);
 
   position: relative;
   display: flex;
@@ -29,11 +29,11 @@
   box-sizing: border-box;
   width: 100%;
   height: 100%;
-  padding: var(--rsEdge);
+  padding: var(--roomEdge);
 }
 
 .room-fill > * {
-  font-size: var(--rsMid);
+  font-size: var(--roomMid);
 }
 
 .room-event {
@@ -43,15 +43,15 @@
 .room-name {
   margin: 0;
   color: var(--colorInkOnDarkSecondary);
-  font-size: var(--rsMid);
+  font-size: var(--roomMid);
   font-weight: 600;
   line-height: 1.2;
 }
 
 .room-label {
-  margin: 0 0 calc(var(--rsLabel) * 0.8);
+  margin: 0 0 calc(var(--roomLabel) * 0.8);
   color: var(--colorInkOnDarkSecondary);
-  font-size: var(--rsLabel);
+  font-size: var(--roomLabel);
   font-weight: 600;
   letter-spacing: 0.04em;
   line-height: 1.2;
@@ -61,7 +61,7 @@
 .room-big {
   margin: 0;
   color: var(--colorInkOnDark);
-  font-size: var(--rsBig);
+  font-size: var(--roomBig);
   font-weight: 700;
   line-height: 1.1;
   overflow-wrap: anywhere;
@@ -71,7 +71,7 @@
   display: grid;
   flex: 1;
   grid-template-columns: 3fr 2fr;
-  gap: var(--rsEdge);
+  gap: var(--roomEdge);
   align-content: center;
   align-items: start;
 }
@@ -90,7 +90,7 @@
 .room-list {
   display: flex;
   flex-direction: column;
-  gap: calc(var(--rsMid) * 0.9);
+  gap: calc(var(--roomMid) * 0.9);
   margin: 0;
   padding: 0;
   list-style: none;
@@ -99,9 +99,9 @@
 .room-item {
   display: grid;
   grid-template-columns: 4.2em 1fr;
-  gap: calc(var(--rsMid) * 0.8);
+  gap: calc(var(--roomMid) * 0.8);
   align-items: baseline;
-  font-size: var(--rsMid);
+  font-size: var(--roomMid);
   line-height: 1.2;
 }
 
@@ -120,7 +120,7 @@
   display: flex;
   flex: 1;
   flex-direction: column;
-  gap: var(--rsMid);
+  gap: var(--roomMid);
   align-items: center;
   justify-content: center;
   text-align: center;
@@ -129,33 +129,33 @@
 .room-said {
   margin: 0;
   color: var(--colorInkOnDarkSecondary);
-  font-size: var(--rsMid);
+  font-size: var(--roomMid);
   font-weight: 600;
 }
 
 .room-asof {
   position: absolute;
-  right: var(--rsEdge);
-  bottom: calc(var(--rsEdge) / 2);
+  right: var(--roomEdge);
+  bottom: calc(var(--roomEdge) / 2);
   display: flex;
-  gap: calc(var(--rsLabel) * 0.5);
+  gap: calc(var(--roomLabel) * 0.5);
   align-items: center;
   margin: 0;
   color: var(--colorInkOnDarkSecondary);
-  font-size: var(--rsLabel);
+  font-size: var(--roomLabel);
 }
 
 .room-dot {
-  width: calc(var(--rsLabel) * 0.6);
-  height: calc(var(--rsLabel) * 0.6);
+  width: calc(var(--roomLabel) * 0.6);
+  height: calc(var(--roomLabel) * 0.6);
   border-radius: 50%;
   background: var(--colorAttentionOnDark);
 }
 
 .room-full {
   position: absolute;
-  top: calc(var(--rsEdge) / 2);
-  right: calc(var(--rsEdge) / 2);
+  top: calc(var(--roomEdge) / 2);
+  right: calc(var(--roomEdge) / 2);
   display: inline-flex;
   gap: var(--spaceSm);
   align-items: center;
