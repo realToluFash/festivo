@@ -131,6 +131,7 @@ describe('Data and control › Export all data (sc-612)', () => {
     expect(screen.getByText('Events with their People')).toBeDefined();
     expect(screen.getByText(/leaves out your own account’s sign-in methods/)).toBeDefined();
     expect(screen.getByRole('button', { name: 'Data and control' })).toBeDefined();
+    expect(document.querySelectorAll('.desk-bell')).toHaveLength(1);
   });
 
   it('shows Preparing once pressed, then Ready with Download without a reload', async () => {
