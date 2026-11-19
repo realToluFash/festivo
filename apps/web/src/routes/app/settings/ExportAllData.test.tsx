@@ -91,7 +91,11 @@ function answering(answers: Record<string, () => Response>) {
   vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
     const line = `${init?.method ?? 'GET'} ${new URL(String(input)).pathname}`;
     sent.push(line);
-    const answer = answers[line];
+    const answer =
+      answers[line] ??
+      (line === 'GET /api/orgs/org_1/email-domains'
+        ? () => json({ plan: 'enterprise', domains: [] })
+        : null);
     if (answer == null) throw new TypeError('Failed to fetch');
 
     return answer();

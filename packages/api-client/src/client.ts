@@ -66,6 +66,7 @@ import {
   vendorsQuery,
 } from './vendors.ts';
 import { ApiError, ApiUnreachableError, type Problem, toProblem } from './problem.ts';
+import { type EmailDomainsPage, asEmailDomainsPage } from './emailDomains.ts';
 import { type OrganisationExportPage, asOrganisationExportPage } from './organisationExport.ts';
 import {
   asSeating,
@@ -449,9 +450,9 @@ export interface RequestLinkPreview {
   askAgainFrom: string | null;
 }
 
-/** Settings > General's Company domain joining (sc-561): `stopped` for one another organisation proved. */
+/** Settings > General's Company domain joining (sc-561): `stopped` for one another organisation proved, `proved` for one this one proved under Email domains (sc-560). */
 export interface CompanyDomains {
-  domains: { domain: string; stopped: boolean }[];
+  domains: { domain: string; stopped: boolean; proved: boolean }[];
   most: number;
   ownAddress: string | null;
 }
@@ -1903,6 +1904,57 @@ export class ApiClient {
     );
 
     return new Uint8Array(await response.arrayBuffer());
+  }
+
+  /** Data and control › Email domains (sc-560): an Owner's or an Admin's; a Member is refused, and a change off Enterprise `plan_required`. */
+  async emailDomains(organisationId: string): Promise<EmailDomainsPage> {
+    return this.readEmailDomains(
+      await this.get<unknown>(`/api/orgs/${encodeURIComponent(organisationId)}/email-domains`),
+    );
+  }
+
+  /** 422 on `domain`: `domain_blank`, `domain_invalid`, `domain_public`, `domain_listed` or `domain_taken`. */
+  async addEmailDomain(organisationId: string, domain: string): Promise<EmailDomainsPage> {
+    return this.readEmailDomains(
+      await this.post<unknown>(`/api/orgs/${encodeURIComponent(organisationId)}/email-domains`, {
+        domain,
+      }),
+    );
+  }
+
+  /** `found` false while the record cannot be found; 409 `email_domain_taken` once another organisation has proved it. */
+  async verifyEmailDomain(
+    organisationId: string,
+    domain: string,
+  ): Promise<{ found: boolean; page: EmailDomainsPage }> {
+    const raw = await this.post<unknown>(
+      `/api/orgs/${encodeURIComponent(organisationId)}/email-domains/${encodeURIComponent(domain)}/verify`,
+    );
+
+    return {
+      found: (raw as Record<string, unknown> | null)?.found === true,
+      page: this.readEmailDomains(raw),
+    };
+  }
+
+  async removeEmailDomain(organisationId: string, domain: string): Promise<EmailDomainsPage> {
+    return this.readEmailDomains(
+      await this.delete<unknown>(
+        `/api/orgs/${encodeURIComponent(organisationId)}/email-domains/${encodeURIComponent(domain)}`,
+      ),
+    );
+  }
+
+  private readEmailDomains(raw: unknown): EmailDomainsPage {
+    const page = asEmailDomainsPage(raw);
+
+    if (page == null) {
+      throw new Error(
+        'The API answered /api/orgs/{id}/email-domains in a shape this client does not know. Check EmailDomainsController in services/api.',
+      );
+    }
+
+    return page;
   }
 
   private readOrganisationExport(raw: unknown): OrganisationExportPage {
@@ -4443,7 +4495,11 @@ export class ApiClient {
       domains: domains.map((one) => {
         const row = one as Record<string, unknown>;
 
-        return { domain: row.domain as string, stopped: row.stopped === true };
+        return {
+          domain: row.domain as string,
+          stopped: row.stopped === true,
+          proved: row.proved === true,
+        };
       }),
       most: body.most,
       ownAddress: typeof body.ownAddress === 'string' ? body.ownAddress : null,
