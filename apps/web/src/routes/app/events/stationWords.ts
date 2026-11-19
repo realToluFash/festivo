@@ -11,7 +11,7 @@ export function stationLabel(
     : station.name;
 }
 
-/** The Station picker's two groups, as Stations lists them; a group with no stations is left out. */
+/** The roster's Station picker: Stations' two groups, each section by its plain name; a group with no stations is left out. */
 export function stationGroups(
   { places, sections }: StaffStations,
   t: TFunction,
@@ -23,10 +23,7 @@ export function stationGroups(
     },
     {
       label: t('stations.sections'),
-      options: sections.map((one) => ({
-        value: one.id,
-        label: stationLabel({ ...one, kind: 'section' }, t),
-      })),
+      options: sections.map((one) => ({ value: one.id, label: one.name })),
     },
   ].filter((group) => group.options.length > 0);
 }

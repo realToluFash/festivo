@@ -34,7 +34,7 @@ import { useHubTopics } from './useHubTopics.ts';
 import { useStartingCountry } from './useStartingCountry.ts';
 import { StaffTabs } from './StaffTabs.tsx';
 import { StationSelect } from './StationsArea.tsx';
-import { stationGroups, stationLabel } from './stationWords.ts';
+import { stationGroups } from './stationWords.ts';
 import { type StaffTimes, rangeWords, staffTimes } from './staffTimes.ts';
 import { useDeskTop } from '../../../deskTop.ts';
 import '../../../components/SettingsParts.css';
@@ -424,7 +424,7 @@ function Roster({
       say([
         now == null
           ? t('stations.saidOff', { name: entry.fullName })
-          : t('stations.saidOn', { name: entry.fullName, station: stationLabel(now, t) }),
+          : t('stations.saidOn', { name: entry.fullName, station: now.name }),
       ]);
     } catch {
       setFailed(t('stations.notSaved'));
@@ -708,7 +708,7 @@ function StationWords({ entry }: { entry: StaffEntry }) {
 
   return (
     <>
-      {stationLabel(entry.station, t)}
+      {entry.station.name}
       {entry.leads && (
         <>
           {' '}
@@ -804,7 +804,7 @@ function Details({
                   value={entry.station?.id ?? ''}
                   shown={
                     entry.station != null
-                      ? stationLabel(entry.station, t)
+                      ? entry.station.name
                       : entry.stationRemoved != null
                         ? t('stations.noStation')
                         : t('roster.noStation')
