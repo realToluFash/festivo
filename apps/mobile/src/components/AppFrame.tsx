@@ -841,7 +841,7 @@ function ScreenTop({
   const backView =
     back == null || backHidden ? null : (
       <BesideBack beside={besideBack}>
-        <FrameBack back={back} cap={cap} />
+        <FrameBack back={back} cap={cap} besideShown={besideBack != null} />
       </BesideBack>
     );
   const under = (
@@ -984,7 +984,7 @@ function FrameHeader({
   const backView =
     back == null || backHidden ? null : back.pill === true ? (
       <BesideBack beside={besideBack}>
-        <FrameBack back={back} cap={cap} />
+        <FrameBack back={back} cap={cap} besideShown={besideBack != null} />
       </BesideBack>
     ) : (
       <BackButton
@@ -1054,7 +1054,7 @@ function FrameHeader({
           <View style={styles.fill}>
             {back != null && !backHidden && (
               <BesideBack beside={besideBack}>
-                <FrameBack back={back} cap={cap} />
+                <FrameBack back={back} cap={cap} besideShown={besideBack != null} />
               </BesideBack>
             )}
           </View>
@@ -1074,7 +1074,7 @@ function FrameHeader({
           <View style={styles.fill}>
             {!backHidden && (
               <BesideBack beside={besideBack}>
-                <FrameBack back={back} cap={cap} />
+                <FrameBack back={back} cap={cap} besideShown={besideBack != null} />
               </BesideBack>
             )}
           </View>
@@ -1113,13 +1113,21 @@ function FrameHeader({
 function FrameBack({
   back,
   cap,
+  besideShown,
 }: {
   back: NonNullable<FrameHeaderProps['back']>;
   cap: number | null;
+  besideShown: boolean;
 }) {
   return (
     <TitleCap.Provider value={cap}>
-      <Back label={back.label} onPress={back.onPress} off={back.off} testID="frame.back" />
+      <Back
+        label={back.label}
+        onPress={back.onPress}
+        off={back.off}
+        besideShown={besideShown}
+        testID="frame.back"
+      />
     </TitleCap.Provider>
   );
 }

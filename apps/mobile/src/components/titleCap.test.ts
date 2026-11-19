@@ -90,10 +90,12 @@ describe('the Back pill over a page title draws no larger than the title (sc-674
 
   it('puts every Back the frame draws under the title’s cap', () => {
     expect(frame).toMatch(
-      /<TitleCap\.Provider value=\{cap\}>\s+<Back label=\{back\.label\} onPress=\{back\.onPress\} off=\{back\.off\} testID="frame\.back" \/>/u,
+      /<TitleCap\.Provider value=\{cap\}>\s+<Back\s+label=\{back\.label\}\s+onPress=\{back\.onPress\}\s+off=\{back\.off\}\s+besideShown=\{besideShown\}\s+testID="frame\.back"\s+\/>/u,
     );
     expect(frame.match(/<Back\b/gu)).toHaveLength(1);
-    expect(frame.match(/<FrameBack back=\{back\} cap=\{cap\} \/>/gu)).toHaveLength(4);
+    expect(
+      frame.match(/<FrameBack back=\{back\} cap=\{cap\} besideShown=\{besideBack != null\} \/>/gu),
+    ).toHaveLength(4);
   });
 });
 

@@ -321,11 +321,13 @@ export function Back({
   label,
   onPress,
   off = false,
+  besideShown = false,
   testID,
 }: {
   label?: string;
   onPress: () => void;
   off?: boolean | undefined;
+  besideShown?: boolean;
   testID?: string;
 }) {
   const { t } = useTranslation();
@@ -333,7 +335,7 @@ export function Back({
   const scale = backScale(fontScale, useContext(TitleCap));
   const place = label ?? t('settings.title');
   const back = pillBack(scale);
-  const word = useBackWord(place, back);
+  const word = useBackWord(place, back, besideShown);
 
   return (
     <>
