@@ -14,13 +14,13 @@ import {
   TextAction,
   TitleRow,
 } from '../components/SettingsParts.tsx';
-import { useLater } from '../useLater.ts';
 import { DemoBell } from './DemoBell.tsx';
 import { DemoOffline } from './DemoOffline.tsx';
 import { dataControlPath } from './dataControl.ts';
 import type { Viewer } from './settings.ts';
 import { SsoForm } from './SingleSignOnForm.tsx';
-import { CopyRows, DemoOnly, Refused, SsoMark, Switch } from './SingleSignOnParts.tsx';
+import { RecordRows } from './RecordRows.tsx';
+import { DemoOnly, Refused, SsoMark, Switch } from './SingleSignOnParts.tsx';
 import {
   type Ask as AskKind,
   type Form,
@@ -49,8 +49,6 @@ import {
   switched,
 } from './singleSignOn.ts';
 
-const TEST_MS = 3000;
-
 /** Sign-in rules › Single sign-on (sc-610): an owner connects the identity provider, tests it, then switches it on. */
 export function SingleSignOn({
   viewer,
@@ -64,7 +62,6 @@ export function SingleSignOn({
   tell: Tell;
 }) {
   const navigate = useNavigate();
-  const later = useLater();
   const [start] = useState(() => ssoStart(state, plan, clockOf(new Date())));
   const [sso, setSso] = useState<Sso>(start.sso);
   const [form, setForm] = useState<Form | null>(start.form);
@@ -77,18 +74,16 @@ export function SingleSignOn({
     if (start.told != null) tell(start.told);
   }, [start.told, tell]);
 
-  const passNow = () => {
-    setSso((now) => ({ ...now, test: 'passed', testedAt: clockOf(new Date()) }));
-  };
   const test = () => {
     setRefusal(null);
     setSso((now) => ({ ...now, test: 'running', testedAt: null }));
-    later(TEST_MS, passNow);
   };
   const comeBack = (worked: boolean) => {
-    later(0, () => undefined);
-    if (worked) passNow();
-    else setSso((now) => ({ ...now, test: 'failed' }));
+    setSso((now) =>
+      worked
+        ? { ...now, test: 'passed', testedAt: clockOf(new Date()) }
+        : { ...now, test: 'failed' },
+    );
   };
   const open = (next: Form | null) => {
     setForm(next);
@@ -223,10 +218,7 @@ export function SingleSignOn({
           <>
             <TextAction
               label={W.stopTesting}
-              onClick={() => {
-                later(0, () => undefined);
-                setSso({ ...sso, test: 'untested' });
-              }}
+              onClick={() => setSso({ ...sso, test: 'untested' })}
             />
             <DemoOnly>
               <p>{W.demoTab}</p>
@@ -279,7 +271,7 @@ export function SingleSignOn({
       </section>
       <section className="desk-block">
         <Head title={provider.protocol === 'saml' ? W.giveThese : W.giveThis} />
-        <CopyRows parts={ourValues(provider.protocol)} tell={tell} />
+        <RecordRows parts={ourValues(provider.protocol)} tell={tell} />
       </section>
       {asked != null && ask != null && (
         <Ask
@@ -287,7 +279,7 @@ export function SingleSignOn({
           line={asked.lines[0]}
           keep={asked.keep}
           go={asked.go}
-          red={false}
+          red={ask === 'remove'}
           onKeep={() => setAsk(null)}
           onGo={() => {
             setAsk(null);

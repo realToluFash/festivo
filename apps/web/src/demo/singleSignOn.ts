@@ -85,8 +85,6 @@ export const SSO_WORDS = {
   replyUrl: 'Reply URL',
   ourMetadata: 'Metadata URL',
   redirectUrl: 'Redirect URL',
-  copy: 'Copy',
-  copied: 'Copied.',
   cancel: 'Cancel',
   save: 'Save provider',
   test: 'Test sign-on',
@@ -190,6 +188,14 @@ export function faultsOf(draft: Draft): Faults {
       return fault == null ? [] : [[field, fault]];
     }),
   );
+}
+
+export function withFault(faults: Faults, field: FieldKey, fault: string | null): Faults {
+  const next = { ...faults };
+  if (fault == null) delete next[field];
+  else next[field] = fault;
+
+  return next;
 }
 
 export function discoveryAt(issuer: string): string {
@@ -811,7 +817,19 @@ export const SIGN_IN_SSO = {
   another: 'Sign in another way',
   demoGone: 'Demo: in the product this tab goes to Okta, and comes back here signed in.',
   back: 'Come back signed in',
+  ownerStill: `Demo: an owner’s own address, ${SAMPLE.email}, still signs in another way, and the other owners get an email.`,
+  seeEmail: 'See the email',
 } as const;
+
+export type SsoSignIn = 'handoff' | 'required';
+
+export function ssoSignInOf(state: string): SsoSignIn | null {
+  if (state === 'sso_handoff') return 'handoff';
+
+  return state === 'sso_required' ? 'required' : null;
+}
+
+export const BREAK_GLASS_PATH = '/demo/emails/sso-break-glass';
 
 export const BREAK_GLASS = {
   to: `The other owners of ${ORG}`,
@@ -819,7 +837,8 @@ export const BREAK_GLASS = {
   subject: `${SAMPLE.name} signed in to ${ORG} without Okta`,
   lines: [
     `${SAMPLE.name}, an owner, signed in to ${ORG} with a password at 09:14 on Thursday, Nov 19, without going through Okta.`,
-    `Owners can always do this, so a broken provider never locks ${ORG} out. If you did not expect it, check the audit log and talk to Folake.`,
+    `Owners can always do this, so a broken provider never locks ${ORG} out. The sign-in is recorded in the audit log.`,
+    'If you did not expect it, check the audit log and talk to Folake.',
   ],
   button: 'Open the audit log',
   foot: `You get this because you are an owner of ${ORG}.`,
@@ -841,6 +860,6 @@ export const SIGN_IN_SSO_PAGES: readonly { name: string; states: readonly DemoLi
   },
   {
     name: 'The break-glass email (sc-610)',
-    states: [{ to: '/demo/emails/sso-break-glass', name: 'An owner signed in without Okta' }],
+    states: [{ to: BREAK_GLASS_PATH, name: 'An owner signed in without Okta' }],
   },
 ];

@@ -2,12 +2,11 @@ import type { ReactNode } from 'react';
 import { useNavigate } from 'react-router';
 
 import { Glyph } from '../components/Glyph.tsx';
-import { RowWords, type Tell } from '../components/SettingsParts.tsx';
+import { RowWords } from '../components/SettingsParts.tsx';
 import { RuleMark } from '../components/SignInRulesParts.tsx';
-import { copyText, type Viewer } from './settings.ts';
+import type { Viewer } from './settings.ts';
 import {
   type RowMark,
-  SSO_WORDS as W,
   type Standing,
   type StatusKind,
   pageFor,
@@ -73,41 +72,6 @@ export function SsoRuleRow({ standing, viewer }: { standing: Standing; viewer: V
           <div className="desk-row">{words}</div>
         )}
       </li>
-    </ul>
-  );
-}
-
-/** Soirely's own values for the provider, each with Copy; Copied is said even where the browser keeps the clipboard shut. */
-export function CopyRows({
-  parts,
-  tell,
-}: {
-  parts: readonly { label: string; value: string }[];
-  tell: Tell;
-}) {
-  return (
-    <ul className="desk-rows">
-      {parts.map((part) => (
-        <li key={part.label} className="desk-row">
-          <span className="desk-row-words">
-            <span className="desk-row-line">{part.label}</span>
-            <span className="sso-value">{part.value}</span>
-          </span>
-          <button
-            type="button"
-            className="desk-text"
-            aria-label={`${W.copy} ${part.label}`}
-            onClick={() => {
-              void copyText(part.value)
-                .catch(() => undefined)
-                .finally(() => tell(W.copied));
-            }}
-          >
-            <Glyph name="copy" size={17} weight={2.3} />
-            {W.copy}
-          </button>
-        </li>
-      ))}
     </ul>
   );
 }

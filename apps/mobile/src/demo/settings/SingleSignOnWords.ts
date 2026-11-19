@@ -35,6 +35,7 @@ export const SSO_WORDS = {
   entityId: 'Entity ID',
   replyUrl: 'Reply URL (assertion consumer service)',
   redirectUrl: 'Redirect URL',
+  metadataUrl: 'Soirely metadata URL',
   copy: 'Copy',
   copyLabel: (label: string) => `Copy ${label}`,
   copied: 'Copied.',
@@ -129,4 +130,29 @@ export const SSO_WORDS = {
   seePlans: 'See plans',
   plansToast: 'Plans has its own design.',
   exempt: 'Sign-in through your organisation’s own single sign-on is exempt.',
+  copyFailed: 'Could not copy. Select the value and copy it.',
+  provider: 'Provider',
+  switches: 'Sign-in',
+  rowTitle: 'Single sign-on',
+} as const;
+
+export const SSO_SIGN_IN_WORDS = {
+  through: (name: string) => `${SSO_ORG} signs in through ${name}`,
+  throughLine: (name: string) =>
+    `Your address is at ${SSO_DOMAIN}, so ${name} signs you in. You will not need a Soirely password.`,
+  continueTo: (name: string) => `Continue to ${name}`,
+  anotherWay: 'Sign in another way',
+  backTo: (name: string) => `Sign in through ${name}`,
+  required: (name: string) => `${SSO_ORG} signs you in through ${name}.`,
+  requiredLine: `A password, Google and Apple are not used for ${SSO_DOMAIN}.`,
+  breakGlass: (name: string) =>
+    `As an owner you keep your own sign-in, in case ${name} is down. This sign-in is recorded and emailed to the other owners.`,
+  browserTitle: (name: string) => `Signing in through ${name}`,
+  stop: 'Cancel',
+  didNotWork: (name: string) =>
+    `${name} did not sign you in. Try again, or ask the people who run ${name} at ${SSO_ORG}.`,
+  viaDemo: (who: string) =>
+    `Stand-in for Google and Apple. Come back from either as ${who}; the demo opens nothing:`,
+  viaRefused: (via: string, name: string) =>
+    `${via} is not used for ${SSO_DOMAIN}. ${SSO_ORG} signs you in through ${name}.`,
 } as const;

@@ -2,7 +2,7 @@ import { type RefObject, useId, useRef, useState } from 'react';
 
 import { Glyph } from '../components/Glyph.tsx';
 import { Choices, Field, Head, Note, type Tell, TextAction } from '../components/SettingsParts.tsx';
-import { CopyRows } from './SingleSignOnParts.tsx';
+import { RecordRows } from './RecordRows.tsx';
 import {
   type Draft,
   type FieldKey,
@@ -18,6 +18,7 @@ import {
   protocolOf,
   providerOf,
   refusalOf,
+  withFault,
 } from './singleSignOn.ts';
 
 /** Pick SAML or OpenID Connect, then its fields: Save checks what it can before it sends, and the server's refusal lands under its field. */
@@ -56,11 +57,10 @@ export function SsoForm({
   const edit = (field: FieldKey, next: Draft) => {
     setDraft(next);
     if (refused?.field === field) setRefused(null);
-    if (shown[field] != null)
-      setShown((now) => ({ ...now, [field]: faultOf(next, field) ?? undefined }));
+    if (shown[field] != null) setShown((now) => withFault(now, field, faultOf(next, field)));
   };
   const left = (field: FieldKey) => {
-    if (pressed) setShown((now) => ({ ...now, [field]: faultOf(draft, field) ?? undefined }));
+    if (pressed) setShown((now) => withFault(now, field, faultOf(draft, field)));
   };
   const save = () => {
     const faults = faultsOf(draft);
@@ -122,7 +122,7 @@ export function SsoForm({
                 file={file}
                 onWay={(way) => {
                   setDraft({ ...draft, way });
-                  setShown((now) => ({ ...now, metadata: undefined }));
+                  setShown((now) => withFault(now, 'metadata', null));
                   setRefused(null);
                 }}
                 onEdit={(next) => edit('metadata', next)}
@@ -167,7 +167,7 @@ export function SsoForm({
           </div>
           <section className="desk-block">
             <Head title={draft.protocol === 'saml' ? W.giveThese : W.giveThis} level={3} />
-            <CopyRows parts={ourValues(draft.protocol)} tell={tell} />
+            <RecordRows parts={ourValues(draft.protocol)} tell={tell} />
           </section>
           <div className="sso-buttons">
             <TextAction label={W.cancel} onClick={onCancel} />

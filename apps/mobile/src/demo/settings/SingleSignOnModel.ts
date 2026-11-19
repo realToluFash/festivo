@@ -178,7 +178,39 @@ export function setupCancelled(model: SsoModel): SsoModel {
       setup: { protocol: null, typed: EMPTY, problems: {}, pressed: false },
     };
 
-  return { ...model, setup: null, previous: null };
+  return { ...model, setup: null };
+}
+
+function stillWrong(before: Problems, now: Problems): Problems {
+  const kept: Problems = {};
+  for (const field of Object.keys(before) as FieldKey[]) {
+    const problem = now[field];
+    if (problem != null) kept[field] = problem;
+  }
+
+  return kept;
+}
+
+/** Once Save was pressed, a field's problem goes as it is fixed; a new one waits for the next Save. */
+export function retyped(model: SsoModel, patch: Partial<Typed>): SsoModel {
+  const setup = model.setup;
+  if (setup?.protocol == null) return model;
+  const typed = { ...setup.typed, ...patch };
+  const problems = setup.pressed
+    ? stillWrong(setup.problems, formProblems(setup.protocol, typed))
+    : {};
+
+  return { ...model, setup: { ...setup, typed, problems } };
+}
+
+export function savePressed(model: SsoModel): SsoModel {
+  const setup = model.setup;
+  if (setup?.protocol == null) return model;
+
+  return {
+    ...model,
+    setup: { ...setup, pressed: true, problems: formProblems(setup.protocol, setup.typed) },
+  };
 }
 
 /** Saving switches nothing on: a change keeps the old provider on until the new one is tested and switched on. */
@@ -221,6 +253,14 @@ export function switched(model: SsoModel, next: boolean): SsoModel {
   if (model.required) return { ...model, refusal: 'switchOff' };
 
   return { ...model, on: false, refusal: null };
+}
+
+export function askKept(model: SsoModel): SsoModel {
+  return { ...model, ask: null };
+}
+
+export function requiredConfirmed(model: SsoModel): SsoModel {
+  return { ...model, required: true, ask: null, refusal: null };
 }
 
 export function requiredSwitched(model: SsoModel, next: boolean): SsoModel {
@@ -312,7 +352,8 @@ export function ssoCard(model: SsoModel): SsoCard | null {
       : { mark: 'notyet', word: W.notSetUp, says: W.notSetUpLine, lines: [], step: null };
   const says = `${provider.name} · ${protocolWord(provider.protocol)}`;
   const name = provider.name;
-  const lines = (more: readonly string[]) => [provider.source, ...more];
+  const staying = model.previous != null && !model.on ? [W.changeNote(model.previous.name)] : [];
+  const lines = (more: readonly string[]) => [provider.source, ...more, ...staying];
   const owner = model.owns;
 
   if (model.on && model.required)
@@ -561,3 +602,42 @@ export function ssoHref(
 
   return `/demo/settings/sign-in-rules/single-sign-on${parts.length === 0 ? '' : `?${parts.join('&')}`}`;
 }
+
+export const STANDINGS: readonly Standing[] = ['notSetUp', 'saved', 'on', 'required', 'free'];
+
+export function standingNamed(name: string | undefined): Standing | null {
+  return STANDINGS.find((standing) => standing === name) ?? null;
+}
+
+/** Where the Sign-in rules row opens: the page in the state the row stands at, as whoever is looking. */
+export function standingHref(standing: Standing, owns: boolean): string {
+  return ssoHref(STANDING_STATE[standing], {
+    plan: standing === 'free' ? 'free' : null,
+    as: owns ? null : 'julien',
+  });
+}
+
+const RULES_STATE: Record<Standing, string | null> = {
+  notSetUp: null,
+  saved: 'ssoSaved',
+  on: 'ssoOn',
+  required: 'ssoRequired',
+  free: 'ssoFree',
+};
+
+/** Back to Sign-in rules, its row standing where the page left it. */
+export function rulesHref(standing: Standing): string {
+  const state = RULES_STATE[standing];
+
+  return `/demo/settings/sign-in-rules${state == null ? '' : `?state=${state}`}`;
+}
+
+export const FIELD_OF: Record<keyof Typed, FieldKey> = {
+  name: 'name',
+  way: 'metadata',
+  url: 'metadata',
+  file: 'metadata',
+  issuer: 'issuer',
+  clientId: 'clientId',
+  secret: 'secret',
+};
