@@ -4489,7 +4489,7 @@
     "exportDownloaded": "Downloaded",
     "exportPreparingMine": "Preparing · we’ll email you",
     "exportPreparingOther": "Preparing · asked by {{name}}",
-    "exportFailed": "Didn’t finish"
+    "exportFailed": "Did not finish"
   },
   "exportAllData": {
     "title": "Export all data",
@@ -4531,7 +4531,7 @@
     "expiredSays": "Your export’s link has ended",
     "expiredLine": "It ended on {{when}} without a download. You can export again.",
     "failedSays": "Your export did not finish",
-    "failedLine": "Nothing was emailed, and it doesn’t count toward today’s export.",
+    "failedLine": "Nothing was emailed, and it does not count towards today’s export.",
     "preparingOtherSays": "Preparing {{organisation}}’s export",
     "preparingOtherLine": "Asked by {{name}}, {{when}}. Only they can download it.",
     "notOwnerSays": "Only an owner exports {{organisation}}’s data",
