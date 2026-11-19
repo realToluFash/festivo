@@ -458,7 +458,7 @@ function TopRow({
                   allowFontScaling={false}
                   numberOfLines={1}
                   accessible={false}
-                  style={styles.secondary}
+                  style={[styles.kept, styles.secondary]}
                 >
                   {` ${tail(rest)}`}
                 </Text>
@@ -536,6 +536,7 @@ const styles = StyleSheet.create({
   title: { flexShrink: 0 },
   value: { flex: 1, minWidth: 0, flexDirection: 'row', justifyContent: 'flex-end' },
   shrink: { flexShrink: 1 },
+  kept: { flexShrink: 0 },
   secondary: { color: tokens.colorInkSecondary },
   on: { color: tokens.colorAccentText },
   rule: { height: 1, marginVertical: tokens.spaceXs, backgroundColor: tokens.colorBorder },
