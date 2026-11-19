@@ -72,6 +72,7 @@ import {
   CoverCard,
   DueNext,
   EverythingDue,
+  QuotesNotLoaded,
   ReadOnlyLine,
   VendorPage,
   VendorsQuoted,
@@ -141,6 +142,8 @@ export function BudgetArea({ event }: { event: OrganisationEvent }) {
   const [paying, setPaying] = useState<EventQuote | null>(null);
   const [amending, setAmending] = useState<Amending | null>(null);
   const [removing, setRemoving] = useState<string | null>(null);
+  const [notRemoved, setNotRemoved] = useState(false);
+  const [retryingQuotes, setRetryingQuotes] = useState(false);
   const [earlier, setEarlier] = useState(false);
   const [told, setTold] = useState<string | null>(null);
   const viewed = useRef(false);
@@ -181,6 +184,7 @@ export function BudgetArea({ event }: { event: OrganisationEvent }) {
     setSeenView(viewKey);
     setAmending(null);
     setRemoving(null);
+    setNotRemoved(false);
     setEarlier(false);
   }
 
@@ -290,7 +294,9 @@ export function BudgetArea({ event }: { event: OrganisationEvent }) {
   const home = budgetPath(event.id);
   const vendorAt = (vendorId: string) => vendorPagePath(event.id, vendorId);
   const writes = quotes != null && quotes.entitled && canOn(event, 'budget.manage');
-  const readOnly = quotes != null && !quotes.entitled;
+  const readOnly = quotes != null && !quotes.entitled && quotes.quotes.length > 0;
+  const quotesShown =
+    quotesLoad.kind === 'failed' || (quotes != null && (quotes.entitled || readOnly));
   const tell = (words: string) => setTold(words);
 
   const crumb = (
@@ -353,16 +359,29 @@ export function BudgetArea({ event }: { event: OrganisationEvent }) {
     if (revised) setEarlier(false);
     tell(words);
   };
+  const retryQuotes = async () => {
+    if (retryingQuotes) return;
+    setRetryingQuotes(true);
+    try {
+      setQuotesLoad({ kind: 'loaded', quotes: await api.quotes(event.id) });
+      title.current?.focus();
+    } catch {
+      return;
+    } finally {
+      setRetryingQuotes(false);
+    }
+  };
   const removePayment = async (payment: ScheduledPayment) => {
     if (quotes == null) return;
     try {
       await api.removePayment(event.id, payment.id);
     } catch {
-      tell(t('budget.notRemoved'));
+      setNotRemoved(true);
       return;
     }
     await readQuotes();
     setRemoving(null);
+    setNotRemoved(false);
     title.current?.focus();
     tell(
       t('quotes.paymentRemoved', {
@@ -409,12 +428,17 @@ export function BudgetArea({ event }: { event: OrganisationEvent }) {
               quotes={quotes}
               writes={writes}
               readOnly={readOnly}
-              directory={can(session, 'vendors.read') ? '/app/settings/vendors' : null}
+              directory={
+                can(session, 'vendors.read')
+                  ? `/app/settings/vendors?vendor=${encodeURIComponent(shownQuote.vendor.id)}`
+                  : null
+              }
               event={event}
               back={home}
               titleRef={title}
               amending={amending}
               removing={removing}
+              notRemoved={notRemoved}
               earlier={earlier}
               onEarlier={setEarlier}
               onQuote={(form) => setQuoting({ form, quote: shownQuote })}
@@ -426,7 +450,10 @@ export function BudgetArea({ event }: { event: OrganisationEvent }) {
                   tell(words);
                 });
               }}
-              onRemoving={setRemoving}
+              onRemoving={(id) => {
+                setRemoving(id);
+                setNotRemoved(false);
+              }}
               onRemove={(payment) => void removePayment(payment)}
             />
           )}
@@ -539,14 +566,31 @@ export function BudgetArea({ event }: { event: OrganisationEvent }) {
                       }}
                     />
                   </div>
-                  {quotes != null && (
+                  {quotesShown && (
                     <div className="ev-right">
-                      <DueNext quotes={quotes} more={`${home}/due`} />
-                      <VendorsQuoted
-                        quotes={quotes}
-                        vendorAt={vendorAt}
-                        onAdd={writes ? () => setQuoting({ form: 'add', quote: null }) : null}
-                      />
+                      {quotes == null ? (
+                        <>
+                          <QuotesNotLoaded
+                            title={t('quotes.dueNext')}
+                            busy={retryingQuotes}
+                            onRetry={() => void retryQuotes()}
+                          />
+                          <QuotesNotLoaded
+                            title={t('quotes.vendorsQuoted')}
+                            busy={retryingQuotes}
+                            onRetry={() => void retryQuotes()}
+                          />
+                        </>
+                      ) : (
+                        <>
+                          <DueNext quotes={quotes} more={`${home}/due`} />
+                          <VendorsQuoted
+                            quotes={quotes}
+                            vendorAt={vendorAt}
+                            onAdd={writes ? () => setQuoting({ form: 'add', quote: null }) : null}
+                          />
+                        </>
+                      )}
                     </div>
                   )}
                 </div>

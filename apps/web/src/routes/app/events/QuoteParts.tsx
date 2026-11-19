@@ -194,17 +194,23 @@ export function ReadOnlyLine() {
 
 function AskInRow({
   question,
+  problem = null,
   onKeep,
   onGo,
 }: {
   question: string;
+  problem?: string | null;
   onKeep: () => void;
   onGo: () => void;
 }) {
   const { t } = useTranslation();
   const first = useRef<HTMLButtonElement>(null);
+  const again = useRef<HTMLButtonElement>(null);
 
   useEffect(() => first.current?.focus(), []);
+  useEffect(() => {
+    if (problem != null) again.current?.focus();
+  }, [problem]);
 
   return (
     <div className="bt-ask" role="group" aria-label={question}>
@@ -212,9 +218,15 @@ function AskInRow({
       <button ref={first} type="button" className="desk-text" onClick={onKeep}>
         {t('quotes.keep')}
       </button>
-      <button type="button" className="desk-text is-red" onClick={onGo}>
+      <button ref={again} type="button" className="desk-text is-red" onClick={onGo}>
         {t('budget.remove')}
       </button>
+      {problem != null && (
+        <p className="desk-error bt-ask-problem" role="alert">
+          <Glyph name="alert" size={15} weight={2.2} />
+          {problem}
+        </p>
+      )}
     </div>
   );
 }
@@ -242,6 +254,26 @@ function DueRow({ due, currency, to }: { due: DuePayment; currency: string; to?:
       end={<Amount value={minorMoney(due.amount, currency, locale)} />}
       {...(to == null ? {} : { to })}
     />
+  );
+}
+
+/** Due next or Vendors quoted when the event's quotes and payments did not load: the block keeps its place, says so and offers Try again. */
+export function QuotesNotLoaded({
+  title,
+  busy,
+  onRetry,
+}: {
+  title: string;
+  busy: boolean;
+  onRetry: () => void;
+}) {
+  const { t } = useTranslation();
+
+  return (
+    <Block title={title}>
+      <p className="desk-line is-ink">{t('quotes.notLoaded')}</p>
+      <TextAction label={t(busy ? 'quotes.tryingAgain' : 'budget.tryAgain')} onClick={onRetry} />
+    </Block>
   );
 }
 
@@ -387,6 +419,7 @@ export function VendorPage({
   titleRef,
   amending,
   removing,
+  notRemoved,
   earlier,
   onEarlier,
   onQuote,
@@ -407,6 +440,7 @@ export function VendorPage({
   titleRef: RefObject<HTMLHeadingElement | null>;
   amending: Amending | null;
   removing: string | null;
+  notRemoved: boolean;
   earlier: boolean;
   onEarlier: (open: boolean) => void;
   onQuote: (form: 'revise' | 'correct') => void;
@@ -497,6 +531,7 @@ export function VendorPage({
                       writes={writes}
                       amending={amending?.id === one.id ? amending : null}
                       removing={removing === one.id}
+                      notRemoved={removing === one.id && notRemoved}
                       onAmending={onAmending}
                       onAmended={onAmended}
                       onRemoving={(asking) => onRemoving(asking ? one.id : null)}
@@ -592,6 +627,7 @@ function ScheduleRow({
   writes,
   amending,
   removing,
+  notRemoved,
   onAmending,
   onAmended,
   onRemoving,
@@ -604,6 +640,7 @@ function ScheduleRow({
   writes: boolean;
   amending: Amending | null;
   removing: boolean;
+  notRemoved: boolean;
   onAmending: (next: Amending | null) => void;
   onAmended: (words: string) => void;
   onRemoving: (asking: boolean) => void;
@@ -651,6 +688,7 @@ function ScheduleRow({
       {!writes ? null : removing ? (
         <AskInRow
           question={t('quotes.removeAsk')}
+          problem={notRemoved ? t('budget.notRemoved') : null}
           onKeep={() => {
             onRemoving(false);
             backToChange();

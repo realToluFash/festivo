@@ -5290,7 +5290,9 @@
     "quoteCorrectedNumber": "Quote corrected: {{vendor}}, quote {{number}}. The amount, the date quoted and the schedule are unchanged.",
     "paymentAdded": "Payment added: {{what}}, {{amount}}, due on {{day}}.",
     "paymentChanged": "Payment changed: {{what}}, {{amount}}, due on {{day}}.",
-    "paymentRemoved": "Payment removed: {{what}}, {{amount}}."
+    "paymentRemoved": "Payment removed: {{what}}, {{amount}}.",
+    "notLoaded": "Quotes and payments did not load. Check your connection and try again.",
+    "tryingAgain": "Trying again…"
   },
   "managed": {
     "title": "Managed by {{organisation}}",
