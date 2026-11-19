@@ -14,6 +14,7 @@ import type { WaitingInvitations } from '../invitations.ts';
 import type { DomainOffer } from '../joinOffers.ts';
 import { leaveMenu } from '../leaving.ts';
 import { focusStep } from '../stepFocus.ts';
+import { ManagedBanner } from './Managed.tsx';
 import { Notice } from './Notice.tsx';
 import {
   InvitationActions,
@@ -168,7 +169,9 @@ export function OrganisationSwitcher({
     ...waiting.invitations
       .filter(
         (invitation) =>
-          waiting.outcomes[invitation.id]?.kind !== 'accepted' && !answered.includes(invitation.id),
+          waiting.outcomes[invitation.id]?.kind !== 'accepted' &&
+          (waiting.outcomes[invitation.id]?.kind === 'managed' ||
+            !answered.includes(invitation.id)),
       )
       .map((invitation): MenuTile => ({
         kind: 'invitation',
@@ -302,6 +305,11 @@ function InvitationPanel({
           busy={outcome?.kind === 'busy' ? outcome.answer : null}
           onAccept={() => void reply('accept')}
           onDecline={() => void reply('decline')}
+        />
+      ) : outcome?.kind === 'managed' ? (
+        <ManagedBanner
+          managed={{ organisation: { name: outcome.organisation }, message: outcome.message }}
+          level={3}
         />
       ) : outcome?.kind === 'declined' ? (
         <Notice kind="quiet" lands>

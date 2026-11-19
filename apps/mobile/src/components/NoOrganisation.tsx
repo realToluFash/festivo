@@ -6,6 +6,7 @@ import { useTranslation } from 'react-i18next';
 
 import { useWaitingInvitations } from '../invitations.ts';
 import { SECTION_HREF } from '../kit/appNav.ts';
+import { noOrganisationEnd } from '../kit/orgSwitcher.ts';
 import { useLayout } from '../layout/useLayout.ts';
 import { signOutHere, useSignedIn } from '../signedIn.ts';
 import { switchByTap } from '../tappedSwitch.ts';
@@ -13,11 +14,12 @@ import { tokens } from '../theme/tokens.ts';
 import { useStartOrganisation } from './AppFrame.tsx';
 import { Footnote, PrimaryButton, QuietButton } from './Buttons.tsx';
 import { InvitationRows } from './InvitationRows.tsx';
+import { ManagedBanner } from './ManagedBanner.tsx';
 import { cardFrame } from './cardFrame.ts';
 import { Text, type TextHandle } from './Text.tsx';
 import { Title } from './Title.tsx';
 
-/** `OrgSwitcher-*` Tweak `no_org_invitation`: an account in no organisation, with any invitation waiting for it, as the web's `NoOrganisation`. */
+/** `OrgSwitcher-*` Tweak `no_org_invitation`: an account in no organisation, with any invitation waiting for it, as the web's `NoOrganisation`. A managed account reads sc-563's banner where Start your own was. */
 export function NoOrganisation({
   titleRef,
 }: {
@@ -32,6 +34,7 @@ export function NoOrganisation({
   const startButton = useRef<ViewInstance>(null);
   const email = account == null ? '' : (primaryEmailAddress(account) ?? '');
   const listed = waiting.invitations.length > 0;
+  const end = noOrganisationEnd(startOrganisation?.managed);
 
   return (
     <View style={[cardFrame(kind), styles.card]} testID="noOrganisation">
@@ -49,7 +52,14 @@ export function NoOrganisation({
       ) : (
         <Text size={tokens.typeBodyPhone.size}>{t('noOrganisation.wayOn', { email })}</Text>
       )}
-      {startOrganisation != null && (
+      {end === 'managed' && startOrganisation?.managed != null && (
+        <ManagedBanner
+          organisation={startOrganisation.managed.organisation.name}
+          message={startOrganisation.managed.message}
+          testID="noOrganisation.managed"
+        />
+      )}
+      {end === 'start' && startOrganisation != null && (
         <View style={styles.start}>
           <Text size={tokens.typeTitleSection.size} weight="bold" accessibilityRole="header">
             {t('noOrganisation.startTitle')}
@@ -58,7 +68,7 @@ export function NoOrganisation({
           <View style={styles.startAction}>
             <PrimaryButton
               label={t('noOrganisation.start')}
-              onPress={() => startOrganisation(startButton)}
+              onPress={() => startOrganisation.open(startButton)}
               ref={startButton}
               testID="noOrganisation.start"
             />

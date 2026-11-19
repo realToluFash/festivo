@@ -620,6 +620,12 @@ describe('Data and control › Email domains › Only our organisation (sc-563)'
   };
   const on: EmailDomain = { ...scheduled, onlyOurs: 'on' };
 
+  async function findOnly(): Promise<HTMLElement> {
+    return (
+      await screen.findByText('Only our organisation', { selector: '.desk-row-name' })
+    ).closest('li') as HTMLElement;
+  }
+
   function only(): HTMLElement {
     return screen
       .getByText('Only our organisation', { selector: '.desk-row-name' })
@@ -681,6 +687,15 @@ describe('Data and control › Email domains › Only our organisation (sc-563)'
     expect(await screen.findByText('Only our organisation was cancelled')).toBeDefined();
     expect(screen.getByText('Nothing changes for the accounts at ire.events.')).toBeDefined();
     expect(screen.queryByRole('dialog')).toBeNull();
+  });
+
+  it('says since when it is on, in the order the device writes dates, as the demo does', async () => {
+    vi.spyOn(navigator, 'language', 'get').mockReturnValue('en-GB');
+    signedIn();
+    answering({ [PAGE]: () => json(page([on])) });
+    open();
+
+    expect(await within(await findOnly()).findByText('On since Saturday 31 Oct')).toBeDefined();
   });
 
   it('switching it off applies at once', async () => {

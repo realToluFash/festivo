@@ -500,3 +500,34 @@ describe('where focus goes on No organisation (sc-11369)', () => {
     expect(notice?.getAttribute('role')).toBeNull();
   });
 });
+
+describe('No organisation for a managed account (sc-563)', () => {
+  it('has the banner where Start your own was, and nothing else changes', async () => {
+    inNone();
+    answering({
+      'GET /api/invitations': () => json({ invitations: [] }),
+      'GET /api/join-offers': () =>
+        json({
+          domain: 'ire.events',
+          offers: [],
+          request: null,
+          managed: {
+            domain: 'ire.events',
+            organisation: { id: 'org_1', name: 'Ìrè Events' },
+            message:
+              'Your ire.events address is managed by Ìrè Events, so you can only be a member there.',
+          },
+        }),
+    });
+    app();
+
+    expect(await screen.findByRole('heading', { name: 'Managed by Ìrè Events' })).toBeDefined();
+    expect(screen.getByText('Access to a single event still works.')).toBeDefined();
+    expect(
+      screen.getByRole('link', { name: 'Change your main email address' }).getAttribute('href'),
+    ).toBe('/app/account');
+    expect(screen.queryByRole('button', { name: 'Start organisation' })).toBeNull();
+    expect(screen.getByRole('heading', { name: 'You are not in an organisation' })).toBeDefined();
+    expect(screen.getByText('Signed in as chidi@ire.events.')).toBeDefined();
+  });
+});

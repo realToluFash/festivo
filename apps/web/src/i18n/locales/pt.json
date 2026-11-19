@@ -3704,7 +3704,7 @@
     "group": "Grupo",
     "noGroup": "Sem grupo",
     "newGroup": "Novo grupo",
-    "placeholder": "Por exemplo, Família da noiva ou Trabalho",
+    "placeholder": "Ex.: Família ou Trabalho",
     "createGroup": "Criar grupo",
     "createNamed": "Criar «{{name}}»",
     "chooserHint": "Escolha um grupo ou escreva um nome novo.",

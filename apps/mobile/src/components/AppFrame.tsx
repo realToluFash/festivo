@@ -1,4 +1,9 @@
-import { type Membership, type OutsideEvent, primaryEmailAddress } from '@soirely/api-client';
+import {
+  type ManagedAccount,
+  type Membership,
+  type OutsideEvent,
+  primaryEmailAddress,
+} from '@soirely/api-client';
 import {
   PHONE_EVENT_TABS,
   createNewOrganisation,
@@ -190,11 +195,15 @@ export function useFrameOrgOpener(ref: OpenerRef, primary = true): OrgOpening {
   };
 }
 
-type OrganisationStart = Opening;
+interface OrganisationStart {
+  open: Opening;
+  /** sc-563: undefined until the API has said, and then the refusal a managed account reads instead. */
+  managed: ManagedAccount | null | undefined;
+}
 
 const StartOrganisation = createContext<OrganisationStart | undefined>(undefined);
 
-/** Opens the frame's Create an organisation sheet, as the switcher's last row does (sc-5932). */
+/** Opens the frame's Create an organisation sheet, as the switcher's last row does (sc-5932), unless the account is managed. */
 export function useStartOrganisation(): OrganisationStart | undefined {
   return useContext(StartOrganisation);
 }
@@ -627,7 +636,9 @@ export function AppFrame({
                 <TitleCap.Provider value={cap}>
                   {!ownTop && switchedNotice}
                   <OpenSwitcher.Provider value={openSwitcher}>
-                    <StartOrganisation.Provider value={startOrganisation}>
+                    <StartOrganisation.Provider
+                      value={{ open: startOrganisation, managed: offer.managed }}
+                    >
                       <HideBack.Provider value={backRow.hide}>
                         <EdgeSwipeStrip.Provider value={setEdgeSwipe}>
                           {standIn === 'paused' && signedIn.pausedIn != null ? (

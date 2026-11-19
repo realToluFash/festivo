@@ -46,6 +46,13 @@ export interface Session {
   managed?: string | undefined;
 }
 
+/** sc-563: what You are not in an organisation offers last, nothing until the API has said whether the account is managed. */
+export function noOrganisationEnd(managed: DomainOffer['managed']): 'managed' | 'start' | null {
+  if (managed === undefined) return null;
+
+  return managed === null ? 'start' : 'managed';
+}
+
 export function waitingOf(session: Session): number {
   return waitingInvitations(session.invitations, session.outcomes);
 }

@@ -31,6 +31,7 @@ import {
 } from '../../../components/SettingsParts.tsx';
 import { Toast } from '../../../components/Toast.tsx';
 import { useDeskTop } from '../../../deskTop.ts';
+import { dateLocale } from '../../../i18n/index.ts';
 import { focusWhenFree, useDeskLayers } from '../../../layers.ts';
 import { can, useSession } from '../../../session.ts';
 import { Forbidden } from '../Forbidden.tsx';
@@ -76,7 +77,7 @@ function DomainsDesk({
   example: string;
   zone: string | null;
 }) {
-  const { t, i18n } = useTranslation();
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const desk = useDeskTop();
   const { layers, covered, setHost } = useDeskLayers();
@@ -118,7 +119,7 @@ function DomainsDesk({
             onPage={show}
             tell={setTold}
             day={(at) =>
-              new Intl.DateTimeFormat(i18n.language, {
+              new Intl.DateTimeFormat(dateLocale(), {
                 weekday: 'long',
                 month: 'short',
                 day: 'numeric',
