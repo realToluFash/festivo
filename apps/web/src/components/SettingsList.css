@@ -123,6 +123,10 @@
   background: var(--optionGreen);
 }
 
+.desk-tile.is-data {
+  background: color-mix(in srgb, var(--optionBlue) 55%, var(--optionTeal));
+}
+
 .desk-sections {
   margin: 0;
   padding: 0;

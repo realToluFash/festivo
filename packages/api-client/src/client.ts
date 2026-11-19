@@ -66,6 +66,7 @@ import {
   vendorsQuery,
 } from './vendors.ts';
 import { ApiError, ApiUnreachableError, type Problem, toProblem } from './problem.ts';
+import { type OrganisationExportPage, asOrganisationExportPage } from './organisationExport.ts';
 import {
   asSeating,
   asSeatingMoved,
@@ -1871,6 +1872,45 @@ export class ApiClient {
     if (page == null) {
       throw new Error(
         'The API answered /api/orgs/{id}/sign-in-rules in a shape this client does not know. Check SignInRulesController in services/api.',
+      );
+    }
+
+    return page;
+  }
+
+  /** Data and control › Export all data (sc-612): an Owner's or an Admin's read; a Member is refused. */
+  async organisationExport(organisationId: string): Promise<OrganisationExportPage> {
+    return this.readOrganisationExport(
+      await this.get<unknown>(`/api/orgs/${encodeURIComponent(organisationId)}/export`),
+    );
+  }
+
+  /** Refused `owner_required` for anyone but an Owner, and `too_many_attempts` with `retryAt` within 24 hours of the last. */
+  async askOrganisationExport(organisationId: string): Promise<OrganisationExportPage> {
+    return this.readOrganisationExport(
+      await this.post<unknown>(`/api/orgs/${encodeURIComponent(organisationId)}/export`),
+    );
+  }
+
+  /** The archive, once, for the Owner who asked: 404 for anyone else, `export_used` or `export_expired` after. */
+  async downloadOrganisationExport(
+    organisationId: string,
+    exportId: string,
+  ): Promise<Uint8Array<ArrayBuffer>> {
+    const response = await this.answered(
+      `/api/orgs/${encodeURIComponent(organisationId)}/export/${encodeURIComponent(exportId)}/download`,
+      { method: 'POST' },
+    );
+
+    return new Uint8Array(await response.arrayBuffer());
+  }
+
+  private readOrganisationExport(raw: unknown): OrganisationExportPage {
+    const page = asOrganisationExportPage(raw);
+
+    if (page == null) {
+      throw new Error(
+        'The API answered /api/orgs/{id}/export in a shape this client does not know. Check ExportController in services/api.',
       );
     }
 
