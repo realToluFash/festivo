@@ -34,7 +34,7 @@ import { useHubTopics } from './useHubTopics.ts';
 import { useStartingCountry } from './useStartingCountry.ts';
 import { StaffTabs } from './StaffTabs.tsx';
 import { StationSelect } from './StationsArea.tsx';
-import { stationLabel } from './stationWords.ts';
+import { stationGroups, stationLabel } from './stationWords.ts';
 import { type StaffTimes, rangeWords, staffTimes } from './staffTimes.ts';
 import { useDeskTop } from '../../../deskTop.ts';
 import '../../../components/SettingsParts.css';
@@ -701,6 +701,8 @@ function PanelTop({ title, onClose }: { title: string; onClose: () => void }) {
 
 function StationWords({ entry }: { entry: StaffEntry }) {
   const { t } = useTranslation();
+  if (entry.stationRemoved != null)
+    return <>{t('stations.removedTitle', { name: entry.stationRemoved })}</>;
   if (entry.station == null) return <>{t('roster.noStation')}</>;
 
   return (
@@ -778,18 +780,16 @@ function Details({
                   label={t('stations.stationChange', { name: entry.fullName })}
                   value={entry.station?.id ?? ''}
                   shown={
-                    entry.station == null ? t('roster.noStation') : stationLabel(entry.station, t)
+                    entry.stationRemoved != null
+                      ? t('stations.removedTitle', { name: entry.stationRemoved })
+                      : entry.station == null
+                        ? t('roster.noStation')
+                        : stationLabel(entry.station, t)
                   }
                   dense
                   onChange={onStation}
-                  options={[
-                    { value: '', label: t('roster.noStation') },
-                    ...plan.stations.places.map((one) => ({ value: one.id, label: one.name })),
-                    ...plan.stations.sections.map((one) => ({
-                      value: one.id,
-                      label: stationLabel({ ...one, kind: 'section' }, t),
-                    })),
-                  ]}
+                  options={[{ value: '', label: t('roster.noStation') }]}
+                  groups={stationGroups(plan.stations, t)}
                 />
               ) : (
                 <StationWords entry={entry} />

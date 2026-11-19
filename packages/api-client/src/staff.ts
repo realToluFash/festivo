@@ -14,12 +14,18 @@ export interface StaffEntryShift {
 
 export type StationKind = 'place' | 'section';
 
-/** A section's `name` is bare ("Section A"); the client writes its table count beside it. */
+/** A seating table, by the seating plan's id and name. */
+export interface StationTable {
+  id: string;
+  name: string;
+}
+
+/** A section's `name` is bare ("Section A"); the client writes its table count beside it. A place has no tables. */
 export interface StationRef {
   id: string;
   name: string;
   kind: StationKind;
-  tables: number;
+  tables: StationTable[];
 }
 
 export interface StaffEntry {
@@ -65,7 +71,7 @@ export interface StationPlace {
 export interface StationSection {
   id: string;
   name: string;
-  tables: number;
+  tables: StationTable[];
   people: string[];
   lead: string | null;
 }
@@ -150,14 +156,22 @@ function asEntryShift(raw: unknown): StaffEntryShift | null {
     : null;
 }
 
+function asStationTable(raw: unknown): StationTable | null {
+  if (!isRecord(raw)) return null;
+  const { id, name } = raw;
+
+  return typeof id === 'string' && typeof name === 'string' ? { id, name } : null;
+}
+
 function asStationRef(raw: unknown): StationRef | null {
   if (!isRecord(raw)) return null;
-  const { id, name, kind, tables } = raw;
+  const { id, name, kind } = raw;
+  const tables = every(raw.tables, asStationTable);
 
   return typeof id === 'string' &&
     typeof name === 'string' &&
     KINDS.includes(kind as StationKind) &&
-    typeof tables === 'number'
+    tables != null
     ? { id, name, kind: kind as StationKind, tables }
     : null;
 }
@@ -262,11 +276,12 @@ function asStationPlace(raw: unknown): StationPlace | null {
 
 function asStationSection(raw: unknown): StationSection | null {
   if (!isRecord(raw)) return null;
-  const { id, name, tables, people, lead } = raw;
+  const { id, name, people, lead } = raw;
+  const tables = every(raw.tables, asStationTable);
 
   return typeof id === 'string' &&
     typeof name === 'string' &&
-    typeof tables === 'number' &&
+    tables != null &&
     strings(people) &&
     text(lead)
     ? { id, name, tables, people, lead }

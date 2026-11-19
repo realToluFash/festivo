@@ -2,6 +2,9 @@ import { describe, expect, it } from 'vitest';
 
 import { asStaffPlan } from './staff.ts';
 
+const tablesOf = (count: number) =>
+  Array.from({ length: count }, (_, n) => ({ id: `t${n + 1}`, name: `T${n + 1}` }));
+
 const entry = {
   id: 's1',
   fullName: 'Sade Lawal',
@@ -61,14 +64,14 @@ describe('asStaffPlan', () => {
   });
 
   it('reads stations, and a person on a section who leads it (sc-3910)', () => {
-    const section = { id: 'sa', name: 'Section A', kind: 'section', tables: 6 };
+    const section = { id: 'sa', name: 'Section A', kind: 'section', tables: tablesOf(6) };
     const onIt = { ...entry, station: section, stations: [section], leads: true };
     const stations = {
       places: [
         { id: 'pass', name: 'Pass', pass: true, people: [], lead: null, dishes: 1 },
         { id: 'grill', name: 'Grill', pass: false, people: [], lead: null, dishes: 1 },
       ],
-      sections: [{ id: 'sa', name: 'Section A', tables: 6, people: ['s1'], lead: 's1' }],
+      sections: [{ id: 'sa', name: 'Section A', tables: tablesOf(6), people: ['s1'], lead: 's1' }],
       floorLead: 's1',
       courses: [
         {
@@ -92,7 +95,7 @@ describe('asStaffPlan', () => {
 
   it('refuses a plan without stations, and a station of a kind it does not know', () => {
     const { stations: _, ...withoutStations } = plan;
-    const odd = { ...entry, station: { id: 'x', name: 'X', kind: 'zone', tables: 0 } };
+    const odd = { ...entry, station: { id: 'x', name: 'X', kind: 'zone', tables: [] } };
 
     expect(asStaffPlan(withoutStations)).toBeNull();
     expect(asStaffPlan({ ...plan, staff: [odd] })).toBeNull();

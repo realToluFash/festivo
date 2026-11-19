@@ -7,6 +7,9 @@ import { OWNER_PERMISSIONS, membership } from '../../../test-memberships.ts';
 import { routes } from '../../index.tsx';
 import { cssRule, stylesheet } from '../../../test-styles.ts';
 
+const tablesOf = (count: number) =>
+  Array.from({ length: count }, (_, n) => ({ id: `t${n + 1}`, name: `T${n + 1}` }));
+
 const ROSTER_CSS = stylesheet(import.meta.dirname, 'roster.css');
 
 const IRE = membership({ id: 'org_1', name: 'Ìrè Events' });
@@ -411,8 +414,8 @@ describe('The Roster on the Staff page (sc-3906)', () => {
 
   it('writes each station in the Station column, a section with its tables and a lead in words (sc-3910)', async () => {
     signedIn();
-    const grill = { id: 'grill', name: 'Grill', kind: 'place', tables: 0 };
-    const sectionA = { id: 'sa', name: 'Section A', kind: 'section', tables: 6 };
+    const grill = { id: 'grill', name: 'Grill', kind: 'place', tables: [] };
+    const sectionA = { id: 'sa', name: 'Section A', kind: 'section', tables: tablesOf(6) };
     await onRoster({
       'GET /api/events/ev_1/staff': () =>
         json({
@@ -420,6 +423,7 @@ describe('The Roster on the Staff page (sc-3906)', () => {
             entry('st_1', 'Tayo Bamidele', { station: grill, stations: [grill], leads: true }),
             entry('st_2', 'Grace Udo', { station: sectionA, stations: [sectionA] }),
             entry('st_3', 'Emeka Obi'),
+            entry('st_4', 'Kunle Ajayi', { stationRemoved: 'Section D' }),
           ],
           jobs: [],
           shifts: [],
@@ -431,18 +435,40 @@ describe('The Roster on the Staff page (sc-3906)', () => {
     expect(rows[0]?.querySelectorAll('td')[1]?.textContent).toBe('Grill Lead');
     expect(rows[1]?.querySelectorAll('td')[1]?.textContent).toBe('Section A · 6 tables');
     expect(rows[2]?.querySelectorAll('td')[1]?.textContent).toBe('No station yet');
+    expect(rows[3]?.querySelectorAll('td')[1]?.textContent).toBe(
+      'Section D was removed from the seating plan.',
+    );
+  });
+
+  it("says in the details that a person's section was removed from the seating plan (sc-3910)", async () => {
+    signedIn();
+    await onRoster({
+      'GET /api/events/ev_1/staff': () =>
+        json({
+          staff: [entry('st_1', 'Grace Udo', { stationRemoved: 'Section D' })],
+          jobs: [],
+          shifts: [],
+          stations: NO_STATIONS,
+        }),
+    });
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Grace Udo' }));
+    const select = screen.getByRole('combobox', { name: 'Change station, Grace Udo' });
+    expect(select.parentElement?.textContent).toContain(
+      'Section D was removed from the seating plan.',
+    );
   });
 
   it("changes a person's station from their details, places then sections (sc-3910)", async () => {
     signedIn();
-    const sectionB = { id: 'sb', name: 'Section B', kind: 'section', tables: 1 };
+    const sectionB = { id: 'sb', name: 'Section B', kind: 'section', tables: tablesOf(1) };
     const stations = {
       ...NO_STATIONS,
       places: [
         { id: 'pass', name: 'Pass', pass: true, people: [], lead: null, dishes: 0 },
         { id: 'bar', name: 'Bar', pass: false, people: [], lead: null, dishes: 0 },
       ],
-      sections: [{ id: 'sb', name: 'Section B', tables: 1, people: [], lead: null }],
+      sections: [{ id: 'sb', name: 'Section B', tables: tablesOf(1), people: [], lead: null }],
     };
     const sent = await onRoster({
       'GET /api/events/ev_1/staff': () =>
@@ -467,6 +493,15 @@ describe('The Roster on the Staff page (sc-3906)', () => {
       'Bar',
       'Section B · 1 table',
     ]);
+    expect(
+      [...select.querySelectorAll('optgroup')].map((group) => [
+        group.label,
+        [...group.querySelectorAll('option')].map((one) => one.textContent),
+      ]),
+    ).toEqual([
+      ['Places', ['Pass', 'Bar']],
+      ['Seating sections', ['Section B · 1 table']],
+    ]);
     fireEvent.change(select, { target: { value: 'sb' } });
 
     expect(await screen.findAllByText('Funmi Bakare is on Section B · 1 table.')).not.toHaveLength(
@@ -479,7 +514,7 @@ describe('The Roster on the Staff page (sc-3906)', () => {
 
   it('shows the station as words, with no select, without permission to manage staff (sc-3910)', async () => {
     signedIn();
-    const bar = { id: 'bar', name: 'Bar', kind: 'place', tables: 0 };
+    const bar = { id: 'bar', name: 'Bar', kind: 'place', tables: [] };
     await onRoster(
       {
         'GET /api/events/ev_1/staff': () =>

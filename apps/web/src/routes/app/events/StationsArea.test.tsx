@@ -6,6 +6,9 @@ import { __setSessionState, type Session } from '../../../session.ts';
 import { OWNER_PERMISSIONS, membership } from '../../../test-memberships.ts';
 import { routes } from '../../index.tsx';
 
+const tablesOf = (count: number) =>
+  Array.from({ length: count }, (_, n) => ({ id: `t${n + 1}`, name: `T${n + 1}` }));
+
 const IRE = membership({ id: 'org_1', name: 'Ìrè Events' });
 
 const EVENT = {
@@ -74,14 +77,19 @@ function json(body: unknown, status = 200): Response {
 
 type Answer = (body: unknown) => Response | Promise<Response>;
 
-type Ref = { id: string; name: string; kind: 'place' | 'section'; tables: number };
+type Ref = {
+  id: string;
+  name: string;
+  kind: 'place' | 'section';
+  tables: { id: string; name: string }[];
+};
 
-const place = (id: string, name: string): Ref => ({ id, name, kind: 'place', tables: 0 });
+const place = (id: string, name: string): Ref => ({ id, name, kind: 'place', tables: [] });
 const section = (id: string, name: string, tables: number): Ref => ({
   id,
   name,
   kind: 'section',
-  tables,
+  tables: tablesOf(tables),
 });
 
 function person(id: string, fullName: string, at: Ref | null, more: Record<string, unknown> = {}) {
@@ -138,9 +146,9 @@ const STATIONS = {
     { id: 'pastry', name: 'Pastry', pass: false, people: [], lead: null, dishes: 1 },
   ],
   sections: [
-    { id: 'sa', name: 'Section A', tables: 6, people: ['grace'], lead: 'grace' },
-    { id: 'sb', name: 'Section B', tables: 1, people: [], lead: null },
-    { id: 'sc', name: 'Section C', tables: 0, people: [], lead: null },
+    { id: 'sa', name: 'Section A', tables: tablesOf(6), people: ['grace'], lead: 'grace' },
+    { id: 'sb', name: 'Section B', tables: tablesOf(1), people: [], lead: null },
+    { id: 'sc', name: 'Section C', tables: tablesOf(0), people: [], lead: null },
   ],
   floorLead: 'ifeoma',
   courses: [
@@ -345,6 +353,24 @@ describe('Stations on the Staff page (sc-3910)', () => {
 
     expect(await screen.findByText('Stage removed.')).toBeDefined();
     expect(screen.queryByText('Nobody on Stage')).toBeNull();
+  });
+
+  it('asks in one sentence when one person and an item go with a place', async () => {
+    signedIn();
+    const places = STATIONS.places.map((one) =>
+      one.id === 'kitchen' ? { ...one, people: ['emeka'] } : one,
+    );
+    await onStations({
+      'GET /api/events/ev_1/staff': () => json({ ...PLAN, stations: { ...STATIONS, places } }),
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Remove Kitchen…' }));
+
+    expect(
+      screen.getByText(
+        'Remove Kitchen? 1 person loses their station, and its 1 item goes to the Pass.',
+      ),
+    ).toBeDefined();
   });
 
   it("refuses a blank name, a place's name and a section's name before sending, then adds the place", async () => {

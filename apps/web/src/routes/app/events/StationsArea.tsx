@@ -6,6 +6,7 @@ import {
   type StaffPlan,
   type StationCourse,
   type StationKind,
+  type StationTable,
   asStaffPlan,
   realtimeTopic,
 } from '@soirely/api-client';
@@ -46,7 +47,7 @@ interface Station {
   id: string;
   name: string;
   kind: StationKind;
-  tables: number;
+  tables: StationTable[];
   pass: boolean;
   people: string[];
   lead: string | null;
@@ -55,7 +56,7 @@ interface Station {
 
 function stationsOf(plan: StaffPlan): Station[] {
   return [
-    ...plan.stations.places.map((one) => ({ ...one, kind: 'place' as const, tables: 0 })),
+    ...plan.stations.places.map((one) => ({ ...one, kind: 'place' as const, tables: [] })),
     ...plan.stations.sections.map((one) => ({
       ...one,
       kind: 'section' as const,
@@ -437,11 +438,12 @@ function Stations({
   function askLine(place: Station): string {
     const people = place.people.length;
     const items = place.dishes;
-    const lose = t('stations.loseStation', { count: people });
-    const go = t('stations.goToPass', { count: items });
-    if (people > 0 && items > 0) return t('stations.removeAskBoth', { name: place.name, lose, go });
-    if (people > 0) return t('stations.removeAskPeople', { name: place.name, lose });
-    if (items > 0) return t('stations.removeAskItems', { name: place.name, go });
+    const name = place.name;
+    if (people === 1 && items > 0)
+      return t('stations.removeAskBothPerson', { name, people, count: items });
+    if (people > 0 && items > 0) return t('stations.removeAskBoth', { name, people, count: items });
+    if (people > 0) return t('stations.removeAskPeople', { name, count: people });
+    if (items > 0) return t('stations.removeAskItems', { name, count: items });
 
     return t('stations.removeAsk', { name: place.name });
   }
@@ -1060,11 +1062,18 @@ function PanelFoot({
 }
 
 /** A native select under the shown words, as the Stations and Roster demos draw it. */
+interface StationOption {
+  value: string;
+  label: string;
+}
+
+/** A native select drawn as the demo's box; `groups` follow `options`, each an optgroup. */
 export function StationSelect({
   id,
   value,
   shown,
   options,
+  groups = [],
   label,
   describedBy,
   wrong = false,
@@ -1074,7 +1083,8 @@ export function StationSelect({
   id: string;
   value: string;
   shown: string;
-  options: readonly { value: string; label: string }[];
+  options: readonly StationOption[];
+  groups?: readonly { label: string; options: readonly StationOption[] }[];
   label?: string;
   describedBy?: string;
   wrong?: boolean;
@@ -1101,6 +1111,15 @@ export function StationSelect({
           <option key={one.value} value={one.value}>
             {one.label}
           </option>
+        ))}
+        {groups.map((group) => (
+          <optgroup key={group.label} label={group.label}>
+            {group.options.map((one) => (
+              <option key={one.value} value={one.value}>
+                {one.label}
+              </option>
+            ))}
+          </optgroup>
         ))}
       </select>
     </div>
