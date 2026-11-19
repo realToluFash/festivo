@@ -16,6 +16,7 @@ import { OrgMark } from './OrgMark.tsx';
 import { Text } from './Text.tsx';
 import { pressOnDoubleTap } from './screenReaderFocus.ts';
 import { useSideFit } from './sideFit.tsx';
+import { titleWithInkRoom } from './titleWidth.ts';
 
 const NAME_LINE = 1.25;
 
@@ -54,7 +55,7 @@ export function OpenerWords({
         accessible={false}
         style={[styles.name, size != null && { lineHeight: size * NAME_LINE }, ink]}
       >
-        {name}
+        {titleWithInkRoom(name, Platform.OS)}
       </Text>
       {waiting != null && (
         <View style={styles.waitingLine}>
