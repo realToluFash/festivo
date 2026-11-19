@@ -57,7 +57,6 @@ describe('the sample’s instants, each derived and written as the server writes
     expect(say.day(DERIVED.onlySince)).toBe('Saturday, Oct 3');
     expect(say.at(DERIVED.stopped)).toBe('Monday, Oct 12 at 09:30 WAT');
     expect(say.at(DERIVED.putBackBy)).toBe('Saturday, Oct 31 at 14:20 WAT');
-    expect(say.day(AT.leftEnterprise)).toBe('Sunday, Oct 18');
     expect(say.exact('2026-10-17T08:12:44Z')).toBe('Saturday, Oct 17, 2026 at 09:12:44 WAT');
   });
 
@@ -206,8 +205,8 @@ describe('the hub in the app: Control only, its card the soonest instant that as
 
   it('keeps everything as it was once Ire Events has left Enterprise', () => {
     expect(hubCard(hubStart('downgraded'), say)).toMatchObject({
-      says: 'Ire Events left Enterprise on Sunday, Oct 18',
-      step: { label: 'Contact Soirely about Enterprise' },
+      says: 'Ire Events left Enterprise',
+      step: null,
     });
     expect(hubRows(hubStart('downgraded'), 'downgraded')).toMatchObject([
       { line: 'ire.events kept as it was', locked: true, opens: 'ed_downgraded' },
@@ -378,8 +377,9 @@ describe('Email domains: each state’s card and rows (sc-560, sc-563)', () => {
       step: { label: 'Contact Soirely about Enterprise' },
     });
     expect(card('ed_downgraded')).toMatchObject({
-      says: 'Switched off on Sunday, Oct 18',
+      says: 'Switched off',
       line: 'Ire Events left Enterprise. Its domains are kept as they were, and come back on with Enterprise.',
+      step: null,
     });
     expect(rows('ed_downgraded')).toEqual([
       {
