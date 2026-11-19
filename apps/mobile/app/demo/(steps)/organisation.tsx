@@ -4,15 +4,36 @@ import { StyleSheet, type TextInputInstance, View, type ViewInstance } from 'rea
 
 import { PrimaryButton } from '../../../src/components/Buttons.tsx';
 import { focusPicker } from '../../../src/components/CountryPicker.tsx';
+import { OrgTile } from '../../../src/components/OrgTile.tsx';
+import { Text } from '../../../src/components/Text.tsx';
 import { DemoScreen, NavBar, closeFlow } from '../../../src/demo/DemoScreen.tsx';
+import { ManagedBanner } from '../../../src/demo/Managed.tsx';
+import { SAMPLE } from '../../../src/demo/samples.ts';
 import { InsideField } from '../../../src/steps/InsideField.tsx';
 import { Heading, Plain, Says } from '../../../src/steps/Lines.tsx';
 import { SelectRow } from '../../../src/demo/SelectRow.tsx';
 import { COUNTRY_BLANK, startCountry } from '../../../src/demo/signUpChecks.ts';
 import { tokens } from '../../../src/theme/tokens.ts';
 
-/** The organisation on its own step: its name, and its country set from the phone's region. */
+const MANAGED_STATES = ['managed', 'managedOffer'] as const;
+type ManagedState = (typeof MANAGED_STATES)[number];
+
+function managedStateOf(state: string | undefined): ManagedState | null {
+  return MANAGED_STATES.find((known) => known === state) ?? null;
+}
+
 export default function Organisation() {
+  const { state, via } = useLocalSearchParams<{ state?: string; via?: string }>();
+  const managed = managedStateOf(state);
+
+  if (managed != null)
+    return <Managed offer={managed === 'managedOffer'} short={via === 'google'} />;
+
+  return <OwnOrganisation />;
+}
+
+/** The organisation on its own step: its name, and its country set from the phone's region. */
+function OwnOrganisation() {
   const { via, region } = useLocalSearchParams<{ via?: string; region?: string }>();
   const short = via === 'google';
   const [name, setName] = useState('');
@@ -85,7 +106,65 @@ export default function Organisation() {
   );
 }
 
+/** No Change your main email address here: Account settings is behind the onboarding gate (sc-563). */
+function Managed({ offer, short }: { offer: boolean; short: boolean }) {
+  const next = () =>
+    router.push({ pathname: '/demo/mobile', params: { via: short ? 'google' : 'email' } });
+
+  return (
+    <DemoScreen
+      nav={
+        <NavBar
+          left={{ label: 'Sign out', onPress: () => closeFlow('/demo/welcome') }}
+          step={short ? [1, 2] : [3, 4]}
+        />
+      }
+      foot={
+        offer ? (
+          <PrimaryButton
+            label={`Ask to join ${SAMPLE.organisation}`}
+            onPress={next}
+            testID="organisation.managed.ask"
+          />
+        ) : (
+          <PrimaryButton label="Continue" onPress={next} testID="demo.continue" />
+        )
+      }
+    >
+      <Heading title="Your organisation" />
+      <View style={styles.managed}>
+        {offer && (
+          <View style={styles.panel} accessible>
+            <OrgTile name={SAMPLE.organisation} size="card" />
+            <View style={styles.words}>
+              <Text size={tokens.typeRowTitle.size} weight="semibold">
+                {`${SAMPLE.organisation} uses Soirely`}
+              </Text>
+              <Text size={tokens.typeSmall.size} muted>
+                Somebody there approves you before you see anything.
+              </Text>
+            </View>
+          </View>
+        )}
+        <ManagedBanner way={false} testID="organisation.managed" />
+      </View>
+    </DemoScreen>
+  );
+}
+
 const styles = StyleSheet.create({
   first: { marginTop: tokens.space3xl },
   next: { marginTop: tokens.spaceXxl },
+  managed: { marginTop: tokens.space3xl, gap: tokens.spaceXl },
+  panel: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: tokens.spaceLg,
+    padding: tokens.spaceXl,
+    borderWidth: 1,
+    borderColor: tokens.colorBorder,
+    borderRadius: tokens.radiusInset,
+    backgroundColor: tokens.colorCard,
+  },
+  words: { flex: 1, minWidth: 0, gap: tokens.spaceHair },
 });

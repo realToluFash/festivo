@@ -62,6 +62,19 @@ describe('a managed account, wherever a membership path ends (sc-563, enterprise
     expect(join).toMatch(/<ManagedBanner testID="join\.managed" \/>/u);
   });
 
+  it('stands in for the organisation fields on A few details, with no way to Account settings', () => {
+    const step = read('app', 'demo', '(steps)', 'organisation.tsx');
+    expect(step).toMatch(/MANAGED_STATES = \['managed', 'managedOffer'\]/u);
+    expect(step).toMatch(/<ManagedBanner way=\{false\} testID="organisation\.managed" \/>/u);
+    const managed = step.slice(step.indexOf('function Managed('));
+    expect(managed).not.toMatch(/QuietButton|InsideField|SelectRow/u);
+    expect(step).toMatch(/label=\{`Ask to join \$\{SAMPLE\.organisation\}`\}/u);
+    expect(read('src', 'demo', 'Managed.tsx')).toMatch(/way \? \(\s*<TextAction/u);
+    const index = read('app', 'demo', 'index.tsx');
+    expect(index).toContain("href: '/demo/organisation?state=managed'");
+    expect(index).toContain("href: '/demo/organisation?state=managedOffer'");
+  });
+
   it('says a member is also in 2 other organisations, never which', () => {
     expect(membersStateOf('alsoMember')).toBe('alsoMember');
     expect(membersStart('alsoMember')).toMatchObject({
