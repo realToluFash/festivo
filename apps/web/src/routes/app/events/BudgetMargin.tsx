@@ -315,6 +315,13 @@ export interface MarkupOpening {
   key: string;
 }
 
+interface MarkupRow {
+  name: string;
+  how: string;
+  key: string;
+  opening: MarkupOpening | null;
+}
+
 /** The markups as one list beside the costs: the whole event, then category overrides, then each cost's own. */
 export function MarkupBlock({
   margin,
@@ -330,7 +337,7 @@ export function MarkupBlock({
     Number(markup) === 0
       ? t('budget.margin.atCostChosen')
       : t('budget.margin.markupIs', { markup: percentWords(markup, locale) });
-  const rows: { name: string; how: string; key: string; opening: MarkupOpening | null }[] = [
+  const rows: MarkupRow[] = [
     {
       name: t('budget.margin.wholeEvent'),
       how:
@@ -340,7 +347,7 @@ export function MarkupBlock({
       key: 'event',
       opening: { scope: 'event', key: '' },
     },
-    ...VENDOR_CATEGORIES.flatMap((category) => {
+    ...VENDOR_CATEGORIES.flatMap((category): MarkupRow[] => {
       const markup = margin.markups.categories[category];
 
       return markup == null
@@ -354,7 +361,7 @@ export function MarkupBlock({
             },
           ];
     }),
-    ...margin.lines.flatMap((line) =>
+    ...margin.lines.flatMap((line): MarkupRow[] =>
       line.source === 'line' && line.markup != null
         ? [
             {
