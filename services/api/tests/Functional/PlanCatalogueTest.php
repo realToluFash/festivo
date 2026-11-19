@@ -268,6 +268,10 @@ final class PlanCatalogueTest extends FunctionalTestCase
         yield 'lowering the divisor' => [['provider_micro_dollars_per_credit'], 6000, true];
         yield 'raising the divisor' => [['provider_micro_dollars_per_credit'], 6500, false];
         yield 'lowering a priced cell' => [['sms_per_segment', 'DE'], 17, false];
+        yield 'raising email' => [['email'], 1, true];
+        yield 'raising an AI proposal' => [['ai', 'proposal'], 14, true];
+        yield 'raising an AI question' => [['ai', 'question'], 1, true];
+        yield 'lowering an AI proposal' => [['ai', 'proposal'], 12, false];
     }
 
     /** @param non-empty-list<string> $path */
