@@ -55,10 +55,15 @@ class StaffMember
     #[ORM\Column(type: Types::DATETIME_IMMUTABLE, nullable: true)]
     private ?DateTimeImmutable $contactsErasedAt = null;
 
-    /** At most one station from the roster (sc-3910); a second, from Team's As well, is sc-36034's. */
+    /** The roster's one station (sc-3910). */
     #[ORM\ManyToOne(targetEntity: StaffStation::class)]
     #[ORM\JoinColumn(nullable: true, onDelete: 'SET NULL')]
     private ?StaffStation $station = null;
+
+    /** The one more that Team's As well adds for their shift (sc-36034 writes it). */
+    #[ORM\ManyToOne(targetEntity: StaffStation::class)]
+    #[ORM\JoinColumn(nullable: true, onDelete: 'SET NULL')]
+    private ?StaffStation $asWellStation = null;
 
     #[ORM\Column(type: Types::BOOLEAN, options: ['default' => false])]
     private bool $floorLead = false;
@@ -146,6 +151,16 @@ class StaffMember
     public function setStation(?StaffStation $station): void
     {
         $this->station = $station;
+    }
+
+    public function getAsWellStation(): ?StaffStation
+    {
+        return $this->asWellStation;
+    }
+
+    public function setAsWellStation(?StaffStation $station): void
+    {
+        $this->asWellStation = $station;
     }
 
     public function isFloorLead(): bool

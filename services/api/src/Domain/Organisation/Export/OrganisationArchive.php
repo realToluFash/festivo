@@ -262,7 +262,7 @@ final readonly class OrganisationArchive
              ORDER BY ev.starts_at_utc, s.event_id, s.starts_at, s.id
             SQL,
         'staff' => <<<'SQL'
-            SELECT s.id, s.event_id, s.full_name, s.mobile, s.email, m.id AS member_id, s.job_id, s.station_id, s.floor_lead
+            SELECT s.id, s.event_id, s.full_name, s.mobile, s.email, m.id AS member_id, s.job_id, s.station_id, s.as_well_station_id, s.floor_lead
               FROM staff_members s
               JOIN events ev ON ev.id = s.event_id
               LEFT JOIN memberships m ON m.user_id = s.member_id AND m.organisation_id = ev.organisation_id

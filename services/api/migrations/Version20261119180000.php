@@ -55,10 +55,13 @@ final class Version20261119180000 extends AbstractMigration
         $this->addSql('ALTER TABLE staff_item_stations ADD CONSTRAINT FK_8816C04A591CC992 FOREIGN KEY (course_id) REFERENCES menu_courses (id) ON DELETE CASCADE NOT DEFERRABLE');
         $this->addSql('ALTER TABLE staff_item_stations ADD CONSTRAINT FK_8816C04A21BDB235 FOREIGN KEY (station_id) REFERENCES staff_stations (id) ON DELETE CASCADE NOT DEFERRABLE');
         $this->addSql('ALTER TABLE staff_members ADD station_id UUID DEFAULT NULL');
+        $this->addSql('ALTER TABLE staff_members ADD as_well_station_id UUID DEFAULT NULL');
         $this->addSql('ALTER TABLE staff_members ADD floor_lead BOOLEAN DEFAULT false NOT NULL');
         $this->addSql('CREATE INDEX IDX_1916C54921BDB235 ON staff_members (station_id)');
+        $this->addSql('CREATE INDEX IDX_1916C5491B5C0E2A ON staff_members (as_well_station_id)');
         $this->addSql('CREATE UNIQUE INDEX uniq_staff_floor_lead ON staff_members (event_id) WHERE floor_lead');
         $this->addSql('ALTER TABLE staff_members ADD CONSTRAINT FK_1916C54921BDB235 FOREIGN KEY (station_id) REFERENCES staff_stations (id) ON DELETE SET NULL NOT DEFERRABLE');
+        $this->addSql('ALTER TABLE staff_members ADD CONSTRAINT FK_1916C5491B5C0E2A FOREIGN KEY (as_well_station_id) REFERENCES staff_stations (id) ON DELETE SET NULL NOT DEFERRABLE');
         $this->addSql(<<<'SQL'
             INSERT INTO staff_stations (id, event_id, kind, name, name_key, position, created_at, updated_at)
             SELECT gen_random_uuid(), e.id, s.kind, s.name, s.name_key, s.position, NOW(), NOW()
@@ -101,10 +104,13 @@ final class Version20261119180000 extends AbstractMigration
     public function down(Schema $schema): void
     {
         $this->addSql('ALTER TABLE staff_members DROP CONSTRAINT FK_1916C54921BDB235');
+        $this->addSql('ALTER TABLE staff_members DROP CONSTRAINT FK_1916C5491B5C0E2A');
         $this->addSql('DROP INDEX uniq_staff_floor_lead');
         $this->addSql('DROP INDEX IDX_1916C54921BDB235');
+        $this->addSql('DROP INDEX IDX_1916C5491B5C0E2A');
         $this->addSql('ALTER TABLE staff_members DROP floor_lead');
         $this->addSql('ALTER TABLE staff_members DROP station_id');
+        $this->addSql('ALTER TABLE staff_members DROP as_well_station_id');
         $this->addSql('DROP TABLE staff_item_stations');
         $this->addSql('DROP TABLE staff_stations');
     }

@@ -17,6 +17,8 @@ use App\Entity\Role;
 use App\Entity\SeatingPlan;
 use App\Entity\SeatingSection;
 use App\Entity\SeatingTable;
+use App\Entity\StaffMember;
+use App\Entity\StaffStation;
 use App\Entity\User;
 use App\Enum\EventRole;
 use App\Enum\MembershipStatus;
@@ -86,8 +88,9 @@ final class StationsTest extends ApiTestCase
 
         self::assertSame(
             [['Section A', 6], ['Section B', 1], ['Section C', 0]],
-            Vec\map($this->stations()['sections'], static fn (array $one): array => [$one['name'], $one['tables']]),
+            Vec\map($this->stations()['sections'], static fn (array $one): array => [$one['name'], Iter\count($one['tables'])]),
         );
+        self::assertSame(['Section B T1'], Vec\map($this->sectionRow('Section B')['tables'], static fn (array $table): string => $table['name']));
     }
 
     #[Test]
@@ -154,11 +157,31 @@ final class StationsTest extends ApiTestCase
         self::assertSame([], $this->placeRow('Bar')['people']);
         self::assertSame([$grace], $this->placeRow('Door')['people']);
         $entry = $this->staffEntry($grace);
-        self::assertSame(['id' => $door, 'name' => 'Door', 'kind' => 'place', 'tables' => 0], $entry['station']);
+        self::assertSame(['id' => $door, 'name' => 'Door', 'kind' => 'place', 'tables' => []], $entry['station']);
         self::assertSame([$entry['station']], $entry['stations']);
 
         $this->station($grace, null);
         self::assertNull($this->staffEntry($grace)['station']);
+    }
+
+    #[Test]
+    public function aSecondStationIsOnlyTeamsAsWellAndGoesWithItsPlace(): void
+    {
+        $grace = $this->person('Grace Udo');
+        $door = $this->place('Door');
+        $bar = $this->place('Bar');
+        $this->station($grace, $door);
+
+        $person = self::em()->find(StaffMember::class, $grace) ?? self::fail('nobody');
+        $person->setAsWellStation(self::em()->find(StaffStation::class, $bar));
+        self::em()->flush();
+
+        $entry = $this->staffEntry($grace);
+        self::assertSame(['Door'], [$entry['station']['name'] ?? null]);
+        self::assertSame(['Door', 'Bar'], Vec\map($entry['stations'], static fn (mixed $one): mixed => Type\shape(['name' => Type\string()], true)->coerce($one)['name']));
+
+        $this->as($this->owner, 'DELETE', $this->path('places/' . $bar));
+        self::assertSame(['Door'], Vec\map($this->staffEntry($grace)['stations'], static fn (mixed $one): mixed => Type\shape(['name' => Type\string()], true)->coerce($one)['name']));
     }
 
     #[Test]
@@ -207,15 +230,17 @@ final class StationsTest extends ApiTestCase
         $tables = $this->tables($a, 2);
         $grace = $this->person('Grace Udo');
         $this->station($grace, $b->getId()->toRfc4122());
-        self::assertSame(0, $this->staffEntry($grace)['station']['tables'] ?? null);
+        self::assertSame([], $this->staffEntry($grace)['station']['tables'] ?? null);
 
         $table = self::em()->find(SeatingTable::class, $tables[0]->getId()) ?? self::fail('no table');
         $table->setSection(self::em()->find(SeatingSection::class, $b->getId()));
         self::em()->flush();
 
+        $moved = [['id' => $tables[0]->getId()->toRfc4122(), 'name' => 'Section A T1']];
         self::assertSame([$grace], $this->sectionRow('Section B')['people']);
-        self::assertSame(1, $this->sectionRow('Section B')['tables']);
-        self::assertSame(['id' => $b->getId()->toRfc4122(), 'name' => 'Section B', 'kind' => 'section', 'tables' => 1], $this->staffEntry($grace)['station']);
+        self::assertSame($moved, $this->sectionRow('Section B')['tables']);
+        self::assertSame(['id' => $b->getId()->toRfc4122(), 'name' => 'Section B', 'kind' => 'section', 'tables' => $moved], $this->staffEntry($grace)['station']);
+        self::assertSame([['id' => $tables[1]->getId()->toRfc4122(), 'name' => 'Section A T2']], $this->sectionRow('Section A')['tables']);
     }
 
     #[Test]
@@ -360,6 +385,16 @@ final class StationsTest extends ApiTestCase
     }
 
     #[Test]
+    public function anItemGivenThePassItIsAlreadyAtIsNotAudited(): void
+    {
+        [$course] = $this->course('Main', ['Chicken']);
+
+        $this->dish($course, 'Chicken', $this->place('Pass'));
+
+        self::assertSame([], self::em()->getRepository(AuditEntry::class)->findBy(['action' => StationPlan::ITEM_DISHED_AT]));
+    }
+
+    #[Test]
     public function assigningStationsLeavesTheSeatingPlanAndTheMenuAsTheyWere(): void
     {
         [$course, $dish] = $this->course('Main', ['Chicken']);
@@ -452,7 +487,7 @@ final class StationsTest extends ApiTestCase
         return Iter\search($this->stations()['places'], static fn (array $one): bool => $one['name'] === $name) ?? self::fail('no place ' . $name);
     }
 
-    /** @return array{id: string, name: string, tables: int, people: list<string>, lead: ?string} */
+    /** @return array{id: string, name: string, tables: list<array{id: string, name: string}>, people: list<string>, lead: ?string} */
     private function sectionRow(string $name): array
     {
         return Iter\search($this->stations()['sections'], static fn (array $one): bool => $one['name'] === $name) ?? self::fail('no section ' . $name);
@@ -537,13 +572,13 @@ final class StationsTest extends ApiTestCase
         return Type\shape(['id' => Type\string()], true)->coerce($this->last()['staff'] ?? null)['id'];
     }
 
-    /** @return array{id: string, station: ?array{id: string, name: string, kind: string, tables: int}, stations: list<mixed>, stationRemoved: ?string, leads: bool, floorLead: bool, ...} */
+    /** @return array{id: string, station: ?array{id: string, name: string, kind: string, tables: list<array{id: string, name: string}>}, stations: list<mixed>, stationRemoved: ?string, leads: bool, floorLead: bool, ...} */
     private function staffEntry(string $id): array
     {
         $body = $this->as($this->owner, 'GET', $this->staff());
         $staff = Type\vec(Type\shape([
             'id' => Type\string(),
-            'station' => Type\nullable(Type\shape(['id' => Type\string(), 'name' => Type\string(), 'kind' => Type\string(), 'tables' => Type\int()])),
+            'station' => Type\nullable(Type\shape(['id' => Type\string(), 'name' => Type\string(), 'kind' => Type\string(), 'tables' => $this->tableList()])),
             'stations' => Type\vec(Type\mixed()),
             'stationRemoved' => Type\nullable(Type\string()),
             'leads' => Type\bool(),
@@ -553,7 +588,7 @@ final class StationsTest extends ApiTestCase
         return Iter\search($staff, static fn (array $one): bool => $one['id'] === $id) ?? self::fail('nobody ' . $id);
     }
 
-    /** @return array{places: list<array{id: string, name: string, pass: bool, people: list<string>, lead: ?string, dishes: int}>, sections: list<array{id: string, name: string, tables: int, people: list<string>, lead: ?string}>, floorLead: ?string, courses: list<array{id: string, name: string, items: list<array{name: string, dishedAt: string}>}>, walk: list<string>} */
+    /** @return array{places: list<array{id: string, name: string, pass: bool, people: list<string>, lead: ?string, dishes: int}>, sections: list<array{id: string, name: string, tables: list<array{id: string, name: string}>, people: list<string>, lead: ?string}>, floorLead: ?string, courses: list<array{id: string, name: string, items: list<array{name: string, dishedAt: string}>}>, walk: list<string>} */
     private function stations(): array
     {
         $body = $this->as($this->owner, 'GET', $this->staff());
@@ -570,7 +605,7 @@ final class StationsTest extends ApiTestCase
             'sections' => Type\vec(Type\shape([
                 'id' => Type\string(),
                 'name' => Type\string(),
-                'tables' => Type\int(),
+                'tables' => $this->tableList(),
                 'people' => Type\vec(Type\string()),
                 'lead' => Type\nullable(Type\string()),
             ])),
@@ -582,6 +617,12 @@ final class StationsTest extends ApiTestCase
             ])),
             'walk' => Type\vec(Type\string()),
         ])->coerce($body['stations'] ?? null);
+    }
+
+    /** @return Type\TypeInterface<list<array{id: string, name: string}>> */
+    private function tableList(): Type\TypeInterface
+    {
+        return Type\vec(Type\shape(['id' => Type\string(), 'name' => Type\string()]));
     }
 
     private function newEvent(): string

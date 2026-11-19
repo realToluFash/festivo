@@ -97,7 +97,7 @@ final class OrganisationExportTest extends ApiTestCase
         'dish_library_variants' => ['id', 'dish_id', 'position', 'name', 'for_children', 'allergens', 'diets', 'last_price_minor', 'last_price_currency'],
         'vendors' => ['id', 'name', 'category', 'contact_name', 'email_address', 'phone_country_code', 'phone_number', 'website', 'address', 'note', 'archived_at', 'created_at'],
         'run_of_show' => ['id', 'event_id', 'title', 'starts_at', 'length_minutes', 'place', 'owner_name', 'owner_role', 'note', 'show_to_guests', 'skipped', 'started_at', 'ended_at'],
-        'staff' => ['id', 'event_id', 'full_name', 'mobile', 'email', 'member_id', 'job_id', 'station_id', 'floor_lead'],
+        'staff' => ['id', 'event_id', 'full_name', 'mobile', 'email', 'member_id', 'job_id', 'station_id', 'as_well_station_id', 'floor_lead'],
         'staff_jobs' => ['id', 'event_id', 'name', 'access', 'position', 'created_at'],
         'staff_shifts' => ['id', 'job_id', 'starts_at', 'ends_at', 'needed'],
         'staff_shift_people' => ['shift_id', 'staff_id'],

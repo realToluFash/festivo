@@ -51,8 +51,8 @@ final readonly class StaffSerialiser
     }
 
     /**
-     * @param ?list<StaffShift>   $shifts the person's shifts by start, read when null
-     * @param ?array<string, int> $tables each seating section's tables, read when null
+     * @param ?list<StaffShift>                                     $shifts the person's shifts by start, read when null
+     * @param ?array<string, list<array{id: string, name: string}>> $tables each seating section's tables, read when null
      *
      * @return array<string, mixed>
      */

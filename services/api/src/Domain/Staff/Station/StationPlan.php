@@ -111,6 +111,10 @@ final readonly class StationPlan
                 $person->setStation(null);
             }
 
+            foreach ($this->staffMemberRepository->findBy(['asWellStation' => $place]) as $person) {
+                $person->setAsWellStation(null);
+            }
+
             foreach ($this->staffItemStationRepository->findBy(['station' => $place]) as $row) {
                 $this->entityManager->remove($row);
             }
@@ -189,7 +193,7 @@ final readonly class StationPlan
     {
         $event = $course->getEvent();
 
-        $this->changed($event, function () use ($event, $course, $item, $placeId, $by): null {
+        $this->changed($event, function () use ($event, $course, $item, $placeId, $by): bool {
             $place = Uuid::isValid($placeId) ? $this->staffStationRepository->findOneInEvent($event, Uuid::fromString($placeId)) : null;
 
             if (null === $place || !$place->isPlace()) {
@@ -208,6 +212,10 @@ final readonly class StationPlan
             $before = DishedItemsReader::counts($courses);
             $row = $this->staffItemStationRepository->findOneOfItem($course, $key);
             $was = $row?->getStation();
+
+            if (null === $was && StationKind::Pass === $place->getKind()) {
+                return false;
+            }
 
             if (StationKind::Pass === $place->getKind()) {
                 if (null !== $row) {
@@ -237,7 +245,7 @@ final readonly class StationPlan
                 'station' => [($was ?? Iter\first($places))?->getName(), $place->getName()],
             ]);
 
-            return null;
+            return true;
         });
     }
 
@@ -307,7 +315,7 @@ final readonly class StationPlan
     /**
      * @template T
      *
-     * @param callable(): T $change
+     * @param callable(): T $change false when it changed nothing, so nobody is told
      *
      * @return T
      */
@@ -321,7 +329,9 @@ final readonly class StationPlan
             return $done;
         });
 
-        $this->staffRosterPublisher->publish($event);
+        if (false !== $done) {
+            $this->staffRosterPublisher->publish($event);
+        }
 
         return $done;
     }

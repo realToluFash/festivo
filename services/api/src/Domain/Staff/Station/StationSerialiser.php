@@ -77,7 +77,7 @@ final readonly class StationSerialiser
                 return [
                     'id' => $id,
                     'name' => $section->getName(),
-                    'tables' => $tables[$id] ?? 0,
+                    'tables' => $tables[$id] ?? [],
                     'people' => null === $row ? [] : $people($row),
                     'lead' => $row?->getLead()?->getId()->toRfc4122(),
                 ];
@@ -96,47 +96,42 @@ final readonly class StationSerialiser
     }
 
     /**
-     * @param ?array<string, int> $tables
+     * @param ?array<string, list<array{id: string, name: string}>> $tables
      *
      * @return array{station: ?array<string, mixed>, stations: list<array<string, mixed>>, stationRemoved: ?string, leads: bool, floorLead: bool}
      */
     public function person(StaffMember $person, ?array $tables = null): array
     {
         $row = $person->getStation();
-        $section = $row?->getSection();
-        $removed = null !== $row && StationKind::Section === $row->getKind() && null === $section;
-        $station = null === $row || $removed ? null : [
-            'id' => (null === $section ? $row->getId() : $section->getId())->toRfc4122(),
-            'name' => null === $section ? $row->getName() : $section->getName(),
-            'kind' => null === $section ? 'place' : 'section',
-            'tables' => null === $section ? 0 : ($tables ?? $this->tables($person->getEvent()))[$section->getId()->toRfc4122()] ?? 0,
-        ];
+        $removed = null !== $row && StationKind::Section === $row->getKind() && null === $row->getSection();
+        $tables ??= $this->tables($person->getEvent());
+        $station = $removed ? null : $this->ref($row, $tables);
+        $asWell = $this->ref($person->getAsWellStation(), $tables);
 
         return [
             'station' => $station,
-            'stations' => null === $station ? [] : [$station],
+            'stations' => Vec\filter_nulls([$station, $asWell]),
             'stationRemoved' => $removed ? $row->getName() : null,
             'leads' => null !== $station && $row?->getLead() === $person,
             'floorLead' => $person->isFloorLead(),
         ];
     }
 
-    /** @return array<string, int> */
+    /** @return array<string, list<array{id: string, name: string}>> each seating section's tables, in the plan's order */
     public function tables(Event $event): array
     {
         $plan = $this->seatingPlanRepository->findOneForEvent($event);
-        $counts = [];
+        $bySection = [];
 
         foreach (null === $plan ? [] : $this->seatingTableRepository->findInPlan($plan) as $table) {
             $section = $table->getSection();
 
             if (null !== $section) {
-                $id = $section->getId()->toRfc4122();
-                $counts[$id] = ($counts[$id] ?? 0) + 1;
+                $bySection[$section->getId()->toRfc4122()][] = ['id' => $table->getId()->toRfc4122(), 'name' => $table->getName()];
             }
         }
 
-        return $counts;
+        return $bySection;
     }
 
     /** @return list<SeatingSection> */
@@ -145,6 +140,24 @@ final readonly class StationSerialiser
         $plan = $this->seatingPlanRepository->findOneForEvent($event);
 
         return null === $plan ? [] : $this->seatingSectionRepository->findInPlan($plan);
+    }
+
+    /**
+     * @param array<string, list<array{id: string, name: string}>> $tables
+     *
+     * @return ?array{id: string, name: string, kind: string, tables: list<array{id: string, name: string}>}
+     */
+    private function ref(?StaffStation $row, array $tables): ?array
+    {
+        $section = $row?->getSection();
+
+        if (null === $row || (StationKind::Section === $row->getKind() && null === $section)) {
+            return null;
+        }
+
+        return null === $section
+            ? ['id' => $row->getId()->toRfc4122(), 'name' => $row->getName(), 'kind' => 'place', 'tables' => []]
+            : ['id' => $section->getId()->toRfc4122(), 'name' => $section->getName(), 'kind' => 'section', 'tables' => $tables[$section->getId()->toRfc4122()] ?? []];
     }
 
     /** @param list<StaffStation> $places */
