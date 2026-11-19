@@ -21,4 +21,11 @@ final readonly class AuditFilter
         public ?DateTimeImmutable $until = null,
     ) {
     }
+
+    public function upTo(DateTimeImmutable $at): self
+    {
+        $until = null === $this->until || $at < $this->until ? $at : $this->until;
+
+        return new self($this->organisationId, $this->since, $this->person, $this->type, $this->event, $this->from, $until);
+    }
 }

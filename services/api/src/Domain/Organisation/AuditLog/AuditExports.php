@@ -85,7 +85,7 @@ final readonly class AuditExports
         $this->entityManager->persist($export);
         $this->audit($organisation, $by, $filters, $format, $count);
         $this->entityManager->flush();
-        $this->afterResponse->defer(fn () => $this->prepare($export, $filter));
+        $this->afterResponse->defer(fn () => $this->prepare($export, $filter->upTo($export->getAskedAt())));
 
         return $export;
     }
