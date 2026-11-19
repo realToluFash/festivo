@@ -1,5 +1,11 @@
 import type { Membership, OutsideEvent } from '@soirely/api-client';
-import { initials, outsideEventsInOrder, roleName } from '@soirely/domain';
+import {
+  initials,
+  isUnderWay,
+  outsideEventWhen,
+  outsideEventsInOrder,
+  roleName,
+} from '@soirely/domain';
 import {
   type KeyboardEvent,
   useCallback,
@@ -14,12 +20,15 @@ import { Navigate, Outlet, useLocation, useNavigate } from 'react-router';
 
 import { api } from '../../api.ts';
 import { DeskPersonFace, DeskSidebar } from '../../components/DeskSidebar.tsx';
+import { EventSideCard } from '../../components/EventSideCard.tsx';
 import { ErrorBoundary } from '../../components/ErrorBoundary.tsx';
 import { Glyph } from '../../components/Glyph.tsx';
 import { LinkedNotice } from '../../components/LinkedNotice.tsx';
 import { OfflineBand, OfflineBox, OfflineProvider } from '../../components/OfflineBand.tsx';
 import { SkipLink } from '../../components/SkipLink.tsx';
 import { outsideAreas } from '../../components/eventSideAreas.ts';
+import { dateLocale } from '../../i18n/index.ts';
+import { meshFor } from '../../mesh.ts';
 import { rereadOutsideEvents, useSession } from '../../session.ts';
 import { useSignOut } from '../../signOut.ts';
 import { MenuGroup, OrganisationRow, OutsideEventRow } from '../../components/OutsideRows.tsx';
@@ -107,6 +116,7 @@ export function OutsideShell({
                 onFollow={undefined}
                 areas={areas}
                 back={false}
+                card={gone ? <OutsideSideCard event={event} now={now} /> : null}
               />
             </div>
           </DeskSidebar>
@@ -120,6 +130,25 @@ export function OutsideShell({
         </main>
       </div>
     </OfflineProvider>
+  );
+}
+
+/** The event a not-found stands in, at the head of the sidebar as the demo keeps it: its tile, its name, and under way until its end or its date and start. */
+function OutsideSideCard({ event, now }: { event: OutsideEvent; now: Date }) {
+  const { t } = useTranslation();
+  const { date, start } = outsideEventWhen(event.startsAt, dateLocale());
+  const when = isUnderWay(event, now)
+    ? [
+        t('outsideEvent.underWay'),
+        event.endsAt == null ? null : t('outsideEvent.until', { when: event.endsAt.slice(11, 16) }),
+      ]
+    : [date, start];
+
+  return (
+    <EventSideCard
+      event={{ name: event.name, mesh: meshFor(event.id), photo: null }}
+      when={when.filter((part) => part != null).join(' · ')}
+    />
   );
 }
 
@@ -225,22 +254,26 @@ export function OutsideGone({ eventId }: { eventId: string }) {
   const back = others.find((one) => one.id === from) ?? outsideEventsInOrder(others, now)[0];
 
   return (
-    <section className="card oe-gone">
-      <h1 ref={heading} tabIndex={-1}>
-        {t('eventPage.notFound')}
-      </h1>
-      <button
-        type="button"
-        className="button"
-        onClick={() => {
-          void rereadOutsideEvents()
-            .catch(() => undefined)
-            .then(() => navigate(back == null ? '/app' : eventAreaPath(back.id, 'overview')));
-        }}
-      >
-        {back == null ? t('outsideEvent.continue') : t('outsideEvent.backTo', { name: back.name })}
-      </button>
-    </section>
+    <div className="desk-column">
+      <section className="card oe-gone">
+        <h1 ref={heading} tabIndex={-1}>
+          {t('eventPage.notFound')}
+        </h1>
+        <button
+          type="button"
+          className="button"
+          onClick={() => {
+            void rereadOutsideEvents()
+              .catch(() => undefined)
+              .then(() => navigate(back == null ? '/app' : eventAreaPath(back.id, 'overview')));
+          }}
+        >
+          {back == null
+            ? t('outsideEvent.continue')
+            : t('outsideEvent.backTo', { name: back.name })}
+        </button>
+      </section>
+    </div>
   );
 }
 
