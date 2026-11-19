@@ -43,6 +43,7 @@ import { NoOrganisation } from './NoOrganisation.tsx';
 import { OutsideShell } from './OutsideShell.tsx';
 import { useRoutedEventId } from './outsideRoute.ts';
 import { heldRegistration } from '../../pendingRegistration.ts';
+import { holdReturn } from '../../heldReturn.ts';
 import { useTwoFactorStanding } from '../../twoFactorStanding.ts';
 import { useDialogKeys } from '../../dialogFocus.ts';
 import { PHONE_WIDTH, usePhoneWidth } from '../../phoneWidth.ts';
@@ -70,6 +71,7 @@ import './wideDesk.css';
  */
 export function AppLayout() {
   const state = useSessionState();
+  const { pathname, search } = useLocation();
 
   useEffect(() => {
     void restoreSession();
@@ -78,6 +80,8 @@ export function AppLayout() {
   if (state.status === 'signedOut') {
     // A sign-up waiting on its code has no session yet: it goes back to its code, not to sign-in.
     if (heldRegistration() != null) return <Navigate to="/verify-email" replace />;
+    // A link opened signed out comes back after sign-in; signing out on purpose does not.
+    if (!state.ended) holdReturn(`${pathname}${search}`);
 
     return (
       <Navigate
