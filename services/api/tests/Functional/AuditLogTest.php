@@ -159,7 +159,7 @@ final class AuditLogTest extends ApiTestCase
     {
         [$owner, $organisation] = $this->enterprise('folake@ire.events', 'Ìrè Events');
         $this->signIn($owner);
-        $this->client->request('PATCH', Str\format('/api/orgs/%s/sign-in-rules', $organisation->getId()->toRfc4122()), server: ['CONTENT_TYPE' => 'application/json', 'HTTP_USER_AGENT' => 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Safari/605.1.15', 'REMOTE_ADDR' => '203.0.113.17'], content: Json\encode(['administratorsNeedTwoFactor' => true]));
+        $this->client->request('PATCH', Str\format('/api/orgs/%s/sign-in-rules', $organisation->getId()->toRfc4122()), server: ['CONTENT_TYPE' => 'application/json', 'HTTP_USER_AGENT' => 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Safari/605.1.15', 'REMOTE_ADDR' => '203.0.113.17'], content: Json\encode(['inactivityTimeoutDays' => 30]));
         self::assertResponseIsSuccessful();
         $changed = $this->audited('sign_in_rules.changed', $organisation);
         self::assertNotNull($changed->getUserAgent(), 'the device is recorded with a new entry');
@@ -191,7 +191,7 @@ final class AuditLogTest extends ApiTestCase
 
         $this->client->request('POST', $this->path($organisation, 'exports'), server: ['CONTENT_TYPE' => 'application/json'], content: Json\encode(['format' => 'csv']));
         self::assertResponseStatusCodeSame(200);
-        self::assertSame(10_002, Iter\count(Str\split(Str\trim((string) $this->client->getResponse()->getContent()), "\r\n")), 'a heading and 10,000 rows');
+        self::assertSame(10_001, Iter\count(Str\split(Str\trim((string) $this->client->getResponse()->getContent()), "\r\n")), 'a heading and 10,000 rows');
 
         $this->signIn($owner);
         $this->client->request('POST', $this->path($organisation, 'exports'), server: ['CONTENT_TYPE' => 'application/json'], content: Json\encode(['format' => 'jsonl']));

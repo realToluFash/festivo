@@ -11,8 +11,10 @@ use PHPUnit\Framework\TestCase;
 use Psl\Dict;
 use Psl\File;
 use Psl\Iter;
+use Psl\Json;
 use Psl\Regex;
 use Psl\Str;
+use Psl\Type;
 use Psl\Vec;
 use RecursiveDirectoryIterator;
 use RecursiveIteratorIterator;
@@ -51,12 +53,19 @@ final class AuditTypeTest extends TestCase
     }
 
     /**
-     * The codes passed to the Auditor: the class constants and the literals of every file that records, and each kind of deletion's restored and purged.
+     * The codes passed to the Auditor: every quoted code in a file that uses it, less the translation keys those files also quote, and each kind of deletion's restored and purged.
      *
      * @return list<string>
      */
     private function recordedCodes(): array
     {
+        $root = \dirname(__DIR__, 2);
+        $keys = [];
+
+        foreach (['messages.en.json', 'messages+intl-icu.en.json', 'errors.en.json'] as $catalogue) {
+            $keys = [...$keys, ...Vec\keys(Type\dict(Type\string(), Type\mixed())->coerce(Json\decode(File\read($root . '/translations/' . $catalogue))))];
+        }
+
         $codes = [AuditType::VIEWED, AuditType::EXPORTED];
 
         foreach (DeletedKind::cases() as $kind) {
@@ -64,33 +73,22 @@ final class AuditTypeTest extends TestCase
             $codes[] = $kind->purged();
         }
 
-        $files = new RecursiveIteratorIterator(new RecursiveDirectoryIterator(\dirname(__DIR__, 2) . '/src'));
-
-        foreach ($files as $file) {
+        foreach (new RecursiveIteratorIterator(new RecursiveDirectoryIterator($root . '/src')) as $file) {
             if (!$file instanceof SplFileInfo || 'php' !== $file->getExtension()) {
                 continue;
             }
 
             $source = File\read($file->getPathname());
 
-            if (!Str\contains($source, 'auditor->record(')) {
+            if (!Str\contains($source, 'Audit\\Auditor;') || Str\ends_with($file->getPathname(), 'Enum/AuditType.php')) {
                 continue;
             }
 
-            foreach (Regex\every_match($source, "/const string [A-Z_]+ = '([a-z_]+\.[a-z_]+)';/") ?? [] as $match) {
+            foreach (Regex\every_match($source, "/'([a-z_]+\\.[a-z_]+)'/") ?? [] as $match) {
                 $codes[] = $match[1];
-            }
-
-            foreach (Regex\every_match($source, "/auditor->record\(\s*'([a-z_]+\.[a-z_]+)'/") ?? [] as $match) {
-                $codes[] = $match[1];
-            }
-
-            foreach (Regex\every_match($source, "/'([a-z_]+\.[a-z_]+)'\s*:\s*'([a-z_]+\.[a-z_]+)'/") ?? [] as $match) {
-                $codes[] = $match[1];
-                $codes[] = $match[2];
             }
         }
 
-        return Vec\values(Dict\unique($codes));
+        return Vec\values(Dict\diff(Dict\unique($codes), $keys));
     }
 }
