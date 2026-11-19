@@ -752,7 +752,10 @@ function MarginCard({
   washed: boolean;
   figures: ReturnType<typeof marginOf>;
 }) {
-  const after = [figures.client[0] - MARGIN.spent, figures.client[1] - MARGIN.spent] as const;
+  const after = [
+    figures.margin[0] - MARGIN.quotesOver,
+    figures.margin[1] - MARGIN.quotesOver,
+  ] as const;
 
   return (
     <BudgetCard event={event} label={W.budget}>

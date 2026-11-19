@@ -173,8 +173,8 @@ describe('the states Budget A still lacked (sc-85, sc-88, sc-90, sc-91, sc-92, s
     expect(section('Costs').textContent).toContain('no markup set0.0%');
     expect(section('Markup').textContent).toContain('No markup set');
     const card = screen.getByRole('region', { name: 'Budget' }).textContent ?? '';
-    expect(card).toContain('£2,290 to £5,620');
-    expect(card).toContain('10.1% to 21.6%');
+    expect(card).toContain('Margin after payments£2,290');
+    expect(card).toContain('10.1% to 8.8%');
   });
 
   it(
