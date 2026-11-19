@@ -18,7 +18,7 @@ const HUB: Record<HubState, readonly [string, string]> = {
   quiet: ['nothing needs you', 'ire.events proved, no step'],
   new: ['nothing set up', 'Prove a domain'],
   locked: ['free, never on Enterprise', 'The rows locked; Contact Soirely'],
-  downgraded: ['left Enterprise', 'Kept as they were, Sunday, Oct 18'],
+  downgraded: ['left Enterprise', 'Kept as they were, with no date'],
   loading: ['loading', 'Loading Data and control…'],
   failed: ['failed', 'Could not load, Try again'],
 };

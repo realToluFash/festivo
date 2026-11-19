@@ -91,8 +91,8 @@ describe('Data and control, the hub (sc-560, enterprise-b-spec §4)', () => {
       step: 'contact',
     });
     expect(hubCard(view('downgraded'), VIEWERS.julien, LOCALE)).toMatchObject({
-      says: 'Ire Events left Enterprise on Sunday, Oct 18',
-      step: 'contact',
+      says: 'Ire Events left Enterprise',
+      step: null,
     });
   });
 
