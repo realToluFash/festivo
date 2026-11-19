@@ -363,6 +363,10 @@
   .js-shift-top .js-job-acts {
     margin-left: 0;
   }
+
+  .js-when-pair {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }
 
 .sn-tabs {
@@ -389,6 +393,10 @@
   background: var(--colorCard);
   box-shadow: var(--shadowKnob);
   color: var(--colorAccentText);
+}
+
+a.sn-tab {
+  text-decoration: none;
 }
 
 a.sn-tab:hover {

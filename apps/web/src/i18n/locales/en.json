@@ -3808,7 +3808,7 @@
     "shiftHelp": "Shifts of this job with an open place, by start.",
     "onShifts": "Unassign {{name}} from their shifts first.",
     "onShiftsHint": "Their job can change once they are on no shift.",
-    "moreShifts": "{{first}} +{{count, number}} more",
+    "moreShifts": "{{first}} <more>+{{count, number}} more</more>",
     "removeShifts": "Their places on these shifts are left open:"
   },
   "schedule": {

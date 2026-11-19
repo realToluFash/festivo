@@ -302,6 +302,38 @@ describe('The Roster on the Staff page (sc-3906)', () => {
     ]);
   });
 
+  it('writes the earliest shift, then how many more, in the Shift column', async () => {
+    signedIn();
+    await onRoster({
+      'GET /api/events/ev_1/staff': () =>
+        json({
+          staff: [
+            entry('st_1', 'Amaka Eze', {
+              shifts: [
+                {
+                  id: 'sh_1',
+                  startsAt: '2030-11-14T16:30:00+01:00',
+                  endsAt: '2030-11-14T21:00:00+01:00',
+                },
+                {
+                  id: 'sh_2',
+                  startsAt: '2030-11-14T22:00:00+01:00',
+                  endsAt: '2030-11-15T01:00:00+01:00',
+                },
+              ],
+            }),
+          ],
+          jobs: [],
+          shifts: [],
+        }),
+    });
+
+    await screen.findByRole('button', { name: 'Amaka Eze' });
+    const more = document.querySelector('.rs-more');
+    expect(more?.textContent).toBe('+1 more');
+    expect(more?.parentElement?.textContent).toBe('16:30 to 21:00 +1 more');
+  });
+
   it('removes a person after asking', async () => {
     signedIn();
     const sent = await onRoster({

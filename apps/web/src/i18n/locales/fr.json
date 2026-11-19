@@ -4017,7 +4017,7 @@
     "shiftHelp": "Services de cette fonction où une place est libre, par heure de début.",
     "onShifts": "Retirez d’abord {{name}} de ses services.",
     "onShiftsHint": "Sa fonction pourra changer quand aucun service ne sera plus à son nom.",
-    "moreShifts": "{{first}} et {{count, number}} de plus",
+    "moreShifts": "{{first}} <more>et {{count, number}} de plus</more>",
     "removeShifts": "Ses places sur ces services resteront libres :"
   },
   "schedule": {

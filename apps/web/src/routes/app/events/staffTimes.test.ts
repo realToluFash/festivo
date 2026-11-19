@@ -36,6 +36,38 @@ describe('staff times (sc-3908)', () => {
     );
   });
 
+  it('names each day at exactly 24 hours', () => {
+    const times = staffTimes(
+      {
+        startsAt: '2026-11-06T10:00:00+01:00',
+        endsAt: '2026-11-07T10:00:00+01:00',
+        timeZone: 'Africa/Lagos',
+      },
+      [],
+      'en-GB',
+    );
+
+    expect(rangeWords('2026-11-06T10:00:00+01:00', '2026-11-07T10:00:00+01:00', times, t)).toBe(
+      'Fri 6 Nov, 10:00 to Sat 7 Nov, 10:00',
+    );
+  });
+
+  it('names each day at 24 hours on the clock across the spring clock change', () => {
+    const times = staffTimes(
+      {
+        startsAt: '2027-03-27T10:00:00Z',
+        endsAt: '2027-03-28T10:30:00+01:00',
+        timeZone: 'Europe/London',
+      },
+      [],
+      'en-GB',
+    );
+
+    expect(rangeWords('2027-03-27T10:00:00Z', '2027-03-28T10:30:00+01:00', times, t)).toBe(
+      'Sat 27 Mar, 10:00 to Sun 28 Mar, 10:30',
+    );
+  });
+
   it('reads a moment as the form’s date and time in the event’s zone', () => {
     expect(wallOf('2026-11-06T15:30:00Z', 'Africa/Lagos')).toEqual({
       date: '2026-11-06',
