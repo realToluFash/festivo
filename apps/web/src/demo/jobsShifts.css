@@ -28,7 +28,6 @@
 .js-frame {
   max-width: 100%;
   overflow-x: auto;
-  border-radius: var(--radiusInset);
 }
 
 .js-frame:focus-visible {
