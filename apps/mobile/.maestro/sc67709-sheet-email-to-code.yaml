@@ -1,0 +1,52 @@
+# sc-67709: signed out on the iPad, Google onto Enter your code, Back to the Sign in sheet, then an email sign-in from the sheet onto Enter your code again. Leaves the app there, for a time-out test.
+appId: host.exp.Exponent
+---
+- launchApp:
+    appId: host.exp.Exponent
+    stopApp: true
+- openLink: ${METRO_URL}/--/
+- extendedWaitUntil:
+    visible:
+      id: 'welcome.email'
+    timeout: 90000
+- tapOn:
+    id: 'signIn.google'
+- extendedWaitUntil:
+    visible: '.*Wants to Use.*|.*Each name is its own account.*'
+    timeout: 20000
+- runFlow:
+    when:
+      visible: '.*Wants to Use.*'
+    commands:
+      - tapOn: 'Continue'
+- extendedWaitUntil:
+    visible: '.*Each name is its own account.*'
+    timeout: 20000
+- tapOn:
+    text: '.*Each name is its own account.*'
+- inputText: ${EMAIL}
+- tapOn: 'Sign in'
+- extendedWaitUntil:
+    visible:
+      id: 'twoFactor.code'
+    timeout: 30000
+- runFlow: sc29072-close-code-pad.yaml
+- tapOn:
+    id: 'twoFactor.back'
+- extendedWaitUntil:
+    visible:
+      id: 'signIn.email'
+    timeout: 15000
+- tapOn:
+    id: 'signIn.email'
+- inputText: ${EMAIL}
+- tapOn:
+    id: 'signIn.password'
+- inputText: ${PASSWORD}
+- tapOn:
+    id: 'signIn.submit'
+- extendedWaitUntil:
+    visible:
+      id: 'twoFactor.code'
+    timeout: 30000
+- takeScreenshot: email-code-step
