@@ -44,11 +44,14 @@ export function ExportButton({
   offline,
   onPress,
   ref,
+  measured = false,
 }: {
   kind: LayoutKind;
   offline: boolean;
   onPress: () => void;
-  ref: Ref<ViewInstance>;
+  ref?: Ref<ViewInstance> | undefined;
+  /** A hidden copy that is only measured, so it carries no test ids (sc-71821). */
+  measured?: boolean;
 }) {
   const { t } = useTranslation();
 
@@ -58,7 +61,7 @@ export function ExportButton({
         style={[styles.offline, kind === 'phone' && styles.offlinePhone]}
         accessible
         accessibilityLabel={t('guestExport.needsConnection')}
-        testID="guests.export.offline"
+        testID={measured ? undefined : 'guests.export.offline'}
       >
         <NoSignal />
         <CappedWholeWords
@@ -80,7 +83,7 @@ export function ExportButton({
       full={false}
       grows
       onPress={onPress}
-      testID="guests.export"
+      {...(measured ? {} : { testID: 'guests.export' })}
     />
   );
 }

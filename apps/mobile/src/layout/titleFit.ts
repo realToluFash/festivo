@@ -35,6 +35,24 @@ export function actionsUnder({ room, title, extra, plus, bell, gap }: TitleActio
   return title + beside > room;
 }
 
+/** sc-71821: the room the title steps down in beside Export, as if Export were at its widest, the size it draws under the title's start. Export is capped by the size the title draws, so a title sized from Export as drawn would grow, Export with it, and break or step down again: sized from its widest, the title takes one size and Export only ever has room to spare. */
+export function titleRoomBeside({
+  slot,
+  extra,
+  widest,
+}: {
+  /** The title's slot as laid out. */
+  slot: number;
+  /** Export as drawn beside it; zero where it is not on the row. */
+  extra: number;
+  /** Export under the title's start; zero until measured, when the slot is taken as it is. */
+  widest: number;
+}): number {
+  if (unmeasured(slot, extra, widest)) return slot;
+
+  return Math.max(0, slot - Math.max(0, widest - extra));
+}
+
 /** sc-72136: a dialog's Cancel stays beside its title only where the title's longest word, at the size the title draws alone, the gap and Cancel fit the row; the title's size never depends on Cancel. */
 export function cancelUnder({
   room,

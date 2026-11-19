@@ -8,6 +8,7 @@ import {
   labelFits,
   rowRoom,
   statusFits,
+  titleRoomBeside,
   titleRowKey,
 } from './titleFit.ts';
 
@@ -252,6 +253,31 @@ describe('Refreshing… gives way (sc-71821)', () => {
     expect(statusFits({ room: 800, lead: 0, ends: [44], status: 90, gap: 10 })).toBe(false);
     expect(statusFits({ room: 800, lead: 100, ends: [0], status: 90, gap: 10 })).toBe(false);
     expect(statusFits({ room: 800, lead: 100, ends: [44], status: 0, gap: 10 })).toBe(false);
+  });
+});
+
+describe('the title’s room beside Export at its widest (sc-71821)', () => {
+  it('takes the slot less what Export would take back at its widest', () => {
+    expect(titleRoomBeside({ slot: 120, extra: 140, widest: 180 })).toBe(80);
+  });
+
+  it('is the same whichever size Export draws at, so the title takes one size', () => {
+    const row = 120 + 140;
+    const rooms = [140, 160, 180].map((extra) =>
+      titleRoomBeside({ slot: row - extra, extra, widest: 180 }),
+    );
+
+    expect(new Set(rooms)).toEqual(new Set([80]));
+  });
+
+  it('takes the slot as it is with Export at its widest, off the row, or not yet measured', () => {
+    expect(titleRoomBeside({ slot: 120, extra: 180, widest: 180 })).toBe(120);
+    expect(titleRoomBeside({ slot: 300, extra: 0, widest: 180 })).toBe(300);
+    expect(titleRoomBeside({ slot: 120, extra: 140, widest: 0 })).toBe(120);
+  });
+
+  it('never gives less than nothing', () => {
+    expect(titleRoomBeside({ slot: 10, extra: 50, widest: 200 })).toBe(0);
   });
 });
 
