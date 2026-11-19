@@ -3094,6 +3094,7 @@
     "locked": "Se incluyen con Enterprise",
     "lockedLine": "Dominios de correo y registro de auditoría.",
     "leftLine": "Los dominios de correo, el registro de auditoría y la eliminación de los datos de invitados están desactivados y se conservan tal cual. Vuelven a activarse con Enterprise.",
+    "leftSays": "{{organisation}} left Enterprise",
     "rows": {
       "domains": "Dominios de correo",
       "noDomains": "Aún no hay dominios",
@@ -3160,6 +3161,7 @@
       "locked": "Disponible con Enterprise",
       "lockedLine": "Verifique que el dominio pertenece a {{organisation}} y limite sus cuentas a {{organisation}}.",
       "offLine": "{{organisation}} ha dejado Enterprise. Sus dominios se conservan tal cual y vuelven a activarse con Enterprise.",
+      "off": "Switched off",
       "keep": "Limit {{domain}} accounts to {{organisation}}",
       "scheduled": "Only our organisation starts on {{at}}",
       "scheduledLine": "Everyone at {{domain}} was emailed. You can cancel until then.",

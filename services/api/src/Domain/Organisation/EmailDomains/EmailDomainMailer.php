@@ -68,8 +68,9 @@ final readonly class EmailDomainMailer
             $locale = $this->userMailer->localeFor($user);
             $this->userMailer->send(AccountMail::DomainRecordGone, $address, $locale, 'domainRecordGone.subject', [
                 $this->userMailer->line('domainRecordGone.body', $locale, [...$named, '{deadline}' => $this->userMailer->deadline($putBackBy, $user, $locale)]),
-                $this->userMailer->line('domainRecordGone.name', $locale, ['{name}' => EmailDomains::recordName($domain->getDomain())]),
                 $this->userMailer->line('domainRecordGone.type', $locale),
+                $this->userMailer->line('domainRecordGone.name', $locale, ['{name}' => EmailDomains::recordName($domain->getDomain())]),
+                $this->userMailer->line('domainRecordGone.value', $locale, ['{value}' => $domain->getRecordValue()]),
                 '--',
                 $this->userMailer->line('domainRecordGone.footer', $locale, $named),
             ], $named);

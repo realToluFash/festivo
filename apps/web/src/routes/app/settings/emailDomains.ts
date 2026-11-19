@@ -40,10 +40,11 @@ export type DomainsSaid = {
 
 /** `record` opens a domain's record; `keep` asks to limit a domain's accounts, the Owner's alone. */
 export interface DomainsCard {
-  says: string | null;
+  says: string;
   line: string;
   record: string | null;
   keep: string | null;
+  prove?: true;
 }
 
 /** Only our organisation's line under a proved domain (sc-563); anyone but the Owner reads that only an owner changes it. */
@@ -130,7 +131,7 @@ export function domainsCard(
     };
   if (page.plan === 'left')
     return {
-      says: null,
+      says: t('emailDomains.leftSays'),
       line: t('emailDomains.leftLine', { organisation }),
       record: null,
       keep: null,
@@ -194,6 +195,7 @@ export function domainsCard(
     line: t('emailDomains.noneLine', { organisation }),
     record: null,
     keep: null,
+    prove: true,
   };
 }
 
@@ -227,7 +229,7 @@ export type HubAsk =
   | { at: string; does: 'record'; domain: string; says: string; line: string };
 
 /** What asks something of the reader now, the soonest first: their ready export, a waiting record before its checks stop, a missing one before it lapses. */
-export function soonestAsk(
+function soonestAsk(
   t: TFunction,
   exported: OrganisationExportPage,
   domains: EmailDomainsPage,
@@ -263,4 +265,34 @@ export function soonestAsk(
     }
 
   return asks.sort((one, other) => Date.parse(one.at) - Date.parse(other.at))[0] ?? null;
+}
+
+export type HubCard = HubAsk | { does: 'prove' | null; says: string; line: string | null };
+
+/** The hub's card: the soonest ask, or else where the organisation stands, with Prove a domain while nothing is set up. */
+export function hubCard(
+  t: TFunction,
+  exported: OrganisationExportPage,
+  domains: EmailDomainsPage,
+  organisation: string,
+): HubCard {
+  const ask = soonestAsk(t, exported, domains);
+
+  if (ask != null) return ask;
+  if (domains.plan === 'free')
+    return { does: null, says: t('dataControl.lockedSays'), line: t('dataControl.lockedLine') };
+  if (domains.plan === 'left')
+    return {
+      does: null,
+      says: t('dataControl.leftSays', { organisation }),
+      line: t('dataControl.leftLine'),
+    };
+  if (domains.domains.length === 0)
+    return {
+      does: 'prove',
+      says: t('dataControl.newSays'),
+      line: t('dataControl.newLine', { organisation }),
+    };
+
+  return { does: null, says: t('dataControl.nothingAsks'), line: null };
 }

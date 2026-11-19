@@ -67,6 +67,8 @@ export interface SheetWindows {
   lower: (id: string) => void;
   /** True while another sheet's window is up and this one's is not. */
   waits: (id: string) => boolean;
+  /** Settles once no sheet's window is up, so what iOS presents next is not taken down with a window still going. */
+  cleared: () => Promise<void>;
   subscribe: (heard: () => void) => () => void;
 }
 
@@ -85,6 +87,19 @@ export function sheetWindows(): SheetWindows {
       if (up.delete(id)) told();
     },
     waits: (id) => !up.has(id) && up.size > 0,
+    cleared: () =>
+      new Promise((done) => {
+        if (up.size === 0) {
+          done();
+          return;
+        }
+        const heard = () => {
+          if (up.size > 0) return;
+          listeners.delete(heard);
+          done();
+        };
+        listeners.add(heard);
+      }),
     subscribe: (heard) => {
       listeners.add(heard);
       return () => listeners.delete(heard);
