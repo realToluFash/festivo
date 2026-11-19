@@ -1,0 +1,131 @@
+# sc-611: the audit log demo's states, each shot for the pair beside the product.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/demo/settings/data-and-control/audit-log?state=list
+- extendedWaitUntil:
+    visible:
+      text: '.+'
+    timeout: 20000
+- waitForAnimationToEnd:
+    timeout: 8000
+- takeScreenshot: audit-list-demo
+- openLink: ${METRO_URL}/--/demo/settings/data-and-control/audit-log?state=filter_person
+- extendedWaitUntil:
+    visible:
+      text: '.+'
+    timeout: 20000
+- waitForAnimationToEnd:
+    timeout: 8000
+- takeScreenshot: audit-filter_person-demo
+- openLink: ${METRO_URL}/--/demo/settings/data-and-control/audit-log?state=filter_type
+- extendedWaitUntil:
+    visible:
+      text: '.+'
+    timeout: 20000
+- waitForAnimationToEnd:
+    timeout: 8000
+- takeScreenshot: audit-filter_type-demo
+- openLink: ${METRO_URL}/--/demo/settings/data-and-control/audit-log?state=filter_event
+- extendedWaitUntil:
+    visible:
+      text: '.+'
+    timeout: 20000
+- waitForAnimationToEnd:
+    timeout: 8000
+- takeScreenshot: audit-filter_event-demo
+- openLink: ${METRO_URL}/--/demo/settings/data-and-control/audit-log?state=dates
+- extendedWaitUntil:
+    visible:
+      text: '.+'
+    timeout: 20000
+- waitForAnimationToEnd:
+    timeout: 8000
+- takeScreenshot: audit-dates-demo
+- openLink: ${METRO_URL}/--/demo/settings/data-and-control/audit-log?state=date_invalid
+- extendedWaitUntil:
+    visible:
+      text: '.+'
+    timeout: 20000
+- waitForAnimationToEnd:
+    timeout: 8000
+- takeScreenshot: audit-date_invalid-demo
+- openLink: ${METRO_URL}/--/demo/settings/data-and-control/audit-log?state=filtered
+- extendedWaitUntil:
+    visible:
+      text: '.+'
+    timeout: 20000
+- waitForAnimationToEnd:
+    timeout: 8000
+- takeScreenshot: audit-filtered-demo
+- openLink: ${METRO_URL}/--/demo/settings/data-and-control/audit-log?state=empty_filter
+- extendedWaitUntil:
+    visible:
+      text: '.+'
+    timeout: 20000
+- waitForAnimationToEnd:
+    timeout: 8000
+- takeScreenshot: audit-empty_filter-demo
+- openLink: ${METRO_URL}/--/demo/settings/data-and-control/audit-log?state=detail
+- extendedWaitUntil:
+    visible:
+      text: '.+'
+    timeout: 20000
+- waitForAnimationToEnd:
+    timeout: 8000
+- takeScreenshot: audit-detail-demo
+- openLink: ${METRO_URL}/--/demo/settings/data-and-control/audit-log?state=detail_gone
+- extendedWaitUntil:
+    visible:
+      text: '.+'
+    timeout: 20000
+- waitForAnimationToEnd:
+    timeout: 8000
+- takeScreenshot: audit-detail_gone-demo
+- openLink: ${METRO_URL}/--/demo/settings/data-and-control/audit-log?state=detail_signin
+- extendedWaitUntil:
+    visible:
+      text: '.+'
+    timeout: 20000
+- waitForAnimationToEnd:
+    timeout: 8000
+- takeScreenshot: audit-detail_signin-demo
+- openLink: ${METRO_URL}/--/demo/settings/data-and-control/audit-log?state=detail_old
+- extendedWaitUntil:
+    visible:
+      text: '.+'
+    timeout: 20000
+- waitForAnimationToEnd:
+    timeout: 8000
+- takeScreenshot: audit-detail_old-demo
+- openLink: ${METRO_URL}/--/demo/settings/data-and-control/audit-log?state=detail_system
+- extendedWaitUntil:
+    visible:
+      text: '.+'
+    timeout: 20000
+- waitForAnimationToEnd:
+    timeout: 8000
+- takeScreenshot: audit-detail_system-demo
+- openLink: ${METRO_URL}/--/demo/settings/data-and-control/audit-log?state=locked
+- extendedWaitUntil:
+    visible:
+      text: '.+'
+    timeout: 20000
+- waitForAnimationToEnd:
+    timeout: 8000
+- takeScreenshot: audit-locked-demo
+- openLink: ${METRO_URL}/--/demo/settings/data-and-control/audit-log?state=loading
+- extendedWaitUntil:
+    visible:
+      text: '.+'
+    timeout: 20000
+- waitForAnimationToEnd:
+    timeout: 8000
+- takeScreenshot: audit-loading-demo
+- openLink: ${METRO_URL}/--/demo/settings/data-and-control/audit-log?state=failed
+- extendedWaitUntil:
+    visible:
+      text: '.+'
+    timeout: 20000
+- waitForAnimationToEnd:
+    timeout: 8000
+- takeScreenshot: audit-failed-demo
