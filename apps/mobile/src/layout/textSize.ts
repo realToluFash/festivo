@@ -58,6 +58,16 @@ export function capUnderTitle(title: number, size: number, own?: number): number
   return Math.max(1, Math.min(own ?? Infinity, title / size));
 }
 
+/** Where a label starts before its words are fitted: `size × scale`, no larger than `cap`, never under `size`. */
+export function labelStart(size: number, scale: number, cap: number): number {
+  return size * capUnderTitle(cap, size, scale);
+}
+
+/** The line under a title starts no larger than the title draws, so a stepped-down title never has a larger line under it. */
+export function lineStart(line: number, scale: number, cap: number, title: number): number {
+  return labelStart(line, scale, Math.min(cap, title));
+}
+
 /** The most a disc's initials of `size` may grow: to half the disc's side, which keeps its size at every text size (sc-37693). */
 export function capInDisc(side: number, size: number): number {
   return Math.max(1, (side * 0.5) / size);
@@ -87,6 +97,20 @@ export function frameTitleSize(tablet: boolean, shortSide: number): number {
 /** Every distinct word in these texts. */
 export function wordsIn(texts: readonly string[]): string[] {
   return [...new Set(texts.flatMap((text) => text.split(/\s+/u)).filter((word) => word !== ''))];
+}
+
+/** Every distinct piece a line may wrap between: each word, split after a hyphen it already has, the hyphen kept on the first part (sc-69816). */
+export function piecesIn(texts: readonly string[]): string[] {
+  return [
+    ...new Set(
+      wordsIn(texts).flatMap((word) =>
+        word
+          .replace(/([-\u2010])/gu, '$1\n')
+          .split('\n')
+          .filter((piece) => piece !== ''),
+      ),
+    ),
+  ];
 }
 
 /** The one size for labels whose widest word, drawn at `start`, measures `widest` in a slot `slot` wide: `start` when it fits, never below `size`. */

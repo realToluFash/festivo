@@ -9,9 +9,10 @@ import {
 
 import { type WeightName } from '../theme/fonts.ts';
 import {
-  capUnderTitle,
   type DrawnTitle,
   fitWidest,
+  lineStart,
+  piecesIn,
   reportTitle,
   titleCapKey,
   titleCapOn,
@@ -28,6 +29,8 @@ interface WordsLook {
   style?: StyleProp<TextStyle> | undefined;
   /** The width the texts have, known from the container, so the size does not wait on seeing a text wrap. */
   room?: number | undefined;
+  /** Measures each word in pieces split after a hyphen it already has, where a line may break without breaking a word (sc-69816). */
+  breakAfterHyphens?: boolean | undefined;
 }
 
 /** Each of these words drawn hidden and unbounded, to know how wide it is before anything that shows it is laid out. */
@@ -72,7 +75,7 @@ export function useWholeWords(
   look: WordsLook = {},
 ) {
   const { width: windowWidth } = useWindowDimensions();
-  const words = wordsIn(texts);
+  const words = look.breakAfterHyphens ? piecesIn(texts) : wordsIn(texts);
   const roomKey = `${start}|${windowWidth}`;
   const seenKey = `${roomKey}|${texts.join('\n')}`;
   const [measured, setMeasured] = useState<Readonly<Record<string, number>>>({});
@@ -140,16 +143,19 @@ export function WholeWords({
   onLayout,
   onDrawn,
   room,
+  breakAfterHyphens,
   ...rest
 }: WholeWordsProps & {
   start: number;
   onDrawn?: ((size: number) => void) | undefined;
   room?: number | undefined;
+  breakAfterHyphens?: boolean | undefined;
 }) {
   const words = useWholeWords(size, start, [children], {
     weight: rest.weight,
     style: rest.style,
     room,
+    breakAfterHyphens,
   });
   const drawnSize = words.maxFontSizeMultiplier * size;
 
@@ -173,17 +179,20 @@ export function WholeWords({
   );
 }
 
-/** Grows with the text up to a title's cap, as any text under it, then steps down rather than break a word, never below `size` (sc-67338). */
-export function CappedWholeWords(props: WholeWordsProps) {
+/** Grows with the text up to a title's cap, and no larger than `under` when given, then steps down rather than break a word, never below `size` (sc-67338). */
+export function CappedWholeWords({
+  under = Infinity,
+  ...props
+}: WholeWordsProps & {
+  under?: number | undefined;
+  onDrawn?: ((size: number) => void) | undefined;
+  room?: number | undefined;
+  breakAfterHyphens?: boolean | undefined;
+}) {
   const { fontScale } = useWindowDimensions();
   const cap = useContext(TitleCap);
 
-  return (
-    <WholeWords
-      {...props}
-      start={props.size * capUnderTitle(cap ?? Infinity, props.size, fontScale)}
-    />
-  );
+  return <WholeWords {...props} start={lineStart(props.size, fontScale, cap ?? Infinity, under)} />;
 }
 
 /** Grows less than other text at the accessibility sizes, and steps down rather than break a word (sc-13496). */
