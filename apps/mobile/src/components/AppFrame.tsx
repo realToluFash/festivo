@@ -219,6 +219,8 @@ export interface InsideEvent {
   up?: { label: string; onPress: () => void } | undefined;
   /** Held from outside an organisation (sc-71): its level's areas, no way back to Events, and in More the account's other events, a member's organisations (sc-68438), Your account and Sign out. */
   outside?: { id: string; role: OutsideEvent['role'] } | undefined;
+  /** Nothing above the body: held from outside at a reading level, Overview's card heads the page, as the demo's `more-in` draws it (sc-71). */
+  bare?: boolean | undefined;
 }
 
 interface NavEntry {
@@ -553,6 +555,7 @@ export function AppFrame({
     kind,
     entries,
     inEvent: inEvent != null,
+    bare: inEvent?.bare === true,
     title,
     titleRef: frameTitle,
     switchAnswer: bodyTakesSwitch || standIn != null ? undefined : switchAnswer,
@@ -789,6 +792,8 @@ interface FrameHeaderProps {
   switched: ReactNode;
   /** A page whose body names it (an event's Overview card, a member's own card in front of the list), so the frame draws no title. */
   untitled: boolean;
+  /** No title, back or bell above the body; upright, the area pills alone. */
+  bare: boolean;
   /** The size the title drew at, which nothing under it outgrows; null where nothing caps (sc-67338). */
   cap: number | null;
   onTitleDrawn: (size: number) => void;
@@ -978,6 +983,7 @@ function FrameHeader({
   kind,
   entries,
   inEvent,
+  bare,
   title,
   titleRef,
   switchAnswer,
@@ -1100,21 +1106,25 @@ function FrameHeader({
           untitled && styles.flushFoot,
         ]}
       >
-        <View style={styles.titleRow}>
-          <View style={styles.fill}>
-            {back != null && !backHidden && (
-              <BesideBack beside={besideBack}>
-                <FrameBack back={back} cap={cap} besideShown={besideBack != null} />
-              </BesideBack>
-            )}
+        {!bare && (
+          <View style={styles.titleRow}>
+            <View style={styles.fill}>
+              {back != null && !backHidden && (
+                <BesideBack beside={besideBack}>
+                  <FrameBack back={back} cap={cap} besideShown={besideBack != null} />
+                </BesideBack>
+              )}
+            </View>
+            <BellButton />
           </View>
-          <BellButton />
-        </View>
+        )}
         <Pills entries={entries} scrolls />
         {!untitled && titleRow()}
       </View>
     );
   }
+
+  if (bare) return <View style={{ paddingTop: insets.top + tokens.spaceLg }} />;
 
   // Inside an event, ‹ in its pill and the bell head the page; on Overview the event's card under them names it (sc-30413).
   if (inEvent && back != null) {

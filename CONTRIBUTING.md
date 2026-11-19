@@ -105,7 +105,9 @@ On the Mac, `release` does the same for the tester's iPhone simulator (`--ipad` 
 `xcodebuild` Release build for the simulator, with no signing, no Expo account and no EAS, kept as
 `.qa/release/soirely-<commit>.app`. It needs Xcode and CocoaPods. A simulator shares the Mac's
 network, so `--offline` stops the services the app reaches (`api`, `mercure`, `storage`, `oidc`)
-before that launch rather than cutting the network. The next `ios` removes the build and starts
+before that launch rather than cutting the network. `--link <url>` makes that first launch the
+link (`simctl openurl`) instead of the app's icon, for a link that opens the app just after
+install; it is iOS only. `ios` and `release` set the simulator they boot to the default text size. The next `ios` removes the build and starts
 them again.
 
 There are several developers. Developer 1 works in this checkout on the development ports.

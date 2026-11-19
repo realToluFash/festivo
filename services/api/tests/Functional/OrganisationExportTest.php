@@ -99,10 +99,12 @@ final class OrganisationExportTest extends ApiTestCase
         'dish_library_variants' => ['id', 'dish_id', 'position', 'name', 'for_children', 'allergens', 'diets', 'last_price_minor', 'last_price_currency'],
         'vendors' => ['id', 'name', 'category', 'contact_name', 'email_address', 'phone_country_code', 'phone_number', 'website', 'address', 'note', 'archived_at', 'created_at'],
         'run_of_show' => ['id', 'event_id', 'title', 'starts_at', 'length_minutes', 'place', 'owner_name', 'owner_role', 'note', 'show_to_guests', 'skipped', 'started_at', 'ended_at'],
-        'staff' => ['id', 'event_id', 'full_name', 'mobile', 'email', 'member_id', 'job_id'],
+        'staff' => ['id', 'event_id', 'full_name', 'mobile', 'email', 'member_id', 'job_id', 'station_id', 'as_well_station_id', 'floor_lead'],
         'staff_jobs' => ['id', 'event_id', 'name', 'access', 'position', 'created_at'],
         'staff_shifts' => ['id', 'job_id', 'starts_at', 'ends_at', 'needed'],
         'staff_shift_people' => ['shift_id', 'staff_id'],
+        'staff_stations' => ['id', 'event_id', 'kind', 'name', 'section_id', 'lead_id', 'position', 'walk_position'],
+        'staff_item_stations' => ['course_id', 'item_key', 'station_id'],
         'cost_lines' => ['id', 'event_id', 'label', 'category', 'basis', 'price_minor', 'price_currency', 'note', 'created_at', 'updated_at'],
     ];
 
@@ -113,6 +115,7 @@ final class OrganisationExportTest extends ApiTestCase
         'audit_entries' => 'the audit log, which Settings > Audit log exports (sc-611)',
         'billing_accounts' => "billing: Soirely's own records, the terms it sells on (pm, 19 Nov)",
         'calendar_feeds' => 'a link that opens without signing in',
+        'catalogue_versions' => "billing: Soirely's own records, the terms it sells on (pm, 19 Nov)",
         'doctrine_migration_versions' => "Soirely's own records",
         'email_suppressions' => "Soirely's own records",
         'event_changes' => 'change history',
@@ -406,10 +409,11 @@ final class OrganisationExportTest extends ApiTestCase
         $body = $this->as($this->owner, 'GET', $this->path(''));
         $shown = Type\dict(Type\string(), Type\mixed())->coerce($body['export']);
         self::assertSame(['ready', true, 'Folake Adeyemi', 'Sunday 18 Oct at 14:20 WAT'], [$shown['state'], $shown['mine'], $shown['askedBy'], $shown['expires']]);
-        self::assertSame(['2026-10-18T13:20:00+00:00', 'Sunday 18 Oct at 14:20 WAT'], [$body['nextAllowedAt'], $body['nextAllowed']]);
+        self::assertSame(['2026-10-18T13:20:00+00:00', 'Sunday 18 Oct at 14:21 WAT'], [$body['nextAllowedAt'], $body['nextAllowed']]);
 
         $mail = $this->mailTo('folake@ire.events');
         self::assertSame('Your export of Ìrè Events is ready', $mail->getSubject());
+        self::assertStringContainsString('which you asked for on Saturday 17 Oct at 14:20 WAT, is ready.', (string) $mail->getTextBody());
         self::assertStringContainsString('It downloads once, until Sunday 18 Oct at 14:20 WAT, and only for you, signed in.', (string) $mail->getTextBody());
         self::assertStringContainsString('/app/settings/data-and-control/export?download=' . $export->getId()->toRfc4122(), (string) $mail->getTextBody());
     }
@@ -476,6 +480,7 @@ final class OrganisationExportTest extends ApiTestCase
         self::assertSame('Sunday 18 Oct at 14:21 WAT', $this->last()['retryAt'] ?? null);
         self::assertGreaterThan(0, Str\to_int((string) $this->client->getResponse()->headers->get('Retry-After')));
         self::assertCount(1, self::em()->getRepository(OrganisationExport::class)->findAll());
+        self::assertSame('Sunday 18 Oct at 14:21 WAT', $this->as($this->owner, 'GET', $this->path(''))['nextAllowed']);
 
         self::mockTime(new DateTimeImmutable('2026-10-18T13:20:00+00:00'));
         $this->as($this->owner, 'POST', $this->path(''));

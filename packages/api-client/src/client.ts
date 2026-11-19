@@ -2784,6 +2784,86 @@ export class ApiClient {
     );
   }
 
+  /** Refused `validation_failed` on `name`: blank, too long, or another station's (sc-3910). */
+  async addStationPlace(eventId: string, name: string): Promise<StaffPlan> {
+    return this.staffPlanOf(
+      await this.post<unknown>(`${this.stationsPath(eventId)}/places`, { name }),
+    );
+  }
+
+  /** As `addStationPlace`; refused on the Pass. */
+  async renameStationPlace(eventId: string, placeId: string, name: string): Promise<StaffPlan> {
+    return this.staffPlanOf(
+      await this.put<unknown>(
+        `${this.stationsPath(eventId)}/places/${encodeURIComponent(placeId)}`,
+        { name },
+      ),
+    );
+  }
+
+  /** Its people lose their station and its items go to the Pass; refused on the Pass. */
+  async removeStationPlace(eventId: string, placeId: string): Promise<StaffPlan> {
+    return this.staffPlanOf(
+      await this.delete<unknown>(
+        `${this.stationsPath(eventId)}/places/${encodeURIComponent(placeId)}`,
+      ),
+    );
+  }
+
+  /** A place or section id, or `null` to take them off their station. */
+  async putOnStation(eventId: string, staffId: string, station: string | null): Promise<StaffPlan> {
+    return this.staffPlanOf(
+      await this.put<unknown>(
+        `${this.stationsPath(eventId)}/people/${encodeURIComponent(staffId)}`,
+        { station },
+      ),
+    );
+  }
+
+  /** Refused `validation_failed` unless the lead is on the station. */
+  async setStationLead(
+    eventId: string,
+    stationId: string,
+    lead: string | null,
+  ): Promise<StaffPlan> {
+    return this.staffPlanOf(
+      await this.put<unknown>(
+        `${this.stationsPath(eventId)}/${encodeURIComponent(stationId)}/lead`,
+        {
+          lead,
+        },
+      ),
+    );
+  }
+
+  async setFloorLead(eventId: string, lead: string | null): Promise<StaffPlan> {
+    return this.staffPlanOf(
+      await this.put<unknown>(`${this.stationsPath(eventId)}/floor-lead`, { lead }),
+    );
+  }
+
+  /** Refused `validation_failed` when `place` is not a place or `item` is not on the course. */
+  async setDishedAt(
+    eventId: string,
+    courseId: string,
+    item: string,
+    place: string,
+  ): Promise<StaffPlan> {
+    return this.staffPlanOf(
+      await this.put<unknown>(
+        `${this.stationsPath(eventId)}/courses/${encodeURIComponent(courseId)}/dished-at`,
+        { item, place },
+      ),
+    );
+  }
+
+  /** Refused `validation_failed` unless `order` is exactly the current walk, reordered. */
+  async setWalkingOrder(eventId: string, order: string[]): Promise<StaffPlan> {
+    return this.staffPlanOf(
+      await this.put<unknown>(`${this.stationsPath(eventId)}/walking-order`, { order }),
+    );
+  }
+
   async staffSubscription(eventId: string): Promise<RealtimeSubscription> {
     const body = await this.post<{ token?: unknown; expiresAt?: unknown }>(
       `${this.staffPath(eventId)}/subscriptions`,
@@ -3252,6 +3332,10 @@ export class ApiClient {
 
   private staffPath(eventId: string): string {
     return `/api/events/${encodeURIComponent(eventId)}/staff`;
+  }
+
+  private stationsPath(eventId: string): string {
+    return `/api/events/${encodeURIComponent(eventId)}/stations`;
   }
 
   /** sc-3784: the people named, in their order, as a spreadsheet the API builds from the list as it is now. */

@@ -18,6 +18,7 @@ import {
   titleCapOn,
   titleSize,
   wordsIn,
+  wordsRoomKey,
   wordsSlot,
 } from '../layout/textSize.ts';
 import { Text, TitleCap, type TextProps } from './Text.tsx';
@@ -53,7 +54,8 @@ export function MeasuredWords({
       >
         {[...new Set(words)].map((word) => (
           <Text
-            key={word}
+            // A new Text per start, so a layout read at the last start is never filed under this one when the title's cap moves (sc-69816).
+            key={`${look.maxFontSizeMultiplier ?? 1}|${word}`}
             {...look}
             style={[look.style, styles.word]}
             onLayout={(event) => onWidth(word, event.nativeEvent.layout.width)}
@@ -76,7 +78,8 @@ export function useWholeWords(
 ) {
   const { width: windowWidth } = useWindowDimensions();
   const words = look.breakAfterHyphens ? piecesIn(texts) : wordsIn(texts);
-  const roomKey = `${start}|${windowWidth}`;
+  const given = look.room != null && look.room > 0 ? look.room : undefined;
+  const roomKey = wordsRoomKey(start, windowWidth, given);
   const seenKey = `${roomKey}|${texts.join('\n')}`;
   const [measured, setMeasured] = useState<Readonly<Record<string, number>>>({});
   const [room, setRoom] = useState<{ key: string; width: number } | null>(null);
@@ -91,17 +94,18 @@ export function useWholeWords(
     {
       wrapped: wrapped ? seen.width : null,
       kept: room,
-      reported: look.room != null && look.room > 0 ? { windowWidth, width: look.room } : reported,
+      reported: given == null ? reported : { windowWidth, width: given },
     },
     start,
     windowWidth,
+    given,
   );
   const drawn =
     slot > 0 && widths.length === words.length
       ? fitWidest(size, start, Math.max(...widths), slot)
       : start;
 
-  // Kept under the start and window width, so it outlives a change of the texts.
+  // Kept under its `wordsRoomKey`, the start, window width and reported room, so it outlives a change of the texts.
   if (wrapped && (room?.key !== roomKey || room.width !== seen.width)) {
     setRoom({ key: roomKey, width: seen.width });
   }
@@ -166,6 +170,8 @@ export function WholeWords({
       {words.measure}
       <Text
         {...rest}
+        // A new size mounts a new Text, so iOS never draws one size in the box laid out for another (sc-69816).
+        key={drawnSize}
         size={size}
         maxFontSizeMultiplier={words.maxFontSizeMultiplier}
         onLayout={(event) => {

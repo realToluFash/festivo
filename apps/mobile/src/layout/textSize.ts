@@ -141,10 +141,15 @@ export function grownPad(height: number, size: number, ring: number): number {
 export interface WordsRoom {
   /** The width a text drawn at the start wrapped at, when it wrapped. */
   wrapped: number | null;
-  /** That width, kept under the start and window width it was read at. */
+  /** That width, kept under its `wordsRoomKey`: the start, window width and reported room it was read at. */
   kept: { key: string; width: number } | null;
   /** A container's width, as its caller reports it, under the window width it was read at. */
   reported: { windowWidth: number; width: number } | null;
+}
+
+/** What a wrapped text's width holds for: its start, the window's width, and the room its container reported, so a new room is never fitted to a width read in an old one (sc-69816). */
+export function wordsRoomKey(start: number, windowWidth: number, given?: number): string {
+  return given == null ? `${start}|${windowWidth}` : `${start}|${windowWidth}|${given}`;
 }
 
 /** The width the texts have to fit, 0 while it is not known. */
@@ -152,9 +157,10 @@ export function wordsSlot(
   { wrapped, kept, reported }: WordsRoom,
   start: number,
   windowWidth: number,
+  given?: number,
 ): number {
   if (wrapped != null) return wrapped;
-  if (kept?.key === `${start}|${windowWidth}`) return kept.width;
+  if (kept?.key === wordsRoomKey(start, windowWidth, given)) return kept.width;
   // A container's onLayout does not fire again when only the text size changes (sc-37298).
   return reported?.windowWidth === windowWidth ? reported.width : 0;
 }

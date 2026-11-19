@@ -87,7 +87,7 @@ final readonly class ExportController
             'owner' => $this->ownerCheck->holds($organisation, $user),
             'export' => null === $latest ? null : $this->export($latest, $user),
             'nextAllowedAt' => $next?->format(\DATE_ATOM),
-            'nextAllowed' => null === $next ? null : $this->written($next, $user),
+            'nextAllowed' => null === $next ? null : $this->written(ApiException::statedMinute($next), $user),
         ];
     }
 

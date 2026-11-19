@@ -67,6 +67,7 @@ const SHARED: readonly Family[] = [
       NARROW,
       'payers.css',
       'payments.css',
+      'people.css',
       'phone.css',
       'quotes.css',
       'roster.css',

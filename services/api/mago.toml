@@ -287,11 +287,12 @@ permit = [
 
 # Plans & billing (sc-3927): the subscription, who pays for it, and the one
 # entitlement answer. The organisation scope founds a subscription and asks for
-# the answer; billing never reaches back. A purge takes a billing account
+# the answer; billing never reaches back. Staff actions on the plan catalogue
+# are audited (sc-3928). A purge takes a billing account
 # nothing is paid for by any more.
 [[guard.perimeter.rules]]
 namespace = "App\\Domain\\Billing\\"
-permit = ["@layer:native", "@layer:external", "@layer:shared", "@layer:domain_billing", "@layer:repository", "@layer:deletion"]
+permit = ["@layer:native", "@layer:external", "@layer:shared", "@layer:domain_billing", "@layer:repository", "@layer:deletion", "@layer:audit"]
 
 # Events check their zone and currency as an organisation's are checked (Regions,
 # AccountTimeZone), and each create goes to the audit trail (sc-1486). A venue's
@@ -365,6 +366,7 @@ permit = [
 # Staffing: an event's roster, the people working it without being members (sc-3906). A
 # mobile number is checked by the account's parser; each change is audited and published.
 # A shift's wall-clock times are read in the event's zone as the event's own are (sc-3908).
+# Stations give each course's items, as the menu lists them, the place that dishes them (sc-3910).
 [[guard.perimeter.rules]]
 namespace = "App\\Domain\\Staff\\"
 permit = [
@@ -372,6 +374,7 @@ permit = [
     "@layer:external",
     "@layer:shared",
     "@layer:domain_event",
+    "@layer:domain_menu",
     "@layer:domain_staff",
     "@layer:domain_user",
     "@layer:repository",

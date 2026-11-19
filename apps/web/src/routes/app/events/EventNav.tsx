@@ -1,6 +1,6 @@
 import type { OrganisationEvent } from '@soirely/api-client';
 import { isPlaceholderEventArea, shownPhase } from '@soirely/domain';
-import { type MouseEvent, useEffect, useSyncExternalStore } from 'react';
+import { type MouseEvent, type ReactNode, useEffect, useSyncExternalStore } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useLocation, useMatch, useNavigate } from 'react-router';
 
@@ -151,12 +151,15 @@ export function EventNav({
   onFollow,
   areas = SIDE_AREAS,
   back = true,
+  card = null,
 }: {
   inside: Omit<InsideEvent, 'area'> & { area: SideArea | null };
   onFollow: (() => void) | undefined;
   /** An account with no organisation sees its level's areas and has no Events to go back to (sc-71). */
   areas?: readonly SideArea[];
   back?: boolean;
+  /** Drawn at the head instead of the event its page loaded: a not-found has none (sc-68438). */
+  card?: ReactNode;
 }) {
   const { t } = useTranslation();
   const location = useLocation();
@@ -182,7 +185,7 @@ export function EventNav({
             {t('nav.events')}
           </Link>
         )}
-        {event != null && <SideCard event={event} />}
+        {card ?? (event != null && <SideCard event={event} />)}
       </div>
       <ul className="today-places">
         {areas.map((area) => {

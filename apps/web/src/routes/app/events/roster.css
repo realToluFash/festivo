@@ -34,6 +34,33 @@
   font: 400 14px/1.45 var(--fontFamily);
 }
 
+.rs-gone {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceXxs);
+}
+
+.rs-gone-now {
+  color: var(--colorInkSecondary);
+}
+
+.rs-gone-why {
+  display: inline-flex;
+  align-items: flex-start;
+  gap: var(--spaceXs);
+  color: var(--colorAttentionText);
+  font: var(--typeSmallStrong);
+}
+
+.rs-gone-why > svg {
+  flex: none;
+  margin-top: 2px;
+}
+
+.rs-facts dd > .rs-gone-why {
+  margin-top: var(--spaceXs);
+}
+
 .rs .mn-lock svg {
   flex: none;
   margin-top: 2px;
@@ -180,6 +207,11 @@
 
 .rs-frame {
   overflow-x: auto;
+}
+
+.rs-frame:focus-visible {
+  outline: 2px solid var(--colorAccent);
+  outline-offset: 2px;
 }
 
 .rs-table {
@@ -447,6 +479,21 @@
 
   .rs .sn-card-names {
     flex-basis: 12rem;
+  }
+
+  /* At 400% zoom a cell breaks only between words and the frame scrolls further (sc-70540); the global overflow-wrap: anywhere on span and button would let a column shrink to one letter. The Coverage table is an .rs-table too, so these stay inside the Roster's frame. */
+  .rs-frame > .rs-table :is(th, td),
+  .rs-frame > .rs-table :is(th, td) * {
+    overflow-wrap: normal;
+  }
+
+  .rs-frame > .rs-table thead th:nth-child(2),
+  .rs-frame > .rs-table thead th:nth-child(3) {
+    min-width: 128px;
+  }
+
+  .rs-frame > .rs-table thead th:nth-child(5) {
+    min-width: 168px;
   }
 }
 

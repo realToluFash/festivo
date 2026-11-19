@@ -23,6 +23,7 @@ import {
   piecesIn,
   titleSize,
   wordsIn,
+  wordsRoomKey,
   wordsSlot,
 } from './textSize.ts';
 
@@ -377,6 +378,23 @@ describe('the width labels have to fit (sc-37298)', () => {
 
     expect(wordsSlot({ wrapped: null, kept, reported: null }, 20, 360)).toBe(120);
     expect(wordsSlot({ wrapped: null, kept, reported: null }, 24, 360)).toBe(0);
+  });
+
+  it('forgets a wrapped text’s width once its container reports a new room (sc-69816)', () => {
+    const kept = { key: wordsRoomKey(43, 402), width: 129 };
+    const reported = { windowWidth: 402, width: 238 };
+
+    expect(wordsSlot({ wrapped: null, kept, reported }, 43, 402, 238)).toBe(238);
+    expect(fitWidest(16, 43, 171, wordsSlot({ wrapped: null, kept, reported }, 43, 402, 238))).toBe(
+      43,
+    );
+  });
+
+  it('keeps a wrapped text’s width while its container’s room is the same (sc-69816)', () => {
+    const kept = { key: wordsRoomKey(43, 402, 238), width: 236 };
+    const reported = { windowWidth: 402, width: 238 };
+
+    expect(wordsSlot({ wrapped: null, kept, reported }, 43, 402, 238)).toBe(236);
   });
 
   it('takes the width a text wrapped at over anything kept', () => {

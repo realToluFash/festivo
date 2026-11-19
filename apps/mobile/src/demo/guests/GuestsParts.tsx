@@ -38,7 +38,7 @@ import { W, say } from './GuestsWords.ts';
 import { type MarkKind, ReplyMark } from '../../components/ReplyMark.tsx';
 import { DoneLine } from '../../components/FormLayers.tsx';
 import { PaneBell, useBellInPane } from '../events/EventFrame.tsx';
-import { actionsUnder, brokeOn } from '../../layout/titleFit.ts';
+import { actionsUnder, brokeOn, titleRowKey } from '../../layout/titleFit.ts';
 import { titleSize } from '../../layout/textSize.ts';
 
 export type Layout = 'phone' | 'portrait' | 'landscape';
@@ -408,7 +408,7 @@ export function GuestsTitle({
   const pageDrawn = usePageTitleDrawn();
   const drawn = useRef(0);
   const [broke, setBroke] = useState<string | null>(null);
-  const row = `${room}|${title}|${fontScale}`;
+  const row = titleRowKey({ room, title, fontScale, spinning: false });
   const under =
     broke === row ||
     actionsUnder({

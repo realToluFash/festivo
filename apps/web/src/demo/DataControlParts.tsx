@@ -65,7 +65,7 @@ export function SubPage({
               }
               bell={<DemoBell tell={tell} />}
             />
-            <TitleRow title={title} />
+            <TitleRow title={title} underBack />
           </>
         )}
         {children}

@@ -2,6 +2,7 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { RouterProvider, createMemoryRouter } from 'react-router';
 
+import { holdReturn } from '../../heldReturn.ts';
 import { routes } from '../index.tsx';
 
 const ACCOUNT = {
@@ -47,6 +48,7 @@ function reloaded() {
 
 afterEach(() => {
   vi.restoreAllMocks();
+  sessionStorage.clear();
 });
 
 describe('Set up two-factor again, reloaded (sc-29956)', () => {
@@ -82,5 +84,25 @@ describe('Set up two-factor again, reloaded (sc-29956)', () => {
     expect(
       await screen.findByRole('heading', { level: 1, name: 'Set up two-factor again' }),
     ).toBeDefined();
+  });
+});
+
+describe('Not now, with a product link opened signed out (sc-612)', () => {
+  it('goes on to the link rather than the product home', async () => {
+    answering(
+      () => json(ACCOUNT),
+      () => new Response(null, { status: 204 }),
+    );
+    holdReturn('/app/org/o1/export?download=r1');
+    const router = createMemoryRouter(routes, { initialEntries: ['/two-factor/again'] });
+    render(<RouterProvider router={router} />);
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Not now' }));
+
+    await vi.waitFor(() => {
+      expect(`${router.state.location.pathname}${router.state.location.search}`).toBe(
+        '/app/org/o1/export?download=r1',
+      );
+    });
   });
 });
