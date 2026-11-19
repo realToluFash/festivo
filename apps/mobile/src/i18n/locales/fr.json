@@ -3058,11 +3058,11 @@
     "dropped": "Connexion requise pour exporter. Rien n’a été exporté."
   },
   "outsideEvent": {
-    "until": "until {{when}}",
-    "guestsLine": "Names and replies only, no contact details",
-    "onEvent_one": "{{count, number}} person on this event",
-    "onEvent_other": "{{count, number}} people on this event",
-    "onEvent_many": "{{count, number}} people on this event",
+    "until": "jusqu’au {{when}}",
+    "guestsLine": "Noms et réponses uniquement, sans les coordonnées",
+    "onEvent_one": "{{count, number}} personne sur cet événement",
+    "onEvent_other": "{{count, number}} personnes sur cet événement",
+    "onEvent_many": "{{count, number}} de personnes sur cet événement",
     "yourEvents": "Your events",
     "fromOutside": "Events from outside",
     "yourOrganisations": "Your organisations",

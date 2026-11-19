@@ -2706,12 +2706,12 @@
     "people": "Pessoas"
   },
   "outsideEvent": {
-    "when": "{{day}} · {{start}} to {{end}}",
-    "until": "until {{when}}",
-    "guestsLine": "Names and replies only, no contact details",
-    "onEvent_one": "{{count, number}} person on this event",
-    "onEvent_other": "{{count, number}} people on this event",
-    "onEvent_many": "{{count, number}} people on this event",
+    "when": "{{day}} · {{start}} a {{end}}",
+    "until": "até {{when}}",
+    "guestsLine": "Só nomes e respostas, sem contactos",
+    "onEvent_one": "{{count, number}} pessoa neste evento",
+    "onEvent_other": "{{count, number}} pessoas neste evento",
+    "onEvent_many": "{{count, number}} de pessoas neste evento",
     "yourEvents": "Your events",
     "fromOutside": "Events from outside",
     "yourOrganisations": "Your organisations",
