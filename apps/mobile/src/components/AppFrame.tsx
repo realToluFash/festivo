@@ -20,6 +20,7 @@ import {
   useState,
 } from 'react';
 import {
+  type LayoutChangeEvent,
   Pressable,
   ScrollView,
   type ScrollViewInstance,
@@ -62,6 +63,7 @@ import {
 import { leaveThen } from '../leaveHeld.ts';
 import { frameTitleSize } from '../layout/textSize.ts';
 import { backScale } from '../layout/focusedHeader.ts';
+import { statusFits } from '../layout/titleFit.ts';
 import {
   type LayoutKind,
   useAccessibilitySizes,
@@ -274,8 +276,8 @@ export function AppFrame({
   underTitle?: ReactNode;
   /** At the end of the title's row, as Members' Refreshing… (sc-27046). */
   besideTitle?: ReactNode;
-  /** At the end of the header's back row, where it has one, as an event page's Refreshing… (sc-27046). */
-  besideBack?: ReactNode;
+  /** At the end of the header's back row, where it has one, as an event page's Refreshing… (sc-27046); or one that gives way to the pill, as Guests' (sc-71821). */
+  besideBack?: BesideBackNode;
   /** Inside an event, its areas take the navigation's place. */
   inEvent?: InsideEvent | undefined;
   /** The body names the page itself (an event's Overview card, a member's own card in front of the list), so the frame draws no title (sc-30413, sc-37693). */
@@ -793,7 +795,7 @@ interface FrameHeaderProps {
   primary: TopPrimaryProps | undefined;
   underTitle: ReactNode;
   besideTitle: ReactNode;
-  besideBack: ReactNode;
+  besideBack: BesideBackNode;
   entries: readonly NavEntry[];
   inEvent: boolean;
   title: string;
@@ -914,7 +916,7 @@ function ScreenTop({
   const backView =
     back == null || backHidden ? null : (
       <BesideBack beside={besideBack}>
-        <FrameBack back={back} cap={cap} besideShown={besideBack != null} />
+        <FrameBack back={back} cap={cap} besideShown={shownBeside(besideBack)} />
       </BesideBack>
     );
   const under = (
@@ -1058,7 +1060,7 @@ function FrameHeader({
   const backView =
     back == null || backHidden ? null : back.pill === true ? (
       <BesideBack beside={besideBack}>
-        <FrameBack back={back} cap={cap} besideShown={besideBack != null} />
+        <FrameBack back={back} cap={cap} besideShown={shownBeside(besideBack)} />
       </BesideBack>
     ) : (
       <BackButton
@@ -1129,7 +1131,7 @@ function FrameHeader({
             <View style={styles.fill}>
               {back != null && !backHidden && (
                 <BesideBack beside={besideBack}>
-                  <FrameBack back={back} cap={cap} besideShown={besideBack != null} />
+                  <FrameBack back={back} cap={cap} besideShown={shownBeside(besideBack)} />
                 </BesideBack>
               )}
             </View>
@@ -1152,7 +1154,7 @@ function FrameHeader({
           <View style={styles.fill}>
             {!backHidden && (
               <BesideBack beside={besideBack}>
-                <FrameBack back={back} cap={cap} besideShown={besideBack != null} />
+                <FrameBack back={back} cap={cap} besideShown={shownBeside(besideBack)} />
               </BesideBack>
             )}
           </View>
@@ -1223,7 +1225,7 @@ export function BackButton({
   onPress: () => void;
   off?: boolean | undefined;
   /** Null while the slot is empty, never undefined: the row stays, so Back is not remounted and keeps screen reader focus (sc-27046). */
-  beside?: ReactNode;
+  beside?: BesideBackNode;
   testID: string;
 }) {
   const { fontScale } = useWindowDimensions();
@@ -1232,7 +1234,7 @@ export function BackButton({
   const word = useBackWord(
     label,
     { full: body * scale, least: body, glyph: tokens.sizeMark, sides: 3 * tokens.spaceXs },
-    beside != null,
+    shownBeside(beside),
   );
   const mark = (tokens.sizeMark / body) * word.size;
   const button = (
@@ -1271,13 +1273,62 @@ export function BackButton({
   return <BesideBack beside={beside}>{button}</BesideBack>;
 }
 
-function BesideBack({ beside, children }: { beside: ReactNode; children: ReactNode }) {
+/** A status beside Back that gives way to the pill: drawn there only where the pill stays whole beside it, and told where it went, so its screen draws it elsewhere when it does not fit (sc-71821). */
+export interface GivesWay {
+  status: ReactNode;
+  onPlaced: (beside: boolean) => void;
+}
+
+type BesideBackNode = ReactNode | GivesWay;
+
+function givesWay(beside: BesideBackNode): beside is GivesWay {
+  return typeof beside === 'object' && beside != null && 'onPlaced' in beside;
+}
+
+/** Whether Back shares its row with something it makes room for; a status that gives way never shrinks its word (sc-68778, sc-71821). */
+function shownBeside(beside: BesideBackNode): boolean {
+  return beside != null && !givesWay(beside);
+}
+
+function BesideBack({ beside, children }: { beside: BesideBackNode; children: ReactNode }) {
   if (beside === undefined) return <>{children}</>;
+  if (givesWay(beside)) return <GivingWay beside={beside}>{children}</GivingWay>;
 
   return (
     <View style={besideRow.row}>
       {children}
       {beside}
+    </View>
+  );
+}
+
+/** Back laid out as if the status were not there, the status measured hidden, and drawn beside the pill only in the room left; the bell is outside this row. It stays mounted while the status comes and goes, keeping the status's last width, so where it goes is known again the frame it returns (sc-71821). */
+function GivingWay({ beside, children }: { beside: GivesWay; children: ReactNode }) {
+  const [slot, setSlot] = useState(0);
+  const [back, setBack] = useState(0);
+  const [status, setStatus] = useState(0);
+  const fits = statusFits({ room: slot, lead: back, ends: [], status, gap: tokens.spaceMd });
+  const { onPlaced } = beside;
+
+  useEffect(() => onPlaced(fits), [fits, onPlaced]);
+
+  const widthOf = (set: (width: number) => void) => (event: LayoutChangeEvent) =>
+    set(Math.ceil(event.nativeEvent.layout.width));
+
+  return (
+    <View style={besideRow.row} onLayout={widthOf(setSlot)}>
+      <View style={besideRow.back} onLayout={widthOf(setBack)}>
+        {children}
+      </View>
+      <View
+        style={besideRow.measure}
+        pointerEvents="none"
+        accessibilityElementsHidden
+        importantForAccessibility="no-hide-descendants"
+      >
+        {beside.status != null && <View onLayout={widthOf(setStatus)}>{beside.status}</View>}
+      </View>
+      {fits && beside.status}
     </View>
   );
 }
@@ -1290,6 +1341,8 @@ export const besideRow = StyleSheet.create({
     justifyContent: 'space-between',
     gap: tokens.spaceMd,
   },
+  back: { flexShrink: 1, minWidth: 0 },
+  measure: { position: 'absolute', opacity: 0 },
 });
 
 function goTo(destination: Destination): void {

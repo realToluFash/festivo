@@ -1,6 +1,3 @@
-import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
-
 import { describe, expect, it } from 'vitest';
 
 import {
@@ -10,10 +7,9 @@ import {
   cancelUnder,
   labelFits,
   rowRoom,
+  statusFits,
   titleRowKey,
 } from './titleFit.ts';
-
-const guests = readFileSync(join('src', 'components', 'GuestsHeading.tsx'), 'utf8');
 
 const row = { room: 400, title: 140, extra: 0, labelled: 170, gap: 16 };
 
@@ -71,7 +67,7 @@ describe('the row a title stands in', () => {
 });
 
 describe('Export and the + under the title (sc-68417)', () => {
-  const actions = { room: 370, title: 170, extra: 0, plus: 44, bell: 0, refreshing: 0, gap: 10 };
+  const actions = { room: 370, title: 170, extra: 0, plus: 44, bell: 0, gap: 10 };
 
   it('stay beside the title where all three fit', () => {
     expect(actionsUnder({ ...actions, extra: 120 })).toBe(false);
@@ -90,15 +86,6 @@ describe('Export and the + under the title (sc-68417)', () => {
     const room = 170 + 10 + 100 + 10 + 44 + 10 + 44;
     expect(actionsUnder({ ...actions, extra: 100, bell: 44, room })).toBe(false);
     expect(actionsUnder({ ...actions, extra: 100, bell: 44, room: room - 1 })).toBe(true);
-  });
-
-  it('count a refresh spinner while it shows, with its own gap', () => {
-    const room = 170 + 10 + 100 + 10 + 44 + 10 + 44;
-    expect(actionsUnder({ ...actions, extra: 100, bell: 44, room })).toBe(false);
-    expect(actionsUnder({ ...actions, extra: 100, bell: 44, refreshing: 20, room })).toBe(true);
-    expect(
-      actionsUnder({ ...actions, extra: 100, bell: 44, refreshing: 20, room: room + 30 }),
-    ).toBe(false);
   });
 
   it('stay beside it until the row and the title are measured', () => {
@@ -232,43 +219,39 @@ describe('the row the title broke on (sc-68417)', () => {
   });
 });
 
-describe('Guests on an iPad on its side, the spinner then none (sc-68417)', () => {
-  const row = { room: 404, title: 'Guests', fontScale: 1 };
-  const widths = { room: 404, title: 92, extra: 120, plus: 44, bell: 44, gap: 16 };
-  const broken = [
-    { text: 'Gue', width: 52 },
-    { text: 'sts', width: 43 },
-  ];
-
-  function under(broke: string | null, spinning: boolean): boolean {
-    return (
-      broke === titleRowKey({ ...row, spinning }) ||
-      actionsUnder({ ...widths, refreshing: spinning ? 40 : 0 })
-    );
-  }
-
-  it('puts the actions back beside the title once a break latched while the spinner was up goes with it', () => {
-    const latched = brokeOn({
-      broke: null,
-      row: titleRowKey({ ...row, spinning: true }),
-      under: under(null, true),
-      lines: broken,
-      drawn: 26,
-      start: 26,
-      size: 26,
-      slot: 92,
-      title: 92,
-    });
-
-    expect(latched).not.toBeNull();
-    expect(under(latched, true)).toBe(true);
-    expect(under(latched, false)).toBe(false);
+describe('Refreshing… gives way (sc-71821)', () => {
+  it('latches no break on whether Refreshing… shows: the row key names only the room, the title and the size', () => {
+    expect(titleRowKey({ room: 404, title: 'Guests', fontScale: 1 })).toBe('404|Guests|1');
   });
 
-  it('latches the heading on the key that names the spinner', () => {
-    expect(guests).toMatch(
-      /const rowKey = titleRowKey\(\{ room, title, fontScale, spinning \}\);/u,
+  it('stays beside the Back pill at the default size, where the pill, it and the bell fit', () => {
+    expect(statusFits({ room: 318, lead: 110, ends: [], status: 99, gap: 10 })).toBe(true);
+  });
+
+  it('takes its own line at the twelfth step on a phone rather than shrink the Back pill', () => {
+    expect(statusFits({ room: 318, lead: 259, ends: [], status: 238, gap: 10 })).toBe(false);
+  });
+
+  it('counts the title as drawn and every control, so on its side at the twelfth step it goes under them', () => {
+    expect(statusFits({ room: 360, lead: 103, ends: [139, 44, 44], status: 191, gap: 10 })).toBe(
+      false,
     );
+  });
+
+  it('stays on the title row upright at the ninth step, where the title keeps its size beside it', () => {
+    expect(statusFits({ room: 770, lead: 141, ends: [142, 224], status: 184, gap: 10 })).toBe(true);
+  });
+
+  it('is exact at the edge: fitting to the point stays, one over goes under', () => {
+    expect(statusFits({ room: 300, lead: 100, ends: [80], status: 100, gap: 10 })).toBe(true);
+    expect(statusFits({ room: 299, lead: 100, ends: [80], status: 100, gap: 10 })).toBe(false);
+  });
+
+  it('takes its own line until every width is measured', () => {
+    expect(statusFits({ room: 0, lead: 100, ends: [44], status: 90, gap: 10 })).toBe(false);
+    expect(statusFits({ room: 800, lead: 0, ends: [44], status: 90, gap: 10 })).toBe(false);
+    expect(statusFits({ room: 800, lead: 100, ends: [0], status: 90, gap: 10 })).toBe(false);
+    expect(statusFits({ room: 800, lead: 100, ends: [44], status: 0, gap: 10 })).toBe(false);
   });
 });
 

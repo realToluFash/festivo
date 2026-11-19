@@ -228,14 +228,24 @@ export function CappedWholeWords({
 /** Grows less than other text at the accessibility sizes, and steps down rather than break a word (sc-13496). */
 export function Title({
   size,
+  grows = true,
   ...rest
 }: WholeWordsProps & {
   onDrawn?: ((size: number) => void) | undefined;
   room?: number | undefined;
+  /** False where a title keeps its default size at every text size, as Guests' on its side with the actions under it (sc-67659). */
+  grows?: boolean | undefined;
 }) {
   const { fontScale } = useWindowDimensions();
 
-  return <WholeWords weight="bold" {...rest} size={size} start={titleSize(size, fontScale)} />;
+  return (
+    <WholeWords
+      weight="bold"
+      {...rest}
+      size={size}
+      start={grows ? titleSize(size, fontScale) : size}
+    />
+  );
 }
 
 /** Where a page's title says the size it drew at, so the frame caps what is under it there (sc-67338). */
@@ -246,7 +256,9 @@ export function usePageTitleDrawn() {
 }
 
 /** A page's title drawn in the frame's body, as an event area's, which tells the frame the size it drew at (sc-67338). */
-export function BodyTitle(props: WholeWordsProps & { room?: number | undefined }) {
+export function BodyTitle(
+  props: WholeWordsProps & { room?: number | undefined; grows?: boolean | undefined },
+) {
   return <Title {...props} onDrawn={usePageTitleDrawn()} />;
 }
 

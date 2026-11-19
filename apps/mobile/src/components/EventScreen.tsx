@@ -48,6 +48,7 @@ import { outsideOn, outsidePlaces, readsOverview, wayBack } from '../kit/outside
 import { type Opened, openedOf, openedWithoutAsking } from '../kit/eventsOpen.ts';
 import { ASKS_END, SHOWN_EVENT, goUpToEvent } from '../kit/upToEvent.ts';
 import { useServerNow } from '../kit/serverNow.ts';
+import { backRow } from '../layout/backRow.ts';
 import { useLayout } from '../layout/useLayout.ts';
 import { rereadAccount, useSignedIn } from '../signedIn.ts';
 import { tokens } from '../theme/tokens.ts';
@@ -151,6 +152,7 @@ export function EventScreen({
       >,
   );
   const [guestsOffline, setGuestsOffline] = useState<ScreenOffline>(NOT_OFFLINE);
+  const [refreshingBesideBack, setRefreshingBesideBack] = useState(false);
   const [guestsTop, setGuestsTop] = useState<GuestsTop>({
     add: null,
     exports: null,
@@ -393,7 +395,7 @@ export function EventScreen({
   const guests = area === 'guests' && event != null;
   const refreshing =
     opened.refreshing || (guests && guestsOffline.refreshing) ? (
-      <Refreshing testID="events.page.refreshing" />
+      <Refreshing testID="events.page.refreshing" wraps={guests} />
     ) : null;
   const underTitle =
     area === 'people' && event != null ? (
@@ -411,6 +413,8 @@ export function EventScreen({
       />
     ) : null;
   const guestBack = guests ? guestsTop.back : null;
+  // On Guests' list on a phone, Refreshing… stays beside Back only where the pill stays whole, else it takes its own line under the heading (sc-71821).
+  const besideBackRow = backRow({ phone, guestsList: guests && guestBack == null, cardNamed });
   const titledInList = areaTitled || guests;
   const frameBack = !backs
     ? undefined
@@ -454,7 +458,13 @@ export function EventScreen({
       titleRef={title}
       untitled={cardNamed || titledInList}
       offline={guests ? (guestsOffline.stale ?? opened.stale) : opened.stale}
-      besideBack={phone || cardNamed ? refreshing : undefined}
+      besideBack={
+        besideBackRow === 'givingWay'
+          ? { status: refreshing, onPlaced: setRefreshingBesideBack }
+          : besideBackRow === 'beside'
+            ? refreshing
+            : undefined
+      }
       besideTitle={titledInList || phone ? undefined : refreshing}
       back={frameBack}
       backInBody={top.frameBack == null}
@@ -494,7 +504,7 @@ export function EventScreen({
             <GuestsHeading
               kind={kind}
               titleRef={title}
-              refreshing={refreshing}
+              refreshing={besideBackRow === 'givingWay' && refreshingBesideBack ? null : refreshing}
               exports={exportGuests}
               onAdd={guestsTop.add ?? null}
               addRef={guestsAdd}
