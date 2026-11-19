@@ -143,6 +143,20 @@ function Withheld() {
   );
 }
 
+/** Without budget.read, as an event of another organisation reads (sc-85): it never says what it is hiding. */
+function EventNotFound() {
+  const { t } = useTranslation();
+
+  return (
+    <div className="event-page">
+      <EventCrumb name={null} />
+      <section className="card">
+        <h1 tabIndex={-1}>{t('eventPage.notFound')}</h1>
+      </section>
+    </div>
+  );
+}
+
 function EventOf({
   organisationId,
   eventId,
@@ -226,7 +240,9 @@ function EventOf({
     else keepLoaded(key, shown, answered.current);
     answered.current = null;
   }, [load, eventId]);
-  useShowEvent(eventId, load.kind === 'loaded' ? load.event : undefined);
+  const budgetUnseen =
+    page === 'budget' && load.kind === 'loaded' && !canOn(load.event, PAGE_NEEDS.budget);
+  useShowEvent(eventId, load.kind === 'loaded' && !budgetUnseen ? load.event : undefined);
   useGoneEvent(
     eventId,
     (page === 'guests' && load.kind === 'notFound') ||
@@ -253,7 +269,7 @@ function EventOf({
     return canOn(load.event, PAGE_NEEDS.menu) ? <MenuArea event={load.event} /> : <Withheld />;
 
   if (page === 'budget' && load.kind === 'loaded')
-    return canOn(load.event, PAGE_NEEDS.budget) ? <BudgetArea event={load.event} /> : <Withheld />;
+    return budgetUnseen ? <EventNotFound /> : <BudgetArea event={load.event} />;
 
   if (page === 'schedule' && load.kind === 'loaded')
     return canOn(load.event, PAGE_NEEDS.schedule) ? (

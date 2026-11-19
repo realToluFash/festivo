@@ -47,6 +47,7 @@ import {
 } from '../../../components/SettingsParts.tsx';
 import { useDeskTop } from '../../../deskTop.ts';
 import { dateLocale } from '../../../i18n/index.ts';
+import { LayersContext, useDeskLayers } from '../../../layers.ts';
 import { meshFor } from '../../../mesh.ts';
 import { useOwnOfflineNotice } from '../../../offline.ts';
 import { pageTitle, usePageTitle } from '../../../pageTitle.ts';
@@ -96,6 +97,7 @@ interface Removed {
 export function BudgetArea({ event }: { event: OrganisationEvent }) {
   const { t } = useTranslation();
   const desk = useDeskTop();
+  const { layers, covered, setHost } = useDeskLayers();
   const locale = dateLocale();
   const stale = useOwnOfflineNotice();
   const [load, setLoad] = useState<Load>({ kind: 'loading' });
@@ -231,161 +233,164 @@ export function BudgetArea({ event }: { event: OrganisationEvent }) {
   };
 
   return (
-    <div className="desk ev desk-page ev-page bt">
-      <div className="ev-wide bt-page">
-        {crumb}
-        <div className="bt-title-row">
-          <h1 ref={title} className="bt-title" tabIndex={-1}>
-            {t('budget.title')}
-          </h1>
-          {budget != null && (
-            <div className="bt-title-actions">
-              <TextAction label={t('budget.addCost')} before="plus" onClick={openAdd} />
-            </div>
-          )}
-        </div>
-        <div aria-live="polite" aria-atomic="true" className="visually-hidden">
-          {heard}
-        </div>
-        {load.kind === 'loading' && <Loading />}
-        {load.kind === 'failed' && (
-          <>
-            <p className="desk-line is-ink">{t('budget.failed')}</p>
-            <TextAction
-              label={t('budget.tryAgain')}
-              onClick={() => {
-                setLoad({ kind: 'loading' });
-                setAttempt((n) => n + 1);
-              }}
-            />
-          </>
-        )}
-        {budget != null && (
-          <>
-            {live != null && stale == null && <LiveLine words={live} />}
-            {stale != null && <NotLive at={stale.at} onTry={stale.retry} />}
-            {budget.lines.length === 0 ? (
-              <FirstCard event={event} budget={budget} onAdd={openAdd} />
-            ) : (
-              <SummaryCard
-                event={event}
-                budget={budget}
-                washed={washed > 0}
-                step={stale == null}
-                onPrice={() => {
-                  const unpriced = budget.lines.find((one) => lineState(one) === 'notPriced');
-                  if (unpriced == null) return;
-                  setOpened(unpriced.id);
-                  setSaid(null);
-                }}
-              />
-            )}
-            {budget.lines.length > 0 && (
-              <div className="ev-columns">
-                <div className="ev-left">
-                  <Costs
-                    budget={budget}
-                    opened={opened}
-                    lit={lit}
-                    said={said}
-                    removed={removed}
-                    undoRef={undoRef}
-                    onOpen={(id) => {
-                      setOpened((now) => (now === id ? null : id));
-                      setSaid(null);
-                    }}
-                    onClose={(id) => {
-                      setOpened(null);
-                      setToRow(id);
-                    }}
-                    onSave={async (line, typed) => {
-                      await api.changeBudgetLine(event.id, line.id, typed);
-                      setRemoved(null);
-                      setLive(null);
-                      await readOwn();
-                      setOpened(null);
-                      setLit(line.id);
-                      setSaid({ id: line.id, words: t('budget.saved'), ok: true });
-                      setHeard(t('budget.saved'));
-                      setWashed((n) => n + 1);
-                      setToRow(line.id);
-                    }}
-                    onSaveFailed={(line) => {
-                      const rate = rateWords(t, line, locale);
-                      const words =
-                        lineState(line) === 'notPriced' || rate == null
-                          ? t('budget.notSavedPrice')
-                          : t('budget.notSaved', { rate });
-                      setOpened(null);
-                      setLit(null);
-                      setSaid({ id: line.id, words, ok: false });
-                      setToRow(line.id);
-                    }}
-                    onRemove={async (line) => {
-                      try {
-                        await api.removeBudgetLine(event.id, line.id);
-                      } catch {
-                        setSaid({ id: line.id, words: t('budget.notRemoved'), ok: false });
-                        return;
-                      }
-                      const words = removedWords(t, line, locale);
-                      setOpened(null);
-                      setSaid(null);
-                      setLive(null);
-                      setRemoved({ line, words });
-                      await readOwn();
-                      window.setTimeout(() => undoRef.current?.focus(), 0);
-                    }}
-                    onUndo={async () => {
-                      if (removed == null) return;
-                      const was = shown.current;
-                      try {
-                        await api.addBudgetLine(event.id, typedOf(removed.line));
-                      } catch {
-                        return;
-                      }
-                      const now = await readOwn();
-                      const back = now?.lines.find(
-                        (one) => was?.lines.every((old) => old.id !== one.id) ?? false,
-                      );
-                      setRemoved(null);
-                      setHeard(t('budget.back', { name: removed.line.label }));
-                      if (back != null) {
-                        setLit(back.id);
-                        setToRow(back.id);
-                      }
-                    }}
-                  />
-                </div>
+    <LayersContext value={layers}>
+      <div className="desk ev desk-page ev-page bt">
+        <div className="ev-wide bt-page" inert={covered}>
+          {crumb}
+          <div className="bt-title-row">
+            <h1 ref={title} className="bt-title" tabIndex={-1}>
+              {t('budget.title')}
+            </h1>
+            {budget != null && (
+              <div className="bt-title-actions">
+                <TextAction label={t('budget.addCost')} before="plus" onClick={openAdd} />
               </div>
             )}
-          </>
+          </div>
+          <div aria-live="polite" aria-atomic="true" className="visually-hidden">
+            {heard}
+          </div>
+          {load.kind === 'loading' && <Loading />}
+          {load.kind === 'failed' && (
+            <>
+              <p className="desk-line is-ink">{t('budget.failed')}</p>
+              <TextAction
+                label={t('budget.tryAgain')}
+                onClick={() => {
+                  setLoad({ kind: 'loading' });
+                  setAttempt((n) => n + 1);
+                }}
+              />
+            </>
+          )}
+          {budget != null && (
+            <>
+              {live != null && stale == null && <LiveLine words={live} />}
+              {stale != null && <NotLive at={stale.at} onTry={stale.retry} />}
+              {budget.lines.length === 0 ? (
+                <FirstCard event={event} budget={budget} onAdd={openAdd} />
+              ) : (
+                <SummaryCard
+                  event={event}
+                  budget={budget}
+                  washed={washed > 0}
+                  step={stale == null}
+                  onPrice={() => {
+                    const unpriced = budget.lines.find((one) => lineState(one) === 'notPriced');
+                    if (unpriced == null) return;
+                    setOpened(unpriced.id);
+                    setSaid(null);
+                  }}
+                />
+              )}
+              {budget.lines.length > 0 && (
+                <div className="ev-columns">
+                  <div className="ev-left">
+                    <Costs
+                      budget={budget}
+                      opened={opened}
+                      lit={lit}
+                      said={said}
+                      removed={removed}
+                      undoRef={undoRef}
+                      onOpen={(id) => {
+                        setOpened((now) => (now === id ? null : id));
+                        setSaid(null);
+                      }}
+                      onClose={(id) => {
+                        setOpened(null);
+                        setToRow(id);
+                      }}
+                      onSave={async (line, typed) => {
+                        await api.changeBudgetLine(event.id, line.id, typed);
+                        setRemoved(null);
+                        setLive(null);
+                        await readOwn();
+                        setOpened(null);
+                        setLit(line.id);
+                        setSaid({ id: line.id, words: t('budget.saved'), ok: true });
+                        setHeard(t('budget.saved'));
+                        setWashed((n) => n + 1);
+                        setToRow(line.id);
+                      }}
+                      onSaveFailed={(line) => {
+                        const rate = rateWords(t, line, locale);
+                        const words =
+                          lineState(line) === 'notPriced' || rate == null
+                            ? t('budget.notSavedPrice')
+                            : t('budget.notSaved', { rate });
+                        setOpened(null);
+                        setLit(null);
+                        setSaid({ id: line.id, words, ok: false });
+                        setToRow(line.id);
+                      }}
+                      onRemove={async (line) => {
+                        try {
+                          await api.removeBudgetLine(event.id, line.id);
+                        } catch {
+                          setSaid({ id: line.id, words: t('budget.notRemoved'), ok: false });
+                          return;
+                        }
+                        const words = removedWords(t, line, locale);
+                        setOpened(null);
+                        setSaid(null);
+                        setLive(null);
+                        setRemoved({ line, words });
+                        await readOwn();
+                        window.setTimeout(() => undoRef.current?.focus(), 0);
+                      }}
+                      onUndo={async () => {
+                        if (removed == null) return;
+                        const was = shown.current;
+                        try {
+                          await api.addBudgetLine(event.id, typedOf(removed.line));
+                        } catch {
+                          return;
+                        }
+                        const now = await readOwn();
+                        const back = now?.lines.find(
+                          (one) => was?.lines.every((old) => old.id !== one.id) ?? false,
+                        );
+                        setRemoved(null);
+                        setHeard(t('budget.back', { name: removed.line.label }));
+                        if (back != null) {
+                          setLit(back.id);
+                          setToRow(back.id);
+                        }
+                      }}
+                    />
+                  </div>
+                </div>
+              )}
+            </>
+          )}
+        </div>
+        {adding && budget != null && (
+          <AddCostDialog
+            eventId={event.id}
+            budget={budget}
+            onDismiss={() => setAdding(false)}
+            onAdded={async () => {
+              const was = shown.current;
+              const now = await readOwn();
+              const added = now?.lines.find(
+                (one) => was?.lines.every((old) => old.id !== one.id) ?? false,
+              );
+              setAdding(false);
+              setRemoved(null);
+              setWashed((n) => n + 1);
+              setHeard(t('budget.saved'));
+              if (added != null) {
+                setLit(added.id);
+                setSaid({ id: added.id, words: t('budget.saved'), ok: true });
+                setToRow(added.id);
+              }
+            }}
+          />
         )}
+        <div ref={setHost} className="desk-layers" />
       </div>
-      {adding && budget != null && (
-        <AddCostDialog
-          eventId={event.id}
-          budget={budget}
-          onDismiss={() => setAdding(false)}
-          onAdded={async () => {
-            const was = shown.current;
-            const now = await readOwn();
-            const added = now?.lines.find(
-              (one) => was?.lines.every((old) => old.id !== one.id) ?? false,
-            );
-            setAdding(false);
-            setRemoved(null);
-            setWashed((n) => n + 1);
-            setHeard(t('budget.saved'));
-            if (added != null) {
-              setLit(added.id);
-              setSaid({ id: added.id, words: t('budget.saved'), ok: true });
-              setToRow(added.id);
-            }
-          }}
-        />
-      )}
-    </div>
+    </LayersContext>
   );
 
   function typedOf(line: BudgetLine): BudgetLineTyped {
