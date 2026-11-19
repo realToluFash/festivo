@@ -479,3 +479,12 @@
     font-size: 26px;
   }
 }
+
+.bt-below {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  color: var(--colorAttentionText);
+  font: 600 14px/1.4 var(--fontFamily);
+}

@@ -1,6 +1,7 @@
 import {
   ApiError,
   type BudgetLine,
+  type BudgetMargin,
   type BudgetLineTyped,
   COST_BASES,
   type CostBasis,
@@ -8,6 +9,7 @@ import {
   type OrganisationEvent,
   VENDOR_CATEGORIES,
   type VendorCategory,
+  asBudgetMargin,
   linePrice,
   realtimeTopic,
 } from '@soirely/api-client';
@@ -19,16 +21,7 @@ import {
   typedAmount,
 } from '@soirely/domain';
 import type { TFunction } from 'i18next';
-import {
-  type ReactNode,
-  type RefObject,
-  useCallback,
-  useEffect,
-  useId,
-  useMemo,
-  useRef,
-  useState,
-} from 'react';
+import { type RefObject, useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router';
 
@@ -48,7 +41,6 @@ import {
 import { useDeskTop } from '../../../deskTop.ts';
 import { dateLocale } from '../../../i18n/index.ts';
 import { LayersContext, useDeskLayers } from '../../../layers.ts';
-import { meshFor } from '../../../mesh.ts';
 import { useOwnOfflineNotice } from '../../../offline.ts';
 import { pageTitle, usePageTitle } from '../../../pageTitle.ts';
 import { keptKeys, keptLoad, useAnsweredAgain, useKeptAsShown } from '../../../tabKept.ts';
@@ -70,13 +62,20 @@ import {
   sentPrice,
   wholeMoney,
 } from './budgetArea.ts';
+import {
+  MarginCard,
+  MarginCosts,
+  MarkupBlock,
+  MarkupDialog,
+  type MarkupOpening,
+} from './BudgetMargin.tsx';
+import { CoverCard, MoneyField } from './BudgetParts.tsx';
 import { useHubTopics } from './useHubTopics.ts';
 import '../../../components/SettingsParts.css';
 import '../../../components/eventsDesk.css';
 import '../../../components/eventPage.css';
 import './budget.css';
 
-const PIECES = [1, 2, 3, 4, 5, 6];
 const WASH_MS = 1600;
 const MINUTE_MS = 60_000;
 
@@ -118,6 +117,10 @@ export function BudgetArea({ event }: { event: OrganisationEvent }) {
   const shown = useRef<EventBudget | null>(null);
   const known = useRef(new Set<string>());
   const own = useRef(0);
+  const marginReader = event.permissions.includes('budget.margin');
+  const [margin, setMargin] = useState<BudgetMargin | null>(null);
+  const [marginFace, setMarginFace] = useState(false);
+  const [markupOpening, setMarkupOpening] = useState<MarkupOpening | null>(null);
 
   usePageTitle(pageTitle(t, [t('budget.title'), event.name]));
 
@@ -139,6 +142,14 @@ export function BudgetArea({ event }: { event: OrganisationEvent }) {
     };
   }, [event.id, attempt, answeredAgain]);
   useKeptAsShown(keptKeys.budget(event.id), load.kind === 'loaded' ? load.budget : null);
+
+  /** Refused plan_required on a plan without margin: then nothing says it is missing (sc-92). */
+  const readMargin = useCallback(() => {
+    if (!marginReader) return;
+    api.budgetMargin(event.id).then(setMargin, () => setMargin(null));
+  }, [event.id, marginReader]);
+
+  useEffect(readMargin, [readMargin, attempt, answeredAgain]);
 
   useEffect(() => {
     if (washed === 0) return;
@@ -205,6 +216,25 @@ export function BudgetArea({ event }: { event: OrganisationEvent }) {
   );
   useHubTopics(topics, () => api.budgetSubscription(event.id), readLive, readLive);
 
+  const marginHeld = margin != null;
+  const marginTopics = useMemo(
+    () =>
+      !marginHeld
+        ? []
+        : [realtimeTopic('EventBudgetMargin', event.id), realtimeTopic('EventHeadcount', event.id)],
+    [event.id, marginHeld],
+  );
+  useHubTopics(
+    marginTopics,
+    () => api.budgetMarginSubscription(event.id),
+    (data) => {
+      if (data != null) setMargin(asBudgetMargin(data));
+      if (marginFace && own.current === 0) setWashed((n) => n + 1);
+    },
+    readMargin,
+  );
+  const onMarginFace = marginFace && margin != null;
+
   const budget = load.kind === 'loaded' ? load.budget : null;
 
   const crumb = (
@@ -247,6 +277,16 @@ export function BudgetArea({ event }: { event: OrganisationEvent }) {
             {budget != null && (
               <div className="bt-title-actions">
                 <TextAction label={t('budget.addCost')} before="plus" onClick={openAdd} />
+                {margin != null && budget.lines.length > 0 && (
+                  <TextAction
+                    label={onMarginFace ? t('budget.margin.hide') : t('budget.margin.see')}
+                    onClick={() => {
+                      setMarginFace((now) => !now);
+                      setOpened(null);
+                      readMargin();
+                    }}
+                  />
+                )}
               </div>
             )}
           </div>
@@ -272,6 +312,8 @@ export function BudgetArea({ event }: { event: OrganisationEvent }) {
               {stale != null && <NotLive at={stale.at} onTry={stale.retry} />}
               {budget.lines.length === 0 ? (
                 <FirstCard event={event} budget={budget} onAdd={openAdd} />
+              ) : onMarginFace ? (
+                <MarginCard event={event} margin={margin} washed={washed > 0} />
               ) : (
                 <SummaryCard
                   event={event}
@@ -286,7 +328,32 @@ export function BudgetArea({ event }: { event: OrganisationEvent }) {
                   }}
                 />
               )}
-              {budget.lines.length > 0 && (
+              {budget.lines.length > 0 && onMarginFace && (
+                <div className="ev-columns">
+                  <div className="ev-left">
+                    <MarginCosts
+                      eventId={event.id}
+                      margin={margin}
+                      shownIds={
+                        new Set(
+                          budget.lines
+                            .filter((one) => lineState(one) === 'priced')
+                            .map((one) => one.id),
+                        )
+                      }
+                      onSaved={(next) => {
+                        setMargin(next);
+                        setHeard(t('budget.saved'));
+                        setWashed((n) => n + 1);
+                      }}
+                    />
+                  </div>
+                  <div className="ev-right">
+                    <MarkupBlock margin={margin} onOpen={setMarkupOpening} />
+                  </div>
+                </div>
+              )}
+              {budget.lines.length > 0 && !onMarginFace && (
                 <div className="ev-columns">
                   <div className="ev-left">
                     <Costs
@@ -402,6 +469,20 @@ export function BudgetArea({ event }: { event: OrganisationEvent }) {
             }}
           />
         )}
+        {markupOpening != null && margin != null && (
+          <MarkupDialog
+            eventId={event.id}
+            margin={margin}
+            opening={markupOpening}
+            onDismiss={() => setMarkupOpening(null)}
+            onSaved={(next) => {
+              setMargin(next);
+              setMarkupOpening(null);
+              setHeard(t('budget.margin.dialog.saved'));
+              setWashed((n) => n + 1);
+            }}
+          />
+        )}
         <div ref={setHost} className="desk-layers" />
       </div>
     </LayersContext>
@@ -459,23 +540,6 @@ function NotLive({ at, onTry }: { at: Date; onTry: () => void }) {
       </span>
       <TextAction label={t('budget.tryNow')} onClick={onTry} />
     </div>
-  );
-}
-
-function CoverCard({ event, children }: { event: OrganisationEvent; children: ReactNode }) {
-  const { t } = useTranslation();
-
-  return (
-    <section
-      className={`ev-card today-cover bt-card is-${meshFor(event.id)}`}
-      aria-label={t('budget.card')}
-    >
-      <span className="ev-scrim" aria-hidden="true" />
-      {PIECES.map((piece) => (
-        <span key={piece} className={`desk-piece p${piece}`} aria-hidden="true" />
-      ))}
-      <div className="ev-card-inner bt-card-inner">{children}</div>
-    </section>
   );
 }
 
@@ -881,64 +945,6 @@ function OpenedCost({
           <TextAction label={t('budget.remove')} red onClick={() => void onRemove()} />
         </div>
       </div>
-    </div>
-  );
-}
-
-function MoneyField({
-  label,
-  value,
-  onChange,
-  sign,
-  unit,
-  error,
-  inputRef,
-}: {
-  label: string;
-  value: string;
-  onChange: (value: string) => void;
-  sign: string;
-  unit?: string;
-  error?: string | null;
-  inputRef?: RefObject<HTMLInputElement | null>;
-}) {
-  const id = useId();
-  const told = [unit == null ? null : `${id}-unit`, error == null ? null : `${id}-error`]
-    .filter(Boolean)
-    .join(' ');
-
-  return (
-    <div className="desk-field bt-money">
-      <label htmlFor={id} className="desk-label">
-        {label}
-      </label>
-      <div className={error == null ? 'desk-box' : 'desk-box is-wrong'}>
-        <span className="bt-symbol" aria-hidden="true">
-          {sign}
-        </span>
-        <input
-          ref={inputRef}
-          id={id}
-          type="text"
-          inputMode="decimal"
-          value={value}
-          spellCheck={false}
-          aria-invalid={error != null}
-          aria-describedby={told === '' ? undefined : told}
-          onChange={(event) => onChange(event.target.value)}
-        />
-        {unit != null && (
-          <span id={`${id}-unit`} className="bt-unit">
-            {unit}
-          </span>
-        )}
-      </div>
-      {error != null && (
-        <p id={`${id}-error`} className="desk-error">
-          <Glyph name="alert" size={15} weight={2.2} />
-          {error}
-        </p>
-      )}
     </div>
   );
 }

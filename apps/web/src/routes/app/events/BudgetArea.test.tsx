@@ -141,6 +141,7 @@ function serve(
     if (answer != null) return answer(body);
     if (line === 'GET /api/events/ev_1') return json({ event: { ...EVENT, permissions } });
     if (line === 'GET /api/events/ev_1/budget') return json(budget());
+    if (line === 'GET /api/events/ev_1/budget/margin') return problem(403, 'plan_required');
 
     return json({});
   });
@@ -854,4 +855,138 @@ describe('a failed Undo (sc-85)', () => {
       },
     });
   }
+});
+
+const MARGIN_DINNER = {
+  id: 'dinner',
+  label: 'Dinner',
+  category: 'catering',
+  basis: 'per_head',
+  source: 'event',
+  markup: '20',
+  price: null,
+  client: { confirmed: '7833.60', potential: '10852.80' },
+  cost: { confirmed: '6528.00', potential: '9044.00' },
+  margin: { confirmed: '1305.60', potential: '1808.80' },
+  share: { confirmed: '16.7', potential: '16.7' },
+};
+
+function margin(fields: Record<string, unknown> = {}) {
+  return {
+    currency: 'GBP',
+    markups: { event: '20', categories: {} },
+    total: {
+      client: MARGIN_DINNER.client,
+      cost: MARGIN_DINNER.cost,
+      margin: MARGIN_DINNER.margin,
+      share: MARGIN_DINNER.share,
+    },
+    categories: {},
+    lines: [MARGIN_DINNER],
+    ...fields,
+  };
+}
+
+describe('the margin face, for margin readers on a plan with margin (sc-92)', () => {
+  it('opens on the plain Budget, and See margin turns it to its margin face and back', async () => {
+    signedIn();
+    serve({ 'GET /api/events/ev_1/budget/margin': () => json(margin()) });
+
+    fireEvent.click(await screen.findByRole('button', { name: 'See margin' }));
+
+    const card = screen.getByRole('region', { name: 'Budget' });
+    expect(within(card).getByText('Client total')).toBeTruthy();
+    expect(within(card).getByText('£7,834 to £10,853')).toBeTruthy();
+    expect(within(card).getByText('Internal cost')).toBeTruthy();
+    expect(within(card).getByText('£1,306 to £1,809')).toBeTruthy();
+    expect(within(card).getByText('16.7% of the client total')).toBeTruthy();
+    expect(within(card).getByText('Never on a share or a printout.')).toBeTruthy();
+    expect(
+      screen.getByText('Cost £6,528.00 · Charged at £7,833.60 · 20% markup, the event’s'),
+    ).toBeTruthy();
+    expect(screen.getByRole('button', { name: /^Whole event/u }).textContent).toContain(
+      '20% markup',
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Hide margin' }));
+    expect(screen.getByText('This event will cost')).toBeTruthy();
+    expect(screen.queryByText('Client total')).toBeNull();
+  });
+
+  it('says nothing is missing on a plan without margin', async () => {
+    signedIn();
+    serve({ 'GET /api/events/ev_1/budget/margin': () => problem(403, 'plan_required') });
+
+    expect(await screen.findByText('This event will cost')).toBeTruthy();
+    await act(async () => Promise.resolve());
+    expect(screen.queryByRole('button', { name: 'See margin' })).toBeNull();
+  });
+
+  it('asks nothing without budget.margin', async () => {
+    signedIn();
+    const sent = serve(
+      {},
+      { permissions: OWNER_PERMISSIONS.filter((one) => one !== 'budget.margin') },
+    );
+
+    expect(await screen.findByText('This event will cost')).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'See margin' })).toBeNull();
+    expect(sent.some((one) => one.line.includes('/margin'))).toBe(false);
+  });
+
+  it('refuses a markup below 0 at the field with nothing sent, and saves one', async () => {
+    signedIn();
+    const sent = serve({
+      'GET /api/events/ev_1/budget/margin': () => json(margin()),
+      'PUT /api/events/ev_1/budget/markup': () =>
+        json(margin({ markups: { event: '25', categories: {} } })),
+    });
+
+    fireEvent.click(await screen.findByRole('button', { name: 'See margin' }));
+    fireEvent.click(screen.getByRole('button', { name: /^Whole event/u }));
+    const field = await screen.findByRole('textbox', { name: 'Markup' });
+    expect((field as HTMLInputElement).value).toBe('20');
+
+    fireEvent.change(field, { target: { value: '-5' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+    expect(
+      screen.getByText('A markup cannot be below 0. To sell below cost, enter the price instead.'),
+    ).toBeTruthy();
+    fireEvent.change(field, { target: { value: '20.25' } });
+    expect(screen.getByText('Enter a markup with at most 1 decimal place.')).toBeTruthy();
+    expect(sent.some((one) => one.line.startsWith('PUT'))).toBe(false);
+
+    fireEvent.change(field, { target: { value: '25' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+    await waitFor(() =>
+      expect(sent.find((one) => one.line === 'PUT /api/events/ev_1/budget/markup')?.body).toEqual({
+        markup: '25',
+      }),
+    );
+    expect(await screen.findByText('Markup saved.')).toBeTruthy();
+  });
+
+  it('says a price below cost beside the field, with its margin, and still saves it', async () => {
+    signedIn();
+    const sent = serve({
+      'GET /api/events/ev_1/budget/margin': () => json(margin()),
+      'PUT /api/events/ev_1/budget/lines/dinner/charge': () => json(margin()),
+    });
+
+    fireEvent.click(await screen.findByRole('button', { name: 'See margin' }));
+    fireEvent.click(screen.getByRole('button', { name: /^Dinner/u }));
+    const field = screen.getByRole('textbox', { name: 'Charged at' });
+    expect((field as HTMLInputElement).value).toBe('7,833.60');
+
+    fireEvent.change(field, { target: { value: '6000' } });
+    expect(screen.getByRole('status').textContent).toMatch(/^Below cost: margin [-−]£528\.00\.$/u);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+    await waitFor(() =>
+      expect(
+        sent.find((one) => one.line === 'PUT /api/events/ev_1/budget/lines/dinner/charge')?.body,
+      ).toEqual({ price: '6000.00', currency: 'GBP' }),
+    );
+  });
 });
