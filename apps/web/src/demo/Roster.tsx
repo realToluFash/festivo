@@ -1,7 +1,8 @@
 import { callingCode, formatPhone } from '@soirely/domain';
-import { useEffect, useRef, useState } from 'react';
+import { Fragment, useEffect, useRef, useState } from 'react';
 import { Link, Navigate, useParams, useSearchParams } from 'react-router';
 
+import { ConfirmDialog } from '../components/ConfirmDialog.tsx';
 import { Glyph } from '../components/Glyph.tsx';
 import type { Tell } from '../components/SettingsParts.tsx';
 import { DemoBell } from './DemoBell.tsx';
@@ -12,6 +13,7 @@ import { EventSidebar } from './EventSidebar.tsx';
 import { CLOCKS, type SampleEvent, sampleEvent } from './events.ts';
 import { Pill } from './GuestsParts.tsx';
 import { clockOfKitchen } from './kitchen.ts';
+import { firstName } from './members.ts';
 import { Wrong } from './MenuServed.tsx';
 import { keptInbox, waitingLine } from './messages.ts';
 import {
@@ -43,6 +45,18 @@ import {
   sorted,
 } from './roster.ts';
 import { COUNTRIES, codeChoice } from './rules.ts';
+import {
+  type CopyOutcome,
+  ISSUE_MS,
+  LW,
+  SAMPLE_LINK,
+  afterCopy,
+  afterMark,
+  afterReplace,
+  copyIssued,
+  plainItem,
+  trailLine,
+} from './staffLink.ts';
 import { STATIONS_EVENT } from './stations.ts';
 import { PanelFoot, PanelTop, Select, StaffTabs } from './Stations.tsx';
 import { useSwitcherStart } from './switcher.ts';
@@ -110,12 +124,21 @@ function RosterView({
   const [pressed, setPressed] = useState(first.pressed);
   const [warning, setWarning] = useState<string | null>(first.warning);
   const [bar, setBar] = useState<string[] | null>(first.bar);
-  const [live, setLive] = useState({ text: first.bar?.join(' ') ?? '', said: 0 });
+  const [live, setLive] = useState({ text: firstSaid(first), said: 0 });
   const [failed, setFailed] = useState<string | null>(first.failed);
+  const [busy, setBusy] = useState<string | null>(null);
+  const [held, setHeld] = useState(first.held);
+  const [missed, setMissed] = useState(first.missed);
+  const [replacing, setReplacing] = useState(first.replacing);
   const focusAfter = useRef<string | null>(null);
   const { manage, finished, erased } = first;
 
   useEffect(() => {
+    if (first.held != null) {
+      const field = document.getElementById(`rs-held-${first.held.id}`);
+      if (field instanceof HTMLInputElement) field.select();
+      return;
+    }
     if (first.warning != null) {
       document.getElementById('rs-warning')?.focus();
       return;
@@ -247,6 +270,67 @@ function RosterView({
     ]);
   }
 
+  function relink(id: string, change: (one: Entry) => Partial<Entry>) {
+    setEntries((was) => was.map((one) => (one.id === id ? { ...one, ...change(one) } : one)));
+  }
+
+  function announce(text: string) {
+    setLive((was) => ({ text, said: was.said + 1 }));
+  }
+
+  async function copy(id: string) {
+    if (busy != null) return;
+    setBusy(id);
+    setMissed(null);
+    if (held?.id === id) setHeld(null);
+    const issue = () =>
+      new Promise<string>((resolve, reject) =>
+        window.setTimeout(
+          () => (first.copy === 'notIssued' ? reject(new Error('503')) : resolve(SAMPLE_LINK)),
+          ISSUE_MS,
+        ),
+      );
+    const outcome: CopyOutcome =
+      first.copy === 'refused'
+        ? await copyIssued(issue, null, null)
+        : await copyIssued(
+            issue,
+            navigator.clipboard ?? null,
+            typeof ClipboardItem === 'undefined' ? null : plainItem,
+          );
+    setBusy(null);
+    if (outcome.kind === 'notIssued') {
+      setMissed(id);
+      announce(LW.notIssued);
+      return;
+    }
+    relink(id, (one) => afterCopy(one.link, one.trail ?? null));
+    if (outcome.kind === 'copied') {
+      say([LW.copied]);
+      return;
+    }
+    setHeld({ id, url: outcome.url });
+    announce(LW.refused);
+    focusAfter.current = `rs-held-${id}`;
+  }
+
+  function mark(id: string) {
+    relink(id, afterMark);
+    if (held?.id === id) setHeld(null);
+    say([LW.marked(shown(id).name)]);
+    focusAfter.current = `rs-copy-${id}`;
+  }
+
+  function replace(id: string) {
+    relink(id, afterReplace);
+    if (held?.id === id) setHeld(null);
+    if (missed === id) setMissed(null);
+    setReplacing(null);
+    say([LW.replaced(shown(id).name)]);
+    focusAfter.current = 'sn-panel-title';
+  }
+
+  const acts = manage && !finished && !erased;
   const next = nextLine(entries, finished);
 
   return (
@@ -341,34 +425,51 @@ function RosterView({
                     </thead>
                     <tbody>
                       {rows.map((one) => (
-                        <tr key={one.id} className={lit === one.id ? 'is-lit' : undefined}>
-                          <th scope="row">
-                            <button
-                              id={`rs-name-${one.id}`}
-                              type="button"
-                              className="rs-name"
-                              aria-current={lit === one.id || undefined}
-                              onClick={() => open({ kind: 'details', id: one.id })}
-                            >
-                              {one.name}
-                            </button>
-                          </th>
-                          <td className={one.job == null ? 'rs-quiet' : undefined}>
-                            {one.job ?? RW.noJob}
-                          </td>
-                          <td className={one.station == null ? 'rs-quiet' : undefined}>
-                            {one.station ?? RW.noStation}
-                          </td>
-                          <td className={one.shift == null ? 'rs-quiet' : 'rs-shift'}>
-                            {one.shift ?? RW.noShift}
-                            {one.more.length > 0 && (
-                              <span className="rs-more">{RW.more(one.more.length)}</span>
-                            )}
-                          </td>
-                          <td>
-                            <LinkWord state={linkOf(one, erased)} />
-                          </td>
-                        </tr>
+                        <Fragment key={one.id}>
+                          <tr className={lit === one.id ? 'is-lit' : undefined}>
+                            <th scope="row">
+                              <button
+                                id={`rs-name-${one.id}`}
+                                type="button"
+                                className="rs-name"
+                                aria-current={lit === one.id || undefined}
+                                onClick={() => open({ kind: 'details', id: one.id })}
+                              >
+                                {one.name}
+                              </button>
+                            </th>
+                            <td className={one.job == null ? 'rs-quiet' : undefined}>
+                              {one.job ?? RW.noJob}
+                            </td>
+                            <td className={one.station == null ? 'rs-quiet' : undefined}>
+                              {one.station ?? RW.noStation}
+                            </td>
+                            <td className={one.shift == null ? 'rs-quiet' : 'rs-shift'}>
+                              {one.shift ?? RW.noShift}
+                              {one.more.length > 0 && (
+                                <span className="rs-more">{RW.more(one.more.length)}</span>
+                              )}
+                            </td>
+                            <td>
+                              <LinkCell
+                                entry={one}
+                                erased={erased}
+                                acts={acts}
+                                busy={busy === one.id}
+                                missed={missed === one.id}
+                                onCopy={() => void copy(one.id)}
+                                onMark={() => mark(one.id)}
+                              />
+                            </td>
+                          </tr>
+                          {held?.id === one.id && (
+                            <tr className="rs-held-row">
+                              <td colSpan={5}>
+                                <HeldLink entry={one} url={held.url} />
+                              </td>
+                            </tr>
+                          )}
+                        </Fragment>
                       ))}
                     </tbody>
                   </table>
@@ -388,6 +489,7 @@ function RosterView({
                   onEdit={() => open({ kind: 'edit', id: panel.id })}
                   onRemove={() => open({ kind: 'remove', id: panel.id })}
                   onStation={(station) => restation(panel.id, station)}
+                  onReplace={acts ? () => setReplacing(panel.id) : null}
                 />
               )}
               {panel.kind === 'remove' && (
@@ -424,6 +526,19 @@ function RosterView({
           )}
         </div>
       </div>
+      {replacing != null && (
+        <ConfirmDialog
+          id="rs-replace"
+          title={LW.replaceTitle(firstName(shown(replacing).name))}
+          keep={LW.keep}
+          go={LW.replace}
+          pending={false}
+          onKeep={() => setReplacing(null)}
+          onGo={() => replace(replacing)}
+        >
+          <p>{LW.replaceLine}</p>
+        </ConfirmDialog>
+      )}
       {bar != null && (
         <div className="rs-bar">
           <Glyph name="tick" size={18} weight={2.6} />
@@ -439,6 +554,13 @@ function RosterView({
       )}
     </div>
   );
+}
+
+function firstSaid(first: RosterStart): string {
+  if (first.held != null) return LW.refused;
+  if (first.missed != null) return LW.notIssued;
+
+  return first.bar?.join(' ') ?? '';
 }
 
 export function LinkWord({ state }: { state: LinkState }) {
@@ -462,6 +584,7 @@ function Details({
   onEdit,
   onRemove,
   onStation,
+  onReplace,
 }: {
   entry: Entry;
   manage: boolean;
@@ -471,7 +594,9 @@ function Details({
   onEdit: () => void;
   onRemove: () => void;
   onStation: (station: string) => void;
+  onReplace: (() => void) | null;
 }) {
+  const trail = erased ? null : trailLine(entry.link, entry.trail ?? null);
   const next = detailsNext(entry, finished, erased);
 
   return (
@@ -524,13 +649,23 @@ function Details({
           )}
           <div>
             <dt>{RW.link}</dt>
-            <dd>
+            <dd className="rs-link-fact">
               <LinkWord state={linkOf(entry, erased)} />
+              {trail != null && <span className="rs-trail">{trail}</span>}
+              {onReplace != null && entry.mobile != null && entry.link !== 'none' && (
+                <button
+                  id="rs-replace-open"
+                  type="button"
+                  className="gs-pill is-secondary"
+                  onClick={onReplace}
+                >
+                  {LW.replaceOpen}
+                </button>
+              )}
             </dd>
           </div>
         </dl>
         {next != null && <p className="rs-next">{next}</p>}
-        {!finished && <p className="mn-quiet">{RW.linksThere}</p>}
       </div>
       {manage && (
         <div className="mn-panel-foot">
@@ -550,6 +685,93 @@ function Details({
         </div>
       )}
     </>
+  );
+}
+
+/** The row's Link: its word with a mark, who and when, and Copy link, then Mark as sent once copied. */
+function LinkCell({
+  entry,
+  erased,
+  acts,
+  busy,
+  missed,
+  onCopy,
+  onMark,
+}: {
+  entry: Entry;
+  erased: boolean;
+  acts: boolean;
+  busy: boolean;
+  missed: boolean;
+  onCopy: () => void;
+  onMark: () => void;
+}) {
+  const state = linkOf(entry, erased);
+  const trail = erased ? null : trailLine(entry.link, entry.trail ?? null);
+  const offered = acts && entry.mobile != null;
+
+  return (
+    <div className="rs-link-cell">
+      <LinkWord state={state} />
+      {trail != null && <span className="rs-trail">{trail}</span>}
+      {missed && (
+        <span className="rs-missed">
+          <Glyph name="alert" size={15} weight={2.2} />
+          {LW.notIssued}
+        </span>
+      )}
+      {offered && (
+        <span className="rs-link-acts">
+          <button
+            id={`rs-copy-${entry.id}`}
+            type="button"
+            className={busy ? 'desk-text is-busy' : 'desk-text'}
+            aria-label={`${LW.copy}: ${entry.name}`}
+            aria-disabled={busy || undefined}
+            aria-busy={busy || undefined}
+            onClick={onCopy}
+          >
+            {busy && <span className="pending-spinner desk-turning" aria-hidden="true" />}
+            {LW.copy}
+          </button>
+          {entry.link === 'copied' && (
+            <button
+              type="button"
+              className="desk-text"
+              aria-label={`${LW.markSent}: ${entry.name}`}
+              onClick={onMark}
+            >
+              {LW.markSent}
+            </button>
+          )}
+        </span>
+      )}
+    </div>
+  );
+}
+
+/** A link the browser would not copy, shown to copy by hand; the field is named for whose link it is. */
+function HeldLink({ entry, url }: { entry: Entry; url: string }) {
+  const id = `rs-held-${entry.id}`;
+
+  return (
+    <div className="rs-held">
+      <p className="rs-held-says">
+        <Glyph name="alert" size={16} weight={2.2} />
+        {LW.refused}
+      </p>
+      <label htmlFor={id} className="rs-held-label">
+        {LW.linkFor(entry.name)}
+      </label>
+      <input
+        id={id}
+        className="rs-held-field"
+        type="text"
+        readOnly
+        value={url}
+        onFocus={(event) => event.currentTarget.select()}
+      />
+    </div>
   );
 }
 
