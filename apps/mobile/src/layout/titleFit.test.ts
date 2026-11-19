@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { actionsUnder, brokeInWord, labelFits, rowRoom } from './titleFit.ts';
+import { actionsUnder, brokeInWord, brokeOn, labelFits, rowRoom } from './titleFit.ts';
 
 const row = { room: 400, title: 140, extra: 0, labelled: 170, gap: 16 };
 
@@ -118,5 +118,36 @@ describe('a title that broke beside its actions all the same (sc-68417)', () => 
     expect(brokeInWord({ lines: whole, drawn: 30, start: 43, size: 30 })).toBe(false);
     const between = [{ text: 'Lista de ' }, { text: 'convidados' }];
     expect(brokeInWord({ lines: between, drawn: 30, start: 43, size: 30 })).toBe(false);
+  });
+});
+
+describe('the row the title broke on (sc-68417)', () => {
+  const broken = [{ text: 'Convidad' }, { text: 'os' }];
+  const whole = [{ text: 'Convidados' }];
+  const atFloor = { drawn: 30, start: 43, size: 30 };
+
+  it('is this row once the title breaks beside its actions', () => {
+    expect(brokeOn({ broke: null, row: '370|pt', under: false, lines: broken, ...atFloor })).toBe(
+      '370|pt',
+    );
+  });
+
+  it('stays as it was while the actions are already under', () => {
+    expect(
+      brokeOn({ broke: null, row: '370|pt', under: true, lines: broken, ...atFloor }),
+    ).toBeNull();
+  });
+
+  it('stays as it was while the title is whole', () => {
+    expect(
+      brokeOn({ broke: '360|pt', row: '370|pt', under: false, lines: whole, ...atFloor }),
+    ).toBe('360|pt');
+  });
+
+  it('is not yet this row at the start size, where the title steps down next', () => {
+    const atStart = { drawn: 43, start: 43, size: 30 };
+    expect(
+      brokeOn({ broke: null, row: '370|pt', under: false, lines: broken, ...atStart }),
+    ).toBeNull();
   });
 });

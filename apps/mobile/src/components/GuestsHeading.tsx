@@ -19,7 +19,7 @@ import {
 
 import { type LayoutKind } from '../layout/classify.ts';
 import { titleSize } from '../layout/textSize.ts';
-import { actionsUnder, brokeInWord } from '../layout/titleFit.ts';
+import { actionsUnder, brokeOn } from '../layout/titleFit.ts';
 import { tokens } from '../theme/tokens.ts';
 import { BellInPane, PaneBell } from './BellButton.tsx';
 import { type TextHandle } from './Text.tsx';
@@ -27,7 +27,7 @@ import { BodyTitle, MeasuredWords, PageTitleDrawn, usePageTitleDrawn } from './T
 import { TopPrimary, usePrimaryLabel } from './TopPrimary.tsx';
 import { COLUMN_TITLE, PAGE_TITLE, columnTitle, pageTitle } from './topTitle.ts';
 
-/** Guests' title row as `/demo/guests` draws it: the title whole, then Export, the + and on its side the bell; where the title at its default size has no room beside them, or broke there all the same, Export and the + go together to a row under it, the bell staying on the title's row (sc-51444, sc-67659, sc-68417). */
+/** Guests' title row as `/demo/guests` draws it: the title whole, stepping down from its slot's width, then Export, the + and on its side the bell; where the title at its default size has no room beside them, or broke there all the same, Export and the + go together to a row under it, the bell staying on the title's row (sc-51444, sc-67659, sc-68417). */
 export function GuestsHeading({
   kind,
   titleRef,
@@ -59,6 +59,7 @@ export function GuestsHeading({
   const bell = useContext(BellInPane);
   const { fontScale } = useWindowDimensions();
   const [room, setRoom] = useState(0);
+  const [slot, setSlot] = useState(0);
   const [titleWidth, setTitleWidth] = useState(0);
   const [exportWidth, setExportWidth] = useState(0);
   const [spinnerWidth, setSpinnerWidth] = useState(0);
@@ -86,17 +87,30 @@ export function GuestsHeading({
     [pageDrawn],
   );
   const onTitleLines = (event: TextLayoutEvent) => {
-    const lines = event.nativeEvent.lines;
     const start = titleSize(size, fontScale);
-    if (!under && brokeInWord({ lines, drawn: drawn.current || start, start, size })) {
-      setBroke(rowKey);
-    }
+    setBroke((was) =>
+      brokeOn({
+        broke: was,
+        row: rowKey,
+        under,
+        lines: event.nativeEvent.lines,
+        drawn: drawn.current || start,
+        start,
+        size,
+      }),
+    );
   };
   const widthOf = (set: (width: number) => void) => (event: LayoutChangeEvent) =>
     set(Math.ceil(event.nativeEvent.layout.width));
 
   const heading = (
-    <View style={styles.fill} onLayout={label.onSlot}>
+    <View
+      style={styles.fill}
+      onLayout={(event) => {
+        label.onSlot(event);
+        setSlot(Math.floor(event.nativeEvent.layout.width));
+      }}
+    >
       {label.measure}
       <PageTitleDrawn.Provider value={onDrawn}>
         <BodyTitle
@@ -104,6 +118,7 @@ export function GuestsHeading({
           accessibilityRole="header"
           ref={titleRef}
           style={style}
+          room={slot}
           onTextLayout={onTitleLines}
         >
           {title}
