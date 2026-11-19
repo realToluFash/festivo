@@ -92,10 +92,6 @@
   gap: 8px;
 }
 
-.pc-check .gk-rows {
-  margin: 0;
-}
-
 .pc-meals {
   display: grid;
   gap: var(--spaceLg);
