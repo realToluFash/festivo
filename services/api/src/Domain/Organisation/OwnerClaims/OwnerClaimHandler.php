@@ -6,6 +6,7 @@ namespace App\Domain\Organisation\OwnerClaims;
 
 use App\Audit\Auditor;
 use App\Domain\Organisation\DomainJoining\JoinOfferFinder;
+use App\Domain\Organisation\EmailDomains\ProvedDomains;
 use App\Domain\Organisation\Interfaces\TxtRecordLookupInterface;
 use App\Domain\Organisation\Members\MemberActions;
 use App\Domain\Organisation\Roles\RoleAssignment;
@@ -67,6 +68,7 @@ final readonly class OwnerClaimHandler
         private EntityManagerInterface $entityManager,
         private TranslatorInterface $translator,
         private ClockInterface $clock,
+        private ProvedDomains $provedDomains,
     ) {
     }
 
@@ -109,7 +111,7 @@ final readonly class OwnerClaimHandler
             return $own;
         }
 
-        $proved = Vec\filter($listings, static fn (OrganisationDomain $listing): bool => null !== $listing->getProvedAt());
+        $proved = Vec\filter($listings, fn (OrganisationDomain $listing): bool => $this->provedDomains->isProvedBy($listing->getDomain(), $organisation));
 
         return (Iter\first($proved) ?? Iter\first($listings))?->getDomain();
     }
@@ -354,12 +356,7 @@ final readonly class OwnerClaimHandler
             throw new ApiException(ErrorCode::OwnerClaimAddress, $this->translator->trans('owner_claims.address', ['{domain}' => $domain]));
         }
 
-        $managedElsewhere = Iter\any(
-            $this->organisationDomainRepository->findListings($domain),
-            static fn (OrganisationDomain $listing): bool => null !== $listing->getProvedAt() && !$listing->getOrganisation()->getId()->equals($organisation->getId()),
-        );
-
-        if ($managedElsewhere) {
+        if ($this->provedDomains->isProvedElsewhere($domain, $organisation)) {
             throw new ApiException(ErrorCode::OwnerClaimManaged, $this->translator->trans('owner_claims.managed', ['{domain}' => $domain]));
         }
 

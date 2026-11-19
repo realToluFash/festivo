@@ -5,12 +5,11 @@ declare(strict_types=1);
 namespace App\Entity;
 
 use App\Doctrine\Traits\Timestampable;
-use DateTimeImmutable;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Uid\Uuid;
 
-/** A domain whose people may ask to join (sc-561). Several organisations may list one, unless one has proved it (sc-560). */
+/** A domain whose people may ask to join (sc-561). Several organisations may list one, unless one has proved it under Email domains (sc-560). */
 #[ORM\Entity]
 #[ORM\HasLifecycleCallbacks]
 #[ORM\Table(name: 'organisation_domains')]
@@ -33,10 +32,6 @@ class OrganisationDomain
     #[ORM\Column(type: Types::STRING, length: 253)]
     private string $domain;
 
-    /** Set by sc-560's DNS proof; while set, every other organisation's listing of this domain stops working. */
-    #[ORM\Column(type: Types::DATETIME_IMMUTABLE, nullable: true)]
-    private ?DateTimeImmutable $provedAt = null;
-
     public function __construct(Organisation $organisation, string $domain)
     {
         $this->id = Uuid::v7();
@@ -57,15 +52,5 @@ class OrganisationDomain
     public function getDomain(): string
     {
         return $this->domain;
-    }
-
-    public function getProvedAt(): ?DateTimeImmutable
-    {
-        return $this->provedAt;
-    }
-
-    public function setProvedAt(?DateTimeImmutable $provedAt): void
-    {
-        $this->provedAt = $provedAt;
     }
 }

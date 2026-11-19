@@ -1,10 +1,15 @@
-import { type Membership, type OrganisationExportPage } from '@soirely/api-client';
+import {
+  type EmailDomainsPage,
+  type Membership,
+  type OrganisationExportPage,
+} from '@soirely/api-client';
 import { useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link } from 'react-router';
+import { Link, useNavigate } from 'react-router';
 
 import { api } from '../../../api.ts';
-import { DrawnGlyph, PageLoading } from '../../../components/DataControlParts.tsx';
+import { DrawnGlyph, LockTag, PageLoading } from '../../../components/DataControlParts.tsx';
+import { Glyph } from '../../../components/Glyph.tsx';
 import {
   Card,
   CardStep,
@@ -21,8 +26,11 @@ import {
 import { focusWhenFree, useDeskLayers } from '../../../layers.ts';
 import { can, useSession } from '../../../session.ts';
 import { Forbidden } from '../Forbidden.tsx';
-import { cardStateOf, exportRow, saveArchive } from './exportAllData.ts';
+import { domainsRow, soonestAsk } from './emailDomains.ts';
+import { EMAIL_DOMAINS } from './EmailDomains.tsx';
+import { exportRow, saveArchive } from './exportAllData.ts';
 import { DATA_AND_CONTROL } from './ExportAllData.tsx';
+import { useEmailDomains } from './useEmailDomains.ts';
 import { useOrganisationExport } from './useOrganisationExport.ts';
 import '../../../components/SettingsParts.css';
 
@@ -40,22 +48,35 @@ export function DataAndControl() {
 function Hub({ organisation }: { organisation: Membership }) {
   const { t } = useTranslation();
   const { layers } = useDeskLayers();
-  const { load, reload } = useOrganisationExport(organisation.id);
+  const exported = useOrganisationExport(organisation.id);
+  const domains = useEmailDomains(organisation.id);
+  const failed = exported.load.kind === 'failed' || domains.load.kind === 'failed';
+  const reload = () => {
+    exported.reload();
+    domains.reload();
+  };
 
   return (
     <DeskPage layers={layers}>
       <div className="desk-column">
         <TitleRow title={t('dataControl.title')} />
-        {load.kind === 'loading' && <PageLoading words={t('dataControl.loading')} />}
-        {load.kind === 'failed' && (
+        {!failed && (exported.load.kind === 'loading' || domains.load.kind === 'loading') && (
+          <PageLoading words={t('dataControl.loading')} />
+        )}
+        {failed && (
           <div className="desk-failed" role="alert">
             <h2>{t('dataControl.failed')}</h2>
             <p className="desk-line">{t('dataControl.failedLine')}</p>
             <TextAction label={t('dataControl.tryAgain')} onClick={reload} />
           </div>
         )}
-        {load.kind === 'loaded' && (
-          <Loaded page={load.page} organisation={organisation} onDownloaded={reload} />
+        {exported.load.kind === 'loaded' && domains.load.kind === 'loaded' && (
+          <Loaded
+            page={exported.load.page}
+            domains={domains.load.page}
+            organisation={organisation}
+            onDownloaded={exported.reload}
+          />
         )}
       </div>
     </DeskPage>
@@ -64,19 +85,23 @@ function Hub({ organisation }: { organisation: Membership }) {
 
 function Loaded({
   page,
+  domains,
   organisation,
   onDownloaded,
 }: {
   page: OrganisationExportPage;
+  domains: EmailDomainsPage;
   organisation: Membership;
   onDownloaded: () => void;
 }) {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const [busy, setBusy] = useState(false);
   const said = useRef<HTMLDivElement>(null);
   const row = exportRow(t, page, organisation.name);
+  const domainsLine = domainsRow(t, domains);
   const exported = page.export;
-  const asks = cardStateOf(page) === 'ready' && exported != null;
+  const ask = soonestAsk(t, page, domains);
 
   async function download(exportId: string, askedAt: string): Promise<void> {
     setBusy(true);
@@ -100,23 +125,49 @@ function Loaded({
     <>
       <Card>
         <div ref={said} className="desk-said-lines" tabIndex={-1} aria-live="polite">
-          {asks ? (
+          {ask != null ? (
             <>
-              <Says>{t('exportAllData.readySays')}</Says>
-              <OnCard>{t('dataControl.cardReadyLine', { when: exported.expires })}</OnCard>
+              <Says>{ask.says}</Says>
+              <OnCard>{ask.line}</OnCard>
             </>
           ) : (
             <Says>{t('dataControl.nothingAsks')}</Says>
           )}
         </div>
-        {asks && (
+        {ask?.does === 'download' && exported != null && (
           <CardStep
             label={t('exportAllData.download')}
             busy={busy}
             onClick={() => void download(exported.id, exported.askedAt)}
           />
         )}
+        {ask?.does === 'record' && (
+          <CardStep
+            label={t('emailDomains.seeRecord')}
+            onClick={() =>
+              void navigate(`${EMAIL_DOMAINS}?${new URLSearchParams({ record: ask.domain })}`)
+            }
+          />
+        )}
       </Card>
+      <section className="desk-block">
+        <Head title={t('dataControl.control')} />
+        <ul className="desk-rows dc-led">
+          <li>
+            <Link className="desk-row dc-row" to={EMAIL_DOMAINS}>
+              <span className="dc-lead" aria-hidden="true">
+                <Glyph name="globe" size={22} />
+              </span>
+              <RowWords
+                title={t('emailDomains.title')}
+                tag={domainsLine.locked && <LockTag word={t('dataControl.enterprise')} />}
+                lines={[domainsLine.line]}
+              />
+              <Chevron />
+            </Link>
+          </li>
+        </ul>
+      </section>
       <section className="desk-block">
         <Head title={t('dataControl.data')} />
         <ul className="desk-rows dc-led">

@@ -408,5 +408,7 @@
     "validation.vendor_website_scheme": "Enter a web address that starts with https:// or http://, or leave that part off.",
     "validation.vendor_phone_invalid": "That is not a phone number for {country}. Check it and try again.",
     "vendors.archived_read_only": "This vendor is archived, so your changes were not saved. To edit it, restore it under Archived.",
-    "access.plan_required": "Available on Enterprise. Contact Soirely about Enterprise to change this."
+    "access.plan_required": "Available on Enterprise. Contact Soirely about Enterprise to change this.",
+    "email_domains.not_listed": "That domain is not on the list.",
+    "email_domains.taken": "Another organisation has already proved this domain. Contact Soirely support if it is yours."
 }

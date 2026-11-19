@@ -11,12 +11,12 @@ import {
   Head,
   Note,
   RedAction,
-  RowWords,
   TextAction,
 } from '../../../components/SettingsParts.tsx';
 import { useShownLanguage } from '../../../i18n/index.ts';
 import { focusWhenFree } from '../../../layers.ts';
 import type { ClaimOnCard } from './membersCard.ts';
+import { RecordRows } from './RecordRows.tsx';
 
 const cardWords = () => document.querySelector<HTMLElement>('.members-desk .desk-said-lines');
 
@@ -420,52 +420,6 @@ function ClaimDialog({
           onGo={() => void withdraw()}
         />
       )}
-    </>
-  );
-}
-
-/** The record as rows, its value as each row's title, Copy turning into a ticked Copied in place. */
-function RecordRows({ record }: { record: { type: string; name: string; value: string } }) {
-  const { t } = useTranslation();
-  const [copied, setCopied] = useState<'type' | 'name' | 'value' | null>(null);
-  const parts = [
-    { field: 'type', label: t('ownerClaim.type'), value: record.type },
-    { field: 'name', label: t('ownerClaim.name'), value: record.name },
-    { field: 'value', label: t('ownerClaim.value'), value: record.value },
-  ] as const;
-
-  return (
-    <>
-      <ul className="desk-rows">
-        {parts.map((part) => {
-          const done = copied === part.field;
-
-          return (
-            <li key={part.field} className="desk-row">
-              <RowWords title={part.value} lines={[part.label]} />
-              <button
-                type="button"
-                className="desk-text"
-                aria-label={t(done ? 'ownerClaim.partCopied' : 'ownerClaim.copyPart', {
-                  part: part.label,
-                })}
-                onClick={() =>
-                  void navigator.clipboard.writeText(part.value).then(
-                    () => setCopied(part.field),
-                    () => setCopied(null),
-                  )
-                }
-              >
-                <Glyph name={done ? 'tick' : 'copy'} size={17} weight={2.3} />
-                {done ? t('ownerClaim.copied') : t('ownerClaim.copy')}
-              </button>
-            </li>
-          );
-        })}
-      </ul>
-      <span className="desk-unseen" role="status">
-        {copied == null ? '' : t(`ownerClaim.${copied}Copied`)}
-      </span>
     </>
   );
 }
