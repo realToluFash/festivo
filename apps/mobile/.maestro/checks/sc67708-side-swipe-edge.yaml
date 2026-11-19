@@ -21,6 +21,7 @@ appId: host.exp.Exponent
 - assertVisible: { id: 'event.side.card' }
 - tapOn: { id: 'event.nav.guests' }
 - extendedWaitUntil: { visible: { id: 'guests.row.${GUEST_ID}' }, timeout: 20000 }
+- waitForAnimationToEnd: { timeout: 8000 }
 - tapOn: { id: 'guests.row.${GUEST_ID}' }
 - waitForAnimationToEnd: { timeout: 8000 }
 - takeScreenshot: guest-page

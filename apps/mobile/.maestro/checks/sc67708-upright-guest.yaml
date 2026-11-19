@@ -10,7 +10,7 @@ appId: host.exp.Exponent
 - takeScreenshot: upright-guest-page
 - assertVisible: { id: 'guest.${GUEST_ID}' }
 - assertNotVisible: { id: 'guests.row.${GUEST_ID}' }
-- tapOn: { id: 'guest.back' }
+- tapOn: { id: 'frame.back' }
 - waitForAnimationToEnd: { timeout: 8000 }
 - takeScreenshot: upright-after-guests-back
 - assertVisible: { id: 'guests.row.${GUEST_ID}' }
