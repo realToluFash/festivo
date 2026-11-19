@@ -2972,6 +2972,7 @@
     "locked": "These come with Enterprise",
     "lockedLine": "Email domains and the audit log.",
     "leftLine": "Email domains, the audit log and deleting guest data are switched off and kept as they were. They come back on with Enterprise.",
+    "leftSays": "{{organisation}} left Enterprise",
     "rows": {
       "domains": "Email domains",
       "noDomains": "No domains yet",
@@ -3037,7 +3038,8 @@
       "removedLine": "It is no longer proved.",
       "locked": "Available on Enterprise",
       "lockedLine": "Prove that {{organisation}} owns its domain, then limit the accounts at it to {{organisation}}.",
-      "offLine": "{{organisation}} left Enterprise. Its domains are kept as they were, and come back on with Enterprise."
+      "offLine": "{{organisation}} left Enterprise. Its domains are kept as they were, and come back on with Enterprise.",
+      "off": "Switched off"
     },
     "removeAsk": {
       "title": "Remove {{domain}}?",

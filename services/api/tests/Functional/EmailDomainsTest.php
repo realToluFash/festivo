@@ -208,7 +208,7 @@ final class EmailDomainsTest extends ApiTestCase
         $mails = $this->mailsTitled('The record for ire.events is missing');
         self::assertSame(['folake@ire.events'], Vec\map($mails, self::to(...)));
         self::assertStringContainsString('Put it back by ', (string) $mails[0]->getTextBody());
-        self::assertStringContainsString('Name: _soirely-verify.ire.events', (string) $mails[0]->getTextBody());
+        self::assertStringContainsString("Type: TXT\n\nName: _soirely-verify.ire.events\n\nValue: {$missing->getRecordValue()}", (string) $mails[0]->getTextBody());
 
         $this->move($domain, 'missing_since', '-14 days -1 minute');
         $putBackBy = $this->fresh($domain)->putBackBy();

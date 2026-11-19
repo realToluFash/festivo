@@ -544,7 +544,7 @@ describe('Data and control’s Email domains row and card (sc-560)', () => {
     await waitFor(() => expect(screen.getByText('Ìrè Events left Enterprise')).toBeDefined());
     expect(
       screen.getByText(
-        'Email domains are switched off and kept as they were. They come back on with Enterprise.',
+        'Email domains, the audit log and deleting guest data are switched off and kept as they were. They come back on with Enterprise.',
       ),
     ).toBeDefined();
   });
@@ -555,7 +555,11 @@ describe('Data and control’s Email domains row and card (sc-560)', () => {
     open('/app/settings/data-and-control');
 
     expect(await screen.findByText('These come with Enterprise')).toBeDefined();
-    expect(screen.getByText('Email domains. Export all data is on every plan.')).toBeDefined();
+    expect(
+      screen.getByText(
+        'Email domains, the audit log and deleting guest data after an event. Export all data and a guest’s request are on every plan.',
+      ),
+    ).toBeDefined();
   });
 
   it('starts with Prove a domain when nothing is set up, and opens the field on Email domains', async () => {

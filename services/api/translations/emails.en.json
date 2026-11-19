@@ -206,5 +206,6 @@
     "domainRecordGone.body": "We could not find the DNS record that proves {organisation} owns {domain}. Put it back by {deadline}, or {domain} stops being proved.",
     "domainRecordGone.name": "Name: {name}",
     "domainRecordGone.type": "Type: TXT",
+    "domainRecordGone.value": "Value: {value}",
     "domainRecordGone.footer": "You're getting this because you are an owner or an admin of {organisation}."
 }

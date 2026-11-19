@@ -206,5 +206,6 @@
     "domainRecordGone.body": "No hemos encontrado el registro DNS que demuestra que {domain} es de {organisation}. Vuelva a añadirlo antes del {deadline} o {domain} dejará de estar verificado.",
     "domainRecordGone.name": "Nombre: {name}",
     "domainRecordGone.type": "Tipo: TXT",
+    "domainRecordGone.value": "Value: {value}",
     "domainRecordGone.footer": "Recibe este correo porque es propietario o administrador de {organisation}."
 }

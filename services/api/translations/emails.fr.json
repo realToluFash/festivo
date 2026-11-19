@@ -206,5 +206,6 @@
     "domainRecordGone.body": "Nous n’avons pas trouvé l’enregistrement DNS qui prouve que {domain} appartient à l’organisation {organisation}. Remettez-le avant le {deadline}, sinon {domain} ne sera plus vérifié.",
     "domainRecordGone.name": "Nom : {name}",
     "domainRecordGone.type": "Type : TXT",
+    "domainRecordGone.value": "Value: {value}",
     "domainRecordGone.footer": "Vous recevez ce message parce que vous êtes propriétaire ou administrateur de l’organisation {organisation}."
 }
