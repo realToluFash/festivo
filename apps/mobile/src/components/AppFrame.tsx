@@ -228,6 +228,8 @@ interface NavEntry {
   on: boolean;
   onPress: () => void;
   testID: string;
+  /** The entry a sheet it opens gives focus back to. */
+  opener?: RefObject<ViewInstance | null>;
 }
 
 function areaEntry(t: (key: string) => string, inside: InsideEvent, area: EventPlace): NavEntry {
@@ -355,7 +357,7 @@ export function AppFrame({
   usePushTaps(signedIn.account?.id);
   const now = useServerNow();
   const [outsideMoreOpen, setOutsideMoreOpen] = useState(false);
-  const noOpener = useRef<ViewInstance>(null);
+  const moreOpener = useRef<ViewInstance>(null);
   const outsideHere = inEvent?.outside?.id;
   const heldGroups = outsideGroups(signedIn);
   // Upright on a tablet, held from outside, the capsule's More holds the account's groups, as the demo's Inside draws it (sc-68438).
@@ -379,6 +381,7 @@ export function AppFrame({
                   on: false,
                   onPress: () => setOutsideMoreOpen(true),
                   testID: 'event.nav.more',
+                  opener: moreOpener,
                 },
               ]
             : []),
@@ -673,7 +676,7 @@ export function AppFrame({
             <OutsideYouSheet
               here={outsideHere}
               open={outsideMoreOpen}
-              opener={noOpener}
+              opener={moreOpener}
               name={t('eventNav.more')}
               onClose={() => setOutsideMoreOpen(false)}
             />
@@ -1585,6 +1588,7 @@ function Pills({ entries, scrolls }: { entries: readonly NavEntry[]; scrolls: bo
   const pills = entries.map((entry) => (
     <Pressable
       key={entry.key}
+      ref={entry.opener}
       style={[styles.pill, entry.on && styles.pillOn]}
       onLayout={(event) => {
         starts.current[entry.key] = event.nativeEvent.layout.x;
