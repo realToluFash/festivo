@@ -46,6 +46,7 @@ final readonly class QuantityResolver
             null === $plan ? null : $this->seatingTableRepository->count(['plan' => $plan]),
             null, // Staffing's shifts (sc-101) are not built, so no event has scheduled hours yet.
             EventDayCount::of($event->getStartsAt(), $event->getEndsAt(), new DateTimeZone($event->getTimeZone())),
+            HeadcountCalculator::ifAllCome($counts),
         );
     }
 
