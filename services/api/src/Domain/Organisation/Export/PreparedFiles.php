@@ -2,12 +2,14 @@
 
 declare(strict_types=1);
 
-namespace App\Storage;
+namespace App\Domain\Organisation\Export;
 
 use App\Entity\PreparedFile;
 use App\Entity\User;
 use App\Enum\ErrorCode;
 use App\Http\Exception\ApiException;
+use App\Storage\ObjectStore;
+use Psl\Filesystem;
 use Psl\Str;
 use Psr\Clock\ClockInterface;
 use RuntimeException;
@@ -26,14 +28,33 @@ final readonly class PreparedFiles
     /** @param callable(resource): void $write fills the temporary file the kept one is uploaded from */
     public function keep(string $key, string $contentType, callable $write): void
     {
-        $file = \tmpfile() ?: throw new RuntimeException('No temporary file for a prepared file.');
+        $this->keepAt($key, $contentType, static function (string $path) use ($write): void {
+            $file = \fopen($path, 'wb') ?: throw new RuntimeException('No temporary file for a prepared file.');
+
+            try {
+                $write($file);
+            } finally {
+                \fclose($file);
+            }
+        });
+    }
+
+    /** @param callable(string): void $write writes the file at the temporary path given, which is uploaded from where it stands */
+    public function keepAt(string $key, string $contentType, callable $write): void
+    {
+        $path = Filesystem\create_temporary_file(prefix: 'prepared-file-');
 
         try {
-            $write($file);
-            \rewind($file);
-            $this->objectStore->keepFile($key, $file, $contentType);
+            $write($path);
+            $file = \fopen($path, 'rb') ?: throw new RuntimeException('The prepared file could not be read back.');
+
+            try {
+                $this->objectStore->keepFile($key, $file, $contentType);
+            } finally {
+                \fclose($file);
+            }
         } finally {
-            \fclose($file);
+            Filesystem\delete_file($path);
         }
     }
 

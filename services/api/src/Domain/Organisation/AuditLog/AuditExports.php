@@ -6,6 +6,7 @@ namespace App\Domain\Organisation\AuditLog;
 
 use App\Audit\Auditor;
 use App\Domain\Guest\Export\CsvFile;
+use App\Domain\Organisation\Export\PreparedFiles;
 use App\Entity\AuditEntry;
 use App\Entity\AuditExport;
 use App\Entity\Organisation;
@@ -19,7 +20,6 @@ use App\Http\Exception\ApiException;
 use App\Repository\AuditEntryRepository;
 use App\Repository\AuditExportRepository;
 use App\Repository\AuditFilter;
-use App\Storage\PreparedFiles;
 use Doctrine\ORM\EntityManagerInterface;
 use Psl\Iter;
 use Psl\Json;

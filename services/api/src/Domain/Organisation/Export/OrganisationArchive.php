@@ -340,14 +340,12 @@ final readonly class OrganisationArchive
     ) {
     }
 
-    /** @param resource $file the .zip is written to it, every table read in pieces, so no table is ever held in memory whole */
-    public function write(Organisation $organisation, $file): void
+    /** The .zip is written at $zipPath, every table read in pieces, so no table is ever held in memory whole; the pieces it is made from are gone once it returns. */
+    public function write(Organisation $organisation, string $zipPath): void
     {
         $made = [];
 
         try {
-            $zipPath = Filesystem\create_temporary_file(prefix: 'organisation-export-');
-            $made[] = $zipPath;
             $jsonPath = Filesystem\create_temporary_file(prefix: 'organisation-export-');
             $made[] = $jsonPath;
             $json = self::open($jsonPath, 'wb');
@@ -378,10 +376,6 @@ final readonly class OrganisationArchive
             if (!$zip->close()) {
                 throw new RuntimeException('The archive could not be written.');
             }
-
-            $zipped = self::open($zipPath, 'rb');
-            \stream_copy_to_stream($zipped, $file);
-            \fclose($zipped);
         } finally {
             foreach ($made as $path) {
                 Filesystem\delete_file($path);

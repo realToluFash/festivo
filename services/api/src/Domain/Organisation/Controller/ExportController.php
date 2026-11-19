@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domain\Organisation\Controller;
 
 use App\Domain\Organisation\Export\OrganisationExports;
+use App\Domain\Organisation\Export\PreparedFiles;
 use App\Domain\Organisation\Members\OwnerCheck;
 use App\Domain\User\Mail\UserMailer;
 use App\Entity\Organisation;
@@ -17,7 +18,6 @@ use App\Http\Access\Policy\InOrganisation;
 use App\Http\Exception\ApiException;
 use App\Repository\OrganisationExportRepository;
 use App\Repository\OrganisationRepository;
-use App\Storage\PreparedFiles;
 use DateTimeImmutable;
 use Psr\Clock\ClockInterface;
 use Symfony\Bundle\SecurityBundle\Security;

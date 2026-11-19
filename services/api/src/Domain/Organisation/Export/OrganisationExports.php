@@ -15,7 +15,6 @@ use App\Enum\ErrorCode;
 use App\Http\AfterResponse;
 use App\Http\Exception\ApiException;
 use App\Repository\OrganisationExportRepository;
-use App\Storage\PreparedFiles;
 use DateInterval;
 use DateTimeImmutable;
 use Doctrine\DBAL\LockMode;
@@ -101,7 +100,7 @@ final readonly class OrganisationExports
 
         try {
             $key = Str\format('organisation-exports/%s/%s-%d.zip', $export->getOrganisation()->getId()->toRfc4122(), $export->getId()->toRfc4122(), $export->getAttempts());
-            $this->preparedFiles->keep($key, self::CONTENT_TYPE, fn ($file) => $this->organisationArchive->write($export->getOrganisation(), $file));
+            $this->preparedFiles->keepAt($key, self::CONTENT_TYPE, fn (string $path) => $this->organisationArchive->write($export->getOrganisation(), $path));
         } catch (Throwable $e) {
             $this->logger->error('An organisation export failed to prepare.', ['export' => $export->getId()->toRfc4122(), 'attempt' => $export->getAttempts(), 'exception' => $e::class]);
             $this->organisationExportRepository->claimFailed($export, $this->clock->now());

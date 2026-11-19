@@ -7,7 +7,7 @@ namespace App\Entity;
 use DateTimeImmutable;
 use Symfony\Component\Uid\Uuid;
 
-/** A file the server prepares after answering, for the one person who asked, downloadable signed in for a day from its being ready (App\Storage\PreparedFiles). */
+/** A file the server prepares after answering, for the one person who asked, downloadable signed in for a day from its being ready (App\Domain\Organisation\Export\PreparedFiles). */
 interface PreparedFile
 {
     public const string LINK_LIFETIME = 'PT24H';
