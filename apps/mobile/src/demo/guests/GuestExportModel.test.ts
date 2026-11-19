@@ -6,14 +6,19 @@ import { describe, expect, it } from 'vitest';
 import {
   COLUMNS,
   EXPORT_STATES,
+  ENGLISH_SHEET,
+  LONG_ONE_WORD_NAME,
   XW,
+  cancelUnder,
   columnsFor,
   exportDay,
   exportStart,
   exportWordsIn,
+  exportedName,
   fileName,
   narrowing,
   scopeFor,
+  sheetWordsIn,
 } from './GuestExportModel.ts';
 import { GUESTS_BOARDS } from './GuestsBoards.ts';
 import { areaStart, guestsStateOf, inViewOf, roleOf, titleRowOf } from './GuestsModel.ts';
@@ -124,5 +129,70 @@ describe('the app’s guest export (sc-3784)', () => {
     expect(screen).toMatch(/inPortuguese = titleRow\.locale === 'pt'/);
     expect(screen).toMatch(/&& titleRow\.export \? \(\s*<ExportButton/);
     expect(button).toMatch(/words=\{inPortuguese \? exportWordsIn\(portuguese\) : undefined\}/);
+  });
+});
+
+describe('the Export sheet at the largest text sizes (sc-72136)', () => {
+  const gap = 10;
+
+  it('keeps Cancel beside the title while its longest word and Cancel fit the row', () => {
+    expect(cancelUnder({ room: 354, widest: 140, cancel: 175, gap })).toBe(false);
+    expect(cancelUnder({ room: 354, widest: 169, cancel: 175, gap })).toBe(false);
+  });
+
+  it('puts Cancel under the title where they do not, or where the word alone fills the row', () => {
+    expect(cancelUnder({ room: 354, widest: 222, cancel: 206, gap })).toBe(true);
+    expect(cancelUnder({ room: 354, widest: 400, cancel: 60, gap })).toBe(true);
+  });
+
+  it('leaves the row as on main until the row, the word and Cancel are measured', () => {
+    expect(cancelUnder({ room: 0, widest: 222, cancel: 206, gap })).toBe(false);
+    expect(cancelUnder({ room: 354, widest: 0, cancel: 206, gap })).toBe(false);
+    expect(cancelUnder({ room: 354, widest: 222, cancel: 0, gap })).toBe(false);
+  });
+
+  it('opens the sheet after a search, in English and in Portuguese', () => {
+    for (const state of ['exportSearched', 'exportSearchedPt'] as const) {
+      expect(exportStart(state).open).toBe(true);
+      expect(areaStart(state).typed).toBe('okon');
+    }
+    expect(titleRowOf('exportSearched').locale).toBe('en');
+    expect(titleRowOf('exportSearchedPt').locale).toBe('pt');
+  });
+
+  it('opens the sheet for an event named with one word wider than the row, in English and in Portuguese', () => {
+    for (const state of ['exportLongName', 'exportLongNamePt'] as const) {
+      expect(exportStart(state).open).toBe(true);
+      expect(exportedName(state, 'Adeola & Kwame')).toBe(LONG_ONE_WORD_NAME);
+    }
+    expect(LONG_ONE_WORD_NAME).not.toMatch(/\s/);
+    expect(exportedName('exportSearched', 'Adeola & Kwame')).toBe('Adeola & Kwame');
+    expect(titleRowOf('exportLongName').locale).toBe('en');
+    expect(titleRowOf('exportLongNamePt').locale).toBe('pt');
+  });
+
+  it('speaks Portuguese from the catalogue, and English as XW has it', () => {
+    const pt = JSON.parse(
+      readFileSync(join(import.meta.dirname, '../../i18n/locales/pt.json'), 'utf8'),
+    ) as Record<string, Record<string, unknown>>;
+    const t = (key: string, values: Record<string, string | number> = {}) => {
+      const [area, ...rest] = key.split('.');
+      let found: unknown = pt[area as string];
+      for (const part of rest) found = (found as Record<string, unknown>)[part];
+      if (found == null && 'count' in values)
+        found = (pt[area as string] as Record<string, unknown>)[`${rest.join('.')}_other`];
+      return String(found).replace(/\{\{(\w+)(, number)?\}\}/g, (_, name: string) =>
+        String(values[name]),
+      );
+    };
+    const words = sheetWordsIn(t);
+
+    expect(words.title).toBe('Exportar convidados');
+    expect(words.close).toBe('Cancelar');
+    expect(words.thisView(156)).toBe('Esta vista (156 pessoas)');
+    expect(words.columnsFor(true)).toContain('Acessibilidade');
+    expect(words.columnsFor(false)).not.toContain('Acessibilidade');
+    expect(ENGLISH_SHEET.title).toBe(XW.title);
+    expect(ENGLISH_SHEET.columnsFor(true)).toEqual(columnsFor(true));
   });
 });
