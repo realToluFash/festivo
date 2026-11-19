@@ -129,7 +129,11 @@ export function hubStart(state: HubState): HubStart {
     case 'locked':
       return { ...at, plan: 'locked', domains: [] };
     case 'downgraded':
-      return { ...at, plan: 'downgraded', domains: [KEPT_IRE] };
+      return {
+        ...at,
+        plan: 'downgraded',
+        domains: [KEPT_IRE, { ...WAITING_IRE_EVENTS, status: 'kept' }],
+      };
     case 'loading':
     case 'failed':
       return { ...at, load: state, domains: [PROVED_IRE, WAITING_IRE_EVENTS] };

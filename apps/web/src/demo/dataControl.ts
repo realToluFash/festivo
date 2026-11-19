@@ -305,7 +305,11 @@ export function hubRows(
   });
   const exported = exportRow(view, viewer, locale);
   const domains = left
-    ? row('emailDomains', `${PROVED_DOMAIN} kept as it was`, 'ed_downgraded')
+    ? row(
+        'emailDomains',
+        `${PROVED_DOMAIN} kept as it was · ${WAITING_DOMAIN} kept as it was`,
+        'ed_downgraded',
+      )
     : locked
       ? row('emailDomains', `Prove your domain and limit its accounts to ${ORG}`, 'ed_locked')
       : view.setup === 'new'

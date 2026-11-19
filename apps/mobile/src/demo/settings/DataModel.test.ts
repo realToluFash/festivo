@@ -209,7 +209,11 @@ describe('the hub in the app: Control only, its card the soonest instant that as
       step: null,
     });
     expect(hubRows(hubStart('downgraded'), 'downgraded')).toMatchObject([
-      { line: 'ire.events kept as it was', locked: true, opens: 'ed_downgraded' },
+      {
+        line: 'ire.events kept as it was · ireevents.com kept as it was',
+        locked: true,
+        opens: 'ed_downgraded',
+      },
       { locked: true, opens: 'locked' },
     ]);
   });
