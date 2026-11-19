@@ -22,6 +22,7 @@ function vendor(overrides: Partial<Vendor>): Vendor {
     address: null,
     note: null,
     archivedAt: null,
+    events: 0,
     ...overrides,
   };
 }

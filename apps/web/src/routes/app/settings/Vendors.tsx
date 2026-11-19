@@ -5,6 +5,7 @@ import {
   type VendorView,
   type VendorsPage,
   VENDOR_CATEGORIES,
+  owingEvents,
 } from '@soirely/api-client';
 import { callingCode, countryChoices, formatEventDate, formatPhone } from '@soirely/domain';
 import {
@@ -18,6 +19,7 @@ import {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Link } from 'react-router';
 
 import { api } from '../../../api.ts';
 import { Glyph } from '../../../components/Glyph.tsx';
@@ -43,6 +45,7 @@ import { offButton } from '../../../offButton.ts';
 import { codeChoice } from '../../../phoneProblem.ts';
 import { can, useSession } from '../../../session.ts';
 import { Forbidden } from '../Forbidden.tsx';
+import { vendorPagePath } from '../events/quotesArea.ts';
 import {
   BLANK,
   type Draft,
@@ -436,6 +439,9 @@ function Loaded({
                             })
                           : (one.emailAddress ??
                             (one.phoneNumber == null ? null : formatPhone(one.phoneNumber))),
+                        one.archivedAt == null && one.events > 0
+                          ? t('vendors.usedOn', { count: one.events })
+                          : null,
                       ]
                         .filter((part) => part != null && part !== '')
                         .join(' · ')}
@@ -656,6 +662,7 @@ function VendorForm({
   const [busy, setBusy] = useState(false);
   const [asking, setAsking] = useState(false);
   const [failed, setFailed] = useState<string | null>(null);
+  const [owing, setOwing] = useState<{ id: string; name: string }[] | null>(null);
   const name = useRef<HTMLInputElement>(null);
   const toFix = fieldsToFix(problems);
 
@@ -675,6 +682,11 @@ function VendorForm({
   };
   const refused = (error: unknown) => {
     setBusy(false);
+    if (error instanceof ApiError && error.is('vendor_owed')) {
+      setFailed(null);
+      setOwing(owingEvents(error.problem));
+      return;
+    }
     const found =
       error instanceof ApiError ? refusedAt(error.problem.violations ?? []) : ({} as Problems);
     if (Object.keys(found).length === 0) {
@@ -693,6 +705,7 @@ function VendorForm({
     const found = draftProblems(draft, t);
     setProblems(found);
     setFailed(null);
+    setOwing(null);
     if (Object.keys(found).length > 0) {
       firstProblem();
       return;
@@ -732,6 +745,19 @@ function VendorForm({
         onConfirm={save}
       >
         <div className="vd-wide">
+          {vendor != null && owing != null && (
+            <div className="vd-owing">
+              <div className="vd-alert" role="alert">
+                <Glyph name="alert" size={16} weight={2.3} />
+                <p>{t('vendors.archiveRefused', { vendor: vendor.name })}</p>
+              </div>
+              {owing.map((event) => (
+                <Link key={event.id} className="desk-text" to={vendorPagePath(event.id, vendor.id)}>
+                  {t('vendors.owingLink', { vendor: vendor.name, event: event.name })}
+                </Link>
+              ))}
+            </div>
+          )}
           {toFix > 0 && (
             <p className="desk-error vd-to-fix" role="alert">
               <Glyph name="alert" size={15} weight={2.2} />
