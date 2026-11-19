@@ -63,7 +63,7 @@ const LIT_MS = 2000;
 const ARROWS = new Set(['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight']);
 const LABEL_MOST = 60;
 
-/** People on an event (sc-29915), as the People demo draws it at a desk: who has which of its four roles, changed by Owners, Admins and its Lead. */
+/** People on an event (sc-29915), as the People demo draws it at a desk, on its own title under the crumb (sc-69635): who has which of its four roles, changed by Owners, Admins and its Lead. */
 export function EventPeople({ event }: { event: OrganisationEvent }) {
   const { t } = useTranslation();
   const session = useSession();
@@ -125,22 +125,42 @@ export function EventPeople({ event }: { event: OrganisationEvent }) {
   }, []);
   const closeAdd = useCallback(() => setOpen(null), []);
 
+  const top = (
+    <header className="desk-top">
+      <h1 ref={title} className="desk-title" tabIndex={-1}>
+        {t('eventPeople.title')}
+      </h1>
+    </header>
+  );
+
   if (load.kind === 'loading')
-    return <Skeleton words={t('eventPeople.loading')} shape="rows" rowHeight={60} />;
+    return (
+      <div className="desk event-people-desk">
+        <div className="desk-column event-people">
+          {top}
+          <Skeleton words={t('eventPeople.loading')} shape="rows" rowHeight={60} />
+        </div>
+      </div>
+    );
 
   if (load.kind === 'failed')
     return (
-      <ArrivalNotice
-        role={attempt > 0 ? undefined : 'alert'}
-        line={t('eventPeople.failed')}
-        lineRef={failedLine}
-        focusable
-        retry={t('eventPeople.retry')}
-        onRetry={() => {
-          setLoad({ kind: 'loading' });
-          setAttempt((n) => n + 1);
-        }}
-      />
+      <div className="desk event-people-desk">
+        <div className="desk-column event-people">
+          {top}
+          <ArrivalNotice
+            role={attempt > 0 ? undefined : 'alert'}
+            line={t('eventPeople.failed')}
+            lineRef={failedLine}
+            focusable
+            retry={t('eventPeople.retry')}
+            onRetry={() => {
+              setLoad({ kind: 'loading' });
+              setAttempt((n) => n + 1);
+            }}
+          />
+        </div>
+      </div>
     );
 
   const loaded = load;
@@ -171,14 +191,8 @@ export function EventPeople({ event }: { event: OrganisationEvent }) {
   return (
     <LayersContext value={layers}>
       <div className="desk event-people-desk">
-        <section
-          className="card desk-column event-people"
-          aria-labelledby="event-people-title"
-          inert={covered}
-        >
-          <h2 id="event-people-title" ref={title} className="desk-title" tabIndex={-1}>
-            {t('eventPeople.title')}
-          </h2>
+        <div className="desk-column event-people" inert={covered}>
+          {top}
           {adds && (
             <button
               ref={addBox}
@@ -288,7 +302,7 @@ export function EventPeople({ event }: { event: OrganisationEvent }) {
               </p>
             )}
           </div>
-        </section>
+        </div>
         <div ref={setHost} className="desk-layers" />
 
         {opened != null && open?.kind === 'person' && (

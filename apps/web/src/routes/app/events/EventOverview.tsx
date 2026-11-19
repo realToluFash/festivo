@@ -71,7 +71,15 @@ import '../../../components/SettingsParts.css';
 import '../../../components/eventPage.css';
 
 /** The crumb an event's page starts with at a desk: Events, then where you are, and the bell at its end. */
-export function EventCrumb({ name, children }: { name: string | null; children?: ReactNode }) {
+export function EventCrumb({
+  name,
+  area,
+  children,
+}: {
+  name: string | null;
+  area?: { label: string; event: string } | undefined;
+  children?: ReactNode;
+}) {
   const { t } = useTranslation();
   const { bell } = useDeskTop();
   const state = useSessionState();
@@ -81,7 +89,7 @@ export function EventCrumb({ name, children }: { name: string | null; children?:
     state.session.pausedIn == null;
 
   return (
-    <Crumb to={outside ? null : '/app/events'} back={t('events.title')} name={name}>
+    <Crumb to={outside ? null : '/app/events'} back={t('events.title')} name={name} area={area}>
       {children}
       {bell}
     </Crumb>

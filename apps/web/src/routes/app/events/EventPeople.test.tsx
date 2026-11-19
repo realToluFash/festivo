@@ -177,13 +177,21 @@ async function onPeople(
       router={createMemoryRouter(routes, { initialEntries: ['/app/events/ev_1/people'] })}
     />,
   );
-  await screen.findByRole('heading', { level: 2, name: 'People' });
+  await peopleShown();
 
   return sent;
 }
 
+async function peopleShown(): Promise<void> {
+  await screen.findByRole('heading', { level: 1, name: 'People' });
+  await waitFor(() => expect(people().querySelector('.people-foot')).not.toBeNull());
+}
+
 function people(): HTMLElement {
-  return screen.getByRole('region', { name: 'People' });
+  const page = document.querySelector<HTMLElement>('.event-people');
+  if (page == null) throw new Error('People is not on the page');
+
+  return page;
 }
 
 afterEach(() => {
@@ -222,7 +230,7 @@ describe('People on an event, at a desk (sc-29915)', () => {
       expect.stringContaining('Tom BeckerCan check guests in · Bar and drinks'),
     ]);
     expect(
-      screen.getByRole('heading', { level: 2, name: 'People' }).closest('.desk'),
+      screen.getByRole('heading', { level: 1, name: 'People' }).closest('.desk'),
     ).not.toBeNull();
     expect(within(people()).getByText('3')).toBeDefined();
     expect(
@@ -761,7 +769,7 @@ describe('coming back to People while offline (sc-65646)', () => {
     });
     const router = createMemoryRouter(routes, { initialEntries: ['/app/events/ev_1/people'] });
     render(<RouterProvider router={router} />);
-    await screen.findByRole('heading', { level: 2, name: 'People' });
+    await peopleShown();
 
     fireEvent.click(within(people()).getByRole('button', { name: /Tom Becker/ }));
     const dialog = screen.getByRole('dialog', { name: 'Role on this event' });
@@ -939,5 +947,93 @@ describe('People from outside the organisation (sc-71)', () => {
         'Kofi Mensah is a member of Ìrè Events already. Add them from In Ìrè Events.',
       ),
     ).toBeDefined();
+  });
+});
+
+describe('People opens on its own title under the crumb, as Guests does (sc-69635)', () => {
+  it('reads Events, the event and People in the crumb, with People as the only h1 and no event top', async () => {
+    signedIn();
+    await onPeople([TOM, PRIYA]);
+
+    const crumb = screen.getByRole('navigation', { name: 'Breadcrumb' });
+    const parts = within(crumb).getAllByRole('listitem');
+    expect(parts.map((part) => part.textContent)).toEqual(['Events', EVENT.name, 'People']);
+    expect(within(parts[0]!).getByRole('link').getAttribute('href')).toBe('/app/events');
+    expect(within(parts[1]!).getByRole('link').getAttribute('href')).toBe('/app/events/ev_1');
+    expect(parts[1]!.getAttribute('aria-current')).toBeNull();
+    expect(parts[2]!.getAttribute('aria-current')).toBe('page');
+    expect(within(parts[2]!).queryByRole('link')).toBeNull();
+    expect(crumb.closest('.ev-crumb-row')?.querySelector('.notifications')).not.toBeNull();
+
+    const headings = screen.getAllByRole('heading', { level: 1 });
+    expect(headings.map((one) => one.textContent)).toEqual(['People']);
+    expect(headings[0]!.getAttribute('tabindex')).toBe('-1');
+    expect(screen.queryByRole('heading', { name: EVENT.name })).toBeNull();
+    expect(screen.queryByText('Live')).toBeNull();
+    expect(screen.queryByRole('button', { name: /Make live|Duplicate/u })).toBeNull();
+    expect(people().closest('.card')).toBeNull();
+  });
+
+  it('keeps the crumb and the title while People loads and when it fails, with no event top', async () => {
+    signedIn();
+    await onPeople([TOM], { 'GET /api/events/ev_1/people': () => json({}, 500) }).catch(
+      () => undefined,
+    );
+
+    await screen.findByRole('button', { name: 'Try again' });
+    expect(screen.getByRole('navigation', { name: 'Breadcrumb' }).textContent).toContain('People');
+    expect(screen.getAllByRole('heading', { level: 1 }).map((one) => one.textContent)).toEqual([
+      'People',
+    ]);
+    expect(screen.queryByRole('heading', { name: EVENT.name })).toBeNull();
+  });
+
+  it('starts the crumb at the event for an account with no organisation (sc-71)', async () => {
+    reader = IRE;
+    __setSessionState({
+      status: 'signedIn',
+      session: {
+        name: 'Bisi Adebayo',
+        email: 'bisi@lagoslights.example',
+        verified: true,
+        complete: true,
+        awaiting: null,
+        providers: [],
+        userId: 'u_bisi',
+        needsOrganisation: false,
+        hasPassword: true,
+        organisation: null,
+        organisations: [],
+        organisationCountry: null,
+        timezone: null,
+        waitingFor: null,
+        outsideEvents: [
+          {
+            id: 'ev_1',
+            name: EVENT.name,
+            organisationName: 'Ìrè Events',
+            role: 'can_view',
+            jobLabel: null,
+            startsAt: EVENT.startsAt,
+            endsAt: EVENT.endsAt,
+          },
+        ],
+      },
+    });
+    await onPeople([TOM], {
+      'GET /api/events/ev_1': () =>
+        json({ event: { ...EVENT, permissions: ON_THE_EVENT.can_view } }),
+    });
+
+    const crumb = screen.getByRole('navigation', { name: 'Breadcrumb' });
+    expect(
+      within(crumb)
+        .getAllByRole('listitem')
+        .map((part) => part.textContent),
+    ).toEqual([EVENT.name, 'People']);
+    expect(within(crumb).queryByRole('link', { name: 'Events' })).toBeNull();
+    expect(screen.getAllByRole('heading', { level: 1 }).map((one) => one.textContent)).toEqual([
+      'People',
+    ]);
   });
 });
