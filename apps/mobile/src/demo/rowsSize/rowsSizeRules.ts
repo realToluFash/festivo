@@ -70,3 +70,15 @@ export function labelSize(size: number, start: number, widest: number, room: num
 export function lineStart(line: number, scale: number, cap: number, title: number): number {
   return labelStart(line, scale, Math.min(cap, title));
 }
+
+/** The pieces a label may wrap between: its words, each split after a hyphen it already has, so `two-factor,` is `two-` and `factor,` (the AC: a break after a hyphen is not a break inside a word). */
+export function piecesIn(text: string): string[] {
+  return [
+    ...new Set(
+      text
+        .split(/\s+/u)
+        .flatMap((word) => word.replace(/([-\u2010])/gu, '$1\n').split('\n'))
+        .filter((piece) => piece !== ''),
+    ),
+  ];
+}

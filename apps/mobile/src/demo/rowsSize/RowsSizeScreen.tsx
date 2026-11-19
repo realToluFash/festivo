@@ -12,7 +12,6 @@ import { Caps, Tile } from '../../components/SettingsParts.tsx';
 import { Text } from '../../components/Text.tsx';
 import { MeasuredWords } from '../../components/Title.tsx';
 import { useShellLayout } from '../../components/settingsShell.ts';
-import { wordsIn } from '../../layout/textSize.ts';
 import { DemoOnly } from '../../steps/Lines.tsx';
 import { defaultScheme, tokens } from '../../theme/tokens.ts';
 import { Choices } from '../focusedHeader/FocusedHeaderScreen.tsx';
@@ -26,6 +25,7 @@ import {
   labelSize,
   labelStart,
   lineStart,
+  piecesIn,
   rowType,
   rowsScale,
   settingsCap,
@@ -217,7 +217,7 @@ function DemoRow({
   );
 }
 
-/** A label measured word by word at its start, drawn at the largest size its widest word fits `room`, never under `size`. */
+/** A label measured piece by piece at its start (words, split after their hyphens), drawn at the largest size its widest piece fits `room`, never under `size`. */
 function DemoLabel({
   text,
   size,
@@ -240,7 +240,7 @@ function DemoLabel({
     widths: {},
   });
   const key = `${start}|${text}`;
-  const each = wordsIn([text]);
+  const each = piecesIn(text);
   const widths = measured.key === key ? measured.widths : {};
   const widest = each.every((word) => widths[word] != null)
     ? Math.max(...each.map((word) => widths[word] ?? 0))
