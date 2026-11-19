@@ -629,6 +629,8 @@ describe('Quotes and what is due on the wedding’s Budget, in A (sc-87, sc-88)'
     ).toBeDefined();
     await settle();
     expect(within(section('Vendors quoted')).getByText('Savour Kitchen')).toBeDefined();
+    expect(document.activeElement?.tagName).toBe('H1');
+    expect(document.activeElement?.textContent).toBe('Budget');
   });
 
   it(

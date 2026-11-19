@@ -519,11 +519,11 @@ export function AskInRow({
   onGo: () => void;
 }) {
   const first = useRef<HTMLButtonElement>(null);
-  const again = useRef<HTMLButtonElement>(null);
+  const goRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => first.current?.focus(), []);
   useEffect(() => {
-    if (problem != null) again.current?.focus();
+    if (problem != null) goRef.current?.focus();
   }, [problem]);
 
   return (
@@ -532,7 +532,7 @@ export function AskInRow({
       <button ref={first} type="button" className="desk-text" onClick={onKeep}>
         {keep}
       </button>
-      <button ref={again} type="button" className="desk-text is-red" onClick={onGo}>
+      <button ref={goRef} type="button" className="desk-text is-red" onClick={onGo}>
         {go}
       </button>
       {problem != null && (
