@@ -11,38 +11,34 @@ import { Glyph, type GlyphName } from '../../components/Glyph.tsx';
 import { Initials } from '../../components/Initials.tsx';
 import { OrgMark } from '../../components/OrgMark.tsx';
 import { Text } from '../../components/Text.tsx';
-import { MeasuredWords } from '../../components/Title.tsx';
 import { AREA_GLYPH } from '../../components/areaGlyph.ts';
 import { cardTags } from '../../kit/eventsList.ts';
-import { nameLines, wordsIn } from '../../layout/textSize.ts';
 import { DemoOnly } from '../../steps/Lines.tsx';
-import type { WeightName } from '../../theme/fonts.ts';
 import { tokens } from '../../theme/tokens.ts';
 import { Choices } from '../focusedHeader/FocusedHeaderScreen.tsx';
 import { shownEvent } from '../events/EventsModel.ts';
 import { AREAS, EVENT_OF_KEY, sampleEvent } from '../events/EventsSample.ts';
 import { SAMPLE } from '../samples.ts';
 import { SIDEBAR_EVENTS } from '../sideEvents.ts';
+import { useSideFit } from '../../components/sideFit.tsx';
 import {
   CARD_THUMB,
+  HEADING_TRACKING,
   OPENER_GLYPH,
   ORG_MARK,
   PERSON_GLYPH,
   ROOMS,
+  glyphSide,
+  rowPad,
+} from '../../layout/sidebarSize.ts';
+import { SIDEBAR_WIDTH, nameLines } from '../../layout/textSize.ts';
+import {
   SIDEBAR_LANGUAGES,
   SIDEBAR_PLACES,
   SIDEBAR_SIZES,
-  SIDEBAR_WIDTH,
-  HEADING_TRACKING,
-  type SideFit,
-  type SideRoom,
-  lettersIn,
   type SidebarAt,
   type SidebarLanguage,
   type SidebarSize,
-  glyphSide,
-  rowPad,
-  sideTextSize,
   sidebarScale,
 } from './sidebarSizeRules.ts';
 
@@ -188,65 +184,6 @@ function Sidebar({
   );
 }
 
-/** A text's size in the sidebar, from its words measured hidden at its full size. */
-function useFit(
-  text: string,
-  room: SideRoom,
-  scale: number,
-  weight: WeightName,
-  fit: SideFit = 'label',
-) {
-  const start = room.size * scale;
-  const words = wordsIn([text]);
-  const key = `${start}|${weight}|${text}`;
-  const [measured, setMeasured] = useState<{ key: string; widths: Record<string, number> }>({
-    key: '',
-    widths: {},
-  });
-  const widths = measured.key === key ? measured.widths : {};
-  const whole = widths[`\n${text}`];
-  const known = whole != null && words.every((word) => widths[word] != null);
-  const size = sideTextSize(
-    room,
-    scale,
-    known
-      ? {
-          words: words.map((word) => ({ width: widths[word] ?? 0, letters: lettersIn(word) })),
-          whole: { width: whole, letters: lettersIn(text) },
-        }
-      : null,
-    fit,
-  );
-  const keep = (name: string, width: number) =>
-    setMeasured((now) => {
-      const kept = now.key === key ? now.widths : {};
-
-      return kept[name] === width ? now : { key, widths: { ...kept, [name]: width } };
-    });
-
-  return {
-    size,
-    measure: (
-      <>
-        <MeasuredWords
-          words={words}
-          size={start}
-          weight={weight}
-          allowFontScaling={false}
-          onWidth={keep}
-        />
-        <MeasuredWords
-          words={[text]}
-          size={start}
-          weight={weight}
-          allowFontScaling={false}
-          onWidth={(_, width) => keep(`\n${text}`, width)}
-        />
-      </>
-    ),
-  };
-}
-
 function Place({
   label,
   glyph,
@@ -263,7 +200,7 @@ function Place({
   testID: string;
 }) {
   const weight = on ? 'semibold' : 'medium';
-  const { size, measure } = useFit(label, ROOMS.place, scale, weight);
+  const { size, measure } = useSideFit(label, ROOMS.place, scale, weight);
   const ink = on ? tokens.colorInk : tokens.colorInkSecondary;
 
   return (
@@ -296,7 +233,7 @@ function Place({
 }
 
 function Org({ scale }: { scale: number }) {
-  const { size, measure } = useFit(SAMPLE.organisation, ROOMS.org, scale, 'semibold', 'line');
+  const { size, measure } = useSideFit(SAMPLE.organisation, ROOMS.org, scale, 'semibold', 'line');
 
   return (
     <Pressable
@@ -327,7 +264,7 @@ function Org({ scale }: { scale: number }) {
 }
 
 function Search({ scale, label }: { scale: number; label: string }) {
-  const { size, measure } = useFit(label, ROOMS.search, scale, 'medium');
+  const { size, measure } = useSideFit(label, ROOMS.search, scale, 'medium');
 
   return (
     <Pressable
@@ -364,7 +301,7 @@ function YourEvents({
   onOpen: () => void;
 }) {
   const caps = heading.toLocaleUpperCase();
-  const { size, measure } = useFit(caps, ROOMS.heading, scale, 'semibold');
+  const { size, measure } = useSideFit(caps, ROOMS.heading, scale, 'semibold');
 
   return (
     <View style={styles.list}>
@@ -394,7 +331,7 @@ function EventRow({
   scale: number;
   onOpen: () => void;
 }) {
-  const { size, measure } = useFit(event.name, ROOMS.event, scale, 'medium', 'line');
+  const { size, measure } = useSideFit(event.name, ROOMS.event, scale, 'medium', 'line');
 
   return (
     <Pressable
@@ -428,7 +365,7 @@ const CARD_EVENT = sampleEvent(EVENT_OF_KEY.wed);
 function InEvent({ scale, onBack, t }: { scale: number; onBack: () => void; t: TFunction }) {
   const [area, setArea] = useState<(typeof AREAS)[number]>('overview');
   const back = t('todayScreen.tab.events');
-  const { size, measure } = useFit(back, ROOMS.back, scale, 'semibold');
+  const { size, measure } = useSideFit(back, ROOMS.back, scale, 'semibold');
 
   return (
     <>
@@ -487,8 +424,8 @@ function Card({ scale, t }: { scale: number; t: TFunction }) {
       : cardTags(event, now, t)
           .map((tag) => tag.word)
           .join(' · ');
-  const name = useFit(event?.name ?? '', ROOMS.cardName, scale, 'bold', 'lines');
-  const tagged = useFit(tags, ROOMS.cardTags, scale, 'medium');
+  const name = useSideFit(event?.name ?? '', ROOMS.cardName, scale, 'bold', 'lines');
+  const tagged = useSideFit(tags, ROOMS.cardTags, scale, 'medium');
   if (event == null) return null;
 
   return (
@@ -522,8 +459,14 @@ function Card({ scale, t }: { scale: number; t: TFunction }) {
 
 function Person({ scale, role, label }: { scale: number; role: string; label: string }) {
   const lines = nameLines(scale);
-  const name = useFit(SAMPLE.name, ROOMS.person, scale, 'semibold', lines === 1 ? 'line' : 'lines');
-  const roleFit = useFit(role, ROOMS.role, scale, 'medium');
+  const name = useSideFit(
+    SAMPLE.name,
+    ROOMS.person,
+    scale,
+    'semibold',
+    lines === 1 ? 'line' : 'lines',
+  );
+  const roleFit = useSideFit(role, ROOMS.role, scale, 'medium');
 
   return (
     <Pressable
