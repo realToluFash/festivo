@@ -311,6 +311,33 @@ final class EmailDomainsTest extends ApiTestCase
     }
 
     #[Test]
+    public function aProofHeldByAnOrganisationThatLeftEnterpriseIsStillTakenAndTheHourlyCheckCarriesOn(): void
+    {
+        [, $prover] = $this->enterprise('folake@ire.events', 'Ìrè Events');
+        [$owner, $organisation] = $this->enterprise('ada@lumen.pt', 'Lumen');
+        $late = $this->add($organisation, 'ire.events');
+        $other = $this->add($organisation, 'lumen.pt');
+        $this->prove($this->add($prover, 'ire.events'));
+        $this->moveTo($prover, Plan::Free);
+
+        $this->signIn($owner);
+        $body = $this->send('POST', $this->path($organisation), ['domain' => 'ire.events']);
+        self::assertResponseStatusCodeSame(422);
+        self::assertSame('domain_taken', $this->violations($body)[0][2]);
+
+        ScriptedTxtRecordLookup::publish(self::RECORD, $late->getRecordValue());
+        ScriptedTxtRecordLookup::publish(EmailDomains::recordName('lumen.pt'), $other->getRecordValue());
+        $this->move($late, 'checked_at', '-2 hours');
+        $this->move($other, 'checked_at', '-61 minutes');
+        self::service(EmailDomains::class)->checkDue();
+
+        self::assertFalse($this->fresh($late)->isProved());
+        self::assertTrue($this->fresh($other)->isProved());
+        $this->send('POST', $this->path($organisation, 'ire.events/verify'));
+        self::assertResponseStatusCodeSame(409);
+    }
+
+    #[Test]
     public function aMemberIsRefusedReadingAddingVerifyingAndRemoving(): void
     {
         [, $organisation] = $this->enterprise('folake@ire.events', 'Ìrè Events');

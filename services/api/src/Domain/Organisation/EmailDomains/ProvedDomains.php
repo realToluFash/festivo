@@ -44,6 +44,14 @@ final readonly class ProvedDomains implements EnterpriseSettingInterface
         return null !== $by && !$by->getId()->equals($organisation->getId());
     }
 
+    /** In force or not: the proved-domain index lets one organisation hold a domain's proof, whatever its plan. */
+    public function isHeldElsewhere(string $domain, Organisation $organisation): bool
+    {
+        $proof = $this->emailDomainRepository->findProvedOf($domain);
+
+        return null !== $proof && !$proof->getOrganisation()->getId()->equals($organisation->getId());
+    }
+
     public function isProvedBy(string $domain, Organisation $organisation): bool
     {
         return true === $this->provedBy($domain)?->getId()->equals($organisation->getId());

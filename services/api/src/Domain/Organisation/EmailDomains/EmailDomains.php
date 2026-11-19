@@ -107,7 +107,7 @@ final readonly class EmailDomains
         $emailDomain = $this->emailDomainRepository->findOneInOrganisation($organisation, DomainNameNormaliser::normalise($domain))
             ?? throw ApiException::notFound($this->translator->trans('email_domains.not_listed'));
 
-        if ($this->provedDomains->isProvedElsewhere($emailDomain->getDomain(), $organisation)) {
+        if ($this->provedDomains->isHeldElsewhere($emailDomain->getDomain(), $organisation)) {
             throw $this->taken();
         }
 
@@ -182,7 +182,7 @@ final readonly class EmailDomains
             return false;
         }
 
-        if ($published && $now < $domain->checksEndAt() && !$this->provedDomains->isProvedElsewhere($domain->getDomain(), $domain->getOrganisation())) {
+        if ($published && $now < $domain->checksEndAt() && !$this->provedDomains->isHeldElsewhere($domain->getDomain(), $domain->getOrganisation())) {
             $this->found($domain, $now, null);
 
             return true;
@@ -262,7 +262,7 @@ final readonly class EmailDomains
             '' === $domain => DomainRefusal::Blank,
             !DomainNameNormaliser::isHostname($domain) => DomainRefusal::Invalid,
             PublicMailDomains::includes($domain) => DomainRefusal::Public,
-            $this->provedDomains->isProvedElsewhere($domain, $organisation) => DomainRefusal::Taken,
+            $this->provedDomains->isHeldElsewhere($domain, $organisation) => DomainRefusal::Taken,
             null !== $this->emailDomainRepository->findOneInOrganisation($organisation, $domain) => DomainRefusal::Listed,
             default => null,
         };
