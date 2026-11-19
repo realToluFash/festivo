@@ -2012,7 +2012,7 @@ describe('People on an event at a desk (sc-29915)', () => {
     ['nobody', 'Adaeze & Tunde’s wedding', 'evt-wed-4'],
     ['code', 'Joana & Rui’s wedding', 'evt-joana-rui-2'],
   ] as const) {
-    it(`opens ${state ?? 'populated'} under the crumb row with the bell at its end, and People as its only title (sc-69635)`, async () => {
+    it(`opens ${state ?? 'populated'} under the crumb row, which runs the event page's width with the bell at its end, and People as its only title (sc-69635)`, async () => {
       await people(state);
 
       const crumb = screen.getByRole('navigation', { name: 'Breadcrumb' });
@@ -2024,6 +2024,8 @@ describe('People on an event at a desk (sc-29915)', () => {
       );
       expect(crumb.querySelector('[aria-current="page"]')?.textContent).toBe('People');
       expect(crumb.parentElement?.querySelector(':scope > .desk-bell')).not.toBeNull();
+      expect(crumb.closest('.desk-column')).toBeNull();
+      expect(crumb.parentElement?.parentElement?.classList.contains('event-page')).toBe(true);
       expect(
         within(screen.getByRole('main'))
           .getAllByRole('heading', { level: 1 })
