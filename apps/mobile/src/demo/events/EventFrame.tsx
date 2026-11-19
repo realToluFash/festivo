@@ -48,13 +48,6 @@ const PHONE_BAR: readonly (readonly [string, GlyphName])[] = [
   [W.more, 'dots'],
 ];
 
-/** On the phone People opens its own page from More, its ‹ Overview landing on Overview whatever More was opened over (sc-68022); on the iPad it is an area in the frame like the other nine (sc-67665). */
-function toArea(area: AreaKey, onArea: (area: AreaKey) => void): void {
-  if (area !== 'people') return onArea(area);
-  onArea('overview');
-  router.push('/demo/people');
-}
-
 export function backToEvents(): void {
   router.dismissTo('/demo/events');
 }
@@ -355,7 +348,7 @@ function MoreSheet({
                 selected={one === area}
                 onPress={() => {
                   onClose();
-                  toArea(one, onArea);
+                  onArea(one);
                 }}
                 testID={`event.more.${one}`}
               />

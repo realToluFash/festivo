@@ -46,10 +46,6 @@ export interface CardStart {
   opens: string | null;
 }
 
-/** People on its own page, as the phone opens it, in the state the card names. */
-export const peopleHref = (opens: string | null) =>
-  opens == null ? '/demo/people' : `/demo/people?state=${opens}`;
-
 export function cardStart(state: CardState | null): CardStart {
   const onEvent = sampleOnEvent();
   const base: CardStart = {
