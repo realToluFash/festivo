@@ -4790,7 +4790,7 @@
     "removeTitle": "Retirer {{domain}} ?",
     "removeLine": "Il n’est plus vérifié, et « Réservé à notre organisation » cesse de s’y appliquer. L’adhésion par domaine d’entreprise garde sa propre liste.",
     "lockedSays": "Disponible avec le forfait Enterprise",
-    "lockedLine": "Vérifiez que le domaine appartient à l’organisation {{organisation}}, puis réservez-lui les comptes de ce domaine.",
+    "lockedLine": "Vérifiez que le domaine appartient à l’organisation {{organisation}}, puis réservez ses comptes à l’organisation {{organisation}}.",
     "leftLine": "L’organisation {{organisation}} n’a plus le forfait Enterprise. Ses domaines sont conservés tels quels et se réactivent avec le forfait Enterprise.",
     "removedSays": "{{domain}} a été retiré",
     "removedLine": "Il n’est plus vérifié.",
