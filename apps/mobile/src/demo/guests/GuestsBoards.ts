@@ -23,8 +23,8 @@ const GUESTS: Record<GuestsState, Board> = {
     'sc-67659, sc-68417: É preciso Internet para exportar in Exportar’s place, each word whole; with the + under Convidados where they do not fit beside it',
   ],
   refreshing: [
-    'Refreshing… at the largest sizes',
-    'sc-71821: Refreshing… held on screen; it keeps main’s place only where it fits once the controls are placed, else its own line under the heading',
+    'Refreshing… at any size',
+    'sc-71821: Refreshing… held on screen at the size set, the default included; it keeps main’s place only where it fits once the controls are placed, else its own line under the heading',
   ],
   refreshingPt: [
     'A atualizar… in Portuguese',
