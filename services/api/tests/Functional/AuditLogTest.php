@@ -185,7 +185,7 @@ final class AuditLogTest extends ApiTestCase
     public function tenThousandDownloadAtOnceAndOneMoreIsPreparedAndEmailedToTheExporterOnly(): void
     {
         [$owner, $organisation] = $this->enterprise('folake@ire.events', 'Ìrè Events');
-        $already = $this->count($organisation);
+        $already = $this->listedCount($organisation);
         $this->bulk($organisation, $owner, 10_000 - $already);
         $this->signIn($owner);
 
@@ -308,7 +308,7 @@ final class AuditLogTest extends ApiTestCase
             SQL, ['actor' => $by->getId()->toRfc4122(), 'label' => $by->getName(), 'organisation' => $organisation->getId()->toRfc4122(), 'count' => $count]);
     }
 
-    private function count(Organisation $organisation): int
+    private function listedCount(Organisation $organisation): int
     {
         return Iter\count(Vec\filter($this->entries($organisation), static fn (AuditEntry $entry): bool => AuditType::isListed($entry->getAction())));
     }
