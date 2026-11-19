@@ -131,6 +131,7 @@ export function sectionLabel(station: Pick<Station, 'name' | 'tables'>): string 
   return `${station.name} · ${count}`;
 }
 
+/** The count stays on a station's heading; a sentence names the section alone. */
 export function labelOf(station: Station): string {
   return station.kind === 'section' ? sectionLabel(station) : station.name;
 }
@@ -181,7 +182,7 @@ export function dishesLine(n: number): string | null {
 }
 
 export function stopLine(name: string, to: number, of: number): string {
-  return `${name} moved to stop ${to} of ${of}`;
+  return `${name} moved to stop ${to} of ${of}.`;
 }
 
 export interface Changed {
@@ -385,8 +386,8 @@ export function toggle(state: Stations, personId: string, stationId: string): Ch
 
     return one;
   });
-  const fromName = from == null ? '' : labelOf(from);
-  const toName = labelOf(target);
+  const fromName = from?.name ?? '';
+  const toName = target.name;
   let said = `${person.name} is on ${toName}.`;
   if (off)
     said = wasLead
@@ -400,7 +401,7 @@ export function toggle(state: Stations, personId: string, stationId: string): Ch
 
 export function setLead(state: Stations, stationId: string, personId: string | null): Changed {
   const station = stationById(state, stationId) as Station;
-  const name = labelOf(station);
+  const name = station.name;
 
   return {
     state: {

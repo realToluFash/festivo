@@ -33,6 +33,7 @@ enum AccountMail: string
     case PlanDowngraded = 'plan_downgraded';
     case DomainListingStopped = 'domain_listing_stopped';
     case DomainRecordGone = 'domain_record_gone';
+    case ManagedNotice = 'managed_notice';
 
     public function typeName(): string
     {

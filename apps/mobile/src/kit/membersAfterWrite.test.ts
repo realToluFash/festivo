@@ -26,6 +26,7 @@ const member = (id: string): OrganisationMember => ({
   self: false,
   history: [],
   suspension: null,
+  alsoMemberOf: null,
 });
 
 const list: MembersList = membersListOf([member('m1'), member('m2')]);

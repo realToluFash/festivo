@@ -6,6 +6,7 @@ import {
   HUB_STATES,
   type HubState,
 } from './DataModel.ts';
+import { LOCK_STATES, type LockState } from './EnterpriseAsk.ts';
 
 interface Board {
   title: string;
@@ -17,7 +18,7 @@ const HUB: Record<HubState, readonly [string, string]> = {
   hub: ['the hub', 'ireevents.com waits for its record; See the record'],
   quiet: ['nothing needs you', 'ire.events proved, no step'],
   new: ['nothing set up', 'Prove a domain'],
-  locked: ['free, never on Enterprise', 'The rows locked; Contact Soirely'],
+  locked: ['free, never on Enterprise', 'The rows locked; The plan cannot be changed in the app.'],
   downgraded: ['left Enterprise', 'Kept as they were, with no date'],
   loading: ['loading', 'Loading Data and control…'],
   failed: ['failed', 'Could not load, Try again'],
@@ -55,7 +56,10 @@ const DOMAINS: Record<DomainsState, readonly [string, string]> = {
 const AUDIT: Record<AuditState, readonly [string, string]> = {
   list: ['Audit log', 'Entries by day, four menus'],
   filter_person: ['Person menu', 'Anyone, the members, Marta Silva · left'],
-  filter_type: ['Type menu', 'All types and the six'],
+  filter_type: ['Type menu', 'All types and the twelve'],
+  filter_type_es: ['Type menu in Spanish', 'Invitados, Mesas, Personal…'],
+  filter_type_fr: ['Type menu in French', 'Invités, Plan de table, Équipe…'],
+  filter_type_pt: ['Type menu in Portuguese', 'Convidados, Mesas, Equipa…'],
   filter_event: ['Event menu', 'All events and the events'],
   dates: ['Dates', 'Oct 1 to Oct 19, 2026'],
   date_invalid: ['Dates the wrong way round', 'Apply off'],
@@ -66,6 +70,11 @@ const AUDIT: Record<AuditState, readonly [string, string]> = {
   detail_signin: ['an entry, sign-in rules', 'Network address and device'],
   detail_old: ['an entry, recorded before', 'An address, no device'],
   detail_system: ['an entry by System', 'No address, no device'],
+  detail_guest_removed: ['a removed guest', 'Removed a guest, the Guests link'],
+  detail_guest_gone: ['an entry, the guest gone', 'A guest · no longer exists'],
+  detail_skipped: ['a schedule item skipped', 'run_of_show.item_skipped'],
+  detail_section: ['an entry on the event’s Staff', 'The Staff link'],
+  detail_dish: ['an organisation’s dish', 'Under no event'],
   export: ['Export these entries (iPad)', 'CSV or JSON Lines'],
   export_small: ['export, up to 10,000 (iPad)', 'Downloading, as a toast'],
   export_preparing: ['export, prepared (iPad)', 'We’ll email a link'],
@@ -74,6 +83,26 @@ const AUDIT: Record<AuditState, readonly [string, string]> = {
   loading: ['loading', 'Loading the audit log…'],
   failed: ['failed', 'Could not load, Try again'],
 };
+
+const LOCK: Record<LockState, readonly [string, string]> = {
+  owner_app: ['an owner', 'The plan cannot be changed in the app.'],
+  admin: ['an admin', 'Ask an owner'],
+  admin_sending: ['an admin, sending', 'Ask an owner, held'],
+  admin_sent_one: ['sent, one owner', 'The owner has been sent the link'],
+  admin_sent_several: ['sent, several owners', 'The owners have been sent the link'],
+  admin_not_sent: ['not sent', 'Ask an owner, Not sent under it'],
+  admin_asked_one: ['asked today, one owner', 'The owner was asked in the last 24 hours'],
+  admin_asked_several: [
+    'asked today, several owners',
+    'The owners were asked in the last 24 hours',
+  ],
+};
+
+const LOCK_PAGES = [
+  ['hub', 'Data and control'],
+  ['emailDomains', 'Email domains'],
+  ['auditLog', 'Audit log'],
+] as const;
 
 const titled = (page: string, atRest: string, title: string) =>
   title === atRest ? page : `${page} · ${title}`;
@@ -110,6 +139,13 @@ export const DATA_BOARDS: readonly Board[] = [
     what: AUDIT[state][1],
     href: dataHref('auditLog', { state: state === 'list' ? null : state }),
   })),
+  ...LOCK_PAGES.flatMap(([page, name]) =>
+    LOCK_STATES.map((state) => ({
+      title: `${name} · locked, ${LOCK[state][0]} (sc-72241)`,
+      what: LOCK[state][1],
+      href: dataHref(page, { state, as: state === 'owner_app' ? 'folake' : 'julien' }),
+    })),
+  ),
   {
     title: 'Organisation · a domain on both lists',
     what: 'ire.events carries Proved in Company domain joining',

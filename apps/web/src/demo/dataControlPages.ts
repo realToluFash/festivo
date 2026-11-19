@@ -1,6 +1,7 @@
 import { type PageLinks, linkTo } from './dataControl.ts';
 import { type DemoLink, VIEWERS, settingsPath } from './settings.ts';
 import { way } from './rules.ts';
+import { LOCK_PAGE_NAMES, LOCK_STATES, type LockPage } from './enterpriseAsk.ts';
 
 const hub = (state: string | undefined, name: string, viewer = VIEWERS.folake) =>
   linkTo('hub', state, name, viewer);
@@ -12,6 +13,27 @@ const exported = (state: string, name: string, viewer = VIEWERS.folake) =>
 const retention = (state: string | undefined, name: string, viewer = VIEWERS.folake) =>
   linkTo('deleteGuestData', state, name, viewer);
 const request = (state: string, name: string) => linkTo('guestRequest', state, name);
+
+const LOCK_STATE_NAMES: Record<(typeof LOCK_STATES)[number], string> = {
+  owner_web: 'An owner: Contact Soirely about Enterprise, Compare plans',
+  admin: 'An admin: Ask an owner',
+  admin_sending: 'Ask an owner, sending',
+  admin_sent_one: 'Sent, one owner',
+  admin_sent_several: 'Sent, several owners',
+  admin_not_sent: 'Not sent, try again',
+  admin_asked_one: 'Asked in the last 24 hours, one owner',
+  admin_asked_several: 'Asked in the last 24 hours, several owners',
+};
+
+const asked = (page: LockPage) =>
+  LOCK_STATES.map((state) =>
+    linkTo(
+      page,
+      state,
+      `${LOCK_PAGE_NAMES[page]}: ${LOCK_STATE_NAMES[state]}`,
+      state === 'owner_web' ? VIEWERS.folake : VIEWERS.julien,
+    ),
+  );
 
 /** Their data at the foot of Dr Emeka Nwosu's details in Guests A: `state=guest` opens him, `data=` its state. */
 export function theirDataPath(data: string): string {
@@ -30,6 +52,7 @@ export const DATA_CONTROL_PAGES: PageLinks = [
       hub('quiet', 'Nothing needs your attention'),
       hub('new', 'Nothing set up yet: Prove a domain'),
       hub('locked', 'Never on Enterprise: these locked'),
+      hub('locked_ready', 'Never on Enterprise, your export ready: Download'),
       hub('downgraded', 'Left Enterprise: kept as they were'),
       hub(undefined, 'A member: no Data and control', VIEWERS.ana),
       hub('loading', 'Loading'),
@@ -74,7 +97,10 @@ export const DATA_CONTROL_PAGES: PageLinks = [
     states: [
       audit('list', 'The entries by day'),
       audit('filter_person', 'The person menu open'),
-      audit('filter_type', 'The type menu open'),
+      audit('filter_type', 'The type menu open: the twelve types'),
+      audit('filter_type_es', 'The type menu in Spanish'),
+      audit('filter_type_fr', 'The type menu in French'),
+      audit('filter_type_pt', 'The type menu in Portuguese'),
       audit('filter_event', 'The event menu open'),
       audit('dates', 'Dates, Oct 1 to Oct 19'),
       audit('date_invalid', 'Dates the wrong way round'),
@@ -85,6 +111,11 @@ export const DATA_CONTROL_PAGES: PageLinks = [
       audit('detail_signin', 'An entry with its address and device'),
       audit('detail_old', 'An entry from before devices were kept'),
       audit('detail_system', 'An entry by System'),
+      audit('detail_guest_removed', 'A removed guest: Removed a guest'),
+      audit('detail_guest_gone', 'An entry on a guest removed since'),
+      audit('detail_skipped', 'A schedule item skipped during the event'),
+      audit('detail_section', 'An entry on the event’s Staff'),
+      audit('detail_dish', 'An organisation’s dish, under no event'),
       audit('export', 'Export these entries'),
       audit('export_small', 'Exported: downloading'),
       audit('export_preparing', 'Exported: preparing, emailed'),
@@ -194,5 +225,9 @@ export const DATA_CONTROL_PAGES: PageLinks = [
         name: 'Members: Priya, also a member of 2 others',
       },
     ],
+  },
+  {
+    name: 'The lock cards’ step (sc-72241), never on Enterprise',
+    states: (['hub', 'emailDomains', 'auditLog', 'deleteGuestData'] as const).flatMap(asked),
   },
 ];

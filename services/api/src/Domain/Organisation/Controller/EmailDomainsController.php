@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Domain\Organisation\Controller;
 
 use App\Domain\Organisation\EmailDomains\EmailDomains;
+use App\Domain\Organisation\EmailDomains\OnlyOurOrganisation;
+use App\Domain\Organisation\Members\OwnerCheck;
 use App\Domain\User\Mail\UserMailer;
 use App\Entity\EmailDomain;
 use App\Entity\Organisation;
@@ -36,6 +38,8 @@ final readonly class EmailDomainsController
         private OrganisationRepository $organisationRepository,
         private EmailDomainRepository $emailDomainRepository,
         private EmailDomains $emailDomains,
+        private OnlyOurOrganisation $onlyOurOrganisation,
+        private OwnerCheck $ownerCheck,
         private UserMailer $userMailer,
         private ClockInterface $clock,
     ) {
@@ -77,6 +81,26 @@ final readonly class EmailDomainsController
         return new JsonResponse($this->page($organisation));
     }
 
+    /** Only our organisation (sc-563): the Owner's alone, 403 `owner_required` to an Admin; 422 on a domain not proved. */
+    #[Route('/api/orgs/{organisationId}/email-domains/{domain}/only-ours', name: 'orgs_email_domains_only_ours_on', methods: ['POST'])]
+    public function switchOnlyOursOn(string $organisationId, string $domain): JsonResponse
+    {
+        $organisation = $this->organisation($organisationId);
+        $this->onlyOurOrganisation->switchOn($organisation, $this->user(), $domain);
+
+        return new JsonResponse($this->page($organisation));
+    }
+
+    /** Cancels it while it is scheduled, switches it off once it applies. */
+    #[Route('/api/orgs/{organisationId}/email-domains/{domain}/only-ours', name: 'orgs_email_domains_only_ours_off', methods: ['DELETE'])]
+    public function switchOnlyOursOff(string $organisationId, string $domain): JsonResponse
+    {
+        $organisation = $this->organisation($organisationId);
+        $this->onlyOurOrganisation->switchOff($organisation, $this->user(), $domain);
+
+        return new JsonResponse($this->page($organisation));
+    }
+
     /** @return array<string, mixed> each instant twice: as it is, and written in the reader's own zone (sc-868) */
     private function page(Organisation $organisation): array
     {
@@ -91,6 +115,7 @@ final readonly class EmailDomainsController
                 [] === $domains => 'free',
                 default => 'left',
             },
+            'ownerChanges' => $this->ownerCheck->holds($organisation, $user),
             'domains' => Vec\map($domains, fn (EmailDomain $domain): array => [
                 'domain' => $domain->getDomain(),
                 'status' => EmailDomains::statusOf($domain, $now),
@@ -103,6 +128,10 @@ final readonly class EmailDomainsController
                 ...$this->instant('provedAt', 'proved', $domain->getProvedAt(), $user),
                 ...$this->instant('checksEndAt', 'checksEnd', $domain->checksEndAt(), $user),
                 ...$this->instant('putBackByAt', 'putBackBy', $domain->putBackBy(), $user),
+                'onlyOurs' => OnlyOurOrganisation::stateOf($domain, $now),
+                ...$this->instant('onlyOursFromAt', 'onlyOursFrom', $domain->getOnlyOursFrom(), $user),
+                // What switching it on now would say it starts, for the Owner's confirm.
+                ...$this->instant('onlyOursIfNowAt', 'onlyOursIfNow', $domain->isProved() && null === $domain->getOnlyOursFrom() ? OnlyOurOrganisation::startsIfSwitchedOnAt($now) : null, $user),
             ]),
         ];
     }

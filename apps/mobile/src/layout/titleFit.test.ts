@@ -3,7 +3,15 @@ import { join } from 'node:path';
 
 import { describe, expect, it } from 'vitest';
 
-import { actionsUnder, brokeInWord, brokeOn, labelFits, rowRoom, titleRowKey } from './titleFit.ts';
+import {
+  actionsUnder,
+  brokeInWord,
+  brokeOn,
+  cancelUnder,
+  labelFits,
+  rowRoom,
+  titleRowKey,
+} from './titleFit.ts';
 
 const guests = readFileSync(join('src', 'components', 'GuestsHeading.tsx'), 'utf8');
 
@@ -261,5 +269,25 @@ describe('Guests on an iPad on its side, the spinner then none (sc-68417)', () =
     expect(guests).toMatch(
       /const rowKey = titleRowKey\(\{ room, title, fontScale, spinning \}\);/u,
     );
+  });
+});
+
+describe('Cancel beside a dialog’s title (sc-72136)', () => {
+  const gap = 10;
+
+  it('stays beside the title while its longest word and Cancel fit the row', () => {
+    expect(cancelUnder({ room: 354, widest: 140, cancel: 175, gap })).toBe(false);
+    expect(cancelUnder({ room: 354, widest: 169, cancel: 175, gap })).toBe(false);
+  });
+
+  it('takes the row under the title where they do not, or where the word alone fills the row', () => {
+    expect(cancelUnder({ room: 354, widest: 222, cancel: 206, gap })).toBe(true);
+    expect(cancelUnder({ room: 354, widest: 400, cancel: 60, gap })).toBe(true);
+  });
+
+  it('leaves the row as on main until the row, the word and Cancel are measured', () => {
+    expect(cancelUnder({ room: 0, widest: 222, cancel: 206, gap })).toBe(false);
+    expect(cancelUnder({ room: 354, widest: 0, cancel: 206, gap })).toBe(false);
+    expect(cancelUnder({ room: 354, widest: 222, cancel: 0, gap })).toBe(false);
   });
 });

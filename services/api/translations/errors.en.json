@@ -114,6 +114,7 @@
     "join_request_answered": "This request has already been answered, or was removed.",
     "owner_claim_address": "To become the owner, your main address must be at the organisation's domain.",
     "owner_claim_managed": "That domain is managed by another organisation. Contact Soirely support.",
+    "domain_managed": "Your address is managed by an organisation, so you can only be a member there.",
     "owner_claim_open": "Somebody is already becoming the owner of this organisation.",
     "owner_claim_closed": "Ownership has to be restored by Soirely support.",
     "owner_claim_ended": "This claim has already ended.",

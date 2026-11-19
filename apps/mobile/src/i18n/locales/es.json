@@ -1378,7 +1378,10 @@
       "loading": "Cargando más personas…",
       "failedTitle": "No se han podido cargar más personas.",
       "failedLine": "Compruebe la conexión y vuelva a intentarlo."
-    }
+    },
+    "alsoMemberOf_one": "Also a member of 1 other organisation",
+    "alsoMemberOf_many": "Also a member of {{count, number}} other organisations",
+    "alsoMemberOf_other": "Also a member of {{count, number}} other organisations"
   },
   "accessPaused": {
     "badge": "En pausa",
@@ -3152,18 +3155,48 @@
       "failed": "No se ha verificado {{domain}}",
       "failedLine": "Dejamos de comprobarlo el {{at}}. Añada el registro y pulse Verificar.",
       "missing": "Falta el registro de {{domain}}",
-      "missingLine": "Vuelva a añadirlo antes del {{at}} o {{domain}} dejará de estar verificado.",
+      "missingLine": "Put it back by {{at}}, or {{domain}} stops being proved and Only our organisation stops with it.",
       "removed": "Se ha quitado {{domain}}",
       "removedLine": "Ya no está verificado.",
       "locked": "Disponible con Enterprise",
       "lockedLine": "Verifique que el dominio pertenece a {{organisation}} y limite sus cuentas a {{organisation}}.",
       "offLine": "{{organisation}} ha dejado Enterprise. Sus dominios se conservan tal cual y vuelven a activarse con Enterprise.",
-      "off": "Switched off"
+      "off": "Switched off",
+      "keep": "Limit {{domain}} accounts to {{organisation}}",
+      "scheduled": "Only our organisation starts on {{at}}",
+      "scheduledLine": "Everyone at {{domain}} was emailed. You can cancel until then.",
+      "scheduledAdmin": "Only an owner can cancel it.",
+      "cancelled": "Only our organisation was cancelled",
+      "cancelledLine": "Nothing changes for the accounts at {{domain}}.",
+      "on": "Accounts at {{domain}} belong to {{organisation}}",
+      "onLine": "They can still be given access to another organisation’s event.",
+      "turnedOff": "Only our organisation is off",
+      "turnedOffLine": "Accounts at {{domain}} can be members of other organisations again."
     },
     "removeAsk": {
       "title": "¿Quitar {{domain}}?",
-      "line": "Dejará de estar verificado. Unirse por dominio de empresa conserva su propia lista.",
+      "line": "It stops being proved, and Only our organisation stops for it. Company domain joining keeps its own list.",
       "keep": "Conservarlo"
+    },
+    "only": "Only our organisation",
+    "onlyOff": "People at {{domain}} can still be members of other organisations.",
+    "onlyStarts": "Starts {{at}}",
+    "onlySince": "On since {{day}}",
+    "onlyKept": "Kept as it was. It comes back on with Enterprise.",
+    "ownerOnly": "Only an owner can change this.",
+    "onlyFor": "Only our organisation, {{domain}}",
+    "cancel": "Cancel",
+    "cancelOnlyFor": "Cancel Only our organisation, {{domain}}",
+    "onlyAsk": {
+      "title": "Limit {{domain}} accounts to {{organisation}}?",
+      "line": "From {{at}}, 14 days from now, an account whose main email address is at {{domain}} can only be a member of {{organisation}}.",
+      "more": "Everyone at {{domain}} is emailed now. Access to a single event still works. You can cancel until then.",
+      "schedule": "Schedule it"
     }
+  },
+  "managed": {
+    "title": "Managed by {{organisation}}",
+    "single": "Access to a single event still works.",
+    "change": "Change your main email address"
   }
 }

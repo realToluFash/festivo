@@ -514,6 +514,50 @@ describe('an organisation at the domain of the address (sc-561)', () => {
 
     await waitFor(() => expect(sent.some((request) => request.method === 'DELETE')).toBe(true));
   });
+
+  describe('a managed account (sc-563)', () => {
+    const MANAGED = {
+      domain: 'ire.events',
+      organisation: { id: 'org_ire', name: 'Ìrè Events' },
+      message:
+        'Your ire.events address is managed by Ìrè Events, so you can only be a member there.',
+    };
+
+    it('asks to join with the banner in place of Start my own, and no intro', async () => {
+      answering({ 'GET /api/join-offers': () => json({ ...OFFERS, managed: MANAGED }) });
+      at('/complete-profile', ADA);
+
+      expect(await screen.findByText('Managed by Ìrè Events')).toBeDefined();
+      expect(screen.getByRole('button', { name: 'Ask to join Ìrè Events' })).toBeDefined();
+      expect(screen.queryByText(/Your address is at ire\.events/u)).toBeNull();
+      expect(screen.queryByRole('button', { name: 'Start my own organisation' })).toBeNull();
+      expect(screen.queryByText('Change your main email address')).toBeNull();
+    });
+
+    it('with nothing to join, saves the name alone, with no organisation', async () => {
+      const sent = answering({
+        'GET /api/join-offers': () => json({ ...OFFERS, offers: [], managed: MANAGED }),
+        'PATCH /api/auth/complete-profile': () =>
+          json({ account: { ...ACCOUNT, name: 'Ada Okeke' }, verificationNeeded: false }),
+        'GET /api/orgs': () => json({ organisations: [] }),
+      });
+      at('/complete-profile', ADA);
+
+      expect(await screen.findByText('Managed by Ìrè Events')).toBeDefined();
+      expect(screen.queryByLabelText('Organisation name')).toBeNull();
+      expect(screen.queryByText('Change your main email address')).toBeNull();
+
+      fireEvent.click(screen.getByRole('button', { name: 'Save and continue' }));
+
+      await waitFor(() =>
+        expect(sent.find((request) => request.method === 'PATCH')?.body).toEqual({
+          name: 'Ada Okeke',
+          phoneCountryCode: expect.any(String) as string,
+          phoneNumber: '',
+        }),
+      );
+    });
+  });
 });
 
 // Every key InvitationsController::preview writes, as GET /api/invitations lists them.

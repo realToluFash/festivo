@@ -304,6 +304,8 @@ export function switcherSession({
       signedInAs: invitation.signedInAs,
     })),
     outcomes: waiting.outcomes,
+    managed: invitations.find((invitation) => waiting.outcomes[invitation.id]?.kind === 'managed')
+      ?.id,
     offer:
       offer.organisation == null
         ? null

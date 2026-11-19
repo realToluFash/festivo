@@ -34,7 +34,13 @@ describe('Data and control › Audit log (sc-611)', () => {
       within(document.querySelector<HTMLElement>('.desk-page') ?? document.body)
         .getAllByRole('heading', { level: 2 })
         .map((heading) => heading.textContent),
-    ).toEqual(['Today · Monday, Oct 19', 'Saturday, Oct 17', 'Friday, Oct 16', 'Tuesday, Oct 6']);
+    ).toEqual([
+      'Today · Monday, Oct 19',
+      'Sunday, Oct 18',
+      'Saturday, Oct 17',
+      'Friday, Oct 16',
+      'Tuesday, Oct 6',
+    ]);
     expect(
       screen.getByRole('button', { name: /^10:05 ?Downloaded Ire Events’s data/u }),
     ).toBeDefined();
@@ -45,6 +51,34 @@ describe('Data and control › Audit log (sc-611)', () => {
       ),
     ).toEqual(['Anyone', 'All types', 'All events', 'Last 365 days']);
     expect(screen.queryByRole('button', { name: 'Clear filters' })).toBeNull();
+  });
+
+  it('names the types in French as the event’s sections do (sc-71986)', async () => {
+    await log('?state=filter_type_fr');
+    const menu = await screen.findByRole('menu', { name: 'Type' });
+
+    expect(
+      within(menu)
+        .getAllByRole('menuitemradio')
+        .map((item) => item.textContent)
+        .slice(1),
+    ).toEqual([
+      'Événements',
+      'Accès aux événements',
+      'Invités',
+      'Menu',
+      'Plan de table',
+      'Programme',
+      'Équipe',
+      'Budget',
+      'Membres et invitations',
+      'Connexion et sécurité',
+      'Organisation',
+      'Journal d’audit',
+    ]);
+    fireEvent.click(within(menu).getByRole('menuitemradio', { name: 'Programme' }));
+    expect(entries()).toEqual(['skipped']);
+    expect(screen.getByText('Priya Shah · Programme')).toBeDefined();
   });
 
   it('filters by type from its menu, by keyboard, and clears', async () => {
@@ -62,6 +96,12 @@ describe('Data and control › Audit log (sc-611)', () => {
       'All types',
       'Events',
       'Event access',
+      'Guests',
+      'Menu',
+      'Seating',
+      'Schedule',
+      'Staff',
+      'Budget',
       'Members and invitations',
       'Sign-in and security',
       'Organisation',
@@ -80,7 +120,7 @@ describe('Data and control › Audit log (sc-611)', () => {
     expect(screen.getByRole('button', { name: 'Type: Sign-in and security' })).toBeDefined();
     expect(entries()).toEqual(['signIn', 'domainAdded', 'proved']);
     fireEvent.click(screen.getByRole('button', { name: 'Clear filters' }));
-    expect(entries()).toHaveLength(11);
+    expect(entries()).toHaveLength(18);
   });
 
   it('lists the people with Marta as having left', async () => {
@@ -106,14 +146,14 @@ describe('Data and control › Audit log (sc-611)', () => {
 
     expect(screen.getByText('No entry matches these filters.')).toBeDefined();
     fireEvent.click(screen.getAllByRole('button', { name: 'Clear filters' })[1] as HTMLElement);
-    expect(entries()).toHaveLength(11);
+    expect(entries()).toHaveLength(18);
   });
 
   it('applies the dates as they change, and catches them the wrong way round', async () => {
     await log('?state=dates');
     const dialog = screen.getByRole('dialog', { name: 'Dates' });
 
-    expect(entries()).toHaveLength(11);
+    expect(entries()).toHaveLength(18);
     fireEvent.change(within(dialog).getByLabelText('To'), { target: { value: '2026-10-17' } });
     expect(entries()).toHaveLength(8);
     fireEvent.change(within(dialog).getByLabelText('From'), { target: { value: '2026-10-18' } });
@@ -125,7 +165,7 @@ describe('Data and control › Audit log (sc-611)', () => {
       within(dialog).getByRole('button', { name: 'Apply' }).getAttribute('aria-disabled'),
     ).toBe('true');
     fireEvent.click(within(dialog).getByRole('button', { name: 'Cancel' }));
-    expect(entries()).toHaveLength(11);
+    expect(entries()).toHaveLength(18);
     expect(screen.getByRole('button', { name: 'Dates: Last 365 days' })).toBeDefined();
   });
 
@@ -215,6 +255,6 @@ describe('Data and control › Audit log (sc-611)', () => {
     await log('?state=failed');
     fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
 
-    await waitFor(() => expect(entries()).toHaveLength(11), { timeout: 3000 });
+    await waitFor(() => expect(entries()).toHaveLength(18), { timeout: 3000 });
   });
 });

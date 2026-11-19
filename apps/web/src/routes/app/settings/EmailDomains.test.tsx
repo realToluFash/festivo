@@ -53,6 +53,11 @@ function domain(name: string, status: EmailDomain['status']): EmailDomain {
     checksEnd: 'Friday 23 Oct at 16:45 WAT',
     putBackByAt: status === 'missing' ? '2026-10-31T13:20:00+00:00' : null,
     putBackBy: status === 'missing' ? 'Saturday 31 Oct at 14:20 WAT' : null,
+    onlyOurs: 'off',
+    onlyOursFromAt: null,
+    onlyOursFrom: null,
+    onlyOursIfNowAt: proved ? '2026-10-31T13:20:00+00:00' : null,
+    onlyOursIfNow: proved ? 'Saturday 31 Oct at 14:20 WAT' : null,
   };
 }
 
@@ -62,7 +67,8 @@ const IRE_COM = domain('ireevents.com', 'waiting');
 const page = (
   domains: EmailDomain[],
   plan: EmailDomainsPage['plan'] = 'enterprise',
-): EmailDomainsPage => ({ plan, domains });
+  ownerChanges = true,
+): EmailDomainsPage => ({ plan, ownerChanges, domains });
 
 function json(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {
@@ -139,7 +145,9 @@ describe('Data and control › Email domains (sc-560)', () => {
 
     expect(await screen.findByText('The record for ire.co is missing')).toBeDefined();
     expect(
-      screen.getByText('Put it back by Sunday 1 Nov at 09:00 WAT, or ire.co stops being proved.'),
+      screen.getByText(
+        'Put it back by Sunday 1 Nov at 09:00 WAT, or ire.co stops being proved and Only our organisation stops with it.',
+      ),
     ).toBeDefined();
     expect(within(row('ire.events')).getByText('Proved')).toBeDefined();
     expect(within(row('ire.events')).getByText('Proved Tuesday 6 Oct at 11:02 WAT')).toBeDefined();
@@ -173,7 +181,9 @@ describe('Data and control › Email domains (sc-560)', () => {
         'Proving a domain does not let anyone join. Company domain joining is its own list, in General.',
       ),
     ).toBeDefined();
-    expect(screen.queryByText(/Only our organisation/)).toBeNull();
+    expect(
+      screen.getAllByText('Only our organisation', { selector: '.desk-row-name' }),
+    ).toHaveLength(2);
   });
 
   it('draws the page in the desk’s look', async () => {
@@ -185,7 +195,12 @@ describe('Data and control › Email domains (sc-560)', () => {
     expect(title.closest('.desk')).not.toBeNull();
     expect(await screen.findByText('ire.events is proved')).toBeDefined();
     expect(
-      screen.getByText('People at ire.events can still be members of other organisations.'),
+      screen.getByText('People at ire.events can still be members of other organisations.', {
+        selector: '.desk-on-card',
+      }),
+    ).toBeDefined();
+    expect(
+      screen.getByRole('button', { name: 'Limit ire.events accounts to Ìrè Events' }),
     ).toBeDefined();
   });
 
@@ -353,7 +368,9 @@ describe('Data and control › Email domains (sc-560)', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Remove ire.events' }));
     const ask = await screen.findByRole('alertdialog', { name: 'Remove ire.events?' });
     expect(
-      within(ask).getByText('It stops being proved. Company domain joining keeps its own list.'),
+      within(ask).getByText(
+        'It stops being proved, and Only our organisation stops for it. Company domain joining keeps its own list.',
+      ),
     ).toBeDefined();
     expect(
       within(ask)
@@ -390,7 +407,11 @@ describe('Data and control › Email domains (sc-560)', () => {
     open();
 
     expect(await screen.findByText('Available on Enterprise')).toBeDefined();
-    expect(screen.getByText('Prove that Ìrè Events owns its domain.')).toBeDefined();
+    expect(
+      screen.getByText(
+        'Prove that Ìrè Events owns its domain, then limit the accounts at it to Ìrè Events.',
+      ),
+    ).toBeDefined();
     expect(screen.queryByRole('heading', { name: 'Domains' })).toBeNull();
     expect(screen.queryByRole('button', { name: 'Prove a domain' })).toBeNull();
   });
@@ -583,5 +604,127 @@ describe('Data and control’s Email domains row and card (sc-560)', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Prove a domain' }));
 
     expect(await screen.findByRole('textbox', { name: 'Domain' })).toBeDefined();
+  });
+});
+
+describe('Data and control › Email domains › Only our organisation (sc-563)', () => {
+  const ONLY = 'POST /api/orgs/org_1/email-domains/ire.events/only-ours';
+  const OFF = 'DELETE /api/orgs/org_1/email-domains/ire.events/only-ours';
+  const scheduled: EmailDomain = {
+    ...IRE,
+    onlyOurs: 'scheduled',
+    onlyOursFromAt: '2026-10-31T13:20:00+00:00',
+    onlyOursFrom: 'Saturday 31 Oct at 14:20 WAT',
+    onlyOursIfNowAt: null,
+    onlyOursIfNow: null,
+  };
+  const on: EmailDomain = { ...scheduled, onlyOurs: 'on' };
+
+  function only(): HTMLElement {
+    return screen
+      .getByText('Only our organisation', { selector: '.desk-row-name' })
+      .closest('li') as HTMLElement;
+  }
+
+  it('switching it on asks once with the instant, then shows it scheduled with Cancel', async () => {
+    signedIn();
+    const sent = answering({
+      [PAGE]: () => json(page([IRE])),
+      [ONLY]: () => json(page([scheduled])),
+    });
+    open();
+
+    expect(
+      await screen.findByText('People at ire.events can still be members of other organisations.', {
+        selector: '.desk-on-card',
+      }),
+    ).toBeDefined();
+    fireEvent.click(
+      within(only()).getByRole('switch', { name: 'Only our organisation for ire.events' }),
+    );
+
+    const ask = await screen.findByRole('alertdialog', {
+      name: 'Limit ire.events accounts to Ìrè Events?',
+    });
+    expect(
+      within(ask).getByText(
+        'From Saturday 31 Oct at 14:20 WAT, 14 days from now, an account whose main email address is at ire.events can only be a member of Ìrè Events.',
+      ),
+    ).toBeDefined();
+    expect(
+      within(ask).getByText(
+        'Everyone at ire.events is emailed now. Access to a single event still works. You can cancel until then.',
+      ),
+    ).toBeDefined();
+    fireEvent.click(within(ask).getByRole('button', { name: 'Schedule it' }));
+
+    expect(
+      await screen.findByText('Only our organisation starts on Saturday 31 Oct at 14:20 WAT'),
+    ).toBeDefined();
+    expect(
+      screen.getByText('Everyone at ire.events was emailed. You can cancel until then.'),
+    ).toBeDefined();
+    expect(within(only()).getByText('Starts Saturday 31 Oct at 14:20 WAT')).toBeDefined();
+    expect(within(only()).queryByRole('switch')).toBeNull();
+    expect(sent.map((one) => one.line)).toContain(ONLY);
+  });
+
+  it('cancelling asks nothing and says nothing changes', async () => {
+    signedIn();
+    answering({ [PAGE]: () => json(page([scheduled])), [OFF]: () => json(page([IRE])) });
+    open();
+
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Cancel Only our organisation for ire.events' }),
+    );
+
+    expect(await screen.findByText('Only our organisation was cancelled')).toBeDefined();
+    expect(screen.getByText('Nothing changes for the accounts at ire.events.')).toBeDefined();
+    expect(screen.queryByRole('dialog')).toBeNull();
+  });
+
+  it('switching it off applies at once', async () => {
+    signedIn();
+    answering({ [PAGE]: () => json(page([on])), [OFF]: () => json(page([IRE])) });
+    open();
+
+    expect(await screen.findByText('Accounts at ire.events belong to Ìrè Events')).toBeDefined();
+    fireEvent.click(
+      within(only()).getByRole('switch', {
+        name: 'Only our organisation for ire.events',
+        checked: true,
+      }),
+    );
+
+    expect(await screen.findByText('Only our organisation is off')).toBeDefined();
+    expect(
+      screen.getByText('Accounts at ire.events can be members of other organisations again.'),
+    ).toBeDefined();
+  });
+
+  it('an admin reads its state and that only an owner can change it, with no control', async () => {
+    signedIn(ADMIN);
+    answering({ [PAGE]: () => json(page([scheduled], 'enterprise', false)) });
+    open();
+
+    expect(
+      await screen.findByText(
+        'Starts Saturday 31 Oct at 14:20 WAT. Only an owner can change this.',
+      ),
+    ).toBeDefined();
+    expect(screen.getByText('Only an owner can cancel it.')).toBeDefined();
+    expect(within(only()).queryByRole('switch')).toBeNull();
+    expect(within(only()).queryByRole('button')).toBeNull();
+  });
+
+  it('after leaving Enterprise it reads as kept', async () => {
+    signedIn();
+    answering({ [PAGE]: () => json(page([on], 'left')) });
+    open();
+
+    expect(
+      await screen.findByText('Kept as it was. It comes back on with Enterprise.'),
+    ).toBeDefined();
+    expect(within(only()).queryByRole('switch')).toBeNull();
   });
 });

@@ -84,10 +84,12 @@ function creating(created: () => Response | Promise<Response>) {
     );
 }
 
-function openCreate(): void {
+/** The walk opens once the account is known not to be managed (sc-563). */
+async function openCreate(): Promise<void> {
   at('/app');
   fireEvent.click(screen.getByRole('button', { name: /Organisation: Ìrè Events/ }));
   fireEvent.click(screen.getByRole('button', { name: 'Create an organisation' }));
+  await screen.findByRole('dialog', { name: 'Create an organisation' });
 }
 
 function at(path: string) {
@@ -405,19 +407,19 @@ describe('creating an organisation from the switcher (sc-30412)', () => {
     fireEvent.click(within(walk()).getByRole('button', { name: 'Continue' }));
   }
 
-  it('opens the walk on the name, Step 1 of 3, the tile a dashed plus', () => {
+  it('opens the walk on the name, Step 1 of 3, the tile a dashed plus', async () => {
     inOne();
-    openCreate();
+    await openCreate();
 
     expect(document.activeElement).toBe(within(walk()).getByLabelText('Organisation name'));
     expect(within(walk()).getByText('Step 1 of 3')).toBeDefined();
     expect(within(walk()).getByRole('heading', { level: 1 }).textContent).toBe('What’s it called?');
   });
 
-  it('opens the country on the device’s, and on Ready says the defaults with the primary email', () => {
+  it('opens the country on the device’s, and on Ready says the defaults with the primary email', async () => {
     vi.spyOn(navigator, 'languages', 'get').mockReturnValue(['en-NG']);
     inOne();
-    openCreate();
+    await openCreate();
 
     fireEvent.change(within(walk()).getByLabelText('Organisation name'), {
       target: { value: 'Supper' },
@@ -435,10 +437,10 @@ describe('creating an organisation from the switcher (sc-30412)', () => {
     ).toBeDefined();
   });
 
-  it('asks for a country when this device named none', () => {
+  it('asks for a country when this device named none', async () => {
     vi.spyOn(navigator, 'languages', 'get').mockReturnValue([]);
     inOne();
-    openCreate();
+    await openCreate();
 
     toReady('Supper');
 
@@ -450,7 +452,7 @@ describe('creating an organisation from the switcher (sc-30412)', () => {
     const created = membership({ id: 'org_9', name: 'Lagos Supper Club' });
     const fetch = creating(() => json({ organisation: created }, 201));
     inOne();
-    openCreate();
+    await openCreate();
 
     toReady('  Lagos Supper Club ');
     fireEvent.click(within(walk()).getByRole('button', { name: 'Create organisation' }));
@@ -470,9 +472,9 @@ describe('creating an organisation from the switcher (sc-30412)', () => {
     expect(window.localStorage.getItem('soirely.organisation')).toBe('org_9');
   });
 
-  it('keeps Tab and Shift+Tab inside the walk', () => {
+  it('keeps Tab and Shift+Tab inside the walk', async () => {
     inOne();
-    openCreate();
+    await openCreate();
 
     const name = within(walk()).getByLabelText('Organisation name');
     const goOn = within(walk()).getByRole('button', { name: 'Continue' });
@@ -486,10 +488,10 @@ describe('creating an organisation from the switcher (sc-30412)', () => {
     expect(walk().contains(document.activeElement)).toBe(true);
   });
 
-  it('returns focus to the switcher button on Cancel and on Escape, with nothing created', () => {
-    const fetch = vi.spyOn(globalThis, 'fetch');
+  it('returns focus to the switcher button on Cancel and on Escape, with nothing created', async () => {
+    const fetch = vi.spyOn(globalThis, 'fetch').mockRejectedValue(new TypeError('Failed to fetch'));
     inOne();
-    openCreate();
+    await openCreate();
 
     fireEvent.click(within(walk()).getByRole('button', { name: 'Cancel' }));
     expect(screen.queryByRole('dialog')).toBeNull();
@@ -499,6 +501,7 @@ describe('creating an organisation from the switcher (sc-30412)', () => {
 
     fireEvent.click(screen.getByRole('button', { name: /Organisation: Ìrè Events/ }));
     fireEvent.click(screen.getByRole('button', { name: 'Create an organisation' }));
+    await screen.findByRole('dialog', { name: 'Create an organisation' });
     fireEvent.keyDown(within(walk()).getByLabelText('Organisation name'), { key: 'Escape' });
 
     expect(screen.queryByRole('dialog')).toBeNull();
@@ -506,6 +509,42 @@ describe('creating an organisation from the switcher (sc-30412)', () => {
       screen.getByRole('button', { name: /Organisation: Ìrè Events/ }),
     );
     expect(fetch.mock.calls.some(([, sent]) => sent?.method === 'POST')).toBe(false);
+  });
+});
+
+describe('a managed account (sc-563)', () => {
+  const MANAGED = {
+    domain: 'ire.events',
+    organisation: { id: 'org_1', name: 'Ìrè Events' },
+    message: 'Your ire.events address is managed by Ìrè Events, so you can only be a member there.',
+  };
+
+  it('reads the refusal in the walk’s place, with Close and no way to create', async () => {
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) =>
+      new URL(String(input)).pathname === '/api/join-offers'
+        ? new Response(
+            JSON.stringify({ domain: 'ire.events', offers: [], request: null, managed: MANAGED }),
+            {
+              status: 200,
+              headers: { 'Content-Type': 'application/json' },
+            },
+          )
+        : new Response(JSON.stringify({ invitations: [] }), { status: 200 }),
+    );
+    inOne();
+    await openCreate();
+
+    const dialog = screen.getByRole('dialog', { name: 'Create an organisation' });
+    expect(within(dialog).getByRole('heading', { name: 'Managed by Ìrè Events' })).toBeDefined();
+    expect(within(dialog).getByText(MANAGED.message)).toBeDefined();
+    expect(within(dialog).getByText('Access to a single event still works.')).toBeDefined();
+    expect(
+      within(dialog).getByRole('link', { name: 'Change your main email address' }),
+    ).toBeDefined();
+    expect(within(dialog).queryByLabelText('Organisation name')).toBeNull();
+
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Close' }));
+    expect(screen.queryByRole('dialog')).toBeNull();
   });
 });
 
