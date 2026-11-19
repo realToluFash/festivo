@@ -73,6 +73,10 @@ services:
         arguments:
             $entitlementsCache: '@cache.entitlements'
 
+    App\Domain\Billing\Catalogue\Catalogue:
+        arguments:
+            $catalogueCache: '@cache.catalogue'
+
     # One adapter behind the port. Have I Been Pwned is the only corpus worth
     # querying and swapping it is this line plus a class.
     App\Domain\User\Interfaces\BreachedPasswordCheckerInterface: '@App\Integrations\Hibp\HibpBreachedPasswordChecker'

@@ -33,7 +33,7 @@ final readonly class OrganisationSerialiser
             'timezone' => $organisation->getTimezone(),
             'contactAddress' => $organisation->getContactAddress(),
             'locale' => $organisation->getLocale(),
-            // sc-581: what the organisation's plan unlocks is Plan::unlocks(); a client shows the lock from this.
+            // sc-581: what the plan unlocks is in the plan catalogue (sc-3928); a client shows the lock from this.
             'plan' => $subscription->getPlan()->value,
             'subscription' => [
                 'status' => $subscription->getStatus()->value,

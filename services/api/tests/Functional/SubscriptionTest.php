@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Tests\Functional;
 
 use App\Deletion\Pruner;
+use App\Domain\Billing\Catalogue\Catalogue;
 use App\Domain\Billing\Entitlements;
 use App\Domain\Billing\Model\ChangedBy;
 use App\Domain\Billing\SubscriptionChanger;
@@ -67,8 +68,8 @@ final class SubscriptionTest extends ApiTestCase
         $subscription = $this->subscription();
 
         self::assertSame(
-            [Plan::Free, SubscriptionStatus::Active, SubscriptionSource::Manual, null, null, null],
-            [$subscription->getPlan(), $subscription->getStatus(), $subscription->getSource(), $subscription->getPeriodEnd(), $subscription->getCatalogueVersion(), $subscription->getExternalRef()],
+            [Plan::Free, SubscriptionStatus::Active, SubscriptionSource::Manual, null, self::service(Catalogue::class)->inForce()->versionId->toRfc4122(), null],
+            [$subscription->getPlan(), $subscription->getStatus(), $subscription->getSource(), $subscription->getPeriodEnd(), $subscription->getCatalogueVersion()->getId()->toRfc4122(), $subscription->getExternalRef()],
         );
 
         $account = $subscription->getBillingAccount();
@@ -92,7 +93,7 @@ final class SubscriptionTest extends ApiTestCase
     {
         $account = new BillingAccount('folake@ire.events', 'NGN', 'NG');
         self::em()->persist($account);
-        self::em()->persist(new Subscription($this->organisation, $account, Plan::Enterprise, SubscriptionStatus::Active, SubscriptionSource::Invoice, new DateTimeImmutable()));
+        self::em()->persist(new Subscription($this->organisation, $account, Plan::Enterprise, $this->subscription()->getCatalogueVersion(), SubscriptionStatus::Active, SubscriptionSource::Invoice, new DateTimeImmutable()));
 
         $this->expectException(UniqueConstraintViolationException::class);
 
@@ -140,7 +141,7 @@ final class SubscriptionTest extends ApiTestCase
 
         self::service(SubscriptionChanger::class)->changePlan($this->subscription(), Plan::Enterprise, SubscriptionSource::Manual, ChangedBy::staff('Ada at Soirely', 'Signed the order form'), static function () use ($cache, $key): void {
             self::em()->flush();
-            $cache->get($key, static fn (): string => Plan::Free->value);
+            $cache->get($key, static fn (): array => ['plan' => Plan::Free->value, 'version' => self::service(Catalogue::class)->inForce()->versionId->toRfc4122()]);
         });
 
         self::assertSame(Plan::Enterprise, $entitlements->of($this->organisation->getId())->plan);
@@ -184,6 +185,7 @@ final class SubscriptionTest extends ApiTestCase
         $accountId = $this->subscription()->getBillingAccount()->getId()->toRfc4122();
 
         $connection->executeStatement("ALTER TABLE organisations ADD plan VARCHAR(20) DEFAULT 'free' NOT NULL");
+        $connection->executeStatement('ALTER TABLE subscriptions ALTER catalogue_version_id DROP NOT NULL');
         $connection->executeStatement("UPDATE organisations SET plan = 'enterprise' WHERE id = :id", ['id' => $id]);
         $connection->executeStatement('DELETE FROM subscriptions WHERE organisation_id = :id', ['id' => $id]);
         $connection->executeStatement('DELETE FROM billing_accounts WHERE id = :id', ['id' => $accountId]);
@@ -202,6 +204,9 @@ final class SubscriptionTest extends ApiTestCase
         self::assertSame([$before[0] + 1, $before[1] + 1], $once);
         self::assertSame($once, $count(), 'a second run creates nothing');
         self::assertSame(1, (int) $connection->fetchOne('SELECT COUNT(*) FROM subscriptions WHERE organisation_id = :id', ['id' => $id]));
+
+        // As sc-3928's migration does next, before the column is made NOT NULL again.
+        $connection->executeStatement("UPDATE subscriptions SET catalogue_version_id = (SELECT id FROM catalogue_versions WHERE part = 'plans' AND name = '2026-10-19') WHERE catalogue_version_id IS NULL");
 
         $subscription = $this->subscription();
         self::assertSame(

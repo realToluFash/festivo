@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Tests\Functional;
 
 use App\Audit\Auditor;
+use App\Domain\Billing\Catalogue\Catalogue;
 use App\Domain\Billing\Entitlements;
 use App\Domain\Billing\SubscriptionChanger;
 use App\Domain\Organisation\OrganisationFounder;
@@ -230,13 +231,15 @@ final class OrganisationPlanTest extends ApiTestCase
         }
     }
 
-    /** Regression: everything not on the list is open on both plans, and everything on it only on Enterprise. */
+    /** Regression (sc-3928): the catalogue answers sc-581's list as the plan did, Enterprise only. */
     #[Test]
     public function onlyEnterpriseUnlocksTheListAndFreeUnlocksNoneOfIt(): void
     {
-        foreach (PlanFeature::cases() as $feature) {
-            self::assertTrue(Plan::Enterprise->unlocks($feature), $feature->value);
-            self::assertFalse(Plan::Free->unlocks($feature), $feature->value);
+        $catalogue = self::service(Catalogue::class)->inForce();
+
+        foreach ([PlanFeature::EmailDomains, PlanFeature::AuditLog, PlanFeature::GuestDataDeletion] as $feature) {
+            self::assertTrue($catalogue->plan(Plan::Enterprise)->unlocks($feature), $feature->value);
+            self::assertFalse($catalogue->plan(Plan::Free)->unlocks($feature), $feature->value);
         }
     }
 
@@ -256,6 +259,7 @@ final class OrganisationPlanTest extends ApiTestCase
             $settings,
             self::service(SubscriptionRepository::class),
             self::service(SubscriptionChanger::class),
+            self::service(Catalogue::class),
         );
     }
 

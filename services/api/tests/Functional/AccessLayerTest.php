@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Tests\Functional;
 
+use App\Domain\Billing\Catalogue\Catalogue;
 use App\Domain\User\UserRegistrar;
 use App\Enum\ErrorCode;
 use App\Enum\Permission;
@@ -210,7 +211,7 @@ final class AccessLayerTest extends ApiTestCase
     public function aChangeToAnEnterpriseSettingOnFreeIsRefusedWithPlanRequired(): void
     {
         $this->client->disableReboot();
-        $this->directories([$this->organisation->toRfc4122() => Grants::everything()->onPlan(Plan::Free)]);
+        $this->directories([$this->organisation->toRfc4122() => Grants::everything()->onPlan(self::service(Catalogue::class)->inForce()->plan(Plan::Free)->features())]);
         $path = '/api/_access/organisations/' . $this->organisation->toRfc4122() . '/enterprise';
 
         self::assertSame(['reached' => true], $this->get($path));
@@ -226,7 +227,7 @@ final class AccessLayerTest extends ApiTestCase
     #[Test]
     public function aChangeToAnEnterpriseSettingOnEnterpriseIsLetThrough(): void
     {
-        $this->directories([$this->organisation->toRfc4122() => Grants::everything()->onPlan(Plan::Enterprise)]);
+        $this->directories([$this->organisation->toRfc4122() => Grants::everything()->onPlan(self::service(Catalogue::class)->inForce()->plan(Plan::Enterprise)->features())]);
 
         $body = $this->send('PUT', '/api/_access/organisations/' . $this->organisation->toRfc4122() . '/enterprise');
 
@@ -238,7 +239,7 @@ final class AccessLayerTest extends ApiTestCase
     #[Test]
     public function thePermissionIsAskedBeforeThePlan(): void
     {
-        $this->directories([$this->organisation->toRfc4122() => Grants::only([])->onPlan(Plan::Free)]);
+        $this->directories([$this->organisation->toRfc4122() => Grants::only([])->onPlan(self::service(Catalogue::class)->inForce()->plan(Plan::Free)->features())]);
 
         $body = $this->send('PUT', '/api/_access/organisations/' . $this->organisation->toRfc4122() . '/enterprise');
 

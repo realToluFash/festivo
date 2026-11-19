@@ -144,6 +144,9 @@ limits" (memo sc-3928 #4131). Two lines above changed with them, and one rule is
   is charged per segment, and WhatsApp by the category Meta charged for the message. AI is
   13 credits per delivered proposal on the model in force (claude-opus-5-5); questions about
   the host's own event cost 0 (sc-3928 #4278). Guest email takes no credits and has no quota.
+- **Payment rails** (epic 37, bm #5168): Enterprise is USD 249 a month or 2,490 a year, sold
+  by contract. There are no price zones. Billing is in EUR, GBP and USD, through Paddle. NGN
+  (G1) and the country of incorporation are still open.
 
 ## Built, sc-3927: the records and the one answer
 
@@ -163,3 +166,21 @@ limits" (memo sc-3928 #4131). Two lines above changed with them, and one rule is
   each provider's adapter (sc-3933) turns its events into the same calls.
 - The plan and status are any member's to read on the organisation; the billing account,
   `GET /api/orgs/{id}/billing-account`, needs **billing.read**.
+
+## Built, sc-3928: the plan catalogue
+
+- Every number above lives in `catalogue_versions`, never in feature code; a test fails the
+  build when one is written into `src/` (`CatalogueNumbersTest`). Two parts are versioned
+  apart. **Plans** hold each plan's limits (each with its kind: hard, metered, included or
+  credits), list prices in minor units by currency, sales channel and features; a
+  subscription keeps the plans version it was sold on (`subscriptions.catalogue_version_id`).
+  **Unit costs** hold credits per unit and apply to everyone from `effective_from`: a rise is
+  published 14 days ahead, a fall applies at once, and a reservation keeps the version it was
+  priced at. "Unlimited" is a value of its own.
+- `App\Domain\Billing\Catalogue\Catalogue` is the one read: `inForce()`, `soldTo()`,
+  `unitCosts()`, served from `cache.catalogue`, which a publication clears. `Entitlements`
+  answers from the plans version the subscription is on, so sc-581's settings ask the
+  catalogue rather than `Plan`.
+- Staff act through `app:catalogue:show`, `app:catalogue:publish`,
+  `app:catalogue:move-subscribers` (says how many moved) and `app:catalogue:withdraw` (only a
+  version nothing uses), each audited. A version is never updated: a trigger refuses it.
