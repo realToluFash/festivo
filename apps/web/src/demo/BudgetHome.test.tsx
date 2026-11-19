@@ -271,7 +271,7 @@ describe('the Budget page at a desk in A (sc-31779)', () => {
   );
 
   it(
-    'refuses 8OO or an empty Charged at, and says a ceiling saved in another currency changes nothing',
+    'refuses 8OO in Charged at, and says a ceiling saved in another currency changes nothing',
     SLOW,
     async () => {
       vi.useFakeTimers({ shouldAdvanceTime: true });

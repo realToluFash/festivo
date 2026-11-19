@@ -175,6 +175,35 @@ describe('the states Budget A still lacked (sc-85, sc-88, sc-90, sc-91, sc-92, s
   });
 
   it(
+    'removes an emptied markup or price, and the line falls to the next in the order',
+    SLOW,
+    async () => {
+      await open(at('markup'));
+      const dialog = await screen.findByRole('dialog', { name: 'Markup' }, SLOW);
+      fireEvent.change(within(dialog).getByLabelText('Markup'), { target: { value: '' } });
+      fireEvent.click(within(dialog).getByRole('button', { name: 'Save' }));
+      expect(screen.getByText('Markup removed.')).toBeTruthy();
+      expect(section('Costs').textContent).toContain('no markup set');
+      expect(section('Costs').textContent).toContain('15% markup, Photography’s');
+      expect(section('Markup').textContent).toContain('No markup set');
+      cleanup();
+
+      await open(at('margin'));
+      const save = () =>
+        fireEvent.click(within(section('Costs')).getByRole('button', { name: 'Save' }));
+      save();
+      expect(section('Costs').textContent).toContain('Charged at £800.00 · its own price');
+      fireEvent.click(within(section('Costs')).getByRole('button', { name: /^DJ/ }));
+      fireEvent.change(screen.getByLabelText('Charged at'), { target: { value: '' } });
+      save();
+      expect(screen.getByText('Price removed.')).toBeTruthy();
+      expect(section('Costs').textContent).toContain(
+        'Charged at £1,080.00 · 20% markup, the event’s',
+      );
+    },
+  );
+
+  it(
     'refuses Mark paid by the server and at the date, and words added and deleted payments',
     SLOW,
     async () => {

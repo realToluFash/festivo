@@ -251,7 +251,7 @@ export function rateProblem(
 export function priceProblem(typed: string, currency = CURRENCY): string | null {
   const found = typedMinor(typed, currency);
 
-  if ('minor' in found) return null;
+  if ('minor' in found || found.wrong === 'blank') return null;
   if (found.wrong === 'decimals')
     return `That has too many decimal places for this event’s currency. Enter the price like ${exampleIn(12, currency)}.`;
 
@@ -310,6 +310,7 @@ function decimalsOf(typed: string): number {
 export function markupProblem(typed: string): string | null {
   const text = typed.trim();
 
+  if (text === '') return null;
   if (/^[-−]/.test(text))
     return 'A markup cannot be below 0. To sell below cost, enter the price instead.';
   if (!/^\d+(\.\d+)?$/.test(text)) return 'Enter the markup as a number, like 12.5.';
@@ -494,6 +495,23 @@ export const NO_MARKUPS: Markups = { event: null, categories: {}, costs: {}, pri
 export const PLANNING_FEE = 300000;
 
 const percentWords = (n: number): string => `${n}%`;
+
+/** sc-92, 19 Nov: an emptied markup or price is removed, and the line falls to the next in the order. */
+export function withoutChoice(
+  markups: Markups,
+  scope: 'event' | 'category' | 'cost' | 'price',
+  key: string,
+): Markups {
+  const drop = <T>(from: Readonly<Record<string, T>>) =>
+    Object.fromEntries(Object.entries(from).filter(([one]) => one !== key));
+
+  if (scope === 'event') return { ...markups, event: null };
+  if (scope === 'category') return { ...markups, categories: drop(markups.categories) };
+
+  return scope === 'cost'
+    ? { ...markups, costs: drop(markups.costs) }
+    : { ...markups, prices: drop(markups.prices) };
+}
 
 export function markupWords(line: CostLine, markups: Markups): string {
   if (markups.prices[line.id] != null) return 'its own price';

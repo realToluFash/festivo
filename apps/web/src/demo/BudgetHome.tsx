@@ -64,6 +64,7 @@ import {
   type Markups,
   MARKUPS,
   NO_MARKUPS,
+  withoutChoice,
   PLANNING_FEE,
   chargedOf,
   marginOf,
@@ -447,8 +448,12 @@ export function BudgetHomeContent({
                 markups={markups}
                 fee={fee}
                 onPrice={(id, price) => {
-                  setMarkups((now) => ({ ...now, prices: { ...now.prices, [id]: price } }));
-                  tell('Saved.');
+                  setMarkups((now) =>
+                    price == null
+                      ? withoutChoice(now, 'price', id)
+                      : { ...now, prices: { ...now.prices, [id]: price } },
+                  );
+                  tell(price == null ? 'Price removed.' : 'Saved.');
                 }}
               />
             ) : (
@@ -554,14 +559,16 @@ export function BudgetHomeContent({
           onDismiss={() => setDialog(null)}
           onSaved={(scope, key, percent) => {
             setMarkups((now) =>
-              scope === 'event'
-                ? { ...now, event: percent }
-                : scope === 'category'
-                  ? { ...now, categories: { ...now.categories, [key]: percent } }
-                  : { ...now, costs: { ...now.costs, [key]: percent } },
+              percent == null
+                ? withoutChoice(now, scope, key)
+                : scope === 'event'
+                  ? { ...now, event: percent }
+                  : scope === 'category'
+                    ? { ...now, categories: { ...now.categories, [key]: percent } }
+                    : { ...now, costs: { ...now.costs, [key]: percent } },
             );
             setDialog(null);
-            tell('Markup saved.');
+            tell(percent == null ? 'Markup removed.' : 'Markup saved.');
           }}
         />
       )}
@@ -1135,7 +1142,7 @@ function MarginCosts({
   first: string;
   markups: Markups;
   fee: number;
-  onPrice: (id: string, price: number) => void;
+  onPrice: (id: string, price: number | null) => void;
 }) {
   const refused = first === 'price_negative' || first === 'price_decimals';
   const [opened, setOpened] = useState<string | null>(
@@ -1176,17 +1183,23 @@ function MarginCosts({
                         <MoneyField
                           label="Charged at"
                           value={charged}
-                          help={`Cost ${money(cost)}`}
+                          help={
+                            markups.prices[one.id] == null
+                              ? `Cost ${money(cost)}`
+                              : `Cost ${money(cost)}. Leave it empty to charge by the markup.`
+                          }
                           error={chargedTried ? priceProblem(charged) : null}
                           inputRef={chargedField}
                           onChange={setCharged}
                         />
-                        {minorOf(charged) < cost && priceProblem(charged) == null && (
-                          <p className="bud-below" role="status">
-                            <DownArrow />
-                            Below cost: margin {whole(minorOf(charged) - cost)}.
-                          </p>
-                        )}
+                        {charged.trim() !== '' &&
+                          minorOf(charged) < cost &&
+                          priceProblem(charged) == null && (
+                            <p className="bud-below" role="status">
+                              <DownArrow />
+                              Below cost: margin {whole(minorOf(charged) - cost)}.
+                            </p>
+                          )}
                         <div className="bud-opened-actions">
                           <TextAction label={W.cancel} onClick={() => setOpened(null)} />
                           <TextAction
@@ -1195,7 +1208,7 @@ function MarginCosts({
                               setChargedTried(true);
                               if (priceProblem(charged) != null)
                                 return chargedField.current?.focus();
-                              onPrice(one.id, minorOf(charged));
+                              onPrice(one.id, charged.trim() === '' ? null : minorOf(charged));
                               setOpened(null);
                             }}
                           />
@@ -1833,7 +1846,7 @@ function MarkupDialog({
   first: string;
   lines: readonly CostLine[];
   onDismiss: () => void;
-  onSaved: (scope: 'event' | 'category' | 'cost', key: string, percent: number) => void;
+  onSaved: (scope: 'event' | 'category' | 'cost', key: string, percent: number | null) => void;
 }) {
   const [scope, setScope] = useState<'event' | 'category' | 'cost'>('event');
   const priced = lines.filter((one) => lineState(one) === 'priced');
@@ -1860,7 +1873,7 @@ function MarkupDialog({
         onSaved(
           scope,
           scope === 'category' ? category : scope === 'cost' ? cost : '',
-          Number(typed.trim()),
+          typed.trim() === '' ? null : Number(typed.trim()),
         );
       }}
     >
@@ -1932,7 +1945,7 @@ function MarkupDialog({
         value={typed}
         error={problem}
         inputRef={field}
-        help="A share of cost: £1,000 at 25% is charged at £1,250."
+        help="A share of cost: £1,000 at 25% is charged at £1,250. Leave it empty to remove it."
         onChange={(value) => {
           setTyped(value);
         }}
