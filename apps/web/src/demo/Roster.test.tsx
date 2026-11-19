@@ -228,6 +228,46 @@ describe('/demo/events/evt-wed-4/staff/roster (sc-3906)', () => {
     ]);
   });
 
+  it('says beside a name that its section was removed from the seating plan (sc-3910)', async () => {
+    await open('sectionRemoved');
+    const table = screen.getByRole('table', { name: 'Roster' });
+    const chidi = within(table).getByRole('rowheader', { name: 'Chidi Okafor' }).closest('tr');
+    expect(within(chidi as HTMLElement).getByText('No station')).toBeTruthy();
+    expect(within(table).getAllByText('Section D was removed from the seating plan.')).toHaveLength(
+      2,
+    );
+    const picker = screen.getByLabelText('Change station, Emeka Obi');
+    expect(picker.getAttribute('aria-describedby')).toBe('rs-gone');
+    fireEvent.change(picker, { target: { value: 'Section B' } });
+    const emeka = within(table).getByRole('rowheader', { name: 'Emeka Obi' }).closest('tr');
+    expect(within(emeka as HTMLElement).getByText('Section B')).toBeTruthy();
+    expect(within(table).getAllByText('Section D was removed from the seating plan.')).toHaveLength(
+      1,
+    );
+  });
+
+  it('says why in the details without staff.manage, with no picker (sc-3910)', async () => {
+    await open('sectionRemovedReadOnly');
+    const details = screen.getByRole('complementary');
+    expect(within(details).getByText('No station')).toBeTruthy();
+    expect(within(details).getByText('Section D was removed from the seating plan.')).toBeTruthy();
+    expect(screen.queryByLabelText('Change station, Emeka Obi')).toBeNull();
+  });
+
+  it('groups the Station picker as Stations does, Places then Seating sections (sc-3910)', async () => {
+    await open('details');
+    const picker = screen.getByLabelText('Change station, Amina Yusuf');
+    const groups = [...picker.querySelectorAll('optgroup')].map((group) => [
+      group.label,
+      [...group.querySelectorAll('option')].map((one) => one.textContent),
+    ]);
+    expect(groups).toEqual([
+      ['Places', ['Pass', 'Door', 'Bar', 'Kitchen', 'Stage', 'Floor', 'Grill', 'Pastry']],
+      ['Seating sections', ['Section A', 'Section B', 'Section C']],
+    ]);
+    expect(picker.querySelector(':scope > option')?.textContent).toBe('No station yet');
+  });
+
   it.each(['populated', 'readOnly'])(
     'lets the keyboard reach the table frame, the one region named Roster, just before the first name, in %s (sc-70540)',
     async (state) => {

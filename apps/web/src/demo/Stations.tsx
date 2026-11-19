@@ -958,6 +958,7 @@ export function Select({
   value,
   shown,
   options,
+  groups = [],
   label,
   describedBy,
   wrong = false,
@@ -968,6 +969,7 @@ export function Select({
   value: string;
   shown: string;
   options: readonly { value: string; label: string }[];
+  groups?: readonly { label: string; options: readonly { value: string; label: string }[] }[];
   label?: string;
   describedBy?: string;
   wrong?: boolean;
@@ -994,6 +996,15 @@ export function Select({
           <option key={one.value} value={one.value}>
             {one.label}
           </option>
+        ))}
+        {groups.map((group) => (
+          <optgroup key={group.label} label={group.label}>
+            {group.options.map((one) => (
+              <option key={one.value} value={one.value}>
+                {one.label}
+              </option>
+            ))}
+          </optgroup>
         ))}
       </select>
     </div>

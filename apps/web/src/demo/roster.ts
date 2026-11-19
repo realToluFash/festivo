@@ -3,7 +3,7 @@ import { emailProblem, phoneE164, phoneFields, phoneLengthProblem } from '@soire
 import { countryName } from './rules.ts';
 import type { DemoLink } from './settings.ts';
 import { type Trail, SAMPLE_LINK } from './staffLink.ts';
-import { STATIONS_EVENT } from './stations.ts';
+import { STATIONS_EVENT, SW, placesOf, sectionsOf, stationsStart } from './stations.ts';
 
 /** The Roster on the event's Staff page (sc-3906, Staffing.dc.html on page e34): who works the event, without making them members. */
 export const ORGANISATION = 'Ire Events';
@@ -17,6 +17,8 @@ export interface Entry {
   name: string;
   job: string | null;
   station: string | null;
+  /** The section the seating plan removed from under them, until they are given a station (sc-3910). */
+  gone?: string;
   shift: string | null;
   more: readonly string[];
   mobile: string | null;
@@ -98,6 +100,8 @@ export const RW = {
   nextErasing: 'Next: nothing. Their mobile number and email are removed 30 days after the event.',
   lock: 'You can see the roster. Changing it needs permission to manage staff.',
   stationChange: 'Change station',
+  noStationNow: 'No station',
+  sectionGone: (section: string) => `${section} was removed from the seating plan.`,
 };
 
 export const LINK_WORDS: Record<LinkState, string> = {
@@ -119,19 +123,13 @@ export const JOBS: readonly { job: string; station: string | null; shifts: reado
   { job: 'Door', station: 'Door', shifts: ['16:30 to 21:00'] },
 ];
 
-export const STATIONS: readonly string[] = [
-  'Pass',
-  'Door',
-  'Bar',
-  'Kitchen',
-  'Floor',
-  'Grill',
-  'Pastry',
-  'Section A',
-  'Section B',
-  'Section C',
-];
+const STATIONS_SAMPLE = stationsStart(null).state;
 
+/** sc-3910: the roster's Station picker is Stations' grouped list, Places then Seating sections. */
+export const STATION_GROUPS: readonly { label: string; stations: readonly string[] }[] = [
+  { label: SW.places, stations: placesOf(STATIONS_SAMPLE).map((one) => one.name) },
+  { label: SW.sections, stations: sectionsOf(STATIONS_SAMPLE).map((one) => one.name) },
+];
 /** Members of the organisation the roster can link to by mobile number or email. */
 export const MEMBERS: readonly { name: string; mobile: string; email: string }[] = [
   { name: 'Amara Obi', mobile: '+2348035550142', email: 'amara.obi@ireevents.com' },
@@ -462,6 +460,16 @@ function start(o: Partial<RosterStart> & Pick<RosterStart, 'name' | 'note'>): Ro
 const typed = (o: Partial<Draft>): Draft => ({ ...draftOf(null), ...o });
 const byId = (id: string) => sample().find((one) => one.id === id) as Entry;
 
+function sectionRemovedEntries(): Entry[] {
+  return [
+    ...sample().map((one) => (one.id === 'emeka' ? { ...one, gone: 'Section D' } : one)),
+    {
+      ...entry('chidi', 'Chidi Okafor', 'Waiter', null, '17:00 to 00:00', '+2348031110014', 'sent'),
+      gone: 'Section D',
+    },
+  ];
+}
+
 const STATES = {
   populated: () =>
     start({
@@ -614,6 +622,21 @@ const STATES = {
       panel: { kind: 'edit', id: 'kunle' },
       draft: { ...draftOf(byId('kunle')), number: '', email: '' },
     }),
+  sectionRemoved: () =>
+    start({
+      name: 'A section removed from the seating plan',
+      note: 'Section D’s people have no station now; their rows and details say why.',
+      entries: sectionRemovedEntries(),
+      panel: { kind: 'details', id: 'emeka' },
+    }),
+  sectionRemovedReadOnly: () =>
+    start({
+      name: 'A section removed, without staff.manage',
+      note: 'Emeka Obi’s details say No station and why, with no picker.',
+      manage: false,
+      entries: sectionRemovedEntries(),
+      panel: { kind: 'details', id: 'emeka' },
+    }),
   readOnly: () =>
     start({
       name: 'Without staff.manage',
@@ -720,6 +743,8 @@ export const ROSTER_PAGES: readonly { name: string; states: readonly DemoLink[] 
         'empty',
         'details',
         'detailsShifts',
+        'sectionRemoved',
+        'sectionRemovedReadOnly',
         'readOnly',
         'finishedEvent',
         'finishedErased',

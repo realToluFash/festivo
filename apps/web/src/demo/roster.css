@@ -331,6 +331,34 @@ a.sn-tab {
   list-style: none;
 }
 
+/* sc-3910: Section D removed from the seating plan. The words carry it; the mark is beside them, never alone. */
+.rs-gone {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceXxs);
+}
+
+.rs-gone-now {
+  color: var(--colorInkSecondary);
+}
+
+.rs-gone-why {
+  display: inline-flex;
+  align-items: flex-start;
+  gap: var(--spaceXs);
+  color: var(--colorAttentionText);
+  font: var(--typeSmallStrong);
+}
+
+.rs-gone-why > svg {
+  flex: none;
+  margin-top: 2px;
+}
+
+.rs-facts dd > .rs-gone-why {
+  margin-top: var(--spaceXs);
+}
+
 /* A person's own link (sc-3912): the word, who and when, Copy link and Mark as sent in the row, and the link to copy by hand under it. */
 .rs-link-cell,
 .rs-link-fact {
