@@ -105,7 +105,7 @@ export function useWholeWords(
       ? fitWidest(size, start, Math.max(...widths), slot)
       : start;
 
-  // Kept under the start and window width, so it outlives a change of the texts.
+  // Kept under its `wordsRoomKey`, the start, window width and reported room, so it outlives a change of the texts.
   if (wrapped && (room?.key !== roomKey || room.width !== seen.width)) {
     setRoom({ key: roomKey, width: seen.width });
   }

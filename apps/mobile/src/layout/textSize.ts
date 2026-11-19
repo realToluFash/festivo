@@ -141,7 +141,7 @@ export function grownPad(height: number, size: number, ring: number): number {
 export interface WordsRoom {
   /** The width a text drawn at the start wrapped at, when it wrapped. */
   wrapped: number | null;
-  /** That width, kept under the start and window width it was read at. */
+  /** That width, kept under its `wordsRoomKey`: the start, window width and reported room it was read at. */
   kept: { key: string; width: number } | null;
   /** A container's width, as its caller reports it, under the window width it was read at. */
   reported: { windowWidth: number; width: number } | null;
