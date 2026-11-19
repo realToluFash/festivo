@@ -51,6 +51,19 @@ describe('the sidebar at the largest text sizes', () => {
     },
   );
 
+  it.each([FIFTH, SIXTH, SEVENTH, EIGHTH])(
+    'steps a two-line name down at fontScale %s until its widest word fits a line',
+    (scale) => {
+      const start = 14 * scale;
+      const widest = 1.05 * ROOMS.cardName.inside;
+      const size = sideTextSize(ROOMS.cardName, scale, oneWord(widest), 'lines');
+
+      expect(size).toBeLessThan(start);
+      expect(size).toBeGreaterThanOrEqual(14);
+      expect((widest / start) * size).toBeLessThanOrEqual(ROOMS.cardName.inside);
+    },
+  );
+
   it('keeps a name at its size on main at the eighth step while it fits', () => {
     expect(sideTextSize(ROOMS.org, EIGHTH, oneWord(ROOMS.org.inside), 'line')).toBe(15 * EIGHTH);
   });
