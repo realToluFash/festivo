@@ -3576,8 +3576,14 @@ export class ApiClient {
     await this.put<unknown>(this.budgetLinePath(eventId, lineId), typed);
   }
 
+  /** Kept a day for `putBackBudgetLine`, and out of every figure meanwhile. */
   async removeBudgetLine(eventId: string, lineId: string): Promise<void> {
     await this.delete<unknown>(this.budgetLinePath(eventId, lineId));
+  }
+
+  /** Undo: the same line in its place. 404 once erased, a day after its removal; `basis` refused when another staff-time line holds it. */
+  async putBackBudgetLine(eventId: string, lineId: string): Promise<void> {
+    await this.delete<unknown>(`${this.budgetLinePath(eventId, lineId)}/removal`);
   }
 
   /** A hub token for this event's budget lines and its headcount, which moves the range. */

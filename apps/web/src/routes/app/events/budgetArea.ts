@@ -186,12 +186,13 @@ export function removedWords(t: TFunction, line: BudgetLine, locale: string): st
   });
 }
 
-/** One line saying what another tab or a guest's answer changed; null when nothing a reader sees moved. */
+/** One line saying what another tab or a guest's answer changed; null when nothing a reader sees moved. A line back with an id this tab has shown was put back by an Undo, not added. */
 export function liveWords(
   t: TFunction,
   was: EventBudget,
   now: EventBudget,
   locale: string,
+  known: ReadonlySet<string> = new Set(),
 ): string | null {
   const before = new Map(was.lines.map((line) => [line.id, line]));
   const after = new Map(now.lines.map((line) => [line.id, line]));
@@ -227,9 +228,11 @@ export function liveWords(
   if (lines === 1 && one != null) {
     const key =
       added.length === 1
-        ? lineState(one) === 'notPriced'
-          ? 'budget.live.addedNoPrice'
-          : 'budget.live.added'
+        ? known.has(one.id)
+          ? 'budget.live.putBack'
+          : lineState(one) === 'notPriced'
+            ? 'budget.live.addedNoPrice'
+            : 'budget.live.added'
         : removed.length === 1
           ? 'budget.live.removed'
           : lineState(one) !== 'notPriced' && lineState(before.get(one.id) ?? one) === 'notPriced'

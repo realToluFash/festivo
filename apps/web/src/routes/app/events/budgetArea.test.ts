@@ -217,6 +217,18 @@ describe('the live line (sc-83, sc-99)', () => {
     );
   });
 
+  it('says a line this tab has shown, back from an Undo, was put back and never added (decided 19 Nov)', () => {
+    const was = budget({ lines: [], confirmed: '0.00' });
+    const now = budget({ confirmed: '480.00' });
+
+    expect(liveWords(t, was, now, EN, new Set(['dinner']))).toBe(
+      'Dinner was put back in another tab, so the settled total went up by £480.',
+    );
+    expect(liveWords(t, was, now, EN)).toBe(
+      'Dinner was added in another tab, so the settled total went up by £480.',
+    );
+  });
+
   it('says nothing when nothing a reader sees moved', () => {
     expect(liveWords(t, budget(), budget(), EN)).toBeNull();
   });

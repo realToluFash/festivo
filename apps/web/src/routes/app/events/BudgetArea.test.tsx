@@ -355,7 +355,7 @@ describe('changing a rate in place (sc-85)', () => {
 });
 
 describe('removing a cost (sc-85)', () => {
-  it('takes it off at once with Undo, saying how far the settled total fell, and Undo puts it back', async () => {
+  it('takes it off at once with Undo, saying how far the settled total fell, and Undo puts the same line back in its place', async () => {
     signedIn();
     let lines = [DINNER, ARCH, CENTRE];
     const sent = serve({
@@ -364,9 +364,9 @@ describe('removing a cost (sc-85)', () => {
         lines = [ARCH, CENTRE];
         return new Response(null, { status: 204 });
       },
-      'POST /api/events/ev_1/budget/lines': () => {
-        lines = [ARCH, CENTRE, { ...DINNER, id: 'dinner-2' }];
-        return json({ line: DINNER }, 201);
+      'DELETE /api/events/ev_1/budget/lines/dinner/removal': () => {
+        lines = [DINNER, ARCH, CENTRE];
+        return json({ line: DINNER });
       },
     });
 
@@ -381,13 +381,14 @@ describe('removing a cost (sc-85)', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Undo' }));
 
     expect(await screen.findByRole('button', { name: /^Dinner\./u })).toBeTruthy();
-    expect(sent.find((one) => one.line === 'POST /api/events/ev_1/budget/lines')?.body).toEqual({
-      label: 'Dinner',
-      category: 'catering',
-      basis: 'per_head',
-      rate: '68.00',
-      currency: 'GBP',
-    });
+    expect(sent.some((one) => one.line.startsWith('POST '))).toBe(false);
+    expect(
+      sent.filter((one) => one.line === 'DELETE /api/events/ev_1/budget/lines/dinner/removal'),
+    ).toHaveLength(1);
+    const rows = Array.from(document.querySelectorAll('[data-line]'), (row) =>
+      row.getAttribute('data-line'),
+    );
+    expect(rows.indexOf('dinner')).toBeLessThan(rows.indexOf(CENTRE.id));
   });
 
   it('says a line with no price leaves the total the same', async () => {
@@ -658,6 +659,29 @@ describe('the Budget while others change it (sc-85)', () => {
     expect(screen.getByRole('button', { name: /^Cake\./u })).toBeTruthy();
   });
 
+  it('says a cost another tab put back with Undo was put back, never added (decided 19 Nov)', async () => {
+    signedIn();
+    let now = budget();
+    serve({
+      'GET /api/events/ev_1/budget': () => json(now),
+      'POST /api/events/ev_1/budget/subscriptions': hub,
+    });
+    await screen.findByRole('button', { name: /^Dinner\./u });
+    const hubbed = await source();
+
+    now = budget({ confirmed: '0.00', lines: [ARCH, CENTRE] });
+    hubbed.publish();
+    await screen.findByText(/^Dinner was removed in another tab/u);
+    now = budget();
+    hubbed.publish();
+
+    expect(
+      await screen.findByText(
+        'Dinner was put back in another tab, so the settled total went up by £6,528.',
+      ),
+    ).toBeTruthy();
+  });
+
   it('says how many more guests said yes when the headcount moves', async () => {
     signedIn();
     let now = budget();
@@ -781,18 +805,7 @@ describe('a failed Undo (sc-85)', () => {
     ],
   ])('says the line is not back, and keeps Undo', async (failure, words) => {
     signedIn();
-    let lines = [DINNER, ARCH, CENTRE];
-    serve({
-      'GET /api/events/ev_1/budget': () => json(budget({ lines })),
-      'DELETE /api/events/ev_1/budget/lines/dinner': () => {
-        lines = [ARCH, CENTRE];
-        return new Response(null, { status: 204 });
-      },
-      'POST /api/events/ev_1/budget/lines': () => {
-        if (failure instanceof Response) return failure;
-        throw failure;
-      },
-    });
+    removeDinner(failure);
 
     fireEvent.click(await screen.findByRole('button', { name: /^Dinner\./u }));
     fireEvent.click(screen.getByRole('button', { name: 'Remove' }));
@@ -803,4 +816,37 @@ describe('a failed Undo (sc-85)', () => {
     expect(screen.queryByText('Dinner removed. The settled total fell by £6,528.')).toBeNull();
     expect(screen.getByRole('button', { name: 'Undo' })).toBeTruthy();
   });
+
+  it('says a line removed more than a day ago is not put back, and offers Undo no more (decided 19 Nov)', async () => {
+    signedIn();
+    removeDinner(problem(404, 'not_found'));
+
+    fireEvent.click(await screen.findByRole('button', { name: /^Dinner\./u }));
+    fireEvent.click(screen.getByRole('button', { name: 'Remove' }));
+    await screen.findByText('Dinner removed. The settled total fell by £6,528.');
+    fireEvent.click(screen.getByRole('button', { name: 'Undo' }));
+
+    expect(
+      await screen.findByText('Not put back. It was removed more than a day ago.', {
+        selector: '.bt-undo-words',
+      }),
+    ).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Undo' })).toBeNull();
+    expect(screen.queryByRole('button', { name: /^Dinner\./u })).toBeNull();
+  });
+
+  function removeDinner(failure: unknown) {
+    let lines = [DINNER, ARCH, CENTRE];
+    serve({
+      'GET /api/events/ev_1/budget': () => json(budget({ lines })),
+      'DELETE /api/events/ev_1/budget/lines/dinner': () => {
+        lines = [ARCH, CENTRE];
+        return new Response(null, { status: 204 });
+      },
+      'DELETE /api/events/ev_1/budget/lines/dinner/removal': () => {
+        if (failure instanceof Response) return failure;
+        throw failure;
+      },
+    });
+  }
 });

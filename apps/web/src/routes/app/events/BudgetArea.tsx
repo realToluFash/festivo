@@ -91,6 +91,7 @@ interface Said {
 interface Removed {
   line: BudgetLine;
   words: string;
+  gone?: boolean;
 }
 
 /** An event's Budget at a desk (sc-85), as Budget A's demo draws it: the card with the range, the costs under their categories, a rate opened in place, Add a cost. */
@@ -115,6 +116,7 @@ export function BudgetArea({ event }: { event: OrganisationEvent }) {
   const title = useRef<HTMLHeadingElement>(null);
   const undoRef = useRef<HTMLButtonElement>(null);
   const shown = useRef<EventBudget | null>(null);
+  const known = useRef(new Set<string>());
   const own = useRef(0);
 
   usePageTitle(pageTitle(t, [t('budget.title'), event.name]));
@@ -126,6 +128,7 @@ export function BudgetArea({ event }: { event: OrganisationEvent }) {
       (budget) => {
         if (!current) return;
         shown.current = budget;
+        for (const line of budget.lines) known.current.add(line.id);
         setLoad({ kind: 'loaded', budget });
       },
       () => current && setLoad((was) => (was.kind === 'loaded' ? was : { kind: 'failed' })),
@@ -163,6 +166,7 @@ export function BudgetArea({ event }: { event: OrganisationEvent }) {
 
   const adopt = useCallback((budget: EventBudget) => {
     shown.current = budget;
+    for (const line of budget.lines) known.current.add(line.id);
     setLoad({ kind: 'loaded', budget });
   }, []);
 
@@ -185,10 +189,9 @@ export function BudgetArea({ event }: { event: OrganisationEvent }) {
     api.budget(event.id).then(
       (budget) => {
         const was = shown.current;
+        const words = was == null ? null : liveWords(t, was, budget, locale, known.current);
         adopt(budget);
-        if (was == null || own.current > 0) return;
-        const words = liveWords(t, was, budget, locale);
-        if (words == null) return;
+        if (own.current > 0 || words == null) return;
         setLive(words);
         setWashed((n) => n + 1);
       },
@@ -340,28 +343,29 @@ export function BudgetArea({ event }: { event: OrganisationEvent }) {
                         window.setTimeout(() => undoRef.current?.focus(), 0);
                       }}
                       onUndo={async () => {
-                        if (removed == null) return;
-                        const was = shown.current;
+                        if (removed == null || removed.gone === true) return;
                         try {
-                          await api.addBudgetLine(event.id, typedOf(removed.line));
+                          await api.putBackBudgetLine(event.id, removed.line.id);
                         } catch (error) {
+                          const gone = error instanceof ApiError && error.status === 404;
                           const staff =
                             error instanceof ApiError && error.fieldErrors()['basis'] != null;
-                          const words = t(staff ? 'budget.notBackStaff' : 'budget.notBack');
-                          setRemoved({ line: removed.line, words });
+                          const words = t(
+                            gone
+                              ? 'budget.notBackGone'
+                              : staff
+                                ? 'budget.notBackStaff'
+                                : 'budget.notBack',
+                          );
+                          setRemoved({ line: removed.line, words, gone });
                           setHeard(words);
                           return;
                         }
-                        const now = await readOwn();
-                        const back = now?.lines.find(
-                          (one) => was?.lines.every((old) => old.id !== one.id) ?? false,
-                        );
+                        await readOwn();
                         setRemoved(null);
                         setHeard(t('budget.back', { name: removed.line.label }));
-                        if (back != null) {
-                          setLit(back.id);
-                          setToRow(back.id);
-                        }
+                        setLit(removed.line.id);
+                        setToRow(removed.line.id);
                       }}
                     />
                   </div>
@@ -397,22 +401,6 @@ export function BudgetArea({ event }: { event: OrganisationEvent }) {
       </div>
     </LayersContext>
   );
-
-  function typedOf(line: BudgetLine): BudgetLineTyped {
-    const price = linePrice(line);
-
-    return {
-      label: line.label,
-      category: line.category,
-      basis: line.basis,
-      ...(price == null
-        ? {}
-        : line.basis === 'fixed'
-          ? { amount: price, currency: line.currency }
-          : { rate: price, currency: line.currency }),
-      ...(line.note == null ? {} : { note: line.note }),
-    };
-  }
 }
 
 function Loading() {
@@ -619,10 +607,17 @@ function Costs({
       {removed != null && (
         <div className="bt-undo" role="status">
           <span className="bt-undo-words">{removed.words}</span>
-          <button ref={undoRef} type="button" className="bt-undo-do" onClick={() => void onUndo()}>
-            <Glyph name="undo" size={16} weight={2.4} />
-            {t('budget.undo')}
-          </button>
+          {removed.gone !== true && (
+            <button
+              ref={undoRef}
+              type="button"
+              className="bt-undo-do"
+              onClick={() => void onUndo()}
+            >
+              <Glyph name="undo" size={16} weight={2.4} />
+              {t('budget.undo')}
+            </button>
+          )}
         </div>
       )}
       {categoriesOf(budget.lines).map((category) => (
