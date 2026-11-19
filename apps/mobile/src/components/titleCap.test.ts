@@ -18,6 +18,7 @@ const rows = readFileSync(join('src', 'components', 'SummaryRows.tsx'), 'utf8');
 const event = readFileSync(join('src', 'components', 'EventScreen.tsx'), 'utf8');
 const guests = readFileSync(join('src', 'components', 'GuestsHeading.tsx'), 'utf8');
 const settings = readFileSync(join('src', 'components', 'SettingsHome.tsx'), 'utf8');
+const title = readFileSync(join('src', 'components', 'Title.tsx'), 'utf8');
 const demoFrame = readFileSync(join('src', 'demo', 'settings', 'Frame.tsx'), 'utf8');
 const demoMembers = readFileSync(join('src', 'demo', 'settings', 'MembersParts.tsx'), 'utf8');
 
@@ -149,6 +150,14 @@ describe('every line under the cap wraps whole, and nothing is cut (sc-67338)', 
     expect(settings).toMatch(
       /<CappedWholeWords[^>]*\bunder=\{title\}[^>]*\bbreakAfterHyphens\s*>\s+\{row\.line\}/u,
     );
+  });
+
+  it('draws a label that changes size as a new text, so a moved cap never leaves the old size drawn (sc-69816)', () => {
+    expect(title).toMatch(/<Text\s+\{\.\.\.rest\}\s+(?:\/\/[^\n]*\s+)?key=\{drawnSize\}/u);
+  });
+
+  it('measures a word afresh at each start, so a reading at the last start never sizes this one (sc-69816)', () => {
+    expect(title).toMatch(/key=\{`\$\{look\.maxFontSizeMultiplier \?\? 1\}\|\$\{word\}`\}/u);
   });
 
   it('wraps a row’s tag at the accessibility sizes rather than cut it', () => {

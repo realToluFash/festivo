@@ -53,7 +53,8 @@ export function MeasuredWords({
       >
         {[...new Set(words)].map((word) => (
           <Text
-            key={word}
+            // A new Text per start, so a layout read at the last start is never filed under this one when the title's cap moves (sc-69816).
+            key={`${look.maxFontSizeMultiplier ?? 1}|${word}`}
             {...look}
             style={[look.style, styles.word]}
             onLayout={(event) => onWidth(word, event.nativeEvent.layout.width)}
@@ -166,6 +167,8 @@ export function WholeWords({
       {words.measure}
       <Text
         {...rest}
+        // A new size mounts a new Text, so iOS never draws one size in the box laid out for another (sc-69816).
+        key={drawnSize}
         size={size}
         maxFontSizeMultiplier={words.maxFontSizeMultiplier}
         onLayout={(event) => {
