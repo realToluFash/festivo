@@ -2627,7 +2627,14 @@
     "until": "until {{when}}",
     "guestsLine": "Names and replies only, no contact details",
     "onEvent_one": "{{count, number}} person on this event",
-    "onEvent_other": "{{count, number}} people on this event"
+    "onEvent_other": "{{count, number}} people on this event",
+    "yourEvents": "Your events",
+    "fromOutside": "Events from outside",
+    "yourOrganisations": "Your organisations",
+    "underWay": "Under way",
+    "here": "You’re here",
+    "backTo": "Back to {{name}}",
+    "continue": "Continue"
   },
   "seating": {
     "area": "Seating",
@@ -4489,7 +4496,7 @@
     "exportDownloaded": "Downloaded",
     "exportPreparingMine": "Preparing · we’ll email you",
     "exportPreparingOther": "Preparing · asked by {{name}}",
-    "exportFailed": "Didn’t finish"
+    "exportFailed": "Did not finish"
   },
   "exportAllData": {
     "title": "Export all data",
@@ -4531,7 +4538,7 @@
     "expiredSays": "Your export’s link has ended",
     "expiredLine": "It ended on {{when}} without a download. You can export again.",
     "failedSays": "Your export did not finish",
-    "failedLine": "Nothing was emailed, and it doesn’t count toward today’s export.",
+    "failedLine": "Nothing was emailed, and it does not count towards today’s export.",
     "preparingOtherSays": "Preparing {{organisation}}’s export",
     "preparingOtherLine": "Asked by {{name}}, {{when}}. Only they can download it.",
     "notOwnerSays": "Only an owner exports {{organisation}}’s data",

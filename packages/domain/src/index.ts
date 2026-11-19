@@ -28,6 +28,7 @@ export * from './password.ts';
 export * from './regions.ts';
 export * from './firstName.ts';
 export * from './initials.ts';
+export * from './outsideEvents.ts';
 export * from './phone.ts';
 export * from './forms.ts';
 export * from './recovery.ts';

@@ -231,7 +231,7 @@ describe('Data and control › Export all data (sc-612)', () => {
 
     expect(await screen.findByText('Your export did not finish')).toBeDefined();
     expect(
-      screen.getByText('Nothing was emailed, and it doesn’t count toward today’s export.'),
+      screen.getByText('Nothing was emailed, and it does not count towards today’s export.'),
     ).toBeDefined();
     expect(screen.getByRole('button', { name: 'Try again' })).toBeDefined();
   });
@@ -414,7 +414,7 @@ describe('Data and control (sc-612)', () => {
       exported('preparing', false, true),
       'Preparing · asked by Folake Adeyemi',
     ],
-    ['an export that did not finish', exported('failed'), 'Didn’t finish'],
+    ['an export that did not finish', exported('failed'), 'Did not finish'],
     ['a downloaded export', exported('used', false, true), 'Downloaded'],
     [
       'a link that ended unused',

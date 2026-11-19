@@ -1,7 +1,8 @@
 import type { OutsideEvent } from '@soirely/api-client';
+import { outsideEventsInOrder } from '@soirely/domain';
 import type { TFunction } from 'i18next';
 
-import { EVENT_PLACES, type EventPlace } from './eventNav.ts';
+import { EVENT_PLACES, type EventPlace, eventHref } from './eventNav.ts';
 
 const READING_PLACES: readonly EventPlace[] = [
   'overview',
@@ -29,12 +30,9 @@ interface Held {
   pausedIn?: unknown;
 }
 
-/** In no organisation, the event it holds from outside at this id; null for any other, and for anyone in an organisation. */
-export function outsideOn(
-  { account, organisation, pausedIn }: Held,
-  eventId: string,
-): OutsideEvent | null {
-  if (organisation != null || pausedIn != null) return null;
+/** The event the account holds from outside at this id, in no organisation or as a member of another (sc-68438); null for any other, and while paused. */
+export function outsideOn({ account, pausedIn }: Held, eventId: string): OutsideEvent | null {
+  if (pausedIn != null) return null;
 
   return account?.outsideEvents.find((one) => one.id === eventId) ?? null;
 }
@@ -74,4 +72,45 @@ export function levelLine(
   ]
     .filter((part) => part != null && part !== '')
     .join(' · ');
+}
+
+export const CAME_FROM = 'cameFrom';
+
+/** Another event held from outside, opened on its Overview, remembering the one it was chosen in. */
+export function outsideHref(eventId: string, from: string): `/events/${string}` {
+  return `${eventHref(eventId)}?${CAME_FROM}=${encodeURIComponent(from)}`;
+}
+
+/** What More lists inside an event held from outside (sc-68438): a member's organisations, and the events once there are two. */
+export function outsideGroups({ account, organisation }: Held): {
+  organisations: boolean;
+  events: boolean;
+} {
+  return {
+    organisations: organisation != null,
+    events: (account?.outsideEvents.length ?? 0) >= 2,
+  };
+}
+
+/** The switcher's Events from outside: a member's grants on other organisations' events, in their order. */
+export function switcherOutside({ account, organisation }: Held, now: Date): OutsideEvent[] {
+  return organisation == null ? [] : outsideEventsInOrder(account?.outsideEvents ?? [], now);
+}
+
+export type WayBack =
+  { kind: 'events' } | { kind: 'event'; event: OutsideEvent } | { kind: 'continue' };
+
+/** From an event gone while its list was open: a member back to Events; in no organisation, the event it came from, else where it would land, else on. */
+export function wayBack(
+  { account, organisation, pausedIn }: Held,
+  missing: string,
+  from: string | undefined,
+  now: Date,
+): WayBack {
+  if (organisation != null || pausedIn != null) return { kind: 'events' };
+
+  const live = (account?.outsideEvents ?? []).filter((one) => one.id !== missing);
+  const back = live.find((one) => one.id === from) ?? outsideEventsInOrder(live, now)[0];
+
+  return back == null ? { kind: 'continue' } : { kind: 'event', event: back };
 }

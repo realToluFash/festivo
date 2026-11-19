@@ -2711,7 +2711,14 @@
     "guestsLine": "Solo nombres y respuestas, sin datos de contacto",
     "onEvent_one": "{{count, number}} persona en este evento",
     "onEvent_other": "{{count, number}} personas en este evento",
-    "onEvent_many": "{{count, number}} de personas en este evento"
+    "onEvent_many": "{{count, number}} de personas en este evento",
+    "yourEvents": "Your events",
+    "fromOutside": "Events from outside",
+    "yourOrganisations": "Your organisations",
+    "underWay": "Under way",
+    "here": "You’re here",
+    "backTo": "Back to {{name}}",
+    "continue": "Continue"
   },
   "seating": {
     "area": "Mesas",

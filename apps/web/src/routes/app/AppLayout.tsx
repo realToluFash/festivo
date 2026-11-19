@@ -28,6 +28,7 @@ import {
   joinOrganisation,
   landingFor,
   onMovedOn,
+  outsideOn,
   rereadOrganisations,
   restoreSession,
   switchOrganisation,
@@ -40,12 +41,13 @@ import { UNASKED } from '../../pageArrival.ts';
 import { useDomainOffer } from '../../joinOffers.ts';
 import { NoOrganisation } from './NoOrganisation.tsx';
 import { OutsideShell } from './OutsideShell.tsx';
+import { useRoutedEventId } from './outsideRoute.ts';
 import { heldRegistration } from '../../pendingRegistration.ts';
 import { useTwoFactorStanding } from '../../twoFactorStanding.ts';
 import { useDialogKeys } from '../../dialogFocus.ts';
 import { PHONE_WIDTH, usePhoneWidth } from '../../phoneWidth.ts';
 import { DeskTopContext, fitsPhone, placesItsNotices } from '../../deskTop.ts';
-import { EventNav, type InsideEvent, useInsideEvent } from './events/EventNav.tsx';
+import { EventNav, type InsideEvent, eventAreaPath, useInsideEvent } from './events/EventNav.tsx';
 import { EventHandoff } from './events/EventHandoff.tsx';
 import { type Handoff, useHandoff } from './events/handoff.ts';
 import { Skeleton } from '../../components/Skeleton.tsx';
@@ -137,6 +139,7 @@ function Shell() {
   }, []);
   const menuId = useId();
   const organisation = session.organisation;
+  const routedEvent = useRoutedEventId();
   const waiting = useWaitingInvitations();
   const closeCreate = useCallback(() => setCreating(false), []);
   const offer = useDomainOffer();
@@ -244,6 +247,22 @@ function Shell() {
     return <OutsideShell events={[landing, ...others]} />;
   }
 
+  // A member inside another organisation's event they hold from outside sees none of either organisation's places beside it (sc-68438).
+  if (organisation != null && session.pausedIn == null && outsideOn(session, routedEvent) != null) {
+    return (
+      <OutsideShell
+        events={session.outsideEvents ?? []}
+        member={{
+          organisations: session.organisations,
+          onOpen: (next) => {
+            switchOrganisation(next.id);
+            void navigate('/app');
+          },
+        }}
+      />
+    );
+  }
+
   // Every product page would open this page again, so it stands alone: only what works without an organisation, the account pages under the same header.
   if (organisation == null && session.pausedIn == null) {
     return (
@@ -316,7 +335,9 @@ function Shell() {
                   email={session.email}
                   paused={session.pausedIn != null}
                   opened={choosing}
+                  outside={session.outsideEvents ?? []}
                   onSwitch={switchInto}
+                  onOutside={(id) => void navigate(eventAreaPath(id, 'overview'))}
                   onCreate={() => setCreating(true)}
                 />
               )
