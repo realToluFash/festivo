@@ -33,6 +33,8 @@ import { FieldWrong } from './GuestFields.tsx';
 import { useHubTopics } from './useHubTopics.ts';
 import { useStartingCountry } from './useStartingCountry.ts';
 import { StaffTabs } from './StaffTabs.tsx';
+import { StationSelect } from './StationsArea.tsx';
+import { stationGroups, stationLabel } from './stationWords.ts';
 import { type StaffTimes, rangeWords, staffTimes } from './staffTimes.ts';
 import { useDeskTop } from '../../../deskTop.ts';
 import '../../../components/SettingsParts.css';
@@ -41,6 +43,7 @@ import '../../../components/eventPage.css';
 import './guests.css';
 import './roster.css';
 import './jobsShifts.css';
+import './stations.css';
 
 const FIELD_IDS = {
   name: 'rs-f-name',
@@ -195,6 +198,7 @@ export function RosterArea({ event }: { event: OrganisationEvent }) {
             event={event}
             plan={load.plan}
             onStaff={(staff) => setLoad({ kind: 'loaded', plan: { ...load.plan, staff } })}
+            onPlan={(plan) => setLoad({ kind: 'loaded', plan })}
             reload={() => setAttempt((n) => n + 1)}
           />
         )}
@@ -207,11 +211,13 @@ function Roster({
   event,
   plan,
   onStaff,
+  onPlan,
   reload,
 }: {
   event: OrganisationEvent;
   plan: StaffPlan;
   onStaff: (staff: StaffEntry[]) => void;
+  onPlan: (plan: StaffPlan) => void;
   reload: () => void;
 }) {
   const { t } = useTranslation();
@@ -408,6 +414,26 @@ function Roster({
     }
   }
 
+  async function restation(entry: StaffEntry, station: string) {
+    setBusy(true);
+    setFailed(null);
+    try {
+      const next = await api.putOnStation(event.id, entry.id, station === '' ? null : station);
+      onPlan(next);
+      const now = next.staff.find((one) => one.id === entry.id)?.station ?? null;
+      say([
+        now == null
+          ? t('stations.saidOff', { name: entry.fullName })
+          : t('stations.saidOn', { name: entry.fullName, station: stationLabel(now, t) }),
+      ]);
+    } catch {
+      setFailed(t('stations.notSaved'));
+      focusAfter.current = 'rs-failed';
+    } finally {
+      setBusy(false);
+    }
+  }
+
   const unsent = staff.some((one) => one.link === 'none');
   const next = finished ? t('roster.nextHours') : unsent ? t('roster.nextSend') : null;
 
@@ -424,7 +450,7 @@ function Roster({
       </p>
       <div className="mn-split">
         <div className="mn-list">
-          <section className="sn-card" aria-labelledby="rs-roster">
+          <section className="sn-card">
             <div className="sn-card-top">
               <div className="sn-card-names">
                 <h2 id="rs-roster" tabIndex={-1}>
@@ -461,7 +487,8 @@ function Roster({
                 )}
               </div>
             ) : (
-              <div className="rs-frame">
+              // eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- it scrolls sideways, so a keyboard has to reach it (WCAG 2.2 §2.1.1).
+              <div className="rs-frame" tabIndex={0} role="region" aria-labelledby="rs-roster">
                 <table className="rs-table" aria-labelledby="rs-roster">
                   <thead>
                     <tr>
@@ -490,7 +517,7 @@ function Roster({
                           {one.job?.name ?? t('roster.noJob')}
                         </td>
                         <td className={one.station == null ? 'rs-quiet' : undefined}>
-                          {one.station ?? t('roster.noStation')}
+                          <StationWords entry={one} />
                         </td>
                         <td className={one.shifts.length === 0 ? 'rs-quiet' : 'rs-shift'}>
                           <ShiftCell entry={one} times={times} />
@@ -513,9 +540,12 @@ function Roster({
               {panel.kind === 'details' && opened != null && (
                 <Details
                   entry={opened}
+                  plan={plan}
                   times={times}
                   manage={manage}
                   finished={finished}
+                  failed={failed}
+                  onStation={(station) => void restation(opened, station)}
                   onClose={close}
                   onEdit={() => open({ kind: 'edit', id: opened.id })}
                   onRemove={() => open({ kind: 'remove', id: opened.id })}
@@ -670,19 +700,66 @@ function PanelTop({ title, onClose }: { title: string; onClose: () => void }) {
   );
 }
 
+function StationWords({ entry }: { entry: StaffEntry }) {
+  const { t } = useTranslation();
+  if (entry.station == null && entry.stationRemoved != null)
+    return <Gone section={entry.stationRemoved} />;
+  if (entry.station == null) return <>{t('roster.noStation')}</>;
+
+  return (
+    <>
+      {stationLabel(entry.station, t)}
+      {entry.leads && (
+        <>
+          {' '}
+          <span className="sn-lead">{t('stations.lead')}</span>
+        </>
+      )}
+    </>
+  );
+}
+
+function Gone({ section }: { section: string }) {
+  const { t } = useTranslation();
+
+  return (
+    <span className="rs-gone">
+      <span className="rs-gone-now">{t('stations.noStation')}</span>
+      <GoneWhy section={section} />
+    </span>
+  );
+}
+
+function GoneWhy({ section, id }: { section: string; id?: string }) {
+  const { t } = useTranslation();
+
+  return (
+    <span className="rs-gone-why" id={id}>
+      <Glyph name="alert" size={14} weight={2.4} />
+      {t('stations.removedTitle', { name: section })}
+    </span>
+  );
+}
+
 function Details({
   entry,
+  plan,
   times,
   manage,
   finished,
+  failed,
+  onStation,
   onClose,
   onEdit,
   onRemove,
 }: {
   entry: StaffEntry;
+  plan: StaffPlan;
   times: StaffTimes;
   manage: boolean;
   finished: boolean;
+  failed: string | null;
+  onStation: (station: string) => void;
   onClose: () => void;
   onEdit: () => void;
   onRemove: () => void;
@@ -709,6 +786,7 @@ function Details({
         </button>
       </div>
       <div className="mn-panel-body">
+        {failed != null && <Failed words={failed} />}
         <dl className="rs-facts">
           <div>
             <dt>{t('roster.shift')}</dt>
@@ -718,7 +796,33 @@ function Details({
           </div>
           <div>
             <dt>{t('roster.station')}</dt>
-            <dd>{entry.station ?? t('roster.noStation')}</dd>
+            <dd>
+              {manage ? (
+                <StationSelect
+                  id="rs-station"
+                  label={t('stations.stationChange', { name: entry.fullName })}
+                  value={entry.station?.id ?? ''}
+                  shown={
+                    entry.station != null
+                      ? stationLabel(entry.station, t)
+                      : entry.stationRemoved != null
+                        ? t('stations.noStation')
+                        : t('roster.noStation')
+                  }
+                  {...(entry.station == null &&
+                    entry.stationRemoved != null && { describedBy: 'rs-gone' })}
+                  dense
+                  onChange={onStation}
+                  options={[{ value: '', label: t('roster.noStation') }]}
+                  groups={stationGroups(plan.stations, t)}
+                />
+              ) : (
+                <StationWords entry={entry} />
+              )}
+              {manage && entry.station == null && entry.stationRemoved != null && (
+                <GoneWhy section={entry.stationRemoved} id="rs-gone" />
+              )}
+            </dd>
           </div>
           {entry.mobile != null && (
             <div>

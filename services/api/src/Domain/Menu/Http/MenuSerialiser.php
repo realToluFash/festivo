@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domain\Menu\Http;
 
 use App\Domain\Menu\ChoiceRules;
+use App\Domain\Menu\CourseItemLister;
 use App\Domain\Menu\Interfaces\MenuPicksInterface;
 use App\Domain\Menu\Model\PicksClose;
 use App\Entity\Event;
@@ -14,7 +15,6 @@ use App\Entity\MenuDish;
 use App\Entity\MenuDishChoice;
 use App\Entity\MenuDishVariant;
 use App\Locale\Money;
-use App\Locale\NameNormaliser;
 use App\Repository\MenuChoiceOptionRepository;
 use App\Repository\MenuCourseRepository;
 use App\Repository\MenuDishChoiceRepository;
@@ -59,7 +59,7 @@ final readonly class MenuSerialiser
                 'answer' => $course->guestsChoose() ? 'choose' : 'same',
                 'skippable' => $course->isSkippable(),
                 'ownItems' => $course->getOwnItems(),
-                'items' => self::courseItems($course, $dishes[$course->getId()->toRfc4122()] ?? [], $variants, $options),
+                'items' => CourseItemLister::items($course, $dishes[$course->getId()->toRfc4122()] ?? [], $variants, $options),
                 'dishes' => Vec\map($dishes[$course->getId()->toRfc4122()] ?? [], fn (MenuDish $dish): array => $this->dish(
                     $dish,
                     $variants[$dish->getId()->toRfc4122()] ?? [],
@@ -160,52 +160,6 @@ final readonly class MenuSerialiser
             'picked' => [] !== $this->menuPicks->pickersOfVariant($variant),
             ...(null === $currency ? [] : ['cost' => self::money($variant->getCostMinor(), $currency), 'pricedIn' => $variant->getPricedIn()]),
         ];
-    }
-
-    /**
-     * One name is one item on a course, whichever dish or option it comes from: each once, in the order it first appears, the dishes' then the course's own.
-     *
-     * @param list<MenuDish>                        $dishes   in the menu's order
-     * @param array<string, list<MenuDishVariant>>  $variants by dish id
-     * @param array<string, list<MenuChoiceOption>> $options  by choice id
-     *
-     * @return list<string>
-     */
-    private static function courseItems(MenuCourse $course, array $dishes, array $variants, array $options): array
-    {
-        $names = [];
-
-        foreach ($dishes as $dish) {
-            $items = $dish->getItems();
-
-            if ([] === $items) {
-                $names[] = $dish->getName();
-
-                continue;
-            }
-
-            foreach ($items as $item) {
-                $names = [...$names, ...match ($item['kind']) {
-                    'fixed' => [$item['name']],
-                    'variants' => Vec\map($variants[$dish->getId()->toRfc4122()] ?? [], static fn (MenuDishVariant $one): string => $one->getName()),
-                    'choice' => Vec\map($options[$item['choiceId']] ?? [], static fn (MenuChoiceOption $one): string => $one->getName()),
-                }];
-            }
-        }
-
-        $seen = [];
-        $items = [];
-
-        foreach ([...$names, ...$course->getOwnItems()] as $name) {
-            $key = NameNormaliser::key($name);
-
-            if (!Iter\contains($seen, $key)) {
-                $seen[] = $key;
-                $items[] = NameNormaliser::name($name);
-            }
-        }
-
-        return $items;
     }
 
     /** @return ?array{amount: string, currency: string} */

@@ -97,10 +97,12 @@ final class OrganisationExportTest extends ApiTestCase
         'dish_library_variants' => ['id', 'dish_id', 'position', 'name', 'for_children', 'allergens', 'diets', 'last_price_minor', 'last_price_currency'],
         'vendors' => ['id', 'name', 'category', 'contact_name', 'email_address', 'phone_country_code', 'phone_number', 'website', 'address', 'note', 'archived_at', 'created_at'],
         'run_of_show' => ['id', 'event_id', 'title', 'starts_at', 'length_minutes', 'place', 'owner_name', 'owner_role', 'note', 'show_to_guests', 'skipped', 'started_at', 'ended_at'],
-        'staff' => ['id', 'event_id', 'full_name', 'mobile', 'email', 'member_id', 'job_id'],
+        'staff' => ['id', 'event_id', 'full_name', 'mobile', 'email', 'member_id', 'job_id', 'station_id', 'as_well_station_id', 'floor_lead'],
         'staff_jobs' => ['id', 'event_id', 'name', 'access', 'position', 'created_at'],
         'staff_shifts' => ['id', 'job_id', 'starts_at', 'ends_at', 'needed'],
         'staff_shift_people' => ['shift_id', 'staff_id'],
+        'staff_stations' => ['id', 'event_id', 'kind', 'name', 'section_id', 'lead_id', 'position', 'walk_position'],
+        'staff_item_stations' => ['course_id', 'item_key', 'station_id'],
         'cost_lines' => ['id', 'event_id', 'label', 'category', 'basis', 'price_minor', 'price_currency', 'note', 'created_at', 'updated_at'],
     ];
 
