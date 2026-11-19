@@ -246,6 +246,14 @@ describe('/demo/events/evt-wed-4/staff/roster (sc-3906)', () => {
     );
   });
 
+  it('says why in the details without staff.manage, with no picker (sc-3910)', async () => {
+    await open('sectionRemovedReadOnly');
+    const details = screen.getByRole('complementary');
+    expect(within(details).getByText('No station')).toBeTruthy();
+    expect(within(details).getByText('Section D was removed from the seating plan.')).toBeTruthy();
+    expect(screen.queryByLabelText('Change station, Emeka Obi')).toBeNull();
+  });
+
   it('groups the Station picker as Stations does, Places then Seating sections (sc-3910)', async () => {
     await open('details');
     const picker = screen.getByLabelText('Change station, Amina Yusuf');
@@ -254,7 +262,7 @@ describe('/demo/events/evt-wed-4/staff/roster (sc-3906)', () => {
       [...group.querySelectorAll('option')].map((one) => one.textContent),
     ]);
     expect(groups).toEqual([
-      ['Places', ['Pass', 'Door', 'Bar', 'Kitchen', 'Floor', 'Grill', 'Pastry']],
+      ['Places', ['Pass', 'Door', 'Bar', 'Kitchen', 'Stage', 'Floor', 'Grill', 'Pastry']],
       ['Seating sections', ['Section A', 'Section B', 'Section C']],
     ]);
     expect(picker.querySelector(':scope > option')?.textContent).toBe('No station yet');
