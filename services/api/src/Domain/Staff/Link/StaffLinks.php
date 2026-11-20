@@ -24,6 +24,7 @@ use DateTimeImmutable;
 use Doctrine\DBAL\LockMode;
 use Doctrine\ORM\EntityManagerInterface;
 use Psl\Encoding\Base64;
+use Psl\Iter;
 use Psl\SecureRandom;
 use Psl\Vec;
 use Psr\Clock\ClockInterface;
@@ -154,8 +155,8 @@ final readonly class StaffLinks
 
         $starts = Vec\map($shifts, static fn (StaffShift $shift): DateTimeImmutable => ShiftClock::instant($shift->getStartsAt(), $event));
         $ends = Vec\map($shifts, static fn (StaffShift $shift): DateTimeImmutable => ShiftClock::instant($shift->getEndsAt(), $event));
-        $from = \min($starts)->modify(self::OPENS_BEFORE);
-        $until = \max($ends)->modify(self::ENDS_AFTER);
+        $from = Iter\reduce($starts, static fn (DateTimeImmutable $one, DateTimeImmutable $other): DateTimeImmutable => $other < $one ? $other : $one, $starts[0])->modify(self::OPENS_BEFORE);
+        $until = Iter\reduce($ends, static fn (DateTimeImmutable $one, DateTimeImmutable $other): DateTimeImmutable => $other > $one ? $other : $one, $ends[0])->modify(self::ENDS_AFTER);
 
         return match (true) {
             $now < $from => StaffLinkWindow::notYet($from, $until),
