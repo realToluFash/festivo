@@ -332,6 +332,11 @@ describe('payments on a vendor’s page, shapes and reminders, in A (sc-88, sc-1
     expect(shapingProblems(three([0, 50, 50]), 1000)[0]).toEqual({
       share: 'Enter a percentage above 0 and up to 100, with up to two decimal places.',
     });
+    expect(shapingProblems(three([0, 50, 50]), 1)).toEqual([
+      { share: 'Enter a percentage above 0 and up to 100, with up to two decimal places.' },
+      {},
+      { share: tooSmall },
+    ]);
     expect(shapingProblems(three([45, 45, 10]))).toEqual([{}, {}, {}]);
   });
 

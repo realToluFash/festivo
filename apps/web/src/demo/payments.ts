@@ -357,7 +357,7 @@ export function shapingProblems(shaping: Shaping, quoted?: number): ShapeProblem
   const found = shaping.terms.map((one, index) =>
     shapeProblems(one, shaping.typed[index] ?? draftOfTerm(one)),
   );
-  if (quoted == null || !sharesTyped(shaping)) return found;
+  if (quoted == null) return found;
   const amounts = shapeAmounts(typedTerms(shaping), quoted);
 
   return found.map((one, index) =>
