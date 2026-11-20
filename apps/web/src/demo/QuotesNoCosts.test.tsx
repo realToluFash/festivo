@@ -124,6 +124,31 @@ describe('An event with no costs yet keeps its quotes on Budget (sc-74361)', () 
     },
   );
 
+  it('says the same in Correct, on a quote whose event has no costs', SLOW, async () => {
+    await open(`${BUDGET}&vendor=v3&costs=none`);
+    await within(main()).findByRole('heading', { level: 1, name: 'Bloom & Co' });
+    fireEvent.click(
+      within(section('The quote')).getByRole('button', { name: 'Correct the quote' }),
+    );
+    const dialog = screen.getByRole('dialog', { name: 'Correct the quote' });
+    expect(within(dialog).getByText(NO_LINES)).toBeDefined();
+    expect(within(dialog).queryByRole('checkbox')).toBeNull();
+  });
+
+  it('never shows a page with costs the quotes a page with none kept', SLOW, async () => {
+    await open(`${BUDGET}&state=empty_quoted`);
+    expect(
+      within(section('Vendors quoted')).getByRole('link', { name: /^Bloom & Co/ }),
+    ).toBeDefined();
+    cleanup();
+
+    await open(BUDGET);
+    expect(within(main()).queryByText('No costs yet')).toBeNull();
+    expect(
+      within(section('Vendors quoted')).getByRole('link', { name: /^Savour Kitchen/ }),
+    ).toBeDefined();
+  });
+
   it('shows the quote and its overdue balance under Due next', SLOW, async () => {
     await open(`${BUDGET}&state=empty_quoted`);
     expect(within(main()).getByText('No costs yet')).toBeDefined();

@@ -147,12 +147,13 @@ function QuotesBody({
     return paymentsStart(quotesStart(from, vendorId, longDay), state, vendorId);
   });
   const [budget, setBudget] = useState<Budget>(
-    () => (state === '' ? keptBudget() : null) ?? start.budget,
+    () => (state === '' ? keptBudget(noCosts) : null) ?? start.budget,
   );
 
   useEffect(() => {
-    if (budget !== start.budget || NO_COSTS_STATES.includes(state)) keepBudget(budget);
-  }, [budget, start.budget, state]);
+    if (noCosts || NO_COSTS_STATES.includes(state)) keepBudget(budget, true);
+    else if (budget !== start.budget) keepBudget(budget, false);
+  }, [budget, start.budget, state, noCosts]);
   const [hasCosts, setHasCosts] = useState(() => !noCosts && linesOf(state).length > 0);
   const [quote, setQuote] = useState<Opened | null>(start.quote);
   const [payment, setPayment] = useState<PaymentOpen | null>(start.payment);

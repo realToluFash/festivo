@@ -575,14 +575,15 @@ function paidBy(payment: Payment): Payment {
   return { ...payment, paid: { amount: payment.amount, on, by: READER, reference: '' } };
 }
 
-let kept: Budget | null = null;
+let kept: { budget: Budget; noCosts: boolean } | null = null;
 
-export function keepBudget(budget: Budget): void {
-  kept = budget;
+export function keepBudget(budget: Budget, noCosts: boolean): void {
+  kept = { budget, noCosts };
 }
 
-export function keptBudget(): Budget | null {
-  return kept;
+/** A page with costs never shows the quotes a page with none kept, nor the other way round. */
+export function keptBudget(noCosts: boolean): Budget | null {
+  return kept?.noCosts === noCosts ? kept.budget : null;
 }
 
 export function forgetBudget(): void {
@@ -819,6 +820,11 @@ export const QUOTES_PAGES: readonly { name: string; states: readonly DemoLink[] 
       { to: at('no_quotes'), name: 'No quotes yet (no_quotes)' },
       { to: at('nothing_due'), name: 'Quotes, and nothing is due (nothing_due)' },
       { to: at('quotes_failed'), name: 'Quotes and payments did not load (quotes_failed)' },
+      { to: at('vendor', SAVOUR), name: 'Savour Kitchen, £1,500.00 not scheduled (vendor)' },
+      { to: at(undefined, BLOOM), name: 'Bloom & Co, the balance overdue, with Mark paid' },
+      { to: at('no_payments', SAVOUR), name: 'No payments scheduled yet (no_payments)' },
+      { to: at('earlier', SAVOUR), name: 'The earlier quote, shown (earlier)' },
+      { to: at('lead', SAVOUR), name: 'The event’s Lead: the name is plain (lead)' },
     ],
   },
   {
@@ -846,11 +852,6 @@ export const QUOTES_PAGES: readonly { name: string; states: readonly DemoLink[] 
         to: at('empty_quotes_failed'),
         name: 'Quotes did not load, no costs (empty_quotes_failed)',
       },
-      { to: at('vendor', SAVOUR), name: 'Savour Kitchen, £1,500.00 not scheduled (vendor)' },
-      { to: at(undefined, BLOOM), name: 'Bloom & Co, the balance overdue, with Mark paid' },
-      { to: at('no_payments', SAVOUR), name: 'No payments scheduled yet (no_payments)' },
-      { to: at('earlier', SAVOUR), name: 'The earlier quote, shown (earlier)' },
-      { to: at('lead', SAVOUR), name: 'The event’s Lead: the name is plain (lead)' },
     ],
   },
   {
