@@ -26,6 +26,6 @@ final class SplitLine
 
     public function isNotPriced(): bool
     {
-        return 0 === $this->cost->line->getPriceMinor();
+        return $this->cost->line->isNotPriced();
     }
 }

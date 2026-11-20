@@ -392,6 +392,23 @@ final class PayersTest extends ApiTestCase
     }
 
     #[Test]
+    public function theAgencysFeeAtNothingWithAClientPriceOfItsOwnIsPriced(): void
+    {
+        $fee = $this->addCost('Planning fee', '0');
+        $mum = $this->addPayer('Mum');
+        $this->choose([$fee], ['mode' => 'one', 'payerId' => $mum]);
+        (self::em()->find(BudgetLine::class, Uuid::fromString($fee)) ?? self::fail('no line'))->chargeAt(120000);
+        self::em()->flush();
+
+        $mine = Type\shape([
+            'notPriced' => Type\int(),
+            'covers' => Type\vec(Type\shape(['label' => Type\string(), 'notPriced' => Type\bool()], true)),
+        ], true)->coerce(Type\vec(Type\mixed())->coerce($this->as($this->owner, 'GET', $this->payers())['payers'] ?? null)[0] ?? null);
+
+        self::assertSame([0, [['Planning fee', false]]], [$mine['notPriced'], Vec\map($mine['covers'], static fn (array $cover): array => [$cover['label'], $cover['notPriced']])]);
+    }
+
+    #[Test]
     public function aRiseOnAFixedSplitGoesToWhoeverCoversTheRestWithNoFlag(): void
     {
         $line = $this->addCost('Cars', '900');
