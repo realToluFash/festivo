@@ -314,11 +314,20 @@ final readonly class OrganisationArchive
             SQL,
         'cost_lines' => <<<'SQL'
             SELECT b.id, b.event_id, b.label, b.category, b.basis, b.price_minor,
-                   CASE WHEN b.price_minor IS NOT NULL THEN ev.currency END AS price_currency, b.note, b.created_at, b.updated_at
+                   CASE WHEN b.price_minor IS NOT NULL THEN ev.currency END AS price_currency, b.note,
+                   b.markup_tenths, b.client_price_minor,
+                   CASE WHEN b.client_price_minor IS NOT NULL THEN ev.currency END AS client_price_currency, b.created_at, b.updated_at
               FROM budget_lines b
               JOIN events ev ON ev.id = b.event_id
              WHERE ev.organisation_id = :organisation AND ev.deleted_at IS NULL AND b.removed_at IS NULL
              ORDER BY ev.starts_at_utc, b.event_id, b.id
+            SQL,
+        'cost_markups' => <<<'SQL'
+            SELECT m.id, m.event_id, m.category, m.markup_tenths, m.created_at, m.updated_at
+              FROM budget_markups m
+              JOIN events ev ON ev.id = m.event_id
+             WHERE ev.organisation_id = :organisation AND ev.deleted_at IS NULL
+             ORDER BY ev.starts_at_utc, m.event_id, m.id
             SQL,
         'quotes' => <<<'SQL'
             SELECT q.id, e.event_id, e.vendor_id, q.covers, q.amount_minor, ev.currency AS amount_currency,

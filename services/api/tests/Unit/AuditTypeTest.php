@@ -23,7 +23,7 @@ use SplFileInfo;
 final class AuditTypeTest extends TestCase
 {
     /** Areas about an event's guests, menu, seating, schedule, staff and budget: left out until sc-71986 gives them types (decided 19 Nov 2026). */
-    private const array LEFT_OUT = ['guest', 'guests', 'guest_group', 'menu', 'dish', 'seating', 'run_of_show', 'staff', 'stations', 'budget_line', 'quote', 'scheduled_payment'];
+    private const array LEFT_OUT = ['guest', 'guests', 'guest_group', 'menu', 'dish', 'seating', 'run_of_show', 'staff', 'stations', 'budget_line', 'budget_markup', 'quote', 'scheduled_payment'];
 
     /** Areas about a person's own account, which the log never shows. */
     private const array PERSONAL = ['name', 'email', 'phone', 'provider', 'sessions', 'two_factor_recovery'];

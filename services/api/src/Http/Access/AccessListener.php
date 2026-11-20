@@ -85,7 +85,7 @@ final readonly class AccessListener
         $organisationId = $this->eventDirectory->organisationOf($eventId) ?? throw self::notFound();
 
         $grants = $this->membershipDirectory->grantsOnEvent($user, $organisationId, $eventId) ?? throw self::notFound();
-        $this->check($request, $grants, $policy->permission, $policy->feature);
+        $this->check($request, $grants, $policy->permission, $policy->feature, $policy->featureLocksReading);
 
         $request->attributes->set(self::EVENT, $eventId);
     }

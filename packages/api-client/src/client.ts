@@ -136,6 +136,7 @@ import {
 } from './schedule.ts';
 import { type RoomScreen, type ScreenLink, asRoomScreen, asScreenLinks } from './screens.ts';
 import { type BudgetLineTyped, type EventBudget, asEventBudget } from './budget.ts';
+import { type BudgetMargin, type LineCharge, asBudgetMargin } from './margin.ts';
 import {
   type EventQuote,
   type EventQuotes,
@@ -3714,6 +3715,47 @@ export class ApiClient {
   async budgetSubscription(eventId: string): Promise<RealtimeSubscription> {
     const body = await this.post<{ token?: unknown; expiresAt?: unknown }>(
       `${this.budgetPath(eventId)}/subscriptions`,
+    );
+
+    return {
+      token: typeof body.token === 'string' ? body.token : '',
+      expiresAt: typeof body.expiresAt === 'string' ? body.expiresAt : '',
+    };
+  }
+
+  /** Client prices, markups and margin (sc-92); 403 `plan_required` without a plan with margin, `permission_required` without budget.margin. */
+  async budgetMargin(eventId: string): Promise<BudgetMargin> {
+    return asBudgetMargin(await this.get<unknown>(`${this.budgetPath(eventId)}/margin`));
+  }
+
+  /** The whole event's markup, or a category's; null takes it away. Answers with the whole margin. */
+  async setBudgetMarkup(
+    eventId: string,
+    category: string | null,
+    markup: string | null,
+  ): Promise<BudgetMargin> {
+    const path =
+      category == null
+        ? `${this.budgetPath(eventId)}/markup`
+        : `${this.budgetPath(eventId)}/markups/${encodeURIComponent(category)}`;
+
+    return asBudgetMargin(await this.put<unknown>(path, { markup }));
+  }
+
+  async chargeBudgetLine(
+    eventId: string,
+    lineId: string,
+    charge: LineCharge,
+  ): Promise<BudgetMargin> {
+    return asBudgetMargin(
+      await this.put<unknown>(`${this.budgetLinePath(eventId, lineId)}/charge`, charge),
+    );
+  }
+
+  /** A hub token for this event's margin and the headcount that moves it. */
+  async budgetMarginSubscription(eventId: string): Promise<RealtimeSubscription> {
+    const body = await this.post<{ token?: unknown; expiresAt?: unknown }>(
+      `${this.budgetPath(eventId)}/margin/subscriptions`,
     );
 
     return {

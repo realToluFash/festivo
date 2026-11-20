@@ -176,6 +176,7 @@ export function FocusedScreen({
   over,
   toast,
   scrollRef,
+  toTop = 0,
   fills = false,
   gap = tokens.spaceLg,
   children,
@@ -198,6 +199,8 @@ export function FocusedScreen({
   over?: Layer | null;
   toast?: { words: string; onClose: () => void } | null;
   scrollRef?: Ref<ScrollViewInstance>;
+  /** Each time it changes, the body goes back to its top, where a notice answering the verb shows (sc-74540). */
+  toTop?: number;
   /** The body brings its own scroller, sized `flexGrow: 1, flexShrink: 1`: a tablet sheet takes its height from it, so `flex: 1` draws it at none. */
   fills?: boolean;
   gap?: number;
@@ -217,7 +220,17 @@ export function FocusedScreen({
   const close = asking ? ask.onKeep : over != null ? over.onClose : cancel;
   const scroll = useRef<ScrollViewInstance>(null);
   const offset = useRef(0);
-  useFocusedFieldInSight(scroll, offset);
+  const holdField = useFocusedFieldInSight(scroll, offset);
+  const reduced = useReducedMotion();
+  const wentToTop = useRef(toTop);
+
+  useEffect(() => {
+    if (toTop === wentToTop.current) return;
+
+    wentToTop.current = toTop;
+    holdField();
+    scroll.current?.scrollTo({ y: 0, animated: !reduced });
+  }, [toTop, reduced, holdField]);
 
   return (
     <Window

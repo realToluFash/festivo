@@ -531,7 +531,7 @@ final class AlternativeContactsTest extends ApiTestCase
         $me = $this->call('GET', '/api/auth/me');
         $emails = Type\vec(Type\shape(['address' => Type\string(), 'undeliverable' => Type\bool()], true))->coerce($me['emailAddresses']);
 
-        return Dict\from_entries(Vec\map($emails, static fn (array $email): array => [$email['address'], $email['undeliverable']]));
+        return Dict\sort_by_key(Dict\from_entries(Vec\map($emails, static fn (array $email): array => [$email['address'], $email['undeliverable']])));
     }
 
     /** @return list<string> */

@@ -8,14 +8,7 @@
 }
 
 .ea-step .desk-step {
-  height: auto;
-  min-height: var(--sizeHit);
-  max-width: 100%;
   margin-top: 0;
-  padding-block: var(--spaceSm);
-  line-height: 1.25;
-  text-align: left;
-  white-space: normal;
 }
 
 .ea-said-region {

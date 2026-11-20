@@ -1,0 +1,15 @@
+# sc-73933: the Filter menu with three types chosen, left open for the accessibility tree to be read.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events
+- extendedWaitUntil: { visible: { id: 'events.filter' }, timeout: 30000 }
+- waitForAnimationToEnd
+- tapOn: { id: 'events.filter' }
+- tapOn: { id: 'events.filter.type' }
+- waitForAnimationToEnd
+- tapOn: { id: 'events.filter.type.wedding' }
+- tapOn: { id: 'events.filter.type.birthday' }
+- tapOn: { id: 'events.filter.type.anniversary' }
+- tapOn: { id: 'events.filter.back' }
+- waitForAnimationToEnd
+- takeScreenshot: three

@@ -11,50 +11,59 @@ final class Version20261120090000 extends AbstractMigration
 {
     public function getDescription(): string
     {
-        return 'Marking a scheduled payment paid, cancelling it, and adding one already made (sc-88). Nullable columns and a false default, so every existing payment reads as unpaid and owed, as it was.';
+        return 'What a budget line is charged at (sc-92): a markup in tenths of a percent or an explicit client price on the line, never both, and a markup once for the event or per category. No line has either yet, so nothing is backfilled.';
     }
 
     public function up(Schema $schema): void
     {
         $this->addSql(<<<'SQL'
-            ALTER TABLE scheduled_payments
-                ADD paid_amount_minor  BIGINT DEFAULT NULL,
-                ADD paid_on            DATE DEFAULT NULL,
-                ADD paid_reference     VARCHAR(400) DEFAULT NULL,
-                ADD paid_at            TIMESTAMP(0) WITHOUT TIME ZONE DEFAULT NULL,
-                ADD paid_by_id         UUID DEFAULT NULL,
-                ADD added_as_paid      BOOLEAN DEFAULT false NOT NULL,
-                ADD cancelled_at       TIMESTAMP(0) WITHOUT TIME ZONE DEFAULT NULL,
-                ADD cancelled_by_id    UUID DEFAULT NULL,
-                ADD cancel_reason      VARCHAR(800) DEFAULT NULL,
-                ADD CONSTRAINT scheduled_payments_paid_amount_positive CHECK (paid_amount_minor > 0),
-                ADD CONSTRAINT scheduled_payments_paid_or_cancelled CHECK (paid_at IS NULL OR cancelled_at IS NULL)
+            ALTER TABLE budget_lines
+              ADD markup_tenths      INT    DEFAULT NULL,
+              ADD client_price_minor BIGINT DEFAULT NULL
             SQL);
-        $this->addSql('CREATE INDEX idx_scheduled_payment_paid_by ON scheduled_payments (paid_by_id)');
-        $this->addSql('CREATE INDEX idx_scheduled_payment_cancelled_by ON scheduled_payments (cancelled_by_id)');
-        $this->addSql('ALTER TABLE scheduled_payments ADD CONSTRAINT FK_SCHEDULED_PAYMENTS_PAID_BY FOREIGN KEY (paid_by_id) REFERENCES users (id) ON DELETE SET NULL NOT DEFERRABLE');
-        $this->addSql('ALTER TABLE scheduled_payments ADD CONSTRAINT FK_SCHEDULED_PAYMENTS_CANCELLED_BY FOREIGN KEY (cancelled_by_id) REFERENCES users (id) ON DELETE SET NULL NOT DEFERRABLE');
+        $this->addSql('ALTER TABLE budget_lines DROP CONSTRAINT budget_lines_erased_past_currency');
+        $this->addSql(<<<'SQL'
+            ALTER TABLE budget_lines
+              ADD CONSTRAINT budget_lines_markup_bounds CHECK (markup_tenths BETWEEN 0 AND 9999),
+              ADD CONSTRAINT budget_lines_client_price_not_negative CHECK (client_price_minor >= 0),
+              ADD CONSTRAINT budget_lines_one_charge CHECK (markup_tenths IS NULL OR client_price_minor IS NULL),
+              ADD CONSTRAINT budget_lines_erased_past_currency CHECK (
+                  NOT currency_changed OR (removed_at IS NOT NULL AND label IS NULL AND price_minor IS NULL AND note IS NULL AND client_price_minor IS NULL)
+              )
+            SQL);
+        $this->addSql(<<<'SQL'
+            CREATE TABLE budget_markups (
+                id            UUID NOT NULL,
+                event_id      UUID NOT NULL,
+                category      VARCHAR(16) DEFAULT NULL,
+                markup_tenths INT NOT NULL,
+                created_at    TIMESTAMP(0) WITHOUT TIME ZONE NOT NULL,
+                updated_at    TIMESTAMP(0) WITHOUT TIME ZONE NOT NULL,
+                PRIMARY KEY (id),
+                CONSTRAINT budget_markups_category CHECK (category IN ('catering', 'venue', 'flowers', 'photography', 'music', 'transport', 'staffing', 'hire', 'other')),
+                CONSTRAINT budget_markups_bounds CHECK (markup_tenths BETWEEN 0 AND 9999)
+            )
+            SQL);
+        $this->addSql('CREATE INDEX idx_budget_markup_event ON budget_markups (event_id)');
+        $this->addSql('CREATE UNIQUE INDEX uniq_budget_markup_event ON budget_markups (event_id) WHERE (category IS NULL)');
+        $this->addSql('CREATE UNIQUE INDEX uniq_budget_markup_category ON budget_markups (event_id, category) WHERE (category IS NOT NULL)');
+        $this->addSql('ALTER TABLE budget_markups ADD CONSTRAINT FK_BUDGET_MARKUPS_EVENT FOREIGN KEY (event_id) REFERENCES events (id) ON DELETE CASCADE NOT DEFERRABLE');
     }
 
     public function down(Schema $schema): void
     {
-        $this->addSql('ALTER TABLE scheduled_payments DROP CONSTRAINT FK_SCHEDULED_PAYMENTS_CANCELLED_BY');
-        $this->addSql('ALTER TABLE scheduled_payments DROP CONSTRAINT FK_SCHEDULED_PAYMENTS_PAID_BY');
-        $this->addSql('DROP INDEX idx_scheduled_payment_cancelled_by');
-        $this->addSql('DROP INDEX idx_scheduled_payment_paid_by');
+        $this->addSql('DROP TABLE budget_markups');
+        $this->addSql('ALTER TABLE budget_lines DROP CONSTRAINT budget_lines_erased_past_currency');
         $this->addSql(<<<'SQL'
-            ALTER TABLE scheduled_payments
-                DROP CONSTRAINT scheduled_payments_paid_or_cancelled,
-                DROP CONSTRAINT scheduled_payments_paid_amount_positive,
-                DROP paid_amount_minor,
-                DROP paid_on,
-                DROP paid_reference,
-                DROP paid_at,
-                DROP paid_by_id,
-                DROP added_as_paid,
-                DROP cancelled_at,
-                DROP cancelled_by_id,
-                DROP cancel_reason
+            ALTER TABLE budget_lines
+              DROP CONSTRAINT budget_lines_one_charge,
+              DROP CONSTRAINT budget_lines_client_price_not_negative,
+              DROP CONSTRAINT budget_lines_markup_bounds,
+              DROP markup_tenths,
+              DROP client_price_minor,
+              ADD CONSTRAINT budget_lines_erased_past_currency CHECK (
+                  NOT currency_changed OR (removed_at IS NOT NULL AND label IS NULL AND price_minor IS NULL AND note IS NULL)
+              )
             SQL);
     }
 }
