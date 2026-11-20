@@ -1235,6 +1235,7 @@ export type EditState =
   | 'replyByError'
   | 'replyBySooner'
   | 'replyByNow'
+  | 'replyByForbidden'
   | 'replyBySaved'
   | 'replyByRemoved';
 
@@ -1332,6 +1333,7 @@ export const EVENT_STATES: Record<EventStateName, string> = {
   replyByError: 'evt-wed-4',
   replyBySooner: 'evt-wed-4',
   replyByNow: 'evt-wed-4',
+  replyByForbidden: 'evt-wed-4',
   replyBySaved: 'evt-wed-4',
   replyByRemoved: 'evt-wed-4',
   pause: 'evt-wed-4',
@@ -1467,6 +1469,7 @@ export function partOf(state: EventStateName | null): Part | null {
     case 'replyByError':
     case 'replyBySooner':
     case 'replyByNow':
+    case 'replyByForbidden':
       return 'replyBy';
     default:
       return null;
@@ -1733,6 +1736,7 @@ export const EVENTS_PAGES: readonly { name: string; states: readonly DemoLink[] 
       on('replyByError', 'Reply by, on the day it starts'),
       on('replyBySooner', 'Reply by, moved sooner'),
       on('replyByNow', 'Reply by, moved into the past'),
+      on('replyByForbidden', 'Reply by, a role changed while open (403): above Cancel and Save'),
       on('replyBySaved', 'Reply by, saved'),
       on('replyByRemoved', 'Reply by, removed'),
     ],
