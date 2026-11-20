@@ -1,4 +1,4 @@
-# sc-27213 regression: a wrong current password sent by the return key is refused with the keys up and Current password focused, the field the refusal names (sc-13408); then a key typed into New password and sent again with the API paused leaves Cancel off, and a tap on it closes nothing (sc-12545). Needs ${METRO_URL}.
+# sc-27213 regression: a wrong current password sent by the return key is refused with the keys up and Current password focused, the field the refusal names (sc-13408); then New password typed into and sent again with the API paused leaves Cancel off, and a tap on it closes nothing (sc-12545). Needs ${METRO_URL}.
 # The return key is Enter on iOS and the keyboard's action key on Android, where Enter can type into the field instead (sc-18648): tapped by its name, Done, where the keyboard names it, else at its place. The choice is made before anything is sent, so a fast refusal cannot draw a second tap.
 appId: host.exp.Exponent
 onFlowComplete:
@@ -92,7 +92,17 @@ onFlowComplete:
           centerElement: true
 - tapOn:
     id: 'security.change.new'
-- inputText: 'x'
+# iOS replaces a secure field's text when it is typed into again after losing focus, so it gets a whole new password; Android adds to it.
+- runFlow:
+    when:
+      platform: iOS
+    commands:
+      - inputText: 'brand-new-password-456'
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      - inputText: 'x'
 - runFlow:
     when:
       platform: iOS
