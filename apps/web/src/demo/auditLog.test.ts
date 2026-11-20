@@ -41,7 +41,7 @@ describe('Audit log (sc-611)', () => {
       ['Today · Monday, Oct 19', 4],
       ['Sunday, Oct 18', 7],
       ['Saturday, Oct 17', 2],
-      ['Friday, Oct 16', 4],
+      ['Friday, Oct 16', 5],
       ['Tuesday, Oct 6', 2],
     ]);
     expect(timeOf(entry('download'), LOCALE, LAGOS)).toBe('10:05');
@@ -130,6 +130,28 @@ describe('Audit log (sc-611)', () => {
       Entries: '3',
       'Type and action': 'Audit log · audit_log.exported',
     });
+  });
+
+  it('gives a plan change by Soirely support its reason as a row of its own, after Changes', () => {
+    expect(auditStart('detail_plan').detail).toBe('planChanged');
+    expect(factsOf(entry('planChanged'), LOCALE, LAGOS).map((fact) => fact.label)).toEqual([
+      'When',
+      'Who',
+      'What',
+      'On',
+      'Changes',
+      'Reason',
+      'Type and action',
+      'Reference',
+    ]);
+    expect(facts('planChanged')).toMatchObject({
+      Who: 'Soirely support',
+      What: 'Changed the plan of Ire Events',
+      Changes: 'Plan: Free → Enterprise',
+      Reason: 'QA retest',
+      'Type and action': 'Organisation · organisation.plan_changed',
+    });
+    expect(Object.values(facts('planChanged')).join('\n')).not.toContain('None →');
   });
 
   it('opens each state as the boards draw it', () => {

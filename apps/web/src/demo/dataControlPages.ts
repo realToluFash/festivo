@@ -118,6 +118,7 @@ export const DATA_CONTROL_PAGES: PageLinks = [
       audit('detail_section', 'An entry on the event’s Staff'),
       audit('detail_dish', 'An organisation’s dish, under no event'),
       audit('detail_export', 'An export of the log: its format, filters and count'),
+      audit('detail_plan', 'A plan change by Soirely support: its reason'),
       audit('export', 'Export these entries'),
       audit('export_small', 'Exported: downloading'),
       audit('export_preparing', 'Exported: preparing, emailed'),
