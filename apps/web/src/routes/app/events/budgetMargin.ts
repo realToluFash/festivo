@@ -81,7 +81,9 @@ export function howWords(t: TFunction, line: ChargedLine, locale: string): strin
             category: t(`vendors.categories.${line.category}`),
           });
     case 'event':
-      return t('budget.margin.how.event', { markup });
+      return Number(line.markup) === 0
+        ? t('budget.margin.how.atCost')
+        : t('budget.margin.how.event', { markup });
     default:
       return t('budget.margin.how.none');
   }

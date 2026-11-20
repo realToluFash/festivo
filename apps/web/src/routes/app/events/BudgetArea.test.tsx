@@ -990,6 +990,27 @@ describe('the margin face, for margin readers on a plan with margin (sc-92)', ()
     expect(screen.queryByText('Client total')).toBeNull();
   });
 
+  it('reads an event markup of 0 as at cost, chosen, on the event row and every line it covers', async () => {
+    signedIn();
+    serve({
+      'GET /api/events/ev_1/budget/margin': () =>
+        json(
+          margin({
+            markups: { event: '0', categories: {} },
+            lines: [{ ...MARGIN_DINNER, markup: '0' }],
+          }),
+        ),
+    });
+
+    fireEvent.click(await screen.findByRole('button', { name: 'See margin' }));
+
+    expect(screen.getByRole('button', { name: /^Whole event/u }).textContent).toContain(
+      'At cost, chosen',
+    );
+    expect(screen.getByText(/· at cost, chosen$/u)).toBeTruthy();
+    expect(screen.queryByText(/markup, the event’s/u)).toBeNull();
+  });
+
   it('says nothing is missing on a plan without margin', async () => {
     signedIn();
     serve({ 'GET /api/events/ev_1/budget/margin': () => problem(403, 'plan_required') });

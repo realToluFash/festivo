@@ -349,7 +349,7 @@ export function MarkupBlock({
       how:
         margin.markups.event == null
           ? t('budget.margin.noMarkupSet')
-          : t('budget.margin.markupIs', { markup: percentWords(margin.markups.event, locale) }),
+          : markupIs(margin.markups.event),
       key: 'event',
       opening: { scope: 'event', key: '' },
     },
