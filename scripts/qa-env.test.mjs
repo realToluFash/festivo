@@ -866,6 +866,13 @@ describe('the ports an emulator is given', () => {
     }
   });
 
+  it('take in the port of a proxy QA_API_URL names on this machine', () => {
+    expect(reversedPorts(QA_PORTS, { QA_API_URL: 'http://127.0.0.1:18999' })).toContain(18999);
+    expect(reversedPorts(QA_PORTS, { QA_API_URL: 'http://192.168.1.40:18999' })).not.toContain(
+      18999,
+    );
+  });
+
   it('leave the databases on the host', () => {
     const ports = reversedPorts(QA_PORTS);
     expect(ports).not.toContain(QA_PORTS.POSTGRES_PORT);

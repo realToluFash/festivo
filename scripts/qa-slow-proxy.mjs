@@ -39,10 +39,11 @@ export function startProxy({ target, delay, pattern, port = 0, host = '127.0.0.1
 
     if (holds(req.method, req.url, pattern)) {
       req.pause();
-      setTimeout(() => {
+      const held = setTimeout(() => {
         req.resume();
         forward();
       }, delay);
+      res.on('close', () => clearTimeout(held));
     } else {
       forward();
     }

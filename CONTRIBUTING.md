@@ -88,7 +88,10 @@ To hold a loading state on screen, start `ios` or `android` with `QA_API_URL` na
 in front of the tester's API: `node scripts/qa-slow-proxy.mjs --target <API url> --port <n>
 --delay 5000` holds each `GET /api/events/{id}/guests` for five seconds and forwards everything
 else at once; `--path` takes another route as a regular expression. Pass `--clear` with it, or
-Metro keeps the last bundle's API URL.
+Metro keeps the last bundle's API URL. Name the proxy as `http://127.0.0.1:<n>`: `android`
+reverses that port onto the emulator as it does the stack's. A physical phone cannot reach
+127.0.0.1, so for one start the proxy with `--host` set to the machine's network address and
+put that address in `QA_API_URL`.
 
 Expo Go fetches the bundle from Metro and draws its own splash, so a bullet about the app
 offline from first launch, or its own splash screen, needs the app itself.
