@@ -69,11 +69,10 @@ export function shapingOf(t: TFunction, shape: Shape): Shaping {
   };
 }
 
-/** Read as an amount in a two-place currency, so a percentage takes the reader's marks (sc-3901): 12,5 in fr, 12.5 in en. */
-const SHARE_PLACES = 'EUR';
+const A_TWO_PLACE_CURRENCY = 'EUR';
 
 export function typedShare(typed: string, language: MoneyLanguage): number | null {
-  const read = readAmount(typed, language, SHARE_PLACES);
+  const read = readAmount(typed, language, A_TWO_PLACE_CURRENCY);
   if (read == null) return null;
   const share = Number(read);
 
@@ -88,7 +87,6 @@ export function typedShapeDays(typed: string): number | null {
   return days <= SHAPE_LIMITS.days ? days : null;
 }
 
-/** What a shape's rows are priced from: the quote, the event's days, and the locale the smallest amount is written in. */
 export interface ShapePricing {
   quote: { amount: string; quotedOn: string };
   currency: string;
