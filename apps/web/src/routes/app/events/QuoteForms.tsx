@@ -611,7 +611,7 @@ export function PaymentDialog({
   const [draft, setDraft] = useState<PaymentDraft>(BLANK_PAYMENT);
   const [problems, setProblems] = useState<PaymentProblems>({});
   const [shaping, setShaping] = useState<Shaping | null>(() =>
-    quote.payments.length === 0 ? shapingOf(t, 'rows') : null,
+    quote.payments.every((one) => one.cancelled != null) ? shapingOf(t, 'rows') : null,
   );
   const [top, setTop] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);

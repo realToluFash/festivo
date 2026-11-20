@@ -1571,6 +1571,31 @@ describe('a schedule from the vendor’s terms (sc-1332)', () => {
   const quotesRead = (sent: { line: string }[]) =>
     sent.filter((one) => one.line === 'GET /api/events/ev_1/budget/quotes').length;
 
+  it.each([
+    [
+      'offers the shapes when every payment is cancelled',
+      { cancelled: { at: '', by: null, reason: 'Venue includes it' } },
+      1,
+    ],
+    ['offers no shapes once a payment was added as already made', { addedAsPaid: true }, 0],
+  ])('%s', async (_, over, offered) => {
+    signedIn();
+    const payment = { ...SAVOUR.payments[0]!, ...over };
+    serve(
+      {
+        'GET /api/events/ev_1/budget/quotes': () =>
+          json(quotes({ quotes: [{ ...SAVOUR, payments: [payment] }] })),
+      },
+      { at },
+    );
+    fireEvent.click((await screen.findAllByRole('button', { name: 'Add a payment' }))[0]!);
+    const dialog = await screen.findByRole('dialog', { name: 'Add a payment' });
+
+    expect(within(dialog).queryAllByRole('radio', { name: 'Three instalments' })).toHaveLength(
+      offered,
+    );
+  });
+
   it('Save 3 payments sends the rows the shape computed, all at once', async () => {
     const { sent, dialog } = await chooseInstalments(() => json(UNPAID, 201));
 

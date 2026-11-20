@@ -322,6 +322,23 @@ final class QuotesTest extends ApiTestCase
     }
 
     #[Test]
+    public function aCancelledPaymentLeavesRoomForAScheduleAndOneAlreadyMadeDoesNot(): void
+    {
+        $row = ['description' => 'Payment in full', 'amount' => '1000', 'currency' => 'GBP', 'dueOn' => '2027-05-18'];
+        $quote = $this->add();
+        $this->as($this->owner, 'POST', $this->payments($this->payment($quote['id'])) . '/cancellation', ['reason' => '']);
+
+        $this->as($this->owner, 'POST', $this->schedule($quote['id']), ['payments' => [$row]]);
+        self::assertSame(201, $this->statusCode(), Json\encode($this->last()));
+
+        $made = $this->add(['vendorId' => $this->vendor('Anchor Hire', 'hire')]);
+        $this->as($this->owner, 'POST', $this->quotes($made['id']) . '/paid-payments', $this->made());
+
+        $this->as($this->owner, 'POST', $this->schedule($made['id']), ['payments' => [$row]]);
+        self::assertSame(409, $this->statusCode());
+    }
+
+    #[Test]
     public function aPaymentIsAmendedAndRemovedAndEverythingDueRunsSoonestFirstThenByVendor(): void
     {
         $bloom = $this->add();
