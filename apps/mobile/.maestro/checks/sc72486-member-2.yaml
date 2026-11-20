@@ -1,0 +1,17 @@
+# sc-72486: the page of the member ${M2}, for the Also a member of line (2 other organisations). Pass METRO_URL and M2.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/settings/members
+- extendedWaitUntil:
+    visible:
+      id: 'members.card'
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: 'members.row.${M2}'
+    direction: DOWN
+    centerElement: true
+- tapOn:
+    id: 'members.row.${M2}'
+- waitForAnimationToEnd
+- takeScreenshot: sc72486-member-2

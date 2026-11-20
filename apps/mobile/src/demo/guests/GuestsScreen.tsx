@@ -432,6 +432,7 @@ export function GuestsScreen({
       />
     );
 
+  const exportShown = owner && phase === 'ok' && !empty && titleRow.export;
   const list = (
     <>
       <GuestsTitle
@@ -441,13 +442,24 @@ export function GuestsScreen({
         plus={owner && phase !== 'loading' && !empty}
         onPlus={() => show('add', 'plus')}
         extra={
-          owner && phase === 'ok' && !empty && titleRow.export ? (
+          exportShown ? (
             <ExportButton
               ref={refFor('export')}
               layout={layout}
               offline={offline}
               words={inPortuguese ? exportWordsIn(portuguese) : undefined}
               onPress={openExport}
+            />
+          ) : null
+        }
+        extraWidest={
+          exportShown ? (
+            <ExportButton
+              layout={layout}
+              offline={offline}
+              words={inPortuguese ? exportWordsIn(portuguese) : undefined}
+              onPress={openExport}
+              measured
             />
           ) : null
         }

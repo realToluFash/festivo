@@ -7,6 +7,7 @@ namespace App\Tests\Functional;
 use App\Audit\Auditor;
 use App\Domain\Organisation\AuditLog\AuditExports;
 use App\Domain\Organisation\EmailDomains\ManagedAccounts;
+use App\Domain\Organisation\Export\PreparedFiles;
 use App\Domain\Organisation\Members\MembershipMachine;
 use App\Domain\Organisation\OrganisationFounder;
 use App\Domain\Organisation\Plan\PlanChanger;
@@ -32,16 +33,19 @@ use DateTimeImmutable;
 use Doctrine\ORM\EntityManagerInterface;
 use Lexik\Bundle\JWTAuthenticationBundle\Services\JWTTokenManagerInterface;
 use PHPUnit\Framework\Attributes\Test;
+use Psl\Dict;
 use Psl\Iter;
 use Psl\Json;
 use Psl\Str;
 use Psl\Type;
 use Psl\Vec;
+use Symfony\Component\Clock\Test\ClockSensitiveTrait;
 use Symfony\Component\Mime\Email;
 use Symfony\Component\Uid\Uuid;
 
 final class AuditLogTest extends ApiTestCase
 {
+    use ClockSensitiveTrait;
     use InvitesPeople;
     use OnboardsAccounts;
 
@@ -121,6 +125,18 @@ final class AuditLogTest extends ApiTestCase
         self::assertSame(['name' => 'Ada’s Wedding', 'eventId' => null, 'gone' => true], $removed['on']);
         self::assertSame(['kind' => 'person', 'name' => 'Julien Moreau', 'email' => 'julien@ire.events'], $removed['who']);
         self::assertSame('event_access', $removed['type']);
+    }
+
+    #[Test]
+    public function theDownloadIsNamedForTheOrganisationWithAnySlashOrQuoteTakenOut(): void
+    {
+        self::mockTime(new DateTimeImmutable('2026-10-19T10:00:00Z'));
+        [$owner, $organisation] = $this->enterprise('folake@ire.events', 'Ìrè / Events "Lagos"');
+        $this->signIn($owner);
+
+        $this->export($organisation, 'csv');
+
+        self::assertSame("attachment; filename=audit-log.csv; filename*=utf-8''%C3%8Cr%C3%A8%20-%20Events%20Lagos%20audit%20log%202026-10-19.csv", $this->client->getResponse()->headers->get('Content-Disposition'));
     }
 
     #[Test]
@@ -238,6 +254,44 @@ final class AuditLogTest extends ApiTestCase
     }
 
     #[Test]
+    public function theChangesSayRolesStatusesAndTimesInWordsAndLeaveOutIdsAndWhatDidNotChange(): void
+    {
+        [$owner, $organisation] = $this->enterprise('folake@ire.events', 'Ìrè Events');
+        $admin = Type\instance_of(Role::class)->coerce(self::service(EntityManagerInterface::class)->getRepository(Role::class)->findOneBy(['organisation' => $organisation->getId(), 'seededAs' => SeededRole::Admin]));
+        $eventId = Uuid::v7();
+        $this->entry($organisation, 'invitation.sent', $owner, '-4 hours', changes: ['email' => [null, 'ada@ire.events'], 'role' => [null, $admin->getId()->toRfc4122()]]);
+        $this->entry($organisation, 'event_person.granted', $owner, '-3 hours', $eventId, 'Gala', changes: ['role' => [null, 'can_edit'], 'jobLabel' => [null, null], 'addressKind' => [null, null], 'eventId' => [null, $eventId->toRfc4122()], 'userId' => [null, $owner->getId()->toRfc4122()]]);
+        $this->entry($organisation, 'membership.removed', $owner, '-2 hours', changes: ['status' => ['active', 'left_or_removed'], 'user' => [null, $owner->getId()->toRfc4122()]]);
+        $this->entry($organisation, 'event.deleted', $owner, '-1 hour', $eventId, 'Gala', changes: ['deletedAt' => [null, '2026-11-19T19:35:47+00:00']]);
+        $this->entry($organisation, 'membership.role_changed', $owner, '-30 minutes', changes: ['roleId' => [Uuid::v7()->toRfc4122(), $admin->getId()->toRfc4122()]]);
+        $this->entry($organisation, 'organisation.plan_changed', $owner, '-15 minutes', changes: ['plan' => ['free', 'enterprise']]);
+        [, $elsewhere] = $this->enterprise('kemi@elsewhere.events', 'Elsewhere');
+        $theirAdmin = Type\instance_of(Role::class)->coerce(self::service(EntityManagerInterface::class)->getRepository(Role::class)->findOneBy(['organisation' => $elsewhere->getId(), 'seededAs' => SeededRole::Admin]));
+        $this->entry($organisation, 'invitation.revoked', $owner, '-10 minutes', changes: ['email' => ['kemi@ire.events', null], 'role' => [null, $theirAdmin->getId()->toRfc4122()]]);
+
+        $this->signIn($owner);
+        $entries = Type\vec(Type\shape(['action' => Type\string(), 'changes' => Type\vec(Type\string())], true))->coerce($this->send('GET', $this->path($organisation))['entries']);
+        $changes = Dict\pull($entries, static fn (array $entry): array => $entry['changes'], static fn (array $entry): string => $entry['action']);
+
+        self::assertSame(['Email: None → ada@ire.events', 'Role: None → Admin'], $changes['invitation.sent']);
+        self::assertSame(['Role: None → Can edit'], $changes['event_person.granted']);
+        self::assertSame(['Status: Active → Left or removed'], $changes['membership.removed']);
+        self::assertSame(['Role: None → Admin'], $changes['membership.role_changed'], 'a role since removed reads as none, and the side that can be read stays');
+        self::assertSame(['Plan: Free → Enterprise'], $changes['organisation.plan_changed']);
+        self::assertSame(['Email: kemi@ire.events → None'], $changes['invitation.revoked'], 'another organisation\'s role is never read');
+        self::assertCount(1, $changes['event.deleted']);
+        self::assertStringStartsWith('Deleted at: None → ', $changes['event.deleted'][0]);
+        self::assertStringNotContainsString('2026-11-19T', $changes['event.deleted'][0], 'on screen the time reads in the reader\'s zone');
+
+        $rows = Vec\map(Vec\filter(Str\split(Str\trim($this->export($organisation, 'jsonl')), "\n"), static fn (string $line): bool => '' !== $line), static fn (string $line): array => Type\dict(Type\string(), Type\nullable(Type\string()))->coerce(Json\decode($line)));
+        $exported = Dict\pull($rows, static fn (array $row): ?string => $row['changes'], static fn (array $row): string => (string) $row['action']);
+        self::assertSame('Email: None → ada@ire.events; Role: None → Admin', $exported['invitation.sent']);
+        self::assertSame('Status: Active → Left or removed', $exported['membership.removed']);
+        self::assertSame('Deleted at: None → 2026-11-19T19:35:47Z', $exported['event.deleted']);
+        self::assertSame('Plan: Free → Enterprise', $exported['organisation.plan_changed']);
+    }
+
+    #[Test]
     public function tenThousandDownloadAtOnceAndOneMoreIsPreparedAndEmailedToTheExporterOnly(): void
     {
         [$owner, $organisation] = $this->enterprise('folake@ire.events', 'Ìrè Events');
@@ -275,15 +329,17 @@ final class AuditLogTest extends ApiTestCase
     }
 
     #[Test]
-    public function aPreparedExportsMemoryDoesNotGrowWithItsRows(): void
+    public function aPreparedExportsMemoryToPrepareAndToDownloadDoesNotGrowWithItsRows(): void
     {
         [$owner, $organisation] = $this->enterprise('folake@ire.events', 'Ìrè Events');
         $this->bulk($organisation, $owner, 1_000, 'a long note ' . Str\repeat('x', 2_000));
-        $small = $this->preparedPeak($organisation, $owner);
+        [$small, $smallDownloaded] = $this->preparedPeak($organisation, $owner);
         $this->bulk($organisation, $owner, 14_000, 'a long note ' . Str\repeat('x', 2_000));
-        $large = $this->preparedPeak($organisation, $owner);
+        [$large, $largeDownloaded] = $this->preparedPeak($organisation, $owner);
 
         self::assertLessThan(4 * 1024 * 1024, $large - $small, 'a file some 30 MB larger, and no more than 4 MB more memory at the peak');
+        self::assertGreaterThan(25 * 1024 * 1024, $largeDownloaded['bytes'] - $smallDownloaded['bytes']);
+        self::assertLessThan(4 * 1024 * 1024, $largeDownloaded['peak'] - $smallDownloaded['peak'], 'and no more than 4 MB more to download it');
     }
 
     #[Test]
@@ -297,6 +353,7 @@ final class AuditLogTest extends ApiTestCase
 
         self::assertResponseStatusCodeSame(422);
         self::assertSame(ErrorCode::AuditExportTooMany->type(), $body['type']);
+        self::assertSame('More than 1,000,000 entries match. Narrow the filters, then export again.', $body['detail'] ?? null);
         self::assertSame(0, self::service(EntityManagerInterface::class)->getConnection()->fetchOne('SELECT COUNT(*) FROM audit_entries WHERE action = :action', ['action' => AuditType::EXPORTED]), 'nothing started, nothing recorded');
         self::assertSame(0, self::service(EntityManagerInterface::class)->getConnection()->fetchOne('SELECT COUNT(*) FROM audit_exports'));
     }
@@ -361,10 +418,11 @@ final class AuditLogTest extends ApiTestCase
         return Vec\map(Type\vec(Type\shape(['action' => Type\string()], true))->coerce($body['entries']), static fn (array $entry): string => $entry['action']);
     }
 
-    private function entry(Organisation $organisation, string $action, User $by, string $ago, ?Uuid $eventId = null, ?string $eventName = null, ?string $target = null): void
+    /** @param array<string, array{0: mixed, 1: mixed}> $changes */
+    private function entry(Organisation $organisation, string $action, User $by, string $ago, ?Uuid $eventId = null, ?string $eventName = null, ?string $target = null, array $changes = []): void
     {
         $entityManager = self::service(EntityManagerInterface::class);
-        $entityManager->persist(new AuditEntry(Actor::User, $by->getId(), $by->getName(), null === $eventId ? 'Organisation' : 'Event', $eventId ?? $organisation->getId(), $action, [], null, null, new DateTimeImmutable($ago), $organisation->getId(), $eventId, $eventName, $target ?? $eventName ?? $organisation->getName()));
+        $entityManager->persist(new AuditEntry(Actor::User, $by->getId(), $by->getName(), null === $eventId ? 'Organisation' : 'Event', $eventId ?? $organisation->getId(), $action, $changes, null, null, new DateTimeImmutable($ago), $organisation->getId(), $eventId, $eventName, $target ?? $eventName ?? $organisation->getName()));
         $entityManager->flush();
     }
 
@@ -378,7 +436,8 @@ final class AuditLogTest extends ApiTestCase
             SQL, ['actor' => $by->getId()->toRfc4122(), 'label' => $by->getName(), 'organisation' => $organisation->getId()->toRfc4122(), 'count' => $count, 'note' => $note]);
     }
 
-    private function preparedPeak(Organisation $organisation, User $by): int
+    /** @return array{int, array{peak: int, bytes: int}} the memory to prepare the file, then to download it whole */
+    private function preparedPeak(Organisation $organisation, User $by): array
     {
         $entityManager = self::service(EntityManagerInterface::class);
         $organisation = $entityManager->find(Organisation::class, $organisation->getId()) ?? self::fail('gone');
@@ -395,7 +454,17 @@ final class AuditLogTest extends ApiTestCase
 
         self::assertSame(AuditExportStatus::Ready, $export->getStatus());
 
-        return $peak;
+        \gc_collect_cycles();
+        $before = \memory_get_usage();
+        \memory_reset_peak_usage();
+        $files = self::service(PreparedFiles::class);
+        $bytes = 0;
+
+        foreach ($files->chunks(self::service(AuditExports::class)->download($organisation, $export->getId()->toRfc4122(), $by)) as $chunk) {
+            $bytes += Str\Byte\length($chunk);
+        }
+
+        return [$peak, ['peak' => \memory_get_peak_usage() - $before, 'bytes' => $bytes]];
     }
 
     private function listedCount(Organisation $organisation): int

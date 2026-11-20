@@ -1313,7 +1313,7 @@ function BesideBack({ beside, children }: { beside: BesideBackNode; children: Re
   );
 }
 
-/** Back laid out as if the status were not there, the status measured hidden, and drawn beside the pill only in the room left; the bell is outside this row. It stays mounted while the status comes and goes, keeping the status's last width, so where it goes is known again the frame it returns (sc-71821). */
+/** Back laid out as if the status were not there, the status measured hidden, and drawn beside the pill only in the room left; the bell is outside this row. It stays mounted while the status comes and goes, keeping the status's last width, so where it goes is known again the frame it returns (sc-71821). The drawn status is out of the row's flow: in it, a pill that grew after the status was placed was squeezed, and Back measured the squeezed width as room enough for both (sc-74113). */
 function GivingWay({ beside, children }: { beside: GivesWay; children: ReactNode }) {
   const [slot, setSlot] = useState(0);
   const [back, setBack] = useState(0);
@@ -1339,7 +1339,7 @@ function GivingWay({ beside, children }: { beside: GivesWay; children: ReactNode
       >
         {beside.status != null && <View onLayout={widthOf(setStatus)}>{beside.status}</View>}
       </View>
-      {fits && beside.status}
+      {fits && <View style={besideRow.end}>{beside.status}</View>}
     </View>
   );
 }
@@ -1354,6 +1354,7 @@ export const besideRow = StyleSheet.create({
   },
   back: { flexShrink: 1, minWidth: 0 },
   measure: { position: 'absolute', opacity: 0 },
+  end: { position: 'absolute', top: 0, right: 0, bottom: 0, justifyContent: 'center' },
 });
 
 function goTo(destination: Destination): void {

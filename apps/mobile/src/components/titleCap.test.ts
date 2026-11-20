@@ -158,8 +158,10 @@ describe('every line under the cap wraps whole, and nothing is cut (sc-67338)', 
     expect(title).toMatch(/<Text\s+\{\.\.\.rest\}\s+(?:\/\/[^\n]*\s+)?key=\{drawnSize\}/u);
   });
 
-  it('measures a word afresh at each start, so a reading at the last start never sizes this one (sc-69816)', () => {
-    expect(title).toMatch(/key=\{`\$\{look\.maxFontSizeMultiplier \?\? 1\}\|\$\{word\}`\}/u);
+  it('measures a word afresh at each size and start, so a reading at the last one never sizes this one (sc-69816, sc-74113)', () => {
+    expect(title).toMatch(
+      /key=\{`\$\{look\.size \?\? ''\}\|\$\{look\.maxFontSizeMultiplier \?\? 1\}\|\$\{word\}`\}/u,
+    );
   });
 
   it('wraps a row’s tag at the accessibility sizes rather than cut it', () => {

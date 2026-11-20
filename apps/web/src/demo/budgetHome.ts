@@ -13,7 +13,7 @@ import { type CeilingKey, CEILINGS, budgetAt, ceilingState } from './budgetSampl
 import { type DemoGroup } from './budgetSample.ts';
 import { type CeilingState } from './BudgetParts.tsx';
 import { type Category } from './vendors.ts';
-import { exampleIn, typedMinor } from './quotes.ts';
+import { NO_COSTS_STATES, exampleIn, typedMinor } from './quotes.ts';
 import { CATEGORY_WORDS } from './vendorsWords.ts';
 
 /** The Budget home's states (spec §9: the Web board, the Ceiling board, and the margin and templates states drawn on the home). */
@@ -39,6 +39,11 @@ export const WEB_STATES = [
   'removed_priced',
   'removed_not_priced',
   'removed_nothing_yet',
+  'removed_last',
+  'removed_last_currency',
+  'removed_last_expired',
+  'undo_refused_currency',
+  'undo_refused_expired',
   'add_cost',
   'add_cost_blank',
   'add_cost_fixed',
@@ -177,7 +182,13 @@ export function linesOf(state: string): CostLine[] {
   if (state === 'removed_priced') return lines.filter((one) => one.id !== 'dj');
   if (state === 'removed_not_priced') return lines.filter((one) => one.id !== 'arch');
   if (state === 'removed_nothing_yet') return lines.filter((one) => one.id !== 'centre');
-  if (state === 'first_time' || state === 'nothing_to_start') return [];
+  if (
+    state === 'first_time' ||
+    state === 'nothing_to_start' ||
+    LAST_REMOVED.includes(state) ||
+    NO_COSTS_STATES.includes(state)
+  )
+    return [];
   if (state === 'add_cost_added') return [...lines, { ...WELCOME_DRINKS }];
 
   return lines;
@@ -341,6 +352,31 @@ export function categoryCeilingsLine(ceilings: Partial<Record<CeilingKey, number
   } than the event’s ceiling.`;
 }
 
+/** The states where the event's only cost, Dinner, has just been removed. */
+export const LAST_REMOVED: readonly string[] = [
+  'removed_last',
+  'removed_last_quoted',
+  'removed_last_currency',
+  'removed_last_expired',
+  'undo_refused_currency',
+  'undo_refused_expired',
+];
+
+export type UndoRefusal = 'currency' | 'expired';
+
+/** Why Undo cannot put a removed line back (sc-85, decided 19 Nov, #72349 and #72668). */
+export const UNDO_REFUSED: Readonly<Record<UndoRefusal, string>> = {
+  currency: 'Not put back. The event’s currency has changed since it was removed.',
+  expired: 'Not put back. It was removed more than a day ago.',
+};
+
+export function undoRefusalOf(state: string): UndoRefusal | null {
+  if (state.endsWith('_currency') && LAST_REMOVED.includes(state)) return 'currency';
+  if (state.endsWith('_expired') && LAST_REMOVED.includes(state)) return 'expired';
+
+  return null;
+}
+
 export function removedWords(line: CostLine, settled: number): string {
   if (lineState(line) === 'notPriced')
     return `${line.name} removed. It had no price, so the total is the same.`;
@@ -384,6 +420,17 @@ export const BUDGET_PAGES: readonly DemoGroup[] = [
       { to: at('removed_priced'), name: 'DJ removed, with Undo' },
       { to: at('removed_not_priced'), name: 'A cost with no price removed' },
       { to: at('removed_nothing_yet'), name: 'A cost with nothing yet removed' },
+      { to: at('removed_last'), name: 'The only cost removed: the bar above No costs yet' },
+      {
+        to: at('removed_last_currency'),
+        name: 'The only cost removed, the currency since changed in another tab: press Undo',
+      },
+      {
+        to: at('removed_last_expired'),
+        name: 'The only cost removed more than a day ago: press Undo',
+      },
+      { to: at('undo_refused_currency'), name: 'Undo refused: the currency has changed' },
+      { to: at('undo_refused_expired'), name: 'Undo refused: removed more than a day ago' },
     ],
   },
   {

@@ -25,7 +25,6 @@ export const BUDGET_WORDS = {
   markPaid: 'Mark paid',
   undo: 'Undo',
   tryNow: 'Try now',
-  seePlans: 'See plans',
   readOnlyLine:
     'Quotes and payment schedules are read-only because this organisation’s plan no longer includes them. Nothing has been removed.',
   loading: 'Loading the budget…',

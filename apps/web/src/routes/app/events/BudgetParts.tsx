@@ -1,28 +1,6 @@
-import type { OrganisationEvent } from '@soirely/api-client';
-import { type ReactNode, type RefObject, useId } from 'react';
-import { useTranslation } from 'react-i18next';
+import { type RefObject, useId } from 'react';
 
 import { Glyph } from '../../../components/Glyph.tsx';
-import { meshFor } from '../../../mesh.ts';
-
-const PIECES = [1, 2, 3, 4, 5, 6];
-
-export function CoverCard({ event, children }: { event: OrganisationEvent; children: ReactNode }) {
-  const { t } = useTranslation();
-
-  return (
-    <section
-      className={`ev-card today-cover bt-card is-${meshFor(event.id)}`}
-      aria-label={t('budget.card')}
-    >
-      <span className="ev-scrim" aria-hidden="true" />
-      {PIECES.map((piece) => (
-        <span key={piece} className={`desk-piece p${piece}`} aria-hidden="true" />
-      ))}
-      <div className="ev-card-inner bt-card-inner">{children}</div>
-    </section>
-  );
-}
 
 export function MoneyField({
   label,

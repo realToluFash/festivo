@@ -1,6 +1,7 @@
 import {
   type InputHTMLAttributes,
   type ReactNode,
+  type Ref,
   type RefObject,
   useContext,
   useEffect,
@@ -150,9 +151,7 @@ export function Opened({
   unsaved = changed,
   verb,
   asking: first = null,
-  refused = false,
   busy = false,
-  onLatest,
   onCancel,
   onSave,
   children,
@@ -162,10 +161,8 @@ export function Opened({
   /** What Cancel asks about, when it is more than what Save would save: a photo still uploading. */
   unsaved?: boolean;
   verb?: string;
-  asking?: 'discard' | 'latest' | null;
-  refused?: boolean;
+  asking?: 'discard' | null;
   busy?: boolean;
-  onLatest?: () => void;
   onCancel: () => void;
   onSave: () => void;
   children: ReactNode;
@@ -201,15 +198,6 @@ export function Opened({
 
   return (
     <div className="ev-opened" role="group" aria-label={label} ref={box}>
-      {refused && (
-        <Broken
-          action={
-            <TextAction label={t('eventEdit.showLatest')} onClick={() => setAsking('latest')} />
-          }
-        >
-          {t('eventEdit.changedElsewhere')}
-        </Broken>
-      )}
       {children}
       <div className="ev-opened-actions">
         <TextAction label={t('eventEdit.cancel')} onClick={cancel} />
@@ -235,19 +223,6 @@ export function Opened({
           onGo={() => {
             setAsking(null);
             onCancel();
-          }}
-        />
-      )}
-      {asking === 'latest' && (
-        <Ask
-          title={t('eventEdit.showLatestTitle')}
-          line={t('eventEdit.showLatestBody')}
-          keep={t('eventEdit.keepEditing')}
-          go={t('eventEdit.showLatest')}
-          onKeep={() => setAsking(null)}
-          onGo={() => {
-            setAsking(null);
-            onLatest?.();
           }}
         />
       )}
@@ -471,10 +446,23 @@ export function Alert({ children }: { children: ReactNode }) {
   );
 }
 
-/** The broken notice, with what to do about it under its words. */
-export function Broken({ children, action }: { children: ReactNode; action?: ReactNode }) {
+/** The broken notice and what to do about it; with `landing`, focus reads it instead of an announcement. */
+export function Broken({
+  children,
+  action,
+  landing,
+}: {
+  children: ReactNode;
+  action?: ReactNode;
+  landing?: Ref<HTMLDivElement> | undefined;
+}) {
   return (
-    <div className="notice notice-broken ev-notice" role="alert">
+    <div
+      className="notice notice-broken ev-notice"
+      role={landing == null ? 'alert' : undefined}
+      ref={landing}
+      tabIndex={landing == null ? undefined : -1}
+    >
       <span className="mark mark-broken" aria-hidden="true">
         ✕
       </span>

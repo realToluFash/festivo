@@ -110,6 +110,15 @@ describe('who looks, and where each page is', () => {
     expect(existsSync(join('app', 'demo', 'settings', '[section].tsx'))).toBe(true);
   });
 
+  it('names its Settings row in the app’s words, so each locale reads as the app does', () => {
+    const home = readFileSync(join('src', 'demo', 'settings', 'SettingsHome.tsx'), 'utf8');
+    const words = readFileSync(join('src', 'demo', 'settings', 'DataWords.ts'), 'utf8');
+
+    expect(home).toContain("title: t('settings.dataAndControl')");
+    expect(home).toContain("line: t('settings.dataAndControlLine')");
+    expect(words).not.toContain('settingsLine');
+  });
+
   it('links every state from the demo’s home', () => {
     const hrefs = DATA_BOARDS.map(({ href }) => href);
     for (const state of HUB_STATES.filter((one) => one !== 'hub'))

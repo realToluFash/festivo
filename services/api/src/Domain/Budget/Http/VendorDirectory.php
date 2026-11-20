@@ -25,6 +25,7 @@ use App\Http\Access\Policy\InOrganisation;
                 new Parameter('view', 'query', 'inUse, the default, or archived', schema: ['type' => 'string', 'enum' => ['inUse', 'archived']]),
                 new Parameter('q', 'query', 'A name containing this, ignoring case', schema: ['type' => 'string']),
                 new Parameter('category', 'query', 'One of the nine', schema: ['type' => 'string', 'enum' => VendorCategory::VALUES]),
+                new Parameter('vendor', 'query', 'Opens the page holding this vendor, when nothing is searched', schema: ['type' => 'string', 'format' => 'uuid']),
             ]),
             provider: VendorDirectoryProvider::class,
         ),

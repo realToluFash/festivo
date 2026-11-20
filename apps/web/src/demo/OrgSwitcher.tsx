@@ -95,7 +95,7 @@ function PlacesSwitcher({ tell, toast }: { tell: Tell; toast: boolean }) {
   const { pathname } = useLocation();
   const [first, setFirst] = useState<Opening | null>(() => {
     const raw = params.get('switcher');
-    if (!isSwitcherState(raw) || raw === 'closed') return null;
+    if (!isSwitcherState(raw) || raw === 'closed' || raw === 'managed-closed') return null;
 
     const answered = raw === 'declined' || raw === 'expired' || raw === 'withdrawn';
 

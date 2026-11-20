@@ -46,6 +46,9 @@ import {
   replyByAfterStart,
 } from './replyBy.ts';
 import { NotBuilt } from './EventParts.tsx';
+import { saveAnswerOf } from './saveAnswer.ts';
+import { useSaveAnswer } from '../components/saveAnswer.ts';
+import { SaveNotice } from '../components/SaveNotice.tsx';
 import {
   Broken,
   DateTime,
@@ -57,6 +60,7 @@ import { type CoverStart, type CoverUploaded, CoverEdit } from '../components/Co
 import { Select } from '../components/EventFormParts.tsx';
 import { Glyph } from '../components/Glyph.tsx';
 import { Ask } from '../components/SettingsParts.tsx';
+import { focusStep, landOnNotice } from '../stepFocus.ts';
 import {
   HostFields as ProductHostFields,
   VenueFieldsView,
@@ -146,7 +150,9 @@ export function DatesPart({
     moved && state !== 'datesError' ? W.endMoved(movedDay(first.end)) : null,
   );
   const [tried, setTried] = useState(state === 'datesError');
-  const [refused, setRefused] = useState(state === 'changedElsewhere' || state === 'showLatest');
+  const elsewhere = useSaveAnswer(
+    state === 'changedElsewhere' || state === 'showLatest' ? 'changedElsewhere' : null,
+  );
   const id = useId();
   const startsAt = instantOf(start.date, start.time, zone);
   const endsAt = instantOf(end.date, end.time, zone);
@@ -188,22 +194,12 @@ export function DatesPart({
     <Opened
       label={W.dates}
       changed={changed}
-      asking={state === 'discard' ? 'discard' : state === 'showLatest' ? 'latest' : null}
-      refused={refused}
-      onLatest={() => {
-        const latest = latestOf(event);
-        setStart(wallOf(latest.startsAt, latest.timeZone));
-        setEnd(wallOf(latest.endsAt, latest.timeZone));
-        setZone(latest.timeZone);
-        setRefused(false);
-        setSaid(null);
-        onLatest(latest);
-      }}
+      asking={state === 'discard' ? 'discard' : null}
       onCancel={onClose}
       onSave={() => {
         setTried(true);
         if (startsAt == null || endsAt == null || backwards) return;
-        if (refused) return;
+        if (elsewhere.answer != null) return elsewhere.give('changedElsewhere');
         if (ask != null) return setAsking(true);
         onSave({ ...event, startsAt, endsAt, timeZone: zone });
       }}
@@ -264,6 +260,18 @@ export function DatesPart({
       )}
       <ZoneSelect value={zone} onChange={setZone} />
       <OnceSaved />
+      <SaveNotice
+        answered={elsewhere}
+        asking={state === 'showLatest'}
+        onLatest={() => {
+          const latest = latestOf(event);
+          setStart(wallOf(latest.startsAt, latest.timeZone));
+          setEnd(wallOf(latest.endsAt, latest.timeZone));
+          setZone(latest.timeZone);
+          setSaid(null);
+          onLatest(latest);
+        }}
+      />
     </Opened>
   );
 }
@@ -447,7 +455,7 @@ export function VenuePart({ event, state, onDirty, onClose, onSave }: PartProps)
   const [said, setSaid] = useState<string | null>(
     state === 'venueNoteTooLong' ? NOTE_WORDS.oneField : null,
   );
-  const [forbidden, setForbidden] = useState(false);
+  const forbidden = useSaveAnswer();
   const changed =
     name !== (event.venue?.name ?? '') ||
     address !== (event.venue?.address ?? '') ||
@@ -475,7 +483,7 @@ export function VenuePart({ event, state, onDirty, onClose, onSave }: PartProps)
           return;
         }
         if (state === 'venueNoteForbidden') {
-          setForbidden(true);
+          forbidden.give('forbidden');
           return;
         }
 
@@ -490,7 +498,6 @@ export function VenuePart({ event, state, onDirty, onClose, onSave }: PartProps)
         });
       }}
     >
-      {forbidden && <Broken>{NOTE_WORDS.forbidden}</Broken>}
       <VenueFields
         name={name}
         onName={setName}
@@ -505,7 +512,7 @@ export function VenuePart({ event, state, onDirty, onClose, onSave }: PartProps)
         note={note}
         onNote={(typed) => {
           setNote(typed);
-          setForbidden(false);
+          forbidden.clear();
           if (!noteTooLong(typed)) setNoteError(null);
         }}
         noteError={noteError}
@@ -516,6 +523,7 @@ export function VenuePart({ event, state, onDirty, onClose, onSave }: PartProps)
         {said}
       </p>
       <OnceSaved />
+      <SaveNotice answered={forbidden} />
     </Opened>
   );
 }
@@ -679,13 +687,27 @@ export function TypePart({ event, onDirty, onClose, onSave }: PartProps) {
 }
 
 /** Currency: refused once amounts are recorded against the event. */
-export function CurrencyPart({ event, state, onDirty, onClose, onSave }: PartProps) {
+export function CurrencyPart({ event, state, onDirty, onClose, onSave, onLatest }: PartProps) {
   const refusing = state === 'currencyRefused';
-  const [picked, setPicked] = useState<Currency>(refusing ? 'EUR' : event.currency);
-  const [refused, setRefused] = useState(refusing);
+  const answers = saveAnswerOf(state);
+  const last = CURRENCY_CHOICES.at(-1)?.[0] ?? event.currency;
+  const [picked, setPicked] = useState<Currency>(
+    refusing ? 'EUR' : answers == null ? event.currency : last,
+  );
+  const [refused, setRefused] = useState(refusing ? 0 : null);
+  const [pending, setPending] = useState(answers);
+  const answered = useSaveAnswer();
+  const notice = useRef<HTMLDivElement>(null);
   const changed = picked !== event.currency;
 
   useDirty(changed, onDirty);
+  useLayoutEffect(() => {
+    const landed = notice.current;
+
+    if (refused == null || refused === 0 || landed == null) return;
+
+    focusStep(landOnNotice(landed));
+  }, [refused]);
 
   return (
     <Opened
@@ -693,19 +715,39 @@ export function CurrencyPart({ event, state, onDirty, onClose, onSave }: PartPro
       changed={changed}
       onCancel={onClose}
       onSave={() => {
-        if (refusing) setRefused(true);
+        if (refusing) setRefused((times) => (times ?? 0) + 1);
+        else if (pending != null) answered.give(pending);
         else onSave({ ...event, currency: picked });
       }}
     >
-      {refused && <Broken>{W.currencyInUse}</Broken>}
+      {refused != null && (
+        <Broken key={refused} landing={refused === 0 ? undefined : notice}>
+          {W.currencyInUse}
+        </Broken>
+      )}
       <Radios legend={W.currency} choices={CURRENCY_CHOICES} picked={picked} onPick={setPicked} />
+      <SaveNotice
+        answered={answered}
+        onLatest={() => {
+          const latest = latestOf(event);
+
+          setPicked(latest.currency);
+          setPending(null);
+          onLatest(latest);
+        }}
+      />
     </Opened>
   );
 }
 
 /** Event name: up to 120 characters, never blank. */
-export function NamePart({ event, state, onDirty, onClose, onSave }: PartProps) {
-  const [name, setName] = useState(state === 'nameBlank' ? '' : event.name);
+export function NamePart({ event, state, onDirty, onClose, onSave, onLatest }: PartProps) {
+  const answers = saveAnswerOf(state);
+  const [name, setName] = useState(
+    state === 'nameBlank' ? '' : answers == null ? event.name : `${event.name}, the reception`,
+  );
+  const [pending, setPending] = useState(answers);
+  const answered = useSaveAnswer();
   const [tried, setTried] = useState(state === 'nameBlank');
   const field = useRef<HTMLInputElement>(null);
   const length = eventNameLength(name);
@@ -729,6 +771,7 @@ export function NamePart({ event, state, onDirty, onClose, onSave }: PartProps) 
       onSave={() => {
         setTried(true);
         if (length === 0 || length > EVENT_NAME_MAXIMUM) return field.current?.focus();
+        if (pending != null) return answered.give(pending);
         onSave({ ...event, name: name.trim() });
       }}
     >
@@ -741,6 +784,16 @@ export function NamePart({ event, state, onDirty, onClose, onSave }: PartProps) 
         onChange={setName}
       />
       <OnceSaved />
+      <SaveNotice
+        answered={answered}
+        onLatest={() => {
+          const latest = latestOf(event);
+
+          setName(latest.name);
+          setPending(null);
+          onLatest(latest);
+        }}
+      />
     </Opened>
   );
 }

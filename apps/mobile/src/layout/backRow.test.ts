@@ -6,6 +6,7 @@ import { describe, expect, it } from 'vitest';
 import { backRow } from './backRow.ts';
 
 const event = readFileSync(join('src', 'components', 'EventScreen.tsx'), 'utf8');
+const frame = readFileSync(join('src', 'components', 'AppFrame.tsx'), 'utf8');
 
 describe('Back keeps its row while Refreshing… comes and goes (sc-71821)', () => {
   it('gives way on Guests’ list on a phone, refreshing or not', () => {
@@ -33,5 +34,15 @@ describe('EventScreen builds Back’s row from backRow alone (sc-71821)', () => 
     expect(event).toMatch(
       /besideBack=\{\s+besideBackRow === 'givingWay'\s+\? \{ status: refreshing, onPlaced: setRefreshingBesideBack \}\s+: besideBackRow === 'beside'\s+\? refreshing\s+: undefined\s+\}/u,
     );
+  });
+});
+
+describe('GivingWay draws Refreshing… out of the row’s flow (sc-74113)', () => {
+  it('places the status inside besideRow.end', () => {
+    expect(frame).toMatch(/\{fits && <View style=\{besideRow\.end\}>\{beside\.status\}<\/View>\}/u);
+  });
+
+  it('keeps besideRow.end absolute, so a late-growing Back is never squeezed', () => {
+    expect(frame).toMatch(/\n {2}end: \{ position: 'absolute', top: 0, right: 0, bottom: 0,/u);
   });
 });

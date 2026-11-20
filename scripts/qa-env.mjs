@@ -439,7 +439,7 @@ export function emulatorFor(args) {
 }
 
 // An emulator's 127.0.0.1 is itself; reversed, these reach the host's, as on a simulator.
-export function reversedPorts(ports) {
+export function reversedPorts(ports, env = process.env) {
   const reached = [
     'METRO_PORT',
     'API_PORT',
@@ -448,7 +448,13 @@ export function reversedPorts(ports) {
     'STORAGE_PORT',
     'MAILPIT_UI_PORT',
   ];
-  return reached.map((key) => ports[key]);
+  return [...reached.map((key) => ports[key]), ...proxyPort(env.QA_API_URL)];
+}
+
+function proxyPort(url) {
+  if (!url) return [];
+  const { hostname, port } = new URL(url);
+  return ['127.0.0.1', 'localhost'].includes(hostname) && port ? [Number(port)] : [];
 }
 
 // `adb reverse --list` prints `<serial> tcp:<device> tcp:<host>`, or `(reverse) …` on older adb.

@@ -1,0 +1,18 @@
+# sc-560: a lapsed domain's record screen names when the checks stopped (failedAt). The card's See the record opens the lapsed domain's record.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/settings/data-and-control/email-domains
+- extendedWaitUntil:
+    visible:
+      id: emailDomains.card
+    timeout: 20000
+- takeScreenshot: email-domains-phone-lapsed-product
+- tapOn:
+    text: 'See the record.*'
+- extendedWaitUntil:
+    visible:
+      id: emailDomains.record.verify
+    timeout: 10000
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: email-domains-phone-lapsed-record-product

@@ -277,6 +277,7 @@ export default function AuditLog() {
                 entries={page.entries}
                 now={new Date()}
                 zone={page.zone}
+                locale={dateLocale()}
                 onOpen={openEntry}
               />
             )}

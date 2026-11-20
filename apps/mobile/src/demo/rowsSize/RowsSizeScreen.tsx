@@ -16,6 +16,7 @@ import { labelStart, lineStart, piecesIn } from '../../layout/textSize.ts';
 import { DemoOnly } from '../../steps/Lines.tsx';
 import { defaultScheme, tokens } from '../../theme/tokens.ts';
 import { Choices } from '../focusedHeader/FocusedHeaderScreen.tsx';
+import { frameTitleCap } from '../frameTitleCap.ts';
 import { settingsHref } from '../settings/Route.tsx';
 import { signOutRoom } from '../signOutSize/signOutSizeRules.ts';
 import {
@@ -26,7 +27,6 @@ import {
   labelSize,
   rowType,
   rowsScale,
-  settingsCap,
   type RowsLanguage,
   type RowsName,
   type RowsSize,
@@ -56,7 +56,7 @@ interface RowWords {
 export function RowsSizeScreen({ start }: { start: RowsSizeStart }) {
   const { i18n } = useTranslation();
   const insets = useSafeAreaInsets();
-  const { width: windowWidth, fontScale } = useWindowDimensions();
+  const { width: windowWidth, height: windowHeight, fontScale } = useWindowDimensions();
   const layout = useShellLayout();
   const [size, setSize] = useState(start.size);
   const [language, setLanguage] = useState(start.language);
@@ -68,7 +68,7 @@ export function RowsSizeScreen({ start }: { start: RowsSizeStart }) {
   const t = words.t.bind(words);
   const scale = rowsScale(size, fontScale);
   const dense = layout === 'landscape';
-  const cap = settingsCap(layout !== 'phone', scale);
+  const cap = frameTitleCap(layout !== 'phone', Math.min(windowWidth, windowHeight), scale);
   const room = signOutRoom(layout, windowWidth);
   const groups = GROUPS.map(({ heading, sections }) => ({
     heading: t(`settings.${heading}`),

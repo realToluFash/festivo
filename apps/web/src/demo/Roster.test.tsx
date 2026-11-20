@@ -414,3 +414,60 @@ describe('a person’s own link on the roster (sc-3912)', () => {
     expect(button('Replace link…')).toBeNull();
   });
 });
+
+describe('the Roster from 961 to 1279 px, in English and French (sc-73291)', () => {
+  async function openIn(state: string, title: string): Promise<void> {
+    const router = createMemoryRouter(routes, {
+      initialEntries: [`/demo/events/evt-wed-4/staff/roster?state=${state}`],
+    });
+    render(<RouterProvider router={router} />);
+    await screen.findByRole('heading', { level: 1, name: title }, { timeout: 8000 });
+  }
+
+  it('opens Add a person on the roster and on an empty one, Cancel back on Add a person', async () => {
+    await openIn('add', 'Staff');
+    expect(screen.getByRole('heading', { level: 2, name: 'Add a person' })).toBeTruthy();
+    expect(screen.getByRole('table', { name: 'Roster' })).toBeTruthy();
+    press('Cancel');
+    expect(document.activeElement).toBe(button('Add a person'));
+  });
+
+  it('says the empty roster under the open form', async () => {
+    await openIn('addEmpty', 'Staff');
+    expect(screen.getByRole('heading', { level: 2, name: 'Add a person' })).toBeTruthy();
+    expect(screen.getByText('Nobody on the staff yet')).toBeTruthy();
+  });
+
+  it('puts the details, the Roster and the top in the product’s French', async () => {
+    await openIn('detailsFrench', 'Équipe');
+    const table = screen.getByRole('table', { name: 'Liste du personnel' });
+    expect(
+      within(table)
+        .getAllByRole('columnheader')
+        .map((one) => one.textContent),
+    ).toEqual(['Nom', 'Fonction', 'Poste', 'Service', 'Lien']);
+    expect(screen.getByRole('navigation', { name: 'Fil d’Ariane' })).toBeTruthy();
+    expect(screen.getByText('Fonctions et services')).toBeTruthy();
+    const panel = screen.getByRole('complementary');
+    expect(within(panel).getByRole('heading', { level: 2, name: 'Amina Yusuf' })).toBeTruthy();
+    expect(within(panel).getByText('Numéro de portable')).toBeTruthy();
+  });
+
+  it('moves focus to the name in French, and Fermer back to the row', async () => {
+    await openIn('detailsFrench', 'Équipe');
+    press('Bisi Okon');
+    expect(document.activeElement).toBe(
+      screen.getByRole('heading', { level: 2, name: 'Bisi Okon' }),
+    );
+    press('Fermer');
+    expect(document.activeElement).toBe(button('Bisi Okon'));
+  });
+
+  it('opens Add a person in French on an empty roster, Annuler back on Ajouter une personne', async () => {
+    await openIn('addEmptyFrench', 'Équipe');
+    expect(screen.getByRole('heading', { level: 2, name: 'Ajouter une personne' })).toBeTruthy();
+    expect(screen.getByText('Personne dans l’équipe pour l’instant')).toBeTruthy();
+    press('Annuler');
+    expect(document.activeElement).toBe(button('Ajouter une personne'));
+  });
+});

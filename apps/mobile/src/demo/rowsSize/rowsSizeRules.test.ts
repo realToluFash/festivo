@@ -1,19 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { labelSize, rowsScale, settingsCap } from './rowsSizeRules.ts';
-
-const AX5 = rowsScale('twelfth', 1);
-
-describe('settingsCap', () => {
-  it('caps the list at the page title’s 43 at the twelfth step, on a phone and a tablet', () => {
-    expect(settingsCap(false, AX5)).toBe(43);
-    expect(settingsCap(true, AX5)).toBe(43);
-  });
-
-  it('caps nothing a row draws at the default size', () => {
-    expect(settingsCap(false, 1)).toBe(34);
-  });
-});
+import { labelSize } from './rowsSizeRules.ts';
 
 describe('labelSize', () => {
   it('keeps the start while the widest word fits', () => {

@@ -33,7 +33,8 @@ import {
   shareWords,
   wholeRange,
 } from './budgetMargin.ts';
-import { CoverCard, MoneyField } from './BudgetParts.tsx';
+import { MoneyField } from './BudgetParts.tsx';
+import { CoverCard } from './QuoteParts.tsx';
 
 /** A's card, its margin face (sc-92): the client's figures and the agency's, never on a share or a printout. */
 export function MarginCard({

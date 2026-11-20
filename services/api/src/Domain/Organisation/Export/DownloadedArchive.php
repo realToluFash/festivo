@@ -6,9 +6,10 @@ namespace App\Domain\Organisation\Export;
 
 final readonly class DownloadedArchive
 {
+    /** @param iterable<string> $chunks the kept archive in pieces */
     public function __construct(
         public string $name,
-        public string $bytes,
+        public iterable $chunks,
     ) {
     }
 }

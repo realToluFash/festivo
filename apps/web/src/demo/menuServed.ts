@@ -105,7 +105,7 @@ export const MW = {
 } as const;
 
 export function mw(words: string, values: Record<string, string | number>): string {
-  return words.replace(/\{\{(\w+)\}\}/gu, (_, key: string) => String(values[key] ?? ''));
+  return words.replace(/\{\{(\w+)(?:, ?\w+)?\}\}/gu, (_, key: string) => String(values[key] ?? ''));
 }
 
 export function choiceOf(dish: Dish, id: string): Choice | undefined {

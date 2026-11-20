@@ -59,6 +59,10 @@ import {
   STAFF_REFUSED,
   whatProblem,
   removedWords,
+  LAST_REMOVED,
+  UNDO_REFUSED,
+  type UndoRefusal,
+  undoRefusalOf,
   sumLines,
   WELCOME_DRINKS,
   type Markups,
@@ -110,7 +114,6 @@ import {
   ceilingSentence,
   noPayer,
   planOf,
-  viewerOf,
 } from './budgetSample.ts';
 import { BUDGET_WORDS as W } from './budgetWords.ts';
 import { type SampleEvent } from './events.ts';
@@ -139,6 +142,9 @@ interface Removed {
   line: CostLine;
   index: number;
   words: string;
+  refuse?: UndoRefusal;
+  refused?: boolean;
+  fresh?: boolean;
 }
 
 function dialogOf(state: string): Dialog {
@@ -177,6 +183,19 @@ const LISTED = ['ceiling_saved', 'ceiling_categories_only', 'ceiling_cleared_one
 const MARGIN_HOME = ['margin', 'margin_zero_price', 'price_negative', 'price_decimals'];
 
 function removedOf(state: string, heads: Heads): Removed | null {
+  if (LAST_REMOVED.includes(state)) {
+    const only = linesOf('populated')[0];
+    const refuse = undoRefusalOf(state);
+    const refused = refuse != null && state.startsWith('undo_refused');
+    if (only == null) return null;
+
+    return {
+      line: only,
+      index: 0,
+      words: refused ? UNDO_REFUSED[refuse] : removedWords(only, lineAmounts(only, heads).settled),
+      ...(refuse == null ? {} : { refuse, refused }),
+    };
+  }
   const id = { removed_priced: 'dj', removed_not_priced: 'arch', removed_nothing_yet: 'centre' }[
     state as 'removed_priced'
   ];
@@ -227,6 +246,10 @@ export function BudgetHomeContent({
   vendorsQuoted,
   payments = PAYMENTS,
   onMark,
+  readOnly: readOnlyPlan,
+  noCosts = false,
+  quotesBeside = false,
+  onCosts,
 }: {
   event: SampleEvent;
   state: string;
@@ -236,14 +259,17 @@ export function BudgetHomeContent({
   vendorsQuoted: ReactNode;
   payments?: readonly Payment[];
   onMark?: ((payment: Payment) => void) | undefined;
+  readOnly?: boolean;
+  noCosts?: boolean;
+  quotesBeside?: boolean;
+  onCosts?: (has: boolean) => void;
 }) {
   const [params] = useSearchParams();
   const navigate = useNavigate();
-  const viewer = viewerOf(params.get('as'));
   const enterprise = planOf(params.get('plan')) === 'enterprise';
   const currency = params.get('currency') ?? CURRENCY;
   const [state, setState] = useState(first);
-  const [lines, setLines] = useState(() => linesOf(first));
+  const [lines, setLines] = useState(() => (noCosts ? [] : linesOf(first)));
   const heads = headsOf(first);
   const [ceilings, setCeilings] = useState(() => ceilingsOf(first));
   const [listed, setListed] = useState(LISTED.includes(first) || first === 'ceiling_no_costs');
@@ -302,9 +328,11 @@ export function BudgetHomeContent({
   useEffect(() => {
     if (first === 'ceiling_cleared_one') tell('Ceiling saved.');
   }, [first, tell]);
-  const readOnly = first === 'read_only';
+  const readOnly = readOnlyPlan ?? first === 'read_only';
   const live = first !== 'not_live';
   const empty = lines.length === 0;
+
+  useEffect(() => onCosts?.(!empty), [empty, onCosts]);
 
   if (state === 'loading')
     return (
@@ -331,6 +359,20 @@ export function BudgetHomeContent({
       </>
     );
 
+  const undo = () => {
+    if (removed == null) return;
+    if (removed.refuse != null) {
+      setRemoved({ ...removed, words: UNDO_REFUSED[removed.refuse], refused: true });
+      return;
+    }
+    setLines((now) => {
+      const back = [...now];
+      back.splice(removed.index, 0, removed.line);
+      return back;
+    });
+    setLit(removed.line.id);
+    setRemoved(null);
+  };
   const sum = sumLines(lines, heads);
   const wholeCeiling =
     ceilings.whole == null ? null : ceilingOf('whole', ceilings.whole, lines, heads);
@@ -366,11 +408,13 @@ export function BudgetHomeContent({
           onTry={() => void navigate(budgetAt('populated'))}
         />
       )}
-      {readOnly && (
-        <ReadOnlyLine
-          {...(viewer.key === 'folake'
-            ? { onPlans: () => tell('Plans have their own design.') }
-            : {})}
+      {readOnly && (!empty || quotesBeside) && <ReadOnlyLine />}
+      {empty && removed != null && (
+        <UndoBar
+          words={removed.words}
+          onUndo={undo}
+          refused={removed.refused === true}
+          focus={removed.fresh === true}
         />
       )}
       {empty ? (
@@ -430,13 +474,21 @@ export function BudgetHomeContent({
             </Block>
           }
           right={
-            <Block title="Share">
-              <p className="desk-line">No links yet.</p>
-              <Link className="desk-text" to={budgetAt('no_links')}>
-                <Glyph name="plus" size={17} weight={2.3} />
-                Create a link
-              </Link>
-            </Block>
+            <>
+              {quotesBeside && (
+                <>
+                  {dueNext}
+                  {vendorsQuoted}
+                </>
+              )}
+              <Block title="Share">
+                <p className="desk-line">No links yet.</p>
+                <Link className="desk-text" to={budgetAt('no_links')}>
+                  <Glyph name="plus" size={17} weight={2.3} />
+                  Create a link
+                </Link>
+              </Block>
+            </>
           }
         />
       ) : (
@@ -485,16 +537,7 @@ export function BudgetHomeContent({
                   setOpened(null);
                   setRemoved(gone);
                 }}
-                onUndo={() => {
-                  if (removed == null) return;
-                  setLines((now) => {
-                    const back = [...now];
-                    back.splice(removed.index, 0, removed.line);
-                    return back;
-                  });
-                  setLit(removed.line.id);
-                  setRemoved(null);
-                }}
+                onUndo={undo}
               />
             )
           }
@@ -534,6 +577,7 @@ export function BudgetHomeContent({
           onDismiss={() => setDialog(null)}
           onAdded={(added) => {
             setLines((now) => [...now, added]);
+            setRemoved(null);
             setDialog(null);
             setLit(added.id);
             setLine({ id: added.id, words: 'Saved.', ok: true });
@@ -866,7 +910,9 @@ function Costs({
 
   return (
     <Block title={W.costs}>
-      {removed != null && <UndoBar words={removed.words} onUndo={onUndo} />}
+      {removed != null && (
+        <UndoBar words={removed.words} onUndo={onUndo} refused={removed.refused === true} />
+      )}
       {categories.map((category) => (
         <div key={category} className="bud-cat">
           <CategoryHead
@@ -892,6 +938,7 @@ function Costs({
                           line: one,
                           index: lines.indexOf(one),
                           words: removedWords(one, lineAmounts(one, heads).settled),
+                          fresh: true,
                         })
                       }
                     />

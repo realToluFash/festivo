@@ -39,7 +39,7 @@ final readonly class MarginController
     }
 
     #[Route('/api/events/{eventId}/budget/margin', name: 'budget_margin', methods: ['GET'])]
-    #[InEvent(Permission::BudgetMargin, feature: PlanFeature::Margin)]
+    #[InEvent(Permission::BudgetMargin, feature: PlanFeature::Margin, featureLocksReading: true)]
     public function margin(string $eventId): JsonResponse
     {
         return new JsonResponse($this->marginSerialiser->margin($this->event($eventId)));
@@ -47,7 +47,7 @@ final readonly class MarginController
 
     /** The whole event's markup: `markup` "20" or "12.5"; null or blank clears it. */
     #[Route('/api/events/{eventId}/budget/markup', name: 'budget_markup_event', methods: ['PUT'])]
-    #[InEvent(Permission::BudgetMargin, feature: PlanFeature::Margin)]
+    #[InEvent(Permission::BudgetMargin, feature: PlanFeature::Margin, featureLocksReading: true)]
     public function eventMarkup(Request $request, string $eventId): JsonResponse
     {
         $event = $this->event($eventId);
@@ -58,7 +58,7 @@ final readonly class MarginController
 
     /** One category's, over the event's; null or blank takes the event's again. */
     #[Route('/api/events/{eventId}/budget/markups/{category}', name: 'budget_markup_category', methods: ['PUT'])]
-    #[InEvent(Permission::BudgetMargin, feature: PlanFeature::Margin)]
+    #[InEvent(Permission::BudgetMargin, feature: PlanFeature::Margin, featureLocksReading: true)]
     public function categoryMarkup(Request $request, string $eventId, string $category): JsonResponse
     {
         $event = $this->event($eventId);
@@ -70,7 +70,7 @@ final readonly class MarginController
 
     /** One line's: `markup` of its own, or `price` with `currency` for the whole line; neither takes its category's or the event's again. */
     #[Route('/api/events/{eventId}/budget/lines/{lineId}/charge', name: 'budget_line_charge', methods: ['PUT'])]
-    #[InEvent(Permission::BudgetMargin, feature: PlanFeature::Margin)]
+    #[InEvent(Permission::BudgetMargin, feature: PlanFeature::Margin, featureLocksReading: true)]
     public function charge(Request $request, #[InThisEvent('lineId')] BudgetLine $line): JsonResponse
     {
         $charge = $this->marginRules->charge(Input::body($request, MarginRules::sentCharge()), $line->getEvent()->getCurrency());
@@ -81,7 +81,7 @@ final readonly class MarginController
 
     /** A hub token for this event's margin and the headcount that moves it. */
     #[Route('/api/events/{eventId}/budget/margin/subscriptions', name: 'budget_margin_subscribe', methods: ['POST'])]
-    #[InEvent(Permission::BudgetMargin, feature: PlanFeature::Margin)]
+    #[InEvent(Permission::BudgetMargin, feature: PlanFeature::Margin, featureLocksReading: true)]
     public function subscribe(string $eventId): JsonResponse
     {
         $issued = $this->subscriberTokenIssuer->issueForEventBudgetMargin($this->event($eventId)->getId());

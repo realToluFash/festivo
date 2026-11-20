@@ -14,7 +14,6 @@ import { useHeldChoice } from './PersonalisationModel.ts';
 import { SettingsDemoRow } from './SettingsDemoRow.tsx';
 import { dataHref } from './DataModel.ts';
 import { DataTile, useDataNav, useDataOpen } from './DataParts.tsx';
-import { DATA_WORDS } from './DataWords.ts';
 import { demoGroups, managesOrganisation, YOU } from './sample.ts';
 import { type ShellSection, useShell, type Viewer } from '../../components/settingsShell.ts';
 import {
@@ -90,6 +89,7 @@ function PersonCard({
 /** Data and control, a row of the demo's own: on its side it changes the page beside the list. */
 function useDataRow(dense: boolean) {
   const shell = useShell();
+  const { t } = useTranslation();
   const lit = useDataOpen();
   const nav = useDataNav();
   const href = dataHref('hub', { as: nav.viewer }) as Href;
@@ -98,8 +98,8 @@ function useDataRow(dense: boolean) {
     lit: lit != null,
     row: {
       key: DATA_ROW,
-      title: DATA_WORDS.title,
-      line: DATA_WORDS.settingsLine,
+      title: t('settings.dataAndControl'),
+      line: t('settings.dataAndControlLine'),
       tile: <DataTile side={rowSide(dense)} />,
     },
     open: () => {
@@ -172,7 +172,9 @@ export function SettingsHome({
   if (shell.layout === 'landscape')
     return (
       <Landscape column={shell.listColumn}>
-        <ChooseASection />
+        <TitleCap.Provider value={titleCap.cap}>
+          <ChooseASection />
+        </TitleCap.Provider>
       </Landscape>
     );
 
