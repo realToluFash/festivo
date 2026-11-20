@@ -139,6 +139,8 @@ describe('the states Budget A still lacked (sc-85, sc-88, sc-90, sc-91, sc-92, s
 
   it('prices a fee from its row, and refuses a markup that is not a number', SLOW, async () => {
     await open(at('margin_zero_price'));
+    const card = () => screen.getByRole('region', { name: 'Budget' }).textContent ?? '';
+    expect(card()).toContain('Client total£22,296 to £26,292');
     expect(section('Costs').textContent).toContain('Charged at £0.00 · its own priceNo figure');
     fireEvent.click(within(section('Costs')).getByRole('button', { name: /^Planning fee/ }));
     const fee = screen.getByLabelText('Charged at');
@@ -150,6 +152,8 @@ describe('the states Budget A still lacked (sc-85, sc-88, sc-90, sc-91, sc-92, s
     fireEvent.change(fee, { target: { value: '3000' } });
     save();
     expect(section('Costs').textContent).toContain('Charged at £3,000.00 · its own price100.0%');
+    expect(card()).toContain('Client total£25,296 to £29,292');
+    expect(card()).toContain('Margin£5,566 to £6,232');
     cleanup();
 
     await open(at('markup_nan'));
