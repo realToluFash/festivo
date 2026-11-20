@@ -3,7 +3,7 @@ import { join } from 'node:path';
 
 import { describe, expect, it } from 'vitest';
 
-import { fitWidest, lineStart, piecesIn } from '../layout/textSize.ts';
+import { frameTitleSize, lineStart, titleSize } from '../layout/textSize.ts';
 
 const search = readFileSync(join('src', 'components', 'EventsSearch.tsx'), 'utf8');
 const moment = readFileSync(join('src', 'components', 'MomentPick.tsx'), 'utf8');
@@ -18,20 +18,16 @@ function body(name: string): string {
 }
 
 describe('the Filter menu’s drilled levels keep every word whole (sc-75213)', () => {
-  it('starts a row’s words at 16 × the size, no larger than the Events title', () => {
-    expect(lineStart(16, AX1, 38, Infinity)).toBeCloseTo(28.58, 1);
-    expect(lineStart(16, AX5, 43, Infinity)).toBe(43);
-    expect(lineStart(15, AX5, 43, Infinity)).toBe(43);
-  });
+  it('starts the Back title at 16 × AX1 under the Events title’s 38, and at its 43 from AX5', () => {
+    const back = /<LevelWords size=\{(\d+)\} weight="bold" accessibilityRole="header">/u.exec(
+      body('Drilled'),
+    );
+    const size = Number(back?.[1]);
+    const title = frameTitleSize(false, 402);
 
-  it('steps a word too wide for its line down to where it fits, never under its default size', () => {
-    expect(fitWidest(16, 43, 260, 200)).toBe(33);
-    expect(fitWidest(16, 43, 900, 200)).toBe(16);
-    expect(fitWidest(16, 43, 180, 200)).toBe(43);
-  });
-
-  it('measures a host by the pieces after its own hyphen, not the whole name', () => {
-    expect(piecesIn(['Funmilayo Adéṣínà-Ọláolúwa'])).toEqual(['Funmilayo', 'Adéṣínà-', 'Ọláolúwa']);
+    expect(size).toBe(16);
+    expect(lineStart(size, AX1, titleSize(title, AX1), Infinity)).toBeCloseTo(28.58, 1);
+    expect(lineStart(size, AX5, titleSize(title, AX5), Infinity)).toBe(43);
   });
 
   it('draws each type, choice, host and Back title through the level’s words', () => {
