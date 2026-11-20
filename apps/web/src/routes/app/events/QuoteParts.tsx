@@ -821,7 +821,11 @@ function ScheduleRow({
         <BudgetRow
           lead={<TickMark large />}
           title={payment.description}
-          lines={[line]}
+          lines={
+            paid.reference == null || paid.reference === ''
+              ? [line]
+              : [line, t('quotes.paidReference', { reference: paid.reference })]
+          }
           lit={lit}
           end={
             <>

@@ -5376,6 +5376,7 @@
     "paidLineDifference": "Paid {{amount}} on {{day}} · {{difference}} · Marked by {{by}}",
     "paidLineNoName": "Paid {{amount}} on {{day}}",
     "paidLineDifferenceNoName": "Paid {{amount}} on {{day}} · {{difference}}",
+    "paidReference": "Reference: {{reference}}",
     "markedPaid": "Marked paid: {{amount}} on {{day}}.",
     "alreadyPaid": "{{name}} has already marked this paid, so nothing has changed.",
     "alreadyPaidNoName": "This has already been marked paid, so nothing has changed.",

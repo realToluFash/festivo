@@ -1322,6 +1322,7 @@ describe('marking a payment paid (sc-88)', () => {
     const lit = (await screen.findByText(/Marked by Folake Adeyemi/)).closest('li')!;
     expect(within(lit).getByRole('button', { name: 'Undo' })).toBeTruthy();
     expect(within(lit).queryByRole('button', { name: 'Mark paid' })).toBeNull();
+    expect(within(lit).getByText('Reference: FP-2231')).toBeTruthy();
     expect(
       sent.find((one) => one.line === 'POST /api/events/ev_1/budget/payments/p_deposit/paid')?.body,
     ).toEqual({ amount: '4600.00', currency: 'GBP', paidOn: today, reference: 'FP-2231' });
@@ -1571,12 +1572,30 @@ describe('marking a payment paid (sc-88)', () => {
     );
 
     const row = (await screen.findByText(/Marked by Kofi Mensah/)).closest('li')!;
+    expect(within(row).queryByText(/^Reference:/)).toBeNull();
     fireEvent.click(within(row).getByRole('button', { name: 'Undo' }));
 
     expect(await screen.findByRole('button', { name: 'Mark paid' })).toBeTruthy();
     expect(
       sent.some((one) => one.line === 'DELETE /api/events/ev_1/budget/payments/p_deposit/paid'),
     ).toBe(true);
+  });
+
+  it('draws the reference under the paid line of a row added as already paid (ux #77035)', async () => {
+    signedIn();
+    const added = addedEarlier({ id: 'u_kofi', name: 'Kofi Mensah' });
+    serve(
+      {
+        'GET /api/events/ev_1/budget/quotes': () =>
+          json(withPayments([{ ...added, paid: { ...added.paid, reference: 'Cheque 004417' } }])),
+      },
+      { at },
+    );
+
+    const row = (await screen.findByText('Extra stems for the arch')).closest('li')!;
+    const lines = [...row.querySelectorAll('.desk-row-line')].map((one) => one.textContent);
+    expect(lines[1]).toBe('Reference: Cheque 004417');
+    expect(lines).toHaveLength(2);
   });
 
   it('says nothing under Amount paid in Mark paid until the amount differs, and nothing in Add a payment already made', async () => {

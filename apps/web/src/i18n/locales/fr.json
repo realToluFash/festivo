@@ -5654,6 +5654,7 @@
     "paidLineDifference": "Réglé : {{amount}} le {{day}} · {{difference}} · Marqué par {{by}}",
     "paidLineNoName": "Réglé : {{amount}} le {{day}}",
     "paidLineDifferenceNoName": "Réglé : {{amount}} le {{day}} · {{difference}}",
+    "paidReference": "Reference: {{reference}}",
     "markedPaid": "Marqué comme réglé : {{amount}} le {{day}}.",
     "alreadyPaid": "{{name}} l’a déjà marqué comme réglé : rien n’a changé.",
     "alreadyPaidNoName": "Ce paiement a déjà été marqué comme réglé : rien n’a changé.",
