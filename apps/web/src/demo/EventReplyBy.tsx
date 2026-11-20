@@ -13,6 +13,8 @@ import {
   haventCountOf,
 } from './replyBy.ts';
 import { Glyph } from '../components/Glyph.tsx';
+import { useSaveAnswer } from '../components/saveAnswer.ts';
+import { SaveNotice } from '../components/SaveNotice.tsx';
 import { Ask, TextAction } from '../components/SettingsParts.tsx';
 
 const GUEST_WORDS = wordsFor('en');
@@ -24,6 +26,7 @@ function typedFor(state: EditState | null, was: string | null): string {
     case 'replyByError':
       return '2026-11-05';
     case 'replyBySooner':
+    case 'replyByForbidden':
       return '2026-11-03';
     case 'replyByNow':
       return '2026-11-02';
@@ -61,6 +64,7 @@ export function ReplyByPart({
   const [tried, setTried] = useState(state === 'replyByError');
   const [asking, setAsking] = useState<ReplyByCheck | null>(askedFor(state));
   const [askedFirst] = useState(asking != null);
+  const forbidden = useSaveAnswer();
   const field = useRef<HTMLInputElement>(null);
   const id = useId();
   const next = typed === '' ? null : typed;
@@ -81,6 +85,14 @@ export function ReplyByPart({
     if (!askedFirst) field.current?.focus();
   }, [askedFirst]);
 
+  function commit(): void {
+    if (state === 'replyByForbidden') {
+      forbidden.give('forbidden');
+      return;
+    }
+    onSave(next);
+  }
+
   function save(): void {
     setTried(true);
     if (check === 'tooLate') {
@@ -91,7 +103,7 @@ export function ReplyByPart({
       setAsking(check);
       return;
     }
-    onSave(next);
+    commit();
   }
 
   return (
@@ -112,6 +124,7 @@ export function ReplyByPart({
           onChange={(change) => {
             setTyped(change.target.value);
             setTried(false);
+            forbidden.clear();
           }}
         />
         {wrong && (
@@ -129,6 +142,7 @@ export function ReplyByPart({
             onClick={() => {
               setTyped('');
               setTried(false);
+              forbidden.clear();
               field.current?.focus();
             }}
           />
@@ -147,12 +161,13 @@ export function ReplyByPart({
           onKeep={() => setAsking(null)}
           onGo={() => {
             setAsking(null);
-            onSave(next);
+            commit();
           }}
         >
           <p>{asking === 'sooner' ? R.soonerLine : R.nowLine}</p>
         </Ask>
       )}
+      <SaveNotice answered={forbidden} />
     </Opened>
   );
 }
