@@ -9,6 +9,8 @@ use App\Entity\AuditEntry;
 use App\Entity\User;
 use App\Enum\Actor;
 use App\Enum\AuditType;
+use DateTimeImmutable;
+use DateTimeZone;
 use Doctrine\DBAL\ArrayParameterType;
 use Doctrine\DBAL\Connection;
 use Psl\Dict;
@@ -22,7 +24,13 @@ use Symfony\Contracts\Translation\TranslatorInterface;
 
 final readonly class AuditEntryView
 {
-    private const array UNSHOWN_FIELDS = ['export', 'eventId', 'membershipId', 'invitationId', 'userId', 'organisationId', 'claimId'];
+    private const array UNSHOWN_FIELDS = ['export', 'eventId', 'membershipId', 'invitationId', 'userId', 'organisationId', 'claimId', 'organisation', 'user', 'claimant', 'duplicatedFrom'];
+
+    private const array CODED_FIELDS = ['role', 'roleId', 'status', 'membershipStatus', 'suspension', 'type', 'addressKind'];
+
+    private const string UUID = '/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/';
+
+    private const string INSTANT = '/^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d+)?(Z|[+-]\\d{2}:\\d{2})$/';
 
     public function __construct(
         private TranslatorInterface $translator,
@@ -45,7 +53,7 @@ final readonly class AuditEntryView
                 'day' => $day,
                 'time' => $time,
                 'when' => $this->userMailer->stamp($entry->getOccurredAt(), $reader, $locale),
-                ...$this->facts($entry, $context, $locale),
+                ...$this->facts($entry, $context, $locale, $reader),
             ];
         });
     }
@@ -97,11 +105,11 @@ final readonly class AuditEntryView
     }
 
     /**
-     * @param array{emails: array<string, ?string>, live: array<string, true>} $context
+     * @param array{emails: array<string, ?string>, live: array<string, true>, roles: array<string, string>} $context
      *
      * @return array<string, mixed>
      */
-    private function facts(AuditEntry $entry, array $context, string $locale): array
+    private function facts(AuditEntry $entry, array $context, string $locale, ?User $reader = null): array
     {
         $type = AuditType::of($entry->getAction()) ?? AuditType::Organisation;
         $actorId = $entry->getActorId()?->toRfc4122();
@@ -127,7 +135,7 @@ final readonly class AuditEntryView
                 'eventId' => Iter\contains_key($context['live'], $eventId) ? $eventId : null,
                 'gone' => !Iter\contains_key($context['live'], $eventId),
             ],
-            'changes' => $this->changes($entry, $locale),
+            'changes' => $this->changes($entry, $context['roles'], $locale, $reader),
             'type' => $type->value,
             'action' => $entry->getAction(),
             'address' => $whereFrom ? $entry->getIp() : null,
@@ -136,8 +144,12 @@ final readonly class AuditEntryView
         ];
     }
 
-    /** @return list<string> "Everyone needs two-factor: Off → On", one per field a reader can make sense of */
-    private function changes(AuditEntry $entry, string $locale): array
+    /**
+     * @param array<string, string> $roles role id => the role it was seeded as
+     *
+     * @return list<string> "Everyone needs two-factor: Off → On", one per field a reader can make sense of and that changed
+     */
+    private function changes(AuditEntry $entry, array $roles, string $locale, ?User $reader): array
     {
         $lines = [];
 
@@ -146,10 +158,18 @@ final readonly class AuditEntryView
                 continue;
             }
 
+            $coded = Iter\contains(self::CODED_FIELDS, $field);
+            $was = $this->value($before, $coded, $roles, $locale, $reader);
+            $now = $this->value($after, $coded, $roles, $locale, $reader);
+
+            if (null === $was || null === $now || $was === $now) {
+                continue;
+            }
+
             $lines[] = $this->translator->trans('audit.change', [
                 'field' => $this->fieldName($field, $locale),
-                'before' => $this->value($before, $locale),
-                'after' => $this->value($after, $locale),
+                'before' => $was,
+                'after' => $now,
             ], 'messages', $locale);
         }
 
@@ -168,19 +188,44 @@ final readonly class AuditEntryView
         return Str\capitalize(Str\lowercase(Regex\replace($field, '/(?<=[a-z0-9])([A-Z])/', ' $1')));
     }
 
-    private function value(mixed $value, string $locale): string
+    /**
+     * @param array<string, string> $roles
+     *
+     * @return ?string null for a value no reader could make sense of, such as another record's id
+     */
+    private function value(mixed $value, bool $coded, array $roles, string $locale, ?User $reader): ?string
     {
         return match (true) {
-            null === $value => '—',
+            null === $value, '' === $value, [] === $value => $this->translator->trans('audit.value.none', [], 'messages', $locale),
             true === $value => $this->translator->trans('audit.value.on', [], 'messages', $locale),
             false === $value => $this->translator->trans('audit.value.off', [], 'messages', $locale),
-            \is_string($value) => '' === $value ? '—' : $value,
             \is_int($value), \is_float($value) => (string) $value,
+            \is_string($value) && Regex\matches($value, self::UUID) => Iter\contains_key($roles, $value) ? $this->code($roles[$value], $locale) : null,
+            \is_string($value) && Regex\matches($value, self::INSTANT) => $this->instant(new DateTimeImmutable($value), $locale, $reader),
+            \is_string($value) => $coded ? $this->code($value, $locale) : $value,
+            \is_array($value) && Iter\all($value, static fn (mixed $one): bool => \is_string($one)) => Str\join(Type\vec(Type\string())->coerce($value), ', '),
             default => Json\encode($value),
         };
     }
 
-    /** @return array{emails: array<string, ?string>, live: array<string, true>} */
+    /** A stored code in words: "can_edit" reads "Can edit", from audit.value.* where it has a word of its own. */
+    private function code(string $code, string $locale): string
+    {
+        $key = 'audit.value.' . $code;
+        $named = $this->translator->trans($key, [], 'messages', $locale);
+
+        return $named !== $key ? $named : Str\capitalize(Str\replace($code, '_', ' '));
+    }
+
+    /** On screen in the reader's zone, as the entry's own time is; in the export in UTC, as its occurred_at is. */
+    private function instant(DateTimeImmutable $at, string $locale, ?User $reader): string
+    {
+        return null === $reader
+            ? $at->setTimezone(new DateTimeZone('UTC'))->format('Y-m-d\TH:i:s\Z')
+            : $this->userMailer->stamp($at, $reader, $locale);
+    }
+
+    /** @return array{emails: array<string, ?string>, live: array<string, true>, roles: array<string, string>} */
     private function context(AuditEntry ...$entries): array
     {
         $actors = Vec\unique(Vec\filter_nulls(Vec\map($entries, static fn (AuditEntry $entry): ?string => Actor::User === $entry->getActorType() ? $entry->getActorId()?->toRfc4122() : null)));
@@ -208,6 +253,21 @@ final readonly class AuditEntryView
             static fn (): bool => true,
         );
 
-        return ['emails' => $emails, 'live' => Type\dict(Type\string(), Type\literal_scalar(true))->coerce($live)];
+        $roleIds = Vec\unique(Type\vec(Type\string())->coerce(Vec\filter(
+            Vec\flat_map($entries, static fn (AuditEntry $entry): array => Vec\flat_map(Vec\values($entry->getChanges()), static fn (array $pair): array => Vec\values($pair))),
+            static fn (mixed $value): bool => \is_string($value) && Regex\matches($value, self::UUID),
+        )));
+
+        $roles = [] === $roleIds ? [] : Dict\pull(
+            Type\vec(Type\shape(['id' => Type\string(), 'seeded_as' => Type\string()]))->coerce($this->connection->fetchAllAssociative(<<<'SQL'
+                SELECT id::text AS id, seeded_as
+                FROM   roles
+                WHERE  id::text IN (:ids)
+                SQL, ['ids' => $roleIds], ['ids' => ArrayParameterType::STRING])),
+            static fn (array $row): string => $row['seeded_as'],
+            static fn (array $row): string => $row['id'],
+        );
+
+        return ['emails' => $emails, 'live' => Type\dict(Type\string(), Type\literal_scalar(true))->coerce($live), 'roles' => $roles];
     }
 }
