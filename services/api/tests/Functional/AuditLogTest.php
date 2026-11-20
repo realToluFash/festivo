@@ -40,7 +40,10 @@ use App\Tests\Double\SteppingClock;
 use App\Tests\Traits\InvitesPeople;
 use App\Tests\Traits\OnboardsAccounts;
 use DateTimeImmutable;
+use Doctrine\DBAL\Schema\Schema;
 use Doctrine\DBAL\Types\Types;
+use Doctrine\Migrations\DependencyFactory;
+use Doctrine\Migrations\Version\Version;
 use Doctrine\ORM\EntityManagerInterface;
 use Lexik\Bundle\JWTAuthenticationBundle\Services\JWTTokenManagerInterface;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -498,6 +501,30 @@ final class AuditLogTest extends ApiTestCase
     }
 
     #[Test]
+    public function aTryStillUploadingItsFilePastFiveMinutesIsNeitherStartedAgainNorFailed(): void
+    {
+        $asked = new DateTimeImmutable();
+        self::mockTime($asked);
+        [$owner, $organisation] = $this->enterprise('folake@ire.events', 'Ìrè Events');
+        $export = $this->preparing($organisation, $owner, 0, null, askedAt: $asked);
+        $cutIn = [];
+        $clock = new SteppingClock($asked, 'PT4M', static function (int $reading, DateTimeImmutable $now) use (&$cutIn): void {
+            if (4 !== $reading) {
+                return;
+            }
+
+            self::mockTime($now);
+            $cutIn[] = self::service(AuditExports::class)->prepareDue();
+        });
+
+        $this->exportsWith(clock: $clock)->prepare($export);
+
+        self::assertSame([0], $cutIn, 'twelve minutes after the try began, eight after it wrote its last batch, four after its upload was last seen, another run leaves it alone');
+        self::assertSame([AuditExportStatus::Ready, 1], $this->triesOf($export));
+        self::assertCount(1, $this->readyMails());
+    }
+
+    #[Test]
     public function aTryThatAnotherFinishedFirstDiscardsItsOwnFileAndEmailsNothing(): void
     {
         $asked = new DateTimeImmutable();
@@ -640,17 +667,40 @@ final class AuditLogTest extends ApiTestCase
     }
 
     #[Test]
-    public function anExportStuckPreparingBeforeRetriesShippedIsTriedAgainByTheFirstRunAsItsSecondTry(): void
+    public function anExportStuckPreparingBeforeRetriesShippedIsTriedAgainByTheFirstRunAsItsSecondTryInItsAskersZoneToday(): void
     {
         $now = new DateTimeImmutable('2026-11-20T10:00:00Z');
         self::mockTime($now);
         [$owner, $organisation] = $this->enterprise('folake@ire.events', 'Ìrè Events');
-        $export = $this->preparing($organisation, $owner, 1, $now->modify('-3 days'), askedAt: $now->modify('-3 days'));
+        $admin = $this->member('julien@ire.events', 'Julien Moreau');
+        $this->join($organisation, $admin, SeededRole::Admin);
+        $stuck = $this->preparing($organisation, $owner, 0, null, askedAt: $now->modify('-3 days'));
+        $zoneless = $this->preparing($organisation, $admin, 0, null, askedAt: $now->modify('-3 days'));
+        $connection = self::service(EntityManagerInterface::class)->getConnection();
+        $connection->executeStatement('UPDATE users SET timezone = CASE WHEN id = :owner THEN :zone ELSE NULL END WHERE id IN (:owner, :admin)', ['owner' => $owner->getId()->toRfc4122(), 'admin' => $admin->getId()->toRfc4122(), 'zone' => 'Pacific/Kiritimati']);
+        $connection->executeStatement('UPDATE audit_exports SET updated_at = :then', ['then' => $now->modify('-3 days')], ['then' => Types::DATETIME_IMMUTABLE]);
+        $connection->executeStatement('DROP INDEX idx_audit_export_preparing');
+        $connection->executeStatement('ALTER TABLE audit_exports DROP attempts, DROP worked_at, DROP zone');
 
-        self::assertSame(1, self::service(AuditExports::class)->prepareDue());
+        $factory = self::serviceById('doctrine.migrations.dependency_factory', DependencyFactory::class);
+        $migration = $factory->getMigrationRepository()->getMigration(new Version('DoctrineMigrations\Version20261120150000'))->getMigration();
+        $migration->up(new Schema());
 
-        self::assertSame([AuditExportStatus::Ready, 2], $this->triesOf($export));
-        self::assertCount(1, $this->readyMails());
+        foreach ($migration->getSql() as $query) {
+            $connection->executeStatement($query->getStatement());
+        }
+
+        self::service(EntityManagerInterface::class)->clear();
+        $stuck = self::service(EntityManagerInterface::class)->find(AuditExport::class, $stuck->getId()) ?? self::fail('gone');
+        $zoneless = self::service(EntityManagerInterface::class)->find(AuditExport::class, $zoneless->getId()) ?? self::fail('gone');
+        self::assertSame(['Pacific/Kiritimati', 'UTC'], [$stuck->getZone(), $zoneless->getZone()]);
+        self::assertSame([1, $now->modify('-3 days')->getTimestamp()], [$stuck->getAttempts(), $stuck->getWorkedAt()?->getTimestamp()], 'its stuck try counted as its first, last working when the row last changed');
+
+        self::assertSame(2, self::service(AuditExports::class)->prepareDue());
+
+        self::assertSame([AuditExportStatus::Ready, 2], $this->triesOf($stuck));
+        self::assertSame([AuditExportStatus::Ready, 2], $this->triesOf($zoneless));
+        self::assertCount(2, $this->readyMails());
     }
 
     #[Test]

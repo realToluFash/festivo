@@ -126,7 +126,8 @@ final readonly class AuditExports
         try {
             $key = Str\format('audit-exports/%s/%s-%d.%s', $export->getOrganisation()->getId()->toRfc4122(), $export->getId()->toRfc4122(), $attempt, $export->getFormat());
             $filter = $this->auditFilters->asked($export->getOrganisation()->getId(), $export->getFilters(), new DateTimeZone($export->getZone()), $export->getAskedAt())->upTo($export->getAskedAt());
-            $this->preparedFiles->keep($key, self::contentType($export->getFormat()), fn ($file) => $this->write($file, $filter, $export->getFormat(), $export->getLocale(), fn () => $this->auditExportRepository->working($export, $attempt, $this->clock->now())));
+            $working = fn () => $this->auditExportRepository->working($export, $attempt, $this->clock->now());
+            $this->preparedFiles->keep($key, self::contentType($export->getFormat()), fn ($file) => $this->write($file, $filter, $export->getFormat(), $export->getLocale(), $working), $working);
         } catch (Throwable $e) {
             $this->logger->error('An audit log export failed to prepare.', [...self::context($export, $attempt), 'exception' => $e::class]);
 

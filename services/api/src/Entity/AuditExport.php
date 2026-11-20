@@ -61,7 +61,7 @@ class AuditExport implements PreparedFile
     #[ORM\Column(type: Types::SMALLINT, options: ['default' => 0])]
     private int $attempts = 0;
 
-    /** When the latest try was last seen writing; a try quiet for PreparedFile::RETRY_AFTER has stopped. */
+    /** When the latest try was last seen writing or uploading its file; a try quiet for PreparedFile::RETRY_AFTER has stopped. */
     #[ORM\Column(type: Types::DATETIME_IMMUTABLE, nullable: true)]
     private ?DateTimeImmutable $workedAt = null;
 
