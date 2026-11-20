@@ -298,10 +298,18 @@ a.desk-row.bud-row:hover {
 
 .bud-row-end {
   display: flex;
-  flex: none;
+  flex: 0 1 auto;
   align-items: center;
+  max-width: 100%;
   gap: var(--spaceLg);
   margin-inline-start: auto;
+}
+
+.bud-row-end > .bud-amount {
+  flex-shrink: 1;
+  min-width: 0;
+  white-space: normal;
+  text-align: end;
 }
 
 .bud-row-actions {

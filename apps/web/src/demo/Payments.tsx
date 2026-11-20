@@ -286,13 +286,21 @@ function MadeTotals({ budget, draft }: { budget: Budget; draft: MadeDraft }) {
         <li>
           <BudgetRow
             title={PW.paidTo(inset.vendor)}
-            end={<Amount value={<Then now={now.paid} after={after?.paid} />} />}
+            end={
+              <span className="bud-row-end">
+                <Amount value={<Then now={now.paid} after={after?.paid} />} />
+              </span>
+            }
           />
         </li>
         <li>
           <BudgetRow
             title={QW.scheduled}
-            end={<Amount value={<Then now={now.scheduled} after={after?.scheduled} />} />}
+            end={
+              <span className="bud-row-end">
+                <Amount value={<Then now={now.scheduled} after={after?.scheduled} />} />
+              </span>
+            }
           />
         </li>
       </Rows>

@@ -128,23 +128,3 @@
   display: grid;
   gap: var(--spaceSm);
 }
-
-.pay-inset .bud-row {
-  flex-wrap: wrap;
-  row-gap: var(--spaceXs);
-}
-
-.pay-inset .bud-row > .desk-row-words {
-  flex: 1 1 10rem;
-}
-
-.pay-inset .bud-amount {
-  flex-shrink: 1;
-  min-width: 0;
-  margin-inline-start: auto;
-}
-
-.pay-inset .bud-amount-value {
-  text-align: end;
-  white-space: normal;
-}
