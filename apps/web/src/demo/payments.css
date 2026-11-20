@@ -131,6 +131,8 @@
 }
 
 .pay-over-quote {
+  --budAmber: var(--colorAttentionText);
+
   display: flex;
   align-items: flex-start;
   gap: 8px;
