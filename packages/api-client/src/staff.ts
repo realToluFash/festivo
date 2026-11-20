@@ -1,7 +1,7 @@
 /** An event's roster (sc-3906), with its jobs and shifts (sc-3908), as the API answers and the hub publishes it. Every time is an instant with the event's offset. */
 
-/** How far a person's own link got (sc-3912), or why none can be given. Shared is a copy made from the app's share sheet. */
-export type StaffLink = 'none' | 'copied' | 'shared' | 'sent' | 'opened' | 'no_mobile' | 'erased';
+/** How far a person's own link got (sc-3912), or why none can be given. */
+export type StaffLink = 'none' | 'copied' | 'sent' | 'opened' | 'no_mobile' | 'erased';
 
 export type StaffAccess = 'view' | 'check_in' | 'floor' | 'pass' | 'run';
 
@@ -42,7 +42,7 @@ export interface StaffEntry {
   floorLead: boolean;
   shifts: StaffEntryShift[];
   link: StaffLink;
-  /** Who copied, shared or marked it as sent; null for Opened and No link yet. */
+  /** Who copied or marked it as sent; null for Opened and No link yet. */
   linkBy: string | null;
   linkAt: string | null;
   contactsErased: boolean;
@@ -137,15 +137,7 @@ export const STATION_NAME_MAXIMUM = 60;
 /** The API's StaffShift::NEEDED_MAXIMUM. */
 export const SHIFT_NEEDED_MAXIMUM = 50;
 
-const LINKS: readonly StaffLink[] = [
-  'none',
-  'copied',
-  'shared',
-  'sent',
-  'opened',
-  'no_mobile',
-  'erased',
-];
+const LINKS: readonly StaffLink[] = ['none', 'copied', 'sent', 'opened', 'no_mobile', 'erased'];
 
 const KINDS: readonly StationKind[] = ['place', 'section'];
 

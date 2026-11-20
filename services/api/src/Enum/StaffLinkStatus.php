@@ -9,7 +9,6 @@ enum StaffLinkStatus: string
 {
     case None = 'none';
     case Copied = 'copied';
-    case Shared = 'shared';
     case Sent = 'sent';
     case Opened = 'opened';
 

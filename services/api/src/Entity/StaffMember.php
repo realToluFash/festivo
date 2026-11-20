@@ -73,7 +73,7 @@ class StaffMember
     #[ORM\Column(type: Types::STRING, length: 16, enumType: StaffLinkStatus::class, options: ['default' => 'none'])]
     private StaffLinkStatus $linkStatus = StaffLinkStatus::None;
 
-    /** Who copied, shared or marked it as sent; never set for Opened. */
+    /** Who copied or marked it as sent; never set for Opened. */
     #[ORM\ManyToOne(targetEntity: User::class)]
     #[ORM\JoinColumn(nullable: true, onDelete: 'SET NULL')]
     private ?User $linkBy = null;

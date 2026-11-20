@@ -35,13 +35,12 @@ final readonly class StaffLinkController
     ) {
     }
 
-    /** `via` is `copy` or `share`. Answers the link with its plain token once, which is never logged or kept; refused 409 `conflict` with no mobile number. */
+    /** Answers the link with its plain token once, which is never logged or kept; refused 409 `conflict` with no mobile number. */
     #[Route('/api/events/{eventId}/staff/{staffId}/link', name: 'staff_link_deliver', methods: ['POST'])]
     #[InEvent(Permission::StaffManage)]
-    public function deliver(Request $request, #[InThisEvent('staffId')] StaffMember $entry): JsonResponse
+    public function deliver(#[InThisEvent('staffId')] StaffMember $entry): JsonResponse
     {
-        $via = Input::body($request, Type\shape(['via' => Type\union(Type\literal_scalar('copy'), Type\literal_scalar('share'))]))['via'];
-        $url = $this->staffLinks->deliver($entry, 'share' === $via, $this->user());
+        $url = $this->staffLinks->deliver($entry, $this->user());
 
         return new JsonResponse(['url' => $url, 'staff' => $this->staffSerialiser->entry($entry)]);
     }

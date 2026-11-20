@@ -80,14 +80,6 @@ final class StaffLinkTest extends ApiTestCase
     }
 
     #[Test]
-    public function shareRecordsShared(): void
-    {
-        $this->deliver($this->ada, 'share');
-
-        self::assertSame('shared', $this->row($this->ada)['link']);
-    }
-
-    #[Test]
     public function theTokenIsKeptOnlyAsItsHashAndNeverInTheAuditLog(): void
     {
         $token = self::token($this->deliver($this->ada));
@@ -113,7 +105,7 @@ final class StaffLinkTest extends ApiTestCase
     }
 
     #[Test]
-    public function aCopyOrShareOnALinkSentRowLeavesItsWordAndItsLine(): void
+    public function aCopyOnALinkSentRowLeavesItsWordAndItsLine(): void
     {
         $this->deliver($this->ada);
         $this->as($this->owner, 'POST', $this->linkPath($this->ada) . '/sent');
@@ -121,7 +113,6 @@ final class StaffLinkTest extends ApiTestCase
         $this->at('2027-03-01T12:00:00Z');
 
         $this->deliver($this->ada);
-        $this->deliver($this->ada, 'share');
 
         self::assertSame($before, $this->row($this->ada));
     }
@@ -158,7 +149,7 @@ final class StaffLinkTest extends ApiTestCase
     {
         $kemi = $this->person('Kemi Ade', null);
 
-        $this->as($this->owner, 'POST', $this->linkPath($kemi), ['via' => 'copy']);
+        $this->as($this->owner, 'POST', $this->linkPath($kemi));
 
         self::assertSame(409, $this->statusCode());
         self::assertSame([], self::em()->getRepository(StaffLinkToken::class)->findAll());
@@ -170,7 +161,7 @@ final class StaffLinkTest extends ApiTestCase
         $viewer = $this->member('viewer@ire.events', 'Bisi Ola', EventRole::CanView);
 
         foreach (['', '/sent', '/replace'] as $what) {
-            $this->as($viewer, 'POST', $this->linkPath($this->ada) . $what, ['via' => 'copy']);
+            $this->as($viewer, 'POST', $this->linkPath($this->ada) . $what);
             self::assertSame(403, $this->statusCode(), $what);
         }
 
@@ -303,7 +294,7 @@ final class StaffLinkTest extends ApiTestCase
     public function theAccessListShowsEachPersonWithALiveLinkOnceAndNotSignedIn(): void
     {
         $this->deliver($this->ada);
-        $this->deliver($this->ada, 'share');
+        $this->deliver($this->ada);
         $this->person('Kemi Ade', '0803 111 0010');
 
         self::assertSame([[
@@ -359,9 +350,9 @@ final class StaffLinkTest extends ApiTestCase
         self::mockTime(new DateTimeImmutable($instant));
     }
 
-    private function deliver(string $staffId, string $via = 'copy'): string
+    private function deliver(string $staffId): string
     {
-        $answer = $this->as($this->owner, 'POST', $this->linkPath($staffId), ['via' => $via]);
+        $answer = $this->as($this->owner, 'POST', $this->linkPath($staffId));
         self::assertSame(200, $this->statusCode(), Json\encode($answer));
 
         return Type\string()->coerce($answer['url'] ?? null);

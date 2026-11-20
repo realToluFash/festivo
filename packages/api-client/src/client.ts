@@ -2917,18 +2917,16 @@ export class ApiClient {
   async deliverStaffLink(
     eventId: string,
     staffId: string,
-    via: 'copy' | 'share',
   ): Promise<{ url: string; staff: StaffEntry }> {
     const body = await this.post<{ url?: unknown; staff?: unknown }>(
       `${this.staffPath(eventId)}/${encodeURIComponent(staffId)}/link`,
-      { via },
     );
     const { staff } = this.staffAnswerOf(body);
 
     return { url: typeof body.url === 'string' ? body.url : '', staff };
   }
 
-  /** Only a Copied or Shared row moves; Link sent and Link opened stay. */
+  /** Only a Copied row moves; Link sent and Link opened stay. */
   async markStaffLinkSent(eventId: string, staffId: string): Promise<StaffEntry> {
     return this.staffAnswerOf(
       await this.post<unknown>(

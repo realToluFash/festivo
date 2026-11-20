@@ -81,7 +81,6 @@ type Field = keyof Problems;
 const LINK_KEYS: Record<StaffLink, string> = {
   none: 'roster.linkNone',
   copied: 'roster.linkCopied',
-  shared: 'roster.linkShared',
   sent: 'roster.linkSent',
   opened: 'roster.linkOpened',
   no_mobile: 'roster.linkNoMobile',
@@ -91,16 +90,15 @@ const LINK_KEYS: Record<StaffLink, string> = {
 const LINK_MARKS: Record<StaffLink, string> = {
   none: 'is-none',
   copied: 'is-copied',
-  shared: 'is-copied',
   sent: 'is-sent',
   opened: 'is-opened',
   no_mobile: 'is-no-mobile',
   erased: 'is-erased',
 };
 
-/** Copied or Shared: given out, and not yet marked as sent. */
+/** Copied: given out, and not yet marked as sent. */
 function unmarked(link: StaffLink): boolean {
-  return link === 'copied' || link === 'shared';
+  return link === 'copied';
 }
 
 function draftOf(entry: StaffEntry | null, country: string): Draft {
@@ -297,7 +295,7 @@ function Roster({
     if (held?.id === entry.id) setHeld(null);
     let answered: StaffEntry | null = null;
     const issue = () =>
-      api.deliverStaffLink(event.id, entry.id, 'copy').then((answer) => {
+      api.deliverStaffLink(event.id, entry.id).then((answer) => {
         answered = answer.staff;
         return answer.url;
       });
@@ -820,8 +818,6 @@ function trailLine(entry: StaffEntry, times: StaffTimes, t: TFunction): string |
   switch (entry.link) {
     case 'copied':
       return t('roster.trailCopied', { name, time });
-    case 'shared':
-      return t('roster.trailShared', { name, time });
     case 'sent':
       return t('roster.trailSent', { name, time });
     case 'opened':
