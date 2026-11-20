@@ -1947,6 +1947,16 @@ describe('a card’s sentence steps down rather than break a word (sc-37693)', (
 
     expect(says.slice(0, says.indexOf('\n}\n'))).toContain('<WholeWords');
   });
+
+  it.each(['SecurityCard.tsx', 'NotificationsCard.tsx'])(
+    'in %s, whose heading beside the glyph is a CardSays, so Double authentification désactivée never reads authentifica / tion (sc-13281)',
+    (file) => {
+      const card = readFileSync(join(__dirname, 'components', file), 'utf8');
+
+      expect(card).toContain('<CardSays');
+      expect(card).not.toMatch(/<Text[\s>]/u);
+    },
+  );
 });
 
 describe('a screen still reading says so in words (sc-23279)', () => {
