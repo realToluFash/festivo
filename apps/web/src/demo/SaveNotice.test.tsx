@@ -8,7 +8,7 @@ import { routes } from '../routes/index.tsx';
 import en from '../i18n/locales/en.json';
 import fr from '../i18n/locales/fr.json';
 import { resetSample, sampleEvent } from './events.ts';
-import type { SaveAnswer } from './saveAnswer.ts';
+import type { SaveAnswer } from '../components/saveAnswer.ts';
 
 const tested = config();
 const SLOW = { timeout: 20000 };

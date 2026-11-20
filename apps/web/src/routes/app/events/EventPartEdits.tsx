@@ -40,6 +40,8 @@ import {
 } from '../../../components/EventPageParts.tsx';
 import { type CoverEdited, type CoverUploaded, CoverEdit } from '../../../components/CoverEdit.tsx';
 import { Glyph } from '../../../components/Glyph.tsx';
+import { type SaveAnswer, useSaveAnswer } from '../../../components/saveAnswer.ts';
+import { SaveNotice } from '../../../components/SaveNotice.tsx';
 import { currentLocale, dateLocale } from '../../../i18n/index.ts';
 import { meshFor } from '../../../mesh.ts';
 import { focusStep, landOnNotice } from '../../../stepFocus.ts';
@@ -140,25 +142,33 @@ function useDirty(changed: boolean, onDirty: (dirty: boolean) => void): void {
   useEffect(() => onDirty(changed), [changed, onDirty]);
 }
 
-/** The notice a save that failed for no reason the part can show leaves, or for the role, and Changed elsewhere's way to the latest. */
+/** The answer a save left that no field holds — not saved, the role refused it, or changed elsewhere with its way to the latest — shown last in the part, directly above Cancel and Save (sc-74398). */
 function useOutcome(onLatest: PartProps['onLatest'], latest: ReturnType<typeof useSave>['latest']) {
-  const { t } = useTranslation();
-  const [outcome, setOutcome] = useState<'changed' | 'failed' | 'forbidden' | null>(null);
+  const answered = useSaveAnswer();
 
   return {
-    refused: outcome === 'changed',
-    failed:
-      outcome === 'failed' || outcome === 'forbidden' ? (
-        <Broken>{t(outcome === 'forbidden' ? 'eventEdit.forbidden' : 'eventEdit.notSaved')}</Broken>
-      ) : null,
+    notice: (
+      <SaveNotice
+        answered={answered}
+        onLatest={() =>
+          void latest(onLatest).then((read) => {
+            if (!read) answered.give('notSaved');
+          })
+        }
+      />
+    ),
     took(saving: Saving): void {
-      setOutcome(saving.kind === 'refused' || saving.kind === 'saved' ? null : saving.kind);
-    },
-    showLatest(): void {
-      void latest(onLatest).then((read) => setOutcome(read ? null : 'failed'));
+      if (saving.kind === 'refused' || saving.kind === 'saved') answered.clear();
+      else answered.give(ANSWER[saving.kind]);
     },
   };
 }
+
+const ANSWER = {
+  changed: 'changedElsewhere',
+  failed: 'notSaved',
+  forbidden: 'forbidden',
+} as const satisfies Record<Exclude<Saving['kind'], 'saved' | 'refused'>, SaveAnswer>;
 
 export function NamePart({ event, tag, onDirty, onClose, onSaved, onLatest }: PartProps) {
   const { t } = useTranslation();
@@ -193,13 +203,10 @@ export function NamePart({ event, tag, onDirty, onClose, onSaved, onLatest }: Pa
     <Opened
       label={t('eventForm.name')}
       changed={changed}
-      refused={outcome.refused}
       busy={busy}
-      onLatest={outcome.showLatest}
       onCancel={onClose}
       onSave={() => void send()}
     >
-      {outcome.failed}
       <EditText
         label={t('eventForm.name')}
         value={name}
@@ -216,6 +223,7 @@ export function NamePart({ event, tag, onDirty, onClose, onSaved, onLatest }: Pa
           setError(null);
         }}
       />
+      {outcome.notice}
     </Opened>
   );
 }
@@ -238,9 +246,7 @@ export function TypePart({ event, tag, onDirty, onClose, onSaved, onLatest }: Pa
     <Opened
       label={t('eventForm.type')}
       changed={changed}
-      refused={outcome.refused}
       busy={busy}
-      onLatest={outcome.showLatest}
       onCancel={onClose}
       onSave={() =>
         void save({ ...typedOf(event), draft: { ...draftOf(event), type: picked } }, null).then(
@@ -248,7 +254,6 @@ export function TypePart({ event, tag, onDirty, onClose, onSaved, onLatest }: Pa
         )
       }
     >
-      {outcome.failed}
       <div className="ev-field is-small" role="search" aria-label={t('eventPage.searchTypes')}>
         <Glyph name="search" size={18} weight={2.2} />
         <input
@@ -266,6 +271,7 @@ export function TypePart({ event, tag, onDirty, onClose, onSaved, onLatest }: Pa
         picked={picked}
         onPick={setPicked}
       />
+      {outcome.notice}
     </Opened>
   );
 }
@@ -298,9 +304,7 @@ export function CurrencyPart({ event, tag, onDirty, onClose, onSaved, onLatest }
     <Opened
       label={t('eventForm.currency')}
       changed={changed}
-      refused={outcome.refused}
       busy={busy}
-      onLatest={outcome.showLatest}
       onCancel={onClose}
       onSave={() => {
         const from = document.activeElement;
@@ -317,7 +321,6 @@ export function CurrencyPart({ event, tag, onDirty, onClose, onSaved, onLatest }
         });
       }}
     >
-      {outcome.failed}
       {inUse != null && (
         <Broken key={inUse.times} landing={inUse.landing ? notice : undefined}>
           {t('eventEdit.currencyInUse')}
@@ -329,6 +332,7 @@ export function CurrencyPart({ event, tag, onDirty, onClose, onSaved, onLatest }
         picked={picked}
         onPick={setPicked}
       />
+      {outcome.notice}
     </Opened>
   );
 }
@@ -414,13 +418,10 @@ export function DatesPart({
     <Opened
       label={t('eventPage.dates')}
       changed={changed}
-      refused={outcome.refused}
       busy={busy}
-      onLatest={outcome.showLatest}
       onCancel={onClose}
       onSave={() => void send(false)}
     >
-      {outcome.failed}
       <DateTime
         legend={t('eventForm.starts')}
         wall={wallOf(draft, false)}
@@ -513,6 +514,7 @@ export function DatesPart({
           {errors.timeZone ?? t('eventPage.timesIn', { timeZone: zone })}
         </p>
       </div>
+      {outcome.notice}
     </Opened>
   );
 }
@@ -575,13 +577,10 @@ export function VenuePart({
     <Opened
       label={t('eventPage.venue')}
       changed={changed}
-      refused={outcome.refused}
       busy={busy}
-      onLatest={outcome.showLatest}
       onCancel={onClose}
       onSave={() => void send()}
     >
-      {outcome.failed}
       <VenueFields
         venue={venue}
         errors={errors}
@@ -604,6 +603,7 @@ export function VenuePart({
       <p className="visually-hidden" role="status">
         {said}
       </p>
+      {outcome.notice}
     </Opened>
   );
 }
@@ -661,13 +661,10 @@ export function HostsPart({ event, tag, onDirty, onClose, onSaved, onLatest }: P
     <Opened
       label={t('eventHosts.heading')}
       changed={changed}
-      refused={outcome.refused}
       busy={busy}
-      onLatest={outcome.showLatest}
       onCancel={onClose}
       onSave={() => void send()}
     >
-      {outcome.failed}
       <HostFields
         rows={rows}
         errors={errors}
@@ -676,6 +673,7 @@ export function HostsPart({ event, tag, onDirty, onClose, onSaved, onLatest }: P
         onRows={setRows}
         onEdited={(key) => setErrors((was) => ({ ...was, [key]: undefined }))}
       />
+      {outcome.notice}
     </Opened>
   );
 }

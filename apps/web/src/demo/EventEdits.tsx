@@ -46,8 +46,9 @@ import {
   replyByAfterStart,
 } from './replyBy.ts';
 import { NotBuilt } from './EventParts.tsx';
-import { saveAnswerOf, useSaveAnswer } from './saveAnswer.ts';
-import { SaveNotice } from './SaveNotice.tsx';
+import { saveAnswerOf } from './saveAnswer.ts';
+import { useSaveAnswer } from '../components/saveAnswer.ts';
+import { SaveNotice } from '../components/SaveNotice.tsx';
 import {
   Broken,
   DateTime,
