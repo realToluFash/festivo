@@ -1376,6 +1376,83 @@ describe('quotes on an event with no costs yet (sc-74361)', () => {
     expect(screen.getByRole('heading', { name: 'Vendors quoted' })).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Add the first cost' })).toBeTruthy();
   });
+
+  it('keeps the bar with Undo above No costs yet, and both blocks, when the last cost goes with a quote on the event', async () => {
+    signedIn();
+    let lines = [DINNER];
+    serve({
+      'GET /api/events/ev_1/budget': () => json(budget({ lines })),
+      'GET /api/events/ev_1/budget/quotes': () => json(quotes()),
+      'DELETE /api/events/ev_1/budget/lines/dinner': () => {
+        lines = [];
+        return new Response(null, { status: 204 });
+      },
+    });
+
+    fireEvent.click(await screen.findByRole('button', { name: /^Dinner\./u }));
+    fireEvent.click(screen.getByRole('button', { name: 'Remove' }));
+
+    const none = await screen.findByText('No costs yet');
+    const undo = screen.getByRole('button', { name: 'Undo' });
+    expect(undo.compareDocumentPosition(none) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(screen.getByRole('region', { name: 'Due next' })).toBeTruthy();
+    const quoted = screen.getByRole('region', { name: 'Vendors quoted' });
+    expect(within(quoted).getByText('Savour Kitchen')).toBeTruthy();
+  });
+
+  it('keeps Due next and Vendors quoted in the right column beside the first cost once it is added', async () => {
+    signedIn();
+    let lines: unknown[] = [];
+    const drinks = costed('drinks', 'Welcome drinks', { rate: '12.00' }, '1152.00', '1596.00');
+    serve({
+      'GET /api/events/ev_1/budget': () => json(budget({ lines, notPriced: 0 })),
+      'GET /api/events/ev_1/budget/quotes': () => json(quotes()),
+      'POST /api/events/ev_1/budget/lines': () => {
+        lines = [drinks];
+        return json({ line: drinks }, 201);
+      },
+    });
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Add the first cost' }));
+    const dialog = await screen.findByRole('dialog', { name: 'Add a cost' });
+    fireEvent.change(within(dialog).getByRole('textbox', { name: 'What it is' }), {
+      target: { value: 'Welcome drinks' },
+    });
+    fireEvent.change(within(dialog).getByRole('combobox', { name: 'Category' }), {
+      target: { value: 'catering' },
+    });
+    fireEvent.click(within(dialog).getByRole('radio', { name: /Per head/u }));
+    fireEvent.change(within(dialog).getByRole('textbox', { name: 'Rate' }), {
+      target: { value: '12' },
+    });
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Add' }));
+
+    const row = await screen.findByRole('button', { name: /^Welcome drinks\./u });
+    expect(screen.queryByText('No costs yet')).toBeNull();
+    const right = screen.getByRole('region', { name: 'Vendors quoted' }).closest('.ev-right');
+    expect(right?.contains(screen.getByRole('region', { name: 'Due next' }))).toBe(true);
+    expect(right?.parentElement?.querySelector('.ev-left')?.contains(row)).toBe(true);
+  });
+
+  it('says in Correct that there are no budget lines to agree', async () => {
+    signedIn();
+    serve(
+      {
+        'GET /api/events/ev_1/budget': noCosts,
+        'GET /api/events/ev_1/budget/quotes': () => json(quotes()),
+      },
+      { at: '/app/events/ev_1/budget/vendors/v4' },
+    );
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Correct the quote' }));
+
+    const dialog = await screen.findByRole('dialog', { name: 'Correct the quote' });
+    const lines = within(dialog).getByRole('group', { name: 'Budget lines it agrees' });
+    expect(lines.textContent).toContain(
+      'This event has no costs yet, so the quote agrees none. Once it has some, correct the quote to add them.',
+    );
+    expect(within(lines).queryByRole('checkbox')).toBeNull();
+  });
 });
 
 describe('a schedule from the vendor’s terms (sc-1332)', () => {

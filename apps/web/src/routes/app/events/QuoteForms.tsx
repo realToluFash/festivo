@@ -536,7 +536,7 @@ function VendorField({
   );
 }
 
-/** Every cost on the event: one agreed in another vendor's quote says whose, and cannot be ticked. With no costs, one line in place of the list. */
+/** Every cost on the event: one agreed in another vendor's quote says whose, and cannot be ticked. */
 function LinesField({
   lines,
   quotes,
