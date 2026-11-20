@@ -142,15 +142,29 @@ describe('the states Budget A still lacked (sc-85, sc-88, sc-90, sc-91, sc-92, s
     const card = () => screen.getByRole('region', { name: 'Budget' }).textContent ?? '';
     expect(card()).toContain('Client total£22,296 to £26,292');
     expect(section('Costs').textContent).toContain('Charged at £0.00 · its own priceNo figure');
-    fireEvent.click(within(section('Costs')).getByRole('button', { name: /^Planning fee/ }));
-    const fee = screen.getByLabelText('Charged at');
+    const openFee = () =>
+      fireEvent.click(within(section('Costs')).getByRole('button', { name: /^Planning fee/ }));
+    const fee = () => screen.getByLabelText('Charged at');
     const save = () =>
       fireEvent.click(within(section('Costs')).getByRole('button', { name: 'Save' }));
-    fireEvent.change(fee, { target: { value: '' } });
+    openFee();
+    expect(screen.getByText('Cost £0.00. Leave it empty to charge by the markup.')).toBeTruthy();
+    fireEvent.change(fee(), { target: { value: '' } });
+    save();
+    expect(screen.getByText('Price removed.')).toBeTruthy();
+    expect(section('Costs').textContent).toContain(
+      'Planning feeCost £0.00 · Charged at £0.00 · 20% markup, the event’sNo figure',
+    );
+    expect(section('Markup').textContent).not.toContain('Planning fee');
+    expect(card()).toContain('Client total£22,296 to £26,292');
+    openFee();
+    expect(screen.queryByText('Cost £0.00. Leave it empty to charge by the markup.')).toBeNull();
+    fireEvent.change(fee(), { target: { value: '' } });
     save();
     expect(screen.getByText('Enter a price of 0 or more, in numbers only.')).toBeTruthy();
-    fireEvent.change(fee, { target: { value: '3000' } });
+    fireEvent.change(fee(), { target: { value: '3000' } });
     save();
+    expect(section('Markup').textContent).toContain('Planning fee');
     expect(section('Costs').textContent).toContain('Charged at £3,000.00 · its own price100.0%');
     expect(card()).toContain('Client total£25,296 to £29,292');
     expect(card()).toContain('Margin£5,566 to £6,232');
