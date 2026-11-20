@@ -45,6 +45,7 @@ final class CatalogueNumbersTest extends FunctionalTestCase
         'Entity/Guest.php: public const int COMPANIONS_MAXIMUM = 10;',
         'Entity/BudgetLine.php: public const int LABEL_MAXIMUM = 100;',
         'Entity/ScheduledPayment.php: public const int DESCRIPTION_MAXIMUM = 100;',
+        'Entity/ScheduledPayment.php: public const int REFERENCE_MAXIMUM = 100;',
         'Entity/MenuDishChoice.php: public const int PER_DISH_MAXIMUM = 3;',
         'Entity/MenuDishChoice.php: public const int OPTIONS_MAXIMUM = 8;',
         'Entity/SeatingRow.php: public const int LABEL_MAXIMUM = 10;',
