@@ -74,22 +74,3 @@
     display: none;
   }
 }
-
-/* From 961 to 1279 px, until the docked Roster keeps whole words at 1280 (sc-71607), an open person or form comes before the Roster (sc-73291); up to 960 narrowDesk.css already does. */
-@media (60rem < width < 80rem) {
-  .shell .rs .mn-split:has(> .mn-panel) {
-    flex-direction: column;
-    align-items: stretch;
-  }
-
-  .shell .rs .mn-split > .mn-panel {
-    position: static;
-    order: -1;
-    width: auto;
-    max-height: none;
-  }
-
-  .shell .rs .mn-split > .mn-panel .mn-panel-body {
-    overflow: visible;
-  }
-}
