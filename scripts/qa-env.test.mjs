@@ -111,6 +111,7 @@ import {
   remoteEmulatorCommand,
   remoteEmulatorScript,
   adbAnnouncement,
+  shouldAnnounce,
   pickPlayImage,
   missingRemoteTools,
   SSH_OPTIONS,
@@ -1882,6 +1883,23 @@ describe('an emulator on another computer', () => {
 
   it('is announced to adb as the server protocol frames it', () => {
     expect(adbAnnouncement(5578)).toBe('0012host:emulator:5579');
+  });
+
+  it('is announced again only when remote, missing from adb and its unit still runs', () => {
+    const asked = [];
+    const ask = (name, value) => () => (asked.push(name), value);
+    expect(
+      shouldAnnounce({ remote: true, online: ask('online', false), unit: ask('unit', 'active') }),
+    ).toBe(true);
+    expect(shouldAnnounce({ remote: true, online: () => true, unit: () => 'active' })).toBe(false);
+    expect(shouldAnnounce({ remote: true, online: () => false, unit: () => 'inactive' })).toBe(
+      false,
+    );
+    asked.length = 0;
+    expect(
+      shouldAnnounce({ remote: false, online: ask('online', false), unit: ask('unit', 'active') }),
+    ).toBe(false);
+    expect(asked).toEqual([]);
   });
 
   it('is found and stopped by its console port alone', () => {
