@@ -71,11 +71,11 @@ describe('the demo’s refused currency (sc-74701)', () => {
     }
   });
 
-  it('keeps a landed notice 12px clear of its scroller on both edges', () => {
+  it('keeps whatever a notice landing rings 12px clear of its scroller on both edges', () => {
     const sheet = readFileSync(join(__dirname, 'events.css'), 'utf8');
 
     expect(sheet).toMatch(
-      /\.ev-notice\[data-notice-landing\]\s*\{\s*scroll-margin-block: var\(--spaceLg\);\s*\}/,
+      /(^|\n)\[data-notice-landing\]\s*\{\s*scroll-margin-block: var\(--spaceLg\);\s*\}/,
     );
   });
 });
