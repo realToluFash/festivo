@@ -259,7 +259,7 @@
     "audit.who.system": "Système",
     "audit.unnamed": "(sans nom)",
     "audit.gone": "{name} · n’existe plus",
-    "audit.change": "{field}: {before} → {after}",
+    "audit.change": "{field} : {before} → {after}",
     "audit.value.on": "Activé",
     "audit.value.off": "Désactivé",
     "audit.value.none": "Aucun",
