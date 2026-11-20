@@ -127,7 +127,7 @@ final readonly class AuditLogController
             'to' => Type\optional(Type\string()),
         ]));
         $format = $body['format'];
-        $asked = Dict\filter_nulls(['person' => $body['person'] ?? null, 'type' => $body['type'] ?? null, 'event' => $body['event'] ?? null, 'from' => $body['from'] ?? null, 'to' => $body['to'] ?? null]);
+        $asked = Dict\filter(Dict\filter_nulls(['person' => $body['person'] ?? null, 'type' => $body['type'] ?? null, 'event' => $body['event'] ?? null, 'from' => $body['from'] ?? null, 'to' => $body['to'] ?? null]), static fn (string $value): bool => '' !== $value);
         $filter = $this->filter($organisation, $user, $asked);
         $exported = $this->auditExports->export($organisation, $user, $filter, $asked, $format, $this->userMailer->localeFor($user, $request->getLocale()));
 
@@ -194,7 +194,7 @@ final readonly class AuditLogController
 
         $parsed = Regex\matches($day, self::DAY) ? DateTimeImmutable::createFromFormat('!Y-m-d', $day, $zone) : false;
 
-        return false === $parsed ? throw ApiException::validation([['propertyPath' => $field, 'message' => 'audit.invalid_filter', 'code' => 'invalid_date']]) : $parsed;
+        return false === $parsed || $parsed->format('Y-m-d') !== $day ? throw ApiException::validation([['propertyPath' => $field, 'message' => 'audit.invalid_filter', 'code' => 'invalid_date']]) : $parsed;
     }
 
     private function uuid(?string $id, string $field): ?Uuid

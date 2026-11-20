@@ -152,6 +152,21 @@ final class AuditLogTest extends ApiTestCase
     }
 
     #[Test]
+    public function aDayThatDoesNotExistIsRefusedRatherThanRolledOver(): void
+    {
+        [$owner, $organisation] = $this->enterprise('folake@ire.events', 'Ìrè Events');
+        $this->signIn($owner);
+
+        foreach (['2026-13-40', '2026-02-30'] as $day) {
+            $body = $this->send('GET', $this->path($organisation) . '?from=' . $day);
+
+            self::assertResponseStatusCodeSame(422, $day);
+            $violation = Type\shape(['violations' => Type\vec(Type\shape(['propertyPath' => Type\string(), 'code' => Type\string()], true))], true)->coerce($body)['violations'][0] ?? self::fail('no violation for ' . $day);
+            self::assertSame(['from', 'invalid_date'], [$violation['propertyPath'], $violation['code']], $day);
+        }
+    }
+
+    #[Test]
     public function theLogNeverShowsAnotherOrganisationsEntriesAPersonsOwnAccountOrAnythingOlderThanAYear(): void
     {
         [$owner, $organisation] = $this->enterprise('folake@ire.events', 'Ìrè Events');
@@ -265,6 +280,7 @@ final class AuditLogTest extends ApiTestCase
         $this->entry($organisation, 'event.deleted', $owner, '-1 hour', $eventId, 'Gala', changes: ['deletedAt' => [null, '2026-11-19T19:35:47+00:00']]);
         $this->entry($organisation, 'membership.role_changed', $owner, '-30 minutes', changes: ['roleId' => [Uuid::v7()->toRfc4122(), $admin->getId()->toRfc4122()]]);
         $this->entry($organisation, 'organisation.plan_changed', $owner, '-15 minutes', changes: ['plan' => ['free', 'enterprise']]);
+        $this->entry($organisation, 'event.updated', $owner, '-12 minutes', Uuid::v7(), 'Gala', changes: ['name' => ['Gala', 'Gala night'], 'type' => ['party', 'gala'], 'timeZone' => ['Africa/Lagos', 'Europe/Paris'], 'venueCoordinates' => [[6.45, 3.39], [48.85, 2.35]], 'notYetNamed' => ['a', 'b']]);
         [, $elsewhere] = $this->enterprise('kemi@elsewhere.events', 'Elsewhere');
         $theirAdmin = Type\instance_of(Role::class)->coerce(self::service(EntityManagerInterface::class)->getRepository(Role::class)->findOneBy(['organisation' => $elsewhere->getId(), 'seededAs' => SeededRole::Admin]));
         $this->entry($organisation, 'invitation.revoked', $owner, '-10 minutes', changes: ['email' => ['kemi@ire.events', null], 'role' => [null, $theirAdmin->getId()->toRfc4122()]]);
@@ -278,6 +294,7 @@ final class AuditLogTest extends ApiTestCase
         self::assertSame(['Status: Active → Left or removed'], $changes['membership.removed']);
         self::assertSame(['Role: None → Admin'], $changes['membership.role_changed'], 'a role since removed reads as none, and the side that can be read stays');
         self::assertSame(['Plan: Free → Enterprise'], $changes['organisation.plan_changed']);
+        self::assertSame(['Name: Gala → Gala night', 'Type: Party → Gala', 'Time zone: Africa/Lagos → Europe/Paris'], $changes['event.updated'], 'a field with no name in the catalogue is left out rather than shown in English');
         self::assertSame(['Email: kemi@ire.events → None'], $changes['invitation.revoked'], 'another organisation\'s role is never read');
         self::assertCount(1, $changes['event.deleted']);
         self::assertStringStartsWith('Deleted at: None → ', $changes['event.deleted'][0]);
@@ -289,6 +306,22 @@ final class AuditLogTest extends ApiTestCase
         self::assertSame('Status: Active → Left or removed', $exported['membership.removed']);
         self::assertSame('Deleted at: None → 2026-11-19T19:35:47Z', $exported['event.deleted']);
         self::assertSame('Plan: Free → Enterprise', $exported['organisation.plan_changed']);
+    }
+
+    #[Test]
+    public function anExportsEntrySaysItsFiltersInWords(): void
+    {
+        [$owner, $organisation] = $this->enterprise('folake@ire.events', 'Ìrè Events');
+        $admin = $this->member('julien@ire.events', 'Julien Moreau');
+        $this->join($organisation, $admin, SeededRole::Admin);
+        $this->signIn($owner);
+
+        $this->client->request('POST', $this->path($organisation, 'exports'), server: ['CONTENT_TYPE' => 'application/json'], content: Json\encode(['format' => 'csv', 'type' => 'members', 'person' => $admin->getId()->toRfc4122(), 'event' => '', 'from' => '2026-11-01']));
+        self::assertResponseStatusCodeSame(200);
+        $entries = Type\vec(Type\shape(['action' => Type\string(), 'changes' => Type\vec(Type\string())], true))->coerce($this->list($organisation, ['type' => 'audit_log'])['entries']);
+        $exported = Iter\first(Vec\filter($entries, static fn (array $entry): bool => AuditType::EXPORTED === $entry['action'])) ?? self::fail('no export entry');
+
+        self::assertSame(['Format: None → csv', 'Filters: None → Person: Julien Moreau, Action type: Members and invitations, From: 2026-11-01', 'Rows: None → 0'], $exported['changes']);
     }
 
     #[Test]
@@ -431,7 +464,7 @@ final class AuditLogTest extends ApiTestCase
         self::service(EntityManagerInterface::class)->getConnection()->executeStatement(<<<'SQL'
             INSERT INTO audit_entries (id, occurred_at, actor_type, actor_id, actor_label, subject_type, subject_id, action, changes, organisation_id, target)
             SELECT gen_random_uuid(), NOW() - (n || ' seconds')::interval - INTERVAL '1 hour', 'user', :actor, :label, 'Organisation', :organisation, 'event.updated',
-                   CASE WHEN CAST(:note AS text) IS NULL THEN '{}'::jsonb ELSE jsonb_build_object('note', jsonb_build_array(NULL, CAST(:note AS text))) END, :organisation, 'Bulk'
+                   CASE WHEN CAST(:note AS text) IS NULL THEN '{}'::jsonb ELSE jsonb_build_object('arrivalNote', jsonb_build_array(NULL, CAST(:note AS text))) END, :organisation, 'Bulk'
             FROM   generate_series(1, :count) AS n
             SQL, ['actor' => $by->getId()->toRfc4122(), 'label' => $by->getName(), 'organisation' => $organisation->getId()->toRfc4122(), 'count' => $count, 'note' => $note]);
     }

@@ -9,6 +9,7 @@ use App\Domain\Guest\Export\CsvFile;
 use App\Domain\Organisation\Export\PreparedFiles;
 use App\Entity\AuditEntry;
 use App\Entity\AuditExport;
+use App\Entity\Event;
 use App\Entity\Organisation;
 use App\Entity\User;
 use App\Enum\Actor;
@@ -21,6 +22,7 @@ use App\Repository\AuditEntryRepository;
 use App\Repository\AuditExportRepository;
 use App\Repository\AuditFilter;
 use Doctrine\ORM\EntityManagerInterface;
+use Psl\Dict;
 use Psl\Iter;
 use Psl\Json;
 use Psl\Str;
@@ -28,6 +30,7 @@ use Psl\Vec;
 use Psr\Clock\ClockInterface;
 use Psr\Log\LoggerInterface;
 use RuntimeException;
+use Symfony\Component\Uid\Uuid;
 use Throwable;
 
 /** Export of the filtered entries (sc-611): up to 10,000 at once, up to 1,000,000 prepared and emailed to the person who asked, more refused before anything starts. */
@@ -129,9 +132,23 @@ final readonly class AuditExports
     {
         $this->auditor->record(AuditType::EXPORTED, 'Organisation', $organisation->getId(), Actor::User, $by->getId(), $by->getName(), [
             'format' => [null, $format],
-            'filters' => [null, [] === $filters ? null : Json\encode($filters)],
+            'filters' => [null, [] === $filters ? null : $this->described($filters)],
             'rows' => [null, $count],
         ]);
+    }
+
+    /**
+     * @param array<string, string> $filters
+     *
+     * @return array<string, ?string> the filters as the exporter chose them, a person and an event by the name they had then
+     */
+    private function described(array $filters): array
+    {
+        return Dict\map_with_key($filters, fn (string $filter, string $value): ?string => match ($filter) {
+            'person' => $this->entityManager->find(User::class, Uuid::fromString($value))?->getName(),
+            'event' => $this->entityManager->find(Event::class, Uuid::fromString($value))?->getName(),
+            default => $value,
+        });
     }
 
     private function file(AuditFilter $filter, string $format, string $locale): string
