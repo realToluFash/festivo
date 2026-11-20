@@ -116,7 +116,7 @@ export function EmailDomains({
           <EnterpriseStep viewer={viewer} state={state} tell={tell} />
         ) : (
           shown != null && (
-            <div className="dc-step">
+            <div className="dc-step step-wraps">
               <CardStep label={stepWords(shown)} onClick={() => onStep(shown)} />
             </div>
           )
