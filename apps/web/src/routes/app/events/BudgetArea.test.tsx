@@ -1047,7 +1047,7 @@ describe('a schedule from the vendor’s terms (sc-1332)', () => {
     return { sent, dialog };
   }
 
-  const scheduled = (sent: { line: string }[]) =>
+  const scheduled = (sent: { line: string; body: unknown }[]) =>
     sent.filter((one) => one.line === 'POST /api/events/ev_1/budget/quotes/q_savour/schedule');
   const quotesRead = (sent: { line: string }[]) =>
     sent.filter((one) => one.line === 'GET /api/events/ev_1/budget/quotes').length;
