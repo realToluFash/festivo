@@ -1,0 +1,39 @@
+# sc-74024: A opens the Calendar, leaves it on Agenda at March 2027, and Switch organisation keeps it.
+appId: host.exp.Exponent
+---
+- runFlow: ../return-home.yaml
+- tapOn:
+    id: 'tab-calendar|frame.calendar'
+- extendedWaitUntil:
+    visible:
+      id: 'calendar.next'
+    timeout: 30000
+- waitForAnimationToEnd
+- takeScreenshot: a-first
+- tapOn:
+    id: 'calendar.view.agenda'
+- waitForAnimationToEnd
+- repeat:
+    times: 4
+    commands:
+      - tapOn:
+          id: 'calendar.next'
+      - waitForAnimationToEnd
+- assertVisible: 'March 2027'
+- takeScreenshot: a-agenda-march-2027
+- runFlow: ../open-switcher.yaml
+- tapOn: 'QA Second Org.*'
+- waitForAnimationToEnd
+- runFlow: ../return-home.yaml
+- tapOn:
+    id: 'tab-calendar|frame.calendar'
+- extendedWaitUntil:
+    visible:
+      id: 'calendar.next'
+    timeout: 30000
+- waitForAnimationToEnd
+- takeScreenshot: a-switched-org
+- assertVisible: 'March 2027'
+- runFlow: ../open-switcher.yaml
+- tapOn: 'QA Organisation.*'
+- waitForAnimationToEnd

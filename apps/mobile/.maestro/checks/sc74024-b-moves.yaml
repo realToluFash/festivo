@@ -1,0 +1,20 @@
+# sc-74024: B opens the Calendar and moves on two months to January 2027.
+appId: host.exp.Exponent
+---
+- runFlow: ../return-home.yaml
+- tapOn:
+    id: 'tab-calendar|frame.calendar'
+- extendedWaitUntil:
+    visible:
+      id: 'calendar.next'
+    timeout: 30000
+- waitForAnimationToEnd
+- takeScreenshot: b-first
+- repeat:
+    times: 2
+    commands:
+      - tapOn:
+          id: 'calendar.next'
+      - waitForAnimationToEnd
+- assertVisible: 'January 2027'
+- takeScreenshot: b-january-2027
