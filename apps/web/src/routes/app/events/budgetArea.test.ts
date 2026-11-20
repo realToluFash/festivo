@@ -166,6 +166,21 @@ describe('a removal that moves no money says the total is the same (decided 1 No
         EN,
       ),
     ).toBe('Welcome drinks removed. Nothing was counted for it yet, so the total is the same.');
+    expect(
+      removedWords(
+        t,
+        line({
+          label: 'Planning fee',
+          basis: 'fixed',
+          rate: null,
+          amount: '0.00',
+          notPriced: false,
+          quantity: { count: 1, source: 'fixed', reason: null },
+          cost: { confirmed: '0.00', potential: '0.00' },
+        }),
+        EN,
+      ),
+    ).toBe('Planning fee removed. It cost nothing, so the total is the same.');
   });
 });
 

@@ -175,8 +175,9 @@ export function removedWords(t: TFunction, line: BudgetLine, locale: string): st
   const state = lineState(line);
 
   if (state === 'notPriced') return t('budget.removedNotPriced', { name: line.label });
-  if (state === 'nothingYet' || Number(line.cost.confirmed) === 0)
-    return t('budget.removedNothingYet', { name: line.label });
+  if (state === 'nothingYet') return t('budget.removedNothingYet', { name: line.label });
+  if (Number(line.cost.confirmed) === 0)
+    return t('budget.removedCostNothing', { name: line.label });
 
   return t('budget.removed', {
     name: line.label,
