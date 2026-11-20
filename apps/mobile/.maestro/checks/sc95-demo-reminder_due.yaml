@@ -1,0 +1,10 @@
+# sc-95: the app demo's reminder_due: the payment reminder as it arrives, for the side-by-side pair. Needs ${METRO_URL}.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/demo/events/evt-wed-4?area=budget&state=reminder_due
+- extendedWaitUntil:
+    visible:
+      text: '.*(overdue|due in the next).*'
+    timeout: 30000
+- waitForAnimationToEnd
+- takeScreenshot: demo

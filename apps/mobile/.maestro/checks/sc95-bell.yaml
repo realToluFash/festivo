@@ -1,0 +1,15 @@
+# sc-95: the product's bell after a payment reminder: the reminder's item, and where tapping it lands. Needs ${METRO_URL}.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/notifications
+- extendedWaitUntil:
+    visible:
+      text: '.*(overdue|due in the next).*'
+    timeout: 30000
+- waitForAnimationToEnd
+- takeScreenshot: bell
+- tapOn:
+    text: '.*(overdue|due in the next).*'
+    index: 0
+- waitForAnimationToEnd
+- takeScreenshot: bell-tapped
