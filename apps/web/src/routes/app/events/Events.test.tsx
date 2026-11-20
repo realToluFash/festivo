@@ -5989,4 +5989,18 @@ describe('A part’s save notices show directly above Cancel and Save (sc-74398)
 
     expect(note.compareDocumentPosition(said) & Node.DOCUMENT_POSITION_FOLLOWING).not.toBe(0);
   });
+
+  it('brings Save into view with room for its focus ring (QA #74918)', () => {
+    expect(cssRule('.ev-opened-actions', EVENT_PAGE_CSS)).toContain(
+      'scroll-margin-block: var(--spaceLg);',
+    );
+  });
+
+  it('keeps Cancel, Save and the notice inside a narrow part, in French (QA #74918)', () => {
+    expect(cssRule('.ev-opened-actions', EVENT_PAGE_CSS)).toContain('flex-wrap: wrap;');
+    expect(cssRule('.ev-notice .notice-body', EVENT_PAGE_CSS)).toContain('min-width: 0;');
+    expect(cssRule('.ev-notice .notice-body > .desk-text', EVENT_PAGE_CSS)).toContain(
+      'white-space: normal;',
+    );
+  });
 });
