@@ -501,6 +501,27 @@ const BEAT = 'v2';
 const BLOOM = 'v3';
 export const TAKEN_LINE = 'arch';
 
+/** sc-74361: an event with no costs yet, its quotes kept on Budget. `removed_last_quoted` is sc-85's last cost removed with a quote on the event. */
+export const NO_COSTS_STATES: readonly string[] = [
+  'empty_no_quote',
+  'empty_quoted',
+  'empty_add_quote',
+  'removed_last_quoted',
+  'empty_read_only',
+  'empty_read_only_none',
+  'empty_quotes_failed',
+];
+
+/** Bloom & Co's quote agreeing no lines, with the deposit paid and the balance overdue: the one quote on an event with no costs. */
+function noCostsBudget(full: Budget): Budget {
+  return {
+    quotes: full.quotes
+      .filter((one) => one.vendor.id === BLOOM)
+      .map((one) => ({ ...one, lines: [] })),
+    payments: full.payments.filter((one) => one.vendorId === BLOOM),
+  };
+}
+
 /** Board 2's names, each drawn on Savour Kitchen's page: without `&vendor=` they open there. */
 export const VENDOR_STATES: readonly string[] = [
   'vendor',
@@ -536,6 +557,7 @@ export const QUOTES_STATES: readonly string[] = [
   'vendor_gone',
   'line_taken',
   'quotes_failed',
+  ...NO_COSTS_STATES,
 ];
 
 export function pageVendor(state: string, vendor: string | null): string | null {
@@ -605,7 +627,22 @@ export function quotesStart(
   switch (state) {
     case 'no_quotes':
     case 'early_on':
+    case 'empty_no_quote':
       return { ...start, budget: { quotes: [], payments: [] } };
+    case 'empty_add_quote':
+      return {
+        ...start,
+        budget: { quotes: [], payments: [] },
+        quote: opened('add', BLANK_QUOTE, { list: true }),
+      };
+    case 'empty_read_only_none':
+      return { ...start, budget: { quotes: [], payments: [] }, readOnly: true };
+    case 'empty_quoted':
+    case 'removed_last_quoted':
+    case 'empty_quotes_failed':
+      return { ...start, budget: noCostsBudget(full) };
+    case 'empty_read_only':
+      return { ...start, budget: noCostsBudget(full), readOnly: true };
     case 'nothing_due':
       return { ...start, budget: { ...full, payments: full.payments.map(paidBy) } };
     case 'no_payments':
@@ -724,8 +761,21 @@ export interface BudgetAddresses {
   vendor: (id: string) => string;
 }
 
-export function budgetAt(event: string, viewer: BudgetViewer, readOnly = false): BudgetAddresses {
-  const as = `${viewer.key === 'folake' ? '' : `&as=${viewer.key}`}${readOnly ? '&state=read_only' : ''}`;
+/** With no costs on the event, a link keeps the page's quotes: read only reopens its own state, otherwise `&costs=none` keeps the costs away and the kept quotes show. */
+export function budgetAt(
+  event: string,
+  viewer: BudgetViewer,
+  readOnly = false,
+  noCosts = false,
+): BudgetAddresses {
+  const kept = noCosts
+    ? readOnly
+      ? '&state=empty_read_only'
+      : '&costs=none'
+    : readOnly
+      ? '&state=read_only'
+      : '';
+  const as = `${viewer.key === 'folake' ? '' : `&as=${viewer.key}`}${kept}`;
 
   return {
     home: `/demo/events/${event}?area=budget${as}`,
@@ -769,6 +819,33 @@ export const QUOTES_PAGES: readonly { name: string; states: readonly DemoLink[] 
       { to: at('no_quotes'), name: 'No quotes yet (no_quotes)' },
       { to: at('nothing_due'), name: 'Quotes, and nothing is due (nothing_due)' },
       { to: at('quotes_failed'), name: 'Quotes and payments did not load (quotes_failed)' },
+    ],
+  },
+  {
+    name: 'An event with no costs yet (sc-74361)',
+    states: [
+      { to: at('empty_no_quote'), name: 'No costs and no quote (empty_no_quote)' },
+      {
+        to: at('empty_quoted'),
+        name: 'No costs, Bloom & Co quoted, the balance overdue (empty_quoted)',
+      },
+      { to: at('empty_add_quote'), name: 'Add a quote with no budget lines (empty_add_quote)' },
+      {
+        to: at('removed_last_quoted'),
+        name: 'The last cost removed, the quote kept (removed_last_quoted)',
+      },
+      {
+        to: at('empty_read_only'),
+        name: 'Read only, a quote and no costs (empty_read_only)',
+      },
+      {
+        to: at('empty_read_only_none'),
+        name: 'Read only, no quote: sc-85’s first-time page (empty_read_only_none)',
+      },
+      {
+        to: at('empty_quotes_failed'),
+        name: 'Quotes did not load, no costs (empty_quotes_failed)',
+      },
       { to: at('vendor', SAVOUR), name: 'Savour Kitchen, £1,500.00 not scheduled (vendor)' },
       { to: at(undefined, BLOOM), name: 'Bloom & Co, the balance overdue, with Mark paid' },
       { to: at('no_payments', SAVOUR), name: 'No payments scheduled yet (no_payments)' },

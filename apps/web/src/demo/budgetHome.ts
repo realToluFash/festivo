@@ -13,7 +13,7 @@ import { type CeilingKey, CEILINGS, budgetAt, ceilingState } from './budgetSampl
 import { type DemoGroup } from './budgetSample.ts';
 import { type CeilingState } from './BudgetParts.tsx';
 import { type Category } from './vendors.ts';
-import { exampleIn, typedMinor } from './quotes.ts';
+import { NO_COSTS_STATES, exampleIn, typedMinor } from './quotes.ts';
 import { CATEGORY_WORDS } from './vendorsWords.ts';
 
 /** The Budget home's states (spec §9: the Web board, the Ceiling board, and the margin and templates states drawn on the home). */
@@ -182,7 +182,12 @@ export function linesOf(state: string): CostLine[] {
   if (state === 'removed_priced') return lines.filter((one) => one.id !== 'dj');
   if (state === 'removed_not_priced') return lines.filter((one) => one.id !== 'arch');
   if (state === 'removed_nothing_yet') return lines.filter((one) => one.id !== 'centre');
-  if (state === 'first_time' || state === 'nothing_to_start' || LAST_REMOVED.includes(state))
+  if (
+    state === 'first_time' ||
+    state === 'nothing_to_start' ||
+    LAST_REMOVED.includes(state) ||
+    NO_COSTS_STATES.includes(state)
+  )
     return [];
   if (state === 'add_cost_added') return [...lines, { ...WELCOME_DRINKS }];
 
@@ -350,6 +355,7 @@ export function categoryCeilingsLine(ceilings: Partial<Record<CeilingKey, number
 /** The states where the event's only cost, Dinner, has just been removed. */
 export const LAST_REMOVED: readonly string[] = [
   'removed_last',
+  'removed_last_quoted',
   'removed_last_currency',
   'removed_last_expired',
   'undo_refused_currency',
