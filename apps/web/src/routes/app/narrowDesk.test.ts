@@ -62,6 +62,7 @@ describe('a desk window from 641 px up (sc-61150)', () => {
       '@media (40rem < width <= 75rem) {',
       '@media (40rem < width <= 70rem) {',
       '@media (40rem < width <= 77.5rem) {',
+      '@media (60rem < width < 80rem) {',
     ]);
   });
 
@@ -90,6 +91,20 @@ describe('a desk window from 641 px up (sc-61150)', () => {
     expect(cssRule('.shell :is(.gs-list, .gs-column)', guests)).not.toContain('max-width');
     expect(cssRule('.shell .gs-column', guests)).toContain('order: -1;');
     expect(cssRule('.shell .gs-column:has(> .gs-pick)', guests)).toContain('display: none;');
+  });
+
+  it('puts an open person or form before the Roster, at the card’s width, from 961 to 1279 px', () => {
+    const roster = band('(60rem < width < 80rem)');
+
+    expect(cssRule('.shell .rs .mn-split:has(> .mn-panel)', roster)).toContain(
+      'flex-direction: column;',
+    );
+    expect(cssRule('.shell .rs .mn-split > .mn-panel', roster)).toMatch(
+      /position: static;\s+order: -1;\s+width: auto;\s+max-height: none;/u,
+    );
+    expect(cssRule('.shell .rs .mn-split > .mn-panel .mn-panel-body', roster)).toContain(
+      'overflow: visible;',
+    );
   });
 });
 
