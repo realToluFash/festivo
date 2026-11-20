@@ -1,7 +1,7 @@
 import { type Payer } from '@soirely/api-client';
 import { useEffect, useId, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useNavigate, useSearchParams } from 'react-router';
+import { useLocation, useNavigate, useSearchParams } from 'react-router';
 
 import { Glyph } from '../components/Glyph.tsx';
 import { Mark } from '../components/SettingsParts.tsx';
@@ -41,6 +41,7 @@ export function PayersPage({ event, state }: { event: SampleEvent; state: string
   const { t } = useTranslation();
   const [params] = useSearchParams();
   const navigate = useNavigate();
+  const here = useLocation();
   const [demo] = useState(() => startOf(state, params.get('payer'), t, dateLocale()));
   const [source] = useState(() =>
     bookSource(demo.book, demo.payments, demo.paidShown, demo.removed, demo.loading),
@@ -109,13 +110,18 @@ export function PayersPage({ event, state }: { event: SampleEvent; state: string
           {children}
         </BudgetCard>
       )}
-      renderFrame={({ choosing, body, dialog }) => (
+      renderFrame={({ choosing, back, body, dialog }) => (
         <BudgetShell
           event={event}
-          trail={[
-            { label: t('budget.title'), to: budgetAt() },
-            { label: choosing ? t('payers.chooseTitle') : t('payers.title') },
-          ]}
+          trail={
+            choosing
+              ? [
+                  { label: t('budget.title'), to: budgetAt() },
+                  { label: t('payers.title'), to: `${here.pathname}${here.search}`, onClick: back },
+                  { label: t('payers.chooseTitle') },
+                ]
+              : [{ label: t('budget.title'), to: budgetAt() }, { label: t('payers.title') }]
+          }
         >
           {() => (
             <>
