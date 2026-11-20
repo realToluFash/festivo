@@ -295,7 +295,6 @@
     "audit.field.description": "Cover description",
     "audit.field.guestsCopied": "Guests copied",
     "audit.field.status": "Status",
-    "audit.field.deletedAt": "Deleted at",
     "audit.field.addressKind": "Contact by",
     "audit.field.jobLabel": "Job",
     "audit.field.email": "Email",

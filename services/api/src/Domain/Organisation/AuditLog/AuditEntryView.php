@@ -26,6 +26,12 @@ use Symfony\Contracts\Translation\TranslatorInterface;
 
 final readonly class AuditEntryView
 {
+    /** Ids, coordinates, file keys and internal stamps: recorded for the trail, never a change a reader is shown (sc-611, #74875). */
+    public const array UNSHOWN_FIELDS = ['deletedAt', 'export', 'eventId', 'membershipId', 'userId', 'organisation', 'user', 'claimant', 'duplicatedFrom', 'newOwnerRoleId', 'owner', 'venueCoordinates', 'photo'];
+
+    /** An entry that creates, deletes, restores or deletes a record for good: its sentence and On already say it, so it has no Changes (#74875). */
+    private const array LIFECYCLE_ACTIONS = ['event.created', 'event.deleted', 'event.restored', 'event.purged', 'organisation.created', 'organisation.deleted', 'organisation.restored', 'organisation.purged'];
+
     private const array ROLE_FIELDS = ['role', 'roleId'];
 
     private const array CODED_FIELDS = ['role', 'roleId', 'status', 'membershipStatus', 'suspension', 'type', 'addressKind', 'plan', 'requestLink', 'onlyOurs', 'outcome', 'path'];
@@ -150,14 +156,18 @@ final readonly class AuditEntryView
     /**
      * @param array<string, string> $roles role id => the role it was seeded as
      *
-     * @return list<string> "Everyone needs two-factor: Off → On", one per field that changed and has a name in audit.field.*, which an id never has
+     * @return list<string> "Everyone needs two-factor: Off → On", one per shown field that changed and has a name in audit.field.*
      */
     private function changes(AuditEntry $entry, array $roles, string $locale, ?User $reader): array
     {
+        if (Iter\contains(self::LIFECYCLE_ACTIONS, $entry->getAction())) {
+            return [];
+        }
+
         $lines = [];
 
         foreach ($entry->getChanges() as $field => [$before, $after]) {
-            $name = $this->fieldName($field, $locale);
+            $name = Iter\contains(self::UNSHOWN_FIELDS, $field) ? null : $this->fieldName($field, $locale);
 
             if (null === $name) {
                 continue;

@@ -277,6 +277,7 @@ final class AuditLogTest extends ApiTestCase
         $this->entry($organisation, 'invitation.sent', $owner, '-4 hours', changes: ['email' => [null, 'ada@ire.events'], 'role' => [null, $admin->getId()->toRfc4122()]]);
         $this->entry($organisation, 'event_person.granted', $owner, '-3 hours', $eventId, 'Gala', changes: ['role' => [null, 'can_edit'], 'jobLabel' => [null, null], 'addressKind' => [null, null], 'eventId' => [null, $eventId->toRfc4122()], 'userId' => [null, $owner->getId()->toRfc4122()]]);
         $this->entry($organisation, 'membership.removed', $owner, '-2 hours', changes: ['status' => ['active', 'left_or_removed'], 'user' => [null, $owner->getId()->toRfc4122()]]);
+        $this->entry($organisation, 'event.created', $owner, '-90 minutes', $eventId, 'Gala', changes: ['name' => [null, 'Gala'], 'startsAt' => [null, '2026-12-19T19:00:00+00:00']]);
         $this->entry($organisation, 'event.deleted', $owner, '-1 hour', $eventId, 'Gala', changes: ['deletedAt' => [null, '2026-11-19T19:35:47+00:00']]);
         $this->entry($organisation, 'membership.role_changed', $owner, '-30 minutes', changes: ['roleId' => [Uuid::v7()->toRfc4122(), $admin->getId()->toRfc4122()]]);
         $this->entry($organisation, 'organisation.plan_changed', $owner, '-15 minutes', changes: ['plan' => ['free', 'enterprise']]);
@@ -296,15 +297,15 @@ final class AuditLogTest extends ApiTestCase
         self::assertSame(['Plan: Free → Enterprise'], $changes['organisation.plan_changed']);
         self::assertSame(['Name: Gala → Gala night', 'Type: Party → Gala', 'Time zone: Africa/Lagos → Europe/Paris'], $changes['event.updated'], 'a field with no name in the catalogue is left out rather than shown in English');
         self::assertSame(['Email: kemi@ire.events → None'], $changes['invitation.revoked'], 'another organisation\'s role is never read');
-        self::assertCount(1, $changes['event.deleted']);
-        self::assertStringStartsWith('Deleted at: None → ', $changes['event.deleted'][0]);
-        self::assertStringNotContainsString('2026-11-19T', $changes['event.deleted'][0], 'on screen the time reads in the reader\'s zone');
+        self::assertSame([], $changes['event.deleted'], 'a deletion has no Changes row: its sentence and On say it, and Deleted at is internal');
+        self::assertSame([], $changes['event.created'], 'nor does a creation');
 
         $rows = Vec\map(Vec\filter(Str\split(Str\trim($this->export($organisation, 'jsonl')), "\n"), static fn (string $line): bool => '' !== $line), static fn (string $line): array => Type\dict(Type\string(), Type\nullable(Type\string()))->coerce(Json\decode($line)));
         $exported = Dict\pull($rows, static fn (array $row): ?string => $row['changes'], static fn (array $row): string => (string) $row['action']);
         self::assertSame('Email: None → ada@ire.events; Role: None → Admin', $exported['invitation.sent']);
         self::assertSame('Status: Active → Left or removed', $exported['membership.removed']);
-        self::assertSame('Deleted at: None → 2026-11-19T19:35:47Z', $exported['event.deleted']);
+        self::assertSame('', $exported['event.deleted'] ?? '', 'the export follows the same rule');
+        self::assertSame('', $exported['event.created'] ?? '');
         self::assertSame('Plan: Free → Enterprise', $exported['organisation.plan_changed']);
     }
 
@@ -322,6 +323,27 @@ final class AuditLogTest extends ApiTestCase
         $exported = Iter\first(Vec\filter($entries, static fn (array $entry): bool => AuditType::EXPORTED === $entry['action'])) ?? self::fail('no export entry');
 
         self::assertSame(['Format: None → csv', 'Filters: None → Person: Julien Moreau, Action type: Members and invitations, From: 2026-11-01', 'Rows: None → 0'], $exported['changes']);
+    }
+
+    #[Test]
+    public function anExportFilteredByAnotherOrganisationsEventOrPersonIsRefusedAndNamesNothing(): void
+    {
+        [$owner, $organisation] = $this->enterprise('folake@ire.events', 'Ìrè Events');
+        [$stranger, $elsewhere] = $this->enterprise('kemi@elsewhere.events', 'Elsewhere');
+        $theirEvent = Uuid::v7();
+        $this->entry($elsewhere, 'event.created', $stranger, '-1 hour', $theirEvent, 'Their secret launch');
+        $this->signIn($owner);
+
+        foreach (['event' => $theirEvent->toRfc4122(), 'person' => $stranger->getId()->toRfc4122()] as $field => $id) {
+            $body = $this->send('POST', $this->path($organisation, 'exports'), ['format' => 'csv', $field => $id]);
+
+            self::assertResponseStatusCodeSame(422, $field);
+            $violation = Type\shape(['violations' => Type\vec(Type\shape(['propertyPath' => Type\string(), 'code' => Type\string()], true))], true)->coerce($body)['violations'][0] ?? self::fail('no violation for ' . $field);
+            self::assertSame([$field, 'invalid_choice'], [$violation['propertyPath'], $violation['code']]);
+        }
+
+        $entries = Type\vec(Type\shape(['action' => Type\string()], true))->coerce($this->list($organisation, ['type' => 'audit_log'])['entries']);
+        self::assertSame([], Vec\values(Vec\filter($entries, static fn (array $entry): bool => AuditType::EXPORTED === $entry['action'])), 'a refused export is never recorded');
     }
 
     #[Test]
