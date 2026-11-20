@@ -144,8 +144,8 @@ final readonly class PaymentReminder implements NotificationTypeInterface
 
         $payments = Vec\sort(
             Vec\filter_nulls(Vec\map(Vec\keys($kinds), fn (string $id): ?ScheduledPayment => $this->scheduledPaymentRepository->find($id))),
-            static fn (ScheduledPayment $a, ScheduledPayment $b): int => [PaymentReminders::OVERDUE !== $kinds[$b->getId()->toRfc4122()], $a->getDueOn(), $a->getId()->toRfc4122()]
-                <=> [PaymentReminders::OVERDUE !== $kinds[$a->getId()->toRfc4122()], $b->getDueOn(), $b->getId()->toRfc4122()],
+            static fn (ScheduledPayment $a, ScheduledPayment $b): int => [PaymentReminders::OVERDUE !== $kinds[$a->getId()->toRfc4122()], $a->getDueOn(), $a->getId()->toRfc4122()]
+                <=> [PaymentReminders::OVERDUE !== $kinds[$b->getId()->toRfc4122()], $b->getDueOn(), $b->getId()->toRfc4122()],
         );
 
         if ([] === $payments) {
@@ -223,7 +223,7 @@ final readonly class PaymentReminder implements NotificationTypeInterface
         $formatter->setAttribute(NumberFormatter::MIN_FRACTION_DIGITS, $digits);
         $formatter->setAttribute(NumberFormatter::MAX_FRACTION_DIGITS, $digits);
 
-        return $formatter->formatCurrency((float) Money::written($minor, $currency), $currency) ?: Money::written($minor, $currency) . ' ' . $currency;
+        return $formatter->formatCurrency($minor / 10 ** $digits, $currency) ?: Money::written($minor, $currency) . ' ' . $currency;
     }
 
     /** @param array<string, mixed> $parameters */
