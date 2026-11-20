@@ -533,6 +533,18 @@ describe('The Roster on the Staff page (sc-3906)', () => {
     expect(sheetsLeadingWithRs()).toEqual([]);
   });
 
+  it('puts an open person or form before the Roster, at the card’s width, from 961 to 1279 px (sc-73291)', () => {
+    const mid = mediaBlock('(60rem < width < 80rem)', ROSTER_CSS);
+
+    expect(cssRule('.rs .mn-split:has(> .mn-panel)', mid)).toContain('flex-direction: column;');
+    expect(cssRule('.rs .mn-split > .mn-panel', mid)).toMatch(
+      /position: static;\s+order: -1;\s+width: auto;\s+max-height: none;/u,
+    );
+    expect(cssRule('.rs .mn-split > .mn-panel .mn-panel-body', mid)).toContain(
+      'overflow: visible;',
+    );
+  });
+
   it('writes each station in the Station column, a section by its plain name and a lead in words (sc-3910)', async () => {
     signedIn();
     const grill = { id: 'grill', name: 'Grill', kind: 'place', tables: [] };
