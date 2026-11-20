@@ -133,7 +133,7 @@ final readonly class SplitRules
 
         foreach ($sent as $part) {
             $id = $part['payerId'] ?? '';
-            $path = Str\format('split.shares.%s', $id);
+            $path = Str\join(['split', 'shares', $id], '.');
             $typed = Str\trim($part['percent'] ?? '');
             [$whole, $fraction] = [...Str\split($typed, '.'), ''];
 
@@ -186,9 +186,9 @@ final readonly class SplitRules
             $minor = Money::minorOf($typed, $currency);
 
             if (null === $minor || $minor <= 0) {
-                $this->refuse($draft, Str\format('split.amounts.%s', $id), 'validation.payer_split_amount_invalid', $example);
+                $this->refuse($draft, Str\join(['split', 'amounts', $id], '.'), 'validation.payer_split_amount_invalid', $example);
             } else {
-                $this->add($event, $draft, Str\format('split.amounts.%s', $id), $id, $minor, $rest);
+                $this->add($event, $draft, Str\join(['split', 'amounts', $id], '.'), $id, $minor, $rest);
             }
         }
 
