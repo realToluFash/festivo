@@ -156,12 +156,11 @@ export function settingsSayIn(locale: string): SettingsSay {
   const format = (options: Intl.DateTimeFormatOptions) =>
     new Intl.DateTimeFormat(locale, { ...options, timeZone: 'UTC' });
   const date = format({ month: 'short', day: 'numeric', year: 'numeric' });
-  const dayOnly = format({ month: 'short', day: 'numeric' });
   const weekday = format({ weekday: 'long', month: 'short', day: 'numeric' });
 
   return {
     date: (day) => date.format(new Date(`${day}T00:00Z`)),
-    day: (day) => dayOnly.format(new Date(`${day}T00:00Z`)),
+    day: (day) => weekday.format(new Date(`${day}T00:00Z`)),
     // The sample's deadlines are wall clock in Lagos, so they are read in UTC and named WAT.
     deadline: (at) => `${weekday.format(new Date(`${at}Z`))} at ${writtenTime(at, locale)} WAT`,
   };
