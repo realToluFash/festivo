@@ -543,7 +543,8 @@ export function AppFrame({
     standIn == null;
   const floatingTabs = framed && kind === 'phone' && inEvent == null && !openedFromNone;
   const eventTabs = framed && kind === 'phone' && inEvent != null;
-  const sidebar = framed && kind === 'tabletLandscape' && !openedFromNone;
+  const sideCard = framed && kind === 'tabletLandscape';
+  const sidebar = sideCard && !openedFromNone;
   const ownTop = framed && top != null && standIn == null;
   const underTabs =
     floatingTabs && listUnderTabs && standIn == null ? phoneTabBarClearance(insets.bottom) : 0;
@@ -617,7 +618,7 @@ export function AppFrame({
       <RegisterOpener.Provider value={registerOpener}>
         <SwitcherOpenedBy.Provider value={choosing ? switcherFrom : null}>
           <View
-            style={[styles.root, sidebar && side.chrome]}
+            style={[styles.root, sideCard && side.chrome]}
             importantForAccessibility={inFront ? 'auto' : 'no-hide-descendants'}
           >
             {sidebar && (
@@ -635,7 +636,9 @@ export function AppFrame({
                 cap={titleCap.cap}
               />
             )}
-            <View style={[styles.column, sidebar && side.card]}>
+            <View
+              style={[styles.column, sideCard && side.card, sideCard && !sidebar && side.alone]}
+            >
               {framed && !ownTop && (
                 <View style={headerSides}>
                   <FrameHeader {...header} />

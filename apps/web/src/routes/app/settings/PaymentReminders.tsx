@@ -202,7 +202,14 @@ function DaysDialog({
           {t('paymentReminders.notSaved')}
         </div>
       )}
-      <div className="desk-fields">
+      <form
+        className="desk-fields"
+        noValidate
+        onSubmit={(event) => {
+          event.preventDefault();
+          void save();
+        }}
+      >
         <Field
           label={t('paymentReminders.daysField')}
           value={typed}
@@ -215,7 +222,7 @@ function DaysDialog({
             if (problem != null) setProblem(typedDays(next) == null ? refusal : null);
           }}
         />
-      </div>
+      </form>
     </Dialog>
   );
 }
