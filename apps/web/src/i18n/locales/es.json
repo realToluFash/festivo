@@ -5407,6 +5407,7 @@
     "removed": "Se ha quitado {{name}}. La cifra confirmada ha bajado {{amount}}.",
     "removedNotPriced": "Se ha quitado {{name}}. No tenía precio, así que el total no cambia.",
     "removedNothingYet": "Se ha quitado {{name}}. Aún no sumaba nada, así que el total no cambia.",
+    "removedCostNothing": "{{name}} removed. It cost nothing, so the total is the same.",
     "back": "{{name}} vuelve a estar en el presupuesto.",
     "notBack": "No se ha recuperado. Compruebe su conexión y vuelva a intentarlo.",
     "notBackStaff": "No se ha recuperado. El presupuesto ya tiene un coste de horas del personal.",

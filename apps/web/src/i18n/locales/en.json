@@ -5137,6 +5137,7 @@
     "removed": "{{name}} removed. The settled total fell by {{amount}}.",
     "removedNotPriced": "{{name}} removed. It had no price, so the total is the same.",
     "removedNothingYet": "{{name}} removed. Nothing was counted for it yet, so the total is the same.",
+    "removedCostNothing": "{{name}} removed. It cost nothing, so the total is the same.",
     "back": "{{name}} is back.",
     "notBack": "Not put back. Check your connection and try again.",
     "notBackStaff": "Not put back. The budget already has a staff-time cost.",
