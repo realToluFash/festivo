@@ -299,7 +299,7 @@ def drawn_before_its_demo(c, story, state):
         return
     missing = demo_missing(story)
     if missing:
-        raise Refused(f"sc-{story['id']} is not ready to build without its demo: {missing}. "
+        raise Refused(f"sc-{story['id']} is not ready to build without its demo: {missing[1]}. "
                       f"It stays {story['state']}: move it once every pull request on the "
                       "Demo: line has merged")
 
@@ -378,10 +378,19 @@ def stack_up(c, story, held=False):
 
 
 NOT_BUILT = re.compile(r"\b(being built|not built)\b", re.I)
-DEMO_UNMERGED = "is not merged yet"
+DEMO_OPEN = "open"
+DEMO_ABSENT = "absent"
 
 
 def demo_missing(story):
+    """(kind, why) or None; kind is DEMO_OPEN when the claim should wait for a merge."""
+    missing = demo_gap(story)
+    if missing is None or isinstance(missing, tuple):
+        return missing
+    return DEMO_ABSENT, missing
+
+
+def demo_gap(story):
     """Why a story the designer drew is not ready to build: a pull request its Demo line
     names is still open, or none of them merged. A closed one was superseded. A story with no Design section, or whose Demo line reads `none`, shows nothing,
     so nothing is missing, whatever numbers the rest of the line cites."""
@@ -406,7 +415,7 @@ def demo_missing(story):
         return f"GitHub did not answer for {', '.join(unread)}, so its demo is not known merged"
     open_ = [f"#{n}" for n, state in states.items() if state not in ("MERGED", "CLOSED")]
     if open_:
-        return f"its demo {', '.join(open_)} {DEMO_UNMERGED}"
+        return DEMO_OPEN, f"its demo {', '.join(open_)} is not merged yet"
     if "MERGED" not in states.values():
         return f"its demo {', '.join(f'#{n}' for n in states)} was closed without merging"
     return None
@@ -443,8 +452,8 @@ def claim(c, a):
         if holders:
             raise Refused(f"sc-{story['id']} is {W.held_by(holders)}: it is offered once "
                           "they merge, at Ready For QA or later. Nothing claimed: pick another")
-        missing = story["state"] == "Ready For Dev" and demo_missing(story)
-        if missing and missing.endswith(DEMO_UNMERGED):
+        kind, missing = (story["state"] == "Ready For Dev" and demo_missing(story)) or (None, None)
+        if kind == DEMO_OPEN:
             raise Refused(f"sc-{story['id']} is not built without its demo: {missing}. Nothing "
                           "claimed: wait for the merge, and pick another. It stays Ready For "
                           "Dev; the demo is drawn, so do not send it back to Needs Design")
