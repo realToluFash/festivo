@@ -11,6 +11,22 @@ use Psr\Log\NullLogger;
 
 final class AfterResponseTest extends TestCase
 {
+    private int $timeLimit;
+
+    private int $ignoreUserAbort;
+
+    protected function setUp(): void
+    {
+        $this->timeLimit = (int) \ini_get('max_execution_time');
+        $this->ignoreUserAbort = \ignore_user_abort();
+    }
+
+    protected function tearDown(): void
+    {
+        \set_time_limit($this->timeLimit);
+        \ignore_user_abort(1 === $this->ignoreUserAbort);
+    }
+
     #[Test]
     public function deferredWorkRunsWithoutTheRequestsTimeLimit(): void
     {
@@ -35,6 +51,5 @@ final class AfterResponseTest extends TestCase
         new AfterResponse(new NullLogger())->run();
 
         self::assertSame('30', \ini_get('max_execution_time'));
-        \set_time_limit(0);
     }
 }
