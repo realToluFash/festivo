@@ -415,6 +415,15 @@ class DemoFirst(Base):
         self.refused("#1386 is not merged yet",
                      mock.patch("soirely_queue.github.live", return_value={"state": "OPEN"}))
 
+    def test_an_open_demo_is_waited_for_not_sent_back(self):
+        self.drawn("**Demo:** `It` in the app's demo · PR #1386")
+        with mock.patch("soirely_queue.github.live", return_value={"state": "OPEN"}), \
+                self.assertRaises(actions.Refused) as refused:
+            actions.claim(self.as_("dev"), args(story="sc-1"))
+        self.assertIn("wait for the merge", str(refused.exception))
+        self.assertNotIn("move sc-1", str(refused.exception))
+        self.assertEqual(self.state(1), "Ready For Dev")
+
     def test_a_demo_github_cannot_read_is_refused(self):
         self.drawn("**Demo:** `It` in the app's demo · PR #1386")
         self.refused("GitHub did not answer for #1386",
