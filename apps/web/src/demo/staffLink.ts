@@ -4,6 +4,8 @@ export type Delivered = 'opened' | 'sent' | 'shared' | 'copied' | 'none';
 export interface Trail {
   by: string;
   at: string;
+  /** Sent by a text (sc-77904) rather than marked as sent by hand. */
+  via?: 'text';
 }
 
 export const YOU = 'Amara Nwosu';
@@ -33,7 +35,10 @@ export function trailLine(link: Delivered, trail: Trail | null): string | null {
   if (trail == null || link === 'none') return null;
   if (link === 'copied') return `Copied by ${trail.by} · ${trail.at} · not marked as sent`;
   if (link === 'shared') return `Shared by ${trail.by} · ${trail.at} · not marked as sent`;
-  if (link === 'sent') return `Marked as sent by ${trail.by} · ${trail.at}`;
+  if (link === 'sent')
+    return trail.via === 'text'
+      ? `Sent by ${trail.by} · ${trail.at}`
+      : `Marked as sent by ${trail.by} · ${trail.at}`;
 
   return `Opened ${trail.at}`;
 }

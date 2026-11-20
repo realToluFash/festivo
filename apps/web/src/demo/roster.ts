@@ -2,7 +2,8 @@ import { emailProblem, phoneE164, phoneFields, phoneLengthProblem } from '@soire
 
 import { countryName } from './rules.ts';
 import type { DemoLink } from './settings.ts';
-import { type Trail, SAMPLE_LINK } from './staffLink.ts';
+import { type Trail, NOW_AT, SAMPLE_LINK, YOU } from './staffLink.ts';
+import { type Texting, texting } from './staffText.ts';
 import { STATIONS_EVENT, SW, placesOf, sectionsOf, stationsStart } from './stations.ts';
 
 /** The Roster on the event's Staff page (sc-3906, Staffing.dc.html on page e34): who works the event, without making them members. */
@@ -25,6 +26,11 @@ export interface Entry {
   email: string | null;
   link: 'opened' | 'sent' | 'shared' | 'copied' | 'none';
   trail?: Trail | null;
+  /** sc-77904: a text sending or waiting, the time one was not delivered, and a number that replied STOP. */
+  pending?: 'sending' | 'held' | 'waits' | undefined;
+  undelivered?: string | null;
+  before?: { link: Entry['link']; trail: Trail | null } | undefined;
+  stopped?: boolean;
 }
 
 export interface Draft {
@@ -450,6 +456,11 @@ export interface RosterStart {
   noShift: string;
   /** The language of the Roster's words; French to measure the longest from 961 to 1279 px (sc-73291). */
   lang: 'en' | 'fr' | 'es' | 'pt';
+  /** Null until SMS (sc-3946) is merged, so the states before smsOn have no texting. */
+  sms: Texting | null;
+  /** The check before sending, for one person's id or 'all'. */
+  checking: string | null;
+  checkFailed: boolean;
 }
 
 function start(o: Partial<RosterStart> & Pick<RosterStart, 'name' | 'note'>): RosterStart {
@@ -470,6 +481,9 @@ function start(o: Partial<RosterStart> & Pick<RosterStart, 'name' | 'note'>): Ro
     replacing: null,
     noShift: RW.noShift,
     lang: 'en',
+    sms: null,
+    checking: null,
+    checkFailed: false,
     ...o,
   };
 }
@@ -505,7 +519,267 @@ function sectionRemovedEntries(): Entry[] {
   ];
 }
 
+const OWED = ['tolu', 'amina', 'kunle', 'emeka', 'chinedu'];
+const BULK_RESULT = ['Sending to 5 people.', '1 has no mobile number.'];
+
+/** Kunle shared from the app by Kemi Adeyemi, so {n} is five: Tolu, Amina, Kunle, Emeka and Chinedu. */
+function smsEntries(change: (one: Entry) => Partial<Entry> = () => ({})): Entry[] {
+  return sample().map((one) => {
+    const shared: Entry =
+      one.id === 'kunle'
+        ? { ...one, link: 'shared', trail: { by: 'Kemi Adeyemi', at: '18:44' } }
+        : one;
+
+    return { ...shared, ...change(shared) };
+  });
+}
+
+const textedBy = (at: string) => ({
+  link: 'sent' as const,
+  trail: { by: YOU, at, via: 'text' as const },
+});
+const only =
+  (id: string, change: Partial<Entry>) =>
+  (one: Entry): Partial<Entry> =>
+    one.id === id ? change : {};
+const owedOnes =
+  (change: Partial<Entry>) =>
+  (one: Entry): Partial<Entry> =>
+    OWED.includes(one.id) ? change : {};
+
+function sms(
+  o: Partial<RosterStart> & Pick<RosterStart, 'name' | 'note'>,
+  t: Partial<Texting> = {},
+): RosterStart {
+  return start({ entries: smsEntries(), sms: texting(t), ...o });
+}
+
+const NIGHT = { clock: '22:40', quiet: true } as const;
+
+const SMS_STATES = {
+  smsOn: () =>
+    sms({
+      name: 'Texting on',
+      note: 'Once SMS (sc-3946) is merged: Text the link first in each Link cell, and Text links to 5 before Add a person.',
+    }),
+  textCheck: () =>
+    sms({
+      name: 'Text the link, the check',
+      note: 'sc-3931 for one text (pm, #77935): This text uses 62 credits. Credits after sending: 1,438. Cancel, or Text the link.',
+      checking: 'tolu',
+    }),
+  textCheckShort: () =>
+    sms(
+      {
+        name: 'Text the link, the check with no credits',
+        note: '1 SMS message will wait for credits, with Add credits (billing.manage).',
+        checking: 'tolu',
+      },
+      { credits: 0 },
+    ),
+  textCheckQuiet: () =>
+    sms(
+      {
+        name: 'Text the link, the check at 22:40 the night before',
+        note: 'The event is not Happening now and Tolu’s shift starts after 09:00, so sc-3946’s wait line shows.',
+        checking: 'tolu',
+      },
+      NIGHT,
+    ),
+  textNotSent: () =>
+    sms(
+      {
+        name: 'Text the link, not sent',
+        note: 'The press is refused: That did not work. Try again in a moment. in the check, Tolu’s status unchanged.',
+        checking: 'tolu',
+        checkFailed: true,
+      },
+      { refused: true },
+    ),
+  textSending: () =>
+    sms({
+      name: 'Sending text…',
+      note: 'Until Twilio reports sent: No link yet with Sending text… under it, no Text the link; Sending the link to Tolu Bello. said.',
+      entries: smsEntries(only('tolu', { pending: 'sending' })),
+      bar: ['Sending the link to Tolu Bello.'],
+    }),
+  textSent: () =>
+    sms({
+      name: 'Text the link, sent',
+      note: 'Twilio reported sent: Link sent, Sent by Amara Nwosu · 19:12. Nothing more is said.',
+      entries: smsEntries(only('tolu', textedBy(NOW_AT))),
+    }),
+  textOpened: () =>
+    sms({
+      name: 'Text the link, already opened',
+      note: 'Grace Udo had opened hers: a new link went, and the row stays Link opened.',
+      bar: ['Sending the link to Grace Udo.'],
+    }),
+  textHeld: () =>
+    sms(
+      {
+        name: 'Text held: no credits',
+        note: 'Tolu’s status kept, Text held: no credits under it, no Text the link; Copy link stays.',
+        entries: smsEntries(only('tolu', { pending: 'held' })),
+        bar: ['Text held: no credits.'],
+      },
+      { credits: 0 },
+    ),
+  textWaits: () =>
+    sms(
+      {
+        name: 'Text waits until 09:00',
+        note: 'Sent at 22:40 the night before: Tolu’s status kept, with the wait line and no Text the link.',
+        entries: smsEntries(only('tolu', { pending: 'waits' })),
+        bar: ['Text waits until 09:00, their time.'],
+      },
+      NIGHT,
+    ),
+  textUndelivered: () =>
+    sms({
+      name: 'Text not delivered',
+      note: 'Twilio reported undelivered: back to No link yet with Text not delivered · 19:12, and Text the link back. Text links to 5 counts Tolu again.',
+      entries: smsEntries(only('tolu', { undelivered: NOW_AT })),
+    }),
+  stopped: () =>
+    sms({
+      name: 'Stopped texts',
+      note: 'Chinedu Eze replied STOP: Stopped texts where Text the link would be; Copy link stays. Text links to 4.',
+      entries: smsEntries(only('chinedu', { stopped: true })),
+    }),
+  bulkCheck: () =>
+    sms({
+      name: 'Text links to 5, the check',
+      note: 'Texts use 310 credits. Credits after sending: 1,190. Cancel, or Text links to 5.',
+      checking: 'all',
+    }),
+  bulkCheckShort: () =>
+    sms(
+      {
+        name: 'Text links to 5, short of credits',
+        note: '150 credits: Texts use 124 credits. 3 SMS messages will wait for credits. Add credits.',
+        checking: 'all',
+      },
+      { credits: 150 },
+    ),
+  bulkCheckAsk: () =>
+    sms(
+      {
+        name: 'Short of credits, without billing.manage',
+        note: 'Ask an owner in Add credits’ place (sc-3963).',
+        checking: 'all',
+      },
+      { credits: 150, billing: false },
+    ),
+  bulkCheckQuiet: () =>
+    sms(
+      {
+        name: 'Text links to 5, at 22:40 the night before',
+        note: 'Texts to 5 people wait until 09:00, their time. (sc-3946’s wait line)',
+        checking: 'all',
+      },
+      NIGHT,
+    ),
+  bulkSending: () =>
+    sms({
+      name: 'Text links to 5, sending',
+      note: 'The result as the press returns: Sending to 5 people. 1 has no mobile number. Each row Sending text… until sent.',
+      entries: smsEntries(owedOnes({ pending: 'sending' })),
+      bar: BULK_RESULT,
+    }),
+  bulkResult: () =>
+    sms(
+      {
+        name: 'Text links to 5, sent',
+        note: 'Twilio reported each sent: five rows read Link sent.',
+        entries: smsEntries(owedOnes(textedBy(NOW_AT))),
+        bar: BULK_RESULT,
+      },
+      { credits: 1190 },
+    ),
+  bulkHeld: () =>
+    sms(
+      {
+        name: 'Text links to 5, part held',
+        note: 'Sending to 2 people. 1 has no mobile number. 3 held: no credits.',
+        entries: smsEntries((one) =>
+          one.id === 'tolu' || one.id === 'amina'
+            ? { pending: 'sending' }
+            : OWED.includes(one.id)
+              ? { pending: 'held' }
+              : {},
+        ),
+        bar: ['Sending to 2 people.', '1 has no mobile number.', '3 held: no credits.'],
+      },
+      { credits: 26 },
+    ),
+  bulkQuiet: () =>
+    sms(
+      {
+        name: 'Text links to 5, all waiting',
+        note: 'At 22:40 the night before: 1 has no mobile number. 5 wait until 09:00, their time. Sending to is left out at 0.',
+        entries: smsEntries(owedOnes({ pending: 'waits' })),
+        bar: ['1 has no mobile number.', '5 wait until 09:00, their time.'],
+      },
+      NIGHT,
+    ),
+  bulkNone: () =>
+    sms({
+      name: 'Everyone sent one',
+      note: 'Text links to {n} is not shown at 0 (AC); the line under Roster says why.',
+      entries: smsEntries(owedOnes(textedBy(NOW_AT))),
+    }),
+  noCredits: () =>
+    sms(
+      {
+        name: 'No credits',
+        note: 'Tolu’s text is held; Copy link stays and works, and Emeka Obi reads Copied.',
+        entries: smsEntries((one) =>
+          one.id === 'tolu'
+            ? { pending: 'held' }
+            : one.id === 'emeka'
+              ? { link: 'copied', trail: { by: YOU, at: NOW_AT } }
+              : {},
+        ),
+        bar: ['Link copied.'],
+      },
+      { credits: 0 },
+    ),
+  smsReadOnly: () =>
+    sms({
+      name: 'Texting, without staff.manage',
+      note: 'Neither Text the link nor Text links to {n}.',
+      manage: false,
+    }),
+  smsFrench: () =>
+    sms({
+      name: 'Texting, in French',
+      note: 'The longest words in the Link cell and the head; [bracketed] until l10n.',
+      entries: smsEntries((one) =>
+        one.id === 'tolu'
+          ? { pending: 'waits' }
+          : one.id === 'emeka'
+            ? { undelivered: NOW_AT }
+            : one.id === 'chinedu'
+              ? { stopped: true }
+              : {},
+      ),
+      ...FRENCH,
+    }),
+  bulkCheckFrench: () =>
+    sms(
+      {
+        name: 'Text links to 5, the check in French',
+        note: 'The check’s longest lines, short of credits; [bracketed] until l10n.',
+        checking: 'all',
+        ...FRENCH,
+      },
+      { credits: 150 },
+    ),
+};
+
 const STATES = {
+  ...SMS_STATES,
   populated: () =>
     start({
       name: 'Populated',
@@ -992,6 +1266,10 @@ export const ROSTER_PAGES: readonly { name: string; states: readonly DemoLink[] 
         'replaced',
       ] as const
     ).map(link),
+  },
+  {
+    name: 'Text the link, and Text links to {n}, once SMS is in (sc-77904)',
+    states: (Object.keys(SMS_STATES) as (keyof typeof SMS_STATES)[]).map(link),
   },
   {
     name: 'A desk window from 961 to 1279 px, an open person before the Roster (sc-73291)',
