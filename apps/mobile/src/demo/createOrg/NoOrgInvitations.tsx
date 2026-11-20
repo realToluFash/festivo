@@ -38,6 +38,7 @@ function InvitationRow({ invite }: { invite: Invite }) {
       note={t(keys.declineNote, { inviter })}
       declined={t(keys.declined, { inviter })}
       row={invitationRowOf(outcomes[invite.id])}
+      answer={outcomes[invite.id]}
       onAnswer={(yes) => answer(invite.id, yes)}
       onOpen={() => open(invite.id)}
     />

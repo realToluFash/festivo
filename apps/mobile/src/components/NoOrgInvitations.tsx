@@ -25,7 +25,7 @@ export function NoOrgInvitationList({ children }: { children: ReactNode }) {
   );
 }
 
-/** One invitation waiting: its dashed tile, its lines, and the switcher's own answers under them. A refusal or a failed answer is `said`, in the switcher's words. */
+/** One invitation waiting: its dashed tile, its lines, and the switcher's own answers under them. A refusal or a failed answer is `said`, in the switcher's words; `answer` is what the last tap came to, so its notice is read out or takes focus as in the switcher. */
 export function NoOrgInvitationRow({
   id,
   organisation,
@@ -36,6 +36,7 @@ export function NoOrgInvitationRow({
   declined,
   row,
   said,
+  answer,
   onAnswer,
   onOpen,
 }: {
@@ -48,6 +49,7 @@ export function NoOrgInvitationRow({
   declined: string;
   row: InvitationRow;
   said?: ReactNode;
+  answer?: unknown;
   onAnswer: (yes: boolean) => void;
   onOpen: () => void;
 }) {
@@ -80,6 +82,7 @@ export function NoOrgInvitationRow({
               tone="done"
               mark={tokens.marks.done.glyph}
               body={t('invitations.joined', { organisation, role })}
+              answer={answer}
               takesFocus
             />
             <View style={styles.open}>
@@ -94,7 +97,7 @@ export function NoOrgInvitationRow({
           </View>
         ) : row.kind === 'declined' ? (
           <View style={styles.under}>
-            <Notice tone="quiet" mark="–" body={declined} takesFocus />
+            <Notice tone="quiet" mark="–" body={declined} answer={answer} takesFocus />
           </View>
         ) : row.kind === 'refused' ? (
           <View style={styles.under}>{said}</View>

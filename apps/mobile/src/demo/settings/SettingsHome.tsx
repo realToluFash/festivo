@@ -10,7 +10,7 @@ import { tokens } from '../../theme/tokens.ts';
 import { PHONE_TAB_BAR, TabBarFade } from '../../components/TodayCover.tsx';
 import { Bell, Landscape, OrgPill, PortraitTop, SettingsTabBar } from './Frame.tsx';
 import { Back } from '../../components/SettingsParts.tsx';
-import { WAY_BACK, useFromNone } from './fromNone.ts';
+import { useWayBackToNone } from '../../components/wayBackToNone.ts';
 import { type Held, HeldStandIn } from './Held.tsx';
 import { useHeldChoice } from './PersonalisationModel.ts';
 import { SettingsDemoRow } from './SettingsDemoRow.tsx';
@@ -161,9 +161,9 @@ export function SettingsHome({
   const insets = useSafeAreaInsets();
   const { t } = useTranslation();
   const list = useDemoList(false, null, onSignOut, onDemo);
-  const fromNone = useFromNone();
+  const fromNone = useWayBackToNone();
   const backToNone = fromNone != null && (
-    <Back label={WAY_BACK} onPress={fromNone} testID="settings.fromNone.back" />
+    <Back label={t('noOrganisation.wayBack')} onPress={fromNone} testID="settings.fromNone.back" />
   );
   // As the product's frame: the title keeps its words whole, and nothing under it draws larger than it drew (sc-13496, sc-67338).
   const titleCap = useTitleCap(`${shell.layout}|${t('settings.title')}`, PAGE_TITLE);
@@ -289,7 +289,7 @@ export function SettingsColumn({ onSignOut, onDemo }: Handlers) {
   const shell = useShell();
   const { t } = useTranslation();
   const list = useDemoList(true, shell.open, onSignOut, onDemo);
-  const fromNone = useFromNone();
+  const fromNone = useWayBackToNone();
 
   return (
     <SettingsListBody
@@ -299,7 +299,11 @@ export function SettingsColumn({ onSignOut, onDemo }: Handlers) {
         <>
           {fromNone != null && (
             <View style={styles.columnBack}>
-              <Back label={WAY_BACK} onPress={fromNone} testID="settings.fromNone.back" />
+              <Back
+                label={t('noOrganisation.wayBack')}
+                onPress={fromNone}
+                testID="settings.fromNone.back"
+              />
             </View>
           )}
           <View style={styles.columnTop}>

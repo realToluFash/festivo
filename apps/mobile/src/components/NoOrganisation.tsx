@@ -1,7 +1,7 @@
 import { type InvitationPreview, primaryEmailAddress } from '@soirely/api-client';
-import { formatDay, invitationWording, refusalBody, roleName } from '@soirely/domain';
+import { formatDay, type InvitationOutcome, invitationWording, roleName } from '@soirely/domain';
 import { router } from 'expo-router';
-import { type ReactNode, type RefObject, useRef } from 'react';
+import { type ReactNode, type RefObject, useRef, useState } from 'react';
 import type { ViewInstance } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
@@ -12,12 +12,11 @@ import { invitationRowOf } from '../kit/noOrgInvitations.ts';
 import { noOrganisationEnd } from '../kit/orgSwitcher.ts';
 import { signOutHere, useSignedIn } from '../signedIn.ts';
 import { switchByTap } from '../tappedSwitch.ts';
-import { tokens } from '../theme/tokens.ts';
 import { useStartOrganisation } from './AppFrame.tsx';
+import { InvitationFailedNotice, InvitationRefusalNotice } from './InvitationNotices.tsx';
 import { ManagedBanner } from './ManagedBanner.tsx';
 import { NoOrgInvitationList, NoOrgInvitationRow } from './NoOrgInvitations.tsx';
 import { NoOrgPage, NoOrgWayOn, SignedInWays, StartYourOwn } from './NoOrganisationParts.tsx';
-import { Notice } from './Notice.tsx';
 import type { TextHandle } from './Text.tsx';
 
 /** Where an account in no organisation lands, as `/demo/today?orgs=none` draws it: no header, card or tab bar; any invitation waiting for it, Start your own or sc-563's banner in its place, and Your account beside Sign out (sc-75471). */
@@ -80,9 +79,11 @@ function Waiting({
   const organisation = invitation.organisation.name;
   const inviter = invitation.invitedBy?.name ?? '';
   const role = invitation.role == null ? '' : roleName(t, invitation.role);
+  const [answered, setAnswered] = useState<InvitationOutcome | null>(null);
+  const answer = outcome === answered ? outcome : undefined;
   const said =
     outcome?.kind === 'failed' ? (
-      <Notice tone="broken" mark={tokens.marks.broken.glyph} body={t('invitations.failed')} />
+      <InvitationFailedNotice answer={answer} />
     ) : outcome?.kind === 'managed' ? (
       <ManagedBanner
         organisation={outcome.organisation}
@@ -90,17 +91,11 @@ function Waiting({
         testID={`noOrganisation.invitation.${invitation.id}.managed`}
       />
     ) : outcome?.kind === 'refused' ? (
-      <Notice
-        tone={outcome.refusal === 'invitation_expired' ? 'attention' : 'quiet'}
-        mark={outcome.refusal === 'invitation_expired' ? '!' : 'i'}
-        title={t(`invitations.refused.${outcome.refusal}.word`)}
-        body={t(refusalBody(outcome.refusal, invitation.invitedBy != null), {
-          inviter,
-          organisation,
-          email: invitation.email,
-          signedInAs: invitation.signedInAs ?? '',
-        })}
-        takesFocus
+      <InvitationRefusalNotice
+        refusal={outcome.refusal}
+        organisation={organisation}
+        invitation={invitation}
+        answer={answer}
       />
     ) : undefined;
 
@@ -118,7 +113,10 @@ function Waiting({
       declined={t(keys.declined, { inviter })}
       row={invitationRowOf(outcome)}
       said={said}
-      onAnswer={(yes) => void waiting.answer(invitation, yes ? 'accept' : 'decline')}
+      answer={answer}
+      onAnswer={(yes) =>
+        void waiting.answer(invitation, yes ? 'accept' : 'decline').then(setAnswered)
+      }
       onOpen={() => {
         if (outcome?.kind === 'accepted') switchByTap(outcome.organisationId);
       }}

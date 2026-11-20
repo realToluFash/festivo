@@ -29,7 +29,8 @@ import { lookingAs, managesOrganisation, memberLooking, SECTIONS, viewerOf } fro
 import { underSavedName, useSavedName } from './savedName.ts';
 import { SecuritySection } from './Security.tsx';
 import { heldOf } from './Held.tsx';
-import { boardFrom, FromNone, fromNoneOf, noOrgHome } from './fromNone.ts';
+import { WayBackToNone } from '../../components/wayBackToNone.ts';
+import { boardFrom, fromNoneOf, noOrgHome } from './fromNone.ts';
 import { SettingsColumn, SettingsHome, sectionsFor } from './SettingsHome.tsx';
 import { SignInRulesSection } from './SignInRules.tsx';
 import { SingleSignOnSection } from './SingleSignOn.tsx';
@@ -184,7 +185,7 @@ export function SettingsRoute({
 
   return (
     <ShellContext.Provider value={shell}>
-      <FromNone.Provider value={fromNone ? toNone : null}>
+      <WayBackToNone.Provider value={fromNone ? toNone : null}>
         <OrgSwitcherProvider state={switcherStateOf(params.switcher)} tell={tell}>
           <View style={styles.fill}>
             <DataOpenContext.Provider value={dataShown}>
@@ -201,7 +202,7 @@ export function SettingsRoute({
             )}
           </View>
         </OrgSwitcherProvider>
-      </FromNone.Provider>
+      </WayBackToNone.Provider>
     </ShellContext.Provider>
   );
 }

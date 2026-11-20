@@ -518,10 +518,11 @@ export function AppFrame({
     overdueIn.current = overdueOn;
   });
   const framed = !ownChrome || standIn != null;
-  // Opened from You are not in an organisation: no tab bar or sidebar, and its way back on top (sc-75471).
+  // Opened from You are not in an organisation: no tab bar or sidebar, and its way back on top (sc-75471). An account holding an event from outside lands in that event instead, so it keeps today's frame.
   const openedFromNone =
     signedIn.organisation == null &&
     signedIn.pausedIn == null &&
+    (signedIn.account?.outsideEvents.length ?? 0) === 0 &&
     inEvent == null &&
     standIn == null;
   const floatingTabs = framed && kind === 'phone' && inEvent == null && !openedFromNone;

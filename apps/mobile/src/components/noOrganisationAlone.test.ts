@@ -35,6 +35,19 @@ describe('You are not in an organisation, alone (sc-75471)', () => {
 });
 
 describe('Settings opened from no organisation (sc-75471)', () => {
+  it('keeps today’s frame for an account holding an event from outside, which lands in that event', () => {
+    expect(frame).toMatch(
+      /const openedFromNone =[^;]*\(signedIn\.account\?\.outsideEvents\.length \?\? 0\) === 0 &&/u,
+    );
+  });
+
+  it('shares its way back with the demo, in the app’s words', () => {
+    const demoSettings = read('src', 'demo', 'settings', 'SettingsHome.tsx');
+    expect(demoSettings).toContain("from '../../components/wayBackToNone.ts'");
+    expect(demoSettings).toContain("label={t('noOrganisation.wayBack')}");
+    expect(read('src', 'demo', 'settings', 'fromNone.ts')).not.toMatch(/createContext|WAY_BACK/u);
+  });
+
   it('has no tab bar and no sidebar', () => {
     expect(frame).toMatch(
       /const floatingTabs = framed && kind === 'phone' && inEvent == null && !openedFromNone;/u,
