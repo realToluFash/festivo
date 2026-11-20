@@ -48,11 +48,11 @@ function directlyAboveSave(group: HTMLElement): HTMLElement {
 }
 
 let fetching: ReturnType<typeof vi.spyOn>;
-let scrolled: ReturnType<typeof vi.fn>;
+let scrolled: ReturnType<typeof vi.fn<(arg?: boolean | ScrollIntoViewOptions) => void>>;
 
 beforeEach(() => {
   __setConfig({ ...tested, environment: 'development' });
-  scrolled = vi.fn();
+  scrolled = vi.fn<(arg?: boolean | ScrollIntoViewOptions) => void>();
   Element.prototype.scrollIntoView = scrolled;
   resetSample();
   fetching = vi.spyOn(globalThis, 'fetch');
