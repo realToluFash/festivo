@@ -87,6 +87,7 @@ enum AuditType: string
         'email_domain.only_ours_off' => self::Security,
         'organisation.created' => self::Organisation,
         'organisation.plan_changed' => self::Organisation,
+        'organisation.payment_reminders_changed' => self::Organisation,
         'organisation.ownership_transferred' => self::Organisation,
         'organisation.deleted' => self::Organisation,
         'organisation.restored' => self::Organisation,

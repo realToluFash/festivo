@@ -847,6 +847,12 @@ export interface SignInRuleChange {
   was: boolean | number | null;
 }
 
+/** How many days before a payment falls due its reminder goes; `inForce` is false once the plan no longer has payment schedules (sc-95). */
+export interface PaymentRemindersSetting {
+  days: number;
+  inForce: boolean;
+}
+
 export interface SignInRulesPage extends OrganisationSignInRules {
   inactivityChoices: number[];
   changes: SignInRuleChange[];
@@ -1917,6 +1923,42 @@ export class ApiClient {
     }
 
     return page;
+  }
+
+  /** Settings › Vendors › Payment reminders (sc-95): an Owner's or an Admin's; anybody else is refused 403. */
+  async paymentReminders(organisationId: string): Promise<PaymentRemindersSetting> {
+    return this.readPaymentReminders(
+      await this.get<unknown>(`/api/orgs/${encodeURIComponent(organisationId)}/payment-reminders`),
+    );
+  }
+
+  /** Refused `validation_failed` at `days` for anything but a whole number from 1 to 30. */
+  async updatePaymentReminders(
+    organisationId: string,
+    days: number,
+  ): Promise<PaymentRemindersSetting> {
+    return this.readPaymentReminders(
+      await this.put<unknown>(`/api/orgs/${encodeURIComponent(organisationId)}/payment-reminders`, {
+        days,
+      }),
+    );
+  }
+
+  private readPaymentReminders(raw: unknown): PaymentRemindersSetting {
+    if (
+      raw == null ||
+      typeof raw !== 'object' ||
+      !('days' in raw) ||
+      typeof raw.days !== 'number' ||
+      !('inForce' in raw) ||
+      typeof raw.inForce !== 'boolean'
+    ) {
+      throw new Error(
+        'The API answered /api/orgs/{id}/payment-reminders in a shape this client does not know. Check PaymentRemindersController in services/api.',
+      );
+    }
+
+    return { days: raw.days, inForce: raw.inForce };
   }
 
   /** Data and control › Export all data (sc-612): an Owner's or an Admin's read; a Member is refused. */

@@ -241,6 +241,7 @@
     "audit.what.email_domain.only_ours_off": "Switched off Only our organisation for an email domain",
     "audit.what.organisation.created": "Created {target}",
     "audit.what.organisation.plan_changed": "Changed the plan of {target}",
+    "audit.what.organisation.payment_reminders_changed": "Changed when payment reminders go for {target}",
     "audit.what.organisation.ownership_transferred": "Transferred ownership of {target}",
     "audit.what.organisation.deleted": "Deleted {target}",
     "audit.what.organisation.restored": "Restored {target}",
@@ -308,6 +309,7 @@
     "audit.field.passesAt": "Passes at",
     "audit.field.providerOnly": "Sign in with a provider only",
     "audit.field.inactivityTimeoutDays": "Signed out after days inactive",
+    "audit.field.paymentReminderDays": "Days before a payment its reminder goes",
     "audit.field.onlyOurs": "Only our organisation",
     "audit.field.from": "From",
     "audit.field.recipients": "People told",
@@ -383,5 +385,16 @@
     "validation.budget_client_price_invalid": "Enter a price of {min} or more, in numbers only.",
     "validation.budget_client_price_too_many_decimals": "That has too many decimal places for this event’s currency. Enter the price like {example}.",
     "audit.export_file": "{organisation} audit log {day}",
-    "audit.export_too_many": "More than {most, number, ::group-auto} entries match. Narrow the filters, then export again."
+    "audit.export_too_many": "More than {most, number, ::group-auto} entries match. Narrow the filters, then export again.",
+    "payment_reminder.title.overdue_on": "{count, plural, one {{count, number, ::group-auto} payment} other {{count, number, ::group-auto} payments}} overdue on {event}",
+    "payment_reminder.title.overdue": "{count, plural, one {{count, number, ::group-auto} payment} other {{count, number, ::group-auto} payments}} overdue across {events, plural, one {{events, number, ::group-auto} event} other {{events, number, ::group-auto} events}}",
+    "payment_reminder.title.coming_due_on": "{count, plural, one {{count, number, ::group-auto} payment} other {{count, number, ::group-auto} payments}} due {days, plural, =1 {by tomorrow} other {in the next {days, number, ::group-auto} days}} on {event}",
+    "payment_reminder.title.coming_due": "{count, plural, one {{count, number, ::group-auto} payment} other {{count, number, ::group-auto} payments}} due {days, plural, =1 {by tomorrow} other {in the next {days, number, ::group-auto} days}} across {events, plural, one {{events, number, ::group-auto} event} other {{events, number, ::group-auto} events}}",
+    "payment_reminder.title.mixed": "{overdue, plural, one {{overdue, number, ::group-auto} payment} other {{overdue, number, ::group-auto} payments}} overdue, {count, number, ::group-auto} due {days, plural, =1 {by tomorrow} other {in the next {days, number, ::group-auto} days}}",
+    "payment_reminder.row": "{vendor} · {amount} · {when}",
+    "payment_reminder.row_on": "{vendor} · {event} · {amount} · {when}",
+    "payment_reminder.due": "due {date}",
+    "payment_reminder.was_due": "was due {date}",
+    "payment_reminder.overdue_row": "{row} · Overdue · last reminder",
+    "payment_reminder.last_about": "This is the last reminder about {vendor}: {what}."
 }

@@ -32,7 +32,7 @@ final class AuditTypeTest extends TestCase
     private const array NOT_AN_ORGANISATION = ['catalogue'];
 
     /** Codes and areas the scan finds that name something other than an audited action. */
-    private const array NOT_ACTIONS = ['sign_in_rules.notice', 'catalogue.versions', 'replies.close', 'example.com', 'group.id', 'group.name', 'event_changes', 'event_day', 'app'];
+    private const array NOT_ACTIONS = ['sign_in_rules.notice', 'budget.payment_reminder', 'catalogue.versions', 'replies.close', 'example.com', 'group.id', 'group.name', 'event_changes', 'event_day', 'app'];
 
     /** Every action whose entry shows what changed on something already there: a new action goes here or on AuditType::CREATES_OR_REMOVES (#74875). */
     private const array CHANGES_A_VALUE = [
@@ -47,7 +47,7 @@ final class AuditTypeTest extends TestCase
         'sign_in_rules.changed', 'sign_in_rules.two_factor_held',
         'email_domain.proved', 'email_domain.failed', 'email_domain.record_missing', 'email_domain.lapsed',
         'email_domain.only_ours_on', 'email_domain.only_ours_notice_sent', 'email_domain.only_ours_applied', 'email_domain.only_ours_cancelled', 'email_domain.only_ours_off',
-        'organisation.plan_changed', 'organisation.ownership_transferred', 'organisation.export_asked', 'organisation.export_downloaded',
+        'organisation.plan_changed', 'organisation.payment_reminders_changed', 'organisation.ownership_transferred', 'organisation.export_asked', 'organisation.export_downloaded',
         AuditType::VIEWED, AuditType::EXPORTED,
     ];
 
