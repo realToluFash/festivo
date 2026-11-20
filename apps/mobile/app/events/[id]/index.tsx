@@ -14,7 +14,7 @@ import { OPENED_GUEST } from '../../../src/kit/searchLinks.ts';
 import { ASKS_END } from '../../../src/kit/upToEvent.ts';
 import { CAME_FROM } from '../../../src/kit/outsideEvent.ts';
 
-/** An event's page, pushed over whatever opened it; from a copy, back leads to its original. */
+/** An event's page, pushed over whatever opened it; from a copy, back leads to its original. A link that swaps the id on a mounted page starts the page afresh, so nothing one event had open reaches another (sc-48601). */
 export default function EventPage() {
   const {
     id = '',
@@ -40,6 +40,7 @@ export default function EventPage() {
 
   return (
     <EventScreen
+      key={id}
       eventId={id}
       area={areaOf(area)}
       filter={choiceOf(filter ?? null)}
