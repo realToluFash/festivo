@@ -1,3 +1,6 @@
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
+
 import { act, cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import { RouterProvider, createMemoryRouter } from 'react-router';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -247,6 +250,25 @@ describe('the Budget page at a desk in A (sc-31779)', () => {
       'Client total',
     );
   });
+
+  it(
+    'wraps the who-sees pill inside the card, by the rule every glass pill takes (sc-30767)',
+    SLOW,
+    async () => {
+      const css = readFileSync(join(import.meta.dirname, 'demo.css'), 'utf8');
+      const rule = /\.desk-glass:is\(li, span\) \{([^}]*)\}/u.exec(css)?.[1] ?? '';
+
+      expect(rule).toContain('white-space: normal;');
+      expect(rule).toContain('height: auto;');
+      expect(rule).toContain('min-height: 28px;');
+      expect(rule).toContain('max-width: 100%;');
+
+      await open(at('margin'));
+      const pill = screen.getByText('Only owners, admins and this event’s lead see this');
+      expect(pill.tagName).toBe('LI');
+      expect(pill.classList.contains('desk-glass')).toBe(true);
+    },
+  );
 
   it('is not available to someone who can only edit the event', SLOW, async () => {
     await open(at('populated', '&as=kemi'));
