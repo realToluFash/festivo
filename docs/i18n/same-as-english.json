@@ -48,6 +48,7 @@
     "web:dataControl.control",
     "mobile:dataAndControl.control",
     "web:dataControl.enterprise",
+    "messagesCounts:audit.value.enterprise",
     "mobile:dataAndControl.enterprise",
     "web:auditLog.formats.csv",
     "web:auditLog.formats.jsonl",
