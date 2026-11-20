@@ -3257,7 +3257,7 @@
     "exportLine": "Se descargan hasta {{atOnce, number}} entradas a la vez. Si hay más, las preparamos y le enviamos un enlace por correo.",
     "downloading": "Descargando el registro de auditoría en {{format}}.",
     "preparing": "Preparando su exportación",
-    "preparingLine": "Enviaremos un enlace a {{email}} cuando esté lista. Funciona una sola vez, durante 24 horas.",
+    "preparingLine": "Enviaremos un enlace a {{email}} cuando esté lista. Solo usted podrá descargarla, con su sesión iniciada, durante 24 horas.",
     "tooMany": "Las entradas que coinciden superan el límite de {{most, number}}. Acote los filtros y vuelva a exportar.",
     "exportFailed": "No se ha podido crear el archivo, así que no se ha compartido nada. Vuelva a intentarlo.",
     "locked": "Disponible con Enterprise",
