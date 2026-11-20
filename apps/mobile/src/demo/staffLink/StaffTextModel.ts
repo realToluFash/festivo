@@ -1,38 +1,58 @@
 import { type LinkState, type Texting, NOW, W, YOU, acts, seed } from './StaffLinkModel.ts';
 import { type OnRoster, sampleRoster } from './StaffRosterModel.ts';
 
-/** sc-77904's words; [bracketed] ones are proposals waiting for [en]. */
+const one = (n: number, single: string, many: string) => (n === 1 ? single : many);
+const counted = (n: number) => n.toLocaleString('en-GB');
+
+/** sc-77904's words as the AC quotes [en] (#77928, #77937, #77953); [bracketed] ones are the drawing's, for [en]. */
 export const TW = {
   text: 'Text the link',
-  textSent: (name: string) => `Text sent to ${name}.`,
-  held: 'Held: no credits',
-  heldLine: '[It goes once there are credits. Share or copy the link meanwhile.]',
-  stopped: 'Stopped texts',
-  stoppedLine: '[They replied STOP. Share or copy the link instead.]',
-  waits: 'Waits until 08:00, their time',
-  waitsLine: '[Quiet hours: it goes in the morning.]',
   bulk: (n: number) => `Text links to ${n}`,
+  sending: 'Sending text…',
+  held: 'Text held: no credits',
+  waits: (time: string) => `Text waits until ${time}, their time`,
+  notDelivered: (time: string) => `Text not delivered · ${time}`,
+  stopped: 'Stopped texts',
+  sendingTo: (name: string) => `Sending the link to ${name}.`,
+  checkOne: (name: string) => `[Text the link to ${name}?]`,
+  checkMany: (n: number) => `[Text links to ${n} ${one(n, 'person', 'people')}?]`,
+  checkLine: '[Each gets a text with their own link. Links sent before keep working.]',
+  thisTextUses: (c: number) => `This text uses ${counted(c)} ${one(c, 'credit', 'credits')}.`,
+  textsUse: (c: number) => `Texts use ${counted(c)} ${one(c, 'credit', 'credits')}.`,
+  after: (c: number) => `Credits after sending: ${counted(c)}.`,
+  smsWaits: (w: number) =>
+    `${counted(w)} ${one(w, 'SMS message', 'SMS messages')} will wait for credits.`,
+  quiet: (n: number, time: string) =>
+    `Texts to ${counted(n)} ${one(n, 'person', 'people')} wait until ${time}, their time.`,
+  notInApp: 'Credits cannot be added in the app.',
+  askOwner: 'Ask an owner',
+  cancel: 'Cancel',
   allSent: '[Everyone with a mobile number has been sent a link.]',
-  checkTitle: (n: number) => `Text links to ${n} ${n === 1 ? 'person' : 'people'}?`,
-  checkLine: 'Each of them gets a text with their own link. Links sent before keep working.',
-  noMobile: (m: number) =>
-    m === 1
-      ? '1 has no mobile number and is left out.'
-      : `${m} have no mobile number and are left out.`,
-  stoppedSkip: (k: number) =>
-    `${k} stopped texts and ${k === 1 ? 'is' : 'are'} left out. Share or copy their link instead.`,
-  uses: (c: number) => `Texts use ${counted(c)} ${c === 1 ? 'credit' : 'credits'}.`,
-  after: (c: number) => `Balance after sending: ${counted(c)} ${c === 1 ? 'credit' : 'credits'}.`,
-  wait: (w: number) => `${w} ${w === 1 ? 'text' : 'texts'} will wait for credits.`,
-  send: 'Send',
-  notNow: 'Not now',
+  noMobile: (m: number) => `${m} ${one(m, 'has', 'have')} no mobile number.`,
+  stoppedCount: (k: number) => `${k} ${one(k, 'has', 'have')} stopped texts.`,
 };
 
-function counted(n: number): string {
-  return n.toLocaleString('en-GB');
+export interface Result {
+  sending: number;
+  m: number;
+  k: number;
+  held: number;
+  waits: number;
+  time: string;
 }
 
-/** A sample of sc-3928's unit costs: the credits one text costs by its number's country, never the event's. */
+/** Each sentence only above 0, every one with its full stop; a held or waiting person only in their own line. */
+export function resultLines(r: Result): string[] {
+  return [
+    r.sending === 0 ? '' : `Sending to ${r.sending} ${one(r.sending, 'person', 'people')}.`,
+    r.m === 0 ? '' : TW.noMobile(r.m),
+    r.k === 0 ? '' : TW.stoppedCount(r.k),
+    r.held === 0 ? '' : `${r.held} held: no credits.`,
+    r.waits === 0 ? '' : `${r.waits} ${one(r.waits, 'waits', 'wait')} until ${r.time}, their time.`,
+  ].filter((line) => line !== '');
+}
+
+/** A sample of sc-3928's unit costs: one text's credits by its number's country, never the event's. */
 export const CREDITS_A_TEXT: Readonly<Record<string, number>> = {
   NG: 62,
   GB: 9,
@@ -44,98 +64,145 @@ export const CREDITS_A_TEXT: Readonly<Record<string, number>> = {
   US: 2,
 };
 
-export const SAMPLE_COUNTRY = 'NG';
 export const BALANCE = 1500;
+export const QUIET_ENDS = '09:00';
+export const SENT_MS = 2400;
 
-export function creditsFor(country: string = SAMPLE_COUNTRY): number {
+export function creditsFor(country = 'NG'): number {
   return CREDITS_A_TEXT[country] ?? 0;
 }
 
-const texting = (over: Partial<Texting> = {}): Texting => ({
-  credits: BALANCE,
-  fails: false,
-  stopped: false,
-  quietWaits: false,
-  clock: NOW,
-  note: null,
-  ...over,
-});
+export function texting(over: Partial<Texting> = {}): Texting {
+  return {
+    credits: BALANCE,
+    refused: false,
+    undelivered: false,
+    quiet: false,
+    clock: NOW,
+    billing: true,
+    stopped: false,
+    pending: null,
+    notDelivered: null,
+    before: null,
+    checking: false,
+    checkFailed: false,
+    ...over,
+  };
+}
 
 export function offersText(s: LinkState): boolean {
   return (
     s.texting != null &&
     acts(s) &&
+    s.view === 'manage' &&
+    s.who.mobile &&
     !s.texting.stopped &&
-    s.texting.note == null &&
-    !s.asking &&
-    s.view === 'manage'
+    s.texting.pending == null &&
+    !s.asking
   );
 }
 
-export type TextOutcome = 'sent' | 'notSent' | 'held' | 'waits';
-
-/** Proposal, #77921: quiet hours do not hold a staff link (point 1), unless pm says they do. */
-export function outcomeOf(t: Texting): TextOutcome {
-  if (t.fails) return 'notSent';
-  if (t.credits < creditsFor()) return 'held';
-  if (t.quietWaits && (t.clock >= '21:00' || t.clock < '08:00')) return 'waits';
-
-  return 'sent';
+export interface Check {
+  n: number;
+  m: number;
+  k: number;
+  uses: number;
+  after: number;
+  wait: number;
 }
 
-export function textSent(s: LinkState): LinkState {
-  const t = s.texting ?? texting();
-  const said = TW.textSent(s.who.name);
-  const moved =
-    s.status === 'opened'
-      ? { status: s.status, trail: s.trail }
-      : { status: 'sent' as const, trail: { by: YOU, at: t.clock, via: 'text' as const } };
+export function checkOf(n: number, credits: number, m = 0, k = 0): Check {
+  const afford = Math.min(n, Math.floor(credits / creditsFor()));
+  const uses = afford * creditsFor();
+
+  return { n, m, k, uses, after: credits - uses, wait: n - afford };
+}
+
+export function askText(s: LinkState, open: boolean): LinkState {
+  if (s.texting == null) return s;
+
+  return { ...s, texting: { ...s.texting, checking: open, checkFailed: false } };
+}
+
+/** The confirm: refused, it says so in the check; otherwise the text sends, is held, or waits for 09:00. */
+export function pressText(s: LinkState): LinkState {
+  const t = s.texting;
+  if (t == null) return s;
+  if (t.refused) return { ...s, texting: { ...t, checkFailed: true }, say: W.notIssued };
+  const pending = t.quiet ? 'waits' : t.credits < creditsFor() ? 'held' : 'sending';
+  const say =
+    pending === 'sending'
+      ? TW.sendingTo(s.who.name)
+      : pending === 'held'
+        ? `${TW.held}.`
+        : `${TW.waits(QUIET_ENDS)}.`;
 
   return {
     ...s,
-    ...moved,
-    busy: null,
     failed: false,
-    texting: { ...t, credits: t.credits - creditsFor() },
-    toast: said,
-    say: said,
+    texting: {
+      ...t,
+      checking: false,
+      checkFailed: false,
+      pending,
+      notDelivered: null,
+      credits: pending === 'sending' ? t.credits - creditsFor() : t.credits,
+    },
+    toast: say,
+    say,
   };
 }
 
-export function textNotSent(s: LinkState): LinkState {
-  return { ...s, busy: null, failed: true, say: W.notIssued };
-}
-
-/** Held for credits (proposal, #77921, point 4) or waiting for the morning: the status stays, with the note. */
-export function textHeld(s: LinkState, note: 'held' | 'waits'): LinkState {
-  const t = s.texting ?? texting();
+/** Twilio reports sent: Link sent by you, unless already opened, since the status only moves forward. */
+export function reportedSent(s: LinkState): LinkState {
+  const t = s.texting;
+  if (t?.pending !== 'sending') return s;
+  if (s.status === 'opened') return { ...s, texting: { ...t, pending: null }, say: '' };
+  const before = t.undelivered ? { status: s.status, trail: s.trail } : null;
 
   return {
     ...s,
-    busy: null,
-    texting: { ...t, note },
-    say: note === 'held' ? TW.held : TW.waits,
+    status: 'sent',
+    trail: { by: YOU, at: t.clock, via: 'text' },
+    texting: { ...t, pending: null, before },
+    say: '',
   };
 }
 
-export function afterText(s: LinkState): LinkState {
-  const outcome = outcomeOf(s.texting ?? texting());
-  if (outcome === 'notSent') return textNotSent(s);
-  if (outcome === 'held' || outcome === 'waits') return textHeld(s, outcome);
+/** Twilio reports undelivered: back to what the other deliveries make it, with the time. */
+export function reportedUndelivered(s: LinkState): LinkState {
+  const t = s.texting;
+  if (t?.before == null) return s;
 
-  return textSent(s);
+  return {
+    ...s,
+    status: t.before.status,
+    trail: t.before.trail,
+    texting: { ...t, before: null, notDelivered: NOW },
+  };
+}
+
+/** Mark as sent and Replace link withdraw a waiting text: it never goes and uses no credits. */
+export function withdrawn(s: LinkState): LinkState {
+  const t = s.texting;
+  if (t == null || (t.pending !== 'held' && t.pending !== 'waits')) return s;
+
+  return { ...s, texting: { ...t, pending: null } };
 }
 
 export const TEXT_STATES = [
   'smsOn',
-  'textBusy',
+  'textCheck',
+  'textCheckShort',
+  'textCheckQuiet',
+  'textNotSent',
+  'textSending',
   'textSent',
   'textOpened',
-  'textNotSent',
   'textHeld',
+  'textWaits',
+  'textUndelivered',
   'stopped',
-  'quiet',
-  'quietWaits',
   'noCredits',
   'smsReadOnly',
 ] as const;
@@ -143,129 +210,123 @@ export const TEXT_STATES = [
 export type TextStateName = (typeof TEXT_STATES)[number];
 
 export function textStateOf(raw: string | null | undefined): TextStateName | null {
-  return TEXT_STATES.find((one) => one === raw) ?? null;
+  return TEXT_STATES.find((name) => name === raw) ?? null;
 }
 
+const NIGHT = { clock: '22:40', quiet: true } as const;
+
 export function textSeed(name: TextStateName): LinkState {
-  const s: LinkState = { ...seed('none'), texting: texting() };
-  const opened: LinkState = { ...s, status: 'opened', trail: { by: '', at: '19:05' } };
-  const quiet = { ...s, texting: texting({ clock: '22:40' }) };
+  const on = (over: Partial<Texting>, from: LinkState = seed('none')): LinkState => ({
+    ...from,
+    texting: texting(over),
+  });
+  const quietly = (s: LinkState): LinkState => ({ ...s, toast: '', say: '' });
   switch (name) {
-    case 'textBusy':
-      return { ...s, busy: 'text' };
-    case 'textSent':
-      return textSent(s);
-    case 'textOpened':
-      return textSent(opened);
+    case 'textCheck':
+      return on({ checking: true });
+    case 'textCheckShort':
+      return on({ checking: true, credits: 0 });
+    case 'textCheckQuiet':
+      return on({ checking: true, ...NIGHT });
     case 'textNotSent':
-      return { ...textNotSent(s), texting: texting({ fails: true }), say: '' };
+      return on({ checking: true, checkFailed: true, refused: true });
+    case 'textSending':
+      return pressText(on({}));
+    case 'textSent':
+      return quietly(reportedSent(pressText(on({}))));
+    case 'textOpened':
+      return quietly(reportedSent(pressText(on({}, seed('opened')))));
     case 'textHeld':
-      return { ...textHeld({ ...s, texting: texting({ credits: 0 }) }, 'held'), say: '' };
+      return on({ pending: 'held', credits: 0 });
+    case 'textWaits':
+      return on({ pending: 'waits', ...NIGHT });
+    case 'textUndelivered':
+      return on({ notDelivered: NOW });
     case 'stopped':
-      return { ...s, texting: texting({ stopped: true }) };
-    case 'quiet':
-      return textSent(quiet);
-    case 'quietWaits':
-      return {
-        ...textHeld({ ...s, texting: texting({ clock: '22:40', quietWaits: true }) }, 'waits'),
-        say: '',
-      };
+      return on({ stopped: true });
     case 'noCredits':
-      return {
-        ...s,
-        status: 'copied',
-        trail: { by: YOU, at: NOW },
-        texting: texting({ credits: 0, note: 'held' }),
-      };
+      return { ...on({ credits: 0, pending: 'held' }, seed('copied')) };
     case 'smsReadOnly':
-      return { ...s, view: 'read' };
+      return on({}, seed('readOnly'));
     default:
-      return s;
+      return on({});
   }
 }
 
-export function textingFor(person: OnRoster, credits: number): Texting {
+export function textingFor(person: OnRoster, over: Partial<Texting>): Texting {
   return texting({
-    credits,
+    ...over,
     stopped: person.stopped === true,
-    note: person.held === true ? 'held' : null,
+    pending: person.pending ?? null,
+    notDelivered: person.notDelivered ?? null,
   });
 }
 
-/** {n}: a number, not stopped or held, reading No link yet, Copied or Shared. */
+export function textable(person: OnRoster): boolean {
+  return person.mobile && person.stopped !== true && person.pending == null;
+}
+
 export function owed(person: OnRoster): boolean {
   return (
-    person.mobile &&
-    person.stopped !== true &&
-    person.held !== true &&
+    textable(person) &&
     (person.status === 'none' || person.status === 'copied' || person.status === 'shared')
   );
 }
 
-export interface Check {
-  n: number;
-  /** No mobile number among those not yet sent one. */
-  m: number;
-  k: number;
-  afford: number;
-  uses: number;
-  after: number;
-  wait: number;
+export function bulkCheck(people: readonly OnRoster[], credits: number): Check {
+  return checkOf(
+    people.filter(owed).length,
+    credits,
+    people.filter((p) => !p.mobile && p.status === 'none').length,
+    people.filter((p) => p.mobile && p.stopped === true).length,
+  );
 }
 
-export function checkOf(people: readonly OnRoster[], credits: number): Check {
-  const n = people.filter(owed).length;
-  const each = creditsFor();
-  const afford = Math.min(n, Math.floor(credits / each));
-  const uses = afford * each;
-
-  return {
-    n,
-    m: people.filter((p) => !p.mobile && p.status === 'none').length,
-    k: people.filter((p) => p.mobile && p.stopped === true).length,
-    afford,
-    uses,
-    after: credits - uses,
-    wait: n - afford,
-  };
-}
-
-/** "Sent to {n}. {m} have no mobile number.", the second sentence left out at 0; held and stopped counted too. */
-export function resultLine(sent: number, m: number, k: number, held: number): string {
-  const heldLine = held === 0 ? '' : ` ${held} ${held === 1 ? 'is' : 'are'} held: no credits.`;
-  const left = [
-    m === 0 ? '' : `${m} ${m === 1 ? 'has' : 'have'} no mobile number`,
-    k === 0 ? '' : `${k} stopped texts`,
-  ]
-    .filter((one) => one !== '')
-    .join(' and ');
-
-  return `Sent to ${sent}.${heldLine}${left === '' ? '' : ` ${left}.`}`;
-}
-
-export interface Sent {
+export interface Pressed {
   people: OnRoster[];
   credits: number;
-  line: string;
+  lines: string[];
 }
 
-/** Text links to {n}: what credits cover goes now, the rest is held (sc-3932). */
-export function sendAll(people: readonly OnRoster[], credits: number): Sent {
-  const check = checkOf(people, credits);
-  const due = people.filter(owed).map((p) => p.id);
-  const go = new Set(due.slice(0, check.afford));
-  const wait = new Set(due.slice(check.afford));
+export function textAll(people: readonly OnRoster[], credits: number, quiet: boolean): Pressed {
+  const ids = people.filter(owed).map((p) => p.id);
+  const afford = quiet ? 0 : Math.min(ids.length, Math.floor(credits / creditsFor()));
+  const go = new Set(quiet ? [] : ids.slice(0, afford));
+  const held = new Set(quiet ? [] : ids.slice(afford));
+  const waits = new Set(quiet ? ids : []);
+  const check = bulkCheck(people, credits);
 
   return {
     people: people.map((p) =>
       go.has(p.id)
-        ? { ...p, status: 'sent', trail: { by: YOU, at: NOW, via: 'text' }, held: false }
-        : wait.has(p.id)
-          ? { ...p, held: true }
-          : p,
+        ? { ...p, pending: 'sending' as const, notDelivered: null }
+        : held.has(p.id)
+          ? { ...p, pending: 'held' as const }
+          : waits.has(p.id)
+            ? { ...p, pending: 'waits' as const }
+            : p,
     ),
-    credits: credits - check.uses,
-    line: resultLine(go.size, check.m, check.k, wait.size),
+    credits: credits - go.size * creditsFor(),
+    lines: resultLines({
+      sending: go.size,
+      m: check.m,
+      k: check.k,
+      held: held.size,
+      waits: waits.size,
+      time: QUIET_ENDS,
+    }),
+  };
+}
+
+export function sentOn(person: OnRoster): OnRoster {
+  if (person.pending !== 'sending') return person;
+  if (person.status === 'opened') return { ...person, pending: null };
+
+  return {
+    ...person,
+    pending: null,
+    status: 'sent',
+    trail: { by: YOU, at: NOW, via: 'text' },
   };
 }
 
@@ -282,42 +343,60 @@ export function setCredits(credits: number): void {
 export interface TextRoster {
   people: OnRoster[];
   credits: number;
+  quiet: boolean;
+  billing: boolean;
   checking: boolean;
-  toast: string | null;
+  toast: string[] | null;
 }
+
+const OWED = new Set(['tolu', 'amina', 'kunle', 'emeka', 'chinedu']);
 
 export function textRoster(state: string): TextRoster | null {
   const base = sampleRoster();
-  const one = (people: OnRoster[], credits = BALANCE): TextRoster => ({
-    people,
-    credits,
+  const list = (over: Partial<TextRoster> = {}): TextRoster => ({
+    people: base,
+    credits: BALANCE,
+    quiet: false,
+    billing: true,
     checking: false,
     toast: null,
+    ...over,
   });
+  const pressedTo = (credits: number, quiet: boolean, after = (p: OnRoster) => p) => {
+    const pressed = textAll(base, credits, quiet);
+    return list({
+      people: pressed.people.map(after),
+      credits: pressed.credits,
+      quiet,
+      toast: pressed.lines,
+    });
+  };
   switch (state) {
     case 'smsOn':
     case 'smsReadOnly':
-      return one(base);
+      return list();
     case 'bulkCheck':
-      return { ...one(base), checking: true };
+      return list({ checking: true });
     case 'bulkCheckShort':
-      return { ...one(base, 150), checking: true };
-    case 'bulkResult': {
-      const sent = sendAll(base, BALANCE);
-      return { ...one(sent.people, sent.credits), toast: sent.line };
-    }
-    case 'bulkHeld': {
-      const held = new Set(['tolu', 'kunle', 'emeka']);
-      const sent = sendAll(
-        base.map((p) => (held.has(p.id) ? { ...p, held: true } : p)),
-        2 * creditsFor() + 26,
-      );
-      return { ...one(sent.people, sent.credits), toast: resultLine(2, 1, 0, 3) };
-    }
+      return list({ checking: true, credits: 150 });
+    case 'bulkCheckAsk':
+      return list({ checking: true, credits: 150, billing: false });
+    case 'bulkCheckQuiet':
+      return list({ checking: true, quiet: true });
+    case 'bulkSending':
+      return pressedTo(BALANCE, false);
+    case 'bulkResult':
+      return pressedTo(BALANCE, false, sentOn);
+    case 'bulkHeld':
+      return pressedTo(150, false);
+    case 'bulkQuiet':
+      return pressedTo(BALANCE, true);
     case 'bulkNone':
-      return one(sendAll(base, BALANCE).people);
+      return list({
+        people: base.map((p) => (OWED.has(p.id) ? sentOn({ ...p, pending: 'sending' }) : p)),
+      });
     case 'stopped':
-      return one(base.map((p) => (p.id === 'chinedu' ? { ...p, stopped: true } : p)));
+      return list({ people: base.map((p) => (p.id === 'chinedu' ? { ...p, stopped: true } : p)) });
     default:
       return null;
   }

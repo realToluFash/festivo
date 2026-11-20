@@ -38,18 +38,24 @@ export const STAFF_LINK_BOARDS = (Object.keys(LEAD) as LinkStateName[]).map((sta
 
 const TEXT: Record<TextStateName, readonly [string, string]> = {
   smsOn: ['Text the link', 'Once SMS is in: Text the link first, then Share link and Copy link'],
-  textBusy: ['Text the link, sending', 'Busy while the text goes'],
-  textSent: [
-    'Text the link, sent',
-    'Link sent · Sent by Amara Nwosu · 19:12; Text sent to Ada Obi.',
+  textCheck: [
+    'Text the link, the check',
+    'This text uses 62 credits. Credits after sending: 1,438.',
   ],
-  textOpened: ['Text the link, already opened', 'A new link goes; the status stays Link opened'],
-  textNotSent: ['Text the link, not sent', 'That did not work. Try again in a moment. Status kept'],
-  textHeld: ['Held: no credits', 'Proposal, #77921: the status kept, no Text the link'],
-  stopped: ['Stopped texts', 'Proposal, #77921: Copy link and Share link stay'],
-  quiet: ['Quiet hours', 'Proposal, #77921: a staff link goes at 22:40 all the same'],
-  quietWaits: ['Quiet hours, if pm says they hold', 'Waits until 08:00, their time'],
-  noCredits: ['No credits', 'Held: no credits; Share link and Copy link stay and work'],
+  textCheckShort: [
+    'The check with no credits',
+    '1 SMS message will wait for credits. Credits cannot be added in the app.',
+  ],
+  textCheckQuiet: ['The check at 22:40', 'Texts to 1 person wait until 09:00, their time.'],
+  textNotSent: ['Not sent', 'That did not work. Try again in a moment. in the check; status kept'],
+  textSending: ['Sending text…', 'Until Twilio reports sent; Sending the link to Ada Obi.'],
+  textSent: ['Link sent', 'Sent by Amara Nwosu · 19:12'],
+  textOpened: ['Already opened', 'A new link went; it stays Link opened'],
+  textHeld: ['Text held: no credits', 'Status kept; no Text the link; Share and Copy stay'],
+  textWaits: ['Text waits until 09:00', 'Quiet hours, their time; no Text the link'],
+  textUndelivered: ['Text not delivered', 'Back to No link yet with the time; Text the link back'],
+  stopped: ['Stopped texts', 'In Text the link’s place; Share and Copy stay'],
+  noCredits: ['No credits', 'The text held; Copy link worked'],
   smsReadOnly: ['Texting, without staff.manage', 'No Text the link'],
 };
 
@@ -75,18 +81,18 @@ const ROSTER: readonly (readonly [string, string, string])[] = [
   ['Text links to 5', 'Once SMS is in: the button at the head of the list', 'smsOn'],
   [
     'Text links to 5, the check',
-    'Uses 310 credits; 1,190 after; a sheet, centred or docked',
+    'Texts use 310 credits. Credits after sending: 1,190.',
     'bulkCheck',
   ],
-  ['Text links to 5, the result', 'Sent to 5. 1 has no mobile number.', 'bulkResult'],
-  ['The check, short of credits', '2 go now, 3 texts will wait for credits', 'bulkCheckShort'],
-  [
-    'The result, part held',
-    'Sent to 2. 3 are held: no credits. 1 has no mobile number.',
-    'bulkHeld',
-  ],
-  ['Everyone sent one', 'Proposal: the button hidden at 0, with a line saying why', 'bulkNone'],
-  ['Stopped texts', 'Proposal, #77921: Chinedu left out and counted', 'stopped'],
+  ['The check, short of credits', '3 SMS messages will wait for credits', 'bulkCheckShort'],
+  ['Short, without billing.manage', 'Ask an owner', 'bulkCheckAsk'],
+  ['The check at 22:40', 'Texts to 5 people wait until 09:00, their time.', 'bulkCheckQuiet'],
+  ['Sending', 'Sending to 5 people. 1 has no mobile number.', 'bulkSending'],
+  ['Sent', 'Twilio reported each sent: five read Link sent', 'bulkResult'],
+  ['Part held', 'Sending to 2 people. 1 has no mobile number. 3 held: no credits.', 'bulkHeld'],
+  ['All waiting', '1 has no mobile number. 5 wait until 09:00, their time.', 'bulkQuiet'],
+  ['Everyone sent one', 'Text links to {n} is hidden at 0 (AC)', 'bulkNone'],
+  ['Stopped texts', 'Chinedu reads Stopped texts; Text links to 4', 'stopped'],
   ['Texting, without staff.manage', 'No Text links to {n}', 'smsReadOnly'],
 ];
 

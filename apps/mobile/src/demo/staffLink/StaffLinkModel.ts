@@ -69,14 +69,21 @@ export interface Trail {
   via?: 'text';
 }
 
-/** Texting once SMS (sc-3946) is in: the credits left, the demo's switches, and what holds a text back. */
+/** Texting once SMS (sc-3946) is in: the credits, the demo's switches, and this person's text. */
 export interface Texting {
   credits: number;
-  fails: boolean;
-  stopped: boolean;
-  quietWaits: boolean;
+  refused: boolean;
+  undelivered: boolean;
+  /** Outside 09:00–20:00 their time, the event not Happening now and no shift before 09:00 (pm, #77935). */
+  quiet: boolean;
   clock: string;
-  note: 'held' | 'waits' | null;
+  billing: boolean;
+  stopped: boolean;
+  pending: 'sending' | 'held' | 'waits' | null;
+  notDelivered: string | null;
+  before: { status: LinkStatus; trail: Trail | null } | null;
+  checking: boolean;
+  checkFailed: boolean;
 }
 
 export interface LinkState {

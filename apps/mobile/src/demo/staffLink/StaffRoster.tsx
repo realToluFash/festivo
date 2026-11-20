@@ -35,11 +35,15 @@ import {
 } from './StaffRosterModel.ts';
 import {
   BALANCE,
+  type Check,
+  QUIET_ENDS,
+  SENT_MS,
   TW,
-  checkOf,
+  bulkCheck,
   creditsNow,
-  sendAll,
+  sentOn,
   setCredits,
+  textAll,
   textRoster,
 } from './StaffTextModel.ts';
 
@@ -65,7 +69,10 @@ export function StaffRoster({ state }: { state: RosterState }) {
   const [credits, setLeft] = useState(texts?.credits ?? BALANCE);
   const [checking, setChecking] = useState(texts?.checking ?? false);
   const [sending, setSending] = useState(false);
-  const [toast, setToast] = useState<string | null>(texts?.toast ?? null);
+  const [toast, setToast] = useState<string[] | null>(texts?.toast ?? null);
+  const [quiet, setQuiet] = useState(texts?.quiet ?? false);
+  const [asked, setAsked] = useState(false);
+  const billing = texts?.billing ?? true;
   const bulkRef = useRef<ViewInstance | null>(null);
   const { kind } = useLayout();
   const insets = useSafeAreaInsets();
@@ -118,25 +125,34 @@ export function StaffRoster({ state }: { state: RosterState }) {
     router.push(`/demo/staff-link?person=${person.id}${view}${withSms}`);
   }
 
-  const check = checkOf(people, credits);
+  const check = bulkCheck(people, credits);
   const bulkShown = sms && manage && !erased && phase === 'ready' && check.n > 0;
   const allSent =
     sms && manage && !erased && phase === 'ready' && people.length > 0 && check.n === 0;
 
+  function hold(next: OnRoster[]): void {
+    for (const p of next)
+      keep(p.id, p.status, p.trail, {
+        pending: p.pending ?? null,
+        notDelivered: p.notDelivered ?? null,
+      });
+    setBase(next);
+    setPeople(next);
+  }
+
   function send(): void {
     setSending(true);
     setTimeout(() => {
-      const sent = sendAll(people, credits);
-      const next = rosterOrder(sent.people);
-      for (const person of next) keep(person.id, person.status, person.trail, person.held);
-      setBase(next);
-      setPeople(next);
-      setLeft(sent.credits);
-      setCredits(sent.credits);
+      const pressed = textAll(people, credits, quiet);
+      const next = rosterOrder(pressed.people);
+      hold(next);
+      setLeft(pressed.credits);
+      setCredits(pressed.credits);
       setSending(false);
       setChecking(false);
-      setToast(sent.line);
-      readOut(sent.line);
+      setToast(pressed.lines);
+      readOut(pressed.lines.join(' '));
+      setTimeout(() => hold(rosterOrder(next.map(sentOn))), SENT_MS);
     }, SEND_MS);
   }
 
@@ -194,11 +210,17 @@ export function StaffRoster({ state }: { state: RosterState }) {
             const note =
               !sms || erased || !person.mobile
                 ? null
-                : person.held === true
-                  ? TW.held
-                  : person.stopped === true
-                    ? TW.stopped
-                    : null;
+                : person.pending === 'sending'
+                  ? TW.sending
+                  : person.pending === 'held'
+                    ? TW.held
+                    : person.pending === 'waits'
+                      ? TW.waits(QUIET_ENDS)
+                      : person.notDelivered != null
+                        ? TW.notDelivered(person.notDelivered)
+                        : person.stopped === true
+                          ? TW.stopped
+                          : null;
             const word = note == null ? SHOWN_WORDS[shown] : `${SHOWN_WORDS[shown]} · ${note}`;
             const line = rowLine(person);
 
@@ -273,6 +295,13 @@ export function StaffRoster({ state }: { state: RosterState }) {
         />
         {sms && (
           <SecondaryButton
+            label={quiet ? 'At 22:40 the night before · on' : 'At 22:40 the night before'}
+            onPress={() => setQuiet(!quiet)}
+            testID="staff.demo.quiet"
+          />
+        )}
+        {sms && (
+          <SecondaryButton
             label={credits === 0 ? 'No credits · on' : 'No credits'}
             onPress={() => {
               const next = credits === 0 ? BALANCE : 0;
@@ -294,6 +323,7 @@ export function StaffRoster({ state }: { state: RosterState }) {
             setCredits(again?.credits ?? BALANCE);
             setChecking(again?.checking ?? false);
             setToast(again?.toast ?? null);
+            setQuiet(again?.quiet ?? false);
           }}
           testID="staff.demo.reset"
         />
@@ -301,7 +331,7 @@ export function StaffRoster({ state }: { state: RosterState }) {
       <Sheet
         open={checking}
         onClose={() => setChecking(false)}
-        scrimLabel={TW.notNow}
+        scrimLabel={TW.cancel}
         held={sending}
         opener={bulkRef}
         docked
@@ -311,14 +341,20 @@ export function StaffRoster({ state }: { state: RosterState }) {
           check={check}
           phone={phone}
           sending={sending}
+          quiet={quiet}
+          billing={billing}
           onSend={send}
-          onNotNow={() => setChecking(false)}
+          onCancel={() => setChecking(false)}
+          onAsk={() => setAsked(true)}
         />
       </Sheet>
-      {toast != null && (
+      {(toast != null || asked) && (
         <PageToast
-          words={toast}
-          onClose={() => setToast(null)}
+          words={asked ? `${TW.askOwner} has its own design (sc-3963).` : (toast ?? []).join(' ')}
+          onClose={() => {
+            setToast(null);
+            setAsked(false);
+          }}
           bottom={insets.bottom + tokens.spaceXl}
         />
       )}
@@ -326,31 +362,49 @@ export function StaffRoster({ state }: { state: RosterState }) {
   );
 }
 
-/** sc-3931's check in Messaging B's way: who goes, who is left out, the credits it uses and the balance after. */
+/** sc-3931's check in Messaging B's way, with sc-3963's credit lines; the confirm keeps the opener's label. */
 function CheckBody({
   check,
   phone,
   sending,
+  quiet,
+  billing,
   onSend,
-  onNotNow,
+  onCancel,
+  onAsk,
 }: {
-  check: ReturnType<typeof checkOf>;
+  check: Check;
   phone: boolean;
   sending: boolean;
+  quiet: boolean;
+  billing: boolean;
   onSend: () => void;
-  onNotNow: () => void;
+  onCancel: () => void;
+  onAsk: () => void;
 }) {
   const go = (
-    <PrimaryButton label={TW.send} busy={sending} onPress={onSend} testID="staff.check.send" />
+    <PrimaryButton
+      label={TW.bulk(check.n)}
+      busy={sending}
+      onPress={onSend}
+      paired={!phone}
+      testID="staff.check.send"
+    />
   );
-  const notNow = (
-    <QuietButton label={TW.notNow} onPress={onNotNow} off={sending} testID="staff.check.notNow" />
+  const cancel = (
+    <QuietButton
+      label={TW.cancel}
+      onPress={onCancel}
+      off={sending}
+      inset={!phone}
+      testID="staff.check.cancel"
+    />
   );
 
   return (
     <View style={styles.check}>
       <Text size={tokens.typeTitleSection.size} weight="bold" accessibilityRole="header">
-        {TW.checkTitle(check.n)}
+        {TW.checkMany(check.n)}
       </Text>
       <Text size={tokens.typeBodyPhone.size}>{TW.checkLine}</Text>
       {(check.m > 0 || check.k > 0) && (
@@ -362,21 +416,41 @@ function CheckBody({
           )}
           {check.k > 0 && (
             <Text size={15} style={styles.secondary}>
-              {TW.stoppedSkip(check.k)}
+              {TW.stoppedCount(check.k)}
             </Text>
           )}
         </View>
       )}
       <View style={styles.credits} testID="staff.check.credits">
-        <Text size={15} weight="semibold">
-          {TW.uses(check.uses)}
-        </Text>
-        <Text size={15} style={styles.secondary}>
-          {TW.after(check.after)}
-        </Text>
+        {check.uses > 0 && (
+          <Text size={15} weight="semibold">
+            {TW.textsUse(check.uses)}
+          </Text>
+        )}
+        {check.wait === 0 && (
+          <Text size={15} style={styles.secondary}>
+            {TW.after(check.after)}
+          </Text>
+        )}
         {check.wait > 0 && (
-          <Text size={15} weight="semibold" style={styles.attention}>
-            {TW.wait(check.wait)}
+          <View style={styles.status}>
+            <Glyph name="clock" size={16} ink={tokens.colorAttentionText} />
+            <Text size={15} weight="semibold" style={[styles.attention, styles.shrink]}>
+              {TW.smsWaits(check.wait)}
+            </Text>
+          </View>
+        )}
+        {check.wait > 0 &&
+          (billing ? (
+            <Text size={15} style={styles.secondary}>
+              {TW.notInApp}
+            </Text>
+          ) : (
+            <QuietButton label={TW.askOwner} onPress={onAsk} testID="staff.check.ask" />
+          ))}
+        {quiet && (
+          <Text size={15} style={styles.secondary}>
+            {TW.quiet(check.n, QUIET_ENDS)}
           </Text>
         )}
       </View>
@@ -384,11 +458,11 @@ function CheckBody({
         {phone ? (
           <>
             {go}
-            {notNow}
+            {cancel}
           </>
         ) : (
           <>
-            {notNow}
+            {cancel}
             {go}
           </>
         )}
