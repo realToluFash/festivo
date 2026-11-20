@@ -474,6 +474,20 @@ function start(o: Partial<RosterStart> & Pick<RosterStart, 'name' | 'note'>): Ro
 
 const FRENCH = { lang: 'fr', noShift: 'Aucun service pour l’instant' } as const;
 
+/** A name and an email of 40 characters with no space, the longest single word a cell may hold (sc-75033). */
+const LONG: Entry = entry(
+  'long',
+  'Oluwatimilehinoluwadamilareoluwaseunfunmi',
+  'Runner',
+  'Pass',
+  '17:00 to 00:00',
+  '+2348031110015',
+  'none',
+  'oluwatimilehin.oluwadamilare@example.com',
+);
+
+const erasedSample = () => sample().map((one) => ({ ...one, mobile: null, email: null }));
+
 const typed = (o: Partial<Draft>): Draft => ({ ...draftOf(null), ...o });
 const byId = (id: string) => sample().find((one) => one.id === id) as Entry;
 
@@ -778,6 +792,59 @@ const STATES = {
       panel: { kind: 'add' },
       ...FRENCH,
     }),
+  populatedFrench: () =>
+    start({
+      name: 'Populated, in French',
+      note: 'Nothing open. Pas encore de lien and the no-mobile words wrap only between words; open it at 641, 800, 960 and 1100 × 800.',
+      ...FRENCH,
+    }),
+  detailsNoLink: () =>
+    start({
+      name: 'Details, Emeka Obi, No link yet',
+      note: 'Open it at 1280 or 1440 × 800: the details docked beside the Roster, each Link word whole.',
+      panel: { kind: 'details', id: 'emeka' },
+    }),
+  detailsNoLinkFrench: () =>
+    start({
+      name: 'Details, Emeka Obi, Pas encore de lien',
+      note: 'Open it at 1280 × 800: Pas encore de lien may wrap as Pas encore / de lien, never inside a word.',
+      panel: { kind: 'details', id: 'emeka' },
+      ...FRENCH,
+    }),
+  erasedList: () =>
+    start({
+      name: 'After the 30-day erasure, nothing open',
+      note: 'Every Link cell reads Contact details removed after the event, in whole words.',
+      finished: true,
+      erased: true,
+      entries: erasedSample(),
+    }),
+  erasedListFrench: () =>
+    start({
+      name: 'After the 30-day erasure, nothing open, in French',
+      note: 'Coordonnées effacées après l’événement, in whole words; the frame scrolls if the table is wider.',
+      finished: true,
+      erased: true,
+      entries: erasedSample(),
+      ...FRENCH,
+    }),
+  erasedDetailsFrench: () =>
+    start({
+      name: 'After the 30-day erasure, details open, in French',
+      note: 'Open it at 1280 × 800: the Roster and the details keep whole words.',
+      finished: true,
+      erased: true,
+      entries: erasedSample(),
+      panel: { kind: 'details', id: 'kunle' },
+      ...FRENCH,
+    }),
+  longWord: () =>
+    start({
+      name: 'A 40-character word, details docked',
+      note: 'Open it at 1280 × 800: in the Roster the Name column widens and the frame scrolls; in the details the word breaks at the panel’s edge.',
+      entries: [...sample(), LONG],
+      panel: { kind: 'details', id: 'long' },
+    }),
 } satisfies Record<string, () => RosterStart>;
 
 export type RosterStateName = keyof typeof STATES;
@@ -853,6 +920,20 @@ export const ROSTER_PAGES: readonly { name: string; states: readonly DemoLink[] 
     name: 'A desk window from 961 to 1279 px, an open person before the Roster (sc-73291)',
     states: (
       ['details', 'detailsFrench', 'add', 'addFrench', 'addEmpty', 'addEmptyFrench'] as const
+    ).map(link),
+  },
+  {
+    name: 'Whole words in the Link column at every desk width (sc-75033)',
+    states: (
+      [
+        'populatedFrench',
+        'detailsNoLink',
+        'detailsNoLinkFrench',
+        'erasedList',
+        'erasedListFrench',
+        'erasedDetailsFrench',
+        'longWord',
+      ] as const
     ).map(link),
   },
 ];
