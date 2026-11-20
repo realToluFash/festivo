@@ -144,8 +144,8 @@ export interface CalendarBoardProps<S extends string, E extends CalEvent> {
   now: Date;
   locale: string;
   firstDay: number;
-  /** The AsyncStorage key the view and month are kept under. */
-  kept: string;
+  /** The person whose view and month the board opens on and keeps. */
+  personId: string;
   start?: BoardStart;
   bottom: number;
   head?: ReactNode;
@@ -168,7 +168,7 @@ export function CalendarBoard<S extends string, E extends CalEvent>({
   now,
   locale,
   firstDay,
-  kept,
+  personId,
   start = NO_START,
   bottom,
   head,
@@ -211,12 +211,12 @@ export function CalendarBoard<S extends string, E extends CalEvent>({
       setAt((was) => was ?? opening.at);
     };
 
-    void openingOf(kept, today).then((opening) => live && land(opening));
+    void openingOf(personId, today).then((opening) => live && land(opening));
 
     return () => {
       live = false;
     };
-  }, [placed, kept, today]);
+  }, [placed, personId, today]);
 
   useEffect(() => {
     if (!start.menu) return;
@@ -253,8 +253,8 @@ export function CalendarBoard<S extends string, E extends CalEvent>({
 
   useEffect(() => {
     if (view == null || at == null) return;
-    void keepPlace(kept, { view, month: monthOfDay(`${pinnedKey}-01`) });
-  }, [kept, view, at, pinnedKey]);
+    void keepPlace(personId, { view, month: monthOfDay(`${pinnedKey}-01`) });
+  }, [personId, view, at, pinnedKey]);
 
   const loaded = load === 'loaded';
   const none = loaded && events.length === 0;

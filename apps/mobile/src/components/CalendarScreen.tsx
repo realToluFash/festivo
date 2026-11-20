@@ -2,7 +2,6 @@ import type { ListedEvent } from '@soirely/api-client';
 import {
   type CalendarShow,
   calendarDays,
-  calendarPlaceKey,
   firstDayOfWeek,
   roleHolds,
   serverClock,
@@ -88,7 +87,7 @@ export function CalendarScreen() {
       {organisation != null && account != null && (
         <CalendarOf
           key={`${account.id}/${organisation.id}`}
-          kept={calendarPlaceKey(account.id)}
+          personId={account.id}
           organisationId={organisation.id}
           creates={roleHolds(organisation, 'events.create')}
           kind={kind}
@@ -113,14 +112,14 @@ export function CalendarScreen() {
 }
 
 function CalendarOf({
-  kept,
+  personId,
   organisationId,
   creates,
   kind,
   heading,
   onOffline,
 }: {
-  kept: string;
+  personId: string;
   organisationId: string;
   creates: boolean;
   kind: LayoutKind;
@@ -203,7 +202,7 @@ function CalendarOf({
         now={now}
         locale={locale}
         firstDay={firstDay}
-        kept={kept}
+        personId={personId}
         bottom={kind === 'phone' ? underTabs + tokens.space3xl : insets.bottom + tokens.space3xl}
         onOpen={openItem}
         onRetry={retry}

@@ -52,7 +52,7 @@ import { LIST_EDGES } from '../../components/listFrame.ts';
 import { dateLocale } from '../../i18n/index.ts';
 
 /** The demo keeps its own place, so it never moves the real Calendar's. */
-const KEPT = 'soirely.demo.calendar';
+const DEMO_PERSON = 'demo';
 const TODAY = wallDay(CLOCKS.reader, READER_ZONE);
 const RETRY_MS = 900;
 
@@ -193,7 +193,7 @@ export function CalendarPage({ state }: { state: CalendarState | null }) {
       now={NOW}
       locale={locale}
       firstDay={firstDay}
-      kept={KEPT}
+      personId={DEMO_PERSON}
       start={settled ? start : { ...start, open: null, menu: false }}
       bottom={bottom}
       head={

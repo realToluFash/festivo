@@ -1,4 +1,4 @@
-import { calendarPlaceKey, monthOfDay } from '@soirely/domain';
+import { monthOfDay } from '@soirely/domain';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { keepPlace, openingOf } from './calendarPlace.ts';
@@ -13,8 +13,8 @@ vi.mock('@react-native-async-storage/async-storage', () => ({
 }));
 
 const TODAY = '2026-11-19';
-const A = calendarPlaceKey('acc_a');
-const B = calendarPlaceKey('acc_b');
+const A = 'acc_a';
+const B = 'acc_b';
 
 beforeEach(() => kept.clear());
 

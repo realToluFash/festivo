@@ -2,6 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   type CalendarPlace,
   type CalendarView,
+  calendarPlaceKey,
   keptCalendarPlace,
   readCalendarPlace,
 } from '@soirely/domain';
@@ -13,9 +14,12 @@ export interface Opening {
   at: string;
 }
 
-/** Where the Calendar opens under a key: the view and month kept there, or Month at today's month. */
-export async function openingOf(kept: string, today: string): Promise<Opening> {
-  const place = await AsyncStorage.getItem(kept).then(readCalendarPlace, () => null);
+/** Where the Calendar opens for a person: the view and month they last kept on this device, or Month at today's month. */
+export async function openingOf(personId: string, today: string): Promise<Opening> {
+  const place = await AsyncStorage.getItem(calendarPlaceKey(personId)).then(
+    readCalendarPlace,
+    () => null,
+  );
 
   return {
     view: place?.view ?? 'month',
@@ -23,6 +27,8 @@ export async function openingOf(kept: string, today: string): Promise<Opening> {
   };
 }
 
-export async function keepPlace(kept: string, place: CalendarPlace): Promise<void> {
-  await AsyncStorage.setItem(kept, keptCalendarPlace(place)).catch(() => undefined);
+export async function keepPlace(personId: string, place: CalendarPlace): Promise<void> {
+  await AsyncStorage.setItem(calendarPlaceKey(personId), keptCalendarPlace(place)).catch(
+    () => undefined,
+  );
 }
