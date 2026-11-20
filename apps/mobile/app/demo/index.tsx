@@ -26,6 +26,7 @@ import { SIGN_OUT_SIZE_BOARDS } from '../../src/demo/signOutSize/SignOutSizeBoar
 import { SIDEBAR_SIZE_BOARDS } from '../../src/demo/sidebarSize/SidebarSizeBoards.ts';
 import { ROWS_SIZE_BOARDS } from '../../src/demo/rowsSize/RowsSizeBoards.ts';
 import { FILTER_SIZE_BOARDS } from '../../src/demo/filterSize/FilterSizeBoards.ts';
+import { COUNT_SIZE_BOARDS } from '../../src/demo/countSize/CountSizeBoards.ts';
 import { SWITCHER_BOARDS } from '../../src/demo/OrgSwitcherBoards.ts';
 import { Heading } from '../../src/steps/Lines.tsx';
 import { SAMPLE } from '../../src/demo/samples.ts';
@@ -143,6 +144,14 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
   {
     page: 'Events · the Filter menu’s values whole at the largest text sizes (sc-73933)',
     boards: FILTER_SIZE_BOARDS.map(({ title, what, href }) => ({
+      title,
+      what,
+      href: href as Href,
+    })),
+  },
+  {
+    page: 'Events · the count line whole at the largest text sizes (sc-75214)',
+    boards: COUNT_SIZE_BOARDS.map(({ title, what, href }) => ({
       title,
       what,
       href: href as Href,
