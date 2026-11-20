@@ -37,6 +37,7 @@ import {
   planOf,
   reduce,
   referenceTooLong,
+  reminderRows,
   reminderSheet,
   shareOf,
   startOf,
@@ -49,6 +50,7 @@ import {
 } from './BudgetModel.ts';
 import {
   CEILINGS,
+  EVENT_NAME,
   GUESTS,
   HEADS_IF_ALL_COME,
   LEAD,
@@ -549,6 +551,30 @@ describe('the gaps of 8 Nov: refusals, ceilings and the reminder on the Budget t
     );
     expect(opened.reminder).toBeNull();
     expect(opened.dueNow).toMatchObject({ fromReminder: true, lastAbout: ['bloom-balance'] });
+  });
+});
+
+describe('the reminder’s rows (sc-95, #76776)', () => {
+  it('names the event on every row of the mixed reminder', () => {
+    const rows = reminderRows('mixed', 'en-GB');
+
+    expect(rows.map((row) => row.id)).toEqual([
+      'bloom-balance',
+      'savour-deposit',
+      'landmark-balance',
+    ]);
+    for (const row of rows) expect(row.words).toContain(` · ${EVENT_NAME} · `);
+    expect(rows[0]).toMatchObject({ late: true });
+    expect(rows[0]?.words).toMatch(/^Bloom & Co · /);
+  });
+
+  it('leaves the event to the title when the reminder is about one event', () => {
+    for (const kind of ['overdue', 'due'] as const) {
+      const rows = reminderRows(kind, 'en-GB');
+
+      expect(rows.length).toBeGreaterThan(0);
+      for (const row of rows) expect(row.words).not.toContain(EVENT_NAME);
+    }
   });
 });
 

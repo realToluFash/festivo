@@ -681,6 +681,32 @@ export function reminderSheet(kind: ReminderKind): DueNowSheet {
   };
 }
 
+export interface ReminderRow {
+  id: string;
+  late: boolean;
+  words: string;
+}
+
+export function reminderRows(kind: ReminderKind, locale: string): ReminderRow[] {
+  const sheet = reminderSheet(kind);
+  return sheet.ids.map((id) => {
+    const payment = paymentOf(id);
+    const date = days.short(payment.due, locale);
+    const late = sheet.lastAbout.includes(id);
+    const amount = money(payment.amount, locale);
+    const when = late ? say.wasDue(date) : say.dueWhen(date);
+    const vendor = VENDORS[payment.vendor].name;
+    return {
+      id,
+      late,
+      words:
+        kind === 'mixed'
+          ? say.reminderRowOn(vendor, EVENT_NAME, amount, when)
+          : say.reminderRow(vendor, amount, when),
+    };
+  });
+}
+
 export function startOf(state: BudgetState | null, removed: string): BudgetModel {
   const base: BudgetModel = {
     figures: 'shown',
