@@ -70,6 +70,7 @@ import { useLeaveGuard } from './useLeaveGuard.tsx';
 
 import '../../../components/SettingsParts.css';
 import '../../../components/eventPage.css';
+import './overviewReflow.css';
 
 /** The crumb an event's page starts with at a desk: Events, then where you are, and the bell at its end. */
 export function EventCrumb({
