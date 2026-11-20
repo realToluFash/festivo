@@ -1070,6 +1070,7 @@ function ScheduleRow({
                     longDay(payment.paid.on),
                     payment.paid.by,
                   ),
+            ...(payment.paid.reference === '' ? [] : [PW.paidReference(payment.paid.reference)]),
           ]}
           lit={lit}
           end={
