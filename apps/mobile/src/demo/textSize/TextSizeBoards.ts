@@ -63,7 +63,7 @@ export const TEXT_SIZE_BOARDS: readonly TextSizeBoard[] = [
   },
   {
     title: 'Home’s This week · default size · French',
-    what: 'As on main: the strip of seven days over the agenda (sc-13281)',
+    what: 'As on main for this sample week: the strip of seven days over the agenda (sc-13281)',
     href: '/demo/text-size?part=week&size=default&lang=fr',
   },
   {

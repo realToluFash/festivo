@@ -93,9 +93,13 @@ describe('the board’s choices', () => {
 });
 
 describe('Home’s This week at a text size (sc-13281)', () => {
-  it('keeps the strip at the default sizes and gives it up at the accessibility sizes', () => {
+  it('keeps the strip at the default sizes', () => {
     expect(weekStripShown(scaleFor('default', 1))).toBe(true);
     expect(weekStripShown(1.35)).toBe(true);
+  });
+
+  it('gives the strip up from iOS’s eighth step (1.79), the first accessibility size', () => {
+    expect(weekStripShown(1.79)).toBe(false);
     expect(weekStripShown(scaleFor('android', 1))).toBe(false);
     expect(weekStripShown(scaleFor('iphone', 1))).toBe(false);
     expect(weekStripShown(scaleFor('twelfth', 1))).toBe(false);
