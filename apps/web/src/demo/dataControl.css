@@ -140,3 +140,7 @@
   color: var(--colorInk);
   font-weight: 600;
 }
+
+.dc-step {
+  display: contents;
+}

@@ -88,6 +88,7 @@ export const DATA_CONTROL_PAGES: PageLinks = [
       domains('oo_on', 'On since Saturday, Oct 3'),
       domains('oo_turned_off', 'Turned off'),
       domains('oo_not_owner', 'Scheduled, an admin reads it', VIEWERS.julien),
+      domains('oo_long_name', 'A long domain: the step wraps'),
       domains('loading', 'Loading'),
       domains('failed', 'Failed'),
     ],

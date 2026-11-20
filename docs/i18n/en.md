@@ -225,9 +225,16 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
   pm's #32327 from ux's demo, sc-31779 #1485). Field labels: "Percentage of the quote" (won
   over the earlier boards' "Share of the quote": "share" reads as a part of something, not a
   number to type, and es, fr and pt say percentage anyway), "Days before the event", "Days
-  after the event", labels with no full stop. Help: "From 0 to 100, with up to two decimal
-  places." and "A whole number from 0 to 730." Refusals: "Enter a percentage from 0 to 100,
-  with up to two decimal places." and "Enter a whole number of days from 0 to 730." "Decimal
+  after the event", labels with no full stop. Help: "Above 0 and up to 100, with up to two
+  decimal places." and "A whole number from 0 to 730." Refusals: "Enter a percentage above 0
+  and up to 100, with up to two decimal places." and "Enter a whole number of days from 0 to
+  730." (20 Nov, pm's #75237: a percentage of 0 is refused, so "from 0 to 100" is no longer
+  the copy.) A percentage in range whose row comes to 0 once rounded to the currency's minor
+  unit is refused at that row's percentage field: "This payment would come to less than
+  {{smallest}}. Enter a higher percentage.", `{{smallest}}` the event currency's smallest
+  amount from `Intl.NumberFormat` at its ISO 4217 minor unit (£0.01, ¥1). "This payment", the
+  row the field sits in, true for the last row's remainder too; "would come to", since nothing
+  was saved. "Above 0", not "From 0.01", so no decimal is written into a string. "Decimal
   places", the house term since sc-83, not the demo's bare "decimals". A row with no
   description yet, in its amount line: "No description yet", a label with no full stop.
   Before saving, when the percentages do not come to 100, one key each: "The percentages come
