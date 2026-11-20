@@ -76,6 +76,7 @@ const AUDIT: Record<AuditState, readonly [string, string]> = {
   detail_section: ['an entry on the event’s Staff', 'The Staff link'],
   detail_dish: ['an organisation’s dish', 'Under no event'],
   detail_export: ['an export of the log', 'Format, Filters, Entries'],
+  detail_plan: ['a plan change by Soirely support', 'Changes, then Reason'],
   export: ['Export these entries (iPad)', 'CSV or JSON Lines'],
   export_small: ['export, up to 10,000 (iPad)', 'Downloading, as a toast'],
   export_preparing: ['export, prepared (iPad)', 'We’ll email a link'],
