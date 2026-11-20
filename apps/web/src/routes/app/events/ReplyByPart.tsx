@@ -106,6 +106,8 @@ export function ReplyByPart({
       setBusy(false);
       if (error instanceof ApiError && error.status === 412)
         return outcome.give('changedElsewhere');
+      if (error instanceof ApiError && error.is('permission_required'))
+        return outcome.give('forbidden');
       if (
         error instanceof ApiError &&
         error.status === 422 &&
@@ -118,6 +120,13 @@ export function ReplyByPart({
       }
       outcome.give('notSaved');
     }
+  }
+
+  function retyped(value: string): void {
+    setTyped(value);
+    setTried(false);
+    setRefusedHere(false);
+    if (outcome.answer === 'forbidden') outcome.clear();
   }
 
   function save(): void {
@@ -154,11 +163,7 @@ export function ReplyByPart({
           value={typed}
           aria-invalid={wrong}
           aria-describedby={told}
-          onChange={(change) => {
-            setTyped(change.target.value);
-            setTried(false);
-            setRefusedHere(false);
-          }}
+          onChange={(change) => retyped(change.target.value)}
         />
         {wrong && (
           <p id={`${id}-error`} className="desk-error" role="alert">
@@ -173,9 +178,7 @@ export function ReplyByPart({
           <TextAction
             label={t('eventReplyBy.remove')}
             onClick={() => {
-              setTyped('');
-              setTried(false);
-              setRefusedHere(false);
+              retyped('');
               field.current?.focus();
             }}
           />
