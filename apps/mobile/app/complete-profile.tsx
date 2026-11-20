@@ -682,13 +682,15 @@ function Details({
         )}
 
         {singleOffer != null && (
-          <Panel
-            organisation={singleOffer.name}
-            title={t('domainJoining.usesSoirely', { organisation: singleOffer.name })}
-            line={t('domainJoining.approvesFirst')}
-          />
+          <View style={styles.offerAndBanner}>
+            <Panel
+              organisation={singleOffer.name}
+              title={t('domainJoining.usesSoirely', { organisation: singleOffer.name })}
+              line={t('domainJoining.approvesFirst')}
+            />
+            {managedBanner}
+          </View>
         )}
-        {singleOffer != null && managedBanner}
 
         {showOffers && singleOffer == null && (
           <View style={styles.offers}>
@@ -864,6 +866,7 @@ const styles = StyleSheet.create({
   form: { gap: tokens.space3xl },
   details: { marginTop: tokens.space3xl },
   fields: { gap: tokens.spaceXl },
+  offerAndBanner: { gap: tokens.spaceXl },
   invitations: { gap: tokens.spaceMd },
   offers: { gap: tokens.spaceMd },
   offer: {
