@@ -2,8 +2,8 @@ import { useLayoutEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import type { Answered, SaveAnswer } from './saveAnswer.ts';
-import { Broken } from '../components/EventPageParts.tsx';
-import { Ask, TextAction } from '../components/SettingsParts.tsx';
+import { Broken } from './EventPageParts.tsx';
+import { Ask, TextAction } from './SettingsParts.tsx';
 
 const SAID = {
   notSaved: 'eventEdit.notSaved',

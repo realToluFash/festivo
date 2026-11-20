@@ -5851,3 +5851,142 @@ describe('A currency change refused once amounts are recorded takes focus to its
     expect(within(currency).queryByText(IN_USE)).toBeNull();
   });
 });
+
+describe('A part’s save notices show directly above Cancel and Save (sc-74398)', () => {
+  const ANSWERS = [
+    [
+      'a save that failed',
+      () => problem(500, 'internal_error'),
+      'Not saved. Your changes are still here. Try again.',
+    ],
+    [
+      'a role that no longer allows it',
+      () => problem(403, 'permission_required'),
+      'Nothing was changed. Your role does not include the permission this needs.',
+    ],
+    [
+      'a change made elsewhere',
+      () => problem(412, 'precondition_failed'),
+      'Not saved. Somebody else changed this event since you opened it. What you typed is still here.',
+    ],
+  ] as const;
+
+  async function pickedLastCurrency(saving: () => Response) {
+    signedIn();
+    const sent: string[] = [];
+
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
+      const line = `${init?.method ?? 'GET'} ${new URL(String(input)).pathname}`;
+      sent.push(line);
+      if (line === 'PATCH /api/events/ev_1') return saving();
+
+      return json({ event: event() });
+    });
+    at('/app/events/ev_1');
+    const details = await screen.findByRole('region', { name: 'Details' });
+
+    fireEvent.click(within(details).getByRole('button', { name: /Currency$/u }));
+    const [currency] = await within(details).findAllByRole('group', { name: 'Currency' });
+    const radios = within(currency!).getAllByRole('radio');
+    const last = radios[radios.length - 1]!;
+    fireEvent.click(last);
+
+    return {
+      sent,
+      currency: currency!,
+      last,
+      save: within(currency!).getByRole('button', { name: 'Save' }),
+    };
+  }
+
+  function directlyAboveSave(part: HTMLElement, words: string): HTMLElement {
+    const notices = within(part).getAllByText(words);
+
+    expect(notices).toHaveLength(1);
+
+    const said = notices[0]!.closest('.ev-save-said');
+
+    expect(said).not.toBeNull();
+    expect(said?.parentElement).toBe(part);
+    expect(said?.nextElementSibling?.classList.contains('ev-opened-actions')).toBe(true);
+
+    return said as HTMLElement;
+  }
+
+  it.each(ANSWERS)(
+    'shows %s below the last currency, right above Cancel and Save, with focus left on Save',
+    async (_, saving, words) => {
+      const { currency, last, save } = await pickedLastCurrency(saving);
+
+      save.focus();
+      fireEvent.click(save);
+
+      await within(currency).findByText(words);
+      const said = directlyAboveSave(currency, words);
+
+      expect(last.compareDocumentPosition(said) & Node.DOCUMENT_POSITION_FOLLOWING).not.toBe(0);
+      expect(document.activeElement).toBe(save);
+    },
+  );
+
+  it('keeps one notice in the same place when Save is pressed again, and brings Save and it back into view', async () => {
+    const scrolled = vi.spyOn(Element.prototype, 'scrollIntoView');
+    const words = ANSWERS[0][2];
+    const { sent, currency, save } = await pickedLastCurrency(ANSWERS[0][1]);
+
+    fireEvent.click(save);
+    await within(currency).findByText(words);
+    const first = scrolled.mock.calls.length;
+
+    expect(first).toBeGreaterThan(0);
+
+    fireEvent.click(save);
+    await waitFor(() =>
+      expect(sent.filter((line) => line === 'PATCH /api/events/ev_1')).toHaveLength(2),
+    );
+    await waitFor(() => expect(scrolled.mock.calls.length).toBeGreaterThan(first));
+    directlyAboveSave(currency, words);
+  });
+
+  it('puts Show the latest inside the notice right above Save, and Shift+Tab order runs Save, Cancel, Show the latest', async () => {
+    const words = ANSWERS[2][2];
+    const { currency, save } = await pickedLastCurrency(ANSWERS[2][1]);
+
+    fireEvent.click(save);
+    await within(currency).findByText(words);
+    const said = directlyAboveSave(currency, words);
+    const latest = within(said).getByRole('button', { name: 'Show the latest' });
+    const cancel = within(currency).getByRole('button', { name: 'Cancel' });
+
+    expect(latest.compareDocumentPosition(cancel) & Node.DOCUMENT_POSITION_FOLLOWING).not.toBe(0);
+    expect(cancel.compareDocumentPosition(save) & Node.DOCUMENT_POSITION_FOLLOWING).not.toBe(0);
+
+    fireEvent.click(latest);
+    expect(
+      await screen.findByRole('alertdialog', { name: 'Show the latest version?' }),
+    ).toBeDefined();
+  });
+
+  it('shows the role’s refusal in Venue below the arrival note, right above Cancel and Save', async () => {
+    signedIn();
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) =>
+      `${init?.method ?? 'GET'} ${new URL(String(input)).pathname}` === 'PATCH /api/events/ev_1'
+        ? problem(403, 'permission_required')
+        : json({ event: event() }),
+    );
+    at('/app/events/ev_1');
+    const details = await screen.findByRole('region', { name: 'Details' });
+
+    fireEvent.click(within(details).getByRole('button', { name: /Venue to be confirmed/ }));
+    const note = await within(details).findByLabelText(/Arrival note/u);
+    fireEvent.change(note, { target: { value: 'Doors close at 23:00.' } });
+    fireEvent.click(within(details).getByRole('button', { name: 'Save' }));
+
+    const words = ANSWERS[1][2];
+    await within(details).findByText(words);
+    const venue = screen.getByRole('group', { name: 'Venue' });
+    const said = directlyAboveSave(venue, words);
+
+    expect(note.compareDocumentPosition(said) & Node.DOCUMENT_POSITION_FOLLOWING).not.toBe(0);
+  });
+});

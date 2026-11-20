@@ -151,9 +151,7 @@ export function Opened({
   unsaved = changed,
   verb,
   asking: first = null,
-  refused = false,
   busy = false,
-  onLatest,
   onCancel,
   onSave,
   children,
@@ -163,10 +161,8 @@ export function Opened({
   /** What Cancel asks about, when it is more than what Save would save: a photo still uploading. */
   unsaved?: boolean;
   verb?: string;
-  asking?: 'discard' | 'latest' | null;
-  refused?: boolean;
+  asking?: 'discard' | null;
   busy?: boolean;
-  onLatest?: () => void;
   onCancel: () => void;
   onSave: () => void;
   children: ReactNode;
@@ -202,15 +198,6 @@ export function Opened({
 
   return (
     <div className="ev-opened" role="group" aria-label={label} ref={box}>
-      {refused && (
-        <Broken
-          action={
-            <TextAction label={t('eventEdit.showLatest')} onClick={() => setAsking('latest')} />
-          }
-        >
-          {t('eventEdit.changedElsewhere')}
-        </Broken>
-      )}
       {children}
       <div className="ev-opened-actions">
         <TextAction label={t('eventEdit.cancel')} onClick={cancel} />
@@ -236,19 +223,6 @@ export function Opened({
           onGo={() => {
             setAsking(null);
             onCancel();
-          }}
-        />
-      )}
-      {asking === 'latest' && (
-        <Ask
-          title={t('eventEdit.showLatestTitle')}
-          line={t('eventEdit.showLatestBody')}
-          keep={t('eventEdit.keepEditing')}
-          go={t('eventEdit.showLatest')}
-          onKeep={() => setAsking(null)}
-          onGo={() => {
-            setAsking(null);
-            onLatest?.();
           }}
         />
       )}
