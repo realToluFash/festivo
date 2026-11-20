@@ -85,7 +85,7 @@ export interface AuditLogPage {
 
 /** A small export arrives as its file; a large one is prepared and emailed. More than a million is refused `audit_export_too_many`. */
 export type AuditExportOutcome =
-  | { kind: 'file'; type: string; bytes: Uint8Array<ArrayBuffer> }
+  | { kind: 'file'; type: string; name: string | null; bytes: Uint8Array<ArrayBuffer> }
   | { kind: 'preparing'; count: number; email: string };
 
 function isRecord(value: unknown): value is Record<string, unknown> {

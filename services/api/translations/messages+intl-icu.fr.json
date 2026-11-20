@@ -382,5 +382,6 @@
     "validation.budget_markup_with_price": "Saisissez une majoration ou un prix, pas les deux.",
     "validation.budget_client_price_invalid": "Saisissez un prix de {min} ou plus, en chiffres uniquement.",
     "validation.budget_client_price_too_many_decimals": "Il y a trop de décimales pour la devise de cet événement. Saisissez le prix sous la forme {example}.",
+    "audit.export_file": "{organisation} audit log {day}",
     "audit.export_too_many": "Les entrées correspondantes dépassent la limite de {most, number, ::group-auto}. Affinez les filtres, puis exportez à nouveau."
 }

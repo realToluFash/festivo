@@ -350,7 +350,7 @@ describe('exporting', () => {
   it('downloads a small export, and prepares a large one for the address given', () => {
     const bytes = new Uint8Array(new ArrayBuffer(2));
 
-    expect(exportAnswered({ kind: 'file', type: 'text/csv', bytes })).toEqual({
+    expect(exportAnswered({ kind: 'file', type: 'text/csv', name: null, bytes })).toEqual({
       kind: 'file',
       bytes,
     });

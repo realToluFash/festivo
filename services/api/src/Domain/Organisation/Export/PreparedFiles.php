@@ -19,6 +19,8 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 /** How a PreparedFile is written, kept, refused and handed over; neither the file nor its download is ever held in memory whole. */
 final readonly class PreparedFiles
 {
+    private const array REFUSED = ['/' => '-', '\\' => '-', ':' => '-', '*' => '-', '?' => '-', '<' => '-', '>' => '-', '|' => '-', '"' => ''];
+
     public function __construct(
         private ObjectStore $objectStore,
         private ClockInterface $clock,
@@ -118,12 +120,12 @@ final readonly class PreparedFiles
         return $response;
     }
 
-    /** @return array<string, string> a download named as given, with any slash or quote that a file name can't hold taken out */
+    /** @return array<string, string> a download named as given, with each character a common file system refuses read as a dash, and each quote taken out */
     public static function headers(string $contentType, string $name, string $fallback): array
     {
         return [
             'Content-Type' => $contentType,
-            'Content-Disposition' => HeaderUtils::makeDisposition(HeaderUtils::DISPOSITION_ATTACHMENT, Str\replace_every($name, ['/' => '-', '\\' => '-', '"' => '']), $fallback),
+            'Content-Disposition' => HeaderUtils::makeDisposition(HeaderUtils::DISPOSITION_ATTACHMENT, Str\replace_every($name, self::REFUSED), $fallback),
             'Cache-Control' => 'no-store',
         ];
     }

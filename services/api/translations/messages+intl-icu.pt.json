@@ -382,5 +382,6 @@
     "validation.budget_markup_with_price": "Introduza um acréscimo ou um preço, não os dois.",
     "validation.budget_client_price_invalid": "Introduza um preço de {min} ou mais, só com algarismos.",
     "validation.budget_client_price_too_many_decimals": "Tem demasiadas casas decimais para a moeda deste evento. Introduza o preço assim: {example}.",
+    "audit.export_file": "{organisation} audit log {day}",
     "audit.export_too_many": "As entradas correspondentes ultrapassam o limite de {most, number, ::group-auto}. Restrinja os filtros e exporte novamente."
 }

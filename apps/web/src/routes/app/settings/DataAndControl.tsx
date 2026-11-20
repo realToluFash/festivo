@@ -105,15 +105,11 @@ function Loaded({
   const exported = page.export;
   const ask = hubCard(t, page, domains, organisation.name, currentLocale());
 
-  async function download(exportId: string, askedAt: string): Promise<void> {
+  async function download(exportId: string): Promise<void> {
     setBusy(true);
 
     try {
-      saveArchive(
-        await api.downloadOrganisationExport(organisation.id, exportId),
-        organisation.name,
-        askedAt,
-      );
+      saveArchive(await api.downloadOrganisationExport(organisation.id, exportId));
     } catch {
       // Used or ended since the page loaded: asking again shows which.
     } finally {
@@ -134,7 +130,7 @@ function Loaded({
           <CardStep
             label={t('exportAllData.download')}
             busy={busy}
-            onClick={() => void download(exported.id, exported.askedAt)}
+            onClick={() => void download(exported.id)}
           />
         )}
         {ask.does === 'prove' && (
