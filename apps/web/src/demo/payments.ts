@@ -69,6 +69,7 @@ export const SHAPE_STATES: readonly string[] = [
   'shape_clamped',
   'shape_short',
   'shape_refused',
+  'shape_too_small',
   'shape_failed',
   'shape_raced',
 ];
@@ -327,7 +328,7 @@ export function typedShare(typed: string): number | null {
   if (!/^\d{1,3}(\.\d{1,2})?$/.test(plain)) return null;
   const share = Number(plain);
 
-  return share <= SHAPE_LIMITS.share ? share : null;
+  return share > 0 && share <= SHAPE_LIMITS.share ? share : null;
 }
 
 export function typedShapeDays(typed: string): number | null {
@@ -351,9 +352,16 @@ export function shapeProblems(one: Term, draft: ShapeDraft): ShapeProblems {
   return problems;
 }
 
-export function shapingProblems(shaping: Shaping): ShapeProblems[] {
-  return shaping.terms.map((one, index) =>
+/** With the quote's amount, a percentage in range whose row rounds to nothing is refused at that row too. */
+export function shapingProblems(shaping: Shaping, quoted?: number): ShapeProblems[] {
+  const found = shaping.terms.map((one, index) =>
     shapeProblems(one, shaping.typed[index] ?? draftOfTerm(one)),
+  );
+  if (quoted == null || !sharesTyped(shaping)) return found;
+  const amounts = shapeAmounts(typedTerms(shaping), quoted);
+
+  return found.map((one, index) =>
+    one.share == null && amounts[index] === 0 ? { ...one, share: PW.shareTooSmall(money(1)) } : one,
   );
 }
 
@@ -379,12 +387,17 @@ export function sharesTyped(shaping: Shaping): boolean {
   return shaping.typed.every((one) => typedShare(one.share) != null);
 }
 
-export function retyped(shaping: Shaping, index: number, change: Partial<ShapeDraft>): Shaping {
+export function retyped(
+  shaping: Shaping,
+  index: number,
+  change: Partial<ShapeDraft>,
+  quoted?: number,
+): Shaping {
   const next: Shaping = {
     ...shaping,
     typed: shaping.typed.map((one, at) => (at === index ? { ...one, ...change } : one)),
   };
-  const now = shapingProblems(next);
+  const now = shapingProblems(next, quoted);
 
   return {
     ...next,
@@ -426,14 +439,26 @@ export interface ShapeRow extends Term {
 }
 
 /** Each row rounded to the minor unit; when the shares come to 100 the last takes what is left, so the rows add up to the quote. */
+export function shapeAmounts(terms: readonly Term[], quoted: number): number[] {
+  const parts = terms.map((one) => Math.round(one.share * 100));
+  const whole = parts.reduce((sum, one) => sum + one, 0) === 10000;
+  let given = 0;
+
+  return parts.map((part, index) => {
+    const amount =
+      whole && index === parts.length - 1 ? quoted - given : Math.round((quoted * part) / 10000);
+    given += amount;
+
+    return amount;
+  });
+}
+
 export function shapeRows(
   terms: readonly Term[],
   quote: Pick<Quote, 'amount' | 'quotedOn'>,
   days: EventDays,
 ): ShapeRow[] {
-  const parts = terms.map((one) => Math.round(one.share * 100));
-  const whole = parts.reduce((sum, one) => sum + one, 0) === 10000;
-  let given = 0;
+  const amounts = shapeAmounts(terms, quote.amount);
 
   return terms.map((one, index) => {
     const counted =
@@ -443,13 +468,13 @@ export function shapeRows(
           ? addDays(days.starts, -one.days)
           : addDays(days.ends, one.days);
     const clamped = counted < quote.quotedOn;
-    const amount =
-      whole && index === terms.length - 1
-        ? quote.amount - given
-        : Math.round((quote.amount * (parts[index] ?? 0)) / 10000);
-    given += amount;
 
-    return { ...one, dueOn: clamped ? quote.quotedOn : counted, clamped, amount };
+    return {
+      ...one,
+      dueOn: clamped ? quote.quotedOn : counted,
+      clamped,
+      amount: amounts[index] ?? 0,
+    };
   });
 }
 
@@ -652,6 +677,23 @@ export function paymentsStart(
 
     return shaped({ ...refused, problems: shapingProblems(refused) });
   }
+  if (state === 'shape_too_small') {
+    const tiny = 10;
+    const offered = shapingFrom(
+      'instalments',
+      SHAPE_TERMS.instalments.map((one, index) => ({ ...one, share: index === 2 ? 10 : 45 })),
+    );
+
+    return shaped(
+      { ...offered, problems: shapingProblems(offered, tiny) },
+      {
+        ...none,
+        quotes: none.quotes.map((one) =>
+          one.vendor.id === vendorId ? { ...one, amount: tiny } : one,
+        ),
+      },
+    );
+  }
   if (state === 'shape_failed') return shaped({ ...shapingOf('instalments'), failed: true });
   if (state === 'shape_raced') return shaped(shapingOf('deposit', true), base.budget);
   if (MADE_STATES.includes(state)) {
@@ -827,6 +869,10 @@ export const PAYMENTS_PAGES: readonly DemoGroup[] = [
       {
         to: savour('shape_refused'),
         name: 'Refused at the field: blank, too long, percentage, days (shape_refused)',
+      },
+      {
+        to: savour('shape_too_small'),
+        name: 'A £0.10 quote at 45%, 45%, 10%: the last row comes to £0.00, refused (shape_too_small)',
       },
       {
         to: savour('shape_failed'),
