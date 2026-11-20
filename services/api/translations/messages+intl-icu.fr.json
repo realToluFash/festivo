@@ -369,7 +369,7 @@
     "audit.filter.event": "Événement",
     "audit.filter.from": "Du",
     "audit.filter.to": "Au",
-    "audit.filter.pair": "{field} : {value}",
+    "audit.filter.pair": "{field} : {value}",
     "validation.what_if_change_unknown": "« {change} » n’est pas un changement qu’un budget peut chiffrer. Indiquez guests, tables, staff_hours ou days.",
     "validation.what_if_not_whole": "Indiquez un nombre entier pour {change}.",
     "validation.what_if_too_large": "Le changement de {change} ne peut pas dépasser {most, number, ::group-auto} au total.",
