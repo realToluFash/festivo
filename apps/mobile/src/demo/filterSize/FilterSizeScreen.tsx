@@ -6,7 +6,6 @@ import {
   NO_EVENTS_FILTERS,
   filtered,
   listFormat,
-  picksLead,
   withHostToggled,
   withTypeToggled,
 } from '@soirely/domain';
@@ -30,13 +29,11 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { FilterButton, useFilterWords } from '../../components/EventsSearch.tsx';
+import { FilterButton, GrownTopRow, useFilterWords } from '../../components/EventsSearch.tsx';
 import { Glyph } from '../../components/Glyph.tsx';
 import { type Anchor, AnchoredMenu, anchorUnder } from '../../components/Summary.tsx';
 import { Text } from '../../components/Text.tsx';
-import { MeasuredWords } from '../../components/Title.tsx';
 import { isTablet } from '../../layout/classify.ts';
-import { piecesIn } from '../../layout/textSize.ts';
 import { useLayout } from '../../layout/useLayout.ts';
 import { DemoOnly } from '../../steps/Lines.tsx';
 import { tokens } from '../../theme/tokens.ts';
@@ -51,10 +48,8 @@ import {
   type FilterPicks,
   type FilterSize,
   filterScale,
-  keptWhole,
-  rowDrawn,
-  rowStarts,
 } from './filterSizeRules.ts';
+import { rowStarts } from '../../layout/menuRowFit.ts';
 import { frameTitleCap } from '../frameTitleCap.ts';
 
 export interface FilterSizeStart {
@@ -236,7 +231,7 @@ function Menu({
     >
       {level === 'top' && (
         <>
-          <TopRow
+          <GrownTopRow
             ref={first}
             title={t('eventsSearch.type')}
             picks={types}
@@ -246,7 +241,7 @@ function Menu({
             onPress={() => setLevel('type')}
             testID="demo.filterSize.type"
           />
-          <TopRow
+          <GrownTopRow
             title={t('eventsSearch.when')}
             picks={[whenWord]}
             value={whenWord}
@@ -255,7 +250,7 @@ function Menu({
             onPress={() => setLevel('when')}
             testID="demo.filterSize.when"
           />
-          <TopRow
+          <GrownTopRow
             title={t('eventsSearch.hostedBy')}
             picks={filters.hosts}
             value={filters.hosts.length === 0 ? t('eventsSearch.anyone') : listed(filters.hosts)}
@@ -328,179 +323,6 @@ function Menu({
   );
 }
 
-/** A top-level row: beside its title while its value fits whole, under it at the accessibility sizes when not. */
-function TopRow({
-  ref,
-  title,
-  picks,
-  value,
-  scale,
-  cap,
-  onPress,
-  testID,
-}: {
-  ref?: Ref<ViewInstance>;
-  title: string;
-  picks: readonly string[];
-  value: string;
-  scale: number;
-  cap: number;
-  onPress: () => void;
-  testID: string;
-}) {
-  const { t } = useTranslation();
-  const shownPicks = picks.length === 0 ? [value] : picks;
-  const count = shownPicks.length;
-  const tail = (rest: number) => keptWhole(t('calendar.moreItems', { count: rest }));
-  const read = (shown: number) =>
-    shown === count ? value : `${picksLead(shownPicks, shown)} ${tail(count - shown)}`;
-  // Beside its title the line draws as two texts, so it is measured as two: as one string it comes out narrower on Android (main's usePicksFit).
-  const parts = (shown: number) =>
-    shown === count ? [value] : [picksLead(shownPicks, shown), ` ${tail(count - shown)}`];
-  const reads = shownPicks.map((_, index) => read(index + 1));
-  const besides = shownPicks.flatMap((_, index) => parts(index + 1));
-  const tails = shownPicks.slice(1).map((_, index) => tail(index + 1));
-  const valuePieces = [...piecesIn(shownPicks), ...tails];
-  const starts = rowStarts(scale, cap);
-  const [widths, setWidths] = useState<Readonly<Record<string, number>>>({});
-  const [room, setRoom] = useState(0);
-  const titleKey = (text: string) => `t|${starts.title}|${text}`;
-  const valueKey = (text: string) => `v|${starts.value}|${text}`;
-  const titlePieces = piecesIn([title]);
-  const keys = [
-    titleKey(title),
-    ...titlePieces.map(titleKey),
-    ...reads.map(valueKey),
-    ...besides.map(valueKey),
-    ...valuePieces.map(valueKey),
-  ];
-  const ready = room > 0 && keys.every((key) => widths[key] != null);
-  const widthOf = (key: string) => widths[key] ?? 0;
-  const widestOf = (texts: readonly string[], key: (text: string) => string) =>
-    Math.max(...texts.map((text) => widthOf(key(text))));
-  const drawn = ready
-    ? rowDrawn({
-        scale,
-        cap,
-        room,
-        gap: tokens.spaceMd,
-        title: widthOf(titleKey(title)),
-        titleWidest: widestOf(titlePieces, titleKey),
-        valueWidestAt: (shown) =>
-          widestOf(
-            [
-              ...piecesIn(shownPicks.slice(0, shown)),
-              ...(shown < count ? [tail(count - shown)] : []),
-            ],
-            valueKey,
-          ),
-        count,
-        besideAt: (shown) =>
-          parts(shown).reduce((sum, text) => sum + Math.ceil(widthOf(valueKey(text))), 0),
-        underAt: (shown) => widthOf(valueKey(read(shown))),
-      })
-    : null;
-  const shown = drawn?.shown ?? count;
-  const rest = count - shown;
-  const lead = rest === 0 ? value : picksLead(shownPicks, shown);
-  const measured = (key: (text: string) => string) => (text: string, width: number) =>
-    setWidths((now) => (now[key(text)] === width ? now : { ...now, [key(text)]: width }));
-
-  return (
-    <Pressable
-      ref={ref}
-      onPress={onPress}
-      style={({ pressed }) => [
-        styles.top,
-        drawn?.stacked === true && styles.topStacked,
-        pressed && styles.pressed,
-      ]}
-      accessibilityRole="button"
-      accessibilityLabel={t('eventsSearch.choice', { title, value })}
-      testID={testID}
-    >
-      <MeasuredWords
-        words={[title, ...titlePieces]}
-        size={starts.title}
-        weight="medium"
-        allowFontScaling={false}
-        onWidth={measured(titleKey)}
-      />
-      <MeasuredWords
-        words={[...new Set([...reads, ...besides, ...valuePieces])]}
-        size={starts.value}
-        weight="medium"
-        allowFontScaling={false}
-        onWidth={measured(valueKey)}
-      />
-      <View
-        style={[drawn?.stacked === true ? styles.stacked : styles.beside, !ready && styles.waiting]}
-        onLayout={(event) => setRoom(event.nativeEvent.layout.width)}
-      >
-        {drawn?.stacked === true ? (
-          <>
-            <Text
-              size={drawn.titleSize}
-              weight="medium"
-              allowFontScaling={false}
-              accessible={false}
-            >
-              {title}
-            </Text>
-            <Text
-              size={drawn.valueSize}
-              weight="medium"
-              allowFontScaling={false}
-              accessible={false}
-              style={styles.secondary}
-            >
-              {rest === 0 ? value : `${lead} ${tail(rest)}`}
-            </Text>
-          </>
-        ) : (
-          <>
-            <Text
-              size={starts.title}
-              weight="medium"
-              allowFontScaling={false}
-              numberOfLines={1}
-              accessible={false}
-              style={styles.title}
-            >
-              {title}
-            </Text>
-            <View style={styles.value}>
-              <Text
-                size={starts.value}
-                weight="medium"
-                allowFontScaling={false}
-                numberOfLines={1}
-                accessible={false}
-                style={[styles.shrink, styles.secondary]}
-              >
-                {lead}
-              </Text>
-              {rest > 0 && (
-                <Text
-                  size={starts.value}
-                  weight="medium"
-                  allowFontScaling={false}
-                  numberOfLines={1}
-                  accessible={false}
-                  style={[styles.kept, styles.secondary]}
-                >
-                  {` ${tail(rest)}`}
-                </Text>
-              )}
-            </View>
-          </>
-        )}
-      </View>
-      <Glyph name="chevron" size={16} ink={tokens.colorInkTertiary} weight={2.3} />
-    </Pressable>
-  );
-}
-
 function Drilled({
   title,
   onBack,
@@ -557,16 +379,8 @@ const styles = StyleSheet.create({
     gap: tokens.spaceMd,
     paddingHorizontal: tokens.spacePillEnd,
   },
-  topStacked: { paddingVertical: tokens.spaceSm },
   pressed: { backgroundColor: tokens.colorInset },
-  beside: { flex: 1, minWidth: 0, flexDirection: 'row', alignItems: 'center', gap: tokens.spaceMd },
-  stacked: { flex: 1, minWidth: 0, gap: tokens.spaceXxs },
-  waiting: { opacity: 0 },
-  title: { flexShrink: 0 },
-  value: { flex: 1, minWidth: 0, flexDirection: 'row', justifyContent: 'flex-end' },
   shrink: { flexShrink: 1 },
-  kept: { flexShrink: 0 },
-  secondary: { color: tokens.colorInkSecondary },
   on: { color: tokens.colorAccentText },
   rule: { height: 1, marginVertical: tokens.spaceXs, backgroundColor: tokens.colorBorder },
   back: {

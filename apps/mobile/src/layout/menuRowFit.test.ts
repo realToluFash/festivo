@@ -1,10 +1,15 @@
 import { describe, expect, it } from 'vitest';
 
-import { type RowMeasure, filterScale, keptWhole, rowDrawn, rowStarts } from './filterSizeRules.ts';
-import { frameTitleCap } from '../frameTitleCap.ts';
+import { type RowMeasure, keptWhole, rowDrawn, rowStarts } from './menuRowFit.ts';
+import { frameTitleSize, titleSize } from './textSize.ts';
 
-const AX1 = filterScale('ax1', 1);
-const AX5 = filterScale('ax5', 1);
+// React Native's fontScale on iOS at the seventh step, AX1 and AX5.
+const SEVENTH = 1.353;
+const frameTitleCap = (tablet: boolean, side: number, scale: number) =>
+  titleSize(frameTitleSize(tablet, side), scale);
+
+const AX1 = 1.786;
+const AX5 = 3.571;
 const PHONE = 402;
 
 const row = (over: Partial<RowMeasure>): RowMeasure => {
@@ -38,11 +43,10 @@ describe('rowStarts', () => {
   });
 
   it('caps nothing at the standard sizes', () => {
-    const seventh = filterScale('seventh', 1);
-    const starts = rowStarts(seventh, frameTitleCap(false, PHONE, seventh));
+    const starts = rowStarts(SEVENTH, frameTitleCap(false, PHONE, SEVENTH));
 
-    expect(starts.title).toBeCloseTo(16 * seventh);
-    expect(starts.value).toBeCloseTo(15 * seventh);
+    expect(starts.title).toBeCloseTo(16 * SEVENTH);
+    expect(starts.value).toBeCloseTo(15 * SEVENTH);
   });
 });
 
@@ -54,9 +58,7 @@ describe('rowDrawn at the standard sizes', () => {
   });
 
   it('stays on one line at the seventh step', () => {
-    expect(rowDrawn(row({ scale: filterScale('seventh', 1), besideAt: () => 500 })).stacked).toBe(
-      false,
-    );
+    expect(rowDrawn(row({ scale: SEVENTH, besideAt: () => 500 })).stacked).toBe(false);
   });
 
   it('counts the picks beside the title by the line measured as its two texts', () => {
