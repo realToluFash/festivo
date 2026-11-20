@@ -23,10 +23,9 @@
 
 .bt-title {
   flex: 1;
-  min-width: 0;
   font: 700 30px/1.12 var(--fontFamily);
   letter-spacing: -0.02em;
-  overflow-wrap: anywhere;
+  overflow-wrap: break-word;
 }
 
 .bt-title:focus {
@@ -477,6 +476,12 @@
 
   .bt-figure {
     font-size: 26px;
+  }
+}
+
+@media (width < 600px) {
+  .bt-title-actions {
+    flex-basis: 100%;
   }
 }
 
