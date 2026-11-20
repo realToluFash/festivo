@@ -125,8 +125,6 @@
 }
 
 .pay-inset {
-  --budAmber: var(--colorAttentionText);
-
   display: grid;
   gap: var(--spaceSm);
 }
