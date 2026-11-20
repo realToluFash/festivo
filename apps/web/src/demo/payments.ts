@@ -651,7 +651,13 @@ export function paymentsStart(
           : null,
     };
   }
-  if (state === 'payments_read_only') return { ...start, readOnly: true };
+  if (state === 'payments_read_only')
+    return {
+      ...start,
+      readOnly: true,
+      budget: { ...base.budget, payments: [...base.budget.payments, ...ADDED] },
+      addedPaid: ADDED.map((one) => one.id),
+    };
   if (state === 'add_payment') return shaped(shapingOf('rows'));
   if (state === 'shape_deposit') return shaped(shapingOf('deposit'));
   if (state === 'shape_clamped')
@@ -838,7 +844,7 @@ export const PAYMENTS_PAGES: readonly DemoGroup[] = [
   {
     name: 'Marked, cancelled, already made',
     states: [
-      { to: bloom('marked'), name: 'Marked paid, £60.00 more, with Undo (marked)' },
+      { to: bloom('marked'), name: 'Marked paid, £60.00 more; every paid row has Undo (marked)' },
       { to: bloom('cancel'), name: 'Cancel payment: why it is not owed (cancel)' },
       { to: bloom('cancelled'), name: 'Cancelled, with Restore (cancelled)' },
       { to: bloom('already_made'), name: 'Add a payment already made: Buttonholes (already_made)' },
@@ -869,7 +875,7 @@ export const PAYMENTS_PAGES: readonly DemoGroup[] = [
       },
       {
         to: budgetAt('payments_read_only', { vendor: BLOOM, plan: 'downgraded' }),
-        name: 'Read only after a downgrade: the overdue balance is no longer chased (payments_read_only)',
+        name: 'Read only after a downgrade: no Undo, the overdue balance no longer chased (payments_read_only)',
       },
     ],
   },

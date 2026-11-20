@@ -305,7 +305,7 @@ describe('the states Budget A still lacked (sc-85, sc-88, sc-90, sc-91, sc-92, s
       expect(schedule.textContent).toContain(
         'Paid Saturday, October 31. Added by Julien Moreau as already paid, so Undo deletes it.',
       );
-      expect(within(schedule).getAllByRole('button', { name: 'Undo' })).toHaveLength(2);
+      expect(within(schedule).getAllByRole('button', { name: 'Undo' })).toHaveLength(3);
       cleanup();
 
       await open(at('added_deleted', '&vendor=v3'));
@@ -319,6 +319,10 @@ describe('the states Budget A still lacked (sc-85, sc-88, sc-90, sc-91, sc-92, s
       await open(at('payments_read_only', '&vendor=v3&plan=downgraded'));
       expect(section('Schedule').textContent).toContain('Due Fri, Oct 30 · No longer chased.');
       expect(within(section('Schedule')).queryByRole('button', { name: 'Mark paid' })).toBeNull();
+      expect(section('Schedule').textContent).toContain(
+        'Paid Saturday, October 31. Added by Julien Moreau as already paid.',
+      );
+      expect(section('Schedule').textContent).not.toContain('Undo');
     },
   );
 
