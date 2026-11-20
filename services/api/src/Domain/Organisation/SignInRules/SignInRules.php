@@ -13,6 +13,7 @@ use App\Entity\User;
 use App\Enum\ErrorCode;
 use App\Http\Access\Grants;
 use App\Http\Exception\ApiException;
+use App\Repository\EmailDomainRepository;
 use App\Repository\MembershipRepository;
 use App\Repository\ProviderIdentityRepository;
 use App\Repository\TwoFactorFactorRepository;
@@ -20,8 +21,10 @@ use DateInterval;
 use DateTimeImmutable;
 use DateTimeInterface;
 use Psl\Iter;
+use Psl\Str;
 use Psl\Vec;
 use Psr\Clock\ClockInterface;
+use Symfony\Component\Uid\Uuid;
 
 /** How an organisation's sign-in rules (sc-69) apply to one member. An organisation with none set changes nothing. */
 final readonly class SignInRules
@@ -36,6 +39,7 @@ final readonly class SignInRules
         private MembershipRepository $membershipRepository,
         private ProviderIdentityRepository $providerIdentityRepository,
         private TwoFactorFactorRepository $twoFactorFactorRepository,
+        private EmailDomainRepository $emailDomainRepository,
         private UserMailer $userMailer,
         private ClockInterface $clock,
     ) {
@@ -95,17 +99,47 @@ final readonly class SignInRules
         ));
     }
 
-    /** Seven days from the switch-on, or from joining after it (sc-609). */
+    /** Seven days from the switch-on, or from joining after it (sc-609); none for a member required sign-on leaves out. */
     public function twoFactorDeadline(Membership $membership): ?DateTimeImmutable
     {
         $since = $membership->getOrganisation()->getTwoFactorRequiredSince();
         $joined = $membership->getJoinedAt();
 
-        if (null === $since || null === $joined) {
+        if (null === $since || null === $joined || $this->isExemptFromTwoFactor($membership)) {
             return null;
         }
 
         return ($joined > $since ? $joined : $since)->add(new DateInterval(self::TWO_FACTOR_GRACE));
+    }
+
+    /**
+     * Under required sign-on, a non-Owner whose address is at a proved domain can sign in only through the identity
+     * provider, which satisfies two-factor (sc-610, Decided 19 Nov). Owners keep their own sign-in, so stay held.
+     */
+    public function isExemptFromTwoFactor(Membership $membership): bool
+    {
+        $organisation = $membership->getOrganisation();
+        $address = $membership->getUser()->getPrimaryEmailAddress()?->getAddress();
+
+        if (null === $organisation->getSsoRequiredSince() || $membership->getRole()->isOwner() || null === $address) {
+            return false;
+        }
+
+        $proved = $this->emailDomainRepository->findProvedOf(Str\after_last($address, '@') ?? '');
+
+        return null !== $proved && $proved->getOrganisation()->getId()->equals($organisation->getId());
+    }
+
+    /** Whether the account still has two-factor to turn on for this organisation: not on, and not left out by required sign-on. */
+    public function owesTwoFactor(User $user, Uuid $organisationId): bool
+    {
+        if ($this->hasTwoFactor($user)) {
+            return false;
+        }
+
+        $membership = $this->membershipRepository->findActive($user, $organisationId);
+
+        return null === $membership || !$this->isExemptFromTwoFactor($membership);
     }
 
     /** A member whose grace began before this is past the deadline. */

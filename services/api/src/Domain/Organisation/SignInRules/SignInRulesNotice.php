@@ -9,6 +9,7 @@ use App\Domain\Messaging\Model\EventTimes;
 use App\Domain\Messaging\Model\Recipient;
 use App\Domain\Messaging\Model\RenderedNotification;
 use App\Domain\User\Mail\UserMailer;
+use App\Entity\Organisation;
 use App\Entity\User;
 use App\Enum\NotificationAudienceKind;
 use App\Enum\NotificationCategory;
@@ -46,11 +47,12 @@ final readonly class SignInRulesNotice implements NotificationTypeInterface
      *
      * @return array<string, mixed>
      */
-    public static function payload(string $email, string $organisation, User $by, array $changes, DateTimeImmutable $at, ?string $asked): array
+    public static function payload(string $email, Organisation $organisation, User $by, array $changes, DateTimeImmutable $at, ?string $asked): array
     {
         return [
             'email' => $email,
-            'organisation' => $organisation,
+            'organisation' => $organisation->getName(),
+            'organisationId' => $organisation->getId()->toRfc4122(),
             'by' => ['id' => $by->getId()->toRfc4122(), 'name' => $by->getName()],
             'changes' => $changes,
             'at' => $at->format(\DATE_ATOM),
@@ -126,7 +128,7 @@ final readonly class SignInRulesNotice implements NotificationTypeInterface
 
         $member = $this->entityManager->find(User::class, $recipient);
 
-        return null !== $member && !$this->signInRules->hasTwoFactor($member);
+        return null !== $member && $this->signInRules->owesTwoFactor($member, Uuid::fromString(self::shape($payload)['organisationId']));
     }
 
     public function thread(array $payload): ?string
@@ -143,7 +145,7 @@ final readonly class SignInRulesNotice implements NotificationTypeInterface
         $twoFactorRequired = true === ($changes['everyoneNeedsTwoFactor'][1] ?? null);
         $toldOnce = $twoFactorRequired && ['everyoneNeedsTwoFactor'] === Vec\keys($changes);
 
-        if (self::DUE === $notice['email'] || ($toldOnce && !$this->signInRules->hasTwoFactor($member))) {
+        if (self::DUE === $notice['email'] || ($toldOnce && $this->signInRules->owesTwoFactor($member, Uuid::fromString($notice['organisationId'])))) {
             return $this->signInRulesMailer->twoFactorDue(
                 $member,
                 $recipient->locale,
@@ -169,13 +171,14 @@ final readonly class SignInRulesNotice implements NotificationTypeInterface
     /**
      * @param array<string, mixed> $payload
      *
-     * @return array{email: string, organisation: string, by: array{id: string, name: string}, changes: array<string, array{0: mixed, 1: mixed}>, at: string, asked: ?string}
+     * @return array{email: string, organisation: string, organisationId: string, by: array{id: string, name: string}, changes: array<string, array{0: mixed, 1: mixed}>, at: string, asked: ?string}
      */
     private static function shape(array $payload): array
     {
         return Type\shape([
             'email' => Type\string(),
             'organisation' => Type\string(),
+            'organisationId' => Type\string(),
             'by' => Type\shape(['id' => Type\string(), 'name' => Type\string()]),
             'changes' => Type\dict(Type\string(), Type\shape([0 => Type\mixed(), 1 => Type\mixed()])),
             'at' => Type\string(),

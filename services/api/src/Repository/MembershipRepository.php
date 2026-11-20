@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Repository;
 
+use App\Entity\EmailAddress;
+use App\Entity\EmailDomain;
 use App\Entity\Membership;
 use App\Entity\Organisation;
 use App\Entity\ProviderIdentity;
@@ -379,27 +381,39 @@ final class MembershipRepository extends ServiceEntityRepository
 
     private function withoutTwoFactor(Organisation $organisation, User $reader): QueryBuilder
     {
-        return $this->createQueryBuilder('m')
+        return $this->owingTwoFactor($this->createQueryBuilder('m')
             ->join('m.user', 'u')
+            ->join('m.organisation', 'o')
             ->where('m.organisation = :organisation')
             ->andWhere('m.status = :active')
             ->andWhere('u <> :reader')
-            ->andWhere('NOT EXISTS (SELECT 1 FROM ' . TwoFactorFactor::class . ' f WHERE f.user = u AND f.activatedAt IS NOT NULL)')
             ->setParameter('organisation', $organisation)
             ->setParameter('active', MembershipStatus::Active)
-            ->setParameter('reader', $reader);
+            ->setParameter('reader', $reader));
+    }
+
+    /** No two-factor on, and not left out by required sign-on: SignInRules::isExemptFromTwoFactor(), as a query (sc-610). */
+    private function owingTwoFactor(QueryBuilder $query): QueryBuilder
+    {
+        return $query
+            ->join('m.role', 'r')
+            ->andWhere('NOT EXISTS (SELECT 1 FROM ' . TwoFactorFactor::class . ' f WHERE f.user = u AND f.activatedAt IS NOT NULL)')
+            ->andWhere(
+                'o.ssoRequiredSince IS NULL OR r.seededAs = :owner OR NOT EXISTS ('
+                . 'SELECT 1 FROM ' . EmailAddress::class . ' ea, ' . EmailDomain::class . ' ed'
+                . " WHERE ea.user = u AND ea.isPrimary = true AND ed.organisation = o AND ed.provedAt IS NOT NULL AND ea.address LIKE CONCAT('%@', ed.domain))",
+            )
+            ->setParameter('owner', SeededRole::Owner);
     }
 
     /** @return list<Membership> active, past the deadline for two-factor of everyone, still without it, and not yet recorded as held back (sc-609) */
     public function findHeldForTwoFactorUnrecorded(DateTimeImmutable $graceStartedBefore): array
     {
         /** @var list<Membership> */
-        return $this->active()
-            ->join('m.user', 'u')
+        return $this->owingTwoFactor($this->active()->join('m.user', 'u'))
             ->andWhere('o.twoFactorRequiredSince <= :before')
             ->andWhere('m.joinedAt <= :before')
             ->andWhere('m.twoFactorBlockedAt IS NULL')
-            ->andWhere('NOT EXISTS (SELECT 1 FROM ' . TwoFactorFactor::class . ' f WHERE f.user = u AND f.activatedAt IS NOT NULL)')
             ->setParameter('before', $graceStartedBefore)
             ->getQuery()
             ->getResult();

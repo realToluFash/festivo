@@ -103,7 +103,7 @@ final readonly class SignInRulesEditor
                     $source,
                     Trigger::at($at),
                     Audience::membersJoinedBy($organisation->getId(), $at),
-                    SignInRulesNotice::payload($email, $organisation->getName(), $by, $changes, $at, $request?->getLocale()),
+                    SignInRulesNotice::payload($email, $organisation, $by, $changes, $at, $request?->getLocale()),
                 );
             }
         });

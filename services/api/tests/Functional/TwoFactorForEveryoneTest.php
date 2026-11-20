@@ -12,6 +12,7 @@ use App\Domain\User\TokenIssuer;
 use App\Domain\User\TwoFactor\SecretBox;
 use App\Domain\User\UserRegistrar;
 use App\Entity\AuditEntry;
+use App\Entity\EmailDomain;
 use App\Entity\Membership;
 use App\Entity\Organisation;
 use App\Entity\Role;
@@ -421,6 +422,75 @@ final class TwoFactorForEveryoneTest extends ApiTestCase
         self::assertNull($this->standingOf($bisi)['twoFactorDue']);
     }
 
+    #[Test]
+    public function requiredSignOnLeavesAMemberAtTheDomainOutOfTheCountAndEmailWhileAnOwnerAtItStaysIn(): void
+    {
+        $this->member('bisi@ire.events', 'Bisi Adeyemi', SeededRole::Admin);
+        $kemi = $this->member('kemi@ire.events', 'Kemi Ojo', SeededRole::Owner);
+        $this->member('tope@gmail.com', 'Tope Bello', SeededRole::Member);
+        $this->turnOnTwoFactor($this->owner);
+        $this->requireSignOn();
+
+        $body = $this->set(['everyoneNeedsTwoFactor' => true]);
+
+        self::assertSame(200, $this->statusCode(), Json\encode($body));
+        self::assertSame(['Kemi Ojo', 'Tope Bello'], $this->named($body));
+        self::assertSame(2, Type\shape(['count' => Type\int()], true)->coerce($body['withoutTwoFactor'] ?? null)['count']);
+        self::assertSame(['kemi@ire.events', 'tope@gmail.com'], Vec\sort(Vec\map($this->mails(), static fn (Email $mail): string => $mail->getTo()[0]->getAddress())));
+        self::assertNotNull($this->standingOf($kemi)['twoFactorDue'], 'an Owner keeps their own sign-in, so is still held to it');
+    }
+
+    #[Test]
+    public function aMemberRequiredSignOnLeavesOutSeesNoBannerAndIsNeverHeldBack(): void
+    {
+        $bisi = $this->member('bisi@ire.events', 'Bisi Adeyemi', SeededRole::Member);
+        $tope = $this->member('tope@gmail.com', 'Tope Bello', SeededRole::Member);
+        $this->turnOnTwoFactor($this->owner);
+        $this->requireSignOn();
+        $this->set(['everyoneNeedsTwoFactor' => true]);
+
+        self::assertNull($this->standingOf($bisi)['twoFactorDue']);
+
+        self::mockTime('+8 days');
+        self::assertSame(1, self::service(TwoFactorHolds::class)->recordDue(), 'only the member at another address is recorded as held');
+        $this->as($bisi, 'GET', $this->path());
+        self::assertSame(200, $this->statusCode());
+        $this->as($tope, 'GET', $this->path());
+        self::assertSame(403, $this->statusCode(), 'a member at any other address is held as before');
+    }
+
+    #[Test]
+    public function singleSignOnThatIsOnButNotRequiredLeavesNobodyOut(): void
+    {
+        $bisi = $this->member('bisi@ire.events', 'Bisi Adeyemi', SeededRole::Member);
+        $this->turnOnTwoFactor($this->owner);
+        $this->proveDomain();
+
+        $body = $this->set(['everyoneNeedsTwoFactor' => true]);
+
+        self::assertSame(['Bisi Adeyemi'], $this->named($body));
+        self::assertSame(['bisi@ire.events'], Vec\map($this->mails(), static fn (Email $mail): string => $mail->getTo()[0]->getAddress()));
+        self::assertNotNull($this->standingOf($bisi)['twoFactorDue']);
+    }
+
+    #[Test]
+    public function switchingRequiredSignOnOffPutsTheMemberBackInTheCountWithNoEmail(): void
+    {
+        $bisi = $this->member('bisi@ire.events', 'Bisi Adeyemi', SeededRole::Member);
+        $this->turnOnTwoFactor($this->owner);
+        $this->requireSignOn();
+        $this->set(['everyoneNeedsTwoFactor' => true]);
+        self::assertSame([], $this->mails(), 'left out while required sign-on is on');
+
+        $organisation = self::em()->find(Organisation::class, $this->organisation->getId()) ?? self::fail('no organisation');
+        $organisation->setSsoRequiredSince(null);
+        self::em()->flush();
+
+        self::assertSame(['Bisi Adeyemi'], $this->named($this->as($this->owner, 'GET', $this->path())));
+        self::assertSame([], $this->mails());
+        self::assertNotNull($this->standingOf($bisi)['twoFactorDue']);
+    }
+
     /**
      * @param array<string, mixed> $rules
      *
@@ -429,6 +499,36 @@ final class TwoFactorForEveryoneTest extends ApiTestCase
     private function set(array $rules): array
     {
         return $this->as($this->owner, 'PATCH', $this->path(), $rules);
+    }
+
+    /**
+     * @param array<string, mixed> $body
+     *
+     * @return list<string>
+     */
+    private function named(array $body): array
+    {
+        return Vec\map(
+            Type\shape(['named' => Type\vec(Type\shape(['name' => Type\string()], true))], true)->coerce($body['withoutTwoFactor'] ?? null)['named'],
+            static fn (array $member): string => $member['name'],
+        );
+    }
+
+    private function proveDomain(): void
+    {
+        $organisation = self::em()->find(Organisation::class, $this->organisation->getId()) ?? self::fail('no organisation');
+        $domain = new EmailDomain($organisation, 'ire.events', 'proof', new Clock()->now());
+        $domain->found(new Clock()->now());
+        self::em()->persist($domain);
+        self::em()->flush();
+    }
+
+    private function requireSignOn(): void
+    {
+        $this->proveDomain();
+        $organisation = self::em()->find(Organisation::class, $this->organisation->getId()) ?? self::fail('no organisation');
+        $organisation->setSsoRequiredSince(new Clock()->now());
+        self::em()->flush();
     }
 
     private function account(string $address, string $name): User
