@@ -2062,3 +2062,20 @@ describe("a section's hint is drawn in lines of whole points (sc-13281)", () => 
     expect(footStyle).not.toMatch(/lineHeight/u);
   });
 });
+
+describe('a pill with words grows with them rather than cutting them (sc-13281)', () => {
+  const styleOf = (file: string, name: string) =>
+    new RegExp(`\\n {2}${name}: \\{([^}]*)\\}`, 'u').exec(
+      readFileSync(join('src', 'components', file), 'utf8'),
+    )?.[1] ?? '';
+
+  it.each([
+    ['TodayParts.tsx', 'create', 'Créer votre premier événement (QA #76223)'],
+    ['CreateWalkParts.tsx', 'tag', 'De cet appareil (QA #76223)'],
+  ])('%s %s sets a least height, never a height', (file, name, seen) => {
+    const style = styleOf(file, name);
+
+    expect(style, seen).toMatch(/\bminHeight:/u);
+    expect(style, seen).not.toMatch(/(?<![A-Za-z])height:/u);
+  });
+});

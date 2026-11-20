@@ -732,7 +732,13 @@ export function FirstRun({ wide }: { wide: boolean }) {
           accessibilityLabel={t('todayScreen.startFirst')}
         >
           <Glyph name="plus" ink={tokens.colorInkOnDark} />
-          <Text size={TYPE.row} weight="semibold" accessible={false} style={styles.onAccent}>
+          <Text
+            size={TYPE.row}
+            weight="semibold"
+            wholeLines
+            accessible={false}
+            style={[styles.onAccent, styles.createWords]}
+          >
             {t('todayScreen.startFirst')}
           </Text>
         </Pressable>
@@ -948,7 +954,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   create: {
-    height: tokens.sizeHitPhoneHero,
+    minHeight: tokens.sizeHitPhoneHero,
+    paddingVertical: tokens.spaceSm,
+    paddingHorizontal: tokens.spaceLg,
     borderRadius: tokens.sizeHitPhoneHero / 2,
     backgroundColor: tokens.colorAccent,
     flexDirection: 'row',
@@ -956,5 +964,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: tokens.spaceSm,
   },
+  createWords: { flexShrink: 1, textAlign: 'center' },
   createWide: { alignSelf: 'flex-start', paddingHorizontal: tokens.space4xl },
 });
