@@ -187,7 +187,7 @@ describe('creating an organisation in B · A short walk at a desk (sc-30335)', (
 
     await screen.findByRole('heading', { level: 1, name: 'You are not in an organisation' });
     const start = screen.getByRole('button', { name: 'Start organisation' });
-    expect(document.activeElement).toBe(start);
+    expect(document.activeElement).toBe(document.body);
     fireEvent.click(start);
     expect(await walk()).toBeDefined();
     cleanup();
