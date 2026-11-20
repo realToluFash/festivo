@@ -31,6 +31,7 @@ function line(fields: Partial<BudgetLine> = {}): BudgetLine {
     quantity: { count: 96, source: 'accepted', reason: null },
     cost: { confirmed: '6528.00', potential: '9044.00' },
     ...fields,
+    notPriced: fields.notPriced ?? [fields.rate, fields.amount].includes('0.00'),
   };
 }
 
@@ -60,6 +61,9 @@ describe('the three kinds of line, never sharing a word (sc-85, 31 Oct)', () => 
   it('reads a price of 0 as Not priced, and a priced line counting 0 as Nothing yet', () => {
     expect(lineState(line())).toBe('priced');
     expect(lineState(line({ rate: '0.00' }))).toBe('notPriced');
+    expect(lineState(line({ basis: 'fixed', rate: null, amount: '0.00', notPriced: false }))).toBe(
+      'priced',
+    );
     expect(
       lineState(line({ quantity: { count: 0, source: 'accepted', reason: 'none_accepted' } })),
     ).toBe('nothingYet');
@@ -208,12 +212,39 @@ describe('the live line (sc-83, sc-99)', () => {
       confirmed: '7428.00',
       lines: [
         line(),
-        { ...arch, rate: '25.00', cost: { confirmed: '900.00', potential: '900.00' } },
+        {
+          ...arch,
+          rate: '25.00',
+          notPriced: false,
+          cost: { confirmed: '900.00', potential: '900.00' },
+        },
       ],
     });
 
     expect(liveWords(t, was, now, EN)).toBe(
       'Centrepieces was priced in another tab at £25.00 a table, so the settled total went up by £900.',
+    );
+  });
+
+  it('says a fee emptied of its client price changed, the total the same, with the new count (sc-75696)', () => {
+    const fee = line({
+      id: 'fee',
+      label: 'Planning fee',
+      category: 'other',
+      basis: 'fixed',
+      rate: null,
+      amount: '0.00',
+      notPriced: false,
+      cost: { confirmed: '0.00', potential: '0.00' },
+    });
+    const was = budget({ lines: [line(), fee], notPriced: 0 });
+    const now = budget({ lines: [line(), { ...fee, notPriced: true }], notPriced: 1 });
+
+    expect(liveWords(t, was, now, EN)).toBe(
+      'Planning fee was changed in another tab, so the total is the same. 1 cost not priced yet.',
+    );
+    expect(liveWords(t, now, was, EN)).toBe(
+      'Planning fee was priced in another tab at £0.00, so the total is the same.',
     );
   });
 

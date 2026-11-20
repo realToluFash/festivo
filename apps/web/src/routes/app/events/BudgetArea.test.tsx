@@ -63,6 +63,7 @@ function costed(
     createdAt: '2026-11-01T09:00:00+00:00',
     updatedAt: '2026-11-01T09:00:00+00:00',
     ...fields,
+    notPriced: fields.notPriced ?? [fields.rate, fields.amount].includes('0.00'),
     cost: { confirmed: settled, potential: ifAll },
   };
 }
@@ -234,6 +235,34 @@ describe('reading an event’s Budget (sc-85)', () => {
     const centre = screen.getByRole('button', { name: /^Centrepieces\./u });
     expect(within(centre).getByText('Not counted')).toBeTruthy();
     expect(within(centre).getByText(/Nothing yet · No seating plan yet/u)).toBeTruthy();
+  });
+
+  it('reads the agency’s fee at £0.00 with its own client price as priced, out of the count (sc-75696)', async () => {
+    signedIn();
+    const fee = costed(
+      'fee',
+      'Planning fee',
+      {
+        category: 'other',
+        basis: 'fixed',
+        amount: '0.00',
+        notPriced: false,
+        quantity: QUANTITIES.fixed,
+      },
+      '0.00',
+    );
+    serve({
+      'GET /api/events/ev_1/budget': () => json(budget({ lines: [DINNER, fee], notPriced: 0 })),
+    });
+
+    const row = await screen.findByRole('button', { name: /^Planning fee\./u });
+    expect(within(row).queryByText('Not priced')).toBeNull();
+    expect(within(row).getByText('A fixed amount')).toBeTruthy();
+    expect(row.getAttribute('aria-label')).toBe(
+      'Planning fee. Rate: £0.00. Quantity: A fixed amount. Settled: £0',
+    );
+    expect(screen.queryByText(/not priced yet/u)).toBeNull();
+    expect(screen.queryByRole('button', { name: /Add a price/u })).toBeNull();
   });
 
   it('with no costs, says what the event already knows and offers the first cost', async () => {
