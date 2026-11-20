@@ -29,7 +29,9 @@ export function ReminderBanner({
   const title =
     kind === 'overdue'
       ? say.reminderOverdue(overdue.length, EVENT_NAME)
-      : say.reminderMixed(overdue.length, coming.length, REMINDER_DAYS);
+      : kind === 'due'
+        ? say.reminderDue(coming.length, REMINDER_DAYS, EVENT_NAME)
+        : say.reminderMixed(overdue.length, coming.length, REMINDER_DAYS);
   const rows = sheet.ids.map((id) => {
     const payment = paymentOf(id);
     const date = days.short(payment.due, locale);

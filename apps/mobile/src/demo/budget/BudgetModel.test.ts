@@ -529,6 +529,13 @@ describe('the gaps of 8 Nov: refusals, ceilings and the reminder on the Budget t
     expect(mixed.ids).toEqual(['bloom-balance', 'savour-deposit', 'landmark-balance']);
     expect(mixed.lastAbout).toEqual(['bloom-balance']);
     expect(reminderSheet('overdue').ids).toEqual(['bloom-balance']);
+    expect(reminderSheet('due')).toMatchObject({
+      ids: ['savour-deposit', 'landmark-balance'],
+      lastAbout: [],
+    });
+    expect(say.reminderDue(2, 3, 'Adaeze & Tunde’s wedding')).toBe(
+      '2 payments due in the next 3 days on Adaeze & Tunde’s wedding',
+    );
     expect(say.reminderMixed(1, 2, 3)).toBe('1 payment overdue, 2 due in the next 3 days');
     expect(say.reminderOverdue(1, 'Adaeze & Tunde’s wedding')).toBe(
       '1 payment overdue on Adaeze & Tunde’s wedding',
@@ -667,6 +674,7 @@ const SPEC_STATES = [
   'ceiling_live_cleared',
   'reminder_overdue',
   'reminder_mixed',
+  'reminder_due',
   'payers_loading',
   'payers_live',
   'payers_reconnecting',

@@ -742,8 +742,16 @@ export function paymentsStart(
 
 const bloom = (state: string) => budgetAt(state, { vendor: BLOOM });
 const savour = (state: string) => budgetAt(state, { vendor: SAVOUR });
-const reminders = (state: string, as?: string) =>
-  `/demo/settings/payment-reminders?${new URLSearchParams({ ...(as == null ? {} : { as }), state }).toString()}`;
+const reminders = (state: string, as?: string) => remindersPath(state, as);
+
+export function remindersPath(state: string, as?: string | null, plan?: string | null): string {
+  const query = new URLSearchParams();
+  if (as != null) query.set('as', as);
+  query.set('state', state);
+  if (plan != null) query.set('plan', plan);
+
+  return `/demo/settings/payment-reminders?${query.toString()}`;
+}
 
 export const PAYMENTS_PAGES: readonly DemoGroup[] = [
   {
@@ -850,6 +858,11 @@ export const PAYMENTS_PAGES: readonly DemoGroup[] = [
   {
     name: 'Payment reminders, in Settings (sc-95)',
     states: [
+      { to: '/demo/settings/vendors', name: 'The way in: the Payment reminders row on Vendors' },
+      {
+        to: '/demo/settings/vendors?plan=downgraded',
+        name: 'The way in after a downgrade: the row says reminders are off',
+      },
       { to: reminders('reminders'), name: 'When reminders go, and who hears (reminders)' },
       { to: reminders('reminders_bad'), name: 'Change, refused: 31 days (reminders_bad)' },
       {

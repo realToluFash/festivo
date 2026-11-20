@@ -235,10 +235,11 @@ export const REMOVED_PAYER = 'Uncle Kayode';
 
 export const REMINDER = { sent: '2026-11-01', payments: ['bloom-balance', 'savour-deposit'] };
 
-/** sc-95's two reminders as they arrive today: the overdue one alone, and one with what falls due in the next 3 days. */
+/** sc-95's reminders as they arrive today: the overdue one alone, one with what falls due in the next 3 days, and that alone. */
 export const REMINDERS = {
   overdue: { sent: TODAY, payments: ['bloom-balance'] },
   mixed: { sent: TODAY, payments: ['bloom-balance', 'savour-deposit', 'landmark-balance'] },
+  due: { sent: TODAY, payments: ['savour-deposit', 'landmark-balance'] },
 } as const;
 export const REMINDER_DAYS = 3;
 
