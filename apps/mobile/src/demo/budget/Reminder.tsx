@@ -4,7 +4,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useShell } from '../../components/settingsShell.ts';
 import { Text } from '../../components/Text.tsx';
 import { tokens } from '../../theme/tokens.ts';
-import { type ReminderKind, days, money, paymentOf, reminderSheet } from './BudgetModel.ts';
+import { type ReminderKind, paymentOf, reminderRows, reminderSheet } from './BudgetModel.ts';
 import { EVENT_NAME, REMINDER_DAYS, VENDORS } from './BudgetSample.ts';
 import { OverdueTag } from './BudgetParts.tsx';
 import { W, say } from './BudgetWords.ts';
@@ -32,21 +32,7 @@ export function ReminderBanner({
       : kind === 'due'
         ? say.reminderDue(coming.length, REMINDER_DAYS, EVENT_NAME)
         : say.reminderMixed(overdue.length, coming.length, REMINDER_DAYS);
-  const rows = sheet.ids.map((id) => {
-    const payment = paymentOf(id);
-    const date = days.short(payment.due, locale);
-    const late = overdue.includes(id);
-    const amount = money(payment.amount, locale);
-    const when = late ? say.wasDue(date) : say.dueWhen(date);
-    return {
-      id,
-      late,
-      words:
-        kind === 'mixed'
-          ? say.reminderRowOn(VENDORS[payment.vendor].name, EVENT_NAME, amount, when)
-          : say.reminderRow(VENDORS[payment.vendor].name, amount, when),
-    };
-  });
+  const rows = reminderRows(kind, locale);
   const last = overdue[0];
   const closing =
     kind === 'mixed' && last != null
