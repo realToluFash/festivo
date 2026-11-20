@@ -91,7 +91,10 @@ else at once; `--path` takes another route as a regular expression. Pass `--clea
 Metro keeps the last bundle's API URL. Name the proxy as `http://127.0.0.1:<n>`: `android`
 reverses that port onto the emulator as it does the stack's. A physical phone cannot reach
 127.0.0.1, so for one start the proxy with `--host` set to the machine's network address and
-put that address in `QA_API_URL`.
+put that address in `QA_API_URL`. Every matching GET is held, the first load
+included, so let the screen settle, then pull to refresh: reopening a screen remounts it and
+shows its first load, not its refresh. Raise `--delay` (30000) where a tap is slow to land,
+as on the iPad, or the hold runs out before the next screenshot.
 
 Expo Go fetches the bundle from Metro and draws its own splash, so a bullet about the app
 offline from first launch, or its own splash screen, needs the app itself.
