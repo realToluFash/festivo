@@ -302,6 +302,31 @@ describe('/demo/events/evt-wed-4/staff/roster (sc-3906)', () => {
     expect(cssRule('.rs-table thead th:nth-child(5)', narrow)).toContain('min-width: 168px;');
   });
 
+  it('keeps whole words in the Roster at every desk width, Link at 168 px (sc-75033)', () => {
+    const desk = ROSTER_CSS.slice(0, ROSTER_CSS.indexOf('@media'));
+    expect(
+      cssRule('.rs-frame > .rs-table :is(th, td),\n.rs-frame > .rs-table :is(th, td) *', desk),
+    ).toContain('overflow-wrap: normal;');
+    expect(cssRule('.rs-frame > .rs-table thead th:nth-child(5)', desk)).toContain(
+      'min-width: 168px;',
+    );
+    expect(desk).not.toContain('min-width: 128px;');
+  });
+
+  it.each([
+    ['populatedFrench', 'Liste du personnel', 'Pas encore de lien'],
+    ['detailsNoLinkFrench', 'Liste du personnel', 'Pas encore de lien'],
+    ['erasedListFrench', 'Liste du personnel', 'Coordonnées effacées après l’événement'],
+    ['erasedList', 'Roster', 'Contact details removed after the event'],
+  ])('shows the Link words of %s in the Roster (sc-75033)', async (state, roster, words) => {
+    const router = createMemoryRouter(routes, {
+      initialEntries: [`/demo/events/evt-wed-4/staff/roster?state=${state}`],
+    });
+    render(<RouterProvider router={router} />);
+    const table = await screen.findByRole('table', { name: roster }, { timeout: 8000 });
+    expect(within(table).getAllByText(words).length).toBeGreaterThan(0);
+  });
+
   it.each([
     ['nobodyOnShift', 'Not on a shift yet'],
     ['nobodyOnShiftFrench', 'Aucun service pour l’instant'],

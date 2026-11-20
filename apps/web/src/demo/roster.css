@@ -49,6 +49,17 @@ a.sn-tab {
   white-space: nowrap;
 }
 
+/* A cell breaks only between words at every width (sc-70540, sc-75033): the global overflow-wrap: anywhere on span and button would let a column shrink to one letter. Where the table is then wider than its frame, the frame scrolls, never the page. */
+.rs-frame > .rs-table :is(th, td),
+.rs-frame > .rs-table :is(th, td) * {
+  overflow-wrap: normal;
+}
+
+/* Link is the column whose words run longest in every language, so it keeps 168 px at every width and reads in at most four lines; Name keeps its 120, and Job, Station and Shift narrow only to their longest word. */
+.rs-frame > .rs-table thead th:nth-child(5) {
+  min-width: 168px;
+}
+
 .rs-table tbody td.rs-quiet {
   color: var(--colorInkSecondary);
 }
@@ -298,7 +309,7 @@ a.sn-tab {
     flex-basis: 12rem;
   }
 
-  /* At 400% zoom a cell breaks only between words and the frame scrolls further (sc-70540); the global overflow-wrap: anywhere on span and button would let a column shrink to one letter. */
+  /* At 400% zoom a cell breaks only between words and the frame scrolls further (sc-70540); here the rule also holds Jobs and shifts' coverage table, an .rs-table outside the Roster's frame. */
   .rs-table :is(th, td),
   .rs-table :is(th, td) * {
     overflow-wrap: normal;
@@ -313,7 +324,7 @@ a.sn-tab {
     min-width: 168px;
   }
 
-  /* Only here, as in the product: with the panel docked at 1280 px, a one-line empty Shift cell would squeeze Link until its words break letter by letter (sc-71607). */
+  /* Only here: at a desk an empty Shift cell wraps between words rather than push the frame further (sc-71607, sc-75033). */
   .rs-table td.rs-no-shift {
     white-space: nowrap;
   }
