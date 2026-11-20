@@ -29,6 +29,8 @@
     "vendor_already_quoted": "Esse fornecedor já tem uma cotação neste evento, por isso esta cotação não foi guardada. Para dar um preço novo, reveja essa cotação.",
     "quote_unchanged": "Altere o valor ou a data da cotação para a rever. Para alterar outra coisa, corrija a cotação.",
     "vendor_owed": "Este fornecedor não foi arquivado, porque um ou mais eventos ainda têm pagamentos pendentes a este fornecedor.",
+    "payment_already_paid": "This has already been marked paid, so nothing has changed.",
+    "payment_cancelled": "This payment has been cancelled, so it cannot be marked paid.",
     "plan_limit": "O limite do plano foi atingido.",
     "seating_plan_exists": "Este evento já tem um plano de mesas.",
     "seating_section_limit": "Um plano pode ter até 30 zonas. Elimine uma para adicionar outra.",

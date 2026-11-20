@@ -57,6 +57,7 @@ final readonly class QuoteEditor
         private BudgetLineRepository $budgetLineRepository,
         private QuoteRules $quoteRules,
         private QuotePublisher $quotePublisher,
+        private PaymentEditor $paymentEditor,
         private Auditor $auditor,
         private ClockInterface $clock,
     ) {
@@ -155,6 +156,7 @@ final readonly class QuoteEditor
         $engagement = $payment->getEngagement();
         $event = $engagement->getEvent();
         $this->locked($event, function () use ($event, $engagement, $payment, $sent, $by): VendorEngagement {
+            $this->paymentEditor->refuseSettled($payment);
             $details = $this->quoteRules->payment($sent, $event, $this->current($engagement));
             $payment->amend($details->description, $details->amountMinor, $details->dueOn);
             $this->audit(self::PAYMENT_AMENDED, 'ScheduledPayment', $payment->getId(), $by);
@@ -169,6 +171,7 @@ final readonly class QuoteEditor
         $engagement = $payment->getEngagement();
         $event = $engagement->getEvent();
         $this->locked($event, function () use ($engagement, $payment, $by): VendorEngagement {
+            $this->paymentEditor->refuseSettled($payment);
             $this->audit(self::PAYMENT_REMOVED, 'ScheduledPayment', $payment->getId(), $by);
             $this->entityManager->remove($payment);
 

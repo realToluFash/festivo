@@ -23,6 +23,12 @@ final class QuoteRepository extends ServiceEntityRepository
         return $this->findOneBy(['engagement' => $engagement, 'supersededAt' => null]);
     }
 
+    /** The vendor's first quote for the event, before any revision: a payment already made cannot be dated before it (sc-88). */
+    public function findFirst(VendorEngagement $engagement): ?Quote
+    {
+        return $this->findOneBy(['engagement' => $engagement], ['id' => 'ASC']);
+    }
+
     /** @return list<Quote> every version on the event, newest first within each engagement */
     public function findOnEvent(Event $event): array
     {
