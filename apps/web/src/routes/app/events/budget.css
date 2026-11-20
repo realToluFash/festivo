@@ -13,6 +13,11 @@
   gap: 18px;
 }
 
+/* The columns fill the page at 1280, and a row that opens reaches spaceMd past the right one: the margin keeps it inside, or focusing it scrolls the page sideways. */
+.bt .ev-right {
+  margin-inline-end: var(--spaceMd);
+}
+
 .bt-title-row {
   display: flex;
   flex-wrap: wrap;
