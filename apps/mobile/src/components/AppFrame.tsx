@@ -637,7 +637,7 @@ export function AppFrame({
               />
             )}
             <View
-              style={[styles.column, sideCard && side.card, sideCard && !sidebar && styles.alone]}
+              style={[styles.column, sideCard && side.card, sideCard && !sidebar && side.alone]}
             >
               {framed && !ownTop && (
                 <View style={headerSides}>
@@ -2001,7 +2001,6 @@ const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: tokens.colorPage },
   edgeSwipe: { position: 'absolute', top: 0, bottom: 0, left: 0, width: EDGE_SWIPE_WIDTH },
   column: { flex: 1, minWidth: 0 },
-  alone: { marginLeft: tokens.spaceMd },
   body: { flex: 1, minHeight: 0 },
   fill: { flex: 1 },
   titled: { gap: tokens.spaceXxs, flexShrink: 1 },

@@ -69,12 +69,13 @@ describe('Settings opened from no organisation (sc-75471)', () => {
   it('sits on its side in its card on the grey ground, alone there as the demo draws it', () => {
     expect(frame).toMatch(/style=\{\[styles\.root, sideCard && side\.chrome\]\}/u);
     expect(frame).toMatch(
-      /styles\.column, sideCard && side\.card, sideCard && !sidebar && styles\.alone\]/u,
+      /styles\.column, sideCard && side\.card, sideCard && !sidebar && side\.alone\]/u,
     );
-    expect(frame).toMatch(/alone: \{ marginLeft: tokens\.spaceMd \}/u);
     expect(read('src', 'demo', 'settings', 'Frame.tsx')).toMatch(
-      /alone: \{ marginLeft: tokens\.spaceMd \}/u,
+      /side\.card, fromNone != null && side\.alone\]/u,
     );
+    expect(frame).not.toMatch(/alone: \{/u);
+    expect(read('src', 'demo', 'settings', 'Frame.tsx')).not.toMatch(/alone: \{/u);
   });
 
   it('has no bell', () => {

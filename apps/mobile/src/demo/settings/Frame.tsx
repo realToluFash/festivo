@@ -103,9 +103,9 @@ export function Landscape({
           </TodayShellProvider>
         ))}
       {band == null ? (
-        <View style={[styles.main, side.card, fromNone != null && styles.alone]}>{columns}</View>
+        <View style={[styles.main, side.card, fromNone != null && side.alone]}>{columns}</View>
       ) : (
-        <View style={[styles.grow, side.card, fromNone != null && styles.alone]}>
+        <View style={[styles.grow, side.card, fromNone != null && side.alone]}>
           {band}
           <View style={styles.main}>{columns}</View>
         </View>
@@ -312,7 +312,6 @@ const styles = StyleSheet.create({
   cardsPhone: { gap: tokens.spaceXl },
   main: { flex: 1, flexDirection: 'row' },
   column: { borderRightWidth: 1, borderRightColor: tokens.colorBorder },
-  alone: { marginLeft: tokens.spaceMd },
   task: { paddingHorizontal: tokens.space3xl, gap: tokens.spaceXl },
   taskTablet: { width: '100%', maxWidth: 560, alignSelf: 'center' },
   taskHead: { gap: tokens.spaceMd, paddingTop: tokens.spaceMd, paddingBottom: tokens.spaceSm },
