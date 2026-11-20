@@ -3799,6 +3799,17 @@ export class ApiClient {
     );
   }
 
+  /** A vendor's first payments, every one or none (sc-1332); 409 `payments_already_scheduled` once the vendor has any payment. */
+  async addSchedule(
+    eventId: string,
+    quoteId: string,
+    payments: readonly PaymentTyped[],
+  ): Promise<EventQuote> {
+    return this.readQuote(
+      await this.post<unknown>(`${this.quotePath(eventId, quoteId)}/schedule`, { payments }),
+    );
+  }
+
   async amendPayment(eventId: string, paymentId: string, typed: PaymentTyped): Promise<EventQuote> {
     return this.readQuote(
       await this.put<unknown>(

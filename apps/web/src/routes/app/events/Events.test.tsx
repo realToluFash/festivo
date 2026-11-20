@@ -5990,6 +5990,12 @@ describe('A part’s save notices show directly above Cancel and Save (sc-74398)
     expect(note.compareDocumentPosition(said) & Node.DOCUMENT_POSITION_FOLLOWING).not.toBe(0);
   });
 
+  it('brings Save into view with room for its whole focus ring, at every width (QA #75127)', () => {
+    expect(cssRule('.ev-opened-actions', EVENT_PAGE_CSS)).toContain(
+      'scroll-margin-block: var(--spaceSm);',
+    );
+  });
+
   describe('in Reply by, a role that no longer allows it (sc-74926)', () => {
     const ROLE = ANSWERS[1][2];
 

@@ -125,31 +125,8 @@
 }
 
 .pay-inset {
-  display: flex;
-  flex-direction: column;
-  gap: var(--spaceSm);
-}
-
-.pay-over-quote {
   --budAmber: var(--colorAttentionText);
 
-  display: flex;
-  align-items: flex-start;
-  gap: 8px;
-  color: var(--colorInk);
-  font: 500 14px/1.45 var(--fontFamily);
-}
-
-.pay-over-quote:empty {
-  display: none;
-}
-
-.pay-over-quote .bud-ring {
-  flex: none;
-  margin-top: 3px;
-}
-
-.pay-over-quote strong {
-  color: var(--colorAttentionText);
-  font-weight: 600;
+  display: grid;
+  gap: var(--spaceSm);
 }

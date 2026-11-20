@@ -256,58 +256,55 @@ export function MadeDialog({
           optional
           onChange={(reference) => set({ reference })}
         />
-        <MadeInsetRows budget={budget} draft={draft} />
+        <MadeTotals budget={budget} draft={draft} />
       </div>
     </BudgetDialog>
   );
 }
 
-/** sc-75579: Paid and Scheduled before and after, from the Amount paid typed; amber words once the schedule would pass the quote. Nothing here is saved. */
-function MadeInsetRows({ budget, draft }: { budget: Budget; draft: MadeDraft }) {
-  const inset = madeInset(budget, draft);
-  if (inset == null) return null;
-  const { amount, over } = inset;
-
-  return (
-    <div className="pay-inset">
-      <Rows label={PW.totalsWithThis}>
-        <li>
-          <BudgetRow
-            title={PW.paidTo(inset.vendor)}
-            end={<Amount value={<BeforeAfter now={inset.paid} amount={amount} />} />}
-          />
-        </li>
-        <li>
-          <BudgetRow
-            title={PW.scheduled}
-            end={<Amount value={<BeforeAfter now={inset.scheduled} amount={amount} />} />}
-          />
-        </li>
-      </Rows>
-      <div role="status" className="pay-over-quote">
-        {over != null && (
-          <>
-            <RingMark state="overIfAll" />
-            <span>
-              <strong>{PW.overWithThis(money(over))}</strong> {PW.staysVisible}
-            </span>
-          </>
-        )}
-      </div>
-    </div>
-  );
-}
-
-function BeforeAfter({ now, amount }: { now: number; amount: number | null }) {
-  if (amount == null) return money(now);
+function Then({ now, after }: { now: number; after: number | undefined }) {
+  if (after == null) return money(now);
+  const said = PW.withThisSaid(money(now), money(after));
 
   return (
     <>
-      {money(now)}
-      <span aria-hidden="true"> → </span>
-      <span className="visually-hidden"> {PW.withThisPayment} </span>
-      {money(now + amount)}
+      <span aria-hidden="true">{PW.withThis(money(now), money(after))}</span>
+      <span className="visually-hidden">{said}</span>
     </>
+  );
+}
+
+/** sc-75579's inset (Budget-A-Payments-More 43): a preview only; what the page shows after Add as paid is the server's arithmetic. */
+function MadeTotals({ budget, draft }: { budget: Budget; draft: MadeDraft }) {
+  const inset = madeInset(budget, draft);
+  if (inset == null) return null;
+  const { now, after, over } = inset;
+
+  return (
+    <div className="pay-inset" aria-live="polite">
+      <Rows>
+        <li>
+          <BudgetRow
+            title={PW.paidTo(inset.vendor)}
+            end={<Amount value={<Then now={now.paid} after={after?.paid} />} />}
+          />
+        </li>
+        <li>
+          <BudgetRow
+            title={QW.scheduled}
+            end={<Amount value={<Then now={now.scheduled} after={after?.scheduled} />} />}
+          />
+        </li>
+      </Rows>
+      {over != null && (
+        <div className="bud-warn">
+          <RingMark state="overIfAll" />
+          <span>
+            <strong>{PW.overWithThis(money(over))}</strong> {PW.differenceVisible}
+          </span>
+        </div>
+      )}
+    </div>
   );
 }
 

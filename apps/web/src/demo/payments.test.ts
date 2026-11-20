@@ -46,11 +46,11 @@ const SPEC_NAMES = [
   'cancel',
   'cancelled',
   'already_made',
-  'made_early',
-  'made_no_amount',
+  'made_as_is',
   'made_under',
   'made_over',
   'made_over_already',
+  'made_early',
   'add_payment',
   'shape_deposit',
   'shape_clamped',
@@ -348,38 +348,93 @@ describe('payments on a vendor’s page, shapes and reminders, in A (sc-88, sc-1
       expect(daysProblem(wrong)).toBe('Enter a whole number of days from 1 to 30.');
   });
 
-  it('previews a payment already made against the vendor’s totals, the gap only past the quote', () => {
-    const inset = (state: string, amount?: string) => {
-      const { budget, made } = startOf(state);
-      if (made == null) throw new Error(`${state} opens no dialog`);
-
-      return madeInset(budget, amount == null ? made.draft : { ...made.draft, amount });
-    };
-    expect(paymentsVendor('made_under', null)).toBe('v4');
-    expect(inset('made_no_amount')).toEqual({
+  it('counts a payment already made on top of a schedule already past the quote', () => {
+    const { budget, made, addedPaid } = startOf('made_over_already');
+    expect(addedPaid).toEqual(['p20']);
+    expect(made == null ? null : madeInset(budget, made.draft)).toEqual({
       vendor: 'Bloom & Co',
-      paid: 36000,
-      scheduled: 120000,
-      amount: null,
-      over: null,
-    });
-    expect(inset('made_under')).toMatchObject({
-      paid: 0,
-      scheduled: 750000,
-      amount: 12000,
-      over: null,
-    });
-    expect(inset('made_over')).toMatchObject({ paid: 36000, scheduled: 120000, over: 12000 });
-    expect(inset('made_over_already')).toMatchObject({
-      paid: 42000,
-      scheduled: 126000,
+      now: { paid: 42000, scheduled: 126000 },
+      after: { paid: 54000, scheduled: 138000 },
       over: 18000,
     });
-    expect(inset('made_over', '0')).toMatchObject({ amount: null, over: null });
-    expect(inset('made_over', '12,0.5.0')).toMatchObject({ amount: null, over: null });
-    expect(startOf('made_over_already').addedPaid).toEqual(['p20']);
-    const { budget, made } = startOf('made_over');
-    expect(madeInset(budget, { ...made!.draft, vendorId: 'v4' })?.vendor).toBe('Savour Kitchen');
-    expect(madeInset(budget, { ...made!.draft, vendorId: 'v9' })).toBeNull();
+  });
+});
+
+describe('sc-75579: the totals an already-made payment would leave', () => {
+  const quoted = (amount: number, scheduled: number) => {
+    const sample = sampleBudget();
+
+    return {
+      quotes: sample.quotes.map((one) => (one.vendor.id === 'v3' ? { ...one, amount } : one)),
+      payments: [
+        ...sample.payments.filter((one) => one.vendorId !== 'v3'),
+        {
+          id: 'p9',
+          vendorId: 'v3',
+          what: 'Flowers',
+          amount: scheduled,
+          dueOn: '2026-11-30',
+          paid: null,
+          cancelled: null,
+        },
+        {
+          id: 'p10',
+          vendorId: 'v3',
+          what: 'Arch',
+          amount: 50000,
+          dueOn: '2026-11-30',
+          paid: null,
+          cancelled: { why: 'The venue supplies it' },
+        },
+      ],
+    };
+  };
+  const draft = (vendorId: string, amount: string) => ({
+    vendorId,
+    what: 'Buttonholes',
+    amount,
+    paidOn: '2026-11-02',
+    reference: '',
+  });
+
+  it('adds the amount paid to both Paid and Scheduled, and says how far over the quote', () => {
+    expect(madeInset(quoted(100000, 100000), draft('v3', '180'))).toEqual({
+      vendor: 'Bloom & Co',
+      now: { paid: 0, scheduled: 100000 },
+      after: { paid: 18000, scheduled: 118000 },
+      over: 18000,
+    });
+  });
+
+  it('gives the gap after the payment when the schedule was already over, not the payment', () => {
+    expect(madeInset(quoted(100000, 105000), draft('v3', '180'))?.over).toBe(23000);
+  });
+
+  it('says nothing about the quote at or under it', () => {
+    expect(madeInset(quoted(100000, 82000), draft('v3', '180'))?.over).toBeNull();
+    expect(madeInset(quoted(100000, 81000), draft('v3', '180'))?.over).toBeNull();
+  });
+
+  it('shows the figures as they stand while the amount is blank or refused', () => {
+    for (const typed of ['', '0', '-5', 'abc', '12.345']) {
+      const inset = madeInset(sampleBudget(), draft('v3', typed));
+      expect(inset?.now).toEqual({ paid: 36000, scheduled: 120000 });
+      expect(inset?.after).toBeNull();
+      expect(inset?.over).toBeNull();
+    }
+  });
+
+  it('follows the vendor chosen, and the sample states say so', () => {
+    expect(madeInset(sampleBudget(), draft('v4', '1,000.00'))).toEqual({
+      vendor: 'Savour Kitchen',
+      now: { paid: 0, scheduled: 750000 },
+      after: { paid: 100000, scheduled: 850000 },
+      over: null,
+    });
+    expect(startOf('made_as_is').made?.draft.amount).toBe('');
+    expect(startOf('made_under').made?.draft).toMatchObject({ vendorId: 'v4', amount: '1,000.00' });
+    const over = startOf('made_over');
+    expect(over.made == null ? null : madeInset(over.budget, over.made.draft)?.over).toBe(12000);
+    expect(money(12000)).toBe('£120.00');
   });
 });

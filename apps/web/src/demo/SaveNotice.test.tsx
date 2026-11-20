@@ -96,9 +96,18 @@ describe('A part’s save notices sit directly above Cancel and Save (sc-74398)'
       save.focus();
       fireEvent.click(save);
 
-      expect(directlyAboveSave(part(name)).textContent).toContain(en.eventEdit[answer]);
+      const notice = directlyAboveSave(part(name));
+
+      expect(notice.textContent).toContain(en.eventEdit[answer]);
       expect(document.activeElement).toBe(save);
-      expect(scrolled).toHaveBeenCalled();
+      const [first, last] = scrolled.mock.contexts.slice(-2);
+
+      expect(first).toBe(notice.parentElement);
+      expect(last).toBe(save.closest('.ev-opened-actions'));
+      expect(scrolled.mock.calls.slice(-2)).toEqual([
+        [{ block: 'nearest' }],
+        [{ block: 'nearest' }],
+      ]);
 
       fireEvent.click(save);
       expect(directlyAboveSave(part(name)).textContent).toContain(en.eventEdit[answer]);

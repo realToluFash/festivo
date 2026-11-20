@@ -435,6 +435,8 @@ interface MenuProps {
   /** Above the scrolling items: a search field. */
   head?: ReactNode;
   scrollRef?: Ref<ScrollViewInstance>;
+  /** Where its items are scrolled to, as they scroll. */
+  onOffset?: (offset: number) => void;
   /** Out of TalkBack's reach while its window arrives, so its own first focus finds nothing. */
   hidden?: boolean;
   /** Close the menu alone out of TalkBack's reach, so its own first focus can only find the menu. */
@@ -504,6 +506,7 @@ export function MenuLayer({
   floor = null,
   head,
   scrollRef,
+  onOffset,
   hidden = false,
   outsideHidden = false,
   children,
@@ -586,6 +589,7 @@ export function MenuLayer({
               onScroll={(event) => {
                 const offset = event.nativeEvent.contentOffset.y;
                 setSeen((now) => ({ ...now, offset }));
+                onOffset?.(offset);
               }}
             >
               {children}

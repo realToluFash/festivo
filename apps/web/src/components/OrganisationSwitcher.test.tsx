@@ -365,6 +365,10 @@ describe('a 100-character name (sc-486)', () => {
     expect(cssRule('.org-name,\n.org-role')).toMatch(/margin: 0;/u);
   });
 
+  it("keeps the menu's own lines free of a paragraph's margins, outside Today's page too (sc-563)", () => {
+    expect(MENU_STYLES).toMatch(/:where\(\.sw-menu\) :is\(h2, h3, p\) \{\s*margin: 0;/u);
+  });
+
   it('never lets the frame grow past the viewport, nor the open list', () => {
     expect(cssRule('.shell')).toMatch(
       /grid-template-columns: var\(--todaySide\) minmax\(0, 1fr\);/u,

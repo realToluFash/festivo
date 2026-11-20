@@ -21,6 +21,7 @@ import {
   type RefObject,
   useContext,
   useEffect,
+  useLayoutEffect,
   useRef,
   useState,
 } from 'react';
@@ -28,6 +29,7 @@ import { useTranslation } from 'react-i18next';
 import {
   Platform,
   Pressable,
+  type ScrollViewInstance,
   StyleSheet,
   type TextInputInstance,
   View,
@@ -36,8 +38,9 @@ import {
 } from 'react-native';
 
 import { endCut, endCuts } from '../layout/endCut.ts';
+import { countLineDrawn, countLineStarts } from '../layout/countLineFit.ts';
 import { keptWhole, rowDrawn, rowStarts } from '../layout/menuRowFit.ts';
-import { atAccessibilitySizes, piecesIn } from '../layout/textSize.ts';
+import { atAccessibilitySizes, LABEL_LINE, piecesIn, wordsIn } from '../layout/textSize.ts';
 import { tokens } from '../theme/tokens.ts';
 import { TextField } from './Field.tsx';
 import { Glyph } from './Glyph.tsx';
@@ -46,6 +49,7 @@ import { RadioMark } from './RadioMark.tsx';
 import { useReadOut } from './ReadOut.tsx';
 import { moveScreenReaderFocus, type ScreenReaderTarget } from './screenReaderFocus.ts';
 import { type Anchor, AnchoredMenu, HeadCount, SectionHead, TextAction } from './Summary.tsx';
+import { TapPressable } from './TapPressable.tsx';
 import { Text, TitleCap } from './Text.tsx';
 import { MeasuredWords } from './Title.tsx';
 
@@ -397,6 +401,9 @@ export function EventsFilterMenu({
   const first = useRef<ViewInstance>(null);
   const whenRow = useRef<ViewInstance>(null);
   const hostsRow = useRef<ViewInstance>(null);
+  const scroll = useRef<ScrollViewInstance>(null);
+  const offset = useRef(0);
+  const leftAt = useRef(0);
   const { locale } = calendar;
   const types = filters.types.map((type) => t(`eventTypes.${type}`));
   const whenNamed = whenWords(filters.when, locale, t);
@@ -404,12 +411,23 @@ export function EventsFilterMenu({
   const close = () => {
     setLevel('top');
     setCameFrom(null);
+    offset.current = 0;
+    leftAt.current = 0;
     onClose();
+  };
+  const drill = (to: Exclude<Level, 'top'>) => {
+    leftAt.current = offset.current;
+    setLevel(to);
   };
   const back = (from: Exclude<Level, 'top'>) => {
     setCameFrom(from);
     setLevel('top');
   };
+
+  // A level opens at its own top, Back first; back from it, the top level is where it was left, or as near as it still scrolls (sc-75211).
+  useLayoutEffect(() => {
+    scroll.current?.scrollTo({ y: level === 'top' ? leftAt.current : 0, animated: false });
+  }, [level]);
 
   // The back row under TalkBack's focus is gone with its level, so focus goes back to the row that opened it rather than wherever TalkBack picks (sc-53520).
   useEffect(() => {
@@ -451,6 +469,10 @@ export function EventsFilterMenu({
       first={first}
       width={272}
       align="start"
+      scrollRef={scroll}
+      onOffset={(now) => {
+        offset.current = now;
+      }}
       over={
         picking != null && (
           <PickerLayer picking={picking} locale={locale} onClose={() => setPicking(null)} />
@@ -465,7 +487,7 @@ export function EventsFilterMenu({
             title={t('eventsSearch.type')}
             picks={types}
             value={types.length === 0 ? t('eventsSearch.anyType') : listed(types, locale)}
-            onPress={() => setLevel('type')}
+            onPress={() => drill('type')}
             testID="events.filter.type"
           />
           <TopRow
@@ -473,7 +495,7 @@ export function EventsFilterMenu({
             title={t('eventsSearch.when')}
             picks={[whenNamed]}
             value={whenNamed}
-            onPress={() => setLevel('when')}
+            onPress={() => drill('when')}
             testID="events.filter.when"
           />
           <TopRow
@@ -483,13 +505,13 @@ export function EventsFilterMenu({
             value={
               filters.hosts.length === 0 ? t('eventsSearch.anyone') : listed(filters.hosts, locale)
             }
-            onPress={() => setLevel('hosts')}
+            onPress={() => drill('hosts')}
             testID="events.filter.hosts"
           />
           {filtered(filters) && (
             <>
               <View style={styles.rule} />
-              <Pressable
+              <TapPressable
                 onPress={() => onFilters(NO_EVENTS_FILTERS)}
                 style={({ pressed }) => [styles.top, pressed && styles.rowPressed]}
                 accessibilityRole="button"
@@ -499,7 +521,7 @@ export function EventsFilterMenu({
                 <Text size={16} weight="medium" accessible={false} style={styles.on}>
                   {t('eventsSearch.clearFilters')}
                 </Text>
-              </Pressable>
+              </TapPressable>
             </>
           )}
         </>
@@ -543,6 +565,7 @@ export function EventsFilterMenu({
                     year={false}
                     height={tokens.sizeHit}
                     onPress={() => pickDay(end)}
+                    tapOnly
                     testID={`events.filter.${end}`}
                   />
                 </View>
@@ -596,7 +619,7 @@ function OneLineTopRow({ ref, title, picks, value, onPress, testID }: TopRowProp
   const [room, setRoom] = useState<number | null>(null);
 
   return (
-    <Pressable
+    <TapPressable
       ref={ref}
       onPress={onPress}
       style={({ pressed }) => [styles.top, pressed && styles.rowPressed]}
@@ -621,7 +644,7 @@ function OneLineTopRow({ ref, title, picks, value, onPress, testID }: TopRowProp
         />
       </View>
       <Glyph name="chevron" size={16} ink={tokens.colorInkTertiary} weight={2.3} />
-    </Pressable>
+    </TapPressable>
   );
 }
 
@@ -696,7 +719,7 @@ export function GrownTopRow({
     setWidths((now) => (now[key(text)] === width ? now : { ...now, [key(text)]: width }));
 
   return (
-    <Pressable
+    <TapPressable
       ref={ref}
       onPress={onPress}
       style={({ pressed }) => [
@@ -788,7 +811,7 @@ export function GrownTopRow({
         )}
       </View>
       <Glyph name="chevron" size={16} ink={tokens.colorInkTertiary} weight={2.3} />
-    </Pressable>
+    </TapPressable>
   );
 }
 
@@ -814,7 +837,7 @@ function Drilled({
 
   return (
     <>
-      <Pressable
+      <TapPressable
         ref={back}
         onPress={onBack}
         style={({ pressed }) => [styles.back, pressed && styles.rowPressed]}
@@ -826,7 +849,7 @@ function Drilled({
         <Text size={16} weight="bold" accessible={false} accessibilityRole="header">
           {title}
         </Text>
-      </Pressable>
+      </TapPressable>
       <View style={styles.rule} />
       {children}
     </>
@@ -845,7 +868,7 @@ function Check({
   testID: string;
 }) {
   return (
-    <Pressable
+    <TapPressable
       onPress={onPress}
       style={({ pressed }) => [styles.choice, pressed && styles.rowPressed]}
       accessibilityRole="checkbox"
@@ -864,7 +887,7 @@ function Check({
       >
         {word}
       </Text>
-    </Pressable>
+    </TapPressable>
   );
 }
 
@@ -880,7 +903,7 @@ function Radio({
   testID: string;
 }) {
   return (
-    <Pressable
+    <TapPressable
       onPress={onPress}
       style={({ pressed }) => [styles.choice, pressed && styles.rowPressed]}
       accessibilityRole="radio"
@@ -897,7 +920,7 @@ function Radio({
       >
         {word}
       </Text>
-    </Pressable>
+    </TapPressable>
   );
 }
 
@@ -924,6 +947,130 @@ export function SearchRow({
           {t('eventsSearch.searchOff')}
         </Text>
       )}
+    </View>
+  );
+}
+
+interface CountLineProps {
+  words: string;
+  clears: boolean;
+  onClearFilters: () => void;
+}
+
+function CountLine(props: CountLineProps) {
+  const { fontScale } = useWindowDimensions();
+  const cap = useContext(TitleCap) ?? Infinity;
+
+  return atAccessibilitySizes(fontScale) ? (
+    <GrownCountLine {...props} scale={fontScale} cap={cap} />
+  ) : (
+    <OneCountLine {...props} />
+  );
+}
+
+function OneCountLine({ words, clears, onClearFilters }: CountLineProps) {
+  const { t } = useTranslation();
+
+  return (
+    <View style={styles.countRow}>
+      <Text size={16} weight="semibold" style={[styles.grow, styles.figures]} testID="events.count">
+        {words}
+      </Text>
+      {clears && (
+        <TextAction
+          label={t('eventsSearch.clearFilters')}
+          onPress={onClearFilters}
+          testID="events.clearFilters"
+        />
+      )}
+    </View>
+  );
+}
+
+/** sc-75214: the count and Clear filters side by side while both fit whole on one line, Clear filters under the count once they cannot. */
+function GrownCountLine({
+  words,
+  clears,
+  onClearFilters,
+  scale,
+  cap,
+}: CountLineProps & { scale: number; cap: number }) {
+  const { t } = useTranslation();
+  const clear = t('eventsSearch.clearFilters');
+  const starts = countLineStarts(scale, cap);
+  const countWords = wordsIn([words]);
+  const clearWords = wordsIn([clear]);
+  const [widths, setWidths] = useState<Readonly<Record<string, number>>>({});
+  const [room, setRoom] = useState(0);
+  const countKey = (text: string) => `c|${starts.count}|${text}`;
+  const clearKey = (text: string) => `x|${starts.clear}|${text}`;
+  const keys = [
+    countKey(words),
+    ...countWords.map(countKey),
+    ...(clears ? [clearKey(clear), ...clearWords.map(clearKey)] : []),
+  ];
+  const ready = room > 0 && keys.every((key) => widths[key] != null);
+  const widthOf = (key: string) => widths[key] ?? 0;
+  const widestOf = (texts: readonly string[], key: (text: string) => string) =>
+    Math.max(0, ...texts.map((text) => widthOf(key(text))));
+  const drawn = countLineDrawn({
+    scale,
+    cap,
+    room,
+    gap: tokens.spaceLg,
+    count: ready && clears ? widthOf(countKey(words)) : 0,
+    clear: ready && clears ? widthOf(clearKey(clear)) : 0,
+    countWidest: ready ? widestOf(countWords, countKey) : 0,
+    clearWidest: ready ? widestOf(clearWords, clearKey) : 0,
+  });
+  const measured = (key: (text: string) => string) => (text: string, width: number) =>
+    setWidths((now) => (now[key(text)] === width ? now : { ...now, [key(text)]: width }));
+
+  return (
+    <View onLayout={(event) => setRoom(event.nativeEvent.layout.width)}>
+      <MeasuredWords
+        words={[words, ...countWords]}
+        size={starts.count}
+        weight="semibold"
+        allowFontScaling={false}
+        style={styles.figures}
+        onWidth={measured(countKey)}
+      />
+      {clears && (
+        <MeasuredWords
+          words={[clear, ...clearWords]}
+          size={starts.clear}
+          weight="semibold"
+          allowFontScaling={false}
+          onWidth={measured(clearKey)}
+        />
+      )}
+      <View
+        style={[styles.countRow, drawn.stacked && styles.countStacked, !ready && styles.waiting]}
+      >
+        <Text
+          size={drawn.countSize}
+          weight="semibold"
+          allowFontScaling={false}
+          style={[
+            drawn.stacked ? styles.shrink : styles.grow,
+            styles.figures,
+            { lineHeight: Math.ceil(drawn.countSize * LABEL_LINE) },
+          ]}
+          testID="events.count"
+        >
+          {words}
+        </Text>
+        {clears && (
+          <TextAction
+            label={clear}
+            onPress={onClearFilters}
+            wraps
+            drawnAt={drawn.clearSize}
+            testID="events.clearFilters"
+          />
+        )}
+      </View>
     </View>
   );
 }
@@ -968,23 +1115,11 @@ export function EventsResults({
 
   return (
     <View style={styles.results}>
-      <View style={styles.countRow}>
-        <Text
-          size={16}
-          weight="semibold"
-          style={[styles.grow, styles.figures]}
-          testID="events.count"
-        >
-          {words}
-        </Text>
-        {filtered(filters) && count > 0 && (
-          <TextAction
-            label={t('eventsSearch.clearFilters')}
-            onPress={onClearFilters}
-            testID="events.clearFilters"
-          />
-        )}
-      </View>
+      <CountLine
+        words={words}
+        clears={filtered(filters) && count > 0}
+        onClearFilters={onClearFilters}
+      />
       {count === 0 ? (
         <View style={styles.noMatch} testID="events.noMatch">
           <Text size={18} weight="bold" accessibilityRole="header" style={styles.noMatchTitle}>
@@ -1154,6 +1289,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: tokens.spaceLg,
   },
+  countStacked: { flexDirection: 'column', alignItems: 'flex-start', gap: 0 },
   groups: { gap: tokens.spaceMd },
   noMatch: { gap: tokens.spaceXs, paddingTop: tokens.spaceXxs },
   noMatchTitle: { letterSpacing: -0.18, lineHeight: 18 * 1.25 },

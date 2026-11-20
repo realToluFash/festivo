@@ -265,6 +265,33 @@ describe('payments on a vendor’s page, shapes and the reminder setting, in A (
     ).toBeDefined();
   });
 
+  it(
+    'previews the vendor’s totals before and after a payment already made (sc-75579)',
+    SLOW,
+    async () => {
+      await open(`${BLOOM}&state=made_over`);
+      const made = dialog('Add a payment already made');
+      expect(within(made).getByText('£360.00 now, £480.00 with this payment')).toBeDefined();
+      expect(within(made).getByText('£1,200.00 now, £1,320.00 with this payment')).toBeDefined();
+      expect(
+        within(made).getByText('With this, the schedule is £120.00 over the quote.'),
+      ).toBeDefined();
+
+      fireEvent.change(within(made).getByLabelText('Vendor'), { target: { value: 'v4' } });
+      expect(within(made).getByText('Paid to Savour Kitchen')).toBeDefined();
+      expect(within(made).getByText('£7,500.00 now, £7,620.00 with this payment')).toBeDefined();
+      expect(within(made).queryByText(/over the quote/u)).toBeNull();
+
+      type(made, 'Amount paid', '');
+      expect(within(made).getByText('£7,500.00')).toBeDefined();
+      expect(within(made).queryByText(/with this payment/u)).toBeNull();
+      type(made, 'Amount paid', '1,500.01');
+      expect(
+        within(made).getByText('With this, the schedule is £0.01 over the quote.'),
+      ).toBeDefined();
+    },
+  );
+
   it('refuses a payment already made dated before the vendor’s first quote', SLOW, async () => {
     await open(`${BLOOM}&state=made_early`);
     const made = dialog('Add a payment already made');
@@ -504,45 +531,15 @@ describe('payments on a vendor’s page, shapes and the reminder setting, in A (
   });
 
   it(
-    'shows the vendor’s paid and scheduled before and after, and says by how much past the quote',
+    'gives the gap after a payment already made when the schedule is already over',
     SLOW,
     async () => {
-      await open(`${BLOOM}&state=made_no_amount`);
-      const made = dialog('Add a payment already made');
-      const totals = within(made).getByRole('list', {
-        name: 'The vendor’s totals with this payment',
-      });
-      const figures = () =>
-        within(totals)
-          .getAllByRole('listitem')
-          .map((one) => one.textContent);
-      expect(figures()).toEqual(['Paid to Bloom & Co£360.00', 'Scheduled£1,200.00']);
-      expect(within(made).getByRole('status').textContent).toBe('');
-
-      type(made, 'Amount paid', '120.00');
-      expect(figures()).toEqual([
-        'Paid to Bloom & Co£360.00 →  with this payment £480.00',
-        'Scheduled£1,200.00 →  with this payment £1,320.00',
-      ]);
-      expect(within(made).getByRole('status').textContent).toBe(
-        'With this, the schedule is £120.00 over the quote. The difference stays visible; nothing absorbs it.',
-      );
-
-      fireEvent.change(within(made).getByLabelText('Vendor'), { target: { value: 'v4' } });
-      expect(figures()).toEqual([
-        'Paid to Savour Kitchen£0.00 →  with this payment £120.00',
-        'Scheduled£7,500.00 →  with this payment £7,620.00',
-      ]);
-      expect(within(made).getByRole('status').textContent).toBe('');
-
-      type(made, 'Amount paid', '0');
-      expect(figures()).toEqual(['Paid to Savour Kitchen£0.00', 'Scheduled£7,500.00']);
-      cleanup();
-
       await open(`${BLOOM}&state=made_over_already`);
+      const made = dialog('Add a payment already made');
+      expect(within(made).getByText('£1,260.00 now, £1,380.00 with this payment')).toBeDefined();
       expect(
-        within(dialog('Add a payment already made')).getByRole('status').textContent,
-      ).toContain('With this, the schedule is £180.00 over the quote.');
+        within(made).getByText('With this, the schedule is £180.00 over the quote.'),
+      ).toBeDefined();
     },
   );
 });

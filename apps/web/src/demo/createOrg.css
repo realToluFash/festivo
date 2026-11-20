@@ -97,3 +97,44 @@
 .cw-signed-ways a.desk-text:hover {
   text-decoration: underline;
 }
+
+/* Invitations waiting, above Start your own (sc-75471): a hairline between rows, each tile beside its answers. */
+.cw-invitations {
+  --swLine: 500 13.5px/1.4 var(--fontFamily);
+
+  display: flex;
+  flex-direction: column;
+}
+
+.cw-invitations h2 {
+  margin-bottom: var(--spaceSm);
+  color: var(--colorInkSecondary);
+  font: 600 14px/1.4 var(--fontFamily);
+}
+
+.cw-invitation {
+  display: flex;
+  gap: var(--spaceLg);
+  padding: var(--spaceXl) 0;
+  border-top: var(--borderInset);
+}
+
+.cw-invitation:last-child {
+  border-bottom: var(--borderInset);
+}
+
+.cw-invitation-tile {
+  flex: none;
+  width: 48px;
+  height: 48px;
+}
+
+.cw-invitation-answer {
+  flex: 1;
+  min-width: 0;
+}
+
+.cw-invitations :is(.sw-button, .sw-lands):focus-visible {
+  outline: none;
+  box-shadow: var(--swRing);
+}
