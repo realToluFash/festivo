@@ -43,4 +43,11 @@ describe('countLineDrawn', () => {
     expect(drawn.countSize).toBe(Math.floor((43 * 362) / 430));
     expect(drawn.clearSize).toBe(43);
   });
+
+  it('steps the count down alone on its line too, with no filter set', () => {
+    const drawn = countLineDrawn(line({ count: 0, clear: 0, countWidest: 430 }));
+
+    expect(drawn.stacked).toBe(false);
+    expect(drawn.countSize).toBe(Math.floor((43 * 362) / 430));
+  });
 });

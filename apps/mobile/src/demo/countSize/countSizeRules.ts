@@ -50,12 +50,9 @@ export function countLineDrawn(line: CountLineMeasure): CountLineDrawn {
   const starts = countLineStarts(line.scale, line.cap);
   const fits = line.count + line.gap + line.clear <= line.room;
 
-  if (!atAccessibilitySizes(line.scale) || fits)
-    return { stacked: false, countSize: starts.count, clearSize: starts.clear };
-
   // A word wider than its own line still steps down, as everywhere else (sc-69816).
   return {
-    stacked: true,
+    stacked: atAccessibilitySizes(line.scale) && !fits,
     countSize: fitWidest(COUNT_TYPE.count, starts.count, line.countWidest, line.room),
     clearSize: fitWidest(COUNT_TYPE.clear, starts.clear, line.clearWidest, line.room),
   };
