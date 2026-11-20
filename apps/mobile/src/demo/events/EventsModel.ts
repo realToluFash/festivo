@@ -441,6 +441,7 @@ export const EVENT_STATES = [
   'replyByNow',
   'replyBySaved',
   'replyByRemoved',
+  'replyByGone',
   'venue',
   'venueSuggestions',
   'venueZone',
@@ -460,6 +461,7 @@ export const EVENT_STATES = [
   'currencyRefused',
   'name',
   'nameBlank',
+  'nameGone',
   'cover',
   'coverRefused',
   'coverPhoto',
@@ -532,6 +534,7 @@ export function editOf(state: EventDemoState | null): EditPart | null {
     case 'replyByError':
     case 'replyBySooner':
     case 'replyByNow':
+    case 'replyByGone':
       return 'replyBy';
     case 'venue':
     case 'venueSuggestions':
@@ -554,6 +557,7 @@ export function editOf(state: EventDemoState | null): EditPart | null {
       return 'currency';
     case 'name':
     case 'nameBlank':
+    case 'nameGone':
       return 'name';
     case 'cover':
     case 'coverRefused':

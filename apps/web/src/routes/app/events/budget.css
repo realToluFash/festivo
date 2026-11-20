@@ -81,6 +81,16 @@
   }
 }
 
+.desk-glass.bt-glass-wraps {
+  flex: 0 1 auto;
+  min-width: 0;
+  height: auto;
+  min-height: 28px;
+  padding-block: 6px;
+  line-height: 1.25;
+  white-space: normal;
+}
+
 .bt-pairs {
   display: flex;
   flex-wrap: wrap;

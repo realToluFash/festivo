@@ -1,14 +1,18 @@
-import { initials } from '@soirely/domain';
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate, useSearchParams } from 'react-router';
 
-import { Brand } from '../components/Brand.tsx';
 import { StartYourOwn } from '../components/CreateOrganisation.tsx';
 import { Toast } from '../components/Toast.tsx';
 import { CreateWalk } from './CreateOrg.tsx';
 import { NO_ORG_WORDS as W, type DemoWalk, freshWalk, isCreateState, walkOf } from './createOrg.ts';
-import { Glyph } from '../components/Glyph.tsx';
+import {
+  AloneHeader,
+  LanguageFace,
+  SignedIn,
+  WaitingList,
+  WaitingRow,
+} from '../components/NoOrganisationParts.tsx';
 import { Notice } from '../components/Notice.tsx';
 import { InvitationActions, InvitationAnswer, JoinedAnswer } from '../components/OrgMenu.tsx';
 import { LayersContext, focusWhenFree, useDeskLayers } from '../layers.ts';
@@ -23,8 +27,6 @@ import {
   join,
   switchTo,
 } from './switcher.ts';
-import '../components/SettingsParts.css';
-import './createOrg.css';
 
 const ANSWERING_MS = 700;
 
@@ -54,17 +56,15 @@ export function NoOrganisation() {
   return (
     <LayersContext value={layers}>
       <div className="cw-alone desk">
-        <header className="cw-header" inert={covered}>
-          <Brand lockup />
+        <AloneHeader covered={covered}>
           <button
             type="button"
             className="cw-language"
             onClick={() => setTold('Choosing a language has its own design.')}
           >
-            <Glyph name="globe" size={16} />
-            {W.language}
+            <LanguageFace name={W.language} />
           </button>
-        </header>
+        </AloneHeader>
         <main id="content" className="cw-none" inert={covered}>
           <h1>{W.title}</h1>
           <p className="cw-none-body">{W.body}</p>
@@ -84,17 +84,14 @@ export function NoOrganisation() {
           ) : (
             <StartYourOwn button={start} onStart={() => setWalk(freshWalk())} />
           )}
-          <div className="cw-signed">
-            <p>{W.signedInAs(SAMPLE.email)}</p>
-            <div className="cw-signed-ways">
-              <Link className="desk-text" to="/demo/settings/account">
-                {W.account}
-              </Link>
-              <Link className="desk-text" to="/demo/sign-in?state=signed-out">
-                {W.signOut}
-              </Link>
-            </div>
-          </div>
+          <SignedIn line={W.signedInAs(SAMPLE.email)}>
+            <Link className="desk-text" to="/demo/settings/account">
+              {W.account}
+            </Link>
+            <Link className="desk-text" to="/demo/sign-in?state=signed-out">
+              {W.signOut}
+            </Link>
+          </SignedIn>
         </main>
         <div ref={setHost} className="desk-layers" />
         {walk != null && (
@@ -118,7 +115,6 @@ export function NoOrganisation() {
 
 /** Each invitation waiting, a row with its dashed tile and the switcher's own answers: Accept and join holds while it is sent, then says so with Open; Decline says what it told. */
 function WaitingInvitations({ onOpen }: { onOpen: (invitation: Invitation) => void }) {
-  const { t } = useTranslation();
   const [said, setSaid] = useState<Readonly<Record<string, Said>>>({});
   const timers = useRef<number[]>([]);
 
@@ -141,52 +137,41 @@ function WaitingInvitations({ onOpen }: { onOpen: (invitation: Invitation) => vo
   }
 
   return (
-    <section className="cw-invitations" aria-labelledby="cw-invitations-heading">
-      <h2 id="cw-invitations-heading">{t('invitations.heading')}</h2>
+    <WaitingList>
       {INVITATIONS.map((invitation) => {
         const now = said[invitation.id];
 
         return (
-          <div
-            key={invitation.id}
-            className="cw-invitation"
-            role="group"
-            aria-label={invitation.name}
-          >
-            <span className="cw-invitation-tile" aria-hidden="true">
-              <span className="sw-tile is-dashed">{initials(invitation.name)}</span>
-            </span>
-            <div className="cw-invitation-answer">
-              <InvitationAnswer
-                name={invitation.name}
-                line={`Invitation from ${invitation.inviter} · ${invitation.role}`}
-                until={`Works until ${dayOf(invitation.until)}`}
-              >
-                {now === 'joined' ? (
-                  <JoinedAnswer
-                    name={invitation.name}
-                    role={invitation.role}
-                    onOpen={() => onOpen(invitation)}
-                  />
-                ) : now === 'declined' ? (
-                  <Notice kind="quiet" lands>
-                    You declined. {invitation.inviter} will see that you said no.
-                  </Notice>
-                ) : (
-                  <InvitationActions
-                    name={invitation.name}
-                    note={`Declining tells ${invitation.inviter} you said no. Nothing else changes.`}
-                    failed={false}
-                    busy={now === 'accept' || now === 'decline' ? now : null}
-                    onAccept={() => answer(invitation, 'accept')}
-                    onDecline={() => answer(invitation, 'decline')}
-                  />
-                )}
-              </InvitationAnswer>
-            </div>
-          </div>
+          <WaitingRow key={invitation.id} name={invitation.name}>
+            <InvitationAnswer
+              name={invitation.name}
+              line={`Invitation from ${invitation.inviter} · ${invitation.role}`}
+              until={`Works until ${dayOf(invitation.until)}`}
+            >
+              {now === 'joined' ? (
+                <JoinedAnswer
+                  name={invitation.name}
+                  role={invitation.role}
+                  onOpen={() => onOpen(invitation)}
+                />
+              ) : now === 'declined' ? (
+                <Notice kind="quiet" lands>
+                  You declined. {invitation.inviter} will see that you said no.
+                </Notice>
+              ) : (
+                <InvitationActions
+                  name={invitation.name}
+                  note={`Declining tells ${invitation.inviter} you said no. Nothing else changes.`}
+                  failed={false}
+                  busy={now === 'accept' || now === 'decline' ? now : null}
+                  onAccept={() => answer(invitation, 'accept')}
+                  onDecline={() => answer(invitation, 'decline')}
+                />
+              )}
+            </InvitationAnswer>
+          </WaitingRow>
         );
       })}
-    </section>
+    </WaitingList>
   );
 }

@@ -101,7 +101,7 @@ function Loaded({
   const [busy, setBusy] = useState(false);
   const said = useRef<HTMLDivElement>(null);
   const row = exportRow(t, page, organisation.name);
-  const domainsLine = domainsRow(t, domains);
+  const domainsLine = domainsRow(t, domains, organisation.name);
   const exported = page.export;
   const ask = hubCard(t, page, domains, organisation.name, currentLocale());
 

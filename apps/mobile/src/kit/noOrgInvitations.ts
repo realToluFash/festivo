@@ -1,7 +1,5 @@
 import type { InvitationOutcome } from '@soirely/domain';
 
-import type { Invite } from '../OrgSwitcherModel.ts';
-
 export interface AnswerButton {
   label: string;
   accessibilityLabel: string;
@@ -12,12 +10,14 @@ export interface AnswerButton {
 export type InvitationRow =
   | { kind: 'joined' }
   | { kind: 'declined' }
+  | { kind: 'refused' }
   | { kind: 'answers'; accept: AnswerButton; decline: AnswerButton };
 
 /** A declined one keeps its row with the notice; while either answer is in flight both are off and the pressed one says what it is doing (sc-75471). */
 export function invitationRowOf(outcome: InvitationOutcome | undefined): InvitationRow {
   if (outcome?.kind === 'accepted') return { kind: 'joined' };
   if (outcome?.kind === 'declined') return { kind: 'declined' };
+  if (outcome?.kind === 'refused' || outcome?.kind === 'managed') return { kind: 'refused' };
   const busy = outcome?.kind === 'busy' ? outcome.answer : null;
 
   return {
@@ -38,7 +38,7 @@ export function invitationRowOf(outcome: InvitationOutcome | undefined): Invitat
 }
 
 /** The way-on line shows only with nothing waiting; the invitations take its place. */
-export function wayOnShows(invitations: readonly Invite[]): boolean {
+export function wayOnShows(invitations: readonly unknown[]): boolean {
   return invitations.length === 0;
 }
 

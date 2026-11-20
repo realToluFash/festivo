@@ -314,7 +314,7 @@ describe('the page', () => {
     expect(auditCard(t, { ...at, preparing: 'folake@ire.events', kind: 'tabletPortrait' })).toEqual(
       {
         says: 'Preparing your export',
-        line: 'We’ll email folake@ire.events a link when it’s ready. It works once, for 24 hours.',
+        line: 'We’ll email folake@ire.events a link when it’s ready. It downloads only for you, signed in, for 24 hours.',
         step: null,
       },
     );
