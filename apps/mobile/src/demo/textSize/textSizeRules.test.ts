@@ -5,6 +5,7 @@ import {
   cardTileShown,
   languageOf,
   LONG_ORGANISATION,
+  partOf,
   scaleFor,
   TAB_GLYPH,
   TAB_GLYPH_GAP,
@@ -12,6 +13,8 @@ import {
   TAB_LABEL_MOST,
   tabLabelSize,
   textSizeOf,
+  weekStateOf,
+  weekStripShown,
 } from './textSizeRules.ts';
 
 // Instrument Sans SemiBold at 24, from the app's own font files.
@@ -86,5 +89,31 @@ describe('the board’s choices', () => {
 
   it('uses sc-13280’s 100-character organisation', () => {
     expect(LONG_ORGANISATION).toHaveLength(100);
+  });
+});
+
+describe('Home’s This week at a text size (sc-13281)', () => {
+  it('keeps the strip at the default sizes', () => {
+    expect(weekStripShown(scaleFor('default', 1))).toBe(true);
+    expect(weekStripShown(1.35)).toBe(true);
+  });
+
+  it('gives the strip up from iOS’s eighth step (1.79), the first accessibility size', () => {
+    expect(weekStripShown(1.79)).toBe(false);
+    expect(weekStripShown(scaleFor('android', 1))).toBe(false);
+    expect(weekStripShown(scaleFor('iphone', 1))).toBe(false);
+    expect(weekStripShown(scaleFor('twelfth', 1))).toBe(false);
+  });
+
+  it('draws the twelfth step at 3.57', () => {
+    expect(textSizeOf('twelfth')).toBe('twelfth');
+    expect(scaleFor('twelfth', 1)).toBe(3.57);
+  });
+
+  it('reads the board’s part and week from the address', () => {
+    expect(partOf('week')).toBe('week');
+    expect(partOf(undefined)).toBe('card');
+    expect(weekStateOf('nothing')).toBe('nothing');
+    expect(weekStateOf('other')).toBe('events');
   });
 });
