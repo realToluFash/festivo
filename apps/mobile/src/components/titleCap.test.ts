@@ -19,6 +19,7 @@ const event = readFileSync(join('src', 'components', 'EventScreen.tsx'), 'utf8')
 const guests = readFileSync(join('src', 'components', 'GuestsHeading.tsx'), 'utf8');
 const settings = readFileSync(join('src', 'components', 'SettingsHome.tsx'), 'utf8');
 const title = readFileSync(join('src', 'components', 'Title.tsx'), 'utf8');
+const parts = readFileSync(join('src', 'components', 'SettingsParts.tsx'), 'utf8');
 const demoFrame = readFileSync(join('src', 'demo', 'settings', 'Frame.tsx'), 'utf8');
 const demoMembers = readFileSync(join('src', 'demo', 'settings', 'MembersParts.tsx'), 'utf8');
 
@@ -158,8 +159,14 @@ describe('every line under the cap wraps whole, and nothing is cut (sc-67338)', 
     expect(title).toMatch(/<Text\s+\{\.\.\.rest\}\s+(?:\/\/[^\n]*\s+)?key=\{drawnSize\}/u);
   });
 
-  it('measures a word afresh at each start, so a reading at the last start never sizes this one (sc-69816)', () => {
-    expect(title).toMatch(/key=\{`\$\{look\.maxFontSizeMultiplier \?\? 1\}\|\$\{word\}`\}/u);
+  it('measures a word afresh at each size and start, so a reading at the last one never sizes this one (sc-69816, sc-74113)', () => {
+    expect(title).toMatch(
+      /key=\{`\$\{look\.size \?\? ''\}\|\$\{look\.maxFontSizeMultiplier \?\? 1\}\|\$\{word\}`\}/u,
+    );
+  });
+
+  it('relearns the Back pill’s room whenever its word is remeasured, so a room learned from a stale width never holds it small (sc-74113)', () => {
+    expect(parts).toMatch(/const roomKey = `\$\{key\}\|\$\{measured\}\|/u);
   });
 
   it('wraps a row’s tag at the accessibility sizes rather than cut it', () => {

@@ -56,8 +56,8 @@ export function MeasuredWords({
       >
         {[...new Set(words)].map((word) => (
           <Text
-            // A new Text per start, so a layout read at the last start is never filed under this one when the title's cap moves (sc-69816).
-            key={`${look.maxFontSizeMultiplier ?? 1}|${word}`}
+            // A new Text per size and start, so a layout read at the last one is never filed under this one when the title's cap moves (sc-69816, sc-74113).
+            key={`${look.size ?? ''}|${look.maxFontSizeMultiplier ?? 1}|${word}`}
             {...look}
             style={[look.style, styles.word]}
             onLayout={(event) => onWidth(word, event.nativeEvent.layout.width)}

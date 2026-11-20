@@ -285,14 +285,14 @@ export function Pair({
   );
 }
 
-/** A back's word sized by `backWordSize`, measured; the room is relearned when Refreshing… comes or goes beside it (sc-68778). */
+/** A back's word sized by `backWordSize`, measured; the room is relearned when Refreshing… comes or goes beside it (sc-68778), and whenever the word is remeasured (sc-74113). */
 export function useBackWord(word: string, back: BackSizing, besideShown = false) {
   const { width: windowWidth } = useWindowDimensions();
   const key = `${back.full}|${word}`;
-  const roomKey = `${key}|${windowWidth}|${besideShown}`;
   const [width, setWidth] = useState<{ key: string; width: number } | null>(null);
   const [room, setRoom] = useState<{ key: string; width: number } | null>(null);
   const measured = width?.key === key ? width.width : null;
+  const roomKey = `${key}|${measured}|${windowWidth}|${besideShown}`;
   const known = room?.key === roomKey ? room.width : null;
   const size = measured == null || known == null ? back.full : backWordSize(back, measured, known);
 
