@@ -26,7 +26,7 @@ import { SAMPLE } from '../samples.ts';
 import { openEvent } from '../events/openEvent.ts';
 import { CLOCKS, READER_ZONE } from '../events/EventsSample.ts';
 import { W } from '../events/EventsWords.ts';
-import { Bell, Landscape, OrgPill, PortraitTop } from '../settings/Frame.tsx';
+import { Landscape, ListTopEnd, OrgPill, PortraitTop } from '../settings/Frame.tsx';
 import {
   type CalendarState,
   type Feed,
@@ -173,7 +173,7 @@ export function CalendarPage({ state }: { state: CalendarState | null }) {
       kind={kindOf(shell.layout)}
       title={t('calendar.title')}
       pill={<OrgPill />}
-      bell={<Bell tell={tell} />}
+      bell={<ListTopEnd />}
       beside={<Subscribe phone={phone} onPress={subscribe} ref={subscribeRef} />}
     />
   );

@@ -188,12 +188,22 @@ export function Bell({
 }
 
 /** Search left of the bell, as the product's upright top has it (sc-39534); a phone page with a Back has the bell alone. */
-function SearchAndBell({ tell, role }: { tell: Tell; role: string | null }) {
+export function SearchAndBell({ tell, role }: { tell: Tell; role: string | null }) {
   return (
     <View style={styles.ends}>
       <SearchButton role={role} />
       <Bell tell={tell} />
     </View>
+  );
+}
+
+/** A list's own top: Search before the bell on a phone, as the product has it (sc-39534); on its side the sidebar's row opens Search, so the bell is alone. */
+export function ListTopEnd() {
+  const shell = useShell();
+  return shell.layout === 'landscape' ? (
+    <Bell tell={shell.tell} />
+  ) : (
+    <SearchAndBell tell={shell.tell} role={shell.looking.role} />
   );
 }
 
