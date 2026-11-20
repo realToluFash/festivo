@@ -570,8 +570,10 @@ export function markupWords(line: CostLine, markups: Markups): string {
       ? 'at cost, chosen'
       : `${percentWords(category)} markup, ${CATEGORY_WORDS[line.category]}’s`;
 
-  return markups.event == null
-    ? 'no markup set'
+  if (markups.event == null) return 'no markup set';
+
+  return markups.event === 0
+    ? 'at cost, chosen'
     : `${percentWords(markups.event)} markup, the event’s`;
 }
 
