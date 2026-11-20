@@ -305,7 +305,7 @@ export interface BesideBackStatus {
   onPlaced: (beside: boolean) => void;
 }
 
-/** Back, and beside it a status only where the pill stays whole with it, as on main where it fits; else the area draws the status under its heading (sc-71821). */
+/** Back, and beside it a status only where the pill stays whole with it, as on main where it fits; else the area draws the status under its heading (sc-71821). The drawn status is out of the row's flow, as the app's GivingWay draws it, so a pill that grows after the status is placed is never squeezed into reading as room for both (sc-74113). */
 function BackSlot({
   beside,
   capped,
@@ -352,7 +352,7 @@ function BackSlot({
           {capped(beside.node)}
         </View>
       </View>
-      {fits && <View style={styles.offBell}>{capped(beside.node)}</View>}
+      {fits && <View style={[styles.offBell, styles.atEnd]}>{capped(beside.node)}</View>}
     </View>
   );
 }
@@ -842,6 +842,7 @@ const styles = StyleSheet.create({
     gap: tokens.spaceMd,
   },
   offBell: { paddingRight: tokens.spaceMd },
+  atEnd: { position: 'absolute', top: 0, right: 0, bottom: 0, justifyContent: 'center' },
   backWhole: { flexShrink: 1, minWidth: 0 },
   measure: { position: 'absolute', opacity: 0 },
   bellRow: { flexDirection: 'row', alignItems: 'flex-start', gap: tokens.spaceLg },
