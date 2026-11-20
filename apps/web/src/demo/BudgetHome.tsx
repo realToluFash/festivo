@@ -288,8 +288,10 @@ export function BudgetHomeContent({
           : MARKUPS,
   );
   const feeLine = lines.some((one) => one.id === FEE_LINE.id);
-  const [planningFee, setFee] = useState(first === 'margin_zero_price' ? 0 : PLANNING_FEE);
-  const fee = feeLine ? 0 : planningFee;
+  const [planningFee, setFee] = useState<number | null>(
+    first === 'margin_zero_price' ? 0 : PLANNING_FEE,
+  );
+  const fee = feeLine ? 0 : (planningFee ?? 0);
   const ceilingLive = first.startsWith('ceiling_live');
   const [opened, setOpened] = useState<string | null>(() => openedOf(first));
   const [removed, setRemoved] = useState<Removed | null>(() => removedOf(first, heads));
@@ -510,10 +512,10 @@ export function BudgetHomeContent({
                 heads={heads}
                 first={first}
                 markups={markups}
-                fee={feeLine ? null : fee}
+                fee={feeLine ? undefined : planningFee}
                 onFee={(price) => {
                   setFee(price);
-                  tell('Saved.');
+                  tell(price == null ? 'Price removed.' : 'Saved.');
                 }}
                 onPrice={(id, price) => {
                   setMarkups((now) =>
@@ -564,6 +566,7 @@ export function BudgetHomeContent({
               <MarginBlocks
                 markups={markups}
                 lines={lines}
+                feePriced={!feeLine && planningFee != null}
                 onMarkup={(start) => {
                   setMarkupStart(start);
                   setDialog('markup');
@@ -1223,8 +1226,8 @@ function MarginCosts({
   heads: Heads;
   first: string;
   markups: Markups;
-  fee: number | null;
-  onFee: (price: number) => void;
+  fee: number | null | undefined;
+  onFee: (price: number | null) => void;
   onPrice: (id: string, price: number | null) => void;
 }) {
   const refused = first === 'price_negative' || first === 'price_decimals';
@@ -1325,7 +1328,7 @@ function MarginCosts({
           </Rows>
         </div>
       ))}
-      {fee != null && (
+      {fee !== undefined && (
         <div className="bud-cat">
           <CategoryHead name="Other" />
           <Rows>
@@ -1336,8 +1339,12 @@ function MarginCosts({
                   <MoneyField
                     label="Charged at"
                     value={charged}
-                    help="Cost £0.00"
-                    error={chargedTried ? priceProblem(charged, CURRENCY) : null}
+                    help={
+                      fee == null
+                        ? 'Cost £0.00'
+                        : 'Cost £0.00. Leave it empty to charge by the markup.'
+                    }
+                    error={chargedTried ? priceProblem(charged, CURRENCY, fee != null) : null}
                     inputRef={chargedField}
                     onChange={setCharged}
                   />
@@ -1347,9 +1354,9 @@ function MarginCosts({
                       label={W.save}
                       onClick={() => {
                         setChargedTried(true);
-                        if (priceProblem(charged, CURRENCY) != null)
+                        if (priceProblem(charged, CURRENCY, fee != null) != null)
                           return chargedField.current?.focus();
-                        onFee(minorOf(charged));
+                        onFee(charged.trim() === '' ? null : minorOf(charged));
                         setOpened(null);
                       }}
                     />
@@ -1358,11 +1365,13 @@ function MarginCosts({
               ) : (
                 <BudgetRow
                   title="Planning fee"
-                  lines={[`Cost £0.00 · Charged at ${money(fee)} · its own price`]}
-                  end={<Amount value={fee === 0 ? 'No figure' : '100.0%'} />}
+                  lines={[
+                    `Cost £0.00 · Charged at ${money(fee ?? 0)} · ${fee == null ? markupWords(FEE_LINE, markups) : 'its own price'}`,
+                  ]}
+                  end={<Amount value={(fee ?? 0) === 0 ? 'No figure' : '100.0%'} />}
                   onOpen={() => {
                     setChargedTried(false);
-                    setCharged((fee / 100).toFixed(2));
+                    setCharged(((fee ?? 0) / 100).toFixed(2));
                     setOpened('fee');
                   }}
                 />
@@ -1378,10 +1387,12 @@ function MarginCosts({
 function MarginBlocks({
   markups,
   lines,
+  feePriced,
   onMarkup,
 }: {
   markups: Markups;
   lines: readonly CostLine[];
+  feePriced: boolean;
   onMarkup: (start: MarkupStart) => void;
 }) {
   const shown = (percent: number) => (percent === 0 ? 'At cost, chosen' : `${percent}% markup`);
@@ -1408,9 +1419,7 @@ function MarginBlocks({
       'Its own price',
       null,
     ]),
-    ...(lines.some((one) => one.id === FEE_LINE.id)
-      ? []
-      : [['Planning fee', 'Its own price', null] as [string, string, null]]),
+    ...(feePriced ? [['Planning fee', 'Its own price', null] as [string, string, null]] : []),
   ];
 
   return (
