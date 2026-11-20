@@ -262,7 +262,7 @@
     "audit.change": "{field}: {before} → {after}",
     "audit.value.on": "Ativado",
     "audit.value.off": "Desativado",
-    "audit.value.none": "Nenhuma",
+    "audit.value.none": "Sem valor",
     "audit.value.lead": "Responsável",
     "audit.value.can_edit": "Pode editar",
     "audit.value.can_view": "Pode ver",
