@@ -4,6 +4,7 @@ import { type Ref, useState } from 'react';
 import { Platform, Pressable, StyleSheet, View, type ViewInstance } from 'react-native';
 
 import { TextField, type TextFieldProps } from './Field.tsx';
+import { TapPressable } from './TapPressable.tsx';
 import { Text } from './Text.tsx';
 import { pickedInto, pickerValue } from '../kit/eventForm.ts';
 import { weight } from '../theme/fonts.ts';
@@ -93,6 +94,7 @@ export function MomentBox({
   wrong = false,
   line = null,
   onPress,
+  tapOnly = false,
   ref,
   testID,
 }: {
@@ -107,10 +109,13 @@ export function MomentBox({
   /** Read after the box while it is wrong: the line under it. */
   line?: string | null;
   onPress: () => void;
+  /** In a list that scrolls, a touch that moved it opens nothing (sc-75211). */
+  tapOnly?: boolean;
   ref?: Ref<ViewInstance>;
   testID?: string;
 }) {
   const { t } = useTranslation();
+  const Press = tapOnly ? TapPressable : Pressable;
   const words =
     value === ''
       ? ''
@@ -123,7 +128,7 @@ export function MomentBox({
   const inside = (tall ? tokens.spacePillEnd : tokens.spaceLg) - (wrong ? 2 : 1.5);
 
   return (
-    <Pressable
+    <Press
       ref={ref}
       onPress={onPress}
       style={({ pressed }) => [
@@ -145,7 +150,7 @@ export function MomentBox({
       <Text size={tall ? 16 : 15} weight="medium" accessible={false} style={styles.figures}>
         {words}
       </Text>
-    </Pressable>
+    </Press>
   );
 }
 
