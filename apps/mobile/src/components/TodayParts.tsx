@@ -792,7 +792,8 @@ const styles = StyleSheet.create({
   },
   thumb: { overflow: 'hidden', flex: 0 },
   action: {
-    height: tokens.sizeControlDense,
+    minHeight: tokens.sizeControlDense,
+    paddingVertical: tokens.spaceXxs,
     paddingHorizontal: 15,
     borderRadius: tokens.sizeControlDense / 2,
     alignItems: 'center',
@@ -878,7 +879,8 @@ const styles = StyleSheet.create({
     backgroundColor: tokens.colorCard,
   },
   chip: {
-    height: 26,
+    minHeight: 26,
+    paddingVertical: tokens.spaceHair,
     paddingHorizontal: 11,
     borderRadius: 13,
     flexDirection: 'row',
@@ -887,7 +889,7 @@ const styles = StyleSheet.create({
     flex: 0,
   },
   chipSmall: {
-    height: tokens.space3xl,
+    minHeight: tokens.space3xl,
     paddingHorizontal: tokens.spaceMd,
     borderRadius: tokens.spaceLg,
   },

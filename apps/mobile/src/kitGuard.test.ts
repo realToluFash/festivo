@@ -2072,6 +2072,9 @@ describe('a pill with words grows with them rather than cutting them (sc-13281)'
   it.each([
     ['TodayParts.tsx', 'create', 'Créer votre premier événement (QA #76223)'],
     ['CreateWalkParts.tsx', 'tag', 'De cet appareil (QA #76223)'],
+    ['TodayParts.tsx', 'action', "an event card's action at the ninth step"],
+    ['TodayParts.tsx', 'chip', "an event card's count and stage at the ninth step"],
+    ['TodayParts.tsx', 'chipSmall', "a tile's count and stage at the ninth step"],
   ])('%s %s sets a least height, never a height', (file, name, seen) => {
     const style = styleOf(file, name);
 

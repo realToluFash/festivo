@@ -304,6 +304,11 @@ is held to what both can do:
 - **Text on web breaks words anywhere** (`apps/web/src/styles.css`), so a one-line mark of
   fixed height, such as a pill, a tag or a button's one word, sets `flex: none` and
   `white-space: nowrap`, and the text beside it gives way.
+- **On the app, a box that holds words takes a least height, never a height**: at the
+  accessibility text sizes its words outgrow it and are cut at the foot. `minHeight` and a
+  little vertical padding let it grow. Only a box whose words are capped at the default
+  size (`maxFontSizeMultiplier={1}`) or that holds a single glyph keeps a `height`, and
+  `kitGuard.test.ts` names each one that has been cut.
 
 ## 8. Inputs, accessibility, and verifying
 
