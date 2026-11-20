@@ -107,6 +107,15 @@ export function backRoomIsLaid(
   return size === back.full || laid < natural - 1;
 }
 
+/** A room laid at `full` is the true room whatever the word measured; one laid stepped down holds only for the width it was stepped for (sc-74113). */
+export function backRoomStands(
+  back: BackSizing,
+  room: { size: number; word: number | null },
+  word: number | null,
+): boolean {
+  return room.size === back.full || room.word === word;
+}
+
 /** The pill's word at its full size unless the pill would be wider than its room, then the size that fits; never below 15. */
 export function pillTextSize(scale: number, word: number, room: number): number {
   return backWordSize(pillBack(scale), word, room);

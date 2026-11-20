@@ -19,6 +19,7 @@ import {
   PILL_LEFT,
   PILL_RIGHT,
   backRoomIsLaid,
+  backRoomStands,
   backScale,
   backWordSize,
   pillBack,
@@ -285,15 +286,20 @@ export function Pair({
   );
 }
 
-/** A back's word sized by `backWordSize`, measured; the room is relearned when Refreshing… comes or goes beside it (sc-68778), and whenever the word is remeasured (sc-74113). */
+/** A back's word sized by `backWordSize`, measured; the room is relearned when Refreshing… comes or goes beside it (sc-68778), and a room learned stepped down is dropped once the word is remeasured (sc-74113). */
 export function useBackWord(word: string, back: BackSizing, besideShown = false) {
   const { width: windowWidth } = useWindowDimensions();
   const key = `${back.full}|${word}`;
   const [width, setWidth] = useState<{ key: string; width: number } | null>(null);
-  const [room, setRoom] = useState<{ key: string; width: number } | null>(null);
+  const roomKey = `${key}|${windowWidth}|${besideShown}`;
+  const [room, setRoom] = useState<{
+    key: string;
+    width: number;
+    size: number;
+    word: number | null;
+  } | null>(null);
   const measured = width?.key === key ? width.width : null;
-  const roomKey = `${key}|${measured}|${windowWidth}|${besideShown}`;
-  const known = room?.key === roomKey ? room.width : null;
+  const known = room?.key === roomKey && backRoomStands(back, room, measured) ? room.width : null;
   const size = measured == null || known == null ? back.full : backWordSize(back, measured, known);
 
   return {
@@ -311,7 +317,7 @@ export function useBackWord(word: string, back: BackSizing, besideShown = false)
       const laid = event.nativeEvent.layout.width;
 
       if (size === back.full || (measured != null && backRoomIsLaid(back, measured, size, laid)))
-        setRoom({ key: roomKey, width: laid });
+        setRoom({ key: roomKey, width: laid, size, word: measured });
     },
   };
 }
