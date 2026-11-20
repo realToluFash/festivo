@@ -670,7 +670,11 @@ export function PaymentDialog({
       const refused = error instanceof ApiError ? error.fieldErrors() : {};
       const fields = shapeRefusedAt(refused, now.terms.length);
       if (fields == null) {
-        setTop(t('quotes.shapeFailed', { count: now.terms.length }));
+        setTop(
+          error instanceof ApiError && error.status !== 0 && error.status < 500
+            ? refusalWords(error, t('budget.form.failed'))
+            : t('quotes.shapeFailed', { count: now.terms.length }),
+        );
         return;
       }
       setShaping({ ...now, problems: fields.rows });
