@@ -17,6 +17,7 @@ use App\Http\Exception\ApiException;
 use App\Repository\OrganisationExportRepository;
 use DateInterval;
 use DateTimeImmutable;
+use DateTimeZone;
 use Doctrine\DBAL\LockMode;
 use Doctrine\ORM\EntityManagerInterface;
 use Psl\Iter;
@@ -155,6 +156,6 @@ final readonly class OrganisationExports
         ]);
         $this->entityManager->flush();
 
-        return new DownloadedArchive(Str\format('%s %s.zip', $organisation->getName(), $export->getAskedAt()->format('Y-m-d')), $chunks);
+        return new DownloadedArchive(Str\format('%s %s.zip', $organisation->getName(), $export->getAskedAt()->setTimezone(new DateTimeZone('UTC'))->format('Y-m-d')), $chunks);
     }
 }

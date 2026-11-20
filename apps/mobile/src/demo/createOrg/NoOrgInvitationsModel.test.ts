@@ -13,7 +13,7 @@ import {
   noOrgHome,
   noOrgSettings,
 } from '../settings/fromNone.ts';
-import { invitationRowOf, NO_ORG_IDS, wayOnShows } from './NoOrgInvitationsModel.ts';
+import { invitationRowOf, NO_ORG_IDS, wayOnShows } from '../../kit/noOrgInvitations.ts';
 
 const i18n = createInstance();
 void i18n.init({
@@ -31,9 +31,7 @@ describe('no organisation, with invitations waiting (sc-75471)', () => {
     expect(wayOnShows(invited.invitations)).toBe(false);
     expect(wayOnShows(withoutPlaces(sessionFor('one')).invitations)).toBe(true);
     const page = read('src', 'demo', 'createOrg', 'NoOrganisation.tsx');
-    expect(page).toMatch(
-      /wayOn \?[\s\S]*noOrganisation\.wayOn[\s\S]*: \(\s*<NoOrgInvitations \/>/u,
-    );
+    expect(page).toMatch(/wayOn \? <NoOrgWayOn email=\{email\} \/> : <NoOrgInvitations \/>/u);
   });
 
   it('offers both answers by name, then Joining… with both off while one is sent', () => {
@@ -61,22 +59,47 @@ describe('no organisation, with invitations waiting (sc-75471)', () => {
     });
   });
 
+  it('takes the answers away from a refused or managed one, so it never goes back to live buttons', () => {
+    expect(invitationRowOf({ kind: 'refused', refusal: 'invitation_expired' })).toEqual({
+      kind: 'refused',
+    });
+    expect(
+      invitationRowOf({ kind: 'managed', organisation: 'Alameda', message: 'Ask IT.' }),
+    ).toEqual({ kind: 'refused' });
+  });
+
+  it('gives each notice the answer it shows, so a screen reader hears it as in the switcher', () => {
+    const rows = read('src', 'components', 'NoOrgInvitations.tsx');
+    expect(rows.match(/answer=\{answer\}\s+takesFocus/gu)).toHaveLength(2);
+    const landing = read('src', 'components', 'NoOrganisation.tsx');
+    expect(landing).toMatch(/const answer = outcome === answered \? outcome : undefined;/u);
+    expect(landing).toMatch(/\.then\(setAnswered\)/u);
+    expect(landing.match(/answer=\{answer\}/gu)?.length).toBeGreaterThanOrEqual(3);
+    const notices = read('src', 'components', 'InvitationNotices.tsx');
+    expect(notices.match(/answer=\{answer\}/gu)).toHaveLength(2);
+  });
+
+  it('writes the refusal and failed notices once, for the switcher, the onboarding rows and this page', () => {
+    for (const file of ['OrgDropDown.tsx', 'InvitationRows.tsx', 'NoOrganisation.tsx']) {
+      const source = read('src', 'components', file);
+      expect(source).toContain('<InvitationRefusalNotice');
+      expect(source).toContain('<InvitationFailedNotice');
+      expect(source).not.toContain('refusalBody(');
+    }
+  });
+
   it('renders each row and answer under the testIDs QA drives', () => {
     expect(NO_ORG_IDS.row(ALAMEDA)).toBe(`noOrganisation.invitation.${ALAMEDA}`);
     expect(NO_ORG_IDS.accept(ALAMEDA)).toBe(`noOrganisation.invitation.${ALAMEDA}.accept`);
     expect(NO_ORG_IDS.decline(ALAMEDA)).toBe(`noOrganisation.invitation.${ALAMEDA}.decline`);
     expect(NO_ORG_IDS.open(ALAMEDA)).toBe(`noOrganisation.invitation.${ALAMEDA}.open`);
-    const rows = read('src', 'demo', 'createOrg', 'NoOrgInvitations.tsx');
-    for (const part of [
-      'list',
-      'row(invite.id)',
-      'accept(invite.id)',
-      'decline(invite.id)',
-      'open(invite.id)',
-    ]) {
+    const rows = read('src', 'components', 'NoOrgInvitations.tsx');
+    for (const part of ['list', 'row(id)', 'accept(id)', 'decline(id)', 'open(id)']) {
       expect(rows).toContain(`testID={NO_ORG_IDS.${part}}`);
     }
-    expect(rows).toContain('invitationRowOf(outcomes[invite.id])');
+    expect(read('src', 'demo', 'createOrg', 'NoOrgInvitations.tsx')).toContain(
+      'invitationRowOf(outcomes[invite.id])',
+    );
   });
 });
 

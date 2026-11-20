@@ -22,7 +22,8 @@
     "startBody": "Configurez une nouvelle organisation et vous y aurez le rôle Propriétaire.",
     "start": "Créer l’organisation",
     "signedInAs": "Connecté en tant que {{email}}.",
-    "account": "Votre compte"
+    "account": "Votre compte",
+    "wayBack": "Rejoindre ou créer une organisation"
   },
   "status": {
     "title": "État du service",
@@ -3257,7 +3258,7 @@
     "exportLine": "Jusqu’à {{atOnce, number}} entrées se téléchargent directement. Au-delà, nous préparons le fichier et vous envoyons un lien par e-mail.",
     "downloading": "Téléchargement du journal d’audit au format {{format}}.",
     "preparing": "Préparation de votre exportation",
-    "preparingLine": "Nous enverrons un lien à {{email}} dès qu’elle sera prête. Il ne sert qu’une fois, pendant 24 heures.",
+    "preparingLine": "Nous enverrons un lien à {{email}} dès qu’elle sera prête. Elle se télécharge uniquement par vous, depuis votre session, pendant 24 heures.",
     "tooMany": "Les entrées correspondantes dépassent la limite de {{most, number}}. Affinez les filtres, puis exportez à nouveau.",
     "exportFailed": "Le fichier n’a pas pu être créé, rien n’a donc été partagé. Veuillez réessayer.",
     "locked": "Disponible avec le forfait Enterprise",

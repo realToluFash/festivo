@@ -157,6 +157,24 @@ describe('payments on a vendor’s page, shapes and reminders, in A (sc-88, sc-1
     expect(offersShapes(raced.budget, 'v4')).toBe(false);
   });
 
+  it('offers the shapes again when every payment a vendor has is cancelled, never when one was made', () => {
+    const sample = sampleBudget();
+    const savour = sample.payments.filter((one) => one.vendorId === 'v4');
+    const others = sample.payments.filter((one) => one.vendorId !== 'v4');
+    const cancelled = savour.map((one) => cancelledOf(one, ''));
+    expect(offersShapes({ ...sample, payments: [...others, ...cancelled] }, 'v4')).toBe(true);
+    expect(
+      offersShapes({ ...sample, payments: [...others, cancelled[0]!, savour[1]!] }, 'v4'),
+    ).toBe(false);
+    const made = {
+      ...savour[0]!,
+      paid: { amount: 450000, on: '2026-11-02', by: 'Ada', reference: '' },
+    };
+    expect(offersShapes({ ...sample, payments: [...others, made, cancelled[1]!] }, 'v4')).toBe(
+      false,
+    );
+  });
+
   it('says a different amount, never absorbing it, and puts it on the paid row', () => {
     const balance = sampleBudget().payments.find((one) => one.id === 'p6')!;
     expect(differenceWords(84000, 84000)).toBeNull();

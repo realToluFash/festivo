@@ -31,7 +31,7 @@ import { Bell as ProductBell } from '../../components/BellButton.tsx';
 import { PortraitTop as ProductPortraitTop } from '../../components/ListTop.tsx';
 import { useSideFrame } from '../../components/listFrame.ts';
 import { usePillFit } from '../../components/usePillFit.tsx';
-import { useFromNone } from './fromNone.ts';
+import { useWayBackToNone } from '../../components/wayBackToNone.ts';
 
 /** A page whose sample someone else sees: the Settings card, its rows and the sidebar's foot follow them. */
 export function SeenBy({ looking, children }: { looking: Looking; children: ReactNode }) {
@@ -68,7 +68,7 @@ export function Landscape({
 }) {
   const shell = useShell();
   const side = useSideFrame();
-  const fromNone = useFromNone();
+  const fromNone = useWayBackToNone();
   const { fontScale } = useWindowDimensions();
   const columnWidth = useSideListWidth(SETTINGS_LIST_WIDTH);
   // The product's frame caps its Settings column under the page title's size, as everything under it (sc-67338).
@@ -181,7 +181,7 @@ export function Bell({
   onPress?: (() => void) | undefined;
   ref?: Ref<ViewInstance> | undefined;
 }) {
-  const fromNone = useFromNone();
+  const fromNone = useWayBackToNone();
 
   if (fromNone != null) return null;
 
@@ -263,7 +263,7 @@ export function tabsFor(viewer: Viewer): readonly (typeof TABS)[number][] {
 export function SettingsTabBar({ bottom }: { bottom: number }) {
   const { t } = useTranslation();
   const shell = useShell();
-  const fromNone = useFromNone();
+  const fromNone = useWayBackToNone();
 
   if (fromNone != null) return null;
 
@@ -286,7 +286,7 @@ export function PortraitTop({ at = 'Settings' }: { at?: Tab }) {
   const tabs = tabsFor(shell.viewer);
   const say = (_: Tab, glyph: GlyphName) => t(`todayScreen.tab.${glyph}`);
   const insets = useSafeAreaInsets();
-  const fromNone = useFromNone();
+  const fromNone = useWayBackToNone();
 
   if (fromNone != null) return <View style={{ height: insets.top + tokens.spaceXl }} />;
 

@@ -69,6 +69,7 @@ import { type WhatIf, type WhatIfChange, asWhatIf } from './budget.ts';
 import { ApiError, ApiUnreachableError, type Problem, toProblem } from './problem.ts';
 import { type EmailDomainsPage, asEmailDomainsPage } from './emailDomains.ts';
 import { type OrganisationExportPage, asOrganisationExportPage } from './organisationExport.ts';
+import { downloadName } from './fileName.ts';
 import {
   type AuditExportOutcome,
   type AuditFilters,
@@ -1932,17 +1933,20 @@ export class ApiClient {
     );
   }
 
-  /** The archive, once, for the Owner who asked: 404 for anyone else, `export_used` or `export_expired` after. */
+  /** The archive, once, for the Owner who asked: 404 for anyone else, `export_used` or `export_expired` after. `name` is the server's name for it. */
   async downloadOrganisationExport(
     organisationId: string,
     exportId: string,
-  ): Promise<Uint8Array<ArrayBuffer>> {
+  ): Promise<{ name: string | null; bytes: Uint8Array<ArrayBuffer> }> {
     const response = await this.answered(
       `/api/orgs/${encodeURIComponent(organisationId)}/export/${encodeURIComponent(exportId)}/download`,
       { method: 'POST' },
     );
 
-    return new Uint8Array(await response.arrayBuffer());
+    return {
+      name: downloadName(response.headers.get('Content-Disposition')),
+      bytes: new Uint8Array(await response.arrayBuffer()),
+    };
   }
 
   /** Data and control › Audit log (sc-611): an Owner's or an Admin's, refused `plan_required` off Enterprise and `permission_required` to a Member. */
@@ -1995,6 +1999,7 @@ export class ApiClient {
     return {
       kind: 'file',
       type: response.headers.get('Content-Type') ?? 'application/octet-stream',
+      name: downloadName(response.headers.get('Content-Disposition')),
       bytes: new Uint8Array(await response.arrayBuffer()),
     };
   }
@@ -2003,7 +2008,7 @@ export class ApiClient {
   async downloadAuditExport(
     organisationId: string,
     exportId: string,
-  ): Promise<{ type: string; bytes: Uint8Array<ArrayBuffer> }> {
+  ): Promise<{ type: string; name: string | null; bytes: Uint8Array<ArrayBuffer> }> {
     const response = await this.answered(
       `/api/orgs/${encodeURIComponent(organisationId)}/audit-log/exports/${encodeURIComponent(exportId)}/download`,
       { method: 'POST' },
@@ -2011,6 +2016,7 @@ export class ApiClient {
 
     return {
       type: response.headers.get('Content-Type') ?? 'application/octet-stream',
+      name: downloadName(response.headers.get('Content-Disposition')),
       bytes: new Uint8Array(await response.arrayBuffer()),
     };
   }

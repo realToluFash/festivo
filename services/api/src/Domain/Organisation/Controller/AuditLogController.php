@@ -44,6 +44,7 @@ use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Uid\Uuid;
+use Symfony\Contracts\Translation\TranslatorInterface;
 
 /** Settings › Data and control › Audit log (sc-611): read only, for an Owner or an Admin of an Enterprise organisation; a Member is refused, and a free organisation `plan_required`. */
 #[InOrganisation(Permission::OrganisationManage, feature: PlanFeature::AuditLog, featureLocksReading: true)]
@@ -68,6 +69,7 @@ final readonly class AuditLogController
         private Auditor $auditor,
         private EntityManagerInterface $entityManager,
         private ClockInterface $clock,
+        private TranslatorInterface $translator,
     ) {
     }
 
@@ -129,10 +131,11 @@ final readonly class AuditLogController
         $format = $body['format'];
         $asked = Dict\filter(Dict\filter_nulls(['person' => $body['person'] ?? null, 'type' => $body['type'] ?? null, 'event' => $body['event'] ?? null, 'from' => $body['from'] ?? null, 'to' => $body['to'] ?? null]), static fn (string $value): bool => '' !== $value);
         $filter = $this->filter($organisation, $user, $asked);
-        $exported = $this->auditExports->export($organisation, $user, $filter, $asked, $format, $this->userMailer->localeFor($user, $request->getLocale()));
+        $locale = $this->userMailer->localeFor($user, $request->getLocale());
+        $exported = $this->auditExports->export($organisation, $user, $filter, $asked, $format, $locale);
 
         if (\is_string($exported)) {
-            return $this->file($exported, $format, $organisation);
+            return new Response($exported, Response::HTTP_OK, PreparedFiles::headers(AuditExports::contentType($format), $this->fileName($organisation, $this->clock->now(), $format, $locale), 'audit-log.' . $format));
         }
 
         return new JsonResponse([
@@ -143,22 +146,23 @@ final readonly class AuditLogController
     }
 
     #[Route('/api/orgs/{organisationId}/audit-log/exports/{exportId}/download', name: 'orgs_audit_log_export_download', methods: ['POST'])]
-    public function download(string $organisationId, string $exportId): Response
+    public function download(Request $request, string $organisationId, string $exportId): Response
     {
         $organisation = $this->organisation($organisationId);
-        $export = $this->auditExports->download($organisation, $exportId, $this->user());
+        $user = $this->user();
+        $export = $this->auditExports->download($organisation, $exportId, $user);
+        $format = $export->getFormat();
+        $name = $this->fileName($organisation, $export->getAskedAt(), $format, $this->userMailer->localeFor($user, $request->getLocale()));
 
-        return $this->preparedFiles->response($this->preparedFiles->chunks($export), AuditExports::contentType($export->getFormat()), $this->fileName($export->getFormat(), $organisation), 'audit-log.' . $export->getFormat());
+        return $this->preparedFiles->response($this->preparedFiles->chunks($export), AuditExports::contentType($format), $name, 'audit-log.' . $format);
     }
 
-    private function file(string $bytes, string $format, Organisation $organisation): Response
+    private function fileName(Organisation $organisation, DateTimeImmutable $askedAt, string $format, string $locale): string
     {
-        return new Response($bytes, Response::HTTP_OK, PreparedFiles::headers(AuditExports::contentType($format), $this->fileName($format, $organisation), 'audit-log.' . $format));
-    }
-
-    private function fileName(string $format, Organisation $organisation): string
-    {
-        return Str\format('%s audit log %s.%s', $organisation->getName(), $this->clock->now()->format('Y-m-d'), $format);
+        return $this->translator->trans('audit.export_file', [
+            'organisation' => $organisation->getName(),
+            'day' => $askedAt->setTimezone(new DateTimeZone('UTC'))->format('Y-m-d'),
+        ], 'messages', $locale) . '.' . $format;
     }
 
     /** @param array<string, string> $asked person, type, event, from, to and before; the dates are days in the reader's zone */

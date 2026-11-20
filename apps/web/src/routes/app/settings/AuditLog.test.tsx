@@ -388,7 +388,14 @@ describe('Data and control › Audit log (sc-611)', () => {
       [LOG]: () => json(logPage([LIVE])),
       [VIEWED]: viewed,
       [EXPORT]: () =>
-        new Response('when,who\n', { status: 200, headers: { 'Content-Type': 'text/csv' } }),
+        new Response('when,who\n', {
+          status: 200,
+          headers: {
+            'Content-Type': 'text/csv',
+            'Content-Disposition':
+              "attachment; filename=audit-log.csv; filename*=utf-8''Acme%20-%20Quote%20Co%20audit%20log%202026-11-20.csv",
+          },
+        }),
     });
     open();
 
@@ -411,7 +418,7 @@ describe('Data and control › Audit log (sc-611)', () => {
       type: 'events',
     });
     const link = vi.mocked(HTMLAnchorElement.prototype.click).mock.contexts[0] as HTMLAnchorElement;
-    expect(link.download).toMatch(/^audit-log-\d{4}-\d{2}-\d{2}\.csv$/u);
+    expect(link.download).toBe('Acme - Quote Co audit log 2026-11-20.csv');
     expect(screen.queryByRole('dialog')).toBeNull();
   });
 
@@ -432,7 +439,7 @@ describe('Data and control › Audit log (sc-611)', () => {
     expect(await screen.findByText('Preparing your export')).toBeDefined();
     expect(
       screen.getByText(
-        'We’ll email folake@ire.events a link when it’s ready. It works once, for 24 hours.',
+        'We’ll email folake@ire.events a link when it’s ready. It downloads only for you, signed in, for 24 hours.',
       ),
     ).toBeDefined();
     expect(screen.queryByRole('button', { name: 'Export these entries' })).toBeNull();
@@ -476,7 +483,7 @@ describe('Data and control › Audit log (sc-611)', () => {
     expect(URL.createObjectURL).not.toHaveBeenCalled();
   });
 
-  it('downloads a prepared export from its emailed link', async () => {
+  it('downloads a prepared export from its emailed link, as audit-log.jsonl when no name is sent', async () => {
     signedIn();
     const sent = answering({
       [LOG]: () => json(logPage([LIVE])),
@@ -489,7 +496,29 @@ describe('Data and control › Audit log (sc-611)', () => {
     expect(await screen.findByText('Downloading the audit log as JSON Lines.')).toBeDefined();
     expect(sent.filter((one) => one.line === DOWNLOAD)).toHaveLength(1);
     const link = vi.mocked(HTMLAnchorElement.prototype.click).mock.contexts[0] as HTMLAnchorElement;
-    expect(link.download).toMatch(/^audit-log-\d{4}-\d{2}-\d{2}\.jsonl$/u);
+    expect(link.download).toBe('audit-log.jsonl');
+  });
+
+  it('saves an emailed link’s file under the name the server sends', async () => {
+    signedIn();
+    answering({
+      [LOG]: () => json(logPage([LIVE])),
+      [VIEWED]: viewed,
+      [DOWNLOAD]: () =>
+        new Response('{}\n', {
+          status: 200,
+          headers: {
+            'Content-Type': 'application/jsonl',
+            'Content-Disposition':
+              "attachment; filename=audit-log.jsonl; filename*=utf-8''Soir%C3%A9e%20%C3%A0%20Lisboa%20audit%20log%202026-11-20.jsonl",
+          },
+        }),
+    });
+    open(`${AT}?download=ax_1`);
+
+    expect(await screen.findByText('Downloading the audit log as JSON Lines.')).toBeDefined();
+    const link = vi.mocked(HTMLAnchorElement.prototype.click).mock.contexts[0] as HTMLAnchorElement;
+    expect(link.download).toBe('Soirée à Lisboa audit log 2026-11-20.jsonl');
   });
 
   it('says an emailed link has ended', async () => {

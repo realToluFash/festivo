@@ -115,6 +115,11 @@ export function money(minor: number, currency = CURRENCY, locale = LOCALE): stri
   return minus(new Intl.NumberFormat(locale, { style: 'currency', currency }).format(minor / 100));
 }
 
+/** A figure in a message, exactly as Intl gives it (sc-92's Conventions): no true minus. */
+export function cldrMoney(minor: number, currency = CURRENCY, locale = LOCALE): string {
+  return new Intl.NumberFormat(locale, { style: 'currency', currency }).format(minor / 100);
+}
+
 /** A summary card's figure, in whole units. */
 export function whole(minor: number, currency = CURRENCY, locale = LOCALE): string {
   return minus(

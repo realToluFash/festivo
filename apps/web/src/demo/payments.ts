@@ -393,7 +393,7 @@ export function retyped(shaping: Shaping, index: number, change: Partial<ShapeDr
 }
 
 export function offersShapes(budget: Budget, vendorId: string): boolean {
-  return !budget.payments.some((one) => one.vendorId === vendorId);
+  return !budget.payments.some((one) => one.vendorId === vendorId && one.cancelled == null);
 }
 
 export interface EventDays {

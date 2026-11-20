@@ -382,5 +382,6 @@
     "validation.budget_markup_with_price": "Enter a markup or a price, not both.",
     "validation.budget_client_price_invalid": "Enter a price of {min} or more, in numbers only.",
     "validation.budget_client_price_too_many_decimals": "That has too many decimal places for this event’s currency. Enter the price like {example}.",
+    "audit.export_file": "{organisation} audit log {day}",
     "audit.export_too_many": "More than {most, number, ::group-auto} entries match. Narrow the filters, then export again."
 }

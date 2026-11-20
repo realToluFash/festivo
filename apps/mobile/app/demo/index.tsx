@@ -1762,6 +1762,11 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
         what: 'Replies stay open until the start',
         href: '/demo/events/evt-wed-4?state=replyByRemoved',
       },
+      {
+        title: 'Reply by · the event no longer available (404)',
+        what: 'Close replies sooner: nothing was changed, at the top',
+        href: '/demo/events/evt-wed-4?state=replyByGone',
+      },
       { title: 'Venue', what: 'Name and address', href: '/demo/events/evt-wed-4?state=venue' },
       {
         title: 'Venue · suggestions',
@@ -1848,6 +1853,11 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
         title: 'Event name · blank',
         what: 'The name, in red',
         href: '/demo/events/evt-wed-4?state=nameBlank',
+      },
+      {
+        title: 'Event name · the event no longer available (404)',
+        what: 'Save: nothing was changed, at the top',
+        href: '/demo/events/evt-wed-4?state=nameGone',
       },
       {
         title: 'Cover',

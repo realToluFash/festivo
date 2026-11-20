@@ -38,7 +38,7 @@ const facts = (id: string) =>
 describe('Audit log (sc-611)', () => {
   it('lists the entries by day, newest first, today’s day saying so', () => {
     expect(byDay(ENTRIES, LOCALE, LAGOS).map((day) => [day.heading, day.entries.length])).toEqual([
-      ['Today · Monday, Oct 19', 3],
+      ['Today · Monday, Oct 19', 4],
       ['Sunday, Oct 18', 7],
       ['Saturday, Oct 17', 2],
       ['Friday, Oct 16', 4],
@@ -108,6 +108,28 @@ describe('Audit log (sc-611)', () => {
     expect(facts('domainAdded').Device).toBeUndefined();
     expect(facts('proved').Who).toBe('System');
     expect(facts('proved')['Network address']).toBeUndefined();
+  });
+
+  it('gives an export its format, filters and count as rows of their own, with no Changes', () => {
+    expect(auditStart('detail_export').detail).toBe('exported');
+    expect(factsOf(entry('exported'), LOCALE, LAGOS).map((fact) => fact.label)).toEqual([
+      'When',
+      'Who',
+      'What',
+      'On',
+      'Format',
+      'Filters',
+      'Entries',
+      'Type and action',
+      'Reference',
+    ]);
+    expect(facts('exported')).toMatchObject({
+      On: 'Ire Events',
+      Format: 'CSV',
+      Filters: 'Person: Priya Shah · Type: Event access',
+      Entries: '3',
+      'Type and action': 'Audit log · audit_log.exported',
+    });
   });
 
   it('opens each state as the boards draw it', () => {
