@@ -29,10 +29,9 @@
     text-overflow: ellipsis;
   }
 
-  /* Cancel and Save stay side by side, wrapping only in a language too long for one line; brought into view after a notice, Save keeps its whole 5 px focus ring inside the window. */
+  /* Cancel and Save stay side by side, wrapping only in a language too long for one line. */
   .event-overview .ev-opened-actions {
     flex-wrap: wrap;
-    scroll-margin-block: var(--spaceSm);
   }
 
   /* Show the latest version? stacks its two actions in their reading order, Keep editing above Show the latest. */
