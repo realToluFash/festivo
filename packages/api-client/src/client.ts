@@ -103,6 +103,7 @@ import {
   type StaffAccess,
   type StaffEntry,
   type StaffPlan,
+  STAFF_ACCESS,
   asStaffEntry,
   asStaffPlan,
   asStaffRoster,
@@ -557,10 +558,21 @@ export interface OutsideEvent {
   endsAt: string | null;
 }
 
+/** A person on the roster holding a link not yet ended (sc-3912), with their job's level; `signedIn` stays false until sc-4235 signs them in. */
+export interface StaffLinkHolder {
+  id: string;
+  name: string;
+  job: string | null;
+  access: StaffAccess | null;
+  endsAt: string;
+  signedIn: boolean;
+}
+
 export interface EventPeople {
   people: EventPerson[];
   owners: string[];
   admins: string[];
+  staffLinks: StaffLinkHolder[];
 }
 
 export interface AddableMember {
@@ -2397,10 +2409,14 @@ export class ApiClient {
 
   /** Everyone with a role on the event (sc-29912), read by everyone on it and by Owners and Admins, with its Owners' and Admins' names, each under their role. */
   async eventPeople(eventId: string): Promise<EventPeople> {
-    const raw = await this.get<{ people?: unknown; owners?: unknown; admins?: unknown }>(
-      `/api/events/${encodeURIComponent(eventId)}/people`,
-    );
+    const raw = await this.get<{
+      people?: unknown;
+      owners?: unknown;
+      admins?: unknown;
+      staffLinks?: unknown;
+    }>(`/api/events/${encodeURIComponent(eventId)}/people`);
     const people = Array.isArray(raw.people) ? raw.people.map(asEventPerson) : null;
+    const staffLinks = Array.isArray(raw.staffLinks) ? raw.staffLinks.map(asStaffLinkHolder) : [];
     const { owners, admins } = raw;
     const names = (value: unknown): value is string[] =>
       Array.isArray(value) && value.every((name) => typeof name === 'string');
@@ -2409,14 +2425,15 @@ export class ApiClient {
       people == null ||
       !people.every((person) => person != null) ||
       !names(owners) ||
-      !names(admins)
+      !names(admins) ||
+      !staffLinks.every((holder) => holder != null)
     ) {
       throw new Error(
         'The API answered GET /api/events/{id}/people in a shape this client does not know. Check EventPeopleController in services/api.',
       );
     }
 
-    return { people, owners, admins };
+    return { people, owners, admins, staffLinks: staffLinks as StaffLinkHolder[] };
   }
 
   /** The organisation's active members not yet on the event, by name alone, for whoever may change its People (sc-29915). */
@@ -2829,6 +2846,39 @@ export class ApiClient {
   /** Refused 409 `event_concluded` once the event has finished. */
   async removeStaff(eventId: string, staffId: string): Promise<void> {
     await this.delete<unknown>(`${this.staffPath(eventId)}/${encodeURIComponent(staffId)}`);
+  }
+
+  /** Issues a new link for the person (sc-3912), answered once and never kept; refused 409 `conflict` without a mobile number. */
+  async deliverStaffLink(
+    eventId: string,
+    staffId: string,
+    via: 'copy' | 'share',
+  ): Promise<{ url: string; staff: StaffEntry }> {
+    const body = await this.post<{ url?: unknown; staff?: unknown }>(
+      `${this.staffPath(eventId)}/${encodeURIComponent(staffId)}/link`,
+      { via },
+    );
+    const { staff } = this.staffAnswerOf(body);
+
+    return { url: typeof body.url === 'string' ? body.url : '', staff };
+  }
+
+  /** Only a Copied or Shared row moves; Link sent and Link opened stay. */
+  async markStaffLinkSent(eventId: string, staffId: string): Promise<StaffEntry> {
+    return this.staffAnswerOf(
+      await this.post<unknown>(
+        `${this.staffPath(eventId)}/${encodeURIComponent(staffId)}/link/sent`,
+      ),
+    ).staff;
+  }
+
+  /** Ends every link the person was given; the row reads No link yet. */
+  async replaceStaffLink(eventId: string, staffId: string): Promise<StaffEntry> {
+    return this.staffAnswerOf(
+      await this.post<unknown>(
+        `${this.staffPath(eventId)}/${encodeURIComponent(staffId)}/link/replace`,
+      ),
+    ).staff;
   }
 
   /** The roster with the event's jobs and shifts (sc-3908); refused 403 without staff.read. */
@@ -6096,6 +6146,20 @@ function asSentInvitation(raw: unknown): SentInvitation | null {
     declinedAt: stringOrNull(invitation.declinedAt),
     revokedAt: stringOrNull(invitation.revokedAt),
   };
+}
+
+function asStaffLinkHolder(raw: unknown): StaffLinkHolder | null {
+  if (typeof raw !== 'object' || raw == null) return null;
+  const { id, name, job, access, endsAt, signedIn } = raw as Record<string, unknown>;
+
+  return typeof id === 'string' &&
+    typeof name === 'string' &&
+    (job === null || typeof job === 'string') &&
+    (access === null || STAFF_ACCESS.includes(access as StaffAccess)) &&
+    typeof endsAt === 'string' &&
+    typeof signedIn === 'boolean'
+    ? { id, name, job, access: access as StaffAccess | null, endsAt, signedIn }
+    : null;
 }
 
 function asMembersList(raw: unknown): MembersList | null {

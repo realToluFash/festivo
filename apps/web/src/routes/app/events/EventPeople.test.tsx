@@ -1076,3 +1076,46 @@ describe('People opens on its own title under the crumb, as Guests does (sc-6963
     ]);
   });
 });
+
+describe('Staff links on People (sc-3912)', () => {
+  it('lists each person with a live staff link once, after the people, opening nothing, with Not signed in yet until they sign in', async () => {
+    signedIn();
+    await onPeople([TOM], {
+      'GET /api/events/ev_1/people': () =>
+        json({
+          people: [TOM],
+          owners: [],
+          admins: [],
+          staffLinks: [
+            {
+              id: 'st_grace',
+              name: 'Grace Okon',
+              job: 'Waiter',
+              access: 'view',
+              endsAt: '2030-11-15T03:00:00+01:00',
+              signedIn: false,
+            },
+            {
+              id: 'st_tolu',
+              name: 'Tolu Bello',
+              job: 'Door',
+              access: 'check_in',
+              endsAt: '2030-11-14T23:00:00+01:00',
+              signedIn: true,
+            },
+          ],
+        }),
+    });
+
+    const rows = within(people()).getAllByRole('listitem');
+    expect(rows).toHaveLength(3);
+    expect(rows[1]?.textContent).toBe(
+      'Staff link · Grace Okon · Waiter · ends 03:00 on Friday, Nov 15Not signed in yetCan view',
+    );
+    expect(rows[2]?.textContent).toBe(
+      'Staff link · Tolu Bello · Door · ends 23:00Can check guests in',
+    );
+    expect(within(rows[1] as HTMLElement).queryByRole('button')).toBeNull();
+    expect(within(people()).getByText('3')).toBeDefined();
+  });
+});
