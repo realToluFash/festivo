@@ -20,6 +20,7 @@ describe('a staff link’s row (sc-3912)', () => {
     expect(trailLine('copied', trail)).toBe('Copied by Amara Nwosu · 18:44 · not marked as sent');
     expect(trailLine('sent', trail)).toBe('Marked as sent by Amara Nwosu · 18:44');
     expect(trailLine('opened', { by: YOU, at: '19:05' })).toBe('Opened 19:05');
+    expect(trailLine('shared', trail)).toBe('Shared by Amara Nwosu · 18:44 · not marked as sent');
     expect(trailLine('none', trail)).toBeNull();
   });
 

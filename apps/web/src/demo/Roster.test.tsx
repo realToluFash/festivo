@@ -417,6 +417,20 @@ describe('a person’s own link on the roster (sc-3912)', () => {
     expect(button('Mark as sent: Emeka Obi')).toBeNull();
   });
 
+  it('reads Shared for a person shared in the app, with Copied’s ring and Mark as sent (sc-77903)', async () => {
+    await open('linkShared');
+    const table = screen.getByRole('table', { name: 'Roster' });
+    expect(within(table).getByText('Shared')).toBeTruthy();
+    expect(
+      within(table).getByText('Shared by Kemi Adeyemi · 19:12 · not marked as sent'),
+    ).toBeTruthy();
+    expect(table.querySelector('.rs-mark.is-shared')).toBeTruthy();
+    expect(cssRule('.rs-mark.is-shared', ROSTER_CSS)).toContain('linear-gradient');
+    press('Mark as sent: Emeka Obi');
+    expect(screen.getAllByText('Marked as sent by Amara Nwosu · 19:12').length).toBeGreaterThan(0);
+    expect(button('Mark as sent: Emeka Obi')).toBeNull();
+  });
+
   it('records nothing when no link is issued, and says so', async () => {
     await open('linkNotIssued');
     const table = screen.getByRole('table', { name: 'Roster' });

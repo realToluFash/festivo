@@ -132,6 +132,7 @@ const FR: RosterWords = {
   links: {
     opened: '[Lien ouvert]',
     sent: '[Lien envoyé]',
+    shared: '[Partagé]',
     copied: fr.ownerClaim.copied,
     none: R.linkNone,
     noMobile: R.linkNoMobile,
@@ -145,6 +146,8 @@ const FR: RosterWords = {
   trail: (link, trail) => {
     if (trail == null || link === 'none') return null;
     if (link === 'copied') return `[Copié par ${trail.by} · ${trail.at} · pas marqué comme envoyé]`;
+    if (link === 'shared')
+      return `[Partagé par ${trail.by} · ${trail.at} · pas marqué comme envoyé]`;
     if (link === 'sent') return `[Marqué comme envoyé par ${trail.by} · ${trail.at}]`;
 
     return `[Ouvert à ${trail.at}]`;
@@ -167,7 +170,13 @@ interface Samples {
   lw: Omit<typeof LW, 'copy' | 'replace' | 'replaceOpen' | 'copied' | 'notIssued'>;
   opened: string;
   sent: string;
-  trail: { copied: (t: Trail) => string; sent: (t: Trail) => string; opened: (t: Trail) => string };
+  shared: string;
+  trail: {
+    copied: (t: Trail) => string;
+    shared: (t: Trail) => string;
+    sent: (t: Trail) => string;
+    opened: (t: Trail) => string;
+  };
 }
 
 const SAMPLES_ES: Samples = {
@@ -198,8 +207,10 @@ const SAMPLES_ES: Samples = {
   },
   opened: '[Enlace abierto]',
   sent: '[Enlace enviado]',
+  shared: '[Compartido]',
   trail: {
     copied: (t) => `[Copiado por ${t.by} · ${t.at} · sin marcar como enviado]`,
+    shared: (t) => `[Compartido por ${t.by} · ${t.at} · sin marcar como enviado]`,
     sent: (t) => `[Marcado como enviado por ${t.by} · ${t.at}]`,
     opened: (t) => `[Abierto a las ${t.at}]`,
   },
@@ -231,8 +242,10 @@ const SAMPLES_PT: Samples = {
   },
   opened: '[Ligação aberta]',
   sent: '[Ligação enviada]',
+  shared: '[Partilhada]',
   trail: {
     copied: (t) => `[Copiada por ${t.by} · ${t.at} · não marcada como enviada]`,
+    shared: (t) => `[Partilhada por ${t.by} · ${t.at} · não marcada como enviada]`,
     sent: (t) => `[Marcada como enviada por ${t.by} · ${t.at}]`,
     opened: (t) => `[Aberta às ${t.at}]`,
   },
@@ -256,6 +269,7 @@ function productRoster(L: Locale, lang: 'es' | 'pt', s: Samples): RosterWords {
     links: {
       opened: s.opened,
       sent: s.sent,
+      shared: s.shared,
       copied: L.ownerClaim.copied,
       none: L.roster.linkNone,
       noMobile: L.roster.linkNoMobile,
