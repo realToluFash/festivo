@@ -375,10 +375,12 @@ function AgendaDays({
   days,
   nothing,
   wide,
+  stacked,
 }: {
   days: AgendaDay[];
   nothing: string;
   wide: boolean;
+  stacked: boolean;
 }) {
   return (
     <Panel style={styles.agenda}>
@@ -406,28 +408,43 @@ function AgendaDays({
             ) : (
               day.items.map((item, index) => {
                 const last = index === day.items.length - 1;
+                const time = (
+                  <Text
+                    size={14}
+                    weight="bold"
+                    numberOfLines={stacked ? undefined : item.allDay ? 2 : 1}
+                    style={[styles.figures, !stacked && [styles.time, { width: wide ? 76 : 70 }]]}
+                  >
+                    {item.time}
+                  </Text>
+                );
 
                 return (
                   <View
                     key={`${item.event.id}${item.time}${item.title}`}
-                    style={[styles.item, last && styles.itemLast, last && ruled && styles.ruled]}
+                    style={[
+                      stacked ? styles.itemStacked : styles.item,
+                      last && styles.itemLast,
+                      last && ruled && styles.ruled,
+                    ]}
                   >
-                    <Text
-                      size={14}
-                      weight="bold"
-                      numberOfLines={item.allDay ? 2 : 1}
-                      style={[styles.figures, styles.time, { width: wide ? 76 : 70 }]}
-                    >
-                      {item.time}
-                    </Text>
-                    <View style={[styles.stripe, { backgroundColor: eventColour(item.event) }]} />
-                    <View style={styles.words}>
-                      <Text size={15} weight="semibold">
-                        {item.title}
-                      </Text>
-                      <Text size={13} weight="medium" style={styles.secondary} numberOfLines={1}>
-                        {item.event.name + (item.note === '' ? '' : ` · ${item.note}`)}
-                      </Text>
+                    {stacked && time}
+                    <View style={styles.itemRow}>
+                      {!stacked && time}
+                      <View style={[styles.stripe, { backgroundColor: eventColour(item.event) }]} />
+                      <View style={styles.words}>
+                        <Text size={15} weight="semibold">
+                          {item.title}
+                        </Text>
+                        <Text
+                          size={13}
+                          weight="medium"
+                          style={styles.secondary}
+                          numberOfLines={stacked ? undefined : 1}
+                        >
+                          {item.event.name + (item.note === '' ? '' : ` · ${item.note}`)}
+                        </Text>
+                      </View>
                     </View>
                   </View>
                 );
@@ -444,6 +461,7 @@ export function ThisWeek({ moment, wide, top }: { moment: Moment; wide: boolean;
   const { t } = useTranslation();
   const { open } = useTodayShell();
   const { nextUp } = moment;
+  const agendaAlone = atAccessibilitySizes(useWindowDimensions().fontScale);
 
   return (
     <>
@@ -453,9 +471,14 @@ export function ThisWeek({ moment, wide, top }: { moment: Moment; wide: boolean;
         onLink={() => open({ to: 'calendar' })}
         top={top}
       />
-      <Strip moment={moment} wide={wide} />
+      {!agendaAlone && <Strip moment={moment} wide={wide} />}
       {nextUp == null ? (
-        <AgendaDays days={moment.agenda} nothing={moment.nothing} wide={wide} />
+        <AgendaDays
+          days={moment.agenda}
+          nothing={moment.nothing}
+          wide={wide}
+          stacked={agendaAlone}
+        />
       ) : (
         <Panel style={styles.quiet}>
           <Text size={TYPE.row} weight="semibold" style={styles.quietLine}>
@@ -470,7 +493,7 @@ export function ThisWeek({ moment, wide, top }: { moment: Moment; wide: boolean;
               when: nextUp.when,
             })}
           >
-            <EventThumb event={nextUp.event} side={48} />
+            {!agendaAlone && <EventThumb event={nextUp.event} side={48} />}
             <View style={styles.words}>
               <Text
                 size={12}
@@ -864,13 +887,16 @@ const styles = StyleSheet.create({
   agenda: { marginTop: tokens.spaceMd, paddingVertical: 0, paddingBottom: tokens.spaceHair },
   dayLine: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     alignItems: 'baseline',
-    gap: tokens.spaceXs,
+    columnGap: tokens.spaceXs,
     paddingTop: tokens.spacePillEnd,
     paddingBottom: tokens.spaceXxs,
   },
   nothing: { paddingTop: tokens.spaceXxs, paddingBottom: tokens.spacePillEnd },
-  item: { flexDirection: 'row', alignItems: 'center', gap: tokens.spaceLg, paddingVertical: 7 },
+  item: { paddingVertical: 7 },
+  itemStacked: { paddingVertical: 7, gap: tokens.spaceXs },
+  itemRow: { flexDirection: 'row', alignItems: 'center', gap: tokens.spaceLg },
   itemLast: { paddingBottom: 13 },
   time: { flex: 0 },
   stripe: { width: tokens.spaceXxs, alignSelf: 'stretch', borderRadius: tokens.spaceHair },
