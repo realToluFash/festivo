@@ -509,6 +509,21 @@ describe('payments on a vendor’s page, shapes and the reminder setting, in A (
     },
   );
 
+  it('reaches the reminder setting from Settings › Vendors', SLOW, async () => {
+    await open('/demo/settings/vendors');
+    const row = within(main()).getByRole('link', { name: /^Payment reminders/ });
+    expect(row.textContent).toContain(
+      'Payment reminders3 days before a payment is due, and once the day after, then silence.',
+    );
+    expect(row.getAttribute('href')).toBe(`${REMINDERS}?state=reminders`);
+  });
+
+  it('says the reminders are off from Vendors after a downgrade', SLOW, async () => {
+    await open('/demo/settings/vendors?plan=downgraded');
+    const row = within(main()).getByRole('link', { name: /^Payment reminders are off/ });
+    expect(row.getAttribute('href')).toBe(`${REMINDERS}?state=reminders_plan_lost&plan=downgraded`);
+  });
+
   it('opens the refused change, and refuses a Member as Vendors does', SLOW, async () => {
     await open(`${REMINDERS}?state=reminders_bad`);
     const days = within(dialog('Payment reminders')).getByLabelText('Days before a payment is due');
