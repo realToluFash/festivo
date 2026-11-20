@@ -542,17 +542,22 @@ export function MenuLayer({
   const scroll = useRef<ScrollViewInstance>(null);
   const asked = useRef(bringTo);
   const wanted = useRef(bringTo?.y ?? null);
+  const measured = useRef(false);
+  const bring = (content: number, panel: number) => {
+    if (wanted.current == null) return;
+    const y = reachableOffset(wanted.current, content, panel);
+    scroll.current?.scrollTo({ y, animated: false });
+    if (measured.current && y === wanted.current) wanted.current = null;
+  };
 
-  // Content laid out for the items before the asked-for ones still holds the scroll short of where it is asked to go, so it goes again as they lay out (sc-75211).
+  // The sizes seen before the ask are the items it replaced, and they can reach the offset the new items will not yet, so it is only reached once the new items are measured (sc-75211, #77053).
   useLayoutEffect(() => {
     if (asked.current !== bringTo) {
       asked.current = bringTo;
       wanted.current = bringTo?.y ?? null;
+      measured.current = false;
     }
-    if (wanted.current == null) return;
-    const y = reachableOffset(wanted.current, seen.content, seen.panel);
-    scroll.current?.scrollTo({ y, animated: false });
-    if (y === wanted.current) wanted.current = null;
+    bring(seen.content, seen.panel);
   }, [bringTo, seen.content, seen.panel]);
 
   return (
@@ -600,9 +605,11 @@ export function MenuLayer({
                 const panel = event.nativeEvent.layout.height;
                 setSeen((now) => (now.panel === panel ? now : { ...now, panel }));
               }}
-              onContentSizeChange={(_width, content) =>
-                setSeen((now) => (now.content === content ? now : { ...now, content }))
-              }
+              onContentSizeChange={(_width, content) => {
+                measured.current = true;
+                bring(content, seen.panel);
+                setSeen((now) => (now.content === content ? now : { ...now, content }));
+              }}
               onScroll={(event) => {
                 const offset = event.nativeEvent.contentOffset.y;
                 setSeen((now) => ({ ...now, offset }));
