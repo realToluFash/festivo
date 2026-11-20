@@ -133,7 +133,7 @@ final readonly class SplitRules
 
         foreach ($sent as $part) {
             $id = $part['payerId'] ?? '';
-            $path = Str\join(['split', 'shares', $id], '.');
+            $path = 'split.shares.' . $id;
             $typed = Str\trim($part['percent'] ?? '');
             [$whole, $fraction] = [...Str\split($typed, '.'), ''];
 
@@ -156,7 +156,7 @@ final readonly class SplitRules
             $hundredths = (int) $whole * 100 + (int) Str\pad_right($fraction, 2, '0');
 
             if (0 !== $hundredths) {
-                $this->add($event, $draft, $path, $id, $hundredths, null);
+                $this->withPart($event, $draft, $path, $id, $hundredths, null);
             }
         }
 
@@ -186,9 +186,9 @@ final readonly class SplitRules
             $minor = Money::minorOf($typed, $currency);
 
             if (null === $minor || $minor <= 0) {
-                $this->refuse($draft, Str\join(['split', 'amounts', $id], '.'), 'validation.payer_split_amount_invalid', $example);
+                $this->refuse($draft, 'split.amounts.' . $id, 'validation.payer_split_amount_invalid', $example);
             } else {
-                $this->add($event, $draft, Str\join(['split', 'amounts', $id], '.'), $id, $minor, $rest);
+                $this->withPart($event, $draft, 'split.amounts.' . $id, $id, $minor, $rest);
             }
         }
 
@@ -205,7 +205,7 @@ final readonly class SplitRules
         }
     }
 
-    private function add(Event $event, SplitDraft $draft, string $path, string $id, int $value, ?Payer $rest): void
+    private function withPart(Event $event, SplitDraft $draft, string $path, string $id, int $value, ?Payer $rest): void
     {
         $payer = $this->payer($event, $draft, $path, $id, 'validation.payer_split_payer_required');
 
