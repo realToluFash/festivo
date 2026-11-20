@@ -20,6 +20,8 @@ const entry = {
     { id: 'h1', startsAt: '2026-11-07T16:00:00+01:00', endsAt: '2026-11-08T01:00:00+01:00' },
   ],
   link: 'no_mobile',
+  linkBy: null,
+  linkAt: null,
   contactsErased: false,
 };
 
