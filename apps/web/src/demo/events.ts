@@ -1215,8 +1215,14 @@ export type EditState =
   | 'type'
   | 'currency'
   | 'currencyRefused'
+  | 'currencyNotSaved'
+  | 'currencyForbidden'
+  | 'currencyChangedElsewhere'
   | 'name'
   | 'nameBlank'
+  | 'nameNotSaved'
+  | 'nameForbidden'
+  | 'nameChangedElsewhere'
   | 'cover'
   | 'coverRefused'
   | 'coverPhoto'
@@ -1306,8 +1312,14 @@ export const EVENT_STATES: Record<EventStateName, string> = {
   type: 'evt-wed-4',
   currency: 'evt-wed-4',
   currencyRefused: 'evt-wed-4',
+  currencyNotSaved: 'evt-wed-4',
+  currencyForbidden: 'evt-wed-4',
+  currencyChangedElsewhere: 'evt-wed-4',
   name: 'evt-wed-4',
   nameBlank: 'evt-wed-4',
+  nameNotSaved: 'evt-wed-4',
+  nameForbidden: 'evt-wed-4',
+  nameChangedElsewhere: 'evt-wed-4',
   cover: 'evt-wed-4',
   coverRefused: 'evt-wed-4',
   coverPhoto: 'evt-wed-4',
@@ -1432,9 +1444,15 @@ export function partOf(state: EventStateName | null): Part | null {
       return 'type';
     case 'currency':
     case 'currencyRefused':
+    case 'currencyNotSaved':
+    case 'currencyForbidden':
+    case 'currencyChangedElsewhere':
       return 'currency';
     case 'name':
     case 'nameBlank':
+    case 'nameNotSaved':
+    case 'nameForbidden':
+    case 'nameChangedElsewhere':
       return 'name';
     case 'cover':
     case 'coverRefused':
@@ -1655,7 +1673,7 @@ export const EVENTS_PAGES: readonly { name: string; states: readonly DemoLink[] 
       on('datesReplyBy', 'Dates, the start on the Reply by day (sc-3780)'),
       on('datesReplyByAsk', 'Dates asks before closing replies sooner (sc-3780)'),
       on('discard', 'Cancel with a change'),
-      on('changedElsewhere', 'Changed elsewhere'),
+      on('changedElsewhere', 'Dates, changed elsewhere: the notice above Cancel and Save'),
       on('showLatest', 'Show the latest'),
       on('venue', 'Venue, opened'),
       on('venueSuggestions', 'Venue, suggestions'),
@@ -1669,7 +1687,7 @@ export const EVENTS_PAGES: readonly { name: string; states: readonly DemoLink[] 
       on('venueNote', 'Venue, the arrival note under Address'),
       on('venueNoteTooLong', 'Venue, a note of 501 characters: refused before sending'),
       on('venueNoteRefused', 'Venue, the note refused by the server (422)'),
-      on('venueNoteForbidden', 'Venue, a role changed while open (403)'),
+      on('venueNoteForbidden', 'Venue, a role changed while open (403): above Cancel and Save'),
       on('noteNoVenue', 'Details, Venue to be confirmed with a note'),
       on('noteWide', 'Details, a note of 500 characters with no spaces'),
       on('noteMarkup', 'Details, markup typed as text'),
@@ -1694,6 +1712,17 @@ export const EVENTS_PAGES: readonly { name: string; states: readonly DemoLink[] 
       on('coverPhotoUploading', 'Cover, a new photo uploading over the photo'),
       on('coverChangeRefused', 'Cover, Change photo refused: the photo stays'),
       on('coverSaveRefused', 'Cover, the save refused by the server'),
+    ],
+  },
+  {
+    name: 'A part’s save notices, directly above Cancel and Save (sc-74398)',
+    states: [
+      on('nameNotSaved', 'Event name, Save fails: Not saved'),
+      on('nameForbidden', 'Event name, a role changed while open (403)'),
+      on('nameChangedElsewhere', 'Event name, changed elsewhere (409)'),
+      on('currencyNotSaved', 'Currency, Save fails: Not saved'),
+      on('currencyForbidden', 'Currency, a role changed while open (403)'),
+      on('currencyChangedElsewhere', 'Currency, changed elsewhere (409)'),
     ],
   },
   {
