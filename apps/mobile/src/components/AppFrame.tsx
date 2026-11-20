@@ -209,6 +209,13 @@ export function useStartOrganisation(): OrganisationStart | undefined {
   return useContext(StartOrganisation);
 }
 
+const OpenJoined = createContext<((id: string) => void) | undefined>(undefined);
+
+/** Open, once an invitation is accepted from no organisation: into it, with "Now working in …" focused, as its demo does (sc-75471). */
+export function useOpenJoined(): ((id: string) => void) | undefined {
+  return useContext(OpenJoined);
+}
+
 const HideBack = createContext<((hidden: boolean) => void) | undefined>(undefined);
 
 /** While `hidden`, the phone header keeps its title and drops the back row (sc-3132); it comes back a moment after, as `backRowHiding` holds it. */
@@ -493,6 +500,15 @@ export function AppFrame({
     }),
     [toSheet, switcherFrom, frameTitle, switcherOpenedOnOverdue],
   );
+  const openJoined = useCallback(
+    (id: string) => {
+      const name = signedIn.organisations.find((known) => known.id === id)?.name;
+      switchOrganisation(id, () => {
+        if (name != null) setCreated({ name, takesFocus: true });
+      });
+    },
+    [signedIn.organisations],
+  );
   const startOrganisation = (opener: RefObject<ViewInstance | null>) => {
     setCreated(null);
     walkBack.current = opener;
@@ -648,40 +664,42 @@ export function AppFrame({
                       <StartOrganisation.Provider
                         value={{ open: startOrganisation, managed: offer.managed }}
                       >
-                        <HideBack.Provider value={backRow.hide}>
-                          <EdgeSwipeStrip.Provider value={setEdgeSwipe}>
-                            {standIn === 'paused' && signedIn.pausedIn != null ? (
-                              <AccessPaused
-                                paused={signedIn.pausedIn}
-                                others={signedIn.organisations}
-                                onSwitch={(next) => switchByTap(next.id)}
-                                onChoose={(opener) => openSwitcher?.(opener)}
-                              />
-                            ) : standIn === 'overdue' && signedIn.organisation != null ? (
-                              <TwoFactorOverdue
-                                organisation={signedIn.organisation.name}
-                                answer={switchAnswer ?? lapsed}
-                                headingRef={overdueHeading}
-                                onTurnOn={() => router.navigate(SECTION_HREF.security)}
-                                onSignOut={signOutHere}
-                              />
-                            ) : (
-                              <FrameSwitch.Provider value={switchAnswer}>
-                                <ScrolledTop.Provider
-                                  value={ownTop && top === 'scrolls' ? header : null}
-                                >
-                                  <BodySwitched.Provider value={bodySwitched}>
-                                    <UnderTabsProvider value={underTabs}>
-                                      <BellInPane.Provider value={sidebar && untitled}>
-                                        {children}
-                                      </BellInPane.Provider>
-                                    </UnderTabsProvider>
-                                  </BodySwitched.Provider>
-                                </ScrolledTop.Provider>
-                              </FrameSwitch.Provider>
-                            )}
-                          </EdgeSwipeStrip.Provider>
-                        </HideBack.Provider>
+                        <OpenJoined.Provider value={openJoined}>
+                          <HideBack.Provider value={backRow.hide}>
+                            <EdgeSwipeStrip.Provider value={setEdgeSwipe}>
+                              {standIn === 'paused' && signedIn.pausedIn != null ? (
+                                <AccessPaused
+                                  paused={signedIn.pausedIn}
+                                  others={signedIn.organisations}
+                                  onSwitch={(next) => switchByTap(next.id)}
+                                  onChoose={(opener) => openSwitcher?.(opener)}
+                                />
+                              ) : standIn === 'overdue' && signedIn.organisation != null ? (
+                                <TwoFactorOverdue
+                                  organisation={signedIn.organisation.name}
+                                  answer={switchAnswer ?? lapsed}
+                                  headingRef={overdueHeading}
+                                  onTurnOn={() => router.navigate(SECTION_HREF.security)}
+                                  onSignOut={signOutHere}
+                                />
+                              ) : (
+                                <FrameSwitch.Provider value={switchAnswer}>
+                                  <ScrolledTop.Provider
+                                    value={ownTop && top === 'scrolls' ? header : null}
+                                  >
+                                    <BodySwitched.Provider value={bodySwitched}>
+                                      <UnderTabsProvider value={underTabs}>
+                                        <BellInPane.Provider value={sidebar && untitled}>
+                                          {children}
+                                        </BellInPane.Provider>
+                                      </UnderTabsProvider>
+                                    </BodySwitched.Provider>
+                                  </ScrolledTop.Provider>
+                                </FrameSwitch.Provider>
+                              )}
+                            </EdgeSwipeStrip.Provider>
+                          </HideBack.Provider>
+                        </OpenJoined.Provider>
                       </StartOrganisation.Provider>
                     </OpenSwitcher.Provider>
                   </TitleCap.Provider>
