@@ -29,6 +29,7 @@ import { useTranslation } from 'react-i18next';
 
 import { SETTLED_MS, bothRefs, useFocusOnAnswer, useWindowOrigin } from './Screen.tsx';
 import { useFocusedFieldInSight } from './focusedFieldInSight.ts';
+import { reachableOffset } from './reachableOffset.ts';
 import { moveScreenReaderFocus, type ScreenReaderTarget } from './screenReaderFocus.ts';
 import {
   SilentWindowName,
@@ -434,7 +435,8 @@ interface MenuProps {
   floor?: number | null;
   /** Above the scrolling items: a search field. */
   head?: ReactNode;
-  scrollRef?: Ref<ScrollViewInstance>;
+  /** Where its items are to be scrolled, held as they lay out until it is reached or a drag takes over; a new object asks again. */
+  bringTo?: { y: number } | null;
   /** Where its items are scrolled to, as they scroll. */
   onOffset?: (offset: number) => void;
   /** Out of TalkBack's reach while its window arrives, so its own first focus finds nothing. */
@@ -505,7 +507,7 @@ export function MenuLayer({
   below = tokens.spaceXxs,
   floor = null,
   head,
-  scrollRef,
+  bringTo = null,
   onOffset,
   hidden = false,
   outsideHidden = false,
@@ -537,6 +539,21 @@ export function MenuLayer({
   const hold = nextHeld(held, button, side, seen.content > 0);
   if (hold !== held) setHeld(hold);
   const reach = hidden ? 'no-hide-descendants' : 'auto';
+  const scroll = useRef<ScrollViewInstance>(null);
+  const asked = useRef(bringTo);
+  const wanted = useRef(bringTo?.y ?? null);
+
+  // Content laid out for the items before the asked-for ones still holds the scroll short of where it is asked to go, so it goes again as they lay out (sc-75211).
+  useLayoutEffect(() => {
+    if (asked.current !== bringTo) {
+      asked.current = bringTo;
+      wanted.current = bringTo?.y ?? null;
+    }
+    if (wanted.current == null) return;
+    const y = reachableOffset(wanted.current, seen.content, seen.panel);
+    scroll.current?.scrollTo({ y, animated: false });
+    if (y === wanted.current) wanted.current = null;
+  }, [bringTo, seen.content, seen.panel]);
 
   return (
     <>
@@ -574,7 +591,7 @@ export function MenuLayer({
               {head}
             </View>
             <ScrollView
-              ref={scrollRef}
+              ref={scroll}
               bounces={false}
               keyboardShouldPersistTaps="handled"
               contentContainerStyle={styles.menuBody}
@@ -590,6 +607,9 @@ export function MenuLayer({
                 const offset = event.nativeEvent.contentOffset.y;
                 setSeen((now) => ({ ...now, offset }));
                 onOffset?.(offset);
+              }}
+              onScrollBeginDrag={() => {
+                wanted.current = null;
               }}
             >
               {children}
