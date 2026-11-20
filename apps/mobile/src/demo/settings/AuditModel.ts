@@ -34,6 +34,8 @@ export const AUDIT_STATES = [
   'detail_skipped',
   'detail_section',
   'detail_dish',
+  'detail_export',
+  'detail_plan',
   'export',
   'export_small',
   'export_preparing',
@@ -158,6 +160,10 @@ export function auditStart(state: AuditState): AuditStart {
       return detail('floorLead');
     case 'detail_dish':
       return detail('dish');
+    case 'detail_export':
+      return detail('exported');
+    case 'detail_plan':
+      return detail('planChanged');
     case 'export':
       return { ...base, exporting: { format: 'csv', refused: false } };
     case 'export_small':
@@ -315,6 +321,7 @@ export function detailRows(entry: AuditEntry, say: DataSay, lang: TypeLang = 'en
       ...(entry.on.href == null || entry.on.gone ? {} : { href: entry.on.href }),
     },
     entry.changes == null ? null : { label: L.changes, value: entry.changes },
+    ...(entry.recorded ?? []),
     { label: L.kind, value: `${TYPE_WORDS[lang][entry.type]} ·`, code: entry.action },
     entry.address == null
       ? null

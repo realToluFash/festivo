@@ -119,6 +119,7 @@ export const SWITCHER_STATES = [
   'withdrawn',
   'large',
   'managed',
+  'managed-listed',
 ] as const;
 
 export type SwitcherState = (typeof SWITCHER_STATES)[number];
@@ -206,6 +207,15 @@ export function sessionFor(state: SwitcherState): Session {
         expanded: CELEBRACIONES,
         managed: CELEBRACIONES,
       };
+    case 'managed-listed': {
+      const managed = {
+        kind: 'managed',
+        organisation: IRE_EVENTS.name,
+        message: MANAGED_WORDS.body,
+      } as const;
+
+      return { ...populated, outcomes: { [CELEBRACIONES]: managed, [BLUEBIRD]: managed } };
+    }
     case 'populated':
       return populated;
   }
@@ -215,8 +225,18 @@ export function currentPlace(session: Session): Place {
   return session.places.find((place) => place.id === session.current) ?? IRE_EVENTS;
 }
 
+/** The kit draws the banner under the invitation `managed` names, so it follows whichever is open. */
 export function expand(session: Session, id: string): Session {
-  return { ...session, expanded: session.expanded === id ? null : id };
+  const expanded = session.expanded === id ? null : id;
+  const managed =
+    expanded != null && session.outcomes[expanded]?.kind === 'managed' ? expanded : undefined;
+
+  return { ...session, expanded, managed };
+}
+
+/** sc-73668: one a managed account cannot accept is never counted, and stays listed with its banner. */
+function listed(outcome: InvitationOutcome | undefined): boolean {
+  return isWaiting(outcome) || outcome?.kind === 'managed';
 }
 
 /** The press in flight: both buttons off, the pressed one saying what it is doing. */
@@ -258,10 +278,11 @@ export function settled(session: Session): Session {
   return {
     ...session,
     places: [...session.places, ...joined.map(({ id, name, role }) => ({ id, name, role }))],
-    invitations: session.invitations.filter((invite) => isWaiting(session.outcomes[invite.id])),
+    invitations: session.invitations.filter((invite) => listed(session.outcomes[invite.id])),
     outcomes: Object.fromEntries(
-      Object.entries(session.outcomes).filter(([, outcome]) => isWaiting(outcome)),
+      Object.entries(session.outcomes).filter(([, outcome]) => listed(outcome)),
     ),
+    managed: undefined,
     offer: session.offer?.status === 'dismissed' ? null : session.offer,
     expanded: null,
     query: '',
@@ -280,9 +301,16 @@ export function founded(session: Session, place: Place): Session {
   return { ...now, places: [...others, place], current: place.id };
 }
 
-/** Folake in no organisation; founded() gives her one. */
-export function withoutPlaces(session: Session): Session {
-  return { ...session, places: [], current: '', invitations: [], outcomes: {}, offer: null };
+/** Folake in no organisation; founded() gives her one, and with `invited` her two invitations wait (sc-75471). */
+export function withoutPlaces(session: Session, invited = false): Session {
+  return {
+    ...session,
+    places: [],
+    current: '',
+    invitations: invited ? INVITATIONS : [],
+    outcomes: {},
+    offer: null,
+  };
 }
 
 export function placeOf(session: Session): Place | null {

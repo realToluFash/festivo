@@ -18,6 +18,7 @@ use Symfony\Component\Uid\Uuid;
 #[ORM\HasLifecycleCallbacks]
 #[ORM\Table(name: 'budget_lines')]
 #[ORM\Index(name: 'idx_budget_line_event', columns: ['event_id'])]
+#[ORM\Index(name: 'idx_budget_line_agreed_in', columns: ['agreed_in_id'])]
 #[ORM\UniqueConstraint(name: 'uniq_budget_staff_line', columns: ['event_id'], options: ['where' => "(((basis)::text = 'per_staff_hour'::text) AND (removed_at IS NULL))"])]
 class BudgetLine
 {
@@ -52,6 +53,14 @@ class BudgetLine
     #[ORM\Column(type: Types::TEXT, nullable: true)]
     private ?string $note;
 
+    /** What the client is charged (sc-92): this markup on the cost, in tenths of a percent, 0 being at cost by choice; null takes the category's or the event's. */
+    #[ORM\Column(type: Types::INTEGER, nullable: true)]
+    private ?int $markupTenths = null;
+
+    /** Or the line's own client price, in the currency's minor unit, for the whole line; never with a markup. */
+    #[ORM\Column(type: Types::BIGINT, nullable: true)]
+    private ?string $clientPriceMinor = null;
+
     /** Removed and waiting for its Undo (sc-85, decided 19 Nov): in no figure and no read, until BudgetEditor erases it a day after. */
     #[ORM\Column(type: Types::DATETIME_IMMUTABLE, nullable: true)]
     private ?DateTimeImmutable $removedAt = null;
@@ -59,6 +68,11 @@ class BudgetLine
     /** Removed before the event's currency changed: Undo can no longer put it back, and its words and price are erased (sc-85, decided 19 Nov, #72668, #72947). */
     #[ORM\Column(options: ['default' => false])]
     private bool $currencyChanged = false;
+
+    /** The vendor whose current quote agrees this cost (sc-87); null while it is only estimated. */
+    #[ORM\ManyToOne(targetEntity: VendorEngagement::class)]
+    #[ORM\JoinColumn(nullable: true, onDelete: 'SET NULL')]
+    private ?VendorEngagement $agreedIn = null;
 
     public function __construct(Event $event, string $label, CostCategory $category, CostBasis $basis, ?int $priceMinor, ?string $note)
     {
@@ -131,6 +145,41 @@ class BudgetLine
         $this->note = $note;
     }
 
+    public function getMarkupTenths(): ?int
+    {
+        return $this->markupTenths;
+    }
+
+    public function getClientPriceMinor(): ?int
+    {
+        return null === $this->clientPriceMinor ? null : (int) $this->clientPriceMinor;
+    }
+
+    /** A line at 0 waits for a price (sc-84), unless a client price of its own above 0 says it is the agency's fee, whose cost is nothing (sc-75696). */
+    public function isNotPriced(): bool
+    {
+        return 0 === $this->getPriceMinor() && ($this->getClientPriceMinor() ?? 0) <= 0;
+    }
+
+    public function chargeWithMarkup(int $tenths): void
+    {
+        $this->markupTenths = $tenths;
+        $this->clientPriceMinor = null;
+    }
+
+    public function chargeAt(int $priceMinor): void
+    {
+        $this->clientPriceMinor = (string) $priceMinor;
+        $this->markupTenths = null;
+    }
+
+    /** Back to its category's markup, or the event's. */
+    public function chargeAsMarkedUp(): void
+    {
+        $this->markupTenths = null;
+        $this->clientPriceMinor = null;
+    }
+
     public function isRemoved(): bool
     {
         return null !== $this->removedAt;
@@ -154,5 +203,15 @@ class BudgetLine
     public function isCurrencyChanged(): bool
     {
         return $this->currencyChanged;
+    }
+
+    public function getAgreedIn(): ?VendorEngagement
+    {
+        return $this->agreedIn;
+    }
+
+    public function agreeIn(?VendorEngagement $engagement): void
+    {
+        $this->agreedIn = $engagement;
     }
 }

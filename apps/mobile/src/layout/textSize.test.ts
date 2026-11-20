@@ -7,6 +7,7 @@ import {
   capInDisc,
   capUnderTitle,
   drawnLine,
+  drawnSize,
   besideGlyph,
   fitWidest,
   grownPad,
@@ -453,6 +454,18 @@ describe('wholeLineHeight', () => {
 
   it('keeps four lines of a stepped-down row line at four whole lines', () => {
     expect(4 * wholeLineHeight(13, 40) * (40 / 13)).toBeCloseTo(196, 9);
+  });
+});
+
+describe('drawnSize', () => {
+  it('grows with the text size up to its multiplier', () => {
+    expect(drawnSize(14, 2)).toBe(28);
+    expect(drawnSize(14, 2, 1.5)).toBe(21);
+    expect(drawnSize(14, 1.2, 1.5)).toBeCloseTo(16.8, 9);
+  });
+
+  it('ignores a multiplier under 1, as React Native does', () => {
+    expect(drawnSize(14, 2, 0)).toBe(28);
   });
 });
 

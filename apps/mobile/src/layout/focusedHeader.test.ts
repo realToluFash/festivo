@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   backRoomIsLaid,
+  backRoomStands,
   backScale,
   backWordSize,
   backWidth,
@@ -165,5 +166,15 @@ describe('a back’s size and room', () => {
 
   it('stops at 15 for a word wider than the window', () => {
     expect(backWordSize(back, 2780, 318)).toBe(15);
+  });
+
+  it('keeps a room laid at full once the word is measured, so a word wider than it still steps down (sc-74113)', () => {
+    expect(backRoomStands(back, { size: back.full, word: null }, 278.2)).toBe(true);
+    expect(backRoomStands(back, { size: back.full, word: 259.6 }, 278.2)).toBe(true);
+  });
+
+  it('drops a room laid stepped down for another width, so a stale width never holds the pill small (sc-74113)', () => {
+    expect(backRoomStands(back, { size: 15, word: 2780 }, 259.6)).toBe(false);
+    expect(backRoomStands(back, { size: 40, word: 278.2 }, 278.2)).toBe(true);
   });
 });

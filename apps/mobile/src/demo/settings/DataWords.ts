@@ -3,7 +3,6 @@ const ORG = 'Ire Events';
 
 export const DATA_WORDS = {
   title: 'Data and control',
-  settingsLine: 'Email domains and the audit log',
   control: 'Control',
   onTheWeb:
     'Export all data, deleting guest data after an event and a guest’s request are on the web.',
@@ -175,7 +174,7 @@ export const AUDIT_WORDS = {
   downloading: (format: string) => `Downloading the audit log as ${format}.`,
   preparing: 'Preparing your export',
   preparingLine: (email: string) =>
-    `We’ll email ${email} a link when it’s ready. It works once, for 24 hours.`,
+    `We’ll email ${email} a link when it’s ready. It downloads only for you, signed in, for 24 hours.`,
   tooMany: 'More than 1,000,000 entries match. Narrow the filters, then export again.',
   locked: 'Available on Enterprise',
   lockedLine: `See who did what in ${ORG}, for 365 days, and export it.`,

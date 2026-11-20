@@ -15,13 +15,11 @@ import {
 } from '@soirely/domain';
 import type { TFunction } from 'i18next';
 
-/** Never sharing a word or a mark (31 Oct): a price of 0 is Not priced, a priced line counting 0 is Nothing yet. */
+/** Never sharing a word or a mark (31 Oct): a line the API counts as waiting for a price is Not priced, a priced line counting 0 is Nothing yet. */
 export type LineState = 'priced' | 'notPriced' | 'nothingYet';
 
 export function lineState(line: BudgetLine): LineState {
-  const price = linePrice(line);
-
-  if (line.basis !== 'per_staff_hour' && price != null && Number(price) === 0) return 'notPriced';
+  if (line.basis !== 'per_staff_hour' && line.notPriced) return 'notPriced';
 
   return line.quantity.count === 0 ? 'nothingYet' : 'priced';
 }
@@ -207,7 +205,8 @@ export function liveWords(
         old.amount !== line.amount ||
         old.label !== line.label ||
         old.category !== line.category ||
-        old.basis !== line.basis)
+        old.basis !== line.basis ||
+        old.notPriced !== line.notPriced)
     );
   });
   const moved = minorOf(now.confirmed, now.currency) - minorOf(was.confirmed, was.currency);

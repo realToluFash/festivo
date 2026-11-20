@@ -94,6 +94,8 @@ const STATE_WORD: Record<CeilingState, string> = {
   over: 'Over',
 };
 
+const within = (days: number) => (days === 1 ? 'by tomorrow' : `in the next ${days} days`);
+
 export const say = {
   state: (state: CeilingState) => STATE_WORD[state],
   notPricedLine: (count: number) =>
@@ -169,8 +171,12 @@ export const say = {
   reminderOverdue: (count: number, event: string) =>
     `${count === 1 ? '1 payment' : `${count} payments`} overdue on ${event}`,
   reminderMixed: (overdue: number, due: number, days: number) =>
-    `${overdue === 1 ? '1 payment' : `${overdue} payments`} overdue, ${due} due in the next ${days} days`,
+    `${overdue === 1 ? '1 payment' : `${overdue} payments`} overdue, ${due} due ${within(days)}`,
+  reminderDue: (count: number, days: number, event: string) =>
+    `${count === 1 ? '1 payment' : `${count} payments`} due ${within(days)} on ${event}`,
   reminderRow: (vendor: string, amount: string, when: string) => `${vendor} · ${amount} · ${when}`,
+  reminderRowOn: (vendor: string, event: string, amount: string, when: string) =>
+    `${vendor} · ${event} · ${amount} · ${when}`,
   wasDue: (date: string) => `was due ${date}`,
   dueWhen: (date: string) => `due ${date}`,
   lastAbout: (what: string, vendor: string) =>

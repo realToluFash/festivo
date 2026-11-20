@@ -27,7 +27,7 @@ import {
   withReply,
 } from './GuestCounts.ts';
 import { PHONE_TAB_BAR, PhoneTabBar, TabBarFade } from '../../components/TodayCover.tsx';
-import { Bell, Landscape, OrgPill, PortraitTop } from '../settings/Frame.tsx';
+import { Landscape, ListTopEnd, OrgPill, PortraitTop } from '../settings/Frame.tsx';
 import { EventCard } from '../../components/EventCard.tsx';
 import { EventThumb } from '../../components/EventThumb.tsx';
 import {
@@ -253,7 +253,7 @@ export function EventsList({
         kind={kindOf(shell.layout)}
         title={W.events}
         pill={<OrgPill />}
-        bell={<Bell tell={shell.tell} />}
+        bell={<ListTopEnd />}
         primary={
           asks
             ? undefined

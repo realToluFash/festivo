@@ -188,52 +188,61 @@ export function shiftLine(entry: Entry): string {
 }
 
 /** Every shift by start, each by job and times: the details and Remove's question. */
-export function shiftLines(entry: Entry): string[] {
-  if (entry.job == null || entry.shift == null) return [RW.noShift];
+export function shiftLines(entry: Entry, rw: typeof RW = RW): string[] {
+  if (entry.job == null || entry.shift == null) return [rw.noShift];
 
   return [entry.shift, ...entry.more].map((one) => `${entry.job} · ${one}`);
 }
 
 /** A person has one job on the event: it changes only while they are on no shift (Decided, 18 Nov 2026). */
-export function jobLocked(editing: Entry | null, draft: Draft): string | null {
+export function jobLocked(editing: Entry | null, draft: Draft, rw: typeof RW = RW): string | null {
   if (editing == null || editing.shift == null) return null;
   if ((draft.job === '' ? null : draft.job) === editing.job) return null;
 
-  return RW.jobLocked(editing.name);
+  return rw.jobLocked(editing.name);
 }
 
-export function nextLine(entries: readonly Entry[], finished: boolean): string | null {
-  if (finished) return RW.nextHours;
+export function nextLine(
+  entries: readonly Entry[],
+  finished: boolean,
+  rw: typeof RW = RW,
+): string | null {
+  if (finished) return rw.nextHours;
   const unsent = entries.some(
     (one) => one.mobile != null && (one.link === 'none' || one.link === 'copied'),
   );
 
-  return unsent ? RW.nextSend : null;
+  return unsent ? rw.nextSend : null;
 }
 
-export function detailsNext(entry: Entry, finished: boolean, erased: boolean): string | null {
+export function detailsNext(
+  entry: Entry,
+  finished: boolean,
+  erased: boolean,
+  rw: typeof RW = RW,
+): string | null {
   if (erased) return null;
-  if (finished) return RW.nextErasing;
+  if (finished) return rw.nextErasing;
 
-  return linkOf(entry, false) === 'copied' ? RW.nextCopied : null;
+  return linkOf(entry, false) === 'copied' ? rw.nextCopied : null;
 }
 
 export type Problems = { name?: string; number?: string; email?: string };
 
 /** A blank name, a number the wrong length for its country, an email with no @ and domain; in the form's order. */
-export function problemsOf(draft: Draft, contact: boolean): Problems {
+export function problemsOf(draft: Draft, contact: boolean, rw: typeof RW = RW): Problems {
   const problems: Problems = {};
-  if (draft.name.trim() === '') problems.name = RW.blank;
+  if (draft.name.trim() === '') problems.name = rw.blank;
   if (!contact) return problems;
 
   const length = phoneLengthProblem(draft.number, draft.country);
   if (length === 'tooShort' || length === 'tooLong')
-    problems.number = RW.phoneLength(
+    problems.number = rw.phoneLength(
       length === 'tooShort' ? 'short' : 'long',
       countryName(draft.country),
     );
   if (draft.email.trim() !== '' && emailProblem(draft.email) === 'shape')
-    problems.email = RW.emailShape;
+    problems.email = rw.emailShape;
 
   return problems;
 }
@@ -437,6 +446,8 @@ export interface RosterStart {
   replacing: string | null;
   /** The words of a Shift cell with no shift: the product's French, to measure the longest at 400% zoom (sc-71607). */
   noShift: string;
+  /** The language of the Roster's words; French to measure the longest from 961 to 1279 px (sc-73291). */
+  lang: 'en' | 'fr' | 'es' | 'pt';
 }
 
 function start(o: Partial<RosterStart> & Pick<RosterStart, 'name' | 'note'>): RosterStart {
@@ -456,9 +467,28 @@ function start(o: Partial<RosterStart> & Pick<RosterStart, 'name' | 'note'>): Ro
     missed: null,
     replacing: null,
     noShift: RW.noShift,
+    lang: 'en',
     ...o,
   };
 }
+
+const FRENCH = { lang: 'fr', noShift: 'Aucun service pour l’instant' } as const;
+const SPANISH = { lang: 'es', noShift: 'Aún sin turno' } as const;
+const PORTUGUESE = { lang: 'pt', noShift: 'Ainda sem turno' } as const;
+
+/** A name and an email of 40 characters with no space, the longest single word a cell may hold (sc-75033). */
+const LONG: Entry = entry(
+  'long',
+  'Oluwatimilehinoluwadamilareoluwaseunfunmi',
+  'Runner',
+  'Pass',
+  '17:00 to 00:00',
+  '+2348031110015',
+  'none',
+  'oluwatimilehin.oluwadamilare@example.com',
+);
+
+const erasedSample = () => sample().map((one) => ({ ...one, mobile: null, email: null }));
 
 const typed = (o: Partial<Draft>): Draft => ({ ...draftOf(null), ...o });
 const byId = (id: string) => sample().find((one) => one.id === id) as Entry;
@@ -729,6 +759,150 @@ const STATES = {
       entries: weddingSample(),
       panel: { kind: 'remove', id: 'tolu' },
     }),
+  add: () =>
+    start({
+      name: 'Add a person, the form open',
+      note: 'Open it at 1000 × 800: the form comes before the Roster, which keeps its width.',
+      panel: { kind: 'add' },
+    }),
+  addEmpty: () =>
+    start({
+      name: 'Add a person, on an empty roster',
+      note: 'Open it at 1000 × 800: the form before Nobody on the staff yet.',
+      entries: [],
+      panel: { kind: 'add' },
+    }),
+  detailsFrench: () =>
+    start({
+      name: 'Details, Amina Yusuf, in French',
+      note: 'The product’s French, [bracketed] where l10n has not written it. Open it at 1000 × 800.',
+      panel: { kind: 'details', id: 'amina' },
+      ...FRENCH,
+    }),
+  addFrench: () =>
+    start({
+      name: 'Add a person, the form open, in French',
+      note: 'Open it at 1000 × 800: the form comes before the Roster.',
+      panel: { kind: 'add' },
+      ...FRENCH,
+    }),
+  addEmptyFrench: () =>
+    start({
+      name: 'Add a person, on an empty roster, in French',
+      note: 'Open it at 1000 × 800: the form before the empty Roster.',
+      entries: [],
+      panel: { kind: 'add' },
+      ...FRENCH,
+    }),
+  populatedFrench: () =>
+    start({
+      name: 'Populated, in French',
+      note: 'Nothing open. Pas encore de lien and the no-mobile words wrap only between words; open it at 641, 800, 960 and 1100 × 800.',
+      ...FRENCH,
+    }),
+  detailsNoLink: () =>
+    start({
+      name: 'Details, Emeka Obi, No link yet',
+      note: 'Open it at 1280 or 1440 × 800: the details docked beside the Roster, each Link word whole.',
+      panel: { kind: 'details', id: 'emeka' },
+    }),
+  detailsNoLinkFrench: () =>
+    start({
+      name: 'Details, Emeka Obi, Pas encore de lien',
+      note: 'Open it at 1280 × 800: Pas encore de lien may wrap as Pas encore / de lien, never inside a word.',
+      panel: { kind: 'details', id: 'emeka' },
+      ...FRENCH,
+    }),
+  erasedList: () =>
+    start({
+      name: 'After the 30-day erasure, nothing open',
+      note: 'Every Link cell reads Contact details removed after the event, in whole words.',
+      finished: true,
+      erased: true,
+      entries: erasedSample(),
+    }),
+  erasedListFrench: () =>
+    start({
+      name: 'After the 30-day erasure, nothing open, in French',
+      note: 'Coordonnées effacées après l’événement, in whole words; the frame scrolls if the table is wider.',
+      finished: true,
+      erased: true,
+      entries: erasedSample(),
+      ...FRENCH,
+    }),
+  erasedDetailsFrench: () =>
+    start({
+      name: 'After the 30-day erasure, details open, in French',
+      note: 'Open it at 1280 × 800: the Roster and the details keep whole words.',
+      finished: true,
+      erased: true,
+      entries: erasedSample(),
+      panel: { kind: 'details', id: 'kunle' },
+      ...FRENCH,
+    }),
+  populatedSpanish: () =>
+    start({ name: 'Populated, in Spanish', note: 'Open it at 800 × 800.', ...SPANISH }),
+  detailsNoLinkSpanish: () =>
+    start({
+      name: 'Details, Emeka Obi, in Spanish',
+      note: 'Open it at 1280 × 800, the details docked.',
+      panel: { kind: 'details', id: 'emeka' },
+      ...SPANISH,
+    }),
+  erasedListSpanish: () =>
+    start({
+      name: 'After the 30-day erasure, in Spanish',
+      note: 'Open it at 800 × 800.',
+      finished: true,
+      erased: true,
+      entries: erasedSample(),
+      ...SPANISH,
+    }),
+  erasedDetailsSpanish: () =>
+    start({
+      name: 'After the 30-day erasure, details open, in Spanish',
+      note: 'Open it at 1280 × 800, the details docked.',
+      finished: true,
+      erased: true,
+      entries: erasedSample(),
+      panel: { kind: 'details', id: 'kunle' },
+      ...SPANISH,
+    }),
+  populatedPortuguese: () =>
+    start({ name: 'Populated, in Portuguese', note: 'Open it at 800 × 800.', ...PORTUGUESE }),
+  detailsNoLinkPortuguese: () =>
+    start({
+      name: 'Details, Emeka Obi, in Portuguese',
+      note: 'Open it at 1280 × 800, the details docked.',
+      panel: { kind: 'details', id: 'emeka' },
+      ...PORTUGUESE,
+    }),
+  erasedListPortuguese: () =>
+    start({
+      name: 'After the 30-day erasure, in Portuguese',
+      note: 'Open it at 800 × 800.',
+      finished: true,
+      erased: true,
+      entries: erasedSample(),
+      ...PORTUGUESE,
+    }),
+  erasedDetailsPortuguese: () =>
+    start({
+      name: 'After the 30-day erasure, details open, in Portuguese',
+      note: 'Open it at 1280 × 800, the details docked.',
+      finished: true,
+      erased: true,
+      entries: erasedSample(),
+      panel: { kind: 'details', id: 'kunle' },
+      ...PORTUGUESE,
+    }),
+  longWord: () =>
+    start({
+      name: 'A 40-character word, details docked',
+      note: 'Open it at 1280 × 800: in the Roster the Name column widens and the frame scrolls; in the details the word breaks at the panel’s edge.',
+      entries: [...sample(), LONG],
+      panel: { kind: 'details', id: 'long' },
+    }),
 } satisfies Record<string, () => RosterStart>;
 
 export type RosterStateName = keyof typeof STATES;
@@ -799,5 +973,33 @@ export const ROSTER_PAGES: readonly { name: string; states: readonly DemoLink[] 
     states: (['linkCopied', 'linkNotIssued', 'linkRefused', 'replaceAsk', 'replaced'] as const).map(
       link,
     ),
+  },
+  {
+    name: 'A desk window from 961 to 1279 px, an open person before the Roster (sc-73291)',
+    states: (
+      ['details', 'detailsFrench', 'add', 'addFrench', 'addEmpty', 'addEmptyFrench'] as const
+    ).map(link),
+  },
+  {
+    name: 'Whole words in the Link column at every desk width (sc-75033)',
+    states: (
+      [
+        'populatedFrench',
+        'detailsNoLink',
+        'detailsNoLinkFrench',
+        'erasedList',
+        'erasedListFrench',
+        'erasedDetailsFrench',
+        'populatedSpanish',
+        'detailsNoLinkSpanish',
+        'erasedListSpanish',
+        'erasedDetailsSpanish',
+        'populatedPortuguese',
+        'detailsNoLinkPortuguese',
+        'erasedListPortuguese',
+        'erasedDetailsPortuguese',
+        'longWord',
+      ] as const
+    ).map(link),
   },
 ];

@@ -22,7 +22,8 @@
     "startBody": "Al configurar una organización nueva, usted tendrá la función Propietario.",
     "start": "Crear organización",
     "signedInAs": "Sesión iniciada como {{email}}.",
-    "account": "Su cuenta"
+    "account": "Su cuenta",
+    "wayBack": "Unirse a una organización o crear una"
   },
   "status": {
     "title": "Estado del servicio",
@@ -3094,7 +3095,7 @@
     "locked": "Se incluyen con Enterprise",
     "lockedLine": "Dominios de correo y registro de auditoría.",
     "leftLine": "Los dominios de correo, el registro de auditoría y la eliminación de los datos de invitados están desactivados y se conservan tal cual. Vuelven a activarse con Enterprise.",
-    "leftSays": "{{organisation}} left Enterprise",
+    "leftSays": "{{organisation}} ha dejado Enterprise",
     "rows": {
       "domains": "Dominios de correo",
       "audit": "Registro de auditoría",
@@ -3163,7 +3164,7 @@
       "locked": "Disponible con Enterprise",
       "lockedLine": "Verifique que el dominio pertenece a {{organisation}} y limite sus cuentas a {{organisation}}.",
       "offLine": "{{organisation}} ha dejado Enterprise. Sus dominios se conservan tal cual y vuelven a activarse con Enterprise.",
-      "off": "Switched off",
+      "off": "Desactivados",
       "keep": "Limitar las cuentas de {{domain}} a {{organisation}}",
       "scheduled": "«Solo nuestra organización» empieza el {{at}}",
       "scheduledLine": "Hemos avisado por correo a todas las personas de {{domain}}. Puede cancelarlo hasta entonces.",
@@ -3257,7 +3258,7 @@
     "exportLine": "Se descargan hasta {{atOnce, number}} entradas a la vez. Si hay más, las preparamos y le enviamos un enlace por correo.",
     "downloading": "Descargando el registro de auditoría en {{format}}.",
     "preparing": "Preparando su exportación",
-    "preparingLine": "Enviaremos un enlace a {{email}} cuando esté lista. Funciona una sola vez, durante 24 horas.",
+    "preparingLine": "Enviaremos un enlace a {{email}} cuando esté lista. Solo usted podrá descargarla, con su sesión iniciada, durante 24 horas.",
     "tooMany": "Las entradas que coinciden superan el límite de {{most, number}}. Acote los filtros y vuelva a exportar.",
     "exportFailed": "No se ha podido crear el archivo, así que no se ha compartido nada. Vuelva a intentarlo.",
     "locked": "Disponible con Enterprise",

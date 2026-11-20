@@ -183,7 +183,11 @@ describe('Data and control › Export all data (sc-612)', () => {
       [DOWNLOAD]: () => {
         page = exported('used');
         return new Response(new Uint8Array([80, 75]), {
-          headers: { 'Content-Type': 'application/zip' },
+          headers: {
+            'Content-Type': 'application/zip',
+            'Content-Disposition':
+              "attachment; filename=export.zip; filename*=utf-8''Acme%20-%20Quote%20Co%202026-11-20.zip",
+          },
         });
       },
     });
@@ -193,8 +197,31 @@ describe('Data and control › Export all data (sc-612)', () => {
 
     expect(await screen.findByText('Your export was downloaded')).toBeDefined();
     expect(URL.createObjectURL).toHaveBeenCalledTimes(1);
+    const link = vi.mocked(HTMLAnchorElement.prototype.click).mock.contexts[0] as HTMLAnchorElement;
+    expect(link.download).toBe('Acme - Quote Co 2026-11-20.zip');
     expect(screen.queryByRole('button', { name: 'Download' })).toBeNull();
     expect(sent.filter((line) => line === DOWNLOAD)).toHaveLength(1);
+  });
+
+  it('saves the archive as export.zip when the server names no file', async () => {
+    signedIn();
+    let page = exported('ready');
+    answering({
+      [PAGE]: () => json(page),
+      [DOWNLOAD]: () => {
+        page = exported('used');
+        return new Response(new Uint8Array([80, 75]), {
+          headers: { 'Content-Type': 'application/zip' },
+        });
+      },
+    });
+    open();
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Download' }));
+
+    expect(await screen.findByText('Your export was downloaded')).toBeDefined();
+    const link = vi.mocked(HTMLAnchorElement.prototype.click).mock.contexts[0] as HTMLAnchorElement;
+    expect(link.download).toBe('export.zip');
   });
 
   it('follows the emailed link once, and says so when it was already used', async () => {

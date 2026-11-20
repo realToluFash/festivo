@@ -1,0 +1,11 @@
+# sc-563: from Your mobile number, a managed account with nothing to join presses Skip and lands on sc-2939's "You are not in an organisation".
+appId: host.exp.Exponent
+---
+- tapOn: 'Skip'
+- extendedWaitUntil:
+    visible:
+      text: 'You are not in an?.*'
+    timeout: 30000
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: sc563-no-org-phone-product

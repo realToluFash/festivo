@@ -1,5 +1,5 @@
 import type { OutsideEvent } from '@soirely/api-client';
-import { invitationWording, refusalBody } from '@soirely/domain';
+import { invitationWording } from '@soirely/domain';
 import { useIsFocused } from 'expo-router';
 import { Fragment, type ReactNode, type RefObject, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -45,6 +45,7 @@ import { useModalOpen } from '../updateRequired.ts';
 import { TextField } from './Field.tsx';
 import { Glyph } from './Glyph.tsx';
 import { Initials } from './Initials.tsx';
+import { InvitationFailedNotice, InvitationRefusalNotice } from './InvitationNotices.tsx';
 import { Notice } from './Notice.tsx';
 import { OrgMark } from './OrgMark.tsx';
 import { OutsideEventsGroup } from './OutsideRows.tsx';
@@ -904,30 +905,18 @@ function InvitationPanel({
         </View>
       ) : outcome?.kind === 'refused' ? (
         <View style={styles.answerUnder}>
-          <Notice
-            tone={outcome.refusal === 'invitation_expired' ? 'attention' : 'quiet'}
-            mark={outcome.refusal === 'invitation_expired' ? '!' : 'i'}
-            title={t(`invitations.refused.${outcome.refusal}.word`)}
-            body={t(refusalBody(outcome.refusal, invite.invitedBy != null), {
-              inviter,
-              organisation,
-              email: invite.email,
-              signedInAs: invite.signedInAs ?? '',
-            })}
+          <InvitationRefusalNotice
+            refusal={outcome.refusal}
+            organisation={organisation}
+            invitation={invite}
             answer={answered}
-            takesFocus
           />
         </View>
       ) : (
         <View style={styles.answerUnder}>
           {outcome?.kind === 'failed' && (
             <View style={styles.failed}>
-              <Notice
-                tone="broken"
-                mark={tokens.marks.broken.glyph}
-                body={t('invitations.failed')}
-                answer={answered}
-              />
+              <InvitationFailedNotice answer={answered} />
             </View>
           )}
           {!full && (

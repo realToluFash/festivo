@@ -429,17 +429,20 @@ function reveal(scroller: HTMLElement, element: HTMLElement): void {
 export function JoinedAnswer({
   name,
   role,
+  takesFocus = false,
   onOpen,
 }: {
   name: string;
   role: string;
+  /** On a page, where nothing else moves focus to it, it takes focus and is read once. */
+  takesFocus?: boolean;
   onOpen: () => void;
 }) {
   const { t } = useTranslation();
 
   return (
     <>
-      <Notice kind="done" lands>
+      <Notice kind="done" lands={!takesFocus} takesFocus={takesFocus}>
         {t('invitations.joined', { organisation: name, role })}
       </Notice>
       <button type="button" className="sw-button is-primary is-whole" onClick={onOpen}>
@@ -527,17 +530,23 @@ export function RefusalAnswer({
   organisation,
   email,
   signedInAs,
+  takesFocus = false,
 }: {
   refusal: InvitationRefusalCode;
   inviter: string | null;
   organisation: string;
   email: string;
   signedInAs: string;
+  takesFocus?: boolean;
 }) {
   const { t } = useTranslation();
 
   return (
-    <Notice kind={refusal === 'invitation_expired' ? 'attention' : 'quiet'} lands>
+    <Notice
+      kind={refusal === 'invitation_expired' ? 'attention' : 'quiet'}
+      lands={!takesFocus}
+      takesFocus={takesFocus}
+    >
       <strong>{t(`invitations.refused.${refusal}.word`)}</strong>{' '}
       {t(refusalBody(refusal, inviter != null), {
         inviter: inviter ?? '',

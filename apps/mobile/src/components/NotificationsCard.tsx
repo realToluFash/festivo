@@ -3,8 +3,7 @@ import { useTranslation } from 'react-i18next';
 
 import { tokens } from '../theme/tokens.ts';
 import { useCardWords } from './Cover.tsx';
-import { CardGlyph, OnCard, SummaryCard } from './Summary.tsx';
-import { Text } from './Text.tsx';
+import { CardGlyph, CardSays, OnCard, SummaryCard } from './Summary.tsx';
 
 /** How you hear on Confetti: the bell, the channels and their counts, and a step only while this device blocks push. */
 export function NotificationsCard({
@@ -45,18 +44,7 @@ export function NotificationsCard({
       <View style={styles.face} onLayout={words.onArea}>
         <CardGlyph name={blocked ? 'bellOff' : 'bell'} side={face} />
         <View style={styles.words} onLayout={words.onWords}>
-          <Text
-            size={size}
-            weight="bold"
-            accessibilityRole="header"
-            style={[
-              styles.white,
-              { lineHeight: Math.round(size * 1.15), letterSpacing: size * -0.015 },
-            ]}
-            testID="notifications.says"
-          >
-            {says}
-          </Text>
+          <CardSays text={says} size={size} heading besideGlyph testID="notifications.says" />
           <OnCard text={counts} />
         </View>
       </View>
@@ -72,6 +60,5 @@ export function NotificationsCard({
 const styles = StyleSheet.create({
   face: { flexDirection: 'row', alignItems: 'center', gap: 14 },
   words: { flexShrink: 1, minWidth: 0, gap: tokens.spaceHair },
-  white: { color: tokens.colorInkOnDark },
   line: { alignSelf: 'flex-start' },
 });

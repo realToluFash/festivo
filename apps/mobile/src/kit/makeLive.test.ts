@@ -1,3 +1,6 @@
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
+
 import { ApiError } from '@soirely/api-client';
 import { describe, expect, it } from 'vitest';
 
@@ -14,6 +17,8 @@ import {
   refusalOf,
   toldOf,
 } from './makeLive.ts';
+import { LIVE, W, sayLive } from '../demo/events/EventsWords.ts';
+import en from '../i18n/locales/en.json';
 
 const STARTS = '2026-11-14T16:00:00+01:00';
 const ENDS = '2026-11-15T02:00:00+01:00';
@@ -212,5 +217,46 @@ describe('Make live’s alert (sc-48601)', () => {
       host: null,
       hostsNow: { line: 'eventLive.hostsNow', names: ['Bisi Akindele', 'Kola Mensah'] },
     });
+  });
+});
+
+describe('Make live’s words are the demo’s (sc-48601)', () => {
+  const DEMO: Record<string, string> = {
+    guestsBlocked: W.guestsBlocked,
+    makeLive: LIVE.makeLive,
+    endPassed: W.endPassed,
+    changeDates: W.changeDates,
+    confirmTitle: sayLive.confirmTitle('{{name}}'),
+    confirmLine: LIVE.confirmLine,
+    notYet: LIVE.notYet,
+    madeLive: LIVE.madeLive,
+    failed: LIVE.failed,
+    changedElsewhere: LIVE.changedTitle,
+    nowState_live: LIVE.nowLive,
+    notMadeLive: LIVE.notMadeLive,
+    planLimitStays: LIVE.planLimitStays,
+    close: LIVE.close,
+    hostExplainer: LIVE.hostExplainer,
+    notSavedChanged: LIVE.notSavedChanged,
+    hostsNow: LIVE.hostsNow,
+    making: LIVE.making,
+  };
+
+  it.each(Object.entries(DEMO))('eventLive.%s reads as the demo has it', (key, demo) => {
+    expect(en.eventLive[key as keyof typeof en.eventLive]).toBe(demo);
+  });
+
+  it('writes every eventLive apostrophe curled, as the demo does', () => {
+    const straight = Object.entries(en.eventLive).filter(([, words]) => words.includes("'"));
+
+    expect(straight).toEqual([]);
+  });
+});
+
+describe('the event page (sc-48601)', () => {
+  it('keys EventScreen by the event’s id, so a link to another event starts its page afresh', () => {
+    const page = readFileSync(join(__dirname, '../../app/events/[id]/index.tsx'), 'utf8');
+
+    expect(page).toMatch(/<EventScreen\s+key=\{id\}\s+eventId=\{id\}/);
   });
 });

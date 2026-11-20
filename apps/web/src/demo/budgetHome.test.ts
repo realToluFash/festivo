@@ -13,6 +13,8 @@ import {
   ceilingsOf,
   MARKUPS,
   marginOf,
+  markupWords,
+  NO_MARKUPS,
   headsOf,
   lineAmounts,
   linesOf,
@@ -32,7 +34,7 @@ const line = (id: string) => COST_LINES.find((one) => one.id === id) ?? COST_LIN
 
 describe('the Budget home’s states (spec §9)', () => {
   it('has every Web and Ceiling name, and the margin ones on the home', () => {
-    expect(WEB_STATES).toHaveLength(34);
+    expect(WEB_STATES).toHaveLength(39);
     expect(CEILING_STATES).toHaveLength(24);
     expect(MARGIN_STATES).toContain('free');
     const linked = [...BUDGET_PAGES, ...TEMPLATES_PAGES].flatMap((group) =>
@@ -200,5 +202,11 @@ describe('the Budget home’s states (spec §9)', () => {
       share: ['22.0%', '21.3%'],
     });
     expect(marginOf(lines, heads, { ...MARKUPS, event: 25 }).client).toEqual([2584750, 3001000]);
+  });
+
+  it('reads an event markup of 0 as at cost, chosen, apart from no markup set (sc-92)', () => {
+    expect(markupWords(line('dj'), { ...MARKUPS, event: 0 })).toBe('at cost, chosen');
+    expect(markupWords(line('dj'), NO_MARKUPS)).toBe('no markup set');
+    expect(markupWords(line('dj'), MARKUPS)).toBe('20% markup, the event’s');
   });
 });

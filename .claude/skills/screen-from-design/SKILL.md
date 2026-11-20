@@ -264,6 +264,12 @@ From `CLAUDE.md` and the foundations. Each one is a decision, not a preference:
   unstyled, with no error and nothing red in a test that only finds the
   text. Its test asserts the card's `.desk` ancestor, as `SecurityDesk` and
   `NotificationsDesk` do (sc-35456).
+- **On the web, a row that bleeds past its column needs that much room at the page's
+  edge.** A row whose tint or open state reaches out by a negative inline margin
+  (`spaceMd`, say) overflows a column that already fills the page, as `--evWide` columns
+  do at 1280, and focusing it scrolls the page sideways, cutting the first letter off every
+  line. The column keeps a `margin-inline-end` (or padding) of the same size, as
+  `.bt .ev-right` and the vendor list do (sc-82, sc-92).
 
 ## 7. What the stack cannot express
 
@@ -304,6 +310,11 @@ is held to what both can do:
 - **Text on web breaks words anywhere** (`apps/web/src/styles.css`), so a one-line mark of
   fixed height, such as a pill, a tag or a button's one word, sets `flex: none` and
   `white-space: nowrap`, and the text beside it gives way.
+- **On the app, a box that holds words takes a least height, never a height**: at the
+  accessibility text sizes its words outgrow it and are cut at the foot. `minHeight` and a
+  little vertical padding let it grow. Only a box whose words are capped at the default
+  size (`maxFontSizeMultiplier={1}`) or that holds a single glyph keeps a `height`, and
+  `kitGuard.test.ts` names each one that has been cut.
 
 ## 8. Inputs, accessibility, and verifying
 

@@ -13,6 +13,11 @@
   gap: 18px;
 }
 
+/* The columns fill the page at 1280, and a row that opens reaches spaceMd past the right one: the margin keeps it inside, or focusing it scrolls the page sideways. */
+.bt .ev-right {
+  margin-inline-end: var(--spaceMd);
+}
+
 .bt-title-row {
   display: flex;
   flex-wrap: wrap;
@@ -23,10 +28,9 @@
 
 .bt-title {
   flex: 1;
-  min-width: 0;
   font: 700 30px/1.12 var(--fontFamily);
   letter-spacing: -0.02em;
-  overflow-wrap: anywhere;
+  overflow-wrap: break-word;
 }
 
 .bt-title:focus {
@@ -477,6 +481,21 @@
 
   .bt-figure {
     font-size: 26px;
+  }
+}
+
+.bt-below {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  color: var(--colorAttentionText);
+  font: 600 14px/1.4 var(--fontFamily);
+}
+
+@media (width < 600px) {
+  .bt-title-actions {
+    flex-basis: 100%;
   }
 }
 

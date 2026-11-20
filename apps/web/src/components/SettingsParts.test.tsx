@@ -1,3 +1,6 @@
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
+
 import { act, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
@@ -108,5 +111,19 @@ describe("the filter menu writes its counts in the language's number format (sc-
 
     expect(screen.getByRole('button', { name: /All/u }).textContent).toBe(`All · 1${NARROW}384`);
     expect(counts()).toEqual([`1${NARROW}384`, '0']);
+  });
+});
+
+describe('a card step', () => {
+  it('wraps a long label inside its card, as the demo’s step-wraps rule draws it', () => {
+    const css = readFileSync(join(import.meta.dirname, 'SettingsParts.css'), 'utf8');
+    const rule = /^\.desk-step \{([^}]*)\}/mu.exec(css)?.[1] ?? '';
+
+    expect(rule).toContain('min-height: var(--sizeHit);');
+    expect(rule).toContain('max-width: 100%;');
+    expect(rule).toContain('white-space: normal;');
+    expect(rule).toContain('overflow-wrap: anywhere;');
+    expect(rule).not.toMatch(/^\s*height:/mu);
+    expect(css).toMatch(/^\.desk-step > svg \{\s*flex: none;\s*\}/mu);
   });
 });

@@ -22,6 +22,7 @@ function vendor(overrides: Partial<Vendor>): Vendor {
     address: null,
     note: null,
     archivedAt: null,
+    events: 0,
     ...overrides,
   };
 }
@@ -82,6 +83,8 @@ function signedIn(organisation: Membership): void {
   __setSessionState({ status: 'signedIn', session });
 }
 
+let reminders = { days: 3, inForce: true };
+
 type Sent = { method: string; path: string; search: string; body: unknown };
 
 function answering(
@@ -98,6 +101,8 @@ function answering(
     const one = { method, path: url.pathname, search: url.search, body };
     sent.push(one);
 
+    if (method === 'GET' && url.pathname.endsWith('/payment-reminders'))
+      return new Response(JSON.stringify(reminders), { status: 200 });
     if (method === 'GET') return new Response(JSON.stringify(read(url.search)), { status: 200 });
 
     return write(one);
@@ -106,14 +111,15 @@ function answering(
   return sent;
 }
 
-function open() {
-  const router = createMemoryRouter(routes, { initialEntries: ['/app/settings/vendors'] });
+function open(at = '/app/settings/vendors') {
+  const router = createMemoryRouter(routes, { initialEntries: [at] });
   render(<RouterProvider router={router} />);
   return router;
 }
 
 afterEach(() => {
   vi.restoreAllMocks();
+  reminders = { days: 3, inForce: true };
 });
 
 describe('Settings › Vendors at a desk (sc-82)', () => {
@@ -528,5 +534,75 @@ describe('Settings › Vendors at a desk (sc-82)', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Back to the dashboard' }));
     await waitFor(() => expect(router.state.location.pathname).toBe('/app'));
+  });
+
+  it('lands on the page holding the vendor a Budget names, its row lit and focused', async () => {
+    signedIn(membership());
+    const sent = answering((search) =>
+      new URLSearchParams(search).get('vendor') === 'v7'
+        ? pageOf([DELTA], { page: 2, total: 26, inUse: 26 })
+        : pageOf([BLOOM], { total: 26, inUse: 26 }),
+    );
+    open('/app/settings/vendors?vendor=v7');
+
+    const delta = await screen.findByRole('button', { name: /^Delta Frames/ });
+    const reads = () => sent.filter((one) => one.path === '/api/orgs/org_1/vendors');
+    expect(reads()[0]?.search).toBe('?vendor=v7');
+    expect(delta.classList.contains('is-on')).toBe(true);
+    await waitFor(() => expect(document.activeElement).toBe(delta));
+    expect(screen.getByText('26 to 26 of 26, A to Z')).toBeDefined();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Previous' }));
+    await screen.findByRole('button', { name: /^Bloom & Co/ });
+    expect(reads().at(-1)?.search).toBe('');
+  });
+
+  it('lights and focuses the vendor for someone who only reads the directory', async () => {
+    signedIn(membership({ permissions: ['vendors.read'] }));
+    answering(() => pageOf([BLOOM, DELTA]));
+    open('/app/settings/vendors?vendor=v7');
+
+    await screen.findByText('Delta Frames');
+    const row = document.getElementById('vendor-v7')!;
+    expect(row.classList.contains('is-on')).toBe(true);
+    await waitFor(() => expect(document.activeElement).toBe(row));
+  });
+});
+
+describe('the way into Payment reminders, on Settings › Vendors (sc-95)', () => {
+  it('shows the organisation’s days under the directory’s card, empty or not, and opens the setting', async () => {
+    signedIn(membership());
+    answering(() => pageOf([]));
+    const router = open();
+
+    const row = await screen.findByRole('link', { name: /^Payment reminders/ });
+    expect(row.textContent).toBe(
+      'Payment reminders3 days before a payment is due, and once the day after, then silence.',
+    );
+    fireEvent.click(row);
+    await waitFor(() =>
+      expect(router.state.location.pathname).toBe('/app/settings/vendors/payment-reminders'),
+    );
+  });
+
+  it('says the reminders are off after a downgrade, and still opens the setting', async () => {
+    reminders = { days: 3, inForce: false };
+    signedIn(membership());
+    answering(() => pageOf([BLOOM]));
+    open();
+
+    const row = await screen.findByRole('link', { name: /^Payment reminders are off/ });
+    expect(row.getAttribute('href')).toBe('/app/settings/vendors/payment-reminders');
+  });
+
+  it('is not there for someone who cannot change the setting, nor while the directory loads', async () => {
+    signedIn(membership({ permissions: ['vendors.read'] }));
+    const sent = answering(() => pageOf([BLOOM]));
+    open();
+
+    expect(screen.queryByRole('link', { name: /^Payment reminders/ })).toBeNull();
+    await screen.findByText('Bloom & Co');
+    expect(screen.queryByRole('link', { name: /^Payment reminders/ })).toBeNull();
+    expect(sent.some((one) => one.path.endsWith('/payment-reminders'))).toBe(false);
   });
 });

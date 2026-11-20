@@ -159,7 +159,21 @@ domain_guest = ["App\\Domain\\Guest\\**"]
 domain_staff = ["App\\Domain\\Staff\\**"]
 domain_menu = ["App\\Domain\\Menu\\**"]
 domain_run_of_show = ["App\\Domain\\RunOfShow\\**"]
-domain_budget = ["App\\Domain\\Budget\\**"]
+domain_budget = [
+    "App\\Domain\\Budget\\*",
+    "App\\Domain\\Budget\\Command\\**",
+    "App\\Domain\\Budget\\Controller\\**",
+    "App\\Domain\\Budget\\Model\\**",
+    "App\\Domain\\Budget\\Reminder\\**",
+    "App\\Domain\\Budget\\Http\\BudgetSerialiser",
+    "App\\Domain\\Budget\\Http\\QuoteSerialiser",
+    "App\\Domain\\Budget\\Http\\VendorDirectory",
+    "App\\Domain\\Budget\\Http\\VendorDirectoryProvider",
+    "App\\Domain\\Budget\\Http\\VendorSerialiser",
+]
+# Internal cost and margin leave the server only through MarginSerialiser (sc-92), so it is a
+# layer of its own that no other scope gets with domain_budget.
+budget_margin = ["App\\Domain\\Budget\\Http\\MarginSerialiser"]
 domain_billing = ["App\\Domain\\Billing\\**"]
 
 # Capabilities. Each is its own layer so an edge between two of them has to be
@@ -412,7 +426,9 @@ permit = [
 # days, so it reads the guest headcount and the event's day count; a price is parsed and
 # written at the currency's minor unit by Locale's Money, as the menu's costs are
 # (sc-68066). A line holds the event's currency (sc-98); each change is audited and
-# published.
+# published. The margin is published only to an organisation whose plan unlocks it,
+# asked of billing's one entitlement answer (sc-92). A payment falling due is a message
+# scheduled and sent through messaging (sc-95).
 [[guard.perimeter.rules]]
 namespace = "App\\Domain\\Budget\\"
 permit = [
@@ -420,6 +436,62 @@ permit = [
     "@layer:external",
     "@layer:shared",
     "@layer:domain_budget",
+    "@layer:budget_margin",
+    "@layer:domain_billing",
+    "@layer:domain_event",
+    "@layer:domain_guest",
+    "@layer:domain_messaging",
+    "@layer:domain_user",
+    "@layer:repository",
+    "@layer:audit",
+    "@layer:realtime",
+    "@layer:locale",
+]
+
+# Only Budget's controllers and its top-level classes (MarginController, BudgetPublisher)
+# reach MarginSerialiser; its commands, models and other serialisers do not.
+[[guard.perimeter.rules]]
+namespace = "App\\Domain\\Budget\\Command\\"
+permit = [
+    "@layer:native",
+    "@layer:external",
+    "@layer:shared",
+    "@layer:domain_budget",
+    "@layer:domain_billing",
+    "@layer:domain_event",
+    "@layer:domain_guest",
+    "@layer:domain_user",
+    "@layer:repository",
+    "@layer:audit",
+    "@layer:realtime",
+    "@layer:locale",
+]
+
+[[guard.perimeter.rules]]
+namespace = "App\\Domain\\Budget\\Http\\"
+permit = [
+    "@layer:native",
+    "@layer:external",
+    "@layer:shared",
+    "@layer:domain_budget",
+    "@layer:domain_billing",
+    "@layer:domain_event",
+    "@layer:domain_guest",
+    "@layer:domain_user",
+    "@layer:repository",
+    "@layer:audit",
+    "@layer:realtime",
+    "@layer:locale",
+]
+
+[[guard.perimeter.rules]]
+namespace = "App\\Domain\\Budget\\Model\\"
+permit = [
+    "@layer:native",
+    "@layer:external",
+    "@layer:shared",
+    "@layer:domain_budget",
+    "@layer:domain_billing",
     "@layer:domain_event",
     "@layer:domain_guest",
     "@layer:domain_user",

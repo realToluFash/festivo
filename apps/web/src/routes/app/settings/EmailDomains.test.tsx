@@ -603,7 +603,7 @@ describe('Data and control’s Email domains row and card (sc-560)', () => {
     expect(await screen.findByText('ire.events and ire.co are proved.')).toBeDefined();
   });
 
-  it('locks the row off Enterprise, and keeps it once the organisation left', async () => {
+  it('locks the row off Enterprise, and keeps it locked once the organisation left', async () => {
     signedIn();
     let plan: EmailDomainsPage = page([], 'free');
     answering({ [EXPORT]: () => json(NO_EXPORT), [PAGE]: () => json(plan) });
@@ -611,13 +611,17 @@ describe('Data and control’s Email domains row and card (sc-560)', () => {
 
     const link = await screen.findByRole('link', { name: /Email domains/ });
     expect(within(link).getByText('Enterprise')).toBeDefined();
-    expect(within(link).getByText('Prove your domain')).toBeDefined();
+    expect(
+      within(link).getByText('Prove your domain and limit its accounts to Ìrè Events'),
+    ).toBeDefined();
     unmount();
 
     plan = page([domain('ireevents.com', 'waiting')], 'left');
     open('/app/settings/data-and-control');
 
     expect(await screen.findByText('ireevents.com kept as it was')).toBeDefined();
+    const kept = screen.getByRole('link', { name: /Email domains/ });
+    expect(within(kept).getByText('Enterprise')).toBeDefined();
     await waitFor(() => expect(screen.getByText('Ìrè Events left Enterprise')).toBeDefined());
     expect(
       screen.getByText(

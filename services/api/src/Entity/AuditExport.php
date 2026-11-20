@@ -6,6 +6,7 @@ namespace App\Entity;
 
 use App\Doctrine\Traits\Timestampable;
 use App\Enum\AuditExportStatus;
+use DateInterval;
 use DateTimeImmutable;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
@@ -17,11 +18,10 @@ use Symfony\Component\Uid\Uuid;
 #[ORM\Table(name: 'audit_exports')]
 #[ORM\Index(name: 'idx_audit_export_organisation', columns: ['organisation_id', 'asked_at'])]
 #[ORM\Index(name: 'idx_audit_export_asked_by', columns: ['asked_by_id'])]
-class AuditExport
+#[ORM\Index(name: 'idx_audit_export_preparing', columns: ['status'], options: ['where' => "(status = 'preparing')"])]
+class AuditExport implements PreparedFile
 {
     use Timestampable;
-
-    public const string LINK_LIFETIME = 'PT24H';
 
     #[ORM\Id]
     #[ORM\Column(type: 'uuid')]
@@ -51,8 +51,19 @@ class AuditExport
     #[ORM\Column(type: Types::STRING, length: 20)]
     private string $locale;
 
+    /** The asker's zone when they asked, which the From and To days are read in on every try. */
+    #[ORM\Column(type: Types::STRING, length: 64)]
+    private string $zone;
+
     #[ORM\Column(type: Types::STRING, length: 20, enumType: AuditExportStatus::class)]
     private AuditExportStatus $status = AuditExportStatus::Preparing;
+
+    #[ORM\Column(type: Types::SMALLINT, options: ['default' => 0])]
+    private int $attempts = 0;
+
+    /** When the latest try was last seen writing or uploading its file; a try quiet for PreparedFile::RETRY_AFTER has stopped. */
+    #[ORM\Column(type: Types::DATETIME_IMMUTABLE, nullable: true)]
+    private ?DateTimeImmutable $workedAt = null;
 
     #[ORM\Column(type: Types::STRING, length: 255, nullable: true)]
     private ?string $fileKey = null;
@@ -61,7 +72,7 @@ class AuditExport
     private ?DateTimeImmutable $readyAt = null;
 
     /** @param array<string, string> $filters */
-    public function __construct(Organisation $organisation, User $askedBy, DateTimeImmutable $askedAt, string $format, array $filters, int $entries, string $locale)
+    public function __construct(Organisation $organisation, User $askedBy, DateTimeImmutable $askedAt, string $format, array $filters, int $entries, string $locale, string $zone)
     {
         $this->id = Uuid::v7();
         $this->organisation = $organisation;
@@ -71,6 +82,7 @@ class AuditExport
         $this->filters = $filters;
         $this->entries = $entries;
         $this->locale = $locale;
+        $this->zone = $zone;
     }
 
     public function getId(): Uuid
@@ -86,6 +98,11 @@ class AuditExport
     public function getAskedBy(): User
     {
         return $this->askedBy;
+    }
+
+    public function isAskedBy(User $user): bool
+    {
+        return $this->askedBy->getId()->equals($user->getId());
     }
 
     public function getAskedAt(): DateTimeImmutable
@@ -114,14 +131,29 @@ class AuditExport
         return $this->locale;
     }
 
+    public function getZone(): string
+    {
+        return $this->zone;
+    }
+
+    public function getAttempts(): int
+    {
+        return $this->attempts;
+    }
+
+    public function getWorkedAt(): ?DateTimeImmutable
+    {
+        return $this->workedAt;
+    }
+
     public function getStatus(): AuditExportStatus
     {
         return $this->status;
     }
 
-    public function setStatus(AuditExportStatus $status): void
+    public function isReady(): bool
     {
-        $this->status = $status;
+        return AuditExportStatus::Ready === $this->status;
     }
 
     public function getFileKey(): ?string
@@ -129,18 +161,13 @@ class AuditExport
         return $this->fileKey;
     }
 
-    public function setFileKey(?string $fileKey): void
-    {
-        $this->fileKey = $fileKey;
-    }
-
     public function getReadyAt(): ?DateTimeImmutable
     {
         return $this->readyAt;
     }
 
-    public function setReadyAt(?DateTimeImmutable $readyAt): void
+    public function expiresAt(): ?DateTimeImmutable
     {
-        $this->readyAt = $readyAt;
+        return $this->readyAt?->add(new DateInterval(self::LINK_LIFETIME));
     }
 }

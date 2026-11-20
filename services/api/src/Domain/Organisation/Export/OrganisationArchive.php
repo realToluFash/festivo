@@ -11,10 +11,10 @@ use DateTimeImmutable;
 use DateTimeZone;
 use Doctrine\DBAL\Connection;
 use Psl\Dict;
-use Psl\File;
 use Psl\Filesystem;
 use Psl\Iter;
 use Psl\Json;
+use Psl\Str;
 use Psl\Type;
 use Psl\Vec;
 use Psr\Clock\ClockInterface;
@@ -24,6 +24,8 @@ use ZipArchive;
 /** Everything an organisation holds as one .zip (sc-612); a person's account gives only their name and address, as sc-611 rules. */
 final readonly class OrganisationArchive
 {
+    private const int BATCH = 1_000;
+
     /** Each table's file name, and the query whose columns are its headings, in order. */
     private const array TABLES = [
         'organisation' => <<<'SQL'
@@ -312,11 +314,38 @@ final readonly class OrganisationArchive
             SQL,
         'cost_lines' => <<<'SQL'
             SELECT b.id, b.event_id, b.label, b.category, b.basis, b.price_minor,
-                   CASE WHEN b.price_minor IS NOT NULL THEN ev.currency END AS price_currency, b.note, b.created_at, b.updated_at
+                   CASE WHEN b.price_minor IS NOT NULL THEN ev.currency END AS price_currency, b.note,
+                   b.markup_tenths, b.client_price_minor,
+                   CASE WHEN b.client_price_minor IS NOT NULL THEN ev.currency END AS client_price_currency, b.created_at, b.updated_at
               FROM budget_lines b
               JOIN events ev ON ev.id = b.event_id
              WHERE ev.organisation_id = :organisation AND ev.deleted_at IS NULL AND b.removed_at IS NULL
              ORDER BY ev.starts_at_utc, b.event_id, b.id
+            SQL,
+        'cost_markups' => <<<'SQL'
+            SELECT m.id, m.event_id, m.category, m.markup_tenths, m.created_at, m.updated_at
+              FROM budget_markups m
+              JOIN events ev ON ev.id = m.event_id
+             WHERE ev.organisation_id = :organisation AND ev.deleted_at IS NULL
+             ORDER BY ev.starts_at_utc, m.event_id, m.id
+            SQL,
+        'quotes' => <<<'SQL'
+            SELECT q.id, e.event_id, e.vendor_id, q.covers, q.amount_minor, ev.currency AS amount_currency,
+                   q.quoted_on, q.reference, q.superseded_at, q.created_at
+              FROM quotes q
+              JOIN vendor_engagements e ON e.id = q.engagement_id
+              JOIN events ev ON ev.id = e.event_id
+             WHERE ev.organisation_id = :organisation AND ev.deleted_at IS NULL
+             ORDER BY ev.starts_at_utc, e.event_id, e.vendor_id, q.superseded_at NULLS LAST, q.id
+            SQL,
+        'scheduled_payments' => <<<'SQL'
+            SELECT p.id, e.event_id, e.vendor_id, p.description, p.amount_minor, ev.currency AS amount_currency,
+                   p.due_on, p.created_at
+              FROM scheduled_payments p
+              JOIN vendor_engagements e ON e.id = p.engagement_id
+              JOIN events ev ON ev.id = e.event_id
+             WHERE ev.organisation_id = :organisation AND ev.deleted_at IS NULL
+             ORDER BY ev.starts_at_utc, e.event_id, p.due_on, p.id
             SQL,
     ];
 
@@ -324,6 +353,7 @@ final readonly class OrganisationArchive
     private const array TIMES = [
         'created_at', 'proved_at', 'joined_at', 'expires_at', 'accepted_at', 'declined_at', 'revoked_at',
         'asked_at', 'starts_at', 'ends_at', 'replied_at', 'shared_at', 'archived_at', 'started_at', 'ended_at', 'updated_at',
+        'superseded_at',
     ];
 
     private const array ROLES = [
@@ -338,46 +368,103 @@ final readonly class OrganisationArchive
     ) {
     }
 
-    /** The archive's bytes. */
-    public function of(Organisation $organisation): string
+    /** The .zip is written at $zipPath, every table read in pieces, so no table is ever held in memory whole; the pieces it is made from are gone once it returns. */
+    public function write(Organisation $organisation, string $zipPath): void
     {
-        $tables = $this->read($organisation);
-        $path = Filesystem\create_temporary_file(prefix: 'organisation-export-');
+        $made = [];
 
         try {
+            $jsonPath = Filesystem\create_temporary_file(prefix: 'organisation-export-');
+            $made[] = $jsonPath;
+            $json = self::open($jsonPath, 'wb');
+            \fwrite($json, "{\n    \"exportedAt\": " . Json\encode(self::utc($this->clock->now())));
+            $csvPaths = [];
+
+            foreach (self::TABLES as $name => $sql) {
+                $csvPath = Filesystem\create_temporary_file(prefix: 'organisation-export-');
+                $made[] = $csvPath;
+                $csvPaths[$name] = $csvPath;
+                $this->table($organisation, $sql, $name, $json, $csvPath);
+            }
+
+            \fwrite($json, "\n}");
+            \fclose($json);
+
             $zip = new ZipArchive();
-            if (true !== $zip->open($path, ZipArchive::OVERWRITE)) {
+            if (true !== $zip->open($zipPath, ZipArchive::OVERWRITE)) {
                 throw new RuntimeException('The archive could not be opened for writing.');
             }
 
-            $zip->addFromString('archive.json', Json\encode([
-                'exportedAt' => self::utc($this->clock->now()),
-                ...Dict\map($tables, static fn (ArchiveTable $table): array => $table->rows),
-            ], pretty: true));
+            $zip->addFile($jsonPath, 'archive.json');
 
-            foreach ($tables as $name => $table) {
-                $zip->addFromString($name . '.csv', CsvFile::of($table->lines()));
+            foreach ($csvPaths as $name => $csvPath) {
+                $zip->addFile($csvPath, $name . '.csv');
             }
 
-            $zip->close();
-
-            return File\read($path);
+            if (!$zip->close()) {
+                throw new RuntimeException('The archive could not be written.');
+            }
         } finally {
-            Filesystem\delete_file($path);
+            foreach ($made as $path) {
+                Filesystem\delete_file($path);
+            }
         }
     }
 
-    /** @return array<string, ArchiveTable> */
-    public function read(Organisation $organisation): array
+    /**
+     * One table, a batch of rows at a time from a cursor: its .csv, and its list in archive.json, laid out as one pretty-printed document would be.
+     *
+     * @param resource $json
+     */
+    private function table(Organisation $organisation, string $sql, string $name, $json, string $csvPath): void
     {
-        $id = $organisation->getId()->toRfc4122();
+        $csv = self::open($csvPath, 'wb');
+        CsvFile::start($csv);
+        \fwrite($json, ",\n    " . Json\encode($name) . ': [');
+        $rows = 0;
 
-        return Dict\map(self::TABLES, function (string $sql) use ($id): ArchiveTable {
-            $result = $this->connection->executeQuery($sql, ['organisation' => $id]);
-            $columns = Vec\map(Vec\range(0, $result->columnCount() - 1), $result->getColumnName(...));
+        $this->connection->transactional(function () use ($organisation, $sql, $json, $csv, &$rows): void {
+            $this->connection->executeStatement('DECLARE organisation_archive NO SCROLL CURSOR FOR ' . $sql, ['organisation' => $organisation->getId()->toRfc4122()]);
 
-            return new ArchiveTable($columns, Vec\map($result->fetchAllAssociative(), self::row(...)));
+            do {
+                $result = $this->connection->executeQuery(Str\format('FETCH FORWARD %d FROM organisation_archive', self::BATCH));
+
+                if (0 === $rows) {
+                    CsvFile::row($csv, Vec\map(Vec\range(0, $result->columnCount() - 1), $result->getColumnName(...)));
+                }
+
+                $batch = $result->fetchAllAssociative();
+
+                foreach ($batch as $fetched) {
+                    $row = self::row($fetched);
+                    CsvFile::row($csv, Vec\map(Vec\values($row), self::cell(...)));
+                    \fwrite($json, (0 === $rows ? "\n        " : ",\n        ") . Str\replace(Json\encode($row, pretty: true), "\n", "\n        "));
+                    ++$rows;
+                }
+            } while (self::BATCH === Iter\count($batch));
+
+            $this->connection->executeStatement('CLOSE organisation_archive');
         });
+
+        \fwrite($json, 0 === $rows ? ']' : "\n    ]");
+        \fclose($csv);
+    }
+
+    /** @return resource */
+    private static function open(string $path, string $mode)
+    {
+        return \fopen($path, $mode) ?: throw new RuntimeException('A file of the archive could not be opened.');
+    }
+
+    /** Blank for nothing, true or false for a yes or no. */
+    private static function cell(string|int|bool|null $value): string
+    {
+        return match (true) {
+            null === $value => '',
+            true === $value => 'true',
+            false === $value => 'false',
+            default => (string) $value,
+        };
     }
 
     /**

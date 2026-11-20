@@ -69,6 +69,7 @@ import { type WhatIf, type WhatIfChange, asWhatIf } from './budget.ts';
 import { ApiError, ApiUnreachableError, type Problem, toProblem } from './problem.ts';
 import { type EmailDomainsPage, asEmailDomainsPage } from './emailDomains.ts';
 import { type OrganisationExportPage, asOrganisationExportPage } from './organisationExport.ts';
+import { downloadName } from './fileName.ts';
 import {
   type AuditExportOutcome,
   type AuditFilters,
@@ -136,6 +137,21 @@ import {
 } from './schedule.ts';
 import { type RoomScreen, type ScreenLink, asRoomScreen, asScreenLinks } from './screens.ts';
 import { type BudgetLineTyped, type EventBudget, asEventBudget } from './budget.ts';
+import { type BudgetMargin, type LineCharge, asBudgetMargin } from './margin.ts';
+import {
+  type EventQuote,
+  type EventQuotes,
+  type OfferedVendor,
+  type MadeTyped,
+  type PaidTyped,
+  type PaymentTyped,
+  type QuoteTermsTyped,
+  type QuoteTyped,
+  type QuoteWordingTyped,
+  asEventQuote,
+  asEventQuotes,
+  asOfferedVendors,
+} from './quotes.ts';
 
 /** A table call's answer: the plan whole, and the table it added or changed. */
 export interface SeatingWithTable {
@@ -829,6 +845,12 @@ export interface SignInRuleChange {
   rule: (typeof RULES)[number];
   now: boolean | number | null;
   was: boolean | number | null;
+}
+
+/** How many days before a payment falls due its reminder goes; `inForce` is false once the plan no longer has payment schedules (sc-95). */
+export interface PaymentRemindersSetting {
+  days: number;
+  inForce: boolean;
 }
 
 export interface SignInRulesPage extends OrganisationSignInRules {
@@ -1903,6 +1925,42 @@ export class ApiClient {
     return page;
   }
 
+  /** Settings › Vendors › Payment reminders (sc-95): an Owner's or an Admin's; anybody else is refused 403. */
+  async paymentReminders(organisationId: string): Promise<PaymentRemindersSetting> {
+    return this.readPaymentReminders(
+      await this.get<unknown>(`/api/orgs/${encodeURIComponent(organisationId)}/payment-reminders`),
+    );
+  }
+
+  /** Refused `validation_failed` at `days` for anything but a whole number from 1 to 30. */
+  async updatePaymentReminders(
+    organisationId: string,
+    days: number,
+  ): Promise<PaymentRemindersSetting> {
+    return this.readPaymentReminders(
+      await this.put<unknown>(`/api/orgs/${encodeURIComponent(organisationId)}/payment-reminders`, {
+        days,
+      }),
+    );
+  }
+
+  private readPaymentReminders(raw: unknown): PaymentRemindersSetting {
+    if (
+      raw == null ||
+      typeof raw !== 'object' ||
+      !('days' in raw) ||
+      typeof raw.days !== 'number' ||
+      !('inForce' in raw) ||
+      typeof raw.inForce !== 'boolean'
+    ) {
+      throw new Error(
+        'The API answered /api/orgs/{id}/payment-reminders in a shape this client does not know. Check PaymentRemindersController in services/api.',
+      );
+    }
+
+    return { days: raw.days, inForce: raw.inForce };
+  }
+
   /** Data and control › Export all data (sc-612): an Owner's or an Admin's read; a Member is refused. */
   async organisationExport(organisationId: string): Promise<OrganisationExportPage> {
     return this.readOrganisationExport(
@@ -1917,17 +1975,20 @@ export class ApiClient {
     );
   }
 
-  /** The archive, once, for the Owner who asked: 404 for anyone else, `export_used` or `export_expired` after. */
+  /** The archive, once, for the Owner who asked: 404 for anyone else, `export_used` or `export_expired` after. `name` is the server's name for it. */
   async downloadOrganisationExport(
     organisationId: string,
     exportId: string,
-  ): Promise<Uint8Array<ArrayBuffer>> {
+  ): Promise<{ name: string | null; bytes: Uint8Array<ArrayBuffer> }> {
     const response = await this.answered(
       `/api/orgs/${encodeURIComponent(organisationId)}/export/${encodeURIComponent(exportId)}/download`,
       { method: 'POST' },
     );
 
-    return new Uint8Array(await response.arrayBuffer());
+    return {
+      name: downloadName(response.headers.get('Content-Disposition')),
+      bytes: new Uint8Array(await response.arrayBuffer()),
+    };
   }
 
   /** Data and control › Audit log (sc-611): an Owner's or an Admin's, refused `plan_required` off Enterprise and `permission_required` to a Member. */
@@ -1980,6 +2041,7 @@ export class ApiClient {
     return {
       kind: 'file',
       type: response.headers.get('Content-Type') ?? 'application/octet-stream',
+      name: downloadName(response.headers.get('Content-Disposition')),
       bytes: new Uint8Array(await response.arrayBuffer()),
     };
   }
@@ -1988,7 +2050,7 @@ export class ApiClient {
   async downloadAuditExport(
     organisationId: string,
     exportId: string,
-  ): Promise<{ type: string; bytes: Uint8Array<ArrayBuffer> }> {
+  ): Promise<{ type: string; name: string | null; bytes: Uint8Array<ArrayBuffer> }> {
     const response = await this.answered(
       `/api/orgs/${encodeURIComponent(organisationId)}/audit-log/exports/${encodeURIComponent(exportId)}/download`,
       { method: 'POST' },
@@ -1996,6 +2058,7 @@ export class ApiClient {
 
     return {
       type: response.headers.get('Content-Type') ?? 'application/octet-stream',
+      name: downloadName(response.headers.get('Content-Disposition')),
       bytes: new Uint8Array(await response.arrayBuffer()),
     };
   }
@@ -3696,7 +3759,7 @@ export class ApiClient {
     await this.delete<unknown>(`${this.budgetLinePath(eventId, lineId)}/removal`);
   }
 
-  /** A hub token for this event's budget lines and its headcount, which moves the range. */
+  /** A hub token for this event's budget lines, its quotes and schedules, and its headcount, which moves the range. */
   async budgetSubscription(eventId: string): Promise<RealtimeSubscription> {
     const body = await this.post<{ token?: unknown; expiresAt?: unknown }>(
       `${this.budgetPath(eventId)}/subscriptions`,
@@ -3706,6 +3769,165 @@ export class ApiClient {
       token: typeof body.token === 'string' ? body.token : '',
       expiresAt: typeof body.expiresAt === 'string' ? body.expiresAt : '',
     };
+  }
+
+  /** Client prices, markups and margin (sc-92); 403 `plan_required` without a plan with margin, `permission_required` without budget.margin. */
+  async budgetMargin(eventId: string): Promise<BudgetMargin> {
+    return asBudgetMargin(await this.get<unknown>(`${this.budgetPath(eventId)}/margin`));
+  }
+
+  /** The whole event's markup, or a category's; null takes it away. Answers with the whole margin. */
+  async setBudgetMarkup(
+    eventId: string,
+    category: string | null,
+    markup: string | null,
+  ): Promise<BudgetMargin> {
+    const path =
+      category == null
+        ? `${this.budgetPath(eventId)}/markup`
+        : `${this.budgetPath(eventId)}/markups/${encodeURIComponent(category)}`;
+
+    return asBudgetMargin(await this.put<unknown>(path, { markup }));
+  }
+
+  async chargeBudgetLine(
+    eventId: string,
+    lineId: string,
+    charge: LineCharge,
+  ): Promise<BudgetMargin> {
+    return asBudgetMargin(
+      await this.put<unknown>(`${this.budgetLinePath(eventId, lineId)}/charge`, charge),
+    );
+  }
+
+  /** A hub token for this event's margin and the headcount that moves it. */
+  async budgetMarginSubscription(eventId: string): Promise<RealtimeSubscription> {
+    const body = await this.post<{ token?: unknown; expiresAt?: unknown }>(
+      `${this.budgetPath(eventId)}/margin/subscriptions`,
+    );
+
+    return {
+      token: typeof body.token === 'string' ? body.token : '',
+      expiresAt: typeof body.expiresAt === 'string' ? body.expiresAt : '',
+    };
+  }
+
+  /** Every vendor quoted on the event with its quote, earlier quotes, lines and schedule, and everything due (sc-87); 403 without budget.read. */
+  async quotes(eventId: string): Promise<EventQuotes> {
+    return asEventQuotes(await this.get<unknown>(`${this.budgetPath(eventId)}/quotes`));
+  }
+
+  /** The quote form's Vendor field: the organisation's vendors not archived, A to Z, each marked when already quoted on the event; 403 without budget.manage. */
+  async quoteVendors(eventId: string): Promise<OfferedVendor[]> {
+    return asOfferedVendors(await this.get<unknown>(`${this.budgetPath(eventId)}/quote-vendors`));
+  }
+
+  /** Refused 409 `vendor_already_quoted` for a vendor quoted on the event, and 403 `plan_required` without vendors on the plan. */
+  async addQuote(eventId: string, typed: QuoteTyped): Promise<EventQuote> {
+    return this.readQuote(await this.post<unknown>(`${this.budgetPath(eventId)}/quotes`, typed));
+  }
+
+  /** A new amount or date quoted, keeping the current quote as an earlier one; 409 `quote_unchanged` when both are as they were. */
+  async reviseQuote(eventId: string, quoteId: string, typed: QuoteTermsTyped): Promise<EventQuote> {
+    return this.readQuote(
+      await this.post<unknown>(`${this.quotePath(eventId, quoteId)}/revisions`, typed),
+    );
+  }
+
+  /** What it covers, its quote number and its budget lines, in place. */
+  async correctQuote(
+    eventId: string,
+    quoteId: string,
+    typed: QuoteWordingTyped,
+  ): Promise<EventQuote> {
+    return this.readQuote(await this.put<unknown>(this.quotePath(eventId, quoteId), typed));
+  }
+
+  async addPayment(eventId: string, quoteId: string, typed: PaymentTyped): Promise<EventQuote> {
+    return this.readQuote(
+      await this.post<unknown>(`${this.quotePath(eventId, quoteId)}/payments`, typed),
+    );
+  }
+
+  /** A vendor's first payments, every one or none (sc-1332); 409 `payments_already_scheduled` once the vendor has any payment. */
+  async addSchedule(
+    eventId: string,
+    quoteId: string,
+    payments: readonly PaymentTyped[],
+  ): Promise<EventQuote> {
+    return this.readQuote(
+      await this.post<unknown>(`${this.quotePath(eventId, quoteId)}/schedule`, { payments }),
+    );
+  }
+
+  async amendPayment(eventId: string, paymentId: string, typed: PaymentTyped): Promise<EventQuote> {
+    return this.readQuote(
+      await this.put<unknown>(
+        `${this.budgetPath(eventId)}/payments/${encodeURIComponent(paymentId)}`,
+        typed,
+      ),
+    );
+  }
+
+  async removePayment(eventId: string, paymentId: string): Promise<void> {
+    await this.delete<unknown>(
+      `${this.budgetPath(eventId)}/payments/${encodeURIComponent(paymentId)}`,
+    );
+  }
+
+  /** Mark paid (sc-88): a command, refused 409 when already paid or cancelled. */
+  async markPaid(eventId: string, paymentId: string, typed: PaidTyped): Promise<EventQuote> {
+    return this.readQuote(
+      await this.post<unknown>(`${this.paymentPath(eventId, paymentId)}/paid`, typed),
+    );
+  }
+
+  /** Undo: unmarks a scheduled payment, and deletes one added as already made. */
+  async undoPaid(eventId: string, paymentId: string): Promise<EventQuote> {
+    return this.readQuote(
+      await this.delete<unknown>(`${this.paymentPath(eventId, paymentId)}/paid`),
+    );
+  }
+
+  async cancelPayment(eventId: string, paymentId: string, reason: string): Promise<EventQuote> {
+    return this.readQuote(
+      await this.post<unknown>(`${this.paymentPath(eventId, paymentId)}/cancellation`, { reason }),
+    );
+  }
+
+  async restorePayment(eventId: string, paymentId: string): Promise<EventQuote> {
+    return this.readQuote(
+      await this.delete<unknown>(`${this.paymentPath(eventId, paymentId)}/cancellation`),
+    );
+  }
+
+  async addMadePayment(
+    eventId: string,
+    quoteId: string,
+    typed: MadeTyped,
+  ): Promise<{ quote: EventQuote; paymentId: string }> {
+    const raw = await this.post<unknown>(
+      `${this.quotePath(eventId, quoteId)}/paid-payments`,
+      typed,
+    );
+    const paymentId = (raw as Record<string, unknown> | null)?.paymentId;
+
+    return {
+      quote: this.readQuote(raw),
+      paymentId: typeof paymentId === 'string' ? paymentId : '',
+    };
+  }
+
+  private paymentPath(eventId: string, paymentId: string): string {
+    return `${this.budgetPath(eventId)}/payments/${encodeURIComponent(paymentId)}`;
+  }
+
+  private quotePath(eventId: string, quoteId: string): string {
+    return `${this.budgetPath(eventId)}/quotes/${encodeURIComponent(quoteId)}`;
+  }
+
+  private readQuote(raw: unknown): EventQuote {
+    return asEventQuote((raw as Record<string, unknown> | null)?.quote);
   }
 
   private budgetPath(eventId: string): string {

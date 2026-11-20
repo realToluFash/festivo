@@ -439,7 +439,7 @@ export function emulatorFor(args) {
 }
 
 // An emulator's 127.0.0.1 is itself; reversed, these reach the host's, as on a simulator.
-export function reversedPorts(ports) {
+export function reversedPorts(ports, env = process.env) {
   const reached = [
     'METRO_PORT',
     'API_PORT',
@@ -448,7 +448,13 @@ export function reversedPorts(ports) {
     'STORAGE_PORT',
     'MAILPIT_UI_PORT',
   ];
-  return reached.map((key) => ports[key]);
+  return [...reached.map((key) => ports[key]), ...proxyPort(env.QA_API_URL)];
+}
+
+function proxyPort(url) {
+  if (!url) return [];
+  const { hostname, port } = new URL(url);
+  return ['127.0.0.1', 'localhost'].includes(hostname) && port ? [Number(port)] : [];
 }
 
 // `adb reverse --list` prints `<serial> tcp:<device> tcp:<host>`, or `(reverse) …` on older adb.
@@ -2157,11 +2163,20 @@ function announceEmulator(tools) {
   spawnSync(process.execPath, ['-e', script, adbAnnouncement(CONFIG.emulatorPort)]);
 }
 
+export function shouldAnnounce({ remote, online, unit }) {
+  return remote && !online() && unit() === 'active';
+}
+
 let SEEN = false;
-function seeRemoteEmulator(tools) {
-  if (SEEN || !remoteHost()) return;
+function seeRemoteEmulator(tools, { again = false } = {}) {
+  if (SEEN && !again) return;
   SEEN = true;
-  if (emulatorOnline(tools) || unitState(`${CONFIG.project}-emulator`) !== 'active') return;
+  const due = shouldAnnounce({
+    remote: Boolean(remoteHost()),
+    online: () => emulatorOnline(tools),
+    unit: () => unitState(`${CONFIG.project}-emulator`),
+  });
+  if (!due) return;
   announceEmulator(tools);
   for (let i = 0; i < 20 && !emulatorOnline(tools); i++) spawnSync('sleep', ['0.25']);
 }
@@ -2216,8 +2231,18 @@ export async function restoreReverses(adb, ports, { wait = pause } = {}) {
   return missing;
 }
 
-async function reversePorts(tools) {
-  const missing = await restoreReverses((args) => adbOut(tools, args), reversedPorts(CONFIG.ports));
+// Another tester's command can restart the shared adb server mid-batch, which forgets ours (sc-76877).
+export async function reversePorts(
+  tools,
+  {
+    see = seeRemoteEmulator,
+    adb = (args) => adbOut(tools, args),
+    ports = reversedPorts(CONFIG.ports),
+    wait = pause,
+  } = {},
+) {
+  see(tools, { again: true });
+  const missing = await restoreReverses(adb, ports, { wait });
   if (missing.length) {
     throw new Error(
       `${emulatorSerial()} still has ${missing.join(', ')} unreversed after ten seconds`,

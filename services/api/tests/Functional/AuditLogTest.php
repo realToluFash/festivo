@@ -5,8 +5,12 @@ declare(strict_types=1);
 namespace App\Tests\Functional;
 
 use App\Audit\Auditor;
+use App\Domain\Organisation\AuditLog\AuditEntryView;
+use App\Domain\Organisation\AuditLog\AuditExportMailer;
 use App\Domain\Organisation\AuditLog\AuditExports;
+use App\Domain\Organisation\AuditLog\AuditFilters;
 use App\Domain\Organisation\EmailDomains\ManagedAccounts;
+use App\Domain\Organisation\Export\PreparedFiles;
 use App\Domain\Organisation\Members\MembershipMachine;
 use App\Domain\Organisation\OrganisationFounder;
 use App\Domain\Organisation\Plan\PlanChanger;
@@ -24,24 +28,41 @@ use App\Enum\MembershipChannel;
 use App\Enum\MembershipStatus;
 use App\Enum\Plan;
 use App\Enum\SeededRole;
-use App\Repository\AuditFilter;
+use App\Http\Access\Interfaces\MembershipDirectoryInterface;
+use App\Http\Access\Interfaces\PlanFeaturesInterface;
+use App\Http\AfterResponse;
+use App\Repository\AuditEntryRepository;
+use App\Repository\AuditExportRepository;
+use App\Storage\ObjectStore;
 use App\Tests\ApiTestCase;
+use App\Tests\Double\RecordingLogger;
+use App\Tests\Double\SteppingClock;
 use App\Tests\Traits\InvitesPeople;
 use App\Tests\Traits\OnboardsAccounts;
 use DateTimeImmutable;
+use Doctrine\DBAL\Schema\Schema;
+use Doctrine\DBAL\Types\Types;
+use Doctrine\Migrations\DependencyFactory;
+use Doctrine\Migrations\Version\Version;
 use Doctrine\ORM\EntityManagerInterface;
 use Lexik\Bundle\JWTAuthenticationBundle\Services\JWTTokenManagerInterface;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
+use Psl\Dict;
 use Psl\Iter;
 use Psl\Json;
 use Psl\Str;
 use Psl\Type;
 use Psl\Vec;
+use Psr\Clock\ClockInterface;
+use Psr\Log\LoggerInterface;
+use Symfony\Component\Clock\Test\ClockSensitiveTrait;
 use Symfony\Component\Mime\Email;
 use Symfony\Component\Uid\Uuid;
 
 final class AuditLogTest extends ApiTestCase
 {
+    use ClockSensitiveTrait;
     use InvitesPeople;
     use OnboardsAccounts;
 
@@ -124,6 +145,37 @@ final class AuditLogTest extends ApiTestCase
     }
 
     #[Test]
+    public function theDownloadIsNamedForTheOrganisationWithAnySlashOrQuoteTakenOut(): void
+    {
+        self::mockTime(new DateTimeImmutable('2026-10-19T10:00:00Z'));
+        [$owner, $organisation] = $this->enterprise('folake@ire.events', 'Ìrè / Events "Lagos"');
+        $this->signIn($owner);
+
+        $this->export($organisation, 'csv');
+
+        self::assertSame("attachment; filename=audit-log.csv; filename*=utf-8''%C3%8Cr%C3%A8%20-%20Events%20Lagos%20audit%20log%202026-10-19.csv", $this->client->getResponse()->headers->get('Content-Disposition'));
+    }
+
+    #[Test]
+    public function aPreparedExportDownloadedOnALaterDayKeepsTheDayItWasAskedFor(): void
+    {
+        self::mockTime(new DateTimeImmutable('2026-11-20T23:30:00Z'));
+        [$owner, $organisation] = $this->enterprise('folake@ire.events', 'Soirée à Lisboa');
+        $entityManager = self::service(EntityManagerInterface::class);
+        $export = new AuditExport($entityManager->find(Organisation::class, $organisation->getId()) ?? self::fail('gone'), $entityManager->find(User::class, $owner->getId()) ?? self::fail('gone'), new DateTimeImmutable('2026-11-20T23:30:00Z'), 'jsonl', [], 0, 'en', 'Africa/Lagos');
+        $entityManager->persist($export);
+        $entityManager->flush();
+        self::service(AuditExports::class)->prepare($export);
+
+        self::mockTime(new DateTimeImmutable('2026-11-21T09:00:00Z'));
+        $this->signIn($owner);
+        $this->client->request('POST', $this->path($organisation, 'exports/' . $export->getId()->toRfc4122() . '/download'));
+
+        self::assertResponseStatusCodeSame(200);
+        self::assertSame("attachment; filename=audit-log.jsonl; filename*=utf-8''Soir%C3%A9e%20%C3%A0%20Lisboa%20audit%20log%202026-11-20.jsonl", $this->client->getResponse()->headers->get('Content-Disposition'));
+    }
+
+    #[Test]
     public function aStartAfterTheEndIsRefusedOnTheEndDate(): void
     {
         [$owner, $organisation] = $this->enterprise('folake@ire.events', 'Ìrè Events');
@@ -133,6 +185,21 @@ final class AuditLogTest extends ApiTestCase
 
         self::assertResponseStatusCodeSame(422);
         self::assertSame('to', Type\shape(['violations' => Type\vec(Type\shape(['propertyPath' => Type\string()], true))], true)->coerce($body)['violations'][0]['propertyPath']);
+    }
+
+    #[Test]
+    public function aDayThatDoesNotExistIsRefusedRatherThanRolledOver(): void
+    {
+        [$owner, $organisation] = $this->enterprise('folake@ire.events', 'Ìrè Events');
+        $this->signIn($owner);
+
+        foreach (['2026-13-40', '2026-02-30'] as $day) {
+            $body = $this->send('GET', $this->path($organisation) . '?from=' . $day);
+
+            self::assertResponseStatusCodeSame(422, $day);
+            $violation = Type\shape(['violations' => Type\vec(Type\shape(['propertyPath' => Type\string(), 'code' => Type\string()], true))], true)->coerce($body)['violations'][0] ?? self::fail('no violation for ' . $day);
+            self::assertSame(['from', 'invalid_date'], [$violation['propertyPath'], $violation['code']], $day);
+        }
     }
 
     #[Test]
@@ -238,6 +305,89 @@ final class AuditLogTest extends ApiTestCase
     }
 
     #[Test]
+    public function theChangesSayRolesStatusesAndTimesInWordsAndLeaveOutIdsAndWhatDidNotChange(): void
+    {
+        [$owner, $organisation] = $this->enterprise('folake@ire.events', 'Ìrè Events');
+        $admin = Type\instance_of(Role::class)->coerce(self::service(EntityManagerInterface::class)->getRepository(Role::class)->findOneBy(['organisation' => $organisation->getId(), 'seededAs' => SeededRole::Admin]));
+        $eventId = Uuid::v7();
+        $this->entry($organisation, 'invitation.sent', $owner, '-4 hours', changes: ['email' => [null, 'ada@ire.events'], 'role' => [null, $admin->getId()->toRfc4122()]]);
+        $this->entry($organisation, 'event_person.granted', $owner, '-3 hours', $eventId, 'Gala', changes: ['role' => [null, 'can_edit'], 'jobLabel' => [null, null], 'addressKind' => [null, null], 'eventId' => [null, $eventId->toRfc4122()], 'userId' => [null, $owner->getId()->toRfc4122()]]);
+        $this->entry($organisation, 'event_person.changed', $owner, '-150 minutes', $eventId, 'Gala', changes: ['role' => ['can_view', 'can_edit']]);
+        $this->entry($organisation, 'organisation_domain.removed', $owner, '-140 minutes', changes: ['domain' => ['ire.events', null]]);
+        $this->entry($organisation, 'membership.removed', $owner, '-2 hours', changes: ['status' => ['active', 'left_or_removed'], 'user' => [null, $owner->getId()->toRfc4122()]]);
+        $this->entry($organisation, 'event.created', $owner, '-90 minutes', $eventId, 'Gala', changes: ['name' => [null, 'Gala'], 'startsAt' => [null, '2026-12-19T19:00:00+00:00']]);
+        $this->entry($organisation, 'event.deleted', $owner, '-1 hour', $eventId, 'Gala', changes: ['deletedAt' => [null, '2026-11-19T19:35:47+00:00']]);
+        $this->entry($organisation, 'membership.role_changed', $owner, '-30 minutes', changes: ['roleId' => [Uuid::v7()->toRfc4122(), $admin->getId()->toRfc4122()]]);
+        $this->entry($organisation, 'organisation.plan_changed', $owner, '-15 minutes', changes: ['plan' => ['free', 'enterprise']]);
+        $this->entry($organisation, 'event.updated', $owner, '-12 minutes', Uuid::v7(), 'Gala', changes: ['name' => ['Gala', 'Gala night'], 'type' => ['party', 'gala'], 'timeZone' => ['Africa/Lagos', 'Europe/Paris'], 'venueCoordinates' => [[6.45, 3.39], [48.85, 2.35]], 'notYetNamed' => ['a', 'b']]);
+        [, $elsewhere] = $this->enterprise('kemi@elsewhere.events', 'Elsewhere');
+        $theirAdmin = Type\instance_of(Role::class)->coerce(self::service(EntityManagerInterface::class)->getRepository(Role::class)->findOneBy(['organisation' => $elsewhere->getId(), 'seededAs' => SeededRole::Admin]));
+        $this->entry($organisation, 'membership.approved', $owner, '-10 minutes', changes: ['status' => ['pending_approval', 'active'], 'roleId' => [Uuid::v7()->toRfc4122(), $theirAdmin->getId()->toRfc4122()]]);
+
+        $this->signIn($owner);
+        $entries = Type\vec(Type\shape(['action' => Type\string(), 'changes' => Type\vec(Type\string())], true))->coerce($this->send('GET', $this->path($organisation))['entries']);
+        $changes = Dict\pull($entries, static fn (array $entry): array => $entry['changes'], static fn (array $entry): string => $entry['action']);
+
+        self::assertSame([], $changes['invitation.sent'], 'a creation has no Changes row: its sentence names what was created');
+        self::assertSame([], $changes['event_person.granted']);
+        self::assertSame([], $changes['organisation_domain.removed'], 'nor does a removal, which would read as a rename');
+        self::assertSame(['Role: Can view → Can edit'], $changes['event_person.changed']);
+        self::assertSame(['Status: Active → Left or removed'], $changes['membership.removed']);
+        self::assertSame(['Role: None → Admin'], $changes['membership.role_changed'], 'a role since removed reads as none, and the side that can be read stays');
+        self::assertSame(['Plan: Free → Enterprise'], $changes['organisation.plan_changed']);
+        self::assertSame(['Name: Gala → Gala night', 'Type: Party → Gala', 'Time zone: Africa/Lagos → Europe/Paris'], $changes['event.updated'], 'a field with no name in the catalogue is left out rather than shown in English');
+        self::assertSame(['Status: Awaiting approval → Active'], $changes['membership.approved'], 'another organisation\'s role is never read');
+        self::assertSame([], $changes['event.deleted'], 'a deletion has no Changes row: its sentence and On say it, and Deleted at is internal');
+        self::assertSame([], $changes['event.created'], 'nor does a creation');
+
+        $rows = Vec\map(Vec\filter(Str\split(Str\trim($this->export($organisation, 'jsonl')), "\n"), static fn (string $line): bool => '' !== $line), static fn (string $line): array => Type\dict(Type\string(), Type\nullable(Type\string()))->coerce(Json\decode($line)));
+        $exported = Dict\pull($rows, static fn (array $row): ?string => $row['changes'], static fn (array $row): string => (string) $row['action']);
+        self::assertSame('', $exported['invitation.sent'] ?? '');
+        self::assertSame('', $exported['organisation_domain.removed'] ?? '');
+        self::assertSame('Status: Active → Left or removed', $exported['membership.removed']);
+        self::assertSame('', $exported['event.deleted'] ?? '', 'the export follows the same rule');
+        self::assertSame('', $exported['event.created'] ?? '');
+        self::assertSame('Plan: Free → Enterprise', $exported['organisation.plan_changed']);
+    }
+
+    #[Test]
+    public function anExportsEntrySaysItsFiltersInWords(): void
+    {
+        [$owner, $organisation] = $this->enterprise('folake@ire.events', 'Ìrè Events');
+        $admin = $this->member('julien@ire.events', 'Julien Moreau');
+        $this->join($organisation, $admin, SeededRole::Admin);
+        $this->signIn($owner);
+
+        $this->client->request('POST', $this->path($organisation, 'exports'), server: ['CONTENT_TYPE' => 'application/json'], content: Json\encode(['format' => 'csv', 'type' => 'members', 'person' => $admin->getId()->toRfc4122(), 'event' => '', 'from' => '2026-11-01']));
+        self::assertResponseStatusCodeSame(200);
+        $entries = Type\vec(Type\shape(['action' => Type\string(), 'changes' => Type\vec(Type\string())], true))->coerce($this->list($organisation, ['type' => 'audit_log'])['entries']);
+        $exported = Iter\first(Vec\filter($entries, static fn (array $entry): bool => AuditType::EXPORTED === $entry['action'])) ?? self::fail('no export entry');
+
+        self::assertSame(['Format: None → csv', 'Filters: None → Person: Julien Moreau, Action type: Members and invitations, From: 2026-11-01', 'Rows: None → 0'], $exported['changes']);
+    }
+
+    #[Test]
+    public function anExportFilteredByAnotherOrganisationsEventOrPersonIsRefusedAndNamesNothing(): void
+    {
+        [$owner, $organisation] = $this->enterprise('folake@ire.events', 'Ìrè Events');
+        [$stranger, $elsewhere] = $this->enterprise('kemi@elsewhere.events', 'Elsewhere');
+        $theirEvent = Uuid::v7();
+        $this->entry($elsewhere, 'event.created', $stranger, '-1 hour', $theirEvent, 'Their secret launch');
+        $this->signIn($owner);
+
+        foreach (['event' => $theirEvent->toRfc4122(), 'person' => $stranger->getId()->toRfc4122()] as $field => $id) {
+            $body = $this->send('POST', $this->path($organisation, 'exports'), ['format' => 'csv', $field => $id]);
+
+            self::assertResponseStatusCodeSame(422, $field);
+            $violation = Type\shape(['violations' => Type\vec(Type\shape(['propertyPath' => Type\string(), 'code' => Type\string()], true))], true)->coerce($body)['violations'][0] ?? self::fail('no violation for ' . $field);
+            self::assertSame([$field, 'invalid_choice'], [$violation['propertyPath'], $violation['code']]);
+        }
+
+        $entries = Type\vec(Type\shape(['action' => Type\string()], true))->coerce($this->list($organisation, ['type' => 'audit_log'])['entries']);
+        self::assertSame([], Vec\values(Vec\filter($entries, static fn (array $entry): bool => AuditType::EXPORTED === $entry['action'])), 'a refused export is never recorded');
+    }
+
+    #[Test]
     public function tenThousandDownloadAtOnceAndOneMoreIsPreparedAndEmailedToTheExporterOnly(): void
     {
         [$owner, $organisation] = $this->enterprise('folake@ire.events', 'Ìrè Events');
@@ -275,15 +425,17 @@ final class AuditLogTest extends ApiTestCase
     }
 
     #[Test]
-    public function aPreparedExportsMemoryDoesNotGrowWithItsRows(): void
+    public function aPreparedExportsMemoryToPrepareAndToDownloadDoesNotGrowWithItsRows(): void
     {
         [$owner, $organisation] = $this->enterprise('folake@ire.events', 'Ìrè Events');
         $this->bulk($organisation, $owner, 1_000, 'a long note ' . Str\repeat('x', 2_000));
-        $small = $this->preparedPeak($organisation, $owner);
+        [$small, $smallDownloaded] = $this->preparedPeak($organisation, $owner);
         $this->bulk($organisation, $owner, 14_000, 'a long note ' . Str\repeat('x', 2_000));
-        $large = $this->preparedPeak($organisation, $owner);
+        [$large, $largeDownloaded] = $this->preparedPeak($organisation, $owner);
 
         self::assertLessThan(4 * 1024 * 1024, $large - $small, 'a file some 30 MB larger, and no more than 4 MB more memory at the peak');
+        self::assertGreaterThan(25 * 1024 * 1024, $largeDownloaded['bytes'] - $smallDownloaded['bytes']);
+        self::assertLessThan(4 * 1024 * 1024, $largeDownloaded['peak'] - $smallDownloaded['peak'], 'and no more than 4 MB more to download it');
     }
 
     #[Test]
@@ -297,8 +449,258 @@ final class AuditLogTest extends ApiTestCase
 
         self::assertResponseStatusCodeSame(422);
         self::assertSame(ErrorCode::AuditExportTooMany->type(), $body['type']);
+        self::assertSame('More than 1,000,000 entries match. Narrow the filters, then export again.', $body['detail'] ?? null);
         self::assertSame(0, self::service(EntityManagerInterface::class)->getConnection()->fetchOne('SELECT COUNT(*) FROM audit_entries WHERE action = :action', ['action' => AuditType::EXPORTED]), 'nothing started, nothing recorded');
         self::assertSame(0, self::service(EntityManagerInterface::class)->getConnection()->fetchOne('SELECT COUNT(*) FROM audit_exports'));
+    }
+
+    #[Test]
+    public function aStoppedTryIsTriedAgainFiveMinutesAfterItWasLastWorkingAndNotBefore(): void
+    {
+        $asked = new DateTimeImmutable('2026-11-20T10:00:00Z');
+        self::mockTime($asked);
+        [$owner, $organisation] = $this->enterprise('folake@ire.events', 'Ìrè Events');
+        $export = $this->preparing($organisation, $owner, 1, $asked);
+
+        self::mockTime($asked->modify('+4 minutes 59 seconds'));
+        self::assertSame(0, self::service(AuditExports::class)->prepareDue());
+        self::assertSame([AuditExportStatus::Preparing, 1], $this->triesOf($export));
+
+        self::mockTime($asked->modify('+5 minutes'));
+        self::assertSame(1, self::service(AuditExports::class)->prepareDue());
+        self::assertSame([AuditExportStatus::Ready, 2], $this->triesOf($export));
+        self::assertCount(1, $this->readyMails());
+    }
+
+    #[Test]
+    public function aTryStillWritingPastFiveMinutesIsNeitherStartedAgainNorFailedAndItsAskerIsEmailedOnce(): void
+    {
+        $asked = new DateTimeImmutable();
+        self::mockTime($asked);
+        [$owner, $organisation] = $this->enterprise('folake@ire.events', 'Ìrè Events');
+        $this->bulk($organisation, $owner, 2_500);
+        $export = $this->preparing($organisation, $owner, 0, null, askedAt: $asked);
+        $cutIn = [];
+        $clock = new SteppingClock($asked, 'PT2M', function (int $reading, DateTimeImmutable $now) use ($export, &$cutIn): void {
+            if (4 !== $reading) {
+                return;
+            }
+
+            self::mockTime($now->modify('+2 minutes'));
+            $cutIn[] = self::service(AuditExports::class)->prepareDue();
+            self::service(AuditExports::class)->prepare($export);
+            $cutIn[] = $this->triesOf($export);
+        });
+
+        $this->exportsWith(clock: $clock)->prepare($export);
+
+        self::assertSame([0, [AuditExportStatus::Preparing, 1]], $cutIn, 'eight minutes after the try began, four after it last wrote a batch, another run leaves it alone');
+        self::assertSame([AuditExportStatus::Ready, 1], $this->triesOf($export));
+        self::assertStringEndsWith(Str\format('%s-1.csv', $export->getId()->toRfc4122()), (string) $export->getFileKey());
+        self::assertCount(1, $this->readyMails());
+    }
+
+    #[Test]
+    public function aTryStillUploadingItsFilePastFiveMinutesIsNeitherStartedAgainNorFailed(): void
+    {
+        $asked = new DateTimeImmutable();
+        self::mockTime($asked);
+        [$owner, $organisation] = $this->enterprise('folake@ire.events', 'Ìrè Events');
+        $export = $this->preparing($organisation, $owner, 0, null, askedAt: $asked);
+        $cutIn = [];
+        $clock = new SteppingClock($asked, 'PT4M', static function (int $reading, DateTimeImmutable $now) use (&$cutIn): void {
+            if (4 !== $reading) {
+                return;
+            }
+
+            self::mockTime($now);
+            $cutIn[] = self::service(AuditExports::class)->prepareDue();
+        });
+
+        $this->exportsWith(clock: $clock)->prepare($export);
+
+        self::assertSame([0], $cutIn, 'twelve minutes after the try began, eight after it wrote its last batch, four after its upload was last seen, another run leaves it alone');
+        self::assertSame([AuditExportStatus::Ready, 1], $this->triesOf($export));
+        self::assertCount(1, $this->readyMails());
+    }
+
+    #[Test]
+    public function aTryThatAnotherFinishedFirstDiscardsItsOwnFileAndEmailsNothing(): void
+    {
+        $asked = new DateTimeImmutable();
+        self::mockTime($asked);
+        [$owner, $organisation] = $this->enterprise('folake@ire.events', 'Ìrè Events');
+        $export = $this->preparing($organisation, $owner, 0, null, askedAt: $asked);
+        $clock = new SteppingClock($asked, 'PT1S', static function (int $reading, DateTimeImmutable $now) use ($export): void {
+            if (2 === $reading) {
+                self::service(AuditExportRepository::class)->claimReady($export, 'audit-exports/the-other-try.csv', $now);
+            }
+        });
+
+        $this->exportsWith(clock: $clock)->prepare($export);
+
+        $private = Type\string()->coerce($_SERVER['STORAGE_BUCKET_PRIVATE']);
+        self::assertSame([AuditExportStatus::Ready, 'audit-exports/the-other-try.csv'], [$export->getStatus(), $export->getFileKey()]);
+        self::assertFalse(self::service(ObjectStore::class)->exists($private, Str\format('audit-exports/%s/%s-1.csv', $organisation->getId()->toRfc4122(), $export->getId()->toRfc4122())));
+        self::assertSame([], $this->readyMails());
+    }
+
+    #[Test]
+    public function aThirdTryThatFailsEndsTheExportFailedAndNoFourthIsMade(): void
+    {
+        $asked = new DateTimeImmutable('2026-11-20T10:00:00Z');
+        self::mockTime($asked);
+        [$owner, $organisation] = $this->enterprise('folake@ire.events', 'Ìrè Events');
+        $export = $this->preparing($organisation, $owner, 1, $asked, ['type' => 'not.a.type']);
+        $logger = new RecordingLogger();
+
+        self::mockTime($asked->modify('+5 minutes'));
+        $this->exportsWith($logger)->prepareDue();
+        self::assertSame([AuditExportStatus::Preparing, 2], $this->triesOf($export), 'a second try that fails leaves it for the third');
+
+        self::mockTime($asked->modify('+10 minutes'));
+        $this->exportsWith($logger)->prepareDue();
+        self::assertSame([AuditExportStatus::Failed, 3], $this->triesOf($export));
+
+        self::mockTime($asked->modify('+20 minutes'));
+        self::assertSame(0, $this->exportsWith($logger)->prepareDue());
+        self::assertSame([AuditExportStatus::Failed, 3], $this->triesOf($export));
+        self::assertSame([], $this->readyMails());
+        self::assertSame(
+            [['error', 'An audit log export failed to prepare.', 2], ['error', 'An audit log export failed to prepare.', 3], ['error', 'An audit log export failed for good: its last try failed.', 3]],
+            $this->logged($logger, $export),
+        );
+    }
+
+    #[Test]
+    public function aThirdTryThatStopsEndsTheExportFailedSoThePreparingCardGoesAndExportWorksAtOnce(): void
+    {
+        $asked = new DateTimeImmutable();
+        self::mockTime($asked);
+        [$owner, $organisation] = $this->enterprise('folake@ire.events', 'Ìrè Events');
+        $export = $this->preparing($organisation, $owner, 3, $asked);
+        $logger = new RecordingLogger();
+        $this->signIn($owner);
+        self::assertSame('folake@ire.events', $this->list($organisation, [])['preparing']);
+
+        self::mockTime($asked->modify('+4 minutes'));
+        $this->exportsWith($logger)->prepareDue();
+        self::assertSame([AuditExportStatus::Preparing, 3], $this->triesOf($export));
+
+        self::mockTime($asked->modify('+5 minutes'));
+        $this->exportsWith($logger)->prepareDue();
+        self::assertSame([AuditExportStatus::Failed, 3], $this->triesOf($export));
+        self::assertSame([['error', 'An audit log export failed for good: its last try stopped without finishing.', 3]], $this->logged($logger, $export));
+        self::assertSame([], $this->readyMails());
+
+        $this->signIn($owner);
+        self::assertNull($this->list($organisation, [])['preparing']);
+        $this->signIn($owner);
+        $this->export($organisation, 'csv');
+    }
+
+    #[Test]
+    public function aRetryHoldsOnlyTheEntriesMatchedWhenAskedWithItsDaysInTheZoneItsAskerHadThen(): void
+    {
+        [$owner, $organisation] = $this->enterprise('folake@ire.events', 'Ìrè Events');
+        $this->entry($organisation, 'event.updated', $owner, '2026-11-09T12:00:00Z', target: 'the 10th in Kiritimati, the 9th in UTC');
+        $this->entry($organisation, 'event.updated', $owner, '2026-11-10T12:00:00Z', target: 'the 11th in Kiritimati, the 10th in UTC');
+        $this->entry($organisation, 'event.updated', $owner, '2026-11-10T09:30:00Z', target: 'recorded after it was asked');
+        $asked = new DateTimeImmutable('2026-11-10T09:00:00Z');
+        self::mockTime($asked);
+        $export = $this->preparing($organisation, $owner, 1, $asked, ['from' => '2026-11-10', 'to' => '2026-11-10'], 'Pacific/Kiritimati', $asked, 'jsonl');
+        $user = self::service(EntityManagerInterface::class)->find(User::class, $owner->getId()) ?? self::fail('gone');
+        $user->setTimezone('UTC');
+        self::service(EntityManagerInterface::class)->flush();
+
+        self::mockTime($asked->modify('+5 minutes'));
+        self::service(AuditExports::class)->prepareDue();
+        $this->signIn($owner);
+        $this->client->request('POST', $this->path($organisation, 'exports/' . $export->getId()->toRfc4122() . '/download'));
+        self::assertResponseStatusCodeSame(200);
+        $rows = Vec\map(
+            Vec\filter(Str\split(Str\trim($this->client->getInternalResponse()->getContent()), "\n"), static fn (string $line): bool => '' !== $line),
+            static fn (string $line): string => Type\shape(['what' => Type\string()], true)->coerce(Json\decode($line))['what'],
+        );
+
+        self::assertCount(1, $rows);
+        self::assertStringContainsString('the 10th in Kiritimati, the 9th in UTC', $rows[0]);
+    }
+
+    /** @return iterable<string, array{string}> */
+    public static function nowUnableToRead(): iterable
+    {
+        yield 'an Admin made a Member' => ['member'];
+        yield 'an organisation moved off Enterprise' => ['free'];
+    }
+
+    #[Test]
+    #[DataProvider('nowUnableToRead')]
+    public function aTryDueForSomeoneWhoCanNoLongerReadTheLogFailsWithNoFileAndNoEmail(string $change): void
+    {
+        $asked = new DateTimeImmutable();
+        self::mockTime($asked);
+        [, $organisation] = $this->enterprise('folake@ire.events', 'Ìrè Events');
+        $admin = $this->member('julien@ire.events', 'Julien Moreau');
+        $this->join($organisation, $admin, SeededRole::Admin);
+        $export = $this->preparing($organisation, $admin, 1, $asked);
+        $logger = new RecordingLogger();
+
+        if ('member' === $change) {
+            self::service(EntityManagerInterface::class)->getConnection()->executeStatement(
+                'UPDATE memberships SET role_id = (SELECT id FROM roles WHERE organisation_id = :organisation AND seeded_as = :member) WHERE organisation_id = :organisation AND user_id = :user',
+                ['organisation' => $organisation->getId()->toRfc4122(), 'member' => SeededRole::Member->value, 'user' => $admin->getId()->toRfc4122()],
+            );
+            self::service(EntityManagerInterface::class)->clear();
+            $export = self::service(EntityManagerInterface::class)->find(AuditExport::class, $export->getId()) ?? self::fail('gone');
+        } else {
+            $this->moveTo($organisation, Plan::Free);
+        }
+
+        self::mockTime($asked->modify('+5 minutes'));
+        $this->exportsWith($logger)->prepareDue();
+
+        self::assertSame([AuditExportStatus::Failed, 2], $this->triesOf($export));
+        self::assertNull($export->getFileKey());
+        self::assertSame([], $this->readyMails());
+        self::assertSame([['error', 'An audit log export failed for good: its asker can no longer read the log.', 2]], $this->logged($logger, $export));
+    }
+
+    #[Test]
+    public function anExportStuckPreparingBeforeRetriesShippedIsTriedAgainByTheFirstRunAsItsSecondTryInItsAskersZoneToday(): void
+    {
+        $now = new DateTimeImmutable('2026-11-20T10:00:00Z');
+        self::mockTime($now);
+        [$owner, $organisation] = $this->enterprise('folake@ire.events', 'Ìrè Events');
+        $admin = $this->member('julien@ire.events', 'Julien Moreau');
+        $this->join($organisation, $admin, SeededRole::Admin);
+        $stuck = $this->preparing($organisation, $owner, 0, null, askedAt: $now->modify('-3 days'));
+        $zoneless = $this->preparing($organisation, $admin, 0, null, askedAt: $now->modify('-3 days'));
+        $connection = self::service(EntityManagerInterface::class)->getConnection();
+        $connection->executeStatement('UPDATE users SET timezone = CASE WHEN id = :owner THEN :zone ELSE NULL END WHERE id IN (:owner, :admin)', ['owner' => $owner->getId()->toRfc4122(), 'admin' => $admin->getId()->toRfc4122(), 'zone' => 'Pacific/Kiritimati']);
+        $connection->executeStatement('UPDATE audit_exports SET updated_at = :then', ['then' => $now->modify('-3 days')], ['then' => Types::DATETIME_IMMUTABLE]);
+        $connection->executeStatement('DROP INDEX idx_audit_export_preparing');
+        $connection->executeStatement('ALTER TABLE audit_exports DROP attempts, DROP worked_at, DROP zone');
+
+        $factory = self::serviceById('doctrine.migrations.dependency_factory', DependencyFactory::class);
+        $migration = $factory->getMigrationRepository()->getMigration(new Version('DoctrineMigrations\Version20261120150000'))->getMigration();
+        $migration->up(new Schema());
+
+        foreach ($migration->getSql() as $query) {
+            $connection->executeStatement($query->getStatement());
+        }
+
+        self::service(EntityManagerInterface::class)->clear();
+        $stuck = self::service(EntityManagerInterface::class)->find(AuditExport::class, $stuck->getId()) ?? self::fail('gone');
+        $zoneless = self::service(EntityManagerInterface::class)->find(AuditExport::class, $zoneless->getId()) ?? self::fail('gone');
+        self::assertSame(['Pacific/Kiritimati', 'UTC'], [$stuck->getZone(), $zoneless->getZone()]);
+        self::assertSame([1, $now->modify('-3 days')->getTimestamp()], [$stuck->getAttempts(), $stuck->getWorkedAt()?->getTimestamp()], 'its stuck try counted as its first, last working when the row last changed');
+
+        self::assertSame(2, self::service(AuditExports::class)->prepareDue());
+
+        self::assertSame([AuditExportStatus::Ready, 2], $this->triesOf($stuck));
+        self::assertSame([AuditExportStatus::Ready, 2], $this->triesOf($zoneless));
+        self::assertCount(2, $this->readyMails());
     }
 
     #[Test]
@@ -361,10 +763,11 @@ final class AuditLogTest extends ApiTestCase
         return Vec\map(Type\vec(Type\shape(['action' => Type\string()], true))->coerce($body['entries']), static fn (array $entry): string => $entry['action']);
     }
 
-    private function entry(Organisation $organisation, string $action, User $by, string $ago, ?Uuid $eventId = null, ?string $eventName = null, ?string $target = null): void
+    /** @param array<string, array{0: mixed, 1: mixed}> $changes */
+    private function entry(Organisation $organisation, string $action, User $by, string $ago, ?Uuid $eventId = null, ?string $eventName = null, ?string $target = null, array $changes = []): void
     {
         $entityManager = self::service(EntityManagerInterface::class);
-        $entityManager->persist(new AuditEntry(Actor::User, $by->getId(), $by->getName(), null === $eventId ? 'Organisation' : 'Event', $eventId ?? $organisation->getId(), $action, [], null, null, new DateTimeImmutable($ago), $organisation->getId(), $eventId, $eventName, $target ?? $eventName ?? $organisation->getName()));
+        $entityManager->persist(new AuditEntry(Actor::User, $by->getId(), $by->getName(), null === $eventId ? 'Organisation' : 'Event', $eventId ?? $organisation->getId(), $action, $changes, null, null, new DateTimeImmutable($ago), $organisation->getId(), $eventId, $eventName, $target ?? $eventName ?? $organisation->getName()));
         $entityManager->flush();
     }
 
@@ -373,29 +776,118 @@ final class AuditLogTest extends ApiTestCase
         self::service(EntityManagerInterface::class)->getConnection()->executeStatement(<<<'SQL'
             INSERT INTO audit_entries (id, occurred_at, actor_type, actor_id, actor_label, subject_type, subject_id, action, changes, organisation_id, target)
             SELECT gen_random_uuid(), NOW() - (n || ' seconds')::interval - INTERVAL '1 hour', 'user', :actor, :label, 'Organisation', :organisation, 'event.updated',
-                   CASE WHEN CAST(:note AS text) IS NULL THEN '{}'::jsonb ELSE jsonb_build_object('note', jsonb_build_array(NULL, CAST(:note AS text))) END, :organisation, 'Bulk'
+                   CASE WHEN CAST(:note AS text) IS NULL THEN '{}'::jsonb ELSE jsonb_build_object('arrivalNote', jsonb_build_array(NULL, CAST(:note AS text))) END, :organisation, 'Bulk'
             FROM   generate_series(1, :count) AS n
             SQL, ['actor' => $by->getId()->toRfc4122(), 'label' => $by->getName(), 'organisation' => $organisation->getId()->toRfc4122(), 'count' => $count, 'note' => $note]);
     }
 
-    private function preparedPeak(Organisation $organisation, User $by): int
+    /** @return array{int, array{peak: int, bytes: int}} the memory to prepare the file, then to download it whole */
+    private function preparedPeak(Organisation $organisation, User $by): array
     {
         $entityManager = self::service(EntityManagerInterface::class);
         $organisation = $entityManager->find(Organisation::class, $organisation->getId()) ?? self::fail('gone');
         $by = $entityManager->find(User::class, $by->getId()) ?? self::fail('gone');
-        $export = new AuditExport($organisation, $by, new DateTimeImmutable(), 'csv', [], 0, 'en');
+        $export = new AuditExport($organisation, $by, new DateTimeImmutable(), 'csv', [], 0, 'en', 'Africa/Lagos');
         $entityManager->persist($export);
         $entityManager->flush();
 
         \gc_collect_cycles();
         $before = \memory_get_usage();
         \memory_reset_peak_usage();
-        self::service(AuditExports::class)->prepare($export, new AuditFilter($organisation->getId(), new DateTimeImmutable('-1 year')));
+        self::service(AuditExports::class)->prepare($export);
         $peak = \memory_get_peak_usage() - $before;
 
         self::assertSame(AuditExportStatus::Ready, $export->getStatus());
 
-        return $peak;
+        \gc_collect_cycles();
+        $before = \memory_get_usage();
+        \memory_reset_peak_usage();
+        $files = self::service(PreparedFiles::class);
+        $bytes = 0;
+
+        foreach ($files->chunks(self::service(AuditExports::class)->download($organisation, $export->getId()->toRfc4122(), $by)) as $chunk) {
+            $bytes += Str\Byte\length($chunk);
+        }
+
+        return [$peak, ['peak' => \memory_get_peak_usage() - $before, 'bytes' => $bytes]];
+    }
+
+    /** @param array<string, string> $filters */
+    private function preparing(Organisation $organisation, User $by, int $attempts, ?DateTimeImmutable $workedAt, array $filters = [], string $zone = 'Africa/Lagos', ?DateTimeImmutable $askedAt = null, string $format = 'csv'): AuditExport
+    {
+        $entityManager = self::service(EntityManagerInterface::class);
+        $export = new AuditExport(
+            $entityManager->find(Organisation::class, $organisation->getId()) ?? self::fail('gone'),
+            $entityManager->find(User::class, $by->getId()) ?? self::fail('gone'),
+            $askedAt ?? $workedAt ?? new DateTimeImmutable(),
+            $format,
+            $filters,
+            AuditExports::AT_ONCE + 1,
+            'en',
+            $zone,
+        );
+        $entityManager->persist($export);
+        $entityManager->flush();
+        $entityManager->getConnection()->executeStatement(
+            'UPDATE audit_exports SET attempts = :attempts, worked_at = :workedAt WHERE id = :id',
+            ['attempts' => $attempts, 'workedAt' => $workedAt, 'id' => $export->getId()->toRfc4122()],
+            ['workedAt' => Types::DATETIME_IMMUTABLE],
+        );
+        $entityManager->refresh($export);
+
+        return $export;
+    }
+
+    /** @return array{AuditExportStatus, int} */
+    private function triesOf(AuditExport $export): array
+    {
+        self::service(EntityManagerInterface::class)->refresh($export);
+
+        return [$export->getStatus(), $export->getAttempts()];
+    }
+
+    /** @return list<Email> */
+    private function readyMails(): array
+    {
+        return Vec\filter(
+            Vec\filter_nulls(Vec\map(self::getMailerMessages(), static fn (object $message): ?Email => $message instanceof Email ? $message : null)),
+            static fn (Email $mail): bool => Str\contains((string) $mail->getSubject(), 'audit log is ready'),
+        );
+    }
+
+    /** @return list<array{mixed, string, mixed}> level, message and try number of each line logged about the export */
+    private function logged(RecordingLogger $logger, AuditExport $export): array
+    {
+        $lines = [];
+
+        foreach ($logger->records as $at => $record) {
+            $context = $logger->contexts[$at] ?? [];
+
+            if ($export->getId()->toRfc4122() === ($context['export'] ?? null)) {
+                $lines[] = [$record['level'], $record['message'], $context['attempt'] ?? null];
+            }
+        }
+
+        return $lines;
+    }
+
+    private function exportsWith(?LoggerInterface $logger = null, ?ClockInterface $clock = null): AuditExports
+    {
+        return new AuditExports(
+            self::service(AuditEntryRepository::class),
+            self::service(AuditExportRepository::class),
+            self::service(AuditEntryView::class),
+            self::service(AuditExportMailer::class),
+            self::service(AuditFilters::class),
+            self::service(MembershipDirectoryInterface::class),
+            self::service(PlanFeaturesInterface::class),
+            self::service(PreparedFiles::class),
+            self::service(Auditor::class),
+            self::service(EntityManagerInterface::class),
+            self::service(AfterResponse::class),
+            $logger ?? self::service(LoggerInterface::class),
+            $clock ?? self::service(ClockInterface::class),
+        );
     }
 
     private function listedCount(Organisation $organisation): int

@@ -46,7 +46,13 @@ import { W, say } from './GuestsWords.ts';
 import { type MarkKind, ReplyMark } from '../../components/ReplyMark.tsx';
 import { DoneLine } from '../../components/FormLayers.tsx';
 import { PaneBell, useBellInPane } from '../events/EventFrame.tsx';
-import { actionsUnder, brokeOn, statusFits, titleRowKey } from '../../layout/titleFit.ts';
+import {
+  actionsUnder,
+  brokeOn,
+  statusFits,
+  titleRoomBeside,
+  titleRowKey,
+} from '../../layout/titleFit.ts';
 import { titleSize } from '../../layout/textSize.ts';
 
 export type Layout = 'phone' | 'portrait' | 'landscape';
@@ -388,6 +394,7 @@ export function GuestsTitle({
   onPlus,
   plusLabel = W.addGuest,
   extra = null,
+  extraWidest = null,
   refreshing = null,
 }: {
   layout: Layout;
@@ -396,6 +403,8 @@ export function GuestsTitle({
   onPlus: () => void;
   plusLabel?: string;
   extra?: ReactNode;
+  /** Export again, drawn hidden and never pressed, measured at its widest (sc-71821). */
+  extraWidest?: ReactNode;
   /** Refreshing… while it shows; `row` where main draws it on this row, a tablet's (sc-71821). */
   refreshing?: { node: ReactNode; row: boolean } | null;
 }) {
@@ -412,6 +421,7 @@ export function GuestsTitle({
   const bell = useBellInPane();
   const [room, setRoom] = useState(0);
   const [extraWidth, setExtraWidth] = useState(0);
+  const [widest, setWidest] = useState(0);
   const [titleWidth, setTitleWidth] = useState(0);
   const [plusWidth, setPlusWidth] = useState(0);
   const [statusWidth, setStatusWidth] = useState(0);
@@ -429,7 +439,7 @@ export function GuestsTitle({
     actionsUnder({
       room,
       title: titleWidth,
-      extra: extra == null ? 0 : extraWidth,
+      extra: extra == null ? 0 : widest || extraWidth,
       plus: plus ? tokens.sizeHit : 0,
       bell: bell ? tokens.sizeHit : 0,
       gap: tokens.spaceMd,
@@ -451,6 +461,12 @@ export function GuestsTitle({
       gap: tokens.spaceMd,
     });
   const line = refreshing != null && !onRow;
+  // As the product: the title steps down beside Export as if Export were at its widest, so the two never resize each other into a broken word (sc-71821).
+  const titleRoom = titleRoomBeside({
+    slot,
+    extra: extra == null || under ? 0 : extraWidth,
+    widest,
+  });
   const keepsDefault = layout === 'landscape' && under;
   const onDrawn = useCallback(
     (next: number) => {
@@ -473,7 +489,7 @@ export function GuestsTitle({
         drawn: drawn.current || start,
         start,
         size,
-        slot,
+        slot: titleRoom,
         title: titleWidth,
       }),
     );
@@ -496,7 +512,7 @@ export function GuestsTitle({
             size={size}
             accessibilityRole="header"
             style={titleStyle}
-            room={slot}
+            room={titleRoom}
             onTextLayout={onTitleLines}
             testID="guests.title"
           >
@@ -535,6 +551,18 @@ export function GuestsTitle({
       <View onLayout={widthOf(setStatusWidth)}>{refreshing.node}</View>
     </View>
   );
+  const measureWidest = extra != null && extraWidest != null && (
+    <View
+      style={styles.measure}
+      pointerEvents="none"
+      accessibilityElementsHidden
+      importantForAccessibility="no-hide-descendants"
+    >
+      <TitleCap.Provider value={titleSize(size, fontScale)}>
+        <View onLayout={widthOf(setWidest)}>{extraWidest}</View>
+      </TitleCap.Provider>
+    </View>
+  );
   const ownLine = refreshing != null && line && (
     <View style={styles.statusLine} testID="guests.refreshingLine">
       {refreshing.node}
@@ -556,6 +584,7 @@ export function GuestsTitle({
         onWidth={(_, width) => setTitleWidth(Math.ceil(width))}
       />
       {status}
+      {measureWidest}
       {under ? (
         <>
           <View style={styles.titleRow}>

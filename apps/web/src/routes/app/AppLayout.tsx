@@ -41,6 +41,7 @@ import { useWaitingInvitations } from '../../invitations.ts';
 import { UNASKED } from '../../pageArrival.ts';
 import { useDomainOffer } from '../../joinOffers.ts';
 import { NoOrganisation } from './NoOrganisation.tsx';
+import { AloneHeader } from '../../components/NoOrganisationParts.tsx';
 import { OutsideShell } from './OutsideShell.tsx';
 import { useRoutedEventId } from './outsideRoute.ts';
 import { heldRegistration } from '../../pendingRegistration.ts';
@@ -285,12 +286,11 @@ function Shell() {
   // Every product page would open this page again, so it stands alone: only what works without an organisation, the account pages under the same header.
   if (organisation == null && session.pausedIn == null) {
     return (
-      <div className="no-organisation-page">
+      <div className={atAccount ? 'no-organisation-page' : 'cw-alone desk'}>
         <SkipLink />
-        <header className="public-header">
-          <Brand />
-          <LanguagePicker automatic={false} />
-        </header>
+        <AloneHeader>
+          <LanguagePicker automatic={false} desk />
+        </AloneHeader>
         {atAccount ? (
           <main id="content" className="shell-content no-organisation-account">
             <LinkedNotice />

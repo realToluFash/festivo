@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { chooseLanguage } from '../accountLanguage.ts';
 import { currentLocale, storedLanguage } from '../i18n/index.ts';
 import { useSessionState } from '../session.ts';
+import { LanguageFace } from './NoOrganisationParts.tsx';
 
 /**
  * Reachable from the public pages too, and that is the point.
@@ -21,10 +22,13 @@ import { useSessionState } from '../session.ts';
 export function LanguagePicker({
   automatic = true,
   pill = false,
+  desk = false,
 }: {
   automatic?: boolean;
   /** Drawn as a pill naming the language shown, with the native select laid over it. */
   pill?: boolean;
+  /** The same, in the desk's look: a globe and the language's own name (sc-75471). */
+  desk?: boolean;
 }) {
   const { t } = useTranslation();
   const stored = storedLanguage();
@@ -32,8 +36,13 @@ export function LanguagePicker({
   const shown = LOCALES.find((locale) => locale.code === currentLocale());
 
   return (
-    <label className={pill ? 'button language-pill' : 'language-picker'}>
+    <label
+      className={
+        desk ? 'cw-language language-pill' : pill ? 'button language-pill' : 'language-picker'
+      }
+    >
       <span className="visually-hidden">{t('language.label')}</span>
+      {desk && shown != null && <LanguageFace name={shown.nativeName} />}
       {pill && shown != null && (
         <span className="language-pill-face" aria-hidden="true">
           <svg viewBox="0 0 16 16" width="16" height="16" fill="none" stroke="currentColor">

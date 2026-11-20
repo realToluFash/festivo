@@ -22,7 +22,8 @@
     "startBody": "Configurez une nouvelle organisation et vous y aurez le rôle Propriétaire.",
     "start": "Créer l’organisation",
     "signedInAs": "Connecté en tant que {{email}}.",
-    "account": "Votre compte"
+    "account": "Votre compte",
+    "wayBack": "Rejoindre ou créer une organisation"
   },
   "status": {
     "title": "État du service",
@@ -3094,7 +3095,7 @@
     "locked": "Inclus dans le forfait Enterprise",
     "lockedLine": "Domaines de messagerie et journal d’audit.",
     "leftLine": "Les domaines de messagerie, le journal d’audit et la suppression des données des invités sont désactivés et conservés tels quels. Ils se réactivent avec le forfait Enterprise.",
-    "leftSays": "{{organisation}} left Enterprise",
+    "leftSays": "L’organisation {{organisation}} n’a plus le forfait Enterprise",
     "rows": {
       "domains": "Domaines de messagerie",
       "audit": "Journal d’audit",
@@ -3163,7 +3164,7 @@
       "locked": "Disponible avec le forfait Enterprise",
       "lockedLine": "Vérifiez que le domaine appartient à l’organisation {{organisation}}, puis réservez ses comptes à l’organisation {{organisation}}.",
       "offLine": "L’organisation {{organisation}} n’a plus le forfait Enterprise. Ses domaines sont conservés tels quels et se réactivent avec le forfait Enterprise.",
-      "off": "Switched off",
+      "off": "Désactivés",
       "keep": "Réserver les comptes {{domain}} à l’organisation {{organisation}}",
       "scheduled": "« Réservé à notre organisation » commence le {{at}}",
       "scheduledLine": "Toutes les personnes du domaine {{domain}} ont reçu un e-mail. Vous pouvez annuler jusque-là.",
@@ -3257,7 +3258,7 @@
     "exportLine": "Jusqu’à {{atOnce, number}} entrées se téléchargent directement. Au-delà, nous préparons le fichier et vous envoyons un lien par e-mail.",
     "downloading": "Téléchargement du journal d’audit au format {{format}}.",
     "preparing": "Préparation de votre exportation",
-    "preparingLine": "Nous enverrons un lien à {{email}} dès qu’elle sera prête. Il ne sert qu’une fois, pendant 24 heures.",
+    "preparingLine": "Nous enverrons un lien à {{email}} dès qu’elle sera prête. Elle se télécharge uniquement par vous, depuis votre session, pendant 24 heures.",
     "tooMany": "Les entrées correspondantes dépassent la limite de {{most, number}}. Affinez les filtres, puis exportez à nouveau.",
     "exportFailed": "Le fichier n’a pas pu être créé, rien n’a donc été partagé. Veuillez réessayer.",
     "locked": "Disponible avec le forfait Enterprise",

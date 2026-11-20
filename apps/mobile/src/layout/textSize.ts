@@ -141,6 +141,13 @@ export function wholeLineHeight(size: number, drawn: number): number {
   return (Math.ceil(drawn * LABEL_LINE) * size) / drawn;
 }
 
+/** The size iOS and Android draw a text of `size` at: grown by the text size, no further than its multiplier (none under 1). */
+export function drawnSize(size: number, fontScale: number, multiplier?: number): number {
+  return (
+    size * (multiplier == null || multiplier < 1 ? fontScale : Math.min(fontScale, multiplier))
+  );
+}
+
 /** A text given a `room` is not drawn until that room is reported and every word is measured, so no frame cuts a word; one given no room never waits (sc-69816). */
 export function wordsPending(
   room: number | undefined,

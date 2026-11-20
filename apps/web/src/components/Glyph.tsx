@@ -47,6 +47,7 @@ const GLYPHS = {
   ],
   updown: [{ d: 'm7 15 5 5 5-5' }, { d: 'm7 9 5-5 5 5' }],
   arrow: [{ d: 'M5 12h14' }, { d: 'm12 5 7 7-7 7' }],
+  arrowDown: [{ d: 'M12 5v14' }, { d: 'm6 13 6 6 6-6' }],
   chevron: [{ d: 'm9 18 6-6-6-6' }],
   clock: [{ cx: 12, cy: 12, r: 10 }, { d: 'M12 6v6l4 2' }],
   tick: [{ d: 'M20 6 9 17l-5-5' }],

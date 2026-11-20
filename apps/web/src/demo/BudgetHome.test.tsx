@@ -1,3 +1,6 @@
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
+
 import { act, cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import { RouterProvider, createMemoryRouter } from 'react-router';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -115,6 +118,78 @@ describe('the Budget page at a desk in A (sc-31779)', () => {
     expect(within(section('Costs')).getByRole('button', { name: /^DJ/ })).toBeTruthy();
   });
 
+  it(
+    'keeps the bar above No costs yet once the only cost is removed, and Undo puts it back',
+    SLOW,
+    async () => {
+      await open(at('removed_last'));
+
+      const bar = screen.getByText(/^Dinner removed\. The settled total fell by £/).closest('div');
+      const card = screen.getByText('No costs yet');
+      expect(bar).toBeTruthy();
+      expect(bar!.compareDocumentPosition(card) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+      fireEvent.click(screen.getByRole('button', { name: 'Undo' }));
+      expect(within(section('Costs')).getByRole('button', { name: /^Dinner/ })).toBeTruthy();
+      expect(screen.queryByText('No costs yet')).toBeNull();
+    },
+  );
+
+  it(
+    'puts focus on Undo when Dinner is removed again after Undo on removed_last',
+    SLOW,
+    async () => {
+      await open(at('removed_last'));
+
+      fireEvent.click(screen.getByRole('button', { name: 'Undo' }));
+      fireEvent.click(within(section('Costs')).getByRole('button', { name: /^Dinner/ }));
+      fireEvent.click(within(section('Costs')).getByRole('button', { name: /^Remove/ }));
+      expect(screen.getByText('No costs yet')).toBeTruthy();
+      expect(screen.getByRole('button', { name: 'Undo' })).toBe(document.activeElement);
+    },
+  );
+
+  it.each([
+    [
+      'removed_last_currency',
+      'Not put back. The event’s currency has changed since it was removed.',
+    ],
+    ['removed_last_expired', 'Not put back. It was removed more than a day ago.'],
+  ])('refuses Undo on %s, says why and offers Undo no more', SLOW, async (state, words) => {
+    await open(at(state));
+
+    fireEvent.click(screen.getByRole('button', { name: 'Undo' }));
+    const bar = screen.getByText(words).closest('div');
+    expect(document.activeElement).toBe(bar);
+    expect(screen.queryByRole('button', { name: 'Undo' })).toBeNull();
+    expect(screen.getByText('No costs yet')).toBeTruthy();
+  });
+
+  it.each([
+    [
+      'undo_refused_currency',
+      'Not put back. The event’s currency has changed since it was removed.',
+    ],
+    ['undo_refused_expired', 'Not put back. It was removed more than a day ago.'],
+  ])('opens %s on the refusal', SLOW, async (state, words) => {
+    await open(at(state));
+
+    expect(screen.getByText(words)).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Undo' })).toBeNull();
+  });
+
+  it('keeps the bar when every cost is removed in turn', SLOW, async () => {
+    await open(at('populated'));
+
+    for (let left = 20; left > 0; left--) {
+      if (screen.queryByText('No costs yet') != null) break;
+      const row = within(section('Costs')).getAllByRole('button', { name: /,/ })[0] as HTMLElement;
+      fireEvent.click(row);
+      fireEvent.click(within(section('Costs')).getByRole('button', { name: /^Remove/ }));
+    }
+    expect(screen.getByText('No costs yet')).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Undo' })).toBe(document.activeElement);
+  });
+
   it('refuses Add a cost with three blank fields, sending nothing', SLOW, async () => {
     await open(at('add_cost_blank'));
     const dialog = await screen.findByRole('dialog', {}, SLOW);
@@ -163,7 +238,7 @@ describe('the Budget page at a desk in A (sc-31779)', () => {
     expect(paid).toContain('Client total');
     expect(paid).toContain('Margin after payments£4,856 to £5,522');
     expect(paid).toContain('19.2% to 18.9%');
-    expect(screen.getByText('Below cost: margin −£100.')).toBeTruthy();
+    expect(screen.getByText('Below cost: margin -£100.00.')).toBeTruthy();
     cleanup();
     await open(at('margin_before_paid'));
     const card = screen.getByRole('region', { name: 'Budget' }).textContent ?? '';
@@ -175,6 +250,26 @@ describe('the Budget page at a desk in A (sc-31779)', () => {
       'Client total',
     );
   });
+
+  it(
+    'wraps the who-sees pill inside the card, by the rule every glass pill takes (sc-30767)',
+    SLOW,
+    async () => {
+      const css = readFileSync(join(import.meta.dirname, 'demo.css'), 'utf8');
+      const rule = /\.glass-wraps \.desk-glass:is\(li, span\) \{([^}]*)\}/u.exec(css)?.[1] ?? '';
+
+      expect(rule).toContain('white-space: normal;');
+      expect(rule).toContain('height: auto;');
+      expect(rule).toContain('min-height: 28px;');
+      expect(rule).toContain('max-width: 100%;');
+
+      await open(at('margin'));
+      const pill = screen.getByText('Only owners, admins and this event’s lead see this');
+      expect(pill.tagName).toBe('LI');
+      expect(pill.classList.contains('desk-glass')).toBe(true);
+      expect(pill.parentElement?.classList.contains('glass-wraps')).toBe(true);
+    },
+  );
 
   it('is not available to someone who can only edit the event', SLOW, async () => {
     await open(at('populated', '&as=kemi'));

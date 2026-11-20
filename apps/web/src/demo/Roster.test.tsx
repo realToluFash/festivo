@@ -302,6 +302,57 @@ describe('/demo/events/evt-wed-4/staff/roster (sc-3906)', () => {
     expect(cssRule('.rs-table thead th:nth-child(5)', narrow)).toContain('min-width: 168px;');
   });
 
+  it('keeps whole words in the Roster at every desk width, Link at 168 px (sc-75033)', () => {
+    const desk = ROSTER_CSS.slice(0, ROSTER_CSS.indexOf('@media'));
+    expect(
+      cssRule('.rs-frame > .rs-table :is(th, td),\n.rs-frame > .rs-table :is(th, td) *', desk),
+    ).toContain('overflow-wrap: normal;');
+    expect(cssRule('.rs-frame > .rs-table thead th:nth-child(5)', desk)).toContain(
+      'min-width: 168px;',
+    );
+    expect(desk).not.toMatch(/th:nth-child\([23]\)/u);
+  });
+
+  it.each([
+    ['populatedFrench', 'Liste du personnel', 'Pas encore de lien'],
+    ['detailsNoLinkFrench', 'Liste du personnel', 'Pas encore de lien'],
+    ['erasedListFrench', 'Liste du personnel', 'Coordonnées effacées après l’événement'],
+    ['erasedList', 'Roster', 'Contact details removed after the event'],
+    ['populatedSpanish', 'Lista del personal', 'Aún sin enlace'],
+    ['erasedDetailsSpanish', 'Lista del personal', 'Datos de contacto eliminados tras el evento'],
+    ['populatedPortuguese', 'Lista da equipa', 'Ainda sem ligação'],
+    ['erasedDetailsPortuguese', 'Lista da equipa', 'Contactos apagados depois do evento'],
+  ])('shows the Link words of %s in the Roster (sc-75033)', async (state, roster, words) => {
+    const router = createMemoryRouter(routes, {
+      initialEntries: [`/demo/events/evt-wed-4/staff/roster?state=${state}`],
+    });
+    render(<RouterProvider router={router} />);
+    const table = await screen.findByRole('table', { name: roster }, { timeout: 8000 });
+    expect(within(table).getAllByText(words).length).toBeGreaterThan(0);
+  });
+
+  it.each([
+    ['populatedSpanish', 'Siguiente paso: enviar un enlace a quien aún no lo haya recibido.'],
+    [
+      'erasedListSpanish',
+      'Siguiente paso: revisar las horas en «Horas trabajadas» antes de que se cierre el presupuesto.',
+    ],
+    [
+      'erasedListPortuguese',
+      'Próximo passo: verificar as horas em «Horas trabalhadas» antes de o orçamento fechar.',
+    ],
+    ['detailsNoLinkSpanish', 'Copiar enlace'],
+    ['detailsNoLinkPortuguese', 'Copiar ligação'],
+  ])('reads %s in the product’s words, not English (sc-75033)', async (state, words) => {
+    const router = createMemoryRouter(routes, {
+      initialEntries: [`/demo/events/evt-wed-4/staff/roster?state=${state}`],
+    });
+    render(<RouterProvider router={router} />);
+    expect((await screen.findAllByText(words, {}, { timeout: 8000 })).length).toBeGreaterThan(0);
+    expect(screen.queryByText(/^Next: /u)).toBeNull();
+    expect(screen.queryByText('Copy link')).toBeNull();
+  });
+
   it.each([
     ['nobodyOnShift', 'Not on a shift yet'],
     ['nobodyOnShiftFrench', 'Aucun service pour l’instant'],
@@ -412,5 +463,62 @@ describe('a person’s own link on the roster (sc-3912)', () => {
     await open('readOnly');
     expect(button('Copy link: Emeka Obi')).toBeNull();
     expect(button('Replace link…')).toBeNull();
+  });
+});
+
+describe('the Roster from 961 to 1279 px, in English and French (sc-73291)', () => {
+  async function openIn(state: string, title: string): Promise<void> {
+    const router = createMemoryRouter(routes, {
+      initialEntries: [`/demo/events/evt-wed-4/staff/roster?state=${state}`],
+    });
+    render(<RouterProvider router={router} />);
+    await screen.findByRole('heading', { level: 1, name: title }, { timeout: 8000 });
+  }
+
+  it('opens Add a person on the roster and on an empty one, Cancel back on Add a person', async () => {
+    await openIn('add', 'Staff');
+    expect(screen.getByRole('heading', { level: 2, name: 'Add a person' })).toBeTruthy();
+    expect(screen.getByRole('table', { name: 'Roster' })).toBeTruthy();
+    press('Cancel');
+    expect(document.activeElement).toBe(button('Add a person'));
+  });
+
+  it('says the empty roster under the open form', async () => {
+    await openIn('addEmpty', 'Staff');
+    expect(screen.getByRole('heading', { level: 2, name: 'Add a person' })).toBeTruthy();
+    expect(screen.getByText('Nobody on the staff yet')).toBeTruthy();
+  });
+
+  it('puts the details, the Roster and the top in the product’s French', async () => {
+    await openIn('detailsFrench', 'Équipe');
+    const table = screen.getByRole('table', { name: 'Liste du personnel' });
+    expect(
+      within(table)
+        .getAllByRole('columnheader')
+        .map((one) => one.textContent),
+    ).toEqual(['Nom', 'Fonction', 'Poste', 'Service', 'Lien']);
+    expect(screen.getByRole('navigation', { name: 'Fil d’Ariane' })).toBeTruthy();
+    expect(screen.getByText('Fonctions et services')).toBeTruthy();
+    const panel = screen.getByRole('complementary');
+    expect(within(panel).getByRole('heading', { level: 2, name: 'Amina Yusuf' })).toBeTruthy();
+    expect(within(panel).getByText('Numéro de portable')).toBeTruthy();
+  });
+
+  it('moves focus to the name in French, and Fermer back to the row', async () => {
+    await openIn('detailsFrench', 'Équipe');
+    press('Bisi Okon');
+    expect(document.activeElement).toBe(
+      screen.getByRole('heading', { level: 2, name: 'Bisi Okon' }),
+    );
+    press('Fermer');
+    expect(document.activeElement).toBe(button('Bisi Okon'));
+  });
+
+  it('opens Add a person in French on an empty roster, Annuler back on Ajouter une personne', async () => {
+    await openIn('addEmptyFrench', 'Équipe');
+    expect(screen.getByRole('heading', { level: 2, name: 'Ajouter une personne' })).toBeTruthy();
+    expect(screen.getByText('Personne dans l’équipe pour l’instant')).toBeTruthy();
+    press('Annuler');
+    expect(document.activeElement).toBe(button('Ajouter une personne'));
   });
 });

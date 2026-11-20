@@ -4,8 +4,10 @@ import { useEffect, useId, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { api } from '../../../api.ts';
-import { Broken, Opened } from '../../../components/EventPageParts.tsx';
+import { Opened } from '../../../components/EventPageParts.tsx';
 import { Glyph } from '../../../components/Glyph.tsx';
+import { useSaveAnswer } from '../../../components/saveAnswer.ts';
+import { SaveNotice } from '../../../components/SaveNotice.tsx';
 import { Ask, TextAction } from '../../../components/SettingsParts.tsx';
 import { dateLocale } from '../../../i18n/index.ts';
 import { closesAtClock, showsPreview } from '../../../replyBy.ts';
@@ -74,7 +76,7 @@ export function ReplyByPart({
   const [refusedHere, setRefusedHere] = useState(false);
   const [asking, setAsking] = useState<ReplyByCheck | null>(null);
   const [busy, setBusy] = useState(false);
-  const [outcome, setOutcome] = useState<'changed' | 'failed' | null>(null);
+  const outcome = useSaveAnswer();
   const field = useRef<HTMLInputElement>(null);
   const id = useId();
   const next = typed === '' ? null : typed;
@@ -102,19 +104,29 @@ export function ReplyByPart({
       onSaved(saved, replyBySaid(next, now, event.timeZone, t));
     } catch (error) {
       setBusy(false);
-      if (error instanceof ApiError && error.status === 412) return setOutcome('changed');
+      if (error instanceof ApiError && error.status === 412)
+        return outcome.give('changedElsewhere');
+      if (error instanceof ApiError && error.is('permission_required'))
+        return outcome.give('forbidden');
       if (
         error instanceof ApiError &&
         error.status === 422 &&
         error.fieldErrors().replyBy != null
       ) {
-        setOutcome(null);
+        outcome.clear();
         setRefusedHere(true);
         field.current?.focus();
         return;
       }
-      setOutcome('failed');
+      outcome.give('notSaved');
     }
+  }
+
+  function retyped(value: string): void {
+    setTyped(value);
+    setTried(false);
+    setRefusedHere(false);
+    if (outcome.answer === 'forbidden') outcome.clear();
   }
 
   function save(): void {
@@ -134,21 +146,10 @@ export function ReplyByPart({
     <Opened
       label={t('eventReplyBy.replyBy')}
       changed={changed}
-      refused={outcome === 'changed'}
       busy={busy}
-      onLatest={() => {
-        void api.taggedEvent(event.id).then(
-          (latest) => {
-            setOutcome(null);
-            onLatest(latest);
-          },
-          () => setOutcome('failed'),
-        );
-      }}
       onCancel={onClose}
       onSave={save}
     >
-      {outcome === 'failed' && <Broken>{t('eventEdit.notSaved')}</Broken>}
       <div className="desk-field">
         <label htmlFor={id} className="desk-label">
           {t('eventReplyBy.replyBy')}
@@ -162,11 +163,7 @@ export function ReplyByPart({
           value={typed}
           aria-invalid={wrong}
           aria-describedby={told}
-          onChange={(change) => {
-            setTyped(change.target.value);
-            setTried(false);
-            setRefusedHere(false);
-          }}
+          onChange={(change) => retyped(change.target.value)}
         />
         {wrong && (
           <p id={`${id}-error`} className="desk-error" role="alert">
@@ -181,9 +178,7 @@ export function ReplyByPart({
           <TextAction
             label={t('eventReplyBy.remove')}
             onClick={() => {
-              setTyped('');
-              setTried(false);
-              setRefusedHere(false);
+              retyped('');
               field.current?.focus();
             }}
           />
@@ -220,6 +215,12 @@ export function ReplyByPart({
           }}
         />
       )}
+      <SaveNotice
+        answered={outcome}
+        onLatest={() => {
+          void api.taggedEvent(event.id).then(onLatest, () => outcome.give('notSaved'));
+        }}
+      />
     </Opened>
   );
 }

@@ -1,0 +1,81 @@
+# sc-75211: drags in a scrolling Filter menu open nothing and change no pick; qa3's foot, top, past-top drag ten times.
+# Drags are drawn between points inside the menu: a swipe from an element runs to the screen's edge, and from the top edge iOS pulls down its own screens.
+appId: host.exp.Exponent
+---
+- runFlow: sc75211-setup.yaml
+- takeScreenshot: d-top
+- repeat:
+    times: 10
+    commands:
+      - swipe: { start: '40%,88%', end: '40%,60%', duration: 400 }
+      - waitForAnimationToEnd
+      - swipe: { start: '40%,60%', end: '40%,88%', duration: 400 }
+      - waitForAnimationToEnd
+      - swipe: { start: '40%,60%', end: '40%,88%', duration: 400 }
+      - waitForAnimationToEnd
+      - assertNotVisible: { id: 'events.filter.back' }
+      - assertVisible: { id: 'events.filter.type' }
+- takeScreenshot: d-after-ten
+- swipe: { start: '40%,62%', end: '40%,92%', duration: 400 }
+- waitForAnimationToEnd
+- swipe: { start: '40%,72%', end: '40%,60%', duration: 400 }
+- waitForAnimationToEnd
+- assertNotVisible: { id: 'events.filter.back' }
+- swipe: { start: '40%,88%', end: '40%,60%', duration: 400 }
+- waitForAnimationToEnd
+- swipe: { start: '40%,88%', end: '40%,60%', duration: 400 }
+- waitForAnimationToEnd
+- takeScreenshot: d-foot
+- assertNotVisible: { id: 'events.filter.back' }
+- assertVisible: { id: 'events.filter.clear' }
+- swipe: { start: '30%,91%', end: '40%,62%', duration: 400 }
+- waitForAnimationToEnd
+- swipe: { start: '30%,91%', end: '40%,96%', duration: 300 }
+- waitForAnimationToEnd
+- takeScreenshot: d-after-clear-drags
+- assertNotVisible: { id: 'events.filter.back' }
+- repeat:
+    while: { notVisible: { id: 'events.filter.clear' } }
+    times: 6
+    commands:
+      - swipe: { start: '40%,88%', end: '40%,60%', duration: 500 }
+      - waitForAnimationToEnd
+- assertVisible: { id: 'events.filter.clear' }
+- repeat:
+    while: { notVisible: { id: 'events.filter.type' } }
+    times: 8
+    commands:
+      - swipe: { start: '40%,60%', end: '40%,88%', duration: 500 }
+      - waitForAnimationToEnd
+- tapOn: { id: 'events.filter.type' }
+- waitForAnimationToEnd
+- takeScreenshot: d-type-top
+- swipe: { start: '40%,59%', end: '40%,88%', duration: 400 }
+- waitForAnimationToEnd
+- assertVisible: { id: 'events.filter.back' }
+- swipe: { start: '40%,70%', end: '40%,60%', duration: 400 }
+- waitForAnimationToEnd
+- swipe: { start: '40%,62%', end: '40%,92%', duration: 400 }
+- waitForAnimationToEnd
+- swipe: { start: '40%,62%', end: '40%,92%', duration: 400 }
+- waitForAnimationToEnd
+- takeScreenshot: d-type-after-drags
+- assertVisible: { id: 'events.filter.back' }
+- repeat:
+    while: { notVisible: { id: 'events.filter.type.party' } }
+    times: 6
+    commands:
+      - swipe: { start: '40%,88%', end: '40%,60%', duration: 500 }
+      - waitForAnimationToEnd
+- swipe: { start: '40%,88%', end: '40%,60%', duration: 400 }
+- waitForAnimationToEnd
+- swipe: { start: '40%,88%', end: '40%,60%', duration: 400 }
+- waitForAnimationToEnd
+- takeScreenshot: d-type-foot-pulled
+- repeat:
+    while: { notVisible: { id: 'events.filter.type.party' } }
+    times: 8
+    commands:
+      - swipe: { start: '40%,60%', end: '40%,88%', duration: 500 }
+      - waitForAnimationToEnd
+- takeScreenshot: d-type-picks-kept

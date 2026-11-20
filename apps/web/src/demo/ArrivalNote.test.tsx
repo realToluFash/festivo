@@ -146,7 +146,7 @@ describe('Edit details › Venue, the arrival note', () => {
   });
 
   it(
-    'says a 403 in the notice at the top of Venue, where Not saved sits, and changes nothing',
+    'says a 403 in the notice directly above Cancel and Save, where Not saved sits, and changes nothing',
     SLOW,
     async () => {
       await page('venueNoteForbidden');
@@ -158,7 +158,9 @@ describe('Edit details › Venue, the arrival note', () => {
         'Nothing was changed. Your role does not include the permission this needs.',
       );
       expect(notice.classList.contains('notice-broken')).toBe(true);
-      expect(venue().firstElementChild).toBe(notice);
+      expect(
+        notice.parentElement?.nextElementSibling?.classList.contains('ev-opened-actions'),
+      ).toBe(true);
       expect(sampleEvent('evt-wed-4')?.arrivalNote).toBe(ARRIVAL_NOTE);
     },
   );

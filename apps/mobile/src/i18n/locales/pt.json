@@ -22,7 +22,8 @@
     "startBody": "Configure uma nova organização e terá a função Proprietário.",
     "start": "Criar organização",
     "signedInAs": "Sessão iniciada como {{email}}.",
-    "account": "A sua conta"
+    "account": "A sua conta",
+    "wayBack": "Aderir a uma organização ou criar uma"
   },
   "status": {
     "title": "Estado do serviço",
@@ -3094,7 +3095,7 @@
     "locked": "Incluídos no plano Enterprise",
     "lockedLine": "Domínios de e-mail e registo de auditoria.",
     "leftLine": "Os domínios de e-mail, o registo de auditoria e a eliminação dos dados dos convidados estão desativados e mantêm-se como estavam. Voltam a ficar ativos com o plano Enterprise.",
-    "leftSays": "{{organisation}} left Enterprise",
+    "leftSays": "{{organisation}} deixou o plano Enterprise",
     "rows": {
       "domains": "Domínios de e-mail",
       "audit": "Registo de auditoria",
@@ -3163,7 +3164,7 @@
       "locked": "Disponível no plano Enterprise",
       "lockedLine": "Verifique que o domínio pertence a {{organisation}} e, depois, limite as contas desse domínio a {{organisation}}.",
       "offLine": "{{organisation}} deixou o plano Enterprise. Os domínios mantêm-se como estavam e voltam a ficar ativos com o plano Enterprise.",
-      "off": "Switched off",
+      "off": "Desativados",
       "keep": "Limitar as contas de {{domain}} a {{organisation}}",
       "scheduled": "«Só a nossa organização» a partir de {{at}}",
       "scheduledLine": "Enviámos um e-mail a todas as pessoas de {{domain}}. Pode cancelar até lá.",
@@ -3257,7 +3258,7 @@
     "exportLine": "Até {{atOnce, number}} entradas são transferidas de imediato. Se forem mais, preparamos o ficheiro e enviamos uma ligação por e-mail.",
     "downloading": "A transferir o registo de auditoria em {{format}}.",
     "preparing": "A preparar a sua exportação",
-    "preparingLine": "Vamos enviar uma ligação para {{email}} quando estiver pronta. Só funciona uma vez, durante 24 horas.",
+    "preparingLine": "Vamos enviar uma ligação para {{email}} quando estiver pronta. Pode ser transferida apenas por si, com sessão iniciada, durante 24 horas.",
     "tooMany": "As entradas correspondentes ultrapassam o limite de {{most, number}}. Restrinja os filtros e exporte novamente.",
     "exportFailed": "Não foi possível criar o ficheiro, por isso nada foi partilhado. Tente novamente.",
     "locked": "Disponível no plano Enterprise",

@@ -48,11 +48,15 @@
     "web:dataControl.control",
     "mobile:dataAndControl.control",
     "web:dataControl.enterprise",
+    "messagesCounts:audit.value.enterprise",
     "mobile:dataAndControl.enterprise",
+    "web:budget.margin.enterprise",
     "web:auditLog.formats.csv",
     "web:auditLog.formats.jsonl",
     "mobile:auditLog.csv",
-    "mobile:auditLog.jsonLines"
+    "mobile:auditLog.jsonLines",
+    "messagesCounts:audit.value.baby_shower",
+    "messagesCounts:audit.field.plan"
   ],
   "fr": [
     "web:nav.menu",
@@ -195,7 +199,9 @@
     "web:stations.sectionTables_other",
     "messages:stations.place_suggested.bar",
     "web:dataControl.enterprise",
+    "messagesCounts:audit.value.enterprise",
     "mobile:dataAndControl.enterprise",
+    "web:budget.margin.enterprise",
     "web:auditLog.formats.csv",
     "web:auditLog.formats.jsonl",
     "mobile:auditLog.csv",
@@ -207,7 +213,11 @@
     "mobile:auditLog.type",
     "mobile:auditLog.dates",
     "mobile:auditLog.types.organisation",
-    "messagesCounts:audit.type.organisation"
+    "messagesCounts:audit.type.organisation",
+    "messagesCounts:audit.value.baby_shower",
+    "messagesCounts:audit.field.type",
+    "messagesCounts:audit.field.format",
+    "messagesCounts:audit.value.invitation"
   ],
   "pt": [
     "web:seating.shapeCocktailShort",
@@ -261,7 +271,9 @@
     "messages:staff.job_suggested.bar",
     "messages:stations.place_suggested.bar",
     "web:dataControl.enterprise",
+    "messagesCounts:audit.value.enterprise",
     "mobile:dataAndControl.enterprise",
+    "web:budget.margin.enterprise",
     "web:auditLog.formats.csv",
     "web:auditLog.formats.jsonl",
     "mobile:auditLog.csv",

@@ -1,11 +1,16 @@
 import {
   ApiError,
   type BudgetLine,
+  type BudgetMargin,
   type BudgetLineTyped,
   COST_BASES,
   type CostBasis,
   type EventBudget,
+  type EventQuote,
+  type EventQuotes,
   type OrganisationEvent,
+  type DuePayment,
+  type ScheduledPayment,
   VENDOR_CATEGORIES,
   type VendorCategory,
   linePrice,
@@ -30,7 +35,7 @@ import {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link } from 'react-router';
+import { Link, Navigate, useParams } from 'react-router';
 
 import { api } from '../../../api.ts';
 import { Glyph } from '../../../components/Glyph.tsx';
@@ -48,9 +53,10 @@ import {
 import { useDeskTop } from '../../../deskTop.ts';
 import { dateLocale } from '../../../i18n/index.ts';
 import { LayersContext, useDeskLayers } from '../../../layers.ts';
-import { meshFor } from '../../../mesh.ts';
 import { useOwnOfflineNotice } from '../../../offline.ts';
 import { pageTitle, usePageTitle } from '../../../pageTitle.ts';
+import { can, canOn, useSession } from '../../../session.ts';
+import { Toast } from '../../../components/Toast.tsx';
 import { keptKeys, keptLoad, useAnsweredAgain, useKeptAsShown } from '../../../tabKept.ts';
 import {
   NOTE_MAX,
@@ -68,19 +74,58 @@ import {
   removedWords,
   rowLine,
   sentPrice,
+  minorMoney,
   wholeMoney,
 } from './budgetArea.ts';
+import {
+  MarginCard,
+  MarginCosts,
+  MarkupBlock,
+  MarkupDialog,
+  type MarkupOpening,
+} from './BudgetMargin.tsx';
+import { listedOnMarginFace } from './budgetMargin.ts';
+import { MoneyField } from './BudgetParts.tsx';
+import { PaymentDialog, QuoteDialog } from './QuoteForms.tsx';
+import { CancelDialog, MadeDialog, MarkPaidDialog } from './PaymentForms.tsx';
+import {
+  type Amending,
+  CoverCard,
+  DueNext,
+  EverythingDue,
+  QuotesNotLoaded,
+  ReadOnlyLine,
+  VendorPage,
+  VendorsQuoted,
+} from './QuoteParts.tsx';
+import {
+  type QuoteForm,
+  budgetPath,
+  budgetView,
+  cardDue,
+  dueInOrder,
+  longDay,
+  todayIn,
+  vendorPagePath,
+} from './quotesArea.ts';
 import { useHubTopics } from './useHubTopics.ts';
 import '../../../components/SettingsParts.css';
 import '../../../components/eventsDesk.css';
 import '../../../components/eventPage.css';
 import './budget.css';
 
-const PIECES = [1, 2, 3, 4, 5, 6];
 const WASH_MS = 1600;
 const MINUTE_MS = 60_000;
 
 type Load = { kind: 'loading' } | { kind: 'failed' } | { kind: 'loaded'; budget: EventBudget };
+
+type QuotesLoad =
+  { kind: 'loading' } | { kind: 'failed' } | { kind: 'loaded'; quotes: EventQuotes };
+
+interface Quoting {
+  form: QuoteForm;
+  quote: EventQuote | null;
+}
 
 interface Said {
   id: string;
@@ -118,8 +163,76 @@ export function BudgetArea({ event }: { event: OrganisationEvent }) {
   const shown = useRef<EventBudget | null>(null);
   const known = useRef(new Set<string>());
   const own = useRef(0);
+  const marginReader = event.permissions.includes('budget.margin');
+  const [margin, setMargin] = useState<BudgetMargin | null>(null);
+  const [marginFace, setMarginFace] = useState(false);
+  const [markupOpening, setMarkupOpening] = useState<MarkupOpening | null>(null);
+  const session = useSession();
+  const { '*': rest = '' } = useParams();
+  const view = budgetView(rest);
+  const viewKey = view.kind === 'vendor' ? `vendor:${view.vendorId}` : view.kind;
+  const [quotesLoad, setQuotesLoad] = useState<QuotesLoad>({ kind: 'loading' });
+  const [quoting, setQuoting] = useState<Quoting | null>(null);
+  const [paying, setPaying] = useState<EventQuote | null>(null);
+  const [amending, setAmending] = useState<Amending | null>(null);
+  const [removing, setRemoving] = useState<string | null>(null);
+  const [notRemoved, setNotRemoved] = useState(false);
+  const [retryingQuotes, setRetryingQuotes] = useState(false);
+  const [earlier, setEarlier] = useState(false);
+  const [told, setTold] = useState<string | null>(null);
+  const [marking, setMarking] = useState<{ quoteId: string; paymentId: string } | null>(null);
+  const [cancelling, setCancelling] = useState<ScheduledPayment | null>(null);
+  const [making, setMaking] = useState(false);
+  const [marked, setMarked] = useState<string | null>(null);
+  const [deleted, setDeleted] = useState<string | null>(null);
+  const viewed = useRef(false);
+  const quotes = quotesLoad.kind === 'loaded' ? quotesLoad.quotes : null;
+  const shownQuote =
+    view.kind === 'vendor'
+      ? (quotes?.quotes.find((one) => one.vendor.id === view.vendorId) ?? null)
+      : null;
+  const sub =
+    view.kind === 'due'
+      ? t('quotes.everythingDueTitle')
+      : view.kind === 'vendor'
+        ? (shownQuote?.vendor.name ?? null)
+        : null;
 
-  usePageTitle(pageTitle(t, [t('budget.title'), event.name]));
+  usePageTitle(
+    pageTitle(
+      t,
+      sub == null ? [t('budget.title'), event.name] : [sub, t('budget.title'), event.name],
+    ),
+  );
+
+  useEffect(() => {
+    let current = true;
+
+    api.quotes(event.id).then(
+      (found) => current && setQuotesLoad({ kind: 'loaded', quotes: found }),
+      () => current && setQuotesLoad((was) => (was.kind === 'loaded' ? was : { kind: 'failed' })),
+    );
+
+    return () => {
+      current = false;
+    };
+  }, [event.id, attempt, answeredAgain]);
+
+  const [seenView, setSeenView] = useState(viewKey);
+  if (seenView !== viewKey) {
+    setSeenView(viewKey);
+    setAmending(null);
+    setRemoving(null);
+    setNotRemoved(false);
+    setEarlier(false);
+    setMarked(null);
+    setDeleted(null);
+  }
+
+  useEffect(() => {
+    if (viewed.current) title.current?.focus();
+    viewed.current = true;
+  }, [viewKey]);
 
   useEffect(() => {
     let current = true;
@@ -139,6 +252,14 @@ export function BudgetArea({ event }: { event: OrganisationEvent }) {
     };
   }, [event.id, attempt, answeredAgain]);
   useKeptAsShown(keptKeys.budget(event.id), load.kind === 'loaded' ? load.budget : null);
+
+  /** Refused plan_required on a plan without margin: then nothing says it is missing (sc-92). */
+  const readMargin = useCallback(() => {
+    if (!marginReader) return;
+    api.budgetMargin(event.id).then(setMargin, () => setMargin(null));
+  }, [event.id, marginReader]);
+
+  useEffect(readMargin, [readMargin, attempt, answeredAgain]);
 
   useEffect(() => {
     if (washed === 0) return;
@@ -185,7 +306,16 @@ export function BudgetArea({ event }: { event: OrganisationEvent }) {
     }
   }, [adopt, event.id]);
 
+  const readQuotes = useCallback(async (): Promise<void> => {
+    try {
+      setQuotesLoad({ kind: 'loaded', quotes: await api.quotes(event.id) });
+    } catch {
+      return;
+    }
+  }, [event.id]);
+
   const readLive = useCallback(() => {
+    void readQuotes();
     api.budget(event.id).then(
       (budget) => {
         const was = shown.current;
@@ -197,15 +327,45 @@ export function BudgetArea({ event }: { event: OrganisationEvent }) {
       },
       () => undefined,
     );
-  }, [adopt, event.id, locale, t]);
+  }, [adopt, event.id, locale, readQuotes, t]);
 
   const topics = useMemo(
-    () => [realtimeTopic('EventBudget', event.id), realtimeTopic('EventHeadcount', event.id)],
+    () => [
+      realtimeTopic('EventBudget', event.id),
+      realtimeTopic('EventHeadcount', event.id),
+      realtimeTopic('EventQuotes', event.id),
+    ],
     [event.id],
   );
   useHubTopics(topics, () => api.budgetSubscription(event.id), readLive, readLive);
 
+  const marginHeld = margin != null;
+  const marginTopics = useMemo(
+    () =>
+      !marginHeld
+        ? []
+        : [realtimeTopic('EventBudgetMargin', event.id), realtimeTopic('EventHeadcount', event.id)],
+    [event.id, marginHeld],
+  );
+  useHubTopics(
+    marginTopics,
+    () => api.budgetMarginSubscription(event.id),
+    () => {
+      readMargin();
+      if (marginFace && own.current === 0) setWashed((n) => n + 1);
+    },
+    readMargin,
+  );
+  const onMarginFace = marginFace && margin != null;
+
   const budget = load.kind === 'loaded' ? load.budget : null;
+  const home = budgetPath(event.id);
+  const vendorAt = (vendorId: string) => vendorPagePath(event.id, vendorId);
+  const writes = quotes != null && quotes.entitled && canOn(event, 'budget.manage');
+  const readOnly = quotes != null && !quotes.entitled && quotes.quotes.length > 0;
+  const quotesShown =
+    quotesLoad.kind === 'failed' || (quotes != null && (quotes.entitled || readOnly));
+  const tell = (words: string) => setTold(words);
 
   const crumb = (
     <div className="ev-crumb-row">
@@ -220,10 +380,25 @@ export function BudgetArea({ event }: { event: OrganisationEvent }) {
               {event.name}
             </Link>
           </li>
-          <li className="ev-crumb-part" aria-current="page">
-            <Glyph name="chevron" size={15} weight={2.4} className="desk-chevron" />
-            <span className="ev-crumb-name">{t('budget.title')}</span>
-          </li>
+          {sub == null ? (
+            <li className="ev-crumb-part" aria-current="page">
+              <Glyph name="chevron" size={15} weight={2.4} className="desk-chevron" />
+              <span className="ev-crumb-name">{t('budget.title')}</span>
+            </li>
+          ) : (
+            <>
+              <li className="ev-crumb-part">
+                <Glyph name="chevron" size={15} weight={2.4} className="desk-chevron" />
+                <Link className="ev-crumb-name" to={home}>
+                  {t('budget.title')}
+                </Link>
+              </li>
+              <li className="ev-crumb-part" aria-current="page">
+                <Glyph name="chevron" size={15} weight={2.4} className="desk-chevron" />
+                <span className="ev-crumb-name">{sub}</span>
+              </li>
+            </>
+          )}
         </ol>
       </nav>
       {desk.bell}
@@ -235,49 +410,313 @@ export function BudgetArea({ event }: { event: OrganisationEvent }) {
     setLive(null);
   };
 
+  if (view.kind === 'unknown' || (view.kind === 'vendor' && quotes != null && shownQuote == null))
+    return <Navigate replace to={home} />;
+
+  const failed = load.kind === 'failed' || (view.kind !== 'home' && quotesLoad.kind === 'failed');
+  const waiting =
+    !failed && (load.kind === 'loading' || (view.kind !== 'home' && quotesLoad.kind === 'loading'));
+  const retry = () => {
+    setLoad((was) => (was.kind === 'failed' ? { kind: 'loading' } : was));
+    setQuotesLoad((was) => (was.kind === 'failed' ? { kind: 'loading' } : was));
+    setAttempt((n) => n + 1);
+  };
+  const afterQuote = async (words: string, revised: boolean) => {
+    await readQuotes();
+    setQuoting(null);
+    if (revised) setEarlier(false);
+    tell(words);
+  };
+  const retryQuotes = async () => {
+    if (retryingQuotes) return;
+    setRetryingQuotes(true);
+    try {
+      setQuotesLoad({ kind: 'loaded', quotes: await api.quotes(event.id) });
+      title.current?.focus();
+    } catch {
+      return;
+    } finally {
+      setRetryingQuotes(false);
+    }
+  };
+  const removePayment = async (payment: ScheduledPayment) => {
+    if (quotes == null) return;
+    try {
+      await api.removePayment(event.id, payment.id);
+    } catch {
+      setNotRemoved(true);
+      return;
+    }
+    await readQuotes();
+    setRemoving(null);
+    setNotRemoved(false);
+    title.current?.focus();
+    tell(
+      t('quotes.paymentRemoved', {
+        what: payment.description,
+        amount: minorMoney(payment.amount, quotes.currency, locale),
+      }),
+    );
+  };
+
+  const paymentAt = (quoteId: string, paymentId: string) => {
+    const quote = quotes?.quotes.find((one) => one.id === quoteId) ?? null;
+    const payment = quote?.payments.find((one) => one.id === paymentId) ?? null;
+
+    return quote == null || payment == null ? null : { quote, payment };
+  };
+  const markingAt = marking == null ? null : paymentAt(marking.quoteId, marking.paymentId);
+  const homeMarked =
+    view.kind === 'home' && marked != null
+      ? (quotes?.quotes
+          .flatMap((quote) =>
+            quote.payments.map((payment) => ({ payment, vendor: quote.vendor.name })),
+          )
+          .find((one) => one.payment.id === marked && one.payment.paid != null) ?? null)
+      : null;
+  const focusPayment = (id: string) => {
+    let tries = 20;
+    const go = () => {
+      const to = document.querySelector<HTMLElement>(`[data-payment="${id}"] .desk-text`);
+      if (to != null && to.closest('[inert]') == null) to.focus();
+      else if (tries-- > 0) window.requestAnimationFrame(go);
+      else title.current?.focus();
+    };
+    window.requestAnimationFrame(go);
+  };
+  const failedWords = (error: unknown) =>
+    error instanceof ApiError && error.problem.detail != null && error.status !== 0
+      ? error.problem.detail
+      : t('budget.form.failed');
+  const undoPaid = async (payment: ScheduledPayment) => {
+    if (quotes == null) return;
+    try {
+      await api.undoPaid(event.id, payment.id);
+    } catch (error) {
+      tell(failedWords(error));
+      return;
+    }
+    await readQuotes();
+    setMarked(null);
+    if (payment.addedAsPaid && payment.paid != null && shownQuote != null) {
+      const words = t('quotes.deleted', {
+        amount: minorMoney(payment.paid.amount, quotes.currency, locale),
+        vendor: shownQuote.vendor.name,
+        day: longDay(payment.paid.paidOn, locale),
+        what: payment.description,
+      });
+      setDeleted(words);
+      title.current?.focus();
+      return;
+    }
+    if (view.kind === 'home') title.current?.focus();
+    else focusPayment(payment.id);
+  };
+  const restorePayment = async (payment: ScheduledPayment) => {
+    try {
+      await api.restorePayment(event.id, payment.id);
+    } catch (error) {
+      tell(failedWords(error));
+      return;
+    }
+    await readQuotes();
+    focusPayment(payment.id);
+  };
+
+  const undo = async (): Promise<void> => {
+    if (removed == null || removed.gone === true) return;
+    try {
+      await api.putBackBudgetLine(event.id, removed.line.id);
+    } catch (error) {
+      const lapsed = error instanceof ApiError && error.status === 404;
+      const currencyChanged = error instanceof ApiError && error.is('budget_line_currency_changed');
+      const gone = lapsed || currencyChanged;
+      const staff = error instanceof ApiError && error.fieldErrors()['basis'] != null;
+      const words = t(
+        currencyChanged
+          ? 'budget.notBackCurrency'
+          : lapsed
+            ? 'budget.notBackGone'
+            : staff
+              ? 'budget.notBackStaff'
+              : 'budget.notBack',
+      );
+      setRemoved({ line: removed.line, words, gone });
+      setHeard(words);
+      return;
+    }
+    await readOwn();
+    setRemoved(null);
+    setHeard(t('budget.back', { name: removed.line.label }));
+    setLit(removed.line.id);
+    setToRow(removed.line.id);
+  };
+
+  const undoBar = removed != null && (
+    <UndoBar removed={removed} undoRef={undoRef} onUndo={() => void undo()} />
+  );
+
+  const quoteColumn = quotesShown && (
+    <div className="ev-right">
+      {quotes == null ? (
+        <>
+          <QuotesNotLoaded
+            title={t('quotes.dueNext')}
+            busy={retryingQuotes}
+            onRetry={() => void retryQuotes()}
+          />
+          <QuotesNotLoaded
+            title={t('quotes.vendorsQuoted')}
+            busy={retryingQuotes}
+            onRetry={() => void retryQuotes()}
+          />
+        </>
+      ) : (
+        <>
+          <DueNext
+            quotes={quotes}
+            more={`${home}/due`}
+            marked={homeMarked}
+            {...(writes
+              ? {
+                  onMark: (due: DuePayment) =>
+                    setMarking({ quoteId: due.quoteId, paymentId: due.id }),
+                  onUndo: (payment: ScheduledPayment) => void undoPaid(payment),
+                }
+              : {})}
+          />
+          <VendorsQuoted
+            quotes={quotes}
+            vendorAt={vendorAt}
+            onAdd={writes ? () => setQuoting({ form: 'add', quote: null }) : null}
+          />
+        </>
+      )}
+    </div>
+  );
+
   return (
     <LayersContext value={layers}>
       <div className="desk ev desk-page ev-page bt">
         <div className="ev-wide bt-page" inert={covered}>
           {crumb}
-          <div className="bt-title-row">
-            <h1 ref={title} className="bt-title" tabIndex={-1}>
-              {t('budget.title')}
-            </h1>
-            {budget != null && (
-              <div className="bt-title-actions">
-                <TextAction label={t('budget.addCost')} before="plus" onClick={openAdd} />
-              </div>
-            )}
-          </div>
+          {view.kind === 'home' && (
+            <div className="bt-title-row">
+              <h1 ref={title} className="bt-title" tabIndex={-1}>
+                {t('budget.title')}
+              </h1>
+              {budget != null && (
+                <div className="bt-title-actions">
+                  <TextAction label={t('budget.addCost')} before="plus" onClick={openAdd} />
+                  {margin != null && budget.lines.length > 0 && (
+                    <TextAction
+                      label={onMarginFace ? t('budget.margin.hide') : t('budget.margin.see')}
+                      onClick={() => {
+                        setMarginFace((now) => !now);
+                        setOpened(null);
+                        readMargin();
+                      }}
+                    />
+                  )}
+                </div>
+              )}
+            </div>
+          )}
           <div aria-live="polite" aria-atomic="true" className="visually-hidden">
             {heard}
           </div>
-          {load.kind === 'loading' && <Loading />}
-          {load.kind === 'failed' && (
+          {waiting && <Loading />}
+          {failed && (
             <>
               <p className="desk-line is-ink">{t('budget.failed')}</p>
-              <TextAction
-                label={t('budget.tryAgain')}
-                onClick={() => {
-                  setLoad({ kind: 'loading' });
-                  setAttempt((n) => n + 1);
-                }}
-              />
+              <TextAction label={t('budget.tryAgain')} onClick={retry} />
             </>
           )}
-          {budget != null && (
+          {!waiting && !failed && view.kind === 'due' && quotes != null && (
+            <EverythingDue quotes={quotes} back={home} vendorAt={vendorAt} titleRef={title} />
+          )}
+          {!waiting && !failed && shownQuote != null && quotes != null && (
+            <VendorPage
+              eventId={event.id}
+              quote={shownQuote}
+              quotes={quotes}
+              writes={writes}
+              readOnly={readOnly}
+              directory={
+                can(session, 'vendors.read')
+                  ? `/app/settings/vendors?vendor=${encodeURIComponent(shownQuote.vendor.id)}`
+                  : null
+              }
+              event={event}
+              back={home}
+              titleRef={title}
+              amending={amending}
+              removing={removing}
+              notRemoved={notRemoved}
+              earlier={earlier}
+              onEarlier={setEarlier}
+              onQuote={(form) => setQuoting({ form, quote: shownQuote })}
+              onAddPayment={() => setPaying(shownQuote)}
+              onAmending={setAmending}
+              onAmended={(words) => {
+                void readQuotes().then(() => {
+                  setAmending(null);
+                  tell(words);
+                });
+              }}
+              onRemoving={(id) => {
+                setRemoving(id);
+                setNotRemoved(false);
+              }}
+              onRemove={(payment) => void removePayment(payment)}
+              viewerId={session.userId}
+              marked={marked}
+              deleted={deleted}
+              onMarkPaid={(payment) => {
+                setDeleted(null);
+                setMarking({ quoteId: shownQuote.id, paymentId: payment.id });
+              }}
+              onUndo={(payment) => void undoPaid(payment)}
+              onCancel={(payment) => {
+                setDeleted(null);
+                setCancelling(payment);
+              }}
+              onRestore={(payment) => void restorePayment(payment)}
+              onAlreadyMade={() => {
+                setDeleted(null);
+                setMaking(true);
+              }}
+            />
+          )}
+          {view.kind === 'home' && budget != null && (
             <>
               {live != null && stale == null && <LiveLine words={live} />}
               {stale != null && <NotLive at={stale.at} onTry={stale.retry} />}
+              {readOnly && <ReadOnlyLine />}
+              {budget.lines.length === 0 && undoBar}
               {budget.lines.length === 0 ? (
-                <FirstCard event={event} budget={budget} onAdd={openAdd} />
+                <>
+                  <FirstCard event={event} budget={budget} onAdd={openAdd} />
+                  {quotesShown && (
+                    <div className="ev-columns">
+                      <div className="ev-left" />
+                      {quoteColumn}
+                    </div>
+                  )}
+                </>
+              ) : onMarginFace ? (
+                <MarginCard event={event} margin={margin} washed={washed > 0} />
               ) : (
                 <SummaryCard
                   event={event}
                   budget={budget}
                   washed={washed > 0}
                   step={stale == null}
+                  next={
+                    writes && quotes != null ? (dueInOrder(quotes.due, locale)[0] ?? null) : null
+                  }
+                  quotes={quotes}
+                  onMark={(due) => setMarking({ quoteId: due.quoteId, paymentId: due.id })}
                   onPrice={() => {
                     const unpriced = budget.lines.find((one) => lineState(one) === 'notPriced');
                     if (unpriced == null) return;
@@ -286,7 +725,28 @@ export function BudgetArea({ event }: { event: OrganisationEvent }) {
                   }}
                 />
               )}
-              {budget.lines.length > 0 && (
+              {budget.lines.length > 0 && onMarginFace && (
+                <div className="ev-columns">
+                  <div className="ev-left">
+                    <MarginCosts
+                      eventId={event.id}
+                      margin={margin}
+                      shownIds={
+                        new Set(budget.lines.filter(listedOnMarginFace).map((one) => one.id))
+                      }
+                      onSaved={(next, removed) => {
+                        setMargin(next);
+                        setHeard(t(removed ? 'budget.margin.priceRemoved' : 'budget.saved'));
+                        setWashed((n) => n + 1);
+                      }}
+                    />
+                  </div>
+                  <div className="ev-right">
+                    <MarkupBlock margin={margin} onOpen={setMarkupOpening} />
+                  </div>
+                </div>
+              )}
+              {budget.lines.length > 0 && !onMarginFace && (
                 <div className="ev-columns">
                   <div className="ev-left">
                     <Costs
@@ -294,8 +754,7 @@ export function BudgetArea({ event }: { event: OrganisationEvent }) {
                       opened={opened}
                       lit={lit}
                       said={said}
-                      removed={removed}
-                      undoRef={undoRef}
+                      bar={undoBar}
                       onOpen={(id) => {
                         setOpened((now) => (now === id ? null : id));
                         setSaid(null);
@@ -342,43 +801,99 @@ export function BudgetArea({ event }: { event: OrganisationEvent }) {
                         await readOwn();
                         window.setTimeout(() => undoRef.current?.focus(), 0);
                       }}
-                      onUndo={async () => {
-                        if (removed == null || removed.gone === true) return;
-                        try {
-                          await api.putBackBudgetLine(event.id, removed.line.id);
-                        } catch (error) {
-                          const lapsed = error instanceof ApiError && error.status === 404;
-                          const currencyChanged =
-                            error instanceof ApiError && error.is('budget_line_currency_changed');
-                          const gone = lapsed || currencyChanged;
-                          const staff =
-                            error instanceof ApiError && error.fieldErrors()['basis'] != null;
-                          const words = t(
-                            currencyChanged
-                              ? 'budget.notBackCurrency'
-                              : lapsed
-                                ? 'budget.notBackGone'
-                                : staff
-                                  ? 'budget.notBackStaff'
-                                  : 'budget.notBack',
-                          );
-                          setRemoved({ line: removed.line, words, gone });
-                          setHeard(words);
-                          return;
-                        }
-                        await readOwn();
-                        setRemoved(null);
-                        setHeard(t('budget.back', { name: removed.line.label }));
-                        setLit(removed.line.id);
-                        setToRow(removed.line.id);
-                      }}
                     />
                   </div>
+                  {quoteColumn}
                 </div>
               )}
             </>
           )}
         </div>
+        {quoting != null && quotes != null && budget != null && (
+          <QuoteDialog
+            eventId={event.id}
+            form={quoting.form}
+            quotes={quotes}
+            current={quoting.quote}
+            lines={budget.lines}
+            readsVendors={can(session, 'vendors.read')}
+            onClose={() => setQuoting(null)}
+            onSaved={(words) => void afterQuote(words, quoting.form === 'revise')}
+          />
+        )}
+        {paying != null && quotes != null && (
+          <PaymentDialog
+            eventId={event.id}
+            event={event}
+            quote={paying}
+            quotes={quotes}
+            onClose={() => setPaying(null)}
+            onRaced={() => void readQuotes()}
+            onSaved={(words) => {
+              void readQuotes().then(() => {
+                setPaying(null);
+                tell(words);
+              });
+            }}
+          />
+        )}
+        {markingAt != null && quotes != null && (
+          <MarkPaidDialog
+            eventId={event.id}
+            eventName={event.name}
+            quote={markingAt.quote}
+            quotes={quotes}
+            payment={markingAt.payment}
+            onClose={() => {
+              setMarking(null);
+              void readQuotes();
+            }}
+            onSaved={(words) => {
+              const id = markingAt.payment.id;
+              void readQuotes().then(() => {
+                setMarking(null);
+                setAmending((now) => (now?.id === id ? null : now));
+                setRemoving((now) => (now === id ? null : now));
+                setMarked(id);
+                setHeard(words);
+                focusPayment(id);
+              });
+            }}
+          />
+        )}
+        {cancelling != null && quotes != null && shownQuote != null && (
+          <CancelDialog
+            eventId={event.id}
+            quote={shownQuote}
+            quotes={quotes}
+            payment={cancelling}
+            onClose={() => setCancelling(null)}
+            onSaved={() => {
+              const id = cancelling.id;
+              void readQuotes().then(() => {
+                setCancelling(null);
+                focusPayment(id);
+              });
+            }}
+          />
+        )}
+        {making && quotes != null && shownQuote != null && (
+          <MadeDialog
+            eventId={event.id}
+            quote={shownQuote}
+            quotes={quotes}
+            onClose={() => setMaking(false)}
+            onSaved={({ paymentId, words }) => {
+              void readQuotes().then(() => {
+                setMaking(false);
+                setMarked(paymentId);
+                setHeard(words);
+                focusPayment(paymentId);
+              });
+            }}
+          />
+        )}
+        {told != null && <Toast key={told} words={told} onClose={() => setTold(null)} />}
         {adding && budget != null && (
           <AddCostDialog
             eventId={event.id}
@@ -399,6 +914,20 @@ export function BudgetArea({ event }: { event: OrganisationEvent }) {
                 setSaid({ id: added.id, words: t('budget.saved'), ok: true });
                 setToRow(added.id);
               }
+            }}
+          />
+        )}
+        {markupOpening != null && margin != null && (
+          <MarkupDialog
+            eventId={event.id}
+            margin={margin}
+            opening={markupOpening}
+            onDismiss={() => setMarkupOpening(null)}
+            onSaved={(next, removed) => {
+              setMargin(next);
+              setMarkupOpening(null);
+              setHeard(t(removed ? 'budget.margin.dialog.removed' : 'budget.margin.dialog.saved'));
+              setWashed((n) => n + 1);
             }}
           />
         )}
@@ -462,37 +991,26 @@ function NotLive({ at, onTry }: { at: Date; onTry: () => void }) {
   );
 }
 
-function CoverCard({ event, children }: { event: OrganisationEvent; children: ReactNode }) {
-  const { t } = useTranslation();
-
-  return (
-    <section
-      className={`ev-card today-cover bt-card is-${meshFor(event.id)}`}
-      aria-label={t('budget.card')}
-    >
-      <span className="ev-scrim" aria-hidden="true" />
-      {PIECES.map((piece) => (
-        <span key={piece} className={`desk-piece p${piece}`} aria-hidden="true" />
-      ))}
-      <div className="ev-card-inner bt-card-inner">{children}</div>
-    </section>
-  );
-}
-
 function SummaryCard({
   event,
   budget,
   washed,
   step,
+  next,
+  quotes,
+  onMark,
   onPrice,
 }: {
   event: OrganisationEvent;
   budget: EventBudget;
   washed: boolean;
   step: boolean;
+  next: DuePayment | null;
+  quotes: EventQuotes | null;
+  onMark: (due: DuePayment) => void;
   onPrice: () => void;
 }) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const locale = dateLocale();
   const money = (amount: string) => wholeMoney(amount, budget.currency, locale);
   const pair = (label: string, perHead: EventBudget['perHead']['confirmed']) =>
@@ -532,11 +1050,28 @@ function SummaryCard({
           </div>
         ))}
       </dl>
-      {step && budget.notPriced > 0 && (
+      {step && next != null && quotes != null ? (
         <div className="bt-card-foot bt-card-foot-stack">
-          <p className="bt-card-strong">{t('budget.addPriceLine', { count: budget.notPriced })}</p>
-          <CardStep label={t('budget.addPrice')} onClick={onPrice} />
+          <p className="bt-card-strong">
+            {t(`quotes.${cardDue(next, todayIn(quotes.timeZone))}`, {
+              what: next.description.toLocaleLowerCase(i18n.language),
+              vendor: next.vendor,
+              amount: wholeMoney(next.amount, quotes.currency, locale),
+              day: longDay(next.dueOn, locale),
+            })}
+          </p>
+          <CardStep label={t('quotes.markPaid')} onClick={() => onMark(next)} />
         </div>
+      ) : (
+        step &&
+        budget.notPriced > 0 && (
+          <div className="bt-card-foot bt-card-foot-stack">
+            <p className="bt-card-strong">
+              {t('budget.addPriceLine', { count: budget.notPriced })}
+            </p>
+            <CardStep label={t('budget.addPrice')} onClick={onPrice} />
+          </div>
+        )
       )}
     </CoverCard>
   );
@@ -580,27 +1115,23 @@ function Costs({
   opened,
   lit,
   said,
-  removed,
-  undoRef,
+  bar,
   onOpen,
   onClose,
   onSave,
   onSaveFailed,
   onRemove,
-  onUndo,
 }: {
   budget: EventBudget;
   opened: string | null;
   lit: string | null;
   said: Said | null;
-  removed: Removed | null;
-  undoRef: RefObject<HTMLButtonElement | null>;
+  bar: ReactNode;
   onOpen: (id: string) => void;
   onClose: (id: string) => void;
   onSave: (line: BudgetLine, typed: BudgetLineTyped) => Promise<void>;
   onSaveFailed: (line: BudgetLine) => void;
   onRemove: (line: BudgetLine) => Promise<void>;
-  onUndo: () => Promise<void>;
 }) {
   const { t } = useTranslation();
   const id = useId();
@@ -609,22 +1140,7 @@ function Costs({
   return (
     <section className="desk-block bt-block" aria-labelledby={id}>
       <Head title={<span id={id}>{t('budget.costs')}</span>} />
-      {removed != null && (
-        <div className="bt-undo" role="status">
-          <span className="bt-undo-words">{removed.words}</span>
-          {removed.gone !== true && (
-            <button
-              ref={undoRef}
-              type="button"
-              className="bt-undo-do"
-              onClick={() => void onUndo()}
-            >
-              <Glyph name="undo" size={16} weight={2.4} />
-              {t('budget.undo')}
-            </button>
-          )}
-        </div>
-      )}
+      {bar}
       {categoriesOf(budget.lines).map((category) => (
         <div key={category} className="bt-cat">
           <div className="bt-category">
@@ -669,6 +1185,38 @@ function Costs({
         </div>
       ))}
     </section>
+  );
+}
+
+/** The bar a removal leaves, with Undo: at the top of Costs, or above No costs yet once the only cost has gone. Refused, it keeps its place with a cross and takes focus itself. */
+function UndoBar({
+  removed,
+  undoRef,
+  onUndo,
+}: {
+  removed: Removed;
+  undoRef: RefObject<HTMLButtonElement | null>;
+  onUndo: () => void;
+}) {
+  const { t } = useTranslation();
+  const bar = useRef<HTMLDivElement>(null);
+  const refused = removed.gone === true;
+
+  useEffect(() => {
+    if (refused) bar.current?.focus();
+  }, [refused]);
+
+  return (
+    <div ref={bar} className="bt-undo" role="status" tabIndex={refused ? -1 : undefined}>
+      {refused && <Glyph name="clear" size={16} weight={2.6} />}
+      <span className="bt-undo-words">{removed.words}</span>
+      {!refused && (
+        <button ref={undoRef} type="button" className="bt-undo-do" onClick={onUndo}>
+          <Glyph name="undo" size={16} weight={2.4} />
+          {t('budget.undo')}
+        </button>
+      )}
+    </div>
   );
 }
 
@@ -881,64 +1429,6 @@ function OpenedCost({
           <TextAction label={t('budget.remove')} red onClick={() => void onRemove()} />
         </div>
       </div>
-    </div>
-  );
-}
-
-function MoneyField({
-  label,
-  value,
-  onChange,
-  sign,
-  unit,
-  error,
-  inputRef,
-}: {
-  label: string;
-  value: string;
-  onChange: (value: string) => void;
-  sign: string;
-  unit?: string;
-  error?: string | null;
-  inputRef?: RefObject<HTMLInputElement | null>;
-}) {
-  const id = useId();
-  const told = [unit == null ? null : `${id}-unit`, error == null ? null : `${id}-error`]
-    .filter(Boolean)
-    .join(' ');
-
-  return (
-    <div className="desk-field bt-money">
-      <label htmlFor={id} className="desk-label">
-        {label}
-      </label>
-      <div className={error == null ? 'desk-box' : 'desk-box is-wrong'}>
-        <span className="bt-symbol" aria-hidden="true">
-          {sign}
-        </span>
-        <input
-          ref={inputRef}
-          id={id}
-          type="text"
-          inputMode="decimal"
-          value={value}
-          spellCheck={false}
-          aria-invalid={error != null}
-          aria-describedby={told === '' ? undefined : told}
-          onChange={(event) => onChange(event.target.value)}
-        />
-        {unit != null && (
-          <span id={`${id}-unit`} className="bt-unit">
-            {unit}
-          </span>
-        )}
-      </div>
-      {error != null && (
-        <p id={`${id}-error`} className="desk-error">
-          <Glyph name="alert" size={15} weight={2.2} />
-          {error}
-        </p>
-      )}
     </div>
   );
 }
