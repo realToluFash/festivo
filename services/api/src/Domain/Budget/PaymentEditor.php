@@ -11,6 +11,7 @@ use App\Entity\VendorEngagement;
 use App\Enum\Actor;
 use App\Enum\ErrorCode;
 use App\Http\Exception\ApiException;
+use App\Locale\Money;
 use App\Repository\QuoteRepository;
 use Doctrine\DBAL\LockMode;
 use Doctrine\ORM\EntityManagerInterface;
@@ -54,8 +55,9 @@ final readonly class PaymentEditor
         $this->locked($payment, function () use ($payment, $sent, $by): void {
             $this->refuseSettled($payment);
             $details = $this->quoteRules->paid($sent, $payment->getEngagement()->getEvent());
+            $before = self::recorded($payment);
             $payment->markPaid($details->amountMinor, $details->paidOn, $details->reference, $this->clock->now(), $by);
-            $this->audit(self::MARKED_PAID, $payment, $by);
+            $this->audit(self::MARKED_PAID, $payment, $by, $before);
         });
     }
 
@@ -67,15 +69,17 @@ final readonly class PaymentEditor
                 return;
             }
 
+            $before = self::recorded($payment);
+
             if ($payment->isAddedAsPaid()) {
-                $this->audit(self::DELETED, $payment, $by);
+                $this->auditor->record(self::DELETED, 'ScheduledPayment', $payment->getId(), Actor::User, $by->getId(), $by->getName(), Auditor::diff($before, []));
                 $this->entityManager->remove($payment);
 
                 return;
             }
 
             $payment->unmark();
-            $this->audit(self::UNMARKED, $payment, $by);
+            $this->audit(self::UNMARKED, $payment, $by, $before);
         });
     }
 
@@ -83,9 +87,14 @@ final readonly class PaymentEditor
     public function cancel(ScheduledPayment $payment, array $sent, User $by): void
     {
         $this->locked($payment, function () use ($payment, $sent, $by): void {
+            if ($payment->isCancelled()) {
+                return;
+            }
+
             $this->refuseSettled($payment);
+            $before = self::recorded($payment);
             $payment->cancel($this->quoteRules->reason($sent), $this->clock->now(), $by);
-            $this->audit(self::CANCELLED, $payment, $by);
+            $this->audit(self::CANCELLED, $payment, $by, $before);
         });
     }
 
@@ -96,8 +105,9 @@ final readonly class PaymentEditor
                 return;
             }
 
+            $before = self::recorded($payment);
             $payment->restore();
-            $this->audit(self::RESTORED, $payment, $by);
+            $this->audit(self::RESTORED, $payment, $by, $before);
         });
     }
 
@@ -113,7 +123,7 @@ final readonly class PaymentEditor
             $payment->markPaid($details->amountMinor, $details->paidOn, $details->reference, $this->clock->now(), $by);
             $payment->addedAsPaid();
             $this->entityManager->persist($payment);
-            $this->audit(self::ADDED_AS_PAID, $payment, $by);
+            $this->audit(self::ADDED_AS_PAID, $payment, $by, []);
             $this->entityManager->flush();
 
             return $payment;
@@ -151,8 +161,29 @@ final readonly class PaymentEditor
         $this->quotePublisher->publish($event);
     }
 
-    private function audit(string $action, ScheduledPayment $payment, User $by): void
+    /** @param array<string, ?string> $before */
+    private function audit(string $action, ScheduledPayment $payment, User $by, array $before): void
     {
-        $this->auditor->record($action, 'ScheduledPayment', $payment->getId(), Actor::User, $by->getId(), $by->getName());
+        $this->auditor->record($action, 'ScheduledPayment', $payment->getId(), Actor::User, $by->getId(), $by->getName(), Auditor::diff($before, self::recorded($payment)));
+    }
+
+    /** @return array<string, ?string> */
+    private static function recorded(ScheduledPayment $payment): array
+    {
+        $currency = $payment->getEngagement()->getEvent()->getCurrency();
+        $paid = $payment->getPaidAmountMinor();
+
+        return [
+            'vendor' => $payment->getEngagement()->getVendor()->getName(),
+            'description' => $payment->getDescription(),
+            'amount' => Money::written($payment->getAmountMinor(), $currency),
+            'dueOn' => $payment->getDueOn()->format('Y-m-d'),
+            'paidAmount' => null === $paid ? null : Money::written($paid, $currency),
+            'paidOn' => $payment->getPaidOn()?->format('Y-m-d'),
+            'reference' => $payment->getPaidReference(),
+            'paidBy' => $payment->getPaidBy()?->getName(),
+            'cancelReason' => $payment->getCancelReason(),
+            'cancelledBy' => $payment->getCancelledBy()?->getName(),
+        ];
     }
 }

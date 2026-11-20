@@ -86,9 +86,7 @@ final readonly class QuoteSerialiser
                     continue;
                 }
 
-                if (!$payment->isAddedAsPaid()) {
-                    $sums['scheduled'] += $payment->getAmountMinor();
-                }
+                $sums['scheduled'] += $payment->isAddedAsPaid() ? $payment->getPaidAmountMinor() ?? 0 : $payment->getAmountMinor();
 
                 if ($payment->isPaid()) {
                     $sums['paid'] += $payment->getPaidAmountMinor() ?? 0;

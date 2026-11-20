@@ -5,9 +5,11 @@ declare(strict_types=1);
 namespace App\Tests\Functional;
 
 use App\Domain\Billing\Catalogue\CatalogueKeeper;
+use App\Domain\Budget\PaymentEditor;
 use App\Domain\Budget\QuoteRules;
 use App\Domain\Organisation\OrganisationFounder;
 use App\Domain\User\UserRegistrar;
+use App\Entity\AuditEntry;
 use App\Entity\Membership;
 use App\Entity\Organisation;
 use App\Entity\Role;
@@ -26,6 +28,7 @@ use DateTimeImmutable;
 use Lexik\Bundle\JWTAuthenticationBundle\Services\JWTTokenManagerInterface;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
+use Psl\Dict;
 use Psl\Iter;
 use Psl\Json;
 use Psl\Str;
@@ -522,6 +525,8 @@ final class QuotesTest extends ApiTestCase
 
         $this->as($this->owner, 'POST', $this->payments($payment) . '/cancellation', ['reason' => '  Venue includes it  ']);
         self::assertSame(200, $this->statusCode());
+        $this->as($this->member('sam@bloom.events', 'Sam Reid', SeededRole::Admin, null), 'POST', $this->payments($payment) . '/cancellation', ['reason' => 'Already sorted']);
+        self::assertSame(200, $this->statusCode(), 'a second cancel is already done');
         $cancelled = Type\dict(Type\string(), Type\mixed())->coerce($this->row($payment)['cancelled']);
         self::assertSame(['Venue includes it', ['id' => $this->owner->getId()->toRfc4122(), 'name' => 'Harriet Cole']], [$cancelled['reason'], $cancelled['by']]);
         self::assertSame(['0.00', '400.00', '0.00', []], [$this->only()['scheduled'], $this->only()['cancelled'], $this->only()['outstanding'], $this->read()['due']]);
@@ -550,11 +555,59 @@ final class QuotesTest extends ApiTestCase
 
         $row = $this->row($payment);
         self::assertSame(['Extra stems for the arch', true, '2027-02-25'], [$row['description'], $row['addedAsPaid'], $row['dueOn']]);
-        self::assertSame(['0.00', '180.00', '0.00'], [$this->only()['scheduled'], $this->only()['paid'], $this->only()['outstanding']]);
+        self::assertSame(['180.00', '180.00', '0.00', []], [$this->only()['scheduled'], $this->only()['paid'], $this->only()['outstanding'], $this->read()['due']]);
 
         $this->as($this->owner, 'DELETE', $this->payments($payment) . '/paid');
         self::assertSame(200, $this->statusCode());
-        self::assertSame([[], '0.00'], [$this->only()['payments'], $this->only()['paid']]);
+        self::assertSame([[], '0.00', '0.00'], [$this->only()['payments'], $this->only()['paid'], $this->only()['scheduled']]);
+    }
+
+    #[Test]
+    public function aPaymentAlreadyMadeCountsInScheduledSoAFullyScheduledQuoteReadsOverByIt(): void
+    {
+        $quote = $this->add();
+        $this->payment($quote['id'], ['description' => 'Full balance', 'amount' => '1000']);
+        $cancelled = $this->payment($quote['id'], ['description' => 'Delivery', 'amount' => '60']);
+        $this->as($this->owner, 'POST', $this->payments($cancelled) . '/cancellation', ['reason' => '']);
+
+        $this->as($this->owner, 'POST', $this->quotes($quote['id']) . '/paid-payments', $this->made());
+        self::assertSame(201, $this->statusCode(), Json\encode($this->last()));
+
+        self::assertSame(['1180.00', '180.00', '180.00', '1000.00'], [$this->only()['scheduled'], $this->only()['difference'], $this->only()['paid'], $this->only()['outstanding']]);
+        self::assertSame(['paid' => '180.00', 'owed' => '1000.00', 'overdue' => '0.00', 'overdueCount' => 0], $this->as($this->owner, 'GET', $this->quotes())['totals'] ?? null);
+    }
+
+    #[Test]
+    public function everyPaymentActionIsAuditedWithItsActorAndWhatItChanged(): void
+    {
+        $quote = $this->add();
+        $payment = $this->payment($quote['id']);
+        $owner = ['id' => $this->owner->getId()->toRfc4122(), 'name' => 'Harriet Cole'];
+
+        $this->as($this->owner, 'POST', $this->payments($payment) . '/paid', $this->paid(['amount' => '450.5', 'paidOn' => '2027-02-28', 'reference' => 'FP-2231']));
+        $this->as($this->owner, 'DELETE', $this->payments($payment) . '/paid');
+        $this->as($this->owner, 'POST', $this->payments($payment) . '/cancellation', ['reason' => 'Venue includes it']);
+        $this->as($this->owner, 'DELETE', $this->payments($payment) . '/cancellation');
+        $this->as($this->owner, 'POST', $this->quotes($quote['id']) . '/paid-payments', $this->made(['reference' => 'CHQ 104']));
+        $added = Type\string()->coerce($this->last()['paymentId'] ?? null);
+        $this->as($this->owner, 'DELETE', $this->payments($added) . '/paid');
+
+        $paid = ['paidAmount' => [null, '450.50'], 'paidOn' => [null, '2027-02-28'], 'reference' => [null, 'FP-2231'], 'paidBy' => [null, 'Harriet Cole']];
+        $made = ['vendor' => 'Bloom & Co', 'description' => 'Extra stems for the arch', 'amount' => '180.00', 'dueOn' => '2027-02-25', 'paidAmount' => '180.00', 'paidOn' => '2027-02-25', 'reference' => 'CHQ 104', 'paidBy' => 'Harriet Cole'];
+        $expected = [
+            [PaymentEditor::MARKED_PAID, $payment, $paid],
+            [PaymentEditor::UNMARKED, $payment, Dict\map($paid, static fn (array $change): array => [$change[1], $change[0]])],
+            [PaymentEditor::CANCELLED, $payment, ['cancelReason' => [null, 'Venue includes it'], 'cancelledBy' => [null, 'Harriet Cole']]],
+            [PaymentEditor::RESTORED, $payment, ['cancelReason' => ['Venue includes it', null], 'cancelledBy' => ['Harriet Cole', null]]],
+            [PaymentEditor::ADDED_AS_PAID, $added, Dict\map($made, static fn (string $value): array => [null, $value])],
+            [PaymentEditor::DELETED, $added, Dict\map($made, static fn (string $value): array => [$value, null])],
+        ];
+
+        foreach ($expected as [$action, $subject, $changes]) {
+            $entry = Type\instance_of(AuditEntry::class)->coerce(self::em()->getRepository(AuditEntry::class)->findOneBy(['action' => $action, 'subjectId' => Uuid::fromString($subject)]));
+            self::assertSame([$owner['id'], $owner['name']], [$entry->getActorId()?->toRfc4122(), $entry->getActorLabel()], $action);
+            self::assertSame($changes, $entry->getChanges(), $action);
+        }
     }
 
     #[Test]
