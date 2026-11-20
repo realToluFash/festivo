@@ -23,6 +23,7 @@ export interface BudgetLine {
   amount: string | null;
   currency: string;
   note: string | null;
+  notPriced: boolean;
   quantity: BudgetQuantity;
   cost: { confirmed: string; potential: string };
 }
@@ -99,6 +100,7 @@ function asLine(value: unknown): BudgetLine | null {
     amount: textOrNull(one.amount),
     currency: text(one.currency),
     note: textOrNull(one.note),
+    notPriced: one.notPriced === true,
     quantity: asQuantity(one.quantity),
     cost: { confirmed: text(cost.confirmed) || '0', potential: text(cost.potential) || '0' },
   };
