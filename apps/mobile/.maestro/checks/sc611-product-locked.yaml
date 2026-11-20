@@ -1,0 +1,11 @@
+# sc-611: the audit log of a free organisation: locked, with no Contact step.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/settings/data-and-control/audit-log
+- extendedWaitUntil:
+    visible:
+      id: audit.card
+    timeout: 40000
+- waitForAnimationToEnd:
+    timeout: 8000
+- takeScreenshot: audit-locked-product
