@@ -1726,6 +1726,21 @@ export const EVENTS_PAGES: readonly { name: string; states: readonly DemoLink[] 
     ],
   },
   {
+    name: 'At 400% zoom: a 1280 × 800 window is 320 CSS px wide, after Show this page anyway (sc-74933)',
+    states: [
+      on('live', 'The Overview, no part open: the sidebar above the page, one column'),
+      on('nameNotSaved', 'Event name, Save fails: Not saved'),
+      on('nameForbidden', 'Event name, a role changed while open (403)'),
+      on('nameChangedElsewhere', 'Event name, changed elsewhere (409)'),
+      on('currencyNotSaved', 'Currency, at the end of the list, Save fails: Not saved'),
+      on('currencyForbidden', 'Currency, a role changed while open (403)'),
+      on('currencyChangedElsewhere', 'Currency, changed elsewhere (409)'),
+      on('hostsSix', 'Hosted by, six'),
+      on('dates', 'Dates: each day above its time'),
+      on('showLatest', 'Show the latest version?, its two actions one above the other'),
+    ],
+  },
+  {
     name: 'Reply by, in place (sc-3780)',
     states: [
       on('replyBy', 'Reply by, opened'),
