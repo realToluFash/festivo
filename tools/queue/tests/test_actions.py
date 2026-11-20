@@ -401,6 +401,10 @@ class DemoFirst(Base):
         self.assertEqual(self.state(1), "Ready For Dev")
         self.assertEqual(self.labels(1), set())
 
+    def refused_with_the_way_back(self, pattern, live=None):
+        self.refused(rf"(?s){pattern}.*Nothing claimed\. Send it back for one:.*"
+                     r"move sc-1 \"Needs Design\".*comment sc-1 --to ux", live)
+
     def test_a_drawn_story_with_no_demo_line_is_refused_with_the_way_back(self):
         self.drawn("**Status:** drawn, not by the designer.")
         self.refused(r"(?s)no Demo: line\. Nothing claimed.*move sc-1 \"Needs Design\".*"
@@ -408,18 +412,31 @@ class DemoFirst(Base):
 
     def test_a_demo_still_being_built_is_refused(self):
         self.drawn("**Demo:** being built.")
-        self.refused("says the demo is not built")
+        self.refused_with_the_way_back("says the demo is not built")
 
     def test_a_demo_whose_pull_request_is_open_is_refused(self):
         self.drawn("**Demo:** `It` in the app's demo (`/demo/it`) · PR #1386")
         self.refused("#1386 is not merged yet",
                      mock.patch("soirely_queue.github.live", return_value={"state": "OPEN"}))
 
-    def test_a_demo_github_cannot_read_is_refused(self):
+    def test_an_open_demo_is_waited_for_not_sent_back(self):
         self.drawn("**Demo:** `It` in the app's demo · PR #1386")
-        self.refused("GitHub did not answer for #1386",
-                     mock.patch("soirely_queue.github.live",
-                                side_effect=github.GitHubError("gh api: 502")))
+        with mock.patch("soirely_queue.github.live", return_value={"state": "OPEN"}), \
+                self.assertRaises(actions.Refused) as refused:
+            actions.claim(self.as_("dev"), args(story="sc-1"))
+        self.assertIn("wait for the merge", str(refused.exception))
+        self.assertNotIn("move sc-1", str(refused.exception))
+        self.assertEqual(self.state(1), "Ready For Dev")
+
+    def test_a_demo_github_cannot_read_is_waited_for_not_sent_back(self):
+        self.drawn("**Demo:** `It` in the app's demo · PR #1386")
+        with mock.patch("soirely_queue.github.live",
+                        side_effect=github.GitHubError("gh api: 502")), \
+                self.assertRaises(actions.Refused) as refused:
+            actions.claim(self.as_("dev"), args(story="sc-1"))
+        self.assertIn("GitHub did not answer for #1386", str(refused.exception))
+        self.assertNotIn("move sc-1", str(refused.exception))
+        self.assertEqual(self.state(1), "Ready For Dev")
 
     def test_a_comment_cited_on_the_demo_line_is_skipped(self):
         self.drawn("**Demo:** `It` in the app's demo · PR #1386 (pm, #55333)")
@@ -434,9 +451,10 @@ class DemoFirst(Base):
 
     def test_a_demo_line_citing_only_comments_names_no_pull_request(self):
         self.drawn("**Demo:** `It` in the app's demo (pm, #55333)")
-        self.refused("names no pull request",
-                     mock.patch("soirely_queue.github.live",
-                                side_effect=github.GitHubError("gh api: Not Found (HTTP 404)")))
+        self.refused_with_the_way_back(
+            "names no pull request",
+            mock.patch("soirely_queue.github.live",
+                       side_effect=github.GitHubError("gh api: Not Found (HTTP 404)")))
 
     def test_a_merged_demo_is_claimed(self):
         self.drawn("**Demo:** `It` in the app's demo · PR #1386, superseding #1300")
@@ -460,8 +478,19 @@ class DemoFirst(Base):
 
     def test_a_demo_only_ever_closed_is_refused(self):
         self.drawn("**Demo:** `It` in the app's demo · PR #1386")
-        self.refused("#1386 was closed without merging",
-                     mock.patch("soirely_queue.github.live", return_value={"state": "CLOSED"}))
+        self.refused_with_the_way_back(
+            "#1386 was closed without merging",
+            mock.patch("soirely_queue.github.live", return_value={"state": "CLOSED"}))
+
+    def test_a_demo_closed_without_merging_beside_a_comment_is_sent_back(self):
+        self.drawn("**Demo:** `It` in the app's demo · PR #1386 (pm, #55333)")
+
+        def live(number):
+            if number == 55333:
+                raise github.GitHubError("gh api repos/o/r/pulls/55333: Not Found (HTTP 404)")
+            return {"state": "CLOSED"}
+        self.refused_with_the_way_back("#1386 was closed without merging",
+                                       mock.patch("soirely_queue.github.live", side_effect=live))
 
     def test_a_story_with_no_design_section_is_claimed_without_asking_github(self):
         self.fake.add(1, "Ready For Dev")

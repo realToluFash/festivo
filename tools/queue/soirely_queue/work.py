@@ -239,7 +239,31 @@ def queued(role, stories, epics=None, ios=None, testers=None, prs=None):
             and not (role in R.TESTERS and R.kept_for_person(story, testers))
             and not held_epic(story, epics)
             and not (builds(role) and holding(story, by_id))
-            and not (builds(role) and story["id"] in only)]
+            and not (builds(role) and story["id"] in only)
+            and not (builds(role) and demo_open(story, prs or []))]
+
+
+DEMO_LINE = re.compile(r"^[\s*_>-]*demo[*_]*:", re.I)
+SHOWS_NOTHING = re.compile(r"^[\s*_>-]*demo[*_]*:[\s*_]*none(?:\s*[:.]|[\s*_]*$)", re.I)
+
+
+def demo_line(story):
+    design = T.find(story.get("description"), "Design")
+    if not design:
+        return None
+    return next((x for x in design[2].splitlines() if DEMO_LINE.match(x)), None)
+
+
+def demo_open(story, prs):
+    """The pull requests a Ready For Dev story's Demo: line names that are still open. Its demo
+    is drawn and waiting to merge, so no builder is offered it until then."""
+    if story["state"] != "Ready For Dev":
+        return []
+    line = demo_line(story)
+    if not line or SHOWS_NOTHING.match(line):
+        return []
+    open_ = {pr["number"] for pr in prs if pr.get("state") == "open"}
+    return [n for n in dict.fromkeys(int(x) for x in re.findall(r"#(\d+)", line)) if n in open_]
 
 
 def retester(story, now=None):
