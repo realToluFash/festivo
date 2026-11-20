@@ -263,6 +263,7 @@
     "messages:staff.job_suggested.bar",
     "messages:stations.place_suggested.bar",
     "web:dataControl.enterprise",
+    "messagesCounts:audit.value.enterprise",
     "mobile:dataAndControl.enterprise",
     "web:auditLog.formats.csv",
     "web:auditLog.formats.jsonl",
