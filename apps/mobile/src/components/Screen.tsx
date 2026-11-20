@@ -941,9 +941,9 @@ export function FocusBack({
   return children(useFocusBackToOpener(closed, fallback, 'page'));
 }
 
-/** The scroll context a ScrollView provides, and the props that keep it in step with that view. */
-export function useScreenScrollView() {
-  const windowOrigin = useContext(Origin);
+/** The scroll context a ScrollView provides, and the props that keep it in step with that view; `top` is how far below the window's top the frame measureInWindow reads starts, as an iPad's sheet does. */
+export function useScreenScrollView(top = 0) {
+  const windowOrigin = useContext(Origin) - top;
   const origin = useRef(windowOrigin);
   const scrollView = useRef<ScrollViewInstance>(null);
   const offset = useRef(0);
