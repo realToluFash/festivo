@@ -13,7 +13,7 @@ appId: host.exp.Exponent
     id: 'members.approve.${MEMBER_ID}'
 - extendedWaitUntil:
     visible:
-      text: '.*QA Organisation.*'
+      id: 'members.approveAs'
     timeout: 20000
 - waitForAnimationToEnd:
     timeout: 8000
