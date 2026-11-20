@@ -6,7 +6,7 @@ appId: host.exp.Exponent
     visible: '{{t:todayScreen.tab.today}}'
     timeout: 30000
 - tapOn:
-    id: 'tab-today'
+    id: 'tab-today|frame.home'
 - waitForAnimationToEnd:
     timeout: 5000
 - takeScreenshot: home-1
