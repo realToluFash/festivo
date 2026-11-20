@@ -568,7 +568,7 @@ export function EventsFilterMenu({
   );
 }
 
-interface TopRowProps {
+export interface TopRowProps {
   ref?: Ref<ViewInstance>;
   title: string;
   picks: readonly string[];
@@ -580,9 +580,10 @@ interface TopRowProps {
 /** A menu row: main's one line at the standard sizes; at the accessibility sizes its value under its title when that shows more of it (sc-73933). */
 function TopRow(props: TopRowProps) {
   const { fontScale } = useWindowDimensions();
+  const cap = useContext(TitleCap) ?? Infinity;
 
   return atAccessibilitySizes(fontScale) ? (
-    <GrownTopRow {...props} scale={fontScale} />
+    <GrownTopRow {...props} scale={fontScale} cap={cap} />
   ) : (
     <OneLineTopRow {...props} />
   );
@@ -625,7 +626,7 @@ function OneLineTopRow({ ref, title, picks, value, onPress, testID }: TopRowProp
 }
 
 /** Beside its title while its value shows there at least as many whole picks as under it, otherwise under it, nothing cut; its words stop at the page title's size. */
-function GrownTopRow({
+export function GrownTopRow({
   ref,
   title,
   picks,
@@ -633,9 +634,9 @@ function GrownTopRow({
   onPress,
   testID,
   scale,
-}: TopRowProps & { scale: number }) {
+  cap,
+}: TopRowProps & { scale: number; cap: number }) {
   const { t } = useTranslation();
-  const cap = useContext(TitleCap) ?? Infinity;
   const shownPicks = picks.length === 0 ? [value] : picks;
   const count = shownPicks.length;
   const tail = (rest: number) => keptWhole(t('calendar.moreItems', { count: rest }));
