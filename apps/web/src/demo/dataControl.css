@@ -140,3 +140,23 @@
   color: var(--colorInk);
   font-weight: 600;
 }
+
+/* A step naming a domain wraps onto lines rather than run past the card (sc-563). */
+.dc-step {
+  display: contents;
+}
+
+.dc-step .desk-step {
+  height: auto;
+  min-height: var(--sizeHit);
+  max-width: 100%;
+  padding-block: var(--spaceSm);
+  line-height: 1.25;
+  text-align: left;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.dc-step .desk-step > svg {
+  flex: none;
+}

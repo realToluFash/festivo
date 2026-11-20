@@ -115,7 +115,11 @@ export function EmailDomains({
         {shown?.does === 'contact' ? (
           <EnterpriseStep viewer={viewer} state={state} tell={tell} />
         ) : (
-          shown != null && <CardStep label={stepWords(shown)} onClick={() => onStep(shown)} />
+          shown != null && (
+            <div className="dc-step">
+              <CardStep label={stepWords(shown)} onClick={() => onStep(shown)} />
+            </div>
+          )
         )}
       </Card>
       {view.plan !== 'free' && (

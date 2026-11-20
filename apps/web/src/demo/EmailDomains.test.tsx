@@ -225,6 +225,15 @@ describe('Data and control › Email domains (sc-560, sc-563)', () => {
     expect(screen.getAllByText(tag).length).toBeGreaterThan(0);
   });
 
+  it('keeps a long domain’s step whole, to wrap rather than run past the card', async () => {
+    await domains('?state=oo_long_name');
+    const step = screen.getByRole('button', {
+      name: 'Limit associacaodeorganizadoresdeeventosdelisboaeporto.com.pt accounts to Ire Events',
+    });
+
+    expect(step.parentElement?.className).toBe('dc-step');
+  });
+
   it('opens the missing record’s own dialog from the card', async () => {
     await domains('?state=ed_lapsing');
     fireEvent.click(screen.getByRole('button', { name: 'See the record' }));

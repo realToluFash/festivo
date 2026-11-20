@@ -393,6 +393,7 @@ const IRE: Domain = {
   only: 'off',
   onAt: null,
 };
+const LONG: Domain = { ...IRE, name: 'associacaodeorganizadoresdeeventosdelisboaeporto.com.pt' };
 const IRE_COM: Domain = {
   name: WAITING_DOMAIN,
   status: 'waiting',
@@ -436,6 +437,7 @@ export const DOMAIN_STATES = [
   'oo_on',
   'oo_turned_off',
   'oo_not_owner',
+  'oo_long_name',
   'loading',
   'failed',
 ] as const;
@@ -522,6 +524,8 @@ export function domainsStart(state: string): DomainsStart {
       };
     case 'oo_turned_off':
       return { ...alone, view: onlyOff(alone.view, PROVED_DOMAIN, 'turnedOff') };
+    case 'oo_long_name':
+      return { ...base, view: enterprise([LONG]) };
     case 'loading':
     case 'failed':
       return { ...base, load: state };
