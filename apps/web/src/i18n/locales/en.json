@@ -5316,6 +5316,7 @@
     "inCurrency": "In {{currency}}, the currency this event uses.",
     "numberHelp": "The number the vendor uses for this quote, so a call can start with it.",
     "linesItAgrees": "Budget lines it agrees",
+    "noCostsToAgree": "This event has no costs yet, so the quote agrees none. Once it has some, correct the quote to add them.",
     "agreedIn": "Agreed in the quote from {{vendor}}",
     "notPricedLine": "Not priced · {{category}}",
     "priced": "{{amount}} · {{category}}",

@@ -5594,6 +5594,7 @@
     "inCurrency": "En {{currency}}, la devise de cet événement.",
     "numberHelp": "Le numéro que le prestataire donne à ce devis, pour le citer dès le début d’un appel.",
     "linesItAgrees": "Coûts du budget convenus dans ce devis",
+    "noCostsToAgree": "This event has no costs yet, so the quote agrees none. Once it has some, correct the quote to add them.",
     "agreedIn": "Convenu dans le devis du prestataire {{vendor}}",
     "notPricedLine": "Sans prix · {{category}}",
     "priced": "{{amount}} · {{category}}",

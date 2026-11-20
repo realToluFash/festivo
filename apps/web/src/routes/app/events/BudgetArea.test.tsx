@@ -1268,3 +1268,112 @@ describe('a vendor’s page (sc-87)', () => {
     expect(screen.queryByRole('status', { name: /Not removed/ })).toBeNull();
   });
 });
+
+describe('quotes on an event with no costs yet (sc-74361)', () => {
+  const noCosts = () =>
+    json(budget({ lines: [], confirmed: '0.00', potential: '0.00', notPriced: 0 }));
+
+  it('shows Due next and Vendors quoted empty under the first-time card, with Add a quote', async () => {
+    signedIn();
+    serve({
+      'GET /api/events/ev_1/budget': noCosts,
+      'GET /api/events/ev_1/budget/quotes': () => json(quotes({ quotes: [] })),
+    });
+
+    expect(await screen.findByText('No quotes on this event yet.')).toBeTruthy();
+    expect(screen.getByText('No costs yet')).toBeTruthy();
+    expect(screen.getByText('Nothing is due.')).toBeTruthy();
+    const first = screen.getByRole('button', { name: 'Add the first cost' });
+    const add = screen.getByRole('button', { name: 'Add a quote' });
+    expect(first.compareDocumentPosition(add) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(screen.queryByText(READ_ONLY)).toBeNull();
+  });
+
+  it('says in the quote form that there are no budget lines to agree', async () => {
+    signedIn();
+    serve({
+      'GET /api/events/ev_1/budget': noCosts,
+      'GET /api/events/ev_1/budget/quotes': () => json(quotes({ quotes: [] })),
+    });
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Add a quote' }));
+
+    const lines = await screen.findByRole('group', { name: 'Budget lines it agrees' });
+    expect(lines.textContent).toContain(
+      'This event has no costs yet, so the quote agrees none. Once it has some, correct the quote to add them.',
+    );
+    expect(within(lines).queryByRole('checkbox')).toBeNull();
+  });
+
+  it('keeps a quote and its overdue payment on the page', async () => {
+    signedIn();
+    serve({
+      'GET /api/events/ev_1/budget': noCosts,
+      'GET /api/events/ev_1/budget/quotes': () =>
+        json(
+          quotes({
+            due: [
+              {
+                id: 'p_deposit',
+                quoteId: 'q_savour',
+                vendor: 'Savour Kitchen',
+                description: 'Deposit',
+                amount: '4500.00',
+                dueOn: '2020-11-04',
+                overdue: true,
+              },
+            ],
+          }),
+        ),
+    });
+
+    const quoted = await screen.findByRole('region', { name: 'Vendors quoted' });
+    expect(within(quoted).getByText('Savour Kitchen')).toBeTruthy();
+    expect(screen.getByText('No costs yet')).toBeTruthy();
+    const due = screen.getByRole('region', { name: 'Due next' });
+    expect(within(due).getByText(/Deposit/u)).toBeTruthy();
+    expect(within(due).getByText('Overdue')).toBeTruthy();
+  });
+
+  it('keeps quotes readable after a downgrade, with the read-only line and no Add a quote', async () => {
+    signedIn();
+    serve({
+      'GET /api/events/ev_1/budget': noCosts,
+      'GET /api/events/ev_1/budget/quotes': () => json(quotes({ entitled: false })),
+    });
+
+    expect(await screen.findByText(READ_ONLY)).toBeTruthy();
+    expect(screen.getByText('Savour Kitchen')).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Add a quote' })).toBeNull();
+  });
+
+  it('shows the first-time page alone without vendors and with no quote', async () => {
+    signedIn();
+    const sent = serve({
+      'GET /api/events/ev_1/budget': noCosts,
+      'GET /api/events/ev_1/budget/quotes': () => json(quotes({ entitled: false, quotes: [] })),
+    });
+
+    expect(await screen.findByText('No costs yet')).toBeTruthy();
+    await waitFor(() =>
+      expect(sent.some((one) => one.line === 'GET /api/events/ev_1/budget/quotes')).toBe(true),
+    );
+    await act(async () => {});
+    expect(screen.queryByText(READ_ONLY)).toBeNull();
+    expect(screen.queryByRole('heading', { name: 'Due next' })).toBeNull();
+    expect(screen.queryByRole('heading', { name: 'Vendors quoted' })).toBeNull();
+  });
+
+  it('keeps both blocks in place with Try again when the quotes did not load', async () => {
+    signedIn();
+    serve({
+      'GET /api/events/ev_1/budget': noCosts,
+      'GET /api/events/ev_1/budget/quotes': () => problem(500, 'internal_error'),
+    });
+
+    expect(await screen.findAllByText(NOT_LOADED)).toHaveLength(2);
+    expect(screen.getByRole('heading', { name: 'Due next' })).toBeTruthy();
+    expect(screen.getByRole('heading', { name: 'Vendors quoted' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Add the first cost' })).toBeTruthy();
+  });
+});

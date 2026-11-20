@@ -473,6 +473,34 @@ export function BudgetArea({ event }: { event: OrganisationEvent }) {
     <UndoBar removed={removed} undoRef={undoRef} onUndo={() => void undo()} />
   );
 
+  const quoteColumn = quotesShown && (
+    <div className="ev-right">
+      {quotes == null ? (
+        <>
+          <QuotesNotLoaded
+            title={t('quotes.dueNext')}
+            busy={retryingQuotes}
+            onRetry={() => void retryQuotes()}
+          />
+          <QuotesNotLoaded
+            title={t('quotes.vendorsQuoted')}
+            busy={retryingQuotes}
+            onRetry={() => void retryQuotes()}
+          />
+        </>
+      ) : (
+        <>
+          <DueNext quotes={quotes} more={`${home}/due`} />
+          <VendorsQuoted
+            quotes={quotes}
+            vendorAt={vendorAt}
+            onAdd={writes ? () => setQuoting({ form: 'add', quote: null }) : null}
+          />
+        </>
+      )}
+    </div>
+  );
+
   return (
     <LayersContext value={layers}>
       <div className="desk ev desk-page ev-page bt">
@@ -556,7 +584,15 @@ export function BudgetArea({ event }: { event: OrganisationEvent }) {
               {readOnly && <ReadOnlyLine />}
               {budget.lines.length === 0 && undoBar}
               {budget.lines.length === 0 ? (
-                <FirstCard event={event} budget={budget} onAdd={openAdd} />
+                <>
+                  <FirstCard event={event} budget={budget} onAdd={openAdd} />
+                  {quotesShown && (
+                    <div className="ev-columns">
+                      <div className="ev-left" />
+                      {quoteColumn}
+                    </div>
+                  )}
+                </>
               ) : onMarginFace ? (
                 <MarginCard event={event} margin={margin} washed={washed > 0} />
               ) : (
@@ -655,33 +691,7 @@ export function BudgetArea({ event }: { event: OrganisationEvent }) {
                       }}
                     />
                   </div>
-                  {quotesShown && (
-                    <div className="ev-right">
-                      {quotes == null ? (
-                        <>
-                          <QuotesNotLoaded
-                            title={t('quotes.dueNext')}
-                            busy={retryingQuotes}
-                            onRetry={() => void retryQuotes()}
-                          />
-                          <QuotesNotLoaded
-                            title={t('quotes.vendorsQuoted')}
-                            busy={retryingQuotes}
-                            onRetry={() => void retryQuotes()}
-                          />
-                        </>
-                      ) : (
-                        <>
-                          <DueNext quotes={quotes} more={`${home}/due`} />
-                          <VendorsQuoted
-                            quotes={quotes}
-                            vendorAt={vendorAt}
-                            onAdd={writes ? () => setQuoting({ form: 'add', quote: null }) : null}
-                          />
-                        </>
-                      )}
-                    </div>
-                  )}
+                  {quoteColumn}
                 </div>
               )}
             </>

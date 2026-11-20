@@ -517,7 +517,7 @@ function VendorField({
   );
 }
 
-/** Every cost on the event: one agreed in another vendor's quote says whose, and cannot be ticked. */
+/** Every cost on the event: one agreed in another vendor's quote says whose, and cannot be ticked. With no costs, one line in place of the list. */
 function LinesField({
   lines,
   quotes,
@@ -543,32 +543,38 @@ function LinesField({
         </span>
         <span className="qt-optional">{t('quotes.optional')}</span>
       </div>
-      <ul className="desk-rows">
-        {lines.map((line) => {
-          const holder = agreedElsewhere(quotes.quotes, line.id, quoteId);
+      {lines.length === 0 ? (
+        <p className="desk-line">{t('quotes.noCostsToAgree')}</p>
+      ) : (
+        <ul className="desk-rows">
+          {lines.map((line) => {
+            const holder = agreedElsewhere(quotes.quotes, line.id, quoteId);
 
-          return (
-            <li key={line.id}>
-              <label className={holder == null ? 'desk-row qt-line' : 'desk-row qt-line is-taken'}>
-                <input
-                  type="checkbox"
-                  className="qt-check"
-                  checked={holder == null && ticked.includes(line.id)}
-                  disabled={holder != null}
-                  onChange={() =>
-                    onTick(
-                      ticked.includes(line.id)
-                        ? ticked.filter((one) => one !== line.id)
-                        : [...ticked, line.id],
-                    )
-                  }
-                />
-                <RowWords title={line.label} lines={[lineLine(t, line, holder, locale)]} />
-              </label>
-            </li>
-          );
-        })}
-      </ul>
+            return (
+              <li key={line.id}>
+                <label
+                  className={holder == null ? 'desk-row qt-line' : 'desk-row qt-line is-taken'}
+                >
+                  <input
+                    type="checkbox"
+                    className="qt-check"
+                    checked={holder == null && ticked.includes(line.id)}
+                    disabled={holder != null}
+                    onChange={() =>
+                      onTick(
+                        ticked.includes(line.id)
+                          ? ticked.filter((one) => one !== line.id)
+                          : [...ticked, line.id],
+                      )
+                    }
+                  />
+                  <RowWords title={line.label} lines={[lineLine(t, line, holder, locale)]} />
+                </label>
+              </li>
+            );
+          })}
+        </ul>
+      )}
     </div>
   );
 }
