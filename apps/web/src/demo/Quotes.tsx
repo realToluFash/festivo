@@ -20,7 +20,17 @@ import {
   RingMark,
   Rows,
 } from './BudgetParts.tsx';
-import { type Payment, TODAY, longDay, money, overdue, shortDay, whole } from './budget.ts';
+import {
+  type CostLine,
+  type Payment,
+  TODAY,
+  longDay,
+  money,
+  overdue,
+  shortDay,
+  whole,
+} from './budget.ts';
+import { linesOf } from './budgetHome.ts';
 import { BUDGET_WORDS as BW } from './budgetWords.ts';
 import { NotBuilt } from './EventParts.tsx';
 import { EVENT_WORDS, type SampleEvent } from './events.ts';
@@ -64,6 +74,7 @@ import {
   type Quote,
   type BudgetAddresses,
   DUE_NEXT,
+  FIRST_TIME_ALONE,
   budgetAt,
   budgetViewerOf,
   cardGap,
@@ -86,6 +97,8 @@ import {
   forgetBudget,
   keepBudget,
   keptBudget,
+  keepCosts,
+  keptCosts,
 } from './quotes.ts';
 import { BudgetHomeContent } from './BudgetHome.tsx';
 import { QW } from './quotesWords.ts';
@@ -138,13 +151,23 @@ function QuotesBody({
   useEffect(() => {
     if (budget !== start.budget) keepBudget(budget);
   }, [budget, start.budget]);
+  const [firstCosts] = useState<CostLine[]>(
+    () => (state === '' ? keptCosts() : null) ?? linesOf(state),
+  );
+  const [costs, setCosts] = useState(firstCosts);
+
+  useEffect(() => {
+    if (costs !== firstCosts) keepCosts(costs);
+  }, [costs, firstCosts]);
   const [quote, setQuote] = useState<Opened | null>(start.quote);
   const [payment, setPayment] = useState<PaymentOpen | null>(start.payment);
   const [amending, setAmending] = useState<Amending | null>(start.amending);
   const [removing, setRemoving] = useState<string | null>(start.removing);
   const [removeFails, setRemoveFails] = useState(state === 'remove_failed');
   const [notRemoved, setNotRemoved] = useState(false);
-  const [quotesFailed, setQuotesFailed] = useState(state === 'quotes_failed');
+  const [quotesFailed, setQuotesFailed] = useState(
+    state === 'quotes_failed' || state === 'quotes_failed_no_costs',
+  );
   const [retrying, setRetrying] = useState(false);
   const [earlier, setEarlier] = useState(start.earlier);
   const [marking, setMarking] = useState<Marking | null>(start.marking);
@@ -159,7 +182,12 @@ function QuotesBody({
   const title = useRef<HTMLHeadingElement>(null);
   const opened = useRef(false);
   const readOnly = start.readOnly;
-  const at = budgetAt(event.id, viewer, readOnly);
+  const at = budgetAt(
+    event.id,
+    viewer,
+    readOnly,
+    state === 'quotes_read_only_no_costs' ? state : 'read_only',
+  );
   const open = page === 'vendor' ? budget.quotes.find((one) => one.vendor.id === vendorId) : null;
   const marks = marking == null ? null : budget.payments.find((one) => one.id === marking.id);
   const cancels =
@@ -342,6 +370,11 @@ function QuotesBody({
               titleRef={title}
               payments={budget.payments}
               onMark={readOnly ? undefined : markPaid}
+              costs={costs}
+              onCosts={setCosts}
+              quotesFirst={
+                !FIRST_TIME_ALONE.includes(state) && !(readOnly && budget.quotes.length === 0)
+              }
               dueNext={
                 quotesFailed ? (
                   <QuotesNotLoaded title={BW.dueNext} busy={retrying} onRetry={retry} />
@@ -385,6 +418,7 @@ function QuotesBody({
             <QuoteDialog
               opened={quote}
               budget={budget}
+              costs={costs}
               vendors={start.vendors}
               current={quote.form === 'add' ? null : (open ?? null)}
               viewer={viewer}

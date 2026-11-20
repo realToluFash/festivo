@@ -59,7 +59,7 @@ import {
   STAFF_REFUSED,
   whatProblem,
   removedWords,
-  LAST_REMOVED,
+  lastRemoved,
   UNDO_REFUSED,
   type UndoRefusal,
   undoRefusalOf,
@@ -183,7 +183,7 @@ const LISTED = ['ceiling_saved', 'ceiling_categories_only', 'ceiling_cleared_one
 const MARGIN_HOME = ['margin', 'margin_zero_price', 'price_negative', 'price_decimals'];
 
 function removedOf(state: string, heads: Heads): Removed | null {
-  if (LAST_REMOVED.includes(state)) {
+  if (lastRemoved(state)) {
     const only = linesOf('populated')[0];
     const refuse = undoRefusalOf(state);
     const refused = refuse != null && state.startsWith('undo_refused');
@@ -236,7 +236,7 @@ function NotAvailable() {
   );
 }
 
-/** The event's Budget at a desk in A: the card across, the costs at the left, what is due, the ceiling and the rest at the right. */
+/** The event's Budget at a desk in A: the card across, the costs at the left, what is due, the ceiling and the rest at the right; with no costs, `quotesFirst` keeps Due next and Vendors quoted at the right (sc-74361). */
 export function BudgetHomeContent({
   event,
   state: first,
@@ -246,6 +246,9 @@ export function BudgetHomeContent({
   vendorsQuoted,
   payments = PAYMENTS,
   onMark,
+  costs = null,
+  onCosts,
+  quotesFirst = false,
 }: {
   event: SampleEvent;
   state: string;
@@ -255,13 +258,20 @@ export function BudgetHomeContent({
   vendorsQuoted: ReactNode;
   payments?: readonly Payment[];
   onMark?: ((payment: Payment) => void) | undefined;
+  costs?: CostLine[] | null;
+  onCosts?: (lines: CostLine[]) => void;
+  quotesFirst?: boolean;
 }) {
   const [params] = useSearchParams();
   const navigate = useNavigate();
   const enterprise = planOf(params.get('plan')) === 'enterprise';
   const currency = params.get('currency') ?? CURRENCY;
   const [state, setState] = useState(first);
-  const [lines, setLines] = useState(() => linesOf(first));
+  const [lines, setLines] = useState(() => costs ?? linesOf(first));
+
+  useEffect(() => {
+    onCosts?.(lines);
+  }, [lines, onCosts]);
   const heads = headsOf(first);
   const [ceilings, setCeilings] = useState(() => ceilingsOf(first));
   const [listed, setListed] = useState(LISTED.includes(first) || first === 'ceiling_no_costs');
@@ -320,7 +330,7 @@ export function BudgetHomeContent({
   useEffect(() => {
     if (first === 'ceiling_cleared_one') tell('Ceiling saved.');
   }, [first, tell]);
-  const readOnly = first === 'read_only';
+  const readOnly = first === 'read_only' || first === 'quotes_read_only_no_costs';
   const live = first !== 'not_live';
   const empty = lines.length === 0;
 
@@ -464,13 +474,17 @@ export function BudgetHomeContent({
             </Block>
           }
           right={
-            <Block title="Share">
-              <p className="desk-line">No links yet.</p>
-              <Link className="desk-text" to={budgetAt('no_links')}>
-                <Glyph name="plus" size={17} weight={2.3} />
-                Create a link
-              </Link>
-            </Block>
+            <>
+              {quotesFirst && dueNext}
+              {quotesFirst && vendorsQuoted}
+              <Block title="Share">
+                <p className="desk-line">No links yet.</p>
+                <Link className="desk-text" to={budgetAt('no_links')}>
+                  <Glyph name="plus" size={17} weight={2.3} />
+                  Create a link
+                </Link>
+              </Block>
+            </>
           }
         />
       ) : (

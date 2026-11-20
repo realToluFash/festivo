@@ -13,7 +13,7 @@ import { type CeilingKey, CEILINGS, budgetAt, ceilingState } from './budgetSampl
 import { type DemoGroup } from './budgetSample.ts';
 import { type CeilingState } from './BudgetParts.tsx';
 import { type Category } from './vendors.ts';
-import { exampleIn, typedMinor } from './quotes.ts';
+import { QUOTES_NO_COSTS, exampleIn, typedMinor } from './quotes.ts';
 import { CATEGORY_WORDS } from './vendorsWords.ts';
 
 /** The Budget home's states (spec §9: the Web board, the Ceiling board, and the margin and templates states drawn on the home). */
@@ -182,7 +182,12 @@ export function linesOf(state: string): CostLine[] {
   if (state === 'removed_priced') return lines.filter((one) => one.id !== 'dj');
   if (state === 'removed_not_priced') return lines.filter((one) => one.id !== 'arch');
   if (state === 'removed_nothing_yet') return lines.filter((one) => one.id !== 'centre');
-  if (state === 'first_time' || state === 'nothing_to_start' || LAST_REMOVED.includes(state))
+  if (
+    state === 'first_time' ||
+    state === 'nothing_to_start' ||
+    LAST_REMOVED.includes(state) ||
+    QUOTES_NO_COSTS.includes(state)
+  )
     return [];
   if (state === 'add_cost_added') return [...lines, { ...WELCOME_DRINKS }];
 
@@ -363,6 +368,11 @@ export const UNDO_REFUSED: Readonly<Record<UndoRefusal, string>> = {
   currency: 'Not put back. The event’s currency has changed since it was removed.',
   expired: 'Not put back. It was removed more than a day ago.',
 };
+
+/** Each state whose page opens with the only cost just removed and its bar above No costs yet, sc-74361's included. */
+export function lastRemoved(state: string): boolean {
+  return LAST_REMOVED.includes(state) || state === 'quotes_removed_last';
+}
 
 export function undoRefusalOf(state: string): UndoRefusal | null {
   if (state.endsWith('_currency') && LAST_REMOVED.includes(state)) return 'currency';

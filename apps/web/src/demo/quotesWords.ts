@@ -46,6 +46,9 @@ export const QW = {
   inCurrency: 'In GBP, the currency this event uses.',
   numberHelp: 'The number the vendor uses for this quote, so a call can start with it.',
   linesItAgrees: 'Budget lines it agrees',
+  /** A placeholder until [en] words it (#74362 on sc-74361). */
+  noCostsToAgree: 'This event has no costs yet, so there are no budget lines to agree.',
+  placeholderForEn: 'Placeholder words · [en] to word, #74362',
   agreedIn: (vendor: string) => `Agreed in the quote from ${vendor}`,
   notPricedLine: (category: string) => `Not priced · ${category}`,
   priced: (amount: string, category: string) => `${amount} · ${category}`,

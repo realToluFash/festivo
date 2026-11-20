@@ -3,6 +3,7 @@ import { listFormat } from '@soirely/domain';
 import {
   BUDGET_EVENT,
   COST_LINES,
+  type CostLine,
   CURRENCY,
   LOCALE,
   PAYMENTS,
@@ -499,6 +500,7 @@ export interface QuotesStart {
 export const SAVOUR = 'v4';
 const BEAT = 'v2';
 const BLOOM = 'v3';
+const LANDMARK = 'v5';
 export const TAKEN_LINE = 'arch';
 
 /** Board 2's names, each drawn on Savour Kitchen's page: without `&vendor=` they open there. */
@@ -518,6 +520,38 @@ export const VENDOR_STATES: readonly string[] = [
   'remove_failed',
 ];
 
+/** sc-74361: an event with no costs, with Due next and Vendors quoted beside its first-time card. */
+export const QUOTES_NO_COSTS: readonly string[] = [
+  'quotes_no_costs',
+  'quotes_no_costs_due',
+  'quotes_removed_last',
+  'quotes_read_only_no_costs',
+  'quotes_failed_no_costs',
+];
+
+/** sc-85's own first-time states, read as a plan without `vendors` and no quote: its page unchanged (sc-74361's regression). */
+export const FIRST_TIME_ALONE: readonly string[] = [
+  'first_time',
+  'nothing_to_start',
+  'removed_last',
+  'removed_last_currency',
+  'removed_last_expired',
+  'undo_refused_currency',
+  'undo_refused_expired',
+];
+
+/** sc-74361's sample: The Landmark's quote agrees no budget line; its deposit is overdue and its balance due in 2 days. */
+export function quoteBeforeCosts(full: Budget): Budget {
+  const landmark = full.quotes.find((one) => one.vendor.id === LANDMARK);
+
+  return {
+    quotes: landmark == null ? [] : [{ ...landmark, lines: [] }],
+    payments: full.payments
+      .filter((one) => one.vendorId === LANDMARK)
+      .map((one) => (one.paid == null ? one : { ...one, dueOn: '2026-10-28', paid: null })),
+  };
+}
+
 export const QUOTES_STATES: readonly string[] = [
   ...VENDOR_STATES,
   'no_quotes',
@@ -536,6 +570,7 @@ export const QUOTES_STATES: readonly string[] = [
   'vendor_gone',
   'line_taken',
   'quotes_failed',
+  ...QUOTES_NO_COSTS,
 ];
 
 export function pageVendor(state: string, vendor: string | null): string | null {
@@ -554,6 +589,7 @@ function paidBy(payment: Payment): Payment {
 }
 
 let kept: Budget | null = null;
+let keptLines: CostLine[] | null = null;
 
 export function keepBudget(budget: Budget): void {
   kept = budget;
@@ -563,8 +599,18 @@ export function keptBudget(): Budget | null {
   return kept;
 }
 
+/** The event's costs as the page left them, so a vendor's page and Budget's home agree on them (sc-74361). */
+export function keepCosts(lines: CostLine[]): void {
+  keptLines = lines;
+}
+
+export function keptCosts(): CostLine[] | null {
+  return keptLines;
+}
+
 export function forgetBudget(): void {
   kept = null;
+  keptLines = null;
 }
 
 export function quotesStart(
@@ -608,6 +654,14 @@ export function quotesStart(
       return { ...start, budget: { quotes: [], payments: [] } };
     case 'nothing_due':
       return { ...start, budget: { ...full, payments: full.payments.map(paidBy) } };
+    case 'quotes_no_costs':
+      return { ...start, budget: { quotes: [], payments: [] } };
+    case 'quotes_no_costs_due':
+    case 'quotes_removed_last':
+    case 'quotes_failed_no_costs':
+      return { ...start, budget: quoteBeforeCosts(full) };
+    case 'quotes_read_only_no_costs':
+      return { ...start, budget: quoteBeforeCosts(full), readOnly: true };
     case 'no_payments':
       return {
         ...start,
@@ -724,8 +778,13 @@ export interface BudgetAddresses {
   vendor: (id: string) => string;
 }
 
-export function budgetAt(event: string, viewer: BudgetViewer, readOnly = false): BudgetAddresses {
-  const as = `${viewer.key === 'folake' ? '' : `&as=${viewer.key}`}${readOnly ? '&state=read_only' : ''}`;
+export function budgetAt(
+  event: string,
+  viewer: BudgetViewer,
+  readOnly = false,
+  readState = 'read_only',
+): BudgetAddresses {
+  const as = `${viewer.key === 'folake' ? '' : `&as=${viewer.key}`}${readOnly ? `&state=${readState}` : ''}`;
 
   return {
     home: `/demo/events/${event}?area=budget${as}`,
@@ -774,6 +833,28 @@ export const QUOTES_PAGES: readonly { name: string; states: readonly DemoLink[] 
       { to: at('no_payments', SAVOUR), name: 'No payments scheduled yet (no_payments)' },
       { to: at('earlier', SAVOUR), name: 'The earlier quote, shown (earlier)' },
       { to: at('lead', SAVOUR), name: 'The event’s Lead: the name is plain (lead)' },
+    ],
+  },
+  {
+    name: 'An event with no costs yet (sc-74361)',
+    states: [
+      { to: at('quotes_no_costs'), name: 'No costs and no quote (quotes_no_costs)' },
+      {
+        to: at('quotes_no_costs_due'),
+        name: 'No costs, a quote with a payment overdue (quotes_no_costs_due)',
+      },
+      {
+        to: at('quotes_removed_last'),
+        name: 'The last cost removed with a quote on the event (quotes_removed_last)',
+      },
+      {
+        to: at('quotes_read_only_no_costs'),
+        name: 'Read only, a quote and no costs (quotes_read_only_no_costs)',
+      },
+      {
+        to: at('quotes_failed_no_costs'),
+        name: 'No costs, quotes and payments did not load (quotes_failed_no_costs)',
+      },
     ],
   },
   {

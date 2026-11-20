@@ -14,7 +14,7 @@ import {
   Rows,
 } from './BudgetParts.tsx';
 import {
-  COST_LINES,
+  type CostLine,
   type Payment,
   amounts,
   lineState,
@@ -25,6 +25,7 @@ import {
 } from './budget.ts';
 import { BUDGET_WORDS as BW } from './budgetWords.ts';
 import { Alert } from '../components/EventPageParts.tsx';
+import { NotBuilt } from './EventParts.tsx';
 import {
   type EventDays,
   SHAPES,
@@ -104,6 +105,7 @@ const VERBS = { add: QW.add, revise: QW.revise, correct: BW.save } as const;
 export function QuoteDialog({
   opened,
   budget,
+  costs,
   vendors,
   current,
   viewer,
@@ -114,6 +116,7 @@ export function QuoteDialog({
 }: {
   opened: Opened;
   budget: Budget;
+  costs: readonly CostLine[];
   vendors: readonly Vendor[];
   current: Quote | null;
   viewer: BudgetViewer;
@@ -230,6 +233,7 @@ export function QuoteDialog({
   const lines = (
     <LinesField
       budget={budget}
+      costs={costs}
       vendorId={vendorId}
       ticked={draft.lines}
       onTick={(next) => set({ lines: next })}
@@ -500,10 +504,8 @@ function VendorField({
   );
 }
 
-function lineLine(id: string, elsewhere: Quote | null): string {
+function lineLine(line: CostLine, elsewhere: Quote | null): string {
   if (elsewhere != null) return QW.agreedIn(elsewhere.vendor.name);
-  const line = COST_LINES.find((one) => one.id === id);
-  if (line == null) return '';
   const category = CATEGORY_WORDS[line.category];
   if (lineState(line) === 'notPriced') return QW.notPricedLine(category);
   const each = amounts(line);
@@ -511,14 +513,16 @@ function lineLine(id: string, elsewhere: Quote | null): string {
   return QW.priced(moneyRange(each.settled, each.ifAll), category);
 }
 
-/** sc-83's lines: a line agreed in another vendor's quote shows that vendor and cannot be ticked. */
+/** sc-83's lines: a line agreed in another vendor's quote shows that vendor and cannot be ticked; with no costs, one line says so (sc-74361). */
 function LinesField({
   budget,
+  costs,
   vendorId,
   ticked,
   onTick,
 }: {
   budget: Budget;
+  costs: readonly CostLine[];
   vendorId: string;
   ticked: readonly string[];
   onTick: (lines: string[]) => void;
@@ -533,34 +537,43 @@ function LinesField({
         </span>
         <span className="qt-optional">{QW.optional}</span>
       </div>
-      <ul className="desk-rows">
-        {COST_LINES.map((line) => {
-          const elsewhere = agreedElsewhere(budget, line.id, vendorId);
+      {costs.length === 0 ? (
+        <div className="qt-no-lines">
+          <p className="desk-line">{QW.noCostsToAgree}</p>
+          <div>
+            <NotBuilt words={QW.placeholderForEn} />
+          </div>
+        </div>
+      ) : (
+        <ul className="desk-rows">
+          {costs.map((line) => {
+            const elsewhere = agreedElsewhere(budget, line.id, vendorId);
 
-          return (
-            <li key={line.id}>
-              <label
-                className={elsewhere == null ? 'desk-row qt-line' : 'desk-row qt-line is-taken'}
-              >
-                <input
-                  type="checkbox"
-                  className="qt-check"
-                  checked={elsewhere == null && ticked.includes(line.id)}
-                  disabled={elsewhere != null}
-                  onChange={() =>
-                    onTick(
-                      ticked.includes(line.id)
-                        ? ticked.filter((one) => one !== line.id)
-                        : [...ticked, line.id],
-                    )
-                  }
-                />
-                <RowWords title={line.name} lines={[lineLine(line.id, elsewhere)]} />
-              </label>
-            </li>
-          );
-        })}
-      </ul>
+            return (
+              <li key={line.id}>
+                <label
+                  className={elsewhere == null ? 'desk-row qt-line' : 'desk-row qt-line is-taken'}
+                >
+                  <input
+                    type="checkbox"
+                    className="qt-check"
+                    checked={elsewhere == null && ticked.includes(line.id)}
+                    disabled={elsewhere != null}
+                    onChange={() =>
+                      onTick(
+                        ticked.includes(line.id)
+                          ? ticked.filter((one) => one !== line.id)
+                          : [...ticked, line.id],
+                      )
+                    }
+                  />
+                  <RowWords title={line.name} lines={[lineLine(line, elsewhere)]} />
+                </label>
+              </li>
+            );
+          })}
+        </ul>
+      )}
     </div>
   );
 }
