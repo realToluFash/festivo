@@ -7,6 +7,7 @@ namespace App\Domain\Organisation\Controller;
 use App\Audit\Auditor;
 use App\Domain\Organisation\AuditLog\AuditEntryView;
 use App\Domain\Organisation\AuditLog\AuditExports;
+use App\Domain\Organisation\AuditLog\AuditFilters;
 use App\Domain\Organisation\Export\PreparedFiles;
 use App\Domain\User\Mail\UserMailer;
 use App\Entity\AuditEntry;
@@ -26,14 +27,12 @@ use App\Repository\AuditExportRepository;
 use App\Repository\AuditFilter;
 use App\Repository\MembershipRepository;
 use App\Repository\OrganisationRepository;
-use DateInterval;
 use DateTimeImmutable;
 use DateTimeZone;
 use Doctrine\DBAL\ArrayParameterType;
 use Doctrine\ORM\EntityManagerInterface;
 use Psl\Dict;
 use Psl\Iter;
-use Psl\Regex;
 use Psl\Str;
 use Psl\Type;
 use Psl\Vec;
@@ -50,11 +49,7 @@ use Symfony\Contracts\Translation\TranslatorInterface;
 #[InOrganisation(Permission::OrganisationManage, feature: PlanFeature::AuditLog, featureLocksReading: true)]
 final readonly class AuditLogController
 {
-    public const string KEPT_FOR = 'P365D';
-
     private const int PAGE = 50;
-
-    private const string DAY = '/^\d{4}-\d{2}-\d{2}$/';
 
     public function __construct(
         private Security $security,
@@ -64,6 +59,7 @@ final readonly class AuditLogController
         private MembershipRepository $membershipRepository,
         private AuditEntryView $auditEntryView,
         private AuditExports $auditExports,
+        private AuditFilters $auditFilters,
         private PreparedFiles $preparedFiles,
         private UserMailer $userMailer,
         private Auditor $auditor,
@@ -130,9 +126,8 @@ final readonly class AuditLogController
         ]));
         $format = $body['format'];
         $asked = Dict\filter(Dict\filter_nulls(['person' => $body['person'] ?? null, 'type' => $body['type'] ?? null, 'event' => $body['event'] ?? null, 'from' => $body['from'] ?? null, 'to' => $body['to'] ?? null]), static fn (string $value): bool => '' !== $value);
-        $filter = $this->filter($organisation, $user, $asked);
         $locale = $this->userMailer->localeFor($user, $request->getLocale());
-        $exported = $this->auditExports->export($organisation, $user, $filter, $asked, $format, $locale);
+        $exported = $this->auditExports->export($organisation, $user, $asked, self::zone($user), $format, $locale);
 
         if (\is_string($exported)) {
             return new Response($exported, Response::HTTP_OK, PreparedFiles::headers(AuditExports::contentType($format), $this->fileName($organisation, $this->clock->now(), $format, $locale), 'audit-log.' . $format));
@@ -165,49 +160,15 @@ final readonly class AuditLogController
         ], 'messages', $locale) . '.' . $format;
     }
 
-    /** @param array<string, string> $asked person, type, event, from, to and before; the dates are days in the reader's zone */
+    /** @param array<string, string> $asked person, type, event, from and to; the dates are days in the reader's zone */
     private function filter(Organisation $organisation, User $user, array $asked): AuditFilter
     {
-        $zone = new DateTimeZone($user->getTimezone() ?? 'UTC');
-        $utc = new DateTimeZone('UTC');
-        $from = $this->day($asked['from'] ?? null, 'from', $zone);
-        $to = $this->day($asked['to'] ?? null, 'to', $zone);
-
-        if (null !== $from && null !== $to && $from > $to) {
-            throw ApiException::validation([['propertyPath' => 'to', 'message' => 'audit.dates_backwards', 'code' => 'dates_backwards']]);
-        }
-
-        $type = $asked['type'] ?? null;
-
-        return new AuditFilter(
-            $organisation->getId(),
-            $this->clock->now()->setTimezone($utc)->sub(new DateInterval(self::KEPT_FOR)),
-            $this->uuid($asked['person'] ?? null, 'person'),
-            null === $type ? null : AuditType::tryFrom($type) ?? throw ApiException::validation([['propertyPath' => 'type', 'message' => 'audit.invalid_filter', 'code' => 'invalid_choice']]),
-            $this->uuid($asked['event'] ?? null, 'event'),
-            $from?->setTimezone($utc),
-            $to?->modify('+1 day')->setTimezone($utc),
-        );
+        return $this->auditFilters->asked($organisation->getId(), $asked, self::zone($user), $this->clock->now());
     }
 
-    private function day(?string $day, string $field, DateTimeZone $zone): ?DateTimeImmutable
+    private static function zone(User $user): DateTimeZone
     {
-        if (null === $day || '' === $day) {
-            return null;
-        }
-
-        $parsed = Regex\matches($day, self::DAY) ? DateTimeImmutable::createFromFormat('!Y-m-d', $day, $zone) : false;
-
-        return false === $parsed || $parsed->format('Y-m-d') !== $day ? throw ApiException::validation([['propertyPath' => $field, 'message' => 'audit.invalid_filter', 'code' => 'invalid_date']]) : $parsed;
-    }
-
-    private function uuid(?string $id, string $field): ?Uuid
-    {
-        if (null === $id || '' === $id) {
-            return null;
-        }
-
-        return Uuid::isValid($id) ? Uuid::fromString($id) : throw ApiException::validation([['propertyPath' => $field, 'message' => 'audit.invalid_filter', 'code' => 'invalid_choice']]);
+        return new DateTimeZone($user->getTimezone() ?? 'UTC');
     }
 
     /** @return ?array{0: DateTimeImmutable, 1: Uuid} */

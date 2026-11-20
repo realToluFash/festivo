@@ -14,14 +14,19 @@ use App\Entity\Membership;
 use App\Entity\Organisation;
 use App\Entity\User;
 use App\Enum\Actor;
-use App\Enum\AuditExportStatus;
 use App\Enum\AuditType;
 use App\Enum\ErrorCode;
+use App\Enum\Permission;
+use App\Enum\PlanFeature;
+use App\Http\Access\Interfaces\MembershipDirectoryInterface;
+use App\Http\Access\Interfaces\PlanFeaturesInterface;
 use App\Http\AfterResponse;
 use App\Http\Exception\ApiException;
 use App\Repository\AuditEntryRepository;
 use App\Repository\AuditExportRepository;
 use App\Repository\AuditFilter;
+use DateInterval;
+use DateTimeZone;
 use Doctrine\ORM\EntityManagerInterface;
 use Psl\Dict;
 use Psl\Iter;
@@ -50,6 +55,9 @@ final readonly class AuditExports
         private AuditExportRepository $auditExportRepository,
         private AuditEntryView $auditEntryView,
         private AuditExportMailer $auditExportMailer,
+        private AuditFilters $auditFilters,
+        private MembershipDirectoryInterface $membershipDirectory,
+        private PlanFeaturesInterface $planFeatures,
         private PreparedFiles $preparedFiles,
         private Auditor $auditor,
         private EntityManagerInterface $entityManager,
@@ -67,10 +75,12 @@ final readonly class AuditExports
     /**
      * The file itself for a small export, or the export now being prepared; either way one Audit log entry, with its filters and its row count.
      *
-     * @param array<string, string> $filters as asked, for the entry
+     * @param array<string, string> $filters as asked, From and To days in `$zone`
      */
-    public function export(Organisation $organisation, User $by, AuditFilter $filter, array $filters, string $format, string $locale): string|AuditExport
+    public function export(Organisation $organisation, User $by, array $filters, DateTimeZone $zone, string $format, string $locale): string|AuditExport
     {
+        $now = $this->clock->now();
+        $filter = $this->auditFilters->asked($organisation->getId(), $filters, $zone, $now);
         $described = [] === $filters ? null : $this->described($organisation, $filter, $filters);
         $count = $this->auditEntryRepository->countMatching($filter);
 
@@ -86,38 +96,76 @@ final readonly class AuditExports
             return $file;
         }
 
-        $export = new AuditExport($organisation, $by, $this->clock->now(), $format, $filters, $count, $locale);
+        $export = new AuditExport($organisation, $by, $now, $format, $filters, $count, $locale, $zone->getName());
         $this->entityManager->persist($export);
         $this->audit($organisation, $by, $described, $format, $count);
         $this->entityManager->flush();
-        $this->afterResponse->defer(fn () => $this->prepare($export, $filter->upTo($export->getAskedAt())));
+        $this->afterResponse->defer(fn () => $this->prepare($export));
 
         return $export;
     }
 
-    public function prepare(AuditExport $export, AuditFilter $filter): void
+    /** One try, unless another is under way or every try has been had: the entries matched when it was asked, kept and emailed to its asker once; failed for good after its last try, or at once for an asker who can no longer read the log. */
+    public function prepare(AuditExport $export): void
     {
-        try {
-            $key = Str\format('audit-exports/%s/%s.%s', $export->getOrganisation()->getId()->toRfc4122(), $export->getId()->toRfc4122(), $export->getFormat());
-            $this->preparedFiles->keep($key, self::contentType($export->getFormat()), fn ($file) => $this->write($file, $filter, $export->getFormat(), $export->getLocale()));
-        } catch (Throwable $e) {
-            $this->logger->error('An audit log export failed to prepare.', ['export' => $export->getId()->toRfc4122(), 'exception' => $e::class]);
-            $export->setStatus(AuditExportStatus::Failed);
-            $this->entityManager->flush();
+        $now = $this->clock->now();
+
+        if (!$this->auditExportRepository->claimTry($export, $now, $now->sub(new DateInterval(AuditExport::RETRY_AFTER)))) {
+            return;
+        }
+
+        $attempt = $export->getAttempts();
+
+        if (!$this->stillReads($export)) {
+            $this->auditExportRepository->claimFailed($export, $this->clock->now());
+            $this->logger->error('An audit log export failed for good: its asker can no longer read the log.', self::context($export, $attempt));
 
             return;
         }
 
-        $export->setFileKey($key);
-        $export->setReadyAt($this->clock->now());
-        $export->setStatus(AuditExportStatus::Ready);
-        $this->entityManager->flush();
+        try {
+            $key = Str\format('audit-exports/%s/%s-%d.%s', $export->getOrganisation()->getId()->toRfc4122(), $export->getId()->toRfc4122(), $attempt, $export->getFormat());
+            $filter = $this->auditFilters->asked($export->getOrganisation()->getId(), $export->getFilters(), new DateTimeZone($export->getZone()), $export->getAskedAt())->upTo($export->getAskedAt());
+            $this->preparedFiles->keep($key, self::contentType($export->getFormat()), fn ($file) => $this->write($file, $filter, $export->getFormat(), $export->getLocale(), fn () => $this->auditExportRepository->working($export, $attempt, $this->clock->now())));
+        } catch (Throwable $e) {
+            $this->logger->error('An audit log export failed to prepare.', [...self::context($export, $attempt), 'exception' => $e::class]);
+
+            if ($attempt >= AuditExport::MOST_ATTEMPTS && $this->auditExportRepository->claimFailed($export, $this->clock->now())) {
+                $this->logger->error('An audit log export failed for good: its last try failed.', self::context($export, $attempt));
+            }
+
+            return;
+        }
+
+        if (!$this->auditExportRepository->claimReady($export, $key, $this->clock->now())) {
+            $this->preparedFiles->discard($key);
+
+            return;
+        }
 
         try {
             $this->entityManager->getConnection()->transactional(fn () => $this->auditExportMailer->ready($export));
         } catch (Throwable $e) {
             $this->logger->error('An audit log export is ready but its email failed.', ['export' => $export->getId()->toRfc4122(), 'exception' => $e::class]);
         }
+    }
+
+    /** Each export still preparing whose latest try has not been seen working for five minutes: tried again, or failed for good once that was its last. */
+    public function prepareDue(): int
+    {
+        $now = $this->clock->now();
+        $quietSince = $now->sub(new DateInterval(AuditExport::RETRY_AFTER));
+        $due = $this->auditExportRepository->findDue($quietSince);
+
+        foreach ($due as $export) {
+            if ($export->getAttempts() < AuditExport::MOST_ATTEMPTS) {
+                $this->prepare($export);
+            } elseif ($this->auditExportRepository->claimStopped($export, $now, $quietSince)) {
+                $this->logger->error('An audit log export failed for good: its last try stopped without finishing.', self::context($export, $export->getAttempts()));
+            }
+        }
+
+        return Iter\count($due);
     }
 
     /** The prepared file, for the person who asked, signed in, while they still read the log and for 24 hours from its being ready; anyone else is told it isn't there. */
@@ -127,6 +175,21 @@ final readonly class AuditExports
         $this->preparedFiles->unexpired($export, 'audit.export_expired');
 
         return $export;
+    }
+
+    /** An Owner or an Admin still, of an organisation still on a plan with the log. */
+    private function stillReads(AuditExport $export): bool
+    {
+        $organisationId = $export->getOrganisation()->getId();
+
+        return true === $this->membershipDirectory->grantsIn($export->getAskedBy(), $organisationId)?->holds(Permission::OrganisationManage)
+            && $this->planFeatures->unlocks($organisationId, PlanFeature::AuditLog);
+    }
+
+    /** @return array{export: string, attempt: int} */
+    private static function context(AuditExport $export, int $attempt): array
+    {
+        return ['export' => $export->getId()->toRfc4122(), 'attempt' => $attempt];
     }
 
     /** @param ?array<string, ?string> $filters */
@@ -195,8 +258,11 @@ final readonly class AuditExports
         return false === $written ? '' : $written;
     }
 
-    /** @param resource $stream */
-    private function write($stream, AuditFilter $filter, string $format, string $locale): void
+    /**
+     * @param resource          $stream
+     * @param ?callable(): void $working told after each batch, so a long export is never taken for a stopped one
+     */
+    private function write($stream, AuditFilter $filter, string $format, string $locale, ?callable $working = null): void
     {
         $columns = AuditEntryView::columns();
 
@@ -223,6 +289,10 @@ final readonly class AuditExports
 
             foreach ($entries as $entry) {
                 $this->entityManager->detach($entry);
+            }
+
+            if (null !== $working) {
+                $working();
             }
         } while (self::BATCH === Iter\count($entries));
     }
