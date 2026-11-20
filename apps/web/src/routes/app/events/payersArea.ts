@@ -35,11 +35,9 @@ export interface ChooseStart {
   amounts?: Readonly<Record<string, string>>;
   rest?: string;
   checked?: boolean;
-  /** The refusal a save met because a payer or a cost was removed meanwhile. */
   stale?: string;
 }
 
-/** Where Who is paying reads and writes: the API in the product, the sample data in the demo. */
 export interface PayersSource {
   read: () => Promise<EventPayers>;
   add: (typed: PayerTyped) => Promise<Payer>;

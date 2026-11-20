@@ -535,11 +535,7 @@ final class PayersTest extends ApiTestCase
         self::assertSame(404, $this->statusCode());
     }
 
-    /**
-     * A payer and a cost on a second event: in this organisation, or in another one.
-     *
-     * @return array{string, string}
-     */
+    /** @return array{string, string} */
     private function elsewhere(bool $anotherOrganisation): array
     {
         [$owner, $organisation, $event] = [$this->owner, $this->organisation, $this->eventId];
@@ -612,7 +608,6 @@ final class PayersTest extends ApiTestCase
         return Type\shape(['id' => Type\string()], true)->coerce($body['line'] ?? null)['id'];
     }
 
-    /** A guest on a live event who replied Maybe: counted in the upper figure only. */
     private function maybe(string $name): void
     {
         self::em()->getConnection()->executeStatement('UPDATE events SET hosts = :hosts WHERE id = :id', ['hosts' => '["Ada and Obi"]', 'id' => $this->eventId]);
