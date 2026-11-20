@@ -53,6 +53,8 @@ export const PW = {
   addedByYou: (day: string) => `Paid ${day}. Added by you as already paid, so Undo deletes it.`,
   addedBy: (day: string, name: string) =>
     `Paid ${day}. Added by ${name} as already paid, so Undo deletes it.`,
+  addedByYouHeld: (day: string) => `Paid ${day}. Added by you as already paid.`,
+  addedByHeld: (day: string, name: string) => `Paid ${day}. Added by ${name} as already paid.`,
   deleted: (amount: string, vendor: string, day: string, what: string) =>
     `Deleted the payment of ${amount} to ${vendor} on ${day}: ${what}.`,
   noLongerChased: 'No longer chased.',

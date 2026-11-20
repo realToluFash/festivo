@@ -73,7 +73,7 @@ describe('payments on a vendor’s page, shapes and the reminder setting, in A (
     async () => {
       await open(`${BLOOM}&state=schedule`);
       expect(rowOf('Deposit').textContent).toBe(
-        'DepositPaid £360.00 on Tue, Oct 6 · Marked by Folake Adeyemi',
+        'DepositPaid £360.00 on Tue, Oct 6 · Marked by Folake AdeyemiUndo',
       );
       expect(rowOf('Balance').textContent).toBe(
         'BalanceOverdueDue Fri, Oct 30£840.00Mark paidCancel paymentChangeRemove',
@@ -81,6 +81,8 @@ describe('payments on a vendor’s page, shapes and the reminder setting, in A (
       expect(
         within(section('Schedule')).getByRole('button', { name: 'Add a payment already made' }),
       ).toBeDefined();
+      fireEvent.click(within(rowOf('Deposit')).getByRole('button', { name: 'Undo' }));
+      expect(within(rowOf('Deposit')).getByRole('button', { name: 'Mark paid' })).toBeDefined();
     },
   );
 
@@ -184,7 +186,7 @@ describe('payments on a vendor’s page, shapes and the reminder setting, in A (
       expect(within(marking).queryByRole('button', { name: 'Cancel' })).toBeNull();
       expect(within(marking).queryByLabelText('Amount paid')).toBeNull();
       expect(rowOf('Balance').textContent).toBe(
-        'BalancePaid £840.00 on Mon, Nov 2 · Marked by Julien Moreau',
+        'BalancePaid £840.00 on Mon, Nov 2 · Marked by Julien MoreauUndo',
       );
       fireEvent.click(within(marking).getByRole('button', { name: 'Close' }));
       expect(screen.queryByRole('dialog')).toBeNull();
