@@ -30,7 +30,7 @@
     "quote_unchanged": "Altere o valor ou a data da cotação para a rever. Para alterar outra coisa, corrija a cotação.",
     "payments_already_scheduled": "Foram adicionados pagamentos ao calendário deste fornecedor enquanto preenchia o formulário, por isso nenhum dos seus foi guardado. Verifique os pagamentos que o calendário tem agora antes de adicionar mais.",
     "vendor_owed": "Este fornecedor não foi arquivado, porque um ou mais eventos ainda têm pagamentos pendentes a este fornecedor.",
-    "payment_already_paid": "Este pagamento já foi marcado como pago, por isso nada foi alterado.",
+    "payment_already_paid": "Já tinha sido marcado como pago, por isso nada mudou.",
     "payment_cancelled": "Este pagamento foi cancelado, por isso não pode ser marcado como pago.",
     "plan_limit": "O limite do plano foi atingido.",
     "seating_plan_exists": "Este evento já tem um plano de mesas.",
