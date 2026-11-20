@@ -1,0 +1,302 @@
+import { describe, expect, it } from 'vitest';
+
+import {
+  actionsUnder,
+  brokeInWord,
+  brokeOn,
+  cancelUnder,
+  labelFits,
+  rowRoom,
+  statusFits,
+  titleRoomBeside,
+  titleRowKey,
+} from './titleFit.ts';
+
+const row = { room: 400, title: 140, extra: 0, labelled: 170, gap: 16 };
+
+describe('the primary beside a title', () => {
+  it('keeps its label where the title and the label both fit', () => {
+    expect(labelFits(row)).toBe(true);
+  });
+
+  it('gives way to the round plus where they do not', () => {
+    expect(labelFits({ ...row, title: 230 })).toBe(false);
+  });
+
+  it('fits on exactly the width the row has', () => {
+    expect(labelFits({ ...row, room: 140 + 16 + 170 })).toBe(true);
+    expect(labelFits({ ...row, room: 140 + 16 + 170 - 1 })).toBe(false);
+  });
+
+  it('counts what stands beside the title, with its own gap', () => {
+    expect(labelFits({ ...row, extra: 60, room: 402 })).toBe(true);
+    expect(labelFits({ ...row, extra: 60, room: 401 })).toBe(false);
+  });
+
+  it('keeps the label until the row is measured', () => {
+    expect(labelFits({ ...row, room: 0 })).toBe(true);
+    expect(labelFits({ ...row, title: 0 })).toBe(true);
+  });
+});
+
+describe('the row a title stands in', () => {
+  const sides = { gap: 16, labelled: 170, round: 44 };
+
+  it('adds back the labelled primary when that is what was drawn', () => {
+    expect(rowRoom({ ...sides, slot: 214, drawn: 'labelled' })).toBe(400);
+  });
+
+  it('adds back the round primary when that is what was drawn', () => {
+    expect(rowRoom({ ...sides, slot: 340, drawn: 'round' })).toBe(400);
+  });
+
+  it('is the same row whichever primary took its share, so a flip settles', () => {
+    const labelled = rowRoom({ ...sides, slot: 400 - 16 - 170, drawn: 'labelled' });
+    const round = rowRoom({ ...sides, slot: 400 - 16 - 44, drawn: 'round' });
+    expect(labelled).toBe(round);
+  });
+
+  it('is unmeasured until the slot is', () => {
+    expect(rowRoom({ ...sides, slot: null, drawn: 'labelled' })).toBe(0);
+  });
+
+  it('leaves the title no room when its slot is squeezed to nothing, so the primary goes round', () => {
+    const room = rowRoom({ ...sides, slot: 0, drawn: 'labelled' });
+    expect(room).toBe(16 + 170);
+    expect(labelFits({ room, title: 90, extra: 0, labelled: 170, gap: 16 })).toBe(false);
+  });
+});
+
+describe('Export and the + under the title (sc-68417)', () => {
+  const actions = { room: 370, title: 170, extra: 0, plus: 44, bell: 0, gap: 10 };
+
+  it('stay beside the title where all three fit', () => {
+    expect(actionsUnder({ ...actions, extra: 120 })).toBe(false);
+  });
+
+  it('go under it where the title would have to break', () => {
+    expect(actionsUnder({ ...actions, title: 215, extra: 200 })).toBe(true);
+  });
+
+  it('fit on exactly the width the row has', () => {
+    expect(actionsUnder({ ...actions, extra: 124, room: 170 + 10 + 124 + 10 + 44 })).toBe(false);
+    expect(actionsUnder({ ...actions, extra: 124, room: 170 + 10 + 124 + 10 + 44 - 1 })).toBe(true);
+  });
+
+  it('count the bell on its side, with its own gap', () => {
+    const room = 170 + 10 + 100 + 10 + 44 + 10 + 44;
+    expect(actionsUnder({ ...actions, extra: 100, bell: 44, room })).toBe(false);
+    expect(actionsUnder({ ...actions, extra: 100, bell: 44, room: room - 1 })).toBe(true);
+  });
+
+  it('stay beside it until the row and the title are measured', () => {
+    expect(actionsUnder({ ...actions, extra: 400, room: 0 })).toBe(false);
+    expect(actionsUnder({ ...actions, extra: 400, title: 0 })).toBe(false);
+  });
+});
+
+const inSlot = { slot: 180, title: 180 };
+
+describe('a title that broke beside its actions all the same (sc-68417)', () => {
+  const broken = [
+    { text: 'Convidad', width: 150 },
+    { text: 'os', width: 40 },
+  ];
+  const whole = [{ text: 'Convidados', width: 175 }];
+
+  it('broke where it is at its default size and still wraps inside its word', () => {
+    expect(brokeInWord({ lines: broken, drawn: 30, start: 43, size: 30, ...inSlot })).toBe(true);
+  });
+
+  it('broke where it stepped down part way and still wraps, as it steps no further', () => {
+    expect(brokeInWord({ lines: broken, drawn: 34, start: 43, size: 30, ...inSlot })).toBe(true);
+  });
+
+  it('did not break while it is still at its start size, as it steps down next', () => {
+    expect(brokeInWord({ lines: broken, drawn: 43, start: 43, size: 30, ...inSlot })).toBe(false);
+  });
+
+  it('broke at the default text size, where its start is its default size', () => {
+    expect(brokeInWord({ lines: broken, drawn: 30, start: 30, size: 30, ...inSlot })).toBe(true);
+  });
+
+  it('did not break on one line, or between words', () => {
+    expect(brokeInWord({ lines: whole, drawn: 30, start: 43, size: 30, ...inSlot })).toBe(false);
+    const between = [
+      { text: 'Lista de ', width: 120 },
+      { text: 'convidados', width: 170 },
+    ];
+    expect(brokeInWord({ lines: between, drawn: 30, start: 43, size: 30, ...inSlot })).toBe(false);
+  });
+
+  it('did not break in a slot narrower than the title, as the row is still laying out', () => {
+    const atDefault = { lines: broken, drawn: 30, start: 30, size: 30 };
+    expect(brokeInWord({ ...atDefault, slot: 120, title: 180 })).toBe(false);
+    expect(brokeInWord({ ...atDefault, slot: 0, title: 180 })).toBe(false);
+    expect(brokeInWord({ ...atDefault, slot: 179, title: 180 })).toBe(true);
+  });
+
+  it('did not break where its lines together fit the slot, as they were laid out in a narrower box than the slot last measured (sc-68417, iPad on its side at the default size)', () => {
+    const squeezed = [
+      { text: 'Gue', width: 50 },
+      { text: 'sts', width: 42 },
+    ];
+    const atDefault = { drawn: 26, start: 26, size: 26, title: 92 };
+    expect(brokeInWord({ ...atDefault, lines: squeezed, slot: 400 })).toBe(false);
+    expect(brokeInWord({ ...atDefault, lines: squeezed, slot: 92 })).toBe(false);
+    expect(brokeInWord({ ...atDefault, lines: squeezed, slot: 91 })).toBe(true);
+  });
+});
+
+describe('the row the title broke on (sc-68417)', () => {
+  const broken = [
+    { text: 'Convidad', width: 150 },
+    { text: 'os', width: 40 },
+  ];
+  const whole = [{ text: 'Convidados', width: 175 }];
+  const atFloor = { drawn: 30, start: 43, size: 30, ...inSlot };
+
+  it('is this row once the title breaks beside its actions', () => {
+    expect(brokeOn({ broke: null, row: '370|pt', under: false, lines: broken, ...atFloor })).toBe(
+      '370|pt',
+    );
+  });
+
+  it('stays as it was while the actions are already under', () => {
+    expect(
+      brokeOn({ broke: null, row: '370|pt', under: true, lines: broken, ...atFloor }),
+    ).toBeNull();
+  });
+
+  it('stays as it was while the title is whole', () => {
+    expect(
+      brokeOn({ broke: '360|pt', row: '370|pt', under: false, lines: whole, ...atFloor }),
+    ).toBe('360|pt');
+  });
+
+  it('is not this row where the title broke while its slot was still narrower than it (sc-68417, iPad on its side)', () => {
+    expect(
+      brokeOn({
+        broke: null,
+        row: '700|Guests',
+        under: false,
+        lines: [
+          { text: 'Gue', width: 50 },
+          { text: 'sts', width: 42 },
+        ],
+        drawn: 26,
+        start: 26,
+        size: 26,
+        slot: 60,
+        title: 92,
+      }),
+    ).toBeNull();
+  });
+
+  it('is not this row where the lines broke in a box narrower than the slot last measured (sc-68417, iPad on its side at the default size)', () => {
+    expect(
+      brokeOn({
+        broke: null,
+        row: '700|Guests',
+        under: false,
+        lines: [
+          { text: 'Gue', width: 50 },
+          { text: 'sts', width: 42 },
+        ],
+        drawn: 26,
+        start: 26,
+        size: 26,
+        slot: 400,
+        title: 92,
+      }),
+    ).toBeNull();
+  });
+
+  it('is not yet this row at the start size, where the title steps down next', () => {
+    const atStart = { drawn: 43, start: 43, size: 30, ...inSlot };
+    expect(
+      brokeOn({ broke: null, row: '370|pt', under: false, lines: broken, ...atStart }),
+    ).toBeNull();
+  });
+});
+
+describe('Refreshing… gives way (sc-71821)', () => {
+  it('latches no break on whether Refreshing… shows: the row key names only the room, the title and the size', () => {
+    expect(titleRowKey({ room: 404, title: 'Guests', fontScale: 1 })).toBe('404|Guests|1');
+  });
+
+  it('stays beside the Back pill at the default size, where the pill, it and the bell fit', () => {
+    expect(statusFits({ room: 318, lead: 110, ends: [], status: 99, gap: 10 })).toBe(true);
+  });
+
+  it('takes its own line at the twelfth step on a phone rather than shrink the Back pill', () => {
+    expect(statusFits({ room: 318, lead: 259, ends: [], status: 238, gap: 10 })).toBe(false);
+  });
+
+  it('counts the title as drawn and every control, so on its side at the twelfth step it goes under them', () => {
+    expect(statusFits({ room: 360, lead: 103, ends: [139, 44, 44], status: 191, gap: 10 })).toBe(
+      false,
+    );
+  });
+
+  it('stays on the title row upright at the ninth step, where the title keeps its size beside it', () => {
+    expect(statusFits({ room: 770, lead: 141, ends: [142, 224], status: 184, gap: 10 })).toBe(true);
+  });
+
+  it('is exact at the edge: fitting to the point stays, one over goes under', () => {
+    expect(statusFits({ room: 300, lead: 100, ends: [80], status: 100, gap: 10 })).toBe(true);
+    expect(statusFits({ room: 299, lead: 100, ends: [80], status: 100, gap: 10 })).toBe(false);
+  });
+
+  it('takes its own line until every width is measured', () => {
+    expect(statusFits({ room: 0, lead: 100, ends: [44], status: 90, gap: 10 })).toBe(false);
+    expect(statusFits({ room: 800, lead: 0, ends: [44], status: 90, gap: 10 })).toBe(false);
+    expect(statusFits({ room: 800, lead: 100, ends: [0], status: 90, gap: 10 })).toBe(false);
+    expect(statusFits({ room: 800, lead: 100, ends: [44], status: 0, gap: 10 })).toBe(false);
+  });
+});
+
+describe('the title’s room beside Export at its widest (sc-71821)', () => {
+  it('takes the slot less what Export would take back at its widest', () => {
+    expect(titleRoomBeside({ slot: 120, extra: 140, widest: 180 })).toBe(80);
+  });
+
+  it('is the same whichever size Export draws at, so the title takes one size', () => {
+    const row = 120 + 140;
+    const rooms = [140, 160, 180].map((extra) =>
+      titleRoomBeside({ slot: row - extra, extra, widest: 180 }),
+    );
+
+    expect(new Set(rooms)).toEqual(new Set([80]));
+  });
+
+  it('takes the slot as it is with Export at its widest, off the row, or not yet measured', () => {
+    expect(titleRoomBeside({ slot: 120, extra: 180, widest: 180 })).toBe(120);
+    expect(titleRoomBeside({ slot: 300, extra: 0, widest: 180 })).toBe(300);
+    expect(titleRoomBeside({ slot: 120, extra: 140, widest: 0 })).toBe(120);
+  });
+
+  it('never gives less than nothing', () => {
+    expect(titleRoomBeside({ slot: 10, extra: 50, widest: 200 })).toBe(0);
+  });
+});
+
+describe('Cancel beside a dialog’s title (sc-72136)', () => {
+  const gap = 10;
+
+  it('stays beside the title while its longest word and Cancel fit the row', () => {
+    expect(cancelUnder({ room: 354, widest: 140, cancel: 175, gap })).toBe(false);
+    expect(cancelUnder({ room: 354, widest: 169, cancel: 175, gap })).toBe(false);
+  });
+
+  it('takes the row under the title where they do not, or where the word alone fills the row', () => {
+    expect(cancelUnder({ room: 354, widest: 222, cancel: 206, gap })).toBe(true);
+    expect(cancelUnder({ room: 354, widest: 400, cancel: 60, gap })).toBe(true);
+  });
+
+  it('leaves the row as on main until the row, the word and Cancel are measured', () => {
+    expect(cancelUnder({ room: 0, widest: 222, cancel: 206, gap })).toBe(false);
+    expect(cancelUnder({ room: 354, widest: 0, cancel: 206, gap })).toBe(false);
+    expect(cancelUnder({ room: 354, widest: 222, cancel: 0, gap })).toBe(false);
+  });
+});

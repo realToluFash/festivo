@@ -1,0 +1,17 @@
+# sc-70819: the record sheet from a waiting domain's step. DOMAIN is a domain on the list still waiting for its record.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/settings/data-and-control/email-domains
+- extendedWaitUntil:
+    visible:
+      id: emailDomains.card
+    timeout: 20000
+- tapOn:
+    id: emailDomains.${DOMAIN}
+- extendedWaitUntil:
+    visible:
+      id: emailDomains.record.verify
+    timeout: 20000
+- waitForAnimationToEnd:
+    timeout: 8000
+- takeScreenshot: sc70819-record

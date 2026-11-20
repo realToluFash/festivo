@@ -1,0 +1,205 @@
+/* sc-3904: the choices inside a dish on the event Menu. */
+.ch-box {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceSm);
+}
+
+.ch-head {
+  margin: 0;
+  color: var(--colorInkSecondary);
+  font: 600 13px/1.4 var(--fontFamily);
+}
+
+.ch-insets {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceSm);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ch-options {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceXxs);
+  margin: var(--spaceXxs) 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ch-option {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--spaceXxs) var(--spaceMd);
+  min-width: 0;
+}
+
+.ch-option-name {
+  min-width: 8rem;
+  font: 600 14px/1.4 var(--fontFamily);
+}
+
+.ch-option .lib-contains,
+.ch-not-offered .mn-quiet,
+.ch-draft,
+.ch-stays,
+.ch-prep-line {
+  min-width: 0;
+  overflow-wrap: break-word;
+}
+
+.ch-draft-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spaceXxs);
+  padding: 2px var(--spaceSm);
+  border: 1px solid var(--colorAttentionBorder);
+  border-radius: var(--radiusPill);
+  background: var(--colorAttentionTint);
+  color: var(--colorAttentionText);
+  font: 600 12px/1.3 var(--fontFamily);
+}
+
+.ch-not-offered {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--spaceXxs) var(--spaceSm);
+}
+
+.ch-not-offered .mn-quiet {
+  margin: 0;
+}
+
+.ch-draft {
+  padding: var(--spaceSm) var(--spaceMd);
+  border: 1px solid var(--colorAttentionBorder);
+  border-radius: var(--radiusInset);
+  background: var(--colorAttentionWash);
+  color: var(--colorInk);
+  font: 400 13.5px/1.45 var(--fontFamily);
+}
+
+.ch-draft p,
+.ch-stays p {
+  margin: 0;
+}
+
+.ch-draft ul,
+.ch-stays ul {
+  margin: var(--spaceXxs) 0 0;
+  padding-left: var(--spaceLg);
+}
+
+.ch-stays {
+  padding: var(--spaceSm) var(--spaceMd);
+  border: 1px solid var(--colorBroken);
+  border-radius: var(--radiusInset);
+  background: var(--colorCard);
+  font: 400 13.5px/1.45 var(--fontFamily);
+}
+
+.ch-stays-head {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--spaceXs);
+  color: var(--colorBrokenText);
+  font-weight: 600;
+}
+
+.ch-stays li::marker {
+  color: var(--colorBroken);
+}
+
+.ch-prep {
+  margin-top: var(--spaceXxs);
+}
+
+.ch-prep p {
+  margin: 0;
+}
+
+.ch-prep-line {
+  font: 600 13.5px/1.45 var(--fontFamily);
+}
+
+.ch-intro {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceXxs);
+}
+
+.ch-intro p {
+  margin: 0;
+}
+
+.ch-options-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+}
+
+.ch-options-head h3 {
+  margin: 0;
+}
+
+.ch-block-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spaceSm);
+}
+
+.ch-contains-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spaceXs) var(--spaceMd);
+}
+
+.ch-add-option {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--spaceXs);
+}
+
+.ch-warn {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--spaceXs);
+  margin: var(--spaceXxs) 0 0;
+  min-width: 0;
+  overflow-wrap: break-word;
+  color: var(--colorInk);
+  font: 400 13.5px/1.45 var(--fontFamily);
+}
+
+.ch-stepper {
+  display: flex;
+  align-items: center;
+  gap: var(--spaceMd);
+}
+
+.ch-step:disabled {
+  color: var(--colorInkTertiary);
+  cursor: not-allowed;
+}
+
+.ch-count {
+  min-width: 2ch;
+  font: 600 18px/1 var(--fontFamily);
+  text-align: center;
+}
+
+.ch-required {
+  min-height: var(--sizeHit);
+}
+
+.ch-status:empty {
+  display: none;
+}

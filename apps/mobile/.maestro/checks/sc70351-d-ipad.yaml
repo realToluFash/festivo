@@ -1,0 +1,15 @@
+# sc-70351 regression: on the iPad People sits in the event's frame, from the side and its own link.
+appId: host.exp.Exponent
+---
+- setOrientation: ${ORIENT}
+- openLink: ${METRO_URL}/--/demo/events/evt-wed-4
+- extendedWaitUntil: { visible: '.*Adaeze.*', timeout: 30000 }
+- tapOn: { id: 'event.area.people', optional: true }
+- tapOn: { id: 'event.side.people', optional: true }
+- extendedWaitUntil: { visible: 'On this event', timeout: 10000 }
+- waitForAnimationToEnd: { timeout: 5000 }
+- takeScreenshot: d-ipad-area
+- openLink: ${METRO_URL}/--/demo/people
+- extendedWaitUntil: { visible: 'On this event', timeout: 20000 }
+- waitForAnimationToEnd: { timeout: 5000 }
+- takeScreenshot: d-ipad-link

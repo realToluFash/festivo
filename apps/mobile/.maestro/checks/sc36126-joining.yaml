@@ -1,0 +1,53 @@
+# sc-36126: Company domain joining with no domain, the Add a domain sheet, the added line, the remove ask; Requests to join's lead. DOMAIN must be the account's own domain (soirely.test).
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/settings/organisation
+- extendedWaitUntil:
+    visible:
+      id: organisation.card
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: organisation.domain.add
+    centerElement: true
+- waitForAnimationToEnd
+- takeScreenshot: domains-off
+- tapOn:
+    id: organisation.domain.add
+- extendedWaitUntil:
+    visible:
+      id: organisation.domain.field
+    timeout: 15000
+- tapOn:
+    id: organisation.domain.field
+- inputText: ${DOMAIN}
+- waitForAnimationToEnd
+- takeScreenshot: add-domain
+- tapOn:
+    id: organisation.domain.send
+- extendedWaitUntil:
+    visible:
+      id: organisation.domain.${DOMAIN}.remove
+    timeout: 30000
+- waitForAnimationToEnd
+- takeScreenshot: domain-added
+- tapOn:
+    id: organisation.domain.${DOMAIN}.remove
+- extendedWaitUntil:
+    visible:
+      id: organisation.domain.confirm
+    timeout: 15000
+- waitForAnimationToEnd
+- takeScreenshot: remove-ask
+- tapOn:
+    id: organisation.domain.confirm
+- extendedWaitUntil:
+    notVisible:
+      id: organisation.domain.${DOMAIN}.remove
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: organisation.link.switch
+    centerElement: true
+- waitForAnimationToEnd
+- takeScreenshot: request-link

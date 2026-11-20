@@ -1,0 +1,42 @@
+# sc-36468: own screen, wrong error, then the code goes to a text by textfail; the error follows (or keeps its words).
+appId: host.exp.Exponent
+---
+- runScript:
+    file: ../scripts/sc36468-fresh-phone.js
+    env:
+      MODE: alt
+      FAIL: '1'
+- openLink: ${METRO_URL}/--/verify-phone?phone=${output.phoneId}
+- extendedWaitUntil:
+    visible: '{{t:verifyPhone.introWhatsApp}}'
+    timeout: 30000
+- tapOn:
+    id: 'verifyPhone.code'
+- inputText: '000000'
+- hideKeyboard
+- scrollUntilVisible:
+    element:
+      id: 'verifyPhone.submit'
+    timeout: 10000
+- tapOn:
+    id: 'verifyPhone.submit'
+- extendedWaitUntil:
+    visible: '{{t:verifyPhone.wrongWhatsApp}}'
+    timeout: 10000
+- takeScreenshot: before
+- swipe:
+    start: 50%, 45%
+    end: 50%, 15%
+- scrollUntilVisible:
+    element:
+      id: 'verifyPhone.textInstead'
+    timeout: 10000
+- tapOn:
+    id: 'verifyPhone.textInstead'
+- scrollUntilVisible:
+    element:
+      text: '{{t:verifyPhone.textInsteadFailed}}'
+    timeout: 15000
+- waitForAnimationToEnd
+- assertVisible: '{{t:verifyPhone.wrongWhatsApp}}'
+- takeScreenshot: after
