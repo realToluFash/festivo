@@ -33,6 +33,7 @@ use DateTimeImmutable;
 use Doctrine\ORM\EntityManagerInterface;
 use Lexik\Bundle\JWTAuthenticationBundle\Services\JWTTokenManagerInterface;
 use PHPUnit\Framework\Attributes\Test;
+use Psl\Dict;
 use Psl\Iter;
 use Psl\Json;
 use Psl\Str;
@@ -253,6 +254,44 @@ final class AuditLogTest extends ApiTestCase
     }
 
     #[Test]
+    public function theChangesSayRolesStatusesAndTimesInWordsAndLeaveOutIdsAndWhatDidNotChange(): void
+    {
+        [$owner, $organisation] = $this->enterprise('folake@ire.events', 'Ìrè Events');
+        $admin = Type\instance_of(Role::class)->coerce(self::service(EntityManagerInterface::class)->getRepository(Role::class)->findOneBy(['organisation' => $organisation->getId(), 'seededAs' => SeededRole::Admin]));
+        $eventId = Uuid::v7();
+        $this->entry($organisation, 'invitation.sent', $owner, '-4 hours', changes: ['email' => [null, 'ada@ire.events'], 'role' => [null, $admin->getId()->toRfc4122()]]);
+        $this->entry($organisation, 'event_person.granted', $owner, '-3 hours', $eventId, 'Gala', changes: ['role' => [null, 'can_edit'], 'jobLabel' => [null, null], 'addressKind' => [null, null], 'eventId' => [null, $eventId->toRfc4122()], 'userId' => [null, $owner->getId()->toRfc4122()]]);
+        $this->entry($organisation, 'membership.removed', $owner, '-2 hours', changes: ['status' => ['active', 'left_or_removed'], 'user' => [null, $owner->getId()->toRfc4122()]]);
+        $this->entry($organisation, 'event.deleted', $owner, '-1 hour', $eventId, 'Gala', changes: ['deletedAt' => [null, '2026-11-19T19:35:47+00:00']]);
+        $this->entry($organisation, 'membership.role_changed', $owner, '-30 minutes', changes: ['roleId' => [Uuid::v7()->toRfc4122(), $admin->getId()->toRfc4122()]]);
+        $this->entry($organisation, 'organisation.plan_changed', $owner, '-15 minutes', changes: ['plan' => ['free', 'enterprise']]);
+        [, $elsewhere] = $this->enterprise('kemi@elsewhere.events', 'Elsewhere');
+        $theirAdmin = Type\instance_of(Role::class)->coerce(self::service(EntityManagerInterface::class)->getRepository(Role::class)->findOneBy(['organisation' => $elsewhere->getId(), 'seededAs' => SeededRole::Admin]));
+        $this->entry($organisation, 'invitation.revoked', $owner, '-10 minutes', changes: ['email' => ['kemi@ire.events', null], 'role' => [null, $theirAdmin->getId()->toRfc4122()]]);
+
+        $this->signIn($owner);
+        $entries = Type\vec(Type\shape(['action' => Type\string(), 'changes' => Type\vec(Type\string())], true))->coerce($this->send('GET', $this->path($organisation))['entries']);
+        $changes = Dict\pull($entries, static fn (array $entry): array => $entry['changes'], static fn (array $entry): string => $entry['action']);
+
+        self::assertSame(['Email: None → ada@ire.events', 'Role: None → Admin'], $changes['invitation.sent']);
+        self::assertSame(['Role: None → Can edit'], $changes['event_person.granted']);
+        self::assertSame(['Status: Active → Left or removed'], $changes['membership.removed']);
+        self::assertSame(['Role: None → Admin'], $changes['membership.role_changed'], 'a role since removed reads as none, and the side that can be read stays');
+        self::assertSame(['Plan: Free → Enterprise'], $changes['organisation.plan_changed']);
+        self::assertSame(['Email: kemi@ire.events → None'], $changes['invitation.revoked'], 'another organisation\'s role is never read');
+        self::assertCount(1, $changes['event.deleted']);
+        self::assertStringStartsWith('Deleted at: None → ', $changes['event.deleted'][0]);
+        self::assertStringNotContainsString('2026-11-19T', $changes['event.deleted'][0], 'on screen the time reads in the reader\'s zone');
+
+        $rows = Vec\map(Vec\filter(Str\split(Str\trim($this->export($organisation, 'jsonl')), "\n"), static fn (string $line): bool => '' !== $line), static fn (string $line): array => Type\dict(Type\string(), Type\nullable(Type\string()))->coerce(Json\decode($line)));
+        $exported = Dict\pull($rows, static fn (array $row): ?string => $row['changes'], static fn (array $row): string => (string) $row['action']);
+        self::assertSame('Email: None → ada@ire.events; Role: None → Admin', $exported['invitation.sent']);
+        self::assertSame('Status: Active → Left or removed', $exported['membership.removed']);
+        self::assertSame('Deleted at: None → 2026-11-19T19:35:47Z', $exported['event.deleted']);
+        self::assertSame('Plan: Free → Enterprise', $exported['organisation.plan_changed']);
+    }
+
+    #[Test]
     public function tenThousandDownloadAtOnceAndOneMoreIsPreparedAndEmailedToTheExporterOnly(): void
     {
         [$owner, $organisation] = $this->enterprise('folake@ire.events', 'Ìrè Events');
@@ -379,10 +418,11 @@ final class AuditLogTest extends ApiTestCase
         return Vec\map(Type\vec(Type\shape(['action' => Type\string()], true))->coerce($body['entries']), static fn (array $entry): string => $entry['action']);
     }
 
-    private function entry(Organisation $organisation, string $action, User $by, string $ago, ?Uuid $eventId = null, ?string $eventName = null, ?string $target = null): void
+    /** @param array<string, array{0: mixed, 1: mixed}> $changes */
+    private function entry(Organisation $organisation, string $action, User $by, string $ago, ?Uuid $eventId = null, ?string $eventName = null, ?string $target = null, array $changes = []): void
     {
         $entityManager = self::service(EntityManagerInterface::class);
-        $entityManager->persist(new AuditEntry(Actor::User, $by->getId(), $by->getName(), null === $eventId ? 'Organisation' : 'Event', $eventId ?? $organisation->getId(), $action, [], null, null, new DateTimeImmutable($ago), $organisation->getId(), $eventId, $eventName, $target ?? $eventName ?? $organisation->getName()));
+        $entityManager->persist(new AuditEntry(Actor::User, $by->getId(), $by->getName(), null === $eventId ? 'Organisation' : 'Event', $eventId ?? $organisation->getId(), $action, $changes, null, null, new DateTimeImmutable($ago), $organisation->getId(), $eventId, $eventName, $target ?? $eventName ?? $organisation->getName()));
         $entityManager->flush();
     }
 
