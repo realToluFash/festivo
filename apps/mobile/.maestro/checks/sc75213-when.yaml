@@ -1,3 +1,4 @@
+# Needs an organisation with events; text size set outside the flow.
 # sc-75213: the When level at the device's text size, nothing then Between dates chosen.
 appId: host.exp.Exponent
 ---
