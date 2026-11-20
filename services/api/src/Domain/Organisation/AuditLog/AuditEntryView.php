@@ -30,7 +30,7 @@ final readonly class AuditEntryView
 
     private const array ROLE_FIELDS = ['role', 'roleId'];
 
-    private const array CODED_FIELDS = ['role', 'roleId', 'status', 'membershipStatus', 'suspension', 'type', 'addressKind'];
+    private const array CODED_FIELDS = ['role', 'roleId', 'status', 'membershipStatus', 'suspension', 'type', 'addressKind', 'plan'];
 
     private const string UUID = '/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/';
 

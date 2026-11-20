@@ -264,6 +264,7 @@ final class AuditLogTest extends ApiTestCase
         $this->entry($organisation, 'membership.removed', $owner, '-2 hours', changes: ['status' => ['active', 'left_or_removed'], 'user' => [null, $owner->getId()->toRfc4122()]]);
         $this->entry($organisation, 'event.deleted', $owner, '-1 hour', $eventId, 'Gala', changes: ['deletedAt' => [null, '2026-11-19T19:35:47+00:00']]);
         $this->entry($organisation, 'membership.role_changed', $owner, '-30 minutes', changes: ['roleId' => [Uuid::v7()->toRfc4122(), $admin->getId()->toRfc4122()]]);
+        $this->entry($organisation, 'organisation.plan_changed', $owner, '-15 minutes', changes: ['plan' => ['free', 'enterprise']]);
 
         $this->signIn($owner);
         $entries = Type\vec(Type\shape(['action' => Type\string(), 'changes' => Type\vec(Type\string())], true))->coerce($this->send('GET', $this->path($organisation))['entries']);
@@ -273,6 +274,7 @@ final class AuditLogTest extends ApiTestCase
         self::assertSame(['Role: None → Can edit'], $changes['event_person.granted']);
         self::assertSame(['Status: Active → Left or removed'], $changes['membership.removed']);
         self::assertSame(['Role: None → Admin'], $changes['membership.role_changed'], 'a role since removed reads as none, and the side that can be read stays');
+        self::assertSame(['Plan: Free → Enterprise'], $changes['organisation.plan_changed']);
         self::assertCount(1, $changes['event.deleted']);
         self::assertStringStartsWith('Deleted at: None → ', $changes['event.deleted'][0]);
         self::assertStringNotContainsString('2026-11-19T', $changes['event.deleted'][0], 'on screen the time reads in the reader\'s zone');
@@ -282,6 +284,7 @@ final class AuditLogTest extends ApiTestCase
         self::assertSame('Email: None → ada@ire.events; Role: None → Admin', $exported['invitation.sent']);
         self::assertSame('Status: Active → Left or removed', $exported['membership.removed']);
         self::assertSame('Deleted at: None → 2026-11-19T19:35:47Z', $exported['event.deleted']);
+        self::assertSame('Plan: Free → Enterprise', $exported['organisation.plan_changed']);
     }
 
     #[Test]
