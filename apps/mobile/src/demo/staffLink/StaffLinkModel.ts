@@ -65,6 +65,18 @@ export const WORDS: Record<LinkStatus, string> = {
 export interface Trail {
   by: string;
   at: string;
+  /** Sent by a text (sc-77904) rather than marked as sent by hand. */
+  via?: 'text';
+}
+
+/** Texting once SMS (sc-3946) is in: the credits left, the demo's switches, and what holds a text back. */
+export interface Texting {
+  credits: number;
+  fails: boolean;
+  stopped: boolean;
+  quietWaits: boolean;
+  clock: string;
+  note: 'held' | 'waits' | null;
 }
 
 export interface LinkState {
@@ -76,7 +88,9 @@ export interface LinkState {
   trail: Trail | null;
   asking: boolean;
   replacing: boolean;
-  busy: 'share' | 'copy' | null;
+  busy: 'share' | 'copy' | 'text' | null;
+  /** Null until SMS is merged: then Text the link shows. */
+  texting: Texting | null;
   failed: boolean;
   /** The link the clipboard refused, shown in a read-only field to copy by hand. */
   held: string | null;
@@ -92,7 +106,10 @@ export function trailLine(status: LinkStatus, trail: Trail | null): string | nul
   if (trail == null) return null;
   if (status === 'shared') return `Shared by ${trail.by} · ${trail.at} · not marked as sent`;
   if (status === 'copied') return `Copied by ${trail.by} · ${trail.at} · not marked as sent`;
-  if (status === 'sent') return `Marked as sent by ${trail.by} · ${trail.at}`;
+  if (status === 'sent')
+    return trail.via === 'text'
+      ? `Sent by ${trail.by} · ${trail.at}`
+      : `Marked as sent by ${trail.by} · ${trail.at}`;
   if (status === 'opened') return `Opened ${trail.at}`;
 
   return null;
@@ -107,7 +124,7 @@ function delivered(s: LinkState, as: 'shared' | 'copied'): Pick<LinkState, 'stat
   return { status: as, trail: mine() };
 }
 
-export function pressed(s: LinkState, what: 'share' | 'copy'): LinkState {
+export function pressed(s: LinkState, what: 'share' | 'copy' | 'text'): LinkState {
   if (s.busy != null) return s;
 
   return { ...s, busy: what, failed: false, held: null, asking: false, say: '', toast: '' };
@@ -243,6 +260,7 @@ const fresh = (who: Who): LinkState => ({
   asking: false,
   replacing: false,
   busy: null,
+  texting: null,
   failed: false,
   held: null,
   issueFails: false,

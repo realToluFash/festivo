@@ -10,6 +10,9 @@ export interface OnRoster {
   mobile: boolean;
   status: LinkStatus;
   trail: Trail | null;
+  /** sc-77904: the number replied STOP, or a text waits for credits. */
+  stopped?: boolean;
+  held?: boolean;
 }
 
 export const RW = {
@@ -136,6 +139,14 @@ export const ROSTER_STATES = [
   'live',
   'erased',
   'noRead',
+  'smsOn',
+  'bulkCheck',
+  'bulkResult',
+  'bulkCheckShort',
+  'bulkHeld',
+  'bulkNone',
+  'stopped',
+  'smsReadOnly',
 ] as const;
 
 export type RosterState = (typeof ROSTER_STATES)[number];
@@ -153,7 +164,7 @@ export const LIVE_CHANGE = {
 };
 
 /** The demo's roster between the list and a link screen: what one changed, the other reads on coming back. */
-const kept = new Map<string, Pick<OnRoster, 'status' | 'trail'>>();
+const kept = new Map<string, Pick<OnRoster, 'status' | 'trail' | 'held'>>();
 const gone = new Set<string>();
 
 export function resetKept(): void {
@@ -161,8 +172,8 @@ export function resetKept(): void {
   gone.clear();
 }
 
-export function keep(id: string, status: LinkStatus, trail: Trail | null): void {
-  kept.set(id, { status, trail });
+export function keep(id: string, status: LinkStatus, trail: Trail | null, held?: boolean): void {
+  kept.set(id, held == null ? { status, trail } : { status, trail, held });
 }
 
 export function removeKept(id: string): void {
