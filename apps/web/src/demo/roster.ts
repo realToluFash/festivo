@@ -10,7 +10,7 @@ export const ORGANISATION = 'Ire Events';
 export const NAME_MAX = 200;
 export const BAR_MS = 10_000;
 
-export type LinkState = 'opened' | 'sent' | 'copied' | 'none' | 'noMobile' | 'erased';
+export type LinkState = 'opened' | 'sent' | 'shared' | 'copied' | 'none' | 'noMobile' | 'erased';
 
 export interface Entry {
   id: string;
@@ -23,7 +23,7 @@ export interface Entry {
   more: readonly string[];
   mobile: string | null;
   email: string | null;
-  link: 'opened' | 'sent' | 'copied' | 'none';
+  link: 'opened' | 'sent' | 'shared' | 'copied' | 'none';
   trail?: Trail | null;
 }
 
@@ -107,6 +107,7 @@ export const RW = {
 export const LINK_WORDS: Record<LinkState, string> = {
   opened: 'Link opened',
   sent: 'Link sent',
+  shared: 'Shared',
   copied: 'Copied',
   none: 'No link yet',
   noMobile: 'Add a mobile number to send a link',
@@ -209,7 +210,8 @@ export function nextLine(
 ): string | null {
   if (finished) return rw.nextHours;
   const unsent = entries.some(
-    (one) => one.mobile != null && (one.link === 'none' || one.link === 'copied'),
+    (one) =>
+      one.mobile != null && (one.link === 'none' || one.link === 'copied' || one.link === 'shared'),
   );
 
   return unsent ? rw.nextSend : null;
@@ -716,6 +718,16 @@ const STATES = {
       ),
       bar: ['Link copied.'],
     }),
+  linkShared: () =>
+    start({
+      name: 'Shared in the app',
+      note: 'Emeka Obi, shared from the app (sc-77903): Shared with Copied’s half-filled ring, Shared by Kemi Adeyemi, and Mark as sent as on Copied.',
+      entries: sample().map((one) =>
+        one.id === 'emeka'
+          ? { ...one, link: 'shared', trail: { by: 'Kemi Adeyemi', at: '19:12' } }
+          : one,
+      ),
+    }),
   linkNotIssued: () =>
     start({
       name: 'Copy link, no link issued',
@@ -970,9 +982,16 @@ export const ROSTER_PAGES: readonly { name: string; states: readonly DemoLink[] 
   },
   {
     name: 'A person’s own link (sc-3912)',
-    states: (['linkCopied', 'linkNotIssued', 'linkRefused', 'replaceAsk', 'replaced'] as const).map(
-      link,
-    ),
+    states: (
+      [
+        'linkCopied',
+        'linkShared',
+        'linkNotIssued',
+        'linkRefused',
+        'replaceAsk',
+        'replaced',
+      ] as const
+    ).map(link),
   },
   {
     name: 'A desk window from 961 to 1279 px, an open person before the Roster (sc-73291)',
