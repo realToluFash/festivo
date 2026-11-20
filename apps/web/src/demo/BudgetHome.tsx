@@ -550,9 +550,10 @@ export function BudgetHomeContent({
                   setRemoved(null);
                 }}
                 onRemove={(gone) => {
+                  const stored = lines.find((one) => one.id === gone.line.id);
                   setLines((now) => now.filter((one) => one.id !== gone.line.id));
                   setOpened(null);
-                  setRemoved(gone);
+                  setRemoved(stored == null ? gone : { ...gone, line: stored });
                 }}
                 onUndo={undo}
               />
