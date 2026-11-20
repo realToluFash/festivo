@@ -15,7 +15,15 @@ import {
   withTypeToggled,
 } from '@soirely/domain';
 import type { TFunction } from 'i18next';
-import { type ReactNode, type Ref, type RefObject, useEffect, useRef, useState } from 'react';
+import {
+  type ReactNode,
+  type Ref,
+  type RefObject,
+  useContext,
+  useEffect,
+  useRef,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   Platform,
@@ -28,6 +36,8 @@ import {
 } from 'react-native';
 
 import { endCut, endCuts } from '../layout/endCut.ts';
+import { keptWhole, rowDrawn, rowStarts } from '../layout/menuRowFit.ts';
+import { atAccessibilitySizes, piecesIn } from '../layout/textSize.ts';
 import { tokens } from '../theme/tokens.ts';
 import { TextField } from './Field.tsx';
 import { Glyph } from './Glyph.tsx';
@@ -36,7 +46,7 @@ import { RadioMark } from './RadioMark.tsx';
 import { useReadOut } from './ReadOut.tsx';
 import { moveScreenReaderFocus, type ScreenReaderTarget } from './screenReaderFocus.ts';
 import { type Anchor, AnchoredMenu, HeadCount, SectionHead, TextAction } from './Summary.tsx';
-import { Text } from './Text.tsx';
+import { Text, TitleCap } from './Text.tsx';
 import { MeasuredWords } from './Title.tsx';
 
 type Level = 'top' | 'type' | 'when' | 'hosts';
@@ -558,22 +568,28 @@ export function EventsFilterMenu({
   );
 }
 
-/** A menu row: its title, then its picks fitted between the title and the chevron. */
-function TopRow({
-  ref,
-  title,
-  picks,
-  value,
-  onPress,
-  testID,
-}: {
+interface TopRowProps {
   ref?: Ref<ViewInstance>;
   title: string;
   picks: readonly string[];
   value: string;
   onPress: () => void;
   testID: string;
-}) {
+}
+
+/** A menu row: main's one line at the standard sizes; at the accessibility sizes its value under its title when that shows more of it (sc-73933). */
+function TopRow(props: TopRowProps) {
+  const { fontScale } = useWindowDimensions();
+
+  return atAccessibilitySizes(fontScale) ? (
+    <GrownTopRow {...props} scale={fontScale} />
+  ) : (
+    <OneLineTopRow {...props} />
+  );
+}
+
+/** Its title, then its picks fitted between the title and the chevron. */
+function OneLineTopRow({ ref, title, picks, value, onPress, testID }: TopRowProps) {
   const { t } = useTranslation();
   const fit = usePicksFit(picks, value, { size: 15, weight: 'medium' });
   const [room, setRoom] = useState<number | null>(null);
@@ -602,6 +618,173 @@ function TopRow({
           weight="medium"
           ink={tokens.colorInkSecondary}
         />
+      </View>
+      <Glyph name="chevron" size={16} ink={tokens.colorInkTertiary} weight={2.3} />
+    </Pressable>
+  );
+}
+
+/** Beside its title while its value shows there at least as many whole picks as under it, otherwise under it, nothing cut; its words stop at the page title's size. */
+function GrownTopRow({
+  ref,
+  title,
+  picks,
+  value,
+  onPress,
+  testID,
+  scale,
+}: TopRowProps & { scale: number }) {
+  const { t } = useTranslation();
+  const cap = useContext(TitleCap) ?? Infinity;
+  const shownPicks = picks.length === 0 ? [value] : picks;
+  const count = shownPicks.length;
+  const tail = (rest: number) => keptWhole(t('calendar.moreItems', { count: rest }));
+  const read = (shown: number) =>
+    shown === count ? value : `${picksLead(shownPicks, shown)} ${tail(count - shown)}`;
+  // Beside its title the line draws as two texts, so it is measured as two, as usePicksFit does.
+  const parts = (shown: number) =>
+    shown === count ? [value] : [picksLead(shownPicks, shown), ` ${tail(count - shown)}`];
+  const reads = shownPicks.map((_, index) => read(index + 1));
+  const besides = shownPicks.flatMap((_, index) => parts(index + 1));
+  const tails = shownPicks.slice(1).map((_, index) => tail(index + 1));
+  const valuePieces = [...piecesIn(shownPicks), ...tails];
+  const titlePieces = piecesIn([title]);
+  const starts = rowStarts(scale, cap);
+  const [widths, setWidths] = useState<Readonly<Record<string, number>>>({});
+  const [room, setRoom] = useState(0);
+  const titleKey = (text: string) => `t|${starts.title}|${text}`;
+  const valueKey = (text: string) => `v|${starts.value}|${text}`;
+  const keys = [
+    titleKey(title),
+    ...titlePieces.map(titleKey),
+    ...reads.map(valueKey),
+    ...besides.map(valueKey),
+    ...valuePieces.map(valueKey),
+  ];
+  const ready = room > 0 && keys.every((key) => widths[key] != null);
+  const widthOf = (key: string) => widths[key] ?? 0;
+  const widestOf = (texts: readonly string[], key: (text: string) => string) =>
+    Math.max(...texts.map((text) => widthOf(key(text))));
+  const drawn = ready
+    ? rowDrawn({
+        scale,
+        cap,
+        room,
+        gap: tokens.spaceMd,
+        title: widthOf(titleKey(title)),
+        titleWidest: widestOf(titlePieces, titleKey),
+        valueWidestAt: (shown) =>
+          widestOf(
+            [
+              ...piecesIn(shownPicks.slice(0, shown)),
+              ...(shown < count ? [tail(count - shown)] : []),
+            ],
+            valueKey,
+          ),
+        count,
+        besideAt: (shown) =>
+          parts(shown).reduce((sum, text) => sum + Math.ceil(widthOf(valueKey(text))), 0),
+        underAt: (shown) => widthOf(valueKey(read(shown))),
+      })
+    : null;
+  const stacked = drawn?.stacked === true;
+  const shown = drawn?.shown ?? count;
+  const rest = count - shown;
+  const lead = rest === 0 ? value : picksLead(shownPicks, shown);
+  const measured = (key: (text: string) => string) => (text: string, width: number) =>
+    setWidths((now) => (now[key(text)] === width ? now : { ...now, [key(text)]: width }));
+
+  return (
+    <Pressable
+      ref={ref}
+      onPress={onPress}
+      style={({ pressed }) => [
+        styles.top,
+        stacked && styles.topStacked,
+        pressed && styles.rowPressed,
+      ]}
+      accessibilityRole="button"
+      accessibilityLabel={t('eventsSearch.choice', { title, value })}
+      testID={testID}
+    >
+      <MeasuredWords
+        words={[title, ...titlePieces]}
+        size={starts.title}
+        weight="medium"
+        allowFontScaling={false}
+        onWidth={measured(titleKey)}
+      />
+      <MeasuredWords
+        words={[...new Set([...reads, ...besides, ...valuePieces])]}
+        size={starts.value}
+        weight="medium"
+        allowFontScaling={false}
+        onWidth={measured(valueKey)}
+      />
+      <View
+        style={[stacked ? styles.grownStacked : styles.grownBeside, !ready && styles.waiting]}
+        onLayout={(event) => setRoom(event.nativeEvent.layout.width)}
+      >
+        {drawn != null && stacked ? (
+          <>
+            <Text
+              size={drawn.titleSize}
+              weight="medium"
+              allowFontScaling={false}
+              accessible={false}
+            >
+              {title}
+            </Text>
+            <Text
+              size={drawn.valueSize}
+              weight="medium"
+              allowFontScaling={false}
+              accessible={false}
+              style={styles.secondary}
+              testID={`${testID}.value`}
+            >
+              {rest === 0 ? value : `${lead} ${tail(rest)}`}
+            </Text>
+          </>
+        ) : (
+          <>
+            <Text
+              size={starts.title}
+              weight="medium"
+              allowFontScaling={false}
+              numberOfLines={1}
+              accessible={false}
+              style={styles.title}
+            >
+              {title}
+            </Text>
+            <View style={styles.grownValue}>
+              <Text
+                size={starts.value}
+                weight="medium"
+                allowFontScaling={false}
+                numberOfLines={1}
+                accessible={false}
+                style={[styles.shrink, styles.secondary]}
+                testID={`${testID}.value`}
+              >
+                {lead}
+              </Text>
+              {rest > 0 && (
+                <Text
+                  size={starts.value}
+                  weight="medium"
+                  allowFontScaling={false}
+                  numberOfLines={1}
+                  accessible={false}
+                  style={[styles.kept, styles.secondary]}
+                >
+                  {` ${tail(rest)}`}
+                </Text>
+              )}
+            </View>
+          </>
+        )}
       </View>
       <Glyph name="chevron" size={16} ink={tokens.colorInkTertiary} weight={2.3} />
     </Pressable>
@@ -919,6 +1102,17 @@ const styles = StyleSheet.create({
     gap: tokens.spaceMd,
     paddingHorizontal: tokens.spacePillEnd,
   },
+  topStacked: { paddingVertical: tokens.spaceSm },
+  grownBeside: {
+    flex: 1,
+    minWidth: 0,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: tokens.spaceMd,
+  },
+  grownStacked: { flex: 1, minWidth: 0, gap: tokens.spaceXxs },
+  grownValue: { flex: 1, minWidth: 0, flexDirection: 'row', justifyContent: 'flex-end' },
+  waiting: { opacity: 0 },
   on: { color: tokens.colorAccentText },
   title: { flexShrink: 0 },
   value: { flex: 1, minWidth: 0, alignItems: 'flex-end' },

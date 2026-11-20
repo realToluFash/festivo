@@ -51,10 +51,8 @@ import {
   type FilterPicks,
   type FilterSize,
   filterScale,
-  keptWhole,
-  rowDrawn,
-  rowStarts,
 } from './filterSizeRules.ts';
+import { keptWhole, rowDrawn, rowStarts } from '../../layout/menuRowFit.ts';
 import { frameTitleCap } from '../frameTitleCap.ts';
 
 export interface FilterSizeStart {
