@@ -6,7 +6,7 @@ import { __setConfig, config } from '../config.ts';
 import { routes } from '../routes/index.tsx';
 import { forgetBudget } from './quotes.ts';
 import { budgetAt } from './budgetSample.ts';
-import { PAYMENTS_PAGES } from './payments.ts';
+import { LONGEST_REFERENCE, PAYMENTS_PAGES } from './payments.ts';
 
 const tested = config();
 const SLOW = { timeout: 20000 };
@@ -266,6 +266,24 @@ describe('payments on a vendor’s page, shapes and the reminder setting, in A (
         'Deleted the payment of £120.00 to Bloom & Co on Monday, November 2: Buttonholes.',
       ),
     ).toBeDefined();
+  });
+
+  it('draws a paid row’s reference as its second line, and none without one (sc-88)', async () => {
+    await open(`${BLOOM}&state=added`);
+    expect(rowOf('Buttonholes').textContent).toBe(
+      'ButtonholesPaid Monday, November 2. Added by you as already paid, so Undo deletes it.Reference: Cheque 004417£120.00Undo',
+    );
+    expect(rowOf('Extra stems').textContent).not.toContain('Reference');
+    cleanup();
+
+    await open(budgetAt('payments_read_only', { vendor: 'v3', plan: 'downgraded' }));
+    expect(rowOf('Buttonholes').textContent).toBe(
+      'ButtonholesPaid Monday, November 2. Added by you as already paid.Reference: Cheque 004417£120.00',
+    );
+    cleanup();
+
+    await open(`${BLOOM}&state=marked_long_reference`);
+    expect(within(rowOf('Balance')).getByText(`Reference: ${LONGEST_REFERENCE}`)).toBeDefined();
   });
 
   it(

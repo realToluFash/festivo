@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { TODAY, longDay, money } from './budget.ts';
 import { sampleEvent } from './events.ts';
 import {
+  LONGEST_REFERENCE,
   PAYMENTS_PAGES,
   PAYMENTS_STATES,
   REMINDER_STATES,
@@ -117,6 +118,14 @@ describe('payments on a vendor’s page, shapes and reminders, in A (sc-88, sc-1
     const marked = startOf('marked');
     expect(marked.marked).toBe('p6');
     expect(marked.said).toBe('Marked paid: £900.00 on Tuesday, November 3.');
+    expect(marked.budget.payments.find((one) => one.id === 'p6')?.paid?.reference).toBe('FP-0001');
+    const longest = startOf('marked_long_reference');
+    expect(LONGEST_REFERENCE).toHaveLength(100);
+    expect(LONGEST_REFERENCE).not.toMatch(/\s/);
+    expect(longest.budget.payments.find((one) => one.id === 'p6')?.paid?.reference).toBe(
+      LONGEST_REFERENCE,
+    );
+    expect(longest.said).toBe(marked.said);
     expect(startOf('cancel').cancelling?.why).toBe('The venue supplies the arch flowers');
     expect(startOf('cancelled').budget.payments.find((one) => one.id === 'p6')?.cancelled).toEqual({
       why: 'The venue supplies the arch flowers',

@@ -49,6 +49,7 @@ export const PAYMENTS_STATES: readonly string[] = [
   'already_paid',
   'already_cancelled',
   'marked',
+  'marked_long_reference',
   'cancel',
   'cancelled',
   'already_made',
@@ -596,6 +597,8 @@ export function deletedLine(payment: Payment, vendor: string): string {
 }
 
 const WHY = 'The venue supplies the arch flowers';
+export const LONGEST_REFERENCE =
+  'BLOOMCO-ADAEZE-TUNDE-WEDDING-BALANCE-PAID-03NOV2026-FROM-IRE-EVENTS-CURRENT-ACCOUNT-TRANSFER-REF-001';
 const LONG_REFERENCE =
   'Paid by bank transfer on the Tuesday after the meeting with Ngozi, reference given on the phone that evening';
 const TOO_LONG_WHAT =
@@ -773,11 +776,17 @@ export function paymentsStart(
       return { ...start, marking: marking({ draft, problems: markProblems(draft, due) }) };
     }
     case 'marked':
+    case 'marked_long_reference':
       return {
         ...start,
         budget: change({
           ...due,
-          paid: { amount: more, on: TODAY, by: READER, reference: 'FP-0001' },
+          paid: {
+            amount: more,
+            on: TODAY,
+            by: READER,
+            reference: state === 'marked' ? 'FP-0001' : LONGEST_REFERENCE,
+          },
         }),
         marked: due.id,
         said: QW.markedPaid(money(more), longDay(TODAY)),
@@ -848,6 +857,10 @@ export const PAYMENTS_PAGES: readonly DemoGroup[] = [
     name: 'Marked, cancelled, already made',
     states: [
       { to: bloom('marked'), name: 'Marked paid, £60.00 more; every paid row has Undo (marked)' },
+      {
+        to: bloom('marked_long_reference'),
+        name: 'Marked with a 100-character reference and no spaces: it wraps inside the row (marked_long_reference)',
+      },
       { to: bloom('cancel'), name: 'Cancel payment: why it is not owed (cancel)' },
       { to: bloom('cancelled'), name: 'Cancelled, with Restore (cancelled)' },
       { to: bloom('already_made'), name: 'Add a payment already made: Buttonholes (already_made)' },
