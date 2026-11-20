@@ -13,8 +13,18 @@ onFlowComplete:
       id: 'security.password'
     timeout: 30000
     centerElement: true
-- tapOn:
-    id: 'security.password'
+# After a cold start the first tap on the row can be lost, so it is tapped until the sheet opens.
+- waitForAnimationToEnd
+- repeat:
+    while:
+      notVisible:
+        id: 'security.change.current'
+    times: 5
+    commands:
+      - tapOn:
+          id: 'security.password'
+      - waitForAnimationToEnd:
+          timeout: 2000
 - extendedWaitUntil:
     visible:
       id: 'security.change.current'
