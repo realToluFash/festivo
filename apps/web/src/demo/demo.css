@@ -780,8 +780,8 @@
   flex: none;
 }
 
-/* Every glass pill wraps once its words outgrow the card; the product puts these lines on .desk-glass itself (sc-30767). */
-.desk-glass:is(li, span) {
+/* Demo-scoped so a visit to /demo never restyles the product; dev puts these lines on .desk-glass itself (sc-30767). */
+.glass-wraps .desk-glass:is(li, span) {
   height: auto;
   min-height: 28px;
   max-width: 100%;

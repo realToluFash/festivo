@@ -256,7 +256,7 @@ describe('the Budget page at a desk in A (sc-31779)', () => {
     SLOW,
     async () => {
       const css = readFileSync(join(import.meta.dirname, 'demo.css'), 'utf8');
-      const rule = /\.desk-glass:is\(li, span\) \{([^}]*)\}/u.exec(css)?.[1] ?? '';
+      const rule = /\.glass-wraps \.desk-glass:is\(li, span\) \{([^}]*)\}/u.exec(css)?.[1] ?? '';
 
       expect(rule).toContain('white-space: normal;');
       expect(rule).toContain('height: auto;');
@@ -267,6 +267,7 @@ describe('the Budget page at a desk in A (sc-31779)', () => {
       const pill = screen.getByText('Only owners, admins and this event’s lead see this');
       expect(pill.tagName).toBe('LI');
       expect(pill.classList.contains('desk-glass')).toBe(true);
+      expect(pill.parentElement?.classList.contains('glass-wraps')).toBe(true);
     },
   );
 
