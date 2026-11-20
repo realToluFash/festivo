@@ -97,6 +97,35 @@ enum AuditType: string
         self::EXPORTED => self::AuditLog,
     ];
 
+    /** Actions that create, remove, restore or delete for good: the sentence and On already say it, so the entry has no Changes (sc-611, #74875). AuditTypeTest holds every other action to the opposite. */
+    public const array CREATES_OR_REMOVES = [
+        'event.created',
+        'event.deleted',
+        'event.restored',
+        'event.purged',
+        'event_person.added',
+        'event_person.granted',
+        'event_person.claimed',
+        'event_person.revoked',
+        'event_person.removed',
+        'event_person.dropped',
+        'event_person.expired',
+        'invitation.sent',
+        'invitation.revoked',
+        'request_link.asked',
+        'domain_join.asked',
+        'domain_join.withdrawn',
+        'owner_claim.started',
+        'organisation_domain.added',
+        'organisation_domain.removed',
+        'email_domain.added',
+        'email_domain.removed',
+        'organisation.created',
+        'organisation.deleted',
+        'organisation.restored',
+        'organisation.purged',
+    ];
+
     public static function of(string $action): ?self
     {
         return self::ACTIONS[$action] ?? null;

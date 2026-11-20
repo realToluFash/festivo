@@ -23,10 +23,9 @@
 
 .bt-title {
   flex: 1;
-  min-width: 0;
   font: 700 30px/1.12 var(--fontFamily);
   letter-spacing: -0.02em;
-  overflow-wrap: anywhere;
+  overflow-wrap: break-word;
 }
 
 .bt-title:focus {
@@ -487,6 +486,12 @@
   margin: 0;
   color: var(--colorAttentionText);
   font: 600 14px/1.4 var(--fontFamily);
+}
+
+@media (width < 600px) {
+  .bt-title-actions {
+    flex-basis: 100%;
+  }
 }
 
 /* At a phone the shell already pads the page 16 px, as Budget A's narrow frames do, so Settings' 40 px desk-page padding is not added to it (sc-85). */

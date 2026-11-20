@@ -53,7 +53,9 @@
     "web:auditLog.formats.csv",
     "web:auditLog.formats.jsonl",
     "mobile:auditLog.csv",
-    "mobile:auditLog.jsonLines"
+    "mobile:auditLog.jsonLines",
+    "messagesCounts:audit.value.baby_shower",
+    "messagesCounts:audit.field.plan"
   ],
   "fr": [
     "web:nav.menu",
@@ -209,7 +211,11 @@
     "mobile:auditLog.type",
     "mobile:auditLog.dates",
     "mobile:auditLog.types.organisation",
-    "messagesCounts:audit.type.organisation"
+    "messagesCounts:audit.type.organisation",
+    "messagesCounts:audit.value.baby_shower",
+    "messagesCounts:audit.field.type",
+    "messagesCounts:audit.field.format",
+    "messagesCounts:audit.value.invitation"
   ],
   "pt": [
     "web:seating.shapeCocktailShort",

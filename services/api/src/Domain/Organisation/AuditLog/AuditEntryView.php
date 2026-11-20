@@ -26,11 +26,12 @@ use Symfony\Contracts\Translation\TranslatorInterface;
 
 final readonly class AuditEntryView
 {
-    private const array UNSHOWN_FIELDS = ['export', 'eventId', 'membershipId', 'invitationId', 'userId', 'organisationId', 'claimId', 'organisation', 'user', 'claimant', 'duplicatedFrom'];
+    /** Ids, coordinates, file keys and internal stamps: recorded for the trail, never a change a reader is shown (sc-611, #74875). */
+    public const array UNSHOWN_FIELDS = ['deletedAt', 'export', 'eventId', 'membershipId', 'userId', 'organisation', 'user', 'claimant', 'duplicatedFrom', 'newOwnerRoleId', 'owner', 'venueCoordinates', 'photo'];
 
     private const array ROLE_FIELDS = ['role', 'roleId'];
 
-    private const array CODED_FIELDS = ['role', 'roleId', 'status', 'membershipStatus', 'suspension', 'type', 'addressKind', 'plan'];
+    private const array CODED_FIELDS = ['role', 'roleId', 'status', 'membershipStatus', 'suspension', 'type', 'addressKind', 'plan', 'requestLink', 'onlyOurs', 'outcome', 'path'];
 
     private const string UUID = '/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/';
 
@@ -152,14 +153,20 @@ final readonly class AuditEntryView
     /**
      * @param array<string, string> $roles role id => the role it was seeded as
      *
-     * @return list<string> "Everyone needs two-factor: Off → On", one per field a reader can make sense of and that changed
+     * @return list<string> "Everyone needs two-factor: Off → On", one per shown field that changed and has a name in audit.field.*
      */
     private function changes(AuditEntry $entry, array $roles, string $locale, ?User $reader): array
     {
+        if (Iter\contains(AuditType::CREATES_OR_REMOVES, $entry->getAction())) {
+            return [];
+        }
+
         $lines = [];
 
         foreach ($entry->getChanges() as $field => [$before, $after]) {
-            if (Iter\contains(self::UNSHOWN_FIELDS, $field)) {
+            $name = Iter\contains(self::UNSHOWN_FIELDS, $field) ? null : $this->fieldName($field, $locale);
+
+            if (null === $name) {
                 continue;
             }
 
@@ -171,7 +178,7 @@ final readonly class AuditEntryView
             }
 
             $lines[] = $this->translator->trans('audit.change', [
-                'field' => $this->fieldName($field, $locale),
+                'field' => $name,
                 'before' => $was,
                 'after' => $now,
             ], 'messages', $locale);
@@ -180,16 +187,27 @@ final readonly class AuditEntryView
         return $lines;
     }
 
-    private function fieldName(string $field, string $locale): string
+    private function fieldName(string $field, string $locale): ?string
     {
         $key = 'audit.field.' . $field;
         $named = $this->translator->trans($key, [], 'messages', $locale);
 
-        if ($named !== $key) {
-            return $named;
-        }
+        return $named !== $key ? $named : null;
+    }
 
-        return Str\capitalize(Str\lowercase(Regex\replace($field, '/(?<=[a-z0-9])([A-Z])/', ' $1')));
+    /** @param array<array-key, mixed> $filters as an export recorded them: "Action type: Members and invitations, From: 2026-11-01" */
+    private function filters(array $filters, string $locale): string
+    {
+        $none = $this->translator->trans('audit.unnamed', [], 'messages', $locale);
+
+        return Str\join(Vec\map_with_key($filters, fn (int|string $filter, mixed $value): string => $this->translator->trans('audit.filter.pair', [
+            'field' => $this->translator->trans('audit.filter.' . $filter, [], 'messages', $locale),
+            'value' => match (true) {
+                'type' === $filter && \is_string($value) => $this->translator->trans('audit.type.' . $value, [], 'messages', $locale),
+                \is_string($value) => $value,
+                default => $none,
+            },
+        ], 'messages', $locale)), ', ');
     }
 
     /**
@@ -203,6 +221,7 @@ final readonly class AuditEntryView
         $coded = Iter\contains(self::CODED_FIELDS, $field);
 
         return match (true) {
+            'filters' === $field && \is_array($value) && [] !== $value => $this->filters($value, $locale),
             null === $value, '' === $value, [] === $value => $this->translator->trans('audit.value.none', [], 'messages', $locale),
             true === $value => $this->translator->trans('audit.value.on', [], 'messages', $locale),
             false === $value => $this->translator->trans('audit.value.off', [], 'messages', $locale),
