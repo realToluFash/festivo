@@ -99,6 +99,8 @@ export const MARGIN_STATES = [
   'price_decimals',
   'margin_live',
   'margin_unset',
+  'fee_priced',
+  'fee_beside_not_priced',
   'free',
 ] as const;
 
@@ -174,10 +176,11 @@ export function linesOf(state: string): CostLine[] {
     if (line != null) line.rate = rate;
   };
 
-  if (state === 'all_priced') {
-    set('arch', 45000);
+  if (state === 'all_priced' || FEE_STATES.includes(state)) {
+    set('arch', state === 'fee_beside_not_priced' ? null : 45000);
     set('shuttle', 40000);
   }
+  if (FEE_STATES.includes(state)) lines.push({ ...FEE_LINE });
   if (state === 'rate_saved') set('dinner', 7000);
   if (state === 'removed_priced') return lines.filter((one) => one.id !== 'dj');
   if (state === 'removed_not_priced') return lines.filter((one) => one.id !== 'arch');
@@ -512,6 +515,14 @@ export const BUDGET_PAGES: readonly DemoGroup[] = [
       { to: at('margin_live'), name: 'Live: a markup changed in another tab' },
       { to: at('margin_unset'), name: 'No markup set anywhere: each line at its cost' },
       { to: at('populated'), name: 'The plain Budget, with See margin in the title row' },
+      {
+        to: at('fee_priced'),
+        name: 'The plain Budget with a Planning fee: £0.00, priced, no count',
+      },
+      {
+        to: at('fee_beside_not_priced'),
+        name: 'The fee priced beside Aisle arch, not priced: 1 cost not priced yet',
+      },
       { to: at('free', { plan: 'free' }), name: 'A Free organisation: no margin' },
     ],
   },
@@ -540,6 +551,19 @@ export const MARKUPS: Markups = {
 export const NO_MARKUPS: Markups = { event: null, categories: {}, costs: {}, prices: {} };
 
 export const PLANNING_FEE = 300000;
+
+/** sc-75696: the agency's fee as a fixed line at 0 with a client price of its own, which makes it priced. */
+export const FEE_LINE: CostLine = {
+  id: 'fee',
+  name: 'Planning fee',
+  category: 'other',
+  basis: 'fixed',
+  rate: 0,
+};
+
+export const FEE_STATES: readonly string[] = ['fee_priced', 'fee_beside_not_priced'];
+
+export const FEE_MARKUPS: Markups = { ...MARKUPS, prices: { [FEE_LINE.id]: PLANNING_FEE } };
 
 const percentWords = (n: number): string => `${n}%`;
 

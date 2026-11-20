@@ -71,6 +71,9 @@ import {
   withoutChoice,
   shareOf,
   PLANNING_FEE,
+  FEE_LINE,
+  FEE_MARKUPS,
+  FEE_STATES,
   chargedOf,
   marginOf,
   markupWords,
@@ -278,9 +281,12 @@ export function BudgetHomeContent({
       ? { ...MARKUPS, categories: { ...MARKUPS.categories, photography: 25 } }
       : first === 'margin_unset'
         ? NO_MARKUPS
-        : MARKUPS,
+        : FEE_STATES.includes(first)
+          ? FEE_MARKUPS
+          : MARKUPS,
   );
-  const fee = first === 'margin_zero_price' ? 0 : PLANNING_FEE;
+  const feeLine = lines.some((one) => one.id === FEE_LINE.id);
+  const fee = first === 'margin_zero_price' || feeLine ? 0 : PLANNING_FEE;
   const ceilingLive = first.startsWith('ceiling_live');
   const [opened, setOpened] = useState<string | null>(() => openedOf(first));
   const [removed, setRemoved] = useState<Removed | null>(() => removedOf(first, heads));
@@ -500,7 +506,7 @@ export function BudgetHomeContent({
                 heads={heads}
                 first={first}
                 markups={markups}
-                fee={fee}
+                fee={feeLine ? null : fee}
                 onPrice={(id, price) => {
                   setMarkups((now) =>
                     price == null
@@ -1204,7 +1210,7 @@ function MarginCosts({
   heads: Heads;
   first: string;
   markups: Markups;
-  fee: number;
+  fee: number | null;
   onPrice: (id: string, price: number | null) => void;
 }) {
   const refused = first === 'price_negative' || first === 'price_decimals';
@@ -1305,18 +1311,20 @@ function MarginCosts({
           </Rows>
         </div>
       ))}
-      <div className="bud-cat">
-        <CategoryHead name="Other" />
-        <Rows>
-          <li>
-            <BudgetRow
-              title="Planning fee"
-              lines={[`Cost £0.00 · Charged at ${money(fee)} · its own price`]}
-              end={<Amount value={fee === 0 ? 'No figure' : '100.0%'} />}
-            />
-          </li>
-        </Rows>
-      </div>
+      {fee != null && (
+        <div className="bud-cat">
+          <CategoryHead name="Other" />
+          <Rows>
+            <li>
+              <BudgetRow
+                title="Planning fee"
+                lines={[`Cost £0.00 · Charged at ${money(fee)} · its own price`]}
+                end={<Amount value={fee === 0 ? 'No figure' : '100.0%'} />}
+              />
+            </li>
+          </Rows>
+        </div>
+      )}
     </Block>
   );
 }
@@ -1354,7 +1362,9 @@ function MarginBlocks({
       'Its own price',
       null,
     ]),
-    ['Planning fee', 'Its own price', null],
+    ...(markups.prices[FEE_LINE.id] == null
+      ? [['Planning fee', 'Its own price', null] as [string, string, null]]
+      : []),
   ];
 
   return (

@@ -589,4 +589,30 @@ describe('the states Budget A still lacked (sc-85, sc-88, sc-90, sc-91, sc-92, s
       ).toBeTruthy();
     },
   );
+
+  it(
+    'reads a fee line at 0 with its own price as priced on the plain Budget (sc-75696)',
+    SLOW,
+    async () => {
+      await open(at('fee_priced'));
+      const fee = (): HTMLElement => {
+        const row = main().querySelector<HTMLElement>('[data-line="fee"]');
+        if (row == null) throw new Error('the Planning fee is not drawn');
+
+        return row;
+      };
+      expect(within(fee()).getByText('Planning fee')).toBeTruthy();
+      expect(within(fee()).getAllByText('£0.00').length).toBeGreaterThan(0);
+      expect(within(fee()).queryByText('Not priced')).toBeNull();
+      expect(within(main()).queryByText(/[1-9]\d* costs? not priced yet/)).toBeNull();
+      expect(within(main()).queryByRole('button', { name: 'Add a price' })).toBeNull();
+      cleanup();
+
+      await open(at('fee_beside_not_priced'));
+      expect(within(main()).getAllByText(/1 cost not priced yet/).length).toBeGreaterThan(0);
+      expect(within(fee()).queryByText('Not priced')).toBeNull();
+      const arch = main().querySelector<HTMLElement>('[data-line="arch"]');
+      expect(arch == null ? null : within(arch).getByText('Not priced')).toBeTruthy();
+    },
+  );
 });
