@@ -9,6 +9,7 @@ use App\Entity\User;
 use App\Enum\ErrorCode;
 use App\Http\Exception\ApiException;
 use App\Storage\ObjectStore;
+use App\Storage\ReadProgress;
 use Psl\Filesystem;
 use Psl\Str;
 use Psr\Clock\ClockInterface;
@@ -27,8 +28,11 @@ final readonly class PreparedFiles
     ) {
     }
 
-    /** @param callable(resource): void $write fills the temporary file the kept one is uploaded from */
-    public function keep(string $key, string $contentType, callable $write): void
+    /**
+     * @param callable(resource): void $write     fills the temporary file the kept one is uploaded from
+     * @param ?callable(): void        $uploading told as the upload starts, and as it goes on, every ReadProgress::EVERY bytes
+     */
+    public function keep(string $key, string $contentType, callable $write, ?callable $uploading = null): void
     {
         $this->keepAt($key, $contentType, static function (string $path) use ($write): void {
             $file = \fopen($path, 'wb') ?: throw new RuntimeException('No temporary file for a prepared file.');
@@ -38,17 +42,24 @@ final readonly class PreparedFiles
             } finally {
                 \fclose($file);
             }
-        });
+        }, $uploading);
     }
 
-    /** @param callable(string): void $write writes the file at the temporary path given, which is uploaded from where it stands */
-    public function keepAt(string $key, string $contentType, callable $write): void
+    /**
+     * @param callable(string): void $write     writes the file at the temporary path given, which is uploaded from where it stands
+     * @param ?callable(): void      $uploading told as the upload starts, and as it goes on, every ReadProgress::EVERY bytes
+     */
+    public function keepAt(string $key, string $contentType, callable $write, ?callable $uploading = null): void
     {
         $path = Filesystem\create_temporary_file(prefix: 'prepared-file-');
 
         try {
             $write($path);
             $file = \fopen($path, 'rb') ?: throw new RuntimeException('The prepared file could not be read back.');
+
+            if (null !== $uploading) {
+                ReadProgress::watch($file, $uploading);
+            }
 
             try {
                 $this->objectStore->keepFile($key, $file, $contentType);

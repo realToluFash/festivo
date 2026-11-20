@@ -60,6 +60,7 @@ export const BUDGET_STATES = [
   'ceiling_live_cleared',
   'reminder_overdue',
   'reminder_mixed',
+  'reminder_due',
 ] as const;
 
 export const PAYERS_STATES = [
@@ -680,6 +681,32 @@ export function reminderSheet(kind: ReminderKind): DueNowSheet {
   };
 }
 
+export interface ReminderRow {
+  id: string;
+  late: boolean;
+  words: string;
+}
+
+export function reminderRows(kind: ReminderKind, locale: string): ReminderRow[] {
+  const sheet = reminderSheet(kind);
+  return sheet.ids.map((id) => {
+    const payment = paymentOf(id);
+    const date = days.short(payment.due, locale);
+    const late = sheet.lastAbout.includes(id);
+    const amount = money(payment.amount, locale);
+    const when = late ? say.wasDue(date) : say.dueWhen(date);
+    const vendor = VENDORS[payment.vendor].name;
+    return {
+      id,
+      late,
+      words:
+        kind === 'mixed'
+          ? say.reminderRowOn(vendor, EVENT_NAME, amount, when)
+          : say.reminderRow(vendor, amount, when),
+    };
+  });
+}
+
 export function startOf(state: BudgetState | null, removed: string): BudgetModel {
   const base: BudgetModel = {
     figures: 'shown',
@@ -854,8 +881,11 @@ export function startOf(state: BudgetState | null, removed: string): BudgetModel
     case 'ceiling_live_cleared':
       return { ...base, ceilingLive: 'cleared' };
     case 'reminder_overdue':
+      return { ...base, reminder: 'overdue' };
     case 'reminder_mixed':
-      return { ...base, reminder: state === 'reminder_overdue' ? 'overdue' : 'mixed' };
+      return { ...base, reminder: 'mixed' };
+    case 'reminder_due':
+      return { ...base, reminder: 'due' };
     case 'payers_loading':
       return { ...base, view: { page: 'payers' }, figures: 'loading' };
     case 'payers_live':

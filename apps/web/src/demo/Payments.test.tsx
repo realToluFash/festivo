@@ -73,7 +73,7 @@ describe('payments on a vendor’s page, shapes and the reminder setting, in A (
     async () => {
       await open(`${BLOOM}&state=schedule`);
       expect(rowOf('Deposit').textContent).toBe(
-        'DepositPaid £360.00 on Tue, Oct 6 · Marked by Folake Adeyemi',
+        'DepositPaid £360.00 on Tue, Oct 6 · Marked by Folake AdeyemiUndo',
       );
       expect(rowOf('Balance').textContent).toBe(
         'BalanceOverdueDue Fri, Oct 30£840.00Mark paidCancel paymentChangeRemove',
@@ -81,6 +81,8 @@ describe('payments on a vendor’s page, shapes and the reminder setting, in A (
       expect(
         within(section('Schedule')).getByRole('button', { name: 'Add a payment already made' }),
       ).toBeDefined();
+      fireEvent.click(within(rowOf('Deposit')).getByRole('button', { name: 'Undo' }));
+      expect(within(rowOf('Deposit')).getByRole('button', { name: 'Mark paid' })).toBeDefined();
     },
   );
 
@@ -184,7 +186,7 @@ describe('payments on a vendor’s page, shapes and the reminder setting, in A (
       expect(within(marking).queryByRole('button', { name: 'Cancel' })).toBeNull();
       expect(within(marking).queryByLabelText('Amount paid')).toBeNull();
       expect(rowOf('Balance').textContent).toBe(
-        'BalancePaid £840.00 on Mon, Nov 2 · Marked by Julien Moreau',
+        'BalancePaid £840.00 on Mon, Nov 2 · Marked by Julien MoreauUndo',
       );
       fireEvent.click(within(marking).getByRole('button', { name: 'Close' }));
       expect(screen.queryByRole('dialog')).toBeNull();
@@ -334,7 +336,7 @@ describe('payments on a vendor’s page, shapes and the reminder setting, in A (
       fireEvent.click(within(group).getByRole('radio', { name: 'In full after the event' }));
       expect(within(add).getByText('100% · 7 days after the event · Sat, Nov 14')).toBeDefined();
       fireEvent.click(within(group).getByRole('radio', { name: 'Deposit and balance' }));
-      expect(within(add).getByText('50% · on the date quoted · Tue, Oct 13')).toBeDefined();
+      expect(within(add).getByText('50% · On the date quoted · Tue, Oct 13')).toBeDefined();
       expect(within(add).getByText('50% · 14 days before the event · Thu, Oct 22')).toBeDefined();
       expect(
         within(add).getByText(
@@ -392,6 +394,21 @@ describe('payments on a vendor’s page, shapes and the reminder setting, in A (
     },
   );
 
+  it('refuses a row that would come to nothing, until its percentage is raised', SLOW, async () => {
+    await open(`${SAVOUR}&state=shape_too_small`);
+    const add = dialog('Add a payment');
+    const tooSmall = 'This payment would come to less than £0.01. Enter a higher percentage.';
+    const share = within(add).getAllByRole('textbox', { name: 'Percentage of the quote' });
+    expect(share.map((one) => one.getAttribute('aria-invalid'))).toEqual([
+      'false',
+      'false',
+      'true',
+    ]);
+    expect(within(add).getByText(tooSmall)).toBeDefined();
+    fireEvent.change(share[2]!, { target: { value: '20' } });
+    expect(within(add).queryByText(tooSmall)).toBeNull();
+  });
+
   it(
     'refuses a shape row at its field, then saves every row or none, and sends all again',
     SLOW,
@@ -410,7 +427,9 @@ describe('payments on a vendor’s page, shapes and the reminder setting, in A (
         within(add).getByText('Shorten what the payment is for to 100 characters or fewer.'),
       ).toBeDefined();
       expect(
-        within(add).getByText('Enter a percentage from 0 to 100, with up to two decimal places.'),
+        within(add).getByText(
+          'Enter a percentage above 0 and up to 100, with up to two decimal places.',
+        ),
       ).toBeDefined();
       expect(within(add).getByText('Enter a whole number of days from 0 to 730.')).toBeDefined();
       fireEvent.click(within(add).getByRole('button', { name: 'Save 3 payments' }));
@@ -508,6 +527,21 @@ describe('payments on a vendor’s page, shapes and the reminder setting, in A (
       ).toBeDefined();
     },
   );
+
+  it('reaches the reminder setting from Settings › Vendors', SLOW, async () => {
+    await open('/demo/settings/vendors');
+    const row = within(main()).getByRole('link', { name: /^Payment reminders/ });
+    expect(row.textContent).toContain(
+      'Payment reminders3 days before a payment is due, and once the day after, then silence.',
+    );
+    expect(row.getAttribute('href')).toBe(`${REMINDERS}?state=reminders`);
+  });
+
+  it('says the reminders are off from Vendors after a downgrade', SLOW, async () => {
+    await open('/demo/settings/vendors?plan=downgraded');
+    const row = within(main()).getByRole('link', { name: /^Payment reminders are off/ });
+    expect(row.getAttribute('href')).toBe(`${REMINDERS}?state=reminders_plan_lost&plan=downgraded`);
+  });
 
   it('opens the refused change, and refuses a Member as Vendors does', SLOW, async () => {
     await open(`${REMINDERS}?state=reminders_bad`);

@@ -5490,6 +5490,10 @@
     "descriptionTooLong": "Shorten the description to {{count, number}} characters or fewer.",
     "beforeFirstQuote": "The date paid cannot be before the quote from {{vendor}} on {{day}}. Choose that date or a later one.",
     "addAsPaid": "Add as paid",
+    "paidTo": "Paid to {{vendor}}",
+    "nowWithThis": "{{now}} now, {{after}} with this payment",
+    "overWithThis": "With this payment, the schedule is {{gap}} over the quote.",
+    "nothingAbsorbs": "The difference stays visible; nothing absorbs it.",
     "addedByYou": "Paid {{day}}. Added by you as already paid, so Undo deletes it.",
     "addedBy": "Paid {{day}}. Added by {{name}} as already paid, so Undo deletes it.",
     "deleted": "Deleted the payment of {{amount}} to {{vendor}} on {{day}}: {{what}}.",
@@ -5553,5 +5557,26 @@
     "fullNotKnown_other": "Full cost not known: {{count, number}} costs it moves have no price yet.",
     "noChange": "No change",
     "nothingPerGuest": "Nothing in this budget is counted per guest."
+  },
+  "paymentReminders": {
+    "title": "Payment reminders",
+    "whenReminded_one": "{{count, number}} day before a payment is due, and once the day after, then silence.",
+    "whenReminded_other": "{{count, number}} days before a payment is due, and once the day after, then silence.",
+    "change": "Change",
+    "whoHears": "Who hears",
+    "whoHearsLine": "The organisation’s owners and admins, and each event’s lead.",
+    "how": "How",
+    "howLine": "Through the channels each person chose in Notifications",
+    "daysField": "Days before a payment is due",
+    "daysHelp": "From 1 to 30. Counted in each event’s own time zone. A change applies to reminders not sent yet.",
+    "stopsReminders": "Marking a payment paid or cancelling it stops its reminders.",
+    "off": "Payment reminders are off",
+    "offLine": "This organisation’s plan no longer includes payment schedules, so no reminders go out. Their history stays readable.",
+    "enterDays": "Enter a whole number of days from 1 to 30.",
+    "loading": "Loading payment reminders…",
+    "failed": "Payment reminders did not load",
+    "failedLine": "Check your connection, then try again.",
+    "tryAgain": "Try again",
+    "notSaved": "The days were not saved. Check your connection, then try again."
   }
 }

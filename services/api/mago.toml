@@ -164,6 +164,7 @@ domain_budget = [
     "App\\Domain\\Budget\\Command\\**",
     "App\\Domain\\Budget\\Controller\\**",
     "App\\Domain\\Budget\\Model\\**",
+    "App\\Domain\\Budget\\Reminder\\**",
     "App\\Domain\\Budget\\Http\\BudgetSerialiser",
     "App\\Domain\\Budget\\Http\\PayersSerialiser",
     "App\\Domain\\Budget\\Http\\QuoteSerialiser",
@@ -427,7 +428,8 @@ permit = [
 # written at the currency's minor unit by Locale's Money, as the menu's costs are
 # (sc-68066). A line holds the event's currency (sc-98); each change is audited and
 # published. The margin is published only to an organisation whose plan unlocks it,
-# asked of billing's one entitlement answer (sc-92).
+# asked of billing's one entitlement answer (sc-92). A payment falling due is a message
+# scheduled and sent through messaging (sc-95).
 [[guard.perimeter.rules]]
 namespace = "App\\Domain\\Budget\\"
 permit = [
@@ -439,6 +441,7 @@ permit = [
     "@layer:domain_billing",
     "@layer:domain_event",
     "@layer:domain_guest",
+    "@layer:domain_messaging",
     "@layer:domain_user",
     "@layer:repository",
     "@layer:audit",

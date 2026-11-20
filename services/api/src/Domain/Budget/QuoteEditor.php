@@ -6,6 +6,7 @@ namespace App\Domain\Budget;
 
 use App\Audit\Auditor;
 use App\Domain\Budget\Model\QuoteWording;
+use App\Domain\Budget\Reminder\PaymentReminders;
 use App\Entity\BudgetLine;
 use App\Entity\Event;
 use App\Entity\Quote;
@@ -61,6 +62,7 @@ final readonly class QuoteEditor
         private QuoteRules $quoteRules,
         private QuotePublisher $quotePublisher,
         private PaymentEditor $paymentEditor,
+        private PaymentReminders $paymentReminders,
         private Auditor $auditor,
         private ClockInterface $clock,
     ) {
@@ -144,6 +146,7 @@ final readonly class QuoteEditor
             $details = $this->quoteRules->payment($sent, $event, $this->current($engagement));
             $payment = new ScheduledPayment($engagement, $details->description, $details->amountMinor, $details->dueOn);
             $this->entityManager->persist($payment);
+            $this->paymentReminders->follow($payment);
             $this->audit(self::PAYMENT_ADDED, 'ScheduledPayment', $payment->getId(), $by);
 
             return $engagement;
@@ -169,6 +172,7 @@ final readonly class QuoteEditor
             foreach ($this->quoteRules->schedule($sent, $event, $this->current($engagement)) as $details) {
                 $payment = new ScheduledPayment($engagement, $details->description, $details->amountMinor, $details->dueOn);
                 $this->entityManager->persist($payment);
+                $this->paymentReminders->follow($payment);
                 $this->audit(self::PAYMENT_ADDED, 'ScheduledPayment', $payment->getId(), $by);
             }
 
@@ -186,6 +190,7 @@ final readonly class QuoteEditor
             $this->paymentEditor->refuseSettled($payment);
             $details = $this->quoteRules->payment($sent, $event, $this->current($engagement));
             $payment->amend($details->description, $details->amountMinor, $details->dueOn);
+            $this->paymentReminders->follow($payment);
             $this->audit(self::PAYMENT_AMENDED, 'ScheduledPayment', $payment->getId(), $by);
 
             return $engagement;
@@ -200,6 +205,7 @@ final readonly class QuoteEditor
         $this->locked($event, function () use ($engagement, $payment, $by): VendorEngagement {
             $this->paymentEditor->refuseSettled($payment);
             $this->audit(self::PAYMENT_REMOVED, 'ScheduledPayment', $payment->getId(), $by);
+            $this->paymentReminders->forget($payment->getId());
             $this->entityManager->remove($payment);
 
             return $engagement;

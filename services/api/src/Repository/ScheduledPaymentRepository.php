@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Repository;
 
 use App\Entity\Event;
+use App\Entity\Organisation;
 use App\Entity\ScheduledPayment;
 use App\Entity\VendorEngagement;
 use App\Http\Access\Interfaces\EventScopedRepositoryInterface;
@@ -63,5 +64,22 @@ final class ScheduledPaymentRepository extends ServiceEntityRepository implement
             ->setMaxResults(1)
             ->getQuery()
             ->getOneOrNullResult();
+    }
+
+    /** @return list<ScheduledPayment> neither paid nor cancelled, on the organisation's events that are not deleted */
+    public function findOwedInOrganisation(Organisation $organisation): array
+    {
+        /** @var list<ScheduledPayment> */
+        return $this->createQueryBuilder('p')
+            ->join('p.engagement', 'e')
+            ->join('e.event', 'v')
+            ->where('v.organisation = :organisation')
+            ->andWhere('v.deletedAt IS NULL')
+            ->andWhere('p.paidAt IS NULL')
+            ->andWhere('p.cancelledAt IS NULL')
+            ->setParameter('organisation', $organisation->getId(), 'uuid')
+            ->orderBy('p.id', 'ASC')
+            ->getQuery()
+            ->getResult();
     }
 }

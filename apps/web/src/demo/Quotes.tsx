@@ -1065,14 +1065,17 @@ function ScheduleRow({
             !added
               ? paidLineOf(payment)
               : payment.paid.by === reader
-                ? PW.addedByYou(longDay(payment.paid.on))
-                : PW.addedBy(longDay(payment.paid.on), payment.paid.by),
+                ? (readOnly ? PW.addedByYouHeld : PW.addedByYou)(longDay(payment.paid.on))
+                : (readOnly ? PW.addedByHeld : PW.addedBy)(
+                    longDay(payment.paid.on),
+                    payment.paid.by,
+                  ),
           ]}
           lit={lit}
           end={
             <>
               {added && <Amount value={money(payment.paid.amount)} />}
-              {(lit || added) && !readOnly && (
+              {!readOnly && (
                 <button type="button" className="desk-text" onClick={onUndo}>
                   <Glyph name="undo" size={16} weight={2.4} />
                   {BW.undo}

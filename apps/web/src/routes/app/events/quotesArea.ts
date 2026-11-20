@@ -519,6 +519,36 @@ export function madeProblems(
   return problems;
 }
 
+export interface MadeTotals {
+  paid: string;
+  scheduled: string;
+}
+
+export interface MadeInset {
+  now: MadeTotals;
+  after: MadeTotals | null;
+  /** How far Scheduled after the payment runs past the current quote; null at or under it. */
+  over: string | null;
+}
+
+/** A preview of the vendor's totals: what the page shows after Add as paid is the server's arithmetic. */
+export function madeInset(quote: EventQuote, amount: string | null, currency: string): MadeInset {
+  const now = { paid: quote.paid, scheduled: quote.scheduled };
+  if (amount == null) return { now, after: null, over: null };
+  const added = minorOf(amount, currency);
+  const scheduled = minorOf(quote.scheduled, currency) + added;
+  const gap = scheduled - minorOf(quote.quote.amount, currency);
+
+  return {
+    now,
+    after: {
+      paid: amountOfMinor(minorOf(quote.paid, currency) + added, currency),
+      scheduled: amountOfMinor(scheduled, currency),
+    },
+    over: gap > 0 ? amountOfMinor(gap, currency) : null,
+  };
+}
+
 export function reasonProblem(t: TFunction, why: string): string | null {
   return lengthOf(why) > PAID_LIMITS.reason
     ? t('quotes.reasonTooLong', { count: PAID_LIMITS.reason })

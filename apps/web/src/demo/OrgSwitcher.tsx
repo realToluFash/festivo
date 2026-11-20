@@ -52,6 +52,7 @@ import {
   openerLabel,
   openingOf,
   switchTo,
+  untilOf,
   useWhere,
   waiting,
 } from './switcher.ts';
@@ -337,7 +338,7 @@ function Menu({
       <InvitationAnswer
         name={invitation.name}
         line={`Invitation from ${invitation.inviter} · ${invitation.role}`}
-        until={`Works until ${dayOf(invitation.until)}`}
+        until={`Works until ${untilOf(invitation.until)}`}
       >
         {said === 'managed' ? (
           <ManagedBanner level={3} />

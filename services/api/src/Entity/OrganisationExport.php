@@ -26,9 +26,6 @@ class OrganisationExport implements PreparedFile
     /** One export per organisation in this long, counted from when the last one was asked for. */
     public const string LIMIT_WINDOW = 'PT24H';
 
-    /** Tries in the background before the export is Didn't finish. */
-    public const int MOST_ATTEMPTS = 3;
-
     #[ORM\Id]
     #[ORM\Column(type: 'uuid')]
     private Uuid $id;

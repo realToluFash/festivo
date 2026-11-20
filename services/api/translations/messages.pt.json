@@ -467,5 +467,6 @@
     "audit.invalid_filter": "O registo de auditoria não oferece este filtro.",
     "email_domains.managed": "O seu endereço de {domain} é gerido por {organisation}, por isso só pode ser membro dessa organização.",
     "email_domains.only_ours_owner": "Só alguém com a função Proprietário pode alterar esta definição.",
-    "email_domains.only_ours_unproved": "«Só a nossa organização» exige um domínio verificado por esta organização."
+    "email_domains.only_ours_unproved": "«Só a nossa organização» exige um domínio verificado por esta organização.",
+    "validation.payment_reminder_days": "Enter a whole number of days from 1 to 30."
 }

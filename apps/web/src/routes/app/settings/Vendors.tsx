@@ -1,5 +1,6 @@
 import {
   ApiError,
+  type PaymentRemindersSetting,
   type Vendor,
   type VendorCategory,
   type VendorView,
@@ -46,6 +47,7 @@ import { offButton } from '../../../offButton.ts';
 import { codeChoice } from '../../../phoneProblem.ts';
 import { can, useSession } from '../../../session.ts';
 import { Forbidden } from '../Forbidden.tsx';
+import { BudgetRow, Rows as RowList } from '../events/QuoteParts.tsx';
 import { vendorPagePath } from '../events/quotesArea.ts';
 import {
   BLANK,
@@ -61,6 +63,7 @@ import {
 } from './vendorsForm.ts';
 import '../../../components/SettingsParts.css';
 import '../../../components/AccountParts.css';
+import '../events/quotes.css';
 import './vendors.css';
 
 interface Looking {
@@ -102,6 +105,7 @@ export function Vendors() {
       landing={landing}
       named={organisation.name}
       manages={can(session, 'vendors.manage')}
+      setsReminders={can(session, 'organisation.manage')}
     />
   );
 }
@@ -111,11 +115,13 @@ function Directory({
   landing,
   named,
   manages,
+  setsReminders,
 }: {
   organisationId: string;
   landing: string | null;
   named: string;
   manages: boolean;
+  setsReminders: boolean;
 }) {
   const { t } = useTranslation();
   const desk = useDeskTop();
@@ -132,6 +138,22 @@ function Directory({
   const search = useRef<HTMLInputElement>(null);
   const backToSearch = useRef(false);
   const retried = useRef(false);
+  const [reminders, setReminders] = useState<PaymentRemindersSetting | null>(null);
+
+  useEffect(() => {
+    if (!setsReminders) return;
+    let live = true;
+    api.paymentReminders(organisationId).then(
+      (setting) => {
+        if (live) setReminders(setting);
+      },
+      () => undefined,
+    );
+
+    return () => {
+      live = false;
+    };
+  }, [organisationId, setsReminders]);
 
   useEffect(() => {
     const stop = new AbortController();
@@ -235,6 +257,7 @@ function Directory({
                 typed={typed}
                 named={named}
                 manages={manages}
+                reminders={reminders}
                 lit={lit}
                 menu={menu}
                 search={search}
@@ -294,6 +317,7 @@ function Loaded({
   typed,
   named,
   manages,
+  reminders,
   lit,
   menu,
   search,
@@ -314,6 +338,7 @@ function Loaded({
   typed: string;
   named: string;
   manages: boolean;
+  reminders: PaymentRemindersSetting | null;
   lit: string | null;
   menu: 'category' | 'filter' | null;
   search: RefObject<HTMLInputElement | null>;
@@ -374,6 +399,21 @@ function Loaded({
         </div>
         {manages && <CardStep label={t('vendors.add')} onClick={onAdd} />}
       </Card>
+      {reminders != null && (
+        <RowList>
+          <li>
+            <BudgetRow
+              title={reminders.inForce ? t('paymentReminders.title') : t('paymentReminders.off')}
+              lines={[
+                reminders.inForce
+                  ? t('paymentReminders.whenReminded', { count: reminders.days })
+                  : t('paymentReminders.offLine'),
+              ]}
+              to="/app/settings/vendors/payment-reminders"
+            />
+          </li>
+        </RowList>
+      )}
       {page.inUse + page.archived > 0 && (
         <>
           <div className="vd-tools">

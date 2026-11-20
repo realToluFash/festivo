@@ -23,9 +23,9 @@ import {
   type Invitation,
   NEW_PLACE,
   create,
-  dayOf,
   join,
   switchTo,
+  untilOf,
 } from './switcher.ts';
 
 const ANSWERING_MS = 700;
@@ -46,12 +46,7 @@ export function NoOrganisation() {
     return isCreateState(raw) && !managed ? walkOf(raw, t) : null;
   });
   const [told, setTold] = useState<string | null>(null);
-  const [opensOn] = useState(walk == null);
   const start = useRef<HTMLButtonElement>(null);
-
-  useEffect(() => {
-    if (opensOn) start.current?.focus();
-  }, [opensOn]);
 
   return (
     <LayersContext value={layers}>
@@ -146,7 +141,7 @@ function WaitingInvitations({ onOpen }: { onOpen: (invitation: Invitation) => vo
             <InvitationAnswer
               name={invitation.name}
               line={`Invitation from ${invitation.inviter} · ${invitation.role}`}
-              until={`Works until ${dayOf(invitation.until)}`}
+              until={`Works until ${untilOf(invitation.until)}`}
             >
               {now === 'joined' ? (
                 <JoinedAnswer

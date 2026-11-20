@@ -85,6 +85,7 @@ import {
   MarkupDialog,
   type MarkupOpening,
 } from './BudgetMargin.tsx';
+import { listedOnMarginFace } from './budgetMargin.ts';
 import { MoneyField } from './BudgetParts.tsx';
 import { PaymentDialog, QuoteDialog } from './QuoteForms.tsx';
 import { CancelDialog, MadeDialog, MarkPaidDialog } from './PaymentForms.tsx';
@@ -758,11 +759,7 @@ function BudgetHome({ event }: { event: OrganisationEvent }) {
                       eventId={event.id}
                       margin={margin}
                       shownIds={
-                        new Set(
-                          budget.lines
-                            .filter((one) => lineState(one) === 'priced')
-                            .map((one) => one.id),
-                        )
+                        new Set(budget.lines.filter(listedOnMarginFace).map((one) => one.id))
                       }
                       onSaved={(next, removed) => {
                         setMargin(next);

@@ -21,7 +21,6 @@ import {
   type RefObject,
   useContext,
   useEffect,
-  useLayoutEffect,
   useRef,
   useState,
 } from 'react';
@@ -29,7 +28,6 @@ import { useTranslation } from 'react-i18next';
 import {
   Platform,
   Pressable,
-  type ScrollViewInstance,
   type StyleProp,
   StyleSheet,
   type TextInputInstance,
@@ -403,9 +401,9 @@ export function EventsFilterMenu({
   const first = useRef<ViewInstance>(null);
   const whenRow = useRef<ViewInstance>(null);
   const hostsRow = useRef<ViewInstance>(null);
-  const scroll = useRef<ScrollViewInstance>(null);
   const offset = useRef(0);
   const leftAt = useRef(0);
+  const [bringTo, setBringTo] = useState<{ y: number } | null>(null);
   const { locale } = calendar;
   const grown = atAccessibilitySizes(useWindowDimensions().fontScale);
   const types = filters.types.map((type) => t(`eventTypes.${type}`));
@@ -416,21 +414,19 @@ export function EventsFilterMenu({
     setCameFrom(null);
     offset.current = 0;
     leftAt.current = 0;
+    setBringTo(null);
     onClose();
   };
   const drill = (to: Exclude<Level, 'top'>) => {
     leftAt.current = offset.current;
+    setBringTo({ y: 0 });
     setLevel(to);
   };
   const back = (from: Exclude<Level, 'top'>) => {
     setCameFrom(from);
+    setBringTo({ y: leftAt.current });
     setLevel('top');
   };
-
-  // A level opens at its own top, Back first; back from it, the top level is where it was left, or as near as it still scrolls (sc-75211).
-  useLayoutEffect(() => {
-    scroll.current?.scrollTo({ y: level === 'top' ? leftAt.current : 0, animated: false });
-  }, [level]);
 
   // The back row under TalkBack's focus is gone with its level, so focus goes back to the row that opened it rather than wherever TalkBack picks (sc-53520).
   useEffect(() => {
@@ -472,7 +468,7 @@ export function EventsFilterMenu({
       first={first}
       width={272}
       align="start"
-      scrollRef={scroll}
+      bringTo={bringTo}
       onOffset={(now) => {
         offset.current = now;
       }}

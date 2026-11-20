@@ -37,6 +37,7 @@ import {
   planOf,
   reduce,
   referenceTooLong,
+  reminderRows,
   reminderSheet,
   shareOf,
   startOf,
@@ -49,6 +50,7 @@ import {
 } from './BudgetModel.ts';
 import {
   CEILINGS,
+  EVENT_NAME,
   GUESTS,
   HEADS_IF_ALL_COME,
   LEAD,
@@ -529,7 +531,18 @@ describe('the gaps of 8 Nov: refusals, ceilings and the reminder on the Budget t
     expect(mixed.ids).toEqual(['bloom-balance', 'savour-deposit', 'landmark-balance']);
     expect(mixed.lastAbout).toEqual(['bloom-balance']);
     expect(reminderSheet('overdue').ids).toEqual(['bloom-balance']);
+    expect(reminderSheet('due')).toMatchObject({
+      ids: ['savour-deposit', 'landmark-balance'],
+      lastAbout: [],
+    });
+    expect(say.reminderDue(2, 3, 'Adaeze & Tunde’s wedding')).toBe(
+      '2 payments due in the next 3 days on Adaeze & Tunde’s wedding',
+    );
     expect(say.reminderMixed(1, 2, 3)).toBe('1 payment overdue, 2 due in the next 3 days');
+    expect(say.reminderMixed(1, 2, 1)).toBe('1 payment overdue, 2 due by tomorrow');
+    expect(say.reminderDue(2, 1, 'Adaeze & Tunde’s wedding')).toBe(
+      '2 payments due by tomorrow on Adaeze & Tunde’s wedding',
+    );
     expect(say.reminderOverdue(1, 'Adaeze & Tunde’s wedding')).toBe(
       '1 payment overdue on Adaeze & Tunde’s wedding',
     );
@@ -538,6 +551,30 @@ describe('the gaps of 8 Nov: refusals, ceilings and the reminder on the Budget t
     );
     expect(opened.reminder).toBeNull();
     expect(opened.dueNow).toMatchObject({ fromReminder: true, lastAbout: ['bloom-balance'] });
+  });
+});
+
+describe('the reminder’s rows (sc-95, #76776)', () => {
+  it('names the event on every row of the mixed reminder', () => {
+    const rows = reminderRows('mixed', 'en-GB');
+
+    expect(rows.map((row) => row.id)).toEqual([
+      'bloom-balance',
+      'savour-deposit',
+      'landmark-balance',
+    ]);
+    for (const row of rows) expect(row.words).toContain(` · ${EVENT_NAME} · `);
+    expect(rows[0]).toMatchObject({ late: true });
+    expect(rows[0]?.words).toMatch(/^Bloom & Co · /);
+  });
+
+  it('leaves the event to the title when the reminder is about one event', () => {
+    for (const kind of ['overdue', 'due'] as const) {
+      const rows = reminderRows(kind, 'en-GB');
+
+      expect(rows.length).toBeGreaterThan(0);
+      for (const row of rows) expect(row.words).not.toContain(EVENT_NAME);
+    }
   });
 });
 
@@ -667,6 +704,7 @@ const SPEC_STATES = [
   'ceiling_live_cleared',
   'reminder_overdue',
   'reminder_mixed',
+  'reminder_due',
   'payers_loading',
   'payers_live',
   'payers_reconnecting',

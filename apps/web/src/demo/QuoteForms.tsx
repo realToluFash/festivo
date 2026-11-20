@@ -628,7 +628,7 @@ export function PaymentDialog({
   const save = () => {
     if (busy) return;
     if (shaped) {
-      const found = shapingProblems(shaping);
+      const found = shapingProblems(shaping, quote.amount);
       onShaping?.({ ...shaping, problems: found });
       if (anyShapeProblem(found)) {
         focusFirstWrong();
@@ -719,7 +719,9 @@ export function PaymentDialog({
                           label={QW.whatFor}
                           value={typed.what}
                           error={problems.what ?? null}
-                          onChange={(what) => onShaping?.(retyped(shaping, index, { what }))}
+                          onChange={(what) =>
+                            onShaping?.(retyped(shaping, index, { what }, quote.amount))
+                          }
                         />
                         <div className="qt-two">
                           <TextField
@@ -728,7 +730,9 @@ export function PaymentDialog({
                             value={typed.share}
                             help={PW.shareHelp}
                             error={problems.share ?? null}
-                            onChange={(share) => onShaping?.(retyped(shaping, index, { share }))}
+                            onChange={(share) =>
+                              onShaping?.(retyped(shaping, index, { share }, quote.amount))
+                            }
                           />
                           {row.from !== 'quoted' && (
                             <TextField
@@ -737,7 +741,9 @@ export function PaymentDialog({
                               value={typed.days}
                               help={PW.shapeDaysHelp}
                               error={problems.days ?? null}
-                              onChange={(days) => onShaping?.(retyped(shaping, index, { days }))}
+                              onChange={(days) =>
+                                onShaping?.(retyped(shaping, index, { days }, quote.amount))
+                              }
                             />
                           )}
                         </div>

@@ -1,4 +1,4 @@
-import { formattingLocale } from '@soirely/domain';
+import { formatDay, formattingLocale } from '@soirely/domain';
 import { useState, useSyncExternalStore } from 'react';
 import { useLocation, useSearchParams } from 'react-router';
 
@@ -228,6 +228,10 @@ export function waiting(where: Where): readonly Invitation[] {
 
 export function currentPlace(where: Where): Place {
   return where.places.find((place) => place.id === where.current) ?? IRE;
+}
+
+export function untilOf(date: string): string {
+  return formatDay(`${date}T12:00:00Z`, formattingLocale('en', navigator.language));
 }
 
 export function dayOf(date: string): string {

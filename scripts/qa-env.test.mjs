@@ -111,6 +111,7 @@ import {
   remoteEmulatorCommand,
   remoteEmulatorScript,
   adbAnnouncement,
+  shouldAnnounce,
   pickPlayImage,
   missingRemoteTools,
   SSH_OPTIONS,
@@ -186,6 +187,7 @@ import {
   reversedPorts,
   unreversed,
   restoreReverses,
+  reversePorts,
   simulatorFor,
   TESTERS,
   testerOf,
@@ -926,6 +928,22 @@ describe('the reverses a batch puts back', () => {
     const missing = await restoreReverses(adb, [13181], { wait: async () => {} });
     expect(missing).toEqual([13181]);
     expect(tries).toHaveLength(10);
+  });
+
+  it('announces the remote emulator again before restoring them', async () => {
+    const calls = [];
+    const held = [13181];
+    const see = (_tools, options) => calls.push(['see', options]);
+    const adb = (args) => {
+      calls.push(args);
+      if (args[1] === '--list')
+        return held.map((p) => `emulator-5578 tcp:${p} tcp:${p}`).join('\n');
+      held.push(Number(args[1].slice(4)));
+      return '';
+    };
+    await reversePorts({}, { see, adb, ports: [13180, 13181], wait: async () => {} });
+    expect(calls[0]).toEqual(['see', { again: true }]);
+    expect(calls.slice(1)).toContainEqual(['reverse', 'tcp:13180', 'tcp:13180']);
   });
 });
 
@@ -1882,6 +1900,23 @@ describe('an emulator on another computer', () => {
 
   it('is announced to adb as the server protocol frames it', () => {
     expect(adbAnnouncement(5578)).toBe('0012host:emulator:5579');
+  });
+
+  it('is announced again only when remote, missing from adb and its unit still runs', () => {
+    const asked = [];
+    const ask = (name, value) => () => (asked.push(name), value);
+    expect(
+      shouldAnnounce({ remote: true, online: ask('online', false), unit: ask('unit', 'active') }),
+    ).toBe(true);
+    expect(shouldAnnounce({ remote: true, online: () => true, unit: () => 'active' })).toBe(false);
+    expect(shouldAnnounce({ remote: true, online: () => false, unit: () => 'inactive' })).toBe(
+      false,
+    );
+    asked.length = 0;
+    expect(
+      shouldAnnounce({ remote: false, online: ask('online', false), unit: ask('unit', 'active') }),
+    ).toBe(false);
+    expect(asked).toEqual([]);
   });
 
   it('is found and stopped by its console port alone', () => {

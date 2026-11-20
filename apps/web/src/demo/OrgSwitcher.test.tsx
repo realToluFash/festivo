@@ -195,7 +195,7 @@ describe('the organisation switcher in B · Places at a desk (sc-30323)', () => 
     const panel = screen.getByRole('group', { name: 'Celebraciones Alameda' });
 
     expect(within(panel).getByText('Invitation from Kemi Adeyemi · Member')).toBeDefined();
-    expect(within(panel).getByText('Works until Fri, Nov 20')).toBeDefined();
+    expect(within(panel).getByText('Works until Friday, Nov 20')).toBeDefined();
 
     fireEvent.click(
       within(panel).getByRole('button', { name: 'Accept and join Celebraciones Alameda' }),

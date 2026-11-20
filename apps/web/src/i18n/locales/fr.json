@@ -5775,6 +5775,10 @@
     "descriptionTooLong": "Raccourcissez l’objet du paiement à {{count, number}} caractères maximum.",
     "beforeFirstQuote": "La date de règlement ne peut pas précéder le devis du prestataire {{vendor}} daté du {{day}}. Choisissez cette date ou une date ultérieure.",
     "addAsPaid": "Ajouter comme réglé",
+    "paidTo": "Réglé au prestataire {{vendor}}",
+    "nowWithThis": "{{now}} actuellement, {{after}} avec ce paiement",
+    "overWithThis": "Avec ce paiement, l’échéancier dépasse le devis de {{gap}}.",
+    "nothingAbsorbs": "L’écart reste visible ; rien ne l’absorbe.",
     "addedByYou": "Réglé le {{day}}. Ajouté par vous comme déjà réglé : « Annuler » le supprime.",
     "addedBy": "Réglé le {{day}}. Ajouté par {{name}} comme déjà réglé : « Annuler » le supprime.",
     "deleted": "Paiement de {{amount}} au prestataire {{vendor}} du {{day}} supprimé : {{what}}.",
@@ -5843,5 +5847,27 @@
     "fullNotKnown_many": "Coût total inconnu : {{count, number}} des coûts concernés n’ont pas encore de prix.",
     "noChange": "Aucun changement",
     "nothingPerGuest": "Rien dans ce budget n’est calculé par invité."
+  },
+  "paymentReminders": {
+    "title": "Payment reminders",
+    "whenReminded_one": "{{count, number}} day before a payment is due, and once the day after, then silence.",
+    "whenReminded_other": "{{count, number}} days before a payment is due, and once the day after, then silence.",
+    "whenReminded_many": "{{count, number}} days before a payment is due, and once the day after, then silence.",
+    "change": "Change",
+    "whoHears": "Who hears",
+    "whoHearsLine": "The organisation’s owners and admins, and each event’s lead.",
+    "how": "How",
+    "howLine": "Through the channels each person chose in Notifications",
+    "daysField": "Days before a payment is due",
+    "daysHelp": "From 1 to 30. Counted in each event’s own time zone. A change applies to reminders not sent yet.",
+    "stopsReminders": "Marking a payment paid or cancelling it stops its reminders.",
+    "off": "Payment reminders are off",
+    "offLine": "This organisation’s plan no longer includes payment schedules, so no reminders go out. Their history stays readable.",
+    "enterDays": "Enter a whole number of days from 1 to 30.",
+    "loading": "Loading payment reminders…",
+    "failed": "Payment reminders did not load",
+    "failedLine": "Check your connection, then try again.",
+    "tryAgain": "Try again",
+    "notSaved": "The days were not saved. Check your connection, then try again."
   }
 }

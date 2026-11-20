@@ -23,6 +23,7 @@ import {
   firstOverdue,
   firstQuoteOn,
   keptOf,
+  madeInset,
   madeProblems,
   markProblems,
   paidDifference,
@@ -470,5 +471,39 @@ describe('cardDue', () => {
     expect(i18next.t('quotes.cardDueTomorrow', slots)).toBe(
       'The deposit for Atlas, £1,880, is due tomorrow, Monday 3 November.',
     );
+  });
+});
+
+describe('the inset on Add a payment already made (sc-75579)', () => {
+  const at = (scheduled: string, paid = '0.00') =>
+    quote({ quote: { ...quote().quote, amount: '1000.00' }, scheduled, paid });
+
+  it('shows the figures as they stand and no after while no amount is usable', () => {
+    expect(madeInset(at('1000.00', '250.00'), null, 'GBP')).toEqual({
+      now: { paid: '250.00', scheduled: '1000.00' },
+      after: null,
+      over: null,
+    });
+  });
+
+  it('adds the amount paid to both Paid and Scheduled, and gives the gap over the quote', () => {
+    expect(madeInset(at('1000.00'), '180.00', 'GBP')).toEqual({
+      now: { paid: '0.00', scheduled: '1000.00' },
+      after: { paid: '180.00', scheduled: '1180.00' },
+      over: '180.00',
+    });
+  });
+
+  it('gives the gap after the payment, not the payment, when already over', () => {
+    expect(madeInset(at('1050.00'), '180.00', 'GBP').over).toBe('230.00');
+  });
+
+  it('says nothing about the quote at or under it', () => {
+    expect(madeInset(at('820.00'), '180.00', 'GBP').over).toBeNull();
+    expect(madeInset(at('500.00'), '180.00', 'GBP').over).toBeNull();
+  });
+
+  it('keeps a gap under one unit in its minor unit', () => {
+    expect(madeInset(at('1000.00'), '0.01', 'GBP').over).toBe('0.01');
   });
 });
