@@ -97,6 +97,7 @@ export const RW = {
   nextSend: 'Next: send a link to everyone who has not been sent one yet.',
   nextHours: 'Next: check the hours on Hours worked before the budget closes.',
   nextCopied: 'Next: once you have sent them the copied link, mark it as sent.',
+  nextShared: '[Next: once you have sent them the link shared in the app, mark it as sent.]',
   nextErasing: 'Next: nothing. Their mobile number and email are removed 30 days after the event.',
   lock: 'You can see the roster. Changing it needs permission to manage staff.',
   stationChange: 'Change station',
@@ -226,7 +227,10 @@ export function detailsNext(
   if (erased) return null;
   if (finished) return rw.nextErasing;
 
-  return linkOf(entry, false) === 'copied' ? rw.nextCopied : null;
+  const link = linkOf(entry, false);
+  if (link === 'copied') return rw.nextCopied;
+
+  return link === 'shared' ? rw.nextShared : null;
 }
 
 export type Problems = { name?: string; number?: string; email?: string };
@@ -721,7 +725,8 @@ const STATES = {
   linkShared: () =>
     start({
       name: 'Shared in the app',
-      note: 'Emeka Obi, shared from the app (sc-77903): Shared with Copied’s half-filled ring, Shared by Kemi Adeyemi, and Mark as sent as on Copied.',
+      note: 'Emeka Obi, shared from the app (sc-77903): Shared with Copied’s half-filled ring, Shared by Kemi Adeyemi, Mark as sent as on Copied, and the details’ next step to mark it as sent.',
+      panel: { kind: 'details', id: 'emeka' },
       entries: sample().map((one) =>
         one.id === 'emeka'
           ? { ...one, link: 'shared', trail: { by: 'Kemi Adeyemi', at: '19:12' } }

@@ -7,11 +7,11 @@ import { Glyph } from '../../components/Glyph.tsx';
 import { Notice } from '../../components/Notice.tsx';
 import { moveScreenReaderFocus } from '../../components/screenReaderFocus.ts';
 import { Skeleton } from '../../components/Skeleton.tsx';
-import { HeadCount, Row, RowList, Section } from '../../components/SummaryRows.tsx';
+import { HeadCount, Row, RowList, SectionHead } from '../../components/SummaryRows.tsx';
 import { Text } from '../../components/Text.tsx';
 import { DemoOnly } from '../../steps/Lines.tsx';
 import { tokens } from '../../theme/tokens.ts';
-import { WORDS } from './StaffLinkModel.ts';
+import { SHOWN_WORDS, shownOf } from './StaffLinkModel.ts';
 import { StatusShape } from './StaffLinkScreen.tsx';
 import {
   LIVE_CHANGE,
@@ -19,19 +19,15 @@ import {
   type OnRoster,
   RW,
   type RosterState,
-  type Shown,
   keep,
   resetKept,
   rosterOrder,
   rowLine,
   sampleRoster,
-  shownOf,
   withKept,
 } from './StaffRosterModel.ts';
 
 const RETRY_MS = 1200;
-
-const SHOWN_WORDS: Record<Shown, string> = { ...WORDS, noMobile: RW.noMobile, erased: RW.erased };
 
 type Phase = 'loading' | 'failed' | 'ready';
 
@@ -50,6 +46,7 @@ export function StaffRoster({ state }: { state: RosterState }) {
   const opened = useRef<string | null>(null);
   const erased = state === 'erased';
   const manage = state !== 'readOnly';
+  const counted = phase === 'ready' && people.length > 0;
 
   const reread = useCallback(() => {
     if (state !== 'empty') setPeople(rosterOrder(withKept(sampleRoster())));
@@ -170,17 +167,20 @@ export function StaffRoster({ state }: { state: RosterState }) {
 
   return (
     <View style={styles.page} testID={`staff.${state}`}>
-      <View ref={head} accessible={false}>
-        <Section
-          title={RW.roster}
-          right={
-            phase === 'ready' && people.length > 0 ? (
-              <HeadCount text={RW.people(people.length)} />
-            ) : undefined
-          }
+      <View>
+        <View
+          ref={head}
+          accessible
+          accessibilityRole="header"
+          accessibilityLabel={counted ? `${RW.roster}, ${RW.people(people.length)}` : RW.roster}
+          testID="staff.heading"
         >
-          {body}
-        </Section>
+          <SectionHead
+            title={RW.roster}
+            right={counted ? <HeadCount text={RW.people(people.length)} /> : undefined}
+          />
+        </View>
+        {body}
       </View>
       <DemoOnly title="Demo only: the board’s switches">
         <SecondaryButton

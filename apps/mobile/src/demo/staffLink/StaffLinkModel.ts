@@ -186,12 +186,28 @@ export function offersReplace(s: LinkState): boolean {
   return acts(s) && s.status !== 'none';
 }
 
-/** What the status reads: after the erasure and without a number, those words; else the link's own. */
-export function statusWord(s: LinkState): string {
-  if (s.view === 'erased') return W.erased;
-  if (!s.who.mobile) return W.noMobile;
+/** What a person's status shows, on their roster row and on their link screen alike: after the erasure and without a number, those; else the link's own. */
+export type Shown = LinkStatus | 'noMobile' | 'erased';
 
-  return WORDS[s.status];
+export const SHOWN_WORDS: Record<Shown, string> = {
+  ...WORDS,
+  noMobile: W.noMobile,
+  erased: W.erased,
+};
+
+export function shownOf(link: { status: LinkStatus; mobile: boolean }, erased: boolean): Shown {
+  if (erased) return 'erased';
+  if (!link.mobile) return 'noMobile';
+
+  return link.status;
+}
+
+export function linkShown(s: LinkState): Shown {
+  return shownOf({ status: s.status, mobile: s.who.mobile }, s.view === 'erased');
+}
+
+export function statusWord(s: LinkState): string {
+  return SHOWN_WORDS[linkShown(s)];
 }
 
 /** Removed on the web: the screen says so and holds nothing, whatever was under way. */
