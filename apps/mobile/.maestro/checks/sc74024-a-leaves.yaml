@@ -1,4 +1,4 @@
-# sc-74024: A opens the Calendar, leaves it on Agenda at March 2027, and Switch organisation keeps it.
+# sc-74024: A opens the Calendar, leaves it on Agenda four months on, and Switch organisation keeps that month.
 appId: host.exp.Exponent
 ---
 - runFlow: ../return-home.yaml
@@ -13,14 +13,20 @@ appId: host.exp.Exponent
 - tapOn:
     id: 'calendar.view.agenda'
 - waitForAnimationToEnd
+- copyTextFrom:
+    id: 'calendar.month'
+- evalScript: ${output.first = maestro.copiedText}
 - repeat:
     times: 4
     commands:
       - tapOn:
           id: 'calendar.next'
       - waitForAnimationToEnd
-- assertVisible: 'March 2027'
-- takeScreenshot: a-agenda-march-2027
+- copyTextFrom:
+    id: 'calendar.month'
+- assertTrue: ${maestro.copiedText != output.first}
+- evalScript: ${output.left = maestro.copiedText}
+- takeScreenshot: a-agenda-moved
 - runFlow: ../open-switcher.yaml
 - tapOn: 'QA Second Org.*'
 - waitForAnimationToEnd
@@ -33,7 +39,9 @@ appId: host.exp.Exponent
     timeout: 30000
 - waitForAnimationToEnd
 - takeScreenshot: a-switched-org
-- assertVisible: 'March 2027'
+- copyTextFrom:
+    id: 'calendar.month'
+- assertTrue: ${maestro.copiedText == output.left}
 - runFlow: ../open-switcher.yaml
 - tapOn: 'QA Organisation.*'
 - waitForAnimationToEnd

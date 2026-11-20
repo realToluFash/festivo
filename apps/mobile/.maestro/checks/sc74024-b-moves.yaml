@@ -1,4 +1,4 @@
-# sc-74024: B opens the Calendar and moves on two months to January 2027.
+# sc-74024: B opens the Calendar and moves on two months.
 appId: host.exp.Exponent
 ---
 - runFlow: ../return-home.yaml
@@ -10,11 +10,16 @@ appId: host.exp.Exponent
     timeout: 30000
 - waitForAnimationToEnd
 - takeScreenshot: b-first
+- copyTextFrom:
+    id: 'calendar.month'
+- evalScript: ${output.first = maestro.copiedText}
 - repeat:
     times: 2
     commands:
       - tapOn:
           id: 'calendar.next'
       - waitForAnimationToEnd
-- assertVisible: 'January 2027'
-- takeScreenshot: b-january-2027
+- copyTextFrom:
+    id: 'calendar.month'
+- assertTrue: ${maestro.copiedText != output.first}
+- takeScreenshot: b-moved
