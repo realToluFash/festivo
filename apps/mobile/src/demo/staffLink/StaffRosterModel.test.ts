@@ -4,8 +4,11 @@ import {
   acts,
   offersMarkSent,
   offersReplace,
+  SHOWN_WORDS,
   removedNow,
   seed,
+  seedFor,
+  shownOf,
   statusWord,
 } from './StaffLinkModel.ts';
 import {
@@ -17,8 +20,8 @@ import {
   rosterOrder,
   rosterStateOf,
   rowLine,
+  restoreKept,
   sampleRoster,
-  shownOf,
   withKept,
 } from './StaffRosterModel.ts';
 
@@ -54,8 +57,31 @@ describe('the event’s Staff in the app (sc-77903)', () => {
     expect(now.find((one) => one.id === 'amina')?.status).toBe('sent');
     expect(now.some((one) => one.id === 'emeka')).toBe(false);
     expect(personOf('emeka')).toBeNull();
-    resetKept();
+    restoreKept('emeka');
     expect(personOf('emeka')?.name).toBe('Emeka Obi');
+    resetKept();
+    expect(personOf('amina')?.status).toBe('copied');
+  });
+
+  it('reads the same words on a row and on that person’s link screen', () => {
+    for (const person of sampleRoster())
+      for (const erased of [false, true]) {
+        const view = erased ? 'erased' : 'manage';
+        const screen = seedFor(
+          {
+            id: person.id,
+            name: person.name,
+            first: person.name,
+            job: '',
+            shift: '',
+            mobile: person.mobile,
+          },
+          person.status,
+          person.trail,
+          view,
+        );
+        expect(statusWord(screen)).toBe(SHOWN_WORDS[shownOf(person, erased)]);
+      }
   });
 
   it('opens on the populated roster for a state it does not know', () => {

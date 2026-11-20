@@ -106,6 +106,8 @@ const RW_FR: typeof RW = {
     `[${mw(R.removed, { name })} ${shifts > 1 ? 'Ses services ne sont plus attribués.' : 'Son service n’est plus attribué.'}]`,
   notAdded: (name) => `[Impossible d’ajouter ${name}.]`,
   nextCopied: '[Étape suivante : une fois le lien copié envoyé, indiquez qu’il a été envoyé.]',
+  nextShared:
+    '[Étape suivante : une fois le lien partagé dans l’app envoyé, indiquez qu’il a été envoyé.]',
   stationChange: '[Changer de poste]',
   sectionGone: (section) => `[${section} a été supprimée du plan de table.]`,
 };
@@ -166,6 +168,7 @@ interface Samples {
     | 'removed'
     | 'notAdded'
     | 'nextCopied'
+    | 'nextShared'
     | 'stationChange'
     | 'sectionGone'
   >;
@@ -193,6 +196,8 @@ const SAMPLES_ES: Samples = {
     notAdded: (name) => `[No se ha podido añadir a ${name}.]`,
     nextCopied:
       '[Siguiente paso: cuando le haya enviado el enlace copiado, márquelo como enviado.]',
+    nextShared:
+      '[Siguiente paso: cuando le haya enviado el enlace compartido en la app, márquelo como enviado.]',
     stationChange: '[Cambiar de zona]',
     sectionGone: (section) => `[Se ha quitado ${section} del plano de mesas.]`,
   },
@@ -228,6 +233,8 @@ const SAMPLES_PT: Samples = {
       `[${mw(pt.roster.removed, { name })} ${shifts > 1 ? 'Os turnos ficam sem atribuição.' : 'O turno fica sem atribuição.'}]`,
     notAdded: (name) => `[Não foi possível adicionar ${name}.]`,
     nextCopied: '[Próximo passo: depois de enviar a ligação copiada, marque-a como enviada.]',
+    nextShared:
+      '[Próximo passo: depois de enviar a ligação partilhada na app, marque-a como enviada.]',
     stationChange: '[Mudar de posto]',
     sectionGone: (section) => `[${section} foi removida da planta de mesas.]`,
   },

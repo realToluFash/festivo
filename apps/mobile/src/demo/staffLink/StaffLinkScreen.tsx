@@ -26,15 +26,17 @@ import { Notice } from '../../components/Notice.tsx';
 import {
   ISSUE_MS,
   type LinkState,
-  type LinkStatus,
   type LinkView,
   SAMPLE_LINK,
+  SHOWN_WORDS,
+  type Shown,
   W,
   acts,
   askReplace,
   backFromShare,
   copiedNow,
   copyRefused,
+  linkShown,
   linkStateOf,
   markSent,
   notIssued,
@@ -46,10 +48,9 @@ import {
   replace,
   seed,
   seedFor,
-  statusWord,
   trailLine,
 } from './StaffLinkModel.ts';
-import { RW, firstName, keep, personOf, removeKept } from './StaffRosterModel.ts';
+import { RW, firstName, keep, personOf, removeKept, restoreKept } from './StaffRosterModel.ts';
 import {
   BALANCE,
   QUIET_ENDS,
@@ -249,7 +250,7 @@ function StaffLink({ first, fromRoster }: { first: () => LinkState; fromRoster: 
     </View>
   );
 
-  const shape: Shape = s.view === 'erased' ? 'erased' : who.mobile ? s.status : 'noMobile';
+  const shape = linkShown(s);
   const trail = shape === s.status ? trailLine(s.status, s.trail) : null;
   const help = shape === 'erased' ? W.erasedLine : shape === 'noMobile' ? W.noMobileLine : W.help;
 
@@ -265,7 +266,7 @@ function StaffLink({ first, fromRoster }: { first: () => LinkState; fromRoster: 
       <View style={styles.statusRow}>
         <StatusShape shape={shape} />
         <Text size={17} weight="semibold" style={styles.shrink}>
-          {statusWord(s)}
+          {SHOWN_WORDS[shape]}
         </Text>
       </View>
       {trail != null && (
@@ -461,7 +462,8 @@ function StaffLink({ first, fromRoster }: { first: () => LinkState; fromRoster: 
               label="Start again"
               onPress={() => {
                 removedRef.current = false;
-                setS(first());
+                if (fromRoster) restoreKept(s.who.id);
+                apply(first());
               }}
               testID="staffLink.demo.reset"
             />
@@ -672,8 +674,6 @@ function StaffLink({ first, fromRoster }: { first: () => LinkState; fromRoster: 
   );
 }
 
-type Shape = LinkStatus | 'noMobile' | 'erased';
-
 const INK = {
   secondary: tokens.colorInkSecondary,
   attention: tokens.colorAttentionText,
@@ -681,7 +681,7 @@ const INK = {
 };
 
 /** Each status a shape with its word: a dashed ring, a half ring, a ring, a filled tick; an amber ring with no number, a grey one after the erasure. */
-export function StatusShape({ shape, side = 16 }: { shape: Shape; side?: number }) {
+export function StatusShape({ shape, side = 16 }: { shape: Shown; side?: number }) {
   if (shape === 'noMobile' || shape === 'erased')
     return (
       <ShapeMark

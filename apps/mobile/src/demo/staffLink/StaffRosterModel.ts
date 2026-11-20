@@ -28,8 +28,6 @@ export const RW = {
   noJob: 'No job yet',
   noStation: 'No station yet',
   noShift: 'Not on a shift yet',
-  noMobile: 'Add a mobile number to send a link',
-  erased: 'Contact details removed after the event',
 };
 
 const KEMI = 'Kemi Adeyemi';
@@ -116,15 +114,6 @@ export function firstName(name: string): string {
   return name.split(' ')[0] ?? name;
 }
 
-export type Shown = LinkStatus | 'noMobile' | 'erased';
-
-export function shownOf(person: OnRoster, erased: boolean): Shown {
-  if (erased) return 'erased';
-  if (!person.mobile) return 'noMobile';
-
-  return person.status;
-}
-
 export function rowLine(person: OnRoster): string {
   return [person.job ?? RW.noJob, person.station ?? RW.noStation, person.shift ?? RW.noShift].join(
     ' · ',
@@ -190,6 +179,11 @@ export function keep(
 
 export function removeKept(id: string): void {
   gone.add(id);
+}
+
+/** Start again on a link screen: the person is back on the roster as the screen now has them. */
+export function restoreKept(id: string): void {
+  gone.delete(id);
 }
 
 export function withKept(people: readonly OnRoster[]): OnRoster[] {

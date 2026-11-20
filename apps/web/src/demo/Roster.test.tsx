@@ -426,6 +426,11 @@ describe('a person’s own link on the roster (sc-3912)', () => {
     ).toBeTruthy();
     expect(table.querySelector('.rs-mark.is-shared')).toBeTruthy();
     expect(cssRule('.rs-mark.is-shared', ROSTER_CSS)).toContain('linear-gradient');
+    expect(
+      screen.getByText(
+        '[Next: once you have sent them the link shared in the app, mark it as sent.]',
+      ),
+    ).toBeTruthy();
     press('Mark as sent: Emeka Obi');
     expect(screen.getAllByText('Marked as sent by Amara Nwosu · 19:12').length).toBeGreaterThan(0);
     expect(button('Mark as sent: Emeka Obi')).toBeNull();

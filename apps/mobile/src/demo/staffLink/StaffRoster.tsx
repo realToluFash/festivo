@@ -11,12 +11,12 @@ import { Sheet, SheetActions } from '../../components/Sheet.tsx';
 import { moveScreenReaderFocus } from '../../components/screenReaderFocus.ts';
 import { Skeleton } from '../../components/Skeleton.tsx';
 import { PageToast } from '../../components/Summary.tsx';
-import { HeadCount, Row, RowList, Section } from '../../components/SummaryRows.tsx';
+import { HeadCount, Row, RowList, SectionHead } from '../../components/SummaryRows.tsx';
 import { Text } from '../../components/Text.tsx';
 import { useLayout } from '../../layout/useLayout.ts';
 import { DemoOnly } from '../../steps/Lines.tsx';
 import { tokens } from '../../theme/tokens.ts';
-import { ISSUE_MS as SEND_MS, WORDS } from './StaffLinkModel.ts';
+import { ISSUE_MS as SEND_MS, SHOWN_WORDS, shownOf } from './StaffLinkModel.ts';
 import { StatusShape } from './StaffLinkScreen.tsx';
 import {
   LIVE_CHANGE,
@@ -24,13 +24,11 @@ import {
   type OnRoster,
   RW,
   type RosterState,
-  type Shown,
   keep,
   resetKept,
   rosterOrder,
   rowLine,
   sampleRoster,
-  shownOf,
   withKept,
 } from './StaffRosterModel.ts';
 import {
@@ -48,8 +46,6 @@ import {
 } from './StaffTextModel.ts';
 
 const RETRY_MS = 1200;
-
-const SHOWN_WORDS: Record<Shown, string> = { ...WORDS, noMobile: RW.noMobile, erased: RW.erased };
 
 type Phase = 'loading' | 'failed' | 'ready';
 
@@ -83,6 +79,7 @@ export function StaffRoster({ state }: { state: RosterState }) {
   const erased = state === 'erased';
   const manage = state !== 'readOnly' && state !== 'smsReadOnly';
   const [base, setBase] = useState<OnRoster[]>(() => texts?.people ?? sampleRoster());
+  const counted = phase === 'ready' && people.length > 0;
 
   const reread = useCallback(() => {
     if (state === 'empty') return;
@@ -260,27 +257,30 @@ export function StaffRoster({ state }: { state: RosterState }) {
 
   return (
     <View style={styles.page} testID={`staff.${state}`}>
-      <View ref={head} accessible={false} style={styles.head}>
-        <Section
-          title={RW.roster}
-          right={
-            phase === 'ready' && people.length > 0 ? (
-              <HeadCount text={RW.people(people.length)} />
-            ) : undefined
-          }
+      <View style={styles.head}>
+        <View
+          ref={head}
+          accessible
+          accessibilityRole="header"
+          accessibilityLabel={counted ? `${RW.roster}, ${RW.people(people.length)}` : RW.roster}
+          testID="staff.heading"
         >
-          {bulk != null && (
-            <View style={phone ? undefined : styles.bulkBeside} testID="staff.bulkHead">
-              {bulk}
-            </View>
-          )}
-          {allSent && (
-            <Text size={15} weight="medium" style={styles.secondary} testID="staff.allSent">
-              {TW.allSent}
-            </Text>
-          )}
-          {body}
-        </Section>
+          <SectionHead
+            title={RW.roster}
+            right={counted ? <HeadCount text={RW.people(people.length)} /> : undefined}
+          />
+        </View>
+        {bulk != null && (
+          <View style={phone ? undefined : styles.bulkBeside} testID="staff.bulkHead">
+            {bulk}
+          </View>
+        )}
+        {allSent && (
+          <Text size={15} weight="medium" style={styles.secondary} testID="staff.allSent">
+            {TW.allSent}
+          </Text>
+        )}
+        {body}
       </View>
       <DemoOnly title="Demo only: the board’s switches">
         <SecondaryButton

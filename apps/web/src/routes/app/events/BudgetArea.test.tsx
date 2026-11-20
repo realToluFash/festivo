@@ -8,7 +8,10 @@ import { __setConfig, config } from '../../../config.ts';
 import { __setSessionState, type Session } from '../../../session.ts';
 import { OWNER_PERMISSIONS, membership } from '../../../test-memberships.ts';
 import { routes } from '../../index.tsx';
+import { cssRule, stylesheet } from '../../../test-styles.ts';
 import { todayIn } from './quotesArea.ts';
+
+const BUDGET_CSS = stylesheet(import.meta.dirname, 'budget.css');
 
 const IRE = membership({ id: 'org_1', name: 'Ìrè Events' });
 
@@ -340,6 +343,19 @@ describe('changing a rate in place (sc-85)', () => {
       rate: '70.00',
       currency: 'GBP',
     });
+  });
+
+  it('lets the opened rate’s tint reach past its rows at a desk, the page never clipping it (sc-92)', async () => {
+    signedIn();
+    serve({});
+
+    fireEvent.click(await screen.findByRole('button', { name: /^Dinner\./u }));
+    expect(
+      screen.getByRole('textbox', { name: 'Rate for Dinner' }).closest('.bt.desk-page'),
+    ).not.toBeNull();
+    expect(cssRule('.bt.desk-page', BUDGET_CSS.slice(0, BUDGET_CSS.indexOf('@media')))).toContain(
+      'overflow: visible;',
+    );
   });
 
   it('Escape leaves the rate as it was and sends nothing', async () => {
