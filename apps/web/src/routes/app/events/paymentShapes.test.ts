@@ -21,6 +21,7 @@ import {
 const t = i18next.getFixedT('en');
 const QUOTE = { amount: '9000.00', quotedOn: '2027-02-20' };
 const DAYS = { starts: '2027-06-12', ends: '2027-06-13' };
+const PRICING = { quote: QUOTE, currency: 'GBP', days: DAYS, locale: 'en-GB' };
 
 const rowsOf = (shape: 'deposit' | 'instalments' | 'before' | 'after', quote = QUOTE) =>
   shapeRows(typedTerms(shapingOf(t, shape)), quote, 'GBP', DAYS);
@@ -78,7 +79,7 @@ describe('rounding and dates the shape cannot use', () => {
   });
 
   it('adjusts no row when the percentages do not come to 100, and says how short it is', () => {
-    const shaping = retyped(t, shapingOf(t, 'deposit'), 1, { share: '40' });
+    const shaping = retyped(t, shapingOf(t, 'deposit'), 1, { share: '40' }, PRICING);
     const rows = shapeRows(typedTerms(shaping), QUOTE, 'GBP', DAYS);
 
     expect(rows.map((row) => row.amountMinor)).toEqual([450000, 360000]);
@@ -100,9 +101,10 @@ describe('rounding and dates the shape cannot use', () => {
 });
 
 describe('the fields of a shape’s rows', () => {
-  it('takes 0 to 100 with up to two decimals, and 0 to 730 whole days', () => {
-    expect(['0', '100', '33.33', '30.555', '101', '-1', 'x'].map(typedShare)).toEqual([
-      0,
+  it('takes above 0 and up to 100 with up to two decimals, and 0 to 730 whole days', () => {
+    expect(['0', '0.00', '100', '33.33', '30.555', '101', '-1', 'x'].map(typedShare)).toEqual([
+      null,
+      null,
       100,
       33.33,
       null,
@@ -120,18 +122,62 @@ describe('the fields of a shape’s rows', () => {
       { what: 'x'.repeat(101), share: '30.555', days: '60' },
       { what: 'Balance', share: '20', days: '731' },
     ];
-    const problems = shapingProblems(t, { ...shaping, typed });
+    const problems = shapingProblems(t, { ...shaping, typed }, PRICING);
 
     expect(problems).toEqual([
       { what: 'Enter what the payment is for.' },
       {
         what: 'Shorten what the payment is for to 100 characters or fewer.',
-        share: 'Enter a percentage from 0 to 100, with up to two decimal places.',
+        share: 'Enter a percentage above 0 and up to 100, with up to two decimal places.',
       },
       { days: 'Enter a whole number of days from 0 to 730.' },
     ]);
     expect(anyShapeProblem(problems)).toBe(true);
-    expect(anyShapeProblem(shapingProblems(t, shaping))).toBe(false);
+    expect(anyShapeProblem(shapingProblems(t, shaping, PRICING))).toBe(false);
+  });
+
+  it('refuses a percentage of 0 at its field, and never drops the row', () => {
+    const shaping = retyped(t, shapingOf(t, 'instalments'), 1, { share: '0' }, PRICING);
+
+    expect(shapingProblems(t, shaping, PRICING)).toEqual([
+      {},
+      { share: 'Enter a percentage above 0 and up to 100, with up to two decimal places.' },
+      {},
+    ]);
+    expect(shaping.terms).toHaveLength(3);
+  });
+
+  it('refuses a percentage whose row rounds to 0, at that row, naming the smallest amount', () => {
+    const small = { ...PRICING, quote: { ...QUOTE, amount: '10.00' } };
+    const tiny = retyped(t, shapingOf(t, 'deposit'), 0, { share: '0.01' }, small);
+
+    expect(shapingProblems(t, tiny, small)).toEqual([
+      { share: 'This payment would come to less than £0.01. Enter a higher percentage.' },
+      {},
+    ]);
+
+    const tenPence = { ...PRICING, quote: { ...QUOTE, amount: '0.10' } };
+    const instalments = shapingOf(t, 'instalments');
+    const shares = ['45', '45', '10'];
+    const remainder = {
+      ...instalments,
+      typed: instalments.typed.map((one, at) => ({ ...one, share: shares[at] ?? '' })),
+    };
+
+    expect(shapingProblems(t, remainder, tenPence)).toEqual([
+      {},
+      {},
+      { share: 'This payment would come to less than £0.01. Enter a higher percentage.' },
+    ]);
+  });
+
+  it('names the smallest amount in the currency’s own minor unit', () => {
+    const yen = { ...PRICING, currency: 'JPY', quote: { ...QUOTE, amount: '10' } };
+    const shaping = retyped(t, shapingOf(t, 'deposit'), 0, { share: '1' }, yen);
+
+    expect(shapingProblems(t, shaping, yen)[0]).toEqual({
+      share: 'This payment would come to less than ¥1. Enter a higher percentage.',
+    });
   });
 
   it('clears a field’s refusal once it is fixed, and marks no field still being filled', () => {
@@ -140,8 +186,8 @@ describe('the fields of a shape’s rows', () => {
       problems: [{ what: 'Enter what the payment is for.' }, {}],
     };
 
-    expect(retyped(t, shown, 0, { what: 'Deposit' }).problems).toEqual([{}, {}]);
-    expect(retyped(t, shown, 1, { share: 'x' }).problems[1]).toEqual({});
+    expect(retyped(t, shown, 0, { what: 'Deposit' }, PRICING).problems).toEqual([{}, {}]);
+    expect(retyped(t, shown, 1, { share: 'x' }, PRICING).problems[1]).toEqual({});
   });
 
   it('words the row’s timing, with its own words for 0 days', () => {
@@ -156,16 +202,33 @@ describe('the fields of a shape’s rows', () => {
 });
 
 describe('the API’s refusals of a schedule', () => {
-  it('puts a row’s description beside its field and anything else at the top', () => {
+  it('puts each refusal beside the row’s field that fixes it, and anything else at the top', () => {
     expect(
       shapeRefusedAt(
         {
           'payments[1].description': 'Enter what the payment is for.',
-          'payments[0].dueOn': 'Too early.',
+          'payments[1].amount': 'Enter the amount as a number above 0.',
+          'payments[1].dueOn': 'Too early.',
         },
-        2,
+        SHAPE_TERMS.deposit,
       ),
-    ).toEqual({ rows: [{}, { what: 'Enter what the payment is for.' }], top: 'Too early.' });
-    expect(shapeRefusedAt({}, 2)).toBeNull();
+    ).toEqual({
+      rows: [
+        {},
+        {
+          what: 'Enter what the payment is for.',
+          share: 'Enter the amount as a number above 0.',
+          days: 'Too early.',
+        },
+      ],
+      top: null,
+    });
+    expect(
+      shapeRefusedAt(
+        { 'payments[0].dueOn': 'Too early.', payments: 'Too many.' },
+        SHAPE_TERMS.deposit,
+      ),
+    ).toEqual({ rows: [{}, {}], top: 'Too early.' });
+    expect(shapeRefusedAt({}, SHAPE_TERMS.deposit)).toBeNull();
   });
 });

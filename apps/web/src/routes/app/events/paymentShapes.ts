@@ -74,7 +74,7 @@ export function typedShare(typed: string): number | null {
   if (!/^\d{1,3}(\.\d{1,2})?$/.test(plain)) return null;
   const share = Number(plain);
 
-  return share <= SHAPE_LIMITS.share ? share : null;
+  return share > 0 && share <= SHAPE_LIMITS.share ? share : null;
 }
 
 export function typedShapeDays(typed: string): number | null {
@@ -85,22 +85,51 @@ export function typedShapeDays(typed: string): number | null {
   return days <= SHAPE_LIMITS.days ? days : null;
 }
 
-function rowProblems(t: TFunction, one: Term, draft: ShapeDraft): ShapeProblems {
+/** What a shape's rows are priced from: the quote, the event's days, and the locale the smallest amount is written in. */
+export interface ShapePricing {
+  quote: { amount: string; quotedOn: string };
+  currency: string;
+  days: EventDays;
+  locale: string;
+}
+
+function rowProblems(
+  t: TFunction,
+  one: Term,
+  draft: ShapeDraft,
+  amountMinor: number | undefined,
+  smallest: string,
+): ShapeProblems {
   const problems: ShapeProblems = {};
 
   if (draft.what.trim() === '') problems.what = t('quotes.enterWhatFor');
   else if (lengthOf(draft.what) > QUOTE_LIMITS.description)
     problems.what = t('quotes.whatForTooLong', { max: QUOTE_LIMITS.description });
   if (typedShare(draft.share) == null) problems.share = t('quotes.enterShare');
+  else if (amountMinor != null && amountMinor <= 0)
+    problems.share = t('quotes.shareTooSmall', { smallest });
   if (one.from !== 'quoted' && typedShapeDays(draft.days) == null)
     problems.days = t('quotes.enterShapeDays');
 
   return problems;
 }
 
-export function shapingProblems(t: TFunction, shaping: Shaping): ShapeProblems[] {
+export function shapingProblems(
+  t: TFunction,
+  shaping: Shaping,
+  pricing: ShapePricing,
+): ShapeProblems[] {
+  const rows = shapeRows(typedTerms(shaping), pricing.quote, pricing.currency, pricing.days);
+  const smallest = minorMoney(amountOfMinor(1, pricing.currency), pricing.currency, pricing.locale);
+
   return shaping.terms.map((one, index) =>
-    rowProblems(t, one, shaping.typed[index] ?? { what: '', share: '', days: '' }),
+    rowProblems(
+      t,
+      one,
+      shaping.typed[index] ?? { what: '', share: '', days: '' },
+      rows[index]?.amountMinor,
+      smallest,
+    ),
   );
 }
 
@@ -135,12 +164,13 @@ export function retyped(
   shaping: Shaping,
   index: number,
   change: Partial<ShapeDraft>,
+  pricing: ShapePricing,
 ): Shaping {
   const next: Shaping = {
     ...shaping,
     typed: shaping.typed.map((one, at) => (at === index ? { ...one, ...change } : one)),
   };
-  const now = shapingProblems(t, next);
+  const now = shapingProblems(t, next, pricing);
 
   return {
     ...next,
@@ -258,19 +288,31 @@ export function sharesLine(
   });
 }
 
-/** The API's refusals for a schedule: a row's description beside its field, anything else at the top; null when nothing was refused field by field. */
+/** The field of a row that fixes what the API refused: the amount comes from the percentage, the date from the days, where the row has them. */
+function fieldFor(sent: string, one: Term): ShapeField | null {
+  if (sent === 'description') return 'what';
+  if (sent === 'amount') return 'share';
+  if (sent === 'dueOn' && one.from !== 'quoted') return 'days';
+
+  return null;
+}
+
+/** The API's refusals for a schedule, each beside the row's field that fixes it, anything else at the top; null when nothing was refused field by field. */
 export function shapeRefusedAt(
   violations: Record<string, string>,
-  count: number,
+  terms: readonly Term[],
 ): { rows: ShapeProblems[]; top: string | null } | null {
   const paths = Object.entries(violations);
   if (paths.length === 0) return null;
-  const rows: ShapeProblems[] = Array.from({ length: count }, () => ({}));
+  const rows: ShapeProblems[] = terms.map(() => ({}));
   let top: string | null = null;
   for (const [path, words] of paths) {
-    const found = /^payments\[(\d+)\]\.description$/.exec(path);
-    const row = found == null ? undefined : rows[Number(found[1])];
-    if (row != null) row.what ??= words;
+    const found = /^payments\[(\d+)\]\.(\w+)$/.exec(path);
+    const index = Number(found?.[1]);
+    const one = terms[index];
+    const field = found == null || one == null ? null : fieldFor(found[2] ?? '', one);
+    const row = rows[index];
+    if (field != null && row != null) row[field] ??= words;
     else top ??= words;
   }
 

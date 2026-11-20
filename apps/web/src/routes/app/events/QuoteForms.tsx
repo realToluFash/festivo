@@ -26,6 +26,7 @@ import { dateLocale } from '../../../i18n/index.ts';
 import { amountOfMinor, currencySign, minorMoney } from './budgetArea.ts';
 import {
   type ShapeDraft,
+  type ShapePricing,
   type Shaping,
   SHAPES,
   anyShapeProblem,
@@ -628,9 +629,8 @@ export function PaymentDialog({
   const first = useRef<HTMLInputElement>(null);
   const picked = useRef<HTMLInputElement>(null);
   const shaped = shaping != null && shaping.shape !== 'rows';
-  const rows = shaped
-    ? shapeRows(typedTerms(shaping), quote.quote, currency, eventDays(event))
-    : [];
+  const pricing: ShapePricing = { quote: quote.quote, currency, days: eventDays(event), locale };
+  const rows = shaped ? shapeRows(typedTerms(shaping), pricing.quote, currency, pricing.days) : [];
   const short =
     shaped && sharesTyped(shaping) ? sharesLine(t, rows, quote.quote, currency, locale) : null;
 
@@ -641,7 +641,7 @@ export function PaymentDialog({
   };
 
   async function saveShaped(now: Shaping): Promise<void> {
-    const found = shapingProblems(t, now);
+    const found = shapingProblems(t, now, pricing);
     setShaping({ ...now, problems: found });
     setTop(null);
     if (anyShapeProblem(found)) {
@@ -668,7 +668,7 @@ export function PaymentDialog({
         return;
       }
       const refused = error instanceof ApiError ? error.fieldErrors() : {};
-      const fields = shapeRefusedAt(refused, now.terms.length);
+      const fields = shapeRefusedAt(refused, now.terms);
       if (fields == null) {
         setTop(
           error instanceof ApiError && error.status !== 0 && error.status < 500
@@ -789,7 +789,7 @@ export function PaymentDialog({
                 const wrong = shaping.problems[index] ?? {};
                 const at = `${id}-row-${index}`;
                 const retype = (change: Partial<ShapeDraft>) =>
-                  setShaping(retyped(t, shaping, index, change));
+                  setShaping(retyped(t, shaping, index, change, pricing));
 
                 return (
                   <li key={at} className="qt-shape-row">
