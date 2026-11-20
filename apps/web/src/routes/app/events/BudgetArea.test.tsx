@@ -392,6 +392,36 @@ describe('removing a cost (sc-85)', () => {
     expect(rows.indexOf('dinner')).toBeLessThan(rows.indexOf(CENTRE.id));
   });
 
+  it('keeps the bar with Undo above No costs yet when the only cost goes, and Undo puts it back', async () => {
+    signedIn();
+    let lines = [DINNER];
+    serve({
+      'GET /api/events/ev_1/budget': () => json(budget({ lines })),
+      'DELETE /api/events/ev_1/budget/lines/dinner': () => {
+        lines = [];
+        return new Response(null, { status: 204 });
+      },
+      'DELETE /api/events/ev_1/budget/lines/dinner/removal': () => {
+        lines = [DINNER];
+        return json({ line: DINNER });
+      },
+    });
+
+    fireEvent.click(await screen.findByRole('button', { name: /^Dinner\./u }));
+    fireEvent.click(screen.getByRole('button', { name: 'Remove' }));
+
+    expect(await screen.findByText('No costs yet')).toBeTruthy();
+    expect(screen.getByText('Dinner removed. The settled total fell by £6,528.')).toBeTruthy();
+    await waitFor(() =>
+      expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Undo' })),
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Undo' }));
+
+    expect(await screen.findByRole('button', { name: /^Dinner\./u })).toBeTruthy();
+    expect(screen.queryByText('No costs yet')).toBeNull();
+  });
+
   it('says a line with no price leaves the total the same', async () => {
     signedIn();
     serve({
@@ -839,6 +869,9 @@ describe('a failed Undo (sc-85)', () => {
       expect(await screen.findByText(words, { selector: '.bt-undo-words' })).toBeTruthy();
       expect(screen.queryByRole('button', { name: 'Undo' })).toBeNull();
       expect(screen.queryByRole('button', { name: /^Dinner\./u })).toBeNull();
+      expect(document.activeElement).toBe(
+        screen.getByText(words, { selector: '.bt-undo-words' }).parentElement,
+      );
     },
   );
 

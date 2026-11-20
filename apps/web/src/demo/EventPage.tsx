@@ -59,6 +59,7 @@ import {
 import { ReplyByPart } from './EventReplyBy.tsx';
 import { withNote } from './arrivalNote.ts';
 import './arrivalNote.css';
+import './overviewReflow.css';
 import {
   REPLY_BY_WORDS,
   datesSaveSays,
@@ -533,7 +534,11 @@ function EventView({
       )}
     >
       {(tell, show) => (
-        <div className="desk-page ev-page">
+        <div
+          className={
+            !dates && area === 'overview' ? 'desk-page ev-page ev-overview' : 'desk-page ev-page'
+          }
+        >
           <div className="ev-wide">
             <KeptBox kept={tab} />
             <Crumb to="/demo/events" back={W.back} name={event.name}>
