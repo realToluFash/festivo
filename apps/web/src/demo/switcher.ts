@@ -115,7 +115,7 @@ const CELEBRACIONES_INVITATION: Invitation = {
   until: '2026-11-20',
 };
 
-const INVITATIONS: readonly Invitation[] = [
+export const INVITATIONS: readonly Invitation[] = [
   CELEBRACIONES_INVITATION,
   {
     id: BLUEBIRD,
