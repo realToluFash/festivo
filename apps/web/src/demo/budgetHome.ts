@@ -565,6 +565,15 @@ export const FEE_STATES: readonly string[] = ['fee_priced', 'fee_beside_not_pric
 
 export const FEE_MARKUPS: Markups = { ...MARKUPS, prices: { [FEE_LINE.id]: PLANNING_FEE } };
 
+/** The plain face's lines (sc-75696): a line at 0 is priced only with a client price of its own above 0. */
+export function plainLines(lines: readonly CostLine[], markups: Markups): CostLine[] {
+  return lines.map((line) =>
+    line.rate === 0 && line.basis !== 'perStaffHour' && !((markups.prices[line.id] ?? 0) > 0)
+      ? { ...line, rate: null }
+      : line,
+  );
+}
+
 const percentWords = (n: number): string => `${n}%`;
 
 /** sc-92, 19 Nov: an emptied markup or price is removed, and the line falls to the next in the order. */

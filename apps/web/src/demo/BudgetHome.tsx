@@ -74,6 +74,7 @@ import {
   FEE_LINE,
   FEE_MARKUPS,
   FEE_STATES,
+  plainLines,
   chargedOf,
   marginOf,
   markupWords,
@@ -379,9 +380,10 @@ export function BudgetHomeContent({
     setLit(removed.line.id);
     setRemoved(null);
   };
-  const sum = sumLines(lines, heads);
+  const plain = plainLines(lines, markups);
+  const sum = sumLines(plain, heads);
   const wholeCeiling =
-    ceilings.whole == null ? null : ceilingOf('whole', ceilings.whole, lines, heads);
+    ceilings.whole == null ? null : ceilingOf('whole', ceilings.whole, plain, heads);
   const due = dueList(payments, vendorName);
   const next = due[0] ?? null;
 
@@ -460,7 +462,7 @@ export function BudgetHomeContent({
               : void navigate(budgetAt('mark_paid', { vendor: payment.vendorId }))
           }
           onPrice={() => {
-            const unpriced = lines.find((one) => lineState(one) === 'notPriced');
+            const unpriced = plain.find((one) => lineState(one) === 'notPriced');
             if (unpriced != null) setOpened(unpriced.id);
           }}
         />
@@ -518,7 +520,7 @@ export function BudgetHomeContent({
               />
             ) : (
               <Costs
-                lines={lines}
+                lines={plain}
                 heads={heads}
                 ceilings={ceilings}
                 opened={opened}
@@ -532,7 +534,10 @@ export function BudgetHomeContent({
                 }}
                 onClose={() => setOpened(null)}
                 onSaved={(next_, id, words, ok) => {
-                  setLines(next_);
+                  const saved = next_.find((one) => one.id === id);
+                  setLines((now) =>
+                    now.map((one) => (one.id === id && saved != null ? saved : one)),
+                  );
                   setOpened(null);
                   setLit(ok ? id : null);
                   setLine({ id, words, ok });
@@ -564,11 +569,11 @@ export function BudgetHomeContent({
                   ceilings={ceilings}
                   listed={listed}
                   washed={ceilingLive}
-                  lines={lines}
+                  lines={plain}
                   heads={heads}
                   onChange={() => setDialog('ceiling')}
                 />
-                <AgainstPlan lines={lines} payments={payments} />
+                <AgainstPlan lines={plain} payments={payments} />
                 <WhoIsPaying />
                 {vendorsQuoted}
                 <FromOtherEvents onSave={() => setDialog('save')} />
@@ -1362,9 +1367,9 @@ function MarginBlocks({
       'Its own price',
       null,
     ]),
-    ...(markups.prices[FEE_LINE.id] == null
-      ? [['Planning fee', 'Its own price', null] as [string, string, null]]
-      : []),
+    ...(lines.some((one) => one.id === FEE_LINE.id)
+      ? []
+      : [['Planning fee', 'Its own price', null] as [string, string, null]]),
   ];
 
   return (
