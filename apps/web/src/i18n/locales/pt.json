@@ -5594,6 +5594,7 @@
     "inCurrency": "Em {{currency}}, a moeda deste evento.",
     "numberHelp": "O número que o fornecedor dá a esta cotação, para o indicar logo no início de uma chamada.",
     "linesItAgrees": "Custos do orçamento acordados nesta cotação",
+    "noCostsToAgree": "This event has no costs yet, so the quote agrees none. Once it has some, correct the quote to add them.",
     "agreedIn": "Acordado na cotação de {{vendor}}",
     "notPricedLine": "Sem preço · {{category}}",
     "priced": "{{amount}} · {{category}}",
