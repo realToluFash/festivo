@@ -537,6 +537,10 @@ describe('the gaps of 8 Nov: refusals, ceilings and the reminder on the Budget t
       '2 payments due in the next 3 days on Adaeze & Tunde’s wedding',
     );
     expect(say.reminderMixed(1, 2, 3)).toBe('1 payment overdue, 2 due in the next 3 days');
+    expect(say.reminderMixed(1, 2, 1)).toBe('1 payment overdue, 2 due by tomorrow');
+    expect(say.reminderDue(2, 1, 'Adaeze & Tunde’s wedding')).toBe(
+      '2 payments due by tomorrow on Adaeze & Tunde’s wedding',
+    );
     expect(say.reminderOverdue(1, 'Adaeze & Tunde’s wedding')).toBe(
       '1 payment overdue on Adaeze & Tunde’s wedding',
     );
