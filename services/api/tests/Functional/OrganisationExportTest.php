@@ -110,6 +110,8 @@ final class OrganisationExportTest extends ApiTestCase
         'cost_markups' => ['id', 'event_id', 'category', 'markup_tenths', 'created_at', 'updated_at'],
         'quotes' => ['id', 'event_id', 'vendor_id', 'covers', 'amount_minor', 'amount_currency', 'quoted_on', 'reference', 'superseded_at', 'created_at'],
         'scheduled_payments' => ['id', 'event_id', 'vendor_id', 'description', 'amount_minor', 'amount_currency', 'due_on', 'created_at'],
+        'payers' => ['id', 'event_id', 'name', 'note', 'created_at', 'updated_at'],
+        'cost_payers' => ['id', 'event_id', 'line_id', 'payer_id', 'split', 'value', 'value_currency', 'rest_payer_id'],
     ];
 
     /** Every table the archive does not read, and why: a new table fails the test below until it is in one or the other. */

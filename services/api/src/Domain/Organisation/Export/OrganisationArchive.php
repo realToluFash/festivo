@@ -347,6 +347,22 @@ final readonly class OrganisationArchive
              WHERE ev.organisation_id = :organisation AND ev.deleted_at IS NULL
              ORDER BY ev.starts_at_utc, e.event_id, p.due_on, p.id
             SQL,
+        'payers' => <<<'SQL'
+            SELECT p.id, p.event_id, p.name, p.note, p.created_at, p.updated_at
+              FROM payers p
+              JOIN events ev ON ev.id = p.event_id
+             WHERE ev.organisation_id = :organisation AND ev.deleted_at IS NULL AND p.removed_at IS NULL
+             ORDER BY ev.starts_at_utc, p.event_id, p.id
+            SQL,
+        'cost_payers' => <<<'SQL'
+            SELECT pp.id, b.event_id, pp.line_id, pp.payer_id, b.payer_split AS split, pp.value,
+                   CASE WHEN b.payer_split = 'fixed' THEN ev.currency END AS value_currency, b.rest_payer_id
+              FROM payer_parts pp
+              JOIN budget_lines b ON b.id = pp.line_id
+              JOIN events ev ON ev.id = b.event_id
+             WHERE ev.organisation_id = :organisation AND ev.deleted_at IS NULL AND b.removed_at IS NULL
+             ORDER BY ev.starts_at_utc, b.event_id, pp.line_id, pp.id
+            SQL,
     ];
 
     /** Columns holding a date and time, written in UTC as `2026-11-05T14:20:07Z`. */
