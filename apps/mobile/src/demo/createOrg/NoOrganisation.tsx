@@ -10,7 +10,9 @@ import type { Tell } from '../../components/TodayParts.tsx';
 import { useLayout } from '../../layout/useLayout.ts';
 import { tokens } from '../../theme/tokens.ts';
 import { ManagedBanner } from '../Managed.tsx';
-import { useStartWalk } from '../OrgSwitcher.tsx';
+import { useNoOrgInvitations, useStartWalk } from '../OrgSwitcher.tsx';
+import { NoOrgInvitations } from './NoOrgInvitations.tsx';
+import { NO_ORG_SETTINGS } from '../settings/fromNone.ts';
 import { VIEWER } from '../OrgSwitcherModel.ts';
 import { DraftTile } from '../../components/DraftTile.tsx';
 import { Pill } from '../../components/SettingsParts.tsx';
@@ -18,7 +20,7 @@ import { TextAction } from '../../components/SummaryRows.tsx';
 
 const COLUMN = 560;
 
-/** Main's NoOrganisation, its words and order, in B's parts: no tab bar and no switcher, as nothing here belongs to an organisation. A managed account reads sc-563's banner where Start your own was. */
+/** Main's NoOrganisation, its words and order, in B's parts: no tab bar and no switcher, as nothing here belongs to an organisation. A managed account reads sc-563's banner where Start your own was; invitations waiting are listed in place of the way on. Your account opens Settings' own list, with Back to here in place of the tab bar (sc-75471). */
 export function NoOrganisation({ tell, managed = false }: { tell: Tell; managed?: boolean }) {
   const { t } = useTranslation();
   const { kind } = useLayout();
@@ -27,6 +29,7 @@ export function NoOrganisation({ tell, managed = false }: { tell: Tell; managed?
   const startWalk = useStartWalk(start);
   const email = VIEWER.email;
   const phone = kind === 'phone';
+  const invited = useNoOrgInvitations().invitations.length > 0;
 
   return (
     <ScrollView
@@ -53,9 +56,13 @@ export function NoOrganisation({ tell, managed = false }: { tell: Tell; managed?
         <Text size={16} weight="medium" style={styles.body}>
           {t('noOrganisation.body')}
         </Text>
-        <Text size={16} weight="medium" muted style={styles.body}>
-          {t('noOrganisation.wayOn', { email })}
-        </Text>
+        {invited ? (
+          <NoOrgInvitations />
+        ) : (
+          <Text size={16} weight="medium" muted style={styles.body}>
+            {t('noOrganisation.wayOn', { email })}
+          </Text>
+        )}
         {managed ? (
           <ManagedBanner testID="noOrganisation.managed" />
         ) : (
@@ -84,7 +91,7 @@ export function NoOrganisation({ tell, managed = false }: { tell: Tell; managed?
           <View style={styles.ways}>
             <TextAction
               label={t('noOrganisation.account')}
-              onPress={() => router.push('/demo/settings/account')}
+              onPress={() => router.push(NO_ORG_SETTINGS)}
               testID="noOrganisation.account"
             />
             <TextAction

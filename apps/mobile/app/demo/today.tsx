@@ -196,6 +196,7 @@ function DemoTodayScreen() {
       state={switcherStateOf(params.switcher)}
       create={createStateOf(params.create)}
       none={params.orgs === 'none'}
+      invited={params.state === 'invitations'}
       statusBar={bar}
       tell={tell}
     >

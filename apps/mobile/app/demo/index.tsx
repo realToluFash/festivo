@@ -408,6 +408,16 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
         href: '/demo/today?orgs=none&state=managed',
       },
       {
+        title: 'The way in · no organisation, invitations',
+        what: 'Two waiting under Invitations; Open moves into the one joined',
+        href: '/demo/today?orgs=none&state=invitations',
+      },
+      {
+        title: 'The way in · no organisation, Your account',
+        what: 'Settings’ own list, Back in place of the tab bar',
+        href: '/demo/settings?as=noOrg&from=none',
+      },
+      {
         title: 'Step 1 · nothing typed',
         what: 'The dashed plus, the keys up',
         href: '/demo/today?create=name',

@@ -301,9 +301,16 @@ export function founded(session: Session, place: Place): Session {
   return { ...now, places: [...others, place], current: place.id };
 }
 
-/** Folake in no organisation; founded() gives her one. */
-export function withoutPlaces(session: Session): Session {
-  return { ...session, places: [], current: '', invitations: [], outcomes: {}, offer: null };
+/** Folake in no organisation; founded() gives her one, and with `invited` her two invitations wait (sc-75471). */
+export function withoutPlaces(session: Session, invited = false): Session {
+  return {
+    ...session,
+    places: [],
+    current: '',
+    invitations: invited ? INVITATIONS : [],
+    outcomes: {},
+    offer: null,
+  };
 }
 
 export function placeOf(session: Session): Place | null {
