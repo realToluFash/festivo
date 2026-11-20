@@ -277,7 +277,17 @@ function BackLink({ to }: { to: string }) {
   );
 }
 
-function DueRow({ due, currency, to }: { due: DuePayment; currency: string; to?: string }) {
+function DueRow({
+  due,
+  currency,
+  to,
+  onMark,
+}: {
+  due: DuePayment;
+  currency: string;
+  to?: string;
+  onMark?: () => void;
+}) {
   const { t } = useTranslation();
   const locale = dateLocale();
 
@@ -286,8 +296,14 @@ function DueRow({ due, currency, to }: { due: DuePayment; currency: string; to?:
       title={due.vendor}
       lines={[t('quotes.dueLine', { what: due.description, day: shortDay(due.dueOn, locale) })]}
       tag={due.overdue ? <OverdueTag /> : undefined}
-      end={<Amount value={minorMoney(due.amount, currency, locale)} />}
+      end={
+        <>
+          <Amount value={minorMoney(due.amount, currency, locale)} />
+          {onMark != null && <span className="visually-hidden">{t('quotes.markPaid')}</span>}
+        </>
+      }
       {...(to == null ? {} : { to })}
+      {...(onMark == null ? {} : { onOpen: onMark })}
     />
   );
 }
@@ -312,9 +328,24 @@ export function QuotesNotLoaded({
   );
 }
 
-export function DueNext({ quotes, more }: { quotes: EventQuotes; more: string }) {
+/** Each row opens its own Mark paid; one just marked stays lit with Undo. */
+export function DueNext({
+  quotes,
+  more,
+  marked = null,
+  onMark,
+  onUndo,
+}: {
+  quotes: EventQuotes;
+  more: string;
+  marked?: { payment: ScheduledPayment; vendor: string } | null;
+  onMark?: (due: DuePayment) => void;
+  onUndo?: (payment: ScheduledPayment) => void;
+}) {
   const { t } = useTranslation();
-  const due = dueInOrder(quotes.due, dateLocale());
+  const locale = dateLocale();
+  const due = dueInOrder(quotes.due, locale);
+  const paid = marked?.payment.paid ?? null;
 
   return (
     <Block
@@ -328,13 +359,44 @@ export function DueNext({ quotes, more }: { quotes: EventQuotes; more: string })
         )
       }
     >
-      {due.length === 0 ? (
+      {due.length === 0 && paid == null ? (
         <p className="desk-line">{t('quotes.nothingDue')}</p>
       ) : (
         <Rows>
+          {marked != null && paid != null && (
+            <li data-payment={marked.payment.id}>
+              <BudgetRow
+                lead={<TickMark large />}
+                title={marked.vendor}
+                lines={[
+                  t('quotes.markedPaid', {
+                    amount: minorMoney(paid.amount, quotes.currency, locale),
+                    day: longDay(paid.paidOn, locale),
+                  }),
+                ]}
+                lit
+                end={
+                  onUndo != null && (
+                    <button
+                      type="button"
+                      className="desk-text"
+                      onClick={() => onUndo(marked.payment)}
+                    >
+                      <Glyph name="undo" size={16} weight={2.4} />
+                      {t('quotes.undo')}
+                    </button>
+                  )
+                }
+              />
+            </li>
+          )}
           {due.slice(0, DUE_NEXT).map((one) => (
-            <li key={one.id}>
-              <DueRow due={one} currency={quotes.currency} />
+            <li key={one.id} data-payment={one.id}>
+              <DueRow
+                due={one}
+                currency={quotes.currency}
+                {...(onMark == null ? {} : { onMark: () => onMark(one) })}
+              />
             </li>
           ))}
         </Rows>

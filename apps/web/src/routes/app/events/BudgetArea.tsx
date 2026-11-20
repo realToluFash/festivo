@@ -8,6 +8,7 @@ import {
   type EventQuote,
   type EventQuotes,
   type OrganisationEvent,
+  type DuePayment,
   type ScheduledPayment,
   VENDOR_CATEGORIES,
   type VendorCategory,
@@ -147,7 +148,7 @@ export function BudgetArea({ event }: { event: OrganisationEvent }) {
   const [retryingQuotes, setRetryingQuotes] = useState(false);
   const [earlier, setEarlier] = useState(false);
   const [told, setTold] = useState<string | null>(null);
-  const [marking, setMarking] = useState<ScheduledPayment | null>(null);
+  const [marking, setMarking] = useState<{ quoteId: string; paymentId: string } | null>(null);
   const [cancelling, setCancelling] = useState<ScheduledPayment | null>(null);
   const [making, setMaking] = useState(false);
   const [marked, setMarked] = useState<string | null>(null);
@@ -399,6 +400,21 @@ export function BudgetArea({ event }: { event: OrganisationEvent }) {
     );
   };
 
+  const paymentAt = (quoteId: string, paymentId: string) => {
+    const quote = quotes?.quotes.find((one) => one.id === quoteId) ?? null;
+    const payment = quote?.payments.find((one) => one.id === paymentId) ?? null;
+
+    return quote == null || payment == null ? null : { quote, payment };
+  };
+  const markingAt = marking == null ? null : paymentAt(marking.quoteId, marking.paymentId);
+  const homeMarked =
+    view.kind === 'home' && marked != null
+      ? (quotes?.quotes
+          .flatMap((quote) =>
+            quote.payments.map((payment) => ({ payment, vendor: quote.vendor.name })),
+          )
+          .find((one) => one.payment.id === marked && one.payment.paid != null) ?? null)
+      : null;
   const focusPayment = (id: string) => {
     let tries = 20;
     const go = () => {
@@ -434,7 +450,8 @@ export function BudgetArea({ event }: { event: OrganisationEvent }) {
       title.current?.focus();
       return;
     }
-    focusPayment(payment.id);
+    if (view.kind === 'home') title.current?.focus();
+    else focusPayment(payment.id);
   };
   const restorePayment = async (payment: ScheduledPayment) => {
     try {
@@ -516,7 +533,7 @@ export function BudgetArea({ event }: { event: OrganisationEvent }) {
               deleted={deleted}
               onMarkPaid={(payment) => {
                 setDeleted(null);
-                setMarking(payment);
+                setMarking({ quoteId: shownQuote.id, paymentId: payment.id });
               }}
               onUndo={(payment) => void undoPaid(payment)}
               onCancel={(payment) => {
@@ -656,7 +673,18 @@ export function BudgetArea({ event }: { event: OrganisationEvent }) {
                         </>
                       ) : (
                         <>
-                          <DueNext quotes={quotes} more={`${home}/due`} />
+                          <DueNext
+                            quotes={quotes}
+                            more={`${home}/due`}
+                            marked={homeMarked}
+                            {...(writes
+                              ? {
+                                  onMark: (due: DuePayment) =>
+                                    setMarking({ quoteId: due.quoteId, paymentId: due.id }),
+                                  onUndo: (payment: ScheduledPayment) => void undoPaid(payment),
+                                }
+                              : {})}
+                          />
                           <VendorsQuoted
                             quotes={quotes}
                             vendorAt={vendorAt}
@@ -697,19 +725,19 @@ export function BudgetArea({ event }: { event: OrganisationEvent }) {
             }}
           />
         )}
-        {marking != null && quotes != null && shownQuote != null && (
+        {markingAt != null && quotes != null && (
           <MarkPaidDialog
             eventId={event.id}
             eventName={event.name}
-            quote={shownQuote}
+            quote={markingAt.quote}
             quotes={quotes}
-            payment={marking}
+            payment={markingAt.payment}
             onClose={() => {
               setMarking(null);
               void readQuotes();
             }}
             onSaved={(words) => {
-              const id = marking.id;
+              const id = markingAt.payment.id;
               void readQuotes().then(() => {
                 setMarking(null);
                 setAmending((now) => (now?.id === id ? null : now));

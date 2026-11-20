@@ -1173,6 +1173,51 @@ describe('marking a payment paid (sc-88)', () => {
     ).toBe(true);
   });
 
+  it('opens Mark paid from a row of Due next, and keeps the row lit with Undo once marked', async () => {
+    signedIn();
+    let now = quotes({
+      due: [
+        {
+          id: 'p_deposit',
+          quoteId: 'q_savour',
+          vendor: 'Savour Kitchen',
+          description: 'Deposit',
+          amount: '4500.00',
+          dueOn: '2030-11-04',
+          overdue: false,
+        },
+      ],
+    });
+    serve({
+      'GET /api/events/ev_1/budget/quotes': () => json(now),
+      'POST /api/events/ev_1/budget/payments/p_deposit/paid': () => {
+        now = withPayments([
+          {
+            ...deposit,
+            paid: {
+              amount: '4500.00',
+              paidOn: '2026-11-20',
+              reference: null,
+              at: '',
+              by: { id: 'u_folake', name: 'Folake Adeyemi' },
+              difference: '0.00',
+            },
+          },
+        ]);
+        return json({ quote: now.quotes[0] });
+      },
+    });
+
+    fireEvent.click(await screen.findByRole('button', { name: /Savour Kitchen.*Mark paid/ }));
+    expect(within(dialog()).getByText('Savour Kitchen · Deposit · Adaeze and Tunde')).toBeTruthy();
+    fireEvent.click(within(dialog()).getByRole('button', { name: 'Mark paid' }));
+
+    const lit = (await screen.findAllByText(/^Marked paid: £4,500\.00 on /))
+      .map((one) => one.closest('li'))
+      .find((one) => one != null)!;
+    expect(within(lit).getByRole('button', { name: 'Undo' })).toBeTruthy();
+  });
+
   it('offers no Mark paid, Cancel payment or Add a payment already made after a downgrade', async () => {
     signedIn();
     serve(
