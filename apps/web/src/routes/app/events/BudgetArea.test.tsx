@@ -813,6 +813,65 @@ describe('the Budget while others change it (sc-85)', () => {
     expect(screen.queryByText(/in another tab/u)).toBeNull();
   });
 
+  it('never tells the reader their own emptied price came from another tab (sc-75696)', async () => {
+    signedIn();
+    const fee = (notPriced: boolean) =>
+      costed(
+        'fee',
+        'Planning fee',
+        {
+          category: 'other',
+          basis: 'fixed',
+          amount: '0.00',
+          notPriced,
+          quantity: QUANTITIES.fixed,
+        },
+        '0.00',
+      );
+    let emptied = false;
+    const priced = {
+      ...MARGIN_DINNER,
+      id: 'fee',
+      label: 'Planning fee',
+      category: 'other',
+      basis: 'fixed',
+      source: 'price',
+      markup: null,
+      price: '3000.00',
+    };
+    serve({
+      'GET /api/events/ev_1/budget': () =>
+        json(budget({ lines: [DINNER, fee(emptied)], notPriced: emptied ? 1 : 0 })),
+      'GET /api/events/ev_1/budget/margin': () => json(margin({ lines: [MARGIN_DINNER, priced] })),
+      'POST /api/events/ev_1/budget/subscriptions': hub,
+      'POST /api/events/ev_1/budget/margin/subscriptions': hub,
+      'PUT /api/events/ev_1/budget/lines/fee/charge': () => {
+        emptied = true;
+        return json(margin());
+      },
+    });
+    const plain = () =>
+      StubSource.made.find((one) =>
+        new URL(one.url).searchParams
+          .getAll('topic')
+          .includes(realtimeTopic('EventBudget', 'ev_1')),
+      );
+    await waitFor(() => expect(plain()).toBeDefined());
+
+    fireEvent.click(await screen.findByRole('button', { name: 'See margin' }));
+    fireEvent.click(await screen.findByRole('button', { name: /^Planning fee/u }));
+    fireEvent.change(screen.getByRole('textbox', { name: 'Charged at' }), {
+      target: { value: '' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+    expect((await screen.findAllByText('Price removed.')).length).toBeGreaterThan(0);
+    act(() => plain()!.publish());
+
+    fireEvent.click(screen.getByRole('button', { name: 'Hide margin' }));
+    expect((await screen.findAllByText(/1 cost not priced yet/u)).length).toBeGreaterThan(0);
+    expect(screen.queryByText(/in another tab/u)).toBeNull();
+  });
+
   it('says it is not live, as of when, hides the live line, and Try now asks again', async () => {
     vi.useFakeTimers({ shouldAdvanceTime: true, toFake: ['Date'] });
     vi.setSystemTime(new Date(2030, 10, 15, 14, 32));
