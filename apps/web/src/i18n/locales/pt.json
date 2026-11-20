@@ -4898,7 +4898,7 @@
     "exportLine": "Até {{atOnce, number}} entradas são transferidas de imediato. Se forem mais, preparamos o ficheiro e enviamos uma ligação por e-mail.",
     "downloading": "A transferir o registo de auditoria em {{format}}.",
     "preparing": "A preparar a sua exportação",
-    "preparingLine": "Vamos enviar uma ligação para {{email}} quando estiver pronta. Só funciona uma vez, durante 24 horas.",
+    "preparingLine": "Vamos enviar uma ligação para {{email}} quando estiver pronta. Pode ser transferida apenas por si, com sessão iniciada, durante 24 horas.",
     "tooMany": "As entradas correspondentes ultrapassam o limite de {{most, number}}. Restrinja os filtros e exporte novamente.",
     "linkEnded": "Esta ligação de transferência expirou. Exporte novamente as entradas.",
     "locked": "Disponível no plano Enterprise",

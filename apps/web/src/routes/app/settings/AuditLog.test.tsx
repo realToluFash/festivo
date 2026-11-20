@@ -432,7 +432,7 @@ describe('Data and control › Audit log (sc-611)', () => {
     expect(await screen.findByText('Preparing your export')).toBeDefined();
     expect(
       screen.getByText(
-        'We’ll email folake@ire.events a link when it’s ready. It works once, for 24 hours.',
+        'We’ll email folake@ire.events a link when it’s ready. It downloads only for you, signed in, for 24 hours.',
       ),
     ).toBeDefined();
     expect(screen.queryByRole('button', { name: 'Export these entries' })).toBeNull();
