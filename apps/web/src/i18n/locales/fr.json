@@ -5654,6 +5654,7 @@
     "paidLineDifference": "Réglé : {{amount}} le {{day}} · {{difference}} · Marqué par {{by}}",
     "paidLineNoName": "Réglé : {{amount}} le {{day}}",
     "paidLineDifferenceNoName": "Réglé : {{amount}} le {{day}} · {{difference}}",
+    "paidReference": "Reference: {{reference}}",
     "markedPaid": "Marqué comme réglé : {{amount}} le {{day}}.",
     "alreadyPaid": "{{name}} l’a déjà marqué comme réglé : rien n’a changé.",
     "alreadyPaidNoName": "Ce paiement a déjà été marqué comme réglé : rien n’a changé.",
@@ -5685,6 +5686,8 @@
     "nothingAbsorbs": "L’écart reste visible ; rien ne l’absorbe.",
     "addedByYou": "Réglé le {{day}}. Ajouté par vous comme déjà réglé : « Annuler » le supprime.",
     "addedBy": "Réglé le {{day}}. Ajouté par {{name}} comme déjà réglé : « Annuler » le supprime.",
+    "addedByYouHeld": "Paid {{day}}. Added by you as already paid.",
+    "addedByHeld": "Paid {{day}}. Added by {{name}} as already paid.",
     "deleted": "Paiement de {{amount}} au prestataire {{vendor}} du {{day}} supprimé : {{what}}.",
     "howItIsPaid": "Modalités de paiement",
     "shapeName": {

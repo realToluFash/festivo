@@ -210,11 +210,7 @@ export function MarkPaidDialog({
           label={t('quotes.amountPaid')}
           value={draft.amount}
           sign={currencySign(currency, locale)}
-          help={
-            difference == null
-              ? t('quotes.inCurrency', { currency })
-              : t('quotes.differenceStays', { difference })
-          }
+          {...(difference == null ? {} : { help: t('quotes.differenceStays', { difference }) })}
           error={problems.amount ?? null}
           inputRef={first}
           onChange={(amount) => set({ amount })}
@@ -469,7 +465,6 @@ export function MadeDialog({
           label={t('quotes.amountPaid')}
           value={draft.amount}
           sign={currencySign(currency, locale)}
-          help={t('quotes.inCurrency', { currency })}
           error={problems.amount ?? null}
           onChange={(amount) => set({ amount })}
         />
