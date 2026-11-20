@@ -1334,7 +1334,7 @@ function MarginBlocks({
   const rows: [string, string, MarkupStart | null][] = [
     [
       'Whole event',
-      markups.event == null ? 'No markup set' : `${markups.event}% markup`,
+      markups.event == null ? 'No markup set' : shown(markups.event),
       { scope: 'event', key: '' },
     ],
     ...(Object.entries(markups.categories) as [Category, number][]).map(
