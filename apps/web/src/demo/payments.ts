@@ -586,7 +586,7 @@ const ADDED: readonly Payment[] = [
     what: 'Buttonholes',
     amount: 12000,
     dueOn: '2026-11-02',
-    paid: { amount: 12000, on: '2026-11-02', by: READER, reference: '' },
+    paid: { amount: 12000, on: '2026-11-02', by: READER, reference: 'Cheque 004417' },
     cancelled: null,
   },
 ];
@@ -775,7 +775,10 @@ export function paymentsStart(
     case 'marked':
       return {
         ...start,
-        budget: change({ ...due, paid: { amount: more, on: TODAY, by: READER, reference: '' } }),
+        budget: change({
+          ...due,
+          paid: { amount: more, on: TODAY, by: READER, reference: 'FP-0001' },
+        }),
         marked: due.id,
         said: QW.markedPaid(money(more), longDay(TODAY)),
       };

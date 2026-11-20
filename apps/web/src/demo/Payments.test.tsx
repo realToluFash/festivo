@@ -128,12 +128,13 @@ describe('payments on a vendor’s page, shapes and the reminder setting, in A (
         ),
       ).toBeDefined();
       type(marking, 'Amount paid', '900.00');
+      type(marking, 'Reference', '  FP-0001 ');
       fireEvent.click(within(marking).getByRole('button', { name: 'Mark paid' }));
       await settle();
 
       expect(screen.queryByRole('dialog')).toBeNull();
       expect(rowOf('Balance').textContent).toBe(
-        'BalancePaid £900.00 on Tue, Nov 3 · £60.00 more than scheduled · Marked by Folake AdeyemiUndo',
+        'BalancePaid £900.00 on Tue, Nov 3 · £60.00 more than scheduled · Marked by Folake AdeyemiReference: FP-0001Undo',
       );
       expect(
         within(main()).getByText('Marked paid: £900.00 on Tuesday, November 3.'),

@@ -70,6 +70,7 @@ export const PW = {
     difference == null
       ? `Paid ${amount} on ${day} · Marked by ${by}`
       : `Paid ${amount} on ${day} · ${difference} · Marked by ${by}`,
+  paidReference: (reference: string) => `Reference: ${reference}`,
   howItIsPaid: 'How it is paid',
   shapes: {
     deposit: 'Deposit and balance',
