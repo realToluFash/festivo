@@ -264,6 +264,12 @@ From `CLAUDE.md` and the foundations. Each one is a decision, not a preference:
   unstyled, with no error and nothing red in a test that only finds the
   text. Its test asserts the card's `.desk` ancestor, as `SecurityDesk` and
   `NotificationsDesk` do (sc-35456).
+- **On the web, a row that bleeds past its column needs that much room at the page's
+  edge.** A row whose tint or open state reaches out by a negative inline margin
+  (`spaceMd`, say) overflows a column that already fills the page, as `--evWide` columns
+  do at 1280, and focusing it scrolls the page sideways, cutting the first letter off every
+  line. The column keeps a `margin-inline-end` (or padding) of the same size, as
+  `.bt .ev-right` and the vendor list do (sc-82, sc-92).
 
 ## 7. What the stack cannot express
 
