@@ -5407,7 +5407,7 @@
     "removed": "Coût {{name}} retiré. Le montant confirmé baisse de {{amount}}.",
     "removedNotPriced": "Coût {{name}} retiré. Il n’avait pas de prix : le total ne change pas.",
     "removedNothingYet": "Coût {{name}} retiré. Rien n’était encore compté pour lui : le total ne change pas.",
-    "removedCostNothing": "{{name}} removed. It cost nothing, so the total is the same.",
+    "removedCostNothing": "Coût {{name}} retiré. Il ne coûtait rien : le total ne change pas.",
     "back": "Coût {{name}} remis.",
     "notBack": "Coût non remis. Vérifiez votre connexion et réessayez.",
     "notBackStaff": "Coût non remis. Le budget a déjà un coût d’heures du personnel.",
