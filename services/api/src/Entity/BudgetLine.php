@@ -53,6 +53,14 @@ class BudgetLine
     #[ORM\Column(type: Types::TEXT, nullable: true)]
     private ?string $note;
 
+    /** What the client is charged (sc-92): this markup on the cost, in tenths of a percent, 0 being at cost by choice; null takes the category's or the event's. */
+    #[ORM\Column(type: Types::INTEGER, nullable: true)]
+    private ?int $markupTenths = null;
+
+    /** Or the line's own client price, in the currency's minor unit, for the whole line; never with a markup. */
+    #[ORM\Column(type: Types::BIGINT, nullable: true)]
+    private ?string $clientPriceMinor = null;
+
     /** Removed and waiting for its Undo (sc-85, decided 19 Nov): in no figure and no read, until BudgetEditor erases it a day after. */
     #[ORM\Column(type: Types::DATETIME_IMMUTABLE, nullable: true)]
     private ?DateTimeImmutable $removedAt = null;
@@ -135,6 +143,35 @@ class BudgetLine
     public function setNote(?string $note): void
     {
         $this->note = $note;
+    }
+
+    public function getMarkupTenths(): ?int
+    {
+        return $this->markupTenths;
+    }
+
+    public function getClientPriceMinor(): ?int
+    {
+        return null === $this->clientPriceMinor ? null : (int) $this->clientPriceMinor;
+    }
+
+    public function chargeWithMarkup(int $tenths): void
+    {
+        $this->markupTenths = $tenths;
+        $this->clientPriceMinor = null;
+    }
+
+    public function chargeAt(int $priceMinor): void
+    {
+        $this->clientPriceMinor = (string) $priceMinor;
+        $this->markupTenths = null;
+    }
+
+    /** Back to its category's markup, or the event's. */
+    public function chargeAsMarkedUp(): void
+    {
+        $this->markupTenths = null;
+        $this->clientPriceMinor = null;
     }
 
     public function isRemoved(): bool
