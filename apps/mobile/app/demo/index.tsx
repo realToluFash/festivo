@@ -2526,6 +2526,21 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
         href: '/demo/welcome?notice=byRule',
       },
       {
+        title: 'Welcome · Language sheet',
+        what: 'At the size set on the device: the title whole, Done beside it or under it',
+        href: '/demo/welcome?state=language',
+      },
+      {
+        title: 'Welcome · Language sheet in French',
+        what: 'Langue and Terminé; from the eighth step the line opens the list',
+        href: '/demo/welcome?state=languageFr',
+      },
+      {
+        title: 'Welcome · Language sheet, Terminé under the title',
+        what: 'The rule’s second row, shown whatever the row measures',
+        href: '/demo/welcome?state=languageFrUnder',
+      },
+      {
         title: 'Welcome · Terms pressed',
         what: 'Under the last button; names what the in-app browser opens',
         href: '/demo/legal-link?doc=terms',
