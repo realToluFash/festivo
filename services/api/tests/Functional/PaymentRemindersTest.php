@@ -268,6 +268,45 @@ final class PaymentRemindersTest extends ApiTestCase
         self::assertSame([], $this->inApp());
     }
 
+    #[Test]
+    public function nothingGoesWhileTheEventIsPausedOrOnceItIsCalledOff(): void
+    {
+        $paused = $this->newEvent();
+        $this->payment('Deposit', '2027-03-10', $paused, $this->quote($paused));
+        $this->payment('Balance', '2027-03-10');
+        $this->live($paused);
+        $this->live($this->eventId);
+        $this->as($this->owner, 'POST', '/api/events/' . $paused . '/pause');
+        self::assertSame(200, $this->statusCode(), Json\encode($this->last()));
+        $this->as($this->owner, 'POST', '/api/events/' . $this->eventId . '/end');
+        self::assertSame(200, $this->statusCode(), Json\encode($this->last()));
+
+        self::mockTime(new DateTimeImmutable('2027-03-07T10:00:00Z'));
+        self::runUntilIdle();
+        self::mockTime(new DateTimeImmutable('2027-03-11T10:00:00Z'));
+        self::runUntilIdle();
+
+        self::assertSame([], $this->inApp());
+    }
+
+    #[Test]
+    public function aBalanceDueAfterTheEventHasEndedIsStillReminded(): void
+    {
+        $this->live($this->eventId);
+        $this->payment('Balance', '2027-07-01');
+
+        self::mockTime(new DateTimeImmutable('2027-06-28T10:00:00Z'));
+        self::runUntilIdle();
+
+        self::assertSame(['1 payment due in the next 3 days on Summer wedding'], $this->inApp()[$this->owner->getId()->toRfc4122()] ?? []);
+    }
+
+    private function live(string $eventId): void
+    {
+        $this->as($this->owner, 'POST', '/api/events/' . $eventId . '/make-live');
+        self::assertSame(200, $this->statusCode(), Json\encode($this->last()));
+    }
+
     private static function runUntilIdle(): void
     {
         $worker = self::service(NotificationWorker::class);
@@ -344,6 +383,7 @@ final class PaymentRemindersTest extends ApiTestCase
             'endsAt' => '2027-06-13T01:00',
             'timeZone' => 'Europe/London',
             'currency' => 'GBP',
+            'hosts' => ['Funmi', 'Tayo'],
         ]);
         self::assertSame(201, $this->statusCode(), Json\encode($body));
 
