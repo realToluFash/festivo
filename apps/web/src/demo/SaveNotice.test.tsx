@@ -223,3 +223,49 @@ describe('Reply by gets the role’s refusal, not Not saved (sc-74926)', () => {
     }
   });
 });
+
+describe('A save refused 404 says the event is no longer available, with no retry (sc-75689)', () => {
+  const GONE = 'Nothing was changed. This event is no longer available.';
+
+  it.each([
+    ['nameGone', 'Event name', nameOf],
+    ['currencyGone', 'Currency', currencyOf],
+  ])('%s: above Cancel and Save, once however often', SLOW, async (state, name, unchanged) => {
+    const before = unchanged();
+
+    await page(state);
+
+    const save = within(part(name)).getByRole('button', { name: 'Save' });
+
+    save.focus();
+    fireEvent.click(save);
+    fireEvent.click(save);
+
+    const notice = directlyAboveSave(part(name));
+
+    expect(notice.textContent).toContain(GONE);
+    expect(notice.textContent).not.toContain(en.eventEdit.notSaved);
+    expect(within(part(name)).queryByRole('button', { name: /try again/iu })).toBeNull();
+    expect(document.activeElement).toBe(save);
+    expect(scrolled).toHaveBeenCalled();
+    expect(unchanged()).toBe(before);
+  });
+
+  it('Reply by, through Close replies sooner, keeps what was typed', SLOW, async () => {
+    await page('replyByGone');
+
+    const replyBy = () => part('Reply by');
+    const field = within(replyBy()).getByLabelText(/^Reply by/u) as HTMLInputElement;
+
+    fireEvent.click(within(replyBy()).getByRole('button', { name: 'Save' }));
+    fireEvent.click(
+      within(await screen.findByRole('alertdialog')).getByRole('button', {
+        name: 'Close replies sooner',
+      }),
+    );
+
+    expect(directlyAboveSave(replyBy()).textContent).toContain(GONE);
+    expect(field.value).toBe('2026-11-03');
+    expect(within(replyBy()).queryByRole('button', { name: /try again/iu })).toBeNull();
+  });
+});

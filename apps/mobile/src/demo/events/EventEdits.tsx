@@ -360,6 +360,7 @@ const REPLY_BY_TYPED: Partial<Record<EventDemoState, string>> = {
   replyByError: '2026-11-05',
   replyBySooner: '2026-11-03',
   replyByNow: '2026-11-02',
+  replyByGone: '2026-11-03',
 };
 
 /** Reply by (sc-3780): an optional day; a day on or after the start is refused, and closing replies sooner asks first. */
@@ -377,6 +378,7 @@ function ReplyByEdit(edit: EditProps) {
       : null,
   );
   const [picking, setPicking] = useState<Picking | null>(null);
+  const [gone, setGone] = useState(false);
   const box = useRef<ViewInstance>(null);
   const [aim, setAim] = useState(0);
   const next = value === '' ? null : value;
@@ -384,7 +386,8 @@ function ReplyByEdit(edit: EditProps) {
   const keep = saved == null ? W.keepEditing : say.keepDate(formatWallDay(saved, locale));
   const done = () => {
     setAsking(null);
-    edit.onReplyBy?.(next);
+    if (start === 'replyByGone') setGone(true);
+    else edit.onReplyBy?.(next);
   };
   const save = () => {
     if (wrong) {
@@ -443,6 +446,7 @@ function ReplyByEdit(edit: EditProps) {
       edit={edit}
       ask={ask}
       over={pickerOver(picking, locale, () => setPicking(null))}
+      failed={gone ? W.eventGone : null}
     >
       <EventField
         label={W.replyBy}
@@ -822,15 +826,27 @@ export function CurrencySearch({
 const NAME_MOST = 120;
 
 function NameEdit(edit: EditProps) {
-  const [name, setName] = useState(edit.start === 'nameBlank' ? '' : edit.event.name);
+  const [name, setName] = useState(
+    edit.start === 'nameBlank'
+      ? ''
+      : edit.start === 'nameGone'
+        ? `${edit.event.name}, the reception`
+        : edit.event.name,
+  );
+  const [gone, setGone] = useState(false);
   const blank = name.trim() === '';
 
   return (
     <Shell
       part="name"
       changed={name.trim() !== edit.event.name}
-      onSave={() => !blank && edit.onSaved({ ...edit.event, name: name.trim() })}
+      onSave={() => {
+        if (blank) return;
+        if (edit.start === 'nameGone') setGone(true);
+        else edit.onSaved({ ...edit.event, name: name.trim() });
+      }}
       edit={edit}
+      failed={gone ? W.eventGone : null}
     >
       <NameView
         name={name}

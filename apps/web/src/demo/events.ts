@@ -626,6 +626,7 @@ export const EVENT_WORDS = {
   hostRemoved: (name: string) => `${name} removed`,
   searchTypes: 'Search types',
   currencyInUse: 'The currency cannot change once amounts are recorded against this event.',
+  eventGone: 'Nothing was changed. This event is no longer available.',
   nameCount: (count: number, most: number) => `${count} of ${most} characters`,
   nameBlank: 'Give the event a name.',
   nameTooLong: (most: number) => `Shorten the name to ${most} characters or fewer.`,
@@ -1217,11 +1218,13 @@ export type EditState =
   | 'currencyRefused'
   | 'currencyNotSaved'
   | 'currencyForbidden'
+  | 'currencyGone'
   | 'currencyChangedElsewhere'
   | 'name'
   | 'nameBlank'
   | 'nameNotSaved'
   | 'nameForbidden'
+  | 'nameGone'
   | 'nameChangedElsewhere'
   | 'cover'
   | 'coverRefused'
@@ -1236,6 +1239,7 @@ export type EditState =
   | 'replyBySooner'
   | 'replyByNow'
   | 'replyByForbidden'
+  | 'replyByGone'
   | 'replyBySaved'
   | 'replyByRemoved';
 
@@ -1315,11 +1319,13 @@ export const EVENT_STATES: Record<EventStateName, string> = {
   currencyRefused: 'evt-wed-4',
   currencyNotSaved: 'evt-wed-4',
   currencyForbidden: 'evt-wed-4',
+  currencyGone: 'evt-wed-4',
   currencyChangedElsewhere: 'evt-wed-4',
   name: 'evt-wed-4',
   nameBlank: 'evt-wed-4',
   nameNotSaved: 'evt-wed-4',
   nameForbidden: 'evt-wed-4',
+  nameGone: 'evt-wed-4',
   nameChangedElsewhere: 'evt-wed-4',
   cover: 'evt-wed-4',
   coverRefused: 'evt-wed-4',
@@ -1334,6 +1340,7 @@ export const EVENT_STATES: Record<EventStateName, string> = {
   replyBySooner: 'evt-wed-4',
   replyByNow: 'evt-wed-4',
   replyByForbidden: 'evt-wed-4',
+  replyByGone: 'evt-wed-4',
   replyBySaved: 'evt-wed-4',
   replyByRemoved: 'evt-wed-4',
   pause: 'evt-wed-4',
@@ -1448,12 +1455,14 @@ export function partOf(state: EventStateName | null): Part | null {
     case 'currencyRefused':
     case 'currencyNotSaved':
     case 'currencyForbidden':
+    case 'currencyGone':
     case 'currencyChangedElsewhere':
       return 'currency';
     case 'name':
     case 'nameBlank':
     case 'nameNotSaved':
     case 'nameForbidden':
+    case 'nameGone':
     case 'nameChangedElsewhere':
       return 'name';
     case 'cover':
@@ -1470,6 +1479,7 @@ export function partOf(state: EventStateName | null): Part | null {
     case 'replyBySooner':
     case 'replyByNow':
     case 'replyByForbidden':
+    case 'replyByGone':
       return 'replyBy';
     default:
       return null;
@@ -1726,6 +1736,8 @@ export const EVENTS_PAGES: readonly { name: string; states: readonly DemoLink[] 
       on('currencyNotSaved', 'Currency, Save fails: Not saved'),
       on('currencyForbidden', 'Currency, a role changed while open (403)'),
       on('currencyChangedElsewhere', 'Currency, changed elsewhere (409)'),
+      on('nameGone', 'Event name, the event no longer available (404)'),
+      on('currencyGone', 'Currency, the event no longer available (404)'),
     ],
   },
   {
@@ -1752,6 +1764,7 @@ export const EVENTS_PAGES: readonly { name: string; states: readonly DemoLink[] 
       on('replyBySooner', 'Reply by, moved sooner'),
       on('replyByNow', 'Reply by, moved into the past'),
       on('replyByForbidden', 'Reply by, a role changed while open (403): above Cancel and Save'),
+      on('replyByGone', 'Reply by, the event no longer available (404): above Cancel and Save'),
       on('replyBySaved', 'Reply by, saved'),
       on('replyByRemoved', 'Reply by, removed'),
     ],

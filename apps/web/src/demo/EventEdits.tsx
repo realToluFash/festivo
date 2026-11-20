@@ -46,7 +46,8 @@ import {
   replyByAfterStart,
 } from './replyBy.ts';
 import { NotBuilt } from './EventParts.tsx';
-import { saveAnswerOf } from './saveAnswer.ts';
+import { DemoSaveNotice } from './DemoSaveNotice.tsx';
+import { saveAnswerOf, useDemoAnswer } from './saveAnswer.ts';
 import { useSaveAnswer } from '../components/saveAnswer.ts';
 import { SaveNotice } from '../components/SaveNotice.tsx';
 import {
@@ -696,7 +697,7 @@ export function CurrencyPart({ event, state, onDirty, onClose, onSave, onLatest 
   );
   const [refused, setRefused] = useState(refusing ? 0 : null);
   const [pending, setPending] = useState(answers);
-  const answered = useSaveAnswer();
+  const answered = useDemoAnswer();
   const notice = useRef<HTMLDivElement>(null);
   const changed = picked !== event.currency;
 
@@ -726,7 +727,7 @@ export function CurrencyPart({ event, state, onDirty, onClose, onSave, onLatest 
         </Broken>
       )}
       <Radios legend={W.currency} choices={CURRENCY_CHOICES} picked={picked} onPick={setPicked} />
-      <SaveNotice
+      <DemoSaveNotice
         answered={answered}
         onLatest={() => {
           const latest = latestOf(event);
@@ -747,7 +748,7 @@ export function NamePart({ event, state, onDirty, onClose, onSave, onLatest }: P
     state === 'nameBlank' ? '' : answers == null ? event.name : `${event.name}, the reception`,
   );
   const [pending, setPending] = useState(answers);
-  const answered = useSaveAnswer();
+  const answered = useDemoAnswer();
   const [tried, setTried] = useState(state === 'nameBlank');
   const field = useRef<HTMLInputElement>(null);
   const length = eventNameLength(name);
@@ -784,7 +785,7 @@ export function NamePart({ event, state, onDirty, onClose, onSave, onLatest }: P
         onChange={setName}
       />
       <OnceSaved />
-      <SaveNotice
+      <DemoSaveNotice
         answered={answered}
         onLatest={() => {
           const latest = latestOf(event);
