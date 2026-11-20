@@ -59,7 +59,11 @@ final class Version20261120120000 extends AbstractMigration
     {
         $this->addSql('ALTER TABLE budget_lines DROP CONSTRAINT FK_BUDGET_LINES_REST_PAYER');
         $this->addSql('DROP INDEX idx_budget_line_rest_payer');
-        $this->addSql('ALTER TABLE budget_lines DROP payer_split, DROP rest_payer_id');
+        $this->addSql(<<<'SQL'
+            ALTER TABLE budget_lines
+                DROP payer_split,
+                DROP rest_payer_id
+            SQL);
         $this->addSql('DROP TABLE payer_parts');
         $this->addSql('DROP TABLE payers');
     }
