@@ -62,8 +62,18 @@ describe('Settings opened from no organisation (sc-75471)', () => {
     expect(frame).toMatch(
       /const floatingTabs = framed && kind === 'phone' && inEvent == null && !openedFromNone;/u,
     );
+    expect(frame).toMatch(/const sideCard = framed && kind === 'tabletLandscape';/u);
+    expect(frame).toMatch(/const sidebar = sideCard && !openedFromNone;/u);
+  });
+
+  it('sits on its side in its card on the grey ground, alone there as the demo draws it', () => {
+    expect(frame).toMatch(/style=\{\[styles\.root, sideCard && side\.chrome\]\}/u);
     expect(frame).toMatch(
-      /const sidebar = framed && kind === 'tabletLandscape' && !openedFromNone;/u,
+      /styles\.column, sideCard && side\.card, sideCard && !sidebar && styles\.alone\]/u,
+    );
+    expect(frame).toMatch(/alone: \{ marginLeft: tokens\.spaceMd \}/u);
+    expect(read('src', 'demo', 'settings', 'Frame.tsx')).toMatch(
+      /alone: \{ marginLeft: tokens\.spaceMd \}/u,
     );
   });
 
