@@ -448,7 +448,7 @@
     "payments.already_paid_by": "{name} has already marked this paid, so nothing has changed.",
     "payments.already_paid": "This has already been marked paid, so nothing has changed.",
     "payments.cancelled": "This payment has been cancelled, so it cannot be marked paid.",
-    "validation.payment_paid_on_required": "Enter the date paid.",
+    "validation.payment_paid_on_required": "Enter the date it was paid.",
     "validation.payment_paid_in_future": "The date paid cannot be in the future. Choose today or an earlier date.",
     "validation.payment_reference_too_long": "Shorten the reference to {max} characters or fewer.",
     "validation.payment_reason_too_long": "Shorten the reason to {max} characters or fewer.",

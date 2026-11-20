@@ -84,7 +84,7 @@ export interface AuditEntry {
   /** The event it is on, for the Event filter. */
   event: string | null;
   changes: string | null;
-  /** What an entry that changed nothing recorded, each a row of its own: an export's format, filters and count. */
+  /** What an entry recorded beside any change, each a row of its own: an export's format, filters and count, or a plan change's reason. */
   recorded?: readonly { label: string; value: string }[];
   address: string | null;
   device: string | null;
@@ -329,6 +329,20 @@ export const ENTRIES: readonly AuditEntry[] = [
     on: { name: TOLA, href: null, gone: false },
     event: TOLA,
     reference: '1c9f5a8e-3d7b-4e2c-b6a1-9f4d2e7c0b38',
+  },
+  {
+    ...quiet,
+    id: 'planChanged',
+    at: '2026-10-16T08:20:14Z',
+    what: 'Changed the plan of Ire Events',
+    who: 'Soirely support',
+    whoEmail: null,
+    type: 'Organisation',
+    action: 'organisation.plan_changed',
+    on: ORGANISATION,
+    reference: '3b8e1f6a-0c4d-4a92-b7e5-6d2f9a1c8e07',
+    changes: 'Plan: Free → Enterprise',
+    recorded: [{ label: 'Reason', value: 'QA retest' }],
   },
   {
     ...quiet,

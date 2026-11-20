@@ -92,13 +92,14 @@ export interface Entry {
   /** The event it belongs to, for the Event filter; an organisation's dish has none. */
   event?: string;
   changes?: string;
-  /** What an entry that changed nothing recorded, each a row of its own: an export's format, filters and count. */
+  /** What an entry recorded beside any change, each a row of its own: an export's format, filters and count, or a plan change's reason. */
   recorded?: readonly { label: string; value: string }[];
   address?: string;
   device?: string;
 }
 
 export const SYSTEM = 'System';
+export const SUPPORT = 'Soirely support';
 export const PEOPLE = [
   { name: VIEWERS.folake.name, email: VIEWERS.folake.id, left: false },
   { name: VIEWERS.julien.name, email: VIEWERS.julien.id, left: false },
@@ -321,6 +322,18 @@ export const ENTRIES: readonly Entry[] = [
     reference: '4d2c8e6a-9f17-4b35-8e0d-a7b1c3f59e28',
     on: { name: 'Tola & Seun’s wedding' },
     event: 'Tola & Seun’s wedding',
+  },
+  {
+    id: 'planChanged',
+    at: '2026-10-16T09:20:14+01:00',
+    what: `Changed the plan of ${ORG}`,
+    who: SUPPORT,
+    type: 'Organisation',
+    action: 'organisation.plan_changed',
+    on: ON_ORG,
+    reference: '3b8e1f6a-0c4d-4a92-b7e5-6d2f9a1c8e07',
+    changes: 'Plan: Free → Enterprise',
+    recorded: [{ label: 'Reason', value: 'QA retest' }],
   },
   {
     id: 'proved',
@@ -580,6 +593,7 @@ export const AUDIT_STATES = [
   'detail_section',
   'detail_dish',
   'detail_export',
+  'detail_plan',
   'export',
   'export_small',
   'export_preparing',
@@ -601,6 +615,7 @@ const DETAILS: Record<string, string> = {
   detail_section: 'floorLead',
   detail_dish: 'dish',
   detail_export: 'exported',
+  detail_plan: 'planChanged',
 };
 
 export function auditStart(state: string): AuditStart {

@@ -64,7 +64,7 @@ describe('the audit log’s states (sc-611)', () => {
       ['Today · Monday, Oct 19', 4],
       ['Sunday, Oct 18', 7],
       ['Saturday, Oct 17', 2],
-      ['Friday, Oct 16', 4],
+      ['Friday, Oct 16', 5],
       ['Tuesday, Oct 6', 2],
     ]);
     expect(
@@ -160,7 +160,7 @@ describe('the audit log’s states (sc-611)', () => {
       'The start date must be on or before the end date.',
     );
     const range = { from: '2026-10-16', to: '2026-10-17' };
-    expect(matching({ ...NO_FILTERS, range })).toHaveLength(6);
+    expect(matching({ ...NO_FILTERS, range })).toHaveLength(7);
     expect(buttonWords({ ...NO_FILTERS, range }, 'en-US').dates).toBe('Oct 16 to Oct 17');
   });
 
@@ -275,6 +275,22 @@ describe('the audit log’s states (sc-611)', () => {
       Filters: 'Person: Priya Shah · Type: Event access',
       Entries: '3',
     });
+    expect(Object.keys(detail('detail_plan'))).toEqual([
+      'When',
+      'Who',
+      'What',
+      'On',
+      'Changes',
+      'Reason',
+      'Type and action',
+      'Reference',
+    ]);
+    expect(detail('detail_plan')).toMatchObject({
+      Who: 'Soirely support',
+      Changes: 'Plan: Free → Enterprise',
+      Reason: 'QA retest',
+    });
+    expect(Object.values(detail('detail_plan')).join('\n')).not.toContain('None →');
     for (const entry of ENTRIES.filter(({ type }) => type === 'Guests'))
       expect(entry.what).not.toMatch(/Emeka|Nwosu/u);
     for (const entry of ENTRIES.filter(({ type }) => type !== 'Sign-in and security')) {

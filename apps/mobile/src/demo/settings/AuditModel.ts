@@ -35,6 +35,7 @@ export const AUDIT_STATES = [
   'detail_section',
   'detail_dish',
   'detail_export',
+  'detail_plan',
   'export',
   'export_small',
   'export_preparing',
@@ -161,6 +162,8 @@ export function auditStart(state: AuditState): AuditStart {
       return detail('dish');
     case 'detail_export':
       return detail('exported');
+    case 'detail_plan':
+      return detail('planChanged');
     case 'export':
       return { ...base, exporting: { format: 'csv', refused: false } };
     case 'export_small':
