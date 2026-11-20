@@ -5679,7 +5679,7 @@
     "descriptionTooLong": "Raccourcissez l’objet du paiement à {{count, number}} caractères maximum.",
     "beforeFirstQuote": "La date de règlement ne peut pas précéder le devis du prestataire {{vendor}} daté du {{day}}. Choisissez cette date ou une date ultérieure.",
     "addAsPaid": "Ajouter comme réglé",
-    "paidTo": "Payé à {{vendor}}",
+    "paidTo": "Réglé au prestataire {{vendor}}",
     "nowWithThis": "{{now}} actuellement, {{after}} avec ce paiement",
     "overWithThis": "Avec ce paiement, l’échéancier dépasse le devis de {{gap}}.",
     "nothingAbsorbs": "L’écart reste visible ; rien ne l’absorbe.",
