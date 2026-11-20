@@ -46,7 +46,8 @@ export const QW = {
   inCurrency: 'In GBP, the currency this event uses.',
   numberHelp: 'The number the vendor uses for this quote, so a call can start with it.',
   linesItAgrees: 'Budget lines it agrees',
-  noCostLines: 'This event has no costs yet, so there are no budget lines to agree.',
+  noCostLines:
+    'This event has no costs yet, so the quote agrees none. Once it has some, correct the quote to add them.',
   agreedIn: (vendor: string) => `Agreed in the quote from ${vendor}`,
   notPricedLine: (category: string) => `Not priced · ${category}`,
   priced: (amount: string, category: string) => `${amount} · ${category}`,

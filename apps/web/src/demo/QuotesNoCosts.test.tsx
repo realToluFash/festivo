@@ -11,7 +11,8 @@ const SLOW = { timeout: 20000 };
 const BUDGET = '/demo/events/evt-wed-4?area=budget';
 const READ_ONLY =
   'Quotes and payment schedules are read-only because this organisation’s plan no longer includes them. Nothing has been removed.';
-const NO_LINES = 'This event has no costs yet, so there are no budget lines to agree.';
+const NO_LINES =
+  'This event has no costs yet, so the quote agrees none. Once it has some, correct the quote to add them.';
 
 function main(): HTMLElement {
   return screen.getByRole('main');
