@@ -31,9 +31,7 @@ use Psr\Clock\ClockInterface;
 use SensitiveParameter;
 use Symfony\Contracts\Translation\TranslatorInterface;
 
-/**
- * Each person's own link (sc-3912). Every delivery issues its own 128-bit token, kept only as its SHA-256, and none ends another; Replace link and removal end them all. How far the link got lives on the person, and only moves forward.
- */
+/** Each person's own link (sc-3912): a token per delivery, kept only as its SHA-256; how far the link got lives on the person and only moves forward. */
 final readonly class StaffLinks
 {
     public const string ISSUED = 'staff.link_issued';
@@ -62,9 +60,7 @@ final readonly class StaffLinks
     ) {
     }
 
-    /**
-     * The link with its plain token, returned once and never kept. A copy or share on a row reading No link yet, Copied or Shared records it; on one reading Link sent or Link opened the row stays as it is.
-     */
+    /** The link with its plain token, returned once and never kept. */
     public function deliver(StaffMember $entry, bool $shared, User $by): string
     {
         if (null === $entry->getMobile()) {
@@ -90,7 +86,6 @@ final readonly class StaffLinks
         return $this->webOrigin . self::PATH . $token;
     }
 
-    /** Only after a copy or share; Link sent and Link opened stay as they are. */
     public function markSent(StaffMember $entry, User $by): void
     {
         $this->entityManager->wrapInTransaction(function () use ($entry, $by): void {
@@ -106,7 +101,6 @@ final readonly class StaffLinks
         $this->staffRosterPublisher->publish($entry->getEvent());
     }
 
-    /** Ends every link the person was given, and the row reads No link yet again. */
     public function replace(StaffMember $entry, User $by): void
     {
         $this->entityManager->wrapInTransaction(function () use ($entry, $by): void {
@@ -120,13 +114,11 @@ final readonly class StaffLinks
         $this->staffRosterPublisher->publish($entry->getEvent());
     }
 
-    /** Unknown, replaced and removed tokens all come back null from the one lookup by hash. */
     public function find(#[SensitiveParameter] string $token): ?StaffMember
     {
         return $this->staffLinkTokenRepository->findOneByTokenHash(LinkTokens::hash($token))?->getStaffMember();
     }
 
-    /** Recorded by the page once it is visible, never by a fetch, and only inside the window. */
     public function opened(StaffMember $entry): void
     {
         if (!$this->window($entry)->open || StaffLinkStatus::Opened === $entry->getLinkStatus()) {
@@ -166,8 +158,6 @@ final readonly class StaffLinks
     }
 
     /**
-     * Everyone on the event holding a link not yet ended, for the access list (sc-71).
-     *
      * @param list<StaffMember> $staff
      *
      * @return list<array{entry: StaffMember, until: DateTimeImmutable}>

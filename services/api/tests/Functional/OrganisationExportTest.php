@@ -147,6 +147,7 @@ final class OrganisationExportTest extends ApiTestCase
         'scheduled_notifications' => "notifications: one person's, or deliveries",
         'schema_probes' => "Soirely's own records",
         'screen_links' => 'a link that opens without signing in',
+        'staff_link_tokens' => 'a link that opens without signing in',
         'sign_in_proofs' => "sign-in credentials (sc-611's rule)",
         'subscription_changes' => "billing: Soirely's own records, the terms it sells on (pm, 19 Nov)",
         'subscriptions' => "billing: Soirely's own records, the terms it sells on (pm, 19 Nov)",
