@@ -18,12 +18,39 @@ export interface QuoteVersion {
   supersededAt: string | null;
 }
 
+export interface PaymentPerson {
+  id: string;
+  name: string;
+}
+
+export interface PaymentPaid {
+  amount: string;
+  /** A day, YYYY-MM-DD, in the event's time zone. */
+  paidOn: string;
+  reference: string | null;
+  at: string;
+  /** Null once the person who marked it has left Soirely. */
+  by: PaymentPerson | null;
+  /** Paid less scheduled: shown, never absorbed. */
+  difference: string;
+}
+
+export interface PaymentCancelled {
+  at: string;
+  by: PaymentPerson | null;
+  reason: string | null;
+}
+
 export interface ScheduledPayment {
   id: string;
   description: string;
   amount: string;
   dueOn: string;
   overdue: boolean;
+  /** Added as a payment already made: Undo deletes it. */
+  addedAsPaid: boolean;
+  paid: PaymentPaid | null;
+  cancelled: PaymentCancelled | null;
 }
 
 export interface EventQuote {
@@ -37,6 +64,9 @@ export interface EventQuote {
   scheduled: string;
   /** Scheduled less quoted: below zero while part of the quote is not scheduled yet. */
   difference: string;
+  paid: string;
+  outstanding: string;
+  cancelled: string;
 }
 
 export interface DuePayment {
@@ -56,6 +86,7 @@ export interface EventQuotes {
   entitled: boolean;
   quotes: EventQuote[];
   due: DuePayment[];
+  totals: { paid: string; owed: string; overdue: string; overdueCount: number };
 }
 
 export interface OfferedVendor extends QuotedVendor {
@@ -80,6 +111,17 @@ export interface PaymentTyped {
   amount: string;
   currency: string;
   dueOn: string;
+}
+
+export interface PaidTyped {
+  amount: string;
+  currency: string;
+  paidOn: string;
+  reference: string;
+}
+
+export interface MadeTyped extends PaidTyped {
+  description: string;
 }
 
 type Row = Record<string, unknown>;
@@ -117,6 +159,39 @@ function asVersion(value: unknown): QuoteVersion {
   };
 }
 
+function asPerson(value: unknown): PaymentPerson | null {
+  const row = record(value);
+
+  return typeof row.id === 'string' ? { id: row.id, name: text(row.name) } : null;
+}
+
+function asPaid(value: unknown): PaymentPaid | null {
+  if (value == null) {
+    return null;
+  }
+
+  const row = record(value);
+
+  return {
+    amount: text(row.amount) || '0',
+    paidOn: text(row.paidOn),
+    reference: maybe(row.reference),
+    at: text(row.at),
+    by: asPerson(row.by),
+    difference: text(row.difference) || '0',
+  };
+}
+
+function asCancelled(value: unknown): PaymentCancelled | null {
+  if (value == null) {
+    return null;
+  }
+
+  const row = record(value);
+
+  return { at: text(row.at), by: asPerson(row.by), reason: maybe(row.reason) };
+}
+
 function asPayment(value: unknown): ScheduledPayment {
   const row = record(value);
 
@@ -126,6 +201,9 @@ function asPayment(value: unknown): ScheduledPayment {
     amount: text(row.amount) || '0',
     dueOn: text(row.dueOn),
     overdue: row.overdue === true,
+    addedAsPaid: row.addedAsPaid === true,
+    paid: asPaid(row.paid),
+    cancelled: asCancelled(row.cancelled),
   };
 }
 
@@ -144,6 +222,9 @@ export function asEventQuote(value: unknown): EventQuote {
     payments: list(row.payments).map(asPayment),
     scheduled: text(row.scheduled) || '0',
     difference: text(row.difference) || '0',
+    paid: text(row.paid) || '0',
+    outstanding: text(row.outstanding) || '0',
+    cancelled: text(row.cancelled) || '0',
   };
 }
 
@@ -168,6 +249,12 @@ export function asEventQuotes(value: unknown): EventQuotes {
         overdue: row.overdue === true,
       };
     }),
+    totals: {
+      paid: text(record(body.totals).paid) || '0',
+      owed: text(record(body.totals).owed) || '0',
+      overdue: text(record(body.totals).overdue) || '0',
+      overdueCount: Number(record(body.totals).overdueCount) || 0,
+    },
   };
 }
 

@@ -52,12 +52,13 @@ final class ScheduledPaymentRepository extends ServiceEntityRepository implement
             ->getResult();
     }
 
-    /** Paid and cancelled payments count: an engagement with any payment at all has a schedule. */
-    public function hasAny(VendorEngagement $engagement): bool
+    /** Paid ones and ones added as already made count; cancelled ones do not, as in what scheduled sums (sc-88). */
+    public function hasScheduled(VendorEngagement $engagement): bool
     {
         return null !== $this->createQueryBuilder('p')
             ->select('1')
             ->where('p.engagement = :engagement')
+            ->andWhere('p.cancelledAt IS NULL')
             ->setParameter('engagement', $engagement->getId(), 'uuid')
             ->setMaxResults(1)
             ->getQuery()

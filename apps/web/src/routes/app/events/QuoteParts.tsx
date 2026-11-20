@@ -28,6 +28,7 @@ import {
   type Difference,
   type PaymentDraft,
   type PaymentProblems,
+  cancelledLine,
   cardDifference,
   differenceLine,
   differenceOf,
@@ -36,6 +37,8 @@ import {
   dueInOrder,
   firstOverdue,
   linesWords,
+  longDay,
+  paidLine,
   scheduleOf,
   shortDay,
   vendorLine,
@@ -84,6 +87,7 @@ export function BudgetRow({
   end,
   to,
   open,
+  lit = false,
   onOpen,
 }: {
   title: ReactNode;
@@ -93,6 +97,7 @@ export function BudgetRow({
   end?: ReactNode;
   to?: string;
   open?: boolean;
+  lit?: boolean;
   onOpen?: () => void;
 }) {
   const inner = (
@@ -117,7 +122,7 @@ export function BudgetRow({
       </button>
     );
 
-  return <div className="desk-row bt-row">{inner}</div>;
+  return <div className={lit ? 'desk-row bt-row is-on' : 'desk-row bt-row'}>{inner}</div>;
 }
 
 export function Rows({ children }: { children: ReactNode }) {
@@ -143,7 +148,7 @@ export function Block({
   );
 }
 
-function Amount({ value, line }: { value: ReactNode; line?: ReactNode }) {
+export function Amount({ value, line }: { value: ReactNode; line?: ReactNode }) {
   return (
     <span className="bt-amount">
       <span className="bt-amount-value">{value}</span>
@@ -163,11 +168,41 @@ export function OverdueTag() {
   );
 }
 
-function TickMark() {
+function TickMark({ large = false }: { large?: boolean }) {
   return (
-    <span className="qt-tick" aria-hidden="true">
-      <Glyph name="tick" size={9} weight={3.4} />
+    <span className={large ? 'qt-tick is-large' : 'qt-tick'} aria-hidden="true">
+      <Glyph name="tick" size={large ? 13 : 9} weight={3.4} />
     </span>
+  );
+}
+
+/** A ring with a bar: a cancelled payment, never deleted. */
+function CancelledMark() {
+  return (
+    <span className="pay-cancelled" aria-hidden="true">
+      <span />
+    </span>
+  );
+}
+
+/** A bin, drawn here: the product's glyph set has none. */
+function BinMark() {
+  return (
+    <svg
+      className="pay-bin"
+      width={16}
+      height={16}
+      viewBox="0 0 24 24"
+      aria-hidden="true"
+      focusable="false"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={2.2}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14M10 11v6M14 11v6" />
+    </svg>
   );
 }
 
@@ -242,7 +277,17 @@ function BackLink({ to }: { to: string }) {
   );
 }
 
-function DueRow({ due, currency, to }: { due: DuePayment; currency: string; to?: string }) {
+function DueRow({
+  due,
+  currency,
+  to,
+  onMark,
+}: {
+  due: DuePayment;
+  currency: string;
+  to?: string;
+  onMark?: () => void;
+}) {
   const { t } = useTranslation();
   const locale = dateLocale();
 
@@ -251,8 +296,14 @@ function DueRow({ due, currency, to }: { due: DuePayment; currency: string; to?:
       title={due.vendor}
       lines={[t('quotes.dueLine', { what: due.description, day: shortDay(due.dueOn, locale) })]}
       tag={due.overdue ? <OverdueTag /> : undefined}
-      end={<Amount value={minorMoney(due.amount, currency, locale)} />}
+      end={
+        <>
+          <Amount value={minorMoney(due.amount, currency, locale)} />
+          {onMark != null && <span className="visually-hidden">{t('quotes.markPaid')}</span>}
+        </>
+      }
       {...(to == null ? {} : { to })}
+      {...(onMark == null ? {} : { onOpen: onMark })}
     />
   );
 }
@@ -277,9 +328,24 @@ export function QuotesNotLoaded({
   );
 }
 
-export function DueNext({ quotes, more }: { quotes: EventQuotes; more: string }) {
+/** Each row opens its own Mark paid; one just marked stays lit with Undo. */
+export function DueNext({
+  quotes,
+  more,
+  marked = null,
+  onMark,
+  onUndo,
+}: {
+  quotes: EventQuotes;
+  more: string;
+  marked?: { payment: ScheduledPayment; vendor: string } | null;
+  onMark?: (due: DuePayment) => void;
+  onUndo?: (payment: ScheduledPayment) => void;
+}) {
   const { t } = useTranslation();
-  const due = dueInOrder(quotes.due, dateLocale());
+  const locale = dateLocale();
+  const due = dueInOrder(quotes.due, locale);
+  const paid = marked?.payment.paid ?? null;
 
   return (
     <Block
@@ -293,13 +359,44 @@ export function DueNext({ quotes, more }: { quotes: EventQuotes; more: string })
         )
       }
     >
-      {due.length === 0 ? (
+      {due.length === 0 && paid == null ? (
         <p className="desk-line">{t('quotes.nothingDue')}</p>
       ) : (
         <Rows>
+          {marked != null && paid != null && (
+            <li data-payment={marked.payment.id}>
+              <BudgetRow
+                lead={<TickMark large />}
+                title={marked.vendor}
+                lines={[
+                  t('quotes.markedPaid', {
+                    amount: minorMoney(paid.amount, quotes.currency, locale),
+                    day: longDay(paid.paidOn, locale),
+                  }),
+                ]}
+                lit
+                end={
+                  onUndo != null && (
+                    <button
+                      type="button"
+                      className="desk-text"
+                      onClick={() => onUndo(marked.payment)}
+                    >
+                      <Glyph name="undo" size={16} weight={2.4} />
+                      {t('quotes.undo')}
+                    </button>
+                  )
+                }
+              />
+            </li>
+          )}
           {due.slice(0, DUE_NEXT).map((one) => (
-            <li key={one.id}>
-              <DueRow due={one} currency={quotes.currency} />
+            <li key={one.id} data-payment={one.id}>
+              <DueRow
+                due={one}
+                currency={quotes.currency}
+                {...(onMark == null ? {} : { onMark: () => onMark(one) })}
+              />
             </li>
           ))}
         </Rows>
@@ -428,6 +525,14 @@ export function VendorPage({
   onAmended,
   onRemoving,
   onRemove,
+  viewerId,
+  marked,
+  deleted,
+  onMarkPaid,
+  onUndo,
+  onCancel,
+  onRestore,
+  onAlreadyMade,
 }: {
   eventId: string;
   quote: EventQuote;
@@ -449,6 +554,14 @@ export function VendorPage({
   onAmended: (words: string) => void;
   onRemoving: (id: string | null) => void;
   onRemove: (payment: ScheduledPayment) => void;
+  viewerId: string;
+  marked: string | null;
+  deleted: string | null;
+  onMarkPaid: (payment: ScheduledPayment) => void;
+  onUndo: (payment: ScheduledPayment) => void;
+  onCancel: (payment: ScheduledPayment) => void;
+  onRestore: (payment: ScheduledPayment) => void;
+  onAlreadyMade: () => void;
 }) {
   const { t, i18n } = useTranslation();
   const locale = dateLocale();
@@ -500,13 +613,22 @@ export function VendorPage({
         )}
         {writes && (
           <div className="bt-card-foot">
-            <CardStep label={t('quotes.addAPayment')} onClick={onAddPayment} />
+            <CardStep
+              label={late != null ? t('quotes.markPaid') : t('quotes.addAPayment')}
+              onClick={() => (late != null ? onMarkPaid(late) : onAddPayment())}
+            />
           </div>
         )}
       </CoverCard>
       <div className="ev-columns">
         <div className="ev-left">
           <Block title={t('quotes.schedule')}>
+            {deleted != null && (
+              <p className="pay-deleted" role="status">
+                <BinMark />
+                {deleted}
+              </p>
+            )}
             {payments.length === 0 ? (
               <div className="qt-empty">
                 <p className="desk-line">{t('quotes.noPayments')}</p>
@@ -536,6 +658,13 @@ export function VendorPage({
                       onAmended={onAmended}
                       onRemoving={(asking) => onRemoving(asking ? one.id : null)}
                       onRemove={() => onRemove(one)}
+                      readOnly={readOnly}
+                      lit={marked === one.id}
+                      viewerId={viewerId}
+                      onMarkPaid={() => onMarkPaid(one)}
+                      onUndo={() => onUndo(one)}
+                      onCancel={() => onCancel(one)}
+                      onRestore={() => onRestore(one)}
                     />
                   ))}
                 </Rows>
@@ -554,6 +683,11 @@ export function VendorPage({
                   </li>
                 </Rows>
               </>
+            )}
+            {writes && (
+              <div className="pay-made">
+                <TextAction label={t('quotes.alreadyMade')} before="plus" onClick={onAlreadyMade} />
+              </div>
             )}
           </Block>
         </div>
@@ -632,6 +766,13 @@ function ScheduleRow({
   onAmended,
   onRemoving,
   onRemove,
+  readOnly,
+  lit,
+  viewerId,
+  onMarkPaid,
+  onUndo,
+  onCancel,
+  onRestore,
 }: {
   eventId: string;
   payment: ScheduledPayment;
@@ -645,15 +786,76 @@ function ScheduleRow({
   onAmended: (words: string) => void;
   onRemoving: (asking: boolean) => void;
   onRemove: () => void;
+  readOnly: boolean;
+  lit: boolean;
+  viewerId: string;
+  onMarkPaid: () => void;
+  onUndo: () => void;
+  onCancel: () => void;
+  onRestore: () => void;
 }) {
   const { t, i18n } = useTranslation();
   const locale = dateLocale();
   const change = useRef<HTMLButtonElement>(null);
+  const { currency } = quotes;
+  const { paid, cancelled } = payment;
   const backToChange = (tries = 10) =>
     window.requestAnimationFrame(() => {
       if (change.current != null) change.current.focus();
       else if (tries > 0) backToChange(tries - 1);
     });
+
+  if (paid != null) {
+    const added = payment.addedAsPaid;
+    const day = longDay(paid.paidOn, locale);
+    const line = !added
+      ? paidLine(t, payment, currency, locale)
+      : paid.by?.id === viewerId
+        ? t('quotes.addedByYou', { day })
+        : paid.by == null
+          ? paidLine(t, payment, currency, locale)
+          : t('quotes.addedBy', { day, name: paid.by.name });
+
+    return (
+      <li data-payment={payment.id}>
+        <BudgetRow
+          lead={<TickMark large />}
+          title={payment.description}
+          lines={[line]}
+          lit={lit}
+          end={
+            <>
+              {added && <Amount value={minorMoney(paid.amount, currency, locale)} />}
+              {(lit || added) && writes && (
+                <button type="button" className="desk-text" onClick={onUndo}>
+                  <Glyph name="undo" size={16} weight={2.4} />
+                  {t('quotes.undo')}
+                </button>
+              )}
+            </>
+          }
+        />
+      </li>
+    );
+  }
+
+  if (cancelled != null)
+    return (
+      <li data-payment={payment.id}>
+        <BudgetRow
+          lead={<CancelledMark />}
+          title={payment.description}
+          lines={[cancelledLine(t, payment, currency, locale)]}
+          end={
+            writes ? (
+              <button type="button" className="desk-text" onClick={onRestore}>
+                {t('quotes.restore')}
+              </button>
+            ) : undefined
+          }
+        />
+      </li>
+    );
 
   if (amending != null)
     return (
@@ -681,7 +883,11 @@ function ScheduleRow({
     <li data-payment={payment.id}>
       <BudgetRow
         title={payment.description}
-        lines={[t('quotes.due', { day: shortDay(payment.dueOn, locale) })]}
+        lines={[
+          readOnly && payment.overdue
+            ? `${t('quotes.due', { day: shortDay(payment.dueOn, locale) })} · ${t('quotes.noLongerChased')}`
+            : t('quotes.due', { day: shortDay(payment.dueOn, locale) }),
+        ]}
         tag={payment.overdue ? <OverdueTag /> : undefined}
         end={<Amount value={minorMoney(payment.amount, quotes.currency, locale)} />}
       />
@@ -697,6 +903,12 @@ function ScheduleRow({
         />
       ) : (
         <div className="bt-row-actions">
+          <button type="button" className="desk-text" onClick={onMarkPaid}>
+            {t('quotes.markPaid')}
+          </button>
+          <button type="button" className="desk-text pay-quiet" onClick={onCancel}>
+            {t('quotes.cancelPayment')}
+          </button>
           <button
             ref={change}
             type="button"
