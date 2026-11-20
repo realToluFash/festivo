@@ -310,7 +310,7 @@ describe('/demo/events/evt-wed-4/staff/roster (sc-3906)', () => {
     expect(cssRule('.rs-frame > .rs-table thead th:nth-child(5)', desk)).toContain(
       'min-width: 168px;',
     );
-    expect(desk).not.toContain('min-width: 128px;');
+    expect(desk).not.toMatch(/th:nth-child\([23]\)/u);
   });
 
   it.each([
@@ -329,6 +329,28 @@ describe('/demo/events/evt-wed-4/staff/roster (sc-3906)', () => {
     render(<RouterProvider router={router} />);
     const table = await screen.findByRole('table', { name: roster }, { timeout: 8000 });
     expect(within(table).getAllByText(words).length).toBeGreaterThan(0);
+  });
+
+  it.each([
+    ['populatedSpanish', 'Siguiente paso: enviar un enlace a quien aún no lo haya recibido.'],
+    [
+      'erasedListSpanish',
+      'Siguiente paso: revisar las horas en «Horas trabajadas» antes de que se cierre el presupuesto.',
+    ],
+    [
+      'erasedListPortuguese',
+      'Próximo passo: verificar as horas em «Horas trabalhadas» antes de o orçamento fechar.',
+    ],
+    ['detailsNoLinkSpanish', 'Copiar enlace'],
+    ['detailsNoLinkPortuguese', 'Copiar ligação'],
+  ])('reads %s in the product’s words, not English (sc-75033)', async (state, words) => {
+    const router = createMemoryRouter(routes, {
+      initialEntries: [`/demo/events/evt-wed-4/staff/roster?state=${state}`],
+    });
+    render(<RouterProvider router={router} />);
+    expect((await screen.findAllByText(words, {}, { timeout: 8000 })).length).toBeGreaterThan(0);
+    expect(screen.queryByText(/^Next: /u)).toBeNull();
+    expect(screen.queryByText('Copy link')).toBeNull();
   });
 
   it.each([

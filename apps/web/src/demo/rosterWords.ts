@@ -82,6 +82,11 @@ function productWords(L: Locale, hours: string) {
     member: (name: string) => mw(R.member, { name, organisation: ORGANISATION }),
     more: (n: number) => mw(more, { count: n }),
     jobLocked: (name: string) => mw(R.onShifts, { name }),
+    jobLockedHelp: R.onShiftsHint,
+    nextSend: R.nextSend,
+    nextHours: R.nextHours,
+    nextErasing: R.nextErasing,
+    lock: R.lock,
     removeAsk: (name: string) => mw(R.removeAsk, { name }),
     editTitle: (name: string) => mw(R.editTitle, { name }),
     noStationNow: L.stations.noStation,
@@ -99,13 +104,8 @@ const RW_FR: typeof RW = {
     `[Ce numéro semble trop ${problem === 'short' ? 'court' : 'long'} pour ${country}. Vérifiez-le et réessayez.]`,
   removed: (name, shifts) =>
     `[${mw(R.removed, { name })} ${shifts > 1 ? 'Ses services ne sont plus attribués.' : 'Son service n’est plus attribué.'}]`,
-  jobLockedHelp: R.onShiftsHint,
   notAdded: (name) => `[Impossible d’ajouter ${name}.]`,
-  nextSend: R.nextSend,
-  nextHours: R.nextHours,
   nextCopied: '[Étape suivante : une fois le lien copié envoyé, indiquez qu’il a été envoyé.]',
-  nextErasing: R.nextErasing,
-  lock: R.lock,
   stationChange: '[Changer de poste]',
   sectionGone: (section) => `[${section} a été supprimée du plan de table.]`,
 };
@@ -151,17 +151,111 @@ const FR: RosterWords = {
   },
 };
 
-/** Spanish and Portuguese: the card, its table and the details in the product's words, so QA can measure the Link column in all four locales (sc-75033). */
-function productRoster(L: Locale, lang: 'es' | 'pt'): RosterWords {
-  const rw: typeof RW = { ...RW, ...productWords(L, `[${RW.tabs[3]}]`) };
+/** What l10n has not written for Spanish or Portuguese, as [bracketed] samples in that language. */
+interface Samples {
+  rw: Pick<
+    typeof RW,
+    | 'emailShape'
+    | 'phoneLength'
+    | 'removed'
+    | 'notAdded'
+    | 'nextCopied'
+    | 'stationChange'
+    | 'sectionGone'
+  >;
+  hours: string;
+  lw: Omit<typeof LW, 'copy' | 'replace' | 'replaceOpen' | 'copied' | 'notIssued'>;
+  opened: string;
+  sent: string;
+  trail: { copied: (t: Trail) => string; sent: (t: Trail) => string; opened: (t: Trail) => string };
+}
+
+const SAMPLES_ES: Samples = {
+  rw: {
+    emailShape:
+      '[Esa dirección de correo electrónico no parece válida. Compruebe que tenga una @ y un dominio.]',
+    phoneLength: (problem, country) =>
+      `[Ese número parece demasiado ${problem === 'short' ? 'corto' : 'largo'} para ${country}. Compruébelo y vuelva a intentarlo.]`,
+    removed: (name, shifts) =>
+      `[${mw(es.roster.removed, { name })} ${shifts > 1 ? 'Sus turnos quedan sin asignar.' : 'Su turno queda sin asignar.'}]`,
+    notAdded: (name) => `[No se ha podido añadir a ${name}.]`,
+    nextCopied:
+      '[Siguiente paso: cuando le haya enviado el enlace copiado, márquelo como enviado.]',
+    stationChange: '[Cambiar de zona]',
+    sectionGone: (section) => `[Se ha quitado ${section} del plano de mesas.]`,
+  },
+  hours: '[Horas trabajadas]',
+  lw: {
+    markSent: '[Marcar como enviado]',
+    refused: '[No se ha podido copiar el enlace. Cópielo desde el campo del enlace.]',
+    linkFor: (name) => `[Enlace de ${name}]`,
+    replaceTitle: (name) => `[¿Sustituir el enlace de ${name}?]`,
+    replaceLine: '[Su enlace actual deja de funcionar ahora mismo.]',
+    keep: '[Conservar este enlace]',
+    replaced: (name) =>
+      `[Se ha sustituido el enlace de ${name}. Copiar enlace le da uno nuevo para enviar.]`,
+    marked: (name) => `[Marcado como enviado a ${name}.]`,
+  },
+  opened: '[Enlace abierto]',
+  sent: '[Enlace enviado]',
+  trail: {
+    copied: (t) => `[Copiado por ${t.by} · ${t.at} · sin marcar como enviado]`,
+    sent: (t) => `[Marcado como enviado por ${t.by} · ${t.at}]`,
+    opened: (t) => `[Abierto a las ${t.at}]`,
+  },
+};
+
+const SAMPLES_PT: Samples = {
+  rw: {
+    emailShape: '[Este endereço de e-mail não parece válido. Verifique se tem um @ e um domínio.]',
+    phoneLength: (problem, country) =>
+      `[Este número parece demasiado ${problem === 'short' ? 'curto' : 'longo'} para ${country}. Verifique-o e tente novamente.]`,
+    removed: (name, shifts) =>
+      `[${mw(pt.roster.removed, { name })} ${shifts > 1 ? 'Os turnos ficam sem atribuição.' : 'O turno fica sem atribuição.'}]`,
+    notAdded: (name) => `[Não foi possível adicionar ${name}.]`,
+    nextCopied: '[Próximo passo: depois de enviar a ligação copiada, marque-a como enviada.]',
+    stationChange: '[Mudar de posto]',
+    sectionGone: (section) => `[${section} foi removida da planta de mesas.]`,
+  },
+  hours: '[Horas trabalhadas]',
+  lw: {
+    markSent: '[Marcar como enviada]',
+    refused: '[Não foi possível copiar a ligação. Copie-a a partir do campo da ligação.]',
+    linkFor: (name) => `[Ligação de ${name}]`,
+    replaceTitle: (name) => `[Substituir a ligação de ${name}?]`,
+    replaceLine: '[A ligação atual deixa de funcionar agora.]',
+    keep: '[Manter esta ligação]',
+    replaced: (name) =>
+      `[A ligação de ${name} foi substituída. Copiar ligação dá-lhe uma nova para enviar.]`,
+    marked: (name) => `[Marcada como enviada para ${name}.]`,
+  },
+  opened: '[Ligação aberta]',
+  sent: '[Ligação enviada]',
+  trail: {
+    copied: (t) => `[Copiada por ${t.by} · ${t.at} · não marcada como enviada]`,
+    sent: (t) => `[Marcada como enviada por ${t.by} · ${t.at}]`,
+    opened: (t) => `[Aberta às ${t.at}]`,
+  },
+};
+
+/** Spanish and Portuguese: the card, its table and the details in the product's words, [bracketed] samples elsewhere, so QA can measure the Roster in all four locales (sc-75033). */
+function productRoster(L: Locale, lang: 'es' | 'pt', s: Samples): RosterWords {
+  const rw: typeof RW = { ...RW, ...productWords(L, s.hours), ...s.rw };
 
   return {
-    ...EN,
     lang,
     rw,
+    lw: {
+      ...s.lw,
+      copy: L.requestLink.copy,
+      replace: L.requestLink.replaceConfirm,
+      replaceOpen: L.requestLink.replace,
+      copied: L.requestLink.flash.copied,
+      notIssued: L.requestLink.failed,
+    },
     links: {
-      opened: `[${LINK_WORDS.opened}]`,
-      sent: `[${LINK_WORDS.sent}]`,
+      opened: s.opened,
+      sent: s.sent,
       copied: L.ownerClaim.copied,
       none: L.roster.linkNone,
       noMobile: L.roster.linkNoMobile,
@@ -172,14 +266,19 @@ function productRoster(L: Locale, lang: 'es' | 'pt'): RosterWords {
     crumb: L.roster.crumb,
     close: L.roster.close,
     cancel: L.roster.cancel,
+    trail: (link, trail) => {
+      if (trail == null || link === 'none') return null;
+
+      return s.trail[link](trail);
+    },
   };
 }
 
 export const ROSTER_WORDS = {
   en: EN,
   fr: FR,
-  es: productRoster(es, 'es'),
-  pt: productRoster(pt, 'pt'),
+  es: productRoster(es, 'es', SAMPLES_ES),
+  pt: productRoster(pt, 'pt', SAMPLES_PT),
 } as const;
 
 export const RosterWordsContext = createContext<RosterWords>(EN);
