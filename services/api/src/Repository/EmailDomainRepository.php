@@ -46,7 +46,7 @@ final class EmailDomainRepository extends ServiceEntityRepository
 
     public function hasProvedIn(Organisation $organisation): bool
     {
-        return [] !== $this->provedIn($organisation);
+        return [] !== $this->findProvedIn($organisation);
     }
 
     /** @return list<EmailDomain> waiting, or missing its record, and looked up an hour ago; past its checks or its put-back instant; or due its 30-day re-check */
@@ -87,14 +87,15 @@ final class EmailDomainRepository extends ServiceEntityRepository
             ->getResult();
     }
 
-    /** @return list<EmailDomain> */
-    private function provedIn(Organisation $organisation): array
+    /** @return list<EmailDomain> in the order they were added */
+    public function findProvedIn(Organisation $organisation): array
     {
         /** @var list<EmailDomain> */
         return $this->createQueryBuilder('d')
             ->where('d.organisation = :organisation')
             ->andWhere('d.provedAt IS NOT NULL')
             ->setParameter('organisation', $organisation)
+            ->orderBy('d.addedAt', 'ASC')
             ->getQuery()
             ->getResult();
     }

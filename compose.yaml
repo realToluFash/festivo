@@ -129,6 +129,7 @@ services:
       OAUTH_APPLE_WEB_CLIENT_SECRET: ${OAUTH_APPLE_WEB_CLIENT_SECRET:-development-secret}
       # Must equal the return route the app sends Apple; defaults to this stack's own API port.
       OAUTH_APPLE_RETURN_URI: ${OAUTH_APPLE_RETURN_URI:-http://localhost:${API_PORT:-8080}/api/auth/oauth/apple/return}
+      SSO_SERVICE_ORIGIN: ${SSO_SERVICE_ORIGIN:-http://localhost:${API_PORT:-8080}}
       CORS_WEB_ORIGIN: ${CORS_WEB_ORIGIN:-http://localhost:5173}
       TEAM_SEAT_LIMIT: ${TEAM_SEAT_LIMIT:-}
       MINIMUM_APP_VERSION_IOS: ${MINIMUM_APP_VERSION_IOS:-}

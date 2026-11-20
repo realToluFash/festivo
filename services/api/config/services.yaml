@@ -86,6 +86,10 @@ services:
         arguments:
             $endpoint: '%env(DNS_TXT_ENDPOINT)%'
     App\Domain\Organisation\Interfaces\TxtRecordLookupInterface: '@App\Integrations\Dns\DnsOverHttpsTxtLookup'
+    App\Domain\Organisation\Interfaces\ProviderDocumentsInterface: '@App\Integrations\SingleSignOn\HttpProviderDocuments'
+    App\Domain\Organisation\SingleSignOn\ServiceUrls:
+        arguments:
+            $ssoServiceOrigin: '%env(SSO_SERVICE_ORIGIN)%'
 
     # One adapter behind the port; in development it reaches the SMS mock.
     App\Integrations\Twilio\TwilioTextMessageSender:
@@ -479,6 +483,8 @@ when@test:
 
         # No test asks real DNS: a test publishes the record it means to be found.
         App\Domain\Organisation\Interfaces\TxtRecordLookupInterface: '@App\Domain\Organisation\OwnerClaims\ScriptedTxtRecordLookup'
+        # No test reaches an identity provider: a test publishes the metadata or discovery document it means to be read.
+        App\Domain\Organisation\Interfaces\ProviderDocumentsInterface: '@App\Domain\Organisation\SingleSignOn\ScriptedProviderDocuments'
 
         # No test reaches a provider; the suite signs its own tokens and can rotate the key.
         App\Tests\Fixtures\OpenIdConnect\TestSigningKeys:

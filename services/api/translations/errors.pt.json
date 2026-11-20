@@ -141,5 +141,9 @@
     "idempotency_key_reused": "Esta Idempotency-Key já foi enviada com outra ação.",
     "plan_required": "O plano da organização não inclui esta funcionalidade.",
     "email_domain_taken": "Outra organização já verificou este domínio.",
-    "audit_export_too_many": "Há demasiados registos para exportar."
+    "audit_export_too_many": "Há demasiados registos para exportar.",
+    "sso_untested": "Single sign-on has not been tested.",
+    "sso_not_on": "Single sign-on is not on.",
+    "sso_required_on": "Required sign-on is on.",
+    "sso_domain_unproved": "No domain is proved."
 }

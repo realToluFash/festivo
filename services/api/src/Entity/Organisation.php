@@ -65,6 +65,10 @@ class Organisation implements SoftDeletableInterface
     #[ORM\Column(type: Types::DATETIME_IMMUTABLE, nullable: true)]
     private ?DateTimeImmutable $twoFactorRequiredSince = null;
 
+    /** When required sign-on was switched on: accounts at a proved domain then sign in only through the identity provider (sc-610). */
+    #[ORM\Column(type: Types::DATETIME_IMMUTABLE, nullable: true)]
+    private ?DateTimeImmutable $ssoRequiredSince = null;
+
     /** The request link's token (sc-562); null is off. Turning it on, or replacing it, writes a new one. */
     #[ORM\Column(type: Types::STRING, length: 32, nullable: true)]
     private ?string $requestLinkToken = null;
@@ -208,6 +212,16 @@ class Organisation implements SoftDeletableInterface
     public function setTwoFactorRequiredSince(?DateTimeImmutable $twoFactorRequiredSince): void
     {
         $this->twoFactorRequiredSince = $twoFactorRequiredSince;
+    }
+
+    public function getSsoRequiredSince(): ?DateTimeImmutable
+    {
+        return $this->ssoRequiredSince;
+    }
+
+    public function setSsoRequiredSince(?DateTimeImmutable $ssoRequiredSince): void
+    {
+        $this->ssoRequiredSince = $ssoRequiredSince;
     }
 
     public function getRequestLinkToken(): ?string

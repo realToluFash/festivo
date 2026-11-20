@@ -111,6 +111,10 @@ enum ErrorCode: string
     case OwnerClaimOwn = 'owner_claim_own';
     case EmailDomainTaken = 'email_domain_taken';
     case AuditExportTooMany = 'audit_export_too_many';
+    case SsoUntested = 'sso_untested';
+    case SsoNotOn = 'sso_not_on';
+    case SsoRequiredOn = 'sso_required_on';
+    case SsoDomainUnproved = 'sso_domain_unproved';
     case DomainManaged = 'domain_managed';
 
     case Unauthenticated = 'unauthenticated';
@@ -199,6 +203,7 @@ enum ErrorCode: string
 
             self::AssistantRefused, self::IdempotencyKeyReused => 422,
             self::AuditExportTooMany => 422,
+            self::SsoUntested, self::SsoNotOn, self::SsoRequiredOn, self::SsoDomainUnproved => 409,
         };
     }
 
