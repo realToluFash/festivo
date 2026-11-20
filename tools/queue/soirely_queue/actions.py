@@ -383,41 +383,37 @@ DEMO_ABSENT = "absent"
 
 
 def demo_missing(story):
-    """(kind, why) or None; kind is DEMO_OPEN when the claim should wait for a merge."""
-    missing = demo_gap(story)
-    if missing is None or isinstance(missing, tuple):
-        return missing
-    return DEMO_ABSENT, missing
-
-
-def demo_gap(story):
-    """Why a story the designer drew is not ready to build: a pull request its Demo line
-    names is still open, or none of them merged. A closed one was superseded. A story with no Design section, or whose Demo line reads `none`, shows nothing,
-    so nothing is missing, whatever numbers the rest of the line cites."""
+    """(kind, why) for a story the designer drew that is not ready to build, or None.
+    DEMO_OPEN waits: a pull request on its Demo line is still open, or GitHub could not say.
+    DEMO_ABSENT sends it back: no demo, or none of its pull requests merged. A closed one was
+    superseded. A story with no Design section, or whose Demo line reads `none`, shows
+    nothing, so nothing is missing, whatever numbers the rest of the line cites."""
     if not T.find(story.get("description"), "Design"):
         return None
     line = W.demo_line(story)
     if line is None:
-        return "its Design section has no Demo: line"
+        return DEMO_ABSENT, "its Design section has no Demo: line"
     if NOT_BUILT.search(line):
-        return "its Demo: line says the demo is not built"
+        return DEMO_ABSENT, "its Demo: line says the demo is not built"
     if W.SHOWS_NOTHING.match(line):
         return None
     numbers = [int(n) for n in re.findall(r"#(\d+)", line)]
     if not numbers:
-        return "its Demo: line names no pull request"
+        return DEMO_ABSENT, "its Demo: line names no pull request"
     states = {n: pr_state(n) for n in dict.fromkeys(numbers)}
     states = {n: state for n, state in states.items() if state != NOT_A_PR}
     if not states:
-        return "its Demo: line names no pull request"
+        return DEMO_ABSENT, "its Demo: line names no pull request"
     unread = [f"#{n}" for n, state in states.items() if state is None]
     if unread:
-        return f"GitHub did not answer for {', '.join(unread)}, so its demo is not known merged"
+        return DEMO_OPEN, (f"GitHub did not answer for {', '.join(unread)}, so its demo is not "
+                           "known merged")
     open_ = [f"#{n}" for n, state in states.items() if state not in ("MERGED", "CLOSED")]
     if open_:
         return DEMO_OPEN, f"its demo {', '.join(open_)} is not merged yet"
     if "MERGED" not in states.values():
-        return f"its demo {', '.join(f'#{n}' for n in states)} was closed without merging"
+        closed = ", ".join(f"#{n}" for n in states)
+        return DEMO_ABSENT, f"its demo {closed} was closed without merging"
     return None
 
 

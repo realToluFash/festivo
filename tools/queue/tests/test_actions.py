@@ -428,11 +428,15 @@ class DemoFirst(Base):
         self.assertNotIn("move sc-1", str(refused.exception))
         self.assertEqual(self.state(1), "Ready For Dev")
 
-    def test_a_demo_github_cannot_read_is_refused(self):
+    def test_a_demo_github_cannot_read_is_waited_for_not_sent_back(self):
         self.drawn("**Demo:** `It` in the app's demo · PR #1386")
-        self.refused("GitHub did not answer for #1386",
-                     mock.patch("soirely_queue.github.live",
-                                side_effect=github.GitHubError("gh api: 502")))
+        with mock.patch("soirely_queue.github.live",
+                        side_effect=github.GitHubError("gh api: 502")), \
+                self.assertRaises(actions.Refused) as refused:
+            actions.claim(self.as_("dev"), args(story="sc-1"))
+        self.assertIn("GitHub did not answer for #1386", str(refused.exception))
+        self.assertNotIn("move sc-1", str(refused.exception))
+        self.assertEqual(self.state(1), "Ready For Dev")
 
     def test_a_comment_cited_on_the_demo_line_is_skipped(self):
         self.drawn("**Demo:** `It` in the app's demo · PR #1386 (pm, #55333)")
