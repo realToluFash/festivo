@@ -2075,10 +2075,22 @@ describe('a pill with words grows with them rather than cutting them (sc-13281)'
     ['TodayParts.tsx', 'action', "an event card's action at the ninth step"],
     ['TodayParts.tsx', 'chip', "an event card's count and stage at the ninth step"],
     ['TodayParts.tsx', 'chipSmall', "a tile's count and stage at the ninth step"],
+    ['TodayParts.tsx', 'count', "Home's Needs you count of 10 or more at the ninth step"],
   ])('%s %s sets a least height, never a height', (file, name, seen) => {
     const style = styleOf(file, name);
 
     expect(style, seen).toMatch(/\bminHeight:/u);
     expect(style, seen).not.toMatch(/(?<![A-Za-z])height:/u);
+  });
+
+  it("lets an event card's chips take a second line rather than end in an ellipsis", () => {
+    const text = readFileSync(join('src', 'components', 'TodayParts.tsx'), 'utf8');
+    const chips =
+      /function CountChip\([\s\S]*?\nfunction StageChip\([\s\S]*?\n\}\n/u.exec(text)?.[0] ?? '';
+
+    expect(chips, 'En cours · 12 invités beside Publié on a 232-wide tile').toMatch(/StageChip/u);
+    expect(chips).not.toMatch(/numberOfLines/u);
+    expect(styleOf('TodayParts.tsx', 'tileChips')).toMatch(/flexWrap: 'wrap'/u);
+    expect(styleOf('TodayParts.tsx', 'rowChips')).toMatch(/flexWrap: 'wrap'/u);
   });
 });

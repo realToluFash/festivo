@@ -521,8 +521,10 @@ function CountChip({
       <Text
         size={size}
         weight="semibold"
-        numberOfLines={1}
-        style={dark ? styles.onAccent : card.draft ? styles.secondary : undefined}
+        style={[
+          styles.chipWords,
+          dark ? styles.onAccent : card.draft ? styles.secondary : undefined,
+        ]}
       >
         {words}
       </Text>
@@ -538,8 +540,7 @@ function StageChip({ stage, onCover, small }: { stage: string; onCover: boolean;
       <Text
         size={small ? 12 : TYPE.meta}
         weight="semibold"
-        numberOfLines={1}
-        style={onCover ? styles.onAccent : styles.accentText}
+        style={[styles.chipWords, onCover ? styles.onAccent : styles.accentText]}
       >
         {stage}
       </Text>
@@ -777,7 +778,7 @@ const styles = StyleSheet.create({
   title: { lineHeight: TYPE.head * 1.15 },
   count: {
     minWidth: tokens.space3xl,
-    height: tokens.space3xl,
+    minHeight: tokens.space3xl,
     paddingHorizontal: tokens.spaceSm,
     borderRadius: tokens.spaceLg,
     backgroundColor: tokens.colorAccent,
@@ -886,8 +887,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: tokens.spaceXs,
-    flex: 0,
+    flexShrink: 1,
   },
+  chipWords: { flexShrink: 1 },
   chipSmall: {
     minHeight: tokens.space3xl,
     paddingHorizontal: tokens.spaceMd,
@@ -919,8 +921,11 @@ const styles = StyleSheet.create({
   tileChips: {
     position: 'absolute',
     left: tokens.spaceMd,
+    right: tokens.spaceMd,
     top: tokens.spaceMd,
     flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'flex-start',
     gap: tokens.spaceXs,
   },
   tileBody: {
