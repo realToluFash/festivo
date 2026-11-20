@@ -1527,6 +1527,32 @@ describe('marking a payment paid (sc-88)', () => {
     expect(within(lit).getByRole('button', { name: 'Undo' })).toBeTruthy();
   });
 
+  it('says nothing under Amount paid in Mark paid until the amount differs, and nothing in Add a payment already made', async () => {
+    signedIn();
+    serve({ 'GET /api/events/ev_1/budget/quotes': () => json(quotes()) }, { at });
+
+    const row = (await screen.findByText('Deposit')).closest('li')!;
+    fireEvent.click(within(row).getByRole('button', { name: 'Mark paid' }));
+    const amount = within(dialog()).getByRole('textbox', { name: 'Amount paid' });
+    expect(within(dialog()).queryByText(/the currency this event uses/)).toBeNull();
+    expect(amount.closest('.desk-field')!.querySelector('.desk-help')).toBeNull();
+
+    fireEvent.change(amount, { target: { value: '4,400' } });
+    expect(amount.closest('.desk-field')!.querySelector('.desk-help')!.textContent).toBe(
+      '£100.00 less than scheduled. The difference stays visible; nothing absorbs it.',
+    );
+    fireEvent.click(within(dialog()).getByRole('button', { name: 'Cancel' }));
+
+    fireEvent.click(screen.getByRole('button', { name: 'Add a payment already made' }));
+    expect(within(dialog()).queryByText(/the currency this event uses/)).toBeNull();
+    expect(
+      within(dialog())
+        .getByRole('textbox', { name: 'Amount paid' })
+        .closest('.desk-field')!
+        .querySelector('.desk-help'),
+    ).toBeNull();
+  });
+
   it('offers no Mark paid, Cancel payment or Add a payment already made after a downgrade', async () => {
     signedIn();
     serve(
