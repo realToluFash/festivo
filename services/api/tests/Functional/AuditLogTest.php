@@ -140,6 +140,25 @@ final class AuditLogTest extends ApiTestCase
     }
 
     #[Test]
+    public function aPreparedExportDownloadedOnALaterDayKeepsTheDayItWasAskedFor(): void
+    {
+        self::mockTime(new DateTimeImmutable('2026-11-20T23:30:00Z'));
+        [$owner, $organisation] = $this->enterprise('folake@ire.events', 'Soirée à Lisboa');
+        $entityManager = self::service(EntityManagerInterface::class);
+        $export = new AuditExport($entityManager->find(Organisation::class, $organisation->getId()) ?? self::fail('gone'), $entityManager->find(User::class, $owner->getId()) ?? self::fail('gone'), new DateTimeImmutable('2026-11-20T23:30:00Z'), 'jsonl', [], 0, 'en');
+        $entityManager->persist($export);
+        $entityManager->flush();
+        self::service(AuditExports::class)->prepare($export, new AuditFilter($organisation->getId(), new DateTimeImmutable('-1 year')));
+
+        self::mockTime(new DateTimeImmutable('2026-11-21T09:00:00Z'));
+        $this->signIn($owner);
+        $this->client->request('POST', $this->path($organisation, 'exports/' . $export->getId()->toRfc4122() . '/download'));
+
+        self::assertResponseStatusCodeSame(200);
+        self::assertSame("attachment; filename=audit-log.jsonl; filename*=utf-8''Soir%C3%A9e%20%C3%A0%20Lisboa%20audit%20log%202026-11-20.jsonl", $this->client->getResponse()->headers->get('Content-Disposition'));
+    }
+
+    #[Test]
     public function aStartAfterTheEndIsRefusedOnTheEndDate(): void
     {
         [$owner, $organisation] = $this->enterprise('folake@ire.events', 'Ìrè Events');
