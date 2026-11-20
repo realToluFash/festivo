@@ -205,17 +205,16 @@ export function isPreparing(page: OrganisationExportPage | null): boolean {
   return page?.export?.state === 'preparing';
 }
 
-/** The browser saves the archive, named for the organisation and the day it was asked for. */
-export function saveArchive(
-  bytes: Uint8Array<ArrayBuffer>,
-  organisation: string,
-  askedAt: string,
-): void {
-  const url = URL.createObjectURL(new Blob([bytes], { type: 'application/zip' }));
+/** The browser saves the archive under the server's name for it, and `export.zip` when the server gave none. */
+export function saveArchive(archive: {
+  name: string | null;
+  bytes: Uint8Array<ArrayBuffer>;
+}): void {
+  const url = URL.createObjectURL(new Blob([archive.bytes], { type: 'application/zip' }));
   const link = document.createElement('a');
 
   link.href = url;
-  link.download = `${organisation} ${askedAt.slice(0, 10)}.zip`;
+  link.download = archive.name ?? 'export.zip';
   link.click();
   window.setTimeout(() => URL.revokeObjectURL(url), 0);
 }

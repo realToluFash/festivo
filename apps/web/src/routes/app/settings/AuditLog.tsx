@@ -100,7 +100,7 @@ function AuditDesk({ organisation }: { organisation: Membership }) {
     api.downloadAuditExport(organisation.id, exportId).then(
       (file) => {
         const format = formatOf(file.type);
-        saveAuditFile(file.bytes, file.type, auditFileName(format, new Date(), null));
+        saveAuditFile(file.bytes, file.type, auditFileName(file.name, format));
         setTold(t('auditLog.downloading', { format: t(`auditLog.formats.${format}`) }));
       },
       (error: unknown) =>
@@ -225,7 +225,7 @@ function Loaded({
       setExporting(null);
 
       if (outcome.kind === 'file') {
-        saveAuditFile(outcome.bytes, outcome.type, auditFileName(format, new Date(), page.zone));
+        saveAuditFile(outcome.bytes, outcome.type, auditFileName(outcome.name, format));
         tell(t('auditLog.downloading', { format: t(`auditLog.formats.${format}`) }));
       } else {
         onPreparing(outcome.email);

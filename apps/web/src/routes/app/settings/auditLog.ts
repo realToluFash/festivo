@@ -160,8 +160,9 @@ export function formatOf(contentType: string): AuditFormat {
   return contentType.split(';')[0]?.trim().toLowerCase() === 'text/csv' ? 'csv' : 'jsonl';
 }
 
-export function auditFileName(format: AuditFormat, now: Date, zone: string | null): string {
-  return `audit-log-${dayIn(now, zone)}.${format}`;
+/** The server's name for the file, and `audit-log.<format>` when it gave none. */
+export function auditFileName(name: string | null, format: AuditFormat): string {
+  return name ?? `audit-log.${format}`;
 }
 
 export function saveAuditFile(bytes: Uint8Array<ArrayBuffer>, type: string, name: string): void {
