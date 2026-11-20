@@ -5757,3 +5757,97 @@ describe('Make live, Pause, Call off and End now keep the keyboard in their dial
     },
   );
 });
+
+describe('A currency change refused once amounts are recorded takes focus to its notice (sc-74372)', () => {
+  const IN_USE = 'The currency cannot change once amounts are recorded against this event.';
+
+  async function refusedPick(saving: () => Response | Promise<Response>) {
+    signedIn();
+    const sent: string[] = [];
+
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
+      const line = `${init?.method ?? 'GET'} ${new URL(String(input)).pathname}`;
+      sent.push(line);
+      if (line === 'PATCH /api/events/ev_1') return saving();
+
+      return json({ event: event() });
+    });
+    at('/app/events/ev_1');
+    const details = await screen.findByRole('region', { name: 'Details' });
+
+    fireEvent.click(within(details).getByRole('button', { name: /Currency$/u }));
+    const [currency] = await within(details).findAllByRole('group', { name: 'Currency' });
+    const radios = within(currency!).getAllByRole('radio');
+    const last = radios[radios.length - 1]!;
+    fireEvent.click(last);
+    const save = within(currency!).getByRole('button', { name: 'Save' });
+
+    return { sent, currency: currency!, last, save };
+  }
+
+  it('focuses the notice once the API answers 409 event_currency_in_use, with no live role to read it twice', async () => {
+    const { currency, last, save } = await refusedPick(() => problem(409, 'event_currency_in_use'));
+
+    save.focus();
+    fireEvent.click(save);
+
+    const notice = (await within(currency).findByText(IN_USE)).closest('.notice');
+    await waitFor(() => expect(document.activeElement).toBe(notice));
+    expect(notice?.getAttribute('role')).toBeNull();
+    expect(notice?.getAttribute('tabindex')).toBe('-1');
+    expect(notice?.hasAttribute('data-notice-landing')).toBe(true);
+    expect((last as HTMLInputElement).checked).toBe(true);
+    expect(save.getAttribute('aria-disabled')).toBe('false');
+    expect(notice!.compareDocumentPosition(last) & Node.DOCUMENT_POSITION_FOLLOWING).not.toBe(0);
+  });
+
+  it('takes focus to the notice again when Save is pressed again with the same pick', async () => {
+    const { sent, currency, save } = await refusedPick(() => problem(409, 'event_currency_in_use'));
+
+    save.focus();
+    fireEvent.click(save);
+    await waitFor(() =>
+      expect(document.activeElement).toBe(within(currency).getByText(IN_USE).closest('.notice')),
+    );
+
+    save.focus();
+    fireEvent.click(save);
+    await waitFor(() =>
+      expect(sent.filter((line) => line === 'PATCH /api/events/ev_1')).toHaveLength(2),
+    );
+    await waitFor(() =>
+      expect(document.activeElement).toBe(within(currency).getByText(IN_USE).closest('.notice')),
+    );
+    expect(within(currency).getAllByText(IN_USE)).toHaveLength(1);
+  });
+
+  it('leaves focus where the person moved it while saving, and announces the notice as it appears', async () => {
+    let answer: (response: Response) => void = () => {};
+    const { sent, currency, last, save } = await refusedPick(
+      () => new Promise<Response>((resolve) => (answer = resolve)),
+    );
+
+    save.focus();
+    fireEvent.click(save);
+    await waitFor(() => expect(sent).toContain('PATCH /api/events/ev_1'));
+    last.focus();
+    await act(async () => answer(problem(409, 'event_currency_in_use')));
+
+    const notice = (await within(currency).findByText(IN_USE)).closest('.notice');
+    expect(notice?.getAttribute('role')).toBe('alert');
+    expect(document.activeElement).toBe(last);
+  });
+
+  it('keeps focus on Save for the part’s other notices', async () => {
+    const { currency, save } = await refusedPick(() => problem(500, 'internal_error'));
+
+    save.focus();
+    fireEvent.click(save);
+
+    expect(
+      await within(currency).findByText('Not saved. Your changes are still here. Try again.'),
+    ).toBeDefined();
+    expect(document.activeElement).toBe(save);
+    expect(within(currency).queryByText(IN_USE)).toBeNull();
+  });
+});
