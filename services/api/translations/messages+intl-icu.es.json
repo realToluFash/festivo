@@ -382,6 +382,6 @@
     "validation.budget_markup_with_price": "Escriba un recargo o un precio, no los dos.",
     "validation.budget_client_price_invalid": "Escriba un precio de {min} o más, solo con números.",
     "validation.budget_client_price_too_many_decimals": "Tiene demasiados decimales para la moneda de este evento. Escriba el precio así: {example}.",
-    "audit.export_file": "{organisation} audit log {day}",
+    "audit.export_file": "Registro de auditoría de {organisation} {day}",
     "audit.export_too_many": "Las entradas que coinciden superan el límite de {most, number, ::group-auto}. Acote los filtros y vuelva a exportar."
 }
