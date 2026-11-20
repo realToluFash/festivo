@@ -32,6 +32,7 @@ import { EmailDomains } from './app/settings/EmailDomains.tsx';
 import { ExportAllData } from './app/settings/ExportAllData.tsx';
 import { General } from './app/settings/General.tsx';
 import { Members } from './app/settings/Members.tsx';
+import { PaymentReminders } from './app/settings/PaymentReminders.tsx';
 import { SignInRules } from './app/settings/SignInRules.tsx';
 import { Vendors } from './app/settings/Vendors.tsx';
 import { SettingsDesk } from './app/SettingsDesk.tsx';
@@ -127,6 +128,7 @@ export const routes = [
               { path: 'settings/members', element: <Members /> },
               { path: 'settings/sign-in-rules', element: <SignInRules /> },
               { path: 'settings/vendors', element: <Vendors /> },
+              { path: 'settings/vendors/payment-reminders', element: <PaymentReminders /> },
               { path: 'settings/data-and-control', element: <DataAndControl /> },
               { path: 'settings/data-and-control/export', element: <ExportAllData /> },
               { path: 'settings/data-and-control/email-domains', element: <EmailDomains /> },

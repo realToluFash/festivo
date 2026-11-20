@@ -1938,10 +1938,9 @@ export class ApiClient {
     days: number,
   ): Promise<PaymentRemindersSetting> {
     return this.readPaymentReminders(
-      await this.put<unknown>(
-        `/api/orgs/${encodeURIComponent(organisationId)}/payment-reminders`,
-        { days },
-      ),
+      await this.put<unknown>(`/api/orgs/${encodeURIComponent(organisationId)}/payment-reminders`, {
+        days,
+      }),
     );
   }
 
