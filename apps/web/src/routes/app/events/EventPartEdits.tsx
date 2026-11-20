@@ -42,7 +42,7 @@ import { type CoverEdited, type CoverUploaded, CoverEdit } from '../../../compon
 import { Glyph } from '../../../components/Glyph.tsx';
 import { currentLocale, dateLocale } from '../../../i18n/index.ts';
 import { meshFor } from '../../../mesh.ts';
-import { focusStep } from '../../../stepFocus.ts';
+import { focusStep, landOnNotice } from '../../../stepFocus.ts';
 import { currencyChoices, timeZoneChoices } from '../../../zoneAndCurrencyChoices.ts';
 import { discardCoverUpload, refusalOf } from './coverPhoto.ts';
 import { HostFields, VenueFields } from './EventFormFields.tsx';
@@ -291,11 +291,7 @@ export function CurrencyPart({ event, tag, onDirty, onClose, onSaved, onLatest }
 
     if (inUse == null || !inUse.landing || landed == null) return;
 
-    landed.setAttribute('data-notice-landing', '');
-    landed.addEventListener('blur', () => landed.removeAttribute('data-notice-landing'), {
-      once: true,
-    });
-    focusStep(landed);
+    focusStep(landOnNotice(landed));
   }, [inUse]);
 
   return (
