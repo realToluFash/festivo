@@ -67,6 +67,7 @@ import {
   wholeMoney,
 } from './budgetArea.ts';
 import { PaymentDialog, QuoteDialog } from './QuoteForms.tsx';
+import { CancelDialog, MadeDialog, MarkPaidDialog } from './PaymentForms.tsx';
 import {
   type Amending,
   CoverCard,
@@ -77,7 +78,7 @@ import {
   VendorPage,
   VendorsQuoted,
 } from './QuoteParts.tsx';
-import { type QuoteForm, budgetPath, budgetView, vendorPagePath } from './quotesArea.ts';
+import { type QuoteForm, budgetPath, budgetView, longDay, vendorPagePath } from './quotesArea.ts';
 import { useHubTopics } from './useHubTopics.ts';
 import '../../../components/SettingsParts.css';
 import '../../../components/eventsDesk.css';
@@ -146,6 +147,11 @@ export function BudgetArea({ event }: { event: OrganisationEvent }) {
   const [retryingQuotes, setRetryingQuotes] = useState(false);
   const [earlier, setEarlier] = useState(false);
   const [told, setTold] = useState<string | null>(null);
+  const [marking, setMarking] = useState<ScheduledPayment | null>(null);
+  const [cancelling, setCancelling] = useState<ScheduledPayment | null>(null);
+  const [making, setMaking] = useState(false);
+  const [marked, setMarked] = useState<string | null>(null);
+  const [deleted, setDeleted] = useState<string | null>(null);
   const viewed = useRef(false);
   const quotes = quotesLoad.kind === 'loaded' ? quotesLoad.quotes : null;
   const shownQuote =
@@ -186,6 +192,8 @@ export function BudgetArea({ event }: { event: OrganisationEvent }) {
     setRemoving(null);
     setNotRemoved(false);
     setEarlier(false);
+    setMarked(null);
+    setDeleted(null);
   }
 
   useEffect(() => {
@@ -391,6 +399,54 @@ export function BudgetArea({ event }: { event: OrganisationEvent }) {
     );
   };
 
+  const focusPayment = (id: string) => {
+    let tries = 20;
+    const go = () => {
+      const to = document.querySelector<HTMLElement>(`[data-payment="${id}"] .desk-text`);
+      if (to != null && to.closest('[inert]') == null) to.focus();
+      else if (tries-- > 0) window.requestAnimationFrame(go);
+      else title.current?.focus();
+    };
+    window.requestAnimationFrame(go);
+  };
+  const failedWords = (error: unknown) =>
+    error instanceof ApiError && error.problem.detail != null && error.status !== 0
+      ? error.problem.detail
+      : t('budget.form.failed');
+  const undoPaid = async (payment: ScheduledPayment) => {
+    if (quotes == null) return;
+    try {
+      await api.undoPaid(event.id, payment.id);
+    } catch (error) {
+      tell(failedWords(error));
+      return;
+    }
+    await readQuotes();
+    setMarked(null);
+    if (payment.addedAsPaid && payment.paid != null && shownQuote != null) {
+      const words = t('quotes.deleted', {
+        amount: minorMoney(payment.paid.amount, quotes.currency, locale),
+        vendor: shownQuote.vendor.name,
+        day: longDay(payment.paid.paidOn, locale),
+        what: payment.description,
+      });
+      setDeleted(words);
+      title.current?.focus();
+      return;
+    }
+    focusPayment(payment.id);
+  };
+  const restorePayment = async (payment: ScheduledPayment) => {
+    try {
+      await api.restorePayment(event.id, payment.id);
+    } catch (error) {
+      tell(failedWords(error));
+      return;
+    }
+    await readQuotes();
+    focusPayment(payment.id);
+  };
+
   return (
     <LayersContext value={layers}>
       <div className="desk ev desk-page ev-page bt">
@@ -455,6 +511,23 @@ export function BudgetArea({ event }: { event: OrganisationEvent }) {
                 setNotRemoved(false);
               }}
               onRemove={(payment) => void removePayment(payment)}
+              viewerId={session.userId}
+              marked={marked}
+              deleted={deleted}
+              onMarkPaid={(payment) => {
+                setDeleted(null);
+                setMarking(payment);
+              }}
+              onUndo={(payment) => void undoPaid(payment)}
+              onCancel={(payment) => {
+                setDeleted(null);
+                setCancelling(payment);
+              }}
+              onRestore={(payment) => void restorePayment(payment)}
+              onAlreadyMade={() => {
+                setDeleted(null);
+                setMaking(true);
+              }}
             />
           )}
           {view.kind === 'home' && budget != null && (
@@ -620,6 +693,62 @@ export function BudgetArea({ event }: { event: OrganisationEvent }) {
               void readQuotes().then(() => {
                 setPaying(null);
                 tell(words);
+              });
+            }}
+          />
+        )}
+        {marking != null && quotes != null && shownQuote != null && (
+          <MarkPaidDialog
+            eventId={event.id}
+            eventName={event.name}
+            quote={shownQuote}
+            quotes={quotes}
+            payment={marking}
+            onClose={() => {
+              setMarking(null);
+              void readQuotes();
+            }}
+            onSaved={(words) => {
+              const id = marking.id;
+              void readQuotes().then(() => {
+                setMarking(null);
+                setAmending((now) => (now?.id === id ? null : now));
+                setRemoving((now) => (now === id ? null : now));
+                setMarked(id);
+                setHeard(words);
+                focusPayment(id);
+              });
+            }}
+          />
+        )}
+        {cancelling != null && quotes != null && shownQuote != null && (
+          <CancelDialog
+            eventId={event.id}
+            quote={shownQuote}
+            quotes={quotes}
+            payment={cancelling}
+            onClose={() => setCancelling(null)}
+            onSaved={() => {
+              const id = cancelling.id;
+              void readQuotes().then(() => {
+                setCancelling(null);
+                focusPayment(id);
+              });
+            }}
+          />
+        )}
+        {making && quotes != null && shownQuote != null && (
+          <MadeDialog
+            eventId={event.id}
+            quote={shownQuote}
+            quotes={quotes}
+            onClose={() => setMaking(false)}
+            onSaved={({ paymentId, words }) => {
+              void readQuotes().then(() => {
+                setMaking(false);
+                setMarked(paymentId);
+                setHeard(words);
+                focusPayment(paymentId);
               });
             }}
           />

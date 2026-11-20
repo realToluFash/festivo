@@ -35,6 +35,7 @@ import {
   type QuoteProblems,
   agreedElsewhere,
   draftOfQuote,
+  focusFirstWrong,
   keptOf,
   lineLine,
   longDay,
@@ -43,30 +44,18 @@ import {
   paymentRefusedAt,
   quoteProblems,
   quoteRefusedAt,
+  refusalWords,
   sentAmount,
   todayIn,
 } from './quotesArea.ts';
 
-function focusFirstWrong(within: string): void {
-  window.setTimeout(
-    () => document.querySelector<HTMLElement>(`${within} [aria-invalid="true"]`)?.focus(),
-    0,
-  );
-}
-
-function AlertInset({ children }: { children: ReactNode }) {
+export function AlertInset({ children }: { children: ReactNode }) {
   return (
     <div className="bt-alert" role="alert">
       <Glyph name="alert" size={16} weight={2.3} />
       <p>{children}</p>
     </div>
   );
-}
-
-function refusalWords(error: unknown, failed: string): string {
-  return error instanceof ApiError && error.problem.detail != null && error.status !== 0
-    ? error.problem.detail
-    : failed;
 }
 
 /** Add (800, two columns), Revise or Correct (540): the vendor is chosen once, on Add; Revise changes the amount or the date; Correct the rest. */
@@ -850,7 +839,7 @@ export function AmendInPlace({
   );
 }
 
-function Fixed({ label, value }: { label: string; value: string }) {
+export function Fixed({ label, value }: { label: string; value: string }) {
   return (
     <div className="desk-field">
       <span className="desk-label">{label}</span>
@@ -893,7 +882,7 @@ function Label({ id, label, optional }: { id: string; label: string; optional: b
   );
 }
 
-function TextField({
+export function TextField({
   id,
   label,
   value,
@@ -951,11 +940,12 @@ function TextField({
   );
 }
 
-function DateField({
+export function DateField({
   id,
   label,
   value,
   max,
+  help,
   error,
   onChange,
 }: {
@@ -963,6 +953,7 @@ function DateField({
   label: string;
   value: string;
   max?: string;
+  help?: string;
   error: string | null;
   onChange: (value: string) => void;
 }) {
@@ -976,16 +967,21 @@ function DateField({
           value={value}
           max={max}
           aria-invalid={error != null}
-          aria-describedby={described(id, false, error)}
+          aria-describedby={described(id, help != null, error)}
           onChange={(event) => onChange(event.target.value)}
         />
       </div>
+      {help != null && (
+        <p id={`${id}-help`} className="desk-help">
+          {help}
+        </p>
+      )}
       <Problem id={`${id}-error`} line={error} />
     </div>
   );
 }
 
-function MoneyField({
+export function MoneyField({
   label,
   value,
   sign,
