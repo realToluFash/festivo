@@ -235,7 +235,7 @@ describe('the Budget page at a desk in A (sc-31779)', () => {
     expect(paid).toContain('Client total');
     expect(paid).toContain('Margin after payments£4,856 to £5,522');
     expect(paid).toContain('19.2% to 18.9%');
-    expect(screen.getByText('Below cost: margin −£100.')).toBeTruthy();
+    expect(screen.getByText('Below cost: margin -£100.00.')).toBeTruthy();
     cleanup();
     await open(at('margin_before_paid'));
     const card = screen.getByRole('region', { name: 'Budget' }).textContent ?? '';

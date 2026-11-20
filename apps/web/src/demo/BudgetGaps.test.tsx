@@ -137,27 +137,37 @@ describe('the states Budget A still lacked (sc-85, sc-88, sc-90, sc-91, sc-92, s
     expect(screen.queryByText('This would take the event over its ceiling.')).toBeNull();
   });
 
-  it(
-    'shows a fee at £0 with no margin figure, and refuses a markup that is not a number',
-    SLOW,
-    async () => {
-      await open(at('margin_zero_price'));
-      expect(section('Costs').textContent).toContain('Charged at £0.00 · its own priceNo figure');
-      cleanup();
+  it('prices a fee from its row, and refuses a markup that is not a number', SLOW, async () => {
+    await open(at('margin_zero_price'));
+    const card = () => screen.getByRole('region', { name: 'Budget' }).textContent ?? '';
+    expect(card()).toContain('Client total£22,296 to £26,292');
+    expect(section('Costs').textContent).toContain('Charged at £0.00 · its own priceNo figure');
+    fireEvent.click(within(section('Costs')).getByRole('button', { name: /^Planning fee/ }));
+    const fee = screen.getByLabelText('Charged at');
+    const save = () =>
+      fireEvent.click(within(section('Costs')).getByRole('button', { name: 'Save' }));
+    fireEvent.change(fee, { target: { value: '' } });
+    save();
+    expect(screen.getByText('Enter a price of 0 or more, in numbers only.')).toBeTruthy();
+    fireEvent.change(fee, { target: { value: '3000' } });
+    save();
+    expect(section('Costs').textContent).toContain('Charged at £3,000.00 · its own price100.0%');
+    expect(card()).toContain('Client total£25,296 to £29,292');
+    expect(card()).toContain('Margin£5,566 to £6,232');
+    cleanup();
 
-      await open(at('markup_nan'));
-      const dialog = await screen.findByRole('dialog', { name: 'Markup' }, SLOW);
-      expect(within(dialog).getByText('Enter the markup as a number, like 12.5.')).toBeTruthy();
-      cleanup();
+    await open(at('markup_nan'));
+    const dialog = await screen.findByRole('dialog', { name: 'Markup' }, SLOW);
+    expect(within(dialog).getByText('Enter the markup as a number, like 12.5.')).toBeTruthy();
+    cleanup();
 
-      await open(at('margin_live'));
-      expect(
-        screen.getByText(
-          'Julien Moreau changed Photography’s markup to 25%, so the margin went up by £240.',
-        ),
-      ).toBeTruthy();
-    },
-  );
+    await open(at('margin_live'));
+    expect(
+      screen.getByText(
+        'Julien Moreau changed Photography’s markup to 25%, so the margin went up by £240.',
+      ),
+    ).toBeTruthy();
+  });
 
   it('opens on the plain Budget and turns to the margin face with See margin', SLOW, async () => {
     await open(at('populated'));
