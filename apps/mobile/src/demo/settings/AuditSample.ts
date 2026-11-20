@@ -84,6 +84,8 @@ export interface AuditEntry {
   /** The event it is on, for the Event filter. */
   event: string | null;
   changes: string | null;
+  /** What an entry that changed nothing recorded, each a row of its own: an export's format, filters and count. */
+  recorded?: readonly { label: string; value: string }[];
   address: string | null;
   device: string | null;
   reference: string;
@@ -116,6 +118,22 @@ const section = (type: AuditType, area: string) => ({
 
 /** Newest first, the instants in UTC: Lagos is an hour ahead. */
 export const ENTRIES: readonly AuditEntry[] = [
+  {
+    ...quiet,
+    ...FOLAKE,
+    id: 'exported',
+    at: '2026-10-19T10:42:09Z',
+    what: 'Exported 3 audit log entries',
+    type: 'Audit log',
+    action: 'audit_log.exported',
+    on: ORGANISATION,
+    reference: '7c3e9a14-2b6d-4f81-9e05-d8a1f62b3c47',
+    recorded: [
+      { label: 'Format', value: 'CSV' },
+      { label: 'Filters', value: 'Person: Priya Shah · Type: Event access' },
+      { label: 'Entries', value: '3' },
+    ],
+  },
   {
     ...quiet,
     ...FOLAKE,

@@ -61,7 +61,7 @@ describe('the audit log’s states (sc-611)', () => {
     const days = byDay(matching(NO_FILTERS), say);
 
     expect(days.map(({ heading, entries }) => [heading, entries.length])).toEqual([
-      ['Today · Monday, Oct 19', 3],
+      ['Today · Monday, Oct 19', 4],
       ['Sunday, Oct 18', 7],
       ['Saturday, Oct 17', 2],
       ['Friday, Oct 16', 4],
@@ -70,6 +70,7 @@ describe('the audit log’s states (sc-611)', () => {
     expect(
       days[0]?.entries.map((entry) => [say.time(entry.at), entry.what, entryLine(entry)]),
     ).toEqual([
+      ['11:42', 'Exported 3 audit log entries', 'Folake Adeyemi · Audit log'],
       ['10:05', 'Downloaded Ire Events’s data', 'Folake Adeyemi · Organisation'],
       ['09:30', 'Asked for an export of Ire Events’s data', 'Folake Adeyemi · Organisation'],
       [
@@ -268,6 +269,12 @@ describe('the audit log’s states (sc-611)', () => {
     expect(href('dish')).toBeUndefined();
     expect(detail('detail_skipped')['Type and action']).toBe('Schedule · run_of_show.item_skipped');
     expect(detail('detail_dish').On).toBe('Jollof rice');
+    expect(Object.keys(detail('detail_export'))).not.toContain('Changes');
+    expect(detail('detail_export')).toMatchObject({
+      Format: 'CSV',
+      Filters: 'Person: Priya Shah · Type: Event access',
+      Entries: '3',
+    });
     for (const entry of ENTRIES.filter(({ type }) => type === 'Guests'))
       expect(entry.what).not.toMatch(/Emeka|Nwosu/u);
     for (const entry of ENTRIES.filter(({ type }) => type !== 'Sign-in and security')) {
