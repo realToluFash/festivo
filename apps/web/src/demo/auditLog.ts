@@ -92,6 +92,8 @@ export interface Entry {
   /** The event it belongs to, for the Event filter; an organisation's dish has none. */
   event?: string;
   changes?: string;
+  /** What an entry that changed nothing recorded, each a row of its own: an export's format, filters and count. */
+  recorded?: readonly { label: string; value: string }[];
   address?: string;
   device?: string;
 }
@@ -127,6 +129,20 @@ const ADDRESS = '203.0.113.17';
 
 /** Newest first, as the boards list them; the seconds, codes and references the spec leaves out are the sample's. */
 export const ENTRIES: readonly Entry[] = [
+  {
+    id: 'exported',
+    at: '2026-10-19T11:42:09+01:00',
+    what: 'Exported 3 audit log entries',
+    who: FOLAKE,
+    type: 'Audit log',
+    action: 'audit_log.exported',
+    reference: '7c3e9a14-2b6d-4f81-9e05-d8a1f62b3c47',
+    recorded: [
+      { label: 'Format', value: 'CSV' },
+      { label: 'Filters', value: 'Person: Priya Shah · Type: Event access' },
+      { label: 'Entries', value: '3' },
+    ],
+  },
   {
     id: 'download',
     at: '2026-10-19T10:05:31+01:00',
@@ -505,6 +521,7 @@ export function factsOf(
       ...(entry.on.link == null || entry.on.gone === true ? {} : { link: entry.on.link }),
     });
   if (entry.changes != null) facts.push({ label: AUDIT_WORDS.changes, value: entry.changes });
+  for (const row of entry.recorded ?? []) facts.push(row);
   facts.push({
     label: AUDIT_WORDS.typeAndAction,
     value: `${TYPE_WORDS[lang][entry.type]} · ${entry.action}`,
@@ -554,6 +571,7 @@ export const AUDIT_STATES = [
   'detail_skipped',
   'detail_section',
   'detail_dish',
+  'detail_export',
   'export',
   'export_small',
   'export_preparing',
@@ -574,6 +592,7 @@ const DETAILS: Record<string, string> = {
   detail_skipped: 'skipped',
   detail_section: 'floorLead',
   detail_dish: 'dish',
+  detail_export: 'exported',
 };
 
 export function auditStart(state: string): AuditStart {
