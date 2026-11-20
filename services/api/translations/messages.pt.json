@@ -427,7 +427,7 @@
     "validation.money_currency_mismatch": "Introduza o valor em {currency}, a moeda deste evento.",
     "quotes.vendor_already_quoted": "Esse fornecedor já tem uma cotação neste evento, por isso esta cotação não foi guardada. Para dar um preço novo, reveja essa cotação.",
     "quotes.revision_unchanged": "Altere o valor ou a data da cotação para a rever. Para alterar outra coisa, corrija a cotação.",
-    "quotes.payments_already_scheduled": "Foram adicionados pagamentos ao calendário deste fornecedor enquanto preenchia isto, por isso nenhum dos seus foi guardado. Verifique os pagamentos que tem agora antes de adicionar mais.",
+    "quotes.payments_already_scheduled": "Foram adicionados pagamentos ao calendário deste fornecedor enquanto preenchia o formulário, por isso nenhum dos seus foi guardado. Verifique os pagamentos que o calendário tem agora antes de adicionar mais.",
     "vendors.archive_refused": "O fornecedor {vendor} não foi arquivado, porque um ou mais eventos ainda têm pagamentos pendentes a este fornecedor.",
     "access.plan_required": "Disponível no plano Enterprise. Para alterar esta definição, contacte a Soirely sobre o plano Enterprise.",
     "email_domains.not_listed": "Esse domínio não está na lista.",
