@@ -1,0 +1,16 @@
+# Needs an organisation with events typed party; text size set outside the flow.
+# sc-75214: nothing found, Party chosen and a search nothing matches; then one tap on the count line's Clear filters.
+appId: host.exp.Exponent
+---
+- runFlow: sc75214-five.yaml
+- tapOn: { id: 'events.search' }
+- inputText: 'zzqq'
+- hideKeyboard
+- waitForAnimationToEnd
+- takeScreenshot: count-none
+- tapOn: { id: 'events.search.clear' }
+- waitForAnimationToEnd
+- tapOn: { id: 'events.clearFilters' }
+- waitForAnimationToEnd
+- assertNotVisible: { id: 'events.clearFilters' }
+- takeScreenshot: count-cleared
