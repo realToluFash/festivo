@@ -37,6 +37,7 @@ const BOARDS: Record<BudgetState, readonly [string, string]> = {
   ],
   reminder_overdue: ['the reminder, overdue', 'Overdue · last reminder; it opens Due now'],
   reminder_mixed: ['the reminder, mixed', '1 overdue, 2 due in the next 3 days'],
+  reminder_due: ['the reminder, coming due', '2 due in the next 3 days on one event'],
   payers: ['Who is paying', 'A row per payer with its link’s state'],
   payer_never_sent: ['a payer, never sent', 'Send to Adaeze and Tunde'],
   payer_opened: ['a payer, opened', 'Opened 3 times, Send again'],
