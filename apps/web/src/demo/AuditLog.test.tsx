@@ -222,7 +222,7 @@ describe('Data and control › Audit log (sc-611)', () => {
     ['export_small', 'Downloading the audit log as CSV.'],
     [
       'export_preparing',
-      'We’ll email folake@ire.events a link when it’s ready. It works once, for 24 hours.',
+      'We’ll email folake@ire.events a link when it’s ready. It downloads only for you, signed in, for 24 hours.',
     ],
     [
       'export_too_many',

@@ -52,6 +52,9 @@ export const PAYMENTS_STATES: readonly string[] = [
   'cancel',
   'cancelled',
   'already_made',
+  'made_as_is',
+  'made_under',
+  'made_over',
   'made_early',
   'mark_currency',
   'mark_plan',
@@ -203,6 +206,36 @@ export function madeProblems(draft: MadeDraft, quote: Quote | undefined): MadePr
     problems.reference = PW.referenceTooLong(QUOTE_LIMITS.reference);
 
   return problems;
+}
+
+export interface Totals {
+  paid: number;
+  scheduled: number;
+}
+
+/** sc-75579's inset: the vendor's totals as they stand, and after an amount sc-88 accepts, which counts in both at its amount paid. */
+export interface MadeInset {
+  vendor: string;
+  now: Totals;
+  after: Totals | null;
+  over: number | null;
+}
+
+export function madeInset(budget: Budget, draft: MadeDraft): MadeInset | null {
+  const quote = budget.quotes.find((one) => one.vendor.id === draft.vendorId);
+  if (quote == null) return null;
+  const counted = scheduledFor(budget, draft.vendorId);
+  const now = {
+    paid: counted.reduce((total, one) => total + (one.paid?.amount ?? 0), 0),
+    scheduled: counted.reduce((total, one) => total + one.amount, 0),
+  };
+  const amount = parsedAmount(draft.amount);
+  const after =
+    amount == null ? null : { paid: now.paid + amount, scheduled: now.scheduled + amount };
+  const over =
+    after != null && after.scheduled > quote.amount ? after.scheduled - quote.amount : null;
+
+  return { vendor: quote.vendor.name, now, after, over };
 }
 
 export function madePayment(draft: MadeDraft, payments: readonly Payment[], by: string): Payment {
@@ -490,6 +523,14 @@ export function remindersStart(state: string): { days: number; changing: Changin
     : { days: REMINDER_DAYS, changing: null };
 }
 
+const MADE_STATES: readonly string[] = [
+  'already_made',
+  'made_as_is',
+  'made_under',
+  'made_over',
+  'made_early',
+];
+
 export interface PaymentsStart extends QuotesStart {
   marking: Marking | null;
   marked: string | null;
@@ -613,11 +654,12 @@ export function paymentsStart(
   }
   if (state === 'shape_failed') return shaped({ ...shapingOf('instalments'), failed: true });
   if (state === 'shape_raced') return shaped(shapingOf('deposit', true), base.budget);
-  if (state === 'already_made' || state === 'made_early') {
+  if (MADE_STATES.includes(state)) {
+    const under = state === 'made_under';
     const draft: MadeDraft = {
-      vendorId,
-      what: 'Buttonholes',
-      amount: '120.00',
+      vendorId: under ? SAVOUR : vendorId,
+      what: under ? 'Wine for the toasts' : 'Buttonholes',
+      amount: state === 'made_as_is' ? '' : under ? '1,000.00' : '120.00',
       paidOn: state === 'made_early' ? '2026-10-05' : '2026-11-02',
       reference: '',
     };
@@ -742,6 +784,18 @@ export const PAYMENTS_PAGES: readonly DemoGroup[] = [
       { to: bloom('cancel'), name: 'Cancel payment: why it is not owed (cancel)' },
       { to: bloom('cancelled'), name: 'Cancelled, with Restore (cancelled)' },
       { to: bloom('already_made'), name: 'Add a payment already made: Buttonholes (already_made)' },
+      {
+        to: bloom('made_as_is'),
+        name: 'Already made, no amount yet: Bloom & Co’s totals as they stand (made_as_is)',
+      },
+      {
+        to: bloom('made_under'),
+        name: 'Already made to Savour Kitchen, £1,000.00: under the quote, nothing said (made_under)',
+      },
+      {
+        to: bloom('made_over'),
+        name: 'Already made, £120.00: the schedule £120.00 over the quote (made_over)',
+      },
       { to: bloom('made_early'), name: 'Dated before the vendor’s first quote (made_early)' },
       {
         to: bloom('added'),

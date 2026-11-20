@@ -265,6 +265,33 @@ describe('payments on a vendor’s page, shapes and the reminder setting, in A (
     ).toBeDefined();
   });
 
+  it(
+    'previews the vendor’s totals before and after a payment already made (sc-75579)',
+    SLOW,
+    async () => {
+      await open(`${BLOOM}&state=made_over`);
+      const made = dialog('Add a payment already made');
+      expect(within(made).getByText('£360.00 now, £480.00 with this payment')).toBeDefined();
+      expect(within(made).getByText('£1,200.00 now, £1,320.00 with this payment')).toBeDefined();
+      expect(
+        within(made).getByText('With this, the schedule is £120.00 over the quote.'),
+      ).toBeDefined();
+
+      fireEvent.change(within(made).getByLabelText('Vendor'), { target: { value: 'v4' } });
+      expect(within(made).getByText('Paid to Savour Kitchen')).toBeDefined();
+      expect(within(made).getByText('£7,500.00 now, £7,620.00 with this payment')).toBeDefined();
+      expect(within(made).queryByText(/over the quote/u)).toBeNull();
+
+      type(made, 'Amount paid', '');
+      expect(within(made).getByText('£7,500.00')).toBeDefined();
+      expect(within(made).queryByText(/with this payment/u)).toBeNull();
+      type(made, 'Amount paid', '1,500.01');
+      expect(
+        within(made).getByText('With this, the schedule is £0.01 over the quote.'),
+      ).toBeDefined();
+    },
+  );
+
   it('refuses a payment already made dated before the vendor’s first quote', SLOW, async () => {
     await open(`${BLOOM}&state=made_early`);
     const made = dialog('Add a payment already made');

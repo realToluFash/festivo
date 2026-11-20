@@ -368,7 +368,7 @@ export const AUDIT_WORDS = {
   export: 'Export',
   exportLine: 'Up to 10,000 entries download at once. More are prepared, and we email you a link.',
   preparing: 'Preparing your export',
-  preparingLine: `We’ll email ${SAMPLE.email} a link when it’s ready. It works once, for 24 hours.`,
+  preparingLine: `We’ll email ${SAMPLE.email} a link when it’s ready. It downloads only for you, signed in, for 24 hours.`,
   tooMany: 'More than 1,000,000 entries match. Narrow the filters, then export again.',
   locked: 'Available on Enterprise',
   lockedLine: `See who did what in ${ORG}, for 365 days, and export it.`,
