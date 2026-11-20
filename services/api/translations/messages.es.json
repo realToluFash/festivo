@@ -421,6 +421,7 @@
     "validation.payment_description_too_long": "Acorte el concepto del pago a {max} caracteres como máximo.",
     "validation.payment_due_required": "Indique la fecha de vencimiento.",
     "validation.schedule_payments_required": "Añada al menos un pago al calendario.",
+    "validation.schedule_payments_too_many": "Un calendario puede tener como máximo {max} pagos. Añada los demás uno a uno.",
     "validation.payment_before_quote": "La fecha de vencimiento no puede ser anterior a la cotización de {vendor} del {date}. Elija esa fecha o una posterior.",
     "validation.money_amount_invalid": "Escriba el importe como un número mayor que 0, por ejemplo {example}.",
     "validation.money_currency_mismatch": "Escriba el importe en {currency}, la moneda de este evento.",

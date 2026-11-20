@@ -421,6 +421,7 @@
     "validation.payment_description_too_long": "Shorten what the payment is for to {max} characters or fewer.",
     "validation.payment_due_required": "Enter the date due.",
     "validation.schedule_payments_required": "Add at least one payment to the schedule.",
+    "validation.schedule_payments_too_many": "A schedule can have at most {max} payments. Add the others one at a time.",
     "validation.payment_before_quote": "The date due cannot be before the quote from {vendor} on {date}. Choose that date or a later one.",
     "validation.money_amount_invalid": "Enter the amount as a number above 0, like {example}.",
     "validation.money_currency_mismatch": "Enter the amount in {currency}, the currency this event uses.",

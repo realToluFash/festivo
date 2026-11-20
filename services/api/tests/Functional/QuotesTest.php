@@ -287,6 +287,22 @@ final class QuotesTest extends ApiTestCase
     }
 
     #[Test]
+    public function aScheduleOfMoreRowsThanTheMaximumIsRefusedAtPaymentsAndNothingIsAdded(): void
+    {
+        $quote = $this->add();
+        $row = ['description' => 'Instalment', 'amount' => '10', 'currency' => 'GBP', 'dueOn' => '2027-03-01'];
+
+        $this->as($this->owner, 'POST', $this->schedule($quote['id']), ['payments' => Vec\fill(QuoteRules::SCHEDULE_MAXIMUM + 1, $row)]);
+
+        self::assertSame(422, $this->statusCode());
+        self::assertSame('A schedule can have at most 10 payments. Add the others one at a time.', $this->violation('payments')['message'] ?? null);
+        self::assertSame([], $this->only()['payments']);
+
+        $this->as($this->owner, 'POST', $this->schedule($quote['id']), ['payments' => Vec\fill(QuoteRules::SCHEDULE_MAXIMUM, $row)]);
+        self::assertSame(201, $this->statusCode());
+    }
+
+    #[Test]
     public function aScheduleForAVendorThatAlreadyHasAPaymentIsRefusedAndNothingIsAdded(): void
     {
         $quote = $this->add();

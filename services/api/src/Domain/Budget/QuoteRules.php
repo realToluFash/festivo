@@ -46,6 +46,8 @@ final readonly class QuoteRules
 
     public const string VENDOR_GONE = 'vendor_gone';
 
+    public const int SCHEDULE_MAXIMUM = 10;
+
     public function __construct(
         private TranslatorInterface $translator,
         private Money $money,
@@ -182,6 +184,10 @@ final readonly class QuoteRules
 
         if ([] === $rows) {
             throw ApiException::validation([$this->violation('payments', 'validation.schedule_payments_required')]);
+        }
+
+        if (Iter\count($rows) > self::SCHEDULE_MAXIMUM) {
+            throw ApiException::validation([$this->violation('payments', 'validation.schedule_payments_too_many', ['{max}' => (string) self::SCHEDULE_MAXIMUM])]);
         }
 
         $schedule = [];

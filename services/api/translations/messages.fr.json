@@ -421,6 +421,7 @@
     "validation.payment_description_too_long": "Raccourcissez l’objet du paiement à {max} caractères maximum.",
     "validation.payment_due_required": "Indiquez la date d’échéance.",
     "validation.schedule_payments_required": "Ajoutez au moins un paiement à l’échéancier.",
+    "validation.schedule_payments_too_many": "Un échéancier peut compter au plus {max} paiements. Ajoutez les autres un par un.",
     "validation.payment_before_quote": "La date d’échéance ne peut pas précéder le devis du prestataire {vendor} daté du {date}. Choisissez cette date ou une date ultérieure.",
     "validation.money_amount_invalid": "Saisissez le montant sous forme de nombre supérieur à 0, par exemple {example}.",
     "validation.money_currency_mismatch": "Saisissez le montant en {currency}, la devise de cet événement.",
