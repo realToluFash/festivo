@@ -1,8 +1,8 @@
-import type { ChargedLine, MarginFigures } from '@soirely/api-client';
+import type { BudgetLine, ChargedLine, MarginFigures } from '@soirely/api-client';
 import { type MoneyLanguage, numberFormat } from '@soirely/domain';
 import type { TFunction } from 'i18next';
 
-import { amountOfMinor, minorMoney, minorOf, wholeMoney } from './budgetArea.ts';
+import { amountOfMinor, lineState, minorMoney, minorOf, wholeMoney } from './budgetArea.ts';
 
 export const MOST_MARKUP = 999.9;
 
@@ -60,6 +60,11 @@ export function markupProblemWords(t: TFunction, problem: MarkupProblem, locale:
     default:
       return t('budget.margin.markupNumber', { example: number(12.5, 1) });
   }
+}
+
+/** A cost the margin face lists: every line that counts something, priced or at 0, since a line at 0 is charged only by a price entered there (sc-92, 20 Nov). */
+export function listedOnMarginFace(line: BudgetLine): boolean {
+  return line.quantity.count !== 0 && lineState(line) !== 'nothingYet';
 }
 
 /** Where the line's client price comes from, in the row's words. */
