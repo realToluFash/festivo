@@ -1,0 +1,16 @@
+# sc-24385, the tablet on its side: the app demo's event page, state venueNoteRefused, top and one scroll, for the side-by-side pair.
+appId: host.exp.Exponent
+---
+- setOrientation: LANDSCAPE_LEFT
+- runScript:
+    file: ../batch/helper.js
+    env:
+      ASK: /landscape # the harness turns it (sc-50565)
+- waitForAnimationToEnd
+- openLink: ${METRO_URL}/--/demo/events/evt-wed-4?state=venueNoteRefused
+- waitForAnimationToEnd:
+    timeout: 8000
+- takeScreenshot: top
+- scroll
+- waitForAnimationToEnd
+- takeScreenshot: scrolled

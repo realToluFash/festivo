@@ -1,0 +1,33 @@
+# sc-67708: on its side, Guests (waiting on ${GUEST_ID}'s row) pulled to refresh with the API paused: Refreshing… beside the area's name, no ‹ above it.
+appId: host.exp.Exponent
+onFlowComplete:
+  - runScript:
+      file: ../batch/helper.js
+      env:
+        ASK: /api?to=up
+---
+- setOrientation: LANDSCAPE_LEFT
+- openLink: ${METRO_URL}/--/events/${EVENT_ID}?area=guests
+- extendedWaitUntil: { visible: { id: 'guests.row.${GUEST_ID}' }, timeout: 30000 }
+- runFlow: ../developer-menu-close.yaml
+- runScript:
+    file: ../batch/helper.js
+    env:
+      ASK: /api?to=paused
+- swipe:
+    start: 30%, 45%
+    end: 30%, 85%
+    duration: 600
+- runScript:
+    file: ../batch/helper.js
+    env:
+      ASK: /shot?name=held-1
+- runScript:
+    file: ../batch/helper.js
+    env:
+      ASK: /shot?name=held-2
+- takeScreenshot: side-after-pull
+- runScript:
+    file: ../batch/helper.js
+    env:
+      ASK: /api?to=up

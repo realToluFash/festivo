@@ -1,0 +1,30 @@
+# sc-54450 offline: with the API stopped (by the runner, between steps), Save on Record a reply from a message is refused and the form keeps the reply, how and quote.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/${EVENT_ID}?area=guests
+- extendedWaitUntil:
+    visible:
+      id: 'guests.paste'
+    timeout: 30000
+- tapOn:
+    id: 'guests.paste'
+- extendedWaitUntil:
+    visible:
+      id: 'paste.row.${GUEST_ID}'
+    timeout: 10000
+- tapOn:
+    id: 'paste.row.${GUEST_ID}'
+- extendedWaitUntil:
+    visible:
+      id: 'guest.record.save'
+    timeout: 10000
+- tapOn:
+    id: 'guest.record.notComing'
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 25000, optional: true }
+- tapOn:
+    id: 'guest.record.save'
+- extendedWaitUntil:
+    visible:
+      id: 'guest.record.offline'
+    timeout: 20000
+- takeScreenshot: refused

@@ -1,0 +1,27 @@
+# sc-17728 regression, on the phone: ${EV}'s All dates keeps ‹ Event in the frame header above its title, with no back in the body, and ‹ Event returns to the event.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/${EV}
+- scrollUntilVisible:
+    element:
+      id: 'timeline.allDates'
+    direction: DOWN
+    timeout: 30000
+- tapOn:
+    id: 'timeline.allDates'
+- extendedWaitUntil:
+    visible:
+      id: 'timeline.row'
+    timeout: 15000
+- assertVisible:
+    id: 'frame.back'
+- assertNotVisible:
+    id: 'timeline.allDates.back'
+- takeScreenshot: all-dates
+- tapOn:
+    id: 'frame.back'
+- extendedWaitUntil:
+    visible:
+      id: 'events.page'
+    timeout: 15000
+- takeScreenshot: back
