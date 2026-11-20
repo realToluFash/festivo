@@ -5989,4 +5989,103 @@ describe('A part’s save notices show directly above Cancel and Save (sc-74398)
 
     expect(note.compareDocumentPosition(said) & Node.DOCUMENT_POSITION_FOLLOWING).not.toBe(0);
   });
+
+  describe('in Reply by, a role that no longer allows it (sc-74926)', () => {
+    const ROLE = ANSWERS[1][2];
+
+    beforeEach(() => {
+      vi.useFakeTimers({ shouldAdvanceTime: true, toFake: ['Date'] });
+      vi.setSystemTime(new Date('2026-11-01T12:00:00Z'));
+    });
+
+    afterEach(() => {
+      vi.useRealTimers();
+    });
+
+    async function pickedReplyBy(day: string, saving: () => Response) {
+      signedIn();
+      const sent: string[] = [];
+
+      vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
+        const line = `${init?.method ?? 'GET'} ${new URL(String(input)).pathname}`;
+        sent.push(line);
+        if (line === 'PATCH /api/events/ev_1') return saving();
+
+        return json({ event: event({ replyBy: '2026-11-10' }) });
+      });
+      at('/app/events/ev_1');
+      const details = await screen.findByRole('region', { name: 'Details' });
+
+      fireEvent.click(within(details).getByRole('button', { name: /Reply by ·/u }));
+      const part = await within(details).findByRole('group', { name: 'Reply by' });
+      const field = within(part).getByLabelText<HTMLInputElement>(/^Reply by/u);
+      fireEvent.change(field, { target: { value: day } });
+
+      return {
+        sent,
+        details,
+        part,
+        field,
+        save: within(part).getByRole('button', { name: 'Save' }),
+      };
+    }
+
+    it('says nothing was changed, right above Cancel and Save, keeps the date and focus on Save, and offers no retry', async () => {
+      const { sent, details, part, field, save } = await pickedReplyBy('2026-11-12', () =>
+        problem(403, 'permission_required'),
+      );
+
+      save.focus();
+      fireEvent.click(save);
+
+      expect((await within(part).findByRole('alert')).textContent).toContain(ROLE);
+      directlyAboveSave(part, ROLE);
+      expect(within(part).queryByText(/Not saved|Try again/u)).toBeNull();
+      expect(field.value).toBe('2026-11-12');
+      expect(document.activeElement).toBe(save);
+
+      fireEvent.click(save);
+      await waitFor(() =>
+        expect(sent.filter((line) => line === 'PATCH /api/events/ev_1')).toHaveLength(2),
+      );
+      directlyAboveSave(part, ROLE);
+      expect(within(details).getByText('Tue, Nov 10, 2026')).toBeDefined();
+    });
+
+    it.each([
+      ['Close replies sooner', '2026-11-05'],
+      ['Close replies now', '2026-10-30'],
+    ])('says the same after %s in its ask', async (go, day) => {
+      const { part, field } = await pickedReplyBy(day, () => problem(403, 'permission_required'));
+
+      fireEvent.click(within(part).getByRole('button', { name: 'Save' }));
+      fireEvent.click(await screen.findByRole('button', { name: go }));
+
+      await within(part).findByText(ROLE);
+      directlyAboveSave(part, ROLE);
+      expect(field.value).toBe(day);
+    });
+
+    it('keeps Not saved for a save that failed for another reason', async () => {
+      const { part } = await pickedReplyBy('2026-11-12', ANSWERS[0][1]);
+
+      fireEvent.click(within(part).getByRole('button', { name: 'Save' }));
+
+      await within(part).findByText(ANSWERS[0][2]);
+      directlyAboveSave(part, ANSWERS[0][2]);
+      expect(within(part).queryByText(ROLE)).toBeNull();
+    });
+
+    it('takes the notice away when the date changes', async () => {
+      const { part, field } = await pickedReplyBy('2026-11-12', () =>
+        problem(403, 'permission_required'),
+      );
+
+      fireEvent.click(within(part).getByRole('button', { name: 'Save' }));
+      await within(part).findByText(ROLE);
+      fireEvent.change(field, { target: { value: '2026-11-11' } });
+
+      expect(within(part).queryByText(ROLE)).toBeNull();
+    });
+  });
 });

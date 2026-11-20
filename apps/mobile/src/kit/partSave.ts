@@ -48,6 +48,13 @@ export interface PartSaveApi {
 export type PartSent =
   { kind: 'unchanged' } | { kind: 'saved'; event: OrganisationEvent } | EventSaveRefusal;
 
+/** The save was answered with a notice at the top of the part's screen, not under a field: the screen goes to its top to show it (sc-74540). */
+export function answeredWithNotice(sent: PartSent): boolean {
+  return sent.kind === 'refused'
+    ? sent.currencyInUse
+    : sent.kind !== 'unchanged' && sent.kind !== 'saved';
+}
+
 /** One part's save: nothing when nothing changed, and only that part under the tag read at open, unless somebody else has changed it since the page was read. */
 export async function sendPart(
   {

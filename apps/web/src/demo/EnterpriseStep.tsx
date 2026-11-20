@@ -50,7 +50,7 @@ function ContactStep({ tell }: { tell: Tell }) {
   };
 
   return (
-    <div className="ea-step">
+    <div className="ea-step step-wraps">
       <CardStep ref={step} label={S.contact} onClick={() => setOpen(true)} />
       {open && (
         <Dialog
@@ -110,7 +110,7 @@ function AskStep({ state }: { state: string }) {
   const sending = ask.now === 'sending';
 
   return (
-    <div className="ea-step">
+    <div className="ea-step step-wraps">
       {showsButton(ask) && (
         <button
           type="button"
