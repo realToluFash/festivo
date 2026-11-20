@@ -103,8 +103,10 @@ import {
   type ShiftDetails,
   type StaffAccess,
   type StaffEntry,
+  type StaffLinkWindow,
   type StaffPlan,
   asStaffEntry,
+  asStaffLinkWindow,
   asStaffPlan,
   asStaffRoster,
 } from './staff.ts';
@@ -3432,6 +3434,25 @@ export class ApiClient {
     }
 
     return screen;
+  }
+
+  /** A person's own link (sc-3912), by its token in the body. `seen` is the visible page, which records Link opened inside the window; a preview fetch sends it false and records nothing. Refused `not_found` alike for an unknown, replaced or removed token. */
+  async staffLinkWindow(token: string, seen: boolean): Promise<StaffLinkWindow> {
+    const window = asStaffLinkWindow(
+      await this.post<unknown>(
+        seen ? '/api/staff-links/opened' : '/api/staff-links/look',
+        { token },
+        { anonymous: true },
+      ),
+    );
+
+    if (window == null) {
+      throw new Error(
+        'The API answered a staff link in a shape this client does not know. Check StaffLinkController in services/api.',
+      );
+    }
+
+    return window;
   }
 
   /** A hub token for the event's bare signal to ask again; refused `not_found` once the link is replaced. */

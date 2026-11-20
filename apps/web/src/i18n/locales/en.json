@@ -2311,6 +2311,20 @@
     "failedTitle": "Asking did not work",
     "failedBody": "Something went wrong on the way. Try again in a moment."
   },
+  "staffLink": {
+    "goneTitle": "This link does not work.",
+    "goneBody": "It may have been replaced, or it is no longer in use.",
+    "goneNext": "Open the newest link you were sent, or ask the person who sent it.",
+    "notYetTitle": "This link works from {{time}} on {{day}}.",
+    "notYetBody": "It opens 12 hours before your first shift.",
+    "notYetNext": "Open this link again then. It stays the same.",
+    "notYetFoot": "This link is yours alone. Nothing stays on this device.",
+    "endedTitle": "This link has ended.",
+    "endedBody": "It stopped working 2 hours after your last shift.",
+    "endedNext": "If you are working another event, you will get a new link for it.",
+    "foot": "Nothing stays on this device.",
+    "failed": "That did not work. Try again in a moment."
+  },
   "ownerClaim": {
     "loading": "Loading",
     "noOwner": "{{organisation}} has no active owner",

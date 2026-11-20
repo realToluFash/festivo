@@ -2388,6 +2388,20 @@
     "failedTitle": "No se ha podido enviar la solicitud",
     "failedBody": "Algo ha fallado por el camino. Vuelva a intentarlo en un momento."
   },
+  "staffLink": {
+    "goneTitle": "This link does not work.",
+    "goneBody": "It may have been replaced, or it is no longer in use.",
+    "goneNext": "Open the newest link you were sent, or ask the person who sent it.",
+    "notYetTitle": "This link works from {{time}} on {{day}}.",
+    "notYetBody": "It opens 12 hours before your first shift.",
+    "notYetNext": "Open this link again then. It stays the same.",
+    "notYetFoot": "This link is yours alone. Nothing stays on this device.",
+    "endedTitle": "This link has ended.",
+    "endedBody": "It stopped working 2 hours after your last shift.",
+    "endedNext": "If you are working another event, you will get a new link for it.",
+    "foot": "No se guarda nada en este dispositivo.",
+    "failed": "No ha funcionado. Vuelva a intentarlo en un momento."
+  },
   "ownerClaim": {
     "loading": "Cargando",
     "noOwner": "{{organisation}} no tiene a nadie con el rol Propietario en activo",

@@ -310,6 +310,7 @@ final class StaffLinkTest extends ApiTestCase
             'id' => $this->ada,
             'name' => 'Ada Obi',
             'job' => 'Bartender',
+            'access' => 'check_in',
             'endsAt' => '2027-03-07T01:00:00+01:00',
             'signedIn' => false,
         ]], $this->people()['staffLinks']);

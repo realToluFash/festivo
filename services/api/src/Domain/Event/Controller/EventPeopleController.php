@@ -147,7 +147,7 @@ final readonly class EventPeopleController
     /**
      * Each person holding a staff link not yet ended (sc-3912), shown to whoever may read the roster; `signedIn` stays false until sc-4235 signs them in.
      *
-     * @return list<array{id: string, name: string, job: ?string, endsAt: string, signedIn: bool}>
+     * @return list<array{id: string, name: string, job: ?string, access: ?string, endsAt: string, signedIn: bool}>
      */
     private function staffLinks(Event $event): array
     {
@@ -163,6 +163,7 @@ final readonly class EventPeopleController
                 'id' => $live['entry']->getId()->toRfc4122(),
                 'name' => $live['entry']->getFullName(),
                 'job' => $live['entry']->getJob()?->getName(),
+                'access' => $live['entry']->getJob()?->getAccess()->value,
                 'endsAt' => $live['until']->setTimezone($zone)->format(\DATE_ATOM),
                 'signedIn' => false,
             ],
