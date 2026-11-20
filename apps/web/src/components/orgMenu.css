@@ -18,6 +18,10 @@
   animation: rise-in var(--motionBase) var(--motionEase);
 }
 
+:where(.sw-menu) :is(h2, h3, p) {
+  margin: 0;
+}
+
 .sw-head {
   flex: none;
   padding: var(--spaceXl) var(--spaceLg) var(--spaceLg);

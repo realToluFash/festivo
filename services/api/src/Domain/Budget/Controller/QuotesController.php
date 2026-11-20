@@ -111,6 +111,16 @@ final readonly class QuotesController
         return new JsonResponse(['quote' => $this->quoteSerialiser->one($engagement->getEvent(), $engagement)], Response::HTTP_CREATED);
     }
 
+    /** A schedule started from a shape (sc-1332): every payment or none, refused 409 `payments_already_scheduled` once the vendor has any. */
+    #[Route('/api/events/{eventId}/budget/quotes/{quoteId}/schedule', name: 'budget_schedule_add', methods: ['POST'])]
+    #[InEvent(Permission::BudgetManage, feature: PlanFeature::Vendors)]
+    public function addSchedule(Request $request, #[InThisEvent('quoteId')] VendorEngagement $engagement): JsonResponse
+    {
+        $this->quoteEditor->addSchedule($engagement, Input::body($request, QuoteRules::sentSchedule()), $this->user());
+
+        return new JsonResponse(['quote' => $this->quoteSerialiser->one($engagement->getEvent(), $engagement)], Response::HTTP_CREATED);
+    }
+
     #[Route('/api/events/{eventId}/budget/payments/{paymentId}', name: 'budget_payments_amend', methods: ['PUT'])]
     #[InEvent(Permission::BudgetManage, feature: PlanFeature::Vendors)]
     public function amendPayment(Request $request, #[InThisEvent('paymentId')] ScheduledPayment $payment): JsonResponse

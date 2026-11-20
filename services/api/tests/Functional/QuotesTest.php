@@ -252,6 +252,76 @@ final class QuotesTest extends ApiTestCase
     }
 
     #[Test]
+    public function aScheduleSavesEveryPaymentAtOnceAsOrdinaryOnesThatCanBeAmended(): void
+    {
+        $quote = $this->add();
+        $answer = $this->as($this->owner, 'POST', $this->schedule($quote['id']), ['payments' => [
+            ['description' => 'Deposit', 'amount' => '500.00', 'currency' => 'GBP', 'dueOn' => '2027-02-20'],
+            ['description' => '  Balance ', 'amount' => '500.00', 'currency' => 'GBP', 'dueOn' => '2027-05-18'],
+        ]]);
+        self::assertSame(201, $this->statusCode(), Json\encode($answer));
+
+        $payments = $this->only()['payments'];
+        self::assertSame([['Deposit', '500.00', '2027-02-20'], ['Balance', '500.00', '2027-05-18']], Vec\map($payments, static fn (array $one): array => [$one['description'], $one['amount'], $one['dueOn']]));
+        self::assertSame('0.00', $this->only()['difference']);
+
+        $this->as($this->owner, 'PUT', $this->payments(Type\string()->coerce($payments[1]['id'])), ['description' => 'Balance', 'amount' => '450', 'currency' => 'GBP', 'dueOn' => '2027-05-01']);
+        self::assertSame(200, $this->statusCode());
+    }
+
+    #[Test]
+    public function aScheduleWithAnyRowRefusedSavesNoneAndNamesEachRowsField(): void
+    {
+        $quote = $this->add();
+        $this->as($this->owner, 'POST', $this->schedule($quote['id']), ['payments' => [
+            ['description' => '   ', 'amount' => '500', 'currency' => 'GBP', 'dueOn' => '2027-02-20'],
+            ['description' => 'Balance', 'amount' => '500', 'currency' => 'GBP', 'dueOn' => '2027-02-19'],
+            ['description' => Str\repeat('d', 101), 'amount' => '0', 'currency' => 'GBP', 'dueOn' => '2027-05-18'],
+        ]]);
+
+        self::assertSame(422, $this->statusCode());
+        self::assertSame(['payments[0].description', 'payments[1].dueOn', 'payments[2].description', 'payments[2].amount'], Vec\map($this->violations(), static fn (array $v): string => $v['propertyPath']));
+        self::assertSame('Enter what the payment is for.', $this->violation('payments[0].description')['message'] ?? null);
+        self::assertSame([], $this->only()['payments']);
+
+        $this->as($this->owner, 'POST', $this->schedule($quote['id']), ['payments' => []]);
+        self::assertSame(422, $this->statusCode());
+        self::assertSame([], $this->only()['payments']);
+    }
+
+    #[Test]
+    public function aScheduleOfMoreRowsThanTheMaximumIsRefusedAtPaymentsAndNothingIsAdded(): void
+    {
+        $quote = $this->add();
+        $row = ['description' => 'Instalment', 'amount' => '10', 'currency' => 'GBP', 'dueOn' => '2027-03-01'];
+
+        $this->as($this->owner, 'POST', $this->schedule($quote['id']), ['payments' => Vec\fill(QuoteRules::SCHEDULE_MAXIMUM + 1, $row)]);
+
+        self::assertSame(422, $this->statusCode());
+        self::assertSame('A schedule can have at most 10 payments. Add the others one at a time.', $this->violation('payments')['message'] ?? null);
+        self::assertSame([], $this->only()['payments']);
+
+        $this->as($this->owner, 'POST', $this->schedule($quote['id']), ['payments' => Vec\fill(QuoteRules::SCHEDULE_MAXIMUM, $row)]);
+        self::assertSame(201, $this->statusCode());
+    }
+
+    #[Test]
+    public function aScheduleForAVendorThatAlreadyHasAPaymentIsRefusedAndNothingIsAdded(): void
+    {
+        $quote = $this->add();
+        $this->payment($quote['id']);
+
+        $this->as($this->owner, 'POST', $this->schedule($quote['id']), ['payments' => [
+            ['description' => 'Payment in full', 'amount' => '1000', 'currency' => 'GBP', 'dueOn' => '2027-05-18'],
+        ]]);
+
+        self::assertSame(409, $this->statusCode());
+        self::assertSame(ErrorCode::PaymentsAlreadyScheduled->type(), $this->last()['type'] ?? null);
+        self::assertSame("Payments were added to this vendor's schedule while you were filling this in, so none of yours were saved. Check the payments it has now before adding more.", $this->last()['detail'] ?? null);
+        self::assertSame(['Deposit'], Vec\map($this->only()['payments'], static fn (array $one): mixed => $one['description']));
+    }
+
+    #[Test]
     public function aPaymentIsAmendedAndRemovedAndEverythingDueRunsSoonestFirstThenByVendor(): void
     {
         $bloom = $this->add();
@@ -654,6 +724,7 @@ final class QuotesTest extends ApiTestCase
             ['POST', $this->quotes($quoteId) . '/revisions', ['amount' => '5', 'currency' => 'GBP', 'quotedOn' => '2027-02-21']],
             ['PUT', $this->quotes($quoteId), ['covers' => 'x']],
             ['POST', $this->quotes($quoteId) . '/payments', ['description' => 'x', 'amount' => '5', 'currency' => 'GBP', 'dueOn' => '2027-03-01']],
+            ['POST', $this->schedule($quoteId), ['payments' => [['description' => 'x', 'amount' => '5', 'currency' => 'GBP', 'dueOn' => '2027-03-01']]]],
             ['PUT', $this->payments($paymentId), ['description' => 'x', 'amount' => '5', 'currency' => 'GBP', 'dueOn' => '2027-03-01']],
             ['DELETE', $this->payments($paymentId), null],
             ['POST', $this->payments($paymentId) . '/paid', $this->paid()],
@@ -827,6 +898,11 @@ final class QuotesTest extends ApiTestCase
     private function quotes(?string $id = null): string
     {
         return '/api/events/' . $this->eventId . '/budget/quotes' . (null === $id ? '' : '/' . $id);
+    }
+
+    private function schedule(string $quoteId): string
+    {
+        return $this->quotes($quoteId) . '/schedule';
     }
 
     private function quoteVendors(): string

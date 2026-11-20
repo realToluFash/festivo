@@ -225,7 +225,7 @@ export function amountProblem(t: TFunction, language: MoneyLanguage, currency: s
   return t('quotes.enterAmount', { example });
 }
 
-const lengthOf = (typed: string): number => [...typed.trim()].length;
+export const lengthOf = (typed: string): number => [...typed.trim()].length;
 
 export type QuoteForm = 'add' | 'revise' | 'correct';
 
