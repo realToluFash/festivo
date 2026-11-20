@@ -72,7 +72,7 @@ export function MarginCard({
     <CoverCard event={event}>
       <ul className={washed ? 'desk-glass-tags is-washed' : 'desk-glass-tags'}>
         <li className="desk-glass">{t('budget.margin.enterprise')}</li>
-        <li className="desk-glass">{t('budget.margin.whoSees')}</li>
+        <li className="desk-glass bt-glass-wraps">{t('budget.margin.whoSees')}</li>
       </ul>
       <dl className={washed ? 'bt-pairs bt-margin-pairs is-washed' : 'bt-pairs bt-margin-pairs'}>
         {pairs.map((one) => (
