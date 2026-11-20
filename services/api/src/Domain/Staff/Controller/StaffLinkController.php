@@ -91,8 +91,12 @@ final readonly class StaffLinkController
             return ['state' => 'open'];
         }
 
-        if (null === $window->from) {
+        if ($window->ended) {
             return ['state' => 'ended'];
+        }
+
+        if (null === $window->from) {
+            return ['state' => 'not_yet'];
         }
 
         return ['state' => 'not_yet', 'from' => $window->from->setTimezone(new DateTimeZone($entry->getEvent()->getTimeZone()))->format(\DATE_ATOM)];

@@ -134,15 +134,19 @@ final readonly class StaffLinks
         $this->staffRosterPublisher->publish($entry->getEvent());
     }
 
-    /** From 12 hours before their first shift starts until 2 hours after their last one ends, and never once the event has finished. */
+    /** From 12 hours before their first shift starts until 2 hours after their last one ends, not yet while they have no shift, and never once the event has finished. */
     public function window(StaffMember $entry): StaffLinkWindow
     {
         $event = $entry->getEvent();
         $now = $this->clock->now();
         $shifts = $this->staffShiftRepository->findOfPerson($entry);
 
-        if ([] === $shifts || $this->finished($event, $now)) {
+        if ($this->finished($event, $now)) {
             return StaffLinkWindow::ended();
+        }
+
+        if ([] === $shifts) {
+            return StaffLinkWindow::noShiftYet();
         }
 
         $starts = Vec\map($shifts, static fn (StaffShift $shift): DateTimeImmutable => ShiftClock::instant($shift->getStartsAt(), $event));

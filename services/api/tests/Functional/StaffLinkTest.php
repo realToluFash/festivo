@@ -197,6 +197,31 @@ final class StaffLinkTest extends ApiTestCase
     }
 
     #[Test]
+    public function aPersonWithNoShiftYetIsNotOpenYetWithNoTimeThenFollowsTheirWindow(): void
+    {
+        $ben = $this->person('Ben Eze', '0803 111 0010');
+        $token = self::token($this->deliver($ben));
+
+        self::assertSame(['state' => 'not_yet'], $this->open('look', $token));
+
+        $this->as($this->owner, 'PUT', $this->path('shifts/' . $this->shift['id'] . '/people/' . $ben));
+        self::assertLessThan(300, $this->statusCode(), Json\encode($this->last()));
+
+        self::assertSame(['state' => 'not_yet', 'from' => '2027-03-06T06:00:00+01:00'], $this->open('look', $token));
+        $this->at('2027-03-06T05:00:00Z');
+        self::assertSame(['state' => 'open'], $this->open('look', $token));
+    }
+
+    #[Test]
+    public function aPersonWithNoShiftOnAFinishedEventReadsEnded(): void
+    {
+        $token = self::token($this->deliver($this->person('Ben Eze', '0803 111 0010')));
+
+        $this->at('2027-03-07T01:00:01Z');
+        self::assertSame(['state' => 'ended'], $this->open('look', $token));
+    }
+
+    #[Test]
     public function lookingRecordsNothingAndAGetIsNotAnswered(): void
     {
         $token = self::token($this->deliver($this->ada));

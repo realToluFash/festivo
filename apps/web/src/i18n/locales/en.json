@@ -2316,6 +2316,7 @@
     "goneBody": "It may have been replaced, or it is no longer in use.",
     "goneNext": "Open the newest link you were sent, or ask the person who sent it.",
     "notYetTitle": "This link works from {{time}} on {{day}}.",
+    "noShiftTitle": "This link is not open yet.",
     "notYetBody": "It opens 12 hours before your first shift.",
     "notYetNext": "Open this link again then. It stays the same.",
     "notYetFoot": "This link is yours alone. Nothing stays on this device.",

@@ -6,11 +6,12 @@ namespace App\Domain\Staff\Link;
 
 use DateTimeImmutable;
 
-/** Where now falls in a person's link window: `from` only before it opens, `until` until it has ended. */
+/** Where now falls in a person's link window: `from` only before it opens, and not before a person with no shift has one; `until` until it has ended. */
 final readonly class StaffLinkWindow
 {
     private function __construct(
         public bool $open,
+        public bool $ended,
         public ?DateTimeImmutable $from,
         public ?DateTimeImmutable $until,
     ) {
@@ -18,16 +19,21 @@ final readonly class StaffLinkWindow
 
     public static function notYet(DateTimeImmutable $from, DateTimeImmutable $until): self
     {
-        return new self(false, $from, $until);
+        return new self(false, false, $from, $until);
+    }
+
+    public static function noShiftYet(): self
+    {
+        return new self(false, false, null, null);
     }
 
     public static function open(DateTimeImmutable $until): self
     {
-        return new self(true, null, $until);
+        return new self(true, false, null, $until);
     }
 
     public static function ended(): self
     {
-        return new self(false, null, null);
+        return new self(false, true, null, null);
     }
 }

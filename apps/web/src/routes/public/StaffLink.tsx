@@ -105,14 +105,18 @@ function Shown({ load }: { load: Load }) {
     );
   if (load.window.state === 'not_yet') {
     const locale = dateLocale();
-    const wall = wallOfZoned(load.window.from);
+    const wall = load.window.from == null ? null : wallOfZoned(load.window.from);
 
     return (
       <Ended
-        title={t('staffLink.notYetTitle', {
-          time: formatWallClock(wall, locale),
-          day: wallDayLong(wall, locale),
-        })}
+        title={
+          wall == null
+            ? t('staffLink.noShiftTitle')
+            : t('staffLink.notYetTitle', {
+                time: formatWallClock(wall, locale),
+                day: wallDayLong(wall, locale),
+              })
+        }
         body={t('staffLink.notYetBody')}
         next={t('staffLink.notYetNext')}
         foot={t('staffLink.notYetFoot')}
