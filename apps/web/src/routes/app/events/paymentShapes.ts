@@ -1,3 +1,4 @@
+import { numberFormat } from '@soirely/domain';
 import type { TFunction } from 'i18next';
 
 import { amountOfMinor, minorMoney, minorOf } from './budgetArea.ts';
@@ -46,7 +47,6 @@ export interface ShapeDraft {
 export type ShapeField = keyof ShapeDraft;
 export type ShapeProblems = Partial<Record<ShapeField, string>>;
 
-/** `terms` are the shape's rows as offered; `typed` is each row as the organiser has it, and only `typed` is saved. */
 export interface Shaping {
   shape: Shape;
   terms: readonly Term[];
@@ -130,7 +130,6 @@ export function sharesTyped(shaping: Shaping): boolean {
   return shaping.typed.every((one) => typedShare(one.share) != null);
 }
 
-/** Only the problems already shown are kept, each as the row now reads, so a field clears once it is fixed. */
 export function retyped(
   t: TFunction,
   shaping: Shaping,
@@ -227,9 +226,7 @@ export function shapeRows(
 }
 
 export function shareWords(share: number, locale: string): string {
-  return new Intl.NumberFormat(locale, { style: 'percent', maximumFractionDigits: 2 }).format(
-    share / 100,
-  );
+  return numberFormat(locale, { style: 'percent', maximumFractionDigits: 2 }).format(share / 100);
 }
 
 export function whenWords(t: TFunction, row: Pick<Term, 'from' | 'days'>): string {
@@ -239,7 +236,6 @@ export function whenWords(t: TFunction, row: Pick<Term, 'from' | 'days'>): strin
   return row.days === 0 ? t(`${key}_zero`) : t(key, { count: row.days });
 }
 
-/** Total percentage when it is not 100, with the gap it leaves or the excess, both against the quote. */
 export function sharesLine(
   t: TFunction,
   rows: readonly ShapeRow[],
