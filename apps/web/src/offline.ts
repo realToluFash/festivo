@@ -17,11 +17,13 @@ export interface Stale {
   retry: () => void;
   /** Counts the presses of Try again that came back unanswered, each one announced again. */
   unanswered: number;
+  /** The event's own load, whose minute the box says over its area's (sc-65646). */
+  event?: boolean;
 }
 
 export const StaleScreen = createContext<{
   stale: Stale | null;
-  show: (stale: Stale | null) => void;
+  show: (screen: symbol, stale: Stale | null) => void;
   /** A page that says it is offline in its own words keeps the shell's band and box away (sc-3895). */
   hushed: boolean;
   hush: (on: boolean) => void;
@@ -47,22 +49,28 @@ export function useOffline(screen: {
   title: RefObject<HTMLElement | null>;
   /** The minute of what the screen shows, where a load that answers does not replace it: Edit details. */
   since?: Date | null;
+  event?: boolean;
 }): {
   watch: <T>(load: Promise<T>) => Promise<T>;
   keep: (at: Date) => void;
   refreshing: boolean;
 } {
   const { show } = useContext(StaleScreen);
+  const [screenId] = useState(() => Symbol('screen'));
   const { watch, keep, stale, refreshing } = useStaleWatch(screen);
   const at = stale == null ? undefined : (screen.since ?? stale.at);
   const unanswered = stale?.unanswered;
   const retry = stale?.retry;
+  const event = screen.event ?? false;
 
   useLayoutEffect(() => {
-    show(at == null || retry == null ? null : { at, retry, unanswered: unanswered ?? 0 });
-  }, [show, at, retry, unanswered]);
+    show(
+      screenId,
+      at == null || retry == null ? null : { at, retry, unanswered: unanswered ?? 0, event },
+    );
+  }, [show, screenId, at, retry, unanswered, event]);
 
-  useLayoutEffect(() => () => show(null), [show]);
+  useLayoutEffect(() => () => show(screenId, null), [show, screenId]);
 
   return { watch, keep, refreshing };
 }

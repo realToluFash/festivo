@@ -48,6 +48,8 @@ import {
   withPeriod,
 } from './dataSettings.ts';
 import { SHARED_WORDS } from './dataControl.ts';
+import { pageStateOf } from './enterpriseAsk.ts';
+import { EnterpriseStep } from './EnterpriseStep.tsx';
 import type { Load } from './members.ts';
 import type { Viewer } from './settings.ts';
 import './dataSettings.css';
@@ -67,7 +69,7 @@ export function DataSettings({
   onBack: () => void;
 }) {
   const locale = useMemo(() => formattingLocale('en', navigator.language), []);
-  const [start] = useState(() => dataStart(state, viewer, locale));
+  const [start] = useState(() => dataStart(pageStateOf('deleteGuestData', state), viewer, locale));
   const [load, setLoad] = useState<Load | 'retrying'>(start.load);
   const [page, setPage] = useState(start.page);
   const [asking, setAsking] = useState(start.asking);
@@ -120,9 +122,7 @@ export function DataSettings({
           <Says>{card.says}</Says>
           <OnCard>{card.line}</OnCard>
         </div>
-        {card.step === 'contact' && (
-          <CardStep label={W.contact} onClick={() => tell(W.contactTold)} />
-        )}
+        {card.step === 'contact' && <EnterpriseStep viewer={viewer} state={state} tell={tell} />}
         {card.step === 'choose' && <CardStep label={W.choose} onClick={() => setMenu(true)} />}
       </Card>
       <section className="desk-block">

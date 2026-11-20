@@ -4,10 +4,13 @@ declare(strict_types=1);
 
 namespace App\Tests\Functional;
 
+use App\Domain\Messaging\NotificationPreferenceSetter;
 use App\Domain\Organisation\OrganisationFounder;
+use App\Domain\RunOfShow\Card\RunOfShowCard;
 use App\Domain\RunOfShow\ScheduleEditor;
 use App\Domain\User\UserRegistrar;
 use App\Entity\AuditEntry;
+use App\Entity\EventPerson;
 use App\Entity\Membership;
 use App\Entity\Organisation;
 use App\Entity\Role;
@@ -15,9 +18,12 @@ use App\Entity\SchedulePress;
 use App\Entity\User;
 use App\Enum\EventRole;
 use App\Enum\MembershipStatus;
+use App\Enum\NotificationCategory;
+use App\Enum\NotificationChannel;
 use App\Enum\SeededRole;
 use App\Tests\ApiTestCase;
 use App\Tests\Double\Messaging\RecordingHub;
+use App\Tests\Double\Messaging\RecordingPushSender;
 use App\Tests\Traits\OnboardsAccounts;
 use App\Tests\Traits\PutsPeopleOnEvents;
 use DateTimeImmutable;
@@ -358,6 +364,124 @@ final class SchedulePressTest extends ApiTestCase
             self::assertCount(1, $entries, $action);
             self::assertSame($id, $entries[0]->getSubjectId()->toRfc4122());
         }
+    }
+
+    #[Test]
+    public function aPressSendsTheTracksCardToEachPersonWhoHasPressedThere(): void
+    {
+        $speeches = $this->add('Speeches', '2027-03-06T19:00', 'Ballroom', 40);
+        $this->add('First dance', '2027-03-06T19:30', 'Ballroom');
+        $this->add('Carriages', '2027-03-06T19:30', 'Foyer');
+
+        $this->press($this->owner, $speeches, 'start', '2027-03-06T19:27:00+01:00');
+
+        self::assertSame([[
+            'to' => $this->owner->getId()->toRfc4122(),
+            'title' => 'Owambe · Ballroom',
+            'lines' => ['Speeches · since 19:27', 'Next: First dance · about 20:07', 'As of 19:30'],
+            'place' => '/app/events/' . $this->eventId . '/schedule?track=2027-03-06%7CBallroom',
+            'silent' => true,
+            'category' => NotificationCategory::EventDay,
+            'collapseKey' => RunOfShowCard::key($this->eventId, '2027-03-06', 'Ballroom'),
+        ]], $this->cards());
+
+        self::mockTime(new DateTimeImmutable('2027-03-06T19:05:00Z'));
+        $this->press($this->colleague, $speeches, 'done', '2027-03-06T20:04:00+01:00');
+
+        self::assertSame(
+            [[$this->owner->getId()->toRfc4122(), ['Nothing is on', 'Next: First dance · about 20:05', 'As of 20:05']], [$this->colleague->getId()->toRfc4122(), ['Nothing is on', 'Next: First dance · about 20:05', 'As of 20:05']]],
+            Vec\map($this->cards(), static fn (array $card): array => [$card['to'], $card['lines']]),
+        );
+    }
+
+    #[Test]
+    public function aTracksLastItemDoneOrSkippedSaysThatsEverything(): void
+    {
+        $speeches = $this->add('Speeches', '2027-03-06T19:00', 'Ballroom');
+        $dance = $this->add('First dance', '2027-03-06T19:30', 'Ballroom');
+
+        $this->press($this->owner, $speeches, 'start', '2027-03-06T19:05:00+01:00');
+        $this->press($this->owner, $speeches, 'done', '2027-03-06T19:20:00+01:00');
+        $this->press($this->owner, $dance, 'skip', '2027-03-06T19:21:00+01:00');
+
+        self::assertSame(['That’s everything.'], Vec\map($this->cards(), static fn (array $card): array => $card['lines'])[0] ?? null);
+    }
+
+    #[Test]
+    public function aLongTitleKeepsItsFirst39AndAnEllipsisAndTheTimeWhole(): void
+    {
+        $title = 'Speeches from the father of the bride, the maid of honour, and the best man';
+        $id = $this->add($title, '2027-03-06T19:00', 'Ballroom');
+
+        $this->press($this->owner, $id, 'start', '2027-03-06T19:10:00+01:00');
+
+        self::assertSame('Speeches from the father of the bride, … · since 19:10', $this->cards()[0]['lines'][0] ?? null);
+    }
+
+    #[Test]
+    public function withEventDayPushOffNoCardComes(): void
+    {
+        $id = $this->add('Speeches', '2027-03-06T19:00', 'Ballroom');
+        self::service(NotificationPreferenceSetter::class)->set($this->owner, NotificationCategory::EventDay, NotificationChannel::Push, false);
+
+        $this->press($this->owner, $id, 'start');
+
+        self::assertSame([], $this->cards());
+    }
+
+    #[Test]
+    public function aPresserWhoNoLongerManagesTheRunOfShowGetsNoCard(): void
+    {
+        $id = $this->add('Speeches', '2027-03-06T19:00', 'Ballroom');
+        $this->press($this->colleague, $id, 'start', '2027-03-06T19:10:00+01:00');
+        $this->cards();
+        $person = self::em()->getRepository(EventPerson::class)->findOneBy(['event' => $this->eventId]) ?? self::fail('not on the event');
+        $person->setRole(EventRole::CanView);
+        self::em()->flush();
+
+        $this->press($this->owner, $id, 'done', '2027-03-06T19:20:00+01:00');
+
+        self::assertSame([$this->owner->getId()->toRfc4122()], Vec\map($this->cards(), static fn (array $card): string => $card['to']));
+    }
+
+    #[Test]
+    public function eachPressKeepsWhetherItWasMadeFromTheCard(): void
+    {
+        $id = $this->add('Speeches', '2027-03-06T19:00');
+
+        $this->as($this->owner, 'POST', $this->items($id) . '/presses', ['kind' => 'start', 'fromCard' => true], 'from-card');
+        $this->press($this->owner, $id, 'done');
+
+        self::assertSame(
+            [true, false],
+            Vec\map(self::em()->getRepository(SchedulePress::class)->findBy([], ['pressedAt' => 'ASC']), static fn (SchedulePress $press): bool => $press->isFromCard()),
+        );
+    }
+
+    /**
+     * What the worker sends from the presses so far, each sent once.
+     *
+     * @return list<array{to: string, title: string, lines: list<string>, place: ?string, silent: bool, category: NotificationCategory, collapseKey: ?string}>
+     */
+    private function cards(): array
+    {
+        self::drainNotifications();
+
+        $pushes = self::service(RecordingPushSender::class);
+        $sent = Vec\map($pushes->sent, static fn (array $push): array => [
+            'to' => $push['recipient']->id->toRfc4122(),
+            'title' => $push['notification']->subject,
+            'lines' => $push['notification']->lines,
+            'place' => $push['notification']->place,
+            'silent' => $push['notification']->silent,
+            'category' => $push['category'],
+            'collapseKey' => $push['collapseKey'],
+        ]);
+        $pushes->sent = [];
+
+        $owner = $this->owner->getId()->toRfc4122();
+
+        return Vec\sort($sent, static fn (array $a, array $b): int => [$a['to'] !== $owner, $a['to']] <=> [$b['to'] !== $owner, $b['to']]);
     }
 
     private function add(string $title, string $startsAt, ?string $place = null, ?int $lengthMinutes = null): string

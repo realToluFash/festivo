@@ -11,12 +11,27 @@ import { PILL_FIT_BOARDS } from '../../src/demo/pillFit/PillFitBoards.ts';
 import { TABLET_TABS_BOARDS } from '../../src/demo/tabletTabs/TabletTabsBoards.ts';
 import { TEXT_SIZE_BOARDS } from '../../src/demo/textSize/TextSizeBoards.ts';
 import { DATA_BOARDS } from '../../src/demo/settings/DataBoards.ts';
+import { SSO_BOARDS } from '../../src/demo/settings/SingleSignOnBoards.ts';
+import { CONSULTATION_BOARDS } from '../../src/demo/enquiries/ConsultationsModel.ts';
+import {
+  ENQUIRIES_BOARDS,
+  ENQUIRY_PAGE_BOARDS,
+  NEW_ENQUIRY_BOARDS,
+  WAY_IN_BOARDS,
+} from '../../src/demo/enquiries/EnquiriesBoards.ts';
+import { TELL_BOARDS } from '../../src/demo/enquiries/TellClientModel.ts';
+import { ENQUIRY_EVENT_BOARDS } from '../../src/demo/enquiries/EnquiryEventBoards.ts';
 import { FOCUSED_HEADER_BOARDS } from '../../src/demo/focusedHeader/FocusedHeaderBoards.ts';
+import { SIGN_OUT_SIZE_BOARDS } from '../../src/demo/signOutSize/SignOutSizeBoards.ts';
+import { SIDEBAR_SIZE_BOARDS } from '../../src/demo/sidebarSize/SidebarSizeBoards.ts';
+import { ROWS_SIZE_BOARDS } from '../../src/demo/rowsSize/RowsSizeBoards.ts';
+import { FILTER_SIZE_BOARDS } from '../../src/demo/filterSize/FilterSizeBoards.ts';
 import { SWITCHER_BOARDS } from '../../src/demo/OrgSwitcherBoards.ts';
 import { Heading } from '../../src/steps/Lines.tsx';
 import { SAMPLE } from '../../src/demo/samples.ts';
 import { SEARCH_BOARDS } from '../../src/demo/search/searchRules.ts';
 import { DOOR_CODE_BOARDS } from '../../src/demo/doorCode/DoorCodeBoards.ts';
+import { OUTSIDE_BOARDS } from '../../src/demo/outsideEvents/OutsideModel.ts';
 import { GUESTS_BOARDS } from '../../src/demo/guests/GuestsBoards.ts';
 import { PASS_BOARDS } from '../../src/demo/pass/PassBoards.ts';
 import { NEXT_BOARDS, QUEUE_BOARDS } from '../../src/demo/queue/QueueBoards.ts';
@@ -30,9 +45,11 @@ import { isStopState } from '../../src/demo/messages/StopWriting.ts';
 import { isReasonState } from '../../src/demo/messages/TrySms.ts';
 import { SEATING_BOARDS } from '../../src/demo/seating/SeatingBoards.ts';
 import { RUN_BOARDS, RUN_READ_BOARDS } from '../../src/demo/runView/runViewModel.ts';
+import { LOCK_CARD_BOARDS } from '../../src/demo/night/lockCard.ts';
 import { NIGHT_BOARDS } from '../../src/demo/night/nightModel.ts';
 import { STATION_BOARDS } from '../../src/demo/station/StationBoards.ts';
 import { MOVED_BOARDS, TEAM_BOARDS } from '../../src/demo/team/TeamBoards.ts';
+import { STAFF_LINK_BOARDS } from '../../src/demo/staffLink/StaffLinkBoards.ts';
 import { tokens } from '../../src/theme/tokens.ts';
 
 interface Board {
@@ -48,6 +65,54 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
     boards: SEARCH_BOARDS.map(({ title, what, href }) => ({ title, what, href: href as Href })),
   },
   {
+    page: '31221 · Enquiries · the list and its search (sc-31226, sc-42749)',
+    boards: ENQUIRIES_BOARDS.map(({ title, what, href }) => ({ title, what, href: href as Href })),
+  },
+  {
+    page: '31221 · Enquiries · New enquiry (sc-31226)',
+    boards: NEW_ENQUIRY_BOARDS.map(({ title, what, href }) => ({
+      title,
+      what,
+      href: href as Href,
+    })),
+  },
+  {
+    page: '31221 · Enquiries · an enquiry’s page (sc-31226)',
+    boards: ENQUIRY_PAGE_BOARDS.map(({ title, what, href }) => ({
+      title,
+      what,
+      href: href as Href,
+    })),
+  },
+  {
+    page: '31221 · Enquiries · the way in from Events (sc-31226)',
+    boards: WAY_IN_BOARDS.map(({ title, what, href }) => ({
+      title,
+      what,
+      href: href as Href,
+    })),
+  },
+  {
+    page: '31221 · Enquiries · Consultations (sc-31228)',
+    boards: CONSULTATION_BOARDS.map(({ title, what, href }) => ({
+      title,
+      what,
+      href: href as Href,
+    })),
+  },
+  {
+    page: '31221 · Enquiries · Tell the client (sc-37133)',
+    boards: TELL_BOARDS.map(({ title, what, href }) => ({ title, what, href: href as Href })),
+  },
+  {
+    page: '31221 · Enquiries · An enquiry becomes an event (sc-31232)',
+    boards: ENQUIRY_EVENT_BOARDS.map(({ title, what, href }) => ({
+      title,
+      what,
+      href: href as Href,
+    })),
+  },
+  {
     page: '26 · Foundation · Notifications on a phone on its side (sc-62023)',
     boards: BELL_BOARDS.map(({ title, what, href }) => ({ title, what, href: href as Href })),
   },
@@ -58,6 +123,34 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
   {
     page: 'Focused header · the largest text sizes',
     boards: FOCUSED_HEADER_BOARDS.map(({ title, what, href }) => ({
+      title,
+      what,
+      href: href as Href,
+    })),
+  },
+  {
+    page: 'Settings · Sign out at the largest text sizes (sc-66900)',
+    boards: SIGN_OUT_SIZE_BOARDS.map(({ title, what, href }) => ({
+      title,
+      what,
+      href: href as Href,
+    })),
+  },
+  {
+    page: 'Settings · the rows’ words whole at the largest text sizes (sc-69816)',
+    boards: ROWS_SIZE_BOARDS.map(({ title, what, href }) => ({ title, what, href: href as Href })),
+  },
+  {
+    page: 'Events · the Filter menu’s values whole at the largest text sizes (sc-73933)',
+    boards: FILTER_SIZE_BOARDS.map(({ title, what, href }) => ({
+      title,
+      what,
+      href: href as Href,
+    })),
+  },
+  {
+    page: 'Text size · the iPad sidebar on its side at the largest sizes (sc-68441)',
+    boards: SIDEBAR_SIZE_BOARDS.map(({ title, what, href }) => ({
       title,
       what,
       href: href as Href,
@@ -288,6 +381,11 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
         title: 'The way in · no organisation',
         what: 'Start organisation opens the walk',
         href: '/demo/today?orgs=none',
+      },
+      {
+        title: 'The way in · no organisation, managed',
+        what: 'Managed by Ire Events in place of Start your own',
+        href: '/demo/today?orgs=none&state=managed',
       },
       {
         title: 'Step 1 · nothing typed',
@@ -676,6 +774,21 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
         href: '/demo/settings/notifications?state=failed',
       },
       {
+        title: 'Notifications · Event day, opened (sc-66580)',
+        what: 'Its longer description names the run-of-show notification',
+        href: '/demo/settings/notifications?state=eventDay',
+      },
+      {
+        title: 'Notifications · Event day, opened, in French (sc-66580)',
+        what: 'The longest row, shown whole on an iPhone SE',
+        href: '/demo/settings/notifications?state=eventDay&lang=fr',
+      },
+      {
+        title: 'Notifications · Event day push off (sc-66580)',
+        what: 'No run-of-show card, this device’s own included',
+        href: '/demo/settings/notifications?state=eventDayPushOff',
+      },
+      {
         title: 'Personalisation',
         what: 'Never chosen: Violet, Choose colours',
         href: '/demo/settings/personalisation',
@@ -1017,6 +1130,10 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
         href: '/demo/settings/sign-in-rules?state=failed',
       },
     ],
+  },
+  {
+    page: 'Sign-in rules · Single sign-on (sc-610) · phone, tablet portrait and landscape',
+    boards: SSO_BOARDS.map(({ title, what, href }) => ({ title, what, href: href as Href })),
   },
   {
     page: 'Data and control · B · One place',
@@ -2123,6 +2240,10 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
     boards: DOOR_CODE_BOARDS.map(({ title, what, href }) => ({ title, what, href: href as Href })),
   },
   {
+    page: 'Events from outside · sc-68438',
+    boards: OUTSIDE_BOARDS.map(({ title, what, href }) => ({ title, what, href: href as Href })),
+  },
+  {
     page: 'Budget · A Summary first',
     boards: BUDGET_BOARDS.map(({ title, what, href }) => ({ title, what, href: href as Href })),
   },
@@ -2159,12 +2280,20 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
     boards: NIGHT_BOARDS.map(({ title, what, href }) => ({ title, what, href: href as Href })),
   },
   {
+    page: 'Run of show · the lock-screen card (sc-66580) · iPhone, iPad and Android, and Event day',
+    boards: LOCK_CARD_BOARDS.map(({ title, what, href }) => ({ title, what, href: href as Href })),
+  },
+  {
     page: 'Run of show · the run view (sc-1404) · phone, tablet portrait and landscape',
     boards: [...RUN_BOARDS, ...RUN_READ_BOARDS].map(({ title, what, href }) => ({
       title,
       what,
       href: href as Href,
     })),
+  },
+  {
+    page: 'Staffing · one person’s own link, Share link first (sc-3912) · phone, tablet portrait and landscape',
+    boards: STAFF_LINK_BOARDS.map(({ title, what, href }) => ({ title, what, href: href as Href })),
   },
   {
     page: 'Service · the pass’s print controls (sc-4018) · tablet landscape',
@@ -2364,12 +2493,12 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
       {
         title: 'Sign in with email',
         what: 'The checks, and the refused shake',
-        href: '/demo/sign-in',
+        href: '/demo/welcome?signIn=email',
       },
       {
         title: 'Sign in · that sign-in timed out',
         what: 'A two-factor sign-in ran out, email kept',
-        href: `/demo/sign-in?timedOut=1&email=${SAMPLE.email}`,
+        href: '/demo/welcome?signIn=timedOut',
       },
     ],
   },
@@ -2411,6 +2540,16 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
         title: 'Your organisation · no country',
         what: 'The device names none: Choose a country.',
         href: '/demo/organisation?region=none',
+      },
+      {
+        title: 'Your organisation · managed, nothing to join',
+        what: 'The banner where the fields were; Continue, no organisation',
+        href: '/demo/organisation?state=managed',
+      },
+      {
+        title: 'Your organisation · managed, Ire Events listed',
+        what: 'Ask to join, and the banner for Start my own',
+        href: '/demo/organisation?state=managedOffer',
       },
       {
         title: 'Your mobile number · no code',

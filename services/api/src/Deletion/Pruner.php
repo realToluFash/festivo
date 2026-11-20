@@ -6,9 +6,11 @@ namespace App\Deletion;
 
 use App\Audit\Auditor;
 use App\Deletion\Interfaces\PurgedFileRemoverInterface;
+use App\Deletion\Interfaces\PurgedRowRemoverInterface;
 use App\Enum\DeletedKind;
 use DateInterval;
 use DateTimeImmutable;
+use Doctrine\DBAL\ArrayParameterType;
 use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\EntityManagerInterface;
@@ -22,7 +24,10 @@ use Symfony\Component\Uid\Uuid;
 /** Purges what support can no longer restore, of every kind; what lies beneath each goes with it by the foreign keys' cascade, and the files it cannot reach are removed after. */
 final readonly class Pruner
 {
-    /** @param iterable<PurgedFileRemoverInterface> $purgedFileRemovers */
+    /**
+     * @param iterable<PurgedFileRemoverInterface> $purgedFileRemovers
+     * @param iterable<PurgedRowRemoverInterface>  $purgedRowRemovers
+     */
     public function __construct(
         private Connection $connection,
         private EntityManagerInterface $entityManager,
@@ -30,6 +35,8 @@ final readonly class Pruner
         private ClockInterface $clock,
         #[AutowireIterator(PurgedFileRemoverInterface::TAG)]
         private iterable $purgedFileRemovers,
+        #[AutowireIterator(PurgedRowRemoverInterface::TAG)]
+        private iterable $purgedRowRemovers,
     ) {
     }
 
@@ -58,17 +65,29 @@ final readonly class Pruner
         }
 
         foreach (DeletedKind::cases() as $kind) {
-            $ids = Type\vec(Type\string())->coerce($this->connection->fetchFirstColumn(
-                Str\format('DELETE FROM %s WHERE deleted_at <= :cutoff RETURNING id', $kind->table()),
-                ['cutoff' => $cutoff],
-                ['cutoff' => Types::DATETIME_IMMUTABLE],
-            ));
+            $count += $this->connection->transactional(function () use ($kind, $cutoff): int {
+                $ids = Type\vec(Type\string())->coerce($this->connection->fetchFirstColumn(
+                    Str\format('SELECT id FROM %s WHERE deleted_at <= :cutoff FOR UPDATE', $kind->table()),
+                    ['cutoff' => $cutoff],
+                    ['cutoff' => Types::DATETIME_IMMUTABLE],
+                ));
 
-            foreach ($ids as $id) {
-                $this->auditor->record($kind->purged(), $kind->subjectType(), Uuid::fromString($id));
-            }
+                foreach ($ids as $id) {
+                    $this->auditor->record($kind->purged(), $kind->subjectType(), Uuid::fromString($id));
+                }
 
-            $count += Iter\count($ids);
+                $this->connection->executeStatement(
+                    Str\format('DELETE FROM %s WHERE id IN (:ids)', $kind->table()),
+                    ['ids' => $ids],
+                    ['ids' => ArrayParameterType::STRING],
+                );
+
+                return Iter\count($ids);
+            });
+        }
+
+        foreach ($this->purgedRowRemovers as $remover) {
+            $remover->remove();
         }
 
         $this->entityManager->flush();

@@ -209,6 +209,9 @@ export function PersonBody({
           <OnCard key={line} text={line} />
         ))}
       </SummaryCard>
+      {(member.alsoMemberOf ?? 0) > 0 && (
+        <Line text={t('membersScreen.alsoMemberOf', { count: member.alsoMemberOf })} />
+      )}
       {refused?.on === 'restore' && (
         <View accessibilityRole="alert">
           <FieldError message={refused.words} />
@@ -293,6 +296,7 @@ export function PersonBody({
           testID: 'members.remove.confirm',
           removes: true,
           busy: removeBusy ? t('membersScreen.removing') : undefined,
+          busyWords: t('membersScreen.removing'),
         }}
         failed={!onlyOwnerSuspended && refused?.on === 'remove' ? refused.words : null}
         onKeep={() => {

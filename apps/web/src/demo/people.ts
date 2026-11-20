@@ -1,4 +1,10 @@
-import { listFormat } from '@soirely/domain';
+import {
+  emailProblem,
+  formatPhone,
+  listFormat,
+  phoneE164,
+  phoneLengthProblem,
+} from '@soirely/domain';
 
 import { ORGANISATION, samplePeople } from './members.ts';
 import type { DemoLink } from './settings.ts';
@@ -23,7 +29,7 @@ const NOW_CAN: Record<EventRole, { one: string; several: string }> = {
   'Can check guests in': { one: 'can check guests in now.', several: 'can check guests in now.' },
 };
 
-export const ADD_PROMPT = 'Add by name';
+export const ADD_PROMPT = 'Add by name, email or mobile';
 export const ON_EVENT = 'On this event';
 export const EMPTY_TITLE = 'Nobody is on this event yet.';
 export const EMPTY_LINE = 'Add the people working on it. Owners and admins see it already.';
@@ -68,22 +74,63 @@ export interface OnEvent {
   role: EventRole;
   outside: boolean;
   label: string | null;
+  /** Added by an address the viewer is not shown: no name, no address, no kind of address. */
+  withheld?: boolean;
   /** In by a door code (sc-72): which one, and when. */
   door?: { code: string; at: string } | null;
+  /** In by their own staff link from the roster (sc-3912): one row a person, however many links they were given. */
+  staffLink?: { job: string; ends: string; signedIn: boolean } | null;
 }
+
+export const NOT_SIGNED_IN = 'Not signed in yet';
+
+export function staffLinkTitle(person: OnEvent): string | null {
+  const link = person.staffLink;
+  if (link == null) return null;
+
+  return `Staff link · ${person.name} · ${link.job} · ends ${link.ends}`;
+}
+
+const STAFF_LINKS: readonly OnEvent[] = [
+  {
+    id: 'staff-grace',
+    name: 'Grace Okon',
+    initials: '',
+    tone: 0,
+    role: 'Can view',
+    outside: false,
+    label: null,
+    staffLink: { job: 'Waiter', ends: '03:00 on Sunday, Oct 25', signedIn: false },
+  },
+  {
+    id: 'staff-tolu',
+    name: 'Tolu Bello',
+    initials: '',
+    tone: 0,
+    role: 'Can check guests in',
+    outside: false,
+    label: null,
+    staffLink: { job: 'Door', ends: '23:00', signedIn: true },
+  },
+];
 
 /** The organisation and the event a People screen is drawn for, as its sidebar shows them. */
 export interface EventPlace {
   organisation: string;
+  /** Where a mobile number typed without its + code is read. */
+  country: string;
   initials: string;
   event: string;
+  eventId: string;
   when: string;
 }
 
 export const IRE_PLACE: EventPlace = {
   organisation: ORGANISATION,
+  country: 'NG',
   initials: 'IE',
   event: EVENT,
+  eventId: 'evt-wed-4',
   when: 'Live · in 3 days',
 };
 
@@ -144,6 +191,19 @@ export function sampleOnEvent(): OnEvent[] {
   ];
 }
 
+export const NOT_JOINED = 'Not joined yet';
+
+/** Someone added by address with no account yet: only an owner, an admin or the lead sees the address, everyone else 'Not joined yet' (pm #67966). */
+export function seenBy(onEvent: readonly OnEvent[], seesAddresses: boolean): OnEvent[] {
+  return seesAddresses
+    ? [...onEvent]
+    : onEvent.map((one, index) =>
+        one.initials === ''
+          ? { ...one, id: `not-joined-${index}`, name: NOT_JOINED, withheld: true }
+          : one,
+      );
+}
+
 export function listed(onEvent: readonly OnEvent[]): OnEvent[] {
   return [...onEvent].sort(
     (one, other) =>
@@ -160,7 +220,7 @@ export function manages(viewer: PeopleViewer, onEvent: readonly OnEvent[]): bool
 }
 
 export function opens(person: OnEvent, viewer: PeopleViewer, onEvent: readonly OnEvent[]): boolean {
-  return manages(viewer, onEvent) && person.id !== viewer.id;
+  return manages(viewer, onEvent) && person.id !== viewer.id && person.staffLink == null;
 }
 
 function joined(parts: readonly (string | null)[]): string {
@@ -264,6 +324,82 @@ export function offeredMembers(
     .sort((one, other) => one.name.localeCompare(other.name, 'en'));
 }
 
+export const FIND_LABEL = 'Name, email or mobile number';
+export const NAME_LABEL = 'Name';
+export const UNUSABLE = 'That is not an email address or a mobile number we can use.';
+export const PICK_ANOTHER = 'Pick another role to add someone from outside.';
+export const fromOutside = (org: string = ORGANISATION) => `From outside ${org}`;
+export const ALREADY_A_MEMBER = 'That person is already a member of this organisation.';
+
+export type Address =
+  | { kind: 'email'; address: string; shown: string }
+  | { kind: 'mobile'; address: string; shown: string };
+
+export type OutsideView =
+  | { kind: 'none' }
+  | { kind: 'offer'; address: Address }
+  | { kind: 'unusable' }
+  | { kind: 'leadOff' }
+  | { kind: 'onEvent'; name: string };
+
+function readAddress(text: string, country: string): Address | 'name' | 'unusable' {
+  if (text.includes('@'))
+    return emailProblem(text) == null ? { kind: 'email', address: text, shown: text } : 'unusable';
+  if (text === '' || /\p{L}/u.test(text) || !/\d/u.test(text)) return 'name';
+  const e164 = phoneLengthProblem(text, country) == null ? phoneE164(text, country) : null;
+
+  return e164 == null ? 'unusable' : { kind: 'mobile', address: e164, shown: formatPhone(e164) };
+}
+
+/** sc-71's form checks: an @ is an email address, digits a mobile number by the country's lengths, letters a name to find. */
+export function outsideView(
+  typed: string,
+  country: string,
+  role: EventRole,
+  onEvent: readonly OnEvent[] = [],
+): OutsideView {
+  const read = readAddress(typed.trim(), country);
+  if (read === 'name') return { kind: 'none' };
+  if (read === 'unusable') return { kind: 'unusable' };
+  const there = onEvent.find((one) => one.id.toLowerCase() === read.address.toLowerCase());
+  if (there != null) return { kind: 'onEvent', name: there.name };
+
+  return role === 'Lead' ? { kind: 'leadOff' } : { kind: 'offer', address: read };
+}
+
+export function onAlreadyLine(name: string): string {
+  return `${name} is on this event already.`;
+}
+
+/** The sample API: a member's own address is refused `already_a_member`, in the server's words. */
+export function outsideRefusal(address: Address, members: readonly OrgMember[]): string | null {
+  const typed = address.address.toLowerCase();
+
+  return members.some((one) => one.id.toLowerCase() === typed) ? ALREADY_A_MEMBER : null;
+}
+
+export function withOutside(
+  onEvent: readonly OnEvent[],
+  role: EventRole,
+  address: Address,
+  job: string,
+): OnEvent[] {
+  const label = job.trim();
+
+  return [
+    ...onEvent,
+    {
+      id: address.address,
+      name: address.shown,
+      initials: '',
+      tone: onEvent.length,
+      role,
+      outside: true,
+      label: label === '' ? null : label,
+    },
+  ];
+}
+
 export function withRole(onEvent: readonly OnEvent[], id: string, role: EventRole): OnEvent[] {
   return onEvent.map((one) => (one.id === id ? { ...one, role } : one));
 }
@@ -297,8 +433,14 @@ export const PEOPLE_STATES = [
   'lead',
   'nobody',
   'roleFails',
+  'addOutside',
+  'addMobile',
+  'addUnusable',
+  'addLeadOutside',
+  'addMemberAddress',
   'loading',
   'failed',
+  'staffLinks',
 ] as const;
 
 export type PeopleState = (typeof PEOPLE_STATES)[number];
@@ -317,11 +459,25 @@ export interface PeopleStart {
   load: 'loaded' | 'loading' | 'failed';
   place: EventPlace;
   members: OrgMember[];
+  adding?: { typed: string; role: EventRole };
 }
 
 export function peopleStateOf(name: string | null): PeopleState {
   return PEOPLE_STATES.find((one) => one === name) ?? 'people';
 }
+
+const BISI = 'bisi@lagoslights.example';
+
+/** Added by her address and not joined yet, so the API has no name for her. */
+export const BISI_ON: OnEvent = {
+  id: BISI,
+  name: BISI,
+  initials: '',
+  tone: 5,
+  role: 'Can check guests in',
+  outside: true,
+  label: 'Lighting',
+};
 
 export function peopleStart(state: PeopleState): PeopleStart {
   const start: PeopleStart = {
@@ -335,11 +491,23 @@ export function peopleStart(state: PeopleState): PeopleStart {
 
   switch (state) {
     case 'readOnly':
-      return { ...start, viewer: PEOPLE_VIEWERS.ana };
+      return { ...start, viewer: PEOPLE_VIEWERS.ana, onEvent: [...start.onEvent, BISI_ON] };
     case 'lead':
       return { ...start, viewer: PEOPLE_VIEWERS.priya };
     case 'nobody':
       return { ...start, onEvent: [] };
+    case 'addOutside':
+      return { ...start, adding: { typed: BISI, role: FIRST_ROLE } };
+    case 'addMobile':
+      return { ...start, adding: { typed: '0803 555 0142', role: FIRST_ROLE } };
+    case 'addUnusable':
+      return { ...start, adding: { typed: 'bisi@lagos', role: FIRST_ROLE } };
+    case 'addLeadOutside':
+      return { ...start, adding: { typed: BISI, role: 'Lead' } };
+    case 'addMemberAddress':
+      return { ...start, adding: { typed: 'kofi@ire.events', role: FIRST_ROLE } };
+    case 'staffLinks':
+      return { ...start, onEvent: [...start.onEvent, ...STAFF_LINKS] };
     default:
       return start;
   }
@@ -359,8 +527,14 @@ export const PEOPLE_PAGES: readonly { name: string; states: readonly DemoLink[] 
       people('lead', 'Priya Shah, the lead'),
       people('nobody', 'Nobody on it yet'),
       people('roleFails', 'A role change that does not save'),
+      people('addOutside', 'Add someone from outside by email address'),
+      people('addMobile', 'Add someone from outside by mobile number'),
+      people('addUnusable', 'Half an address'),
+      people('addLeadOutside', 'An address under Lead'),
+      people('addMemberAddress', 'A member’s own address, refused by the server'),
       people('loading', 'Loading'),
       people('failed', 'Failed'),
+      people('staffLinks', 'Staff links from the roster, one signed in and one not yet (sc-3912)'),
     ],
   },
 ];

@@ -7,10 +7,11 @@ import { membership } from '../test-memberships.ts';
 import { AccessPaused } from './AccessPaused.tsx';
 
 function paused(reason: PausedOrganisation['suspension']['reason']): PausedOrganisation {
-  const { id, name, countryCode, currency, timezone, contactAddress, locale } = membership({
-    id: 'org_1',
-    name: 'Ìrè Events',
-  });
+  const { id, name, countryCode, currency, timezone, contactAddress, locale, plan, subscription } =
+    membership({
+      id: 'org_1',
+      name: 'Ìrè Events',
+    });
 
   return {
     id,
@@ -19,6 +20,8 @@ function paused(reason: PausedOrganisation['suspension']['reason']): PausedOrgan
     currency,
     timezone,
     contactAddress,
+    plan,
+    subscription,
     locale,
     suspension: {
       reason,

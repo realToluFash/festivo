@@ -1,4 +1,4 @@
-import { type Ref, useRef, useState } from 'react';
+import { type ReactNode, type Ref, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   Animated,
@@ -12,9 +12,11 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Circle, Defs, LinearGradient, Rect, Stop } from 'react-native-svg';
 
 import { coverRowSides, pastSides, sidePadding, tabBarSides } from './bodyEdges.ts';
-import { Text } from './Text.tsx';
-import { useWholeWords } from './Title.tsx';
-import { CAPSULE_LABEL } from '../layout/capsuleFit.ts';
+import { Text, type TextProps } from './Text.tsx';
+import { useMeasuredAt, useWholeWords } from './Title.tsx';
+import { TAB_LABEL, eventBarLabelSize, tabLabelStart } from '../layout/tabLabel.ts';
+import { wordsIn } from '../layout/textSize.ts';
+import { CAPSULE_HEIGHT, CAPSULE_LABEL } from '../layout/capsuleFit.ts';
 import { capsuleLabelMultiplier, useCapsuleLabels } from './CapsuleLabels.tsx';
 import { tokens } from '../theme/tokens.ts';
 import { Confetti, Cover, type Piece } from './Cover.tsx';
@@ -819,19 +821,7 @@ export function Band({
   );
 }
 
-const TAB_LABEL = 12;
-// Past 20 a label's line no longer fits under the glyph in the 54 tab (sc-37298).
-const TAB_LABEL_MOST = 20;
-
-export function TabBar<T extends string>({
-  tabs,
-  bottom,
-  onTab,
-  at,
-  say = (tab) => tab,
-  ids,
-  refs,
-}: {
+interface TabBarProps<T extends string> {
   tabs: readonly (readonly [T, GlyphName])[];
   bottom: number;
   onTab: (tab: T) => void;
@@ -840,15 +830,78 @@ export function TabBar<T extends string>({
   ids?: Partial<Record<T, string>>;
   /** A tab that opens something, which hands focus back to it when it closes. */
   refs?: Partial<Record<T, Ref<ViewInstance>>>;
-}) {
+  /** Its labels step down below the default size, as far as 10, where that keeps every word whole: the event's bar alone (sc-71148). */
+  stepsBelowDefault?: boolean;
+}
+
+interface TabWords {
+  measure: ReactNode;
+  room: (width: number) => void;
+  label: Pick<TextProps, 'size' | 'maxFontSizeMultiplier' | 'allowFontScaling' | 'style'>;
+}
+
+export function TabBar<T extends string>(props: TabBarProps<T>) {
+  return props.stepsBelowDefault ? <SteppedTabBar {...props} /> : <DefaultTabBar {...props} />;
+}
+
+function tabLabels<T extends string>({ tabs, say = (tab) => tab }: TabBarProps<T>): string[] {
+  return tabs.map(([label, glyph]) => say(label, glyph));
+}
+
+/** Labels never drawn under the default size, stepping down from their start rather than break a word (sc-37298). */
+function DefaultTabBar<T extends string>(props: TabBarProps<T>) {
   const { fontScale } = useWindowDimensions();
-  const insets = useSafeAreaInsets();
-  const words = useWholeWords(
-    TAB_LABEL,
-    Math.min(TAB_LABEL * fontScale, TAB_LABEL_MOST),
-    tabs.map(([label, glyph]) => say(label, glyph)),
-    { weight: 'semibold' },
+  const words = useWholeWords(TAB_LABEL, tabLabelStart(fontScale), tabLabels(props), {
+    weight: 'semibold',
+  });
+
+  return (
+    <TabRow
+      {...props}
+      words={{
+        measure: words.measure,
+        room: words.room,
+        label: { size: TAB_LABEL, maxFontSizeMultiplier: words.maxFontSizeMultiplier },
+      }}
+    />
   );
+}
+
+/** The five labels at one size, measured at semibold so selecting a tab never moves it, and drawn at exactly that size (sc-71148). */
+function SteppedTabBar<T extends string>(props: TabBarProps<T>) {
+  const { fontScale } = useWindowDimensions();
+  const [slot, setSlot] = useState(0);
+  const start = tabLabelStart(fontScale);
+  const { widths, measure } = useMeasuredAt(start, wordsIn(tabLabels(props)));
+  const widest = widths.every((width) => width != null) ? Math.max(...widths.map(Number)) : 0;
+
+  return (
+    <TabRow
+      {...props}
+      words={{
+        measure,
+        room: (width) => setSlot((now) => (now === width ? now : width)),
+        label: {
+          size: eventBarLabelSize(fontScale, widest, slot),
+          allowFontScaling: false,
+          style: styles.tabLabelCentred,
+        },
+      }}
+    />
+  );
+}
+
+function TabRow<T extends string>({
+  tabs,
+  bottom,
+  onTab,
+  at,
+  say = (tab) => tab,
+  ids,
+  refs,
+  words,
+}: TabBarProps<T> & { words: TabWords }) {
+  const insets = useSafeAreaInsets();
 
   return (
     <View style={[styles.tabBar, tabBarSides(insets), { bottom }]} accessibilityRole="tablist">
@@ -873,11 +926,10 @@ export function TabBar<T extends string>({
           >
             <Glyph name={glyph} size={22} ink={ink} />
             <Text
-              size={TAB_LABEL}
+              {...words.label}
               weight={on ? 'semibold' : 'medium'}
-              maxFontSizeMultiplier={words.maxFontSizeMultiplier}
               accessible={false}
-              style={{ color: ink }}
+              style={[words.label.style, { color: ink }]}
             >
               {say(label, glyph)}
             </Text>
@@ -998,16 +1050,16 @@ const styles = StyleSheet.create({
   ends: { flexDirection: 'row', alignItems: 'center', gap: tokens.spaceSm },
   fade: { position: 'absolute', left: 0, right: 0, bottom: 0, height: 150 },
   whiteCapsule: {
-    height: 46,
+    minHeight: CAPSULE_HEIGHT,
     flexDirection: 'row',
     alignItems: 'center',
     gap: tokens.spaceHair,
-    paddingHorizontal: tokens.spaceXxs,
+    padding: tokens.spaceXxs,
     borderRadius: 23,
     backgroundColor: tokens.colorInset,
   },
   whiteCapsuleTab: {
-    height: 38,
+    minHeight: CAPSULE_HEIGHT - 2 * tokens.spaceXxs,
     flexDirection: 'row',
     alignItems: 'center',
     gap: tokens.spaceSm,
@@ -1199,4 +1251,5 @@ const styles = StyleSheet.create({
     gap: 3,
   },
   tabOn: { backgroundColor: tokens.colorAccentTint },
+  tabLabelCentred: { textAlign: 'center' },
 });

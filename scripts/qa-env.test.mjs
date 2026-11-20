@@ -94,6 +94,9 @@ import {
   branchForStory,
   CACHE_CLEARER,
   clearApiCache,
+  freshBatchDir,
+  servicesMountingApi,
+  withApiStopped,
   execOutput,
   staleInContainer,
   defaultNetwork,
@@ -171,6 +174,9 @@ import {
   releaseApk,
   releaseApp,
   releasePlatform,
+  releaseLink,
+  bootCommands,
+  shutCommands,
   simulatorArch,
   staleBuilds,
   iosBuildEnv,
@@ -179,6 +185,7 @@ import {
   renderQaEnv,
   reversedPorts,
   unreversed,
+  restoreReverses,
   simulatorFor,
   TESTERS,
   testerOf,
@@ -881,6 +888,40 @@ describe('the reversed ports read back', () => {
   });
 });
 
+describe('the reverses a batch puts back', () => {
+  const emulator = (held) => {
+    const added = [];
+    const adb = (args) => {
+      if (args[1] === '--list')
+        return held.map((p) => `emulator-5578 tcp:${p} tcp:${p}`).join('\n');
+      added.push(Number(args[1].slice(4)));
+      held.push(Number(args[1].slice(4)));
+      return '';
+    };
+    return { adb, added };
+  };
+
+  it('adds back only the ports a reconnect lost', async () => {
+    const { adb, added } = emulator([13180]);
+    expect(await restoreReverses(adb, [13180, 13181, 13189])).toEqual([]);
+    expect(added).toEqual([13181, 13189]);
+  });
+
+  it('adds nothing when every port is held', async () => {
+    const { adb, added } = emulator([13180, 13181]);
+    expect(await restoreReverses(adb, [13180, 13181])).toEqual([]);
+    expect(added).toEqual([]);
+  });
+
+  it('names the ports adb still drops after ten tries', async () => {
+    const tries = [];
+    const adb = (args) => (args[1] === '--list' ? '' : tries.push(args[1]));
+    const missing = await restoreReverses(adb, [13181], { wait: async () => {} });
+    expect(missing).toEqual([13181]);
+    expect(tries).toHaveLength(10);
+  });
+});
+
 describe('the Android SDK', () => {
   it('is ANDROID_HOME, then ANDROID_SDK_ROOT', () => {
     expect(androidSdk({ ANDROID_HOME: '/a', ANDROID_SDK_ROOT: '/b' }, 'linux', '/h')).toBe('/a');
@@ -1060,6 +1101,27 @@ describe('a release build', () => {
     expect(releasePlatform(['--ipad', '--offline'], 'darwin')).toBe('ios');
     expect(releasePlatform(['--android'], 'darwin')).toBe('android');
     expect(releasePlatform(['--ipad'], 'linux')).toBe('android');
+  });
+
+  it('opens the first launch with --link, a URL, on iOS only', () => {
+    expect(releaseLink(['--ipad'], 'ios')).toBeNull();
+    expect(releaseLink(['--ipad', '--link', 'soirely://sign-in'], 'ios')).toBe('soirely://sign-in');
+    expect(releaseLink(['--link', 'https://example.test/e/1', '--offline'], 'ios')).toBe(
+      'https://example.test/e/1',
+    );
+    expect(() => releaseLink(['--link', 'sign-in'], 'ios')).toThrow(/--link needs a URL/);
+    expect(() => releaseLink(['--link'], 'ios')).toThrow(/--link needs a URL/);
+    expect(() => releaseLink(['--link', '--ipad'], 'ios')).toThrow(/--link needs a URL/);
+    expect(() => releaseLink(['--android', '--link', 'soirely://sign-in'])).toThrow(
+      /--link is iOS only/,
+    );
+    expect(() => releaseLink(['--link', 'soirely://sign-in'], 'android')).toThrow(/iOS only/);
+  });
+
+  it('leaves every simulator it opens or shuts at the default text size', () => {
+    const reset = ['simctl', 'ui', 'UDID', 'content_size', 'large'];
+    expect(bootCommands('UDID')).toEqual([['simctl', 'bootstatus', 'UDID', '-b'], reset]);
+    expect(shutCommands('UDID')).toEqual([reset, ['simctl', 'shutdown', 'UDID']]);
   });
 
   it("builds for the Mac's own simulator architecture", () => {
@@ -1939,6 +2001,43 @@ describe('the API cache a checkout leaves behind', () => {
     clearApiCache(mkdtempSync(join(tmpdir(), 'qa-cache-')), exec);
 
     expect(seen).toEqual([]);
+  });
+
+  it('stops first every service that mounts services/api, and only those', () => {
+    const root = '/work/soirely-qa5';
+    const api = { type: 'bind', source: '/work/soirely-qa5/services/api', target: '/app' };
+    const services = {
+      api: { volumes: [api] },
+      'notification-worker': { volumes: [api] },
+      web: { volumes: [{ type: 'bind', source: '/work/soirely-qa5/apps/web', target: '/app' }] },
+      postgres: { volumes: [{ type: 'volume', source: 'postgres-data', target: '/data' }] },
+      mailpit: {},
+    };
+
+    expect(servicesMountingApi(services, root)).toEqual(['api', 'notification-worker']);
+  });
+
+  it('starts the stopped services again when the checkout fails', () => {
+    const started = [];
+    const failing = () => {
+      throw new Error('checkout failed');
+    };
+
+    expect(() =>
+      withApiStopped(failing, {
+        stop: () => ['api', 'notification-worker'],
+        start: (names) => started.push(...names),
+      }),
+    ).toThrow('checkout failed');
+    expect(started).toEqual(['api', 'notification-worker']);
+  });
+
+  it('leaves them stopped when the checkout succeeds', () => {
+    const started = [];
+
+    withApiStopped(() => 'ok', { stop: () => ['api'], start: (names) => started.push(...names) });
+
+    expect(started).toEqual([]);
   });
 
   it('pins the image it clears with', () => {
@@ -3166,8 +3265,7 @@ describe('a cold batch whose bundler goes away', () => {
 describe('the time a Maestro run is given', () => {
   it('grows with its checks, and stops a hung single check within minutes', () => {
     expect(runBudgetMs(1)).toBe(7 * 60_000);
-    expect(runBudgetMs(10)).toBeGreaterThan(runBudgetMs(1));
-    expect(runBudgetMs(10)).toBeLessThan(47 * 60_000);
+    expect(runBudgetMs(10)).toBe(43 * 60_000);
   });
 
   it('stops a run that never exits once its budget is spent', async () => {
@@ -3760,6 +3858,20 @@ describe('the database, from a checkout', () => {
     const commands = databaseCommands(console_, [], false);
     expect(commands.filter(([first]) => first === 'compose')).toEqual([]);
     expect(commands).toHaveLength(6);
+  });
+
+  it('empties Redis with the database it drops, and never when keeping the data', () => {
+    const flushes = (keepData) =>
+      databaseCommands(console_, ['notification-worker'], keepData, true).filter((args) =>
+        args.includes('FLUSHALL'),
+      );
+    expect(flushes(false)).toEqual([['compose', 'exec', '-T', 'redis', 'redis-cli', 'FLUSHALL']]);
+    expect(verbs(databaseCommands(console_, [], false, true)).slice(0, 3)).toEqual([
+      'console doctrine:database:drop',
+      'console doctrine:database:create',
+      'compose exec',
+    ]);
+    expect(flushes(true)).toEqual([]);
   });
 
   it('rebuilds the test database from nothing, even keeping the data', () => {
@@ -4629,5 +4741,31 @@ describe("a Maestro run's debug logs", () => {
 
   it('ask nothing of a run that left no folder', () => {
     expect(() => trimMaestroLogs(join(tmpdir(), 'no-such-maestro-run'))).not.toThrow();
+  });
+});
+
+describe('a batch folder', () => {
+  it('keeps the last run of the same name beside the new one', () => {
+    const root = mkdtempSync(join(tmpdir(), 'qa-batch-'));
+    mkdirSync(join(root, '.qa/shots'), { recursive: true });
+    writeFileSync(join(root, '.qa/shots/first.png'), '');
+
+    const out = freshBatchDir(root, 'shots');
+
+    expect(out).toBe(join(root, '.qa/shots'));
+    expect(readdirSync(out)).toEqual([]);
+    expect(readdirSync(join(root, '.qa/shots.previous'))).toEqual(['first.png']);
+  });
+
+  it('keeps only one run back', () => {
+    const root = mkdtempSync(join(tmpdir(), 'qa-batch-'));
+    mkdirSync(join(root, '.qa/shots.previous'), { recursive: true });
+    writeFileSync(join(root, '.qa/shots.previous/oldest.png'), '');
+    mkdirSync(join(root, '.qa/shots'));
+    writeFileSync(join(root, '.qa/shots/second.png'), '');
+
+    freshBatchDir(root, 'shots');
+
+    expect(readdirSync(join(root, '.qa/shots.previous'))).toEqual(['second.png']);
   });
 });

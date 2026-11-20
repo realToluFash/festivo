@@ -7,6 +7,7 @@ import { useReadOut } from '../../components/ReadOut.tsx';
 import { ShapeMark } from '../../components/Summary.tsx';
 import { Text } from '../../components/Text.tsx';
 import { tokens } from '../../theme/tokens.ts';
+import { PaneBell } from '../events/EventFrame.tsx';
 import type { CeilingState } from './BudgetModel.ts';
 import { say } from './BudgetWords.ts';
 
@@ -374,6 +375,7 @@ export function PageTitle({
           {title}
         </Text>
         {right}
+        <PaneBell />
       </View>
       {line != null && (
         <Text size={15} weight="medium" style={styles.secondary}>

@@ -3,6 +3,10 @@ import { describe, expect, it } from 'vitest';
 import {
   listed,
   manages,
+  NOT_JOINED,
+  seenBy,
+  outsideRefusal,
+  outsideView,
   offeredMembers,
   opens,
   PEOPLE_PAGES,
@@ -15,6 +19,8 @@ import {
   sampleMembers,
   sampleOnEvent,
   seesEveryEvent,
+  staffLinkTitle,
+  withOutside,
 } from './people.ts';
 
 const names = (people: readonly { name: string }[]) => people.map((one) => one.name);
@@ -88,5 +94,77 @@ describe('People on an event at a desk (sc-29915)', () => {
     expect(peopleStart('lead').viewer).toBe(PEOPLE_VIEWERS.priya);
     expect(peopleStart('nobody').onEvent).toEqual([]);
     expect(peopleStart('failed').load).toBe('failed');
+  });
+});
+
+describe('someone from outside at a desk (sc-71)', () => {
+  it('reads an @ as an email address, digits as a mobile number, letters as a name', () => {
+    expect(outsideView('Kofi', 'NG', 'Can view')).toEqual({ kind: 'none' });
+    expect(outsideView('bisi@lagoslights.example', 'NG', 'Can view')).toMatchObject({
+      kind: 'offer',
+      address: { kind: 'email' },
+    });
+    expect(outsideView('0803 555 0142', 'NG', 'Can view')).toMatchObject({
+      address: { kind: 'mobile', address: '+2348035550142', shown: '+234 803 555 0142' },
+    });
+    expect(outsideView('0803 12', 'NG', 'Can view')).toEqual({ kind: 'unusable' });
+    expect(outsideView('bisi@', 'NG', 'Can view')).toEqual({ kind: 'unusable' });
+    expect(outsideView('bisi@lagoslights.example', 'NG', 'Lead')).toEqual({ kind: 'leadOff' });
+  });
+
+  it('does not offer someone on the event already, and leaves already_a_member to the server', () => {
+    expect(outsideView('kemi.okafor@example.com', 'NG', 'Can view', sampleOnEvent())).toEqual({
+      kind: 'onEvent',
+      name: 'Kemi Okafor',
+    });
+    const kofi = { kind: 'email', address: 'kofi@ire.events', shown: 'kofi@ire.events' } as const;
+    expect(outsideRefusal(kofi, sampleMembers())).toBe(
+      'That person is already a member of this organisation.',
+    );
+  });
+
+  it('lists them as from outside, with the job label trimmed or none', () => {
+    const phone = {
+      kind: 'mobile',
+      address: '+2348035550142',
+      shown: '+234 803 555 0142',
+    } as const;
+    const [added] = withOutside([], 'Can view', phone, ' Kitchen ');
+
+    expect(added).toMatchObject({ outside: true, label: 'Kitchen', name: '+234 803 555 0142' });
+    expect(withOutside([], 'Can view', phone, ' ')[0]?.label).toBeNull();
+  });
+
+  it('withholds the address of someone not joined yet from a viewer who does not manage it (pm #67966)', () => {
+    const start = peopleStart('readOnly');
+    expect(manages(start.viewer, start.onEvent)).toBe(false);
+    const seen = seenBy(start.onEvent, false);
+    expect(seen.find((one) => one.withheld === true)).toMatchObject({
+      name: NOT_JOINED,
+      role: 'Can check guests in',
+      outside: true,
+      label: 'Lighting',
+    });
+    expect(JSON.stringify(seen)).not.toContain('lagoslights');
+    expect(seenBy(start.onEvent, true).find((one) => one.initials === '')?.name).toBe(
+      'bisi@lagoslights.example',
+    );
+  });
+});
+
+describe('staff links on the access list (sc-3912)', () => {
+  const linked = peopleStart('staffLinks').onEvent.filter((one) => one.staffLink != null);
+
+  it('reads Staff link · name · job · ends, one row a person', () => {
+    expect(linked.map(staffLinkTitle)).toEqual([
+      'Staff link · Grace Okon · Waiter · ends 03:00 on Sunday, Oct 25',
+      'Staff link · Tolu Bello · Door · ends 23:00',
+    ]);
+    expect(linked.map((one) => one.staffLink?.signedIn)).toEqual([false, true]);
+  });
+
+  it('does not open the role dialog: a link is changed on the roster', () => {
+    const start = peopleStart('staffLinks');
+    expect(linked.some((one) => opens(one, start.viewer, start.onEvent))).toBe(false);
   });
 });

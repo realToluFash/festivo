@@ -3,6 +3,7 @@ import { useState, useSyncExternalStore } from 'react';
 import { useLocation, useSearchParams } from 'react-router';
 
 import { type CreateState, NEW_ORG, isCreateState } from './createOrg.ts';
+import { E1, E2, E3, type OutsideEvent } from './outsideEvents.ts';
 import type { DemoLink } from './settings.ts';
 
 export type Role = 'Owner' | 'Admin' | 'Member';
@@ -32,6 +33,8 @@ export interface Where {
   opens: number;
   fresh: readonly string[];
   arrived: string | null;
+  /** The account's live grants on other organisations' events (sc-68438). */
+  outside: readonly OutsideEvent[];
 }
 
 export const SWITCHER_STATES = [
@@ -52,7 +55,11 @@ export const SWITCHER_STATES = [
   'expired',
   'withdrawn',
   'managed',
+  'managed-closed',
+  'managed-listed',
   'paused',
+  'outside',
+  'outside-one-org',
 ] as const;
 
 export type SwitcherState = (typeof SWITCHER_STATES)[number];
@@ -133,14 +140,16 @@ export function whereOf(state: SwitcherState | null): Where {
           ? { [BLUEBIRD]: state }
           : state === 'managed'
             ? { [CELEBRACIONES]: 'managed' }
-            : {};
+            : state === 'managed-closed' || state === 'managed-listed'
+              ? { [CELEBRACIONES]: 'managed', [BLUEBIRD]: 'managed' }
+              : {};
   const many = state === 'many' || state === 'search' || state === 'no-match';
-  const alone = state === 'one' || many || state === 'paused';
+  const alone = state === 'one' || many || state === 'paused' || state === 'outside-one-org';
 
   return {
     places: many
       ? MANY
-      : state === 'one'
+      : state === 'one' || state === 'outside-one-org'
         ? [IRE]
         : state === 'joined'
           ? [...POPULATED, joinedPlace(CELEBRACIONES_INVITATION)]
@@ -161,6 +170,7 @@ export function whereOf(state: SwitcherState | null): Where {
     opens: 0,
     fresh: [],
     arrived: null,
+    outside: state === 'outside' ? [E1, E2, E3] : state === 'outside-one-org' ? [E2] : [],
   };
 }
 
@@ -207,11 +217,12 @@ function joinedPlace(invitation: Invitation): Place {
   return { id: invitation.id, name: invitation.name, role: invitation.role };
 }
 
+/** sc-73668: one a managed account cannot accept has no answer left to give, so it is listed and never counted. */
 export function waiting(where: Where): readonly Invitation[] {
   return where.invitations.filter((one) => {
     const answer = where.answers[one.id];
 
-    return answer == null || answer === 'failed' || answer === 'busy' || answer === 'managed';
+    return answer == null || answer === 'failed' || answer === 'busy';
   });
 }
 
@@ -365,7 +376,25 @@ export const SWITCHER_PAGES: readonly { name: string; states: readonly DemoLink[
       switcherLink('expired', 'An invitation, refused: expired'),
       switcherLink('withdrawn', 'An invitation, refused: withdrawn'),
       switcherLink('managed', 'An invitation, managed by Ire Events: refused'),
+      switcherLink('managed-closed', 'Managed by Ire Events, 2 invitations: no count'),
+      switcherLink(
+        'managed-listed',
+        'Managed by Ire Events, 2 invitations listed, none answerable',
+      ),
     ],
   },
   { name: 'Access paused', states: [switcherLink('paused', 'Access paused, none current')] },
+  {
+    name: 'Events from outside (sc-68438)',
+    states: [
+      {
+        to: '/demo/today?switcher=outside',
+        name: 'Three organisations, three events from outside, one under way',
+      },
+      {
+        to: '/demo/today?switcher=outside-one-org',
+        name: 'One organisation, one event from outside',
+      },
+    ],
+  },
 ];

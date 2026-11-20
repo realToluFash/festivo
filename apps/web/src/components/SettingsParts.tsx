@@ -69,31 +69,34 @@ export function Bell({
   );
 }
 
-/** The page's title, its one header action, and the bell: in the product the shell's, with "Now working in…" under the row. A compact row heads a column, and the bell is the page's beside it. */
+/** The page's title, its one header action, and the bell: in the product the shell's, with "Now working in…" under the row. A compact row heads a column, and the bell is the page's beside it; a row under a back row leaves the bell and the offline line to that row. */
 export function TitleRow({
   title,
   titleRef,
   action,
   bell,
   compact = false,
+  underBack = false,
 }: {
   title: string;
   titleRef?: Ref<HTMLHeadingElement>;
   action?: ReactNode;
   bell?: ReactNode;
   compact?: boolean;
+  underBack?: boolean;
 }) {
   const desk = useDeskTop();
+  const topped = compact || underBack;
 
   return (
     <>
-      {!compact && desk.offline}
+      {!topped && desk.offline}
       <header className={compact ? 'desk-top is-compact' : 'desk-top'}>
         <h1 ref={titleRef} className="desk-title" tabIndex={-1}>
           {title}
         </h1>
         {action}
-        {bell ?? (compact ? null : desk.bell)}
+        {bell ?? (topped ? null : desk.bell)}
       </header>
       {desk.said}
     </>

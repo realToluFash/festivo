@@ -29,7 +29,7 @@ import {
   PartsSection,
   type RefFor,
 } from '../../components/EventOverview.tsx';
-import { AreaPage, EventFrame, type EventToast } from './EventFrame.tsx';
+import { AreaPage, BellRow, EventFrame, type EventToast } from './EventFrame.tsx';
 import { INVITATION_HREF, liveToastOf, makeLiveStateOf, reachOf, seededEvent } from './MakeLive.ts';
 import { MakeLiveAsk, useMakeLive } from './MakeLiveAsk.tsx';
 import { EventNeedsYou } from './EventNeedsYou.tsx';
@@ -111,6 +111,8 @@ import { SeatingScreen } from '../seating/SeatingScreen.tsx';
 import { GuestNumbers } from '../guests/GuestNumbers.tsx';
 import { PeopleCard } from '../people/PeopleCard.tsx';
 import type { CardState } from '../people/PeopleCardModel.ts';
+import { type PeopleParams, PeopleSection } from '../people/People.tsx';
+import { PeopleInEvent } from '../people/PeopleFrame.tsx';
 import {
   type FilterKey,
   type ListFilter,
@@ -129,6 +131,8 @@ import { DemoOnly } from '../../steps/Lines.tsx';
 import { GUESTS as TALKS, type GuestKey } from '../messages/MessagesSample.ts';
 import type { BudgetState } from '../budget/BudgetModel.ts';
 import { BudgetScreen } from '../budget/BudgetScreen.tsx';
+import { type OriginState, draftFromEnquiry } from '../enquiries/EnquiryToEventModel.ts';
+import { FromEnquiryLine } from '../enquiries/FromEnquiryParts.tsx';
 
 type Mute = 'ok' | 'notLoaded' | 'notSaved';
 
@@ -200,8 +204,10 @@ export function EventScreen({
   guests = null,
   budget = null,
   people = null,
+  peopleParams,
   guestsFrom: figureOpens = null,
   without,
+  origin = null,
 }: {
   id: string | undefined;
   state: EventDemoState | null;
@@ -213,9 +219,12 @@ export function EventScreen({
   budget?: BudgetState | null;
   /** The People card's state on Overview (sc-29914); none is the populated card. */
   people?: CardState | null;
+  /** People's own query, when People opens in this frame from its own page (sc-67665). */
+  peopleParams?: PeopleParams | undefined;
   /** A figure on Events opens the event's Guests with its choice in the filter menu (sc-3786). */
   guestsFrom?: FilterKey | null;
   without?: AreaKey | undefined;
+  origin?: OriginState | null;
 }) {
   const shell = useShell();
   const locale = formattingLocale('en', getLocales()[0]?.languageTag);
@@ -223,7 +232,11 @@ export function EventScreen({
     () => (guests == null ? clockOf(state) : guestsClock(guests)),
     [state, guests],
   );
-  const [event, setEvent] = useState(() => startEvent(id, state, messages, now));
+  const [event, setEvent] = useState(() =>
+    origin == null
+      ? startEvent(id, state, messages, now)
+      : draftFromEnquiry(startEvent(id, state, messages, now)),
+  );
   const reach = useMemo(() => reachOf(state, event), [state, event]);
   const live = useMakeLive(state, reach, (host) =>
     setEvent((now) => ({ ...now, hosts: host == null ? now.hosts : [host], status: 'live' })),
@@ -239,13 +252,13 @@ export function EventScreen({
           ? 'overview'
           : 'guests'
         : area == null ||
-            area === 'people' ||
             messages === 'tell' ||
             messages === 'tellPlace' ||
             (isTellKind(messages) && !TELL_IN_MESSAGES.includes(messages))
           ? 'overview'
           : area;
   });
+  const [peopleAt, setPeopleAt] = useState<PeopleParams>(peopleParams ?? {});
   const [guestsFrom, setGuestsFrom] = useState<ListFilter | null>(figureOpens);
   const [sinceFrom, setSinceFrom] = useState<string | null>(null);
   const [m, dispatch] = useReducer(reduceReach, null, () => {
@@ -464,6 +477,7 @@ export function EventScreen({
       refFor={refFor}
       onEdit={openEdit}
       onMaps={() => shell.tell(W.mapsHandOff)}
+      last={origin === 'from-enquiry' ? <FromEnquiryLine /> : null}
     />
   );
   const needsYou = (
@@ -505,7 +519,15 @@ export function EventScreen({
       onOpen={openGuests}
     />
   );
-  const peopleCard = <PeopleCard state={people} />;
+  const peopleCard = (
+    <PeopleCard
+      state={people}
+      onOpen={(params) => {
+        setPeopleAt(params);
+        setAt('people');
+      }}
+    />
+  );
   const guestsPage = (
     <GuestsPage
       write={write}
@@ -649,8 +671,26 @@ export function EventScreen({
         without={without}
         loading
       >
+        <BellRow>{null}</BellRow>
         <LoadingBlock words={W.loadingEvent} />
       </EventFrame>
+    );
+
+  if (at === 'people')
+    return (
+      <PeopleInEvent.Provider
+        value={{
+          event: shown,
+          now,
+          onArea: setAt,
+          more,
+          onMore: setMore,
+          badge: messagesHere && messagesSeen ? badgeFor(m) : null,
+          without,
+        }}
+      >
+        <PeopleSection params={peopleAt} />
+      </PeopleInEvent.Provider>
     );
 
   if (at === 'seating' && messagesHere)
@@ -736,13 +776,12 @@ export function EventScreen({
     );
 
   let page: ReactNode;
-  if (at !== 'overview' && at !== 'people')
-    page = <AreaPage area={at} event={shown} locale={locale} />;
+  if (at !== 'overview') page = <AreaPage area={at} event={shown} locale={locale} />;
   else
     page = (
       <OverviewColumns
         landscape={shell.layout === 'landscape'}
-        card={card}
+        card={<BellRow>{card}</BellRow>}
         left={
           <>
             {photoNotice}
@@ -894,6 +933,7 @@ function Details({
   refFor,
   onEdit,
   onMaps,
+  last,
 }: {
   shown: Shown;
   replyBy: string | null;
@@ -902,6 +942,7 @@ function Details({
   refFor: RefFor;
   onEdit: (part: EditPart) => void;
   onMaps: () => void;
+  last?: ReactNode;
 }) {
   const dates = datesRow(shown, locale);
   const hosts = hostsRow(shown, locale);
@@ -945,7 +986,13 @@ function Details({
         },
         { part: 'hosts', ...hosts, opens: true },
         { part: 'type', title: TYPE_WORDS[shown.type], line: W.type, opens: true },
-        { part: 'currency', title: currencyWords(shown.currency), line: W.currency, opens: true },
+        {
+          part: 'currency',
+          title: currencyWords(shown.currency),
+          line: W.currency,
+          opens: true,
+          after: last,
+        },
       ]}
     />
   );

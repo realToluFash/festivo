@@ -36,13 +36,14 @@ import {
   READ_ONLY,
   removedToast,
   rowLine,
+  seenBy,
   seesEveryEvent,
   withAdded,
   without,
+  withOutside,
   withRole,
 } from './PeopleSample.ts';
 import { AddBox, PeopleLoading } from '../../components/PeopleParts.tsx';
-import { useShell } from '../../components/settingsShell.ts';
 import { FailedBlock, Line, Row, RowList, SectionHead } from '../../components/Summary.tsx';
 
 const LIT_MS = 2000;
@@ -54,14 +55,17 @@ interface Opened {
   visit: number;
 }
 
-/** People on an event in A, one list with the role in a sheet, on sample data. */
-export function PeopleSection() {
-  const { state, code, show, hold } = useLocalSearchParams<{
-    state?: string;
-    code?: string;
-    show?: string;
-    hold?: string;
-  }>();
+export type PeopleParams = {
+  state?: string;
+  code?: string;
+  show?: string;
+  hold?: string;
+};
+
+/** People on an event in A, one list with the role in a sheet, on sample data; `params` in place of the route's, as the event page's own query is not People's. */
+export function PeopleSection({ params }: { params?: PeopleParams }) {
+  const route = useLocalSearchParams<PeopleParams>();
+  const { state, code, show, hold } = params ?? route;
   const shown = show ?? hold;
   const door = useMemo(() => doorStartOf(state, code, shown), [state, code, shown]);
   const name = peopleStateOf(state);
@@ -79,7 +83,6 @@ function openedAtStart(start: PeopleStart): Opened | null {
 }
 
 function PeopleScreen({ start, door }: { start: PeopleStart; door: DoorStart | null }) {
-  const { layout } = useShell();
   const { load, retry } = useLoad(start.load);
   const viewer = start.viewer;
   const [world] = useState(() => start.world ?? ireWorld());
@@ -143,7 +146,7 @@ function PeopleScreen({ start, door }: { start: PeopleStart; door: DoorStart | n
   }
 
   const back = {
-    label: layout === 'phone' ? 'More' : 'Overview',
+    label: 'Overview',
     onPress: () => (router.canGoBack() ? router.back() : router.replace('/demo')),
   };
 
@@ -163,7 +166,7 @@ function PeopleScreen({ start, door }: { start: PeopleStart; door: DoorStart | n
       </PeoplePage>
     );
 
-  const shown = listed(onEvent);
+  const shown = listed(seenBy(onEvent, canChange));
 
   return (
     <>
@@ -229,7 +232,9 @@ function PeopleScreen({ start, door }: { start: PeopleStart; door: DoorStart | n
                         line={line}
                         lead={<Face person={one} side={40} />}
                         tag={
-                          one.outside ? { kind: 'now', word: outsideTag(world.organisation) } : null
+                          one.outside
+                            ? { kind: 'now', word: outsideTag(world.organisation), wraps: true }
+                            : null
                         }
                         trail={
                           opensRow ? (
@@ -289,14 +294,23 @@ function PeopleScreen({ start, door }: { start: PeopleStart; door: DoorStart | n
           viewer={viewer}
           organisation={world.organisation}
           opener={focusBack}
+          country={world.country}
           refuses={start.addRefuses}
+          startTyped={start.addTyped}
+          startRole={start.addRole}
           onClose={() => setAdding((was) => ({ ...was, open: false }))}
-          onAdd={(role, added, finished) => {
-            const next = withAdded(onEvent, role, added);
-            setOnEvent(next.onEvent);
+          onAdd={(added, finished) => {
+            const next = withAdded(onEvent, added.role, added.members);
+            const all =
+              added.outside == null
+                ? next.onEvent
+                : withOutside(next.onEvent, added.role, added.outside.address, added.outside.job);
+            setOnEvent(all);
             if (!finished) return;
             setAdding((was) => ({ ...was, open: false }));
-            setToast(addedToast(next.names, role));
+            const names =
+              added.outside == null ? next.names : [...next.names, added.outside.address.shown];
+            setToast(addedToast(names, added.role));
           }}
         />
       )}

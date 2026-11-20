@@ -41,8 +41,9 @@ nothing else can be scheduled, and scheduling an unregistered name throws.
   delivery, cancelled. A payment reminder answers false once the payment is made.
 - **`thread()`** names the bell item a type's messages share, or null for an item of its
   own. See [Threads](#threads).
-- **`collapseKey()`**: rows due together for one person on one channel that share a key go
-  out as one message, rendered from every payload at once.
+- **`collapseKey($payload)`**: rows due together for one person on one channel that share a key go
+  out as one message, rendered from every payload at once, and a push replaces the one shown
+  under the same key.
 - **`render()`** writes the message in the recipient's language.
 
 A type that answers an event action also replaces its `Notice::awaiting('sc-N')` entry in
@@ -130,7 +131,9 @@ between is handled as they are then.
   address costs the request exactly what a fresh one does.
 - **Channels** come from `ChannelSelector`, the one place that applies a member's
   preferences (sc-3980's store; epic 36's product defaults until then). In-app always goes;
-  push only rides along with another channel and is never the only way somebody hears.
+  push only rides along with another channel and is never the only way somebody hears,
+  except for a type that offers push alone: what it says is told nowhere else, so missing it
+  loses nothing. The run-of-show card (sc-66580) is the one such type.
 
 ## The worker
 
@@ -196,7 +199,10 @@ one sender, `PushSender`, and two providers behind `PushServiceInterface`:
   way a session ends), and with the account, by the foreign key. A session that runs out
   unused is never sent to. Expo's receipts are not polled: no story runs its own sweep.
 - **Collapse**: `collapseKey()` is the Web Push `Topic` (hashed to its 32 characters) and
-  Expo's `collapseId`, `threadId` and `tag`.
+  Expo's `collapseId`, `threadId` and `tag`. iOS takes 64 bytes of it.
+- **Silent** (`RenderedNotification::$silent`): the app alone, passive on iOS and on the app's
+  `run_of_show` Android channel, which makes no sound and no pop-up. The run-of-show card
+  (sc-66580), which the app also writes itself under the same key, so either replaces the other.
 - **One attempt** sends to every live device. It succeeds if any took it, and fails to be
   retried only when none did; a member with no live device is **Failed** at once, as email
   is with no address.

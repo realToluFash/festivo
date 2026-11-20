@@ -25,7 +25,7 @@ export interface TopPrimaryProps {
   ref?: Ref<ViewInstance>;
 }
 
-/** The primary at the end of a top's title row, as the demos draw it: the round violet + on a phone, the + and its label wider (sc-39471). */
+/** The primary at the end of a top's title row, as the demos draw it: the round violet + on a phone, the + and its label wider (sc-39471), as tall as its words (sc-67659). */
 export function TopPrimary({
   label,
   onPress,
@@ -41,6 +41,7 @@ export function TopPrimary({
         glyph="plus"
         height={tokens.sizeHit}
         full={false}
+        grows
         onPress={onPress}
         testID={testID}
       />
@@ -79,7 +80,10 @@ export function usePrimaryLabel({
 }): { wide: boolean; onSlot: (event: LayoutChangeEvent) => void; measure: ReactNode } {
   const { fontScale } = useWindowDimensions();
   // The title's slot as last laid out, and whether the primary beside it then was labelled.
-  const [slot, setSlot] = useState({ width: 0, wide: true });
+  const [slot, setSlot] = useState<{ width: number | null; wide: boolean }>({
+    width: null,
+    wide: true,
+  });
   const [titleWidth, setTitleWidth] = useState(0);
   const [labelledWidth, setLabelledWidth] = useState(0);
   const measuring = labelled && label != null;
@@ -126,7 +130,7 @@ export function usePrimaryLabel({
           importantForAccessibility="no-hide-descendants"
         >
           <View onLayout={widthOf(setLabelledWidth)}>
-            <Pill label={label} glyph="plus" height={tokens.sizeHit} full={false} />
+            <Pill label={label} glyph="plus" height={tokens.sizeHit} full={false} grows />
           </View>
         </View>
       </>

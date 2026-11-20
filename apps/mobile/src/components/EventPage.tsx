@@ -31,6 +31,7 @@ import { ArrivalNoteInset } from './ArrivalNoteInset.tsx';
 import { useDeleteEvent } from './DeleteEvent.tsx';
 import { EventCard } from './EventCard.tsx';
 import { EventGuestNumbers } from './EventGuestNumbers.tsx';
+import { EventPeopleCard } from './EventPeopleCard.tsx';
 import { EventThumb } from './EventThumb.tsx';
 import { useManageAsks } from './EventManageAsks.tsx';
 import {
@@ -47,6 +48,7 @@ import { useMakeLive } from './MakeLive.tsx';
 import { useEventMute } from './MuteEventCard.tsx';
 import { useResume } from './PauseEvent.tsx';
 import { ThankYouCard, ThankYouScreen } from './ThankYou.tsx';
+import { BellRow } from './BellButton.tsx';
 import { readOut } from './ReadOut.tsx';
 import type { ScreenReaderTarget } from './screenReaderFocus.ts';
 import type { TextHandle } from './Text.tsx';
@@ -66,6 +68,7 @@ export function EventPage({
   onDuplicate,
   onDeleted,
   onGuests,
+  onPeople,
   tell,
   opensEndNow = false,
   onEndNowOpened,
@@ -75,6 +78,8 @@ export function EventPage({
   event: OrganisationEvent;
   /** Guests, on the choice a count on the Guests card opens (sc-3786). */
   onGuests: (choice: Choice) => void;
+  /** The event's People, from the People card (sc-68607). */
+  onPeople: () => void;
   /** The card's name, where it is the page's only title. */
   nameRef?: Ref<TextHandle> | undefined;
   manages: boolean;
@@ -301,6 +306,7 @@ export function EventPage({
     />
   );
   const numbers = <EventGuestNumbers event={event} onOpen={onGuests} />;
+  const people = <EventPeopleCard event={event} onOpen={onPeople} />;
   const forYou = (
     <JustForYou
       words={{
@@ -352,7 +358,7 @@ export function EventPage({
     <View style={styles.page} testID="events.page">
       <OverviewColumns
         landscape={kind === 'tabletLandscape'}
-        card={card}
+        card={<BellRow>{card}</BellRow>}
         left={
           <>
             {notice}
@@ -365,6 +371,7 @@ export function EventPage({
         right={
           <>
             {numbers}
+            {people}
             {forYou}
             {manage}
           </>
@@ -374,6 +381,7 @@ export function EventPage({
             {notice}
             {thankYou}
             {numbers}
+            {people}
             {details}
             {comingUp}
             {nameCover}

@@ -159,6 +159,8 @@ domain_guest = ["App\\Domain\\Guest\\**"]
 domain_staff = ["App\\Domain\\Staff\\**"]
 domain_menu = ["App\\Domain\\Menu\\**"]
 domain_run_of_show = ["App\\Domain\\RunOfShow\\**"]
+domain_budget = ["App\\Domain\\Budget\\**"]
+domain_billing = ["App\\Domain\\Billing\\**"]
 
 # Capabilities. Each is its own layer so an edge between two of them has to be
 # declared below rather than appearing by accident.
@@ -262,7 +264,9 @@ permit = [
 # the seeded labels in every one of SupportedLocales (sc-2301). Its deletion uses the
 # shared restore window and typed-name check (sc-3592). Members reads
 # whether an invitation's email could not be delivered from its delivery record and the
-# suppression list (sc-46109); messaging does not reach back.
+# suppression list (sc-46109); messaging does not reach back. Export all data keeps
+# its archive in the private bucket, and writes its CSV files as the guest export
+# does (CsvFile, sc-612); neither reaches back.
 [[guard.perimeter.rules]]
 namespace = "App\\Domain\\Organisation\\"
 permit = [
@@ -272,11 +276,24 @@ permit = [
     "@layer:domain_organisation",
     "@layer:domain_user",
     "@layer:domain_messaging",
+    "@layer:domain_guest",
+    "@layer:domain_billing",
     "@layer:repository",
     "@layer:audit",
     "@layer:deletion",
     "@layer:locale",
+    "@layer:storage",
 ]
+
+# Plans & billing (sc-3927): the subscription, who pays for it, and the one
+# entitlement answer. The organisation scope founds a subscription and asks for
+# the answer; billing never reaches back. Staff actions on the plan catalogue
+# are audited (sc-3928), and its unit-cost countries are checked against the one
+# country list (Regions), not the scope around it. A purge takes a billing account
+# nothing is paid for by any more.
+[[guard.perimeter.rules]]
+namespace = "App\\Domain\\Billing\\"
+permit = ["@layer:native", "@layer:external", "@layer:shared", "@layer:domain_billing", "@layer:repository", "@layer:deletion", "@layer:audit", "App\\Domain\\Organisation\\Regions"]
 
 # Events check their zone and currency as an organisation's are checked (Regions,
 # AccountTimeZone), and each create goes to the audit trail (sc-1486). A venue's
@@ -284,7 +301,8 @@ permit = [
 # shared window and typed name (sc-3592). A new date, time or zone re-schedules
 # what the one clock counts from it (sc-104). A duplicate brings the guest list
 # through the guests' scope when asked (sc-3656). Search folds a member's name by the
-# shared rule (NameNormaliser) to match and rank it (sc-39534).
+# shared rule (NameNormaliser) to match and rank it (sc-39534). A new event, and a
+# duplicate, starts with the suggested jobs through the staff scope (sc-3908).
 [[guard.perimeter.rules]]
 namespace = "App\\Domain\\Event\\"
 permit = [
@@ -302,6 +320,7 @@ permit = [
     "@layer:deletion",
     "@layer:domain_seating",
     "@layer:domain_guest",
+    "@layer:domain_staff",
     "@layer:locale",
 ]
 
@@ -347,12 +366,16 @@ permit = [
 
 # Staffing: an event's roster, the people working it without being members (sc-3906). A
 # mobile number is checked by the account's parser; each change is audited and published.
+# A shift's wall-clock times are read in the event's zone as the event's own are (sc-3908).
+# Stations give each course's items, as the menu lists them, the place that dishes them (sc-3910).
 [[guard.perimeter.rules]]
 namespace = "App\\Domain\\Staff\\"
 permit = [
     "@layer:native",
     "@layer:external",
     "@layer:shared",
+    "@layer:domain_event",
+    "@layer:domain_menu",
     "@layer:domain_staff",
     "@layer:domain_user",
     "@layer:repository",
@@ -382,10 +405,35 @@ permit = [
     "@layer:locale",
 ]
 
+# Budget & costs: the organisation's vendors (sc-82). A vendor's number is checked by
+# the account's parser, as a guest's is.
+# Budget & costs: an event's cost lines (sc-83). A line's quantity is read from what the
+# event already knows, accepted guests (sc-99), tables in the seating plan and the event's
+# days, so it reads the guest headcount and the event's day count; a price is parsed and
+# written at the currency's minor unit by Locale's Money, as the menu's costs are
+# (sc-68066). A line holds the event's currency (sc-98); each change is audited and
+# published.
+[[guard.perimeter.rules]]
+namespace = "App\\Domain\\Budget\\"
+permit = [
+    "@layer:native",
+    "@layer:external",
+    "@layer:shared",
+    "@layer:domain_budget",
+    "@layer:domain_event",
+    "@layer:domain_guest",
+    "@layer:domain_user",
+    "@layer:repository",
+    "@layer:audit",
+    "@layer:realtime",
+    "@layer:locale",
+]
+
 # Run of show: an event's running order, built on the Schedule page (sc-3893). Its
 # starts are wall-clock times read with the event's zone (LocalTimeResolver), and it
 # adds each day's first item and its fixed-time items to the event's timeline. Each
-# change is audited and published.
+# change is audited and published, and a press sends its track's card through
+# messaging (sc-66580).
 [[guard.perimeter.rules]]
 namespace = "App\\Domain\\RunOfShow\\"
 permit = [
@@ -394,6 +442,7 @@ permit = [
     "@layer:shared",
     "@layer:domain_run_of_show",
     "@layer:domain_event",
+    "@layer:domain_messaging",
     "@layer:repository",
     "@layer:audit",
     "@layer:realtime",

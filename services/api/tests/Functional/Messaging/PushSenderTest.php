@@ -82,6 +82,32 @@ final class PushSenderTest extends ApiTestCase
     }
 
     #[Test]
+    public function aSilentCardIsPassiveOnTheRunOfShowChannel(): void
+    {
+        $this->registerPhone();
+
+        $this->sender(['data' => [['status' => 'ok', 'id' => 'ticket-1']]])->send(...$this->message('run-of-show:1', NotificationCategory::EventDay, silent: true));
+
+        $message = Type\shape([0 => Type\dict(Type\string(), Type\mixed())])->coerce(Json\decode(Type\string()->coerce($this->requests[0]['options']['body'])))[0];
+        self::assertSame('run_of_show', $message['channelId'] ?? null);
+        self::assertSame('passive', $message['interruptionLevel'] ?? null);
+        self::assertSame(['place' => '/events/1', 'recipient' => $this->member->getId()->toRfc4122(), 'silent' => true], $message['data'] ?? null);
+        self::assertArrayNotHasKey('sound', $message);
+    }
+
+    #[Test]
+    public function aSilentCardNeverGoesToABrowser(): void
+    {
+        $session = self::service(TokenIssuer::class)->issueFor($this->member)->sessionId;
+        self::em()->flush();
+        self::service(PushTargets::class)->register($this->member->getId(), $session, PushTargetKind::Web, 'https://fcm.googleapis.com/fcm/send/abc', 'key', 'secret');
+
+        $this->expectException(Unreachable::class);
+
+        $this->sender(['data' => [['status' => 'ok', 'id' => 'ticket-1']]])->send(...$this->message('run-of-show:1', NotificationCategory::EventDay, silent: true));
+    }
+
+    #[Test]
     public function aPhoneExpoNoLongerKnowsIsForgotten(): void
     {
         $this->registerPhone();
@@ -148,13 +174,13 @@ final class PushSenderTest extends ApiTestCase
     }
 
     /** @return array{Uuid, Recipient, NotificationCategory, RenderedNotification, ?string} */
-    private function message(?string $collapseKey, NotificationCategory $category = NotificationCategory::EventChanges): array
+    private function message(?string $collapseKey, NotificationCategory $category = NotificationCategory::EventChanges, bool $silent = false): array
     {
         return [
             Uuid::v7(),
             new Recipient(NotificationAudienceKind::Member, $this->member->getId(), 'Ada', 'en', null),
             $category,
-            new RenderedNotification('Ada replied', 'Going', [], '/events/1'),
+            new RenderedNotification('Ada replied', 'Going', [], '/events/1', silent: $silent),
             $collapseKey,
         ];
     }

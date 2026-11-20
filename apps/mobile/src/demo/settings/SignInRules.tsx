@@ -1,6 +1,6 @@
 import { formattingLocale } from '@soirely/domain';
 import { getLocales } from 'expo-localization';
-import { useLocalSearchParams } from 'expo-router';
+import { type Href, router, useLocalSearchParams } from 'expo-router';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 
@@ -18,6 +18,9 @@ import {
 } from './SignInRulesSample.ts';
 import { useShell } from '../../components/settingsShell.ts';
 import { SummaryPage } from './SummaryPage.tsx';
+import { standingHref, standingRow } from './SingleSignOnModel.ts';
+import { StandingLine } from './SingleSignOnParts.tsx';
+import { SSO_WORDS } from './SingleSignOnWords.ts';
 import { StandChanges, StandRules } from '../../components/SignInRulesStand.tsx';
 import {
   CardSays,
@@ -74,7 +77,12 @@ function SignInRulesPage({ start }: { start: SignInRulesStart }) {
 
   const rules = standRules(start.page);
   const viewer = standViewer(start.viewer);
-  const rows = whereYouStand(t, rules, viewer, locale, NOW);
+  const ssoOn = start.sso === 'on' || start.sso === 'required';
+  const rows = whereYouStand(t, rules, viewer, locale, NOW).map((row) =>
+    ssoOn && rules.everyoneNeedsTwoFactor && row.key === 'twoFactor'
+      ? { ...row, line: `${row.line}\n${SSO_WORDS.exempt}` }
+      : row,
+  );
   const card = rulesCard(t, rows, viewer);
   const pane = shell.layout === 'landscape';
 
@@ -100,6 +108,12 @@ function SignInRulesPage({ start }: { start: SignInRulesStart }) {
       </SummaryCard>
       <Section title={t('signInRules.stand.whereTitle')} foot={standFoot(t, rules)}>
         <StandRules rules={rows.map((rule) => ({ ...rule, label: ruleLabel(t, rule) }))} />
+      </Section>
+      <Section title={SSO_WORDS.rowTitle}>
+        <StandingLine
+          row={standingRow(start.sso)}
+          onPress={() => router.push(standingHref(start.sso, false) as Href)}
+        />
       </Section>
       <Section
         title={t('signInRules.stand.changedTitle')}

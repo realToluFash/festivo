@@ -43,7 +43,10 @@ final readonly class ChannelSelector
         });
 
         // Push rides along and is never the only way somebody hears: a closed tab or a muted phone would be silence.
-        if ([] !== $chosen && Iter\contains($offered, NotificationChannel::Push) && $this->notificationPreferences->allows($recipientId, $category, NotificationChannel::Push)) {
+        // A type that offers push alone is told nowhere else, so missing it loses nothing: the run-of-show card (sc-66580).
+        $pushAlone = [NotificationChannel::Push] === $offered;
+
+        if (([] !== $chosen || $pushAlone) && Iter\contains($offered, NotificationChannel::Push) && $this->notificationPreferences->allows($recipientId, $category, NotificationChannel::Push)) {
             $chosen[] = NotificationChannel::Push;
         }
 

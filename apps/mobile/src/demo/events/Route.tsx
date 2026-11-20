@@ -1,5 +1,6 @@
-import { router, useLocalSearchParams } from 'expo-router';
-import { type ReactNode, useCallback, useMemo, useState } from 'react';
+import { type Href, router, useLocalSearchParams } from 'expo-router';
+import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { I18nextProvider, useTranslation } from 'react-i18next';
 import { StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -26,6 +27,8 @@ import { budgetStateOf } from '../budget/BudgetModel.ts';
 import { cardStateOf } from '../people/PeopleCardModel.ts';
 import { areaOf, sampleEvent } from './EventsSample.ts';
 import { say } from './EventsWords.ts';
+import { originStateOf } from '../enquiries/EnquiryToEventModel.ts';
+import { CREATED_ID } from './NewEvent.tsx';
 import {
   type Looking,
   type Shell,
@@ -33,6 +36,8 @@ import {
   type ShellSection,
 } from '../../components/settingsShell.ts';
 import { PageToast } from '../../components/Summary.tsx';
+import { type WayInState, wayInOf, wayInStateOf } from '../enquiries/WayInModel.ts';
+import { WayInRow } from '../enquiries/WayInRow.tsx';
 
 const OWNER = lookingAs('owner');
 
@@ -110,6 +115,46 @@ export function EventsShell({
 /** /demo/events: the list, with ?state= for each of its states and ?deleted= after a delete. */
 export function EventsRoute() {
   const params = useLocalSearchParams<{ state?: string; deleted?: string; switcher?: string }>();
+  const wayIn = wayInStateOf(params.state);
+  if (wayIn != null) return <WayInRoute state={wayIn} />;
+
+  return <ListRoute params={params} />;
+}
+
+function WayInRoute({ state }: { state: WayInState }) {
+  const { i18n } = useTranslation();
+  const way = wayInOf(state);
+  const words = useMemo(
+    () => i18n.cloneInstance({ lng: way.language, initAsync: false }),
+    [i18n, way.language],
+  );
+
+  const pushedFor = useRef<WayInState | null>(null);
+
+  useEffect(() => {
+    if (!way.opensEnquiries || pushedFor.current === state) return undefined;
+    const later = setTimeout(() => {
+      pushedFor.current = state;
+      router.push('/demo/enquiries' as Href);
+    }, 600);
+
+    return () => clearTimeout(later);
+  }, [way.opensEnquiries, state]);
+
+  return (
+    <I18nextProvider i18n={words}>
+      <EventsShell key={state}>
+        <EventsList state={way.list} deleted={null} wayIn={way.enterprise && <WayInRow />} />
+      </EventsShell>
+    </I18nextProvider>
+  );
+}
+
+function ListRoute({
+  params,
+}: {
+  params: { state?: string; deleted?: string; switcher?: string };
+}) {
   const state = listStateOf(params.state);
   const deleted = sampleEvent(params.deleted);
 
@@ -124,7 +169,7 @@ export function EventsRoute() {
   );
 }
 
-/** /demo/events/[id]: one event, with ?state= for each phase, edit and question, and ?area= for an area, ?people= for Overview's People card; with ?area=messages, ?state= is Messages'. */
+/** /demo/events/[id]: one event, with ?state= for each phase, edit and question, or the draft made from an enquiry (sc-31232), and ?area= for an area, ?people= for Overview's People card; with ?area=messages, ?state= is Messages'. */
 export function EventRoute() {
   const params = useLocalSearchParams<{
     id?: string;
@@ -145,6 +190,7 @@ export function EventRoute() {
   const state = noBudget ? 'more' : eventStateOf(params.state);
   const guests = area === 'guests' ? guestsStateOf(params.state) : null;
   const people = cardStateOf(params.people);
+  const origin = params.id === CREATED_ID ? originStateOf(params.state) : null;
 
   if (area === 'guests' && params.state === 'eventDeleted')
     return (
@@ -161,7 +207,7 @@ export function EventRoute() {
         : {})}
     >
       <EventScreen
-        key={`${params.id ?? ''}:${state ?? ''}:${area ?? ''}:${messages ?? ''}:${seating ?? ''}:${guests ?? ''}:${budget ?? ''}:${people ?? ''}:${from ?? ''}`}
+        key={`${params.id ?? ''}:${state ?? ''}:${area ?? ''}:${messages ?? ''}:${seating ?? ''}:${guests ?? ''}:${budget ?? ''}:${people ?? ''}:${from ?? ''}:${origin ?? ''}`}
         id={params.id}
         state={state}
         area={noBudget ? null : area}
@@ -172,6 +218,7 @@ export function EventRoute() {
         people={people}
         guestsFrom={from}
         without={noBudget ? 'budget' : undefined}
+        origin={origin}
       />
     </EventsShell>
   );

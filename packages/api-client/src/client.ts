@@ -56,7 +56,27 @@ import {
   type RecordedReplyInput,
   type TaggedGuest,
 } from './guests.ts';
+import {
+  type Vendor,
+  type VendorTyped,
+  type VendorsLooking,
+  type VendorsPage,
+  asVendor,
+  asVendorsPage,
+  vendorsQuery,
+} from './vendors.ts';
+import { type WhatIf, type WhatIfChange, asWhatIf } from './budget.ts';
 import { ApiError, ApiUnreachableError, type Problem, toProblem } from './problem.ts';
+import { type EmailDomainsPage, asEmailDomainsPage } from './emailDomains.ts';
+import { type OrganisationExportPage, asOrganisationExportPage } from './organisationExport.ts';
+import {
+  type AuditExportOutcome,
+  type AuditFilters,
+  type AuditFormat,
+  type AuditLogPage,
+  asAuditLogPage,
+  auditQuery,
+} from './auditLog.ts';
 import {
   asSeating,
   asSeatingMoved,
@@ -79,8 +99,12 @@ import {
 import {
   type StaffAnswer,
   type StaffDetails,
+  type ShiftDetails,
+  type StaffAccess,
   type StaffEntry,
+  type StaffPlan,
   asStaffEntry,
+  asStaffPlan,
   asStaffRoster,
 } from './staff.ts';
 import {
@@ -111,6 +135,19 @@ import {
   asSchedule,
 } from './schedule.ts';
 import { type RoomScreen, type ScreenLink, asRoomScreen, asScreenLinks } from './screens.ts';
+import { type BudgetLineTyped, type EventBudget, asEventBudget } from './budget.ts';
+import {
+  type EventQuote,
+  type EventQuotes,
+  type OfferedVendor,
+  type PaymentTyped,
+  type QuoteTermsTyped,
+  type QuoteTyped,
+  type QuoteWordingTyped,
+  asEventQuote,
+  asEventQuotes,
+  asOfferedVendors,
+} from './quotes.ts';
 
 /** A table call's answer: the plan whole, and the table it added or changed. */
 export interface SeatingWithTable {
@@ -391,6 +428,8 @@ export interface Account {
   phoneNumbers: LinkedPhone[];
   /** An account in no organisation that asked to join one at its domain (sc-561), until somebody answers. */
   waitingFor: JoinRequest | null;
+  /** The events this account is on from outside their organisations (sc-71), soonest first. */
+  outsideEvents: OutsideEvent[];
 }
 
 export interface JoinOffer {
@@ -408,6 +447,16 @@ export interface JoinOffers {
   offers: JoinOffer[];
   /** A request still waiting, while which nothing else is offered. */
   request: JoinRequest | null;
+  /** The account is managed (sc-563): shown in place of Start my own organisation. */
+  managed: ManagedAccount | null;
+}
+
+/** An account whose main address is at a domain its home organisation keeps to itself (sc-563); every other way in is refused `domain_managed`. */
+export interface ManagedAccount {
+  domain: string;
+  organisation: { id: string; name: string };
+  /** "Your {domain} address is managed by {organisation}, so you can only be a member there." */
+  message: string;
 }
 
 /** Settings > General's Requests to join (sc-562): the link in full while it is on. */
@@ -431,11 +480,13 @@ export interface RequestLinkPreview {
   standing: RequestStanding | null;
   /** While cooling off, when they may ask again. */
   askAgainFrom: string | null;
+  /** Signed in with an account another organisation manages (sc-563): asking is refused. */
+  managed: ManagedAccount | null;
 }
 
-/** Settings > General's Company domain joining (sc-561): `stopped` for one another organisation proved. */
+/** Settings > General's Company domain joining (sc-561): `stopped` for one another organisation proved, `proved` for one this one proved under Email domains (sc-560). */
 export interface CompanyDomains {
-  domains: { domain: string; stopped: boolean }[];
+  domains: { domain: string; stopped: boolean; proved: boolean }[];
   most: number;
   ownAddress: string | null;
 }
@@ -449,6 +500,20 @@ export interface Organisation {
   contactAddress: string;
   /** What an invitation to somebody with no account is written in (sc-2914). */
   locale: string;
+  /** The subscription's plan (sc-581, sc-3927): on `free`, an Enterprise setting is shown locked and a change to it is refused `plan_required`. */
+  plan: Plan;
+  /** Any member reads it; who pays is `GET /api/orgs/{id}/billing-account`, with billing.read (sc-3927). */
+  subscription: OrganisationSubscription;
+}
+
+export type Plan = 'free' | 'enterprise';
+
+export type SubscriptionStatus = 'active' | 'past_due' | 'read_only' | 'cancelled';
+
+/** `periodEnd` is null for a subscription with no end, as Free has. */
+export interface OrganisationSubscription {
+  status: SubscriptionStatus;
+  periodEnd: string | null;
 }
 
 /** A seeded role is named by `seededAs`, which each client words itself; a custom one by `name`. */
@@ -477,14 +542,31 @@ export const EVENT_ROLES = ['lead', 'can_edit', 'can_view', 'can_check_in'] as c
 
 export type EventRole = (typeof EVENT_ROLES)[number];
 
-/** Somebody with a role on an event; `outside` waits on sc-71, so it is false for now. */
+/** Somebody with a role on an event: a member, or someone from outside the organisation (sc-71). */
 export interface EventPerson {
   id: string;
-  membershipId: string;
-  user: { id: string; name: string };
+  membershipId: string | null;
+  /** Null until someone added by an address has an account: "Not joined yet" to anyone not given `address`. */
+  user: { id: string; name: string } | null;
   role: EventRole;
   jobLabel: string | null;
   outside: boolean;
+  /** Only to an Owner, an Admin or the event's Lead, and only until an account claims it (pm #67966). */
+  address: string | null;
+  addressKind: 'email' | 'mobile' | null;
+  /** When the event concludes, for someone from outside; null for a member. */
+  endsAt: string | null;
+}
+
+/** An event someone in no organisation of its own reaches from outside (sc-71). */
+export interface OutsideEvent {
+  id: string;
+  name: string;
+  organisationName: string;
+  role: EventRole;
+  jobLabel: string | null;
+  startsAt: string;
+  endsAt: string | null;
 }
 
 export interface EventPeople {
@@ -892,6 +974,8 @@ export interface OrganisationMember {
   self: boolean;
   history: MembershipStep[];
   suspension: Suspension | null;
+  /** For the owners and admins of the organisation that manages this person (sc-563): how many other organisations they belong to, never which. */
+  alsoMemberOf: number | null;
 }
 
 export type SentInvitationStatus = 'pending' | 'accepted' | 'declined' | 'revoked' | 'expired';
@@ -1831,6 +1915,184 @@ export class ApiClient {
     return page;
   }
 
+  /** Data and control › Export all data (sc-612): an Owner's or an Admin's read; a Member is refused. */
+  async organisationExport(organisationId: string): Promise<OrganisationExportPage> {
+    return this.readOrganisationExport(
+      await this.get<unknown>(`/api/orgs/${encodeURIComponent(organisationId)}/export`),
+    );
+  }
+
+  /** Refused `owner_required` for anyone but an Owner, and `too_many_attempts` with `retryAt` within 24 hours of the last. */
+  async askOrganisationExport(organisationId: string): Promise<OrganisationExportPage> {
+    return this.readOrganisationExport(
+      await this.post<unknown>(`/api/orgs/${encodeURIComponent(organisationId)}/export`),
+    );
+  }
+
+  /** The archive, once, for the Owner who asked: 404 for anyone else, `export_used` or `export_expired` after. */
+  async downloadOrganisationExport(
+    organisationId: string,
+    exportId: string,
+  ): Promise<Uint8Array<ArrayBuffer>> {
+    const response = await this.answered(
+      `/api/orgs/${encodeURIComponent(organisationId)}/export/${encodeURIComponent(exportId)}/download`,
+      { method: 'POST' },
+    );
+
+    return new Uint8Array(await response.arrayBuffer());
+  }
+
+  /** Data and control › Audit log (sc-611): an Owner's or an Admin's, refused `plan_required` off Enterprise and `permission_required` to a Member. */
+  async auditLog(
+    organisationId: string,
+    filters: AuditFilters = {},
+    before: string | null = null,
+  ): Promise<AuditLogPage> {
+    const raw = await this.get<unknown>(
+      `/api/orgs/${encodeURIComponent(organisationId)}/audit-log`,
+      { query: { ...auditQuery(filters), ...(before == null ? {} : { before }) } },
+    );
+    const page = asAuditLogPage(raw);
+
+    if (page == null) {
+      throw new Error(
+        'The API answered /api/orgs/{id}/audit-log in a shape this client does not know. Check AuditLogController in services/api.',
+      );
+    }
+
+    return page;
+  }
+
+  /** Opening the log is itself audited, once per opening; filtering and loading more are not. */
+  async auditLogViewed(organisationId: string): Promise<void> {
+    await this.post<unknown>(`/api/orgs/${encodeURIComponent(organisationId)}/audit-log/views`);
+  }
+
+  /** The filtered entries: up to 10,000 as the file itself, more prepared and emailed; over 1,000,000 refused `audit_export_too_many`. */
+  async exportAuditLog(
+    organisationId: string,
+    format: AuditFormat,
+    filters: AuditFilters = {},
+  ): Promise<AuditExportOutcome> {
+    const response = await this.answered(
+      `/api/orgs/${encodeURIComponent(organisationId)}/audit-log/exports`,
+      { method: 'POST', body: { format, ...auditQuery(filters) } },
+    );
+
+    if (response.status === 202) {
+      const raw = (await response.json()) as Record<string, unknown> | null;
+
+      return {
+        kind: 'preparing',
+        count: typeof raw?.count === 'number' ? raw.count : 0,
+        email: typeof raw?.email === 'string' ? raw.email : '',
+      };
+    }
+
+    return {
+      kind: 'file',
+      type: response.headers.get('Content-Type') ?? 'application/octet-stream',
+      bytes: new Uint8Array(await response.arrayBuffer()),
+    };
+  }
+
+  /** A prepared export, for the person who asked, signed in, within 24 hours of its being ready: 404 for anyone else, `export_expired` after. */
+  async downloadAuditExport(
+    organisationId: string,
+    exportId: string,
+  ): Promise<{ type: string; bytes: Uint8Array<ArrayBuffer> }> {
+    const response = await this.answered(
+      `/api/orgs/${encodeURIComponent(organisationId)}/audit-log/exports/${encodeURIComponent(exportId)}/download`,
+      { method: 'POST' },
+    );
+
+    return {
+      type: response.headers.get('Content-Type') ?? 'application/octet-stream',
+      bytes: new Uint8Array(await response.arrayBuffer()),
+    };
+  }
+
+  /** Data and control › Email domains (sc-560): an Owner's or an Admin's; a Member is refused, and a change off Enterprise `plan_required`. */
+  async emailDomains(organisationId: string): Promise<EmailDomainsPage> {
+    return this.readEmailDomains(
+      await this.get<unknown>(`/api/orgs/${encodeURIComponent(organisationId)}/email-domains`),
+    );
+  }
+
+  /** 422 on `domain`: `domain_blank`, `domain_invalid`, `domain_public`, `domain_listed` or `domain_taken`. */
+  async addEmailDomain(organisationId: string, domain: string): Promise<EmailDomainsPage> {
+    return this.readEmailDomains(
+      await this.post<unknown>(`/api/orgs/${encodeURIComponent(organisationId)}/email-domains`, {
+        domain,
+      }),
+    );
+  }
+
+  /** `found` false while the record cannot be found; 409 `email_domain_taken` once another organisation has proved it. */
+  async verifyEmailDomain(
+    organisationId: string,
+    domain: string,
+  ): Promise<{ found: boolean; page: EmailDomainsPage }> {
+    const raw = await this.post<unknown>(
+      `/api/orgs/${encodeURIComponent(organisationId)}/email-domains/${encodeURIComponent(domain)}/verify`,
+    );
+
+    return {
+      found: (raw as Record<string, unknown> | null)?.found === true,
+      page: this.readEmailDomains(raw),
+    };
+  }
+
+  async removeEmailDomain(organisationId: string, domain: string): Promise<EmailDomainsPage> {
+    return this.readEmailDomains(
+      await this.delete<unknown>(
+        `/api/orgs/${encodeURIComponent(organisationId)}/email-domains/${encodeURIComponent(domain)}`,
+      ),
+    );
+  }
+
+  /** Only our organisation (sc-563): the Owner's alone, `owner_required` to anyone else; it starts 14 days on and everyone at the domain is emailed now. */
+  async switchOnlyOursOn(organisationId: string, domain: string): Promise<EmailDomainsPage> {
+    return this.readEmailDomains(
+      await this.post<unknown>(
+        `/api/orgs/${encodeURIComponent(organisationId)}/email-domains/${encodeURIComponent(domain)}/only-ours`,
+      ),
+    );
+  }
+
+  /** Cancels it while it is scheduled, and switches it off once it has started. */
+  async switchOnlyOursOff(organisationId: string, domain: string): Promise<EmailDomainsPage> {
+    return this.readEmailDomains(
+      await this.delete<unknown>(
+        `/api/orgs/${encodeURIComponent(organisationId)}/email-domains/${encodeURIComponent(domain)}/only-ours`,
+      ),
+    );
+  }
+
+  private readEmailDomains(raw: unknown): EmailDomainsPage {
+    const page = asEmailDomainsPage(raw);
+
+    if (page == null) {
+      throw new Error(
+        'The API answered /api/orgs/{id}/email-domains in a shape this client does not know. Check EmailDomainsController in services/api.',
+      );
+    }
+
+    return page;
+  }
+
+  private readOrganisationExport(raw: unknown): OrganisationExportPage {
+    const page = asOrganisationExportPage(raw);
+
+    if (page == null) {
+      throw new Error(
+        'The API answered /api/orgs/{id}/export in a shape this client does not know. Check ExportController in services/api.',
+      );
+    }
+
+    return page;
+  }
+
   /** sc-390: the caller its Owner, as `organisations()` lists it. Refused `too_many_attempts` past five an hour. */
   async createOrganisation(organisation: {
     name: string;
@@ -2212,6 +2474,22 @@ export class ApiClient {
     );
   }
 
+  /** By email address or mobile number, at any role but Lead (sc-71); a member is refused `already_a_member`. */
+  async addEventPersonFromOutside(
+    eventId: string,
+    address: string,
+    role: EventRole,
+    jobLabel: string | null,
+  ): Promise<EventPerson> {
+    return eventPersonOf(
+      await this.post<{ person?: unknown }>(`/api/events/${encodeURIComponent(eventId)}/people`, {
+        address,
+        role,
+        jobLabel,
+      }),
+    );
+  }
+
   async removeEventPerson(eventId: string, personId: string): Promise<void> {
     await this.request<unknown>(
       `/api/events/${encodeURIComponent(eventId)}/people/${encodeURIComponent(personId)}`,
@@ -2565,6 +2843,151 @@ export class ApiClient {
     await this.delete<unknown>(`${this.staffPath(eventId)}/${encodeURIComponent(staffId)}`);
   }
 
+  /** The roster with the event's jobs and shifts (sc-3908); refused 403 without staff.read. */
+  async staffPlan(eventId: string): Promise<StaffPlan> {
+    return this.staffPlanOf(await this.get<unknown>(this.staffPath(eventId)));
+  }
+
+  /** Refused `validation_failed` on `name`. */
+  async addStaffJob(
+    eventId: string,
+    job: { name: string; access: StaffAccess },
+  ): Promise<StaffPlan> {
+    return this.staffPlanOf(await this.post<unknown>(`${this.staffPath(eventId)}/jobs`, job));
+  }
+
+  async editStaffJob(
+    eventId: string,
+    jobId: string,
+    job: { name: string; access: StaffAccess },
+  ): Promise<StaffPlan> {
+    return this.staffPlanOf(
+      await this.put<unknown>(`${this.staffPath(eventId)}/jobs/${encodeURIComponent(jobId)}`, job),
+    );
+  }
+
+  /** Refused 409 `staff_job_staffed` while anyone is on its shifts. */
+  async removeStaffJob(eventId: string, jobId: string): Promise<StaffPlan> {
+    return this.staffPlanOf(
+      await this.delete<unknown>(`${this.staffPath(eventId)}/jobs/${encodeURIComponent(jobId)}`),
+    );
+  }
+
+  /** Refused `validation_failed` on each field at once. */
+  async addStaffShift(
+    eventId: string,
+    shift: ShiftDetails & { job: string | null },
+  ): Promise<StaffPlan> {
+    return this.staffPlanOf(await this.post<unknown>(`${this.staffPath(eventId)}/shifts`, shift));
+  }
+
+  /** Refused `validation_failed` naming `onShift` when People needed is below the people on it, and 409 `staff_shift_overlap`. */
+  async editStaffShift(eventId: string, shiftId: string, shift: ShiftDetails): Promise<StaffPlan> {
+    return this.staffPlanOf(
+      await this.put<unknown>(
+        `${this.staffPath(eventId)}/shifts/${encodeURIComponent(shiftId)}`,
+        shift,
+      ),
+    );
+  }
+
+  /** Refused 409 `staff_shift_full`, `staff_works_as`, then `staff_shift_overlap`. */
+  async assignStaff(eventId: string, shiftId: string, staffId: string): Promise<StaffPlan> {
+    return this.staffPlanOf(
+      await this.put<unknown>(
+        `${this.staffPath(eventId)}/shifts/${encodeURIComponent(shiftId)}/people/${encodeURIComponent(staffId)}`,
+      ),
+    );
+  }
+
+  async unassignStaff(eventId: string, shiftId: string, staffId: string): Promise<StaffPlan> {
+    return this.staffPlanOf(
+      await this.delete<unknown>(
+        `${this.staffPath(eventId)}/shifts/${encodeURIComponent(shiftId)}/people/${encodeURIComponent(staffId)}`,
+      ),
+    );
+  }
+
+  /** Refused `validation_failed` on `name`: blank, too long, or another station's (sc-3910). */
+  async addStationPlace(eventId: string, name: string): Promise<StaffPlan> {
+    return this.staffPlanOf(
+      await this.post<unknown>(`${this.stationsPath(eventId)}/places`, { name }),
+    );
+  }
+
+  /** As `addStationPlace`; refused on the Pass. */
+  async renameStationPlace(eventId: string, placeId: string, name: string): Promise<StaffPlan> {
+    return this.staffPlanOf(
+      await this.put<unknown>(
+        `${this.stationsPath(eventId)}/places/${encodeURIComponent(placeId)}`,
+        { name },
+      ),
+    );
+  }
+
+  /** Its people lose their station and its items go to the Pass; refused on the Pass. */
+  async removeStationPlace(eventId: string, placeId: string): Promise<StaffPlan> {
+    return this.staffPlanOf(
+      await this.delete<unknown>(
+        `${this.stationsPath(eventId)}/places/${encodeURIComponent(placeId)}`,
+      ),
+    );
+  }
+
+  /** A place or section id, or `null` to take them off their station. */
+  async putOnStation(eventId: string, staffId: string, station: string | null): Promise<StaffPlan> {
+    return this.staffPlanOf(
+      await this.put<unknown>(
+        `${this.stationsPath(eventId)}/people/${encodeURIComponent(staffId)}`,
+        { station },
+      ),
+    );
+  }
+
+  /** Refused `validation_failed` unless the lead is on the station. */
+  async setStationLead(
+    eventId: string,
+    stationId: string,
+    lead: string | null,
+  ): Promise<StaffPlan> {
+    return this.staffPlanOf(
+      await this.put<unknown>(
+        `${this.stationsPath(eventId)}/${encodeURIComponent(stationId)}/lead`,
+        {
+          lead,
+        },
+      ),
+    );
+  }
+
+  async setFloorLead(eventId: string, lead: string | null): Promise<StaffPlan> {
+    return this.staffPlanOf(
+      await this.put<unknown>(`${this.stationsPath(eventId)}/floor-lead`, { lead }),
+    );
+  }
+
+  /** Refused `validation_failed` when `place` is not a place or `item` is not on the course. */
+  async setDishedAt(
+    eventId: string,
+    courseId: string,
+    item: string,
+    place: string,
+  ): Promise<StaffPlan> {
+    return this.staffPlanOf(
+      await this.put<unknown>(
+        `${this.stationsPath(eventId)}/courses/${encodeURIComponent(courseId)}/dished-at`,
+        { item, place },
+      ),
+    );
+  }
+
+  /** Refused `validation_failed` unless `order` is exactly the current walk, reordered. */
+  async setWalkingOrder(eventId: string, order: string[]): Promise<StaffPlan> {
+    return this.staffPlanOf(
+      await this.put<unknown>(`${this.stationsPath(eventId)}/walking-order`, { order }),
+    );
+  }
+
   async staffSubscription(eventId: string): Promise<RealtimeSubscription> {
     const body = await this.post<{ token?: unknown; expiresAt?: unknown }>(
       `${this.staffPath(eventId)}/subscriptions`,
@@ -2582,6 +3005,17 @@ export class ApiClient {
       (() => {
         throw new Error(
           'The API answered the roster in a shape this client does not know. Check StaffSerialiser in services/api.',
+        );
+      })()
+    );
+  }
+
+  private staffPlanOf(body: unknown): StaffPlan {
+    return (
+      asStaffPlan(body) ??
+      (() => {
+        throw new Error(
+          'The API answered the staff plan in a shape this client does not know. Check StaffSerialiser in services/api.',
         );
       })()
     );
@@ -2896,7 +3330,7 @@ export class ApiClient {
     return this.scheduleOf(
       await this.post<unknown>(
         `${this.schedulePath(eventId)}/items/${encodeURIComponent(itemId)}/presses`,
-        { kind, pressedAt: sent.pressedAt },
+        { kind, pressedAt: sent.pressedAt, ...(sent.fromCard === true ? { fromCard: true } : {}) },
         { headers: { 'Idempotency-Key': sent.key } },
       ),
     );
@@ -3022,6 +3456,10 @@ export class ApiClient {
 
   private staffPath(eventId: string): string {
     return `/api/events/${encodeURIComponent(eventId)}/staff`;
+  }
+
+  private stationsPath(eventId: string): string {
+    return `/api/events/${encodeURIComponent(eventId)}/stations`;
   }
 
   /** sc-3784: the people named, in their order, as a spreadsheet the API builds from the list as it is now. */
@@ -3243,6 +3681,111 @@ export class ApiClient {
     }
 
     return group;
+  }
+
+  /** The range, per head, the count not priced, what each basis counts today and every line with its cost (sc-84, sc-85); 403 without budget.read. */
+  async budget(eventId: string): Promise<EventBudget> {
+    return asEventBudget(await this.get<unknown>(this.budgetPath(eventId)));
+  }
+
+  /** Refused `validation_failed` beside each field at once, `basis` for a second staff-time line. */
+  async addBudgetLine(eventId: string, typed: BudgetLineTyped): Promise<void> {
+    await this.post<unknown>(`${this.budgetPath(eventId)}/lines`, typed);
+  }
+
+  /** The whole line, checked as Add checks it. */
+  async changeBudgetLine(eventId: string, lineId: string, typed: BudgetLineTyped): Promise<void> {
+    await this.put<unknown>(this.budgetLinePath(eventId, lineId), typed);
+  }
+
+  /** Kept a day for `putBackBudgetLine`, and out of every figure meanwhile. */
+  async removeBudgetLine(eventId: string, lineId: string): Promise<void> {
+    await this.delete<unknown>(this.budgetLinePath(eventId, lineId));
+  }
+
+  /** Undo: the same line in its place. 404 once erased, a day after its removal; 410 `budget_line_currency_changed` once the event's currency changed; `basis` refused when another staff-time line holds it. */
+  async putBackBudgetLine(eventId: string, lineId: string): Promise<void> {
+    await this.delete<unknown>(`${this.budgetLinePath(eventId, lineId)}/removal`);
+  }
+
+  /** A hub token for this event's budget lines, its quotes and schedules, and its headcount, which moves the range. */
+  async budgetSubscription(eventId: string): Promise<RealtimeSubscription> {
+    const body = await this.post<{ token?: unknown; expiresAt?: unknown }>(
+      `${this.budgetPath(eventId)}/subscriptions`,
+    );
+
+    return {
+      token: typeof body.token === 'string' ? body.token : '',
+      expiresAt: typeof body.expiresAt === 'string' ? body.expiresAt : '',
+    };
+  }
+
+  /** Every vendor quoted on the event with its quote, earlier quotes, lines and schedule, and everything due (sc-87); 403 without budget.read. */
+  async quotes(eventId: string): Promise<EventQuotes> {
+    return asEventQuotes(await this.get<unknown>(`${this.budgetPath(eventId)}/quotes`));
+  }
+
+  /** The quote form's Vendor field: the organisation's vendors not archived, A to Z, each marked when already quoted on the event; 403 without budget.manage. */
+  async quoteVendors(eventId: string): Promise<OfferedVendor[]> {
+    return asOfferedVendors(await this.get<unknown>(`${this.budgetPath(eventId)}/quote-vendors`));
+  }
+
+  /** Refused 409 `vendor_already_quoted` for a vendor quoted on the event, and 403 `plan_required` without vendors on the plan. */
+  async addQuote(eventId: string, typed: QuoteTyped): Promise<EventQuote> {
+    return this.readQuote(await this.post<unknown>(`${this.budgetPath(eventId)}/quotes`, typed));
+  }
+
+  /** A new amount or date quoted, keeping the current quote as an earlier one; 409 `quote_unchanged` when both are as they were. */
+  async reviseQuote(eventId: string, quoteId: string, typed: QuoteTermsTyped): Promise<EventQuote> {
+    return this.readQuote(
+      await this.post<unknown>(`${this.quotePath(eventId, quoteId)}/revisions`, typed),
+    );
+  }
+
+  /** What it covers, its quote number and its budget lines, in place. */
+  async correctQuote(
+    eventId: string,
+    quoteId: string,
+    typed: QuoteWordingTyped,
+  ): Promise<EventQuote> {
+    return this.readQuote(await this.put<unknown>(this.quotePath(eventId, quoteId), typed));
+  }
+
+  async addPayment(eventId: string, quoteId: string, typed: PaymentTyped): Promise<EventQuote> {
+    return this.readQuote(
+      await this.post<unknown>(`${this.quotePath(eventId, quoteId)}/payments`, typed),
+    );
+  }
+
+  async amendPayment(eventId: string, paymentId: string, typed: PaymentTyped): Promise<EventQuote> {
+    return this.readQuote(
+      await this.put<unknown>(
+        `${this.budgetPath(eventId)}/payments/${encodeURIComponent(paymentId)}`,
+        typed,
+      ),
+    );
+  }
+
+  async removePayment(eventId: string, paymentId: string): Promise<void> {
+    await this.delete<unknown>(
+      `${this.budgetPath(eventId)}/payments/${encodeURIComponent(paymentId)}`,
+    );
+  }
+
+  private quotePath(eventId: string, quoteId: string): string {
+    return `${this.budgetPath(eventId)}/quotes/${encodeURIComponent(quoteId)}`;
+  }
+
+  private readQuote(raw: unknown): EventQuote {
+    return asEventQuote((raw as Record<string, unknown> | null)?.quote);
+  }
+
+  private budgetPath(eventId: string): string {
+    return `/api/events/${encodeURIComponent(eventId)}/budget`;
+  }
+
+  private budgetLinePath(eventId: string, lineId: string): string {
+    return `${this.budgetPath(eventId)}/lines/${encodeURIComponent(lineId)}`;
   }
 
   /** Needs guests.read on the event (sc-99). */
@@ -4041,6 +4584,7 @@ export class ApiClient {
       organisation: { name: organisation.name },
       standing: oneOf(raw.standing, REQUEST_STANDINGS),
       askAgainFrom: stringOrNull(raw.askAgainFrom),
+      managed: asManagedAccount(raw.managed),
     };
   }
 
@@ -4135,6 +4679,7 @@ export class ApiClient {
       domain: typeof raw.domain === 'string' ? raw.domain : null,
       offers: offers as JoinOffer[],
       request: asJoinRequest(raw.request),
+      managed: asManagedAccount(raw.managed),
     };
   }
 
@@ -4161,6 +4706,90 @@ export class ApiClient {
 
   async withdrawJoinRequest(): Promise<void> {
     await this.delete<unknown>('/api/join-offers/request');
+  }
+
+  /** What the changes would cost (sc-86); writes nothing. Refused 403 `permission_required` without budget.read. */
+  async whatIf(
+    eventId: string,
+    changes: readonly { change: WhatIfChange; by: number }[],
+    { signal }: { signal?: AbortSignal } = {},
+  ): Promise<WhatIf> {
+    const answer = asWhatIf(
+      await this.post<unknown>(
+        `/api/events/${encodeURIComponent(eventId)}/budget/what-if`,
+        { changes },
+        signal == null ? undefined : { signal },
+      ),
+    );
+
+    if (answer == null) {
+      throw new Error(
+        'The API answered /api/events/{id}/budget/what-if in a shape this client does not know. Check BudgetSerialiser in services/api.',
+      );
+    }
+
+    return answer;
+  }
+
+  async vendors(
+    organisationId: string,
+    looking: VendorsLooking,
+    { signal }: { signal?: AbortSignal } = {},
+  ): Promise<VendorsPage> {
+    const page = asVendorsPage(
+      await this.get<unknown>(
+        `/api/orgs/${encodeURIComponent(organisationId)}/vendors${vendorsQuery(looking)}`,
+        signal == null ? undefined : { signal },
+      ),
+    );
+
+    if (page == null) {
+      throw new Error(
+        'The API answered /api/orgs/{id}/vendors in a shape this client does not know. Check VendorDirectory in services/api.',
+      );
+    }
+
+    return page;
+  }
+
+  async addVendor(organisationId: string, typed: VendorTyped): Promise<Vendor> {
+    return this.readVendor(
+      await this.post<unknown>(`/api/orgs/${encodeURIComponent(organisationId)}/vendors`, typed),
+    );
+  }
+
+  async editVendor(organisationId: string, vendorId: string, typed: VendorTyped): Promise<Vendor> {
+    return this.readVendor(
+      await this.put<unknown>(this.vendorPath(organisationId, vendorId), typed),
+    );
+  }
+
+  async archiveVendor(organisationId: string, vendorId: string): Promise<Vendor> {
+    return this.readVendor(
+      await this.post<unknown>(`${this.vendorPath(organisationId, vendorId)}/archive`),
+    );
+  }
+
+  async restoreVendor(organisationId: string, vendorId: string): Promise<Vendor> {
+    return this.readVendor(
+      await this.post<unknown>(`${this.vendorPath(organisationId, vendorId)}/restore`),
+    );
+  }
+
+  private vendorPath(organisationId: string, vendorId: string): string {
+    return `/api/orgs/${encodeURIComponent(organisationId)}/vendors/${encodeURIComponent(vendorId)}`;
+  }
+
+  private readVendor(raw: unknown): Vendor {
+    const vendor = asVendor((raw as Record<string, unknown> | null)?.vendor);
+
+    if (vendor == null) {
+      throw new Error(
+        'The API answered a vendor in a shape this client does not know. Check VendorsController in services/api.',
+      );
+    }
+
+    return vendor;
   }
 
   async companyDomains(organisationId: string): Promise<CompanyDomains> {
@@ -4204,7 +4833,11 @@ export class ApiClient {
       domains: domains.map((one) => {
         const row = one as Record<string, unknown>;
 
-        return { domain: row.domain as string, stopped: row.stopped === true };
+        return {
+          domain: row.domain as string,
+          stopped: row.stopped === true,
+          proved: row.proved === true,
+        };
       }),
       most: body.most,
       ownAddress: typeof body.ownAddress === 'string' ? body.ownAddress : null,
@@ -4648,26 +5281,28 @@ function asAddableMember(raw: unknown): AddableMember | null {
 function asEventPerson(raw: unknown): EventPerson | null {
   if (typeof raw !== 'object' || raw == null) return null;
 
-  const { id, membershipId, user, role, jobLabel, outside } = raw as Record<string, unknown>;
+  const { id, membershipId, user, role, jobLabel, outside, address, addressKind, endsAt } =
+    raw as Record<string, unknown>;
   const named = typeof user === 'object' && user != null ? (user as Record<string, unknown>) : null;
 
   if (
     typeof id !== 'string' ||
-    typeof membershipId !== 'string' ||
-    named == null ||
-    typeof named.id !== 'string' ||
-    typeof named.name !== 'string' ||
+    (membershipId != null && typeof membershipId !== 'string') ||
+    (named != null && (typeof named.id !== 'string' || typeof named.name !== 'string')) ||
     !(EVENT_ROLES as readonly unknown[]).includes(role)
   )
     return null;
 
   return {
     id,
-    membershipId,
-    user: { id: named.id, name: named.name },
+    membershipId: typeof membershipId === 'string' ? membershipId : null,
+    user: named == null ? null : { id: named.id as string, name: named.name as string },
     role: role as EventRole,
     jobLabel: typeof jobLabel === 'string' ? jobLabel : null,
     outside: outside === true,
+    address: typeof address === 'string' ? address : null,
+    addressKind: addressKind === 'email' || addressKind === 'mobile' ? addressKind : null,
+    endsAt: typeof endsAt === 'string' ? endsAt : null,
   };
 }
 
@@ -4773,7 +5408,40 @@ function asAccount(raw: unknown): Account | null {
     emailAddresses,
     phoneNumbers,
     waitingFor: asJoinRequest(candidate.waitingFor),
+    outsideEvents: Array.isArray(candidate.outsideEvents)
+      ? candidate.outsideEvents.flatMap(asOutsideEvent)
+      : [],
   };
+}
+
+function asOutsideEvent(raw: unknown): OutsideEvent[] {
+  if (typeof raw !== 'object' || raw == null) return [];
+
+  const { id, name, organisationName, role, jobLabel, startsAt, endsAt } = raw as Record<
+    string,
+    unknown
+  >;
+
+  if (
+    typeof id !== 'string' ||
+    typeof name !== 'string' ||
+    typeof organisationName !== 'string' ||
+    typeof startsAt !== 'string' ||
+    !(EVENT_ROLES as readonly unknown[]).includes(role)
+  )
+    return [];
+
+  return [
+    {
+      id,
+      name,
+      organisationName,
+      role: role as EventRole,
+      jobLabel: typeof jobLabel === 'string' ? jobLabel : null,
+      startsAt,
+      endsAt: typeof endsAt === 'string' ? endsAt : null,
+    },
+  ];
 }
 
 function asLinkedProvider(raw: unknown): LinkedProvider[] {
@@ -5231,6 +5899,25 @@ function asOrganisation(raw: unknown): Organisation | null {
     timezone: candidate.timezone as string,
     contactAddress: candidate.contactAddress as string,
     locale: candidate.locale as string,
+    plan: candidate.plan === 'enterprise' ? 'enterprise' : 'free',
+    subscription: subscriptionFrom(candidate.subscription),
+  };
+}
+
+const SUBSCRIPTION_STATUSES: readonly SubscriptionStatus[] = [
+  'active',
+  'past_due',
+  'read_only',
+  'cancelled',
+];
+
+function subscriptionFrom(raw: unknown): OrganisationSubscription {
+  const candidate = typeof raw === 'object' && raw != null ? (raw as Record<string, unknown>) : {};
+  const status = SUBSCRIPTION_STATUSES.find((one) => one === candidate.status) ?? 'active';
+
+  return {
+    status,
+    periodEnd: typeof candidate.periodEnd === 'string' ? candidate.periodEnd : null,
   };
 }
 
@@ -5431,7 +6118,24 @@ function asOrganisationMember(raw: unknown): OrganisationMember | null {
     self: member.self === true,
     history: history as MembershipStep[],
     suspension: asSuspension(member.suspension),
+    alsoMemberOf: typeof member.alsoMemberOf === 'number' ? member.alsoMemberOf : null,
   };
+}
+
+function asManagedAccount(raw: unknown): ManagedAccount | null {
+  const managed = raw as Record<string, unknown> | null | undefined;
+  const organisation = managed?.organisation as Record<string, unknown> | null | undefined;
+
+  return typeof managed?.domain === 'string' &&
+    typeof managed.message === 'string' &&
+    typeof organisation?.id === 'string' &&
+    typeof organisation.name === 'string'
+    ? {
+        domain: managed.domain,
+        organisation: { id: organisation.id, name: organisation.name },
+        message: managed.message,
+      }
+    : null;
 }
 
 function asDeadline(raw: unknown): { at: string; written: string } | null {

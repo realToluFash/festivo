@@ -76,7 +76,7 @@ final readonly class ScheduleController
         return $this->schedule($event, Response::HTTP_OK, $item);
     }
 
-    /** Night-screen presses (sc-3895): `pressedAt` is the presser's corrected clock, now when absent; 409 with `superseded_by` when it changes nothing. */
+    /** Night-screen presses (sc-3895): `pressedAt` is the presser's corrected clock, now when absent; `fromCard` whether it was made on a night opened from a run-of-show card (sc-66580); 409 with `superseded_by` when it changes nothing. */
     #[Route('/api/events/{eventId}/schedule/items/{itemId}/presses', name: 'schedule_items_press', methods: ['POST'])]
     #[InEvent(Permission::RunOfShowManage)]
     public function press(Request $request, string $eventId, #[InThisEvent('itemId')] ScheduleItem $item): JsonResponse
@@ -91,12 +91,13 @@ final readonly class ScheduleController
         $body = Input::body($request, Type\shape([
             'kind' => Type\backed_enum(PressKind::class),
             'pressedAt' => Type\optional(Type\nullable(Type\string())),
+            'fromCard' => Type\optional(Type\bool()),
         ]));
         $sentAt = $body['pressedAt'] ?? null;
         $pressedAt = null === $sentAt ? $this->clock->now() : (DateTimeImmutable::createFromFormat(\DATE_RFC3339_EXTENDED, $sentAt) ?: DateTimeImmutable::createFromFormat(\DATE_ATOM, $sentAt) ?: throw new ApiException(ErrorCode::BadRequest, 'run_of_show.pressed_at_invalid'));
         $fingerprint = Hash\hash($item->getId()->toRfc4122() . "\0" . $body['kind']->value . "\0" . ($sentAt ?? ''), Hash\Algorithm::Sha256);
 
-        $this->scheduleEditor->press($event, $item, $body['kind'], $pressedAt, $key, $fingerprint, $this->user());
+        $this->scheduleEditor->press($event, $item, $body['kind'], $pressedAt, $key, $fingerprint, $this->user(), $body['fromCard'] ?? false);
 
         return $this->schedule($event, Response::HTTP_OK, $item);
     }

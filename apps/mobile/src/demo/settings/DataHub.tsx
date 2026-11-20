@@ -21,7 +21,6 @@ import { useLoad } from './MembersLoading.tsx';
 import { memberLooking } from './sample.ts';
 import {
   DATA_PEOPLE,
-  type Go,
   hubCard,
   hubRows,
   type HubStart,
@@ -34,18 +33,20 @@ import { LOCK_TAG, Lead, TagRow, useDataNav } from './DataParts.tsx';
 import { dataSayIn, zoneFor } from './DataSample.ts';
 import { DATA_WORDS as H } from './DataWords.ts';
 import { SummaryPage } from './SummaryPage.tsx';
+import { pageStateOf } from './EnterpriseAsk.ts';
+import { EnterpriseStep } from './EnterpriseStep.tsx';
 
 /** Settings › Data and control in B: one card with the soonest step, then Control's rows; the rest is on the web. */
 export function DataHubSection() {
   const { state } = useLocalSearchParams<{ state?: string }>();
   const { viewer } = useDataNav();
-  const name = hubStateOf(state);
+  const name = hubStateOf(pageStateOf('hub', state));
   const start = useMemo(() => hubStart(name), [name]);
   const looking = useMemo(() => memberLooking(DATA_PEOPLE[viewer].email), [viewer]);
 
   return (
     <SeenBy looking={looking}>
-      <HubPage key={name} state={name} start={start} />
+      <HubPage key={`${name}:${state ?? ''}`} state={name} start={start} />
     </SeenBy>
   );
 }
@@ -69,22 +70,20 @@ function HubPage({ state, start }: { state: HubState; start: HubStart }) {
     );
 
   const card = hubCard(start, say);
-  const go = (to: Go) => {
-    if (to.kind === 'contact') shell.tell(H.contacting);
-    else open('emailDomains', hubStepOpens(state), state);
-  };
+  const go = () => open('emailDomains', hubStepOpens(state), state);
+  const locked = start.plan === 'locked';
 
   return (
     <SummaryPage title={H.title}>
       <SummaryCard
         size={shell.layout === 'portrait' ? 'wide' : 'page'}
-        height={card.step == null ? 170 : 210}
+        height={card.step == null && !locked ? 170 : 210}
         step={
           card.step == null
             ? null
             : {
                 label: card.step.label,
-                onPress: () => go(card.step?.go ?? { kind: 'contact' }),
+                onPress: go,
                 testID: 'data.step',
               }
         }
@@ -92,6 +91,7 @@ function HubPage({ state, start }: { state: HubState; start: HubStart }) {
       >
         <CardSays text={card.says} size={pane ? 26 : 24} heading />
         <OnCard text={card.line} />
+        {locked && <EnterpriseStep testID="data.enterprise" />}
       </SummaryCard>
       <View>
         <Section title={H.control}>

@@ -50,8 +50,12 @@ interface NotificationTypeInterface
     /** Still emailed to an address a hard bounce or complaint suppressed: security mail, which the person may need to get back in. */
     public function reachesSuppressed(): bool;
 
-    /** Due rows sharing a key, for one person on one channel, go out as one message. Null never collapses. */
-    public function collapseKey(): ?string;
+    /**
+     * Due rows sharing a key, for one person on one channel, go out as one message, and a push replaces the one shown under it. Null never collapses.
+     *
+     * @param array<string, mixed> $payload
+     */
+    public function collapseKey(array $payload): ?string;
 
     /**
      * @param array<string, mixed> $payload   asked again at send time; false records the row cancelled

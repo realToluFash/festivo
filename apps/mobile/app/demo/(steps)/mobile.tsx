@@ -4,16 +4,22 @@ import { StyleSheet, type TextInputInstance, View, type ViewInstance } from 'rea
 
 import { PrimaryButton } from '../../../src/components/Buttons.tsx';
 import { focusPicker } from '../../../src/components/CountryPicker.tsx';
-import { DemoScreen, NavBar, finish } from '../../../src/demo/DemoScreen.tsx';
+import { DemoScreen, NavBar } from '../../../src/demo/DemoScreen.tsx';
 import { InsideField } from '../../../src/steps/InsideField.tsx';
 import { Heading, Plain, Says } from '../../../src/steps/Lines.tsx';
 import { SelectRow } from '../../../src/demo/SelectRow.tsx';
 import { mobileRefusal, startCountry } from '../../../src/demo/signUpChecks.ts';
+import { signUpEndOf, signUpLanding } from '../../../src/demo/signUpEnd.ts';
 import { tokens } from '../../../src/theme/tokens.ts';
 
 /** The last step, which Skip at the top right passes. */
 export default function Mobile() {
-  const { via, region } = useLocalSearchParams<{ via?: string; region?: string }>();
+  const { via, region, end } = useLocalSearchParams<{
+    via?: string;
+    region?: string;
+    end?: string;
+  }>();
+  const ending = signUpEndOf(end);
   const short = via === 'google' || via === 'apple';
   const [country, setCountry] = useState(() => startCountry(region));
   const [number, setNumber] = useState('');
@@ -29,14 +35,17 @@ export default function Mobile() {
     if (found != null || country == null) return;
     router.push({
       pathname: '/demo/phone-code',
-      params: { via: via ?? 'email', phone: `${country.dial} ${number.trim()}` },
+      params: { via: via ?? 'email', phone: `${country.dial} ${number.trim()}`, end: ending },
     });
   }
 
   return (
     <DemoScreen
       nav={
-        <NavBar step={short ? [2, 2] : [4, 4]} right={{ label: 'Skip', onPress: () => finish() }} />
+        <NavBar
+          step={short ? [2, 2] : [4, 4]}
+          right={{ label: 'Skip', onPress: () => router.replace(signUpLanding(ending)) }}
+        />
       }
       foot={<PrimaryButton label="Send code" onPress={send} testID="demo.sendCode" />}
     >

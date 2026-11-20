@@ -38,6 +38,24 @@ export const SECTION_HREF = {
   signInRules: '/settings/sign-in-rules',
 } as const satisfies Record<SettingsSection, string>;
 
+/** Data and control (sc-560) is not a section of its own kind: its row follows the organisation's, for whoever manages it. */
+export const DATA_AND_CONTROL = 'dataAndControl';
+
+export const DATA_HREF = {
+  hub: '/settings/data-and-control',
+  emailDomains: '/settings/data-and-control/email-domains',
+  auditLog: '/settings/data-and-control/audit-log',
+  auditEntry: '/settings/data-and-control/audit-entry',
+} as const;
+
+export type SettingsOpen = SettingsSection | typeof DATA_AND_CONTROL;
+
+export function dataAndControlListed(
+  organisation: { permissions: readonly string[] } | null,
+): boolean {
+  return organisation != null && roleHolds(organisation, 'organisation.manage');
+}
+
 /** The interim screens' old paths, kept so a link to one still lands on its Settings page. */
 export const INTERIM_HREF = {
   '/security': SECTION_HREF.security,

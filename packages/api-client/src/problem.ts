@@ -33,11 +33,15 @@ export interface Problem {
   providerEmail?: string;
   /** On `oauth_only`, `session_timed_out`, `provider_kept_by_rule` or `two_factor_kept_by_rule`: the organisation whose rule it is (sc-69, sc-609). */
   organisation?: string;
+  /** On `domain_managed` (sc-563), with `organisation` naming the home organisation: the managed address's domain. */
+  domain?: string;
   /** On `oauth_only`: the providers this account may sign in with instead. */
   providers?: string[];
   /** On `session_timed_out`: the limit that ended it. With `oauth_only` too, the address to sign back in with. */
   days?: number;
   email?: string;
+  /** On a `validation_failed` shift (sc-3908): how many people are on it as the API now has them. */
+  onShift?: number;
   /** On `join_request_cooling_off`: when they may ask that organisation again (sc-562). */
   until?: string;
   /** On `provider_kept_by_rule`: the provider that must stay linked. */

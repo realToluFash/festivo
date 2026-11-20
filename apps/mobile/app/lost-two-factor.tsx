@@ -22,11 +22,12 @@ import { useTranslation } from 'react-i18next';
 
 import { api } from '../src/api.ts';
 import { heldChallenge } from '../src/challenge.ts';
-import { timedOutSignIn } from '../src/kit/signInRules.ts';
 import { PrimaryButton, QuietButton, SecondaryButton } from '../src/components/Buttons.tsx';
 import { keysStayDown } from '../src/components/Field.tsx';
 import { LifecycleSheet } from '../src/components/LifecycleSheet.tsx';
 import { Notice } from '../src/components/Notice.tsx';
+import { leaveTimedOutSignIn } from '../src/steps/leaveTimedOutSignIn.ts';
+import { signInOver } from '../src/steps/signInOver.ts';
 import { Pending } from '../src/components/Pending.tsx';
 import { readOut } from '../src/components/ReadOut.tsx';
 import { useFocusOnAnswer } from '../src/components/Screen.tsx';
@@ -98,6 +99,10 @@ export default function LostTwoFactor() {
     };
   }, [load, setView]);
 
+  useEffect(() => {
+    if (view.kind === 'timedOut') leaveTimedOutSignIn();
+  }, [view.kind]);
+
   const reload = (): void => {
     void load().then((next) => {
       markTap();
@@ -159,7 +164,7 @@ export default function LostTwoFactor() {
 
   function shown(): ReactNode {
     if (view.kind === 'signIn') return <Redirect href="/sign-in" />;
-    if (view.kind === 'timedOut') return <Redirect href={timedOutSignIn(held?.email ?? '')} />;
+    if (view.kind === 'timedOut') return null;
     if (view.kind === 'loading')
       return (
         <StepScreen nav={<BackToCode />}>
@@ -222,6 +227,7 @@ function BackToCode({ step }: { step?: readonly [number, number] }) {
 }
 
 function toSignIn(email?: string): void {
+  signInOver(router.canGoBack());
   router.replace(email == null ? '/sign-in' : { pathname: '/sign-in', params: { email } });
 }
 

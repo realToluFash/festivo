@@ -47,3 +47,23 @@ describe('a demo settings page’s back speaks its locale (sc-30410, #33288)', (
     expect(backTo('fr', catalogue('fr').settings.title)).toBe('Retour à Paramètres');
   });
 });
+
+describe('a demo settings page’s back draws no larger than its title (sc-67471)', () => {
+  it('puts the back under the title’s cap, as the signed-out screens do', () => {
+    expect(summaryPage).toMatch(
+      /<TitleCap\.Provider value=\{cap\}>\s*<Back \{\.\.\.backTo\} \/>\s*<\/TitleCap\.Provider>/u,
+    );
+  });
+
+  it('caps the back over a Data and control page’s title on a tablet on its side', () => {
+    expect(read('src', 'components', 'DataParts.tsx')).toMatch(
+      /<TitleCap\.Provider value=\{cap\}>\s*<View style=\{styles\.paneHead\}>\s*<Back \{\.\.\.back\} \/>\s*<Title/u,
+    );
+  });
+
+  it('caps the back over People’s title', () => {
+    expect(read('src', 'demo', 'people', 'PeopleFrame.tsx')).toMatch(
+      /<TitleCap\.Provider value=\{cap\}>\s*<View style=\{styles\.top\}>\s*<Back /u,
+    );
+  });
+});

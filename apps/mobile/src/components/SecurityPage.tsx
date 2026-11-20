@@ -440,6 +440,7 @@ export function SecurityPage({
     }
   }
 
+  const askWords = askBusy(ask, t);
   const question = askOf(ask, {
     unlink: openedWay?.linked === true ? unlinkAsk(openedWay, ways, t) : null,
     signOut: openedDevice == null ? null : signOutAsk(openedDevice.name, t),
@@ -568,7 +569,7 @@ export function SecurityPage({
           label: question?.confirm ?? '',
           testID: `security.${ask ?? 'ask'}.confirm`,
           removes: question?.removes ?? false,
-          busy: acting ? askBusy(ask, t) : undefined,
+          ...(askWords == null ? {} : { busy: acting ? askWords : undefined, busyWords: askWords }),
         }}
         onKeep={() => {
           if (!acting) setAsk(null);

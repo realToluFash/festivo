@@ -47,6 +47,14 @@ import {
   trackLabel,
 } from '../kit/night.ts';
 import { nightPressQueue, storedPresses } from '../kit/nightPresses.ts';
+import { runOfShowCardOf } from '../kit/runOfShowCard.ts';
+import {
+  isFromCard,
+  leftNight,
+  putUpRunOfShowCard,
+  rememberEventDayPush,
+} from '../runOfShowCards.ts';
+import { useSignedIn } from '../signedIn.ts';
 import { useServerNow } from '../kit/serverNow.ts';
 import type { LayoutKind } from '../layout/classify.ts';
 import { tokens } from '../theme/tokens.ts';
@@ -130,6 +138,7 @@ export function useNight(eventId: string) {
           api.pressScheduleItem(press.eventId, press.itemId, press.kind, {
             key: press.key,
             pressedAt: press.pressedAt,
+            ...(press.fromCard === true ? { fromCard: true } : {}),
           }),
         );
         const left = await queue.load();
@@ -173,6 +182,13 @@ export function useNight(eventId: string) {
       (one) => live.current && setEvent(one),
       () => undefined,
     );
+    void api.notificationSettings().then(
+      (settings) => {
+        const eventDay = settings.find((one) => one.category === 'event_day');
+        if (eventDay != null) void rememberEventDayPush(eventDay.push.on);
+      },
+      () => undefined,
+    );
     void queue.load().then((kept) => {
       if (!live.current) return;
       setWaiting(kept);
@@ -193,6 +209,7 @@ export function useNight(eventId: string) {
 
     return () => {
       live.current = false;
+      leftNight();
       stop();
       clearInterval(timer);
       foreground.remove();
@@ -208,6 +225,7 @@ export function useNight(eventId: string) {
         itemId: item.id,
         kind,
         title: item.title,
+        ...(isFromCard(eventId) ? { fromCard: true } : {}),
       };
       const kept = await queue.keep(pressed);
 
@@ -345,6 +363,43 @@ function Shown({
     return () => clearTimeout(later);
   }, [back]);
 
+  const recipient = useSignedIn().account?.id ?? null;
+  const carded = useRef(new Set<string>());
+  const pressedOn = useRef(schedule);
+
+  useEffect(() => {
+    pressedOn.current = schedule;
+  }, [schedule]);
+
+  // Each press puts up its track's card here, and each send rewrites it with what is still waiting (sc-66580).
+  useEffect(() => {
+    const base = pressedOn.current;
+    if (base == null || event == null || recipient == null) return;
+    const cardShown = withPresses(base, night.waiting);
+    const cardNow = zonedAt(serverClock.now(), cardShown.timeZone);
+    const cardTracks = nightTracks(nightItemsOf(cardShown), cardNow);
+
+    for (const key of carded.current) {
+      const one = cardTracks.find((each) => each.key === key);
+      if (one == null) continue;
+      const words = runOfShowCardOf(
+        event.name,
+        trackLabel(one, nightDayOf(cardNow), locale, t),
+        one,
+        nightView(one, cardNow, cardShown.timeZone),
+        cardNow,
+        night.waiting.length,
+        locale,
+        t,
+      );
+
+      void putUpRunOfShowCard(
+        { eventId: event.id, day: one.day, place: one.place, recipient },
+        words,
+      ).catch(() => undefined);
+    }
+  }, [night.waiting, event, recipient, locale, t]);
+
   const sentCount = useRef(night.sent);
 
   useEffect(() => {
@@ -362,6 +417,7 @@ function Shown({
   };
   const act = (how: ScheduleItemPress, item: NightShownItem) => {
     if (shown == null || track == null) return;
+    carded.current.add(track.key);
     if (how === 'skip' && item.id === chosen) setBack({ id: item.id });
     setChosen(null);
     setMoving(false);

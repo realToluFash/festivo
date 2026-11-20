@@ -9,6 +9,12 @@ describe("a bell item's place in the app (sc-3980)", () => {
     expect(appPlace('/app/account/notifications')).toBe('/settings/notifications');
   });
 
+  it("opens a run-of-show card's track on the night (sc-66580)", () => {
+    expect(appPlace('/app/events/e1/schedule?track=2026-11-20%7CGarden')).toBe(
+      '/events/e1/night?track=2026-11-20%7CGarden',
+    );
+  });
+
   it('stays in the bell for a place the app has no screen for, or none', () => {
     expect(appPlace('/app/events/e1/guests')).toBeNull();
     expect(appPlace(null)).toBeNull();

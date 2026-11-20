@@ -16,6 +16,7 @@ appId: host.exp.Exponent
           element:
             text: '{{t:settings.signedInAs|email}}'
           direction: DOWN
+          visibilityPercentage: 50
           timeout: 30000
 - runFlow:
     when:
@@ -25,5 +26,6 @@ appId: host.exp.Exponent
           element:
             text: '{{t:noOrganisation.signedInAs|email}}'
           direction: DOWN
+          visibilityPercentage: 50
           timeout: 30000
 - takeScreenshot: home

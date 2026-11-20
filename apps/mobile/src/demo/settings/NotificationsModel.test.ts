@@ -89,7 +89,10 @@ describe('a state link', () => {
       'saved',
       'loading',
       'failed',
+      'eventDay',
+      'eventDayPushOff',
     ]);
+    expect(firstPage('eventDay')).toMatchObject({ opened: 'event_day' });
     expect(firstPage(null)).toMatchObject({ opened: null, savedRow: null });
   });
 

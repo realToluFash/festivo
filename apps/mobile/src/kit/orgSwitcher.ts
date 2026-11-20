@@ -1,4 +1,4 @@
-import type { Membership } from '@soirely/api-client';
+import type { Membership, OutsideEvent } from '@soirely/api-client';
 import { type InvitationOutcome, isWaiting, waitingInvitations } from '@soirely/domain';
 
 import type { WaitingInvitations } from '../invitations.ts';
@@ -44,6 +44,13 @@ export interface Session {
   large: boolean;
   /** sc-563: the invitation whose Join is refused, the address being managed by its home organisation. */
   managed?: string | undefined;
+}
+
+/** sc-563: what You are not in an organisation offers last, nothing until the API has said whether the account is managed. */
+export function noOrganisationEnd(managed: DomainOffer['managed']): 'managed' | 'start' | null {
+  if (managed === undefined) return null;
+
+  return managed === null ? 'start' : 'managed';
 }
 
 export function waitingOf(session: Session): number {
@@ -122,6 +129,22 @@ export function tilesOf(session: Session, query: string): Tile[] {
 
 export function noneMatch(session: Session, query: string): boolean {
   return searchable(session) && query.trim() !== '' && tilesOf(session, query).length === 1;
+}
+
+/** What a search finds, the events from outside counted with the tiles, as the web's switcher counts them (sc-68438). */
+export function foundBy(
+  session: Session,
+  events: readonly OutsideEvent[],
+  query: string,
+): { held: OutsideEvent[]; none: boolean; count: number } {
+  const typed = searchable(session) ? query : '';
+  const held = events.filter((event) => matches(event.name, typed));
+
+  return {
+    held,
+    none: noneMatch(session, typed) && held.length === 0,
+    count: tilesOf(session, typed).length - 1 + held.length,
+  };
 }
 
 export function untilIn(locale: string, day: string): string {
@@ -288,6 +311,8 @@ export function switcherSession({
       signedInAs: invitation.signedInAs,
     })),
     outcomes: waiting.outcomes,
+    managed: invitations.find((invitation) => waiting.outcomes[invitation.id]?.kind === 'managed')
+      ?.id,
     offer:
       offer.organisation == null
         ? null

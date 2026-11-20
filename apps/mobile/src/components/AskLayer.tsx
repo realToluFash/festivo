@@ -14,9 +14,19 @@ import { useReadOut, useSendingWords } from './ReadOut.tsx';
 import { SETTLED_MS } from './Screen.tsx';
 import { moveScreenReaderFocus } from './screenReaderFocus.ts';
 import { type TextHandle, Text } from './Text.tsx';
+import { Title, useWholeWords } from './Title.tsx';
 import { useLayout } from '../layout/useLayout.ts';
 import { tokens } from '../theme/tokens.ts';
 import { TextAction, TurningMark } from './SummaryRows.tsx';
+
+export type AskConfirm = { label: string; testID?: string; removes?: boolean } & (
+  | { busy?: never; busyWords?: never }
+  | {
+      busy: string | undefined;
+      /** The words `busy` will say, known before sending, so the two buttons are sized for them from the start. */
+      busyWords: string;
+    }
+);
 
 export interface AskProps {
   title: string;
@@ -24,7 +34,7 @@ export interface AskProps {
   /** `off` while the answer is out: the way back waits in Ink 3. */
   keep: { label: string; testID?: string; off?: boolean };
   /** `busy` while the answer is out: the turning mark and these words in Ink 2, off. None once nothing is left to decide. */
-  confirm: { label: string; testID?: string; removes?: boolean; busy?: string | undefined } | null;
+  confirm: AskConfirm | null;
   onKeep: () => void;
   onConfirm?: () => void;
   /** The line says the question no longer stands, with the alert mark, and is read out. */
@@ -33,7 +43,7 @@ export interface AskProps {
   failed?: string | null;
   testID?: string;
   width?: number;
-  /** After the line, 10 apart: a handover's button and list. Too tall for the screen, the Ask scrolls as a whole (sc-614). */
+  /** After the line, 10 apart: a handover's button and list. */
   body?: ReactNode;
   /** A menu is over it, so a screen reader stays in the menu. */
   covered?: boolean;
@@ -42,7 +52,7 @@ export interface AskProps {
   onPlaced?: (top: number) => void;
 }
 
-/** B's one question: what happens, in words, then the way back first and the verb last, red when it removes. Two actions too wide for one line stack with the verb on top (sc-22092). */
+/** B's one question: what happens, in words, then the way back first and the verb last, red when it removes. Two actions too wide for one line stack with the verb on top (sc-22092). The title and the two actions each step down to keep every word whole; the line keeps the person's size (sc-66727). Too tall for the screen, as at the largest text, it scrolls as a whole (sc-614, sc-30894). */
 export function AskLayer({
   title,
   line,
@@ -65,11 +75,27 @@ export function AskLayer({
   const heading = useRef<TextHandle>(null);
   const [widths, setWidths] = useState({ room: 0, keep: 0, confirm: 0 });
   const [inside, setInside] = useState(0);
+  const actionWords = useWholeWords(
+    ACTION,
+    ACTION * frame.fontScale,
+    [keep.label, confirm?.label].filter((label) => label != null),
+    { weight: 'semibold' },
+  );
+  const busyWords = useWholeWords(
+    ACTION,
+    ACTION * frame.fontScale,
+    [confirm?.busyWords ?? confirm?.busy].filter((label) => label != null),
+    { weight: 'semibold' },
+  );
+  const actionScale = Math.min(actionWords.maxFontSizeMultiplier, busyWords.maxFontSizeMultiplier);
   const measured = widths.room > 0 && widths.keep > 0 && (confirm == null || widths.confirm > 0);
   const stacked =
     measured && confirm != null && widths.keep + tokens.space3xl + widths.confirm > widths.room;
-  const fits = frame.height - insets.top - tokens.spaceLg - insets.bottom;
-  const tall = body != null && inside > fits;
+  const tallTop = insets.top + tokens.spaceLg;
+  const tallBottom = Math.max(insets.bottom, tokens.spaceXxl);
+  const placedRoom = frame.height - (top ?? tokens.spaceXxl) - tokens.spaceXxl;
+  const tallRoom = frame.height - tallTop - tallBottom;
+  const tall = inside > Math.min(placedRoom, tallRoom);
   const laid = (part: keyof typeof widths) => (event: LayoutChangeEvent) => {
     const width = event.nativeEvent.layout.width;
     setWidths((now) => (now[part] === width ? now : { ...now, [part]: width }));
@@ -80,6 +106,7 @@ export function AskLayer({
         label={keep.label}
         onPress={onKeep}
         off={keep.off ?? false}
+        maxFontSizeMultiplier={actionScale}
         testID={keep.testID}
       />
     </View>
@@ -91,6 +118,7 @@ export function AskLayer({
           label={confirm.label}
           onPress={() => onConfirm?.()}
           removes={confirm.removes ?? false}
+          maxFontSizeMultiplier={actionScale}
           testID={confirm.testID}
         />
       ) : (
@@ -102,8 +130,14 @@ export function AskLayer({
           accessibilityState={{ disabled: true, busy: true }}
           testID={confirm.testID}
         >
-          <TurningMark side={14} />
-          <Text size={15} weight="semibold" accessible={false} style={styles.secondary}>
+          <TurningMark side={BUSY_MARK} />
+          <Text
+            size={ACTION}
+            weight="semibold"
+            accessible={false}
+            maxFontSizeMultiplier={actionScale}
+            style={styles.secondary}
+          >
             {confirm.busy}
           </Text>
         </Pressable>
@@ -132,15 +166,15 @@ export function AskLayer({
   );
   const content = (
     <>
-      <Text
+      <Title
         ref={heading}
         size={18}
-        weight="bold"
+        room={widths.room}
         accessibilityRole="header"
         style={styles.askTitle}
       >
         {title}
-      </Text>
+      </Title>
       {body == null ? (
         lineText
       ) : (
@@ -151,14 +185,20 @@ export function AskLayer({
       )}
       <View
         style={[stacked ? styles.askStack : styles.askActions, !measured && styles.unmeasured]}
-        onLayout={laid('room')}
+        onLayout={(event) => {
+          laid('room')(event);
+          actionWords.room(event.nativeEvent.layout.width);
+          busyWords.room(event.nativeEvent.layout.width - BUSY_MARK - tokens.spaceXs);
+        }}
       >
+        {actionWords.measure}
+        {busyWords.measure}
         {stacked ? [confirmAction, keepAction] : [keepAction, confirmAction]}
       </View>
     </>
   );
   const placed = tall
-    ? { justifyContent: 'flex-start' as const, paddingTop: insets.top + tokens.spaceLg }
+    ? { justifyContent: 'flex-start' as const, paddingTop: tallTop }
     : top == null
       ? null
       : { justifyContent: 'flex-start' as const, paddingTop: top };
@@ -169,13 +209,12 @@ export function AskLayer({
         StyleSheet.absoluteFill,
         styles.askScrim,
         placed,
-        tall && { paddingBottom: Math.max(insets.bottom, tokens.spaceXxl) },
+        tall && { paddingBottom: tallBottom },
       ]}
     >
       <View
         style={[
           styles.dialog,
-          body != null && styles.dialogScrolls,
           tall && styles.dialogTall,
           { maxWidth: width ?? (phone ? 340 : 400) },
         ]}
@@ -186,24 +225,23 @@ export function AskLayer({
         onLayout={(event) => onPlaced?.(event.nativeEvent.layout.y)}
         testID={testID}
       >
-        {body == null ? (
-          content
-        ) : (
-          <ScrollView
-            style={styles.grow}
-            contentContainerStyle={styles.inside}
-            scrollEnabled={tall}
-            bounces={false}
-            keyboardShouldPersistTaps="handled"
-            onContentSizeChange={(_width, height) => setInside(height)}
-          >
-            {content}
-          </ScrollView>
-        )}
+        <ScrollView
+          style={styles.grow}
+          contentContainerStyle={styles.inside}
+          scrollEnabled={tall}
+          bounces={false}
+          keyboardShouldPersistTaps="handled"
+          onContentSizeChange={(_width, height) => setInside(height)}
+        >
+          {content}
+        </ScrollView>
       </View>
     </View>
   );
 }
+
+const ACTION = 15;
+const BUSY_MARK = 14;
 
 function AlertLine({ words }: { words: string }) {
   return (
@@ -229,13 +267,11 @@ const styles = StyleSheet.create({
   },
   dialog: {
     width: '100%',
-    gap: tokens.spaceSm,
-    padding: tokens.space3xl,
-    paddingBottom: tokens.spaceLg,
+    maxHeight: '100%',
+    overflow: 'hidden',
     borderRadius: tokens.space3xl,
     backgroundColor: tokens.colorCard,
   },
-  dialogScrolls: { padding: 0, paddingBottom: 0, maxHeight: '100%', overflow: 'hidden' },
   dialogTall: { flexShrink: 1 },
   inside: {
     gap: tokens.spaceSm,

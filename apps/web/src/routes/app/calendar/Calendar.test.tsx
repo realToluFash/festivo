@@ -1,7 +1,7 @@
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { RouterProvider, createMemoryRouter } from 'react-router';
-import { serverClock } from '@soirely/domain';
+import { calendarPlaceKey, keptCalendarPlace, monthOfDay, serverClock } from '@soirely/domain';
 
 import { __setSessionState, type Session, switchOrganisation } from '../../../session.ts';
 import { OWNER_PERMISSIONS, membership } from '../../../test-memberships.ts';
@@ -88,7 +88,7 @@ const DINNER = event({
   ],
 });
 
-function signedIn(organisation = IRE, organisations = [IRE, LAGOON]): void {
+function signedIn(organisation = IRE, organisations = [IRE, LAGOON], userId = 'u1'): void {
   const session: Session = {
     name: 'Folake Adeyemi',
     email: 'folake@ire.events',
@@ -96,7 +96,7 @@ function signedIn(organisation = IRE, organisations = [IRE, LAGOON]): void {
     complete: true,
     awaiting: null,
     providers: [],
-    userId: 'u1',
+    userId,
     needsOrganisation: false,
     hasPassword: true,
     organisation,
@@ -126,8 +126,13 @@ function answering(byOrganisation: Record<string, Record<string, unknown>[] | 'f
   });
 }
 
-function at(path: string): void {
-  render(<RouterProvider router={createMemoryRouter(routes, { initialEntries: [path] })} />);
+function at(path: string): () => void {
+  return render(<RouterProvider router={createMemoryRouter(routes, { initialEntries: [path] })} />)
+    .unmount;
+}
+
+function keptFor(userId: string): unknown {
+  return JSON.parse(localStorage.getItem(calendarPlaceKey(userId)) ?? 'null');
 }
 
 function day(date: string): HTMLElement {
@@ -379,6 +384,48 @@ describe('Calendar, weeks as lanes (sc-30413)', () => {
     expect(
       await screen.findByRole('radio', { name: 'View: Agenda', checked: true }, WAIT),
     ).toBeTruthy();
+  });
+
+  it(
+    'keeps two people on one browser each to their own view and month (sc-74024)',
+    SLOW,
+    async () => {
+      localStorage.setItem(
+        calendarPlaceKey('u1'),
+        keptCalendarPlace({ view: 'agenda', month: monthOfDay('2027-03-01') }),
+      );
+      answering({ org_1: [DINNER, WEDDING] });
+
+      signedIn(IRE, [IRE, LAGOON], 'u2');
+      const leave = at('/app/calendar');
+      await loaded();
+
+      expect(screen.getByRole('radio', { name: 'View: Month', checked: true })).toBeTruthy();
+      expect(screen.getByRole('heading', { level: 2, name: 'November 2026' })).toBeTruthy();
+      fireEvent.click(screen.getByRole('radio', { name: 'View: Agenda' }));
+      await waitFor(() => expect(keptFor('u2')).toEqual({ view: 'agenda', month: '2026-11' }));
+      leave();
+
+      signedIn(IRE, [IRE, LAGOON], 'u1');
+      at('/app/calendar');
+
+      expect(
+        await screen.findByRole('radio', { name: 'View: Agenda', checked: true }, WAIT),
+      ).toBeTruthy();
+      expect(keptFor('u1')).toEqual({ view: 'agenda', month: '2027-03' });
+    },
+  );
+
+  it('gives the view and month this browser kept before sc-74024 to nobody', SLOW, async () => {
+    localStorage.setItem('soirely.calendar', '{"view":"agenda","month":"2024-11"}');
+    signedIn();
+    answering({ org_1: [WEDDING] });
+    at('/app/calendar');
+    await loaded();
+
+    expect(screen.getByRole('radio', { name: 'View: Month', checked: true })).toBeTruthy();
+    expect(screen.getByRole('heading', { level: 2, name: 'November 2026' })).toBeTruthy();
+    expect(keptFor('u1')).toEqual({ view: 'month', month: '2026-11' });
   });
 
   it(

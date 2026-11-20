@@ -14,13 +14,16 @@ import { Animated, StyleSheet, View, type ViewInstance } from 'react-native';
 import { api } from '../api.ts';
 import { currentLocale } from '../i18n/index.ts';
 import {
+  JOB_LABEL_MOST,
   addRefused,
+  holderOf,
   inListOrder,
   joinedLine,
   managesPeople,
   nowCan,
   offered,
   opensRow,
+  personShown,
   rowLine,
   seesEveryEvent,
 } from '../kit/eventPeople.ts';
@@ -34,6 +37,7 @@ import {
   AddBox,
   AddScreen,
   type AddWords,
+  type OutsideAdd,
   PeopleLoading,
   PersonFace,
   RoleSheet,
@@ -66,6 +70,26 @@ function Face({ name, id, side }: { name: string; id: string; side: number }) {
   return <PersonFace initials={letters} tone={toneOf(id)} side={side} />;
 }
 
+function PersonMark({ person, side }: { person: EventPerson; side: number }) {
+  const shown = personShown(person);
+  if (shown.kind === 'named') return <Face name={shown.name} id={shown.userId} side={side} />;
+
+  return (
+    <PersonFace
+      initials={null}
+      tone={toneOf(person.id)}
+      side={side}
+      mark={shown.kind === 'address' ? shown.mark : 'user'}
+    />
+  );
+}
+
+function nameOf(t: TFunction, person: EventPerson): string {
+  const shown = personShown(person);
+
+  return shown.kind === 'notJoined' ? t('eventPeople.notJoined') : shown.name;
+}
+
 function roleWords(t: TFunction): RoleWords<EventRole> {
   return {
     roles: EVENT_ROLES,
@@ -81,7 +105,7 @@ function sheetWords(
   person: EventPerson,
   organisation: string,
 ): RoleSheetWords<EventRole> {
-  const name = person.user.name;
+  const name = nameOf(t, person);
 
   return {
     ...roleWords(t),
@@ -89,7 +113,9 @@ function sheetWords(
     done: t('eventPeople.done'),
     remove: t('eventPeople.remove'),
     removeTitle: t('eventPeople.removeTitle', { name }),
-    removeLine: t('eventPeople.removeLine', { organisation }),
+    removeLine: person.outside
+      ? t('eventPeople.removeLineOutside')
+      : t('eventPeople.removeLine', { organisation }),
     keep: t('eventPeople.keep', { name: firstName(name) }),
     removeConfirm: t('eventPeople.removeConfirm'),
     removing: t('eventPeople.removing'),
@@ -112,7 +138,7 @@ function addWords(t: TFunction, organisation: string, nothingLeft: boolean): Add
     cancel: t('eventPeople.cancel'),
     done: t('eventPeople.done'),
     theirRole: t('eventPeople.theirRole'),
-    find: t('eventPeople.find'),
+    find: t('eventPeople.findAnyone'),
     inOrganisation: t('eventPeople.inOrganisation', { organisation }),
     noMatch: (typed) => t('eventPeople.noMatch', { organisation, typed }),
     discardTitle: t('eventPeople.discardTitle'),
@@ -121,6 +147,23 @@ function addWords(t: TFunction, organisation: string, nothingLeft: boolean): Add
     discard: t('eventPeople.discard'),
     refusal: (error, role, went, left) => addRefused(t, error, role, went, left),
     everyoneOn: nothingLeft ? t('eventPeople.everyoneOn', { organisation }) : undefined,
+  };
+}
+
+function outsideWords(
+  t: TFunction,
+  organisation: string,
+): OutsideAdd<EventRole, EventPerson>['words'] {
+  return {
+    find: t('eventPeople.findAnyone'),
+    findName: t('eventPeople.find'),
+    fromOutside: t('eventPeople.fromOutside', { organisation }),
+    leadOff: t('eventPeople.leadOff', { organisation }),
+    pickAnother: t('eventPeople.pickAnother'),
+    unusable: t('eventPeople.unusable'),
+    onAlready: (name) => t('eventPeople.onAlready', { name }),
+    jobLabel: t('eventPeople.jobLabel'),
+    jobHelp: (job) => t('eventPeople.jobHelp', { length: [...job].length, most: JOB_LABEL_MOST }),
   };
 }
 
@@ -136,7 +179,9 @@ export function EventPeople({
   const { account, organisation } = useSignedIn();
   const locale = currentLocale();
   const userId = account?.id ?? null;
-  const organisationName = organisation?.name ?? '';
+  const outsideIn = account?.outsideEvents.find((one) => one.id === event.id);
+  const organisationName = organisation?.name ?? outsideIn?.organisationName ?? '';
+  const country = organisation?.countryCode ?? '';
   const manages = managesPeople(event);
   const [load, setLoad] = useState<Load>({ kind: 'loading' });
   const [attempt, setAttempt] = useState(0);
@@ -228,7 +273,7 @@ export function EventPeople({
     );
     setOpened((was) => (was == null ? null : { ...was, open: false }));
     setLit(null);
-    tell(t('eventPeople.removed', { name: gone.user.name }));
+    tell(t('eventPeople.removed', { name: nameOf(t, gone) }));
     api.addableEventMembers(event.id).then(
       (addable) => setLoad((was) => (was.kind !== 'loaded' ? was : { ...was, addable })),
       () => undefined,
@@ -260,7 +305,7 @@ export function EventPeople({
       nowCan(
         t,
         role,
-        added.map((one) => one.user.name),
+        added.map((one) => nameOf(t, one)),
       ),
     );
   }
@@ -290,8 +335,12 @@ export function EventPeople({
           <RowList
             items={people.map((one) => {
               const isLit = lit?.id === one.id;
-              const opens = opensRow(one.user.id, manages, userId);
+              const opens = opensRow(one.user?.id ?? null, manages, userId);
               const line = rowLine(t, one, userId);
+              const name = nameOf(t, one);
+              const tag = one.outside
+                ? t('eventPeople.outsideTag', { organisation: organisationName })
+                : null;
 
               return {
                 key: one.id,
@@ -310,9 +359,10 @@ export function EventPeople({
                         if (node == null) rows.current.delete(one.id);
                         else rows.current.set(one.id, node);
                       }}
-                      title={one.user.name}
+                      title={name}
                       line={line}
-                      lead={<Face name={one.user.name} id={one.user.id} side={40} />}
+                      lead={<PersonMark person={one} side={40} />}
+                      tag={tag == null ? null : { kind: 'now', word: tag, wraps: true }}
                       trail={
                         opens ? (
                           <Glyph name="down" size={18} ink={tokens.colorInkTertiary} weight={2.3} />
@@ -320,7 +370,9 @@ export function EventPeople({
                       }
                       accent={isLit}
                       onPress={opens ? () => openRole(one) : undefined}
-                      accessibilityLabel={`${one.user.name}. ${line}`}
+                      accessibilityLabel={[name, tag, line]
+                        .filter((part) => part != null)
+                        .join('. ')}
                       testID={`people.row.${one.id}`}
                     />
                   </View>
@@ -338,14 +390,25 @@ export function EventPeople({
         <RoleSheet
           key={`role-${opened.visit}`}
           person={{
-            name: person.user.name,
+            name: nameOf(t, person),
             line: joinedLine([
-              t('eventPeople.memberOf', { organisation: organisationName }),
+              person.outside
+                ? t('eventPeople.fromOutside', { organisation: organisationName })
+                : t('eventPeople.memberOf', { organisation: organisationName }),
               person.jobLabel,
             ]),
-            face: <Face name={person.user.name} id={person.user.id} side={44} />,
+            face: <PersonMark person={person} side={44} />,
           }}
+          notes={person.outside && <Line text={t('eventPeople.outsideEnds')} size={14} />}
           start={person.role}
+          off={
+            person.outside
+              ? {
+                  roles: ['lead'],
+                  line: t('eventPeople.leadOff', { organisation: organisationName }),
+                }
+              : undefined
+          }
           words={sheetWords(t, person, organisationName)}
           open={opened.open}
           opener={focusBack}
@@ -372,6 +435,19 @@ export function EventPeople({
               face: <Face name={member.name} id={member.membershipId} side={40} />,
             }))
           }
+          outside={{
+            country,
+            lead: 'lead',
+            holder: (address) => holderOf(load.people, address, t('eventPeople.notJoined')),
+            add: (role, address, job) =>
+              api.addEventPersonFromOutside(
+                event.id,
+                address.address,
+                role,
+                job === '' ? null : job,
+              ),
+            words: outsideWords(t, organisationName),
+          }}
           words={addWords(t, organisationName, addable.length === 0)}
           opener={focusBack}
           onClose={() => setAdding((was) => ({ ...was, open: false }))}

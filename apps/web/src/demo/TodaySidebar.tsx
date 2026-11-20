@@ -1,4 +1,5 @@
 import { Link, useSearchParams } from 'react-router';
+import type { ReactNode } from 'react';
 
 import { DeskEvents } from '../components/DeskEvents.tsx';
 import { DeskPersonFace, type DeskPerson, DeskSidebar } from '../components/DeskSidebar.tsx';
@@ -18,6 +19,12 @@ const PLACES: readonly (readonly [string, GlyphName])[] = [
   ['Events', 'events'],
   ['Calendar', 'calendar'],
   ['Menu library', 'menu'],
+];
+
+const WITH_ENQUIRIES: readonly (readonly [string, GlyphName])[] = [
+  ...PLACES.slice(0, 2),
+  ['Enquiries', 'message'],
+  ...PLACES.slice(2),
 ];
 
 const FOLAKE: DeskPerson = { name: SAMPLE.name, initials: 'FA', role: 'Owner' };
@@ -43,6 +50,9 @@ export function TodaySidebar({
   person = FOLAKE,
   inert = false,
   phone = false,
+  enquiries = false,
+  free = false,
+  bell,
 }: {
   events: readonly EventKey[];
   tell: Tell;
@@ -56,9 +66,16 @@ export function TodaySidebar({
   inert?: boolean;
   /** At 40rem and under the sidebar is the phone's bar: the switcher and Menu (sc-13413), as on Today, Events and Calendar (sc-57468). */
   phone?: boolean;
+  /** On Enquiries, which an Enterprise organisation has right after Events (sc-31226). */
+  enquiries?: boolean;
+  /** A Free organisation has no Enquiries; every other screen of the sample is Enterprise and lists it, and `?plan=free` shows any of them as Free (sc-31226). */
+  free?: boolean;
+  /** At 40rem and under on Settings, the bell at the bar's end, after Menu, as the product's shell has it (sc-13413). */
+  bell?: ReactNode;
 }) {
   const [params] = useSearchParams();
   const listed = sideEvents(events, params.get('sidebar'));
+  const places = free || params.get('plan') === 'free' ? PLACES : WITH_ENQUIRIES;
 
   return (
     <DeskSidebar
@@ -104,16 +121,27 @@ export function TodaySidebar({
           Menu
         </button>
       )}
+      {phone && bell}
       <SearchRow />
       <ul className="today-places">
-        {PLACES.filter(([label]) => !hideLibrary || label !== 'Menu library').map(
-          ([label, glyph]) => (
+        {places
+          .filter(([label]) => !hideLibrary || label !== 'Menu library')
+          .map(([label, glyph]) => (
             <li key={label}>
               {label === 'Events' ? (
                 <Link
                   className={listing ? 'today-place is-on' : 'today-place'}
                   to="/demo/events"
                   aria-current={listing ? 'page' : undefined}
+                >
+                  <Glyph name={glyph} />
+                  {label}
+                </Link>
+              ) : label === 'Enquiries' ? (
+                <Link
+                  className={enquiries ? 'today-place is-on' : 'today-place'}
+                  to="/demo/enquiries"
+                  aria-current={enquiries ? 'page' : undefined}
                 >
                   <Glyph name={glyph} />
                   {label}
@@ -136,7 +164,7 @@ export function TodaySidebar({
                   <Glyph name={glyph} />
                   {label}
                 </Link>
-              ) : (settings || listing || calendar || library) && label === 'Today' ? (
+              ) : (settings || listing || calendar || library || enquiries) && label === 'Today' ? (
                 <Link className="today-place" to="/demo/today">
                   <Glyph name={glyph} />
                   {label}
@@ -155,8 +183,7 @@ export function TodaySidebar({
                 </button>
               )}
             </li>
-          ),
-        )}
+          ))}
       </ul>
       <DeskEvents heading="Your events" events={listed} to={(id) => `/demo/events/${id}`} />
     </DeskSidebar>

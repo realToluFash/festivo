@@ -49,6 +49,18 @@ describe('presses kept on the device (sc-3895)', () => {
     expect((await reopened.load()).map((one) => one.key)).toEqual(['a']);
   });
 
+  it('sends a press made from the card as from the card, however late it goes (sc-66580)', async () => {
+    await nightPressQueue(storedPresses('evt-1')).keep({ ...press('a'), fromCard: true });
+    const sent: QueuedPress[] = [];
+
+    await nightPressQueue(storedPresses('evt-1')).send(async (one) => {
+      sent.push(one);
+      return SCHEDULE;
+    });
+
+    expect(sent.map((one) => one.fromCard)).toEqual([true]);
+  });
+
   it('keeps each event apart and drops what is not a press', async () => {
     kept.set('soirely.nightPresses.evt-2', JSON.stringify([{ key: 1 }, press('b')]));
 

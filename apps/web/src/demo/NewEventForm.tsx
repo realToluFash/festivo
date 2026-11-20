@@ -52,6 +52,8 @@ import {
   typedSomething,
 } from './newEvent.ts';
 import { useCoverPick } from './useCoverPick.tsx';
+import { type Filling, currencyHelp } from './enquiryToEvent.ts';
+import { FilledNotice, LeadBlock } from './NewEventFromEnquiry.tsx';
 import { useLeaveAsk } from './useLeaveAsk.ts';
 
 const LOCALE = 'en-US';
@@ -89,9 +91,17 @@ const WORDED = (key: string, values?: Record<string, string | number>): string =
 };
 
 /** New event's form at a desk (sc-48607): the event's own parts in today's order, in blocks, Create event at the foot. */
-export function NewEventForm({ state }: { state: NewEventState | null }) {
+export function NewEventForm({
+  state,
+  from = null,
+}: {
+  state: NewEventState | null;
+  from?: Filling | null;
+}) {
   const navigate = useNavigate();
-  const [typed, setTyped] = useState<NewTyped>(() => typedFor(state));
+  const first = from?.typed ?? typedFor(state);
+  const opens = from?.opens ?? `/demo/events/${CREATED_ID}`;
+  const [typed, setTyped] = useState<NewTyped>(first);
   const [tried, setTried] = useState(state === 'refused');
   const [status, setStatus] = useState<Status>(() => statusOf(state));
   const cover = useCoverPick(chosen, state === 'photoSendFailed' ? W.uploadFailed : null);
@@ -111,11 +121,11 @@ export function NewEventForm({ state }: { state: NewEventState | null }) {
       : null,
   );
   const [summary, setSummary] = useState<string | null>(() =>
-    state === 'refused' ? N.problems(checkOf(typedFor(state)).count) : null,
+    state === 'refused' ? N.problems(checkOf(first).count) : null,
   );
   const [leaving, setLeaving] = useState(state === 'leave');
   const [target, setTarget] = useState<Target | null>(() =>
-    state === 'refused' ? targetOf(typedFor(state), {}) : null,
+    state === 'refused' ? targetOf(first, {}) : null,
   );
   const away = useLeaveAsk((typedSomething(typed) || sending) && status !== 'created');
   const id = useId();
@@ -173,7 +183,7 @@ export function NewEventForm({ state }: { state: NewEventState | null }) {
     const later = setTimeout(
       () =>
         void navigate(
-          `/demo/events/${CREATED_ID}`,
+          opens,
           state === 'photoRefused'
             ? { state: { noPhoto: N.createdWithout(W.refusedDimensions) } }
             : lost != null
@@ -184,7 +194,7 @@ export function NewEventForm({ state }: { state: NewEventState | null }) {
     );
 
     return () => clearTimeout(later);
-  }, [status, state, navigate, sending, lost]);
+  }, [status, state, navigate, sending, lost, opens]);
 
   function change(next: Partial<NewTyped>): void {
     setTyped((was) => ({ ...was, ...next }));
@@ -249,6 +259,11 @@ export function NewEventForm({ state }: { state: NewEventState | null }) {
       return;
     }
     setSummary(null);
+    if (from?.leaves != null) {
+      away.release();
+      return void navigate(from.leaves, { replace: true });
+    }
+    if (from?.refusal != null) return setStatus('failed');
     setStatus('creating');
     pressed.current = true;
     if (sending && slowFirst.current) {
@@ -277,6 +292,7 @@ export function NewEventForm({ state }: { state: NewEventState | null }) {
 
   return (
     <form className="ev-new-form" noValidate aria-busy={busy} onSubmit={create}>
+      {from != null && <FilledNotice client={from.client} />}
       <Block title={N.aboutHeading}>
         <Text
           label={W.eventName}
@@ -308,6 +324,8 @@ export function NewEventForm({ state }: { state: NewEventState | null }) {
           fieldsRef={hostFields}
         />
       </Block>
+
+      {from?.lead != null && <LeadBlock lead={from.lead} removed={from.leadRemoved} off={busy} />}
 
       <Block title={W.coverPhoto}>
         <div className="ev-new-frame">
@@ -440,7 +458,7 @@ export function NewEventForm({ state }: { state: NewEventState | null }) {
             placeholder={N.currencyBlank}
             choices={CURRENCY_CHOICES}
             error={shown.currency}
-            help={N.defaultsHint(ORGANISATION)}
+            help={currencyHelp(from, N.defaultsHint(ORGANISATION))}
             off={busy}
             onChange={(currency) => change({ currency })}
           />
@@ -448,7 +466,7 @@ export function NewEventForm({ state }: { state: NewEventState | null }) {
       </Block>
 
       <div className="ev-new-foot">
-        {status === 'failed' && <Broken>{N.notCreated}</Broken>}
+        {status === 'failed' && <Broken>{from?.refusal ?? N.notCreated}</Broken>}
         {summary != null && (
           <p className="desk-error" role="alert">
             <Glyph name="alert" size={15} weight={2.2} />

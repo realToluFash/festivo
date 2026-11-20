@@ -2,7 +2,8 @@ import { emailProblem, phoneE164, phoneFields, phoneLengthProblem } from '@soire
 
 import { countryName } from './rules.ts';
 import type { DemoLink } from './settings.ts';
-import { STATIONS_EVENT } from './stations.ts';
+import { type Trail, SAMPLE_LINK } from './staffLink.ts';
+import { STATIONS_EVENT, SW, placesOf, sectionsOf, stationsStart } from './stations.ts';
 
 /** The Roster on the event's Staff page (sc-3906, Staffing.dc.html on page e34): who works the event, without making them members. */
 export const ORGANISATION = 'Ire Events';
@@ -16,10 +17,14 @@ export interface Entry {
   name: string;
   job: string | null;
   station: string | null;
+  /** The section the seating plan removed from under them, until they are given a station (sc-3910). */
+  gone?: string;
   shift: string | null;
+  more: readonly string[];
   mobile: string | null;
   email: string | null;
   link: 'opened' | 'sent' | 'copied' | 'none';
+  trail?: Trail | null;
 }
 
 export interface Draft {
@@ -40,7 +45,7 @@ export type Panel =
 
 export const RW = {
   title: 'Staff',
-  sub: 'Who works the event, where they work, and what each place dishes.',
+  sub: 'Who works the event, where they work, and what each station serves.',
   tabs: ['Roster', 'Jobs and shifts', 'Stations', 'Hours worked'],
   roster: 'Roster',
   add: 'Add a person',
@@ -81,7 +86,11 @@ export const RW = {
   added: (name: string) => `${name} added to the roster.`,
   member: (name: string) =>
     `${name} is a member of ${ORGANISATION}. Their shift will appear in their app.`,
-  removed: (name: string) => `[${name} removed from the event. Their shift is unassigned.]`,
+  removed: (name: string, shifts: number) =>
+    `[${name} removed from the event. ${shifts > 1 ? 'Their shifts are' : 'Their shift is'} unassigned.]`,
+  more: (n: number) => `+${n} more`,
+  jobLocked: (name: string) => `Unassign ${name} from their shifts first.`,
+  jobLockedHelp: 'Their job can change once they are on no shift.',
   notAdded: (name: string) => `[${name} was not added.]`,
   removeAsk: (name: string) => `Remove ${name} from the event?`,
   editTitle: (name: string) => `Edit ${name}`,
@@ -89,9 +98,10 @@ export const RW = {
   nextHours: 'Next: check the hours on Hours worked before the budget closes.',
   nextCopied: 'Next: once you have sent them the copied link, mark it as sent.',
   nextErasing: 'Next: nothing. Their mobile number and email are removed 30 days after the event.',
-  linksThere: '[Copy link, Mark as sent and Replace link are on Roster links.]',
   lock: 'You can see the roster. Changing it needs permission to manage staff.',
   stationChange: 'Change station',
+  noStationNow: 'No station',
+  sectionGone: (section: string) => `${section} was removed from the seating plan.`,
 };
 
 export const LINK_WORDS: Record<LinkState, string> = {
@@ -113,19 +123,13 @@ export const JOBS: readonly { job: string; station: string | null; shifts: reado
   { job: 'Door', station: 'Door', shifts: ['16:30 to 21:00'] },
 ];
 
-export const STATIONS: readonly string[] = [
-  'Pass',
-  'Door',
-  'Bar',
-  'Kitchen',
-  'Floor',
-  'Grill',
-  'Pastry',
-  'Section A',
-  'Section B',
-  'Section C',
-];
+const STATIONS_SAMPLE = stationsStart(null).state;
 
+/** sc-3910: the roster's Station picker is Stations' grouped list, Places then Seating sections. */
+export const STATION_GROUPS: readonly { label: string; stations: readonly string[] }[] = [
+  { label: SW.places, stations: placesOf(STATIONS_SAMPLE).map((one) => one.name) },
+  { label: SW.sections, stations: sectionsOf(STATIONS_SAMPLE).map((one) => one.name) },
+];
 /** Members of the organisation the roster can link to by mobile number or email. */
 export const MEMBERS: readonly { name: string; mobile: string; email: string }[] = [
   { name: 'Amara Obi', mobile: '+2348035550142', email: 'amara.obi@ireevents.com' },
@@ -141,10 +145,19 @@ export function linkOf(entry: Entry, erased: boolean): LinkState {
 const DAY = 24 * 60;
 const DAY_TURNS = 6 * 60;
 
-/** Minutes from 06:00, so a start after midnight sorts last; the product sorts on sc-3908's full start. */
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+/** Minutes from 06:00, so a start after midnight sorts last; a start that names its day ("Fri 6 Nov, 16:00") sorts by it. The product sorts on sc-3908's full start. */
 function startOf(entry: Entry): number | null {
   const clock = entry.shift?.split(' to ')[0];
   if (clock == null) return null;
+  const dated = /^\S+ (\d{1,2}) (\S+), (\d{2}):(\d{2})$/.exec(clock);
+  if (dated != null)
+    return (
+      Date.UTC(2026, MONTHS.indexOf(dated[2] as string), Number(dated[1])) / 60_000 +
+      Number(dated[3]) * 60 +
+      Number(dated[4])
+    );
   const [hours, minutes] = clock.split(':').map(Number);
 
   return ((hours as number) * 60 + (minutes as number) - DAY_TURNS + DAY) % DAY;
@@ -174,38 +187,62 @@ export function shiftLine(entry: Entry): string {
   return entry.job == null || entry.shift == null ? RW.noShift : `${entry.job} · ${entry.shift}`;
 }
 
-export function nextLine(entries: readonly Entry[], finished: boolean): string | null {
-  if (finished) return RW.nextHours;
+/** Every shift by start, each by job and times: the details and Remove's question. */
+export function shiftLines(entry: Entry, rw: typeof RW = RW): string[] {
+  if (entry.job == null || entry.shift == null) return [rw.noShift];
+
+  return [entry.shift, ...entry.more].map((one) => `${entry.job} · ${one}`);
+}
+
+/** A person has one job on the event: it changes only while they are on no shift (Decided, 18 Nov 2026). */
+export function jobLocked(editing: Entry | null, draft: Draft, rw: typeof RW = RW): string | null {
+  if (editing == null || editing.shift == null) return null;
+  if ((draft.job === '' ? null : draft.job) === editing.job) return null;
+
+  return rw.jobLocked(editing.name);
+}
+
+export function nextLine(
+  entries: readonly Entry[],
+  finished: boolean,
+  rw: typeof RW = RW,
+): string | null {
+  if (finished) return rw.nextHours;
   const unsent = entries.some(
     (one) => one.mobile != null && (one.link === 'none' || one.link === 'copied'),
   );
 
-  return unsent ? RW.nextSend : null;
+  return unsent ? rw.nextSend : null;
 }
 
-export function detailsNext(entry: Entry, finished: boolean, erased: boolean): string | null {
+export function detailsNext(
+  entry: Entry,
+  finished: boolean,
+  erased: boolean,
+  rw: typeof RW = RW,
+): string | null {
   if (erased) return null;
-  if (finished) return RW.nextErasing;
+  if (finished) return rw.nextErasing;
 
-  return linkOf(entry, false) === 'copied' ? RW.nextCopied : null;
+  return linkOf(entry, false) === 'copied' ? rw.nextCopied : null;
 }
 
 export type Problems = { name?: string; number?: string; email?: string };
 
 /** A blank name, a number the wrong length for its country, an email with no @ and domain; in the form's order. */
-export function problemsOf(draft: Draft, contact: boolean): Problems {
+export function problemsOf(draft: Draft, contact: boolean, rw: typeof RW = RW): Problems {
   const problems: Problems = {};
-  if (draft.name.trim() === '') problems.name = RW.blank;
+  if (draft.name.trim() === '') problems.name = rw.blank;
   if (!contact) return problems;
 
   const length = phoneLengthProblem(draft.number, draft.country);
   if (length === 'tooShort' || length === 'tooLong')
-    problems.number = RW.phoneLength(
+    problems.number = rw.phoneLength(
       length === 'tooShort' ? 'short' : 'long',
       countryName(draft.country),
     );
   if (draft.email.trim() !== '' && emailProblem(draft.email) === 'shape')
-    problems.email = RW.emailShape;
+    problems.email = rw.emailShape;
 
   return problems;
 }
@@ -255,6 +292,7 @@ export function entryFrom(draft: Draft, before: Entry | null): Entry {
     station:
       before != null && before.job === job ? before.station : (jobOf(draft.job)?.station ?? null),
     shift: job == null || draft.shift === '' ? null : draft.shift,
+    more: before != null && before.job === job && before.shift === draft.shift ? before.more : [],
     mobile,
     email: draft.email.trim() === '' ? null : draft.email.trim(),
     link: before != null && before.mobile === mobile ? before.link : 'none',
@@ -283,9 +321,24 @@ const entry = (
   mobile: string | null,
   link: Entry['link'],
   email: string | null = null,
-): Entry => ({ id, name, job, station, shift, mobile, email, link });
+): Entry => ({ id, name, job, station, shift, more: [], mobile, email, link });
+
+const TRAILS: Record<string, Trail> = {
+  bisi: { by: '', at: '18:20' },
+  tayo: { by: 'Amara Nwosu', at: '17:58' },
+  ifeoma: { by: '', at: '17:41' },
+  sade: { by: 'Amara Nwosu', at: '18:02' },
+  amina: { by: 'Amara Nwosu', at: '18:44' },
+  grace: { by: '', at: '19:05' },
+  kunle: { by: 'Amara Nwosu', at: '18:44' },
+  ronke: { by: '', at: '18:31' },
+};
 
 export function sample(): Entry[] {
+  return listed().map((one) => ({ ...one, trail: TRAILS[one.id] ?? null }));
+}
+
+function listed(): Entry[] {
   return [
     entry('bisi', 'Bisi Okon', 'Cook', 'Kitchen', '15:00 to 23:00', '+2348031110002', 'opened'),
     entry('tayo', 'Tayo Bamidele', 'Cook', 'Grill', '15:00 to 23:00', '+2348031110003', 'sent'),
@@ -300,7 +353,10 @@ export function sample(): Entry[] {
       'opened',
     ),
     entry('sade', 'Sade Lawal', 'Bar', 'Bar', '16:00 to 01:00', '+2348031110006', 'sent'),
-    entry('tolu', 'Tolu Bello', 'Door', 'Door', '16:30 to 21:00', '+2348031110007', 'none'),
+    {
+      ...entry('tolu', 'Tolu Bello', 'Door', 'Door', '16:30 to 21:00', '+2348031110007', 'none'),
+      more: ['23:00 to 02:00'],
+    },
     entry(
       'amina',
       'Amina Yusuf',
@@ -335,6 +391,41 @@ export function sample(): Entry[] {
   ];
 }
 
+const dated = (id: string, shift: string, ...more: string[]) => ({ id, shift, more });
+
+/** The wedding, Thu 5 Nov 18:00 to Sat 7 Nov 15:00 (sc-3908's weddingPlan): every start and end names its day. */
+const WEDDING: readonly { id: string; shift: string; more: string[] }[] = [
+  dated('bisi', 'Thu 5 Nov, 16:00 to 22:00', 'Fri 6 Nov, 14:00 to 23:00'),
+  dated('tayo', 'Thu 5 Nov, 16:00 to 22:00', 'Fri 6 Nov, 14:00 to 23:00'),
+  dated('ada', 'Fri 6 Nov, 14:00 to 23:00', 'Sat 7 Nov, 08:00 to 13:00'),
+  dated(
+    'ifeoma',
+    'Thu 5 Nov, 18:00 to 23:00',
+    'Fri 6 Nov, 16:00 to Sat 7 Nov, 01:00',
+    'Sat 7 Nov, 10:00 to 15:00',
+  ),
+  dated('sade', 'Fri 6 Nov, 16:00 to Sat 7 Nov, 01:00'),
+  dated(
+    'tolu',
+    'Thu 5 Nov, 17:30 to 21:00',
+    'Fri 6 Nov, 16:30 to 21:00',
+    'Fri 6 Nov, 23:00 to Sat 7 Nov, 02:00',
+  ),
+  dated('amina', 'Thu 5 Nov, 18:00 to 23:00', 'Fri 6 Nov, 17:00 to Sat 7 Nov, 00:00'),
+  dated('grace', 'Thu 5 Nov, 18:00 to 23:00', 'Fri 6 Nov, 17:00 to Sat 7 Nov, 00:00'),
+  dated('kunle', 'Fri 6 Nov, 17:00 to Sat 7 Nov, 00:00', 'Sat 7 Nov, 10:00 to 15:00'),
+  dated('ronke', 'Fri 6 Nov, 17:00 to Sat 7 Nov, 00:00'),
+  dated('emeka', 'Sat 7 Nov, 10:00 to 15:00'),
+];
+
+export function weddingSample(): Entry[] {
+  return sample().map((one) => {
+    const at = WEDDING.find((row) => row.id === one.id);
+
+    return at == null ? one : { ...one, shift: at.shift, more: at.more };
+  });
+}
+
 export interface RosterStart {
   name: string;
   note: string;
@@ -348,6 +439,15 @@ export interface RosterStart {
   warning: string | null;
   bar: string[] | null;
   failed: string | null;
+  /** What the demo's Copy link gets back: a link on the clipboard, no link issued, or a link the browser would not copy. */
+  copy: 'works' | 'notIssued' | 'refused';
+  held: { id: string; url: string } | null;
+  missed: string | null;
+  replacing: string | null;
+  /** The words of a Shift cell with no shift: the product's French, to measure the longest at 400% zoom (sc-71607). */
+  noShift: string;
+  /** The language of the Roster's words; French to measure the longest from 961 to 1279 px (sc-73291). */
+  lang: 'en' | 'fr';
 }
 
 function start(o: Partial<RosterStart> & Pick<RosterStart, 'name' | 'note'>): RosterStart {
@@ -362,12 +462,30 @@ function start(o: Partial<RosterStart> & Pick<RosterStart, 'name' | 'note'>): Ro
     warning: null,
     bar: null,
     failed: null,
+    copy: 'works',
+    held: null,
+    missed: null,
+    replacing: null,
+    noShift: RW.noShift,
+    lang: 'en',
     ...o,
   };
 }
 
+const FRENCH = { lang: 'fr', noShift: 'Aucun service pour l’instant' } as const;
+
 const typed = (o: Partial<Draft>): Draft => ({ ...draftOf(null), ...o });
 const byId = (id: string) => sample().find((one) => one.id === id) as Entry;
+
+function sectionRemovedEntries(): Entry[] {
+  return [
+    ...sample().map((one) => (one.id === 'emeka' ? { ...one, gone: 'Section D' } : one)),
+    {
+      ...entry('chidi', 'Chidi Okafor', 'Waiter', null, '17:00 to 00:00', '+2348031110014', 'sent'),
+      gone: 'Section D',
+    },
+  ];
+}
 
 const STATES = {
   populated: () =>
@@ -428,6 +546,7 @@ const STATES = {
           job: 'Waiter',
           station: null,
           shift: '17:00 to 00:00',
+          more: [],
           mobile: '+2348031110013',
           email: null,
           link: 'none',
@@ -447,6 +566,7 @@ const STATES = {
           job: 'Door',
           station: 'Door',
           shift: '16:30 to 21:00',
+          more: [],
           mobile: '+2348035550142',
           email: null,
           link: 'none',
@@ -457,13 +577,13 @@ const STATES = {
   details: () =>
     start({
       name: 'Details, Amina Yusuf',
-      note: 'Copied: the next step points to Roster links.',
+      note: 'Copied: the next step says to mark it as sent; Replace link under the Link.',
       panel: { kind: 'details', id: 'amina' },
     }),
   edit: () =>
     start({
       name: 'Edit, Kunle Ajayi',
-      note: 'Name, mobile, email, job and shift; no Station field.',
+      note: 'Name, mobile, email and job; no Station or Shift field.',
       panel: { kind: 'edit', id: 'kunle' },
       draft: draftOf(byId('kunle')),
     }),
@@ -482,6 +602,26 @@ const STATES = {
       note: 'Their shift by job and times, and Keep them.',
       panel: { kind: 'remove', id: 'kunle' },
     }),
+  removeTwoShifts: () =>
+    start({
+      name: 'Remove, someone on two shifts',
+      note: 'Tolu Bello: each shift named by job and times; each place is left open.',
+      panel: { kind: 'remove', id: 'tolu' },
+    }),
+  detailsShifts: () =>
+    start({
+      name: 'Details, every shift',
+      note: 'Tolu Bello is on two Door shifts: the row reads +1 more, the details list both by start.',
+      panel: { kind: 'details', id: 'tolu' },
+    }),
+  editJobOnShift: () =>
+    start({
+      name: 'Edit, the job changed while on a shift',
+      note: 'Kunle Ajayi from Waiter to Bar: refused until he is on no shift.',
+      panel: { kind: 'edit', id: 'kunle' },
+      draft: { ...draftOf(byId('kunle')), job: 'Bar' },
+      pressed: true,
+    }),
   finishedEvent: () =>
     start({
       name: 'Finished event',
@@ -499,6 +639,34 @@ const STATES = {
       panel: { kind: 'edit', id: 'kunle' },
       draft: { ...draftOf(byId('kunle')), number: '', email: '' },
     }),
+  nobodyOnShift: () =>
+    start({
+      name: 'Nobody on a shift yet',
+      note: 'Before shifts are handed out: every Shift cell reads Not on a shift yet, on one line at 400% zoom.',
+      entries: sample().map((one) => ({ ...one, shift: null, more: [] })),
+    }),
+  nobodyOnShiftFrench: () =>
+    start({
+      name: 'Nobody on a shift yet, the French words',
+      note: 'Each Shift cell holds the product’s French, Aucun service pour l’instant, still on one line at 400% zoom.',
+      entries: sample().map((one) => ({ ...one, shift: null, more: [] })),
+      noShift: 'Aucun service pour l’instant',
+    }),
+  sectionRemoved: () =>
+    start({
+      name: 'A section removed from the seating plan',
+      note: 'Section D’s people have no station now; their rows and details say why.',
+      entries: sectionRemovedEntries(),
+      panel: { kind: 'details', id: 'emeka' },
+    }),
+  sectionRemovedReadOnly: () =>
+    start({
+      name: 'A section removed, without staff.manage',
+      note: 'Emeka Obi’s details say No station and why, with no picker.',
+      manage: false,
+      entries: sectionRemovedEntries(),
+      panel: { kind: 'details', id: 'emeka' },
+    }),
   readOnly: () =>
     start({
       name: 'Without staff.manage',
@@ -513,6 +681,102 @@ const STATES = {
       panel: { kind: 'add' },
       draft: typed({ name: 'Kemi Ade', number: '0803 111 0013' }),
       failed: RW.notAdded('Kemi Ade'),
+    }),
+  longEvent: () =>
+    start({
+      name: 'An event over 24 hours, the wedding Thu 5 Nov to Sat 7 Nov',
+      note: 'Each Shift names its day; Tolu Bello’s details list all three by start.',
+      entries: weddingSample(),
+      panel: { kind: 'details', id: 'tolu' },
+    }),
+  linkCopied: () =>
+    start({
+      name: 'Copy link, copied',
+      note: 'Emeka Obi: Copied by Amara Nwosu, Mark as sent, and Link copied. said once the clipboard has it.',
+      entries: sample().map((one) =>
+        one.id === 'emeka'
+          ? { ...one, link: 'copied', trail: { by: 'Amara Nwosu', at: '19:12' } }
+          : one,
+      ),
+      bar: ['Link copied.'],
+    }),
+  linkNotIssued: () =>
+    start({
+      name: 'Copy link, no link issued',
+      note: 'No connection or a server error: nothing copied or recorded, Emeka’s row keeps No link yet. Copy link fails again in Play.',
+      copy: 'notIssued',
+      missed: 'emeka',
+    }),
+  linkRefused: () =>
+    start({
+      name: 'Copy link, the browser refuses the clipboard',
+      note: 'A link issued and shown to copy by hand, labelled Link for Emeka Obi; it counts as a copy. Copy link is refused again in Play.',
+      copy: 'refused',
+      entries: sample().map((one) =>
+        one.id === 'emeka'
+          ? { ...one, link: 'copied', trail: { by: 'Amara Nwosu', at: '19:12' } }
+          : one,
+      ),
+      held: { id: 'emeka', url: SAMPLE_LINK },
+    }),
+  replaceAsk: () =>
+    start({
+      name: 'Replace link, the question',
+      note: 'Grace Udo’s details, the centred dialog over them: Replace link or Keep this link.',
+      panel: { kind: 'details', id: 'grace' },
+      replacing: 'grace',
+    }),
+  replaced: () =>
+    start({
+      name: 'Replace link, replaced',
+      note: 'Every link Grace Udo was given has stopped working; her row is back to No link yet.',
+      entries: sample().map((one) =>
+        one.id === 'grace' ? { ...one, link: 'none', trail: null } : one,
+      ),
+      panel: { kind: 'details', id: 'grace' },
+      bar: ['[Grace Udo’s link is replaced. Copy link gives them a new one to send.]'],
+    }),
+  longEventRemove: () =>
+    start({
+      name: 'An event over 24 hours, Remove from the event',
+      note: 'Tolu Bello’s three shifts, each with its day.',
+      entries: weddingSample(),
+      panel: { kind: 'remove', id: 'tolu' },
+    }),
+  add: () =>
+    start({
+      name: 'Add a person, the form open',
+      note: 'Open it at 1000 × 800: the form comes before the Roster, which keeps its width.',
+      panel: { kind: 'add' },
+    }),
+  addEmpty: () =>
+    start({
+      name: 'Add a person, on an empty roster',
+      note: 'Open it at 1000 × 800: the form before Nobody on the staff yet.',
+      entries: [],
+      panel: { kind: 'add' },
+    }),
+  detailsFrench: () =>
+    start({
+      name: 'Details, Amina Yusuf, in French',
+      note: 'The product’s French, [bracketed] where l10n has not written it. Open it at 1000 × 800.',
+      panel: { kind: 'details', id: 'amina' },
+      ...FRENCH,
+    }),
+  addFrench: () =>
+    start({
+      name: 'Add a person, the form open, in French',
+      note: 'Open it at 1000 × 800: the form comes before the Roster.',
+      panel: { kind: 'add' },
+      ...FRENCH,
+    }),
+  addEmptyFrench: () =>
+    start({
+      name: 'Add a person, on an empty roster, in French',
+      note: 'Open it at 1000 × 800: the form before the empty Roster.',
+      entries: [],
+      panel: { kind: 'add' },
+      ...FRENCH,
     }),
 } satisfies Record<string, () => RosterStart>;
 
@@ -539,7 +803,19 @@ export const ROSTER_PAGES: readonly { name: string; states: readonly DemoLink[] 
   {
     name: 'The roster, and a person’s details',
     states: (
-      ['populated', 'empty', 'details', 'readOnly', 'finishedEvent', 'finishedErased'] as const
+      [
+        'populated',
+        'empty',
+        'nobodyOnShift',
+        'nobodyOnShiftFrench',
+        'details',
+        'detailsShifts',
+        'sectionRemoved',
+        'sectionRemovedReadOnly',
+        'readOnly',
+        'finishedEvent',
+        'finishedErased',
+      ] as const
     ).map(link),
   },
   {
@@ -559,6 +835,24 @@ export const ROSTER_PAGES: readonly { name: string; states: readonly DemoLink[] 
   },
   {
     name: 'Editing and removing',
-    states: (['edit', 'editDuplicateNumber', 'removeAsk'] as const).map(link),
+    states: (
+      ['edit', 'editJobOnShift', 'editDuplicateNumber', 'removeAsk', 'removeTwoShifts'] as const
+    ).map(link),
+  },
+  {
+    name: 'An event over 24 hours',
+    states: (['longEvent', 'longEventRemove'] as const).map(link),
+  },
+  {
+    name: 'A person’s own link (sc-3912)',
+    states: (['linkCopied', 'linkNotIssued', 'linkRefused', 'replaceAsk', 'replaced'] as const).map(
+      link,
+    ),
+  },
+  {
+    name: 'A desk window from 961 to 1279 px, an open person before the Roster (sc-73291)',
+    states: (
+      ['details', 'detailsFrench', 'add', 'addFrench', 'addEmpty', 'addEmptyFrench'] as const
+    ).map(link),
   },
 ];

@@ -13,6 +13,7 @@ import { Footnote, PrimaryButton, QuietButton } from './Buttons.tsx';
 import { CodeField, Field, focusChecked, keysStayDown, TextField } from './Field.tsx';
 import { Notice } from './Notice.tsx';
 import { Text } from './Text.tsx';
+import { signInOver } from '../steps/signInOver.ts';
 
 type Status =
   | { kind: 'ready' }
@@ -217,7 +218,10 @@ export function SecondFactorStep({
 
         <QuietButton
           label={t('twoFactor.back')}
-          onPress={() => router.replace('/sign-in')}
+          onPress={() => {
+            signInOver(false);
+            router.replace('/sign-in');
+          }}
           testID="twoFactor.back"
         />
 

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domain\RunOfShow;
 
 use App\Audit\Auditor;
+use App\Domain\RunOfShow\Card\RunOfShowCards;
 use App\Domain\RunOfShow\Http\ScheduleSerialiser;
 use App\Domain\RunOfShow\Model\ItemDetails;
 use App\Domain\RunOfShow\Model\PressLoss;
@@ -56,6 +57,7 @@ final readonly class ScheduleEditor
         private Auditor $auditor,
         private RealtimePublisher $realtimePublisher,
         private ScreenSignal $screenSignal,
+        private RunOfShowCards $runOfShowCards,
         private ClockInterface $clock,
     ) {
     }
@@ -111,10 +113,10 @@ final readonly class ScheduleEditor
         return $item;
     }
 
-    /** A press that changes nothing is still kept, so a late earlier press can make it count, unless it would have changed another item on its track; the same key answers as the first time (sc-3895). */
-    public function press(Event $event, ScheduleItem $item, PressKind $kind, DateTimeImmutable $pressedAt, string $key, string $fingerprint, User $by): void
+    /** A press that changes nothing is still kept, so a late earlier press can make it count, unless it would have changed another item on its track; the same key answers as the first time (sc-3895). One taken sends its track's card (sc-66580). */
+    public function press(Event $event, ScheduleItem $item, PressKind $kind, DateTimeImmutable $pressedAt, string $key, string $fingerprint, User $by, bool $fromCard = false): void
     {
-        $loss = $this->locked($event, function () use ($event, $item, $kind, $pressedAt, $key, $fingerprint, $by): ?PressLoss {
+        $loss = $this->locked($event, function () use ($event, $item, $kind, $pressedAt, $key, $fingerprint, $by, $fromCard): ?PressLoss {
             $sent = $this->schedulePressRepository->findOneByKey($by, $key);
 
             if (null !== $sent) {
@@ -129,7 +131,7 @@ final readonly class ScheduleEditor
                 return $this->replayed($event)->losses[$sent->getId()->toRfc4122()] ?? self::answered($sent);
             }
 
-            $press = new SchedulePress($event, $item, $kind, $this->clamped($event, $pressedAt), $key, $fingerprint, $by, $by->getName());
+            $press = new SchedulePress($event, $item, $kind, $this->clamped($event, $pressedAt), $key, $fingerprint, $by, $by->getName(), $fromCard);
             $this->entityManager->persist($press);
             $this->entityManager->flush();
 
@@ -148,6 +150,7 @@ final readonly class ScheduleEditor
 
             if (null === $loss) {
                 $this->auditor->record(self::PRESSED[$kind->value], 'ScheduleItem', $item->getId(), Actor::User, $by->getId(), $by->getName(), ['pressedAt' => [null, $press->getPressedAt()->format(\DATE_ATOM)]]);
+                $this->runOfShowCards->pressed($event, $press);
             }
 
             return $loss;

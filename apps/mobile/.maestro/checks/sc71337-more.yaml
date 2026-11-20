@@ -1,0 +1,14 @@
+# sc-71337: an account with no organisation, on an event, opens More: Your events with Under way and You're here.
+appId: host.exp.Exponent
+---
+- setOrientation: ${ORIENT}
+- openLink: ${METRO_URL}/--/events/${EV}
+- extendedWaitUntil: { visible: { id: never.there }, timeout: 6000, optional: true }
+- waitForAnimationToEnd
+- tapOn: { id: event.nav.more, optional: true }
+- extendedWaitUntil: { visible: { id: never.there }, timeout: 4000, optional: true }
+- waitForAnimationToEnd
+- takeScreenshot: more
+- scroll
+- waitForAnimationToEnd
+- takeScreenshot: more-scrolled

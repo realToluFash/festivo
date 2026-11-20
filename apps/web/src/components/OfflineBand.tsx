@@ -2,6 +2,7 @@ import { fallsOnEarlierDay, formatDay, formatTimeOfDay, nextMidnight } from '@so
 import {
   type ReactNode,
   type Ref,
+  useCallback,
   useContext,
   useEffect,
   useLayoutEffect,
@@ -14,14 +15,41 @@ import { useTranslation } from 'react-i18next';
 import { dateLocale } from '../i18n/index.ts';
 import { type Stale, StaleScreen } from '../offline.ts';
 import { TextAction } from './SettingsParts.tsx';
+import './SettingsParts.css';
 import './OfflineBox.css';
 
 export function OfflineProvider({ children }: { children: ReactNode }) {
-  const [stale, show] = useState<Stale | null>(null);
+  const [shown, setShown] = useState<ReadonlyMap<symbol, Stale>>(new Map());
   const [hushed, hush] = useState(false);
-  const value = useMemo(() => ({ stale, show, hushed, hush }), [stale, hushed]);
+  const show = useCallback((screen: symbol, stale: Stale | null) => {
+    setShown((was) => {
+      if (stale == null && !was.has(screen)) return was;
+
+      const next = new Map(was);
+
+      if (stale == null) next.delete(screen);
+      else next.set(screen, stale);
+
+      return next;
+    });
+  }, []);
+  const stale = useMemo(() => together([...shown.values()]), [shown]);
+  const value = useMemo(() => ({ stale, show, hushed, hush }), [stale, show, hushed]);
 
   return <StaleScreen.Provider value={value}>{children}</StaleScreen.Provider>;
+}
+
+/** An event and its area each load on their own (sc-65646): the box says when the event last loaded, and Try again asks for both. */
+function together(stales: Stale[]): Stale | null {
+  if (stales.length <= 1) return stales[0] ?? null;
+
+  const event = stales.find((stale) => stale.event);
+
+  return {
+    at: event?.at ?? new Date(Math.min(...stales.map((stale) => stale.at.getTime()))),
+    retry: () => stales.forEach((stale) => stale.retry()),
+    unanswered: stales.reduce((sum, stale) => sum + stale.unanswered, 0),
+  };
 }
 
 /** Under the header, taking its own room: what was in view stays in view, as `ReleaseBand` keeps it. */

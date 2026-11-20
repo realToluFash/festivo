@@ -1,20 +1,22 @@
-import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import { RouterProvider, createMemoryRouter } from 'react-router';
 import { beforeEach, describe, expect, it } from 'vitest';
 
 import { __setConfig, config } from '../config.ts';
 import { routes } from '../routes/index.tsx';
-import { MW, PERSON, type MealStateName, mealAt } from './mealStep.ts';
+import { MSW } from './mealClose.ts';
+import { type CloseStateName, MW, PERSON, type MealStateName, mealAt } from './mealStep.ts';
 
 const tested = config();
 const SLOW = { timeout: 20000 };
 const WAIT = { timeout: 8000 };
 
-async function meal(state: MealStateName) {
+async function meal(state: MealStateName | CloseStateName, ready: string = MW.next) {
   cleanup();
   const router = createMemoryRouter(routes, { initialEntries: [mealAt(state)] });
   render(<RouterProvider router={router} />);
-  await screen.findByRole('button', { name: MW.next }, WAIT);
+  if (ready === MSW.title) await screen.findByRole('heading', { name: ready }, WAIT);
+  else await screen.findByRole('button', { name: ready }, WAIT);
 }
 
 const next = () => fireEvent.click(screen.getByRole('button', { name: MW.next }));
@@ -93,4 +95,136 @@ describe('the meal step on the guest’s page (sc-3904)', () => {
       expect(screen.getByText(`${PERSON} · Main · 2 of 2`)).toBeTruthy();
     },
   );
+});
+
+describe('when picks close, on the meal step (sc-3905)', () => {
+  const row = (course: string): HTMLElement =>
+    screen.getByText(course, { selector: '.mx-course' }).closest('li') as HTMLElement;
+  const send = () => fireEvent.click(screen.getByRole('button', { name: MSW.send }));
+
+  it('changes a pick, holds it as not sent, then saves it', SLOW, async () => {
+    await meal('picksOpen', MSW.send);
+    send();
+    expect(screen.getByRole('status').textContent).toBe(MSW.nothingToSend);
+    fireEvent.click(screen.getByRole('button', { name: `Change main for ${PERSON}` }));
+    fireEvent.click(screen.getByRole('radio', { name: /Grilled croaker/ }));
+    next();
+    expect(within(row('Main')).getByText(MSW.notSent)).toBeTruthy();
+    send();
+    expect(screen.getByRole('status').textContent).toBe(MSW.saved);
+    expect(within(row('Main')).queryByText(MSW.notSent)).toBeNull();
+  });
+
+  it(
+    'greys a closed course with no Change, and asks the hosts once all have closed',
+    SLOW,
+    async () => {
+      await meal('oneClosed', MSW.send);
+      expect(within(row('Starter')).getByText('Picks closed on Friday, Oct 16.')).toBeTruthy();
+      expect(screen.queryByRole('button', { name: `Change starter for ${PERSON}` })).toBeNull();
+
+      await meal('allClosed', MSW.title);
+      expect(screen.queryByRole('button', { name: MSW.send })).toBeNull();
+      expect(screen.getByText(MSW.askHosts)).toBeTruthy();
+    },
+  );
+
+  it('refuses the closed course and saves the open one in the same send', SLOW, async () => {
+    await meal('refused', MSW.send);
+    send();
+    const alert = screen.getByRole('alert');
+    expect(alert.textContent).toBe(
+      'Picks for Starter closed on Friday, Oct 16, so your change was not saved.',
+    );
+    expect(document.activeElement).toBe(alert);
+    expect(within(row('Starter')).getByText('Canapé selection')).toBeTruthy();
+    expect(within(row('Main')).getByText('Grilled croaker')).toBeTruthy();
+    expect(screen.getByRole('status').textContent).toBe(MSW.otherSaved);
+
+    await meal('refusedClosedToo', MSW.send);
+    send();
+    expect(screen.getAllByRole('alert')).toHaveLength(2);
+    expect(within(row('Main')).getByText('Jollof rice')).toBeTruthy();
+    expect(screen.getByRole('status').textContent).toBe('');
+    expect(screen.queryByRole('button', { name: MSW.send })).toBeNull();
+  });
+
+  it('shows a closed course’s screen as its pick, and goes on to the next', SLOW, async () => {
+    await meal('courseClosed', MW.next);
+    expect(heading()).toBe('[Your starter]');
+    expect(screen.queryByRole('radio')).toBeNull();
+    next();
+    expect(heading()).toBe('Main');
+  });
+});
+
+describe('a course’s default on the meal step (sc-1362)', () => {
+  const row = (course: string): HTMLElement =>
+    screen.getByText(course, { selector: '.mx-course' }).closest('li') as HTMLElement;
+  const waiting =
+    'Choose your starter by Friday, Oct 16. If you have not chosen by then, Canapé selection will be waiting for you.';
+
+  it('says the default will be waiting until the person answers', SLOW, async () => {
+    await meal('chooseByBefore', MW.next);
+    expect(document.getElementById('ms-close')?.textContent).toBe(waiting);
+    fireEvent.click(screen.getByRole('radio', { name: /Pepper soup/ }));
+    expect(document.getElementById('ms-close')?.textContent).toBe('Picks close Friday, Oct 16.');
+
+    await meal('chooseByBack', MSW.send);
+    expect(within(row('Starter')).getByText(waiting)).toBeTruthy();
+    expect(within(row('Main')).getByText('Picks close Monday, Oct 19.')).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: `Change starter for ${PERSON}` }));
+    fireEvent.click(screen.getByRole('radio', { name: /Pepper soup/ }));
+    next();
+    expect(within(row('Starter')).getByText('Picks close Friday, Oct 16.')).toBeTruthy();
+  });
+
+  it('names a companion in the line', SLOW, async () => {
+    await meal('chooseByCompanion', MSW.send);
+    expect(
+      within(row('Starter')).getByText(
+        'Choose a starter for Kofi by Friday, Oct 16. If none is chosen by then, Canapé selection will be waiting for Kofi.',
+      ),
+    ).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Change starter for Kofi' })).toBeTruthy();
+  });
+
+  it('never mentions the default to someone it leaves out', SLOW, async () => {
+    await meal('excludedBefore', MSW.send);
+    expect(within(row('Starter')).getByText('Picks close Friday, Oct 16.')).toBeTruthy();
+    expect(within(row('Starter')).queryByText(/Canapé selection/)).toBeNull();
+
+    await meal('excludedAfter', MSW.send);
+    expect(
+      within(row('Starter')).getByText(
+        '[You hadn’t chosen a starter by then. The host will be in touch about it.]',
+      ),
+    ).toBeTruthy();
+    expect(within(row('Starter')).queryByText(MSW.notChosen)).toBeNull();
+    expect(screen.queryByRole('button', { name: `Change starter for ${PERSON}` })).toBeNull();
+  });
+
+  it('shows the default given to someone who never answered', SLOW, async () => {
+    await meal('defaulted', MSW.send);
+    expect(within(row('Starter')).getByText('Canapé selection')).toBeTruthy();
+    expect(
+      within(row('Starter')).getByText('You had not chosen by then, so this is your starter.'),
+    ).toBeTruthy();
+
+    await meal('refusedNoPick', MSW.send);
+    fireEvent.click(screen.getByRole('button', { name: MSW.send }));
+    expect(within(row('Starter')).getByText('Canapé selection')).toBeTruthy();
+    expect(
+      within(row('Starter')).getByText('You had not chosen by then, so this is your starter.'),
+    ).toBeTruthy();
+
+    await meal('refusedExcluded', MSW.send);
+    fireEvent.click(screen.getByRole('button', { name: MSW.send }));
+    expect(
+      within(row('Starter')).getByText(
+        '[You hadn’t chosen a starter by then. The host will be in touch about it.]',
+      ),
+    ).toBeTruthy();
+    expect(within(row('Starter')).queryByText('Canapé selection')).toBeNull();
+  });
 });

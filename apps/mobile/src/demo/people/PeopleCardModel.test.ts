@@ -30,7 +30,7 @@ describe('the People card', () => {
     expect(cardFacts(start.onEvent, start.viewer)).toEqual(
       cardFacts(sampleOnEvent(), PEOPLE_VIEWERS.julien),
     );
-    expect(start.href).toBe('/demo/people?state=readOnly');
+    expect(start.opens).toBe('readOnly');
   });
 
   it('names a long Lead in full', () => {
@@ -41,6 +41,6 @@ describe('the People card', () => {
 
   it('reads an unknown state as the populated card', () => {
     expect(cardStateOf('nope')).toBeNull();
-    expect(cardStart(null).href).toBe('/demo/people');
+    expect(cardStart(null).opens).toBeNull();
   });
 });

@@ -1,4 +1,9 @@
-import { type Membership, primaryEmailAddress } from '@soirely/api-client';
+import {
+  type ManagedAccount,
+  type Membership,
+  type OutsideEvent,
+  primaryEmailAddress,
+} from '@soirely/api-client';
 import {
   PHONE_EVENT_TABS,
   createNewOrganisation,
@@ -20,6 +25,7 @@ import {
   useState,
 } from 'react';
 import {
+  type LayoutChangeEvent,
   Pressable,
   ScrollView,
   type ScrollViewInstance,
@@ -36,7 +42,7 @@ import { useTranslation } from 'react-i18next';
 
 import { api } from '../api.ts';
 import { usePushTaps } from '../appPush.ts';
-import { useWaitingInvitations } from '../invitations.ts';
+import { type WaitingInvitations, useWaitingInvitations } from '../invitations.ts';
 import { useDomainOffer } from '../joinOffers.ts';
 import {
   DESTINATION_HREF,
@@ -49,10 +55,20 @@ import { backRowHiding } from '../kit/backRow.ts';
 import { type Currencies, freshWalk } from '../kit/createWalk.ts';
 import { phonePillAlone } from '../kit/frameBand.ts';
 import { EDGE_SWIPE_WIDTH, headerDrawsBack, stackSwipes } from '../kit/systemBack.ts';
-import { EVENT_PLACES, type EventPlace, MORE_PLACES } from '../kit/eventNav.ts';
+import { EVENT_PLACES, type EventPlace, MORE_PLACES, eventHref } from '../kit/eventNav.ts';
+import { useServerNow } from '../kit/serverNow.ts';
+import {
+  OUTSIDE_TABS,
+  outsideGroups,
+  outsideHref,
+  outsideMore,
+  outsidePlaces,
+  switcherOutside,
+} from '../kit/outsideEvent.ts';
 import { leaveThen } from '../leaveHeld.ts';
 import { frameTitleSize } from '../layout/textSize.ts';
-import { backLeast, backScale } from '../layout/focusedHeader.ts';
+import { backScale } from '../layout/focusedHeader.ts';
+import { statusFits } from '../layout/titleFit.ts';
 import {
   type LayoutKind,
   useAccessibilitySizes,
@@ -73,7 +89,7 @@ import { FrameSwitch, switchByTap, useFrameSwitch } from '../tappedSwitch.ts';
 import { switcherFocusBack } from '../kit/focusBack.ts';
 import { tokens } from '../theme/tokens.ts';
 import { useTwoFactorStanding } from '../twoFactorStanding.ts';
-import { BellButton } from './BellButton.tsx';
+import { BellButton, BellInPane } from './BellButton.tsx';
 import { SearchAndBell } from './SearchButton.tsx';
 import { SEARCH_HREF } from '../kit/searchLinks.ts';
 import { CreateWalkWindow, type WalkOpening, deviceNow } from './CreateWalkWindow.tsx';
@@ -109,15 +125,17 @@ import {
   type TodayShell,
   TodayShellProvider,
 } from './todayShell.ts';
+import { ManagedBanner } from './ManagedBanner.tsx';
 import { OrgDropDown } from './OrgDropDown.tsx';
 import { AREA_GLYPH } from './areaGlyph.ts';
 import { ReadOut } from './ReadOut.tsx';
-import { Row, RowList } from './SummaryRows.tsx';
-import { Back } from './SettingsParts.tsx';
+import { Row, RowList, TextAction } from './SummaryRows.tsx';
+import { OutsideEventsGroup, YourOrganisationsGroup } from './OutsideRows.tsx';
+import { Back, useBackWord } from './SettingsParts.tsx';
 import { SETTLED_MS, useFocusOnAnswer, useWindowOrigin } from './Screen.tsx';
 import type { ScreenReaderTarget } from './screenReaderFocus.ts';
 import { type TextHandle, Text, TitleCap } from './Text.tsx';
-import { Title } from './Title.tsx';
+import { PageTitleDrawn, Title, useTitleCap } from './Title.tsx';
 import { PAGE_TITLE, pageTitle } from './topTitle.ts';
 import { TopPrimary, type TopPrimaryProps, usePrimaryLabel } from './TopPrimary.tsx';
 import { ListTop, PortraitRow, PortraitTop } from './ListTop.tsx';
@@ -177,11 +195,15 @@ export function useFrameOrgOpener(ref: OpenerRef, primary = true): OrgOpening {
   };
 }
 
-type OrganisationStart = Opening;
+interface OrganisationStart {
+  open: Opening;
+  /** sc-563: undefined until the API has said, and then the refusal a managed account reads instead. */
+  managed: ManagedAccount | null | undefined;
+}
 
 const StartOrganisation = createContext<OrganisationStart | undefined>(undefined);
 
-/** Opens the frame's Create an organisation sheet, as the switcher's last row does (sc-5932). */
+/** Opens the frame's Create an organisation sheet, as the switcher's last row does (sc-5932), unless the account is managed. */
 export function useStartOrganisation(): OrganisationStart | undefined {
   return useContext(StartOrganisation);
 }
@@ -207,6 +229,10 @@ export interface InsideEvent {
   card: { event: Shown | null; now: Date };
   /** The landscape sidebar's ‹ when it goes somewhere other than Events, as a copy's ‹ Event up to its original. */
   up?: { label: string; onPress: () => void } | undefined;
+  /** Held from outside an organisation (sc-71): its level's areas, no way back to Events, and in More the account's other events, a member's organisations (sc-68438), Your account and Sign out. */
+  outside?: { id: string; role: OutsideEvent['role'] } | undefined;
+  /** Nothing above the body: held from outside at a reading level, Overview's card heads the page, as the demo's `more-in` draws it (sc-71). */
+  bare?: boolean | undefined;
 }
 
 interface NavEntry {
@@ -216,6 +242,8 @@ interface NavEntry {
   on: boolean;
   onPress: () => void;
   testID: string;
+  /** The entry a sheet it opens gives focus back to. */
+  opener?: RefObject<ViewInstance | null>;
 }
 
 function areaEntry(t: (key: string) => string, inside: InsideEvent, area: EventPlace): NavEntry {
@@ -257,8 +285,8 @@ export function AppFrame({
   underTitle?: ReactNode;
   /** At the end of the title's row, as Members' Refreshing… (sc-27046). */
   besideTitle?: ReactNode;
-  /** At the end of the header's back row, where it has one, as an event page's Refreshing… (sc-27046). */
-  besideBack?: ReactNode;
+  /** At the end of the header's back row, where it has one, as an event page's Refreshing… (sc-27046); or one that gives way to the pill, as Guests' (sc-71821). */
+  besideBack?: BesideBackNode;
   /** Inside an event, its areas take the navigation's place. */
   inEvent?: InsideEvent | undefined;
   /** The body names the page itself (an event's Overview card, a member's own card in front of the list), so the frame draws no title (sc-30413, sc-37693). */
@@ -341,7 +369,37 @@ export function AppFrame({
   useEffect(() => navigation.setOptions({ gestureEnabled: stackSwipe }), [navigation, stackSwipe]);
   const signedIn = useSignedIn();
   usePushTaps(signedIn.account?.id);
-  const entries = inEvent == null ? [] : EVENT_PLACES.map((area) => areaEntry(t, inEvent, area));
+  const now = useServerNow();
+  const [outsideMoreOpen, setOutsideMoreOpen] = useState(false);
+  const moreOpener = useRef<ViewInstance>(null);
+  const outsideHere = inEvent?.outside?.id;
+  const heldGroups = outsideGroups(signedIn);
+  // Upright on a tablet, held from outside, the capsule's More holds the account's groups, as the demo's Inside draws it (sc-68438).
+  const uprightMore =
+    kind === 'tabletPortrait' &&
+    outsideHere != null &&
+    (heldGroups.organisations || heldGroups.events);
+  const entries =
+    inEvent == null
+      ? []
+      : [
+          ...(inEvent.outside == null ? EVENT_PLACES : outsidePlaces(inEvent.outside.role)).map(
+            (area) => areaEntry(t, inEvent, area),
+          ),
+          ...(uprightMore
+            ? [
+                {
+                  key: 'more',
+                  label: t('eventNav.more'),
+                  glyph: 'dots' as const,
+                  on: false,
+                  onPress: () => setOutsideMoreOpen(true),
+                  testID: 'event.nav.more',
+                  opener: moreOpener,
+                },
+              ]
+            : []),
+        ];
   const waiting = useWaitingInvitations();
   const offer = useDomainOffer();
   const count = waitingInvitations(waiting.invitations, waiting.outcomes);
@@ -439,7 +497,7 @@ export function AppFrame({
     walkBack.current = opener;
     setWalking((last) => ({
       visit: (last?.visit ?? 0) + 1,
-      walk: freshWalk(deviceNow()),
+      walk: { ...freshWalk(deviceNow()), managed: offer.managed != null },
       focus: 'name',
       toPick: false,
       opener: walkOpener,
@@ -501,11 +559,15 @@ export function AppFrame({
         {switchedWords}
       </View>
     ) : null;
+  const titleCap = useTitleCap(`${kind}|${untitled}|${title}`, PAGE_TITLE);
+  // A page the frame draws no title for is capped only by a title its body draws, as an event area's (sc-67338).
+  const cap = framed && (titleCap.drawn || !untitled) ? titleCap.cap : null;
   const header: FrameHeaderProps = {
     current,
     kind,
     entries,
     inEvent: inEvent != null,
+    bare: inEvent?.bare === true,
     title,
     titleRef: frameTitle,
     switchAnswer: bodyTakesSwitch || standIn != null ? undefined : switchAnswer,
@@ -522,6 +584,8 @@ export function AppFrame({
     besideBack: standIn == null || besideBack === undefined ? besideBack : null,
     switched: ownTop ? switchedNotice : null,
     untitled,
+    cap,
+    onTitleDrawn: titleCap.onDrawn,
   };
 
   return (
@@ -538,10 +602,12 @@ export function AppFrame({
               inEvent={inEvent != null}
               card={inEvent?.card}
               up={inEvent?.up}
+              outside={inEvent?.outside?.id ?? null}
               organisation={signedIn.organisation}
               waiting={count}
               onSwitch={switchFromPill}
               pill={pill}
+              cap={titleCap.cap}
             />
           )}
           <View style={[styles.column, sidebar && side.card]}>
@@ -566,39 +632,51 @@ export function AppFrame({
                 },
               ]}
             >
-              {!ownTop && switchedNotice}
-              <OpenSwitcher.Provider value={openSwitcher}>
-                <StartOrganisation.Provider value={startOrganisation}>
-                  <HideBack.Provider value={backRow.hide}>
-                    <EdgeSwipeStrip.Provider value={setEdgeSwipe}>
-                      {standIn === 'paused' && signedIn.pausedIn != null ? (
-                        <AccessPaused
-                          paused={signedIn.pausedIn}
-                          others={signedIn.organisations}
-                          onSwitch={(next) => switchByTap(next.id)}
-                          onChoose={(opener) => openSwitcher?.(opener)}
-                        />
-                      ) : standIn === 'overdue' && signedIn.organisation != null ? (
-                        <TwoFactorOverdue
-                          organisation={signedIn.organisation.name}
-                          answer={switchAnswer ?? lapsed}
-                          headingRef={overdueHeading}
-                          onTurnOn={() => router.navigate(SECTION_HREF.security)}
-                          onSignOut={signOutHere}
-                        />
-                      ) : (
-                        <FrameSwitch.Provider value={switchAnswer}>
-                          <ScrolledTop.Provider value={ownTop && top === 'scrolls' ? header : null}>
-                            <BodySwitched.Provider value={bodySwitched}>
-                              <UnderTabsProvider value={underTabs}>{children}</UnderTabsProvider>
-                            </BodySwitched.Provider>
-                          </ScrolledTop.Provider>
-                        </FrameSwitch.Provider>
-                      )}
-                    </EdgeSwipeStrip.Provider>
-                  </HideBack.Provider>
-                </StartOrganisation.Provider>
-              </OpenSwitcher.Provider>
+              <PageTitleDrawn.Provider value={titleCap.onDrawn}>
+                <TitleCap.Provider value={cap}>
+                  {!ownTop && switchedNotice}
+                  <OpenSwitcher.Provider value={openSwitcher}>
+                    <StartOrganisation.Provider
+                      value={{ open: startOrganisation, managed: offer.managed }}
+                    >
+                      <HideBack.Provider value={backRow.hide}>
+                        <EdgeSwipeStrip.Provider value={setEdgeSwipe}>
+                          {standIn === 'paused' && signedIn.pausedIn != null ? (
+                            <AccessPaused
+                              paused={signedIn.pausedIn}
+                              others={signedIn.organisations}
+                              onSwitch={(next) => switchByTap(next.id)}
+                              onChoose={(opener) => openSwitcher?.(opener)}
+                            />
+                          ) : standIn === 'overdue' && signedIn.organisation != null ? (
+                            <TwoFactorOverdue
+                              organisation={signedIn.organisation.name}
+                              answer={switchAnswer ?? lapsed}
+                              headingRef={overdueHeading}
+                              onTurnOn={() => router.navigate(SECTION_HREF.security)}
+                              onSignOut={signOutHere}
+                            />
+                          ) : (
+                            <FrameSwitch.Provider value={switchAnswer}>
+                              <ScrolledTop.Provider
+                                value={ownTop && top === 'scrolls' ? header : null}
+                              >
+                                <BodySwitched.Provider value={bodySwitched}>
+                                  <UnderTabsProvider value={underTabs}>
+                                    <BellInPane.Provider value={sidebar && untitled}>
+                                      {children}
+                                    </BellInPane.Provider>
+                                  </UnderTabsProvider>
+                                </BodySwitched.Provider>
+                              </ScrolledTop.Provider>
+                            </FrameSwitch.Provider>
+                          )}
+                        </EdgeSwipeStrip.Provider>
+                      </HideBack.Provider>
+                    </StartOrganisation.Provider>
+                  </OpenSwitcher.Provider>
+                </TitleCap.Provider>
+              </PageTitleDrawn.Provider>
             </View>
             {floatingTabs && <FrameTabBar current={current} organisation={signedIn.organisation} />}
             {eventTabs && inEvent != null && <TabBar inEvent={inEvent} />}
@@ -609,6 +687,15 @@ export function AppFrame({
               accessibilityElementsHidden
               importantForAccessibility="no-hide-descendants"
               {...edgeSwipe}
+            />
+          )}
+          {uprightMore && outsideHere != null && (
+            <OutsideYouSheet
+              here={outsideHere}
+              open={outsideMoreOpen}
+              opener={moreOpener}
+              name={t('eventNav.more')}
+              onClose={() => setOutsideMoreOpen(false)}
             />
           )}
           {drop != null && (
@@ -628,6 +715,15 @@ export function AppFrame({
               open={choosing}
               back={switcherOpener}
               email={email}
+              managed={managedRefusal(waiting, () => {
+                closeSwitcher();
+                setTimeout(() => router.push('/settings/account'), SETTLED_MS);
+              })}
+              events={switcherOutside(signedIn, now)}
+              onEvent={(eventId) => {
+                closeSwitcher();
+                router.push(eventHref(eventId));
+              }}
               onClose={closeSwitcher}
               onPick={(id) => {
                 closeSwitcher();
@@ -668,6 +764,19 @@ export function AppFrame({
               email={email}
               statusBar="dark"
               currencies={currencies}
+              managedBanner={
+                offer.managed == null ? undefined : (
+                  <ManagedBanner
+                    organisation={offer.managed.organisation.name}
+                    message={offer.managed.message}
+                    onChange={() => {
+                      setCreating(false);
+                      setTimeout(() => router.push('/settings/account'), SETTLED_MS);
+                    }}
+                    testID="createWalk.managed"
+                  />
+                )
+              }
               create={(walk) =>
                 createNewOrganisation((organisation) => api.createOrganisation(organisation), walk)
               }
@@ -697,7 +806,7 @@ interface FrameHeaderProps {
   primary: TopPrimaryProps | undefined;
   underTitle: ReactNode;
   besideTitle: ReactNode;
-  besideBack: ReactNode;
+  besideBack: BesideBackNode;
   entries: readonly NavEntry[];
   inEvent: boolean;
   title: string;
@@ -714,6 +823,11 @@ interface FrameHeaderProps {
   switched: ReactNode;
   /** A page whose body names it (an event's Overview card, a member's own card in front of the list), so the frame draws no title. */
   untitled: boolean;
+  /** No title, back or bell above the body; upright, the area pills alone. */
+  bare: boolean;
+  /** The size the title drew at, which nothing under it outgrows; null where nothing caps (sc-67338). */
+  cap: number | null;
+  onTitleDrawn: (size: number) => void;
 }
 
 const ScrolledTop = createContext<FrameHeaderProps | null>(null);
@@ -731,7 +845,12 @@ export function FrameTop({
 
   if (top == null) return null;
 
-  return <ScreenTop {...top} style={style} rowStyle={rowStyle} />;
+  // The pill and the bell keep their own sizes; ScreenTop caps Back and what is under the title (sc-67338, sc-67471).
+  return (
+    <TitleCap.Provider value={null}>
+      <ScreenTop {...top} style={style} rowStyle={rowStyle} />
+    </TitleCap.Provider>
+  );
 }
 
 const BodySwitched = createContext<ReactNode>(null);
@@ -793,6 +912,8 @@ function ScreenTop({
   besideBack,
   switched,
   untitled,
+  cap,
+  onTitleDrawn,
   stays = false,
   style,
   rowStyle,
@@ -806,14 +927,14 @@ function ScreenTop({
   const backView =
     back == null || backHidden ? null : (
       <BesideBack beside={besideBack}>
-        <Back label={back.label} onPress={back.onPress} off={back.off} testID="frame.back" />
+        <FrameBack back={back} cap={cap} besideShown={shownBeside(besideBack)} />
       </BesideBack>
     );
   const under = (
-    <>
+    <TitleCap.Provider value={cap}>
       {underTitle}
       {switched}
-    </>
+    </TitleCap.Provider>
   );
   const staysStyle = stays && LIST_EDGES[kind];
   const label = usePrimaryLabel({
@@ -831,6 +952,7 @@ function ScreenTop({
         kind={kind}
         title={title}
         titleRef={read}
+        onTitleDrawn={onTitleDrawn}
         pill={
           organisation != null && (
             <OrgPill organisation={organisation} waiting={waiting} onSwitch={onSwitch} ref={pill} />
@@ -850,7 +972,13 @@ function ScreenTop({
     <View style={[styles.topRow, styles.pageRow, rowStyle]}>
       <View style={styles.fill} onLayout={label.onSlot}>
         {label.measure}
-        <Title size={PAGE_TITLE} accessibilityRole="header" ref={read} style={pageTitle}>
+        <Title
+          size={PAGE_TITLE}
+          accessibilityRole="header"
+          ref={read}
+          style={pageTitle}
+          onDrawn={onTitleDrawn}
+        >
           {title}
         </Title>
       </View>
@@ -886,6 +1014,7 @@ function FrameHeader({
   kind,
   entries,
   inEvent,
+  bare,
   title,
   titleRef,
   switchAnswer,
@@ -900,6 +1029,8 @@ function FrameHeader({
   besideTitle,
   besideBack,
   untitled,
+  cap,
+  onTitleDrawn,
 }: FrameHeaderProps) {
   const insets = useSafeAreaInsets();
   const top = kind === 'tabletLandscape' ? undefined : { paddingTop: insets.top + tokens.spaceXxs };
@@ -911,19 +1042,21 @@ function FrameHeader({
 
   if (kind === 'tabletLandscape') {
     if (untitled) return null;
+    // Inside an event the bell ends the area's name's row at every size, the name wrapping to its left (sc-68052).
+    const stacks = large && !inEvent;
 
     return (
-      <View style={[styles.landscapeHeader, large && styles.stacked]}>
-        <View style={[styles.titled, !large && styles.fill]}>
-          <View style={styles.titleRow}>
-            <View style={large ? styles.shrink : styles.fill}>
-              <Title size={titleSize} accessibilityRole="header" ref={read}>
+      <View style={[styles.landscapeHeader, stacks && styles.stacked, inEvent && styles.bellAtTop]}>
+        <View style={[styles.titled, !stacks && styles.fill]}>
+          <View style={[styles.titleRow, inEvent && styles.bellHigh]}>
+            <View style={stacks ? styles.shrink : styles.fill}>
+              <Title size={titleSize} accessibilityRole="header" ref={read} onDrawn={onTitleDrawn}>
                 {title}
               </Title>
             </View>
             {besideTitle}
           </View>
-          {underTitle}
+          <TitleCap.Provider value={cap}>{underTitle}</TitleCap.Provider>
         </View>
         <BellButton />
       </View>
@@ -938,7 +1071,7 @@ function FrameHeader({
   const backView =
     back == null || backHidden ? null : back.pill === true ? (
       <BesideBack beside={besideBack}>
-        <Back label={back.label} onPress={back.onPress} off={back.off} testID="frame.back" />
+        <FrameBack back={back} cap={cap} besideShown={shownBeside(besideBack)} />
       </BesideBack>
     ) : (
       <BackButton
@@ -954,13 +1087,13 @@ function FrameHeader({
       <View style={styles.fill}>
         <View style={styles.titleRow}>
           <View style={styles.fill}>
-            <Title size={titleSize} accessibilityRole="header" ref={read}>
+            <Title size={titleSize} accessibilityRole="header" ref={read} onDrawn={onTitleDrawn}>
               {title}
             </Title>
           </View>
           {besideTitle}
         </View>
-        {underTitle}
+        <TitleCap.Provider value={cap}>{underTitle}</TitleCap.Provider>
       </View>
       {end}
     </View>
@@ -1004,26 +1137,25 @@ function FrameHeader({
           untitled && styles.flushFoot,
         ]}
       >
-        <View style={styles.titleRow}>
-          <View style={styles.fill}>
-            {back != null && !backHidden && (
-              <BesideBack beside={besideBack}>
-                <Back
-                  label={back.label}
-                  onPress={back.onPress}
-                  off={back.off}
-                  testID="frame.back"
-                />
-              </BesideBack>
-            )}
+        {!bare && (
+          <View style={styles.titleRow}>
+            <View style={styles.fill}>
+              {back != null && !backHidden && (
+                <BesideBack beside={besideBack}>
+                  <FrameBack back={back} cap={cap} besideShown={shownBeside(besideBack)} />
+                </BesideBack>
+              )}
+            </View>
+            <BellButton />
           </View>
-          <BellButton />
-        </View>
+        )}
         <Pills entries={entries} scrolls />
         {!untitled && titleRow()}
       </View>
     );
   }
+
+  if (bare) return <View style={{ paddingTop: insets.top + tokens.spaceLg }} />;
 
   // Inside an event, ‹ in its pill and the bell head the page; on Overview the event's card under them names it (sc-30413).
   if (inEvent && back != null) {
@@ -1033,12 +1165,7 @@ function FrameHeader({
           <View style={styles.fill}>
             {!backHidden && (
               <BesideBack beside={besideBack}>
-                <Back
-                  label={back.label}
-                  onPress={back.onPress}
-                  off={back.off}
-                  testID="frame.back"
-                />
+                <FrameBack back={back} cap={cap} besideShown={shownBeside(besideBack)} />
               </BesideBack>
             )}
           </View>
@@ -1073,6 +1200,29 @@ function FrameHeader({
   );
 }
 
+/** The frame's Back pill over a page title draws no larger than the title, as on the signed-out screens (sc-67471). */
+function FrameBack({
+  back,
+  cap,
+  besideShown,
+}: {
+  back: NonNullable<FrameHeaderProps['back']>;
+  cap: number | null;
+  besideShown: boolean;
+}) {
+  return (
+    <TitleCap.Provider value={cap}>
+      <Back
+        label={back.label}
+        onPress={back.onPress}
+        off={back.off}
+        besideShown={besideShown}
+        testID="frame.back"
+      />
+    </TitleCap.Provider>
+  );
+}
+
 export function BackButton({
   label,
   heard,
@@ -1086,53 +1236,110 @@ export function BackButton({
   onPress: () => void;
   off?: boolean | undefined;
   /** Null while the slot is empty, never undefined: the row stays, so Back is not remounted and keeps screen reader focus (sc-27046). */
-  beside?: ReactNode;
+  beside?: BesideBackNode;
   testID: string;
 }) {
   const { fontScale } = useWindowDimensions();
   const scale = backScale(fontScale, useContext(TitleCap));
-  const mark = tokens.sizeMark * scale;
+  const body = tokens.typeBodyPhone.size;
+  const word = useBackWord(
+    label,
+    { full: body * scale, least: body, glyph: tokens.sizeMark, sides: 3 * tokens.spaceXs },
+    shownBeside(beside),
+  );
+  const mark = (tokens.sizeMark / body) * word.size;
   const button = (
-    <Pressable
-      style={styles.back}
-      onPress={onPress}
-      disabled={off}
-      accessibilityRole="button"
-      accessibilityLabel={heard}
-      accessibilityState={{ disabled: off }}
-      testID={testID}
-    >
-      <Svg width={mark} height={mark} viewBox="0 0 24 24" fill="none">
-        <Path
-          d="m15 18-6-6 6-6"
-          {...STROKE}
-          stroke={off ? tokens.colorInkSecondary : tokens.colorInk}
-        />
-      </Svg>
-      <Text
-        size={tokens.typeBodyPhone.size * scale}
-        weight="semibold"
-        muted={off}
-        allowFontScaling={false}
-        numberOfLines={1}
-        adjustsFontSizeToFit
-        minimumFontScale={backLeast(scale)}
+    <>
+      {word.measure}
+      <Pressable
+        style={styles.back}
+        onPress={onPress}
+        onLayout={word.onLayout}
+        disabled={off}
+        accessibilityRole="button"
+        accessibilityLabel={heard}
+        accessibilityState={{ disabled: off }}
+        testID={testID}
       >
-        {label}
-      </Text>
-    </Pressable>
+        <Svg width={mark} height={mark} viewBox="0 0 24 24" fill="none">
+          <Path
+            d="m15 18-6-6 6-6"
+            {...STROKE}
+            stroke={off ? tokens.colorInkSecondary : tokens.colorInk}
+          />
+        </Svg>
+        <Text
+          size={word.size}
+          weight="semibold"
+          muted={off}
+          allowFontScaling={false}
+          numberOfLines={1}
+        >
+          {label}
+        </Text>
+      </Pressable>
+    </>
   );
 
   return <BesideBack beside={beside}>{button}</BesideBack>;
 }
 
-function BesideBack({ beside, children }: { beside: ReactNode; children: ReactNode }) {
+/** A status beside Back that gives way to the pill: drawn there only where the pill stays whole beside it, and told where it went, so its screen draws it elsewhere when it does not fit (sc-71821). */
+export interface GivesWay {
+  status: ReactNode;
+  onPlaced: (beside: boolean) => void;
+}
+
+type BesideBackNode = ReactNode | GivesWay;
+
+function givesWay(beside: BesideBackNode): beside is GivesWay {
+  return typeof beside === 'object' && beside != null && 'onPlaced' in beside;
+}
+
+/** Whether Back shares its row with something it makes room for; a status that gives way never shrinks its word (sc-68778, sc-71821). */
+function shownBeside(beside: BesideBackNode): boolean {
+  return beside != null && !givesWay(beside);
+}
+
+function BesideBack({ beside, children }: { beside: BesideBackNode; children: ReactNode }) {
   if (beside === undefined) return <>{children}</>;
+  if (givesWay(beside)) return <GivingWay beside={beside}>{children}</GivingWay>;
 
   return (
     <View style={besideRow.row}>
       {children}
       {beside}
+    </View>
+  );
+}
+
+/** Back laid out as if the status were not there, the status measured hidden, and drawn beside the pill only in the room left; the bell is outside this row. It stays mounted while the status comes and goes, keeping the status's last width, so where it goes is known again the frame it returns (sc-71821). The drawn status is out of the row's flow: in it, a pill that grew after the status was placed was squeezed, and Back measured the squeezed width as room enough for both (sc-74113). */
+function GivingWay({ beside, children }: { beside: GivesWay; children: ReactNode }) {
+  const [slot, setSlot] = useState(0);
+  const [back, setBack] = useState(0);
+  const [status, setStatus] = useState(0);
+  const fits = statusFits({ room: slot, lead: back, ends: [], status, gap: tokens.spaceMd });
+  const { onPlaced } = beside;
+
+  useEffect(() => onPlaced(fits), [fits, onPlaced]);
+
+  const widthOf = (set: (width: number) => void) => (event: LayoutChangeEvent) =>
+    set(Math.ceil(event.nativeEvent.layout.width));
+
+  return (
+    <View style={besideRow.row} onLayout={widthOf(setSlot)}>
+      <View style={besideRow.back} onLayout={widthOf(setBack)}>
+        {children}
+      </View>
+      <View
+        style={besideRow.measure}
+        pointerEvents="none"
+        accessibilityElementsHidden
+        importantForAccessibility="no-hide-descendants"
+      >
+        {beside.status != null && <View onLayout={widthOf(setStatus)}>{beside.status}</View>}
+      </View>
+      {fits && <View style={besideRow.end}>{beside.status}</View>}
     </View>
   );
 }
@@ -1145,6 +1352,9 @@ export const besideRow = StyleSheet.create({
     justifyContent: 'space-between',
     gap: tokens.spaceMd,
   },
+  back: { flexShrink: 1, minWidth: 0 },
+  measure: { position: 'absolute', opacity: 0 },
+  end: { position: 'absolute', top: 0, right: 0, bottom: 0, justifyContent: 'center' },
 });
 
 function goTo(destination: Destination): void {
@@ -1214,6 +1424,13 @@ const PHONE_EVENT_BAR: readonly (readonly [PhoneEventTab, GlyphName])[] = [
   ['more', 'dots'],
 ];
 
+const OUTSIDE_BAR: readonly (readonly [PhoneEventTab, GlyphName])[] = [
+  ...(OUTSIDE_TABS as readonly PhoneEventTab[]).map(
+    (area) => [area, AREA_GLYPH[area as EventPlace]] as const,
+  ),
+  ['more', 'dots'],
+];
+
 const PHONE_EVENT_IDS: Record<PhoneEventTab, string> = {
   overview: 'event.nav.overview',
   guests: 'event.nav.guests',
@@ -1228,7 +1445,10 @@ function TabBar({ inEvent }: { inEvent: InsideEvent }) {
   const insets = useSafeAreaInsets();
   const [more, setMore] = useState(false);
   const moreTab = useRef<ViewInstance>(null);
-  const at: PhoneEventTab = (PHONE_EVENT_TABS as readonly EventPlace[]).includes(inEvent.area)
+  const { outside } = inEvent;
+  const tabs = outside == null ? PHONE_EVENT_BAR : OUTSIDE_BAR;
+  const inMore = outside == null ? MORE_PLACES : outsideMore(outside.role);
+  const at: PhoneEventTab = tabs.some(([tab]) => tab === inEvent.area)
     ? (inEvent.area as PhoneEventTab)
     : 'more';
 
@@ -1236,13 +1456,14 @@ function TabBar({ inEvent }: { inEvent: InsideEvent }) {
     <>
       <TabBarFade />
       <PhoneTabs
-        tabs={PHONE_EVENT_BAR}
+        tabs={tabs}
         bottom={tabBarFoot(insets.bottom)}
         at={at}
         say={(tab) => t(`eventNav.${tab}`)}
         ids={PHONE_EVENT_IDS}
         refs={{ more: moreTab }}
         onTab={(tab) => (tab === 'more' ? setMore(true) : inEvent.onArea(tab))}
+        stepsBelowDefault
       />
       <Sheet
         open={more}
@@ -1273,7 +1494,7 @@ function TabBar({ inEvent }: { inEvent: InsideEvent }) {
           </View>
           <View accessibilityRole="tablist">
             <RowList
-              items={MORE_PLACES.map((area) => {
+              items={inMore.map((area) => {
                 const on = area === inEvent.area;
 
                 return {
@@ -1298,9 +1519,141 @@ function TabBar({ inEvent }: { inEvent: InsideEvent }) {
               })}
             />
           </View>
+          {outside != null && (
+            <OutsideYou
+              here={outside.id}
+              onLeave={() => setMore(false)}
+              idPrefix="event.nav.more"
+            />
+          )}
         </View>
       </Sheet>
     </>
+  );
+}
+
+/** Held from outside an organisation (sc-71), the account's own two: Your account and Sign out, in the phone's More and behind the sidebar's person button. */
+function OutsideYou({
+  here,
+  onLeave,
+  idPrefix,
+}: {
+  here: string;
+  onLeave: () => void;
+  idPrefix: string;
+}) {
+  const { t } = useTranslation();
+  const held = useSignedIn();
+  const { account } = held;
+  const groups = outsideGroups(held);
+
+  return (
+    <>
+      {groups.organisations && (
+        <YourOrganisationsGroup
+          organisations={held.organisations}
+          idPrefix={`${idPrefix}.organisations`}
+          onOrganisation={(organisation) => {
+            onLeave();
+            if (organisation.id !== held.organisation?.id) switchByTap(organisation.id);
+            goTo('home');
+          }}
+        />
+      )}
+      {groups.events && account != null && (
+        <OutsideEventsGroup
+          title={t('outsideEvent.yourEvents')}
+          events={account.outsideEvents}
+          here={here}
+          idPrefix={`${idPrefix}.events`}
+          onEvent={(event) => {
+            onLeave();
+            if (event.id !== here) router.replace(outsideHref(event.id, here));
+          }}
+        />
+      )}
+      <RowList
+        items={[
+          {
+            key: 'account',
+            inset: 40,
+            row: (
+              <Row
+                title={t('settings.yourAccount')}
+                line={account?.name}
+                lead={<MoreGlyph name="user" on={false} />}
+                opens
+                onPress={() => {
+                  onLeave();
+                  router.navigate(SECTION_HREF.account);
+                }}
+                testID={`${idPrefix}.account`}
+              />
+            ),
+          },
+        ]}
+      />
+      <TextAction
+        label={t('settings.signOut')}
+        plain
+        glyph="signOut"
+        onPress={() => {
+          onLeave();
+          signOutHere();
+        }}
+        testID={`${idPrefix}.signOut`}
+      />
+    </>
+  );
+}
+
+/** On its side, held from outside, the sidebar person button's sheet: the person's name over Your account and Sign out, as the demo's MoreSheet draws it there. */
+function OutsideYouSheet({
+  here,
+  open,
+  opener,
+  name,
+  onClose,
+}: {
+  here: string;
+  open: boolean;
+  opener: RefObject<ViewInstance | null>;
+  name: string;
+  onClose: () => void;
+}) {
+  const { t } = useTranslation();
+
+  return (
+    <Sheet
+      open={open}
+      onClose={onClose}
+      scrimLabel={t('eventNav.closeMore')}
+      opener={opener}
+      testID="frame.side.you"
+    >
+      <View style={styles.moreSheet}>
+        <View style={styles.moreHead}>
+          <Text
+            size={22}
+            weight="bold"
+            accessibilityRole="header"
+            style={[styles.fill, styles.moreTitle]}
+          >
+            {name}
+          </Text>
+          <Pressable
+            onPress={onClose}
+            style={({ pressed }) => [styles.moreClose, pressed && styles.closePressed]}
+            accessibilityRole="button"
+            accessibilityLabel={t('eventNav.closeMore')}
+            testID="frame.side.you.close"
+          >
+            <Glyph name="x" size={18} ink={tokens.colorInk} weight={2.4} />
+          </Pressable>
+        </View>
+        <OutsideYou here={here} onLeave={onClose} idPrefix="frame.side.you" />
+      </View>
+    </Sheet>
   );
 }
 
@@ -1336,6 +1689,7 @@ function Pills({ entries, scrolls }: { entries: readonly NavEntry[]; scrolls: bo
   const pills = entries.map((entry) => (
     <Pressable
       key={entry.key}
+      ref={entry.opener}
       style={[styles.pill, entry.on && styles.pillOn]}
       onLayout={(event) => {
         starts.current[entry.key] = event.nativeEvent.layout.x;
@@ -1382,25 +1736,34 @@ function FrameSidebar({
   inEvent,
   card,
   up,
+  outside,
   organisation,
   waiting,
   onSwitch,
   pill,
+  cap,
 }: {
   current: Destination;
   entries: readonly NavEntry[];
   inEvent: boolean;
   card: InsideEvent['card'] | undefined;
   up: InsideEvent['up'];
+  /** The event held from outside, when it is one. */
+  outside: string | null;
   organisation: Membership | null;
   waiting: number;
   onSwitch: (() => void) | undefined;
   pill: Ref<ViewInstance>;
+  /** The size the area's name draws at in the pane, which nothing in an event's sidebar outgrows at the largest sizes (sc-68052). */
+  cap: number;
 }) {
   const { t } = useTranslation();
+  const large = useAccessibilitySizes();
   const { account } = useSignedIn();
   const events = useSidebarEvents(account?.id, inEvent ? undefined : organisation?.id);
   const tabs = useFrameTabs(current, organisation);
+  const [you, setYou] = useState(false);
+  const youOpener = useRef<ViewInstance>(null);
   const name = account?.name ?? '';
   const role = organisation == null ? null : roleName(t, organisation.role);
   const person = useMemo(() => ({ name, role }), [name, role]);
@@ -1410,7 +1773,7 @@ function FrameSidebar({
       person,
       unread: 0,
       creates: organisation != null && roleHolds(organisation, 'events.create'),
-      search: organisation != null,
+      search: organisation != null && !inEvent,
       open: (opens) => {
         if (opens.to === 'account') router.navigate(SECTION_HREF.account);
         if (opens.to === 'event') router.push(`/events/${opens.id}`);
@@ -1418,7 +1781,7 @@ function FrameSidebar({
       },
       useOrgOpener: useFrameOrgOpener,
     }),
-    [organisation, person],
+    [organisation, person, inEvent],
   );
   const places = inEvent
     ? entries.map((entry) => (
@@ -1446,36 +1809,50 @@ function FrameSidebar({
 
   return (
     <TodayShellProvider value={shell}>
-      <SidebarColumn>
-        <SidebarHead>
-          {organisation != null && (
-            <OrgPill
-              organisation={organisation}
-              waiting={waiting}
-              onSwitch={onSwitch}
-              sidebar
-              ref={pill}
+      <TitleCap.Provider value={inEvent && large ? cap : null}>
+        <SidebarColumn>
+          <SidebarHead>
+            {organisation != null && outside == null && (
+              <OrgPill
+                organisation={organisation}
+                waiting={waiting}
+                onSwitch={onSwitch}
+                sidebar
+                ref={pill}
+              />
+            )}
+          </SidebarHead>
+          {inEvent && outside == null && (
+            <SidebarBack
+              label={up?.label ?? t('todayScreen.tab.events')}
+              heard={up?.label ?? t('eventsScreen.backToEvents')}
+              onPress={up?.onPress ?? (() => goTo('events'))}
+              testID="frame.side.back"
             />
           )}
-        </SidebarHead>
-        {inEvent && (
-          <SidebarBack
-            label={up?.label ?? t('todayScreen.tab.events')}
-            heard={up?.label ?? t('eventsScreen.backToEvents')}
-            onPress={up?.onPress ?? (() => goTo('events'))}
-            testID="frame.side.back"
+          {inEvent && card != null && <SidebarEventCard event={card.event} now={card.now} />}
+          <SidebarPlaces>{places}</SidebarPlaces>
+          {inEvent ? <View style={styles.fill} /> : <SidebarEvents events={events} />}
+          <SidebarFoot
+            onTab={tabs.onTab}
+            at={inEvent ? null : tabs.at}
+            person={person}
+            settingsID={TAB_IDS.Settings}
+            settings={outside == null}
+            onPerson={outside != null ? () => setYou(true) : undefined}
+            personRef={outside != null ? youOpener : undefined}
+          />
+        </SidebarColumn>
+        {outside != null && (
+          <OutsideYouSheet
+            here={outside}
+            open={you}
+            opener={youOpener}
+            name={name}
+            onClose={() => setYou(false)}
           />
         )}
-        {inEvent && card != null && <SidebarEventCard event={card.event} now={card.now} />}
-        <SidebarPlaces>{places}</SidebarPlaces>
-        {inEvent ? <View style={styles.fill} /> : <SidebarEvents events={events} />}
-        <SidebarFoot
-          onTab={tabs.onTab}
-          at={inEvent ? null : tabs.at}
-          person={person}
-          settingsID={TAB_IDS.Settings}
-        />
-      </SidebarColumn>
+      </TitleCap.Provider>
     </TodayShellProvider>
   );
 }
@@ -1569,6 +1946,8 @@ const styles = StyleSheet.create({
     paddingBottom: tokens.spaceLg,
   },
   stacked: { flexDirection: 'column', alignItems: 'flex-start', gap: tokens.spaceXs },
+  bellAtTop: { alignItems: 'flex-start' },
+  bellHigh: { minHeight: tokens.sizeHit },
   back: {
     alignSelf: 'flex-start',
     flexShrink: 1,
@@ -1661,4 +2040,18 @@ function useCountryCurrencies(open: boolean): Currencies | null {
   }, [open]);
 
   return currencies ?? currenciesRead;
+}
+
+/** sc-563's banner for the invitation whose Join the API refused as managed. */
+function managedRefusal(waiting: WaitingInvitations, onChange: () => void) {
+  const outcome = Object.values(waiting.outcomes).find((one) => one.kind === 'managed');
+
+  return outcome?.kind === 'managed' ? (
+    <ManagedBanner
+      organisation={outcome.organisation}
+      message={outcome.message}
+      onChange={onChange}
+      testID="switcher.invitation.managed"
+    />
+  ) : undefined;
 }

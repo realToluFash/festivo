@@ -1,7 +1,8 @@
 import { callingCode, formatPhone } from '@soirely/domain';
-import { useEffect, useRef, useState } from 'react';
+import { Fragment, useEffect, useRef, useState } from 'react';
 import { Link, Navigate, useParams, useSearchParams } from 'react-router';
 
+import { ConfirmDialog } from '../components/ConfirmDialog.tsx';
 import { Glyph } from '../components/Glyph.tsx';
 import type { Tell } from '../components/SettingsParts.tsx';
 import { DemoBell } from './DemoBell.tsx';
@@ -12,6 +13,7 @@ import { EventSidebar } from './EventSidebar.tsx';
 import { CLOCKS, type SampleEvent, sampleEvent } from './events.ts';
 import { Pill } from './GuestsParts.tsx';
 import { clockOfKitchen } from './kitchen.ts';
+import { firstName } from './members.ts';
 import { Wrong } from './MenuServed.tsx';
 import { keptInbox, waitingLine } from './messages.ts';
 import {
@@ -23,14 +25,13 @@ import {
   type RosterStart,
   BAR_MS,
   JOBS,
-  LINK_WORDS,
   NAME_MAX,
-  RW,
-  STATIONS,
+  STATION_GROUPS,
   detailsNext,
   draftOf,
   entryFrom,
   firstWrong,
+  jobLocked,
   jobOf,
   linkOf,
   memberOf,
@@ -38,10 +39,26 @@ import {
   problemsOf,
   rosterStart,
   sharesNumber,
-  shiftLine,
+  shiftLines,
   sorted,
 } from './roster.ts';
 import { COUNTRIES, codeChoice } from './rules.ts';
+import {
+  type CopyOutcome,
+  ISSUE_MS,
+  SAMPLE_LINK,
+  afterCopy,
+  afterMark,
+  afterReplace,
+  copyIssued,
+  plainItem,
+} from './staffLink.ts';
+import {
+  type RosterWords,
+  ROSTER_WORDS,
+  RosterWordsContext,
+  useRosterWords,
+} from './rosterWords.ts';
 import { STATIONS_EVENT } from './stations.ts';
 import { PanelFoot, PanelTop, Select, StaffTabs } from './Stations.tsx';
 import { useSwitcherStart } from './switcher.ts';
@@ -88,7 +105,11 @@ function RosterAt({ id, raw }: { id: string | undefined; raw: string | null }) {
           />
         )}
       >
-        {(tell) => <RosterView first={first} event={event} tell={tell} />}
+        {(tell) => (
+          <RosterWordsContext value={ROSTER_WORDS[first.lang]}>
+            <RosterView first={first} event={event} tell={tell} />
+          </RosterWordsContext>
+        )}
       </EventsShell>
     </KeptArea>
   );
@@ -103,24 +124,44 @@ function RosterView({
   event: SampleEvent;
   tell: Tell;
 }) {
+  const { rw: RW, lw: LW, tabs, events, crumb } = useRosterWords();
   const [entries, setEntries] = useState<Entry[]>(first.entries);
   const [panel, setPanel] = useState<Panel>(first.panel);
   const [draft, setDraft] = useState<Draft>(first.draft);
   const [pressed, setPressed] = useState(first.pressed);
   const [warning, setWarning] = useState<string | null>(first.warning);
   const [bar, setBar] = useState<string[] | null>(first.bar);
-  const [live, setLive] = useState({ text: first.bar?.join(' ') ?? '', said: 0 });
+  const [live, setLive] = useState({ text: firstSaid(first, LW), said: 0 });
   const [failed, setFailed] = useState<string | null>(first.failed);
+  const [busy, setBusy] = useState<string | null>(null);
+  const [held, setHeld] = useState(first.held);
+  const [missed, setMissed] = useState(first.missed);
+  const [replacing, setReplacing] = useState(first.replacing);
   const focusAfter = useRef<string | null>(null);
   const { manage, finished, erased } = first;
 
   useEffect(() => {
-    if (first.warning != null) document.getElementById('rs-warning')?.focus();
-    else if (first.pressed) {
-      const wrong = firstWrong(problemsOf(first.draft, !first.erased));
-      if (wrong != null) document.getElementById(FIELD_IDS[wrong])?.focus();
+    if (first.held != null) {
+      const field = document.getElementById(`rs-held-${first.held.id}`);
+      if (field instanceof HTMLInputElement) field.select();
+      return;
     }
-  }, [first]);
+    if (first.warning != null) {
+      document.getElementById('rs-warning')?.focus();
+      return;
+    }
+    if (!first.pressed) return;
+    const wrong = firstWrong(problemsOf(first.draft, !first.erased, RW));
+    if (wrong != null) {
+      document.getElementById(FIELD_IDS[wrong])?.focus();
+      return;
+    }
+    const was =
+      first.panel?.kind === 'edit'
+        ? (first.entries.find((one) => one.id === (first.panel as { id: string }).id) ?? null)
+        : null;
+    if (jobLocked(was, first.draft, RW) != null) document.getElementById('rs-f-job')?.focus();
+  }, [first, RW]);
 
   useEffect(() => {
     if (focusAfter.current == null) return;
@@ -144,7 +185,7 @@ function RosterView({
   const shown = (id: string) => entries.find((one) => one.id === id) as Entry;
   const editing = panel?.kind === 'edit' ? shown(panel.id) : null;
   const contact = !erased;
-  const problems: Problems = pressed ? problemsOf(draft, contact) : {};
+  const problems: Problems = pressed ? problemsOf(draft, contact, RW) : {};
   const lit = panel != null && panel.kind !== 'add' ? panel.id : null;
 
   function open(next: Panel) {
@@ -171,11 +212,17 @@ function RosterView({
   }
 
   function submit(anyway: boolean) {
-    const wrong = firstWrong(problemsOf(draft, contact));
+    const wrong = firstWrong(problemsOf(draft, contact, RW));
     if (wrong != null) {
       setPressed(true);
       setWarning(null);
       focusAfter.current = FIELD_IDS[wrong];
+      return;
+    }
+    if (jobLocked(editing, draft, RW) != null) {
+      setPressed(true);
+      setWarning(null);
+      focusAfter.current = 'rs-f-job';
       return;
     }
     const shared = anyway || !contact ? null : sharesNumber(entries, draft, editing);
@@ -212,7 +259,7 @@ function RosterView({
     const gone = shown(id);
     setEntries(entries.filter((one) => one.id !== id));
     setPanel(null);
-    say([RW.removed(gone.name)]);
+    say([RW.removed(gone.name, shiftLines(gone, RW).length)]);
     focusAfter.current = 'rs-roster';
   }
 
@@ -220,7 +267,11 @@ function RosterView({
     const person = shown(id);
     setEntries(
       entries.map((one) =>
-        one.id === id ? { ...one, station: station === '' ? null : station } : one,
+        one.id !== id
+          ? one
+          : station === ''
+            ? { ...one, station: null }
+            : withoutGone({ ...one, station }),
       ),
     );
     say([
@@ -230,17 +281,78 @@ function RosterView({
     ]);
   }
 
-  const next = nextLine(entries, finished);
+  function relink(id: string, change: (one: Entry) => Partial<Entry>) {
+    setEntries((was) => was.map((one) => (one.id === id ? { ...one, ...change(one) } : one)));
+  }
+
+  function announce(text: string) {
+    setLive((was) => ({ text, said: was.said + 1 }));
+  }
+
+  async function copy(id: string) {
+    if (busy != null) return;
+    setBusy(id);
+    setMissed(null);
+    if (held?.id === id) setHeld(null);
+    const issue = () =>
+      new Promise<string>((resolve, reject) =>
+        window.setTimeout(
+          () => (first.copy === 'notIssued' ? reject(new Error('503')) : resolve(SAMPLE_LINK)),
+          ISSUE_MS,
+        ),
+      );
+    const outcome: CopyOutcome =
+      first.copy === 'refused'
+        ? await copyIssued(issue, null, null)
+        : await copyIssued(
+            issue,
+            navigator.clipboard ?? null,
+            typeof ClipboardItem === 'undefined' ? null : plainItem,
+          );
+    setBusy(null);
+    if (outcome.kind === 'notIssued') {
+      setMissed(id);
+      announce(LW.notIssued);
+      return;
+    }
+    relink(id, (one) => afterCopy(one.link, one.trail ?? null));
+    if (outcome.kind === 'copied') {
+      say([LW.copied]);
+      return;
+    }
+    setHeld({ id, url: outcome.url });
+    announce(LW.refused);
+    focusAfter.current = `rs-held-${id}`;
+  }
+
+  function mark(id: string) {
+    relink(id, afterMark);
+    if (held?.id === id) setHeld(null);
+    say([LW.marked(shown(id).name)]);
+    focusAfter.current = `rs-copy-${id}`;
+  }
+
+  function replace(id: string) {
+    relink(id, afterReplace);
+    if (held?.id === id) setHeld(null);
+    if (missed === id) setMissed(null);
+    setReplacing(null);
+    say([LW.replaced(shown(id).name)]);
+    focusAfter.current = 'sn-panel-title';
+  }
+
+  const acts = manage && !finished && !erased;
+  const next = nextLine(entries, finished, RW);
 
   return (
     <div className="desk-page ev-page gs mn sn rs">
       <div className="ev-wide mn-page">
         <KeptHere />
         <div className="ev-crumb-row">
-          <nav className="ev-crumb" aria-label="Breadcrumb">
+          <nav className="ev-crumb" aria-label={crumb}>
             <ol>
               <li className="ev-crumb-part">
-                <Link to="/demo/events">Events</Link>
+                <Link to="/demo/events">{events}</Link>
               </li>
               <li className="ev-crumb-part">
                 <Glyph name="chevron" size={15} weight={2.4} className="desk-chevron" />
@@ -262,7 +374,7 @@ function RosterView({
             <p className="mn-sub">{RW.sub}</p>
           </div>
         </header>
-        <StaffTabs on="Roster" eventId={event.id} tell={tell} />
+        <StaffTabs on="Roster" eventId={event.id} tell={tell} words={tabs} />
         {!manage && (
           <p className="mn-lock">
             <Glyph name="lock" size={16} weight={2.2} />
@@ -274,7 +386,7 @@ function RosterView({
         </p>
         <div className="mn-split">
           <div className="mn-list">
-            <section className="sn-card" aria-labelledby="rs-roster">
+            <section className="sn-card">
               <div className="sn-card-top">
                 <div className="sn-card-names">
                   <h2 id="rs-roster" tabIndex={-1}>
@@ -311,7 +423,8 @@ function RosterView({
                   )}
                 </div>
               ) : (
-                <div className="rs-frame">
+                // eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- it scrolls sideways, so a keyboard has to reach it (WCAG 2.2 §2.1.1).
+                <div className="rs-frame" tabIndex={0} role="region" aria-labelledby="rs-roster">
                   <table className="rs-table" aria-labelledby="rs-roster">
                     <thead>
                       <tr>
@@ -324,31 +437,55 @@ function RosterView({
                     </thead>
                     <tbody>
                       {rows.map((one) => (
-                        <tr key={one.id} className={lit === one.id ? 'is-lit' : undefined}>
-                          <th scope="row">
-                            <button
-                              id={`rs-name-${one.id}`}
-                              type="button"
-                              className="rs-name"
-                              aria-current={lit === one.id || undefined}
-                              onClick={() => open({ kind: 'details', id: one.id })}
-                            >
-                              {one.name}
-                            </button>
-                          </th>
-                          <td className={one.job == null ? 'rs-quiet' : undefined}>
-                            {one.job ?? RW.noJob}
-                          </td>
-                          <td className={one.station == null ? 'rs-quiet' : undefined}>
-                            {one.station ?? RW.noStation}
-                          </td>
-                          <td className={one.shift == null ? 'rs-quiet' : 'rs-shift'}>
-                            {one.shift ?? RW.noShift}
-                          </td>
-                          <td>
-                            <LinkWord state={linkOf(one, erased)} />
-                          </td>
-                        </tr>
+                        <Fragment key={one.id}>
+                          <tr className={lit === one.id ? 'is-lit' : undefined}>
+                            <th scope="row">
+                              <button
+                                id={`rs-name-${one.id}`}
+                                type="button"
+                                className="rs-name"
+                                aria-current={lit === one.id || undefined}
+                                onClick={() => open({ kind: 'details', id: one.id })}
+                              >
+                                {one.name}
+                              </button>
+                            </th>
+                            <td className={one.job == null ? 'rs-quiet' : undefined}>
+                              {one.job ?? RW.noJob}
+                            </td>
+                            <td className={one.station == null ? 'rs-quiet' : undefined}>
+                              {one.station == null && one.gone != null ? (
+                                <Gone section={one.gone} />
+                              ) : (
+                                (one.station ?? RW.noStation)
+                              )}
+                            </td>
+                            <td className={one.shift == null ? 'rs-no-shift rs-quiet' : 'rs-shift'}>
+                              {one.shift ?? first.noShift}
+                              {one.more.length > 0 && (
+                                <span className="rs-more">{RW.more(one.more.length)}</span>
+                              )}
+                            </td>
+                            <td>
+                              <LinkCell
+                                entry={one}
+                                erased={erased}
+                                acts={acts}
+                                busy={busy === one.id}
+                                missed={missed === one.id}
+                                onCopy={() => void copy(one.id)}
+                                onMark={() => mark(one.id)}
+                              />
+                            </td>
+                          </tr>
+                          {held?.id === one.id && (
+                            <tr className="rs-held-row">
+                              <td colSpan={5}>
+                                <HeldLink entry={one} url={held.url} />
+                              </td>
+                            </tr>
+                          )}
+                        </Fragment>
                       ))}
                     </tbody>
                   </table>
@@ -368,6 +505,7 @@ function RosterView({
                   onEdit={() => open({ kind: 'edit', id: panel.id })}
                   onRemove={() => open({ kind: 'remove', id: panel.id })}
                   onStation={(station) => restation(panel.id, station)}
+                  onReplace={acts ? () => setReplacing(panel.id) : null}
                 />
               )}
               {panel.kind === 'remove' && (
@@ -389,6 +527,7 @@ function RosterView({
                   warning={warning}
                   failed={failed}
                   editing={editing != null}
+                  locked={pressed ? jobLocked(editing, draft, RW) : null}
                   onChange={change}
                   onSubmit={() => submit(false)}
                   onAnyway={() => submit(true)}
@@ -403,6 +542,19 @@ function RosterView({
           )}
         </div>
       </div>
+      {replacing != null && (
+        <ConfirmDialog
+          id="rs-replace"
+          title={LW.replaceTitle(firstName(shown(replacing).name))}
+          keep={LW.keep}
+          go={LW.replace}
+          pending={false}
+          onKeep={() => setReplacing(null)}
+          onGo={() => replace(replacing)}
+        >
+          <p>{LW.replaceLine}</p>
+        </ConfirmDialog>
+      )}
       {bar != null && (
         <div className="rs-bar">
           <Glyph name="tick" size={18} weight={2.6} />
@@ -420,14 +572,50 @@ function RosterView({
   );
 }
 
+function firstSaid(first: RosterStart, LW: RosterWords['lw']): string {
+  if (first.held != null) return LW.refused;
+  if (first.missed != null) return LW.notIssued;
+
+  return first.bar?.join(' ') ?? '';
+}
+
 export function LinkWord({ state }: { state: LinkState }) {
+  const { links } = useRosterWords();
+
   return (
     <span className="rs-link">
       <span
         className={`rs-mark is-${state === 'noMobile' ? 'no-mobile' : state}`}
         aria-hidden="true"
       />
-      {LINK_WORDS[state]}
+      {links[state]}
+    </span>
+  );
+}
+
+function withoutGone({ gone: _gone, ...one }: Entry): Entry {
+  return one;
+}
+
+/** sc-3910: a person whose section the seating plan removed reads No station, and why, with the alert mark beside the words. */
+function Gone({ section }: { section: string }) {
+  const { rw: RW } = useRosterWords();
+
+  return (
+    <span className="rs-gone">
+      <span className="rs-gone-now">{RW.noStationNow}</span>
+      <GoneWhy section={section} />
+    </span>
+  );
+}
+
+function GoneWhy({ section, id }: { section: string; id?: string }) {
+  const { rw: RW } = useRosterWords();
+
+  return (
+    <span className="rs-gone-why" id={id}>
+      <Glyph name="alert" size={14} weight={2.4} />
+      {RW.sectionGone(section)}
     </span>
   );
 }
@@ -441,6 +629,7 @@ function Details({
   onEdit,
   onRemove,
   onStation,
+  onReplace,
 }: {
   entry: Entry;
   manage: boolean;
@@ -450,17 +639,26 @@ function Details({
   onEdit: () => void;
   onRemove: () => void;
   onStation: (station: string) => void;
+  onReplace: (() => void) | null;
 }) {
-  const next = detailsNext(entry, finished, erased);
+  const { rw: RW, lw: LW, trail: trailLine, close } = useRosterWords();
+  const trail = erased ? null : trailLine(entry.link, entry.trail ?? null);
+  const next = detailsNext(entry, finished, erased, RW);
 
   return (
     <>
-      <PanelTop title={entry.name} eyebrow={RW.roster} onClose={onClose} />
+      <PanelTop title={entry.name} eyebrow={RW.roster} close={close} onClose={onClose} />
       <div className="mn-panel-body">
         <dl className="rs-facts">
           <div>
             <dt>{RW.shift}</dt>
-            <dd>{shiftLine(entry)}</dd>
+            <dd>
+              <ul className="rs-shifts">
+                {shiftLines(entry, RW).map((line) => (
+                  <li key={line}>{line}</li>
+                ))}
+              </ul>
+            </dd>
           </div>
           <div>
             <dt>{RW.station}</dt>
@@ -470,16 +668,23 @@ function Details({
                   id="rs-station"
                   label={`${RW.stationChange}, ${entry.name}`}
                   value={entry.station ?? ''}
-                  shown={entry.station ?? RW.noStation}
+                  shown={entry.station ?? (entry.gone != null ? RW.noStationNow : RW.noStation)}
+                  {...(entry.station == null && entry.gone != null && { describedBy: 'rs-gone' })}
                   dense
                   onChange={onStation}
-                  options={[
-                    { value: '', label: RW.noStation },
-                    ...STATIONS.map((one) => ({ value: one, label: one })),
-                  ]}
+                  options={[{ value: '', label: RW.noStation }]}
+                  groups={STATION_GROUPS.map((group) => ({
+                    label: group.label,
+                    options: group.stations.map((one) => ({ value: one, label: one })),
+                  }))}
                 />
+              ) : entry.station == null && entry.gone != null ? (
+                <Gone section={entry.gone} />
               ) : (
                 (entry.station ?? RW.noStation)
+              )}
+              {manage && entry.station == null && entry.gone != null && (
+                <GoneWhy section={entry.gone} id="rs-gone" />
               )}
             </dd>
           </div>
@@ -497,13 +702,23 @@ function Details({
           )}
           <div>
             <dt>{RW.link}</dt>
-            <dd>
+            <dd className="rs-link-fact">
               <LinkWord state={linkOf(entry, erased)} />
+              {trail != null && <span className="rs-trail">{trail}</span>}
+              {onReplace != null && entry.mobile != null && entry.link !== 'none' && (
+                <button
+                  id="rs-replace-open"
+                  type="button"
+                  className="gs-pill is-secondary"
+                  onClick={onReplace}
+                >
+                  {LW.replaceOpen}
+                </button>
+              )}
             </dd>
           </div>
         </dl>
         {next != null && <p className="rs-next">{next}</p>}
-        {!finished && <p className="mn-quiet">{RW.linksThere}</p>}
       </div>
       {manage && (
         <div className="mn-panel-foot">
@@ -526,6 +741,95 @@ function Details({
   );
 }
 
+/** The row's Link: its word with a mark, who and when, and Copy link, then Mark as sent once copied. */
+function LinkCell({
+  entry,
+  erased,
+  acts,
+  busy,
+  missed,
+  onCopy,
+  onMark,
+}: {
+  entry: Entry;
+  erased: boolean;
+  acts: boolean;
+  busy: boolean;
+  missed: boolean;
+  onCopy: () => void;
+  onMark: () => void;
+}) {
+  const { lw: LW, trail: trailLine } = useRosterWords();
+  const state = linkOf(entry, erased);
+  const trail = erased ? null : trailLine(entry.link, entry.trail ?? null);
+  const offered = acts && entry.mobile != null;
+
+  return (
+    <div className="rs-link-cell">
+      <LinkWord state={state} />
+      {trail != null && <span className="rs-trail">{trail}</span>}
+      {missed && (
+        <span className="rs-missed">
+          <Glyph name="alert" size={15} weight={2.2} />
+          {LW.notIssued}
+        </span>
+      )}
+      {offered && (
+        <span className="rs-link-acts">
+          <button
+            id={`rs-copy-${entry.id}`}
+            type="button"
+            className={busy ? 'desk-text is-busy' : 'desk-text'}
+            aria-label={`${LW.copy}: ${entry.name}`}
+            aria-disabled={busy || undefined}
+            aria-busy={busy || undefined}
+            onClick={onCopy}
+          >
+            {busy && <span className="pending-spinner desk-turning" aria-hidden="true" />}
+            {LW.copy}
+          </button>
+          {entry.link === 'copied' && (
+            <button
+              type="button"
+              className="desk-text"
+              aria-label={`${LW.markSent}: ${entry.name}`}
+              onClick={onMark}
+            >
+              {LW.markSent}
+            </button>
+          )}
+        </span>
+      )}
+    </div>
+  );
+}
+
+/** A link the browser would not copy, shown to copy by hand; the field is named for whose link it is. */
+function HeldLink({ entry, url }: { entry: Entry; url: string }) {
+  const { lw: LW } = useRosterWords();
+  const id = `rs-held-${entry.id}`;
+
+  return (
+    <div className="rs-held">
+      <p className="rs-held-says">
+        <Glyph name="alert" size={16} weight={2.2} />
+        {LW.refused}
+      </p>
+      <label htmlFor={id} className="rs-held-label">
+        {LW.linkFor(entry.name)}
+      </label>
+      <input
+        id={id}
+        className="rs-held-field"
+        type="text"
+        readOnly
+        value={url}
+        onFocus={(event) => event.currentTarget.select()}
+      />
+    </div>
+  );
+}
+
 function RemoveAsk({
   entry,
   onKeep,
@@ -535,6 +839,8 @@ function RemoveAsk({
   onKeep: () => void;
   onRemove: () => void;
 }) {
+  const { rw: RW } = useRosterWords();
+
   return (
     <>
       <div className="mn-panel-top">
@@ -545,7 +851,13 @@ function RemoveAsk({
         </div>
       </div>
       <div className="mn-panel-body">
-        <p className="rs-ask-shift">{shiftLine(entry)}</p>
+        <ul className="rs-shifts">
+          {shiftLines(entry, RW).map((line) => (
+            <li key={line} className="rs-ask-shift">
+              {line}
+            </li>
+          ))}
+        </ul>
         <p className="mn-quiet">{RW.stopsWorking}</p>
       </div>
       <div className="mn-panel-foot">
@@ -570,6 +882,7 @@ function PersonForm({
   warning,
   failed,
   editing,
+  locked,
   onChange,
   onSubmit,
   onAnyway,
@@ -583,12 +896,14 @@ function PersonForm({
   warning: string | null;
   failed: string | null;
   editing: boolean;
+  locked: string | null;
   onChange: (next: Partial<Draft>) => void;
   onSubmit: () => void;
   onAnyway: () => void;
   onCancelWarning: () => void;
   onCancel: () => void;
 }) {
+  const { rw: RW, close, cancel } = useRosterWords();
   const job = jobOf(draft.job);
   const told = (id: string, error: string | undefined, help?: boolean) =>
     [error == null ? null : `${id}-error`, help === true ? `${id}-help` : null]
@@ -597,7 +912,7 @@ function PersonForm({
 
   return (
     <>
-      <PanelTop title={title} onClose={onCancel} />
+      <PanelTop title={title} close={close} onClose={onCancel} />
       <div className="mn-panel-body">
         {failed != null && (
           <p className="mn-failed" role="alert">
@@ -722,14 +1037,28 @@ function PersonForm({
             id="rs-f-job"
             value={draft.job}
             shown={draft.job === '' ? RW.noJob : draft.job}
-            onChange={(value) => onChange({ job: value, shift: jobOf(value)?.shifts[0] ?? '' })}
+            wrong={locked != null}
+            {...(locked == null ? {} : { describedBy: 'rs-f-job-error rs-f-job-help' })}
+            onChange={(value) =>
+              onChange(
+                editing ? { job: value } : { job: value, shift: jobOf(value)?.shifts[0] ?? '' },
+              )
+            }
             options={[
               { value: '', label: RW.noJob },
               ...JOBS.map((one) => ({ value: one.job, label: one.job })),
             ]}
           />
+          {locked != null && (
+            <>
+              <Wrong id="rs-f-job-error">{locked}</Wrong>
+              <p id="rs-f-job-help" className="desk-help">
+                {RW.jobLockedHelp}
+              </p>
+            </>
+          )}
         </div>
-        {job != null && (
+        {!editing && job != null && (
           <div className="desk-field">
             <div className="rs-label-row">
               <label htmlFor="rs-f-shift" className="desk-label">
@@ -750,7 +1079,12 @@ function PersonForm({
           </div>
         )}
       </div>
-      <PanelFoot cta={editing ? RW.saveChanges : RW.addCta} onSave={onSubmit} onCancel={onCancel} />
+      <PanelFoot
+        cta={editing ? RW.saveChanges : RW.addCta}
+        cancel={cancel}
+        onSave={onSubmit}
+        onCancel={onCancel}
+      />
     </>
   );
 }

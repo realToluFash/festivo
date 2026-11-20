@@ -13,7 +13,10 @@ const router = vi.hoisted(() => ({ replace: vi.fn() }));
 const shown = vi.hoisted(() => ({ language: 'en' }));
 
 vi.mock('./api.ts', () => ({ api }));
+const cards = vi.hoisted(() => ({ takeDown: vi.fn(async () => {}) }));
+
 vi.mock('./appPush.ts', () => ({ registerAppPush: async () => {} }));
+vi.mock('./runOfShowCards.ts', () => ({ takeDownRunOfShowCards: cards.takeDown }));
 vi.mock('./i18n/index.ts', () => ({ currentLocale: () => shown.language }));
 vi.mock('./tokens.ts', () => ({ tokens: { clear: vi.fn() } }));
 vi.mock('expo-router', () => ({ router }));
@@ -50,6 +53,8 @@ const organisation = {
   countryCode: 'NG',
   contactAddress: 'hello@ire.events',
   locale: 'en',
+  plan: 'free' as const,
+  subscription: { status: 'active' as const, periodEnd: null },
   currency: 'NGN',
   timezone: 'Africa/Lagos',
   role: { id: 'role_1', seededAs: 'owner', name: null },
@@ -85,6 +90,13 @@ describe('"Sign out" on the Settings list and the "This device" row', () => {
     await settle();
 
     expect(api.signOut).toHaveBeenCalledTimes(1);
+  });
+
+  it('takes down every run-of-show card on this device (sc-66580)', async () => {
+    signOutHere();
+    await settle();
+
+    expect(cards.takeDown).toHaveBeenCalledTimes(1);
   });
 
   it('opens welcome with no "You were signed out" banner', async () => {

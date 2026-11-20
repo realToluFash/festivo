@@ -115,6 +115,7 @@ export function useDeleteEvent({
           label: t('eventDelete.delete'),
           removes: true,
           busy: pending ? t('eventDelete.deleting') : undefined,
+          busyWords: t('eventDelete.deleting'),
           testID: 'events.deleteGo',
         }}
         failed={failed}

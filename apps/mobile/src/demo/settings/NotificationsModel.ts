@@ -12,6 +12,8 @@ export const NOTIFICATIONS_STATES = [
   'saved',
   'loading',
   'failed',
+  'eventDay',
+  'eventDayPushOff',
 ] as const;
 
 export type NotificationsState = (typeof NOTIFICATIONS_STATES)[number];
@@ -36,8 +38,13 @@ export const SAVE_MS = 500;
 export const LOADING_MS = 8000;
 export const RETRY_MS = 1500;
 
+/** Event day's own row, opened for its longer description (sc-66580); with its push off, no run-of-show card comes. */
+export const EVENT_DAY = 'event_day';
+
 function firstSettings(state: NotificationsState | null): NotificationSetting[] {
   const { category, channel } = SAMPLE_SWITCH;
+
+  if (state === 'eventDayPushOff') return settingFlipped(SAMPLE_SETTINGS, EVENT_DAY, 'push', false);
 
   return state === 'saving' || state === 'saved'
     ? settingFlipped(SAMPLE_SETTINGS, category, channel, false)
@@ -62,7 +69,11 @@ export function firstPage(state: NotificationsState | null): NotificationsPage {
 
   return {
     grid: firstGrid(state),
-    opened: opens ? SAMPLE_SWITCH.category : null,
+    opened: opens
+      ? SAMPLE_SWITCH.category
+      : state === 'eventDay' || state === 'eventDayPushOff'
+        ? EVENT_DAY
+        : null,
     savedRow: state === 'saved' ? SAMPLE_SWITCH.category : null,
     answers: 0,
   };

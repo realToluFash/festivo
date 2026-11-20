@@ -2574,7 +2574,7 @@ function Plan({
               <FreeTag key={`free-${tag.id}`} x={tag.x} y={tag.y} n={tag.n} />
             ))}
           {party != null && chairTip?.pick === party.lead.id && s >= CHAIRS_FROM_SCALE && (
-            <ChairTipDrawing tip={chairTip.tip} cover={cover} />
+            <ChairTipDrawing tip={chairTip.tip} width={size.w} cover={cover} />
           )}
           {tipped != null && tip != null && (
             <Tip

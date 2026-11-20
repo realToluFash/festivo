@@ -3,8 +3,9 @@ import { useTranslation } from 'react-i18next';
 
 import { api } from '../api.ts';
 import { heldChallenge, nextAfterSignIn } from '../challenge.ts';
-import { timedOutSignIn } from '../kit/signInRules.ts';
 import { codePassed } from '../providerSignIn.ts';
+import { backToSignIn } from './backToSignIn.ts';
+import { leaveTimedOutSignIn } from './leaveTimedOutSignIn.ts';
 import { TwoFactorStep } from './TwoFactorStep.tsx';
 
 /** "Enter your code", or with `recovery`, "Enter a recovery code": the second half of a sign-in, reached only with a challenge held. */
@@ -13,8 +14,6 @@ export function SignInSecondFactor({ recovery = false }: { recovery?: boolean })
   const challenge = heldChallenge();
 
   if (challenge == null) return <Redirect href="/sign-in" />;
-
-  const back = () => (router.canGoBack() ? router.back() : router.replace('/sign-in'));
 
   return (
     <TwoFactorStep
@@ -32,10 +31,10 @@ export function SignInSecondFactor({ recovery = false }: { recovery?: boolean })
         if (recovery && router.canDismiss()) router.dismiss();
         router.replace(next);
       }}
-      onExpired={() => router.replace(timedOutSignIn(challenge.email))}
-      onOtherWay={() => (recovery ? back() : router.push('/sign-in-recovery'))}
+      onExpired={leaveTimedOutSignIn}
+      onOtherWay={() => (recovery ? router.back() : router.push('/sign-in-recovery'))}
       onLostBoth={() => router.push('/lost-two-factor')}
-      onBack={back}
+      onBack={recovery ? () => router.back() : backToSignIn}
     />
   );
 }

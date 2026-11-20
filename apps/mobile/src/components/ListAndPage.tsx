@@ -25,6 +25,7 @@ import { COLUMN } from './Summary.tsx';
 import { bodyEdges } from './bodyEdges.ts';
 import { QuietButton } from './Buttons.tsx';
 import { type ColumnRows, Screen, ScrollColumn } from './Screen.tsx';
+import { Back } from './SettingsParts.tsx';
 import { useEdgeSwipeBack } from './useEdgeSwipeBack.ts';
 import { useSystemBack } from './useSystemBack.ts';
 
@@ -62,7 +63,14 @@ export interface ListAndPageProps<Item = never> {
   /** Nothing to put in the page, so on a tablet on its side the list takes the full width. */
   pageless?: boolean;
   /** The page's own back, the header's on a phone included; Android's Back and iOS's swipe from the left edge run it too wherever the page is in front. `revealsList: false` when it leads elsewhere, so the swipe shows no list under the page. */
-  back: { label: string; onPress: () => void; testID: string; revealsList?: boolean };
+  back: {
+    label: string;
+    onPress: () => void;
+    testID: string;
+    revealsList?: boolean;
+    /** The upright tablet's back is the settings pill, as a settings demo draws it, rather than quiet text. */
+    pill?: boolean;
+  };
   /** The frame's top already carries the back, so the upright tablet's page draws none of its own. */
   backInFrame?: boolean;
   spacing: ListAndPageSpacing;
@@ -187,7 +195,11 @@ export function ListAndPage<Item = never>({
               {!landscape && pageInFront && <FrameTop style={topStyle} />}
               {kind === 'tabletPortrait' && !backInFrame && (
                 <View style={styles.start}>
-                  <QuietButton label={back.label} onPress={back.onPress} testID={back.testID} />
+                  {back.pill === true ? (
+                    <Back label={back.label} onPress={back.onPress} testID={back.testID} />
+                  ) : (
+                    <QuietButton label={back.label} onPress={back.onPress} testID={back.testID} />
+                  )}
                 </View>
               )}
               {page}

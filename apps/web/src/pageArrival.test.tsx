@@ -319,7 +319,17 @@ describe('the pages Soirely has, signed in', () => {
   );
 
   it("titles a paused organisation's page with Paused and its name", async () => {
-    const { id, name, countryCode, currency, timezone, contactAddress, locale } = membership({
+    const {
+      id,
+      name,
+      countryCode,
+      currency,
+      timezone,
+      contactAddress,
+      locale,
+      plan,
+      subscription,
+    } = membership({
       id: 'org_3',
       name: 'Lagos Weddings',
     });
@@ -334,6 +344,8 @@ describe('the pages Soirely has, signed in', () => {
           currency,
           timezone,
           contactAddress,
+          plan,
+          subscription,
           locale,
           suspension: {
             reason: 'address_gone',

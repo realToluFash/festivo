@@ -1,5 +1,12 @@
 import { type ReactNode, type Ref, type RefObject, useEffect, useRef, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, View, type ViewInstance } from 'react-native';
+import {
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  View,
+  type ViewInstance,
+  useWindowDimensions,
+} from 'react-native';
 import Svg, { Path } from 'react-native-svg';
 
 import { AlertLine } from '../../components/AlertLine.tsx';
@@ -12,15 +19,18 @@ import {
 import { Pill } from '../../components/SettingsParts.tsx';
 import { Sheet } from '../../components/Sheet.tsx';
 import { TextAction } from '../../components/Summary.tsx';
-import { Text, type TextHandle } from '../../components/Text.tsx';
+import { Text, TitleCap, type TextHandle } from '../../components/Text.tsx';
+import { CappedWholeWords, MeasuredWords, Title } from '../../components/Title.tsx';
+import { atAccessibilitySizes, titleSize, wordsIn } from '../../layout/textSize.ts';
+import { cancelUnder } from '../../layout/titleFit.ts';
 import { tokens } from '../../theme/tokens.ts';
 import { DemoOnly } from '../../steps/Lines.tsx';
 import {
   type Format,
   type Making,
   type Scope,
+  type SheetWords,
   XW,
-  columnsFor,
   scopeFor,
 } from './GuestExportModel.ts';
 import type { Layout } from './GuestsParts.tsx';
@@ -28,42 +38,52 @@ import type { Layout } from './GuestsParts.tsx';
 const MAKING_MS = 900;
 const SETTLED_MS = 450;
 
-/** Export in the Guests header: a secondary pill, or offline the words and the no-signal mark in its place. */
+/** Export in the Guests header: a secondary pill as tall as its word, or offline the words and the no-signal mark in its place, each word whole (sc-67659). */
 export function ExportButton({
   layout,
   offline,
+  words = { export: XW.export, needsConnection: XW.needsConnection },
   onPress,
   ref,
+  measured = false,
 }: {
   layout: Layout;
   offline: boolean;
+  words?: { export: string; needsConnection: string } | undefined;
   onPress: () => void;
-  ref: Ref<ViewInstance>;
+  ref?: Ref<ViewInstance> | undefined;
+  /** A hidden copy that is only measured, so it carries no test ids (sc-71821). */
+  measured?: boolean;
 }) {
   if (offline)
     return (
       <View
         style={[styles.offline, layout === 'phone' && styles.offlinePhone]}
         accessible
-        accessibilityLabel={XW.needsConnection}
-        testID="guests.export.offline"
+        accessibilityLabel={words.needsConnection}
+        testID={measured ? undefined : 'guests.export.offline'}
       >
         <NoSignal />
-        <Text size={13.5} weight="semibold" style={[styles.secondary, styles.offlineWords]}>
-          {XW.needsConnection}
-        </Text>
+        <CappedWholeWords
+          size={13.5}
+          weight="semibold"
+          style={[styles.secondary, styles.offlineWords]}
+        >
+          {words.needsConnection}
+        </CappedWholeWords>
       </View>
     );
 
   return (
     <Pill
       ref={ref}
-      label={XW.export}
+      label={words.export}
       kind="secondary"
       height={tokens.sizeHit}
       full={false}
+      grows
       onPress={onPress}
-      testID="guests.export"
+      {...(measured ? {} : { testID: 'guests.export' })}
     />
   );
 }
@@ -86,6 +106,7 @@ function NoSignal() {
 }
 
 interface ExportProps {
+  words: SheetWords;
   file: (format: Format) => string;
   inView: number;
   everyone: number;
@@ -111,6 +132,7 @@ function useExport(props: ExportProps) {
 
   useEffect(() => () => clearTimeout(timer.current), []);
 
+  const words = props.words;
   const share = () => {
     if (busy) return;
     if (props.offline) {
@@ -125,28 +147,28 @@ function useExport(props: ExportProps) {
 
   const body = (
     <>
-      {making === 'failed' && <AlertLine text={XW.failed} />}
-      {refused && <AlertLine text={XW.dropped} />}
+      {making === 'failed' && <AlertLine text={words.failed} />}
+      {refused && <AlertLine text={words.dropped} />}
       <Choices
-        legend={XW.who}
+        legend={words.who}
         options={[
           {
             key: 'view',
-            name: XW.thisView(props.inView),
-            line: props.inView === 0 ? XW.nothingInView : props.narrowed,
+            name: words.thisView(props.inView),
+            line: props.inView === 0 ? words.nothingInView : props.narrowed,
             off: props.inView === 0,
           },
-          { key: 'all', name: XW.allGuests(props.everyone) },
+          { key: 'all', name: words.allGuests(props.everyone) },
         ]}
         picked={scopeFor(asked, props.inView)}
         onPick={setAsked}
         testID="guests.export.who"
       />
       <Choices
-        legend={XW.format}
+        legend={words.format}
         options={[
-          { key: 'xlsx', name: XW.excel },
-          { key: 'csv', name: XW.csv },
+          { key: 'xlsx', name: words.excel },
+          { key: 'csv', name: words.csv },
         ]}
         picked={format}
         onPick={setFormat}
@@ -154,21 +176,21 @@ function useExport(props: ExportProps) {
       />
       <View style={styles.file}>
         <Text size={15} weight="bold" accessibilityRole="header">
-          {XW.file}
+          {words.file}
         </Text>
         <Text size={15} weight="semibold" style={styles.lines} testID="guests.export.file">
           {file}
         </Text>
         <Text size={13.5} weight="medium" style={styles.secondary}>
-          {XW.columns}
+          {words.columns}
         </Text>
         <Text size={14} weight="medium" style={styles.lines} testID="guests.export.columns">
-          {columnsFor(props.needs).join(' · ')}
+          {words.columnsFor(props.needs).join(' · ')}
         </Text>
       </View>
       {!props.needs && (
         <Text size={14} weight="medium" style={[styles.secondary, styles.lines]}>
-          {XW.noNeeds}
+          {words.noNeeds}
         </Text>
       )}
     </>
@@ -177,10 +199,10 @@ function useExport(props: ExportProps) {
   const foot = (
     <View style={styles.foot}>
       <Text size={13.5} weight="medium" style={[styles.secondary, styles.small]}>
-        {XW.safety}
+        {words.safety}
       </Text>
       <Pill
-        label={busy ? XW.preparing : XW.share}
+        label={busy ? words.preparing : words.share}
         busy={busy}
         onPress={share}
         testID="guests.export.share"
@@ -198,23 +220,28 @@ export function ExportSheet({
   ...props
 }: ExportProps & { open: boolean; opener: RefObject<ScreenReaderTarget | null> }) {
   const { body, foot, held } = useExport(props);
+  const [drawn, setDrawn] = useState<number | null>(null);
+  const scrolls = atAccessibilitySizes(useWindowDimensions().fontScale);
 
   return (
     <Sheet
       open={open}
       onClose={props.onClose}
       opener={opener}
-      scrimLabel={XW.close}
+      scrimLabel={props.words.close}
       held={held}
       testID="guests.export.sheet"
     >
-      <View style={styles.sheetHead}>
-        <Head onClose={props.onClose} off={held} />
-      </View>
-      <ScrollView style={styles.scroll} contentContainerStyle={styles.body} bounces={false}>
-        {body}
-      </ScrollView>
-      <View style={styles.sheetFoot}>{foot}</View>
+      <TitleCap.Provider value={drawn}>
+        <View style={styles.sheetHead}>
+          <Head words={props.words} onClose={props.onClose} off={held} onDrawn={setDrawn} />
+        </View>
+        <ScrollView style={styles.scroll} contentContainerStyle={styles.body} bounces={false}>
+          {body}
+          {scrolls && <View style={styles.footScrolled}>{foot}</View>}
+        </ScrollView>
+        {!scrolls && <View style={styles.sheetFoot}>{foot}</View>}
+      </TitleCap.Provider>
     </Sheet>
   );
 }
@@ -223,6 +250,8 @@ export function ExportSheet({
 export function ExportPanel(props: ExportProps) {
   const { body, foot, held } = useExport(props);
   const title = useRef<TextHandle>(null);
+  const [drawn, setDrawn] = useState<number | null>(null);
+  const scrolls = atAccessibilitySizes(useWindowDimensions().fontScale);
 
   useEffect(() => {
     const wait = setTimeout(() => moveScreenReaderFocus(title.current), SETTLED_MS);
@@ -231,32 +260,86 @@ export function ExportPanel(props: ExportProps) {
 
   return (
     <View style={styles.panel} testID="guests.export.panel">
-      <View style={styles.panelHead}>
-        <Head onClose={props.onClose} off={held} titleRef={title} />
-      </View>
-      <ScrollView style={styles.scroll} contentContainerStyle={styles.panelBody}>
-        {body}
-      </ScrollView>
-      <View style={styles.panelFoot}>{foot}</View>
+      <TitleCap.Provider value={drawn}>
+        <View style={styles.panelHead}>
+          <Head
+            words={props.words}
+            onClose={props.onClose}
+            off={held}
+            titleRef={title}
+            onDrawn={setDrawn}
+          />
+        </View>
+        <ScrollView style={styles.scroll} contentContainerStyle={styles.panelBody}>
+          {body}
+          {scrolls && <View style={styles.footScrolled}>{foot}</View>}
+        </ScrollView>
+        {!scrolls && <View style={styles.panelFoot}>{foot}</View>}
+      </TitleCap.Provider>
     </View>
   );
 }
 
+const TITLE = tokens.typeTitleDialog.size;
+
+/** sc-72136: the title at a title's steps, each word whole, never under its default size; Cancel beside it where its longest word and Cancel fit the row, else on the row under it at its end. Read in that order: the title, then Cancel. */
 function Head({
+  words,
   onClose,
   off,
   titleRef,
+  onDrawn,
 }: {
+  words: SheetWords;
   onClose: () => void;
   off: boolean;
   titleRef?: Ref<TextHandle>;
+  onDrawn: (size: number) => void;
 }) {
+  const start = titleSize(TITLE, useWindowDimensions().fontScale);
+  const titleWords = wordsIn([words.title]);
+  const [measured, setMeasured] = useState<Readonly<Record<string, number>>>({});
+  const [room, setRoom] = useState(0);
+  const [cancel, setCancel] = useState(0);
+  const widths = titleWords.map((word) => measured[`${start}|${word}`]);
+  const widest = widths.every((width) => width != null) ? Math.max(0, ...widths) : 0;
+  const under = cancelUnder({ room, widest, cancel, gap: tokens.spaceMd });
+
   return (
-    <View style={styles.head}>
-      <Text size={20} weight="bold" accessibilityRole="header" style={styles.grow} ref={titleRef}>
-        {XW.title}
-      </Text>
-      <TextAction label={XW.close} off={off} onPress={onClose} testID="guests.export.close" />
+    <View onLayout={(event) => setRoom(event.nativeEvent.layout.width)}>
+      <MeasuredWords
+        words={titleWords}
+        size={TITLE}
+        weight="bold"
+        maxFontSizeMultiplier={start / TITLE}
+        onWidth={(word, width) => {
+          const key = `${start}|${word}`;
+          setMeasured((now) => (now[key] === width ? now : { ...now, [key]: width }));
+        }}
+      />
+      <View style={[styles.head, under && styles.headUnder]} testID="guests.export.head">
+        <Title
+          size={TITLE}
+          accessibilityRole="header"
+          style={under ? null : styles.grow}
+          ref={titleRef}
+          room={room > 0 ? (under ? room : room - tokens.spaceMd - cancel) : undefined}
+          onDrawn={onDrawn}
+        >
+          {words.title}
+        </Title>
+        <View
+          style={under ? styles.cancelUnder : styles.cancelBeside}
+          onLayout={(event) => setCancel(event.nativeEvent.layout.width)}
+        >
+          <TextAction
+            label={words.close}
+            off={off}
+            onPress={onClose}
+            testID="guests.export.close"
+          />
+        </View>
+      </View>
     </View>
   );
 }
@@ -391,7 +474,16 @@ const styles = StyleSheet.create({
   },
   offlinePhone: { maxWidth: 132 },
   offlineWords: { flexShrink: 1, lineHeight: 13.5 * 1.3 },
-  head: { minHeight: tokens.sizeHit, flexDirection: 'row', alignItems: 'center' },
+  head: {
+    minHeight: tokens.sizeHit,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: tokens.spaceMd,
+  },
+  headUnder: { flexDirection: 'column', alignItems: 'stretch', gap: tokens.spaceSm },
+  cancelBeside: { flexShrink: 0 },
+  cancelUnder: { alignSelf: 'flex-end' },
+  footScrolled: { paddingBottom: 12 },
   scroll: { flexGrow: 0, flexShrink: 1 },
   sheetHead: { paddingHorizontal: tokens.spaceXxl, paddingTop: 20 },
   body: { gap: 18, paddingHorizontal: tokens.spaceXxl, paddingTop: 12, paddingBottom: 8 },

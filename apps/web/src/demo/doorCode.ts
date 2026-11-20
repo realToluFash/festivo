@@ -16,9 +16,11 @@ export const EVENT_ENDS = '2026-11-14T23:30:00Z';
 export const DESK_NOW = '2026-11-07T16:00:00Z';
 
 export const DOOR_PLACE: EventPlace = {
+  country: 'PT',
   organisation: DOOR_ORG,
   initials: 'LF',
   event: DOOR_EVENT,
+  eventId: DOOR_EVENT_ID,
   when: 'Live · in 7 days',
 };
 
@@ -93,7 +95,7 @@ export interface DoorCode {
   endedAt: string | null;
 }
 
-/** The reader's region refines the English screen's dates, never replaces them (formattingLocale): en-GB reads "Sat 14 Nov", pt-PT stays "Sat, Nov 14". */
+/** The reader's region refines the English screen's dates, never replaces them (formattingLocale): en-US reads "Sat, Nov 14", and en-GB or any other region "Sat 14 Nov". */
 export const readerLocale = () => formattingLocale('en', navigator.language);
 const DAYS = new Map<string, Intl.DateTimeFormat>();
 const dayFormat = (locale: string): Intl.DateTimeFormat => {

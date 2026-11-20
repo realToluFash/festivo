@@ -283,6 +283,7 @@ export function EndNowAsk({
         label: W.endNow,
         removes: true,
         busy: field.busy ? TY_WORDS.ending : undefined,
+        busyWords: TY_WORDS.ending,
         testID: 'event.ask.endNow.confirm',
       }}
       failed={

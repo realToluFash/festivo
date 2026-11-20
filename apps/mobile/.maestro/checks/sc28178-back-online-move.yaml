@@ -1,6 +1,6 @@
-# sc-28178: working in Alpha with the API stopped, Calendar shows the offline band; Alpha's
-# member is suspended, which brings the API back, and the next move, a tap on Settings, catches
-# up: Now working in ‹name›.
+# sc-28178: working in Alpha with the API stopped, Calendar's first load fails with its own Try
+# again (the band only stands over what loaded, sc-22586); Alpha's member is suspended, which
+# brings the API back, and the next move, a tap on Settings, catches up: Now working in ‹name›.
 appId: host.exp.Exponent
 onFlowComplete:
   - runScript:
@@ -23,8 +23,8 @@ onFlowComplete:
     id: 'tab-calendar|frame\.calendar'
 - extendedWaitUntil:
     visible:
-      id: 'offline.band'
-    timeout: 30000
+      id: 'calendar.retry'
+    timeout: 45000
 - takeScreenshot: offline
 # The harness starts the API again before it makes any membership change.
 - runScript:

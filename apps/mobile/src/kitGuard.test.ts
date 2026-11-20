@@ -830,7 +830,7 @@ describe('a refused submit leaves the keyboard as it was, unless dropsKeysAfter 
     'app/complete-profile.tsx',
     'app/verify-email.tsx',
     'app/verify-phone.tsx',
-    'app/sign-in.tsx',
+    'app/(sign-in)/sign-in.tsx',
     'app/register.tsx',
     'app/forgot-password.tsx',
     'app/reset-password.tsx',
@@ -999,7 +999,7 @@ describe('a signed-out submit sends one request, and none with the keys down ope
   // Where each submit starts its request, and what its first return waits on: the request, and a 429 where one locks the button.
   const SIGNED_OUT = [
     [
-      'app/sign-in.tsx',
+      'app/(sign-in)/sign-in.tsx',
       /^\s*onSubmit\(/u,
       ["status.kind === 'signingIn'", "status.kind === 'rateLimited'"],
     ],
@@ -1940,6 +1940,15 @@ describe('the faces’ chip writes its count through moreChip (sc-48825)', () =>
   });
 });
 
+describe('a card’s sentence steps down rather than break a word (sc-37693)', () => {
+  it('in CardSays, so 7 people never reads peopl / e at the largest text', () => {
+    const summary = readFileSync(join(__dirname, 'components', 'Summary.tsx'), 'utf8');
+    const says = summary.slice(summary.indexOf('export function CardSays('));
+
+    expect(says.slice(0, says.indexOf('\n}\n'))).toContain('<WholeWords');
+  });
+});
+
 describe('a screen still reading says so in words (sc-23279)', () => {
   it.each([
     ['app/lost-two-factor.tsx', "view.kind === 'loading'"],
@@ -1960,7 +1969,7 @@ describe('a screen still reading says so in words (sc-23279)', () => {
 
 describe('every sign-in lands through nextAfterSignIn (sc-39703)', () => {
   it.each([
-    'app/sign-in.tsx',
+    'app/(sign-in)/sign-in.tsx',
     'app/reset-password.tsx',
     'src/components/ProviderSignIn.tsx',
     'src/steps/SignInSecondFactor.tsx',
@@ -2007,5 +2016,22 @@ describe('a failing check keeps the keys up on a field Android holds focused, ov
   it('raises the keys there through the native focus command, with no blur first', () => {
     expect(android).toContain('raiseKeysOn(input);');
     expect(android).not.toMatch(/\.blur\(|Keyboard\.isVisible\(/u);
+  });
+});
+
+describe("a hidden measure reads a word at its own width, whatever the caller's style stretches (sc-37693)", () => {
+  const text = readFileSync(join('src', 'components', 'Title.tsx'), 'utf8');
+  const measured = /export function MeasuredWords\([\s\S]*?\n\}\n/u.exec(text)?.[0] ?? '';
+  const word = /\n {2}word: \{([^}]*)\}/u.exec(text)?.[1] ?? '';
+
+  it("ends every measured word's style with styles.word", () => {
+    expect(measured).toMatch(/<Text\b[^>]*\bstyle=\{\[[^\]]*,\s*styles\.word\s*\]\}/u);
+  });
+
+  it('keeps styles.word at its natural width', () => {
+    expect(
+      word,
+      'SectionHead stretches its title; measured stretched, a heading steps down to 18 at AX5.',
+    ).toMatch(/alignSelf: 'flex-start'/u);
   });
 });

@@ -266,7 +266,7 @@ export function doorMembers(): OrgMember[] {
 }
 
 export function doorWorld(): PeopleWorld {
-  return { organisation: ORGANISATION, event: EVENT.name, members: doorMembers() };
+  return { organisation: ORGANISATION, country: 'PT', event: EVENT.name, members: doorMembers() };
 }
 
 function onEventAs(one: OrgMember, role: EventRole): OnEvent {

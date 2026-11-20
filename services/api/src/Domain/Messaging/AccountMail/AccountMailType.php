@@ -90,7 +90,7 @@ final readonly class AccountMailType implements NotificationTypeInterface
         return $this->mail->isSecurity();
     }
 
-    public function collapseKey(): ?string
+    public function collapseKey(array $payload): ?string
     {
         return null;
     }

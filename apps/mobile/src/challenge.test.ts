@@ -2,6 +2,8 @@ import { type Account } from '@soirely/api-client';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import {
+  challengeBeganAlone,
+  challengeTypedEmail,
   dropChallenge,
   heldChallenge,
   nextAfterRegistration,
@@ -58,6 +60,7 @@ describe('where a sign-in goes next', () => {
         twoFactorSetupPrompt: false,
         colourScheme: null,
         waitingFor: null,
+        outsideEvents: [],
         emailAddresses: [],
         phoneNumbers: [],
         providers: [],
@@ -88,6 +91,7 @@ describe('where a sign-in goes next', () => {
         twoFactorSetupPrompt: true,
         colourScheme: null,
         waitingFor: null,
+        outsideEvents: [],
         emailAddresses: [],
         phoneNumbers: [],
         providers: [],
@@ -115,6 +119,7 @@ describe('where a sign-in goes next', () => {
       twoFactorSetupPrompt: false,
       colourScheme: null,
       waitingFor: null,
+      outsideEvents: [],
       emailAddresses: [],
       phoneNumbers: [],
       providers: [],
@@ -148,6 +153,7 @@ describe('where a sign-in goes next', () => {
           twoFactorSetupPrompt: false,
           colourScheme: null,
           waitingFor: null,
+          outsideEvents: [],
           emailAddresses: [],
           phoneNumbers: [],
           providers: [],
@@ -185,6 +191,7 @@ const ACCOUNT: Account = {
   twoFactorSetupPrompt: false,
   colourScheme: null,
   waitingFor: null,
+  outsideEvents: [],
   emailAddresses: [],
   phoneNumbers: [],
   providers: [],
@@ -242,5 +249,29 @@ describe.each(Object.entries(takes))('a held request link, taken by %s (sc-19752
 
     expect(await take()).toBe('/');
     expect(kept.has('soirely.requestLink')).toBe(false);
+  });
+});
+
+describe('where the held sign-in began (sc-67606)', () => {
+  it('holds whether it began on a Sign in with nothing under it, and forgets it once dropped', async () => {
+    await nextAfterSignIn(CHALLENGE, { alone: true });
+    expect(challengeBeganAlone()).toBe(true);
+
+    await nextAfterSignIn(CHALLENGE);
+    expect(challengeBeganAlone()).toBe(false);
+
+    await nextAfterSignIn(CHALLENGE, { alone: true });
+    dropChallenge();
+    expect(challengeBeganAlone()).toBe(false);
+  });
+});
+
+describe('the address the held sign-in was typed with (sc-67828)', () => {
+  it('holds the address typed on Sign in, and forgets it when a sign-in with Google or Apple asks for a code', async () => {
+    await nextAfterSignIn(CHALLENGE, { typed: 'a@b.c' });
+    expect(challengeTypedEmail()).toBe('a@b.c');
+
+    await nextAfterSignIn(CHALLENGE);
+    expect(challengeTypedEmail()).toBeNull();
   });
 });

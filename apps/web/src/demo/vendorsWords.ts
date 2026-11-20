@@ -34,6 +34,7 @@ export const VW = {
     `No vendor matches “${typed}”${category == null ? '' : ` in ${category}`}.`,
   noneIn: (category: string, archived: boolean) =>
     `No${archived ? ' archived' : ''} vendors in ${category}.`,
+  noneArchived: 'No archived vendors.',
   everyCategory: 'Show every category',
   pages: 'Pages',
   page: (from: number, to: number, total: number) => `${from} to ${to} of ${total}, A to Z`,

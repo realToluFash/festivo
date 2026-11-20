@@ -1,5 +1,6 @@
 import {
   type MenuCourse,
+  type PicksClose,
   MENU_COURSE_MAXIMUM,
   MENU_COURSE_NAME_MAXIMUM,
 } from '@soirely/api-client';
@@ -81,4 +82,34 @@ export function zoneCity(timeZone: string): string {
 
 export function onCourse(course: MenuCourse, libraryDishId: string): boolean {
   return course.dishes.some((dish) => dish.libraryDishId === libraryDishId);
+}
+
+/** "Monday, Oct 19", "lundi 19 oct.": the day a course's picks close, in the event's zone, as the reader's locale writes it (sc-3905). */
+export function closeDay(at: string, timeZone: string, locale: string): string {
+  return new Intl.DateTimeFormat(locale, {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'short',
+    timeZone,
+  }).format(new Date(at));
+}
+
+/** "23:59" for a Reply by, the event's start time for its start, on the 24-hour clock in the event's zone. */
+export function closeTime(at: string, timeZone: string, locale: string): string {
+  return new Intl.DateTimeFormat(locale, {
+    hour: '2-digit',
+    minute: '2-digit',
+    hourCycle: 'h23',
+    timeZone,
+  }).format(new Date(at));
+}
+
+/** The Menu header's close: the earliest of the courses still open, or the last once all have closed; null while no course asks guests anything. */
+export function menuClose(courses: readonly MenuCourse[]): PicksClose | null {
+  const closes = courses
+    .flatMap((course) => (course.picksClose == null ? [] : [course.picksClose]))
+    .sort((one, other) => Date.parse(one.at) - Date.parse(other.at));
+  const open = closes.filter((close) => !close.closed);
+
+  return open[0] ?? closes.at(-1) ?? null;
 }

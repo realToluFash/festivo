@@ -1,6 +1,7 @@
 import type { Allergen } from './guestKitchenWords.ts';
 import { type DishAllergen, type Lang, DISH_ALLERGENS, allergenName } from './menuLibrary.ts';
 import type { DemoLink } from './settings.ts';
+import { EARLIER, type Person, type Saved, type SummaryStart } from './mealClose.ts';
 
 /** sc-3904's questions inside a dish on the guest's meal step (board MealStep, page e32): the way, then each choice, one per screen. */
 export type MealContains = readonly DishAllergen[] | 'none';
@@ -82,7 +83,6 @@ export const MW = {
   allergy: 'Allergy',
   back: 'Back',
   next: 'Next',
-  picksClose: '[Picks close 28 November.]',
   recorded: (course: string, how: string) => `${course} is recorded as ${how}.`,
   howChosen: (parts: string) => `chosen: ${parts}`,
   howKitchen: 'chef’s choice',
@@ -307,6 +307,8 @@ export interface MealStart {
   pressed: boolean;
   /** Picks close, sc-3905's line, on a course guests see. */
   closes: boolean;
+  /** sc-3905: coming back to the step, a row per course with its close. */
+  summary?: SummaryStart;
 }
 
 function start(over: Partial<MealStart> & { name: string; note: string }): MealStart {
@@ -318,7 +320,7 @@ function start(over: Partial<MealStart> & { name: string; note: string }): MealS
     answer: BLANK,
     at: 0,
     pressed: false,
-    closes: false,
+    closes: true,
     ...over,
   };
 }
@@ -448,14 +450,154 @@ const STATES = {
     }),
 } satisfies Record<string, () => MealStart>;
 
+function back(over: Partial<SummaryStart> & { name: string; note: string }): MealStart {
+  const { name, note, ...summary } = over;
+
+  return start({
+    name,
+    note,
+    summary: {
+      today: '2026-10-14',
+      saved: EARLIER,
+      changed: {},
+      sendOn: null,
+      screen: null,
+      ...summary,
+    },
+  });
+}
+
+const CLOSE_STATES = {
+  picksOpen: () =>
+    back({
+      name: 'Picks open, coming back',
+      note: 'Today is Wednesday, Oct 14. A row per course with its pick, “Picks close {date}.” with the clock, and Change. Change opens the course’s screen; a change reads [Not sent yet] until [Send my changes] sends it. Send with nothing changed sends nothing.',
+    }),
+  oneClosed: () =>
+    back({
+      name: 'One course closed',
+      note: 'Today is Saturday, Oct 17. Starter closed on Friday, Oct 16 (its own choose-by date, sc-1362’s, sample only): its row is grey, with the padlock and “Picks closed on Friday, Oct 16.”, and no Change.',
+      today: '2026-10-17',
+    }),
+  allClosed: () =>
+    back({
+      name: 'All courses closed',
+      note: 'Today is Tuesday, Oct 20: every row read-only, no send button, and the page says to ask the hosts.',
+      today: '2026-10-20',
+    }),
+  refused: () =>
+    back({
+      name: 'Refused: Starter had a pick, Main still open',
+      note: 'Opened Thursday, Oct 15 with Starter changed to Pepper soup and Main to Grilled croaker, not sent. Press [Send my changes]: it arrives Saturday, Oct 17, the 409 refuses Starter, which keeps Canapé selection with the alert and focus on it; Main is saved and the status line says so.',
+      today: '2026-10-15',
+      changed: { starter: 'pepper', main: 'croaker' },
+      sendOn: '2026-10-17',
+    }),
+  refusedNoPick: () =>
+    back({
+      name: 'Refused: Starter had no pick',
+      note: 'As Refused, but Chidi had no starter before the send. After the 409 the row shows Starter’s default, Canapé selection, with “You had not chosen by then, so this is your starter.”',
+      today: '2026-10-15',
+      saved: { ...EARLIER, starter: null },
+      changed: { starter: 'pepper', main: 'croaker' },
+      sendOn: '2026-10-17',
+    }),
+  refusedClosedToo: () =>
+    back({
+      name: 'Refused: Main closed too',
+      note: 'The send arrives Tuesday, Oct 20, past the reply-by date: both rows refused, each with its own line, Main keeping Jollof rice, focus on Starter’s, no status line, and every course now closed, so no send button.',
+      today: '2026-10-15',
+      changed: { starter: 'pepper', main: 'croaker' },
+      sendOn: '2026-10-20',
+    }),
+  refusedOnly: () =>
+    back({
+      name: 'Refused: nothing else in the send',
+      note: 'Only Starter was changed: the alert, and no status line.',
+      today: '2026-10-15',
+      changed: { starter: 'pepper' },
+      sendOn: '2026-10-17',
+    }),
+  courseClosed: () =>
+    back({
+      name: 'A course screen, closed',
+      note: 'Today is Saturday, Oct 17. Starter’s screen: [Your starter], the pick as a card and the padlock line, no options and no Let the kitchen choose. Next goes on to Main, still open.',
+      today: '2026-10-17',
+      screen: 'starter',
+    }),
+} satisfies Record<string, () => MealStart>;
+
+const UNANSWERED: Saved = { ...EARLIER, starter: null };
+const SESAME: Person = { name: PERSON, companion: false, allergies: ['sesame'], diets: [] };
+
+const DEFAULT_STATES = {
+  chooseByBefore: () =>
+    back({
+      name: 'Choose by, before the date',
+      note: 'Today is Wednesday, Oct 14 and Chidi has not answered Starter, whose default is Canapé selection: its screen says the default will be waiting. Choosing a dish brings back “Picks close Friday, Oct 16.”',
+      saved: UNANSWERED,
+      screen: 'starter',
+    }),
+  chooseByBack: () =>
+    back({
+      name: 'Choose by, coming back',
+      note: 'The rows on coming back: Starter’s row carries the choose-by line until Chidi answers it. Change, pick and send to see it go back to sc-3905’s line.',
+      saved: UNANSWERED,
+    }),
+  chooseByCompanion: () =>
+    back({
+      name: 'Choose by, a companion',
+      note: 'Kofi, covered by Chidi’s reply: the line names Kofi, with no pronoun.',
+      saved: UNANSWERED,
+      person: { name: 'Kofi', companion: true, allergies: [], diets: [] },
+    }),
+  excludedBefore: () =>
+    back({
+      name: 'Excluded, before the date',
+      note: 'Chidi has a sesame allergy recorded, so is never given the default: Starter’s row says only “Picks close Friday, Oct 16.” This sample’s Canapé selection claims no Suitable for, unlike the Menu sample’s Pescatarian, so a recorded diet would exclude Chidi as well.',
+      saved: UNANSWERED,
+      person: SESAME,
+    }),
+  excludedAfter: () =>
+    back({
+      name: 'Excluded, after the date',
+      note: 'Today is Saturday, Oct 17, the allergy recorded and Starter never answered: read-only with the padlock, no dish, no Change, and the host will be in touch.',
+      today: '2026-10-17',
+      saved: UNANSWERED,
+      person: SESAME,
+    }),
+  refusedExcluded: () =>
+    back({
+      name: 'Refused: Starter had no pick, and Chidi is excluded',
+      note: 'As Refused: Starter had no pick, but Chidi has a sesame allergy recorded, so was never given the default. After the 409 the row shows no dish, the needs-the-host mark and “The host will be in touch about it.” in place of the default.',
+      today: '2026-10-15',
+      saved: UNANSWERED,
+      person: SESAME,
+      changed: { starter: 'pepper', main: 'croaker' },
+      sendOn: '2026-10-17',
+    }),
+  defaulted: () =>
+    back({
+      name: 'Defaulted',
+      note: 'Today is Saturday, Oct 17 and Chidi never answered Starter: the row shows the default, Canapé selection, and “You had not chosen by then, so this is your starter.” Main is still open.',
+      today: '2026-10-17',
+      saved: UNANSWERED,
+    }),
+} satisfies Record<string, () => MealStart>;
+
 export type MealStateName = keyof typeof STATES;
 
-export const isMealState = (raw: string | null): raw is MealStateName =>
-  raw != null && Object.hasOwn(STATES, raw);
+export type CloseStateName = keyof typeof CLOSE_STATES | keyof typeof DEFAULT_STATES;
 
-export const mealStart = (state: MealStateName): MealStart => STATES[state]();
+const ALL = { ...STATES, ...CLOSE_STATES, ...DEFAULT_STATES };
 
-export const mealAt = (state: MealStateName): string => `/demo/guest/meal?state=${state}`;
+export const isMealState = (raw: string | null): raw is MealStateName | CloseStateName =>
+  raw != null && Object.hasOwn(ALL, raw);
+
+export const mealStart = (state: MealStateName | CloseStateName): MealStart => ALL[state]();
+
+export const mealAt = (state: MealStateName | CloseStateName): string =>
+  `/demo/guest/meal?state=${state}`;
 
 export const MEAL_PAGES: readonly { name: string; states: readonly DemoLink[] }[] = [
   {
@@ -463,6 +605,20 @@ export const MEAL_PAGES: readonly { name: string; states: readonly DemoLink[] }[
     states: (Object.keys(STATES) as MealStateName[]).map((state) => ({
       to: mealAt(state),
       name: STATES[state]().name,
+    })),
+  },
+  {
+    name: 'When picks close (sc-3905)',
+    states: (Object.keys(CLOSE_STATES) as (keyof typeof CLOSE_STATES)[]).map((state) => ({
+      to: mealAt(state),
+      name: CLOSE_STATES[state]().name,
+    })),
+  },
+  {
+    name: 'A default and a choose-by date (sc-1362)',
+    states: (Object.keys(DEFAULT_STATES) as (keyof typeof DEFAULT_STATES)[]).map((state) => ({
+      to: mealAt(state),
+      name: DEFAULT_STATES[state]().name,
     })),
   },
 ];

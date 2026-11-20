@@ -1,4 +1,4 @@
-import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { RouterProvider, createMemoryRouter } from 'react-router';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
@@ -98,6 +98,12 @@ describe('offline, another area keeps the event, and the night its count (sc-656
       await screen.findByText('The event did not load. Try again in a moment.', {}, SLOW),
     ).toBeDefined();
     expect(screen.queryByText(BOX)).toBeNull();
+    expect(screen.getByRole('alert').classList.contains('notice-broken')).toBe(true);
+    expect(
+      within(screen.getByRole('navigation', { name: 'Breadcrumb' })).getByRole('link', {
+        name: 'Events',
+      }),
+    ).toBeDefined();
   });
 
   it('opens online with no box', SLOW, async () => {

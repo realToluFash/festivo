@@ -8,6 +8,7 @@ import {
   Pressable,
   StyleSheet,
   type StyleProp,
+  useWindowDimensions,
   View,
   type ViewStyle,
   type ViewInstance,
@@ -15,6 +16,8 @@ import {
 import Svg, { Circle, Path } from 'react-native-svg';
 
 import { Text } from './Text.tsx';
+import { CappedWholeWords } from './Title.tsx';
+import { atAccessibilitySizes } from '../layout/textSize.ts';
 import { titleAtWidth, titleWithInkRoom, UNMEASURED_TITLE } from './titleWidth.ts';
 import { useReducedMotion } from '../reducedMotion.ts';
 import { tokens } from '../theme/tokens.ts';
@@ -31,6 +34,7 @@ export interface RowTag {
   kind: TagKind;
   word: string;
   turning?: boolean;
+  wraps?: boolean;
 }
 
 const TAGS: Record<TagKind, { fill: string; ink: string; ring?: string }> = {
@@ -122,15 +126,17 @@ export function Tag({
   kind,
   word,
   turning = false,
-  wraps = false,
+  wraps: wrapsAlways = false,
 }: {
   kind: TagKind;
   word: string;
   turning?: boolean | undefined;
-  /** At the largest text a long word wraps inside the tag rather than run past the row. */
-  wraps?: boolean;
+  /** Wraps at every text size, not only at the accessibility sizes, where a tag always wraps rather than be cut (sc-67338). */
+  wraps?: boolean | undefined;
 }) {
   const look = TAGS[kind];
+  const { fontScale } = useWindowDimensions();
+  const wraps = wrapsAlways || atAccessibilitySizes(fontScale);
 
   return (
     <View
@@ -156,6 +162,8 @@ export function Tag({
   );
 }
 
+const HEAD_SIZE = 18;
+
 export function HeadCount({ text }: { text: string }) {
   return (
     <Text size={14.5} weight="medium" style={[styles.secondary, styles.count]}>
@@ -164,10 +172,29 @@ export function HeadCount({ text }: { text: string }) {
   );
 }
 
+/** At the accessibility sizes the heading takes its own line, stepping down rather than break a word, never under 18, and what ends its row goes under it (sc-37693). */
 export function SectionHead({ title, right }: { title: string; right?: ReactNode }) {
+  const { fontScale } = useWindowDimensions();
+
+  if (atAccessibilitySizes(fontScale)) {
+    return (
+      <View style={[styles.head, styles.headStacked]}>
+        <CappedWholeWords
+          size={HEAD_SIZE}
+          weight="bold"
+          accessibilityRole="header"
+          style={[styles.headTitle, styles.headTitleStacked]}
+        >
+          {title}
+        </CappedWholeWords>
+        {right}
+      </View>
+    );
+  }
+
   return (
     <View style={styles.head}>
-      <Text size={18} weight="bold" accessibilityRole="header" style={styles.headTitle}>
+      <Text size={HEAD_SIZE} weight="bold" accessibilityRole="header" style={styles.headTitle}>
         {title}
       </Text>
       {right}
@@ -286,7 +313,11 @@ export function Row({
               {titleWithInkRoom(title, Platform.OS, selectable)}
             </Text>
           }
-          tag={tag != null && <Tag kind={tag.kind} word={tag.word} turning={tag.turning} />}
+          tag={
+            tag != null && (
+              <Tag kind={tag.kind} word={tag.word} turning={tag.turning} wraps={tag.wraps} />
+            )
+          }
         />
         {line != null && (
           <Text
@@ -404,6 +435,7 @@ export function TextAction({
   wraps = false,
   consequence,
   accessibilityLabel,
+  maxFontSizeMultiplier,
   testID,
   ref,
 }: {
@@ -420,6 +452,8 @@ export function TextAction({
   wraps?: boolean;
   consequence?: string;
   accessibilityLabel?: string;
+  /** Set by a caller that steps its labels down to keep each word whole (sc-13496). */
+  maxFontSizeMultiplier?: number | undefined;
   testID?: string | undefined;
   ref?: Ref<ViewInstance> | undefined;
 }) {
@@ -449,6 +483,7 @@ export function TextAction({
         size={15}
         weight="semibold"
         accessible={false}
+        maxFontSizeMultiplier={maxFontSizeMultiplier}
         style={[
           { color: ink },
           figures && styles.figures,
@@ -510,7 +545,9 @@ const styles = StyleSheet.create({
   tagTurning: { gap: tokens.spaceXs },
   tagWraps: { flexShrink: 1 },
   head: { minHeight: tokens.sizeHit, flexDirection: 'row', alignItems: 'center', gap: 10 },
-  headTitle: { flex: 1, minWidth: 0, letterSpacing: -0.18, lineHeight: 18 * 1.25 },
+  headTitle: { flex: 1, minWidth: 0, letterSpacing: -0.18, lineHeight: HEAD_SIZE * 1.25 },
+  headStacked: { flexDirection: 'column', alignItems: 'flex-start' },
+  headTitleStacked: { flex: 0, alignSelf: 'stretch' },
   foot: { paddingTop: tokens.spaceXs },
   row: { flexDirection: 'row', alignItems: 'center', gap: tokens.spaceLg },
   // Lit like People's row, with no ring: the owner found the ring weird (6 Nov 2026).

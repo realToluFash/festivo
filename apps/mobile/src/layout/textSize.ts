@@ -8,6 +8,10 @@ export function atAccessibilitySizes(fontScale: number): boolean {
   return fontScale >= ACCESSIBILITY_SCALE;
 }
 
+export function fromNinthStep(fontScale: number): boolean {
+  return fontScale >= NINTH_STEP_SCALE;
+}
+
 // iOS's Title 1 and Title 3 at the eighth and the ninth steps (Apple HIG, Typography, Dynamic Type sizes).
 const TITLE_STEPS: Readonly<Record<number, readonly [number, number]>> = {
   20: [31, 37],
@@ -22,12 +26,66 @@ export function titleSize(size: number, fontScale: number): number {
   const steps = TITLE_STEPS[size];
   if (steps == null || !atAccessibilitySizes(fontScale)) return size * fontScale;
 
-  return fontScale >= NINTH_STEP_SCALE ? steps[1] : steps[0];
+  return fromNinthStep(fontScale) ? steps[1] : steps[0];
+}
+
+/** A page's title as it reported the size it drew at, for the page and text size `key` it drew on. */
+export interface DrawnTitle {
+  key: string;
+  size: number;
+}
+
+/** The page and the text size a title's report holds for: a report on another page or at another size caps nothing. */
+export function titleCapKey(at: string, fontScale: number): string {
+  return `${at}|${fontScale}`;
+}
+
+/** A title's report of `size` on `key`, keeping `now` where it says the same, so an unchanged report draws nothing again. */
+export function reportTitle(now: DrawnTitle | null, key: string, size: number): DrawnTitle {
+  return now?.key === key && now.size === size ? now : { key, size };
+}
+
+/** The cap under a page's title of `size` on `key`: the size it reported there, or until it does, the size it will draw at unless a word steps it down. */
+export function titleCapOn(
+  drawn: DrawnTitle | null,
+  key: string,
+  size: number,
+  fontScale: number,
+): { cap: number; drawn: boolean } {
+  const reported = drawn?.key === key;
+
+  return { cap: reported ? drawn.size : titleSize(size, fontScale), drawn: reported };
 }
 
 /** The most a text of `size` may grow so it never draws larger than a title drawn at `title`; React Native ignores a multiplier under 1. */
 export function capUnderTitle(title: number, size: number, own?: number): number {
   return Math.max(1, Math.min(own ?? Infinity, title / size));
+}
+
+/** Where a label starts before its words are fitted: `size × scale`, no larger than `cap`, never under `size`. */
+export function labelStart(size: number, scale: number, cap: number): number {
+  return size * capUnderTitle(cap, size, scale);
+}
+
+/** The line under a title starts no larger than the title draws, so a stepped-down title never has a larger line under it. */
+export function lineStart(line: number, scale: number, cap: number, title: number): number {
+  return labelStart(line, scale, Math.min(cap, title));
+}
+
+/** The most a disc's initials of `size` may grow: to half the disc's side, which keeps its size at every text size (sc-37693). */
+export function capInDisc(side: number, size: number): number {
+  return Math.max(1, (side * 0.5) / size);
+}
+
+// A bold digit, a plus and a space in the faces' chip are each at most this share of their size wide.
+const CHIP_CHARACTER = 0.62;
+const CHIP_ROOM = 0.8;
+
+/** The most a chip of `characters` in a disc may grow: as `capInDisc`, and no wider than the disc's middle, so 99+ is never cut (sc-37693). */
+export function capChipInDisc(side: number, size: number, characters: number): number {
+  const across = (side * CHIP_ROOM) / (size * characters * CHIP_CHARACTER);
+
+  return Math.max(1, Math.min(capInDisc(side, size), across));
 }
 
 // An iPhone SE or mini is 375 across; an iPhone 17 Pro, 402.
@@ -45,6 +103,19 @@ export function wordsIn(texts: readonly string[]): string[] {
   return [...new Set(texts.flatMap((text) => text.split(/\s+/u)).filter((word) => word !== ''))];
 }
 
+/** Every distinct piece a line may wrap between: each word, split after a hyphen it already has, the hyphen kept on the first part (sc-69816). */
+export function piecesIn(texts: readonly string[]): string[] {
+  return [...new Set(wordsIn(texts).flatMap(piecesOf))];
+}
+
+/** A word's pieces in order, repeats kept. */
+export function piecesOf(word: string): string[] {
+  return word
+    .replace(/([-\u2010])/gu, '$1\n')
+    .split('\n')
+    .filter((piece) => piece !== '');
+}
+
 /** The one size for labels whose widest word, drawn at `start`, measures `widest` in a slot `slot` wide: `start` when it fits, never below `size`. */
 export function fitWidest(size: number, start: number, widest: number, slot: number): number {
   if (widest <= slot) return start;
@@ -52,13 +123,51 @@ export function fitWidest(size: number, start: number, widest: number, slot: num
   return Math.max(size, Math.floor((start * slot) / widest));
 }
 
+/** A label beside a glyph that grows with it, `glyph` per unit of the label's size: `start` while the widest word and the glyph fit `inside`, never below `size` (sc-13496). */
+export function besideGlyph(
+  size: number,
+  start: number,
+  widest: number,
+  glyph: number,
+  inside: number,
+): number {
+  return fitWidest(size, start, widest + glyph * start, inside);
+}
+
+export const LABEL_LINE = 1.22;
+
+/** The line height to give a text of `size` drawn at `drawn`, so that once scaled each line is whole points and a box of n lines rounds to n lines (sc-69816). `drawn` must be the size iOS draws at: under a `TitleCap` that lowers it, pass the capped size, or the line is a fraction again. */
+export function wholeLineHeight(size: number, drawn: number): number {
+  return (Math.ceil(drawn * LABEL_LINE) * size) / drawn;
+}
+
+/** A text given a `room` is not drawn until that room is reported and every word is measured, so no frame cuts a word; one given no room never waits (sc-69816). */
+export function wordsPending(
+  room: number | undefined,
+  slot: number,
+  measured: number,
+  words: number,
+): boolean {
+  return room !== undefined && (slot === 0 || measured < words);
+}
+
+/** 12 above and below a growing pill's words, or what main's height leaves around them at the default size, so a tablet on its side keeps 44 (sc-66900). */
+export function grownPad(height: number, size: number, ring: number): number {
+  return Math.min(tokens.spaceLg, (height - 2 * ring - size * LABEL_LINE) / 2);
+}
+
 export interface WordsRoom {
   /** The width a text drawn at the start wrapped at, when it wrapped. */
   wrapped: number | null;
-  /** That width, kept under the start and window width it was read at. */
+  /** That width, kept under its `wordsRoomKey`: the start, window width and reported room it was read at. */
   kept: { key: string; width: number } | null;
   /** A container's width, as its caller reports it, under the window width it was read at. */
   reported: { windowWidth: number; width: number } | null;
+}
+
+/** What a wrapped text's width holds for: its start, the window's width, and the room its container reported, so a new room is never fitted to a width read in an old one (sc-69816). */
+export function wordsRoomKey(start: number, windowWidth: number, given?: number): string {
+  return given == null ? `${start}|${windowWidth}` : `${start}|${windowWidth}|${given}`;
 }
 
 /** The width the texts have to fit, 0 while it is not known. */
@@ -66,9 +175,10 @@ export function wordsSlot(
   { wrapped, kept, reported }: WordsRoom,
   start: number,
   windowWidth: number,
+  given?: number,
 ): number {
   if (wrapped != null) return wrapped;
-  if (kept?.key === `${start}|${windowWidth}`) return kept.width;
+  if (kept?.key === wordsRoomKey(start, windowWidth, given)) return kept.width;
   // A container's onLayout does not fire again when only the text size changes (sc-37298).
   return reported?.windowWidth === windowWidth ? reported.width : 0;
 }

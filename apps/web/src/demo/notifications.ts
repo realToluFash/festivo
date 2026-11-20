@@ -71,6 +71,10 @@ export const ALLOW_WORDS = {
 
 const W = NOTIFICATION_WORDS;
 
+/** Event day's description widened for the run-of-show card (sc-66580), in [l10n]'s words of 18 Nov 2026. */
+export const EVENT_DAY_NOTE =
+  'Your shift or call time changed, or the event changed in its last 24 hours. Also a silent notification with Now and Next for each place you run on the run of show.';
+
 export const CATEGORY_NAMES: Record<Category, string> = {
   guest_replies: 'Guest replies',
   messages: 'Messages',
@@ -87,7 +91,7 @@ export function categoryNote(category: Category, locale: string): string {
     guest_replies: "Guests' replies and changes, the needs they add, and their questions.",
     messages:
       'A send that did not reach everyone, was held for credits or was cancelled, and credits running low.',
-    event_day: 'Your shift or call time changed, or the event changed in its last 24 hours.',
+    event_day: EVENT_DAY_NOTE,
     event_changes:
       'When someone else changes whether, when or where an event you are on takes place.',
     money: `Payments due, usage at ${low} and ${high}, failed payments and invoices.`,
@@ -167,6 +171,8 @@ export const NOTIFICATIONS_STATES = [
   'saved',
   'loading',
   'failed',
+  'eventDay',
+  'eventDayPushOff',
 ] as const;
 
 export const WEB_MOMENTS = ['rowOpen', 'accountSecurity', 'blockedRowOpen', 'allowPush'] as const;
@@ -229,6 +235,14 @@ export function notificationsStart(state: string): NotificationsStart {
       return { ...REST, load: 'loading' };
     case 'failed':
       return { ...REST, load: 'failed' };
+    case 'eventDay':
+      return { ...REST, open: 'event_day' };
+    case 'eventDayPushOff':
+      return {
+        ...REST,
+        settings: settingFlipped(SAMPLE_SETTINGS, 'event_day', 'push', false),
+        open: 'event_day',
+      };
   }
 }
 
@@ -261,6 +275,13 @@ export const NOTIFICATIONS_PAGES: readonly { name: string; states: readonly Demo
       notifications('saving', 'A switch saving'),
       notifications('saved', 'Saved'),
       notifications('saveFailed', 'A save failed'),
+    ],
+  },
+  {
+    name: 'Event day and the run-of-show card (sc-66580)',
+    states: [
+      notifications('eventDay', 'Event day, opened: its longer description'),
+      notifications('eventDayPushOff', 'Event day push off: no run-of-show card'),
     ],
   },
   {

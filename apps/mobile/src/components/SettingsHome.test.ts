@@ -5,6 +5,7 @@ import { describe, expect, it } from 'vitest';
 
 const home = readFileSync(join('src', 'components', 'SettingsHome.tsx'), 'utf8');
 const rows = readFileSync(join('src', 'components', 'SummaryRows.tsx'), 'utf8');
+const parts = readFileSync(join('src', 'components', 'SettingsParts.tsx'), 'utf8');
 
 function style(name: string): string {
   const at = home.indexOf(`  ${name}: `);
@@ -39,5 +40,19 @@ describe('the Settings card at twice the text size (sc-37298)', () => {
   it('drops the 60 tile only on a phone at the accessibility sizes', () => {
     expect(home).toMatch(/const largest = useAccessibilitySizes\(\);/u);
     expect(home).toMatch(/const tileShown = size !== 'phone' \|\| !largest;/u);
+  });
+});
+
+describe('Sign out at the largest text sizes (sc-66900)', () => {
+  it('draws Settings’ Sign out as a pill that grows to hold its words', () => {
+    expect(home).toMatch(/glyph="signOut"\s+height=\{height\}\s+grows\s/u);
+  });
+
+  it('grows the pill from main’s height, a capsule 12 above and below its words, which wrap rather than cut', () => {
+    expect(parts).toMatch(
+      /styles\.pillGrows,\s+\{ minHeight: height, paddingVertical: grownPad\(height, textSize, ring\) \}/u,
+    );
+    expect(parts).toMatch(/pillGrows: \{ borderRadius: tokens\.radiusPill \}/u);
+    expect(parts).toMatch(/numberOfLines=\{grows \? undefined : 1\}/u);
   });
 });

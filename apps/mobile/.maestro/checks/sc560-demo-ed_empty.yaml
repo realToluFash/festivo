@@ -1,0 +1,11 @@
+# sc-560: the app demo's email domains in state ed_empty, for the pair beside the product.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/demo/settings/data-and-control/email-domains?state=ed_empty
+- extendedWaitUntil:
+    visible:
+      id: domains.card
+    timeout: 20000
+- waitForAnimationToEnd:
+    timeout: 8000
+- takeScreenshot: sc560-demo-ed_empty

@@ -1,11 +1,24 @@
 import type { Ref } from 'react';
-import { Platform, Pressable, StyleSheet, View, type ViewInstance } from 'react-native';
+import {
+  Platform,
+  Pressable,
+  StyleSheet,
+  View,
+  type ViewInstance,
+  useWindowDimensions,
+} from 'react-native';
+
+import { ROOMS, rowPad } from '../layout/sidebarSize.ts';
 
 import { tokens } from '../theme/tokens.ts';
 import { Glyph } from './Glyph.tsx';
 import { OrgMark } from './OrgMark.tsx';
 import { Text } from './Text.tsx';
 import { pressOnDoubleTap } from './screenReaderFocus.ts';
+import { useSideFit } from './sideFit.tsx';
+import { titleWithInkRoom } from './titleWidth.ts';
+
+const NAME_LINE = 1.25;
 
 export const OPENER = { rest: tokens.sizeHit, waiting: 56 } as const;
 
@@ -17,6 +30,7 @@ export function OpenerWords({
   grow = false,
   wrap = false,
   lines,
+  size,
 }: {
   name: string;
   /** How many invitations wait, in words, or null when none do. */
@@ -26,19 +40,22 @@ export function OpenerWords({
   wrap?: boolean;
   /** The most lines the name takes before its ellipsis; without it, one line, or no limit when it wraps. */
   lines?: number | undefined;
+  /** The name's size as iPad landscape's sidebar fits it, which the text size no longer grows (sc-68441). */
+  size?: number | undefined;
 }) {
   const ink = { color: onDark ? tokens.colorInkOnDark : tokens.colorInk };
 
   return (
     <View style={[styles.words, grow && styles.grow]}>
       <Text
-        size={15}
+        size={size ?? 15}
         weight="semibold"
         numberOfLines={lines ?? (wrap ? undefined : 1)}
+        allowFontScaling={size == null}
         accessible={false}
-        style={[styles.name, ink]}
+        style={[styles.name, size != null && { lineHeight: size * NAME_LINE }, ink]}
       >
-        {name}
+        {titleWithInkRoom(name, Platform.OS)}
       </Text>
       {waiting != null && (
         <View style={styles.waitingLine}>
@@ -60,6 +77,29 @@ export function OpenerWords({
         </View>
       )}
     </View>
+  );
+}
+
+/** The opener's words at the head of iPad landscape's sidebar: the name on one line, stepped down until it fits whole there (sc-68441). */
+function SidebarOpenerWords({
+  name,
+  waiting,
+  wrap,
+  lines,
+}: {
+  name: string;
+  waiting: string | null;
+  wrap: boolean;
+  lines?: number | undefined;
+}) {
+  const { fontScale } = useWindowDimensions();
+  const { size, measure } = useSideFit(name, ROOMS.org, fontScale, 'semibold', 'line');
+
+  return (
+    <>
+      {measure}
+      <OpenerWords name={name} waiting={waiting} wrap={wrap} lines={lines} size={size} grow />
+    </>
   );
 }
 
@@ -95,6 +135,8 @@ export function OrgPill({
   testID?: string;
   ref?: Ref<ViewInstance> | undefined;
 }) {
+  const { fontScale } = useWindowDimensions();
+
   return (
     <Pressable
       ref={ref}
@@ -104,6 +146,7 @@ export function OrgPill({
         sidebar
           ? [
               styles.side,
+              { paddingVertical: rowPad(fontScale) },
               (waiting != null || wrap) && styles.sideWaiting,
               (expanded === true || pressed) && styles.sideOpen,
             ]
@@ -132,9 +175,12 @@ export function OrgPill({
       ) : (
         !bare && <OrgMark id={id} name={name} side={28} />
       )}
-      {!tileAlone && (
-        <OpenerWords name={name} waiting={waiting} wrap={wrap} lines={lines} grow={sidebar} />
-      )}
+      {!tileAlone &&
+        (sidebar ? (
+          <SidebarOpenerWords name={name} waiting={waiting} wrap={wrap} lines={lines} />
+        ) : (
+          <OpenerWords name={name} waiting={waiting} wrap={wrap} lines={lines} />
+        ))}
       {onPress != null && !tileAlone && (
         <Glyph name="updown" size={14} ink={tokens.colorInkSecondary} />
       )}
@@ -152,7 +198,7 @@ export function quietTap(onPress: (() => void) | undefined, expanded: boolean | 
 const styles = StyleSheet.create({
   grow: { flex: 1, minWidth: 0 },
   words: { flexShrink: 1, minWidth: 0, gap: tokens.spaceHair },
-  name: { lineHeight: 15 * 1.25 },
+  name: { lineHeight: 15 * NAME_LINE },
   waitingLine: { flexDirection: 'row', alignItems: 'center', gap: tokens.spaceXs },
   waitingRing: { width: 11, height: 11, borderRadius: 5.5, borderWidth: 2 },
   tileRingHalo: {

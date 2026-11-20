@@ -21,6 +21,9 @@ use Symfony\Contracts\HttpClient\HttpClientInterface;
 /** The Expo push service; receipts are not polled, since no story runs its own sweep. `tag` replaces a shown notification on Android, as `collapseId` does on iOS. */
 final readonly class ExpoPushService implements PushServiceInterface
 {
+    /** The app makes it silent, with no pop-up, and names it Run of show (sc-66580). */
+    public const string SILENT_CHANNEL = 'run_of_show';
+
     public function __construct(
         private HttpClientInterface $http,
         private string $apiBase,
@@ -42,13 +45,21 @@ final readonly class ExpoPushService implements PushServiceInterface
             'title' => $notification->subject,
             'body' => $notification->body,
             // The app drops a tap on a push sent to somebody else who signed out on this phone.
-            'data' => ['place' => $notification->place, 'recipient' => $target->userId],
+            'data' => ['place' => $notification->place, 'recipient' => $target->userId] + ($notification->silent ? ['silent' => true] : []),
             'collapseId' => $collapseKey,
             'threadId' => $collapseKey,
             'tag' => $collapseKey,
-            // The app makes the event_day channel; every other push takes Android's default.
-            'channelId' => NotificationCategory::EventDay === $category ? $category->value : null,
-            'interruptionLevel' => NotificationCategory::EventDay === $category ? 'time-sensitive' : null,
+            // The app makes the event_day and run_of_show channels; every other push takes Android's default.
+            'channelId' => match (true) {
+                $notification->silent => self::SILENT_CHANNEL,
+                NotificationCategory::EventDay === $category => $category->value,
+                default => null,
+            },
+            'interruptionLevel' => match (true) {
+                $notification->silent => 'passive',
+                NotificationCategory::EventDay === $category => 'time-sensitive',
+                default => null,
+            },
         ]);
 
         try {

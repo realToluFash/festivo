@@ -35,7 +35,12 @@ enum ErrorCode: string
     case EventPaused = 'event_paused';
     case EventHostRequired = 'event_host_required';
     case EventCallOffFirst = 'event_call_off_first';
+    case BudgetLineCurrencyChanged = 'budget_line_currency_changed';
+    case VendorAlreadyQuoted = 'vendor_already_quoted';
+    case QuoteUnchanged = 'quote_unchanged';
+    case VendorOwed = 'vendor_owed';
     case PlanLimit = 'plan_limit';
+    case PlanRequired = 'plan_required';
     case SeatingPlanExists = 'seating_plan_exists';
     case SeatingSectionLimit = 'seating_section_limit';
     case SeatingItemsOutside = 'seating_items_outside';
@@ -54,6 +59,11 @@ enum ErrorCode: string
     case IdempotencyKeyReused = 'idempotency_key_reused';
     case GuestAlreadyListed = 'guest_already_listed';
     case StaffNumberShared = 'staff_number_shared';
+    case StaffJobStaffed = 'staff_job_staffed';
+    case StaffShiftFull = 'staff_shift_full';
+    case StaffWorksAs = 'staff_works_as';
+    case StaffShiftOverlap = 'staff_shift_overlap';
+    case StaffOnShifts = 'staff_on_shifts';
     case RepliesClosed = 'replies_closed';
     case RepliesOpen = 'replies_open';
     case GuestReplied = 'guest_replied';
@@ -88,6 +98,9 @@ enum ErrorCode: string
     case JoinRequestCoolingOff = 'join_request_cooling_off';
     case JoinRequestAnswered = 'join_request_answered';
     case OrganisationDeleted = 'organisation_deleted';
+    case ExportNotReady = 'export_not_ready';
+    case ExportUsed = 'export_used';
+    case ExportExpired = 'export_expired';
     case RestoreNeedsAddress = 'restore_needs_address';
     case OwnerClaimAddress = 'owner_claim_address';
     case OwnerClaimManaged = 'owner_claim_managed';
@@ -96,6 +109,9 @@ enum ErrorCode: string
     case OwnerClaimEnded = 'owner_claim_ended';
     case OwnerClaimUnavailable = 'owner_claim_unavailable';
     case OwnerClaimOwn = 'owner_claim_own';
+    case EmailDomainTaken = 'email_domain_taken';
+    case AuditExportTooMany = 'audit_export_too_many';
+    case DomainManaged = 'domain_managed';
 
     case Unauthenticated = 'unauthenticated';
     case InvalidCredentials = 'invalid_credentials';
@@ -158,15 +174,18 @@ enum ErrorCode: string
             self::AlreadyAMember, self::EmailTaken, self::InvitationAccepted, self::InvitationDeclined, self::JoinOfferUnavailable, self::RestoreNeedsAddress, self::TeamSeatsInUse => 409,
             self::InvitationNotFound, self::RequestLinkDead => 404,
             self::JoinRequestWaiting, self::JoinRequestCoolingOff, self::JoinRequestAnswered => 409,
-            self::OwnerClaimAddress, self::OwnerClaimManaged, self::OwnerClaimOpen, self::OwnerClaimClosed, self::OwnerClaimEnded, self::OwnerClaimUnavailable, self::OwnerClaimOwn => 409,
-            self::InvitationExpired, self::InvitationRevoked, self::OrganisationDeleted => 410,
+            self::OwnerClaimAddress, self::OwnerClaimManaged, self::OwnerClaimOpen, self::OwnerClaimClosed, self::OwnerClaimEnded, self::OwnerClaimUnavailable, self::OwnerClaimOwn, self::EmailDomainTaken, self::DomainManaged => 409,
+            self::InvitationExpired, self::InvitationRevoked, self::OrganisationDeleted, self::BudgetLineCurrencyChanged => 410,
+            self::ExportNotReady => 409,
+            self::ExportUsed, self::ExportExpired => 410,
             self::InvitationNotYours => 403,
             self::UnsupportedMediaType => 415,
             self::PreconditionFailed => 412,
             self::PreconditionRequired => 428,
             self::EventCurrencyInUse, self::EventStateInvalid, self::EventConcluded, self::EventPaused, self::EventHostRequired, self::EventCallOffFirst => 409,
-            self::PlanLimit => 403,
-            self::SeatingPlanExists, self::SeatingSectionLimit, self::SeatingItemsOutside, self::SeatingTableFull, self::SeatingTableShort, self::SeatingSeatTaken, self::SeatingUndoStale, self::SeatingGuestsSeated, self::SeatingGuestNotWaiting, self::ScheduleItemLimit, self::ItemStarted, self::ItemNotStarted, self::ItemFinished, self::TrackBusy, self::GuestAlreadyListed, self::StaffNumberShared, self::RepliesClosed, self::RepliesOpen, self::GuestReplied, self::ReplyIsTheirs, self::GuestNotMarkedByHand, self::DishNameShared, self::DishInUse, self::MenuCourseLimit, self::MenuCoursePicked, self::MenuDishPicked, self::MenuDishOnCourse, self::MenuSameOneDish, self::VariantLimit, self::VariantPicked, self::VariantLastEveryone, self::ChoiceLimit, self::ChoiceAnswered, self::ChoiceOptionPicked => 409,
+            self::VendorAlreadyQuoted, self::QuoteUnchanged, self::VendorOwed => 409,
+            self::PlanLimit, self::PlanRequired => 403,
+            self::SeatingPlanExists, self::SeatingSectionLimit, self::SeatingItemsOutside, self::SeatingTableFull, self::SeatingTableShort, self::SeatingSeatTaken, self::SeatingUndoStale, self::SeatingGuestsSeated, self::SeatingGuestNotWaiting, self::ScheduleItemLimit, self::ItemStarted, self::ItemNotStarted, self::ItemFinished, self::TrackBusy, self::GuestAlreadyListed, self::StaffNumberShared, self::StaffJobStaffed, self::StaffShiftFull, self::StaffWorksAs, self::StaffShiftOverlap, self::StaffOnShifts, self::RepliesClosed, self::RepliesOpen, self::GuestReplied, self::ReplyIsTheirs, self::GuestNotMarkedByHand, self::DishNameShared, self::DishInUse, self::MenuCourseLimit, self::MenuCoursePicked, self::MenuDishPicked, self::MenuDishOnCourse, self::MenuSameOneDish, self::VariantLimit, self::VariantPicked, self::VariantLastEveryone, self::ChoiceLimit, self::ChoiceAnswered, self::ChoiceOptionPicked => 409,
             self::Unauthenticated, self::InvalidCredentials, self::InvalidRefreshToken, self::OAuthTokenInvalid, self::TwoFactorChallengeInvalid, self::SessionTimedOut => 401,
             self::Forbidden, self::PermissionRequired, self::GrantNotHeld, self::OwnEventRole, self::AccountUnverified, self::ProfileIncomplete, self::TwoFactorRequired, self::ProofRequired => 403,
             self::OAuthOnly, self::OAuthOnlyUnlinked, self::OrganisationTwoFactorRequired, self::OrganisationTwoFactorOverdue, self::OwnerRequired => 403,
@@ -179,6 +198,7 @@ enum ErrorCode: string
             self::AssistantUnavailable, self::AssistantBusy => 503,
 
             self::AssistantRefused, self::IdempotencyKeyReused => 422,
+            self::AuditExportTooMany => 422,
         };
     }
 

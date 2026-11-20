@@ -18,6 +18,7 @@ import {
 } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
+import { ManagedBanner } from '../../src/components/ManagedBanner.tsx';
 import { api, meAtLaunch } from '../../src/api.ts';
 import { PrimaryButton, QuietButton, SecondaryButton } from '../../src/components/Buttons.tsx';
 import { focusChecked, keysStayDown } from '../../src/components/Field.tsx';
@@ -33,6 +34,7 @@ import { dateLocale } from '../../src/i18n/index.ts';
 import { useFormChecks } from '../../src/kit/formChecks.ts';
 import { Heading, Plain, stepTitle, useStepTitleSize } from '../../src/steps/Lines.tsx';
 import { MessageBox } from '../../src/steps/MessageBox.tsx';
+import { signInOver } from '../../src/steps/signInOver.ts';
 import { NavBar, StepScreen } from '../../src/steps/StepScreen.tsx';
 import { tokens } from '../../src/theme/tokens.ts';
 import { unreachableFrom } from '../../src/unreachable.ts';
@@ -138,6 +140,7 @@ function SignedOut({ token, organisation }: { token: string; organisation: strin
 
   async function go(to: '/sign-in' | '/register'): Promise<void> {
     await holdLink(token);
+    if (to === '/sign-in') signInOver(true);
     router.push(to);
   }
 
@@ -214,6 +217,25 @@ function Asking({
   // Where the person stood as the link opened was not an answer to Ask to join, so it is not read out.
   const [opened] = useState(view);
   const top = <Top organisation={organisation} />;
+
+  if (view.kind === 'open' && preview.managed != null) {
+    return (
+      <StepScreen nav={nav}>
+        {top}
+        <View style={styles.below}>
+          <ManagedBanner
+            organisation={preview.managed.organisation.name}
+            message={preview.managed.message}
+            onChange={() => {
+              close();
+              router.push('/settings/account');
+            }}
+            testID="join.managed"
+          />
+        </View>
+      </StepScreen>
+    );
+  }
 
   if (view.kind === 'open' && preview.standing == null) {
     return <Ask token={token} preview={preview} onChange={onChange} top={top} />;
@@ -395,6 +417,22 @@ function Ask({
           ...preview,
           standing,
           askAgainFrom: typeof until === 'string' ? until : preview.askAgainFrom,
+        },
+      });
+      return;
+    }
+
+    if (problem.is('domain_managed')) {
+      onChange({
+        kind: 'open',
+        signedIn: true,
+        preview: {
+          ...preview,
+          managed: {
+            domain: problem.problem.domain ?? '',
+            organisation: { id: '', name: problem.problem.organisation ?? '' },
+            message: problem.problem.detail ?? '',
+          },
         },
       });
       return;

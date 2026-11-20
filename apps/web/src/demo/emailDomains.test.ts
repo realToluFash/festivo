@@ -177,9 +177,9 @@ describe('Email domains (sc-560, sc-563)', () => {
       step: { does: 'contact' },
     });
     expect(card('ed_downgraded')).toEqual({
-      says: 'Switched off on Sunday, Oct 18',
+      says: 'Switched off',
       line: 'Ire Events left Enterprise. Its domains are kept as they were, and come back on with Enterprise.',
-      step: { does: 'contact' },
+      step: null,
     });
   });
 

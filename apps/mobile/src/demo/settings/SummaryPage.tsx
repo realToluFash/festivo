@@ -12,13 +12,14 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Back } from '../../components/SettingsParts.tsx';
 import { useShell } from '../../components/settingsShell.ts';
 import { PageToast, type PageToastProps } from '../../components/Summary.tsx';
-import { Text } from '../../components/Text.tsx';
+import { TitleCap } from '../../components/Text.tsx';
+import { Title, useTitleCap } from '../../components/Title.tsx';
 import { PHONE_TAB_BAR, TabBarFade } from '../../components/TodayCover.tsx';
 import { tokens } from '../../theme/tokens.ts';
 import { PAGE_TITLE, PANE_TITLE, pageTitle, paneTitle } from '../../components/topTitle.ts';
 import { Bell, Landscape, OrgPill, PortraitTop, SettingsTabBar } from './Frame.tsx';
 
-/** A section page in B, summary first: back and the bell on top, the title, then the card and the lists. */
+/** A section page in B, summary first: back and the bell on top, the title, then the card and the lists. Back draws no larger than the title (sc-67471). */
 export function SummaryPage({
   title,
   back,
@@ -42,6 +43,10 @@ export function SummaryPage({
   const shell = useShell();
   const insets = useSafeAreaInsets();
   const backTo = back === undefined ? { onPress: shell.toSettings } : back;
+  const titled = shell.layout === 'landscape' ? PANE_TITLE : PAGE_TITLE;
+  const drawn = useTitleCap(`${titled}|${title ?? ''}`, titled);
+  const cap = title == null ? null : drawn.cap;
+  const onDrawn = drawn.onDrawn;
 
   if (shell.layout === 'landscape')
     return (
@@ -55,8 +60,10 @@ export function SummaryPage({
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
-          {title != null && <PageTitle text={title} size={PANE_TITLE} look={paneTitle} />}
-          {children}
+          {title != null && (
+            <PageTitle text={title} size={PANE_TITLE} look={paneTitle} onDrawn={onDrawn} />
+          )}
+          <TitleCap.Provider value={cap}>{children}</TitleCap.Provider>
         </ScrollView>
         {toast != null && <PageToast {...toast} bottom={tokens.spaceLg} />}
       </Landscape>
@@ -92,7 +99,11 @@ export function SummaryPage({
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.top}>
-          {backTo != null && <Back {...backTo} />}
+          {backTo != null && (
+            <TitleCap.Provider value={cap}>
+              <Back {...backTo} />
+            </TitleCap.Provider>
+          )}
           {phone && backTo == null && <OrgPill />}
           <View style={styles.grow} />
           {phone && <Bell tell={shell.tell} />}
@@ -100,9 +111,11 @@ export function SummaryPage({
         {title == null ? (
           <View style={styles.untitled} />
         ) : (
-          <PageTitle text={title} size={PAGE_TITLE} look={pageTitle} />
+          <PageTitle text={title} size={PAGE_TITLE} look={pageTitle} onDrawn={onDrawn} />
         )}
-        <View style={styles.blocks}>{children}</View>
+        <TitleCap.Provider value={cap}>
+          <View style={styles.blocks}>{children}</View>
+        </TitleCap.Provider>
       </ScrollView>
       {phone && (
         <>
@@ -127,15 +140,17 @@ function PageTitle({
   text,
   size,
   look,
+  onDrawn,
 }: {
   text: string;
   size: number;
   look: { letterSpacing: number };
+  onDrawn: (size: number) => void;
 }) {
   return (
-    <Text size={size} weight="bold" accessibilityRole="header" style={[styles.title, look]}>
+    <Title size={size} accessibilityRole="header" style={[styles.title, look]} onDrawn={onDrawn}>
       {text}
-    </Text>
+    </Title>
   );
 }
 

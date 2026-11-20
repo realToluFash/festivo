@@ -1,3 +1,5 @@
+import { type Translate, exportColumns } from '@soirely/domain';
+
 /** sc-3784's Export in the app: the dialog's choices, the file it names, and what it says while the file is made. */
 export type Scope = 'view' | 'all';
 export type Format = 'xlsx' | 'csv';
@@ -15,6 +17,10 @@ export const EXPORT_STATES = [
   'exportOffline',
   'exportDropped',
   'exportGrantView',
+  'exportSearched',
+  'exportSearchedPt',
+  'exportLongName',
+  'exportLongNamePt',
 ] as const;
 
 export type ExportState = (typeof EXPORT_STATES)[number];
@@ -42,6 +48,10 @@ export function exportStart(state: string | null): ExportStart {
     case 'export':
     case 'exportNarrowed':
     case 'exportEmpty':
+    case 'exportSearched':
+    case 'exportSearchedPt':
+    case 'exportLongName':
+    case 'exportLongNamePt':
       return { ...CLOSED, open: true };
     case 'exportCsv':
       return { ...CLOSED, open: true, format: 'csv' };
@@ -96,6 +106,14 @@ export function exportDay(now: Date, timeZone: string): string {
   return `${part('year')}-${part('month')}-${part('day')}`;
 }
 
+/** An event named with one word wider than the iPhone's row at the twelfth step, so its file name must continue on the next line (sc-72136). */
+export const LONG_ONE_WORD_NAME = '#AdeolaAndKwameForever2026';
+
+/** The event's name as the file carries it: the long one-word name in the states that show it. */
+export function exportedName(state: string | null, name: string): string {
+  return state === 'exportLongName' || state === 'exportLongNamePt' ? LONG_ONE_WORD_NAME : name;
+}
+
 export function fileName(event: string, day: string, format: Format): string {
   return `${event} – guests – ${day}.${format}`;
 }
@@ -113,6 +131,13 @@ export function narrowing(shown: string, searched: string): string {
 }
 
 const people = (count: number) => (count === 1 ? '1 person' : `${count} people`);
+
+/** Export's header words from a catalogue, as the Portuguese title row reads them (sc-67659). */
+export function exportWordsIn(
+  t: (key: 'guestExport.export' | 'guestExport.needsConnection') => string,
+) {
+  return { export: t('guestExport.export'), needsConnection: t('guestExport.needsConnection') };
+}
 
 export const XW = {
   export: 'Export',
@@ -141,3 +166,69 @@ export const XW = {
     `Drawn by the system: the iOS share sheet, or Android’s share intent, with ${file}. Closing it returns to the list with no message, and the app keeps no copy.`,
   closeShareSheet: 'Close the share sheet',
 };
+
+/** The words the Export sheet shows: English from XW, or another language from its catalogue (sc-72136). */
+export interface SheetWords {
+  title: string;
+  close: string;
+  who: string;
+  thisView: (count: number) => string;
+  allGuests: (count: number) => string;
+  nothingInView: string;
+  format: string;
+  excel: string;
+  csv: string;
+  file: string;
+  columns: string;
+  columnsFor: (needs: boolean) => readonly string[];
+  noNeeds: string;
+  safety: string;
+  share: string;
+  preparing: string;
+  failed: string;
+  dropped: string;
+}
+
+export const ENGLISH_SHEET: SheetWords = {
+  title: XW.title,
+  close: XW.close,
+  who: XW.who,
+  thisView: XW.thisView,
+  allGuests: XW.allGuests,
+  nothingInView: XW.nothingInView,
+  format: XW.format,
+  excel: XW.excel,
+  csv: XW.csv,
+  file: XW.file,
+  columns: XW.columns,
+  columnsFor,
+  noNeeds: XW.noNeeds,
+  safety: XW.safety,
+  share: XW.share,
+  preparing: XW.preparing,
+  failed: XW.failed,
+  dropped: XW.dropped,
+};
+
+export function sheetWordsIn(t: Translate): SheetWords {
+  return {
+    title: t('guestExport.title'),
+    close: t('guestList.cancel'),
+    who: t('guestExport.who'),
+    thisView: (count) => t('guestExport.thisView', { count }),
+    allGuests: (count) => t('guestExport.allGuests', { count }),
+    nothingInView: t('guestExport.nothingInView'),
+    format: t('guestExport.format'),
+    excel: t('guestExport.excel'),
+    csv: t('guestExport.csv'),
+    file: t('guestExport.file'),
+    columns: t('guestExport.columns'),
+    columnsFor: (needs) => exportColumns(needs).map((one) => t(`guestExport.column.${one}`)),
+    noNeeds: t('guestExport.noNeeds'),
+    safety: t('guestExport.safety'),
+    share: t('guestExport.share'),
+    preparing: t('guestExport.preparing'),
+    failed: t('guestExport.failed'),
+    dropped: t('guestExport.dropped'),
+  };
+}

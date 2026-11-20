@@ -4,6 +4,8 @@
 # the four languages, since the last batch may have left the account in any of them. The card's
 # heading is waited for rather than the Signed in as line, which a long organisation name
 # or a large text size puts below the fold. sc-18454.
+# At AX5 the account card is taller than the space above the tab bar, so the scrolls for its
+# line stop at half of it. sc-67202.
 appId: host.exp.Exponent
 ---
 # A tablet in landscape shows no Signed in as line in Settings, so the session is read upright.
@@ -16,9 +18,9 @@ appId: host.exp.Exponent
 - runFlow:
     file: developer-menu.yaml
     env:
-      SETTLED: '{{t:any:home.signedInTo}}|{{t:any:todayScreen.tab.today}}|{{t:any:noOrganisation.title}}|{{t:any:status.title}}|{{t:any:signIn.title}}|{{t:any:welcome.withEmail}}|{{t:any:signInRules.overdueTitle}}|{{t:any:steps.organisationTitle}}|{{t:any:steps.invitedTitle}}'
+      SETTLED: '{{t:any:home.signedInTo}}|{{t:any:todayScreen.tab.today}}|{{t:any:noOrganisation.title}}|{{t:any:eventNav.more}}|{{t:any:eventNav.overview}}|{{t:any:status.title}}|{{t:any:signIn.title}}|{{t:any:welcome.withEmail}}|{{t:any:signInRules.overdueTitle}}|{{t:any:steps.organisationTitle}}|{{t:any:steps.invitedTitle}}'
 - extendedWaitUntil:
-    visible: '{{t:any:home.signedInTo}}|{{t:any:todayScreen.tab.today}}|{{t:any:noOrganisation.title}}|{{t:any:status.title}}|{{t:any:signIn.title}}|{{t:any:welcome.withEmail}}|{{t:any:signInRules.overdueTitle}}|{{t:any:steps.organisationTitle}}|{{t:any:steps.invitedTitle}}'
+    visible: '{{t:any:home.signedInTo}}|{{t:any:todayScreen.tab.today}}|{{t:any:noOrganisation.title}}|{{t:any:eventNav.more}}|{{t:any:eventNav.overview}}|{{t:any:status.title}}|{{t:any:signIn.title}}|{{t:any:welcome.withEmail}}|{{t:any:signInRules.overdueTitle}}|{{t:any:steps.organisationTitle}}|{{t:any:steps.invitedTitle}}'
     timeout: 60000
     optional: true
 # The two-factor overdue screen names no account, so the batch signs out there and back in. sc-28435.
@@ -35,8 +37,15 @@ appId: host.exp.Exponent
 # The reload before this can crash an Expo Go that has only just opened.
 - runFlow:
     when:
-      notVisible: '{{t:any:home.signedInTo}}|{{t:any:todayScreen.tab.today}}|{{t:any:noOrganisation.title}}|{{t:any:status.title}}|{{t:any:signIn.title}}|{{t:any:welcome.withEmail}}|{{t:any:signInRules.overdueTitle}}|{{t:any:steps.organisationTitle}}|{{t:any:steps.invitedTitle}}'
+      notVisible: '{{t:any:home.signedInTo}}|{{t:any:todayScreen.tab.today}}|{{t:any:noOrganisation.title}}|{{t:any:eventNav.more}}|{{t:any:eventNav.overview}}|{{t:any:status.title}}|{{t:any:signIn.title}}|{{t:any:welcome.withEmail}}|{{t:any:signInRules.overdueTitle}}|{{t:any:steps.organisationTitle}}|{{t:any:steps.invitedTitle}}'
     file: reopen.yaml
+# An account in no organisation that holds an event from outside lands inside it, which names
+# no account: Settings does. sc-68438.
+- runFlow:
+    when:
+      visible:
+        id: 'event\.nav\..*'
+    file: to-settings.yaml
 # Today names no account, so whose session it is is read in Settings. sc-30091.
 - runFlow:
     when:
@@ -53,6 +62,7 @@ appId: host.exp.Exponent
           element:
             text: '{{t:any:settings.signedInAs}}|{{t:any:settings.personLabel}}|{{t:any:settings.personLabelWithRole}}'
           direction: DOWN
+          visibilityPercentage: 50
           timeout: 30000
 - runFlow:
     when:
@@ -62,6 +72,7 @@ appId: host.exp.Exponent
           element:
             text: '{{t:any:settings.signedInAs}}|{{t:any:settings.personLabel}}|{{t:any:settings.personLabelWithRole}}|{{t:any:noOrganisation.signedInAs}}'
           direction: DOWN
+          visibilityPercentage: 50
           timeout: 30000
 - runFlow:
     when:

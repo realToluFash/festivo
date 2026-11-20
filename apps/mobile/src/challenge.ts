@@ -10,26 +10,46 @@ import { takeHeldLink } from './heldLink.ts';
 import { type Landing, landingFor } from './landing.ts';
 
 let held: TwoFactorChallenge | null = null;
+let heldAlone = false;
+let heldTyped: string | null = null;
 
 /** In memory only: a route parameter would put a credential where logs and history keep it. */
-export function holdChallenge(challenge: TwoFactorChallenge): void {
+export function holdChallenge(
+  challenge: TwoFactorChallenge,
+  { alone = false, typed = null }: { alone?: boolean; typed?: string | null } = {},
+): void {
   held = challenge;
+  heldAlone = alone;
+  heldTyped = typed;
 }
 
 export function heldChallenge(): TwoFactorChallenge | null {
   return held;
 }
 
+/** Whether the held sign-in began on a Sign in with nothing under it, as a cold `soirely://sign-in` opens one (sc-67606). */
+export function challengeBeganAlone(): boolean {
+  return heldAlone;
+}
+
+/** The address typed on the Sign in the held sign-in began on, or null when it began with Google or Apple (sc-67828). */
+export function challengeTypedEmail(): string | null {
+  return heldTyped;
+}
+
 export function dropChallenge(): void {
   held = null;
+  heldAlone = false;
+  heldTyped = null;
 }
 
 /** Where any sign-in goes next: the code screen when two-factor asks for one, else where the account belongs. */
 export async function nextAfterSignIn(
   outcome: SignInOutcome,
+  { alone = false, typed = null }: { alone?: boolean; typed?: string | null } = {},
 ): Promise<Landing | '/sign-in-code' | '/two-factor-again' | `/join/${string}`> {
   if ('challenge' in outcome) {
-    holdChallenge(outcome);
+    holdChallenge(outcome, { alone, typed });
     return '/sign-in-code';
   }
 

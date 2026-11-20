@@ -32,7 +32,7 @@ const line = (id: string) => COST_LINES.find((one) => one.id === id) ?? COST_LIN
 
 describe('the Budget home’s states (spec §9)', () => {
   it('has every Web and Ceiling name, and the margin ones on the home', () => {
-    expect(WEB_STATES).toHaveLength(34);
+    expect(WEB_STATES).toHaveLength(39);
     expect(CEILING_STATES).toHaveLength(24);
     expect(MARGIN_STATES).toContain('free');
     const linked = [...BUDGET_PAGES, ...TEMPLATES_PAGES].flatMap((group) =>
@@ -132,6 +132,10 @@ describe('the Budget home’s states (spec §9)', () => {
       'That has too many decimal places for this event’s currency. Enter the price like 12.50.',
     );
     expect(priceProblem('0')).toBeNull();
+    expect(priceProblem('')).toBe('Enter a price of 0 or more, in numbers only.');
+    expect(priceProblem('', 'GBP', true)).toBeNull();
+    expect(markupProblem('')).toBe('Enter the markup as a number, like 12.5.');
+    expect(markupProblem('', true)).toBeNull();
   });
 
   it('refuses what a cost is over 100 and a note over 500, and words the server’s 422 (sc-85)', () => {

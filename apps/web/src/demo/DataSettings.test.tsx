@@ -283,9 +283,7 @@ describe('Data and control › Delete guest data after an event at a desk (sc-30
       expect(within(held).queryByRole('button')).toBeNull();
       expect(screen.queryByRole('heading', { level: 2, name: /^Next run/u })).toBeNull();
       expect(screen.queryByRole('button', { name: /^Hold back /u })).toBeNull();
-      expect(
-        screen.getByRole('button', { name: 'Contact Soirely about Enterprise' }),
-      ).toBeDefined();
+      expect(screen.queryByRole('button', { name: 'Contact Soirely about Enterprise' })).toBeNull();
     },
   );
 
@@ -351,7 +349,7 @@ describe('Data and control › Delete guest data after an event at a desk (sc-30
     expect(screen.queryByRole('heading', { level: 2, name: 'Held back' })).toBeNull();
 
     expect(screen.getByText('Available on Enterprise')).toBeDefined();
-    expect(screen.getByRole('button', { name: 'Contact Soirely about Enterprise' })).toBeDefined();
+    expect(screen.getByRole('button', { name: 'Ask an owner' })).toBeDefined();
     expect(screen.getByText('Locked')).toBeDefined();
     expect(
       screen.queryByRole('button', { name: /^Delete guest data after an event: /u }),

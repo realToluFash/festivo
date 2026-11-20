@@ -25,6 +25,7 @@ import {
   libraryJollof,
   sixWays,
   twoWays,
+  variant,
   variantAllergenLine,
 } from './dishVariants.ts';
 import {
@@ -34,6 +35,7 @@ import {
   type ChoiceMode,
   type OptionForm,
   choiceForm,
+  courseHint,
   dishHidden,
   dishPicked,
   draftChoice,
@@ -43,8 +45,12 @@ import {
   sideChoice,
   thirdChoice,
   withSavedChoice,
+  choice,
+  option,
 } from './dishChoices.ts';
+import { type CourseDefault, type DefaultForm, type Given, DFW } from './courseDefault.ts';
 import { MENU_EVENT, moved } from './menuServed.ts';
+import { type Close, type PicksDates, SAMPLE_PICKS, closeOf } from './picksClose.ts';
 import type { DemoLink } from './settings.ts';
 
 /** sc-3902's event Menu at a desk and in a narrow web window (board Menu, page e32): courses in order, and the dishes on each. */
@@ -80,6 +86,10 @@ export interface EvCourse {
   answer: Answer;
   skip: boolean;
   dishes: readonly EvDish[];
+  /** sc-1362: the default, set with the course's choose-by date in `PicksDates.own`. */
+  pick?: CourseDefault | null;
+  /** sc-1362: the people given the default once its date passed. */
+  given?: readonly Given[];
 }
 
 export const CW = {
@@ -255,6 +265,16 @@ export const isPicked = (dish: EvDish): boolean => dishPicked(dish);
 export const coursePicked = (course: EvCourse): boolean => course.dishes.some(isPicked);
 
 export const canSame = (course: EvCourse): boolean => course.dishes.length === 1;
+
+/** sc-3905: a course asks guests something when they choose, or when its one dish asks the way or a choice; one not shown to guests asks nothing. */
+export const asksGuests = (course: EvCourse): boolean =>
+  isReady(course) && (course.answer === 'choose' || courseHint(course.dishes) != null);
+
+export const courseClose = (course: EvCourse, dates: PicksDates): Close | null =>
+  asksGuests(course) ? closeOf(course.id, dates) : null;
+
+export const menuCloses = (courses: readonly EvCourse[], dates: PicksDates): Close[] =>
+  courses.flatMap((one) => courseClose(one, dates) ?? []);
 
 export function headerLines(courses: readonly EvCourse[]): {
   counts: string;
@@ -494,6 +514,14 @@ export function variantCourses(): EvCourse[] {
   });
 }
 
+/** sc-3909's sample menu: sc-3903's variants, with "And a side?" on Coconut rice. */
+export function picksCourses(): EvCourse[] {
+  return changed(
+    { 'k2-coconut': (dish) => ({ ...dish, choices: [sideChoice(false)] }) },
+    variantCourses(),
+  );
+}
+
 /** Main as a set course of Jollof rice alone, nobody having picked it. */
 function setMain(variants: readonly Variant[]): EvCourse[] {
   return changed(
@@ -602,7 +630,7 @@ const TWO_FISH: readonly Partial<VariantForm>[] = [
 
 export type Opened =
   | { kind: 'addCourse'; form?: CourseForm; press?: boolean; serverFull?: boolean }
-  | { kind: 'editCourse'; courseId: string }
+  | { kind: 'editCourse'; courseId: string; pair?: Partial<DefaultForm>; press?: boolean }
   | {
       kind: 'addDish';
       courseId: string;
@@ -650,6 +678,7 @@ export type Asking =
 
 export type Refused =
   | { kind: 'dish'; dishId: string }
+  | { kind: 'defaultDish'; dishId: string }
   | { kind: 'course'; courseId: string }
   | { kind: 'limit'; at: 'top' | 'end' }
   | { kind: 'addVariant'; dishId: string; why: 'limit' | 'picked' }
@@ -678,6 +707,12 @@ export interface CoursesStart {
   libraryFailed?: boolean;
   /** Try again on a library that did not load fails once more, then loads. */
   libraryRetryFails?: boolean;
+  /** sc-3905: the dates every course's close is worked out from. */
+  picks: PicksDates;
+  /** sc-3905: the reply-by date moves to this, two seconds after the state opens. */
+  picksMoveTo?: string;
+  /** sc-3909: each dish row and variant inset shows its picks, See picks sits on each course, and the picks summary beside the menu. */
+  showPicks?: boolean;
 }
 
 function start(over: Partial<CoursesStart> & { name: string; note: string }): CoursesStart {
@@ -691,13 +726,118 @@ function start(over: Partial<CoursesStart> & { name: string; note: string }): Co
     said: '',
     system: 'none',
     failing: 'none',
+    picks: SAMPLE_PICKS,
     ...over,
   };
 }
 
 const MAIN = 'k2';
 
+const CANAPE: EvDish = {
+  id: 'k1-canape',
+  name: 'Canapé selection',
+  desc: 'Smoked fish blinis, cheese puffs and small pastries.',
+  contains: ['gluten', 'fish', 'milk'],
+  diets: ['pescatarian'],
+  libraryId: null,
+  pickers: [],
+};
+
+/** Starter guests choose, so all three courses with dishes ask something. */
+function allAskCourses(): EvCourse[] {
+  const all = sampleCourses();
+
+  return all.map((one) =>
+    one.id === 'k1' ? course('k1', 'Starter', '18:30', [CANAPE, from('d-suya', 'k1-suya')]) : one,
+  );
+}
+
+const STARTER_OWN = { k1: '2026-10-16' };
+
+const STARTER_DEFAULT: CourseDefault = { dishId: 'k1-canape', variantId: null, optionIds: [] };
+
+const MAIN_DEFAULT: CourseDefault = {
+  dishId: 'k2-coconut',
+  variantId: 'v-chicken2',
+  optionIds: ['c-side-plantain'],
+};
+
+/** 23 people given Canapé selection at the date: 21 with no diet recorded, 2 Pescatarian. */
+const GIVEN: readonly Given[] = [
+  ...Array.from({ length: 21 }, () => []),
+  ['pescatarian'],
+  ['pescatarian'],
+];
+
+/** 4 Pescatarian people given Canapé selection: Beef suya skewers meets none of them, so nobody moves. */
+const GIVEN_PESCATARIAN: readonly Given[] = Array.from({ length: 4 }, () => ['pescatarian']);
+
+function withPick(
+  courses: readonly EvCourse[],
+  courseId: string,
+  pick: CourseDefault,
+  given: readonly Given[] = [],
+): EvCourse[] {
+  return courses.map((one) => (one.id === courseId ? { ...one, pick, given } : one));
+}
+
+const twoSides = (): Choice =>
+  choice(
+    'c-two',
+    'Two sides?',
+    [
+      option('c-two-plantain', 'Plantain', 'none'),
+      option('c-two-salad', 'Garden salad', ['mustard']),
+      option('c-two-moimoi', 'Moi moi', ['eggs']),
+    ],
+    { pick: 2 },
+  );
+
+/** sc-1362's sample: Starter's two dishes; Main's Jollof rice asks for two sides, and Coconut rice has variants and asks for a side. */
+function defaultCourses(): EvCourse[] {
+  const [fish, chicken] = twoWays() as [Variant, Variant];
+  const kids = variant('v-kids2', 'Children’s portion', 'children', ['celery'], ['halal']);
+
+  return allAskCourses().map((one) =>
+    one.id === MAIN
+      ? {
+          ...one,
+          dishes: [
+            { ...from('d-jollof', 'k2-jollof'), choices: [twoSides()] },
+            {
+              ...from('d-coconut', 'k2-coconut'),
+              variants: [chicken, fish, kids],
+              choices: [sideChoice(false)],
+            },
+            SUYA_WRAP,
+          ],
+        }
+      : one,
+  );
+}
+
+const MAIN_OWN = { k2: '2026-10-16' };
+const AFTER_DATE: PicksDates = { ...SAMPLE_PICKS, today: '2026-10-17', own: STARTER_OWN };
+
+const SIDEBAR_NOTE =
+  ' The sidebar keeps sc-3902’s sample event; the close dates are the picks sample’s, an event starting Saturday, Nov 14 at 16:00, Lagos time.';
+
 const STATES = {
+  menuPicks: () =>
+    start({
+      name: 'The menu with its picks (sc-3909)',
+      note: 'Each dish row and variant inset shows its picks and share of the room, from the same figures as See picks; See picks on each course, and the picks summary beside the menu.',
+      courses: picksCourses(),
+      showPicks: true,
+    }),
+  menuPicksReadOnly: () =>
+    start({
+      name: 'The menu with its picks, read only (sc-3909)',
+      note: 'Without menu.manage: the picks and See picks stay.',
+      courses: picksCourses(),
+      showPicks: true,
+      manage: false,
+    }),
   menu: () =>
     start({
       name: 'The menu',
@@ -891,6 +1031,220 @@ const STATES = {
       name: 'Remove dish, guests have picked it',
       note: 'Refused at once until sc-3913 is built; nothing changes.',
       refused: { kind: 'dish', dishId: 'k2-jollof' },
+    }),
+  picksOneDate: () =>
+    start({
+      name: 'Picks close on one date',
+      note:
+        'Today is Wednesday, Oct 14. Starter, Main and Dessert ask guests something and close on the reply-by date: the header reads “picks close Monday, Oct 19”, each course a clock pill and the host-only source line. Late-night bites has no dishes, so no close.' +
+        SIDEBAR_NOTE,
+      courses: allAskCourses(),
+    }),
+  picksDifferentDates: () =>
+    start({
+      name: 'Picks close on different dates',
+      note:
+        'No reply-by date. Starter on its own choose-by date, with its default’s line, Main and Dessert at the event’s start: “picks close from Friday, Oct 16”.' +
+        SIDEBAR_NOTE,
+      courses: withPick(allAskCourses(), 'k1', STARTER_DEFAULT),
+      picks: { ...SAMPLE_PICKS, replyBy: null, own: STARTER_OWN },
+    }),
+  picksOneClosed: () =>
+    start({
+      name: 'One course closed',
+      note:
+        'Today is Saturday, Oct 17, Starter closed Friday: a grey padlock pill, its default given to 23 guests, the closed line and Who hasn’t picked. The header counts only the open courses: “picks close Saturday, Nov 14”.' +
+        SIDEBAR_NOTE,
+      courses: withPick(allAskCourses(), 'k1', STARTER_DEFAULT, GIVEN),
+      picks: { ...SAMPLE_PICKS, today: '2026-10-17', replyBy: null, own: STARTER_OWN },
+    }),
+  picksAllClosed: () =>
+    start({
+      name: 'All courses closed',
+      note:
+        'Today is Tuesday, Oct 20: Starter closed on its own choose-by date with its default given, Main and Dessert on the reply-by date, and the header reads “picks closed on Monday, Oct 19”, the last close.' +
+        SIDEBAR_NOTE,
+      courses: withPick(allAskCourses(), 'k1', STARTER_DEFAULT, GIVEN),
+      picks: { ...SAMPLE_PICKS, today: '2026-10-20', own: STARTER_OWN },
+    }),
+  picksAllClosedReadOnly: () =>
+    start({
+      name: 'All courses closed, read only',
+      note:
+        'Without guests.manage: the closed line’s first sentence only, and no Who hasn’t picked.' +
+        SIDEBAR_NOTE,
+      courses: withPick(allAskCourses(), 'k1', STARTER_DEFAULT, GIVEN),
+      picks: { ...SAMPLE_PICKS, today: '2026-10-20', own: STARTER_OWN },
+      manage: false,
+    }),
+  picksDateChanged: () =>
+    start({
+      name: 'Close date changed',
+      note:
+        'Two seconds after it opens, as a change from Event details would arrive, the reply-by date moves to Friday, Oct 23: the pills, the header and the source lines change together, and the status line names the new date.' +
+        SIDEBAR_NOTE,
+      courses: allAskCourses(),
+      picksMoveTo: '2026-10-23',
+    }),
+  defaultUnset: () =>
+    start({
+      name: 'Default and choose-by date, unset',
+      note:
+        'Edit course on Starter, where guests choose: the group under Served at, with No default selected and Choose by blank. Pick a dish and a date, then Save changes: the card says when it is given.' +
+        SIDEBAR_NOTE,
+      courses: defaultCourses(),
+      opened: { kind: 'editCourse', courseId: 'k1' },
+    }),
+  defaultSet: () =>
+    start({
+      name: 'Default and choose-by date, set',
+      note:
+        'Starter’s default is Canapé selection, by Friday, Oct 16: its own close, the line under it, and Clear the default and date in Edit course.' +
+        SIDEBAR_NOTE,
+      courses: withPick(defaultCourses(), 'k1', STARTER_DEFAULT),
+      picks: { ...SAMPLE_PICKS, own: STARTER_OWN },
+      opened: { kind: 'editCourse', courseId: 'k1' },
+    }),
+  defaultWholePick: () =>
+    start({
+      name: 'Default, a whole pick',
+      note:
+        'Main’s default is Coconut rice, Chicken, Plantain: the dish, one of its Everyone variants, and the option its required choice asks for. Jollof rice asks for two sides, as checkboxes.' +
+        SIDEBAR_NOTE,
+      courses: withPick(defaultCourses(), MAIN, MAIN_DEFAULT),
+      picks: { ...SAMPLE_PICKS, own: MAIN_OWN },
+      opened: { kind: 'editCourse', courseId: MAIN },
+    }),
+  defaultOnlyOne: () =>
+    start({
+      name: 'Default, only one of the two set',
+      note:
+        'Canapé selection with no date, Save changes pressed: refused before sending, the line under Choose by and focus on it. Set No default and a date for the other line.' +
+        SIDEBAR_NOTE,
+      courses: defaultCourses(),
+      opened: { kind: 'editCourse', courseId: 'k1', pair: { dishId: 'k1-canape' }, press: true },
+    }),
+  defaultAfterEvent: () =>
+    start({
+      name: 'Default, a date on the event’s day',
+      note: 'Choose by Saturday, Nov 14, the event’s own date: refused.' + SIDEBAR_NOTE,
+      courses: defaultCourses(),
+      opened: {
+        kind: 'editCourse',
+        courseId: 'k1',
+        pair: { dishId: 'k1-canape', chooseBy: '2026-11-14' },
+        press: true,
+      },
+    }),
+  defaultPast: () =>
+    start({
+      name: 'Default, a date that has passed',
+      note:
+        'Choose by Monday, Oct 12, newly entered: refused. A stored date is never checked against today.' +
+        SIDEBAR_NOTE,
+      courses: defaultCourses(),
+      opened: {
+        kind: 'editCourse',
+        courseId: 'k1',
+        pair: { dishId: 'k1-canape', chooseBy: '2026-10-12' },
+        press: true,
+      },
+    }),
+  defaultChoiceUnanswered: () =>
+    start({
+      name: 'Default, a required choice unanswered',
+      note:
+        'Coconut rice, Chicken and no side: the line names “And a side?”, and focus is on its first option.' +
+        SIDEBAR_NOTE,
+      courses: defaultCourses(),
+      opened: {
+        kind: 'editCourse',
+        courseId: MAIN,
+        pair: { dishId: 'k2-coconut', variantId: 'v-chicken2', chooseBy: '2026-10-16' },
+        press: true,
+      },
+    }),
+  defaultAfterDate: () =>
+    start({
+      name: 'Default, after the date',
+      note:
+        'Today is Saturday, Oct 17: 23 guests were given Canapé selection. Choose by is locked as text, No default is gone, and the default can still change.' +
+        SIDEBAR_NOTE,
+      courses: withPick(defaultCourses(), 'k1', STARTER_DEFAULT, GIVEN),
+      picks: AFTER_DATE,
+      opened: { kind: 'editCourse', courseId: 'k1' },
+    }),
+  defaultMove: () =>
+    start({
+      name: 'Default, moving the guests given it',
+      note:
+        'Beef suya skewers chosen after the date, Save changes pressed: 21 guests move, and the 2 Pescatarian go back to not chosen. Cancel changes nothing.' +
+        SIDEBAR_NOTE,
+      courses: withPick(defaultCourses(), 'k1', STARTER_DEFAULT, GIVEN),
+      picks: AFTER_DATE,
+      opened: { kind: 'editCourse', courseId: 'k1', pair: { dishId: 'k1-suya' }, press: true },
+    }),
+  defaultMoveNone: () =>
+    start({
+      name: 'Default, changed with nobody to move',
+      note:
+        'Beef suya skewers chosen after the date, Save changes pressed: the 4 guests given Canapé selection are all Pescatarian, so nobody moves and all 4 go back to not chosen. The question says the default changes instead of “Move 0 guests”.' +
+        SIDEBAR_NOTE,
+      courses: withPick(defaultCourses(), 'k1', STARTER_DEFAULT, GIVEN_PESCATARIAN),
+      picks: AFTER_DATE,
+      opened: { kind: 'editCourse', courseId: 'k1', pair: { dishId: 'k1-suya' }, press: true },
+    }),
+  defaultRemoveDish: () =>
+    start({
+      name: 'Remove… the default dish',
+      note:
+        'Remove… on Canapé selection, Starter’s default: refused at once, nothing removed.' +
+        SIDEBAR_NOTE,
+      courses: withPick(defaultCourses(), 'k1', STARTER_DEFAULT),
+      picks: { ...SAMPLE_PICKS, own: STARTER_OWN },
+      refused: { kind: 'defaultDish', dishId: 'k1-canape' },
+    }),
+  defaultRemoveVariant: () =>
+    start({
+      name: 'Remove… the default variant',
+      note:
+        'Remove… on Coconut rice’s Chicken, Main’s default variant: refused at once.' +
+        SIDEBAR_NOTE,
+      courses: withPick(defaultCourses(), MAIN, MAIN_DEFAULT),
+      picks: { ...SAMPLE_PICKS, own: MAIN_OWN },
+      asking: {
+        kind: 'variant',
+        dishId: 'k2-coconut',
+        ask: {
+          variantId: 'v-chicken2',
+          kind: 'refused',
+          lines: [],
+          said: DFW.refuseVariant('Chicken', 'Main'),
+        },
+      },
+    }),
+  defaultRemoveOption: () =>
+    start({
+      name: 'Remove an option of the default',
+      note:
+        'Edit “And a side?” on Coconut rice: the bin on Plantain, part of Main’s default, removes nothing. Focus stays on the bin.' +
+        SIDEBAR_NOTE,
+      courses: withPick(defaultCourses(), MAIN, MAIN_DEFAULT),
+      picks: { ...SAMPLE_PICKS, own: MAIN_OWN },
+      opened: {
+        kind: 'choice',
+        courseId: MAIN,
+        dishId: 'k2-coconut',
+        mode: 'edit',
+        choiceId: 'c-side',
+        binAt: 0,
+      },
+    }),
+  defaultAsksNothing: () =>
+    start({
+      name: 'Default, a course that asks nothing',
+      note: 'Edit course on Starter, where everyone gets Catfish pepper soup with no variant or choice to answer: no default group at all.',
+      opened: { kind: 'editCourse', courseId: 'k1' },
     }),
   menuReadOnly: () =>
     start({
@@ -1696,6 +2050,40 @@ export const COURSES_PAGES: readonly { name: string; states: readonly DemoLink[]
         'readOnlyCanView',
         'readOnlyCheckIn',
         'emptyReadOnly',
+      ] as const
+    ).map(link),
+  },
+  {
+    name: 'When picks close (sc-3905)',
+    states: (
+      [
+        'picksOneDate',
+        'picksDifferentDates',
+        'picksOneClosed',
+        'picksAllClosed',
+        'picksAllClosedReadOnly',
+        'picksDateChanged',
+      ] as const
+    ).map(link),
+  },
+  {
+    name: 'A default and a choose-by date (sc-1362)',
+    states: (
+      [
+        'defaultUnset',
+        'defaultSet',
+        'defaultWholePick',
+        'defaultOnlyOne',
+        'defaultAfterEvent',
+        'defaultPast',
+        'defaultChoiceUnanswered',
+        'defaultAfterDate',
+        'defaultMove',
+        'defaultMoveNone',
+        'defaultRemoveDish',
+        'defaultRemoveVariant',
+        'defaultRemoveOption',
+        'defaultAsksNothing',
       ] as const
     ).map(link),
   },

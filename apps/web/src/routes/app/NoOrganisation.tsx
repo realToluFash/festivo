@@ -5,10 +5,11 @@ import { Link } from 'react-router';
 
 import { CreateOrganisation, StartYourOwn } from '../../components/CreateOrganisation.tsx';
 import { InvitationRows } from '../../components/InvitationRows.tsx';
+import { ManagedBanner, useManaged } from '../../components/Managed.tsx';
 import type { WaitingInvitations } from '../../invitations.ts';
 import { joinOrganisation, useSession } from '../../session.ts';
 
-/** Where an account in no organisation lands, with any invitation waiting for it and a way to start its own. Its own account pages still work from here. */
+/** Where an account in no organisation lands, with any invitation waiting for it and a way to start its own, or sc-563's banner in its place when the account is managed. Its own account pages still work from here. */
 export function NoOrganisation({
   waiting,
   onOpen,
@@ -20,6 +21,7 @@ export function NoOrganisation({
 }) {
   const { t } = useTranslation();
   const session = useSession();
+  const managed = useManaged();
   const [creating, setCreating] = useState(false);
 
   return (
@@ -36,7 +38,11 @@ export function NoOrganisation({
       ) : (
         <p>{t('noOrganisation.wayOn', { email: session.email })}</p>
       )}
-      <StartYourOwn onStart={() => setCreating(true)} />
+      {managed != null ? (
+        <ManagedBanner managed={managed} />
+      ) : (
+        managed === null && <StartYourOwn onStart={() => setCreating(true)} />
+      )}
       <div className="auth-footnote no-organisation-footnote">
         <span>{t('noOrganisation.signedInAs', { email: session.email })}</span>
         <Link className="link-button" to="/app/account/security">

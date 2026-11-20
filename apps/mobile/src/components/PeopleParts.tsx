@@ -3,6 +3,8 @@ import { Keyboard, Pressable, StyleSheet, View, type ViewInstance } from 'react-
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { addInTurn } from '../kit/addInTurn.ts';
+import { type Address, type OutsideView, outsideView } from '../kit/eventPeople.ts';
+import { toneOf } from '../kit/personFace.ts';
 import { type PickAnswer, RolePicks } from '../kit/rolePicks.ts';
 import { tokens } from '../theme/tokens.ts';
 import { Field, TextField } from './Field.tsx';
@@ -42,21 +44,24 @@ export interface RoleWords<R extends string> {
   saved: string;
 }
 
+/** Initials, or with none a mark: mail or phone for an address, a plain person for "Not joined yet". */
 export function PersonFace({
   initials,
   tone,
   side,
+  mark = 'phone',
 }: {
   initials: string | null;
   tone: number;
   side: number;
+  mark?: 'mail' | 'phone' | 'user';
 }) {
   return (
     <Avatar
       initials={initials ?? ''}
       side={side}
       tone={tone}
-      glyph={initials == null ? 'phone' : undefined}
+      glyph={initials == null ? mark : undefined}
     />
   );
 }
@@ -270,6 +275,7 @@ export function RoleSheet<R extends string>({
       label: words.removeConfirm,
       removes: true,
       busy: removing === 'sending' ? words.removing : undefined,
+      busyWords: words.removing,
       testID: 'people.remove.confirm',
     },
     failed: removeFailed,
@@ -442,6 +448,29 @@ export interface AddWords<R extends string> extends RoleWords<R> {
   everyoneOn?: string | undefined;
 }
 
+/** Someone from outside the organisation, by email address or mobile number (sc-71). */
+export interface OutsideAdd<R extends string, T> {
+  country: string;
+  lead: R;
+  /** Who on the event already holds this address, if anyone. */
+  holder: (address: Address) => string | null;
+  add: (role: R, address: Address, job: string) => Promise<T>;
+  words: {
+    find: string;
+    findName: string;
+    fromOutside: string;
+    leadOff: string;
+    pickAnother: string;
+    unusable: string;
+    onAlready: (name: string) => string;
+    jobLabel: string;
+    jobHelp: (job: string) => string;
+  };
+}
+
+const NO_OUTSIDE: OutsideView = { kind: 'none' };
+const OUTSIDE_ID = 'outside:';
+
 function Unsent({ failed }: { failed: { line: string; times: number } }) {
   return (
     <ReadOut words={failed.line} answer={failed.times} style={styles.failed}>
@@ -453,11 +482,13 @@ function Unsent({ failed }: { failed: { line: string; times: number } }) {
   );
 }
 
-/** Sends each ticked member in turn; a refusal stops there and leaves the screen open, the ones not added still ticked. */
+/** Sends each ticked member in turn, then anyone from outside; a refusal stops there and leaves the screen open, the ones not added still ticked. */
 export function AddScreen<R extends string, T>({
   open,
   first,
+  startTyped = '',
   offered,
+  outside,
   words,
   opener,
   onClose,
@@ -466,7 +497,9 @@ export function AddScreen<R extends string, T>({
 }: {
   open: boolean;
   first: R;
+  startTyped?: string | undefined;
   offered: (typed: string) => readonly Offer[];
+  outside?: OutsideAdd<R, T> | undefined;
   words: AddWords<R>;
   opener: Opener;
   onClose: () => void;
@@ -475,14 +508,33 @@ export function AddScreen<R extends string, T>({
 }) {
   const [role, setRole] = useState<R>(first);
   const [picking, setPicking] = useState(false);
-  const [typed, setTyped] = useState('');
+  const [typed, setTyped] = useState(startTyped);
+  const [cleared, setCleared] = useState(0);
   const [ticked, setTicked] = useState<readonly string[]>([]);
+  const [outsideOn, setOutsideOn] = useState(true);
+  const [job, setJob] = useState('');
   const [discarding, setDiscarding] = useState(false);
   const [busy, setBusy] = useState(false);
   const [failed, setFailed] = useState<{ line: string; times: number } | null>(null);
   const shown = offered(typed);
-  const nobody = typed.trim() !== '' && shown.length === 0;
-  const canAdd = ticked.length > 0 && !busy;
+  const fromOutside =
+    outside == null
+      ? NO_OUTSIDE
+      : outsideView(typed, outside.country, role === outside.lead, outside.holder);
+  const address = fromOutside.kind === 'offer' ? fromOutside.address : null;
+  const sendsOutside = address != null && outsideOn;
+  const nobody =
+    typed.trim() !== '' &&
+    shown.length === 0 &&
+    fromOutside.kind !== 'offer' &&
+    fromOutside.kind !== 'leadOff';
+  const canAdd = (ticked.length > 0 || sendsOutside) && !busy;
+  const find =
+    outside == null
+      ? words.find
+      : role === outside.lead
+        ? outside.words.findName
+        : outside.words.find;
   const roleName = words.name(role);
   const roleMeans = words.means(role);
 
@@ -490,9 +542,17 @@ export function AddScreen<R extends string, T>({
     if (!canAdd) return;
     setBusy(true);
     setFailed(null);
+    const going = sendsOutside ? address : null;
+    const outsideId = going == null ? null : `${OUTSIDE_ID}${going.address}`;
+    const ids = outsideId == null ? ticked : [...ticked, outsideId];
     const named = new Map(offered('').map((one) => [one.id, one.name]));
-    const names = (ids: readonly string[]) => ids.map((id) => named.get(id) ?? '');
-    const sent = await addInTurn(ticked, (id) => add(role, id));
+    const names = (all: readonly string[]) =>
+      all.map((id) => (id === outsideId ? (going?.shown ?? '') : (named.get(id) ?? '')));
+    const sent = await addInTurn(ids, (id) =>
+      id === outsideId && going != null && outside != null
+        ? outside.add(role, going, job.trim())
+        : add(role, id),
+    );
     if (sent.kind === 'all') {
       onAdded(role, sent.added, true);
       return;
@@ -500,6 +560,11 @@ export function AddScreen<R extends string, T>({
     const { added, went, left, error } = sent;
     setBusy(false);
     setTicked((now) => now.filter((id) => !went.includes(id)));
+    if (outsideId != null && went.includes(outsideId)) {
+      setTyped('');
+      setJob('');
+      setCleared((n) => n + 1);
+    }
     const line = words.refusal(error, role, names(went), names(left));
     setFailed((was) => ({ line, times: (was?.times ?? 0) + 1 }));
     if (added.length > 0) onAdded(role, added, false);
@@ -508,6 +573,11 @@ export function AddScreen<R extends string, T>({
   function cancel(): void {
     if (typed.trim() !== '' || ticked.length > 0) setDiscarding(true);
     else onClose();
+  }
+
+  function type(text: string): void {
+    setTyped(text);
+    setOutsideOn(true);
   }
 
   function tick(id: string): void {
@@ -581,16 +651,20 @@ export function AddScreen<R extends string, T>({
           testID="people.add.role"
         />
       </View>
-      <Field label={words.find}>
+      <Field label={find}>
         <TextField
-          autoFocus
-          autoCapitalize="words"
+          key={`who-${cleared}`}
+          defaultValue={typed}
+          autoFocus={startTyped === ''}
+          autoCapitalize={outside == null ? 'words' : 'none'}
           autoComplete="off"
-          onChangeText={setTyped}
+          autoCorrect={false}
+          spellCheck={false}
+          onChangeText={type}
           returnKeyType="done"
           submitBehavior="submit"
           onSubmitEditing={() => void send()}
-          accessibilityLabel={words.find}
+          accessibilityLabel={find}
           testID="people.add.who"
         />
       </Field>
@@ -616,9 +690,61 @@ export function AddScreen<R extends string, T>({
         </View>
       )}
       {nobody && (
-        <Text size={16} weight="semibold">
-          {words.noMatch(typed.trim())}
-        </Text>
+        <View style={styles.lines}>
+          <Text size={16} weight="semibold">
+            {words.noMatch(typed.trim())}
+          </Text>
+          {outside != null && fromOutside.kind === 'unusable' && (
+            <Line text={outside.words.unusable} />
+          )}
+          {outside != null && fromOutside.kind === 'onEvent' && (
+            <Line text={outside.words.onAlready(fromOutside.name)} />
+          )}
+        </View>
+      )}
+      {outside != null && fromOutside.kind === 'leadOff' && (
+        <View style={styles.lines}>
+          <Text size={16} weight="semibold">
+            {outside.words.leadOff}
+          </Text>
+          <Line text={outside.words.pickAnother} />
+        </View>
+      )}
+      {outside != null && address != null && (
+        <View style={styles.outside}>
+          <View>
+            <SectionHead title={outside.words.fromOutside} />
+            <Ticked
+              on={outsideOn}
+              face={
+                <PersonFace
+                  initials={null}
+                  tone={toneOf(address.address)}
+                  side={40}
+                  mark={address.kind === 'email' ? 'mail' : 'phone'}
+                />
+              }
+              title={address.shown}
+              onPress={() => setOutsideOn((now) => !now)}
+              testID="people.add.outside"
+            />
+          </View>
+          {outsideOn && (
+            <Field label={outside.words.jobLabel} help={outside.words.jobHelp(job)}>
+              <TextField
+                key={`job-${cleared}`}
+                defaultValue={job}
+                onChangeText={setJob}
+                autoCapitalize="sentences"
+                returnKeyType="done"
+                submitBehavior="submit"
+                onSubmitEditing={() => void send()}
+                accessibilityLabel={outside.words.jobLabel}
+                testID="people.add.job"
+              />
+            </Field>
+          )}
+        </View>
       )}
       {words.everyoneOn != null && typed.trim() === '' && shown.length === 0 && (
         <Line text={words.everyoneOn} />
@@ -738,6 +864,8 @@ const styles = StyleSheet.create({
     borderRadius: 2.5,
     backgroundColor: tokens.colorControlBorder,
   },
+  lines: { gap: tokens.spaceXs },
+  outside: { gap: tokens.spaceLg },
   loading: { gap: 26 },
   sunkGroup: { gap: tokens.spaceMd },
   sunkHead: {

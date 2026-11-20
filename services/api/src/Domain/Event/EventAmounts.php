@@ -28,4 +28,11 @@ final readonly class EventAmounts
 
         return false;
     }
+
+    public function currencyChanged(Event $event): void
+    {
+        foreach ($this->sources as $source) {
+            $source->currencyChanged($event);
+        }
+    }
 }

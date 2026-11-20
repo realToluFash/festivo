@@ -14,14 +14,24 @@ import { offButton } from '../offButton.ts';
 import { offField } from '../offField.ts';
 import { BoardPage, OrLine, Providers } from './BoardPage.tsx';
 import { Calendar } from './Calendar.tsx';
+import { Consultations } from './Consultations.tsx';
+import { CONSULTATION_PAGES } from './consultations.ts';
+import { TellClient } from './TellClient.tsx';
+import { TELL_PAGES } from './tellClient.ts';
 import { CALENDAR_PAGES } from './calendar.ts';
 import { CREATE_PAGES } from './createOrg.ts';
 import { DOOR_PAGES } from './doorCode.ts';
 import { NO_ORG_PAGE } from './noOrg.ts';
+import { OUTSIDE_MEMBER_PAGE, OUTSIDE_PAGE } from './outsideEvents.ts';
 import { EventPage } from './EventPage.tsx';
 import { Events } from './Events.tsx';
 import { NewEventTop } from './NewEventTop.tsx';
 import { EVENTS_PAGES } from './events.ts';
+import { ENQUIRIES_PAGES } from './enquiries.ts';
+import { ENQUIRY_EVENT_PAGES } from './enquiryToEvent.ts';
+import { EnquiriesArea, EnquiriesList } from './Enquiries.tsx';
+import { EditEnquiry, NewEnquiry } from './EnquiryForm.tsx';
+import { EnquiryPage } from './EnquiryPage.tsx';
 import { ACCOUNT_PAGES } from './account.ts';
 import { DATA_CONTROL_PAGES } from './dataControlPages.ts';
 import { GENERAL_PAGES } from './general.ts';
@@ -58,6 +68,8 @@ import { KitchenPage } from './Kitchen.tsx';
 import { MenuPage } from './MenuServed.tsx';
 import { MENU_PAGES } from './menuServed.ts';
 import { COURSES_PAGES } from './menuCourses.ts';
+import { PICKS_PAGES } from './seePicks.ts';
+import { PARTY_PAGES } from './mealParty.ts';
 import { MEAL_PAGES } from './mealStep.ts';
 import { MenuLibraryPage } from './MenuLibrary.tsx';
 import { LIBRARY_PAGES } from './menuLibrary.ts';
@@ -74,8 +86,10 @@ import { SERVICE_STATES, SERVICE_STATE_WHAT } from './howItsGoing.ts';
 import { ServiceRoomPage } from './ServiceRoom.tsx';
 import { ROOM_STATES, ROOM_STATE_WHAT } from './serviceRoom.ts';
 import { QUEUE_STATES, type QueueStateName } from './queue.ts';
+import { JobsShiftsPage } from './JobsShifts.tsx';
 import { RosterPage } from './Roster.tsx';
 import { ROSTER_PAGES } from './roster.ts';
+import { JOBS_PAGES } from './shifts.ts';
 import { RunViewPage } from './RunView.tsx';
 import { RoomScreenPage } from './RoomScreen.tsx';
 import { SCREEN_PAGES } from './roomScreen.ts';
@@ -99,6 +113,17 @@ import { REDEEM_PAGES } from './redeem.ts';
 import { Settings } from './Settings.tsx';
 import { SETTINGS_PAGES } from './settings.ts';
 import { SIGN_IN_RULES_PAGES } from './signInRules.ts';
+import {
+  BREAK_GLASS_PATH,
+  SIGN_IN_SSO,
+  SIGN_IN_SSO_PAGES,
+  SSO_PAGES,
+  refusedUnderRequired,
+  ssoDomainOf,
+  ssoSignInOf,
+} from './singleSignOn.ts';
+import { BreakGlass } from './BreakGlass.tsx';
+import { BreakGlassControl, SsoHandoff, SsoRefusedStep } from './SignInSso.tsx';
 import { SWITCHER_PAGES } from './switcher.ts';
 import { QUOTES_PAGES, forgetBudget } from './quotes.ts';
 import { BUDGET_PAGES } from './budgetPages.ts';
@@ -187,9 +212,9 @@ const SIGN_IN_STATES: { key: string; name: string; notice?: SignInNotice; fillsE
   },
   {
     key: 'rule',
-    name: 'Signed out by Ire Events’ rule',
+    name: 'Signed out by Ire Events’s rule',
     notice: {
-      title: 'Signed out by Ire Events’ rule',
+      title: 'Signed out by Ire Events’s rule',
       body: 'Ire Events signs people out after 30 days without use. Sign in again to carry on.',
     },
     fillsEmail: true,
@@ -236,6 +261,7 @@ export default function Demo() {
       <Route path="get-back-in" element={<GetBackInBoard />} />
       <Route path="two-factor" element={<TwoFactorBoard />} />
       <Route path="ways-in" element={<WaysInBoard />} />
+      <Route path={BREAK_GLASS_PATH.replace('/demo/', '')} element={<BreakGlass />} />
       <Route path="terms" element={<LegalPage doc="terms" />} />
       <Route path="privacy" element={<LegalPage doc="privacy" />} />
       {/* Kept so a link to /demo/signed-in opens Today rather than the not-found page. */}
@@ -243,6 +269,12 @@ export default function Demo() {
       <Route path="today" element={<Today />} />
       <Route path="search" element={<SearchBoard />} />
       <Route path="events" element={<Events />} />
+      <Route path="enquiries" element={<EnquiriesArea />}>
+        <Route index element={<EnquiriesList />} />
+        <Route path="new" element={<NewEnquiry />} />
+        <Route path=":id" element={<EnquiryPage />} />
+        <Route path=":id/edit" element={<EditEnquiry />} />
+      </Route>
       <Route path="events/new" element={<NewEventTop />} />
       <Route path="events/:id" element={<EventPage />} />
       <Route path="events/:id/dates" element={<EventPage dates />} />
@@ -253,12 +285,15 @@ export default function Demo() {
       <Route path="events/:id/staff" element={<Navigate to="roster" replace />} />
       <Route path="events/:id/staff/stations" element={<StationsPage />} />
       <Route path="events/:id/staff/roster" element={<RosterPage />} />
+      <Route path="events/:id/staff/jobs" element={<JobsShiftsPage />} />
       <Route path="events/:id/schedule" element={<SchedulePage />} />
       <Route path="events/:id/run" element={<RunViewPage />} />
       <Route path="events/:id/night" element={<NightPage />} />
       <Route path="screen/:place" element={<RoomScreenPage />} />
       <Route path="handoff" element={<HandoffPage />} />
       <Route path="calendar" element={<Calendar />} />
+      <Route path="consultations" element={<Consultations />} />
+      <Route path="tell-client" element={<TellClient />} />
       <Route path="menu-library" element={<MenuLibraryPage />} />
       <Route path="settings" element={<Settings />} />
       <Route path="settings/members" element={<Settings />} />
@@ -268,6 +303,10 @@ export default function Demo() {
       <Route path="settings/personalisation" element={<Settings open="personalisation" />} />
       <Route path="settings/general" element={<Settings open="general" />} />
       <Route path="settings/sign-in-rules" element={<Settings open="signInRules" />} />
+      <Route
+        path="settings/sign-in-rules/single-sign-on"
+        element={<Settings open="signInRules" sso />}
+      />
       <Route
         path="settings/data"
         element={<KeepQuery to="settings/data-and-control/delete-guest-data" />}
@@ -348,6 +387,21 @@ function DemoHome({ from }: { from: string }) {
         <BoardPages pages={SEARCH_PAGES} />
       </section>
 
+      <section className="demo-home-page" aria-labelledby="demo-page-31221">
+        <h2 id="demo-page-31221">31221 · Enquiries</h2>
+        <h3>
+          Enquiries, New enquiry, an enquiry’s page and Search enquiries (sc-31226, sc-42749) ·
+          desktop, and 320 px
+        </h3>
+        <BoardPages pages={ENQUIRIES_PAGES} />
+        <h3>Consultations on an enquiry (sc-31228) · desktop, and 320 px</h3>
+        <BoardPages pages={CONSULTATION_PAGES} />
+        <h3>Tell the client (sc-37133) · desktop, and 320 px</h3>
+        <BoardPages pages={TELL_PAGES} />
+        <h3>An enquiry becomes an event (sc-31232) · desktop, and 320 px</h3>
+        <BoardPages pages={ENQUIRY_EVENT_PAGES} />
+      </section>
+
       <section className="demo-home-page" aria-labelledby="demo-page-29">
         <h2 id="demo-page-29">29 · Today · where signing in lands</h2>
         <h3>Today in B Confetti · desktop</h3>
@@ -421,8 +475,18 @@ function DemoHome({ from }: { from: string }) {
           px (tweaks: &amp;format=fr or pt for the allergen names, &amp;budget=no)
         </h3>
         <BoardPages pages={COURSES_PAGES} />
+        <h3>
+          See picks, Choose for them and Choose who gets it · sc-3909 · desktop, and a web window
+          down to 320 px
+        </h3>
+        <BoardPages pages={PICKS_PAGES} />
         <h3>The guest’s questions inside a dish · sc-3904 · phone, tablet and desk</h3>
         <BoardPages pages={MEAL_PAGES} />
+        <h3>
+          A meal for each person coming · sc-3907 · phone, tablet and desk, from 320 px (tweak:
+          &amp;preview=1 for Preview as guest)
+        </h3>
+        <BoardPages pages={PARTY_PAGES} />
         <h3>How a course is served, and a dish’s parts · sc-34230 · desktop</h3>
         <BoardPages pages={MENU_PAGES} />
       </section>
@@ -457,7 +521,9 @@ function DemoHome({ from }: { from: string }) {
         <h2 id="demo-page-34">34 · Staffing</h2>
         <h3>The roster: who works the event, without making them members (sc-3906) · desktop</h3>
         <BoardPages pages={ROSTER_PAGES} />
-        <h3>Stations and leads, what each station dishes, the walking order (sc-3910) · desktop</h3>
+        <h3>Jobs and shifts, and where it’s short-handed (sc-3908) · desktop</h3>
+        <BoardPages pages={JOBS_PAGES} />
+        <h3>Stations and leads, what each station serves, the walking order (sc-3910) · desktop</h3>
         <BoardPages pages={STATIONS_PAGES} />
       </section>
 
@@ -535,12 +601,14 @@ function DemoHome({ from }: { from: string }) {
         <BoardPages pages={GENERAL_PAGES} />
         <h3>Sign-in rules in B · Where you stand · desktop</h3>
         <BoardPages pages={SIGN_IN_RULES_PAGES} />
+        <h3>Single sign-on in B · Where you stand · desktop (sc-610)</h3>
+        <BoardPages pages={SSO_PAGES} />
         <h3>Data and control in B · One place · desktop</h3>
         <BoardPages pages={DATA_CONTROL_PAGES} />
         <h3>People on an event · desktop</h3>
         <BoardPages pages={PEOPLE_PAGES} />
         <h3>Working an event without joining in A · The door code · desktop</h3>
-        <BoardPages pages={[...DOOR_PAGES, NO_ORG_PAGE]} />
+        <BoardPages pages={[...DOOR_PAGES, NO_ORG_PAGE, OUTSIDE_PAGE, OUTSIDE_MEMBER_PAGE]} />
         <h3>The door code’s redeem pages, signed out · phone, tablet and desk</h3>
         <BoardPages pages={REDEEM_PAGES} />
         <h3>
@@ -562,6 +630,9 @@ function DemoHome({ from }: { from: string }) {
             </li>
           ))}
         </ul>
+
+        <h3>Single sign-on at sign-in, and its email · desktop (sc-610)</h3>
+        <BoardPages pages={SIGN_IN_SSO_PAGES} />
 
         <h3>Create an account · desktop</h3>
         <BoardPages pages={NEW_ACCOUNT_PAGES} />
@@ -731,8 +802,15 @@ function SignInForm({ state }: { state: string }) {
   const email = useRef<HTMLInputElement>(null);
   const password = useRef<HTMLInputElement>(null);
   const pending = useRef<number | undefined>(undefined);
-  const knownEmail = drawn?.fillsEmail ? SAMPLE.email : arrival.email;
+  const sso = ssoSignInOf(state);
+  const knownEmail =
+    sso != null ? SIGN_IN_SSO.sample : drawn?.fillsEmail ? SAMPLE.email : arrival.email;
   const locked = liftsAt != null;
+  const [address, setAddress] = useState(knownEmail ?? '');
+  const [another, setAnother] = useState(sso === 'required');
+  const [gone, setGone] = useState(false);
+  const [ssoRefused, setSsoRefused] = useState(sso === 'required');
+  const handoff = sso != null && !another && ssoDomainOf(address);
 
   useEffect(() => () => window.clearTimeout(pending.current), []);
 
@@ -762,6 +840,10 @@ function SignInForm({ state }: { state: string }) {
   function submit(event: FormEvent<HTMLFormElement>): void {
     event.preventDefault();
     if (busy || locked) return;
+    if (handoff) {
+      setGone(true);
+      return;
+    }
 
     const typed = { email: email.current?.value ?? '', password: password.current?.value ?? '' };
     const found = fieldLines(typed.email, typed.password);
@@ -775,6 +857,10 @@ function SignInForm({ state }: { state: string }) {
 
     setRevealed(false);
     after(() => {
+      if (sso === 'required' && refusedUnderRequired(typed.email)) {
+        setSsoRefused(true);
+        return;
+      }
       if (samplePair(typed.email, typed.password)) {
         if (arrival.recovered === true) void navigate(twoFactorAt('setup'));
         else void navigate(twoFactor ? twoFactorAt('code') : '/demo/today');
@@ -804,7 +890,10 @@ function SignInForm({ state }: { state: string }) {
   function provider(): void {
     if (busy) return;
 
-    after(() => void navigate('/demo/today'));
+    after(() => {
+      if (sso === 'required' && refusedUnderRequired(address)) setSsoRefused(true);
+      else void navigate('/demo/today');
+    });
   }
 
   const until = liftsAt == null ? null : timeOfDay(liftsAt);
@@ -814,15 +903,18 @@ function SignInForm({ state }: { state: string }) {
   return (
     <BoardPage
       controls={
-        <label className="demo-switch">
-          <input
-            type="checkbox"
-            role="switch"
-            checked={twoFactor}
-            onChange={(event) => setTwoFactor(event.target.checked)}
-          />
-          Demo: this account uses two-factor
-        </label>
+        <>
+          {sso === 'required' && <BreakGlassControl />}
+          <label className="demo-switch">
+            <input
+              type="checkbox"
+              role="switch"
+              checked={twoFactor}
+              onChange={(event) => setTwoFactor(event.target.checked)}
+            />
+            Demo: this account uses two-factor
+          </label>
+        </>
       }
     >
       <div className="demo-heading">
@@ -834,7 +926,9 @@ function SignInForm({ state }: { state: string }) {
             alert={locked || state.endsWith('failed')}
           />
         )}
+        {ssoRefused && <Notice title={SIGN_IN_SSO.notice} alert />}
       </div>
+      {ssoRefused && <SsoRefusedStep gone={gone} onGo={() => setGone(true)} />}
 
       {providerOnly ? (
         <>
@@ -876,7 +970,11 @@ function SignInForm({ state }: { state: string }) {
                   {...offField(busy)}
                   aria-invalid={lines.email != null}
                   aria-describedby={lines.email == null ? undefined : 'email-line'}
-                  onChange={() => edited('email')}
+                  onChange={(event) => {
+                    edited('email');
+                    setAddress(event.target.value);
+                    setGone(false);
+                  }}
                 />
                 {lines.email != null && (
                   <p className="demo-line" id="email-line">
@@ -885,71 +983,85 @@ function SignInForm({ state }: { state: string }) {
                 )}
               </div>
 
-              <div
-                className={lines.password == null ? 'demo-field' : 'demo-field demo-field-wrong'}
-              >
-                <div className="demo-label-row">
-                  <label htmlFor="password">Password</label>
-                  <Link
-                    className="link-button demo-link"
-                    to={backIn('reset')}
-                    onClick={(event) => {
-                      event.preventDefault();
-                      void navigate(backIn('reset'), {
-                        state: {
-                          email: email.current?.value ?? '',
-                          back: `/demo/sign-in?state=${state}`,
-                        },
-                      });
-                    }}
-                  >
-                    Forgot your password?
-                  </Link>
+              {!handoff && (
+                <div
+                  className={lines.password == null ? 'demo-field' : 'demo-field demo-field-wrong'}
+                >
+                  <div className="demo-label-row">
+                    <label htmlFor="password">Password</label>
+                    <Link
+                      className="link-button demo-link"
+                      to={backIn('reset')}
+                      onClick={(event) => {
+                        event.preventDefault();
+                        void navigate(backIn('reset'), {
+                          state: {
+                            email: email.current?.value ?? '',
+                            back: `/demo/sign-in?state=${state}`,
+                          },
+                        });
+                      }}
+                    >
+                      Forgot your password?
+                    </Link>
+                  </div>
+                  <div className="demo-reveal">
+                    <input
+                      ref={password}
+                      className="demo-input"
+                      id="password"
+                      name="password"
+                      type={revealed ? 'text' : 'password'}
+                      autoComplete="current-password"
+                      {...offField(busy)}
+                      aria-invalid={lines.password != null}
+                      aria-describedby={
+                        lines.password != null || refused ? 'password-line' : undefined
+                      }
+                      onChange={() => edited('password')}
+                    />
+                    <button
+                      className="demo-reveal-button"
+                      type="button"
+                      aria-pressed={revealed}
+                      onClick={() => setRevealed((was) => !was)}
+                    >
+                      {revealed ? 'Hide' : 'Show'}
+                    </button>
+                  </div>
+                  {(lines.password != null || refused) && (
+                    <p
+                      className="demo-line"
+                      id="password-line"
+                      role={refused ? 'alert' : undefined}
+                    >
+                      {lines.password ?? 'That email and password do not match.'}
+                    </p>
+                  )}
                 </div>
-                <div className="demo-reveal">
-                  <input
-                    ref={password}
-                    className="demo-input"
-                    id="password"
-                    name="password"
-                    type={revealed ? 'text' : 'password'}
-                    autoComplete="current-password"
-                    {...offField(busy)}
-                    aria-invalid={lines.password != null}
-                    aria-describedby={
-                      lines.password != null || refused ? 'password-line' : undefined
-                    }
-                    onChange={() => edited('password')}
-                  />
-                  <button
-                    className="demo-reveal-button"
-                    type="button"
-                    aria-pressed={revealed}
-                    onClick={() => setRevealed((was) => !was)}
-                  >
-                    {revealed ? 'Hide' : 'Show'}
-                  </button>
-                </div>
-                {(lines.password != null || refused) && (
-                  <p className="demo-line" id="password-line" role={refused ? 'alert' : undefined}>
-                    {lines.password ?? 'That email and password do not match.'}
-                  </p>
-                )}
-              </div>
+              )}
             </div>
 
-            <button
-              className="button button-primary demo-wide"
-              type="submit"
-              aria-busy={busy}
-              {...offButton(locked)}
-            >
-              {until != null ? `Try again at ${until}` : busy ? 'Signing in…' : 'Sign in'}
-            </button>
+            {handoff ? (
+              <SsoHandoff busy={busy} gone={gone} onAnother={() => setAnother(true)} />
+            ) : (
+              <button
+                className="button button-primary demo-wide"
+                type="submit"
+                aria-busy={busy}
+                {...offButton(locked)}
+              >
+                {until != null ? `Try again at ${until}` : busy ? 'Signing in…' : 'Sign in'}
+              </button>
+            )}
           </form>
 
-          <OrLine />
-          <Providers busy={busy} onChoose={provider} />
+          {!handoff && (
+            <>
+              <OrLine />
+              <Providers busy={busy} onChoose={provider} />
+            </>
+          )}
         </>
       )}
     </BoardPage>

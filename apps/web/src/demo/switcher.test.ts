@@ -20,7 +20,13 @@ describe('the organisation switcher’s sample (sc-30323)', () => {
   it('knows every state the demo home links to, and nothing else', () => {
     const linked = SWITCHER_PAGES.flatMap((group) => group.states.map((state) => state.to));
 
-    expect(linked).toEqual(SWITCHER_STATES.map((state) => `/demo/events?switcher=${state}`));
+    expect(linked).toEqual(
+      SWITCHER_STATES.map((state) =>
+        state.startsWith('outside')
+          ? `/demo/today?switcher=${state}`
+          : `/demo/events?switcher=${state}`,
+      ),
+    );
     expect(isSwitcherState('populated')).toBe(true);
     expect(isSwitcherState('everything')).toBe(false);
     expect(isSwitcherState(null)).toBe(false);
@@ -38,6 +44,17 @@ describe('the organisation switcher’s sample (sc-30323)', () => {
     expect(waiting(where).map((one) => one.id)).toEqual([CELEBRACIONES, BLUEBIRD]);
     expect(where.offer).toBeNull();
     expect(where.paused).toBe(false);
+  });
+
+  it('counts none of a managed account’s invitations, and lists both (sc-73668)', () => {
+    for (const state of ['managed-closed', 'managed-listed'] as const) {
+      const where = whereOf(state);
+
+      expect(where.invitations.map((one) => one.id)).toEqual([CELEBRACIONES, BLUEBIRD]);
+      expect(waiting(where)).toEqual([]);
+      expect(openingOf(state).panel).toBeNull();
+    }
+    expect(waiting(whereOf('managed')).map((one) => one.id)).toEqual([BLUEBIRD]);
   });
 
   it('holds more than 15 only in the states that show the search', () => {

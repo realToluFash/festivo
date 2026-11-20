@@ -30,6 +30,7 @@ import {
 import { OrgPill } from '../components/OrgPill.tsx';
 import { Switched as ProductSwitched } from '../components/Switched.tsx';
 import { ManagedBanner } from './managed.tsx';
+import { OutsideSwitcher } from './OutsideSwitcher.tsx';
 import { SAMPLE } from './rules.ts';
 import {
   BLUEBIRD,
@@ -79,12 +80,22 @@ function invitationsLine(count: number): string {
 
 /** The sidebar's organisation button, and the menu of places it drops (OrgSwitcher-B-Places-Web, page 29). Pages with no notice of their own say a switch in the toast. */
 export function OrgSwitcher({ tell, toast = false }: { tell: Tell; toast?: boolean }) {
+  const where = useWhere();
+
+  return where.outside.length > 0 ? (
+    <OutsideSwitcher tell={tell} toast={toast} />
+  ) : (
+    <PlacesSwitcher tell={tell} toast={toast} />
+  );
+}
+
+function PlacesSwitcher({ tell, toast }: { tell: Tell; toast: boolean }) {
   const { t } = useTranslation();
   const [params] = useSearchParams();
   const { pathname } = useLocation();
   const [first, setFirst] = useState<Opening | null>(() => {
     const raw = params.get('switcher');
-    if (!isSwitcherState(raw) || raw === 'closed') return null;
+    if (!isSwitcherState(raw) || raw === 'closed' || raw === 'managed-closed') return null;
 
     const answered = raw === 'declined' || raw === 'expired' || raw === 'withdrawn';
 
@@ -408,6 +419,8 @@ const PAUSED_SAMPLE: PausedOrganisation = {
   timezone: 'Europe/Madrid',
   contactAddress: '',
   locale: 'es',
+  plan: 'free',
+  subscription: { status: 'active', periodEnd: null },
   suspension: {
     reason: 'address_gone',
     domain: PAUSED.domain,

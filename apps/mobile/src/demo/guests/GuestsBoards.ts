@@ -14,6 +14,22 @@ const GUESTS: Record<GuestsState, Board> = {
     'the title in Portuguese',
     'sc-51444: Convidados whole; Adicionar convidado gives way to the round + where both do not fit',
   ],
+  exportPt: [
+    'Exportar in Portuguese',
+    'sc-67659, sc-68417: Exportar and the + beside Convidados where all three fit; at the largest phone sizes they go together to the row under it',
+  ],
+  offlinePt: [
+    'offline in Portuguese',
+    'sc-67659, sc-68417: É preciso Internet para exportar in Exportar’s place, each word whole; with the + under Convidados where they do not fit beside it',
+  ],
+  refreshing: [
+    'Refreshing… at any size',
+    'sc-71821: Refreshing… held on screen at the size set, the default included; it keeps main’s place only where it fits once the controls are placed, else its own line under the heading',
+  ],
+  refreshingPt: [
+    'A atualizar… in Portuguese',
+    'sc-71821: as refreshing, in Portuguese: ‹ Vista geral whole, A atualizar… on its own line where the row has no room',
+  ],
   filterOpen: ['the filter menu', 'All, Invited, the five replies and Not yet invited'],
   filtered: ['after a filter', 'No reply · 21: 21 of 156 shown, and Clear'],
   search: ['a search', '“okon”: 2 of 156 shown, the card aside'],
@@ -215,6 +231,22 @@ const GUESTS: Record<GuestsState, Board> = {
   exportOffline: ['Export offline', 'Export needs a connection in its place'],
   exportDropped: ['Export, the connection dropped', 'Share refused: Nothing was exported.'],
   exportGrantView: ['Export, Can view grant', 'No Export, no Add guest'],
+  exportSearched: [
+    'Export after a search, at any size',
+    'sc-72136: Export guests whole at its title size, Cancel beside it only where its longest word fits, else under it; from the eighth step the note and Share scroll',
+  ],
+  exportSearchedPt: [
+    'Exportar after a search, in Portuguese',
+    'sc-72136: as exportSearched, in Portuguese: Exportar convidados whole, Cancelar under it at the largest sizes, Filtro: Todos · pesquisa «okon»',
+  ],
+  exportLongName: [
+    'Export, an event named with one long word',
+    'sc-72136: #AdeolaAndKwameForever2026 in the file name continues on the next line at the largest sizes, never cut',
+  ],
+  exportLongNamePt: [
+    'Exportar, an event named with one long word, in Portuguese',
+    'sc-72136: as exportLongName, in Portuguese: the file name wraps inside the word, nothing cut',
+  ],
   paste: [
     'Paste a reply',
     'sc-54450: iOS’s Paste, or Paste a reply on Android, under Find a guest',

@@ -6,6 +6,7 @@ namespace App\Http\Exception;
 
 use App\Enum\ErrorCode;
 use App\Enum\Permission;
+use App\Enum\PlanFeature;
 use DateTimeImmutable;
 use DateTimeZone;
 use Psl\Math;
@@ -50,6 +51,11 @@ class ApiException extends RuntimeException
     public static function permissionRequired(Permission $permission): self
     {
         return new self(ErrorCode::PermissionRequired, 'access.permission_required', [], null, [], ['permission' => $permission->value], ['{permission}' => $permission->value]);
+    }
+
+    public static function planRequired(PlanFeature $feature): self
+    {
+        return new self(ErrorCode::PlanRequired, 'access.plan_required', [], null, [], ['feature' => $feature->value]);
     }
 
     public static function twoFactorRequired(Permission $permission): self
@@ -116,8 +122,8 @@ class ApiException extends RuntimeException
         );
     }
 
-    /** Rounded up, as the clients round it: told 22:46, whoever tries at 22:46:01 gets in. */
-    private static function statedMinute(DateTimeImmutable $windowEnd): DateTimeImmutable
+    /** Rounded up, as the clients round it: told 22:46, whoever tries at 22:46:01 gets in. A screen naming the same window's end writes this minute too. */
+    public static function statedMinute(DateTimeImmutable $windowEnd): DateTimeImmutable
     {
         $lifts = $windowEnd->getTimestamp() + 1;
 

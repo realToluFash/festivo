@@ -1,4 +1,5 @@
 import { router, useLocalSearchParams } from 'expo-router';
+import { useEffect } from 'react';
 import { StyleSheet, View } from 'react-native';
 
 import { LanguageChoice } from '../../src/components/LanguageChoice.tsx';
@@ -7,21 +8,35 @@ import { OnBrand, useLineSize, WelcomeBrand } from '../../src/components/Welcome
 import { withBoldText } from '../../src/demo/boldText/BoldTextSwitch.tsx';
 import { Choices } from '../../src/demo/Choices.tsx';
 import { LegalLinks } from '../../src/demo/LegalLinks.tsx';
+import { SAMPLE } from '../../src/demo/samples.ts';
 import { coverLine, WelcomeFrame } from '../../src/demo/Welcome.tsx';
 import { tokens } from '../../src/theme/tokens.ts';
 
 const NOTICES = {
   signedOut: ['You were signed out', 'Sign in again to carry on.'],
   byRule: [
-    'Signed out by Ire Events’ rule',
+    'Signed out by Ire Events’s rule',
     'Ire Events signs people out after 30 days without use. Sign in again to carry on.',
   ],
 } as const;
 
+/** Sign in opens over welcome, so the iPad draws it as the sheet sc-29076 settled rather than full screen. */
+const SIGN_IN = {
+  email: '/demo/sign-in',
+  timedOut: `/demo/sign-in?timedOut=1&email=${SAMPLE.email}`,
+} as const;
+
 function Welcome() {
-  const { notice } = useLocalSearchParams<{ notice?: keyof typeof NOTICES }>();
+  const { notice, signIn } = useLocalSearchParams<{
+    notice?: keyof typeof NOTICES;
+    signIn?: keyof typeof SIGN_IN;
+  }>();
   const said = notice != null ? NOTICES[notice] : undefined;
   const line = useLineSize();
+
+  useEffect(() => {
+    if (signIn != null && signIn in SIGN_IN) router.push(SIGN_IN[signIn]);
+  }, [signIn]);
 
   return (
     <WelcomeFrame

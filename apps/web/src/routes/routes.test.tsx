@@ -34,6 +34,7 @@ const ADA_ACCOUNT: Account = {
   providers: [],
   emailAddresses: [],
   phoneNumbers: [],
+  outsideEvents: [],
 };
 
 const ADA: Session = {
@@ -67,10 +68,11 @@ function overdueSession(): Session {
 }
 
 function pausedSession(): Session {
-  const { id, name, countryCode, currency, timezone, contactAddress, locale } = membership({
-    id: 'org_3',
-    name: 'Lagos Weddings',
-  });
+  const { id, name, countryCode, currency, timezone, contactAddress, locale, plan, subscription } =
+    membership({
+      id: 'org_3',
+      name: 'Lagos Weddings',
+    });
 
   return {
     ...ADA,
@@ -82,6 +84,8 @@ function pausedSession(): Session {
       currency,
       timezone,
       contactAddress,
+      plan,
+      subscription,
       locale,
       suspension: {
         reason: 'address_gone',
@@ -395,6 +399,7 @@ describe('the application tree', () => {
           hasPassword: true,
           emailAddresses: [{ id: 'a1', address: 'ada@example.com', verified: true, primary: true }],
           phoneNumbers: [],
+          outsideEvents: [],
         }),
         { status: 200, headers: { 'Content-Type': 'application/json' } },
       ),
