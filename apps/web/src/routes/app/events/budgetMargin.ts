@@ -1,8 +1,8 @@
-import type { ChargedLine, MarginFigures } from '@soirely/api-client';
+import type { BudgetLine, ChargedLine, MarginFigures } from '@soirely/api-client';
 import { type MoneyLanguage, numberFormat } from '@soirely/domain';
 import type { TFunction } from 'i18next';
 
-import { amountOfMinor, minorMoney, minorOf, wholeMoney } from './budgetArea.ts';
+import { amountOfMinor, lineState, minorMoney, minorOf, wholeMoney } from './budgetArea.ts';
 
 export const MOST_MARKUP = 999.9;
 
@@ -60,6 +60,14 @@ export function markupProblemWords(t: TFunction, problem: MarkupProblem, locale:
     default:
       return t('budget.margin.markupNumber', { example: number(12.5, 1) });
   }
+}
+
+/** A cost the margin face lists: a priced one, or a fixed one at 0, the agency's fee, which is priced only there (sc-92, 20 Nov). */
+export function listedOnMarginFace(line: BudgetLine): boolean {
+  return (
+    lineState(line) === 'priced' ||
+    (line.basis === 'fixed' && line.amount != null && Number(line.amount) === 0)
+  );
 }
 
 /** Where the line's client price comes from, in the row's words. */
