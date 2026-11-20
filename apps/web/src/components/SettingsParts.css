@@ -355,14 +355,21 @@
   align-self: flex-start;
   align-items: center;
   gap: var(--spaceSm);
-  height: var(--sizeHit);
+  min-height: var(--sizeHit);
+  max-width: 100%;
   margin-top: auto;
-  padding: 0 var(--spaceXl) 0 18px;
+  padding: var(--spaceSm) var(--spaceXl) var(--spaceSm) 18px;
   border-radius: var(--radiusPill);
   background: var(--colorCard);
   color: var(--colorAccent);
-  font: 600 15px/1 var(--fontFamily);
-  white-space: nowrap;
+  font: 600 15px/1.25 var(--fontFamily);
+  text-align: left;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.desk-step > svg {
+  flex: none;
 }
 
 .desk-who {

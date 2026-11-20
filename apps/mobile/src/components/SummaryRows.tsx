@@ -225,7 +225,7 @@ export function Section({
 
 export function SectionFoot({ foot }: { foot: string }) {
   return (
-    <Text size={14} weight="medium" style={[styles.secondary, styles.foot]}>
+    <Text size={14} weight="medium" wholeLines style={[styles.secondary, styles.foot]}>
       {foot}
     </Text>
   );

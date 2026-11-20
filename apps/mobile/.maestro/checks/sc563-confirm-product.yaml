@@ -1,0 +1,27 @@
+# sc-563: the Owner presses Only our organisation's switch on a domain that is off and reads the confirm; Cancel closes it. Pass DOMAIN: a proved email domain of the account's organisation with Only our organisation off.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/settings/data-and-control/email-domains
+- extendedWaitUntil:
+    visible:
+      id: emailDomains.card
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: emailDomains.${DOMAIN}.only
+    direction: DOWN
+    timeout: 15000
+- tapOn:
+    id: emailDomains.${DOMAIN}.only
+- extendedWaitUntil:
+    visible:
+      id: emailDomains.only.schedule
+    timeout: 15000
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: sc563-confirm-product
+- tapOn:
+    id: emailDomains.only.cancel
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: sc563-confirm-kept-product

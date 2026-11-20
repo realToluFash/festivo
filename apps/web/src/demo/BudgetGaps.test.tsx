@@ -224,6 +224,17 @@ describe('the states Budget A still lacked (sc-85, sc-88, sc-90, sc-91, sc-92, s
       expect(within(dialog).getByText('Enter the markup as a number, like 12.5.')).toBeTruthy();
       expect(screen.queryByText('Markup removed.')).toBeNull();
       fireEvent.click(within(dialog).getByRole('button', { name: 'Cancel' }));
+      fireEvent.click(within(markup()).getByRole('button', { name: /^Whole event/ }));
+      dialog = screen.getByRole('dialog', { name: 'Markup' });
+      fireEvent.change(within(dialog).getByLabelText('Markup'), { target: { value: '0' } });
+      fireEvent.click(within(dialog).getByRole('button', { name: 'Save' }));
+      expect(within(markup()).getByRole('button', { name: /^Whole event/ }).textContent).toContain(
+        'At cost, chosen',
+      );
+      expect(section('Costs').textContent).toContain('at cost, chosen');
+      expect(section('Costs').textContent).not.toContain('no markup set');
+      cleanup();
+      await open(at('margin_unset'));
       expect(screen.queryByRole('dialog', { name: 'Markup' })).toBeNull();
       expect(markup().textContent).toContain('No markup set');
       expect(section('Costs').textContent).toContain('no markup set0.0%');
