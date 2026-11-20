@@ -1,5 +1,6 @@
 import type { InvitationPreview, Membership, OutsideEvent } from '@soirely/api-client';
 import {
+  type InvitationOutcome,
   formatDay,
   invitationWording,
   isWaiting,
@@ -198,7 +199,14 @@ export function OrganisationSwitcher({
 
     return (
       invitation != null && (
-        <InvitationPanel invitation={invitation} waiting={waiting} tools={tools} />
+        <InvitationPanel
+          invitation={invitation}
+          waiting={waiting}
+          onAnswered={(answered) => {
+            if (answered.kind === 'accepted') tools.show(answered.organisationId);
+            if (answered.kind !== 'failed') tools.land('panel');
+          }}
+        />
       )
     );
   }
@@ -264,16 +272,20 @@ export function OrganisationSwitcher({
   );
 }
 
-/** An invitation's panel, answered through the API; a join moves the panel to the place it made. */
-function InvitationPanel({
+/** An invitation's panel, answered through the API: the switcher's, and You are not in an organisation's, which keeps a joined one with its Open (sc-75471). */
+export function InvitationPanel({
   invitation,
   waiting,
-  tools,
+  onAnswered = () => undefined,
+  onOpen,
 }: {
   invitation: InvitationPreview;
   waiting: WaitingInvitations;
-  tools: PanelTools;
+  onAnswered?: (answered: InvitationOutcome) => void;
+  /** On the page, a joined one stays with its Open, and what each answer says takes focus. */
+  onOpen?: (organisationId: string) => void;
 }) {
+  const onPage = onOpen != null;
   const { t } = useTranslation();
   const outcome = waiting.outcomes[invitation.id];
   const keys = invitationWording(invitation);
@@ -282,10 +294,7 @@ function InvitationPanel({
   const role = invitation.role == null ? '' : roleName(t, invitation.role);
 
   async function reply(choice: 'accept' | 'decline'): Promise<void> {
-    const answered = await waiting.answer(invitation, choice);
-
-    if (answered.kind === 'accepted') tools.show(answered.organisationId);
-    if (answered.kind !== 'failed') tools.land('panel');
+    onAnswered(await waiting.answer(invitation, choice));
   }
 
   return (
@@ -306,13 +315,20 @@ function InvitationPanel({
           onAccept={() => void reply('accept')}
           onDecline={() => void reply('decline')}
         />
+      ) : outcome?.kind === 'accepted' && onOpen != null ? (
+        <JoinedAnswer
+          name={organisation}
+          role={role}
+          takesFocus
+          onOpen={() => onOpen(outcome.organisationId)}
+        />
       ) : outcome?.kind === 'managed' ? (
         <ManagedBanner
           managed={{ organisation: { name: outcome.organisation }, message: outcome.message }}
           level={3}
         />
       ) : outcome?.kind === 'declined' ? (
-        <Notice kind="quiet" lands>
+        <Notice kind="quiet" lands={!onPage} takesFocus={onPage}>
           {t(keys.declined, { inviter })}
         </Notice>
       ) : outcome?.kind === 'refused' ? (
@@ -322,6 +338,7 @@ function InvitationPanel({
           organisation={organisation}
           email={invitation.email}
           signedInAs={invitation.signedInAs ?? ''}
+          takesFocus={onPage}
         />
       ) : null}
     </InvitationAnswer>

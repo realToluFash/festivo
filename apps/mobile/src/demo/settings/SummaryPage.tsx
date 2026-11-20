@@ -18,7 +18,7 @@ import { PHONE_TAB_BAR, TabBarFade } from '../../components/TodayCover.tsx';
 import { tokens } from '../../theme/tokens.ts';
 import { PAGE_TITLE, PANE_TITLE, pageTitle, paneTitle } from '../../components/topTitle.ts';
 import { Bell, Landscape, OrgPill, PortraitTop, SettingsTabBar } from './Frame.tsx';
-import { useFromNone } from './fromNone.ts';
+import { useWayBackToNone } from '../../components/wayBackToNone.ts';
 
 /** A section page in B, summary first: back and the bell on top, the title, then the card and the lists. Back draws no larger than the title (sc-67471). */
 export function SummaryPage({
@@ -44,7 +44,7 @@ export function SummaryPage({
   const shell = useShell();
   const insets = useSafeAreaInsets();
   const backTo = back === undefined ? { onPress: shell.toSettings } : back;
-  const bar = useFromNone() == null ? PHONE_TAB_BAR : 0;
+  const bar = useWayBackToNone() == null ? PHONE_TAB_BAR : 0;
   const titled = shell.layout === 'landscape' ? PANE_TITLE : PAGE_TITLE;
   const drawn = useTitleCap(`${titled}|${title ?? ''}`, titled);
   const cap = title == null ? null : drawn.cap;

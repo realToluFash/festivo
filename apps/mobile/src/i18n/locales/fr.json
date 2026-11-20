@@ -22,7 +22,8 @@
     "startBody": "Configurez une nouvelle organisation et vous y aurez le rôle Propriétaire.",
     "start": "Créer l’organisation",
     "signedInAs": "Connecté en tant que {{email}}.",
-    "account": "Votre compte"
+    "account": "Votre compte",
+    "wayBack": "Rejoindre ou créer une organisation"
   },
   "status": {
     "title": "État du service",
