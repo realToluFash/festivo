@@ -69,6 +69,7 @@ import { type WhatIf, type WhatIfChange, asWhatIf } from './budget.ts';
 import { ApiError, ApiUnreachableError, type Problem, toProblem } from './problem.ts';
 import { type EmailDomainsPage, asEmailDomainsPage } from './emailDomains.ts';
 import { type OrganisationExportPage, asOrganisationExportPage } from './organisationExport.ts';
+import { downloadName } from './fileName.ts';
 import {
   type AuditExportOutcome,
   type AuditFilters,
@@ -141,6 +142,8 @@ import {
   type EventQuote,
   type EventQuotes,
   type OfferedVendor,
+  type MadeTyped,
+  type PaidTyped,
   type PaymentTyped,
   type QuoteTermsTyped,
   type QuoteTyped,
@@ -1930,17 +1933,20 @@ export class ApiClient {
     );
   }
 
-  /** The archive, once, for the Owner who asked: 404 for anyone else, `export_used` or `export_expired` after. */
+  /** The archive, once, for the Owner who asked: 404 for anyone else, `export_used` or `export_expired` after. `name` is the server's name for it. */
   async downloadOrganisationExport(
     organisationId: string,
     exportId: string,
-  ): Promise<Uint8Array<ArrayBuffer>> {
+  ): Promise<{ name: string | null; bytes: Uint8Array<ArrayBuffer> }> {
     const response = await this.answered(
       `/api/orgs/${encodeURIComponent(organisationId)}/export/${encodeURIComponent(exportId)}/download`,
       { method: 'POST' },
     );
 
-    return new Uint8Array(await response.arrayBuffer());
+    return {
+      name: downloadName(response.headers.get('Content-Disposition')),
+      bytes: new Uint8Array(await response.arrayBuffer()),
+    };
   }
 
   /** Data and control › Audit log (sc-611): an Owner's or an Admin's, refused `plan_required` off Enterprise and `permission_required` to a Member. */
@@ -1993,6 +1999,7 @@ export class ApiClient {
     return {
       kind: 'file',
       type: response.headers.get('Content-Type') ?? 'application/octet-stream',
+      name: downloadName(response.headers.get('Content-Disposition')),
       bytes: new Uint8Array(await response.arrayBuffer()),
     };
   }
@@ -2001,7 +2008,7 @@ export class ApiClient {
   async downloadAuditExport(
     organisationId: string,
     exportId: string,
-  ): Promise<{ type: string; bytes: Uint8Array<ArrayBuffer> }> {
+  ): Promise<{ type: string; name: string | null; bytes: Uint8Array<ArrayBuffer> }> {
     const response = await this.answered(
       `/api/orgs/${encodeURIComponent(organisationId)}/audit-log/exports/${encodeURIComponent(exportId)}/download`,
       { method: 'POST' },
@@ -2009,6 +2016,7 @@ export class ApiClient {
 
     return {
       type: response.headers.get('Content-Type') ?? 'application/octet-stream',
+      name: downloadName(response.headers.get('Content-Disposition')),
       bytes: new Uint8Array(await response.arrayBuffer()),
     };
   }
@@ -3823,6 +3831,53 @@ export class ApiClient {
     await this.delete<unknown>(
       `${this.budgetPath(eventId)}/payments/${encodeURIComponent(paymentId)}`,
     );
+  }
+
+  /** Mark paid (sc-88): a command, refused 409 when already paid or cancelled. */
+  async markPaid(eventId: string, paymentId: string, typed: PaidTyped): Promise<EventQuote> {
+    return this.readQuote(
+      await this.post<unknown>(`${this.paymentPath(eventId, paymentId)}/paid`, typed),
+    );
+  }
+
+  /** Undo: unmarks a scheduled payment, and deletes one added as already made. */
+  async undoPaid(eventId: string, paymentId: string): Promise<EventQuote> {
+    return this.readQuote(
+      await this.delete<unknown>(`${this.paymentPath(eventId, paymentId)}/paid`),
+    );
+  }
+
+  async cancelPayment(eventId: string, paymentId: string, reason: string): Promise<EventQuote> {
+    return this.readQuote(
+      await this.post<unknown>(`${this.paymentPath(eventId, paymentId)}/cancellation`, { reason }),
+    );
+  }
+
+  async restorePayment(eventId: string, paymentId: string): Promise<EventQuote> {
+    return this.readQuote(
+      await this.delete<unknown>(`${this.paymentPath(eventId, paymentId)}/cancellation`),
+    );
+  }
+
+  async addMadePayment(
+    eventId: string,
+    quoteId: string,
+    typed: MadeTyped,
+  ): Promise<{ quote: EventQuote; paymentId: string }> {
+    const raw = await this.post<unknown>(
+      `${this.quotePath(eventId, quoteId)}/paid-payments`,
+      typed,
+    );
+    const paymentId = (raw as Record<string, unknown> | null)?.paymentId;
+
+    return {
+      quote: this.readQuote(raw),
+      paymentId: typeof paymentId === 'string' ? paymentId : '',
+    };
+  }
+
+  private paymentPath(eventId: string, paymentId: string): string {
+    return `${this.budgetPath(eventId)}/payments/${encodeURIComponent(paymentId)}`;
   }
 
   private quotePath(eventId: string, quoteId: string): string {

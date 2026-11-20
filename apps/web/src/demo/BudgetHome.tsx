@@ -72,6 +72,10 @@ import {
   withoutChoice,
   shareOf,
   PLANNING_FEE,
+  FEE_LINE,
+  FEE_MARKUPS,
+  FEE_STATES,
+  plainLines,
   chargedOf,
   marginOf,
   markupWords,
@@ -279,9 +283,13 @@ export function BudgetHomeContent({
       ? { ...MARKUPS, categories: { ...MARKUPS.categories, photography: 25 } }
       : first === 'margin_unset'
         ? NO_MARKUPS
-        : MARKUPS,
+        : FEE_STATES.includes(first)
+          ? FEE_MARKUPS
+          : MARKUPS,
   );
-  const [fee, setFee] = useState(first === 'margin_zero_price' ? 0 : PLANNING_FEE);
+  const feeLine = lines.some((one) => one.id === FEE_LINE.id);
+  const [planningFee, setFee] = useState(first === 'margin_zero_price' ? 0 : PLANNING_FEE);
+  const fee = feeLine ? 0 : planningFee;
   const ceilingLive = first.startsWith('ceiling_live');
   const [opened, setOpened] = useState<string | null>(() => openedOf(first));
   const [removed, setRemoved] = useState<Removed | null>(() => removedOf(first, heads));
@@ -374,9 +382,10 @@ export function BudgetHomeContent({
     setLit(removed.line.id);
     setRemoved(null);
   };
-  const sum = sumLines(lines, heads);
+  const plain = plainLines(lines, markups);
+  const sum = sumLines(plain, heads);
   const wholeCeiling =
-    ceilings.whole == null ? null : ceilingOf('whole', ceilings.whole, lines, heads);
+    ceilings.whole == null ? null : ceilingOf('whole', ceilings.whole, plain, heads);
   const due = dueList(payments, vendorName);
   const next = due[0] ?? null;
 
@@ -455,7 +464,7 @@ export function BudgetHomeContent({
               : void navigate(budgetAt('mark_paid', { vendor: payment.vendorId }))
           }
           onPrice={() => {
-            const unpriced = lines.find((one) => lineState(one) === 'notPriced');
+            const unpriced = plain.find((one) => lineState(one) === 'notPriced');
             if (unpriced != null) setOpened(unpriced.id);
           }}
         />
@@ -501,7 +510,7 @@ export function BudgetHomeContent({
                 heads={heads}
                 first={first}
                 markups={markups}
-                fee={fee}
+                fee={feeLine ? null : fee}
                 onFee={(price) => {
                   setFee(price);
                   tell('Saved.');
@@ -517,7 +526,7 @@ export function BudgetHomeContent({
               />
             ) : (
               <Costs
-                lines={lines}
+                lines={plain}
                 heads={heads}
                 ceilings={ceilings}
                 opened={opened}
@@ -531,16 +540,20 @@ export function BudgetHomeContent({
                 }}
                 onClose={() => setOpened(null)}
                 onSaved={(next_, id, words, ok) => {
-                  setLines(next_);
+                  const saved = next_.find((one) => one.id === id);
+                  setLines((now) =>
+                    now.map((one) => (one.id === id && saved != null ? saved : one)),
+                  );
                   setOpened(null);
                   setLit(ok ? id : null);
                   setLine({ id, words, ok });
                   setRemoved(null);
                 }}
                 onRemove={(gone) => {
+                  const stored = lines.find((one) => one.id === gone.line.id);
                   setLines((now) => now.filter((one) => one.id !== gone.line.id));
                   setOpened(null);
-                  setRemoved(gone);
+                  setRemoved(stored == null ? gone : { ...gone, line: stored });
                 }}
                 onUndo={undo}
               />
@@ -563,11 +576,11 @@ export function BudgetHomeContent({
                   ceilings={ceilings}
                   listed={listed}
                   washed={ceilingLive}
-                  lines={lines}
+                  lines={plain}
                   heads={heads}
                   onChange={() => setDialog('ceiling')}
                 />
-                <AgainstPlan lines={lines} payments={payments} />
+                <AgainstPlan lines={plain} payments={payments} />
                 <WhoIsPaying />
                 {vendorsQuoted}
                 <FromOtherEvents onSave={() => setDialog('save')} />
@@ -1210,7 +1223,7 @@ function MarginCosts({
   heads: Heads;
   first: string;
   markups: Markups;
-  fee: number;
+  fee: number | null;
   onFee: (price: number) => void;
   onPrice: (id: string, price: number | null) => void;
 }) {
@@ -1312,50 +1325,52 @@ function MarginCosts({
           </Rows>
         </div>
       ))}
-      <div className="bud-cat">
-        <CategoryHead name="Other" />
-        <Rows>
-          <li>
-            {opened === 'fee' ? (
-              <Opened>
-                <p className="bud-opened-name">Planning fee</p>
-                <MoneyField
-                  label="Charged at"
-                  value={charged}
-                  help="Cost £0.00"
-                  error={chargedTried ? priceProblem(charged, CURRENCY) : null}
-                  inputRef={chargedField}
-                  onChange={setCharged}
-                />
-                <div className="bud-opened-actions">
-                  <TextAction label={W.cancel} onClick={() => setOpened(null)} />
-                  <TextAction
-                    label={W.save}
-                    onClick={() => {
-                      setChargedTried(true);
-                      if (priceProblem(charged, CURRENCY) != null)
-                        return chargedField.current?.focus();
-                      onFee(minorOf(charged));
-                      setOpened(null);
-                    }}
+      {fee != null && (
+        <div className="bud-cat">
+          <CategoryHead name="Other" />
+          <Rows>
+            <li>
+              {opened === 'fee' ? (
+                <Opened>
+                  <p className="bud-opened-name">Planning fee</p>
+                  <MoneyField
+                    label="Charged at"
+                    value={charged}
+                    help="Cost £0.00"
+                    error={chargedTried ? priceProblem(charged, CURRENCY) : null}
+                    inputRef={chargedField}
+                    onChange={setCharged}
                   />
-                </div>
-              </Opened>
-            ) : (
-              <BudgetRow
-                title="Planning fee"
-                lines={[`Cost £0.00 · Charged at ${money(fee)} · its own price`]}
-                end={<Amount value={fee === 0 ? 'No figure' : '100.0%'} />}
-                onOpen={() => {
-                  setChargedTried(false);
-                  setCharged((fee / 100).toFixed(2));
-                  setOpened('fee');
-                }}
-              />
-            )}
-          </li>
-        </Rows>
-      </div>
+                  <div className="bud-opened-actions">
+                    <TextAction label={W.cancel} onClick={() => setOpened(null)} />
+                    <TextAction
+                      label={W.save}
+                      onClick={() => {
+                        setChargedTried(true);
+                        if (priceProblem(charged, CURRENCY) != null)
+                          return chargedField.current?.focus();
+                        onFee(minorOf(charged));
+                        setOpened(null);
+                      }}
+                    />
+                  </div>
+                </Opened>
+              ) : (
+                <BudgetRow
+                  title="Planning fee"
+                  lines={[`Cost £0.00 · Charged at ${money(fee)} · its own price`]}
+                  end={<Amount value={fee === 0 ? 'No figure' : '100.0%'} />}
+                  onOpen={() => {
+                    setChargedTried(false);
+                    setCharged((fee / 100).toFixed(2));
+                    setOpened('fee');
+                  }}
+                />
+              )}
+            </li>
+          </Rows>
+        </div>
+      )}
     </Block>
   );
 }
@@ -1393,7 +1408,9 @@ function MarginBlocks({
       'Its own price',
       null,
     ]),
-    ['Planning fee', 'Its own price', null],
+    ...(lines.some((one) => one.id === FEE_LINE.id)
+      ? []
+      : [['Planning fee', 'Its own price', null] as [string, string, null]]),
   ];
 
   return (

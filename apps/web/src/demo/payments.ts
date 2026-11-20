@@ -55,6 +55,7 @@ export const PAYMENTS_STATES: readonly string[] = [
   'made_as_is',
   'made_under',
   'made_over',
+  'made_over_already',
   'made_early',
   'mark_currency',
   'mark_plan',
@@ -406,7 +407,7 @@ export function retyped(
 }
 
 export function offersShapes(budget: Budget, vendorId: string): boolean {
-  return !budget.payments.some((one) => one.vendorId === vendorId);
+  return !budget.payments.some((one) => one.vendorId === vendorId && one.cancelled == null);
 }
 
 export interface EventDays {
@@ -553,6 +554,7 @@ const MADE_STATES: readonly string[] = [
   'made_as_is',
   'made_under',
   'made_over',
+  'made_over_already',
   'made_early',
 ];
 
@@ -705,9 +707,15 @@ export function paymentsStart(
       paidOn: state === 'made_early' ? '2026-10-05' : '2026-11-02',
       reference: '',
     };
+    const stems = ADDED[0];
+    const already = state === 'made_over_already' && stems != null;
 
     return {
       ...start,
+      budget: already
+        ? { ...base.budget, payments: [...base.budget.payments, stems] }
+        : start.budget,
+      addedPaid: already ? [stems.id] : [],
       made: { draft, problems: state === 'made_early' ? madeProblems(draft, quote) : {} },
     };
   }
@@ -837,6 +845,10 @@ export const PAYMENTS_PAGES: readonly DemoGroup[] = [
       {
         to: bloom('made_over'),
         name: 'Already made, £120.00: the schedule £120.00 over the quote (made_over)',
+      },
+      {
+        to: bloom('made_over_already'),
+        name: 'Already £60.00 over: the line gives the gap after, £180.00 (made_over_already)',
       },
       { to: bloom('made_early'), name: 'Dated before the vendor’s first quote (made_early)' },
       {

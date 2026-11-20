@@ -22,7 +22,8 @@
     "startBody": "Set up a new organisation and you become its owner.",
     "start": "Start organisation",
     "signedInAs": "Signed in as {{email}}.",
-    "account": "Your account"
+    "account": "Your account",
+    "wayBack": "Join or start an organisation"
   },
   "status": {
     "title": "Service status",

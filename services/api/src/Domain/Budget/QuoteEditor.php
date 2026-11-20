@@ -60,6 +60,7 @@ final readonly class QuoteEditor
         private BudgetLineRepository $budgetLineRepository,
         private QuoteRules $quoteRules,
         private QuotePublisher $quotePublisher,
+        private PaymentEditor $paymentEditor,
         private Auditor $auditor,
         private ClockInterface $clock,
     ) {
@@ -153,7 +154,7 @@ final readonly class QuoteEditor
     }
 
     /**
-     * A schedule's first payments, all or none (sc-1332): refused 409 `payments_already_scheduled` once the engagement has any payment, so two people never both start one.
+     * A schedule's first payments, all or none (sc-1332): refused 409 `payments_already_scheduled` once the engagement has any payment not cancelled, so two people never both start one.
      *
      * @param SentSchedule $sent
      */
@@ -161,7 +162,7 @@ final readonly class QuoteEditor
     {
         $event = $engagement->getEvent();
         $this->locked($event, function () use ($event, $engagement, $sent, $by): VendorEngagement {
-            if ($this->paymentRepository->hasAny($engagement)) {
+            if ($this->paymentRepository->hasScheduled($engagement)) {
                 throw new ApiException(ErrorCode::PaymentsAlreadyScheduled, 'quotes.payments_already_scheduled');
             }
 
@@ -182,6 +183,7 @@ final readonly class QuoteEditor
         $engagement = $payment->getEngagement();
         $event = $engagement->getEvent();
         $this->locked($event, function () use ($event, $engagement, $payment, $sent, $by): VendorEngagement {
+            $this->paymentEditor->refuseSettled($payment);
             $details = $this->quoteRules->payment($sent, $event, $this->current($engagement));
             $payment->amend($details->description, $details->amountMinor, $details->dueOn);
             $this->audit(self::PAYMENT_AMENDED, 'ScheduledPayment', $payment->getId(), $by);
@@ -196,6 +198,7 @@ final readonly class QuoteEditor
         $engagement = $payment->getEngagement();
         $event = $engagement->getEvent();
         $this->locked($event, function () use ($engagement, $payment, $by): VendorEngagement {
+            $this->paymentEditor->refuseSettled($payment);
             $this->audit(self::PAYMENT_REMOVED, 'ScheduledPayment', $payment->getId(), $by);
             $this->entityManager->remove($payment);
 

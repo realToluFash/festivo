@@ -53,6 +53,7 @@ import {
   type QuoteProblems,
   agreedElsewhere,
   draftOfQuote,
+  focusFirstWrong,
   keptOf,
   lineLine,
   longDay,
@@ -61,31 +62,19 @@ import {
   paymentRefusedAt,
   quoteProblems,
   quoteRefusedAt,
+  refusalWords,
   sentAmount,
   shortDay,
   todayIn,
 } from './quotesArea.ts';
 
-function focusFirstWrong(within: string): void {
-  window.setTimeout(
-    () => document.querySelector<HTMLElement>(`${within} [aria-invalid="true"]`)?.focus(),
-    0,
-  );
-}
-
-function AlertInset({ children }: { children: ReactNode }) {
+export function AlertInset({ children }: { children: ReactNode }) {
   return (
     <div className="bt-alert" role="alert">
       <Glyph name="alert" size={16} weight={2.3} />
       <p>{children}</p>
     </div>
   );
-}
-
-function refusalWords(error: unknown, failed: string): string {
-  return error instanceof ApiError && error.problem.detail != null && error.status !== 0
-    ? error.problem.detail
-    : failed;
 }
 
 /** Add (800, two columns), Revise or Correct (540): the vendor is chosen once, on Add; Revise changes the amount or the date; Correct the rest. */
@@ -562,32 +551,38 @@ function LinesField({
         </span>
         <span className="qt-optional">{t('quotes.optional')}</span>
       </div>
-      <ul className="desk-rows">
-        {lines.map((line) => {
-          const holder = agreedElsewhere(quotes.quotes, line.id, quoteId);
+      {lines.length === 0 ? (
+        <p className="desk-line">{t('quotes.noCostsToAgree')}</p>
+      ) : (
+        <ul className="desk-rows">
+          {lines.map((line) => {
+            const holder = agreedElsewhere(quotes.quotes, line.id, quoteId);
 
-          return (
-            <li key={line.id}>
-              <label className={holder == null ? 'desk-row qt-line' : 'desk-row qt-line is-taken'}>
-                <input
-                  type="checkbox"
-                  className="qt-check"
-                  checked={holder == null && ticked.includes(line.id)}
-                  disabled={holder != null}
-                  onChange={() =>
-                    onTick(
-                      ticked.includes(line.id)
-                        ? ticked.filter((one) => one !== line.id)
-                        : [...ticked, line.id],
-                    )
-                  }
-                />
-                <RowWords title={line.label} lines={[lineLine(t, line, holder, locale)]} />
-              </label>
-            </li>
-          );
-        })}
-      </ul>
+            return (
+              <li key={line.id}>
+                <label
+                  className={holder == null ? 'desk-row qt-line' : 'desk-row qt-line is-taken'}
+                >
+                  <input
+                    type="checkbox"
+                    className="qt-check"
+                    checked={holder == null && ticked.includes(line.id)}
+                    disabled={holder != null}
+                    onChange={() =>
+                      onTick(
+                        ticked.includes(line.id)
+                          ? ticked.filter((one) => one !== line.id)
+                          : [...ticked, line.id],
+                      )
+                    }
+                  />
+                  <RowWords title={line.label} lines={[lineLine(t, line, holder, locale)]} />
+                </label>
+              </li>
+            );
+          })}
+        </ul>
+      )}
     </div>
   );
 }
@@ -622,7 +617,7 @@ export function PaymentDialog({
   const [draft, setDraft] = useState<PaymentDraft>(BLANK_PAYMENT);
   const [problems, setProblems] = useState<PaymentProblems>({});
   const [shaping, setShaping] = useState<Shaping | null>(() =>
-    quote.payments.length === 0 ? shapingOf(t, 'rows') : null,
+    quote.payments.every((one) => one.cancelled != null) ? shapingOf(t, 'rows') : null,
   );
   const [top, setTop] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -1064,7 +1059,7 @@ export function AmendInPlace({
   );
 }
 
-function Fixed({ label, value }: { label: string; value: string }) {
+export function Fixed({ label, value }: { label: string; value: string }) {
   return (
     <div className="desk-field">
       <span className="desk-label">{label}</span>
@@ -1107,7 +1102,7 @@ function Label({ id, label, optional }: { id: string; label: string; optional: b
   );
 }
 
-function TextField({
+export function TextField({
   id,
   label,
   value,
@@ -1165,11 +1160,12 @@ function TextField({
   );
 }
 
-function DateField({
+export function DateField({
   id,
   label,
   value,
   max,
+  help,
   error,
   onChange,
 }: {
@@ -1177,6 +1173,7 @@ function DateField({
   label: string;
   value: string;
   max?: string;
+  help?: string;
   error: string | null;
   onChange: (value: string) => void;
 }) {
@@ -1190,16 +1187,21 @@ function DateField({
           value={value}
           max={max}
           aria-invalid={error != null}
-          aria-describedby={described(id, false, error)}
+          aria-describedby={described(id, help != null, error)}
           onChange={(event) => onChange(event.target.value)}
         />
       </div>
+      {help != null && (
+        <p id={`${id}-help`} className="desk-help">
+          {help}
+        </p>
+      )}
       <Problem id={`${id}-error`} line={error} />
     </div>
   );
 }
 
-function MoneyField({
+export function MoneyField({
   label,
   value,
   sign,

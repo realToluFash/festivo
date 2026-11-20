@@ -8,6 +8,7 @@ import { __setConfig, config } from '../../../config.ts';
 import { __setSessionState, type Session } from '../../../session.ts';
 import { OWNER_PERMISSIONS, membership } from '../../../test-memberships.ts';
 import { routes } from '../../index.tsx';
+import { todayIn } from './quotesArea.ts';
 
 const IRE = membership({ id: 'org_1', name: 'Ìrè Events' });
 
@@ -1269,6 +1270,463 @@ describe('a vendor’s page (sc-87)', () => {
   });
 });
 
+describe('marking a payment paid (sc-88)', () => {
+  const at = '/app/events/ev_1/budget/vendors/v4';
+  const deposit = SAVOUR.payments[0]!;
+  const withPayments = (payments: unknown[]) => quotes({ quotes: [{ ...SAVOUR, payments }] });
+  const dialog = () => screen.getByRole('dialog');
+
+  it('starts on the amount scheduled and today, says the difference, sends it and lights the row with Undo', async () => {
+    signedIn();
+    const today = todayIn('Europe/London');
+    let now = quotes();
+    const paid = {
+      ...deposit,
+      paid: {
+        amount: '4600.00',
+        paidOn: today,
+        reference: 'FP-2231',
+        at: '2026-11-20T10:00:00+00:00',
+        by: { id: 'u_folake', name: 'Folake Adeyemi' },
+        difference: '100.00',
+      },
+    };
+    const sent = serve(
+      {
+        'GET /api/events/ev_1/budget/quotes': () => json(now),
+        'POST /api/events/ev_1/budget/payments/p_deposit/paid': () => {
+          now = withPayments([paid]);
+          return json({ quote: now.quotes[0] });
+        },
+      },
+      { at },
+    );
+
+    const row = (await screen.findByText('Deposit')).closest('li')!;
+    fireEvent.click(within(row).getByRole('button', { name: 'Mark paid' }));
+    const amount = within(dialog()).getByRole('textbox', { name: 'Amount paid' });
+    expect((amount as HTMLInputElement).value).toBe('4,500.00');
+    expect((within(dialog()).getByLabelText('Date paid') as HTMLInputElement).value).toBe(today);
+
+    fireEvent.change(amount, { target: { value: '4,600' } });
+    expect(
+      within(dialog()).getByText(
+        '£100.00 more than scheduled. The difference stays visible; nothing absorbs it.',
+      ),
+    ).toBeTruthy();
+    fireEvent.change(within(dialog()).getByRole('textbox', { name: /Reference/ }), {
+      target: { value: ' FP-2231 ' },
+    });
+    fireEvent.click(within(dialog()).getByRole('button', { name: 'Mark paid' }));
+
+    const lit = (await screen.findByText(/Marked by Folake Adeyemi/)).closest('li')!;
+    expect(within(lit).getByRole('button', { name: 'Undo' })).toBeTruthy();
+    expect(within(lit).queryByRole('button', { name: 'Mark paid' })).toBeNull();
+    expect(
+      sent.find((one) => one.line === 'POST /api/events/ev_1/budget/payments/p_deposit/paid')?.body,
+    ).toEqual({ amount: '4600.00', currency: 'GBP', paidOn: today, reference: 'FP-2231' });
+  });
+
+  it('refuses a blank amount before sending, and gives way to the server’s already paid with only Close', async () => {
+    signedIn();
+    const sent = serve(
+      {
+        'GET /api/events/ev_1/budget/quotes': () => json(quotes()),
+        'POST /api/events/ev_1/budget/payments/p_deposit/paid': () =>
+          new Response(
+            JSON.stringify({
+              type: 'https://soirely.com/errors/payment_already_paid',
+              title: 'payment_already_paid',
+              status: 409,
+              detail: 'Kofi Mensah has already marked this paid, so nothing has changed.',
+            }),
+            { status: 409, headers: { 'Content-Type': 'application/problem+json' } },
+          ),
+      },
+      { at },
+    );
+
+    const row = (await screen.findByText('Deposit')).closest('li')!;
+    fireEvent.click(within(row).getByRole('button', { name: 'Mark paid' }));
+    const amount = within(dialog()).getByRole('textbox', { name: 'Amount paid' });
+    fireEvent.change(amount, { target: { value: '' } });
+    fireEvent.click(within(dialog()).getByRole('button', { name: 'Mark paid' }));
+    expect(amount.getAttribute('aria-invalid')).toBe('true');
+    expect(sent.some((one) => one.line.startsWith('POST'))).toBe(false);
+
+    fireEvent.change(amount, { target: { value: '4500' } });
+    fireEvent.click(within(dialog()).getByRole('button', { name: 'Mark paid' }));
+
+    expect((await within(dialog()).findByRole('alert')).textContent).toBe(
+      'Kofi Mensah has already marked this paid, so nothing has changed.',
+    );
+    expect(within(dialog()).getByRole('button', { name: 'Close' })).toBeTruthy();
+    expect(within(dialog()).queryByRole('textbox', { name: 'Amount paid' })).toBeNull();
+  });
+
+  it('cancels an unpaid payment with its reason, keeps it struck as not owed, and Restore brings it back', async () => {
+    signedIn();
+    let now = quotes();
+    const sent = serve(
+      {
+        'GET /api/events/ev_1/budget/quotes': () => json(now),
+        'POST /api/events/ev_1/budget/payments/p_deposit/cancellation': () => {
+          now = withPayments([
+            { ...deposit, cancelled: { at: '', by: null, reason: 'Venue includes it' } },
+          ]);
+          return json({ quote: now.quotes[0] });
+        },
+        'DELETE /api/events/ev_1/budget/payments/p_deposit/cancellation': () => {
+          now = quotes();
+          return json({ quote: now.quotes[0] });
+        },
+      },
+      { at },
+    );
+
+    const row = (await screen.findByText('Deposit')).closest('li')!;
+    fireEvent.click(within(row).getByRole('button', { name: 'Cancel payment' }));
+    expect(within(dialog()).getByRole('button', { name: 'Keep it' })).toBeTruthy();
+    fireEvent.change(within(dialog()).getByRole('textbox', { name: /Why it is not owed/ }), {
+      target: { value: 'Venue includes it' },
+    });
+    fireEvent.click(within(dialog()).getByRole('button', { name: 'Cancel payment' }));
+
+    expect(
+      await screen.findByText('Cancelled · Not owed: Venue includes it · £4,500.00'),
+    ).toBeTruthy();
+    expect(
+      sent.find((one) => one.line.endsWith('/cancellation') && one.line.startsWith('POST'))?.body,
+    ).toEqual({ reason: 'Venue includes it' });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Restore' }));
+    const back = (await screen.findByRole('button', { name: 'Mark paid' })).closest('li')!;
+    expect(within(back).getByText('Deposit')).toBeTruthy();
+  });
+
+  it('says Undo deletes a payment added as already made, and says what it deleted', async () => {
+    signedIn();
+    const added = {
+      id: 'p_stems',
+      description: 'Extra stems for the arch',
+      amount: '180.00',
+      dueOn: '2026-11-03',
+      overdue: false,
+      addedAsPaid: true,
+      cancelled: null,
+      paid: {
+        amount: '180.00',
+        paidOn: '2026-11-03',
+        reference: null,
+        at: '',
+        by: { id: 'u_folake', name: 'Folake Adeyemi' },
+        difference: '0.00',
+      },
+    };
+    let now = withPayments([deposit, added]);
+    const sent = serve(
+      {
+        'GET /api/events/ev_1/budget/quotes': () => json(now),
+        'DELETE /api/events/ev_1/budget/payments/p_stems/paid': () => {
+          now = quotes();
+          return json({ quote: now.quotes[0] });
+        },
+      },
+      { at },
+    );
+
+    const row = (
+      await screen.findByText(/^Paid .+\. Added by you as already paid, so Undo deletes it\.$/)
+    ).closest('li')!;
+    fireEvent.click(within(row).getByRole('button', { name: 'Undo' }));
+
+    expect(
+      (
+        await screen.findByText(
+          /^Deleted the payment of £180\.00 to Savour Kitchen on .+: Extra stems for the arch\.$/,
+        )
+      ).getAttribute('role'),
+    ).toBe('status');
+    expect(screen.queryByText('Extra stems for the arch')).toBeNull();
+    expect(
+      sent.some((one) => one.line === 'DELETE /api/events/ev_1/budget/payments/p_stems/paid'),
+    ).toBe(true);
+  });
+
+  it('names the next payment on the card, and opens its Mark paid from there', async () => {
+    signedIn();
+    serve({
+      'GET /api/events/ev_1/budget/quotes': () =>
+        json(
+          quotes({
+            due: [
+              {
+                id: 'p_deposit',
+                quoteId: 'q_savour',
+                vendor: 'Savour Kitchen',
+                description: 'Deposit',
+                amount: '4500.00',
+                dueOn: '2026-11-03',
+                overdue: true,
+              },
+            ],
+          }),
+        ),
+    });
+
+    const line = await screen.findByText(
+      /^The deposit for Savour Kitchen, £4,500, was due on .*3.*\.$/,
+    );
+    const foot = line.closest('div')!;
+    fireEvent.click(within(foot).getByRole('button', { name: 'Mark paid' }));
+    expect(within(dialog()).getByText('Savour Kitchen · Deposit · Adaeze and Tunde')).toBeTruthy();
+  });
+
+  it('opens Mark paid from a row of Due next, and keeps the row lit with Undo once marked', async () => {
+    signedIn();
+    let now = quotes({
+      due: [
+        {
+          id: 'p_deposit',
+          quoteId: 'q_savour',
+          vendor: 'Savour Kitchen',
+          description: 'Deposit',
+          amount: '4500.00',
+          dueOn: '2030-11-04',
+          overdue: false,
+        },
+      ],
+    });
+    serve({
+      'GET /api/events/ev_1/budget/quotes': () => json(now),
+      'POST /api/events/ev_1/budget/payments/p_deposit/paid': () => {
+        now = withPayments([
+          {
+            ...deposit,
+            paid: {
+              amount: '4500.00',
+              paidOn: '2026-11-20',
+              reference: null,
+              at: '',
+              by: { id: 'u_folake', name: 'Folake Adeyemi' },
+              difference: '0.00',
+            },
+          },
+        ]);
+        return json({ quote: now.quotes[0] });
+      },
+    });
+
+    fireEvent.click(await screen.findByRole('button', { name: /Savour Kitchen.*Mark paid/ }));
+    expect(within(dialog()).getByText('Savour Kitchen · Deposit · Adaeze and Tunde')).toBeTruthy();
+    fireEvent.click(within(dialog()).getByRole('button', { name: 'Mark paid' }));
+
+    const lit = (await screen.findAllByText(/^Marked paid: £4,500\.00 on /))
+      .map((one) => one.closest('li'))
+      .find((one) => one != null)!;
+    expect(within(lit).getByRole('button', { name: 'Undo' })).toBeTruthy();
+  });
+
+  it('offers no Mark paid, Cancel payment or Add a payment already made after a downgrade', async () => {
+    signedIn();
+    serve(
+      { 'GET /api/events/ev_1/budget/quotes': () => json(quotes({ entitled: false })) },
+      { at },
+    );
+
+    await screen.findByText('Deposit');
+    expect(screen.queryByRole('button', { name: 'Mark paid' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Cancel payment' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Add a payment already made' })).toBeNull();
+  });
+});
+
+describe('quotes on an event with no costs yet (sc-74361)', () => {
+  const noCosts = () =>
+    json(budget({ lines: [], confirmed: '0.00', potential: '0.00', notPriced: 0 }));
+
+  it('shows Due next and Vendors quoted empty under the first-time card, with Add a quote', async () => {
+    signedIn();
+    serve({
+      'GET /api/events/ev_1/budget': noCosts,
+      'GET /api/events/ev_1/budget/quotes': () => json(quotes({ quotes: [] })),
+    });
+
+    expect(await screen.findByText('No quotes on this event yet.')).toBeTruthy();
+    expect(screen.getByText('No costs yet')).toBeTruthy();
+    expect(screen.getByText('Nothing is due.')).toBeTruthy();
+    const first = screen.getByRole('button', { name: 'Add the first cost' });
+    const add = screen.getByRole('button', { name: 'Add a quote' });
+    expect(first.compareDocumentPosition(add) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(screen.queryByText(READ_ONLY)).toBeNull();
+  });
+
+  it('says in the quote form that there are no budget lines to agree', async () => {
+    signedIn();
+    serve({
+      'GET /api/events/ev_1/budget': noCosts,
+      'GET /api/events/ev_1/budget/quotes': () => json(quotes({ quotes: [] })),
+    });
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Add a quote' }));
+
+    const lines = await screen.findByRole('group', { name: 'Budget lines it agrees' });
+    expect(lines.textContent).toContain(
+      'This event has no costs yet, so the quote agrees none. Once it has some, correct the quote to add them.',
+    );
+    expect(within(lines).queryByRole('checkbox')).toBeNull();
+  });
+
+  it('keeps a quote and its overdue payment on the page', async () => {
+    signedIn();
+    serve({
+      'GET /api/events/ev_1/budget': noCosts,
+      'GET /api/events/ev_1/budget/quotes': () =>
+        json(
+          quotes({
+            due: [
+              {
+                id: 'p_deposit',
+                quoteId: 'q_savour',
+                vendor: 'Savour Kitchen',
+                description: 'Deposit',
+                amount: '4500.00',
+                dueOn: '2020-11-04',
+                overdue: true,
+              },
+            ],
+          }),
+        ),
+    });
+
+    const quoted = await screen.findByRole('region', { name: 'Vendors quoted' });
+    expect(within(quoted).getByText('Savour Kitchen')).toBeTruthy();
+    expect(screen.getByText('No costs yet')).toBeTruthy();
+    const due = screen.getByRole('region', { name: 'Due next' });
+    expect(within(due).getByText(/Deposit/u)).toBeTruthy();
+    expect(within(due).getByText('Overdue')).toBeTruthy();
+  });
+
+  it('keeps quotes readable after a downgrade, with the read-only line and no Add a quote', async () => {
+    signedIn();
+    serve({
+      'GET /api/events/ev_1/budget': noCosts,
+      'GET /api/events/ev_1/budget/quotes': () => json(quotes({ entitled: false })),
+    });
+
+    expect(await screen.findByText(READ_ONLY)).toBeTruthy();
+    expect(screen.getByText('Savour Kitchen')).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Add a quote' })).toBeNull();
+  });
+
+  it('shows the first-time page alone without vendors and with no quote', async () => {
+    signedIn();
+    const sent = serve({
+      'GET /api/events/ev_1/budget': noCosts,
+      'GET /api/events/ev_1/budget/quotes': () => json(quotes({ entitled: false, quotes: [] })),
+    });
+
+    expect(await screen.findByText('No costs yet')).toBeTruthy();
+    await waitFor(() =>
+      expect(sent.some((one) => one.line === 'GET /api/events/ev_1/budget/quotes')).toBe(true),
+    );
+    await act(async () => {});
+    expect(screen.queryByText(READ_ONLY)).toBeNull();
+    expect(screen.queryByRole('heading', { name: 'Due next' })).toBeNull();
+    expect(screen.queryByRole('heading', { name: 'Vendors quoted' })).toBeNull();
+  });
+
+  it('keeps both blocks in place with Try again when the quotes did not load', async () => {
+    signedIn();
+    serve({
+      'GET /api/events/ev_1/budget': noCosts,
+      'GET /api/events/ev_1/budget/quotes': () => problem(500, 'internal_error'),
+    });
+
+    expect(await screen.findAllByText(NOT_LOADED)).toHaveLength(2);
+    expect(screen.getByRole('heading', { name: 'Due next' })).toBeTruthy();
+    expect(screen.getByRole('heading', { name: 'Vendors quoted' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Add the first cost' })).toBeTruthy();
+  });
+
+  it('keeps the bar with Undo above No costs yet, and both blocks, when the last cost goes with a quote on the event', async () => {
+    signedIn();
+    let lines = [DINNER];
+    serve({
+      'GET /api/events/ev_1/budget': () => json(budget({ lines })),
+      'GET /api/events/ev_1/budget/quotes': () => json(quotes()),
+      'DELETE /api/events/ev_1/budget/lines/dinner': () => {
+        lines = [];
+        return new Response(null, { status: 204 });
+      },
+    });
+
+    fireEvent.click(await screen.findByRole('button', { name: /^Dinner\./u }));
+    fireEvent.click(screen.getByRole('button', { name: 'Remove' }));
+
+    const none = await screen.findByText('No costs yet');
+    const undo = screen.getByRole('button', { name: 'Undo' });
+    expect(undo.compareDocumentPosition(none) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(screen.getByRole('region', { name: 'Due next' })).toBeTruthy();
+    const quoted = screen.getByRole('region', { name: 'Vendors quoted' });
+    expect(within(quoted).getByText('Savour Kitchen')).toBeTruthy();
+  });
+
+  it('keeps Due next and Vendors quoted in the right column beside the first cost once it is added', async () => {
+    signedIn();
+    let lines: unknown[] = [];
+    const drinks = costed('drinks', 'Welcome drinks', { rate: '12.00' }, '1152.00', '1596.00');
+    serve({
+      'GET /api/events/ev_1/budget': () => json(budget({ lines, notPriced: 0 })),
+      'GET /api/events/ev_1/budget/quotes': () => json(quotes()),
+      'POST /api/events/ev_1/budget/lines': () => {
+        lines = [drinks];
+        return json({ line: drinks }, 201);
+      },
+    });
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Add the first cost' }));
+    const dialog = await screen.findByRole('dialog', { name: 'Add a cost' });
+    fireEvent.change(within(dialog).getByRole('textbox', { name: 'What it is' }), {
+      target: { value: 'Welcome drinks' },
+    });
+    fireEvent.change(within(dialog).getByRole('combobox', { name: 'Category' }), {
+      target: { value: 'catering' },
+    });
+    fireEvent.click(within(dialog).getByRole('radio', { name: /Per head/u }));
+    fireEvent.change(within(dialog).getByRole('textbox', { name: 'Rate' }), {
+      target: { value: '12' },
+    });
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Add' }));
+
+    const row = await screen.findByRole('button', { name: /^Welcome drinks\./u });
+    expect(screen.queryByText('No costs yet')).toBeNull();
+    const right = screen.getByRole('region', { name: 'Vendors quoted' }).closest('.ev-right');
+    expect(right?.contains(screen.getByRole('region', { name: 'Due next' }))).toBe(true);
+    expect(right?.parentElement?.querySelector('.ev-left')?.contains(row)).toBe(true);
+  });
+
+  it('says in Correct that there are no budget lines to agree', async () => {
+    signedIn();
+    serve(
+      {
+        'GET /api/events/ev_1/budget': noCosts,
+        'GET /api/events/ev_1/budget/quotes': () => json(quotes()),
+      },
+      { at: '/app/events/ev_1/budget/vendors/v4' },
+    );
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Correct the quote' }));
+
+    const dialog = await screen.findByRole('dialog', { name: 'Correct the quote' });
+    const lines = within(dialog).getByRole('group', { name: 'Budget lines it agrees' });
+    expect(lines.textContent).toContain(
+      'This event has no costs yet, so the quote agrees none. Once it has some, correct the quote to add them.',
+    );
+    expect(within(lines).queryByRole('checkbox')).toBeNull();
+  });
+});
+
 describe('a schedule from the vendor’s terms (sc-1332)', () => {
   const at = '/app/events/ev_1/budget/vendors/v4';
   const UNPAID = { ...SAVOUR, payments: [], scheduled: '0.00', difference: '-9000.00' };
@@ -1298,6 +1756,31 @@ describe('a schedule from the vendor’s terms (sc-1332)', () => {
     sent.filter((one) => one.line === 'POST /api/events/ev_1/budget/quotes/q_savour/schedule');
   const quotesRead = (sent: { line: string }[]) =>
     sent.filter((one) => one.line === 'GET /api/events/ev_1/budget/quotes').length;
+
+  it.each([
+    [
+      'offers the shapes when every payment is cancelled',
+      { cancelled: { at: '', by: null, reason: 'Venue includes it' } },
+      1,
+    ],
+    ['offers no shapes once a payment was added as already made', { addedAsPaid: true }, 0],
+  ])('%s', async (_, over, offered) => {
+    signedIn();
+    const payment = { ...SAVOUR.payments[0]!, ...over };
+    serve(
+      {
+        'GET /api/events/ev_1/budget/quotes': () =>
+          json(quotes({ quotes: [{ ...SAVOUR, payments: [payment] }] })),
+      },
+      { at },
+    );
+    fireEvent.click((await screen.findAllByRole('button', { name: 'Add a payment' }))[0]!);
+    const dialog = await screen.findByRole('dialog', { name: 'Add a payment' });
+
+    expect(within(dialog).queryAllByRole('radio', { name: 'Three instalments' })).toHaveLength(
+      offered,
+    );
+  });
 
   it('Save 3 payments sends the rows the shape computed, all at once', async () => {
     const { sent, dialog } = await chooseInstalments(() => json(UNPAID, 201));

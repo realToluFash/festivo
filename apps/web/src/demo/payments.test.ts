@@ -51,6 +51,7 @@ const SPEC_NAMES = [
   'made_as_is',
   'made_under',
   'made_over',
+  'made_over_already',
   'made_early',
   'add_payment',
   'shape_deposit',
@@ -163,6 +164,24 @@ describe('payments on a vendor’s page, shapes and reminders, in A (sc-88, sc-1
     const raced = startOf('shape_raced');
     expect(raced.shaping).toMatchObject({ shape: 'deposit', raced: true });
     expect(offersShapes(raced.budget, 'v4')).toBe(false);
+  });
+
+  it('offers the shapes again when every payment a vendor has is cancelled, never when one was made', () => {
+    const sample = sampleBudget();
+    const savour = sample.payments.filter((one) => one.vendorId === 'v4');
+    const others = sample.payments.filter((one) => one.vendorId !== 'v4');
+    const cancelled = savour.map((one) => cancelledOf(one, ''));
+    expect(offersShapes({ ...sample, payments: [...others, ...cancelled] }, 'v4')).toBe(true);
+    expect(
+      offersShapes({ ...sample, payments: [...others, cancelled[0]!, savour[1]!] }, 'v4'),
+    ).toBe(false);
+    const made = {
+      ...savour[0]!,
+      paid: { amount: 450000, on: '2026-11-02', by: 'Ada', reference: '' },
+    };
+    expect(offersShapes({ ...sample, payments: [...others, made, cancelled[1]!] }, 'v4')).toBe(
+      false,
+    );
   });
 
   it('says a different amount, never absorbing it, and puts it on the paid row', () => {
@@ -374,6 +393,17 @@ describe('payments on a vendor’s page, shapes and reminders, in A (sc-88, sc-1
     for (const fine of ['1', '3', ' 30 ']) expect(daysProblem(fine)).toBeNull();
     for (const wrong of ['', '0', '31', '2.5', 'three', '-1'])
       expect(daysProblem(wrong)).toBe('Enter a whole number of days from 1 to 30.');
+  });
+
+  it('counts a payment already made on top of a schedule already past the quote', () => {
+    const { budget, made, addedPaid } = startOf('made_over_already');
+    expect(addedPaid).toEqual(['p20']);
+    expect(made == null ? null : madeInset(budget, made.draft)).toEqual({
+      vendor: 'Bloom & Co',
+      now: { paid: 42000, scheduled: 126000 },
+      after: { paid: 54000, scheduled: 138000 },
+      over: 18000,
+    });
   });
 });
 

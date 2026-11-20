@@ -1,4 +1,5 @@
 import {
+  ApiError,
   type BudgetLine,
   type DuePayment,
   type EventQuote,
@@ -124,6 +125,17 @@ export function todayIn(timeZone: string, now: Date = new Date()): string {
     parts.find((one) => one.type === type)?.value ?? '';
 
   return `${part('year')}-${part('month')}-${part('day')}`;
+}
+
+export type CardDue = 'cardOverdue' | 'cardDueToday' | 'cardDueTomorrow' | 'cardDueOn';
+
+export function cardDue(payment: DuePayment, today: string): CardDue {
+  if (payment.overdue || payment.dueOn < today) return 'cardOverdue';
+  if (payment.dueOn === today) return 'cardDueToday';
+  const tomorrow = new Date(`${today}T00:00:00Z`);
+  tomorrow.setUTCDate(tomorrow.getUTCDate() + 1);
+
+  return payment.dueOn === tomorrow.toISOString().slice(0, 10) ? 'cardDueTomorrow' : 'cardDueOn';
 }
 
 export function dueInOrder(due: readonly DuePayment[], locale: string): DuePayment[] {
@@ -421,4 +433,161 @@ export function budgetView(rest: string): BudgetView {
     return { kind: 'vendor', vendorId: parts[1] };
 
   return { kind: 'unknown' };
+}
+
+export const PAID_LIMITS = { reference: 100, reason: 200, description: 100 } as const;
+
+export interface MarkDraft {
+  amount: string;
+  paidOn: string;
+  reference: string;
+}
+
+export type MarkField = keyof MarkDraft;
+export type MarkProblems = Partial<Record<MarkField, string>>;
+
+/** The amount scheduled, and today in the event's time zone. */
+export function draftToMark(
+  payment: ScheduledPayment,
+  language: MoneyLanguage,
+  currency: string,
+  today: string,
+): MarkDraft {
+  return { amount: typedAmount(payment.amount, language, currency), paidOn: today, reference: '' };
+}
+
+export function markProblems(t: TFunction, draft: MarkDraft, at: MoneyAt): MarkProblems {
+  const problems: MarkProblems = {};
+
+  if (sentAmount(draft.amount, at.language, at.currency) == null)
+    problems.amount = amountProblem(t, at.language, at.currency);
+  if (draft.paidOn === '') problems.paidOn = t('quotes.datePaidBlank');
+  else if (draft.paidOn > at.today) problems.paidOn = t('quotes.datePaidAhead');
+  if (lengthOf(draft.reference) > PAID_LIMITS.reference)
+    problems.reference = t('quotes.referenceTooLong', { count: PAID_LIMITS.reference });
+
+  return problems;
+}
+
+export interface MadeDraft extends MarkDraft {
+  quoteId: string;
+  description: string;
+}
+
+export type MadeField = 'description' | MarkField;
+export type MadeProblems = Partial<Record<MadeField, string>>;
+
+/** The vendor's first quote for the event, before any revision. */
+export function firstQuoteOn(quote: EventQuote): string {
+  return quote.earlier.reduce(
+    (first, one) => (one.quotedOn < first ? one.quotedOn : first),
+    quote.quote.quotedOn,
+  );
+}
+
+export function madeProblems(
+  t: TFunction,
+  draft: MadeDraft,
+  quote: EventQuote | undefined,
+  at: MoneyAt,
+  locale: string,
+): MadeProblems {
+  const problems: MadeProblems = {};
+
+  if (draft.description.trim() === '') problems.description = t('quotes.enterWhatItWasFor');
+  else if (lengthOf(draft.description) > PAID_LIMITS.description)
+    problems.description = t('quotes.descriptionTooLong', { count: PAID_LIMITS.description });
+  const marked = markProblems(t, draft, at);
+  if (marked.amount != null) problems.amount = marked.amount;
+  if (marked.paidOn != null) problems.paidOn = marked.paidOn;
+  else if (quote != null && draft.paidOn < firstQuoteOn(quote))
+    problems.paidOn = t('quotes.beforeFirstQuote', {
+      vendor: quote.vendor.name,
+      day: longDay(firstQuoteOn(quote), locale),
+    });
+  if (marked.reference != null) problems.reference = marked.reference;
+
+  return problems;
+}
+
+export function reasonProblem(t: TFunction, why: string): string | null {
+  return lengthOf(why) > PAID_LIMITS.reason
+    ? t('quotes.reasonTooLong', { count: PAID_LIMITS.reason })
+    : null;
+}
+
+/** Paid against scheduled, in words, or null when they match. */
+export function paidDifference(
+  t: TFunction,
+  scheduled: string,
+  paid: string,
+  currency: string,
+  locale: string,
+): string | null {
+  const gap = minorOf(paid, currency) - minorOf(scheduled, currency);
+  if (gap === 0) return null;
+  const words = minorMoney(amountOfMinor(Math.abs(gap), currency), currency, locale);
+
+  return gap > 0 ? t('quotes.moreThan', { gap: words }) : t('quotes.lessThan', { gap: words });
+}
+
+export function paidLine(
+  t: TFunction,
+  payment: ScheduledPayment,
+  currency: string,
+  locale: string,
+): string {
+  const { paid } = payment;
+  if (paid == null) return '';
+  const words = {
+    amount: minorMoney(paid.amount, currency, locale),
+    day: shortDay(paid.paidOn, locale),
+  };
+  const difference = paidDifference(t, payment.amount, paid.amount, currency, locale);
+  if (paid.by == null)
+    return difference == null
+      ? t('quotes.paidLineNoName', words)
+      : t('quotes.paidLineDifferenceNoName', { ...words, difference });
+
+  return difference == null
+    ? t('quotes.paidLine', { ...words, by: paid.by.name })
+    : t('quotes.paidLineDifference', { ...words, difference, by: paid.by.name });
+}
+
+export function cancelledLine(
+  t: TFunction,
+  payment: ScheduledPayment,
+  currency: string,
+  locale: string,
+): string {
+  const amount = minorMoney(payment.amount, currency, locale);
+  const why = payment.cancelled?.reason ?? null;
+
+  return why == null
+    ? t('quotes.cancelledLine', { amount })
+    : t('quotes.cancelledLineWhy', { why, amount });
+}
+
+const MARK_PATHS: Readonly<Record<string, MadeField>> = {
+  description: 'description',
+  amount: 'amount',
+  currency: 'amount',
+  paidOn: 'paidOn',
+  reference: 'reference',
+};
+
+export const paidRefusedAt = (violations: Record<string, string>) =>
+  refusedAt(violations, MARK_PATHS);
+
+export function focusFirstWrong(within: string): void {
+  window.setTimeout(
+    () => document.querySelector<HTMLElement>(`${within} [aria-invalid="true"]`)?.focus(),
+    0,
+  );
+}
+
+export function refusalWords(error: unknown, failed: string): string {
+  return error instanceof ApiError && error.problem.detail != null && error.status !== 0
+    ? error.problem.detail
+    : failed;
 }

@@ -779,3 +779,15 @@
 .step-wraps .desk-step > svg {
   flex: none;
 }
+
+/* Demo-scoped so a visit to /demo never restyles the product; dev puts these lines on .desk-glass itself (sc-30767). */
+.glass-wraps .desk-glass:is(li, span) {
+  height: auto;
+  min-height: 28px;
+  max-width: 100%;
+  padding-block: var(--spaceXs);
+  line-height: 16px;
+  text-align: start;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}

@@ -83,7 +83,7 @@ final class VendorEngagementRepository extends ServiceEntityRepository implement
     {
         /** @var list<Event> */
         return $this->getEntityManager()->createQuery(
-            'SELECT ev FROM App\\Entity\\Event ev WHERE ev.id IN (SELECT IDENTITY(e.event) FROM App\\Entity\\ScheduledPayment p JOIN p.engagement e WHERE e.vendor = :vendor) ORDER BY ev.name ASC',
+            'SELECT ev FROM App\\Entity\\Event ev WHERE ev.id IN (SELECT IDENTITY(e.event) FROM App\\Entity\\ScheduledPayment p JOIN p.engagement e WHERE e.vendor = :vendor AND p.paidAt IS NULL AND p.cancelledAt IS NULL) ORDER BY ev.name ASC',
         )
             ->setParameter('vendor', $vendor->getId(), 'uuid')
             ->getResult();

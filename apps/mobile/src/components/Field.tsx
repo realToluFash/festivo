@@ -43,7 +43,7 @@ import {
 import { useBoldText } from '../theme/boldText.ts';
 import { inputFaced } from '../theme/fonts.ts';
 import { tokens } from '../theme/tokens.ts';
-import { fieldChecked, fieldFocused, fieldLeft } from './focusedField.ts';
+import { fieldChecked, fieldFocused, fieldLeft, fieldTyped } from './focusedField.ts';
 import { raiseKeysOn } from './keyboardWatch.ts';
 import { useReadOut } from './ReadOut.tsx';
 import { useFocusOnAnswer } from './Screen.tsx';
@@ -321,6 +321,7 @@ export function useHeld(
     onChangeText: (text) => {
       setTyping((last) => keyTyped(last, text));
       onChangeText?.(text);
+      fieldTyped();
     },
   };
 }

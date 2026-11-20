@@ -92,11 +92,14 @@ export interface Entry {
   /** The event it belongs to, for the Event filter; an organisation's dish has none. */
   event?: string;
   changes?: string;
+  /** What an entry recorded beside any change, each a row of its own: an export's format, filters and count, or a plan change's reason. */
+  recorded?: readonly { label: string; value: string }[];
   address?: string;
   device?: string;
 }
 
 export const SYSTEM = 'System';
+export const SUPPORT = 'Soirely support';
 export const PEOPLE = [
   { name: VIEWERS.folake.name, email: VIEWERS.folake.id, left: false },
   { name: VIEWERS.julien.name, email: VIEWERS.julien.id, left: false },
@@ -124,9 +127,25 @@ const section = (
 const FOLAKE = VIEWERS.folake.name;
 const JULIEN = VIEWERS.julien.name;
 const ADDRESS = '203.0.113.17';
+const ON_ORG = { name: ORG };
 
 /** Newest first, as the boards list them; the seconds, codes and references the spec leaves out are the sample's. */
 export const ENTRIES: readonly Entry[] = [
+  {
+    id: 'exported',
+    at: '2026-10-19T11:42:09+01:00',
+    what: 'Exported 3 audit log entries',
+    who: FOLAKE,
+    type: 'Audit log',
+    action: 'audit_log.exported',
+    on: ON_ORG,
+    reference: '7c3e9a14-2b6d-4f81-9e05-d8a1f62b3c47',
+    recorded: [
+      { label: 'Format', value: 'CSV' },
+      { label: 'Filters', value: 'Person: Priya Shah · Type: Event access' },
+      { label: 'Entries', value: '3' },
+    ],
+  },
   {
     id: 'download',
     at: '2026-10-19T10:05:31+01:00',
@@ -134,6 +153,7 @@ export const ENTRIES: readonly Entry[] = [
     who: FOLAKE,
     type: 'Organisation',
     action: 'organisation.export_downloaded',
+    on: ON_ORG,
     reference: '5b0e2d71-8c4a-4f3e-b1d9-2e6a7c90f413',
   },
   {
@@ -143,6 +163,7 @@ export const ENTRIES: readonly Entry[] = [
     who: FOLAKE,
     type: 'Organisation',
     action: 'organisation.export_requested',
+    on: ON_ORG,
     reference: '9e47c1a2-3d5f-4b80-a6e2-71c9f0d84b26',
   },
   {
@@ -241,6 +262,7 @@ export const ENTRIES: readonly Entry[] = [
     who: FOLAKE,
     type: 'Organisation',
     action: 'organisation.retention_changed',
+    on: ON_ORG,
     reference: 'd61b9e4f-0a27-4c83-9f15-6e8d2b7a3c50',
     changes: 'Delete guest data after an event: Off → 90 days',
   },
@@ -263,6 +285,7 @@ export const ENTRIES: readonly Entry[] = [
     who: JULIEN,
     type: 'Members and invitations',
     action: 'invitation.created',
+    on: ON_ORG,
     reference: '7a3d5e90-b6c1-4f28-8d47-c0e2a19f6b35',
   },
   {
@@ -285,6 +308,7 @@ export const ENTRIES: readonly Entry[] = [
     who: JULIEN,
     type: 'Sign-in and security',
     action: 'email_domain.added',
+    on: { name: 'ireevents.com' },
     reference: 'e83a7f25-6b9d-4c10-a4e8-3f5b2d0c9a61',
     address: ADDRESS,
   },
@@ -300,12 +324,25 @@ export const ENTRIES: readonly Entry[] = [
     event: 'Tola & Seun’s wedding',
   },
   {
+    id: 'planChanged',
+    at: '2026-10-16T09:20:14+01:00',
+    what: `Changed the plan of ${ORG}`,
+    who: SUPPORT,
+    type: 'Organisation',
+    action: 'organisation.plan_changed',
+    on: ON_ORG,
+    reference: '3b8e1f6a-0c4d-4a92-b7e5-6d2f9a1c8e07',
+    changes: 'Plan: Free → Enterprise',
+    recorded: [{ label: 'Reason', value: 'QA retest' }],
+  },
+  {
     id: 'proved',
     at: '2026-10-06T11:02:00+01:00',
     what: 'Proved ire.events',
     who: SYSTEM,
     type: 'Sign-in and security',
     action: 'email_domain.proved',
+    on: { name: 'ire.events' },
     reference: 'a95f0c3e-2d81-4e6b-9c7a-1b8e4d2f0c37',
   },
   {
@@ -505,6 +542,7 @@ export function factsOf(
       ...(entry.on.link == null || entry.on.gone === true ? {} : { link: entry.on.link }),
     });
   if (entry.changes != null) facts.push({ label: AUDIT_WORDS.changes, value: entry.changes });
+  for (const row of entry.recorded ?? []) facts.push(row);
   facts.push({
     label: AUDIT_WORDS.typeAndAction,
     value: `${TYPE_WORDS[lang][entry.type]} · ${entry.action}`,
@@ -554,6 +592,8 @@ export const AUDIT_STATES = [
   'detail_skipped',
   'detail_section',
   'detail_dish',
+  'detail_export',
+  'detail_plan',
   'export',
   'export_small',
   'export_preparing',
@@ -574,6 +614,8 @@ const DETAILS: Record<string, string> = {
   detail_skipped: 'skipped',
   detail_section: 'floorLead',
   detail_dish: 'dish',
+  detail_export: 'exported',
+  detail_plan: 'planChanged',
 };
 
 export function auditStart(state: string): AuditStart {

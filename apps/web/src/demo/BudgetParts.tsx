@@ -154,7 +154,9 @@ export function GlassTags({
   washed?: boolean;
 }) {
   return tags.length === 0 ? null : (
-    <ul className={washed ? 'desk-glass-tags is-washed' : 'desk-glass-tags'}>
+    <ul
+      className={washed ? 'desk-glass-tags glass-wraps is-washed' : 'desk-glass-tags glass-wraps'}
+    >
       {tags.map((tag) => (
         <li key={tag.word} className="desk-glass">
           {tag.mark}

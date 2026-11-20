@@ -43,7 +43,7 @@ export const PW = {
   paidTo: (vendor: string) => `Paid to ${vendor}`,
   withThis: (now: string, after: string) => `${now} → ${after}`,
   withThisSaid: (now: string, after: string) => `${now} now, ${after} with this payment`,
-  overWithThis: (gap: string) => `With this, the schedule is ${gap} over the quote.`,
+  overWithThis: (gap: string) => `With this payment, the schedule is ${gap} over the quote.`,
   differenceVisible: 'The difference stays visible; nothing absorbs it.',
   datePaidAhead: 'The date paid cannot be in the future. Choose today or an earlier date.',
   wrongCurrency: (currency: string) =>

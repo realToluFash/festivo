@@ -274,7 +274,7 @@ describe('payments on a vendor’s page, shapes and the reminder setting, in A (
       expect(within(made).getByText('£360.00 now, £480.00 with this payment')).toBeDefined();
       expect(within(made).getByText('£1,200.00 now, £1,320.00 with this payment')).toBeDefined();
       expect(
-        within(made).getByText('With this, the schedule is £120.00 over the quote.'),
+        within(made).getByText('With this payment, the schedule is £120.00 over the quote.'),
       ).toBeDefined();
 
       fireEvent.change(within(made).getByLabelText('Vendor'), { target: { value: 'v4' } });
@@ -287,7 +287,7 @@ describe('payments on a vendor’s page, shapes and the reminder setting, in A (
       expect(within(made).queryByText(/with this payment/u)).toBeNull();
       type(made, 'Amount paid', '1,500.01');
       expect(
-        within(made).getByText('With this, the schedule is £0.01 over the quote.'),
+        within(made).getByText('With this payment, the schedule is £0.01 over the quote.'),
       ).toBeDefined();
     },
   );
@@ -546,4 +546,17 @@ describe('payments on a vendor’s page, shapes and the reminder setting, in A (
       cleanup();
     }
   });
+
+  it(
+    'gives the gap after a payment already made when the schedule is already over',
+    SLOW,
+    async () => {
+      await open(`${BLOOM}&state=made_over_already`);
+      const made = dialog('Add a payment already made');
+      expect(within(made).getByText('£1,260.00 now, £1,380.00 with this payment')).toBeDefined();
+      expect(
+        within(made).getByText('With this payment, the schedule is £180.00 over the quote.'),
+      ).toBeDefined();
+    },
+  );
 });

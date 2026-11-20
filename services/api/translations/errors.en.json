@@ -30,6 +30,8 @@
     "quote_unchanged": "Change the amount or the date quoted to revise this quote. To change anything else, correct the quote instead.",
     "payments_already_scheduled": "Payments were added to this vendor's schedule while you were filling this in, so none of yours were saved. Check the payments it has now before adding more.",
     "vendor_owed": "This vendor was not archived, because one or more events still have payments to it that are not paid or cancelled.",
+    "payment_already_paid": "This has already been marked paid, so nothing has changed.",
+    "payment_cancelled": "This payment has been cancelled, so it cannot be marked paid.",
     "plan_limit": "The plan's limit has been reached.",
     "seating_plan_exists": "This event already has a seating plan.",
     "seating_section_limit": "A plan can have up to 30 sections. Delete one to add another.",

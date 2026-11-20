@@ -1,6 +1,7 @@
 /* Budget A at a desk (budget-a-spec.md §3 to §5): the card, A's rows, marks that are a shape and a word. */
-.bud,
-.desk-dialog {
+
+/* On .desk, not .bud: Budget parts also draw in portalled dialogs and beside Guests, outside any .bud. */
+.desk {
   --budAmber: var(--colorAttentionText);
   --budAmberTint: var(--colorAttentionTint);
   --budRed: var(--colorBroken);

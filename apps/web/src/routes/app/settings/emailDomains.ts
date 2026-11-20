@@ -216,10 +216,12 @@ export function domainsCard(
 export function domainsRow(
   t: TFunction,
   page: EmailDomainsPage,
+  organisation: string,
 ): { line: string; locked: boolean } {
   const locked = page.plan !== 'enterprise';
 
-  if (page.plan === 'free') return { line: t('dataControl.domainsLocked'), locked };
+  if (page.plan === 'free')
+    return { line: t('dataControl.domainsLocked', { organisation }), locked };
   if (page.domains.length === 0) return { line: t('dataControl.domainsNone'), locked };
 
   const key =

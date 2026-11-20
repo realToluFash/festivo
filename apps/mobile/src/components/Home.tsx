@@ -36,6 +36,8 @@ export function Home() {
   const today = account != null && organisation != null ? { account, organisation } : null;
   const [offline, setOffline] = useState<ScreenOffline>(NOT_OFFLINE);
   const landing = outsideLanding(signedIn);
+  // An account in no organisation stands alone, under no title, bell or tab bar, as its demo draws it (sc-75471).
+  const alone = account != null && organisation == null && signedIn.pausedIn == null;
 
   useEffect(homeShown, []);
 
@@ -47,10 +49,12 @@ export function Home() {
       current="home"
       title={t('frame.home')}
       bodyTakesSwitch
-      ownChrome={today != null}
+      ownChrome={today != null || alone}
       offline={offline.stale}
     >
-      {today == null ? (
+      {alone ? (
+        <AloneBody />
+      ) : today == null ? (
         <HomeBody />
       ) : (
         <TodayBody key={today.organisation.id} {...today} onOffline={setOffline} />
@@ -93,6 +97,17 @@ function TodayBody({
   );
 }
 
+function AloneBody() {
+  const { place, heading, onClosed } = useNextAfterClosed();
+
+  return (
+    <NoOrganisation
+      titleRef={heading}
+      notices={<LinkedNotice wordsRef={place('linked')} onDismissed={() => onClosed('linked')} />}
+    />
+  );
+}
+
 function HomeBody() {
   const { t } = useTranslation();
   const { kind } = useLayout();
@@ -112,7 +127,6 @@ function HomeBody() {
           onClosed={onClosed}
         />
       )}
-      {account != null && organisation == null && <NoOrganisation titleRef={heading} />}
       {account != null && organisation != null && (
         <View style={cardFrame(kind)}>
           <SignedInHeading organisation={organisation} headingRef={heading} />
