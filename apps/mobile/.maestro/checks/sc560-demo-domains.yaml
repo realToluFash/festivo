@@ -1,0 +1,11 @@
+# sc-560: the app demo's email domains in state domains, for the pair beside the product.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/demo/settings/data-and-control/email-domains?state=domains
+- extendedWaitUntil:
+    visible:
+      id: domains.card
+    timeout: 20000
+- waitForAnimationToEnd:
+    timeout: 8000
+- takeScreenshot: sc560-demo-domains

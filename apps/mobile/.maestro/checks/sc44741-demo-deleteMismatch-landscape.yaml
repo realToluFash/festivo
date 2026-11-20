@@ -1,0 +1,12 @@
+# sc-44741, Android tablet in landscape. That tablet is landscape-native, so Maestro's PORTRAIT (rotation 0) draws it landscape and LANDSCAPE_LEFT puts it back upright (sc-23471): the app demo's Delete event, state deleteMismatch, for the side-by-side pair with the refused screen. Needs ${METRO_URL}.
+appId: host.exp.Exponent
+---
+- setOrientation: PORTRAIT
+- openLink: ${METRO_URL}/--/demo/events/evt-wed-4?state=deleteMismatch
+- extendedWaitUntil:
+    visible:
+      id: 'event.delete.field'
+    timeout: 30000
+- waitForAnimationToEnd
+- takeScreenshot: demo
+- setOrientation: LANDSCAPE_LEFT

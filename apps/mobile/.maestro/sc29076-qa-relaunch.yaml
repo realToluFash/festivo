@@ -1,0 +1,15 @@
+# Relaunches the app cold and screenshots welcome. Needs ${METRO_URL}, SHOT. sc-29076.
+# Not sc19634-relaunch: qa2 ran this cold bundle with 90 s, past its 60 s, on the bare METRO_URL link.
+appId: host.exp.Exponent
+---
+- stopApp: host.exp.Exponent
+- launchApp:
+    appId: host.exp.Exponent
+- openLink: ${METRO_URL}
+- extendedWaitUntil:
+    visible:
+      id: 'welcome.email'
+    timeout: 90000
+- waitForAnimationToEnd:
+    timeout: 3000
+- takeScreenshot: ${SHOT}

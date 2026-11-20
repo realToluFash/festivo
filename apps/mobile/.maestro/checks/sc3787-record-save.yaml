@@ -1,0 +1,50 @@
+# sc-3787: recording Coming by phone for ${G_SAVE}, unticking the second companion, reads "recorded by …, by phone, …" in the details.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/${EVENT_ID}?area=guests
+- extendedWaitUntil:
+    visible:
+      id: 'guests.search'
+    timeout: 30000
+- tapOn:
+    id: 'guests.search'
+- inputText: ${G_SAVE_NAME}
+- hideKeyboard
+- extendedWaitUntil:
+    visible:
+      id: 'guests.row.${G_SAVE}'
+    timeout: 15000
+- tapOn:
+    id: 'guests.row.${G_SAVE}'
+- extendedWaitUntil:
+    visible:
+      id: 'guest.${G_SAVE}'
+    timeout: 30000
+- tapOn:
+    id: 'guest.card.step'
+- extendedWaitUntil:
+    visible:
+      id: 'guest.record.coming'
+    timeout: 10000
+- tapOn:
+    id: 'guest.record.coming'
+- tapOn:
+    id: 'guest.record.how.phone'
+- scrollUntilVisible:
+    element:
+      id: 'guest.record.companion.1'
+    direction: DOWN
+- takeScreenshot: form-companions
+- tapOn:
+    id: 'guest.record.companion.1'
+- takeScreenshot: form-companion-unticked
+- tapOn:
+    id: 'guest.record.save'
+- extendedWaitUntil:
+    visible: '{{t:guestList.replyRecorded}}'
+    timeout: 15000
+- takeScreenshot: recorded
+- scrollUntilVisible:
+    element: '{{t:guestList.recordedOn}}'
+    direction: DOWN
+- takeScreenshot: recorded-line

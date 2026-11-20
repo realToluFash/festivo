@@ -1,0 +1,21 @@
+# sc-37903: opens Name from Account and types into it, left open for a text-size change.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/settings/account
+- waitForAnimationToEnd:
+    timeout: 8000
+- scrollUntilVisible:
+    element:
+      id: 'account.name'
+    timeout: 30000
+- tapOn:
+    id: 'account.name'
+- extendedWaitUntil:
+    visible:
+      id: 'account.name.field'
+    timeout: 15000
+- tapOn:
+    id: 'account.name.field'
+- eraseText: 80
+- inputText: 'Typed Before Change'
+- takeScreenshot: live-before

@@ -1,0 +1,230 @@
+import type { ReactElement, ReactNode } from 'react';
+import {
+  Animated,
+  type RefreshControlProps,
+  type StyleProp,
+  StyleSheet,
+  View,
+  type ViewStyle,
+} from 'react-native';
+
+import {
+  type LayoutKind,
+  listAndPageKind,
+  type SectionBeside,
+  settingsListGivesWay,
+  useLayout,
+  useSideListWidth,
+  useWindowFrame,
+} from '../layout/useLayout.ts';
+import { pageTakesBack } from '../kit/systemBack.ts';
+import { tokens } from '../theme/tokens.ts';
+import { FrameTop } from './AppFrame.tsx';
+import { LIST_EDGES, SETTINGS_COLUMN, titleFoot } from './listFrame.ts';
+import { COLUMN } from './Summary.tsx';
+import { bodyEdges } from './bodyEdges.ts';
+import { QuietButton } from './Buttons.tsx';
+import { type ColumnRows, Screen, ScrollColumn } from './Screen.tsx';
+import { Back } from './SettingsParts.tsx';
+import { useEdgeSwipeBack } from './useEdgeSwipeBack.ts';
+import { useSystemBack } from './useSystemBack.ts';
+
+export interface ListAndPageSpacing {
+  phone: StyleProp<ViewStyle>;
+  tabletPortrait: StyleProp<ViewStyle>;
+  /** Around the heading and both columns on a tablet on its side. */
+  landscape: ViewStyle & { paddingHorizontal: number };
+  /** Each column's content on a tablet on its side. */
+  column: StyleProp<ViewStyle>;
+  listWidth: number;
+  between: number;
+  /** On its side, the two columns meet at a rule rather than a gap, each padded inside its own scroll, as Guests' demo draws them. */
+  ruled?: { list: StyleProp<ViewStyle>; page: StyleProp<ViewStyle> };
+  /** The scrolled top is a Settings page's title, 16 above the first block whatever the gap (sc-49170). */
+  settingsTitle?: true;
+}
+
+export interface ListAndPageProps<Item = never> {
+  heading?: ReactNode;
+  /** Beside the heading on a tablet on its side, and nowhere otherwise. */
+  besideHeading?: ReactNode;
+  list: ReactNode;
+  /** Pulling the list down. */
+  listRefresh?: ReactElement<RefreshControlProps> | undefined;
+  /** Rows under the list, mounted only near the screen, for a list as long as an organisation (sc-49170). */
+  listRows?: ColumnRows<Item> | undefined;
+  page: ReactNode;
+  /** In the page's place while none is open, filling the pane without the column's padding or scroll, as the demo's pane holds it. */
+  nothingOpen?: ReactNode;
+  /** Changes with the page, so a page opened after a longer one shows from its top. */
+  pageKey: string;
+  /** Wherever the two show one at a time, whether the page shows in place of the list. */
+  pageInFront: boolean;
+  /** Nothing to put in the page, so on a tablet on its side the list takes the full width. */
+  pageless?: boolean;
+  /** The page's own back, the header's on a phone included; Android's Back and iOS's swipe from the left edge run it too wherever the page is in front. `revealsList: false` when it leads elsewhere, so the swipe shows no list under the page. */
+  back: {
+    label: string;
+    onPress: () => void;
+    testID: string;
+    revealsList?: boolean;
+    /** The upright tablet's back is the settings pill, as a settings demo draws it, rather than quiet text. */
+    pill?: boolean;
+  };
+  /** The frame's top already carries the back, so the upright tablet's page draws none of its own. */
+  backInFrame?: boolean;
+  spacing: ListAndPageSpacing;
+  /** The screen's own `useListAndPageLayout`, so the two never decide apart. */
+  kind: LayoutKind;
+  /** On its side, the list takes the Settings list's column with the heading at its top, and the page sits beside it (sc-39471). */
+  settingsColumn?: boolean;
+  /** On its side, the heading scrolls away at the top of the list's column rather than standing above both. */
+  headingInList?: boolean;
+}
+
+function listBeside(spacing: ListAndPageSpacing) {
+  return {
+    margins: 2 * spacing.landscape.paddingHorizontal,
+    list: spacing.listWidth,
+    between: spacing.between,
+  };
+}
+
+export function useListAndPageLayout(
+  spacing: ListAndPageSpacing,
+  beside: SectionBeside,
+): { kind: LayoutKind; givesWay: boolean } {
+  const window = useWindowFrame();
+  const list = listBeside(spacing);
+
+  return {
+    kind: listAndPageKind(window, beside, list),
+    givesWay: settingsListGivesWay(window, beside, list),
+  };
+}
+
+// The half behind is out of the layout, so neither touch, TalkBack nor Tab reaches it; during iOS's swipe back it shows under the page, still hidden from screen readers.
+export function ListAndPage<Item = never>({
+  heading,
+  besideHeading,
+  list,
+  listRefresh,
+  listRows,
+  page,
+  nothingOpen,
+  pageKey,
+  pageInFront,
+  pageless = false,
+  back,
+  backInFrame = false,
+  spacing,
+  kind,
+  settingsColumn = false,
+  headingInList = false,
+}: ListAndPageProps<Item>) {
+  const { kind: frame } = useLayout();
+  const listWidth = useSideListWidth(spacing.listWidth);
+  const landscape = kind === 'tabletLandscape';
+  const split = landscape && !pageless;
+  const inColumn = landscape && settingsColumn;
+  const ruled = split && !inColumn ? spacing.ruled : undefined;
+  const bare = inColumn || ruled != null;
+  const headingAbove = landscape && !inColumn && !headingInList;
+  const takesBack = pageTakesBack(kind, pageInFront);
+  useSystemBack(takesBack, back.onPress);
+  const swipe = useEdgeSwipeBack(takesBack, back.onPress);
+  const listUnder = swipe.dragging && back.revealsList !== false;
+  const column = landscape
+    ? spacing.column
+    : kind === 'phone'
+      ? spacing.phone
+      : spacing.tabletPortrait;
+  const topStyle = spacing.settingsTitle ? titleFoot(column) : undefined;
+
+  return (
+    <Screen
+      edges={bodyEdges(frame)}
+      scroll={false}
+      contentStyle={landscape && !bare ? spacing.landscape : styles.bare}
+    >
+      {headingAbove && (heading || besideHeading) && (
+        <View style={styles.head}>
+          <View style={styles.fill}>{heading}</View>
+          {besideHeading}
+        </View>
+      )}
+      <View style={split ? [styles.split, { gap: bare ? 0 : spacing.between }] : styles.fill}>
+        <View
+          style={[
+            split ? { width: listWidth } : styles.fill,
+            inColumn && SETTINGS_COLUMN,
+            ruled != null && styles.rule,
+            !landscape && pageInFront && !listUnder && styles.behind,
+          ]}
+        >
+          <ScrollColumn
+            style={styles.fill}
+            contentContainerStyle={inColumn ? COLUMN : (ruled?.list ?? column)}
+            refreshControl={listRefresh}
+            away={!landscape && pageInFront}
+            rows={listRows}
+          >
+            {(landscape ? pageless : !pageInFront) && <FrameTop style={topStyle} />}
+            {!headingAbove && heading}
+            {list}
+          </ScrollColumn>
+        </View>
+        <Animated.View
+          style={[
+            styles.fill,
+            (landscape ? pageless : !pageInFront) && styles.behind,
+            swipe.dragging && styles.over,
+            swipe.taking && { transform: [{ translateX: swipe.shift }] },
+          ]}
+        >
+          {page == null && nothingOpen != null ? (
+            <View style={styles.fill}>{nothingOpen}</View>
+          ) : (
+            <ScrollColumn
+              key={pageKey}
+              style={styles.fill}
+              contentContainerStyle={
+                inColumn ? [LIST_EDGES.tabletLandscape, column] : (ruled?.page ?? column)
+              }
+            >
+              {!landscape && pageInFront && <FrameTop style={topStyle} />}
+              {kind === 'tabletPortrait' && !backInFrame && (
+                <View style={styles.start}>
+                  {back.pill === true ? (
+                    <Back label={back.label} onPress={back.onPress} testID={back.testID} />
+                  ) : (
+                    <QuietButton label={back.label} onPress={back.onPress} testID={back.testID} />
+                  )}
+                </View>
+              )}
+              {page}
+            </ScrollColumn>
+          )}
+        </Animated.View>
+      </View>
+    </Screen>
+  );
+}
+
+const styles = StyleSheet.create({
+  rule: { borderRightWidth: 1, borderRightColor: tokens.colorBorder },
+  fill: { flex: 1, minWidth: 0 },
+  bare: { padding: 0, gap: 0 },
+  behind: { display: 'none' },
+  start: { alignSelf: 'flex-start' },
+  head: { flexDirection: 'row', alignItems: 'flex-end', gap: tokens.spaceLg },
+  split: { flex: 1, minHeight: 0, flexDirection: 'row' },
+  over: {
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    bottom: 0,
+    left: 0,
+    backgroundColor: tokens.colorPage,
+  },
+});

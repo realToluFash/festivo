@@ -1,0 +1,10 @@
+# sc-563: A few details for a managed account, as it opens.
+appId: host.exp.Exponent
+---
+- extendedWaitUntil:
+    visible:
+      id: completeProfile.managed
+    timeout: 30000
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: sc563-details-product

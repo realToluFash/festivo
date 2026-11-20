@@ -1,0 +1,11 @@
+# sc-68441: the demo's iPad sidebar, today, at ${SIZE} in ${DLANG}.
+appId: host.exp.Exponent
+---
+- setOrientation: ${ORIENT}
+- openLink: ${METRO_URL}/--/demo/sidebar-size?size=${SIZE}&lang=${DLANG}&at=today
+- waitForAnimationToEnd: { timeout: 10000 }
+- takeScreenshot: d-today-top
+- swipe: { start: '10%, 85%', end: '10%, 15%', duration: 600 }
+- swipe: { start: '10%, 85%', end: '10%, 15%', duration: 600 }
+- waitForAnimationToEnd
+- takeScreenshot: d-foot

@@ -1,0 +1,8 @@
+# sc-18317: Settings > Sign-in rules opens and shows the rules for the signed-in owner, never a load error.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/settings/sign-in-rules
+- extendedWaitUntil:
+    visible: '{{t:signInRules.stand.whereTitle}}'
+    timeout: 60000
+- takeScreenshot: rules-open

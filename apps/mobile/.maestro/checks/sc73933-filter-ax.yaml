@@ -1,0 +1,70 @@
+# Needs an organisation with events typed anniversary and party, one hosted by Funmilayo Adéṣínà-Ọláolúwa; text size set outside the flow.
+# sc-73933: Events' Filter menu at the device's text size with nothing, two types and the long host chosen; beside sc73933-filter-demo.
+# Swipes come in matched pairs: a drag past the top of a scrolled menu opens the row under it.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events
+- extendedWaitUntil: { visible: { id: 'events.filter' }, timeout: 30000 }
+- waitForAnimationToEnd
+- takeScreenshot: p-events
+- tapOn: { id: 'events.filter' }
+- extendedWaitUntil: { visible: { id: 'events.filter.menu' }, timeout: 10000 }
+- waitForAnimationToEnd
+- takeScreenshot: p-none
+- swipe: { from: { id: 'events.filter.menu' }, direction: UP, duration: 400 }
+- waitForAnimationToEnd
+- takeScreenshot: p-none-foot
+- swipe: { from: { id: 'events.filter.menu' }, direction: DOWN, duration: 400 }
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 1500, optional: true }
+- runFlow:
+    when: { visible: { id: 'events.filter.back' } }
+    commands:
+      - tapOn: { id: 'events.filter.back' }
+- tapOn: { id: 'events.filter.type' }
+- waitForAnimationToEnd
+- tapOn: { id: 'events.filter.type.anniversary' }
+- swipe: { from: { id: 'events.filter.menu' }, direction: UP, duration: 400 }
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 1500, optional: true }
+- takeScreenshot: p-type-list
+- tapOn: { id: 'events.filter.type.party' }
+- waitForAnimationToEnd
+- takeScreenshot: p-type-picked
+- tapOn: { point: '2%,62%' }
+- waitForAnimationToEnd
+- takeScreenshot: p-twoTypes-closed
+- runFlow:
+    when: { notVisible: { id: 'events.filter.menu' } }
+    commands:
+      - tapOn: { id: 'events.filter' }
+      - waitForAnimationToEnd
+- takeScreenshot: p-twoTypes
+- swipe: { from: { id: 'events.filter.menu' }, direction: UP, duration: 400 }
+- waitForAnimationToEnd
+- takeScreenshot: p-twoTypes-foot
+- tapOn: { id: 'events.filter.clear' }
+- waitForAnimationToEnd
+- takeScreenshot: p-cleared
+- runFlow:
+    when: { notVisible: { id: 'events.filter.menu' } }
+    commands:
+      - tapOn: { id: 'events.filter' }
+      - waitForAnimationToEnd
+- swipe: { from: { id: 'events.filter.menu' }, direction: UP, duration: 400 }
+- waitForAnimationToEnd
+- tapOn: { id: 'events.filter.hosts' }
+- waitForAnimationToEnd
+- takeScreenshot: p-host-list
+- tapOn: { id: 'events.filter.host.Funmilayo Adéṣínà-Ọláolúwa' }
+- takeScreenshot: p-host-picked
+- tapOn: { point: '2%,62%' }
+- waitForAnimationToEnd
+- runFlow:
+    when: { notVisible: { id: 'events.filter.menu' } }
+    commands:
+      - tapOn: { id: 'events.filter' }
+      - waitForAnimationToEnd
+- takeScreenshot: p-longHost
+- swipe: { from: { id: 'events.filter.menu' }, direction: UP, duration: 400 }
+- waitForAnimationToEnd
+- takeScreenshot: p-longHost-foot
+- tapOn: { id: 'events.filter.clear' }
