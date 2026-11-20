@@ -62,12 +62,9 @@ export function markupProblemWords(t: TFunction, problem: MarkupProblem, locale:
   }
 }
 
-/** A cost the margin face lists: a priced one, or a fixed one at 0, the agency's fee, which is priced only there (sc-92, 20 Nov). */
+/** A cost the margin face lists: every line that counts something, priced or at 0, since a line at 0 is charged only by a price entered there (sc-92, 20 Nov). */
 export function listedOnMarginFace(line: BudgetLine): boolean {
-  return (
-    lineState(line) === 'priced' ||
-    (line.basis === 'fixed' && line.amount != null && Number(line.amount) === 0)
-  );
+  return line.quantity.count !== 0 && lineState(line) !== 'nothingYet';
 }
 
 /** Where the line's client price comes from, in the row's words. */

@@ -48,9 +48,19 @@ describe('the costs the margin face lists (sc-92)', () => {
     expect(listedOnMarginFace(line({ amount: '0.00' }))).toBe(true);
   });
 
-  it('lists a priced line, and leaves out a rate of 0 and a line counting nothing yet', () => {
+  it('lists a priced line and a line at a rate of 0, and leaves out a line counting nothing yet', () => {
     expect(listedOnMarginFace(line({}))).toBe(true);
-    expect(listedOnMarginFace(line({ basis: 'per_head', amount: null, rate: '0.00' }))).toBe(false);
+    expect(listedOnMarginFace(line({ basis: 'per_head', amount: null, rate: '0.00' }))).toBe(true);
+    expect(
+      listedOnMarginFace(
+        line({
+          basis: 'per_head',
+          amount: null,
+          rate: '0.00',
+          quantity: { count: 0 },
+        } as Partial<BudgetLine>),
+      ),
+    ).toBe(false);
     expect(listedOnMarginFace(line({ quantity: { count: 0 } } as Partial<BudgetLine>))).toBe(false);
   });
 });
