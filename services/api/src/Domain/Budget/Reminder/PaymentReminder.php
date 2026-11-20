@@ -205,8 +205,7 @@ final readonly class PaymentReminder implements NotificationTypeInterface
     private function email(string $title, array $lines, array $payments, string $locale): string
     {
         $origin = Str\trim_right($this->webOrigin, '/');
-        $oneVendor = 1 === Iter\count(Vec\unique(Vec\map($payments, static fn (ScheduledPayment $payment): string => $payment->getEngagement()->getId()->toRfc4122())));
-        $open = $oneVendor
+        $open = self::oneVendor($payments)
             ? $this->trans('payment_reminder.email.open_payments', ['count' => Iter\count($payments)], $locale)
             : $this->trans('payment_reminder.email.open_budget', [], $locale);
 
@@ -227,11 +226,16 @@ final readonly class PaymentReminder implements NotificationTypeInterface
     {
         $first = $payments[0]->getEngagement();
         $eventId = $first->getEvent()->getId()->toRfc4122();
-        $vendors = Vec\unique(Vec\map($payments, static fn (ScheduledPayment $payment): string => $payment->getEngagement()->getId()->toRfc4122()));
 
-        return 1 === Iter\count($vendors)
+        return self::oneVendor($payments)
             ? Str\format('/app/events/%s/budget/vendors/%s', $eventId, $first->getVendor()->getId()->toRfc4122())
             : Str\format('/app/events/%s/budget', $eventId);
+    }
+
+    /** @param non-empty-list<ScheduledPayment> $payments */
+    private static function oneVendor(array $payments): bool
+    {
+        return 1 === Iter\count(Vec\unique(Vec\map($payments, static fn (ScheduledPayment $payment): string => $payment->getEngagement()->getId()->toRfc4122())));
     }
 
     private static function date(DateTimeImmutable $day, string $locale): string
