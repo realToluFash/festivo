@@ -29,9 +29,6 @@ final readonly class AuditEntryView
     /** Ids, coordinates, file keys and internal stamps: recorded for the trail, never a change a reader is shown (sc-611, #74875). */
     public const array UNSHOWN_FIELDS = ['deletedAt', 'export', 'eventId', 'membershipId', 'userId', 'organisation', 'user', 'claimant', 'duplicatedFrom', 'newOwnerRoleId', 'owner', 'venueCoordinates', 'photo'];
 
-    /** An entry that creates, deletes, restores or deletes a record for good: its sentence and On already say it, so it has no Changes (#74875). */
-    private const array LIFECYCLE_ACTIONS = ['event.created', 'event.deleted', 'event.restored', 'event.purged', 'organisation.created', 'organisation.deleted', 'organisation.restored', 'organisation.purged'];
-
     private const array ROLE_FIELDS = ['role', 'roleId'];
 
     private const array CODED_FIELDS = ['role', 'roleId', 'status', 'membershipStatus', 'suspension', 'type', 'addressKind', 'plan', 'requestLink', 'onlyOurs', 'outcome', 'path'];
@@ -160,7 +157,7 @@ final readonly class AuditEntryView
      */
     private function changes(AuditEntry $entry, array $roles, string $locale, ?User $reader): array
     {
-        if (Iter\contains(self::LIFECYCLE_ACTIONS, $entry->getAction())) {
+        if (Iter\contains(AuditType::CREATES_OR_REMOVES, $entry->getAction())) {
             return [];
         }
 
