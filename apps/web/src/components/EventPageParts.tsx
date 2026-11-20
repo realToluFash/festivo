@@ -472,10 +472,7 @@ export function Alert({ children }: { children: ReactNode }) {
   );
 }
 
-/**
- * The broken notice, with what to do about it under its words. With `landing`, focus is taken to
- * the notice and reads it, so it is not announced as it appears as well.
- */
+/** The broken notice and what to do about it; with `landing`, focus reads it instead of an announcement. */
 export function Broken({
   children,
   action,
