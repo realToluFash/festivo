@@ -36,14 +36,15 @@ export function ReminderBanner({
     const payment = paymentOf(id);
     const date = days.short(payment.due, locale);
     const late = overdue.includes(id);
+    const amount = money(payment.amount, locale);
+    const when = late ? say.wasDue(date) : say.dueWhen(date);
     return {
       id,
       late,
-      words: say.reminderRow(
-        VENDORS[payment.vendor].name,
-        money(payment.amount, locale),
-        late ? say.wasDue(date) : say.dueWhen(date),
-      ),
+      words:
+        kind === 'mixed'
+          ? say.reminderRowOn(VENDORS[payment.vendor].name, EVENT_NAME, amount, when)
+          : say.reminderRow(VENDORS[payment.vendor].name, amount, when),
     };
   });
   const last = overdue[0];
