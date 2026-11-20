@@ -18,12 +18,12 @@ export const COUNT_SIZE_BOARDS: readonly CountSizeBoard[] = [
   },
   {
     title: 'Count line · AX1 · English',
-    what: 'Both fit whole: they stay side by side',
+    what: 'Side by side while both fit whole, stacked once they cannot',
     href: '/demo/count-size?size=ax1&lang=en',
   },
   {
     title: 'Count line · AX1 · French',
-    what: 'Effacer les filtres under 5 événements once they cannot share the line',
+    what: 'Effacer les filtres under 5 événements once they cannot share a line',
     href: '/demo/count-size?size=ax1&lang=fr',
   },
   {
