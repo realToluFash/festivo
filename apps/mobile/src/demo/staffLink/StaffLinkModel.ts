@@ -210,7 +210,6 @@ export function offersReplace(s: LinkState): boolean {
   return acts(s) && s.status !== 'none';
 }
 
-/** What a person's status shows, on their roster row and on their link screen alike: after the erasure and without a number, those; else the link's own. */
 export type Shown = LinkStatus | 'noMobile' | 'erased';
 
 export const SHOWN_WORDS: Record<Shown, string> = {
@@ -234,7 +233,6 @@ export function statusWord(s: LinkState): string {
   return SHOWN_WORDS[linkShown(s)];
 }
 
-/** Removed on the web: the screen says so and holds nothing, whatever was under way. */
 export function removedNow(s: LinkState): LinkState {
   const say = W.removed(s.who.name);
 
@@ -336,7 +334,6 @@ export function seed(name: LinkStateName, who: Who = PERSON): LinkState {
   }
 }
 
-/** The link screen opened from the roster: that person, their status as the roster has it, and what the viewer may do. */
 export function seedFor(
   who: Who,
   status: LinkStatus,
