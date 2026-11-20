@@ -1,4 +1,4 @@
-import { act, cleanup, fireEvent, render, screen, within } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { RouterProvider, createMemoryRouter } from 'react-router';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -14,6 +14,8 @@ async function open(path: string) {
   const router = createMemoryRouter(routes, { initialEntries: [path] });
   render(<RouterProvider router={router} />);
   await screen.findByRole('heading', { level: 1 }, SLOW);
+  if (!path.includes('state=payers_loading'))
+    await waitFor(() => expect(document.querySelector('.bt-loading')).toBeNull(), SLOW);
 
   return router;
 }
@@ -372,8 +374,7 @@ describe('the states Budget A still lacked (sc-85, sc-88, sc-90, sc-91, sc-92, s
       cleanup();
 
       await open(at('payers_live'));
-      const live =
-        'Julien Moreau changed who pays for Room hire, so Mr and Mrs Obi’s share went down by £3,150.00.';
+      const live = 'Mr and Mrs Obi’s share went down by £3,150.00.';
       expect(screen.getByText(live)).toBeTruthy();
       fireEvent.click(
         within(screen.getByRole('region', { name: 'Has a payer' })).getByRole('button', {
@@ -381,6 +382,7 @@ describe('the states Budget A still lacked (sc-85, sc-88, sc-90, sc-91, sc-92, s
         }),
       );
       fireEvent.click(screen.getByRole('button', { name: 'Leave with no payer' }));
+      await screen.findByRole('heading', { level: 1, name: 'Who is paying' }, SLOW);
       expect(screen.queryByText(live)).toBeNull();
       expect(document.querySelector('.is-washed')).toBeNull();
       cleanup();
@@ -605,7 +607,7 @@ describe('the states Budget A still lacked (sc-85, sc-88, sc-90, sc-91, sc-92, s
 
       for (const state of ['choose_fixed_blank', 'choose_fixed_decimals']) {
         await open(at(state));
-        expect(screen.getByText('Enter an amount in pounds, like 400 or 400.50.')).toBeTruthy();
+        expect(screen.getByText('Enter an amount above 0, like 400.50.')).toBeTruthy();
         cleanup();
       }
 

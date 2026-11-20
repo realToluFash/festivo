@@ -4,6 +4,7 @@ import {
   type OrganisationEvent,
   type Payer,
   type PayerLine,
+  type RealtimeSubscription,
   type SplitTyped,
   realtimeTopic,
 } from '@soirely/api-client';
@@ -48,6 +49,7 @@ import {
   type ChooseStart,
   type Mode,
   PAYER_CAP,
+  type PayersSource,
   PERCENT_TYPED,
   checkFixed,
   checkPercents,
@@ -78,13 +80,13 @@ import './payers.css';
 
 type Load = { kind: 'loading' } | { kind: 'failed' } | { kind: 'loaded'; payers: EventPayers };
 
-type Notice =
+export type PayersNotice =
   | { kind: 'cap' }
   | { kind: 'refused'; name: string; lineIds: string[]; count: number }
   | { kind: 'removed'; id: string; name: string }
   | { kind: 'notBack'; words: string };
 
-interface PayerForm {
+export interface PayerForm {
   id: string | null;
   name: string;
   note: string;
@@ -94,10 +96,35 @@ interface PayerForm {
   failed: string | null;
 }
 
+/** Where the screen opens: the demo's states start part way through. */
+export interface PayersStart {
+  open?: string | null;
+  notice?: PayersNotice | null;
+  form?: Pick<PayerForm, 'id' | 'name' | 'note' | 'error' | 'noteError'> | null;
+  choosing?: ChooseStart | null;
+  live?: string | null;
+}
+
+/** What surrounds the screen: the crumb, the page and the layer a dialog opens on. */
+export interface PayersFrame {
+  choosing: boolean;
+  back: () => void;
+  body: ReactNode;
+  dialog: ReactNode;
+}
+
+/** A part of the payer's row and pane another story adds: the demo's Send (sc-1300). */
+export interface PayersExtra {
+  rowLine?: (payer: Payer) => string | null;
+  renderPane?: (payer: Payer) => ReactNode;
+}
+
 const failedWords = (error: unknown, fallback: string): string =>
   error instanceof ApiError && error.problem.detail != null && error.status !== 0
     ? error.problem.detail
     : fallback;
+
+const NO_TOPICS: readonly string[] = [];
 
 /** Budget's way into Who is paying, in its right column (sc-91), as Budget A's demo draws it. */
 export function WhoIsPaying({ payers, to }: { payers: EventPayers | null; to: string }) {
@@ -150,36 +177,156 @@ export function WhoIsPaying({ payers, to }: { payers: EventPayers | null; to: st
   );
 }
 
-/** Who is paying at a desk (sc-91), as Budget A's demo draws it: the card, a row per payer, the payer's pane, and Choose who pays as a page of its own. */
+/** Who is paying at a desk (sc-91), on the API. */
 export function PayersArea({ event }: { event: OrganisationEvent }) {
   const { t } = useTranslation();
   const desk = useDeskTop();
   const { layers, covered, setHost } = useDeskLayers();
-  const locale = dateLocale();
   const stale = useOwnOfflineNotice();
   const answeredAgain = useAnsweredAgain();
+  const home = budgetPath(event.id);
+  const source = useMemo(
+    (): PayersSource => ({
+      read: () => api.payers(event.id),
+      add: (typed) => api.addPayer(event.id, typed),
+      change: (id, typed) => api.changePayer(event.id, id, typed),
+      remove: (id) => api.removePayer(event.id, id),
+      putBack: (id) => api.putBackPayer(event.id, id),
+      choose: (lineIds, split, currency) => api.choosePayers(event.id, lineIds, split, currency),
+    }),
+    [event.id],
+  );
+  const topics = useMemo(
+    () => [
+      realtimeTopic('EventBudget', event.id),
+      realtimeTopic('EventHeadcount', event.id),
+      realtimeTopic('EventQuotes', event.id),
+    ],
+    [event.id],
+  );
+
+  return (
+    <PayersScreen
+      source={source}
+      writes={canOn(event, 'budget.manage')}
+      home={home}
+      titleTail={[t('budget.title'), event.name]}
+      offline={stale}
+      again={answeredAgain}
+      topics={topics}
+      subscribe={() => api.budgetSubscription(event.id)}
+      renderCard={(label, children) => (
+        <CoverCard event={event} label={label}>
+          {children}
+        </CoverCard>
+      )}
+      renderFrame={({ choosing, back, body, dialog }) => (
+        <LayersContext value={layers}>
+          <div className="desk ev desk-page ev-page bt">
+            <div className="ev-wide bt-page" inert={covered}>
+              <div className="ev-crumb-row">
+                <nav className="ev-crumb" aria-label={t('budget.crumb')}>
+                  <ol>
+                    <li className="ev-crumb-part">
+                      <Link to="/app/events">{t('budget.events')}</Link>
+                    </li>
+                    <li className="ev-crumb-part">
+                      <Glyph name="chevron" size={15} weight={2.4} className="desk-chevron" />
+                      <Link
+                        className="ev-crumb-name"
+                        to={`/app/events/${encodeURIComponent(event.id)}`}
+                      >
+                        {event.name}
+                      </Link>
+                    </li>
+                    <li className="ev-crumb-part">
+                      <Glyph name="chevron" size={15} weight={2.4} className="desk-chevron" />
+                      <Link className="ev-crumb-name" to={home}>
+                        {t('budget.title')}
+                      </Link>
+                    </li>
+                    {choosing ? (
+                      <>
+                        <li className="ev-crumb-part">
+                          <Glyph name="chevron" size={15} weight={2.4} className="desk-chevron" />
+                          <Link className="ev-crumb-name" to={payersPath(event.id)} onClick={back}>
+                            {t('payers.title')}
+                          </Link>
+                        </li>
+                        <li className="ev-crumb-part" aria-current="page">
+                          <Glyph name="chevron" size={15} weight={2.4} className="desk-chevron" />
+                          <span className="ev-crumb-name">{t('payers.chooseTitle')}</span>
+                        </li>
+                      </>
+                    ) : (
+                      <li className="ev-crumb-part" aria-current="page">
+                        <Glyph name="chevron" size={15} weight={2.4} className="desk-chevron" />
+                        <span className="ev-crumb-name">{t('payers.title')}</span>
+                      </li>
+                    )}
+                  </ol>
+                </nav>
+                {desk.bell}
+              </div>
+              {body}
+            </div>
+            {dialog}
+            <div ref={setHost} className="desk-layers" />
+          </div>
+        </LayersContext>
+      )}
+    />
+  );
+}
+
+/** Who is paying (sc-91), as Budget A's demo draws it: the card, a row per payer, the payer's pane, and Choose who pays as a page of its own. The product reads it from the API and the demo from its sample data, through `source`. */
+export function PayersScreen({
+  source,
+  writes,
+  home,
+  titleTail,
+  renderCard,
+  renderFrame,
+  start = {},
+  offline = null,
+  again = 0,
+  topics = NO_TOPICS,
+  subscribe = () => Promise.reject(new Error('not live')),
+  extra = {},
+}: {
+  source: PayersSource;
+  writes: boolean;
+  home: string;
+  titleTail: readonly string[];
+  renderCard: (label: string, children: ReactNode) => ReactNode;
+  renderFrame: (parts: PayersFrame) => ReactNode;
+  start?: PayersStart;
+  offline?: { at: Date; retry: () => void } | null;
+  again?: number;
+  topics?: readonly string[];
+  subscribe?: () => Promise<RealtimeSubscription>;
+  extra?: PayersExtra;
+}) {
+  const { t } = useTranslation();
+  const locale = dateLocale();
   const [load, setLoad] = useState<Load>({ kind: 'loading' });
   const [attempt, setAttempt] = useState(0);
-  const [openId, setOpenId] = useState<string | null>(null);
-  const [notice, setNotice] = useState<Notice | null>(null);
+  const [openId, setOpenId] = useState<string | null>(start.open ?? null);
+  const [notice, setNotice] = useState<PayersNotice | null>(start.notice ?? null);
   const [said, setSaid] = useState(0);
-  const [form, setForm] = useState<PayerForm | null>(null);
-  const [choosing, setChoosing] = useState<ChooseStart | null>(null);
-  const [live, setLive] = useState<string | null>(null);
+  const [form, setForm] = useState<PayerForm | null>(
+    start.form == null ? null : { ...start.form, busy: false, failed: null },
+  );
+  const [choosing, setChoosing] = useState<ChooseStart | null>(start.choosing ?? null);
+  const [live, setLive] = useState<string | null>(start.live ?? null);
   const [heard, setHeard] = useState('');
   const [toTitle, setToTitle] = useState(0);
   const title = useRef<HTMLHeadingElement>(null);
   const shown = useRef<EventPayers | null>(null);
   const own = useRef(0);
-  const writes = canOn(event, 'budget.manage');
-  const home = budgetPath(event.id);
 
   usePageTitle(
-    pageTitle(t, [
-      choosing == null ? t('payers.title') : t('payers.chooseTitle'),
-      t('budget.title'),
-      event.name,
-    ]),
+    pageTitle(t, [choosing == null ? t('payers.title') : t('payers.chooseTitle'), ...titleTail]),
   );
 
   useEffect(() => {
@@ -194,7 +341,7 @@ export function PayersArea({ event }: { event: OrganisationEvent }) {
   useEffect(() => {
     let current = true;
 
-    api.payers(event.id).then(
+    source.read().then(
       (payers) => current && adopt(payers),
       () => current && setLoad((was) => (was.kind === 'loaded' ? was : { kind: 'failed' })),
     );
@@ -202,13 +349,13 @@ export function PayersArea({ event }: { event: OrganisationEvent }) {
     return () => {
       current = false;
     };
-  }, [adopt, event.id, attempt, answeredAgain]);
+  }, [adopt, source, attempt, again]);
 
   /** The reader's own change, read back: never announced as another tab's. */
   const readOwn = useCallback(async (): Promise<EventPayers | null> => {
     own.current += 1;
     try {
-      const payers = await api.payers(event.id);
+      const payers = await source.read();
       adopt(payers);
 
       return payers;
@@ -217,10 +364,10 @@ export function PayersArea({ event }: { event: OrganisationEvent }) {
     } finally {
       own.current -= 1;
     }
-  }, [adopt, event.id]);
+  }, [adopt, source]);
 
   const readLive = useCallback(() => {
-    api.payers(event.id).then(
+    source.read().then(
       (payers) => {
         const was = shown.current;
         const moved = was == null ? null : movedShare(was, payers);
@@ -235,17 +382,9 @@ export function PayersArea({ event }: { event: OrganisationEvent }) {
       },
       () => undefined,
     );
-  }, [adopt, event.id, locale, t]);
+  }, [adopt, source, locale, t]);
 
-  const topics = useMemo(
-    () => [
-      realtimeTopic('EventBudget', event.id),
-      realtimeTopic('EventHeadcount', event.id),
-      realtimeTopic('EventQuotes', event.id),
-    ],
-    [event.id],
-  );
-  useHubTopics(topics, () => api.budgetSubscription(event.id), readLive, readLive);
+  useHubTopics(topics, subscribe, readLive, readLive);
 
   const payers = load.kind === 'loaded' ? load.payers : null;
   const open =
@@ -254,6 +393,11 @@ export function PayersArea({ event }: { event: OrganisationEvent }) {
       : (payers.payers.find((one) => one.id === openId) ??
         payers.payers.find((one) => one.id === openFirst(payers.payers, null)) ??
         null);
+  const rowLines = (one: Payer): string[] => {
+    const line = [one.note, extra.rowLine?.(one)].filter((part) => part != null && part !== '');
+
+    return line.length === 0 ? [] : [line.join(' · ')];
+  };
 
   const moved = () => setToTitle((n) => n + 1);
 
@@ -301,10 +445,7 @@ export function PayersArea({ event }: { event: OrganisationEvent }) {
       note: form.note.trim() === '' ? null : form.note.trim(),
     };
     try {
-      const saved =
-        form.id == null
-          ? await api.addPayer(event.id, typed)
-          : await api.changePayer(event.id, form.id, typed);
+      const saved = form.id == null ? await source.add(typed) : await source.change(form.id, typed);
       setLive(null);
       setNotice(null);
       await readOwn();
@@ -345,7 +486,7 @@ export function PayersArea({ event }: { event: OrganisationEvent }) {
       return;
     }
     try {
-      await api.removePayer(event.id, payer.id);
+      await source.remove(payer.id);
     } catch (error) {
       if (error instanceof ApiError && error.is('payer_covers_costs')) {
         const lineIds = error.problem.lineIds ?? [];
@@ -373,7 +514,7 @@ export function PayersArea({ event }: { event: OrganisationEvent }) {
 
   async function undo(id: string, name: string): Promise<void> {
     try {
-      await api.putBackPayer(event.id, id);
+      await source.putBack(id);
     } catch (error) {
       if (error instanceof ApiError && error.is('payer_limit')) {
         setNotice({ kind: 'cap' });
@@ -397,57 +538,6 @@ export function PayersArea({ event }: { event: OrganisationEvent }) {
     moved();
   }
 
-  const crumb = (
-    <div className="ev-crumb-row">
-      <nav className="ev-crumb" aria-label={t('budget.crumb')}>
-        <ol>
-          <li className="ev-crumb-part">
-            <Link to="/app/events">{t('budget.events')}</Link>
-          </li>
-          <li className="ev-crumb-part">
-            <Glyph name="chevron" size={15} weight={2.4} className="desk-chevron" />
-            <Link className="ev-crumb-name" to={`/app/events/${encodeURIComponent(event.id)}`}>
-              {event.name}
-            </Link>
-          </li>
-          <li className="ev-crumb-part">
-            <Glyph name="chevron" size={15} weight={2.4} className="desk-chevron" />
-            <Link className="ev-crumb-name" to={home}>
-              {t('budget.title')}
-            </Link>
-          </li>
-          {choosing == null ? (
-            <li className="ev-crumb-part" aria-current="page">
-              <Glyph name="chevron" size={15} weight={2.4} className="desk-chevron" />
-              <span className="ev-crumb-name">{t('payers.title')}</span>
-            </li>
-          ) : (
-            <>
-              <li className="ev-crumb-part">
-                <Glyph name="chevron" size={15} weight={2.4} className="desk-chevron" />
-                <Link
-                  className="ev-crumb-name"
-                  to={payersPath(event.id)}
-                  onClick={() => {
-                    setChoosing(null);
-                    moved();
-                  }}
-                >
-                  {t('payers.title')}
-                </Link>
-              </li>
-              <li className="ev-crumb-part" aria-current="page">
-                <Glyph name="chevron" size={15} weight={2.4} className="desk-chevron" />
-                <span className="ev-crumb-name">{t('payers.chooseTitle')}</span>
-              </li>
-            </>
-          )}
-        </ol>
-      </nav>
-      {desk.bell}
-    </div>
-  );
-
   const retry = () => {
     setLoad((was) => (was.kind === 'failed' ? { kind: 'loading' } : was));
     setAttempt((n) => n + 1);
@@ -457,7 +547,7 @@ export function PayersArea({ event }: { event: OrganisationEvent }) {
   if (choosing != null && payers != null)
     body = (
       <ChooseWhoPays
-        eventId={event.id}
+        source={source}
         payers={payers}
         start={choosing}
         titleRef={title}
@@ -502,8 +592,8 @@ export function PayersArea({ event }: { event: OrganisationEvent }) {
         )}
         {payers != null && (
           <>
-            {live != null && stale == null && <LiveLine words={live} />}
-            {stale != null && <NotLive at={stale.at} onTry={stale.retry} />}
+            {live != null && offline == null && <LiveLine words={live} />}
+            {offline != null && <NotLive at={offline.at} onTry={offline.retry} />}
             {notice?.kind === 'cap' && (
               <p key={said} className="desk-error py-alert" role="alert">
                 <Glyph name="alert" size={15} weight={2.2} />
@@ -572,15 +662,22 @@ export function PayersArea({ event }: { event: OrganisationEvent }) {
                     {payers.payers.map((one) => (
                       <li key={one.id}>
                         <div className="desk-row bt-row">
-                          <RowWords title={one.name} lines={one.note == null ? [] : [one.note]} />
+                          <RowWords title={one.name} lines={rowLines(one)} />
                         </div>
                       </li>
                     ))}
                   </Rows>
                 ) : (
-                  writes && (
-                    <TextAction label={t('payers.addAPayer')} before="plus" onClick={addPressed} />
-                  )
+                  <>
+                    <p className="py-empty">{t('payers.noPayers')}</p>
+                    {writes && (
+                      <TextAction
+                        label={t('payers.addAPayer')}
+                        before="plus"
+                        onClick={addPressed}
+                      />
+                    )}
+                  </>
                 )}
               </>
             ) : open == null ? (
@@ -594,9 +691,9 @@ export function PayersArea({ event }: { event: OrganisationEvent }) {
               <div className="ev-columns">
                 <div className="ev-left">
                   <PayersCard
-                    event={event}
+                    renderCard={renderCard}
                     payers={payers}
-                    step={stale == null && writes}
+                    step={offline == null && writes}
                     onNext={(id) => choose({ ticked: [id], mode: 'one' })}
                   />
                   <Rows>
@@ -610,7 +707,7 @@ export function PayersArea({ event }: { event: OrganisationEvent }) {
                           aria-expanded={one.id === open.id}
                           onClick={() => setOpenId(one.id)}
                         >
-                          <RowWords title={one.name} lines={one.note == null ? [] : [one.note]} />
+                          <RowWords title={one.name} lines={rowLines(one)} />
                           <Amount
                             value={moneyRange(
                               t,
@@ -631,6 +728,7 @@ export function PayersArea({ event }: { event: OrganisationEvent }) {
                     payers={payers}
                     payer={open}
                     writes={writes}
+                    extra={extra.renderPane?.(open)}
                     onEdit={() =>
                       setForm({
                         id: open.id,
@@ -652,37 +750,39 @@ export function PayersArea({ event }: { event: OrganisationEvent }) {
       </>
     );
 
-  return (
-    <LayersContext value={layers}>
-      <div className="desk ev desk-page ev-page bt">
-        <div className="ev-wide bt-page" inert={covered}>
-          {crumb}
-          <div aria-live="polite" aria-atomic="true" className="visually-hidden">
-            {heard}
-          </div>
-          {body}
+  return renderFrame({
+    choosing: choosing != null,
+    back: () => {
+      setChoosing(null);
+      moved();
+    },
+    body: (
+      <>
+        <div aria-live="polite" aria-atomic="true" className="visually-hidden">
+          {heard}
         </div>
-        {form != null && (
-          <PayerDialog
-            form={form}
-            onChange={setForm}
-            onDismiss={() => setForm(null)}
-            onConfirm={(name, note) => void confirmForm(name, note)}
-          />
-        )}
-        <div ref={setHost} className="desk-layers" />
-      </div>
-    </LayersContext>
-  );
+        {body}
+      </>
+    ),
+    dialog:
+      form == null ? null : (
+        <PayerDialog
+          form={form}
+          onChange={setForm}
+          onDismiss={() => setForm(null)}
+          onConfirm={(name, note) => void confirmForm(name, note)}
+        />
+      ),
+  });
 }
 
 function PayersCard({
-  event,
+  renderCard,
   payers,
   step,
   onNext,
 }: {
-  event: OrganisationEvent;
+  renderCard: (label: string, children: ReactNode) => ReactNode;
   payers: EventPayers;
   step: boolean;
   onNext: (id: string) => void;
@@ -698,8 +798,9 @@ function PayersCard({
         });
   const total = range(payers.total.confirmed, payers.total.potential);
 
-  return (
-    <CoverCard event={event} label={t('payers.hasAPayer')}>
+  return renderCard(
+    t('payers.hasAPayer'),
+    <>
       <ul className="desk-glass-tags glass-wraps">
         <li className="desk-glass">{t('payers.count', { count: payers.payers.length })}</li>
       </ul>
@@ -725,7 +826,7 @@ function PayersCard({
           )}
         </div>
       )}
-    </CoverCard>
+    </>,
   );
 }
 
@@ -754,12 +855,14 @@ function PayerPane({
   payers,
   payer,
   writes,
+  extra,
   onEdit,
   onRemove,
 }: {
   payers: EventPayers;
   payer: Payer;
   writes: boolean;
+  extra: ReactNode;
   onEdit: () => void;
   onRemove: () => void;
 }) {
@@ -835,6 +938,7 @@ function PayerPane({
           </Rows>
         </section>
       )}
+      {extra}
       {writes && (
         <div className="py-actions">
           <TextAction label={t('payers.edit')} onClick={onEdit} />
@@ -917,7 +1021,7 @@ function PayerDialog({
 type Served = Readonly<Record<string, string>>;
 
 function ChooseWhoPays({
-  eventId,
+  source,
   payers,
   start,
   titleRef,
@@ -925,7 +1029,7 @@ function ChooseWhoPays({
   onDone,
   onAdd,
 }: {
-  eventId: string;
+  source: PayersSource;
   payers: EventPayers;
   start: ChooseStart;
   titleRef: RefObject<HTMLHeadingElement | null>;
@@ -945,7 +1049,7 @@ function ChooseWhoPays({
   const [rest, setRest] = useState(start.rest ?? '');
   const [checked, setChecked] = useState(start.checked === true);
   const [served, setServed] = useState<Served>({});
-  const [stale, setStale] = useState<string | null>(null);
+  const [stale, setStale] = useState<string | null>(start.stale ?? null);
   const [failed, setFailed] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [tries, setTries] = useState(start.checked === true ? 1 : 0);
@@ -1015,7 +1119,7 @@ function ChooseWhoPays({
     setStale(null);
     setFailed(null);
     try {
-      onDone(await api.choosePayers(eventId, present, split, currency));
+      onDone(await source.choose(present, split, currency));
     } catch (error) {
       setBusy(false);
       const violations = error instanceof ApiError ? (error.problem.violations ?? []) : [];

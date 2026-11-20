@@ -4,6 +4,8 @@ import {
   type PayerCover,
   type PayerLine,
   type PayerSplit,
+  type PayerTyped,
+  type SplitTyped,
   VENDOR_CATEGORIES,
 } from '@soirely/api-client';
 import {
@@ -33,6 +35,22 @@ export interface ChooseStart {
   amounts?: Readonly<Record<string, string>>;
   rest?: string;
   checked?: boolean;
+  /** The refusal a save met because a payer or a cost was removed meanwhile. */
+  stale?: string;
+}
+
+/** Where Who is paying reads and writes: the API in the product, the sample data in the demo. */
+export interface PayersSource {
+  read: () => Promise<EventPayers>;
+  add: (typed: PayerTyped) => Promise<Payer>;
+  change: (id: string, typed: PayerTyped) => Promise<Payer>;
+  remove: (id: string) => Promise<void>;
+  putBack: (id: string) => Promise<void>;
+  choose: (
+    lineIds: readonly string[],
+    split: SplitTyped | null,
+    currency: string,
+  ) => Promise<EventPayers>;
 }
 
 export type Range = readonly [number, number];

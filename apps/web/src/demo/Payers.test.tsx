@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { RouterProvider, createMemoryRouter } from 'react-router';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -14,6 +14,7 @@ async function open(state: string, extra = '') {
   });
   render(<RouterProvider router={router} />);
   await screen.findByRole('heading', { level: 1 }, SLOW);
+  await waitFor(() => expect(document.querySelector('.bt-loading')).toBeNull(), SLOW);
 
   return router;
 }
@@ -130,7 +131,7 @@ describe('Who is paying at a desk (sc-91, sc-1300)', () => {
     type('Note · Optional', 'Covering the band', dialog);
     fireEvent.click(within(dialog).getByRole('button', { name: 'Add' }));
 
-    expect(screen.queryByRole('dialog')).toBeNull();
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull(), SLOW);
     expect(screen.getByRole('region', { name: 'Has a payer' }).textContent).toContain('5 payers');
     const kayode = pane('Uncle Kayode');
     expect(kayode.textContent).toContain('Covering the band');
@@ -138,12 +139,15 @@ describe('Who is paying at a desk (sc-91, sc-1300)', () => {
 
     fireEvent.click(within(kayode).getByRole('button', { name: 'Remove' }));
 
-    expect(within(main()).getByText('Uncle Kayode removed.')).toBeDefined();
+    expect(await within(main()).findByText('Uncle Kayode removed.', {}, SLOW)).toBeDefined();
     expect(rowNames().some((one) => one.startsWith('Uncle Kayode'))).toBe(false);
 
     fireEvent.click(within(main()).getByRole('button', { name: 'Undo' }));
 
-    expect(within(main()).queryByText('Uncle Kayode removed.')).toBeNull();
+    await waitFor(
+      () => expect(within(main()).queryByText('Uncle Kayode removed.')).toBeNull(),
+      SLOW,
+    );
     expect(row('Uncle Kayode')).toBeDefined();
   });
 
@@ -161,7 +165,7 @@ describe('Who is paying at a desk (sc-91, sc-1300)', () => {
     type('Name', 'Auntie Funmi', dialog);
     fireEvent.click(within(dialog).getByRole('button', { name: 'Save' }));
 
-    expect(pane('Auntie Funmi')).toBeDefined();
+    expect(await screen.findByRole('region', { name: 'Auntie Funmi' }, SLOW)).toBeDefined();
     expect(row('Auntie Funmi')).toBeDefined();
   });
 
@@ -209,7 +213,9 @@ describe('Who is paying at a desk (sc-91, sc-1300)', () => {
     expect((screen.getByLabelText('Payer') as HTMLSelectElement).value).toBe('couple');
     fireEvent.click(screen.getByRole('button', { name: 'Save' }));
 
-    expect(screen.getByRole('heading', { level: 1, name: 'Who is paying' })).toBeDefined();
+    expect(
+      await screen.findByRole('heading', { level: 1, name: 'Who is paying' }, SLOW),
+    ).toBeDefined();
     const card = screen.getByRole('region', { name: 'Has a payer' });
     expect(card.textContent).toContain('£19,730 to £23,060');
     expect(card.textContent).toContain('Next: Centrepieces has no payer yet.');
@@ -248,7 +254,9 @@ describe('Who is paying at a desk (sc-91, sc-1300)', () => {
       expect(main().textContent).not.toContain('The percentages come to');
       fireEvent.click(screen.getByRole('button', { name: 'Save' }));
 
-      expect(screen.getByRole('heading', { level: 1, name: 'Who is paying' })).toBeDefined();
+      expect(
+        await screen.findByRole('heading', { level: 1, name: 'Who is paying' }, SLOW),
+      ).toBeDefined();
     },
   );
 
@@ -268,6 +276,7 @@ describe('Who is paying at a desk (sc-91, sc-1300)', () => {
     type('Aunt Funmi · amount', '400.00');
     fireEvent.click(screen.getByRole('button', { name: 'Save' }));
 
+    await screen.findByRole('heading', { level: 1, name: 'Who is paying' }, SLOW);
     fireEvent.click(row('Aunt Funmi'));
     expect(pane('Aunt Funmi').textContent).toContain('£400.00, a fixed amount');
     fireEvent.click(row('Mr and Mrs Obi'));
@@ -296,6 +305,7 @@ describe('Who is paying at a desk (sc-91, sc-1300)', () => {
     type('Aunt Funmi · amount', '300.00');
     fireEvent.click(screen.getByRole('button', { name: 'Save' }));
 
+    await screen.findByRole('heading', { level: 1, name: 'Who is paying' }, SLOW);
     expect(main().textContent).not.toContain('no longer adds up');
   });
 

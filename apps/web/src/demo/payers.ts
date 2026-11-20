@@ -1,4 +1,26 @@
-import { parsedAmount } from './quotes.ts';
+import {
+  type EventPayers,
+  type Payer,
+  type PayerCover,
+  type PayerLine,
+  type PayerSplit,
+  type SplitTyped,
+} from '@soirely/api-client';
+import type { TFunction } from 'i18next';
+
+import { minorMoney } from '../routes/app/events/budgetArea.ts';
+import { type PayersNotice, type PayersStart } from '../routes/app/events/PayersArea.tsx';
+import {
+  type ChooseStart,
+  type PayersSource,
+  WHOLE,
+  apportion,
+  coveredBy,
+  fromMinor,
+  nameProblem,
+  noteProblem,
+  toMinor,
+} from '../routes/app/events/payersArea.ts';
 import {
   COST_LINES,
   type CostLine,
@@ -11,11 +33,11 @@ import {
   amounts,
   categoriesOf,
   lineState,
-  money,
   totals,
 } from './budget.ts';
 import { type DemoGroup, type LinkState, PAYERS as SAMPLE, budgetAt } from './budgetSample.ts';
-import { PAYERS_WORDS as W, listOf } from './payersWords.ts';
+
+/** The demo's stand-in for the server's Who is paying (sc-91): its sample costs, payers and splits, read as the API reads them, so the demo draws the product's own screen. */
 
 export type Range = readonly [number, number];
 
@@ -38,40 +60,21 @@ export type Split =
   | { kind: 'percent'; shares: readonly Part[] }
   | { kind: 'fixed'; amounts: readonly Part[]; restId: string };
 
-export type Mode = Split['kind'];
-
 export interface Book {
   lines: readonly CostLine[];
   payers: readonly PayerEntry[];
   splits: Readonly<Record<string, Split>>;
 }
 
-export const PAYER_CAP = 20;
-export const NAME_MAX = 60;
-export const NOTE_MAX = 200;
-export const WHOLE = 10000;
 export const SEND_MS = 500;
+
+const CURRENCY = 'GBP';
 
 const sum = (values: readonly number[]): number => values.reduce((all, one) => all + one, 0);
 
-/** Each part rounded down, the cents left over one each to the parts that lost most in rounding (between equal remainders, the first added): the parts add up exactly. */
-export function apportion(
-  amount: number,
-  weights: readonly number[],
-  whole = sum(weights),
-): number[] {
-  if (whole <= 0) return weights.map(() => 0);
-  const parts = weights.map((weight) => Math.floor((amount * weight) / whole));
-  const left = amount - sum(parts);
-  if (left === 0 || whole !== sum(weights)) return parts;
-  const remainders = weights.map((weight) => (amount * weight) % whole);
-  const byRemainder = weights
-    .map((_, index) => index)
-    .sort((a, b) => (remainders[b] ?? 0) - (remainders[a] ?? 0) || a - b);
-  for (const index of byRemainder.slice(0, left)) parts[index] = (parts[index] ?? 0) + 1;
+const written = (minor: number): string => fromMinor(minor, CURRENCY);
 
-  return parts;
-}
+const pair = ([low, high]: Range) => ({ confirmed: written(low), potential: written(high) });
 
 export function rangeOf(line: CostLine): Range {
   const each = amounts(line);
@@ -79,7 +82,7 @@ export function rangeOf(line: CostLine): Range {
   return [each.settled, each.ifAll];
 }
 
-export function inBudgetOrder(lines: readonly CostLine[]): CostLine[] {
+function inBudgetOrder(lines: readonly CostLine[]): CostLine[] {
   const order = categoriesOf(lines);
 
   return [...lines].sort((a, b) => order.indexOf(a.category) - order.indexOf(b.category));
@@ -88,7 +91,7 @@ export function inBudgetOrder(lines: readonly CostLine[]): CostLine[] {
 const fixedSum = (split: Split): number =>
   split.kind === 'fixed' ? sum(split.amounts.map((one) => one.value)) : 0;
 
-export function isFlagged(line: CostLine, split: Split | undefined): boolean {
+function isFlagged(line: CostLine, split: Split | undefined): boolean {
   return split?.kind === 'fixed' && rangeOf(line)[0] < fixedSum(split);
 }
 
@@ -99,59 +102,54 @@ const inOrder = (parts: readonly Part[], payers: readonly PayerEntry[]): Part[] 
 };
 
 /** Each payer's part of a cost, settled and if all come; while flagged, the payer who covers the rest has 0. */
-export function partsOf(
+function partsOf(
   line: CostLine,
   split: Split,
   payers: readonly PayerEntry[],
-): { payerId: string; part: Range }[] {
+): { payerId: string; part: Range; rest: boolean }[] {
   const [low, high] = rangeOf(line);
 
-  if (split.kind === 'one') return [{ payerId: split.payerId, part: [low, high] }];
+  if (split.kind === 'one') return [{ payerId: split.payerId, part: [low, high], rest: false }];
   if (split.kind === 'percent') {
     const shares = inOrder(split.shares, payers);
-    const lows = apportion(
-      low,
-      shares.map((one) => one.value),
-      WHOLE,
-    );
-    const highs = apportion(
-      high,
-      shares.map((one) => one.value),
-      WHOLE,
-    );
+    const weights = shares.map((one) => one.value);
+    const lows = apportion(low, weights, WHOLE);
+    const highs = apportion(high, weights, WHOLE);
 
     return shares.map((one, index) => ({
       payerId: one.payerId,
       part: [lows[index] ?? 0, highs[index] ?? 0],
+      rest: false,
     }));
   }
   const fixed = fixedSum(split);
-  const rest: Range = low < fixed ? [0, 0] : [low - fixed, high - fixed];
 
   return [
     ...inOrder(split.amounts, payers).map((one) => ({
       payerId: one.payerId,
       part: [one.value, one.value] as const,
+      rest: false,
     })),
-    { payerId: split.restId, part: rest },
+    {
+      payerId: split.restId,
+      part: low < fixed ? ([0, 0] as const) : ([low - fixed, high - fixed] as const),
+      rest: true,
+    },
   ];
 }
 
-const splitOf = (book: Book, line: CostLine): Split | undefined => book.splits[line.id];
+const mine = (book: Book, line: CostLine, payerId: string) => {
+  const split = book.splits[line.id];
 
-const named = (split: Split): string[] =>
-  split.kind === 'one'
-    ? [split.payerId]
-    : split.kind === 'percent'
-      ? split.shares.map((one) => one.payerId)
-      : [...split.amounts.map((one) => one.payerId), split.restId];
+  return split == null
+    ? undefined
+    : partsOf(line, split, book.payers).find((one) => one.payerId === payerId);
+};
 
-export function shareOf(book: Book, payerId: string): Range {
+function shareOf(book: Book, payerId: string): Range {
   return book.lines.reduce<Range>(
     (all, line) => {
-      const split = splitOf(book, line);
-      const mine = split == null ? undefined : partsOf(line, split, book.payers);
-      const part = mine?.find((one) => one.payerId === payerId)?.part ?? [0, 0];
+      const part = mine(book, line, payerId)?.part ?? [0, 0];
 
       return [all[0] + part[0], all[1] + part[1]];
     },
@@ -159,204 +157,182 @@ export function shareOf(book: Book, payerId: string): Range {
   );
 }
 
-/** Has a payer counts each cost with a payer at its own amount, so with No payer yet it is the budget's range exactly. */
-export function hasPayer(book: Book): Range {
-  const lines = book.lines.filter((line) => splitOf(book, line) != null);
-  const sumOf = totals(lines);
-
-  return [sumOf.settled, sumOf.ifAll];
-}
-
-export function noPayer(book: Book): { lines: CostLine[]; range: Range } {
-  const lines = inBudgetOrder(book.lines.filter((line) => splitOf(book, line) == null));
-  const sumOf = totals(lines);
-
-  return { lines, range: [sumOf.settled, sumOf.ifAll] };
-}
-
-export function budgetRange(book: Book): Range {
-  const sumOf = totals(book.lines);
-
-  return [sumOf.settled, sumOf.ifAll];
-}
-
-/** The card's next cost with no payer: the first in the budget's order that costs something, else the first. */
-export function nextNoPayer(book: Book): CostLine | null {
-  const { lines } = noPayer(book);
-
-  return lines.find((line) => rangeOf(line)[1] > 0) ?? lines[0] ?? null;
-}
-
-/** Paid, credited in proportion to each payer's settled part of what the vendor's quote covers; the rest is No payer yet's. */
-export function paidOf(
+/** Paid, credited in proportion to each payer's settled part of what the vendor's quote covers; the rest, and a payment that covers no cost, is No payer yet's. */
+function paidOf(
   book: Book,
-  payments: readonly Payment[] = PAYMENTS,
+  payments: readonly Payment[],
   quotes: readonly EventQuote[] = QUOTES,
-): Map<string, number> {
-  const paid = new Map(book.payers.map((one) => [one.id, 0]));
+): { byPayer: Map<string, number>; noPayer: number } {
+  const byPayer = new Map(book.payers.map((one) => [one.id, 0]));
+  let noPayer = 0;
 
   for (const payment of payments) {
     if (payment.paid == null || payment.cancelled != null) continue;
     const quote = quotes.find((one) => one.vendorId === payment.vendorId);
     const lines = book.lines.filter((line) => quote?.lineIds.includes(line.id) === true);
     const weights = book.payers.map((payer) =>
-      sum(
-        lines.map((line) => {
-          const split = splitOf(book, line);
-          const mine = split == null ? undefined : partsOf(line, split, book.payers);
-
-          return mine?.find((one) => one.payerId === payer.id)?.part[0] ?? 0;
-        }),
-      ),
+      sum(lines.map((line) => mine(book, line, payer.id)?.part[0] ?? 0)),
     );
     const unclaimed = sum(
-      lines.filter((line) => splitOf(book, line) == null).map((line) => rangeOf(line)[0]),
+      lines.filter((line) => book.splits[line.id] == null).map((line) => rangeOf(line)[0]),
     );
-    const parts = apportion(payment.paid.amount, [...weights, unclaimed]);
+    if (sum([...weights, unclaimed]) <= 0) {
+      noPayer += payment.paid.amount;
+      continue;
+    }
+    const parts = apportion(
+      payment.paid.amount,
+      [...weights, unclaimed],
+      sum([...weights, unclaimed]),
+    );
 
     book.payers.forEach((one, index) =>
-      paid.set(one.id, (paid.get(one.id) ?? 0) + (parts[index] ?? 0)),
+      byPayer.set(one.id, (byPayer.get(one.id) ?? 0) + (parts[index] ?? 0)),
     );
+    noPayer += parts[book.payers.length] ?? 0;
   }
 
-  return paid;
+  return { byPayer, noPayer };
 }
 
-export function stillToCome(share: Range, paid: number): Range {
-  return [Math.max(0, share[0] - paid), Math.max(0, share[1] - paid)];
+const percentWritten = (hundredths: number): string => (hundredths / 100).toFixed(2);
+
+function how(book: Book, split: Split, payerId: string, rest: boolean): PayerCover['how'] {
+  if (split.kind === 'one') return { mode: 'one' };
+  if (split.kind === 'percent')
+    return {
+      mode: 'percent',
+      percent: percentWritten(split.shares.find((one) => one.payerId === payerId)?.value ?? 0),
+    };
+  if (!rest)
+    return {
+      mode: 'fixed',
+      amount: written(split.amounts.find((one) => one.payerId === payerId)?.value ?? 0),
+    };
+
+  return {
+    mode: 'rest',
+    after: inOrder(split.amounts, book.payers).map((one) => ({
+      payerId: one.payerId,
+      amount: written(one.value),
+    })),
+  };
 }
 
-export const percentText = (hundredths: number): string => (hundredths / 100).toFixed(2);
-
-const shortPercent = (hundredths: number): string => String(Number(percentText(hundredths)));
-
-const nameOf = (book: Book, id: string): string =>
-  book.payers.find((one) => one.id === id)?.name ?? '';
-
-export interface Cover {
-  lineId: string;
-  name: string;
-  how: string;
-  part: Range;
-  notPriced: boolean;
-}
-
-function howWords(book: Book, split: Split, payerId: string): string {
-  if (split.kind === 'one') return W.allOfIt;
-  if (split.kind === 'percent') {
-    const value = split.shares.find((one) => one.payerId === payerId)?.value ?? 0;
-
-    return value === WHOLE / 2 ? W.half : W.percentOf(shortPercent(value));
-  }
-  const fixed = split.amounts.find((one) => one.payerId === payerId);
-  if (fixed != null) return W.fixedPart(money(fixed.value));
-
-  return W.whatIsLeft(
-    inOrder(split.amounts, book.payers).map((one) =>
-      W.theirs(nameOf(book, one.payerId), money(one.value)),
-    ),
-  );
-}
-
-export function coversOf(book: Book, payerId: string): Cover[] {
+function covers(book: Book, payerId: string): PayerCover[] {
   return inBudgetOrder(book.lines)
     .flatMap((line) => {
-      const split = splitOf(book, line);
-      const mine = split == null ? undefined : partsOf(line, split, book.payers);
-      const part = mine?.find((one) => one.payerId === payerId)?.part;
+      const split = book.splits[line.id];
+      const part = mine(book, line, payerId);
 
       return split == null || part == null
         ? []
         : [
             {
               lineId: line.id,
-              name: line.name,
-              how: howWords(book, split, payerId),
-              part,
+              label: line.name,
               notPriced: lineState(line) === 'notPriced',
+              part: pair(part.part),
+              how: how(book, split, payerId, part.rest),
             },
           ];
     })
-    .sort((a, b) => b.part[0] - a.part[0]);
+    .sort(
+      (a, b) =>
+        Number(a.notPriced) - Number(b.notPriced) ||
+        Number(b.part.confirmed) - Number(a.part.confirmed),
+    );
 }
 
-/** A Not priced cost adds nothing to a share, so the share says how many it leaves out and is never read as complete. */
-export function notPricedFor(book: Book, payerId: string): number {
-  return coversOf(book, payerId).filter((one) => one.notPriced).length;
-}
-
-export function splitWords(book: Book, line: CostLine): string {
-  const split = splitOf(book, line);
-
-  if (split == null) return W.noPayerYet;
-  if (isFlagged(line, split)) return W.needsNewAmounts;
-  if (split.kind === 'one') return W.splitAll(nameOf(book, split.payerId));
-  if (split.kind === 'percent') {
-    const shares = inOrder(split.shares, book.payers);
-
-    return shares.length === 2 && shares.every((one) => one.value === WHOLE / 2)
-      ? W.splitHalves(shares.map((one) => nameOf(book, one.payerId)))
-      : W.splitPercents(
-          shares.map((one) =>
-            W.fromPayer(W.percentOf(shortPercent(one.value)), nameOf(book, one.payerId)),
-          ),
-        );
-  }
-
-  return W.splitFixed(
-    inOrder(split.amounts, book.payers).map((one) =>
-      W.fromPayer(money(one.value), nameOf(book, one.payerId)),
-    ),
-    nameOf(book, split.restId),
-  );
-}
-
-export function flaggedLines(book: Book): CostLine[] {
-  return inBudgetOrder(book.lines).filter((line) => isFlagged(line, splitOf(book, line)));
-}
-
-export function flagWords(book: Book, line: CostLine): { title: string; line: string } {
-  const split = splitOf(book, line);
-  const fixed = split?.kind === 'fixed' ? inOrder(split.amounts, book.payers) : [];
-  const by = listOf(fixed.map((one) => nameOf(book, one.payerId)));
-  const rest = split?.kind === 'fixed' ? nameOf(book, split.restId) : '';
-  const sumOf = money(sum(fixed.map((one) => one.value)));
+function sent(split: Split | undefined): PayerSplit | null {
+  if (split == null) return null;
+  if (split.kind === 'one') return { mode: 'one', payerId: split.payerId };
+  if (split.kind === 'percent')
+    return {
+      mode: 'percent',
+      shares: split.shares.map((one) => ({
+        payerId: one.payerId,
+        percent: percentWritten(one.value),
+      })),
+    };
 
   return {
-    title: W.flagTitle(line.name),
-    line: W.flagLine(line.name, money(rangeOf(line)[0]), sumOf, by, rest, money(0)),
+    mode: 'fixed',
+    amounts: split.amounts.map((one) => ({ payerId: one.payerId, amount: written(one.value) })),
+    restId: split.restId,
   };
 }
 
-export function coveredBy(book: Book, payerId: string): string[] {
-  return inBudgetOrder(book.lines)
-    .filter((line) => {
-      const split = splitOf(book, line);
+/** The book as the API reads it (sc-91's `GET …/budget/payers`). */
+export function served(book: Book, payments: readonly Payment[], paidShown: boolean): EventPayers {
+  const ordered = inBudgetOrder(book.lines);
+  const without = ordered.filter((line) => book.splits[line.id] == null);
+  const withPayer = ordered.filter((line) => book.splits[line.id] != null);
+  const range = (lines: readonly CostLine[]): Range => {
+    const all = totals(lines);
 
-      return split != null && named(split).includes(payerId);
-    })
-    .map((line) => line.id);
+    return [all.settled, all.ifAll];
+  };
+  const paid = paidOf(book, payments);
+  const next = without.find((line) => rangeOf(line)[1] > 0) ?? without[0] ?? null;
+
+  return {
+    currency: CURRENCY,
+    paidShown,
+    total: pair(range(book.lines)),
+    hasPayer: pair(range(withPayer)),
+    noPayer: { ...pair(range(without)), costs: without.length, paid: written(paid.noPayer) },
+    next: next == null ? null : { id: next.id, label: next.name },
+    payers: book.payers.map((one): Payer => {
+      const share = shareOf(book, one.id);
+      const theirs = covers(book, one.id);
+      const paidMinor = paid.byPayer.get(one.id) ?? 0;
+
+      return {
+        id: one.id,
+        name: one.name,
+        note: one.note === '' ? null : one.note,
+        share: pair(share),
+        notPriced: theirs.filter((cover) => cover.notPriced).length,
+        paid: paidShown ? written(paidMinor) : null,
+        stillToCome: paidShown
+          ? pair([Math.max(0, share[0] - paidMinor), Math.max(0, share[1] - paidMinor)])
+          : null,
+        covers: theirs,
+      };
+    }),
+    lines: ordered.map((line): PayerLine => ({
+      id: line.id,
+      label: line.name,
+      category: line.category,
+      cost: pair(rangeOf(line)),
+      notPriced: lineState(line) === 'notPriced',
+      flagged: isFlagged(line, book.splits[line.id]),
+      split: sent(book.splits[line.id]),
+    })),
+  };
 }
 
-export const canAddPayer = (payers: readonly PayerEntry[]): boolean => payers.length < PAYER_CAP;
+function chosen(split: SplitTyped | null): Split | null {
+  if (split == null) return null;
+  if (split.mode === 'one') return { kind: 'one', payerId: split.payerId ?? '' };
+  if (split.mode === 'percent')
+    return {
+      kind: 'percent',
+      shares: split.shares.map((one) => ({
+        payerId: one.payerId,
+        value: Math.round(Number(one.percent) * 100),
+      })),
+    };
 
-export function noteProblem(note: string): string | null {
-  return [...note.trim()].length > NOTE_MAX ? W.noteLong : null;
-}
-
-export function nameProblem(
-  name: string,
-  payers: readonly PayerEntry[],
-  exceptId: string | null = null,
-): string | null {
-  if (name.trim() === '') return W.nameBlank;
-  if ([...name.trim()].length > NAME_MAX) return W.nameLong;
-  const typed = name.trim().toLocaleLowerCase('en');
-  const same = payers.find(
-    (one) => one.id !== exceptId && one.name.trim().toLocaleLowerCase('en') === typed,
-  );
-
-  return same == null ? null : W.sameName(same.name);
+  return {
+    kind: 'fixed',
+    amounts: split.amounts.map((one) => ({
+      payerId: one.payerId,
+      value: toMinor(one.amount, CURRENCY),
+    })),
+    restId: split.restId ?? '',
+  };
 }
 
 export function addPayer(book: Book, name: string, note: string): { book: Book; id: string } {
@@ -377,139 +353,8 @@ export function editPayer(book: Book, id: string, name: string, note: string): B
   };
 }
 
-export function withoutPayer(book: Book, id: string): Book {
-  return { ...book, payers: book.payers.filter((one) => one.id !== id) };
-}
-
-export function withPayer(book: Book, payer: PayerEntry, index: number): Book {
-  const payers = [...book.payers];
-  payers.splice(index, 0, payer);
-
-  return { ...book, payers };
-}
-
 export function withLink(book: Book, id: string, link: LinkState): Book {
   return { ...book, payers: book.payers.map((one) => (one.id === id ? { ...one, link } : one)) };
-}
-
-export function percentOf(text: string): number | null {
-  const typed = text.trim();
-  if (typed === '') return 0;
-  if (!/^(\d+(\.\d{0,2})?|\.\d{1,2})$/.test(typed)) return null;
-  const [whole = '', part = ''] = typed.split('.');
-
-  return Number(whole === '' ? '0' : whole) * 100 + Number(`${part}00`.slice(0, 2));
-}
-
-export const PERCENT_TYPED = /^[-−]?\d{0,4}(\.\d{0,4})?$/;
-
-export function percentProblem(text: string): string | null {
-  const typed = text.trim();
-  if (typed === '') return null;
-  if (/^\d*\.\d{3,}$/.test(typed) && Number(typed) <= WHOLE / 100) return W.percentDecimals;
-  const value = percentOf(typed);
-
-  return value == null || value > WHOLE ? W.percentRange : null;
-}
-
-/** An amount typed in the event's currency: the demo's one parser, above 0. */
-export function amountOf(text: string): number | null {
-  return parsedAmount(text);
-}
-
-export function choicesFor(ticked: number): Mode[] {
-  return ticked >= 2 ? ['one', 'percent'] : ['one', 'percent', 'fixed'];
-}
-
-export function replacesNote(book: Book, ticked: readonly string[]): string | null {
-  if (ticked.length < 2) return null;
-  const lines = inBudgetOrder(book.lines.filter((line) => ticked.includes(line.id)));
-  const taken = lines.filter((line) => splitOf(book, line) != null);
-  const fixedOn = taken.filter((line) => splitOf(book, line)?.kind === 'fixed');
-
-  return taken.length === 0
-    ? null
-    : W.replaces(
-        taken.length,
-        fixedOn.map((line) => line.name),
-      );
-}
-
-export interface PercentCheck {
-  total: number;
-  parts: Map<string, Range>;
-  error: string | null;
-  fields: Readonly<Record<string, string>>;
-  split: Split | null;
-}
-
-export function checkPercents(
-  book: Book,
-  ticked: readonly string[],
-  typed: Readonly<Record<string, string>>,
-): PercentCheck {
-  const values = book.payers.map((one) => percentOf(typed[one.id] ?? '') ?? 0);
-  const total = sum(values);
-  const parts = new Map<string, Range>();
-
-  for (const line of book.lines.filter((one) => ticked.includes(one.id))) {
-    const [low, high] = rangeOf(line);
-    const lows = apportion(low, values, WHOLE);
-    const highs = apportion(high, values, WHOLE);
-    book.payers.forEach((one, index) => {
-      const now = parts.get(one.id) ?? [0, 0];
-      parts.set(one.id, [now[0] + (lows[index] ?? 0), now[1] + (highs[index] ?? 0)]);
-    });
-  }
-  const fields = Object.fromEntries(
-    book.payers
-      .map((one) => [one.id, percentProblem(typed[one.id] ?? '')] as const)
-      .filter(([, problem]) => problem != null),
-  ) as Record<string, string>;
-  const error = total === WHOLE ? null : W.notHundred(percentText(total));
-  const shares = book.payers
-    .map((one, index) => ({ payerId: one.id, value: values[index] ?? 0 }))
-    .filter((one) => one.value > 0);
-
-  const right = error == null && Object.keys(fields).length === 0;
-
-  return { total, parts, error, fields, split: right ? { kind: 'percent', shares } : null };
-}
-
-export interface FixedCheck {
-  errors: Record<string, string>;
-  rest: Range;
-  split: Split | null;
-}
-
-export function checkFixed(
-  book: Book,
-  lineId: string,
-  typed: Readonly<Record<string, string>>,
-  restId: string,
-): FixedCheck {
-  const line = book.lines.find((one) => one.id === lineId);
-  const [low, high] = line == null ? [0, 0] : rangeOf(line);
-  const fields = book.payers.filter((one) => one.id !== restId);
-  const filled = fields.filter((one) => (typed[one.id] ?? '').trim() !== '');
-  const errors: Record<string, string> = {};
-  const amountsTyped: Part[] = [];
-
-  for (const one of filled) {
-    const value = amountOf(typed[one.id] ?? '');
-    if (value == null) errors[one.id] = W.amountWrong;
-    else amountsTyped.push({ payerId: one.id, value });
-  }
-  const first = fields[0];
-  if (filled.length === 0 && first != null) errors[first.id] = W.amountWrong;
-  const together = sum(amountsTyped.map((one) => one.value));
-  const firstFilled = filled[0];
-  if (Object.keys(errors).length === 0 && together > low && firstFilled != null)
-    errors[firstFilled.id] = W.tooMuch(money(together), money(low));
-  const rest: Range = together > low ? [0, 0] : [low - together, high - together];
-  const fine = Object.keys(errors).length === 0;
-
-  return { errors, rest, split: fine ? { kind: 'fixed', amounts: amountsTyped, restId } : null };
 }
 
 export function applyChoice(book: Book, ticked: readonly string[], split: Split | null): Book {
@@ -520,6 +365,64 @@ export function applyChoice(book: Book, ticked: readonly string[], split: Split 
   }
 
   return { ...book, splits };
+}
+
+/** A source the demo's screen reads and writes as it would the API: it keeps the book in memory, sends nothing, and never answers while `loading`. */
+export function bookSource(
+  first: Book,
+  payments: readonly Payment[],
+  paidShown: boolean,
+  removed: readonly { payer: PayerEntry; index: number }[] = [],
+  loading = false,
+): PayersSource {
+  let book = first;
+  let gone = [...removed];
+  const read = (): EventPayers => served(book, payments, paidShown);
+  const payerOf = (id: string): Payer => {
+    const found = read().payers.find((one) => one.id === id);
+    if (found == null) throw new Error(`no payer ${id}`);
+
+    return found;
+  };
+
+  return {
+    read: () => (loading ? new Promise<EventPayers>(() => undefined) : Promise.resolve(read())),
+    add: (typed) => {
+      const added = addPayer(book, typed.name, typed.note ?? '');
+      book = added.book;
+
+      return Promise.resolve(payerOf(added.id));
+    },
+    change: (id, typed) => {
+      book = editPayer(book, id, typed.name, typed.note ?? '');
+
+      return Promise.resolve(payerOf(id));
+    },
+    remove: (id) => {
+      const index = book.payers.findIndex((one) => one.id === id);
+      const payer = book.payers[index];
+      if (payer != null) gone = [...gone, { payer, index }];
+      book = { ...book, payers: book.payers.filter((one) => one.id !== id) };
+
+      return Promise.resolve();
+    },
+    putBack: (id) => {
+      const back = gone.find((one) => one.payer.id === id);
+      if (back != null) {
+        const payers = [...book.payers];
+        payers.splice(back.index, 0, back.payer);
+        book = { ...book, payers };
+        gone = gone.filter((one) => one !== back);
+      }
+
+      return Promise.resolve();
+    },
+    choose: (lineIds, split) => {
+      book = applyChoice(book, lineIds, chosen(split));
+
+      return Promise.resolve(read());
+    },
+  };
 }
 
 const half = (a: string, b: string): Split => ({
@@ -652,64 +555,27 @@ export type PayersState = (typeof STATE_NAMES)[number];
 
 export const PAYERS_STATES: readonly string[] = STATE_NAMES;
 
-export interface ChooseStart {
-  ticked: readonly string[];
-  mode: Mode;
-  payer?: string;
-  percents?: Readonly<Record<string, string>>;
-  amounts?: Readonly<Record<string, string>>;
-  rest?: string;
-  checked?: boolean;
-  stale?: string;
-}
-
-export type Notice =
-  | { kind: 'cap' }
-  | { kind: 'refused'; payerId: string; count: number }
-  | { kind: 'removed'; payer: PayerEntry; index: number };
-
 export type SendKind = 'busy' | 'copied' | 'refused' | 'failed' | 'shared';
 
-export interface FormStart {
-  id: string | null;
-  name: string;
-  note: string;
-  error: string | null;
-  noteError?: string | null;
-}
-
-export interface PayersStart {
+/** A demo state: the book the stand-in starts from, and where the product's screen opens on it. */
+export interface PayersDemo {
   book: Book;
-  open: string | null;
-  notice: Notice | null;
-  form: FormStart | null;
-  send: { payerId: string; kind: SendKind } | null;
-  choose: ChooseStart | null;
   payments: readonly Payment[];
   /** Paid and Still to come show only with `vendors` or a payment marked paid (sc-91). */
   paidShown: boolean;
+  removed: readonly { payer: PayerEntry; index: number }[];
+  loading: boolean;
+  notLive: boolean;
+  send: { payerId: string; kind: SendKind } | null;
   shares: boolean;
+  start: PayersStart;
 }
 
 /** Which payer the pane opens on: the one asked for, else Mr and Mrs Obi as the board draws, else the first. */
-export function openFirst(
-  payers: readonly PayerEntry[],
-  asked: string | null = null,
-): string | null {
+function openFirst(payers: readonly PayerEntry[], asked: string | null): string | null {
   const found = (id: string | null) => payers.find((one) => one.id === id)?.id;
 
   return found(asked) ?? found('obi') ?? payers[0]?.id ?? null;
-}
-
-export function fixedForm(split: Split | undefined): Pick<ChooseStart, 'amounts' | 'rest'> {
-  if (split?.kind !== 'fixed') return {};
-
-  return {
-    amounts: Object.fromEntries(
-      split.amounts.map((one) => [one.payerId, (one.value / 100).toFixed(2)]),
-    ),
-    rest: split.restId,
-  };
 }
 
 const CHOOSE: Partial<Record<PayersState, ChooseStart>> = {
@@ -725,7 +591,6 @@ const CHOOSE: Partial<Record<PayersState, ChooseStart>> = {
   choose_several: { ticked: ['dj', 'cars', 'photo'], mode: 'one', payer: 'couple' },
   choose_no_payer: { ticked: ['dj'], mode: 'one', checked: true },
   choose_no_rest: { ticked: ['cars'], mode: 'fixed', amounts: { funmi: '400.00' }, checked: true },
-  payers_stale: { ticked: ['dj'], mode: 'one', stale: KAYODE.name },
   choose_percent_range: {
     ticked: ['dinner'],
     mode: 'percent',
@@ -759,6 +624,10 @@ const LONG_NOTE =
   'Adaeze’s grandparents, who asked to cover the dinner and the drinks for the family table and the cars on both days, paid in two parts, the first before the end of the month and the rest after the event.';
 const LONG_NAME = 'Mr and Mrs Adeyemi-Okonkwo, on behalf of the whole family in Lagos';
 
+/** The server's refusal of a save naming a payer removed meanwhile (`payer_removed`), as the API words it. */
+const removedMeanwhile = (name: string): string =>
+  `${name} was removed by someone else while this was open, so nothing was saved. The costs are shown as they are now.`;
+
 const SENT: Partial<Record<PayersState, SendKind>> = {
   send_busy: 'busy',
   link_copied: 'copied',
@@ -767,21 +636,23 @@ const SENT: Partial<Record<PayersState, SendKind>> = {
   web_share: 'shared',
 };
 
-export function startOf(state: string, asked: string | null = null): PayersStart {
+export function startOf(
+  state: string,
+  asked: string | null,
+  t: TFunction,
+  locale: string,
+): PayersDemo {
   const name = (STATE_NAMES as readonly string[]).includes(state)
     ? (state as PayersState)
     : 'payers';
-  const sent = SENT[name];
+  const kind = SENT[name];
   let book = SAMPLE_BOOK;
 
   if (name === 'no_payers') book = { ...SAMPLE_BOOK, payers: [], splits: {} };
   if (name === 'no_costs') book = { lines: [], payers: SAMPLE_PAYERS, splits: {} };
   if (name === 'payers_neither') book = { lines: [], payers: [], splits: {} };
   if (name === 'payers_live')
-    book = {
-      ...SAMPLE_BOOK,
-      splits: { ...SAMPLE_SPLITS, room: half('obi', 'bakare') },
-    };
+    book = { ...SAMPLE_BOOK, splits: { ...SAMPLE_SPLITS, room: half('obi', 'bakare') } };
   if (name === 'link_passphrase')
     book = {
       ...SAMPLE_BOOK,
@@ -805,55 +676,74 @@ export function startOf(state: string, asked: string | null = null): PayersStart
         })),
       ],
     };
-  if (sent === 'copied' || sent === 'refused' || sent === 'shared')
+  if (kind === 'copied' || kind === 'refused' || kind === 'shared')
     book = withLink(book, 'couple', 'sent');
 
-  const notice: Notice | null =
+  const payments = name === 'payer_paid_past' ? PAID_PAST : PAYMENTS;
+  const paidShown = name !== 'payer_share_alone';
+  const read = served(book, payments, paidShown);
+  const problem = (typed: string) => nameProblem(t, typed, read.payers, null, locale);
+  const covered = coveredBy(read, 'obi');
+  const notice: PayersNotice | null =
     name === 'payer_cap'
       ? { kind: 'cap' }
       : name === 'remove_refused'
-        ? { kind: 'refused', payerId: 'obi', count: coveredBy(book, 'obi').length }
+        ? { kind: 'refused', name: 'Mr and Mrs Obi', lineIds: covered, count: covered.length }
         : name === 'removed'
-          ? { kind: 'removed', payer: KAYODE, index: book.payers.length }
+          ? { kind: 'removed', id: KAYODE.id, name: KAYODE.name }
           : null;
-  const form: FormStart | null =
+  const blank = { error: null, noteError: null };
+  const form: PayersStart['form'] =
     name === 'add_payer'
-      ? { id: null, name: KAYODE.name, note: KAYODE.note, error: null }
+      ? { id: null, name: KAYODE.name, note: KAYODE.note, ...blank }
       : name === 'payer_duplicate'
-        ? { id: null, name: 'Aunt Funmi', note: '', error: nameProblem('Aunt Funmi', book.payers) }
+        ? { id: null, name: 'Aunt Funmi', note: '', ...blank, error: problem('Aunt Funmi') }
         : name === 'note_too_long'
           ? {
               id: null,
               name: 'Grandma Ada',
               note: LONG_NOTE,
-              error: null,
-              noteError: noteProblem(LONG_NOTE),
+              ...blank,
+              noteError: noteProblem(t, LONG_NOTE),
             }
           : name === 'payer_blank'
-            ? { id: null, name: '', note: '', error: nameProblem('', book.payers) }
+            ? { id: null, name: '', note: '', ...blank, error: problem('') }
             : name === 'payer_long_name'
-              ? { id: null, name: LONG_NAME, note: '', error: nameProblem(LONG_NAME, book.payers) }
+              ? { id: null, name: LONG_NAME, note: '', ...blank, error: problem(LONG_NAME) }
               : name === 'payer_edit'
-                ? { id: 'obi', name: RENAMED, note: 'Adaeze’s parents', error: null }
+                ? { id: 'obi', name: RENAMED, note: 'Adaeze’s parents', ...blank }
                 : null;
   const pane = name === 'link_all_revoked' ? 'bakare' : name === 'web_share' ? 'couple' : null;
+  const choosing: ChooseStart | null =
+    name === 'payers_stale'
+      ? { ticked: ['dj'], mode: 'one', stale: removedMeanwhile(KAYODE.name) }
+      : (CHOOSE[name] ?? null);
 
   return {
     book,
-    open: openFirst(
-      book.payers,
-      asked ?? pane ?? (sent != null || name === 'payer_not_priced' ? 'couple' : null),
-    ),
-    notice,
-    form,
-    send:
-      sent == null
-        ? null
-        : { payerId: openFirst(book.payers, asked ?? 'couple') ?? '', kind: sent },
-    choose: CHOOSE[name] ?? null,
-    payments: name === 'payer_paid_past' ? PAID_PAST : PAYMENTS,
-    paidShown: name !== 'payer_share_alone',
+    payments,
+    paidShown,
+    removed: name === 'removed' ? [{ payer: KAYODE, index: book.payers.length }] : [],
+    loading: name === 'payers_loading',
+    notLive: name === 'payers_not_live',
+    send: kind == null ? null : { payerId: openFirst(book.payers, asked ?? 'couple') ?? '', kind },
     shares: name === 'web_share',
+    start: {
+      open: openFirst(
+        book.payers,
+        asked ?? pane ?? (kind != null || name === 'payer_not_priced' ? 'couple' : null),
+      ),
+      notice,
+      form,
+      choosing,
+      live:
+        name === 'payers_live'
+          ? t('payers.liveDown', {
+              name: 'Mr and Mrs Obi',
+              amount: minorMoney(fromMinor(315000, CURRENCY), CURRENCY, locale),
+            })
+          : null,
+    },
   };
 }
 
