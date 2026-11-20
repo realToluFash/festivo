@@ -21,18 +21,21 @@ use App\Enum\MembershipStatus;
 use App\Enum\SeededRole;
 use App\Enum\VendorCategory;
 use App\Tests\ApiTestCase;
+use App\Tests\Double\Messaging\RecordingHub;
 use App\Tests\Traits\OnboardsAccounts;
 use App\Tests\Traits\PutsPeopleOnEvents;
 use DateTimeImmutable;
 use Lexik\Bundle\JWTAuthenticationBundle\Services\JWTTokenManagerInterface;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
+use Psl\Iter;
 use Psl\Json;
 use Psl\Str;
 use Psl\Type;
 use Psl\Vec;
 use stdClass;
 use Symfony\Component\Clock\Test\ClockSensitiveTrait;
+use Symfony\Component\Mercure\Update;
 use Symfony\Component\Uid\Uuid;
 
 final class PayersTest extends ApiTestCase
@@ -329,6 +332,166 @@ final class PayersTest extends ApiTestCase
         self::assertSame('0.00', $this->payerRows()[0]['paid']);
     }
 
+    #[Test]
+    public function aPaymentWhoseVendorCoversNoCostCountsInFullUnderNoPayerYet(): void
+    {
+        $photo = $this->addCost('Photographer', '2000');
+        $mum = $this->addPayer('Mum');
+        $this->choose([$photo], ['mode' => 'one', 'payerId' => $mum]);
+        $this->paid(null, 30000);
+
+        $read = $this->as($this->owner, 'GET', $this->payers());
+
+        self::assertSame('300.00', Type\shape(['paid' => Type\string()], true)->coerce($read['noPayer'])['paid']);
+        self::assertSame('0.00', $this->payerRows()[0]['paid']);
+    }
+
+    #[Test]
+    public function stillToComeIsNeverBelowNothing(): void
+    {
+        $photo = $this->addCost('Photographer', '1000');
+        $mum = $this->addPayer('Mum');
+        $this->choose([$photo], ['mode' => 'one', 'payerId' => $mum]);
+        $this->paid($photo, 120000);
+
+        self::assertSame('1200.00', $this->payerRows()[0]['paid']);
+        self::assertSame(['confirmed' => '0.00', 'potential' => '0.00'], $this->payerRows()[0]['stillToCome']);
+    }
+
+    #[Test]
+    public function stillToComeWithOnlyItsLowerEndPaidOffStaysARange(): void
+    {
+        $this->maybe('Bisi');
+        $photo = $this->addCost('Photographer', '1000');
+        $catering = $this->addCatering('48');
+        $mum = $this->addPayer('Mum');
+        $this->choose([$photo, $catering], ['mode' => 'one', 'payerId' => $mum]);
+        $this->paid($photo, 102000);
+
+        self::assertSame(['confirmed' => '1000.00', 'potential' => '1048.00'], $this->payerRows()[0]['share']);
+        self::assertSame(['confirmed' => '0.00', 'potential' => '28.00'], $this->payerRows()[0]['stillToCome']);
+    }
+
+    #[Test]
+    public function aCostNotPricedAddsNothingToAShareIsCountedAndComesLast(): void
+    {
+        $flowers = $this->addCost('Flowers', '0');
+        $band = $this->addCost('Band', '1500');
+        $mum = $this->addPayer('Mum');
+        $this->choose([$flowers, $band], ['mode' => 'one', 'payerId' => $mum]);
+
+        $mine = Type\shape([
+            'share' => Type\shape(['confirmed' => Type\string(), 'potential' => Type\string()]),
+            'notPriced' => Type\int(),
+            'covers' => Type\vec(Type\shape(['label' => Type\string(), 'notPriced' => Type\bool()], true)),
+        ], true)->coerce(Type\vec(Type\mixed())->coerce($this->as($this->owner, 'GET', $this->payers())['payers'] ?? null)[0] ?? null);
+
+        self::assertSame(['confirmed' => '1500.00', 'potential' => '1500.00'], $mine['share']);
+        self::assertSame(1, $mine['notPriced']);
+        self::assertSame([['Band', false], ['Flowers', true]], Vec\map($mine['covers'], static fn (array $cover): array => [$cover['label'], $cover['notPriced']]));
+    }
+
+    #[Test]
+    public function aRiseOnAFixedSplitGoesToWhoeverCoversTheRestWithNoFlag(): void
+    {
+        $line = $this->addCost('Cars', '900');
+        $funmi = $this->addPayer('Aunt Funmi');
+        $mum = $this->addPayer('Mum');
+        $this->choose([$line], ['mode' => 'fixed', 'amounts' => [['payerId' => $funmi, 'amount' => '400']], 'restId' => $mum], 'GBP');
+
+        $this->as($this->owner, 'PUT', '/api/events/' . $this->eventId . '/budget/lines/' . $line, ['label' => 'Cars', 'category' => 'transport', 'basis' => 'fixed', 'amount' => '1000', 'currency' => 'GBP']);
+        self::assertSame(200, $this->statusCode(), Json\encode($this->last()));
+
+        self::assertFalse($this->lineRows()[0]['flagged']);
+        self::assertSame(['400.00', '600.00'], Vec\map($this->payerRows(), static fn (array $row): string => $row['share']['confirmed']));
+    }
+
+    #[Test]
+    public function undoingACostRemovedOnTheBudgetBringsItBackWithItsSplit(): void
+    {
+        $photo = $this->addCost('Photographer', '2000');
+        $mum = $this->addPayer('Mum');
+        $this->choose([$photo], ['mode' => 'one', 'payerId' => $mum]);
+
+        $this->as($this->owner, 'DELETE', '/api/events/' . $this->eventId . '/budget/lines/' . $photo);
+        self::assertSame(204, $this->statusCode(), Json\encode($this->last()));
+        self::assertSame([], $this->lineRows());
+
+        $this->as($this->owner, 'DELETE', '/api/events/' . $this->eventId . '/budget/lines/' . $photo . '/removal');
+        self::assertSame(200, $this->statusCode(), Json\encode($this->last()));
+
+        self::assertSame(['mode' => 'one', 'payerId' => $mum], $this->lineRows()[0]['split']);
+        self::assertSame(['confirmed' => '2000.00', 'potential' => '2000.00'], $this->payerRows()[0]['share']);
+    }
+
+    /** @return iterable<string, array{string, string}> */
+    public static function foreignToTheSplit(): iterable
+    {
+        yield 'one payer from another event in the organisation' => ['one', 'sibling'];
+        yield 'one payer from another organisation' => ['one', 'stranger'];
+        yield 'a percentage for a payer from another event in the organisation' => ['percent', 'sibling'];
+        yield 'a percentage for a payer from another organisation' => ['percent', 'stranger'];
+        yield 'a cost from another event' => ['cost', 'sibling'];
+        yield 'a mode outside the three' => ['thirds', 'sibling'];
+    }
+
+    #[Test]
+    #[DataProvider('foreignToTheSplit')]
+    public function aSplitNamingSomethingOutsideTheEventIsRefusedAndNeverSaved(string $case, string $from): void
+    {
+        $dinner = $this->addCost('Dinner', '1000');
+        $mum = $this->addPayer('Mum');
+        [$theirPayer, $theirCost] = $this->elsewhere('stranger' === $from);
+
+        [$lineIds, $split, $path] = match ($case) {
+            'one' => [[$dinner], ['mode' => 'one', 'payerId' => $theirPayer], 'split.payerId'],
+            'percent' => [[$dinner], ['mode' => 'percent', 'shares' => [['payerId' => $mum, 'percent' => '50'], ['payerId' => $theirPayer, 'percent' => '50']]], 'split.shares.' . $theirPayer],
+            'cost' => [[$dinner, $theirCost], ['mode' => 'one', 'payerId' => $mum], 'lineIds'],
+            default => [[$dinner], ['mode' => $case, 'payerId' => $mum], 'split.mode'],
+        };
+        $this->choose($lineIds, $split);
+
+        self::assertSame(422, $this->statusCode(), Json\encode($this->last()));
+        self::assertNotNull($this->violation($path), Json\encode($this->last()));
+        self::assertSame([null], Vec\map($this->lineRows(), static fn (array $row): mixed => $row['split']));
+    }
+
+    #[Test]
+    public function everyWriteIsPublishedOnTheBudgetsTopic(): void
+    {
+        $hub = self::service(RecordingHub::class);
+        $topic = 'events/' . $this->eventId . '/budget';
+        $line = $this->addCost('Cars', '900');
+        $mum = '';
+        $on = static fn (): int => Iter\count(Vec\filter($hub->published, static fn (Update $update): bool => Iter\contains($update->getTopics(), $topic)));
+
+        foreach ([
+            'add a payer' => function () use (&$mum): void {
+                $mum = $this->addPayer('Mum');
+            },
+            'change a payer' => function () use (&$mum): void {
+                $this->as($this->owner, 'PUT', $this->payers($mum), ['name' => 'Mother']);
+            },
+            'choose who pays' => function () use (&$mum, $line): void {
+                $this->choose([$line], ['mode' => 'one', 'payerId' => $mum]);
+            },
+            'leave it with no payer' => function () use ($line): void {
+                $this->choose([$line], null);
+            },
+            'remove a payer' => function () use (&$mum): void {
+                $this->as($this->owner, 'DELETE', $this->payers($mum));
+            },
+            'put a payer back' => function () use (&$mum): void {
+                $this->as($this->owner, 'DELETE', $this->payers($mum) . '/removal');
+            },
+        ] as $write => $act) {
+            $before = $on();
+            $act();
+            self::assertLessThan(300, $this->statusCode(), $write . ' ' . Json\encode($this->last()));
+            self::assertSame($before + 1, $on(), $write);
+        }
+    }
+
     /** @return iterable<string, array{EventRole}> */
     public static function withoutTheBudget(): iterable
     {
@@ -372,15 +535,40 @@ final class PayersTest extends ApiTestCase
         self::assertSame(404, $this->statusCode());
     }
 
-    private function paid(string $lineId, int $amountMinor): void
+    /**
+     * A payer and a cost on a second event: in this organisation, or in another one.
+     *
+     * @return array{string, string}
+     */
+    private function elsewhere(bool $anotherOrganisation): array
     {
-        $line = self::em()->find(BudgetLine::class, Uuid::fromString($lineId)) ?? self::fail('no line');
+        [$owner, $organisation, $event] = [$this->owner, $this->organisation, $this->eventId];
+
+        if ($anotherOrganisation) {
+            $this->owner = $this->account('stranger@else.where', 'Stranger');
+            $this->organisation = self::service(OrganisationFounder::class)->found($this->owner, 'Elsewhere', 'GB', 'Europe/London');
+            self::em()->flush();
+        }
+
+        $this->eventId = $this->newEvent();
+        $found = [$this->addPayer('Mum'), $this->addCost('Dinner', '1000')];
+        [$this->owner, $this->organisation, $this->eventId] = [$owner, $organisation, $event];
+
+        return $found;
+    }
+
+    private function paid(?string $lineId, int $amountMinor): void
+    {
         $event = self::em()->find(Event::class, Uuid::fromString($this->eventId)) ?? self::fail('no event');
         $organisation = self::em()->find(Organisation::class, $this->organisation->getId()) ?? self::fail('no organisation');
         $owner = self::em()->find(User::class, $this->owner->getId()) ?? self::fail('no owner');
         $vendor = new Vendor($organisation, 'Lens & Light', VendorCategory::Photography);
         $engagement = new VendorEngagement($event, $vendor);
-        $line->agreeIn($engagement);
+
+        if (null !== $lineId) {
+            (self::em()->find(BudgetLine::class, Uuid::fromString($lineId)) ?? self::fail('no line'))->agreeIn($engagement);
+        }
+
         $payment = new ScheduledPayment($engagement, 'Deposit', $amountMinor, new DateTimeImmutable('2027-03-01'));
         $payment->markPaid($amountMinor, new DateTimeImmutable('2027-03-01'), null, new DateTimeImmutable(), $owner);
         self::em()->persist($vendor);
@@ -414,6 +602,28 @@ final class PayersTest extends ApiTestCase
         self::assertSame(201, $this->statusCode(), Json\encode($body));
 
         return Type\shape(['id' => Type\string()], true)->coerce($body['line'] ?? null)['id'];
+    }
+
+    private function addCatering(string $rate): string
+    {
+        $body = $this->as($this->owner, 'POST', '/api/events/' . $this->eventId . '/budget/lines', ['label' => 'Catering', 'category' => 'catering', 'basis' => 'per_head', 'rate' => $rate, 'currency' => 'GBP']);
+        self::assertSame(201, $this->statusCode(), Json\encode($body));
+
+        return Type\shape(['id' => Type\string()], true)->coerce($body['line'] ?? null)['id'];
+    }
+
+    /** A guest on a live event who replied Maybe: counted in the upper figure only. */
+    private function maybe(string $name): void
+    {
+        self::em()->getConnection()->executeStatement('UPDATE events SET hosts = :hosts WHERE id = :id', ['hosts' => '["Ada and Obi"]', 'id' => $this->eventId]);
+        $this->as($this->owner, 'POST', '/api/events/' . $this->eventId . '/make-live');
+        $body = $this->as($this->owner, 'POST', '/api/events/' . $this->eventId . '/guests', ['fullName' => $name, 'companions' => []]);
+        self::assertSame(201, $this->statusCode(), Json\encode($body));
+        $guest = Type\shape(['id' => Type\string()], true)->coerce($body['guest'] ?? null)['id'];
+        $link = $this->as($this->owner, 'GET', '/api/events/' . $this->eventId . '/guests/' . $guest . '/link');
+        $token = Str\after(Type\string()->coerce($link['url'] ?? null), '/i/') ?? self::fail('no token');
+        $this->client->request('POST', '/api/guest-links/reply', server: ['CONTENT_TYPE' => 'application/json', 'HTTP_ACCEPT_LANGUAGE' => 'en'], content: Json\encode(['token' => $token, 'answer' => 'maybe']));
+        self::assertSame(200, $this->statusCode(), Json\encode($this->last()));
     }
 
     /** @return list<array{name: string, note: ?string, share: array{confirmed: string, potential: string}, paid: ?string, stillToCome: ?array{confirmed: string, potential: string}, ...}> */
