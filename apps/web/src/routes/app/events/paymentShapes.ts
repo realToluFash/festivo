@@ -1,4 +1,4 @@
-import { numberFormat } from '@soirely/domain';
+import { type MoneyLanguage, numberFormat, readAmount } from '@soirely/domain';
 import type { TFunction } from 'i18next';
 
 import { amountOfMinor, minorMoney, minorOf } from './budgetArea.ts';
@@ -69,10 +69,13 @@ export function shapingOf(t: TFunction, shape: Shape): Shaping {
   };
 }
 
-export function typedShare(typed: string): number | null {
-  const plain = typed.trim();
-  if (!/^\d{1,3}(\.\d{1,2})?$/.test(plain)) return null;
-  const share = Number(plain);
+/** Read as an amount in a two-place currency, so a percentage takes the reader's marks (sc-3901): 12,5 in fr, 12.5 in en. */
+const SHARE_PLACES = 'EUR';
+
+export function typedShare(typed: string, language: MoneyLanguage): number | null {
+  const read = readAmount(typed, language, SHARE_PLACES);
+  if (read == null) return null;
+  const share = Number(read);
 
   return share > 0 && share <= SHAPE_LIMITS.share ? share : null;
 }
@@ -91,6 +94,7 @@ export interface ShapePricing {
   currency: string;
   days: EventDays;
   locale: string;
+  language: MoneyLanguage;
 }
 
 function rowProblems(
@@ -99,13 +103,14 @@ function rowProblems(
   draft: ShapeDraft,
   amountMinor: number | undefined,
   smallest: string,
+  language: MoneyLanguage,
 ): ShapeProblems {
   const problems: ShapeProblems = {};
 
   if (draft.what.trim() === '') problems.what = t('quotes.enterWhatFor');
   else if (lengthOf(draft.what) > QUOTE_LIMITS.description)
     problems.what = t('quotes.whatForTooLong', { max: QUOTE_LIMITS.description });
-  if (typedShare(draft.share) == null) problems.share = t('quotes.enterShare');
+  if (typedShare(draft.share, language) == null) problems.share = t('quotes.enterShare');
   else if (amountMinor != null && amountMinor <= 0)
     problems.share = t('quotes.shareTooSmall', { smallest });
   if (one.from !== 'quoted' && typedShapeDays(draft.days) == null)
@@ -119,7 +124,12 @@ export function shapingProblems(
   shaping: Shaping,
   pricing: ShapePricing,
 ): ShapeProblems[] {
-  const rows = shapeRows(typedTerms(shaping), pricing.quote, pricing.currency, pricing.days);
+  const rows = shapeRows(
+    typedTerms(shaping, pricing.language),
+    pricing.quote,
+    pricing.currency,
+    pricing.days,
+  );
   const smallest = minorMoney(amountOfMinor(1, pricing.currency), pricing.currency, pricing.locale);
 
   return shaping.terms.map((one, index) =>
@@ -129,6 +139,7 @@ export function shapingProblems(
       shaping.typed[index] ?? { what: '', share: '', days: '' },
       rows[index]?.amountMinor,
       smallest,
+      pricing.language,
     ),
   );
 }
@@ -142,21 +153,21 @@ export interface TypedTerm extends Term {
   what: string;
 }
 
-export function typedTerms(shaping: Shaping): TypedTerm[] {
+export function typedTerms(shaping: Shaping, language: MoneyLanguage): TypedTerm[] {
   return shaping.terms.map((one, index) => {
     const draft = shaping.typed[index];
 
     return {
       ...one,
       what: draft?.what.trim() ?? '',
-      share: typedShare(draft?.share ?? '') ?? 0,
+      share: typedShare(draft?.share ?? '', language) ?? 0,
       days: typedShapeDays(draft?.days ?? '') ?? one.days,
     };
   });
 }
 
-export function sharesTyped(shaping: Shaping): boolean {
-  return shaping.typed.every((one) => typedShare(one.share) != null);
+export function sharesTyped(shaping: Shaping, language: MoneyLanguage): boolean {
+  return shaping.typed.every((one) => typedShare(one.share, language) != null);
 }
 
 export function retyped(

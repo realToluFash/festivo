@@ -629,10 +629,20 @@ export function PaymentDialog({
   const first = useRef<HTMLInputElement>(null);
   const picked = useRef<HTMLInputElement>(null);
   const shaped = shaping != null && shaping.shape !== 'rows';
-  const pricing: ShapePricing = { quote: quote.quote, currency, days: eventDays(event), locale };
-  const rows = shaped ? shapeRows(typedTerms(shaping), pricing.quote, currency, pricing.days) : [];
+  const pricing: ShapePricing = {
+    quote: quote.quote,
+    currency,
+    days: eventDays(event),
+    locale,
+    language,
+  };
+  const rows = shaped
+    ? shapeRows(typedTerms(shaping, language), pricing.quote, currency, pricing.days)
+    : [];
   const short =
-    shaped && sharesTyped(shaping) ? sharesLine(t, rows, quote.quote, currency, locale) : null;
+    shaped && sharesTyped(shaping, language)
+      ? sharesLine(t, rows, quote.quote, currency, locale)
+      : null;
 
   const set = (change: Partial<PaymentDraft>) => {
     const next = { ...draft, ...change };

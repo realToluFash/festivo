@@ -21,10 +21,16 @@ import {
 const t = i18next.getFixedT('en');
 const QUOTE = { amount: '9000.00', quotedOn: '2027-02-20' };
 const DAYS = { starts: '2027-06-12', ends: '2027-06-13' };
-const PRICING = { quote: QUOTE, currency: 'GBP', days: DAYS, locale: 'en-GB' };
+const PRICING = {
+  quote: QUOTE,
+  currency: 'GBP',
+  days: DAYS,
+  locale: 'en-GB',
+  language: 'en' as const,
+};
 
 const rowsOf = (shape: 'deposit' | 'instalments' | 'before' | 'after', quote = QUOTE) =>
-  shapeRows(typedTerms(shapingOf(t, shape)), quote, 'GBP', DAYS);
+  shapeRows(typedTerms(shapingOf(t, shape), 'en'), quote, 'GBP', DAYS);
 
 describe('each shape fills its rows from the quote and the event', () => {
   it('Deposit and balance: half on the date quoted, half 14 days before the start', () => {
@@ -69,7 +75,7 @@ describe('rounding and dates the shape cannot use', () => {
 
   it('rounds to whole yen, where the currency has no minor unit', () => {
     const rows = shapeRows(
-      typedTerms(shapingOf(t, 'instalments')),
+      typedTerms(shapingOf(t, 'instalments'), 'en'),
       { amount: '1001', quotedOn: '2027-02-20' },
       'JPY',
       DAYS,
@@ -80,7 +86,7 @@ describe('rounding and dates the shape cannot use', () => {
 
   it('adjusts no row when the percentages do not come to 100, and says how short it is', () => {
     const shaping = retyped(t, shapingOf(t, 'deposit'), 1, { share: '40' }, PRICING);
-    const rows = shapeRows(typedTerms(shaping), QUOTE, 'GBP', DAYS);
+    const rows = shapeRows(typedTerms(shaping, 'en'), QUOTE, 'GBP', DAYS);
 
     expect(rows.map((row) => row.amountMinor)).toEqual([450000, 360000]);
     expect(sharesLine(t, rows, QUOTE, 'GBP', 'en-GB')).toBe(
@@ -102,17 +108,34 @@ describe('rounding and dates the shape cannot use', () => {
 
 describe('the fields of a shape’s rows', () => {
   it('takes above 0 and up to 100 with up to two decimals, and 0 to 730 whole days', () => {
-    expect(['0', '0.00', '100', '33.33', '30.555', '101', '-1', 'x'].map(typedShare)).toEqual([
-      null,
-      null,
-      100,
-      33.33,
-      null,
-      null,
-      null,
-      null,
-    ]);
+    expect(
+      ['0', '0.00', '100', '33.33', '30.555', '101', '-1', 'x'].map((typed) =>
+        typedShare(typed, 'en'),
+      ),
+    ).toEqual([null, null, 100, 33.33, null, null, null, null]);
     expect(['0', '730', '731', '1.5', ''].map(typedShapeDays)).toEqual([0, 730, null, null, null]);
+  });
+
+  it('reads the percentage with the language’s decimal mark: 12,5 is 12.5 in fr and refused in en', () => {
+    expect(typedShare('12,5', 'fr')).toBe(12.5);
+    expect(typedShare('33,33', 'pt')).toBe(33.33);
+    expect(typedShare('12,5', 'en')).toBeNull();
+    expect(typedShare('12.5', 'fr')).toBeNull();
+    expect(typedShare('30,555', 'es')).toBeNull();
+  });
+
+  it('takes a French schedule typed with commas, with no problem at any row', () => {
+    const shaping = shapingOf(t, 'instalments');
+    const typed = shaping.typed.map((one, index) => ({
+      ...one,
+      share: ['33,33', '33,33', '33,34'][index] ?? '',
+    }));
+    const french = { ...PRICING, locale: 'fr-FR', language: 'fr' as const };
+
+    expect(anyShapeProblem(shapingProblems(t, { ...shaping, typed }, french))).toBe(false);
+    expect(typedTerms({ ...shaping, typed }, 'fr').map((one) => one.share)).toEqual([
+      33.33, 33.33, 33.34,
+    ]);
   });
 
   it('refuses a blank description, one over 100 characters, a bad percentage and bad days, each at its field', () => {
