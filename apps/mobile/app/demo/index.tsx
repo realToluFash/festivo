@@ -11,6 +11,7 @@ import { PILL_FIT_BOARDS } from '../../src/demo/pillFit/PillFitBoards.ts';
 import { TABLET_TABS_BOARDS } from '../../src/demo/tabletTabs/TabletTabsBoards.ts';
 import { TEXT_SIZE_BOARDS } from '../../src/demo/textSize/TextSizeBoards.ts';
 import { DATA_BOARDS } from '../../src/demo/settings/DataBoards.ts';
+import { SSO_BOARDS } from '../../src/demo/settings/SingleSignOnBoards.ts';
 import { CONSULTATION_BOARDS } from '../../src/demo/enquiries/ConsultationsModel.ts';
 import {
   ENQUIRIES_BOARDS,
@@ -24,6 +25,7 @@ import { FOCUSED_HEADER_BOARDS } from '../../src/demo/focusedHeader/FocusedHeade
 import { SIGN_OUT_SIZE_BOARDS } from '../../src/demo/signOutSize/SignOutSizeBoards.ts';
 import { SIDEBAR_SIZE_BOARDS } from '../../src/demo/sidebarSize/SidebarSizeBoards.ts';
 import { ROWS_SIZE_BOARDS } from '../../src/demo/rowsSize/RowsSizeBoards.ts';
+import { FILTER_SIZE_BOARDS } from '../../src/demo/filterSize/FilterSizeBoards.ts';
 import { SWITCHER_BOARDS } from '../../src/demo/OrgSwitcherBoards.ts';
 import { Heading } from '../../src/steps/Lines.tsx';
 import { SAMPLE } from '../../src/demo/samples.ts';
@@ -137,6 +139,14 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
   {
     page: 'Settings · the rows’ words whole at the largest text sizes (sc-69816)',
     boards: ROWS_SIZE_BOARDS.map(({ title, what, href }) => ({ title, what, href: href as Href })),
+  },
+  {
+    page: 'Events · the Filter menu’s values whole at the largest text sizes (sc-73933)',
+    boards: FILTER_SIZE_BOARDS.map(({ title, what, href }) => ({
+      title,
+      what,
+      href: href as Href,
+    })),
   },
   {
     page: 'Text size · the iPad sidebar on its side at the largest sizes (sc-68441)',
@@ -1120,6 +1130,10 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
         href: '/demo/settings/sign-in-rules?state=failed',
       },
     ],
+  },
+  {
+    page: 'Sign-in rules · Single sign-on (sc-610) · phone, tablet portrait and landscape',
+    boards: SSO_BOARDS.map(({ title, what, href }) => ({ title, what, href: href as Href })),
   },
   {
     page: 'Data and control · B · One place',

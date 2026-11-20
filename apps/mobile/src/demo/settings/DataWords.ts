@@ -3,7 +3,6 @@ const ORG = 'Ire Events';
 
 export const DATA_WORDS = {
   title: 'Data and control',
-  settingsLine: 'Email domains and the audit log',
   control: 'Control',
   onTheWeb:
     'Export all data, deleting guest data after an event and a guest’s request are on the web.',

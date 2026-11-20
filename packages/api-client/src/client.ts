@@ -136,6 +136,18 @@ import {
 } from './schedule.ts';
 import { type RoomScreen, type ScreenLink, asRoomScreen, asScreenLinks } from './screens.ts';
 import { type BudgetLineTyped, type EventBudget, asEventBudget } from './budget.ts';
+import {
+  type EventQuote,
+  type EventQuotes,
+  type OfferedVendor,
+  type PaymentTyped,
+  type QuoteTermsTyped,
+  type QuoteTyped,
+  type QuoteWordingTyped,
+  asEventQuote,
+  asEventQuotes,
+  asOfferedVendors,
+} from './quotes.ts';
 
 /** A table call's answer: the plan whole, and the table it added or changed. */
 export interface SeatingWithTable {
@@ -3696,7 +3708,7 @@ export class ApiClient {
     await this.delete<unknown>(`${this.budgetLinePath(eventId, lineId)}/removal`);
   }
 
-  /** A hub token for this event's budget lines and its headcount, which moves the range. */
+  /** A hub token for this event's budget lines, its quotes and schedules, and its headcount, which moves the range. */
   async budgetSubscription(eventId: string): Promise<RealtimeSubscription> {
     const body = await this.post<{ token?: unknown; expiresAt?: unknown }>(
       `${this.budgetPath(eventId)}/subscriptions`,
@@ -3706,6 +3718,66 @@ export class ApiClient {
       token: typeof body.token === 'string' ? body.token : '',
       expiresAt: typeof body.expiresAt === 'string' ? body.expiresAt : '',
     };
+  }
+
+  /** Every vendor quoted on the event with its quote, earlier quotes, lines and schedule, and everything due (sc-87); 403 without budget.read. */
+  async quotes(eventId: string): Promise<EventQuotes> {
+    return asEventQuotes(await this.get<unknown>(`${this.budgetPath(eventId)}/quotes`));
+  }
+
+  /** The quote form's Vendor field: the organisation's vendors not archived, A to Z, each marked when already quoted on the event; 403 without budget.manage. */
+  async quoteVendors(eventId: string): Promise<OfferedVendor[]> {
+    return asOfferedVendors(await this.get<unknown>(`${this.budgetPath(eventId)}/quote-vendors`));
+  }
+
+  /** Refused 409 `vendor_already_quoted` for a vendor quoted on the event, and 403 `plan_required` without vendors on the plan. */
+  async addQuote(eventId: string, typed: QuoteTyped): Promise<EventQuote> {
+    return this.readQuote(await this.post<unknown>(`${this.budgetPath(eventId)}/quotes`, typed));
+  }
+
+  /** A new amount or date quoted, keeping the current quote as an earlier one; 409 `quote_unchanged` when both are as they were. */
+  async reviseQuote(eventId: string, quoteId: string, typed: QuoteTermsTyped): Promise<EventQuote> {
+    return this.readQuote(
+      await this.post<unknown>(`${this.quotePath(eventId, quoteId)}/revisions`, typed),
+    );
+  }
+
+  /** What it covers, its quote number and its budget lines, in place. */
+  async correctQuote(
+    eventId: string,
+    quoteId: string,
+    typed: QuoteWordingTyped,
+  ): Promise<EventQuote> {
+    return this.readQuote(await this.put<unknown>(this.quotePath(eventId, quoteId), typed));
+  }
+
+  async addPayment(eventId: string, quoteId: string, typed: PaymentTyped): Promise<EventQuote> {
+    return this.readQuote(
+      await this.post<unknown>(`${this.quotePath(eventId, quoteId)}/payments`, typed),
+    );
+  }
+
+  async amendPayment(eventId: string, paymentId: string, typed: PaymentTyped): Promise<EventQuote> {
+    return this.readQuote(
+      await this.put<unknown>(
+        `${this.budgetPath(eventId)}/payments/${encodeURIComponent(paymentId)}`,
+        typed,
+      ),
+    );
+  }
+
+  async removePayment(eventId: string, paymentId: string): Promise<void> {
+    await this.delete<unknown>(
+      `${this.budgetPath(eventId)}/payments/${encodeURIComponent(paymentId)}`,
+    );
+  }
+
+  private quotePath(eventId: string, quoteId: string): string {
+    return `${this.budgetPath(eventId)}/quotes/${encodeURIComponent(quoteId)}`;
+  }
+
+  private readQuote(raw: unknown): EventQuote {
+    return asEventQuote((raw as Record<string, unknown> | null)?.quote);
   }
 
   private budgetPath(eventId: string): string {

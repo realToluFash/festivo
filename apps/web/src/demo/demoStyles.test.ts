@@ -75,6 +75,7 @@ const SHARED: readonly Family[] = [
       'seating.css',
       'share.css',
       'shareTables.css',
+      'singleSignOn.css',
       'stations.css',
       'thankYou.css',
       WIDE,
@@ -204,6 +205,11 @@ const SHARED: readonly Family[] = [
     prefix: 'ro',
     sheets: [NARROW, 'schedule.css', WIDE],
     part: 'the Schedule (Schedule) at both desk widths',
+  },
+  {
+    prefix: 'rs',
+    sheets: ['roster.css', WIDE],
+    part: 'the Roster (Roster) from 961 to 1279 px',
   },
   {
     prefix: 'sn',

@@ -7,7 +7,15 @@ import { describe, expect, it } from 'vitest';
 import en from '../i18n/locales/en.json';
 import { freshWalk } from '../kit/createWalk.ts';
 import { createStateOf, SAMPLE_DEVICE, walkFor } from './createOrg/CreateWalk.ts';
-import { sessionFor, switcherStateOf, waitingOf } from './OrgSwitcherModel.ts';
+import {
+  currentPlace,
+  expand,
+  openerLabel,
+  sessionFor,
+  settled,
+  switcherStateOf,
+  waitingOf,
+} from './OrgSwitcherModel.ts';
 import { MANAGED_WORDS } from './settings/DataWords.ts';
 import { membersStart, membersStateOf } from './settings/MembersSample.ts';
 import { organisationStart, organisationStateOf } from './settings/OrganisationModel.ts';
@@ -56,6 +64,30 @@ describe('a managed account, wherever a membership path ends (sc-563, enterprise
       /managed=\{session\.managed === opened\.invite\.id \? managed : undefined\}/u,
     );
     expect(read('src', 'demo', 'OrgSwitcher.tsx')).toMatch(/managed=\{\s*<ManagedBanner/u);
+  });
+
+  it('counts none of two invitations a managed account cannot accept, from the start (sc-73668)', () => {
+    const CELEBRACIONES = 'org-celebraciones-alameda';
+    const BLUEBIRD = 'org-bluebird-gatherings';
+    const session = sessionFor('managed-listed');
+
+    expect(session.invitations.map((invite) => invite.id)).toEqual([CELEBRACIONES, BLUEBIRD]);
+    expect(waitingOf(session)).toBe(0);
+    expect(openerLabel(currentPlace(session), waitingOf(session))).toBe(
+      'Organisation: Ire Events, your role Owner. Switch organisation',
+    );
+    expect(session.expanded).toBeNull();
+
+    for (const id of [CELEBRACIONES, BLUEBIRD]) {
+      const opened = expand(session, id);
+      expect(opened.managed).toBe(id);
+      expect(expand(opened, id).managed).toBeUndefined();
+    }
+
+    const again = settled(expand(session, BLUEBIRD));
+    expect(again.invitations.map((invite) => invite.id)).toEqual([CELEBRACIONES, BLUEBIRD]);
+    expect(waitingOf(again)).toBe(0);
+    expect(expand(again, CELEBRACIONES).managed).toBe(CELEBRACIONES);
   });
 
   it('refuses Ask to join on the request link', () => {

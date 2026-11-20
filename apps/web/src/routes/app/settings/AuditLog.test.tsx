@@ -397,6 +397,11 @@ describe('Data and control › Audit log (sc-611)', () => {
     await waitFor(() => expect(reads(sent)).toHaveLength(2));
     fireEvent.click(screen.getByRole('button', { name: 'Export these entries' }));
     const dialog = await screen.findByRole('dialog', { name: 'Export these entries' });
+    expect(
+      within(dialog).getByText(
+        'Up to 10,000 entries download at once. More are prepared, and we email you a link.',
+      ),
+    ).toBeDefined();
     fireEvent.click(within(dialog).getByRole('button', { name: 'Export' }));
 
     expect(await screen.findByText('Downloading the audit log as CSV.')).toBeDefined();

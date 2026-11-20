@@ -7,7 +7,6 @@ namespace App\Domain\Organisation\AuditLog;
 use App\Domain\User\Mail\UserMailer;
 use App\Entity\AuditExport;
 use App\Enum\AccountMail;
-use DateInterval;
 use Psl\Str;
 
 /** `audit_export_ready`: only the person who exported hears, with a link that works for 24 hours and only while they are signed in (sc-611). */
@@ -23,9 +22,9 @@ final readonly class AuditExportMailer
     {
         $user = $export->getAskedBy();
         $address = $user->getPrimaryEmailAddress()?->getAddress();
-        $readyAt = $export->getReadyAt();
+        $expiresAt = $export->expiresAt();
 
-        if (null === $address || null === $readyAt) {
+        if (null === $address || null === $expiresAt) {
             return;
         }
 
@@ -37,7 +36,7 @@ final readonly class AuditExportMailer
             $this->userMailer->line('auditExportReady.body', $locale, [
                 ...$named,
                 '{when}' => $this->userMailer->deadline($export->getAskedAt(), $user, $locale),
-                '{deadline}' => $this->userMailer->deadline($readyAt->add(new DateInterval(AuditExport::LINK_LIFETIME)), $user, $locale),
+                '{deadline}' => $this->userMailer->deadline($expiresAt, $user, $locale),
             ]),
             $this->userMailer->line('auditExportReady.download', $locale, ['{link}' => $link]),
             '--',

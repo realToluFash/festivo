@@ -110,6 +110,15 @@ describe('who looks, and where each page is', () => {
     expect(existsSync(join('app', 'demo', 'settings', '[section].tsx'))).toBe(true);
   });
 
+  it('names its Settings row in the app’s words, so each locale reads as the app does', () => {
+    const home = readFileSync(join('src', 'demo', 'settings', 'SettingsHome.tsx'), 'utf8');
+    const words = readFileSync(join('src', 'demo', 'settings', 'DataWords.ts'), 'utf8');
+
+    expect(home).toContain("title: t('settings.dataAndControl')");
+    expect(home).toContain("line: t('settings.dataAndControlLine')");
+    expect(words).not.toContain('settingsLine');
+  });
+
   it('links every state from the demo’s home', () => {
     const hrefs = DATA_BOARDS.map(({ href }) => href);
     for (const state of HUB_STATES.filter((one) => one !== 'hub'))
@@ -209,7 +218,11 @@ describe('the hub in the app: Control only, its card the soonest instant that as
       step: null,
     });
     expect(hubRows(hubStart('downgraded'), 'downgraded')).toMatchObject([
-      { line: 'ire.events kept as it was', locked: true, opens: 'ed_downgraded' },
+      {
+        line: 'ire.events kept as it was · ireevents.com kept as it was',
+        locked: true,
+        opens: 'ed_downgraded',
+      },
       { locked: true, opens: 'locked' },
     ]);
   });
@@ -392,6 +405,13 @@ describe('Email domains: each state’s card and rows (sc-560, sc-563)', () => {
           control: null,
           on: false,
         },
+      },
+      {
+        name: 'ireevents.com',
+        tag: { kind: 'kept', word: 'Kept' },
+        line: 'Not proved',
+        action: null,
+        only: null,
       },
     ]);
   });

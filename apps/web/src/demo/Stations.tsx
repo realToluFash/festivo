@@ -869,7 +869,18 @@ function PeoplePanel({
 }
 
 /** The Staff page's tabs: Roster and Stations open each other; the rest are their own stories. */
-export function StaffTabs({ on, eventId, tell }: { on: string; eventId: string; tell: Tell }) {
+export function StaffTabs({
+  on,
+  eventId,
+  tell,
+  words = SW.tabs,
+}: {
+  on: string;
+  eventId: string;
+  tell: Tell;
+  /** Each tab's shown name, in SW.tabs' order: the Roster's French (sc-73291). */
+  words?: readonly string[];
+}) {
   const pages: Record<string, string> = {
     Roster: `/demo/events/${eventId}/staff/roster`,
     'Jobs and shifts': `/demo/events/${eventId}/staff/jobs`,
@@ -878,18 +889,19 @@ export function StaffTabs({ on, eventId, tell }: { on: string; eventId: string; 
 
   return (
     <nav className="sn-tabs" aria-label={SW.title}>
-      {SW.tabs.map((tab) => {
+      {SW.tabs.map((tab, at) => {
         const to = pages[tab];
+        const shown = words[at] ?? tab;
         if (tab === on)
           return (
             <span key={tab} className="sn-tab" aria-current="page">
-              {tab}
+              {shown}
             </span>
           );
         if (to != null)
           return (
             <Link key={tab} className="sn-tab" to={to}>
-              {tab}
+              {shown}
             </Link>
           );
 
@@ -898,9 +910,9 @@ export function StaffTabs({ on, eventId, tell }: { on: string; eventId: string; 
             key={tab}
             type="button"
             className="sn-tab"
-            onClick={() => tell(`${tab} has its own design (sc-101).`)}
+            onClick={() => tell(`${shown} has its own design (sc-101).`)}
           >
-            {tab}
+            {shown}
           </button>
         );
       })}
@@ -911,10 +923,12 @@ export function StaffTabs({ on, eventId, tell }: { on: string; eventId: string; 
 export function PanelTop({
   title,
   eyebrow,
+  close = SW.close,
   onClose,
 }: {
   title: string;
   eyebrow?: string;
+  close?: string;
   onClose: () => void;
 }) {
   return (
@@ -925,7 +939,7 @@ export function PanelTop({
           {title}
         </h2>
       </div>
-      <button type="button" className="ev-round mn-close" aria-label={SW.close} onClick={onClose}>
+      <button type="button" className="ev-round mn-close" aria-label={close} onClick={onClose}>
         <Glyph name="clear" size={16} weight={2.4} />
       </button>
     </div>
@@ -934,10 +948,12 @@ export function PanelTop({
 
 export function PanelFoot({
   cta,
+  cancel = SW.cancel,
   onSave,
   onCancel,
 }: {
   cta: string;
+  cancel?: string;
   onSave: () => void;
   onCancel: () => void;
 }) {
@@ -945,7 +961,7 @@ export function PanelFoot({
     <div className="mn-panel-foot">
       <div className="mn-panel-acts">
         <button type="button" className="desk-text" onClick={onCancel}>
-          {SW.cancel}
+          {cancel}
         </button>
         <Pill label={cta} primary onClick={onSave} />
       </div>

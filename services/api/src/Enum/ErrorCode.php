@@ -36,6 +36,9 @@ enum ErrorCode: string
     case EventHostRequired = 'event_host_required';
     case EventCallOffFirst = 'event_call_off_first';
     case BudgetLineCurrencyChanged = 'budget_line_currency_changed';
+    case VendorAlreadyQuoted = 'vendor_already_quoted';
+    case QuoteUnchanged = 'quote_unchanged';
+    case VendorOwed = 'vendor_owed';
     case PlanLimit = 'plan_limit';
     case PlanRequired = 'plan_required';
     case SeatingPlanExists = 'seating_plan_exists';
@@ -180,6 +183,7 @@ enum ErrorCode: string
             self::PreconditionFailed => 412,
             self::PreconditionRequired => 428,
             self::EventCurrencyInUse, self::EventStateInvalid, self::EventConcluded, self::EventPaused, self::EventHostRequired, self::EventCallOffFirst => 409,
+            self::VendorAlreadyQuoted, self::QuoteUnchanged, self::VendorOwed => 409,
             self::PlanLimit, self::PlanRequired => 403,
             self::SeatingPlanExists, self::SeatingSectionLimit, self::SeatingItemsOutside, self::SeatingTableFull, self::SeatingTableShort, self::SeatingSeatTaken, self::SeatingUndoStale, self::SeatingGuestsSeated, self::SeatingGuestNotWaiting, self::ScheduleItemLimit, self::ItemStarted, self::ItemNotStarted, self::ItemFinished, self::TrackBusy, self::GuestAlreadyListed, self::StaffNumberShared, self::StaffJobStaffed, self::StaffShiftFull, self::StaffWorksAs, self::StaffShiftOverlap, self::StaffOnShifts, self::RepliesClosed, self::RepliesOpen, self::GuestReplied, self::ReplyIsTheirs, self::GuestNotMarkedByHand, self::DishNameShared, self::DishInUse, self::MenuCourseLimit, self::MenuCoursePicked, self::MenuDishPicked, self::MenuDishOnCourse, self::MenuSameOneDish, self::VariantLimit, self::VariantPicked, self::VariantLastEveryone, self::ChoiceLimit, self::ChoiceAnswered, self::ChoiceOptionPicked => 409,
             self::Unauthenticated, self::InvalidCredentials, self::InvalidRefreshToken, self::OAuthTokenInvalid, self::TwoFactorChallengeInvalid, self::SessionTimedOut => 401,

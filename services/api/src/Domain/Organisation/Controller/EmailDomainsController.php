@@ -128,6 +128,7 @@ final readonly class EmailDomainsController
                 ...$this->instant('provedAt', 'proved', $domain->getProvedAt(), $user),
                 ...$this->instant('checksEndAt', 'checksEnd', $domain->checksEndAt(), $user),
                 ...$this->instant('putBackByAt', 'putBackBy', $domain->putBackBy(), $user),
+                ...$this->instant('failedAt', 'failed', $domain->getFailedAt(), $user),
                 'onlyOurs' => OnlyOurOrganisation::stateOf($domain, $now),
                 ...$this->instant('onlyOursFromAt', 'onlyOursFrom', $domain->getOnlyOursFrom(), $user),
                 // What switching it on now would say it starts, for the Owner's confirm.

@@ -1,0 +1,15 @@
+# sc-611: Export these entries open, on a tablet.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/settings/data-and-control/audit-log
+- extendedWaitUntil:
+    visible:
+      id: audit.card
+    timeout: 40000
+- waitForAnimationToEnd:
+    timeout: 8000
+- tapOn:
+    id: audit.step
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: audit-export-product

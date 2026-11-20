@@ -2,7 +2,7 @@ import { DemoBell } from './DemoBell.tsx';
 import { DemoOffline } from './DemoOffline.tsx';
 import { formattingLocale } from '@soirely/domain';
 import { type ReactNode, useEffect, useMemo, useRef, useState } from 'react';
-import { useNavigate } from 'react-router';
+import { useNavigate, useSearchParams } from 'react-router';
 import { useLater } from '../useLater.ts';
 
 import { Glyph } from '../components/Glyph.tsx';
@@ -10,6 +10,7 @@ import { RuleMark, RulesBones } from '../components/SignInRulesParts.tsx';
 import type { Load } from './members.ts';
 import { type HeldStep, heldStepPath } from './security.ts';
 import type { Viewer } from './settings.ts';
+import { SsoRuleRow } from './SingleSignOnParts.tsx';
 import {
   Ask,
   Card,
@@ -74,9 +75,17 @@ export function SignInRules({
   tell: Tell;
 }) {
   const navigate = useNavigate();
+  const [params] = useSearchParams();
   const locale = useMemo(() => formattingLocale('en', navigator.language), []);
   const [now] = useState(() => wallClock(new Date()));
-  const [start] = useState(() => signInRulesStart(state, viewer.name, now));
+  const [start] = useState(() =>
+    signInRulesStart(
+      state,
+      viewer.name,
+      now,
+      params.get('plan') === 'free' ? 'free' : 'enterprise',
+    ),
+  );
   const [load, setLoad] = useState<Load | 'retrying'>(start.load);
   const [page, setPage] = useState(start.page);
   const [edit, setEdit] = useState<Edit | null>(start.edit);
@@ -159,6 +168,10 @@ export function SignInRules({
         {standFootLine != null && <p className="desk-foot">{standFootLine}</p>}
       </section>
       <section className="desk-block">
+        <Head title="Single sign-on" />
+        <SsoRuleRow standing={page.sso} viewer={viewer} />
+      </section>
+      <section className="desk-block">
         <Head title="What changed" />
         <Changes changes={changeRows(page.changes, page.seen, locale, thisYear)} />
         {changedFootLine != null && <p className="desk-foot">{changedFootLine}</p>}
@@ -194,7 +207,7 @@ function RuleWords({ rule }: { rule: RuleRow }) {
       <span className="desk-unseen">{MARK_WORD[rule.mark]} </span>
       <RowWords
         title={rule.title}
-        lines={rule.more == null ? [rule.line] : [rule.line, rule.more]}
+        lines={[rule.line, rule.more, rule.exempt].filter((line) => line != null)}
       />
     </>
   );

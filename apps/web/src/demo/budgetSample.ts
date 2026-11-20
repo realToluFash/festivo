@@ -139,8 +139,8 @@ export const MARGIN = {
   cost: [1973000, 2306000],
   margin: [556600, 623200],
   marginShare: ['22.0%', '21.3%'],
-  after: [485600, 885200],
-  afterShare: ['19.2%', '30.2%'],
+  /** A quote's difference against its lines' plan, taken at the settled end and the same at both ends (sc-31468, 19 Nov): after = margin − this. */
+  quotesOver: 71000,
 } as const;
 
 export type ViewerKey = 'folake' | 'julien' | 'ana' | 'kemi';

@@ -33,6 +33,14 @@ final class AfterResponse implements ResetInterface
         $deferred = $this->deferred;
         $this->deferred = [];
 
+        if ([] === $deferred) {
+            return;
+        }
+
+        // The request's max_execution_time would otherwise end a long export part way, past any finally or catch.
+        \set_time_limit(0);
+        \ignore_user_abort(true);
+
         foreach ($deferred as $work) {
             try {
                 $work();

@@ -20,6 +20,7 @@ use App\Entity\OrganisationDomain;
 use App\Entity\OrganisationExport;
 use App\Entity\Role;
 use App\Entity\User;
+use App\Enum\AccountOrigin;
 use App\Enum\ContactKind;
 use App\Enum\ErrorCode;
 use App\Enum\EventRole;
@@ -106,6 +107,8 @@ final class OrganisationExportTest extends ApiTestCase
         'staff_stations' => ['id', 'event_id', 'kind', 'name', 'section_id', 'lead_id', 'position', 'walk_position'],
         'staff_item_stations' => ['course_id', 'item_key', 'station_id'],
         'cost_lines' => ['id', 'event_id', 'label', 'category', 'basis', 'price_minor', 'price_currency', 'note', 'created_at', 'updated_at'],
+        'quotes' => ['id', 'event_id', 'vendor_id', 'covers', 'amount_minor', 'amount_currency', 'quoted_on', 'reference', 'superseded_at', 'created_at'],
+        'scheduled_payments' => ['id', 'event_id', 'vendor_id', 'description', 'amount_minor', 'amount_currency', 'due_on', 'created_at'],
     ];
 
     /** Every table the archive does not read, and why: a new table fails the test below until it is in one or the other. */
@@ -420,6 +423,19 @@ final class OrganisationExportTest extends ApiTestCase
     }
 
     #[Test]
+    public function theDownloadIsNamedForTheOrganisationWithAnySlashOrQuoteTakenOut(): void
+    {
+        $this->organisation->setName('Ìrè / Events "Lagos"');
+        self::em()->flush();
+        $this->as($this->owner, 'POST', $this->path(''));
+
+        $this->download($this->owner, $this->latest()->getId()->toRfc4122());
+
+        self::assertSame(200, $this->statusCode());
+        self::assertSame("attachment; filename=export.zip; filename*=utf-8''%C3%8Cr%C3%A8%20-%20Events%20Lagos%202026-10-17.zip", $this->client->getResponse()->headers->get('Content-Disposition'));
+    }
+
+    #[Test]
     public function theDownloadWorksOnceForTheOwnerWhoAsked(): void
     {
         $this->as($this->owner, 'POST', $this->path(''));
@@ -550,7 +566,7 @@ final class OrganisationExportTest extends ApiTestCase
         self::em()->flush();
         self::mockTime(new DateTimeImmutable('2026-10-17T13:25:00+00:00'));
         self::service(OrganisationExports::class)->prepareDue();
-        $ready = [$this->latest()->getArchiveKey(), $this->latest()->getReadyAt()];
+        $ready = [$this->latest()->getFileKey(), $this->latest()->getReadyAt()];
         self::assertStringEndsWith(Str\format('%s-2.zip', $export->getId()->toRfc4122()), (string) $ready[0]);
 
         self::em()->getConnection()->executeStatement('UPDATE organisation_exports SET attempts = 3 WHERE id = ?', [$export->getId()->toRfc4122()]);
@@ -561,7 +577,7 @@ final class OrganisationExportTest extends ApiTestCase
         self::assertFalse($repository->claimFailed($export, new DateTimeImmutable('2026-10-17T13:31:00+00:00')));
 
         self::assertSame(OrganisationExportStatus::Ready, $this->latest()->getStatus());
-        self::assertEquals($ready, [$this->latest()->getArchiveKey(), $this->latest()->getReadyAt()]);
+        self::assertEquals($ready, [$this->latest()->getFileKey(), $this->latest()->getReadyAt()]);
     }
 
     #[Test]
@@ -591,7 +607,7 @@ final class OrganisationExportTest extends ApiTestCase
 
         self::assertSame(1, self::service(OrganisationExports::class)->prepareDue());
 
-        self::assertSame([OrganisationExportStatus::Ready, $key(1)], [$this->latest()->getStatus(), $this->latest()->getArchiveKey()]);
+        self::assertSame([OrganisationExportStatus::Ready, $key(1)], [$this->latest()->getStatus(), $this->latest()->getFileKey()]);
         self::assertSame([true, false], [$store->exists($env('STORAGE_BUCKET_PRIVATE'), $key(1)), $store->exists($env('STORAGE_BUCKET_PRIVATE'), $key(2))]);
     }
 
@@ -683,6 +699,88 @@ final class OrganisationExportTest extends ApiTestCase
         self::assertSame([OrganisationExports::ASKED, OrganisationExports::DOWNLOADED], Vec\values(Vec\filter($actions, static fn (string $action): bool => Str\starts_with($action, 'organisation.export'))));
     }
 
+    #[Test]
+    public function anArchivesMemoryToPrepareAndToDownloadDoesNotGrowWithItsMembers(): void
+    {
+        $this->bulkMembers(2_000);
+        [$smallPrepared, $smallDownloaded] = $this->archivePeaks(2_001);
+        $this->bulkMembers(58_000);
+        [$largePrepared, $largeDownloaded] = $this->archivePeaks(60_001);
+
+        self::assertLessThan(4 * 1024 * 1024, $largePrepared['peak'] - $smallPrepared['peak'], 'some 25 MB more rows, and no more than 4 MB more memory at the peak to prepare');
+        self::assertGreaterThan(8 * 1024 * 1024, $largeDownloaded['bytes'] - $smallDownloaded['bytes'], 'the larger archive is larger than the memory the test allows');
+        self::assertLessThan(4 * 1024 * 1024, $largeDownloaded['peak'] - $smallDownloaded['peak'], 'no more than 4 MB more memory at the peak to download');
+    }
+
+    /** Members, each with a long name that does not compress, so the archive grows with them. */
+    private function bulkMembers(int $count): void
+    {
+        $role = self::em()->getRepository(Role::class)->findOneBy(['organisation' => $this->fresh(), 'seededAs' => SeededRole::Member]) ?? self::fail('no role');
+        self::em()->getConnection()->executeStatement(<<<'SQL'
+            WITH made AS (
+                INSERT INTO users (id, name, origin, created_at, updated_at)
+                SELECT gen_random_uuid(), md5(n || 'a') || md5(n || 'b') || md5(n || 'c') || md5(n || 'd') || md5(n || 'e') || md5(n || 'f'), :origin, NOW(), NOW()
+                  FROM generate_series(1, :count) AS n
+             RETURNING id
+            ), addressed AS (
+                INSERT INTO email_addresses (id, user_id, address, is_primary, created_at, updated_at)
+                SELECT gen_random_uuid(), id, id || '@bulk.example', TRUE, NOW(), NOW() FROM made
+            )
+            INSERT INTO memberships (id, organisation_id, user_id, role_id, status, joined_at, created_at, updated_at)
+            SELECT gen_random_uuid(), :organisation, id, :role, :status, NOW(), NOW(), NOW() FROM made
+            SQL, [
+            'origin' => AccountOrigin::SelfRegistered->value,
+            'count' => $count,
+            'organisation' => $this->organisation->getId()->toRfc4122(),
+            'role' => $role->getId()->toRfc4122(),
+            'status' => MembershipStatus::Active->value,
+        ]);
+        self::em()->getConnection()->executeStatement('ANALYZE users, email_addresses, memberships');
+    }
+
+    /** @return array{array{peak: int}, array{peak: int, bytes: int}} the memory one archive took to prepare, then to download whole */
+    private function archivePeaks(int $members): array
+    {
+        $export = new OrganisationExport($this->fresh(), $this->freshUser($this->owner), new DateTimeImmutable());
+        self::em()->persist($export);
+        self::em()->flush();
+        $exports = self::service(OrganisationExports::class);
+
+        \gc_collect_cycles();
+        $before = \memory_get_usage();
+        \memory_reset_peak_usage();
+        $exports->prepare($export);
+        $prepared = ['peak' => \memory_get_peak_usage() - $before];
+        self::assertSame(OrganisationExportStatus::Ready, $this->latest()->getStatus(), 'the archive of ' . $members . ' members is ready');
+
+        \gc_collect_cycles();
+        $before = \memory_get_usage();
+        \memory_reset_peak_usage();
+        $bytes = 0;
+        $path = Filesystem\create_temporary_file(prefix: 'organisation-export-test-');
+
+        try {
+            $file = \fopen($path, 'wb') ?: self::fail('no file');
+
+            foreach ($exports->download($this->fresh(), $export->getId()->toRfc4122(), $this->freshUser($this->owner))->chunks as $chunk) {
+                $bytes += Str\Byte\length($chunk);
+                \fwrite($file, $chunk);
+            }
+
+            \fclose($file);
+            $downloaded = ['peak' => \memory_get_peak_usage() - $before, 'bytes' => $bytes];
+            $zip = new ZipArchive();
+            self::assertTrue($zip->open($path));
+            $csv = Type\string()->coerce($zip->getFromName('members.csv'));
+            $zip->close();
+            self::assertSame($members + 1, Iter\count(Str\Byte\split(Str\Byte\trim($csv), "\r\n")), 'a heading and a row for each member');
+        } finally {
+            Filesystem\delete_file($path);
+        }
+
+        return [$prepared, $downloaded];
+    }
+
     /** @return array<string, string> each file in the archive by name, in the archive's order */
     private function archive(): array
     {
@@ -694,7 +792,7 @@ final class OrganisationExportTest extends ApiTestCase
         $path = Filesystem\create_temporary_file(prefix: 'organisation-export-test-');
 
         try {
-            File\write($path, (string) $this->client->getResponse()->getContent(), File\WriteMode::Truncate);
+            File\write($path, $this->client->getInternalResponse()->getContent(), File\WriteMode::Truncate);
             $zip = new ZipArchive();
             self::assertTrue($zip->open($path));
             $files = [];

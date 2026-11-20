@@ -12,6 +12,7 @@ import {
   type CalendarLens,
   type MarkItem,
   CalendarFrameContext,
+  DEMO_KEPT,
   readKept,
 } from '../components/calendarWeeks.ts';
 import { Glyph } from '../components/Glyph.tsx';
@@ -71,7 +72,7 @@ function CalendarAt({ raw }: { raw: string | null }) {
   const [start] = useState(() => {
     if (raw != null) resetSample();
 
-    return calendarStart(calendarStateOf(raw), readKept());
+    return calendarStart(calendarStateOf(raw), readKept(DEMO_KEPT));
   });
   const [params] = useSearchParams();
   nameSample(isLong(params));
@@ -196,6 +197,7 @@ function CalendarPage({ start, tell }: { start: CalendarStart; tell: Tell }) {
         ) : (
           <CalendarBoard
             start={start}
+            kept={DEMO_KEPT}
             events={events}
             load={load}
             shows={SHOWS}

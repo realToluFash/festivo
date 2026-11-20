@@ -39,6 +39,11 @@ export const WEB_STATES = [
   'removed_priced',
   'removed_not_priced',
   'removed_nothing_yet',
+  'removed_last',
+  'removed_last_currency',
+  'removed_last_expired',
+  'undo_refused_currency',
+  'undo_refused_expired',
   'add_cost',
   'add_cost_blank',
   'add_cost_fixed',
@@ -93,6 +98,7 @@ export const MARGIN_STATES = [
   'price_negative',
   'price_decimals',
   'margin_live',
+  'margin_unset',
   'free',
 ] as const;
 
@@ -176,7 +182,8 @@ export function linesOf(state: string): CostLine[] {
   if (state === 'removed_priced') return lines.filter((one) => one.id !== 'dj');
   if (state === 'removed_not_priced') return lines.filter((one) => one.id !== 'arch');
   if (state === 'removed_nothing_yet') return lines.filter((one) => one.id !== 'centre');
-  if (state === 'first_time' || state === 'nothing_to_start') return [];
+  if (state === 'first_time' || state === 'nothing_to_start' || LAST_REMOVED.includes(state))
+    return [];
   if (state === 'add_cost_added') return [...lines, { ...WELCOME_DRINKS }];
 
   return lines;
@@ -247,10 +254,10 @@ export function rateProblem(
 }
 
 /** A client price (sc-92): 0 or more, sc-83's decimals key; never a markup's words. */
-export function priceProblem(typed: string, currency = CURRENCY): string | null {
+export function priceProblem(typed: string, currency = CURRENCY, removable = false): string | null {
   const found = typedMinor(typed, currency);
 
-  if ('minor' in found) return null;
+  if ('minor' in found || (removable && found.wrong === 'blank')) return null;
   if (found.wrong === 'decimals')
     return `That has too many decimal places for this event’s currency. Enter the price like ${exampleIn(12, currency)}.`;
 
@@ -306,9 +313,10 @@ function decimalsOf(typed: string): number {
   return typed.includes('.') ? (typed.split('.')[1]?.length ?? 0) : 0;
 }
 
-export function markupProblem(typed: string): string | null {
+export function markupProblem(typed: string, removable = false): string | null {
   const text = typed.trim();
 
+  if (removable && text === '') return null;
   if (/^[-−]/.test(text))
     return 'A markup cannot be below 0. To sell below cost, enter the price instead.';
   if (!/^\d+(\.\d+)?$/.test(text)) return 'Enter the markup as a number, like 12.5.';
@@ -337,6 +345,30 @@ export function categoryCeilingsLine(ceilings: Partial<Record<CeilingKey, number
   return `The category ceilings come to ${said(sum)}, ${said(gap)} ${
     sum < whole_ ? 'less' : 'more'
   } than the event’s ceiling.`;
+}
+
+/** The states where the event's only cost, Dinner, has just been removed. */
+export const LAST_REMOVED: readonly string[] = [
+  'removed_last',
+  'removed_last_currency',
+  'removed_last_expired',
+  'undo_refused_currency',
+  'undo_refused_expired',
+];
+
+export type UndoRefusal = 'currency' | 'expired';
+
+/** Why Undo cannot put a removed line back (sc-85, decided 19 Nov, #72349 and #72668). */
+export const UNDO_REFUSED: Readonly<Record<UndoRefusal, string>> = {
+  currency: 'Not put back. The event’s currency has changed since it was removed.',
+  expired: 'Not put back. It was removed more than a day ago.',
+};
+
+export function undoRefusalOf(state: string): UndoRefusal | null {
+  if (state.endsWith('_currency') && LAST_REMOVED.includes(state)) return 'currency';
+  if (state.endsWith('_expired') && LAST_REMOVED.includes(state)) return 'expired';
+
+  return null;
 }
 
 export function removedWords(line: CostLine, settled: number): string {
@@ -382,6 +414,17 @@ export const BUDGET_PAGES: readonly DemoGroup[] = [
       { to: at('removed_priced'), name: 'DJ removed, with Undo' },
       { to: at('removed_not_priced'), name: 'A cost with no price removed' },
       { to: at('removed_nothing_yet'), name: 'A cost with nothing yet removed' },
+      { to: at('removed_last'), name: 'The only cost removed: the bar above No costs yet' },
+      {
+        to: at('removed_last_currency'),
+        name: 'The only cost removed, the currency since changed in another tab: press Undo',
+      },
+      {
+        to: at('removed_last_expired'),
+        name: 'The only cost removed more than a day ago: press Undo',
+      },
+      { to: at('undo_refused_currency'), name: 'Undo refused: the currency has changed' },
+      { to: at('undo_refused_expired'), name: 'Undo refused: removed more than a day ago' },
     ],
   },
   {
@@ -461,6 +504,8 @@ export const BUDGET_PAGES: readonly DemoGroup[] = [
       { to: at('price_negative'), name: 'A price refused: below 0' },
       { to: at('price_decimals'), name: 'A price refused: too many decimal places' },
       { to: at('margin_live'), name: 'Live: a markup changed in another tab' },
+      { to: at('margin_unset'), name: 'No markup set anywhere: each line at its cost' },
+      { to: at('populated'), name: 'The plain Budget, with See margin in the title row' },
       { to: at('free', { plan: 'free' }), name: 'A Free organisation: no margin' },
     ],
   },
@@ -471,7 +516,7 @@ export const BUDGET_PAGES: readonly DemoGroup[] = [
 ];
 
 export interface Markups {
-  event: number;
+  event: number | null;
   categories: Partial<Record<Category, number>>;
   costs: Readonly<Record<string, number>>;
   prices: Readonly<Record<string, number>>;
@@ -485,9 +530,29 @@ export const MARKUPS: Markups = {
   prices: {},
 };
 
+/** sc-92, 19 Nov: nothing set on the event, a category or a line, so every line is charged at its cost. */
+export const NO_MARKUPS: Markups = { event: null, categories: {}, costs: {}, prices: {} };
+
 export const PLANNING_FEE = 300000;
 
 const percentWords = (n: number): string => `${n}%`;
+
+/** sc-92, 19 Nov: an emptied markup or price is removed, and the line falls to the next in the order. */
+export function withoutChoice(
+  markups: Markups,
+  scope: 'event' | 'category' | 'cost' | 'price',
+  key: string,
+): Markups {
+  const drop = <T>(from: Readonly<Record<string, T>>) =>
+    Object.fromEntries(Object.entries(from).filter(([one]) => one !== key));
+
+  if (scope === 'event') return { ...markups, event: null };
+  if (scope === 'category') return { ...markups, categories: drop(markups.categories) };
+
+  return scope === 'cost'
+    ? { ...markups, costs: drop(markups.costs) }
+    : { ...markups, prices: drop(markups.prices) };
+}
 
 export function markupWords(line: CostLine, markups: Markups): string {
   if (markups.prices[line.id] != null) return 'its own price';
@@ -499,7 +564,9 @@ export function markupWords(line: CostLine, markups: Markups): string {
       ? 'at cost, chosen'
       : `${percentWords(category)} markup, ${CATEGORY_WORDS[line.category]}’s`;
 
-  return `${percentWords(markups.event)} markup, the event’s`;
+  return markups.event == null
+    ? 'no markup set'
+    : `${percentWords(markups.event)} markup, the event’s`;
 }
 
 export function chargedOf(
@@ -509,7 +576,7 @@ export function chargedOf(
 ): { cost: readonly [number, number]; charged: readonly [number, number] } {
   const each = lineAmounts(line, heads);
   const price = markups.prices[line.id];
-  const percent = markups.costs[line.id] ?? markups.categories[line.category] ?? markups.event;
+  const percent = markups.costs[line.id] ?? markups.categories[line.category] ?? markups.event ?? 0;
   const up = (minor: number) => Math.round((minor * (1000 + percent * 10)) / 1000);
 
   return {
@@ -518,7 +585,7 @@ export function chargedOf(
   };
 }
 
-const shareOf = (margin: number, client: number): string =>
+export const shareOf = (margin: number, client: number): string =>
   `${client === 0 ? '0.0' : ((margin / client) * 100).toFixed(1)}%`;
 
 export function marginOf(

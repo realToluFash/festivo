@@ -246,6 +246,7 @@ services:
     App\Http\Access\Interfaces\OnboardingGateInterface: '@App\Domain\User\Onboarding\OnboardingGate'
 
     App\Http\Access\Interfaces\EventDirectoryInterface: '@App\Domain\Event\EventDirectory'
+    App\Http\Access\Interfaces\PlanFeaturesInterface: '@App\Domain\Billing\PlanFeatures'
 
     App\Domain\Event\Interfaces\ActiveEventsLimitInterface: '@App\Domain\Event\UnlimitedActiveEvents'
 
