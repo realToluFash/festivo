@@ -307,16 +307,15 @@ function Asking({
 
 function Top({ organisation }: { organisation: string }) {
   const { t } = useTranslation();
-  const size = useStepTitleSize();
 
   return (
     <View style={styles.top}>
       <OrgTile name={organisation} size="card" />
       <Text
-        size={size}
+        size={tokens.typeTitlePhone.size}
         weight="bold"
         accessibilityRole="header"
-        style={[styles.title, stepTitle(size)]}
+        style={styles.title}
       >
         {t('requestToJoin.title', { organisation })}
       </Text>
@@ -536,6 +535,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: tokens.spaceLg,
   },
-  title: { flex: 1 },
+  title: { flex: 1, letterSpacing: -0.5 },
   below: { marginTop: tokens.space3xl },
 });
