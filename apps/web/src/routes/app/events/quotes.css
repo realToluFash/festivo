@@ -438,6 +438,29 @@
   font: 500 14px/1.45 var(--fontFamily);
 }
 
+.pay-inset {
+  display: grid;
+  gap: var(--spaceSm);
+}
+
+.pay-over {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 0;
+  color: var(--colorInk);
+  font: 500 14px/1.45 var(--fontFamily);
+}
+
+.pay-over .bt-ring {
+  margin-top: 3px;
+}
+
+.pay-over strong {
+  color: var(--colorAttentionText);
+  font-weight: 600;
+}
+
 .pay-select {
   flex: 1;
   min-width: 0;

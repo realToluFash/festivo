@@ -1541,6 +1541,77 @@ describe('marking a payment paid (sc-88)', () => {
   });
 });
 
+describe('the inset on Add a payment already made (sc-75579)', () => {
+  const at = '/app/events/ev_1/budget/vendors/v4';
+  const BLOOM = {
+    ...SAVOUR,
+    id: 'q_bloom',
+    vendor: { ...SAVOUR.vendor, id: 'v3', name: 'Bloom & Co', category: 'flowers' },
+    quote: { ...SAVOUR.quote, id: 'qv_bloom', amount: '1000.00' },
+    payments: [],
+    scheduled: '1050.00',
+    difference: '50.00',
+    paid: '400.00',
+  };
+  const both = () => quotes({ quotes: [{ ...SAVOUR, paid: '0.00' }, BLOOM] });
+  const dialog = () => screen.getByRole('dialog');
+  const row = (title: string) => within(dialog()).getByText(title).closest('li')!;
+
+  it('shows the vendor’s totals as they stand, then with the amount paid, and follows the Vendor', async () => {
+    signedIn();
+    serve({ 'GET /api/events/ev_1/budget/quotes': () => json(both()) }, { at });
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Add a payment already made' }));
+    expect(row('Paid to Savour Kitchen').textContent).toContain('£0.00');
+    expect(row('Scheduled').textContent).toContain('£4,500.00');
+    expect(row('Scheduled').textContent).not.toContain('→');
+
+    fireEvent.change(within(dialog()).getByRole('textbox', { name: 'Amount paid' }), {
+      target: { value: '500' },
+    });
+    expect(
+      within(row('Paid to Savour Kitchen')).getByText('£0.00 now, £500.00 with this payment'),
+    ).toBeTruthy();
+    expect(
+      within(row('Scheduled')).getByText('£4,500.00 now, £5,000.00 with this payment'),
+    ).toBeTruthy();
+    expect(within(dialog()).queryByText(/over the quote/)).toBeNull();
+
+    fireEvent.change(within(dialog()).getByRole('combobox', { name: 'Vendor' }), {
+      target: { value: 'q_bloom' },
+    });
+    expect(
+      within(row('Paid to Bloom & Co')).getByText('£400.00 now, £900.00 with this payment'),
+    ).toBeTruthy();
+    expect(
+      within(row('Scheduled')).getByText('£1,050.00 now, £1,550.00 with this payment'),
+    ).toBeTruthy();
+    expect(
+      within(dialog()).getByText('With this payment, the schedule is £550.00 over the quote.'),
+    ).toBeTruthy();
+    expect(
+      within(dialog()).getByText(/The difference stays visible; nothing absorbs it\./),
+    ).toBeTruthy();
+    expect(
+      (within(dialog()).getByRole('button', { name: 'Add as paid' }) as HTMLButtonElement).disabled,
+    ).toBe(false);
+  });
+
+  it('drops the after while the amount is one Add as paid refuses', async () => {
+    signedIn();
+    serve({ 'GET /api/events/ev_1/budget/quotes': () => json(both()) }, { at });
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Add a payment already made' }));
+    for (const value of ['0', 'abc', '-20']) {
+      fireEvent.change(within(dialog()).getByRole('textbox', { name: 'Amount paid' }), {
+        target: { value },
+      });
+      expect(row('Scheduled').textContent).toBe('Scheduled£4,500.00');
+      expect(within(dialog()).queryByText(/over the quote/)).toBeNull();
+    }
+  });
+});
+
 describe('quotes on an event with no costs yet (sc-74361)', () => {
   const noCosts = () =>
     json(budget({ lines: [], confirmed: '0.00', potential: '0.00', notPriced: 0 }));

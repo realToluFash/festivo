@@ -23,6 +23,7 @@ import {
   focusFirstWrong,
   keptOf,
   longDay,
+  madeInset,
   madeProblems,
   markProblems,
   paidDifference,
@@ -367,6 +368,8 @@ export function MadeDialog({
   const [busy, setBusy] = useState(false);
   const first = useRef<HTMLSelectElement>(null);
   const quoteOf = (quoteId: string) => quotes.quotes.find((one) => one.id === quoteId);
+  const chosen = quoteOf(draft.quoteId);
+  const typed = sentAmount(draft.amount, language, currency);
   const engaged = [...quotes.quotes].sort((a, b) =>
     a.vendor.name.localeCompare(b.vendor.name, i18n.language),
   );
@@ -379,7 +382,6 @@ export function MadeDialog({
 
   async function save(): Promise<void> {
     if (busy) return;
-    const chosen = quoteOf(draft.quoteId);
     const found = madeProblems(t, draft, chosen, at, locale);
     setProblems(found);
     setTop(null);
@@ -387,7 +389,7 @@ export function MadeDialog({
       focusFirstWrong('.desk-dialog');
       return;
     }
-    const amount = sentAmount(draft.amount, language, currency) ?? '';
+    const amount = typed ?? '';
     setBusy(true);
     let paymentId = '';
     try {
@@ -487,7 +489,73 @@ export function MadeDialog({
           optional
           onChange={(reference) => set({ reference })}
         />
+        {chosen != null && (
+          <MadeInsetRows
+            quote={chosen}
+            amount={markProblems(t, draft, at).amount == null ? typed : null}
+            currency={currency}
+            locale={locale}
+          />
+        )}
       </div>
     </Dialog>
+  );
+}
+
+/** sc-75579's inset (Budget-A-Payments-More 43): the vendor's totals as they stand and with this payment. */
+function MadeInsetRows({
+  quote,
+  amount,
+  currency,
+  locale,
+}: {
+  quote: EventQuote;
+  amount: string | null;
+  currency: string;
+  locale: string;
+}) {
+  const { t } = useTranslation();
+  const { now, after, over } = madeInset(quote, amount, currency);
+  const money = (value: string) => minorMoney(value, currency, locale);
+  const figure = (was: string, will: string | undefined) =>
+    will == null ? (
+      money(was)
+    ) : (
+      <>
+        <span aria-hidden="true">
+          {money(was)} → {money(will)}
+        </span>
+        <span className="visually-hidden">
+          {t('quotes.nowWithThis', { now: money(was), after: money(will) })}
+        </span>
+      </>
+    );
+
+  return (
+    <div className="pay-inset" aria-live="polite">
+      <Rows>
+        <li>
+          <BudgetRow
+            title={t('quotes.paidTo', { vendor: quote.vendor.name })}
+            end={<Amount value={figure(now.paid, after?.paid)} />}
+          />
+        </li>
+        <li>
+          <BudgetRow
+            title={t('quotes.scheduled')}
+            end={<Amount value={figure(now.scheduled, after?.scheduled)} />}
+          />
+        </li>
+      </Rows>
+      {over != null && (
+        <p className="pay-over">
+          <span className="bt-ring is-over-if-all" aria-hidden="true" />
+          <span>
+            <strong>{t('quotes.overWithThis', { gap: money(over) })}</strong>{' '}
+            {t('quotes.nothingAbsorbs')}
+          </span>
+        </p>
+      )}
+    </div>
   );
 }
