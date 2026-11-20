@@ -5407,6 +5407,7 @@
     "removed": "Custo {{name}} removido. O valor confirmado desceu {{amount}}.",
     "removedNotPriced": "Custo {{name}} removido. Não tinha preço, por isso o total não muda.",
     "removedNothingYet": "Custo {{name}} removido. Ainda não contava nada, por isso o total não muda.",
+    "removedCostNothing": "{{name}} removed. It cost nothing, so the total is the same.",
     "back": "Custo {{name}} reposto.",
     "notBack": "Custo não reposto. Verifique a ligação e tente novamente.",
     "notBackStaff": "Custo não reposto. O orçamento já tem um custo de horas da equipa.",

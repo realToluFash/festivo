@@ -736,6 +736,7 @@ export function BudgetArea({ event }: { event: OrganisationEvent }) {
                       }
                       onSaved={(next, removed) => {
                         setMargin(next);
+                        void readOwn();
                         setHeard(t(removed ? 'budget.margin.priceRemoved' : 'budget.saved'));
                         setWashed((n) => n + 1);
                       }}
