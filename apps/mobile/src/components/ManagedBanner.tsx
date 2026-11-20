@@ -1,4 +1,5 @@
 import { router } from 'expo-router';
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { Notice } from './Notice.tsx';
@@ -10,6 +11,7 @@ export function ManagedBanner({
   message,
   onChange,
   way = true,
+  takesFocus = false,
   testID,
 }: {
   organisation: string;
@@ -18,9 +20,12 @@ export function ManagedBanner({
   onChange?: () => void;
   /** False behind the onboarding gate, where Account settings cannot be reached yet. */
   way?: boolean;
+  /** It answers the button it replaced, so screen reader focus moves to its words as it appears (sc-563). */
+  takesFocus?: boolean;
   testID: string;
 }) {
   const { t } = useTranslation();
+  const [appeared] = useState(() => ({}));
 
   return (
     <Notice
@@ -30,6 +35,8 @@ export function ManagedBanner({
       body={message}
       detail={t('managed.single')}
       announce
+      takesFocus={takesFocus}
+      answer={takesFocus ? appeared : undefined}
       actions={
         way ? (
           <TextAction

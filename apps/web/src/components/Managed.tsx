@@ -7,6 +7,7 @@ import { Link } from 'react-router';
 import { api } from '../api.ts';
 import { keepFocusIn } from '../dialogFocus.ts';
 import { LayersContext } from '../layers.ts';
+import { lessMotion } from '../leaving.ts';
 import { Glyph } from './Glyph.tsx';
 import './createWalk.css';
 import './Managed.css';
@@ -17,24 +18,48 @@ export function ManagedBanner({
   alert = false,
   level = 2,
   way = true,
+  takesFocus = false,
 }: {
   managed: Pick<ManagedAccount, 'message'> & { organisation: { name: string } };
   alert?: boolean;
   level?: 2 | 3;
   /** Off on A few details, where Account settings is still behind the onboarding gate. */
   way?: boolean;
+  /** It replaced the button just pressed, so it comes wholly into view and its title takes focus (sc-563). */
+  takesFocus?: boolean;
 }) {
   const { t } = useTranslation();
   const id = useId();
   const Heading = level === 2 ? 'h2' : 'h3';
+  const banner = useRef<HTMLElement>(null);
+  const title = useRef<HTMLHeadingElement>(null);
+
+  useEffect(() => {
+    if (!takesFocus) return;
+    banner.current?.scrollIntoView?.({
+      block: 'nearest',
+      behavior: lessMotion() ? 'auto' : 'smooth',
+    });
+    title.current?.focus({ preventScroll: true });
+  }, [takesFocus]);
 
   return (
-    <section className="managed" role={alert ? 'alert' : undefined} aria-labelledby={id}>
+    <section
+      ref={banner}
+      className="managed"
+      role={alert ? 'alert' : undefined}
+      aria-labelledby={id}
+    >
       <span className="managed-mark" aria-hidden="true">
         <Glyph name="info" size={20} weight={2.2} />
       </span>
       <div className="managed-words">
-        <Heading id={id} className="managed-title">
+        <Heading
+          ref={title}
+          id={id}
+          className="managed-title"
+          tabIndex={takesFocus ? -1 : undefined}
+        >
           {t('managed.title', { organisation: managed.organisation.name })}
         </Heading>
         <p>{managed.message}</p>
