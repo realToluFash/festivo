@@ -9,6 +9,8 @@ use App\Domain\Guest\Export\CsvFile;
 use App\Domain\Organisation\Export\PreparedFiles;
 use App\Entity\AuditEntry;
 use App\Entity\AuditExport;
+use App\Entity\Event;
+use App\Entity\Membership;
 use App\Entity\Organisation;
 use App\Entity\User;
 use App\Enum\Actor;
@@ -21,6 +23,7 @@ use App\Repository\AuditEntryRepository;
 use App\Repository\AuditExportRepository;
 use App\Repository\AuditFilter;
 use Doctrine\ORM\EntityManagerInterface;
+use Psl\Dict;
 use Psl\Iter;
 use Psl\Json;
 use Psl\Str;
@@ -28,6 +31,7 @@ use Psl\Vec;
 use Psr\Clock\ClockInterface;
 use Psr\Log\LoggerInterface;
 use RuntimeException;
+use Symfony\Component\Uid\Uuid;
 use Throwable;
 
 /** Export of the filtered entries (sc-611): up to 10,000 at once, up to 1,000,000 prepared and emailed to the person who asked, more refused before anything starts. */
@@ -67,6 +71,7 @@ final readonly class AuditExports
      */
     public function export(Organisation $organisation, User $by, AuditFilter $filter, array $filters, string $format, string $locale): string|AuditExport
     {
+        $described = [] === $filters ? null : $this->described($organisation, $filter, $filters);
         $count = $this->auditEntryRepository->countMatching($filter);
 
         if ($count > self::AT_MOST) {
@@ -75,7 +80,7 @@ final readonly class AuditExports
 
         if ($count <= self::AT_ONCE) {
             $file = $this->file($filter, $format, $locale);
-            $this->audit($organisation, $by, $filters, $format, $count);
+            $this->audit($organisation, $by, $described, $format, $count);
             $this->entityManager->flush();
 
             return $file;
@@ -83,7 +88,7 @@ final readonly class AuditExports
 
         $export = new AuditExport($organisation, $by, $this->clock->now(), $format, $filters, $count, $locale);
         $this->entityManager->persist($export);
-        $this->audit($organisation, $by, $filters, $format, $count);
+        $this->audit($organisation, $by, $described, $format, $count);
         $this->entityManager->flush();
         $this->afterResponse->defer(fn () => $this->prepare($export, $filter->upTo($export->getAskedAt())));
 
@@ -124,14 +129,59 @@ final readonly class AuditExports
         return $export;
     }
 
-    /** @param array<string, string> $filters */
-    private function audit(Organisation $organisation, User $by, array $filters, string $format, int $count): void
+    /** @param ?array<string, ?string> $filters */
+    private function audit(Organisation $organisation, User $by, ?array $filters, string $format, int $count): void
     {
         $this->auditor->record(AuditType::EXPORTED, 'Organisation', $organisation->getId(), Actor::User, $by->getId(), $by->getName(), [
             'format' => [null, $format],
-            'filters' => [null, [] === $filters ? null : Json\encode($filters)],
+            'filters' => [null, $filters],
             'rows' => [null, $count],
         ]);
+    }
+
+    /**
+     * @param array<string, string> $filters
+     *
+     * @return array<string, ?string> the filters as the exporter chose them, a person and an event by the name they had then; one from outside this organisation is refused, never named
+     */
+    private function described(Organisation $organisation, AuditFilter $filter, array $filters): array
+    {
+        return Dict\map_with_key($filters, fn (string $field, string $value): ?string => match ($field) {
+            'person' => $this->personName($organisation, $filter, $value),
+            'event' => $this->eventName($organisation, $filter, $value),
+            default => $value,
+        });
+    }
+
+    /** A member past or present, or someone the log names as acting here: the people the Person filter offers. */
+    private function personName(Organisation $organisation, AuditFilter $filter, string $id): string
+    {
+        $membership = $this->entityManager->getRepository(Membership::class)->findOneBy(['organisation' => $organisation, 'user' => Uuid::fromString($id)]);
+
+        return $membership?->getUser()->getName()
+            ?? self::named($this->auditEntryRepository->findPeople($filter), $id)
+            ?? throw self::notOffered('person');
+    }
+
+    /** An event of this organisation, or one its log names: the events the Event filter offers, those deleted since among them. */
+    private function eventName(Organisation $organisation, AuditFilter $filter, string $id): string
+    {
+        $event = $this->entityManager->getRepository(Event::class)->findOneBy(['organisation' => $organisation, 'id' => Uuid::fromString($id)]);
+
+        return $event?->getName()
+            ?? self::named($this->auditEntryRepository->findEvents($filter), $id)
+            ?? throw self::notOffered('event');
+    }
+
+    /** @param list<array{id: string, name: string}> $offered */
+    private static function named(array $offered, string $id): ?string
+    {
+        return Iter\first(Vec\filter($offered, static fn (array $one): bool => $one['id'] === Uuid::fromString($id)->toRfc4122()))['name'] ?? null;
+    }
+
+    private static function notOffered(string $field): ApiException
+    {
+        return ApiException::validation([['propertyPath' => $field, 'message' => 'audit.invalid_filter', 'code' => 'invalid_choice']]);
     }
 
     private function file(AuditFilter $filter, string $format, string $locale): string

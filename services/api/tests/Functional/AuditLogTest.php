@@ -152,6 +152,21 @@ final class AuditLogTest extends ApiTestCase
     }
 
     #[Test]
+    public function aDayThatDoesNotExistIsRefusedRatherThanRolledOver(): void
+    {
+        [$owner, $organisation] = $this->enterprise('folake@ire.events', 'Ìrè Events');
+        $this->signIn($owner);
+
+        foreach (['2026-13-40', '2026-02-30'] as $day) {
+            $body = $this->send('GET', $this->path($organisation) . '?from=' . $day);
+
+            self::assertResponseStatusCodeSame(422, $day);
+            $violation = Type\shape(['violations' => Type\vec(Type\shape(['propertyPath' => Type\string(), 'code' => Type\string()], true))], true)->coerce($body)['violations'][0] ?? self::fail('no violation for ' . $day);
+            self::assertSame(['from', 'invalid_date'], [$violation['propertyPath'], $violation['code']], $day);
+        }
+    }
+
+    #[Test]
     public function theLogNeverShowsAnotherOrganisationsEntriesAPersonsOwnAccountOrAnythingOlderThanAYear(): void
     {
         [$owner, $organisation] = $this->enterprise('folake@ire.events', 'Ìrè Events');
@@ -261,34 +276,79 @@ final class AuditLogTest extends ApiTestCase
         $eventId = Uuid::v7();
         $this->entry($organisation, 'invitation.sent', $owner, '-4 hours', changes: ['email' => [null, 'ada@ire.events'], 'role' => [null, $admin->getId()->toRfc4122()]]);
         $this->entry($organisation, 'event_person.granted', $owner, '-3 hours', $eventId, 'Gala', changes: ['role' => [null, 'can_edit'], 'jobLabel' => [null, null], 'addressKind' => [null, null], 'eventId' => [null, $eventId->toRfc4122()], 'userId' => [null, $owner->getId()->toRfc4122()]]);
+        $this->entry($organisation, 'event_person.changed', $owner, '-150 minutes', $eventId, 'Gala', changes: ['role' => ['can_view', 'can_edit']]);
+        $this->entry($organisation, 'organisation_domain.removed', $owner, '-140 minutes', changes: ['domain' => ['ire.events', null]]);
         $this->entry($organisation, 'membership.removed', $owner, '-2 hours', changes: ['status' => ['active', 'left_or_removed'], 'user' => [null, $owner->getId()->toRfc4122()]]);
+        $this->entry($organisation, 'event.created', $owner, '-90 minutes', $eventId, 'Gala', changes: ['name' => [null, 'Gala'], 'startsAt' => [null, '2026-12-19T19:00:00+00:00']]);
         $this->entry($organisation, 'event.deleted', $owner, '-1 hour', $eventId, 'Gala', changes: ['deletedAt' => [null, '2026-11-19T19:35:47+00:00']]);
         $this->entry($organisation, 'membership.role_changed', $owner, '-30 minutes', changes: ['roleId' => [Uuid::v7()->toRfc4122(), $admin->getId()->toRfc4122()]]);
         $this->entry($organisation, 'organisation.plan_changed', $owner, '-15 minutes', changes: ['plan' => ['free', 'enterprise']]);
+        $this->entry($organisation, 'event.updated', $owner, '-12 minutes', Uuid::v7(), 'Gala', changes: ['name' => ['Gala', 'Gala night'], 'type' => ['party', 'gala'], 'timeZone' => ['Africa/Lagos', 'Europe/Paris'], 'venueCoordinates' => [[6.45, 3.39], [48.85, 2.35]], 'notYetNamed' => ['a', 'b']]);
         [, $elsewhere] = $this->enterprise('kemi@elsewhere.events', 'Elsewhere');
         $theirAdmin = Type\instance_of(Role::class)->coerce(self::service(EntityManagerInterface::class)->getRepository(Role::class)->findOneBy(['organisation' => $elsewhere->getId(), 'seededAs' => SeededRole::Admin]));
-        $this->entry($organisation, 'invitation.revoked', $owner, '-10 minutes', changes: ['email' => ['kemi@ire.events', null], 'role' => [null, $theirAdmin->getId()->toRfc4122()]]);
+        $this->entry($organisation, 'membership.approved', $owner, '-10 minutes', changes: ['status' => ['pending_approval', 'active'], 'roleId' => [Uuid::v7()->toRfc4122(), $theirAdmin->getId()->toRfc4122()]]);
 
         $this->signIn($owner);
         $entries = Type\vec(Type\shape(['action' => Type\string(), 'changes' => Type\vec(Type\string())], true))->coerce($this->send('GET', $this->path($organisation))['entries']);
         $changes = Dict\pull($entries, static fn (array $entry): array => $entry['changes'], static fn (array $entry): string => $entry['action']);
 
-        self::assertSame(['Email: None → ada@ire.events', 'Role: None → Admin'], $changes['invitation.sent']);
-        self::assertSame(['Role: None → Can edit'], $changes['event_person.granted']);
+        self::assertSame([], $changes['invitation.sent'], 'a creation has no Changes row: its sentence names what was created');
+        self::assertSame([], $changes['event_person.granted']);
+        self::assertSame([], $changes['organisation_domain.removed'], 'nor does a removal, which would read as a rename');
+        self::assertSame(['Role: Can view → Can edit'], $changes['event_person.changed']);
         self::assertSame(['Status: Active → Left or removed'], $changes['membership.removed']);
         self::assertSame(['Role: None → Admin'], $changes['membership.role_changed'], 'a role since removed reads as none, and the side that can be read stays');
         self::assertSame(['Plan: Free → Enterprise'], $changes['organisation.plan_changed']);
-        self::assertSame(['Email: kemi@ire.events → None'], $changes['invitation.revoked'], 'another organisation\'s role is never read');
-        self::assertCount(1, $changes['event.deleted']);
-        self::assertStringStartsWith('Deleted at: None → ', $changes['event.deleted'][0]);
-        self::assertStringNotContainsString('2026-11-19T', $changes['event.deleted'][0], 'on screen the time reads in the reader\'s zone');
+        self::assertSame(['Name: Gala → Gala night', 'Type: Party → Gala', 'Time zone: Africa/Lagos → Europe/Paris'], $changes['event.updated'], 'a field with no name in the catalogue is left out rather than shown in English');
+        self::assertSame(['Status: Awaiting approval → Active'], $changes['membership.approved'], 'another organisation\'s role is never read');
+        self::assertSame([], $changes['event.deleted'], 'a deletion has no Changes row: its sentence and On say it, and Deleted at is internal');
+        self::assertSame([], $changes['event.created'], 'nor does a creation');
 
         $rows = Vec\map(Vec\filter(Str\split(Str\trim($this->export($organisation, 'jsonl')), "\n"), static fn (string $line): bool => '' !== $line), static fn (string $line): array => Type\dict(Type\string(), Type\nullable(Type\string()))->coerce(Json\decode($line)));
         $exported = Dict\pull($rows, static fn (array $row): ?string => $row['changes'], static fn (array $row): string => (string) $row['action']);
-        self::assertSame('Email: None → ada@ire.events; Role: None → Admin', $exported['invitation.sent']);
+        self::assertSame('', $exported['invitation.sent'] ?? '');
+        self::assertSame('', $exported['organisation_domain.removed'] ?? '');
         self::assertSame('Status: Active → Left or removed', $exported['membership.removed']);
-        self::assertSame('Deleted at: None → 2026-11-19T19:35:47Z', $exported['event.deleted']);
+        self::assertSame('', $exported['event.deleted'] ?? '', 'the export follows the same rule');
+        self::assertSame('', $exported['event.created'] ?? '');
         self::assertSame('Plan: Free → Enterprise', $exported['organisation.plan_changed']);
+    }
+
+    #[Test]
+    public function anExportsEntrySaysItsFiltersInWords(): void
+    {
+        [$owner, $organisation] = $this->enterprise('folake@ire.events', 'Ìrè Events');
+        $admin = $this->member('julien@ire.events', 'Julien Moreau');
+        $this->join($organisation, $admin, SeededRole::Admin);
+        $this->signIn($owner);
+
+        $this->client->request('POST', $this->path($organisation, 'exports'), server: ['CONTENT_TYPE' => 'application/json'], content: Json\encode(['format' => 'csv', 'type' => 'members', 'person' => $admin->getId()->toRfc4122(), 'event' => '', 'from' => '2026-11-01']));
+        self::assertResponseStatusCodeSame(200);
+        $entries = Type\vec(Type\shape(['action' => Type\string(), 'changes' => Type\vec(Type\string())], true))->coerce($this->list($organisation, ['type' => 'audit_log'])['entries']);
+        $exported = Iter\first(Vec\filter($entries, static fn (array $entry): bool => AuditType::EXPORTED === $entry['action'])) ?? self::fail('no export entry');
+
+        self::assertSame(['Format: None → csv', 'Filters: None → Person: Julien Moreau, Action type: Members and invitations, From: 2026-11-01', 'Rows: None → 0'], $exported['changes']);
+    }
+
+    #[Test]
+    public function anExportFilteredByAnotherOrganisationsEventOrPersonIsRefusedAndNamesNothing(): void
+    {
+        [$owner, $organisation] = $this->enterprise('folake@ire.events', 'Ìrè Events');
+        [$stranger, $elsewhere] = $this->enterprise('kemi@elsewhere.events', 'Elsewhere');
+        $theirEvent = Uuid::v7();
+        $this->entry($elsewhere, 'event.created', $stranger, '-1 hour', $theirEvent, 'Their secret launch');
+        $this->signIn($owner);
+
+        foreach (['event' => $theirEvent->toRfc4122(), 'person' => $stranger->getId()->toRfc4122()] as $field => $id) {
+            $body = $this->send('POST', $this->path($organisation, 'exports'), ['format' => 'csv', $field => $id]);
+
+            self::assertResponseStatusCodeSame(422, $field);
+            $violation = Type\shape(['violations' => Type\vec(Type\shape(['propertyPath' => Type\string(), 'code' => Type\string()], true))], true)->coerce($body)['violations'][0] ?? self::fail('no violation for ' . $field);
+            self::assertSame([$field, 'invalid_choice'], [$violation['propertyPath'], $violation['code']]);
+        }
+
+        $entries = Type\vec(Type\shape(['action' => Type\string()], true))->coerce($this->list($organisation, ['type' => 'audit_log'])['entries']);
+        self::assertSame([], Vec\values(Vec\filter($entries, static fn (array $entry): bool => AuditType::EXPORTED === $entry['action'])), 'a refused export is never recorded');
     }
 
     #[Test]
@@ -431,7 +491,7 @@ final class AuditLogTest extends ApiTestCase
         self::service(EntityManagerInterface::class)->getConnection()->executeStatement(<<<'SQL'
             INSERT INTO audit_entries (id, occurred_at, actor_type, actor_id, actor_label, subject_type, subject_id, action, changes, organisation_id, target)
             SELECT gen_random_uuid(), NOW() - (n || ' seconds')::interval - INTERVAL '1 hour', 'user', :actor, :label, 'Organisation', :organisation, 'event.updated',
-                   CASE WHEN CAST(:note AS text) IS NULL THEN '{}'::jsonb ELSE jsonb_build_object('note', jsonb_build_array(NULL, CAST(:note AS text))) END, :organisation, 'Bulk'
+                   CASE WHEN CAST(:note AS text) IS NULL THEN '{}'::jsonb ELSE jsonb_build_object('arrivalNote', jsonb_build_array(NULL, CAST(:note AS text))) END, :organisation, 'Bulk'
             FROM   generate_series(1, :count) AS n
             SQL, ['actor' => $by->getId()->toRfc4122(), 'label' => $by->getName(), 'organisation' => $organisation->getId()->toRfc4122(), 'count' => $count, 'note' => $note]);
     }
