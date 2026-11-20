@@ -76,6 +76,7 @@ import {
   rowLine,
   sentPrice,
   minorMoney,
+  WASH_MS,
   wholeMoney,
 } from './budgetArea.ts';
 import {
@@ -117,7 +118,6 @@ import '../../../components/eventsDesk.css';
 import '../../../components/eventPage.css';
 import './budget.css';
 
-const WASH_MS = 1600;
 const MINUTE_MS = 60_000;
 
 type Load = { kind: 'loading' } | { kind: 'failed' } | { kind: 'loaded'; budget: EventBudget };

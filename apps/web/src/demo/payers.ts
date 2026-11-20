@@ -743,6 +743,7 @@ export function startOf(
               amount: minorMoney(fromMinor(315000, CURRENCY), CURRENCY, locale),
             })
           : null,
+      washed: name === 'payers_live' ? ['obi', 'bakare'] : [],
     },
   };
 }

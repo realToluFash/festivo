@@ -43,7 +43,7 @@ import { pageTitle, usePageTitle } from '../../../pageTitle.ts';
 import { canOn } from '../../../session.ts';
 import { useAnsweredAgain } from '../../../tabKept.ts';
 import { LiveLine, Loading, NotLive } from './BudgetArea.tsx';
-import { currencySign, minorMoney, wholeMoney } from './budgetArea.ts';
+import { WASH_MS, currencySign, minorMoney, wholeMoney } from './budgetArea.ts';
 import { MoneyField } from './BudgetParts.tsx';
 import {
   type ChooseStart,
@@ -103,6 +103,7 @@ export interface PayersStart {
   form?: Pick<PayerForm, 'id' | 'name' | 'note' | 'error' | 'noteError'> | null;
   choosing?: ChooseStart | null;
   live?: string | null;
+  washed?: readonly string[];
 }
 
 /** What surrounds the screen: the crumb, the page and the layer a dialog opens on. */
@@ -319,6 +320,7 @@ export function PayersScreen({
   );
   const [choosing, setChoosing] = useState<ChooseStart | null>(start.choosing ?? null);
   const [live, setLive] = useState<string | null>(start.live ?? null);
+  const [washed, setWashed] = useState<readonly string[]>(start.washed ?? []);
   const [heard, setHeard] = useState('');
   const [toTitle, setToTitle] = useState(0);
   const title = useRef<HTMLHeadingElement>(null);
@@ -373,6 +375,7 @@ export function PayersScreen({
         const moved = was == null ? null : movedShare(was, payers);
         adopt(payers);
         if (own.current > 0 || moved == null) return;
+        setWashed(moved.ids);
         setLive(
           t(moved.down ? 'payers.liveDown' : 'payers.liveUp', {
             name: moved.name,
@@ -385,6 +388,13 @@ export function PayersScreen({
   }, [adopt, source, locale, t]);
 
   useHubTopics(topics, subscribe, readLive, readLive);
+
+  useEffect(() => {
+    if (washed.length === 0) return;
+    const timer = window.setTimeout(() => setWashed([]), WASH_MS);
+
+    return () => window.clearTimeout(timer);
+  }, [washed]);
 
   const payers = load.kind === 'loaded' ? load.payers : null;
   const open =
@@ -701,9 +711,13 @@ export function PayersScreen({
                       <li key={one.id}>
                         <button
                           type="button"
-                          className={
-                            one.id === open.id ? 'desk-row bt-row is-on' : 'desk-row bt-row'
-                          }
+                          className={[
+                            'desk-row bt-row',
+                            one.id === open.id && 'is-on',
+                            washed.includes(one.id) && 'is-washed',
+                          ]
+                            .filter(Boolean)
+                            .join(' ')}
                           aria-expanded={one.id === open.id}
                           onClick={() => setOpenId(one.id)}
                         >
@@ -728,6 +742,7 @@ export function PayersScreen({
                     payers={payers}
                     payer={open}
                     writes={writes}
+                    washed={washed.includes(open.id)}
                     extra={extra.renderPane?.(open)}
                     onEdit={() =>
                       setForm({
@@ -855,6 +870,7 @@ function PayerPane({
   payers,
   payer,
   writes,
+  washed,
   extra,
   onEdit,
   onRemove,
@@ -862,6 +878,7 @@ function PayerPane({
   payers: EventPayers;
   payer: Payer;
   writes: boolean;
+  washed: boolean;
   extra: ReactNode;
   onEdit: () => void;
   onRemove: () => void;
@@ -879,7 +896,7 @@ function PayerPane({
       {payer.note != null && <p className="py-note">{payer.note}</p>}
       <Rows>
         <li>
-          <div className="desk-row bt-row">
+          <div className={washed ? 'desk-row bt-row is-washed' : 'desk-row bt-row'}>
             <RowWords
               title={t('payers.theirShare')}
               lines={[

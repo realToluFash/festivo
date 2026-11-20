@@ -1,7 +1,8 @@
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { RouterProvider, createMemoryRouter } from 'react-router';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
+import { __setConfig, config } from '../../../config.ts';
 import { __setSessionState, type Session } from '../../../session.ts';
 import { OWNER_PERMISSIONS, membership } from '../../../test-memberships.ts';
 import { routes } from '../../index.tsx';
@@ -592,5 +593,71 @@ describe('Who is paying (sc-91)', () => {
       await screen.findByText(/^No payers yet\. Payers are who covers each cost/u),
     ).toBeTruthy();
     expect(screen.queryByRole('region', { name: 'Has a payer' })).toBeNull();
+  });
+});
+
+class StubSource {
+  static readonly CLOSED = 2;
+  static made: StubSource[] = [];
+
+  readyState = 0;
+  onopen: (() => void) | null = null;
+  onmessage: ((message: { data: string }) => void) | null = null;
+  onerror: (() => void) | null = null;
+
+  constructor(readonly url: string | URL) {
+    StubSource.made.push(this);
+  }
+
+  close(): void {
+    this.readyState = StubSource.CLOSED;
+  }
+
+  publish(): void {
+    act(() => this.onmessage?.({ data: '{}' }));
+  }
+}
+
+describe('Who is paying while others change it (sc-91, Live)', () => {
+  const before = config();
+
+  afterEach(() => {
+    __setConfig(before);
+    vi.unstubAllGlobals();
+  });
+
+  it('says the first share that moved, and washes every row whose share moved', async () => {
+    __setConfig({ ...before, mercureUrl: 'http://hub.test/.well-known/mercure' });
+    StubSource.made = [];
+    vi.stubGlobal('EventSource', StubSource);
+    signedIn();
+    let now = payers();
+    serve({
+      'GET /api/events/ev_1/budget/payers': () => json(now),
+      'POST /api/events/ev_1/budget/subscriptions': () =>
+        json({ token: 'tok', expiresAt: new Date(Date.now() + 3_600_000).toISOString() }),
+    });
+    const row = (name: RegExp) => screen.getByRole('button', { name });
+    await screen.findByRole('button', { name: /^Mr and Mrs Obi/u });
+    const budgeted = () => StubSource.made.filter((one) => String(one.url).includes('budget'));
+    await waitFor(() => expect(budgeted()).toHaveLength(1));
+
+    now = payers({
+      payers: [
+        { ...OBI, share: pair('2114.00', '3372.00') },
+        { ...BAKARE, share: pair('6414.00', '7672.00') },
+        FUNMI,
+      ],
+    });
+    budgeted()[0]!.publish();
+
+    expect(await screen.findByText('Mr and Mrs Obi’s share went down by £3,150.00.')).toBeTruthy();
+    expect(row(/^Mr and Mrs Obi/u).className).toContain('is-washed');
+    expect(row(/^Mr and Mrs Bakare/u).className).toContain('is-washed');
+    expect(row(/^Aunt Funmi/u).className).not.toContain('is-washed');
+    const pane = screen.getByRole('region', { name: 'Mr and Mrs Obi' });
+    expect(
+      within(pane).getByText('£2,114.00 to £3,372.00').closest('.bt-row')?.className,
+    ).toContain('is-washed');
   });
 });

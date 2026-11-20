@@ -109,6 +109,8 @@ export function priceProblemWords(
 
 export const WHAT_MAX = 100;
 export const NOTE_MAX = 500;
+/** How long a figure another tab changed stays washed: the length of `bt-wash` in budget.css. */
+export const WASH_MS = 1600;
 
 export const characters = (typed: string): number => [...typed.trim()].length;
 

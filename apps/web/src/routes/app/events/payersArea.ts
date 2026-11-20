@@ -399,20 +399,29 @@ export function fixedForm(
   };
 }
 
-/** The first payer whose share moved since the last read, for the live line; null when no share moved. */
+/** The payers whose share moved since the last read, and the first of them for the live line; null when no share moved. */
 export function movedShare(
   was: EventPayers,
   now: EventPayers,
-): { name: string; by: number; down: boolean } | null {
-  for (const payer of now.payers) {
+): { name: string; by: number; down: boolean; ids: string[] } | null {
+  const moves = now.payers.flatMap((payer) => {
     const before = was.payers.find((one) => one.id === payer.id);
-    if (before == null) continue;
+    if (before == null) return [];
     const by =
       toMinor(payer.share.confirmed, now.currency) - toMinor(before.share.confirmed, now.currency);
-    if (by !== 0) return { name: payer.name, by: Math.abs(by), down: by < 0 };
-  }
 
-  return null;
+    return by === 0 ? [] : [{ id: payer.id, name: payer.name, by }];
+  });
+  const first = moves[0];
+
+  return first == null
+    ? null
+    : {
+        name: first.name,
+        by: Math.abs(first.by),
+        down: first.by < 0,
+        ids: moves.map((one) => one.id),
+      };
 }
 
 export function openFirst(payers: readonly Payer[], asked: string | null): string | null {
