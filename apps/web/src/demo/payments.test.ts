@@ -23,6 +23,8 @@ import {
   scheduleOf,
   shapeLine,
   shapePayments,
+  shapingFrom,
+  shapingProblems,
   shapeProblems,
   shapeRows,
   shapingOf,
@@ -56,6 +58,7 @@ const SPEC_NAMES = [
   'shape_clamped',
   'shape_short',
   'shape_refused',
+  'shape_too_small',
   'shape_failed',
   'shape_raced',
   'reminders',
@@ -144,9 +147,14 @@ describe('payments on a vendor’s page, shapes and reminders, in A (sc-88, sc-1
       { what: 'Enter what the payment is for.' },
       {
         what: 'Shorten what the payment is for to 100 characters or fewer.',
-        share: 'Enter a percentage from 0 to 100, with up to two decimal places.',
+        share: 'Enter a percentage above 0 and up to 100, with up to two decimal places.',
       },
       { days: 'Enter a whole number of days from 0 to 730.' },
+    ]);
+    expect(startOf('shape_too_small').shaping?.problems).toEqual([
+      {},
+      {},
+      { share: 'This payment would come to less than £0.01. Enter a higher percentage.' },
     ]);
     expect(startOf('shape_failed').shaping).toMatchObject({
       shape: 'instalments',
@@ -257,7 +265,7 @@ describe('payments on a vendor’s page, shapes and reminders, in A (sc-88, sc-1
   it('fills a shape’s rows from the quote and the event’s dates, adding up to the quote', () => {
     const deposit = shapeRows(SHAPE_TERMS.deposit, SAVOUR_QUOTE, WEDDING);
     expect(deposit.map((row) => [row.what, shapeLine(row), money(row.amount)])).toEqual([
-      ['Deposit', '50% · on the date quoted · Tue, Oct 13', '£4,500.00'],
+      ['Deposit', '50% · On the date quoted · Tue, Oct 13', '£4,500.00'],
       ['Balance', '50% · 14 days before the event · Thu, Oct 22', '£4,500.00'],
     ]);
     expect(sharesLine(deposit, SAVOUR_QUOTE.amount)).toBeNull();
@@ -301,15 +309,15 @@ describe('payments on a vendor’s page, shapes and reminders, in A (sc-88, sc-1
     expect(PW.shapeFailed(2)).toMatch(/^None of these payments.*Save 2 payments to send them/u);
   });
 
-  it('takes a percentage from 0 to 100 with two decimals, and days from 0 to 730', () => {
+  it('takes a percentage above 0 and up to 100 with two decimals, and days from 0 to 730', () => {
     for (const [typed, share] of [
-      ['0', 0],
+      ['0.01', 0.01],
       ['100', 100],
       [' 33.33 ', 33.33],
       ['12.5', 12.5],
     ] as const)
       expect(typedShare(typed)).toBe(share);
-    for (const wrong of ['', '100.01', '101', '33.333', '-5', 'half', '1,5'])
+    for (const wrong of ['', '0', '0.00', '100.01', '101', '33.333', '-5', 'half', '1,5'])
       expect(typedShare(wrong)).toBeNull();
     for (const [typed, days] of [
       ['0', 0],
@@ -328,6 +336,27 @@ describe('payments on a vendor’s page, shapes and reminders, in A (sc-88, sc-1
       what: 'Shorten what the payment is for to 100 characters or fewer.',
     });
     expect(shapeProblems(balance!, { what: 'x'.repeat(100), share: '50', days: '14' })).toEqual({});
+  });
+
+  it('refuses a row that rounds to nothing at its percentage, the remainder too, and never drops it', () => {
+    const tooSmall = 'This payment would come to less than £0.01. Enter a higher percentage.';
+    const three = (shares: readonly number[]) =>
+      shapingFrom(
+        'instalments',
+        SHAPE_TERMS.instalments.map((one, index) => ({ ...one, share: shares[index] ?? 0 })),
+      );
+    expect(shapingProblems(three([45, 45, 10]), 10)).toEqual([{}, {}, { share: tooSmall }]);
+    expect(shapingProblems(three([45, 45, 20]), 10)).toEqual([{}, {}, {}]);
+    expect(shapingProblems(three([0.01, 49.99, 50]), 1000)).toEqual([{ share: tooSmall }, {}, {}]);
+    expect(shapingProblems(three([0, 50, 50]), 1000)[0]).toEqual({
+      share: 'Enter a percentage above 0 and up to 100, with up to two decimal places.',
+    });
+    expect(shapingProblems(three([0, 50, 50]), 1)).toEqual([
+      { share: 'Enter a percentage above 0 and up to 100, with up to two decimal places.' },
+      {},
+      { share: tooSmall },
+    ]);
+    expect(shapingProblems(three([45, 45, 10]))).toEqual([{}, {}, {}]);
   });
 
   it('counts a shape from its rows as typed, never adjusting shares that miss 100', () => {

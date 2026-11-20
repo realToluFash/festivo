@@ -80,7 +80,7 @@ export const PW = {
   secondInstalment: 'Second instalment',
   balance: 'Balance',
   inFull: 'Payment in full',
-  onTheDateQuoted: 'on the date quoted',
+  onTheDateQuoted: 'On the date quoted',
   daysBefore: (days: number) =>
     days === 0 ? 'On the event’s start date' : many('daysBefore', days),
   daysAfter: (days: number) => (days === 0 ? 'On the event’s end date' : many('daysAfter', days)),
@@ -93,8 +93,10 @@ export const PW = {
   sharesOver: (total: string, gap: string) =>
     `The percentages come to ${total}, so the schedule is ${gap} over the quote. You can still save these payments, and the vendor’s page will show the difference.`,
   shareField: 'Percentage of the quote',
-  shareHelp: 'From 0 to 100, with up to two decimal places.',
-  enterShare: 'Enter a percentage from 0 to 100, with up to two decimal places.',
+  shareHelp: 'Above 0 and up to 100, with up to two decimal places.',
+  enterShare: 'Enter a percentage above 0 and up to 100, with up to two decimal places.',
+  shareTooSmall: (smallest: string) =>
+    `This payment would come to less than ${smallest}. Enter a higher percentage.`,
   daysBeforeField: 'Days before the event',
   daysAfterField: 'Days after the event',
   shapeDaysHelp: 'A whole number from 0 to 730.',

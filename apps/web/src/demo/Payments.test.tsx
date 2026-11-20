@@ -334,7 +334,7 @@ describe('payments on a vendor’s page, shapes and the reminder setting, in A (
       fireEvent.click(within(group).getByRole('radio', { name: 'In full after the event' }));
       expect(within(add).getByText('100% · 7 days after the event · Sat, Nov 14')).toBeDefined();
       fireEvent.click(within(group).getByRole('radio', { name: 'Deposit and balance' }));
-      expect(within(add).getByText('50% · on the date quoted · Tue, Oct 13')).toBeDefined();
+      expect(within(add).getByText('50% · On the date quoted · Tue, Oct 13')).toBeDefined();
       expect(within(add).getByText('50% · 14 days before the event · Thu, Oct 22')).toBeDefined();
       expect(
         within(add).getByText(
@@ -392,6 +392,21 @@ describe('payments on a vendor’s page, shapes and the reminder setting, in A (
     },
   );
 
+  it('refuses a row that would come to nothing, until its percentage is raised', SLOW, async () => {
+    await open(`${SAVOUR}&state=shape_too_small`);
+    const add = dialog('Add a payment');
+    const tooSmall = 'This payment would come to less than £0.01. Enter a higher percentage.';
+    const share = within(add).getAllByRole('textbox', { name: 'Percentage of the quote' });
+    expect(share.map((one) => one.getAttribute('aria-invalid'))).toEqual([
+      'false',
+      'false',
+      'true',
+    ]);
+    expect(within(add).getByText(tooSmall)).toBeDefined();
+    fireEvent.change(share[2]!, { target: { value: '20' } });
+    expect(within(add).queryByText(tooSmall)).toBeNull();
+  });
+
   it(
     'refuses a shape row at its field, then saves every row or none, and sends all again',
     SLOW,
@@ -410,7 +425,9 @@ describe('payments on a vendor’s page, shapes and the reminder setting, in A (
         within(add).getByText('Shorten what the payment is for to 100 characters or fewer.'),
       ).toBeDefined();
       expect(
-        within(add).getByText('Enter a percentage from 0 to 100, with up to two decimal places.'),
+        within(add).getByText(
+          'Enter a percentage above 0 and up to 100, with up to two decimal places.',
+        ),
       ).toBeDefined();
       expect(within(add).getByText('Enter a whole number of days from 0 to 730.')).toBeDefined();
       fireEvent.click(within(add).getByRole('button', { name: 'Save 3 payments' }));
