@@ -1377,3 +1377,95 @@ describe('quotes on an event with no costs yet (sc-74361)', () => {
     expect(screen.getByRole('button', { name: 'Add the first cost' })).toBeTruthy();
   });
 });
+
+describe('a schedule from the vendor’s terms (sc-1332)', () => {
+  const at = '/app/events/ev_1/budget/vendors/v4';
+  const UNPAID = { ...SAVOUR, payments: [], scheduled: '0.00', difference: '-9000.00' };
+  const THREE = [
+    { description: 'Deposit', amount: '4500.00', currency: 'GBP', dueOn: '2026-10-13' },
+    { description: 'Second instalment', amount: '2700.00', currency: 'GBP', dueOn: '2030-09-15' },
+    { description: 'Balance', amount: '1800.00', currency: 'GBP', dueOn: '2030-10-31' },
+  ];
+
+  async function chooseInstalments(answer: Answer) {
+    signedIn();
+    const sent = serve(
+      {
+        'GET /api/events/ev_1/budget/quotes': () => json(quotes({ quotes: [UNPAID] })),
+        'POST /api/events/ev_1/budget/quotes/q_savour/schedule': answer,
+      },
+      { at },
+    );
+    fireEvent.click((await screen.findAllByRole('button', { name: 'Add a payment' }))[0]!);
+    const dialog = await screen.findByRole('dialog', { name: 'Add a payment' });
+    fireEvent.click(within(dialog).getByRole('radio', { name: 'Three instalments' }));
+
+    return { sent, dialog };
+  }
+
+  const scheduled = (sent: { line: string; body: unknown }[]) =>
+    sent.filter((one) => one.line === 'POST /api/events/ev_1/budget/quotes/q_savour/schedule');
+  const quotesRead = (sent: { line: string }[]) =>
+    sent.filter((one) => one.line === 'GET /api/events/ev_1/budget/quotes').length;
+
+  it('Save 3 payments sends the rows the shape computed, all at once', async () => {
+    const { sent, dialog } = await chooseInstalments(() => json(UNPAID, 201));
+
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Save 3 payments' }));
+
+    await waitFor(() => expect(scheduled(sent)).toHaveLength(1));
+    expect(scheduled(sent)[0]?.body).toEqual({ payments: THREE });
+  });
+
+  it('refuses a percentage of 0 at its field and sends nothing', async () => {
+    const { sent, dialog } = await chooseInstalments(() => json(UNPAID, 201));
+
+    fireEvent.change(within(dialog).getAllByLabelText('Percentage of the quote')[1]!, {
+      target: { value: '0' },
+    });
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Save 3 payments' }));
+
+    expect(
+      await within(dialog).findByText(
+        'Enter a percentage above 0 and up to 100, with up to two decimal places.',
+      ),
+    ).toBeTruthy();
+    expect(scheduled(sent)).toHaveLength(0);
+  });
+
+  it('says another tab scheduled payments first, and reads the quotes again', async () => {
+    const { sent, dialog } = await chooseInstalments(() =>
+      problem(409, 'payments_already_scheduled'),
+    );
+    const before = quotesRead(sent);
+
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Save 3 payments' }));
+
+    expect(
+      await within(dialog).findByText(
+        'Payments were added to this vendor’s schedule while you were filling this in, so none of yours were saved. Check the payments it has now before adding more.',
+      ),
+    ).toBeTruthy();
+    await waitFor(() => expect(quotesRead(sent)).toBeGreaterThan(before));
+  });
+
+  it('keeps the rows as filled in and says none were saved when the send fails', async () => {
+    const { dialog } = await chooseInstalments(() => {
+      throw new TypeError('Failed to fetch');
+    });
+    fireEvent.change(within(dialog).getAllByLabelText('Percentage of the quote')[0]!, {
+      target: { value: '40' },
+    });
+
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Save 3 payments' }));
+
+    expect(
+      await within(dialog).findByText(
+        'None of these payments were saved, because they could not be sent. Your rows are kept as you filled them in; select Save 3 payments to send them again.',
+      ),
+    ).toBeTruthy();
+    expect(
+      (within(dialog).getAllByLabelText('Percentage of the quote')[0] as HTMLInputElement).value,
+    ).toBe('40');
+  });
+});

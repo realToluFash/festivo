@@ -712,9 +712,11 @@ export function BudgetArea({ event }: { event: OrganisationEvent }) {
         {paying != null && quotes != null && (
           <PaymentDialog
             eventId={event.id}
+            event={event}
             quote={paying}
             quotes={quotes}
             onClose={() => setPaying(null)}
+            onRaced={() => void readQuotes()}
             onSaved={(words) => {
               void readQuotes().then(() => {
                 setPaying(null);

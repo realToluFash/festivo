@@ -17,7 +17,7 @@ import Svg, { Circle, Path } from 'react-native-svg';
 
 import { Text } from './Text.tsx';
 import { CappedWholeWords } from './Title.tsx';
-import { atAccessibilitySizes } from '../layout/textSize.ts';
+import { atAccessibilitySizes, LABEL_LINE } from '../layout/textSize.ts';
 import { titleAtWidth, titleWithInkRoom, UNMEASURED_TITLE } from './titleWidth.ts';
 import { useReducedMotion } from '../reducedMotion.ts';
 import { tokens } from '../theme/tokens.ts';
@@ -433,6 +433,7 @@ export function TextAction({
   renderMark,
   after,
   wraps = false,
+  drawnAt,
   consequence,
   accessibilityLabel,
   maxFontSizeMultiplier,
@@ -450,6 +451,8 @@ export function TextAction({
   renderMark?: (ink: string) => ReactNode;
   after?: GlyphName;
   wraps?: boolean;
+  /** The label's size already grown to the text size by the caller, drawn as it is (sc-75214). */
+  drawnAt?: number | undefined;
   consequence?: string;
   accessibilityLabel?: string;
   /** Set by a caller that steps its labels down to keep each word whole (sc-13496). */
@@ -480,15 +483,17 @@ export function TextAction({
       {glyph != null && <Glyph name={glyph} size={17} ink={ink} weight={2.3} />}
       {renderMark?.(ink)}
       <Text
-        size={15}
+        size={drawnAt ?? 15}
         weight="semibold"
         accessible={false}
+        allowFontScaling={drawnAt == null}
         maxFontSizeMultiplier={maxFontSizeMultiplier}
         style={[
           { color: ink },
           figures && styles.figures,
           onFill && styles.onFill,
           wraps && styles.wrapsLabel,
+          drawnAt != null && { lineHeight: Math.ceil(drawnAt * LABEL_LINE) },
         ]}
       >
         {label}
