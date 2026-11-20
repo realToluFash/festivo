@@ -25,7 +25,9 @@ describe("an event's Overview at 400% zoom, 320 CSS px (sc-74933)", () => {
   });
 
   it('brings Save into view with room for its whole focus ring', () => {
-    expect(SHEET).toContain('scroll-margin-block: var(--spaceSm);');
+    expect(cssRule('.ev-overview .ev-opened-actions', AT_320)).toContain(
+      'scroll-margin-block: var(--spaceSm);',
+    );
   });
 
   it('puts each day above its time in Dates', () => {
