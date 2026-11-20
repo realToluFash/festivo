@@ -1453,6 +1453,35 @@ describe('marking a payment paid (sc-88)', () => {
     ).toBe(true);
   });
 
+  it('names the next payment on the card, and opens its Mark paid from there', async () => {
+    signedIn();
+    serve({
+      'GET /api/events/ev_1/budget/quotes': () =>
+        json(
+          quotes({
+            due: [
+              {
+                id: 'p_deposit',
+                quoteId: 'q_savour',
+                vendor: 'Savour Kitchen',
+                description: 'Deposit',
+                amount: '4500.00',
+                dueOn: '2026-11-03',
+                overdue: true,
+              },
+            ],
+          }),
+        ),
+    });
+
+    const line = await screen.findByText(
+      /^The deposit for Savour Kitchen, £4,500, was due on .*3.*\.$/,
+    );
+    const foot = line.closest('div')!;
+    fireEvent.click(within(foot).getByRole('button', { name: 'Mark paid' }));
+    expect(within(dialog()).getByText('Savour Kitchen · Deposit · Adaeze and Tunde')).toBeTruthy();
+  });
+
   it('opens Mark paid from a row of Due next, and keeps the row lit with Undo once marked', async () => {
     signedIn();
     let now = quotes({

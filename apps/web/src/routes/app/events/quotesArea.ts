@@ -127,6 +127,17 @@ export function todayIn(timeZone: string, now: Date = new Date()): string {
   return `${part('year')}-${part('month')}-${part('day')}`;
 }
 
+export type CardDue = 'cardOverdue' | 'cardDueToday' | 'cardDueTomorrow' | 'cardDueOn';
+
+export function cardDue(payment: DuePayment, today: string): CardDue {
+  if (payment.overdue || payment.dueOn < today) return 'cardOverdue';
+  if (payment.dueOn === today) return 'cardDueToday';
+  const tomorrow = new Date(`${today}T00:00:00Z`);
+  tomorrow.setUTCDate(tomorrow.getUTCDate() + 1);
+
+  return payment.dueOn === tomorrow.toISOString().slice(0, 10) ? 'cardDueTomorrow' : 'cardDueOn';
+}
+
 export function dueInOrder(due: readonly DuePayment[], locale: string): DuePayment[] {
   return [...due].sort(
     (a, b) =>

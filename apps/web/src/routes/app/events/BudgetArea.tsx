@@ -97,7 +97,16 @@ import {
   VendorPage,
   VendorsQuoted,
 } from './QuoteParts.tsx';
-import { type QuoteForm, budgetPath, budgetView, longDay, vendorPagePath } from './quotesArea.ts';
+import {
+  type QuoteForm,
+  budgetPath,
+  budgetView,
+  cardDue,
+  dueInOrder,
+  longDay,
+  todayIn,
+  vendorPagePath,
+} from './quotesArea.ts';
 import { useHubTopics } from './useHubTopics.ts';
 import '../../../components/SettingsParts.css';
 import '../../../components/eventsDesk.css';
@@ -655,6 +664,11 @@ export function BudgetArea({ event }: { event: OrganisationEvent }) {
                   budget={budget}
                   washed={washed > 0}
                   step={stale == null}
+                  next={
+                    writes && quotes != null ? (dueInOrder(quotes.due, locale)[0] ?? null) : null
+                  }
+                  quotes={quotes}
+                  onMark={(due) => setMarking({ quoteId: due.quoteId, paymentId: due.id })}
                   onPrice={() => {
                     const unpriced = budget.lines.find((one) => lineState(one) === 'notPriced');
                     if (unpriced == null) return;
@@ -973,15 +987,21 @@ function SummaryCard({
   budget,
   washed,
   step,
+  next,
+  quotes,
+  onMark,
   onPrice,
 }: {
   event: OrganisationEvent;
   budget: EventBudget;
   washed: boolean;
   step: boolean;
+  next: DuePayment | null;
+  quotes: EventQuotes | null;
+  onMark: (due: DuePayment) => void;
   onPrice: () => void;
 }) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const locale = dateLocale();
   const money = (amount: string) => wholeMoney(amount, budget.currency, locale);
   const pair = (label: string, perHead: EventBudget['perHead']['confirmed']) =>
@@ -1021,11 +1041,28 @@ function SummaryCard({
           </div>
         ))}
       </dl>
-      {step && budget.notPriced > 0 && (
+      {step && next != null && quotes != null ? (
         <div className="bt-card-foot bt-card-foot-stack">
-          <p className="bt-card-strong">{t('budget.addPriceLine', { count: budget.notPriced })}</p>
-          <CardStep label={t('budget.addPrice')} onClick={onPrice} />
+          <p className="bt-card-strong">
+            {t(`quotes.${cardDue(next, todayIn(quotes.timeZone))}`, {
+              what: next.description.toLocaleLowerCase(i18n.language),
+              vendor: next.vendor,
+              amount: wholeMoney(next.amount, quotes.currency, locale),
+              day: longDay(next.dueOn, locale),
+            })}
+          </p>
+          <CardStep label={t('quotes.markPaid')} onClick={() => onMark(next)} />
         </div>
+      ) : (
+        step &&
+        budget.notPriced > 0 && (
+          <div className="bt-card-foot bt-card-foot-stack">
+            <p className="bt-card-strong">
+              {t('budget.addPriceLine', { count: budget.notPriced })}
+            </p>
+            <CardStep label={t('budget.addPrice')} onClick={onPrice} />
+          </div>
+        )
       )}
     </CoverCard>
   );

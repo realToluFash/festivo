@@ -13,6 +13,7 @@ import {
   budgetView,
   cancelledLine,
   cardDifference,
+  cardDue,
   cardGap,
   differenceLine,
   differenceOf,
@@ -449,5 +450,25 @@ describe('marking paid', () => {
     expect(
       madeProblems(t, { ...draft, description: 'Stems', paidOn: '2026-10-01' }, revised, AT, EN),
     ).toEqual({});
+  });
+});
+
+describe('cardDue', () => {
+  it('picks the sentence by the day it is due, against today in the event', () => {
+    expect(cardDue(due({ dueOn: '2026-11-19', overdue: true }), '2026-11-20')).toBe('cardOverdue');
+    expect(cardDue(due({ dueOn: '2026-11-20' }), '2026-11-20')).toBe('cardDueToday');
+    expect(cardDue(due({ dueOn: '2026-12-01' }), '2026-11-30')).toBe('cardDueTomorrow');
+    expect(cardDue(due({ dueOn: '2026-12-02' }), '2026-11-30')).toBe('cardDueOn');
+  });
+
+  it('says each case in a whole sentence', () => {
+    const slots = { what: 'deposit', vendor: 'Atlas', amount: '£1,880', day: 'Monday 3 November' };
+
+    expect(i18next.t('quotes.cardDueToday', slots)).toBe(
+      'The deposit for Atlas, £1,880, is due today.',
+    );
+    expect(i18next.t('quotes.cardDueTomorrow', slots)).toBe(
+      'The deposit for Atlas, £1,880, is due tomorrow, Monday 3 November.',
+    );
   });
 });
