@@ -75,6 +75,7 @@ import {
   type BudgetAddresses,
   DUE_NEXT,
   FIRST_TIME_ALONE,
+  QUOTES_NO_COSTS,
   budgetAt,
   budgetViewerOf,
   cardGap,
@@ -148,17 +149,20 @@ function QuotesBody({
     () => (state === '' ? keptBudget() : null) ?? start.budget,
   );
 
+  // A page with no costs carries its quotes and its costs to a vendor's page and back (sc-74361).
+  const carried = QUOTES_NO_COSTS.includes(state);
+
   useEffect(() => {
-    if (budget !== start.budget) keepBudget(budget);
-  }, [budget, start.budget]);
+    if (budget !== start.budget || carried) keepBudget(budget);
+  }, [budget, start.budget, carried]);
   const [firstCosts] = useState<CostLine[]>(
     () => (state === '' ? keptCosts() : null) ?? linesOf(state),
   );
   const [costs, setCosts] = useState(firstCosts);
 
   useEffect(() => {
-    if (costs !== firstCosts) keepCosts(costs);
-  }, [costs, firstCosts]);
+    if (costs !== firstCosts || carried) keepCosts(costs);
+  }, [costs, firstCosts, carried]);
   const [quote, setQuote] = useState<Opened | null>(start.quote);
   const [payment, setPayment] = useState<PaymentOpen | null>(start.payment);
   const [amending, setAmending] = useState<Amending | null>(start.amending);
