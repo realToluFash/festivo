@@ -302,6 +302,57 @@ describe('/demo/events/evt-wed-4/staff/roster (sc-3906)', () => {
     expect(cssRule('.rs-table thead th:nth-child(5)', narrow)).toContain('min-width: 168px;');
   });
 
+  it('keeps whole words in the Roster at every desk width, Link at 168 px (sc-75033)', () => {
+    const desk = ROSTER_CSS.slice(0, ROSTER_CSS.indexOf('@media'));
+    expect(
+      cssRule('.rs-frame > .rs-table :is(th, td),\n.rs-frame > .rs-table :is(th, td) *', desk),
+    ).toContain('overflow-wrap: normal;');
+    expect(cssRule('.rs-frame > .rs-table thead th:nth-child(5)', desk)).toContain(
+      'min-width: 168px;',
+    );
+    expect(desk).not.toMatch(/th:nth-child\([23]\)/u);
+  });
+
+  it.each([
+    ['populatedFrench', 'Liste du personnel', 'Pas encore de lien'],
+    ['detailsNoLinkFrench', 'Liste du personnel', 'Pas encore de lien'],
+    ['erasedListFrench', 'Liste du personnel', 'Coordonnées effacées après l’événement'],
+    ['erasedList', 'Roster', 'Contact details removed after the event'],
+    ['populatedSpanish', 'Lista del personal', 'Aún sin enlace'],
+    ['erasedDetailsSpanish', 'Lista del personal', 'Datos de contacto eliminados tras el evento'],
+    ['populatedPortuguese', 'Lista da equipa', 'Ainda sem ligação'],
+    ['erasedDetailsPortuguese', 'Lista da equipa', 'Contactos apagados depois do evento'],
+  ])('shows the Link words of %s in the Roster (sc-75033)', async (state, roster, words) => {
+    const router = createMemoryRouter(routes, {
+      initialEntries: [`/demo/events/evt-wed-4/staff/roster?state=${state}`],
+    });
+    render(<RouterProvider router={router} />);
+    const table = await screen.findByRole('table', { name: roster }, { timeout: 8000 });
+    expect(within(table).getAllByText(words).length).toBeGreaterThan(0);
+  });
+
+  it.each([
+    ['populatedSpanish', 'Siguiente paso: enviar un enlace a quien aún no lo haya recibido.'],
+    [
+      'erasedListSpanish',
+      'Siguiente paso: revisar las horas en «Horas trabajadas» antes de que se cierre el presupuesto.',
+    ],
+    [
+      'erasedListPortuguese',
+      'Próximo passo: verificar as horas em «Horas trabalhadas» antes de o orçamento fechar.',
+    ],
+    ['detailsNoLinkSpanish', 'Copiar enlace'],
+    ['detailsNoLinkPortuguese', 'Copiar ligação'],
+  ])('reads %s in the product’s words, not English (sc-75033)', async (state, words) => {
+    const router = createMemoryRouter(routes, {
+      initialEntries: [`/demo/events/evt-wed-4/staff/roster?state=${state}`],
+    });
+    render(<RouterProvider router={router} />);
+    expect((await screen.findAllByText(words, {}, { timeout: 8000 })).length).toBeGreaterThan(0);
+    expect(screen.queryByText(/^Next: /u)).toBeNull();
+    expect(screen.queryByText('Copy link')).toBeNull();
+  });
+
   it.each([
     ['nobodyOnShift', 'Not on a shift yet'],
     ['nobodyOnShiftFrench', 'Aucun service pour l’instant'],

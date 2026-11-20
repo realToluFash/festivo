@@ -4,7 +4,7 @@ import { Link } from 'react-router';
 
 import { Glyph } from '../components/Glyph.tsx';
 import { Card, CardStep, Field } from '../components/SettingsParts.tsx';
-import { BudgetDialog, BudgetRow, MoneyField, Rows } from './BudgetParts.tsx';
+import { Amount, BudgetDialog, BudgetRow, MoneyField, RingMark, Rows } from './BudgetParts.tsx';
 import { TODAY, type Payment, money, shortDay } from './budget.ts';
 import { BUDGET_WORDS as BW } from './budgetWords.ts';
 import {
@@ -14,13 +14,14 @@ import {
   type MadeOpen,
   daysProblem,
   keptOf,
+  madeInset,
   madeProblems,
   reasonProblem,
   remindersStart,
 } from './payments.ts';
 import { PW } from './paymentsWords.ts';
 import { BUSY_MS, DateField, TextField } from './QuoteForms.tsx';
-import { type Quote } from './quotes.ts';
+import { type Budget } from './quotes.ts';
 import { QW } from './quotesWords.ts';
 import { type Viewer, settingsPath } from './settings.ts';
 import { VW } from './vendorsWords.ts';
@@ -156,13 +157,13 @@ export function CancelDialog({
 /** Add a payment already made, 540: scheduled and paid in one action, its Vendor starting on the page's vendor. */
 export function MadeDialog({
   made,
-  quotes,
+  budget,
   onMade,
   onClose,
   onSaved,
 }: {
   made: MadeOpen;
-  quotes: readonly Quote[];
+  budget: Budget;
   onMade: (next: MadeOpen) => void;
   onClose: () => void;
   onSaved: (draft: MadeDraft) => void;
@@ -171,6 +172,7 @@ export function MadeDialog({
   const first = useRef<HTMLSelectElement>(null);
   const [busy, wait] = useBusy();
   const { draft, problems } = made;
+  const { quotes } = budget;
   const quoteOf = (vendorId: string) => quotes.find((one) => one.vendor.id === vendorId);
   const vendors = quotes
     .map((one) => one.vendor)
@@ -254,8 +256,55 @@ export function MadeDialog({
           optional
           onChange={(reference) => set({ reference })}
         />
+        <MadeTotals budget={budget} draft={draft} />
       </div>
     </BudgetDialog>
+  );
+}
+
+function Then({ now, after }: { now: number; after: number | undefined }) {
+  if (after == null) return money(now);
+  const said = PW.withThisSaid(money(now), money(after));
+
+  return (
+    <>
+      <span aria-hidden="true">{PW.withThis(money(now), money(after))}</span>
+      <span className="visually-hidden">{said}</span>
+    </>
+  );
+}
+
+/** sc-75579's inset (Budget-A-Payments-More 43): a preview only; what the page shows after Add as paid is the server's arithmetic. */
+function MadeTotals({ budget, draft }: { budget: Budget; draft: MadeDraft }) {
+  const inset = madeInset(budget, draft);
+  if (inset == null) return null;
+  const { now, after, over } = inset;
+
+  return (
+    <div className="pay-inset" aria-live="polite">
+      <Rows>
+        <li>
+          <BudgetRow
+            title={PW.paidTo(inset.vendor)}
+            end={<Amount value={<Then now={now.paid} after={after?.paid} />} />}
+          />
+        </li>
+        <li>
+          <BudgetRow
+            title={QW.scheduled}
+            end={<Amount value={<Then now={now.scheduled} after={after?.scheduled} />} />}
+          />
+        </li>
+      </Rows>
+      {over != null && (
+        <div className="bud-warn">
+          <RingMark state="overIfAll" />
+          <span>
+            <strong>{PW.overWithThis(money(over))}</strong> {PW.differenceVisible}
+          </span>
+        </div>
+      )}
+    </div>
   );
 }
 

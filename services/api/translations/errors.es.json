@@ -28,7 +28,7 @@
     "budget_line_currency_changed": "La moneda del evento ha cambiado desde que se quitó este coste.",
     "vendor_already_quoted": "Ese proveedor ya tiene una cotización en este evento, así que esta cotización no se ha guardado. Para dar un precio nuevo, revise esa cotización.",
     "quote_unchanged": "Cambie el importe o la fecha de la cotización para revisarla. Para cambiar cualquier otra cosa, corrija la cotización.",
-    "payments_already_scheduled": "Se añadieron pagos al calendario de este proveedor mientras rellenaba esto, así que no se ha guardado ninguno de los suyos. Revise los pagos que tiene ahora antes de añadir más.",
+    "payments_already_scheduled": "Se han añadido pagos al calendario de este proveedor mientras rellenaba el formulario, así que no se ha guardado ninguno de los suyos. Revise los pagos que tiene ahora el calendario antes de añadir más.",
     "vendor_owed": "Este proveedor no se ha archivado, porque uno o más eventos aún tienen pagos pendientes a este proveedor.",
     "payment_already_paid": "Este pago ya se ha marcado como pagado, así que no se ha cambiado nada.",
     "payment_cancelled": "Este pago se ha cancelado, así que no se puede marcar como pagado.",

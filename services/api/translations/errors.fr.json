@@ -28,7 +28,7 @@
     "budget_line_currency_changed": "La devise de l’événement a changé depuis le retrait de ce coût.",
     "vendor_already_quoted": "Ce prestataire a déjà un devis pour cet événement, ce devis n’a donc pas été enregistré. Pour donner un nouveau prix, révisez le devis existant.",
     "quote_unchanged": "Modifiez le montant ou la date du devis pour le réviser. Pour modifier autre chose, corrigez plutôt le devis.",
-    "payments_already_scheduled": "Des paiements ont été ajoutés à l’échéancier de ce prestataire pendant que vous le remplissiez, aucun des vôtres n’a donc été enregistré. Vérifiez les paiements qu’il contient maintenant avant d’en ajouter d’autres.",
+    "payments_already_scheduled": "Des paiements ont été ajoutés à l’échéancier de ce prestataire pendant que vous remplissiez ce formulaire : aucun des vôtres n’a donc été enregistré. Vérifiez les paiements qu’il contient désormais avant d’en ajouter d’autres.",
     "vendor_owed": "Ce prestataire n’a pas été archivé, car des paiements qui lui sont dus sur un ou plusieurs événements ne sont ni réglés ni annulés.",
     "payment_already_paid": "Ce paiement a déjà été marqué comme réglé : rien n’a été modifié.",
     "payment_cancelled": "Ce paiement a été annulé : il ne peut pas être marqué comme réglé.",

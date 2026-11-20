@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { type CountLineMeasure, countLineDrawn, countLineStarts } from './countSizeRules.ts';
+import { type CountLineMeasure, countLineDrawn, countLineStarts } from './countLineFit.ts';
 
 const AX1 = 1.786;
 const AX5 = 3.571;
@@ -9,7 +9,7 @@ const line = (given: Partial<CountLineMeasure>): CountLineMeasure => ({
   scale: AX5,
   cap: 43,
   room: 362,
-  gap: 16,
+  gap: 12,
   count: 120,
   clear: 110,
   countWidest: 90,
@@ -24,6 +24,10 @@ describe('countLineDrawn', () => {
 
   it('puts Clear filters under the count once they cannot share the line', () => {
     expect(countLineDrawn(line({ count: 280, clear: 400 })).stacked).toBe(true);
+  });
+
+  it('counts the gap between them in the measure', () => {
+    expect(countLineDrawn(line({ count: 180, clear: 175 })).stacked).toBe(true);
   });
 
   it('never stacks at the standard sizes, as main', () => {
