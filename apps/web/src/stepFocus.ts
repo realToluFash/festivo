@@ -59,11 +59,14 @@ export function afterNotice(notice: HTMLElement | null): HTMLElement | null {
       (notice.compareDocumentPosition(candidate) & Node.DOCUMENT_POSITION_FOLLOWING) !== 0,
   );
 
-  if (next == null) return null;
+  return next == null ? null : landOnNotice(next);
+}
 
-  if (!next.hasAttribute('tabindex')) next.tabIndex = -1;
-  next.setAttribute('data-notice-landing', '');
-  next.addEventListener('blur', () => next.removeAttribute('data-notice-landing'), { once: true });
+/** Marks `el` as where focus lands for a notice, until focus leaves it; the caller moves focus there. */
+export function landOnNotice(el: HTMLElement): HTMLElement {
+  if (!el.hasAttribute('tabindex')) el.tabIndex = -1;
+  el.setAttribute('data-notice-landing', '');
+  el.addEventListener('blur', () => el.removeAttribute('data-notice-landing'), { once: true });
 
-  return next;
+  return el;
 }

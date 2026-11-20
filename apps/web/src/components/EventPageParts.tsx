@@ -1,6 +1,7 @@
 import {
   type InputHTMLAttributes,
   type ReactNode,
+  type Ref,
   type RefObject,
   useContext,
   useEffect,
@@ -471,10 +472,23 @@ export function Alert({ children }: { children: ReactNode }) {
   );
 }
 
-/** The broken notice, with what to do about it under its words. */
-export function Broken({ children, action }: { children: ReactNode; action?: ReactNode }) {
+/** The broken notice and what to do about it; with `landing`, focus reads it instead of an announcement. */
+export function Broken({
+  children,
+  action,
+  landing,
+}: {
+  children: ReactNode;
+  action?: ReactNode;
+  landing?: Ref<HTMLDivElement> | undefined;
+}) {
   return (
-    <div className="notice notice-broken ev-notice" role="alert">
+    <div
+      className="notice notice-broken ev-notice"
+      role={landing == null ? 'alert' : undefined}
+      ref={landing}
+      tabIndex={landing == null ? undefined : -1}
+    >
       <span className="mark mark-broken" aria-hidden="true">
         ✕
       </span>

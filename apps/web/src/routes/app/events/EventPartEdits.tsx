@@ -42,6 +42,7 @@ import { type CoverEdited, type CoverUploaded, CoverEdit } from '../../../compon
 import { Glyph } from '../../../components/Glyph.tsx';
 import { currentLocale, dateLocale } from '../../../i18n/index.ts';
 import { meshFor } from '../../../mesh.ts';
+import { focusStep, landOnNotice } from '../../../stepFocus.ts';
 import { currencyChoices, timeZoneChoices } from '../../../zoneAndCurrencyChoices.ts';
 import { discardCoverUpload, refusalOf } from './coverPhoto.ts';
 import { HostFields, VenueFields } from './EventFormFields.tsx';
@@ -273,7 +274,8 @@ export function TypePart({ event, tag, onDirty, onClose, onSaved, onLatest }: Pa
 export function CurrencyPart({ event, tag, onDirty, onClose, onSaved, onLatest }: PartProps) {
   const { t } = useTranslation();
   const [picked, setPicked] = useState(event.currency);
-  const [inUse, setInUse] = useState(false);
+  const [inUse, setInUse] = useState<{ times: number; landing: boolean } | null>(null);
+  const notice = useRef<HTMLDivElement>(null);
   const { busy, save, latest } = useSave({ event, tag, onSaved });
   const outcome = useOutcome(onLatest, latest);
   const locale = currentLocale();
@@ -284,6 +286,13 @@ export function CurrencyPart({ event, tag, onDirty, onClose, onSaved, onLatest }
   const changed = picked !== event.currency;
 
   useDirty(changed, onDirty);
+  useLayoutEffect(() => {
+    const landed = notice.current;
+
+    if (inUse == null || !inUse.landing || landed == null) return;
+
+    focusStep(landOnNotice(landed));
+  }, [inUse]);
 
   return (
     <Opened
@@ -293,15 +302,27 @@ export function CurrencyPart({ event, tag, onDirty, onClose, onSaved, onLatest }
       busy={busy}
       onLatest={outcome.showLatest}
       onCancel={onClose}
-      onSave={() =>
+      onSave={() => {
+        const from = document.activeElement;
+
         void save({ ...typedOf(event), currency: picked }, null).then((saving) => {
+          const landing = document.activeElement === from;
+
           outcome.took(saving);
-          setInUse(saving.kind === 'refused' && saving.currencyInUse);
-        })
-      }
+          setInUse((was) =>
+            saving.kind === 'refused' && saving.currencyInUse
+              ? { times: (was?.times ?? 0) + 1, landing }
+              : null,
+          );
+        });
+      }}
     >
       {outcome.failed}
-      {inUse && <Broken>{t('eventEdit.currencyInUse')}</Broken>}
+      {inUse != null && (
+        <Broken key={inUse.times} landing={inUse.landing ? notice : undefined}>
+          {t('eventEdit.currencyInUse')}
+        </Broken>
+      )}
       <Radios
         legend={t('eventForm.currency')}
         choices={choices.map((choice) => [choice.value, choice.label] as const)}
