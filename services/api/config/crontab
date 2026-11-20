@@ -15,5 +15,6 @@
 * * * * * php /app/bin/console app:owner-claims:run --no-interaction
 * * * * * php /app/bin/console app:email-domains:check --no-interaction
 * * * * * php /app/bin/console app:organisation-exports:prepare --no-interaction
+* * * * * php /app/bin/console app:audit-exports:prepare --no-interaction
 * * * * * php /app/bin/console app:notifications:check --no-interaction
 15 * * * * php /app/bin/console app:mail:check-rates --no-interaction
