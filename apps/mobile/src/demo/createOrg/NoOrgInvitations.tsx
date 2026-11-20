@@ -10,6 +10,7 @@ import { dateLocale } from '../../i18n/index.ts';
 import { tokens } from '../../theme/tokens.ts';
 import { useNoOrgInvitations } from '../OrgSwitcher.tsx';
 import { type Invite, untilIn } from '../OrgSwitcherModel.ts';
+import { invitationRowOf, NO_ORG_IDS, wayOnShows } from './NoOrgInvitationsModel.ts';
 
 const TILE = 48;
 
@@ -18,10 +19,10 @@ export function NoOrgInvitations() {
   const { t } = useTranslation();
   const { invitations } = useNoOrgInvitations();
 
-  if (invitations.length === 0) return null;
+  if (wayOnShows(invitations)) return null;
 
   return (
-    <View testID="noOrganisation.invitations">
+    <View testID={NO_ORG_IDS.list}>
       <Text size={14} weight="semibold" muted accessibilityRole="header" style={styles.heading}>
         {t('invitations.heading')}
       </Text>
@@ -37,14 +38,13 @@ export function NoOrgInvitations() {
 function InvitationRow({ invite }: { invite: Invite }) {
   const { t } = useTranslation();
   const { outcomes, answer, open } = useNoOrgInvitations();
-  const outcome = outcomes[invite.id];
+  const row = invitationRowOf(outcomes[invite.id]);
   const keys = invitationWording(invite);
   const organisation = invite.name;
   const inviter = invite.invitedBy?.name ?? '';
-  const busy = outcome?.kind === 'busy' ? outcome.answer : null;
 
   return (
-    <View style={styles.row} testID={`noOrganisation.invitation.${invite.id}`}>
+    <View style={styles.row} testID={NO_ORG_IDS.row(invite.id)}>
       <View
         style={styles.tile}
         accessibilityElementsHidden
@@ -64,7 +64,7 @@ function InvitationRow({ invite }: { invite: Invite }) {
             {t(keys.until, { date: untilIn(dateLocale(), invite.until), email: invite.email })}
           </Text>
         </View>
-        {outcome?.kind === 'accepted' ? (
+        {row.kind === 'joined' ? (
           <View style={styles.under}>
             <Notice
               tone="done"
@@ -78,11 +78,11 @@ function InvitationRow({ invite }: { invite: Invite }) {
                 full={false}
                 height={tokens.sizeHit}
                 onPress={() => open(invite.id)}
-                testID={`noOrganisation.invitation.${invite.id}.open`}
+                testID={NO_ORG_IDS.open(invite.id)}
               />
             </View>
           </View>
-        ) : outcome?.kind === 'declined' ? (
+        ) : row.kind === 'declined' ? (
           <View style={styles.under}>
             <Notice tone="quiet" mark="–" body={t(keys.declined, { inviter })} takesFocus />
           </View>
@@ -90,32 +90,24 @@ function InvitationRow({ invite }: { invite: Invite }) {
           <View style={styles.under}>
             <View style={styles.answers}>
               <Pill
-                label={busy === 'accept' ? t('invitations.joining') : t('invitations.accept')}
-                accessibilityLabel={
-                  busy === 'accept'
-                    ? t('invitations.joining')
-                    : t('invitations.acceptLabel', { organisation })
-                }
-                kind={busy == null ? 'primary' : 'off'}
-                busy={busy === 'accept'}
+                label={t(row.accept.label)}
+                accessibilityLabel={t(row.accept.accessibilityLabel, { organisation })}
+                kind={row.accept.off ? 'off' : 'primary'}
+                busy={row.accept.busy}
                 full={false}
                 height={tokens.sizeHit}
-                onPress={() => busy == null && answer(invite.id, true)}
-                testID={`noOrganisation.invitation.${invite.id}.accept`}
+                onPress={() => !row.accept.off && answer(invite.id, true)}
+                testID={NO_ORG_IDS.accept(invite.id)}
               />
               <Pill
-                label={busy === 'decline' ? t('invitations.declining') : t('invitations.decline')}
-                accessibilityLabel={
-                  busy === 'decline'
-                    ? t('invitations.declining')
-                    : t('invitations.declineLabel', { organisation })
-                }
-                kind={busy == null ? 'secondary' : 'off'}
-                busy={busy === 'decline'}
+                label={t(row.decline.label)}
+                accessibilityLabel={t(row.decline.accessibilityLabel, { organisation })}
+                kind={row.decline.off ? 'off' : 'secondary'}
+                busy={row.decline.busy}
                 full={false}
                 height={tokens.sizeHit}
-                onPress={() => busy == null && answer(invite.id, false)}
-                testID={`noOrganisation.invitation.${invite.id}.decline`}
+                onPress={() => !row.decline.off && answer(invite.id, false)}
+                testID={NO_ORG_IDS.decline(invite.id)}
               />
             </View>
             <Text size={13} weight="medium" muted style={styles.note}>

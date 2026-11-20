@@ -29,8 +29,7 @@ import { lookingAs, managesOrganisation, memberLooking, SECTIONS, viewerOf } fro
 import { underSavedName, useSavedName } from './savedName.ts';
 import { SecuritySection } from './Security.tsx';
 import { heldOf } from './Held.tsx';
-import { FromNone } from './fromNone.ts';
-import { NO_ORG_HOME } from '../outsideEvents/OutsideModel.ts';
+import { boardFrom, FromNone, fromNoneOf, noOrgHome } from './fromNone.ts';
 import { SettingsColumn, SettingsHome, sectionsFor } from './SettingsHome.tsx';
 import { SignInRulesSection } from './SignInRules.tsx';
 import { SingleSignOnSection } from './SingleSignOn.tsx';
@@ -75,12 +74,12 @@ export function settingsHref(
   viewer: Viewer,
   section: ShellSection | null,
   state?: string,
-  fromNone = false,
+  from?: string,
 ): Href {
   const query = [
     state == null ? '' : `state=${state}`,
     viewer === 'owner' ? '' : `as=${viewer}`,
-    fromNone ? 'from=none' : '',
+    from == null ? '' : `from=${from}`,
   ]
     .filter((part) => part !== '')
     .join('&');
@@ -106,7 +105,9 @@ export function SettingsRoute({
     held?: string;
     from?: string;
   }>();
-  const fromNone = params.from === 'none';
+  const board = boardFrom(params.from);
+  const fromNone = board !== undefined;
+  const from = fromNone ? fromNoneOf(board) : undefined;
   const layout = layoutOf(useLayout().kind);
   const [told, setTold] = useState<string>();
   const tell = useCallback<Tell>((words) => setTold(words), []);
@@ -128,16 +129,16 @@ export function SettingsRoute({
     (next: ShellSection, state?: string) => {
       if (next === shown && state == null) return;
       // On its side the list stays put, so a row changes the page beside it rather than stacking one.
-      if (layout === 'landscape') router.replace(settingsHref(viewer, next, state, fromNone));
-      else router.push(settingsHref(viewer, next, state, fromNone));
+      if (layout === 'landscape') router.replace(settingsHref(viewer, next, state, from));
+      else router.push(settingsHref(viewer, next, state, from));
     },
-    [layout, shown, viewer, fromNone],
+    [layout, shown, viewer, from],
   );
   const toSettings = useCallback(() => {
-    if (layout === 'landscape') router.replace(settingsHref(viewer, null, undefined, fromNone));
-    else router.dismissTo(settingsHref(viewer, null, undefined, fromNone));
-  }, [layout, viewer, fromNone]);
-  const toNone = useCallback(() => router.dismissTo(NO_ORG_HOME as Href), []);
+    if (layout === 'landscape') router.replace(settingsHref(viewer, null, undefined, from));
+    else router.dismissTo(settingsHref(viewer, null, undefined, from));
+  }, [layout, viewer, from]);
+  const toNone = useCallback(() => router.dismissTo(noOrgHome(board ?? null) as Href), [board]);
   const onTab = useCallback(
     (tab: Tab) => {
       if (tab === 'Today') router.replace('/demo/today');
