@@ -52,6 +52,8 @@ final class PaymentRemindersTest extends ApiTestCase
 
     private string $quoteId;
 
+    private string $vendorId;
+
     protected function setUp(): void
     {
         parent::setUp();
@@ -63,15 +65,8 @@ final class PaymentRemindersTest extends ApiTestCase
         $this->eventId = $this->newEvent();
         $vendor = $this->as($this->owner, 'POST', '/api/orgs/' . $this->organisation->getId()->toRfc4122() . '/vendors', ['name' => 'Bloom & Co', 'category' => 'flowers']);
         self::assertSame(201, $this->statusCode(), Json\encode($vendor));
-        $quote = $this->as($this->owner, 'POST', $this->quotes(), [
-            'vendorId' => Type\shape(['id' => Type\string()], true)->coerce($vendor['vendor'] ?? null)['id'],
-            'covers' => 'Bouquets',
-            'amount' => '1000',
-            'currency' => 'GBP',
-            'quotedOn' => '2027-02-20',
-        ]);
-        self::assertSame(201, $this->statusCode(), Json\encode($quote));
-        $this->quoteId = Type\shape(['id' => Type\string()], true)->coerce($quote['quote'] ?? null)['id'];
+        $this->vendorId = Type\shape(['id' => Type\string()], true)->coerce($vendor['vendor'] ?? null)['id'];
+        $this->quoteId = $this->quote($this->eventId);
     }
 
     #[Test]
@@ -121,6 +116,12 @@ final class PaymentRemindersTest extends ApiTestCase
 
         self::assertSame(['days' => 5, 'inForce' => true], $this->as($this->owner, 'PUT', $this->setting(), ['days' => 5]));
         self::assertSame('2027-03-05 09:00:00', $this->pending($payment)[PaymentReminders::COMING_DUE] ?? null);
+
+        $this->as($this->owner, 'PUT', $this->setting(), ['days' => 5]);
+        self::assertSame(
+            [['organisation.payment_reminders_changed', 'Harriet Cole', '{"paymentReminderDays": [3, 5]}']],
+            self::em()->getConnection()->fetchAllNumeric("SELECT action, actor_label, changes::text FROM audit_entries WHERE action LIKE 'organisation.payment%'"),
+        );
     }
 
     #[Test]
@@ -204,9 +205,49 @@ final class PaymentRemindersTest extends ApiTestCase
         self::assertSame([
             'Bloom & Co · £1,000.00 · was due Fri 5 Mar · Overdue · last reminder',
             'Bloom & Co · £1,000.00 · due Wed 10 Mar',
-            'This is the last reminder about the balance to Bloom & Co.',
+            'This is the last reminder about Bloom & Co: Balance.',
         ], $rendered->lines);
         self::assertStringStartsWith('/app/events/' . $this->eventId . '/budget/vendors/', $rendered->place ?? '');
+    }
+
+    #[Test]
+    public function theOverdueReminderStillReachesWhoeverHadTheComingDueOne(): void
+    {
+        $this->payment('Deposit', '2027-03-10');
+
+        self::mockTime(new DateTimeImmutable('2027-03-07T10:00:00Z'));
+        self::runUntilIdle();
+        self::mockTime(new DateTimeImmutable('2027-03-11T10:00:00Z'));
+        self::runUntilIdle();
+
+        self::assertSame(
+            ['1 payment due in the next 3 days on Summer wedding', '1 payment overdue on Summer wedding'],
+            $this->inApp()[$this->owner->getId()->toRfc4122()] ?? [],
+        );
+    }
+
+    #[Test]
+    public function severalEventsAreCountedAndOneDayReadsByTomorrow(): void
+    {
+        $here = $this->payment('Deposit', '2027-03-10');
+        $otherEvent = $this->newEvent();
+        $there = $this->payment('Balance', '2027-03-11', $otherEvent, $this->quote($otherEvent));
+        $reminder = self::service(PaymentReminder::class);
+        $owner = new Recipient(NotificationAudienceKind::Member, $this->owner->getId(), 'Harriet Cole', 'en', null);
+        $both = static fn (string $kind): array => [['paymentId' => $here, 'kind' => $kind], ['paymentId' => $there, 'kind' => $kind]];
+
+        self::assertSame('2 payments due in the next 3 days across 2 events', $reminder->render(NotificationChannel::InApp, $owner, $both(PaymentReminders::COMING_DUE))->subject);
+        self::assertSame('2 payments overdue across 2 events', $reminder->render(NotificationChannel::InApp, $owner, $both(PaymentReminders::OVERDUE))->subject);
+
+        $this->as($this->owner, 'PUT', $this->setting(), ['days' => 1]);
+        self::em()->clear();
+
+        self::assertSame('2 payments due by tomorrow across 2 events', $reminder->render(NotificationChannel::InApp, $owner, $both(PaymentReminders::COMING_DUE))->subject);
+        self::assertSame('1 payment due by tomorrow on Summer wedding', $reminder->render(NotificationChannel::InApp, $owner, [['paymentId' => $here, 'kind' => PaymentReminders::COMING_DUE]])->subject);
+        self::assertSame('1 payment overdue, 1 due by tomorrow', $reminder->render(NotificationChannel::InApp, $owner, [
+            ['paymentId' => $here, 'kind' => PaymentReminders::COMING_DUE],
+            ['paymentId' => $there, 'kind' => PaymentReminders::OVERDUE],
+        ])->subject);
     }
 
     #[Test]
@@ -271,9 +312,23 @@ final class PaymentRemindersTest extends ApiTestCase
         return $pending;
     }
 
-    private function payment(string $description, string $dueOn): string
+    private function quote(string $eventId): string
     {
-        $answer = $this->as($this->owner, 'POST', $this->quotes() . '/' . $this->quoteId . '/payments', ['description' => $description, 'amount' => '1000', 'currency' => 'GBP', 'dueOn' => $dueOn]);
+        $quote = $this->as($this->owner, 'POST', $this->quotes($eventId), [
+            'vendorId' => $this->vendorId,
+            'covers' => 'Bouquets',
+            'amount' => '1000',
+            'currency' => 'GBP',
+            'quotedOn' => '2027-02-20',
+        ]);
+        self::assertSame(201, $this->statusCode(), Json\encode($quote));
+
+        return Type\shape(['id' => Type\string()], true)->coerce($quote['quote'] ?? null)['id'];
+    }
+
+    private function payment(string $description, string $dueOn, ?string $eventId = null, ?string $quoteId = null): string
+    {
+        $answer = $this->as($this->owner, 'POST', $this->quotes($eventId) . '/' . ($quoteId ?? $this->quoteId) . '/payments', ['description' => $description, 'amount' => '1000', 'currency' => 'GBP', 'dueOn' => $dueOn]);
         self::assertSame(201, $this->statusCode(), Json\encode($answer));
         $payments = Type\vec(Type\shape(['id' => Type\string(), 'description' => Type\string()], true))->coerce(Type\shape(['payments' => Type\mixed()], true)->coerce($answer['quote'] ?? null)['payments']);
 
@@ -300,9 +355,9 @@ final class PaymentRemindersTest extends ApiTestCase
         return '/api/orgs/' . $this->organisation->getId()->toRfc4122() . '/payment-reminders';
     }
 
-    private function quotes(): string
+    private function quotes(?string $eventId = null): string
     {
-        return '/api/events/' . $this->eventId . '/budget/quotes';
+        return '/api/events/' . ($eventId ?? $this->eventId) . '/budget/quotes';
     }
 
     private function payments(string $id): string

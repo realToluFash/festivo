@@ -4,8 +4,9 @@ declare(strict_types=1);
 
 namespace App\Domain\Budget\Controller;
 
-use App\Domain\Budget\Reminder\PaymentReminders;
+use App\Domain\Budget\Reminder\PaymentReminderDaysEditor;
 use App\Entity\Organisation;
+use App\Entity\User;
 use App\Enum\ErrorCode;
 use App\Enum\Permission;
 use App\Enum\PlanFeature;
@@ -14,8 +15,8 @@ use App\Http\Access\Policy\InOrganisation;
 use App\Http\Exception\ApiException;
 use App\Http\Input;
 use App\Repository\OrganisationRepository;
-use Doctrine\ORM\EntityManagerInterface;
 use Psl\Type;
+use Symfony\Bundle\SecurityBundle\Security;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Routing\Attribute\Route;
@@ -27,8 +28,8 @@ final readonly class PaymentRemindersController
     public function __construct(
         private OrganisationRepository $organisationRepository,
         private PlanFeaturesInterface $planFeatures,
-        private PaymentReminders $paymentReminders,
-        private EntityManagerInterface $entityManager,
+        private PaymentReminderDaysEditor $paymentReminderDaysEditor,
+        private Security $security,
         private TranslatorInterface $translator,
     ) {
     }
@@ -56,13 +57,7 @@ final readonly class PaymentRemindersController
             ]]);
         }
 
-        if ($days !== $organisation->getPaymentReminderDays()) {
-            $this->entityManager->wrapInTransaction(function () use ($organisation, $days): void {
-                $organisation->setPaymentReminderDays($days);
-                $this->paymentReminders->followAll($organisation);
-                $this->entityManager->flush();
-            });
-        }
+        $this->paymentReminderDaysEditor->change($organisation, $this->user(), $days);
 
         return new JsonResponse($this->setting($organisation));
     }
@@ -79,5 +74,12 @@ final readonly class PaymentRemindersController
     private function organisation(string $id): Organisation
     {
         return $this->organisationRepository->find($id) ?? throw ApiException::notFound('access.not_found');
+    }
+
+    private function user(): User
+    {
+        $user = $this->security->getUser();
+
+        return $user instanceof User ? $user : throw new ApiException(ErrorCode::Unauthenticated, 'access.sign_in');
     }
 }

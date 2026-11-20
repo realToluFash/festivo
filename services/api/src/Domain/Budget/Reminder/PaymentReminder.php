@@ -160,8 +160,8 @@ final readonly class PaymentReminder implements NotificationTypeInterface
         $overdueCount = Iter\count($overdue);
 
         $title = match (true) {
-            0 === $comingCount => $this->trans(null === $oneEvent ? 'payment_reminder.title.overdue' : 'payment_reminder.title.overdue_on', ['count' => $overdueCount, 'event' => $oneEvent?->getName() ?? ''], $locale),
-            0 === $overdueCount => $this->trans(null === $oneEvent ? 'payment_reminder.title.coming_due' : 'payment_reminder.title.coming_due_on', ['count' => $comingCount, 'days' => $days, 'event' => $oneEvent?->getName() ?? ''], $locale),
+            0 === $comingCount => $this->trans(null === $oneEvent ? 'payment_reminder.title.overdue' : 'payment_reminder.title.overdue_on', ['count' => $overdueCount, 'events' => Iter\count($events), 'event' => $oneEvent?->getName() ?? ''], $locale),
+            0 === $overdueCount => $this->trans(null === $oneEvent ? 'payment_reminder.title.coming_due' : 'payment_reminder.title.coming_due_on', ['count' => $comingCount, 'days' => $days, 'events' => Iter\count($events), 'event' => $oneEvent?->getName() ?? ''], $locale),
             default => $this->trans('payment_reminder.title.mixed', ['overdue' => $overdueCount, 'count' => $comingCount, 'days' => $days], $locale),
         };
 
@@ -181,7 +181,7 @@ final readonly class PaymentReminder implements NotificationTypeInterface
 
         if (0 < $comingCount && 1 === $overdueCount) {
             $lines[] = $this->trans('payment_reminder.last_about', [
-                'what' => Str\lowercase($overdue[0]->getDescription()),
+                'what' => $overdue[0]->getDescription(),
                 'vendor' => $overdue[0]->getEngagement()->getVendor()->getName(),
             ], $locale);
         }

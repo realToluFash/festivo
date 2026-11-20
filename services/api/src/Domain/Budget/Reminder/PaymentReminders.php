@@ -81,7 +81,7 @@ final readonly class PaymentReminders
             $this->notificationScheduler->schedule(
                 PaymentReminder::NAME,
                 $key,
-                $payment->getId()->toRfc4122(),
+                $key,
                 Trigger::relativeTo($dueOn, $offset, self::TIME_OF_DAY),
                 Audience::membersOfEvent($organisation->getId(), $event->getId(), Permission::BudgetManage),
                 ['paymentId' => $payment->getId()->toRfc4122(), 'kind' => $kind],
