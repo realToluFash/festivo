@@ -1,6 +1,6 @@
 import { LOCALES } from '@soirely/domain';
 import { useContext, useRef, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, View, type ViewInstance } from 'react-native';
+import { Pressable, StyleSheet, View, type ViewInstance } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import Svg, { Circle, Path } from 'react-native-svg';
 
@@ -8,7 +8,7 @@ import { chooseLanguage } from '../accountLanguage.ts';
 import { currentLocale } from '../i18n/index.ts';
 import { tokens } from '../theme/tokens.ts';
 import { OnCover } from './Cover.tsx';
-import { Sheet } from './Sheet.tsx';
+import { Sheet, SheetScrollView } from './Sheet.tsx';
 import { Text } from './Text.tsx';
 
 /** The signed-out screens' language: the current one on a button, as dark glass on the cover, and the four in a sheet from the foot. */
@@ -71,7 +71,7 @@ export function LanguageChoice() {
             </Text>
           </Pressable>
         </View>
-        <ScrollView style={styles.list} contentContainerStyle={styles.listContent}>
+        <SheetScrollView style={styles.list} contentContainerStyle={styles.listContent}>
           {LOCALES.map((locale) => {
             const chosen = locale.code === current;
             const inCurrent = t(`languageNames.${locale.code}`);
@@ -104,7 +104,7 @@ export function LanguageChoice() {
               </Pressable>
             );
           })}
-        </ScrollView>
+        </SheetScrollView>
       </Sheet>
     </>
   );
