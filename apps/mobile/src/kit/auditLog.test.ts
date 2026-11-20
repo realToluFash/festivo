@@ -235,7 +235,7 @@ describe('an entry', () => {
       entry({
         id: 'deleted',
         at: '2026-10-06T09:40:35Z',
-        day: 'Tuesday, Oct 6',
+        day: '2026-10-06',
         on: { name: 'Bisi & Kola’s engagement', eventId: 'e-bisi', gone: true },
       }),
     ).find((row) => row.key === 'on');
@@ -250,7 +250,7 @@ describe('an entry', () => {
       entry({
         id: 'rules',
         at: '2026-10-16T15:48:13Z',
-        day: 'Friday, Oct 16',
+        day: '2026-10-16',
         who: { kind: 'system', name: null, email: null },
         changes: ['Everyone needs two-factor: Off → On'],
         address: '203.0.113.17',
@@ -322,7 +322,7 @@ describe('the page', () => {
 
   it('adds the next page after the shown one, once each', () => {
     const a = entry({ id: 'a', at: '2026-10-19T09:05:18Z', day: '2026-10-19' });
-    const b = entry({ id: 'b', at: '2026-10-18T09:05:18Z', day: 'Sunday, Oct 18' });
+    const b = entry({ id: 'b', at: '2026-10-18T09:05:18Z', day: '2026-10-18' });
     const page = {
       organisation: 'Ire Events',
       zone: null,
