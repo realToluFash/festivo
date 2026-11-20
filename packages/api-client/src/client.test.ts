@@ -2663,6 +2663,7 @@ describe('invitations and members', () => {
     refusal: null,
     forYou: null,
     signedInAs: null,
+    managed: null,
   };
 
   test('a link opens on who invited whom, to what, until when', async () => {

@@ -26,6 +26,7 @@ vi.mock('@react-native-async-storage/async-storage', () => ({
 vi.mock('react', () => ({
   useSyncExternalStore: (_subscribe: unknown, snapshot: () => unknown) => snapshot(),
   useEffect: (effect: () => void) => effect(),
+  useMemo: (make: () => unknown) => make(),
 }));
 
 const {
@@ -288,6 +289,7 @@ describe('an invitation answered on one screen', () => {
     refusal: null,
     forYou: true,
     signedInAs: null,
+    managed: null,
   };
   const joined = { ...organisation, id: 'org_2', name: 'Okafor Weddings' };
 

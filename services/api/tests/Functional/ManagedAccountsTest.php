@@ -18,12 +18,14 @@ use App\Domain\User\UserRegistrar;
 use App\Entity\AuditEntry;
 use App\Entity\EmailAddress;
 use App\Entity\EmailDomain;
+use App\Entity\Invitation;
 use App\Entity\Membership;
 use App\Entity\Organisation;
 use App\Entity\OrganisationDomain;
 use App\Entity\Role;
 use App\Entity\User;
 use App\Enum\ErrorCode;
+use App\Enum\InvitationStatus;
 use App\Enum\MembershipChannel;
 use App\Enum\MembershipStatus;
 use App\Enum\Plan;
@@ -38,6 +40,7 @@ use DateTimeImmutable;
 use Doctrine\ORM\EntityManagerInterface;
 use Lexik\Bundle\JWTAuthenticationBundle\Services\JWTTokenManagerInterface;
 use PHPUnit\Framework\Attributes\Test;
+use Psl\Dict;
 use Psl\Iter;
 use Psl\Json;
 use Psl\SecureRandom;
@@ -245,6 +248,36 @@ final class ManagedAccountsTest extends ApiTestCase
     }
 
     #[Test]
+    public function theListSaysOnEachLoadWhichInvitationsTheAccountCannotAcceptAndTellsTheInvitingOrganisationNothing(): void
+    {
+        [$owner, $organisation] = $this->proved();
+        [$lumenOwner, $lumen] = $this->organisation('ada@lumen.pt', 'Lumen');
+        $kemi = $this->member('kemi@ire.events', 'Kemi');
+        $elsewhere = self::service(InvitationSender::class)->invite($lumen, 'kemi@ire.events', $this->role($lumen, SeededRole::Member), $lumenOwner);
+        $home = self::service(InvitationSender::class)->invite($organisation, 'kemi@ire.events', $this->role($organisation, SeededRole::Member), $owner);
+        $this->entityManager()->flush();
+        $this->switchOn($owner, $organisation);
+        $this->applied();
+        $this->signIn($kemi);
+
+        $managed = $this->managedByInvitation();
+        self::assertSame(self::MANAGED, Type\shape(['message' => Type\string()], true)->coerce($managed[$elsewhere->getId()->toRfc4122()])['message']);
+        self::assertNull($managed[$home->getId()->toRfc4122()]);
+
+        $this->signIn($lumenOwner);
+        $members = Json\encode($this->send('GET', Str\format('/api/orgs/%s/members', $lumen->getId()->toRfc4122())));
+        self::assertStringContainsString($elsewhere->getId()->toRfc4122(), $members);
+        self::assertStringNotContainsString('managed', $members);
+        self::assertSame(InvitationStatus::Pending, $this->entityManager()->getRepository(Invitation::class)->find($elsewhere->getId())?->getStatus());
+
+        $this->signIn($owner);
+        $this->send('DELETE', $this->path($organisation, 'ire.events/only-ours'));
+        $this->signIn($kemi);
+
+        self::assertSame([null, null], Vec\values($this->managedByInvitation()));
+    }
+
+    #[Test]
     public function onceAppliedTheRequestLinkAndAnotherListingAreRefused(): void
     {
         [$owner, $organisation] = $this->proved();
@@ -420,6 +453,15 @@ final class ManagedAccountsTest extends ApiTestCase
         self::assertResponseStatusCodeSame(200);
 
         return [$owner, $organisation];
+    }
+
+    /** @return array<string, mixed> GET /api/invitations' `managed`, by invitation id */
+    private function managedByInvitation(): array
+    {
+        $listed = Type\vec(Type\shape(['id' => Type\string(), 'managed' => Type\mixed()], true))->coerce($this->send('GET', '/api/invitations')['invitations']);
+        self::assertResponseIsSuccessful();
+
+        return Dict\from_entries(Vec\map($listed, static fn (array $row): array => [$row['id'], $row['managed']]));
     }
 
     private function switchOn(User $owner, Organisation $organisation): void

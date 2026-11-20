@@ -129,12 +129,12 @@ final readonly class ManagedAccounts
         ];
     }
 
-    /** @return ?array{domain: string, organisation: array{id: string, name: string}, message: string} null into the account's home */
-    public function describeFor(User $user, Organisation $into): ?array
+    /** @return ?array{domain: string, organisation: array{id: string, name: string}, message: string} null into the account's home; `$into` null as in refuseUnlessHome() */
+    public function describeFor(User $user, ?Organisation $into): ?array
     {
         $managing = $this->managing($user);
 
-        return null === $managing || $this->isHome($managing, $into) ? null : $this->describe($user);
+        return null === $managing || (null !== $into && $this->isHome($managing, $into)) ? null : $this->describe($user);
     }
 
     /**

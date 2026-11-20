@@ -1,6 +1,6 @@
 import { ApiError, type InvitationPreview } from '@soirely/api-client';
-import { type InvitationOutcome, invitationRefusal } from '@soirely/domain';
-import { useEffect, useState } from 'react';
+import { type InvitationOutcome, invitationRefusal, withManaged } from '@soirely/domain';
+import { useEffect, useMemo, useState } from 'react';
 
 import { api } from './api.ts';
 import { joinOrganisation } from './session.ts';
@@ -84,5 +84,7 @@ export function useWaitingInvitations(load = true): WaitingInvitations {
     return outcome;
   }
 
-  return { invitations, outcomes, firstJoined, answer };
+  const known = useMemo(() => withManaged(invitations, outcomes), [invitations, outcomes]);
+
+  return { invitations, outcomes: known, firstJoined, answer };
 }

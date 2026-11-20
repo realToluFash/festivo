@@ -1,6 +1,6 @@
 import { ApiError, type InvitationPreview, type Membership } from '@soirely/api-client';
-import { type InvitationOutcome, invitationRefusal } from '@soirely/domain';
-import { useEffect, useState } from 'react';
+import { type InvitationOutcome, invitationRefusal, withManaged } from '@soirely/domain';
+import { useEffect, useMemo, useState } from 'react';
 
 import { api } from './api.ts';
 import { joinOrganisation, settleInvitation, useSignedIn } from './signedIn.ts';
@@ -18,10 +18,14 @@ export interface WaitingInvitations {
 /** The invitations to any verified address of this account, read with the account, so every frame on the stack shows the same ones. */
 export function useWaitingInvitations(): WaitingInvitations {
   const { invitations, invitationOutcomes } = useSignedIn();
+  const outcomes = useMemo(
+    () => withManaged(invitations, invitationOutcomes),
+    [invitations, invitationOutcomes],
+  );
 
   return {
     invitations,
-    outcomes: invitationOutcomes,
+    outcomes,
     answer: (invitation, choice) =>
       answerInvitation(invitation, choice, settleInvitation, joinOrganisation),
   };
@@ -58,10 +62,12 @@ export function useInvitationsOnOpen(load: boolean): WaitingInvitations & { read
   const settle = (id: string, outcome: InvitationOutcome): void =>
     setOutcomes((now) => ({ ...now, [id]: outcome }));
 
+  const known = useMemo(() => withManaged(invitations, outcomes), [invitations, outcomes]);
+
   return {
     invitations,
     read,
-    outcomes,
+    outcomes: known,
     answer: (invitation, choice) => answerInvitation(invitation, choice, settle, () => {}),
   };
 }

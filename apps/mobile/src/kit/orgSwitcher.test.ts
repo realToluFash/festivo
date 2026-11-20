@@ -203,6 +203,32 @@ describe('a search across the organisations and the events from outside (sc-6843
   });
 });
 
+describe('the switcher, for a managed account (sc-73668)', () => {
+  const refused: InvitationOutcome = {
+    kind: 'managed',
+    organisation: 'Ire Events',
+    message: 'Your ire.events address is managed by Ire Events, so you can only be a member there.',
+  };
+
+  it('lists an invitation the account cannot accept, though nothing was pressed in this opening', () => {
+    expect(kinds(session({ waiting: waiting({ [invitation.id]: refused }) }))).toEqual([
+      'Ire Events*',
+      'Casa Lumen',
+      'invitation',
+      'create',
+    ]);
+  });
+
+  it('puts the banner under the invitation opened, and under none while it is closed', () => {
+    const outcomes = { [invitation.id]: refused };
+
+    expect(session({ waiting: waiting(outcomes) }).managed).toBeUndefined();
+    expect(session({ waiting: waiting(outcomes), expanded: invitation.id }).managed).toBe(
+      invitation.id,
+    );
+  });
+});
+
 describe('You are not in an organisation, managed (sc-563)', () => {
   it('reads the banner in place of Start your own, and neither until the API has said', () => {
     const managed = {
