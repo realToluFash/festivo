@@ -448,5 +448,5 @@
     "email_domains.managed": "Su dirección de {domain} la gestiona {organisation}, por lo que solo puede ser miembro de esa organización.",
     "email_domains.only_ours_owner": "Solo alguien con el rol Propietario puede cambiarlo.",
     "email_domains.only_ours_unproved": "«Solo nuestra organización» requiere un dominio verificado por esta organización.",
-    "validation.payment_reminder_days": "Enter a whole number of days from 1 to 30."
+    "validation.payment_reminder_days": "Escriba un número entero de días de 1 a 30."
 }
