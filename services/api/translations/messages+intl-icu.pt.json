@@ -383,5 +383,6 @@
     "validation.budget_client_price_invalid": "Introduza um preço de {min} ou mais, só com algarismos.",
     "validation.budget_client_price_too_many_decimals": "Tem demasiadas casas decimais para a moeda deste evento. Introduza o preço assim: {example}.",
     "audit.export_file": "Registo de auditoria de {organisation} {day}",
-    "audit.export_too_many": "As entradas correspondentes ultrapassam o limite de {most, number, ::group-auto}. Restrinja os filtros e exporte novamente."
+    "audit.export_too_many": "As entradas correspondentes ultrapassam o limite de {most, number, ::group-auto}. Restrinja os filtros e exporte novamente.",
+    "budget.payer_covers_costs": "{count, plural, one {{name} cobre 1 custo. Escolha primeiro quem o paga.} other {{name} cobre # custos. Escolha primeiro quem os paga.}}"
 }

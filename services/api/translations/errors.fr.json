@@ -32,6 +32,8 @@
     "vendor_owed": "Ce prestataire n’a pas été archivé, car des paiements qui lui sont dus sur un ou plusieurs événements ne sont ni réglés ni annulés.",
     "payment_already_paid": "Ce paiement a déjà été marqué comme réglé : rien n’a été modifié.",
     "payment_cancelled": "Ce paiement a été annulé : il ne peut pas être marqué comme réglé.",
+    "payer_limit": "Un événement peut avoir jusqu’à 20 payeurs.",
+    "payer_covers_costs": "Ce payeur couvre des coûts. Choisissez d’abord qui les paie.",
     "plan_limit": "La limite du forfait est atteinte.",
     "seating_plan_exists": "Cet événement a déjà un plan de table.",
     "seating_section_limit": "Un plan peut comporter jusqu’à 30 zones. Supprimez-en une pour en ajouter une autre.",

@@ -32,6 +32,8 @@
     "vendor_owed": "Este proveedor no se ha archivado, porque uno o más eventos aún tienen pagos pendientes a este proveedor.",
     "payment_already_paid": "Este pago ya se ha marcado como pagado, así que no se ha cambiado nada.",
     "payment_cancelled": "Este pago se ha cancelado, así que no se puede marcar como pagado.",
+    "payer_limit": "Un evento puede tener hasta 20 pagadores.",
+    "payer_covers_costs": "Este pagador cubre costes. Elija primero quién los paga.",
     "plan_limit": "Se ha alcanzado el límite del plan.",
     "seating_plan_exists": "Este evento ya tiene un plano de mesas.",
     "seating_section_limit": "Un plano puede tener hasta 30 zonas. Elimine una para añadir otra.",
