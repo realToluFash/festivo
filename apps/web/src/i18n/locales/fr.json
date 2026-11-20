@@ -4752,7 +4752,7 @@
     "control": "Contrôle",
     "enterprise": "Enterprise",
     "domainsNone": "Aucun domaine pour l’instant",
-    "domainsLocked": "Vérifiez votre domaine",
+    "domainsLocked": "Vérifiez votre domaine et réservez ses comptes à l’organisation {{organisation}}",
     "domainProved": "{{domain}} vérifié",
     "domainWaiting": "{{domain}} en attente de l’enregistrement",
     "domainFailed": "{{domain}} non vérifié",

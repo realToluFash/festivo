@@ -4752,7 +4752,7 @@
     "control": "Controlo",
     "enterprise": "Enterprise",
     "domainsNone": "Ainda não há domínios",
-    "domainsLocked": "Verifique o seu domínio",
+    "domainsLocked": "Verifique o seu domínio e limite as contas desse domínio a {{organisation}}",
     "domainProved": "{{domain}} verificado",
     "domainWaiting": "{{domain}} à espera do registo",
     "domainFailed": "{{domain}} não verificado",
