@@ -564,6 +564,7 @@ export function EventsFilterMenu({
                     year={false}
                     height={tokens.sizeHit}
                     onPress={() => pickDay(end)}
+                    tapOnly
                     testID={`events.filter.${end}`}
                   />
                 </View>
