@@ -1,4 +1,4 @@
-/* No organisation: main's page under the public header, with no card. */
+/* You are not in an organisation: alone under its own header, with no card (sc-75471). */
 .cw-alone {
   display: flex;
   flex-direction: column;
@@ -7,7 +7,7 @@
   color: var(--colorInk);
 }
 
-:where(.cw-alone) button {
+:where(.cw-none) button {
   margin: 0;
   padding: 0;
   border: 0;
@@ -18,7 +18,7 @@
   cursor: pointer;
 }
 
-:where(.cw-alone) :is(h1, h2, p, dl, dd) {
+:where(.cw-header, .cw-none) :is(h1, h2, p, dl, dd) {
   margin: 0;
 }
 
@@ -30,6 +30,7 @@
   height: 72px;
   padding: 0 var(--space6xl);
   border-bottom: 1px solid var(--colorBorder);
+  background: var(--colorCard);
 }
 
 .cw-header .brand img {
@@ -38,15 +39,19 @@
 }
 
 .cw-language {
+  position: relative;
   display: inline-flex;
   align-items: center;
   gap: var(--spaceSm);
   height: var(--space6xl);
   padding: 0 var(--spacePillEnd);
+  border: 0;
   border-radius: var(--spaceXxl);
   background: var(--colorInset);
+  color: inherit;
   font: 600 14px/1 var(--fontFamily);
   white-space: nowrap;
+  cursor: pointer;
 }
 
 .cw-language svg {
@@ -137,4 +142,9 @@
 .cw-invitations :is(.sw-button, .sw-lands):focus-visible {
   outline: none;
   box-shadow: var(--swRing);
+}
+
+/* The native select laid over the pill takes the 44 its drawing is short of. */
+.cw-language.language-pill select {
+  inset: -2px 0;
 }

@@ -143,6 +143,7 @@ import { AccessPaused } from './AccessPaused.tsx';
 import { TwoFactorOverdue } from './TwoFactorOverdue.tsx';
 import { type EdgeSwipeHandlers, EdgeSwipeStrip } from './useEdgeSwipeBack.ts';
 import { useSystemBack } from './useSystemBack.ts';
+import { WayBackToNone, useWayBackToNone } from './wayBackToNone.ts';
 import { OfflineBand } from './OfflineBand.tsx';
 import { sideInsets } from './bodyEdges.ts';
 import { LIST_EDGES, useSideFrame } from './listFrame.ts';
@@ -517,9 +518,16 @@ export function AppFrame({
     overdueIn.current = overdueOn;
   });
   const framed = !ownChrome || standIn != null;
-  const floatingTabs = framed && kind === 'phone' && inEvent == null;
+  // Opened from You are not in an organisation: no tab bar or sidebar, and its way back on top (sc-75471). An account holding an event from outside lands in that event instead, so it keeps today's frame.
+  const openedFromNone =
+    signedIn.organisation == null &&
+    signedIn.pausedIn == null &&
+    (signedIn.account?.outsideEvents.length ?? 0) === 0 &&
+    inEvent == null &&
+    standIn == null;
+  const floatingTabs = framed && kind === 'phone' && inEvent == null && !openedFromNone;
   const eventTabs = framed && kind === 'phone' && inEvent != null;
-  const sidebar = framed && kind === 'tabletLandscape';
+  const sidebar = framed && kind === 'tabletLandscape' && !openedFromNone;
   const ownTop = framed && top != null && standIn == null;
   const underTabs =
     floatingTabs && listUnderTabs && standIn == null ? phoneTabBarClearance(insets.bottom) : 0;
@@ -589,213 +597,224 @@ export function AppFrame({
   };
 
   return (
-    <RegisterOpener.Provider value={registerOpener}>
-      <SwitcherOpenedBy.Provider value={choosing ? switcherFrom : null}>
-        <View
-          style={[styles.root, sidebar && side.chrome]}
-          importantForAccessibility={inFront ? 'auto' : 'no-hide-descendants'}
-        >
-          {sidebar && (
-            <FrameSidebar
-              current={current}
-              entries={entries}
-              inEvent={inEvent != null}
-              card={inEvent?.card}
-              up={inEvent?.up}
-              outside={inEvent?.outside?.id ?? null}
-              organisation={signedIn.organisation}
-              waiting={count}
-              onSwitch={switchFromPill}
-              pill={pill}
-              cap={titleCap.cap}
-            />
-          )}
-          <View style={[styles.column, sidebar && side.card]}>
-            {framed && !ownTop && (
-              <View style={headerSides}>
-                <FrameHeader {...header} />
-              </View>
+    <WayBackToNone.Provider value={openedFromNone ? backToNone : null}>
+      <RegisterOpener.Provider value={registerOpener}>
+        <SwitcherOpenedBy.Provider value={choosing ? switcherFrom : null}>
+          <View
+            style={[styles.root, sidebar && side.chrome]}
+            importantForAccessibility={inFront ? 'auto' : 'no-hide-descendants'}
+          >
+            {sidebar && (
+              <FrameSidebar
+                current={current}
+                entries={entries}
+                inEvent={inEvent != null}
+                card={inEvent?.card}
+                up={inEvent?.up}
+                outside={inEvent?.outside?.id ?? null}
+                organisation={signedIn.organisation}
+                waiting={count}
+                onSwitch={switchFromPill}
+                pill={pill}
+                cap={titleCap.cap}
+              />
             )}
-            {ownTop && <FixedTop {...header} />}
-            {ownTop && top === 'stays' && (
-              <View style={sides}>
-                <ScreenTop {...header} stays />
+            <View style={[styles.column, sidebar && side.card]}>
+              {framed && !ownTop && (
+                <View style={headerSides}>
+                  <FrameHeader {...header} />
+                </View>
+              )}
+              {ownTop && <FixedTop {...header} />}
+              {ownTop && top === 'stays' && (
+                <View style={sides}>
+                  <ScreenTop {...header} stays />
+                </View>
+              )}
+              <OfflineBand stale={standIn == null ? offline : null} inFront={inFront} />
+              <View
+                style={[
+                  styles.body,
+                  sides,
+                  (eventTabs || (floatingTabs && underTabs === 0)) && {
+                    paddingBottom: phoneTabBarClearance(insets.bottom) + tokens.spaceMd,
+                  },
+                ]}
+              >
+                <PageTitleDrawn.Provider value={titleCap.onDrawn}>
+                  <TitleCap.Provider value={cap}>
+                    {!ownTop && switchedNotice}
+                    <OpenSwitcher.Provider value={openSwitcher}>
+                      <StartOrganisation.Provider
+                        value={{ open: startOrganisation, managed: offer.managed }}
+                      >
+                        <HideBack.Provider value={backRow.hide}>
+                          <EdgeSwipeStrip.Provider value={setEdgeSwipe}>
+                            {standIn === 'paused' && signedIn.pausedIn != null ? (
+                              <AccessPaused
+                                paused={signedIn.pausedIn}
+                                others={signedIn.organisations}
+                                onSwitch={(next) => switchByTap(next.id)}
+                                onChoose={(opener) => openSwitcher?.(opener)}
+                              />
+                            ) : standIn === 'overdue' && signedIn.organisation != null ? (
+                              <TwoFactorOverdue
+                                organisation={signedIn.organisation.name}
+                                answer={switchAnswer ?? lapsed}
+                                headingRef={overdueHeading}
+                                onTurnOn={() => router.navigate(SECTION_HREF.security)}
+                                onSignOut={signOutHere}
+                              />
+                            ) : (
+                              <FrameSwitch.Provider value={switchAnswer}>
+                                <ScrolledTop.Provider
+                                  value={ownTop && top === 'scrolls' ? header : null}
+                                >
+                                  <BodySwitched.Provider value={bodySwitched}>
+                                    <UnderTabsProvider value={underTabs}>
+                                      <BellInPane.Provider value={sidebar && untitled}>
+                                        {children}
+                                      </BellInPane.Provider>
+                                    </UnderTabsProvider>
+                                  </BodySwitched.Provider>
+                                </ScrolledTop.Provider>
+                              </FrameSwitch.Provider>
+                            )}
+                          </EdgeSwipeStrip.Provider>
+                        </HideBack.Provider>
+                      </StartOrganisation.Provider>
+                    </OpenSwitcher.Provider>
+                  </TitleCap.Provider>
+                </PageTitleDrawn.Provider>
               </View>
-            )}
-            <OfflineBand stale={standIn == null ? offline : null} inFront={inFront} />
-            <View
-              style={[
-                styles.body,
-                sides,
-                (eventTabs || (floatingTabs && underTabs === 0)) && {
-                  paddingBottom: phoneTabBarClearance(insets.bottom) + tokens.spaceMd,
-                },
-              ]}
-            >
-              <PageTitleDrawn.Provider value={titleCap.onDrawn}>
-                <TitleCap.Provider value={cap}>
-                  {!ownTop && switchedNotice}
-                  <OpenSwitcher.Provider value={openSwitcher}>
-                    <StartOrganisation.Provider
-                      value={{ open: startOrganisation, managed: offer.managed }}
-                    >
-                      <HideBack.Provider value={backRow.hide}>
-                        <EdgeSwipeStrip.Provider value={setEdgeSwipe}>
-                          {standIn === 'paused' && signedIn.pausedIn != null ? (
-                            <AccessPaused
-                              paused={signedIn.pausedIn}
-                              others={signedIn.organisations}
-                              onSwitch={(next) => switchByTap(next.id)}
-                              onChoose={(opener) => openSwitcher?.(opener)}
-                            />
-                          ) : standIn === 'overdue' && signedIn.organisation != null ? (
-                            <TwoFactorOverdue
-                              organisation={signedIn.organisation.name}
-                              answer={switchAnswer ?? lapsed}
-                              headingRef={overdueHeading}
-                              onTurnOn={() => router.navigate(SECTION_HREF.security)}
-                              onSignOut={signOutHere}
-                            />
-                          ) : (
-                            <FrameSwitch.Provider value={switchAnswer}>
-                              <ScrolledTop.Provider
-                                value={ownTop && top === 'scrolls' ? header : null}
-                              >
-                                <BodySwitched.Provider value={bodySwitched}>
-                                  <UnderTabsProvider value={underTabs}>
-                                    <BellInPane.Provider value={sidebar && untitled}>
-                                      {children}
-                                    </BellInPane.Provider>
-                                  </UnderTabsProvider>
-                                </BodySwitched.Provider>
-                              </ScrolledTop.Provider>
-                            </FrameSwitch.Provider>
-                          )}
-                        </EdgeSwipeStrip.Provider>
-                      </HideBack.Provider>
-                    </StartOrganisation.Provider>
-                  </OpenSwitcher.Provider>
-                </TitleCap.Provider>
-              </PageTitleDrawn.Provider>
+              {floatingTabs && (
+                <FrameTabBar current={current} organisation={signedIn.organisation} />
+              )}
+              {eventTabs && inEvent != null && <TabBar inEvent={inEvent} />}
             </View>
-            {floatingTabs && <FrameTabBar current={current} organisation={signedIn.organisation} />}
-            {eventTabs && inEvent != null && <TabBar inEvent={inEvent} />}
-          </View>
-          {edgeSwipe != null && (
-            <View
-              style={styles.edgeSwipe}
-              accessibilityElementsHidden
-              importantForAccessibility="no-hide-descendants"
-              {...edgeSwipe}
-            />
-          )}
-          {uprightMore && outsideHere != null && (
-            <OutsideYouSheet
-              here={outsideHere}
-              open={outsideMoreOpen}
-              opener={moreOpener}
-              name={t('eventNav.more')}
-              onClose={() => setOutsideMoreOpen(false)}
-            />
-          )}
-          {drop != null && (
-            <OrgDropDown
-              key={drop.visit}
-              session={switcherSession({
-                organisations: signedIn.organisations,
-                current: signedIn.pausedIn != null ? null : signedIn.organisation,
-                waiting,
-                answeredHere,
-                offer,
-                offerRefused,
-                expanded,
-                role: (role) => roleName(t, role),
-              })}
-              frame={drop.frame}
-              open={choosing}
-              back={switcherOpener}
-              email={email}
-              managed={managedRefusal(waiting, () => {
-                closeSwitcher();
-                setTimeout(() => router.push('/settings/account'), SETTLED_MS);
-              })}
-              events={switcherOutside(signedIn, now)}
-              onEvent={(eventId) => {
-                closeSwitcher();
-                router.push(eventHref(eventId));
-              }}
-              onClose={closeSwitcher}
-              onPick={(id) => {
-                closeSwitcher();
-                if (id !== signedIn.organisation?.id || signedIn.pausedIn != null) {
-                  const name = signedIn.organisations.find((known) => known.id === id)?.name;
-                  switchOrganisation(id, () => {
-                    if (name != null) setCreated({ name, takesFocus: false });
-                  });
+            {edgeSwipe != null && (
+              <View
+                style={styles.edgeSwipe}
+                accessibilityElementsHidden
+                importantForAccessibility="no-hide-descendants"
+                {...edgeSwipe}
+              />
+            )}
+            {uprightMore && outsideHere != null && (
+              <OutsideYouSheet
+                here={outsideHere}
+                open={outsideMoreOpen}
+                opener={moreOpener}
+                name={t('eventNav.more')}
+                onClose={() => setOutsideMoreOpen(false)}
+              />
+            )}
+            {drop != null && (
+              <OrgDropDown
+                key={drop.visit}
+                session={switcherSession({
+                  organisations: signedIn.organisations,
+                  current: signedIn.pausedIn != null ? null : signedIn.organisation,
+                  waiting,
+                  answeredHere,
+                  offer,
+                  offerRefused,
+                  expanded,
+                  role: (role) => roleName(t, role),
+                })}
+                frame={drop.frame}
+                open={choosing}
+                back={switcherOpener}
+                email={email}
+                managed={managedRefusal(waiting, () => {
+                  closeSwitcher();
+                  setTimeout(() => router.push('/settings/account'), SETTLED_MS);
+                })}
+                events={switcherOutside(signedIn, now)}
+                onEvent={(eventId) => {
+                  closeSwitcher();
+                  router.push(eventHref(eventId));
+                }}
+                onClose={closeSwitcher}
+                onPick={(id) => {
+                  closeSwitcher();
+                  if (id !== signedIn.organisation?.id || signedIn.pausedIn != null) {
+                    const name = signedIn.organisations.find((known) => known.id === id)?.name;
+                    switchOrganisation(id, () => {
+                      if (name != null) setCreated({ name, takesFocus: false });
+                    });
+                  }
+                }}
+                onCreate={() => {
+                  setToSheet(true);
+                  closeSwitcher();
+                  startOrganisation(switcherFrom ?? pill);
+                }}
+                onExpand={(id) => setExpanded((open) => (open === id ? null : id))}
+                onAnswer={(invite, yes) => {
+                  const invitation = waiting.invitations.find((known) => known.id === invite.id);
+                  if (invitation == null) return;
+                  setAnsweredHere((answered) => new Set(answered).add(invite.id));
+                  void waiting.answer(invitation, yes ? 'accept' : 'decline');
+                }}
+                onAsk={() => {
+                  setOfferRefused(false);
+                  return offer.ask().catch(() => setOfferRefused(true));
+                }}
+                onNotNow={() => {
+                  setExpanded(null);
+                  void offer.dismiss();
+                }}
+              />
+            )}
+            {walking != null && (
+              <CreateWalkWindow
+                key={`walk${walking.visit}`}
+                opening={walking}
+                open={creating}
+                email={email}
+                statusBar="dark"
+                currencies={currencies}
+                managedBanner={
+                  offer.managed == null ? undefined : (
+                    <ManagedBanner
+                      organisation={offer.managed.organisation.name}
+                      message={offer.managed.message}
+                      onChange={() => {
+                        setCreating(false);
+                        setTimeout(() => router.push('/settings/account'), SETTLED_MS);
+                      }}
+                      testID="createWalk.managed"
+                    />
+                  )
                 }
-              }}
-              onCreate={() => {
-                setToSheet(true);
-                closeSwitcher();
-                startOrganisation(switcherFrom ?? pill);
-              }}
-              onExpand={(id) => setExpanded((open) => (open === id ? null : id))}
-              onAnswer={(invite, yes) => {
-                const invitation = waiting.invitations.find((known) => known.id === invite.id);
-                if (invitation == null) return;
-                setAnsweredHere((answered) => new Set(answered).add(invite.id));
-                void waiting.answer(invitation, yes ? 'accept' : 'decline');
-              }}
-              onAsk={() => {
-                setOfferRefused(false);
-                return offer.ask().catch(() => setOfferRefused(true));
-              }}
-              onNotNow={() => {
-                setExpanded(null);
-                void offer.dismiss();
-              }}
-            />
-          )}
-          {walking != null && (
-            <CreateWalkWindow
-              key={`walk${walking.visit}`}
-              opening={walking}
-              open={creating}
-              email={email}
-              statusBar="dark"
-              currencies={currencies}
-              managedBanner={
-                offer.managed == null ? undefined : (
-                  <ManagedBanner
-                    organisation={offer.managed.organisation.name}
-                    message={offer.managed.message}
-                    onChange={() => {
-                      setCreating(false);
-                      setTimeout(() => router.push('/settings/account'), SETTLED_MS);
-                    }}
-                    testID="createWalk.managed"
-                  />
-                )
-              }
-              create={(walk) =>
-                createNewOrganisation((organisation) => api.createOrganisation(organisation), walk)
-              }
-              onCancel={() => setCreating(false)}
-              onCreated={(organisation) => {
-                // In no organisation, what opened the walk goes with it, so it hands focus to the notice (sc-11173).
-                const fromNone = signedIn.organisation == null;
-                if (fromNone) walkBack.current = createdWords;
-                setCreating(false);
-                joinOrganisation(organisation);
-                switchOrganisation(organisation.id);
-                setCreated({ name: organisation.name, takesFocus: fromNone });
-              }}
-            />
-          )}
-        </View>
-      </SwitcherOpenedBy.Provider>
-    </RegisterOpener.Provider>
+                create={(walk) =>
+                  createNewOrganisation(
+                    (organisation) => api.createOrganisation(organisation),
+                    walk,
+                  )
+                }
+                onCancel={() => setCreating(false)}
+                onCreated={(organisation) => {
+                  // In no organisation, what opened the walk goes with it, so it hands focus to the notice (sc-11173).
+                  const fromNone = signedIn.organisation == null;
+                  if (fromNone) walkBack.current = createdWords;
+                  setCreating(false);
+                  joinOrganisation(organisation);
+                  switchOrganisation(organisation.id);
+                  setCreated({ name: organisation.name, takesFocus: fromNone });
+                }}
+              />
+            )}
+          </View>
+        </SwitcherOpenedBy.Provider>
+      </RegisterOpener.Provider>
+    </WayBackToNone.Provider>
   );
+}
+
+function backToNone(): void {
+  router.navigate(DESTINATION_HREF.home);
 }
 
 interface FrameHeaderProps {
@@ -869,9 +888,11 @@ export function FrameSwitched() {
 function FixedTop({ kind, current, organisation, waiting, onSwitch, pill }: FrameHeaderProps) {
   const insets = useSafeAreaInsets();
   const tabs = useFrameTabs(current, organisation);
+  const fromNone = useWayBackToNone();
 
   if (kind === 'phone') return <View style={{ height: insets.top }} />;
   if (kind !== 'tabletPortrait') return null;
+  if (fromNone != null) return <View style={{ height: insets.top + tokens.spaceXl }} />;
 
   return (
     <PortraitTop
@@ -937,6 +958,10 @@ function ScreenTop({
     </TitleCap.Provider>
   );
   const staysStyle = stays && LIST_EDGES[kind];
+  const fromNone = useWayBackToNone();
+  const wayBack = fromNone != null && (
+    <WayBackToNoneButton kind={kind} cap={cap} onPress={fromNone} />
+  );
   const label = usePrimaryLabel({
     title,
     size: PAGE_TITLE,
@@ -948,24 +973,34 @@ function ScreenTop({
 
   if (!page)
     return (
-      <ListTop
-        kind={kind}
-        title={title}
-        titleRef={read}
-        onTitleDrawn={onTitleDrawn}
-        pill={
-          organisation != null && (
-            <OrgPill organisation={organisation} waiting={waiting} onSwitch={onSwitch} ref={pill} />
-          )
-        }
-        bell={kind === 'tabletLandscape' ? <BellButton /> : <SearchAndBell />}
-        beside={besideTitle}
-        primary={primary}
-        under={under}
-        untitled={untitled}
-        style={[staysStyle, style]}
-        rowStyle={rowStyle}
-      />
+      <>
+        {kind !== 'phone' && wayBack}
+        <ListTop
+          kind={kind}
+          title={title}
+          titleRef={read}
+          onTitleDrawn={onTitleDrawn}
+          pill={
+            organisation != null ? (
+              <OrgPill
+                organisation={organisation}
+                waiting={waiting}
+                onSwitch={onSwitch}
+                ref={pill}
+              />
+            ) : (
+              wayBack
+            )
+          }
+          bell={kind === 'tabletLandscape' ? <BellButton /> : <SearchAndBell />}
+          beside={besideTitle}
+          primary={primary}
+          under={under}
+          untitled={untitled}
+          style={[staysStyle, style]}
+          rowStyle={rowStyle}
+        />
+      </>
     );
 
   const titleRow = (
@@ -1196,6 +1231,34 @@ function FrameHeader({
       )}
       {backView}
       {titleRow(<BellButton />)}
+    </View>
+  );
+}
+
+/** ‹ Join or start an organisation, where the pill and the tabs would be: on a phone in the pill's row, upright under the status bar's room, on its side at the head of the column (sc-75471). */
+function WayBackToNoneButton({
+  kind,
+  cap,
+  onPress,
+}: {
+  kind: LayoutKind;
+  cap: number | null;
+  onPress: () => void;
+}) {
+  const { t } = useTranslation();
+  const back = (
+    <FrameBack
+      back={{ label: t('noOrganisation.wayBack'), onPress }}
+      cap={cap}
+      besideShown={false}
+    />
+  );
+
+  if (kind === 'phone') return back;
+
+  return (
+    <View style={kind === 'tabletPortrait' ? styles.noneBackUpright : styles.noneBackSide}>
+      {back}
     </View>
   );
 }
@@ -1947,6 +2010,8 @@ const styles = StyleSheet.create({
   },
   stacked: { flexDirection: 'column', alignItems: 'flex-start', gap: tokens.spaceXs },
   bellAtTop: { alignItems: 'flex-start' },
+  noneBackUpright: { flexDirection: 'row' },
+  noneBackSide: { flexDirection: 'row', marginBottom: tokens.spaceXs },
   bellHigh: { minHeight: tokens.sizeHit },
   back: {
     alignSelf: 'flex-start',

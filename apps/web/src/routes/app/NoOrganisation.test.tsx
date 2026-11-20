@@ -201,6 +201,47 @@ describe('the page an account in no organisation stands on (sc-13339)', () => {
   });
 });
 
+describe('No organisation as its demo draws it (sc-75471)', () => {
+  it('stands under the small logo and the language pill, with no card, and Your account beside Sign out', async () => {
+    inNone();
+    const sent = answering({
+      'GET /api/invitations': () => json({ invitations: [] }),
+      'POST /api/auth/logout': () => new Response(null, { status: 204 }),
+    });
+    const router = createMemoryRouter(routes, { initialEntries: ['/app'] });
+    render(<RouterProvider router={router} />);
+
+    const heading = await screen.findByRole('heading', {
+      level: 1,
+      name: 'You are not in an organisation',
+    });
+    const header = document.querySelector('.cw-header');
+    expect(header?.querySelector('.brand-lockup')).not.toBeNull();
+    expect(header?.querySelector('.cw-language')?.textContent).toContain('English');
+    expect(document.querySelector('.public-header')).toBeNull();
+    expect(heading.closest('.card')).toBeNull();
+
+    const account = screen.getByRole('link', { name: 'Your account' });
+    const signOut = screen.getByRole('button', { name: 'Sign out' });
+    expect(account.parentElement).toBe(signOut.parentElement);
+
+    fireEvent.click(signOut);
+
+    await waitFor(() => expect(router.state.location.pathname).toBe('/sign-in'));
+    expect(sent.some((one) => one.line === 'POST /api/auth/logout')).toBe(true);
+  });
+
+  it('keeps the same header over an account page', async () => {
+    inNone();
+    answering({ 'GET /api/invitations': () => json({ invitations: [] }) });
+    app('/app/account');
+
+    await screen.findByRole('heading', { level: 1, name: 'Your account' });
+    expect(document.querySelector('.cw-header .cw-language')).not.toBeNull();
+    expect(document.querySelector('.public-header')).toBeNull();
+  });
+});
+
 const REFUSED_NAME = {
   type: 'https://soirely.com/errors/validation_failed',
   title: 'Some fields need attention.',
@@ -455,7 +496,7 @@ describe('where focus goes on No organisation (sc-11369)', () => {
     );
 
     const line = await screen.findByText('You declined. Bisi Adeyemi will see that you said no.');
-    await waitFor(() => expect(document.activeElement).toBe(line.closest('.invitation-row-said')));
+    await waitFor(() => expect(document.activeElement).toBe(line.closest('.sw-notice')));
     expect(line.closest('[role="status"]')).toBeNull();
   });
 
@@ -470,8 +511,9 @@ describe('where focus goes on No organisation (sc-11369)', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Accept and join Adunni Weddings' }));
 
     const line = await screen.findByText('You joined Adunni Weddings as Admin.');
-    const said = line.closest('.invitation-row-said');
+    const said = line.closest('.sw-notice');
     await waitFor(() => expect(document.activeElement).toBe(said));
+    expect(said?.getAttribute('role')).toBeNull();
     expect(said?.nextElementSibling?.textContent).toBe('Open Adunni Weddings');
 
     fireEvent.click(screen.getByRole('button', { name: 'Open Adunni Weddings' }));
@@ -495,7 +537,7 @@ describe('where focus goes on No organisation (sc-11369)', () => {
 
     fireEvent.click(await screen.findByRole('button', { name: 'Accept and join Adunni Weddings' }));
 
-    const notice = (await screen.findByText('Withdrawn')).closest('.notice');
+    const notice = (await screen.findByText('Withdrawn')).closest('.sw-notice');
     await waitFor(() => expect(document.activeElement).toBe(notice));
     expect(notice?.getAttribute('role')).toBeNull();
   });

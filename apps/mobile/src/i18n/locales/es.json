@@ -22,7 +22,8 @@
     "startBody": "Al configurar una organización nueva, usted tendrá la función Propietario.",
     "start": "Crear organización",
     "signedInAs": "Sesión iniciada como {{email}}.",
-    "account": "Su cuenta"
+    "account": "Su cuenta",
+    "wayBack": "Unirse a una organización o crear una"
   },
   "status": {
     "title": "Estado del servicio",
