@@ -1,4 +1,4 @@
-# sc-563: a managed account with nothing to join presses Continue on Your organisation and lands where an account with no organisation lands (sc-2939).
+# sc-563: a managed account with nothing to join presses Continue on Your organisation and goes on to Your mobile number; sc563-details-skip-product covers the landing.
 appId: host.exp.Exponent
 ---
 - extendedWaitUntil:
@@ -8,7 +8,7 @@ appId: host.exp.Exponent
 - tapOn: 'Continue'
 - extendedWaitUntil:
     visible:
-      text: '.*not in an organisation.*'
+      text: 'Your mobile number'
     timeout: 30000
 - waitForAnimationToEnd:
     timeout: 5000
