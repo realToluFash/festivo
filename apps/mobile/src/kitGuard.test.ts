@@ -2094,3 +2094,19 @@ describe('a pill with words grows with them rather than cutting them (sc-13281)'
     expect(styleOf('TodayParts.tsx', 'rowChips')).toMatch(/flexWrap: 'wrap'/u);
   });
 });
+
+describe("a field's label inside the box wraps and the box grows (sc-13281)", () => {
+  const text = readFileSync(join('src', 'steps', 'InsideField.tsx'), 'utf8');
+  const label = /<Text\s+nativeID=\{labelID\}[\s\S]*?<\/Text>/u.exec(text)?.[0] ?? '';
+
+  it("never ends Nom de l'organisation in an ellipsis at the ninth step (QA #77151)", () => {
+    expect(label).toMatch(/onLayout=/u);
+    expect(label).not.toMatch(/numberOfLines/u);
+  });
+
+  it('sizes the box and the space above the value from the label as drawn', () => {
+    expect(text).toMatch(/minHeight: restingHeight/u);
+    expect(text).toMatch(/\(restingHeight - labelHeight\) \/ 2/u);
+    expect(text).toMatch(/\(labelHeight \* LABEL_SMALL\) \/ LABEL_LARGE/u);
+  });
+});

@@ -82,6 +82,8 @@ export function InsideField({
     onChangeText?.(text);
   });
   const labelLine = LABEL_SMALL * 1.35 * fontScale;
+  const [labelHeight, setLabelHeight] = useState(LABEL_LARGE * 1.3 * fontScale);
+  const restingHeight = Math.max(HEIGHT - 2, labelHeight + 2 * tokens.spaceSm);
   const box = useRef<ViewInstance>(null);
 
   useEffect(() => {
@@ -103,7 +105,7 @@ export function InsideField({
   });
   const translateY = lift.interpolate({
     inputRange: [0, 1],
-    outputRange: [(HEIGHT - 2 - LABEL_LARGE * 1.3 * fontScale) / 2, tokens.spaceSm],
+    outputRange: [(restingHeight - labelHeight) / 2, tokens.spaceSm],
   });
 
   return (
@@ -132,7 +134,11 @@ export function InsideField({
         style={inputFaced(
           [
             styles.input,
-            { paddingTop: tokens.spaceSm + labelLine },
+            {
+              minHeight: restingHeight,
+              paddingTop:
+                tokens.spaceSm + Math.max(labelLine, (labelHeight * LABEL_SMALL) / LABEL_LARGE),
+            },
             password && styles.inputBeside,
           ],
           'sans',
@@ -152,7 +158,7 @@ export function InsideField({
           nativeID={labelID}
           size={LABEL_LARGE}
           weight="medium"
-          numberOfLines={1}
+          onLayout={(event) => setLabelHeight(event.nativeEvent.layout.height)}
           style={state === 'blank' ? styles.labelBlank : styles.labelText}
           accessible={false}
         >
