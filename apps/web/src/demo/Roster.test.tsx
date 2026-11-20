@@ -318,6 +318,10 @@ describe('/demo/events/evt-wed-4/staff/roster (sc-3906)', () => {
     ['detailsNoLinkFrench', 'Liste du personnel', 'Pas encore de lien'],
     ['erasedListFrench', 'Liste du personnel', 'Coordonnées effacées après l’événement'],
     ['erasedList', 'Roster', 'Contact details removed after the event'],
+    ['populatedSpanish', 'Lista del personal', 'Aún sin enlace'],
+    ['erasedDetailsSpanish', 'Lista del personal', 'Datos de contacto eliminados tras el evento'],
+    ['populatedPortuguese', 'Lista da equipa', 'Ainda sem ligação'],
+    ['erasedDetailsPortuguese', 'Lista da equipa', 'Contactos apagados depois do evento'],
   ])('shows the Link words of %s in the Roster (sc-75033)', async (state, roster, words) => {
     const router = createMemoryRouter(routes, {
       initialEntries: [`/demo/events/evt-wed-4/staff/roster?state=${state}`],

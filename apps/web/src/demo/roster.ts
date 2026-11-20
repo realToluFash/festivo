@@ -447,7 +447,7 @@ export interface RosterStart {
   /** The words of a Shift cell with no shift: the product's French, to measure the longest at 400% zoom (sc-71607). */
   noShift: string;
   /** The language of the Roster's words; French to measure the longest from 961 to 1279 px (sc-73291). */
-  lang: 'en' | 'fr';
+  lang: 'en' | 'fr' | 'es' | 'pt';
 }
 
 function start(o: Partial<RosterStart> & Pick<RosterStart, 'name' | 'note'>): RosterStart {
@@ -473,6 +473,8 @@ function start(o: Partial<RosterStart> & Pick<RosterStart, 'name' | 'note'>): Ro
 }
 
 const FRENCH = { lang: 'fr', noShift: 'Aucun service pour l’instant' } as const;
+const SPANISH = { lang: 'es', noShift: 'Aún sin turno' } as const;
+const PORTUGUESE = { lang: 'pt', noShift: 'Ainda sem turno' } as const;
 
 /** A name and an email of 40 characters with no space, the longest single word a cell may hold (sc-75033). */
 const LONG: Entry = entry(
@@ -838,6 +840,62 @@ const STATES = {
       panel: { kind: 'details', id: 'kunle' },
       ...FRENCH,
     }),
+  populatedSpanish: () =>
+    start({ name: 'Populated, in Spanish', note: 'Open it at 800 × 800.', ...SPANISH }),
+  detailsNoLinkSpanish: () =>
+    start({
+      name: 'Details, Emeka Obi, in Spanish',
+      note: 'Open it at 1280 × 800, the details docked.',
+      panel: { kind: 'details', id: 'emeka' },
+      ...SPANISH,
+    }),
+  erasedListSpanish: () =>
+    start({
+      name: 'After the 30-day erasure, in Spanish',
+      note: 'Open it at 800 × 800.',
+      finished: true,
+      erased: true,
+      entries: erasedSample(),
+      ...SPANISH,
+    }),
+  erasedDetailsSpanish: () =>
+    start({
+      name: 'After the 30-day erasure, details open, in Spanish',
+      note: 'Open it at 1280 × 800, the details docked.',
+      finished: true,
+      erased: true,
+      entries: erasedSample(),
+      panel: { kind: 'details', id: 'kunle' },
+      ...SPANISH,
+    }),
+  populatedPortuguese: () =>
+    start({ name: 'Populated, in Portuguese', note: 'Open it at 800 × 800.', ...PORTUGUESE }),
+  detailsNoLinkPortuguese: () =>
+    start({
+      name: 'Details, Emeka Obi, in Portuguese',
+      note: 'Open it at 1280 × 800, the details docked.',
+      panel: { kind: 'details', id: 'emeka' },
+      ...PORTUGUESE,
+    }),
+  erasedListPortuguese: () =>
+    start({
+      name: 'After the 30-day erasure, in Portuguese',
+      note: 'Open it at 800 × 800.',
+      finished: true,
+      erased: true,
+      entries: erasedSample(),
+      ...PORTUGUESE,
+    }),
+  erasedDetailsPortuguese: () =>
+    start({
+      name: 'After the 30-day erasure, details open, in Portuguese',
+      note: 'Open it at 1280 × 800, the details docked.',
+      finished: true,
+      erased: true,
+      entries: erasedSample(),
+      panel: { kind: 'details', id: 'kunle' },
+      ...PORTUGUESE,
+    }),
   longWord: () =>
     start({
       name: 'A 40-character word, details docked',
@@ -932,6 +990,14 @@ export const ROSTER_PAGES: readonly { name: string; states: readonly DemoLink[] 
         'erasedList',
         'erasedListFrench',
         'erasedDetailsFrench',
+        'populatedSpanish',
+        'detailsNoLinkSpanish',
+        'erasedListSpanish',
+        'erasedDetailsSpanish',
+        'populatedPortuguese',
+        'detailsNoLinkPortuguese',
+        'erasedListPortuguese',
+        'erasedDetailsPortuguese',
         'longWord',
       ] as const
     ).map(link),
