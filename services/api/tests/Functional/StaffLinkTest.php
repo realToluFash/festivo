@@ -6,6 +6,7 @@ namespace App\Tests\Functional;
 
 use App\Domain\Organisation\OrganisationFounder;
 use App\Domain\User\UserRegistrar;
+use App\Entity\Event;
 use App\Entity\Membership;
 use App\Entity\Organisation;
 use App\Entity\Role;
@@ -204,6 +205,8 @@ final class StaffLinkTest extends ApiTestCase
 
         self::assertSame(['state' => 'not_yet'], $this->open('look', $token));
 
+        $this->as($this->owner, 'PUT', $this->path('shifts/' . $this->shift['id']), ['job' => $this->jobId, 'startsAt' => '2027-03-06T18:00', 'endsAt' => '2027-03-06T23:00', 'needed' => 2]);
+        self::assertSame(200, $this->statusCode(), Json\encode($this->last()));
         $this->as($this->owner, 'PUT', $this->path('shifts/' . $this->shift['id'] . '/people/' . $ben));
         self::assertLessThan(300, $this->statusCode(), Json\encode($this->last()));
 
@@ -217,7 +220,10 @@ final class StaffLinkTest extends ApiTestCase
     {
         $token = self::token($this->deliver($this->person('Ben Eze', '0803 111 0010')));
 
-        $this->at('2027-03-07T01:00:01Z');
+        $event = self::em()->find(Event::class, $this->eventId) ?? self::fail('no event');
+        $event->end(new DateTimeImmutable('2027-03-01T10:00:00Z'));
+        self::em()->flush();
+
         self::assertSame(['state' => 'ended'], $this->open('look', $token));
     }
 
