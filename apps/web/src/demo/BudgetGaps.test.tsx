@@ -599,4 +599,90 @@ describe('the states Budget A still lacked (sc-85, sc-88, sc-90, sc-91, sc-92, s
       ).toBeTruthy();
     },
   );
+
+  it(
+    'reads a fee line at 0 with its own price as priced on the plain Budget (sc-75696)',
+    SLOW,
+    async () => {
+      await open(at('fee_priced'));
+      const fee = (): HTMLElement => {
+        const row = main().querySelector<HTMLElement>('[data-line="fee"]');
+        if (row == null) throw new Error('the Planning fee is not drawn');
+
+        return row;
+      };
+      expect(within(fee()).getByText('Planning fee')).toBeTruthy();
+      expect(within(fee()).getAllByText('£0.00').length).toBeGreaterThan(0);
+      expect(within(fee()).queryByText('Not priced')).toBeNull();
+      expect(within(main()).queryByText(/[1-9]\d* costs? not priced yet/)).toBeNull();
+      expect(within(main()).queryByRole('button', { name: 'Add a price' })).toBeNull();
+      cleanup();
+
+      await open(at('fee_beside_not_priced'));
+      expect(within(main()).getAllByText(/1 cost not priced yet/).length).toBeGreaterThan(0);
+      expect(within(fee()).queryByText('Not priced')).toBeNull();
+      const arch = main().querySelector<HTMLElement>('[data-line="arch"]');
+      expect(arch == null ? null : within(arch).getByText('Not priced')).toBeTruthy();
+    },
+  );
+
+  it(
+    'draws the fee line once on See margin, and turns it Not priced when its price is emptied (sc-75696)',
+    SLOW,
+    async () => {
+      await open(at('fee_priced'));
+      const times = (text: string, name: string) =>
+        (section(name).textContent ?? '').split(text).length - 1;
+      fireEvent.click(within(main()).getByRole('button', { name: 'See margin' }));
+      expect(times('Planning fee', 'Costs')).toBe(1);
+      expect(section('Costs').textContent).toContain(
+        'Planning feeCost £0.00 · Charged at £3,000.00 · its own price100.0%',
+      );
+      expect(times('Planning fee', 'Markup')).toBe(1);
+
+      const priceFee = (value: string) => {
+        fireEvent.click(within(section('Costs')).getByRole('button', { name: /^Planning fee/ }));
+        fireEvent.change(screen.getByLabelText('Charged at'), { target: { value } });
+        fireEvent.click(within(section('Costs')).getByRole('button', { name: 'Save' }));
+      };
+      priceFee('');
+      expect(section('Costs').textContent).toContain('Charged at £0.00 · 20% markup, the event’s');
+      expect(times('Planning fee', 'Markup')).toBe(0);
+      fireEvent.click(within(main()).getByRole('button', { name: 'Hide margin' }));
+      const fee = main().querySelector<HTMLElement>('[data-line="fee"]');
+      expect(fee == null ? null : within(fee).getByText('Not priced')).toBeTruthy();
+      expect(within(main()).getAllByText(/1 cost not priced yet/).length).toBeGreaterThan(0);
+
+      fireEvent.click(within(main()).getByRole('button', { name: 'See margin' }));
+      priceFee('3000');
+      fireEvent.click(within(main()).getByRole('button', { name: 'Hide margin' }));
+      expect(within(main()).queryByText(/[1-9]\d* costs? not priced yet/)).toBeNull();
+    },
+  );
+
+  it(
+    'keeps a fee line at 0 through Remove and Undo, so pricing it again takes it off the count (sc-75696)',
+    SLOW,
+    async () => {
+      await open(at('fee_priced'));
+      const priceFee = (value: string) => {
+        fireEvent.click(within(section('Costs')).getByRole('button', { name: /^Planning fee/ }));
+        fireEvent.change(screen.getByLabelText('Charged at'), { target: { value } });
+        fireEvent.click(within(section('Costs')).getByRole('button', { name: 'Save' }));
+      };
+      fireEvent.click(within(main()).getByRole('button', { name: 'See margin' }));
+      priceFee('');
+      fireEvent.click(within(main()).getByRole('button', { name: 'Hide margin' }));
+      fireEvent.click(within(section('Costs')).getByRole('button', { name: /^Planning fee/ }));
+      fireEvent.click(within(section('Costs')).getByRole('button', { name: /^Remove/ }));
+      fireEvent.click(screen.getByRole('button', { name: 'Undo' }));
+
+      fireEvent.click(within(main()).getByRole('button', { name: 'See margin' }));
+      priceFee('3000');
+      fireEvent.click(within(main()).getByRole('button', { name: 'Hide margin' }));
+      const fee = main().querySelector<HTMLElement>('[data-line="fee"]');
+      expect(fee == null ? null : within(fee).queryByText('Not priced')).toBeNull();
+      expect(within(main()).queryByText(/[1-9]\d* costs? not priced yet/)).toBeNull();
+    },
+  );
 });
