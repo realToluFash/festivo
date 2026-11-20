@@ -5685,6 +5685,8 @@
     "nothingAbsorbs": "A diferença fica à vista; nada a absorve.",
     "addedByYou": "Pago: {{day}}. Adicionado por si como já pago, por isso «Anular» elimina-o.",
     "addedBy": "Pago: {{day}}. Adicionado por {{name}} como já pago, por isso «Anular» elimina-o.",
+    "addedByYouHeld": "Paid {{day}}. Added by you as already paid.",
+    "addedByHeld": "Paid {{day}}. Added by {{name}} as already paid.",
     "deleted": "Foi eliminado o pagamento de {{amount}} a {{vendor}}, de {{day}}: {{what}}.",
     "howItIsPaid": "Forma de pagamento",
     "shapeName": {

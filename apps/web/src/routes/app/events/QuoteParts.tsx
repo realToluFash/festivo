@@ -811,10 +811,10 @@ function ScheduleRow({
     const line = !added
       ? paidLine(t, payment, currency, locale)
       : paid.by?.id === viewerId
-        ? t('quotes.addedByYou', { day })
+        ? t(writes ? 'quotes.addedByYou' : 'quotes.addedByYouHeld', { day })
         : paid.by == null
           ? paidLine(t, payment, currency, locale)
-          : t('quotes.addedBy', { day, name: paid.by.name });
+          : t(writes ? 'quotes.addedBy' : 'quotes.addedByHeld', { day, name: paid.by.name });
 
     return (
       <li data-payment={payment.id}>
@@ -826,7 +826,7 @@ function ScheduleRow({
           end={
             <>
               {added && <Amount value={minorMoney(paid.amount, currency, locale)} />}
-              {(lit || added) && writes && (
+              {writes && (
                 <button type="button" className="desk-text" onClick={onUndo}>
                   <Glyph name="undo" size={16} weight={2.4} />
                   {t('quotes.undo')}
