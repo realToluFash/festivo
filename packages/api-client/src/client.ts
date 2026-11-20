@@ -140,6 +140,8 @@ import {
   type EventQuote,
   type EventQuotes,
   type OfferedVendor,
+  type MadeTyped,
+  type PaidTyped,
   type PaymentTyped,
   type QuoteTermsTyped,
   type QuoteTyped,
@@ -3770,6 +3772,53 @@ export class ApiClient {
     await this.delete<unknown>(
       `${this.budgetPath(eventId)}/payments/${encodeURIComponent(paymentId)}`,
     );
+  }
+
+  /** Mark paid (sc-88): a command, refused 409 when already paid or cancelled. */
+  async markPaid(eventId: string, paymentId: string, typed: PaidTyped): Promise<EventQuote> {
+    return this.readQuote(
+      await this.post<unknown>(`${this.paymentPath(eventId, paymentId)}/paid`, typed),
+    );
+  }
+
+  /** Undo: unmarks a scheduled payment, and deletes one added as already made. */
+  async undoPaid(eventId: string, paymentId: string): Promise<EventQuote> {
+    return this.readQuote(
+      await this.delete<unknown>(`${this.paymentPath(eventId, paymentId)}/paid`),
+    );
+  }
+
+  async cancelPayment(eventId: string, paymentId: string, reason: string): Promise<EventQuote> {
+    return this.readQuote(
+      await this.post<unknown>(`${this.paymentPath(eventId, paymentId)}/cancellation`, { reason }),
+    );
+  }
+
+  async restorePayment(eventId: string, paymentId: string): Promise<EventQuote> {
+    return this.readQuote(
+      await this.delete<unknown>(`${this.paymentPath(eventId, paymentId)}/cancellation`),
+    );
+  }
+
+  async addMadePayment(
+    eventId: string,
+    quoteId: string,
+    typed: MadeTyped,
+  ): Promise<{ quote: EventQuote; paymentId: string }> {
+    const raw = await this.post<unknown>(
+      `${this.quotePath(eventId, quoteId)}/paid-payments`,
+      typed,
+    );
+    const paymentId = (raw as Record<string, unknown> | null)?.paymentId;
+
+    return {
+      quote: this.readQuote(raw),
+      paymentId: typeof paymentId === 'string' ? paymentId : '',
+    };
+  }
+
+  private paymentPath(eventId: string, paymentId: string): string {
+    return `${this.budgetPath(eventId)}/payments/${encodeURIComponent(paymentId)}`;
   }
 
   private quotePath(eventId: string, quoteId: string): string {
