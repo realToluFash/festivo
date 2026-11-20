@@ -165,11 +165,13 @@ final readonly class PaymentReminder implements NotificationTypeInterface
             default => $this->trans('payment_reminder.title.mixed', ['overdue' => $overdueCount, 'count' => $comingCount, 'days' => $days], $locale),
         };
 
-        $lines = Vec\map($payments, function (ScheduledPayment $payment) use ($kinds, $oneEvent, $locale): string {
+        $short = null !== $oneEvent && (0 === $comingCount || 0 === $overdueCount);
+
+        $lines = Vec\map($payments, function (ScheduledPayment $payment) use ($kinds, $short, $locale): string {
             $late = PaymentReminders::OVERDUE === $kinds[$payment->getId()->toRfc4122()];
             $event = $payment->getEngagement()->getEvent();
             $date = self::date($payment->getDueOn(), $locale);
-            $row = $this->trans(null === $oneEvent ? 'payment_reminder.row_on' : 'payment_reminder.row', [
+            $row = $this->trans($short ? 'payment_reminder.row' : 'payment_reminder.row_on', [
                 'vendor' => $payment->getEngagement()->getVendor()->getName(),
                 'event' => $event->getName(),
                 'amount' => self::money($payment->getAmountMinor(), $event->getCurrency(), $locale),

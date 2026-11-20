@@ -203,11 +203,27 @@ final class PaymentRemindersTest extends ApiTestCase
 
         self::assertSame('1 payment overdue, 1 due in the next 3 days', $rendered->subject);
         self::assertSame([
-            'Bloom & Co · £1,000.00 · was due Fri 5 Mar · Overdue · last reminder',
-            'Bloom & Co · £1,000.00 · due Wed 10 Mar',
+            'Bloom & Co · Summer wedding · £1,000.00 · was due Fri 5 Mar · Overdue · last reminder',
+            'Bloom & Co · Summer wedding · £1,000.00 · due Wed 10 Mar',
             'This is the last reminder about Bloom & Co: Balance.',
         ], $rendered->lines);
         self::assertStringStartsWith('/app/events/' . $this->eventId . '/budget/vendors/', $rendered->place ?? '');
+    }
+
+    #[Test]
+    public function aOneEventMessageOfOneKindLeavesTheEventToItsTitle(): void
+    {
+        $deposit = $this->payment('Deposit', '2027-03-10');
+        self::mockTime(new DateTimeImmutable('2027-03-07T10:00:00Z'));
+
+        $rendered = self::service(PaymentReminder::class)->render(
+            NotificationChannel::InApp,
+            new Recipient(NotificationAudienceKind::Member, $this->owner->getId(), 'Harriet Cole', 'en', null),
+            [['paymentId' => $deposit, 'kind' => PaymentReminders::COMING_DUE]],
+        );
+
+        self::assertSame('1 payment due in the next 3 days on Summer wedding', $rendered->subject);
+        self::assertSame(['Bloom & Co · £1,000.00 · due Wed 10 Mar'], $rendered->lines);
     }
 
     #[Test]
