@@ -23,7 +23,7 @@ import { type ReactNode, createContext } from 'react';
 import { type Mesh } from '../mesh.ts';
 import { type CardPhoto, type ListPhase, phaseTag } from '../eventsList.ts';
 
-export const KEPT = 'soirely.calendar';
+export const DEMO_KEPT = 'soirely.calendar';
 
 export const ROWS = 3;
 
@@ -46,17 +46,17 @@ export type EventItem = Extract<Item, { kind: 'event' }>;
 export type MarkItem = Extract<Item, { kind: 'milestone' }>;
 export type Cell = CalendarCell<CalEvent>;
 
-export function readKept(): CalendarPlace | null {
+export function readKept(kept: string): CalendarPlace | null {
   try {
-    return readCalendarPlace(window.localStorage.getItem(KEPT));
+    return readCalendarPlace(window.localStorage.getItem(kept));
   } catch {
     return null;
   }
 }
 
-export function keep(place: string): boolean {
+export function keep(kept: string, place: string): boolean {
   try {
-    window.localStorage.setItem(KEPT, place);
+    window.localStorage.setItem(kept, place);
 
     return true;
   } catch {

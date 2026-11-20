@@ -145,6 +145,7 @@ export function CalendarTop({
 /** The Calendar in A · Weeks as lanes (calendar-lanes-spec): the toolbar, then the weeks as one scroll or Agenda, with a day open beside them. */
 export function CalendarBoard<S extends string, E extends CalEvent>({
   start,
+  kept,
   events,
   load,
   shows,
@@ -156,6 +157,8 @@ export function CalendarBoard<S extends string, E extends CalEvent>({
   onRetry,
 }: {
   start: BoardStart<S>;
+  /** The localStorage key the view and month are kept under. */
+  kept: string;
   events: readonly E[];
   load: CalendarLoad;
   /** The Show menu's choices, the first of them everything. */
@@ -340,8 +343,8 @@ export function CalendarBoard<S extends string, E extends CalEvent>({
   });
 
   useEffect(() => {
-    keep(keptCalendarPlace({ view, month: pinned }));
-  }, [view, pinned]);
+    keep(kept, keptCalendarPlace({ view, month: pinned }));
+  }, [kept, view, pinned]);
 
   useEffect(() => {
     if (open == null || menu || held) return;

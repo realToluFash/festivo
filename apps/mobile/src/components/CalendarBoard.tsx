@@ -1,12 +1,4 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import {
-  type CalendarMonth,
-  type CalendarView,
-  keptCalendarPlace,
-  monthOfDay,
-  readCalendarPlace,
-  shiftMonth,
-} from '@soirely/domain';
+import { type CalendarMonth, type CalendarView, monthOfDay, shiftMonth } from '@soirely/domain';
 import {
   type ComponentType,
   type ReactNode,
@@ -48,6 +40,7 @@ import {
   weekIndexOf,
   weeksAround,
 } from '../kit/calendar.ts';
+import { type Opening, keepPlace, openingOf } from '../kit/calendarPlace.ts';
 import { useAccessibilitySizes } from '../layout/useLayout.ts';
 import { motionEase } from '../motion.ts';
 import { useReducedMotion } from '../reducedMotion.ts';
@@ -213,15 +206,12 @@ export function CalendarBoard<S extends string, E extends CalEvent>({
   useEffect(() => {
     if (placed) return;
     let live = true;
-    const land = (place: ReturnType<typeof readCalendarPlace>) => {
-      setView((was) => was ?? place?.view ?? 'month');
-      setAt((was) => was ?? (place == null ? today : landingOf(place.month, today)));
+    const land = (opening: Opening) => {
+      setView((was) => was ?? opening.view);
+      setAt((was) => was ?? opening.at);
     };
 
-    AsyncStorage.getItem(kept).then(
-      (read) => live && land(readCalendarPlace(read)),
-      () => live && land(null),
-    );
+    void openingOf(kept, today).then((opening) => live && land(opening));
 
     return () => {
       live = false;
@@ -263,10 +253,7 @@ export function CalendarBoard<S extends string, E extends CalEvent>({
 
   useEffect(() => {
     if (view == null || at == null) return;
-    void AsyncStorage.setItem(
-      kept,
-      keptCalendarPlace({ view, month: monthOfDay(`${pinnedKey}-01`) }),
-    ).catch(() => undefined);
+    void keepPlace(kept, { view, month: monthOfDay(`${pinnedKey}-01`) });
   }, [kept, view, at, pinnedKey]);
 
   const loaded = load === 'loaded';
