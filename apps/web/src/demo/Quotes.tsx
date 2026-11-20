@@ -508,7 +508,7 @@ function QuotesBody({
           {made != null && open != null && (
             <MadeDialog
               made={made}
-              quotes={budget.quotes}
+              budget={budget}
               onMade={setMade}
               onClose={() => setMade(null)}
               onSaved={(draft) => {
