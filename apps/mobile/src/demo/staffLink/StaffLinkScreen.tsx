@@ -22,14 +22,15 @@ import { useLayout } from '../../layout/useLayout.ts';
 import { DemoOnly } from '../../steps/Lines.tsx';
 import { tokens } from '../../theme/tokens.ts';
 import { goBack } from '../DemoScreen.tsx';
+import { Notice } from '../../components/Notice.tsx';
 import {
   ISSUE_MS,
   type LinkState,
   type LinkStatus,
-  PERSON,
+  type LinkView,
   SAMPLE_LINK,
   W,
-  WORDS,
+  acts,
   askReplace,
   backFromShare,
   copiedNow,
@@ -41,16 +42,46 @@ import {
   offersMarkSent,
   offersReplace,
   pressed,
+  removedNow,
   replace,
   seed,
+  seedFor,
+  statusWord,
   trailLine,
 } from './StaffLinkModel.ts';
+import { RW, firstName, keep, personOf, removeKept } from './StaffRosterModel.ts';
 
+/** ?state= for a board's state; ?person= opens one person from the Staff list, ?view=read without staff.manage, ?view=erased after the erasure. */
 export function StaffLinkRoute() {
-  const params = useLocalSearchParams<{ state?: string }>();
+  const params = useLocalSearchParams<{ state?: string; person?: string; view?: string }>();
   const name = linkStateOf(params.state);
+  const person = personOf(params.person);
+  const view: LinkView =
+    params.view === 'read' ? 'read' : params.view === 'erased' ? 'erased' : 'manage';
+  const first = (): LinkState =>
+    person == null
+      ? seed(name)
+      : seedFor(
+          {
+            id: person.id,
+            name: person.name,
+            first: firstName(person.name),
+            job: person.job ?? RW.noJob,
+            shift: person.shift ?? RW.noShift,
+            mobile: person.mobile,
+          },
+          person.status,
+          person.trail,
+          view,
+        );
 
-  return <StaffLink key={name} start={name} />;
+  return (
+    <StaffLink
+      key={`${name}:${person?.id ?? ''}:${view}`}
+      first={first}
+      fromRoster={person != null}
+    />
+  );
 }
 
 function issue(fails: boolean): Promise<string> {
@@ -59,11 +90,12 @@ function issue(fails: boolean): Promise<string> {
   );
 }
 
-function StaffLink({ start }: { start: ReturnType<typeof linkStateOf> }) {
+function StaffLink({ first, fromRoster }: { first: () => LinkState; fromRoster: boolean }) {
   const { kind } = useLayout();
   const insets = useSafeAreaInsets();
-  const [s, setS] = useState<LinkState>(() => seed(start));
+  const [s, setS] = useState<LinkState>(first);
   const [said, setSaid] = useState(0);
+  const removedRef = useRef(false);
   const replaceOpener = useRef<ViewInstance | null>(null);
   const phone = kind === 'phone';
   const landscape = kind === 'tabletLandscape';
@@ -71,7 +103,14 @@ function StaffLink({ start }: { start: ReturnType<typeof linkStateOf> }) {
   function apply(next: LinkState): void {
     setS(next);
     setSaid((n) => n + 1);
+    if (next.removed) removedRef.current = true;
+    if (!fromRoster) return;
+    if (next.removed) removeKept(next.who.id);
+    else keep(next.who.id, next.status, next.trail);
   }
+
+  const who = s.who;
+  const gone = s.removed;
 
   useEffect(() => {
     if (said === 0 || s.say === '') return;
@@ -90,6 +129,7 @@ function StaffLink({ start }: { start: ReturnType<typeof linkStateOf> }) {
       apply(notIssued(busy));
       return;
     }
+    if (removedRef.current) return;
     await Share.share({ message: url }).catch(() => undefined);
     apply(backFromShare(busy));
   }
@@ -105,6 +145,7 @@ function StaffLink({ start }: { start: ReturnType<typeof linkStateOf> }) {
       apply(notIssued(busy));
       return;
     }
+    if (removedRef.current) return;
     const refused =
       s.clipFails ||
       (await setStringAsync(url).then(
@@ -117,37 +158,53 @@ function StaffLink({ start }: { start: ReturnType<typeof linkStateOf> }) {
   const person = (
     <View style={styles.header}>
       <Text size={30} weight="bold" accessibilityRole="header">
-        {PERSON.name}
+        {who.name}
       </Text>
       <Text size={16} weight="medium" style={styles.secondary}>
-        {`${PERSON.job} · ${PERSON.shift}`}
+        {`${who.job} · ${who.shift}`}
       </Text>
     </View>
   );
 
-  const status = (
+  const shape: Shape = s.view === 'erased' ? 'erased' : who.mobile ? s.status : 'noMobile';
+  const trail = shape === s.status ? trailLine(s.status, s.trail) : null;
+  const help = shape === 'erased' ? W.erasedLine : shape === 'noMobile' ? W.noMobileLine : W.help;
+
+  const status = gone ? (
+    <View testID="staffLink.removed">
+      <Notice tone="attention" mark="alert" title={W.removed(who.name)} body={W.removedLine} />
+    </View>
+  ) : (
     <View style={styles.card} testID="staffLink.status">
       <Text size={13} weight="semibold" style={styles.kicker}>
         {W.link.toUpperCase()}
       </Text>
       <View style={styles.statusRow}>
-        <StatusShape status={s.status} />
-        <Text size={17} weight="semibold">
-          {WORDS[s.status]}
+        <StatusShape shape={shape} />
+        <Text size={17} weight="semibold" style={styles.shrink}>
+          {statusWord(s)}
         </Text>
       </View>
-      {trailLine(s.status, s.trail) != null && (
+      {trail != null && (
         <Text size={15} style={styles.secondary}>
-          {trailLine(s.status, s.trail)}
+          {trail}
         </Text>
       )}
       <Text size={15} style={styles.secondary}>
-        {W.help}
+        {help}
       </Text>
+      {s.view === 'read' && (
+        <View style={styles.lock} testID="staffLink.readOnly">
+          <Glyph name="lock" size={16} ink={tokens.colorInkSecondary} />
+          <Text size={15} weight="medium" style={[styles.secondary, styles.shrink]}>
+            {W.readOnly}
+          </Text>
+        </View>
+      )}
     </View>
   );
 
-  const actions = (
+  const actions = !acts(s) ? null : (
     <View style={styles.actions}>
       {s.failed && (
         <View style={styles.failed} accessibilityRole="alert" testID="staffLink.failed">
@@ -165,10 +222,10 @@ function StaffLink({ start }: { start: ReturnType<typeof linkStateOf> }) {
               {W.refused}
             </Text>
           </View>
-          <Field label={W.linkFor(PERSON.name)}>
+          <Field label={W.linkFor(who.name)}>
             <TextField
               value={s.held}
-              accessibilityLabel={W.linkFor(PERSON.name)}
+              accessibilityLabel={W.linkFor(who.name)}
               submitting
               selectTextOnFocus
               testID="staffLink.held.field"
@@ -179,7 +236,7 @@ function StaffLink({ start }: { start: ReturnType<typeof linkStateOf> }) {
       {s.asking && (
         <View style={styles.ask} testID="staffLink.ask">
           <Text size={17} weight="bold" accessibilityRole="header">
-            {W.didYouSend(PERSON.first)}
+            {W.didYouSend(who.first)}
           </Text>
           <Text size={15} style={styles.secondary}>
             {W.didYouSendLine}
@@ -254,10 +311,10 @@ function StaffLink({ start }: { start: ReturnType<typeof linkStateOf> }) {
             testID="staffLink.back"
           >
             <Text size={16} weight="semibold" style={styles.accent}>
-              Roster
+              {RW.roster}
             </Text>
           </Pressable>
-          {landscape ? (
+          {landscape && actions != null ? (
             <View style={styles.sides}>
               <View style={styles.sideMain}>
                 {person}
@@ -275,7 +332,10 @@ function StaffLink({ start }: { start: ReturnType<typeof linkStateOf> }) {
           <DemoOnly title="Demo only: the board’s switches">
             <SecondaryButton
               label="Start again"
-              onPress={() => setS(seed(start))}
+              onPress={() => {
+                removedRef.current = false;
+                setS(first());
+              }}
               testID="staffLink.demo.reset"
             />
             <SecondaryButton
@@ -289,9 +349,16 @@ function StaffLink({ start }: { start: ReturnType<typeof linkStateOf> }) {
               testID="staffLink.demo.clipFails"
             />
             <SecondaryButton
-              label="Ada opens the link"
-              onPress={() => setS({ ...s, status: 'opened', trail: { by: '', at: '19:20' } })}
+              label={`${who.first} opens the link`}
+              onPress={() =>
+                apply({ ...s, status: 'opened', trail: { by: '', at: '19:20' }, say: '' })
+              }
               testID="staffLink.demo.opened"
+            />
+            <SecondaryButton
+              label={`${who.first} is removed on the web`}
+              onPress={() => apply(removedNow(s))}
+              testID="staffLink.demo.removed"
             />
           </DemoOnly>
         </View>
@@ -306,7 +373,7 @@ function StaffLink({ start }: { start: ReturnType<typeof linkStateOf> }) {
       >
         <View style={styles.confirm}>
           <Text size={tokens.typeTitleSection.size} weight="bold" accessibilityRole="header">
-            {W.replaceTitle(PERSON.first)}
+            {W.replaceTitle(who.first)}
           </Text>
           <Text size={tokens.typeBodyPhone.size}>{W.replaceLine}</Text>
           <SheetActions>
@@ -352,9 +419,19 @@ function StaffLink({ start }: { start: ReturnType<typeof linkStateOf> }) {
   );
 }
 
-/** Each status a shape with its word: a dashed ring, a half ring, a ring, a filled tick. */
-function StatusShape({ status }: { status: LinkStatus }) {
-  if (status === 'none')
+type Shape = LinkStatus | 'noMobile' | 'erased';
+
+/** Each status a shape with its word: a dashed ring, a half ring, a ring, a filled tick; an amber ring with no number, a grey one after the erasure. */
+export function StatusShape({ shape, side = 16 }: { shape: Shape; side?: number }) {
+  if (shape === 'noMobile' || shape === 'erased')
+    return (
+      <ShapeMark
+        kind="notyet"
+        side={side}
+        ink={shape === 'noMobile' ? tokens.colorAttention : tokens.colorInkTertiary}
+      />
+    );
+  if (shape === 'none')
     return (
       <View
         accessibilityElementsHidden
@@ -362,9 +439,9 @@ function StatusShape({ status }: { status: LinkStatus }) {
         style={styles.dashed}
       />
     );
-  const kind = status === 'opened' ? 'yes' : status === 'sent' ? 'notyet' : 'waiting';
+  const kind = shape === 'opened' ? 'yes' : shape === 'sent' ? 'notyet' : 'waiting';
 
-  return <ShapeMark kind={kind} side={16} ink={tokens.colorAccent} />;
+  return <ShapeMark kind={kind} side={side} ink={tokens.colorAccent} />;
 }
 
 const styles = StyleSheet.create({
@@ -393,6 +470,8 @@ const styles = StyleSheet.create({
     borderColor: tokens.colorBorder,
   },
   statusRow: { flexDirection: 'row', alignItems: 'center', gap: tokens.spaceSm },
+  shrink: { flexShrink: 1 },
+  lock: { flexDirection: 'row', alignItems: 'flex-start', gap: tokens.spaceSm },
   dashed: {
     width: 16,
     height: 16,
