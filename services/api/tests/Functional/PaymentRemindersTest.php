@@ -202,8 +202,8 @@ final class PaymentRemindersTest extends ApiTestCase
 
         self::assertSame('1 payment overdue, 1 due in the next 3 days', $rendered->subject);
         self::assertSame([
-            'Bloom & Co · £1,000.00 · was due Fri, 5 Mar · Overdue · last reminder',
-            'Bloom & Co · £1,000.00 · due Wed, 10 Mar',
+            'Bloom & Co · £1,000.00 · was due Fri 5 Mar · Overdue · last reminder',
+            'Bloom & Co · £1,000.00 · due Wed 10 Mar',
             'This is the last reminder about the balance to Bloom & Co.',
         ], $rendered->lines);
         self::assertStringStartsWith('/app/events/' . $this->eventId . '/budget/vendors/', $rendered->place ?? '');

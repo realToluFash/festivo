@@ -5752,6 +5752,7 @@
     "title": "Payment reminders",
     "whenReminded_one": "{{count, number}} day before a payment is due, and once the day after, then silence.",
     "whenReminded_other": "{{count, number}} days before a payment is due, and once the day after, then silence.",
+    "whenReminded_many": "{{count, number}} days before a payment is due, and once the day after, then silence.",
     "change": "Change",
     "whoHears": "Who hears",
     "whoHearsLine": "The organisation’s owners and admins, and each event’s lead.",

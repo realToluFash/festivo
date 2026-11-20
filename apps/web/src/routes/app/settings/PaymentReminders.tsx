@@ -36,7 +36,7 @@ export function PaymentReminders() {
 
 function RemindersDesk({ organisation }: { organisation: Membership }) {
   const { t } = useTranslation();
-  const { layers } = useDeskLayers();
+  const { layers, covered, setHost } = useDeskLayers();
   const [load, setLoad] = useState<Load>({ kind: 'loading' });
   const [attempt, setAttempt] = useState(0);
   const [changing, setChanging] = useState(false);
@@ -60,7 +60,7 @@ function RemindersDesk({ organisation }: { organisation: Membership }) {
 
   return (
     <DeskPage layers={layers}>
-      <div className="desk-page">
+      <div className="desk-page" inert={covered}>
         <div className="desk-column">
           {load.kind === 'loading' && <PageLoading words={t('paymentReminders.loading')} />}
           {load.kind === 'failed' && (
@@ -93,6 +93,7 @@ function RemindersDesk({ organisation }: { organisation: Membership }) {
           />
         )}
       </div>
+      <div ref={setHost} className="desk-layers" />
     </DeskPage>
   );
 }

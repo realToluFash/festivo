@@ -189,11 +189,7 @@ final readonly class PaymentReminder implements NotificationTypeInterface
         return new RenderedNotification($title, Str\join($lines, "\n"), $lines, self::place($payments));
     }
 
-    /**
-     * One vendor's payments open its page; one event's, its budget; several events', the budget of the first listed.
-     *
-     * @param non-empty-list<ScheduledPayment> $payments
-     */
+    /** @param non-empty-list<ScheduledPayment> $payments one vendor's open its page, otherwise the first event's budget */
     private static function place(array $payments): string
     {
         $first = $payments[0]->getEngagement();
@@ -205,7 +201,6 @@ final readonly class PaymentReminder implements NotificationTypeInterface
             : Str\format('/app/events/%s/budget', $eventId);
     }
 
-    /** The reader's own short date, "Fri 20 Nov", for a day that has no time and no zone. */
     private static function date(DateTimeImmutable $day, string $locale): string
     {
         $dates = SupportedLocales::dates($locale);
@@ -215,7 +210,6 @@ final readonly class PaymentReminder implements NotificationTypeInterface
         return $formatter?->format(new DateTimeImmutable($day->format('Y-m-d') . 'T12:00:00Z')) ?: $day->format('Y-m-d');
     }
 
-    /** In the event's currency at its minor unit, written as the reader's locale writes money (CLDR). */
     private static function money(int $minor, string $currency, string $locale): string
     {
         $digits = Money::minorDigits($currency);
