@@ -17,6 +17,7 @@ import {
   waitingOf,
 } from './OrgSwitcherModel.ts';
 import { MANAGED_WORDS } from './settings/DataWords.ts';
+import { noOrgBoardOf } from './settings/fromNone.ts';
 import { membersStart, membersStateOf } from './settings/MembersSample.ts';
 import { organisationStart, organisationStateOf } from './settings/OrganisationModel.ts';
 import { managedStateOf, managedStep, signUpEndOf, signUpLanding } from './signUpEnd.ts';
@@ -138,7 +139,9 @@ describe('a managed account, wherever a membership path ends (sc-563, enterprise
   it('puts the banner in place of Start your own on You are not in an organisation', () => {
     const none = read('src', 'demo', 'createOrg', 'NoOrganisation.tsx');
     expect(none).toMatch(/managed \? \(\s*<ManagedBanner testID="noOrganisation\.managed" \/>/u);
-    expect(read('app', 'demo', 'today.tsx')).toMatch(/managed=\{params\.state === 'managed'\}/u);
+    expect(none).toMatch(/const managed = board === 'managed';/u);
+    expect(read('app', 'demo', 'today.tsx')).toMatch(/board=\{noOrgBoardOf\(params\.state\)\}/u);
+    expect(noOrgBoardOf('managed')).toBe('managed');
   });
 
   it('ends any other sign-up at Home, as before', () => {

@@ -31,6 +31,7 @@ import { Bell as ProductBell } from '../../components/BellButton.tsx';
 import { PortraitTop as ProductPortraitTop } from '../../components/ListTop.tsx';
 import { useSideFrame } from '../../components/listFrame.ts';
 import { usePillFit } from '../../components/usePillFit.tsx';
+import { useFromNone } from './fromNone.ts';
 
 /** A page whose sample someone else sees: the Settings card, its rows and the sidebar's foot follow them. */
 export function SeenBy({ looking, children }: { looking: Looking; children: ReactNode }) {
@@ -67,6 +68,7 @@ export function Landscape({
 }) {
   const shell = useShell();
   const side = useSideFrame();
+  const fromNone = useFromNone();
   const { fontScale } = useWindowDimensions();
   const columnWidth = useSideListWidth(SETTINGS_LIST_WIDTH);
   // The product's frame caps its Settings column under the page title's size, as everything under it (sc-67338).
@@ -83,26 +85,27 @@ export function Landscape({
 
   return (
     <View style={[styles.grow, side.chrome]}>
-      {sidebar ?? (
-        <TodayShellProvider
-          value={{
-            ...demoShell(shell.tell, { search: () => openSearch(shell.looking.role) }),
-            person: shell.looking,
-          }}
-        >
-          <DemoSidebar
-            events={SIDEBAR_EVENTS}
-            onTab={shell.onTab}
-            at={at}
-            onPerson={() => shell.openSection('account')}
-            org={shell.viewer !== 'noOrg'}
-          />
-        </TodayShellProvider>
-      )}
+      {sidebar ??
+        (fromNone == null && (
+          <TodayShellProvider
+            value={{
+              ...demoShell(shell.tell, { search: () => openSearch(shell.looking.role) }),
+              person: shell.looking,
+            }}
+          >
+            <DemoSidebar
+              events={SIDEBAR_EVENTS}
+              onTab={shell.onTab}
+              at={at}
+              onPerson={() => shell.openSection('account')}
+              org={shell.viewer !== 'noOrg'}
+            />
+          </TodayShellProvider>
+        ))}
       {band == null ? (
-        <View style={[styles.main, side.card]}>{columns}</View>
+        <View style={[styles.main, side.card, fromNone != null && styles.alone]}>{columns}</View>
       ) : (
-        <View style={[styles.grow, side.card]}>
+        <View style={[styles.grow, side.card, fromNone != null && styles.alone]}>
           {band}
           <View style={styles.main}>{columns}</View>
         </View>
@@ -178,6 +181,10 @@ export function Bell({
   onPress?: (() => void) | undefined;
   ref?: Ref<ViewInstance> | undefined;
 }) {
+  const fromNone = useFromNone();
+
+  if (fromNone != null) return null;
+
   return (
     <ProductBell
       ref={ref}
@@ -256,6 +263,9 @@ export function tabsFor(viewer: Viewer): readonly (typeof TABS)[number][] {
 export function SettingsTabBar({ bottom }: { bottom: number }) {
   const { t } = useTranslation();
   const shell = useShell();
+  const fromNone = useFromNone();
+
+  if (fromNone != null) return null;
 
   return (
     <TabBar
@@ -275,6 +285,10 @@ export function PortraitTop({ at = 'Settings' }: { at?: Tab }) {
   const shell = useShell();
   const tabs = tabsFor(shell.viewer);
   const say = (_: Tab, glyph: GlyphName) => t(`todayScreen.tab.${glyph}`);
+  const insets = useSafeAreaInsets();
+  const fromNone = useFromNone();
+
+  if (fromNone != null) return <View style={{ height: insets.top + tokens.spaceXl }} />;
 
   return (
     <ProductPortraitTop
@@ -298,6 +312,7 @@ const styles = StyleSheet.create({
   cardsPhone: { gap: tokens.spaceXl },
   main: { flex: 1, flexDirection: 'row' },
   column: { borderRightWidth: 1, borderRightColor: tokens.colorBorder },
+  alone: { marginLeft: tokens.spaceMd },
   task: { paddingHorizontal: tokens.space3xl, gap: tokens.spaceXl },
   taskTablet: { width: '100%', maxWidth: 560, alignSelf: 'center' },
   taskHead: { gap: tokens.spaceMd, paddingTop: tokens.spaceMd, paddingBottom: tokens.spaceSm },
