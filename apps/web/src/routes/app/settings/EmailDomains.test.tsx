@@ -611,7 +611,9 @@ describe('Data and control’s Email domains row and card (sc-560)', () => {
 
     const link = await screen.findByRole('link', { name: /Email domains/ });
     expect(within(link).getByText('Enterprise')).toBeDefined();
-    expect(within(link).getByText('Prove your domain')).toBeDefined();
+    expect(
+      within(link).getByText('Prove your domain and limit its accounts to Ìrè Events'),
+    ).toBeDefined();
     unmount();
 
     plan = page([domain('ireevents.com', 'waiting')], 'left');

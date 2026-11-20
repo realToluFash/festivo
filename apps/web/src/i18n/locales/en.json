@@ -4511,7 +4511,7 @@
     "control": "Control",
     "enterprise": "Enterprise",
     "domainsNone": "No domains yet",
-    "domainsLocked": "Prove your domain",
+    "domainsLocked": "Prove your domain and limit its accounts to {{organisation}}",
     "domainProved": "{{domain}} proved",
     "domainWaiting": "{{domain}} waiting for the record",
     "domainFailed": "{{domain}} not proved",
