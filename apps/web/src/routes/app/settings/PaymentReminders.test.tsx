@@ -123,6 +123,27 @@ describe('Settings › Vendors › Payment reminders (sc-95)', () => {
     expect(sent.find((one) => one.line === CHANGE)?.body).toEqual({ days: 5 });
   });
 
+  it('saves on Enter in the days field', async () => {
+    signedIn();
+    const sent = answering({
+      [SETTING]: () => json({ days: 3, inForce: true }),
+      [CHANGE]: () => json({ days: 7, inForce: true }),
+    });
+    open();
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Change' }));
+    const field = await screen.findByLabelText('Days before a payment is due');
+    fireEvent.change(field, { target: { value: '7' } });
+    fireEvent.submit(field.closest('form') ?? field);
+
+    expect(
+      await screen.findByText(
+        '7 days before a payment is due, and once the day after, then silence.',
+      ),
+    ).toBeDefined();
+    expect(sent.find((one) => one.line === CHANGE)?.body).toEqual({ days: 7 });
+  });
+
   it('says reminders are off, and why, after a downgrade', async () => {
     signedIn();
     answering({ [SETTING]: () => json({ days: 3, inForce: false }) });
