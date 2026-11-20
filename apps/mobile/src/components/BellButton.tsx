@@ -6,6 +6,7 @@ import { StyleSheet, View, type ViewInstance } from 'react-native';
 import { useUnread } from '../notificationsUnread.ts';
 import { RoundButton } from './SettingsParts.tsx';
 import { tokens } from '../theme/tokens.ts';
+import { useWayBackToNone } from './wayBackToNone.ts';
 
 /** The bell as the demos draw it: round and grey, a dot while anything is unread, and the exact count in its name. */
 export function Bell({
@@ -38,6 +39,9 @@ export function Bell({
 /** The bell in the frame (sc-3980), opening Notifications. */
 export function BellButton() {
   const unread = useUnread();
+  const fromNone = useWayBackToNone();
+
+  if (fromNone != null) return null;
 
   return <Bell unread={unread} onPress={() => router.push('/notifications')} testID="frame.bell" />;
 }
