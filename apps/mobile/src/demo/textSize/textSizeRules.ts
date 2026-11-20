@@ -1,6 +1,6 @@
 import { atAccessibilitySizes, fitWidest } from '../../layout/textSize.ts';
 
-export type TextSizeChoice = 'phone' | 'default' | 'android' | 'iphone';
+export type TextSizeChoice = 'phone' | 'default' | 'android' | 'iphone' | 'twelfth';
 export type TextSizeLanguage = 'en' | 'fr' | 'es';
 
 export const TEXT_SIZES: readonly { key: TextSizeChoice; label: string }[] = [
@@ -8,7 +8,20 @@ export const TEXT_SIZES: readonly { key: TextSizeChoice; label: string }[] = [
   { key: 'default', label: 'Default' },
   { key: 'android', label: 'Android 200%' },
   { key: 'iphone', label: 'iPhone ninth step' },
+  { key: 'twelfth', label: 'iPhone twelfth step' },
 ];
+
+/** What the board draws: the Settings card, or Home's This week (sc-13281). */
+export type TextSizePart = 'card' | 'week';
+export type TextSizeWeekState = 'events' | 'nothing';
+
+export function partOf(name: string | undefined): TextSizePart {
+  return name === 'week' ? 'week' : 'card';
+}
+
+export function weekStateOf(name: string | undefined): TextSizeWeekState {
+  return name === 'nothing' ? 'nothing' : 'events';
+}
 
 export const LANGUAGES: readonly { key: TextSizeLanguage; label: string }[] = [
   { key: 'en', label: 'English' },
@@ -16,11 +29,12 @@ export const LANGUAGES: readonly { key: TextSizeLanguage; label: string }[] = [
   { key: 'es', label: 'Spanish' },
 ];
 
-/** Android's Font size at its largest draws text 2 times; iOS's ninth step of Larger Text, 2.14 (sc-13496). */
+/** Android's Font size at its largest draws text 2 times; iOS's ninth step of Larger Text, 2.14 (sc-13496), and its twelfth, 3.57. */
 const SCALES: Readonly<Record<Exclude<TextSizeChoice, 'phone'>, number>> = {
   default: 1,
   android: 2,
   iphone: 2.14,
+  twelfth: 3.57,
 };
 
 export function scaleFor(choice: TextSizeChoice, phoneScale: number): number {
@@ -49,6 +63,11 @@ export function tabLabelSize(scale: number, widest: number, slot: number): numbe
 
 /** The card's 60 tile gives its room to the words at the accessibility sizes. */
 export function cardTileShown(scale: number): boolean {
+  return !atAccessibilitySizes(scale);
+}
+
+/** Seven columns cannot hold a day's name or its date at the accessibility sizes, so the week strip gives way and the agenda carries the week (sc-13281). */
+export function weekStripShown(scale: number): boolean {
   return !atAccessibilitySizes(scale);
 }
 
