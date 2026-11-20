@@ -28,8 +28,10 @@ import { useTranslation } from 'react-i18next';
 import {
   Platform,
   Pressable,
+  type StyleProp,
   StyleSheet,
   type TextInputInstance,
+  type TextStyle,
   View,
   type ViewInstance,
   useWindowDimensions,
@@ -47,7 +49,7 @@ import { useReadOut } from './ReadOut.tsx';
 import { moveScreenReaderFocus, type ScreenReaderTarget } from './screenReaderFocus.ts';
 import { type Anchor, AnchoredMenu, HeadCount, SectionHead, TextAction } from './Summary.tsx';
 import { Text, TitleCap } from './Text.tsx';
-import { MeasuredWords } from './Title.tsx';
+import { CappedWholeWords, MeasuredWords } from './Title.tsx';
 
 type Level = 'top' | 'type' | 'when' | 'hosts';
 
@@ -398,6 +400,7 @@ export function EventsFilterMenu({
   const whenRow = useRef<ViewInstance>(null);
   const hostsRow = useRef<ViewInstance>(null);
   const { locale } = calendar;
+  const grown = atAccessibilitySizes(useWindowDimensions().fontScale);
   const types = filters.types.map((type) => t(`eventTypes.${type}`));
   const whenNamed = whenWords(filters.when, locale, t);
   const offered = [...hosts, ...filters.hosts.filter((host) => !hosts.includes(host))];
@@ -529,12 +532,12 @@ export function EventsFilterMenu({
             />
           ))}
           {between != null && (
-            <View style={styles.between}>
+            <View style={[styles.between, grown && styles.betweenStacked]}>
               {(['from', 'to'] as const).map((end) => (
-                <View key={end} style={styles.day}>
-                  <Text size={13} weight="semibold">
+                <View key={end} style={grown ? styles.dayStacked : styles.day}>
+                  <LevelWords size={13} weight="semibold" accessible>
                     {t(end === 'from' ? 'eventsSearch.from' : 'eventsSearch.to')}
-                  </Text>
+                  </LevelWords>
                   <MomentBox
                     label={t(end === 'from' ? 'eventsSearch.from' : 'eventsSearch.to')}
                     mode="date"
@@ -542,6 +545,7 @@ export function EventsFilterMenu({
                     locale={locale}
                     year={false}
                     height={tokens.sizeHit}
+                    grown={grown}
                     onPress={() => pickDay(end)}
                     testID={`events.filter.${end}`}
                   />
@@ -823,13 +827,50 @@ function Drilled({
         testID="events.filter.back"
       >
         <Glyph name="back" size={18} ink={tokens.colorAccentText} weight={2.4} />
-        <Text size={16} weight="bold" accessible={false} accessibilityRole="header">
+        <LevelWords size={16} weight="bold" accessibilityRole="header">
           {title}
-        </Text>
+        </LevelWords>
       </Pressable>
       <View style={styles.rule} />
       {children}
     </>
+  );
+}
+
+/** A drilled level's words: main's text at the standard sizes; from AX1 no larger than the page title, wrapping between words, a piece too wide for its line stepping down until it fits whole (sc-75213). */
+function LevelWords({
+  size,
+  weight,
+  style,
+  accessible = false,
+  accessibilityRole,
+  children,
+}: {
+  size: number;
+  weight: 'medium' | 'semibold' | 'bold';
+  style?: StyleProp<TextStyle>;
+  accessible?: boolean;
+  accessibilityRole?: 'header';
+  children: string;
+}) {
+  const { fontScale } = useWindowDimensions();
+  const [room, setRoom] = useState(0);
+  const look = { size, weight, accessible, accessibilityRole, style };
+
+  if (!atAccessibilitySizes(fontScale)) {
+    return (
+      <Text {...look} style={[styles.words, style]}>
+        {children}
+      </Text>
+    );
+  }
+
+  return (
+    <View style={styles.words} onLayout={(event) => setRoom(event.nativeEvent.layout.width)}>
+      <CappedWholeWords {...look} room={room} breakAfterHyphens>
+        {children}
+      </CappedWholeWords>
+    </View>
   );
 }
 
@@ -856,14 +897,9 @@ function Check({
       <View style={[styles.box, on ? styles.boxOn : styles.boxOff]}>
         {on && <Glyph name="tick" size={14} ink={tokens.colorInkOnDark} weight={3} />}
       </View>
-      <Text
-        size={16}
-        weight={on ? 'semibold' : 'medium'}
-        accessible={false}
-        style={[styles.grow, on && styles.on]}
-      >
+      <LevelWords size={16} weight={on ? 'semibold' : 'medium'} style={on && styles.on}>
         {word}
-      </Text>
+      </LevelWords>
     </Pressable>
   );
 }
@@ -889,14 +925,9 @@ function Radio({
       testID={testID}
     >
       <RadioMark on={on} />
-      <Text
-        size={16}
-        weight={on ? 'semibold' : 'medium'}
-        accessible={false}
-        style={[styles.grow, on && styles.on]}
-      >
+      <LevelWords size={16} weight={on ? 'semibold' : 'medium'} style={on && styles.on}>
         {word}
-      </Text>
+      </LevelWords>
     </Pressable>
   );
 }
@@ -1032,6 +1063,8 @@ export function EventsResults({
 
 const styles = StyleSheet.create({
   grow: { flex: 1, minWidth: 0 },
+  // Grows across a row and stretches down a column, where flex 1 would leave it no height.
+  words: { flexGrow: 1, flexShrink: 1, minWidth: 0 },
   shrink: { flexShrink: 1 },
   kept: { flexShrink: 0 },
   secondary: { color: tokens.colorInkSecondary },
@@ -1135,6 +1168,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: tokens.spaceMd,
     paddingHorizontal: tokens.spacePillEnd,
+    paddingVertical: tokens.spaceXxs,
   },
   box: { width: 22, height: 22, borderRadius: 7, alignItems: 'center', justifyContent: 'center' },
   boxOn: { backgroundColor: tokens.colorAccent },
@@ -1146,7 +1180,9 @@ const styles = StyleSheet.create({
     paddingTop: tokens.spaceXxs,
     paddingBottom: tokens.spaceMd,
   },
+  betweenStacked: { flexDirection: 'column', gap: tokens.spaceMd },
   day: { flex: 1, gap: 5 },
+  dayStacked: { gap: 5 },
   results: { gap: 18 },
   countRow: {
     minHeight: tokens.sizeHit,

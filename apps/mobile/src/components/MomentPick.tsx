@@ -5,6 +5,7 @@ import { Platform, Pressable, StyleSheet, View, type ViewInstance } from 'react-
 
 import { TextField, type TextFieldProps } from './Field.tsx';
 import { Text } from './Text.tsx';
+import { CappedWholeWords } from './Title.tsx';
 import { pickedInto, pickerValue } from '../kit/eventForm.ts';
 import { weight } from '../theme/fonts.ts';
 import { tokens } from '../theme/tokens.ts';
@@ -92,6 +93,7 @@ export function MomentBox({
   height = 52,
   wrong = false,
   line = null,
+  grown = false,
   onPress,
   ref,
   testID,
@@ -106,6 +108,8 @@ export function MomentBox({
   wrong?: boolean;
   /** Read after the box while it is wrong: the line under it. */
   line?: string | null;
+  /** Its words grow up to the page title's size and step down rather than break, the box growing with them (sc-75213). */
+  grown?: boolean;
   onPress: () => void;
   ref?: Ref<ViewInstance>;
   testID?: string;
@@ -121,6 +125,7 @@ export function MomentBox({
           : formatWallDay(value, locale);
   const tall = height > tokens.sizeHit;
   const inside = (tall ? tokens.spacePillEnd : tokens.spaceLg) - (wrong ? 2 : 1.5);
+  const [room, setRoom] = useState(0);
 
   return (
     <Pressable
@@ -135,6 +140,7 @@ export function MomentBox({
         },
         width == null ? styles.grow : { width },
         wrong && styles.wrong,
+        grown && styles.grown,
         pressed && styles.pressed,
       ]}
       accessibilityRole="button"
@@ -142,9 +148,23 @@ export function MomentBox({
       {...(wrong && line != null ? { accessibilityHint: line } : {})}
       testID={testID}
     >
-      <Text size={tall ? 16 : 15} weight="medium" accessible={false} style={styles.figures}>
-        {words}
-      </Text>
+      {grown ? (
+        <View onLayout={(event) => setRoom(event.nativeEvent.layout.width)}>
+          <CappedWholeWords
+            size={tall ? 16 : 15}
+            weight="medium"
+            accessible={false}
+            style={styles.figures}
+            room={room}
+          >
+            {words}
+          </CappedWholeWords>
+        </View>
+      ) : (
+        <Text size={tall ? 16 : 15} weight="medium" accessible={false} style={styles.figures}>
+          {words}
+        </Text>
+      )}
     </Pressable>
   );
 }
@@ -202,6 +222,7 @@ const styles = StyleSheet.create({
     backgroundColor: tokens.colorCard,
   },
   wrong: { borderWidth: 2, borderColor: tokens.colorBroken },
+  grown: { paddingVertical: tokens.spaceXs },
   field: {
     minHeight: 52,
     paddingLeft: 14.5,
