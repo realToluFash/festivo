@@ -30,8 +30,8 @@ export function SaveNotice({
     const notice = box.current;
 
     if (notice == null || times === 0) return;
-    notice.nextElementSibling?.scrollIntoView({ block: 'nearest' });
     notice.scrollIntoView({ block: 'nearest' });
+    notice.nextElementSibling?.scrollIntoView({ block: 'nearest' });
   }, [answer, times]);
 
   if (answer == null) return null;
