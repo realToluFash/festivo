@@ -98,7 +98,7 @@ export function MarginCosts({
   eventId: string;
   margin: BudgetMargin;
   shownIds: ReadonlySet<string>;
-  onSaved: (margin: BudgetMargin, id: string) => void;
+  onSaved: (margin: BudgetMargin, removed: boolean) => void;
 }) {
   const { t } = useTranslation();
   const id = useId();
@@ -129,10 +129,14 @@ export function MarginCosts({
                       line={one}
                       currency={margin.currency}
                       onCancel={() => setOpened(null)}
-                      onSaved={(next) => {
+                      onSaved={(next, removed) => {
                         setOpened(null);
-                        setSaid({ id: one.id, words: t('budget.saved'), ok: true });
-                        onSaved(next, one.id);
+                        setSaid({
+                          id: one.id,
+                          words: t(removed ? 'budget.margin.priceRemoved' : 'budget.saved'),
+                          ok: true,
+                        });
+                        onSaved(next, removed);
                       }}
                       onFailed={() => {
                         setOpened(null);
@@ -186,7 +190,7 @@ function OpenedCharge({
   line: ChargedLine;
   currency: string;
   onCancel: () => void;
-  onSaved: (margin: BudgetMargin) => void;
+  onSaved: (margin: BudgetMargin, removed: boolean) => void;
   onFailed: () => void;
 }) {
   const { t, i18n } = useTranslation();
@@ -230,6 +234,7 @@ function OpenedCharge({
     try {
       onSaved(
         await api.chargeBudgetLine(eventId, line.id, sent == null ? {} : { price: sent, currency }),
+        sent == null,
       );
     } catch (error) {
       setBusy(false);
@@ -422,7 +427,7 @@ export function MarkupDialog({
   margin: BudgetMargin;
   opening: MarkupOpening;
   onDismiss: () => void;
-  onSaved: (margin: BudgetMargin) => void;
+  onSaved: (margin: BudgetMargin, removed: boolean) => void;
 }) {
   const { t, i18n } = useTranslation();
   const language = moneyLanguage(i18n.language);
@@ -468,6 +473,7 @@ export function MarkupDialog({
         scope === 'cost'
           ? await api.chargeBudgetLine(eventId, cost, markup == null ? {} : { markup })
           : await api.setBudgetMarkup(eventId, scope === 'category' ? category : null, markup),
+        markup == null,
       );
     } catch (error) {
       setBusy(false);

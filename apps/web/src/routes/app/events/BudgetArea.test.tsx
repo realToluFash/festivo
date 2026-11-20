@@ -618,8 +618,8 @@ class StubSource {
     this.readyState = StubSource.CLOSED;
   }
 
-  publish(): void {
-    act(() => this.onmessage?.({ data: '{}' }));
+  publish(data = '{}'): void {
+    act(() => this.onmessage?.({ data }));
   }
 }
 
@@ -1071,6 +1071,68 @@ describe('the margin face, for margin readers on a plan with margin (sc-92)', ()
         markup: null,
       }),
     );
+    expect((await screen.findAllByText('Markup removed.')).length).toBeGreaterThan(0);
+    expect(screen.queryByText('Markup saved.')).toBeNull();
+  });
+
+  it('says an emptied price was removed, not saved', async () => {
+    signedIn();
+    const priced = { ...MARGIN_DINNER, source: 'price', markup: null, price: '8000.00' };
+    const sent = serve({
+      'GET /api/events/ev_1/budget/margin': () => json(margin({ lines: [priced] })),
+      'PUT /api/events/ev_1/budget/lines/dinner/charge': () => json(margin()),
+    });
+
+    fireEvent.click(await screen.findByRole('button', { name: 'See margin' }));
+    fireEvent.click(screen.getByRole('button', { name: /^Dinner/u }));
+    fireEvent.change(screen.getByRole('textbox', { name: 'Charged at' }), {
+      target: { value: '' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+    await waitFor(() =>
+      expect(
+        sent.find((one) => one.line === 'PUT /api/events/ev_1/budget/lines/dinner/charge')?.body,
+      ).toEqual({}),
+    );
+    expect((await screen.findAllByText('Price removed.')).length).toBeGreaterThan(0);
+    expect(screen.queryByText('Saved.')).toBeNull();
+  });
+
+  it('keeps its figures when the headcount moves, and reads the margin again', async () => {
+    const before = config();
+    __setConfig({ ...before, mercureUrl: 'http://hub.test/.well-known/mercure' });
+    StubSource.made = [];
+    vi.stubGlobal('EventSource', StubSource);
+    try {
+      signedIn();
+      let now = margin();
+      const hub = () =>
+        json({ token: 'tok', expiresAt: new Date(Date.now() + 3_600_000).toISOString() });
+      serve({
+        'GET /api/events/ev_1/budget/margin': () => json(now),
+        'POST /api/events/ev_1/budget/subscriptions': hub,
+        'POST /api/events/ev_1/budget/margin/subscriptions': hub,
+      });
+
+      fireEvent.click(await screen.findByRole('button', { name: 'See margin' }));
+      const card = screen.getByRole('region', { name: 'Budget' });
+      expect(within(card).getByText('£7,834 to £10,853')).toBeTruthy();
+      await waitFor(() =>
+        expect(StubSource.made.filter((one) => one.url.includes('margin'))).toHaveLength(1),
+      );
+      const hubbed = StubSource.made.find((one) => one.url.includes('margin'))!;
+
+      const more = { confirmed: '7920.00', potential: '10852.80' };
+      now = margin({ total: { ...margin().total, client: more } });
+      hubbed.publish(JSON.stringify({ headcount: 99 }));
+
+      expect(await within(card).findByText('£7,920 to £10,853')).toBeTruthy();
+      expect(screen.getByText(/^Cost £6,528\.00 · Charged at/u)).toBeTruthy();
+    } finally {
+      __setConfig(before);
+      vi.unstubAllGlobals();
+    }
   });
 
   it('says a price below cost beside the field, with its margin, and still saves it', async () => {

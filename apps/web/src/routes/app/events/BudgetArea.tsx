@@ -12,7 +12,6 @@ import {
   type ScheduledPayment,
   VENDOR_CATEGORIES,
   type VendorCategory,
-  asBudgetMargin,
   linePrice,
   realtimeTopic,
 } from '@soirely/api-client';
@@ -332,8 +331,8 @@ export function BudgetArea({ event }: { event: OrganisationEvent }) {
   useHubTopics(
     marginTopics,
     () => api.budgetMarginSubscription(event.id),
-    (data) => {
-      if (data != null) setMargin(asBudgetMargin(data));
+    () => {
+      readMargin();
       if (marginFace && own.current === 0) setWashed((n) => n + 1);
     },
     readMargin,
@@ -587,9 +586,9 @@ export function BudgetArea({ event }: { event: OrganisationEvent }) {
                             .map((one) => one.id),
                         )
                       }
-                      onSaved={(next) => {
+                      onSaved={(next, removed) => {
                         setMargin(next);
-                        setHeard(t('budget.saved'));
+                        setHeard(t(removed ? 'budget.margin.priceRemoved' : 'budget.saved'));
                         setWashed((n) => n + 1);
                       }}
                     />
@@ -744,10 +743,10 @@ export function BudgetArea({ event }: { event: OrganisationEvent }) {
             margin={margin}
             opening={markupOpening}
             onDismiss={() => setMarkupOpening(null)}
-            onSaved={(next) => {
+            onSaved={(next, removed) => {
               setMargin(next);
               setMarkupOpening(null);
-              setHeard(t('budget.margin.dialog.saved'));
+              setHeard(t(removed ? 'budget.margin.dialog.removed' : 'budget.margin.dialog.saved'));
               setWashed((n) => n + 1);
             }}
           />
