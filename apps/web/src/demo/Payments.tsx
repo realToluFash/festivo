@@ -401,7 +401,14 @@ function DaysDialog({
       onDismiss={onClose}
       onConfirm={save}
     >
-      <div className="desk-fields">
+      <form
+        className="desk-fields"
+        noValidate
+        onSubmit={(event) => {
+          event.preventDefault();
+          save();
+        }}
+      >
         <Field
           label={PW.daysField}
           value={changing.typed}
@@ -413,7 +420,7 @@ function DaysDialog({
             onChanging({ typed, problem: changing.problem == null ? null : daysProblem(typed) })
           }
         />
-      </div>
+      </form>
     </BudgetDialog>
   );
 }
