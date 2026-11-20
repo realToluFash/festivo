@@ -4,11 +4,13 @@ declare(strict_types=1);
 
 namespace App\Domain\Organisation\AuditLog;
 
+use App\Domain\Organisation\Roles\SeededRoleLabels;
 use App\Domain\User\Mail\UserMailer;
 use App\Entity\AuditEntry;
 use App\Entity\User;
 use App\Enum\Actor;
 use App\Enum\AuditType;
+use App\Enum\SeededRole;
 use DateTimeImmutable;
 use DateTimeZone;
 use Doctrine\DBAL\ArrayParameterType;
@@ -26,6 +28,8 @@ final readonly class AuditEntryView
 {
     private const array UNSHOWN_FIELDS = ['export', 'eventId', 'membershipId', 'invitationId', 'userId', 'organisationId', 'claimId', 'organisation', 'user', 'claimant', 'duplicatedFrom'];
 
+    private const array ROLE_FIELDS = ['role', 'roleId'];
+
     private const array CODED_FIELDS = ['role', 'roleId', 'status', 'membershipStatus', 'suspension', 'type', 'addressKind'];
 
     private const string UUID = '/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/';
@@ -36,6 +40,7 @@ final readonly class AuditEntryView
         private TranslatorInterface $translator,
         private UserMailer $userMailer,
         private Connection $connection,
+        private SeededRoleLabels $seededRoleLabels,
     ) {
     }
 
@@ -158,9 +163,8 @@ final readonly class AuditEntryView
                 continue;
             }
 
-            $coded = Iter\contains(self::CODED_FIELDS, $field);
-            $was = $this->value($before, $coded, $roles, $locale, $reader);
-            $now = $this->value($after, $coded, $roles, $locale, $reader);
+            $was = $this->value($field, $before, $roles, $locale, $reader);
+            $now = $this->value($field, $after, $roles, $locale, $reader);
 
             if (null === $was || null === $now || $was === $now) {
                 continue;
@@ -191,21 +195,35 @@ final readonly class AuditEntryView
     /**
      * @param array<string, string> $roles
      *
-     * @return ?string null for a value no reader could make sense of, such as another record's id
+     * @return ?string null for a value no reader could make sense of, such as another record's id; a role since removed reads as none
      */
-    private function value(mixed $value, bool $coded, array $roles, string $locale, ?User $reader): ?string
+    private function value(string $field, mixed $value, array $roles, string $locale, ?User $reader): ?string
     {
+        $isRole = Iter\contains(self::ROLE_FIELDS, $field);
+        $coded = Iter\contains(self::CODED_FIELDS, $field);
+
         return match (true) {
             null === $value, '' === $value, [] === $value => $this->translator->trans('audit.value.none', [], 'messages', $locale),
             true === $value => $this->translator->trans('audit.value.on', [], 'messages', $locale),
             false === $value => $this->translator->trans('audit.value.off', [], 'messages', $locale),
             \is_int($value), \is_float($value) => (string) $value,
-            \is_string($value) && Regex\matches($value, self::UUID) => Iter\contains_key($roles, $value) ? $this->code($roles[$value], $locale) : null,
+            \is_string($value) && Regex\matches($value, self::UUID) && $isRole => $this->role($roles[$value] ?? null, $locale),
+            \is_string($value) && Regex\matches($value, self::UUID) => null,
             \is_string($value) && Regex\matches($value, self::INSTANT) => $this->instant(new DateTimeImmutable($value), $locale, $reader),
+            \is_string($value) && $isRole && null !== SeededRole::tryFrom($value) => $this->role($value, $locale),
             \is_string($value) => $coded ? $this->code($value, $locale) : $value,
             \is_array($value) && Iter\all($value, static fn (mixed $one): bool => \is_string($one)) => Str\join(Type\vec(Type\string())->coerce($value), ', '),
             default => Json\encode($value),
         };
+    }
+
+    private function role(?string $seededAs, string $locale): string
+    {
+        $seeded = null === $seededAs ? null : SeededRole::tryFrom($seededAs);
+
+        return null === $seeded
+            ? $this->translator->trans('audit.value.none', [], 'messages', $locale)
+            : $this->seededRoleLabels->label($seeded, $locale);
     }
 
     /** A stored code in words: "can_edit" reads "Can edit", from audit.value.* where it has a word of its own. */

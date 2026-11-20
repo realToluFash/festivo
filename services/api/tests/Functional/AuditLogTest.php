@@ -263,6 +263,7 @@ final class AuditLogTest extends ApiTestCase
         $this->entry($organisation, 'event_person.granted', $owner, '-3 hours', $eventId, 'Gala', changes: ['role' => [null, 'can_edit'], 'jobLabel' => [null, null], 'addressKind' => [null, null], 'eventId' => [null, $eventId->toRfc4122()], 'userId' => [null, $owner->getId()->toRfc4122()]]);
         $this->entry($organisation, 'membership.removed', $owner, '-2 hours', changes: ['status' => ['active', 'left_or_removed'], 'user' => [null, $owner->getId()->toRfc4122()]]);
         $this->entry($organisation, 'event.deleted', $owner, '-1 hour', $eventId, 'Gala', changes: ['deletedAt' => [null, '2026-11-19T19:35:47+00:00']]);
+        $this->entry($organisation, 'membership.role_changed', $owner, '-30 minutes', changes: ['roleId' => [Uuid::v7()->toRfc4122(), $admin->getId()->toRfc4122()]]);
 
         $this->signIn($owner);
         $entries = Type\vec(Type\shape(['action' => Type\string(), 'changes' => Type\vec(Type\string())], true))->coerce($this->send('GET', $this->path($organisation))['entries']);
@@ -271,6 +272,7 @@ final class AuditLogTest extends ApiTestCase
         self::assertSame(['Email: None → ada@ire.events', 'Role: None → Admin'], $changes['invitation.sent']);
         self::assertSame(['Role: None → Can edit'], $changes['event_person.granted']);
         self::assertSame(['Status: Active → Left or removed'], $changes['membership.removed']);
+        self::assertSame(['Role: None → Admin'], $changes['membership.role_changed'], 'a role since removed reads as none, and the side that can be read stays');
         self::assertCount(1, $changes['event.deleted']);
         self::assertStringStartsWith('Deleted at: None → ', $changes['event.deleted'][0]);
         self::assertStringNotContainsString('2026-11-19T', $changes['event.deleted'][0], 'on screen the time reads in the reader\'s zone');
