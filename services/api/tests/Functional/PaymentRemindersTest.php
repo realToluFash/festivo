@@ -227,6 +227,24 @@ final class PaymentRemindersTest extends ApiTestCase
     }
 
     #[Test]
+    public function theEmailLinksToThePaymentAndSaysHowToStopIt(): void
+    {
+        $deposit = $this->payment('Deposit', '2027-03-10');
+        self::mockTime(new DateTimeImmutable('2027-03-07T10:00:00Z'));
+
+        $body = self::service(PaymentReminder::class)->render(
+            NotificationChannel::Email,
+            new Recipient(NotificationAudienceKind::Member, $this->owner->getId(), 'Harriet Cole', 'en', 'harriet@example.com'),
+            [['paymentId' => $deposit, 'kind' => PaymentReminders::COMING_DUE]],
+        )->body;
+
+        self::assertMatchesRegularExpression('~^Open the payment: https?://\S+/app/events/' . $this->eventId . '/budget/vendors/[0-9a-f-]{36}$~m', $body);
+        self::assertStringContainsString("You're getting this because you can record payments at Bloom Events. To stop these emails, turn off Money email in Notification settings.", $body);
+        self::assertMatchesRegularExpression('~^Notification settings: https?://\S+/app/account/notifications$~m', $body);
+        self::assertStringContainsString('Bloom & Co · £1,000.00 · due Wed 10 Mar', $body);
+    }
+
+    #[Test]
     public function theOverdueReminderStillReachesWhoeverHadTheComingDueOne(): void
     {
         $this->payment('Deposit', '2027-03-10');
