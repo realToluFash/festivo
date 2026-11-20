@@ -122,6 +122,7 @@ import {
 } from './budgetSample.ts';
 import { BUDGET_WORDS as W } from './budgetWords.ts';
 import { type SampleEvent } from './events.ts';
+import { typedAmount } from './quotes.ts';
 import { SaveTemplateDialog } from './Templates.tsx';
 import { type Category } from './vendors.ts';
 import { CATEGORY_WORDS } from './vendorsWords.ts';
@@ -513,17 +514,13 @@ export function BudgetHomeContent({
                 first={first}
                 markups={markups}
                 fee={feeLine ? undefined : planningFee}
-                onFee={(price) => {
-                  setFee(price);
-                  tell(price == null ? 'Price removed.' : 'Saved.');
-                }}
+                onFee={(price) => setFee(price)}
                 onPrice={(id, price) => {
                   setMarkups((now) =>
                     price == null
                       ? withoutChoice(now, 'price', id)
                       : { ...now, prices: { ...now.prices, [id]: price } },
                   );
-                  tell(price == null ? 'Price removed.' : 'Saved.');
                 }}
               />
             ) : (
@@ -1238,7 +1235,16 @@ function MarginCosts({
     first === 'price_negative' ? '−50' : first === 'price_decimals' ? '950.505' : '800',
   );
   const [chargedTried, setChargedTried] = useState(refused);
+  const [said, setSaid] = useState<{ id: string; words: string } | null>(null);
   const chargedField = useRef<HTMLInputElement>(null);
+  const saidUnder = (id: string) =>
+    said?.id === id &&
+    opened !== id && (
+      <p className="bud-said is-ok" role="status">
+        <Glyph name="tick" size={15} weight={2.6} />
+        {said.words}
+      </p>
+    );
 
   useEffect(() => {
     if (opened != null) chargedField.current?.focus();
@@ -1302,7 +1308,12 @@ function MarginCosts({
                                 null
                               )
                                 return chargedField.current?.focus();
-                              onPrice(one.id, charged.trim() === '' ? null : minorOf(charged));
+                              const price = charged.trim() === '' ? null : minorOf(charged);
+                              onPrice(one.id, price);
+                              setSaid({
+                                id: one.id,
+                                words: price == null ? 'Price removed.' : 'Saved.',
+                              });
                               setOpened(null);
                             }}
                           />
@@ -1317,11 +1328,13 @@ function MarginCosts({
                         end={<Amount value={share == null ? 'No figure' : `${share}%`} />}
                         onOpen={() => {
                           setChargedTried(false);
-                          setCharged((price / 100).toFixed(2));
+                          setCharged(typedAmount(price));
+                          setSaid(null);
                           setOpened(one.id);
                         }}
                       />
                     )}
+                    {saidUnder(one.id)}
                   </li>
                 );
               })}
@@ -1356,7 +1369,9 @@ function MarginCosts({
                         setChargedTried(true);
                         if (priceProblem(charged, CURRENCY, fee != null) != null)
                           return chargedField.current?.focus();
-                        onFee(charged.trim() === '' ? null : minorOf(charged));
+                        const price = charged.trim() === '' ? null : minorOf(charged);
+                        onFee(price);
+                        setSaid({ id: 'fee', words: price == null ? 'Price removed.' : 'Saved.' });
                         setOpened(null);
                       }}
                     />
@@ -1371,11 +1386,13 @@ function MarginCosts({
                   end={<Amount value={(fee ?? 0) === 0 ? 'No figure' : '100.0%'} />}
                   onOpen={() => {
                     setChargedTried(false);
-                    setCharged(((fee ?? 0) / 100).toFixed(2));
+                    setCharged(typedAmount(fee ?? 0));
+                    setSaid(null);
                     setOpened('fee');
                   }}
                 />
               )}
+              {saidUnder('fee')}
             </li>
           </Rows>
         </div>
