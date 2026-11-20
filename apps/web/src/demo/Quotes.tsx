@@ -1074,15 +1074,17 @@ function ScheduleRow({
           ]}
           lit={lit}
           end={
-            <>
-              {added && <Amount value={money(payment.paid.amount)} />}
-              {!readOnly && (
-                <button type="button" className="desk-text" onClick={onUndo}>
-                  <Glyph name="undo" size={16} weight={2.4} />
-                  {BW.undo}
-                </button>
-              )}
-            </>
+            added || !readOnly ? (
+              <span className="bud-row-end">
+                {added && <Amount value={money(payment.paid.amount)} />}
+                {!readOnly && (
+                  <button type="button" className="desk-text" onClick={onUndo}>
+                    <Glyph name="undo" size={16} weight={2.4} />
+                    {BW.undo}
+                  </button>
+                )}
+              </span>
+            ) : undefined
           }
         />
       </li>
