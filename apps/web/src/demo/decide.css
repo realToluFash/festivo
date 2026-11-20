@@ -11,8 +11,6 @@
 }
 
 .dec-answer {
-  --budAmber: var(--colorAttentionText);
-
   display: flex;
   flex-direction: column;
   gap: 10px;
