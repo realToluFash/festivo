@@ -36,7 +36,10 @@ function StaffLink({ token }: { token: string }) {
           else
             setLoad({
               kind: 'failed',
-              words: error instanceof ApiError && error.status === 429 ? (error.problem.detail ?? null) : null,
+              words:
+                error instanceof ApiError && error.status === 429
+                  ? (error.problem.detail ?? null)
+                  : null,
             });
         },
       );
@@ -73,7 +76,7 @@ function StaffLink({ token }: { token: string }) {
 }
 
 function Shown({ load }: { load: Load }) {
-  const { t, i18n } = useTranslation();
+  const { t } = useTranslation();
 
   if (load.kind === 'asking') return null;
   if (load.kind === 'failed')
@@ -101,7 +104,7 @@ function Shown({ load }: { load: Load }) {
       />
     );
   if (load.window.state === 'not_yet') {
-    const locale = dateLocale(i18n.language);
+    const locale = dateLocale();
     const wall = wallOfZoned(load.window.from);
 
     return (

@@ -366,7 +366,8 @@ export function asStaffRoster(raw: unknown): StaffEntry[] | null {
 }
 
 /** Where a person's own link stands (sc-3912). Nothing about the person or the event reaches a caller before sign-in (sc-4235) beyond when the link opens, in the event's offset. */
-export type StaffLinkWindow = { state: 'open' } | { state: 'ended' } | { state: 'not_yet'; from: string };
+export type StaffLinkWindow =
+  { state: 'open' } | { state: 'ended' } | { state: 'not_yet'; from: string };
 
 export function asStaffLinkWindow(raw: unknown): StaffLinkWindow | null {
   if (typeof raw !== 'object' || raw == null || !('state' in raw)) return null;
