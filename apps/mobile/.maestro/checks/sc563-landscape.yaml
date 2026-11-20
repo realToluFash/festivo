@@ -1,0 +1,6 @@
+# sc-563: turns the tablet on its side for the checks after it in a batch.
+appId: host.exp.Exponent
+---
+- setOrientation: LANDSCAPE_LEFT
+- waitForAnimationToEnd:
+    timeout: 3000
