@@ -12,8 +12,8 @@ use App\Enum\PayerSplit;
 final readonly class ChosenSplit
 {
     /**
-     * @param list<BudgetLine>                              $lines
-     * @param list<array{payer: Payer, value: int}>         $parts a percentage in hundredths, a fixed amount in the minor unit, or all of it
+     * @param list<BudgetLine>                      $lines
+     * @param list<array{payer: Payer, value: int}> $parts a percentage in hundredths, a fixed amount in the minor unit, or all of it
      */
     public function __construct(
         public array $lines,
