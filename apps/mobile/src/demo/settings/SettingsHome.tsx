@@ -172,7 +172,9 @@ export function SettingsHome({
   if (shell.layout === 'landscape')
     return (
       <Landscape column={shell.listColumn}>
-        <ChooseASection />
+        <TitleCap.Provider value={titleCap.cap}>
+          <ChooseASection />
+        </TitleCap.Provider>
       </Landscape>
     );
 
