@@ -217,8 +217,10 @@ export function domainsRow(
   t: TFunction,
   page: EmailDomainsPage,
 ): { line: string; locked: boolean } {
-  if (page.plan === 'free') return { line: t('dataControl.domainsLocked'), locked: true };
-  if (page.domains.length === 0) return { line: t('dataControl.domainsNone'), locked: false };
+  const locked = page.plan !== 'enterprise';
+
+  if (page.plan === 'free') return { line: t('dataControl.domainsLocked'), locked };
+  if (page.domains.length === 0) return { line: t('dataControl.domainsNone'), locked };
 
   const key =
     page.plan === 'left'
@@ -233,7 +235,7 @@ export function domainsRow(
 
   return {
     line: page.domains.map((domain) => t(key(domain), { domain: domain.domain })).join(' · '),
-    locked: false,
+    locked,
   };
 }
 
