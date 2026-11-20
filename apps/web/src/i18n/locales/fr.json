@@ -5480,7 +5480,7 @@
     }
   },
   "quotes": {
-    "dueNext": "Prochaines échéances",
+    "dueNext": "À régler",
     "everythingDue_one": "Toutes les échéances · {{count, number}}",
     "everythingDue_other": "Toutes les échéances · {{count, number}}",
     "everythingDue_many": "Toutes les échéances · {{count, number}}",

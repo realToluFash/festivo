@@ -5489,7 +5489,7 @@
     "due": "Vence el {{day}}",
     "dueLine": "{{what}} · Vence el {{day}}",
     "overdue": "Atrasado",
-    "vendorsQuoted": "Proveedores con cotización",
+    "vendorsQuoted": "Cotizaciones",
     "addAQuote": "Añadir una cotización",
     "noQuotes": "Aún no hay cotizaciones en este evento.",
     "readOnlyLine": "Las cotizaciones y los calendarios de pagos son de solo lectura porque el plan de esta organización ya no los incluye. No se ha eliminado nada.",

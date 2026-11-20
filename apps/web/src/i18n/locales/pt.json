@@ -5480,7 +5480,7 @@
     }
   },
   "quotes": {
-    "dueNext": "Próximos pagamentos",
+    "dueNext": "A pagar",
     "everythingDue_one": "Pagamentos pendentes · {{count, number}}",
     "everythingDue_other": "Pagamentos pendentes · {{count, number}}",
     "everythingDue_many": "Pagamentos pendentes · {{count, number}}",
@@ -5489,7 +5489,7 @@
     "due": "Vence a {{day}}",
     "dueLine": "{{what}} · Vence a {{day}}",
     "overdue": "Em atraso",
-    "vendorsQuoted": "Fornecedores com cotação",
+    "vendorsQuoted": "Cotações",
     "addAQuote": "Adicionar uma cotação",
     "noQuotes": "Ainda não há cotações neste evento.",
     "readOnlyLine": "As cotações e os calendários de pagamentos são só de leitura porque o plano desta organização já não os inclui. Nada foi removido.",
