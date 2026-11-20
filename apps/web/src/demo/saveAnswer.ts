@@ -1,16 +1,9 @@
 import { useState } from 'react';
 
-import { NOTE_WORDS } from './arrivalNote.ts';
-import { type EditState, EVENT_WORDS as W } from './events.ts';
+import type { EditState } from './events.ts';
 
 /** sc-74398: the three answers to a part's Save, shown after its fields and directly above Cancel and Save. */
 export type SaveAnswer = 'notSaved' | 'forbidden' | 'changedElsewhere';
-
-export const SAVE_WORDS: Record<SaveAnswer, string> = {
-  notSaved: 'Not saved. Your changes are still here. Try again.',
-  forbidden: NOTE_WORDS.forbidden,
-  changedElsewhere: W.changedElsewhere,
-};
 
 /** The demo's states whose Save gets one of the three answers, every press, until Show the latest. */
 export function saveAnswerOf(state: EditState | null): SaveAnswer | null {

@@ -1,11 +1,14 @@
 import { fireEvent, render, screen, within } from '@testing-library/react';
+import i18next from 'i18next';
 import { RouterProvider, createMemoryRouter } from 'react-router';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { __setConfig, config } from '../config.ts';
 import { routes } from '../routes/index.tsx';
+import en from '../i18n/locales/en.json';
+import fr from '../i18n/locales/fr.json';
 import { resetSample, sampleEvent } from './events.ts';
-import { SAVE_WORDS, type SaveAnswer } from './saveAnswer.ts';
+import type { SaveAnswer } from './saveAnswer.ts';
 
 const tested = config();
 const SLOW = { timeout: 20000 };
@@ -64,20 +67,27 @@ afterEach(() => {
   __setConfig(tested);
 });
 
-const CASES: readonly (readonly [string, string, SaveAnswer])[] = [
-  ['nameNotSaved', 'Event name', 'notSaved'],
-  ['nameForbidden', 'Event name', 'forbidden'],
-  ['nameChangedElsewhere', 'Event name', 'changedElsewhere'],
-  ['currencyNotSaved', 'Currency', 'notSaved'],
-  ['currencyForbidden', 'Currency', 'forbidden'],
-  ['currencyChangedElsewhere', 'Currency', 'changedElsewhere'],
+type Unchanged = () => string | undefined;
+
+const nameOf: Unchanged = () => sampleEvent('evt-wed-4')?.name;
+const currencyOf: Unchanged = () => sampleEvent('evt-wed-4')?.currency;
+
+const CASES: readonly (readonly [string, string, SaveAnswer, Unchanged])[] = [
+  ['nameNotSaved', 'Event name', 'notSaved', nameOf],
+  ['nameForbidden', 'Event name', 'forbidden', nameOf],
+  ['nameChangedElsewhere', 'Event name', 'changedElsewhere', nameOf],
+  ['currencyNotSaved', 'Currency', 'notSaved', currencyOf],
+  ['currencyForbidden', 'Currency', 'forbidden', currencyOf],
+  ['currencyChangedElsewhere', 'Currency', 'changedElsewhere', currencyOf],
 ];
 
 describe('A part’s save notices sit directly above Cancel and Save (sc-74398)', () => {
   it.each(CASES)(
     '%s: after the fields, focus on Save, one notice however often',
     SLOW,
-    async (state, name, answer) => {
+    async (state, name, answer, unchanged) => {
+      const before = unchanged();
+
       await page(state);
 
       const save = within(part(name)).getByRole('button', { name: 'Save' });
@@ -86,14 +96,14 @@ describe('A part’s save notices sit directly above Cancel and Save (sc-74398)'
       save.focus();
       fireEvent.click(save);
 
-      expect(directlyAboveSave(part(name)).textContent).toContain(SAVE_WORDS[answer]);
+      expect(directlyAboveSave(part(name)).textContent).toContain(en.eventEdit[answer]);
       expect(document.activeElement).toBe(save);
       expect(scrolled).toHaveBeenCalled();
 
       fireEvent.click(save);
-      expect(directlyAboveSave(part(name)).textContent).toContain(SAVE_WORDS[answer]);
+      expect(directlyAboveSave(part(name)).textContent).toContain(en.eventEdit[answer]);
       expect(document.activeElement).toBe(save);
-      expect(sampleEvent('evt-wed-4')?.name).toBe(WEDDING);
+      expect(unchanged()).toBe(before);
     },
   );
 
@@ -125,6 +135,21 @@ describe('A part’s save notices sit directly above Cancel and Save (sc-74398)'
   it('Dates, changed elsewhere: the notice opens above Cancel and Save', SLOW, async () => {
     await page('changedElsewhere');
 
-    expect(directlyAboveSave(part('Dates')).textContent).toContain(SAVE_WORDS.changedElsewhere);
+    expect(directlyAboveSave(part('Dates')).textContent).toContain(en.eventEdit.changedElsewhere);
+  });
+
+  it('speaks the web’s language: the notice and Show the latest in French', SLOW, async () => {
+    await i18next.changeLanguage('fr');
+
+    try {
+      await page('changedElsewhere');
+
+      const notice = directlyAboveSave(part('Dates'));
+
+      expect(notice.textContent).toContain(fr.eventEdit.changedElsewhere);
+      expect(within(notice).getByRole('button', { name: fr.eventEdit.showLatest })).toBeTruthy();
+    } finally {
+      await i18next.changeLanguage('en');
+    }
   });
 });

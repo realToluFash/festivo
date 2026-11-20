@@ -1,9 +1,15 @@
 import { useLayoutEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 
-import { EVENT_WORDS as W } from './events.ts';
-import { type Answered, SAVE_WORDS } from './saveAnswer.ts';
+import type { Answered, SaveAnswer } from './saveAnswer.ts';
 import { Broken } from '../components/EventPageParts.tsx';
 import { Ask, TextAction } from '../components/SettingsParts.tsx';
+
+const SAID = {
+  notSaved: 'eventEdit.notSaved',
+  forbidden: 'eventEdit.forbidden',
+  changedElsewhere: 'eventEdit.changedElsewhere',
+} as const satisfies Record<SaveAnswer, string>;
 
 /** The last child of an `Opened`, so nothing sits between it and Cancel and Save. */
 export function SaveNotice({
@@ -15,6 +21,7 @@ export function SaveNotice({
   asking?: boolean;
   onLatest?: () => void;
 }) {
+  const { t } = useTranslation();
   const box = useRef<HTMLDivElement>(null);
   const [latest, setLatest] = useState(asking);
   const { answer, times } = answered;
@@ -34,18 +41,18 @@ export function SaveNotice({
       <Broken
         action={
           answer === 'changedElsewhere' ? (
-            <TextAction label={W.showLatest} onClick={() => setLatest(true)} />
+            <TextAction label={t('eventEdit.showLatest')} onClick={() => setLatest(true)} />
           ) : undefined
         }
       >
-        {SAVE_WORDS[answer]}
+        {t(SAID[answer])}
       </Broken>
       {latest && answer === 'changedElsewhere' && (
         <Ask
-          title={W.showLatestTitle}
-          line={W.showLatestBody}
-          keep={W.keepEditing}
-          go={W.showLatest}
+          title={t('eventEdit.showLatestTitle')}
+          line={t('eventEdit.showLatestBody')}
+          keep={t('eventEdit.keepEditing')}
+          go={t('eventEdit.showLatest')}
           onKeep={() => setLatest(false)}
           onGo={() => {
             setLatest(false);
