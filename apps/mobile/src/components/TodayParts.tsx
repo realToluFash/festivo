@@ -5,11 +5,13 @@ import {
   ScrollView,
   type StyleProp,
   StyleSheet,
+  useWindowDimensions,
   View,
   type ViewStyle,
 } from 'react-native';
 
 import { Text } from './Text.tsx';
+import { atAccessibilitySizes } from '../layout/textSize.ts';
 import { tokens } from '../theme/tokens.ts';
 import { EventMesh, eventColour } from './EventMesh.tsx';
 import { Glyph } from './Glyph.tsx';
@@ -577,6 +579,7 @@ function Readiness({ card }: { card: EventCard }) {
 
 function Tile({ card }: { card: EventCard }) {
   const { open } = useTodayShell();
+  const grown = atAccessibilitySizes(useWindowDimensions().fontScale);
 
   return (
     <Pressable
@@ -592,7 +595,12 @@ function Tile({ card }: { card: EventCard }) {
         </View>
       </View>
       <View style={styles.tileBody}>
-        <Text size={15} weight="semibold" numberOfLines={2} style={styles.tileName}>
+        <Text
+          size={15}
+          weight="semibold"
+          numberOfLines={grown ? undefined : 2}
+          style={styles.tileName}
+        >
           {card.name}
         </Text>
         <Text size={13} weight="medium" style={[styles.secondary, styles.dates]}>
@@ -770,6 +778,7 @@ const styles = StyleSheet.create({
   panelWide: { paddingHorizontal: 18 },
   head: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     alignItems: 'center',
     gap: tokens.spaceMd,
     paddingHorizontal: tokens.spaceHair,
