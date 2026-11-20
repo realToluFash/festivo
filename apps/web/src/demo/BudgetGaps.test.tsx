@@ -180,6 +180,17 @@ describe('the states Budget A still lacked (sc-85, sc-88, sc-90, sc-91, sc-92, s
     save();
     expect(within(feeRow() as HTMLElement).getByRole('status').textContent).toBe('Price removed.');
     expect(document.querySelector('.toast')).toBeNull();
+    const djRow = () =>
+      within(section('Costs')).getByRole('button', { name: /^DJ/ }).closest('li') as HTMLElement;
+    fireEvent.click(within(djRow()).getByRole('button', { name: /^DJ/ }));
+    fireEvent.change(screen.getByLabelText('Charged at'), { target: { value: '1000' } });
+    save();
+    expect(within(djRow()).getByRole('status').textContent).toBe('Saved.');
+    fireEvent.click(within(djRow()).getByRole('button', { name: /^DJ/ }));
+    expect((screen.getByLabelText('Charged at') as HTMLInputElement).value).toBe('1,000.00');
+    fireEvent.change(screen.getByLabelText('Charged at'), { target: { value: '' } });
+    save();
+    expect(within(djRow()).getByRole('status').textContent).toBe('Price removed.');
     cleanup();
 
     await open(at('markup_nan'));
