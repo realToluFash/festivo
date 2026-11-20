@@ -116,6 +116,7 @@ describe('Audit log (sc-611)', () => {
       'When',
       'Who',
       'What',
+      'On',
       'Format',
       'Filters',
       'Entries',
@@ -123,6 +124,7 @@ describe('Audit log (sc-611)', () => {
       'Reference',
     ]);
     expect(facts('exported')).toMatchObject({
+      On: 'Ire Events',
       Format: 'CSV',
       Filters: 'Person: Priya Shah · Type: Event access',
       Entries: '3',

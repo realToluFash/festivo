@@ -126,6 +126,7 @@ const section = (
 const FOLAKE = VIEWERS.folake.name;
 const JULIEN = VIEWERS.julien.name;
 const ADDRESS = '203.0.113.17';
+const ON_ORG = { name: ORG };
 
 /** Newest first, as the boards list them; the seconds, codes and references the spec leaves out are the sample's. */
 export const ENTRIES: readonly Entry[] = [
@@ -136,6 +137,7 @@ export const ENTRIES: readonly Entry[] = [
     who: FOLAKE,
     type: 'Audit log',
     action: 'audit_log.exported',
+    on: ON_ORG,
     reference: '7c3e9a14-2b6d-4f81-9e05-d8a1f62b3c47',
     recorded: [
       { label: 'Format', value: 'CSV' },
@@ -150,6 +152,7 @@ export const ENTRIES: readonly Entry[] = [
     who: FOLAKE,
     type: 'Organisation',
     action: 'organisation.export_downloaded',
+    on: ON_ORG,
     reference: '5b0e2d71-8c4a-4f3e-b1d9-2e6a7c90f413',
   },
   {
@@ -159,6 +162,7 @@ export const ENTRIES: readonly Entry[] = [
     who: FOLAKE,
     type: 'Organisation',
     action: 'organisation.export_requested',
+    on: ON_ORG,
     reference: '9e47c1a2-3d5f-4b80-a6e2-71c9f0d84b26',
   },
   {
@@ -257,6 +261,7 @@ export const ENTRIES: readonly Entry[] = [
     who: FOLAKE,
     type: 'Organisation',
     action: 'organisation.retention_changed',
+    on: ON_ORG,
     reference: 'd61b9e4f-0a27-4c83-9f15-6e8d2b7a3c50',
     changes: 'Delete guest data after an event: Off → 90 days',
   },
@@ -279,6 +284,7 @@ export const ENTRIES: readonly Entry[] = [
     who: JULIEN,
     type: 'Members and invitations',
     action: 'invitation.created',
+    on: ON_ORG,
     reference: '7a3d5e90-b6c1-4f28-8d47-c0e2a19f6b35',
   },
   {
@@ -301,6 +307,7 @@ export const ENTRIES: readonly Entry[] = [
     who: JULIEN,
     type: 'Sign-in and security',
     action: 'email_domain.added',
+    on: { name: 'ireevents.com' },
     reference: 'e83a7f25-6b9d-4c10-a4e8-3f5b2d0c9a61',
     address: ADDRESS,
   },
@@ -322,6 +329,7 @@ export const ENTRIES: readonly Entry[] = [
     who: SYSTEM,
     type: 'Sign-in and security',
     action: 'email_domain.proved',
+    on: { name: 'ire.events' },
     reference: 'a95f0c3e-2d81-4e6b-9c7a-1b8e4d2f0c37',
   },
   {
