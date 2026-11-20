@@ -9,6 +9,7 @@ import { useReadOut } from '../../components/ReadOut.tsx';
 import { Text } from '../../components/Text.tsx';
 import { useMeasuredAt } from '../../components/Title.tsx';
 import { isTablet } from '../../layout/classify.ts';
+import { countLineDrawn, countLineStarts } from '../../layout/countLineFit.ts';
 import { LABEL_LINE, wordsIn } from '../../layout/textSize.ts';
 import { useLayout } from '../../layout/useLayout.ts';
 import { DemoOnly } from '../../steps/Lines.tsx';
@@ -23,13 +24,7 @@ import {
   filterScale,
 } from '../filterSize/filterSizeRules.ts';
 import { frameTitleCap } from '../frameTitleCap.ts';
-import {
-  COUNT_FOUND,
-  type CountFound,
-  FOUND_COUNT,
-  countLineDrawn,
-  countLineStarts,
-} from './countSizeRules.ts';
+import { COUNT_FOUND, type CountFound, FOUND_COUNT } from './countSizeRules.ts';
 
 export interface CountSizeStart {
   size: FilterSize;

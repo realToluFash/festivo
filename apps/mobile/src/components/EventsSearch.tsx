@@ -38,8 +38,9 @@ import {
 } from 'react-native';
 
 import { endCut, endCuts } from '../layout/endCut.ts';
+import { countLineDrawn, countLineStarts } from '../layout/countLineFit.ts';
 import { keptWhole, rowDrawn, rowStarts } from '../layout/menuRowFit.ts';
-import { atAccessibilitySizes, piecesIn } from '../layout/textSize.ts';
+import { atAccessibilitySizes, LABEL_LINE, piecesIn, wordsIn } from '../layout/textSize.ts';
 import { tokens } from '../theme/tokens.ts';
 import { TextField } from './Field.tsx';
 import { Glyph } from './Glyph.tsx';
@@ -950,6 +951,130 @@ export function SearchRow({
   );
 }
 
+interface CountLineProps {
+  words: string;
+  clears: boolean;
+  onClearFilters: () => void;
+}
+
+function CountLine(props: CountLineProps) {
+  const { fontScale } = useWindowDimensions();
+  const cap = useContext(TitleCap) ?? Infinity;
+
+  return atAccessibilitySizes(fontScale) ? (
+    <GrownCountLine {...props} scale={fontScale} cap={cap} />
+  ) : (
+    <OneCountLine {...props} />
+  );
+}
+
+function OneCountLine({ words, clears, onClearFilters }: CountLineProps) {
+  const { t } = useTranslation();
+
+  return (
+    <View style={styles.countRow}>
+      <Text size={16} weight="semibold" style={[styles.grow, styles.figures]} testID="events.count">
+        {words}
+      </Text>
+      {clears && (
+        <TextAction
+          label={t('eventsSearch.clearFilters')}
+          onPress={onClearFilters}
+          testID="events.clearFilters"
+        />
+      )}
+    </View>
+  );
+}
+
+/** sc-75214: the count and Clear filters side by side while both fit whole on one line, Clear filters under the count once they cannot. */
+function GrownCountLine({
+  words,
+  clears,
+  onClearFilters,
+  scale,
+  cap,
+}: CountLineProps & { scale: number; cap: number }) {
+  const { t } = useTranslation();
+  const clear = t('eventsSearch.clearFilters');
+  const starts = countLineStarts(scale, cap);
+  const countWords = wordsIn([words]);
+  const clearWords = wordsIn([clear]);
+  const [widths, setWidths] = useState<Readonly<Record<string, number>>>({});
+  const [room, setRoom] = useState(0);
+  const countKey = (text: string) => `c|${starts.count}|${text}`;
+  const clearKey = (text: string) => `x|${starts.clear}|${text}`;
+  const keys = [
+    countKey(words),
+    ...countWords.map(countKey),
+    ...(clears ? [clearKey(clear), ...clearWords.map(clearKey)] : []),
+  ];
+  const ready = room > 0 && keys.every((key) => widths[key] != null);
+  const widthOf = (key: string) => widths[key] ?? 0;
+  const widestOf = (texts: readonly string[], key: (text: string) => string) =>
+    Math.max(0, ...texts.map((text) => widthOf(key(text))));
+  const drawn = countLineDrawn({
+    scale,
+    cap,
+    room,
+    gap: tokens.spaceLg,
+    count: ready && clears ? widthOf(countKey(words)) : 0,
+    clear: ready && clears ? widthOf(clearKey(clear)) : 0,
+    countWidest: ready ? widestOf(countWords, countKey) : 0,
+    clearWidest: ready ? widestOf(clearWords, clearKey) : 0,
+  });
+  const measured = (key: (text: string) => string) => (text: string, width: number) =>
+    setWidths((now) => (now[key(text)] === width ? now : { ...now, [key(text)]: width }));
+
+  return (
+    <View onLayout={(event) => setRoom(event.nativeEvent.layout.width)}>
+      <MeasuredWords
+        words={[words, ...countWords]}
+        size={starts.count}
+        weight="semibold"
+        allowFontScaling={false}
+        style={styles.figures}
+        onWidth={measured(countKey)}
+      />
+      {clears && (
+        <MeasuredWords
+          words={[clear, ...clearWords]}
+          size={starts.clear}
+          weight="semibold"
+          allowFontScaling={false}
+          onWidth={measured(clearKey)}
+        />
+      )}
+      <View
+        style={[styles.countRow, drawn.stacked && styles.countStacked, !ready && styles.waiting]}
+      >
+        <Text
+          size={drawn.countSize}
+          weight="semibold"
+          allowFontScaling={false}
+          style={[
+            drawn.stacked ? styles.shrink : styles.grow,
+            styles.figures,
+            { lineHeight: Math.ceil(drawn.countSize * LABEL_LINE) },
+          ]}
+          testID="events.count"
+        >
+          {words}
+        </Text>
+        {clears && (
+          <TextAction
+            label={clear}
+            onPress={onClearFilters}
+            wraps
+            drawnAt={drawn.clearSize}
+            testID="events.clearFilters"
+          />
+        )}
+      </View>
+    </View>
+  );
+}
+
 export interface ResultsGroup {
   tab: EventsTab;
   count: number;
@@ -990,23 +1115,11 @@ export function EventsResults({
 
   return (
     <View style={styles.results}>
-      <View style={styles.countRow}>
-        <Text
-          size={16}
-          weight="semibold"
-          style={[styles.grow, styles.figures]}
-          testID="events.count"
-        >
-          {words}
-        </Text>
-        {filtered(filters) && count > 0 && (
-          <TextAction
-            label={t('eventsSearch.clearFilters')}
-            onPress={onClearFilters}
-            testID="events.clearFilters"
-          />
-        )}
-      </View>
+      <CountLine
+        words={words}
+        clears={filtered(filters) && count > 0}
+        onClearFilters={onClearFilters}
+      />
       {count === 0 ? (
         <View style={styles.noMatch} testID="events.noMatch">
           <Text size={18} weight="bold" accessibilityRole="header" style={styles.noMatchTitle}>
@@ -1176,6 +1289,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: tokens.spaceLg,
   },
+  countStacked: { flexDirection: 'column', alignItems: 'flex-start', gap: 0 },
   groups: { gap: tokens.spaceMd },
   noMatch: { gap: tokens.spaceXs, paddingTop: tokens.spaceXxs },
   noMatchTitle: { letterSpacing: -0.18, lineHeight: 18 * 1.25 },
