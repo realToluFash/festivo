@@ -23,7 +23,25 @@ import { api } from '../../../api.ts';
 import { Glyph } from '../../../components/Glyph.tsx';
 import { Dialog, RowWords, TextAction } from '../../../components/SettingsParts.tsx';
 import { dateLocale } from '../../../i18n/index.ts';
-import { currencySign, minorMoney } from './budgetArea.ts';
+import { amountOfMinor, currencySign, minorMoney } from './budgetArea.ts';
+import {
+  type ShapeDraft,
+  type ShapePricing,
+  type Shaping,
+  SHAPES,
+  anyShapeProblem,
+  eventDays,
+  retyped,
+  shapeRefusedAt,
+  shapeRows,
+  shapingOf,
+  shapingProblems,
+  shareWords,
+  sharesLine,
+  sharesTyped,
+  typedTerms,
+  whenWords,
+} from './paymentShapes.ts';
 import type { Amending } from './QuoteParts.tsx';
 import {
   BLANK_PAYMENT,
@@ -44,6 +62,7 @@ import {
   quoteProblems,
   quoteRefusedAt,
   sentAmount,
+  shortDay,
   todayIn,
 } from './quotesArea.ts';
 
@@ -577,19 +596,23 @@ function paymentTyped(draft: PaymentDraft, amount: string, currency: string) {
   return { description: draft.description.trim(), amount, currency, dueOn: draft.dueOn };
 }
 
-/** Add a payment, 700: what it is for across, then the amount and the date due side by side. */
+/** Add a payment, 700: what it is for across, then the amount and the date due side by side; for a vendor with no payments yet, How it is paid first (sc-1332). */
 export function PaymentDialog({
   eventId,
+  event,
   quote,
   quotes,
   onClose,
   onSaved,
+  onRaced,
 }: {
   eventId: string;
+  event: { startsAt: string; endsAt: string; timeZone: string };
   quote: EventQuote;
   quotes: EventQuotes;
   onClose: () => void;
   onSaved: (words: string) => void;
+  onRaced: () => void;
 }) {
   const { t, i18n } = useTranslation();
   const id = useId();
@@ -598,9 +621,28 @@ export function PaymentDialog({
   const { currency } = quotes;
   const [draft, setDraft] = useState<PaymentDraft>(BLANK_PAYMENT);
   const [problems, setProblems] = useState<PaymentProblems>({});
+  const [shaping, setShaping] = useState<Shaping | null>(() =>
+    quote.payments.length === 0 ? shapingOf(t, 'rows') : null,
+  );
   const [top, setTop] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const first = useRef<HTMLInputElement>(null);
+  const picked = useRef<HTMLInputElement>(null);
+  const shaped = shaping != null && shaping.shape !== 'rows';
+  const pricing: ShapePricing = {
+    quote: quote.quote,
+    currency,
+    days: eventDays(event),
+    locale,
+    language,
+  };
+  const rows = shaped
+    ? shapeRows(typedTerms(shaping, language), pricing.quote, currency, pricing.days)
+    : [];
+  const short =
+    shaped && sharesTyped(shaping, language)
+      ? sharesLine(t, rows, quote.quote, currency, locale)
+      : null;
 
   const set = (change: Partial<PaymentDraft>) => {
     const next = { ...draft, ...change };
@@ -608,8 +650,67 @@ export function PaymentDialog({
     setProblems(keptOf(problems, paymentProblems(t, next, quote, { language, currency }, locale)));
   };
 
+  async function saveShaped(now: Shaping): Promise<void> {
+    const found = shapingProblems(t, now, pricing);
+    setShaping({ ...now, problems: found });
+    setTop(null);
+    if (anyShapeProblem(found)) {
+      focusFirstWrong('.desk-dialog');
+      return;
+    }
+    setBusy(true);
+    try {
+      await api.addSchedule(
+        eventId,
+        quote.id,
+        rows.map((row) => ({
+          description: row.what,
+          amount: amountOfMinor(row.amountMinor, currency),
+          currency,
+          dueOn: row.dueOn,
+        })),
+      );
+    } catch (error) {
+      setBusy(false);
+      if (error instanceof ApiError && error.is('payments_already_scheduled')) {
+        setTop(t('quotes.shapeRaced'));
+        onRaced();
+        return;
+      }
+      const refused = error instanceof ApiError ? error.fieldErrors() : {};
+      const fields = shapeRefusedAt(refused, now.terms);
+      if (fields == null) {
+        setTop(
+          error instanceof ApiError && error.status !== 0 && error.status < 500
+            ? refusalWords(error, t('budget.form.failed'))
+            : t('quotes.shapeFailed', { count: now.terms.length }),
+        );
+        return;
+      }
+      setShaping({ ...now, problems: fields.rows });
+      setTop(fields.top);
+      focusFirstWrong('.desk-dialog');
+      return;
+    }
+    onSaved(
+      rows
+        .map((row) =>
+          t('quotes.paymentAdded', {
+            what: row.what,
+            amount: minorMoney(amountOfMinor(row.amountMinor, currency), currency, locale),
+            day: longDay(row.dueOn, locale),
+          }),
+        )
+        .join(' '),
+    );
+  }
+
   async function save(): Promise<void> {
     if (busy) return;
+    if (shaped) {
+      await saveShaped(shaping);
+      return;
+    }
     const found = paymentProblems(t, draft, quote, { language, currency }, locale);
     setProblems(found);
     setTop(null);
@@ -645,25 +746,138 @@ export function PaymentDialog({
   return (
     <Dialog
       title={t('quotes.addAPayment')}
-      verb={busy ? t('budget.saving') : t('quotes.add')}
+      verb={
+        busy
+          ? t('budget.saving')
+          : shaped
+            ? t('quotes.saveShapes', { count: shaping.terms.length })
+            : t('quotes.add')
+      }
       on={!busy}
       locked={busy}
-      first={first}
+      first={shaping == null ? first : picked}
       onDismiss={onClose}
       onConfirm={() => void save()}
     >
       <span className="qt-width is-700" hidden />
       <div className="desk-fields">
         {top != null && <AlertInset>{top}</AlertInset>}
-        <Fixed label={t('quotes.vendor')} value={quote.vendor.name} />
-        <PaymentFields
-          id={id}
-          draft={draft}
-          problems={problems}
-          first={first}
-          currency={currency}
-          onSet={set}
-        />
+        {shaping != null && (
+          <fieldset className="qt-shapes">
+            <legend className="qt-legend">{t('quotes.howItIsPaid')}</legend>
+            <ul className="desk-rows bt-rows">
+              {SHAPES.map((shape) => (
+                <li key={shape}>
+                  <label
+                    className={
+                      shape === shaping.shape ? 'desk-row qt-shape is-chosen' : 'desk-row qt-shape'
+                    }
+                  >
+                    <input
+                      ref={shape === shaping.shape ? picked : undefined}
+                      type="radio"
+                      className="desk-radio"
+                      name={`${id}-shape`}
+                      checked={shape === shaping.shape}
+                      onChange={() => {
+                        setShaping(shapingOf(t, shape));
+                        setTop(null);
+                      }}
+                    />
+                    <RowWords title={t(`quotes.shapeName.${shape}`)} />
+                  </label>
+                </li>
+              ))}
+            </ul>
+          </fieldset>
+        )}
+        {shaped ? (
+          <>
+            <ul className="desk-rows bt-rows">
+              {rows.map((row, index) => {
+                const typed = shaping.typed[index];
+                const wrong = shaping.problems[index] ?? {};
+                const at = `${id}-row-${index}`;
+                const retype = (change: Partial<ShapeDraft>) =>
+                  setShaping(retyped(t, shaping, index, change, pricing));
+
+                return (
+                  <li key={at} className="qt-shape-row">
+                    <div className="desk-row bt-row">
+                      <RowWords
+                        title={row.what === '' ? t('quotes.noDescription') : row.what}
+                        lines={[
+                          t(row.clamped ? 'quotes.shapeLineClamped' : 'quotes.shapeLine', {
+                            share: shareWords(row.share, locale),
+                            when: whenWords(t, row),
+                            day: shortDay(row.dueOn, locale),
+                          }),
+                        ]}
+                      />
+                      <span className="bt-amount">
+                        <span className="bt-amount-value">
+                          {minorMoney(amountOfMinor(row.amountMinor, currency), currency, locale)}
+                        </span>
+                      </span>
+                    </div>
+                    {typed != null && (
+                      <div className="desk-fields">
+                        <TextField
+                          id={`${at}-what`}
+                          label={t('quotes.whatFor')}
+                          value={typed.what}
+                          error={wrong.what ?? null}
+                          onChange={(what) => retype({ what })}
+                        />
+                        <div className="qt-two">
+                          <TextField
+                            id={`${at}-share`}
+                            label={t('quotes.shareField')}
+                            value={typed.share}
+                            help={t('quotes.shareHelp')}
+                            error={wrong.share ?? null}
+                            onChange={(share) => retype({ share })}
+                          />
+                          {row.from !== 'quoted' && (
+                            <TextField
+                              id={`${at}-days`}
+                              label={t(
+                                row.from === 'before'
+                                  ? 'quotes.daysBeforeField'
+                                  : 'quotes.daysAfterField',
+                              )}
+                              value={typed.days}
+                              help={t('quotes.shapeDaysHelp')}
+                              error={wrong.days ?? null}
+                              onChange={(days) => retype({ days })}
+                            />
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </li>
+                );
+              })}
+            </ul>
+            {short == null ? (
+              <p className="qt-note">{t('quotes.eachRowSaved')}</p>
+            ) : (
+              <p className="qt-note is-amber">{short}</p>
+            )}
+          </>
+        ) : (
+          <>
+            <Fixed label={t('quotes.vendor')} value={quote.vendor.name} />
+            <PaymentFields
+              id={id}
+              draft={draft}
+              problems={problems}
+              first={first}
+              currency={currency}
+              onSet={set}
+            />
+          </>
+        )}
       </div>
     </Dialog>
   );
