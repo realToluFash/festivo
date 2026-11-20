@@ -2232,9 +2232,17 @@ export async function restoreReverses(adb, ports, { wait = pause } = {}) {
 }
 
 // Another tester's command can restart the shared adb server mid-batch, which forgets ours (sc-76877).
-async function reversePorts(tools) {
-  seeRemoteEmulator(tools, { again: true });
-  const missing = await restoreReverses((args) => adbOut(tools, args), reversedPorts(CONFIG.ports));
+export async function reversePorts(
+  tools,
+  {
+    see = seeRemoteEmulator,
+    adb = (args) => adbOut(tools, args),
+    ports = reversedPorts(CONFIG.ports),
+    wait = pause,
+  } = {},
+) {
+  see(tools, { again: true });
+  const missing = await restoreReverses(adb, ports, { wait });
   if (missing.length) {
     throw new Error(
       `${emulatorSerial()} still has ${missing.join(', ')} unreversed after ten seconds`,

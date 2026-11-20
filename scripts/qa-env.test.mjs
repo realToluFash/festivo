@@ -187,6 +187,7 @@ import {
   reversedPorts,
   unreversed,
   restoreReverses,
+  reversePorts,
   simulatorFor,
   TESTERS,
   testerOf,
@@ -927,6 +928,22 @@ describe('the reverses a batch puts back', () => {
     const missing = await restoreReverses(adb, [13181], { wait: async () => {} });
     expect(missing).toEqual([13181]);
     expect(tries).toHaveLength(10);
+  });
+
+  it('announces the remote emulator again before restoring them', async () => {
+    const calls = [];
+    const held = [13181];
+    const see = (_tools, options) => calls.push(['see', options]);
+    const adb = (args) => {
+      calls.push(args);
+      if (args[1] === '--list')
+        return held.map((p) => `emulator-5578 tcp:${p} tcp:${p}`).join('\n');
+      held.push(Number(args[1].slice(4)));
+      return '';
+    };
+    await reversePorts({}, { see, adb, ports: [13180, 13181], wait: async () => {} });
+    expect(calls[0]).toEqual(['see', { again: true }]);
+    expect(calls.slice(1)).toContainEqual(['reverse', 'tcp:13180', 'tcp:13180']);
   });
 });
 
