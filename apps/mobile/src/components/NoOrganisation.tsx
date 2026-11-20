@@ -11,8 +11,7 @@ import { DESTINATION_HREF } from '../kit/appNav.ts';
 import { invitationRowOf } from '../kit/noOrgInvitations.ts';
 import { noOrganisationEnd } from '../kit/orgSwitcher.ts';
 import { signOutHere, useSignedIn } from '../signedIn.ts';
-import { switchByTap } from '../tappedSwitch.ts';
-import { useStartOrganisation } from './AppFrame.tsx';
+import { useOpenJoined, useStartOrganisation } from './AppFrame.tsx';
 import { InvitationFailedNotice, InvitationRefusalNotice } from './InvitationNotices.tsx';
 import { ManagedBanner } from './ManagedBanner.tsx';
 import { NoOrgInvitationList, NoOrgInvitationRow } from './NoOrgInvitations.tsx';
@@ -80,6 +79,7 @@ function Waiting({
   const inviter = invitation.invitedBy?.name ?? '';
   const role = invitation.role == null ? '' : roleName(t, invitation.role);
   const [answered, setAnswered] = useState<InvitationOutcome | null>(null);
+  const openJoined = useOpenJoined();
   const answer = outcome === answered ? outcome : undefined;
   const said =
     outcome?.kind === 'failed' ? (
@@ -118,7 +118,7 @@ function Waiting({
         void waiting.answer(invitation, yes ? 'accept' : 'decline').then(setAnswered)
       }
       onOpen={() => {
-        if (outcome?.kind === 'accepted') switchByTap(outcome.organisationId);
+        if (outcome?.kind === 'accepted') openJoined?.(outcome.organisationId);
       }}
     />
   );

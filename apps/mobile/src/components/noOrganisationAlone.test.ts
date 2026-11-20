@@ -26,6 +26,16 @@ describe('You are not in an organisation, alone (sc-75471)', () => {
     expect(landing).toMatch(/onSignOut=\{signOutHere\}/u);
   });
 
+  it('opens a joined organisation with "Now working in …" focused, as the demo does', () => {
+    expect(landing).toMatch(
+      /if \(outcome\?\.kind === 'accepted'\) openJoined\?\.\(outcome\.organisationId\);/u,
+    );
+    expect(frame).toMatch(
+      /const openJoined = useCallback\([^]*?setCreated\(\{ name, takesFocus: true \}\)/u,
+    );
+    expect(frame).toMatch(/<OpenJoined\.Provider value=\{openJoined\}>/u);
+  });
+
   it('is drawn from the same parts as its demo', () => {
     for (const part of ['NoOrgPage', 'NoOrgWayOn', 'SignedInWays', 'StartYourOwn']) {
       expect(landing).toContain(`<${part}`);
