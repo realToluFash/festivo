@@ -254,25 +254,27 @@ export function OutsideGone({ eventId }: { eventId: string }) {
   const back = others.find((one) => one.id === from) ?? outsideEventsInOrder(others, now)[0];
 
   return (
-    <div className="desk-column">
-      <section className="card oe-gone">
-        <h1 ref={heading} tabIndex={-1}>
-          {t('eventPage.notFound')}
-        </h1>
-        <button
-          type="button"
-          className="button"
-          onClick={() => {
-            void rereadOutsideEvents()
-              .catch(() => undefined)
-              .then(() => navigate(back == null ? '/app' : eventAreaPath(back.id, 'overview')));
-          }}
-        >
-          {back == null
-            ? t('outsideEvent.continue')
-            : t('outsideEvent.backTo', { name: back.name })}
-        </button>
-      </section>
+    <div className="desk desk-page">
+      <div className="desk-column">
+        <section className="card oe-gone">
+          <h1 ref={heading} tabIndex={-1}>
+            {t('eventPage.notFound')}
+          </h1>
+          <button
+            type="button"
+            className="button"
+            onClick={() => {
+              void rereadOutsideEvents()
+                .catch(() => undefined)
+                .then(() => navigate(back == null ? '/app' : eventAreaPath(back.id, 'overview')));
+            }}
+          >
+            {back == null
+              ? t('outsideEvent.continue')
+              : t('outsideEvent.backTo', { name: back.name })}
+          </button>
+        </section>
+      </div>
     </div>
   );
 }

@@ -312,7 +312,7 @@ describe('an account with no organisation on two or more events (sc-68438)', () 
     const nav = screen.getByRole('navigation', { name: 'Event' });
     expect(within(nav).getByText('Adaeze and Tunde')).toBeDefined();
     expect(within(nav).getByText(/^\S+ \S+ \S+ · 16:00$/u)).toBeDefined();
-    expect(heading.closest('.desk-column')).not.toBeNull();
+    expect(heading.closest('.desk .desk-column')).not.toBeNull();
   });
 
   it('keeps the card of an event under way as Under way until its end', async () => {
