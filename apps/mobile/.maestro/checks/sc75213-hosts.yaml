@@ -1,0 +1,47 @@
+# sc-75213: the Hosted by level at the device's text size, Funmilayo Adéṣínà-Ọláolúwa chosen.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events
+- extendedWaitUntil: { visible: { id: 'events.filter' }, timeout: 30000 }
+- waitForAnimationToEnd
+- tapOn: { id: 'events.filter' }
+- extendedWaitUntil: { visible: { id: 'events.filter.menu' }, timeout: 10000 }
+- waitForAnimationToEnd
+- runFlow:
+    when: { notVisible: { id: 'events.filter.hosts' } }
+    commands:
+      - swipe: { from: { id: 'events.filter.menu' }, direction: UP, duration: 400 }
+      - waitForAnimationToEnd
+- runFlow:
+    when: { notVisible: { id: 'events.filter.hosts' } }
+    commands:
+      - swipe: { from: { id: 'events.filter.menu' }, direction: UP, duration: 400 }
+      - waitForAnimationToEnd
+- swipe: { from: { id: 'events.filter.menu' }, direction: UP, duration: 400 }
+- waitForAnimationToEnd
+- tapOn: { id: 'events.filter.hosts' }
+- waitForAnimationToEnd
+- takeScreenshot: hosts-top
+- runFlow:
+    when: { notVisible: { id: 'events.filter.host.Funmilayo Adéṣínà-Ọláolúwa' } }
+    commands:
+      - swipe: { from: { id: 'events.filter.menu' }, direction: UP, duration: 400 }
+      - waitForAnimationToEnd
+- runFlow:
+    when: { notVisible: { id: 'events.filter.host.Funmilayo Adéṣínà-Ọláolúwa' } }
+    commands:
+      - swipe: { from: { id: 'events.filter.menu' }, direction: UP, duration: 400 }
+      - waitForAnimationToEnd
+- runFlow:
+    when: { notVisible: { id: 'events.filter.host.Funmilayo Adéṣínà-Ọláolúwa' } }
+    commands:
+      - swipe: { from: { id: 'events.filter.menu' }, direction: UP, duration: 400 }
+      - waitForAnimationToEnd
+- swipe: { from: { id: 'events.filter.menu' }, direction: UP, duration: 400 }
+- waitForAnimationToEnd
+- tapOn: { id: 'events.filter.host.Funmilayo Adéṣínà-Ọláolúwa' }
+- waitForAnimationToEnd
+- takeScreenshot: hosts-picked
+- swipe: { from: { id: 'events.filter.menu' }, direction: UP, duration: 400 }
+- waitForAnimationToEnd
+- takeScreenshot: hosts-foot

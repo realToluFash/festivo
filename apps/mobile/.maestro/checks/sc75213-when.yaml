@@ -1,0 +1,39 @@
+# sc-75213: the When level at the device's text size, nothing then Between dates chosen.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events
+- extendedWaitUntil: { visible: { id: 'events.filter' }, timeout: 30000 }
+- waitForAnimationToEnd
+- tapOn: { id: 'events.filter' }
+- extendedWaitUntil: { visible: { id: 'events.filter.menu' }, timeout: 10000 }
+- waitForAnimationToEnd
+- tapOn: { id: 'events.filter.when' }
+- waitForAnimationToEnd
+- takeScreenshot: when-none
+- swipe: { from: { id: 'events.filter.menu' }, direction: UP, duration: 400 }
+- waitForAnimationToEnd
+- takeScreenshot: when-none-foot
+- runFlow:
+    when: { notVisible: { id: 'events.filter.when.between' } }
+    commands:
+      - swipe: { from: { id: 'events.filter.menu' }, direction: UP, duration: 400 }
+      - waitForAnimationToEnd
+- runFlow:
+    when: { notVisible: { id: 'events.filter.when.between' } }
+    commands:
+      - swipe: { from: { id: 'events.filter.menu' }, direction: UP, duration: 400 }
+      - waitForAnimationToEnd
+- runFlow:
+    when: { notVisible: { id: 'events.filter.when.between' } }
+    commands:
+      - swipe: { from: { id: 'events.filter.menu' }, direction: UP, duration: 400 }
+      - waitForAnimationToEnd
+- tapOn: { id: 'events.filter.when.between' }
+- waitForAnimationToEnd
+- takeScreenshot: when-between
+- swipe: { from: { id: 'events.filter.menu' }, direction: UP, duration: 400 }
+- waitForAnimationToEnd
+- takeScreenshot: when-between-foot
+- swipe: { from: { id: 'events.filter.menu' }, direction: UP, duration: 400 }
+- waitForAnimationToEnd
+- takeScreenshot: when-between-foot2
