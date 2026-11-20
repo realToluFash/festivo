@@ -42,7 +42,7 @@ final readonly class BudgetRange
             self::sum(Vec\map($costs, static fn (LineCost $cost): Number => $cost->potentialMinor)),
             $facts->accepted,
             $facts->ifAllCome,
-            Iter\count(Vec\filter($lines, static fn (BudgetLine $line): bool => 0 === $line->getPriceMinor())),
+            Iter\count(Vec\filter($lines, static fn (BudgetLine $line): bool => $line->isNotPriced())),
             $costs,
         );
     }

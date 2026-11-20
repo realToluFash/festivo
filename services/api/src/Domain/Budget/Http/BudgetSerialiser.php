@@ -22,8 +22,8 @@ use Psl\Dict;
 use Psl\Vec;
 
 /**
- * @phpstan-type Line array{id: string, label: string, category: string, basis: string, rate: ?string, amount: ?string, currency: string, note: ?string, quantity: array{count: int, source: string, reason: ?string}, createdAt: string, updatedAt: string}
- * @phpstan-type CostedLine array{id: string, label: string, category: string, basis: string, rate: ?string, amount: ?string, currency: string, note: ?string, quantity: array{count: int, source: string, reason: ?string}, createdAt: string, updatedAt: string, cost: array{confirmed: string, potential: string}}
+ * @phpstan-type Line array{id: string, label: string, category: string, basis: string, rate: ?string, amount: ?string, currency: string, note: ?string, notPriced: bool, quantity: array{count: int, source: string, reason: ?string}, createdAt: string, updatedAt: string}
+ * @phpstan-type CostedLine array{id: string, label: string, category: string, basis: string, rate: ?string, amount: ?string, currency: string, note: ?string, notPriced: bool, quantity: array{count: int, source: string, reason: ?string}, createdAt: string, updatedAt: string, cost: array{confirmed: string, potential: string}}
  * @phpstan-type PerHead array{amount: ?string, heads: int}
  * @phpstan-type Counted array{count: int, source: string, reason: ?string}
  * @phpstan-type Range array{currency: string, confirmed: string, potential: string, perHead: array{confirmed: PerHead, potential: PerHead}, notPriced: int, quantities: array<string, Counted>, lines: list<CostedLine>}
@@ -137,6 +137,7 @@ final readonly class BudgetSerialiser
             'amount' => CostBasis::Fixed === $line->getBasis() ? $written : null,
             'currency' => $currency,
             'note' => $line->getNote(),
+            'notPriced' => $line->isNotPriced(),
             'quantity' => $quantity,
             'createdAt' => $line->getCreatedAt()->format(\DATE_ATOM),
             'updatedAt' => $line->getUpdatedAt()->format(\DATE_ATOM),
