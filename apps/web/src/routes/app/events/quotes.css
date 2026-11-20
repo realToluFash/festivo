@@ -59,6 +59,18 @@
   min-width: 22px;
 }
 
+a.desk-row.bt-row {
+  width: calc(100% + 2 * var(--spaceMd));
+  margin: 0 calc(-1 * var(--spaceMd));
+  padding-inline: var(--spaceMd);
+  border-radius: var(--radiusRow);
+  text-decoration: none;
+}
+
+a.desk-row.bt-row:hover {
+  background: var(--deskHover);
+}
+
 .bt-row-actions {
   display: flex;
   flex-wrap: wrap;
