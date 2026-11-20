@@ -37,6 +37,20 @@ export function watchFocusedFieldReshaped(reshaped: () => void): () => void {
   return () => reshapes.delete(reshaped);
 }
 
+const typers = new Set<() => void>();
+
+/** A character was typed in the focused field, or one taken out. */
+export function fieldTyped(): void {
+  typers.forEach((typed) => typed());
+}
+
+/** Calls `typed` each time the focused field is typed in. Returns the unsubscribe. */
+export function watchFocusedFieldTyped(typed: () => void): () => void {
+  typers.add(typed);
+
+  return () => typers.delete(typed);
+}
+
 /** Calls `moved` each time focus moves to a field, as the keys stay up. Returns the unsubscribe. */
 export function watchFocusedField(moved: () => void): () => void {
   watchers.add(moved);
