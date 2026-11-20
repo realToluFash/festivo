@@ -153,6 +153,22 @@ final class VendorsTest extends ApiTestCase
     }
 
     #[Test]
+    public function aVendorAskedForOpensThePageHoldingIt(): void
+    {
+        $ids = Vec\map(Vec\range(1, 28), fn (int $n): string => Type\string()->coerce($this->add(['name' => Str\format('Vendor %02d', $n), 'category' => 'other'])['id']));
+        $vendor = static fn (int $n): string => $ids[$n - 1] ?? self::fail(Str\format('no vendor %d', $n));
+
+        $holding = $this->list('?vendor=' . $vendor(27));
+
+        self::assertSame(2, $holding['page']);
+        self::assertSame(['Vendor 26', 'Vendor 27', 'Vendor 28'], $this->names($holding));
+        self::assertSame(1, $this->list('?vendor=' . $vendor(25))['page']);
+        self::assertSame(1, $this->list('?q=Vendor&vendor=' . $vendor(27))['page'], 'a search keeps its own first page');
+        self::assertSame(1, $this->list('?view=archived&vendor=' . $vendor(27))['page'], 'a vendor outside the view is not landed on');
+        self::assertSame(1, $this->list('?vendor=not-a-vendor')['page']);
+    }
+
+    #[Test]
     public function anAccentedNameSortsWithItsPlainLetter(): void
     {
         foreach (['zeta Hire', 'Ómega Music', 'Marquee Masters', 'Éclat Catering', 'Àbẹ̀ní Flowers', 'bloom & Co'] as $name) {
@@ -223,7 +239,7 @@ final class VendorsTest extends ApiTestCase
 
         self::assertSame('https://soirely.com/errors/conflict', $refused['type']);
         self::assertSame('This vendor is archived, so your changes were not saved. To edit it, restore it under Archived.', $refused['detail']);
-        self::assertSame([$archived], Type\vec(Type\mixed())->coerce($this->list('?view=archived')['vendors']));
+        self::assertSame([[...$archived, 'events' => 0]], Type\vec(Type\mixed())->coerce($this->list('?view=archived')['vendors']));
 
         $this->send('POST', "/{$id}/restore");
         $edited = Type\dict(Type\string(), Type\mixed())->coerce($this->send('PUT', "/{$id}", $change)['vendor']);

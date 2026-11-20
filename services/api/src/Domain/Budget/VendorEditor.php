@@ -5,11 +5,14 @@ declare(strict_types=1);
 namespace App\Domain\Budget;
 
 use App\Domain\Budget\Model\VendorFields;
+use App\Entity\Event;
 use App\Entity\Organisation;
 use App\Entity\Vendor;
 use App\Enum\ErrorCode;
 use App\Http\Exception\ApiException;
+use App\Repository\VendorEngagementRepository;
 use Doctrine\ORM\EntityManagerInterface;
+use Psl\Vec;
 use Psr\Clock\ClockInterface;
 use Symfony\Contracts\Translation\TranslatorInterface;
 
@@ -20,6 +23,7 @@ final readonly class VendorEditor
         private EntityManagerInterface $entityManager,
         private ClockInterface $clock,
         private TranslatorInterface $translator,
+        private VendorEngagementRepository $engagementRepository,
     ) {
     }
 
@@ -46,9 +50,17 @@ final readonly class VendorEditor
         $this->entityManager->flush();
     }
 
-    /** Archiving one already archived keeps the day it was first archived. */
+    /** Archiving one already archived keeps the day it was first archived. Refused while any event still owes it a payment, naming each such event (sc-87). */
     public function archive(Vendor $vendor): void
     {
+        $owing = $this->engagementRepository->eventsOwing($vendor);
+
+        if ([] !== $owing) {
+            throw new ApiException(ErrorCode::VendorOwed, $this->translator->trans('vendors.archive_refused', ['{vendor}' => $vendor->getName()]), members: [
+                'events' => Vec\map($owing, static fn (Event $event): array => ['id' => $event->getId()->toRfc4122(), 'name' => $event->getName()]),
+            ]);
+        }
+
         if (null === $vendor->getArchivedAt()) {
             $vendor->setArchivedAt($this->clock->now());
             $this->entityManager->flush();

@@ -18,6 +18,7 @@ use Symfony\Component\Uid\Uuid;
 #[ORM\HasLifecycleCallbacks]
 #[ORM\Table(name: 'budget_lines')]
 #[ORM\Index(name: 'idx_budget_line_event', columns: ['event_id'])]
+#[ORM\Index(name: 'idx_budget_line_agreed_in', columns: ['agreed_in_id'])]
 #[ORM\UniqueConstraint(name: 'uniq_budget_staff_line', columns: ['event_id'], options: ['where' => "(((basis)::text = 'per_staff_hour'::text) AND (removed_at IS NULL))"])]
 class BudgetLine
 {
@@ -59,6 +60,11 @@ class BudgetLine
     /** Removed before the event's currency changed: Undo can no longer put it back, and its words and price are erased (sc-85, decided 19 Nov, #72668, #72947). */
     #[ORM\Column(options: ['default' => false])]
     private bool $currencyChanged = false;
+
+    /** The vendor whose current quote agrees this cost (sc-87); null while it is only estimated. */
+    #[ORM\ManyToOne(targetEntity: VendorEngagement::class)]
+    #[ORM\JoinColumn(nullable: true, onDelete: 'SET NULL')]
+    private ?VendorEngagement $agreedIn = null;
 
     public function __construct(Event $event, string $label, CostCategory $category, CostBasis $basis, ?int $priceMinor, ?string $note)
     {
@@ -154,5 +160,15 @@ class BudgetLine
     public function isCurrencyChanged(): bool
     {
         return $this->currencyChanged;
+    }
+
+    public function getAgreedIn(): ?VendorEngagement
+    {
+        return $this->agreedIn;
+    }
+
+    public function agreeIn(?VendorEngagement $engagement): void
+    {
+        $this->agreedIn = $engagement;
     }
 }

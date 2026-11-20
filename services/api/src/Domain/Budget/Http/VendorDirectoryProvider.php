@@ -7,11 +7,14 @@ namespace App\Domain\Budget\Http;
 use ApiPlatform\Metadata\Operation;
 use ApiPlatform\State\Pagination\Pagination;
 use ApiPlatform\State\ProviderInterface;
+use App\Entity\Vendor;
 use App\Enum\VendorCategory;
 use App\Http\Exception\ApiException;
 use App\Http\Exception\ShapeRefusal;
 use App\Repository\OrganisationRepository;
+use App\Repository\VendorEngagementRepository;
 use App\Repository\VendorRepository;
+use Psl\Math;
 use Psl\Str;
 use Psl\Vec;
 use Symfony\Component\Uid\Uuid;
@@ -22,6 +25,7 @@ final readonly class VendorDirectoryProvider implements ProviderInterface
     public function __construct(
         private OrganisationRepository $organisationRepository,
         private VendorRepository $vendorRepository,
+        private VendorEngagementRepository $engagementRepository,
         private Pagination $pagination,
     ) {
     }
@@ -51,11 +55,21 @@ final readonly class VendorDirectoryProvider implements ProviderInterface
 
         $page = $this->pagination->getPage($context);
         $most = $this->pagination->getLimit($operation, $context);
-        $found = $this->vendorRepository->findPage($organisation, $archived, $typed, $category, $this->pagination->getOffset($operation, $context), $most);
+        $first = $this->pagination->getOffset($operation, $context);
+        $landing = \is_string($filters['vendor'] ?? null) ? $this->vendorRepository->findOneInOrganisation($organisation, $filters['vendor']) : null;
+
+        if (null !== $landing && '' === $typed && null === $category && (null !== $landing->getArchivedAt()) === $archived) {
+            $page = Math\div($this->vendorRepository->countBefore($organisation, $archived, $landing), $most) + 1;
+            $first = ($page - 1) * $most;
+        }
+
+        $found = $this->vendorRepository->findPage($organisation, $archived, $typed, $category, $first, $most);
         $counts = $this->vendorRepository->countIn($organisation, $archived);
 
+        $engaging = $this->engagementRepository->countEventsOf(Vec\map($found['vendors'], static fn (Vendor $vendor): Uuid => $vendor->getId()));
+
         return new VendorDirectory(
-            Vec\map($found['vendors'], VendorSerialiser::vendor(...)),
+            Vec\map($found['vendors'], static fn (Vendor $vendor): array => [...VendorSerialiser::vendor($vendor), 'events' => $engaging[$vendor->getId()->toRfc4122()] ?? 0]),
             $page,
             $found['total'],
             $counts['inUse'],

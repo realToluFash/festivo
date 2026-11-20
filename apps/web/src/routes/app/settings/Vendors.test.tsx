@@ -22,6 +22,7 @@ function vendor(overrides: Partial<Vendor>): Vendor {
     address: null,
     note: null,
     archivedAt: null,
+    events: 0,
     ...overrides,
   };
 }
@@ -106,8 +107,8 @@ function answering(
   return sent;
 }
 
-function open() {
-  const router = createMemoryRouter(routes, { initialEntries: ['/app/settings/vendors'] });
+function open(at = '/app/settings/vendors') {
+  const router = createMemoryRouter(routes, { initialEntries: [at] });
   render(<RouterProvider router={router} />);
   return router;
 }
@@ -528,5 +529,37 @@ describe('Settings › Vendors at a desk (sc-82)', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Back to the dashboard' }));
     await waitFor(() => expect(router.state.location.pathname).toBe('/app'));
+  });
+
+  it('lands on the page holding the vendor a Budget names, its row lit and focused', async () => {
+    signedIn(membership());
+    const sent = answering((search) =>
+      new URLSearchParams(search).get('vendor') === 'v7'
+        ? pageOf([DELTA], { page: 2, total: 26, inUse: 26 })
+        : pageOf([BLOOM], { total: 26, inUse: 26 }),
+    );
+    open('/app/settings/vendors?vendor=v7');
+
+    const delta = await screen.findByRole('button', { name: /^Delta Frames/ });
+    const reads = () => sent.filter((one) => one.path === '/api/orgs/org_1/vendors');
+    expect(reads()[0]?.search).toBe('?vendor=v7');
+    expect(delta.classList.contains('is-on')).toBe(true);
+    await waitFor(() => expect(document.activeElement).toBe(delta));
+    expect(screen.getByText('26 to 26 of 26, A to Z')).toBeDefined();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Previous' }));
+    await screen.findByRole('button', { name: /^Bloom & Co/ });
+    expect(reads().at(-1)?.search).toBe('');
+  });
+
+  it('lights and focuses the vendor for someone who only reads the directory', async () => {
+    signedIn(membership({ permissions: ['vendors.read'] }));
+    answering(() => pageOf([BLOOM, DELTA]));
+    open('/app/settings/vendors?vendor=v7');
+
+    await screen.findByText('Delta Frames');
+    const row = document.getElementById('vendor-v7')!;
+    expect(row.classList.contains('is-on')).toBe(true);
+    await waitFor(() => expect(document.activeElement).toBe(row));
   });
 });

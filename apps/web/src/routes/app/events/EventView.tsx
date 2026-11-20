@@ -102,6 +102,11 @@ export function EventStaff() {
   return <Navigate replace to={`/app/events/${encodeURIComponent(eventId)}/staff/roster`} />;
 }
 
+/** Budget, with its pages for everything due and for each vendor quoted (sc-87). */
+export function EventBudget() {
+  return <ForEvent page="budget" />;
+}
+
 /** One of the areas not built yet: its panel says it is coming (sc-22103). */
 export function EventAreaPage() {
   const { area = '' } = useParams();

@@ -633,6 +633,7 @@ describe('the Budget while others change it (sc-85)', () => {
     expect(topics).toEqual([
       realtimeTopic('EventBudget', 'ev_1'),
       realtimeTopic('EventHeadcount', 'ev_1'),
+      realtimeTopic('EventQuotes', 'ev_1'),
     ]);
 
     return one;
@@ -854,4 +855,136 @@ describe('a failed Undo (sc-85)', () => {
       },
     });
   }
+});
+
+const SAVOUR = {
+  id: 'q_savour',
+  vendor: {
+    id: 'v4',
+    name: 'Savour Kitchen',
+    category: 'catering',
+    contactName: 'Kofi Mensah',
+    archived: false,
+  },
+  quote: {
+    id: 'qv_1',
+    covers: 'Dinner and drinks',
+    amount: '9000.00',
+    quotedOn: '2026-10-13',
+    reference: null,
+    supersededAt: null,
+  },
+  earlier: [],
+  lines: [],
+  payments: [
+    {
+      id: 'p_deposit',
+      description: 'Deposit',
+      amount: '4500.00',
+      dueOn: '2030-11-04',
+      overdue: false,
+    },
+  ],
+  scheduled: '4500.00',
+  difference: '-4500.00',
+};
+
+function quotes(fields: Record<string, unknown> = {}) {
+  return {
+    currency: 'GBP',
+    timeZone: 'Europe/London',
+    entitled: true,
+    quotes: [SAVOUR],
+    due: [],
+    ...fields,
+  };
+}
+
+const READ_ONLY =
+  'Quotes and payment schedules are read-only because this organisation’s plan no longer includes them. Nothing has been removed.';
+const NOT_LOADED = 'Quotes and payments did not load. Check your connection and try again.';
+
+describe('quotes on Budget’s home (sc-87)', () => {
+  it('shows nothing of quotes to an organisation whose plan never had them', async () => {
+    signedIn();
+    const sent = serve({
+      'GET /api/events/ev_1/budget/quotes': () => json(quotes({ entitled: false, quotes: [] })),
+    });
+
+    await screen.findByText('Dinner');
+    await waitFor(() =>
+      expect(sent.some((one) => one.line === 'GET /api/events/ev_1/budget/quotes')).toBe(true),
+    );
+    await act(async () => {});
+    expect(screen.queryByText(READ_ONLY)).toBeNull();
+    expect(screen.queryByRole('heading', { name: 'Due next' })).toBeNull();
+    expect(screen.queryByRole('heading', { name: 'Vendors quoted' })).toBeNull();
+  });
+
+  it('keeps the quotes readable after a downgrade, saying they are read-only', async () => {
+    signedIn();
+    serve({ 'GET /api/events/ev_1/budget/quotes': () => json(quotes({ entitled: false })) });
+
+    expect(await screen.findByText(READ_ONLY)).toBeTruthy();
+    expect(screen.getByRole('heading', { name: 'Vendors quoted' })).toBeTruthy();
+    expect(screen.getByText('Savour Kitchen')).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Add a quote' })).toBeNull();
+  });
+
+  it('keeps Due next and Vendors quoted in place when the quotes did not load, with Try again', async () => {
+    signedIn();
+    let tries = 0;
+    serve({
+      'GET /api/events/ev_1/budget/quotes': () =>
+        ++tries === 1 ? problem(500, 'internal_error') : json(quotes()),
+    });
+
+    expect(await screen.findAllByText(NOT_LOADED)).toHaveLength(2);
+    expect(screen.getByRole('heading', { name: 'Due next' })).toBeTruthy();
+    expect(screen.getByRole('heading', { name: 'Vendors quoted' })).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Add a quote' })).toBeNull();
+
+    fireEvent.click(screen.getAllByRole('button', { name: 'Try again' })[0]!);
+
+    expect(await screen.findByText('Savour Kitchen')).toBeTruthy();
+    expect(screen.queryByText(NOT_LOADED)).toBeNull();
+    expect(document.activeElement).toBe(screen.getByRole('heading', { level: 1, name: 'Budget' }));
+  });
+});
+
+describe('a vendor’s page (sc-87)', () => {
+  const at = '/app/events/ev_1/budget/vendors/v4';
+
+  it('opens the vendor’s name on its row in the directory', async () => {
+    signedIn();
+    serve({ 'GET /api/events/ev_1/budget/quotes': () => json(quotes()) }, { at });
+
+    const name = await screen.findByRole('link', { name: 'Savour Kitchen' });
+    expect(name.getAttribute('href')).toBe('/app/settings/vendors?vendor=v4');
+  });
+
+  it('keeps the row asking when Remove fails, says so in it, and puts focus back on Remove', async () => {
+    signedIn();
+    let removals = 0;
+    serve(
+      {
+        'GET /api/events/ev_1/budget/quotes': () => json(quotes()),
+        'DELETE /api/events/ev_1/budget/payments/p_deposit': () =>
+          ++removals === 1 ? problem(500, 'internal_error') : new Response(null, { status: 204 }),
+      },
+      { at },
+    );
+
+    const row = (await screen.findByText('Deposit')).closest('li')!;
+    fireEvent.click(within(row).getByRole('button', { name: 'Remove' }));
+    const ask = within(row).getByRole('group', { name: 'Remove this payment?' });
+    fireEvent.click(within(ask).getByRole('button', { name: 'Remove' }));
+
+    expect((await within(ask).findByRole('alert')).textContent).toBe(
+      'Not removed. Check your connection and try again.',
+    );
+    expect(document.activeElement).toBe(within(ask).getByRole('button', { name: 'Remove' }));
+    expect(screen.getByText('Deposit')).toBeTruthy();
+    expect(screen.queryByRole('status', { name: /Not removed/ })).toBeNull();
+  });
 });

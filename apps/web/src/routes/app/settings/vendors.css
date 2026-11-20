@@ -198,3 +198,26 @@
   padding-top: var(--spaceMd);
   border-top: 1px solid var(--colorBorder);
 }
+
+.vd-owing {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--spaceXs);
+}
+
+.vd-alert {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: var(--colorBrokenTint);
+  color: var(--colorBroken);
+  font: 600 14.5px/1.45 var(--fontFamily);
+}
+
+.vd-alert svg {
+  flex: none;
+  margin-top: 2px;
+}
