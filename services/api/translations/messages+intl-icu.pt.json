@@ -398,5 +398,10 @@
     "payment_reminder.due": "vence a {date}",
     "payment_reminder.was_due": "venceu a {date}",
     "payment_reminder.overdue_row": "{row} · Em atraso · último lembrete",
-    "payment_reminder.last_about": "Este é o último lembrete sobre {vendor}: {what}."
+    "payment_reminder.last_about": "Este é o último lembrete sobre {vendor}: {what}.",
+    "payment_reminder.email.open_payments": "{count, plural, one {Open the payment} other {Open the payments}}",
+    "payment_reminder.email.open_budget": "Open the budget",
+    "payment_reminder.email.link": "{label}: {url}",
+    "payment_reminder.email.settings": "Notification settings",
+    "payment_reminder.email.footer": "You're getting this because you can record payments at {organisation}. To stop these emails, turn off Money email in Notification settings."
 }

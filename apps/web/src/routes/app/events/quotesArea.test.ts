@@ -98,6 +98,7 @@ function line(fields: Partial<BudgetLine> = {}): BudgetLine {
     amount: '900.00',
     currency: 'GBP',
     note: null,
+    notPriced: false,
     quantity: { count: 1, source: 'fixed', reason: null },
     cost: { confirmed: '900.00', potential: '900.00' },
     ...fields,
@@ -252,7 +253,7 @@ describe('budget lines in the quote form', () => {
     expect(
       lineLine(
         t,
-        line({ amount: '0.00', cost: { confirmed: '0.00', potential: '0.00' } }),
+        line({ amount: '0.00', notPriced: true, cost: { confirmed: '0.00', potential: '0.00' } }),
         null,
         EN,
       ),

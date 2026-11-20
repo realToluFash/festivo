@@ -178,6 +178,20 @@ describe('Who is paying at a desk (sc-91, sc-1300)', () => {
     expect(screen.getByRole('alert').textContent).toBe('An event can have up to 20 payers.');
   });
 
+  it('goes back to Who is paying from its step in the crumb', SLOW, async () => {
+    await open('remove_refused');
+    fireEvent.click(
+      within(screen.getByRole('alert').parentElement ?? main()).getByRole('button', {
+        name: 'Choose who pays',
+      }),
+    );
+    const crumb = screen.getByRole('navigation', { name: 'Breadcrumb' });
+    fireEvent.click(within(crumb).getByRole('link', { name: 'Who is paying' }));
+
+    expect(screen.getByRole('heading', { level: 1, name: 'Who is paying' })).toBeDefined();
+    expect(within(crumb).queryByText('Choose who pays')).toBeNull();
+  });
+
   it('refuses to remove a payer who covers costs, and opens those costs ticked', SLOW, async () => {
     await open('remove_refused');
 
@@ -190,6 +204,12 @@ describe('Who is paying at a desk (sc-91, sc-1300)', () => {
     );
 
     expect(screen.getByRole('heading', { level: 1, name: 'Choose who pays' })).toBeDefined();
+    const crumb = screen.getByRole('navigation', { name: 'Breadcrumb' });
+    expect(
+      within(crumb)
+        .getAllByRole('listitem')
+        .map((one) => one.textContent),
+    ).toEqual(['Events', expect.any(String), 'Budget', 'Who is paying', 'Choose who pays']);
     const ticked = screen
       .getAllByRole('checkbox')
       .filter((one) => (one as HTMLInputElement).checked)

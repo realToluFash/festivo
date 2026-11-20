@@ -547,6 +547,26 @@ describe('payments on a vendor’s page, shapes and the reminder setting, in A (
     },
   );
 
+  it('saves the reminder days on Enter, as Save does', SLOW, async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    await open(`${REMINDERS}?state=reminders`);
+    fireEvent.click(within(main()).getByRole('button', { name: 'Change' }));
+    const change = dialog('Payment reminders');
+    const days = within(change).getByLabelText('Days before a payment is due');
+    fireEvent.change(days, { target: { value: '0' } });
+    fireEvent.submit(days.closest('form')!);
+    expect(within(change).getByText('Enter a whole number of days from 1 to 30.')).toBeDefined();
+    fireEvent.change(days, { target: { value: '7' } });
+    fireEvent.submit(days.closest('form')!);
+    await settle();
+    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(
+      within(main()).getByText(
+        '7 days before a payment is due, and once the day after, then silence.',
+      ),
+    ).toBeDefined();
+  });
+
   it('reaches the reminder setting from Settings › Vendors', SLOW, async () => {
     await open('/demo/settings/vendors');
     const row = within(main()).getByRole('link', { name: /^Payment reminders/ });

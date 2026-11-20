@@ -170,6 +170,29 @@ describe('the states Budget A still lacked (sc-85, sc-88, sc-90, sc-91, sc-92, s
     expect(section('Costs').textContent).toContain('Charged at £3,000.00 · its own price100.0%');
     expect(card()).toContain('Client total£25,296 to £29,292');
     expect(card()).toContain('Margin£5,566 to £6,232');
+    const feeRow = () =>
+      within(section('Costs'))
+        .getByRole('button', { name: /^Planning fee/ })
+        .closest('li');
+    expect(within(feeRow() as HTMLElement).getByRole('status').textContent).toBe('Saved.');
+    openFee();
+    expect((fee() as HTMLInputElement).value).toBe('3,000.00');
+    expect(screen.queryByText('Saved.')).toBeNull();
+    fireEvent.change(fee(), { target: { value: '' } });
+    save();
+    expect(within(feeRow() as HTMLElement).getByRole('status').textContent).toBe('Price removed.');
+    expect(document.querySelector('.toast')).toBeNull();
+    const djRow = () =>
+      within(section('Costs')).getByRole('button', { name: /^DJ/ }).closest('li') as HTMLElement;
+    fireEvent.click(within(djRow()).getByRole('button', { name: /^DJ/ }));
+    fireEvent.change(screen.getByLabelText('Charged at'), { target: { value: '1000' } });
+    save();
+    expect(within(djRow()).getByRole('status').textContent).toBe('Saved.');
+    fireEvent.click(within(djRow()).getByRole('button', { name: /^DJ/ }));
+    expect((screen.getByLabelText('Charged at') as HTMLInputElement).value).toBe('1,000.00');
+    fireEvent.change(screen.getByLabelText('Charged at'), { target: { value: '' } });
+    save();
+    expect(within(djRow()).getByRole('status').textContent).toBe('Price removed.');
     cleanup();
 
     await open(at('markup_nan'));

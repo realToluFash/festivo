@@ -62,9 +62,20 @@ describe('Settings opened from no organisation (sc-75471)', () => {
     expect(frame).toMatch(
       /const floatingTabs = framed && kind === 'phone' && inEvent == null && !openedFromNone;/u,
     );
+    expect(frame).toMatch(/const sideCard = framed && kind === 'tabletLandscape';/u);
+    expect(frame).toMatch(/const sidebar = sideCard && !openedFromNone;/u);
+  });
+
+  it('sits on its side in its card on the grey ground, alone there as the demo draws it', () => {
+    expect(frame).toMatch(/style=\{\[styles\.root, sideCard && side\.chrome\]\}/u);
     expect(frame).toMatch(
-      /const sidebar = framed && kind === 'tabletLandscape' && !openedFromNone;/u,
+      /styles\.column, sideCard && side\.card, sideCard && !sidebar && side\.alone\]/u,
     );
+    expect(read('src', 'demo', 'settings', 'Frame.tsx')).toMatch(
+      /side\.card, fromNone != null && side\.alone\]/u,
+    );
+    expect(frame).not.toMatch(/alone: \{/u);
+    expect(read('src', 'demo', 'settings', 'Frame.tsx')).not.toMatch(/alone: \{/u);
   });
 
   it('has no bell', () => {

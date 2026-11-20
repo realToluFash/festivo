@@ -1213,7 +1213,7 @@ export function MoneyField({
   label: string;
   value: string;
   sign: string;
-  help: string;
+  help?: string;
   error: string | null;
   inputRef?: RefObject<HTMLInputElement | null>;
   onChange: (value: string) => void;
@@ -1237,13 +1237,15 @@ export function MoneyField({
           value={value}
           spellCheck={false}
           aria-invalid={error != null}
-          aria-describedby={described(id, true, error)}
+          aria-describedby={described(id, help != null, error)}
           onChange={(event) => onChange(event.target.value)}
         />
       </div>
-      <p id={`${id}-help`} className="desk-help">
-        {help}
-      </p>
+      {help != null && (
+        <p id={`${id}-help`} className="desk-help">
+          {help}
+        </p>
+      )}
       <Problem id={`${id}-error`} line={error} />
     </div>
   );

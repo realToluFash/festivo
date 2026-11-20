@@ -109,6 +109,29 @@ final class BudgetMarginTest extends ApiTestCase
     }
 
     #[Test]
+    public function aLineAtZeroIsPricedOnlyByAClientPriceOfItsOwnAboveZero(): void
+    {
+        $fee = $this->add(self::FEE);
+        $this->put($this->charge($fee['id']), ['price' => '3000', 'currency' => 'GBP']);
+        $this->add([...self::FEE, 'label' => 'Aisle arch', 'category' => 'flowers']);
+        $chargedZero = $this->add([...self::FEE, 'label' => 'Lanterns', 'category' => 'venue']);
+        $this->put($this->charge($chargedZero['id']), ['price' => '0', 'currency' => 'GBP']);
+        $markedUp = $this->add([...self::FEE, 'label' => 'Chairs', 'category' => 'hire']);
+        $this->put($this->charge($markedUp['id']), ['markup' => '20']);
+        $this->put($this->markup(), ['markup' => '15']);
+
+        self::assertSame([3, ['Planning fee' => false, 'Aisle arch' => true, 'Lanterns' => true, 'Chairs' => true]], $this->notPriced());
+
+        $this->plan(Plan::Free);
+        self::assertSame(3, $this->notPriced()[0]);
+        $this->plan(Plan::Enterprise);
+
+        $this->put($this->charge($fee['id']), ['markup' => null]);
+        self::assertSame([4, ['Planning fee' => true, 'Aisle arch' => true, 'Lanterns' => true, 'Chairs' => true]], $this->notPriced());
+        self::assertSame(['0.00', '0.00'], [$this->budget()['confirmed'] ?? null, $this->budget()['potential'] ?? null]);
+    }
+
+    #[Test]
     public function aClientPriceOfZeroHasNoShare(): void
     {
         $fee = $this->add(self::FEE);
@@ -350,6 +373,23 @@ final class BudgetMarginTest extends ApiTestCase
         $organisation = self::em()->find(Organisation::class, $this->organisation->getId()) ?? self::fail('no organisation');
         self::service(PlanChanger::class)->change($organisation, $plan, 'Ada at Soirely', 'A test moves the plan.');
         self::em()->flush();
+    }
+
+    /** @return array<string, mixed> */
+    private function budget(): array
+    {
+        $budget = $this->as($this->owner, 'GET', $this->event());
+        self::assertSame(200, $this->statusCode(), Json\encode($budget));
+
+        return $budget;
+    }
+
+    /** @return array{int, array<string, bool>} */
+    private function notPriced(): array
+    {
+        $budget = Type\shape(['notPriced' => Type\int(), 'lines' => Type\vec(Type\shape(['label' => Type\string(), 'notPriced' => Type\bool()], true))], true)->coerce($this->budget());
+
+        return [$budget['notPriced'], Dict\pull($budget['lines'], static fn (array $line): bool => $line['notPriced'], static fn (array $line): string => $line['label'])];
     }
 
     /** @return array<string, mixed> */

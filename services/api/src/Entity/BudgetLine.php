@@ -166,6 +166,12 @@ class BudgetLine
         return null === $this->clientPriceMinor ? null : (int) $this->clientPriceMinor;
     }
 
+    /** A line at 0 waits for a price (sc-84), unless a client price of its own above 0 says it is the agency's fee, whose cost is nothing (sc-75696). */
+    public function isNotPriced(): bool
+    {
+        return 0 === $this->getPriceMinor() && ($this->getClientPriceMinor() ?? 0) <= 0;
+    }
+
     public function chargeWithMarkup(int $tenths): void
     {
         $this->markupTenths = $tenths;

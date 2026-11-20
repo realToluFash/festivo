@@ -390,7 +390,7 @@
     "validation.payer_split_percent_total": "Los porcentajes suman {percent, number, ::.00}. Haga que sumen exactamente 100.",
     "payment_reminder.title.overdue_on": "{count, plural, one {{count, number, ::group-auto} pago atrasado} many {{count, number, ::group-auto} de pagos atrasados} other {{count, number, ::group-auto} pagos atrasados}} en {event}",
     "payment_reminder.title.overdue": "{count, plural, one {{count, number, ::group-auto} pago atrasado} many {{count, number, ::group-auto} de pagos atrasados} other {{count, number, ::group-auto} pagos atrasados}} en {events, plural, one {{events, number, ::group-auto} evento} many {{events, number, ::group-auto} de eventos} other {{events, number, ::group-auto} eventos}}",
-    "payment_reminder.title.coming_due_on": "{count, plural, one {{count, number, ::group-auto} pago de {event} vence} many {{count, number, ::group-auto} de pagos de {event} vencen} other {{count, number, ::group-auto} pagos de {event} vencen}} {days, plural, =1 {mañana} other {en los próximos {days, number, ::group-auto} días}}",
+    "payment_reminder.title.coming_due_on": "{count, plural, one {{count, number, ::group-auto} pago vence} many {{count, number, ::group-auto} de pagos vencen} other {{count, number, ::group-auto} pagos vencen}} {days, plural, =1 {mañana} other {en los próximos {days, number, ::group-auto} días}} en {event}",
     "payment_reminder.title.coming_due": "{count, plural, one {{count, number, ::group-auto} pago de {events, plural, one {{events, number, ::group-auto} evento} many {{events, number, ::group-auto} de eventos} other {{events, number, ::group-auto} eventos}} vence} many {{count, number, ::group-auto} de pagos de {events, plural, one {{events, number, ::group-auto} evento} many {{events, number, ::group-auto} de eventos} other {{events, number, ::group-auto} eventos}} vencen} other {{count, number, ::group-auto} pagos de {events, plural, one {{events, number, ::group-auto} evento} many {{events, number, ::group-auto} de eventos} other {{events, number, ::group-auto} eventos}} vencen}} {days, plural, =1 {mañana} other {en los próximos {days, number, ::group-auto} días}}",
     "payment_reminder.title.mixed": "{overdue, plural, one {{overdue, number, ::group-auto} pago atrasado} many {{overdue, number, ::group-auto} de pagos atrasados} other {{overdue, number, ::group-auto} pagos atrasados}}, {count, plural, one {{count, number, ::group-auto} vence} other {{count, number, ::group-auto} vencen}} {days, plural, =1 {mañana} other {en los próximos {days, number, ::group-auto} días}}",
     "payment_reminder.row": "{vendor} · {amount} · {when}",
@@ -398,5 +398,10 @@
     "payment_reminder.due": "vence el {date}",
     "payment_reminder.was_due": "venció el {date}",
     "payment_reminder.overdue_row": "{row} · Atrasado · último recordatorio",
-    "payment_reminder.last_about": "Este es el último recordatorio sobre {vendor}: {what}."
+    "payment_reminder.last_about": "Este es el último recordatorio sobre {vendor}: {what}.",
+    "payment_reminder.email.open_payments": "{count, plural, one {Open the payment} other {Open the payments}}",
+    "payment_reminder.email.open_budget": "Open the budget",
+    "payment_reminder.email.link": "{label}: {url}",
+    "payment_reminder.email.settings": "Notification settings",
+    "payment_reminder.email.footer": "You're getting this because you can record payments at {organisation}. To stop these emails, turn off Money email in Notification settings."
 }
