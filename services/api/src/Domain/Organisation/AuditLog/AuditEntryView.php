@@ -276,12 +276,15 @@ final readonly class AuditEntryView
             static fn (mixed $value): bool => \is_string($value) && Regex\matches($value, self::UUID),
         )));
 
-        $roles = [] === $roleIds ? [] : Dict\pull(
+        $organisations = Vec\unique(Vec\filter_nulls(Vec\map($entries, static fn (AuditEntry $entry): ?string => $entry->getOrganisationId()?->toRfc4122())));
+
+        $roles = [] === $roleIds || [] === $organisations ? [] : Dict\pull(
             Type\vec(Type\shape(['id' => Type\string(), 'seeded_as' => Type\string()]))->coerce($this->connection->fetchAllAssociative(<<<'SQL'
                 SELECT id::text AS id, seeded_as
                 FROM   roles
                 WHERE  id::text IN (:ids)
-                SQL, ['ids' => $roleIds], ['ids' => ArrayParameterType::STRING])),
+                  AND  organisation_id::text IN (:organisations)
+                SQL, ['ids' => $roleIds, 'organisations' => $organisations], ['ids' => ArrayParameterType::STRING, 'organisations' => ArrayParameterType::STRING])),
             static fn (array $row): string => $row['seeded_as'],
             static fn (array $row): string => $row['id'],
         );

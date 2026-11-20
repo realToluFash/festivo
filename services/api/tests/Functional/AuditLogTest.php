@@ -265,6 +265,9 @@ final class AuditLogTest extends ApiTestCase
         $this->entry($organisation, 'event.deleted', $owner, '-1 hour', $eventId, 'Gala', changes: ['deletedAt' => [null, '2026-11-19T19:35:47+00:00']]);
         $this->entry($organisation, 'membership.role_changed', $owner, '-30 minutes', changes: ['roleId' => [Uuid::v7()->toRfc4122(), $admin->getId()->toRfc4122()]]);
         $this->entry($organisation, 'organisation.plan_changed', $owner, '-15 minutes', changes: ['plan' => ['free', 'enterprise']]);
+        [, $elsewhere] = $this->enterprise('kemi@elsewhere.events', 'Elsewhere');
+        $theirAdmin = Type\instance_of(Role::class)->coerce(self::service(EntityManagerInterface::class)->getRepository(Role::class)->findOneBy(['organisation' => $elsewhere->getId(), 'seededAs' => SeededRole::Admin]));
+        $this->entry($organisation, 'invitation.accepted', $owner, '-10 minutes', changes: ['role' => [null, $theirAdmin->getId()->toRfc4122()]]);
 
         $this->signIn($owner);
         $entries = Type\vec(Type\shape(['action' => Type\string(), 'changes' => Type\vec(Type\string())], true))->coerce($this->send('GET', $this->path($organisation))['entries']);
@@ -275,6 +278,7 @@ final class AuditLogTest extends ApiTestCase
         self::assertSame(['Status: Active → Left or removed'], $changes['membership.removed']);
         self::assertSame(['Role: None → Admin'], $changes['membership.role_changed'], 'a role since removed reads as none, and the side that can be read stays');
         self::assertSame(['Plan: Free → Enterprise'], $changes['organisation.plan_changed']);
+        self::assertSame([], $changes['invitation.accepted'], 'another organisation\'s role is never read');
         self::assertCount(1, $changes['event.deleted']);
         self::assertStringStartsWith('Deleted at: None → ', $changes['event.deleted'][0]);
         self::assertStringNotContainsString('2026-11-19T', $changes['event.deleted'][0], 'on screen the time reads in the reader\'s zone');
