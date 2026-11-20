@@ -384,5 +384,6 @@
     "validation.budget_client_price_too_many_decimals": "Tiene demasiados decimales para la moneda de este evento. Escriba el precio así: {example}.",
     "audit.export_file": "Registro de auditoría de {organisation} {day}",
     "audit.export_too_many": "Las entradas que coinciden superan el límite de {most, number, ::group-auto}. Acote los filtros y vuelva a exportar.",
-    "budget.payer_covers_costs": "{count, plural, one {{name} cubre 1 coste. Elija primero quién lo paga.} other {{name} cubre # costes. Elija primero quién los paga.}}"
+    "budget.payer_covers_costs": "{count, plural, one {{name} cubre 1 coste. Elija primero quién lo paga.} other {{name} cubre {count, number, ::group-auto} costes. Elija primero quién los paga.}}",
+    "validation.payer_split_percent_total": "Los porcentajes suman {percent, number, ::.00}. Haga que sumen exactamente 100."
 }

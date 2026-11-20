@@ -384,5 +384,6 @@
     "validation.budget_client_price_too_many_decimals": "Il y a trop de décimales pour la devise de cet événement. Saisissez le prix sous la forme {example}.",
     "audit.export_file": "Journal d’audit – {organisation} – {day}",
     "audit.export_too_many": "Les entrées correspondantes dépassent la limite de {most, number, ::group-auto}. Affinez les filtres, puis exportez à nouveau.",
-    "budget.payer_covers_costs": "{count, plural, one {{name} couvre 1 coût. Choisissez d’abord qui le paie.} other {{name} couvre # coûts. Choisissez d’abord qui les paie.}}"
+    "budget.payer_covers_costs": "{count, plural, one {{name} couvre 1 coût. Choisissez d’abord qui le paie.} other {{name} couvre {count, number, ::group-auto} coûts. Choisissez d’abord qui les paie.}}",
+    "validation.payer_split_percent_total": "Les pourcentages font {percent, number, ::.00}. Faites en sorte qu’ils totalisent exactement 100."
 }

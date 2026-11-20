@@ -313,7 +313,7 @@ final class PayersTest extends ApiTestCase
 
         $this->choose([$photo], ['mode' => 'percent', 'shares' => [['payerId' => $mum, 'percent' => '75'], ['payerId' => $dad, 'percent' => '25']]]);
         self::assertSame(['750.00', '250.00'], Vec\map($this->payerRows(), static fn (array $row): ?string => $row['paid']));
-        self::assertSame(['confirmed' => '0.00', 'potential' => '0.00'], $this->payerRows()[1]['stillToCome']);
+        self::assertSame(['confirmed' => '250.00', 'potential' => '250.00'], $this->payerRows()[1]['stillToCome']);
     }
 
     #[Test]

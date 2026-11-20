@@ -288,7 +288,6 @@
     "validation.payer_split_payer_twice": "Give each payer one part of a cost.",
     "validation.payer_split_percent_range": "Use a number from 0 to 100.",
     "validation.payer_split_percent_decimals": "Use a number from 0 to 100, with up to two decimal places.",
-    "validation.payer_split_percent_total": "The percentages come to {total}. Make them add up to exactly 100.",
     "validation.payer_split_amount_invalid": "Enter an amount in {currency}, like {example}.",
     "validation.payer_split_amounts_over": "The fixed amounts come to {sum}, more than {least}, the least this can cost. Lower them so they fit.",
     "validation.payer_split_rest_required": "Choose who covers what is left.",

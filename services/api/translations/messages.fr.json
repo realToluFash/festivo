@@ -288,7 +288,6 @@
     "validation.payer_split_payer_twice": "Donnez à chaque payeur une seule part d’un coût.",
     "validation.payer_split_percent_range": "Utilisez un nombre entre 0 et 100.",
     "validation.payer_split_percent_decimals": "Utilisez un nombre entre 0 et 100, avec au plus deux décimales.",
-    "validation.payer_split_percent_total": "Les pourcentages font {total}. Faites en sorte qu’ils totalisent exactement 100.",
     "validation.payer_split_amount_invalid": "Saisissez un montant en {currency}, comme {example}.",
     "validation.payer_split_amounts_over": "Les montants fixes font {sum}, plus que {least}, le minimum que cela peut coûter. Réduisez-les pour qu’ils tiennent.",
     "validation.payer_split_rest_required": "Choisissez qui couvre le reste.",

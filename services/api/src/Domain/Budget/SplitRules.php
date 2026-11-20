@@ -16,7 +16,6 @@ use App\Locale\Money;
 use App\Repository\BudgetLineRepository;
 use App\Repository\PayerRepository;
 use Psl\Iter;
-use Psl\Math;
 use Psl\Regex;
 use Psl\Str;
 use Psl\Type;
@@ -134,7 +133,7 @@ final readonly class SplitRules
 
         foreach ($sent as $part) {
             $id = $part['payerId'] ?? '';
-            $path = 'split.shares.' . $id;
+            $path = Str\format('split.shares.%s', $id);
             $typed = Str\trim($part['percent'] ?? '');
             [$whole, $fraction] = [...Str\split($typed, '.'), ''];
 
@@ -164,7 +163,7 @@ final readonly class SplitRules
         $total = Iter\reduce($draft->parts, static fn (int $all, array $part): int => $all + $part['value'], 0);
 
         if (Iter\count($draft->violations) === $refused && PayerShares::WHOLE !== $total) {
-            $this->refuse($draft, 'split.shares', 'validation.payer_split_percent_total', ['{total}' => Str\format('%d.%02d', Math\div($total, 100), $total % 100)]);
+            $this->refuse($draft, 'split.shares', 'validation.payer_split_percent_total', ['percent' => $total / 100]);
         }
     }
 
@@ -187,9 +186,9 @@ final readonly class SplitRules
             $minor = Money::minorOf($typed, $currency);
 
             if (null === $minor || $minor <= 0) {
-                $this->refuse($draft, 'split.amounts.' . $id, 'validation.payer_split_amount_invalid', $example);
+                $this->refuse($draft, Str\format('split.amounts.%s', $id), 'validation.payer_split_amount_invalid', $example);
             } else {
-                $this->add($event, $draft, 'split.amounts.' . $id, $id, $minor, $rest);
+                $this->add($event, $draft, Str\format('split.amounts.%s', $id), $id, $minor, $rest);
             }
         }
 
@@ -241,7 +240,7 @@ final readonly class SplitRules
         return $payer;
     }
 
-    /** @param array<string, string> $parameters */
+    /** @param array<string, string|float> $parameters */
     private function refuse(SplitDraft $draft, string $path, string $key, array $parameters = [], string $code = ''): void
     {
         $draft->violations[] = [

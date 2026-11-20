@@ -288,7 +288,6 @@
     "validation.payer_split_payer_twice": "Dé a cada pagador una sola parte de un coste.",
     "validation.payer_split_percent_range": "Use un número del 0 al 100.",
     "validation.payer_split_percent_decimals": "Use un número del 0 al 100, con dos decimales como máximo.",
-    "validation.payer_split_percent_total": "Los porcentajes suman {total}. Haga que sumen exactamente 100.",
     "validation.payer_split_amount_invalid": "Escriba un importe en {currency}, como {example}.",
     "validation.payer_split_amounts_over": "Los importes fijos suman {sum}, más que {least}, lo mínimo que puede costar. Redúzcalos para que quepan.",
     "validation.payer_split_rest_required": "Elija quién cubre lo que queda.",
