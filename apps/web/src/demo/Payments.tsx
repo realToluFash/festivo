@@ -4,7 +4,7 @@ import { Link } from 'react-router';
 
 import { Glyph } from '../components/Glyph.tsx';
 import { Card, CardStep, Field } from '../components/SettingsParts.tsx';
-import { BudgetDialog, BudgetRow, MoneyField, Rows } from './BudgetParts.tsx';
+import { Amount, BudgetDialog, BudgetRow, MoneyField, RingMark, Rows } from './BudgetParts.tsx';
 import { TODAY, type Payment, money, shortDay } from './budget.ts';
 import { BUDGET_WORDS as BW } from './budgetWords.ts';
 import {
@@ -14,13 +14,14 @@ import {
   type MadeOpen,
   daysProblem,
   keptOf,
+  madeInset,
   madeProblems,
   reasonProblem,
   remindersStart,
 } from './payments.ts';
 import { PW } from './paymentsWords.ts';
 import { BUSY_MS, DateField, TextField } from './QuoteForms.tsx';
-import { type Quote } from './quotes.ts';
+import { type Budget } from './quotes.ts';
 import { QW } from './quotesWords.ts';
 import { type Viewer, settingsPath } from './settings.ts';
 import { VW } from './vendorsWords.ts';
@@ -156,13 +157,13 @@ export function CancelDialog({
 /** Add a payment already made, 540: scheduled and paid in one action, its Vendor starting on the page's vendor. */
 export function MadeDialog({
   made,
-  quotes,
+  budget,
   onMade,
   onClose,
   onSaved,
 }: {
   made: MadeOpen;
-  quotes: readonly Quote[];
+  budget: Budget;
   onMade: (next: MadeOpen) => void;
   onClose: () => void;
   onSaved: (draft: MadeDraft) => void;
@@ -171,6 +172,7 @@ export function MadeDialog({
   const first = useRef<HTMLSelectElement>(null);
   const [busy, wait] = useBusy();
   const { draft, problems } = made;
+  const { quotes } = budget;
   const quoteOf = (vendorId: string) => quotes.find((one) => one.vendor.id === vendorId);
   const vendors = quotes
     .map((one) => one.vendor)
@@ -254,8 +256,58 @@ export function MadeDialog({
           optional
           onChange={(reference) => set({ reference })}
         />
+        <MadeInsetRows budget={budget} draft={draft} />
       </div>
     </BudgetDialog>
+  );
+}
+
+/** sc-75579: Paid and Scheduled before and after, from the Amount paid typed; amber words once the schedule would pass the quote. Nothing here is saved. */
+function MadeInsetRows({ budget, draft }: { budget: Budget; draft: MadeDraft }) {
+  const inset = madeInset(budget, draft);
+  if (inset == null) return null;
+  const { amount, over } = inset;
+
+  return (
+    <div className="pay-inset">
+      <Rows label={PW.totalsWithThis}>
+        <li>
+          <BudgetRow
+            title={PW.paidTo(inset.vendor)}
+            end={<Amount value={<BeforeAfter now={inset.paid} amount={amount} />} />}
+          />
+        </li>
+        <li>
+          <BudgetRow
+            title={PW.scheduled}
+            end={<Amount value={<BeforeAfter now={inset.scheduled} amount={amount} />} />}
+          />
+        </li>
+      </Rows>
+      <div role="status" className="pay-over-quote">
+        {over != null && (
+          <>
+            <RingMark state="overIfAll" />
+            <span>
+              <strong>{PW.overWithThis(money(over))}</strong> {PW.staysVisible}
+            </span>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function BeforeAfter({ now, amount }: { now: number; amount: number | null }) {
+  if (amount == null) return money(now);
+
+  return (
+    <>
+      {money(now)}
+      <span aria-hidden="true"> → </span>
+      <span className="visually-hidden"> {PW.withThisPayment} </span>
+      {money(now + amount)}
+    </>
   );
 }
 

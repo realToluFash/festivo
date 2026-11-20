@@ -502,4 +502,47 @@ describe('payments on a vendor’s page, shapes and the reminder setting, in A (
       cleanup();
     }
   });
+
+  it(
+    'shows the vendor’s paid and scheduled before and after, and says by how much past the quote',
+    SLOW,
+    async () => {
+      await open(`${BLOOM}&state=made_no_amount`);
+      const made = dialog('Add a payment already made');
+      const totals = within(made).getByRole('list', {
+        name: 'The vendor’s totals with this payment',
+      });
+      const figures = () =>
+        within(totals)
+          .getAllByRole('listitem')
+          .map((one) => one.textContent);
+      expect(figures()).toEqual(['Paid to Bloom & Co£360.00', 'Scheduled£1,200.00']);
+      expect(within(made).getByRole('status').textContent).toBe('');
+
+      type(made, 'Amount paid', '120.00');
+      expect(figures()).toEqual([
+        'Paid to Bloom & Co£360.00 →  with this payment £480.00',
+        'Scheduled£1,200.00 →  with this payment £1,320.00',
+      ]);
+      expect(within(made).getByRole('status').textContent).toBe(
+        'With this, the schedule is £120.00 over the quote. The difference stays visible; nothing absorbs it.',
+      );
+
+      fireEvent.change(within(made).getByLabelText('Vendor'), { target: { value: 'v4' } });
+      expect(figures()).toEqual([
+        'Paid to Savour Kitchen£0.00 →  with this payment £120.00',
+        'Scheduled£7,500.00 →  with this payment £7,620.00',
+      ]);
+      expect(within(made).getByRole('status').textContent).toBe('');
+
+      type(made, 'Amount paid', '0');
+      expect(figures()).toEqual(['Paid to Savour Kitchen£0.00', 'Scheduled£7,500.00']);
+      cleanup();
+
+      await open(`${BLOOM}&state=made_over_already`);
+      expect(
+        within(dialog('Add a payment already made')).getByRole('status').textContent,
+      ).toContain('With this, the schedule is £180.00 over the quote.');
+    },
+  );
 });

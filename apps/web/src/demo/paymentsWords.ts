@@ -40,6 +40,12 @@ export const PW = {
   beforeFirstQuote: (vendor: string, day: string) =>
     `The date paid cannot be before the quote from ${vendor} on ${day}. Choose that date or a later one.`,
   addAsPaid: 'Add as paid',
+  totalsWithThis: 'The vendor’s totals with this payment',
+  paidTo: (vendor: string) => `Paid to ${vendor}`,
+  scheduled: 'Scheduled',
+  withThisPayment: 'with this payment',
+  overWithThis: (gap: string) => `With this, the schedule is ${gap} over the quote.`,
+  staysVisible: 'The difference stays visible; nothing absorbs it.',
   datePaidAhead: 'The date paid cannot be in the future. Choose today or an earlier date.',
   wrongCurrency: (currency: string) =>
     `Enter the amount in ${currency}, the currency this event uses.`,

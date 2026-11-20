@@ -30,6 +30,7 @@ import {
   pageVendor,
   parsedAmount,
   scheduledFor,
+  sum,
   typedAmount,
 } from './quotes.ts';
 import { QW } from './quotesWords.ts';
@@ -53,6 +54,10 @@ export const PAYMENTS_STATES: readonly string[] = [
   'cancelled',
   'already_made',
   'made_early',
+  'made_no_amount',
+  'made_under',
+  'made_over',
+  'made_over_already',
   'mark_currency',
   'mark_plan',
   'mark_future',
@@ -78,6 +83,7 @@ export const REMINDER_STATES: readonly string[] = [
 
 export function paymentsVendor(state: string, vendor: string | null): string | null {
   if (vendor != null) return vendor;
+  if (state === 'made_under') return SAVOUR;
   if (PAYMENTS_STATES.includes(state)) return BLOOM;
   if (SHAPE_STATES.includes(state)) return SAVOUR;
 
@@ -216,6 +222,32 @@ export function madePayment(draft: MadeDraft, payments: readonly Payment[], by: 
     dueOn: draft.paidOn,
     paid: { amount, on: draft.paidOn, by, reference: draft.reference.trim() },
     cancelled: null,
+  };
+}
+
+export interface MadeInset {
+  vendor: string;
+  paid: number;
+  scheduled: number;
+  amount: number | null;
+  over: number | null;
+}
+
+/** sc-75579's preview of the vendor's Paid and Scheduled: an after only for an amount sc-88 accepts, and the gap only once past the quote. */
+export function madeInset(budget: Budget, draft: MadeDraft): MadeInset | null {
+  const quote = budget.quotes.find((one) => one.vendor.id === draft.vendorId);
+  if (quote == null) return null;
+  const kept = scheduledFor(budget, draft.vendorId);
+  const scheduled = sum(kept);
+  const amount = parsedAmount(draft.amount);
+  const gap = amount == null ? 0 : scheduled + amount - quote.amount;
+
+  return {
+    vendor: quote.vendor.name,
+    paid: kept.reduce((total, one) => total + (one.paid?.amount ?? 0), 0),
+    scheduled,
+    amount,
+    over: gap > 0 ? gap : null,
   };
 }
 
@@ -533,6 +565,16 @@ const LONG_REFERENCE =
 const TOO_LONG_WHAT =
   'Second instalment for the wedding breakfast, the canapés on the lawn and the late supper after the band';
 const BALANCE = 'p6';
+
+/** Add a payment already made's states, each a change to Buttonholes, £120.00 paid on Mon, Nov 2: sc-75579's inset reads Bloom & Co at £1,200 scheduled against £1,200 quoted, Savour Kitchen at £7,500 against £9,000. */
+const MADE: Readonly<Record<string, Partial<MadeDraft>>> = {
+  already_made: {},
+  made_early: { paidOn: '2026-10-05' },
+  made_no_amount: { amount: '' },
+  made_under: { what: 'Extra canapés' },
+  made_over: {},
+  made_over_already: {},
+};
 const PAID_MORE = 90000;
 
 export function paymentsStart(
@@ -613,17 +655,25 @@ export function paymentsStart(
   }
   if (state === 'shape_failed') return shaped({ ...shapingOf('instalments'), failed: true });
   if (state === 'shape_raced') return shaped(shapingOf('deposit', true), base.budget);
-  if (state === 'already_made' || state === 'made_early') {
+  const madeAs = MADE[state];
+  if (madeAs != null) {
     const draft: MadeDraft = {
       vendorId,
       what: 'Buttonholes',
       amount: '120.00',
-      paidOn: state === 'made_early' ? '2026-10-05' : '2026-11-02',
+      paidOn: '2026-11-02',
       reference: '',
+      ...madeAs,
     };
+    const stems = ADDED[0];
+    const already = state === 'made_over_already' && stems != null;
 
     return {
       ...start,
+      budget: already
+        ? { ...base.budget, payments: [...base.budget.payments, stems] }
+        : start.budget,
+      addedPaid: already ? [stems.id] : [],
       made: { draft, problems: state === 'made_early' ? madeProblems(draft, quote) : {} },
     };
   }
@@ -754,6 +804,27 @@ export const PAYMENTS_PAGES: readonly DemoGroup[] = [
       {
         to: budgetAt('payments_read_only', { vendor: BLOOM, plan: 'downgraded' }),
         name: 'Read only after a downgrade: the overdue balance is no longer chased (payments_read_only)',
+      },
+    ],
+  },
+  {
+    name: 'What a payment already made does to the vendor’s totals (sc-75579)',
+    states: [
+      {
+        to: bloom('made_no_amount'),
+        name: 'No amount yet: Paid and Scheduled as they stand, no after (made_no_amount)',
+      },
+      {
+        to: savour('made_under'),
+        name: 'Under the quote: Savour Kitchen, £120.00, nothing said about the quote (made_under)',
+      },
+      {
+        to: bloom('made_over'),
+        name: 'Over the quote: Bloom & Co, £120.00 over, in amber (made_over)',
+      },
+      {
+        to: bloom('made_over_already'),
+        name: 'Already £60.00 over: the line gives the gap after, £180.00 (made_over_already)',
       },
     ],
   },

@@ -13,6 +13,7 @@ import {
   daysProblem,
   differenceWords,
   eventDays,
+  madeInset,
   madeProblems,
   offersShapes,
   paidLineOf,
@@ -46,6 +47,10 @@ const SPEC_NAMES = [
   'cancelled',
   'already_made',
   'made_early',
+  'made_no_amount',
+  'made_under',
+  'made_over',
+  'made_over_already',
   'add_payment',
   'shape_deposit',
   'shape_clamped',
@@ -341,5 +346,40 @@ describe('payments on a vendor’s page, shapes and reminders, in A (sc-88, sc-1
     for (const fine of ['1', '3', ' 30 ']) expect(daysProblem(fine)).toBeNull();
     for (const wrong of ['', '0', '31', '2.5', 'three', '-1'])
       expect(daysProblem(wrong)).toBe('Enter a whole number of days from 1 to 30.');
+  });
+
+  it('previews a payment already made against the vendor’s totals, the gap only past the quote', () => {
+    const inset = (state: string, amount?: string) => {
+      const { budget, made } = startOf(state);
+      if (made == null) throw new Error(`${state} opens no dialog`);
+
+      return madeInset(budget, amount == null ? made.draft : { ...made.draft, amount });
+    };
+    expect(paymentsVendor('made_under', null)).toBe('v4');
+    expect(inset('made_no_amount')).toEqual({
+      vendor: 'Bloom & Co',
+      paid: 36000,
+      scheduled: 120000,
+      amount: null,
+      over: null,
+    });
+    expect(inset('made_under')).toMatchObject({
+      paid: 0,
+      scheduled: 750000,
+      amount: 12000,
+      over: null,
+    });
+    expect(inset('made_over')).toMatchObject({ paid: 36000, scheduled: 120000, over: 12000 });
+    expect(inset('made_over_already')).toMatchObject({
+      paid: 42000,
+      scheduled: 126000,
+      over: 18000,
+    });
+    expect(inset('made_over', '0')).toMatchObject({ amount: null, over: null });
+    expect(inset('made_over', '12,0.5.0')).toMatchObject({ amount: null, over: null });
+    expect(startOf('made_over_already').addedPaid).toEqual(['p20']);
+    const { budget, made } = startOf('made_over');
+    expect(madeInset(budget, { ...made!.draft, vendorId: 'v4' })?.vendor).toBe('Savour Kitchen');
+    expect(madeInset(budget, { ...made!.draft, vendorId: 'v9' })).toBeNull();
   });
 });
