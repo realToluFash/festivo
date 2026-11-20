@@ -414,6 +414,7 @@ export function PayersScreen({
   function choose(next: ChooseStart): void {
     setNotice(null);
     setLive(null);
+    setWashed([]);
     setChoosing(next);
     moved();
   }
@@ -457,6 +458,7 @@ export function PayersScreen({
     try {
       const saved = form.id == null ? await source.add(typed) : await source.change(form.id, typed);
       setLive(null);
+      setWashed([]);
       setNotice(null);
       await readOwn();
       if (form.id == null) setOpenId(saved.id);
@@ -516,6 +518,7 @@ export function PayersScreen({
       return;
     }
     setLive(null);
+    setWashed([]);
     const now = await readOwn();
     setNotice({ kind: 'removed', id: payer.id, name: payer.name });
     setOpenId(now == null ? null : openFirst(now.payers, null));
