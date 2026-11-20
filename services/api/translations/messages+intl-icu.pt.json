@@ -383,5 +383,16 @@
     "validation.budget_client_price_invalid": "Introduza um preço de {min} ou mais, só com algarismos.",
     "validation.budget_client_price_too_many_decimals": "Tem demasiadas casas decimais para a moeda deste evento. Introduza o preço assim: {example}.",
     "audit.export_file": "Registo de auditoria de {organisation} {day}",
-    "audit.export_too_many": "As entradas correspondentes ultrapassam o limite de {most, number, ::group-auto}. Restrinja os filtros e exporte novamente."
+    "audit.export_too_many": "As entradas correspondentes ultrapassam o limite de {most, number, ::group-auto}. Restrinja os filtros e exporte novamente.",
+    "payment_reminder.title.overdue_on": "{count, plural, one {# payment} other {# payments}} overdue on {event}",
+    "payment_reminder.title.overdue": "{count, plural, one {# payment} other {# payments}} overdue",
+    "payment_reminder.title.coming_due_on": "{count, plural, one {# payment} other {# payments}} due in the next {days, plural, one {# day} other {# days}} on {event}",
+    "payment_reminder.title.coming_due": "{count, plural, one {# payment} other {# payments}} due in the next {days, plural, one {# day} other {# days}}",
+    "payment_reminder.title.mixed": "{overdue, plural, one {# payment} other {# payments}} overdue, {count, number, ::group-auto} due in the next {days, plural, one {# day} other {# days}}",
+    "payment_reminder.row": "{vendor} · {amount} · {when}",
+    "payment_reminder.row_on": "{vendor} · {event} · {amount} · {when}",
+    "payment_reminder.due": "due {date}",
+    "payment_reminder.was_due": "was due {date}",
+    "payment_reminder.overdue_row": "{row} · Overdue · last reminder",
+    "payment_reminder.last_about": "This is the last reminder about the {what} to {vendor}."
 }

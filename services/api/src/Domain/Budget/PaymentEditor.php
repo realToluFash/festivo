@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domain\Budget;
 
 use App\Audit\Auditor;
+use App\Domain\Budget\Reminder\PaymentReminders;
 use App\Entity\ScheduledPayment;
 use App\Entity\User;
 use App\Entity\VendorEngagement;
@@ -46,6 +47,7 @@ final readonly class PaymentEditor
         private Auditor $auditor,
         private ClockInterface $clock,
         private TranslatorInterface $translator,
+        private PaymentReminders $paymentReminders,
     ) {
     }
 
@@ -57,6 +59,7 @@ final readonly class PaymentEditor
             $details = $this->quoteRules->paid($sent, $payment->getEngagement()->getEvent());
             $before = self::recorded($payment);
             $payment->markPaid($details->amountMinor, $details->paidOn, $details->reference, $this->clock->now(), $by);
+            $this->paymentReminders->follow($payment);
             $this->audit(self::MARKED_PAID, $payment, $by, $before);
         });
     }
@@ -73,12 +76,14 @@ final readonly class PaymentEditor
 
             if ($payment->isAddedAsPaid()) {
                 $this->auditor->record(self::DELETED, 'ScheduledPayment', $payment->getId(), Actor::User, $by->getId(), $by->getName(), Auditor::diff($before, []));
+                $this->paymentReminders->forget($payment->getId());
                 $this->entityManager->remove($payment);
 
                 return;
             }
 
             $payment->unmark();
+            $this->paymentReminders->follow($payment);
             $this->audit(self::UNMARKED, $payment, $by, $before);
         });
     }
@@ -94,6 +99,7 @@ final readonly class PaymentEditor
             $this->refuseSettled($payment);
             $before = self::recorded($payment);
             $payment->cancel($this->quoteRules->reason($sent), $this->clock->now(), $by);
+            $this->paymentReminders->follow($payment);
             $this->audit(self::CANCELLED, $payment, $by, $before);
         });
     }
@@ -107,6 +113,7 @@ final readonly class PaymentEditor
 
             $before = self::recorded($payment);
             $payment->restore();
+            $this->paymentReminders->follow($payment);
             $this->audit(self::RESTORED, $payment, $by, $before);
         });
     }
