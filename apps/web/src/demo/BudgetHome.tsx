@@ -25,6 +25,7 @@ import {
   type Payment,
   CURRENCY,
   PAYMENTS,
+  cldrMoney,
   QUOTES,
   costLine,
   dueList,
@@ -287,7 +288,8 @@ export function BudgetHomeContent({
           : MARKUPS,
   );
   const feeLine = lines.some((one) => one.id === FEE_LINE.id);
-  const fee = first === 'margin_zero_price' || feeLine ? 0 : PLANNING_FEE;
+  const [planningFee, setFee] = useState(first === 'margin_zero_price' ? 0 : PLANNING_FEE);
+  const fee = feeLine ? 0 : planningFee;
   const ceilingLive = first.startsWith('ceiling_live');
   const [opened, setOpened] = useState<string | null>(() => openedOf(first));
   const [removed, setRemoved] = useState<Removed | null>(() => removedOf(first, heads));
@@ -509,6 +511,10 @@ export function BudgetHomeContent({
                 first={first}
                 markups={markups}
                 fee={feeLine ? null : fee}
+                onFee={(price) => {
+                  setFee(price);
+                  tell('Saved.');
+                }}
                 onPrice={(id, price) => {
                   setMarkups((now) =>
                     price == null
@@ -1209,6 +1215,7 @@ function MarginCosts({
   first,
   markups,
   fee,
+  onFee,
   onPrice,
 }: {
   lines: CostLine[];
@@ -1216,6 +1223,7 @@ function MarginCosts({
   first: string;
   markups: Markups;
   fee: number | null;
+  onFee: (price: number) => void;
   onPrice: (id: string, price: number | null) => void;
 }) {
   const refused = first === 'price_negative' || first === 'price_decimals';
@@ -1276,7 +1284,7 @@ function MarginCosts({
                             null && (
                             <p className="bud-below" role="status">
                               <DownArrow />
-                              Below cost: margin {whole(minorOf(charged) - cost)}.
+                              Below cost: margin {cldrMoney(minorOf(charged) - cost)}.
                             </p>
                           )}
                         <div className="bud-opened-actions">
@@ -1321,11 +1329,43 @@ function MarginCosts({
           <CategoryHead name="Other" />
           <Rows>
             <li>
-              <BudgetRow
-                title="Planning fee"
-                lines={[`Cost £0.00 · Charged at ${money(fee)} · its own price`]}
-                end={<Amount value={fee === 0 ? 'No figure' : '100.0%'} />}
-              />
+              {opened === 'fee' ? (
+                <Opened>
+                  <p className="bud-opened-name">Planning fee</p>
+                  <MoneyField
+                    label="Charged at"
+                    value={charged}
+                    help="Cost £0.00"
+                    error={chargedTried ? priceProblem(charged, CURRENCY) : null}
+                    inputRef={chargedField}
+                    onChange={setCharged}
+                  />
+                  <div className="bud-opened-actions">
+                    <TextAction label={W.cancel} onClick={() => setOpened(null)} />
+                    <TextAction
+                      label={W.save}
+                      onClick={() => {
+                        setChargedTried(true);
+                        if (priceProblem(charged, CURRENCY) != null)
+                          return chargedField.current?.focus();
+                        onFee(minorOf(charged));
+                        setOpened(null);
+                      }}
+                    />
+                  </div>
+                </Opened>
+              ) : (
+                <BudgetRow
+                  title="Planning fee"
+                  lines={[`Cost £0.00 · Charged at ${money(fee)} · its own price`]}
+                  end={<Amount value={fee === 0 ? 'No figure' : '100.0%'} />}
+                  onOpen={() => {
+                    setChargedTried(false);
+                    setCharged((fee / 100).toFixed(2));
+                    setOpened('fee');
+                  }}
+                />
+              )}
             </li>
           </Rows>
         </div>
