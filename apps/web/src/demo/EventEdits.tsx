@@ -59,6 +59,7 @@ import { type CoverStart, type CoverUploaded, CoverEdit } from '../components/Co
 import { Select } from '../components/EventFormParts.tsx';
 import { Glyph } from '../components/Glyph.tsx';
 import { Ask } from '../components/SettingsParts.tsx';
+import { focusStep, landOnNotice } from '../stepFocus.ts';
 import {
   HostFields as ProductHostFields,
   VenueFieldsView,
@@ -692,12 +693,20 @@ export function CurrencyPart({ event, state, onDirty, onClose, onSave, onLatest 
   const [picked, setPicked] = useState<Currency>(
     refusing ? 'EUR' : answers == null ? event.currency : last,
   );
-  const [refused, setRefused] = useState(refusing);
+  const [refused, setRefused] = useState(refusing ? 0 : null);
   const [pending, setPending] = useState(answers);
   const answered = useSaveAnswer();
+  const notice = useRef<HTMLDivElement>(null);
   const changed = picked !== event.currency;
 
   useDirty(changed, onDirty);
+  useLayoutEffect(() => {
+    const landed = notice.current;
+
+    if (refused == null || refused === 0 || landed == null) return;
+
+    focusStep(landOnNotice(landed));
+  }, [refused]);
 
   return (
     <Opened
@@ -705,12 +714,16 @@ export function CurrencyPart({ event, state, onDirty, onClose, onSave, onLatest 
       changed={changed}
       onCancel={onClose}
       onSave={() => {
-        if (refusing) setRefused(true);
+        if (refusing) setRefused((times) => (times ?? 0) + 1);
         else if (pending != null) answered.give(pending);
         else onSave({ ...event, currency: picked });
       }}
     >
-      {refused && <Broken>{W.currencyInUse}</Broken>}
+      {refused != null && (
+        <Broken key={refused} landing={refused === 0 ? undefined : notice}>
+          {W.currencyInUse}
+        </Broken>
+      )}
       <Radios legend={W.currency} choices={CURRENCY_CHOICES} picked={picked} onPick={setPicked} />
       <SaveNotice
         answered={answered}
