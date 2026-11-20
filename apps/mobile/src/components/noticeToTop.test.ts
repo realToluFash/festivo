@@ -7,6 +7,8 @@ const read = (file: string) => readFileSync(join('src', 'components', file), 'ut
 const parts = read('EventPartEdits.tsx');
 const edits = read('EventEdits.tsx');
 const overlays = read('SummaryOverlays.tsx');
+const sight = read('focusedFieldInSight.ts');
+const field = read('Field.tsx');
 const shell = edits.slice(edits.indexOf('export function EditShell('));
 const save = parts.slice(
   parts.indexOf('function usePartSave('),
@@ -36,5 +38,10 @@ describe('a part’s screen goes to its top when Save is answered with a notice 
 
   it('lets that scroll land before the focused field is followed again', () => {
     expect(screen).toMatch(/holdField\(\);\s+scroll\.current\?\.scrollTo/u);
+  });
+
+  it('brings the focused field back above the keys at the next character typed, hold or no hold', () => {
+    expect(field).toMatch(/onChangeText\?\.\(text\);\s+fieldTyped\(\);/u);
+    expect(sight).toContain('const unwatchTyped = watchFocusedFieldTyped(bring);');
   });
 });
