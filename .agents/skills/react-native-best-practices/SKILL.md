@@ -59,6 +59,7 @@ If metrics did not improve, revert and try the next suggested fix.
 - Do not suggest `useMemo` or `useCallback` dependency changes unless behavior is demonstrably incorrect or profiling shows wasted work tied to that value.
 - Do not report stale closures speculatively. Show the stale read path, a repro, or profiler evidence before calling it out.
 - When profiling a flow, measure the target interaction itself. Do not treat component tree depth or component count as the main performance evidence.
+- A text that wraps gets lines of whole points at the size it is drawn at: `wholeLines` on `Text`, or `wholeLineHeight(size, drawn)` from `src/layout/textSize.ts` where a style sets its own line. A fractional line (`14 * 1.45` is 43.5 points at the largest text size) rounds the box short and iOS clips the last line, depending on the words (sc-69816, sc-13281). Where it matters, guard it from the source in `src/kitGuard.test.ts`.
 
 ### Critical: FPS & Re-renders
 

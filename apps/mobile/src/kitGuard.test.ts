@@ -2045,3 +2045,20 @@ describe("a hidden measure reads a word at its own width, whatever the caller's 
     ).toMatch(/alignSelf: 'flex-start'/u);
   });
 });
+
+describe("a section's hint is drawn in lines of whole points (sc-13281)", () => {
+  const text = readFileSync(join('src', 'components', 'SummaryRows.tsx'), 'utf8');
+  const foot = /export function SectionFoot\([\s\S]*?\n\}\n/u.exec(text)?.[0] ?? '';
+  const footStyle = /\n {2}foot: \{([^}]*)\}/u.exec(text)?.[1] ?? '';
+
+  it("gives SectionFoot's Text wholeLines", () => {
+    expect(
+      textTags(foot).map(({ markup }) => markup),
+      'Without it the last line of a hint is clipped at the larger text sizes (QA #75205).',
+    ).toEqual([expect.stringMatching(/\bwholeLines\b/u)]);
+  });
+
+  it('sets no line height of its own over it', () => {
+    expect(footStyle).not.toMatch(/lineHeight/u);
+  });
+});

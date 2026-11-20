@@ -4,6 +4,7 @@ import { type Ref, useState } from 'react';
 import { Platform, Pressable, StyleSheet, View, type ViewInstance } from 'react-native';
 
 import { TextField, type TextFieldProps } from './Field.tsx';
+import { TapPressable } from './TapPressable.tsx';
 import { Text } from './Text.tsx';
 import { CappedWholeWords } from './Title.tsx';
 import { pickedInto, pickerValue } from '../kit/eventForm.ts';
@@ -95,6 +96,7 @@ export function MomentBox({
   line = null,
   grown = false,
   onPress,
+  tapOnly = false,
   ref,
   testID,
 }: {
@@ -111,10 +113,13 @@ export function MomentBox({
   /** Its words grow up to the page title's size and step down rather than break, the box growing with them (sc-75213). */
   grown?: boolean;
   onPress: () => void;
+  /** In a list that scrolls, a touch that moved it opens nothing (sc-75211). */
+  tapOnly?: boolean;
   ref?: Ref<ViewInstance>;
   testID?: string;
 }) {
   const { t } = useTranslation();
+  const Press = tapOnly ? TapPressable : Pressable;
   const words =
     value === ''
       ? ''
@@ -128,7 +133,7 @@ export function MomentBox({
   const [room, setRoom] = useState(0);
 
   return (
-    <Pressable
+    <Press
       ref={ref}
       onPress={onPress}
       style={({ pressed }) => [
@@ -165,7 +170,7 @@ export function MomentBox({
           {words}
         </Text>
       )}
-    </Pressable>
+    </Press>
   );
 }
 

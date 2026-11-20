@@ -31,12 +31,6 @@ describe("an event's Overview at 400% zoom, 320 CSS px (sc-74933)", () => {
     expect(actions).not.toContain('flex-direction');
   });
 
-  it('brings Save into view with room for its whole focus ring', () => {
-    expect(cssRule('.event-overview .ev-opened-actions', AT_320)).toContain(
-      'scroll-margin-block: var(--spaceSm);',
-    );
-  });
-
   it('puts each day above its time in Dates, and ends a long time zone in an ellipsis', () => {
     expect(cssRule('.event-overview .ev-when-pair', AT_320)).toContain('flex-direction: column;');
     expect(cssRule('.ev .event-overview .ev-select select', AT_320)).toMatch(

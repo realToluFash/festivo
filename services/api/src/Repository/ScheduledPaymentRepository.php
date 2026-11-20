@@ -6,6 +6,7 @@ namespace App\Repository;
 
 use App\Entity\Event;
 use App\Entity\ScheduledPayment;
+use App\Entity\VendorEngagement;
 use App\Http\Access\Interfaces\EventScopedRepositoryInterface;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\Persistence\ManagerRegistry;
@@ -49,5 +50,17 @@ final class ScheduledPaymentRepository extends ServiceEntityRepository implement
             ->addOrderBy('p.id', 'ASC')
             ->getQuery()
             ->getResult();
+    }
+
+    /** Paid and cancelled payments count: an engagement with any payment at all has a schedule. */
+    public function hasAny(VendorEngagement $engagement): bool
+    {
+        return null !== $this->createQueryBuilder('p')
+            ->select('1')
+            ->where('p.engagement = :engagement')
+            ->setParameter('engagement', $engagement->getId(), 'uuid')
+            ->setMaxResults(1)
+            ->getQuery()
+            ->getOneOrNullResult();
     }
 }
