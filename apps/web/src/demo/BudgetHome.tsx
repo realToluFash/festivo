@@ -246,6 +246,10 @@ export function BudgetHomeContent({
   vendorsQuoted,
   payments = PAYMENTS,
   onMark,
+  readOnly: readOnlyPlan,
+  noCosts = false,
+  quotesBeside = false,
+  onCosts,
 }: {
   event: SampleEvent;
   state: string;
@@ -255,13 +259,17 @@ export function BudgetHomeContent({
   vendorsQuoted: ReactNode;
   payments?: readonly Payment[];
   onMark?: ((payment: Payment) => void) | undefined;
+  readOnly?: boolean;
+  noCosts?: boolean;
+  quotesBeside?: boolean;
+  onCosts?: (has: boolean) => void;
 }) {
   const [params] = useSearchParams();
   const navigate = useNavigate();
   const enterprise = planOf(params.get('plan')) === 'enterprise';
   const currency = params.get('currency') ?? CURRENCY;
   const [state, setState] = useState(first);
-  const [lines, setLines] = useState(() => linesOf(first));
+  const [lines, setLines] = useState(() => (noCosts ? [] : linesOf(first)));
   const heads = headsOf(first);
   const [ceilings, setCeilings] = useState(() => ceilingsOf(first));
   const [listed, setListed] = useState(LISTED.includes(first) || first === 'ceiling_no_costs');
@@ -320,9 +328,11 @@ export function BudgetHomeContent({
   useEffect(() => {
     if (first === 'ceiling_cleared_one') tell('Ceiling saved.');
   }, [first, tell]);
-  const readOnly = first === 'read_only';
+  const readOnly = readOnlyPlan ?? first === 'read_only';
   const live = first !== 'not_live';
   const empty = lines.length === 0;
+
+  useEffect(() => onCosts?.(!empty), [empty, onCosts]);
 
   if (state === 'loading')
     return (
@@ -398,7 +408,7 @@ export function BudgetHomeContent({
           onTry={() => void navigate(budgetAt('populated'))}
         />
       )}
-      {readOnly && <ReadOnlyLine />}
+      {readOnly && (!empty || quotesBeside) && <ReadOnlyLine />}
       {empty && removed != null && (
         <UndoBar
           words={removed.words}
@@ -464,13 +474,21 @@ export function BudgetHomeContent({
             </Block>
           }
           right={
-            <Block title="Share">
-              <p className="desk-line">No links yet.</p>
-              <Link className="desk-text" to={budgetAt('no_links')}>
-                <Glyph name="plus" size={17} weight={2.3} />
-                Create a link
-              </Link>
-            </Block>
+            <>
+              {quotesBeside && (
+                <>
+                  {dueNext}
+                  {vendorsQuoted}
+                </>
+              )}
+              <Block title="Share">
+                <p className="desk-line">No links yet.</p>
+                <Link className="desk-text" to={budgetAt('no_links')}>
+                  <Glyph name="plus" size={17} weight={2.3} />
+                  Create a link
+                </Link>
+              </Block>
+            </>
           }
         />
       ) : (

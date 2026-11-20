@@ -107,6 +107,7 @@ export function QuoteDialog({
   vendors,
   current,
   viewer,
+  costs = true,
   onOpened,
   onList,
   onClose,
@@ -117,6 +118,7 @@ export function QuoteDialog({
   vendors: readonly Vendor[];
   current: Quote | null;
   viewer: BudgetViewer;
+  costs?: boolean;
   onOpened: (next: Opened) => void;
   onList: (list: boolean) => void;
   onClose: () => void;
@@ -231,6 +233,7 @@ export function QuoteDialog({
     <LinesField
       budget={budget}
       vendorId={vendorId}
+      costs={costs}
       ticked={draft.lines}
       onTick={(next) => set({ lines: next })}
     />
@@ -515,15 +518,30 @@ function lineLine(id: string, elsewhere: Quote | null): string {
 function LinesField({
   budget,
   vendorId,
+  costs,
   ticked,
   onTick,
 }: {
   budget: Budget;
   vendorId: string;
+  costs: boolean;
   ticked: readonly string[];
   onTick: (lines: string[]) => void;
 }) {
   const id = useId();
+
+  if (!costs)
+    return (
+      <div className="desk-field qt-lines" role="group" aria-labelledby={id}>
+        <div className="qt-label-row">
+          <span id={id} className="desk-label">
+            {QW.linesItAgrees}
+          </span>
+          <span className="qt-optional">{QW.optional}</span>
+        </div>
+        <p className="desk-line">{QW.noCostLines}</p>
+      </div>
+    );
 
   return (
     <div className="desk-field qt-lines" role="group" aria-labelledby={id}>
