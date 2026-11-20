@@ -119,7 +119,7 @@ final class PaymentRemindersTest extends ApiTestCase
 
         $this->as($this->owner, 'PUT', $this->setting(), ['days' => 5]);
         self::assertSame(
-            [['organisation.payment_reminders_changed', 'Harriet Cole', '{"paymentReminderDays": [3, 5]}']],
+            [['organisation.payment_reminders_changed', 'Harriet Cole', '{"paymentReminderDays":[3,5]}']],
             self::em()->getConnection()->fetchAllNumeric("SELECT action, actor_label, changes::text FROM audit_entries WHERE action LIKE 'organisation.payment%'"),
         );
     }
