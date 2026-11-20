@@ -1,0 +1,49 @@
+/* sc-74933: at 400% zoom (320 CSS px) an event's Overview reflows into one column under the shell's stacked sidebar, as its demo does (WCAG 2.2 1.4.10). */
+@media (width <= 40rem) {
+  .event-desk:has(.event-overview) .ev-crumb ol,
+  .event-overview .desk-row {
+    flex-wrap: wrap;
+  }
+
+  .event-overview .ev-columns {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  /* An open part gives its indent back to its fields: the accent rule stays, the 14 px before it goes. */
+  .event-overview .ev-opened {
+    margin-left: 0;
+  }
+
+  /* Dates: each day sits above its time, both the part's width, so the whole date shows; the time zone's list keeps to the part too. */
+  .event-overview .ev-when-pair {
+    flex-direction: column;
+  }
+
+  .event-overview .ev-when-pair .ev-input {
+    flex: none;
+    width: auto;
+  }
+
+  .ev .event-overview .ev-select select {
+    min-width: 0;
+    text-overflow: ellipsis;
+  }
+
+  /* Cancel and Save stay side by side, wrapping only in a language too long for one line; brought into view after a notice, Save keeps its whole 5 px focus ring inside the window. */
+  .event-overview .ev-opened-actions {
+    flex-wrap: wrap;
+    scroll-margin-block: var(--spaceSm);
+  }
+
+  /* Show the latest version? stacks its two actions in their reading order, Keep editing above Show the latest. */
+  body:has(.event-overview .ev-save-said) .desk-ask-pair.actions-pair {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--spaceXs);
+  }
+
+  body:has(.event-overview .ev-save-said) .desk-ask-pair .desk-text {
+    min-height: var(--sizeHit);
+    margin-inline: 0;
+  }
+}

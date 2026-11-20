@@ -22,7 +22,16 @@ import {
   typedAmount,
 } from '@soirely/domain';
 import type { TFunction } from 'i18next';
-import { type RefObject, useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
+import {
+  type ReactNode,
+  type RefObject,
+  useCallback,
+  useEffect,
+  useId,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, Navigate, useParams } from 'react-router';
 
@@ -391,6 +400,39 @@ export function BudgetArea({ event }: { event: OrganisationEvent }) {
     );
   };
 
+  const undo = async (): Promise<void> => {
+    if (removed == null || removed.gone === true) return;
+    try {
+      await api.putBackBudgetLine(event.id, removed.line.id);
+    } catch (error) {
+      const lapsed = error instanceof ApiError && error.status === 404;
+      const currencyChanged = error instanceof ApiError && error.is('budget_line_currency_changed');
+      const gone = lapsed || currencyChanged;
+      const staff = error instanceof ApiError && error.fieldErrors()['basis'] != null;
+      const words = t(
+        currencyChanged
+          ? 'budget.notBackCurrency'
+          : lapsed
+            ? 'budget.notBackGone'
+            : staff
+              ? 'budget.notBackStaff'
+              : 'budget.notBack',
+      );
+      setRemoved({ line: removed.line, words, gone });
+      setHeard(words);
+      return;
+    }
+    await readOwn();
+    setRemoved(null);
+    setHeard(t('budget.back', { name: removed.line.label }));
+    setLit(removed.line.id);
+    setToRow(removed.line.id);
+  };
+
+  const undoBar = removed != null && (
+    <UndoBar removed={removed} undoRef={undoRef} onUndo={() => void undo()} />
+  );
+
   return (
     <LayersContext value={layers}>
       <div className="desk ev desk-page ev-page bt">
@@ -462,6 +504,7 @@ export function BudgetArea({ event }: { event: OrganisationEvent }) {
               {live != null && stale == null && <LiveLine words={live} />}
               {stale != null && <NotLive at={stale.at} onTry={stale.retry} />}
               {readOnly && <ReadOnlyLine />}
+              {budget.lines.length === 0 && undoBar}
               {budget.lines.length === 0 ? (
                 <FirstCard event={event} budget={budget} onAdd={openAdd} />
               ) : (
@@ -486,8 +529,7 @@ export function BudgetArea({ event }: { event: OrganisationEvent }) {
                       opened={opened}
                       lit={lit}
                       said={said}
-                      removed={removed}
-                      undoRef={undoRef}
+                      bar={undoBar}
                       onOpen={(id) => {
                         setOpened((now) => (now === id ? null : id));
                         setSaid(null);
@@ -533,36 +575,6 @@ export function BudgetArea({ event }: { event: OrganisationEvent }) {
                         setRemoved({ line, words });
                         await readOwn();
                         window.setTimeout(() => undoRef.current?.focus(), 0);
-                      }}
-                      onUndo={async () => {
-                        if (removed == null || removed.gone === true) return;
-                        try {
-                          await api.putBackBudgetLine(event.id, removed.line.id);
-                        } catch (error) {
-                          const lapsed = error instanceof ApiError && error.status === 404;
-                          const currencyChanged =
-                            error instanceof ApiError && error.is('budget_line_currency_changed');
-                          const gone = lapsed || currencyChanged;
-                          const staff =
-                            error instanceof ApiError && error.fieldErrors()['basis'] != null;
-                          const words = t(
-                            currencyChanged
-                              ? 'budget.notBackCurrency'
-                              : lapsed
-                                ? 'budget.notBackGone'
-                                : staff
-                                  ? 'budget.notBackStaff'
-                                  : 'budget.notBack',
-                          );
-                          setRemoved({ line: removed.line, words, gone });
-                          setHeard(words);
-                          return;
-                        }
-                        await readOwn();
-                        setRemoved(null);
-                        setHeard(t('budget.back', { name: removed.line.label }));
-                        setLit(removed.line.id);
-                        setToRow(removed.line.id);
                       }}
                     />
                   </div>
@@ -811,27 +823,23 @@ function Costs({
   opened,
   lit,
   said,
-  removed,
-  undoRef,
+  bar,
   onOpen,
   onClose,
   onSave,
   onSaveFailed,
   onRemove,
-  onUndo,
 }: {
   budget: EventBudget;
   opened: string | null;
   lit: string | null;
   said: Said | null;
-  removed: Removed | null;
-  undoRef: RefObject<HTMLButtonElement | null>;
+  bar: ReactNode;
   onOpen: (id: string) => void;
   onClose: (id: string) => void;
   onSave: (line: BudgetLine, typed: BudgetLineTyped) => Promise<void>;
   onSaveFailed: (line: BudgetLine) => void;
   onRemove: (line: BudgetLine) => Promise<void>;
-  onUndo: () => Promise<void>;
 }) {
   const { t } = useTranslation();
   const id = useId();
@@ -840,22 +848,7 @@ function Costs({
   return (
     <section className="desk-block bt-block" aria-labelledby={id}>
       <Head title={<span id={id}>{t('budget.costs')}</span>} />
-      {removed != null && (
-        <div className="bt-undo" role="status">
-          <span className="bt-undo-words">{removed.words}</span>
-          {removed.gone !== true && (
-            <button
-              ref={undoRef}
-              type="button"
-              className="bt-undo-do"
-              onClick={() => void onUndo()}
-            >
-              <Glyph name="undo" size={16} weight={2.4} />
-              {t('budget.undo')}
-            </button>
-          )}
-        </div>
-      )}
+      {bar}
       {categoriesOf(budget.lines).map((category) => (
         <div key={category} className="bt-cat">
           <div className="bt-category">
@@ -900,6 +893,38 @@ function Costs({
         </div>
       ))}
     </section>
+  );
+}
+
+/** The bar a removal leaves, with Undo: at the top of Costs, or above No costs yet once the only cost has gone. Refused, it keeps its place with a cross and takes focus itself. */
+function UndoBar({
+  removed,
+  undoRef,
+  onUndo,
+}: {
+  removed: Removed;
+  undoRef: RefObject<HTMLButtonElement | null>;
+  onUndo: () => void;
+}) {
+  const { t } = useTranslation();
+  const bar = useRef<HTMLDivElement>(null);
+  const refused = removed.gone === true;
+
+  useEffect(() => {
+    if (refused) bar.current?.focus();
+  }, [refused]);
+
+  return (
+    <div ref={bar} className="bt-undo" role="status" tabIndex={refused ? -1 : undefined}>
+      {refused && <Glyph name="clear" size={16} weight={2.6} />}
+      <span className="bt-undo-words">{removed.words}</span>
+      {!refused && (
+        <button ref={undoRef} type="button" className="bt-undo-do" onClick={onUndo}>
+          <Glyph name="undo" size={16} weight={2.4} />
+          {t('budget.undo')}
+        </button>
+      )}
+    </div>
   );
 }
 
