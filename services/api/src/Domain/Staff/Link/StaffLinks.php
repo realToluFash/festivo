@@ -41,6 +41,8 @@ final readonly class StaffLinks
 
     public const string REPLACED = 'staff.link_replaced';
 
+    public const string PATH = '/w/';
+
     private const int TOKEN_BYTES = 16;
 
     private const string OPENS_BEFORE = '-12 hours';
@@ -48,6 +50,7 @@ final readonly class StaffLinks
     private const string ENDS_AFTER = '+2 hours';
 
     public function __construct(
+        private string $webOrigin,
         private EntityManagerInterface $entityManager,
         private StaffLinkTokenRepository $staffLinkTokenRepository,
         private StaffShiftRepository $staffShiftRepository,
@@ -59,7 +62,7 @@ final readonly class StaffLinks
     }
 
     /**
-     * The plain token, returned once and never kept. A copy or share on a row reading No link yet, Copied or Shared records it; on one reading Link sent or Link opened the row stays as it is.
+     * The link with its plain token, returned once and never kept. A copy or share on a row reading No link yet, Copied or Shared records it; on one reading Link sent or Link opened the row stays as it is.
      */
     public function deliver(StaffMember $entry, bool $shared, User $by): string
     {
@@ -83,7 +86,7 @@ final readonly class StaffLinks
 
         $this->staffRosterPublisher->publish($entry->getEvent());
 
-        return $token;
+        return $this->webOrigin . self::PATH . $token;
     }
 
     /** Only after a copy or share; Link sent and Link opened stay as they are. */
