@@ -1,5 +1,5 @@
 import { type RefObject, useEffect, useId, useRef, useState } from 'react';
-import { Link, useNavigate, useSearchParams } from 'react-router';
+import { Link, useLocation, useNavigate, useSearchParams } from 'react-router';
 
 import { Glyph } from '../components/Glyph.tsx';
 import {
@@ -121,6 +121,7 @@ export function PayersPage({ event, state }: { event: SampleEvent; state: string
   const title = useRef<HTMLHeadingElement>(null);
   const later = useLater();
   const navigate = useNavigate();
+  const here = useLocation();
   const [washed, setWashed] = useState(state === 'payers_live');
   const link = `${window.location.origin}/demo/share/payer`;
 
@@ -236,10 +237,21 @@ export function PayersPage({ event, state }: { event: SampleEvent; state: string
     setSend((now) => (now?.kind === 'busy' ? now : null));
   }
 
-  const trail = [
-    { label: B.budget, to: budgetAt() },
-    { label: choosing == null ? W.title : W.chooseTitle },
-  ];
+  const trail =
+    choosing == null
+      ? [{ label: B.budget, to: budgetAt() }, { label: W.title }]
+      : [
+          { label: B.budget, to: budgetAt() },
+          {
+            label: W.title,
+            to: `${here.pathname}${here.search}`,
+            onClick: () => {
+              setChoosing(null);
+              moved();
+            },
+          },
+          { label: W.chooseTitle },
+        ];
 
   return (
     <BudgetShell event={event} trail={trail}>
