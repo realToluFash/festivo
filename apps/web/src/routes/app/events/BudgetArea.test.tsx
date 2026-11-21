@@ -322,6 +322,12 @@ describe('who sees the Budget (sc-85)', () => {
     expect(screen.getByRole('link', { name: 'Back to Events' }).getAttribute('href')).toBe(
       '/app/events',
     );
+    const side = screen.getByRole('navigation', { name: 'Event' });
+    await waitFor(() =>
+      expect(
+        within(side).getByRole('link', { name: 'Overview' }).getAttribute('aria-current'),
+      ).toBe('page'),
+    );
   });
 });
 

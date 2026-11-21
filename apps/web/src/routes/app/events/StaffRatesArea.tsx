@@ -216,6 +216,14 @@ function StaffRatesPage({
   const ownRate = (member: string) =>
     rates.own.find((one) => one.member.id === member)?.rate ?? null;
 
+  const back = useRef<string | null>(null);
+  // No dependency list: the row's button exists only once the editor has unmounted.
+  useEffect(() => {
+    if (back.current == null) return;
+    document.querySelector<HTMLElement>(`[data-srt="${back.current}"] button`)?.focus();
+    back.current = null;
+  });
+
   const open = (next: Panel) => {
     const rate =
       next?.kind === 'job' ? jobRate(next.job) : next?.kind === 'own' ? ownRate(next.member) : null;
@@ -243,6 +251,7 @@ function StaffRatesPage({
   ): Promise<boolean> => {
     if (busy) return true;
     setBusy(true);
+    setServer(null);
     try {
       const next = await send();
       onRates(next);
@@ -256,6 +265,7 @@ function StaffRatesPage({
       setPressed(false);
       setServer(null);
       setSaid({ key, words });
+      back.current = key;
     } catch (error) {
       setServer(
         error instanceof ApiError && error.status === 403
@@ -320,7 +330,15 @@ function StaffRatesPage({
       ownRate(member),
     );
 
-  const close = () => open(null);
+  const close = () => {
+    back.current =
+      panel?.kind === 'job'
+        ? jobKey(panel.job)
+        : panel?.kind === 'own'
+          ? ownKey(panel.member)
+          : 'add';
+    open(null);
+  };
   const head = rates.headline;
 
   if (rates.jobs.length === 0)
@@ -379,7 +397,7 @@ function StaffRatesPage({
                   rate == null ? t('staffRates.noRateYet') : rateText(t, rate, currency, locale);
 
                 return (
-                  <li key={job.id}>
+                  <li key={job.id} data-srt={jobKey(job.id)}>
                     {panel?.kind === 'job' && panel.job === job.id ? (
                       <RateEditor
                         name={job.name}
@@ -445,11 +463,13 @@ function StaffRatesPage({
             title={t('staffRates.ownRates')}
             action={
               manages && panel?.kind !== 'add' ? (
-                <TextAction
-                  label={t('staffRates.addOne')}
-                  before="plus"
-                  onClick={() => open({ kind: 'add' })}
-                />
+                <span data-srt="add">
+                  <TextAction
+                    label={t('staffRates.addOne')}
+                    before="plus"
+                    onClick={() => open({ kind: 'add' })}
+                  />
+                </span>
               ) : undefined
             }
           >
@@ -481,7 +501,7 @@ function StaffRatesPage({
                   const theirJob = jobRate(own.job.id);
 
                   return (
-                    <li key={key}>
+                    <li key={key} data-srt={key}>
                       {panel?.kind === 'own' && panel.member === own.member.id ? (
                         <RateEditor
                           name={own.member.name}
@@ -679,6 +699,9 @@ function RateEditor({
   useEffect(() => {
     inputRef.current?.focus();
   }, []);
+  useEffect(() => {
+    if (server != null) inputRef.current?.focus();
+  }, [server]);
   useKeys(box, onCancel, save);
 
   return (
@@ -750,6 +773,9 @@ function AddOwn({
   useEffect(() => {
     whoRef.current?.focus();
   }, []);
+  useEffect(() => {
+    if (server != null) rateRef.current?.focus();
+  }, [server]);
 
   const save = () => {
     if (onSave()) return;
