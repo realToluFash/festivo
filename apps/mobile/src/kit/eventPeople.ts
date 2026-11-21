@@ -125,11 +125,26 @@ function plain(text: string): string {
   return text.normalize('NFD').replace(/\p{M}/gu, '').toLowerCase().trim();
 }
 
-/** Active members not on the event yet, by name. */
+/** Active members not on the event yet, by name: members before the owners and admins, who see it already. */
 export function offered(addable: readonly AddableMember[], typed: string): AddableMember[] {
   const wanted = plain(typed);
+  const found =
+    wanted === '' ? [...addable] : addable.filter((one) => plain(one.name).includes(wanted));
 
-  return wanted === '' ? [...addable] : addable.filter((one) => plain(one.name).includes(wanted));
+  return [...found.filter((one) => !seesEvery(one)), ...found.filter((one) => seesEvery(one))];
+}
+
+function seesEvery(member: AddableMember): boolean {
+  return member.role === 'owner' || member.role === 'administrator';
+}
+
+/** The line under a name on Add people: Member, or Owner or Admin with "sees every event". */
+export function offerLine(t: TFunction, member: AddableMember): string | undefined {
+  if (member.role !== 'owner' && member.role !== 'administrator' && member.role !== 'member')
+    return undefined;
+  const role = t(`roles.${member.role}`);
+
+  return seesEvery(member) ? t('eventPeople.offerSeesEvery', { role }) : role;
 }
 
 /** Add people's one line: who went in, if anyone did, then why the rest did not. */

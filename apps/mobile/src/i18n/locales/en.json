@@ -2308,6 +2308,7 @@
     "pickAnother": "Pick another role to add someone from outside.",
     "jobLabel": "Job label (optional)",
     "jobHelp": "What they’re there for, shown beside their name. It grants nothing. {{length, number}} of {{most, number}}.",
+    "offerSeesEvery": "{{role}} · sees every event",
     "everyoneOn": "Everyone in {{organisation}} is on this event already.",
     "cancel": "Cancel",
     "addConfirm": "Add",

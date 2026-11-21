@@ -12,6 +12,7 @@ import {
   inListOrder,
   managesPeople,
   nowCan,
+  offerLine,
   offered,
   opensRow,
   outsideView,
@@ -114,13 +115,30 @@ describe('People on an event', () => {
 
   it('finds members by name, ignoring accents and case', () => {
     const addable = [
-      { membershipId: 'm1', name: 'Lucía Pérez' },
-      { membershipId: 'm2', name: 'Kofi Mensah' },
+      { membershipId: 'm1', name: 'Lucía Pérez', role: 'member' },
+      { membershipId: 'm2', name: 'Kofi Mensah', role: 'member' },
     ];
 
     expect(offered(addable, 'lucia').map((one) => one.membershipId)).toEqual(['m1']);
     expect(offered(addable, '  ')).toHaveLength(2);
     expect(offered(addable, 'zed')).toEqual([]);
+  });
+
+  it('offers members before the owners and admins, each with their role', () => {
+    const addable = [
+      { membershipId: 'm1', name: 'Folake Adeyemi', role: 'owner' },
+      { membershipId: 'm2', name: 'Julien Moreau', role: 'administrator' },
+      { membershipId: 'm3', name: 'Kofi Mensah', role: 'member' },
+    ];
+    const shown = offered(addable, '');
+
+    expect(shown.map((one) => one.membershipId)).toEqual(['m3', 'm1', 'm2']);
+    expect(shown.map((one) => offerLine(t, one))).toEqual([
+      'Member',
+      'Owner · sees every event',
+      'Admin · sees every event',
+    ]);
+    expect(offerLine(t, { membershipId: 'm4', name: 'Ada', role: null })).toBeUndefined();
   });
 });
 
