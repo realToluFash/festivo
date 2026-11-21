@@ -206,6 +206,39 @@ describe('p6 on a summary card (sc-77292)', () => {
     expect(card?.classList.contains('is-words-low')).toBe(false);
   });
 
+  it('is decided again when a box mounts above the words and moves them without a resize', async () => {
+    const bottoms: Record<string, number> = {
+      'desk-says': 120,
+      'desk-on-card': 140,
+      'desk-step': 190,
+    };
+    place(bottoms);
+    vi.stubGlobal(
+      'ResizeObserver',
+      class {
+        observe() {}
+        disconnect() {}
+      },
+    );
+    const draw = (tags: boolean) => (
+      <Card>
+        {tags && <div className="desk-glass-tags">Fornecedor</div>}
+        <Says>Regras de entrada</Says>
+        <OnCard>Uma linha por baixo</OnCard>
+      </Card>
+    );
+    const { container, rerender } = render(draw(false));
+    const card = container.querySelector('.desk-summary');
+    await act(async () => {});
+
+    expect(card?.classList.contains('is-words-low')).toBe(false);
+    bottoms['desk-glass-tags'] = 40;
+    bottoms['desk-on-card'] = 180;
+    rerender(draw(true));
+    await act(async () => {});
+    expect(card?.classList.contains('is-words-low')).toBe(true);
+  });
+
   it('is hidden only by its own rule, on a card 560 px or wider', () => {
     const css = readFileSync(join(import.meta.dirname, 'SettingsParts.css'), 'utf8');
     const wide = css.slice(css.indexOf('@container desk-summary (width >= 560px)'));

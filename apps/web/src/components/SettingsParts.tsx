@@ -156,14 +156,21 @@ function useWordsLow(card: RefObject<HTMLElement | null>, inner: RefObject<HTMLE
       const edge = top.getBoundingClientRect().top;
       setLow(wordBoxes(box).some((word) => word.getBoundingClientRect().bottom - edge > P6_TOP));
     };
-    check();
+    const sizes = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(check);
+    const watch = () => {
+      sizes?.disconnect();
+      [box, ...wordBoxes(box)].forEach((node) => sizes?.observe(node));
+      check();
+    };
+    const changes = new MutationObserver(watch);
+    changes.observe(box, { childList: true, subtree: true, characterData: true });
+    watch();
     void document.fonts?.ready.then(check);
-    const watch = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(check);
-    [box, ...wordBoxes(box)].forEach((node) => watch?.observe(node));
 
     return () => {
       live = false;
-      watch?.disconnect();
+      sizes?.disconnect();
+      changes.disconnect();
     };
   }, [card, inner]);
 
