@@ -273,8 +273,7 @@ function DueRow({
         : null;
   const owed = !item.gone && isOwed(ledger, id) && !sheet.readOnly && refusal == null;
   const last = sheet.lastAbout.includes(id);
-  const chased = sheet.readOnly && overdue ? W.noLongerChased : null;
-  const line = [item.gone ? `${item.what} · ${item.event}` : base, changed, chased]
+  const line = [item.gone ? `${item.what} · ${item.event}` : base, changed]
     .filter(Boolean)
     .join(' · ');
 
