@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import { RouterProvider, createMemoryRouter } from 'react-router';
 import { beforeEach, describe, expect, it } from 'vitest';
 
@@ -42,6 +42,11 @@ describe('An event’s link from another organisation, sc-80863', () => {
       const notice = await screen.findByText(MOVED);
       expect(pill('Casa Lumen Eventos')).toBeTruthy();
       expect(notice.closest('.sw-switched')?.contains(document.activeElement)).toBe(false);
+
+      const crumb = screen.getByRole('navigation', { name: 'Breadcrumb' });
+      fireEvent.click(within(crumb).getByRole('link', { name: 'Events' }));
+      await screen.findByRole('heading', { level: 1, name: 'Events' }, { timeout: 8000 });
+      expect(pill('Casa Lumen Eventos')).toBeTruthy();
     },
   );
 

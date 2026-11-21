@@ -1,3 +1,5 @@
+import { type Session, pick } from '../OrgSwitcherModel.ts';
+
 /** sc-80863: an event's link opened while working in Ire Events. The event is the Casa Lumen Eventos wedding, Folake an Admin there; `same` is one of Ire Events'. */
 export const LINK_STATES = ['moved', 'loading', 'failed', 'unavailable', 'same'] as const;
 export type LinkState = (typeof LINK_STATES)[number];
@@ -31,10 +33,10 @@ export function moveOf(load: Load, eventOrg: string, current: string | null): st
   return load === 'loaded' && eventOrg !== current ? eventOrg : null;
 }
 
-export const LINK_WORDS = {
-  failed: 'Your events did not load. Check your connection and try again.',
-  retry: 'Try again',
-} as const;
+/** The session once the link has moved it: what every screen after it reads, Events included, until the account moves again. */
+export function linkMoved(session: Session, id: string): Session {
+  return pick(session, id);
+}
 
 const BOARD: Record<LinkState, readonly [string, string]> = {
   moved: [

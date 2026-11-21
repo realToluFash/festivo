@@ -35,6 +35,7 @@ import {
   foundedPlace,
   walkFor,
 } from './createOrg/CreateWalk.ts';
+import { linkMoved } from './events/EventLink.ts';
 import { ManagedBanner } from './Managed.tsx';
 import {
   type DropFrame,
@@ -341,7 +342,7 @@ export function OrgSwitcherProvider({
   );
   const linkMove = useCallback(
     (id: string) => {
-      const next = pick(store.session, id);
+      const next = linkMoved(store.session, id);
       setSession(next);
       setSwitched({ words: t('switcher.switched', { name: currentPlace(next).name }) });
     },

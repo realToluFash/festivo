@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
+import { currentPlace, sessionFor } from '../OrgSwitcherModel.ts';
 import {
   EVENT_IN,
   LINK_BOARDS,
@@ -7,6 +8,7 @@ import {
   WORKING_IN,
   answerOf,
   eventOrgOf,
+  linkMoved,
   linkStateOf,
   moveOf,
 } from './EventLink.ts';
@@ -22,6 +24,15 @@ describe('an event link from another organisation', () => {
   it('does not move for an event of the organisation already worked in', () => {
     expect(moveOf('loaded', eventOrgOf('same'), WORKING_IN)).toBeNull();
     expect(moveOf('loaded', EVENT_IN, EVENT_IN)).toBeNull();
+  });
+
+  it('leaves the account in Casa Lumen Eventos, so Back to Events lists its events', () => {
+    const before = sessionFor('populated');
+    const after = linkMoved(before, EVENT_IN);
+
+    expect(currentPlace(before).name).toBe('Ire Events');
+    expect(currentPlace(after).name).toBe('Casa Lumen Eventos');
+    expect(after.places).toEqual(before.places);
   });
 
   it('loads after Try again', () => {

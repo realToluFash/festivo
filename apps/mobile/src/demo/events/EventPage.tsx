@@ -135,10 +135,8 @@ import { StaffRoster } from '../staffLink/StaffRoster.tsx';
 import type { RosterState } from '../staffLink/StaffRosterModel.ts';
 import { type OriginState, draftFromEnquiry } from '../enquiries/EnquiryToEventModel.ts';
 import { FromEnquiryLine } from '../enquiries/FromEnquiryParts.tsx';
-import { PrimaryButton } from '../../components/Buttons.tsx';
-import { Notice } from '../../components/Notice.tsx';
+import { EventsFailed } from '../../components/Events.tsx';
 import { SwitchedNotice } from '../../components/SwitchedNotice.tsx';
-import { LINK_WORDS } from './EventLink.ts';
 
 type Mute = 'ok' | 'notLoaded' | 'notSaved';
 
@@ -693,15 +691,7 @@ export function EventScreen({
         {failed == null ? (
           <LoadingBlock words={W.loadingEvent} />
         ) : (
-          <View style={styles.failed} accessibilityRole="alert">
-            <Notice
-              tone="broken"
-              mark={tokens.marks.broken.glyph}
-              body={LINK_WORDS.failed}
-              announce
-            />
-            <PrimaryButton label={LINK_WORDS.retry} onPress={failed} testID="event.link.retry" />
-          </View>
+          <EventsFailed onRetry={failed} testID="event.link.retry" />
         )}
       </EventFrame>
     );
@@ -1155,7 +1145,6 @@ const MANAGE: Record<ManageKey, { label: string; line: string; removes: boolean 
 
 const styles = StyleSheet.create({
   headed: { gap: 18 },
-  failed: { gap: tokens.spaceMd },
   dashed: {
     gap: tokens.spaceXs,
     paddingVertical: tokens.spaceLg,
