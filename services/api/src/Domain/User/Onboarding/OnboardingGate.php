@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domain\User\Onboarding;
 
 use App\Entity\User;
+use App\Enum\AccountOrigin;
 use App\Enum\ErrorCode;
 use App\Http\Access\Interfaces\OnboardingGateInterface;
 use Psl\Iter;
@@ -47,10 +48,16 @@ final readonly class OnboardingGate implements OnboardingGateInterface
             return null;
         }
 
-        if (!$user->isVerified()) {
+        if (!$user->isVerified() && !self::heldByDevice($user)) {
             return ErrorCode::AccountUnverified;
         }
 
         return $this->accountCompleteness->isComplete($user) ? null : ErrorCode::ProfileIncomplete;
+    }
+
+    /** A door code's account (sc-72) has no address to prove until sc-4235 asks it for a number. */
+    private static function heldByDevice(User $user): bool
+    {
+        return AccountOrigin::DoorCode === $user->getOrigin() && null === $user->getPrimaryEmailAddress() && null === $user->getPrimaryPhoneNumber();
     }
 }

@@ -20,6 +20,7 @@ use DateTimeZone;
 use Doctrine\ORM\EntityManagerInterface;
 use Psl\Iter;
 use Psl\Str;
+use Psl\Vec;
 use Psr\Clock\ClockInterface;
 use Symfony\Contracts\Translation\TranslatorInterface;
 
@@ -101,7 +102,7 @@ final readonly class DoorCodes
 
     private function unusedCode(): string
     {
-        foreach (Iter\range(1, self::TRIES) as $_) {
+        foreach (Vec\range(1, self::TRIES) as $_) {
             $code = DoorCodeText::generate();
 
             if (null === $this->doorCodeRepository->findOneByCode($code)) {
