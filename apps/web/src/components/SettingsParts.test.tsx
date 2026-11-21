@@ -38,6 +38,7 @@ function draw(count: number, open = true) {
 
 afterEach(async () => {
   vi.restoreAllMocks();
+  vi.unstubAllGlobals();
   localStorage.clear();
   await setLanguage(null);
 });
@@ -160,6 +161,49 @@ describe('p6 on a summary card (sc-77292)', () => {
     place({ 'desk-says': 120, 'desk-on-card': 145, 'desk-step': 190 });
 
     expect(drawCard()?.classList.contains('is-words-low')).toBe(false);
+  });
+
+  it('looks past a step held in a wrapper, as General’s read-only card holds it', () => {
+    place({ 'desk-says': 120, 'desk-on-card': 140, held: 190, 'desk-step': 190 });
+    const { container } = render(
+      <Card>
+        <Says>Regras de entrada</Says>
+        <div className="held">
+          <OnCard>Só o organizador muda isto</OnCard>
+          <CardStep label="Mudar" onClick={() => {}} />
+        </div>
+      </Card>,
+    );
+
+    expect(container.querySelector('.desk-summary')?.classList.contains('is-words-low')).toBe(
+      false,
+    );
+  });
+
+  it('is decided again when the words change height, without reloading', () => {
+    const bottoms = { 'desk-says': 120, 'desk-on-card': 140, 'desk-step': 190 };
+    place(bottoms);
+    const seen: ResizeObserverCallback[] = [];
+    vi.stubGlobal(
+      'ResizeObserver',
+      class {
+        constructor(callback: ResizeObserverCallback) {
+          seen.push(callback);
+        }
+        observe() {}
+        disconnect() {}
+      },
+    );
+    const card = drawCard();
+    const resize = () => act(() => seen.forEach((callback) => callback([], {} as ResizeObserver)));
+
+    expect(card?.classList.contains('is-words-low')).toBe(false);
+    bottoms['desk-on-card'] = 170;
+    resize();
+    expect(card?.classList.contains('is-words-low')).toBe(true);
+    bottoms['desk-on-card'] = 130;
+    resize();
+    expect(card?.classList.contains('is-words-low')).toBe(false);
   });
 
   it('is hidden only by its own rule, on a card 560 px or wider', () => {

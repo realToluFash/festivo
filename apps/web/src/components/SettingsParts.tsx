@@ -150,19 +150,22 @@ function useWordsLow(card: RefObject<HTMLElement | null>, inner: RefObject<HTMLE
     const top = card.current;
     const box = inner.current;
     if (top == null || box == null) return undefined;
-    const words = wordBoxes(box);
+    let live = true;
     const check = () => {
+      if (!live) return;
       const edge = top.getBoundingClientRect().top;
-      setLow(words.some((word) => word.getBoundingClientRect().bottom - edge > P6_TOP));
+      setLow(wordBoxes(box).some((word) => word.getBoundingClientRect().bottom - edge > P6_TOP));
     };
     check();
     void document.fonts?.ready.then(check);
-    if (typeof ResizeObserver === 'undefined') return undefined;
-    const watch = new ResizeObserver(check);
-    [box, ...words].forEach((node) => watch.observe(node));
+    const watch = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(check);
+    [box, ...wordBoxes(box)].forEach((node) => watch?.observe(node));
 
-    return () => watch.disconnect();
-  });
+    return () => {
+      live = false;
+      watch?.disconnect();
+    };
+  }, [card, inner]);
 
   return low;
 }
