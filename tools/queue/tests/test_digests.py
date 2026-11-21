@@ -125,6 +125,16 @@ class StuckBlockers(unittest.TestCase):
             "  sc-7 [Waiting On Owner] story 7 · epic · holds sc-1 (Ready For Dev)"
             " · waits on the owner"])
 
+    def test_a_ready_blocker_whose_epic_is_not_in_progress_waits_on_that_epic(self):
+        lines = self.sweep([self.held(1, 7), self.blocker(7, "Ready For Dev", epic_id=2)])
+        self.assertEqual(self.section(lines), [
+            "  sc-7 [Ready For Dev] story 7 · epic · holds sc-1 (Ready For Dev)"
+            " · waits on its epic, epic 2, to be in progress"])
+
+    def test_a_ready_blocker_in_an_epic_in_progress_is_not_listed(self):
+        self.assertIsNone(self.section(
+            self.sweep([self.held(1, 7), self.blocker(7, "Ready For Dev")])))
+
     def test_a_blocker_someone_is_working_on_is_not_listed(self):
         for state in ("Needs Design", "In Progress", "Ready For QA"):
             with self.subTest(state=state):

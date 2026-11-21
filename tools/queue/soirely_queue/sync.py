@@ -23,6 +23,9 @@ EPICS_EVERY_SECONDS = 60
 # The timer fires every minute and skips a fire while a tick still runs, so a sync stops
 # here and the roles are ticked from the last whole one.
 BUDGET_SECONDS = 25
+# A demo-only story's demo that merged before the sync's window of 15 merges is found by
+# search, and searched for again this often while the story waits on it.
+DEMO_SEARCH_SECONDS = 24 * 60 * 60
 # Bumped when `shortcut.slim` keeps new fields, so stories stored before are fetched again.
 SLIM_VERSION = 3
 
@@ -174,6 +177,35 @@ def sync_github(db):
     store.set_meta(db, "main_run", runs[0] if runs else None)
 
 
+def demo_prs(db, now):
+    """The merged pull requests of each demo-only story waiting on its build that the sync's
+    window no longer holds, stored beside it, so the product manager is still told to move
+    the story on. Each story is searched once a day; a failed search keeps what it found."""
+    stored = store.prs(db)
+    seen = {pr["story_id"] for pr in stored if pr.get("story_id")}
+    found, kept = store.get_meta(db, "demo_prs") or {}, {}
+    for story in store.stories(db):
+        if roles.DEMO_ONLY not in story["labels"] or story["state"] not in work.DEMO_WAITING \
+                or story["done"] or story.get("archived") or story["id"] in seen:
+            continue
+        key, entry = str(story["id"]), found.get(str(story["id"]))
+        if not entry or now - entry["at"] >= DEMO_SEARCH_SECONDS:
+            try:
+                entry = {"at": now, "prs": github.merged_for_story(story["id"])}
+            except github.OutOfTime:
+                raise
+            except github.GitHubError:
+                pass
+        if entry:
+            kept[key] = entry
+    store.set_meta(db, "demo_prs", kept)
+    numbers = {pr["number"] for pr in stored}
+    extra = {pr["number"]: pr for entry in kept.values() for pr in entry["prs"]
+             if pr["number"] not in numbers}
+    if extra:
+        store.put_prs(db, stored + list(extra.values()))
+
+
 def sync(db, now=None, force=False, full=False, budget=BUDGET_SECONDS, clock=time.monotonic,
          client=Shortcut):
     """Syncs unless another tick did within the last minute. Returns the errors, if any.
@@ -205,6 +237,8 @@ def sync(db, now=None, force=False, full=False, budget=BUDGET_SECONDS, clock=tim
     part("shortcut", lambda: sync_shortcut(db, shortcut, now, full))
     with github.deadline(deadline, clock) if deadline else contextlib.nullcontext():
         part("github", lambda: sync_github(db))
+        if "github" not in cut and not errors:
+            part("demo prs", lambda: demo_prs(db, now))
     if not errors and not cut:
         part("pr stories", lambda: pr_stories(db, shortcut, now))
     store.set_meta(db, "sync_errors", errors)
