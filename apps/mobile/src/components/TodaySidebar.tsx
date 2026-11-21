@@ -1,4 +1,4 @@
-import { type ReactNode, type Ref, useRef } from 'react';
+import { type ReactNode, type Ref, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   Pressable,
@@ -428,29 +428,29 @@ export function SidebarEvents({ events }: { events: readonly ShownEvent[] }) {
   const { fontScale } = useWindowDimensions();
   const heading = t('todayScreen.yourEvents').toLocaleUpperCase();
   const { size, measure } = useSideFit(heading, ROOMS.heading, fontScale, 'semibold');
+  const [headingHeight, setHeadingHeight] = useState(0);
   const row = Math.max(
     tokens.sizeHit,
     ROOMS.event.size * fontScale * LABEL_LINE + 2 * rowPad(fontScale),
   );
+  const least = Math.min(events.length, LEAST_ROWS) * row;
 
   if (events.length === 0) return <View style={styles.grow} />;
 
   return (
-    <View style={styles.list}>
+    <View style={[styles.list, { minHeight: headingHeight + least }]}>
       {measure}
       <Text
         size={size}
         weight="semibold"
         allowFontScaling={false}
         accessibilityRole="header"
+        onLayout={({ nativeEvent }) => setHeadingHeight(nativeEvent.layout.height)}
         style={[styles.secondary, styles.caps]}
       >
         {heading}
       </Text>
-      <ScrollView
-        style={[styles.rows, { minHeight: Math.min(events.length, LEAST_ROWS) * row }]}
-        nestedScrollEnabled
-      >
+      <ScrollView style={[styles.rows, { minHeight: least }]} nestedScrollEnabled>
         {events.map((event) => (
           <SidebarEventRow key={event.id} event={event} />
         ))}
@@ -585,7 +585,7 @@ const styles = StyleSheet.create({
   sunkTags: { width: '45%' },
   column: { width: SIDEBAR_WIDTH, flexGrow: 0 },
   fills: { flexGrow: 1 },
-  list: { flexGrow: 1 },
+  list: { flexGrow: 1, flexBasis: 0 },
   rows: { flexGrow: 1, flexBasis: 0 },
   place: {
     minHeight: tokens.sizeHit,
