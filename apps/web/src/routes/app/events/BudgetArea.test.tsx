@@ -974,8 +974,10 @@ describe('a failed Undo (sc-85)', () => {
       expect(await screen.findByText(words, { selector: '.bt-undo-words' })).toBeTruthy();
       expect(screen.queryByRole('button', { name: 'Undo' })).toBeNull();
       expect(screen.queryByRole('button', { name: /^Dinner\./u })).toBeNull();
-      expect(document.activeElement).toBe(
-        screen.getByText(words, { selector: '.bt-undo-words' }).parentElement,
+      await waitFor(() =>
+        expect(document.activeElement).toBe(
+          screen.getByText(words, { selector: '.bt-undo-words' }).parentElement,
+        ),
       );
     },
   );
