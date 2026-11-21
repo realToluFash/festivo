@@ -134,7 +134,7 @@ export const ENTRIES: readonly Entry[] = [
   {
     id: 'exported',
     at: '2026-10-19T11:42:09+01:00',
-    what: 'Exported 3 audit log entries',
+    what: 'Exported the audit log',
     who: FOLAKE,
     type: 'Audit log',
     action: 'audit_log.exported',
