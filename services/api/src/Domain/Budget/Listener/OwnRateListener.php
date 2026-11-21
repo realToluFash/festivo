@@ -9,6 +9,7 @@ use App\Repository\StaffRateRepository;
 use Doctrine\Bundle\DoctrineBundle\Attribute\AsDoctrineListener;
 use Doctrine\ORM\Event\OnFlushEventArgs;
 use Doctrine\ORM\Events;
+use Psl\Iter;
 
 /** A person's own rate is paid instead of their job's, so it goes when their job changes or is removed, as a job's rate goes with its job (sc-101). */
 #[AsDoctrineListener(event: Events::onFlush)]
@@ -25,7 +26,7 @@ final readonly class OwnRateListener
         $unitOfWork = $entityManager->getUnitOfWork();
 
         foreach ($unitOfWork->getScheduledEntityUpdates() as $entity) {
-            if (!$entity instanceof StaffMember || !\array_key_exists('job', $unitOfWork->getEntityChangeSet($entity))) {
+            if (!$entity instanceof StaffMember || !Iter\contains_key($unitOfWork->getEntityChangeSet($entity), 'job')) {
                 continue;
             }
 
