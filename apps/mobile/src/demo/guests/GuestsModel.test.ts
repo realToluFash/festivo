@@ -87,7 +87,7 @@ describe('the states, as guests-a-spec §15 names them', () => {
     expect(
       GUESTS_STATES.filter((state) => (DOOR_STATES as readonly string[]).includes(state)),
     ).toEqual([]);
-    expect(GUESTS_STATES).toHaveLength(188);
+    expect(GUESTS_STATES).toHaveLength(190);
     expect(DOOR_STATES).toHaveLength(13);
   });
 
@@ -876,6 +876,15 @@ describe('Changed since you looked (sc-4331)', () => {
   it('opens each state as its board draws it', () => {
     expect(areaStart('changed')).toMatchObject({ filter: 'changed', since: null });
     expect(areaStart('changedRow')).toMatchObject({ filter: 'all', menu: true, looked: null });
+    expect(areaStart('changedFails')).toMatchObject({
+      filter: 'all',
+      menu: true,
+      looked: null,
+      changeFails: 'onChoose',
+    });
+    expect(areaStart('changedFailed')).toMatchObject({ filter: 'all', changeFails: 'failed' });
+    expect(areaStart('changed').changeFails).toBeNull();
+    expect(W.changedFailed).toBe('We could not load what changed.');
     expect(areaStart('changedNone')).toMatchObject({ filter: 'changed', since: CLOCKS.reader });
     expect(filterWord('changed')).toBe('Changed since you looked');
   });

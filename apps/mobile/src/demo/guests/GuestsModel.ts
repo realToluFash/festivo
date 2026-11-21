@@ -48,6 +48,8 @@ export const LIST_STATES = [
   'changed',
   'changedMenu',
   'changedNone',
+  'changedFails',
+  'changedFailed',
   'loading',
   'failed',
   'offline',
@@ -1310,6 +1312,8 @@ export interface AreaStart {
   since: string | null;
   /** sc-4331: when the event's Guest replies item was last marked read as the state opens: null is never; by default the state's clock, so nothing has changed since. */
   looked?: string | null;
+  /** sc-4331: choosing Changed since you looked fails until Try again; `failed` opens with its line already showing. */
+  changeFails: 'onChoose' | 'failed' | null;
   typed: string;
   menu: boolean;
   phase: 'ok' | 'loading' | 'failed';
@@ -1342,6 +1346,7 @@ export const notCopiedLine = (state: GuestsState | null): string =>
 const QUIET: AreaStart = {
   filter: 'all',
   since: null,
+  changeFails: null,
   typed: '',
   menu: false,
   phase: 'ok',
@@ -1506,6 +1511,10 @@ export function areaStart(state: GuestsState | null): AreaStart {
       return { ...base, filter: 'changed', menu: true };
     case 'changedNone':
       return { ...base, filter: 'changed', since: CLOCKS.reader };
+    case 'changedFails':
+      return { ...base, menu: true, looked: null, changeFails: 'onChoose' };
+    case 'changedFailed':
+      return { ...base, looked: null, changeFails: 'failed' };
     case 'loading':
       return { ...base, phase: 'loading' };
     case 'failed':

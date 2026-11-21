@@ -171,6 +171,8 @@ export function GuestsScreen({
   const [filter, setFilter] = useState<ListFilter>(filterFrom ?? start.filter);
   const [since, setSince] = useState(filterFrom === 'changed' ? sinceFrom : start.since);
   const [looked, setLooked] = useState(lastLooked);
+  const changeFails = useRef(start.changeFails !== null);
+  const [changeFailed, setChangeFailed] = useState(start.changeFails === 'failed');
   const [typed, setTyped] = useState(start.typed);
   const [searched, setSearched] = useState(start.typed);
   const [phase, setPhase] = useState(start.phase);
@@ -307,6 +309,11 @@ export function GuestsScreen({
   };
   const chooseFilter = (key: ListFilter) => {
     if (key === filter) return;
+    setChangeFailed(false);
+    if (key === 'changed' && changeFails.current) {
+      setChangeFailed(true);
+      return;
+    }
     if (key === 'changed') {
       setSince(takeLook(now));
       setLooked(lastLooked());
@@ -493,6 +500,11 @@ export function GuestsScreen({
               filter={filter}
               changed={filter === 'changed' ? listed.length : unseen}
               onFilter={chooseFilter}
+              changeFailed={changeFailed}
+              onRetryChanged={() => {
+                changeFails.current = false;
+                chooseFilter('changed');
+              }}
               typed={typed}
               onTyped={(text) => {
                 setTyped(text);

@@ -1645,6 +1645,8 @@ export interface GuestsStart {
   since: string | null;
   /** sc-4331: when the event's Guest replies item was last marked read, as the state opens: null is never, and by default it is the state's clock, so nothing has changed since. */
   looked?: string | null;
+  /** sc-4331: choosing Changed since you looked fails until Try again; `failed` opens with its line already showing. */
+  changeFails: 'onChoose' | 'failed' | null;
   /** sc-3777's Dietary notes chip. */
   dietary: boolean;
   menu: boolean;
@@ -1739,6 +1741,8 @@ export const GUESTS_STATES = [
   { key: 'changed', name: 'Changed since you looked, from the bell' },
   { key: 'changedMenu', name: 'Changed since you looked, the menu open on it' },
   { key: 'changedNone', name: 'Changed since you looked: nothing since' },
+  { key: 'changedFails', name: 'Changed since you looked: choosing it fails' },
+  { key: 'changedFailed', name: 'Changed since you looked didn’t load: Try again' },
   { key: 'searchNumber', name: 'A number in its national form: “0803 412”' },
   { key: 'everyoneReplied', name: 'Everyone has replied' },
   { key: 'noCompanionsWaiting', name: 'No companion among those who haven’t replied' },
@@ -2041,6 +2045,7 @@ export function guestsStart(state: GuestsState | null, params: URLSearchParams):
     choice: 'all',
     q: '',
     since: null,
+    changeFails: null,
     dietary: false,
     menu: false,
     pane: { kind: 'none' },
@@ -2168,6 +2173,10 @@ export function guestsStart(state: GuestsState | null, params: URLSearchParams):
       return { ...start, choice: 'changed', menu: true, looked: start.clock.toISOString() };
     case 'changedRow':
       return { ...start, menu: true, looked: null };
+    case 'changedFails':
+      return { ...start, menu: true, looked: null, changeFails: 'onChoose' };
+    case 'changedFailed':
+      return { ...start, looked: null, changeFails: 'failed' };
     case 'changedNone':
       return {
         ...start,
