@@ -571,6 +571,60 @@ export interface EventPerson {
   addressKind: 'email' | 'mobile' | null;
   /** When the event concludes, for someone from outside; null for a member. */
   endsAt: string | null;
+  doorCode: string | null;
+  joinedAt: string | null;
+}
+
+export const DOOR_CODE_ROLES = ['can_view', 'can_check_in'] as const;
+export type DoorCodeRole = (typeof DOOR_CODE_ROLES)[number];
+export const DOOR_CODE_STATUSES = ['working', 'full', 'stopped', 'expired'] as const;
+export type DoorCodeStatus = (typeof DOOR_CODE_STATUSES)[number];
+
+/** A door code's card on People (sc-72), as DoorCodesController answers it. */
+export interface DoorCodeCard {
+  id: string;
+  code: string;
+  link: string;
+  qrSvg: string;
+  role: DoorCodeRole;
+  jobLabel: string | null;
+  useCap: number;
+  used: number;
+  status: DoorCodeStatus;
+  expiresAt: string;
+  stoppedAt: string | null;
+  createdAt: string;
+}
+
+export interface NewDoorCode {
+  role: DoorCodeRole;
+  jobLabel: string | null;
+  useCap: number;
+  expiresAt: string;
+}
+
+/** What a door code opens, shown before a name is asked for; `standing` is null signed out. */
+export interface OpenedDoorCode {
+  role: DoorCodeRole;
+  jobLabel: string | null;
+  event: {
+    id: string;
+    name: string;
+    startsAt: string;
+    endsAt: string;
+    timeZone: string;
+    organisation: string;
+  };
+  standing: 'member' | 'in' | null;
+}
+
+export interface RedeemedDoorCode {
+  eventId: string;
+  name: string;
+  role: DoorCodeRole;
+  jobLabel: string | null;
+  endsAt: string | null;
+  again: boolean;
 }
 
 /** An event someone in no organisation of its own reaches from outside (sc-71). */
@@ -2507,6 +2561,89 @@ export class ApiClient {
     }
 
     return { people, owners, admins, staffLinks: staffLinks as StaffLinkHolder[] };
+  }
+
+  /** The event's door codes, newest first, for whoever may change its People (sc-72). */
+  async doorCodes(eventId: string): Promise<DoorCodeCard[]> {
+    const raw = await this.get<{ doorCodes?: unknown }>(
+      `/api/events/${encodeURIComponent(eventId)}/door-codes`,
+    );
+    const cards = Array.isArray(raw.doorCodes) ? raw.doorCodes.map(asDoorCodeCard) : null;
+
+    if (cards == null || !cards.every((card) => card != null)) {
+      throw new Error(DOOR_CODE_SHAPE);
+    }
+
+    return cards as DoorCodeCard[];
+  }
+
+  async makeDoorCode(eventId: string, code: NewDoorCode): Promise<DoorCodeCard> {
+    return this.doorCodeCard(
+      await this.post<{ doorCode?: unknown }>(
+        `/api/events/${encodeURIComponent(eventId)}/door-codes`,
+        code,
+      ),
+    );
+  }
+
+  async stopDoorCode(eventId: string, codeId: string): Promise<DoorCodeCard> {
+    return this.doorCodeCard(
+      await this.post<{ doorCode?: unknown }>(
+        `/api/events/${encodeURIComponent(eventId)}/door-codes/${encodeURIComponent(codeId)}/stop`,
+      ),
+    );
+  }
+
+  /** Refused `door_code_invalid` alike for an unknown, full, expired or stopped code, and `too_many_attempts` after refused tries. */
+  async openDoorCode(code: string): Promise<OpenedDoorCode> {
+    const opened = asOpenedDoorCode(
+      await this.get<unknown>(`/api/door-codes/${encodeURIComponent(code)}`),
+    );
+
+    if (opened == null) {
+      throw new Error(
+        'The API answered GET /api/door-codes/{code} in a shape this client does not know. Check RedeemController in services/api.',
+      );
+    }
+
+    return opened;
+  }
+
+  /** Signed out, `name` is required and the answer is a new session, saved as a sign-in's is. */
+  async redeemDoorCode(code: string, name: string | null): Promise<RedeemedDoorCode> {
+    const path = `/api/door-codes/${encodeURIComponent(code)}/redeem`;
+    const access = await this.options.tokens?.access();
+    let raw: unknown;
+
+    if (access != null && access !== '') {
+      raw = await this.post<unknown>(path, {});
+    } else {
+      this.session += 1;
+      const { tokens, body } = await this.issued(
+        await this.sendTokenRequest(path, { name: name ?? '' }),
+      );
+      this.session += 1;
+      await this.options.tokens?.save(tokens);
+      await this.options.onSignedIn?.();
+      raw = body;
+    }
+
+    const redeemed = asRedeemedDoorCode(raw);
+
+    if (redeemed == null) {
+      throw new Error(
+        'The API answered a door code redemption in a shape this client does not know. Check RedeemController in services/api.',
+      );
+    }
+
+    return redeemed;
+  }
+
+  private doorCodeCard(raw: { doorCode?: unknown }): DoorCodeCard {
+    const card = asDoorCodeCard(raw.doorCode);
+    if (card == null) throw new Error(DOOR_CODE_SHAPE);
+
+    return card;
   }
 
   /** The organisation's active members not yet on the event, by name alone, for whoever may change its People (sc-29915). */
@@ -5556,8 +5693,19 @@ function asAddableMember(raw: unknown): AddableMember | null {
 function asEventPerson(raw: unknown): EventPerson | null {
   if (typeof raw !== 'object' || raw == null) return null;
 
-  const { id, membershipId, user, role, jobLabel, outside, address, addressKind, endsAt } =
-    raw as Record<string, unknown>;
+  const {
+    id,
+    membershipId,
+    user,
+    role,
+    jobLabel,
+    outside,
+    address,
+    addressKind,
+    endsAt,
+    doorCode,
+    joinedAt,
+  } = raw as Record<string, unknown>;
   const named = typeof user === 'object' && user != null ? (user as Record<string, unknown>) : null;
 
   if (
@@ -5578,6 +5726,117 @@ function asEventPerson(raw: unknown): EventPerson | null {
     address: typeof address === 'string' ? address : null,
     addressKind: addressKind === 'email' || addressKind === 'mobile' ? addressKind : null,
     endsAt: typeof endsAt === 'string' ? endsAt : null,
+    doorCode: typeof doorCode === 'string' ? doorCode : null,
+    joinedAt: typeof joinedAt === 'string' ? joinedAt : null,
+  };
+}
+
+const DOOR_CODE_SHAPE =
+  'The API answered a door code in a shape this client does not know. Check DoorCodesController in services/api.';
+
+const isString = (value: unknown): value is string => typeof value === 'string';
+
+function asDoorCodeCard(raw: unknown): DoorCodeCard | null {
+  if (typeof raw !== 'object' || raw == null) return null;
+
+  const {
+    id,
+    code,
+    link,
+    qrSvg,
+    role,
+    jobLabel,
+    useCap,
+    used,
+    status,
+    expiresAt,
+    stoppedAt,
+    createdAt,
+  } = raw as Record<string, unknown>;
+
+  if (
+    !isString(id) ||
+    !isString(code) ||
+    !isString(link) ||
+    !isString(qrSvg) ||
+    !(DOOR_CODE_ROLES as readonly unknown[]).includes(role) ||
+    typeof useCap !== 'number' ||
+    typeof used !== 'number' ||
+    !(DOOR_CODE_STATUSES as readonly unknown[]).includes(status) ||
+    !isString(expiresAt) ||
+    !isString(createdAt)
+  )
+    return null;
+
+  return {
+    id,
+    code,
+    link,
+    qrSvg,
+    role: role as DoorCodeRole,
+    jobLabel: isString(jobLabel) ? jobLabel : null,
+    useCap,
+    used,
+    status: status as DoorCodeStatus,
+    expiresAt,
+    stoppedAt: isString(stoppedAt) ? stoppedAt : null,
+    createdAt,
+  };
+}
+
+function asOpenedDoorCode(raw: unknown): OpenedDoorCode | null {
+  if (typeof raw !== 'object' || raw == null) return null;
+
+  const { role, jobLabel, event, standing } = raw as Record<string, unknown>;
+  const opened =
+    typeof event === 'object' && event != null ? (event as Record<string, unknown>) : null;
+
+  if (
+    !(DOOR_CODE_ROLES as readonly unknown[]).includes(role) ||
+    opened == null ||
+    !isString(opened.id) ||
+    !isString(opened.name) ||
+    !isString(opened.startsAt) ||
+    !isString(opened.endsAt) ||
+    !isString(opened.timeZone) ||
+    !isString(opened.organisation)
+  )
+    return null;
+
+  return {
+    role: role as DoorCodeRole,
+    jobLabel: isString(jobLabel) ? jobLabel : null,
+    event: {
+      id: opened.id,
+      name: opened.name,
+      startsAt: opened.startsAt,
+      endsAt: opened.endsAt,
+      timeZone: opened.timeZone,
+      organisation: opened.organisation,
+    },
+    standing: standing === 'member' || standing === 'in' ? standing : null,
+  };
+}
+
+function asRedeemedDoorCode(raw: unknown): RedeemedDoorCode | null {
+  if (typeof raw !== 'object' || raw == null) return null;
+
+  const { eventId, name, role, jobLabel, endsAt, again } = raw as Record<string, unknown>;
+
+  if (
+    !isString(eventId) ||
+    !isString(name) ||
+    !(DOOR_CODE_ROLES as readonly unknown[]).includes(role)
+  )
+    return null;
+
+  return {
+    eventId,
+    name,
+    role: role as DoorCodeRole,
+    jobLabel: isString(jobLabel) ? jobLabel : null,
+    endsAt: isString(endsAt) ? endsAt : null,
+    again: again === true,
   };
 }
 
