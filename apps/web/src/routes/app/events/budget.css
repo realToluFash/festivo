@@ -42,6 +42,13 @@
   outline: none;
 }
 
+.bt-gone {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceMd);
+  padding-top: var(--spaceXl);
+}
+
 .bt-title-actions {
   display: flex;
   flex-wrap: wrap;
