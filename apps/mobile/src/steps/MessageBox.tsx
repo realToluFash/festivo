@@ -14,7 +14,7 @@ import { fieldFocused, fieldLeft } from '../components/focusedField.ts';
 import { useAboveKeyboard } from '../components/Screen.tsx';
 import { Text } from '../components/Text.tsx';
 import { UnseenName } from '../components/UnseenName.tsx';
-import { FIELD_DEFAULTS, fieldName, refusedHint, refusedName, withInvalid } from '../kit/fields.ts';
+import { fieldDefaults, fieldName, refusedHint, refusedName, withInvalid } from '../kit/fields.ts';
 import { useBoldText } from '../theme/boldText.ts';
 import { inputFaced } from '../theme/fonts.ts';
 import { tokens } from '../theme/tokens.ts';
@@ -88,7 +88,7 @@ export function MessageBox({
         </Text>
         <View style={styles.clip}>
           <TextInput
-            {...FIELD_DEFAULTS}
+            {...fieldDefaults(Platform.OS)}
             {...refusedName(
               Platform.OS,
               fieldName(Platform.OS, label, { labelID }),

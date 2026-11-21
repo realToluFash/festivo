@@ -3,10 +3,10 @@ import { join } from 'node:path';
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { tokens } from '../theme/tokens.ts';
+import { schemes, tokens, withScheme } from '../theme/tokens.ts';
 import {
   codeProps,
-  FIELD_DEFAULTS,
+  fieldDefaults,
   fieldName,
   type FieldText,
   fieldText,
@@ -48,6 +48,7 @@ import {
   shownAboveKeys,
   shownEnd,
 } from './keyboard.ts';
+import { contrast } from './scrim.ts';
 
 describe('the keyboard lifts the card once', () => {
   it('on iOS, by the scroll view alone', () => {
@@ -495,31 +496,67 @@ describe('an iPhone on its side rests the sheet body at its top once the keys go
 });
 
 describe('every field carries the caret colour', () => {
-  it('in the defaults, the password field and the code field', () => {
-    for (const props of [
-      FIELD_DEFAULTS,
-      passwordProps(false),
-      passwordProps(true),
-      codeProps(false),
-      codeProps(true),
-    ]) {
+  const everyField = (os: string) => [
+    fieldDefaults(os),
+    passwordProps(os, false),
+    passwordProps(os, true),
+    codeProps(os, false),
+    codeProps(os, true),
+  ];
+
+  it('in the defaults, the password field and the code field, on both platforms', () => {
+    for (const props of [...everyField('ios'), ...everyField('android')]) {
       expect(props.cursorColor).toBe(tokens.colorInk);
-      expect(props.selectionColor).toBe(tokens.colorInk);
+      expect(props.selectionHandleColor).toBe(tokens.colorInk);
       expect(props.autoCorrect).toBe(false);
       expect(props.spellCheck).toBe(false);
       expect(props.disableFullscreenUI).toBe(true);
     }
   });
+
+  it('selects in ink on iOS, which draws its own tint from it', () => {
+    for (const props of everyField('ios')) expect(props.selectionColor).toBe(tokens.colorInk);
+  });
+
+  it('highlights a selection on Android in ink at 25%, never solid (sc-80268)', () => {
+    for (const props of everyField('android'))
+      expect(props.selectionColor).toBe(`${tokens.colorInk}40`);
+  });
+
+  it('keeps selected text at 4.5:1 over the Android highlight, in every scheme', () => {
+    for (const name of Object.keys(schemes)) {
+      const look = withScheme(name);
+      const alpha = Number.parseInt(fieldDefaults('android').selectionColor.slice(7), 16) / 255;
+
+      for (const fill of [look.colorCard, look.colorInset]) {
+        const highlight = rgb(fill).map(
+          (channel, i) => channel * (1 - alpha) + (rgb(look.colorInk)[i] ?? 0) * alpha,
+        );
+
+        expect(contrast(look.colorInk, hex(highlight)), name).toBeGreaterThanOrEqual(4.5);
+      }
+    }
+  });
 });
+
+function rgb(colour: string): number[] {
+  const value = Number.parseInt(colour.replace('#', '').slice(0, 6), 16);
+
+  return [(value >> 16) & 255, (value >> 8) & 255, value & 255];
+}
+
+function hex(channels: number[]): string {
+  return `#${channels.map((c) => Math.round(c).toString(16).padStart(2, '0')).join('')}`;
+}
 
 describe('the password field reveals', () => {
   it('hides by default and shows on request', () => {
-    expect(passwordProps(false).secureTextEntry).toBe(true);
-    expect(passwordProps(true).secureTextEntry).toBe(false);
+    expect(passwordProps('ios', false).secureTextEntry).toBe(true);
+    expect(passwordProps('ios', true).secureTextEntry).toBe(false);
   });
 
   it('keeps autocorrect off while revealed, and never blocks a paste', () => {
-    const revealed = passwordProps(true);
+    const revealed = passwordProps('ios', true);
 
     expect(revealed.autoCorrect).toBe(false);
     expect(revealed.autoCapitalize).toBe('none');
@@ -529,12 +566,12 @@ describe('the password field reveals', () => {
 
 describe('a code field offers the keyboard its code needs', () => {
   it('digits only, for a code that can only be digits', () => {
-    expect(codeProps(false).keyboardType).toBe('number-pad');
+    expect(codeProps('ios', false).keyboardType).toBe('number-pad');
   });
 
   it('letters and the hyphen, for a field that also takes a recovery code', () => {
-    expect(codeProps(true).keyboardType).toBe('default');
-    expect(codeProps(true).autoCapitalize).toBe('none');
+    expect(codeProps('ios', true).keyboardType).toBe('default');
+    expect(codeProps('ios', true).autoCapitalize).toBe('none');
   });
 });
 
