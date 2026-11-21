@@ -6,6 +6,7 @@ import { Glyph, type GlyphName } from '../../components/Glyph.tsx';
 import { useReadOut } from '../../components/ReadOut.tsx';
 import { ShapeMark } from '../../components/Summary.tsx';
 import { Text } from '../../components/Text.tsx';
+import { Title } from '../../components/Title.tsx';
 import { atAccessibilitySizes } from '../../layout/textSize.ts';
 import { tokens } from '../../theme/tokens.ts';
 import { PaneBell } from '../events/EventFrame.tsx';
@@ -375,9 +376,9 @@ export function PageTitle({
   return (
     <View style={styles.title}>
       <View style={styles.headRow}>
-        <Text size={30} weight="bold" accessibilityRole="header" style={[styles.grow, styles.big]}>
+        <Title size={30} accessibilityRole="header" style={[styles.grow, styles.big]}>
           {title}
-        </Text>
+        </Title>
         {right}
         <PaneBell />
       </View>
