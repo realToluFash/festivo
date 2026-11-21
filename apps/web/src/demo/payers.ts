@@ -713,14 +713,7 @@ export function startOf(
               : name === 'payer_edit'
                 ? { id: 'obi', name: RENAMED, note: 'Adaeze’s parents', ...blank }
                 : null;
-  const pane =
-    name === 'link_all_revoked'
-      ? 'bakare'
-      : name === 'web_share'
-        ? 'couple'
-        : name === 'no_costs'
-          ? (book.payers[0]?.id ?? null)
-          : null;
+  const pane = name === 'link_all_revoked' ? 'bakare' : name === 'web_share' ? 'couple' : null;
   const choosing: ChooseStart | null =
     name === 'payers_stale'
       ? { ticked: ['dj'], mode: 'one', stale: removedMeanwhile(KAYODE.name) }
