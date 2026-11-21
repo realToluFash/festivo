@@ -14,7 +14,6 @@ import {
 import type { DemoLink } from './settings.ts';
 import { STATIONS_EVENT } from './stations.ts';
 
-/** Hours worked on the event's Staff page (sc-234): actual times beside each shift, on Jobs and shifts' sample. */
 export const OPENS_BEFORE = 60;
 export const OUT_AFTER_END = 6 * 60;
 export const LONGEST = 24 * 60;
@@ -312,7 +311,6 @@ export function draftOf(row: HoursRow, stillOn = false): TimesDraft {
   };
 }
 
-/** What was recorded, before any correction. */
 export function recordedOf(times: Times): Pick<Times, 'clockIn' | 'clockOut'> {
   const was = (field: Change['field'], now: number | null) => {
     const change = times.corrected?.changes.find((one) => one.field === field);
