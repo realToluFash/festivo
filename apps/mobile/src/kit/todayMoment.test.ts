@@ -233,7 +233,7 @@ describe('todayMoment', () => {
 });
 
 describe("Your events' replies line (sc-29881)", () => {
-  const wedding = { invited: 142, coming: 96, notReplied: 25 };
+  const wedding = { invited: 142, coming: 96, notReplied: 25, attended: 0, expected: 0 };
   const read = (guests: EventGuestFigures | null, rest: Partial<ListedEvent> = {}) =>
     moment([event('Wedding', { guests, ...rest })]).events[0]?.ready;
 
@@ -247,7 +247,7 @@ describe("Your events' replies line (sc-29881)", () => {
   });
 
   it('keeps the empty bar for an event invited with no replies yet', () => {
-    expect(read({ invited: 40, coming: 0, notReplied: 40 })).toEqual({
+    expect(read({ invited: 40, coming: 0, notReplied: 40, attended: 0, expected: 0 })).toEqual({
       words: '0 coming · 0% replied',
       spoken: '0 coming, 0% replied',
       percent: 0,
@@ -256,7 +256,7 @@ describe("Your events' replies line (sc-29881)", () => {
   });
 
   it('reads Invitations not sent, with no bar, when nobody is invited', () => {
-    expect(read({ invited: 0, coming: 0, notReplied: 0 })).toEqual({
+    expect(read({ invited: 0, coming: 0, notReplied: 0, attended: 0, expected: 0 })).toEqual({
       words: 'Invitations not sent',
       percent: 0,
     });
@@ -290,7 +290,7 @@ describe("Your events' replies line (sc-29881)", () => {
     });
     followPluralLocales(french.services.pluralResolver);
     followNumberLocales(french.services.formatter!);
-    const guests = { invited: 1400, coming: 1204, notReplied: 126 };
+    const guests = { invited: 1400, coming: 1204, notReplied: 126, attended: 0, expected: 0 };
 
     const ready = todayMoment(
       { events: [event('Mariage', { guests })], at: AT },
@@ -301,5 +301,73 @@ describe("Your events' replies line (sc-29881)", () => {
     ).events[0]?.ready;
 
     expect(ready?.words).toBe('1 204 coming · 91 % replied');
+  });
+});
+
+describe("Today's arrived figure (sc-29978)", () => {
+  const coming = { invited: 160, coming: 152, notReplied: 4 };
+  const under = (guests: EventGuestFigures | null) =>
+    event('Wedding', { guests, phase: 'happening_now', startsAt: '2026-11-02T10:00:00Z' });
+  const day = (guests: EventGuestFigures | null) => moment([under(guests)]);
+
+  it('reads arrived of expected on the card, its bar rounded down, and the same on Now beside a ring', () => {
+    const read = day({ ...coming, attended: 141, expected: 152 });
+
+    expect(read.events[0]?.ready).toEqual({
+      words: '141 of 152 arrived',
+      percent: 92,
+      track: true,
+    });
+    expect(read.now?.arrived).toEqual({
+      count: '141',
+      of: '152',
+      share: 141 / 152,
+      label: 'arrived',
+      spoken: '141 of 152 arrived',
+    });
+  });
+
+  it('with nobody Coming, reads the arrivals alone: no bar and no ring', () => {
+    const read = day({ invited: 0, coming: 0, notReplied: 0, attended: 37, expected: 37 });
+
+    expect(read.events[0]?.ready).toEqual({ words: '37 arrived', percent: 0 });
+    expect(read.now?.arrived).toMatchObject({ count: '37', of: null, share: null });
+  });
+
+  it('keeps the replies line and no figure while nobody has arrived', () => {
+    const read = day({ ...coming, attended: 0, expected: 152 });
+
+    expect(read.events[0]?.ready?.words).toBe('152 coming · 98% replied');
+    expect(read.now?.arrived).toBeNull();
+  });
+
+  it('shows no arrivals without guests.read', () => {
+    const read = day(null);
+
+    expect(read.events[0]?.ready).toBeNull();
+    expect(read.now?.arrived).toBeNull();
+  });
+
+  it('writes four-digit figures in the reader’s language', async () => {
+    const french = createInstance();
+    await french.init({
+      resources: { fr: { translation: en } },
+      lng: 'fr',
+      interpolation: { escapeValue: false },
+    });
+    followPluralLocales(french.services.pluralResolver);
+    followNumberLocales(french.services.formatter!);
+    const guests = { invited: 1300, coming: 1250, notReplied: 0, attended: 1204, expected: 1250 };
+
+    const read = todayMoment(
+      { events: [under(guests)], at: AT },
+      NOW,
+      { timeZone: 'Europe/Paris', locale: 'fr-FR' },
+      'Folake',
+      french.t,
+    );
+
+    expect(read.events[0]?.ready?.words).toBe('1\u202f204 of 1\u202f250 arrived');
+    expect(read.now?.arrived).toMatchObject({ count: '1\u202f204', of: '1\u202f250' });
   });
 });

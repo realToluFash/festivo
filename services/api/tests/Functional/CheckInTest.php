@@ -219,6 +219,28 @@ final class CheckInTest extends ApiTestCase
     }
 
     #[Test]
+    public function eventsCarriesTheSameArrivedOfExpectedAsTheDoor(): void
+    {
+        $guest = $this->add(self::ADAEZE);
+        $this->reply($this->token($guest), 'coming');
+        $declined = $this->add('Bisi Adewale');
+        $this->reply($this->token($declined), 'notComing');
+        self::mockTime(new DateTimeImmutable(self::OPEN));
+        self::assertSame([0, 1], $this->listedArrivals());
+
+        $this->arrive($guest);
+        self::assertSame([1, 1], $this->listedArrivals());
+
+        $read = $this->arrive($declined);
+        $this->walkIn('Kemi Olatunji');
+        self::assertSame([3, 3], $this->listedArrivals());
+        self::assertSame(['attended' => 2, 'expected' => 2], $read['count'] ?? null);
+
+        $this->as($this->owner, 'DELETE', $this->checkIn() . '/arrivals/' . $guest);
+        self::assertSame([2, 3], $this->listedArrivals());
+    }
+
+    #[Test]
     public function aWalkInWhoseNameIsOnTheListAsksFirstAndCreatesNothing(): void
     {
         $guest = $this->add(self::ADAEZE);
@@ -428,6 +450,15 @@ final class CheckInTest extends ApiTestCase
         $violations = Type\shape(['violations' => Type\vec(Type\shape(['message' => Type\string()], true))], true)->coerce($this->last());
 
         return $violations['violations'][0]['message'] ?? null;
+    }
+
+    /** @return list<int> attended and expected, as Today reads them from the events list */
+    private function listedArrivals(): array
+    {
+        $body = $this->as($this->owner, 'GET', '/api/orgs/' . $this->organisation->getId()->toRfc4122() . '/events');
+        $guests = Type\shape(['events' => Type\vec(Type\shape(['guests' => Type\shape(['attended' => Type\int(), 'expected' => Type\int()], true)], true))], true)->coerce($body)['events'][0]['guests'];
+
+        return [$guests['attended'], $guests['expected']];
     }
 
     private function checkIn(): string

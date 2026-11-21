@@ -72,15 +72,15 @@ final readonly class HeadcountCalculator
     }
 
     /**
-     * Events' measure (sc-23284): the companions held behind a guest who owes an answer have not replied either.
+     * Events' measure (sc-23284): the companions held behind a guest who owes an answer have not replied either. Today's arrived line reads attended of expected, as Check-in does (sc-29978).
      *
      * @param Counts $counts
      *
-     * @return array{invited: int, coming: int, notReplied: int}
+     * @return array{invited: int, coming: int, notReplied: int, attended: int, expected: int}
      */
     public static function figures(array $counts): array
     {
-        return ['invited' => $counts['invited'], 'coming' => $counts['accepted'], 'notReplied' => $counts['awaitingReply'] + $counts['heldBy']['hostNoReply']];
+        return ['invited' => $counts['invited'], 'coming' => $counts['accepted'], 'notReplied' => $counts['awaitingReply'] + $counts['heldBy']['hostNoReply'], 'attended' => $counts['attended'], 'expected' => $counts['expected']];
     }
 
     /**

@@ -21,6 +21,7 @@ import {
   joinedLine,
   managesPeople,
   nowCan,
+  offerLine,
   offered,
   opensRow,
   personShown,
@@ -433,6 +434,7 @@ export function EventPeople({
               id: member.membershipId,
               name: member.name,
               face: <Face name={member.name} id={member.membershipId} side={40} />,
+              line: offerLine(t, member),
             }))
           }
           outside={{

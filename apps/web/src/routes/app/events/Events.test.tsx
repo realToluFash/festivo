@@ -387,17 +387,17 @@ describe('Events Home (sc-3594)', () => {
         live('Wedding', {
           id: 'ev_wed',
           name: 'Adaeze & Tunde’s wedding',
-          guests: { invited: 142, coming: 96, notReplied: 25 },
+          guests: { invited: 142, coming: 96, notReplied: 25, attended: 0, expected: 0 },
         }),
         live('Party', {
           startsAt: '2026-11-20T16:00:00+01:00',
           endsAt: '2026-11-20T22:00:00+01:00',
-          guests: { invited: 3, coming: 0, notReplied: 3 },
+          guests: { invited: 3, coming: 0, notReplied: 3, attended: 0, expected: 0 },
         }),
         live('Nobody yet', {
           startsAt: '2026-11-21T16:00:00+01:00',
           endsAt: '2026-11-21T22:00:00+01:00',
-          guests: { invited: 0, coming: 0, notReplied: 0 },
+          guests: { invited: 0, coming: 0, notReplied: 0, attended: 0, expected: 0 },
         }),
         live('Unread', {
           startsAt: '2026-11-22T16:00:00+01:00',
@@ -460,7 +460,7 @@ describe('Events Home (sc-3594)', () => {
     const hub = () =>
       json({ token: 'tok', expiresAt: new Date(Date.now() + 3_600_000).toISOString() });
     const headcounts = () => made.filter((one) => one.url.includes('headcount'));
-    let figures = { invited: 142, coming: 96, notReplied: 25 };
+    let figures = { invited: 142, coming: 96, notReplied: 25, attended: 0, expected: 0 };
     const sent = answering({
       'GET /api/orgs/org_1/events': (body, url) =>
         listed([
@@ -480,7 +480,7 @@ describe('Events Home (sc-3594)', () => {
       sent.find((one) => one.line === 'POST /api/orgs/org_1/events/headcounts/subscriptions')?.body,
     ).toEqual({ events: ['ev_wed'] });
 
-    figures = { invited: 142, coming: 97, notReplied: 24 };
+    figures = { invited: 142, coming: 97, notReplied: 24, attended: 0, expected: 0 };
     act(() => headcounts()[0]!.onmessage?.({ data: JSON.stringify({ headcount: {} }) }));
 
     expect(

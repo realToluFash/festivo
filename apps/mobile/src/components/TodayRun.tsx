@@ -136,7 +136,7 @@ function Rail({ run }: { run: RunNow }) {
 function NextRow({ run, aside }: { run: RunNow; aside: ReactNode }) {
   const { t } = useTranslation();
 
-  if (run.next == null) return null;
+  if (run.next == null) return <>{aside}</>;
 
   return (
     <View style={styles.nextRow}>

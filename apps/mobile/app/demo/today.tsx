@@ -16,7 +16,6 @@ import { noOrgBoardOf } from '../../src/demo/settings/fromNone.ts';
 import { OrgSwitcherProvider, useCurrentPlace } from '../../src/demo/OrgSwitcher.tsx';
 import { switcherStateOf } from '../../src/demo/OrgSwitcherModel.ts';
 import { isNeedsState, MOMENTS, momentOf, planGuests, sayIn } from '../../src/demo/today.ts';
-import { ArrivedTodayScreen } from '../../src/demo/today/ArrivedToday.tsx';
 import {
   ARRIVED_AT,
   type ArrivedState,
@@ -208,7 +207,7 @@ function DemoTodayScreen() {
           ) : shownRun != null ? (
             <RunTodayScreen moment={shownRun} onTab={onTab} notices={notices} />
           ) : arrived != null ? (
-            <ArrivedTodayScreen moment={arrived} onTab={onTab} notices={notices} />
+            <TodayScreen moment={arrived} onTab={onTab} notices={notices} />
           ) : drawn.needs != null ? (
             <NeedsTodayScreen moment={drawn} onTab={onTab} notices={notices} />
           ) : kind === 'tabletLandscape' ? (

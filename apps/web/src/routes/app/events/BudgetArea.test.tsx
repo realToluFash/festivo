@@ -2165,3 +2165,12 @@ describe('a schedule from the vendor’s terms (sc-1332)', () => {
     ).toBe('40');
   });
 });
+
+describe('the crumbs of the Budget and Staff rates in every language (sc-79848)', () => {
+  it('wraps them whole at word breaks rather than truncating them', () => {
+    expect(cssRule('.bt .ev-crumb ol', BUDGET_CSS)).toContain('flex-wrap: wrap;');
+    expect(cssRule('.bt .ev-crumb-part', BUDGET_CSS)).toContain('min-width: auto;');
+    expect(cssRule('.bt .ev-crumb-part', BUDGET_CSS)).toContain('overflow-wrap: break-word;');
+    expect(cssRule('.bt .ev-crumb-name', BUDGET_CSS)).toContain('white-space: normal;');
+  });
+});
