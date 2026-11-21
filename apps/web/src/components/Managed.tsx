@@ -7,7 +7,7 @@ import { Link } from 'react-router';
 import { api } from '../api.ts';
 import { keepFocusIn } from '../dialogFocus.ts';
 import { LayersContext } from '../layers.ts';
-import { lessMotion } from '../leaving.ts';
+import { focusStep } from '../stepFocus.ts';
 import { Glyph } from './Glyph.tsx';
 import './createWalk.css';
 import './Managed.css';
@@ -25,7 +25,7 @@ export function ManagedBanner({
   level?: 2 | 3;
   /** Off on A few details, where Account settings is still behind the onboarding gate. */
   way?: boolean;
-  /** It replaced the button just pressed, so it comes wholly into view and its title takes focus (sc-563). */
+  /** It replaced the button just pressed, so it comes wholly into view and its title takes focus, read as it lands rather than as an alert (sc-563). */
   takesFocus?: boolean;
 }) {
   const { t } = useTranslation();
@@ -36,18 +36,14 @@ export function ManagedBanner({
 
   useEffect(() => {
     if (!takesFocus) return;
-    banner.current?.scrollIntoView?.({
-      block: 'nearest',
-      behavior: lessMotion() ? 'auto' : 'smooth',
-    });
-    title.current?.focus({ preventScroll: true });
+    focusStep(title.current, banner.current);
   }, [takesFocus]);
 
   return (
     <section
       ref={banner}
       className="managed"
-      role={alert ? 'alert' : undefined}
+      role={alert && !takesFocus ? 'alert' : undefined}
       aria-labelledby={id}
     >
       <span className="managed-mark" aria-hidden="true">

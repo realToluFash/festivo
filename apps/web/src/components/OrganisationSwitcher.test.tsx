@@ -969,7 +969,7 @@ describe('an invitation in the switcher, answered in its panel (sc-30412)', () =
     const title = await within(panel).findByRole('heading', { name: 'Managed by Ìrè Events' });
     expect(document.activeElement).toBe(title);
     expect(scrolled).toHaveBeenCalledWith(expect.objectContaining({ block: 'nearest' }));
-    expect(within(panel).getByRole('alert')).toBeDefined();
+    expect(within(panel).queryByRole('alert')).toBeNull();
     expect(within(panel).getByText(message)).toBeDefined();
     expect(within(panel).getByText('Access to a single event still works.')).toBeDefined();
     expect(
