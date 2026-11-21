@@ -87,6 +87,10 @@ import { ServiceRoomPage } from './ServiceRoom.tsx';
 import { ROOM_STATES, ROOM_STATE_WHAT } from './serviceRoom.ts';
 import { QUEUE_STATES, type QueueStateName } from './queue.ts';
 import { JobsShiftsPage } from './JobsShifts.tsx';
+import { StaffHoursPage } from './StaffHours.tsx';
+import { HOURS_PAGES } from './hours.ts';
+import { ShiftClockPage } from './ShiftClock.tsx';
+import { SHIFT_CLOCK_PAGES } from './shiftClock.ts';
 import { RosterPage } from './Roster.tsx';
 import { ROSTER_PAGES } from './roster.ts';
 import { JOBS_PAGES } from './shifts.ts';
@@ -291,6 +295,7 @@ export default function Demo() {
       <Route path="events/:id/staff/stations" element={<StationsPage />} />
       <Route path="events/:id/staff/roster" element={<RosterPage />} />
       <Route path="events/:id/staff/jobs" element={<JobsShiftsPage />} />
+      <Route path="events/:id/staff/hours" element={<StaffHoursPage />} />
       <Route path="events/:id/schedule" element={<SchedulePage />} />
       <Route path="events/:id/run" element={<RunViewPage />} />
       <Route path="events/:id/night" element={<NightPage />} />
@@ -341,6 +346,7 @@ export default function Demo() {
       <Route path="settings/payment-reminders" element={<Settings open="vendors" reminders />} />
       <Route path="people" element={<People />} />
       <Route path="redeem" element={<Redeem />} />
+      <Route path="shift-clock" element={<ShiftClockPage />} />
       <Route path="check-in" element={<DoorCheckIn />} />
       <Route path="check-in/shift" element={<ShiftPage />} />
       <Route path="staff-sign-in" element={<StaffSignIn />} />
@@ -532,6 +538,10 @@ function DemoHome({ from }: { from: string }) {
         <BoardPages pages={JOBS_PAGES} />
         <h3>Stations and leads, what each station serves, the walking order (sc-3910) · desktop</h3>
         <BoardPages pages={STATIONS_PAGES} />
+        <h3>Hours worked: actual times, the two marks and Correct times (sc-234) · desktop</h3>
+        <BoardPages pages={HOURS_PAGES} />
+        <h3>The clock card on a person’s own shift, in a browser (sc-234) · phone</h3>
+        <BoardPages pages={SHIFT_CLOCK_PAGES} />
         <h3>
           A staff member’s whole night on one page (sc-3915) · 390 first, two columns from 800
         </h3>

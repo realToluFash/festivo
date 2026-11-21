@@ -277,7 +277,7 @@ export function TabCapsule({
             accessibilityRole="tab"
             accessibilityState={{ selected: on }}
             accessibilityLabel={t(`todayScreen.tab.${glyph}`)}
-            testID={SETTINGS_ID[label]}
+            testID={SETTINGS_ID[label] ?? `tab-${label.toLowerCase()}`}
           >
             <Glyph name={glyph} ink={ink} />
             <Text

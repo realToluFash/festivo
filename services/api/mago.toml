@@ -168,6 +168,7 @@ domain_budget = [
     "App\\Domain\\Budget\\Http\\BudgetSerialiser",
     "App\\Domain\\Budget\\Http\\PayersSerialiser",
     "App\\Domain\\Budget\\Http\\QuoteSerialiser",
+    "App\\Domain\\Budget\\Http\\StaffRatesSerialiser",
     "App\\Domain\\Budget\\Http\\VendorDirectory",
     "App\\Domain\\Budget\\Http\\VendorDirectoryProvider",
     "App\\Domain\\Budget\\Http\\VendorSerialiser",
@@ -429,7 +430,8 @@ permit = [
 # (sc-68066). A line holds the event's currency (sc-98); each change is audited and
 # published. The margin is published only to an organisation whose plan unlocks it,
 # asked of billing's one entitlement answer (sc-92). A payment falling due is a message
-# scheduled and sent through messaging (sc-95).
+# scheduled and sent through messaging (sc-95). Staff rates price the scheduled hours
+# of Staffing's shifts, read on the event's clock through Staff's ShiftClock (sc-101).
 [[guard.perimeter.rules]]
 namespace = "App\\Domain\\Budget\\"
 permit = [
@@ -442,6 +444,7 @@ permit = [
     "@layer:domain_event",
     "@layer:domain_guest",
     "@layer:domain_messaging",
+    "@layer:domain_staff",
     "@layer:domain_user",
     "@layer:repository",
     "@layer:audit",

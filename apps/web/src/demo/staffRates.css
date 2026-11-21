@@ -97,3 +97,48 @@
   color: var(--colorInkSecondary);
   font: 500 15px/1.45 var(--fontFamily);
 }
+
+.srt-after {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
+.srt-after-top {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 12px;
+}
+
+.srt-rate {
+  color: var(--colorInkSecondary);
+  font: 500 14.5px/1.4 var(--fontFamily);
+}
+
+.srt-two {
+  display: grid;
+  grid-template-columns: max-content 1fr max-content;
+  gap: 6px 14px;
+  align-items: baseline;
+}
+
+.srt-two-label {
+  color: var(--colorInkSecondary);
+  font: 600 13.5px/1.4 var(--fontFamily);
+}
+
+.srt-two-words {
+  color: var(--colorInk);
+  font: 500 14.5px/1.4 var(--fontFamily);
+  font-variant-numeric: tabular-nums;
+}
+
+.srt-two-amount {
+  color: var(--colorInk);
+  font: 600 15px/1.4 var(--fontFamily);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}

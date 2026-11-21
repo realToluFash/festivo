@@ -68,6 +68,7 @@ final class BudgetRangeTest extends ApiTestCase
             'potential' => '0.00',
             'perHead' => ['confirmed' => ['amount' => null, 'heads' => 0], 'potential' => ['amount' => null, 'heads' => 0]],
             'notPriced' => 0,
+            'staff' => ['total' => '0.00', 'countedMinutes' => 0, 'scheduledMinutes' => 0, 'unrated' => []],
             'quantities' => [
                 'per_head' => ['count' => 0, 'source' => 'accepted', 'reason' => 'no_guests'],
                 'per_table' => ['count' => 0, 'source' => 'seating_tables', 'reason' => 'no_seating_plan'],

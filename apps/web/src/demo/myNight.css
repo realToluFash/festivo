@@ -154,7 +154,6 @@
 }
 
 .myn-card,
-.myn-clock,
 .myn-demo {
   display: flex;
   flex-direction: column;
@@ -165,20 +164,15 @@
   background: var(--colorCard);
 }
 
-.myn-card h2,
-.myn-clock h2 {
+.myn-card h2 {
   font-size: 17px;
   font-weight: 600;
   color: var(--markInfoInk);
 }
 
-.myn-clock,
 .myn-demo {
   border: 2px dashed var(--colorFieldBorder);
   background: var(--colorInset);
-}
-
-.myn-demo {
   align-items: flex-start;
 }
 
@@ -383,7 +377,6 @@
   }
 
   .myn-card,
-  .myn-clock,
   .myn-demo {
     border-radius: var(--radiusCardDesktop);
   }

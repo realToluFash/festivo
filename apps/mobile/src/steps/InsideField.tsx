@@ -14,7 +14,7 @@ import {
 import Svg, { Circle, Path } from 'react-native-svg';
 import { useTranslation } from 'react-i18next';
 
-import { FocusEdge, useHeld } from '../components/Field.tsx';
+import { FocusEdge, useHeld, useRevealed } from '../components/Field.tsx';
 import { fieldFocused, fieldLeft } from '../components/focusedField.ts';
 import { Text } from '../components/Text.tsx';
 import { UnseenName } from '../components/UnseenName.tsx';
@@ -73,7 +73,7 @@ export function InsideField({
   const { fontScale } = useWindowDimensions();
   const [focused, setFocused] = useState(false);
   const bold = useBoldText();
-  const [revealed, setRevealed] = useState(false);
+  const [revealed, setRevealed] = useRevealed(submitting);
   const [typed, setTyped] = useState(value ?? defaultValue ?? '');
   const raised = focused || (value ?? typed) !== '';
   const [lift] = useState(() => new Animated.Value(raised ? 1 : 0));

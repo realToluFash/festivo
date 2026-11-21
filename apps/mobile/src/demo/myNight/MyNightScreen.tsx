@@ -28,6 +28,15 @@ import {
   nightOf,
   signedOutAt,
 } from './myNightModel.ts';
+import { ClockCard } from '../shiftClock/ShiftClockScreen.tsx';
+import { useClockCard } from '../shiftClock/useClockCard.ts';
+
+/** sc-234's clock card, live, above Your shift: its own states are at /demo/shift-clock. */
+function Clock({ night }: { night: Night }) {
+  const { c, busy, said, press } = useClockCard(night.clock);
+
+  return <ClockCard c={c} busy={busy} said={said} browser={!night.inApp} onPress={press} />;
+}
 
 export function MyNightRoute() {
   const { state } = useLocalSearchParams<{ state?: string }>();
@@ -67,12 +76,7 @@ export function MyNightScreen({ first }: { first: Night }) {
           {headingOf(night)}
         </Text>
       </View>
-      <View style={styles.frame} testID="myNight.clock">
-        <Text size={17} weight="semibold" style={styles.info}>
-          {MN.clockFrame}
-        </Text>
-        <Text size={17}>{MN.clockFrameBody(night.clockShows)}</Text>
-      </View>
+      <Clock night={night} />
       <Card title={MN.yourShift}>
         <Text size={20} weight="bold">
           {night.job}
@@ -431,15 +435,6 @@ const styles = StyleSheet.create({
     backgroundColor: tokens.colorCard,
     borderWidth: 1,
     borderColor: tokens.colorBorder,
-  },
-  frame: {
-    gap: tokens.spaceSm,
-    padding: tokens.spaceLg,
-    borderRadius: tokens.radiusCardPhone,
-    backgroundColor: tokens.colorInset,
-    borderWidth: 2,
-    borderStyle: 'dashed',
-    borderColor: tokens.colorFieldBorder,
   },
   inset: {
     gap: tokens.spaceXs,

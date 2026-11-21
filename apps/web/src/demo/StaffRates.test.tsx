@@ -99,6 +99,11 @@ describe('Staff rates at a desk (sc-101)', () => {
           'Not saved. Changing a rate needs the Manage the budget permission, and you no longer have it on this event. The rate is still £14 an hour.',
         ),
       ).toBeTruthy();
+
+      const save = screen.getByRole('button', { name: 'Save rate' });
+      save.focus();
+      fireEvent.click(save);
+      expect(document.activeElement).toBe(screen.getByLabelText('Rate an hour'));
     },
   );
 
@@ -112,6 +117,30 @@ describe('Staff rates at a desk (sc-101)', () => {
     expect(main().textContent).toContain('Cook’s 24 h and Bar’s 10 h 45 min not counted');
   });
 
+  it('hands focus back to the row the editor opened from', SLOW, async () => {
+    await open('staff_rates');
+
+    fireEvent.click(job('Waiter'));
+    fireEvent.click(screen.getByRole('button', { name: 'Save rate' }));
+    expect(document.activeElement).toBe(job('Waiter'));
+
+    fireEvent.click(job('Cook'));
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+    expect(document.activeElement).toBe(job('Cook'));
+
+    fireEvent.click(job('Door'));
+    fireEvent.keyDown(screen.getByLabelText('Fee for each person'), { key: 'Escape' });
+    expect(document.activeElement).toBe(job('Door'));
+
+    fireEvent.click(job('Cook'));
+    fireEvent.click(screen.getByRole('button', { name: 'Remove the rate' }));
+    expect(document.activeElement).toBe(job('Cook'));
+
+    fireEvent.click(screen.getByRole('button', { name: 'Add one' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Add one' }));
+  });
+
   it('gives a person their own rate, and takes it back', SLOW, async () => {
     await open('staff_rates_add_blank');
 
@@ -123,8 +152,10 @@ describe('Staff rates at a desk (sc-101)', () => {
     const own = within(screen.getByRole('region', { name: 'People on their own rate' }));
     const amina = own.getByRole('button', { name: /^Amina Yusuf/ });
     expect(amina.textContent).toContain('£16 an hour · Instead of Waiter’s £14 an hour');
+    expect(document.activeElement).toBe(amina);
     fireEvent.click(amina);
     fireEvent.click(screen.getByRole('button', { name: 'Use Waiter’s rate' }));
+    expect(document.activeElement).toBe(job('Waiter'));
     expect(screen.getByText('Amina Yusuf is back on Waiter’s rate.')).toBeTruthy();
     expect(own.queryByRole('button', { name: /^Amina Yusuf/ })).toBeNull();
   });
@@ -161,5 +192,34 @@ describe('Staff rates at a desk (sc-101)', () => {
     expect(staff.textContent).toContain('£1,502.00');
     expect(staff.textContent).toContain('91 h 30 min of 102 h 15 min scheduled');
     expect(staff.getAttribute('href')).toContain('state=staff_rates');
+  });
+});
+
+describe('Staff rates after the event (sc-234)', () => {
+  beforeEach(() => {
+    __setConfig({ ...tested, environment: 'development' });
+  });
+
+  afterEach(() => {
+    cleanup();
+  });
+
+  it('puts Scheduled and Worked on each job, with the amount at each', SLOW, async () => {
+    await open('staff_rates_after');
+
+    const lead = within(main()).getByRole('button', { name: /^Floor lead/ });
+    expect(lead.textContent).toContain('Scheduled');
+    expect(lead.textContent).toContain('of which 9 h 8 min assumed (not clocked out)');
+    const door = within(main()).getByRole('button', { name: /^Door/ });
+    expect(door.textContent).toContain('1 person worked');
+    expect(door.textContent).toContain('£120.00');
+  });
+
+  it('keeps the scheduled cost as the headline, the worked cost under it', SLOW, async () => {
+    await open('staff_rates_after');
+
+    const head = within(main()).getByRole('region', { name: 'Staff rates' });
+    expect(head.querySelector('.srt-figure')?.textContent).toBe('£1,502');
+    expect(head.textContent).toContain('Worked 71 h 33 min of 91 h 30 min scheduled: £1,097.70.');
   });
 });

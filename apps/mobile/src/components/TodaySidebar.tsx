@@ -1,6 +1,16 @@
-import { type ReactNode, type Ref, useRef } from 'react';
+import {
+  type ReactNode,
+  type Ref,
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useRef,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import {
+  type LayoutChangeEvent,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -399,14 +409,49 @@ function SidebarCardWords({ event, tags }: { event: Shown; tags: readonly string
   );
 }
 
+type ListReport = (list: { height: number; least: number } | null) => void;
+
+const ListBound = createContext<ListReport>(() => {});
+
+/** The sidebar's own height bounds its content, so your events take only the room the places and the foot leave; shorter than the places, the foot and four rows, the whole sidebar scrolls (sc-39340). */
 export function SidebarColumn({ children }: { children: ReactNode }) {
+  const [viewport, setViewport] = useState(0);
+  const [floor, setFloor] = useState<number | null>(null);
+  const laid = useRef<{ content: number; list: { height: number; least: number } | null }>({
+    content: 0,
+    list: null,
+  });
+  const settle = useCallback(() => {
+    const { content, list } = laid.current;
+    setFloor(list == null || content === 0 ? null : content - list.height + list.least);
+  }, []);
+  const report = useCallback<ListReport>(
+    (list) => {
+      laid.current.list = list;
+      settle();
+    },
+    [settle],
+  );
+  const bound = viewport > 0 && floor != null ? Math.max(viewport, floor) : null;
+
   return (
     <ScrollView
       style={styles.column}
-      contentContainerStyle={[styles.side, styles.fills]}
+      contentContainerStyle={styles.fills}
+      onLayout={({ nativeEvent }) => setViewport(nativeEvent.layout.height)}
       showsVerticalScrollIndicator={false}
     >
-      {children}
+      <ListBound.Provider value={report}>
+        <View
+          style={[styles.side, bound == null ? styles.fills : { height: bound }]}
+          onLayout={({ nativeEvent }) => {
+            laid.current.content = nativeEvent.layout.height;
+            settle();
+          }}
+        >
+          {children}
+        </View>
+      </ListBound.Provider>
     </ScrollView>
   );
 }
@@ -432,11 +477,25 @@ export function SidebarEvents({ events }: { events: readonly ShownEvent[] }) {
     tokens.sizeHit,
     ROOMS.event.size * fontScale * LABEL_LINE + 2 * rowPad(fontScale),
   );
+  const least =
+    events.length === 0
+      ? 0
+      : size * LABEL_LINE + 2 * tokens.spaceXs + Math.min(events.length, LEAST_ROWS) * row;
+  const report = useContext(ListBound);
+  const height = useRef<number | null>(null);
+  useEffect(() => {
+    if (height.current != null) report({ height: height.current, least });
+  }, [report, least]);
+  useEffect(() => () => report(null), [report]);
+  const onLayout = ({ nativeEvent }: LayoutChangeEvent) => {
+    height.current = nativeEvent.layout.height;
+    report({ height: height.current, least });
+  };
 
-  if (events.length === 0) return <View style={styles.grow} />;
+  if (events.length === 0) return <View style={styles.grow} onLayout={onLayout} />;
 
   return (
-    <View style={styles.list}>
+    <View style={[styles.list, { minHeight: least }]} onLayout={onLayout}>
       {measure}
       <Text
         size={size}
@@ -447,10 +506,7 @@ export function SidebarEvents({ events }: { events: readonly ShownEvent[] }) {
       >
         {heading}
       </Text>
-      <ScrollView
-        style={[styles.rows, { minHeight: Math.min(events.length, LEAST_ROWS) * row }]}
-        nestedScrollEnabled
-      >
+      <ScrollView style={styles.rows} nestedScrollEnabled>
         {events.map((event) => (
           <SidebarEventRow key={event.id} event={event} />
         ))}
@@ -585,7 +641,7 @@ const styles = StyleSheet.create({
   sunkTags: { width: '45%' },
   column: { width: SIDEBAR_WIDTH, flexGrow: 0 },
   fills: { flexGrow: 1 },
-  list: { flexGrow: 1 },
+  list: { flexGrow: 1, flexBasis: 0 },
   rows: { flexGrow: 1, flexBasis: 0 },
   place: {
     minHeight: tokens.sizeHit,

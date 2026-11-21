@@ -308,6 +308,21 @@ describe('who sees the Budget (sc-85)', () => {
     expect(screen.queryByRole('heading', { name: 'Adaeze and Tunde' })).toBeNull();
     expect(sent.some((one) => one.line === 'GET /api/events/ev_1/budget')).toBe(false);
   });
+
+  it('draws the not available page as its demo does: the event, Not available, Back to Events', async () => {
+    signedIn();
+    const without = OWNER_PERMISSIONS.filter((one) => !one.startsWith('budget.'));
+    serve({}, { permissions: without, at: '/app/events/ev_1/budget/staff-rates' });
+
+    const heading = await screen.findByRole('heading', { name: 'This event is not available' });
+    const crumb = screen.getByRole('navigation', { name: 'Breadcrumb' });
+    expect(within(crumb).getByRole('link', { name: 'Adaeze and Tunde' })).toBeTruthy();
+    expect(within(crumb).getByText('Not available')).toBeTruthy();
+    expect(heading.closest('.card')).toBeNull();
+    expect(screen.getByRole('link', { name: 'Back to Events' }).getAttribute('href')).toBe(
+      '/app/events',
+    );
+  });
 });
 
 describe('changing a rate in place (sc-85)', () => {

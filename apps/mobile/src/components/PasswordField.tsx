@@ -1,7 +1,5 @@
-import { useFocusEffect } from 'expo-router';
-import { type Ref, useCallback, useEffect, useState } from 'react';
+import { type Ref } from 'react';
 import {
-  AppState,
   Pressable,
   StyleSheet,
   TextInput,
@@ -23,6 +21,7 @@ import {
   useFocusEdge,
   useHeld,
   useRefused,
+  useRevealed,
 } from './Field.tsx';
 import { Text } from './Text.tsx';
 
@@ -47,24 +46,7 @@ export function PasswordField({
 }) {
   const { t } = useTranslation();
   const refused = useRefused(wrong);
-  const [revealed, setRevealed] = useState(false);
-  const [wasSubmitting, setWasSubmitting] = useState(submitting);
-
-  // Hidden again the moment the form is submitted, adjusted while rendering rather than in an effect.
-  if (submitting !== wasSubmitting) {
-    setWasSubmitting(submitting);
-    if (submitting) setRevealed(false);
-  }
-
-  useEffect(() => {
-    const listener = AppState.addEventListener('change', (state) => {
-      if (state !== 'active') setRevealed(false);
-    });
-
-    return () => listener.remove();
-  }, []);
-
-  useFocusEffect(useCallback(() => () => setRevealed(false), [setRevealed]));
+  const [revealed, setRevealed] = useRevealed(submitting);
   const holding = useHeld(submitting, value, rest.defaultValue, onChangeText);
   const labelID = useFieldLabel();
   const { focused, edging } = useFocusEdge(rest.onFocus, rest.onBlur);

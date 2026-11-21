@@ -730,6 +730,19 @@ describe('every field reports its focus to the lift (sc-29076)', () => {
   });
 });
 
+describe('a shown password hides again on a send, a screen left and the app sent away (sc-79989)', () => {
+  it('in every component that can show a password', () => {
+    const offenders = sources(['src', 'app'])
+      .filter(({ text }) => /(?:\.|&\s*)passwordProps\(/u.test(text))
+      .filter(({ text }) => !/=\s*useRevealed\(/u.test(text))
+      .map(({ path }) => path.replace(/^.*\/apps\/mobile\//u, ''));
+
+    expect(offenders, 'Take what is shown from useRevealed in src/components/Field.tsx.').toEqual(
+      [],
+    );
+  });
+});
+
 describe('a button or link taking keyboard focus moves on from the landing toast (sc-41296)', () => {
   const pressables = (file: string) => {
     const text = readFileSync(join(__dirname, file), 'utf8');

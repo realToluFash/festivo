@@ -105,6 +105,7 @@ import {
   budgetPath,
   budgetView,
   payersPath,
+  staffRatesPath,
   cardDue,
   dueInOrder,
   longDay,
@@ -112,6 +113,7 @@ import {
   vendorPagePath,
 } from './quotesArea.ts';
 import { PayersArea, WhoIsPaying } from './PayersArea.tsx';
+import { StaffLine, StaffRatesArea } from './StaffRatesArea.tsx';
 import { useHubTopics } from './useHubTopics.ts';
 import '../../../components/SettingsParts.css';
 import '../../../components/eventsDesk.css';
@@ -142,15 +144,16 @@ interface Removed {
   gone?: boolean;
 }
 
-/** An event's Budget, or Who is paying under it (sc-91). */
+/** An event's Budget, or Who is paying (sc-91) or Staff rates (sc-101) under it. */
 export function BudgetArea({ event }: { event: OrganisationEvent }) {
   const { '*': rest = '' } = useParams();
 
-  return budgetView(rest).kind === 'payers' ? (
-    <PayersArea event={event} />
-  ) : (
-    <BudgetHome event={event} />
-  );
+  const kind = budgetView(rest).kind;
+
+  if (kind === 'payers') return <PayersArea event={event} />;
+  if (kind === 'staffRates') return <StaffRatesArea event={event} />;
+
+  return <BudgetHome event={event} />;
 }
 
 /** An event's Budget at a desk (sc-85), as Budget A's demo draws it: the card with the range, the costs under their categories, a rate opened in place, Add a cost. */
@@ -783,6 +786,7 @@ function BudgetHome({ event }: { event: OrganisationEvent }) {
                 <div className="ev-columns">
                   <div className="ev-left">
                     <Costs
+                      eventId={event.id}
                       budget={budget}
                       opened={opened}
                       lit={lit}
@@ -1144,6 +1148,7 @@ function FirstCard({
 }
 
 function Costs({
+  eventId,
   budget,
   opened,
   lit,
@@ -1155,6 +1160,7 @@ function Costs({
   onSaveFailed,
   onRemove,
 }: {
+  eventId: string;
   budget: EventBudget;
   opened: string | null;
   lit: string | null;
@@ -1184,7 +1190,14 @@ function Costs({
               .filter((one) => one.category === category)
               .map((one) => (
                 <li key={one.id} data-line={one.id}>
-                  {opened === one.id ? (
+                  {one.basis === 'per_staff_hour' ? (
+                    <StaffLine
+                      name={one.label}
+                      staff={budget.staff}
+                      currency={budget.currency}
+                      to={staffRatesPath(eventId)}
+                    />
+                  ) : opened === one.id ? (
                     <OpenedCost
                       line={one}
                       budget={budget}
@@ -1693,6 +1706,15 @@ function AddCostDialog({
               <Glyph name="alert" size={15} weight={2.2} />
               {shown.basis}
             </p>
+          )}
+          {(basis === 'per_staff_hour' || taken) && (
+            <div className="bt-staff-note">
+              <p className="desk-note">{t('staffRates.staffNote')}</p>
+              <Link className="desk-text" to={staffRatesPath(eventId)}>
+                {t('staffRates.openStaffRates')}
+                <Glyph name="chevron" size={16} weight={2.4} />
+              </Link>
+            </div>
           )}
           {priced && (
             <MoneyField

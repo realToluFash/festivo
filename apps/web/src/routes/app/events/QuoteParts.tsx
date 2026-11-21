@@ -88,6 +88,7 @@ export function BudgetRow({
   to,
   open,
   lit = false,
+  label,
   onOpen,
 }: {
   title: ReactNode;
@@ -98,6 +99,7 @@ export function BudgetRow({
   to?: string;
   open?: boolean;
   lit?: boolean;
+  label?: string;
   onOpen?: () => void;
 }) {
   const inner = (
@@ -111,13 +113,19 @@ export function BudgetRow({
 
   if (to != null)
     return (
-      <Link className="desk-row bt-row" to={to}>
+      <Link className="desk-row bt-row" to={to} aria-label={label}>
         {inner}
       </Link>
     );
   if (onOpen != null)
     return (
-      <button type="button" className="desk-row bt-row" aria-expanded={open} onClick={onOpen}>
+      <button
+        type="button"
+        className="desk-row bt-row"
+        aria-label={label}
+        aria-expanded={open}
+        onClick={onOpen}
+      >
         {inner}
       </button>
     );

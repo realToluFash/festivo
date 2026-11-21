@@ -18,6 +18,9 @@ from . import (drawing, leftovers, local, machine, permissions, remote, roles, r
 PAGE = pathlib.Path(__file__).with_name("dashboard.html")
 RECENT = 20
 NEXT = 5
+# Asked of a peer, so two machines settling with each other never ask in a circle.
+OWN = "status.json?own=1"
+KEPT_SECONDS = 30
 
 
 def first_line(text):
@@ -174,20 +177,114 @@ def snapshot(db, platform, now, home, load=machine.load):
     return view
 
 
+def own_view(base, secret, fetch=remote.fetch):
+    """A peer's own reading of itself, or None when it does not give one."""
+    status, body = fetch(base, OWN, secret)
+    try:
+        view = json.loads(body) if status == 200 else None
+    except ValueError:
+        return None
+    return view if isinstance(view, dict) else None
+
+
+def peer_views(peers, secret, fetch=remote.fetch):
+    """Each peer's own reading by name, asked all at once and waited for; a peer that does
+    not answer is left out."""
+    found = {}
+
+    def ask(name, base):
+        view = own_view(base, secret, fetch)
+        if view is not None:
+            found[name] = view
+
+    asking = [threading.Thread(target=ask, args=peer, daemon=True) for peer in peers.items()]
+    for thread in asking:
+        thread.start()
+    for thread in asking:
+        thread.join()
+    return found
+
+
+class PeerViews:
+    """The same for the page, which is read every few seconds and waits for no peer: each
+    call asks again behind it and returns the answers already in, while they are fresh."""
+
+    def __init__(self, peers, secret, fetch=remote.fetch):
+        self.peers, self.secret, self.fetch = peers, secret, fetch
+        self.kept, self.asking, self.lock = {}, set(), threading.Lock()
+
+    def ask(self, name, base):
+        try:
+            view = own_view(base, self.secret, self.fetch)
+            with self.lock:
+                self.kept.pop(name, None)
+                if view is not None:
+                    self.kept[name] = (time.monotonic(), view)
+        finally:
+            with self.lock:
+                self.asking.discard(name)
+
+    def views(self):
+        peers = self.peers()
+        with self.lock:
+            unasked = [name for name in peers if name not in self.asking]
+            self.asking.update(unasked)
+            fresh = {name: view for name, (at, view) in self.kept.items()
+                     if name in peers and time.monotonic() - at < KEPT_SECONDS}
+        for name in unasked:
+            threading.Thread(target=self.ask, args=(name, peers[name]), daemon=True).start()
+        return fresh
+
+
+def settle(view, others):
+    """Counts a role another machine runs as that machine does. This one never hears what
+    was finished there, so its own queue for the role only grows; when that machine does
+    not answer, the count is unknown rather than this one's."""
+    theirs = {}
+    for name, other in others.items():
+        for row in other.get("roles") or []:
+            if row.get("state") not in ("refused", "elsewhere"):
+                theirs.setdefault(row["role"], (name, row))
+    unread = {role: seen["name"] for seen in view.get("machines") or []
+              if seen["name"] not in others for role in seen["started"]}
+
+    def counted(row, name):
+        if name in others and theirs.get(row["role"], (None,))[0] == name:
+            there = theirs[row["role"]][1]
+            return dict(row, waiting=there.get("waiting") or 0, next=there.get("next") or [],
+                        held=there.get("held"), counted_on=name)
+        if name and name not in others:
+            return dict(row, waiting=None, next=[], held=None, counted_on=name)
+        return row
+
+    if "roles" in view:
+        view["roles"] = [counted(row, (row.get("detail") or {}).get("machine"))
+                         if row.get("state") == "elsewhere" else row for row in view["roles"]]
+    if "elsewhere" in view:
+        away = [counted(row, theirs.get(row["role"], (unread.get(row["role"]),))[0])
+                for row in view["elsewhere"]]
+        view["elsewhere"] = [row for row in away
+                             if row["held"] or row["waiting"] or row["waiting"] is None]
+    return view
+
+
 def serve(read, port, open_page=True, say=print, session=lambda session_id: None,
           host=remote.LOOPBACK, secret=None, peers=dict, fetch=remote.fetch):
     """Serves the page, `/status.json` and `/session.json?id=` until interrupted, and the same
-    for each peer under `/m/<name>/`, read through `fetch`. `read` returns a snapshot,
-    `session` one session's view or None, and `peers` the names and addresses of the other
-    machines. Loopback needs no token; anyone else does. Each request has a thread of its own,
-    so a peer that is slow to answer, or a connection left idle, holds only itself; the queue
-    is read by one request at a time."""
+    for each peer under `/m/<name>/`, read through `fetch`. `read` returns a snapshot, which is
+    settled with the peers unless one of them is asking, `session` one session's view or
+    None, and `peers` the names and addresses of the other machines. Loopback needs no
+    token; anyone else does. Each request has a thread of its own, so a peer that is slow to
+    answer, or a connection left idle, holds only itself; the queue is read by one request
+    at a time."""
     if not remote.loopback(host) and not remote.usable(secret):
         say(f"error: sq web will not listen on {host} without {remote.TOKEN} of at least "
             f"{remote.TOKEN_MIN} characters in the env file")
         return
 
     reading = threading.Lock()
+    others = PeerViews(peers, secret, fetch)
+    others.views()
 
     class Page(http.server.BaseHTTPRequestHandler):
         timeout = 10
@@ -213,7 +310,10 @@ def serve(read, port, open_page=True, say=print, session=lambda session_id: None
                 status, body = fetch(base, rest + (f"?{query}" if query else ""), secret)
             elif path == "/status.json":
                 with reading:
-                    body = json.dumps(read(time.time())).encode()
+                    view = read(time.time())
+                if "own=1" not in query.split("&"):
+                    view = settle(view, others.views())
+                body = json.dumps(view).encode()
             elif path == "/session.json":
                 with reading:
                     found = session((urllib.parse.parse_qs(query).get("id") or [""])[0])

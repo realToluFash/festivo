@@ -2,7 +2,7 @@ import { type ReactNode, type RefObject, useEffect, useId, useRef, useState } fr
 import { Link, useSearchParams } from 'react-router';
 
 import { Glyph } from '../components/Glyph.tsx';
-import { RowWords, TextAction } from '../components/SettingsParts.tsx';
+import { Chevron, RowWords, TextAction } from '../components/SettingsParts.tsx';
 import {
   Amount,
   Block,
@@ -27,6 +27,8 @@ import {
   type RateKind,
   type RatesSample,
   type RatesStart,
+  type Rate,
+  afterHeadlineOf,
   biggestUnrated,
   changedLine,
   figure,
@@ -36,6 +38,10 @@ import {
   hoursWords,
   insetWords,
   jobCost,
+  jobWorked,
+  ownWorked,
+  unratedLine,
+  workedLine,
   ownCost,
   ownMinutes,
   rateProblem,
@@ -79,6 +85,7 @@ function StaffRates({ first }: { first: RatesStart }) {
   const { manages } = first;
   const head = headlineOf(sample);
   const { plan } = sample;
+  const after = sample.clocks == null ? null : afterHeadlineOf(sample);
 
   const open = (next: Panel, kind?: RateKind) => {
     const rate =
@@ -94,11 +101,27 @@ function StaffRates({ first }: { first: RatesStart }) {
     setServer(null);
     setSaid(null);
   };
-  const close = () => open(null);
-  const done = (next: RatesSample, key: string, words: string) => {
+  const back = useRef<string | null>(null);
+  // No dependency list: the row's button exists only once the editor has unmounted.
+  useEffect(() => {
+    if (back.current == null) return;
+    document.querySelector<HTMLElement>(`[data-srt="${back.current}"] button`)?.focus();
+    back.current = null;
+  });
+  const close = () => {
+    back.current =
+      panel?.kind === 'job'
+        ? `job:${panel.job}`
+        : panel?.kind === 'own'
+          ? `own:${panel.person}:${panel.job}`
+          : 'add';
+    open(null);
+  };
+  const done = (next: RatesSample, key: string, words: string, to: string) => {
     setSample(next);
     open(null);
     setSaid({ key, words });
+    back.current = to;
   };
 
   const saveJob = (job: string): boolean => {
@@ -106,7 +129,7 @@ function StaffRates({ first }: { first: RatesStart }) {
     if (rate == null) return false;
     if (first.refuse) {
       setServer(refusedWords(sample.rates[job] ?? null));
-      return true;
+      return false;
     }
     const was = sample.rates[job] ?? null;
     done(
@@ -117,6 +140,7 @@ function StaffRates({ first }: { first: RatesStart }) {
       },
       job,
       W.saved(jobName(plan, job)),
+      `job:${job}`,
     );
     return true;
   };
@@ -132,6 +156,7 @@ function StaffRates({ first }: { first: RatesStart }) {
       },
       job,
       W.removed(jobName(plan, job)),
+      `job:${job}`,
     );
   const saveOwn = (own: Pick<OwnRate, 'person' | 'job'>): boolean => {
     const rate = typedRate(draft.typed, draft.kind);
@@ -152,6 +177,7 @@ function StaffRates({ first }: { first: RatesStart }) {
       },
       key,
       W.saved(personName(plan, own.person)),
+      `own:${key}`,
     );
     return true;
   };
@@ -160,6 +186,7 @@ function StaffRates({ first }: { first: RatesStart }) {
       { ...sample, own: sample.own.filter((one) => one !== own) },
       own.job,
       W.backOn(personName(plan, own.person), jobName(plan, own.job)),
+      `job:${own.job}`,
     );
 
   if (plan.jobs.length === 0)
@@ -184,10 +211,23 @@ function StaffRates({ first }: { first: RatesStart }) {
     <>
       <PageTitle title={W.title} />
       {!manages && <ReadOnly />}
-      <section className="srt-head" aria-label={W.title}>
-        <p className="srt-figure">{figure(head.total)}</p>
-        <p className="srt-line">{headlineLine(sample, head)}</p>
-      </section>
+      {after == null ? (
+        <section className="srt-head" aria-label={W.title}>
+          <p className="srt-figure">{figure(head.total)}</p>
+          <p className="srt-line">{headlineLine(sample, head)}</p>
+        </section>
+      ) : (
+        <section className="srt-head" aria-label={W.title}>
+          <p className="srt-figure">{figure(head.total)}</p>
+          <p className="srt-line">
+            {W.afterLine(hoursWords(after.minutes), hoursWords(head.counted), figure(after.worked))}
+          </p>
+          {after.assumed > 0 && (
+            <p className="srt-line">{W.afterAssumed(hoursWords(after.assumed))}</p>
+          )}
+          {head.unrated.length > 0 && <p className="srt-line">{unratedLine(sample, head)}</p>}
+        </section>
+      )}
       {manages && firstUnrated != null && panel?.kind !== 'job' && (
         <div className="bud-plan-line srt-next">
           <span className="srt-open" aria-hidden="true" />
@@ -212,7 +252,7 @@ function StaffRates({ first }: { first: RatesStart }) {
                   rate?.kind === 'flat' ? flatLine(sample, job.id) : sourceLine(sample, job.id);
 
                 return (
-                  <li key={job.id}>
+                  <li key={job.id} data-srt={`job:${job.id}`}>
                     {panel?.kind === 'job' && panel.job === job.id ? (
                       <RateEditor
                         name={job.name}
@@ -240,6 +280,16 @@ function StaffRates({ first }: { first: RatesStart }) {
                           )
                         }
                       />
+                    ) : after != null ? (
+                      <AfterRow
+                        title={job.name}
+                        rate={rate}
+                        scheduled={source}
+                        scheduledCost={cost}
+                        worked={workedLine(sample, job.id, jobWorked(sample, job.id, rate), rate)}
+                        workedCost={jobWorked(sample, job.id, rate).cost}
+                        {...(manages ? { onOpen: () => open({ kind: 'job', job: job.id }) } : {})}
+                      />
                     ) : (
                       <BudgetRow
                         title={job.name}
@@ -266,7 +316,7 @@ function StaffRates({ first }: { first: RatesStart }) {
                 );
               })}
             </Rows>
-            <p className="desk-note">{W.hoursSource}</p>
+            <p className="desk-note">{after == null ? W.hoursSource : W.hoursFrom}</p>
           </Block>
         }
         right={
@@ -275,11 +325,13 @@ function StaffRates({ first }: { first: RatesStart }) {
               title={W.ownRates}
               action={
                 manages && panel?.kind !== 'add' ? (
-                  <TextAction
-                    label={W.addOne}
-                    before="plus"
-                    onClick={() => open({ kind: 'add' })}
-                  />
+                  <span data-srt="add">
+                    <TextAction
+                      label={W.addOne}
+                      before="plus"
+                      onClick={() => open({ kind: 'add' })}
+                    />
+                  </span>
                 ) : undefined
               }
             >
@@ -310,7 +362,7 @@ function StaffRates({ first }: { first: RatesStart }) {
                     const hours = hoursWords(ownMinutes(sample, own));
 
                     return (
-                      <li key={key}>
+                      <li key={key} data-srt={`own:${key}`}>
                         {panel?.kind === 'own' &&
                         panel.person === own.person &&
                         panel.job === own.job ? (
@@ -345,6 +397,11 @@ function StaffRates({ first }: { first: RatesStart }) {
                                 jobRate == null ? W.noRateYet : rateText(jobRate),
                               ),
                               W.ownHours(hours, job),
+                              ...(after == null
+                                ? []
+                                : [
+                                    `${W.worked} ${W.ownHours(hoursWords(ownWorked(sample, own).minutes), job)} · ${money(ownWorked(sample, own).cost)}`,
+                                  ]),
                             ]}
                             end={<Amount value={money(ownCost(sample, own))} />}
                             open={false}
@@ -365,7 +422,7 @@ function StaffRates({ first }: { first: RatesStart }) {
             </Block>
             <Block title={W.howCounted}>
               <ul className="srt-rules">
-                {W.howCountedLines.map((line) => (
+                {(after == null ? W.howCountedLines : W.afterLines).map((line) => (
                   <li key={line}>{line}</li>
                 ))}
               </ul>
@@ -409,6 +466,58 @@ function useKeys(box: RefObject<HTMLDivElement | null>, onCancel: () => void, on
 
     return () => node.removeEventListener('keydown', keys);
   }, [box]);
+}
+
+/** After the event (sc-234): Scheduled and Worked one above the other, each with its amount. */
+function AfterRow({
+  title,
+  rate,
+  scheduled,
+  scheduledCost,
+  worked,
+  workedCost,
+  onOpen,
+}: {
+  title: string;
+  rate: Rate | null;
+  scheduled: string;
+  scheduledCost: number | null;
+  worked: string;
+  workedCost: number | null;
+  onOpen?: () => void;
+}) {
+  const amount = (cost: number | null) =>
+    cost == null ? (
+      <MarkWord mark={<span className="srt-open is-small" />} word={W.notCountedEnd} />
+    ) : (
+      <span className="srt-two-amount">{money(cost)}</span>
+    );
+  const inner = (
+    <span className="srt-after">
+      <span className="srt-after-top">
+        <span className="srt-name">{title}</span>
+        {rate == null ? <NoRateTag /> : <span className="srt-rate">{rateText(rate)}</span>}
+      </span>
+      <span className="srt-two">
+        <span className="srt-two-label">{W.scheduled}</span>
+        <span className="srt-two-words">{scheduled}</span>
+        {amount(scheduledCost)}
+        <span className="srt-two-label">{W.worked}</span>
+        <span className="srt-two-words">{worked}</span>
+        {amount(workedCost)}
+      </span>
+    </span>
+  );
+
+  if (onOpen != null)
+    return (
+      <button type="button" className="desk-row bud-row" onClick={onOpen}>
+        {inner}
+        <Chevron />
+      </button>
+    );
+
+  return <div className="desk-row bud-row">{inner}</div>;
 }
 
 function ReadOnly() {

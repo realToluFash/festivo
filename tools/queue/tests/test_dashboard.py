@@ -33,7 +33,8 @@ class Snapshot(unittest.TestCase):
         self.platform.timer_active = lambda: True
         self.settings = config(self.root, roles={"ops": {}, "dev2": {"wakeEvery": "1m"}})
         for patch in (mock.patch("soirely_queue.machine.free_gb", return_value=40),
-                      mock.patch("soirely_queue.permissions.pending", return_value=[])):
+                      mock.patch("soirely_queue.permissions.pending", return_value=[]),
+                      mock.patch("soirely_queue.dashboard.peer_views", return_value={})):
             patch.start()
             self.addCleanup(patch.stop)
 
@@ -106,6 +107,60 @@ class Snapshot(unittest.TestCase):
         store.record(self.db, [work("qa")], NOW)
         view = self.snap()
         self.assertEqual([(r["role"], r["waiting"]) for r in view["elsewhere"]], [("qa", 1)])
+
+    def test_a_role_another_machine_runs_is_counted_as_that_machine_counts_it(self):
+        store.record(self.db, [work("qa", f"qa:{n}") for n in range(3)]
+                     + [work("pm"), work("bm"), work("dev2")], NOW)
+        store.set_meta(self.db, "shared_view", {"elsewhere": {"dev2": ["tolu-mac", 40]}})
+        runner.set_started(self.db, ["dev2"], True)
+        nxt = [{"id": 9, "reason": "comments for you on sc-7: #70"}]
+        mac = {"roles": [{"role": "qa", "state": "running", "waiting": 1, "next": nxt,
+                          "held": None},
+                         {"role": "pm", "state": "started", "waiting": 0, "next": [],
+                          "held": None},
+                         {"role": "dev2", "state": "started", "waiting": 0, "next": [],
+                          "held": None},
+                         {"role": "ops", "state": "elsewhere", "waiting": 8, "next": [],
+                          "held": None}]}
+        view = dashboard.settle(self.snap(), {"tolu-mac": mac})
+        self.assertEqual({r["role"]: (r["waiting"], r.get("counted_on"))
+                          for r in view["elsewhere"]},
+                         {"qa": (1, "tolu-mac"), "bm": (1, None)})
+        self.assertEqual(next(r for r in view["elsewhere"] if r["role"] == "qa")["next"], nxt)
+        roles = {r["role"]: r for r in view["roles"]}
+        self.assertEqual((roles["dev2"]["waiting"], roles["dev2"]["counted_on"]),
+                         (0, "tolu-mac"))
+        self.assertNotIn("counted_on", roles["ops"])
+
+    def test_a_machine_that_does_not_answer_leaves_its_roles_uncounted(self):
+        from soirely_queue import cli
+        store.record(self.db, [work("qa"), work("pm"), work("dev2")], NOW)
+        store.set_meta(self.db, "shared_view", {
+            "elsewhere": {"dev2": ["tolu-mac", 40]},
+            "machines": {"tolu-mac": {"seen": 40, "started": ["qa", "dev2"]}}})
+        runner.set_started(self.db, ["dev2"], True)
+        view = dashboard.settle(self.snap(), {})
+        self.assertEqual({r["role"]: (r["waiting"], r.get("counted_on"))
+                          for r in view["elsewhere"]},
+                         {"qa": (None, "tolu-mac"), "pm": (1, None)})
+        self.assertIsNone({r["role"]: r for r in view["roles"]}["dev2"]["waiting"])
+        out = io.StringIO()
+        with mock.patch.object(cli.dashboard, "snapshot", return_value=self.snap()), \
+                mock.patch.object(cli, "home", return_value=self.home), redirect_stdout(out):
+            cli.status(self.db, self.platform, NOW)
+        self.assertIn("  qa    ? waiting  on tolu-mac  it did not answer", out.getvalue())
+
+    def test_status_names_the_machine_a_count_came_from(self):
+        from soirely_queue import cli
+        store.record(self.db, [work("qa"), work("qa", "qa:2")], NOW)
+        mac = {"roles": [{"role": "qa", "state": "started", "waiting": 1, "held": None,
+                          "next": [{"id": 9, "reason": "sc-7 is ready"}]}]}
+        out = io.StringIO()
+        with mock.patch.object(cli.dashboard, "snapshot", return_value=self.snap()), \
+                mock.patch.object(cli.dashboard, "peer_views", return_value={"tolu-mac": mac}), \
+                mock.patch.object(cli, "home", return_value=self.home), redirect_stdout(out):
+            cli.status(self.db, self.platform, NOW)
+        self.assertIn("  qa    1 waiting  on tolu-mac  next: sc-7 is ready", out.getvalue())
 
     def test_other_machines_their_roles_and_what_they_hold_are_shown(self):
         store.set_meta(self.db, "shared_view", {
@@ -324,6 +379,44 @@ class Serve(unittest.TestCase):
             self.assertIn("<title>Soirely agents</title>", answer.read().decode())
         self.assertEqual(len(reads), 1)
 
+    def test_the_json_is_settled_with_the_peers_unless_a_peer_is_asking(self):
+        said, asked, server_ready = [], [], threading.Event()
+
+        def say(line):
+            said.append(line)
+            server_ready.set()
+
+        def fetch(base, path, secret):
+            asked.append((base, path))
+            if base != "http://10.0.0.6:8765":
+                return 502, b'{"error": "it did not answer"}'
+            return 200, json.dumps({"roles": [{"role": "qa", "state": "started", "waiting": 2,
+                                               "next": [], "held": None}]}).encode()
+
+        def read(now):
+            return {"roles": [], "elsewhere": [{"role": "qa", "waiting": 90, "held": None,
+                                                "next": []}]}
+
+        peers = {"tolu-mac": "http://10.0.0.6:8765", "down": "http://10.0.0.7:8765"}
+        threading.Thread(target=dashboard.serve, daemon=True, args=(read, 0),
+                         kwargs={"open_page": False, "say": say, "peers": lambda: peers,
+                                 "fetch": fetch}).start()
+        self.assertTrue(server_ready.wait(5))
+        url = said[0].split()[2]
+        until = time.monotonic() + 5
+        while True:
+            with urllib.request.urlopen(url + "status.json") as answer:
+                found = [(r["waiting"], r.get("counted_on"))
+                         for r in json.load(answer)["elsewhere"]]
+            if found != [(90, None)] or time.monotonic() > until:
+                break
+            time.sleep(0.01)
+        self.assertEqual(found, [(2, "tolu-mac")])
+        self.assertEqual({path for _, path in asked}, {"status.json?own=1"})
+        self.assertEqual({base for base, _ in asked}, set(peers.values()))
+        with urllib.request.urlopen(url + "status.json?own=1") as answer:
+            self.assertEqual(json.load(answer)["elsewhere"][0]["waiting"], 90)
+
     def test_a_session_is_served_by_its_id_and_an_unknown_one_is_not_found(self):
         said, asked = [], []
         server_ready = threading.Event()
@@ -403,7 +496,8 @@ class ServeElsewhere(unittest.TestCase):
         asked = []
 
         def fetch(base, path, secret):
-            asked.append((base, path, secret))
+            if path != dashboard.OWN:
+                asked.append((base, path, secret))
             return 502, b'{"error": "it did not answer"}'
 
         said = self.start(peers=lambda: {"tolu-linux": "http://10.0.0.5:8765"}, fetch=fetch)
