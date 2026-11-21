@@ -135,6 +135,7 @@ import { PAYMENTS_PAGES } from './payments.ts';
 import { PLAN_PAGES } from './plan.ts';
 import { SHARE_PAGES } from './share.ts';
 import { ShareRecipient } from './ShareRecipient.tsx';
+import { STAFF_RATES_PAGES } from './staffRates.ts';
 import { TEMPLATES_PAGES } from './templates.ts';
 import { Today } from './Today.tsx';
 import { SEARCH_PAGES, searchStart, searchStateOf } from './search.ts';
@@ -568,6 +569,8 @@ function DemoHome({ from }: { from: string }) {
         <BoardPages pages={PLAN_PAGES} />
         <h3>Templates and calibration · desktop</h3>
         <BoardPages pages={TEMPLATES_PAGES} />
+        <h3>Staff rates · desktop</h3>
+        <BoardPages pages={STAFF_RATES_PAGES} />
         <h3>What a decision costs, in Add guest · desktop</h3>
         <BoardPages pages={DECIDE_PAGES} />
         <h3>Share links, and the signed-out share · desktop, phone and tablet</h3>

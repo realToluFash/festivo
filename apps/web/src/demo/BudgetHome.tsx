@@ -81,6 +81,8 @@ import {
   marginOf,
   markupWords,
 } from './budgetHome.ts';
+import { headlineOf, hoursWords, ratesSample, unratedLine } from './staffRates.ts';
+import { STAFF_RATES_WORDS as SW } from './staffRatesWords.ts';
 import {
   AlertInset,
   Amount,
@@ -943,7 +945,9 @@ function Costs({
               .filter((one) => one.category === category)
               .map((one) => (
                 <li key={one.id} data-line={one.id}>
-                  {opened === one.id ? (
+                  {one.basis === 'perStaffHour' ? (
+                    <StaffLine name={one.name} />
+                  ) : opened === one.id ? (
                     <OpenedCost
                       line={one}
                       lines={lines}
@@ -984,6 +988,26 @@ function Costs({
         </div>
       ))}
     </Block>
+  );
+}
+
+/** sc-101: the staff-time line takes no rate; it reads Staff rates' headline and opens it. */
+function StaffLine({ name }: { name: string }) {
+  const sample = ratesSample();
+  const head = headlineOf(sample);
+  const unrated = unratedLine(sample, head);
+
+  return (
+    <BudgetRow
+      title={name}
+      lines={[
+        SW.staffHours(hoursWords(head.counted), hoursWords(head.scheduled)),
+        ...(unrated == null ? [] : [unrated]),
+      ]}
+      end={<Amount value={money(head.total)} />}
+      to={budgetAt('staff_rates')}
+      label={`${name}, ${SW.staffRatesLink}`}
+    />
   );
 }
 
@@ -1852,6 +1876,15 @@ function AddCostDialog({
               <Glyph name="alert" size={15} weight={2.2} />
               {basisSaid}
             </p>
+          )}
+          {(basis === 'perStaffHour' || taken) && (
+            <div className="bud-staff-note">
+              <p className="desk-note">{SW.staffNote}</p>
+              <Link className="desk-text" to={budgetAt('staff_rates')}>
+                {SW.openStaffRates}
+                <Glyph name="chevron" size={16} weight={2.4} />
+              </Link>
+            </div>
           )}
           {basis != null && basis !== 'perStaffHour' && (
             <MoneyField

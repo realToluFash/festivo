@@ -35,6 +35,7 @@ import {
   codeOpens,
   eventLines,
   joinCodeLine,
+  nameLine,
   redeemStart,
   redeemStateOf,
   isSecondNumber,
@@ -63,7 +64,12 @@ function firstFocus(state: RedeemState): Want {
   if (state === 'code-wrong') return 'select';
   if (state === 'code-expired' || state === 'code-expired-whatsapp' || state === 'code-exhausted')
     return 'title';
-  if (state.startsWith('enter') || state.startsWith('code') || state === 'event-blank')
+  if (
+    state.startsWith('enter') ||
+    state.startsWith('code') ||
+    state === 'event-blank' ||
+    state === 'name-blank'
+  )
     return 'field';
 
   return state === 'refused' || state === 'checking' ? 'field' : 'title';
@@ -103,10 +109,7 @@ function RedeemPage({ state }: { state: RedeemState }) {
     if (step.kind === 'enter') {
       if (codeOpens(step.typed)) {
         setTries(0);
-        go(
-          { kind: 'event', name: '', number: '', checked: false, busy: 'no', usedUp: false },
-          'title',
-        );
+        go({ kind: 'named', checked: false, busy: 'no', usedUp: false }, 'title');
         setName('');
         setNumber('');
         return;
@@ -133,6 +136,11 @@ function RedeemPage({ state }: { state: RedeemState }) {
           },
           'field',
         );
+      return;
+    }
+    if (step.kind === 'named') {
+      if (step.usedUp) setStep({ ...step, busy: 'no' });
+      else go({ kind: 'in', name: name.trim(), checks: true });
       return;
     }
     if (step.kind === 'joinAs') go({ kind: 'in', name, checks: true });
@@ -235,6 +243,24 @@ function RedeemPage({ state }: { state: RedeemState }) {
               setStep({ ...step, checked: true });
               if (lines.name != null || lines.number != null) {
                 document.getElementById(lines.name != null ? 'rd-name' : 'rd-number')?.focus();
+                return;
+              }
+              setStep({ ...step, checked: true, busy: 'busy' });
+            }}
+          />
+        );
+      case 'named':
+        return (
+          <NameStep
+            step={step}
+            name={name}
+            titleRef={title}
+            fieldRef={field}
+            onName={setName}
+            onJoin={() => {
+              if (nameLine(name) != null) {
+                setStep({ ...step, checked: true });
+                field.current?.focus();
                 return;
               }
               setStep({ ...step, checked: true, busy: 'busy' });
@@ -522,6 +548,61 @@ function EnterStep({
       )}
       <Primary submit busy={busy}>
         {R.continue}
+      </Primary>
+    </form>
+  );
+}
+
+/** Signed out, the device-held grant asks a name and nothing else: no number, no phone code (sc-72, until sc-4235). */
+function NameStep({
+  step,
+  name,
+  titleRef,
+  fieldRef,
+  onName,
+  onJoin,
+}: {
+  step: Extract<Step, { kind: 'named' }>;
+  name: string;
+  titleRef: RefObject<HTMLHeadingElement | null>;
+  fieldRef: RefObject<HTMLInputElement | null>;
+  onName: (name: string) => void;
+  onJoin: () => void;
+}) {
+  const said = step.checked ? nameLine(name) : null;
+  const busy = step.busy !== 'no';
+
+  function submit(event: FormEvent<HTMLFormElement>): void {
+    event.preventDefault();
+    if (!busy) onJoin();
+  }
+
+  return (
+    <form className="rd-form" noValidate onSubmit={submit}>
+      <Tile />
+      <Title titleRef={titleRef}>{DOOR_EVENT}</Title>
+      <p className="rd-intro">{EVENT_LINE}</p>
+      {step.usedUp && (
+        <p className="rd-alert" role="alert">
+          <Glyph name="alert" size={17} weight={2.2} />
+          {R.refused}
+        </p>
+      )}
+      <div className="rd-group">
+        <Field
+          id="rd-name"
+          label={R.yourName}
+          value={name}
+          wrong={said != null}
+          told={said == null ? undefined : 'rd-name-line'}
+          inputRef={fieldRef}
+          autoComplete="name"
+          onChange={onName}
+        />
+        {said != null && <Says id="rd-name-line">{said}</Says>}
+      </div>
+      <Primary submit busy={busy}>
+        {busy ? R.joining : R.join}
       </Primary>
     </form>
   );

@@ -33,7 +33,7 @@ export const R = {
   continue: 'Continue',
   codeBlank: 'Enter the door code.',
   codeShort: 'A door code is 8 letters and numbers.',
-  refused: 'That code doesn’t work. Check it with whoever gave it to you.',
+  refused: 'That code does not work. Check it with whoever gave it to you.',
   tooMany: 'Too many tries',
   tryAt: (time: string) => `Try again at ${clockOf(time)}`,
   yourName: 'Your name',
@@ -41,6 +41,8 @@ export const R = {
   countryCode: 'Country code',
   sendCode: 'Send code',
   nameBlank: 'Enter your full name.',
+  join: 'Join',
+  joining: 'Joining…',
   joinAs: (name: string) => `Join as ${name}`,
   signOut: 'Sign out',
   memberTitle: `You’re already a member of ${DOOR_ORG}`,
@@ -97,6 +99,10 @@ export function joinCodeLine(typed: string): string | null {
   return code.length === CODE_LENGTH ? null : R.codeShort;
 }
 
+export function nameLine(name: string): string | null {
+  return name.trim() === '' ? R.nameBlank : null;
+}
+
 export interface EventLines {
   name?: string;
   number?: string;
@@ -150,6 +156,7 @@ export type Step =
       /** After the right phone code, the number is a verified alternative on an account (sc-4235). */
       secondNumber?: boolean;
     }
+  | { kind: 'named'; checked: boolean; busy: Busy; usedUp: boolean }
   | { kind: 'joinAs'; busy: Busy }
   | { kind: 'member' }
   | {
@@ -175,6 +182,11 @@ export const REDEEM_STATES = [
   'checking',
   'refused',
   'too-many',
+  'browser-name',
+  'name',
+  'name-blank',
+  'joining',
+  'name-used-up',
   'event',
   'event-blank',
   'event-short',
@@ -230,6 +242,14 @@ const event = (extra: Partial<Extract<Step, { kind: 'event' }>> = {}): Step => (
   ...extra,
 });
 
+const named = (extra: Partial<Extract<Step, { kind: 'named' }>> = {}): Step => ({
+  kind: 'named',
+  checked: false,
+  busy: 'no',
+  usedUp: false,
+  ...extra,
+});
+
 const code = (extra: Partial<Extract<Step, { kind: 'code' }>> = {}): Step => ({
   kind: 'code',
   via: 'whatsapp',
@@ -268,6 +288,16 @@ function startOf(state: RedeemState): { step: Step; number: string; name: string
       return { step: enter({ typed: 'Q7KM 4XP3', line: 'refused' }), ...joao };
     case 'too-many':
       return { step: { kind: 'tooMany' }, ...joao };
+    case 'browser-name':
+      return { step: named(), ...hugo, name: '' };
+    case 'name':
+      return { step: named(), ...joao };
+    case 'name-blank':
+      return { step: named({ checked: true }), ...joao, name: '' };
+    case 'joining':
+      return { step: named({ busy: 'held' }), ...joao };
+    case 'name-used-up':
+      return { step: named({ usedUp: true }), ...hugo };
     case 'event':
       return { step: event(), ...joao };
     case 'event-blank':
@@ -335,19 +365,29 @@ export const REDEEM_PAGES: readonly { name: string; states: readonly DemoLink[] 
     ],
   },
   {
-    name: 'Joining · the event, then a name',
+    name: 'Joining · the event, then a name only (sc-72, until sc-4235)',
     states: [
-      redeem('browser-event', 'From the QR: the redeem page'),
-      redeem('event', 'The event, then a name'),
-      redeem('event-blank', 'Send code, left blank'),
-      redeem('event-short', 'A number too short'),
-      redeem('sending', 'Sending'),
+      redeem('browser-name', 'From the QR: the redeem page'),
+      redeem('name', 'The event, then a name'),
+      redeem('name-blank', 'Join, left blank'),
+      redeem('joining', 'Joining'),
+      redeem('name-used-up', 'Used up'),
       redeem('join-as', 'Already signed in'),
       redeem('member', 'Already a member'),
     ],
   },
   {
-    name: 'Joining · the phone code',
+    name: 'Joining · a name and a mobile number (once sc-4235 is built)',
+    states: [
+      redeem('browser-event', 'From the QR: the redeem page'),
+      redeem('event', 'The event, then a name and a number'),
+      redeem('event-blank', 'Send code, left blank'),
+      redeem('event-short', 'A number too short'),
+      redeem('sending', 'Sending'),
+    ],
+  },
+  {
+    name: 'Joining · the phone code (once sc-4235 is built)',
     states: [
       redeem('code', 'Check WhatsApp'),
       redeem('code-texted', 'Texted instead'),
