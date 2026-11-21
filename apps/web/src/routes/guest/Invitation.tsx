@@ -650,6 +650,9 @@ function Card({ token, first }: { token: string; first: GuestPage }) {
         {tell.kind === 'card' && (view.kind === 'recorded' || view.kind === 'closed') && (
           <YourTable page={page} />
         )}
+        {tell.kind === 'card' && forTheDay(page, view) && page.checkInCode != null && (
+          <DoorCode qrSvg={page.checkInCode.qrSvg} withCompanions={companionsComing(page)} />
+        )}
         {tell.kind === 'card' && forTheDay(page, view) && page.calendar != null && (
           <AddToCalendar calendar={page.calendar} />
         )}
@@ -724,6 +727,33 @@ function forTheDay(page: GuestPage, view: View): boolean {
     page.guest.reply?.answer === 'coming' &&
     page.phase === 'live' &&
     (view.kind === 'recorded' || view.kind === 'closed')
+  );
+}
+
+/** A companion counts as coming unless the guest said they are not (sc-3779), named or not. */
+function companionsComing(page: GuestPage): boolean {
+  return [...page.guest.companions, ...page.guest.unnamed].some((one) => one.coming);
+}
+
+/** sc-1301: the code the door scans, black on white whatever the page's theme, with the instruction in words beside it. */
+function DoorCode({ qrSvg, withCompanions }: { qrSvg: string; withCompanions: boolean }) {
+  const { t } = useTranslation();
+
+  return (
+    <section className="gp-block" aria-labelledby="gp-door">
+      <h2 id="gp-door" className="gp-h2 is-19">
+        {t('guest.doorTitle')}
+      </h2>
+      <p className="gp-sub">{t(withCompanions ? 'guest.doorLine' : 'guest.doorLineAlone')}</p>
+      <div className="gp-code">
+        <img
+          src={`data:image/svg+xml;charset=utf-8,${encodeURIComponent(qrSvg)}`}
+          alt={t('guest.doorCode')}
+          width={196}
+          height={196}
+        />
+      </div>
+    </section>
   );
 }
 
