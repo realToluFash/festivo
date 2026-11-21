@@ -6201,7 +6201,7 @@ function asGuestPage(raw: unknown): GuestPage | null {
 
 /** The server checks every pick, so a course or an answer this client cannot read is left out rather than failing the page. */
 function asGuestMeals(raw: unknown): GuestMeals {
-  const { courses, answers } = (raw ?? {}) as Record<string, unknown>;
+  const { you, courses, answers } = (raw ?? {}) as Record<string, unknown>;
   const strings = (list: unknown): string[] =>
     Array.isArray(list) ? list.filter((one): one is string => typeof one === 'string') : [];
   const known = Array.isArray(courses)
@@ -6230,7 +6230,7 @@ function asGuestMeals(raw: unknown): GuestMeals {
       }));
   }
 
-  return { courses: known, answers: byPerson };
+  return { you: typeof you === 'string' ? you : '', courses: known, answers: byPerson };
 }
 
 /** Undefined when the shape is not one this client knows. */

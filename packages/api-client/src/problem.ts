@@ -54,6 +54,8 @@ export interface Problem {
   stale?: string[];
   /** On `seating_items_outside`: the tables the refused room size would leave outside it (sc-4000). */
   outside?: string[];
+  /** On `meal_picks_closed`: the closed courses a send would have changed, none of them saved (sc-3907). */
+  courses?: string[];
   /** On `seating_table_short`: the place's free chairs and the party's size (sc-4013). */
   free?: number;
   party?: number;

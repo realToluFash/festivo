@@ -423,6 +423,8 @@ export interface MealAnswer {
 }
 
 export interface GuestMeals {
+  /** The guest's own id, the person their picks and answers go by; companions go by theirs. */
+  you: string;
   courses: MealCourse[];
   answers: Record<string, MealAnswer[]>;
 }

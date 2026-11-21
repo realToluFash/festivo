@@ -140,7 +140,7 @@ final class GuestLinksTest extends ApiTestCase
             'answersClosedOn' => null,
             'calendarFeed' => null,
             'programme' => [],
-            'meals' => ['courses' => [], 'answers' => []],
+            'meals' => ['you' => $guest, 'courses' => [], 'answers' => []],
         ], $page);
         self::assertSame('no-store, private', $this->client->getResponse()->headers->get('Cache-Control'));
         self::assertSame($audited, $this->auditRows());

@@ -232,6 +232,7 @@ final readonly class GuestPageController
             'calendarFeed' => $this->calendarFeed($guest),
             'programme' => $this->guestProgramme->of($event, $phase),
             'meals' => [
+                'you' => $guest->getId()->toRfc4122(),
                 'courses' => $this->guestMenu->menu($event),
                 'answers' => $this->servedMeals->answersOf([$guest, ...$named]),
             ],

@@ -86,6 +86,7 @@ final class MealPicksTest extends ApiTestCase
         $chidi = $this->companionIds($page)[0];
         $guest = $this->guestId();
 
+        self::assertSame($guest, Type\shape(['you' => Type\string()], true)->coerce($page['meals'] ?? null)['you']);
         self::assertSame(['Main'], Vec\map($this->courses(), static fn (array $course): string => Type\string()->coerce($course['name'] ?? null)));
 
         $this->meals($token, [
