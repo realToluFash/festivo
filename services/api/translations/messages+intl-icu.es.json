@@ -371,7 +371,7 @@
     "audit.filter.event": "Evento",
     "audit.filter.pair": "{field}: {value}",
     "audit.filter.dates": "Fechas",
-    "audit.filter.range": "del {from} al {to}",
+    "audit.filter.range": "del {from} al {to}",
     "audit.filter.open_end": "…",
     "audit.format.csv": "CSV",
     "audit.format.jsonl": "JSON Lines",
