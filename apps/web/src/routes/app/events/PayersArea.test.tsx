@@ -512,7 +512,13 @@ describe('Who is paying (sc-91)', () => {
 
   it('says a payer removed elsewhere refused the save, and reads the costs again', async () => {
     signedIn();
+    let reads = 0;
     const sent = serve({
+      'GET /api/events/ev_1/budget/payers': () => {
+        reads += 1;
+
+        return json(reads === 1 ? payers() : payers({ payers: [OBI, BAKARE] }));
+      },
       'PUT /api/events/ev_1/budget/payers/splits': () =>
         problem(422, 'validation_failed', {
           violations: [
@@ -540,6 +546,60 @@ describe('Who is paying (sc-91)', () => {
         2,
       ),
     );
+    await waitFor(() => expect(screen.queryByRole('option', { name: 'Aunt Funmi' })).toBeNull());
+    const select = screen.getByLabelText<HTMLSelectElement>('Payer');
+    expect(select.value).toBe('');
+    expect(select.selectedOptions[0]?.textContent).toBe('Choose a payer');
+  });
+
+  it('leaves Choose a payer for the rest when that payer was removed elsewhere', async () => {
+    signedIn();
+    let reads = 0;
+    const sent = serve({
+      'GET /api/events/ev_1/budget/payers': () => {
+        reads += 1;
+
+        return json(reads === 1 ? payers() : payers({ payers: [OBI, BAKARE] }));
+      },
+      'PUT /api/events/ev_1/budget/payers/splits': () =>
+        problem(422, 'validation_failed', {
+          violations: [
+            {
+              propertyPath: 'split.restId',
+              code: 'payer_removed',
+              message:
+                'Aunt Funmi was removed by someone else while this was open, so nothing was saved.',
+            },
+          ],
+        }),
+    });
+
+    fireEvent.click(await chooseWhoPays());
+    fireEvent.click(await screen.findByRole('checkbox', { name: /^Cars/u }));
+    fireEvent.click(
+      screen.getByRole('radio', { name: 'Fixed amounts, and one payer covers the rest' }),
+    );
+    fireEvent.change(screen.getByLabelText('Who covers what is left'), {
+      target: { value: 'funmi' },
+    });
+    fireEvent.change(screen.getByLabelText('Mr and Mrs Obi · amount'), {
+      target: { value: '100.00' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+    expect(
+      await screen.findByText(
+        'Aunt Funmi was removed by someone else while this was open, so nothing was saved.',
+      ),
+    ).toBeTruthy();
+    await waitFor(() =>
+      expect(sent.filter((one) => one.line === 'GET /api/events/ev_1/budget/payers')).toHaveLength(
+        2,
+      ),
+    );
+    await waitFor(() => expect(screen.queryByRole('option', { name: 'Aunt Funmi' })).toBeNull());
+    const select = screen.getByLabelText<HTMLSelectElement>('Who covers what is left');
+    expect(select.value).toBe('');
+    expect(select.selectedOptions[0]?.textContent).toBe('Choose a payer');
   });
 
   it('flags a fixed split that no longer adds up, and Change the amounts opens it', async () => {
@@ -571,7 +631,7 @@ describe('Who is paying (sc-91)', () => {
     ).toBeTruthy();
     expect(
       screen.getByText(
-        'Cars now costs £350.00, less than the £400.00 fixed for Aunt Funmi. Aunt Funmi keeps £400.00 and Mr and Mrs Obi have £0.00 until the amounts change.',
+        'Cars now costs £350.00, less than the £400.00 fixed for Aunt Funmi. £400.00 stays with Aunt Funmi and £0.00 is left for Mr and Mrs Obi until the amounts change.',
       ),
     ).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: 'Change the amounts' }));
@@ -607,7 +667,7 @@ describe('Who is paying (sc-91)', () => {
 
     expect(
       await screen.findByText(
-        'Cars now costs £500.00, less than the £600.00 fixed for Mr and Mrs Bakare and Aunt Funmi. Mr and Mrs Bakare keeps £200.00, Aunt Funmi keeps £400.00 and Mr and Mrs Obi have £0.00 until the amounts change.',
+        'Cars now costs £500.00, less than the £600.00 fixed for Mr and Mrs Bakare and Aunt Funmi. £200.00 stays with Mr and Mrs Bakare, £400.00 stays with Aunt Funmi and £0.00 is left for Mr and Mrs Obi until the amounts change.',
       ),
     ).toBeTruthy();
   });
