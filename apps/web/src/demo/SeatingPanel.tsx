@@ -47,9 +47,13 @@ import {
   withSeats,
 } from './seating.ts';
 import { useSeating } from './seatingContext.ts';
+import { isProposed } from './autoSeat.ts';
 import { StateMark } from './SeatingRoom.tsx';
 import { SelectionPanel } from './SeatingSelection.tsx';
 import { ShareTables } from './ShareTables.tsx';
+import { AutoSeatBlock, AutoSeatTray } from './AutoSeat.tsx';
+import { TRAY_SAID } from './autoSeat.ts';
+import { outsideProposal } from './autoSeatUi.ts';
 import { Mark, TextAction } from '../components/SettingsParts.tsx';
 
 export function Line({
@@ -305,6 +309,7 @@ export function Swatch({ colour, size = 20 }: { colour: Colour | null; size?: 12
 }
 
 export function Legend() {
+  const { ui } = useSeating();
   const states: Chair['state'][] = ['taken', 'held', 'empty', 'unusable'];
 
   return (
@@ -315,6 +320,12 @@ export function Legend() {
           {stateWord(state)}
         </li>
       ))}
+      {isProposed(ui.plan) && (
+        <li>
+          <StateMark chair={{ state: 'proposed' }} size={16} />
+          {SW.proposed}
+        </li>
+      )}
     </ul>
   );
 }
@@ -1377,7 +1388,7 @@ function Tray({ chips = true }: { chips?: boolean }) {
   const count = coming.reduce((sum, party) => sum + peopleIn(party), 0);
   const unsure = unsureLeft(ui.tray);
   const nobodySeated = ui.plan.items.every((item) => filled(item) === 0);
-  const shown = shownParties(ui);
+  const shown = chips ? outsideProposal(ui, shownParties(ui)) : shownParties(ui);
   const groups = [...GROUP_ORDER, SW.noGroup]
     .map((group) => ({
       group,
@@ -1415,7 +1426,9 @@ function Tray({ chips = true }: { chips?: boolean }) {
         <p className="st-line is-strong">{say(SW.moreUnsure, { n: unsure })}</p>
       )}
       {count === 0 && !ui.unsure ? (
-        <Line>{nobodySeated ? SW.nobodyComing : SW.everyoneSeated}</Line>
+        <p id={TRAY_SAID} className="st-line">
+          {nobodySeated ? SW.nobodyComing : SW.everyoneSeated}
+        </p>
       ) : (
         <>
           <div className="st-search">
@@ -1451,7 +1464,8 @@ function Tray({ chips = true }: { chips?: boolean }) {
               ))}
             </div>
           )}
-          {shown.length === 0 ? (
+          {chips && <AutoSeatTray />}
+          {shown.length === 0 && chips && ui.auto.by != null ? null : shown.length === 0 ? (
             <div className="st-block">
               <p className="st-strong">{SW.noMatch}</p>
               <Acts>
@@ -1589,7 +1603,15 @@ export function SeatingPanel() {
           ? chosen[0]
           : undefined;
 
-    body = table != null && table.kind !== 'single' ? <TableGuests item={table} /> : <Tray />;
+    body =
+      table != null && table.kind !== 'single' ? (
+        <TableGuests item={table} />
+      ) : (
+        <>
+          <AutoSeatBlock />
+          <Tray />
+        </>
+      );
   } else if (ui.panel?.kind === 'start') body = <StartForm />;
   else if (ui.panel?.kind === 'room') body = <RoomSettings />;
   else if (ui.panel?.kind === 'sectionAdd')

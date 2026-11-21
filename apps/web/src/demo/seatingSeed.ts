@@ -32,6 +32,23 @@ import {
   filled,
   freedFrom,
 } from './seating.ts';
+import {
+  type AutoSeat,
+  type AutoState,
+  EARLIER_AT,
+  NO_PROPOSAL,
+  PROPOSED_AT,
+  SAMPLE_NOTES,
+  accepted,
+  changedWords,
+  isAutoState,
+  propose,
+  proposedGuests,
+  proposedTables,
+  readyWords,
+  seatedWords as autoSeatedWords,
+  stampOf,
+} from './autoSeat.ts';
 import { NOT_SHARED, SHARE_STATES, type Share, isShareState, shareOf } from './shareTables.ts';
 import {
   type Fold,
@@ -132,7 +149,13 @@ export interface Ui {
   hover: string | null;
   chairLabel: { id: string; i: number } | null;
   pop: Pop | null;
-  undo: { plan: Plan; tray: Party[]; chosen?: string[]; stale?: boolean } | null;
+  undo: {
+    plan: Plan;
+    tray: Party[];
+    chosen?: string[];
+    stale?: boolean;
+    auto?: AutoSeat;
+  } | null;
   tablesSection: string | null;
   listTab: ListTab | null;
   listOpen: string | null;
@@ -158,6 +181,8 @@ export interface Ui {
   sectionPick: string;
   /** sc-4022: sharing the tables with guests, the card at the top of the panel. */
   share: Share;
+  /** sc-4019: Auto-seat by group's one proposal for the event; its chairs are marked on the plan. */
+  auto: AutoSeat;
 }
 
 const NO_DOCS: Record<Doc, DocState> = {
@@ -229,6 +254,7 @@ export function freshUi(): Ui {
     renumber: { start: '1', error: null },
     sectionPick: '',
     share: NOT_SHARED,
+    auto: NO_PROPOSAL,
   };
 }
 
@@ -357,6 +383,7 @@ export function seedOf(state: SeatingState | null): Ui {
   const plan = ui.plan;
   const at = (s: number, cx: number, cy: number) => ({ s, cx, cy });
 
+  if (isAutoState(state)) return autoSeedOf(ui, state);
   if (isShareState(state)) {
     const start = SHARE_STATES[state];
 
@@ -1422,5 +1449,158 @@ function choosingSeed(state: SeatingState, ui: Ui): Ui {
       return { ...ui, readOnly: true, people: [YOU, PRIYA] };
     default:
       return ui;
+  }
+}
+
+/** Runs Auto-seat on the Ui as `by` would at `at`: the plan carries the proposal, the tray keeps everyone until they are accepted. */
+export function proposedUi(ui: Ui, by: Person, at: string): Ui {
+  const run = propose(ui.plan, ui.tray, SAMPLE_NOTES);
+  const tables = proposedTables(run.plan);
+
+  return {
+    ...ui,
+    plan: run.plan,
+    auto: {
+      asking: false,
+      by: by.name,
+      at,
+      stamps: Object.fromEntries(tables.map((item) => [item.id, stampOf(item)])),
+      left: run.left,
+    },
+    spoken: readyWords(
+      proposedGuests(run.plan),
+      tables.length,
+      run.left.reduce(
+        (sum, one) => sum + peopleIn(ui.tray.find((party) => party.id === one.party)!),
+        0,
+      ),
+    ),
+  };
+}
+
+const FILLERS = [
+  'Ada Okafor',
+  'Ben Lima',
+  'Carla Ruiz',
+  'Dele Ajayi',
+  'Eva Novak',
+  'Femi Ojo',
+  'Gina Russo',
+  'Hassan Ali',
+  'Iris Weber',
+  'Jide Cole',
+  'Kofi Boateng',
+  'Lena Vogel',
+  'Mina Park',
+  'Noah Reed',
+];
+
+/** A fuller room for the reasons: Tables 7, 9 and 10 and the bars full, so a party of two finds no two seats together. */
+function fuller(plan: Plan): Plan {
+  const names = [...FILLERS];
+  let k = 0;
+
+  return {
+    ...plan,
+    items: plan.items.map((item) =>
+      ['t7', 't9', 't10', 'bar1', 'bar2'].includes(item.id)
+        ? {
+            ...item,
+            chairs: item.chairs.map((chair): Chair => {
+              if (chair.state !== 'empty') return chair;
+              k += 1;
+              return { state: 'taken', who: names[k % names.length] };
+            }),
+          }
+        : item,
+    ),
+  };
+}
+
+function autoSeedOf(start: Ui, state: AutoState): Ui {
+  const ui: Ui = { ...start, tab: 'seat' };
+
+  switch (state) {
+    case 'autoBefore':
+      return ui;
+    case 'autoAsk':
+      return { ...ui, auto: { ...NO_PROPOSAL, asking: true } };
+    case 'autoNobody':
+      return { ...seedOf('everyoneSeated'), tab: 'seat' };
+    case 'autoProposed':
+      return proposedUi(ui, YOU, PROPOSED_AT);
+    case 'autoLeftOver':
+      return proposedUi({ ...ui, plan: fuller(ui.plan) }, YOU, PROPOSED_AT);
+    case 'autoAccepted': {
+      const was = proposedUi(ui, YOU, PROPOSED_AT);
+      const done = accepted(was.plan, was.tray, ['t8']);
+      const words = autoSeatedWords(done.guests, 1);
+
+      return {
+        ...was,
+        plan: done.plan,
+        tray: done.tray,
+        auto: {
+          ...was.auto,
+          stamps: Object.fromEntries(Object.entries(was.auto.stamps).filter(([id]) => id !== 't8')),
+        },
+        undo: { plan: was.plan, tray: was.tray, auto: was.auto },
+        bar: { kind: 'undo', words, does: 'undo' },
+        spoken: words,
+      };
+    }
+    case 'autoChanged':
+    case 'autoAllChanged': {
+      const was = proposedUi(ui, YOU, PROPOSED_AT);
+      const plan = {
+        ...was.plan,
+        items: was.plan.items.map((item) =>
+          item.id === 't8'
+            ? {
+                ...item,
+                chairs: item.chairs.map((chair, index): Chair =>
+                  index === 9
+                    ? { state: 'taken', who: 'Hugo Lambert', party: 'hugo', reply: 'notSure' }
+                    : chair,
+                ),
+              }
+            : item,
+        ),
+      };
+      const changed = was.plan.items.filter((item) => item.id === 't8');
+      const tray = was.tray.filter((party) => party.id !== 'hugo');
+
+      if (state === 'autoChanged')
+        return {
+          ...was,
+          plan,
+          tray,
+          bar: { kind: 'amber', words: changedWords(changed) },
+          spoken: changedWords(changed),
+        };
+      const done = accepted(plan, tray, ['t10']);
+      const words = `${autoSeatedWords(done.guests, 1)} ${changedWords(changed)}`;
+
+      return {
+        ...was,
+        plan: done.plan,
+        tray: done.tray,
+        auto: { ...was.auto, stamps: { t8: was.auto.stamps.t8 ?? '' } },
+        undo: { plan, tray, auto: was.auto },
+        bar: { kind: 'undo', words, does: 'undo' },
+        spoken: words,
+      };
+    }
+    case 'autoReplace': {
+      const was = proposedUi(ui, PRIYA, EARLIER_AT);
+
+      return { ...was, spoken: '', auto: { ...was.auto, asking: true } };
+    }
+    case 'autoTables':
+      return { ...proposedUi(ui, YOU, PROPOSED_AT), view: 'tables', spoken: '' };
+    case 'autoList':
+      return { ...proposedUi(ui, YOU, PROPOSED_AT), view: 'list', listOpen: 't8', spoken: '' };
+    case 'autoReadOnly':
+      return { ...proposedUi(ui, PRIYA, EARLIER_AT), readOnly: true, people: [YOU], spoken: '' };
   }
 }
