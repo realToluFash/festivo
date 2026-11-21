@@ -24,10 +24,7 @@ use Doctrine\ORM\EntityManagerInterface;
 use Psr\Clock\ClockInterface;
 use Symfony\Component\Uid\Uuid;
 
-/**
- * Arrivals at the door and walk-ins (sc-1454). Each is in the event's audit with who, which device and when, by the guest's id: no name outlives the purge.
- * The check-in topic carries only that the list changed, never a name, reply or count, so an ended grant learns nothing from it (sc-28230, Decided 2 Nov).
- */
+/** The check-in topic carries only that the list changed, never a name, reply or count, so an ended grant learns nothing from it (sc-28230, Decided 2 Nov). */
 final readonly class Arrivals
 {
     public const string ARRIVED = 'guest.arrived';

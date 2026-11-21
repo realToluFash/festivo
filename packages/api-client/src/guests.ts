@@ -131,7 +131,6 @@ export interface Companion {
   arrival?: Arrival | null;
 }
 
-/** An arrival at the door (sc-1454): when, in the event's zone, and the full name of whoever recorded it. */
 export interface Arrival {
   at: string;
   by: string | null;
@@ -489,7 +488,6 @@ export interface RemovedTogether {
   stayed: StayedGuest[];
 }
 
-/** A guest an arrival keeps on the list (sc-1454): their own, or a companion's. */
 export interface StayedGuest {
   id: string;
   fullName: string | null;
@@ -858,10 +856,8 @@ export function asGuestDetails(value: unknown): GuestDetails | null {
   };
 }
 
-/** The door's state (sc-1454): before it opens search works and nothing is recorded; once the event is concluded the arrivals read only. */
 export type CheckInState = 'before_open' | 'open' | 'ended';
 
-/** A companion on the door's list: a name, or null for "Guest of <host>", in their place under their host. */
 export interface CheckInCompanion {
   id: string;
   fullName: string | null;
@@ -879,7 +875,6 @@ export interface CheckInGuest {
   companions: CheckInCompanion[];
 }
 
-/** The door's list (sc-1454), with when it opens in the event's zone and sc-99's attended of expected. */
 export interface CheckIn {
   state: CheckInState;
   opensAt: string;
