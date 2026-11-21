@@ -414,13 +414,13 @@ function Menu({
   );
 }
 
-interface Sizing {
+export interface Sizing {
   scale: number;
   cap: number;
 }
 
 /** A drilled level's words at the stand-in size: measured piece by piece at their start, a piece being a word or its part up to a hyphen it has, and stepped down only where the widest is wider than `room` (sc-75213). */
-function LevelWords({
+export function LevelWords({
   text,
   size,
   scale,
