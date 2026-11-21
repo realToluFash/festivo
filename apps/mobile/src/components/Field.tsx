@@ -1,8 +1,10 @@
+import { useFocusEffect } from 'expo-router';
 import {
   createContext,
   type ReactNode,
   type Ref,
   type RefObject,
+  useCallback,
   useContext,
   useEffect,
   useId,
@@ -10,6 +12,7 @@ import {
   useState,
 } from 'react';
 import {
+  AppState,
   Keyboard,
   Platform,
   Pressable,
@@ -324,6 +327,29 @@ export function useHeld(
       fieldTyped();
     },
   };
+}
+
+/** Whether a password reads as typed: hidden by default, and hidden again once a submit runs, on leaving the screen and when the app goes to the background. */
+export function useRevealed(submitting: boolean) {
+  const [revealed, setRevealed] = useState(false);
+  const [wasSubmitting, setWasSubmitting] = useState(submitting);
+
+  if (submitting !== wasSubmitting) {
+    setWasSubmitting(submitting);
+    if (submitting) setRevealed(false);
+  }
+
+  useEffect(() => {
+    const listener = AppState.addEventListener('change', (state) => {
+      if (state !== 'active') setRevealed(false);
+    });
+
+    return () => listener.remove();
+  }, []);
+
+  useFocusEffect(useCallback(() => () => setRevealed(false), []));
+
+  return [revealed, setRevealed] as const;
 }
 
 /** To the field a server refusal names: the keyboard moves there if it was up, and a server refusal never raises it. */
