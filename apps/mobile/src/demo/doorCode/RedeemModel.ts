@@ -11,6 +11,10 @@ export const REDEEM_STATES = [
   'checking',
   'refused',
   'too-many',
+  'name',
+  'name-blank',
+  'joining',
+  'name-used-up',
   'event',
   'event-blank',
   'event-short',
@@ -37,6 +41,7 @@ export type RedeemStep =
   | 'camera'
   | 'enter'
   | 'tooMany'
+  | 'named'
   | 'event'
   | 'joinAs'
   | 'member'
@@ -121,6 +126,14 @@ export function flowAt(state: RedeemState): Flow {
       return { ...plain, step: 'enter', typed: 'Q7KM 4XP3', said: W.refused, tries: 1 };
     case 'too-many':
       return { ...plain, step: 'tooMany' };
+    case 'name':
+      return { ...joao, step: 'named' };
+    case 'name-blank':
+      return { ...plain, step: 'named', nameSaid: W.nameBlank };
+    case 'joining':
+      return { ...joao, step: 'named', held: true };
+    case 'name-used-up':
+      return { ...plain, step: 'named', name: 'Hugo Faria', who: 'Hugo Faria', usedUp: true };
     case 'event':
       return { ...joao, step: 'event' };
     case 'event-blank':
