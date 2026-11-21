@@ -243,17 +243,21 @@ function TabletHeader({
 
   if (!under)
     return (
-      <View style={styles.titleRow}>
-        <View style={styles.grow}>{titleView}</View>
-        {ends}
+      <View style={styles.header}>
+        <View style={[styles.titleRow, styles.grow]}>
+          <View style={styles.grow}>{titleView}</View>
+          {ends}
+        </View>
         {bell}
       </View>
     );
 
   return (
     <View style={styles.stacked}>
-      <View style={styles.titleAlone}>{titleView}</View>
-      {ends}
+      <View style={styles.titled}>
+        <View style={styles.titleAlone}>{titleView}</View>
+        {ends}
+      </View>
       {bell}
     </View>
   );
@@ -419,9 +423,11 @@ const styles = StyleSheet.create({
   grow: { flex: 1, minWidth: 0 },
   body: { gap: tokens.space3xl },
   title: { letterSpacing: tracking(TITLE_FRAME), color: tokens.colorInk },
-  titleRow: { minHeight: 48, flexDirection: 'row', alignItems: 'center', gap: tokens.spaceMd },
+  header: { flexDirection: 'row', alignItems: 'center', gap: tokens.spaceLg },
+  titleRow: { minHeight: 48, flexDirection: 'row', alignItems: 'center', gap: tokens.spaceSm },
   titleAlone: { minHeight: 48, justifyContent: 'center', alignSelf: 'stretch' },
   stacked: { alignItems: 'flex-start', gap: tokens.spaceXs },
+  titled: { alignSelf: 'stretch', gap: tokens.spaceXxs },
   ends: { flexDirection: 'row', alignItems: 'center', gap: SUBSCRIBE_GAP },
   endsUnder: { alignSelf: 'stretch' },
   refreshing: { flexDirection: 'row', alignItems: 'center', gap: tokens.spaceSm },
