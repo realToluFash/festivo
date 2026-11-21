@@ -27,7 +27,7 @@ export type Plain =
   | 'hasMobile';
 export type Condition = Plain | `group:${string}`;
 export type Quick = 'coming' | 'notReplied' | 'notInvited';
-export type ToPick = Quick | 'who' | `saved:${string}` | `guest:${string}`;
+export type ToPick = Quick | 'who' | 'chosen' | `saved:${string}` | `guest:${string}`;
 
 /** One named guest (sc-3971: Send invitation on a guest), with what Guests knows of them. */
 export interface OneGuest {
@@ -373,6 +373,7 @@ export function toLine(audience: Audience, groups: readonly Group[]): string {
 export function chipWords(audience: Audience, book: Book, world: World = MESSAGES_WORLD): string {
   if (audience.kind === 'all') return `${MW.allGuests} · ${NUMBER.format(world.all)}`;
   if (audience.kind === 'guest') return audience.guest.name;
+  if (audience.pick === 'chosen') return MW.chooseGuests;
 
   const count = countIn(audience.conditions, book.groups, world);
   const pick = pickOf(audience, book);
@@ -390,7 +391,7 @@ export function refusalOf(
   groups: readonly Group[],
   world: World = MESSAGES_WORLD,
 ): string | null {
-  if (audience.kind !== 'who') return null;
+  if (audience.kind !== 'who' || audience.pick === 'chosen') return null;
   if (audience.conditions.length === 0) return MW.noCondition;
 
   const gone = deletedIn(audience.conditions, groups)[0];
