@@ -3189,7 +3189,7 @@
     "notRecorded": "Not recorded. Try again.",
     "noOne": "Nobody on the list matches “{{typed}}”.",
     "matches_one": "{{count, number}} match",
-    "matches_other": "{{count, number}} match",
+    "matches_other": "{{count, number}} matches",
     "nobodyYet": "Nobody is on the list yet",
     "nobodyYetLine": "Anyone who arrives can be added as a walk-in.",
     "addWalkIn": "Add walk-in",
