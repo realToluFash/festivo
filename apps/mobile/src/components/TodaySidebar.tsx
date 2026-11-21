@@ -417,7 +417,7 @@ const ListRoom = createContext<Room>({ short: false, laid: () => {} });
 /** Layout rounding, so a list that fits to the point is not taken for one that does not. */
 const SLACK = 1;
 
-/** Under a scroll view Yoga ignores the list's flex basis, so the column scrolls only where four rows do not fit (sc-39340). */
+/** Under a scroll view Yoga ignores the list's flex basis, so a column carrying your events scrolls only where four rows do not fit; `listing` stays put while they load, so the column is not rebuilt under VoiceOver's focus (sc-39340). */
 export function SidebarColumn({
   listing = false,
   children,
@@ -574,7 +574,7 @@ export function TodaySidebar({
   org?: boolean;
 }) {
   return (
-    <SidebarColumn listing={events.length > 0}>
+    <SidebarColumn listing>
       <SidebarHead org={org} />
       <SidebarPlaces>
         {PLACES.filter(([tab]) => org || tab === 'Today').map(([label, glyph]) => (
