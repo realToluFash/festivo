@@ -5,6 +5,7 @@ import type { ConvoId, MessagesState, Row, Segment } from './messages.ts';
 import { TW } from './messagesToWords.ts';
 import { MW } from './messagesWords.ts';
 import { crowdName } from './sampleNames.ts';
+import { type ChooseView, chooseSeedOf, isChooseState } from './messagesChoose.ts';
 
 /** Who gets it (sc-3957): conditions on the event's guests, counted live, saved under a name, and resolved when a message goes. */
 export { TW };
@@ -41,7 +42,7 @@ export interface OneGuest {
 
 export type Audience =
   | { kind: 'all' }
-  | { kind: 'who'; conditions: readonly Condition[]; pick?: ToPick }
+  | { kind: 'who'; conditions: readonly Condition[]; pick?: ToPick; chosen?: readonly string[] }
   | { kind: 'guest'; guest: OneGuest };
 
 export interface Group {
@@ -292,6 +293,7 @@ export function countOf(
   world: World = MESSAGES_WORLD,
 ): number | null {
   if (audience.kind === 'guest') return 1;
+  if (audience.kind === 'who' && audience.pick === 'chosen') return audience.chosen?.length ?? 0;
 
   return audience.kind === 'all' ? world.all : countIn(audience.conditions, groups, world);
 }
@@ -357,6 +359,7 @@ export function changedFrom(audience: Audience, book: Book): boolean {
 export function audienceWords(audience: Audience, groups: readonly Group[]): string {
   if (audience.kind === 'all') return MW.allGuests;
   if (audience.kind === 'guest') return audience.guest.name;
+  if (audience.pick === 'chosen') return MW.chooseGuests;
 
   return [MW.guestsWho, audience.conditions.map((one) => conditionWord(one, groups)).join(' · ')]
     .filter(Boolean)
@@ -373,7 +376,11 @@ export function toLine(audience: Audience, groups: readonly Group[]): string {
 export function chipWords(audience: Audience, book: Book, world: World = MESSAGES_WORLD): string {
   if (audience.kind === 'all') return `${MW.allGuests} · ${NUMBER.format(world.all)}`;
   if (audience.kind === 'guest') return audience.guest.name;
-  if (audience.pick === 'chosen') return MW.chooseGuests;
+  if (audience.pick === 'chosen') {
+    const chosen = audience.chosen?.length ?? 0;
+
+    return chosen === 0 ? MW.chooseGuests : `${MW.chooseGuests} · ${NUMBER.format(chosen)}`;
+  }
 
   const count = countIn(audience.conditions, book.groups, world);
   const pick = pickOf(audience, book);
@@ -577,6 +584,7 @@ export interface ToView {
   deleting: string | null;
   said: string | null;
   first: string | null;
+  choose: ChooseView | null;
 }
 
 const VIEW: ToView = {
@@ -590,6 +598,7 @@ const VIEW: ToView = {
   deleting: null,
   said: null,
   first: null,
+  choose: null,
 };
 
 export function viewOf(state: MessagesState | null, book: Book): ToView {
@@ -598,6 +607,12 @@ export function viewOf(state: MessagesState | null, book: Book): ToView {
     saving: { name, wrong },
     first: 'name',
   });
+
+  if (isChooseState(state)) {
+    const seed = chooseSeedOf(state);
+
+    return seed.open ? { ...VIEW, choose: seed.view } : VIEW;
+  }
 
   switch (state) {
     case 'whoNone':
@@ -732,6 +747,7 @@ export interface ToApi {
   setBook: (change: (book: Book) => Book) => void;
   manage: boolean;
   view: () => ToView;
+  addresses: boolean;
   refused: (audience: Audience | undefined) => string | null;
   viewed: () => void;
 }
@@ -756,6 +772,7 @@ export function useTo(state: MessagesState | null): ToApi {
     setBook,
     manage: state !== 'noManage' && state !== 'stoppedNoManage' && state !== 'readOnly',
     view,
+    addresses: state !== 'chooseNoAddresses',
     refused,
     viewed,
   };
