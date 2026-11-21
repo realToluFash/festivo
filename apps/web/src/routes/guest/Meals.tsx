@@ -32,9 +32,9 @@ type Translate = ReturnType<typeof useTranslation>['t'];
 const lower = (words: string) => words.toLocaleLowerCase(currentLocale());
 
 function allergenList(codes: readonly string[], t: Translate): string {
-  return fourteen(codes)
-    .map((code) => lower(t(`guestNeeds.allergen.${code}`)))
-    .join(', ');
+  return new Intl.ListFormat(currentLocale(), { type: 'unit', style: 'short' }).format(
+    fourteen(codes).map((code) => lower(t(`guestNeeds.allergen.${code}`))),
+  );
 }
 
 function reasonOf(ruled: Ruled, eater: Eater, t: Translate): string | null {
