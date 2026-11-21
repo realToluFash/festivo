@@ -1109,6 +1109,8 @@ function ChooseWhoPays({
   );
   const percent = checkPercents(checking, present, percents);
   const fixed = checkFixed(checking, present[0] ?? '', amounts, rest, language);
+  const shownTotal = checkPercents(payers, present, percents).total;
+  const shownRest = checkFixed(payers, present[0] ?? '', amounts, rest, language).rest;
   const off = present.length === 0 || busy;
   const money = (minor: number) => minorMoney(fromMinor(minor, currency), currency, locale);
   const range = (low: number, high: number) =>
@@ -1127,7 +1129,7 @@ function ChooseWhoPays({
   const percentFields = Object.keys(percent.fields).length > 0;
   const totalWrong =
     checked && percent.total !== 10000 && !percentFields
-      ? t('payers.notHundred', { percent: percentText(percent.total, locale) })
+      ? t('payers.notHundred', { percent: percentText(shownTotal, locale) })
       : (served['split.shares'] ?? null);
   const payerError =
     checked && picked === 'one' && payerPicked === ''
@@ -1171,12 +1173,9 @@ function ChooseWhoPays({
       if (raced != null) {
         setStale(raced.message);
         setChecked(false);
-        if (split?.mode === 'one') setPayerPicked('');
-        if (
-          split?.mode === 'fixed' &&
-          violations.some((one) => one.propertyPath === 'split.restId')
-        )
-          setRestPicked('');
+        const at = (path: string) => violations.some((one) => one.propertyPath === path);
+        if (split?.mode === 'one' && at('split.payerId')) setPayerPicked('');
+        if (split?.mode === 'fixed' && at('split.restId')) setRestPicked('');
         const gone = violations
           .map((one) => /^split\.(?:shares|amounts)\.(.+)$/u.exec(one.propertyPath ?? '')?.[1])
           .filter((id) => id != null);
@@ -1372,7 +1371,7 @@ function ChooseWhoPays({
                     );
                   })}
                   <p className={totalWrong != null ? 'py-total is-wrong' : 'py-total'}>
-                    {t('payers.total', { percent: percentText(percent.total, locale) })}
+                    {t('payers.total', { percent: percentText(shownTotal, locale) })}
                   </p>
                   {totalWrong != null && (
                     <p id={totalError} className="desk-error py-alert">
@@ -1403,7 +1402,7 @@ function ChooseWhoPays({
                     label={t('payers.whoCoversTheRest')}
                     value={rest}
                     payers={payers.payers}
-                    help={t('payers.restNow', { amount: range(fixed.rest[0], fixed.rest[1]) })}
+                    help={t('payers.restNow', { amount: range(shownRest[0], shownRest[1]) })}
                     error={restError}
                     onChange={(id) => {
                       setRestPicked(id);

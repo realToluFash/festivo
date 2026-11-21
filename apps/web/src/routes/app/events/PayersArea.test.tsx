@@ -882,6 +882,39 @@ describe('Who is paying while others change it (sc-91, Live)', () => {
     expect(saves()).toHaveLength(1);
   });
 
+  it('keeps the chosen payer when a ticked cost was removed first', async () => {
+    const { saves } = await liveChoose({
+      violations: [
+        {
+          propertyPath: 'lineIds',
+          code: 'budget_line_removed',
+          message: 'Cars was removed by someone else while this was open, so nothing was saved.',
+        },
+      ],
+    });
+    fireEvent.change(screen.getByLabelText('Payer'), { target: { value: 'obi' } });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+    expect(
+      await screen.findByText(
+        'Cars was removed by someone else while this was open, so nothing was saved.',
+      ),
+    ).toBeTruthy();
+    expect(saves()).toHaveLength(1);
+    expect((screen.getByLabelText('Payer') as HTMLSelectElement).value).toBe('obi');
+  });
+
+  it('totals only the percentages on screen once the live list dropped a payer', async () => {
+    const { removeFunmi } = await liveChoose(REMOVED);
+    fireEvent.click(screen.getByRole('radio', { name: 'Shared by percentage' }));
+    fireEvent.change(screen.getByLabelText('Mr and Mrs Obi · %'), { target: { value: '50' } });
+    fireEvent.change(screen.getByLabelText('Aunt Funmi · %'), { target: { value: '50' } });
+    expect(screen.getByText('Total 100.00%')).toBeTruthy();
+
+    await removeFunmi();
+    expect(screen.getByText('Total 50.00%')).toBeTruthy();
+  });
+
   it('refuses the save with the reason when the live list dropped a payer with a fixed amount typed', async () => {
     const { saves, removeFunmi } = await liveChoose({
       violations: [{ ...REMOVED.violations[0]!, propertyPath: 'split.amounts.funmi' }],
