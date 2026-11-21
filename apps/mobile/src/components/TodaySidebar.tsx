@@ -489,6 +489,7 @@ export function SidebarEvents({ events }: { events: readonly ShownEvent[] }) {
   const { fontScale } = useWindowDimensions();
   const heading = t('todayScreen.yourEvents').toLocaleUpperCase();
   const { size, measure } = useSideFit(heading, ROOMS.heading, fontScale, 'semibold');
+  const [headed, setHeaded] = useState<number | null>(null);
   const row = Math.max(
     tokens.sizeHit,
     ROOMS.event.size * fontScale * LABEL_LINE + 2 * rowPad(fontScale),
@@ -496,7 +497,8 @@ export function SidebarEvents({ events }: { events: readonly ShownEvent[] }) {
   const least =
     events.length === 0
       ? EMPTY_LEAST
-      : size * LABEL_LINE + 2 * tokens.spaceXs + Math.min(events.length, LEAST_ROWS) * row;
+      : (headed ?? size * LABEL_LINE + 2 * tokens.spaceXs) +
+        Math.min(events.length, LEAST_ROWS) * row;
   const { short, laid } = useContext(ListRoom);
   const room = useRef<number | null>(null);
   useEffect(() => {
@@ -519,6 +521,7 @@ export function SidebarEvents({ events }: { events: readonly ShownEvent[] }) {
         allowFontScaling={false}
         accessibilityRole="header"
         style={[styles.secondary, styles.caps]}
+        onLayout={({ nativeEvent }) => setHeaded(nativeEvent.layout.height)}
       >
         {heading}
       </Text>
