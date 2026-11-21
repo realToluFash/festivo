@@ -135,6 +135,10 @@ import { StaffRoster } from '../staffLink/StaffRoster.tsx';
 import type { RosterState } from '../staffLink/StaffRosterModel.ts';
 import { type OriginState, draftFromEnquiry } from '../enquiries/EnquiryToEventModel.ts';
 import { FromEnquiryLine } from '../enquiries/FromEnquiryParts.tsx';
+import { PrimaryButton } from '../../components/Buttons.tsx';
+import { Notice } from '../../components/Notice.tsx';
+import { SwitchedNotice } from '../../components/SwitchedNotice.tsx';
+import { LINK_WORDS } from './EventLink.ts';
 
 type Mute = 'ok' | 'notLoaded' | 'notSaved';
 
@@ -211,6 +215,8 @@ export function EventScreen({
   guestsFrom: figureOpens = null,
   without,
   origin = null,
+  linked = false,
+  failed = null,
 }: {
   id: string | undefined;
   state: EventDemoState | null;
@@ -230,6 +236,10 @@ export function EventScreen({
   guestsFrom?: FilterKey | null;
   without?: AreaKey | undefined;
   origin?: OriginState | null;
+  /** Opened from its link (sc-80863): a move into the event's organisation is said at the head of Overview, until the person leaves it. */
+  linked?: boolean;
+  /** The event did not load, and Try again reads it again (sc-80863). */
+  failed?: (() => void) | null;
 }) {
   const shell = useShell();
   const locale = formattingLocale('en', getLocales()[0]?.languageTag);
@@ -289,6 +299,7 @@ export function EventScreen({
     return (isTellKind(messages) ? fieldEvents(messages, sample)?.told : null) ?? sample;
   });
   const [more, setMore] = useState(state === 'more');
+  const [leftOverview, setLeftOverview] = useState(false);
   const [edit, setEdit] = useState<EditPart | null>(editOf(state));
   const [round, setRound] = useState(0);
   const [part, setPart] = useState<EditPart>(editOf(state) ?? 'dates');
@@ -664,7 +675,9 @@ export function EventScreen({
               : null,
         };
 
-  if (state === 'loading')
+  if (linked && at !== 'overview' && !leftOverview) setLeftOverview(true);
+
+  if (state === 'loading' || failed != null)
     return (
       <EventFrame
         event={shown}
@@ -677,7 +690,19 @@ export function EventScreen({
         loading
       >
         <BellRow>{null}</BellRow>
-        <LoadingBlock words={W.loadingEvent} />
+        {failed == null ? (
+          <LoadingBlock words={W.loadingEvent} />
+        ) : (
+          <View style={styles.failed} accessibilityRole="alert">
+            <Notice
+              tone="broken"
+              mark={tokens.marks.broken.glyph}
+              body={LINK_WORDS.failed}
+              announce
+            />
+            <PrimaryButton label={LINK_WORDS.retry} onPress={failed} testID="event.link.retry" />
+          </View>
+        )}
       </EventFrame>
     );
 
@@ -792,7 +817,18 @@ export function EventScreen({
     page = (
       <OverviewColumns
         landscape={shell.layout === 'landscape'}
-        card={<BellRow>{card}</BellRow>}
+        card={
+          <BellRow>
+            {linked && !leftOverview ? (
+              <View style={styles.headed}>
+                <SwitchedNotice />
+                {card}
+              </View>
+            ) : (
+              card
+            )}
+          </BellRow>
+        }
         left={
           <>
             {photoNotice}
@@ -1118,6 +1154,8 @@ const MANAGE: Record<ManageKey, { label: string; line: string; removes: boolean 
 };
 
 const styles = StyleSheet.create({
+  headed: { gap: 18 },
+  failed: { gap: tokens.spaceMd },
   dashed: {
     gap: tokens.spaceXs,
     paddingVertical: tokens.spaceLg,
