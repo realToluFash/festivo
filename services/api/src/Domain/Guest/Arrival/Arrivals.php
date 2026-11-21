@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Domain\Guest\Arrival;
 
 use App\Audit\Auditor;
-use App\Domain\Guest\GuestListPublisher;
 use App\Domain\Guest\Model\NewGuest;
 use App\Entity\Event;
 use App\Entity\Guest;
@@ -24,7 +23,7 @@ use Doctrine\ORM\EntityManagerInterface;
 use Psr\Clock\ClockInterface;
 use Symfony\Component\Uid\Uuid;
 
-/** The check-in topic carries only that the list changed, never a name, reply or count, so an ended grant learns nothing from it (sc-28230, Decided 2 Nov). */
+/** A change at the door publishes only on the check-in topic, which says the list changed and nothing else: no name, reply or count reaches an ended grant, and every guest list and headcount re-reads on it (sc-28230, Decided 2 Nov). */
 final readonly class Arrivals
 {
     public const string ARRIVED = 'guest.arrived';
@@ -37,7 +36,6 @@ final readonly class Arrivals
         private GuestRepository $guestRepository,
         private EntityManagerInterface $entityManager,
         private Auditor $auditor,
-        private GuestListPublisher $guestListPublisher,
         private RealtimePublisher $realtimePublisher,
         private ClockInterface $clock,
     ) {
@@ -135,6 +133,5 @@ final readonly class Arrivals
     private function published(Event $event): void
     {
         $this->realtimePublisher->publish(RealtimeTopic::EventCheckIn, $event->getId()->toRfc4122(), []);
-        $this->guestListPublisher->publish($event);
     }
 }

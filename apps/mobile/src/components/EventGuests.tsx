@@ -336,7 +336,7 @@ export function EventGuests({
   useEffect(
     () =>
       followReadingAgain(
-        realtimeTopic('EventGuests', eventId),
+        [realtimeTopic('EventGuests', eventId), realtimeTopic('EventCheckIn', eventId)],
         () => api.guestsSubscription(eventId),
         () => reloadRef.current(),
         READ_AGAIN_MS,

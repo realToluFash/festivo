@@ -711,6 +711,7 @@ describe('the Budget while others change it (sc-85)', () => {
       realtimeTopic('EventBudget', 'ev_1'),
       realtimeTopic('EventHeadcount', 'ev_1'),
       realtimeTopic('EventQuotes', 'ev_1'),
+      realtimeTopic('EventCheckIn', 'ev_1'),
     ]);
 
     return one;

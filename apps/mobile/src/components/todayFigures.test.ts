@@ -48,7 +48,9 @@ describe("Today's Your events when a headcount reply lands (sc-49692)", () => {
 
     expect(following.topics).toEqual([
       realtimeTopic('EventHeadcount', 'e_replied'),
+      realtimeTopic('EventCheckIn', 'e_replied'),
       realtimeTopic('EventHeadcount', 'e_quiet'),
+      realtimeTopic('EventCheckIn', 'e_quiet'),
     ]);
 
     following.readAgain();

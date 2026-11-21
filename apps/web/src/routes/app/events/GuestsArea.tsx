@@ -158,7 +158,7 @@ const FOCUSABLE = 'button, a[href], input, select, textarea, [tabindex]';
 /** The guest list as the API holds it, published to every page open on it. */
 function useLiveGuests(eventId: string, onList: (list: GuestList) => void, onGap: () => void) {
   useHubTopics(
-    [realtimeTopic('EventGuests', eventId)],
+    [realtimeTopic('EventGuests', eventId), realtimeTopic('EventCheckIn', eventId)],
     () => api.guestsSubscription(eventId),
     (data) => {
       const list = asGuestList(data);

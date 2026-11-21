@@ -311,7 +311,7 @@ final class HeadcountTest extends ApiTestCase
 
         $body = $this->as($member, 'POST', $this->headcountsSubscription(), ['events' => [$this->eventId, $other, 'not-an-id']]);
         self::assertSame(200, $this->statusCode(), Json\encode($body));
-        self::assertSame(['subscribe' => ['events/' . $this->eventId . '/headcount']], $this->claims($body));
+        self::assertSame(['subscribe' => ['events/' . $this->eventId . '/headcount', 'events/' . $this->eventId . '/check-in']], $this->claims($body));
     }
 
     #[Test]

@@ -28,6 +28,7 @@ use Psl\Type;
 use Psl\Vec;
 use SensitiveParameter;
 use Symfony\Component\Clock\Test\ClockSensitiveTrait;
+use Symfony\Component\Mercure\Update;
 
 /** Check-in at the door (sc-1454): arrivals, undo, walk-ins, the count, who may, and an arrived guest staying on the list. */
 final class CheckInTest extends ApiTestCase
@@ -294,10 +295,14 @@ final class CheckInTest extends ApiTestCase
         self::assertSame(['events/' . $this->eventId . '/check-in'], $claims['mercure']['subscribe']);
         self::em()->getConnection()->executeStatement('DELETE FROM event_people WHERE event_id = :event', ['event' => $this->eventId]);
 
-        $this->arrive($guest);
+        $hub = self::service(RecordingHub::class);
+        $hub->published = [];
 
-        $signal = self::service(RecordingHub::class)->lastOn('events/' . $this->eventId . '/check-in') ?? self::fail('no signal');
-        self::assertSame('[]', $signal->getData());
+        $this->arrive($guest);
+        $this->as($this->owner, 'DELETE', $this->checkIn() . '/arrivals/' . $guest);
+        $this->walkIn('Kemi Olatunji');
+
+        self::assertSame(Vec\fill(3, [['events/' . $this->eventId . '/check-in'], '[]']), Vec\map($hub->published, static fn (Update $update): array => [$update->getTopics(), $update->getData()]));
         $this->as($door, 'GET', $this->checkIn());
         self::assertSame(404, $this->statusCode());
     }

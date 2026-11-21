@@ -1,5 +1,12 @@
 import type { Arrival, CheckIn, CheckInGuest } from '@soirely/api-client';
-import { type ReplyWord, companionShown, eventDayOf, nameKey, wallOfZoned } from '@soirely/domain';
+import {
+  type ReplyWord,
+  companionShown,
+  eventDayOf,
+  nameKey,
+  visibleLength,
+  wallOfZoned,
+} from '@soirely/domain';
 import type { TFunction } from 'i18next';
 
 export interface DoorRow {
@@ -94,12 +101,12 @@ export function checksIn(event: { permissions: readonly string[] } | null): bool
   return event?.permissions.includes('guests.check_in') === true;
 }
 
-/** A walk-in's name: required, at most 200 characters, trimmed; only spaces is blank. */
+/** A walk-in's name: required, at most 200 characters as a person sees them (the API's count), trimmed; only spaces is blank. */
 export function walkInProblem(name: string): 'blank' | 'long' | null {
   const trimmed = name.trim();
   if (trimmed === '') return 'blank';
 
-  return [...trimmed].length > 200 ? 'long' : null;
+  return visibleLength(trimmed) > 200 ? 'long' : null;
 }
 
 export function sameName(checkIn: CheckIn, name: string): DoorRow | null {

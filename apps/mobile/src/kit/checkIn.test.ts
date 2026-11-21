@@ -106,6 +106,12 @@ describe('a walk-in', () => {
     expect(walkInProblem(` ${'a'.repeat(200)} `)).toBeNull();
   });
 
+  it('counts a name as a person sees it, as the API does', () => {
+    expect(walkInProblem('👍🏾'.repeat(120))).toBeNull();
+    expect(walkInProblem('Ọ̀'.repeat(200))).toBeNull();
+    expect(walkInProblem('👍🏾'.repeat(201))).toBe('long');
+  });
+
   it('finds the same name on the list, ignoring case and accents', () => {
     expect(sameName(LIST, 'chief mrs adaeze okonkwo-williams')?.id).toBe('g_a');
     expect(sameName(LIST, 'RUI DUARTE')?.id).toBe('c_1');
