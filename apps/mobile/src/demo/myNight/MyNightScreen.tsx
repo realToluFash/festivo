@@ -67,14 +67,12 @@ export function MyNightScreen({ first }: { first: Night }) {
           {headingOf(night)}
         </Text>
       </View>
-      {night.clock === 'open' && (
-        <View style={styles.frame} testID="myNight.clock">
-          <Text size={17} weight="semibold" style={styles.info}>
-            {MN.clockFrame}
-          </Text>
-          <Text size={17}>{MN.clockFrameBody(night.clockShows)}</Text>
-        </View>
-      )}
+      <View style={styles.frame} testID="myNight.clock">
+        <Text size={17} weight="semibold" style={styles.info}>
+          {MN.clockFrame}
+        </Text>
+        <Text size={17}>{MN.clockFrameBody(night.clockShows)}</Text>
+      </View>
       <Card title={MN.yourShift}>
         <Text size={20} weight="bold">
           {night.job}

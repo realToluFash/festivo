@@ -54,12 +54,17 @@ describe('the staff member’s page in the web demo (sc-3915)', () => {
     expect(screen.queryByText('Table 7')).toBeNull();
   });
 
-  it('holds the tables before doors and has no clock card early', SLOW, async () => {
-    await open('/demo/my-night?state=early');
+  it(
+    'holds the tables before doors and shows the clock card early, saying when clocking in opens',
+    SLOW,
+    async () => {
+      await open('/demo/my-night?state=early');
 
-    expect(screen.getByText('Opens at 19:00 when doors open')).toBeDefined();
-    expect(screen.queryByText('sc-234’s clock card')).toBeNull();
-  });
+      expect(screen.getByText('Opens at 19:00 when doors open')).toBeDefined();
+      expect(screen.getByText('sc-234’s clock card')).toBeDefined();
+      expect(screen.getByText(/It would show: Clock in opens at 16:00\./)).toBeDefined();
+    },
+  );
 
   it('stands the floor lead in, and says No lead named yet only with neither', SLOW, async () => {
     await open('/demo/my-night?state=no_station');

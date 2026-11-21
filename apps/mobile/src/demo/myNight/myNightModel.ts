@@ -38,7 +38,6 @@ export type Night = {
   doorsAt: string;
   doorsOpen: boolean;
   tables: readonly Table[] | null;
-  clock: 'open' | 'closed';
   clockShows: string;
   updated: string | null;
   staleAt: string | null;
@@ -72,14 +71,14 @@ export const MN = {
   loading: 'Loading your night…',
   signedInAs: (name: string) => `Signed in as ${name}`,
   yoursAlone: (when: string) =>
-    `This link is yours alone. You’ll be signed out at ${when}, and nothing stays on this phone.`,
+    `This link is yours alone. You’ll be signed out at ${when}, and nothing stays on this device.`,
   signOut: 'Sign out',
   signOutLater: 'Sign out lands on sc-4235’s Confirm it’s you, once its demo (PR #3365) merges.',
   backToDemo: 'Back to the demo list',
   events: 'Events',
   clockFrame: 'sc-234’s clock card',
   clockFrameBody: (shows: string) =>
-    `Its place, while its window is open. Its demo (PR #3372) has not merged, so only the frame is built here. It would show: ${shows}.`,
+    `Its place, above Your shift, before and while its window is open. Its demo (PR #3372) has not merged, so only the frame is built here. It would show: ${shows}.`,
   demoMove: 'Demo: the organiser moves Grace to Section C',
   demoMoveButton: 'Move Grace to Section C',
   demoMoveBody: 'The page changes within 10 seconds and says so to screen readers.',
@@ -149,7 +148,6 @@ const NIGHT: Night = {
   doorsAt: '19:00',
   doorsOpen: true,
   tables: SECTION_B,
-  clock: 'open',
   clockShows: 'Clocked in at 16:58, and Clock out',
   updated: null,
   staleAt: null,
@@ -168,7 +166,7 @@ export function nightOf(state: MyNightState): Night {
     case 'before_doors':
       return { ...night, doorsOpen: false, clockShows: 'Clock in' };
     case 'early':
-      return { ...night, doorsOpen: false, clock: 'closed' };
+      return { ...night, doorsOpen: false, clockShows: 'Clock in opens at 16:00' };
     case 'two_shifts':
       return { ...night, ends: '23:00', endsOn: null, later: { job: 'Bartender', from: '23:00' } };
     case 'no_station':
@@ -213,7 +211,7 @@ export function fresh(night: Night): Night {
 const LEAD: Record<MyNightState, readonly [string, string]> = {
   night: ['Tonight, 19:40', 'Doors open, tables open; the demo moves Grace to Section C'],
   before_doors: ['Before doors, 16:20', 'Opens at 19:00 when doors open'],
-  early: ['Early, 15:30', 'No clock card yet; tables held'],
+  early: ['Early, 15:30', 'Clock in opens at 16:00; tables held'],
   two_shifts: ['Two shifts', 'Later: Bartender from 23:00'],
   no_station: ['No station', 'Tonight you’re on Waiter, the floor lead, no tables'],
   no_lead: ['No station lead', 'The floor lead stands in, with Call'],

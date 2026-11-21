@@ -31,7 +31,7 @@ describe('a staff member’s night (sc-3915)', () => {
 
     expect(MN.only(night.linkEnds)).toBe('Tonight only · ends 02:00');
     expect(MN.yoursAlone(signedOutAt(night))).toBe(
-      'This link is yours alone. You’ll be signed out at Sunday 02:00, and nothing stays on this phone.',
+      'This link is yours alone. You’ll be signed out at Sunday 02:00, and nothing stays on this device.',
     );
   });
 
@@ -54,10 +54,10 @@ describe('a staff member’s night (sc-3915)', () => {
     );
   });
 
-  it('holds the tables until doors, and drops the clock card before its window', () => {
+  it('holds the tables until doors, and says when clocking in opens before its window', () => {
     expect(nightOf('before_doors').doorsOpen).toBe(false);
-    expect(nightOf('before_doors').clock).toBe('open');
-    expect(nightOf('early').clock).toBe('closed');
+    expect(nightOf('before_doors').clockShows).toBe('Clock in');
+    expect(nightOf('early').clockShows).toBe('Clock in opens at 16:00');
     expect(nightOf('no_station').tables).toBeNull();
   });
 

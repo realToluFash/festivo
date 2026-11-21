@@ -89,7 +89,7 @@ function MyNightAt({ first }: { first: Night }) {
                     <span className="myn-on-station">{headingOf(night)}</span>
                   </h1>
                 </div>
-                {night.clock === 'open' && <ClockFrame shows={night.clockShows} />}
+                <ClockFrame shows={night.clockShows} />
                 <Shift night={night} />
                 <YourLead lead={night.lead} />
                 {night.rules != null && (
