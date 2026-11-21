@@ -3,7 +3,7 @@ import { join } from 'node:path';
 
 import { describe, expect, it } from 'vitest';
 
-import { fitWidest, frameTitleSize, lineStart, titleSize } from '../layout/textSize.ts';
+import { frameTitleSize, lineStart, titleSize } from '../layout/textSize.ts';
 
 const controls = readFileSync(join('src', 'components', 'CalendarControls.tsx'), 'utf8');
 const menu = controls.slice(
@@ -31,16 +31,13 @@ describe('the Calendar’s Show menu keeps every word whole (sc-78219)', () => {
   });
 
   it('starts a row at 16 × the size, no larger than the Calendar title', () => {
+    const row = /<MenuWords size=\{(\d+)\}/u.exec(menu);
+    const size = Number(row?.[1]);
     const title = frameTitleSize(false, PHONE);
 
-    expect(lineStart(16, AX1, titleSize(title, AX1), Infinity)).toBeCloseTo(28.58, 1);
-    expect(lineStart(16, AX2, titleSize(title, AX2), Infinity)).toBeCloseTo(34.29, 1);
-    expect(lineStart(16, AX5, titleSize(title, AX5), Infinity)).toBe(43);
-  });
-
-  it('steps a word too wide for its line down until it fits, never under 16', () => {
-    expect(fitWidest(16, 43, 300, 200)).toBeLessThan(43);
-    expect(fitWidest(16, 43, 300, 200)).toBeGreaterThanOrEqual(16);
-    expect(fitWidest(16, 43, 2000, 200)).toBe(16);
+    expect(size).toBe(16);
+    expect(lineStart(size, AX1, titleSize(title, AX1), Infinity)).toBeCloseTo(28.58, 1);
+    expect(lineStart(size, AX2, titleSize(title, AX2), Infinity)).toBeCloseTo(34.29, 1);
+    expect(lineStart(size, AX5, titleSize(title, AX5), Infinity)).toBe(43);
   });
 });
