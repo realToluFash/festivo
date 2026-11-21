@@ -29,7 +29,8 @@ import {
   glyphSide,
   rowPad,
 } from '../layout/sidebarSize.ts';
-import { LABEL_LINE, SIDEBAR_WIDTH } from '../layout/textSize.ts';
+import { SIDEBAR_WIDTH } from '../layout/textSize.ts';
+import { listLeast, sidebarRow } from '../sidebarEvents.ts';
 import { useNameLines } from '../layout/useLayout.ts';
 import { Text } from './Text.tsx';
 import { tokens } from '../theme/tokens.ts';
@@ -480,9 +481,6 @@ export function SidebarPlaces({ children }: { children: ReactNode }) {
   );
 }
 
-/** The least the list's region shows before the whole sidebar scrolls instead (sc-39340). */
-const LEAST_ROWS = 4;
-
 /** Your events under the places: no heading over nothing, and a list longer than the sidebar holds scrolls in its own region while the places and the foot stay (sc-39340). */
 export function SidebarEvents({ events }: { events: readonly ShownEvent[] }) {
   const { t } = useTranslation();
@@ -490,15 +488,10 @@ export function SidebarEvents({ events }: { events: readonly ShownEvent[] }) {
   const heading = t('todayScreen.yourEvents').toLocaleUpperCase();
   const { size, measure } = useSideFit(heading, ROOMS.heading, fontScale, 'semibold');
   const [headed, setHeaded] = useState<number | null>(null);
-  const row = Math.max(
-    tokens.sizeHit,
-    ROOMS.event.size * fontScale * LABEL_LINE + 2 * rowPad(fontScale),
-  );
   const least =
     events.length === 0
       ? EMPTY_LEAST
-      : (headed ?? size * LABEL_LINE + 2 * tokens.spaceXs) +
-        Math.min(events.length, LEAST_ROWS) * row;
+      : listLeast({ heading: headed, size, rows: events.length, row: sidebarRow(fontScale) });
   const { short, laid } = useContext(ListRoom);
   const room = useRef<number | null>(null);
   useEffect(() => {
