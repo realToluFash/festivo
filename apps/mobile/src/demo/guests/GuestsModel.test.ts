@@ -15,6 +15,7 @@ import {
 } from './ChangedSince.ts';
 import {
   changedRows,
+  chooseChanged,
   notCopiedLine,
   filterWord,
   DOOR_STATES,
@@ -885,6 +886,12 @@ describe('Changed since you looked (sc-4331)', () => {
     expect(areaStart('changedFailed')).toMatchObject({ filter: 'all', changeFails: 'failed' });
     expect(areaStart('changed').changeFails).toBeNull();
     expect(W.changedFailed).toBe('We could not load what changed.');
+  });
+
+  it('keeps the list when Changed since you looked fails, and applies it once Try again works', () => {
+    expect(chooseChanged('changed', true)).toEqual({ failed: true, applies: false });
+    expect(chooseChanged('changed', false)).toEqual({ failed: false, applies: true });
+    expect(chooseChanged('coming', true)).toEqual({ failed: false, applies: true });
     expect(areaStart('changedNone')).toMatchObject({ filter: 'changed', since: CLOCKS.reader });
     expect(filterWord('changed')).toBe('Changed since you looked');
   });

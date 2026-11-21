@@ -1340,6 +1340,11 @@ export interface AreaStart {
   walkIn: boolean;
 }
 
+export const chooseChanged = (key: ListFilter, fails: boolean) => {
+  const failed = key === 'changed' && fails;
+  return { failed, applies: !failed };
+};
+
 export const notCopiedLine = (state: GuestsState | null): string =>
   state === 'copyFailedPt' ? W.notCopiedPt : W.notCopied;
 

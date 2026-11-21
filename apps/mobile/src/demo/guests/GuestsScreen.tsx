@@ -60,6 +60,7 @@ import {
   inViewOf,
   refreshingAt,
   titleRowOf,
+  chooseChanged,
 } from './GuestsModel.ts';
 import { RefreshingWords } from './RefreshingWords.tsx';
 import { changesSince, lastLooked, takeLook } from './ChangedSince.ts';
@@ -309,11 +310,9 @@ export function GuestsScreen({
   };
   const chooseFilter = (key: ListFilter) => {
     if (key === filter) return;
-    setChangeFailed(false);
-    if (key === 'changed' && changeFails.current) {
-      setChangeFailed(true);
-      return;
-    }
+    const choice = chooseChanged(key, changeFails.current);
+    setChangeFailed(choice.failed);
+    if (!choice.applies) return;
     if (key === 'changed') {
       setSince(takeLook(now));
       setLooked(lastLooked());
