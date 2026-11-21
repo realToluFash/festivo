@@ -417,6 +417,9 @@ const ListRoom = createContext<Room>({ short: false, laid: () => {} });
 /** Layout rounding, so a list that fits to the point is not taken for one that does not. */
 const SLACK = 1;
 
+/** With no events the spacer squeezed to nothing is the column overflowing, so it needs more than the rounding to count as fitting. */
+const EMPTY_LEAST = 2 * SLACK;
+
 /** Under a scroll view Yoga ignores the list's flex basis, so a column carrying your events scrolls only where four rows do not fit; `listing` stays put while they load, so the column is not rebuilt under VoiceOver's focus (sc-39340). */
 export function SidebarColumn({
   listing = false,
@@ -492,7 +495,7 @@ export function SidebarEvents({ events }: { events: readonly ShownEvent[] }) {
   );
   const least =
     events.length === 0
-      ? 0
+      ? EMPTY_LEAST
       : size * LABEL_LINE + 2 * tokens.spaceXs + Math.min(events.length, LEAST_ROWS) * row;
   const { short, laid } = useContext(ListRoom);
   const room = useRef<number | null>(null);
@@ -504,7 +507,8 @@ export function SidebarEvents({ events }: { events: readonly ShownEvent[] }) {
     if (!short) laid(room.current, least);
   };
 
-  if (events.length === 0) return <View style={styles.grow} />;
+  if (events.length === 0)
+    return <View style={short ? { height: least } : styles.grow} onLayout={onLayout} />;
 
   return (
     <View style={short ? { height: least } : styles.list} onLayout={onLayout}>
