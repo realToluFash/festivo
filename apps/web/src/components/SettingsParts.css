@@ -372,6 +372,31 @@
   flex: none;
 }
 
+.desk-summary {
+  container: desk-summary / inline-size;
+}
+
+@container desk-summary (width < 560px) {
+  .desk-summary > .desk-piece {
+    display: none;
+  }
+}
+
+/* Each margin is how far the confetti reaches in from the inner box's right edge, rotation included. */
+@container desk-summary (width >= 560px) {
+  .desk-summary :is(.desk-says, .desk-name) {
+    max-width: min(80%, calc(100% - 176px));
+  }
+
+  .desk-summary .desk-on-card {
+    max-width: calc(100% - 112px);
+  }
+
+  .desk-summary .desk-step {
+    max-width: calc(100% - 200px);
+  }
+}
+
 .desk-who {
   display: flex;
   align-items: center;

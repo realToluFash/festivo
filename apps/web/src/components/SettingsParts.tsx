@@ -141,7 +141,7 @@ export function Card({
   children: ReactNode;
 }) {
   return (
-    <section className={`desk-card is-${size}`}>
+    <section className={`desk-card desk-summary is-${size}`}>
       {PIECES.map((piece) => (
         <span key={piece} className={`desk-piece p${piece}`} aria-hidden="true" />
       ))}
