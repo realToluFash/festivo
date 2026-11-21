@@ -166,6 +166,18 @@ describe('p6 on a summary card (sc-77292)', () => {
     expect(drawCard()?.classList.contains('is-p6-covered')).toBe(true);
   });
 
+  it('measures each line by its line height, not its glyphs, as a tester measures it', () => {
+    place({ 'desk-on-card': [{ top: 125, bottom: 144, right: 464 }] });
+    const computed = window.getComputedStyle;
+    vi.spyOn(window, 'getComputedStyle').mockImplementation((node, pseudo) =>
+      (node as Element).className === 'desk-on-card'
+        ? ({ lineHeight: '24px' } as CSSStyleDeclaration)
+        : computed(node, pseudo),
+    );
+
+    expect(drawCard()?.classList.contains('is-p6-covered')).toBe(true);
+  });
+
   it('stays when the low line ends left of its box, as Payment reminders reads in Portuguese', () => {
     place({ 'desk-says': [line(100, 420)], 'desk-on-card': [line(110, 464), line(146, 380)] });
 

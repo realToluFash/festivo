@@ -134,7 +134,7 @@ export function BackRow({
 const PIECES = [1, 2, 3, 4, 5, 6];
 
 /** p6's rotated box, from the card's top edge down and from its right edge in. */
-const P6 = { top: 145, bottom: 163, left: 219 };
+const P6 = { top: 145, bottom: 163, fromRight: 219 };
 
 function wordBoxes(box: Element): Element[] {
   return [...box.children].flatMap((child) => {
@@ -143,22 +143,32 @@ function wordBoxes(box: Element): Element[] {
   });
 }
 
-function lines(word: Element): DOMRect[] {
+type LineBox = { top: number; bottom: number; right: number };
+
+function lineBox(glyphs: DOMRect, lineHeight: number): LineBox {
+  if (Number.isNaN(lineHeight)) return glyphs;
+  const centre = (glyphs.top + glyphs.bottom) / 2;
+  return { top: centre - lineHeight / 2, bottom: centre + lineHeight / 2, right: glyphs.right };
+}
+
+function lines(word: Element): LineBox[] {
   const texts = document.createTreeWalker(word, NodeFilter.SHOW_TEXT);
-  const found: DOMRect[] = [];
+  const found: LineBox[] = [];
   const range = document.createRange();
   for (let text = texts.nextNode(); text != null; text = texts.nextNode()) {
+    const owner = text.parentElement ?? word;
+    const lineHeight = Number.parseFloat(getComputedStyle(owner).lineHeight);
     range.selectNodeContents(text);
-    found.push(...range.getClientRects());
+    found.push(...[...range.getClientRects()].map((glyphs) => lineBox(glyphs, lineHeight)));
   }
   return found;
 }
 
-function onP6(line: DOMRect, card: DOMRect): boolean {
+function onP6(line: LineBox, card: DOMRect): boolean {
   return (
     line.bottom - card.top > P6.top &&
     line.top - card.top < P6.bottom &&
-    card.right - line.right < P6.left
+    card.right - line.right < P6.fromRight
   );
 }
 
