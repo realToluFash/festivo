@@ -57,7 +57,7 @@ describe('typing a door code in the browser (sc-72)', () => {
     await wait(1000);
 
     expect(screen.getByRole('alert').textContent).toBe(
-      'That code doesn’t work. Check it with whoever gave it to you.',
+      'That code does not work. Check it with whoever gave it to you.',
     );
     expect(document.activeElement).toBe(screen.getByLabelText('Door code'));
   });
@@ -117,7 +117,7 @@ describe('signed out, a name and nothing else (sc-72, until sc-4235)', () => {
     await redeem('name-used-up');
 
     expect(screen.getByRole('alert').textContent).toBe(
-      'That code doesn’t work. Check it with whoever gave it to you.',
+      'That code does not work. Check it with whoever gave it to you.',
     );
     press('Join');
     await wait(1000);
@@ -257,7 +257,7 @@ describe('a name, a number and the phone code (sc-4235)', () => {
     await redeem('used-up');
 
     expect(screen.getByRole('alert').textContent).toBe(
-      'That code doesn’t work. Check it with whoever gave it to you.',
+      'That code does not work. Check it with whoever gave it to you.',
     );
     expect((screen.getByLabelText('Your name') as HTMLInputElement).value).toBe('Hugo Faria');
   });

@@ -33,7 +33,7 @@ export const R = {
   continue: 'Continue',
   codeBlank: 'Enter the door code.',
   codeShort: 'A door code is 8 letters and numbers.',
-  refused: 'That code doesn’t work. Check it with whoever gave it to you.',
+  refused: 'That code does not work. Check it with whoever gave it to you.',
   tooMany: 'Too many tries',
   tryAt: (time: string) => `Try again at ${clockOf(time)}`,
   yourName: 'Your name',
