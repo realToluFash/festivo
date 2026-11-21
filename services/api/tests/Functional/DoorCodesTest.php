@@ -167,7 +167,7 @@ final class DoorCodesTest extends ApiTestCase
         $this->client->request('GET', '/api/events/' . $this->naming, server: ['HTTP_AUTHORIZATION' => 'Bearer ' . $token]);
         self::assertSame(404, $this->statusCode(), 'a sibling event');
         $this->client->request('GET', '/api/orgs/' . $this->organisation->getId()->toRfc4122() . '/members', server: ['HTTP_AUTHORIZATION' => 'Bearer ' . $token]);
-        self::assertSame(404, $this->statusCode(), 'the organisation');
+        self::assertSame([403, ErrorCode::AccountUnverified->type()], [$this->statusCode(), $this->last()['type'] ?? null], 'the organisation');
 
         $entry = self::em()->getRepository(AuditEntry::class)->findOneBy(['action' => 'door_code.redeemed']) ?? self::fail('not audited');
         self::assertSame([null, $code], $entry->getChanges()['code'] ?? null);
@@ -381,6 +381,21 @@ final class DoorCodesTest extends ApiTestCase
         } catch (ApiException $busy) {
             self::assertSame(ErrorCode::TooManyAttempts, $busy->errorCode);
         }
+    }
+
+    #[Test]
+    public function aDoorCodesAccountReachesNothingButItsEventAndItself(): void
+    {
+        $token = Type\string()->coerce($this->redeem($this->code('can_view'), 'Adébáyọ̀')['accessToken']);
+
+        $this->client->request('POST', '/api/orgs', server: ['CONTENT_TYPE' => 'application/json', 'HTTP_AUTHORIZATION' => 'Bearer ' . $token], content: Json\encode(['name' => 'Stranger Events', 'country' => 'NG', 'timeZone' => 'Africa/Lagos']));
+        self::assertSame([403, ErrorCode::AccountUnverified->type()], [$this->statusCode(), $this->last()['type'] ?? null], 'founding an organisation');
+        $this->client->request('GET', '/api/orgs', server: ['HTTP_AUTHORIZATION' => 'Bearer ' . $token]);
+        self::assertSame([403, ErrorCode::AccountUnverified->type()], [$this->statusCode(), $this->last()['type'] ?? null], 'any other signed-in route');
+        $this->client->request('GET', '/api/auth/me', server: ['HTTP_AUTHORIZATION' => 'Bearer ' . $token]);
+        self::assertSame(200, $this->statusCode(), 'itself');
+        $this->client->request('GET', '/api/events/' . $this->owambe, server: ['HTTP_AUTHORIZATION' => 'Bearer ' . $token]);
+        self::assertSame(200, $this->statusCode(), 'its event');
     }
 
     /** @return array<string, mixed> */

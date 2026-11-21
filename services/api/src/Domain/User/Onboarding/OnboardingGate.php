@@ -37,13 +37,23 @@ final readonly class OnboardingGate implements OnboardingGateInterface
         'request_links_ask',
     ];
 
+    /** Besides the events it holds a grant on, all a door code's account (sc-72) may reach. */
+    public const array DEVICE_REACHES = [
+        'auth_me',
+        'auth_locale',
+    ];
+
     public function __construct(
         private AccountCompleteness $accountCompleteness,
     ) {
     }
 
-    public function refusalFor(User $user, string $route): ?ErrorCode
+    public function refusalFor(User $user, string $route, bool $onAnEvent): ?ErrorCode
     {
+        if (self::heldByDevice($user) && !$onAnEvent && !Iter\contains(self::DEVICE_REACHES, $route)) {
+            return ErrorCode::AccountUnverified;
+        }
+
         if (Iter\contains(self::EXEMPT, $route)) {
             return null;
         }
