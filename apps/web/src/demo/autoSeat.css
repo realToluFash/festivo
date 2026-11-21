@@ -85,16 +85,6 @@
   gap: var(--spaceSm);
 }
 
-.st-party.is-proposed {
-  cursor: default;
-}
-
-.st-avatar.is-proposed {
-  border: 1.5px dashed var(--colorAttention);
-  background: var(--colorCard);
-  color: var(--colorInk);
-}
-
 .st-auto-changed {
   display: flex;
   align-items: flex-start;
@@ -116,8 +106,4 @@
   align-items: flex-start;
   gap: var(--spaceSm);
   padding: var(--spaceXs) 0;
-}
-
-.st-row-line.is-amber {
-  color: var(--colorAttentionText);
 }

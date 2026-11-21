@@ -2991,3 +2991,17 @@
   flex: none;
   padding: var(--spaceMd) var(--spaceLg) 0 24px;
 }
+
+.st-party.is-proposed {
+  cursor: default;
+}
+
+.st-avatar.is-proposed {
+  border: 1.5px dashed var(--colorAttention);
+  background: var(--colorCard);
+  color: var(--colorInk);
+}
+
+.st-row-line.is-amber {
+  color: var(--colorAttentionText);
+}

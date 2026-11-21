@@ -1,4 +1,5 @@
 import { demoWords } from './demoWords.ts';
+import { writtenTime } from './clock.ts';
 import {
   type Item,
   type Party,
@@ -341,12 +342,7 @@ export function tidied(
 }
 
 export function timeOf(iso: string, locale = 'en-GB', timeZone = TIME_ZONE): string {
-  return new Intl.DateTimeFormat(locale, {
-    hour: '2-digit',
-    minute: '2-digit',
-    hourCycle: 'h23',
-    timeZone,
-  }).format(new Date(iso));
+  return writtenTime(iso, locale, timeZone);
 }
 
 export function reasonWords(reason: Reason, party: Party): string {
