@@ -33,6 +33,7 @@ use Psl\Str;
 use Psl\Type;
 use Psl\Vec;
 use Psr\Clock\ClockInterface;
+use SensitiveParameter;
 use Symfony\Component\Clock\Test\ClockSensitiveTrait;
 use Symfony\Component\Uid\Uuid;
 
@@ -191,7 +192,7 @@ final class GuestRepliesApiTest extends ApiTestCase
         return self::service(GuestRepliesUnsubscribe::class)->token($this->owner->getId());
     }
 
-    private function oneClick(#[\SensitiveParameter] string $token): void
+    private function oneClick(#[SensitiveParameter] string $token): void
     {
         $this->client->request('POST', '/api/unsubscribe/guest-replies/' . $token, ['List-Unsubscribe' => 'One-Click'], server: ['CONTENT_TYPE' => 'application/x-www-form-urlencoded']);
     }
