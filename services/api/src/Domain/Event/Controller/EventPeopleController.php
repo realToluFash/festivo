@@ -64,7 +64,7 @@ final readonly class EventPeopleController
         ]);
     }
 
-    /** Names only, so a Lead who may not read Members can still add people (sc-29915). */
+    /** Names and organisation roles only, so a Lead who may not read Members can still add people (sc-29915), and Add people tells a member from an owner or admin who sees every event already. */
     #[Route('/api/events/{eventId}/people/addable', name: 'events_people_addable', methods: ['GET'])]
     #[InEvent(Permission::PeopleManage)]
     public function addable(string $eventId): JsonResponse
@@ -80,6 +80,7 @@ final readonly class EventPeopleController
         return new JsonResponse(['members' => Vec\map($addable, static fn (Membership $membership): array => [
             'membershipId' => $membership->getId()->toRfc4122(),
             'name' => $membership->getUser()->getName(),
+            'role' => $membership->getRole()->getSeededAs()->value,
         ])]);
     }
 

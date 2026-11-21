@@ -605,6 +605,8 @@ export interface EventPeople {
 export interface AddableMember {
   membershipId: string;
   name: string;
+  /** Their seeded role in the organisation, as `MemberRole.seededAs` names it. */
+  role: string | null;
 }
 
 /** Stored, as /event-states.json declares them; what the clock makes of it is its phase (sc-3584). */
@@ -5581,10 +5583,10 @@ function eventPersonOf(body: { person?: unknown }): EventPerson {
 function asAddableMember(raw: unknown): AddableMember | null {
   if (typeof raw !== 'object' || raw == null) return null;
 
-  const { membershipId, name } = raw as Record<string, unknown>;
+  const { membershipId, name, role } = raw as Record<string, unknown>;
 
   return typeof membershipId === 'string' && typeof name === 'string'
-    ? { membershipId, name }
+    ? { membershipId, name, role: typeof role === 'string' ? role : null }
     : null;
 }
 

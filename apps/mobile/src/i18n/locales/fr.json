@@ -2384,6 +2384,7 @@
     "pickAnother": "Choisissez un autre rôle pour ajouter une personne externe.",
     "jobLabel": "Fonction (facultatif)",
     "jobHelp": "Ce que cette personne vient faire, affiché à côté de son nom. Ne donne aucun accès. {{length, number}} sur {{most, number}}.",
+    "offerSeesEvery": "{{role}} · sees every event",
     "everyoneOn": "Toutes les personnes de {{organisation}} participent déjà à cet événement.",
     "cancel": "Annuler",
     "addConfirm": "Ajouter",
