@@ -24,7 +24,10 @@ OWN = "status.json?own=1"
 # seconds: without these, two machines' pages slow each other past the peers' time limit.
 SHARED_SECONDS = 3
 ASK_SECONDS = 10
-KEPT_SECONDS = 45
+# Long enough for a reading told once a minute to last until the next.
+KEPT_SECONDS = 150
+TOLD = "peer.json"
+TOLD_MOST_BYTES = 1 << 20
 
 
 def first_line(text):
@@ -228,6 +231,10 @@ class PeerViews:
             with self.lock:
                 self.asking.discard(name)
 
+    def keep(self, name, view):
+        with self.lock:
+            self.kept[name] = (time.monotonic(), view)
+
     def views(self):
         peers = self.peers()
         with self.lock:
@@ -241,6 +248,20 @@ class PeerViews:
         for name in unasked:
             threading.Thread(target=self.ask, args=(name, peers[name]), daemon=True).start()
         return fresh
+
+
+def tell(view, peers, secret, send=remote.send):
+    """Sends this machine's own reading to each peer's page, all at once. A machine whose
+    page may not open a connection to the others, as macOS can refuse a background Python,
+    still takes one from them, so its counts come this way."""
+    body = json.dumps(view).encode()
+    path = f"{TOLD}?from={urllib.parse.quote(view.get('machine') or '')}"
+    telling = [threading.Thread(target=send, args=(base, path, secret, body), daemon=True)
+               for base in peers.values()]
+    for thread in telling:
+        thread.start()
+    for thread in telling:
+        thread.join()
 
 
 def settle(view, others):
@@ -278,7 +299,8 @@ def settle(view, others):
 def serve(read, port, open_page=True, say=print, session=lambda session_id: None,
           host=remote.LOOPBACK, secret=None, peers=dict, fetch=remote.fetch):
     """Serves the page, `/status.json` and `/session.json?id=` until interrupted, and the same
-    for each peer under `/m/<name>/`, read through `fetch`. `read` returns a snapshot, which is
+    for each peer under `/m/<name>/`, read through `fetch`. A peer may also post its own
+    reading to `/peer.json?from=<name>`. `read` returns a snapshot, which is
     settled with the peers unless one of them is asking, `session` one session's view or
     None, and `peers` the names and addresses of the other machines. Loopback needs no
     token; anyone else does. Each request has a thread of its own, so a peer that is slow to
@@ -342,6 +364,31 @@ def serve(read, port, open_page=True, say=print, session=lambda session_id: None
             self.send_header("Content-Length", str(len(body)))
             self.end_headers()
             self.wfile.write(body)
+            return None
+
+        def do_POST(self):
+            path, _, query = self.path.partition("?")
+            ok, _ = remote.allowed(self.client_address[0], self.headers, "", secret)
+            if not ok:
+                return self.send_error(401)
+            name = (urllib.parse.parse_qs(query).get("from") or [""])[0]
+            if path != f"/{TOLD}" or name not in peers():
+                return self.send_error(404)
+            try:
+                size = int(self.headers.get("Content-Length") or 0)
+            except ValueError:
+                return self.send_error(400)
+            if not 0 < size <= TOLD_MOST_BYTES:
+                return self.send_error(413)
+            try:
+                view = json.loads(self.rfile.read(size))
+            except ValueError:
+                return self.send_error(400)
+            if not isinstance(view, dict):
+                return self.send_error(400)
+            others.keep(name, view)
+            self.send_response(204)
+            self.end_headers()
             return None
 
         def log_message(self, *_):
