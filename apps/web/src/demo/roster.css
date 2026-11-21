@@ -293,30 +293,6 @@ a.sn-tab {
 }
 
 @media (width <= 720px) {
-  .today.desk:has(.rs) {
-    flex-direction: column;
-    height: auto;
-    min-height: 100vh;
-  }
-
-  .today.desk:has(.rs) .today-side {
-    width: auto;
-    height: auto;
-    overflow: visible;
-  }
-
-  .today.desk:has(.rs) .desk-main {
-    min-width: 0;
-    margin: 0 var(--spaceMd) var(--spaceMd);
-    overflow: visible;
-  }
-
-  .rs.desk-page {
-    padding: var(--spaceXl) var(--spaceLg) var(--space3xl);
-    overflow: visible;
-  }
-
-  .rs .ev-crumb ol,
   .rs .gs-top,
   .rs .sn-card-top,
   .rs .mn-panel-acts {

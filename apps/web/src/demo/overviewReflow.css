@@ -1,32 +1,5 @@
-/* sc-74933: at 400% zoom (320 CSS px) an event's Overview reflows into one column, the event's sidebar above the page as Budget's does, until sc-32279 moves it into the shared shell (WCAG 2.2 1.4.10). */
+/* sc-74933: what an event's Overview needs at 400% zoom (320 CSS px) beyond the shared one-column desk (deskReflow.css, sc-32279). */
 @media (width <= 40rem) {
-  .today.desk:has(.ev-overview) {
-    flex-direction: column;
-    height: auto;
-    min-height: 100vh;
-  }
-
-  .today.desk:has(.ev-overview) .today-side {
-    width: auto;
-    height: auto;
-    overflow: visible;
-  }
-
-  .today.desk:has(.ev-overview) .desk-main {
-    margin: 0 var(--spaceMd) var(--spaceMd);
-    overflow: visible;
-  }
-
-  .ev-overview.desk-page {
-    padding: var(--spaceXl) var(--spaceLg) var(--space3xl);
-    overflow: visible;
-  }
-
-  .ev-overview .ev-crumb ol,
-  .ev-overview .desk-row {
-    flex-wrap: wrap;
-  }
-
   .ev-overview .ev-columns {
     grid-template-columns: minmax(0, 1fr);
   }
