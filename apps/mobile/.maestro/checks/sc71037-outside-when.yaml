@@ -1,0 +1,8 @@
+# sc-71037: an outsider's Overview shows the cover card with its date line; the batch screenshots it.
+appId: host.exp.Exponent
+---
+- extendedWaitUntil:
+    visible:
+      id: 'outside\.card'
+    timeout: 30000
+- takeScreenshot: sc71037-outside-when

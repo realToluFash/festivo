@@ -1,0 +1,17 @@
+# sc-39534: the phone's Settings header carries the Search button, and it opens Search.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/settings
+- extendedWaitUntil:
+    visible:
+      id: 'frame.search'
+    timeout: 30000
+- waitForAnimationToEnd
+- takeScreenshot: settings
+- tapOn:
+    id: 'frame.search'
+- extendedWaitUntil:
+    visible:
+      id: 'search.field'
+    timeout: 15000
+- takeScreenshot: opened

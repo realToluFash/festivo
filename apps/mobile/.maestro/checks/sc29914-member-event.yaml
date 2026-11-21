@@ -1,0 +1,15 @@
+# sc-29914: a Member opens ${EV}, an event they are on, by its link and from Events.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/${EV}
+- waitForAnimationToEnd: { timeout: 10000 }
+- extendedWaitUntil: { visible: '.*Winter Gala.*', timeout: 20000, optional: true }
+- takeScreenshot: link
+- openLink: ${METRO_URL}/--/events
+- waitForAnimationToEnd: { timeout: 6000 }
+- tapOn: { text: '(Drafts|Borradores|Brouillons|Rascunhos).*', optional: true }
+- waitForAnimationToEnd: { timeout: 4000 }
+- takeScreenshot: drafts
+- tapOn: { text: '.*Winter Gala.*', optional: true }
+- waitForAnimationToEnd: { timeout: 10000 }
+- takeScreenshot: tapped

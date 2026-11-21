@@ -1,0 +1,16 @@
+# sc-22145: what a member's role shows on an event's page: Duplicate, Edit details, phase actions.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/${EVENT}
+- extendedWaitUntil:
+    visible:
+      id: 'frame.back'
+    timeout: 30000
+- waitForAnimationToEnd
+- takeScreenshot: page-top
+- scrollUntilVisible:
+    element:
+      id: 'events.page.duplicate'
+    timeout: 8000
+    optional: true
+- takeScreenshot: page-scrolled

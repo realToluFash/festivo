@@ -1,0 +1,14 @@
+# sc-51001: the called-off ${CALLED_OFF}'s page, its Dates row saying it was called off. Needs ${METRO_URL}, ${CALLED_OFF}.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/${CALLED_OFF}
+- extendedWaitUntil:
+    visible:
+      id: 'events.page'
+    timeout: 60000
+- scrollUntilVisible:
+    element:
+      id: 'events.details.dates'
+    centerElement: true
+    timeout: 20000
+- takeScreenshot: dates

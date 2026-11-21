@@ -1,0 +1,9 @@
+# sc-79559: the iPad sidebar upright, today, for the pill's invitations line.
+appId: host.exp.Exponent
+---
+- setOrientation: PORTRAIT
+- openLink: ${METRO_URL}/--/
+- extendedWaitUntil: { visible: 'QA Organisation|Ire Events.*', timeout: 30000, optional: true }
+- extendedWaitUntil: { visible: { id: never.there }, timeout: 2500, optional: true }
+- waitForAnimationToEnd: { timeout: 8000 }
+- takeScreenshot: p-up-today
