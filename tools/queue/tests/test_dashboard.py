@@ -356,6 +356,9 @@ class Snapshot(unittest.TestCase):
         self.assertEqual(days[-1]["day"], time.strftime("%Y-%m-%d"))
 
 
+SECRET = "t" * remote.TOKEN_MIN
+
+
 class Serve(unittest.TestCase):
     def test_the_page_and_its_json_are_served_on_this_machine_only(self):
         said = []
@@ -378,6 +381,50 @@ class Serve(unittest.TestCase):
         with urllib.request.urlopen(url) as answer:
             self.assertIn("<title>Soirely agents</title>", answer.read().decode())
         self.assertEqual(len(reads), 1)
+
+    def test_requests_close_together_share_one_reading(self):
+        said, reads, server_ready = [], [], threading.Event()
+
+        def say(line):
+            said.append(line)
+            server_ready.set()
+
+        threading.Thread(target=dashboard.serve, daemon=True,
+                         args=(lambda now: reads.append(now) or {"machine": "here"}, 0),
+                         kwargs={"open_page": False, "say": say}).start()
+        self.assertTrue(server_ready.wait(5))
+        url = said[0].split()[2]
+        for path in ("status.json", "status.json?own=1", "status.json"):
+            with urllib.request.urlopen(url + path) as answer:
+                self.assertEqual(json.load(answer), {"machine": "here"})
+        self.assertEqual(len(reads), 1)
+        with mock.patch.object(dashboard, "SHARED_SECONDS", 0):
+            urllib.request.urlopen(url + "status.json").close()
+        self.assertEqual(len(reads), 2)
+
+    def test_a_peer_is_asked_again_only_after_a_while_and_its_last_answer_is_kept(self):
+        asked, answers = [], [(200, b'{"roles": []}'), (502, b"{}")]
+
+        def fetch(base, path, secret):
+            asked.append(base)
+            return answers[min(len(asked), 2) - 1]
+
+        def settled(views, want):
+            until = time.monotonic() + 5
+            while len(asked) < want and time.monotonic() < until:
+                time.sleep(0.01)
+            time.sleep(0.05)
+            return views.views()
+
+        views = dashboard.PeerViews(lambda: {"tolu-mac": "http://10.0.0.6:8765"}, SECRET, fetch)
+        views.views()
+        self.assertEqual(settled(views, 1), {"tolu-mac": {"roles": []}})
+        self.assertEqual(len(asked), 1)
+        with mock.patch.object(dashboard, "ASK_SECONDS", 0):
+            views.views()
+            self.assertEqual(settled(views, 2), {"tolu-mac": {"roles": []}})
+        with mock.patch.object(dashboard, "KEPT_SECONDS", 0):
+            self.assertEqual(views.views(), {})
 
     def test_the_json_is_settled_with_the_peers_unless_a_peer_is_asking(self):
         said, asked, server_ready = [], [], threading.Event()
@@ -441,9 +488,6 @@ class Serve(unittest.TestCase):
             urllib.request.urlopen(url + "session.json?id=other")
         self.assertEqual(refused.exception.code, 404)
         self.assertEqual(asked, ["known", "other"])
-
-
-SECRET = "t" * remote.TOKEN_MIN
 
 
 class ServeElsewhere(unittest.TestCase):

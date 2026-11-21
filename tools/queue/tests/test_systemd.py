@@ -76,6 +76,12 @@ class Web(unittest.TestCase):
             systemd.Linux().install("/q/sq/sq", "/c/env", "python3")
         return [c.args[0] for c in systemctl.call_args_list]
 
+    def test_the_page_is_restarted_only_if_it_runs(self):
+        with mock.patch.object(systemd, "systemctl") as systemctl:
+            systemd.Linux().restart_web()
+        self.assertEqual([c.args for c in systemctl.call_args_list],
+                         [("try-restart", "soirely-web.service")])
+
     def test_with_web_set_its_page_is_a_service_that_restarts(self):
         calls = self.install(web={"listen": "0.0.0.0"})
         text = self.unit.read_text()
