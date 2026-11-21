@@ -125,6 +125,24 @@ export function ChairMark({
     );
   const edge = near ? ' is-near' : '';
 
+  if (chair.state === 'proposed' || ('proposed' in chair && chair.proposed != null))
+    return (
+      <>
+        {shape(`st-chair is-proposed${edge}`)}
+        {(r >= 11 || near) && (
+          <text
+            className="st-chair-q"
+            x={f(x)}
+            y={f(y)}
+            fontSize={f(Math.max(12, r * 1.1))}
+            textAnchor="middle"
+            dominantBaseline="central"
+          >
+            ?
+          </text>
+        )}
+      </>
+    );
   switch (chair.state) {
     case 'taken':
       return (
@@ -153,8 +171,6 @@ export function ChairMark({
           />
         </>
       );
-    case 'proposed':
-      return shape(`st-chair is-proposed${edge}`);
     case 'unusable': {
       const k = r * 0.45;
 
