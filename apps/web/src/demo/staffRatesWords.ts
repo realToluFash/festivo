@@ -103,5 +103,6 @@ export const STAFF_RATES_WORDS = {
     'No rate on this line. It adds up each job’s rate, or flat fee, from Staff rates, so there is one place to change a rate.',
   openStaffRates: 'Open Staff rates',
   saved: (job: string) => `${job}’s rate saved.`,
+  backOn: (person: string, job: string) => `${person} is back on ${job}’s rate.`,
   removed: (job: string) => `${job}’s rate removed. Its hours are not counted until it has one.`,
 } as const;

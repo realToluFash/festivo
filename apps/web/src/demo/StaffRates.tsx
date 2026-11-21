@@ -15,7 +15,7 @@ import {
   PageTitle,
   Rows,
 } from './BudgetParts.tsx';
-import { money, whole } from './budget.ts';
+import { money } from './budget.ts';
 import { budgetAt, viewerOf } from './budgetSample.ts';
 import { BUDGET_WORDS } from './budgetWords.ts';
 import { type SampleEvent } from './events.ts';
@@ -27,6 +27,7 @@ import {
   type RateKind,
   type RatesSample,
   type RatesStart,
+  biggestUnrated,
   changedLine,
   figure,
   flatLine,
@@ -158,7 +159,7 @@ function StaffRates({ first }: { first: RatesStart }) {
     done(
       { ...sample, own: sample.own.filter((one) => one !== own) },
       own.job,
-      W.saved(jobName(plan, own.job)),
+      W.backOn(personName(plan, own.person), jobName(plan, own.job)),
     );
 
   if (plan.jobs.length === 0)
@@ -177,14 +178,14 @@ function StaffRates({ first }: { first: RatesStart }) {
       </>
     );
 
-  const firstUnrated = head.unrated[0];
+  const firstUnrated = biggestUnrated(head);
 
   return (
     <>
       <PageTitle title={W.title} />
       {!manages && <ReadOnly />}
       <section className="srt-head" aria-label={W.title}>
-        <p className="srt-figure">{whole(head.total)}</p>
+        <p className="srt-figure">{figure(head.total)}</p>
         <p className="srt-line">{headlineLine(sample, head)}</p>
       </section>
       {manages && firstUnrated != null && panel?.kind !== 'job' && (

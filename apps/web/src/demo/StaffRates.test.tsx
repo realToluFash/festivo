@@ -44,6 +44,25 @@ describe('Staff rates at a desk (sc-101)', () => {
     expect(screen.getByRole('button', { name: 'Set Bar’s rate' })).toBeTruthy();
   });
 
+  it('points the strip at the job with the most hours not counted', SLOW, async () => {
+    await open('staff_rates_no_rate');
+
+    expect(main().textContent).toContain(
+      'Runner has no rate yet, so its 14 h are not in the budget.',
+    );
+    expect(screen.getByRole('button', { name: 'Set Runner’s rate' })).toBeTruthy();
+  });
+
+  it('keeps the pence in the headline once a rate has them', SLOW, async () => {
+    await open('staff_rates');
+
+    fireEvent.click(job('Bar'));
+    fireEvent.change(screen.getByLabelText('Rate an hour'), { target: { value: '12.50' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Save rate' }));
+
+    expect(within(main()).getByText('£1,636.38')).toBeTruthy();
+  });
+
   it('changes a rate in place, and says who changed it from what', SLOW, async () => {
     await open('staff_rates');
 
@@ -106,6 +125,7 @@ describe('Staff rates at a desk (sc-101)', () => {
     expect(amina.textContent).toContain('£16 an hour · Instead of Waiter’s £14 an hour');
     fireEvent.click(amina);
     fireEvent.click(screen.getByRole('button', { name: 'Use Waiter’s rate' }));
+    expect(screen.getByText('Amina Yusuf is back on Waiter’s rate.')).toBeTruthy();
     expect(own.queryByRole('button', { name: /^Amina Yusuf/ })).toBeNull();
   });
 
