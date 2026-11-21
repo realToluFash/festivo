@@ -1,4 +1,5 @@
 import type { Ref } from 'react';
+import { useTranslation } from 'react-i18next';
 import { StyleSheet, View } from 'react-native';
 
 import type { LayoutKind } from '../layout/useLayout.ts';
@@ -17,7 +18,7 @@ import {
   type StepProps,
   SummaryCard,
 } from './Summary.tsx';
-import type { TextHandle } from './Text.tsx';
+import { Text, type TextHandle } from './Text.tsx';
 
 const CARD_SIZE: Record<LayoutKind, CardSize> = {
   phone: 'page',
@@ -40,11 +41,14 @@ export function GuestsCard({
   step,
   also = null,
   heading = false,
+  arrived = null,
 }: {
   kind: LayoutKind;
   event: Shown | null;
   tags?: readonly CardTag[];
   says: string;
+  /** On the door's card, once someone has arrived of those expected, the count large in `says`' place (sc-1454). */
+  arrived?: { attended: number; expected: number } | null;
   /** The empty list's "No guests yet" heads the area. */
   heading?: boolean;
   line: string | null;
@@ -70,7 +74,7 @@ export function GuestsCard({
           ))}
         </View>
       )}
-      <CardSays text={says} heading={heading} />
+      {arrived == null ? <CardSays text={says} heading={heading} /> : <ArrivedCount {...arrived} />}
       {line != null && <OnCard text={line} />}
       {(step != null || also != null) && (
         <View style={styles.foot}>
@@ -79,6 +83,27 @@ export function GuestsCard({
         </View>
       )}
     </SummaryCard>
+  );
+}
+
+/** "41 of 98" large and "arrived" smaller, read as one line, as the demo's door card draws it. */
+function ArrivedCount({ attended, expected }: { attended: number; expected: number }) {
+  const { t } = useTranslation();
+
+  return (
+    <View
+      style={styles.count}
+      accessible
+      accessibilityLabel={t('checkIn.count', { count: attended, expected })}
+      testID="guests.card.arrived"
+    >
+      <Text size={40} weight="bold" accessible={false} style={[styles.white, styles.big]}>
+        {t('checkIn.countFigure', { count: attended, expected })}
+      </Text>
+      <Text size={17} weight="semibold" accessible={false} style={styles.white}>
+        {t('checkIn.countWord')}
+      </Text>
+    </View>
   );
 }
 
@@ -130,6 +155,9 @@ export function GuestCover({
 
 const styles = StyleSheet.create({
   tags: { flexDirection: 'row', flexWrap: 'wrap', gap: tokens.spaceSm },
+  count: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'baseline', columnGap: 10 },
+  big: { lineHeight: 42, letterSpacing: 40 * -0.02, fontVariant: ['tabular-nums'] },
+  white: { color: tokens.colorInkOnDark },
   foot: {
     flexDirection: 'row',
     flexWrap: 'wrap',

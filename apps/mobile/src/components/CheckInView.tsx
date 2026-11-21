@@ -17,6 +17,7 @@ import {
   walkInProblem,
 } from '../kit/checkIn.ts';
 import { sidebarCardOf } from '../kit/eventTop.ts';
+import { cardTags } from '../kit/eventsList.ts';
 import { markOf } from '../kit/guestRows.ts';
 import { useServerNow } from '../kit/serverNow.ts';
 import type { LayoutKind } from '../layout/classify.ts';
@@ -86,16 +87,19 @@ function useDoor(eventId: string) {
   };
 }
 
-/** Check-in (sc-1454): its card with the count, Search by name, everyone A to Z with Arrived, and a walk-in for anyone not on the list. */
+/** Check-in (sc-1454): its card with the count, Search by name, everyone A to Z with Arrived, and a walk-in for anyone not on the list; all of it scrolls as one, as the demo's does. */
 export function CheckInView({
   eventId,
   kind,
+  nav,
   top,
   onEvent,
 }: {
   eventId: string;
   kind: LayoutKind;
-  /** Above the card on a tablet: Back to Guests. */
+  /** Above the scroll on a phone: the compact bar with Back to Guests and the title. */
+  nav: ReactNode;
+  /** At the head of the scroll on a tablet: Back to Guests. */
   top: ReactNode;
   onEvent: (event: OrganisationEvent) => void;
 }) {
@@ -189,6 +193,7 @@ export function CheckInView({
   if (door.load.kind === 'failed')
     return (
       <View style={styles.page}>
+        {nav}
         {top}
         <View style={styles.pad}>
           <AlertLine text={t('checkIn.failed')} />
@@ -203,30 +208,38 @@ export function CheckInView({
       </View>
     );
 
-  if (door.load.kind === 'loading') return <View style={styles.page}>{top}</View>;
+  if (door.load.kind === 'loading')
+    return (
+      <View style={styles.page}>
+        {nav}
+        {top}
+      </View>
+    );
 
   const { checkIn } = door.load;
   const open = checkIn.state === 'open';
   const opensAt = clockOf(checkIn.opensAt);
   const looking = typed.trim() !== '';
   const rows = doorRows(t, checkIn, typed, currentLocale());
-  const empty = checkIn.guests.length === 0;
+  const empty = checkIn.guests.length === 0 && !looking;
   const shown = event == null ? null : sidebarCardOf(event, phase);
+  const before = checkIn.state === 'before_open';
+  const { attended, expected } = checkIn.count;
   const card = (
     <GuestsCard
       kind={kind}
       event={shown}
-      says={
-        checkIn.state === 'before_open'
-          ? t('checkIn.opensAt', { time: opensAt })
-          : countLine(t, checkIn.count)
-      }
+      tags={shown == null ? [] : cardTags(shown, now, t)}
+      says={before ? t('checkIn.opensAt', { time: opensAt }) : countLine(t, checkIn.count)}
+      arrived={!before && attended > 0 && expected > 0 ? { attended, expected } : null}
       line={
-        checkIn.state === 'before_open'
+        before
           ? t('checkIn.searchWorksNow', { time: opensAt })
           : checkIn.state === 'ended'
             ? t('checkIn.ended')
-            : t('checkIn.openedAt', { time: opensAt })
+            : checkIn.guests.length === 0
+              ? t('checkIn.openedAtAlone', { time: opensAt })
+              : t('checkIn.openedAt', { time: opensAt })
       }
       step={null}
     />
@@ -235,21 +248,24 @@ export function CheckInView({
     setWalkIn({ name, checked: false, same: null, busy: false, failed: false });
 
   const header = (
-    <View style={styles.header}>
+    <>
       {top}
-      {card}
-      <SearchField
-        typed={typed}
-        off={false}
-        width={null}
-        onTyped={setTyped}
-        onSearch={() => undefined}
-        onClear={() => setTyped('')}
-        label={t('checkIn.searchByName')}
-        testID="checkIn.search"
-        ref={search}
-      />
-    </View>
+      {looking && kind === 'phone' ? null : card}
+      <View style={styles.searchRow}>
+        <SearchField
+          typed={typed}
+          off={false}
+          width={null}
+          onTyped={setTyped}
+          onSearch={() => undefined}
+          onClear={() => setTyped('')}
+          label={t('checkIn.searchByName')}
+          testID="checkIn.search"
+          ref={search}
+        />
+      </View>
+      {looking && rows.length > 0 && <Matches count={rows.length} />}
+    </>
   );
 
   const list = empty ? (
@@ -261,14 +277,6 @@ export function CheckInView({
         <Text size={15} weight="medium" style={styles.secondary}>
           {t('checkIn.nobodyYetLine')}
         </Text>
-      )}
-      {open && (
-        <Pill
-          label={t('checkIn.addWalkIn')}
-          full={false}
-          onPress={() => startWalkIn(typed)}
-          testID="checkIn.walkIn"
-        />
       )}
     </View>
   ) : looking && rows.length === 0 ? (
@@ -340,7 +348,9 @@ export function CheckInView({
       style={styles.grow}
       contentContainerStyle={[styles.list, { paddingBottom: insets.bottom + 120 }]}
       keyboardShouldPersistTaps="handled"
+      showsVerticalScrollIndicator={false}
     >
+      {header}
       {list}
     </ScrollView>
   );
@@ -348,10 +358,7 @@ export function CheckInView({
   if (kind === 'tabletLandscape')
     return (
       <View style={styles.panes}>
-        <View style={[styles.doorPane, walkIn != null && styles.doorPaneNarrow]}>
-          {header}
-          {scroll}
-        </View>
+        <View style={[styles.doorPane, walkIn != null && styles.doorPaneNarrow]}>{scroll}</View>
         {walkIn != null && (
           <ScrollView
             style={styles.grow}
@@ -377,7 +384,7 @@ export function CheckInView({
 
   return (
     <View style={styles.page}>
-      {header}
+      {nav}
       {scroll}
       {walkIn != null && (
         <SheetLayer onClose={closeWalkIn} label={t('checkIn.close')}>
@@ -494,6 +501,18 @@ function ArrivedButton({
   );
 }
 
+function Matches({ count }: { count: number }) {
+  const { t } = useTranslation();
+  const words = t('checkIn.matches', { count });
+  useReadOut(words);
+
+  return (
+    <Text size={14.5} weight="semibold" style={[styles.secondary, styles.figures]}>
+      {words}
+    </Text>
+  );
+}
+
 function NoOne({ typed }: { typed: string }) {
   const { t } = useTranslation();
   const words = t('checkIn.noOne', { typed });
@@ -604,8 +623,9 @@ const styles = StyleSheet.create({
   grow: { flex: 1, minWidth: 0 },
   page: { flex: 1, backgroundColor: tokens.colorCard },
   pad: { gap: tokens.spaceLg, padding: tokens.spaceLg },
-  header: { gap: 14, paddingTop: 16, paddingHorizontal: tokens.spaceLg },
-  list: { gap: 14, paddingTop: 8, paddingHorizontal: tokens.spaceLg },
+  list: { gap: 14, paddingTop: 16, paddingHorizontal: tokens.spaceLg },
+  searchRow: { flexDirection: 'row', alignItems: 'center' },
+  figures: { fontVariant: ['tabular-nums'] },
   secondary: { color: tokens.colorInkSecondary },
   accent: { color: tokens.colorAccentText },
   pressed: { opacity: tokens.opacityPressed },
