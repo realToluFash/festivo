@@ -1,8 +1,7 @@
 import { todayRailWindow } from '@soirely/domain';
 
-import type { Moment, Now } from '../../kit/today.ts';
+import type { ArrivedFigure, Moment, Now } from '../../kit/today.ts';
 import type { Say } from '../today.ts';
-import type { Figure } from './arrived.ts';
 import type { RunNow, RunStop } from '../../kit/todayRun.ts';
 
 /** One item of a track, as sc-3895's presses leave it. Times are `18:00` in the event's zone. */
@@ -198,14 +197,12 @@ export function isRunState(name: string | undefined): name is RunState {
 export interface RunMoment extends Moment {
   now: Now;
   run: RunNow;
-  /** sc-29978's figure beside Next, as `ArrivedFigure` draws it; none before anyone has arrived. */
-  figure: Figure | null;
 }
 
 export function withRun(
   moment: Moment,
   state: RunState,
-  figure: Figure | null,
+  figure: ArrivedFigure | null,
   say: Say,
 ): RunMoment | null {
   if (moment.now == null || !moment.full) return null;
@@ -215,8 +212,7 @@ export function withRun(
   return {
     ...moment,
     time: clock,
-    now: moment.now,
+    now: { ...moment.now, arrived: figure },
     run: runNowOf(moment.now.name, items, clock, say),
-    figure,
   };
 }

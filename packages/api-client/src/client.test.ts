@@ -3068,7 +3068,7 @@ describe('events (sc-1486)', () => {
       action: null,
       done: false,
     };
-    const WEDDING_GUESTS = { invited: 142, coming: 96, notReplied: 25 };
+    const WEDDING_GUESTS = { invited: 142, coming: 96, notReplied: 25, attended: 87, expected: 99 };
     const later = { ...EVENT, id: 'e2', name: 'Later', milestones: [] };
     const { api, sent } = client(() =>
       json({
