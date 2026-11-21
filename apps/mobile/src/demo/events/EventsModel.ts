@@ -446,6 +446,10 @@ export const EVENT_STATES = [
   'venueSuggestions',
   'venueZone',
   'venueDown',
+  'venueOne',
+  'venueShort',
+  'venueNoMatch',
+  'venueFrench',
   'venueNote',
   'venueNoteTooLong',
   'venueNoteRefused',
@@ -540,6 +544,10 @@ export function editOf(state: EventDemoState | null): EditPart | null {
     case 'venueSuggestions':
     case 'venueZone':
     case 'venueDown':
+    case 'venueOne':
+    case 'venueShort':
+    case 'venueNoMatch':
+    case 'venueFrench':
     case 'venueNote':
     case 'venueNoteTooLong':
     case 'venueNoteRefused':

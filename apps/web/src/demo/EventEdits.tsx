@@ -16,6 +16,7 @@ import {
   timezoneLabel,
 } from '@soirely/domain';
 import { type RefObject, useEffect, useId, useLayoutEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 
 import {
   type Currency,
@@ -38,6 +39,15 @@ import {
 import { writtenTime } from './clock.ts';
 import { ARRIVAL_NOTE, LONG_NOTE, NOTE_WORDS, noteTooLong, savedNote } from './arrivalNote.ts';
 import './arrivalNote.css';
+import {
+  CREDIT_TYPED,
+  type CreditLanguage,
+  OSM_COPYRIGHT,
+  OSM_CREDIT,
+  creditLanguageOf,
+  isCreditState,
+} from './addressCredit.ts';
+import './addressCredit.css';
 import {
   REPLY_BY_WORDS,
   datesAsk,
@@ -341,6 +351,7 @@ export function VenueFields({
   addressRef,
   off = false,
   onPicked,
+  credit = 'en',
 }: {
   name: string;
   onName: (name: string) => void;
@@ -363,6 +374,7 @@ export function VenueFields({
   addressRef?: RefObject<HTMLInputElement | null>;
   off?: boolean;
   onPicked?: (venue: SampleVenue | null) => void;
+  credit?: CreditLanguage;
 }) {
   const made = useId();
   const own = useRef<HTMLInputElement>(null);
@@ -371,72 +383,134 @@ export function VenueFields({
   const [offer, setOffer] = useState<string | null>(offering);
   const [zoneSet, setZoneSet] = useState<string | null>(null);
   const shown = down || !listOpen || off ? [] : suggestionsFor(address);
+  const [holder, setHolder] = useState<HTMLDivElement | null>(null);
+  const combo = holder?.querySelector<HTMLElement>('.ev-combo') ?? null;
+  const creditRef = useRef<HTMLAnchorElement>(null);
+  const closeUnlessOnCredit = () =>
+    window.setTimeout(() => {
+      if (document.activeElement !== creditRef.current) setListOpen(false);
+    });
 
   useEffect(() => {
     if (focus) field.current?.focus();
   }, [focus, field]);
 
   return (
-    <VenueFieldsView
-      venue={{ name, address, addressId: null, note }}
-      errors={{
-        ...(nameError == null ? {} : { venueName: nameError }),
-        ...(addressError == null ? {} : { venueAddress: addressError }),
-        ...(noteError == null ? {} : { arrivalNote: noteError }),
-      }}
-      off={off}
-      ids={{ name: `${made}-name`, address: `${made}-address`, note: noteId }}
-      {...(nameRef == null ? {} : { nameRef })}
-      addressRef={field}
-      suggestions={shown.map((one) => ({ id: one.name, text: one.name, secondaryText: one.line }))}
-      down={down}
-      offer={offer == null ? null : { zone: offer, keep: zone }}
-      zoneSet={zoneSet}
-      onVenue={(change) => {
-        if (change.name != null) onName(change.name);
-        if (change.address != null) onAddress(change.address);
-        if (change.note != null) onNote(change.note);
-      }}
-      onType={(typed) => {
-        onAddress(typed);
-        onPicked?.(null);
-        setListOpen(true);
-        setZoneSet(null);
-      }}
-      onDismiss={() => setListOpen(false)}
-      onPick={(chosen) => {
-        const one = shown.find((venue) => venue.name === chosen.id);
-        if (one == null) return;
-        onPicked?.(one);
-        onAddress(one.address);
-        if (name.trim() === '') onName(one.name);
-        setListOpen(false);
-        setOffer(one.timeZone === zone ? null : one.timeZone);
-      }}
-      onUseZone={(chosen) => {
-        onZone(chosen);
-        setOffer(null);
-        setZoneSet(chosen);
-      }}
-      onKeepZone={() => setOffer(null)}
-    />
+    <div className="ev-venue" ref={setHolder}>
+      <VenueFieldsView
+        venue={{ name, address, addressId: null, note }}
+        errors={{
+          ...(nameError == null ? {} : { venueName: nameError }),
+          ...(addressError == null ? {} : { venueAddress: addressError }),
+          ...(noteError == null ? {} : { arrivalNote: noteError }),
+        }}
+        off={off}
+        ids={{ name: `${made}-name`, address: `${made}-address`, note: noteId }}
+        {...(nameRef == null ? {} : { nameRef })}
+        addressRef={field}
+        suggestions={shown.map((one) => ({
+          id: one.name,
+          text: one.name,
+          secondaryText: one.line,
+        }))}
+        down={down}
+        offer={offer == null ? null : { zone: offer, keep: zone }}
+        zoneSet={zoneSet}
+        onVenue={(change) => {
+          if (change.name != null) onName(change.name);
+          if (change.address != null) onAddress(change.address);
+          if (change.note != null) onNote(change.note);
+        }}
+        onType={(typed) => {
+          onAddress(typed);
+          onPicked?.(null);
+          setListOpen(true);
+          setZoneSet(null);
+        }}
+        onDismiss={closeUnlessOnCredit}
+        onPick={(chosen) => {
+          const one = shown.find((venue) => venue.name === chosen.id);
+          if (one == null) return;
+          onPicked?.(one);
+          onAddress(one.address);
+          if (name.trim() === '') onName(one.name);
+          setListOpen(false);
+          setOffer(one.timeZone === zone ? null : one.timeZone);
+        }}
+        onUseZone={(chosen) => {
+          onZone(chosen);
+          setOffer(null);
+          setZoneSet(chosen);
+        }}
+        onKeepZone={() => setOffer(null)}
+      />
+      {combo != null &&
+        shown.length > 0 &&
+        createPortal(
+          <AddressCredit
+            language={credit}
+            linkRef={creditRef}
+            onLeave={closeUnlessOnCredit}
+            onEscape={() => {
+              setListOpen(false);
+              field.current?.focus();
+            }}
+          />,
+          combo,
+        )}
+    </div>
+  );
+}
+
+/** sc-80918: the line at the foot of the suggestions' surface, after the listbox and never one of its options; pressing it keeps Address focused so the list stays. */
+function AddressCredit({
+  language,
+  linkRef,
+  onLeave,
+  onEscape,
+}: {
+  language: CreditLanguage;
+  linkRef: RefObject<HTMLAnchorElement | null>;
+  onLeave: () => void;
+  onEscape: () => void;
+}) {
+  return (
+    <p className="ev-osm" lang={language}>
+      <a
+        ref={linkRef}
+        href={OSM_COPYRIGHT}
+        target="_blank"
+        rel="noopener noreferrer"
+        onPointerDown={(pointer) => pointer.preventDefault()}
+        onBlur={onLeave}
+        onKeyDown={(key) => {
+          if (key.key !== 'Escape') return;
+          key.stopPropagation();
+          onEscape();
+        }}
+      >
+        {OSM_CREDIT[language]}
+      </a>
+    </p>
   );
 }
 
 /** Venue: its name and address, suggestions from 3 characters, and the zone it is in when that differs. */
 export function VenuePart({ event, state, onDirty, onClose, onSave }: PartProps) {
-  const typing = state === 'venueSuggestions' || state === 'venueDown';
+  const typing = state === 'venueSuggestions' || state === 'venueDown' || isCreditState(state);
   const [name, setName] = useState(
     typing ? '' : state === 'venueZone' ? 'Eko Hotel' : (event.venue?.name ?? ''),
   );
   const [address, setAddress] = useState(
-    state === 'venueSuggestions'
-      ? 'Eko Hot'
-      : state === 'venueDown'
-        ? '12 Rua'
-        : state === 'venueZone'
-          ? 'Adetokunbo Ademola Street, Victoria Island, Lagos'
-          : (event.venue?.address ?? ''),
+    isCreditState(state)
+      ? CREDIT_TYPED[state]
+      : state === 'venueSuggestions'
+        ? 'Eko Hot'
+        : state === 'venueDown'
+          ? '12 Rua'
+          : state === 'venueZone'
+            ? 'Adetokunbo Ademola Street, Victoria Island, Lagos'
+            : (event.venue?.address ?? ''),
   );
   const [picked, setPicked] = useState<SampleVenue | null>(null);
   const [zone, setZone] = useState(event.timeZone);
@@ -507,7 +581,8 @@ export function VenuePart({ event, state, onDirty, onClose, onSave }: PartProps)
         zone={zone}
         onZone={setZone}
         down={down}
-        listing={state === 'venueSuggestions'}
+        listing={state === 'venueSuggestions' || isCreditState(state)}
+        credit={creditLanguageOf(state)}
         offering={state === 'venueZone' ? 'Africa/Lagos' : null}
         focus={typing}
         note={note}
