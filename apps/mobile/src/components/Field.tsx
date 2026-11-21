@@ -1,8 +1,10 @@
+import { useFocusEffect } from 'expo-router';
 import {
   createContext,
   type ReactNode,
   type Ref,
   type RefObject,
+  useCallback,
   useContext,
   useEffect,
   useId,
@@ -10,6 +12,7 @@ import {
   useState,
 } from 'react';
 import {
+  AppState,
   Keyboard,
   Platform,
   Pressable,
@@ -25,7 +28,7 @@ import { useTranslation } from 'react-i18next';
 
 import {
   codeProps,
-  FIELD_DEFAULTS,
+  fieldDefaults,
   fieldName,
   fieldText,
   handsHeld,
@@ -43,7 +46,7 @@ import {
 import { useBoldText } from '../theme/boldText.ts';
 import { inputFaced } from '../theme/fonts.ts';
 import { tokens } from '../theme/tokens.ts';
-import { fieldChecked, fieldFocused, fieldLeft } from './focusedField.ts';
+import { fieldChecked, fieldFocused, fieldLeft, fieldTyped } from './focusedField.ts';
 import { raiseKeysOn } from './keyboardWatch.ts';
 import { useReadOut } from './ReadOut.tsx';
 import { useFocusOnAnswer } from './Screen.tsx';
@@ -321,8 +324,32 @@ export function useHeld(
     onChangeText: (text) => {
       setTyping((last) => keyTyped(last, text));
       onChangeText?.(text);
+      fieldTyped();
     },
   };
+}
+
+/** Whether a password reads as typed: hidden by default, and hidden again once a submit runs, on leaving the screen and when the app goes to the background. */
+export function useRevealed(submitting: boolean) {
+  const [revealed, setRevealed] = useState(false);
+  const [wasSubmitting, setWasSubmitting] = useState(submitting);
+
+  if (submitting !== wasSubmitting) {
+    setWasSubmitting(submitting);
+    if (submitting) setRevealed(false);
+  }
+
+  useEffect(() => {
+    const listener = AppState.addEventListener('change', (state) => {
+      if (state !== 'active') setRevealed(false);
+    });
+
+    return () => listener.remove();
+  }, []);
+
+  useFocusEffect(useCallback(() => () => setRevealed(false), []));
+
+  return [revealed, setRevealed] as const;
 }
 
 /** To the field a server refusal names: the keyboard moves there if it was up, and a server refusal never raises it. */
@@ -413,7 +440,7 @@ export function TextField({
 
   return (
     <TextInput
-      {...FIELD_DEFAULTS}
+      {...fieldDefaults(Platform.OS)}
       {...rest}
       {...refusedField(refused, rest, labelID)}
       {...holding}
@@ -451,7 +478,7 @@ export function CodeField({
 
   return (
     <TextInput
-      {...codeProps(takesRecoveryCode)}
+      {...codeProps(Platform.OS, takesRecoveryCode)}
       autoComplete="sms-otp"
       {...rest}
       {...refusedField(refused, rest, labelID)}

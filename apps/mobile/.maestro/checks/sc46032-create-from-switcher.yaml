@@ -3,10 +3,10 @@ appId: host.exp.Exponent
 ---
 - openLink: ${METRO_URL}/--/
 - tapOn:
-    id: 'frame.home'
+    id: 'tab-today|frame.home'
     optional: true
 - tapOn:
-    id: 'frame.organisation'
+    id: 'frame.organisation|home.switchOrganisation'
 - extendedWaitUntil:
     visible:
       id: 'switcher.heading'

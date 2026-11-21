@@ -15,6 +15,7 @@ enum GuestStanding
     case HeldHostNotComing;
     case Declined;
     case NotYetInvited;
+    case WalkIn;
 
     /** For a companion, `reply` and `invited` are their host's: Held while the host is not Coming, then Coming unless the guest marked them Not coming (sc-3779). Nobody is waiting on a reply until they are invited (sc-3788). */
     public static function of(GuestReply $reply, bool $companion, bool $invited, bool $notComingByGuest = false): self

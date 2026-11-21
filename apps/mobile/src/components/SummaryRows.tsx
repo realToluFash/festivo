@@ -17,7 +17,7 @@ import Svg, { Circle, Path } from 'react-native-svg';
 
 import { Text } from './Text.tsx';
 import { CappedWholeWords } from './Title.tsx';
-import { atAccessibilitySizes } from '../layout/textSize.ts';
+import { atAccessibilitySizes, LABEL_LINE } from '../layout/textSize.ts';
 import { titleAtWidth, titleWithInkRoom, UNMEASURED_TITLE } from './titleWidth.ts';
 import { useReducedMotion } from '../reducedMotion.ts';
 import { tokens } from '../theme/tokens.ts';
@@ -34,6 +34,7 @@ export interface RowTag {
   kind: TagKind;
   word: string;
   turning?: boolean;
+  wraps?: boolean;
 }
 
 const TAGS: Record<TagKind, { fill: string; ink: string; ring?: string }> = {
@@ -131,7 +132,7 @@ export function Tag({
   word: string;
   turning?: boolean | undefined;
   /** Wraps at every text size, not only at the accessibility sizes, where a tag always wraps rather than be cut (sc-67338). */
-  wraps?: boolean;
+  wraps?: boolean | undefined;
 }) {
   const look = TAGS[kind];
   const { fontScale } = useWindowDimensions();
@@ -224,7 +225,7 @@ export function Section({
 
 export function SectionFoot({ foot }: { foot: string }) {
   return (
-    <Text size={14} weight="medium" style={[styles.secondary, styles.foot]}>
+    <Text size={14} weight="medium" wholeLines style={[styles.secondary, styles.foot]}>
       {foot}
     </Text>
   );
@@ -312,7 +313,11 @@ export function Row({
               {titleWithInkRoom(title, Platform.OS, selectable)}
             </Text>
           }
-          tag={tag != null && <Tag kind={tag.kind} word={tag.word} turning={tag.turning} />}
+          tag={
+            tag != null && (
+              <Tag kind={tag.kind} word={tag.word} turning={tag.turning} wraps={tag.wraps} />
+            )
+          }
         />
         {line != null && (
           <Text
@@ -428,6 +433,7 @@ export function TextAction({
   renderMark,
   after,
   wraps = false,
+  drawnAt,
   consequence,
   accessibilityLabel,
   maxFontSizeMultiplier,
@@ -445,6 +451,8 @@ export function TextAction({
   renderMark?: (ink: string) => ReactNode;
   after?: GlyphName;
   wraps?: boolean;
+  /** The label's size already grown to the text size by the caller, drawn as it is (sc-75214). */
+  drawnAt?: number | undefined;
   consequence?: string;
   accessibilityLabel?: string;
   /** Set by a caller that steps its labels down to keep each word whole (sc-13496). */
@@ -475,15 +483,17 @@ export function TextAction({
       {glyph != null && <Glyph name={glyph} size={17} ink={ink} weight={2.3} />}
       {renderMark?.(ink)}
       <Text
-        size={15}
+        size={drawnAt ?? 15}
         weight="semibold"
         accessible={false}
+        allowFontScaling={drawnAt == null}
         maxFontSizeMultiplier={maxFontSizeMultiplier}
         style={[
           { color: ink },
           figures && styles.figures,
           onFill && styles.onFill,
           wraps && styles.wrapsLabel,
+          drawnAt != null && { lineHeight: Math.ceil(drawnAt * LABEL_LINE) },
         ]}
       >
         {label}

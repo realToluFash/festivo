@@ -99,9 +99,12 @@ you as your next work, ahead of anything new: test it, or give it back.
 **One exception stays In QA: a side-by-side row whose driver or device would not start,
 with nothing failed** (section 3). Every other row is run and passed; the story stays
 `In QA` under your claim with the unrun rows in a `[ops]` comment, and you do not unclaim it.
-When sq hands it back to you as `held` while that `[ops]` thread is still open, finish the
-run with `sq qa done <id> --note "waiting on [ops] for <rows>"` and leave the claim. Once
-ops answers, re-run only the unrun rows and post the report on the whole story.
+sq hands it back to you as `held` again and again, two hours after you last finished it and
+then at longer waits up to a day, whether or not anyone answered. Each time, try the driver
+or device yourself before anything else: what stopped it has often cleared with no reply
+in the thread. If it starts, re-run only the unrun rows and post the report on the whole
+story. If it still does not, finish the run with
+`sq qa done <id> --note "waiting on [ops] for <rows>"` and leave the claim.
 
 **A story stuck in `In QA`** has a winning claim more than three hours old and no report,
 which means its tester's run died. Any tester may take it over with the same
@@ -339,7 +342,7 @@ With no MCP, fall back to a script — `npx playwright` with a `page.goto`,
 
 ```sh
 node .qa/bin/qa-env.mjs ios [--ipad | --se]              # the bundler, in Expo Go, on the QA phone (or iPad, iPhone SE); shuts the others
-node .qa/bin/qa-env.mjs release [--offline] [--ipad | --se] # a release build of the commit on the simulator, on its first launch
+node .qa/bin/qa-env.mjs release [--offline] [--ipad | --se] [--link <url>] # a release build of the commit on the simulator, on its first launch
 node .qa/bin/qa-env.mjs maestro sign-in EMAIL=… PASSWORD=…        # one flow, on the phone
 node .qa/bin/qa-env.mjs maestro sign-in --ipad EMAIL=… PASSWORD=… # on the tablet
 node .qa/bin/qa-env.mjs hierarchy [--ipad | --se | --android]    # what is on screen, for writing a flow

@@ -52,7 +52,7 @@ describe('Export all data (sc-612)', () => {
       step: 'retry',
     });
     expect(exportCard('not_owner', LOCALE, LAGOS)).toEqual({
-      says: 'Only an owner exports Ire Events’ data',
+      says: 'Only an owner exports Ire Events’s data',
       lines: ['An owner can take everything Ire Events holds in one archive.'],
       step: null,
     });

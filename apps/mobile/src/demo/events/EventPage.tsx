@@ -131,6 +131,8 @@ import { DemoOnly } from '../../steps/Lines.tsx';
 import { GUESTS as TALKS, type GuestKey } from '../messages/MessagesSample.ts';
 import type { BudgetState } from '../budget/BudgetModel.ts';
 import { BudgetScreen } from '../budget/BudgetScreen.tsx';
+import { StaffRoster } from '../staffLink/StaffRoster.tsx';
+import type { RosterState } from '../staffLink/StaffRosterModel.ts';
 import { type OriginState, draftFromEnquiry } from '../enquiries/EnquiryToEventModel.ts';
 import { FromEnquiryLine } from '../enquiries/FromEnquiryParts.tsx';
 
@@ -203,6 +205,7 @@ export function EventScreen({
   seating = null,
   guests = null,
   budget = null,
+  staff = null,
   people = null,
   peopleParams,
   guestsFrom: figureOpens = null,
@@ -217,6 +220,8 @@ export function EventScreen({
   /** With Guests' own states, Guests opens on one, or Overview on its counts. */
   guests?: GuestsState | null;
   budget?: BudgetState | null;
+  /** The Staff area's roster state (sc-77903). */
+  staff?: RosterState | null;
   /** The People card's state on Overview (sc-29914); none is the populated card. */
   people?: CardState | null;
   /** People's own query, when People opens in this frame from its own page (sc-67665). */
@@ -252,7 +257,6 @@ export function EventScreen({
           ? 'overview'
           : 'guests'
         : area == null ||
-            (area === 'people' && shell.layout === 'phone') ||
             messages === 'tell' ||
             messages === 'tellPlace' ||
             (isTellKind(messages) && !TELL_IN_MESSAGES.includes(messages))
@@ -523,14 +527,10 @@ export function EventScreen({
   const peopleCard = (
     <PeopleCard
       state={people}
-      onOpen={
-        shell.layout === 'phone'
-          ? undefined
-          : (params) => {
-              setPeopleAt(params);
-              setAt('people');
-            }
-      }
+      onOpen={(params) => {
+        setPeopleAt(params);
+        setAt('people');
+      }}
     />
   );
   const guestsPage = (
@@ -681,7 +681,7 @@ export function EventScreen({
       </EventFrame>
     );
 
-  if (at === 'people' && shell.layout !== 'phone')
+  if (at === 'people')
     return (
       <PeopleInEvent.Provider
         value={{
@@ -781,8 +781,13 @@ export function EventScreen({
     );
 
   let page: ReactNode;
-  if (at !== 'overview' && at !== 'people')
-    page = <AreaPage area={at} event={shown} locale={locale} />;
+  if (at === 'staff' && messagesHere)
+    page = (
+      <AreaPage area={at} event={shown} locale={locale}>
+        <StaffRoster state={staff ?? 'populated'} />
+      </AreaPage>
+    );
+  else if (at !== 'overview') page = <AreaPage area={at} event={shown} locale={locale} />;
   else
     page = (
       <OverviewColumns

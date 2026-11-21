@@ -22,7 +22,9 @@ import {
   coverAmount,
   dateTooLate,
   days,
+  dueItemOf,
   dueNowSettled,
+  eventsOf,
   ledgerFor,
   linkWords,
   money,
@@ -37,6 +39,7 @@ import {
   planOf,
   reduce,
   referenceTooLong,
+  reminderRows,
   reminderSheet,
   shareOf,
   startOf,
@@ -49,6 +52,7 @@ import {
 } from './BudgetModel.ts';
 import {
   CEILINGS,
+  EVENT_NAME,
   GUESTS,
   HEADS_IF_ALL_COME,
   LEAD,
@@ -392,20 +396,88 @@ describe('Due now (sc-1331): one tap each, no total', () => {
     const open = startOf('due_now', REMOVED_PAYER);
 
     expect(changed.dueNow != null && dueNowSettled(changed.dueNow, changed.ledger)).toBe(true);
-    expect(changed.dueNow?.ids).toEqual(['bloom-balance', 'savour-deposit']);
+    expect(changed.dueNow?.ids).toEqual(['bloom-balance', 'savour-deposit', 'lens-album']);
     expect(open.dueNow != null && dueNowSettled(open.dueNow, open.ledger)).toBe(false);
     const done = startOf('due_done', REMOVED_PAYER);
     expect(done.dueNow != null && dueNowSettled(done.dueNow, done.ledger)).toBe(true);
     expect(done.dueNow?.ids).toEqual(['bloom-balance', 'savour-deposit']);
-    expect(W.nothingLeftHead).toBe('Nothing left to pay.');
+    expect(W.nothingLeftHead).toBe('Nothing left to pay from this reminder');
   });
 
   it('reads the payments as they are now', () => {
     expect(ledgerFor('due_changed').paid['bloom-balance']?.by).toBe('Julien Moreau');
     expect(ledgerFor('due_changed').cancelled).toEqual(['savour-deposit']);
     expect(owed(ledgerFor('due_done')).map((p) => p.id)).not.toContain('savour-deposit');
-    expect(startOf('due_refused', REMOVED_PAYER).dueNow?.refused).toEqual(['savour-deposit']);
+    expect(startOf('due_refused', REMOVED_PAYER).dueNow?.refused).toEqual({
+      'savour-deposit': 'cancelled',
+    });
     expect(startOf('due_read_only', REMOVED_PAYER).dueNow?.readOnly).toBe(true);
+  });
+
+  it('names a reminder across two events, each row in its event’s currency, and no total', () => {
+    const several = startOf('due_several', REMOVED_PAYER);
+    const ids = several.dueNow?.ids ?? [];
+
+    expect(ids).toEqual(['bloom-balance', 'savour-deposit', 'gala-flowers']);
+    expect(eventsOf(ids)).toEqual(['Adaeze & Tunde’s wedding', 'Gala Fundación Lucía']);
+    expect(say.fromReminder('Nov 1', ids.length, eventsOf(ids).length)).toBe(
+      'From the reminder sent Nov 1 · 3 payments across 2 events',
+    );
+    expect(say.fromReminder('Nov 1', 2, 1)).toBe('From the reminder sent Nov 1 · 2 payments');
+    expect(say.fromReminder('Nov 1', 1)).toBe('From the reminder sent Nov 1 · 1 payment');
+    const gala = dueItemOf('gala-flowers');
+    expect(money(gala.amount, 'en-US', gala.currency)).toBe('€1,200.00');
+  });
+
+  it('keeps the gala’s payment out of the wedding’s figures when it is paid', () => {
+    const several = startOf('due_several', REMOVED_PAYER);
+    const paid = reduce(several, { type: 'duePaid', id: 'gala-flowers', reader: 'x', words: 'y' });
+
+    expect(paid.ledger.paid['gala-flowers']?.amount).toBe(120000);
+    expect(planOf(paid.ledger).paid).toBe(planOf(several.ledger).paid);
+  });
+
+  it('says a removed payment is no longer on the schedule, and counts it as settled', () => {
+    expect(dueItemOf('lens-album').gone).toBe(true);
+    expect(W.noLongerOnSchedule).toBe('No longer on the schedule');
+  });
+
+  it('shows a refusal in sc-88’s words under its row, with the row as it is now', () => {
+    const paid = startOf('due_refused_paid', REMOVED_PAYER);
+    expect(paid.dueNow?.refused).toEqual({ 'bloom-balance': 'paid' });
+    expect(paid.ledger.paid['bloom-balance']?.by).toBe('Julien Moreau');
+    expect(W.alreadyPaid('Julien Moreau')).toBe(
+      'Julien Moreau has already marked this paid, so nothing has changed.',
+    );
+    const plan = startOf('due_refused_plan', REMOVED_PAYER);
+    expect(plan.dueNow?.refused).toEqual({ 'savour-deposit': 'plan' });
+    expect(plan.dueNow?.readOnly).toBe(true);
+    expect(canMark(plan)).toBe(false);
+  });
+
+  it('counts a row marked here as settled, with a link for each event and Undo kept', () => {
+    for (const state of ['due_now', 'due_several'] as const) {
+      let m = startOf(state, REMOVED_PAYER);
+      for (const id of m.dueNow?.ids ?? [])
+        m = reduce(m, { type: 'duePaid', id, reader: 'x', words: 'y' });
+
+      expect(m.dueNow != null && dueNowSettled(m.dueNow, m.ledger)).toBe(true);
+      expect(m.dueNow?.marked).toEqual(m.dueNow?.ids);
+      expect(m.dueNow?.readOnly).toBe(false);
+    }
+    const several = startOf('due_several', REMOVED_PAYER);
+    expect(eventsOf(several.dueNow?.ids ?? [])).toHaveLength(2);
+  });
+
+  it('settles a reminder across two events with a link for each, and answers not found alone', () => {
+    const done = startOf('due_done_several', REMOVED_PAYER);
+    expect(done.dueNow != null && dueNowSettled(done.dueNow, done.ledger)).toBe(true);
+    expect(eventsOf(done.dueNow?.ids ?? [])).toHaveLength(2);
+    expect(planOf(done.ledger).paid).toBe(planOf(ledgerFor('due_done')).paid);
+    const gone = startOf('due_not_found', REMOVED_PAYER);
+    expect(gone.dueNow).toMatchObject({ ids: [], notFound: true });
+    expect(gone.dueNow != null && dueNowSettled(gone.dueNow, gone.ledger)).toBe(false);
+    expect(DUE_NOW_STATES).toContain('due_not_found');
   });
 });
 
@@ -529,7 +601,18 @@ describe('the gaps of 8 Nov: refusals, ceilings and the reminder on the Budget t
     expect(mixed.ids).toEqual(['bloom-balance', 'savour-deposit', 'landmark-balance']);
     expect(mixed.lastAbout).toEqual(['bloom-balance']);
     expect(reminderSheet('overdue').ids).toEqual(['bloom-balance']);
+    expect(reminderSheet('due')).toMatchObject({
+      ids: ['savour-deposit', 'landmark-balance'],
+      lastAbout: [],
+    });
+    expect(say.reminderDue(2, 3, 'Adaeze & Tunde’s wedding')).toBe(
+      '2 payments due in the next 3 days on Adaeze & Tunde’s wedding',
+    );
     expect(say.reminderMixed(1, 2, 3)).toBe('1 payment overdue, 2 due in the next 3 days');
+    expect(say.reminderMixed(1, 2, 1)).toBe('1 payment overdue, 2 due by tomorrow');
+    expect(say.reminderDue(2, 1, 'Adaeze & Tunde’s wedding')).toBe(
+      '2 payments due by tomorrow on Adaeze & Tunde’s wedding',
+    );
     expect(say.reminderOverdue(1, 'Adaeze & Tunde’s wedding')).toBe(
       '1 payment overdue on Adaeze & Tunde’s wedding',
     );
@@ -538,6 +621,30 @@ describe('the gaps of 8 Nov: refusals, ceilings and the reminder on the Budget t
     );
     expect(opened.reminder).toBeNull();
     expect(opened.dueNow).toMatchObject({ fromReminder: true, lastAbout: ['bloom-balance'] });
+  });
+});
+
+describe('the reminder’s rows (sc-95, #76776)', () => {
+  it('names the event on every row of the mixed reminder', () => {
+    const rows = reminderRows('mixed', 'en-GB');
+
+    expect(rows.map((row) => row.id)).toEqual([
+      'bloom-balance',
+      'savour-deposit',
+      'landmark-balance',
+    ]);
+    for (const row of rows) expect(row.words).toContain(` · ${EVENT_NAME} · `);
+    expect(rows[0]).toMatchObject({ late: true });
+    expect(rows[0]?.words).toMatch(/^Bloom & Co · /);
+  });
+
+  it('leaves the event to the title when the reminder is about one event', () => {
+    for (const kind of ['overdue', 'due'] as const) {
+      const rows = reminderRows(kind, 'en-GB');
+
+      expect(rows.length).toBeGreaterThan(0);
+      for (const row of rows) expect(row.words).not.toContain(EVENT_NAME);
+    }
   });
 });
 
@@ -656,6 +763,11 @@ const SPEC_STATES = [
   'due_refused',
   'due_done',
   'due_read_only',
+  'due_several',
+  'due_refused_paid',
+  'due_refused_plan',
+  'due_done_several',
+  'due_not_found',
   'mark_paid_earlier',
   'early_on',
   // The gaps of 8 Nov 2026: sc-88, sc-90 and sc-95 on the Budget tab; sc-30200 and sc-1300 on Who is paying.
@@ -667,6 +779,7 @@ const SPEC_STATES = [
   'ceiling_live_cleared',
   'reminder_overdue',
   'reminder_mixed',
+  'reminder_due',
   'payers_loading',
   'payers_live',
   'payers_reconnecting',

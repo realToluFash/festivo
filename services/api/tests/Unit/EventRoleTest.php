@@ -9,7 +9,6 @@ use App\Enum\Permission;
 use App\Enum\PermissionArea;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
-use Psl\Iter;
 use Psl\Vec;
 
 /** sc-29912: what each role on an event opens, the same in every organisation. */
@@ -35,21 +34,24 @@ final class EventRoleTest extends TestCase
     }
 
     #[Test]
-    public function neitherReadingRoleChangesAnythingSeesContactDetailsOrTheBudget(): void
+    public function neitherReadingRoleChangesAnythingButTheDoorSeesContactDetailsOrTheBudget(): void
     {
         foreach ([EventRole::CanView, EventRole::CanCheckIn] as $role) {
             $held = $role->permissions();
 
-            self::assertFalse(Iter\any($held, static fn (Permission $permission): bool => $permission->isChange()), $role->value);
+            self::assertSame(EventRole::CanCheckIn === $role ? [Permission::GuestsCheckIn] : [], Vec\values(Vec\filter($held, static fn (Permission $permission): bool => $permission->isChange())), $role->value);
             self::assertNotContains(Permission::GuestsManage, $held, $role->value);
             self::assertSame([], Vec\filter($held, static fn (Permission $permission): bool => PermissionArea::Budget === $permission->area()), $role->value);
         }
     }
 
     #[Test]
-    public function canCheckGuestsInReadsEveryAreaCanViewReads(): void
+    public function canCheckGuestsInReadsEveryAreaCanViewReadsAndChecksGuestsIn(): void
     {
-        self::assertSame(EventRole::CanView->permissions(), EventRole::CanCheckIn->permissions());
+        self::assertSame([...EventRole::CanView->permissions(), Permission::GuestsCheckIn], EventRole::CanCheckIn->permissions());
+        self::assertNotContains(Permission::GuestsCheckIn, EventRole::CanView->permissions());
+        self::assertContains(Permission::GuestsCheckIn, EventRole::CanEdit->permissions());
+        self::assertContains(Permission::GuestsCheckIn, EventRole::Lead->permissions());
     }
 
     #[Test]

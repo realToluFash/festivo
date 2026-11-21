@@ -6,6 +6,10 @@ import {
   addRefusedLine,
   addView,
   ALREADY_A_MEMBER,
+  AMAKA,
+  DOTTED,
+  LONG_MOBILE,
+  UNBROKEN,
   outsideRefusal,
   outsideView,
   readTyped,
@@ -33,6 +37,7 @@ import {
   savedWords,
   seesEveryEvent,
   sheetLine,
+  sheetWords,
   withAdded,
   without,
   withOutside,
@@ -397,5 +402,24 @@ describe('adding someone from outside (sc-71)', () => {
       'bisi@lagoslights.example',
     );
     expect(seenBy(start.onEvent, false).filter((one) => one.name === NOT_JOINED)).toHaveLength(1);
+  });
+  it('opens an outsider with a long address on their role sheet, each by its link (sc-70353)', () => {
+    const opened = (state: string) => {
+      const start = peopleStart(peopleStateOf(state));
+
+      return start.onEvent.find((one) => one.id === start.opened?.id);
+    };
+    expect(opened('longAddress')).toMatchObject({ name: AMAKA, outside: true, initials: null });
+    expect(opened('longAddressDots')?.name).toBe(DOTTED);
+    expect(opened('longAddressUnbroken')?.name).toBe(UNBROKEN);
+    expect(opened('longMobile')).toMatchObject({ id: LONG_MOBILE, name: '+234 803 123 4567' });
+    expect(peopleStart('longAddressRemove').opened).toEqual({ id: AMAKA, removing: 'ask' });
+    expect(peopleStart('longAddress').opened?.removing).toBeNull();
+    expect(sheetWords(opened('longAddress') as OnEvent).removeTitle).toBe(
+      `Remove ${AMAKA} from this event?`,
+    );
+    expect(
+      peopleStart('longAddress').onEvent.filter((one) => one.outside && one.initials == null),
+    ).toHaveLength(4);
   });
 });

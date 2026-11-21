@@ -6,6 +6,7 @@ namespace App\Domain\Staff\Http;
 
 use App\Domain\Staff\RosterOrder;
 use App\Domain\Staff\ShiftClock;
+use App\Domain\Staff\Station\StationSerialiser;
 use App\Entity\Event;
 use App\Entity\StaffJob;
 use App\Entity\StaffMember;
@@ -13,19 +14,21 @@ use App\Entity\StaffShift;
 use App\Repository\StaffJobRepository;
 use App\Repository\StaffMemberRepository;
 use App\Repository\StaffShiftRepository;
+use DateTimeZone;
 use Psl\Vec;
 
-/** `link` says only `none`, `no_mobile` or `erased` until sc-3912 sends links; station stays null until sc-3910. Every time is the instant, with the event's offset. */
+/** `link` is how far the person's own link got (sc-3912), or `no_mobile` or `erased` when none can be given; `linkBy` and `linkAt` say who moved it and when. Every time is the instant, with the event's offset. */
 final readonly class StaffSerialiser
 {
     public function __construct(
         private StaffMemberRepository $staffMemberRepository,
         private StaffJobRepository $staffJobRepository,
         private StaffShiftRepository $staffShiftRepository,
+        private StationSerialiser $stationSerialiser,
     ) {
     }
 
-    /** @return array{staff: list<array<string, mixed>>, jobs: list<array<string, mixed>>, shifts: list<array<string, mixed>>} */
+    /** @return array{staff: list<array<string, mixed>>, jobs: list<array<string, mixed>>, shifts: list<array<string, mixed>>, stations: array<string, mixed>} */
     public function list(Event $event): array
     {
         $shifts = $this->staffShiftRepository->findOnEvent($event);
@@ -37,22 +40,24 @@ final readonly class StaffSerialiser
             }
         }
 
+        $staff = RosterOrder::sort($this->staffMemberRepository->findOnEvent($event), $theirs);
+        $tables = $this->stationSerialiser->tables($event);
+
         return [
-            'staff' => Vec\map(
-                RosterOrder::sort($this->staffMemberRepository->findOnEvent($event), $theirs),
-                fn (StaffMember $entry): array => $this->entry($entry, $theirs[$entry->getId()->toRfc4122()] ?? []),
-            ),
+            'staff' => Vec\map($staff, fn (StaffMember $entry): array => $this->entry($entry, $theirs[$entry->getId()->toRfc4122()] ?? [], $tables)),
             'jobs' => Vec\map($this->staffJobRepository->findOnEvent($event), self::job(...)),
             'shifts' => Vec\map($shifts, self::shift(...)),
+            'stations' => $this->stationSerialiser->stations($event, $staff),
         ];
     }
 
     /**
-     * @param ?list<StaffShift> $shifts the person's shifts by start, read when null
+     * @param ?list<StaffShift>                                     $shifts the person's shifts by start, read when null
+     * @param ?array<string, list<array{id: string, name: string}>> $tables each seating section's tables, read when null
      *
      * @return array<string, mixed>
      */
-    public function entry(StaffMember $entry, ?array $shifts = null): array
+    public function entry(StaffMember $entry, ?array $shifts = null, ?array $tables = null): array
     {
         $event = $entry->getEvent();
         $job = $entry->getJob();
@@ -63,7 +68,7 @@ final readonly class StaffSerialiser
             'mobile' => $entry->getMobile(),
             'email' => $entry->getEmail(),
             'job' => null === $job ? null : ['id' => $job->getId()->toRfc4122(), 'name' => $job->getName()],
-            'station' => null,
+            ...$this->stationSerialiser->person($entry, $tables),
             'shifts' => Vec\map(
                 $shifts ?? $this->staffShiftRepository->findOfPerson($entry),
                 static fn (StaffShift $shift): array => [
@@ -75,8 +80,10 @@ final readonly class StaffSerialiser
             'link' => match (true) {
                 null !== $entry->getContactsErasedAt() => 'erased',
                 null === $entry->getMobile() => 'no_mobile',
-                default => 'none',
+                default => $entry->getLinkStatus()->value,
             },
+            'linkBy' => $entry->getLinkBy()?->getName(),
+            'linkAt' => $entry->getLinkAt()?->setTimezone(new DateTimeZone($event->getTimeZone()))->format(\DATE_ATOM),
             'contactsErased' => null !== $entry->getContactsErasedAt(),
         ];
     }

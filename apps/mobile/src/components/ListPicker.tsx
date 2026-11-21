@@ -16,7 +16,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import Svg, { Path } from 'react-native-svg';
 
 import { currentLocale } from '../i18n/index.ts';
-import { FIELD_DEFAULTS, fieldName, refusedHint, withInvalid } from '../kit/fields.ts';
+import { fieldDefaults, fieldName, refusedHint, withInvalid } from '../kit/fields.ts';
 import { searchBesideTitle } from '../kit/keyboard.ts';
 import { TURNS_WITH_THE_APP } from '../layout/orientations.ts';
 import { useLayout } from '../layout/useLayout.ts';
@@ -146,7 +146,7 @@ export function ListPicker({
       {/* TalkBack reads no placeholder once the search holds text, so these words name it then. */}
       <UnseenName nativeID={searchNameID}>{searchLabel}</UnseenName>
       <TextInput
-        {...FIELD_DEFAULTS}
+        {...fieldDefaults(Platform.OS)}
         style={inputFaced([styles.search, focusEdge(searchEdge.focused, false)], 'sans', bold)}
         {...searching}
         {...searchEdge.edging}

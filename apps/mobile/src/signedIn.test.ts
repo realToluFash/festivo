@@ -26,6 +26,7 @@ vi.mock('@react-native-async-storage/async-storage', () => ({
 vi.mock('react', () => ({
   useSyncExternalStore: (_subscribe: unknown, snapshot: () => unknown) => snapshot(),
   useEffect: (effect: () => void) => effect(),
+  useMemo: (make: () => unknown) => make(),
 }));
 
 const {
@@ -43,7 +44,8 @@ const {
 } = await import('./signedIn.ts');
 const { rememberEventsTab, rememberedEventsTab } = await import('@soirely/domain');
 const { HOME_TAPPED } = await import('./kit/appNav.ts');
-const { useWaitingInvitations } = await import('./invitations.ts');
+const { useInvitationAnswers, useWaitingInvitations } = await import('./invitations.ts');
+const { waitingInvitations } = await import('@soirely/domain');
 const { default: i18next } = await import('i18next');
 
 const account = { id: 'usr_1', name: 'Adaeze' };
@@ -288,6 +290,7 @@ describe('an invitation answered on one screen', () => {
     refusal: null,
     forYou: true,
     signedInAs: null,
+    managed: null,
   };
   const joined = { ...organisation, id: 'org_2', name: 'Okafor Weddings' };
 
@@ -326,6 +329,39 @@ describe('an invitation answered on one screen', () => {
       inv_1: { kind: 'accepted', organisationId: 'org_2' },
     });
     expect(useSignedIn().organisations.map(({ id }) => id)).toEqual(['org_1', 'org_2']);
+  });
+
+  describe('listed as one a managed account cannot accept (sc-73668)', () => {
+    const message =
+      'Your ire.events address is managed by Ìrè Events, so you can only be a member there.';
+    const managed = {
+      ...invitation,
+      id: 'inv_9',
+      managed: { domain: 'ire.events', organisation: { id: 'org_1', name: 'Ìrè Events' }, message },
+    };
+
+    beforeEach(async () => {
+      api.myInvitations.mockResolvedValue([managed]);
+      await reloadSignedIn();
+    });
+
+    it('reads as managed for the switcher and its openers before anything is pressed, and is not counted', () => {
+      const waiting = useWaitingInvitations();
+
+      expect(waiting.outcomes.inv_9).toEqual({
+        kind: 'managed',
+        organisation: 'Ìrè Events',
+        message,
+      });
+      expect(waitingInvitations(waiting.invitations, waiting.outcomes)).toBe(0);
+    });
+
+    it('keeps its answers on You are not in an organisation until a press is refused, as sc-563 has it', () => {
+      const answers = useInvitationAnswers();
+
+      expect(answers.outcomes.inv_9).toBeUndefined();
+      expect(waitingInvitations(answers.invitations, answers.outcomes)).toBe(1);
+    });
   });
 });
 

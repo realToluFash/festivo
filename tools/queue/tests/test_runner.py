@@ -37,6 +37,9 @@ class FakePlatform:
     def install(self, sq, env_file, python):
         self.installed += 1
 
+    def restart_web(self):
+        self.web_restarts = getattr(self, "web_restarts", 0) + 1
+
     def worker_active(self, role):
         return role in self.active
 
@@ -113,6 +116,25 @@ class Run(unittest.TestCase):
                    say=self.said.append, load=lambda: self.config,
                    probe=lambda: kwargs.pop("version", "2.1.304"),
                    remote=kwargs.pop("remote", self.remote), **kwargs)
+
+    def test_an_updated_sq_restarts_the_page_which_would_serve_the_old_one(self):
+        self.run_once()
+        self.assertEqual(getattr(self.platform, "web_restarts", 0), 0)
+        with mock.patch("soirely_queue.update.check", return_value=True):
+            self.run_once()
+        self.assertEqual(self.platform.web_restarts, 1)
+
+    def test_a_worker_is_given_its_folders_token_and_never_another_accounts(self):
+        mine, plain = "CLAUDE_CODE_OAUTH_TOKEN_CLAUDE_3", "CLAUDE_CODE_OAUTH_TOKEN"
+        theirs = "CLAUDE_CODE_OAUTH_TOKEN_CLAUDE_4"
+        with mock.patch.dict("os.environ", {mine: "m", theirs: "t"}):
+            env = runner.account_env("/home/x/.claude-3")
+            self.assertEqual({k: v for k, v in env.items() if k.startswith(plain)}, {plain: "m"})
+            env = runner.account_env("/home/x/.claude-5")
+            self.assertEqual([k for k in env if k.startswith(plain)], [])
+            with mock.patch.dict("os.environ", {plain: "p"}):
+                self.assertEqual(runner.account_env("/home/x/.claude-5")[plain], "p")
+                self.assertEqual(runner.account_env("/home/x/.claude-3")[plain], "m")
 
     def test_a_due_role_with_work_gets_one_worker(self):
         store.record(self.db, [work("ops")], ON_ZERO)

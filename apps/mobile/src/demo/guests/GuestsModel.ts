@@ -37,6 +37,8 @@ export const LIST_STATES = [
   'titlePt',
   'exportPt',
   'offlinePt',
+  'refreshing',
+  'refreshingPt',
   'filterOpen',
   'filtered',
   'search',
@@ -132,6 +134,7 @@ export const EDIT_STATES = [
   'editCompanions',
   'editMax',
   'editSeated',
+  'editCompanionArrived',
   'editDiscard',
   'edit412',
   'editNotSaved',
@@ -1417,6 +1420,7 @@ export function guestOf(state: GuestsState | null): string | null {
     case 'languageEdit':
     case 'languageGuestChose':
     case 'editSeated':
+    case 'editCompanionArrived':
       return 'ines';
     case 'languageSet':
       return 'sophie';
@@ -1448,7 +1452,22 @@ export function guestOf(state: GuestsState | null): string | null {
 /** The language the title row speaks, and whether Export sits in it: titlePt hides it, as sc-51444 drew it (sc-67659). */
 export function titleRowOf(state: GuestsState | null): { locale: 'en' | 'pt'; export: boolean } {
   if (state === 'titlePt') return { locale: 'pt', export: false };
-  return { locale: state === 'exportPt' || state === 'offlinePt' ? 'pt' : 'en', export: true };
+  return {
+    locale:
+      state === 'exportPt' ||
+      state === 'offlinePt' ||
+      state === 'refreshingPt' ||
+      state === 'exportSearchedPt' ||
+      state === 'exportLongNamePt'
+        ? 'pt'
+        : 'en',
+    export: true,
+  };
+}
+
+/** Whether Refreshing… is held on screen, as a cold or warm reload of a loaded list shows it (sc-71821). */
+export function refreshingAt(state: GuestsState | null): boolean {
+  return state === 'refreshing' || state === 'refreshingPt';
 }
 
 export function areaStart(state: GuestsState | null): AreaStart {
@@ -1472,6 +1491,8 @@ export function areaStart(state: GuestsState | null): AreaStart {
     case 'filtered':
       return { ...base, filter: 'noreply' };
     case 'search':
+    case 'exportSearched':
+    case 'exportSearchedPt':
       return { ...base, typed: 'okon' };
     case 'searchNone':
       return { ...base, typed: 'kofi' };

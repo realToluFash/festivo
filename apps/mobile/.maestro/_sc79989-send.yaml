@@ -1,0 +1,9 @@
+appId: com.soirely.app
+---
+- tapOn: { id: '${SUBMIT}' }
+- takeScreenshot: ${OUT}-sending
+- extendedWaitUntil:
+    visible: '${ANSWER}'
+    timeout: 60000
+- waitForAnimationToEnd
+- takeScreenshot: ${OUT}-answered

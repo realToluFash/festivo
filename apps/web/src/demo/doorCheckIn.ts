@@ -1,4 +1,4 @@
-import { BAR, DOOR_EVENT } from './doorCode.ts';
+import { BAR, DOOR_EVENT, DOOR_ZONE, clockOf, readerLocale } from './doorCode.ts';
 import type { Reply } from './guests.ts';
 import { HUGO } from './redeem.ts';
 import type { DemoLink } from './settings.ts';
@@ -76,10 +76,26 @@ export const OFFLINE_SINCE = (() => {
 })();
 export const OPENS_AT = '16:00';
 export const SHIFT_NAME = 'Bisi Adeyemi';
+/** The shift page's now, Saturday at 18:05 in Lisbon, and the end of the link's last live grant after midnight (sc-4235). */
+export const SHIFT_NOW = '2026-11-14T18:05:00Z';
+export const SHIFT_SIGNED_IN_UNTIL = '2026-11-15T02:00:00Z';
 export const OTHER = 'Samuel Okafor';
 export const JOB = 'Door';
+/** Sign out on the shift page lands on Confirm it's you, with "Signed out." as a status above it (sc-4235). */
+export const SIGNED_OUT_HREF = '/demo/staff-sign-in?state=signed-out';
 export const LONG_NAME =
   'Kunle Adeyemi with his driver and the two security men from the Lagos office, who were not on the list, but the host said on the phone at six to let all of them in at the side gate by the car park on Ozumba Mbadiwe Avenue';
+
+const LISBON_DAY = new Intl.DateTimeFormat('en-CA', { timeZone: DOOR_ZONE });
+
+/** The locale's clock, with the weekday when the end falls on a later day than now, so an end after midnight never reads as tonight. */
+export function signedOutTime(until: string, now: string): string {
+  if (LISBON_DAY.format(new Date(until)) === LISBON_DAY.format(new Date(now)))
+    return clockOf(until);
+  const weekday = new Intl.DateTimeFormat(readerLocale(), { weekday: 'long', timeZone: DOOR_ZONE });
+
+  return `${weekday.format(new Date(until))} ${clockOf(until)}`;
+}
 
 /** The job beside the event's name: the shift's, or the label of the code a door-code holder came in on, as "You're in for…" shows it. */
 export function jobOf(holder: Holder): string {
@@ -164,9 +180,9 @@ export const CW = {
     times: '16:00 to 23:00',
     clocked: 'Clocked in at 17:52',
     signedInAs: (name: string) => `Signed in as ${name}`,
-    signedOutAt: 'You’ll be signed out at 02:00',
+    signedOutAt: (time: string) =>
+      `This link is yours alone. You’ll be signed out at ${time}, and nothing stays on this phone.`,
     signOut: 'Sign out',
-    signOutLater: 'Signing out has its own design (sc-4235).',
   },
   connectionBack: 'Demo: the connection is back',
   noSeat: 'No seat yet',

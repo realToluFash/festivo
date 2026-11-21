@@ -59,6 +59,18 @@ final class VendorRepository extends ServiceEntityRepository
         ];
     }
 
+    /** How many vendors in the view come before this one in the directory's order, so the page holding it can be opened. */
+    public function countBefore(Organisation $organisation, bool $archived, Vendor $vendor): int
+    {
+        return Type\int()->coerce($this->inView($organisation, $archived)
+            ->select('COUNT(v.id)')
+            ->andWhere('FOLDED(v.name) < FOLDED(:name) OR (FOLDED(v.name) = FOLDED(:name) AND (LOWER(v.name) < LOWER(:name) OR (LOWER(v.name) = LOWER(:name) AND v.id < :id)))')
+            ->setParameter('name', $vendor->getName())
+            ->setParameter('id', $vendor->getId(), 'uuid')
+            ->getQuery()
+            ->getSingleScalarResult());
+    }
+
     /** @return array{inUse: int, archived: int, categories: array<string, int>} the categories counted within the view asked for */
     public function countIn(Organisation $organisation, bool $archived): array
     {

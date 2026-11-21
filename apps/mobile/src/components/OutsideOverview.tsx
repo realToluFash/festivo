@@ -1,12 +1,11 @@
 import type { OrganisationEvent, OutsideEvent } from '@soirely/api-client';
-import { formatEventRange } from '@soirely/domain';
 import { type Ref, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { StyleSheet, View } from 'react-native';
 
 import { api } from '../api.ts';
 import { dateLocale } from '../i18n/index.ts';
-import { levelLine } from '../kit/outsideEvent.ts';
+import { cardWhen, levelLine } from '../kit/outsideEvent.ts';
 import { meshFor } from '../kit/today.ts';
 import { signOutHere } from '../signedIn.ts';
 import { tokens } from '../theme/tokens.ts';
@@ -25,6 +24,7 @@ export function OutsideOverview({
   nameRef,
   onGuests,
   onPeople,
+  onCheckIn,
 }: {
   event: OrganisationEvent;
   held: Pick<OutsideEvent, 'role' | 'jobLabel'>;
@@ -33,6 +33,8 @@ export function OutsideOverview({
   nameRef?: Ref<TextHandle> | undefined;
   onGuests: () => void;
   onPeople: () => void;
+  /** At Can check guests in, on a phone and an upright tablet: Check guests in on the card, under the level line (sc-1454). */
+  onCheckIn: (() => void) | null;
 }) {
   const { t } = useTranslation();
   const locale = dateLocale();
@@ -50,9 +52,14 @@ export function OutsideOverview({
             <Confetti pieces={CARD_PIECES} />
           </>
         }
+        step={
+          onCheckIn == null
+            ? null
+            : { label: t('checkIn.checkGuestsIn'), onPress: onCheckIn, testID: 'outside.checkIn' }
+        }
         testID="outside.card"
       >
-        <OnCard text={formatEventRange(event.startsAt, event.endsAt, event.timeZone, locale)} />
+        <OnCard text={cardWhen(t, event, locale)} />
         <CardSays ref={nameRef} text={event.name} heading />
         <OnCard text={place ?? t('eventPage.venueToBeConfirmed')} />
         <OnCard text={levelLine(t, held, event, locale)} strong />
@@ -128,5 +135,5 @@ function usePeopleCount(eventId: string): number | null {
 
 const styles = StyleSheet.create({
   stack: { gap: tokens.spaceXl },
-  you: { alignItems: 'center', gap: tokens.spaceSm, paddingTop: tokens.spaceLg },
+  you: { gap: tokens.spaceHair },
 });

@@ -1,0 +1,11 @@
+# sc-71: sign out an account with no organisation from its event's Overview, so a batch can sign another in. Needs ${METRO_URL}.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/
+- extendedWaitUntil: { visible: 'Sign out', timeout: 30000 }
+- tapOn: 'Sign out'
+- waitForAnimationToEnd: { timeout: 4000 }
+- tapOn: { text: 'Sign out', optional: true }
+- extendedWaitUntil: { notVisible: 'Sign out', timeout: 15000 }
+- waitForAnimationToEnd: { timeout: 4000 }
+- takeScreenshot: signedOut

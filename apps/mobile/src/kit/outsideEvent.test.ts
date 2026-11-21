@@ -1,16 +1,22 @@
 import type { OutsideEvent } from '@soirely/api-client';
+import { formatEventMoment } from '@soirely/domain';
 import { init, t } from 'i18next';
 import { beforeAll, describe, expect, it } from 'vitest';
 
 import en from '../i18n/locales/en.json';
 
 import {
+  cardWhen,
   levelLine,
+  outsideGroups,
+  outsideHref,
   outsideLanding,
   outsideMore,
   outsideOn,
   outsidePlaces,
   readsOverview,
+  switcherOutside,
+  wayBack,
 } from './outsideEvent.ts';
 
 beforeAll(() =>
@@ -91,12 +97,13 @@ describe('where an account in no organisation lands', () => {
     expect(outsideLanding({ account, organisation: null, pausedIn: MEMBERSHIP })).toBeNull();
   });
 
-  it('finds the held event by id, and no other', () => {
+  it('finds the held event by id, and no other, for a member of another organisation too', () => {
     const held = { account: { outsideEvents: [WEDDING, LAUNCH] }, organisation: null };
 
     expect(outsideOn(held, 'ev_2')?.role).toBe('can_edit');
     expect(outsideOn(held, 'ev_9')).toBeNull();
-    expect(outsideOn({ ...held, organisation: MEMBERSHIP }, 'ev_1')).toBeNull();
+    expect(outsideOn({ ...held, organisation: MEMBERSHIP }, 'ev_1')?.id).toBe('ev_1');
+    expect(outsideOn({ ...held, pausedIn: MEMBERSHIP }, 'ev_1')).toBeNull();
   });
 });
 
@@ -119,5 +126,101 @@ describe('Overview held from outside', () => {
     expect(levelLine(t, { role: 'can_check_in', jobLabel: null }, ENDS, 'en-GB')).toBe(
       'Can check guests in · until Fri 15 Nov, 02:00',
     );
+  });
+
+  it('reads the level’s end on the 24-hour clock in every locale, as the web does (sc-71636)', () => {
+    const EARLY = { endsAt: '2030-11-15T03:00:00+01:00', timeZone: 'Africa/Lagos' };
+    const LATE = { endsAt: '2030-11-14T23:30:00+01:00', timeZone: 'Africa/Lagos' };
+
+    expect(levelLine(t, WEDDING, EARLY, 'en-US')).toBe(
+      'Can view · Cloakroom · until Fri, Nov 15, 03:00',
+    );
+    expect(levelLine(t, WEDDING, LATE, 'en-US')).toBe(
+      'Can view · Cloakroom · until Thu, Nov 14, 23:30',
+    );
+    for (const locale of ['es', 'fr', 'pt']) {
+      expect(levelLine(t, WEDDING, EARLY, locale)).toContain(
+        formatEventMoment(EARLY.endsAt, EARLY.timeZone, locale),
+      );
+      expect(levelLine(t, WEDDING, EARLY, locale)).toMatch(/03:00/u);
+      expect(levelLine(t, WEDDING, LATE, locale)).toMatch(/23:30/u);
+    }
+  });
+
+  it('heads the card with the day, then its start to its end, as the demo writes it', () => {
+    const SAME_DAY = {
+      startsAt: '2030-11-14T15:00:00+01:00',
+      endsAt: '2030-11-14T23:30:00+01:00',
+      timeZone: 'Africa/Lagos',
+    };
+
+    expect(cardWhen(t, SAME_DAY, 'en-GB')).toBe('Thu 14 Nov · 15:00 to 23:30');
+  });
+
+  it('keeps the end’s day when the event runs past midnight, in 24 hours in every locale', () => {
+    const LATE = { ...ENDS, startsAt: '2030-11-14T18:00:00Z' };
+
+    expect(cardWhen(t, LATE, 'en-GB')).toBe('Thu 14 Nov · 19:00 to Fri 15 Nov, 02:00');
+    expect(cardWhen(t, LATE, 'en-US')).toBe('Thu, Nov 14 · 19:00 to Fri, Nov 15, 02:00');
+  });
+});
+
+describe('reaching each event held from outside (sc-68438)', () => {
+  const NOW = new Date('2030-11-14T16:30:00Z');
+  const GALA: OutsideEvent = {
+    ...WEDDING,
+    id: 'ev_3',
+    name: 'Gala',
+    organisationName: 'Les Salons',
+    startsAt: '2030-11-21T19:30:00+01:00',
+    endsAt: '2030-11-22T01:00:00+01:00',
+  };
+
+  it('lists Your events from two, and a member’s organisations', () => {
+    expect(outsideGroups({ account: { outsideEvents: [WEDDING] }, organisation: null })).toEqual({
+      organisations: false,
+      events: false,
+    });
+    expect(
+      outsideGroups({ account: { outsideEvents: [WEDDING, GALA] }, organisation: MEMBERSHIP }),
+    ).toEqual({ organisations: true, events: true });
+  });
+
+  it('gives the switcher a member’s events from outside, under way first, and none with no organisation', () => {
+    const account = { outsideEvents: [GALA, WEDDING] };
+
+    expect(
+      switcherOutside({ account, organisation: MEMBERSHIP }, NOW).map((one) => one.id),
+    ).toEqual(['ev_1', 'ev_3']);
+    expect(switcherOutside({ account, organisation: null }, NOW)).toEqual([]);
+  });
+
+  it('opens another on its Overview, remembering the one it was chosen in', () => {
+    expect(outsideHref('ev_3', 'ev_1')).toBe('/events/ev_3?cameFrom=ev_1');
+  });
+
+  it('goes back from a gone event to the one it came from, else where it would land, else on', () => {
+    const held = (events: OutsideEvent[]) => ({
+      account: { outsideEvents: events },
+      organisation: null,
+    });
+
+    expect(wayBack(held([WEDDING, LAUNCH, GALA]), 'ev_2', 'ev_3', NOW)).toEqual({
+      kind: 'event',
+      event: GALA,
+    });
+    expect(wayBack(held([LAUNCH, GALA, WEDDING]), 'ev_2', undefined, NOW)).toEqual({
+      kind: 'event',
+      event: WEDDING,
+    });
+    expect(wayBack(held([LAUNCH]), 'ev_2', 'ev_1', NOW)).toEqual({ kind: 'continue' });
+    expect(
+      wayBack(
+        { account: { outsideEvents: [WEDDING] }, organisation: MEMBERSHIP },
+        'ev_2',
+        'ev_1',
+        NOW,
+      ),
+    ).toEqual({ kind: 'events' });
   });
 });

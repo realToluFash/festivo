@@ -1,0 +1,7 @@
+# sc-69989: an event's People on the phone, with the Outside tag of an organisation's name.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/${EVENT_ID}?area=people
+- extendedWaitUntil: { visible: '.*{{t:eventPeople.title}}.*', timeout: 30000 }
+- waitForAnimationToEnd: { timeout: 8000 }
+- takeScreenshot: people

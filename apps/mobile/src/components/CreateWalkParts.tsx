@@ -300,7 +300,14 @@ export function Tag() {
 
   return (
     <View style={styles.tag}>
-      <Text maxFontSizeMultiplier={TWICE} size={12.5} weight="semibold" muted accessible={false}>
+      <Text
+        maxFontSizeMultiplier={TWICE}
+        size={12.5}
+        weight="semibold"
+        muted
+        wholeLines
+        accessible={false}
+      >
         {t('createOrganisation.fromDevice')}
       </Text>
     </View>
@@ -424,14 +431,21 @@ const styles = StyleSheet.create({
   refusalMark: { paddingTop: 2 },
   broken: { color: tokens.colorBroken },
   tag: {
-    height: 24,
+    minHeight: 24,
+    flexShrink: 1,
     justifyContent: 'center',
+    paddingVertical: tokens.spaceHair,
     paddingHorizontal: 9,
     borderRadius: 12,
     backgroundColor: tokens.colorNeutralFill,
   },
   fact: { gap: tokens.spaceHair },
-  factHead: { flexDirection: 'row', alignItems: 'center', gap: tokens.spaceSm },
+  factHead: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    gap: tokens.spaceSm,
+  },
   factLabel: { lineHeight: 13 * 1.3 },
   factValue: { lineHeight: 15 * 1.3 },
   zone: { flexDirection: 'row', flexWrap: 'wrap' },

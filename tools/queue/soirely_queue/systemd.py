@@ -18,6 +18,7 @@ SLICE = "soirely.slice"
 # What a notification needs to reach the desktop from a unit.
 DESKTOP = ("DBUS_SESSION_BUS_ADDRESS", "DISPLAY", "WAYLAND_DISPLAY")
 DAEMON_WAIT_SECONDS = 10
+TOKEN = machine.TOKEN
 
 
 def daemon_status(env, run=subprocess.run):
@@ -153,6 +154,10 @@ class Linux:
             systemctl("start", f"{WEB}.service", check=False)
         return changed
 
+    def restart_web(self):
+        """The page is one long run, so it serves the `sq` it started with until restarted."""
+        systemctl("try-restart", f"{WEB}.service", check=False)
+
     def enable(self):
         systemctl("enable", "--now", f"{TIMER}.timer")
 
@@ -201,7 +206,10 @@ class Linux:
              f"--slice={SLICE}", f"--setenv=PATH={search_path()}",
              *[f"--setenv={key}={env[key]}" for key in ("CLAUDE_CONFIG_DIR", "HOME")
                if key in env],
-             "--", "claude", "daemon", "run"], capture_output=True, text=True, check=False)
+             # By name, so systemd-run takes the value from `env` and no command line shows it.
+             *[f"--setenv={key}" for key in (TOKEN,) if key in env],
+             "--", "claude", "daemon", "run"], capture_output=True, text=True, check=False,
+            env=env)
         for _ in range(DAEMON_WAIT_SECONDS):
             if "not running" not in daemon_status(env, run):
                 return

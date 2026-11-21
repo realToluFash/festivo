@@ -84,6 +84,18 @@ mid-batch: start them with the longest timeout the tool allows (7200000 ms). `io
 `--clear` starts Metro with an empty cache and stops Expo Go first: without it, a build started
 with different `EXPO_PUBLIC_` values (`EXPO_PUBLIC_SCHEME=violet`, say) shows the last build's.
 
+To hold a loading state on screen, start `ios` or `android` with `QA_API_URL` naming a slow proxy
+in front of the tester's API: `node scripts/qa-slow-proxy.mjs --target <API url> --port <n>
+--delay 5000` holds each `GET /api/events/{id}/guests` for five seconds and forwards everything
+else at once; `--path` takes another route as a regular expression. Pass `--clear` with it, or
+Metro keeps the last bundle's API URL. Name the proxy as `http://127.0.0.1:<n>`: `android`
+reverses that port onto the emulator as it does the stack's. A physical phone cannot reach
+127.0.0.1, so for one start the proxy with `--host` set to the machine's network address and
+put that address in `QA_API_URL`. Every matching GET is held, the first load
+included, so let the screen settle, then pull to refresh: reopening a screen remounts it and
+shows its first load, not its refresh. Raise `--delay` (30000) where a tap is slow to land,
+as on the iPad, or the hold runs out before the next screenshot.
+
 Expo Go fetches the bundle from Metro and draws its own splash, so a bullet about the app
 offline from first launch, or its own splash screen, needs the app itself.
 `node .qa/bin/qa-env.mjs release` builds a release APK of the QA worktree's commit, with the bundle and fonts inside, installs
@@ -105,7 +117,9 @@ On the Mac, `release` does the same for the tester's iPhone simulator (`--ipad` 
 `xcodebuild` Release build for the simulator, with no signing, no Expo account and no EAS, kept as
 `.qa/release/soirely-<commit>.app`. It needs Xcode and CocoaPods. A simulator shares the Mac's
 network, so `--offline` stops the services the app reaches (`api`, `mercure`, `storage`, `oidc`)
-before that launch rather than cutting the network. The next `ios` removes the build and starts
+before that launch rather than cutting the network. `--link <url>` makes that first launch the
+link (`simctl openurl`) instead of the app's icon, for a link that opens the app just after
+install; it is iOS only. `ios` and `release` set the simulator they boot to the default text size. The next `ios` removes the build and starts
 them again.
 
 There are several developers. Developer 1 works in this checkout on the development ports.

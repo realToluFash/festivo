@@ -1,9 +1,35 @@
-import { type ReactNode, type Ref, useRef } from 'react';
+import {
+  type ReactNode,
+  type Ref,
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
-import { Pressable, ScrollView, StyleSheet, View, type ViewInstance } from 'react-native';
+import {
+  type LayoutChangeEvent,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  View,
+  type ViewInstance,
+  useWindowDimensions,
+} from 'react-native';
 
 import { Brand } from './Brand.tsx';
-import { SIDEBAR_WIDTH } from '../layout/textSize.ts';
+import {
+  CARD_THUMB,
+  HEADING_TRACKING,
+  PERSON_GLYPH,
+  ROOMS,
+  glyphSide,
+  rowPad,
+} from '../layout/sidebarSize.ts';
+import { LABEL_LINE, SIDEBAR_WIDTH } from '../layout/textSize.ts';
 import { useNameLines } from '../layout/useLayout.ts';
 import { Text } from './Text.tsx';
 import { tokens } from '../theme/tokens.ts';
@@ -15,6 +41,7 @@ import type { ShownEvent } from '../kit/today.ts';
 import { SETTINGS_ID, type Tab } from './TodayCover.tsx';
 import { Initials } from './Initials.tsx';
 import { OrgPill } from './OrgPill.tsx';
+import { useSideFit } from './sideFit.tsx';
 import { type TodayShell, useTodayShell } from './todayShell.ts';
 
 const PLACES: readonly (readonly [Tab, GlyphName])[] = [
@@ -36,23 +63,33 @@ export function SidebarPlace({
   onPress: () => void;
   testID?: string | undefined;
 }) {
+  const { fontScale } = useWindowDimensions();
+  const weight = on ? 'semibold' : 'medium';
+  const { size, measure } = useSideFit(label, ROOMS.place, fontScale, weight);
   const ink = on ? tokens.colorInk : tokens.colorInkSecondary;
 
   return (
     <Pressable
       onPress={onPress}
-      style={({ pressed }) => [styles.place, on && styles.placeOn, pressed && styles.pressed]}
+      style={({ pressed }) => [
+        styles.place,
+        { paddingVertical: rowPad(fontScale) },
+        on && styles.placeOn,
+        pressed && styles.pressed,
+      ]}
       accessibilityRole="tab"
       accessibilityState={{ selected: on }}
       accessibilityLabel={label}
       testID={testID}
     >
-      <Glyph name={glyph} ink={ink} />
+      {measure}
+      <Glyph name={glyph} size={glyphSide(ROOMS.place, fontScale, size)} ink={ink} />
       <Text
-        size={14.5}
-        weight={on ? 'semibold' : 'medium'}
+        size={size}
+        weight={weight}
+        allowFontScaling={false}
         accessible={false}
-        style={{ color: ink }}
+        style={[styles.grow, { color: ink }]}
       >
         {label}
       </Text>
@@ -126,24 +163,39 @@ export function SidebarHead({
       </View>
       {org && (children ?? <SidebarOrg />)}
       {(search ?? shell.search) && (
-        <Pressable
-          onPress={() => open({ to: 'search' })}
-          style={styles.search}
-          accessibilityRole="search"
-          accessibilityLabel={t('todayScreen.search')}
-        >
-          <Glyph name="search" size={16} ink={tokens.colorInkSecondary} />
-          <Text
-            size={14}
-            weight="medium"
-            accessible={false}
-            style={[styles.grow, styles.secondary]}
-          >
-            {t('todayScreen.search')}
-          </Text>
-        </Pressable>
+        <SidebarSearch label={t('todayScreen.search')} onPress={() => open({ to: 'search' })} />
       )}
     </>
+  );
+}
+
+function SidebarSearch({ label, onPress }: { label: string; onPress: () => void }) {
+  const { fontScale } = useWindowDimensions();
+  const { size, measure } = useSideFit(label, ROOMS.search, fontScale, 'medium');
+
+  return (
+    <Pressable
+      onPress={onPress}
+      style={[styles.search, { paddingVertical: rowPad(fontScale) }]}
+      accessibilityRole="search"
+      accessibilityLabel={label}
+    >
+      {measure}
+      <Glyph
+        name="search"
+        size={glyphSide(ROOMS.search, fontScale, size)}
+        ink={tokens.colorInkSecondary}
+      />
+      <Text
+        size={size}
+        weight="medium"
+        allowFontScaling={false}
+        accessible={false}
+        style={[styles.grow, styles.secondary]}
+      >
+        {label}
+      </Text>
+    </Pressable>
   );
 }
 
@@ -167,7 +219,6 @@ export function SidebarFoot({
 }) {
   const { t } = useTranslation();
   const shell = useTodayShell();
-  const lines = useNameLines();
   const person = shown ?? shell.person;
 
   return (
@@ -175,34 +226,83 @@ export function SidebarFoot({
       {settings && (
         <Place tab="Settings" glyph="settings" onTab={onTab} at={at} testID={settingsID} />
       )}
-      <Pressable
-        ref={personRef}
+      <SidebarPerson
+        name={person.name}
+        role={person.role}
+        label={person.role == null ? person.name : t('todayScreen.personRole', person)}
         onPress={onPerson ?? (() => shell.open({ to: 'account' }))}
-        style={styles.person}
-        accessibilityRole="button"
-        accessibilityLabel={person.role == null ? person.name : t('todayScreen.personRole', person)}
-      >
-        <View
-          style={styles.avatar}
-          accessibilityElementsHidden
-          importantForAccessibility="no-hide-descendants"
-        >
-          <EventMesh event={{ mesh: 'amber', photo: null }} />
-          <Initials name={person.name} size={12} weight="bold" />
-        </View>
-        <View style={styles.grow}>
-          <Text size={14} weight="semibold" numberOfLines={lines} accessible={false}>
-            {person.name}
-          </Text>
-          {person.role != null && (
-            <Text size={12} weight="medium" accessible={false} style={styles.secondary}>
-              {person.role}
-            </Text>
-          )}
-        </View>
-        <Glyph name="updown" size={15} ink={tokens.colorInkSecondary} />
-      </Pressable>
+        personRef={personRef}
+      />
     </>
+  );
+}
+
+function SidebarPerson({
+  name,
+  role,
+  label,
+  onPress,
+  personRef,
+}: {
+  name: string;
+  role: string | null;
+  label: string;
+  onPress: () => void;
+  personRef?: Ref<ViewInstance> | undefined;
+}) {
+  const { fontScale } = useWindowDimensions();
+  const lines = useNameLines();
+  const named = useSideFit(
+    name,
+    ROOMS.person,
+    fontScale,
+    'semibold',
+    lines === 1 ? 'line' : 'lines',
+  );
+  const roled = useSideFit(role ?? '', ROOMS.role, fontScale, 'medium');
+
+  return (
+    <Pressable
+      ref={personRef}
+      onPress={onPress}
+      style={[styles.person, { paddingVertical: rowPad(fontScale) }]}
+      accessibilityRole="button"
+      accessibilityLabel={label}
+    >
+      {named.measure}
+      {role != null && roled.measure}
+      <View
+        style={styles.avatar}
+        accessibilityElementsHidden
+        importantForAccessibility="no-hide-descendants"
+      >
+        <EventMesh event={{ mesh: 'amber', photo: null }} />
+        <Initials name={name} size={12} weight="bold" />
+      </View>
+      <View style={styles.grow}>
+        <Text
+          size={named.size}
+          weight="semibold"
+          numberOfLines={lines}
+          allowFontScaling={false}
+          accessible={false}
+        >
+          {name}
+        </Text>
+        {role != null && (
+          <Text
+            size={roled.size}
+            weight="medium"
+            allowFontScaling={false}
+            accessible={false}
+            style={styles.secondary}
+          >
+            {role}
+          </Text>
+        )}
+      </View>
+      <Glyph name="updown" size={PERSON_GLYPH} ink={tokens.colorInkSecondary} />
+    </Pressable>
   );
 }
 
@@ -218,16 +318,35 @@ export function SidebarBack({
   onPress: () => void;
   testID?: string | undefined;
 }) {
+  const { fontScale } = useWindowDimensions();
+  const { size, measure } = useSideFit(label, ROOMS.back, fontScale, 'semibold');
+
   return (
     <Pressable
       onPress={onPress}
-      style={({ pressed }) => [styles.back, pressed && styles.backPressed]}
+      style={({ pressed }) => [
+        styles.back,
+        { paddingVertical: rowPad(fontScale) },
+        pressed && styles.backPressed,
+      ]}
       accessibilityRole="button"
       accessibilityLabel={heard}
       testID={testID}
     >
-      <Glyph name="back" size={17} ink={tokens.colorInkSecondary} weight={2.4} />
-      <Text size={14} weight="semibold" accessible={false} style={styles.secondary}>
+      {measure}
+      <Glyph
+        name="back"
+        size={glyphSide(ROOMS.back, fontScale, size)}
+        ink={tokens.colorInkSecondary}
+        weight={2.4}
+      />
+      <Text
+        size={size}
+        weight="semibold"
+        allowFontScaling={false}
+        accessible={false}
+        style={[styles.grow, styles.secondary]}
+      >
         {label}
       </Text>
     </Pressable>
@@ -249,7 +368,13 @@ export function SidebarEventCard({ event, now }: { event: Shown | null; now: Dat
       </View>
     );
 
-  const tags = cardTags(event, now, t).map((tag) => tag.word);
+  return <SidebarCardWords event={event} tags={cardTags(event, now, t).map((tag) => tag.word)} />;
+}
+
+function SidebarCardWords({ event, tags }: { event: Shown; tags: readonly string[] }) {
+  const { fontScale } = useWindowDimensions();
+  const named = useSideFit(event.name, ROOMS.cardName, fontScale, 'bold', 'lines');
+  const tagged = useSideFit(tags.join(' · '), ROOMS.cardTags, fontScale, 'medium');
 
   return (
     <View
@@ -258,12 +383,26 @@ export function SidebarEventCard({ event, now }: { event: Shown | null; now: Dat
       accessibilityLabel={`${event.name}. ${tags.join(', ')}`}
       testID="event.side.card"
     >
-      <EventThumb event={event} side={40} radius={12} />
+      {named.measure}
+      {tagged.measure}
+      <EventThumb event={event} side={CARD_THUMB} radius={12} />
       <View style={styles.grow}>
-        <Text size={14} weight="bold" numberOfLines={2} accessible={false}>
+        <Text
+          size={named.size}
+          weight="bold"
+          numberOfLines={2}
+          allowFontScaling={false}
+          accessible={false}
+        >
           {event.name}
         </Text>
-        <Text size={12.5} weight="medium" accessible={false} style={styles.secondary}>
+        <Text
+          size={tagged.size}
+          weight="medium"
+          allowFontScaling={false}
+          accessible={false}
+          style={styles.secondary}
+        >
           {tags.join(' · ')}
         </Text>
       </View>
@@ -271,14 +410,64 @@ export function SidebarEventCard({ event, now }: { event: Shown | null; now: Dat
   );
 }
 
-export function SidebarColumn({ children }: { children: ReactNode }) {
+type Room = { short: boolean; laid: (room: number, least: number) => void };
+
+const ListRoom = createContext<Room>({ short: false, laid: () => {} });
+
+/** Layout rounding, so a list that fits to the point is not taken for one that does not. */
+const SLACK = 1;
+
+/** With no events the spacer squeezed to nothing is the column overflowing, so it needs more than the rounding to count as fitting. */
+const EMPTY_LEAST = 2 * SLACK;
+
+/** Under a scroll view Yoga ignores the list's flex basis, so a column carrying your events scrolls only where four rows do not fit; `listing` stays put while they load, so the column is not rebuilt under VoiceOver's focus (sc-39340). */
+export function SidebarColumn({
+  listing = false,
+  children,
+}: {
+  listing?: boolean;
+  children: ReactNode;
+}) {
+  const [short, setShort] = useState(false);
+  const sizes = useRef({ viewport: 0, content: 0 });
+  const laid = useCallback((room: number, least: number) => {
+    if (room + SLACK >= least) return;
+    sizes.current = { viewport: 0, content: 0 };
+    setShort(true);
+  }, []);
+  const room = useMemo(() => ({ short: listing && short, laid }), [listing, short, laid]);
+  const fitsAgain = () => {
+    const { viewport, content } = sizes.current;
+    if (viewport > 0 && content > 0 && content <= viewport + SLACK) setShort(false);
+  };
+  const onViewport = ({ nativeEvent }: LayoutChangeEvent) => {
+    sizes.current.viewport = nativeEvent.layout.height;
+    fitsAgain();
+  };
+  const onContent = ({ nativeEvent }: LayoutChangeEvent) => {
+    sizes.current.content = nativeEvent.layout.height;
+    fitsAgain();
+  };
+
+  if (listing && !short)
+    return (
+      <ListRoom.Provider value={room}>
+        <View style={[styles.column, styles.side]}>{children}</View>
+      </ListRoom.Provider>
+    );
+
   return (
     <ScrollView
       style={styles.column}
-      contentContainerStyle={[styles.side, styles.fills]}
+      contentContainerStyle={styles.fills}
+      onLayout={listing ? onViewport : undefined}
       showsVerticalScrollIndicator={false}
     >
-      {children}
+      <ListRoom.Provider value={room}>
+        <View style={[styles.side, styles.fills]} onLayout={listing ? onContent : undefined}>
+          {children}
+        </View>
+      </ListRoom.Provider>
     </ScrollView>
   );
 }
@@ -297,46 +486,80 @@ const LEAST_ROWS = 4;
 /** Your events under the places: no heading over nothing, and a list longer than the sidebar holds scrolls in its own region while the places and the foot stay (sc-39340). */
 export function SidebarEvents({ events }: { events: readonly ShownEvent[] }) {
   const { t } = useTranslation();
-  const { open } = useTodayShell();
+  const { fontScale } = useWindowDimensions();
+  const heading = t('todayScreen.yourEvents').toLocaleUpperCase();
+  const { size, measure } = useSideFit(heading, ROOMS.heading, fontScale, 'semibold');
+  const row = Math.max(
+    tokens.sizeHit,
+    ROOMS.event.size * fontScale * LABEL_LINE + 2 * rowPad(fontScale),
+  );
+  const least =
+    events.length === 0
+      ? EMPTY_LEAST
+      : size * LABEL_LINE + 2 * tokens.spaceXs + Math.min(events.length, LEAST_ROWS) * row;
+  const { short, laid } = useContext(ListRoom);
+  const room = useRef<number | null>(null);
+  useEffect(() => {
+    if (!short && room.current != null) laid(room.current, least);
+  }, [short, laid, least]);
+  const onLayout = ({ nativeEvent }: LayoutChangeEvent) => {
+    room.current = nativeEvent.layout.height;
+    if (!short) laid(room.current, least);
+  };
 
-  if (events.length === 0) return <View style={styles.grow} />;
+  if (events.length === 0)
+    return <View style={short ? { height: least } : styles.grow} onLayout={onLayout} />;
 
   return (
-    <View style={styles.list}>
+    <View style={short ? { height: least } : styles.list} onLayout={onLayout}>
+      {measure}
       <Text
-        size={12}
+        size={size}
         weight="semibold"
+        allowFontScaling={false}
         accessibilityRole="header"
         style={[styles.secondary, styles.caps]}
       >
-        {t('todayScreen.yourEvents').toLocaleUpperCase()}
+        {heading}
       </Text>
-      <ScrollView
-        style={[styles.rows, { minHeight: Math.min(events.length, LEAST_ROWS) * tokens.sizeHit }]}
-        nestedScrollEnabled
-      >
+      <ScrollView style={styles.rows} nestedScrollEnabled>
         {events.map((event) => (
-          <Pressable
-            key={event.id}
-            onPress={() => open({ to: 'event', id: event.id, name: event.name })}
-            style={({ pressed }) => [styles.event, pressed && styles.pressed]}
-            accessibilityRole="button"
-            accessibilityLabel={event.name}
-          >
-            <View style={[styles.dot, { backgroundColor: eventColour(event) }]} />
-            <Text
-              size={14}
-              weight="medium"
-              numberOfLines={1}
-              accessible={false}
-              style={[styles.grow, styles.secondary]}
-            >
-              {event.name}
-            </Text>
-          </Pressable>
+          <SidebarEventRow key={event.id} event={event} />
         ))}
       </ScrollView>
     </View>
+  );
+}
+
+function SidebarEventRow({ event }: { event: ShownEvent }) {
+  const { open } = useTodayShell();
+  const { fontScale } = useWindowDimensions();
+  const { size, measure } = useSideFit(event.name, ROOMS.event, fontScale, 'medium', 'line');
+
+  return (
+    <Pressable
+      onPress={() => open({ to: 'event', id: event.id, name: event.name })}
+      style={({ pressed }) => [
+        styles.event,
+        { paddingVertical: rowPad(fontScale) },
+        pressed && styles.pressed,
+      ]}
+      accessibilityRole="button"
+      accessibilityLabel={event.name}
+    >
+      {measure}
+      <View style={[styles.dot, { backgroundColor: eventColour(event) }]} />
+      <Text
+        size={size}
+        weight="medium"
+        numberOfLines={1}
+        allowFontScaling={false}
+        accessible={false}
+        style={[styles.grow, styles.secondary]}
+      >
+        {event.name}
+      </Text>
+    </Pressable>
   );
 }
 
@@ -355,7 +578,7 @@ export function TodaySidebar({
   org?: boolean;
 }) {
   return (
-    <SidebarColumn>
+    <SidebarColumn listing>
       <SidebarHead org={org} />
       <SidebarPlaces>
         {PLACES.filter(([tab]) => org || tab === 'Today').map(([label, glyph]) => (
@@ -373,7 +596,7 @@ const styles = StyleSheet.create({
   secondary: { color: tokens.colorInkSecondary },
   onAccent: { color: tokens.colorInkOnDark },
   caps: {
-    letterSpacing: 11 * 0.08,
+    letterSpacing: HEADING_TRACKING,
     paddingHorizontal: tokens.spaceLg,
     paddingVertical: tokens.spaceXs,
   },
@@ -402,7 +625,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   search: {
-    height: tokens.sizeHit,
+    minHeight: tokens.sizeHit,
     flexDirection: 'row',
     alignItems: 'center',
     gap: tokens.spaceMd,
@@ -434,10 +657,10 @@ const styles = StyleSheet.create({
   sunkTags: { width: '45%' },
   column: { width: SIDEBAR_WIDTH, flexGrow: 0 },
   fills: { flexGrow: 1 },
-  list: { flexGrow: 1 },
+  list: { flexGrow: 1, flexBasis: 0 },
   rows: { flexGrow: 1, flexBasis: 0 },
   place: {
-    height: tokens.sizeHit,
+    minHeight: tokens.sizeHit,
     flexDirection: 'row',
     alignItems: 'center',
     gap: tokens.spaceLg,
@@ -450,7 +673,7 @@ const styles = StyleSheet.create({
     elevation: tokens.elevationNative.card.android.elevation,
   },
   event: {
-    height: tokens.sizeHit,
+    minHeight: tokens.sizeHit,
     flexDirection: 'row',
     alignItems: 'center',
     gap: tokens.spaceLg,
@@ -463,7 +686,7 @@ const styles = StyleSheet.create({
     marginHorizontal: tokens.spaceXxs,
   },
   person: {
-    height: 52,
+    minHeight: 52,
     flexDirection: 'row',
     alignItems: 'center',
     gap: tokens.spaceMd,

@@ -1,13 +1,16 @@
 import {
   ApiError,
+  type PaymentRemindersSetting,
   type Vendor,
   type VendorCategory,
   type VendorView,
   type VendorsPage,
   VENDOR_CATEGORIES,
+  owingEvents,
 } from '@soirely/api-client';
 import { callingCode, countryChoices, formatEventDate, formatPhone } from '@soirely/domain';
 import {
+  type FocusEvent,
   type ReactNode,
   type RefObject,
   useCallback,
@@ -18,6 +21,7 @@ import {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Link, useSearchParams } from 'react-router';
 
 import { api } from '../../../api.ts';
 import { Glyph } from '../../../components/Glyph.tsx';
@@ -34,14 +38,17 @@ import {
   TextAction,
   TitleRow,
 } from '../../../components/SettingsParts.tsx';
+import { TYPING_PAUSE_MS } from '../../../components/ShellSearch.tsx';
 import { Toast } from '../../../components/Toast.tsx';
 import { useDeskTop } from '../../../deskTop.ts';
 import { currentLocale, dateLocale } from '../../../i18n/index.ts';
-import { LayersContext, useDeskLayers } from '../../../layers.ts';
+import { LayersContext, focusWhenFree, useDeskLayers } from '../../../layers.ts';
 import { offButton } from '../../../offButton.ts';
 import { codeChoice } from '../../../phoneProblem.ts';
 import { can, useSession } from '../../../session.ts';
 import { Forbidden } from '../Forbidden.tsx';
+import { BudgetRow, Rows as RowList } from '../events/QuoteParts.tsx';
+import { vendorPagePath } from '../events/quotesArea.ts';
 import {
   BLANK,
   type Draft,
@@ -56,6 +63,7 @@ import {
 } from './vendorsForm.ts';
 import '../../../components/SettingsParts.css';
 import '../../../components/AccountParts.css';
+import '../events/quotes.css';
 import './vendors.css';
 
 interface Looking {
@@ -63,11 +71,16 @@ interface Looking {
   q: string;
   category: VendorCategory | 'all';
   page: number;
+  vendor: string | null;
 }
 
-const NOT_LOOKING: Looking = { view: 'inUse', q: '', category: 'all', page: 1 };
+const NOT_LOOKING: Looking = { view: 'inUse', q: '', category: 'all', page: 1, vendor: null };
 
-type Load = { kind: 'loading' } | { kind: 'failed' } | { kind: 'loaded'; page: VendorsPage };
+/** Once the directory has shown, a read that fails keeps its page and fails only where the rows are. */
+type Rows = 'shown' | 'failed' | 'rereading';
+
+type Load =
+  { kind: 'loading' } | { kind: 'failed' } | { kind: 'loaded'; page: VendorsPage; rows: Rows };
 
 type Editing = { kind: 'add' } | { kind: 'edit'; vendor: Vendor };
 
@@ -79,60 +92,106 @@ const title = () => document.querySelector<HTMLElement>('.vd-desk h1');
 export function Vendors() {
   const session = useSession();
   const organisation = session.organisation;
+  const [params] = useSearchParams();
+  const landing = params.get('vendor');
 
   if (organisation == null) return null;
   if (!can(session, 'vendors.read')) return <Forbidden />;
 
   return (
     <Directory
-      key={organisation.id}
+      key={`${organisation.id}:${landing ?? ''}`}
       organisationId={organisation.id}
+      landing={landing}
       named={organisation.name}
       manages={can(session, 'vendors.manage')}
+      setsReminders={can(session, 'organisation.manage')}
     />
   );
 }
 
 function Directory({
   organisationId,
+  landing,
   named,
   manages,
+  setsReminders,
 }: {
   organisationId: string;
+  landing: string | null;
   named: string;
   manages: boolean;
+  setsReminders: boolean;
 }) {
   const { t } = useTranslation();
   const desk = useDeskTop();
   const { layers, covered, setHost } = useDeskLayers();
-  const [looking, setLooking] = useState<Looking>(NOT_LOOKING);
+  const [looking, setLooking] = useState<Looking>({ ...NOT_LOOKING, vendor: landing });
+  const [lit, setLit] = useState(landing);
+  const landed = useRef(landing == null);
+  const [typed, setTyped] = useState('');
   const [load, setLoad] = useState<Load>({ kind: 'loading' });
   const [attempt, setAttempt] = useState(0);
   const [menu, setMenu] = useState<'category' | 'filter' | null>(null);
   const [editing, setEditing] = useState<Editing | null>(null);
   const [told, setTold] = useState<string | null>(null);
   const search = useRef<HTMLInputElement>(null);
-  const asked = useRef(0);
   const backToSearch = useRef(false);
+  const retried = useRef(false);
+  const [reminders, setReminders] = useState<PaymentRemindersSetting | null>(null);
 
   useEffect(() => {
-    const ask = ++asked.current;
+    if (!setsReminders) return;
+    let live = true;
+    api.paymentReminders(organisationId).then(
+      (setting) => {
+        if (live) setReminders(setting);
+      },
+      () => undefined,
+    );
+
+    return () => {
+      live = false;
+    };
+  }, [organisationId, setsReminders]);
+
+  useEffect(() => {
+    const stop = new AbortController();
     api
-      .vendors(organisationId, {
-        view: looking.view,
-        q: looking.q,
-        category: looking.category === 'all' ? null : looking.category,
-        page: looking.page,
-      })
+      .vendors(
+        organisationId,
+        {
+          view: looking.view,
+          q: looking.q,
+          category: looking.category === 'all' ? null : looking.category,
+          page: looking.page,
+          vendor: looking.vendor,
+        },
+        { signal: stop.signal },
+      )
       .then(
         (page) => {
-          if (ask === asked.current) setLoad({ kind: 'loaded', page });
+          if (!stop.signal.aborted) setLoad({ kind: 'loaded', page, rows: 'shown' });
         },
         () => {
-          if (ask === asked.current) setLoad({ kind: 'failed' });
+          if (!stop.signal.aborted)
+            setLoad((was) =>
+              was.kind === 'loaded' ? { ...was, rows: 'failed' } : { kind: 'failed' },
+            );
         },
       );
+
+    return () => stop.abort();
   }, [organisationId, looking, attempt]);
+
+  useEffect(() => {
+    const wait = window.setTimeout(
+      () => setLooking((was) => (was.q === typed ? was : { ...was, q: typed, page: 1 })),
+      TYPING_PAUSE_MS,
+    );
+
+    return () => window.clearTimeout(wait);
+  }, [typed]);
 
   useEffect(() => {
     if (load.kind !== 'loaded' || !backToSearch.current) return;
@@ -140,12 +199,35 @@ function Directory({
     search.current?.focus();
   }, [load]);
 
-  const look = (next: Omit<Looking, 'page'>) => setLooking({ ...next, page: 1 });
+  useEffect(() => {
+    if (load.kind !== 'loaded' || load.rows === 'rereading' || !retried.current) return;
+    retried.current = false;
+    (search.current != null && search.current.value !== '' ? search.current : title())?.focus();
+  }, [load]);
+
+  useEffect(() => {
+    if (load.kind !== 'loaded' || landed.current) return;
+    landed.current = true;
+    focusWhenFree(() => document.getElementById(`vendor-${lit}`));
+  }, [load, lit]);
+
+  const look = (next: Omit<Looking, 'page' | 'vendor'>) => {
+    setTyped(next.q);
+    setLooking({ ...next, page: 1, vendor: null });
+    setLit(null);
+  };
   const turn = (page: number) => {
-    setLooking((was) => ({ ...was, page }));
+    setLooking((was) => ({ ...was, page, vendor: null }));
+    setLit(null);
     title()?.focus();
   };
   const reread = () => setAttempt((n) => n + 1);
+  const retry = () => {
+    retried.current = true;
+    setLoad((was) => (was.kind === 'loaded' ? { ...was, rows: 'rereading' } : was));
+    setLooking((was) => (was.q === typed ? was : { ...was, q: typed, page: 1 }));
+    reread();
+  };
   const close = useCallback(() => setEditing(null), []);
   const closeMenu = useCallback(() => setMenu(null), []);
   const tell = (words: string) => setTold(words);
@@ -160,8 +242,9 @@ function Directory({
             {load.kind === 'failed' && (
               <Failed
                 onRetry={() => {
-                  backToSearch.current = looking.q !== '';
+                  backToSearch.current = typed !== '';
                   setLoad({ kind: 'loading' });
+                  setLooking((was) => (was.q === typed ? was : { ...was, q: typed, page: 1 }));
                   reread();
                 }}
               />
@@ -169,15 +252,22 @@ function Directory({
             {load.kind === 'loaded' && (
               <Loaded
                 page={load.page}
+                rows={load.rows}
                 looking={looking}
+                typed={typed}
                 named={named}
                 manages={manages}
+                reminders={reminders}
+                lit={lit}
                 menu={menu}
                 search={search}
                 onLook={look}
+                onType={setTyped}
                 onTurn={turn}
                 onMenu={setMenu}
                 onCloseMenu={closeMenu}
+                onRetry={retry}
+                onMoveOn={() => setLit(null)}
                 onAdd={() => setEditing({ kind: 'add' })}
                 onOpen={(vendor) => setEditing({ kind: 'edit', vendor })}
                 onRestore={(vendor) => {
@@ -211,7 +301,7 @@ function Directory({
               close();
               tell(t('vendors.archivedToast', { name: vendor.name }));
               reread();
-              title()?.focus();
+              focusWhenFree(title);
             }}
           />
         )}
@@ -222,29 +312,43 @@ function Directory({
 
 function Loaded({
   page,
+  rows,
   looking,
+  typed,
   named,
   manages,
+  reminders,
+  lit,
   menu,
   search,
   onLook,
+  onType,
   onTurn,
   onMenu,
   onCloseMenu,
+  onRetry,
+  onMoveOn,
   onAdd,
   onOpen,
   onRestore,
 }: {
   page: VendorsPage;
+  rows: Rows;
   looking: Looking;
+  typed: string;
   named: string;
   manages: boolean;
+  reminders: PaymentRemindersSetting | null;
+  lit: string | null;
   menu: 'category' | 'filter' | null;
   search: RefObject<HTMLInputElement | null>;
-  onLook: (next: Omit<Looking, 'page'>) => void;
+  onLook: (next: Omit<Looking, 'page' | 'vendor'>) => void;
+  onType: (typed: string) => void;
   onTurn: (page: number) => void;
   onMenu: (menu: 'category' | 'filter') => void;
   onCloseMenu: () => void;
+  onRetry: () => void;
+  onMoveOn: () => void;
   onAdd: () => void;
   onOpen: (vendor: Vendor) => void;
   onRestore: (vendor: Vendor) => void;
@@ -252,8 +356,10 @@ function Loaded({
   const { t } = useTranslation();
   const locale = dateLocale();
   const readerZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-  const { page: _page, ...kept } = looking;
+  const { page: _page, vendor: _vendor, ...settled } = looking;
+  const kept = { ...settled, q: typed };
   const searching = looking.q.trim() !== '' || looking.category !== 'all';
+  const counted = searching && page.total > 0 && rows === 'shown';
   const here = looking.view === 'archived' ? page.archived : page.inUse;
   const nothingInUse = page.inUse === 0 && looking.view === 'inUse' && !searching;
   const pages = Math.max(1, Math.ceil(page.total / PAGE_SIZE));
@@ -293,6 +399,21 @@ function Loaded({
         </div>
         {manages && <CardStep label={t('vendors.add')} onClick={onAdd} />}
       </Card>
+      {reminders != null && (
+        <RowList>
+          <li>
+            <BudgetRow
+              title={reminders.inForce ? t('paymentReminders.title') : t('paymentReminders.off')}
+              lines={[
+                reminders.inForce
+                  ? t('paymentReminders.whenReminded', { count: reminders.days })
+                  : t('paymentReminders.offLine'),
+              ]}
+              to="/app/settings/vendors/payment-reminders"
+            />
+          </li>
+        </RowList>
+      )}
       {page.inUse + page.archived > 0 && (
         <>
           <div className="vd-tools">
@@ -303,17 +424,17 @@ function Loaded({
                 type="search"
                 aria-label={t('vendors.search')}
                 placeholder={t('vendors.search')}
-                value={looking.q}
+                value={typed}
                 spellCheck={false}
-                onChange={(event) => onLook({ ...kept, q: event.target.value })}
+                onChange={(event) => onType(event.target.value)}
                 onKeyDown={(event) => {
-                  if (event.key === 'Escape' && looking.q !== '') {
+                  if (event.key === 'Escape' && typed !== '') {
                     event.preventDefault();
                     onLook({ ...kept, q: '' });
                   }
                 }}
               />
-              {looking.q !== '' && (
+              {typed !== '' && (
                 <button
                   type="button"
                   className="vd-clear"
@@ -354,13 +475,14 @@ function Loaded({
               onPick={(key) => onLook({ ...kept, view: key as VendorView })}
             />
           </div>
-          <p className={searching && page.total > 0 ? 'vd-count' : 'desk-unseen'} role="status">
-            {searching && page.total > 0 ? t('vendors.vendors', { count: page.total }) : ''}
+          <p className={counted ? 'vd-count' : 'desk-unseen'} role="status">
+            {counted ? t('vendors.vendors', { count: page.total }) : ''}
           </p>
-          {page.total === 0 ? (
+          {rows !== 'shown' ? null : page.total === 0 ? (
             !nothingInUse && (
               <NoMatch
                 looking={looking}
+                typed={typed}
                 categoryWord={categoryWord}
                 onLook={(next) => onLook(next)}
               />
@@ -381,10 +503,15 @@ function Loaded({
                             })
                           : (one.emailAddress ??
                             (one.phoneNumber == null ? null : formatPhone(one.phoneNumber))),
+                        one.archivedAt == null && one.events > 0
+                          ? t('vendors.usedOn', { count: one.events })
+                          : null,
                       ]
                         .filter((part) => part != null && part !== '')
                         .join(' · ')}
                       manages={manages}
+                      lit={one.id === lit}
+                      onMoveOn={onMoveOn}
                       onOpen={() => onOpen(one)}
                       onRestore={() => onRestore(one)}
                     />
@@ -405,6 +532,13 @@ function Loaded({
           )}
         </>
       )}
+      {rows === 'failed' && <Failed onRetry={onRetry} />}
+      {rows === 'rereading' && (
+        <div className="desk-loading" role="status" aria-label={t('vendors.loading')}>
+          <span className="desk-unseen">{t('vendors.loading')}</span>
+          <RowBones />
+        </div>
+      )}
     </>
   );
 }
@@ -416,17 +550,23 @@ function Loading() {
     <div className="desk-loading" role="status" aria-label={t('vendors.loading')}>
       <span className="desk-unseen">{t('vendors.loading')}</span>
       <span className="desk-sunk is-card" aria-hidden="true" />
-      <ul className="desk-rows" aria-hidden="true">
-        {[1, 2, 3, 4].map((bar) => (
-          <li key={bar} className="desk-row is-bones">
-            <span className="desk-row-words">
-              <span className={`desk-sunk is-title b${bar}`} />
-              <span className={`desk-sunk is-line b${bar}`} />
-            </span>
-          </li>
-        ))}
-      </ul>
+      <RowBones />
     </div>
+  );
+}
+
+function RowBones() {
+  return (
+    <ul className="desk-rows" aria-hidden="true">
+      {[1, 2, 3, 4].map((bar) => (
+        <li key={bar} className="desk-row is-bones">
+          <span className="desk-row-words">
+            <span className={`desk-sunk is-title b${bar}`} />
+            <span className={`desk-sunk is-line b${bar}`} />
+          </span>
+        </li>
+      ))}
+    </ul>
   );
 }
 
@@ -445,15 +585,18 @@ function Failed({ onRetry }: { onRetry: () => void }) {
 /** What was looked for, and a way back for whichever narrowed it; never the empty directory. */
 function NoMatch({
   looking,
+  typed: inBox,
   categoryWord,
   onLook,
 }: {
   looking: Looking;
+  typed: string;
   categoryWord: (key: VendorCategory) => string;
-  onLook: (next: Omit<Looking, 'page'>) => void;
+  onLook: (next: Omit<Looking, 'page' | 'vendor'>) => void;
 }) {
   const { t } = useTranslation();
-  const { page: _page, ...kept } = looking;
+  const { page: _page, vendor: _vendor, ...settled } = looking;
+  const kept = { ...settled, q: inBox };
   const typed = looking.q.trim();
   const category = looking.category === 'all' ? null : categoryWord(looking.category);
   const line =
@@ -488,21 +631,34 @@ function VendorRow({
   vendor,
   line,
   manages,
+  lit,
+  onMoveOn,
   onOpen,
   onRestore,
 }: {
   vendor: Vendor;
   line: string;
   manages: boolean;
+  lit: boolean;
+  onMoveOn: () => void;
   onOpen: () => void;
   onRestore: () => void;
 }) {
   const { t } = useTranslation();
   const words = <RowWords title={vendor.name} lines={line === '' ? [] : [line]} />;
+  const className = lit ? 'desk-row is-on' : 'desk-row';
+  const onBlur = (event: FocusEvent) => {
+    const to = event.relatedTarget;
+    if (lit && !(to instanceof Element && to.closest('.desk-layers') != null)) onMoveOn();
+  };
 
   if (vendor.archivedAt != null || !manages)
     return (
-      <div className="desk-row">
+      <div
+        id={`vendor-${vendor.id}`}
+        className={className}
+        {...(lit ? { tabIndex: -1, onBlur } : {})}
+      >
         {words}
         {vendor.archivedAt != null && manages && (
           <TextAction label={t('vendors.restore')} onClick={onRestore} />
@@ -511,7 +667,13 @@ function VendorRow({
     );
 
   return (
-    <button id={`vendor-${vendor.id}`} type="button" className="desk-row" onClick={onOpen}>
+    <button
+      id={`vendor-${vendor.id}`}
+      type="button"
+      className={className}
+      onClick={onOpen}
+      onBlur={onBlur}
+    >
       {words}
       <Chevron />
     </button>
@@ -585,6 +747,7 @@ function VendorForm({
   const [busy, setBusy] = useState(false);
   const [asking, setAsking] = useState(false);
   const [failed, setFailed] = useState<string | null>(null);
+  const [owing, setOwing] = useState<{ id: string; name: string }[] | null>(null);
   const name = useRef<HTMLInputElement>(null);
   const toFix = fieldsToFix(problems);
 
@@ -604,6 +767,11 @@ function VendorForm({
   };
   const refused = (error: unknown) => {
     setBusy(false);
+    if (error instanceof ApiError && error.is('vendor_owed')) {
+      setFailed(null);
+      setOwing(owingEvents(error.problem));
+      return;
+    }
     const found =
       error instanceof ApiError ? refusedAt(error.problem.violations ?? []) : ({} as Problems);
     if (Object.keys(found).length === 0) {
@@ -622,6 +790,7 @@ function VendorForm({
     const found = draftProblems(draft, t);
     setProblems(found);
     setFailed(null);
+    setOwing(null);
     if (Object.keys(found).length > 0) {
       firstProblem();
       return;
@@ -661,6 +830,19 @@ function VendorForm({
         onConfirm={save}
       >
         <div className="vd-wide">
+          {vendor != null && owing != null && (
+            <div className="vd-owing">
+              <div className="vd-alert" role="alert">
+                <Glyph name="alert" size={16} weight={2.3} />
+                <p>{t('vendors.archiveRefused', { vendor: vendor.name })}</p>
+              </div>
+              {owing.map((event) => (
+                <Link key={event.id} className="desk-text" to={vendorPagePath(event.id, vendor.id)}>
+                  {t('vendors.owingLink', { vendor: vendor.name, event: event.name })}
+                </Link>
+              ))}
+            </div>
+          )}
           {toFix > 0 && (
             <p className="desk-error vd-to-fix" role="alert">
               <Glyph name="alert" size={15} weight={2.2} />

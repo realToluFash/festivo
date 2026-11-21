@@ -24,6 +24,7 @@ import { messagesStateOf } from '../messages/MessagesModel.ts';
 import { seatingStateOf } from '../seating/SeatingModel.ts';
 import { guestsFromOf, guestsStateOf } from '../guests/GuestsModel.ts';
 import { budgetStateOf } from '../budget/BudgetModel.ts';
+import { rosterStateOf } from '../staffLink/StaffRosterModel.ts';
 import { cardStateOf } from '../people/PeopleCardModel.ts';
 import { areaOf, sampleEvent } from './EventsSample.ts';
 import { say } from './EventsWords.ts';
@@ -179,15 +180,19 @@ export function EventRoute() {
     as?: string;
     people?: string;
     filter?: string;
+    staff?: string;
   }>();
   const area = areaOf(params.area);
+  const staff = area === 'staff' ? rosterStateOf(params.staff) : null;
+  // Without staff.read the event has no Staff: a deep link to it opens the event page, More open without it (sc-77903).
+  const noStaff = staff === 'noRead';
   const from = area === 'guests' ? guestsFromOf(params.filter) : null;
   const messages = area === 'messages' ? messagesStateOf(params.state) : null;
   const seating = area === 'seating' ? seatingStateOf(params.state) : null;
   const budget = area === 'budget' ? budgetStateOf(params.state) : null;
   // Can edit has no Budget: a deep link to it opens the event page, More open without it (sc-93).
   const noBudget = area === 'budget' && (budget === 'no_budget' || params.as === 'kemi');
-  const state = noBudget ? 'more' : eventStateOf(params.state);
+  const state = noBudget || noStaff ? 'more' : eventStateOf(params.state);
   const guests = area === 'guests' ? guestsStateOf(params.state) : null;
   const people = cardStateOf(params.people);
   const origin = params.id === CREATED_ID ? originStateOf(params.state) : null;
@@ -207,17 +212,18 @@ export function EventRoute() {
         : {})}
     >
       <EventScreen
-        key={`${params.id ?? ''}:${state ?? ''}:${area ?? ''}:${messages ?? ''}:${seating ?? ''}:${guests ?? ''}:${budget ?? ''}:${people ?? ''}:${from ?? ''}:${origin ?? ''}`}
+        key={`${params.id ?? ''}:${state ?? ''}:${area ?? ''}:${messages ?? ''}:${seating ?? ''}:${guests ?? ''}:${budget ?? ''}:${staff ?? ''}:${people ?? ''}:${from ?? ''}:${origin ?? ''}`}
         id={params.id}
         state={state}
-        area={noBudget ? null : area}
+        area={noBudget || noStaff ? null : area}
         messages={messages}
         seating={seating}
         guests={guests}
         budget={budget}
+        staff={staff}
         people={people}
         guestsFrom={from}
-        without={noBudget ? 'budget' : undefined}
+        without={noBudget ? 'budget' : noStaff ? 'staff' : undefined}
         origin={origin}
       />
     </EventsShell>

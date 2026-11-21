@@ -5,6 +5,9 @@ import { RouterProvider, createMemoryRouter } from 'react-router';
 import { __setSessionState, type Session } from '../../../session.ts';
 import { OWNER_PERMISSIONS, membership } from '../../../test-memberships.ts';
 import { routes } from '../../index.tsx';
+import { cssRule, stylesheet } from '../../../test-styles.ts';
+
+const JOBS_CSS = stylesheet(import.meta.dirname, 'jobsShifts.css');
 
 const IRE = membership({ id: 'org_1', name: 'Ìrè Events' });
 
@@ -95,11 +98,19 @@ function person(id: string, fullName: string, job: string | null, shifts: string
     email: null,
     job: job == null ? null : { id: job, name: JOBS.find((one) => one.id === job)?.name ?? '' },
     station: null,
+    stations: [],
+    stationRemoved: null,
+    leads: false,
+    floorLead: false,
     shifts: shifts.map(([sid, startsAt, endsAt]) => ({ id: sid, startsAt, endsAt })),
     link: 'no_mobile',
+    linkBy: null,
+    linkAt: null,
     contactsErased: false,
   };
 }
+
+const NO_STATIONS = { places: [], sections: [], floorLead: null, courses: [], walk: [] };
 
 const PLAN = {
   staff: [
@@ -110,6 +121,7 @@ const PLAN = {
     person('st_ada', 'Ada Nnaji', null),
   ],
   jobs: JOBS,
+  stations: NO_STATIONS,
   shifts: [
     {
       id: 'sh_bar',
@@ -167,7 +179,7 @@ describe('Jobs and shifts on the Staff page (sc-3908)', () => {
     signedIn();
     await onJobs({});
 
-    const tabs = screen.getByRole('navigation', { name: 'Staff pages' });
+    const tabs = screen.getByRole('navigation', { name: 'Staff' });
     expect(tabs.querySelector('[aria-current="page"]')?.textContent).toBe('Jobs and shifts');
     expect(screen.getByRole('link', { name: 'Roster' }).getAttribute('href')).toBe(
       '/app/events/ev_1/staff/roster',
@@ -268,7 +280,7 @@ describe('Jobs and shifts on the Staff page (sc-3908)', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Add' }));
 
     expect(
-      await screen.findByText('A shift can’t be longer than 24 hours. Check the dates.'),
+      await screen.findByText('A shift cannot be longer than 24 hours. Check the dates.'),
     ).toBeDefined();
   });
 
@@ -316,5 +328,17 @@ describe('Jobs and shifts on the Staff page (sc-3908)', () => {
     expect(
       screen.queryByText('Every place on this shift is filled. Unassign someone to make room.'),
     ).toBeNull();
+  });
+
+  it('starts a gap line under the name in a frame too narrow for it, whole words only (sc-70959)', () => {
+    expect(cssRule('.js-frame', JOBS_CSS)).toContain('container: js-frame / inline-size;');
+    expect(cssRule('.js-gaps', JOBS_CSS)).toContain('overflow-wrap: normal;');
+    const narrow = cssRule(
+      '.js-gaps',
+      JOBS_CSS.slice(JOBS_CSS.indexOf('@container js-frame (width < 29.5rem)')),
+    );
+    expect(narrow).toContain('grid-column: 1 / -1;');
+    expect(narrow).toContain('left: 0;');
+    expect(narrow).toContain('max-width: 100cqi;');
   });
 });

@@ -123,3 +123,8 @@
   flex: none;
   margin-top: 2px;
 }
+
+.pay-inset {
+  display: grid;
+  gap: var(--spaceSm);
+}

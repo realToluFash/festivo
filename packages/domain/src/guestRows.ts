@@ -11,6 +11,7 @@ export const REPLY_KEY: Record<ReplyWord, string> = {
   noReply: 'guestList.reply.noReply',
   held: 'guestList.reply.held',
   notYetInvited: 'guestList.reply.notYetInvited',
+  walkIn: 'guestList.reply.walkIn',
 };
 
 export function replyDate(repliedAt: string, timeZone: string, locale: string): string {

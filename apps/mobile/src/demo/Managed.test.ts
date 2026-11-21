@@ -7,10 +7,20 @@ import { describe, expect, it } from 'vitest';
 import en from '../i18n/locales/en.json';
 import { freshWalk } from '../kit/createWalk.ts';
 import { createStateOf, SAMPLE_DEVICE, walkFor } from './createOrg/CreateWalk.ts';
-import { sessionFor, switcherStateOf, waitingOf } from './OrgSwitcherModel.ts';
+import {
+  currentPlace,
+  expand,
+  openerLabel,
+  sessionFor,
+  settled,
+  switcherStateOf,
+  waitingOf,
+} from './OrgSwitcherModel.ts';
 import { MANAGED_WORDS } from './settings/DataWords.ts';
+import { noOrgBoardOf } from './settings/fromNone.ts';
 import { membersStart, membersStateOf } from './settings/MembersSample.ts';
 import { organisationStart, organisationStateOf } from './settings/OrganisationModel.ts';
+import { managedStateOf, managedStep, signUpEndOf, signUpLanding } from './signUpEnd.ts';
 
 const i18n = createInstance();
 void i18n.init({
@@ -49,17 +59,94 @@ describe('a managed account, wherever a membership path ends (sc-563, enterprise
     const session = sessionFor('managed');
     expect(session.expanded).toBe('org-celebraciones-alameda');
     expect(session.managed).toBe('org-celebraciones-alameda');
-    expect(waitingOf(session)).toBe(2);
+    expect(session.outcomes['org-celebraciones-alameda']?.kind).toBe('managed');
+    expect(waitingOf(session)).toBe(1);
     expect(read('src', 'components', 'OrgDropDown.tsx')).toMatch(
       /managed=\{session\.managed === opened\.invite\.id \? managed : undefined\}/u,
     );
     expect(read('src', 'demo', 'OrgSwitcher.tsx')).toMatch(/managed=\{\s*<ManagedBanner/u);
   });
 
+  it('counts none of two invitations a managed account cannot accept, from the start (sc-73668)', () => {
+    const CELEBRACIONES = 'org-celebraciones-alameda';
+    const BLUEBIRD = 'org-bluebird-gatherings';
+    const session = sessionFor('managed-listed');
+
+    expect(session.invitations.map((invite) => invite.id)).toEqual([CELEBRACIONES, BLUEBIRD]);
+    expect(waitingOf(session)).toBe(0);
+    expect(openerLabel(currentPlace(session), waitingOf(session))).toBe(
+      'Organisation: Ire Events, your role Owner. Switch organisation',
+    );
+    expect(session.expanded).toBeNull();
+
+    for (const id of [CELEBRACIONES, BLUEBIRD]) {
+      const opened = expand(session, id);
+      expect(opened.managed).toBe(id);
+      expect(expand(opened, id).managed).toBeUndefined();
+    }
+
+    const again = settled(expand(session, BLUEBIRD));
+    expect(again.invitations.map((invite) => invite.id)).toEqual([CELEBRACIONES, BLUEBIRD]);
+    expect(waitingOf(again)).toBe(0);
+    expect(expand(again, CELEBRACIONES).managed).toBe(CELEBRACIONES);
+  });
+
   it('refuses Ask to join on the request link', () => {
     const join = read('app', 'demo', 'join.tsx');
     expect(join).toMatch(/state === 'managed'/u);
     expect(join).toMatch(/<ManagedBanner testID="join\.managed" \/>/u);
+  });
+
+  it('stands in for the organisation fields on A few details, with no way to Account settings', () => {
+    expect(managedStateOf('managed')).toBe('managed');
+    expect(managedStateOf('managedOffer')).toBe('managedOffer');
+    expect(managedStateOf(undefined)).toBeNull();
+    expect(managedStep('managed')).toEqual({
+      offer: false,
+      way: false,
+      action: 'Continue',
+      end: 'none',
+    });
+    expect(managedStep('managedOffer')).toMatchObject({
+      offer: true,
+      way: false,
+      action: 'Ask to join Ire Events',
+    });
+  });
+
+  it('ends a managed sign-up with nothing to join at You are not in an organisation', () => {
+    const end = managedStep('managed').end;
+
+    expect(signUpLanding(signUpEndOf(end))).toEqual({
+      pathname: '/demo/today',
+      params: { orgs: 'none', state: 'managed' },
+    });
+  });
+
+  it('ends Ask to join with no organisation yet, told it asked, never inside Ire Events', () => {
+    const end = managedStep('managedOffer').end;
+
+    expect(signUpLanding(signUpEndOf(end))).toEqual({
+      pathname: '/demo/today',
+      params: {
+        orgs: 'none',
+        state: 'managed',
+        toast: 'Asked to join Ire Events. We’ll email you when they answer.',
+      },
+    });
+  });
+
+  it('puts the banner in place of Start your own on You are not in an organisation', () => {
+    const none = read('src', 'demo', 'createOrg', 'NoOrganisation.tsx');
+    expect(none).toMatch(/managed \? \(\s*<ManagedBanner testID="noOrganisation\.managed" \/>/u);
+    expect(none).toMatch(/const managed = board === 'managed';/u);
+    expect(read('app', 'demo', 'today.tsx')).toMatch(/board=\{noOrgBoardOf\(params\.state\)\}/u);
+    expect(noOrgBoardOf('managed')).toBe('managed');
+  });
+
+  it('ends any other sign-up at Home, as before', () => {
+    expect(signUpLanding(signUpEndOf(undefined))).toBe('/demo/today');
+    expect(signUpLanding(signUpEndOf('elsewhere'))).toBe('/demo/today');
   });
 
   it('says a member is also in 2 other organisations, never which', () => {
@@ -78,8 +165,10 @@ describe('a managed account, wherever a membership path ends (sc-563, enterprise
     expect(organisationStart('domainBoth', 'Owner').proved).toEqual(['ire.events']);
     expect(organisationStart(null, 'Owner').proved).toEqual([]);
     expect(read('src', 'components', 'OrganisationJoining.tsx')).toMatch(
-      /proved\.includes\(domain\)\s*\? \{ kind: 'yes', word: t\('companyDomains\.proved'\) \}/u,
+      /proved \? \{ kind: 'yes', word: t\('companyDomains\.proved'\) \}/u,
     );
-    expect(read('src', 'demo', 'settings', 'Organisation.tsx')).toContain('proved={start.proved}');
+    expect(read('src', 'demo', 'settings', 'OrganisationCalls.ts')).toContain(
+      'proved: start.proved.includes(YOUR_DOMAIN)',
+    );
   });
 });

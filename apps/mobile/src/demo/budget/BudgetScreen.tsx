@@ -28,15 +28,15 @@ import {
   type BudgetState,
   LIVE_CHANGE,
   days,
+  dueItemOf,
   money,
   owed,
-  paymentOf,
   reduce,
   startOf,
   totalsOf,
   withRate,
 } from './BudgetModel.ts';
-import { COLLEAGUE, LINES, REMOVED_PAYER, TODAY, VENDORS, type PayerKey } from './BudgetSample.ts';
+import { COLLEAGUE, LINES, REMOVED_PAYER, TODAY, type PayerKey } from './BudgetSample.ts';
 import { BudgetHome, ceilingNews, liveWords } from './BudgetHome.tsx';
 import { DueNow } from './DueNow.tsx';
 import { MarkPaid } from './MarkPaid.tsx';
@@ -90,8 +90,12 @@ export function BudgetScreen({
   const sendingForm = m.form?.phase === 'sending' ? m.form : null;
   useEffect(() => {
     if (sendingForm == null) return undefined;
-    const amount = sendingForm.amount ?? paymentOf(sendingForm.id).amount;
-    const words = say.markedPaid(money(amount, locale), days.long(sendingForm.on, locale));
+    const item = dueItemOf(sendingForm.id);
+    const amount = sendingForm.amount ?? item.amount;
+    const words = say.markedPaid(
+      money(amount, locale, item.currency),
+      days.long(sendingForm.on, locale),
+    );
     const timer = setTimeout(() => go({ type: 'marked', amount, reader: READER, words }), SEND_MS);
     return () => clearTimeout(timer);
   }, [sendingForm, locale]);
@@ -263,14 +267,12 @@ export function BudgetScreen({
                 id,
                 reader: READER,
                 words: say.markedPaid(
-                  money(paymentOf(id).amount, locale),
+                  money(dueItemOf(id).amount, locale, dueItemOf(id).currency),
                   days.long(TODAY, locale),
                 ),
               })
             }
-            onUndo={(id) =>
-              go({ type: 'dueUndo', id, words: say.unmarked(VENDORS[paymentOf(id).vendor].name) })
-            }
+            onUndo={(id) => go({ type: 'dueUndo', id, words: say.unmarked(dueItemOf(id).vendor) })}
             onDifferent={(id) => go({ type: 'openMark', id, from: 'dueNow' })}
             onCloseForm={() => go({ type: 'closeForm' })}
             onMark={onMark}

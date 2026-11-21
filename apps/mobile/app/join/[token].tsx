@@ -18,6 +18,7 @@ import {
 } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
+import { ManagedBanner } from '../../src/components/ManagedBanner.tsx';
 import { api, meAtLaunch } from '../../src/api.ts';
 import { PrimaryButton, QuietButton, SecondaryButton } from '../../src/components/Buttons.tsx';
 import { focusChecked, keysStayDown } from '../../src/components/Field.tsx';
@@ -217,6 +218,25 @@ function Asking({
   const [opened] = useState(view);
   const top = <Top organisation={organisation} />;
 
+  if (view.kind === 'open' && preview.managed != null) {
+    return (
+      <StepScreen nav={nav}>
+        {top}
+        <View style={styles.below}>
+          <ManagedBanner
+            organisation={preview.managed.organisation.name}
+            message={preview.managed.message}
+            onChange={() => {
+              close();
+              router.push('/settings/account');
+            }}
+            testID="join.managed"
+          />
+        </View>
+      </StepScreen>
+    );
+  }
+
   if (view.kind === 'open' && preview.standing == null) {
     return <Ask token={token} preview={preview} onChange={onChange} top={top} />;
   }
@@ -287,16 +307,15 @@ function Asking({
 
 function Top({ organisation }: { organisation: string }) {
   const { t } = useTranslation();
-  const size = useStepTitleSize();
 
   return (
     <View style={styles.top}>
       <OrgTile name={organisation} size="card" />
       <Text
-        size={size}
+        size={tokens.typeTitlePhone.size}
         weight="bold"
         accessibilityRole="header"
-        style={[styles.title, stepTitle(size)]}
+        style={styles.title}
       >
         {t('requestToJoin.title', { organisation })}
       </Text>
@@ -402,6 +421,22 @@ function Ask({
       return;
     }
 
+    if (problem.is('domain_managed')) {
+      onChange({
+        kind: 'open',
+        signedIn: true,
+        preview: {
+          ...preview,
+          managed: {
+            domain: problem.problem.domain ?? '',
+            organisation: { id: '', name: problem.problem.organisation ?? '' },
+            message: problem.problem.detail ?? '',
+          },
+        },
+      });
+      return;
+    }
+
     if (problem.is('validation_failed')) {
       setRefused(problem.fieldErrors().message ?? null);
       return;
@@ -500,6 +535,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: tokens.spaceLg,
   },
-  title: { flex: 1 },
+  title: { flex: 1, letterSpacing: -0.5 },
   below: { marginTop: tokens.space3xl },
 });

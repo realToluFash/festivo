@@ -29,6 +29,7 @@ export const RMW = {
     'One of their companions has arrived, so they stay on the list. Their record ends with the event’s guest data setting.',
   companionJustArrived: (name: string) =>
     `A companion of ${name} has just arrived, so they stay on the list.`,
+  companionStays: (name: string) => `${name} has arrived, so they stay on the list.`,
   backToDetails: 'Back to their details',
   alreadyRemoved: (name: string) => `${name} was already removed by someone else.`,
   backToGuests: 'Back to guests',
@@ -105,4 +106,9 @@ export function companionArrivedIn(list: readonly Guest[], id: string, at: strin
         }
       : one,
   );
+}
+
+/** Whether a companion of the guest has arrived, by id: Edit guest then offers no Remove for them (sc-1454). */
+export function companionArrived(guest: Guest, companionId: string | null): boolean {
+  return guest.companions.some((one) => one.id === companionId && one.arrived != null);
 }

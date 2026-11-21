@@ -330,7 +330,7 @@ describe('when picks close, on the Menu (sc-3905)', () => {
     expect(screen.getByText('picks close Saturday, Nov 14')).toBeTruthy();
     expect(within(card('Starter')).getByText('Picks closed on Friday, Oct 16')).toBeTruthy();
     fireEvent.click(
-      within(card('Starter')).getByRole('button', { name: 'Who hasn’t picked starter' }),
+      within(card('Starter')).getByRole('button', { name: 'Who hasn’t picked Starter' }),
     );
     expect(said()).toContain('sc-3909');
 

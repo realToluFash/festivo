@@ -47,6 +47,9 @@ const HEADCOUNT: HeadcountCounts = {
   held: 1,
   heldBy: { hostNoReply: 1, hostMaybe: 0, hostNotComing: 0 },
   declined: 1,
+  walkIns: 0,
+  attended: 0,
+  expected: 2,
 };
 const COUNTS = countsOf(HEADCOUNT);
 
@@ -78,7 +81,7 @@ describe('the counts above the list (sc-3772)', () => {
   it('opens on All for anything the address does not know', () => {
     expect(choiceOf(null)).toBe('all');
     expect(choiceOf('held')).toBe('held');
-    expect(choiceOf('walkIn')).toBe('all');
+    expect(choiceOf('arrived')).toBe('all');
   });
 });
 

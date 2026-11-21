@@ -31,7 +31,9 @@ import {
   exportNarrowing,
   exportsGuests,
   peopleInView,
+  zonedAt,
 } from '@soirely/domain';
+import { router } from 'expo-router';
 import {
   type ReactNode,
   type RefObject,
@@ -66,9 +68,10 @@ import {
   markOf,
   phaseCardOf,
 } from '../kit/guestRows.ts';
+import { checksIn, onEventDay } from '../kit/checkIn.ts';
 import { pasteBeside, pasteShown, waiting, whoseRows } from '../kit/pasteReply.ts';
 import { type GuestReplies, guestRepliesOf, guestReplyBy } from '../kit/replyBy.ts';
-import { type ScreenOffline, useHandOffline, useOffline } from '../offline.ts';
+import { type ScreenOffline, useHandOffline, useOffline, usePullToRefresh } from '../offline.ts';
 import { useSignedIn } from '../signedIn.ts';
 import { tokens } from '../theme/tokens.ts';
 import { SearchField } from './EventsSearch.tsx';
@@ -135,6 +138,7 @@ const CHOICE_KEY: Record<Choice, string> = {
   held: REPLY_KEY.held,
   notComing: REPLY_KEY.notComing,
   notYetInvited: REPLY_KEY.notYetInvited,
+  walkIn: REPLY_KEY.walkIn,
 };
 
 /** What Guests puts in the frame's top: Add guest at the end of the title row, and on a phone the ‹ back to the list from a guest's details. */
@@ -282,6 +286,7 @@ export function EventGuests({
     focusTitle: () => title.current?.focus?.(),
   });
   const { watch, freshen, stale, refreshing } = offline;
+  const pull = usePullToRefresh(refreshing, stale?.retry ?? freshen);
 
   const askGuest = useCallback(
     (guestId: string, quiet: boolean) => {
@@ -331,7 +336,7 @@ export function EventGuests({
   useEffect(
     () =>
       followReadingAgain(
-        realtimeTopic('EventGuests', eventId),
+        [realtimeTopic('EventGuests', eventId), realtimeTopic('EventCheckIn', eventId)],
         () => api.guestsSubscription(eventId),
         () => reloadRef.current(),
         READ_AGAIN_MS,
@@ -581,6 +586,15 @@ export function EventGuests({
       <PhaseLine event={event} phase={phase} now={now} onChange={onEventChange} />
     );
   const phaseCard = phaseCardOf(t, event, shown, phase, now);
+  const doorStep: StepProps | null =
+    checksIn(event) && onEventDay(event, zonedAt(now, event.timeZone))
+      ? {
+          label: t('checkIn.open'),
+          onPress: () =>
+            router.push({ pathname: '/events/[id]/check-in', params: { id: event.id } }),
+          testID: 'guests.openCheckIn',
+        }
+      : null;
   const liveStep: StepProps = {
     label: t('eventLive.makeLive'),
     ref: liveOpener,
@@ -611,7 +625,7 @@ export function EventGuests({
           says={t('guestList.noGuests')}
           heading
           line={phaseCard?.line ?? null}
-          also={phaseCard?.offersMakeLive === true ? liveStep : null}
+          also={phaseCard?.offersMakeLive === true ? liveStep : doorStep}
           step={
             manages
               ? {
@@ -640,6 +654,7 @@ export function EventGuests({
         card={shown}
         phaseCard={phaseCard}
         makeLive={liveStep}
+        door={doorStep}
         kind={kind}
         searchRef={searchField}
         timeZone={timeZone}
@@ -788,11 +803,7 @@ export function EventGuests({
         kind={kind}
         heading={heading}
         list={list}
-        listRefresh={
-          loaded ? (
-            <RefreshControl refreshing={refreshing} onRefresh={stale?.retry ?? freshen} />
-          ) : undefined
-        }
+        listRefresh={loaded ? <RefreshControl {...pull} /> : undefined}
         page={page}
         pageKey={exporting && docked ? 'export' : pasted != null ? 'paste' : (open ?? '')}
         pageInFront={pageOpen}
@@ -949,6 +960,7 @@ function GuestRows({
   card,
   phaseCard,
   makeLive,
+  door,
   kind,
   searchRef,
   timeZone,
@@ -972,6 +984,8 @@ function GuestRows({
   card: Shown | null;
   phaseCard: PhaseCard | null;
   makeLive: StepProps;
+  /** Open check-in, on each of the event's days, for whoever checks guests in (sc-1454). */
+  door: StepProps | null;
   kind: LayoutKind;
   searchRef: React.RefObject<TextInputInstance | null>;
   timeZone: string;
@@ -1064,7 +1078,7 @@ function GuestRows({
           tags={phaseCard?.tags ?? []}
           says={says}
           line={phaseCard?.line ?? (counts.invited > 0 ? haventLine(t, counts) : null)}
-          step={phaseCard?.offersMakeLive === true ? makeLive : null}
+          step={phaseCard?.offersMakeLive === true ? makeLive : door}
         />
       )}
       <View style={styles.searchRow}>

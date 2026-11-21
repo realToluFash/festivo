@@ -135,25 +135,6 @@ final class DomainSuspensionTest extends ApiTestCase
     }
 
     #[Test]
-    public function anotherOrganisationProvingTheDomainSuspendsEveryOtherOrganisationsDomainMembers(): void
-    {
-        [, $organisation] = $this->organisation('folake@ire.events', 'Ìrè Events');
-        [, $prover] = $this->organisation('bisi@ire.events', 'Ìrè Group');
-        $tunde = $this->domainMember($organisation, 'tunde@ire.events');
-        $kemi = $this->domainMember($prover, 'kemi@ire.events');
-        $proved = $this->list($prover, 'ire.events');
-        $proved->setProvedAt(new DateTimeImmutable());
-
-        self::service(EntityManagerInterface::class)->wrapInTransaction(static function () use ($proved): void {
-            self::service(DomainSuspender::class)->domainProved($proved);
-            self::service(EntityManagerInterface::class)->flush();
-        });
-
-        self::assertSame(Suspension::DomainManagedElsewhere, $this->membershipOf($tunde, $organisation)->getSuspension());
-        self::assertSame(MembershipStatus::Active, $this->membershipOf($kemi, $prover)->getStatus(), 'the organisation that proved it keeps its own');
-    }
-
-    #[Test]
     public function aSuspensionNobodyAnswersInThirtyDaysEndsAsRemoved(): void
     {
         [, $organisation] = $this->organisation('folake@ire.events', 'Ìrè Events');

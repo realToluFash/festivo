@@ -127,6 +127,13 @@ export interface Companion {
   needs?: GuestNeeds | null;
   /** Where they sit (sc-4013): a table or a single seat by its name, a row by its label. */
   seat?: CompanionSeat | null;
+  /** Recorded at the door (sc-1454); null until then, and absent reads as null. */
+  arrival?: Arrival | null;
+}
+
+export interface Arrival {
+  at: string;
+  by: string | null;
 }
 
 export interface CompanionSeat {
@@ -208,6 +215,10 @@ export interface Guest {
   repliesReopened?: { by: string; at: string } | null;
   /** A reply a host recorded for them (sc-3787): who, and how the guest told them; null for the guest's own, and absent reads as null. */
   replyRecorded?: GuestReplyRecorded | null;
+  /** Added at the door with a name and nothing else (sc-1454): their reply reads Walk-in. */
+  walkIn?: boolean;
+  /** Recorded at the door (sc-1454); null until then, and absent reads as null. */
+  arrival?: Arrival | null;
 }
 
 /** How a guest told the host who recorded their reply (sc-3787). */
@@ -539,12 +550,36 @@ export interface MovedTogether {
   gone: number;
 }
 
-/** What Remove from the list did (sc-3776): `removal` is what its one Undo and its erasure name, null when nobody was removed. */
+/** What Remove from the list did (sc-3776): `removal` is what its one Undo and its erasure name, null when nobody was removed. `stayed` names each guest left because they or a companion arrived (sc-1454). */
 export interface RemovedTogether {
   removal: string | null;
   guests: number;
   companions: number;
   gone: number;
+  stayed: StayedGuest[];
+}
+
+export interface StayedGuest {
+  id: string;
+  fullName: string | null;
+  why: 'arrived' | 'companionArrived';
+}
+
+function asStayed(value: unknown): StayedGuest | null {
+  if (typeof value !== 'object' || value == null) return null;
+  const row = value as Record<string, unknown>;
+  const id = text(row.id);
+  if (id == null || (row.why !== 'arrived' && row.why !== 'companionArrived')) return null;
+
+  return { id, fullName: text(row.fullName), why: row.why };
+}
+
+/** The guests a 409 `guest_arrived` names (sc-1454), from its problem body. */
+export function stayedOf(problem: unknown): StayedGuest[] {
+  if (typeof problem !== 'object' || problem == null) return [];
+  const stayed = (problem as Record<string, unknown>).stayed;
+
+  return Array.isArray(stayed) ? stayed.map(asStayed).filter((one) => one != null) : [];
 }
 
 function whole(value: unknown): number | null {
@@ -592,7 +627,7 @@ export function asRemovedTogether(value: unknown): RemovedTogether | null {
   if (guests == null || companions == null || gone == null) return null;
   if (removal == null && body.removal !== null) return null;
 
-  return { removal, guests, companions, gone };
+  return { removal, guests, companions, gone, stayed: stayedOf(body) };
 }
 
 function asCounts(value: unknown): GuestCounts | null {
@@ -624,7 +659,16 @@ function asCompanion(value: unknown): Companion | null {
     namedByGuest: row.namedByGuest === true,
     needs: asNeeds(row.needs),
     seat: asCompanionSeat(row.seat),
+    arrival: asArrival(row.arrival),
   };
+}
+
+export function asArrival(value: unknown): Arrival | null {
+  if (typeof value !== 'object' || value == null) return null;
+  const row = value as Record<string, unknown>;
+  const at = text(row.at);
+
+  return at == null ? null : { at, by: text(row.by) };
 }
 
 function asCompanionSeat(value: unknown): CompanionSeat | null {
@@ -724,6 +768,8 @@ export function asGuest(value: unknown): Guest | null {
     companions: companions as Companion[],
     repliesReopened: asReopened(row.repliesReopened),
     replyRecorded: reply === 'noReply' ? null : asRecorded(row.replyRecorded),
+    walkIn: row.walkIn === true,
+    arrival: asArrival(row.arrival),
   };
 }
 
@@ -780,9 +826,12 @@ const HEADCOUNT_COUNTS = [
   'awaitingReply',
   'held',
   'declined',
+  'walkIns',
+  'attended',
+  'expected',
 ] as const;
 
-/** People (sc-99). `accepted` is the settled figure; an optimistic one adds maybe, awaitingReply and held, never `heldBy.hostNotComing`. */
+/** People (sc-99). `attended` is everyone arrived, walk-ins included; `expected` is accepted plus everyone attended who is not in it (sc-1454). `accepted` is the settled figure; an optimistic one adds maybe, awaitingReply and held, never `heldBy.hostNotComing`. */
 export type HeadcountCounts = Record<(typeof HEADCOUNT_COUNTS)[number], number> & {
   heldBy: { hostNoReply: number; hostMaybe: number; hostNotComing: number };
 };
@@ -875,5 +924,93 @@ export function asGuestDetails(value: unknown): GuestDetails | null {
     ...guest,
     added: { at, by: text(added?.by) },
     organisationLanguage: text((value as { organisationLanguage?: unknown }).organisationLanguage),
+  };
+}
+
+export type CheckInState = 'before_open' | 'open' | 'ended';
+
+export interface CheckInCompanion {
+  id: string;
+  fullName: string | null;
+  state: CompanionState;
+  arrival: Arrival | null;
+}
+
+/** A guest on the door's list: names, replies and arrivals, never a contact, need or group. */
+export interface CheckInGuest {
+  id: string;
+  fullName: string;
+  reply: GuestReply;
+  walkIn: boolean;
+  arrival: Arrival | null;
+  companions: CheckInCompanion[];
+}
+
+export interface CheckIn {
+  state: CheckInState;
+  opensAt: string;
+  timeZone: string;
+  count: { attended: number; expected: number };
+  guests: CheckInGuest[];
+}
+
+const CHECK_IN_STATES: readonly CheckInState[] = ['before_open', 'open', 'ended'];
+
+function asCheckInCompanion(value: unknown): CheckInCompanion | null {
+  if (typeof value !== 'object' || value == null) return null;
+  const row = value as Record<string, unknown>;
+  const id = text(row.id);
+  const state = COMPANION_STATES.find((known) => known === row.state);
+
+  return id == null || state == null
+    ? null
+    : { id, fullName: text(row.fullName), state, arrival: asArrival(row.arrival) };
+}
+
+function asCheckInGuest(value: unknown): CheckInGuest | null {
+  if (typeof value !== 'object' || value == null) return null;
+  const row = value as Record<string, unknown>;
+  const id = text(row.id);
+  const fullName = text(row.fullName);
+  const reply = REPLIES.find((known) => known === row.reply);
+  if (id == null || fullName == null || reply == null || !Array.isArray(row.companions))
+    return null;
+  const companions = row.companions.map(asCheckInCompanion);
+  if (companions.some((one) => one == null)) return null;
+
+  return {
+    id,
+    fullName,
+    reply,
+    walkIn: row.walkIn === true,
+    arrival: asArrival(row.arrival),
+    companions: companions as CheckInCompanion[],
+  };
+}
+
+export function asCheckIn(value: unknown): CheckIn | null {
+  if (typeof value !== 'object' || value == null) return null;
+  const body = value as Record<string, unknown>;
+  const door = body.checkIn as Record<string, unknown> | null | undefined;
+  const count = body.count as Record<string, unknown> | null | undefined;
+  if (typeof door !== 'object' || door == null || typeof count !== 'object' || count == null)
+    return null;
+  const state = CHECK_IN_STATES.find((known) => known === door.state);
+  const opensAt = text(door.opensAt);
+  const timeZone = text(door.timeZone);
+  const attended = whole(count.attended);
+  const expected = whole(count.expected);
+  if (state == null || opensAt == null || timeZone == null || attended == null || expected == null)
+    return null;
+  if (!Array.isArray(body.guests)) return null;
+  const guests = body.guests.map(asCheckInGuest);
+  if (guests.some((one) => one == null)) return null;
+
+  return {
+    state,
+    opensAt,
+    timeZone,
+    count: { attended, expected },
+    guests: guests as CheckInGuest[],
   };
 }

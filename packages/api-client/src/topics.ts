@@ -5,12 +5,15 @@ export const REALTIME_TOPICS = {
   EventSeatingChoices: 'events/{id}/seating/choices',
   EventGuests: 'events/{id}/guests',
   EventHeadcount: 'events/{id}/headcount',
+  EventCheckIn: 'events/{id}/check-in',
   EventStaff: 'events/{id}/staff',
   EventSchedule: 'events/{id}/schedule',
   EventMenu: 'events/{id}/menu',
   EventScreens: 'events/{id}/screens',
   EventGuestPages: 'events/{id}/guest-pages',
   EventBudget: 'events/{id}/budget',
+  EventBudgetMargin: 'events/{id}/budget/margin',
+  EventQuotes: 'events/{id}/budget/quotes',
 } as const;
 
 export type RealtimeTopicName = keyof typeof REALTIME_TOPICS;

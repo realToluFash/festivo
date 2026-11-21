@@ -1,6 +1,7 @@
 /** An event's roster (sc-3906), with its jobs and shifts (sc-3908), as the API answers and the hub publishes it. Every time is an instant with the event's offset. */
 
-export type StaffLink = 'none' | 'no_mobile' | 'erased';
+/** How far a person's own link got (sc-3912), or why none can be given. */
+export type StaffLink = 'none' | 'copied' | 'sent' | 'opened' | 'no_mobile' | 'erased';
 
 export type StaffAccess = 'view' | 'check_in' | 'floor' | 'pass' | 'run';
 
@@ -12,15 +13,38 @@ export interface StaffEntryShift {
   endsAt: string;
 }
 
+export type StationKind = 'place' | 'section';
+
+/** A seating table, by the seating plan's id and name. */
+export interface StationTable {
+  id: string;
+  name: string;
+}
+
+/** A section's `name` is bare ("Section A"); the client writes its table count beside it. A place has no tables. */
+export interface StationRef {
+  id: string;
+  name: string;
+  kind: StationKind;
+  tables: StationTable[];
+}
+
 export interface StaffEntry {
   id: string;
   fullName: string;
   mobile: string | null;
   email: string | null;
   job: { id: string; name: string } | null;
-  station: string | null;
+  station: StationRef | null;
+  stations: StationRef[];
+  stationRemoved: string | null;
+  leads: boolean;
+  floorLead: boolean;
   shifts: StaffEntryShift[];
   link: StaffLink;
+  /** Who copied or marked it as sent; null for Opened and No link yet. */
+  linkBy: string | null;
+  linkAt: string | null;
   contactsErased: boolean;
 }
 
@@ -39,10 +63,44 @@ export interface StaffShift {
   people: string[];
 }
 
+export interface StationPlace {
+  id: string;
+  name: string;
+  pass: boolean;
+  people: string[];
+  lead: string | null;
+  dishes: number;
+}
+
+export interface StationSection {
+  id: string;
+  name: string;
+  tables: StationTable[];
+  people: string[];
+  lead: string | null;
+}
+
+/** `dishedAt` is a place id, the Pass's when the item has none. */
+export interface StationCourse {
+  id: string;
+  name: string;
+  items: { name: string; dishedAt: string }[];
+}
+
+/** Places come Pass first; `walk` is the kitchen places after the Pass, never the Pass itself. */
+export interface StaffStations {
+  places: StationPlace[];
+  sections: StationSection[];
+  floorLead: string | null;
+  courses: StationCourse[];
+  walk: string[];
+}
+
 export interface StaffPlan {
   staff: StaffEntry[];
   jobs: StaffJob[];
   shifts: StaffShift[];
+  stations: StaffStations;
 }
 
 /** `job` and `shift` by id; on an edit, `job` left out keeps the person's. */
@@ -73,10 +131,15 @@ export const STAFF_NAME_MAXIMUM = 200;
 /** The API's StaffJob::NAME_MAXIMUM, in visible characters. */
 export const JOB_NAME_MAXIMUM = 60;
 
+/** The API's station place name limit, in visible characters (sc-3910). */
+export const STATION_NAME_MAXIMUM = 60;
+
 /** The API's StaffShift::NEEDED_MAXIMUM. */
 export const SHIFT_NEEDED_MAXIMUM = 50;
 
-const LINKS: readonly StaffLink[] = ['none', 'no_mobile', 'erased'];
+const LINKS: readonly StaffLink[] = ['none', 'copied', 'sent', 'opened', 'no_mobile', 'erased'];
+
+const KINDS: readonly StationKind[] = ['place', 'section'];
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value != null && !Array.isArray(value);
@@ -97,6 +160,26 @@ function asEntryShift(raw: unknown): StaffEntryShift | null {
     : null;
 }
 
+function asStationTable(raw: unknown): StationTable | null {
+  if (!isRecord(raw)) return null;
+  const { id, name } = raw;
+
+  return typeof id === 'string' && typeof name === 'string' ? { id, name } : null;
+}
+
+function asStationRef(raw: unknown): StationRef | null {
+  if (!isRecord(raw)) return null;
+  const { id, name, kind } = raw;
+  const tables = every(raw.tables, asStationTable);
+
+  return typeof id === 'string' &&
+    typeof name === 'string' &&
+    KINDS.includes(kind as StationKind) &&
+    tables != null
+    ? { id, name, kind: kind as StationKind, tables }
+    : null;
+}
+
 function asJobRef(raw: unknown): { id: string; name: string } | null | undefined {
   if (raw === null) return null;
   if (!isRecord(raw) || typeof raw.id !== 'string' || typeof raw.name !== 'string')
@@ -107,8 +190,22 @@ function asJobRef(raw: unknown): { id: string; name: string } | null | undefined
 
 export function asStaffEntry(raw: unknown): StaffEntry | null {
   if (!isRecord(raw)) return null;
-  const { id, fullName, mobile, email, station, link, contactsErased } = raw;
+  const {
+    id,
+    fullName,
+    mobile,
+    email,
+    stationRemoved,
+    leads,
+    floorLead,
+    link,
+    linkBy,
+    linkAt,
+    contactsErased,
+  } = raw;
   const job = asJobRef(raw.job);
+  const station = raw.station === null ? null : asStationRef(raw.station);
+  const stations = every(raw.stations, asStationRef);
   const shifts = Array.isArray(raw.shifts) ? raw.shifts.map(asEntryShift) : null;
 
   if (
@@ -117,10 +214,16 @@ export function asStaffEntry(raw: unknown): StaffEntry | null {
     !text(mobile) ||
     !text(email) ||
     job === undefined ||
-    !text(station) ||
+    (raw.station !== null && station == null) ||
+    stations == null ||
+    !text(stationRemoved) ||
+    typeof leads !== 'boolean' ||
+    typeof floorLead !== 'boolean' ||
     shifts == null ||
     shifts.some((one) => one == null) ||
     !LINKS.includes(link as StaffLink) ||
+    !text(linkBy) ||
+    !text(linkAt) ||
     typeof contactsErased !== 'boolean'
   )
     return null;
@@ -132,8 +235,14 @@ export function asStaffEntry(raw: unknown): StaffEntry | null {
     email,
     job,
     station,
+    stations,
+    stationRemoved,
+    leads,
+    floorLead,
     shifts: shifts as StaffEntryShift[],
     link: link as StaffLink,
+    linkBy,
+    linkAt,
     contactsErased,
   };
 }
@@ -170,14 +279,74 @@ function every<T>(raw: unknown, read: (one: unknown) => T | null): T[] | null {
   return rows.every((row) => row != null) ? (rows as T[]) : null;
 }
 
-/** The roster, jobs and shifts, or null when any row is not one this client knows. */
+function asStationPlace(raw: unknown): StationPlace | null {
+  if (!isRecord(raw)) return null;
+  const { id, name, pass, people, lead, dishes } = raw;
+
+  return typeof id === 'string' &&
+    typeof name === 'string' &&
+    typeof pass === 'boolean' &&
+    strings(people) &&
+    text(lead) &&
+    typeof dishes === 'number'
+    ? { id, name, pass, people, lead, dishes }
+    : null;
+}
+
+function asStationSection(raw: unknown): StationSection | null {
+  if (!isRecord(raw)) return null;
+  const { id, name, people, lead } = raw;
+  const tables = every(raw.tables, asStationTable);
+
+  return typeof id === 'string' &&
+    typeof name === 'string' &&
+    tables != null &&
+    strings(people) &&
+    text(lead)
+    ? { id, name, tables, people, lead }
+    : null;
+}
+
+function asCourseItem(raw: unknown): { name: string; dishedAt: string } | null {
+  if (!isRecord(raw)) return null;
+  const { name, dishedAt } = raw;
+
+  return typeof name === 'string' && typeof dishedAt === 'string' ? { name, dishedAt } : null;
+}
+
+function asStationCourse(raw: unknown): StationCourse | null {
+  if (!isRecord(raw)) return null;
+  const { id, name } = raw;
+  const items = every(raw.items, asCourseItem);
+
+  return typeof id === 'string' && typeof name === 'string' && items != null
+    ? { id, name, items }
+    : null;
+}
+
+export function asStaffStations(raw: unknown): StaffStations | null {
+  if (!isRecord(raw)) return null;
+  const places = every(raw.places, asStationPlace);
+  const sections = every(raw.sections, asStationSection);
+  const courses = every(raw.courses, asStationCourse);
+  const { floorLead, walk } = raw;
+
+  return places == null || sections == null || courses == null || !text(floorLead) || !strings(walk)
+    ? null
+    : { places, sections, floorLead, courses, walk };
+}
+
+/** The roster, jobs, shifts and stations, or null when any row is not one this client knows. */
 export function asStaffPlan(raw: unknown): StaffPlan | null {
   if (!isRecord(raw)) return null;
   const staff = every(raw.staff, asStaffEntry);
   const jobs = every(raw.jobs, asStaffJob);
   const shifts = every(raw.shifts, asStaffShift);
+  const stations = asStaffStations(raw.stations);
 
-  return staff == null || jobs == null || shifts == null ? null : { staff, jobs, shifts };
+  return staff == null || jobs == null || shifts == null || stations == null
+    ? null
+    : { staff, jobs, shifts, stations };
 }
 
 /** The whole roster in roster order, or null when any row is not one this client knows. */
@@ -186,4 +355,19 @@ export function asStaffRoster(raw: unknown): StaffEntry[] | null {
   const rows = raw.staff.map(asStaffEntry);
 
   return rows.every((row) => row != null) ? (rows as StaffEntry[]) : null;
+}
+
+/** Where a person's own link stands (sc-3912). Nothing about the person or the event reaches a caller before sign-in (sc-4235) beyond when the link opens, in the event's offset; `from` is null while they have no shift. */
+export type StaffLinkWindow =
+  { state: 'open' } | { state: 'ended' } | { state: 'not_yet'; from: string | null };
+
+export function asStaffLinkWindow(raw: unknown): StaffLinkWindow | null {
+  if (typeof raw !== 'object' || raw == null || !('state' in raw)) return null;
+  if (raw.state === 'open' || raw.state === 'ended') return { state: raw.state };
+  if (raw.state === 'not_yet') {
+    if (!('from' in raw)) return { state: 'not_yet', from: null };
+    if (typeof raw.from === 'string') return { state: 'not_yet', from: raw.from };
+  }
+
+  return null;
 }

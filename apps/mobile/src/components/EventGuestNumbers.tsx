@@ -68,7 +68,7 @@ function Numbers({ eventId, onOpen }: { eventId: string; onOpen: (choice: Choice
   useEffect(
     () =>
       followReadingAgain(
-        realtimeTopic('EventHeadcount', eventId),
+        [realtimeTopic('EventHeadcount', eventId), realtimeTopic('EventCheckIn', eventId)],
         () => api.guestsSubscription(eventId),
         read,
         READ_AGAIN_MS,

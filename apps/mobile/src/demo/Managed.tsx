@@ -5,7 +5,15 @@ import { TextAction } from '../components/Summary.tsx';
 import { MANAGED_WORDS as M } from './settings/DataWords.ts';
 
 /** sc-563: where a membership path ends for an address its home organisation manages, the "i" on Surf grey and the way out. */
-export function ManagedBanner({ onChange, testID }: { onChange?: () => void; testID: string }) {
+export function ManagedBanner({
+  onChange,
+  way = true,
+  testID,
+}: {
+  onChange?: () => void;
+  way?: boolean;
+  testID: string;
+}) {
   return (
     <Notice
       tone="quiet"
@@ -15,11 +23,13 @@ export function ManagedBanner({ onChange, testID }: { onChange?: () => void; tes
       detail={M.single}
       announce
       actions={
-        <TextAction
-          label={M.change}
-          onPress={onChange ?? (() => router.push('/demo/settings/account'))}
-          testID={`${testID}.change`}
-        />
+        way ? (
+          <TextAction
+            label={M.change}
+            onPress={onChange ?? (() => router.push('/demo/settings/account'))}
+            testID={`${testID}.change`}
+          />
+        ) : undefined
       }
     />
   );

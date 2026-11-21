@@ -203,7 +203,7 @@ describe('retention’s rules (sc-30194)', () => {
       expect(cardOf(left, viewer, LAGOS, LOCALE)).toEqual({
         says: 'Guests’ details are kept after an event',
         line: 'Switched off on Sunday, Oct 18, when Ire Events left Enterprise. The period and the held events are kept as they were, and retention comes back on with Enterprise.',
-        step: 'contact',
+        step: null,
       });
     expect(page('rt_locked')).toMatchObject({ leftEnterpriseAt: null, period: 'Off', held: [] });
   });

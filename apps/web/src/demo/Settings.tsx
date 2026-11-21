@@ -30,6 +30,7 @@ import { PersonalTile } from './SchemeArt.tsx';
 import { underSavedName, useSavedNames } from './savedName.ts';
 import { Security } from './Security.tsx';
 import { SignInRules } from './SignInRules.tsx';
+import { SingleSignOn } from './SingleSignOn.tsx';
 import { Vendors } from './Vendors.tsx';
 import { vendorsViewerKey } from './vendors.ts';
 import { SectionTile, SettingsSections } from '../components/SettingsList.tsx';
@@ -60,10 +61,12 @@ export function Settings({
   open = 'members',
   reminders = false,
   page = 'hub',
+  sso = false,
 }: {
   open?: Drawn;
   reminders?: boolean;
   page?: DataControlPage;
+  sso?: boolean;
 }) {
   const [params] = useSearchParams();
   const state = params.get('state') ?? '';
@@ -137,6 +140,14 @@ export function Settings({
                 <Personalisation key={`${viewer.key}:${state}`} state={state} tell={tell} />
               ) : open === 'general' ? (
                 <General key={`${viewer.key}:${state}`} viewer={viewer} state={state} tell={tell} />
+              ) : open === 'signInRules' && sso ? (
+                <SingleSignOn
+                  key={`sso:${viewer.key}:${state}:${params.get('plan') ?? ''}`}
+                  viewer={viewer}
+                  state={state}
+                  plan={params.get('plan') === 'free' ? 'free' : 'enterprise'}
+                  tell={tell}
+                />
               ) : open === 'signInRules' ? (
                 <SignInRules
                   key={`${viewer.key}:${state}`}

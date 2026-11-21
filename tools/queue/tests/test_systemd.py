@@ -76,6 +76,12 @@ class Web(unittest.TestCase):
             systemd.Linux().install("/q/sq/sq", "/c/env", "python3")
         return [c.args[0] for c in systemctl.call_args_list]
 
+    def test_the_page_is_restarted_only_if_it_runs(self):
+        with mock.patch.object(systemd, "systemctl") as systemctl:
+            systemd.Linux().restart_web()
+        self.assertEqual([c.args for c in systemctl.call_args_list],
+                         [("try-restart", "soirely-web.service")])
+
     def test_with_web_set_its_page_is_a_service_that_restarts(self):
         calls = self.install(web={"listen": "0.0.0.0"})
         text = self.unit.read_text()
@@ -127,17 +133,25 @@ class Launch(unittest.TestCase):
 
 
 class ClaudeDaemon(unittest.TestCase):
-    def daemon(self, statuses):
-        calls, said = [], iter(statuses)
+    def daemon(self, statuses, **env):
+        calls, said, self.envs = [], iter(statuses), []
 
-        def run(argv, **_):
+        def run(argv, **kwargs):
             calls.append(argv)
+            self.envs.append(kwargs.get("env"))
             out = next(said) if argv[:3] == ["claude", "daemon", "status"] else ""
             return subprocess.CompletedProcess(argv, 0, out, "")
 
-        systemd.Linux().claude_daemon({"CLAUDE_CONFIG_DIR": "/home/x/.claude-2"}, run,
-                                      sleep=lambda _: None)
+        systemd.Linux().claude_daemon(dict({"CLAUDE_CONFIG_DIR": "/home/x/.claude-2"}, **env),
+                                      run, sleep=lambda _: None)
         return [argv for argv in calls if argv[0] == "systemd-run"]
+
+    def test_the_daemon_is_given_the_accounts_token_by_name_never_on_the_command_line(self):
+        started = self.daemon(["Daemon not running", "Daemon running"],
+                              CLAUDE_CODE_OAUTH_TOKEN="secret")
+        self.assertIn("--setenv=CLAUDE_CODE_OAUTH_TOKEN", started[0])
+        self.assertFalse(any("secret" in arg for arg in started[0]))
+        self.assertEqual(self.envs[-1]["CLAUDE_CODE_OAUTH_TOKEN"], "secret")
 
     def test_a_running_daemon_is_left_alone(self):
         self.assertEqual(self.daemon(["Daemon running, pid 42"]), [])

@@ -119,12 +119,11 @@ export function membersSayIn(locale: string): MembersSay {
   const format = (options: Intl.DateTimeFormatOptions) =>
     new Intl.DateTimeFormat(locale, { ...options, timeZone: 'UTC' });
   const date = format({ month: 'short', day: 'numeric', year: 'numeric' });
-  const dayOnly = format({ month: 'short', day: 'numeric' });
   const day = format({ weekday: 'long', month: 'short', day: 'numeric' });
 
   return {
     date: (at) => date.format(new Date(`${at}T00:00Z`)),
-    day: (at) => dayOnly.format(new Date(`${at}T00:00Z`)),
+    day: (at) => day.format(new Date(`${at}T00:00Z`)),
     // The sample's deadlines are wall clock in Lagos, so they are read in UTC and named WAT.
     deadline: (at) => `${day.format(new Date(`${at}Z`))} at ${writtenTime(at, locale)} WAT`,
   };

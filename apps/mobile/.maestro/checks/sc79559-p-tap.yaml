@@ -1,0 +1,10 @@
+# sc-79559: one tap on the sidebar pill opens Where are you working?
+appId: host.exp.Exponent
+---
+- setOrientation: LANDSCAPE_LEFT
+- openLink: ${METRO_URL}/--/
+- extendedWaitUntil: { visible: 'QA Organisation|Ire Events.*', timeout: 30000, optional: true }
+- waitForAnimationToEnd: { timeout: 8000 }
+- tapOn: { id: 'home.switchOrganisation' }
+- waitForAnimationToEnd: { timeout: 8000 }
+- takeScreenshot: p-tap

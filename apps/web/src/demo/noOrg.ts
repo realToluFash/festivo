@@ -22,7 +22,6 @@ export function noOrgStateOf(name: string | null): NoOrgState | null {
 }
 
 export const NO_ORG = {
-  checkIn: 'Check guests in',
   overview: 'Overview',
   guests: 'Guests',
   schedule: 'Schedule',
@@ -35,9 +34,9 @@ export const NO_ORG = {
   later: (what: string) => `${what} has its own design.`,
 } as const;
 
-export type NoOrgArea = 'checkIn' | 'overview' | 'guests' | 'schedule' | 'seating' | 'people';
+export type NoOrgArea = 'overview' | 'guests' | 'schedule' | 'seating' | 'people';
 
-/** What a level opens (sc-72): Can view reads the event; Can check guests in has Check guests in first. */
+/** What a level opens (sc-72): both levels read the event; at a desk nothing checks guests in (sc-1454, Added 18 and 19 Nov). */
 const VIEW_AREAS: readonly NoOrgArea[] = ['overview', 'guests', 'schedule', 'seating', 'people'];
 
 export interface NoOrgStart {
@@ -64,7 +63,7 @@ export function noOrgStart(state: NoOrgState): NoOrgStart {
     initials,
     tone,
     code: checkIn ? BAR : CLOAKROOM,
-    areas: checkIn ? ['checkIn', ...VIEW_AREAS] : VIEW_AREAS,
+    areas: VIEW_AREAS,
     menu: state === 'no-org-menu',
     onEvent:
       doorStartOf({ state: 'code-two', code: null, hold: null, print: null })?.onEvent.length ?? 0,

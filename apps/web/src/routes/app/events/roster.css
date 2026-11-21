@@ -1,4 +1,10 @@
 /* The Roster on the event's Staff page (sc-3906), as its demo draws it: src/demo/roster.css, with the menu's docked panel and the stations' card it borrows. */
+
+/* The card scrolls, not Settings' desk-page inside it: a desk-page that never scrolls holds its sticky children where they sit, so the bar stayed below the fold on a long roster (sc-3912, #78264). */
+.rs.desk-page {
+  overflow: visible;
+}
+
 .rs .mn-page {
   display: flex;
   flex-direction: column;
@@ -32,6 +38,33 @@
   background: var(--colorInset);
   color: var(--colorInk);
   font: 400 14px/1.45 var(--fontFamily);
+}
+
+.rs-gone {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceXxs);
+}
+
+.rs-gone-now {
+  color: var(--colorInkSecondary);
+}
+
+.rs-gone-why {
+  display: inline-flex;
+  align-items: flex-start;
+  gap: var(--spaceXs);
+  color: var(--colorAttentionText);
+  font: var(--typeSmallStrong);
+}
+
+.rs-gone-why > svg {
+  flex: none;
+  margin-top: 2px;
+}
+
+.rs-facts dd > .rs-gone-why {
+  margin-top: var(--spaceXs);
 }
 
 .rs .mn-lock svg {
@@ -75,7 +108,7 @@
   display: flex;
   flex: none;
   flex-direction: column;
-  width: 400px;
+  width: 360px;
   max-height: calc(100vh - 140px);
   border: 1px solid var(--colorBorder);
   border-radius: var(--radiusCardDesktop);
@@ -182,6 +215,11 @@
   overflow-x: auto;
 }
 
+.rs-frame:focus-visible {
+  outline: 2px solid var(--colorAccent);
+  outline-offset: 2px;
+}
+
 .rs-table {
   width: 100%;
   border-collapse: collapse;
@@ -217,6 +255,19 @@
 
 .rs-table td.rs-shift {
   white-space: nowrap;
+}
+
+/* With the person's panel open at 1280 × 800 the Roster had about 470 px and cut its Link column (sc-3912, #78267): a shift breaks only after its day and before its end time, and the cells close up to 8 px with none after the last, as the demo does. */
+.rs .mn-split:has(> .mn-panel) .rs-frame > .rs-table :is(thead th, tbody th, tbody td) {
+  padding-right: var(--spaceSm);
+}
+
+.rs .mn-split:has(> .mn-panel) .rs-frame > .rs-table :is(th, td):last-child {
+  padding-right: 0;
+}
+
+.rs .mn-split:has(> .mn-panel) .rs-table td.rs-shift {
+  white-space: normal;
 }
 
 .rs-table tbody td.rs-quiet {
@@ -433,6 +484,25 @@
   }
 }
 
+/* From 961 to 1279 px, until the docked Roster keeps whole words at 1280 (sc-71607), an open person or form comes before the Roster at the card's width, as its demo's wideDesk.css (sc-73291); up to 960 narrowDesk.css already does. */
+@media (60rem < width < 80rem) {
+  .rs .mn-split:has(> .mn-panel) {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .rs .mn-split > .mn-panel {
+    position: static;
+    order: -1;
+    width: auto;
+    max-height: none;
+  }
+
+  .rs .mn-split > .mn-panel .mn-panel-body {
+    overflow: visible;
+  }
+}
+
 @media (width <= 720px) {
   .rs.desk-page {
     padding: var(--spaceXl) var(--spaceLg) var(--space3xl);
@@ -448,16 +518,99 @@
   .rs .sn-card-names {
     flex-basis: 12rem;
   }
+
+  /* At 400% zoom a cell breaks only between words and the frame scrolls further (sc-70540); the global overflow-wrap: anywhere on span and button would let a column shrink to one letter. The Coverage table is an .rs-table too, so these stay inside the Roster's frame. */
+  .rs-frame > .rs-table :is(th, td),
+  .rs-frame > .rs-table :is(th, td) * {
+    overflow-wrap: normal;
+  }
+
+  .rs-frame > .rs-table thead th:nth-child(2),
+  .rs-frame > .rs-table thead th:nth-child(3) {
+    min-width: 128px;
+  }
+
+  .rs-frame > .rs-table thead th:nth-child(5) {
+    min-width: 168px;
+  }
+
+  /* Only here: with the panel docked at 1280 px, a one-line empty Shift cell would squeeze Link until its words break letter by letter (sc-71607). */
+  .rs-frame > .rs-table td.rs-no-shift {
+    white-space: nowrap;
+  }
 }
 
 .rs-more {
   margin-left: var(--spaceXs);
   color: var(--colorInkSecondary);
   font: var(--typeSmallStrong);
+  white-space: nowrap;
 }
 
 .rs-shifts {
   margin: 0;
   padding: 0;
   list-style: none;
+}
+
+/* A person's own link (sc-3912): the word, who and when, Copy link and Mark as sent in the row, and the link to copy by hand under it. */
+.rs-link-cell,
+.rs-link-fact {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--spaceXxs);
+}
+
+.rs-trail {
+  color: var(--colorInkSecondary);
+  font: 500 13px/1.4 var(--fontFamily);
+}
+
+.rs-link-acts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spaceXxs) var(--spaceMd);
+}
+
+.rs-missed,
+.rs-held-says {
+  display: inline-flex;
+  align-items: flex-start;
+  gap: var(--spaceXs);
+  margin: 0;
+  color: var(--colorBrokenText);
+  font: 600 14px/1.45 var(--fontFamily);
+}
+
+.rs-table tbody tr.rs-held-row td {
+  padding-top: 0;
+  border-top: 0;
+}
+
+.rs-held {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceXs);
+  padding: var(--spaceMd);
+  border: 1px solid var(--colorInsetBorder);
+  border-radius: var(--radiusField);
+  background: var(--colorInset);
+}
+
+.rs-held-label {
+  color: var(--colorInk);
+  font: 600 14px/1.4 var(--fontFamily);
+}
+
+.rs-held-field {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: var(--sizeHit);
+  padding: 0 var(--spaceMd);
+  border: 1px solid var(--colorFieldBorder);
+  border-radius: var(--radiusField);
+  background: var(--colorCard);
+  color: var(--colorInk);
+  font: var(--typeBody);
 }

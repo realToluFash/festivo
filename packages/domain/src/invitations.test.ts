@@ -7,7 +7,9 @@ import {
   invitationWording,
   organisationStep,
   refusalBody,
+  stillListed,
   waitingInvitations,
+  withManaged,
 } from './invitations.ts';
 
 describe('invitations waiting in the product', () => {
@@ -28,6 +30,50 @@ describe('invitations waiting in the product', () => {
       }),
     ).toBe(0);
     expect(waitingInvitations(two, { kbc: { kind: 'declined' } })).toBe(1);
+  });
+
+  it('stops counting one refused because the address is managed, as the pill says after Accept and join (sc-73032)', () => {
+    const managed: InvitationOutcome = {
+      kind: 'managed',
+      organisation: 'Ìrè Events',
+      message: 'Your address is managed by Ìrè Events.',
+    };
+
+    expect(waitingInvitations(two, { adw: managed })).toBe(1);
+  });
+
+  it('reads one a managed account cannot accept as refused from the moment it is listed, and keeps it listed (sc-73668)', () => {
+    const listed = [
+      {
+        id: 'adw',
+        managed: {
+          organisation: { name: 'Ìrè Events' },
+          message: 'Your address is managed by Ìrè Events.',
+        },
+      },
+      { id: 'kbc', managed: null },
+    ];
+    const known = withManaged(listed, {});
+
+    expect(known).toEqual({
+      adw: {
+        kind: 'managed',
+        organisation: 'Ìrè Events',
+        message: 'Your address is managed by Ìrè Events.',
+      },
+    });
+    expect(waitingInvitations(listed, known)).toBe(1);
+    expect(stillListed(known.adw)).toBe(true);
+    expect(stillListed({ kind: 'declined' })).toBe(false);
+  });
+
+  it('counts it again once a later load no longer says it is managed', () => {
+    const freed = [
+      { id: 'adw', managed: null },
+      { id: 'kbc', managed: null },
+    ];
+
+    expect(waitingInvitations(freed, withManaged(freed, {}))).toBe(2);
   });
 
   it('holds a save while any accept or decline is in flight, and only then', () => {
@@ -103,6 +149,7 @@ describe('Your organisation, with invitations and domain offers', () => {
     offers: 0,
     own: false,
     joined: false,
+    managed: false,
   };
 
   it.each([
@@ -132,8 +179,33 @@ describe('Your organisation, with invitations and domain offers', () => {
       expect(step.showsSingleInvitation).toBe(single);
       expect(step.showsOffers).toBe(showsOffers);
       expect(step.asksForOrganisation).toBe(fields);
+      expect(step.managedInstead).toBe(false);
     },
   );
+
+  it('puts the banner where the fields were for a managed account with nothing to join (sc-563)', () => {
+    const step = organisationStep({ ...base, managed: true });
+
+    expect(step.heading).toBe('organisation');
+    expect(step.asksForOrganisation).toBe(false);
+    expect(step.managedInstead).toBe(true);
+  });
+
+  it('keeps a managed account on its domain offer, with no organisation of its own to start', () => {
+    const step = organisationStep({ ...base, managed: true, offers: 1, own: true });
+
+    expect(step.showsOffers).toBe(true);
+    expect(step.singleOffer).toBe(true);
+    expect(step.asksForOrganisation).toBe(false);
+    expect(step.managedInstead).toBe(false);
+  });
+
+  it('leaves an open invitation in front of a managed account', () => {
+    const step = organisationStep({ ...base, managed: true, invitations: 1, stillOpen: 1 });
+
+    expect(step.invited).toBe(true);
+    expect(step.managedInstead).toBe(false);
+  });
 
   it('keeps the rows and their notices once the last invitation is answered any way but joining', () => {
     const step = organisationStep({ ...base, invitations: 2, stillOpen: 0 });

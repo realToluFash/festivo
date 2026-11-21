@@ -61,4 +61,34 @@ export const TEXT_SIZE_BOARDS: readonly TextSizeBoard[] = [
     what: 'It continues after its @',
     href: '/demo/text-size?size=android&lang=es&email=long',
   },
+  {
+    title: 'Home’s This week · default size · French',
+    what: 'As on main for this sample week: the strip of seven days over the agenda (sc-13281)',
+    href: '/demo/text-size?part=week&size=default&lang=fr',
+  },
+  {
+    title: 'Home’s This week · iPhone ninth step · French',
+    what: 'qa3’s state: no strip; the agenda alone, each time over its row, every word whole',
+    href: '/demo/text-size?part=week&size=iphone&lang=fr',
+  },
+  {
+    title: 'Home’s This week · iPhone twelfth step · French',
+    what: 'The same at the largest size',
+    href: '/demo/text-size?part=week&size=twelfth&lang=fr',
+  },
+  {
+    title: 'Home’s This week · iPhone ninth step · French · nothing this week',
+    what: 'No strip; Rien de prévu cette semaine and Next up, its picture given up',
+    href: '/demo/text-size?part=week&size=iphone&lang=fr&week=nothing',
+  },
+  {
+    title: 'Home’s This week · Android 200% · French',
+    what: 'No strip, as on the iPhone',
+    href: '/demo/text-size?part=week&size=android&lang=fr',
+  },
+  {
+    title: 'A phone number · this phone’s text size · French',
+    what: 'qa3’s state (#78429): from the accessibility sizes on, Indicatif over Numéro de portable, each full width, so +44 Royaume-Uni stays whole; below them, side by side as on main. Royaume-Uni, 12, Envoyer un code à ce numéro: the refusal line under both boxes, the number box red. Set the size on the phone itself: iOS Larger Text at its eighth step or over, or Android’s font size at 200%',
+    href: '/demo/text-size?part=phone&lang=fr',
+  },
 ];

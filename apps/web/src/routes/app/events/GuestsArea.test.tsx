@@ -144,6 +144,9 @@ function headcountOf({ guests }: Listed) {
           hostNotComing: held('notComing'),
         },
         declined: count('notComing'),
+        walkIns: 0,
+        attended: 0,
+        expected: count('coming') + held('coming'),
       },
       byGroup: [],
       byDietaryNeed: { addsUp: false, needs: [] },
@@ -1779,6 +1782,21 @@ describe('A guest’s details, and correcting them (sc-3773)', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Save' }));
 
     expect(await screen.findByText('Not saved. Nothing was changed. Try again.')).toBeDefined();
+    expect(field('Full name').value).toBe('Ngozi Okafor');
+  });
+
+  it('says in the API’s words why an arrived companion cannot be taken off, and keeps the form', async () => {
+    const line = 'A companion of Ngozi Eze has arrived, so they stay on the list.';
+    await editNgozi({
+      'PUT /api/events/ev_1/guests/g_1': () =>
+        problem('guest_arrived', 409, { detail: line, why: 'companionArrived' }),
+    });
+
+    type('Full name', 'Ngozi Okafor');
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+    expect(await screen.findByText(line)).toBeDefined();
+    expect(screen.queryByText('Not saved. Nothing was changed. Try again.')).toBeNull();
     expect(field('Full name').value).toBe('Ngozi Okafor');
   });
 
@@ -3851,6 +3869,39 @@ describe('Remove from the list, with a short undo (sc-3774)', () => {
     await waitFor(() => expect(document.activeElement).toBe(title));
   });
 
+  it('reads them again when a companion arrived first, and Back to their details lands on that companion (sc-1454)', async () => {
+    let arrived = false;
+    const ARRIVED = {
+      ...NGOZI_TWO,
+      companions: [
+        { ...NGOZI_TWO.companions[0], arrival: { at: '2030-11-14T15:10:00Z', by: 'Door' } },
+        NGOZI_TWO.companions[1],
+      ],
+    };
+    await removing({
+      'GET /api/events/ev_1/guests/g_1': () => tagged(arrived ? ARRIVED : NGOZI_TWO, '"1"'),
+      'DELETE /api/events/ev_1/guests/g_1': () => {
+        arrived = true;
+
+        return problem('guest_arrived', 409, { why: 'companionArrived' });
+      },
+    });
+
+    fireEvent.click(
+      within(screen.getByRole('alertdialog')).getByRole('button', { name: 'Remove' }),
+    );
+    fireEvent.click(await screen.findByRole('button', { name: 'Back to their details' }));
+
+    const companion = await waitFor(() => {
+      const row = column().querySelector('[data-focus="arrival-c_1"]');
+      expect(row).not.toBeNull();
+
+      return row;
+    });
+    await waitFor(() => expect(document.activeElement).toBe(companion));
+    expect(screen.queryByRole('alertdialog')).toBeNull();
+  });
+
   it('turns the open question into already removed when another host’s removal arrives live (#49283)', async () => {
     const before = config();
     __setConfig({ ...before, mercureUrl: 'http://hub.test/.well-known/mercure' });
@@ -3931,6 +3982,63 @@ describe('Remove from the list, with a short undo (sc-3774)', () => {
     );
 
     expect(within(column()).queryByRole('button', { name: 'Remove from the list' })).toBeNull();
+  });
+
+  async function editArrived(arrivedAt: readonly number[]) {
+    const companions = NGOZI_TWO.companions.map((one, at) =>
+      arrivedAt.includes(at)
+        ? { ...one, arrival: { at: '2030-11-14T15:10:00Z', by: 'Door' } }
+        : one,
+    );
+    await openNgozi({
+      'GET /api/events/ev_1/guests': () => json(listOf([{ ...NGOZI_ROW, companions }, AMAKA])),
+      'GET /api/events/ev_1/guests/g_1': () => tagged({ ...NGOZI_TWO, companions }, '"1"'),
+    });
+    fireEvent.click(within(column()).getByRole('button', { name: 'Edit' }));
+    await waitFor(() => expect(document.activeElement).toBe(field('Full name')));
+  }
+
+  function describedBy(input: HTMLElement): string {
+    return (input.getAttribute('aria-describedby') ?? '')
+      .split(' ')
+      .map((id) => document.getElementById(id)?.textContent ?? '')
+      .join(' | ');
+  }
+
+  it('offers no Remove on Edit guest for an arrived companion, and says why under their field (sc-1454)', async () => {
+    await editArrived([0, 1]);
+
+    expect(screen.queryByRole('button', { name: 'Remove Obi Eze' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Remove Ngozi Eze’s guest · 2' })).toBeNull();
+    expect(describedBy(field('Companion’s full name, 1 of 2'))).toBe(
+      'Obi Eze has arrived, so they stay on the list.',
+    );
+    expect(describedBy(field('Companion’s full name, 2 of 2'))).toBe(
+      'Guest of Ngozi Eze · 2 has arrived, so they stay on the list.',
+    );
+  });
+
+  it('offers Remove on Edit guest for a companion who has not arrived', async () => {
+    await editArrived([0]);
+
+    expect(screen.queryByRole('button', { name: 'Remove Obi Eze' })).toBeNull();
+    expect(screen.getByRole('button', { name: 'Remove Ngozi Eze’s guest · 2' })).toBeDefined();
+    expect(field('Companion’s full name, 2 of 2').getAttribute('aria-describedby')).toBeNull();
+  });
+
+  it('Fewer places never drops an arrived place, named or not, and refuses in its own words (sc-1454)', async () => {
+    await editArrived([1]);
+    const places = screen.getByRole('spinbutton', { name: 'Places for companions' });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Fewer places' }));
+
+    expect(
+      screen.getByText(
+        'Ngozi Eze already has 2 named or arrived. Arrived companions stay on the list.',
+      ),
+    ).toBeDefined();
+    expect(places.getAttribute('aria-invalid')).toBe('true');
+    expect((places as HTMLInputElement).value).toBe('2');
   });
 });
 
@@ -5325,5 +5433,403 @@ describe('Export (sc-3784)', () => {
       cleanup();
       vi.mocked(globalThis.fetch).mockRestore();
     }
+  });
+});
+
+describe('What adding them would cost (sc-86)', () => {
+  const ASK = 'POST /api/events/ev_1/budget/what-if';
+
+  function whatIf(heads: number, more: Record<string, unknown> = {}) {
+    const delta = 5000 * heads;
+
+    return {
+      currency: 'NGN',
+      confirmed: { from: '500000.00', to: '500000.00', delta: '0.00' },
+      potential: {
+        from: '700000.00',
+        to: `${700000 + delta}.00`,
+        delta: `${delta}.00`,
+      },
+      fullCostKnown: true,
+      lines: [
+        {
+          id: 'line_1',
+          label: 'Catering',
+          category: 'catering',
+          basis: 'per_head',
+          quantity: {
+            confirmed: { from: 100, to: 100 },
+            potential: { from: 140, to: 140 + heads },
+            reason: null,
+          },
+          known: true,
+          cost: {
+            confirmed: { from: '500000.00', to: '500000.00', delta: '0.00' },
+            potential: {
+              from: '700000.00',
+              to: `${700000 + delta}.00`,
+              delta: `${delta}.00`,
+            },
+          },
+        },
+      ],
+      ...more,
+    };
+  }
+
+  const naira = (amount: number) =>
+    new Intl.NumberFormat('en', {
+      style: 'currency',
+      currency: 'NGN',
+      maximumFractionDigits: 0,
+      minimumFractionDigits: 0,
+    })
+      .format(amount)
+      .replace(/\s/gu, ' ');
+
+  function answer(): HTMLElement {
+    return within(form()).getByRole('status', { name: 'What adding them would cost' });
+  }
+
+  /** The innermost element reading the text whole, though its figures are split into digit groups (sc-72618). */
+  function reading(text: string | RegExp) {
+    const reads = (element: Element) => {
+      const shown = (element.textContent ?? '').replace(/\s+/gu, ' ');
+
+      return typeof text === 'string' ? shown === text : text.test(shown);
+    };
+
+    return (_: string, element: Element | null) =>
+      element != null && reads(element) && ![...element.children].some(reads);
+  }
+
+  it('shows the rise on the upper figure for the guest before Add guest is pressed', async () => {
+    const sent = await opened({
+      [ASK]: (body) => json(whatIf((body as { changes: { by: number }[] }).changes[0]?.by ?? 0)),
+    });
+
+    expect(sent.filter((one) => one.line === ASK).at(-1)?.body).toEqual({
+      changes: [{ change: 'guests', by: 1 }],
+    });
+    await waitFor(() =>
+      expect(within(answer()).getByText(reading(`+${naira(5000)} if all come`))).toBeDefined(),
+    );
+    expect(
+      within(answer()).getByText(
+        reading(
+          `Once they are invited, that would make ${naira(705000)} in total. Settled, it stays ${naira(500000)} until they reply.`,
+        ),
+      ),
+    ).toBeDefined();
+    expect(
+      within(answer()).getByText(
+        reading(`${naira(700000)} → ${naira(705000)} · 140 → 141 if all come`),
+      ),
+    ).toBeDefined();
+    expect(answer().getAttribute('aria-busy')).toBe('false');
+  });
+
+  it('keeps up with the companions, and never shows an answer for an earlier count', async () => {
+    const waiting: ((response: Response) => void)[] = [];
+    await opened({
+      [ASK]: (body) => {
+        const heads = (body as { changes: { by: number }[] }).changes[0]?.by ?? 0;
+
+        return heads === 1
+          ? new Promise<Response>((resolve) => waiting.push(resolve))
+          : json(whatIf(heads));
+      },
+    });
+
+    expect(answer().getAttribute('aria-busy')).toBe('true');
+    fireEvent.click(within(form()).getByRole('button', { name: 'More places' }));
+
+    await waitFor(() =>
+      expect(within(answer()).getByText(reading(`+${naira(10000)} if all come`))).toBeDefined(),
+    );
+    await act(async () => waiting.forEach((resolve) => resolve(json(whatIf(1)))));
+
+    expect(within(answer()).getByText(reading(`+${naira(10000)} if all come`))).toBeDefined();
+    expect(within(answer()).queryByText(reading(`+${naira(5000)} if all come`))).toBeNull();
+  });
+
+  it('says the full cost is not known when a cost it moves has no price', async () => {
+    await opened({
+      [ASK]: () =>
+        json(
+          whatIf(1, {
+            fullCostKnown: false,
+            lines: [
+              {
+                id: 'line_2',
+                label: 'Drinks package',
+                category: 'catering',
+                basis: 'per_head',
+                quantity: {
+                  confirmed: { from: 100, to: 100 },
+                  potential: { from: 140, to: 141 },
+                  reason: null,
+                },
+                known: false,
+                cost: null,
+              },
+            ],
+          }),
+        ),
+    });
+
+    await waitFor(() =>
+      expect(
+        within(answer()).getByText('Full cost not known: 1 cost it moves has no price yet.'),
+      ).toBeDefined(),
+    );
+    expect(within(answer()).getByText('Not known')).toBeDefined();
+  });
+
+  it('lists the priced costs it moves before the ones with no price, whatever their order', async () => {
+    const priced = whatIf(1).lines[0];
+    await opened({
+      [ASK]: () =>
+        json(
+          whatIf(1, {
+            fullCostKnown: false,
+            lines: [
+              {
+                id: 'line_2',
+                label: 'Drinks package',
+                category: 'catering',
+                basis: 'per_head',
+                quantity: {
+                  confirmed: { from: 100, to: 100 },
+                  potential: { from: 140, to: 141 },
+                  reason: null,
+                },
+                known: false,
+                cost: null,
+              },
+              priced,
+            ],
+          }),
+        ),
+    });
+
+    await waitFor(() => expect(within(answer()).getByText('Not known')).toBeDefined());
+    const rows = within(answer())
+      .getAllByRole('listitem')
+      .map((row) => row.textContent ?? '');
+    expect(rows[0]).toContain('Catering');
+    expect(rows[1]).toContain('Drinks package');
+  });
+
+  it('reads Not known if all come when every cost it moves has no price, never +0', async () => {
+    await opened({
+      [ASK]: () =>
+        json(
+          whatIf(1, {
+            fullCostKnown: false,
+            confirmed: { from: '0.00', to: '0.00', delta: '0.00' },
+            potential: { from: '0.00', to: '0.00', delta: '0.00' },
+            lines: [
+              {
+                id: 'line_2',
+                label: 'Catering',
+                category: 'catering',
+                basis: 'per_head',
+                quantity: {
+                  confirmed: { from: 0, to: 0 },
+                  potential: { from: 0, to: 1 },
+                  reason: null,
+                },
+                known: false,
+                cost: null,
+              },
+            ],
+          }),
+        ),
+    });
+
+    await waitFor(() =>
+      expect(
+        within(answer()).getByText('Full cost not known: 1 cost it moves has no price yet.'),
+      ).toBeDefined(),
+    );
+    expect(within(answer()).getByText('Not known if all come')).toBeDefined();
+    expect(answer().textContent).not.toMatch(/0 if all come/u);
+    expect(answer().querySelector('.da-up')).toBeNull();
+  });
+
+  it('asks again after a guest is added, and shows the figure it now lands on', async () => {
+    let added = false;
+    const sent = await opened({
+      [ASK]: () =>
+        json(
+          added
+            ? whatIf(1, { potential: { from: '705000.00', to: '710000.00', delta: '5000.00' } })
+            : whatIf(1),
+        ),
+      'POST /api/events/ev_1/guests': () => {
+        added = true;
+
+        return json({ guest: guest('g_ana', 'Ana Silva') }, 201);
+      },
+    });
+
+    await waitFor(() =>
+      expect(
+        within(answer()).getByText(
+          reading(new RegExp(`Once they are invited, that would make ${naira(705000)}`, 'u')),
+        ),
+      ).toBeDefined(),
+    );
+    const asked = sent.filter((one) => one.line === ASK).length;
+    type('Full name', 'Ana Silva');
+    fireEvent.click(addButton());
+
+    await waitFor(() =>
+      expect(
+        within(answer()).getByText(
+          reading(new RegExp(`Once they are invited, that would make ${naira(710000)}`, 'u')),
+        ),
+      ).toBeDefined(),
+    );
+    expect(sent.filter((one) => one.line === ASK).length).toBeGreaterThan(asked);
+  });
+
+  it('says No change when nothing is counted per guest', async () => {
+    await opened({
+      [ASK]: () =>
+        json(
+          whatIf(1, {
+            potential: { from: '0.00', to: '0.00', delta: '0.00' },
+            lines: [],
+          }),
+        ),
+    });
+
+    await waitFor(() => expect(within(answer()).getByText('No change')).toBeDefined());
+    expect(
+      within(answer()).getByText('Nothing in this budget is counted per guest.'),
+    ).toBeDefined();
+  });
+
+  it('shows a change under one unit in the minor unit, never +0', async () => {
+    await opened({
+      [ASK]: () =>
+        json(
+          whatIf(1, {
+            currency: 'GBP',
+            potential: { from: '10.00', to: '10.40', delta: '0.40' },
+          }),
+        ),
+    });
+
+    await waitFor(() =>
+      expect(within(answer()).getByText(reading('+£0.40 if all come'))).toBeDefined(),
+    );
+  });
+
+  /** sc-71226 bullet 5: 100 Coming, one per_head line at 999999999999999.99, one guest added. */
+  function huge() {
+    const rise = {
+      from: '99999999999999999.00',
+      to: '100999999999999998.99',
+      delta: '999999999999999.99',
+    };
+
+    return whatIf(1, {
+      currency: 'GBP',
+      confirmed: { from: '99999999999999999.00', to: '99999999999999999.00', delta: '0.00' },
+      potential: rise,
+      lines: [
+        {
+          ...whatIf(1).lines[0],
+          label: 'Dinner',
+          quantity: {
+            confirmed: { from: 100, to: 100 },
+            potential: { from: 100, to: 101 },
+            reason: null,
+          },
+          cost: { confirmed: { ...rise, to: rise.from, delta: '0.00' }, potential: rise },
+        },
+      ],
+    });
+  }
+
+  it('reads a huge figure exactly, in whole units, and breaks it only between digit groups (sc-72618)', async () => {
+    await opened({ [ASK]: () => json(huge()) });
+
+    await waitFor(() =>
+      expect(
+        within(answer()).getByText(reading('+£1,000,000,000,000,000 if all come')),
+      ).toBeDefined(),
+    );
+    expect(
+      within(answer()).getByText(
+        reading(
+          'Once they are invited, that would make £100,999,999,999,999,999 in total. Settled, it stays £99,999,999,999,999,999 until they reply.',
+        ),
+      ),
+    ).toBeDefined();
+    expect(
+      within(answer()).getByText(
+        reading('£99,999,999,999,999,999 → £100,999,999,999,999,999 · 100 → 101 if all come'),
+      ),
+    ).toBeDefined();
+    const plus = answer().querySelector('.da-amount');
+    expect(plus?.textContent).toBe('+£1,000,000,000,000,000');
+    expect([...(plus?.querySelectorAll('.da-group') ?? [])].map((one) => one.textContent)).toEqual([
+      '+£1,',
+      '000,',
+      '000,',
+      '000,',
+      '000,',
+      '000',
+    ]);
+    expect(plus?.querySelectorAll('wbr')).toHaveLength(5);
+  });
+
+  it('reads the huge figures exactly in Spanish, the code kept with its last group (sc-72618)', async () => {
+    await opened({ [ASK]: () => json(huge()) });
+    await waitFor(() => expect(answer().querySelector('.da-amount')).not.toBeNull());
+    const shown = answer();
+    await act(() => i18next.changeLanguage('es'));
+    try {
+      await waitFor(() =>
+        expect(shown.querySelector('.da-amount')?.textContent).toBe(
+          '+1.000.000.000.000.000\u00a0GBP',
+        ),
+      );
+      const groups = [...shown.querySelectorAll('.da-group')].map((one) => one.textContent);
+      expect(groups).toContain('999\u00a0GBP');
+      expect(shown.textContent).toContain('100.999.999.999.999.999\u00a0GBP');
+      expect(shown.textContent).toContain('99.999.999.999.999.999\u00a0GBP');
+      expect(shown.textContent).not.toContain('101.000.000.000.000.000');
+    } finally {
+      await i18next.changeLanguage('en');
+    }
+  });
+
+  it('shows no answer when it cannot be fetched, and the form still adds', async () => {
+    await opened({ [ASK]: () => problem('internal_error', 500) });
+
+    await waitFor(() =>
+      expect(
+        within(form()).queryByRole('status', { name: 'What adding them would cost' }),
+      ).toBeNull(),
+    );
+    expect(addButton()).toBeDefined();
+  });
+
+  it('asks nothing and shows no answer to someone who cannot read the budget', async () => {
+    signedIn();
+    const sent = await onGuests(
+      { 'GET /api/events/ev_1/guests': () => json(listOf([NGOZI])) },
+      OWNER_PERMISSIONS.filter((one) => !one.startsWith('budget.')),
+    );
+    fireEvent.click(await screen.findByRole('button', { name: 'Add guest' }));
+    await waitFor(() => expect(document.activeElement).toBe(field('Full name')));
+
+    expect(screen.queryByText('What adding them would cost')).toBeNull();
+    expect(sent.some((one) => one.line === ASK)).toBe(false);
   });
 });

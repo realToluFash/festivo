@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domain\Organisation\Plan;
 
 use App\Audit\Auditor;
+use App\Domain\Billing\Catalogue\Catalogue;
 use App\Domain\Billing\Model\ChangedBy;
 use App\Domain\Billing\SubscriptionChanger;
 use App\Entity\Organisation;
@@ -30,6 +31,7 @@ final readonly class PlanChanger
         private EnterpriseSettings $enterpriseSettings,
         private SubscriptionRepository $subscriptionRepository,
         private SubscriptionChanger $subscriptionChanger,
+        private Catalogue $catalogue,
     ) {
     }
 
@@ -54,7 +56,8 @@ final readonly class PlanChanger
             return [];
         }
 
-        $switchedOff = $this->enterpriseSettings->switchedOff($organisation, $was, $plan);
+        $terms = $this->catalogue->soldTo($subscription);
+        $switchedOff = $this->enterpriseSettings->switchedOff($organisation, $terms->plan($was), $terms->plan($plan));
 
         $this->subscriptionChanger->changePlan($subscription, $plan, SubscriptionSource::Manual, ChangedBy::staff($agent, $reason), function () use ($organisation, $was, $plan, $agent, $reason, $switchedOff): void {
             $this->auditor->record(self::CHANGED, self::SUBJECT, $organisation->getId(), Actor::Agent, null, $agent, [

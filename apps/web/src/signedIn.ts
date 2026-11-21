@@ -2,6 +2,7 @@ import { type SignInOutcome, type TwoFactorChallenge, awaiting } from '@soirely/
 import { type NavigateFunction } from 'react-router';
 
 import { heldInvitation } from './heldInvitation.ts';
+import { takeHeldReturn } from './heldReturn.ts';
 import { adoptAccount, landingFor } from './session.ts';
 
 /** Where any sign-in lands: the code screen when two-factor asks for one, else where the account belongs. */
@@ -16,11 +17,21 @@ export async function landAfterSignIn(
 
   await adoptAccount(outcome.account);
 
+  // Two-factor was turned off to let them back in (sc-509): asked to set it up again before anything else.
+  if (outcome.account.twoFactorSetupPrompt) {
+    navigate('/two-factor/again', { replace: true });
+    return;
+  }
+
   const landing = landingFor(awaiting(outcome.account));
   const invitation = heldInvitation();
   // An address still to verify cannot answer an invitation, so that gate comes first.
-  const next = invitation != null && landing !== '/verify-email' ? `/join/${invitation}` : landing;
+  const next =
+    invitation != null && landing !== '/verify-email'
+      ? `/join/${invitation}`
+      : landing === '/app'
+        ? (takeHeldReturn() ?? landing)
+        : landing;
 
-  // Two-factor was turned off to let them back in (sc-509): asked to set it up again before anything else.
-  navigate(outcome.account.twoFactorSetupPrompt ? '/two-factor/again' : next, { replace: true });
+  navigate(next, { replace: true });
 }

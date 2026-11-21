@@ -6,7 +6,10 @@ import {
   DECIDE_STATES,
   ceilingsFor,
   decideKindOf,
+  exactWhole,
+  groupsOf,
   headline,
+  hugeWhatIf,
   linesFor,
   whatIf,
 } from './decide.ts';
@@ -86,5 +89,31 @@ describe('what a decision costs (sc-86, Budget-A-Ceiling row 4)', () => {
     expect(decideKindOf('decide_rise', null, 'failed')).toBe('none');
     expect(decideKindOf('decide_updating', 'ana', null)).toBe('updating');
     expect(decideKindOf('decide_none', null, null)).toBe('none');
+  });
+
+  it('answers the huge event exactly, as sc-71226 bullet 5 (sc-72618)', () => {
+    const answer = hugeWhatIf(1);
+
+    expect(answer.delta).toBe(99999999999999999n);
+    expect(answer.ifAll).toBe(10099999999999999899n);
+    expect(answer.settled).toBe(9999999999999999900n);
+    expect([answer.headsFrom, answer.headsTo]).toEqual([100, 101]);
+    expect(exactWhole(answer.delta, 'en-US', true)).toBe('£1,000,000,000,000,000');
+    expect(exactWhole(answer.ifAll, 'en-US')).toBe('£100,999,999,999,999,999');
+    expect(exactWhole(answer.settled, 'en-US')).toBe('£99,999,999,999,999,999');
+    expect(exactWhole(answer.settled, 'es-ES')).toBe('99.999.999.999.999.999\u00a0GBP');
+  });
+
+  it('rounds half up at any size, and under one unit in the minor unit (sc-72618)', () => {
+    expect(exactWhole(10199999999999999849n, 'en-US')).toBe('£101,999,999,999,999,998');
+    expect(exactWhole(10199999999999999850n, 'en-US')).toBe('£101,999,999,999,999,999');
+    expect(exactWhole(40n, 'en-US', true)).toBe('£0.40');
+    expect(exactWhole(27000n, 'en-US', true)).toBe('£270');
+  });
+
+  it('breaks a figure only after a group separator, its sign and code kept on', () => {
+    expect(groupsOf('+£1,000,000')).toEqual(['+£1,', '000,', '000']);
+    expect(groupsOf('99.999.999\u00a0GBP')).toEqual(['99.', '999.', '999\u00a0GBP']);
+    expect(groupsOf('£270')).toEqual(['£270']);
   });
 });

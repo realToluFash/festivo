@@ -73,6 +73,10 @@ services:
         arguments:
             $entitlementsCache: '@cache.entitlements'
 
+    App\Domain\Billing\Catalogue\Catalogue:
+        arguments:
+            $catalogueCache: '@cache.catalogue'
+
     # One adapter behind the port. Have I Been Pwned is the only corpus worth
     # querying and swapping it is this line plus a class.
     App\Domain\User\Interfaces\BreachedPasswordCheckerInterface: '@App\Integrations\Hibp\HibpBreachedPasswordChecker'
@@ -169,7 +173,19 @@ services:
     App\Domain\Organisation\Invitations\InvitationMailer:
         arguments:
             $webOrigin: '%env(CORS_WEB_ORIGIN)%'
+    App\Domain\Organisation\AuditLog\AuditExportMailer:
+        arguments:
+            $webOrigin: '%env(CORS_WEB_ORIGIN)%'
+    App\Domain\Organisation\Export\OrganisationExportMailer:
+        arguments:
+            $webOrigin: '%env(CORS_WEB_ORIGIN)%'
     App\Domain\Guest\Link\InvitationLinks:
+        arguments:
+            $webOrigin: '%env(CORS_WEB_ORIGIN)%'
+    App\Domain\Staff\Link\StaffLinks:
+        arguments:
+            $webOrigin: '%env(CORS_WEB_ORIGIN)%'
+    App\Domain\Event\DoorCode\DoorCodeLink:
         arguments:
             $webOrigin: '%env(CORS_WEB_ORIGIN)%'
     App\Domain\Organisation\Members\JoinRequestMailer:
@@ -236,6 +252,7 @@ services:
     App\Http\Access\Interfaces\OnboardingGateInterface: '@App\Domain\User\Onboarding\OnboardingGate'
 
     App\Http\Access\Interfaces\EventDirectoryInterface: '@App\Domain\Event\EventDirectory'
+    App\Http\Access\Interfaces\PlanFeaturesInterface: '@App\Domain\Billing\PlanFeatures'
 
     App\Domain\Event\Interfaces\ActiveEventsLimitInterface: '@App\Domain\Event\UnlimitedActiveEvents'
 

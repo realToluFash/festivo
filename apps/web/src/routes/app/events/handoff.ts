@@ -23,6 +23,7 @@ export const PAGE_NEEDS = {
   schedule: 'run_of_show.read',
   run: 'run_of_show.read',
   staff: 'staff.read',
+  budget: 'budget.read',
 } as const;
 
 function needsOf(page: string): string | null {

@@ -18,6 +18,16 @@ from . import (drawing, leftovers, local, machine, permissions, remote, roles, r
 PAGE = pathlib.Path(__file__).with_name("dashboard.html")
 RECENT = 20
 NEXT = 5
+# Asked of a peer, so two machines settling with each other never ask in a circle.
+OWN = "status.json?own=1"
+# A reading takes a second or more, and every open page and every peer asks for one every few
+# seconds: without these, two machines' pages slow each other past the peers' time limit.
+SHARED_SECONDS = 3
+ASK_SECONDS = 10
+# Long enough for a reading told once a minute to last until the next.
+KEPT_SECONDS = 150
+TOLD = "peer.json"
+TOLD_MOST_BYTES = 1 << 20
 
 
 def first_line(text):
@@ -174,20 +184,142 @@ def snapshot(db, platform, now, home, load=machine.load):
     return view
 
 
+def own_view(base, secret, fetch=remote.fetch):
+    """A peer's own reading of itself, or None when it does not give one."""
+    status, body = fetch(base, OWN, secret)
+    try:
+        view = json.loads(body) if status == 200 else None
+    except ValueError:
+        return None
+    return view if isinstance(view, dict) else None
+
+
+def peer_views(peers, secret, fetch=remote.fetch):
+    """Each peer's own reading by name, asked all at once and waited for; a peer that does
+    not answer is left out."""
+    found = {}
+
+    def ask(name, base):
+        view = own_view(base, secret, fetch)
+        if view is not None:
+            found[name] = view
+
+    asking = [threading.Thread(target=ask, args=peer, daemon=True) for peer in peers.items()]
+    for thread in asking:
+        thread.start()
+    for thread in asking:
+        thread.join()
+    return found
+
+
+class PeerViews:
+    """The same for the page, which is read every few seconds and waits for no peer: a call
+    asks again behind it, each peer at most every `ASK_SECONDS`, and returns the answers
+    already in, while they are fresh."""
+
+    def __init__(self, peers, secret, fetch=remote.fetch):
+        self.peers, self.secret, self.fetch = peers, secret, fetch
+        self.kept, self.asked, self.asking, self.lock = {}, {}, set(), threading.Lock()
+
+    def ask(self, name, base):
+        try:
+            view = own_view(base, self.secret, self.fetch)
+            if view is not None:
+                with self.lock:
+                    self.kept[name] = (time.monotonic(), view)
+        finally:
+            with self.lock:
+                self.asking.discard(name)
+
+    def keep(self, name, view):
+        with self.lock:
+            self.kept[name] = (time.monotonic(), view)
+
+    def views(self):
+        peers = self.peers()
+        with self.lock:
+            now = time.monotonic()
+            unasked = [name for name in peers if name not in self.asking
+                       and now - self.asked.get(name, -ASK_SECONDS) >= ASK_SECONDS]
+            self.asking.update(unasked)
+            self.asked.update(dict.fromkeys(unasked, now))
+            fresh = {name: view for name, (at, view) in self.kept.items()
+                     if name in peers and now - at < KEPT_SECONDS}
+        for name in unasked:
+            threading.Thread(target=self.ask, args=(name, peers[name]), daemon=True).start()
+        return fresh
+
+
+def tell(view, peers, secret, send=remote.send):
+    """Sends this machine's own reading to each peer's page, all at once. A machine whose
+    page may not open a connection to the others, as macOS can refuse a background Python,
+    still takes one from them, so its counts come this way."""
+    body = json.dumps(view).encode()
+    path = f"{TOLD}?from={urllib.parse.quote(view.get('machine') or '')}"
+    telling = [threading.Thread(target=send, args=(base, path, secret, body), daemon=True)
+               for base in peers.values()]
+    for thread in telling:
+        thread.start()
+    for thread in telling:
+        thread.join()
+
+
+def settle(view, others):
+    """Counts a role another machine runs as that machine does. This one never hears what
+    was finished there, so its own queue for the role only grows; when that machine does
+    not answer, the count is unknown rather than this one's."""
+    theirs = {}
+    for name, other in others.items():
+        for row in other.get("roles") or []:
+            if row.get("state") not in ("refused", "elsewhere"):
+                theirs.setdefault(row["role"], (name, row))
+    unread = {role: seen["name"] for seen in view.get("machines") or []
+              if seen["name"] not in others for role in seen["started"]}
+
+    def counted(row, name):
+        if name in others and theirs.get(row["role"], (None,))[0] == name:
+            there = theirs[row["role"]][1]
+            return dict(row, waiting=there.get("waiting") or 0, next=there.get("next") or [],
+                        held=there.get("held"), counted_on=name)
+        if name and name not in others:
+            return dict(row, waiting=None, next=[], held=None, counted_on=name)
+        return row
+
+    if "roles" in view:
+        view["roles"] = [counted(row, (row.get("detail") or {}).get("machine"))
+                         if row.get("state") == "elsewhere" else row for row in view["roles"]]
+    if "elsewhere" in view:
+        away = [counted(row, theirs.get(row["role"], (unread.get(row["role"]),))[0])
+                for row in view["elsewhere"]]
+        view["elsewhere"] = [row for row in away
+                             if row["held"] or row["waiting"] or row["waiting"] is None]
+    return view
+
+
 def serve(read, port, open_page=True, say=print, session=lambda session_id: None,
           host=remote.LOOPBACK, secret=None, peers=dict, fetch=remote.fetch):
     """Serves the page, `/status.json` and `/session.json?id=` until interrupted, and the same
-    for each peer under `/m/<name>/`, read through `fetch`. `read` returns a snapshot,
-    `session` one session's view or None, and `peers` the names and addresses of the other
-    machines. Loopback needs no token; anyone else does. Each request has a thread of its own,
-    so a peer that is slow to answer, or a connection left idle, holds only itself; the queue
-    is read by one request at a time."""
+    for each peer under `/m/<name>/`, read through `fetch`. A peer may also post its own
+    reading to `/peer.json?from=<name>`. `read` returns a snapshot, which is
+    settled with the peers unless one of them is asking, `session` one session's view or
+    None, and `peers` the names and addresses of the other machines. Loopback needs no
+    token; anyone else does. Each request has a thread of its own, so a peer that is slow to
+    answer, or a connection left idle, holds only itself; the queue is read by one request
+    at a time, and requests within `SHARED_SECONDS` of each other share a reading."""
     if not remote.loopback(host) and not remote.usable(secret):
         say(f"error: sq web will not listen on {host} without {remote.TOKEN} of at least "
             f"{remote.TOKEN_MIN} characters in the env file")
         return
 
-    reading = threading.Lock()
+    reading, last = threading.Lock(), {}
+    others = PeerViews(peers, secret, fetch)
+    others.views()
+
+    def shared():
+        with reading:
+            if "view" not in last or time.monotonic() - last["at"] >= SHARED_SECONDS:
+                last.update(view=read(time.time()), at=time.monotonic())
+            return last["view"]
 
     class Page(http.server.BaseHTTPRequestHandler):
         timeout = 10
@@ -212,8 +344,10 @@ def serve(read, port, open_page=True, say=print, session=lambda session_id: None
                     return self.send_error(404)
                 status, body = fetch(base, rest + (f"?{query}" if query else ""), secret)
             elif path == "/status.json":
-                with reading:
-                    body = json.dumps(read(time.time())).encode()
+                view = shared()
+                if "own=1" not in query.split("&"):
+                    view = settle(dict(view), others.views())
+                body = json.dumps(view).encode()
             elif path == "/session.json":
                 with reading:
                     found = session((urllib.parse.parse_qs(query).get("id") or [""])[0])
@@ -230,6 +364,31 @@ def serve(read, port, open_page=True, say=print, session=lambda session_id: None
             self.send_header("Content-Length", str(len(body)))
             self.end_headers()
             self.wfile.write(body)
+            return None
+
+        def do_POST(self):
+            path, _, query = self.path.partition("?")
+            ok, _ = remote.allowed(self.client_address[0], self.headers, "", secret)
+            if not ok:
+                return self.send_error(401)
+            name = (urllib.parse.parse_qs(query).get("from") or [""])[0]
+            if path != f"/{TOLD}" or name not in peers():
+                return self.send_error(404)
+            try:
+                size = int(self.headers.get("Content-Length") or 0)
+            except ValueError:
+                return self.send_error(400)
+            if not 0 < size <= TOLD_MOST_BYTES:
+                return self.send_error(413)
+            try:
+                view = json.loads(self.rfile.read(size))
+            except ValueError:
+                return self.send_error(400)
+            if not isinstance(view, dict):
+                return self.send_error(400)
+            others.keep(name, view)
+            self.send_response(204)
+            self.end_headers()
             return None
 
         def log_message(self, *_):

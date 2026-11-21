@@ -107,6 +107,7 @@ export function QuoteDialog({
   vendors,
   current,
   viewer,
+  costs = true,
   onOpened,
   onList,
   onClose,
@@ -117,6 +118,7 @@ export function QuoteDialog({
   vendors: readonly Vendor[];
   current: Quote | null;
   viewer: BudgetViewer;
+  costs?: boolean;
   onOpened: (next: Opened) => void;
   onList: (list: boolean) => void;
   onClose: () => void;
@@ -211,7 +213,7 @@ export function QuoteDialog({
     <MoneyField
       label={QW.amount}
       value={draft.amount}
-      help={QW.inPounds}
+      help={QW.inCurrency}
       error={problems.amount ?? null}
       {...(form === 'revise' ? { inputRef: first } : {})}
       onChange={(next) => set({ amount: next })}
@@ -231,6 +233,7 @@ export function QuoteDialog({
     <LinesField
       budget={budget}
       vendorId={vendorId}
+      costs={costs}
       ticked={draft.lines}
       onTick={(next) => set({ lines: next })}
     />
@@ -515,15 +518,30 @@ function lineLine(id: string, elsewhere: Quote | null): string {
 function LinesField({
   budget,
   vendorId,
+  costs,
   ticked,
   onTick,
 }: {
   budget: Budget;
   vendorId: string;
+  costs: boolean;
   ticked: readonly string[];
   onTick: (lines: string[]) => void;
 }) {
   const id = useId();
+
+  if (!costs)
+    return (
+      <div className="desk-field qt-lines" role="group" aria-labelledby={id}>
+        <div className="qt-label-row">
+          <span id={id} className="desk-label">
+            {QW.linesItAgrees}
+          </span>
+          <span className="qt-optional">{QW.optional}</span>
+        </div>
+        <p className="desk-line">{QW.noCostLines}</p>
+      </div>
+    );
 
   return (
     <div className="desk-field qt-lines" role="group" aria-labelledby={id}>
@@ -610,7 +628,7 @@ export function PaymentDialog({
   const save = () => {
     if (busy) return;
     if (shaped) {
-      const found = shapingProblems(shaping);
+      const found = shapingProblems(shaping, quote.amount);
       onShaping?.({ ...shaping, problems: found });
       if (anyShapeProblem(found)) {
         focusFirstWrong();
@@ -701,7 +719,9 @@ export function PaymentDialog({
                           label={QW.whatFor}
                           value={typed.what}
                           error={problems.what ?? null}
-                          onChange={(what) => onShaping?.(retyped(shaping, index, { what }))}
+                          onChange={(what) =>
+                            onShaping?.(retyped(shaping, index, { what }, quote.amount))
+                          }
                         />
                         <div className="qt-two">
                           <TextField
@@ -710,7 +730,9 @@ export function PaymentDialog({
                             value={typed.share}
                             help={PW.shareHelp}
                             error={problems.share ?? null}
-                            onChange={(share) => onShaping?.(retyped(shaping, index, { share }))}
+                            onChange={(share) =>
+                              onShaping?.(retyped(shaping, index, { share }, quote.amount))
+                            }
                           />
                           {row.from !== 'quoted' && (
                             <TextField
@@ -719,7 +741,9 @@ export function PaymentDialog({
                               value={typed.days}
                               help={PW.shapeDaysHelp}
                               error={problems.days ?? null}
-                              onChange={(days) => onShaping?.(retyped(shaping, index, { days }))}
+                              onChange={(days) =>
+                                onShaping?.(retyped(shaping, index, { days }, quote.amount))
+                              }
                             />
                           )}
                         </div>
@@ -776,7 +800,7 @@ function PaymentFields({
         <MoneyField
           label={QW.amount}
           value={draft.amount}
-          help={QW.inPounds}
+          help={QW.inCurrency}
           error={problems.amount ?? null}
           onChange={(amount) => onSet({ amount })}
         />

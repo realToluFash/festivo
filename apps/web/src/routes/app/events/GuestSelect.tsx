@@ -21,6 +21,7 @@ import {
   alreadyLine,
   lineWords,
   removeTitle,
+  stayLine,
 } from './guestSelect.ts';
 import './guestSelect.css';
 
@@ -415,7 +416,7 @@ export function MarkMany({
   );
 }
 
-/** Remove {n} guests and their {m} companions? Who has replied and who goes with them; Keep on the list first. */
+/** Remove {n} guests and their {m} companions? Who has replied, who goes with them, and by name who has arrived and stays (sc-1454); Keep on the list first. */
 export function RemoveMany({
   asked,
   busy,
@@ -447,6 +448,9 @@ export function RemoveMany({
         {asked.companions > 0 && (
           <li>{t('guestSelect.companionsGo', { count: asked.companions })}</li>
         )}
+        {asked.stays.map((one) => (
+          <li key={one.id}>{stayLine(t, one)}</li>
+        ))}
         <li>{t('guestList.removeNothingSent')}</li>
       </ul>
     </Ask>

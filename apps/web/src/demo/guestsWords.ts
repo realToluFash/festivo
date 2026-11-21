@@ -173,6 +173,8 @@ export const GW = {
   namedOf: (named: number, places: number) => `${figure(named)} of ${figure(places)} named`,
   placesRefused: (name: string, named: number) =>
     `${name} already has ${figure(named)} named. Remove some first.`,
+  placesRefusedArrived: (name: string, held: number) =>
+    `${name} already has ${figure(held)} named or arrived. Arrived companions stay on the list.`,
   thisGuest: 'This guest',
   namedByGuest: 'Named by the guest',
   ofMost: (count: number, most: number) => `${figure(count)} of ${figure(most)}`,

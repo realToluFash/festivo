@@ -458,6 +458,30 @@ describe('Settings > General at a desk (sc-30191)', () => {
     expect(within(remove).getByText('That matches.')).toBeDefined();
   });
 
+  it('tags a joining domain this organisation proved under Email domains Proved (sc-560)', async () => {
+    signedIn();
+    answering({
+      'GET /api/orgs/org_1/domains': () =>
+        json({
+          ...DOMAINS,
+          domains: [
+            { domain: 'ire.events', stopped: false, proved: true },
+            { domain: 'ire.ng', stopped: false, proved: false },
+          ],
+        }),
+    });
+    settings();
+
+    const proved = (await screen.findByText('ire.events', { selector: '.desk-row-name' })).closest(
+      'li',
+    ) as HTMLElement;
+    const plain = screen
+      .getByText('ire.ng', { selector: '.desk-row-name' })
+      .closest('li') as HTMLElement;
+    expect(within(proved).getByText('Proved')).toBeDefined();
+    expect(within(plain).queryByText('Proved')).toBeNull();
+  });
+
   it('removes a domain after asking, and names it in a toast', async () => {
     signedIn();
     answering({

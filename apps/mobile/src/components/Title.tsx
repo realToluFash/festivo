@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useEffect, useState } from 'react';
+import { createContext, type ReactNode, useCallback, useContext, useEffect, useState } from 'react';
 import {
   type StyleProp,
   StyleSheet,
@@ -9,14 +9,19 @@ import {
 
 import { type WeightName } from '../theme/fonts.ts';
 import {
-  capUnderTitle,
+  atAccessibilitySizes,
   type DrawnTitle,
   fitWidest,
+  lineStart,
+  piecesIn,
   reportTitle,
   titleCapKey,
   titleCapOn,
   titleSize,
   wordsIn,
+  wordsRoomKey,
+  wholeLineHeight,
+  wordsPending,
   wordsSlot,
 } from '../layout/textSize.ts';
 import { Text, TitleCap, type TextProps } from './Text.tsx';
@@ -28,6 +33,8 @@ interface WordsLook {
   style?: StyleProp<TextStyle> | undefined;
   /** The width the texts have, known from the container, so the size does not wait on seeing a text wrap. */
   room?: number | undefined;
+  /** Measures each word in pieces split after a hyphen it already has, where a line may break without breaking a word (sc-69816). */
+  breakAfterHyphens?: boolean | undefined;
 }
 
 /** Each of these words drawn hidden and unbounded, to know how wide it is before anything that shows it is laid out. */
@@ -50,7 +57,8 @@ export function MeasuredWords({
       >
         {[...new Set(words)].map((word) => (
           <Text
-            key={word}
+            // A new Text per size and start, so a layout read at the last one is never filed under this one when the title's cap moves (sc-69816, sc-74113).
+            key={`${look.size ?? ''}|${look.maxFontSizeMultiplier ?? 1}|${word}`}
             {...look}
             style={[look.style, styles.word]}
             onLayout={(event) => onWidth(word, event.nativeEvent.layout.width)}
@@ -64,6 +72,30 @@ export function MeasuredWords({
   );
 }
 
+/** Each of `words` measured hidden in SemiBold at exactly `start`, unscaled: its width, or undefined until it has been laid out. */
+export function useMeasuredAt(
+  start: number,
+  words: readonly string[],
+): { widths: (number | undefined)[]; measure: ReactNode } {
+  const [measured, setMeasured] = useState<Readonly<Record<string, number>>>({});
+
+  return {
+    widths: words.map((word) => measured[`${start}|${word}`]),
+    measure: (
+      <MeasuredWords
+        words={words}
+        size={start}
+        weight="semibold"
+        allowFontScaling={false}
+        onWidth={(word, width) => {
+          const key = `${start}|${word}`;
+          setMeasured((now) => (now[key] === width ? now : { ...now, [key]: width }));
+        }}
+      />
+    ),
+  };
+}
+
 /** One size for several texts, from their words measured hidden at `start`, never below `size` (sc-13496). */
 export function useWholeWords(
   size: number,
@@ -72,8 +104,9 @@ export function useWholeWords(
   look: WordsLook = {},
 ) {
   const { width: windowWidth } = useWindowDimensions();
-  const words = wordsIn(texts);
-  const roomKey = `${start}|${windowWidth}`;
+  const words = look.breakAfterHyphens ? piecesIn(texts) : wordsIn(texts);
+  const given = look.room != null && look.room > 0 ? look.room : undefined;
+  const roomKey = wordsRoomKey(start, windowWidth, given);
   const seenKey = `${roomKey}|${texts.join('\n')}`;
   const [measured, setMeasured] = useState<Readonly<Record<string, number>>>({});
   const [room, setRoom] = useState<{ key: string; width: number } | null>(null);
@@ -88,17 +121,18 @@ export function useWholeWords(
     {
       wrapped: wrapped ? seen.width : null,
       kept: room,
-      reported: look.room != null && look.room > 0 ? { windowWidth, width: look.room } : reported,
+      reported: given == null ? reported : { windowWidth, width: given },
     },
     start,
     windowWidth,
+    given,
   );
   const drawn =
     slot > 0 && widths.length === words.length
       ? fitWidest(size, start, Math.max(...widths), slot)
       : start;
 
-  // Kept under the start and window width, so it outlives a change of the texts.
+  // Kept under its `wordsRoomKey`, the start, window width and reported room, so it outlives a change of the texts.
   if (wrapped && (room?.key !== roomKey || room.width !== seen.width)) {
     setRoom({ key: roomKey, width: seen.width });
   }
@@ -120,6 +154,9 @@ export function useWholeWords(
     measure,
     drawnAtStart: drawn === start,
     maxFontSizeMultiplier: drawn / size,
+    pending: wordsPending(look.room, slot, widths.length, words.length),
+    // A box rounded a fraction short of its last line has iOS draw that line's words clipped on the line above (sc-69816).
+    lineHeight: wholeLineHeight(size, drawn),
     /** The width each of the texts has, whatever the texts say, for as long as the window keeps its width. */
     room: (width: number) =>
       setReported((current) =>
@@ -140,16 +177,19 @@ export function WholeWords({
   onLayout,
   onDrawn,
   room,
+  breakAfterHyphens,
   ...rest
 }: WholeWordsProps & {
   start: number;
   onDrawn?: ((size: number) => void) | undefined;
   room?: number | undefined;
+  breakAfterHyphens?: boolean | undefined;
 }) {
   const words = useWholeWords(size, start, [children], {
     weight: rest.weight,
     style: rest.style,
     room,
+    breakAfterHyphens,
   });
   const drawnSize = words.maxFontSizeMultiplier * size;
 
@@ -160,8 +200,11 @@ export function WholeWords({
       {words.measure}
       <Text
         {...rest}
+        // A new size mounts a new Text, so iOS never draws one size in the box laid out for another (sc-69816).
+        key={drawnSize}
         size={size}
         maxFontSizeMultiplier={words.maxFontSizeMultiplier}
+        style={[{ lineHeight: words.lineHeight }, rest.style, words.pending && styles.pending]}
         onLayout={(event) => {
           onLayout?.(event);
           if (words.drawnAtStart) words.seen(event.nativeEvent.layout.width);
@@ -173,30 +216,43 @@ export function WholeWords({
   );
 }
 
-/** Grows with the text up to a title's cap, as any text under it, then steps down rather than break a word, never below `size` (sc-67338). */
-export function CappedWholeWords(props: WholeWordsProps) {
+/** Grows with the text up to a title's cap, and no larger than `under` when given, then steps down rather than break a word, never below `size` (sc-67338). */
+export function CappedWholeWords({
+  under = Infinity,
+  ...props
+}: WholeWordsProps & {
+  under?: number | undefined;
+  onDrawn?: ((size: number) => void) | undefined;
+  room?: number | undefined;
+  breakAfterHyphens?: boolean | undefined;
+}) {
   const { fontScale } = useWindowDimensions();
   const cap = useContext(TitleCap);
 
-  return (
-    <WholeWords
-      {...props}
-      start={props.size * capUnderTitle(cap ?? Infinity, props.size, fontScale)}
-    />
-  );
+  return <WholeWords {...props} start={lineStart(props.size, fontScale, cap ?? Infinity, under)} />;
 }
 
 /** Grows less than other text at the accessibility sizes, and steps down rather than break a word (sc-13496). */
 export function Title({
   size,
+  grows = true,
   ...rest
 }: WholeWordsProps & {
   onDrawn?: ((size: number) => void) | undefined;
   room?: number | undefined;
+  /** False where a title keeps its default size at every text size, as Guests' on its side with the actions under it (sc-67659). */
+  grows?: boolean | undefined;
 }) {
   const { fontScale } = useWindowDimensions();
 
-  return <WholeWords weight="bold" {...rest} size={size} start={titleSize(size, fontScale)} />;
+  return (
+    <WholeWords
+      weight="bold"
+      {...rest}
+      size={size}
+      start={grows ? titleSize(size, fontScale) : size}
+    />
+  );
 }
 
 /** Where a page's title says the size it drew at, so the frame caps what is under it there (sc-67338). */
@@ -207,7 +263,9 @@ export function usePageTitleDrawn() {
 }
 
 /** A page's title drawn in the frame's body, as an event area's, which tells the frame the size it drew at (sc-67338). */
-export function BodyTitle(props: WholeWordsProps & { room?: number | undefined }) {
+export function BodyTitle(
+  props: WholeWordsProps & { room?: number | undefined; grows?: boolean | undefined },
+) {
   return <Title {...props} onDrawn={usePageTitleDrawn()} />;
 }
 
@@ -224,6 +282,43 @@ export function useTitleCap(at: string, size: number) {
   return { ...titleCapOn(drawn, key, size, fontScale), onDrawn };
 }
 
+/** A menu row's words: main's text at the standard sizes; from AX1 no larger than the page title, wrapping between words, a piece too wide for its line stepping down until it fits whole (sc-75213, sc-78219). */
+export function MenuWords({
+  size,
+  weight,
+  style,
+  accessible = false,
+  accessibilityRole,
+  children,
+}: {
+  size: number;
+  weight: 'medium' | 'semibold' | 'bold';
+  style?: StyleProp<TextStyle>;
+  accessible?: boolean;
+  accessibilityRole?: 'header';
+  children: string;
+}) {
+  const { fontScale } = useWindowDimensions();
+  const [room, setRoom] = useState(0);
+  const look = { size, weight, accessible, accessibilityRole, style };
+
+  if (!atAccessibilitySizes(fontScale)) {
+    return (
+      <Text {...look} style={[styles.words, style]}>
+        {children}
+      </Text>
+    );
+  }
+
+  return (
+    <View style={styles.words} onLayout={(event) => setRoom(event.nativeEvent.layout.width)}>
+      <CappedWholeWords {...look} room={room} breakAfterHyphens>
+        {children}
+      </CappedWholeWords>
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
   // Each word at its full size, unbounded, so a text can be sized before any of it breaks a word.
   measure: {
@@ -236,4 +331,7 @@ const styles = StyleSheet.create({
   },
   // A caller's stretch or flex would make a word as wide as the box above, and every text would step down to its floor (sc-37693).
   word: { flex: 0, alignSelf: 'flex-start' },
+  pending: { opacity: 0 },
+  // Grows across a row and stretches down a column, where flex 1 would leave it no height.
+  words: { flexGrow: 1, flexShrink: 1, minWidth: 0 },
 });
