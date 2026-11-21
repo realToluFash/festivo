@@ -1,6 +1,6 @@
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { RouterProvider, createMemoryRouter } from 'react-router';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { __setConfig, config } from '../config.ts';
 import { routes } from '../routes/index.tsx';
@@ -40,7 +40,44 @@ function said(): string {
     .join(' | ');
 }
 
+function room(): HTMLElement {
+  return screen.getByRole('group', { name: /^Floor plan, Main hall/u });
+}
+
+function item(name: RegExp): HTMLElement {
+  const found = within(room())
+    .getAllByRole('button', { name })
+    .filter((one) => (one.getAttribute('aria-label') ?? '').includes('seats taken'));
+
+  expect(found).toHaveLength(1);
+  return found[0]!;
+}
+
+function press(target: Element): void {
+  fireEvent.pointerDown(target, { button: 0, pointerId: 1, clientX: 100, clientY: 100 });
+  fireEvent.pointerUp(window, { button: 0, pointerId: 1, clientX: 100, clientY: 100 });
+}
+
+function proposal(): HTMLElement {
+  return screen.getByRole('region', { name: /^Proposed · / });
+}
+
 let fetched: ReturnType<typeof vi.spyOn>;
+
+beforeAll(() => {
+  // jsdom has no PointerEvent: a MouseEvent with a pointer id stands in for it, as a browser's does.
+  if (!('PointerEvent' in window)) {
+    class StandIn extends MouseEvent {
+      pointerId: number;
+
+      constructor(type: string, init: PointerEventInit = {}) {
+        super(type, init);
+        this.pointerId = init.pointerId ?? 1;
+      }
+    }
+    Object.defineProperty(window, 'PointerEvent', { value: StandIn, configurable: true });
+  }
+});
 
 beforeEach(() => {
   __setConfig({ ...tested, environment: 'development' });
@@ -148,6 +185,32 @@ describe('Auto-seat by group (sc-4019)', () => {
 
     await seating('autoReadOnly');
     expect(screen.queryByRole('region', { name: 'Auto-seat by group' })).toBeNull();
+  });
+
+  it('seats a proposed guest by hand, and they leave the proposal', SLOW, async () => {
+    await seating('autoProposed');
+    fireEvent.click(within(proposal()).getByRole('button', { name: /^Amaka Eze/u }));
+    expect(screen.getByText(/^Now pick a table for Amaka Eze/u)).toBeDefined();
+    press(item(/^Bar 1,/u));
+    expect(await screen.findByText(/^Amaka Eze and 2 guests are at Bar 1\./u)).toBeDefined();
+    expect(within(proposal()).queryByRole('button', { name: /^Amaka Eze/u })).toBeNull();
+    expect(panel().textContent).toContain('Proposed · 8');
+  });
+
+  it('narrows the proposal with the search, and says when nobody matches', SLOW, async () => {
+    await seating('autoProposed');
+    const field = within(panel()).getByLabelText('Search by name');
+
+    fireEvent.change(field, { target: { value: 'Amaka' } });
+    expect(
+      within(proposal()).getAllByRole('button', { name: /^(?!Accept|Discard)/u }),
+    ).toHaveLength(1);
+    expect(panel().textContent).not.toContain('Nobody without a seat matches this search.');
+
+    fireEvent.change(field, { target: { value: 'zzz' } });
+    expect(screen.queryByRole('region', { name: /^Proposed · / })).toBeNull();
+    expect(panel().textContent).not.toContain('Left over ·');
+    expect(panel().textContent).toContain('Nobody without a seat matches this search.');
   });
 
   it('names a proposed chair in the List and keeps it free', SLOW, async () => {

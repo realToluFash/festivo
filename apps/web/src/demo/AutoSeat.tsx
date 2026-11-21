@@ -98,13 +98,9 @@ export function AutoSeatBlock() {
   );
 }
 
-function ProposedTable({ item, parties }: { item: Item; parties: readonly Party[] }) {
-  const { ui, set } = useSeating();
+function ProposedTable({ item, here }: { item: Item; here: readonly Party[] }) {
+  const { ui, set, pick } = useSeating();
   const changed = isChanged(item, ui.auto);
-  const ids = proposedParties(item);
-  const here = ids
-    .map((id) => parties.find((party) => party.id === id))
-    .filter((party): party is Party => party != null);
 
   return (
     <li className={changed ? 'st-auto-table is-changed' : 'st-auto-table'}>
@@ -117,7 +113,12 @@ function ProposedTable({ item, parties }: { item: Item; parties: readonly Party[
       <ul className="st-rows is-dense">
         {here.map((party) => (
           <li key={party.id} className="st-party-line">
-            <span className="st-party is-proposed">
+            <button
+              type="button"
+              className={ui.picked === party.id ? 'st-party is-on' : 'st-party'}
+              aria-pressed={ui.picked === party.id}
+              onClick={() => pick(ui.picked === party.id ? null : party.id)}
+            >
               <span className="st-avatar is-proposed" aria-hidden="true">
                 {initials(party.name)}
               </span>
@@ -127,7 +128,7 @@ function ProposedTable({ item, parties }: { item: Item; parties: readonly Party[
                   {AW.proposed} · {party.group ?? SW.noGroup}
                 </span>
               </span>
-            </span>
+            </button>
           </li>
         ))}
       </ul>
@@ -169,17 +170,25 @@ function ProposedTable({ item, parties }: { item: Item; parties: readonly Party[
   );
 }
 
-/** Without a seat keeps proposed guests in its count until they are accepted: Proposed · {n} by table, then Left over · {n} with each reason. */
-export function AutoSeatTray() {
-  const { ui } = useSeating();
-  const tables = proposedTables(ui.plan);
+/** Without a seat keeps proposed guests in its count until they are accepted: Proposed · {n} by table, then Left over · {n} with each reason. Its search and group chips narrow both lists, and a guest in either can be picked and seated by hand. */
+export function AutoSeatTray({ matching }: { matching: readonly Party[] }) {
+  const { ui, pick } = useSeating();
   const proposed = proposedGuests(ui.plan);
-  const left = ui.auto.left
+  const tables = proposedTables(ui.plan)
+    .map((item) => ({
+      item,
+      here: proposedParties(item)
+        .map((id) => matching.find((party) => party.id === id))
+        .filter((party): party is Party => party != null),
+    }))
+    .filter((one) => one.here.length > 0);
+  const all = ui.auto.left
     .map((one) => ({ one, party: ui.tray.find((party) => party.id === one.party) }))
     .filter(
       (row): row is { one: (typeof ui.auto.left)[number]; party: Party } => row.party != null,
     );
-  const leftN = left.reduce((sum, row) => sum + peopleIn(row.party), 0);
+  const leftN = all.reduce((sum, row) => sum + peopleIn(row.party), 0);
+  const left = all.filter((row) => matching.includes(row.party));
 
   if (tables.length === 0 && left.length === 0) return null;
   return (
@@ -190,8 +199,8 @@ export function AutoSeatTray() {
             {say(AW.proposedCount, { n: proposed })}
           </h3>
           <ul className="st-auto-tables">
-            {tables.map((item) => (
-              <ProposedTable key={item.id} item={item} parties={ui.tray} />
+            {tables.map(({ item, here }) => (
+              <ProposedTable key={item.id} item={item} here={here} />
             ))}
           </ul>
         </section>
@@ -203,14 +212,21 @@ export function AutoSeatTray() {
           </h3>
           <ul className="st-rows">
             {left.map(({ one, party }) => (
-              <li key={party.id} className="st-auto-left">
-                <Glyph name="warn" size={15} weight={2.2} />
-                <span className="st-row-words">
-                  <span className="st-row-name">{partyTitle(party)}</span>
-                  <span className="st-row-line is-amber">
-                    {AW.notPlaced} {reasonWords(one.reason, party)}
+              <li key={party.id} className="st-party-line">
+                <button
+                  type="button"
+                  className={ui.picked === party.id ? 'st-party is-left is-on' : 'st-party is-left'}
+                  aria-pressed={ui.picked === party.id}
+                  onClick={() => pick(ui.picked === party.id ? null : party.id)}
+                >
+                  <Glyph name="warn" size={15} weight={2.2} />
+                  <span className="st-row-words">
+                    <span className="st-row-name">{partyTitle(party)}</span>
+                    <span className="st-row-line is-amber">
+                      {AW.notPlaced} {reasonWords(one.reason, party)}
+                    </span>
                   </span>
-                </span>
+                </button>
               </li>
             ))}
           </ul>

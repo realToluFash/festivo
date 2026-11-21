@@ -397,7 +397,6 @@ function shapeWords(kind: Kind): string {
   }[kind];
 }
 
-/** A seated guest picked and a table or chair tapped (sc-4013): they move, and only they; a taken chair asks Swap with; their own chair drops the pick. */
 /** A guest seated by hand leaves Auto-seat's proposal, and a proposal with nothing left in it is gone (sc-4019). */
 function withTidyProposal(ui: Ui): Ui {
   const next = tidied(ui.plan, ui.tray, ui.auto);
@@ -405,6 +404,7 @@ function withTidyProposal(ui: Ui): Ui {
   return next.plan === ui.plan && next.auto === ui.auto ? ui : { ...ui, ...next };
 }
 
+/** A seated guest picked and a table or chair tapped (sc-4013): they move, and only they; a taken chair asks Swap with; their own chair drops the pick. */
 function moveTo(now: Ui, tableId: string, chair?: number): Ui {
   const from = now.moving;
   const item = now.plan.items.find((one) => one.id === tableId);

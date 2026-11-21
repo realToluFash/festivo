@@ -1388,7 +1388,9 @@ function Tray({ chips = true }: { chips?: boolean }) {
   const count = coming.reduce((sum, party) => sum + peopleIn(party), 0);
   const unsure = unsureLeft(ui.tray);
   const nobodySeated = ui.plan.items.every((item) => filled(item) === 0);
-  const shown = chips ? outsideProposal(ui, shownParties(ui)) : shownParties(ui);
+  const matching = shownParties(ui);
+  const shown = chips ? outsideProposal(ui, matching) : matching;
+  const inProposal = matching.length - shown.length;
   const groups = [...GROUP_ORDER, SW.noGroup]
     .map((group) => ({
       group,
@@ -1464,8 +1466,8 @@ function Tray({ chips = true }: { chips?: boolean }) {
               ))}
             </div>
           )}
-          {chips && <AutoSeatTray />}
-          {shown.length === 0 && chips && ui.auto.by != null ? null : shown.length === 0 ? (
+          {chips && <AutoSeatTray matching={matching} />}
+          {shown.length === 0 && inProposal > 0 ? null : shown.length === 0 ? (
             <div className="st-block">
               <p className="st-strong">{SW.noMatch}</p>
               <Acts>

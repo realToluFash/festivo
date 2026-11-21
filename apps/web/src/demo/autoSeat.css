@@ -94,16 +94,8 @@
   font: 600 14px/1.4 var(--fontFamily);
 }
 
-.st-auto-changed svg,
-.st-auto-left svg {
+.st-auto-changed svg {
   flex: none;
   margin-top: 3px;
   color: var(--colorAttention);
-}
-
-.st-auto-left {
-  display: flex;
-  align-items: flex-start;
-  gap: var(--spaceSm);
-  padding: var(--spaceXs) 0;
 }
