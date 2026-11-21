@@ -15,6 +15,7 @@ use App\Domain\Guest\Model\GuestNeeds;
 use App\Domain\Guest\Model\PageReply;
 use App\Domain\Guest\Model\PlaceChoice;
 use App\Domain\Guest\Model\RecordedReply;
+use App\Domain\Messaging\GuestReplies\GuestReplyRecorder;
 use App\Entity\Guest;
 use App\Enum\Actor;
 use App\Enum\ErrorCode;
@@ -47,6 +48,7 @@ final readonly class GuestAnswers
         private GuestNeedsRecord $guestNeedsRecord,
         private ClockInterface $clock,
         private GuestInvitations $guestInvitations,
+        private GuestReplyRecorder $guestReplyRecorder,
     ) {
     }
 
@@ -147,6 +149,10 @@ final readonly class GuestAnswers
             }
 
             $this->entityManager->flush();
+
+            if ($replied || $chose) {
+                $this->guestReplyRecorder->replied($guest, $previous);
+            }
 
             return true;
         });
