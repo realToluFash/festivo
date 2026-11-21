@@ -1894,7 +1894,7 @@ function FrameSidebar({
   return (
     <TodayShellProvider value={shell}>
       <TitleCap.Provider value={inEvent && large ? cap : null}>
-        <SidebarColumn>
+        <SidebarColumn listing={!inEvent && events.length > 0}>
           <SidebarHead>
             {organisation != null && outside == null && (
               <OrgPill

@@ -5,6 +5,7 @@ import {
   useCallback,
   useContext,
   useEffect,
+  useMemo,
   useRef,
   useState,
 } from 'react';
@@ -409,49 +410,65 @@ function SidebarCardWords({ event, tags }: { event: Shown; tags: readonly string
   );
 }
 
-type ListReport = (list: { height: number; least: number } | null) => void;
+type Room = { short: boolean; laid: (room: number, least: number) => void };
 
-const ListBound = createContext<ListReport>(() => {});
+const ListRoom = createContext<Room>({ short: false, laid: () => {} });
 
-/** The sidebar's own height bounds its content, so your events take only the room the places and the foot leave; shorter than the places, the foot and four rows, the whole sidebar scrolls (sc-39340). */
-export function SidebarColumn({ children }: { children: ReactNode }) {
-  const [viewport, setViewport] = useState(0);
-  const [floor, setFloor] = useState<number | null>(null);
-  const laid = useRef<{ content: number; list: { height: number; least: number } | null }>({
-    content: 0,
-    list: null,
-  });
-  const settle = useCallback(() => {
-    const { content, list } = laid.current;
-    setFloor(list == null || content === 0 ? null : content - list.height + list.least);
+/** Layout rounding, so a list that fits to the point is not taken for one that does not. */
+const SLACK = 1;
+
+/**
+ * Your events take the room the places and the foot leave, in a column that does not scroll: under a scroll view
+ * Yoga lays the list out at its full height, whatever its flex basis, and the foot runs off the sidebar. Where that
+ * room is under four rows, the whole sidebar scrolls instead, the list four rows tall (sc-39340).
+ */
+export function SidebarColumn({
+  listing = false,
+  children,
+}: {
+  listing?: boolean;
+  children: ReactNode;
+}) {
+  const [short, setShort] = useState(false);
+  const sizes = useRef({ viewport: 0, content: 0 });
+  const laid = useCallback((room: number, least: number) => {
+    if (room + SLACK >= least) return;
+    sizes.current = { viewport: 0, content: 0 };
+    setShort(true);
   }, []);
-  const report = useCallback<ListReport>(
-    (list) => {
-      laid.current.list = list;
-      settle();
-    },
-    [settle],
-  );
-  const bound = viewport > 0 && floor != null ? Math.max(viewport, floor) : null;
+  const room = useMemo(() => ({ short: listing && short, laid }), [listing, short, laid]);
+  const fitsAgain = () => {
+    const { viewport, content } = sizes.current;
+    if (viewport > 0 && content > 0 && content <= viewport + SLACK) setShort(false);
+  };
+  const onViewport = ({ nativeEvent }: LayoutChangeEvent) => {
+    sizes.current.viewport = nativeEvent.layout.height;
+    fitsAgain();
+  };
+  const onContent = ({ nativeEvent }: LayoutChangeEvent) => {
+    sizes.current.content = nativeEvent.layout.height;
+    fitsAgain();
+  };
+
+  if (listing && !short)
+    return (
+      <ListRoom.Provider value={room}>
+        <View style={[styles.column, styles.side]}>{children}</View>
+      </ListRoom.Provider>
+    );
 
   return (
     <ScrollView
       style={styles.column}
       contentContainerStyle={styles.fills}
-      onLayout={({ nativeEvent }) => setViewport(nativeEvent.layout.height)}
+      onLayout={listing ? onViewport : undefined}
       showsVerticalScrollIndicator={false}
     >
-      <ListBound.Provider value={report}>
-        <View
-          style={[styles.side, bound == null ? styles.fills : { height: bound }]}
-          onLayout={({ nativeEvent }) => {
-            laid.current.content = nativeEvent.layout.height;
-            settle();
-          }}
-        >
+      <ListRoom.Provider value={room}>
+        <View style={[styles.side, styles.fills]} onLayout={listing ? onContent : undefined}>
           {children}
         </View>
-      </ListBound.Provider>
+      </ListRoom.Provider>
     </ScrollView>
   );
 }
@@ -481,21 +498,20 @@ export function SidebarEvents({ events }: { events: readonly ShownEvent[] }) {
     events.length === 0
       ? 0
       : size * LABEL_LINE + 2 * tokens.spaceXs + Math.min(events.length, LEAST_ROWS) * row;
-  const report = useContext(ListBound);
-  const height = useRef<number | null>(null);
+  const { short, laid } = useContext(ListRoom);
+  const room = useRef<number | null>(null);
   useEffect(() => {
-    if (height.current != null) report({ height: height.current, least });
-  }, [report, least]);
-  useEffect(() => () => report(null), [report]);
+    if (!short && room.current != null) laid(room.current, least);
+  }, [short, laid, least]);
   const onLayout = ({ nativeEvent }: LayoutChangeEvent) => {
-    height.current = nativeEvent.layout.height;
-    report({ height: height.current, least });
+    room.current = nativeEvent.layout.height;
+    if (!short) laid(room.current, least);
   };
 
-  if (events.length === 0) return <View style={styles.grow} onLayout={onLayout} />;
+  if (events.length === 0) return <View style={styles.grow} />;
 
   return (
-    <View style={[styles.list, { minHeight: least }]} onLayout={onLayout}>
+    <View style={short ? { height: least } : styles.list} onLayout={onLayout}>
       {measure}
       <Text
         size={size}
@@ -562,7 +578,7 @@ export function TodaySidebar({
   org?: boolean;
 }) {
   return (
-    <SidebarColumn>
+    <SidebarColumn listing={events.length > 0}>
       <SidebarHead org={org} />
       <SidebarPlaces>
         {PLACES.filter(([tab]) => org || tab === 'Today').map(([label, glyph]) => (
