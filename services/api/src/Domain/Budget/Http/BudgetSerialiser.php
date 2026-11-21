@@ -12,6 +12,7 @@ use App\Domain\Budget\Model\Quantity;
 use App\Domain\Budget\Model\QuantityFacts;
 use App\Domain\Budget\Model\WhatIfChanges;
 use App\Domain\Budget\QuantityResolver;
+use App\Domain\Budget\StaffCosts;
 use App\Entity\BudgetLine;
 use App\Entity\Event;
 use App\Enum\CostBasis;
@@ -26,7 +27,10 @@ use Psl\Vec;
  * @phpstan-type CostedLine array{id: string, label: string, category: string, basis: string, rate: ?string, amount: ?string, currency: string, note: ?string, notPriced: bool, quantity: array{count: int, source: string, reason: ?string}, createdAt: string, updatedAt: string, cost: array{confirmed: string, potential: string}}
  * @phpstan-type PerHead array{amount: ?string, heads: int}
  * @phpstan-type Counted array{count: int, source: string, reason: ?string}
- * @phpstan-type Range array{currency: string, confirmed: string, potential: string, perHead: array{confirmed: PerHead, potential: PerHead}, notPriced: int, quantities: array<string, Counted>, lines: list<CostedLine>}
+ * @phpstan-type Range array{currency: string, confirmed: string, potential: string, perHead: array{confirmed: PerHead, potential: PerHead}, notPriced: int, staff: StaffHeadline, quantities: array<string, Counted>, lines: list<CostedLine>}
+ *
+ * @phpstan-import-type Headline from StaffRatesSerialiser as StaffHeadline
+ *
  * @phpstan-type Moved array{from: string, to: string, delta: string}
  * @phpstan-type MovedLine array{id: string, label: string, category: string, basis: string, quantity: array{confirmed: array{from: int, to: int}, potential: array{from: int, to: int}, reason: ?string}, known: bool, cost: array{confirmed: Moved, potential: Moved}|null}
  * @phpstan-type WhatIf array{currency: string, confirmed: Moved, potential: Moved, fullCostKnown: bool, lines: list<MovedLine>}
@@ -36,6 +40,8 @@ final readonly class BudgetSerialiser
     public function __construct(
         private BudgetLineRepository $budgetLineRepository,
         private QuantityResolver $quantityResolver,
+        private StaffCosts $staffCosts,
+        private StaffRatesSerialiser $staffRatesSerialiser,
     ) {
     }
 
@@ -51,14 +57,15 @@ final readonly class BudgetSerialiser
     }
 
     /**
-     * The range and cost per head (sc-84), worked out on every read because an RSVP moves them, with what each basis counts today so Add a cost asks for no number (sc-85).
+     * The range and cost per head (sc-84), worked out on every read because an RSVP moves them, with what each basis counts today so Add a cost asks for no number (sc-85), and Staff rates' headline, which the staff-time line costs (sc-101).
      *
      * @return Range
      */
     public function range(Event $event): array
     {
         $currency = $event->getCurrency();
-        $facts = $this->quantityResolver->factsFor($event);
+        $staff = $this->staffCosts->of($event);
+        $facts = $this->quantityResolver->factsFor($event, $staff);
         $range = BudgetRange::of($this->budgetLineRepository->findOnEvent($event), $facts);
         $money = static fn (?Number $minor): ?string => null === $minor ? null : Money::written($minor, $currency);
 
@@ -71,6 +78,7 @@ final readonly class BudgetSerialiser
                 'potential' => ['amount' => $money($range->potentialPerHead()), 'heads' => $range->potentialHeads],
             ],
             'notPriced' => $range->notPriced,
+            'staff' => $this->staffRatesSerialiser->headline($event, $staff),
             'quantities' => Dict\from_entries(Vec\map(CostBasis::cases(), static fn (CostBasis $basis): array => [$basis->value, self::counted(QuantityResolver::resolve($basis, $facts))])),
             'lines' => Vec\map($range->lines, static fn (LineCost $cost): array => [
                 ...self::line($cost->line, $facts),

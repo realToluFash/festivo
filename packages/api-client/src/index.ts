@@ -17,6 +17,7 @@ export * from './seatingPresence.ts';
 export * from './guests.ts';
 export * from './vendors.ts';
 export * from './budget.ts';
+export * from './staffRates.ts';
 export * from './margin.ts';
 export * from './payers.ts';
 export * from './quotes.ts';

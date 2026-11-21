@@ -297,6 +297,13 @@ final readonly class OrganisationArchive
              WHERE ev.organisation_id = :organisation AND ev.deleted_at IS NULL
              ORDER BY ev.starts_at_utc, j.event_id, j.position, s.starts_at, s.id, p.staff_member_id
             SQL,
+        'staff_rates' => <<<'SQL'
+            SELECT r.id, r.event_id, r.job_id, r.person_id AS staff_id, r.pay, r.amount_minor, ev.currency AS amount_currency, r.set_at
+              FROM staff_rates r
+              JOIN events ev ON ev.id = r.event_id
+             WHERE ev.organisation_id = :organisation AND ev.deleted_at IS NULL
+             ORDER BY ev.starts_at_utc, r.event_id, r.id
+            SQL,
         'staff_stations' => <<<'SQL'
             SELECT t.id, t.event_id, t.kind, t.name, t.section_id, t.lead_id, t.position, t.walk_position
               FROM staff_stations t

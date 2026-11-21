@@ -256,6 +256,13 @@
   margin-inline: 0;
 }
 
+.bt-staff-note {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 10px;
+}
+
 .bt-said {
   display: flex;
   align-items: center;
