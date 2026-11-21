@@ -30,6 +30,8 @@ export const S = {
   signedInAs: (name: string) => `Signed in as ${name}`,
   signOutContinue: 'Sign out and continue',
   signedOut: 'Signed out.',
+  alternative:
+    'This number is a second number on a Soirely account, so it can’t sign you in. Make it that account’s primary number, or ask the event’s organiser to put your primary number on the roster.',
   tfTitle: 'Enter your code',
   tfIntro: (who: string) => `Open your authenticator app and enter the 6-digit code for ${who}.`,
   tfCode: 'Code',
@@ -71,6 +73,7 @@ export type LinkStep =
   | { kind: 'noMobile' }
   | { kind: 'tooMany' }
   | { kind: 'wrongAccount' }
+  | { kind: 'alternative' }
   | CodeStep
   | { kind: 'twoFactor'; digits: string; line: string | null; wrong: boolean; busy: Busy };
 
@@ -89,6 +92,8 @@ export const LINK_STATES = [
   'two-factor-no-email',
   'two-factor-blank',
   'two-factor-wrong',
+  'code-alternative',
+  'alternative-number',
   'wrong-account',
   'too-many',
   'signed-out',
@@ -136,8 +141,11 @@ export const freshTwoFactor = (): LinkStep => ({
 export const twoFactorFor = (state: LinkState) =>
   state === 'two-factor-no-email' ? MASKED : ACCOUNT_EMAIL;
 
-/** The step a state opens on, and whether the account behind the number has two-factor on. */
-export function linkStart(state: LinkState): { step: LinkStep; twoFactor: boolean } {
+/** What the number turns out to be after the right code: an account with two-factor, or a verified alternative on one. */
+export type LinkStart = { step: LinkStep; twoFactor: boolean; alternative?: boolean };
+
+/** The step a state opens on, and what the account behind the number holds. */
+export function linkStart(state: LinkState): LinkStart {
   switch (state) {
     case 'sending':
       return { step: confirm({ busy: 'held' }), twoFactor: false };
@@ -167,6 +175,10 @@ export function linkStart(state: LinkState): { step: LinkStep; twoFactor: boolea
         step: { kind: 'twoFactor', digits: '714303', line: null, wrong: true, busy: 'no' },
         twoFactor: true,
       };
+    case 'code-alternative':
+      return { step: code({ digits: '48' }), twoFactor: false, alternative: true };
+    case 'alternative-number':
+      return { step: { kind: 'alternative' }, twoFactor: false, alternative: true };
     case 'wrong-account':
       return { step: { kind: 'wrongAccount' }, twoFactor: false };
     case 'too-many':
@@ -210,6 +222,8 @@ export const STAFF_SIGN_IN_PAGES: readonly { name: string; states: readonly Demo
       at('two-factor-no-email', 'Two-factor on an account with no email: the masked number'),
       at('two-factor-blank', 'Two-factor, left blank'),
       at('two-factor-wrong', 'Two-factor, a wrong code'),
+      at('code-alternative', 'A second number on an account: the code, before the right one'),
+      at('alternative-number', 'A second number on an account, after the right code'),
     ],
   },
   {

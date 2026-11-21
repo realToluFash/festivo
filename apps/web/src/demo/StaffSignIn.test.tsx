@@ -128,6 +128,36 @@ describe('two-factor on an account with no email (sc-4235)', () => {
   });
 });
 
+describe('a second number on an account, after the right code (sc-4235)', () => {
+  const said =
+    'This number is a second number on a Soirely account, so it can’t sign you in. Make it that account’s primary number, or ask the event’s organiser to put your primary number on the roster.';
+
+  it('keeps the link’s card and says so in place of the code step, with no Send code', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    const router = await open('/demo/staff-sign-in?state=code-alternative');
+
+    type('Code from WhatsApp', SAMPLE.code);
+    press('Sign in');
+    await wait(1000);
+
+    expect(router.state.location.pathname).toBe('/demo/staff-sign-in');
+    expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('Confirm it’s you');
+    expect(screen.getByText('Staff link')).toBeDefined();
+    expect(screen.getByText('Joana & Rui’s wedding')).toBeDefined();
+    expect(screen.getByText(said)).toBeDefined();
+    expect(screen.queryByRole('button', { name: 'Send code' })).toBeNull();
+    expect(screen.queryByLabelText('Code from WhatsApp')).toBeNull();
+    expect(screen.queryByText(/@|Bisi|Samuel/u)).toBeNull();
+  });
+
+  it('opens on the refusal itself', async () => {
+    await open('/demo/staff-sign-in?state=alternative-number');
+
+    expect(screen.getByText(said)).toBeDefined();
+    expect(screen.queryByRole('button', { name: 'Send code' })).toBeNull();
+  });
+});
+
 describe('signed in as someone else, and signed out (sc-4235)', () => {
   it('names the link’s person and signs out to continue', async () => {
     await open('/demo/staff-sign-in?state=wrong-account');

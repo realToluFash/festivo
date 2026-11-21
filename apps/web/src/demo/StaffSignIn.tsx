@@ -77,7 +77,8 @@ function LinkPage({ state }: { state: LinkState }) {
     }
     if (step.kind === 'code') {
       if (rightPhoneCode(step.digits)) {
-        if (start.twoFactor) go(freshTwoFactor(), 'field');
+        if (start.alternative === true) go({ kind: 'alternative' });
+        else if (start.twoFactor) go(freshTwoFactor(), 'field');
         else void navigate(SHIFT_HREF);
         return;
       }
@@ -171,6 +172,14 @@ function LinkPage({ state }: { state: LinkState }) {
             >
               {S.signOutContinue}
             </Primary>
+          </>
+        );
+      case 'alternative':
+        return (
+          <>
+            <Title titleRef={title}>{S.confirm}</Title>
+            <LinkCard />
+            <p className="ss-told">{S.alternative}</p>
           </>
         );
       case 'code':

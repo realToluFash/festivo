@@ -1480,6 +1480,22 @@ describe('the signed-out frame’s foot and ways out (sc-29561)', () => {
     expect(screen.queryByText('New to Soirely?')).toBeNull();
   });
 
+  it('refuses an invitation to a phone-only account until it adds the email (sc-4235)', async () => {
+    await open('/demo/ways-in?page=invitation&state=no-email', 'Add your email first');
+
+    expect(
+      screen.getByText(
+        `This invitation is for ${SAMPLE.email}. Add it to your account and confirm it, then accept.`,
+      ),
+    ).toBeDefined();
+    expect(screen.getByText('+44 ••• ••• 3456')).toBeDefined();
+    expect(screen.queryByText(SAMPLE.email, { selector: 'span' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Accept' })).toBeNull();
+
+    fireEvent.click(screen.getByRole('link', { name: 'Add an email address' }));
+    expect(await screen.findByRole('heading', { level: 1, name: 'Your account' })).toBeDefined();
+  });
+
   it('lands A few details saved with no number on Today', async () => {
     await open('/demo/create-account?page=details', 'A few details');
     type('Organisation name', SAMPLE.organisation);

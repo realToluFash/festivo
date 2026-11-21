@@ -37,6 +37,7 @@ import {
   joinCodeLine,
   redeemStart,
   redeemStateOf,
+  isSecondNumber,
   rightPhoneCode,
   sendNewIn,
   shownNumber,
@@ -58,7 +59,7 @@ type Want = 'title' | 'field' | 'select' | 'number' | null;
 /** Where focus starts: the field being typed in, the heading of a step that shows the event, nothing on "Signed out." (a status). */
 function firstFocus(state: RedeemState): Want {
   if (state === 'signed-out') return null;
-  if (state === 'event-short') return 'number';
+  if (state === 'event-short' || state === 'second-number') return 'number';
   if (state === 'code-wrong') return 'select';
   if (state === 'code-expired' || state === 'code-expired-whatsapp' || state === 'code-exhausted')
     return 'title';
@@ -137,7 +138,20 @@ function RedeemPage({ state }: { state: RedeemState }) {
     if (step.kind === 'joinAs') go({ kind: 'in', name, checks: true });
     if (step.kind === 'code') {
       if (rightPhoneCode(step.digits)) {
-        go({ kind: 'in', name, checks: true });
+        if (isSecondNumber(number))
+          go(
+            {
+              kind: 'event',
+              name,
+              number,
+              checked: true,
+              busy: 'no',
+              usedUp: false,
+              secondNumber: true,
+            },
+            'number',
+          );
+        else go({ kind: 'in', name, checks: true });
         return;
       }
       const wrongs = step.wrongs + 1;
@@ -211,7 +225,10 @@ function RedeemPage({ state }: { state: RedeemState }) {
             titleRef={title}
             fieldRef={field}
             onName={setName}
-            onNumber={setNumber}
+            onNumber={(typed) => {
+              setNumber(typed);
+              if (step.secondNumber === true) setStep({ ...step, secondNumber: false });
+            }}
             onCountry={setCountry}
             onSend={() => {
               const lines = eventLines(name, number, country);
@@ -534,6 +551,7 @@ function EventStep({
   onSend: () => void;
 }) {
   const lines: EventLines = step.checked ? eventLines(name, number, country) : {};
+  if (lines.number == null && step.secondNumber === true) lines.number = R.secondNumber;
 
   function submit(event: FormEvent<HTMLFormElement>): void {
     event.preventDefault();
