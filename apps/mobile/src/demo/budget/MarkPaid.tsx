@@ -359,7 +359,7 @@ function OpenForm({
           ? { label: W.close, on: true, onPress: onClose, testID: 'budget.mark.close' }
           : {
               label: W.markPaid,
-              on: true,
+              on: !sending,
               busy: sending,
               onPress: hook.submit,
               testID: 'budget.mark.send',
@@ -451,7 +451,7 @@ function Docked({
             ? { label: W.close, on: true, onPress: onClose, testID: 'budget.mark.close' }
             : {
                 label: W.markPaid,
-                on: true,
+                on: !sending,
                 busy: sending,
                 onPress: hook.submit,
                 testID: 'budget.mark.send',
