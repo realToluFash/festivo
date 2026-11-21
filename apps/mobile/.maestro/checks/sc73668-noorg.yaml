@@ -3,6 +3,8 @@ appId: host.exp.Exponent
 ---
 - setOrientation: PORTRAIT
 - openLink: ${METRO_URL}/--/
-- waitForAnimationToEnd:
-    timeout: 8000
+- extendedWaitUntil:
+    visible:
+      id: 'noOrganisation.managed'
+    timeout: 15000
 - takeScreenshot: noorg

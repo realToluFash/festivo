@@ -7,8 +7,9 @@ appId: host.exp.Exponent
     timeout: 8000
 - takeScreenshot: demo-listed
 - tapOn:
-    id: 'switcher.tile.*celebraciones.*|switcher.tile.*alameda.*'
-    optional: true
-- waitForAnimationToEnd:
+    id: 'switcher.tile.org-celebraciones-alameda'
+- extendedWaitUntil:
+    visible:
+      id: 'switcher.invitation.org-celebraciones-alameda.managed.change'
     timeout: 5000
 - takeScreenshot: demo-celebraciones
