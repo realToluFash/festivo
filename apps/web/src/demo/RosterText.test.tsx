@@ -6,7 +6,18 @@ import { __setConfig, config } from '../config.ts';
 import { routes } from '../routes/index.tsx';
 import { sample } from './roster.ts';
 import { ISSUE_MS } from './staffLink.ts';
-import { SENT_MS, TW, bulkCheck, owed, textSome, texting } from './staffText.ts';
+import {
+  SENT_MS,
+  TEXT_WORDS,
+  TW,
+  bulkCheck,
+  checkOf,
+  creditsOf,
+  owed,
+  staffSmsOf,
+  textSome,
+  texting,
+} from './staffText.ts';
 
 const tested = config();
 
@@ -135,6 +146,24 @@ describe('texting staff links on the web roster (sc-77904)', () => {
     ).toBeTruthy();
   });
 
+  it('counts no mobile number after Text links to 1, as its check did', async () => {
+    await open('smsOn');
+    for (const name of ['Tolu Bello', 'Amina Yusuf', 'Kunle Ajayi', 'Emeka Obi']) {
+      press(`Text the link: ${name}`);
+      fireEvent.click(
+        within(await screen.findByRole('dialog')).getByRole('button', { name: 'Text the link' }),
+      );
+      await wait(ISSUE_MS);
+    }
+    press('Text links to 1');
+    const dialog = await screen.findByRole('dialog');
+    expect(within(dialog).getByText('1 has no mobile number.')).toBeTruthy();
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Text links to 1' }));
+    await wait(ISSUE_MS);
+    expect(said('Sending to 1 person.')).toBe(true);
+    expect(said('1 has no mobile number.')).toBe(true);
+  }, 15_000);
+
   it('shows neither button without staff.manage', async () => {
     await open('smsReadOnly');
     expect(button('Text the link: Tolu Bello')).toBeNull();
@@ -166,5 +195,27 @@ describe('the result after Text links to {n}', () => {
     expect(pressed.result.sending).toBe(2);
     expect(pressed.result.held).toBe(ids.length - 2);
     expect(bulkCheck(pressed.entries, texting({ credits: pressed.credits })).n).toBe(0);
+  });
+
+  it('prices each text by its own number’s country, never the event’s', () => {
+    const [tolu] = sample().filter(owed);
+    const london = { ...tolu, mobile: '+447400123456' };
+    expect(creditsOf(tolu)).toBe(62);
+    expect(creditsOf(london)).toBe(9);
+    expect(checkOf([tolu, london], [], texting({ credits: 70 }))).toMatchObject({
+      afford: 1,
+      uses: 62,
+      wait: 1,
+    });
+  });
+
+  it('keeps the first text, STOP line and all, to one part with the sample names', () => {
+    expect(staffSmsOf(true).text).toMatch(/Reply STOP to opt out\.$/u);
+    expect(staffSmsOf(true).parts).toBe(1);
+  });
+
+  it('counts in the locale’s plural forms', () => {
+    expect(TW.smsWaits(1)).toBe('1 SMS message will wait for credits.');
+    expect(TEXT_WORDS.fr.noMobile(0)).toBe('[0 n’a pas de numéro de portable.]');
   });
 });

@@ -61,6 +61,7 @@ import {
 } from './rosterWords.ts';
 import { STATIONS_EVENT } from './stations.ts';
 import {
+  QUIET_ENDS,
   SENT_MS,
   TEXT_WORDS,
   bounced,
@@ -407,7 +408,11 @@ function RosterView({
   const texts = sms != null && acts;
   const bulk = sms == null ? null : bulkCheck(entries, sms);
   const check =
-    sms == null || checking == null ? null : checking === 'all' ? bulk : checkOf(1, [], sms);
+    sms == null || checking == null
+      ? null
+      : checking === 'all'
+        ? bulk
+        : checkOf([shown(checking)], [], sms);
   const n = bulk?.n ?? 0;
   const next = texts && n === 0 && rows.length > 0 ? TW.allSent : nextLine(entries, finished, RW);
 
@@ -669,7 +674,7 @@ function RosterView({
                 </div>
               )}
               {sms.quiet && check.n > 0 && (
-                <p className="rs-check-hint">{TW.quiet(check.n, '09:00')}</p>
+                <p className="rs-check-hint">{TW.quiet(check.n, QUIET_ENDS)}</p>
               )}
             </div>
             {checkFailed && (
@@ -920,7 +925,7 @@ function LinkCell({
         : entry.pending === 'held'
           ? TW.held
           : entry.pending === 'waits'
-            ? TW.waits('09:00')
+            ? TW.waits(QUIET_ENDS)
             : entry.undelivered != null
               ? TW.notDelivered(entry.undelivered)
               : null;
