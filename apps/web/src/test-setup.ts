@@ -43,6 +43,7 @@ beforeAll(async () => {
 // jsdom lays nothing out, so it has none of these; a step or a page that takes focus asks them.
 Element.prototype.scrollIntoView = function scrollIntoView() {};
 window.scrollTo = () => {};
+Range.prototype.getClientRects = () => [] as unknown as DOMRectList;
 Object.defineProperty(document, 'fonts', { value: { ready: Promise.resolve() } });
 window.matchMedia = (query) =>
   ({ matches: false, media: query, addEventListener() {}, removeEventListener() {} }) as never;

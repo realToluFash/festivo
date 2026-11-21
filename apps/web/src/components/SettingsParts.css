@@ -396,7 +396,7 @@
     max-width: calc(100% - 200px);
   }
 
-  .desk-summary.is-words-low > .p6 {
+  .desk-summary.is-p6-covered > .p6 {
     display: none;
   }
 }
