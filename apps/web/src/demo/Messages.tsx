@@ -130,7 +130,18 @@ function firstFocus(state: MessagesState | null): string | null {
       return 'refused';
     case 'chooseNone':
     case 'allRefused':
+    case 'chosen':
+    case 'chosenMany':
       return 'to-chip';
+    case 'chooseOpen':
+    case 'chooseSearch':
+    case 'chooseNoMatch':
+    case 'chooseSeveral':
+    case 'chooseFlags':
+    case 'chooseNoAddresses':
+    case 'chooseLoading':
+    case 'chooseLong':
+      return 'choose-first';
     case 'longSubject':
       return 'subject';
     case 'blankMessage':

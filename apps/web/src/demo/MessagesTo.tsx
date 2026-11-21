@@ -1,6 +1,8 @@
 import { type RefObject, useEffect, useId, useRef, useState } from 'react';
 
 import { Glyph } from '../components/Glyph.tsx';
+import { ChoosePanel } from './MessagesChoose.tsx';
+import { CHW, choseAudience, chosenIds, chw } from './messagesChoose.ts';
 import { MW, filled } from './messages.ts';
 import { useInbox } from './messagesContext.ts';
 import { INVITE_WORLD } from './messagesInvite.ts';
@@ -73,15 +75,19 @@ export function ToPopover({
   chip,
   onPick,
   onClose,
+  onNobody,
+  choosingFirst = false,
   invite = false,
 }: {
   to: Audience;
   chip: RefObject<HTMLButtonElement | null>;
   onPick: (to: Audience) => void;
   onClose: (back: boolean) => void;
+  onNobody?: () => void;
+  choosingFirst?: boolean;
   invite?: boolean;
 }) {
-  const { tell, say, to: event } = useInbox();
+  const { say, to: event } = useInbox();
   const { book, setBook, viewed } = event;
   const [first] = useState(event.view);
   const [adding, setAdding] = useState(first.adding);
@@ -92,6 +98,7 @@ export function ToPopover({
   const [menu, setMenu] = useState(first.menu);
   const [renaming, setRenaming] = useState(first.renaming);
   const [deleting, setDeleting] = useState(first.deleting);
+  const [choosing, setChoosing] = useState(choosingFirst || first.choose != null);
   const [kept, setKept] = useState<readonly Condition[]>(to.kind === 'who' ? to.conditions : []);
   const box = useRef<HTMLDivElement>(null);
   const timer = useRef<number | null>(null);
@@ -169,7 +176,7 @@ export function ToPopover({
         setMenu(null);
         return;
       }
-      if (keyEvent.key !== 'Escape') return;
+      if (keyEvent.key !== 'Escape' || (choosing && keyEvent.defaultPrevented)) return;
 
       keyEvent.preventDefault();
       if (menu != null) {
@@ -207,7 +214,7 @@ export function ToPopover({
       document.removeEventListener('keydown', keys);
       document.removeEventListener('pointerdown', outside);
     };
-  }, [menu, adding, renaming, deleting, saving, chip, onClose]);
+  }, [menu, adding, renaming, deleting, saving, choosing, chip, onClose]);
 
   function recount(): void {
     if (timer.current != null) window.clearTimeout(timer.current);
@@ -303,6 +310,30 @@ export function ToPopover({
     checked: pick === value,
     'data-focus': pick === value ? 'to-pick' : undefined,
   });
+
+  if (choosing)
+    return (
+      <div
+        ref={box}
+        className="mg-pop mg-to-pop mgt-pop mgc-pop"
+        role="dialog"
+        aria-labelledby={titleId}
+      >
+        <ChoosePanel
+          to={to}
+          first={first.choose}
+          addresses={event.addresses}
+          titleId={titleId}
+          onPick={onPick}
+          onBack={() => {
+            later.current = 'input:checked';
+            setChoosing(false);
+          }}
+          onClose={() => onClose(true)}
+          onDoneNone={() => (onNobody ?? (() => onClose(true)))()}
+        />
+      </div>
+    );
 
   return (
     <div ref={box} className="mg-pop mg-to-pop mgt-pop" role="dialog" aria-labelledby={titleId}>
@@ -460,10 +491,28 @@ export function ToPopover({
           <label className="mg-radio-row">
             <input
               {...radio('chosen')}
-              onChange={() => tell(`${MW.chooseGuests} has its own design.`)}
+              onChange={() => {
+                onPick(choseAudience(chosenIds(to)));
+                setChoosing(true);
+              }}
             />
             <span className="today-grow">{MW.chooseGuests}</span>
+            {pick === 'chosen' && <span className="mg-radio-count">{chosenIds(to).length}</span>}
           </label>
+          {pick === 'chosen' && (
+            <div className="mg-who-block">
+              <button
+                type="button"
+                className="desk-text"
+                data-to="choose"
+                onClick={() => setChoosing(true)}
+              >
+                {chosenIds(to).length === 0
+                  ? CHW.choose
+                  : `${chw.filled(CHW.chosen, { count: chosenIds(to).length })} · ${CHW.change}`}
+              </button>
+            </div>
+          )}
           <label className="mg-radio-row">
             <input
               {...radio('who')}
