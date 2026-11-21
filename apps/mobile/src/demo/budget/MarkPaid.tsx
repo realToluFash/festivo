@@ -42,6 +42,11 @@ import { W, say } from './BudgetWords.ts';
 
 type Opener = RefObject<ScreenReaderTarget | null>;
 
+// The symbol grows with the text, so the amount starts after the width it drew at rather than a fixed 34 (sc-31778).
+const PREFIX_LEFT = 14;
+const PREFIX_SYMBOL = 10;
+const PREFIX_GAP = 10;
+
 export interface MarkInput {
   amount: string;
   reference: string;
@@ -112,6 +117,7 @@ export function MarkFields({
   const { input, setInput, scheduled, amountRef, referenceRef, submit } = hook;
   const typed = checkAmount(input.amount);
   const diff = typed.ok ? typed.pence - scheduled : 0;
+  const [symbolWidth, setSymbolWidth] = useState(PREFIX_SYMBOL);
 
   return (
     <View style={styles.fields}>
@@ -138,11 +144,15 @@ export function MarkFields({
                 keyboardType="decimal-pad"
                 wrong={input.amountError != null}
                 submitting={sending}
-                style={styles.prefixed}
+                style={{ paddingLeft: PREFIX_LEFT + symbolWidth + PREFIX_GAP }}
                 accessibilityLabel={W.amountPaid}
                 testID="budget.mark.amount"
               />
-              <View style={styles.prefix} pointerEvents="none">
+              <View
+                style={styles.prefix}
+                pointerEvents="none"
+                onLayout={(event) => setSymbolWidth(event.nativeEvent.layout.width)}
+              >
                 <Text size={16} weight="medium" accessible={false} style={styles.secondary}>
                   {currencySymbol(locale, payment.currency)}
                 </Text>
@@ -482,10 +492,9 @@ const styles = StyleSheet.create({
   lineHeight: { lineHeight: 15 * 1.45 },
   fields: { gap: 14 },
   date: { gap: tokens.spaceSm },
-  prefixed: { paddingLeft: 34 },
   prefix: {
     position: 'absolute',
-    left: 14,
+    left: PREFIX_LEFT,
     top: 0,
     bottom: 0,
     justifyContent: 'center',

@@ -1,9 +1,10 @@
 import type { ReactNode, Ref } from 'react';
-import { StyleSheet, View, type ViewInstance } from 'react-native';
+import { StyleSheet, useWindowDimensions, View, type ViewInstance } from 'react-native';
 
 import { useShell } from '../../components/settingsShell.ts';
 import { CardSays, OnCard, SummaryCard } from '../../components/Summary.tsx';
 import { Text } from '../../components/Text.tsx';
+import { WholeWords } from '../../components/Title.tsx';
 import { tokens } from '../../theme/tokens.ts';
 import { CardBackdrop } from '../../components/EventCard.tsx';
 import { Glass } from '../../components/TodayCover.tsx';
@@ -14,16 +15,20 @@ import { W, say } from './BudgetWords.ts';
 
 const FIGURE = { phone: 30, portrait: 32, landscape: 34 } as const;
 
+/** Grows with the text, and steps down rather than break a figure across lines (sc-31778). */
 function Figure({ text, size }: { text: string; size: number }) {
+  const { fontScale } = useWindowDimensions();
+
   return (
-    <Text
+    <WholeWords
       size={size}
+      start={size * fontScale}
       weight="bold"
       accessibilityRole="header"
       style={[styles.figure, { lineHeight: Math.round(size * 1.1), letterSpacing: size * -0.02 }]}
     >
       {text}
-    </Text>
+    </WholeWords>
   );
 }
 
