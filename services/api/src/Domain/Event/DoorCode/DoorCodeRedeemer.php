@@ -58,10 +58,12 @@ final readonly class DoorCodeRedeemer
     public function open(string $typed, ?User $reader, Request $request): DoorCode
     {
         $code = DoorCodeText::normalise($typed);
-        $this->refuseWhenSpent($this->doorCodeSourceLimiter->create($request->getClientIp() ?? 'unknown'));
+        $source = $this->doorCodeSourceLimiter->create($request->getClientIp() ?? 'unknown');
+        $this->refuseWhenSpent($source);
+        $byCode = null === $code ? null : $this->doorCodeCodeLimiter->create(Hash\hash($code, Hash\Algorithm::Sha256));
 
-        if (null !== $code) {
-            $this->refuseWhenSpent($this->doorCodeCodeLimiter->create(Hash\hash($code, Hash\Algorithm::Sha256)));
+        if (null !== $byCode) {
+            $this->refuseWhenSpent($byCode);
         }
 
         $doorCode = null === $code ? null : $this->doorCodeRepository->findOneByCode($code);
@@ -75,7 +77,9 @@ final readonly class DoorCodeRedeemer
         }
 
         if (null === $doorCode || !$this->live($doorCode)) {
-            throw $this->invalid($code, $request);
+            $this->spendARefusal($code, $request);
+
+            throw new ApiException(ErrorCode::DoorCodeInvalid, $this->translator->trans('door_codes.invalid'));
         }
 
         return $doorCode;
@@ -125,7 +129,9 @@ final readonly class DoorCodeRedeemer
             $this->entityManager->refresh($doorCode, LockMode::PESSIMISTIC_WRITE);
 
             if (!$this->live($doorCode)) {
-                throw $this->invalid($doorCode->getCode(), $request);
+                $this->spendARefusal($doorCode->getCode(), $request);
+
+                throw new ApiException(ErrorCode::DoorCodeInvalid, $this->translator->trans('door_codes.invalid'));
             }
 
             $user = $reader ?? $this->deviceAccount($given, $request);
@@ -172,15 +178,13 @@ final readonly class DoorCodeRedeemer
     }
 
     /** Only a refused try spends either limit, so a working code is never refused for being busy. */
-    private function invalid(?string $code, Request $request): ApiException
+    private function spendARefusal(?string $code, Request $request): void
     {
         $this->doorCodeSourceLimiter->create($request->getClientIp() ?? 'unknown')->consume();
 
         if (null !== $code) {
             $this->doorCodeCodeLimiter->create(Hash\hash($code, Hash\Algorithm::Sha256))->consume();
         }
-
-        return new ApiException(ErrorCode::DoorCodeInvalid, $this->translator->trans('door_codes.invalid'));
     }
 
     private function refuseWhenSpent(LimiterInterface $source): void
