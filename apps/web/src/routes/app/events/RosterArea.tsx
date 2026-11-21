@@ -38,7 +38,7 @@ import { useStartingCountry } from './useStartingCountry.ts';
 import { StaffTabs } from './StaffTabs.tsx';
 import { StationSelect } from './StationsArea.tsx';
 import { stationGroups } from './stationWords.ts';
-import { type StaffTimes, clockWords, rangeWords, staffTimes } from './staffTimes.ts';
+import { type StaffTimes, clockWords, rangeWords, shiftBreaks, staffTimes } from './staffTimes.ts';
 import { useDeskTop } from '../../../deskTop.ts';
 import '../../../components/SettingsParts.css';
 import '../../../components/eventsDesk.css';
@@ -765,12 +765,12 @@ function ShiftCell({ entry, times }: { entry: StaffEntry; times: StaffTimes }) {
       {more.length > 0 ? (
         <Trans
           i18nKey="roster.moreShifts"
-          values={{ first: rangeWords(first.startsAt, first.endsAt, times, t) }}
+          values={{ first: shiftBreaks(rangeWords(first.startsAt, first.endsAt, times, t)) }}
           count={more.length}
           components={{ more: <span className="rs-more" /> }}
         />
       ) : (
-        rangeWords(first.startsAt, first.endsAt, times, t)
+        shiftBreaks(rangeWords(first.startsAt, first.endsAt, times, t))
       )}
     </>
   );
