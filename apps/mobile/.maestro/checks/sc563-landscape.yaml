@@ -1,8 +1,12 @@
-# sc-563: turns the tablet on its side, SIDE (LANDSCAPE_LEFT, or PORTRAIT on a tablet whose natural orientation is landscape). A batch resets the orientation before each check, so run it through a sc563-side-* wrapper.
+# sc-563: turns the tablet on its side: SIDE on iOS, and on Android the harness by the display's size, whatever SIDE says. A batch resets the orientation before each check, so run it through a sc563-side-* wrapper.
 appId: host.exp.Exponent
 env:
   SIDE: LANDSCAPE_LEFT
 ---
 - setOrientation: ${SIDE}
+- runScript:
+    file: ../batch/helper.js
+    env:
+      ASK: /landscape # the harness turns it (sc-50565)
 - waitForAnimationToEnd:
     timeout: 3000
