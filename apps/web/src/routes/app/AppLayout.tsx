@@ -146,9 +146,10 @@ function Shell() {
   const menuId = useId();
   const organisation = session.organisation;
   const routedEvent = useRoutedEventId();
-  const waiting = useWaitingInvitations();
+  const reads = session.heldByDevice !== true;
+  const waiting = useWaitingInvitations(reads);
   const closeCreate = useCallback(() => setCreating(false), []);
-  const offer = useDomainOffer();
+  const offer = useDomainOffer(reads);
   const overdue = useTwoFactorStanding(organisation) === 'overdue';
   const switchTo = switchOf(location.state);
   const atPhone = usePhoneWidth();

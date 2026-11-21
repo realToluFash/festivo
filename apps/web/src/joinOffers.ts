@@ -13,12 +13,15 @@ export interface DomainOffer {
 }
 
 /** Another organisation at the domain of the primary address (sc-561), read once per visit. */
-export function useDomainOffer(): DomainOffer {
+export function useDomainOffer(load = true): DomainOffer {
+  const [reads] = useState(load);
   const [organisation, setOrganisation] = useState<JoinOffer | null>(null);
   const [domain, setDomain] = useState<string | null>(null);
   const [asked, setAsked] = useState(false);
 
   useEffect(() => {
+    if (!reads) return;
+
     let live = true;
 
     api.joinOffers().then(
@@ -35,7 +38,7 @@ export function useDomainOffer(): DomainOffer {
     return () => {
       live = false;
     };
-  }, []);
+  }, [reads]);
 
   async function ask(): Promise<void> {
     if (organisation == null) return;
