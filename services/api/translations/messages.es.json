@@ -470,7 +470,6 @@
     "email_domains.only_ours_unproved": "«Solo nuestra organización» requiere un dominio verificado por esta organización.",
     "validation.payment_reminder_days": "Escriba un número entero de días de 1 a 30.",
     "staff.link_needs_mobile": "Añada un número de móvil para enviar un enlace.",
-    "access.plan_required": "Disponible con Enterprise. Para cambiar esto, consulte a Soirely sobre Enterprise.",
     "door_codes.role": "Un código de acceso solo permite ver el evento o registrar la llegada de los invitados, nunca editar.",
     "door_codes.use_cap_required": "Indique cuántas personas pueden usar este código.",
     "door_codes.use_cap_range": "Escriba un número entero del 1 al 500.",

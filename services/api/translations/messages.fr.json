@@ -470,7 +470,6 @@
     "email_domains.only_ours_unproved": "« Réservé à notre organisation » nécessite un domaine vérifié par cette organisation.",
     "validation.payment_reminder_days": "Saisissez un nombre entier de jours de 1 à 30.",
     "staff.link_needs_mobile": "Ajoutez un numéro de portable pour envoyer un lien.",
-    "access.plan_required": "Disponible avec le forfait Enterprise. Pour modifier ce réglage, contactez Soirely au sujet du forfait Enterprise.",
     "door_codes.role": "Un code d’accès permet seulement de consulter l’événement ou d’accueillir les invités, jamais de le modifier.",
     "door_codes.use_cap_required": "Indiquez combien de personnes peuvent utiliser ce code.",
     "door_codes.use_cap_range": "Saisissez un nombre entier de 1 à 500.",

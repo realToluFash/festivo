@@ -238,7 +238,7 @@ final class DoorCodesTest extends ApiTestCase
         $this->redeem($expiring, 'Tolú');
         $answers['expired'] = [$this->statusCode(), $this->last()['type'] ?? null, $this->last()['detail'] ?? null];
 
-        self::assertSame([[404, ErrorCode::DoorCodeInvalid->type(), 'That code doesn’t work. Check it with whoever gave it to you.']], Vec\unique_by(Vec\values($answers), Json\encode(...)));
+        self::assertSame([[404, ErrorCode::DoorCodeInvalid->type(), 'That code does not work. Check it with whoever gave it to you.']], Vec\unique_by(Vec\values($answers), Json\encode(...)));
     }
 
     #[Test]
@@ -323,7 +323,8 @@ final class DoorCodesTest extends ApiTestCase
 
         self::assertSame(429, $this->statusCode());
         self::assertSame(ErrorCode::TooManyAttempts->type(), $this->last()['type'] ?? null);
-        self::assertNotNull($this->last()['retryAt'] ?? null);
+        self::assertMatchesRegularExpression('/^\w+day \d+ \w+ at \d\d:\d\d UTC$/', Type\string()->coerce($this->last()['retryAt'] ?? null));
+        self::assertMatchesRegularExpression('/^Too many tries\. Try again \w+day \d+ \w+ at \d\d:\d\d UTC\.$/', Type\string()->coerce($this->last()['detail'] ?? null));
     }
 
     /** In one kernel, since the limiter's pool is reset between requests. */
