@@ -27,7 +27,7 @@ final readonly class InvitationLinks
 
     public const string FLAGGED = 'guest.link_flagged';
 
-    public const string PATH = '/i/';
+    public const string PATH = Guest::PAGE_PATH;
 
     public function __construct(
         private string $webOrigin,

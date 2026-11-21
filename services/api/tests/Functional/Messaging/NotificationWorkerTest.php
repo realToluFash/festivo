@@ -4,9 +4,11 @@ declare(strict_types=1);
 
 namespace App\Tests\Functional\Messaging;
 
+use App\Domain\Guest\Link\InvitationLinks;
 use App\Domain\Messaging\Exception\UnregisteredNotificationType;
 use App\Domain\Messaging\Model\Audience;
 use App\Domain\Messaging\Model\Trigger;
+use App\Entity\Guest;
 use App\Entity\Membership;
 use App\Enum\MembershipStatus;
 use App\Enum\Permission;
@@ -329,15 +331,20 @@ final class NotificationWorkerTest extends MessagingTestCase
     }
 
     #[Test]
-    public function aGuestAudienceIsAcceptedAndWaitsForItsResolver(): void
+    public function aGuestAudienceResolvesToTheGuestsOnTheListAndNeverACompanion(): void
     {
         $event = $this->event();
-        self::scheduler()->schedule('test.guest', 'guests', 'guests', Trigger::at(new DateTimeImmutable('-1 minute')), Audience::guests($event->getId(), ['replied' => false]), [], $event);
+        $guest = Guest::listed($event, 'Emeka Nwosu', 'emeka nwosu', 'emeka@example.test', null, null, InvitationLinks::token());
+        self::em()->persist($guest);
+        self::em()->persist(Guest::companionOf($guest, 'Ada Nwosu', 'ada nwosu', 1, null));
+        self::em()->flush();
+        self::scheduler()->schedule('test.guest', 'guests', 'guests', Trigger::at(new DateTimeImmutable('-1 minute')), Audience::guests($event->getId(), ['choice' => 'all']), [], $event);
 
         self::runUntilIdle();
 
-        self::assertSame('failed', self::scalar('SELECT status FROM scheduled_notifications'));
-        self::assertSame('nothing resolves a guest audience yet', self::scalar('SELECT outcome FROM scheduled_notifications'));
+        self::assertSame('fanned_out', self::scalar('SELECT status FROM scheduled_notifications'));
+        self::assertSame($guest->getId()->toRfc4122(), self::scalar('SELECT recipient_id FROM notification_deliveries'));
+        self::assertSame(1, self::rowCount('SELECT 1 FROM notification_deliveries'));
     }
 
     private function budgetHolders(): Audience

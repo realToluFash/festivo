@@ -1,0 +1,165 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Domain\Messaging\GuestMessages;
+
+use App\Audit\Auditor;
+use App\Domain\Messaging\Audience\GuestAudienceResolver;
+use App\Domain\Messaging\EventGate;
+use App\Domain\Messaging\NotificationScheduler;
+use App\Entity\Event;
+use App\Entity\GuestMessage;
+use App\Entity\User;
+use App\Enum\Actor;
+use App\Enum\ErrorCode;
+use App\Enum\EventPhase;
+use App\Http\Exception\ApiException;
+use App\Locale\VisibleText;
+use DateInterval;
+use Doctrine\DBAL\Connection;
+use Doctrine\DBAL\Types\Types;
+use Doctrine\ORM\EntityManagerInterface;
+use Psl\Iter;
+use Psl\Json;
+use Psl\Str;
+use Psl\Vec;
+use Psr\Clock\ClockInterface;
+use Symfony\Component\Uid\Uuid;
+use Symfony\Contracts\Translation\TranslatorInterface;
+
+/** Send on a host's message to guests (sc-3942): the message, its deliveries and its audit entry commit together, and the worker sends the queued ones. */
+final readonly class GuestMessageSender
+{
+    public const string SENT = 'guest_message.sent';
+
+    public function __construct(
+        private GuestReach $guestReach,
+        private NotificationScheduler $notificationScheduler,
+        private Connection $connection,
+        private EntityManagerInterface $entityManager,
+        private Auditor $auditor,
+        private TranslatorInterface $translator,
+        private ClockInterface $clock,
+    ) {
+    }
+
+    /** @param list<string> $guestIds */
+    public function check(Event $event, string $choice, array $guestIds): GuestMessagePlan
+    {
+        $this->assertCanSend($event);
+        $violations = $this->audienceViolations($choice, $guestIds);
+
+        if ([] !== $violations) {
+            throw ApiException::validation($violations);
+        }
+
+        return $this->plan($event, $choice, $guestIds);
+    }
+
+    /** @param list<string> $guestIds */
+    public function send(Event $event, User $by, string $choice, array $guestIds, ?string $subject, string $message): GuestMessageSent
+    {
+        $this->assertCanSend($event);
+        $subject = null === $subject ? null : Str\trim($subject);
+        $subject = '' === $subject ? null : $subject;
+        $message = Str\trim($message);
+        $violations = $this->audienceViolations($choice, $guestIds);
+
+        if (null !== $subject && VisibleText::tooLong($subject, GuestMessage::SUBJECT_MAXIMUM)) {
+            $violations[] = $this->violation('subject', 'validation.guest_message_subject_too_long', GuestMessage::SUBJECT_MAXIMUM);
+        }
+
+        if ('' === $message) {
+            $violations[] = $this->violation('message', 'validation.guest_message_required');
+        } elseif (VisibleText::tooLong($message, GuestMessage::BODY_MAXIMUM)) {
+            $violations[] = $this->violation('message', 'validation.guest_message_too_long', GuestMessage::BODY_MAXIMUM);
+        }
+
+        if ([] !== $violations) {
+            throw ApiException::validation($violations);
+        }
+
+        $id = Uuid::v7();
+
+        return $this->connection->transactional(function () use ($event, $by, $choice, $guestIds, $subject, $message, $id): GuestMessageSent {
+            $plan = $this->plan($event, $choice, $guestIds);
+            $audience = GuestAudienceResolver::audience($event->getId(), $choice, $guestIds);
+            $scheduled = $this->notificationScheduler->scheduleFannedOut(GuestMessageNotice::NAME, $id->toRfc4122(), $audience, ['message' => $id->toRfc4122()], $event, $plan->deliveries);
+
+            $this->connection->insert('guest_messages', [
+                'id' => $id->toRfc4122(),
+                'event_id' => $event->getId()->toRfc4122(),
+                'audience' => $choice,
+                'chosen_guest_ids' => Json\encode(GuestMessage::ALL === $choice ? [] : Vec\values($guestIds)),
+                'subject' => $subject,
+                'body' => $message,
+                'created_by_id' => $by->getId()->toRfc4122(),
+                'created_by_name' => $by->getName(),
+                'scheduled_notification_id' => $scheduled->toRfc4122(),
+                'created_at' => $this->clock->now(),
+            ], ['created_at' => Types::DATETIME_IMMUTABLE]);
+
+            $this->auditor->record(self::SENT, 'Event', $event->getId(), Actor::User, $by->getId(), $by->getName(), [
+                'message' => [null, $id->toRfc4122()],
+                'email' => [null, $plan->toldByEmail()],
+                'notSent' => [null, Iter\count($plan->deliveries) - $plan->toldByEmail()],
+            ]);
+            $this->entityManager->flush();
+
+            return new GuestMessageSent($id, $plan);
+        });
+    }
+
+    /** @param list<string> $guestIds */
+    private function plan(Event $event, string $choice, array $guestIds): GuestMessagePlan
+    {
+        $deliveries = $this->guestReach->plan($event, GuestAudienceResolver::audience($event->getId(), $choice, $guestIds));
+
+        if ([] === $deliveries) {
+            throw ApiException::validation(GuestMessage::ALL === $choice
+                ? [$this->violation('audience', 'validation.guest_message_no_guests', code: 'no_guests')]
+                : [$this->violation('guestIds', 'validation.guest_message_choose_guests')]);
+        }
+
+        return new GuestMessagePlan($deliveries);
+    }
+
+    /**
+     * @param list<string> $guestIds
+     *
+     * @return list<array{propertyPath: string, message: string, code: string}>
+     */
+    private function audienceViolations(string $choice, array $guestIds): array
+    {
+        $valid = Vec\filter($guestIds, Uuid::isValid(...));
+
+        return GuestMessage::CHOSEN === $choice && [] === $valid ? [$this->violation('guestIds', 'validation.guest_message_choose_guests')] : [];
+    }
+
+    /** A Draft can't send yet, and a finished event only for 30 days after it ended; a paused one can, so the host can say why. */
+    private function assertCanSend(Event $event): void
+    {
+        $now = $this->clock->now();
+        $phase = EventPhase::of($event->getStatus(), $event->getStartsAt(), $event->getEndsAt(), $now);
+        $key = match (true) {
+            EventPhase::Draft === $phase => 'guest_message.event_draft',
+            EventPhase::Finished === $phase && $now >= ($event->getEndedAt() ?? $event->getEndsAt())->add(new DateInterval(EventGate::HOST_MESSAGES_AFTER_END)) => 'guest_message.event_ended',
+            default => null,
+        };
+
+        if (null !== $key) {
+            throw new ApiException(ErrorCode::EventStateInvalid, $this->translator->trans($key), members: ['phase' => $phase->value]);
+        }
+    }
+
+    /** @return array{propertyPath: string, message: string, code: string} */
+    private function violation(string $path, string $key, ?int $count = null, string $code = 'validation_failed'): array
+    {
+        return [
+            'propertyPath' => $path,
+            'message' => $this->translator->trans($key, null === $count ? [] : ['count' => $count]),
+            'code' => $code,
+        ];
+    }
+}

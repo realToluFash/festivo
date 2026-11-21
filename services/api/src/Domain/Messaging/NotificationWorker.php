@@ -11,6 +11,7 @@ use App\Domain\Messaging\Interfaces\NotificationTypeInterface;
 use App\Domain\Messaging\Model\Audience;
 use App\Domain\Messaging\Model\EventState;
 use App\Domain\Messaging\Model\EventVerdict;
+use App\Domain\Messaging\Model\Recipient;
 use App\Enum\EventStatus;
 use App\Enum\NotificationAudienceKind;
 use App\Enum\NotificationChannel;
@@ -349,6 +350,12 @@ final class NotificationWorker
             $this->finishDelivery($id, NotificationDeliveryStatus::Cancelled, 'no longer in the audience');
 
             return;
+        }
+
+        $fixed = Type\nullable(Type\string())->coerce($row['address']);
+
+        if (null !== $fixed) {
+            $recipient = new Recipient($recipient->kind, $recipient->id, $recipient->name, $recipient->locale, $fixed);
         }
 
         $channel = NotificationChannel::from(Type\string()->coerce($row['channel']));
@@ -754,7 +761,7 @@ final class NotificationWorker
     {
         $row = $this->connection->fetchAssociative(
             <<<'SQL'
-                SELECT d.id, d.type, d.source_id, d.event_id, d.created_at, d.recipient_kind, d.recipient_id, d.channel, d.send_by, d.attempts, s.organisation_id, s.audience, s.payload
+                SELECT d.id, d.type, d.source_id, d.event_id, d.created_at, d.recipient_kind, d.recipient_id, d.channel, d.address, d.send_by, d.attempts, s.organisation_id, s.audience, s.payload
                 FROM notification_deliveries d
                 JOIN scheduled_notifications s ON s.id = d.scheduled_notification_id
                 WHERE d.id = :id

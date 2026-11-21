@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Entity;
 
+use App\Enum\DeliveryNotSentReason;
 use App\Enum\MailProviderReport;
 use App\Enum\NotificationAudienceKind;
 use App\Enum\NotificationChannel;
@@ -103,6 +104,13 @@ class NotificationDelivery
     #[ORM\Column(type: Types::DATETIME_IMMUTABLE, nullable: true)]
     private ?DateTimeImmutable $providerReportedAt = null;
 
+    /** The email address it went to, fixed when it was queued, so a later correction never rewrites where it went (sc-3942). */
+    #[ORM\Column(type: Types::STRING, length: 254, nullable: true)]
+    private ?string $address = null;
+
+    #[ORM\Column(type: Types::STRING, length: 20, nullable: true, enumType: DeliveryNotSentReason::class)]
+    private ?DeliveryNotSentReason $notSentReason = null;
+
     #[ORM\Column(type: Types::DATETIME_IMMUTABLE)]
     private DateTimeImmutable $createdAt;
 
@@ -128,6 +136,16 @@ class NotificationDelivery
         $this->dueAt = $dueAt;
         $this->nextAttemptAt = $dueAt;
         $this->createdAt = $createdAt;
+    }
+
+    public function getAddress(): ?string
+    {
+        return $this->address;
+    }
+
+    public function getNotSentReason(): ?DeliveryNotSentReason
+    {
+        return $this->notSentReason;
     }
 
     public function getId(): Uuid

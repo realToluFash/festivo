@@ -415,5 +415,18 @@
     "payment_reminder.email.link": "{label}: {url}",
     "payment_reminder.email.settings": "Definições de notificações",
     "payment_reminder.email.footer": "Está a receber esta mensagem porque pode registar pagamentos em {organisation}. Para deixar de receber estes e-mails, desative o e-mail de Faturação nas Definições de notificações.",
-    "limits.staff_links": "Esta ligação foi aberta demasiadas vezes. Tente novamente {hour, plural, =1 {à {time}} other {às {time}}}."
+    "limits.staff_links": "Esta ligação foi aberta demasiadas vezes. Tente novamente {hour, plural, =1 {à {time}} other {às {time}}}.",
+    "guest_message.notice.subject": "{event}: a message from {hosts}",
+    "guest_message.notice.dear": "Dear {greeting},",
+    "guest_message.notice.body": "{hosts} sent you a message about {event}. It is on your page.",
+    "guest_message.notice.read": "Read it on your page",
+    "guest_message.notice.link": "{label}: {url}",
+    "guest_message.notice.from": "{organisation} via Soirely",
+    "validation.guest_message_required": "Enter a message.",
+    "validation.guest_message_subject_too_long": "Shorten the subject to {count, number, ::group-auto} characters or fewer.",
+    "validation.guest_message_too_long": "Shorten the message to {count, number, ::group-auto} characters or fewer.",
+    "validation.guest_message_choose_guests": "Choose at least one guest.",
+    "validation.guest_message_no_guests": "This event has no guests to write to yet.",
+    "guest_message.event_draft": "This event is a draft. Make it live to write to your guests.",
+    "guest_message.event_ended": "This event finished more than 30 days ago, so you can no longer write to its guests."
 }

@@ -34,7 +34,7 @@ final readonly class EmailSender implements ChannelSenderInterface
         $address = $recipient->emailAddress ?? throw new Unreachable('No email address.');
         $messageId = $deliveryId->toRfc4122() . '@notifications.soirely';
         $email = new Email()
-            ->from(Address::create($this->mailFrom))
+            ->from(null === $notification->senderName ? Address::create($this->mailFrom) : new Address(Address::create($this->mailFrom)->getAddress(), $notification->senderName))
             ->to($address)
             ->subject($notification->subject)
             ->text($notification->body);
