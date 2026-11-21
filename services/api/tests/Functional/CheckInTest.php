@@ -330,6 +330,25 @@ final class CheckInTest extends ApiTestCase
     }
 
     #[Test]
+    public function anEditThatTakesOffAnArrivedCompanionIsRefusedAndOneNotArrivedGoes(): void
+    {
+        $guest = $this->add('Bisi Adewale', ['Tunde Adewale', 'Kemi Adewale']);
+        [$tunde, $kemi] = $this->companionIds($guest);
+        self::mockTime(new DateTimeImmutable(self::OPEN));
+        $this->arrive($tunde);
+
+        $this->as($this->owner, 'PUT', $this->guests() . '/' . $guest, ['fullName' => 'Bisi Adewale', 'companions' => [['id' => $kemi, 'fullName' => 'Kemi Adewale']]], '"1"');
+        self::assertSame([409, 'guest_arrived', 'companionArrived'], [$this->statusCode(), $this->code(), $this->last()['why'] ?? null]);
+        self::assertSame('A companion of Bisi Adewale has arrived, so they stay on the list.', $this->last()['detail'] ?? null);
+        self::assertSame([$tunde, $kemi], $this->companionIds($guest));
+        self::assertSame(1, $this->counts()['attended'] ?? null);
+
+        $this->as($this->owner, 'PUT', $this->guests() . '/' . $guest, ['fullName' => 'Bisi Adewale', 'companions' => [['id' => $tunde, 'fullName' => 'Tunde Adewale']]], '"1"');
+        self::assertSame(200, $this->statusCode(), Json\encode($this->last()));
+        self::assertSame([$tunde], $this->companionIds($guest));
+    }
+
+    #[Test]
     public function removingManyLeavesTheArrivedAndRemovesTheRestAndRefusesWhenEveryoneStays(): void
     {
         $guest = $this->add(self::ADAEZE);
@@ -513,13 +532,14 @@ final class CheckInTest extends ApiTestCase
      *
      * @return array<string, mixed>
      */
-    private function as(User $user, string $method, string $path, ?array $body = null): array
+    private function as(User $user, string $method, string $path, ?array $body = null, ?string $ifMatch = null): array
     {
         $who = self::em()->find(User::class, $user->getId()) ?? self::fail('no user');
         $this->client->request($method, $path, server: [
             'CONTENT_TYPE' => 'application/json',
             'HTTP_AUTHORIZATION' => 'Bearer ' . self::service(JWTTokenManagerInterface::class)->create($who),
             'HTTP_ACCEPT_LANGUAGE' => 'en',
+            ...null === $ifMatch ? [] : ['HTTP_IF_MATCH' => $ifMatch],
         ], content: null === $body ? null : Json\encode($body));
 
         return $this->last();
