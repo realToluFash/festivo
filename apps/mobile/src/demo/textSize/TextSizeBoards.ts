@@ -86,4 +86,9 @@ export const TEXT_SIZE_BOARDS: readonly TextSizeBoard[] = [
     what: 'No strip, as on the iPhone',
     href: '/demo/text-size?part=week&size=android&lang=fr',
   },
+  {
+    title: 'A phone number · this phone’s text size · French',
+    what: 'qa3’s state (#78429): from the accessibility sizes on, Indicatif over Numéro de portable, each full width, so +44 Royaume-Uni stays whole; below them, side by side as on main. Set the size on the phone itself',
+    href: '/demo/text-size?part=phone&lang=fr',
+  },
 ];

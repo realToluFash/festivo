@@ -13,6 +13,7 @@ import { closeBoldTextBoard, openBoldTextBoard } from '../boldText/boldTextStore
 import { YOU } from '../settings/sample.ts';
 import { TextSizeBar } from './TextSizeBar.tsx';
 import { TextSizeCard } from './TextSizeCard.tsx';
+import { TextSizePhone } from './TextSizePhone.tsx';
 import { TextSizeWeek } from './TextSizeWeek.tsx';
 import {
   LANGUAGES,
@@ -76,7 +77,9 @@ export function TextSizeScreen({ start }: { start: TextSizeStart }) {
         <NavBar />
         <View style={styles.page}>
           <I18nextProvider i18n={words}>
-            {part === 'week' ? (
+            {part === 'phone' ? (
+              <TextSizePhone scale={fontScale} />
+            ) : part === 'week' ? (
               <TextSizeWeek scale={scale} language={language} state={week} />
             ) : (
               <TextSizeCard
@@ -108,6 +111,7 @@ export function TextSizeScreen({ start }: { start: TextSizeStart }) {
               options={[
                 { key: 'card', label: 'The Settings card' },
                 { key: 'week', label: 'Home’s This week' },
+                { key: 'phone', label: 'A phone number, at this phone’s size' },
               ]}
               chosen={part}
               onChoose={setPart}
