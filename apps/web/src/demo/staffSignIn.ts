@@ -31,7 +31,7 @@ export const S = {
   signOutContinue: 'Sign out and continue',
   signedOut: 'Signed out.',
   alternative:
-    'This number is a second number on a Soirely account, so it can’t sign you in. Make it that account’s primary number, or ask the event’s organiser to put your primary number on the roster.',
+    'This is an alternative number on a Soirely account, so it cannot sign you in. Make it that account’s primary number, or ask the event’s organiser to put your primary number on the roster.',
   tfTitle: 'Enter your code',
   tfIntro: (who: string) => `Open your authenticator app and enter the 6-digit code for ${who}.`,
   tfCode: 'Code',
@@ -222,8 +222,8 @@ export const STAFF_SIGN_IN_PAGES: readonly { name: string; states: readonly Demo
       at('two-factor-no-email', 'Two-factor on an account with no email: the masked number'),
       at('two-factor-blank', 'Two-factor, left blank'),
       at('two-factor-wrong', 'Two-factor, a wrong code'),
-      at('code-alternative', 'A second number on an account: the code, before the right one'),
-      at('alternative-number', 'A second number on an account, after the right code'),
+      at('code-alternative', 'An alternative number on an account: the code, before the right one'),
+      at('alternative-number', 'An alternative number on an account, after the right code'),
     ],
   },
   {

@@ -78,7 +78,7 @@ export const R = {
   signedOutAt: `You’ll be signed out at ${clockOf(EVENT_ENDS)}.`,
   signedOut: 'Signed out.',
   secondNumber:
-    'This number is a second number on a Soirely account, so it can’t sign you in. Enter that account’s primary number, or make this one its primary number.',
+    'This is an alternative number on a Soirely account, so it cannot sign you in. Enter that account’s primary number, or make this one primary.',
   eventLater: 'The event in the browser has its own design.',
   eventsLater: 'Events has its own design.',
 } as const;
@@ -357,8 +357,11 @@ export const REDEEM_PAGES: readonly { name: string; states: readonly DemoLink[] 
       redeem('code-exhausted', 'The phone code, tried too often'),
       redeem('code-failed', 'It did not go'),
       redeem('used-up', 'Used up'),
-      redeem('code-second-number', 'A second number on an account: the code (sc-4235)'),
-      redeem('second-number', 'A second number, after the right code: back to the name (sc-4235)'),
+      redeem('code-second-number', 'An alternative number on an account: the code (sc-4235)'),
+      redeem(
+        'second-number',
+        'An alternative number, after the right code: back to the name (sc-4235)',
+      ),
     ],
   },
   {

@@ -260,10 +260,10 @@ function Invitation({ state }: { state: string }) {
   if (state === 'no-email') {
     return (
       <BoardPage end={<SignedInAs email={PHONE_ONLY} />}>
-        <Heading title="Add your email first">
+        <Heading title="Add your email address first">
           <p className="demo-muted">
-            This invitation is for {SAMPLE.email}. Add it to your account and confirm it, then
-            accept.
+            This invitation is for {SAMPLE.email}. Add that address to your account and verify it,
+            then accept the invitation.
           </p>
         </Heading>
         <Organisation line={INVITED_BY} />

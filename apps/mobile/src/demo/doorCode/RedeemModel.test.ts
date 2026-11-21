@@ -182,7 +182,7 @@ describe('a name and a number, then the phone code (sc-4235)', () => {
     });
     expect(flowAt('second-number')).toMatchObject({ step: 'event', numberSaid: W.secondNumber });
     expect(W.secondNumber).toBe(
-      'This number is a second number on a Soirely account, so it can’t sign you in. Enter that account’s primary number, or make this one its primary number.',
+      'This is an alternative number on a Soirely account, so it cannot sign you in. Enter that account’s primary number, or make this one primary.',
     );
   });
 

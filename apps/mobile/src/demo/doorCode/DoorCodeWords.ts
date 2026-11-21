@@ -54,7 +54,7 @@ export const W = {
   nameBlank: 'Enter your full name.',
   numberBlank: 'Enter your mobile number.',
   secondNumber:
-    'This number is a second number on a Soirely account, so it can’t sign you in. Enter that account’s primary number, or make this one its primary number.',
+    'This is an alternative number on a Soirely account, so it cannot sign you in. Enter that account’s primary number, or make this one primary.',
   checkWhatsApp: 'Check WhatsApp',
   checkMessages: 'Check your messages',
   codeLabel: 'Code, 6 digits',

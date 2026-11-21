@@ -229,7 +229,7 @@ describe('a name, a number and the phone code (sc-4235)', () => {
     expect(number.getAttribute('aria-describedby')).toBe('rd-number-line');
     expect(screen.getByText(R.secondNumber)).toBeDefined();
     expect(R.secondNumber).toBe(
-      'This number is a second number on a Soirely account, so it can’t sign you in. Enter that account’s primary number, or make this one its primary number.',
+      'This is an alternative number on a Soirely account, so it cannot sign you in. Enter that account’s primary number, or make this one primary.',
     );
     expect(screen.queryByText(/Signed in as/u)).toBeNull();
     await waitFor(() => expect(document.activeElement).toBe(number));
