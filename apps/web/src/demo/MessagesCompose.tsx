@@ -29,6 +29,7 @@ import {
   isNew,
   outsIn,
   many,
+  plainOf,
   reachedOfThread,
   refusalOf,
   resendOf,
@@ -39,6 +40,14 @@ import {
   whatsAppLine,
 } from './messages.ts';
 import { useInbox } from './messagesContext.ts';
+import {
+  type Field,
+  type Refusals,
+  firstRefused,
+  focusOf,
+  isRefusalState,
+  refusalsOf,
+} from './messagesRefusals.ts';
 import { LaterDialog } from './MessagesDialogs.tsx';
 import { InsertMenu } from './MessagesInsert.tsx';
 import { WhatsAppReach, WhereGlyph } from './MessagesParts.tsx';
@@ -65,9 +74,13 @@ export function ComposePane({ opening, later: laterFirst }: { opening: boolean; 
   const [toOpen, setToOpen] = useState(opening || draft?.openTo === true);
   const [later, setLater] = useState(laterFirst);
   const [refused, setRefused] = useState(() => event.refused(draft?.to));
+  const [wrong, setWrong] = useState<Refusals>(() =>
+    draft != null && isRefusalState(event.state) ? refusalsOfDraft(draft) : {},
+  );
   const { viewed } = event;
   const chip = useRef<HTMLButtonElement>(null);
   const byId = useId();
+  const whoId = useId();
 
   useEffect(() => viewed(), [viewed]);
 
@@ -77,18 +90,23 @@ export function ComposePane({ opening, later: laterFirst }: { opening: boolean; 
   const following = !isNew(draft.thread) || outsIn(inbox, draft.thread).length > 0;
 
   function send(): void {
-    if (blank(current.body)) return;
-
+    const said = refusalsOfDraft(current);
+    const first = firstRefused(said);
     const why = refusalOf(current.to, event.book.groups);
 
-    if (why != null) {
-      setRefused(why);
-      focus('refused');
+    setWrong(said);
+    setRefused(why);
+    if (first != null || why != null) {
+      if (current.step === 'preview') act({ kind: 'draft', draft: { step: 'write' } });
+      focus(first == null ? 'refused' : focusOf(first));
       return;
     }
-    setRefused(null);
     act({ kind: 'draft', draft: { step: 'check' } });
     focus('check');
+  }
+
+  function fixed(field: Field): void {
+    setWrong(({ [field]: _gone, ...left }) => left);
   }
 
   function edit(): void {
@@ -107,10 +125,11 @@ export function ComposePane({ opening, later: laterFirst }: { opening: boolean; 
               <button
                 ref={chip}
                 type="button"
-                className="mg-to-chip"
+                className={wrong.who == null ? 'mg-to-chip' : 'mg-to-chip is-wrong'}
                 aria-haspopup="dialog"
                 aria-expanded={toOpen}
                 data-focus="to-chip"
+                aria-describedby={wrong.who == null ? undefined : whoId}
                 onClick={() => setToOpen((open) => !open)}
               >
                 {chipWords(draft.to, event.book)}
@@ -123,6 +142,7 @@ export function ComposePane({ opening, later: laterFirst }: { opening: boolean; 
                   onPick={(to) => {
                     act({ kind: 'draft', draft: { to } });
                     setRefused(null);
+                    fixed('who');
                   }}
                   onClose={(back) => {
                     setToOpen(false);
@@ -132,6 +152,12 @@ export function ComposePane({ opening, later: laterFirst }: { opening: boolean; 
               )}
             </div>
           </div>
+          {wrong.who != null && (
+            <p id={whoId} className="desk-error mg-field-error">
+              <Glyph name="alert" size={15} weight={2.2} />
+              {wrong.who}
+            </p>
+          )}
           <div className="mg-by-row" role="group" aria-labelledby={byId}>
             <span id={byId} className="mg-by-label">
               {MW.letThemKnowBy}
@@ -206,8 +232,13 @@ export function ComposePane({ opening, later: laterFirst }: { opening: boolean; 
           draft={draft}
           tools={draft.step === 'write'}
           refused={refused}
+          wrong={wrong}
           previewOff={(countOf(draft.to, event.book.groups) ?? 0) === 0 ? PW.nobodyToPreview : null}
-          onDraft={(next) => act({ kind: 'draft', draft: next })}
+          onDraft={(next) => {
+            if (next.subject != null) fixed('subject');
+            if (next.body != null) fixed('body');
+            act({ kind: 'draft', draft: next });
+          }}
           onSend={send}
           onPreview={() => {
             act({ kind: 'draft', draft: { step: 'preview' } });
@@ -237,6 +268,10 @@ export function ComposePane({ opening, later: laterFirst }: { opening: boolean; 
       )}
     </div>
   );
+}
+
+function refusalsOfDraft(draft: Draft): Refusals {
+  return refusalsOf({ to: draft.to, subject: draft.subject, body: plainOf(draft.body) }, filled);
 }
 
 export function TickChip({
@@ -317,12 +352,14 @@ function MessageField({
   body,
   seed,
   editable,
+  wrongId,
   onChange,
   onSubmit,
 }: {
   body: readonly Segment[];
   seed: number;
   editable: boolean;
+  wrongId: string | null;
   onChange: (body: Segment[]) => void;
   onSubmit: () => void;
 }) {
@@ -349,6 +386,8 @@ function MessageField({
       aria-multiline="true"
       aria-label={MW.message}
       aria-readonly={!editable}
+      aria-invalid={wrongId == null ? undefined : true}
+      aria-describedby={wrongId ?? undefined}
       data-placeholder={MW.writeToGuests}
       data-focus="body"
       tabIndex={0}
@@ -375,6 +414,7 @@ export function Composer({
   draft,
   tools,
   refused,
+  wrong = {},
   onSend,
   onPreview,
   onDraft,
@@ -384,6 +424,7 @@ export function Composer({
   draft: Pick<Draft, 'subject' | 'body' | 'seed' | 'opens'>;
   tools: boolean;
   refused: string | null;
+  wrong?: Refusals;
   onSend: () => void;
   onPreview: () => void;
   onDraft: (draft: Partial<Draft>) => void;
@@ -393,7 +434,8 @@ export function Composer({
   const optionalId = useId();
   const refusedId = useId();
   const offId = useId();
-  const empty = blank(draft.body);
+  const subjectId = useId();
+  const bodyId = useId();
 
   function insert(token: Token): void {
     const field = document.querySelector<HTMLElement>('.mg-field');
@@ -419,7 +461,11 @@ export function Composer({
 
   return (
     <form
-      className={tools ? 'mg-composer' : 'mg-composer is-held'}
+      className={[
+        'mg-composer',
+        tools ? '' : 'is-held',
+        wrong.subject == null && wrong.body == null ? '' : 'is-wrong',
+      ].join(' ')}
       onSubmit={(event) => {
         event.preventDefault();
         onSend();
@@ -430,7 +476,8 @@ export function Composer({
           className="mg-subject"
           value={draft.subject}
           aria-label={MW.subject}
-          aria-describedby={optionalId}
+          aria-invalid={wrong.subject == null ? undefined : true}
+          aria-describedby={wrong.subject == null ? optionalId : `${subjectId} ${optionalId}`}
           readOnly={!tools}
           data-focus="subject"
           onChange={(event) => onDraft({ subject: event.target.value })}
@@ -443,13 +490,26 @@ export function Composer({
           </span>
         </span>
       </div>
+      {wrong.subject != null && (
+        <p id={subjectId} className="desk-error mg-field-error">
+          <Glyph name="alert" size={15} weight={2.2} />
+          {wrong.subject}
+        </p>
+      )}
       <MessageField
         body={draft.body}
         seed={draft.seed}
         editable={tools}
+        wrongId={wrong.body == null ? null : bodyId}
         onChange={(body) => onDraft({ body })}
         onSubmit={onSend}
       />
+      {wrong.body != null && (
+        <p id={bodyId} className="desk-error mg-field-error">
+          <Glyph name="alert" size={15} weight={2.2} />
+          {wrong.body}
+        </p>
+      )}
       {refused != null && (
         <p id={refusedId} className="desk-error" role="alert" tabIndex={-1} data-focus="refused">
           <Glyph name="alert" size={15} weight={2.2} />
@@ -479,12 +539,11 @@ export function Composer({
               <span className="mg-goes-page">{MW.goesOnTheirPage}</span>
               <button
                 type="submit"
-                className={empty ? 'mg-send is-off' : 'mg-send'}
+                className="mg-send"
                 aria-label={MW.send}
                 aria-keyshortcuts="Meta+Enter Control+Enter"
                 aria-describedby={refused == null ? undefined : refusedId}
                 data-focus="send"
-                {...offButton(empty, { dim: false })}
               >
                 <Glyph name="send" size={20} weight={2.4} />
               </button>
