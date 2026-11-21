@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import { __setConfig, config } from '../config.ts';
 import { routes } from '../routes/index.tsx';
-import { sample } from './roster.ts';
+import { type Entry, sample } from './roster.ts';
 import { ISSUE_MS } from './staffLink.ts';
 import {
   SENT_MS,
@@ -198,7 +198,7 @@ describe('the result after Text links to {n}', () => {
   });
 
   it('prices each text by its own number’s country, never the event’s', () => {
-    const [tolu] = sample().filter(owed);
+    const tolu = sample().find((one) => one.id === 'tolu') as Entry;
     const london = { ...tolu, mobile: '+447400123456' };
     expect(creditsOf(tolu)).toBe(62);
     expect(creditsOf(london)).toBe(9);
