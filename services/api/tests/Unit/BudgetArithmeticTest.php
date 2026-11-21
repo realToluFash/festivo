@@ -61,7 +61,14 @@ final class BudgetArithmeticTest extends TestCase
     {
         yield 'per table, 100 tables' => [CostBasis::PerTable, new QuantityFacts(0, 0, 100, null, 1, 0), '99999999999999999.00'];
         yield 'per day, 12 days' => [CostBasis::PerDay, new QuantityFacts(0, 0, null, null, 12, 0), '11999999999999999.88'];
-        yield 'per staff hour, 40 hours' => [CostBasis::PerStaffHour, new QuantityFacts(0, 0, null, 40, 1, 0), '39999999999999999.60'];
+    }
+
+    #[Test]
+    public function theStaffTimeLineCostsStaffRatesTotalAtBothEndsWhateverItsHours(): void
+    {
+        $range = BudgetRange::of([self::line(self::event('GBP'), CostBasis::PerStaffHour, self::LARGEST_GBP)], new QuantityFacts(0, 0, null, 40, 1, 0, 150_200));
+
+        self::assertSame(['1502.00', '1502.00'], self::lineCost($range->lines[0], 'GBP'));
     }
 
     #[Test]

@@ -140,6 +140,7 @@ import {
 } from './schedule.ts';
 import { type RoomScreen, type ScreenLink, asRoomScreen, asScreenLinks } from './screens.ts';
 import { type BudgetLineTyped, type EventBudget, asEventBudget } from './budget.ts';
+import { type StaffRateTyped, type StaffRates, asStaffRates } from './staffRates.ts';
 import { type BudgetMargin, type LineCharge, asBudgetMargin } from './margin.ts';
 import {
   type EventPayers,
@@ -3850,6 +3851,30 @@ export class ApiClient {
     };
   }
 
+  /** Budget / Staff rates (sc-101): each job's rate and scheduled hours, people on their own rate, and the headline; 403 without budget.read. */
+  async staffRates(eventId: string): Promise<StaffRates> {
+    return asStaffRates(await this.get<unknown>(`${this.budgetPath(eventId)}/staff-rates`));
+  }
+
+  /** A job's rate or flat fee, set or changed; 403 without budget.manage. Answers with the whole of Staff rates. */
+  async setJobRate(eventId: string, jobId: string, typed: StaffRateTyped): Promise<StaffRates> {
+    return asStaffRates(await this.put<unknown>(this.jobRatePath(eventId, jobId), typed));
+  }
+
+  async removeJobRate(eventId: string, jobId: string): Promise<StaffRates> {
+    return asStaffRates(await this.delete<unknown>(this.jobRatePath(eventId, jobId)));
+  }
+
+  /** A person's own rate, instead of their job's; 403 without budget.manage. */
+  async setOwnRate(eventId: string, memberId: string, typed: StaffRateTyped): Promise<StaffRates> {
+    return asStaffRates(await this.put<unknown>(this.ownRatePath(eventId, memberId), typed));
+  }
+
+  /** Back on their job's rate. */
+  async removeOwnRate(eventId: string, memberId: string): Promise<StaffRates> {
+    return asStaffRates(await this.delete<unknown>(this.ownRatePath(eventId, memberId)));
+  }
+
   /** Who is paying (sc-91): each payer's share, Paid and Still to come, and every cost with its split; 403 without budget.read. */
   async payers(eventId: string): Promise<EventPayers> {
     return asEventPayers(await this.get<unknown>(`${this.budgetPath(eventId)}/payers`));
@@ -4063,6 +4088,14 @@ export class ApiClient {
 
   private budgetLinePath(eventId: string, lineId: string): string {
     return `${this.budgetPath(eventId)}/lines/${encodeURIComponent(lineId)}`;
+  }
+
+  private jobRatePath(eventId: string, jobId: string): string {
+    return `${this.budgetPath(eventId)}/staff-rates/jobs/${encodeURIComponent(jobId)}`;
+  }
+
+  private ownRatePath(eventId: string, memberId: string): string {
+    return `${this.budgetPath(eventId)}/staff-rates/people/${encodeURIComponent(memberId)}`;
   }
 
   /** Needs guests.read on the event (sc-99). */

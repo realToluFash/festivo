@@ -6,6 +6,7 @@ namespace App\Domain\Budget;
 
 use App\Domain\Budget\Model\Quantity;
 use App\Domain\Budget\Model\QuantityFacts;
+use App\Domain\Budget\Model\StaffCost;
 use App\Domain\Event\EventDayCount;
 use App\Domain\Guest\Headcount\HeadcountCalculator;
 use App\Entity\Event;
@@ -14,6 +15,7 @@ use App\Enum\QuantitySource;
 use App\Repository\SeatingPlanRepository;
 use App\Repository\SeatingTableRepository;
 use DateTimeZone;
+use Psl\Math;
 
 /** The only answer to a basis's quantity (sc-83): a surface asks here, never counting from a guest list it has loaded. */
 final readonly class QuantityResolver
@@ -32,11 +34,13 @@ final readonly class QuantityResolver
         private HeadcountCalculator $headcountCalculator,
         private SeatingPlanRepository $seatingPlanRepository,
         private SeatingTableRepository $seatingTableRepository,
+        private StaffCosts $staffCosts,
     ) {
     }
 
-    public function factsFor(Event $event): QuantityFacts
+    public function factsFor(Event $event, ?StaffCost $staff = null): QuantityFacts
     {
+        $staff ??= $this->staffCosts->of($event);
         $plan = $this->seatingPlanRepository->findOneForEvent($event);
         $counts = $this->headcountCalculator->forEvents([$event])[$event->getId()->toRfc4122()];
 
@@ -44,9 +48,10 @@ final readonly class QuantityResolver
             $counts['onList'],
             $counts['accepted'],
             null === $plan ? null : $this->seatingTableRepository->count(['plan' => $plan]),
-            null, // Staffing's shifts (sc-101) are not built, so no event has scheduled hours yet.
+            0 === $staff->scheduledMinutes ? null : Math\div($staff->scheduledMinutes + 30, 60),
             EventDayCount::of($event->getStartsAt(), $event->getEndsAt(), new DateTimeZone($event->getTimeZone())),
             HeadcountCalculator::ifAllCome($counts),
+            $staff->totalMinor,
         );
     }
 
