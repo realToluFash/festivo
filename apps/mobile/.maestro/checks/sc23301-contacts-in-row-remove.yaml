@@ -1,0 +1,14 @@
+# sc-23301: Account's Email addresses card, a second unverified address's in-row Verify and Remove beside each other. iPhone only: on a tablet the page-wide scroll does not move the detail pane. Needs a second, unverified address on the account.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/settings/account
+- extendedWaitUntil:
+    visible: '{{t:contacts.emailsTitle}}'
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: 'contacts\..*\.remove'
+    timeout: 20000
+- assertVisible:
+    id: 'contacts\..*\.verify'
+- takeScreenshot: contacts-remove

@@ -1,0 +1,16 @@
+# Today's organisation pill at rest, for a managed account. sc-73668.
+appId: host.exp.Exponent
+---
+- setOrientation: PORTRAIT
+- openLink: ${METRO_URL}/--/
+- tapOn:
+    id: 'tab-today|frame.home'
+    optional: true
+- extendedWaitUntil:
+    visible:
+      id: 'frame.organisation|home.switchOrganisation'
+    timeout: 15000
+- waitForAnimationToEnd:
+    timeout: 5000
+- assertNotVisible: '.*[0-9] invitations?.*'
+- takeScreenshot: pill

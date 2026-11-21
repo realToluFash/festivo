@@ -1,0 +1,14 @@
+# sc-37577: the app's design demo, /demo/calendar state showMenu, its menu open.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/demo/calendar?state=showMenu
+- waitForAnimationToEnd:
+    timeout: 8000
+- runFlow: ../developer-menu-close.yaml
+- extendedWaitUntil:
+    visible:
+      id: 'calendar.showMenu'
+    timeout: 20000
+- waitForAnimationToEnd:
+    timeout: 3000
+- takeScreenshot: demo-calendar-open

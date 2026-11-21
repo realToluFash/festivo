@@ -1,0 +1,7 @@
+# sc-67659: the Events demo, + New event.
+appId: host.exp.Exponent
+---
+- setOrientation: ${ORIENT}
+- openLink: ${METRO_URL}/--/demo/events
+- waitForAnimationToEnd: { timeout: 8000 }
+- takeScreenshot: d-events

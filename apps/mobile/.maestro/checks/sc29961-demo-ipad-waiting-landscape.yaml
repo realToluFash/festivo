@@ -1,0 +1,9 @@
+# sc-29961: the demo's Waiting, opened first in its stack, with the iPad in landscape, for a side-by-side pair.
+appId: host.exp.Exponent
+---
+- setOrientation: LANDSCAPE_LEFT
+- openLink: ${METRO_URL}/--/demo/waiting?email=${EMAIL}
+- extendedWaitUntil: { visible: { id: 'demo.cancel' }, timeout: 30000 }
+- waitForAnimationToEnd
+- takeScreenshot: waiting-landscape
+- setOrientation: PORTRAIT

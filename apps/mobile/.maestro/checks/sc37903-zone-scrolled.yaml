@@ -1,0 +1,39 @@
+# sc-37903 (scrolls to its row, for the largest sizes): Time zone's header and Cancel with one tap, at whatever text size the device is set to.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/settings/account
+- waitForAnimationToEnd:
+    timeout: 8000
+- scrollUntilVisible:
+    element:
+      id: 'account.zone'
+    centerElement: true
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: 'account.zone'
+    centerElement: true
+- tapOn:
+    id: 'account.zone'
+- extendedWaitUntil:
+    visible:
+      id: 'account.zone.screen'
+    timeout: 15000
+- waitForAnimationToEnd:
+    timeout: 5000
+- swipe:
+    direction: DOWN
+    duration: 400
+- swipe:
+    direction: DOWN
+    duration: 400
+- waitForAnimationToEnd:
+    timeout: 3000
+- takeScreenshot: zone
+- tapOn:
+    id: 'account.zone.cancel'
+- extendedWaitUntil:
+    notVisible:
+      id: 'account.zone.screen'
+    timeout: 10000
+- takeScreenshot: zone-cancelled

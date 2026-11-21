@@ -1,0 +1,26 @@
+appId: host.exp.Exponent
+---
+- setOrientation: LANDSCAPE_LEFT
+- openLink: ${METRO_URL}/--/settings/data-and-control/audit-log
+- extendedWaitUntil:
+    visible:
+      id: 'audit.card'
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: 'audit.entry.${E_EXPORT}'
+    direction: DOWN
+    timeout: 30000
+- tapOn:
+    id: 'audit.entry.${E_EXPORT}'
+- extendedWaitUntil:
+    visible:
+      id: 'audit.detail.recorded-1'
+    timeout: 15000
+- takeScreenshot: audit-export-filters-landscape
+- scrollUntilVisible:
+    element:
+      id: 'audit.detail.recorded-2'
+    direction: DOWN
+    timeout: 10000
+- takeScreenshot: audit-export-filters-landscape-rows

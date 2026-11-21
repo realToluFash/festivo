@@ -1,0 +1,243 @@
+/* sc-87's quotes and schedules in A (Budget-A-Quotes): what Budget's parts do not already draw. */
+.ev-dashed.qt-coming {
+  gap: 10px;
+}
+
+.qt-back {
+  align-self: flex-start;
+}
+
+.qt-vendor-top {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceXs);
+}
+
+.qt-vendor-link {
+  color: var(--colorAccent);
+  text-decoration: none;
+}
+
+.qt-vendor-link:hover {
+  text-decoration: underline;
+  text-decoration-thickness: 2px;
+  text-underline-offset: 5px;
+}
+
+.desk-head:has(.qt-head-actions) {
+  flex-wrap: wrap;
+}
+
+.desk-head:has(.qt-head-actions) h2 {
+  flex: none;
+}
+
+.qt-head-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 var(--spaceXl);
+  margin-inline: calc(-1 * var(--spaceSm));
+}
+
+.qt-head-actions .desk-text {
+  margin-inline: 0;
+}
+
+.qt-empty {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--spaceSm) var(--spaceLg);
+  min-height: var(--sizeHit);
+}
+
+.qt-empty .desk-text {
+  margin-inline: 0;
+}
+
+.qt-list {
+  max-width: var(--evLeft);
+}
+
+.qt-tick {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--deskGreen);
+  color: var(--colorInkOnDark);
+}
+
+.qt-tick.is-large {
+  width: 20px;
+  height: 20px;
+}
+
+.qt-two {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--spaceXl) 40px;
+  align-items: start;
+}
+
+.qt-label-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spaceMd);
+}
+
+.qt-optional {
+  color: var(--colorInkSecondary);
+  font: var(--deskSmall);
+}
+
+.desk-box.qt-area {
+  height: auto;
+  padding-block: var(--spaceMd);
+}
+
+.desk .qt-area textarea {
+  flex: 1;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  outline: none;
+  background: none;
+  color: var(--colorInk);
+  font: 500 16px/1.45 var(--fontFamily);
+  resize: vertical;
+}
+
+.desk .qt-area textarea:focus-visible {
+  box-shadow: none;
+}
+
+.qt-vendor {
+  position: relative;
+}
+
+.qt-combo {
+  gap: var(--spaceSm);
+  color: var(--colorInkSecondary);
+}
+
+.qt-options {
+  display: flex;
+  flex-direction: column;
+  max-height: 320px;
+  margin: 0;
+  padding: var(--spaceXs);
+  overflow-y: auto;
+  border-radius: var(--radiusInset);
+  background: var(--colorCard);
+  box-shadow: var(--shadowPopover);
+  list-style: none;
+}
+
+.qt-option {
+  display: flex;
+  flex: none;
+  align-items: center;
+  min-height: var(--sizeHit);
+  padding: var(--spaceXs) var(--spaceMd);
+  border-radius: var(--radiusRow);
+  cursor: pointer;
+}
+
+.qt-option.is-active {
+  background: var(--colorRowHover);
+}
+
+.qt-option.is-taken {
+  color: var(--colorInkSecondary);
+  cursor: default;
+}
+
+.qt-option.is-taken .desk-row-name {
+  color: var(--colorInkSecondary);
+}
+
+.qt-vendor-status {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--spaceXxs);
+}
+
+.qt-vendor-status:empty {
+  display: none;
+}
+
+.qt-fixed {
+  margin: 0;
+}
+
+.qt-lines .desk-rows {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.qt-line {
+  gap: var(--spaceMd);
+  cursor: pointer;
+}
+
+.qt-line.is-taken {
+  cursor: default;
+}
+
+.qt-line.is-taken .desk-row-name {
+  color: var(--colorInkSecondary);
+}
+
+.qt-check {
+  display: grid;
+  flex: none;
+  place-content: center;
+  box-sizing: border-box;
+  width: 24px;
+  height: 24px;
+  margin: 0;
+  border: 2px solid var(--colorFieldBorder);
+  border-radius: var(--radiusCheckbox);
+  background: var(--colorCard);
+  color: var(--colorInkOnDark);
+  appearance: none;
+}
+
+.qt-check:checked {
+  border-color: var(--colorAccent);
+  background: var(--colorAccent);
+}
+
+.qt-check:checked::after {
+  width: 10px;
+  height: 5px;
+  margin-top: -2px;
+  border-bottom: 2.4px solid currentcolor;
+  border-left: 2.4px solid currentcolor;
+  transform: rotate(-45deg);
+  content: '';
+}
+
+.qt-check:disabled {
+  border-style: dashed;
+  background: var(--colorInset);
+}
+
+@media (width <= 720px) {
+  .qt-two {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.vd-owing {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--spaceXs);
+}
