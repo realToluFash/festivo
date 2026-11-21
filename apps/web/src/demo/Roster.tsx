@@ -788,7 +788,7 @@ function LinkCell({
             {busy && <span className="pending-spinner desk-turning" aria-hidden="true" />}
             {LW.copy}
           </button>
-          {entry.link === 'copied' && (
+          {(entry.link === 'copied' || entry.link === 'shared') && (
             <button
               type="button"
               className="desk-text"
