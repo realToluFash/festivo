@@ -468,5 +468,6 @@
     "email_domains.managed": "Your {domain} address is managed by {organisation}, so you can only be a member there.",
     "email_domains.only_ours_owner": "Only an owner can change this.",
     "email_domains.only_ours_unproved": "Only our organisation needs a domain this organisation has proved.",
-    "validation.payment_reminder_days": "Enter a whole number of days from 1 to 30."
+    "validation.payment_reminder_days": "Enter a whole number of days from 1 to 30.",
+    "staff.link_needs_mobile": "Add a mobile number to send a link."
 }

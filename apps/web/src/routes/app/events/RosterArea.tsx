@@ -12,16 +12,19 @@ import {
   callingCode,
   countryChoices,
   emailProblem,
+  firstName,
   formatPhone,
   phoneFields,
   phoneLengthProblem,
 } from '@soirely/domain';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { Fragment, useEffect, useMemo, useRef, useState } from 'react';
 import type { TFunction } from 'i18next';
 import { Trans, useTranslation } from 'react-i18next';
 import { Link } from 'react-router';
 
 import { api } from '../../../api.ts';
+import { ConfirmDialog } from '../../../components/ConfirmDialog.tsx';
+import { type CopyOutcome, copyIssued, plainItem } from '../../../copyIssued.ts';
 import { keptKeys, keptLoad, useAnsweredAgain, useKeptAsShown } from '../../../tabKept.ts';
 import { Glyph } from '../../../components/Glyph.tsx';
 import { Skeleton } from '../../../components/Skeleton.tsx';
@@ -35,7 +38,7 @@ import { useStartingCountry } from './useStartingCountry.ts';
 import { StaffTabs } from './StaffTabs.tsx';
 import { StationSelect } from './StationsArea.tsx';
 import { stationGroups } from './stationWords.ts';
-import { type StaffTimes, rangeWords, staffTimes } from './staffTimes.ts';
+import { type StaffTimes, clockWords, rangeWords, staffTimes } from './staffTimes.ts';
 import { useDeskTop } from '../../../deskTop.ts';
 import '../../../components/SettingsParts.css';
 import '../../../components/eventsDesk.css';
@@ -77,15 +80,26 @@ type Field = keyof Problems;
 
 const LINK_KEYS: Record<StaffLink, string> = {
   none: 'roster.linkNone',
+  copied: 'roster.linkCopied',
+  sent: 'roster.linkSent',
+  opened: 'roster.linkOpened',
   no_mobile: 'roster.linkNoMobile',
   erased: 'roster.linkErased',
 };
 
 const LINK_MARKS: Record<StaffLink, string> = {
   none: 'is-none',
+  copied: 'is-copied',
+  sent: 'is-sent',
+  opened: 'is-opened',
   no_mobile: 'is-no-mobile',
   erased: 'is-erased',
 };
+
+/** Copied: given out, and not yet marked as sent. */
+function unmarked(link: StaffLink): boolean {
+  return link === 'copied';
+}
 
 function draftOf(entry: StaffEntry | null, country: string): Draft {
   const fields = entry?.mobile == null ? null : phoneFields(entry.mobile);
@@ -235,6 +249,10 @@ function Roster({
   const [busy, setBusy] = useState(false);
   const [bar, setBar] = useState<string[] | null>(null);
   const [live, setLive] = useState({ text: '', said: 0 });
+  const [copying, setCopying] = useState<string | null>(null);
+  const [missed, setMissed] = useState<string | null>(null);
+  const [held, setHeld] = useState<{ id: string; url: string } | null>(null);
+  const [replacing, setReplacing] = useState<string | null>(null);
   const focusAfter = useRef<string | null>(null);
 
   useEffect(() => {
@@ -259,7 +277,79 @@ function Roster({
 
   function say(lines: string[]) {
     setBar(lines);
-    setLive((was) => ({ text: lines.join(' '), said: was.said + 1 }));
+    announce(lines.join(' '));
+  }
+
+  function announce(text: string) {
+    setLive((was) => ({ text, said: was.said + 1 }));
+  }
+
+  function relinked(entry: StaffEntry) {
+    onStaff(staff.map((one) => (one.id === entry.id ? entry : one)));
+  }
+
+  async function copy(entry: StaffEntry) {
+    if (copying != null) return;
+    setCopying(entry.id);
+    setMissed(null);
+    if (held?.id === entry.id) setHeld(null);
+    let answered: StaffEntry | null = null;
+    const issue = () =>
+      api.deliverStaffLink(event.id, entry.id).then((answer) => {
+        answered = answer.staff;
+        return answer.url;
+      });
+    const outcome: CopyOutcome = await copyIssued(
+      issue,
+      navigator.clipboard ?? null,
+      typeof ClipboardItem === 'undefined' ? null : plainItem,
+    );
+    setCopying(null);
+    if (outcome.kind === 'notIssued' || answered == null) {
+      setMissed(entry.id);
+      announce(t('roster.linkNotIssued'));
+      return;
+    }
+    relinked(answered);
+    if (outcome.kind === 'copied') {
+      say([t('roster.linkCopiedSaid')]);
+      return;
+    }
+    setHeld({ id: entry.id, url: outcome.url });
+    announce(t('roster.linkRefused'));
+    focusAfter.current = `rs-held-${entry.id}`;
+  }
+
+  async function markSent(entry: StaffEntry) {
+    setFailed(null);
+    try {
+      relinked(await api.markStaffLinkSent(event.id, entry.id));
+      if (held?.id === entry.id) setHeld(null);
+      say([t('roster.markedSent', { name: entry.fullName })]);
+      focusAfter.current = `rs-copy-${entry.id}`;
+    } catch {
+      setMissed(entry.id);
+      announce(t('roster.linkNotIssued'));
+    }
+  }
+
+  async function replaceLink(entry: StaffEntry) {
+    setBusy(true);
+    setFailed(null);
+    try {
+      relinked(await api.replaceStaffLink(event.id, entry.id));
+      if (held?.id === entry.id) setHeld(null);
+      if (missed === entry.id) setMissed(null);
+      setReplacing(null);
+      say([t('roster.linkReplaced', { name: entry.fullName })]);
+      focusAfter.current = 'sn-panel-title';
+    } catch {
+      setReplacing(null);
+      setFailed(t('roster.linkNotIssued'));
+      focusAfter.current = 'rs-failed';
+    } finally {
+      setBusy(false);
+    }
   }
 
   function open(next: Panel) {
@@ -434,7 +524,8 @@ function Roster({
     }
   }
 
-  const unsent = staff.some((one) => one.link === 'none');
+  const unsent = staff.some((one) => one.link === 'none' || unmarked(one.link));
+  const acts = manage && !finished;
   const next = finished ? t('roster.nextHours') : unsent ? t('roster.nextSend') : null;
 
   return (
@@ -501,33 +592,52 @@ function Roster({
                   </thead>
                   <tbody>
                     {staff.map((one) => (
-                      <tr key={one.id} className={lit === one.id ? 'is-lit' : undefined}>
-                        <th scope="row">
-                          <button
-                            id={`rs-name-${one.id}`}
-                            type="button"
-                            className="rs-name"
-                            aria-current={lit === one.id || undefined}
-                            onClick={() => open({ kind: 'details', id: one.id })}
+                      <Fragment key={one.id}>
+                        <tr className={lit === one.id ? 'is-lit' : undefined}>
+                          <th scope="row">
+                            <button
+                              id={`rs-name-${one.id}`}
+                              type="button"
+                              className="rs-name"
+                              aria-current={lit === one.id || undefined}
+                              onClick={() => open({ kind: 'details', id: one.id })}
+                            >
+                              {one.fullName}
+                            </button>
+                          </th>
+                          <td className={one.job == null ? 'rs-quiet' : undefined}>
+                            {one.job?.name ?? t('roster.noJob')}
+                          </td>
+                          <td className={one.station == null ? 'rs-quiet' : undefined}>
+                            <StationWords entry={one} />
+                          </td>
+                          <td
+                            className={
+                              one.shifts.length === 0 ? 'rs-no-shift rs-quiet' : 'rs-shift'
+                            }
                           >
-                            {one.fullName}
-                          </button>
-                        </th>
-                        <td className={one.job == null ? 'rs-quiet' : undefined}>
-                          {one.job?.name ?? t('roster.noJob')}
-                        </td>
-                        <td className={one.station == null ? 'rs-quiet' : undefined}>
-                          <StationWords entry={one} />
-                        </td>
-                        <td
-                          className={one.shifts.length === 0 ? 'rs-no-shift rs-quiet' : 'rs-shift'}
-                        >
-                          <ShiftCell entry={one} times={times} />
-                        </td>
-                        <td>
-                          <LinkWord link={one.link} />
-                        </td>
-                      </tr>
+                            <ShiftCell entry={one} times={times} />
+                          </td>
+                          <td>
+                            <LinkCell
+                              entry={one}
+                              times={times}
+                              acts={acts}
+                              busy={copying === one.id}
+                              missed={missed === one.id}
+                              onCopy={() => void copy(one)}
+                              onMark={() => void markSent(one)}
+                            />
+                          </td>
+                        </tr>
+                        {held?.id === one.id && (
+                          <tr className="rs-held-row">
+                            <td colSpan={5}>
+                              <HeldLink entry={one} url={held.url} />
+                            </td>
+                          </tr>
+                        )}
+                      </Fragment>
                     ))}
                   </tbody>
                 </table>
@@ -551,6 +661,7 @@ function Roster({
                   onClose={close}
                   onEdit={() => open({ kind: 'edit', id: opened.id })}
                   onRemove={() => open({ kind: 'remove', id: opened.id })}
+                  onReplace={acts ? () => setReplacing(opened.id) : null}
                 />
               )}
               {panel.kind === 'remove' && opened != null && (
@@ -599,6 +710,25 @@ function Roster({
             </aside>
           )}
       </div>
+      {replacing != null && shown(replacing) != null && (
+        <ConfirmDialog
+          id="rs-replace"
+          title={t('roster.replaceTitle', { name: firstName(shown(replacing)?.fullName ?? '') })}
+          keep={t('roster.keepLink')}
+          go={t('roster.replace')}
+          pending={busy}
+          onKeep={() => {
+            setReplacing(null);
+            focusAfter.current = 'rs-replace-open';
+          }}
+          onGo={() => {
+            const entry = shown(replacing);
+            if (entry != null) void replaceLink(entry);
+          }}
+        >
+          <p>{t('roster.replaceLine')}</p>
+        </ConfirmDialog>
+      )}
       {bar != null && (
         <div className="rs-bar">
           <Glyph name="tick" size={18} weight={2.6} />
@@ -680,6 +810,111 @@ function LinkWord({ link }: { link: StaffLink }) {
   );
 }
 
+/** Who moved the link and when: "Copied by Amara Nwosu · 19:12 · not marked as sent". */
+function trailLine(entry: StaffEntry, times: StaffTimes, t: TFunction): string | null {
+  if (entry.linkAt == null) return null;
+  const time = clockWords(entry.linkAt, times);
+  const name = entry.linkBy ?? '';
+  switch (entry.link) {
+    case 'copied':
+      return t('roster.trailCopied', { name, time });
+    case 'sent':
+      return t('roster.trailSent', { name, time });
+    case 'opened':
+      return t('roster.trailOpened', { time });
+    default:
+      return null;
+  }
+}
+
+/** The row's Link: its word with a mark, who and when, and Copy link, then Mark as sent once copied. */
+function LinkCell({
+  entry,
+  times,
+  acts,
+  busy,
+  missed,
+  onCopy,
+  onMark,
+}: {
+  entry: StaffEntry;
+  times: StaffTimes;
+  acts: boolean;
+  busy: boolean;
+  missed: boolean;
+  onCopy: () => void;
+  onMark: () => void;
+}) {
+  const { t } = useTranslation();
+  const trail = trailLine(entry, times, t);
+  const offered = acts && entry.mobile != null && !entry.contactsErased;
+
+  return (
+    <div className="rs-link-cell">
+      <LinkWord link={entry.link} />
+      {trail != null && <span className="rs-trail">{trail}</span>}
+      {missed && (
+        <span className="rs-missed">
+          <Glyph name="alert" size={15} weight={2.2} />
+          {t('roster.linkNotIssued')}
+        </span>
+      )}
+      {offered && (
+        <span className="rs-link-acts">
+          <button
+            id={`rs-copy-${entry.id}`}
+            type="button"
+            className={busy ? 'desk-text is-busy' : 'desk-text'}
+            aria-label={t('roster.copyLinkFor', { name: entry.fullName })}
+            aria-disabled={busy || undefined}
+            aria-busy={busy || undefined}
+            onClick={onCopy}
+          >
+            {busy && <span className="pending-spinner desk-turning" aria-hidden="true" />}
+            {t('roster.copyLink')}
+          </button>
+          {unmarked(entry.link) && (
+            <button
+              type="button"
+              className="desk-text"
+              aria-label={t('roster.markSentFor', { name: entry.fullName })}
+              onClick={onMark}
+            >
+              {t('roster.markSent')}
+            </button>
+          )}
+        </span>
+      )}
+    </div>
+  );
+}
+
+/** A link the browser would not copy, shown to copy by hand; the field is named for whose link it is. */
+function HeldLink({ entry, url }: { entry: StaffEntry; url: string }) {
+  const { t } = useTranslation();
+  const id = `rs-held-${entry.id}`;
+
+  return (
+    <div className="rs-held">
+      <p className="rs-held-says">
+        <Glyph name="alert" size={16} weight={2.2} />
+        {t('roster.linkRefused')}
+      </p>
+      <label htmlFor={id} className="rs-held-label">
+        {t('roster.linkFor', { name: entry.fullName })}
+      </label>
+      <input
+        id={id}
+        className="rs-held-field"
+        type="text"
+        readOnly
+        value={url}
+        onFocus={(focused) => focused.currentTarget.select()}
+      />
+    </div>
+  );
+}
+
 function PanelTop({ title, onClose }: { title: string; onClose: () => void }) {
   const { t } = useTranslation();
 
@@ -754,6 +989,7 @@ function Details({
   onClose,
   onEdit,
   onRemove,
+  onReplace,
 }: {
   entry: StaffEntry;
   plan: StaffPlan;
@@ -765,9 +1001,17 @@ function Details({
   onClose: () => void;
   onEdit: () => void;
   onRemove: () => void;
+  onReplace: (() => void) | null;
 }) {
   const { t } = useTranslation();
-  const next = entry.contactsErased ? null : finished ? t('roster.nextErasing') : null;
+  const next = entry.contactsErased
+    ? null
+    : finished
+      ? t('roster.nextErasing')
+      : unmarked(entry.link)
+        ? t('roster.nextCopied')
+        : null;
+  const trail = trailLine(entry, times, t);
 
   return (
     <>
@@ -840,8 +1084,19 @@ function Details({
           )}
           <div>
             <dt>{t('roster.link')}</dt>
-            <dd>
+            <dd className="rs-link-fact">
               <LinkWord link={entry.link} />
+              {trail != null && <span className="rs-trail">{trail}</span>}
+              {onReplace != null && entry.mobile != null && entry.link !== 'none' && (
+                <button
+                  id="rs-replace-open"
+                  type="button"
+                  className="gs-pill is-secondary"
+                  onClick={onReplace}
+                >
+                  {t('roster.replaceOpen')}
+                </button>
+              )}
             </dd>
           </div>
         </dl>

@@ -403,5 +403,6 @@
     "payment_reminder.email.open_budget": "Open the budget",
     "payment_reminder.email.link": "{label}: {url}",
     "payment_reminder.email.settings": "Notification settings",
-    "payment_reminder.email.footer": "You're getting this because you can record payments at {organisation}. To stop these emails, turn off Money email in Notification settings."
+    "payment_reminder.email.footer": "You're getting this because you can record payments at {organisation}. To stop these emails, turn off Money email in Notification settings.",
+    "limits.staff_links": "This link has been opened too often. Try again {hour, plural, other {at {time}}}."
 }

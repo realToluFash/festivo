@@ -119,6 +119,8 @@ function entry(id: string, fullName: string, more: Record<string, unknown> = {})
     floorLead: false,
     shifts: [],
     link: 'no_mobile',
+    linkBy: null,
+    linkAt: null,
     contactsErased: false,
     ...more,
   };
@@ -665,5 +667,210 @@ describe('The Roster on the Staff page (sc-3906)', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Sade Lawal' }));
     expect(screen.queryByRole('combobox', { name: 'Change station, Sade Lawal' })).toBeNull();
     expect(document.querySelector('.rs-facts')?.textContent).toContain('StationBar');
+  });
+});
+
+describe('Each person’s own link on the Roster (sc-3912)', () => {
+  const URL_ISSUED = 'https://soirely.com/w/7Gk2pQ9xVb4mT1sR8nLw3c';
+  const AMAKA = { mobile: '+2348031234567' };
+  const COPIED = {
+    ...AMAKA,
+    link: 'copied',
+    linkBy: 'Folake Adeyemi',
+    linkAt: '2030-11-14T19:12:00+01:00',
+  };
+  const SENT = {
+    ...AMAKA,
+    link: 'sent',
+    linkBy: 'Tobi Ade',
+    linkAt: '2030-11-14T18:44:00+01:00',
+  };
+
+  function clipboard(writeText: () => Promise<void>): ReturnType<typeof vi.fn> {
+    const spy = vi.fn(writeText);
+    Object.defineProperty(navigator, 'clipboard', {
+      value: { writeText: spy },
+      configurable: true,
+    });
+
+    return spy;
+  }
+
+  function plan(more: Record<string, unknown>) {
+    return () =>
+      json({
+        staff: [entry('st_1', 'Amaka Eze', more)],
+        jobs: [],
+        shifts: [],
+        stations: NO_STATIONS,
+      });
+  }
+
+  function row(): HTMLElement {
+    const name = screen.getByRole('button', { name: 'Amaka Eze' });
+    const tr = name.closest('tr');
+    if (tr == null) throw new Error('No row for Amaka Eze');
+
+    return tr;
+  }
+
+  afterEach(() => {
+    Reflect.deleteProperty(navigator, 'clipboard');
+  });
+
+  it('copies a link on a row reading No link yet, then says who copied it and offers Mark as sent', async () => {
+    signedIn();
+    const writeText = clipboard(() => Promise.resolve());
+    const sent = await onRoster({
+      'GET /api/events/ev_1/staff': plan({ ...AMAKA, link: 'none' }),
+      'POST /api/events/ev_1/staff/st_1/link': () =>
+        json({ url: URL_ISSUED, staff: entry('st_1', 'Amaka Eze', COPIED) }),
+    });
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Copy link: Amaka Eze' }));
+
+    expect(await within(row()).findByText('Copied')).toBeDefined();
+    expect(writeText).toHaveBeenCalledWith(URL_ISSUED);
+    expect(sent.some((one) => one.line === 'POST /api/events/ev_1/staff/st_1/link')).toBe(true);
+    expect(
+      within(row()).getByText('Copied by Folake Adeyemi · 19:12 · not marked as sent'),
+    ).toBeDefined();
+    expect(within(row()).getByRole('button', { name: 'Mark as sent: Amaka Eze' })).toBeDefined();
+    expect(screen.getAllByRole('status').some((one) => one.textContent === 'Link copied.')).toBe(
+      true,
+    );
+  });
+
+  it('marks a copied link as sent', async () => {
+    signedIn();
+    const sent = await onRoster({
+      'GET /api/events/ev_1/staff': plan(COPIED),
+      'POST /api/events/ev_1/staff/st_1/link/sent': () =>
+        json({ staff: entry('st_1', 'Amaka Eze', { ...SENT, linkBy: 'Folake Adeyemi' }) }),
+    });
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Mark as sent: Amaka Eze' }));
+
+    expect(await within(row()).findByText('Link sent')).toBeDefined();
+    expect(sent.some((one) => one.line === 'POST /api/events/ev_1/staff/st_1/link/sent')).toBe(
+      true,
+    );
+    expect(within(row()).queryByRole('button', { name: 'Mark as sent: Amaka Eze' })).toBeNull();
+  });
+
+  it('leaves a row reading Link sent as it was after another copy, with no Mark as sent', async () => {
+    signedIn();
+    clipboard(() => Promise.resolve());
+    await onRoster({
+      'GET /api/events/ev_1/staff': plan(SENT),
+      'POST /api/events/ev_1/staff/st_1/link': () =>
+        json({ url: URL_ISSUED, staff: entry('st_1', 'Amaka Eze', SENT) }),
+    });
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Copy link: Amaka Eze' }));
+
+    await waitFor(() =>
+      expect(screen.getAllByRole('status').some((one) => one.textContent === 'Link copied.')).toBe(
+        true,
+      ),
+    );
+    expect(within(row()).getByText('Link sent')).toBeDefined();
+    expect(within(row()).getByText('Marked as sent by Tobi Ade · 18:44')).toBeDefined();
+    expect(within(row()).queryByRole('button', { name: 'Mark as sent: Amaka Eze' })).toBeNull();
+  });
+
+  it('shows the link to copy by hand when the browser refuses the clipboard, and still records the copy', async () => {
+    signedIn();
+    clipboard(() => Promise.reject(new Error('NotAllowedError')));
+    await onRoster({
+      'GET /api/events/ev_1/staff': plan({ ...AMAKA, link: 'none' }),
+      'POST /api/events/ev_1/staff/st_1/link': () =>
+        json({ url: URL_ISSUED, staff: entry('st_1', 'Amaka Eze', COPIED) }),
+    });
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Copy link: Amaka Eze' }));
+
+    const field = await screen.findByRole<HTMLInputElement>('textbox', {
+      name: 'Link for Amaka Eze',
+    });
+    expect(field.value).toBe(URL_ISSUED);
+    expect(field.readOnly).toBe(true);
+    expect(within(row()).getByText('Copied')).toBeDefined();
+    expect(
+      screen
+        .getAllByRole('status')
+        .some(
+          (one) => one.textContent === 'The link could not be copied. Copy it from the link field.',
+        ),
+    ).toBe(true);
+    await waitFor(() => expect(document.activeElement).toBe(field));
+  });
+
+  it('copies nothing and keeps the status when no link can be issued', async () => {
+    signedIn();
+    const writeText = clipboard(() => Promise.resolve());
+    await onRoster({
+      'GET /api/events/ev_1/staff': plan({ ...AMAKA, link: 'none' }),
+      'POST /api/events/ev_1/staff/st_1/link': () => problem('internal', 503),
+    });
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Copy link: Amaka Eze' }));
+
+    expect(
+      await within(row()).findByText('That did not work. Try again in a moment.'),
+    ).toBeDefined();
+    expect(within(row()).getByText('No link yet')).toBeDefined();
+    expect(writeText).not.toHaveBeenCalled();
+  });
+
+  it('offers no Copy link to a person with no mobile number', async () => {
+    signedIn();
+    await onRoster({ 'GET /api/events/ev_1/staff': plan({}) });
+
+    expect(await within(row()).findByText('Add a mobile number to send a link')).toBeDefined();
+    expect(screen.queryByRole('button', { name: 'Copy link: Amaka Eze' })).toBeNull();
+  });
+
+  it('replaces a link after asking, Keep this link first, and the row reads No link yet', async () => {
+    signedIn();
+    const sent = await onRoster({
+      'GET /api/events/ev_1/staff': plan(SENT),
+      'POST /api/events/ev_1/staff/st_1/link/replace': () =>
+        json({ staff: entry('st_1', 'Amaka Eze', { ...AMAKA, link: 'none' }) }),
+    });
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Amaka Eze' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Replace link…' }));
+
+    const dialog = screen.getByRole('alertdialog', { name: 'Replace Amaka’s link?' });
+    expect(within(dialog).getByText('Their current link stops working now.')).toBeDefined();
+    const [keep, replace] = within(dialog).getAllByRole('button');
+    expect(keep?.textContent).toBe('Keep this link');
+    expect(replace?.textContent).toBe('Replace link');
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Replace link' }));
+
+    await waitFor(() =>
+      expect(sent.some((one) => one.line === 'POST /api/events/ev_1/staff/st_1/link/replace')).toBe(
+        true,
+      ),
+    );
+    expect(await within(row()).findByText('No link yet')).toBeDefined();
+    expect(
+      screen.getAllByText('Amaka Eze’s link is replaced. Copy link gives them a new one to send.'),
+    ).not.toHaveLength(0);
+  });
+
+  it('keeps the link when Keep this link is chosen, and returns focus to Replace link…', async () => {
+    signedIn();
+    const sent = await onRoster({ 'GET /api/events/ev_1/staff': plan(SENT) });
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Amaka Eze' }));
+    const opener = screen.getByRole('button', { name: 'Replace link…' });
+    fireEvent.click(opener);
+    fireEvent.click(screen.getByRole('button', { name: 'Keep this link' }));
+
+    expect(screen.queryByRole('alertdialog')).toBeNull();
+    expect(sent.some((one) => one.line.endsWith('/link/replace'))).toBe(false);
+    await waitFor(() => expect(document.activeElement).toBe(opener));
   });
 });

@@ -142,3 +142,11 @@ framework:
             policy: fixed_window
             limit: 60
             interval: '1 hour'
+
+        staff_link:
+            # Per IP, for a person's own link (sc-3912). Its token is 128 random bits, so this is
+            # not what keeps it unguessable; it stops one network walking the lookup. A crew
+            # sharing a venue's wifi, each opening their link a few times, stays inside it.
+            policy: fixed_window
+            limit: 120
+            interval: '10 minutes'

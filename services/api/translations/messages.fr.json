@@ -468,5 +468,6 @@
     "email_domains.managed": "Votre adresse du domaine {domain} est gérée par {organisation} : vous ne pouvez être membre que de cette organisation.",
     "email_domains.only_ours_owner": "Seule une personne ayant le rôle Propriétaire peut modifier ce réglage.",
     "email_domains.only_ours_unproved": "« Réservé à notre organisation » nécessite un domaine vérifié par cette organisation.",
-    "validation.payment_reminder_days": "Saisissez un nombre entier de jours de 1 à 30."
+    "validation.payment_reminder_days": "Saisissez un nombre entier de jours de 1 à 30.",
+    "staff.link_needs_mobile": "Add a mobile number to send a link."
 }
