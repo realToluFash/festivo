@@ -134,7 +134,11 @@ def stuck(p, every, epics):
     p.add("Stuck: held by a story nobody is working on")
     for blocker, held in found:
         holds = "holds " + ", ".join(f"sc-{s['id']} ({s['state']})" for s in held)
-        if blocker["state"] == R.WAITING:
+        epic = W.held_epic(blocker, epics)
+        if epic:
+            p.add(line(blocker, f"{holds} · waits on its epic, {epic['name']}, "
+                                f"to be in progress"))
+        elif blocker["state"] == R.WAITING:
             p.add(line(blocker, f"{holds} · waits on the owner"))
         elif blocker["state"] == "Backlog":
             p.add(line(blocker, holds), f"    Next: {SQ} pm move sc-{blocker['id']} \"To Do\"")
