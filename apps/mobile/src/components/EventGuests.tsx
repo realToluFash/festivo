@@ -1266,7 +1266,7 @@ function FilterChoice({
       >
         {apart && (
           <ChangedRow
-            first={first}
+            ref={first}
             on={changed.inUse}
             count={changed.count}
             onPress={() => {
@@ -1333,12 +1333,12 @@ interface ChangedFilter {
 
 /** sc-4331: Changed since you looked, first in the menu and set apart from the reply choices. */
 function ChangedRow({
-  first,
+  ref,
   on,
   count,
   onPress,
 }: {
-  first: RefObject<ViewInstance | null>;
+  ref: RefObject<ViewInstance | null>;
   on: boolean;
   count: number;
   onPress: () => void;
@@ -1349,7 +1349,7 @@ function ChangedRow({
 
   return (
     <Pressable
-      ref={first}
+      ref={ref}
       onPress={onPress}
       style={({ pressed }) => [styles.menuRow, styles.menuApart, pressed && styles.menuPressed]}
       accessibilityRole="button"
