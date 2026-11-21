@@ -2486,7 +2486,8 @@
       "notComing": "Ne vient pas",
       "noReply": "Sans réponse",
       "held": "En attente",
-      "notYetInvited": "Sans invitation"
+      "notYetInvited": "Sans invitation",
+      "walkIn": "Walk-in"
     },
     "repliedOn": "a répondu le {{date}}",
     "replyHeading": "Réponse",
@@ -2662,7 +2663,8 @@
     "letThemChange": "Autoriser une nouvelle réponse",
     "reopenNotSaved": "Non enregistré. Vérifiez votre connexion et réessayez.",
     "askedBy": "{{reply}} · réponse attendue d’ici le {{date}}",
-    "askedByOn": "réponse attendue d’ici le {{date}}"
+    "askedByOn": "réponse attendue d’ici le {{date}}",
+    "companionStays": "{{name}} has arrived, so they stay on the list."
   },
   "guestNumbers": {
     "title": "Invités",
@@ -3271,5 +3273,45 @@
     "title": "Compte géré par {{organisation}}",
     "single": "L’accès à un événement précis reste possible.",
     "change": "Modifier votre adresse e-mail principale"
+  },
+  "checkIn": {
+    "title": "Check-in",
+    "back": "Guests",
+    "open": "Open check-in",
+    "checkGuestsIn": "Check guests in",
+    "searchByName": "Search by name",
+    "count_one": "{{count, number}} of {{expected, number}} arrived",
+    "count_other": "{{count, number}} of {{expected, number}} arrived",
+    "countAlone_one": "{{count, number}} arrived",
+    "countAlone_other": "{{count, number}} arrived",
+    "opensAt": "Check-in opens at {{time}}",
+    "searchWorksNow": "Search works now. Arrivals and walk-ins can be recorded from {{time}}.",
+    "openedAt": "Check-in opened at {{time}}. Anyone on the list can be marked arrived, whatever their reply.",
+    "ended": "This event has ended.",
+    "arrived": "Arrived",
+    "arrivedFor": "Arrived, {{name}}",
+    "arrivedAt": "Arrived at {{time}}",
+    "arrivedAtBy": "Arrived at {{time}} · {{name}}",
+    "undo": "Undo arrival",
+    "undoFor": "Undo arrival, {{name}}",
+    "undone": "Arrival undone",
+    "arrivedName": "{{name}} arrived",
+    "notRecorded": "Not recorded. Try again.",
+    "noOne": "Nobody on the list matches “{{typed}}”.",
+    "nobodyYet": "Nobody is on the list yet",
+    "nobodyYetLine": "Anyone who arrives can be added as a walk-in.",
+    "addWalkIn": "Add walk-in",
+    "fullName": "Full name",
+    "addAndArrive": "Add and mark arrived",
+    "nameBlank": "Enter their full name.",
+    "nameLong": "Shorten the name to 200 characters or fewer.",
+    "alreadyListed": "{{name}} is already on the list",
+    "markThemArrived": "Mark them arrived",
+    "addSomeoneNew": "Add as someone new",
+    "close": "Close",
+    "failed": "Check-in did not load. Check your connection and try again.",
+    "tryAgain": "Try again",
+    "count_many": "{{count, number}} of {{expected, number}} arrived",
+    "countAlone_many": "{{count, number}} arrived"
   }
 }

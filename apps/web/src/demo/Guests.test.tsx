@@ -1368,6 +1368,20 @@ describe('Guests, places for companions (sc-3779)', () => {
     await waitFor(() => expect(document.activeElement).toBe(places));
   });
 
+  it('refuses fewer places when the place left has arrived, unnamed (sc-1454)', SLOW, async () => {
+    await guests('placesRefusedArrived');
+
+    const places = screen.getByRole('spinbutton', { name: 'Places for companions' });
+
+    expect(
+      screen.getByText(
+        'Alhaji Musa Bello already has 1 named or arrived. Arrived companions stay on the list.',
+      ),
+    ).toBeDefined();
+    expect(places.getAttribute('aria-invalid')).toBe('true');
+    expect((places as HTMLInputElement).value).toBe('1');
+  });
+
   it('opens the refusal and the most as the boards draw them', SLOW, async () => {
     await guests('placesRefused');
 

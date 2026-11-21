@@ -282,7 +282,7 @@ final class BudgetMarginTest extends ApiTestCase
         self::assertSame(200, $this->statusCode());
         $payload = Str\split(Type\string()->coerce($body['token'] ?? null), '.')[1] ?? self::fail('not a token');
         $claims = Type\shape(['mercure' => Type\shape(['subscribe' => Type\vec(Type\string())], true)], true)->coerce(Json\decode((string) \base64_decode(Str\replace_every($payload, ['-' => '+', '_' => '/']), true)));
-        self::assertSame(['events/' . $this->eventId . '/budget/margin', 'events/' . $this->eventId . '/headcount'], $claims['mercure']['subscribe']);
+        self::assertSame(['events/' . $this->eventId . '/budget/margin', 'events/' . $this->eventId . '/headcount', 'events/' . $this->eventId . '/check-in'], $claims['mercure']['subscribe']);
     }
 
     #[Test]

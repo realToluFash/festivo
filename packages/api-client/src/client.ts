@@ -35,6 +35,8 @@ import {
   asMarkedTogether,
   asMovedTogether,
   asRemovedTogether,
+  asCheckIn,
+  type CheckIn,
   type CompanionChoice,
   type Guest,
   type GuestEdit,
@@ -4124,6 +4126,72 @@ export class ApiClient {
       token: typeof body.token === 'string' ? body.token : '',
       expiresAt: typeof body.expiresAt === 'string' ? body.expiresAt : '',
     };
+  }
+
+  /** The door's list (sc-1454): names, replies and arrivals with sc-99's attended of expected; needs guests.check_in, refused 403 for Can view. */
+  async checkIn(eventId: string): Promise<CheckIn> {
+    return this.checkInOf(await this.get<unknown>(this.checkInPath(eventId)));
+  }
+
+  /** Arrived, for a guest or a companion by id: one already arrived keeps their first arrival and nobody else is arrived. Refused 409 `check_in_closed` outside the window. */
+  async arrive(eventId: string, guestId: string): Promise<CheckIn> {
+    return this.checkInOf(
+      await this.post<unknown>(`${this.checkInPath(eventId)}/arrivals`, { guestId }),
+    );
+  }
+
+  /** Undo arrival; asks nothing first. */
+  async undoArrival(eventId: string, guestId: string): Promise<CheckIn> {
+    return this.checkInOf(
+      await this.delete<unknown>(
+        `${this.checkInPath(eventId)}/arrivals/${encodeURIComponent(guestId)}`,
+      ),
+    );
+  }
+
+  /** A walk-in, by full name only, added arrived; refused 409 `guest_already_listed` with `guest` naming who is on the list unless `allowDuplicate`, and 422 on the name as addGuest. */
+  async addWalkIn(
+    eventId: string,
+    fullName: string,
+    allowDuplicate = false,
+  ): Promise<{ walkIn: string; checkIn: CheckIn }> {
+    const body = await this.post<{ walkIn?: { id?: unknown } }>(
+      `${this.checkInPath(eventId)}/walk-ins`,
+      {
+        fullName,
+        allowDuplicate,
+      },
+    );
+    const id = body.walkIn?.id;
+
+    return { walkIn: typeof id === 'string' ? id : '', checkIn: this.checkInOf(body) };
+  }
+
+  /** A hub token for the door's signal alone: it says the list changed and carries no name, reply or count, so the screen reads checkIn again. */
+  async checkInSubscription(eventId: string): Promise<RealtimeSubscription> {
+    const body = await this.post<{ token?: unknown; expiresAt?: unknown }>(
+      `${this.checkInPath(eventId)}/subscriptions`,
+    );
+
+    return {
+      token: typeof body.token === 'string' ? body.token : '',
+      expiresAt: typeof body.expiresAt === 'string' ? body.expiresAt : '',
+    };
+  }
+
+  private checkInPath(eventId: string): string {
+    return `/api/events/${encodeURIComponent(eventId)}/check-in`;
+  }
+
+  private checkInOf(body: unknown): CheckIn {
+    const read = asCheckIn(body);
+    if (read == null) {
+      throw new Error(
+        'The API answered check-in in a shape this client does not know. Check CheckInSerialiser in services/api.',
+      );
+    }
+
+    return read;
   }
 
   /** A hub token for the headcounts of the events a list shows, those the caller reads guests on (sc-3786). */

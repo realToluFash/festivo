@@ -22,6 +22,7 @@ export function CompanionField({
   label,
   placeholder,
   error,
+  arrived = false,
   onChange,
   onRemove,
 }: {
@@ -31,6 +32,7 @@ export function CompanionField({
   label: string;
   placeholder: string;
   error: string | undefined;
+  arrived?: boolean;
   onChange: (name: string) => void;
   onRemove: () => void;
 }) {
@@ -44,6 +46,9 @@ export function CompanionField({
         : at === 0
           ? t('guestList.removeCompanionOf', { host })
           : t('guestList.removeCompanionOfNth', { host, nth: at + 1 });
+  const told = [arrived ? `${id}-stays` : null, error == null ? null : `${id}-error`]
+    .filter((one) => one != null)
+    .join(' ');
 
   return (
     <div className="gs-companion-field">
@@ -58,46 +63,60 @@ export function CompanionField({
             data-focus={`companion-${at}`}
             aria-label={label}
             aria-invalid={error != null}
-            aria-describedby={error == null ? undefined : `${id}-error`}
+            aria-describedby={told === '' ? undefined : told}
             onChange={(event) => onChange(event.target.value)}
           />
         </div>
-        <button
-          type="button"
-          className="desk-text gs-remove"
-          aria-label={remove}
-          onClick={onRemove}
-        >
-          {t('guestList.remove')}
-        </button>
+        {!arrived && (
+          <button
+            type="button"
+            className="desk-text gs-remove"
+            aria-label={remove}
+            onClick={onRemove}
+          >
+            {t('guestList.remove')}
+          </button>
+        )}
       </div>
+      {arrived && (
+        <p id={`${id}-stays`} className="gs-stays">
+          <Glyph name="tick" size={16} weight={2.6} />
+          {t('guestList.companionStays', { name: name.trim() === '' ? placeholder : name.trim() })}
+        </p>
+      )}
       {error != null && <FieldWrong id={`${id}-error`}>{error}</FieldWrong>}
     </div>
   );
 }
 
-/** sc-3779's Places for companions, at the top of Companions: minus takes unnamed places only, and a step that would drop a name is refused until the next change. */
+/** sc-3779's Places for companions, at the top of Companions: minus takes unnamed, unarrived places only, and a step that would drop a name or an arrival is refused until the next change. */
 export function PlacesStepper({
   host,
   names,
+  arrived = [],
   onStep,
 }: {
   host: string;
   names: readonly string[];
+  arrived?: readonly boolean[];
   onStep: (kept: number[], added: number) => void;
 }) {
   const { t } = useTranslation();
   const id = useId();
   const count = names.length;
   const shape = names.join('\u0000') + String(count);
-  const [refusal, setRefusal] = useState<{ named: number; shape: string } | null>(null);
-  const refused = refusal != null && refusal.shape === shape ? refusal.named : null;
+  const [refusal, setRefusal] = useState<{
+    held: number;
+    arrived: boolean;
+    shape: string;
+  } | null>(null);
+  const refused = refusal != null && refusal.shape === shape ? refusal : null;
 
   function toPlaces(places: number): void {
-    const step = placesTo(names, places);
+    const step = placesTo(names, places, arrived);
 
     if ('refused' in step) {
-      setRefusal({ named: step.refused, shape });
+      setRefusal({ held: step.refused, arrived: step.arrived, shape });
       document.getElementById(`${id}-places`)?.focus();
       return;
     }
@@ -154,9 +173,9 @@ export function PlacesStepper({
       {refused != null && (
         <p id={`${id}-refused`} className="desk-error">
           <Glyph name="alert" size={15} weight={2.2} />
-          {t('guestList.placesRefused', {
+          {t(refused.arrived ? 'guestList.placesRefusedArrived' : 'guestList.placesRefused', {
             name: host === '' ? t('guestList.thisGuest') : host,
-            named: refused,
+            named: refused.held,
           })}
         </p>
       )}

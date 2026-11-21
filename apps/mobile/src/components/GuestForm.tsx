@@ -38,6 +38,7 @@ import type { ScreenReaderTarget } from './screenReaderFocus.ts';
 import { tokens } from '../theme/tokens.ts';
 import { AlertLine } from './AlertLine.tsx';
 import { Field, TextField, focusRefused } from './Field.tsx';
+import { DoneLine } from './FormLayers.tsx';
 import { LanguageField, languageOver } from './GuestLanguage.tsx';
 import { PhoneEntry } from './PhoneEntry.tsx';
 import { type CountedGroup, GroupField, GroupPicker, pickProblemLine } from './GuestGroup.tsx';
@@ -54,7 +55,7 @@ export type GuestFormMode = { kind: 'add' } | { kind: 'edit'; tagged: TaggedGues
 
 type Ask = 'duplicate' | 'discard' | null;
 
-type Refusal = 'offline' | 'notSaved' | null;
+type Refusal = 'offline' | 'notSaved' | { said: string } | null;
 
 /** Group's refusal on Save in the API's words, said as taken once the list read again has a group of the name made. */
 type GroupRefusal = { made: string | null; line: string } | null;
@@ -271,6 +272,8 @@ export function GuestForm({
       }
     } catch (error) {
       if (error instanceof ApiUnreachableError) setRefusal('offline');
+      else if (error instanceof ApiError && error.code === 'guest_arrived')
+        setRefusal(error.problem.detail == null ? 'notSaved' : { said: error.problem.detail });
       else if (error instanceof ApiError && error.code === 'guest_already_listed')
         setAsk('duplicate');
       else if (error instanceof ApiError && error.status === 412 && editing != null) {
@@ -407,6 +410,7 @@ export function GuestForm({
       {refusal === 'notSaved' && (
         <AlertLine text={adding ? t('guestList.notAdded') : t('guestList.notSaved')} />
       )}
+      {refusal != null && typeof refusal === 'object' && <AlertLine text={refusal.said} />}
       {theirs != null && (
         <View style={styles.conflict} testID="guest.form.conflict">
           <AlertLine text={t('guestList.conflict')} />
@@ -522,6 +526,16 @@ export function GuestForm({
         </View>
         {values.companions.map((one, at) => {
           const host = values.fullName.trim();
+          const placeholder =
+            host === ''
+              ? ''
+              : at === 0
+                ? t('guestList.guestOf', { host })
+                : t('guestList.guestOfNth', { host, nth: at + 1 });
+          const arrived =
+            one.id != null &&
+            (editing?.guest.companions.some((was) => was.id === one.id && was.arrival != null) ??
+              false);
 
           return (
             <View key={one.id ?? `new-${at}`} style={styles.companionBlock}>
@@ -538,13 +552,7 @@ export function GuestForm({
                     style={styles.grow}
                     accessibilityLabel={t('guestList.companionName', { nth: at + 1, total: count })}
                     value={one.name}
-                    placeholder={
-                      host === ''
-                        ? ''
-                        : at === 0
-                          ? t('guestList.guestOf', { host })
-                          : t('guestList.guestOfNth', { host, nth: at + 1 })
-                    }
+                    placeholder={placeholder}
                     onChangeText={(name) =>
                       set({
                         companions: values.companions.map((was, here) =>
@@ -556,17 +564,28 @@ export function GuestForm({
                     submitting={sending}
                     testID={`guest.form.companion.${at}`}
                   />
-                  <TextAction
-                    label={t('guestList.remove')}
-                    onPress={() => {
-                      set({ companions: values.companions.filter((_, here) => here !== at) });
-                      setNeedsProblems({});
-                      setOpened((was) => new Set([...was].filter((who) => !who.startsWith('c'))));
-                    }}
-                    testID={`guest.form.companion.${at}.remove`}
-                  />
+                  {!arrived && (
+                    <TextAction
+                      label={t('guestList.remove')}
+                      onPress={() => {
+                        set({ companions: values.companions.filter((_, here) => here !== at) });
+                        setNeedsProblems({});
+                        setOpened((was) => new Set([...was].filter((who) => !who.startsWith('c'))));
+                      }}
+                      testID={`guest.form.companion.${at}.remove`}
+                    />
+                  )}
                 </View>
               </Field>
+              {arrived && (
+                <DoneLine
+                  text={t('guestList.companionStays', {
+                    name: one.name.trim() === '' ? placeholder : one.name.trim(),
+                  })}
+                  size={14}
+                  reads={false}
+                />
+              )}
               <NeedsSection
                 title={t('guestNeeds.theirNeeds')}
                 needs={one.needs}

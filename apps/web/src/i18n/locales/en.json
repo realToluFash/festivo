@@ -3240,7 +3240,8 @@
       "notComing": "Not coming",
       "noReply": "No reply",
       "held": "Held",
-      "notYetInvited": "Not yet invited"
+      "notYetInvited": "Not yet invited",
+      "walkIn": "Walk-in"
     },
     "replied": "{{reply}} · replied {{date}}",
     "repliedOn": "replied {{date}}",
@@ -3306,6 +3307,7 @@
     "morePlaces": "More places",
     "namedOf": "{{named, number}} of {{places, number}} named",
     "placesRefused": "{{name}} already has {{named, number}} named. Remove some first.",
+    "placesRefusedArrived": "{{name}} already has {{named, number}} named or arrived. Arrived companions stay on the list.",
     "thisGuest": "This guest",
     "namedByGuest": "Named by the guest",
     "companionsNamed_one": "{{count, number}} companion · {{named, number}} of {{count, number}} named",
@@ -3441,7 +3443,15 @@
     "undoOpen": "Undo is open for 10 seconds.",
     "backOnList": "Back on the list. As they were, with their link, reply and companions.",
     "alreadyRemoved": "{{name}} was already removed by someone else.",
-    "seatedLine": "{{name}} has a seat at {{table}}. Removing this companion frees the seat."
+    "seatedLine": "{{name}} has a seat at {{table}}. Removing this companion frees the seat.",
+    "arrival": "Arrival",
+    "arrived": "Arrived",
+    "staysArrived": "They have arrived, so they stay on the list. Their record ends with the event’s guest data setting.",
+    "staysCompanionArrived": "One of their companions has arrived, so they stay on the list. Their record ends with the event’s guest data setting.",
+    "justArrived": "{{name}} has just arrived, so they stay on the list.",
+    "companionJustArrived": "A companion of {{name}} has just arrived, so they stay on the list.",
+    "backToDetails": "Back to their details",
+    "companionStays": "{{name}} has arrived, so they stay on the list."
   },
   "guestNumbers": {
     "title": "Guests",
@@ -3658,7 +3668,13 @@
     "marked_other": "{{count, number}} marked as invited, {{how}}.",
     "keptAsRecorded_one": "{{count, number}} already invited, kept as recorded.",
     "keptAsRecorded_other": "{{count, number}} already invited, kept as recorded.",
-    "notLive": "Nothing changed. This event is no longer live, so guests cannot be marked as invited."
+    "notLive": "Nothing changed. This event is no longer live, so guests cannot be marked as invited.",
+    "staysArrived": "{{name}} has arrived, so they stay on the list.",
+    "staysCompanion": "A companion of {{name}} has arrived, so they stay on the list.",
+    "notChanged_one": "{{count, number}} not changed: {{reasons}}.",
+    "notChanged_other": "{{count, number}} not changed: {{reasons}}.",
+    "hasArrived": "{{name}} has arrived",
+    "companionHasArrived": "a companion of {{name}} has arrived"
   },
   "guestKitchen": {
     "title": "Anything the kitchen must know?",
