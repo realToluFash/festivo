@@ -70,6 +70,7 @@ import {
   problemsOf,
   replyDate,
   shownReply,
+  staysBecause,
   violationProblems,
   NO_NEEDS,
   type NeedsProblems,
@@ -94,6 +95,7 @@ const MARK: Record<ReplyWord, string> = {
   noReply: 'is-no-reply',
   held: 'is-held',
   notYetInvited: 'is-not-yet',
+  walkIn: 'is-walk-in',
 };
 
 export function ReplyMark({
@@ -113,7 +115,30 @@ export function ReplyMark({
       {reply === 'coming' && <Glyph name="tick" size={Math.round(size * 0.68)} weight={3.2} />}
       {reply === 'notComing' && <span className="gs-bar" />}
       {reply === 'maybe' && <Glyph name="question" size={Math.round(size * 0.8)} weight={2.8} />}
+      {reply === 'walkIn' && <Door size={Math.round(size * 0.7)} />}
     </span>
+  );
+}
+
+/** The door the Walk-in mark carries (spec §18.8): the shared glyphs have none. */
+function Door({ size }: { size: number }) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      aria-hidden="true"
+      focusable="false"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={2.2}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M4 21h16" />
+      <path d="M6 21V4.5A1.5 1.5 0 0 1 7.5 3h9A1.5 1.5 0 0 1 18 4.5V21" />
+      <path d="M14.5 12.5h.01" />
+    </svg>
   );
 }
 
@@ -658,7 +683,9 @@ function GuestView({
         setRemoving(
           error instanceof ApiError && error.status === 404
             ? { kind: 'gone' }
-            : { kind: 'asking', busy: false, failed: true },
+            : error instanceof ApiError && error.code === 'guest_arrived'
+              ? { kind: 'stays', why: arrivedWhy(error) }
+              : { kind: 'asking', busy: false, failed: true },
         ),
     );
   }
@@ -672,6 +699,7 @@ function GuestView({
   const replied =
     guest.repliedAt == null ? null : replyDate(guest.repliedAt, timeZone, dateLocale());
   const reply = shownReply(guest);
+  const stays = staysBecause(guest);
   const notYet = reply === 'notYetInvited';
   const closed = notYet ? null : closedLine(t, guest, replies, manages, timeZone, dateLocale());
   const reopens = manages && !notYet && replies.closedOn != null && guest.repliesReopened == null;
@@ -895,7 +923,13 @@ function GuestView({
               </li>
             )}
             {guest.companions.map((companion, at) => (
-              <li key={companion.id} className="desk-row">
+              <li
+                key={companion.id}
+                className="desk-row"
+                {...(companion.arrival != null && guest.arrival == null
+                  ? { tabIndex: -1, 'data-focus': `arrival-${companion.id}` }
+                  : {})}
+              >
                 <MarkLead reply={companion.state} />
                 <div className="gs-row-words">
                   <RowWords
@@ -904,6 +938,7 @@ function GuestView({
                       companion.state === 'held'
                         ? t('guestList.heldCompanion')
                         : t('guestList.companionLine', { reply: t(REPLY_KEY[companion.state]) }),
+                      ...(companion.arrival == null ? [] : [t('guestList.arrived')]),
                     ]}
                   />
                   {companion.namedByGuest && (
@@ -912,6 +947,12 @@ function GuestView({
                 </div>
               </li>
             ))}
+            {guest.arrival != null && (
+              <li className="desk-row">
+                <IconLead name="tick" />
+                <RowWords title={t('guestList.arrived')} lines={[t('guestList.arrival')]} />
+              </li>
+            )}
             {manages && (
               <li className="desk-row">
                 <IconLead name="user" />
@@ -928,14 +969,24 @@ function GuestView({
           </ul>
           {manages && (
             <div className="gr-foot">
-              <button
-                type="button"
-                className="gs-pill is-secondary"
-                data-focus="remove"
-                onClick={() => setRemoving({ kind: 'asking', busy: false, failed: false })}
-              >
-                {t('guestList.removeFromList')}
-              </button>
+              {stays == null ? (
+                <button
+                  type="button"
+                  className="gs-pill is-secondary"
+                  data-focus="remove"
+                  onClick={() => setRemoving({ kind: 'asking', busy: false, failed: false })}
+                >
+                  {t('guestList.removeFromList')}
+                </button>
+              ) : (
+                <p className="gr-stays">
+                  {t(
+                    stays === 'arrived'
+                      ? 'guestList.staysArrived'
+                      : 'guestList.staysCompanionArrived',
+                  )}
+                </p>
+              )}
             </div>
           )}
         </section>
@@ -997,6 +1048,14 @@ function GuestView({
           }}
           onRemove={removed}
           onGone={onRemovedAlready}
+          onBack={() => {
+            const arrived = guest.companions.find((one) => one.arrival != null);
+
+            setRemoving(null);
+            if (guest.arrival == null && arrived != null)
+              focus(`arrival-${arrived.id}`, 'guest-heading');
+            else focus('guest-heading');
+          }}
         />
       )}
       {replace.kind === 'asking' && (
@@ -1889,4 +1948,11 @@ function EditCompanions({
       )}
     </fieldset>
   );
+}
+
+/** Which arrival a 409 `guest_arrived` names; the guest's own wins over a companion's (sc-1454). */
+function arrivedWhy(error: ApiError): 'arrived' | 'companionArrived' {
+  return (error.problem as { why?: unknown }).why === 'companionArrived'
+    ? 'companionArrived'
+    : 'arrived';
 }

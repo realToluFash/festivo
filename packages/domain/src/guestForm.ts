@@ -9,10 +9,21 @@ import { phoneLengthProblem } from './phone.ts';
 export const GUEST_NAME_MAXIMUM = 200;
 export const COMPANIONS_MAXIMUM = 10;
 
-export type ReplyWord = Guest['reply'] | Companion['state'];
+/** `walkIn` reads in place of a reply for someone added at the door (sc-1454). */
+export type ReplyWord = Guest['reply'] | Companion['state'] | 'walkIn';
+
+/** Why a guest stays on the list: they arrived, or a companion did, since removing them erases their companions (sc-1454). Their own arrival wins. */
+export function staysBecause(guest: Guest): 'arrived' | 'companionArrived' | null {
+  if (guest.arrival != null) return 'arrived';
+  if (guest.companions.some((one) => one.arrival != null)) return 'companionArrived';
+
+  return null;
+}
 
 /** Not yet invited stands where the reply goes until somebody invites them (sc-3788). */
 export function shownReply(guest: Guest): ReplyWord {
+  if (guest.walkIn === true) return 'walkIn';
+
   return guest.invitation == null && guest.reply === 'noReply' ? 'notYetInvited' : guest.reply;
 }
 

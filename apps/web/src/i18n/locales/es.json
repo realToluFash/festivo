@@ -3394,7 +3394,8 @@
       "notComing": "No viene",
       "noReply": "Sin respuesta",
       "held": "En espera",
-      "notYetInvited": "Sin invitar"
+      "notYetInvited": "Sin invitar",
+      "walkIn": "Walk-in"
     },
     "replied": "{{reply}} · respondió el {{date}}",
     "repliedOn": "respondió el {{date}}",
@@ -3605,7 +3606,14 @@
     "undoOpen": "Puede deshacerlo durante 10 segundos.",
     "backOnList": "De nuevo en la lista, como antes: con su enlace, su respuesta y sus acompañantes.",
     "alreadyRemoved": "Otra persona ya ha quitado a {{name}} de la lista.",
-    "seatedLine": "{{name}} tiene asiento en {{table}}. Si quita a este acompañante, el asiento queda libre."
+    "seatedLine": "{{name}} tiene asiento en {{table}}. Si quita a este acompañante, el asiento queda libre.",
+    "arrival": "Arrival",
+    "arrived": "Arrived",
+    "staysArrived": "They have arrived, so they stay on the list. Their record ends with the event’s guest data setting.",
+    "staysCompanionArrived": "One of their companions has arrived, so they stay on the list. Their record ends with the event’s guest data setting.",
+    "justArrived": "{{name}} has just arrived, so they stay on the list.",
+    "companionJustArrived": "A companion of {{name}} has just arrived, so they stay on the list.",
+    "backToDetails": "Back to their details"
   },
   "guestNumbers": {
     "title": "Invitados",
@@ -3862,7 +3870,13 @@
     "keptAsRecorded_one": "{{count, number}} invitado ya tenía la invitación registrada y se mantiene como estaba.",
     "keptAsRecorded_other": "{{count, number}} invitados ya tenían la invitación registrada y se mantienen como estaban.",
     "keptAsRecorded_many": "{{count, number}} de invitados ya tenían la invitación registrada y se mantienen como estaban.",
-    "notLive": "No ha cambiado nada. Este evento ya no está publicado, así que no se pueden registrar invitaciones."
+    "notLive": "No ha cambiado nada. Este evento ya no está publicado, así que no se pueden registrar invitaciones.",
+    "staysArrived": "{{name}} has arrived, so they stay on the list.",
+    "staysCompanion": "A companion of {{name}} has arrived, so they stay on the list.",
+    "notChanged_one": "{{count, number}} not changed: {{reasons}}.",
+    "notChanged_other": "{{count, number}} not changed: {{reasons}}.",
+    "hasArrived": "{{name}} has arrived",
+    "companionHasArrived": "a companion of {{name}} has arrived"
   },
   "guestKitchen": {
     "title": "¿Algo que deba saber la cocina?",

@@ -183,8 +183,13 @@
   color: var(--colorInkOnDark);
 }
 
-.gs-mark.is-coming {
+.gs-mark.is-coming,
+.gs-mark.is-walk-in {
   background: var(--replyComingDot);
+}
+
+.gs-mark.is-walk-in {
+  border-radius: 28%;
 }
 
 .gs-mark.is-maybe {
