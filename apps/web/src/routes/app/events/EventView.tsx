@@ -163,7 +163,7 @@ function BudgetWithheld({ event }: { event: OrganisationEvent }) {
           event: `/app/events/${encodeURIComponent(event.id)}`,
         }}
       />
-      <div className="bt-gone">
+      <div className="bt-gone ev">
         <h1 className="bt-title" tabIndex={-1}>
           {t('eventPage.notFound')}
         </h1>

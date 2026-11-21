@@ -49,14 +49,6 @@
   padding-top: var(--spaceXl);
 }
 
-.bt-gone a.desk-text {
-  text-decoration: none;
-}
-
-.bt-gone a.desk-text:hover {
-  text-decoration: underline;
-}
-
 .bt-title-actions {
   display: flex;
   flex-wrap: wrap;
