@@ -14,6 +14,7 @@ use App\Enum\NotificationDeliveryStatus;
 use App\Enum\NotificationPriority;
 use App\Enum\Permission;
 use App\Repository\EventMuteRepository;
+use Closure;
 use DateInterval;
 use DateTimeImmutable;
 use DateTimeZone;
@@ -27,6 +28,7 @@ use Psl\Type;
 use Psl\Vec;
 use Psr\Clock\ClockInterface;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
+use Symfony\Component\DependencyInjection\Attribute\AutowireServiceClosure;
 use Symfony\Component\Uid\Uuid;
 
 /** The morning's summary (AC 6 to 9): per event the member still sees and has not muted, what is unseen since the last one; with nothing unseen it is not sent. */
@@ -43,7 +45,9 @@ final readonly class GuestRepliesSummary extends GuestRepliesType
         private GuestReplyLog $guestReplyLog,
         private GuestReplyWording $guestReplyWording,
         private GuestRepliesUnsubscribe $guestRepliesUnsubscribe,
-        private MemberAudienceResolver $memberAudienceResolver,
+        /** @var Closure(): MemberAudienceResolver resolved only when a summary is rendered, so the registry builds without the access layer */
+        #[AutowireServiceClosure(MemberAudienceResolver::class)]
+        private Closure $memberAudienceResolver,
         private EventMuteRepository $eventMuteRepository,
         private ClockInterface $clock,
         #[Autowire(env: 'CORS_WEB_ORIGIN')]
@@ -227,7 +231,7 @@ final readonly class GuestRepliesSummary extends GuestRepliesType
 
     private function canSee(Uuid $organisationId, Event $event, Uuid $userId): bool
     {
-        return null !== $this->memberAudienceResolver->recipient(Audience::memberOfEvent($organisationId, $event->getId(), Permission::GuestsRead, $userId), $userId);
+        return null !== ($this->memberAudienceResolver)()->recipient(Audience::memberOfEvent($organisationId, $event->getId(), Permission::GuestsRead, $userId), $userId);
     }
 
     private function lastSummaryAt(Uuid $organisationId, Uuid $userId): ?DateTimeImmutable
