@@ -296,14 +296,21 @@ export function EventsList({
             />
           }
           filter={
-            <FilterButton
-              ref={filterRef}
-              {...filterWords}
-              wraps={!wide}
-              off
-              open={false}
-              onPress={() => undefined}
-            />
+            <View
+              style={[wide ? styles.unseenBeside : styles.unseenWraps, styles.unseen]}
+              pointerEvents="none"
+              accessibilityElementsHidden
+              importantForAccessibility="no-hide-descendants"
+            >
+              <FilterButton
+                ref={filterRef}
+                {...filterWords}
+                wraps={!wide}
+                off
+                open={false}
+                onPress={() => undefined}
+              />
+            </View>
           }
         />
         <SunkTabs />
@@ -696,4 +703,7 @@ const styles = StyleSheet.create({
   tileName: { flexDirection: 'row', alignItems: 'center', gap: tokens.spaceXs },
   tileShown: { flexDirection: 'row', alignItems: 'center', gap: tokens.spaceMd },
   said: { lineHeight: 14 * 1.45 },
+  unseenWraps: { flexDirection: 'row', flexShrink: 1, minWidth: 0 },
+  unseenBeside: { flexDirection: 'row', flex: 1, minWidth: 0 },
+  unseen: { opacity: 0 },
 });
