@@ -915,6 +915,37 @@ describe('Who is paying while others change it (sc-91, Live)', () => {
     expect(screen.getByText('Total 50.00%')).toBeTruthy();
   });
 
+  it('sends the held share once the percentages on screen come to 100, so the refusal names who was removed', async () => {
+    const { saves, removeFunmi } = await liveChoose({
+      violations: [{ ...REMOVED.violations[0]!, propertyPath: 'split.shares.funmi' }],
+    });
+    fireEvent.click(screen.getByRole('radio', { name: 'Shared by percentage' }));
+    fireEvent.change(screen.getByLabelText('Mr and Mrs Obi · %'), { target: { value: '50' } });
+    fireEvent.change(screen.getByLabelText('Aunt Funmi · %'), { target: { value: '50' } });
+    await removeFunmi();
+    fireEvent.change(screen.getByLabelText('Mr and Mrs Obi · %'), { target: { value: '100' } });
+    expect(screen.getByText('Total 100.00%')).toBeTruthy();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+    expect(
+      await screen.findByText(
+        'Aunt Funmi was removed by someone else while this was open, so nothing was saved.',
+      ),
+    ).toBeTruthy();
+    expect(screen.queryByText(/^The percentages come to/u)).toBeNull();
+    expect(saves().map((one) => one.body)).toMatchObject([
+      {
+        split: {
+          mode: 'percent',
+          shares: [
+            { payerId: 'obi', percent: '100.00' },
+            { payerId: 'funmi', percent: '50.00' },
+          ],
+        },
+      },
+    ]);
+  });
+
   it('refuses the save with the reason when the live list dropped a payer with a fixed amount typed', async () => {
     const { saves, removeFunmi } = await liveChoose({
       violations: [{ ...REMOVED.violations[0]!, propertyPath: 'split.amounts.funmi' }],
@@ -949,6 +980,44 @@ describe('Who is paying while others change it (sc-91, Live)', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Save' }));
     expect(await screen.findByText(/^Enter an amount above 0/u)).toBeTruthy();
     expect(saves()).toHaveLength(1);
+  });
+
+  it('sends a held fixed amount that only goes over the cost with it, so the refusal names who was removed', async () => {
+    const { saves, removeFunmi } = await liveChoose({
+      violations: [{ ...REMOVED.violations[0]!, propertyPath: 'split.amounts.funmi' }],
+    });
+    fireEvent.click(
+      screen.getByRole('radio', { name: 'Fixed amounts, and one payer covers the rest' }),
+    );
+    fireEvent.change(screen.getByLabelText('Who covers what is left'), {
+      target: { value: 'obi' },
+    });
+    fireEvent.change(screen.getByLabelText('Mr and Mrs Bakare · amount'), {
+      target: { value: '600.00' },
+    });
+    fireEvent.change(screen.getByLabelText('Aunt Funmi · amount'), {
+      target: { value: '600.00' },
+    });
+    await removeFunmi();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+    expect(
+      await screen.findByText(
+        'Aunt Funmi was removed by someone else while this was open, so nothing was saved.',
+      ),
+    ).toBeTruthy();
+    expect(saves().map((one) => one.body)).toMatchObject([
+      {
+        split: {
+          mode: 'fixed',
+          amounts: [
+            { payerId: 'bakare', amount: '600.00' },
+            { payerId: 'funmi', amount: '600.00' },
+          ],
+          restId: 'obi',
+        },
+      },
+    ]);
   });
 
   it('says the first share that moved, and washes every row whose share moved', async () => {
