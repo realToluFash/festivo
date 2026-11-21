@@ -11,6 +11,12 @@ const filterButton = between(
   'const fit = usePicksFit(picks, word,',
   'style={wraps ? styles.filterWraps',
 );
+const screen = readFileSync(join('src', 'components', 'EventsScreen.tsx'), 'utf8');
+const loading = screen.slice(
+  screen.indexOf("load.kind === 'loading' ? ("),
+  screen.indexOf('<SunkTabs />'),
+);
+const filterWrapper = between('style={[wraps ? styles.filterWraps', 'onLayout=');
 const searchRow = between('const [held, setHeld] = useState(false);', '</RowHold.Provider>');
 
 describe("Events' Filter shows first where it settles (sc-78193)", () => {
@@ -36,5 +42,13 @@ describe("Events' Filter shows first where it settles (sc-78193)", () => {
       "importantForAccessibility={held ? 'no-hide-descendants' : 'auto'}",
     );
     expect(searchRow).toContain('<RowHold.Provider value={setHeld}>');
+  });
+
+  it('draws no Filter on the loading screen, whose row sits a line above where it settles, and keeps its room', () => {
+    expect(loading).toContain('searchRow(true, true)');
+    expect(screen).toContain('unseen={filterUnseen}');
+    expect(filterWrapper).toContain('unseen && styles.held');
+    expect(filterWrapper).toContain("pointerEvents={unseen ? 'none' : 'auto'}");
+    expect(filterWrapper).toContain('accessibilityElementsHidden={unseen}');
   });
 });
