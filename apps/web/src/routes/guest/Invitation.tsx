@@ -59,6 +59,27 @@ import {
   skipped,
 } from './kitchen.ts';
 import { forgetStarted, markStarted, wasStarted } from './started.ts';
+import { MarkedLine, MealCards, MealScreen, MealsSaved } from './Meals.tsx';
+import {
+  type Cleared,
+  type Plate,
+  type Plates,
+  allergiesOf,
+  askedCourses,
+  changeFocus,
+  clearRuledOut,
+  eatersOf,
+  keyOf,
+  markOf,
+  markedOpen,
+  nothingSafe,
+  otherOf,
+  picksOf,
+  refusalOf,
+  samePlate,
+  savedPlates,
+  stepsOf,
+} from './meals.ts';
 import './withYou.css';
 
 type Load =
@@ -70,7 +91,16 @@ type Load =
 type View =
   | { kind: 'answer'; busy: GuestAnswer | null; note: 'unsent' | 'notSentTap' | null }
   | { kind: 'withYou'; from: 'answer' | 'changing' }
-  | { kind: 'kitchen'; from: 'answer' | 'changing' }
+  | { kind: 'kitchen'; from: 'answer' | 'changing'; fromCheck?: boolean }
+  | {
+      kind: 'meal';
+      from: 'answer' | 'changing';
+      /** Where Next at the end of the course, or Back on its first screen, returns: on through the step, Check and send, or the picks saved. */
+      to: 'flow' | 'check' | 'saved';
+      eater: number;
+      course: number;
+      step: number;
+    }
   | { kind: 'kitchenAfter'; busy: boolean; failed: boolean }
   | {
       kind: 'check';
@@ -83,6 +113,27 @@ type View =
   | { kind: 'recorded'; same: boolean }
   | { kind: 'changing'; busy: GuestAnswer | null; failed: boolean }
   | { kind: 'closed' };
+
+/** The meal step's picks (sc-3907), kept across the steps and on coming back until sent. */
+interface Meal {
+  plates: Plates;
+  cleared: Readonly<Record<string, Cleared>>;
+  draft: Plate | null;
+  pressed: boolean;
+  told: 'marked' | 'nothing' | 'saved' | 'failed' | null;
+  refused: ReadonlySet<string>;
+  busy: boolean;
+}
+
+const NO_MEAL: Meal = {
+  plates: {},
+  cleared: {},
+  draft: null,
+  pressed: false,
+  told: null,
+  refused: new Set(),
+  busy: false,
+};
 
 type Tell =
   | { kind: 'card' }
@@ -284,6 +335,14 @@ function opening(page: GuestPage, token: string): View {
   return { kind: 'answer', busy: null, note: wasStarted(token) ? 'unsent' : null };
 }
 
+function savedMeal(page: GuestPage): Meal {
+  return {
+    ...NO_MEAL,
+    refused: new Set(),
+    plates: savedPlates(page.meals, eatersOf(page.meals, partyOf(page))),
+  };
+}
+
 function Card({ token, first }: { token: string; first: GuestPage }) {
   const { t } = useTranslation();
   const [page, setPage] = useState(first);
@@ -291,6 +350,7 @@ function Card({ token, first }: { token: string; first: GuestPage }) {
   const [party, setParty] = useState<Party>(() => partyOf(first));
   const [kitchen, setKitchen] = useState<Kitchen | null>(null);
   const [kitchenSaved, setKitchenSaved] = useState(false);
+  const [meal, setMeal] = useState<Meal>(() => savedMeal(first));
   const [tell, setTell] = useState<Tell>({ kind: 'card' });
   const [want, setWant] = useState<{ on: string } | null>(null);
   const [gone, setGone] = useState(false);
@@ -301,10 +361,18 @@ function Card({ token, first }: { token: string; first: GuestPage }) {
   const { guest, event } = page;
   const hosts = hostsLine(event.hosts, currentLocale());
   const count = Math.max(event.hosts.length, 1);
+  const courses = askedCourses(page.meals);
+  const eaters = eatersOf(page.meals, party);
+  const allergies = allergiesOf(page, kitchen);
+  const others = otherOf(page, kitchen);
 
   useLayoutEffect(() => {
     if (want == null) return;
-    document.querySelector<HTMLElement>(`.guest-page [data-focus="${want.on}"]`)?.focus();
+    const target =
+      want.on === 'mealFirst'
+        ? '.guest-page .ms-options input:not(:disabled)'
+        : `.guest-page [data-focus="${want.on}"]`;
+    document.querySelector<HTMLElement>(target)?.focus();
   }, [want]);
 
   useEffect(() => {
@@ -327,6 +395,7 @@ function Card({ token, first }: { token: string; first: GuestPage }) {
     setView(opening(next, token));
     setParty(partyOf(next));
     setKitchen(null);
+    setMeal(savedMeal(next));
     setHeld(had);
   }
 
@@ -372,6 +441,8 @@ function Card({ token, first }: { token: string; first: GuestPage }) {
         setKitchen(null);
         setView({ kind: 'recorded', same });
         focus('greeting');
+        if (coming && courses.length > 0) sendPicks(next, meal.plates, null);
+        else setMeal(savedMeal(next));
       },
       (error: unknown) => {
         if (error instanceof ApiError && REFUSED.some((code) => error.is(code))) {
@@ -448,6 +519,12 @@ function Card({ token, first }: { token: string; first: GuestPage }) {
 
   function sendComing(): void {
     if (view.kind !== 'check' || view.busy) return;
+    const marked = markedOpen(meal.plates, eaters, courses, allergies);
+    if (marked[0] != null) {
+      setMeal((was) => ({ ...was, told: 'marked' }));
+      focus(changeFocus(marked[0]));
+      return;
+    }
     setView({ ...view, busy: true, failed: false });
     send('coming', (refused) => {
       setView({ ...view, busy: false, failed: !refused, unsaved: refused });
@@ -461,10 +538,200 @@ function Card({ token, first }: { token: string; first: GuestPage }) {
     focus('withYouHead');
   }
 
-  function toKitchen(from: 'answer' | 'changing'): void {
+  function toKitchen(from: 'answer' | 'changing', fromCheck = false): void {
     setKitchen((was) => kitchenOf(page, party, was));
-    setView({ kind: 'kitchen', from });
+    setView({ kind: 'kitchen', from, fromCheck });
     focus('kitchenHead');
+  }
+
+  /** Each person's picks, sent once the answer and the kitchen note are, so the API checks them against the allergens as now recorded. */
+  function sendPicks(at: GuestPage, plates: Plates, told: Meal['told']): void {
+    const named = new Set(at.guest.companions.map((one) => one.id));
+    const picks = picksOf(plates, eatersOf(at.meals, partyOf(at)), askedCourses(at.meals), (key) =>
+      key === YOU ? at.meals.you : named.has(key) ? key : null,
+    );
+    if (picks.length === 0) {
+      setMeal({ ...savedMeal(at), told });
+      return;
+    }
+    setMeal((was) => ({ ...was, busy: true, told: null }));
+    sends.current += 1;
+    api.sendMealPicks(token, picks).then(
+      (after) => {
+        setPage(after);
+        setMeal({ ...savedMeal(after), told });
+      },
+      (error: unknown) => {
+        if (error instanceof ApiError && error.is('meal_picks_closed')) {
+          const refused = new Set(error.problem.courses ?? []);
+          api.guestPage(token).then(
+            (after) => {
+              setPage(after);
+              setMeal({ ...savedMeal(after), refused });
+            },
+            () => setMeal((was) => ({ ...was, busy: false, refused })),
+          );
+          return;
+        }
+        if (error instanceof ApiError && error.status === 404) setGone(true);
+        else setMeal((was) => ({ ...was, busy: false, told: 'failed' }));
+      },
+    );
+  }
+
+  /** The draft a course opens with: its pick, unless an allergy given since rules it out. */
+  function draftOf(plates: Plates, eater: number, course: number, mine = allergies): Plate | null {
+    const who = eaters[eater];
+    const what = courses[course];
+    if (who == null || what == null) return null;
+    const was = plates[keyOf(who.key, what.id)];
+    if (was == null || was.kind === 'defaulted' || was.kind === 'needsHost') return null;
+
+    return markOf(what, was, mine(who.key)) == null ? was : null;
+  }
+
+  function openMeal(
+    eater: number,
+    course: number,
+    from: 'answer' | 'changing',
+    to: 'flow' | 'check' | 'saved',
+    plates: Plates = meal.plates,
+    mine = allergies,
+  ): void {
+    setMeal((was) => ({
+      ...was,
+      plates,
+      draft: draftOf(plates, eater, course, mine),
+      pressed: false,
+      told: null,
+    }));
+    setView({ kind: 'meal', from, to, eater, course, step: 0 });
+    focus('mealHead');
+  }
+
+  /** Next or Nothing to add on the kitchen note: on to the first meal screen, clearing a pick an allergy given there rules out, or back to Check and send. */
+  function afterKitchen(from: 'answer' | 'changing', fromCheck: boolean, now: Kitchen): void {
+    if (fromCheck) {
+      setView({ kind: 'check', busy: false, failed: false, from });
+      focus('kitchenRow');
+      return;
+    }
+    if (courses.length === 0) {
+      toCheck(from);
+      return;
+    }
+    const mine = allergiesOf(page, now);
+    const result = clearRuledOut(meal.plates, eaters, courses, mine);
+    setMeal((was) => ({ ...was, cleared: { ...was.cleared, ...result.cleared } }));
+    openMeal(0, 0, from, 'flow', result.plates, mine);
+  }
+
+  function leaveMeal(to: 'check' | 'saved', key: string, from: 'answer' | 'changing'): void {
+    setView(
+      to === 'check'
+        ? { kind: 'check', busy: false, failed: false, from }
+        : { kind: 'recorded', same: false },
+    );
+    focus(changeFocus(key));
+  }
+
+  function mealNext(): void {
+    if (view.kind !== 'meal') return;
+    const eater = eaters[view.eater];
+    const course = courses[view.course];
+    if (eater == null || course == null) return;
+    const { draft } = meal;
+    const safe = !nothingSafe(course, allergies(eater.key));
+    let answer: Plate;
+    if (draft != null && draft.kind !== 'chosen') answer = draft;
+    else if (!safe && draft == null)
+      answer = { kind: 'needsHost', dish: null, variant: null, options: {} };
+    else {
+      const steps = stepsOf(course, draft);
+      const step = steps[view.step] ?? steps[0];
+      if (step != null && refusalOf(step, draft, view.step === 0) != null) {
+        setMeal((was) => ({ ...was, pressed: true }));
+        focus('mealFirst');
+        return;
+      }
+      if (view.step < steps.length - 1) {
+        setMeal((was) => ({ ...was, pressed: false }));
+        setView({ ...view, step: view.step + 1 });
+        focus('mealHead');
+        return;
+      }
+      if (draft == null) return;
+      answer = draft;
+    }
+    const key = keyOf(eater.key, course.id);
+    const plates = { ...meal.plates, [key]: answer };
+    const cleared = Object.fromEntries(Object.entries(meal.cleared).filter(([one]) => one !== key));
+    setMeal((was) => ({ ...was, plates, cleared, draft: null, pressed: false }));
+    if (view.to !== 'flow') {
+      leaveMeal(view.to, key, view.from);
+      return;
+    }
+    if (view.course < courses.length - 1)
+      openMeal(view.eater, view.course + 1, view.from, 'flow', plates);
+    else if (view.eater < eaters.length - 1) openMeal(view.eater + 1, 0, view.from, 'flow', plates);
+    else toCheck(view.from);
+  }
+
+  function mealBack(): void {
+    if (view.kind !== 'meal') return;
+    const eater = eaters[view.eater];
+    const course = courses[view.course];
+    if (eater == null || course == null) return;
+    const key = keyOf(eater.key, course.id);
+    if (view.step > 0) {
+      setMeal((was) => ({ ...was, pressed: false }));
+      setView({ ...view, step: view.step - 1 });
+      focus('mealHead');
+      return;
+    }
+    if (view.to !== 'flow') {
+      setMeal((was) => ({ ...was, draft: null, pressed: false }));
+      leaveMeal(view.to, key, view.from);
+      return;
+    }
+    const { draft } = meal;
+    const done =
+      draft != null &&
+      (draft.kind !== 'chosen' ||
+        stepsOf(course, draft).every((step, at) => refusalOf(step, draft, at === 0) == null));
+    const plates = done ? { ...meal.plates, [key]: draft } : meal.plates;
+    if (view.course > 0) openMeal(view.eater, view.course - 1, view.from, 'flow', plates);
+    else if (view.eater > 0)
+      openMeal(view.eater - 1, courses.length - 1, view.from, 'flow', plates);
+    else {
+      setMeal((was) => ({ ...was, plates, draft: null, pressed: false }));
+      setView({ kind: 'kitchen', from: view.from });
+      focus('kitchenHead');
+    }
+  }
+
+  /** Send my changes, on coming back: refused while an open pick holds an allergen, and says so when nothing has changed. */
+  function sendChanges(): void {
+    if (meal.busy) return;
+    const marked = markedOpen(meal.plates, eaters, courses, allergies);
+    if (marked[0] != null) {
+      setMeal((was) => ({ ...was, told: 'marked' }));
+      focus(changeFocus(marked[0]));
+      return;
+    }
+    const saved = savedPlates(page.meals, eaters);
+    const changed = eaters.some((eater) =>
+      courses.some(
+        (course) =>
+          !course.picksClose.closed &&
+          !samePlate(meal.plates[keyOf(eater.key, course.id)], saved[keyOf(eater.key, course.id)]),
+      ),
+    );
+    if (!changed) {
+      setMeal((was) => ({ ...was, told: 'nothing' }));
+      return;
+    }
+    sendPicks(page, meal.plates, 'saved');
   }
 
   function partyNext(): void {
@@ -487,17 +754,21 @@ function Card({ token, first }: { token: string; first: GuestPage }) {
       return;
     }
     setKitchen({ ...kitchen, tried: false });
-    toCheck(view.from);
+    afterKitchen(view.from, view.fromCheck === true, kitchen);
   }
 
   function kitchenSkip(): void {
     if (view.kind !== 'kitchen' || kitchen == null) return;
-    setKitchen(skipped(kitchen, page));
-    toCheck(view.from);
+    const left = skipped(kitchen, page);
+    setKitchen(left);
+    afterKitchen(view.from, view.fromCheck === true, left);
   }
 
   function kitchenBack(): void {
-    if (hasStep(party)) withYou();
+    if (view.kind === 'kitchen' && view.fromCheck === true) {
+      setView({ kind: 'check', busy: false, failed: false, from: view.from });
+      focus('kitchenRow');
+    } else if (hasStep(party)) withYou();
     else back();
   }
 
@@ -568,7 +839,26 @@ function Card({ token, first }: { token: string; first: GuestPage }) {
   /** Check and send's Back and its kitchen row's Change return to the kitchen step; its answer row's Change, to the answers. */
   function checkBack(): void {
     if (view.kind !== 'check') return;
-    toKitchen(view.from);
+    if (courses.length > 0 && eaters.length > 0)
+      openMeal(eaters.length - 1, courses.length - 1, view.from, 'flow');
+    else toKitchen(view.from);
+  }
+
+  function checkKitchen(): void {
+    if (view.kind !== 'check') return;
+    toKitchen(view.from, true);
+  }
+
+  function changeMeal(key: string): void {
+    const at = eaters.findIndex((one) => key.startsWith(`${one.key}|`));
+    const course = courses.findIndex((one) => key.endsWith(`|${one.id}`));
+    if (at < 0 || course < 0) return;
+    openMeal(
+      at,
+      course,
+      view.kind === 'check' ? view.from : 'answer',
+      view.kind === 'check' ? 'check' : 'saved',
+    );
   }
 
   function back(): void {
@@ -600,11 +890,71 @@ function Card({ token, first }: { token: string; first: GuestPage }) {
   if (gone) return <InvalidInvitation />;
 
   const stepping =
+    view.kind === 'meal' ||
     view.kind === 'check' ||
     view.kind === 'withYou' ||
     view.kind === 'kitchen' ||
     view.kind === 'kitchenAfter';
   const alone = tell.kind !== 'card' || stepping;
+  const saved = savedPlates(page.meals, eaters);
+  const marked = markedOpen(meal.plates, eaters, courses, allergies).length;
+  const cards = (head: 'check' | 'back') => (
+    <MealCards
+      eaters={eaters}
+      courses={courses}
+      plates={meal.plates}
+      allergies={allergies}
+      timeZone={event.timeZone}
+      busy={meal.busy || (view.kind === 'check' && view.busy)}
+      head={head}
+      hosts={hosts}
+      pending={(key) => head === 'back' && !samePlate(meal.plates[key], saved[key])}
+      refused={meal.refused}
+      onChange={changeMeal}
+    />
+  );
+  const mealScreen = (() => {
+    if (view.kind !== 'meal') return null;
+    const eater = eaters[view.eater];
+    const course = courses[view.course];
+    if (eater == null || course == null) return null;
+    const steps = stepsOf(course, meal.draft);
+    const step = steps[view.step] ?? steps[0];
+    if (step == null) return null;
+
+    return (
+      <MealScreen
+        eater={eater}
+        course={course}
+        n={view.course + 1}
+        total={courses.length}
+        step={step}
+        first={view.step === 0}
+        plate={meal.draft}
+        allergies={allergies(eater.key)}
+        other={view.course === 0 ? others(eater.key) : null}
+        cleared={meal.cleared[keyOf(eater.key, course.id)] ?? null}
+        refusal={meal.pressed ? refusalOf(step, meal.draft, view.step === 0) : null}
+        timeZone={event.timeZone}
+        onPlate={(plate) => setMeal((was) => ({ ...was, draft: plate, pressed: false }))}
+        onBack={mealBack}
+        onNext={mealNext}
+      />
+    );
+  })();
+  const comingBack =
+    courses.length > 0 && guest.reply?.answer === 'coming' && page.answersOpen ? (
+      <MealsSaved told={meal.told} marked={marked} busy={meal.busy} onSend={sendChanges}>
+        {cards('back')}
+      </MealsSaved>
+    ) : null;
+  const checkMeals =
+    courses.length > 0 ? (
+      <>
+        {cards('check')}
+        {meal.told === 'marked' && marked > 0 && <MarkedLine count={marked} />}
+      </>
+    ) : null;
   const tagged = guest.reply != null && view.kind !== 'check';
 
   return (
@@ -634,6 +984,10 @@ function Card({ token, first }: { token: string; first: GuestPage }) {
             onPartyNext={partyNext}
             onPartyChange={withYou}
             onCheckBack={checkBack}
+            onCheckKitchen={checkKitchen}
+            mealScreen={mealScreen}
+            checkMeals={checkMeals}
+            comingBack={comingBack}
             onChoose={choose}
             onSend={sendComing}
             onBack={back}
@@ -792,6 +1146,10 @@ function Shown({
   onPartyNext,
   onPartyChange,
   onCheckBack,
+  onCheckKitchen,
+  mealScreen,
+  checkMeals,
+  comingBack,
   onChoose,
   onSend,
   onBack,
@@ -814,6 +1172,10 @@ function Shown({
   onPartyNext: () => void;
   onPartyChange: () => void;
   onCheckBack: () => void;
+  onCheckKitchen: () => void;
+  mealScreen: ReactNode;
+  checkMeals: ReactNode;
+  comingBack: ReactNode;
   onChoose: (answer: GuestAnswer) => void;
   onSend: () => void;
   onBack: () => void;
@@ -874,6 +1236,8 @@ function Shown({
           onSkip={onKitchenSkip}
         />
       );
+    case 'meal':
+      return mealScreen;
     case 'kitchenAfter':
       if (kitchen == null) return null;
 
@@ -907,9 +1271,11 @@ function Shown({
             onBack={onCheckBack}
             onAnswer={onBack}
             onParty={onPartyChange}
-            onKitchen={onCheckBack}
+            onKitchen={onCheckKitchen}
             onSend={onSend}
-          />
+          >
+            {checkMeals}
+          </KitchenCheck>
         );
       }
 
@@ -969,40 +1335,45 @@ function Shown({
       if (reply == null) return null;
 
       return (
-        <section className="gp-recorded" aria-labelledby="gp-greeting">
-          <div className="gp-greet">
-            <Mark answer={reply.answer} />
-            <h2 id="gp-greeting" className="gp-h2" tabIndex={-1} data-focus="greeting">
-              {reply.recordedBy == null
-                ? t(GREETING[reply.answer], { name: fullName })
-                : t(ANSWER_IS[reply.answer])}
-            </h2>
-          </div>
-          <div className="gp-indent">
-            {reply.recordedBy == null ? (
-              <p className="gp-sub">{t(ANSWERED[reply.answer], { date: day })}</p>
-            ) : (
-              <p className="gp-sub is-recorded">
-                {t('guest.recordedFor', { name: reply.recordedBy, date: day })}
-              </p>
-            )}
-            {view.same && (
-              <p className="gp-sub is-ink">{t('guest.same', { answer: t(WORD[reply.answer]) })}</p>
-            )}
-            {places && reply.answer === 'coming' && (
-              <p className="gp-sub">{partyLine(partyOf(page), t)}</p>
-            )}
-            {places && reply.answer === 'notComing' && (
-              <p className="gp-sub">{t('guest.companionsNotComing')}</p>
-            )}
-            {places && reply.answer === 'maybe' && (
-              <p className="gp-sub">{t('guest.companionsOnHold')}</p>
-            )}
-            <TextAction focus="change" onClick={onChange}>
-              {t('guest.change')}
-            </TextAction>
-          </div>
-        </section>
+        <>
+          <section className="gp-recorded" aria-labelledby="gp-greeting">
+            <div className="gp-greet">
+              <Mark answer={reply.answer} />
+              <h2 id="gp-greeting" className="gp-h2" tabIndex={-1} data-focus="greeting">
+                {reply.recordedBy == null
+                  ? t(GREETING[reply.answer], { name: fullName })
+                  : t(ANSWER_IS[reply.answer])}
+              </h2>
+            </div>
+            <div className="gp-indent">
+              {reply.recordedBy == null ? (
+                <p className="gp-sub">{t(ANSWERED[reply.answer], { date: day })}</p>
+              ) : (
+                <p className="gp-sub is-recorded">
+                  {t('guest.recordedFor', { name: reply.recordedBy, date: day })}
+                </p>
+              )}
+              {view.same && (
+                <p className="gp-sub is-ink">
+                  {t('guest.same', { answer: t(WORD[reply.answer]) })}
+                </p>
+              )}
+              {places && reply.answer === 'coming' && (
+                <p className="gp-sub">{partyLine(partyOf(page), t)}</p>
+              )}
+              {places && reply.answer === 'notComing' && (
+                <p className="gp-sub">{t('guest.companionsNotComing')}</p>
+              )}
+              {places && reply.answer === 'maybe' && (
+                <p className="gp-sub">{t('guest.companionsOnHold')}</p>
+              )}
+              <TextAction focus="change" onClick={onChange}>
+                {t('guest.change')}
+              </TextAction>
+            </div>
+          </section>
+          {reply.answer === 'coming' && comingBack}
+        </>
       );
     case 'changing':
       return (

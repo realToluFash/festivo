@@ -508,6 +508,7 @@ export function KitchenCheck({
   onParty,
   onKitchen,
   onSend,
+  children,
 }: {
   kitchen: Kitchen;
   busy: boolean;
@@ -518,6 +519,7 @@ export function KitchenCheck({
   onParty: () => void;
   onKitchen: () => void;
   onSend: () => void;
+  children?: ReactNode;
 }) {
   const { t, words } = useWords();
 
@@ -583,6 +585,7 @@ export function KitchenCheck({
           </RowChange>
         </div>
       </div>
+      {children}
       {alert != null && <Notice kind="broken">{alert}</Notice>}
       <Filled busy={busy} focus="send" onClick={onSend}>
         {t('guest.send')}
