@@ -3303,6 +3303,7 @@
     "noOne": "Nadie de la lista coincide con «{{typed}}».",
     "matches_one": "{{count, number}} match",
     "matches_other": "{{count, number}} match",
+    "matches_many": "{{count, number}} match",
     "nobodyYet": "Todavía no hay nadie en la lista",
     "nobodyYetLine": "Puede añadir sin invitación a quien llegue.",
     "addWalkIn": "Añadir sin invitación",

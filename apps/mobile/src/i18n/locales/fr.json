@@ -3303,6 +3303,7 @@
     "noOne": "Personne sur la liste ne correspond à « {{typed}} ».",
     "matches_one": "{{count, number}} match",
     "matches_other": "{{count, number}} match",
+    "matches_many": "{{count, number}} match",
     "nobodyYet": "Personne n’est encore sur la liste",
     "nobodyYetLine": "Toute personne qui arrive peut être inscrite sur place.",
     "addWalkIn": "Inscrire sur place",
