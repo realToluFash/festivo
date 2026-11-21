@@ -1,7 +1,14 @@
 import { ApiError, type CheckIn, type OrganisationEvent, realtimeTopic } from '@soirely/api-client';
 import { REPLY_KEY } from '@soirely/domain';
 import { type ReactNode, useCallback, useEffect, useRef, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, type TextInputInstance, View } from 'react-native';
+import {
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  type TextInputInstance,
+  View,
+  type ViewInstance,
+} from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 
@@ -115,7 +122,7 @@ export function CheckInView({
   const [said, setSaid] = useState<string | null>(null);
   const [walkIn, setWalkIn] = useState<WalkIn | null>(null);
   const search = useRef<TextInputInstance>(null);
-  const opener = useRef(null);
+  const opener = useRef<ViewInstance>(null);
 
   useEffect(() => {
     let current = true;
@@ -286,6 +293,7 @@ export function CheckInView({
       <NoOne typed={typed.trim()} />
       {open && (
         <Pill
+          ref={opener}
           label={t('checkIn.addWalkIn')}
           onPress={() => startWalkIn(typed.trim())}
           testID="checkIn.walkIn"
