@@ -5323,7 +5323,6 @@
     "homeLine_other": "{{count, number}} payers · {{amount}} has no payer yet",
     "homeCovered_one": "{{count, number}} payer",
     "homeCovered_other": "{{count, number}} payers",
-    "homeNone": "No payers yet",
     "loading": "Loading who is paying…",
     "theirShare": "Their share",
     "fixedShare": "Replies do not change this.",

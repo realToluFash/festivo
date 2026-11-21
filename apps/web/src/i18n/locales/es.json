@@ -5604,7 +5604,6 @@
     "homeCovered_one": "{{count, number}} pagador",
     "homeCovered_other": "{{count, number}} pagadores",
     "homeCovered_many": "{{count, number}} pagadores",
-    "homeNone": "Aún no hay pagadores",
     "loading": "Cargando Quién paga…",
     "theirShare": "Su parte",
     "fixedShare": "Las respuestas no cambian esta cifra.",
