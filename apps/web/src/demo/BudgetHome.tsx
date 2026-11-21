@@ -25,9 +25,11 @@ import {
   type Payment,
   CURRENCY,
   PAYMENTS,
+  cldrMoney,
   QUOTES,
   costLine,
   dueList,
+  LOCALE,
   lineState,
   money,
   overdue,
@@ -59,15 +61,28 @@ import {
   STAFF_REFUSED,
   whatProblem,
   removedWords,
+  LAST_REMOVED,
+  UNDO_REFUSED,
+  type UndoRefusal,
+  undoRefusalOf,
   sumLines,
   WELCOME_DRINKS,
   type Markups,
   MARKUPS,
+  NO_MARKUPS,
+  withoutChoice,
+  shareOf,
   PLANNING_FEE,
+  FEE_LINE,
+  FEE_MARKUPS,
+  FEE_STATES,
+  plainLines,
   chargedOf,
   marginOf,
   markupWords,
 } from './budgetHome.ts';
+import { headlineOf, hoursWords, ratesSample, unratedLine } from './staffRates.ts';
+import { STAFF_RATES_WORDS as SW } from './staffRatesWords.ts';
 import {
   AlertInset,
   Amount,
@@ -107,10 +122,10 @@ import {
   ceilingSentence,
   noPayer,
   planOf,
-  viewerOf,
 } from './budgetSample.ts';
 import { BUDGET_WORDS as W } from './budgetWords.ts';
 import { type SampleEvent } from './events.ts';
+import { typedAmount } from './quotes.ts';
 import { SaveTemplateDialog } from './Templates.tsx';
 import { type Category } from './vendors.ts';
 import { CATEGORY_WORDS } from './vendorsWords.ts';
@@ -136,6 +151,9 @@ interface Removed {
   line: CostLine;
   index: number;
   words: string;
+  refuse?: UndoRefusal;
+  refused?: boolean;
+  fresh?: boolean;
 }
 
 function dialogOf(state: string): Dialog {
@@ -174,6 +192,19 @@ const LISTED = ['ceiling_saved', 'ceiling_categories_only', 'ceiling_cleared_one
 const MARGIN_HOME = ['margin', 'margin_zero_price', 'price_negative', 'price_decimals'];
 
 function removedOf(state: string, heads: Heads): Removed | null {
+  if (LAST_REMOVED.includes(state)) {
+    const only = linesOf('populated')[0];
+    const refuse = undoRefusalOf(state);
+    const refused = refuse != null && state.startsWith('undo_refused');
+    if (only == null) return null;
+
+    return {
+      line: only,
+      index: 0,
+      words: refused ? UNDO_REFUSED[refuse] : removedWords(only, lineAmounts(only, heads).settled),
+      ...(refuse == null ? {} : { refuse, refused }),
+    };
+  }
   const id = { removed_priced: 'dj', removed_not_priced: 'arch', removed_nothing_yet: 'centre' }[
     state as 'removed_priced'
   ];
@@ -224,6 +255,10 @@ export function BudgetHomeContent({
   vendorsQuoted,
   payments = PAYMENTS,
   onMark,
+  readOnly: readOnlyPlan,
+  noCosts = false,
+  quotesBeside = false,
+  onCosts,
 }: {
   event: SampleEvent;
   state: string;
@@ -233,27 +268,39 @@ export function BudgetHomeContent({
   vendorsQuoted: ReactNode;
   payments?: readonly Payment[];
   onMark?: ((payment: Payment) => void) | undefined;
+  readOnly?: boolean;
+  noCosts?: boolean;
+  quotesBeside?: boolean;
+  onCosts?: (has: boolean) => void;
 }) {
   const [params] = useSearchParams();
   const navigate = useNavigate();
-  const viewer = viewerOf(params.get('as'));
   const enterprise = planOf(params.get('plan')) === 'enterprise';
   const currency = params.get('currency') ?? CURRENCY;
   const [state, setState] = useState(first);
-  const [lines, setLines] = useState(() => linesOf(first));
+  const [lines, setLines] = useState(() => (noCosts ? [] : linesOf(first)));
   const heads = headsOf(first);
   const [ceilings, setCeilings] = useState(() => ceilingsOf(first));
   const [listed, setListed] = useState(LISTED.includes(first) || first === 'ceiling_no_costs');
   const [markups, setMarkups] = useState<Markups>(() =>
     first === 'margin_live'
       ? { ...MARKUPS, categories: { ...MARKUPS.categories, photography: 25 } }
-      : MARKUPS,
+      : first === 'margin_unset'
+        ? NO_MARKUPS
+        : FEE_STATES.includes(first)
+          ? FEE_MARKUPS
+          : MARKUPS,
   );
-  const fee = first === 'margin_zero_price' ? 0 : PLANNING_FEE;
+  const feeLine = lines.some((one) => one.id === FEE_LINE.id);
+  const [planningFee, setFee] = useState<number | null>(
+    first === 'margin_zero_price' ? 0 : PLANNING_FEE,
+  );
+  const fee = feeLine ? 0 : (planningFee ?? 0);
   const ceilingLive = first.startsWith('ceiling_live');
   const [opened, setOpened] = useState<string | null>(() => openedOf(first));
   const [removed, setRemoved] = useState<Removed | null>(() => removedOf(first, heads));
   const [dialog, setDialog] = useState<Dialog>(() => dialogOf(first));
+  const [markupStart, setMarkupStart] = useState<MarkupStart>({ scope: 'event', key: '' });
   const addedId = first === 'add_cost_added' ? WELCOME_DRINKS.id : null;
   const [lit, setLit] = useState<string | null>(first === 'rate_saved' ? 'dinner' : addedId);
   const [line, setLine] = useState<{ id: string; words: string; ok: boolean } | null>(() =>
@@ -282,16 +329,25 @@ export function BudgetHomeContent({
 
     return () => window.clearTimeout(timer);
   }, [toRow]);
-  const margin =
-    enterprise &&
-    (MARGIN_HOME.includes(first) || first.startsWith('markup') || first === 'margin_live');
+  // The page opens on the plain Budget every visit; See margin turns it to its margin face (sc-92, 19 Nov).
+  const [marginFace, setMarginFace] = useState(
+    () =>
+      MARGIN_HOME.includes(first) ||
+      first.startsWith('markup') ||
+      first === 'margin_live' ||
+      first === 'margin_unset' ||
+      first === 'margin_before_paid',
+  );
+  const margin = enterprise && marginFace;
 
   useEffect(() => {
     if (first === 'ceiling_cleared_one') tell('Ceiling saved.');
   }, [first, tell]);
-  const readOnly = first === 'read_only';
+  const readOnly = readOnlyPlan ?? first === 'read_only';
   const live = first !== 'not_live';
   const empty = lines.length === 0;
+
+  useEffect(() => onCosts?.(!empty), [empty, onCosts]);
 
   if (state === 'loading')
     return (
@@ -318,9 +374,24 @@ export function BudgetHomeContent({
       </>
     );
 
-  const sum = sumLines(lines, heads);
+  const undo = () => {
+    if (removed == null) return;
+    if (removed.refuse != null) {
+      setRemoved({ ...removed, words: UNDO_REFUSED[removed.refuse], refused: true });
+      return;
+    }
+    setLines((now) => {
+      const back = [...now];
+      back.splice(removed.index, 0, removed.line);
+      return back;
+    });
+    setLit(removed.line.id);
+    setRemoved(null);
+  };
+  const plain = plainLines(lines, markups);
+  const sum = sumLines(plain, heads);
   const wholeCeiling =
-    ceilings.whole == null ? null : ceilingOf('whole', ceilings.whole, lines, heads);
+    ceilings.whole == null ? null : ceilingOf('whole', ceilings.whole, plain, heads);
   const due = dueList(payments, vendorName);
   const next = due[0] ?? null;
 
@@ -330,6 +401,12 @@ export function BudgetHomeContent({
         <TextAction label="Add a cost" before="plus" onClick={() => setDialog('addCost')} />
         {!empty && (
           <>
+            {enterprise && !readOnly && (
+              <TextAction
+                label={margin ? 'Hide margin' : 'See margin'}
+                onClick={() => setMarginFace((now) => !now)}
+              />
+            )}
             <Link className="desk-text" to={budgetAt('payers')}>
               Who is paying
             </Link>
@@ -347,11 +424,13 @@ export function BudgetHomeContent({
           onTry={() => void navigate(budgetAt('populated'))}
         />
       )}
-      {readOnly && (
-        <ReadOnlyLine
-          {...(viewer.key === 'folake'
-            ? { onPlans: () => tell('Plans have their own design.') }
-            : {})}
+      {readOnly && (!empty || quotesBeside) && <ReadOnlyLine />}
+      {empty && removed != null && (
+        <UndoBar
+          words={removed.words}
+          onUndo={undo}
+          refused={removed.refused === true}
+          focus={removed.fresh === true}
         />
       )}
       {empty ? (
@@ -361,7 +440,7 @@ export function BudgetHomeContent({
           onAdd={() => setDialog('addCost')}
           onStart={() => void navigate(budgetAt('start_from'))}
         />
-      ) : margin || (enterprise && first === 'margin_before_paid') ? (
+      ) : margin ? (
         <MarginCard
           event={event}
           paid={first !== 'margin_before_paid'}
@@ -391,7 +470,7 @@ export function BudgetHomeContent({
               : void navigate(budgetAt('mark_paid', { vendor: payment.vendorId }))
           }
           onPrice={() => {
-            const unpriced = lines.find((one) => lineState(one) === 'notPriced');
+            const unpriced = plain.find((one) => lineState(one) === 'notPriced');
             if (unpriced != null) setOpened(unpriced.id);
           }}
         />
@@ -411,13 +490,21 @@ export function BudgetHomeContent({
             </Block>
           }
           right={
-            <Block title="Share">
-              <p className="desk-line">No links yet.</p>
-              <Link className="desk-text" to={budgetAt('no_links')}>
-                <Glyph name="plus" size={17} weight={2.3} />
-                Create a link
-              </Link>
-            </Block>
+            <>
+              {quotesBeside && (
+                <>
+                  {dueNext}
+                  {vendorsQuoted}
+                </>
+              )}
+              <Block title="Share">
+                <p className="desk-line">No links yet.</p>
+                <Link className="desk-text" to={budgetAt('no_links')}>
+                  <Glyph name="plus" size={17} weight={2.3} />
+                  Create a link
+                </Link>
+              </Block>
+            </>
           }
         />
       ) : (
@@ -429,15 +516,19 @@ export function BudgetHomeContent({
                 heads={heads}
                 first={first}
                 markups={markups}
-                fee={fee}
+                fee={feeLine ? undefined : planningFee}
+                onFee={(price) => setFee(price)}
                 onPrice={(id, price) => {
-                  setMarkups((now) => ({ ...now, prices: { ...now.prices, [id]: price } }));
-                  tell('Saved.');
+                  setMarkups((now) =>
+                    price == null
+                      ? withoutChoice(now, 'price', id)
+                      : { ...now, prices: { ...now.prices, [id]: price } },
+                  );
                 }}
               />
             ) : (
               <Costs
-                lines={lines}
+                lines={plain}
                 heads={heads}
                 ceilings={ceilings}
                 opened={opened}
@@ -451,33 +542,36 @@ export function BudgetHomeContent({
                 }}
                 onClose={() => setOpened(null)}
                 onSaved={(next_, id, words, ok) => {
-                  setLines(next_);
+                  const saved = next_.find((one) => one.id === id);
+                  setLines((now) =>
+                    now.map((one) => (one.id === id && saved != null ? saved : one)),
+                  );
                   setOpened(null);
                   setLit(ok ? id : null);
                   setLine({ id, words, ok });
                   setRemoved(null);
                 }}
                 onRemove={(gone) => {
+                  const stored = lines.find((one) => one.id === gone.line.id);
                   setLines((now) => now.filter((one) => one.id !== gone.line.id));
                   setOpened(null);
-                  setRemoved(gone);
+                  setRemoved(stored == null ? gone : { ...gone, line: stored });
                 }}
-                onUndo={() => {
-                  if (removed == null) return;
-                  setLines((now) => {
-                    const back = [...now];
-                    back.splice(removed.index, 0, removed.line);
-                    return back;
-                  });
-                  setLit(removed.line.id);
-                  setRemoved(null);
-                }}
+                onUndo={undo}
               />
             )
           }
           right={
             margin ? (
-              <MarginBlocks markups={markups} lines={lines} />
+              <MarginBlocks
+                markups={markups}
+                lines={lines}
+                feePriced={!feeLine && planningFee != null}
+                onMarkup={(start) => {
+                  setMarkupStart(start);
+                  setDialog('markup');
+                }}
+              />
             ) : (
               <>
                 {dueNext}
@@ -485,11 +579,11 @@ export function BudgetHomeContent({
                   ceilings={ceilings}
                   listed={listed}
                   washed={ceilingLive}
-                  lines={lines}
+                  lines={plain}
                   heads={heads}
                   onChange={() => setDialog('ceiling')}
                 />
-                <AgainstPlan lines={lines} payments={payments} />
+                <AgainstPlan lines={plain} payments={payments} />
                 <WhoIsPaying />
                 {vendorsQuoted}
                 <FromOtherEvents onSave={() => setDialog('save')} />
@@ -504,6 +598,7 @@ export function BudgetHomeContent({
           onDismiss={() => setDialog(null)}
           onAdded={(added) => {
             setLines((now) => [...now, added]);
+            setRemoved(null);
             setDialog(null);
             setLit(added.id);
             setLine({ id: added.id, words: 'Saved.', ok: true });
@@ -535,17 +630,21 @@ export function BudgetHomeContent({
         <MarkupDialog
           first={first}
           lines={lines}
+          markups={markups}
+          start={markupStart}
           onDismiss={() => setDialog(null)}
           onSaved={(scope, key, percent) => {
             setMarkups((now) =>
-              scope === 'event'
-                ? { ...now, event: percent }
-                : scope === 'category'
-                  ? { ...now, categories: { ...now.categories, [key]: percent } }
-                  : { ...now, costs: { ...now.costs, [key]: percent } },
+              percent == null
+                ? withoutChoice(now, scope, key)
+                : scope === 'event'
+                  ? { ...now, event: percent }
+                  : scope === 'category'
+                    ? { ...now, categories: { ...now.categories, [key]: percent } }
+                    : { ...now, costs: { ...now.costs, [key]: percent } },
             );
             setDialog(null);
-            tell('Markup saved.');
+            tell(percent == null ? 'Markup removed.' : 'Markup saved.');
           }}
         />
       )}
@@ -728,6 +827,11 @@ function MarginCard({
   washed: boolean;
   figures: ReturnType<typeof marginOf>;
 }) {
+  const after = [
+    figures.margin[0] - MARGIN.quotesOver,
+    figures.margin[1] - MARGIN.quotesOver,
+  ] as const;
+
   return (
     <BudgetCard event={event} label={W.budget}>
       <GlassTags
@@ -754,8 +858,8 @@ function MarginCard({
             ? [
                 {
                   label: 'Margin after payments',
-                  figure: wholeRange(...MARGIN.after),
-                  sub: `${MARGIN.afterShare[0]} to ${MARGIN.afterShare[1]}`,
+                  figure: wholeRange(...after),
+                  sub: `${shareOf(after[0], figures.client[0])} to ${shareOf(after[1], figures.client[1])}`,
                 },
               ]
             : []),
@@ -827,7 +931,9 @@ function Costs({
 
   return (
     <Block title={W.costs}>
-      {removed != null && <UndoBar words={removed.words} onUndo={onUndo} />}
+      {removed != null && (
+        <UndoBar words={removed.words} onUndo={onUndo} refused={removed.refused === true} />
+      )}
       {categories.map((category) => (
         <div key={category} className="bud-cat">
           <CategoryHead
@@ -839,7 +945,9 @@ function Costs({
               .filter((one) => one.category === category)
               .map((one) => (
                 <li key={one.id} data-line={one.id}>
-                  {opened === one.id ? (
+                  {one.basis === 'perStaffHour' ? (
+                    <StaffLine name={one.name} />
+                  ) : opened === one.id ? (
                     <OpenedCost
                       line={one}
                       lines={lines}
@@ -853,6 +961,7 @@ function Costs({
                           line: one,
                           index: lines.indexOf(one),
                           words: removedWords(one, lineAmounts(one, heads).settled),
+                          fresh: true,
                         })
                       }
                     />
@@ -879,6 +988,26 @@ function Costs({
         </div>
       ))}
     </Block>
+  );
+}
+
+/** sc-101: the staff-time line takes no rate; it reads Staff rates' headline and opens it. */
+function StaffLine({ name }: { name: string }) {
+  const sample = ratesSample();
+  const head = headlineOf(sample);
+  const unrated = unratedLine(sample, head);
+
+  return (
+    <BudgetRow
+      title={name}
+      lines={[
+        SW.staffHours(hoursWords(head.counted), hoursWords(head.scheduled)),
+        ...(unrated == null ? [] : [unrated]),
+      ]}
+      end={<Amount value={money(head.total)} />}
+      to={budgetAt('staff_rates')}
+      label={`${name}, ${SW.staffRatesLink}`}
+    />
   );
 }
 
@@ -1112,14 +1241,16 @@ function MarginCosts({
   first,
   markups,
   fee,
+  onFee,
   onPrice,
 }: {
   lines: CostLine[];
   heads: Heads;
   first: string;
   markups: Markups;
-  fee: number;
-  onPrice: (id: string, price: number) => void;
+  fee: number | null | undefined;
+  onFee: (price: number | null) => void;
+  onPrice: (id: string, price: number | null) => void;
 }) {
   const refused = first === 'price_negative' || first === 'price_decimals';
   const [opened, setOpened] = useState<string | null>(
@@ -1129,7 +1260,16 @@ function MarginCosts({
     first === 'price_negative' ? '−50' : first === 'price_decimals' ? '950.505' : '800',
   );
   const [chargedTried, setChargedTried] = useState(refused);
+  const [said, setSaid] = useState<{ id: string; words: string } | null>(null);
   const chargedField = useRef<HTMLInputElement>(null);
+  const saidUnder = (id: string) =>
+    said?.id === id &&
+    opened !== id && (
+      <p className="bud-said is-ok" role="status">
+        <Glyph name="tick" size={15} weight={2.6} />
+        {said.words}
+      </p>
+    );
 
   useEffect(() => {
     if (opened != null) chargedField.current?.focus();
@@ -1160,26 +1300,45 @@ function MarginCosts({
                         <MoneyField
                           label="Charged at"
                           value={charged}
-                          help={`Cost ${money(cost)}`}
-                          error={chargedTried ? priceProblem(charged) : null}
+                          help={
+                            markups.prices[one.id] == null
+                              ? `Cost ${money(cost)}`
+                              : `Cost ${money(cost)}. Leave it empty to charge by the markup.`
+                          }
+                          error={
+                            chargedTried
+                              ? priceProblem(charged, CURRENCY, markups.prices[one.id] != null)
+                              : null
+                          }
                           inputRef={chargedField}
                           onChange={setCharged}
                         />
-                        {minorOf(charged) < cost && priceProblem(charged) == null && (
-                          <p className="bud-below" role="status">
-                            <DownArrow />
-                            Below cost: margin {whole(minorOf(charged) - cost)}.
-                          </p>
-                        )}
+                        {charged.trim() !== '' &&
+                          minorOf(charged) < cost &&
+                          priceProblem(charged, CURRENCY, markups.prices[one.id] != null) ==
+                            null && (
+                            <p className="bud-below" role="status">
+                              <DownArrow />
+                              Below cost: margin {cldrMoney(minorOf(charged) - cost)}.
+                            </p>
+                          )}
                         <div className="bud-opened-actions">
                           <TextAction label={W.cancel} onClick={() => setOpened(null)} />
                           <TextAction
                             label={W.save}
                             onClick={() => {
                               setChargedTried(true);
-                              if (priceProblem(charged) != null)
+                              if (
+                                priceProblem(charged, CURRENCY, markups.prices[one.id] != null) !=
+                                null
+                              )
                                 return chargedField.current?.focus();
-                              onPrice(one.id, minorOf(charged));
+                              const price = charged.trim() === '' ? null : minorOf(charged);
+                              onPrice(one.id, price);
+                              setSaid({
+                                id: one.id,
+                                words: price == null ? 'Price removed.' : 'Saved.',
+                              });
                               setOpened(null);
                             }}
                           />
@@ -1194,60 +1353,128 @@ function MarginCosts({
                         end={<Amount value={share == null ? 'No figure' : `${share}%`} />}
                         onOpen={() => {
                           setChargedTried(false);
-                          setCharged((price / 100).toFixed(2));
+                          setCharged(typedAmount(price));
+                          setSaid(null);
                           setOpened(one.id);
                         }}
                       />
                     )}
+                    {saidUnder(one.id)}
                   </li>
                 );
               })}
           </Rows>
         </div>
       ))}
-      <div className="bud-cat">
-        <CategoryHead name="Other" />
-        <Rows>
-          <li>
-            <BudgetRow
-              title="Planning fee"
-              lines={[`Cost £0.00 · Charged at ${money(fee)} · its own price`]}
-              end={<Amount value={fee === 0 ? 'No figure' : '100.0%'} />}
-            />
-          </li>
-        </Rows>
-      </div>
+      {fee !== undefined && (
+        <div className="bud-cat">
+          <CategoryHead name="Other" />
+          <Rows>
+            <li>
+              {opened === 'fee' ? (
+                <Opened>
+                  <p className="bud-opened-name">Planning fee</p>
+                  <MoneyField
+                    label="Charged at"
+                    value={charged}
+                    help={
+                      fee == null
+                        ? 'Cost £0.00'
+                        : 'Cost £0.00. Leave it empty to charge by the markup.'
+                    }
+                    error={chargedTried ? priceProblem(charged, CURRENCY, fee != null) : null}
+                    inputRef={chargedField}
+                    onChange={setCharged}
+                  />
+                  <div className="bud-opened-actions">
+                    <TextAction label={W.cancel} onClick={() => setOpened(null)} />
+                    <TextAction
+                      label={W.save}
+                      onClick={() => {
+                        setChargedTried(true);
+                        if (priceProblem(charged, CURRENCY, fee != null) != null)
+                          return chargedField.current?.focus();
+                        const price = charged.trim() === '' ? null : minorOf(charged);
+                        onFee(price);
+                        setSaid({ id: 'fee', words: price == null ? 'Price removed.' : 'Saved.' });
+                        setOpened(null);
+                      }}
+                    />
+                  </div>
+                </Opened>
+              ) : (
+                <BudgetRow
+                  title="Planning fee"
+                  lines={[
+                    `Cost £0.00 · Charged at ${money(fee ?? 0)} · ${fee == null ? markupWords(FEE_LINE, markups) : 'its own price'}`,
+                  ]}
+                  end={<Amount value={(fee ?? 0) === 0 ? 'No figure' : '100.0%'} />}
+                  onOpen={() => {
+                    setChargedTried(false);
+                    setCharged(typedAmount(fee ?? 0));
+                    setSaid(null);
+                    setOpened('fee');
+                  }}
+                />
+              )}
+              {saidUnder('fee')}
+            </li>
+          </Rows>
+        </div>
+      )}
     </Block>
   );
 }
 
-function MarginBlocks({ markups, lines }: { markups: Markups; lines: readonly CostLine[] }) {
-  const rows: [string, string][] = [
-    ['Whole event', `${markups.event}% markup`],
+function MarginBlocks({
+  markups,
+  lines,
+  feePriced,
+  onMarkup,
+}: {
+  markups: Markups;
+  lines: readonly CostLine[];
+  feePriced: boolean;
+  onMarkup: (start: MarkupStart) => void;
+}) {
+  const shown = (percent: number) => (percent === 0 ? 'At cost, chosen' : `${percent}% markup`);
+  const rows: [string, string, MarkupStart | null][] = [
+    [
+      'Whole event',
+      markups.event == null ? 'No markup set' : shown(markups.event),
+      { scope: 'event', key: '' },
+    ],
     ...(Object.entries(markups.categories) as [Category, number][]).map(
-      ([category, percent]): [string, string] => [
+      ([category, percent]): [string, string, MarkupStart] => [
         CATEGORY_WORDS[category],
-        percent === 0 ? 'At cost, chosen' : `${percent}% markup`,
+        shown(percent),
+        { scope: 'category', key: category },
       ],
     ),
-    ...Object.entries(markups.costs).map(([id, percent]): [string, string] => [
+    ...Object.entries(markups.costs).map(([id, percent]): [string, string, MarkupStart] => [
       lines.find((one) => one.id === id)?.name ?? id,
-      percent === 0 ? 'At cost, chosen' : `${percent}% markup`,
+      shown(percent),
+      { scope: 'cost', key: id },
     ]),
-    ...Object.keys(markups.prices).map((id): [string, string] => [
+    ...Object.keys(markups.prices).map((id): [string, string, null] => [
       lines.find((one) => one.id === id)?.name ?? id,
       'Its own price',
+      null,
     ]),
-    ['Planning fee', 'Its own price'],
+    ...(feePriced ? [['Planning fee', 'Its own price', null] as [string, string, null]] : []),
   ];
 
   return (
     <>
       <Block title="Markup">
         <Rows>
-          {rows.map(([name, how]) => (
+          {rows.map(([name, how, start]) => (
             <li key={name}>
-              <BudgetRow title={name} lines={[how]} to={budgetAt('markup')} />
+              <BudgetRow
+                title={name}
+                lines={[how]}
+                {...(start == null ? {} : { onOpen: () => onMarkup(start) })}
+              />
             </li>
           ))}
         </Rows>
@@ -1650,6 +1877,15 @@ function AddCostDialog({
               {basisSaid}
             </p>
           )}
+          {(basis === 'perStaffHour' || taken) && (
+            <div className="bud-staff-note">
+              <p className="desk-note">{SW.staffNote}</p>
+              <Link className="desk-text" to={budgetAt('staff_rates')}>
+                {SW.openStaffRates}
+                <Glyph name="chevron" size={16} weight={2.4} />
+              </Link>
+            </div>
+          )}
           {basis != null && basis !== 'perStaffHour' && (
             <MoneyField
               label={basis === 'fixed' ? 'Amount' : 'Rate'}
@@ -1808,30 +2044,59 @@ const SCOPES = [
   { key: 'cost', word: 'One cost', line: 'Overrides both, or set at cost' },
 ] as const;
 
+type MarkupScope = 'event' | 'category' | 'cost';
+
+interface MarkupStart {
+  scope: MarkupScope;
+  key: string;
+}
+
+function markupSet(markups: Markups, scope: MarkupScope, key: string): number | null {
+  if (scope === 'event') return markups.event;
+
+  return (scope === 'category' ? markups.categories[key as Category] : markups.costs[key]) ?? null;
+}
+
 function MarkupDialog({
   first,
   lines,
+  markups,
+  start,
   onDismiss,
   onSaved,
 }: {
   first: string;
   lines: readonly CostLine[];
+  markups: Markups;
+  start: MarkupStart;
   onDismiss: () => void;
-  onSaved: (scope: 'event' | 'category' | 'cost', key: string, percent: number) => void;
+  onSaved: (scope: MarkupScope, key: string, percent: number | null) => void;
 }) {
-  const [scope, setScope] = useState<'event' | 'category' | 'cost'>('event');
+  const [scope, setScope] = useState<MarkupScope>(start.scope);
   const priced = lines.filter((one) => lineState(one) === 'priced');
-  const [category, setCategory] = useState<Category>('catering');
-  const [cost, setCost] = useState<string>(priced[0]?.id ?? '');
+  const [category, setCategory] = useState<Category>(
+    start.scope === 'category' ? (start.key as Category) : 'catering',
+  );
+  const [cost, setCost] = useState<string>(
+    start.scope === 'cost' ? start.key : (priced[0]?.id ?? ''),
+  );
+  const keyOf = (one: MarkupScope) => (one === 'category' ? category : one === 'cost' ? cost : '');
+  const setNow = markupSet(markups, scope, keyOf(scope));
+  const typedOf = (percent: number | null) => (percent == null ? '' : String(percent));
   const [typed, setTyped] = useState(
     { markup_negative: '−5', markup_cap: '1200', markup_decimals: '20.25', markup_nan: 'twenty' }[
       first as 'markup_cap'
-    ] ?? '20',
+    ] ?? typedOf(markupSet(markups, start.scope, start.key)),
   );
-  const [tried, setTried] = useState(first !== 'markup');
+  const [tried, setTried] = useState(first.startsWith('markup_'));
   const field = useRef<HTMLInputElement>(null);
   const id = useId();
-  const problem = tried ? markupProblem(typed) : null;
+  const removable = setNow != null;
+  const problem = tried ? markupProblem(typed, removable) : null;
+  const pick = (next: MarkupScope, key: string) => {
+    setTyped(typedOf(markupSet(markups, next, key)));
+    setTried(false);
+  };
 
   return (
     <BudgetDialog
@@ -1840,12 +2105,8 @@ function MarkupDialog({
       onDismiss={onDismiss}
       onConfirm={() => {
         setTried(true);
-        if (markupProblem(typed) != null) return field.current?.focus();
-        onSaved(
-          scope,
-          scope === 'category' ? category : scope === 'cost' ? cost : '',
-          Number(typed.trim()),
-        );
+        if (markupProblem(typed, removable) != null) return field.current?.focus();
+        onSaved(scope, keyOf(scope), typed.trim() === '' ? null : Number(typed.trim()));
       }}
     >
       <fieldset className="bud-bases">
@@ -1859,7 +2120,10 @@ function MarkupDialog({
                   className="desk-radio"
                   name={`${id}-scope`}
                   checked={scope === one.key}
-                  onChange={() => setScope(one.key)}
+                  onChange={() => {
+                    setScope(one.key);
+                    pick(one.key, keyOf(one.key));
+                  }}
                 />
                 <RowWords title={one.word} lines={[one.line]} />
               </label>
@@ -1877,7 +2141,10 @@ function MarkupDialog({
               id={`${id}-category`}
               className="bud-select"
               value={category}
-              onChange={(event) => setCategory(event.target.value as Category)}
+              onChange={(event) => {
+                setCategory(event.target.value as Category);
+                pick('category', event.target.value);
+              }}
             >
               {(Object.keys(CATEGORY_WORDS) as Category[]).map((one) => (
                 <option key={one} value={one}>
@@ -1898,7 +2165,10 @@ function MarkupDialog({
               id={`${id}-cost`}
               className="bud-select"
               value={cost}
-              onChange={(event) => setCost(event.target.value)}
+              onChange={(event) => {
+                setCost(event.target.value);
+                pick('cost', event.target.value);
+              }}
             >
               {priced.map((one) => (
                 <option key={one.id} value={one.id}>
@@ -1916,7 +2186,11 @@ function MarkupDialog({
         value={typed}
         error={problem}
         inputRef={field}
-        help="A share of cost: £1,000 at 25% is charged at £1,250."
+        help={
+          removable
+            ? 'A share of cost: £1,000 at 25% is charged at £1,250. Leave it empty to remove it.'
+            : 'A share of cost: £1,000 at 25% is charged at £1,250.'
+        }
         onChange={(value) => {
           setTyped(value);
         }}
@@ -1928,9 +2202,111 @@ function MarkupDialog({
   );
 }
 
-type DueNowState = 'owed' | 'marked' | 'paidElsewhere' | 'cancelled' | 'refused';
+type DueNowState = 'owed' | 'marked' | 'paidElsewhere' | 'cancelled' | 'gone';
+type DueRefusal = 'paid' | 'cancelled' | 'plan';
 
-const REMINDED = ['p6', 'p7'];
+interface DueItem {
+  id: string;
+  vendor: string;
+  what: string;
+  amount: number;
+  dueOn: string;
+  event: string;
+  currency: string;
+}
+
+const GALA = { id: 'evt-gala-4', name: 'Gala Fundación Lucía', currency: 'EUR' } as const;
+const REMINDER_SENT = '2026-11-01';
+const COLLEAGUE = 'Julien Moreau';
+
+const DUE_REFUSED: Record<DueRefusal, string> = {
+  paid: `${COLLEAGUE} has already marked this paid, so nothing has changed.`,
+  cancelled: 'This payment has been cancelled, so it cannot be marked paid.',
+  plan: 'Payments cannot be marked paid on this organisation’s plan, so nothing has changed.',
+};
+
+/** sc-1331's reminders: the wedding's two payments, one since removed, and the gala's in euros. */
+function dueItemsOf(first: string, event: SampleEvent): DueItem[] {
+  const wedding = ['p6', 'p7'].flatMap((id) => {
+    const payment = PAYMENTS.find((one) => one.id === id);
+    return payment == null
+      ? []
+      : [
+          {
+            id,
+            vendor: vendorName(payment.vendorId),
+            what: payment.what,
+            amount: payment.amount,
+            dueOn: payment.dueOn,
+            event: event.name,
+            currency: CURRENCY,
+          },
+        ];
+  });
+  if (first === 'due_changed')
+    return [
+      ...wedding,
+      {
+        id: 'p9',
+        vendor: vendorName('v6'),
+        what: 'Album',
+        amount: 35000,
+        dueOn: '2026-11-02',
+        event: event.name,
+        currency: CURRENCY,
+      },
+    ];
+  if (first === 'due_several' || first === 'due_done_several')
+    return [
+      ...wedding,
+      {
+        id: 'g1',
+        vendor: 'Floristería Lirio',
+        what: 'Balance',
+        amount: 120000,
+        dueOn: '2026-11-06',
+        event: GALA.name,
+        currency: GALA.currency,
+      },
+    ];
+
+  return wedding;
+}
+
+function dueStartOf(first: string, items: readonly DueItem[]): Record<string, DueNowState> {
+  const all = (now: DueNowState) => Object.fromEntries(items.map((item) => [item.id, now]));
+  if (first === 'due_marked') return { ...all('owed'), p6: 'marked' };
+  if (first === 'due_changed') return { p6: 'paidElsewhere', p7: 'cancelled', p9: 'gone' };
+  if (first === 'due_refused') return { p6: 'owed', p7: 'cancelled' };
+  if (first === 'due_refused_paid') return { p6: 'paidElsewhere', p7: 'owed' };
+  if (first === 'due_done' || first === 'due_done_several') return all('paidElsewhere');
+
+  return all('owed');
+}
+
+function dueRefusedOf(first: string): Partial<Record<string, DueRefusal>> {
+  if (first === 'due_refused') return { p7: 'cancelled' };
+  if (first === 'due_refused_paid') return { p6: 'paid' };
+  if (first === 'due_refused_plan') return { p7: 'plan' };
+
+  return {};
+}
+
+function monthDay(day: string): string {
+  return new Intl.DateTimeFormat(LOCALE, {
+    month: 'short',
+    day: 'numeric',
+    timeZone: 'UTC',
+  }).format(new Date(`${day}T00:00:00Z`));
+}
+
+function dueSubline(count: number, events: number): string {
+  const payments = count === 1 ? '1 payment' : `${count} payments`;
+
+  return `From the reminder sent ${monthDay(REMINDER_SENT)} · ${payments}${
+    events > 1 ? ` across ${events} events` : ''
+  }`;
+}
 
 function DueNowDialog({
   event,
@@ -1941,19 +2317,28 @@ function DueNowDialog({
   first: string;
   onClose: () => void;
 }) {
-  const readOnly = first === 'due_read_only';
-  const [rows, setRows] = useState<Record<string, DueNowState>>(() => {
-    if (first === 'due_marked') return { p6: 'marked', p7: 'owed' };
-    if (first === 'due_changed') return { p6: 'paidElsewhere', p7: 'cancelled' };
-    if (first === 'due_refused') return { p6: 'owed', p7: 'refused' };
-    if (first === 'due_done') return { p6: 'marked', p7: 'marked' };
+  const readOnly = first === 'due_read_only' || first === 'due_refused_plan';
+  const [items] = useState(() => dueItemsOf(first, event));
+  const [rows, setRows] = useState<Record<string, DueNowState>>(() => dueStartOf(first, items));
+  const [refused] = useState(() => dueRefusedOf(first));
+  const events = [...new Set(items.map((item) => item.event))];
+  const settled = items.every((item) => rows[item.id] !== 'owed');
 
-    return { p6: 'owed', p7: 'owed' };
-  });
-  const done = first === 'due_done' || REMINDED.every((id) => rows[id] === 'marked');
-  const payments = REMINDED.map((id) => PAYMENTS.find((one) => one.id === id)).filter(
-    (one): one is Payment => one != null,
-  );
+  if (first === 'due_not_found')
+    return (
+      <BudgetDialog
+        title="Due now"
+        verb="Close"
+        cancel={false}
+        onDismiss={onClose}
+        onConfirm={onClose}
+      >
+        <p className="bud-due-done">We cannot find these payments.</p>
+        <Link className="desk-text" to="/demo/events">
+          Go to your events
+        </Link>
+      </BudgetDialog>
+    );
 
   return (
     <BudgetDialog
@@ -1963,85 +2348,94 @@ function DueNowDialog({
       onDismiss={onClose}
       onConfirm={onClose}
     >
-      {done ? (
-        <>
-          <p className="bud-due-done" role="status">
-            Nothing left to pay from this reminder
-          </p>
-          <Link className="desk-text" to={budgetAt(undefined, { view: 'due' })}>
-            {`Everything due on ${event.name}`}
-          </Link>
-        </>
-      ) : (
-        <>
-          <p className="desk-line">From the reminder sent Nov 1 · 2 payments</p>
-          {readOnly && <ReadOnlyLine />}
-          <Rows label="Due now">
-            {payments.map((payment) => {
-              const now = rows[payment.id] ?? 'owed';
-              const where = `${payment.what} · ${
-                overdue(payment)
-                  ? `Overdue since ${shortDay(payment.dueOn)}`
-                  : W.due(shortDay(payment.dueOn))
-              } · ${event.name}`;
-              const said =
-                now === 'paidElsewhere'
-                  ? `${where} · Paid by Julien Moreau on Nov 2`
-                  : now === 'cancelled'
-                    ? `${where} · Cancelled`
-                    : now === 'refused'
-                      ? `${where} · This payment has been cancelled, so it cannot be marked paid.`
-                      : where;
-
-              return (
-                <li key={payment.id}>
-                  {now === 'marked' ? (
-                    <div className="desk-row bud-row is-on" role="status">
-                      <span className="bud-lead">
-                        <Mark kind="yes" />
-                      </span>
-                      <RowWords
-                        title={vendorName(payment.vendorId)}
-                        lines={[`Marked paid · ${money(payment.amount)}`]}
-                      />
-                      <button
-                        type="button"
-                        className="desk-text"
-                        onClick={() => setRows((was) => ({ ...was, [payment.id]: 'owed' }))}
-                      >
-                        <Glyph name="undo" size={16} weight={2.4} />
-                        {W.undo}
-                      </button>
-                    </div>
-                  ) : (
-                    <>
-                      <BudgetRow
-                        title={vendorName(payment.vendorId)}
-                        lines={[said]}
-                        end={<Amount value={money(payment.amount)} />}
-                      />
-                      {now === 'owed' && !readOnly && (
-                        <div className="bud-row-actions">
-                          <TextAction
-                            label="Paid"
-                            onClick={() => setRows((was) => ({ ...was, [payment.id]: 'marked' }))}
-                          />
-                          <Link
-                            className="desk-text"
-                            to={budgetAt('paid_more', { vendor: payment.vendorId })}
-                          >
-                            Paid a different amount
-                          </Link>
-                        </div>
-                      )}
-                    </>
-                  )}
-                </li>
-              );
-            })}
-          </Rows>
-        </>
+      {settled && (
+        <p className="bud-due-done" role="status">
+          Nothing left to pay from this reminder
+        </p>
       )}
+      <p className="desk-line">{dueSubline(items.length, events.length)}</p>
+      {readOnly && <ReadOnlyLine />}
+      <Rows label="Due now">
+        {items.map((item) => {
+          const now = rows[item.id] ?? 'owed';
+          const refusal = refused[item.id];
+          const amount = money(item.amount, item.currency);
+          const late = now !== 'gone' && item.dueOn < TODAY;
+          const where =
+            now === 'gone'
+              ? `${item.what} · ${item.event}`
+              : `${item.what} · ${
+                  late ? `Overdue since ${shortDay(item.dueOn)}` : W.due(shortDay(item.dueOn))
+                } · ${item.event}`;
+          const paidOn = first === 'due_changed' ? '2026-11-02' : TODAY;
+          const said =
+            now === 'paidElsewhere'
+              ? `${where} · Paid by ${COLLEAGUE} on ${monthDay(paidOn)}`
+              : now === 'cancelled'
+                ? `${where} · Cancelled`
+                : now === 'gone'
+                  ? `${where} · No longer on the schedule`
+                  : where;
+
+          return (
+            <li key={item.id}>
+              {now === 'marked' ? (
+                <div className="desk-row bud-row is-on" role="status">
+                  <span className="bud-lead">
+                    <Mark kind="yes" />
+                  </span>
+                  <RowWords title={item.vendor} lines={[`Marked paid · ${amount}`]} />
+                  <button
+                    type="button"
+                    className="desk-text"
+                    onClick={() => setRows((was) => ({ ...was, [item.id]: 'owed' }))}
+                  >
+                    <Glyph name="undo" size={16} weight={2.4} />
+                    {W.undo}
+                  </button>
+                </div>
+              ) : (
+                <>
+                  <BudgetRow title={item.vendor} lines={[said]} end={<Amount value={amount} />} />
+                  {refusal != null && <AlertInset>{DUE_REFUSED[refusal]}</AlertInset>}
+                  {now === 'owed' && !readOnly && refusal == null && (
+                    <div className="bud-row-actions">
+                      <TextAction
+                        label="Paid"
+                        onClick={() => setRows((was) => ({ ...was, [item.id]: 'marked' }))}
+                      />
+                      <Link
+                        className="desk-text"
+                        to={
+                          item.event === GALA.name
+                            ? `/demo/events/${GALA.id}`
+                            : budgetAt('paid_more', {
+                                vendor: PAYMENTS.find((one) => one.id === item.id)?.vendorId ?? '',
+                              })
+                        }
+                      >
+                        Paid a different amount
+                      </Link>
+                    </div>
+                  )}
+                </>
+              )}
+            </li>
+          );
+        })}
+      </Rows>
+      {settled &&
+        events.map((name) => (
+          <Link
+            key={name}
+            className="desk-text"
+            to={
+              name === GALA.name ? `/demo/events/${GALA.id}` : budgetAt(undefined, { view: 'due' })
+            }
+          >
+            {`Everything due on ${name}`}
+          </Link>
+        ))}
     </BudgetDialog>
   );
 }

@@ -84,6 +84,16 @@ final readonly class HeadcountCalculator
     }
 
     /**
+     * The budget's upper figure (sc-84): everybody who has not said Not coming says yes, so a held companion counts unless their host has declined.
+     *
+     * @param Counts $counts
+     */
+    public static function ifAllCome(array $counts): int
+    {
+        return $counts['accepted'] + $counts['maybe'] + $counts['awaitingReply'] + $counts['held'] - $counts['heldBy']['hostNotComing'];
+    }
+
+    /**
      * Each code everybody on the list has, in its list's order, allergens first (sc-3777): someone with two counts once under each, so these do not add up.
      *
      * @return list<NeedCount>

@@ -681,6 +681,26 @@ describe('a person at a desk (sc-34200)', () => {
     );
   });
 
+  it('says Also a member of only from 1 other organisation up (sc-563)', async () => {
+    signedIn();
+    answering({
+      ...READS,
+      'GET /api/orgs/org_1/members': () =>
+        json({
+          ...LIST,
+          members: LIST.members.map((row, at) => ({ ...row, alsoMemberOf: at === 1 ? 2 : 0 })),
+        }),
+    });
+    open();
+
+    await openPerson('Bisi Adeyemi');
+    expect(page().getByText('Also a member of 2 other organisations')).toBeDefined();
+
+    fireEvent.click(page().getByRole('button', { name: 'Members' }));
+    await openPerson('Folake Adeyemi');
+    expect(page().queryByText(/Also a member of/)).toBeNull();
+  });
+
   it('offers nothing to change on your own page', async () => {
     signedIn();
     answering(READS);

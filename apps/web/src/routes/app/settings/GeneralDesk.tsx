@@ -295,14 +295,20 @@ function Domains({ organisation, tell }: { organisation: Membership; tell: Tell 
         </div>
       ) : (
         <ul className="desk-rows general-domains" aria-label={t('companyDomains.listLabel')}>
-          {list.domains.map(({ domain, stopped }) => (
+          {list.domains.map(({ domain, stopped, proved }) => (
             <li key={domain} className="desk-row">
               <span className="general-globe" aria-hidden="true">
                 <Glyph name="globe" size={22} />
               </span>
               <RowWords
                 title={domain}
-                tag={stopped && <Tag kind="waiting" word={t('companyDomains.stopped')} />}
+                tag={
+                  stopped ? (
+                    <Tag kind="waiting" word={t('companyDomains.stopped')} />
+                  ) : (
+                    proved && <Tag kind="yes" word={t('companyDomains.proved')} />
+                  )
+                }
                 lines={[
                   stopped
                     ? t('companyDomains.stoppedBody', { domain })

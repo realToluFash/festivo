@@ -1,10 +1,11 @@
-import { useLocalSearchParams } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { useRef, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
 import { QuietButton } from '../../../src/components/Buttons.tsx';
 import { CodeBoxes, type CodeBoxesHandle } from '../../../src/steps/CodeBoxes.tsx';
-import { DemoScreen, NavBar, finish } from '../../../src/demo/DemoScreen.tsx';
+import { DemoScreen, NavBar } from '../../../src/demo/DemoScreen.tsx';
+import { signUpEndOf, signUpLanding } from '../../../src/demo/signUpEnd.ts';
 import { Confirmed, Heading, Says } from '../../../src/steps/Lines.tsx';
 import { minutesSeconds, RESEND_SECONDS } from '../../../src/steps/rules.ts';
 import { SAMPLE } from '../../../src/demo/samples.ts';
@@ -13,7 +14,8 @@ import { tokens } from '../../../src/theme/tokens.ts';
 
 /** WhatsApp first, and by text on asking; the right code ends the flow on Home. */
 export default function PhoneCode() {
-  const params = useLocalSearchParams<{ via?: string; phone?: string }>();
+  const params = useLocalSearchParams<{ via?: string; phone?: string; end?: string }>();
+  const finish = () => router.replace(signUpLanding(signUpEndOf(params.end)));
   const short = params.via === 'google' || params.via === 'apple';
   const phone = params.phone ?? SAMPLE.phoneShown;
   const [texted, setTexted] = useState(false);

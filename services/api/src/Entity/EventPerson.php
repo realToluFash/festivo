@@ -60,6 +60,11 @@ class EventPerson
     #[ORM\Column(type: Types::STRING, length: 240, nullable: true)]
     private ?string $jobLabel;
 
+    /** The door code they came in by (sc-72), null for anyone added by name. */
+    #[ORM\ManyToOne(targetEntity: DoorCode::class)]
+    #[ORM\JoinColumn(nullable: true, onDelete: 'SET NULL')]
+    private ?DoorCode $doorCode = null;
+
     public function __construct(Event $event, ?Membership $membership, EventRole $role, ?string $jobLabel)
     {
         $this->id = Uuid::v7();
@@ -79,7 +84,7 @@ class EventPerson
         return $this->event;
     }
 
-    public static function outside(Event $event, User $user, EventRole $role, ?string $jobLabel, User $grantedBy): self
+    public static function outside(Event $event, User $user, EventRole $role, ?string $jobLabel, ?User $grantedBy): self
     {
         $person = new self($event, null, $role, $jobLabel);
         $person->user = $user;
@@ -155,5 +160,15 @@ class EventPerson
     public function setJobLabel(?string $jobLabel): void
     {
         $this->jobLabel = $jobLabel;
+    }
+
+    public function getDoorCode(): ?DoorCode
+    {
+        return $this->doorCode;
+    }
+
+    public function setDoorCode(?DoorCode $doorCode): void
+    {
+        $this->doorCode = $doorCode;
     }
 }

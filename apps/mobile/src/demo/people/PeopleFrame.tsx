@@ -13,7 +13,7 @@ import { useShell } from '../../components/settingsShell.ts';
 import { Back } from '../../components/SettingsParts.tsx';
 import { PageToast, type PageToastProps } from '../../components/Summary.tsx';
 
-/** On the iPad, the event's frame People draws in as every other area does, People lit in it (sc-67665). */
+/** The event's frame People draws in as every other area does: People lit in it on the iPad (sc-67665), More lit under it on the phone (sc-70351). */
 export type InEvent = Omit<ComponentProps<typeof EventFrame>, 'area' | 'toast' | 'children'>;
 
 export const PeopleInEvent = createContext<InEvent | null>(null);
@@ -36,7 +36,7 @@ function PeopleTitle({ onDrawn }: { onDrawn: (size: number) => void }) {
   );
 }
 
-/** A page inside an event: back, the title over the event's name, then the blocks 18 apart; on the iPad in the event's frame, named for the frame's event, with no back of its own. Nothing under the title draws larger than it, the frame's ‹ Events included (sc-67471, sc-67665). */
+/** A page inside an event: back, the title over the event's name, then the blocks 18 apart; in the event's frame, named for the frame's event, with the frame's back, bell and, on the phone, tab bar. Nothing under the title draws larger than it, the frame's ‹ Events included (sc-67471, sc-67665). */
 export function PeoplePage({
   back,
   event = EVENT,
@@ -59,12 +59,12 @@ export function PeoplePage({
         <PeopleTitle onDrawn={onDrawn} />
       </BellRow>
       <Text size={15} weight="medium" style={styles.secondary}>
-        {inEvent == null || phone ? event : inEvent.event.name}
+        {inEvent == null ? event : inEvent.event.name}
       </Text>
     </View>
   );
 
-  if (inEvent != null && !phone)
+  if (inEvent != null)
     return (
       <TitleCap.Provider value={cap}>
         <EventFrame

@@ -26,7 +26,7 @@ import { SAMPLE } from '../samples.ts';
 import { openEvent } from '../events/openEvent.ts';
 import { CLOCKS, READER_ZONE } from '../events/EventsSample.ts';
 import { W } from '../events/EventsWords.ts';
-import { Bell, Landscape, OrgPill, PortraitTop } from '../settings/Frame.tsx';
+import { Landscape, ListTopEnd, OrgPill, PortraitTop } from '../settings/Frame.tsx';
 import {
   type CalendarState,
   type Feed,
@@ -52,7 +52,7 @@ import { LIST_EDGES } from '../../components/listFrame.ts';
 import { dateLocale } from '../../i18n/index.ts';
 
 /** The demo keeps its own place, so it never moves the real Calendar's. */
-const KEPT = 'soirely.demo.calendar';
+const DEMO_PERSON = 'demo';
 const TODAY = wallDay(CLOCKS.reader, READER_ZONE);
 const RETRY_MS = 900;
 
@@ -173,7 +173,7 @@ export function CalendarPage({ state }: { state: CalendarState | null }) {
       kind={kindOf(shell.layout)}
       title={t('calendar.title')}
       pill={<OrgPill />}
-      bell={<Bell tell={tell} />}
+      bell={<ListTopEnd />}
       beside={<Subscribe phone={phone} onPress={subscribe} ref={subscribeRef} />}
     />
   );
@@ -193,7 +193,7 @@ export function CalendarPage({ state }: { state: CalendarState | null }) {
       now={NOW}
       locale={locale}
       firstDay={firstDay}
-      kept={KEPT}
+      personId={DEMO_PERSON}
       start={settled ? start : { ...start, open: null, menu: false }}
       bottom={bottom}
       head={

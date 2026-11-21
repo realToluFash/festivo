@@ -1,10 +1,17 @@
 /* Budget A at a desk (budget-a-spec.md §3 to §5): the card, A's rows, marks that are a shape and a word. */
-.bud {
+
+/* On .desk, not .bud: Budget parts also draw in portalled dialogs and beside Guests, outside any .bud. The --bt ones are the product's .bt, for its parts drawn in this shell (Who is paying, sc-91). */
+.desk {
   --budAmber: var(--colorAttentionText);
   --budAmberTint: var(--colorAttentionTint);
   --budRed: var(--colorBroken);
   --budRedTint: var(--colorBrokenTint);
   --budGreen: var(--deskGreen);
+  --btAmber: var(--colorAttentionText);
+  --btAmberTint: var(--colorAttentionTint);
+  --btRed: var(--colorBroken);
+  --btRedTint: var(--colorBrokenTint);
+  --btGreen: var(--deskGreen);
 }
 
 .bud-title-row {
@@ -240,6 +247,7 @@
 .bud-amount-value {
   color: var(--colorInk);
   font: 600 15px/1.3 var(--fontFamily);
+  font-variant-numeric: tabular-nums;
 }
 
 .bud-amount-line {
@@ -248,6 +256,7 @@
   gap: 5px;
   color: var(--colorInkSecondary);
   font: 500 13px/1.3 var(--fontFamily);
+  font-variant-numeric: tabular-nums;
 }
 
 .bud-rows {
@@ -280,6 +289,32 @@ a.desk-row.bud-row:hover {
   margin: 0 calc(-1 * var(--spaceMd));
   padding-inline: var(--spaceMd);
   border-radius: var(--radiusRow);
+}
+
+/* sc-75579: where the end would leave the words under 10rem (fr and es at 320 px), the end takes its own line beneath them, still at the right. */
+.bud-row:has(> .bud-row-end) {
+  flex-wrap: wrap;
+  row-gap: var(--spaceXs);
+}
+
+.bud-row:has(> .bud-row-end) > .desk-row-words {
+  flex: 1 1 10rem;
+}
+
+.bud-row-end {
+  display: flex;
+  flex: 0 1 auto;
+  align-items: center;
+  max-width: 100%;
+  gap: var(--spaceLg);
+  margin-inline-start: auto;
+}
+
+.bud-row-end > .bud-amount {
+  flex-shrink: 1;
+  min-width: 0;
+  white-space: normal;
+  text-align: end;
 }
 
 .bud-row-actions {
@@ -481,6 +516,12 @@ a.desk-row.bud-row:hover {
 
 .bud-ask .desk-text {
   margin-inline: 0;
+}
+
+.bud-ask .bud-ask-problem {
+  flex: 1 0 100%;
+  color: var(--colorBroken);
+  font: 500 13.5px/1.4 var(--fontFamily);
 }
 
 .desk-dialog:has(.bud-width.is-700) {

@@ -44,7 +44,7 @@ describe('Sign-in rules at a desk (sc-30064)', () => {
   it('says where an owner stands, in the app’s order, and what changed, newest first', async () => {
     await rules('/demo/settings/sign-in-rules');
 
-    expect(screen.getByText('You meet Ire Events’ rules')).toBeDefined();
+    expect(screen.getByText('You meet Ire Events’s rules')).toBeDefined();
     expect(screen.getByText('As an owner, you can change them below.')).toBeDefined();
     expect(titles('Where you stand')).toEqual([
       'Sign in any way',
@@ -62,7 +62,7 @@ describe('Sign-in rules at a desk (sc-30064)', () => {
   it('opens a state it does not know as the page with no state', async () => {
     await rules('/demo/settings/sign-in-rules?state=rules');
 
-    expect(screen.getByText('You meet Ire Events’ rules')).toBeDefined();
+    expect(screen.getByText('You meet Ire Events’s rules')).toBeDefined();
     expect(screen.getAllByText('Change')).toHaveLength(3);
   });
 

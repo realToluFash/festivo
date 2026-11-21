@@ -1,0 +1,10 @@
+# sc-68417: the top of Settings, unchanged at every size.
+appId: host.exp.Exponent
+---
+- setOrientation: ${ORIENT}
+- openLink: ${METRO_URL}/--/settings
+- extendedWaitUntil:
+    visible:
+      id: 'settings.account'
+    timeout: 30000
+- takeScreenshot: p-settings

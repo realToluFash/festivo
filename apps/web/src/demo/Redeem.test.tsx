@@ -57,7 +57,7 @@ describe('typing a door code in the browser (sc-72)', () => {
     await wait(1000);
 
     expect(screen.getByRole('alert').textContent).toBe(
-      'That code doesn’t work. Check it with whoever gave it to you.',
+      'That code does not work. Check it with whoever gave it to you.',
     );
     expect(document.activeElement).toBe(screen.getByLabelText('Door code'));
   });
@@ -75,6 +75,54 @@ describe('typing a door code in the browser (sc-72)', () => {
     expect(screen.getByRole('heading', { level: 1, name: 'Too many tries' })).toBeDefined();
     expect(screen.getByText('Try again at 13:32')).toBeDefined();
     expect(screen.queryByText(/Joana/u)).toBeNull();
+  });
+});
+
+describe('signed out, a name and nothing else (sc-72, until sc-4235)', () => {
+  it('asks only a name once the code opens, then joins with it', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    await redeem('enter');
+
+    press('Continue');
+    await wait(1000);
+    expect(screen.getByRole('heading', { level: 1, name: 'Joana & Rui’s wedding' })).toBeDefined();
+    expect(screen.queryByLabelText('Mobile number')).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Send code' })).toBeNull();
+
+    press('Join');
+    expect(screen.getByText('Enter your full name.')).toBeDefined();
+    expect(document.activeElement).toBe(screen.getByLabelText('Your name'));
+    type('Your name', ' João Pereira ');
+    press('Join');
+    expect(screen.getByRole('button', { name: 'Joining…' }).getAttribute('aria-busy')).toBe('true');
+    await wait(1000);
+
+    const title = screen.getByRole('heading', {
+      level: 1,
+      name: 'You’re in for Joana & Rui’s wedding · Bar and drinks',
+    });
+    expect(screen.getByText('Signed in as João Pereira')).toBeDefined();
+    await waitFor(() => expect(document.activeElement).toBe(title));
+  });
+
+  it('opens a blank name with its line and focus in the field', async () => {
+    await redeem('name-blank');
+
+    expect(screen.getByText('Enter your full name.')).toBeDefined();
+    await waitFor(() => expect(document.activeElement).toBe(screen.getByLabelText('Your name')));
+  });
+
+  it('refuses a code used up while the name was typed, and keeps the name', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    await redeem('name-used-up');
+
+    expect(screen.getByRole('alert').textContent).toBe(
+      'That code does not work. Check it with whoever gave it to you.',
+    );
+    press('Join');
+    await wait(1000);
+    expect((screen.getByLabelText('Your name') as HTMLInputElement).value).toBe('Hugo Faria');
+    expect(screen.queryByText('Signed in as Hugo Faria')).toBeNull();
   });
 });
 
@@ -209,14 +257,38 @@ describe('a name, a number and the phone code (sc-4235)', () => {
     await redeem('used-up');
 
     expect(screen.getByRole('alert').textContent).toBe(
-      'That code doesn’t work. Check it with whoever gave it to you.',
+      'That code does not work. Check it with whoever gave it to you.',
     );
     expect((screen.getByLabelText('Your name') as HTMLInputElement).value).toBe('Hugo Faria');
+  });
+
+  it('returns a second number on an account to the name and number, both kept, with a line under the number', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    await redeem('code-second-number');
+
+    type('Code from WhatsApp', SAMPLE.code);
+    press('Verify');
+    await wait(1000);
+
+    const number = screen.getByLabelText('Mobile number') as HTMLInputElement;
+    expect(screen.getByRole('heading', { level: 1, name: 'Joana & Rui’s wedding' })).toBeDefined();
+    expect((screen.getByLabelText('Your name') as HTMLInputElement).value).toBe('Rita Sousa');
+    expect(number.value).toBe('916 480 233');
+    expect(number.getAttribute('aria-describedby')).toBe('rd-number-line');
+    expect(screen.getByText(R.secondNumber)).toBeDefined();
+    expect(R.secondNumber).toBe(
+      'This is an alternative number on a Soirely account, so it cannot sign you in. Enter that account’s primary number, or make this one primary.',
+    );
+    expect(screen.queryByText(/Signed in as/u)).toBeNull();
+    await waitFor(() => expect(document.activeElement).toBe(number));
+
+    type('Mobile number', '912 345 412');
+    expect(screen.queryByText(R.secondNumber)).toBeNull();
   });
 });
 
 describe('the Soirely wordmark', () => {
-  it.each(['enter', 'browser-event', 'code', 'browser-in', 'signed-out'])(
+  it.each(['enter', 'browser-name', 'browser-event', 'code', 'browser-in', 'signed-out'])(
     'sits above the column on %s',
     async (state) => {
       await redeem(state);

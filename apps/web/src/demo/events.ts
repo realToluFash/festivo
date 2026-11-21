@@ -626,6 +626,7 @@ export const EVENT_WORDS = {
   hostRemoved: (name: string) => `${name} removed`,
   searchTypes: 'Search types',
   currencyInUse: 'The currency cannot change once amounts are recorded against this event.',
+  eventGone: 'Nothing was changed. This event is no longer available.',
   nameCount: (count: number, most: number) => `${count} of ${most} characters`,
   nameBlank: 'Give the event a name.',
   nameTooLong: (most: number) => `Shorten the name to ${most} characters or fewer.`,
@@ -1215,8 +1216,16 @@ export type EditState =
   | 'type'
   | 'currency'
   | 'currencyRefused'
+  | 'currencyNotSaved'
+  | 'currencyForbidden'
+  | 'currencyGone'
+  | 'currencyChangedElsewhere'
   | 'name'
   | 'nameBlank'
+  | 'nameNotSaved'
+  | 'nameForbidden'
+  | 'nameGone'
+  | 'nameChangedElsewhere'
   | 'cover'
   | 'coverRefused'
   | 'coverPhoto'
@@ -1229,6 +1238,8 @@ export type EditState =
   | 'replyByError'
   | 'replyBySooner'
   | 'replyByNow'
+  | 'replyByForbidden'
+  | 'replyByGone'
   | 'replyBySaved'
   | 'replyByRemoved';
 
@@ -1306,8 +1317,16 @@ export const EVENT_STATES: Record<EventStateName, string> = {
   type: 'evt-wed-4',
   currency: 'evt-wed-4',
   currencyRefused: 'evt-wed-4',
+  currencyNotSaved: 'evt-wed-4',
+  currencyForbidden: 'evt-wed-4',
+  currencyGone: 'evt-wed-4',
+  currencyChangedElsewhere: 'evt-wed-4',
   name: 'evt-wed-4',
   nameBlank: 'evt-wed-4',
+  nameNotSaved: 'evt-wed-4',
+  nameForbidden: 'evt-wed-4',
+  nameGone: 'evt-wed-4',
+  nameChangedElsewhere: 'evt-wed-4',
   cover: 'evt-wed-4',
   coverRefused: 'evt-wed-4',
   coverPhoto: 'evt-wed-4',
@@ -1320,6 +1339,8 @@ export const EVENT_STATES: Record<EventStateName, string> = {
   replyByError: 'evt-wed-4',
   replyBySooner: 'evt-wed-4',
   replyByNow: 'evt-wed-4',
+  replyByForbidden: 'evt-wed-4',
+  replyByGone: 'evt-wed-4',
   replyBySaved: 'evt-wed-4',
   replyByRemoved: 'evt-wed-4',
   pause: 'evt-wed-4',
@@ -1432,9 +1453,17 @@ export function partOf(state: EventStateName | null): Part | null {
       return 'type';
     case 'currency':
     case 'currencyRefused':
+    case 'currencyNotSaved':
+    case 'currencyForbidden':
+    case 'currencyGone':
+    case 'currencyChangedElsewhere':
       return 'currency';
     case 'name':
     case 'nameBlank':
+    case 'nameNotSaved':
+    case 'nameForbidden':
+    case 'nameGone':
+    case 'nameChangedElsewhere':
       return 'name';
     case 'cover':
     case 'coverRefused':
@@ -1449,6 +1478,8 @@ export function partOf(state: EventStateName | null): Part | null {
     case 'replyByError':
     case 'replyBySooner':
     case 'replyByNow':
+    case 'replyByForbidden':
+    case 'replyByGone':
       return 'replyBy';
     default:
       return null;
@@ -1655,7 +1686,7 @@ export const EVENTS_PAGES: readonly { name: string; states: readonly DemoLink[] 
       on('datesReplyBy', 'Dates, the start on the Reply by day (sc-3780)'),
       on('datesReplyByAsk', 'Dates asks before closing replies sooner (sc-3780)'),
       on('discard', 'Cancel with a change'),
-      on('changedElsewhere', 'Changed elsewhere'),
+      on('changedElsewhere', 'Dates, changed elsewhere: the notice above Cancel and Save'),
       on('showLatest', 'Show the latest'),
       on('venue', 'Venue, opened'),
       on('venueSuggestions', 'Venue, suggestions'),
@@ -1669,7 +1700,7 @@ export const EVENTS_PAGES: readonly { name: string; states: readonly DemoLink[] 
       on('venueNote', 'Venue, the arrival note under Address'),
       on('venueNoteTooLong', 'Venue, a note of 501 characters: refused before sending'),
       on('venueNoteRefused', 'Venue, the note refused by the server (422)'),
-      on('venueNoteForbidden', 'Venue, a role changed while open (403)'),
+      on('venueNoteForbidden', 'Venue, a role changed while open (403): above Cancel and Save'),
       on('noteNoVenue', 'Details, Venue to be confirmed with a note'),
       on('noteWide', 'Details, a note of 500 characters with no spaces'),
       on('noteMarkup', 'Details, markup typed as text'),
@@ -1697,6 +1728,34 @@ export const EVENTS_PAGES: readonly { name: string; states: readonly DemoLink[] 
     ],
   },
   {
+    name: 'A part’s save notices, directly above Cancel and Save (sc-74398)',
+    states: [
+      on('nameNotSaved', 'Event name, Save fails: Not saved'),
+      on('nameForbidden', 'Event name, a role changed while open (403)'),
+      on('nameChangedElsewhere', 'Event name, changed elsewhere (409)'),
+      on('currencyNotSaved', 'Currency, Save fails: Not saved'),
+      on('currencyForbidden', 'Currency, a role changed while open (403)'),
+      on('currencyChangedElsewhere', 'Currency, changed elsewhere (409)'),
+      on('nameGone', 'Event name, the event no longer available (404)'),
+      on('currencyGone', 'Currency, the event no longer available (404)'),
+    ],
+  },
+  {
+    name: 'At 400% zoom: a 1280 × 800 window is 320 CSS px wide, after Show this page anyway (sc-74933)',
+    states: [
+      on('live', 'The Overview, no part open: the sidebar above the page, one column'),
+      on('nameNotSaved', 'Event name, Save fails: Not saved'),
+      on('nameForbidden', 'Event name, a role changed while open (403)'),
+      on('nameChangedElsewhere', 'Event name, changed elsewhere (409)'),
+      on('currencyNotSaved', 'Currency, at the end of the list, Save fails: Not saved'),
+      on('currencyForbidden', 'Currency, a role changed while open (403)'),
+      on('currencyChangedElsewhere', 'Currency, changed elsewhere (409)'),
+      on('hostsSix', 'Hosted by, six'),
+      on('dates', 'Dates: each day above its time'),
+      on('showLatest', 'Show the latest version?, its two actions one above the other'),
+    ],
+  },
+  {
     name: 'Reply by, in place (sc-3780)',
     states: [
       on('replyBy', 'Reply by, opened'),
@@ -1704,6 +1763,8 @@ export const EVENTS_PAGES: readonly { name: string; states: readonly DemoLink[] 
       on('replyByError', 'Reply by, on the day it starts'),
       on('replyBySooner', 'Reply by, moved sooner'),
       on('replyByNow', 'Reply by, moved into the past'),
+      on('replyByForbidden', 'Reply by, a role changed while open (403): above Cancel and Save'),
+      on('replyByGone', 'Reply by, the event no longer available (404): above Cancel and Save'),
       on('replyBySaved', 'Reply by, saved'),
       on('replyByRemoved', 'Reply by, removed'),
     ],

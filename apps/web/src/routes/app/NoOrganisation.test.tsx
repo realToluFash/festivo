@@ -201,6 +201,47 @@ describe('the page an account in no organisation stands on (sc-13339)', () => {
   });
 });
 
+describe('No organisation as its demo draws it (sc-75471)', () => {
+  it('stands under the small logo and the language pill, with no card, and Your account beside Sign out', async () => {
+    inNone();
+    const sent = answering({
+      'GET /api/invitations': () => json({ invitations: [] }),
+      'POST /api/auth/logout': () => new Response(null, { status: 204 }),
+    });
+    const router = createMemoryRouter(routes, { initialEntries: ['/app'] });
+    render(<RouterProvider router={router} />);
+
+    const heading = await screen.findByRole('heading', {
+      level: 1,
+      name: 'You are not in an organisation',
+    });
+    const header = document.querySelector('.cw-header');
+    expect(header?.querySelector('.brand-lockup')).not.toBeNull();
+    expect(header?.querySelector('.cw-language')?.textContent).toContain('English');
+    expect(document.querySelector('.public-header')).toBeNull();
+    expect(heading.closest('.card')).toBeNull();
+
+    const account = screen.getByRole('link', { name: 'Your account' });
+    const signOut = screen.getByRole('button', { name: 'Sign out' });
+    expect(account.parentElement).toBe(signOut.parentElement);
+
+    fireEvent.click(signOut);
+
+    await waitFor(() => expect(router.state.location.pathname).toBe('/sign-in'));
+    expect(sent.some((one) => one.line === 'POST /api/auth/logout')).toBe(true);
+  });
+
+  it('keeps the same header over an account page', async () => {
+    inNone();
+    answering({ 'GET /api/invitations': () => json({ invitations: [] }) });
+    app('/app/account');
+
+    await screen.findByRole('heading', { level: 1, name: 'Your account' });
+    expect(document.querySelector('.cw-header .cw-language')).not.toBeNull();
+    expect(document.querySelector('.public-header')).toBeNull();
+  });
+});
+
 const REFUSED_NAME = {
   type: 'https://soirely.com/errors/validation_failed',
   title: 'Some fields need attention.',
@@ -455,7 +496,7 @@ describe('where focus goes on No organisation (sc-11369)', () => {
     );
 
     const line = await screen.findByText('You declined. Bisi Adeyemi will see that you said no.');
-    await waitFor(() => expect(document.activeElement).toBe(line.closest('.invitation-row-said')));
+    await waitFor(() => expect(document.activeElement).toBe(line.closest('.sw-notice')));
     expect(line.closest('[role="status"]')).toBeNull();
   });
 
@@ -470,8 +511,9 @@ describe('where focus goes on No organisation (sc-11369)', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Accept and join Adunni Weddings' }));
 
     const line = await screen.findByText('You joined Adunni Weddings as Admin.');
-    const said = line.closest('.invitation-row-said');
+    const said = line.closest('.sw-notice');
     await waitFor(() => expect(document.activeElement).toBe(said));
+    expect(said?.getAttribute('role')).toBeNull();
     expect(said?.nextElementSibling?.textContent).toBe('Open Adunni Weddings');
 
     fireEvent.click(screen.getByRole('button', { name: 'Open Adunni Weddings' }));
@@ -495,8 +537,77 @@ describe('where focus goes on No organisation (sc-11369)', () => {
 
     fireEvent.click(await screen.findByRole('button', { name: 'Accept and join Adunni Weddings' }));
 
-    const notice = (await screen.findByText('Withdrawn')).closest('.notice');
+    const notice = (await screen.findByText('Withdrawn')).closest('.sw-notice');
     await waitFor(() => expect(document.activeElement).toBe(notice));
     expect(notice?.getAttribute('role')).toBeNull();
+  });
+});
+
+describe('No organisation for a managed account (sc-563)', () => {
+  it('has the banner where Start your own was, and nothing else changes', async () => {
+    inNone();
+    answering({
+      'GET /api/invitations': () => json({ invitations: [] }),
+      'GET /api/join-offers': () =>
+        json({
+          domain: 'ire.events',
+          offers: [],
+          request: null,
+          managed: {
+            domain: 'ire.events',
+            organisation: { id: 'org_1', name: 'Ìrè Events' },
+            message:
+              'Your ire.events address is managed by Ìrè Events, so you can only be a member there.',
+          },
+        }),
+    });
+    app();
+
+    expect(await screen.findByRole('heading', { name: 'Managed by Ìrè Events' })).toBeDefined();
+    expect(screen.getByText('Access to a single event still works.')).toBeDefined();
+    expect(
+      screen.getByRole('link', { name: 'Change your main email address' }).getAttribute('href'),
+    ).toBe('/app/account');
+    expect(screen.queryByRole('button', { name: 'Start organisation' })).toBeNull();
+    expect(screen.getByRole('heading', { name: 'You are not in an organisation' })).toBeDefined();
+    expect(screen.getByText('Signed in as chidi@ire.events.')).toBeDefined();
+  });
+
+  it('offers Accept and join and Decline on an invitation it cannot accept, under the one banner (sc-73668)', async () => {
+    inNone();
+    const managed = {
+      domain: 'ire.events',
+      organisation: { id: 'org_1', name: 'Ìrè Events' },
+      message:
+        'Your ire.events address is managed by Ìrè Events, so you can only be a member there.',
+    };
+    answering({
+      'GET /api/invitations': () =>
+        json({
+          invitations: [
+            {
+              id: 'inv_1',
+              organisation: { id: 'org_7', name: 'Lagos Hall' },
+              email: 'chidi@ire.events',
+              role: { id: 'role_3', seededAs: 'administrator', name: null },
+              invitedBy: { name: 'Bisi Adeyemi' },
+              expiresAt: '2026-10-23T09:00:00+00:00',
+              refusal: null,
+              forYou: true,
+              signedInAs: 'chidi@ire.events',
+              managed,
+            },
+          ],
+        }),
+      'GET /api/join-offers': () =>
+        json({ domain: 'ire.events', offers: [], request: null, managed }),
+    });
+    app();
+
+    expect(await screen.findByRole('button', { name: 'Accept and join Lagos Hall' })).toBeDefined();
+    expect(
+      screen.getByRole('button', { name: 'Decline the invitation to Lagos Hall' }),
+    ).toBeDefined();
+    expect(screen.getAllByRole('heading', { name: 'Managed by Ìrè Events' })).toHaveLength(1);
   });
 });

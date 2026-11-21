@@ -1,0 +1,14 @@
+# sc-78219: the app's design demo /demo/show-size at the device's text size, in en, all chosen, its menu open; beside sc78219-calendar-show-ax.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/demo/show-size?size=device&lang=en&rows=main&chosen=all
+- waitForAnimationToEnd:
+    timeout: 8000
+- runFlow: ../developer-menu-close.yaml
+- extendedWaitUntil: { visible: { id: 'demo.showSize.menu' }, timeout: 20000 }
+- waitForAnimationToEnd:
+    timeout: 3000
+- takeScreenshot: demo-open
+- swipe: { from: { id: 'demo.showSize.menu' }, direction: UP, duration: 400 }
+- waitForAnimationToEnd
+- takeScreenshot: demo-open-foot

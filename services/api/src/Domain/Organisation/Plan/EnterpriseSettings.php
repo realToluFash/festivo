@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace App\Domain\Organisation\Plan;
 
+use App\Domain\Billing\Catalogue\Model\PlanTerms;
 use App\Domain\Billing\Entitlements;
 use App\Domain\Organisation\Interfaces\EnterpriseSettingInterface;
 use App\Entity\Organisation;
-use App\Enum\Plan;
 use App\Enum\PlanFeature;
 use Psl\Iter;
 use Psl\Vec;
@@ -31,7 +31,7 @@ final readonly class EnterpriseSettings
     }
 
     /** @return list<PlanFeature> the configured settings `$was` unlocks and `$plan` does not */
-    public function switchedOff(Organisation $organisation, Plan $was, Plan $plan): array
+    public function switchedOff(Organisation $organisation, PlanTerms $was, PlanTerms $plan): array
     {
         $settings = Vec\filter(
             Vec\values($this->settings),

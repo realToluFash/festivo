@@ -8,7 +8,7 @@ use App\Domain\Billing\Entitlements;
 use App\Domain\Organisation\SignInRules\SignInRules;
 use App\Entity\Membership;
 use App\Entity\User;
-use App\Enum\Plan;
+use App\Enum\PlanFeature;
 use App\Enum\SeededRole;
 use App\Http\Access\EventScope;
 use App\Http\Access\Grants;
@@ -82,9 +82,10 @@ final readonly class MembershipDirectory implements MembershipDirectoryInterface
         return new EventScope($membership, $grants, $byEvent);
     }
 
-    private function planOf(Membership $membership): Plan
+    /** @return list<PlanFeature> */
+    private function planOf(Membership $membership): array
     {
-        return $this->entitlements->of($membership->getOrganisation()->getId())->plan;
+        return $this->entitlements->of($membership->getOrganisation()->getId())->terms->features();
     }
 
     private function grantsOf(Membership $membership): Grants

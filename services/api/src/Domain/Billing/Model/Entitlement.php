@@ -4,19 +4,23 @@ declare(strict_types=1);
 
 namespace App\Domain\Billing\Model;
 
+use App\Domain\Billing\Catalogue\Model\PlanTerms;
 use App\Enum\Plan;
 use App\Enum\PlanFeature;
 
-/** What an organisation may do, from its subscription's plan; sc-3928's catalogue later stands behind it without its callers changing. */
+/** What an organisation may do: its plan's terms in the catalogue version its subscription was sold on (sc-3927, sc-3928). */
 final readonly class Entitlement
 {
+    public Plan $plan;
+
     public function __construct(
-        public Plan $plan,
+        public PlanTerms $terms,
     ) {
+        $this->plan = $terms->plan;
     }
 
     public function unlocks(PlanFeature $feature): bool
     {
-        return $this->plan->unlocks($feature);
+        return $this->terms->unlocks($feature);
     }
 }

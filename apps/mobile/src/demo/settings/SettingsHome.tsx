@@ -4,16 +4,18 @@ import { useTranslation } from 'react-i18next';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { Text } from '../../components/Text.tsx';
+import { Text, TitleCap } from '../../components/Text.tsx';
+import { Title, useTitleCap } from '../../components/Title.tsx';
 import { tokens } from '../../theme/tokens.ts';
 import { PHONE_TAB_BAR, TabBarFade } from '../../components/TodayCover.tsx';
 import { Bell, Landscape, OrgPill, PortraitTop, SettingsTabBar } from './Frame.tsx';
+import { Back } from '../../components/SettingsParts.tsx';
+import { useWayBackToNone } from '../../components/wayBackToNone.ts';
 import { type Held, HeldStandIn } from './Held.tsx';
 import { useHeldChoice } from './PersonalisationModel.ts';
 import { SettingsDemoRow } from './SettingsDemoRow.tsx';
 import { dataHref } from './DataModel.ts';
 import { DataTile, useDataNav, useDataOpen } from './DataParts.tsx';
-import { DATA_WORDS } from './DataWords.ts';
 import { demoGroups, managesOrganisation, YOU } from './sample.ts';
 import { type ShellSection, useShell, type Viewer } from '../../components/settingsShell.ts';
 import {
@@ -26,7 +28,7 @@ import {
 import { SettingsListBody } from '../../components/SettingsList.tsx';
 import { SwitchedNotice } from '../../components/SwitchedNotice.tsx';
 import { LegalLinks } from '../LegalLinks.tsx';
-import { TOP_TITLE, topTitle } from '../../components/topTitle.ts';
+import { PAGE_TITLE, TOP_TITLE, topTitle } from '../../components/topTitle.ts';
 
 type Listed = Exclude<ShellSection, 'account'>;
 
@@ -89,6 +91,7 @@ function PersonCard({
 /** Data and control, a row of the demo's own: on its side it changes the page beside the list. */
 function useDataRow(dense: boolean) {
   const shell = useShell();
+  const { t } = useTranslation();
   const lit = useDataOpen();
   const nav = useDataNav();
   const href = dataHref('hub', { as: nav.viewer }) as Href;
@@ -97,8 +100,8 @@ function useDataRow(dense: boolean) {
     lit: lit != null,
     row: {
       key: DATA_ROW,
-      title: DATA_WORDS.title,
-      line: DATA_WORDS.settingsLine,
+      title: t('settings.dataAndControl'),
+      line: t('settings.dataAndControlLine'),
       tile: <DataTile side={rowSide(dense)} />,
     },
     open: () => {
@@ -158,13 +161,26 @@ export function SettingsHome({
   const insets = useSafeAreaInsets();
   const { t } = useTranslation();
   const list = useDemoList(false, null, onSignOut, onDemo);
+  const fromNone = useWayBackToNone();
+  const backToNone = fromNone != null && (
+    <Back label={t('noOrganisation.wayBack')} onPress={fromNone} testID="settings.fromNone.back" />
+  );
+  // As the product's frame: the title keeps its words whole, and nothing under it draws larger than it drew (sc-13496, sc-67338).
+  const titleCap = useTitleCap(`${shell.layout}|${t('settings.title')}`, PAGE_TITLE);
+  const title = (
+    <Title size={TOP_TITLE} accessibilityRole="header" style={topTitle} onDrawn={titleCap.onDrawn}>
+      {t('settings.title')}
+    </Title>
+  );
 
   if (held != null) return <HeldSettings held={held} onSignOut={onSignOut} />;
 
   if (shell.layout === 'landscape')
     return (
       <Landscape column={shell.listColumn}>
-        <ChooseASection />
+        <TitleCap.Provider value={titleCap.cap}>
+          <ChooseASection />
+        </TitleCap.Provider>
       </Landscape>
     );
 
@@ -178,30 +194,25 @@ export function SettingsHome({
           contentContainerStyle={{
             paddingTop: insets.top + tokens.spaceXs,
             paddingHorizontal: tokens.spaceXxl,
-            paddingBottom: foot + PHONE_TAB_BAR + tokens.space6xl,
+            paddingBottom: foot + (fromNone == null ? PHONE_TAB_BAR : 0) + tokens.space6xl,
           }}
           showsVerticalScrollIndicator={false}
         >
           <View style={styles.orgRow}>
-            <OrgPill />
+            {backToNone || <OrgPill />}
             <View style={styles.grow} />
             <Bell tell={shell.tell} />
           </View>
           <View style={styles.titleRow}>
-            <Text
-              size={TOP_TITLE}
-              weight="bold"
-              accessibilityRole="header"
-              style={[styles.grow, topTitle]}
-            >
-              {t('settings.title')}
-            </Text>
+            <View style={styles.grow}>{title}</View>
           </View>
-          <SwitchedNotice style={styles.switched} />
-          <SettingsListBody size="phone" {...list} />
+          <TitleCap.Provider value={titleCap.cap}>
+            <SwitchedNotice style={styles.switched} />
+            <SettingsListBody size="phone" {...list} />
+          </TitleCap.Provider>
         </ScrollView>
         <View style={[styles.statusStrip, { height: insets.top }]} pointerEvents="none" />
-        <TabBarFade />
+        {fromNone == null && <TabBarFade />}
         <SettingsTabBar bottom={foot} />
       </View>
     );
@@ -210,6 +221,7 @@ export function SettingsHome({
   return (
     <View style={styles.page}>
       <PortraitTop at="Settings" />
+      {backToNone !== false && <View style={styles.portraitBack}>{backToNone}</View>}
       <ScrollView
         style={styles.grow}
         contentContainerStyle={{
@@ -218,16 +230,11 @@ export function SettingsHome({
         }}
         showsVerticalScrollIndicator={false}
       >
-        <Text
-          size={TOP_TITLE}
-          weight="bold"
-          accessibilityRole="header"
-          style={[topTitle, styles.portraitTitle]}
-        >
-          {t('settings.title')}
-        </Text>
-        <SwitchedNotice style={styles.switched} />
-        <SettingsListBody size="portrait" {...list} />
+        <View style={styles.portraitTitle}>{title}</View>
+        <TitleCap.Provider value={titleCap.cap}>
+          <SwitchedNotice style={styles.switched} />
+          <SettingsListBody size="portrait" {...list} />
+        </TitleCap.Provider>
       </ScrollView>
     </View>
   );
@@ -282,6 +289,7 @@ export function SettingsColumn({ onSignOut, onDemo }: Handlers) {
   const shell = useShell();
   const { t } = useTranslation();
   const list = useDemoList(true, shell.open, onSignOut, onDemo);
+  const fromNone = useWayBackToNone();
 
   return (
     <SettingsListBody
@@ -289,6 +297,15 @@ export function SettingsColumn({ onSignOut, onDemo }: Handlers) {
       {...list}
       top={
         <>
+          {fromNone != null && (
+            <View style={styles.columnBack}>
+              <Back
+                label={t('noOrganisation.wayBack')}
+                onPress={fromNone}
+                testID="settings.fromNone.back"
+              />
+            </View>
+          )}
           <View style={styles.columnTop}>
             <Text
               size={TOP_TITLE}
@@ -337,6 +354,8 @@ const styles = StyleSheet.create({
     gap: tokens.spaceMd,
     marginBottom: tokens.spaceLg,
   },
+  portraitBack: { flexDirection: 'row', paddingHorizontal: tokens.space5xl },
+  columnBack: { flexDirection: 'row', marginBottom: tokens.spaceXs },
   portraitTitle: { paddingTop: 30, paddingBottom: 22, paddingHorizontal: tokens.spaceHair },
   switched: { marginBottom: tokens.spaceXl },
   legal: { marginTop: tokens.spaceXs },

@@ -1409,3 +1409,36 @@ class People(unittest.TestCase):
         self.assertEqual(roles.last_tester(s), "qa2")
         self.assertIsNone(roles.planner(s))
         self.assertFalse(roles.kept_for_person(s, TESTERS))
+
+
+class DemoNotMerged(unittest.TestCase):
+    DRAWN = "# AC\n- shows it\n\n# Design\n**Artboard:** `It.dc.html`\n\n"
+
+    def drawn(self, demo_line, state="Ready For Dev"):
+        return dict(story(1, state), description=self.DRAWN + demo_line)
+
+    def offered(self, stories, prs, role="dev"):
+        return [s["id"] for s in work.queued(role, stories, prs=prs)]
+
+    def test_a_story_whose_demo_is_open_is_offered_to_no_builder(self):
+        stories = [self.drawn("**Demo:** `It` in the app's demo · PR #40")]
+        for role in roles.ROLES:
+            if work.builds(role):
+                self.assertEqual(self.offered(stories, [pr(40, state="open")], role), [], role)
+
+    def test_a_story_whose_demo_merged_is_offered(self):
+        stories = [self.drawn("**Demo:** `It` in the app's demo · PR #40")]
+        self.assertEqual(self.offered(stories, [pr(40, state="merged")]), [1])
+
+    def test_a_demo_half_merged_across_the_clients_still_holds_it(self):
+        stories = [self.drawn("**Demo:** app PR #40 · web PR #41")]
+        self.assertEqual(self.offered(stories, [pr(40, state="merged"), pr(41, state="open")]),
+                         [])
+
+    def test_a_demo_line_reading_none_is_offered_whatever_it_cites(self):
+        stories = [self.drawn("**Demo:** none: copy only, see #40")]
+        self.assertEqual(self.offered(stories, [pr(40, state="open")]), [1])
+
+    def test_rework_is_offered_whatever_its_demo_line_says(self):
+        stories = [self.drawn("**Demo:** PR #40", state="Failed QA")]
+        self.assertEqual(self.offered(stories, [pr(40, state="open")]), [1])

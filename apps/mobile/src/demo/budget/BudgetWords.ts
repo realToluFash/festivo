@@ -58,7 +58,10 @@ export const W = {
   paidOne: 'Paid',
   paidDifferent: 'Paid a different amount',
   cancelledWord: 'Cancelled',
-  nothingLeftHead: 'Nothing left to pay.',
+  nothingLeftHead: 'Nothing left to pay from this reminder',
+  noLongerOnSchedule: 'No longer on the schedule',
+  notFound: 'We cannot find these payments.',
+  goToEvents: 'Go to your events',
   hasAPayer: 'Has a payer',
   noPayerYet: 'No payer yet',
   chosenOnComputer: 'Who pays is chosen on a computer.',
@@ -93,6 +96,8 @@ const STATE_WORD: Record<CeilingState, string> = {
   overIf: 'Over if all come',
   over: 'Over',
 };
+
+const within = (days: number) => (days === 1 ? 'by tomorrow' : `in the next ${days} days`);
 
 export const say = {
   state: (state: CeilingState) => STATE_WORD[state],
@@ -143,8 +148,8 @@ export const say = {
   opened: (times: number, day: string, time: string) =>
     `Opened ${times === 1 ? 'once' : `${times} times`}. Last on ${day} at ${time}.`,
   removed: (name: string) => `${name} is no longer a payer on this event.`,
-  fromReminder: (date: string, count: number) =>
-    `From the reminder sent ${date} · ${count === 1 ? '1 payment' : `${count} payments`}`,
+  fromReminder: (date: string, count: number, events = 1) =>
+    `From the reminder sent ${date} · ${count === 1 ? '1 payment' : `${count} payments`}${events > 1 ? ` across ${events} events` : ''}`,
   overdueSince: (what: string, date: string, event: string) =>
     `${what} · Overdue since ${date} · ${event}`,
   dueOnEvent: (what: string, date: string, event: string) => `${what} · Due ${date} · ${event}`,
@@ -169,8 +174,12 @@ export const say = {
   reminderOverdue: (count: number, event: string) =>
     `${count === 1 ? '1 payment' : `${count} payments`} overdue on ${event}`,
   reminderMixed: (overdue: number, due: number, days: number) =>
-    `${overdue === 1 ? '1 payment' : `${overdue} payments`} overdue, ${due} due in the next ${days} days`,
+    `${overdue === 1 ? '1 payment' : `${overdue} payments`} overdue, ${due} due ${within(days)}`,
+  reminderDue: (count: number, days: number, event: string) =>
+    `${count === 1 ? '1 payment' : `${count} payments`} due ${within(days)} on ${event}`,
   reminderRow: (vendor: string, amount: string, when: string) => `${vendor} · ${amount} · ${when}`,
+  reminderRowOn: (vendor: string, event: string, amount: string, when: string) =>
+    `${vendor} · ${event} · ${amount} · ${when}`,
   wasDue: (date: string) => `was due ${date}`,
   dueWhen: (date: string) => `due ${date}`,
   lastAbout: (what: string, vendor: string) =>

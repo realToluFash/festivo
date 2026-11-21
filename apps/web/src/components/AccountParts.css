@@ -14,6 +14,12 @@
   color: var(--colorInk);
 }
 
+@container desk-summary (width >= 560px) {
+  .desk-summary .account-said {
+    max-width: calc(100% - 112px);
+  }
+}
+
 .desk-mark.account-done {
   width: 16px;
   height: 16px;

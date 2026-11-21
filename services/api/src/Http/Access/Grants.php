@@ -7,7 +7,6 @@ namespace App\Http\Access;
 use App\Enum\EventRole;
 use App\Enum\Permission;
 use App\Enum\PermissionArea;
-use App\Enum\Plan;
 use App\Enum\PlanFeature;
 use App\Http\Exception\ApiException;
 use Psl\Iter;
@@ -19,6 +18,7 @@ final readonly class Grants
     /**
      * @param list<Permission>      $permissions
      * @param list<Permission>      $withheld    held by the role, and waiting on two-factor (sc-69)
+     * @param list<PlanFeature>     $unlocks     what the organisation's plan switches on (sc-581, sc-3928)
      * @param ?list<PermissionArea> $areas       what a level held from outside an organisation opens (sc-71); null for a member
      */
     private function __construct(
@@ -28,7 +28,7 @@ final readonly class Grants
         private bool $readOnly = false,
         private bool $heldForTwoFactor = false,
         private ?EventRole $eventRole = null,
-        private Plan $plan = Plan::Free,
+        private array $unlocks = [],
         private ?array $areas = null,
     ) {
     }
@@ -59,31 +59,31 @@ final readonly class Grants
     /** The administrative permissions this holds, kept back until the member turns two-factor on. */
     public function withholdingAdministration(): self
     {
-        return new self($this->everything, $this->permissions, Vec\filter(Permission::cases(), fn (Permission $permission): bool => $permission->isAdministrative() && $this->roleHolds($permission)), $this->readOnly, $this->heldForTwoFactor, $this->eventRole, $this->plan, $this->areas);
+        return new self($this->everything, $this->permissions, Vec\filter(Permission::cases(), fn (Permission $permission): bool => $permission->isAdministrative() && $this->roleHolds($permission)), $this->readOnly, $this->heldForTwoFactor, $this->eventRole, $this->unlocks, $this->areas);
     }
 
     /** Reading only, until the member links Google or Apple. */
     public function readingOnly(): self
     {
-        return new self($this->everything, $this->permissions, $this->withheld, true, $this->heldForTwoFactor, $this->eventRole, $this->plan, $this->areas);
+        return new self($this->everything, $this->permissions, $this->withheld, true, $this->heldForTwoFactor, $this->eventRole, $this->unlocks, $this->areas);
     }
 
     /** Nothing at all, past the organisation's deadline for two-factor, until the member turns it on (sc-609). */
     public function heldForTwoFactor(): self
     {
-        return new self($this->everything, $this->permissions, $this->withheld, $this->readOnly, true, $this->eventRole, $this->plan, $this->areas);
+        return new self($this->everything, $this->permissions, $this->withheld, $this->readOnly, true, $this->eventRole, $this->unlocks, $this->areas);
     }
 
-    /** The organisation's plan, which unlocks its Enterprise settings (sc-581). */
-    public function onPlan(Plan $plan): self
+    /** @param list<PlanFeature> $unlocks what the organisation's plan switches on, from the catalogue (sc-581, sc-3928) */
+    public function onPlan(array $unlocks): self
     {
-        return new self($this->everything, $this->permissions, $this->withheld, $this->readOnly, $this->heldForTwoFactor, $this->eventRole, $plan, $this->areas);
+        return new self($this->everything, $this->permissions, $this->withheld, $this->readOnly, $this->heldForTwoFactor, $this->eventRole, $unlocks, $this->areas);
     }
 
     /** 403 `plan_required` for a change to a setting the organisation's plan does not unlock; reading it stays open, so it can be shown locked. */
     public function requirePlanFor(PlanFeature $feature): void
     {
-        if (!$this->plan->unlocks($feature)) {
+        if (!Iter\contains($this->unlocks, $feature)) {
             throw ApiException::planRequired($feature);
         }
     }

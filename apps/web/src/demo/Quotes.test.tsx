@@ -205,12 +205,12 @@ describe('Quotes and what is due on the wedding’s Budget, in A (sc-87, sc-88)'
     );
   });
 
-  it('reads only after a downgrade, with See plans only for billing.manage', SLOW, async () => {
+  it('reads only after a downgrade, with no See plans for anyone', SLOW, async () => {
     const line =
       'Quotes and payment schedules are read-only because this organisation’s plan no longer includes them. Nothing has been removed.';
     await open(`${SAVOUR}&state=read_only`);
     expect(within(main()).getByText(line)).toBeDefined();
-    expect(within(main()).getByRole('button', { name: 'See plans' })).toBeDefined();
+    expect(within(main()).queryByRole('button', { name: 'See plans' })).toBeNull();
     for (const verb of ['Add a payment', 'Mark paid', 'Change', 'Remove', 'Revise the quote'])
       expect(within(main()).queryByRole('button', { name: verb })).toBeNull();
     cleanup();
@@ -232,7 +232,7 @@ describe('Quotes and what is due on the wedding’s Budget, in A (sc-87, sc-88)'
       const top = card('Bloom & Co');
       expect(within(top).getByText('The balance, £840.00, was due Fri, Oct 30.')).toBeDefined();
       expect(rowOf('Deposit').textContent).toBe(
-        'DepositPaid £360.00 on Tue, Oct 6 · Marked by Folake Adeyemi',
+        'DepositPaid £360.00 on Tue, Oct 6 · Marked by Folake AdeyemiUndo',
       );
 
       fireEvent.click(within(top).getByRole('button', { name: 'Mark paid' }));
@@ -594,6 +594,43 @@ describe('Quotes and what is due on the wedding’s Budget, in A (sc-87, sc-88)'
     expect(
       within(section('Schedule')).getByText('£4,500.00 of the quote is not scheduled yet.'),
     ).toBeDefined();
+  });
+
+  it('keeps the row and says so in it when Remove fails, and removes it on the second try', async () => {
+    await open(`${SAVOUR}&state=remove_failed`);
+    const ask = within(rowOf('Second instalment')).getByRole('group', {
+      name: 'Remove this payment?',
+    });
+    fireEvent.click(within(ask).getByRole('button', { name: 'Remove' }));
+    expect(within(ask).getByRole('alert').textContent).toBe(
+      'Not removed. Check your connection and try again.',
+    );
+    expect(document.activeElement?.textContent).toBe('Remove');
+    expect(within(section('Schedule')).getByText('Second instalment')).toBeDefined();
+    fireEvent.click(within(ask).getByRole('button', { name: 'Remove' }));
+    expect(within(section('Schedule')).queryByText('Second instalment')).toBeNull();
+  });
+
+  it('keeps Due next and Vendors quoted in place when the quotes did not load, with Try again', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    await open(`${BUDGET}&state=quotes_failed`);
+    for (const name of ['Due next', 'Vendors quoted'])
+      expect(
+        within(section(name)).getByText(
+          'Quotes and payments did not load. Check your connection and try again.',
+        ),
+      ).toBeDefined();
+    expect(
+      within(section('Vendors quoted')).queryByRole('button', { name: 'Add a quote' }),
+    ).toBeNull();
+    fireEvent.click(within(section('Due next')).getByRole('button', { name: 'Try again' }));
+    expect(
+      within(section('Due next')).getByRole('button', { name: 'Trying again…' }),
+    ).toBeDefined();
+    await settle();
+    expect(within(section('Vendors quoted')).getByText('Savour Kitchen')).toBeDefined();
+    expect(document.activeElement?.tagName).toBe('H1');
+    expect(document.activeElement?.textContent).toBe('Budget');
   });
 
   it(

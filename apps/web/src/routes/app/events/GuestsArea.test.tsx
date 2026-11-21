@@ -5327,3 +5327,401 @@ describe('Export (sc-3784)', () => {
     }
   });
 });
+
+describe('What adding them would cost (sc-86)', () => {
+  const ASK = 'POST /api/events/ev_1/budget/what-if';
+
+  function whatIf(heads: number, more: Record<string, unknown> = {}) {
+    const delta = 5000 * heads;
+
+    return {
+      currency: 'NGN',
+      confirmed: { from: '500000.00', to: '500000.00', delta: '0.00' },
+      potential: {
+        from: '700000.00',
+        to: `${700000 + delta}.00`,
+        delta: `${delta}.00`,
+      },
+      fullCostKnown: true,
+      lines: [
+        {
+          id: 'line_1',
+          label: 'Catering',
+          category: 'catering',
+          basis: 'per_head',
+          quantity: {
+            confirmed: { from: 100, to: 100 },
+            potential: { from: 140, to: 140 + heads },
+            reason: null,
+          },
+          known: true,
+          cost: {
+            confirmed: { from: '500000.00', to: '500000.00', delta: '0.00' },
+            potential: {
+              from: '700000.00',
+              to: `${700000 + delta}.00`,
+              delta: `${delta}.00`,
+            },
+          },
+        },
+      ],
+      ...more,
+    };
+  }
+
+  const naira = (amount: number) =>
+    new Intl.NumberFormat('en', {
+      style: 'currency',
+      currency: 'NGN',
+      maximumFractionDigits: 0,
+      minimumFractionDigits: 0,
+    })
+      .format(amount)
+      .replace(/\s/gu, ' ');
+
+  function answer(): HTMLElement {
+    return within(form()).getByRole('status', { name: 'What adding them would cost' });
+  }
+
+  /** The innermost element reading the text whole, though its figures are split into digit groups (sc-72618). */
+  function reading(text: string | RegExp) {
+    const reads = (element: Element) => {
+      const shown = (element.textContent ?? '').replace(/\s+/gu, ' ');
+
+      return typeof text === 'string' ? shown === text : text.test(shown);
+    };
+
+    return (_: string, element: Element | null) =>
+      element != null && reads(element) && ![...element.children].some(reads);
+  }
+
+  it('shows the rise on the upper figure for the guest before Add guest is pressed', async () => {
+    const sent = await opened({
+      [ASK]: (body) => json(whatIf((body as { changes: { by: number }[] }).changes[0]?.by ?? 0)),
+    });
+
+    expect(sent.filter((one) => one.line === ASK).at(-1)?.body).toEqual({
+      changes: [{ change: 'guests', by: 1 }],
+    });
+    await waitFor(() =>
+      expect(within(answer()).getByText(reading(`+${naira(5000)} if all come`))).toBeDefined(),
+    );
+    expect(
+      within(answer()).getByText(
+        reading(
+          `Once they are invited, that would make ${naira(705000)} in total. Settled, it stays ${naira(500000)} until they reply.`,
+        ),
+      ),
+    ).toBeDefined();
+    expect(
+      within(answer()).getByText(
+        reading(`${naira(700000)} → ${naira(705000)} · 140 → 141 if all come`),
+      ),
+    ).toBeDefined();
+    expect(answer().getAttribute('aria-busy')).toBe('false');
+  });
+
+  it('keeps up with the companions, and never shows an answer for an earlier count', async () => {
+    const waiting: ((response: Response) => void)[] = [];
+    await opened({
+      [ASK]: (body) => {
+        const heads = (body as { changes: { by: number }[] }).changes[0]?.by ?? 0;
+
+        return heads === 1
+          ? new Promise<Response>((resolve) => waiting.push(resolve))
+          : json(whatIf(heads));
+      },
+    });
+
+    expect(answer().getAttribute('aria-busy')).toBe('true');
+    fireEvent.click(within(form()).getByRole('button', { name: 'More places' }));
+
+    await waitFor(() =>
+      expect(within(answer()).getByText(reading(`+${naira(10000)} if all come`))).toBeDefined(),
+    );
+    await act(async () => waiting.forEach((resolve) => resolve(json(whatIf(1)))));
+
+    expect(within(answer()).getByText(reading(`+${naira(10000)} if all come`))).toBeDefined();
+    expect(within(answer()).queryByText(reading(`+${naira(5000)} if all come`))).toBeNull();
+  });
+
+  it('says the full cost is not known when a cost it moves has no price', async () => {
+    await opened({
+      [ASK]: () =>
+        json(
+          whatIf(1, {
+            fullCostKnown: false,
+            lines: [
+              {
+                id: 'line_2',
+                label: 'Drinks package',
+                category: 'catering',
+                basis: 'per_head',
+                quantity: {
+                  confirmed: { from: 100, to: 100 },
+                  potential: { from: 140, to: 141 },
+                  reason: null,
+                },
+                known: false,
+                cost: null,
+              },
+            ],
+          }),
+        ),
+    });
+
+    await waitFor(() =>
+      expect(
+        within(answer()).getByText('Full cost not known: 1 cost it moves has no price yet.'),
+      ).toBeDefined(),
+    );
+    expect(within(answer()).getByText('Not known')).toBeDefined();
+  });
+
+  it('lists the priced costs it moves before the ones with no price, whatever their order', async () => {
+    const priced = whatIf(1).lines[0];
+    await opened({
+      [ASK]: () =>
+        json(
+          whatIf(1, {
+            fullCostKnown: false,
+            lines: [
+              {
+                id: 'line_2',
+                label: 'Drinks package',
+                category: 'catering',
+                basis: 'per_head',
+                quantity: {
+                  confirmed: { from: 100, to: 100 },
+                  potential: { from: 140, to: 141 },
+                  reason: null,
+                },
+                known: false,
+                cost: null,
+              },
+              priced,
+            ],
+          }),
+        ),
+    });
+
+    await waitFor(() => expect(within(answer()).getByText('Not known')).toBeDefined());
+    const rows = within(answer())
+      .getAllByRole('listitem')
+      .map((row) => row.textContent ?? '');
+    expect(rows[0]).toContain('Catering');
+    expect(rows[1]).toContain('Drinks package');
+  });
+
+  it('reads Not known if all come when every cost it moves has no price, never +0', async () => {
+    await opened({
+      [ASK]: () =>
+        json(
+          whatIf(1, {
+            fullCostKnown: false,
+            confirmed: { from: '0.00', to: '0.00', delta: '0.00' },
+            potential: { from: '0.00', to: '0.00', delta: '0.00' },
+            lines: [
+              {
+                id: 'line_2',
+                label: 'Catering',
+                category: 'catering',
+                basis: 'per_head',
+                quantity: {
+                  confirmed: { from: 0, to: 0 },
+                  potential: { from: 0, to: 1 },
+                  reason: null,
+                },
+                known: false,
+                cost: null,
+              },
+            ],
+          }),
+        ),
+    });
+
+    await waitFor(() =>
+      expect(
+        within(answer()).getByText('Full cost not known: 1 cost it moves has no price yet.'),
+      ).toBeDefined(),
+    );
+    expect(within(answer()).getByText('Not known if all come')).toBeDefined();
+    expect(answer().textContent).not.toMatch(/0 if all come/u);
+    expect(answer().querySelector('.da-up')).toBeNull();
+  });
+
+  it('asks again after a guest is added, and shows the figure it now lands on', async () => {
+    let added = false;
+    const sent = await opened({
+      [ASK]: () =>
+        json(
+          added
+            ? whatIf(1, { potential: { from: '705000.00', to: '710000.00', delta: '5000.00' } })
+            : whatIf(1),
+        ),
+      'POST /api/events/ev_1/guests': () => {
+        added = true;
+
+        return json({ guest: guest('g_ana', 'Ana Silva') }, 201);
+      },
+    });
+
+    await waitFor(() =>
+      expect(
+        within(answer()).getByText(
+          reading(new RegExp(`Once they are invited, that would make ${naira(705000)}`, 'u')),
+        ),
+      ).toBeDefined(),
+    );
+    const asked = sent.filter((one) => one.line === ASK).length;
+    type('Full name', 'Ana Silva');
+    fireEvent.click(addButton());
+
+    await waitFor(() =>
+      expect(
+        within(answer()).getByText(
+          reading(new RegExp(`Once they are invited, that would make ${naira(710000)}`, 'u')),
+        ),
+      ).toBeDefined(),
+    );
+    expect(sent.filter((one) => one.line === ASK).length).toBeGreaterThan(asked);
+  });
+
+  it('says No change when nothing is counted per guest', async () => {
+    await opened({
+      [ASK]: () =>
+        json(
+          whatIf(1, {
+            potential: { from: '0.00', to: '0.00', delta: '0.00' },
+            lines: [],
+          }),
+        ),
+    });
+
+    await waitFor(() => expect(within(answer()).getByText('No change')).toBeDefined());
+    expect(
+      within(answer()).getByText('Nothing in this budget is counted per guest.'),
+    ).toBeDefined();
+  });
+
+  it('shows a change under one unit in the minor unit, never +0', async () => {
+    await opened({
+      [ASK]: () =>
+        json(
+          whatIf(1, {
+            currency: 'GBP',
+            potential: { from: '10.00', to: '10.40', delta: '0.40' },
+          }),
+        ),
+    });
+
+    await waitFor(() =>
+      expect(within(answer()).getByText(reading('+£0.40 if all come'))).toBeDefined(),
+    );
+  });
+
+  /** sc-71226 bullet 5: 100 Coming, one per_head line at 999999999999999.99, one guest added. */
+  function huge() {
+    const rise = {
+      from: '99999999999999999.00',
+      to: '100999999999999998.99',
+      delta: '999999999999999.99',
+    };
+
+    return whatIf(1, {
+      currency: 'GBP',
+      confirmed: { from: '99999999999999999.00', to: '99999999999999999.00', delta: '0.00' },
+      potential: rise,
+      lines: [
+        {
+          ...whatIf(1).lines[0],
+          label: 'Dinner',
+          quantity: {
+            confirmed: { from: 100, to: 100 },
+            potential: { from: 100, to: 101 },
+            reason: null,
+          },
+          cost: { confirmed: { ...rise, to: rise.from, delta: '0.00' }, potential: rise },
+        },
+      ],
+    });
+  }
+
+  it('reads a huge figure exactly, in whole units, and breaks it only between digit groups (sc-72618)', async () => {
+    await opened({ [ASK]: () => json(huge()) });
+
+    await waitFor(() =>
+      expect(
+        within(answer()).getByText(reading('+£1,000,000,000,000,000 if all come')),
+      ).toBeDefined(),
+    );
+    expect(
+      within(answer()).getByText(
+        reading(
+          'Once they are invited, that would make £100,999,999,999,999,999 in total. Settled, it stays £99,999,999,999,999,999 until they reply.',
+        ),
+      ),
+    ).toBeDefined();
+    expect(
+      within(answer()).getByText(
+        reading('£99,999,999,999,999,999 → £100,999,999,999,999,999 · 100 → 101 if all come'),
+      ),
+    ).toBeDefined();
+    const plus = answer().querySelector('.da-amount');
+    expect(plus?.textContent).toBe('+£1,000,000,000,000,000');
+    expect([...(plus?.querySelectorAll('.da-group') ?? [])].map((one) => one.textContent)).toEqual([
+      '+£1,',
+      '000,',
+      '000,',
+      '000,',
+      '000,',
+      '000',
+    ]);
+    expect(plus?.querySelectorAll('wbr')).toHaveLength(5);
+  });
+
+  it('reads the huge figures exactly in Spanish, the code kept with its last group (sc-72618)', async () => {
+    await opened({ [ASK]: () => json(huge()) });
+    await waitFor(() => expect(answer().querySelector('.da-amount')).not.toBeNull());
+    const shown = answer();
+    await act(() => i18next.changeLanguage('es'));
+    try {
+      await waitFor(() =>
+        expect(shown.querySelector('.da-amount')?.textContent).toBe(
+          '+1.000.000.000.000.000\u00a0GBP',
+        ),
+      );
+      const groups = [...shown.querySelectorAll('.da-group')].map((one) => one.textContent);
+      expect(groups).toContain('999\u00a0GBP');
+      expect(shown.textContent).toContain('100.999.999.999.999.999\u00a0GBP');
+      expect(shown.textContent).toContain('99.999.999.999.999.999\u00a0GBP');
+      expect(shown.textContent).not.toContain('101.000.000.000.000.000');
+    } finally {
+      await i18next.changeLanguage('en');
+    }
+  });
+
+  it('shows no answer when it cannot be fetched, and the form still adds', async () => {
+    await opened({ [ASK]: () => problem('internal_error', 500) });
+
+    await waitFor(() =>
+      expect(
+        within(form()).queryByRole('status', { name: 'What adding them would cost' }),
+      ).toBeNull(),
+    );
+    expect(addButton()).toBeDefined();
+  });
+
+  it('asks nothing and shows no answer to someone who cannot read the budget', async () => {
+    signedIn();
+    const sent = await onGuests(
+      { 'GET /api/events/ev_1/guests': () => json(listOf([NGOZI])) },
+      OWNER_PERMISSIONS.filter((one) => !one.startsWith('budget.')),
+    );
+    fireEvent.click(await screen.findByRole('button', { name: 'Add guest' }));
+    await waitFor(() => expect(document.activeElement).toBe(field('Full name')));
+
+    expect(screen.queryByText('What adding them would cost')).toBeNull();
+    expect(sent.some((one) => one.line === ASK)).toBe(false);
+  });
+});

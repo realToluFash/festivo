@@ -94,6 +94,7 @@ export const keptKeys = {
   staff: (eventId: string) => `staff:${eventId}`,
   schedule: (eventId: string) => `schedule:${eventId}`,
   people: (eventId: string) => `people:${eventId}`,
+  budget: (eventId: string) => `budget:${eventId}`,
 };
 
 /** Signing out or moving to another organisation: nothing one account or organisation loaded is shown under the next. */

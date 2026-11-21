@@ -28,7 +28,7 @@
 .js-frame {
   max-width: 100%;
   overflow-x: auto;
-  border-radius: var(--radiusInset);
+  container: js-frame / inline-size;
 }
 
 .js-frame:focus-visible {
@@ -127,10 +127,20 @@
   margin: 0;
   color: var(--colorAttentionText);
   font: var(--typeSmallStrong);
+  overflow-wrap: normal;
 }
 
 .js-gaps.is-covered {
   color: var(--colorInkSecondary);
+}
+
+/* A frame narrower than the name's 120 px and a 22rem line, as at 400% zoom: the line starts under the name and takes the frame's width, so it shows whole at every scroll position (sc-70959). */
+@container js-frame (width < 29.5rem) {
+  .js-gaps {
+    grid-column: 1 / -1;
+    left: 0;
+    max-width: 100cqi;
+  }
 }
 
 .js-table td,
@@ -363,6 +373,10 @@
   .js-shift-top .js-job-acts {
     margin-left: 0;
   }
+
+  .js-when-pair {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }
 
 .sn-tabs {
@@ -389,6 +403,10 @@
   background: var(--colorCard);
   box-shadow: var(--shadowKnob);
   color: var(--colorAccentText);
+}
+
+a.sn-tab {
+  text-decoration: none;
 }
 
 a.sn-tab:hover {

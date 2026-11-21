@@ -7,9 +7,12 @@ import {
   capInDisc,
   capUnderTitle,
   drawnLine,
+  drawnSize,
   besideGlyph,
   fitWidest,
   grownPad,
+  labelStart,
+  lineStart,
   LABEL_LINE,
   frameTitleSize,
   nameLines,
@@ -18,9 +21,13 @@ import {
   rowsFloor,
   sideListWidth,
   TITLE_LINE,
+  piecesIn,
   titleSize,
   wordsIn,
+  wordsRoomKey,
   wordsSlot,
+  wholeLineHeight,
+  wordsPending,
 } from './textSize.ts';
 
 const AX1 = 1.786;
@@ -141,6 +148,52 @@ describe('wordsIn', () => {
       'votre',
       'application',
     ]);
+  });
+});
+
+describe('piecesIn', () => {
+  it('splits a word after the hyphen it already has, keeping the hyphen on the first part', () => {
+    expect(piecesIn(['Password, two-factor, signed-in devices'])).toEqual([
+      'Password,',
+      'two-',
+      'factor,',
+      'signed-',
+      'in',
+      'devices',
+    ]);
+  });
+
+  it('keeps a word with no hyphen whole, and lists each piece once across the texts', () => {
+    expect(piecesIn(['Notifications', 'e-mail Notifications'])).toEqual([
+      'Notifications',
+      'e-',
+      'mail',
+    ]);
+  });
+});
+
+describe('labelStart', () => {
+  it('grows a title to the cap and no further', () => {
+    expect(labelStart(16, 3.571, 43)).toBe(43);
+  });
+
+  it('keeps main’s size below the cap', () => {
+    expect(labelStart(16, 1, 34)).toBe(16);
+    expect(labelStart(16, 2.143, 43)).toBeCloseTo(34.29, 2);
+  });
+});
+
+describe('lineStart', () => {
+  it('starts the line no larger than its title draws', () => {
+    expect(lineStart(13.5, 3.571, 43, 35)).toBe(35);
+  });
+
+  it('starts the line at the cap when its title draws at the cap', () => {
+    expect(lineStart(13.5, 3.571, 43, 43)).toBe(43);
+  });
+
+  it('keeps main’s line at the default size', () => {
+    expect(lineStart(13.5, 1, 34, 16)).toBe(13.5);
   });
 });
 
@@ -330,6 +383,23 @@ describe('the width labels have to fit (sc-37298)', () => {
     expect(wordsSlot({ wrapped: null, kept, reported: null }, 24, 360)).toBe(0);
   });
 
+  it('forgets a wrapped text’s width once its container reports a new room (sc-69816)', () => {
+    const kept = { key: wordsRoomKey(43, 402), width: 129 };
+    const reported = { windowWidth: 402, width: 238 };
+
+    expect(wordsSlot({ wrapped: null, kept, reported }, 43, 402, 238)).toBe(238);
+    expect(fitWidest(16, 43, 171, wordsSlot({ wrapped: null, kept, reported }, 43, 402, 238))).toBe(
+      43,
+    );
+  });
+
+  it('keeps a wrapped text’s width while its container’s room is the same (sc-69816)', () => {
+    const kept = { key: wordsRoomKey(43, 402, 238), width: 236 };
+    const reported = { windowWidth: 402, width: 238 };
+
+    expect(wordsSlot({ wrapped: null, kept, reported }, 43, 402, 238)).toBe(236);
+  });
+
   it('takes the width a text wrapped at over anything kept', () => {
     const kept = { key: '20|360', width: 120 };
 
@@ -372,5 +442,45 @@ describe('pasteHeight', () => {
   it('grows past the word Apple draws at the accessibility sizes', () => {
     expect(pasteHeight(45, AX1)).toBeGreaterThan(17 * AX1 * 1.2 + 14);
     expect(pasteHeight(45, 3.12)).toBeGreaterThan(17 * 3.12 * 1.2 + 14);
+  });
+});
+
+describe('wholeLineHeight', () => {
+  it('scales to whole points at the size a text is drawn at', () => {
+    expect(wholeLineHeight(13, 40) * (40 / 13)).toBeCloseTo(49, 9);
+    expect(wholeLineHeight(15.5, 43) * (43 / 15.5)).toBeCloseTo(53, 9);
+    expect(wholeLineHeight(13, 13)).toBe(16);
+  });
+
+  it('keeps four lines of a stepped-down row line at four whole lines', () => {
+    expect(4 * wholeLineHeight(13, 40) * (40 / 13)).toBeCloseTo(196, 9);
+  });
+});
+
+describe('drawnSize', () => {
+  it('grows with the text size up to its multiplier', () => {
+    expect(drawnSize(14, 2)).toBe(28);
+    expect(drawnSize(14, 2, 1.5)).toBe(21);
+    expect(drawnSize(14, 1.2, 1.5)).toBeCloseTo(16.8, 9);
+  });
+
+  it('ignores a multiplier under 1, as React Native does', () => {
+    expect(drawnSize(14, 2, 0)).toBe(28);
+  });
+});
+
+describe('wordsPending', () => {
+  it('never holds a text given no room', () => {
+    expect(wordsPending(undefined, 0, 0, 3)).toBe(false);
+  });
+
+  it('holds a text whose room is not reported yet', () => {
+    expect(wordsPending(0, 0, 3, 3)).toBe(true);
+    expect(wordsPending(120, 0, 3, 3)).toBe(true);
+  });
+
+  it('holds a text until every word is measured, then draws it', () => {
+    expect(wordsPending(120, 120, 2, 3)).toBe(true);
+    expect(wordsPending(120, 120, 3, 3)).toBe(false);
   });
 });

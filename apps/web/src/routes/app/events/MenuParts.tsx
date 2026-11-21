@@ -392,7 +392,7 @@ export function CourseCard({
             <Glyph name="lock" size={16} weight={2.2} />
             <span>
               {t('eventMenu.picksClosedCourse', {
-                course: name.toLocaleLowerCase(i18n.resolvedLanguage),
+                course: name,
               })}
             </span>
           </p>

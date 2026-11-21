@@ -28,16 +28,19 @@ import { OutcomeLine } from './OutcomeLine.tsx';
 import { EventPeople } from './EventPeople.tsx';
 import { GuestsArea, GuestsGone } from './GuestsArea.tsx';
 import { RunArea } from './RunArea.tsx';
+import { BudgetArea } from './BudgetArea.tsx';
 import { MenuArea } from './MenuArea.tsx';
 import { ScheduleOrNight } from './NightArea.tsx';
 import { SeatingArea } from './SeatingArea.tsx';
 import { JobsShiftsArea } from './JobsShiftsArea.tsx';
 import { RosterArea } from './RosterArea.tsx';
+import { StationsArea } from './StationsArea.tsx';
 import { PAGE_NEEDS } from './handoff.ts';
 import { typeLabel } from './eventTypes.ts';
 import { AllDates } from './Timeline.tsx';
 import { EventCrumb, Overview, PhaseChange } from './EventOverview.tsx';
 import { OutsideOverview } from './OutsideOverview.tsx';
+import { OutsideGone } from '../OutsideShell.tsx';
 import { useGoneEvent, useShowEvent } from './EventNav.tsx';
 import { Arrived, Skeleton } from '../../../components/Skeleton.tsx';
 import { NotFound } from '../../public/NotFound.tsx';
@@ -49,7 +52,15 @@ type Load =
   | { kind: 'notFound' }
   | { kind: 'loaded'; event: OrganisationEvent; tag: string };
 
-type Page = 'event' | 'guests' | 'dates' | 'people' | 'run' | 'staffJobs' | PlaceholderEventArea;
+type Page =
+  | 'event'
+  | 'guests'
+  | 'dates'
+  | 'people'
+  | 'run'
+  | 'staffJobs'
+  | 'staffStations'
+  | PlaceholderEventArea;
 
 export function EventView() {
   return <ForEvent page="event" />;
@@ -80,11 +91,20 @@ export function EventJobsShifts() {
   return <ForEvent page="staffJobs" />;
 }
 
+export function EventStations() {
+  return <ForEvent page="staffStations" />;
+}
+
 /** Staff opens its first tab, the Roster (sc-3906). */
 export function EventStaff() {
   const { eventId = '' } = useParams();
 
   return <Navigate replace to={`/app/events/${encodeURIComponent(eventId)}/staff/roster`} />;
+}
+
+/** Budget, with its pages for everything due and for each vendor quoted (sc-87). */
+export function EventBudget() {
+  return <ForEvent page="budget" />;
 }
 
 /** One of the areas not built yet: its panel says it is coming (sc-22103). */
@@ -98,7 +118,7 @@ function ForEvent({ page }: { page: Page }) {
   const session = useSession();
   const { eventId = '' } = useParams();
   const outside = outsideOn(session, eventId);
-  const organisationId = session.organisation?.id ?? (outside == null ? null : OUTSIDE);
+  const organisationId = outside == null ? (session.organisation?.id ?? null) : OUTSIDE;
 
   if (organisationId == null) return null;
 
@@ -112,7 +132,7 @@ function ForEvent({ page }: { page: Page }) {
   );
 }
 
-/** Held from outside an organisation (sc-71): the event is the account's whichever organisation it belongs to. */
+/** Held from outside an organisation (sc-71), by a member of another as much as by an account in none (sc-68438): the event is the account's whichever organisation it belongs to. */
 const OUTSIDE = 'outside';
 
 function ofOrganisation(event: OrganisationEvent, organisationId: string): boolean {
@@ -128,6 +148,20 @@ function Withheld() {
   );
 }
 
+/** Without budget.read, as an event of another organisation reads (sc-85): it never says what it is hiding. */
+function EventNotFound() {
+  const { t } = useTranslation();
+
+  return (
+    <div className="event-page">
+      <EventCrumb name={null} />
+      <section className="card">
+        <h1 tabIndex={-1}>{t('eventPage.notFound')}</h1>
+      </section>
+    </div>
+  );
+}
+
 function EventOf({
   organisationId,
   eventId,
@@ -138,7 +172,10 @@ function EventOf({
   page: Page;
 }) {
   const { t } = useTranslation();
-  const outside = outsideOn(useSession(), eventId);
+  const session = useSession();
+  const outside = outsideOn(session, eventId);
+  const noOrganisation = session.organisation == null && session.pausedIn == null;
+  const looking = outside != null && outside.role !== 'can_edit' ? outside : null;
   const [load, setLoad] = useState<Load>({ kind: 'loading' });
   const [attempt, setAttempt] = useState(0);
   const [refresh, setRefresh] = useState(0);
@@ -208,12 +245,16 @@ function EventOf({
     else keepLoaded(key, shown, answered.current);
     answered.current = null;
   }, [load, eventId]);
-  useShowEvent(eventId, load.kind === 'loaded' ? load.event : undefined);
+  const budgetUnseen =
+    page === 'budget' && load.kind === 'loaded' && !canOn(load.event, PAGE_NEEDS.budget);
+  useShowEvent(eventId, load.kind === 'loaded' && !budgetUnseen ? load.event : undefined);
   useGoneEvent(
     eventId,
     (page === 'guests' && load.kind === 'notFound') ||
       (load.kind === 'failed' && load.offline === true),
   );
+
+  if (noOrganisation && load.kind === 'notFound') return <OutsideGone eventId={eventId} />;
 
   if (page === 'guests' && load.kind === 'notFound')
     return (
@@ -231,6 +272,9 @@ function EventOf({
 
   if (page === 'menu' && load.kind === 'loaded')
     return canOn(load.event, PAGE_NEEDS.menu) ? <MenuArea event={load.event} /> : <Withheld />;
+
+  if (page === 'budget' && load.kind === 'loaded')
+    return budgetUnseen ? <EventNotFound /> : <BudgetArea event={load.event} />;
 
   if (page === 'schedule' && load.kind === 'loaded')
     return canOn(load.event, PAGE_NEEDS.schedule) ? (
@@ -251,6 +295,9 @@ function EventOf({
     ) : (
       <Withheld />
     );
+
+  if (page === 'staffStations' && load.kind === 'loaded')
+    return canOn(load.event, PAGE_NEEDS.staff) ? <StationsArea event={load.event} /> : <Withheld />;
 
   if (page === 'guests' && load.kind === 'loaded')
     return canOn(load.event, PAGE_NEEDS.guests) ? (
@@ -308,14 +355,18 @@ function EventOf({
       <EventDesk>
         {(covered) => (
           <div className="event-page ev-wide" inert={covered}>
-            <EventCrumb name={load.kind === 'loaded' ? load.event.name : null}>
-              {refreshing && <Refreshing />}
-            </EventCrumb>
+            {looking != null ? (
+              refreshing && <Refreshing />
+            ) : (
+              <EventCrumb name={load.kind === 'loaded' ? load.event.name : null}>
+                {refreshing && <Refreshing />}
+              </EventCrumb>
+            )}
             {states}
             {load.kind === 'loaded' && (
               <Arrived>
-                {outside != null && outside.role !== 'can_edit' ? (
-                  <OutsideOverview event={load.event} held={outside} heading={heading} />
+                {looking != null ? (
+                  <OutsideOverview event={load.event} held={looking} heading={heading} />
                 ) : (
                   <Overview
                     event={load.event}
@@ -334,8 +385,18 @@ function EventOf({
   return (
     <AskHost>
       {(covered) => (
-        <div className="event-page" inert={covered}>
-          <EventCrumb name={load.kind === 'loaded' ? load.event.name : null}>
+        <div className={page === 'people' ? 'event-page is-people' : 'event-page'} inert={covered}>
+          <EventCrumb
+            name={load.kind === 'loaded' ? load.event.name : null}
+            area={
+              page === 'people'
+                ? {
+                    label: t('eventPeople.title'),
+                    event: `/app/events/${encodeURIComponent(eventId)}`,
+                  }
+                : undefined
+            }
+          >
             {refreshing && <Refreshing />}
           </EventCrumb>
 
@@ -343,12 +404,14 @@ function EventOf({
 
           {load.kind === 'loaded' && (
             <Arrived>
-              <EventTop
-                event={load.event}
-                tag={load.tag}
-                heading={heading}
-                onChange={(event, tag) => setLoad({ kind: 'loaded', event, tag })}
-              />
+              {page !== 'people' && (
+                <EventTop
+                  event={load.event}
+                  tag={load.tag}
+                  heading={heading}
+                  onChange={(event, tag) => setLoad({ kind: 'loaded', event, tag })}
+                />
+              )}
               {page === 'dates' && <AllDatesPage event={load.event} heading={heading} />}
               {page === 'people' && <PeoplePage event={load.event} />}
               {isPlaceholderEventArea(page) &&
@@ -363,7 +426,7 @@ function EventOf({
   );
 }
 
-/** Above every area but Overview, whose cover card is its top: the name, the phase, the dates, the venue, and the phase's one primary (sc-22103). */
+/** Above every area but Overview, whose cover card is its top, and People, which opens on its own title (sc-69635): the name, the phase, the dates, the venue, and the phase's one primary (sc-22103). */
 function EventTop({
   event,
   tag,

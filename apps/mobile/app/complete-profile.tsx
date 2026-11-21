@@ -28,6 +28,7 @@ import { CountryPicker, focusPicker } from '../src/components/CountryPicker.tsx'
 import { Field, focusChecked, keysStayDown, TextField } from '../src/components/Field.tsx';
 import { InvitationRows } from '../src/components/InvitationRows.tsx';
 import { LinkedNotice } from '../src/components/LinkedNotice.tsx';
+import { ManagedBanner } from '../src/components/ManagedBanner.tsx';
 import { Notice } from '../src/components/Notice.tsx';
 import { OrgTile } from '../src/components/OrgTile.tsx';
 import {
@@ -426,6 +427,15 @@ function Details({
   }, [account.needsOrganisation]);
 
   const offers = offered?.offers ?? [];
+  const managed = offered?.managed ?? null;
+  const managedBanner = managed != null && (
+    <ManagedBanner
+      organisation={managed.organisation.name}
+      message={managed.message}
+      way={false}
+      testID="completeProfile.managed"
+    />
+  );
   const step = organisationStep({
     needsOrganisation: account.needsOrganisation,
     invitations: loaded.invitations.length,
@@ -433,6 +443,7 @@ function Details({
     offers: offers.length,
     own,
     joined: firstJoined != null,
+    managed: managed != null,
   });
   const { invited, listsInvitations, asksForOrganisation, showsOffers: showOffers } = step;
   const single = step.showsSingleInvitation ? loaded.invitations[0] : undefined;
@@ -572,7 +583,7 @@ function Details({
           busy={saving}
           testID={`completeProfile.ask.${singleOffer.id}`}
         />
-        {startOwnButton}
+        {managed == null && startOwnButton}
       </>
     );
   } else if (invited || showOffers) foot = undefined;
@@ -587,13 +598,15 @@ function Details({
       ) : step.heading === 'offers' ? (
         <Heading
           title={t('steps.organisationTitle')}
-          intro={t('domainJoining.intro', { domain: offered?.domain ?? '' })}
+          {...(managed == null
+            ? { intro: t('domainJoining.intro', { domain: offered?.domain ?? '' }) }
+            : {})}
           answer={askedInstead}
         />
       ) : (
         <Heading title={t('steps.organisationTitle')} />
       )}
-      <View style={styles.form}>
+      <View style={[styles.form, styles.details]}>
         {children}
         {failed != null && (
           <Notice
@@ -669,11 +682,14 @@ function Details({
         )}
 
         {singleOffer != null && (
-          <Panel
-            organisation={singleOffer.name}
-            title={t('domainJoining.usesSoirely', { organisation: singleOffer.name })}
-            line={t('domainJoining.approvesFirst')}
-          />
+          <View style={styles.offerAndBanner}>
+            <Panel
+              organisation={singleOffer.name}
+              title={t('domainJoining.usesSoirely', { organisation: singleOffer.name })}
+              line={t('domainJoining.approvesFirst')}
+            />
+            {managedBanner}
+          </View>
         )}
 
         {showOffers && singleOffer == null && (
@@ -697,11 +713,11 @@ function Details({
                 />
               </View>
             ))}
-            {startOwnButton}
+            {managedBanner || startOwnButton}
           </View>
         )}
 
-        {needsOne && stillOpen === 0 && offers.length > 0 && own && (
+        {needsOne && stillOpen === 0 && offers.length > 0 && own && managed == null && (
           <QuietButton
             label={t('domainJoining.askInstead', { domain: offered?.domain ?? '' })}
             onPress={() => {
@@ -712,6 +728,8 @@ function Details({
             testID="completeProfile.askInstead"
           />
         )}
+
+        {step.managedInstead && managedBanner}
 
         {asksForOrganisation && (
           <View style={styles.fields}>
@@ -846,7 +864,9 @@ function SingleInvitation({
 
 const styles = StyleSheet.create({
   form: { gap: tokens.space3xl },
+  details: { marginTop: tokens.space3xl },
   fields: { gap: tokens.spaceXl },
+  offerAndBanner: { gap: tokens.spaceXl },
   invitations: { gap: tokens.spaceMd },
   offers: { gap: tokens.spaceMd },
   offer: {

@@ -46,6 +46,17 @@ describe('the organisation switcher’s sample (sc-30323)', () => {
     expect(where.paused).toBe(false);
   });
 
+  it('counts none of a managed account’s invitations, and lists both (sc-73668)', () => {
+    for (const state of ['managed-closed', 'managed-listed'] as const) {
+      const where = whereOf(state);
+
+      expect(where.invitations.map((one) => one.id)).toEqual([CELEBRACIONES, BLUEBIRD]);
+      expect(waiting(where)).toEqual([]);
+      expect(openingOf(state).panel).toBeNull();
+    }
+    expect(waiting(whereOf('managed')).map((one) => one.id)).toEqual([BLUEBIRD]);
+  });
+
   it('holds more than 15 only in the states that show the search', () => {
     for (const state of ['many', 'search', 'no-match'] as const) {
       expect(whereOf(state).places.length).toBeGreaterThan(SEARCH_FROM);

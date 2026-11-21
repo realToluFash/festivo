@@ -6,6 +6,7 @@ namespace App\Domain\Organisation\RequestLink;
 
 use App\Audit\Auditor;
 use App\Domain\Organisation\DomainJoining\JoinOfferFinder;
+use App\Domain\Organisation\EmailDomains\ManagedAccounts;
 use App\Domain\Organisation\Members\MembershipMachine;
 use App\Domain\User\Mail\UserMailer;
 use App\Entity\Membership;
@@ -45,6 +46,7 @@ final readonly class LinkRequester
         private MembershipRepository $membershipRepository,
         private MembershipTransitionRepository $membershipTransitionRepository,
         private MembershipMachine $membershipMachine,
+        private ManagedAccounts $managedAccounts,
         private RateLimiterFactoryInterface $joinRequestAccountLimiter,
         private RateLimiterFactoryInterface $joinRequestOrganisationLimiter,
         private EntityManagerInterface $entityManager,
@@ -89,6 +91,8 @@ final readonly class LinkRequester
     /** Under the account's lock and the organisation's, so requests sent together are counted one after another on both limits, and charged only once made. */
     public function ask(User $user, Organisation $organisation, ?string $message): Membership
     {
+        $this->managedAccounts->refuseUnlessHome($user, $organisation, MembershipChannel::Request->value);
+
         $asked = $this->entityManager->wrapInTransaction(function () use ($user, $organisation, $message): Membership|ApiException {
             $this->entityManager->refresh($user, LockMode::PESSIMISTIC_WRITE);
             $this->entityManager->refresh($organisation, LockMode::PESSIMISTIC_WRITE);

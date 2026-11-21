@@ -243,3 +243,10 @@ resend and cooldown, since the details screen can lead there. Logout and refresh
 they never reach it. A route added without being named there is gated, so an unprotected
 one takes a deliberate act. `OnboardingGateTest` checks every name on the list is a real
 route.
+
+A door code's account (sc-72, `AccountOrigin::DoorCode`, no address and no number) has
+nothing to verify, so it is not asked to. It is not let through everywhere instead: it
+reaches only `#[InEvent]` routes, where its grant on the one event decides as for anyone,
+and `OnboardingGate::DEVICE_REACHES` (`me` and the language switcher). Every other route,
+exempt or not, answers it `403 account_unverified`, so it cannot found an organisation,
+run the assistant or reach another organisation's routes. `DoorCodesTest` holds this.

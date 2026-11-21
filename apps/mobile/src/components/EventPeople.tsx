@@ -362,7 +362,7 @@ export function EventPeople({
                       title={name}
                       line={line}
                       lead={<PersonMark person={one} side={40} />}
-                      tag={tag == null ? null : { kind: 'now', word: tag }}
+                      tag={tag == null ? null : { kind: 'now', word: tag, wraps: true }}
                       trail={
                         opens ? (
                           <Glyph name="down" size={18} ink={tokens.colorInkTertiary} weight={2.3} />

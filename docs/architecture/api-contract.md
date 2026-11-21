@@ -340,6 +340,57 @@ else `GET /api/orgs/{id}/members` leaves them out entirely.
   check settle a due claim first. The record is asked of DNS over HTTPS at
   `DNS_TXT_ENDPOINT` (smocker in the local stack).
 
+### Email domains (sc-560)
+
+An Owner or an Admin proves the organisation owns a domain; a Member gets `403
+permission_required` on every route, and a change off Enterprise `403 plan_required`.
+
+- `GET /api/orgs/{id}/email-domains` answers `{plan, domains}`, `plan` one of `enterprise`,
+  `free` and `left` (had Enterprise, domains kept read only). Each domain carries `status`
+  (`waiting`, `proved`, `failed`, `missing`), `record` (`{type, name, value}`, the TXT record
+  at `_soirely-verify.<domain>`), and each instant as `…At` and written in the caller's zone:
+  `added`, `proved`, `checksEnd` (added + 7 × 24 h) and `putBackBy` (first missing + 14 × 24 h).
+- `POST …/email-domains` with `{domain}` answers `201`, or `422` on `domain`: `domain_blank`,
+  `domain_invalid`, `domain_public`, `domain_listed`, `domain_taken`.
+- `POST …/email-domains/{domain}/verify` looks the record up at once and answers the page with
+  `found`; `409 email_domain_taken` once another organisation has proved it.
+  `DELETE …/email-domains/{domain}` removes it, proved or not.
+- `app:email-domains:check` (every minute) looks a waiting domain up hourly and fails it at
+  `checksEnd`, re-checks a proved one every 30 days, and lapses a missing one at `putBackBy`.
+  It leaves an organisation off Enterprise as it was. Proving stops every other
+  organisation's joining listing of the domain (`/domains` rows say `stopped`, and this
+  organisation's own row `proved`); it never adds a listing.
+
+### Audit log (sc-611)
+
+An Owner or an Admin reads, filters and exports the organisation's log; a Member gets `403
+permission_required`, and an organisation off Enterprise `403 plan_required` on every route,
+reading included. Entries are recorded on every plan.
+
+- `GET /api/orgs/{id}/audit-log` with `person`, `type` (`events`, `event_access`, `members`,
+  `security`, `organisation`, `audit_log`), `event`, `from`, `to` (days in the caller's zone)
+  and `before` (the last page's `next`) answers `{organisation, zone, entries, next, people,
+events, preparing}`: 50 entries a page, newest first, from the last 365 days. Each entry
+  carries `at` (UTC), `day` (`YYYY-MM-DD`) and `time` (`HH:mm`) in the caller's zone, `who`
+  (`{kind: person|support|system, name, email}`), `what` in words, `on` (`{name, eventId,
+gone}`, `eventId` null once the event is gone), `changes`, `recorded`, `type`, `action`
+  (sc-73's code), and `address` and `device` on Sign-in and security entries only.
+  `recorded` (sc-76228) is `[{label, value}]` in the reader's words: what an entry records
+  beside a change, an export's Format, Filters and Entries and a plan change's Reason, which
+  no longer come in `changes`; `[]` on every other entry. A start after the end is `422` on
+  `to`, `dates_backwards`.
+- `POST …/audit-log/views` records the log being opened (`204`); the client sends it once per
+  opening, not per filter or page.
+- `POST …/audit-log/exports` with `{format: csv|jsonl}` and the filters: up to 10,000 entries
+  answer the file (`200`); up to 1,000,000 answer `202 {id, count, email}`, prepared after the
+  response and emailed (`audit_export_ready`) to the person who asked only; more is `422
+audit_export_too_many` before anything starts. Each export is an entry of its own. The
+  file keeps its twelve columns; its `changes` column joins an entry's `changes` and then its
+  `recorded`, `; ` between.
+- `POST …/audit-log/exports/{exportId}/download` hands the prepared file to the person who
+  asked, signed in, for 24 hours from its being ready: `404` for anyone else, `410
+export_expired` after.
+
 ## Authentication
 
 A bearer access token on every request, renewed from a refresh token the client keeps.

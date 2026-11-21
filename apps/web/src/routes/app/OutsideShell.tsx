@@ -1,33 +1,89 @@
-import type { OutsideEvent } from '@soirely/api-client';
-import { initials } from '@soirely/domain';
-import { type KeyboardEvent, useCallback, useEffect, useId, useRef, useState } from 'react';
+import type { Membership, OutsideEvent } from '@soirely/api-client';
+import {
+  initials,
+  isUnderWay,
+  outsideEventWhen,
+  outsideEventsInOrder,
+  roleName,
+} from '@soirely/domain';
+import {
+  type KeyboardEvent,
+  useCallback,
+  useEffect,
+  useId,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import { Navigate, Outlet, useLocation, useNavigate } from 'react-router';
 
+import { api } from '../../api.ts';
 import { DeskPersonFace, DeskSidebar } from '../../components/DeskSidebar.tsx';
+import { EventSideCard } from '../../components/EventSideCard.tsx';
 import { ErrorBoundary } from '../../components/ErrorBoundary.tsx';
 import { Glyph } from '../../components/Glyph.tsx';
 import { LinkedNotice } from '../../components/LinkedNotice.tsx';
 import { OfflineBand, OfflineBox, OfflineProvider } from '../../components/OfflineBand.tsx';
 import { SkipLink } from '../../components/SkipLink.tsx';
 import { outsideAreas } from '../../components/eventSideAreas.ts';
-import { useSession } from '../../session.ts';
+import { dateLocale } from '../../i18n/index.ts';
+import { meshFor } from '../../mesh.ts';
+import { rereadOutsideEvents, useSession } from '../../session.ts';
 import { useSignOut } from '../../signOut.ts';
+import { MenuGroup, OrganisationRow, OutsideEventRow } from '../../components/OutsideRows.tsx';
 import { EventNav, eventAreaPath, useInsideEvent } from './events/EventNav.tsx';
+import { openedFrom, useRoutedEventId } from './outsideRoute.ts';
 import '../../components/SettingsParts.css';
 import './outside.css';
 
-/** An account with no organisation, inside an event it holds from outside (sc-71): no Today, Events, Calendar or switcher, its level's areas, and Your account and Sign out from the person at the sidebar's foot. */
-export function OutsideShell({ events }: { events: readonly [OutsideEvent, ...OutsideEvent[]] }) {
+const EDGE = 12;
+
+/** A member of an organisation inside another's event they hold from outside (sc-68438): their organisations, each opening its Today. */
+export interface MemberWay {
+  organisations: readonly Membership[];
+  onOpen: (organisation: Membership) => void;
+}
+
+/** Inside an event held from outside an organisation (sc-71): its level's areas, and from the person at the sidebar's foot the account's other events and, for a member, its organisations (sc-68438), then Your account and Sign out. */
+export function OutsideShell({
+  events,
+  member = null,
+  shown = [],
+}: {
+  events: readonly OutsideEvent[];
+  member?: MemberWay | null;
+  /** Events the account held when the page was opened, for the shell around a not-found once none is left. */
+  shown?: readonly OutsideEvent[];
+}) {
   const { t } = useTranslation();
-  const { pathname } = useLocation();
+  const { pathname, state } = useLocation();
   const routed = useInsideEvent();
+  const routedId = useRoutedEventId();
+  const [now] = useState(() => new Date());
   const atAccount = pathname === '/app/account' || pathname.startsWith('/app/account/');
-  const held = routed == null ? null : (events.find((one) => one.id === routed.eventId) ?? null);
-  const event = held ?? events[0];
+  const held = routedId == null ? null : (events.find((one) => one.id === routedId) ?? null);
+  const gone = !atAccount && routedId != null && held == null;
+  const from = openedFrom(state);
+  const landing = outsideEventsInOrder(events, now)[0] ?? null;
+  const event =
+    held ??
+    (gone
+      ? (events.find((one) => one.id === from) ?? shown.find((one) => one.id === from))
+      : null) ??
+    landing ??
+    (gone ? (shown[0] ?? null) : null);
+  const heldId = held?.id;
+
+  useEffect(() => {
+    if (heldId != null) void rereadOutsideEvents().catch(() => undefined);
+  }, [heldId]);
+
+  if (event == null) return <Navigate replace to="/app" />;
+
   const areas = outsideAreas(event.role);
 
-  if (!atAccount && (held == null || routed == null || !areas.includes(routed.area))) {
+  if (!atAccount && !gone && (held == null || routed == null || !areas.includes(routed.area))) {
     return <Navigate replace to={eventAreaPath(event.id, 'overview')} />;
   }
 
@@ -39,14 +95,28 @@ export function OutsideShell({ events }: { events: readonly [OutsideEvent, ...Ou
           <DeskSidebar
             label={t('app.name')}
             pill={null}
-            foot={<OutsidePerson role={t(`eventPeople.role.${event.role}`)} />}
+            foot={
+              <OutsidePerson
+                role={t(`eventPeople.role.${event.role}`)}
+                groups={
+                  member == null && events.length < 2
+                    ? null
+                    : { events, member, here: held?.id ?? null, now }
+                }
+              />
+            }
           >
             <div className="shell-links">
               <EventNav
-                inside={routed ?? { eventId: event.id, area: null, onPage: false }}
+                inside={
+                  !gone && routed != null
+                    ? routed
+                    : { eventId: event.id, area: null, onPage: false }
+                }
                 onFollow={undefined}
                 areas={areas}
                 back={false}
+                card={gone ? <OutsideSideCard event={event} now={now} /> : null}
               />
             </div>
           </DeskSidebar>
@@ -55,7 +125,7 @@ export function OutsideShell({ events }: { events: readonly [OutsideEvent, ...Ou
           {atAccount ? <OfflineBand /> : <OfflineBox />}
           <LinkedNotice />
           <ErrorBoundary>
-            <Outlet context={null} />
+            {gone ? <OutsideGone eventId={routedId} /> : <Outlet context={null} />}
           </ErrorBoundary>
         </main>
       </div>
@@ -63,20 +133,184 @@ export function OutsideShell({ events }: { events: readonly [OutsideEvent, ...Ou
   );
 }
 
-/** The desk's version of the app's More: the person button opens Your account and Sign out, as a menu. */
-function OutsidePerson({ role }: { role: string }) {
+/** The event a not-found stands in, at the head of the sidebar as the demo keeps it: its tile, its name, and under way until its end or its date and start. */
+function OutsideSideCard({ event, now }: { event: OutsideEvent; now: Date }) {
+  const { t } = useTranslation();
+  const { date, start } = outsideEventWhen(event.startsAt, dateLocale());
+  const when = isUnderWay(event, now)
+    ? [
+        t('outsideEvent.underWay'),
+        event.endsAt == null ? null : t('outsideEvent.until', { when: event.endsAt.slice(11, 16) }),
+      ]
+    : [date, start];
+
+  return (
+    <EventSideCard
+      event={{ name: event.name, mesh: meshFor(event.id), photo: null }}
+      when={when.filter((part) => part != null).join(' · ')}
+    />
+  );
+}
+
+interface Groups {
+  events: readonly OutsideEvent[];
+  member: MemberWay | null;
+  here: string | null;
+  now: Date;
+}
+
+function MenuGroups({ groups, close }: { groups: Groups; close: (back: boolean) => void }) {
+  const { events, member, here, now } = groups;
+
+  return (
+    <>
+      {member != null && <MemberGroup member={member} close={close} />}
+      {events.length > 1 && <EventsGroup events={events} here={here} now={now} close={close} />}
+    </>
+  );
+}
+
+function MemberGroup({ member, close }: { member: MemberWay; close: (back: boolean) => void }) {
+  const { t } = useTranslation();
+
+  return (
+    <MenuGroup heading={t('outsideEvent.yourOrganisations')}>
+      {member.organisations.map((organisation) => (
+        <OrganisationRow
+          key={organisation.id}
+          id={organisation.id}
+          name={organisation.name}
+          role={roleName(t, organisation.role)}
+          onChoose={() => {
+            close(false);
+            member.onOpen(organisation);
+          }}
+        />
+      ))}
+    </MenuGroup>
+  );
+}
+
+function EventsGroup({
+  events,
+  here,
+  now,
+  close,
+}: {
+  events: readonly OutsideEvent[];
+  here: string | null;
+  now: Date;
+  close: (back: boolean) => void;
+}) {
+  const { t } = useTranslation();
+  const navigate = useNavigate();
+
+  return (
+    <MenuGroup heading={t('outsideEvent.yourEvents')}>
+      {outsideEventsInOrder(events, now).map((one) => (
+        <OutsideEventRow
+          key={one.id}
+          event={one}
+          here={one.id === here}
+          now={now}
+          role="menuitem"
+          className="desk-menu-item oe-row"
+          onChoose={() => {
+            close(one.id === here);
+            if (one.id !== here)
+              void navigate(eventAreaPath(one.id, 'overview'), { state: { from: here } });
+          }}
+        />
+      ))}
+    </MenuGroup>
+  );
+}
+
+/** The product's not-found for an event, for an account with no organisation: no Events to go back to, so back to the event it came from, else the one it would land on, else on to the no-organisation home (sc-68438). */
+export function OutsideGone({ eventId }: { eventId: string }) {
+  const { t } = useTranslation();
+  const session = useSession();
+  const navigate = useNavigate();
+  const from = openedFrom(useLocation().state);
+  const [live, setLive] = useState<readonly OutsideEvent[] | null>(null);
+  const [now] = useState(() => new Date());
+  const heading = useRef<HTMLHeadingElement>(null);
+
+  useEffect(() => heading.current?.focus(), [eventId]);
+
+  useEffect(() => {
+    let current = true;
+    api.me().then(
+      (account) => current && setLive(account.outsideEvents),
+      () => undefined,
+    );
+
+    return () => {
+      current = false;
+    };
+  }, [eventId]);
+
+  const others = (live ?? session.outsideEvents ?? []).filter((one) => one.id !== eventId);
+  const back = others.find((one) => one.id === from) ?? outsideEventsInOrder(others, now)[0];
+
+  return (
+    <div className="desk desk-page">
+      <div className="desk-column">
+        <section className="card oe-gone">
+          <h1 ref={heading} tabIndex={-1}>
+            {t('eventPage.notFound')}
+          </h1>
+          <button
+            type="button"
+            className="button"
+            onClick={() => {
+              void rereadOutsideEvents()
+                .catch(() => undefined)
+                .then(() => navigate(back == null ? '/app' : eventAreaPath(back.id, 'overview')));
+            }}
+          >
+            {back == null
+              ? t('outsideEvent.continue')
+              : t('outsideEvent.backTo', { name: back.name })}
+          </button>
+        </section>
+      </div>
+    </div>
+  );
+}
+
+/** The desk's version of the app's More: the person button opens the account's groups, then Your account and Sign out, as a menu. */
+function OutsidePerson({ role, groups }: { role: string; groups: Groups | null }) {
   const { t } = useTranslation();
   const session = useSession();
   const navigate = useNavigate();
   const id = useId();
   const [open, setOpen] = useState(false);
   const button = useRef<HTMLButtonElement>(null);
-  const menu = useRef<HTMLUListElement>(null);
+  const menu = useRef<HTMLDivElement>(null);
+  const wide = groups != null;
   const { signOut } = useSignOut(() => void navigate('/sign-in'));
   const close = useCallback((back: boolean) => {
     setOpen(false);
     if (back) button.current?.focus();
   }, []);
+
+  useLayoutEffect(() => {
+    const drop = menu.current;
+    const opener = button.current;
+    if (!open || !wide || drop == null || opener == null) return;
+
+    const place = (): void => {
+      const box = opener.getBoundingClientRect();
+      drop.style.setProperty('left', `${box.left}px`);
+      drop.style.setProperty('bottom', `${window.innerHeight - box.top + 4}px`);
+      drop.style.setProperty('max-height', `${Math.max(0, box.top - EDGE)}px`);
+    };
+    place();
+    window.addEventListener('resize', place);
+
+    return () => window.removeEventListener('resize', place);
+  }, [open, wide]);
 
   useEffect(() => {
     if (!open) return;
@@ -111,15 +345,17 @@ function OutsidePerson({ role }: { role: string }) {
   return (
     <div className="outside-person">
       {open && (
-        <ul
+        <div
           ref={menu}
           id={`${id}-menu`}
-          className="desk-menu outside-menu"
+          className={wide ? 'desk-menu outside-menu is-wide' : 'desk-menu outside-menu'}
           role="menu"
+          tabIndex={-1}
           aria-labelledby={`${id}-button`}
           onKeyDown={keys}
         >
-          <li role="none">
+          {groups != null && <MenuGroups groups={groups} close={close} />}
+          <div role="none" className="oe-group">
             <button
               type="button"
               role="menuitem"
@@ -135,8 +371,6 @@ function OutsidePerson({ role }: { role: string }) {
               </span>
               {t('nav.account')}
             </button>
-          </li>
-          <li role="none">
             <button
               type="button"
               role="menuitem"
@@ -152,8 +386,8 @@ function OutsidePerson({ role }: { role: string }) {
               </span>
               {t('nav.signOut')}
             </button>
-          </li>
-        </ul>
+          </div>
+        </div>
       )}
       <button
         ref={button}
@@ -172,6 +406,6 @@ function OutsidePerson({ role }: { role: string }) {
   );
 }
 
-function itemsOf(menu: HTMLUListElement | null): HTMLElement[] {
+function itemsOf(menu: HTMLDivElement | null): HTMLElement[] {
   return [...(menu?.querySelectorAll<HTMLElement>('[role=menuitem]') ?? [])];
 }

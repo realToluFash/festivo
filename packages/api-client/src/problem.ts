@@ -33,6 +33,8 @@ export interface Problem {
   providerEmail?: string;
   /** On `oauth_only`, `session_timed_out`, `provider_kept_by_rule` or `two_factor_kept_by_rule`: the organisation whose rule it is (sc-69, sc-609). */
   organisation?: string;
+  /** On `domain_managed` (sc-563), with `organisation` naming the home organisation: the managed address's domain. */
+  domain?: string;
   /** On `oauth_only`: the providers this account may sign in with instead. */
   providers?: string[];
   /** On `session_timed_out`: the limit that ended it. With `oauth_only` too, the address to sign back in with. */
@@ -68,6 +70,9 @@ export interface Problem {
   archived?: boolean;
   /** On a schedule item's `precondition_failed`: the item as it is stored now, which `asScheduleItem` reads (sc-3893). */
   current?: unknown;
+  /** On `payer_covers_costs` (sc-91): the costs the payer covers, in the budget's order, and how many. */
+  lineIds?: string[];
+  count?: number;
   /** On a night-screen press that changed nothing: the earlier press it lost to, its presser's name and when, in the event's zone (sc-3895). */
   superseded_by?: { name: string; at: string };
 }

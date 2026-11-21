@@ -1,4 +1,4 @@
-import type { JoinOffer } from '@soirely/api-client';
+import type { JoinOffer, ManagedAccount } from '@soirely/api-client';
 import { useEffect, useState } from 'react';
 
 import { api } from './api.ts';
@@ -8,6 +8,8 @@ export interface DomainOffer {
   organisation: JoinOffer | null;
   domain: string | null;
   asked: boolean;
+  /** The account is managed by its home organisation (sc-563): no other way in is open. Undefined until read. */
+  managed: ManagedAccount | null | undefined;
   ask: () => Promise<void>;
   dismiss: () => Promise<void>;
 }
@@ -17,6 +19,7 @@ export function useDomainOffer(): DomainOffer {
   const [organisation, setOrganisation] = useState<JoinOffer | null>(null);
   const [domain, setDomain] = useState<string | null>(null);
   const [asked, setAsked] = useState(false);
+  const [managed, setManaged] = useState<ManagedAccount | null | undefined>(undefined);
 
   useEffect(() => {
     let live = true;
@@ -28,8 +31,11 @@ export function useDomainOffer(): DomainOffer {
         setDomain(found.domain);
         setOrganisation(found.request?.organisation ?? found.offers[0] ?? null);
         setAsked(found.request != null);
+        setManaged(found.managed);
       },
-      () => {},
+      () => {
+        if (live) setManaged(null);
+      },
     );
 
     return () => {
@@ -52,5 +58,5 @@ export function useDomainOffer(): DomainOffer {
     await api.dismissJoinOffer(dismissed.id).catch(() => undefined);
   }
 
-  return { organisation, domain, asked, ask, dismiss };
+  return { organisation, domain, asked, managed, ask, dismiss };
 }

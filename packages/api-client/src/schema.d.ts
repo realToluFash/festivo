@@ -65,6 +65,8 @@ export interface operations {
           | 'staffing'
           | 'hire'
           | 'other';
+        /** @description Opens the page holding this vendor, when nothing is searched */
+        vendor?: string;
         /** @description The collection page number */
         page?: number;
       };

@@ -22,4 +22,8 @@ final readonly class MenuCosts implements EventAmountsInterface
     {
         return $this->variants->anyCostOnEvent($event) || $this->dishes->anyCostOnEvent($event);
     }
+
+    public function currencyChanged(Event $event): void
+    {
+    }
 }

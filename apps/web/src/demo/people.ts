@@ -78,7 +78,41 @@ export interface OnEvent {
   withheld?: boolean;
   /** In by a door code (sc-72): which one, and when. */
   door?: { code: string; at: string } | null;
+  /** In by their own staff link from the roster (sc-3912): one row a person, however many links they were given. */
+  staffLink?: { job: string; ends: string; signedIn: boolean } | null;
 }
+
+export const NOT_SIGNED_IN = 'Not signed in yet';
+
+export function staffLinkTitle(person: OnEvent): string | null {
+  const link = person.staffLink;
+  if (link == null) return null;
+
+  return `Staff link · ${person.name} · ${link.job} · ends ${link.ends}`;
+}
+
+const STAFF_LINKS: readonly OnEvent[] = [
+  {
+    id: 'staff-grace',
+    name: 'Grace Okon',
+    initials: '',
+    tone: 0,
+    role: 'Can view',
+    outside: false,
+    label: null,
+    staffLink: { job: 'Waiter', ends: '03:00 on Sunday, Oct 25', signedIn: false },
+  },
+  {
+    id: 'staff-tolu',
+    name: 'Tolu Bello',
+    initials: '',
+    tone: 0,
+    role: 'Can check guests in',
+    outside: false,
+    label: null,
+    staffLink: { job: 'Door', ends: '23:00', signedIn: true },
+  },
+];
 
 /** The organisation and the event a People screen is drawn for, as its sidebar shows them. */
 export interface EventPlace {
@@ -87,6 +121,7 @@ export interface EventPlace {
   country: string;
   initials: string;
   event: string;
+  eventId: string;
   when: string;
 }
 
@@ -95,6 +130,7 @@ export const IRE_PLACE: EventPlace = {
   country: 'NG',
   initials: 'IE',
   event: EVENT,
+  eventId: 'evt-wed-4',
   when: 'Live · in 3 days',
 };
 
@@ -184,7 +220,7 @@ export function manages(viewer: PeopleViewer, onEvent: readonly OnEvent[]): bool
 }
 
 export function opens(person: OnEvent, viewer: PeopleViewer, onEvent: readonly OnEvent[]): boolean {
-  return manages(viewer, onEvent) && person.id !== viewer.id;
+  return manages(viewer, onEvent) && person.id !== viewer.id && person.staffLink == null;
 }
 
 function joined(parts: readonly (string | null)[]): string {
@@ -290,7 +326,7 @@ export function offeredMembers(
 
 export const FIND_LABEL = 'Name, email or mobile number';
 export const NAME_LABEL = 'Name';
-export const UNUSABLE = 'That isn’t an email address or a mobile number we can use.';
+export const UNUSABLE = 'That is not an email address or a mobile number we can use.';
 export const PICK_ANOTHER = 'Pick another role to add someone from outside.';
 export const fromOutside = (org: string = ORGANISATION) => `From outside ${org}`;
 export const ALREADY_A_MEMBER = 'That person is already a member of this organisation.';
@@ -404,6 +440,7 @@ export const PEOPLE_STATES = [
   'addMemberAddress',
   'loading',
   'failed',
+  'staffLinks',
 ] as const;
 
 export type PeopleState = (typeof PEOPLE_STATES)[number];
@@ -469,6 +506,8 @@ export function peopleStart(state: PeopleState): PeopleStart {
       return { ...start, adding: { typed: BISI, role: 'Lead' } };
     case 'addMemberAddress':
       return { ...start, adding: { typed: 'kofi@ire.events', role: FIRST_ROLE } };
+    case 'staffLinks':
+      return { ...start, onEvent: [...start.onEvent, ...STAFF_LINKS] };
     default:
       return start;
   }
@@ -495,6 +534,7 @@ export const PEOPLE_PAGES: readonly { name: string; states: readonly DemoLink[] 
       people('addMemberAddress', 'A member’s own address, refused by the server'),
       people('loading', 'Loading'),
       people('failed', 'Failed'),
+      people('staffLinks', 'Staff links from the roster, one signed in and one not yet (sc-3912)'),
     ],
   },
 ];

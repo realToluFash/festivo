@@ -1,4 +1,3 @@
-import { type Href, router } from 'expo-router';
 import { StyleSheet, View } from 'react-native';
 
 import { AlertLine } from '../../components/AlertLine.tsx';
@@ -17,7 +16,6 @@ import {
   cardFacts,
   cardStart,
   leadLine,
-  peopleHref,
   onThisEvent,
 } from './PeopleCardModel.ts';
 import { EMPTY_TITLE, LOADING_WORDS } from './PeopleSample.ts';
@@ -26,13 +24,13 @@ const OPENS = 'Opens People.';
 /** Loading holds the count's words, its figure a bar. */
 const HELD = 'on this event';
 
-/** Overview's People (sc-29914): how many are on the event and who leads it, the whole row opening People; with `onOpen`, in the event's own frame (the iPad, sc-67665). */
+/** Overview's People (sc-29914): how many are on the event and who leads it, the whole row opening People in the event's own frame (sc-67665, sc-70351). */
 export function PeopleCard({
   state,
   onOpen,
 }: {
   state: CardState | null;
-  onOpen?: ((params: { state?: string }) => void) | undefined;
+  onOpen: (params: { state?: string }) => void;
 }) {
   const start = cardStart(state);
   const { load, retry } = useLoad(start.load);
@@ -85,11 +83,7 @@ export function PeopleCard({
                 lead={mark}
                 opens
                 pad={4}
-                onPress={() =>
-                  onOpen == null
-                    ? router.push(peopleHref(start.opens) as Href)
-                    : onOpen(start.opens == null ? {} : { state: start.opens })
-                }
+                onPress={() => onOpen(start.opens == null ? {} : { state: start.opens })}
                 accessibilityLabel={[
                   count === 0 ? title : `${title}.`,
                   line == null ? null : `Lead, ${lead}.`,

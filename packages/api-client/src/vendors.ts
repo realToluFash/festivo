@@ -29,6 +29,8 @@ export interface Vendor {
   note: string | null;
   /** When it was archived; null while it is in use. */
   archivedAt: string | null;
+  /** How many of the organisation's events engage it, by a quote current or earlier (sc-87); the directory's rows carry it. */
+  events: number;
 }
 
 /** What the form sends, every field as typed: the API trims, checks and stores them. */
@@ -49,6 +51,8 @@ export interface VendorsLooking {
   q: string;
   category: VendorCategory | null;
   page: number;
+  /** Opens the page holding this vendor instead, when nothing is searched. */
+  vendor?: string | null;
 }
 
 /** A page, with the counts the card and the menus show: the whole view's, whatever is searched. */
@@ -91,6 +95,7 @@ export function asVendor(raw: unknown): Vendor | null {
     address: text(row.address),
     note: text(row.note),
     archivedAt: text(row.archivedAt),
+    events: typeof row.events === 'number' ? row.events : 0,
   };
 }
 
@@ -131,6 +136,7 @@ export function vendorsQuery(looking: VendorsLooking): string {
   if (looking.q.trim() !== '') query.set('q', looking.q.trim());
   if (looking.category != null) query.set('category', looking.category);
   if (looking.page > 1) query.set('page', String(looking.page));
+  if (looking.vendor != null) query.set('vendor', looking.vendor);
   const search = query.toString();
 
   return search === '' ? '' : `?${search}`;

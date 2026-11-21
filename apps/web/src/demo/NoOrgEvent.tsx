@@ -63,7 +63,6 @@ import './doorCode.css';
 import './outsideEvents.css';
 
 const WORDS: Record<OutsideArea, string> = {
-  checkIn: NO_ORG.checkIn,
   overview: NO_ORG.overview,
   guests: NO_ORG.guests,
   menu: 'Menu',
@@ -75,7 +74,7 @@ const WORDS: Record<OutsideArea, string> = {
   reports: 'Reports',
 };
 
-const GLYPHS: Record<OutsideArea, GlyphName> = { ...SIDE_AREA_GLYPHS, checkIn: 'tick' };
+const GLYPHS: Record<OutsideArea, GlyphName> = SIDE_AREA_GLYPHS;
 
 const PIECES = [1, 2, 3, 4, 5, 6];
 
@@ -130,7 +129,6 @@ export function NoOrgEvent({ state }: { state: NoOrgState }) {
         when={doorWhenLine()}
         venue={NO_ORG_VENUE}
         level={doorLevelLine(start.code)}
-        checkIn={start.areas.includes('checkIn')}
         guests={NO_ORG.guestsLine}
         onEvent={start.onEvent}
         tell={tell}
@@ -258,7 +256,6 @@ export function OutsideEventPage({
           when={whenLine(event)}
           venue={VENUES[event.id] ?? NO_ORG_VENUE}
           level={levelLine(event)}
-          checkIn={event.role === 'Can check guests in'}
           guests={event.role === 'Can edit' ? null : NO_ORG.guestsLine}
           onEvent={onEventOf(event.id)}
           tell={tell}
@@ -362,7 +359,6 @@ function EventMain({
   when,
   venue,
   level,
-  checkIn,
   guests,
   onEvent,
   tell,
@@ -372,7 +368,6 @@ function EventMain({
   when: string;
   venue: string;
   level: string;
-  checkIn: boolean;
   guests: string | null;
   onEvent: number;
   tell: Tell;
@@ -390,16 +385,6 @@ function EventMain({
           </h1>
           <p className="desk-on-card">{venue}</p>
           <p className="desk-on-card">{level}</p>
-          {checkIn && (
-            <button
-              type="button"
-              className="desk-step"
-              onClick={() => tell(NO_ORG.later(NO_ORG.checkIn))}
-            >
-              {NO_ORG.checkIn}
-              <Glyph name="arrow" size={16} weight={2.4} />
-            </button>
-          )}
         </div>
       </section>
       <ul className="desk-rows has-lead">

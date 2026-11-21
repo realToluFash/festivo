@@ -2,7 +2,7 @@ import { ApiError, type EventChanges, type OrganisationEvent } from '@soirely/ap
 import type { TFunction } from 'i18next';
 import { describe, expect, it, vi } from 'vitest';
 
-import { heldRead, partChangedElsewhere, sendPart } from './partSave.ts';
+import { answeredWithNotice, heldRead, partChangedElsewhere, sendPart } from './partSave.ts';
 
 const t = ((key: string) => key) as unknown as TFunction;
 
@@ -121,5 +121,27 @@ describe('the read held from the opening of the screen', () => {
     await expect(held()).resolves.toMatchObject({ tag: '"7"' });
     await expect(held()).resolves.toMatchObject({ tag: '"7"' });
     expect(read).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe('a save answered with a notice at the top of the screen (sc-74540)', () => {
+  const refused = { kind: 'refused', errors: {}, hosts: {}, currencyInUse: false } as const;
+
+  it('is Not saved, the role’s refusal and somebody else’s change', () => {
+    expect(answeredWithNotice({ kind: 'failed' })).toBe(true);
+    expect(answeredWithNotice({ kind: 'forbidden' })).toBe(true);
+    expect(answeredWithNotice({ kind: 'changed' })).toBe(true);
+  });
+
+  it('is the currency refused once amounts are recorded', () => {
+    expect(answeredWithNotice({ ...refused, currencyInUse: true })).toBe(true);
+  });
+
+  it('is not a refusal that names a field, nor a save that went through', () => {
+    expect(answeredWithNotice({ ...refused, errors: { name: 'eventForm.nameRequired' } })).toBe(
+      false,
+    );
+    expect(answeredWithNotice({ kind: 'saved', event: gala })).toBe(false);
+    expect(answeredWithNotice({ kind: 'unchanged' })).toBe(false);
   });
 });

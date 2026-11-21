@@ -5,11 +5,13 @@ import {
   ScrollView,
   type StyleProp,
   StyleSheet,
+  useWindowDimensions,
   View,
   type ViewStyle,
 } from 'react-native';
 
 import { Text } from './Text.tsx';
+import { atAccessibilitySizes } from '../layout/textSize.ts';
 import { tokens } from '../theme/tokens.ts';
 import { EventMesh, eventColour } from './EventMesh.tsx';
 import { Glyph } from './Glyph.tsx';
@@ -373,10 +375,12 @@ function AgendaDays({
   days,
   nothing,
   wide,
+  stacked,
 }: {
   days: AgendaDay[];
   nothing: string;
   wide: boolean;
+  stacked: boolean;
 }) {
   return (
     <Panel style={styles.agenda}>
@@ -404,28 +408,43 @@ function AgendaDays({
             ) : (
               day.items.map((item, index) => {
                 const last = index === day.items.length - 1;
+                const time = (
+                  <Text
+                    size={14}
+                    weight="bold"
+                    numberOfLines={stacked ? undefined : item.allDay ? 2 : 1}
+                    style={[styles.figures, !stacked && [styles.time, { width: wide ? 76 : 70 }]]}
+                  >
+                    {item.time}
+                  </Text>
+                );
 
                 return (
                   <View
                     key={`${item.event.id}${item.time}${item.title}`}
-                    style={[styles.item, last && styles.itemLast, last && ruled && styles.ruled]}
+                    style={[
+                      stacked ? styles.itemStacked : styles.item,
+                      last && styles.itemLast,
+                      last && ruled && styles.ruled,
+                    ]}
                   >
-                    <Text
-                      size={14}
-                      weight="bold"
-                      numberOfLines={item.allDay ? 2 : 1}
-                      style={[styles.figures, styles.time, { width: wide ? 76 : 70 }]}
-                    >
-                      {item.time}
-                    </Text>
-                    <View style={[styles.stripe, { backgroundColor: eventColour(item.event) }]} />
-                    <View style={styles.words}>
-                      <Text size={15} weight="semibold">
-                        {item.title}
-                      </Text>
-                      <Text size={13} weight="medium" style={styles.secondary} numberOfLines={1}>
-                        {item.event.name + (item.note === '' ? '' : ` · ${item.note}`)}
-                      </Text>
+                    {stacked && time}
+                    <View style={styles.itemRow}>
+                      {!stacked && time}
+                      <View style={[styles.stripe, { backgroundColor: eventColour(item.event) }]} />
+                      <View style={styles.words}>
+                        <Text size={15} weight="semibold">
+                          {item.title}
+                        </Text>
+                        <Text
+                          size={13}
+                          weight="medium"
+                          style={styles.secondary}
+                          numberOfLines={stacked ? undefined : 1}
+                        >
+                          {item.event.name + (item.note === '' ? '' : ` · ${item.note}`)}
+                        </Text>
+                      </View>
                     </View>
                   </View>
                 );
@@ -442,6 +461,7 @@ export function ThisWeek({ moment, wide, top }: { moment: Moment; wide: boolean;
   const { t } = useTranslation();
   const { open } = useTodayShell();
   const { nextUp } = moment;
+  const agendaAlone = atAccessibilitySizes(useWindowDimensions().fontScale);
 
   return (
     <>
@@ -451,9 +471,14 @@ export function ThisWeek({ moment, wide, top }: { moment: Moment; wide: boolean;
         onLink={() => open({ to: 'calendar' })}
         top={top}
       />
-      <Strip moment={moment} wide={wide} />
+      {!agendaAlone && <Strip moment={moment} wide={wide} />}
       {nextUp == null ? (
-        <AgendaDays days={moment.agenda} nothing={moment.nothing} wide={wide} />
+        <AgendaDays
+          days={moment.agenda}
+          nothing={moment.nothing}
+          wide={wide}
+          stacked={agendaAlone}
+        />
       ) : (
         <Panel style={styles.quiet}>
           <Text size={TYPE.row} weight="semibold" style={styles.quietLine}>
@@ -468,7 +493,7 @@ export function ThisWeek({ moment, wide, top }: { moment: Moment; wide: boolean;
               when: nextUp.when,
             })}
           >
-            <EventThumb event={nextUp.event} side={48} />
+            {!agendaAlone && <EventThumb event={nextUp.event} side={48} />}
             <View style={styles.words}>
               <Text
                 size={12}
@@ -521,8 +546,10 @@ function CountChip({
       <Text
         size={size}
         weight="semibold"
-        numberOfLines={1}
-        style={dark ? styles.onAccent : card.draft ? styles.secondary : undefined}
+        style={[
+          styles.chipWords,
+          dark ? styles.onAccent : card.draft ? styles.secondary : undefined,
+        ]}
       >
         {words}
       </Text>
@@ -538,8 +565,7 @@ function StageChip({ stage, onCover, small }: { stage: string; onCover: boolean;
       <Text
         size={small ? 12 : TYPE.meta}
         weight="semibold"
-        numberOfLines={1}
-        style={onCover ? styles.onAccent : styles.accentText}
+        style={[styles.chipWords, onCover ? styles.onAccent : styles.accentText]}
       >
         {stage}
       </Text>
@@ -576,6 +602,7 @@ function Readiness({ card }: { card: EventCard }) {
 
 function Tile({ card }: { card: EventCard }) {
   const { open } = useTodayShell();
+  const grown = atAccessibilitySizes(useWindowDimensions().fontScale);
 
   return (
     <Pressable
@@ -591,7 +618,12 @@ function Tile({ card }: { card: EventCard }) {
         </View>
       </View>
       <View style={styles.tileBody}>
-        <Text size={15} weight="semibold" numberOfLines={2} style={styles.tileName}>
+        <Text
+          size={15}
+          weight="semibold"
+          numberOfLines={grown ? undefined : 2}
+          style={styles.tileName}
+        >
           {card.name}
         </Text>
         <Text size={13} weight="medium" style={[styles.secondary, styles.dates]}>
@@ -732,7 +764,13 @@ export function FirstRun({ wide }: { wide: boolean }) {
           accessibilityLabel={t('todayScreen.startFirst')}
         >
           <Glyph name="plus" ink={tokens.colorInkOnDark} />
-          <Text size={TYPE.row} weight="semibold" accessible={false} style={styles.onAccent}>
+          <Text
+            size={TYPE.row}
+            weight="semibold"
+            wholeLines
+            accessible={false}
+            style={[styles.onAccent, styles.createWords]}
+          >
             {t('todayScreen.startFirst')}
           </Text>
         </Pressable>
@@ -763,6 +801,7 @@ const styles = StyleSheet.create({
   panelWide: { paddingHorizontal: 18 },
   head: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     alignItems: 'center',
     gap: tokens.spaceMd,
     paddingHorizontal: tokens.spaceHair,
@@ -771,7 +810,7 @@ const styles = StyleSheet.create({
   title: { lineHeight: TYPE.head * 1.15 },
   count: {
     minWidth: tokens.space3xl,
-    height: tokens.space3xl,
+    minHeight: tokens.space3xl,
     paddingHorizontal: tokens.spaceSm,
     borderRadius: tokens.spaceLg,
     backgroundColor: tokens.colorAccent,
@@ -786,7 +825,8 @@ const styles = StyleSheet.create({
   },
   thumb: { overflow: 'hidden', flex: 0 },
   action: {
-    height: tokens.sizeControlDense,
+    minHeight: tokens.sizeControlDense,
+    paddingVertical: tokens.spaceXxs,
     paddingHorizontal: 15,
     borderRadius: tokens.sizeControlDense / 2,
     alignItems: 'center',
@@ -847,13 +887,16 @@ const styles = StyleSheet.create({
   agenda: { marginTop: tokens.spaceMd, paddingVertical: 0, paddingBottom: tokens.spaceHair },
   dayLine: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     alignItems: 'baseline',
-    gap: tokens.spaceXs,
+    columnGap: tokens.spaceXs,
     paddingTop: tokens.spacePillEnd,
     paddingBottom: tokens.spaceXxs,
   },
   nothing: { paddingTop: tokens.spaceXxs, paddingBottom: tokens.spacePillEnd },
-  item: { flexDirection: 'row', alignItems: 'center', gap: tokens.spaceLg, paddingVertical: 7 },
+  item: { paddingVertical: 7 },
+  itemStacked: { paddingVertical: 7, gap: tokens.spaceXs },
+  itemRow: { flexDirection: 'row', alignItems: 'center', gap: tokens.spaceLg },
   itemLast: { paddingBottom: 13 },
   time: { flex: 0 },
   stripe: { width: tokens.spaceXxs, alignSelf: 'stretch', borderRadius: tokens.spaceHair },
@@ -872,16 +915,18 @@ const styles = StyleSheet.create({
     backgroundColor: tokens.colorCard,
   },
   chip: {
-    height: 26,
+    minHeight: 26,
+    paddingVertical: tokens.spaceHair,
     paddingHorizontal: 11,
     borderRadius: 13,
     flexDirection: 'row',
     alignItems: 'center',
     gap: tokens.spaceXs,
-    flex: 0,
+    flexShrink: 1,
   },
+  chipWords: { flexShrink: 1 },
   chipSmall: {
-    height: tokens.space3xl,
+    minHeight: tokens.space3xl,
     paddingHorizontal: tokens.spaceMd,
     borderRadius: tokens.spaceLg,
   },
@@ -911,8 +956,11 @@ const styles = StyleSheet.create({
   tileChips: {
     position: 'absolute',
     left: tokens.spaceMd,
+    right: tokens.spaceMd,
     top: tokens.spaceMd,
     flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'flex-start',
     gap: tokens.spaceXs,
   },
   tileBody: {
@@ -948,7 +996,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   create: {
-    height: tokens.sizeHitPhoneHero,
+    minHeight: tokens.sizeHitPhoneHero,
+    paddingVertical: tokens.spaceSm,
+    paddingHorizontal: tokens.spaceLg,
     borderRadius: tokens.sizeHitPhoneHero / 2,
     backgroundColor: tokens.colorAccent,
     flexDirection: 'row',
@@ -956,5 +1006,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: tokens.spaceSm,
   },
+  createWords: { flexShrink: 1, textAlign: 'center' },
   createWide: { alignSelf: 'flex-start', paddingHorizontal: tokens.space4xl },
 });

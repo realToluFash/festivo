@@ -152,6 +152,7 @@ export const W = {
   hostBlank: 'Enter a name or remove this host.',
   searchCurrencies: 'Search currencies',
   nameBlank: 'Give the event a name.',
+  eventGone: 'Nothing was changed. This event is no longer available.',
   coverPhoto: 'Cover photo',
   useThisPhoto: 'Use this photo',
   coverDefaultLine: 'Soirely’s cover, in this event’s own colours. Add your own photo if you like.',

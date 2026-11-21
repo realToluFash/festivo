@@ -306,7 +306,10 @@ describe('Members in the demo', () => {
     });
     expect(tagOf(person('Daniel Kim'))).toEqual({ kind: 'ended', word: 'Left' });
     expect(personLine(person('Folake Adeyemi'), VIEWERS.folake.id)).toBe('Owner · you');
-    expect(waitingLine(person('Lucía Gómez'), us)).toBe('lucia.gomez@outlook.com · asked Nov 2');
+    expect(waitingLine(person('Lucía Gómez'), us)).toBe(
+      'lucia.gomez@outlook.com · asked Monday, Nov 2',
+    );
+    expect(gb.day(person('Lucía Gómez').when)).toBe('Monday 2 Nov');
     expect(whenWord(person('Priya Shah'))).toBe('Member since');
     expect(us.date(person('Priya Shah').when)).toBe('Jun 3, 2025');
   });

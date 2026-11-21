@@ -2,7 +2,7 @@ import { type Course, courseItems, servedCourses } from './menuServed.ts';
 import { andList } from './queue.ts';
 import type { DemoLink } from './settings.ts';
 
-/** Stations on the event's Staff page (sc-3910, Stations-Desktop.dc.html on page e34): places and sections, who is on each, what each place dishes, and the walking order. */
+/** Stations on the event's Staff page (sc-3910, Stations-Desktop.dc.html on page e34): places and sections, who is on each, what each place serves, and the walking order. */
 export const STATIONS_EVENT = 'evt-wed-4';
 export const PASS = 'pass';
 export const NAME_MAX = 60;
@@ -45,7 +45,7 @@ export type Panel =
 
 export const SW = {
   title: 'Staff',
-  sub: 'Who works the event, where they work, and what each place dishes.',
+  sub: 'Who works the event, where they work, and what each station serves.',
   tabs: ['Roster', 'Jobs and shifts', 'Stations', 'Hours worked'],
   places: 'Places',
   placesSub: 'Where somebody works. Every tray starts at the Pass.',
@@ -56,17 +56,17 @@ export const SW = {
     'From the seating plan, in its order. A table moved to another section takes its waiters with it.',
   sectionsFoot: 'Sections are added, renamed and removed in the seating plan.',
   noSections: 'No sections yet. Once the seating plan has sections, each one appears here.',
-  dishes: 'What each station dishes',
+  dishes: 'What each station serves',
   dishesSub:
-    'Each course’s items, as the menu lists them. An item with no station is dished at the Pass.',
-  dishedAt: 'Dished at',
+    'Each course’s items, as the menu lists them. An item with no station is served from the Pass.',
+  dishedAt: 'Served from',
   noDishes: 'No dishes on this course yet.',
   noCourses: 'This event’s menu has no courses yet.',
   walk: 'Walking order',
   walkSub:
     'The order a waiter walks the kitchen stations from the Pass, the same for every course.',
   walkPass: 'Every tray starts here',
-  walkEmpty: 'Every item is dished at the Pass.',
+  walkEmpty: 'Every item is served from the Pass.',
   walkFoot: 'A place joins the end when it gets its first item, and leaves when it loses its last.',
   noStation: 'No station',
   everyone: 'Everybody on tonight’s roster has a station.',
@@ -99,7 +99,7 @@ export const SW = {
   cancel: 'Cancel',
   name: 'Name',
   nameHelp: 'At most 60 characters. Each station on this event has its own name.',
-  addNote: 'It starts with nobody on it and dishes nothing.',
+  addNote: 'It starts with nobody on it and serves nothing.',
   renameNote: 'The new name shows on the roster, on each person’s shift and on every tray.',
   addCta: 'Add place',
   saveName: 'Save name',
@@ -110,7 +110,14 @@ export const SW = {
   moveDown: 'Move down',
   removedTitle: 'Section D was removed from the seating plan.',
   close: 'Close',
+  tonight: 'Stations tonight',
+  tonightFoot:
+    'Shows from the event’s start to its end. Somebody whose shift has not started or has ended is not counted.',
 };
+
+export function tonightSub(at: string): string {
+  return `Who is on shift at each station now, ${at}.`;
+}
 
 export function stationsWord(n: number, one: string, many: string): string {
   return `${n} ${n === 1 ? one : many}`;
@@ -124,6 +131,7 @@ export function sectionLabel(station: Pick<Station, 'name' | 'tables'>): string 
   return `${station.name} · ${count}`;
 }
 
+/** The count stays on a station's heading; a sentence names the section alone. */
 export function labelOf(station: Station): string {
   return station.kind === 'section' ? sectionLabel(station) : station.name;
 }
@@ -168,13 +176,13 @@ export function itemsAt(state: Stations, placeId: string): number {
   );
 }
 
-/** A place's row says how many items it dishes, and nothing when it dishes none. */
+/** A place's row says how many items it serves, and nothing when it serves none. */
 export function dishesLine(n: number): string | null {
-  return n === 0 ? null : `Dishes ${stationsWord(n, 'item', 'items')}`;
+  return n === 0 ? null : `Serves ${stationsWord(n, 'item', 'items')}`;
 }
 
 export function stopLine(name: string, to: number, of: number): string {
-  return `${name} moved to stop ${to} of ${of}`;
+  return `${name} moved to stop ${to} of ${of}.`;
 }
 
 export interface Changed {
@@ -200,7 +208,7 @@ export function setDishedAt(
   const joins = placeId !== PASS && !kept.includes(placeId);
   const walk = joins ? [...kept, placeId] : kept;
   const name = stationById(state, placeId)?.name ?? '';
-  const words = [`${item} is dished at ${name}.`];
+  const words = [`${item} is served from ${name}.`];
   if (joins) words.push(`${name} joins the walking order at stop ${walk.length + 1}.`);
   if (before !== PASS && !walk.includes(before))
     words.push(`${stationById(state, before)?.name ?? ''} leaves the walking order.`);
@@ -319,6 +327,47 @@ export function shiftOf(person: Person): string {
   return `${person.from} to ${person.to}`;
 }
 
+/** 21:30 on the wedding's second night, London. */
+export const TONIGHT = new Date('2026-11-06T21:30:00Z');
+
+function minutesOf(time: string): number {
+  const [hours = '0', minutes = '0'] = time.split(':');
+
+  return Number(hours) * 60 + Number(minutes);
+}
+
+/** Minutes past midnight on the event's clock, kept apart from how the time is worded. */
+export function clockMinutes(when: Date, timeZone: string): number {
+  const parts = new Intl.DateTimeFormat('en-GB', {
+    hour: 'numeric',
+    minute: 'numeric',
+    hourCycle: 'h23',
+    timeZone,
+  }).formatToParts(when);
+  const part = (type: 'hour' | 'minute') =>
+    Number(parts.find((one) => one.type === type)?.value ?? 0);
+
+  return part('hour') * 60 + part('minute');
+}
+
+/** A shift that ends at or before its start runs past midnight. */
+export function onShiftAt(person: Person, now: number): boolean {
+  const from = minutesOf(person.from);
+  const end = minutesOf(person.to);
+  const to = end <= from ? end + 1440 : end;
+
+  return [now, now + 1440].some((one) => one >= from && one < to);
+}
+
+export function onNow(station: Station, now: number): Person[] {
+  return station.people.map(personById).filter((one) => onShiftAt(one, now));
+}
+
+/** Stations tonight shows from the event's start to its end. */
+export function inService(event: { startsAt: string; endsAt: string }, clock: Date): boolean {
+  return clock >= new Date(event.startsAt) && clock < new Date(event.endsAt);
+}
+
 /** Puts someone on a station, or takes them off it; a lead who leaves stops being its lead. */
 export function toggle(state: Stations, personId: string, stationId: string): Changed {
   const person = personById(personId);
@@ -337,8 +386,8 @@ export function toggle(state: Stations, personId: string, stationId: string): Ch
 
     return one;
   });
-  const fromName = from == null ? '' : labelOf(from);
-  const toName = labelOf(target);
+  const fromName = from?.name ?? '';
+  const toName = target.name;
   let said = `${person.name} is on ${toName}.`;
   if (off)
     said = wasLead
@@ -352,7 +401,7 @@ export function toggle(state: Stations, personId: string, stationId: string): Ch
 
 export function setLead(state: Stations, stationId: string, personId: string | null): Changed {
   const station = stationById(state, stationId) as Station;
-  const name = labelOf(station);
+  const name = station.name;
 
   return {
     state: {
@@ -480,6 +529,7 @@ export interface StationsStart {
   pressed: boolean;
   scroll: 'dishes' | 'walk' | null;
   removed: boolean;
+  clock: Date | null;
 }
 
 function start(o: Partial<StationsStart> & Pick<StationsStart, 'name' | 'note'>): StationsStart {
@@ -493,6 +543,7 @@ function start(o: Partial<StationsStart> & Pick<StationsStart, 'name' | 'note'>)
     pressed: false,
     scroll: null,
     removed: false,
+    clock: null,
     ...o,
   };
 }
@@ -505,7 +556,20 @@ const STATES = {
   populated: () =>
     start({
       name: 'Populated',
-      note: 'Places with the Pass first, sections with their table count, who is on each, and what each place dishes.',
+      note: 'Places with the Pass first, sections with their table count, who is on each, and what each station serves.',
+    }),
+  tonight: () =>
+    start({
+      name: 'Stations tonight, during service',
+      note: '21:30 on the night. Tolu Bello’s Door shift ended at 21:00, so nobody is on Door now, though Tolu is still given it.',
+      clock: TONIGHT,
+    }),
+  tonightPeople: () =>
+    start({
+      name: 'Stations tonight, changing who is on Door',
+      note: 'Put somebody on Door from People and lead: Stations tonight shows them at once.',
+      clock: TONIGHT,
+      panel: { kind: 'people', id: 'door' },
     }),
   people: () =>
     start({
@@ -516,7 +580,7 @@ const STATES = {
   allPass: () =>
     start({
       name: 'Every item at the Pass',
-      note: 'A new menu: each Dished at reads Pass, and no place says it dishes anything.',
+      note: 'A new menu: each Served from reads Pass, and no place says it serves anything.',
       state: allAtPass(),
       scroll: 'dishes',
     }),
@@ -544,7 +608,7 @@ const STATES = {
   walkEmpty: () =>
     start({
       name: 'Walking order, the Pass alone',
-      note: 'With no kitchen station but the Pass, the walking order says every item is dished there.',
+      note: 'With no kitchen station but the Pass, the walking order says every item is served from there.',
       state: allAtPass(),
       scroll: 'walk',
     }),
@@ -563,7 +627,7 @@ const STATES = {
       asking: 'grill',
     }),
   removePeople: () =>
-    start({ name: 'Remove a place with people only', note: 'Bar dishes nothing.', asking: 'bar' }),
+    start({ name: 'Remove a place with people only', note: 'Bar serves nothing.', asking: 'bar' }),
   removeItems: () =>
     start({
       name: 'Remove a place with items only',
@@ -573,7 +637,7 @@ const STATES = {
   removeEmpty: () =>
     start({
       name: 'Remove a place with neither',
-      note: 'Nobody on Stage and nothing dished there: still asked first.',
+      note: 'Nobody on Stage and nothing served from there: still asked first.',
       asking: 'stage',
     }),
   readOnly: () =>
@@ -667,7 +731,11 @@ export const STATIONS_PAGES: readonly { name: string; states: readonly DemoLink[
     ).map(link),
   },
   {
-    name: 'What each station dishes, and the walking order',
+    name: 'Stations tonight, during service',
+    states: (['tonight', 'tonightPeople'] as const).map(link),
+  },
+  {
+    name: 'What each station serves, and the walking order',
     states: (['allPass', 'courseEmpty', 'noCourses', 'walkEmpty', 'moved'] as const).map(link),
   },
   {

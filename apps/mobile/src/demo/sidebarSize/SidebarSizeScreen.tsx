@@ -10,39 +10,47 @@ import { EventThumb } from '../../components/EventThumb.tsx';
 import { Glyph, type GlyphName } from '../../components/Glyph.tsx';
 import { Initials } from '../../components/Initials.tsx';
 import { OrgMark } from '../../components/OrgMark.tsx';
-import { Text } from '../../components/Text.tsx';
-import { MeasuredWords } from '../../components/Title.tsx';
+import { OPENER } from '../../components/OrgPill.tsx';
+import { Text, TitleCap } from '../../components/Text.tsx';
 import { AREA_GLYPH } from '../../components/areaGlyph.ts';
 import { cardTags } from '../../kit/eventsList.ts';
-import { nameLines, wordsIn } from '../../layout/textSize.ts';
 import { DemoOnly } from '../../steps/Lines.tsx';
-import type { WeightName } from '../../theme/fonts.ts';
 import { tokens } from '../../theme/tokens.ts';
 import { Choices } from '../focusedHeader/FocusedHeaderScreen.tsx';
 import { shownEvent } from '../events/EventsModel.ts';
 import { AREAS, EVENT_OF_KEY, sampleEvent } from '../events/EventsSample.ts';
 import { SAMPLE } from '../samples.ts';
 import { SIDEBAR_EVENTS } from '../sideEvents.ts';
+import { useSideFit } from '../../components/sideFit.tsx';
 import {
   CARD_THUMB,
+  HEADING_TRACKING,
   OPENER_GLYPH,
   ORG_MARK,
   PERSON_GLYPH,
   ROOMS,
-  SIDEBAR_LANGUAGES,
-  SIDEBAR_PLACES,
-  SIDEBAR_SIZES,
-  SIDEBAR_WIDTH,
-  HEADING_TRACKING,
-  type SideFit,
-  type SideRoom,
-  lettersIn,
-  type SidebarAt,
-  type SidebarLanguage,
-  type SidebarSize,
   glyphSide,
   rowPad,
-  sideTextSize,
+} from '../../layout/sidebarSize.ts';
+import { PANE_TITLE } from '../../components/topTitle.ts';
+import {
+  SIDEBAR_WIDTH,
+  atAccessibilitySizes,
+  nameLines,
+  titleSize,
+} from '../../layout/textSize.ts';
+import {
+  SIDEBAR_LANGUAGES,
+  SIDEBAR_ORGS,
+  SIDEBAR_PLACES,
+  SIDEBAR_SIZES,
+  SIDEBAR_WAITING,
+  type SidebarAt,
+  type SidebarLanguage,
+  type SidebarOrg,
+  type SidebarSize,
+  type SidebarWaiting,
+  sidebarOrgName,
   sidebarScale,
 } from './sidebarSizeRules.ts';
 
@@ -50,7 +58,11 @@ export interface SidebarSizeStart {
   size: SidebarSize;
   language: SidebarLanguage;
   at: SidebarAt;
+  org: SidebarOrg;
+  waiting: SidebarWaiting;
 }
+
+const RING = 11;
 
 /** iPad landscape's sidebar at a text size and language the board chooses: each row grows to hold its words, and each word stays whole in the 252 column. */
 export function SidebarSizeScreen({ start }: { start: SidebarSizeStart }) {
@@ -60,6 +72,8 @@ export function SidebarSizeScreen({ start }: { start: SidebarSizeStart }) {
   const [size, setSize] = useState(start.size);
   const [language, setLanguage] = useState(start.language);
   const [at, setAt] = useState(start.at);
+  const [org, setOrg] = useState(start.org);
+  const [waiting, setWaiting] = useState(start.waiting);
   const words = useMemo(
     () => i18n.cloneInstance({ lng: language, initAsync: false }),
     [i18n, language],
@@ -78,13 +92,22 @@ export function SidebarSizeScreen({ start }: { start: SidebarSizeStart }) {
         ]}
         showsVerticalScrollIndicator={false}
       >
-        <Sidebar scale={scale} at={at} onAt={setAt} t={t} />
+        <Sidebar
+          scale={scale}
+          at={at}
+          onAt={setAt}
+          org={org}
+          waiting={
+            waiting === 'none' ? null : t('invitations.count', { count: waiting === 'two' ? 2 : 1 })
+          }
+          t={t}
+        />
       </ScrollView>
       <ScrollView
         style={styles.page}
         contentContainerStyle={[styles.pageBody, { paddingTop: insets.top + tokens.space3xl }]}
       >
-        <DemoOnly title="Stand-ins for the iPad’s own text size and language, and the page beside the sidebar. The sidebar is main’s 252 column at every size. Below the tenth step it draws as on main, except that a label whose widest word would break beside main’s glyph steps down alone, as Événements does at the ninth step in French. From the tenth each row grows to hold its words and each label steps down only where its widest word would break beside its glyph, never below its size on main. Each place opens here what it opens in the app; the organisation pill and the person open nothing in this board.">
+        <DemoOnly title="Stand-ins for the iPad’s own text size and language, the organisation’s name, the invitations waiting for you, and the page beside the sidebar. The sidebar is main’s 252 column at every size. Below the tenth step it draws as on main, except that a label whose widest word would break beside main’s glyph steps down alone, as Événements does at the ninth step in French, and a name main’s size would cut steps down until it fits its lines, from the fifth step. Organisation chooses the pill’s name: Ire Events fits at main’s size at the eighth step, and QA Organisation steps down there to read whole on one line. Invitations gives the pill its second line, which steps down on its own, beside its ring, to the largest size at which it reads whole on one line, never below its size at the default, and never cut or broken inside a word; the name keeps its own size. From the tenth each row grows to hold its words and each label steps down only where its widest word would break beside its glyph, never below its size on main. Each place opens here what it opens in the app; the organisation pill and the person open nothing in this board.">
           <Choices
             heading="Text size"
             options={SIDEBAR_SIZES}
@@ -109,6 +132,22 @@ export function SidebarSizeScreen({ start }: { start: SidebarSizeStart }) {
             id="at"
             prefix="demo.sidebar"
           />
+          <Choices
+            heading="Organisation"
+            options={SIDEBAR_ORGS}
+            chosen={org}
+            onChoose={setOrg}
+            id="org"
+            prefix="demo.sidebar"
+          />
+          <Choices
+            heading="Invitations"
+            options={SIDEBAR_WAITING}
+            chosen={waiting}
+            onChoose={setWaiting}
+            id="waiting"
+            prefix="demo.sidebar"
+          />
         </DemoOnly>
       </ScrollView>
     </View>
@@ -119,11 +158,15 @@ function Sidebar({
   scale,
   at,
   onAt,
+  org,
+  waiting,
   t,
 }: {
   scale: number;
   at: SidebarAt;
   onAt: (at: SidebarAt) => void;
+  org: SidebarOrg;
+  waiting: string | null;
   t: TFunction;
 }) {
   const inEvent = at === 'event';
@@ -143,9 +186,13 @@ function Sidebar({
       <View style={styles.logo}>
         <Brand lockup height={24} />
       </View>
-      <Org scale={scale} />
+      <Org scale={scale} org={org} waiting={waiting} />
       {inEvent ? (
-        <InEvent scale={scale} onBack={() => onAt('events')} t={t} />
+        <TitleCap.Provider
+          value={atAccessibilitySizes(scale) ? titleSize(PANE_TITLE, scale) : null}
+        >
+          <InEvent scale={scale} onBack={() => onAt('events')} t={t} />
+        </TitleCap.Provider>
       ) : (
         <>
           <Search scale={scale} label={t('todayScreen.search')} />
@@ -188,65 +235,6 @@ function Sidebar({
   );
 }
 
-/** A text's size in the sidebar, from its words measured hidden at its full size. */
-function useFit(
-  text: string,
-  room: SideRoom,
-  scale: number,
-  weight: WeightName,
-  fit: SideFit = 'label',
-) {
-  const start = room.size * scale;
-  const words = wordsIn([text]);
-  const key = `${start}|${weight}|${text}`;
-  const [measured, setMeasured] = useState<{ key: string; widths: Record<string, number> }>({
-    key: '',
-    widths: {},
-  });
-  const widths = measured.key === key ? measured.widths : {};
-  const whole = widths[`\n${text}`];
-  const known = whole != null && words.every((word) => widths[word] != null);
-  const size = sideTextSize(
-    room,
-    scale,
-    known
-      ? {
-          words: words.map((word) => ({ width: widths[word] ?? 0, letters: lettersIn(word) })),
-          whole: { width: whole, letters: lettersIn(text) },
-        }
-      : null,
-    fit,
-  );
-  const keep = (name: string, width: number) =>
-    setMeasured((now) => {
-      const kept = now.key === key ? now.widths : {};
-
-      return kept[name] === width ? now : { key, widths: { ...kept, [name]: width } };
-    });
-
-  return {
-    size,
-    measure: (
-      <>
-        <MeasuredWords
-          words={words}
-          size={start}
-          weight={weight}
-          allowFontScaling={false}
-          onWidth={keep}
-        />
-        <MeasuredWords
-          words={[text]}
-          size={start}
-          weight={weight}
-          allowFontScaling={false}
-          onWidth={(_, width) => keep(`\n${text}`, width)}
-        />
-      </>
-    ),
-  };
-}
-
 function Place({
   label,
   glyph,
@@ -263,7 +251,7 @@ function Place({
   testID: string;
 }) {
   const weight = on ? 'semibold' : 'medium';
-  const { size, measure } = useFit(label, ROOMS.place, scale, weight);
+  const { size, measure } = useSideFit(label, ROOMS.place, scale, weight);
   const ink = on ? tokens.colorInk : tokens.colorInkSecondary;
 
   return (
@@ -295,39 +283,60 @@ function Place({
   );
 }
 
-function Org({ scale }: { scale: number }) {
-  const { size, measure } = useFit(SAMPLE.organisation, ROOMS.org, scale, 'semibold', 'line');
+function Org({ scale, org, waiting }: { scale: number; org: SidebarOrg; waiting: string | null }) {
+  const name = sidebarOrgName(org);
+  const { size, measure } = useSideFit(name, ROOMS.org, scale, 'semibold', 'line');
+  const line = useSideFit(waiting ?? '', ROOMS.waiting, scale, 'semibold', 'line');
 
   return (
     <Pressable
       style={({ pressed }) => [
         styles.org,
         { paddingVertical: rowPad(scale) },
+        waiting != null && styles.orgWaiting,
         pressed && styles.orgOpen,
       ]}
       accessibilityRole="button"
-      accessibilityLabel={SAMPLE.organisation}
+      accessibilityLabel={waiting == null ? name : `${name}, ${waiting}`}
       testID="demo.sidebar.org"
     >
       {measure}
-      <OrgMark id="ire" name={SAMPLE.organisation} side={ORG_MARK} />
-      <Text
-        size={size}
-        weight="semibold"
-        numberOfLines={1}
-        allowFontScaling={false}
-        accessible={false}
-        style={styles.grow}
-      >
-        {SAMPLE.organisation}
-      </Text>
+      {waiting != null && line.measure}
+      <OrgMark id={org} name={name} side={ORG_MARK} />
+      <View style={[styles.grow, styles.orgWords]}>
+        <Text
+          size={size}
+          weight="semibold"
+          numberOfLines={1}
+          allowFontScaling={false}
+          accessible={false}
+        >
+          {name}
+        </Text>
+        {waiting != null && (
+          <View style={styles.waitingLine}>
+            <View style={styles.ring} />
+            <Text
+              size={line.size}
+              weight="semibold"
+              numberOfLines={1}
+              allowFontScaling={false}
+              accessible={false}
+              style={styles.grow}
+              testID="demo.sidebar.org.waiting"
+            >
+              {waiting}
+            </Text>
+          </View>
+        )}
+      </View>
       <Glyph name="updown" size={OPENER_GLYPH} ink={tokens.colorInkSecondary} />
     </Pressable>
   );
 }
 
 function Search({ scale, label }: { scale: number; label: string }) {
-  const { size, measure } = useFit(label, ROOMS.search, scale, 'medium');
+  const { size, measure } = useSideFit(label, ROOMS.search, scale, 'medium');
 
   return (
     <Pressable
@@ -364,7 +373,7 @@ function YourEvents({
   onOpen: () => void;
 }) {
   const caps = heading.toLocaleUpperCase();
-  const { size, measure } = useFit(caps, ROOMS.heading, scale, 'semibold');
+  const { size, measure } = useSideFit(caps, ROOMS.heading, scale, 'semibold');
 
   return (
     <View style={styles.list}>
@@ -394,7 +403,7 @@ function EventRow({
   scale: number;
   onOpen: () => void;
 }) {
-  const { size, measure } = useFit(event.name, ROOMS.event, scale, 'medium', 'line');
+  const { size, measure } = useSideFit(event.name, ROOMS.event, scale, 'medium', 'line');
 
   return (
     <Pressable
@@ -428,7 +437,7 @@ const CARD_EVENT = sampleEvent(EVENT_OF_KEY.wed);
 function InEvent({ scale, onBack, t }: { scale: number; onBack: () => void; t: TFunction }) {
   const [area, setArea] = useState<(typeof AREAS)[number]>('overview');
   const back = t('todayScreen.tab.events');
-  const { size, measure } = useFit(back, ROOMS.back, scale, 'semibold');
+  const { size, measure } = useSideFit(back, ROOMS.back, scale, 'semibold');
 
   return (
     <>
@@ -487,8 +496,8 @@ function Card({ scale, t }: { scale: number; t: TFunction }) {
       : cardTags(event, now, t)
           .map((tag) => tag.word)
           .join(' · ');
-  const name = useFit(event?.name ?? '', ROOMS.cardName, scale, 'bold', 'lines');
-  const tagged = useFit(tags, ROOMS.cardTags, scale, 'medium');
+  const name = useSideFit(event?.name ?? '', ROOMS.cardName, scale, 'bold', 'lines');
+  const tagged = useSideFit(tags, ROOMS.cardTags, scale, 'medium');
   if (event == null) return null;
 
   return (
@@ -522,8 +531,14 @@ function Card({ scale, t }: { scale: number; t: TFunction }) {
 
 function Person({ scale, role, label }: { scale: number; role: string; label: string }) {
   const lines = nameLines(scale);
-  const name = useFit(SAMPLE.name, ROOMS.person, scale, 'semibold', lines === 1 ? 'line' : 'lines');
-  const roleFit = useFit(role, ROOMS.role, scale, 'medium');
+  const name = useSideFit(
+    SAMPLE.name,
+    ROOMS.person,
+    scale,
+    'semibold',
+    lines === 1 ? 'line' : 'lines',
+  );
+  const roleFit = useSideFit(role, ROOMS.role, scale, 'medium');
 
   return (
     <Pressable
@@ -593,6 +608,16 @@ const styles = StyleSheet.create({
     paddingLeft: tokens.spaceSm,
     paddingRight: tokens.spaceMd,
     borderRadius: tokens.radiusRow,
+  },
+  orgWaiting: { minHeight: OPENER.waiting },
+  orgWords: { gap: tokens.spaceHair },
+  waitingLine: { flexDirection: 'row', alignItems: 'center', gap: tokens.spaceXs },
+  ring: {
+    width: RING,
+    height: RING,
+    borderRadius: RING / 2,
+    borderWidth: 2,
+    borderColor: tokens.colorInk,
   },
   orgOpen: { backgroundColor: tokens.colorCard },
   search: {

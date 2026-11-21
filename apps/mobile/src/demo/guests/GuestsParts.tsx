@@ -1,12 +1,32 @@
-import { type ReactNode, type Ref, useEffect, useRef, useState } from 'react';
-import { type LayoutChangeEvent, Pressable, StyleSheet, View } from 'react-native';
+import {
+  type ReactNode,
+  type Ref,
+  useCallback,
+  useContext,
+  useEffect,
+  useRef,
+  useState,
+} from 'react';
+import {
+  type LayoutChangeEvent,
+  Pressable,
+  StyleSheet,
+  type TextLayoutEvent,
+  View,
+  useWindowDimensions,
+} from 'react-native';
 
 import { eventColour } from '../../components/EventMesh.tsx';
 import { Glyph } from '../../components/Glyph.tsx';
-import { BodyTitle, MeasuredWords } from '../../components/Title.tsx';
+import {
+  BodyTitle,
+  MeasuredWords,
+  PageTitleDrawn,
+  usePageTitleDrawn,
+} from '../../components/Title.tsx';
 import { TopPrimary, usePrimaryLabel } from '../../components/TopPrimary.tsx';
 import { useReadOut } from '../../components/ReadOut.tsx';
-import { type TextHandle, Text } from '../../components/Text.tsx';
+import { type TextHandle, Text, TitleCap } from '../../components/Text.tsx';
 import { tokens } from '../../theme/tokens.ts';
 import { CardBackdrop, PhaseShape } from '../../components/EventCard.tsx';
 import type { Shown } from '../events/EventsModel.ts';
@@ -26,7 +46,14 @@ import { W, say } from './GuestsWords.ts';
 import { type MarkKind, ReplyMark } from '../../components/ReplyMark.tsx';
 import { DoneLine } from '../../components/FormLayers.tsx';
 import { PaneBell, useBellInPane } from '../events/EventFrame.tsx';
-import { actionsUnder } from '../../layout/titleFit.ts';
+import {
+  actionsUnder,
+  brokeOn,
+  statusFits,
+  titleRoomBeside,
+  titleRowKey,
+} from '../../layout/titleFit.ts';
+import { titleSize } from '../../layout/textSize.ts';
 
 export type Layout = 'phone' | 'portrait' | 'landscape';
 
@@ -359,7 +386,7 @@ export function ShownLine({
   );
 }
 
-/** The title row as the product draws it: the title keeps its words whole under its cap, and the + keeps its label only where the title and the labelled + both fit beside what is there (sc-67338, sc-51444, sc-67659). Where the title at its default size has no room beside Export and the round +, those two go together to a row under it (sc-68417). */
+/** The title row as the product draws it: the title keeps its words whole under its cap, and the + keeps its label only where the title and the labelled + both fit beside what is there (sc-67338, sc-51444, sc-67659). Where the title at its default size has no room beside Export and the round +, or broke beside them all the same, those two go together to a row under it (sc-68417). */
 export function GuestsTitle({
   layout,
   title = W.guests,
@@ -367,6 +394,8 @@ export function GuestsTitle({
   onPlus,
   plusLabel = W.addGuest,
   extra = null,
+  extraWidest = null,
+  refreshing = null,
 }: {
   layout: Layout;
   title?: string;
@@ -374,6 +403,10 @@ export function GuestsTitle({
   onPlus: () => void;
   plusLabel?: string;
   extra?: ReactNode;
+  /** Export again, drawn hidden and never pressed, measured at its widest (sc-71821). */
+  extraWidest?: ReactNode;
+  /** Refreshing… while it shows; `row` where main draws it on this row, a tablet's (sc-71821). */
+  refreshing?: { node: ReactNode; row: boolean } | null;
 }) {
   const size = layout === 'landscape' ? 26 : 30;
   const titleStyle = { lineHeight: size * 1.12, letterSpacing: size * -0.02 };
@@ -388,24 +421,105 @@ export function GuestsTitle({
   const bell = useBellInPane();
   const [room, setRoom] = useState(0);
   const [extraWidth, setExtraWidth] = useState(0);
+  const [widest, setWidest] = useState(0);
   const [titleWidth, setTitleWidth] = useState(0);
-  const under = actionsUnder({
-    room,
-    title: titleWidth,
-    extra: extra == null ? 0 : extraWidth,
-    plus: plus ? tokens.sizeHit : 0,
-    bell: bell ? tokens.sizeHit : 0,
-    refreshing: 0,
-    gap: tokens.spaceMd,
+  const [plusWidth, setPlusWidth] = useState(0);
+  const [statusWidth, setStatusWidth] = useState(0);
+  const [titleDrawn, setTitleDrawn] = useState(0);
+  // The title steps down from its slot's width rather than from a wrap it must first see.
+  const [slot, setSlot] = useState(0);
+  const { fontScale } = useWindowDimensions();
+  const pageDrawn = usePageTitleDrawn();
+  const capOver = useContext(TitleCap);
+  const drawn = useRef(0);
+  const [broke, setBroke] = useState<string | null>(null);
+  const row = titleRowKey({ room, title, fontScale });
+  const under =
+    broke === row ||
+    actionsUnder({
+      room,
+      title: titleWidth,
+      extra: extra == null ? 0 : widest || extraWidth,
+      plus: plus ? tokens.sizeHit : 0,
+      bell: bell ? tokens.sizeHit : 0,
+      gap: tokens.spaceMd,
+    });
+  // Refreshing… counts toward nothing above: it stays on the row only in what the title as drawn, Export, the + and the bell leave it (sc-71821).
+  const onRow =
+    refreshing != null &&
+    refreshing.row &&
+    !under &&
+    statusFits({
+      room,
+      lead: titleDrawn,
+      ends: [
+        ...(extra == null ? [] : [extraWidth]),
+        ...(plus ? [plusWidth] : []),
+        ...(bell ? [tokens.sizeHit] : []),
+      ],
+      status: statusWidth,
+      gap: tokens.spaceMd,
+    });
+  const line = refreshing != null && !onRow;
+  // As the product: the title steps down beside Export as if Export were at its widest, so the two never resize each other into a broken word (sc-71821).
+  const titleRoom = titleRoomBeside({
+    slot,
+    extra: extra == null || under ? 0 : extraWidth,
+    widest,
   });
+  const keepsDefault = layout === 'landscape' && under;
+  const onDrawn = useCallback(
+    (next: number) => {
+      drawn.current = next;
+      pageDrawn?.(keepsDefault ? Math.min(next, size) : next);
+    },
+    [pageDrawn, keepsDefault, size],
+  );
+  // Where the device lays the title out wider than it measured hidden, it can break at its floor though the sum says it fits; then the actions go under (sc-68417).
+  const onTitleLines = (event: TextLayoutEvent) => {
+    const start = titleSize(size, fontScale);
+    const lines = event.nativeEvent.lines;
+    setTitleDrawn(Math.ceil(Math.max(0, ...lines.map((one) => one.width))));
+    setBroke((was) =>
+      brokeOn({
+        broke: was,
+        row,
+        under,
+        lines: event.nativeEvent.lines,
+        drawn: drawn.current || start,
+        start,
+        size,
+        slot: titleRoom,
+        title: titleWidth,
+      }),
+    );
+  };
   const widthOf = (set: (width: number) => void) => (event: LayoutChangeEvent) =>
     set(Math.ceil(event.nativeEvent.layout.width));
   const heading = (
-    <View style={styles.grow} onLayout={label.onSlot}>
+    <View
+      style={styles.grow}
+      onLayout={(event) => {
+        label.onSlot(event);
+        setSlot(Math.floor(event.nativeEvent.layout.width));
+      }}
+    >
       {label.measure}
-      <BodyTitle size={size} accessibilityRole="header" style={titleStyle} testID="guests.title">
-        {title}
-      </BodyTitle>
+      <PageTitleDrawn.Provider value={onDrawn}>
+        {/* As the product on a tablet on its side: with Export and the + under it, the title keeps its default size, and so caps the card and the sidebar there (sc-67659). */}
+        <TitleCap.Provider value={keepsDefault ? size : capOver}>
+          <BodyTitle
+            size={size}
+            accessibilityRole="header"
+            style={titleStyle}
+            room={titleRoom}
+            onTextLayout={onTitleLines}
+            testID="guests.title"
+          >
+            {title}
+          </BodyTitle>
+        </TitleCap.Provider>
+      </PageTitleDrawn.Provider>
     </View>
   );
   const actions = (
@@ -416,19 +530,48 @@ export function GuestsTitle({
         </View>
       )}
       {plus && (
-        <TopPrimary
-          label={plusLabel}
-          onPress={onPlus}
-          wide={label.wide && !under}
-          testID="guests.add"
-        />
+        <View onLayout={widthOf(setPlusWidth)}>
+          <TopPrimary
+            label={plusLabel}
+            onPress={onPlus}
+            wide={label.wide && !under}
+            testID="guests.add"
+          />
+        </View>
       )}
     </>
+  );
+  const status = refreshing != null && (
+    <View
+      style={styles.measure}
+      pointerEvents="none"
+      accessibilityElementsHidden
+      importantForAccessibility="no-hide-descendants"
+    >
+      <View onLayout={widthOf(setStatusWidth)}>{refreshing.node}</View>
+    </View>
+  );
+  const measureWidest = extra != null && extraWidest != null && (
+    <View
+      style={styles.measure}
+      pointerEvents="none"
+      accessibilityElementsHidden
+      importantForAccessibility="no-hide-descendants"
+    >
+      <TitleCap.Provider value={titleSize(size, fontScale)}>
+        <View onLayout={widthOf(setWidest)}>{extraWidest}</View>
+      </TitleCap.Provider>
+    </View>
+  );
+  const ownLine = refreshing != null && line && (
+    <View style={styles.statusLine} testID="guests.refreshingLine">
+      {refreshing.node}
+    </View>
   );
 
   return (
     <View
-      style={under ? styles.titleStack : styles.titleRow}
+      style={under || line ? styles.titleStack : styles.titleRow}
       onLayout={widthOf(setRoom)}
       testID="guests.titleRow"
     >
@@ -440,6 +583,8 @@ export function GuestsTitle({
         maxFontSizeMultiplier={1}
         onWidth={(_, width) => setTitleWidth(Math.ceil(width))}
       />
+      {status}
+      {measureWidest}
       {under ? (
         <>
           <View style={styles.titleRow}>
@@ -450,13 +595,21 @@ export function GuestsTitle({
             {actions}
           </View>
         </>
+      ) : line ? (
+        <View style={styles.titleRow}>
+          {heading}
+          {actions}
+          <PaneBell />
+        </View>
       ) : (
         <>
           {heading}
+          {onRow && refreshing?.node}
           {actions}
           <PaneBell />
         </>
       )}
+      {ownLine}
     </View>
   );
 }
@@ -547,4 +700,6 @@ const styles = StyleSheet.create({
   titleStack: { gap: tokens.spaceSm },
   actionsRow: { flexDirection: 'row', alignItems: 'center', gap: tokens.spaceMd },
   shrink: { flexShrink: 1 },
+  measure: { position: 'absolute', opacity: 0 },
+  statusLine: { flexDirection: 'row' },
 });
