@@ -4138,10 +4138,13 @@ export class ApiClient {
     return this.checkInOf(await this.get<unknown>(this.checkInPath(eventId)));
   }
 
-  /** Arrived, for a guest or a companion by id: one already arrived keeps their first arrival and nobody else is arrived. Refused 409 `check_in_closed` outside the window. */
-  async arrive(eventId: string, guestId: string): Promise<CheckIn> {
+  /** Arrived, for a guest or a companion by id: one already arrived keeps their first arrival and nobody else is arrived. `arrivedAt` is when a device that was offline recorded it (sc-1301), and the earlier arrival stands. Refused 409 `check_in_closed` outside the window. */
+  async arrive(eventId: string, guestId: string, arrivedAt?: string): Promise<CheckIn> {
     return this.checkInOf(
-      await this.post<unknown>(`${this.checkInPath(eventId)}/arrivals`, { guestId }),
+      await this.post<unknown>(
+        `${this.checkInPath(eventId)}/arrivals`,
+        arrivedAt == null ? { guestId } : { guestId, arrivedAt },
+      ),
     );
   }
 
@@ -6094,8 +6097,10 @@ function asGuestPage(raw: unknown): GuestPage | null {
     language,
     programme,
     seating,
+    checkInCode,
   } = raw as Record<string, unknown>;
   const shown = GUEST_PAGE_PHASES.find((known) => known === phase);
+  const door = checkInCode as Record<string, unknown> | null | undefined;
   if (typeof guest !== 'object' || guest == null || typeof event !== 'object' || event == null)
     return null;
   const who = guest as Record<string, unknown>;
@@ -6128,7 +6133,8 @@ function asGuestPage(raw: unknown): GuestPage | null {
     typeof what.timeZone !== 'string' ||
     shown == null ||
     typeof started !== 'boolean' ||
-    typeof answersOpen !== 'boolean'
+    typeof answersOpen !== 'boolean' ||
+    (door != null && (typeof door.code !== 'string' || typeof door.qrSvg !== 'string'))
   )
     return null;
 
@@ -6181,6 +6187,7 @@ function asGuestPage(raw: unknown): GuestPage | null {
     calendar: null,
     programme: items.filter((one) => one != null),
     seating: asGuestSeating(seating),
+    checkInCode: door == null ? null : { code: door.code as string, qrSvg: door.qrSvg as string },
   };
 }
 
