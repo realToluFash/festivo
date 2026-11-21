@@ -40,6 +40,7 @@ import { SignedInHome } from './app/Today.tsx';
 import { GuestLayout } from './guest/GuestLayout.tsx';
 import { Invitation } from './guest/Invitation.tsx';
 import { RoomScreenPage } from './screen/RoomScreen.tsx';
+import { RedeemPage } from './public/Redeem.tsx';
 import { StaffLinkPage } from './public/StaffLink.tsx';
 import { ChangePhone } from './public/ChangePhone.tsx';
 import { CompleteProfile } from './public/CompleteProfile.tsx';
@@ -145,6 +146,8 @@ export const routes = [
       },
       { path: '/s/:token', element: <RoomScreenPage /> },
       { path: '/w/:token', element: <StaffLinkPage /> },
+      { path: '/d', element: <RedeemPage /> },
+      { path: '/d/:code', element: <RedeemPage /> },
       { path: '/demo/*', element: <DemoRoute /> },
       { path: '*', element: <NotFound /> },
     ],

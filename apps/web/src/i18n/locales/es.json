@@ -3447,6 +3447,31 @@
     "tag": "Door code",
     "joinedWith": "Joined with the door code {{code}} at {{time}}."
   },
+  "redeem": {
+    "enterTitle": "Enter a door code",
+    "doorCode": "Door code",
+    "continue": "Continue",
+    "line": {
+      "blank": "Enter the door code.",
+      "short": "A door code is 8 letters and numbers.",
+      "refused": "That code doesn’t work. Check it with whoever gave it to you.",
+      "failed": "Something went wrong on the way. Try again in a moment."
+    },
+    "refused": "That code doesn’t work. Check it with whoever gave it to you.",
+    "tooMany": "Too many tries",
+    "tryAt": "Try again {{when}}.",
+    "joinAs": "Join as {{name}}",
+    "signOut": "Sign out",
+    "memberTitle": "You’re already a member of {{organisation}}",
+    "memberLine": "Members open an event from its People page. Ask its lead or an admin to add you.",
+    "openEvents": "Open Events",
+    "inTitle": "You’re in for {{event}} · {{job}}",
+    "inTitleNoJob": "You’re in for {{event}}",
+    "endsLine": "Access ends when the event concludes.",
+    "openEvent": "Open the event",
+    "signedInAs": "Signed in as {{name}}",
+    "signedOut": "Signed out."
+  },
   "guestList": {
     "addGuest": "Añadir invitado",
     "onTheList_one": "{{count, number}} en la lista",
