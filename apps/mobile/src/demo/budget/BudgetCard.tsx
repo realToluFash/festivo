@@ -1,10 +1,9 @@
 import type { ReactNode, Ref } from 'react';
-import { StyleSheet, useWindowDimensions, View, type ViewInstance } from 'react-native';
+import { StyleSheet, View, type ViewInstance } from 'react-native';
 
 import { useShell } from '../../components/settingsShell.ts';
 import { CardSays, OnCard, SummaryCard } from '../../components/Summary.tsx';
 import { Text } from '../../components/Text.tsx';
-import { WholeWords } from '../../components/Title.tsx';
 import { tokens } from '../../theme/tokens.ts';
 import { CardBackdrop } from '../../components/EventCard.tsx';
 import { Glass } from '../../components/TodayCover.tsx';
@@ -14,23 +13,6 @@ import { CeilingMark, RingMark } from './BudgetParts.tsx';
 import { W, say } from './BudgetWords.ts';
 
 const FIGURE = { phone: 30, portrait: 32, landscape: 34 } as const;
-
-/** Grows with the text, and steps down rather than break a figure across lines (sc-31778). */
-function Figure({ text, size }: { text: string; size: number }) {
-  const { fontScale } = useWindowDimensions();
-
-  return (
-    <WholeWords
-      size={size}
-      start={size * fontScale}
-      weight="bold"
-      accessibilityRole="header"
-      style={[styles.figure, { lineHeight: Math.round(size * 1.1), letterSpacing: size * -0.02 }]}
-    >
-      {text}
-    </WholeWords>
-  );
-}
 
 /** The kit's glass tag, taller when its words wrap at the accessibility sizes rather than cut off at 28. */
 function CardTag({ word, shape }: { word: string; shape?: ReactNode }) {
@@ -107,7 +89,7 @@ export function BudgetCard({
           />
         )}
       </View>
-      <Figure text={range} size={FIGURE[layout]} />
+      <CardSays text={range} size={FIGURE[layout]} heading />
       <OnCard text={W.rangeLine} />
       {says != null && <OnCard text={says} strong />}
     </Card>
@@ -140,7 +122,7 @@ export function PayersCard({
       <View style={styles.tags}>
         <CardTag word={count} />
       </View>
-      <Figure text={has} size={28} />
+      <CardSays text={has} size={28} heading />
       <OnCard text={line} />
     </Card>
   );
@@ -165,7 +147,7 @@ export function PayerCard({
         <CardTag word={note} />
       </View>
       <OnCard text={W.theirShare} />
-      <Figure text={share} size={28} />
+      <CardSays text={share} size={28} heading />
       {notPriced > 0 && <OnCard text={say.notPriced(notPriced)} strong />}
       <OnCard text={line} />
     </Card>
@@ -183,5 +165,4 @@ const styles = StyleSheet.create({
     paddingVertical: tokens.spaceXxs,
   },
   tagWord: { flexShrink: 1, color: tokens.colorInkOnDark },
-  figure: { color: tokens.colorInkOnDark, fontVariant: ['tabular-nums'] },
 });
