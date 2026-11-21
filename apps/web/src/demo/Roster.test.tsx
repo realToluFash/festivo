@@ -313,6 +313,20 @@ describe('/demo/events/evt-wed-4/staff/roster (sc-3906)', () => {
     expect(desk).not.toMatch(/th:nth-child\([23]\)/u);
   });
 
+  it('leaves the Link column whole with the person open at 1280 × 800 (sc-3912, #78267)', async () => {
+    await open('longEvent');
+    const desk = ROSTER_CSS.slice(0, ROSTER_CSS.indexOf('@media'));
+    expect(cssRule('.rs .mn-panel', desk)).toContain('width: 360px;');
+    expect(cssRule('.rs .mn-split:has(> .mn-panel) .rs-table td.rs-shift', desk)).toContain(
+      'white-space: normal;',
+    );
+    expect(cssRule('.rs-table td.rs-shift', ROSTER_CSS)).toContain('white-space: nowrap;');
+    const cell = within(screen.getByRole('table')).getByText(
+      'Fri 6 Nov, 16:00 to Sat 7 Nov, 01:00',
+    );
+    expect(cell.textContent).toBe('Fri\u00a06\u00a0Nov, 16:00\u00a0to Sat\u00a07\u00a0Nov, 01:00');
+  });
+
   it.each([
     ['populatedFrench', 'Liste du personnel', 'Pas encore de lien'],
     ['detailsNoLinkFrench', 'Liste du personnel', 'Pas encore de lien'],
