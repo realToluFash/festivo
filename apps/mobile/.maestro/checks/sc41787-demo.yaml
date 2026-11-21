@@ -1,0 +1,20 @@
+# sc-41787: the app's design demo at ${ROUTE} (such as demo/calendar?state=agenda) turned to ${O}, its top and one page down, beside the product.
+appId: host.exp.Exponent
+---
+- setOrientation: ${O}
+- waitForAnimationToEnd:
+    timeout: 4000
+- openLink: ${METRO_URL}/--/${ROUTE}
+- waitForAnimationToEnd:
+    timeout: 8000
+- runFlow: ../developer-menu-close.yaml
+- waitForAnimationToEnd:
+    timeout: 3000
+- takeScreenshot: demo-top
+- swipe:
+    start: 30%, 80%
+    end: 30%, 35%
+    duration: 800
+- waitForAnimationToEnd:
+    timeout: 2000
+- takeScreenshot: demo-down

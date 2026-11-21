@@ -1,0 +1,33 @@
+# sc-52008: ${EVENT_ID}'s Dates (14:00 to 18:00) with Ends set to 13:00; Save (TalkBack off) keeps the screen and its line and sends nothing; Cancel then Discard closes onto the event's page, which shows the dates it had. Needs ${METRO_URL}, ${EVENT_ID}.
+appId: host.exp.Exponent
+---
+- runFlow:
+    file: sc52008-dates-end-before-start-android.yaml
+    env:
+      HOUR: '13'
+- tapOn:
+    id: 'event.edit.dates.save'
+- waitForAnimationToEnd
+- assertVisible:
+    id: 'event.edit.dates.endTime'
+- assertVisible: 'The end is before the start. Choose a later end.'
+- takeScreenshot: save-refused-talkback-off
+- tapOn:
+    id: 'event.edit.dates.cancel'
+- extendedWaitUntil:
+    visible:
+      id: 'event.edit.dates.discard'
+    timeout: 10000
+- takeScreenshot: discard-ask
+- tapOn:
+    id: 'event.edit.dates.discard'
+- extendedWaitUntil:
+    visible:
+      id: 'events.page'
+    timeout: 10000
+- scrollUntilVisible:
+    element:
+      id: 'events.details.dates'
+    direction: DOWN
+    centerElement: true
+- takeScreenshot: page-unchanged

@@ -1,0 +1,28 @@
+# sc-68022: Guests, then More, then People, then ‹ Overview: Overview opens, not Guests.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/demo/events/evt-wed-4
+- extendedWaitUntil: { visible: { id: 'tab-guests' }, timeout: 30000 }
+- tapOn: { id: 'tab-guests' }
+- extendedWaitUntil: { visible: { id: 'tab-guests', selected: true }, timeout: 10000 }
+- waitForAnimationToEnd: { timeout: 5000 }
+- takeScreenshot: d-guests
+- tapOn: { id: 'tab-more' }
+- extendedWaitUntil: { visible: { id: 'event.more.people' }, timeout: 10000 }
+- tapOn: { id: 'event.more.people' }
+- extendedWaitUntil: { visible: '(Back to|Voltar a|Volver a|Retour à) Overview', timeout: 15000 }
+- takeScreenshot: d-people-over-guests
+- tapOn: '(Back to|Voltar a|Volver a|Retour à) Overview'
+- extendedWaitUntil: { visible: { id: 'tab-overview', selected: true }, timeout: 15000 }
+- waitForAnimationToEnd: { timeout: 5000 }
+- assertVisible: { id: 'tab-guests', selected: false }
+- takeScreenshot: d-back-from-guests
+- tapOn: { id: 'tab-menu' }
+- extendedWaitUntil: { visible: { id: 'tab-menu', selected: true }, timeout: 10000 }
+- tapOn: { id: 'tab-more' }
+- tapOn: { id: 'event.more.people' }
+- extendedWaitUntil: { visible: '(Back to|Voltar a|Volver a|Retour à) Overview', timeout: 15000 }
+- tapOn: '(Back to|Voltar a|Volver a|Retour à) Overview'
+- extendedWaitUntil: { visible: { id: 'tab-overview', selected: true }, timeout: 15000 }
+- waitForAnimationToEnd: { timeout: 5000 }
+- takeScreenshot: d-back-from-menu

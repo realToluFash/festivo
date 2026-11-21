@@ -1,0 +1,13 @@
+# sc-58991: scrolls the details pane (the right of a side-by-side tablet) down until TARGET is on screen.
+appId: host.exp.Exponent
+---
+- repeat:
+    while:
+      notVisible:
+        id: ${TARGET}
+    times: 10
+    commands:
+      - swipe:
+          start: 75%, 80%
+          end: 75%, 35%
+          duration: 600

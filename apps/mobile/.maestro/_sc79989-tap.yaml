@@ -1,0 +1,5 @@
+appId: com.soirely.app
+---
+- tapOn: { id: '${ID}' }
+- waitForAnimationToEnd
+- takeScreenshot: ${OUT}

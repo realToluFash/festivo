@@ -1,0 +1,51 @@
+# Search's words on the full-screen Search, empty, short, results, nothing. sc-53041.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/
+- tapOn:
+    id: 'tab-today|frame.home'
+    optional: true
+- extendedWaitUntil:
+    visible:
+      id: 'today.search|frame.search'
+    timeout: 15000
+- tapOn:
+    id: 'today.search|frame.search'
+- extendedWaitUntil:
+    visible:
+      id: 'search.field'
+    timeout: 10000
+- waitForAnimationToEnd:
+    timeout: 3000
+- takeScreenshot: empty
+- tapOn:
+    id: 'search.field'
+- inputText: 'g'
+- waitForAnimationToEnd:
+    timeout: 3000
+- takeScreenshot: short
+- eraseText: 10
+- inputText: 'gala'
+- waitForAnimationToEnd:
+    timeout: 4000
+- hideKeyboard
+- takeScreenshot: gala
+- scroll
+- takeScreenshot: gala-scrolled
+- tapOn:
+    id: 'search.field'
+- eraseText: 10
+- inputText: 'galax'
+- waitForAnimationToEnd:
+    timeout: 4000
+- takeScreenshot: galax
+- eraseText: 10
+- inputText: 'zebra'
+- waitForAnimationToEnd:
+    timeout: 4000
+- takeScreenshot: zebra
+- eraseText: 10
+- inputText: 'qqzz'
+- waitForAnimationToEnd:
+    timeout: 4000
+- takeScreenshot: nothing

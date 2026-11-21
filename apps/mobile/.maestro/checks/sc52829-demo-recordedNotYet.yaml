@@ -1,0 +1,7 @@
+# sc-52829: the app demo's recordedNotYet state, for side-by-side with the product.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/demo/guests?state=recordedNotYet
+- waitForAnimationToEnd:
+    timeout: 8000
+- takeScreenshot: recordedNotYet

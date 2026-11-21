@@ -1,0 +1,27 @@
+appId: com.soirely.app
+---
+- launchApp:
+    appId: com.soirely.app
+    stopApp: true
+- extendedWaitUntil:
+    visible:
+      id: "home\\.openSettings"
+    timeout: 30000
+- tapOn: { id: 'home.openSettings' }
+- tapOn: { id: 'settings.security' }
+- extendedWaitUntil:
+    visible:
+      id: 'security\.password'
+    timeout: 20000
+- tapOn: { id: 'security.password' }
+- extendedWaitUntil:
+    visible:
+      id: 'security\.change\.current'
+    timeout: 20000
+- tapOn: { id: 'security.change.current' }
+- inputText: 'not-the-current-password'
+- tapOn: { id: 'security.change.current.reveal' }
+- tapOn: { id: 'security.change.new' }
+- inputText: 'another-new-password-79989'
+- tapOn: { id: 'security.change.new.reveal' }
+- waitForAnimationToEnd

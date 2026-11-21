@@ -1,0 +1,49 @@
+# sc-48600: the Currency edit on ${EVENT_ID} opens on the event's own currency first and selected, filters by code and name ignoring case and accents, and says when nothing matches with Clear search; the demo's ?state=currency beside it. Needs ${METRO_URL}, ${EVENT_ID}.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/${EVENT_ID}/edit?at=currency
+- extendedWaitUntil:
+    visible:
+      id: 'event.edit.currency.save'
+    timeout: 30000
+- waitForAnimationToEnd:
+    timeout: 4000
+- takeScreenshot: currency-open-product
+- tapOn:
+    id: 'event.edit.currency.search'
+- inputText: 'eur'
+- waitForAnimationToEnd:
+    timeout: 2000
+- assertVisible: 'EUR · .*'
+- takeScreenshot: currency-search-eur-product
+- eraseText: 20
+- inputText: 'Real'
+- waitForAnimationToEnd:
+    timeout: 2000
+- assertVisible: 'BRL · .*'
+- takeScreenshot: currency-search-real-product
+- eraseText: 20
+- inputText: 'zzzz'
+- waitForAnimationToEnd:
+    timeout: 2000
+- assertVisible:
+    id: 'event.edit.currency.none'
+- assertVisible: 'No currency matches .*zzzz.*'
+- takeScreenshot: currency-search-none-product
+- tapOn: 'Clear search'
+- waitForAnimationToEnd:
+    timeout: 2000
+- assertNotVisible:
+    id: 'event.edit.currency.none'
+- assertVisible: 'GBP · .*'
+- takeScreenshot: currency-search-cleared-product
+- tapOn:
+    id: 'event.edit.currency.cancel'
+- openLink: ${METRO_URL}/--/demo/events/evt-wed-4?state=currency
+- waitForAnimationToEnd:
+    timeout: 4000
+- takeScreenshot: currency-open-demo
+- openLink: ${METRO_URL}/--/demo/events/evt-wed-4?state=currencyRefused
+- waitForAnimationToEnd:
+    timeout: 4000
+- takeScreenshot: currencyRefused-demo

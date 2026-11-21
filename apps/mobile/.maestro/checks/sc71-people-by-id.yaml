@@ -1,0 +1,17 @@
+# sc-71: People on the event as its owner, then one outsider's role sheet and removal, tapped by the row's id. Needs ${ORIENT}, ${METRO_URL}, ${EVENT_ID}, ${PERSON_ID}.
+appId: host.exp.Exponent
+---
+- setOrientation: ${ORIENT}
+- openLink: ${METRO_URL}/--/events/${EVENT_ID}?area=people
+- extendedWaitUntil: { visible: { id: 'people.row.*' }, timeout: 30000 }
+- waitForAnimationToEnd: { timeout: 8000 }
+- takeScreenshot: people
+- scrollUntilVisible:
+    { element: { id: 'people.row.${PERSON_ID}' }, direction: DOWN, timeout: 10000 }
+- tapOn: { id: 'people.row.${PERSON_ID}' }
+- extendedWaitUntil: { visible: { id: 'people.roleSheet' }, timeout: 10000 }
+- waitForAnimationToEnd: { timeout: 4000 }
+- takeScreenshot: roleSheet
+- tapOn: { id: 'people.remove' }
+- waitForAnimationToEnd: { timeout: 4000 }
+- takeScreenshot: remove

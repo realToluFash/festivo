@@ -1,0 +1,76 @@
+# sc-72486: Only our organisation from off: the card, the Ask, Schedule it, the scheduled state, Cancel, the cancelled state, then the Remove Ask kept. Pass METRO_URL and DOMAIN; the domain starts proved with the switch off.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/settings/data-and-control/email-domains
+- extendedWaitUntil:
+    visible:
+      id: emailDomains.card
+    timeout: 30000
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: sc72486-off-top
+- scrollUntilVisible:
+    element:
+      id: emailDomains.${DOMAIN}.onlyRow
+    direction: DOWN
+    timeout: 15000
+- takeScreenshot: sc72486-off-row
+- tapOn:
+    id: emailDomains.${DOMAIN}.only
+- extendedWaitUntil:
+    visible:
+      id: emailDomains.only.schedule
+    timeout: 10000
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: sc72486-ask
+- tapOn:
+    id: emailDomains.only.schedule
+- extendedWaitUntil:
+    visible:
+      id: emailDomains.${DOMAIN}.only.cancel
+    timeout: 15000
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: sc72486-scheduled-row
+- scrollUntilVisible:
+    element:
+      id: emailDomains.card
+    direction: UP
+    timeout: 10000
+- takeScreenshot: sc72486-scheduled-top
+- scrollUntilVisible:
+    element:
+      id: emailDomains.${DOMAIN}.only.cancel
+    direction: DOWN
+    timeout: 10000
+- tapOn:
+    id: emailDomains.${DOMAIN}.only.cancel
+- extendedWaitUntil:
+    visible:
+      id: emailDomains.${DOMAIN}.only
+    timeout: 15000
+- scrollUntilVisible:
+    element:
+      id: emailDomains.card
+    direction: UP
+    timeout: 10000
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: sc72486-cancelled-top
+- scrollUntilVisible:
+    element:
+      id: emailDomains.${DOMAIN}.remove
+    direction: DOWN
+    timeout: 10000
+- tapOn:
+    id: emailDomains.${DOMAIN}.remove
+- extendedWaitUntil:
+    visible:
+      id: emailDomains.remove.keep
+    timeout: 10000
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: sc72486-remove-ask
+- tapOn:
+    id: emailDomains.remove.keep
