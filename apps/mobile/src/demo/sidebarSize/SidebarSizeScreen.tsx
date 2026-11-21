@@ -10,6 +10,7 @@ import { EventThumb } from '../../components/EventThumb.tsx';
 import { Glyph, type GlyphName } from '../../components/Glyph.tsx';
 import { Initials } from '../../components/Initials.tsx';
 import { OrgMark } from '../../components/OrgMark.tsx';
+import { OPENER } from '../../components/OrgPill.tsx';
 import { Text, TitleCap } from '../../components/Text.tsx';
 import { AREA_GLYPH } from '../../components/areaGlyph.ts';
 import { cardTags } from '../../kit/eventsList.ts';
@@ -43,12 +44,17 @@ import {
   SIDEBAR_ORGS,
   SIDEBAR_PLACES,
   SIDEBAR_SIZES,
+  SIDEBAR_WAITING,
+  WAITING_RING,
+  WAITING_ROOM,
   type SidebarAt,
   type SidebarLanguage,
   type SidebarOrg,
   type SidebarSize,
+  type SidebarWaiting,
   sidebarOrgName,
   sidebarScale,
+  waitingCount,
 } from './sidebarSizeRules.ts';
 
 export interface SidebarSizeStart {
@@ -56,6 +62,7 @@ export interface SidebarSizeStart {
   language: SidebarLanguage;
   at: SidebarAt;
   org: SidebarOrg;
+  waiting: SidebarWaiting;
 }
 
 /** iPad landscape's sidebar at a text size and language the board chooses: each row grows to hold its words, and each word stays whole in the 252 column. */
@@ -67,6 +74,7 @@ export function SidebarSizeScreen({ start }: { start: SidebarSizeStart }) {
   const [language, setLanguage] = useState(start.language);
   const [at, setAt] = useState(start.at);
   const [org, setOrg] = useState(start.org);
+  const [waiting, setWaiting] = useState(start.waiting);
   const words = useMemo(
     () => i18n.cloneInstance({ lng: language, initAsync: false }),
     [i18n, language],
@@ -85,13 +93,13 @@ export function SidebarSizeScreen({ start }: { start: SidebarSizeStart }) {
         ]}
         showsVerticalScrollIndicator={false}
       >
-        <Sidebar scale={scale} at={at} onAt={setAt} org={org} t={t} />
+        <Sidebar scale={scale} at={at} onAt={setAt} org={org} waiting={waiting} t={t} />
       </ScrollView>
       <ScrollView
         style={styles.page}
         contentContainerStyle={[styles.pageBody, { paddingTop: insets.top + tokens.space3xl }]}
       >
-        <DemoOnly title="Stand-ins for the iPad’s own text size and language, the organisation’s name, and the page beside the sidebar. The sidebar is main’s 252 column at every size. Below the tenth step it draws as on main, except that a label whose widest word would break beside main’s glyph steps down alone, as Événements does at the ninth step in French, and a name main’s size would cut steps down until it fits its lines, from the fifth step. Organisation chooses the pill’s name: Ire Events fits at main’s size at the eighth step, and QA Organisation steps down there to read whole on one line. From the tenth each row grows to hold its words and each label steps down only where its widest word would break beside its glyph, never below its size on main. Each place opens here what it opens in the app; the organisation pill and the person open nothing in this board.">
+        <DemoOnly title="Stand-ins for the iPad’s own text size and language, the organisation’s name, and the page beside the sidebar. The sidebar is main’s 252 column at every size. Below the tenth step it draws as on main, except that a label whose widest word would break beside main’s glyph steps down alone, as Événements does at the ninth step in French, and a name main’s size would cut steps down until it fits its lines, from the fifth step. Organisation chooses the pill’s name: Ire Events fits at main’s size at the eighth step, and QA Organisation steps down there to read whole on one line. Invitations waiting puts the line under the name, its ring before it: where main’s size would break or cut it, it steps down on its own to the largest size at which it reads whole on one line, never below main’s, while the ring keeps its size and the pill grows taller. From the tenth each row grows to hold its words and each label steps down only where its widest word would break beside its glyph, never below its size on main. Each place opens here what it opens in the app; the organisation pill and the person open nothing in this board.">
           <Choices
             heading="Text size"
             options={SIDEBAR_SIZES}
@@ -124,6 +132,14 @@ export function SidebarSizeScreen({ start }: { start: SidebarSizeStart }) {
             id="org"
             prefix="demo.sidebar"
           />
+          <Choices
+            heading="Invitations waiting"
+            options={SIDEBAR_WAITING}
+            chosen={waiting}
+            onChoose={setWaiting}
+            id="waiting"
+            prefix="demo.sidebar"
+          />
         </DemoOnly>
       </ScrollView>
     </View>
@@ -135,12 +151,14 @@ function Sidebar({
   at,
   onAt,
   org,
+  waiting,
   t,
 }: {
   scale: number;
   at: SidebarAt;
   onAt: (at: SidebarAt) => void;
   org: SidebarOrg;
+  waiting: SidebarWaiting;
   t: TFunction;
 }) {
   const inEvent = at === 'event';
@@ -160,7 +178,7 @@ function Sidebar({
       <View style={styles.logo}>
         <Brand lockup height={24} />
       </View>
-      <Org scale={scale} org={org} />
+      <Org scale={scale} org={org} waiting={waitingCount(waiting)} t={t} />
       {inEvent ? (
         <TitleCap.Provider
           value={atAccessibilitySizes(scale) ? titleSize(PANE_TITLE, scale) : null}
@@ -257,23 +275,65 @@ function Place({
   );
 }
 
-function Org({ scale, org }: { scale: number; org: SidebarOrg }) {
+function Org({
+  scale,
+  org,
+  waiting,
+  t,
+}: {
+  scale: number;
+  org: SidebarOrg;
+  waiting: number;
+  t: TFunction;
+}) {
   const name = sidebarOrgName(org);
   const { size, measure } = useSideFit(name, ROOMS.org, scale, 'semibold', 'line');
+  const label =
+    waiting > 0
+      ? t('switcher.labelSwitchWaiting', { name, role: t('roles.owner'), count: waiting })
+      : name;
 
   return (
     <Pressable
       style={({ pressed }) => [
         styles.org,
         { paddingVertical: rowPad(scale) },
+        waiting > 0 && styles.orgWaiting,
         pressed && styles.orgOpen,
       ]}
       accessibilityRole="button"
-      accessibilityLabel={name}
+      accessibilityLabel={label}
       testID="demo.sidebar.org"
     >
       {measure}
       <OrgMark id={org} name={name} side={ORG_MARK} />
+      <View style={[styles.grow, styles.orgWords]}>
+        <Text
+          size={size}
+          weight="semibold"
+          numberOfLines={1}
+          allowFontScaling={false}
+          accessible={false}
+        >
+          {name}
+        </Text>
+        {waiting > 0 && (
+          <WaitingLine scale={scale} words={t('invitations.count', { count: waiting })} />
+        )}
+      </View>
+      <Glyph name="updown" size={OPENER_GLYPH} ink={tokens.colorInkSecondary} />
+    </Pressable>
+  );
+}
+
+/** The ring and how many invitations wait, on one line: the words step down on their own where main's size would break or cut them, and the ring keeps its size (sc-79559). */
+function WaitingLine({ scale, words }: { scale: number; words: string }) {
+  const { size, measure } = useSideFit(words, WAITING_ROOM, scale, 'semibold', 'line');
+
+  return (
+    <View style={styles.waitingLine} testID="demo.sidebar.org.waiting">
+      {measure}
+      <View style={styles.waitingRing} />
       <Text
         size={size}
         weight="semibold"
@@ -282,10 +342,9 @@ function Org({ scale, org }: { scale: number; org: SidebarOrg }) {
         accessible={false}
         style={styles.grow}
       >
-        {name}
+        {words}
       </Text>
-      <Glyph name="updown" size={OPENER_GLYPH} ink={tokens.colorInkSecondary} />
-    </Pressable>
+    </View>
   );
 }
 
@@ -562,6 +621,16 @@ const styles = StyleSheet.create({
     paddingLeft: tokens.spaceSm,
     paddingRight: tokens.spaceMd,
     borderRadius: tokens.radiusRow,
+  },
+  orgWaiting: { minHeight: OPENER.waiting },
+  orgWords: { gap: tokens.spaceHair },
+  waitingLine: { flexDirection: 'row', alignItems: 'center', gap: tokens.spaceXs },
+  waitingRing: {
+    width: WAITING_RING,
+    height: WAITING_RING,
+    borderRadius: WAITING_RING / 2,
+    borderWidth: 2,
+    borderColor: tokens.colorInk,
   },
   orgOpen: { backgroundColor: tokens.colorCard },
   search: {

@@ -1,8 +1,12 @@
+import { ROOMS, type SideRoom } from '../../layout/sidebarSize.ts';
+import { tokens } from '../../theme/tokens.ts';
+
 export type SidebarSize =
   'device' | 'default' | 'eighth' | 'ninth' | 'tenth' | 'eleventh' | 'twelfth';
-export type SidebarLanguage = 'en' | 'fr';
+export type SidebarLanguage = 'en' | 'fr' | 'es';
 export type SidebarAt = 'today' | 'events' | 'calendar' | 'members' | 'event';
 export type SidebarOrg = 'ire' | 'qa';
+export type SidebarWaiting = 'none' | 'one' | 'two';
 
 export const SIDEBAR_SIZES: readonly { key: SidebarSize; label: string }[] = [
   { key: 'device', label: 'This iPad' },
@@ -17,6 +21,7 @@ export const SIDEBAR_SIZES: readonly { key: SidebarSize; label: string }[] = [
 export const SIDEBAR_LANGUAGES: readonly { key: SidebarLanguage; label: string }[] = [
   { key: 'en', label: 'English' },
   { key: 'fr', label: 'French' },
+  { key: 'es', label: 'Spanish' },
 ];
 
 export const SIDEBAR_PLACES: readonly { key: SidebarAt; label: string }[] = [
@@ -66,3 +71,26 @@ export function sidebarOrgOf(name: string | undefined): SidebarOrg {
 export function sidebarOrgName(org: SidebarOrg): string {
   return SIDEBAR_ORGS.find((one) => one.key === org)?.label ?? 'Ire Events';
 }
+
+export const SIDEBAR_WAITING: readonly { key: SidebarWaiting; label: string }[] = [
+  { key: 'none', label: 'None' },
+  { key: 'one', label: 'One' },
+  { key: 'two', label: 'Two' },
+];
+
+export function sidebarWaitingOf(name: string | undefined): SidebarWaiting {
+  return SIDEBAR_WAITING.find((waiting) => waiting.key === name)?.key ?? 'none';
+}
+
+export function waitingCount(waiting: SidebarWaiting): number {
+  return SIDEBAR_WAITING.findIndex((one) => one.key === waiting);
+}
+
+export const WAITING_RING = 11;
+
+// The invitations line under the pill's name: main's 12.5, beside a ring that keeps its size, so it steps down on its own (sc-79559).
+export const WAITING_ROOM: SideRoom = {
+  size: 12.5,
+  glyph: 0,
+  inside: ROOMS.org.inside - WAITING_RING - tokens.spaceXs,
+};
