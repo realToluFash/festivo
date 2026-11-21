@@ -40,6 +40,7 @@ function entry(id: string, overrides: Partial<AuditEntry> = {}): AuditEntry {
     what: `Entry ${id}`,
     on: null,
     changes: [],
+    recorded: [],
     type: 'events',
     action: 'event.made_live',
     address: null,
@@ -366,6 +367,45 @@ describe('Data and control › Audit log (sc-611)', () => {
     const signIn = await screen.findByRole('dialog', { name: 'Entry' });
     expect(within(signIn).getByText('203.0.113.17')).toBeDefined();
     expect(within(signIn).queryByText('Device')).toBeNull();
+  });
+
+  it('opens an export’s entry with Format, Filters and Entries, and a plan change’s with its Reason', async () => {
+    const exported = entry('exported', {
+      what: 'Exported 3 audit log entries',
+      type: 'audit_log',
+      action: 'audit_log.exported',
+      recorded: [
+        { label: 'Format', value: 'CSV' },
+        { label: 'Filters', value: 'Person: Priya Shah · Type: Event access' },
+        { label: 'Entries', value: '3' },
+      ],
+    });
+    const plan = entry('plan', {
+      what: 'Changed the plan of Ire Events',
+      type: 'organisation',
+      action: 'organisation.plan_changed',
+      changes: ['Plan: Free → Enterprise'],
+      recorded: [{ label: 'Reason', value: 'QA retest' }],
+    });
+    signedIn();
+    answering({ [LOG]: () => json(logPage([exported, plan])), [VIEWED]: viewed });
+    open();
+
+    fireEvent.click(await screen.findByRole('button', { name: /Exported 3 audit log entries/u }));
+    const dialog = await screen.findByRole('dialog', { name: 'Entry' });
+    const text = dialog.textContent ?? '';
+
+    expect(within(dialog).queryByText('Changes')).toBeNull();
+    expect(within(dialog).getByText('Person: Priya Shah · Type: Event access')).toBeDefined();
+    expect(text.indexOf('Format')).toBeLessThan(text.indexOf('Filters'));
+    expect(text.indexOf('Filters')).toBeLessThan(text.indexOf('Entries'));
+    expect(text.indexOf('Entries')).toBeLessThan(text.indexOf('Type and action'));
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Done' }));
+
+    fireEvent.click(screen.getByRole('button', { name: /Changed the plan of Ire Events/u }));
+    const planned = (await screen.findByRole('dialog', { name: 'Entry' })).textContent ?? '';
+    expect(planned.indexOf('Plan: Free → Enterprise')).toBeLessThan(planned.indexOf('Reason'));
+    expect(planned.indexOf('QA retest')).toBeLessThan(planned.indexOf('Type and action'));
   });
 
   it('locks the page off Enterprise, with no entries', async () => {
