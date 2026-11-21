@@ -6,7 +6,7 @@ export interface Who {
   first: string;
   job: string;
   shift: string;
-  mobile: boolean;
+  mobile: string | null;
 }
 
 export const PERSON: Who = {
@@ -15,7 +15,7 @@ export const PERSON: Who = {
   first: 'Ada',
   job: 'Waiter',
   shift: '17:00 to 00:00',
-  mobile: true,
+  mobile: '+2348031110004',
 };
 
 /** What the screen may do: share and copy, read the status only (no staff.manage), or nothing after the 30-day erasure. */
@@ -65,6 +65,25 @@ export const WORDS: Record<LinkStatus, string> = {
 export interface Trail {
   by: string;
   at: string;
+  /** Sent by a text (sc-77904) rather than marked as sent by hand. */
+  via?: 'text';
+}
+
+/** Texting once SMS (sc-3946) is in: the credits, the demo's switches, and this person's text. */
+export interface Texting {
+  credits: number;
+  refused: boolean;
+  undelivered: boolean;
+  /** Outside 09:00–20:00 their time, the event not Happening now and no shift before 09:00 (pm, #77935). */
+  quiet: boolean;
+  clock: string;
+  billing: boolean;
+  stopped: boolean;
+  pending: 'sending' | 'held' | 'waits' | null;
+  notDelivered: string | null;
+  before: { status: LinkStatus; trail: Trail | null } | null;
+  checking: boolean;
+  checkFailed: boolean;
 }
 
 export interface LinkState {
@@ -76,7 +95,9 @@ export interface LinkState {
   trail: Trail | null;
   asking: boolean;
   replacing: boolean;
-  busy: 'share' | 'copy' | null;
+  busy: 'share' | 'copy' | 'text' | null;
+  /** Null until SMS is merged: then Text the link shows. */
+  texting: Texting | null;
   failed: boolean;
   /** The link the clipboard refused, shown in a read-only field to copy by hand. */
   held: string | null;
@@ -92,7 +113,10 @@ export function trailLine(status: LinkStatus, trail: Trail | null): string | nul
   if (trail == null) return null;
   if (status === 'shared') return `Shared by ${trail.by} · ${trail.at} · not marked as sent`;
   if (status === 'copied') return `Copied by ${trail.by} · ${trail.at} · not marked as sent`;
-  if (status === 'sent') return `Marked as sent by ${trail.by} · ${trail.at}`;
+  if (status === 'sent')
+    return trail.via === 'text'
+      ? `Sent by ${trail.by} · ${trail.at}`
+      : `Marked as sent by ${trail.by} · ${trail.at}`;
   if (status === 'opened') return `Opened ${trail.at}`;
 
   return null;
@@ -107,7 +131,7 @@ function delivered(s: LinkState, as: 'shared' | 'copied'): Pick<LinkState, 'stat
   return { status: as, trail: mine() };
 }
 
-export function pressed(s: LinkState, what: 'share' | 'copy'): LinkState {
+export function pressed(s: LinkState, what: 'share' | 'copy' | 'text'): LinkState {
   if (s.busy != null) return s;
 
   return { ...s, busy: what, failed: false, held: null, asking: false, say: '', toast: '' };
@@ -175,7 +199,7 @@ export function replace(s: LinkState): LinkState {
 
 /** Share link, Copy link, Mark as sent and Replace link… need staff.manage, a mobile number, and the person still on the staff. */
 export function acts(s: LinkState): boolean {
-  return s.view === 'manage' && s.who.mobile && !s.removed;
+  return s.view === 'manage' && s.who.mobile != null && !s.removed;
 }
 
 export function offersMarkSent(s: LinkState): boolean {
@@ -186,7 +210,6 @@ export function offersReplace(s: LinkState): boolean {
   return acts(s) && s.status !== 'none';
 }
 
-/** What a person's status shows, on their roster row and on their link screen alike: after the erasure and without a number, those; else the link's own. */
 export type Shown = LinkStatus | 'noMobile' | 'erased';
 
 export const SHOWN_WORDS: Record<Shown, string> = {
@@ -195,9 +218,12 @@ export const SHOWN_WORDS: Record<Shown, string> = {
   erased: W.erased,
 };
 
-export function shownOf(link: { status: LinkStatus; mobile: boolean }, erased: boolean): Shown {
+export function shownOf(
+  link: { status: LinkStatus; mobile: string | null },
+  erased: boolean,
+): Shown {
   if (erased) return 'erased';
-  if (!link.mobile) return 'noMobile';
+  if (link.mobile == null) return 'noMobile';
 
   return link.status;
 }
@@ -210,7 +236,6 @@ export function statusWord(s: LinkState): string {
   return SHOWN_WORDS[linkShown(s)];
 }
 
-/** Removed on the web: the screen says so and holds nothing, whatever was under way. */
 export function removedNow(s: LinkState): LinkState {
   const say = W.removed(s.who.name);
 
@@ -259,6 +284,7 @@ const fresh = (who: Who): LinkState => ({
   asking: false,
   replacing: false,
   busy: null,
+  texting: null,
   failed: false,
   held: null,
   issueFails: false,
@@ -273,7 +299,7 @@ const NO_MOBILE: Who = {
   first: 'Ada',
   job: 'Cook',
   shift: '15:00 to 23:00',
-  mobile: false,
+  mobile: null,
 };
 
 export function seed(name: LinkStateName, who: Who = PERSON): LinkState {
@@ -311,7 +337,6 @@ export function seed(name: LinkStateName, who: Who = PERSON): LinkState {
   }
 }
 
-/** The link screen opened from the roster: that person, their status as the roster has it, and what the viewer may do. */
 export function seedFor(
   who: Who,
   status: LinkStatus,

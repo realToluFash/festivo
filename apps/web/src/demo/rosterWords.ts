@@ -150,7 +150,10 @@ const FR: RosterWords = {
     if (link === 'copied') return `[Copié par ${trail.by} · ${trail.at} · pas marqué comme envoyé]`;
     if (link === 'shared')
       return `[Partagé par ${trail.by} · ${trail.at} · pas marqué comme envoyé]`;
-    if (link === 'sent') return `[Marqué comme envoyé par ${trail.by} · ${trail.at}]`;
+    if (link === 'sent')
+      return trail.via === 'text'
+        ? `[Envoyé par ${trail.by} · ${trail.at}]`
+        : `[Marqué comme envoyé par ${trail.by} · ${trail.at}]`;
 
     return `[Ouvert à ${trail.at}]`;
   },

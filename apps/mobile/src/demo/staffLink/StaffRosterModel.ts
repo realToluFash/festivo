@@ -7,9 +7,13 @@ export interface OnRoster {
   station: string | null;
   /** Their first shift's times; the product sorts on sc-3908's full start. */
   shift: string | null;
-  mobile: boolean;
+  mobile: string | null;
   status: LinkStatus;
   trail: Trail | null;
+  /** sc-77904: the number replied STOP, a text sending or waiting, and when one was not delivered. */
+  stopped?: boolean;
+  pending?: 'sending' | 'held' | 'waits' | null;
+  notDelivered?: string | null;
 }
 
 export const RW = {
@@ -35,7 +39,7 @@ const one = (
   job: string | null,
   station: string | null,
   shift: string | null,
-  mobile: boolean,
+  mobile: string | null,
   status: LinkStatus,
   trail: Trail | null = null,
 ): OnRoster => ({ id, name, job, station, shift, mobile, status, trail });
@@ -43,42 +47,69 @@ const one = (
 /** The web roster's sample (sc-3906, `/demo/events/evt-wed-4/staff/roster`), with a Shared row from the app. */
 export function sampleRoster(): OnRoster[] {
   return [
-    one('bisi', 'Bisi Okon', 'Cook', 'Kitchen', '15:00 to 23:00', true, 'opened', {
+    one('bisi', 'Bisi Okon', 'Cook', 'Kitchen', '15:00 to 23:00', '+2348031110002', 'opened', {
       by: '',
       at: '18:20',
     }),
-    one('tayo', 'Tayo Bamidele', 'Cook', 'Grill', '15:00 to 23:00', true, 'sent', {
+    one('tayo', 'Tayo Bamidele', 'Cook', 'Grill', '15:00 to 23:00', '+2348031110003', 'sent', {
       by: YOU,
       at: '17:58',
     }),
-    one('ada', 'Ada Nnaji', 'Cook', 'Pastry', '15:00 to 23:00', false, 'none'),
-    one('ifeoma', 'Ifeoma Nduka', 'Floor lead', 'Floor', '16:00 to 01:00', true, 'opened', {
-      by: '',
-      at: '17:41',
-    }),
-    one('sade', 'Sade Lawal', 'Bar', 'Bar', '16:00 to 01:00', true, 'sent', {
+    one('ada', 'Ada Nnaji', 'Cook', 'Pastry', '15:00 to 23:00', null, 'none'),
+    one(
+      'ifeoma',
+      'Ifeoma Nduka',
+      'Floor lead',
+      'Floor',
+      '16:00 to 01:00',
+      '+2348031110001',
+      'opened',
+      {
+        by: '',
+        at: '17:41',
+      },
+    ),
+    one('sade', 'Sade Lawal', 'Bar', 'Bar', '16:00 to 01:00', '+2348031110006', 'sent', {
       by: YOU,
       at: '18:02',
     }),
-    one('tolu', 'Tolu Bello', 'Door', 'Door', '16:30 to 21:00', true, 'none'),
-    one('amina', 'Amina Yusuf', 'Waiter', 'Section B', '17:00 to 00:00', true, 'copied', {
-      by: YOU,
-      at: '18:44',
-    }),
-    one('grace', 'Grace Udo', 'Waiter', 'Section A', '17:00 to 00:00', true, 'opened', {
+    one('tolu', 'Tolu Bello', 'Door', 'Door', '16:30 to 21:00', '+2348031110007', 'none'),
+    one(
+      'amina',
+      'Amina Yusuf',
+      'Waiter',
+      'Section B',
+      '17:00 to 00:00',
+      '+2348031110010',
+      'copied',
+      {
+        by: YOU,
+        at: '18:44',
+      },
+    ),
+    one('grace', 'Grace Udo', 'Waiter', 'Section A', '17:00 to 00:00', '+2348031110008', 'opened', {
       by: '',
       at: '19:05',
     }),
-    one('kunle', 'Kunle Ajayi', 'Waiter', 'Section A', '17:00 to 00:00', true, 'shared', {
-      by: KEMI,
-      at: '18:44',
-    }),
-    one('ronke', 'Ronke Alade', 'Runner', 'Pass', '17:00 to 00:00', true, 'opened', {
+    one(
+      'kunle',
+      'Kunle Ajayi',
+      'Waiter',
+      'Section A',
+      '17:00 to 00:00',
+      '+2348031110009',
+      'shared',
+      {
+        by: KEMI,
+        at: '18:44',
+      },
+    ),
+    one('ronke', 'Ronke Alade', 'Runner', 'Pass', '17:00 to 00:00', '+2348031110005', 'opened', {
       by: '',
       at: '18:31',
     }),
-    one('emeka', 'Emeka Obi', 'Waiter', null, '19:00 to 23:00', true, 'none'),
-    one('chinedu', 'Chinedu Eze', null, null, null, true, 'none'),
+    one('emeka', 'Emeka Obi', 'Waiter', null, '19:00 to 23:00', '+2348031110011', 'none'),
+    one('chinedu', 'Chinedu Eze', null, null, null, '+2348031110012', 'none'),
   ];
 }
 
@@ -125,6 +156,18 @@ export const ROSTER_STATES = [
   'live',
   'erased',
   'noRead',
+  'smsOn',
+  'bulkCheck',
+  'bulkCheckShort',
+  'bulkCheckAsk',
+  'bulkCheckQuiet',
+  'bulkSending',
+  'bulkResult',
+  'bulkHeld',
+  'bulkQuiet',
+  'bulkNone',
+  'stopped',
+  'smsReadOnly',
 ] as const;
 
 export type RosterState = (typeof ROSTER_STATES)[number];
@@ -142,7 +185,9 @@ export const LIVE_CHANGE = {
 };
 
 /** The demo's roster between the list and a link screen: what one changed, the other reads on coming back. */
-const kept = new Map<string, Pick<OnRoster, 'status' | 'trail'>>();
+type Kept = Pick<OnRoster, 'status' | 'trail' | 'pending' | 'notDelivered'>;
+
+const kept = new Map<string, Kept>();
 const gone = new Set<string>();
 
 export function resetKept(): void {
@@ -150,8 +195,13 @@ export function resetKept(): void {
   gone.clear();
 }
 
-export function keep(id: string, status: LinkStatus, trail: Trail | null): void {
-  kept.set(id, { status, trail });
+export function keep(
+  id: string,
+  status: LinkStatus,
+  trail: Trail | null,
+  text: Pick<OnRoster, 'pending' | 'notDelivered'> = {},
+): void {
+  kept.set(id, { status, trail, ...text });
 }
 
 export function removeKept(id: string): void {

@@ -51,15 +51,41 @@ import {
   trailLine,
 } from './StaffLinkModel.ts';
 import { RW, firstName, keep, personOf, removeKept, restoreKept } from './StaffRosterModel.ts';
+import {
+  BALANCE,
+  QUIET_ENDS,
+  SENT_MS,
+  TW,
+  askText,
+  checkOf,
+  costOfText,
+  creditsNow,
+  offersText,
+  pressText,
+  reportedSent,
+  reportedUndelivered,
+  setCredits,
+  textSeed,
+  textStateOf,
+  textingFor,
+  withdrawn,
+} from './StaffTextModel.ts';
 
-/** ?state= for a board's state; ?person= opens one person from the Staff list, ?view=read without staff.manage, ?view=erased after the erasure. */
+/** ?state= for a board's state; ?person= opens one person from the Staff list, ?view=read without staff.manage, ?view=erased after the erasure, ?sms= with texting on and that many credits. */
 export function StaffLinkRoute() {
-  const params = useLocalSearchParams<{ state?: string; person?: string; view?: string }>();
+  const params = useLocalSearchParams<{
+    state?: string;
+    person?: string;
+    view?: string;
+    sms?: string;
+  }>();
   const name = linkStateOf(params.state);
+  const texted = textStateOf(params.state);
+  const credits = params.sms == null ? null : Number(params.sms);
   const person = personOf(params.person);
   const view: LinkView =
     params.view === 'read' ? 'read' : params.view === 'erased' ? 'erased' : 'manage';
-  const first = (): LinkState =>
+  const fromList = (): LinkState =>
     person == null
       ? seed(name)
       : seedFor(
@@ -75,10 +101,20 @@ export function StaffLinkRoute() {
           person.trail,
           view,
         );
+  const first = (): LinkState => {
+    if (person == null && texted != null) return textSeed(texted);
+    const s = fromList();
+    if (person == null || credits == null || Number.isNaN(credits)) return s;
+
+    return {
+      ...s,
+      texting: textingFor(person, { credits: creditsNow() === BALANCE ? credits : creditsNow() }),
+    };
+  };
 
   return (
     <StaffLink
-      key={`${name}:${person?.id ?? ''}:${view}`}
+      key={`${params.state ?? ''}:${person?.id ?? ''}:${view}:${params.sms ?? ''}`}
       first={first}
       fromRoster={person != null}
     />
@@ -107,11 +143,22 @@ function StaffLink({ first, fromRoster }: { first: () => LinkState; fromRoster: 
     if (next.removed) removedRef.current = true;
     if (!fromRoster) return;
     if (next.removed) removeKept(next.who.id);
-    else keep(next.who.id, next.status, next.trail);
+    else
+      keep(next.who.id, next.status, next.trail, {
+        pending: next.texting?.pending ?? null,
+        notDelivered: next.texting?.notDelivered ?? null,
+      });
+    if (next.texting != null) setCredits(next.texting.credits);
   }
 
   const who = s.who;
   const gone = s.removed;
+  const latest = useRef(s);
+  useEffect(() => {
+    latest.current = s;
+  }, [s]);
+  const textOpener = useRef<ViewInstance | null>(null);
+  const [pressing, setPressing] = useState(false);
 
   useEffect(() => {
     if (said === 0 || s.say === '') return;
@@ -156,6 +203,43 @@ function StaffLink({ first, fromRoster }: { first: () => LinkState; fromRoster: 
     apply(refused ? copyRefused(busy, url) : copiedNow(busy));
   }
 
+  async function textNow(): Promise<void> {
+    if (pressing) return;
+    setPressing(true);
+    await new Promise((resolve) => setTimeout(resolve, ISSUE_MS));
+    setPressing(false);
+    if (removedRef.current) return;
+    const next = pressText(latest.current);
+    apply(next);
+    if (next.texting?.pending !== 'sending') return;
+    await new Promise((resolve) => setTimeout(resolve, SENT_MS));
+    if (removedRef.current) return;
+    apply(reportedSent(latest.current));
+    if (!next.texting.undelivered) return;
+    await new Promise((resolve) => setTimeout(resolve, SENT_MS));
+    if (!removedRef.current) apply(reportedUndelivered(latest.current));
+  }
+
+  const texts = offersText(s);
+  const t = s.texting;
+  const note =
+    t == null || who.mobile == null || s.view !== 'manage'
+      ? null
+      : t.pending === 'sending'
+        ? { mark: null, line: TW.sending, tone: 'secondary' as const }
+        : t.pending === 'held'
+          ? { mark: 'clock' as const, line: TW.held, tone: 'attention' as const }
+          : t.pending === 'waits'
+            ? { mark: 'clock' as const, line: TW.waits(QUIET_ENDS), tone: 'attention' as const }
+            : t.notDelivered != null
+              ? {
+                  mark: 'alert' as const,
+                  line: TW.notDelivered(t.notDelivered),
+                  tone: 'broken' as const,
+                }
+              : null;
+  const check = t == null || who.mobile == null ? null : checkOf([costOfText(s)], t.credits);
+
   const person = (
     <View style={styles.header}>
       <Text size={30} weight="bold" accessibilityRole="header">
@@ -190,6 +274,18 @@ function StaffLink({ first, fromRoster }: { first: () => LinkState; fromRoster: 
         <Text size={15} style={styles.secondary}>
           {trail}
         </Text>
+      )}
+      {note != null && (
+        <View style={styles.note} testID="staffLink.textNote">
+          {note.mark == null ? (
+            <Spinner />
+          ) : (
+            <Glyph name={note.mark} size={18} ink={INK[note.tone]} />
+          )}
+          <Text size={15} weight="semibold" style={[styles.shrink, styles[note.tone]]}>
+            {note.line}
+          </Text>
+        </View>
       )}
       <Text size={15} style={styles.secondary}>
         {help}
@@ -258,12 +354,44 @@ function StaffLink({ first, fromRoster }: { first: () => LinkState; fromRoster: 
           </View>
         </View>
       )}
-      <PrimaryButton
-        label={W.share}
-        busy={s.busy === 'share'}
-        onPress={() => void share()}
-        testID="staffLink.share"
-      />
+      {texts && (
+        <PrimaryButton
+          ref={textOpener}
+          label={TW.text}
+          onPress={() => apply(askText(s, true))}
+          testID="staffLink.text"
+        />
+      )}
+      {t != null && t.stopped && who.mobile != null && s.view === 'manage' && (
+        <View style={styles.note} testID="staffLink.stopped">
+          <Glyph name="x" size={18} ink={tokens.colorInkSecondary} />
+          <Text size={15} weight="semibold" style={[styles.secondary, styles.shrink]}>
+            {TW.stopped}
+          </Text>
+        </View>
+      )}
+      {t != null ? (
+        <View>
+          <SecondaryButton
+            label={W.share}
+            off={s.busy === 'share'}
+            onPress={() => void share()}
+            testID="staffLink.share"
+          />
+          {s.busy === 'share' && (
+            <View style={styles.issuing} pointerEvents="none" testID="staffLink.share.spinner">
+              <Spinner />
+            </View>
+          )}
+        </View>
+      ) : (
+        <PrimaryButton
+          label={W.share}
+          busy={s.busy === 'share'}
+          onPress={() => void share()}
+          testID="staffLink.share"
+        />
+      )}
       <View>
         <SecondaryButton
           label={W.copy}
@@ -280,7 +408,7 @@ function StaffLink({ first, fromRoster }: { first: () => LinkState; fromRoster: 
       {offersMarkSent(s) && (
         <SecondaryButton
           label={W.markSent}
-          onPress={() => apply(markSent(s))}
+          onPress={() => apply(withdrawn(markSent(s)))}
           testID="staffLink.markSent"
         />
       )}
@@ -350,6 +478,34 @@ function StaffLink({ first, fromRoster }: { first: () => LinkState; fromRoster: 
               onPress={() => setS({ ...s, clipFails: !s.clipFails })}
               testID="staffLink.demo.clipFails"
             />
+            {t != null && (
+              <>
+                <SecondaryButton
+                  label={t.refused ? 'The press is refused · on' : 'The press is refused'}
+                  onPress={() => setS({ ...s, texting: { ...t, refused: !t.refused } })}
+                  testID="staffLink.demo.textFails"
+                />
+                <SecondaryButton
+                  label={
+                    t.undelivered ? 'Twilio reports undelivered · on' : 'Twilio reports undelivered'
+                  }
+                  onPress={() => setS({ ...s, texting: { ...t, undelivered: !t.undelivered } })}
+                  testID="staffLink.demo.undelivered"
+                />
+                <SecondaryButton
+                  label={t.credits === 0 ? 'No credits · on' : 'No credits'}
+                  onPress={() =>
+                    setS({ ...s, texting: { ...t, credits: t.credits === 0 ? BALANCE : 0 } })
+                  }
+                  testID="staffLink.demo.noCredits"
+                />
+                <SecondaryButton
+                  label={t.quiet ? 'At 22:40 the night before · on' : 'At 22:40 the night before'}
+                  onPress={() => setS({ ...s, texting: { ...t, quiet: !t.quiet } })}
+                  testID="staffLink.demo.quiet"
+                />
+              </>
+            )}
             <SecondaryButton
               label={`${who.first} opens the link`}
               onPress={() =>
@@ -365,6 +521,104 @@ function StaffLink({ first, fromRoster }: { first: () => LinkState; fromRoster: 
           </DemoOnly>
         </View>
       </ScrollView>
+      {t != null && check != null && (
+        <Sheet
+          open={t.checking}
+          onClose={() => apply(askText(s, false))}
+          scrimLabel={TW.cancel}
+          held={pressing}
+          opener={textOpener}
+          docked
+          testID="staffLink.textCheck"
+        >
+          <View style={styles.confirm}>
+            <Text size={tokens.typeTitleSection.size} weight="bold" accessibilityRole="header">
+              {TW.checkOne(who.name)}
+            </Text>
+            <View style={styles.cost}>
+              {check.uses > 0 && (
+                <Text size={tokens.typeBodyPhone.size}>
+                  {check.wait === 0
+                    ? `${TW.thisTextUses(check.uses)} ${TW.after(check.after)}`
+                    : TW.thisTextUses(check.uses)}
+                </Text>
+              )}
+              {check.wait > 0 && (
+                <View style={styles.note}>
+                  <Glyph name="clock" size={18} ink={tokens.colorAttentionText} />
+                  <Text size={15} weight="semibold" style={[styles.shrink, styles.attention]}>
+                    {TW.smsWaits(check.wait)}
+                  </Text>
+                </View>
+              )}
+              {check.wait > 0 &&
+                (t.billing ? (
+                  <Text size={15} style={styles.secondary}>
+                    {TW.notInApp}
+                  </Text>
+                ) : (
+                  <QuietButton
+                    label={TW.askOwner}
+                    onPress={() =>
+                      setS({ ...s, toast: `${TW.askOwner} has its own design (sc-3963).` })
+                    }
+                    testID="staffLink.textCheck.ask"
+                  />
+                ))}
+              {t.quiet && (
+                <Text size={15} style={styles.secondary}>
+                  {TW.quiet(1, QUIET_ENDS)}
+                </Text>
+              )}
+            </View>
+            {t.checkFailed && (
+              <View
+                style={styles.failed}
+                accessibilityRole="alert"
+                testID="staffLink.textCheck.failed"
+              >
+                <Glyph name="alert" size={18} ink={tokens.colorBrokenText} />
+                <Text size={16} weight="semibold" style={styles.broken}>
+                  {W.notIssued}
+                </Text>
+              </View>
+            )}
+            <SheetActions>
+              {phone ? (
+                <>
+                  <PrimaryButton
+                    label={TW.text}
+                    busy={pressing}
+                    onPress={() => void textNow()}
+                    testID="staffLink.textCheck.go"
+                  />
+                  <QuietButton
+                    label={TW.cancel}
+                    onPress={() => apply(askText(s, false))}
+                    testID="staffLink.textCheck.cancel"
+                  />
+                </>
+              ) : (
+                <>
+                  <QuietButton
+                    label={TW.cancel}
+                    onPress={() => apply(askText(s, false))}
+                    inset
+                    testID="staffLink.textCheck.cancel"
+                  />
+                  <PrimaryButton
+                    label={TW.text}
+                    busy={pressing}
+                    onPress={() => void textNow()}
+                    paired
+                    testID="staffLink.textCheck.go"
+                  />
+                </>
+              )}
+            </SheetActions>
+          </View>
+        </Sheet>
+      )}
       <Sheet
         open={s.replacing}
         onClose={() => apply(askReplace(s, false))}
@@ -383,7 +637,7 @@ function StaffLink({ first, fromRoster }: { first: () => LinkState; fromRoster: 
               <>
                 <DestructiveButton
                   label={W.replace}
-                  onPress={() => apply(replace(s))}
+                  onPress={() => apply(withdrawn(replace(s)))}
                   testID="staffLink.replace.go"
                 />
                 <QuietButton
@@ -401,7 +655,7 @@ function StaffLink({ first, fromRoster }: { first: () => LinkState; fromRoster: 
                 />
                 <DestructiveButton
                   label={W.replace}
-                  onPress={() => apply(replace(s))}
+                  onPress={() => apply(withdrawn(replace(s)))}
                   stacked={false}
                   testID="staffLink.replace.go"
                 />
@@ -420,6 +674,12 @@ function StaffLink({ first, fromRoster }: { first: () => LinkState; fromRoster: 
     </View>
   );
 }
+
+const INK = {
+  secondary: tokens.colorInkSecondary,
+  attention: tokens.colorAttentionText,
+  broken: tokens.colorBrokenText,
+};
 
 /** Each status a shape with its word: a dashed ring, a half ring, a ring, a filled tick; an amber ring with no number, a grey one after the erasure. */
 export function StatusShape({ shape, side = 16 }: { shape: Shown; side?: number }) {
@@ -489,6 +749,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   held: { gap: tokens.spaceSm },
+  note: { flexDirection: 'row', alignItems: 'flex-start', gap: tokens.spaceSm },
+  cost: { gap: tokens.spaceSm },
+  attention: { color: tokens.colorAttentionText },
   failed: { flexDirection: 'row', alignItems: 'flex-start', gap: tokens.spaceSm },
   ask: {
     gap: tokens.spaceSm,

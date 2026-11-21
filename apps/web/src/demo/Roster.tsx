@@ -4,7 +4,7 @@ import { Link, Navigate, useParams, useSearchParams } from 'react-router';
 
 import { ConfirmDialog } from '../components/ConfirmDialog.tsx';
 import { Glyph } from '../components/Glyph.tsx';
-import type { Tell } from '../components/SettingsParts.tsx';
+import { Dialog, type Tell } from '../components/SettingsParts.tsx';
 import { DemoBell } from './DemoBell.tsx';
 import { KeptArea, KeptHere } from './KeptOffline.tsx';
 import { clockWords } from './tabKept.ts';
@@ -60,6 +60,18 @@ import {
   useRosterWords,
 } from './rosterWords.ts';
 import { STATIONS_EVENT } from './stations.ts';
+import {
+  QUIET_ENDS,
+  SENT_MS,
+  TEXT_WORDS,
+  bounced,
+  bulkCheck,
+  checkOf,
+  owed,
+  reported,
+  textSome,
+  textable,
+} from './staffText.ts';
 import { PanelFoot, PanelTop, Select, StaffTabs } from './Stations.tsx';
 import { useSwitcherStart } from './switcher.ts';
 import './guests.css';
@@ -124,7 +136,8 @@ function RosterView({
   event: SampleEvent;
   tell: Tell;
 }) {
-  const { rw: RW, lw: LW, tabs, events, crumb } = useRosterWords();
+  const { rw: RW, lw: LW, tabs, events, crumb, lang } = useRosterWords();
+  const TW = TEXT_WORDS[lang];
   const [entries, setEntries] = useState<Entry[]>(first.entries);
   const [panel, setPanel] = useState<Panel>(first.panel);
   const [draft, setDraft] = useState<Draft>(first.draft);
@@ -137,6 +150,10 @@ function RosterView({
   const [held, setHeld] = useState(first.held);
   const [missed, setMissed] = useState(first.missed);
   const [replacing, setReplacing] = useState(first.replacing);
+  const [sms, setSms] = useState(first.sms);
+  const [checking, setChecking] = useState(first.checking);
+  const [pressing, setPressing] = useState(false);
+  const [checkFailed, setCheckFailed] = useState(first.checkFailed);
   const focusAfter = useRef<string | null>(null);
   const { manage, finished, erased } = first;
 
@@ -326,14 +343,14 @@ function RosterView({
   }
 
   function mark(id: string) {
-    relink(id, afterMark);
+    relink(id, (one) => ({ ...afterMark(), ...withdrawn(one) }));
     if (held?.id === id) setHeld(null);
     say([LW.marked(shown(id).name)]);
     focusAfter.current = `rs-copy-${id}`;
   }
 
   function replace(id: string) {
-    relink(id, afterReplace);
+    relink(id, (one) => ({ ...afterReplace(), ...withdrawn(one) }));
     if (held?.id === id) setHeld(null);
     if (missed === id) setMissed(null);
     setReplacing(null);
@@ -341,8 +358,63 @@ function RosterView({
     focusAfter.current = 'sn-panel-title';
   }
 
+  function ask(target: string) {
+    setCheckFailed(false);
+    setChecking(target);
+  }
+
+  function closeCheck() {
+    focusAfter.current = checking === 'all' ? 'rs-bulk' : `rs-text-${checking ?? ''}`;
+    setChecking(null);
+    setCheckFailed(false);
+  }
+
+  function textNow() {
+    if (sms == null || checking == null || pressing) return;
+    const target = checking;
+    setPressing(true);
+    window.setTimeout(() => {
+      setPressing(false);
+      if (sms.refused) {
+        setCheckFailed(true);
+        announce(LW.notIssued);
+        return;
+      }
+      const ids = target === 'all' ? entries.filter(owed).map((one) => one.id) : [target];
+      const pressed = textSome(entries, ids, sms);
+      setEntries(pressed.entries);
+      setSms({ ...sms, credits: pressed.credits });
+      setChecking(null);
+      const lone = pressed.entries.find((one) => one.id === target);
+      say(
+        target === 'all'
+          ? TW.result(pressed.result)
+          : lone?.pending === 'held'
+            ? [`${TW.held}.`]
+            : lone?.pending === 'waits'
+              ? [`${TW.waits(pressed.result.time)}.`]
+              : [TW.sendingTo(shown(target).name)],
+      );
+      focusAfter.current = target === 'all' ? 'rs-roster' : `rs-copy-${target}`;
+      window.setTimeout(() => {
+        setEntries((was) => was.map((one) => reported(one, sms)));
+        if (sms.undelivered)
+          window.setTimeout(() => setEntries((was) => was.map(bounced)), SENT_MS);
+      }, SENT_MS);
+    }, ISSUE_MS);
+  }
+
   const acts = manage && !finished && !erased;
-  const next = nextLine(entries, finished, RW);
+  const texts = sms != null && acts;
+  const bulk = sms == null ? null : bulkCheck(entries, sms);
+  const check =
+    sms == null || checking == null
+      ? null
+      : checking === 'all'
+        ? bulk
+        : checkOf([shown(checking)], [], sms);
+  const n = bulk?.n ?? 0;
+  const next = texts && n === 0 && rows.length > 0 ? TW.allSent : nextLine(entries, finished, RW);
 
   return (
     <div className="desk-page ev-page gs mn sn rs">
@@ -394,6 +466,18 @@ function RosterView({
                   </h2>
                   {next != null && rows.length > 0 && <p className="mn-sub">{next}</p>}
                 </div>
+                {texts && n > 0 && (
+                  <button
+                    id="rs-bulk"
+                    type="button"
+                    className="desk-text"
+                    aria-haspopup="dialog"
+                    onClick={() => ask('all')}
+                  >
+                    <Glyph name="sms" size={17} weight={2.3} />
+                    {TW.bulk(n)}
+                  </button>
+                )}
                 {manage && rows.length > 0 && (
                   <button
                     id="rs-add"
@@ -475,6 +559,8 @@ function RosterView({
                                 missed={missed === one.id}
                                 onCopy={() => void copy(one.id)}
                                 onMark={() => mark(one.id)}
+                                texts={texts}
+                                onText={() => ask(one.id)}
                               />
                             </td>
                           </tr>
@@ -542,6 +628,64 @@ function RosterView({
           )}
         </div>
       </div>
+      {check != null && checking != null && texts && sms != null && (
+        <Dialog
+          title={checking === 'all' ? TW.checkMany(check.n) : TW.checkOne(shown(checking).name)}
+          verb={checking === 'all' ? TW.bulk(check.n) : TW.text}
+          dismiss={TW.cancel}
+          on={!pressing}
+          locked={pressing}
+          onDismiss={closeCheck}
+          onConfirm={textNow}
+        >
+          <div className="rs-check" aria-busy={pressing || undefined}>
+            {checking === 'all' && <p>{TW.checkLine}</p>}
+            {check.m > 0 && <p className="rs-check-hint">{TW.noMobile(check.m)}</p>}
+            {check.k > 0 && <p className="rs-check-hint">{TW.stoppedCount(check.k)}</p>}
+            <div className="rs-check-cost">
+              {check.uses > 0 && (
+                <p className="rs-check-credits">
+                  {checking === 'all' ? TW.textsUse(check.uses) : TW.thisTextUses(check.uses)}
+                  {check.wait === 0 && (
+                    <>
+                      <br />
+                      {TW.after(check.after)}
+                    </>
+                  )}
+                </p>
+              )}
+              {check.wait > 0 && (
+                <div className="rs-check-short">
+                  <p className="rs-check-wait">
+                    <Glyph name="clock" size={15} weight={2.2} />
+                    {TW.smsWaits(check.wait)}
+                  </p>
+                  <button
+                    type="button"
+                    className="desk-text"
+                    onClick={() =>
+                      tell(
+                        `${sms.billing ? TW.addCredits : TW.askOwner} has its own design (sc-3963).`,
+                      )
+                    }
+                  >
+                    {sms.billing ? TW.addCredits : TW.askOwner}
+                  </button>
+                </div>
+              )}
+              {sms.quiet && check.n > 0 && (
+                <p className="rs-check-hint">{TW.quiet(check.n, QUIET_ENDS)}</p>
+              )}
+            </div>
+            {checkFailed && (
+              <p className="rs-missed" role="alert">
+                <Glyph name="alert" size={15} weight={2.2} />
+                {LW.notIssued}
+              </p>
+            )}
+          </div>
+        </Dialog>
+      )}
       {replacing != null && (
         <ConfirmDialog
           id="rs-replace"
@@ -591,6 +735,11 @@ export function LinkWord({ state }: { state: LinkState }) {
       {links[state]}
     </span>
   );
+}
+
+/** Mark as sent and Replace link withdraw a waiting text: it never goes and uses no credits. */
+function withdrawn(one: Entry): Partial<Entry> {
+  return one.pending === 'held' || one.pending === 'waits' ? { pending: undefined } : {};
 }
 
 function withoutGone({ gone: _gone, ...one }: Entry): Entry {
@@ -750,6 +899,8 @@ function LinkCell({
   missed,
   onCopy,
   onMark,
+  texts,
+  onText,
 }: {
   entry: Entry;
   erased: boolean;
@@ -758,16 +909,45 @@ function LinkCell({
   missed: boolean;
   onCopy: () => void;
   onMark: () => void;
+  texts: boolean;
+  onText: () => void;
 }) {
-  const { lw: LW, trail: trailLine } = useRosterWords();
+  const { lw: LW, trail: trailLine, lang } = useRosterWords();
+  const TW = TEXT_WORDS[lang];
   const state = linkOf(entry, erased);
   const trail = erased ? null : trailLine(entry.link, entry.trail ?? null);
   const offered = acts && entry.mobile != null;
+  const pendingLine =
+    !texts || entry.mobile == null
+      ? null
+      : entry.pending === 'sending'
+        ? TW.sending
+        : entry.pending === 'held'
+          ? TW.held
+          : entry.pending === 'waits'
+            ? TW.waits(QUIET_ENDS)
+            : entry.undelivered != null
+              ? TW.notDelivered(entry.undelivered)
+              : null;
 
   return (
     <div className="rs-link-cell">
       <LinkWord state={state} />
       {trail != null && <span className="rs-trail">{trail}</span>}
+      {pendingLine != null && (
+        <span
+          className={
+            entry.undelivered != null && entry.pending == null ? 'rs-note is-broken' : 'rs-note'
+          }
+        >
+          {entry.pending === 'sending' ? (
+            <span className="pending-spinner desk-turning" aria-hidden="true" />
+          ) : (
+            <Glyph name={entry.pending == null ? 'alert' : 'clock'} size={15} weight={2.2} />
+          )}
+          {pendingLine}
+        </span>
+      )}
       {missed && (
         <span className="rs-missed">
           <Glyph name="alert" size={15} weight={2.2} />
@@ -776,6 +956,24 @@ function LinkCell({
       )}
       {offered && (
         <span className="rs-link-acts">
+          {texts && textable(entry) && (
+            <button
+              id={`rs-text-${entry.id}`}
+              type="button"
+              className="desk-text"
+              aria-label={`${TW.text}: ${entry.name}`}
+              aria-haspopup="dialog"
+              onClick={onText}
+            >
+              {TW.text}
+            </button>
+          )}
+          {texts && entry.stopped === true && (
+            <span className="rs-note is-stopped">
+              <Glyph name="slash" size={15} weight={2.2} />
+              {TW.stopped}
+            </span>
+          )}
           <button
             id={`rs-copy-${entry.id}`}
             type="button"

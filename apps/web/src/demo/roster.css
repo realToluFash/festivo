@@ -450,3 +450,64 @@ a.sn-tab {
   color: var(--colorInk);
   font: var(--typeBody);
 }
+
+.rs-note {
+  display: inline-flex;
+  align-items: flex-start;
+  gap: var(--spaceXs);
+  margin: 0;
+  color: var(--colorAttentionText);
+  font: 600 13px/1.45 var(--fontFamily);
+}
+
+.rs-note.is-stopped {
+  color: var(--colorInkSecondary);
+}
+
+.rs-note.is-broken {
+  color: var(--colorBrokenText);
+}
+
+.rs-check-short {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--spaceSm) var(--spaceLg);
+}
+
+.rs-check {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceMd);
+}
+
+.rs-check p {
+  margin: 0;
+}
+
+.rs-check-hint {
+  color: var(--colorInkSecondary);
+  font: 500 14px/1.45 var(--fontFamily);
+}
+
+.rs-check-cost {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceSm);
+  padding: var(--spaceLg) var(--spaceXl);
+  border-radius: var(--radiusInset);
+  background: var(--colorInset);
+}
+
+.rs-check-credits {
+  font: 500 14px/1.45 var(--fontFamily);
+}
+
+.rs-check-wait {
+  display: inline-flex;
+  align-items: flex-start;
+  gap: var(--spaceXs);
+  margin: 0;
+  color: var(--colorAttentionText);
+  font: 600 14px/1.45 var(--fontFamily);
+}
