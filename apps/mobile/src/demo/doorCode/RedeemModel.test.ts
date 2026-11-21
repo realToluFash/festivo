@@ -51,6 +51,8 @@ describe('joining, every state (spec §5)', () => {
       'code-exhausted': 'code',
       'code-failed': 'code',
       'used-up': 'event',
+      'code-second-number': 'code',
+      'second-number': 'event',
       in: 'in',
       'event-in': 'inside',
       'event-in-view': 'inside',
@@ -168,6 +170,20 @@ describe('a name and a number, then the phone code (sc-4235)', () => {
       step: 'event',
       usedUp: true,
     });
+  });
+
+  it('returns a second number on an account to the name and number, both kept (sc-4235)', () => {
+    expect(afterPhoneCode(flowAt('code-second-number'))).toMatchObject({
+      step: 'event',
+      name: 'Rita Sousa',
+      number: '916 480 233',
+      numberSaid: W.secondNumber,
+      usedUp: false,
+    });
+    expect(flowAt('second-number')).toMatchObject({ step: 'event', numberSaid: W.secondNumber });
+    expect(W.secondNumber).toBe(
+      'This number is a second number on a Soirely account, so it can’t sign you in. Enter that account’s primary number, or make this one its primary number.',
+    );
   });
 
   it('starts again signed out with nothing kept', () => {

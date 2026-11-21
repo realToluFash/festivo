@@ -24,6 +24,8 @@ export const REDEEM_STATES = [
   'code-exhausted',
   'code-failed',
   'used-up',
+  'code-second-number',
+  'second-number',
   'in',
   'event-in',
   'event-in-view',
@@ -72,6 +74,11 @@ export interface Flow {
 }
 
 export const JOAO = { name: 'João Pereira', number: '912 345 412' } as const;
+/** A verified alternative on another account: the right code signs it into nothing (sc-4235). */
+export const RITA = { name: 'Rita Sousa', number: '916 480 233' } as const;
+
+export const isSecondNumber = (number: string) =>
+  number.replace(/\D/gu, '') === RITA.number.replace(/\D/gu, '');
 
 export function freshFlow(step: RedeemStep = 'welcome'): Flow {
   return {
@@ -160,6 +167,10 @@ export function flowAt(state: RedeemState): Flow {
         full: true,
         usedUp: true,
       };
+    case 'code-second-number':
+      return { ...plain, ...RITA, step: 'code' };
+    case 'second-number':
+      return { ...plain, ...RITA, step: 'event', numberSaid: W.secondNumber };
     case 'in':
       return { ...joao, step: 'in' };
     case 'event-in':
@@ -173,8 +184,18 @@ export function flowAt(state: RedeemState): Flow {
   }
 }
 
-/** The step a phone code ends on: the one refusal for a code that filled meanwhile, else You're in. */
+/** The step a phone code ends on: back to the number for a second number, the one refusal for a code that filled meanwhile, else You're in. */
 export function afterPhoneCode(flow: Flow): Flow {
+  if (isSecondNumber(flow.number))
+    return {
+      ...flow,
+      step: 'event',
+      numberSaid: W.secondNumber,
+      digits: '',
+      phone: 'entering',
+      held: false,
+    };
+
   return flow.full
     ? { ...flow, step: 'event', usedUp: true, digits: '', phone: 'entering', held: false }
     : { ...flow, step: 'in', who: flow.name.trim() === '' ? flow.who : flow.name.trim() };
