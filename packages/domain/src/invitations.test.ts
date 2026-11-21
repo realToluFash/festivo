@@ -7,7 +7,9 @@ import {
   invitationWording,
   organisationStep,
   refusalBody,
+  stillListed,
   waitingInvitations,
+  withManaged,
 } from './invitations.ts';
 
 describe('invitations waiting in the product', () => {
@@ -38,6 +40,40 @@ describe('invitations waiting in the product', () => {
     };
 
     expect(waitingInvitations(two, { adw: managed })).toBe(1);
+  });
+
+  it('reads one a managed account cannot accept as refused from the moment it is listed, and keeps it listed (sc-73668)', () => {
+    const listed = [
+      {
+        id: 'adw',
+        managed: {
+          organisation: { name: 'Ìrè Events' },
+          message: 'Your address is managed by Ìrè Events.',
+        },
+      },
+      { id: 'kbc', managed: null },
+    ];
+    const known = withManaged(listed, {});
+
+    expect(known).toEqual({
+      adw: {
+        kind: 'managed',
+        organisation: 'Ìrè Events',
+        message: 'Your address is managed by Ìrè Events.',
+      },
+    });
+    expect(waitingInvitations(listed, known)).toBe(1);
+    expect(stillListed(known.adw)).toBe(true);
+    expect(stillListed({ kind: 'declined' })).toBe(false);
+  });
+
+  it('counts it again once a later load no longer says it is managed', () => {
+    const freed = [
+      { id: 'adw', managed: null },
+      { id: 'kbc', managed: null },
+    ];
+
+    expect(waitingInvitations(freed, withManaged(freed, {}))).toBe(2);
   });
 
   it('holds a save while any accept or decline is in flight, and only then', () => {

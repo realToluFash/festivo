@@ -985,6 +985,47 @@ describe('an invitation in the switcher, answered in its panel (sc-30412)', () =
     ).toBeDefined();
   });
 
+  it('never counts one the API lists as managed, and opens it on the banner with no answers (sc-73668)', async () => {
+    const message =
+      'Your ire.events address is managed by Ìrè Events, so you can only be a member there.';
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) =>
+      new URL(String(input)).pathname === '/api/invitations'
+        ? json(
+            {
+              invitations: [
+                {
+                  ...INVITATION,
+                  managed: {
+                    domain: 'ire.events',
+                    organisation: { id: 'org_1', name: 'Ìrè Events' },
+                    message,
+                  },
+                },
+              ],
+            },
+            200,
+          )
+        : json({}, 404),
+    );
+    inTwo();
+    at('/app');
+
+    const button = await screen.findByRole('button', { name: /Switch organisation/ });
+    await waitFor(() => expect(fetch).toHaveBeenCalled());
+
+    expect(button.textContent).not.toMatch(/invitation/);
+    expect(button.getAttribute('aria-label') ?? button.textContent).not.toMatch(/invitation/);
+
+    const panel = await openInvitation();
+
+    expect(
+      await within(panel).findByRole('heading', { name: 'Managed by Ìrè Events' }),
+    ).toBeDefined();
+    expect(within(panel).getByText(message)).toBeDefined();
+    expect(within(panel).queryByRole('button', { name: /^Accept and join/ })).toBeNull();
+    expect(within(panel).queryByRole('button', { name: /^Decline/ })).toBeNull();
+  });
+
   it('says when the answer did not reach us, and keeps both answers', async () => {
     answering((path) => (path === '/api/invitations/inv_1/accept' ? json({}, 500) : null));
     inTwo();
