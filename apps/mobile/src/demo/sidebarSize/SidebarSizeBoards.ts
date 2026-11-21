@@ -4,7 +4,7 @@ export interface SidebarSizeBoard {
   href: string;
 }
 
-/** iPad landscape's sidebar at each size sc-68441 and sc-72307 ask for, in English and in French. */
+/** iPad landscape's sidebar at each size sc-68441, sc-72307 and sc-79559 ask for, in English, Spanish and French. */
 export const SIDEBAR_SIZE_BOARDS: readonly SidebarSizeBoard[] = [
   {
     title: 'Sidebar · default size',
@@ -50,5 +50,25 @@ export const SIDEBAR_SIZE_BOARDS: readonly SidebarSizeBoard[] = [
     title: 'Barre latérale · twelfth step (AX5), an event',
     what: '‹ Événements, the card and the ten areas whole',
     href: '/demo/sidebar-size?size=twelfth&lang=fr&at=event',
+  },
+  {
+    title: 'Sidebar · twelfth step (AX5), an event, two invitations',
+    what: '2 invitations steps down beside its ring to read whole on one line',
+    href: '/demo/sidebar-size?size=twelfth&lang=en&at=event&waiting=two',
+  },
+  {
+    title: 'Barra lateral · twelfth step (AX5), an event, two invitations',
+    what: '2 invitaciones whole on one line under the name',
+    href: '/demo/sidebar-size?size=twelfth&lang=es&at=event&waiting=two',
+  },
+  {
+    title: 'Sidebar · twelfth step (AX5), Today, one invitation',
+    what: '1 invitation whole on one line beside its ring',
+    href: '/demo/sidebar-size?size=twelfth&lang=en&at=today&waiting=one',
+  },
+  {
+    title: 'Barra lateral · twelfth step (AX5), Today, one invitation',
+    what: '1 invitación whole on one line beside its ring',
+    href: '/demo/sidebar-size?size=twelfth&lang=es&at=today&waiting=one',
   },
 ];
