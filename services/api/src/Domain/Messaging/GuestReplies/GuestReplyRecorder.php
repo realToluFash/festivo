@@ -92,7 +92,7 @@ final readonly class GuestReplyRecorder
         }
 
         foreach ($this->members($audience) as $member) {
-            $this->summaryFor($organisationId, $event->getId(), $member, $now);
+            $this->summaryFor($organisationId, $member, $now);
         }
     }
 
@@ -121,8 +121,8 @@ final readonly class GuestReplyRecorder
         return $next > $now ? $next : $now;
     }
 
-    /** One summary a morning per member and organisation, whichever event's change asked for it first. */
-    private function summaryFor(Uuid $organisationId, Uuid $eventId, Uuid $member, DateTimeImmutable $now): void
+    /** One summary a morning per member and organisation, sent to the member while they belong to it: each event in it is checked for access when it goes, so losing one event leaves the others. */
+    private function summaryFor(Uuid $organisationId, Uuid $member, DateTimeImmutable $now): void
     {
         $zone = Type\nullable(Type\string())->coerce($this->connection->fetchOne('SELECT timezone FROM users WHERE id = :id', ['id' => $member->toRfc4122()]) ?: null);
         $dueAt = self::morningAfter($now, $zone);
@@ -142,7 +142,7 @@ final readonly class GuestReplyRecorder
             $key,
             $key,
             Trigger::at($dueAt),
-            Audience::memberOfEvent($organisationId, $eventId, Permission::GuestsRead, $member),
+            Audience::members($organisationId, [$member]),
             ['organisationId' => $organisationId->toRfc4122()],
         );
     }

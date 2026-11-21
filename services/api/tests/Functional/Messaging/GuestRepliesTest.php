@@ -14,9 +14,12 @@ use App\Domain\Messaging\Model\RenderedNotification;
 use App\Domain\Messaging\Model\Trigger;
 use App\Domain\Messaging\NotificationReadMarker;
 use App\Entity\Event;
+use App\Entity\EventPerson;
 use App\Entity\Guest;
+use App\Entity\Membership;
 use App\Entity\NotificationItem;
 use App\Entity\User;
+use App\Enum\EventRole;
 use App\Enum\EventType;
 use App\Enum\GuestChangeKind;
 use App\Enum\GuestInvitationMethod;
@@ -300,6 +303,28 @@ final class GuestRepliesTest extends MessagingTestCase
     }
 
     #[Test]
+    public function aMemberWhoLosesTheEventThatFirstQueuedTheirSummaryStillGetsItForTheEventsTheyKeep(): void
+    {
+        $bo = $this->member('bo', SeededRole::Member);
+        $bo->setTimezone(self::ZONE);
+        $dinner = $this->wedding('Dinner');
+        $gala = $this->onEvent($bo, $this->event);
+        $this->onEvent($bo, $dinner);
+        $this->reply($this->guest('Tomi Bello'), GuestReply::Coming);
+        self::at('2026-11-02 10:10');
+        $this->reply($this->guest('Kemi Ade', $dinner), GuestReply::Coming);
+        self::em()->remove($gala);
+        self::em()->flush();
+        self::at('2026-11-03 08:00');
+        self::runUntilIdle();
+
+        $email = $this->emails($bo)[0] ?? self::fail('No summary.');
+        self::assertSame('Dinner: 1 new reply', $email->subject);
+        self::assertStringNotContainsString('Gala', $email->body);
+        self::assertStringContainsString('Kemi Ade', $email->body);
+    }
+
+    #[Test]
     public function aDoubledJobSendsOnce(): void
     {
         $this->reply($this->guest('Tomi Bello'), GuestReply::Coming);
@@ -332,10 +357,10 @@ final class GuestRepliesTest extends MessagingTestCase
         self::assertSame(GuestRepliesSummary::NAME, 'guest_replies.summary');
     }
 
-    private function wedding(): Event
+    private function wedding(string $name = 'Gala'): Event
     {
         $starts = new DateTimeImmutable('2026-11-12 18:00', new DateTimeZone(self::ZONE));
-        $event = new Event($this->organisation, 'Gala', EventType::Wedding, $starts, $starts->modify('+5 hours'), 'NGN');
+        $event = new Event($this->organisation, $name, EventType::Wedding, $starts, $starts->modify('+5 hours'), 'NGN');
         $event->makeLive(self::now());
         self::em()->persist($event);
         self::em()->flush();
@@ -343,9 +368,19 @@ final class GuestRepliesTest extends MessagingTestCase
         return $event;
     }
 
-    private function guest(string $name): Guest
+    private function onEvent(User $user, Event $event): EventPerson
     {
-        $guest = Guest::listed($this->event, $name, Str\lowercase($name), null, null, null, Str\pad_right(Str\replace(Uuid::v4()->toBase58(), '1', 'x'), 43, 'a'));
+        $membership = self::em()->getRepository(Membership::class)->findOneBy(['user' => $user, 'organisation' => $this->organisation]) ?? self::fail('Not a member.');
+        $person = new EventPerson($event, $membership, EventRole::CanView, null);
+        self::em()->persist($person);
+        self::em()->flush();
+
+        return $person;
+    }
+
+    private function guest(string $name, ?Event $event = null): Guest
+    {
+        $guest = Guest::listed($event ?? $this->event, $name, Str\lowercase($name), null, null, null, Str\pad_right(Str\replace(Uuid::v4()->toBase58(), '1', 'x'), 43, 'a'));
         $guest->invite(GuestInvitationMethod::InPerson, self::now(), null);
         self::em()->persist($guest);
         self::em()->flush();
