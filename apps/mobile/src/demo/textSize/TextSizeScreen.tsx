@@ -91,14 +91,22 @@ export function TextSizeScreen({ start }: { start: TextSizeStart }) {
               />
             )}
           </I18nextProvider>
-          <DemoOnly title="Stand in for the phone’s own settings and qa’s account. The card, Home’s This week and the bar are drawn at the size chosen; no string is added.">
-            <Choices
-              heading="Text size"
-              options={TEXT_SIZES}
-              chosen={size}
-              onChoose={setSize}
-              id="size"
-            />
+          <DemoOnly
+            title={
+              part === 'phone'
+                ? 'Stand in for qa’s account. The kit’s boxes take this phone’s own text size, so no size is chosen here: the country box goes over the number from iOS’s eighth Larger Text step (Settings › Accessibility › Display & Text Size › Larger Text) and Android’s 200% font size. No string is added.'
+                : 'Stand in for the phone’s own settings and qa’s account. The card, Home’s This week and the bar are drawn at the size chosen; no string is added.'
+            }
+          >
+            {part === 'phone' ? null : (
+              <Choices
+                heading="Text size"
+                options={TEXT_SIZES}
+                chosen={size}
+                onChoose={setSize}
+                id="size"
+              />
+            )}
             <Choices
               heading="Language"
               options={LANGUAGES}
