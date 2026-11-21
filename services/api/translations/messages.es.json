@@ -471,12 +471,12 @@
     "validation.payment_reminder_days": "Escriba un número entero de días de 1 a 30.",
     "staff.link_needs_mobile": "Añada un número de móvil para enviar un enlace.",
     "access.plan_required": "Disponible con Enterprise. Para cambiar esto, consulte a Soirely sobre Enterprise.",
-    "door_codes.role": "A door code lets people view or check guests in, never edit.",
-    "door_codes.use_cap_required": "Enter how many people can use this code.",
-    "door_codes.use_cap_range": "Use a whole number from 1 to 500.",
-    "door_codes.expiry_past": "Choose a time that hasn't passed yet.",
-    "door_codes.not_made": "The door code was not made. Check your connection and try again.",
-    "door_codes.invalid": "That code doesn’t work. Check it with whoever gave it to you.",
-    "door_codes.too_many": "Too many tries. Try again at {when}.",
-    "door_codes.member": "You’re already a member of {organisation}. Members open an event from its People page. Ask its lead or an admin to add you."
+    "door_codes.role": "Un código de acceso solo permite ver el evento o registrar la llegada de los invitados, nunca editar.",
+    "door_codes.use_cap_required": "Indique cuántas personas pueden usar este código.",
+    "door_codes.use_cap_range": "Escriba un número entero del 1 al 500.",
+    "door_codes.expiry_past": "Elija una hora que aún no haya pasado.",
+    "door_codes.not_made": "No se ha creado el código de acceso. Compruebe la conexión e inténtelo de nuevo.",
+    "door_codes.invalid": "Ese código no funciona. Compruébelo con quien se lo dio.",
+    "door_codes.too_many": "Demasiados intentos. Inténtelo de nuevo a partir del {when}.",
+    "door_codes.member": "Ya es miembro de {organisation}. Los miembros acceden a un evento desde la página Personas del evento. Pida a la persona responsable del evento o a un administrador que añada su cuenta."
 }

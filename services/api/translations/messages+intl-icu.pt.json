@@ -201,7 +201,7 @@
     "audit.what.event_person.expired": "O acesso de {target} ao evento {event} expirou",
     "audit.what.door_code.made": "Criou o código de acesso {target} para o evento {event}",
     "audit.what.door_code.stopped": "Desativou o código de acesso {target} do evento {event}",
-    "audit.what.door_code.redeemed": "{target} entrou no evento {event} com um código de acesso",
+    "audit.what.door_code.redeemed": "{target} juntou-se ao evento {event} com um código de acesso",
     "audit.what.invitation.sent": "Convidou {target}",
     "audit.what.invitation.revoked": "Cancelou o convite a {target}",
     "audit.what.managed_account.refused": "O convite a {target} foi recusado: o endereço é gerido por outra organização",
