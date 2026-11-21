@@ -99,7 +99,11 @@ final readonly class StaffCosts
                 }
 
                 $minutes = Iter\reduce($its, static fn (int $sum, ScheduledShift $shift): int => $sum + (Iter\contains($shift->people, $person) ? $shift->minutes : 0), 0);
-                $cost = StaffPay::Flat === $theirs->pay ? ($minutes > 0 ? $theirs->minor : 0) : self::hourly($theirs->minor, $minutes);
+                $cost = match (true) {
+                    StaffPay::Hourly === $theirs->pay => self::hourly($theirs->minor, $minutes),
+                    $minutes > 0 => $theirs->minor,
+                    default => 0,
+                };
                 $own[] = new OwnCost($person, $job, $theirs, $minutes, $cost);
                 $ownCost += $cost;
                 $keepOwn[] = $person;
