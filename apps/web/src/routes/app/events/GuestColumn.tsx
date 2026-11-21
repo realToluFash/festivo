@@ -1352,7 +1352,7 @@ function EditForm({
     sent: Values;
     changed: readonly Field[];
   } | null>(null);
-  const [failed, setFailed] = useState(false);
+  const [failed, setFailed] = useState<boolean | string>(false);
   const [said, setSaid] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const form = useRef<HTMLDivElement>(null);
@@ -1533,6 +1533,8 @@ function EditForm({
           if (again instanceof ApiError && again.status === 404) onGone();
           else setFailed(true);
         }
+      } else if (error instanceof ApiError && error.code === 'guest_arrived') {
+        setFailed(error.problem.detail ?? true);
       } else if (error instanceof ApiError && error.code === 'guest_already_listed') {
         setDuplicate('asked');
         focus('duplicate');
@@ -1619,7 +1621,7 @@ function EditForm({
       {failed && (
         <p className="desk-error gs-refused" role="alert">
           <Glyph name="alert" size={15} weight={2.2} />
-          {t('guestList.notSaved')}
+          {typeof failed === 'string' ? failed : t('guestList.notSaved')}
         </p>
       )}
       <NeedsRefused count={needsFailingCount(needsProblems)} />

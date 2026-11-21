@@ -54,7 +54,7 @@ export type GuestFormMode = { kind: 'add' } | { kind: 'edit'; tagged: TaggedGues
 
 type Ask = 'duplicate' | 'discard' | null;
 
-type Refusal = 'offline' | 'notSaved' | null;
+type Refusal = 'offline' | 'notSaved' | { said: string } | null;
 
 /** Group's refusal on Save in the API's words, said as taken once the list read again has a group of the name made. */
 type GroupRefusal = { made: string | null; line: string } | null;
@@ -271,6 +271,8 @@ export function GuestForm({
       }
     } catch (error) {
       if (error instanceof ApiUnreachableError) setRefusal('offline');
+      else if (error instanceof ApiError && error.code === 'guest_arrived')
+        setRefusal(error.problem.detail == null ? 'notSaved' : { said: error.problem.detail });
       else if (error instanceof ApiError && error.code === 'guest_already_listed')
         setAsk('duplicate');
       else if (error instanceof ApiError && error.status === 412 && editing != null) {
@@ -407,6 +409,7 @@ export function GuestForm({
       {refusal === 'notSaved' && (
         <AlertLine text={adding ? t('guestList.notAdded') : t('guestList.notSaved')} />
       )}
+      {refusal != null && typeof refusal === 'object' && <AlertLine text={refusal.said} />}
       {theirs != null && (
         <View style={styles.conflict} testID="guest.form.conflict">
           <AlertLine text={t('guestList.conflict')} />

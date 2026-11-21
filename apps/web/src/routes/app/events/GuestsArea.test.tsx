@@ -1785,6 +1785,21 @@ describe('A guest’s details, and correcting them (sc-3773)', () => {
     expect(field('Full name').value).toBe('Ngozi Okafor');
   });
 
+  it('says in the API’s words why an arrived companion cannot be taken off, and keeps the form', async () => {
+    const line = 'A companion of Ngozi Eze has arrived, so they stay on the list.';
+    await editNgozi({
+      'PUT /api/events/ev_1/guests/g_1': () =>
+        problem('guest_arrived', 409, { detail: line, why: 'companionArrived' }),
+    });
+
+    type('Full name', 'Ngozi Okafor');
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+    expect(await screen.findByText(line)).toBeDefined();
+    expect(screen.queryByText('Not saved. Nothing was changed. Try again.')).toBeNull();
+    expect(field('Full name').value).toBe('Ngozi Okafor');
+  });
+
   it('says the guest is not on this list when they were removed before the save', async () => {
     await editNgozi({ 'PUT /api/events/ev_1/guests/g_1': () => problem('not_found', 404) });
 
