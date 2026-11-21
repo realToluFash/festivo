@@ -5,6 +5,7 @@ import {
   useContext,
   useEffect,
   useId,
+  useLayoutEffect,
   useRef,
   useState,
 } from 'react';
@@ -132,6 +133,50 @@ export function BackRow({
 
 const PIECES = [1, 2, 3, 4, 5, 6];
 
+/** Where p6's rotated box starts below the card's top edge. */
+const P6_TOP = 145;
+
+function wordBoxes(box: Element): Element[] {
+  return [...box.children].flatMap((child) => {
+    if (child.matches('.desk-step')) return [];
+    return child.querySelector('.desk-step') == null ? [child] : wordBoxes(child);
+  });
+}
+
+function useWordsLow(card: RefObject<HTMLElement | null>, inner: RefObject<HTMLElement | null>) {
+  const [low, setLow] = useState(false);
+
+  useLayoutEffect(() => {
+    const top = card.current;
+    const box = inner.current;
+    if (top == null || box == null) return undefined;
+    let live = true;
+    const check = () => {
+      if (!live) return;
+      const edge = top.getBoundingClientRect().top;
+      setLow(wordBoxes(box).some((word) => word.getBoundingClientRect().bottom - edge > P6_TOP));
+    };
+    const sizes = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(check);
+    const watch = () => {
+      sizes?.disconnect();
+      [box, ...wordBoxes(box)].forEach((node) => sizes?.observe(node));
+      check();
+    };
+    const changes = new MutationObserver(watch);
+    changes.observe(box, { childList: true, subtree: true, characterData: true });
+    watch();
+    void document.fonts?.ready.then(check);
+
+    return () => {
+      live = false;
+      sizes?.disconnect();
+      changes.disconnect();
+    };
+  }, [card, inner]);
+
+  return low;
+}
+
 /** B's summary card: Confetti, what it says, and its one step at the foot. */
 export function Card({
   size = 'page',
@@ -140,12 +185,21 @@ export function Card({
   size?: 'page' | 'person' | 'column';
   children: ReactNode;
 }) {
+  const card = useRef<HTMLElement>(null);
+  const inner = useRef<HTMLDivElement>(null);
+  const low = useWordsLow(card, inner);
+
   return (
-    <section className={`desk-card desk-summary is-${size}`}>
+    <section
+      ref={card}
+      className={`desk-card desk-summary is-${size}${low ? ' is-words-low' : ''}`}
+    >
       {PIECES.map((piece) => (
         <span key={piece} className={`desk-piece p${piece}`} aria-hidden="true" />
       ))}
-      <div className="desk-card-inner">{children}</div>
+      <div ref={inner} className="desk-card-inner">
+        {children}
+      </div>
     </section>
   );
 }

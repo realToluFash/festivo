@@ -5,7 +5,7 @@ import { act, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { setLanguage } from '../i18n/index.ts';
-import { Menu, type MenuItem } from './SettingsParts.tsx';
+import { Card, CardStep, Menu, type MenuItem, OnCard, Says } from './SettingsParts.tsx';
 
 const NARROW = ' ';
 const NO_BREAK = ' ';
@@ -38,6 +38,7 @@ function draw(count: number, open = true) {
 
 afterEach(async () => {
   vi.restoreAllMocks();
+  vi.unstubAllGlobals();
   localStorage.clear();
   await setLanguage(null);
 });
@@ -125,5 +126,123 @@ describe('a card step', () => {
     expect(rule).toContain('overflow-wrap: anywhere;');
     expect(rule).not.toMatch(/^\s*height:/mu);
     expect(css).toMatch(/^\.desk-step > svg \{\s*flex: none;\s*\}/mu);
+  });
+});
+
+describe('p6 on a summary card (sc-77292)', () => {
+  function place(bottoms: Record<string, number>) {
+    vi.spyOn(Element.prototype, 'getBoundingClientRect').mockImplementation(function (
+      this: Element,
+    ) {
+      const bottom = bottoms[this.className] ?? 0;
+      return { top: 0, bottom } as DOMRect;
+    });
+  }
+
+  function drawCard() {
+    const { container } = render(
+      <Card>
+        <Says>Regras de entrada</Says>
+        <OnCard>Uma linha por baixo</OnCard>
+        <CardStep label="Mudar" onClick={() => {}} />
+      </Card>,
+    );
+
+    return container.querySelector('.desk-summary');
+  }
+
+  it('is hidden once any of the words reaches below 145 px from the card’s top', () => {
+    place({ 'desk-says': 120, 'desk-on-card': 146, 'desk-step': 190 });
+
+    expect(drawCard()?.classList.contains('is-words-low')).toBe(true);
+  });
+
+  it('stays when the words end above it, whatever the step does', () => {
+    place({ 'desk-says': 120, 'desk-on-card': 145, 'desk-step': 190 });
+
+    expect(drawCard()?.classList.contains('is-words-low')).toBe(false);
+  });
+
+  it('looks past a step held in a wrapper, as General’s read-only card holds it', () => {
+    place({ 'desk-says': 120, 'desk-on-card': 140, held: 190, 'desk-step': 190 });
+    const { container } = render(
+      <Card>
+        <Says>Regras de entrada</Says>
+        <div className="held">
+          <OnCard>Só o organizador muda isto</OnCard>
+          <CardStep label="Mudar" onClick={() => {}} />
+        </div>
+      </Card>,
+    );
+
+    expect(container.querySelector('.desk-summary')?.classList.contains('is-words-low')).toBe(
+      false,
+    );
+  });
+
+  it('is decided again when the words change height, without reloading', () => {
+    const bottoms = { 'desk-says': 120, 'desk-on-card': 140, 'desk-step': 190 };
+    place(bottoms);
+    const seen: ResizeObserverCallback[] = [];
+    vi.stubGlobal(
+      'ResizeObserver',
+      class {
+        constructor(callback: ResizeObserverCallback) {
+          seen.push(callback);
+        }
+        observe() {}
+        disconnect() {}
+      },
+    );
+    const card = drawCard();
+    const resize = () => act(() => seen.forEach((callback) => callback([], {} as ResizeObserver)));
+
+    expect(card?.classList.contains('is-words-low')).toBe(false);
+    bottoms['desk-on-card'] = 170;
+    resize();
+    expect(card?.classList.contains('is-words-low')).toBe(true);
+    bottoms['desk-on-card'] = 130;
+    resize();
+    expect(card?.classList.contains('is-words-low')).toBe(false);
+  });
+
+  it('is decided again when a box mounts above the words and moves them without a resize', async () => {
+    const bottoms: Record<string, number> = {
+      'desk-says': 120,
+      'desk-on-card': 140,
+      'desk-step': 190,
+    };
+    place(bottoms);
+    vi.stubGlobal(
+      'ResizeObserver',
+      class {
+        observe() {}
+        disconnect() {}
+      },
+    );
+    const draw = (tags: boolean) => (
+      <Card>
+        {tags && <div className="desk-glass-tags">Fornecedor</div>}
+        <Says>Regras de entrada</Says>
+        <OnCard>Uma linha por baixo</OnCard>
+      </Card>
+    );
+    const { container, rerender } = render(draw(false));
+    const card = container.querySelector('.desk-summary');
+    await act(async () => {});
+
+    expect(card?.classList.contains('is-words-low')).toBe(false);
+    bottoms['desk-glass-tags'] = 40;
+    bottoms['desk-on-card'] = 180;
+    rerender(draw(true));
+    await act(async () => {});
+    expect(card?.classList.contains('is-words-low')).toBe(true);
+  });
+
+  it('is hidden only by its own rule, on a card 560 px or wider', () => {
+    const css = readFileSync(join(import.meta.dirname, 'SettingsParts.css'), 'utf8');
+    const wide = css.slice(css.indexOf('@container desk-summary (width >= 560px)'));
+
+    expect(wide).toMatch(/\.desk-summary\.is-words-low > \.p6 \{\s*display: none;\s*\}/u);
   });
 });

@@ -395,6 +395,10 @@
   .desk-summary .desk-step {
     max-width: calc(100% - 200px);
   }
+
+  .desk-summary.is-words-low > .p6 {
+    display: none;
+  }
 }
 
 .desk-who {
