@@ -66,8 +66,8 @@ export const HW = {
   hours: 'Hours',
   range: (a: number, b: number) => `${clock(a)} to ${clock(b)}`,
   inOut: (a: string, b: string) => `In ${a} · Out ${b}`,
-  noOut: 'no clock-out',
-  noIn: 'no clock-in',
+  inOnly: (a: string) => `In ${a} · No clock-out`,
+  noIn: 'No clock-in',
   clockedIn: 'Clocked in',
   clockedInAt: (time: string) => `Clocked in · ${time}`,
   notYet: 'Not clocked in yet',
@@ -151,7 +151,9 @@ export function clockedWords(one: HoursRow): string {
   }
   if (one.clockIn == null) return HW.noIn;
 
-  return HW.inOut(clock(one.clockIn), one.clockOut == null ? HW.noOut : clock(one.clockOut));
+  return one.clockOut == null
+    ? HW.inOnly(clock(one.clockIn))
+    : HW.inOut(clock(one.clockIn), clock(one.clockOut));
 }
 
 export function markWords(one: HoursRow): string | null {

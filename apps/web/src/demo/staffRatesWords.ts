@@ -103,5 +103,26 @@ export const STAFF_RATES_WORDS = {
     'No rate on this line. It adds up each job’s rate, or flat fee, from Staff rates, so there is one place to change a rate.',
   openStaffRates: 'Open Staff rates',
   saved: (job: string) => `${job}’s rate saved.`,
+  scheduled: 'Scheduled',
+  worked: 'Worked',
+  workedNone: '0 h · No shifts',
+  workedBy: (count: number) =>
+    count === 0 ? 'Nobody worked it' : count === 1 ? '1 person worked' : `${count} people worked`,
+  assumed: (hours: string) => `of which ${hours} assumed (not clocked out)`,
+  noAttendance: (count: number) =>
+    count === 1
+      ? '1 shift with no attendance recorded'
+      : `${count} shifts with no attendance recorded`,
+  afterLine: (worked: string, scheduled: string, cost: string) =>
+    `Worked ${worked} of ${scheduled} scheduled. Scheduled, it was ${cost}.`,
+  afterAssumed: (hours: string) =>
+    `Of the hours worked, ${hours} are assumed: a missing clock-out counts to the scheduled end.`,
+  afterLines: [
+    'Scheduled: each shift’s scheduled hours, once for every place it needs, times the rate.',
+    'Worked: the hours each person clocked, times the rate. A missing clock-out counts to the scheduled end, and says so. A shift with no clock-in counts nothing.',
+    'A flat fee after the event: once for each person who worked. A shift nobody worked costs nothing.',
+    'A job with no rate is not counted, and says so.',
+  ],
+  hoursFrom: 'Worked hours are the clock-ins and clock-outs on Staff, Hours worked.',
   removed: (job: string) => `${job}’s rate removed. Its hours are not counted until it has one.`,
 } as const;

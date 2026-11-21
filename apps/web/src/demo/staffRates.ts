@@ -3,6 +3,7 @@ import { type DemoGroup, budgetAt } from './budgetSample.ts';
 import { exampleIn, typedMinor } from './quotes.ts';
 import { type Plan, type Shift, jobName, personName, samplePlan } from './shifts.ts';
 import { STAFF_RATES_WORDS as W } from './staffRatesWords.ts';
+import { type Clocks, placeKey, sampleClocks, workedOf } from './hours.ts';
 
 export type RateKind = 'hourly' | 'flat';
 
@@ -29,6 +30,7 @@ export interface RatesSample {
   rates: Record<string, Rate | null>;
   own: OwnRate[];
   changed: Record<string, Changed>;
+  clocks?: Clocks;
 }
 
 export const STAFF_RATES_STATES: readonly string[] = [
@@ -49,6 +51,8 @@ export const STAFF_RATES_STATES: readonly string[] = [
   'staff_rates_add_blank',
   'staff_rates_read_only',
   'staff_rates_empty',
+  'staff_rates_after',
+  'staff_rates_after_read_only',
 ];
 
 const hourly = (minor: number): Rate => ({ kind: 'hourly', minor });
@@ -81,6 +85,7 @@ export function ratesSample(state = 'staff_rates'): RatesSample {
       'kunle:waiter': setBy('Folake Adeyemi', '2026-10-19'),
     },
   };
+  if (state.startsWith('staff_rates_after')) sample.clocks = sampleClocks();
   if (state === 'staff_rates_saved') {
     sample.rates.waiter = hourly(1500);
     sample.changed.waiter = { who: null, day: null, was: hourly(1400), removed: false };
@@ -382,13 +387,117 @@ export function startOf(state: string, manages: boolean): RatesStart {
     draft: draftOf(null),
     pressed: false,
     refuse: false,
-    manages: manages && state !== 'staff_rates_read_only',
+    manages:
+      manages && state !== 'staff_rates_read_only' && state !== 'staff_rates_after_read_only',
     ...opened[state],
   };
 }
 
 export const refusedWords = (rate: Rate | null) =>
   W.refused(rate == null ? W.noRateYet : rateText(rate));
+
+export interface JobWorked {
+  minutes: number;
+  assumed: number;
+  none: number;
+  people: number;
+  cost: number | null;
+}
+
+/** A flat fee once per person who worked; a place nobody worked costs nothing (sc-234). */
+export function jobWorked(sample: RatesSample, job: string, rate: Rate | null): JobWorked {
+  const clocks = sample.clocks ?? {};
+  const people = new Map<string, number>();
+  let assumed = 0;
+  let none = 0;
+  for (const shift of shiftsFor(sample.plan, job))
+    for (const person of shift.people) {
+      const worked = workedOf(
+        shift,
+        clocks[placeKey(shift.id, person)] ?? { clockIn: null, clockOut: null },
+      );
+      assumed += worked.assumed;
+      if (worked.mark === 'noAttendance') none += 1;
+      people.set(person, (people.get(person) ?? 0) + worked.minutes);
+    }
+  const minutes = [...people.values()].reduce((sum, one) => sum + one, 0);
+  const workedBy = [...people].filter(([, one]) => one > 0);
+  const cost =
+    rate == null
+      ? null
+      : Math.round(
+          workedBy.reduce((sum, [person, one]) => {
+            const theirs = ownOf(sample, person, job)?.rate ?? rate;
+
+            return sum + (theirs.kind === 'hourly' ? (theirs.minor * one) / 60 : theirs.minor);
+          }, 0),
+        );
+
+  return { minutes, assumed, none, people: workedBy.length, cost };
+}
+
+export function ownWorked(sample: RatesSample, own: OwnRate): { minutes: number; cost: number } {
+  const clocks = sample.clocks ?? {};
+  const minutes = shiftsFor(sample.plan, own.job)
+    .filter((one) => one.people.includes(own.person))
+    .reduce(
+      (sum, one) =>
+        sum +
+        workedOf(one, clocks[placeKey(one.id, own.person)] ?? { clockIn: null, clockOut: null })
+          .minutes,
+      0,
+    );
+  const cost =
+    own.rate.kind === 'hourly'
+      ? Math.round((own.rate.minor * minutes) / 60)
+      : minutes > 0
+        ? own.rate.minor
+        : 0;
+
+  return { minutes, cost };
+}
+
+export function workedLine(
+  sample: RatesSample,
+  job: string,
+  worked: JobWorked,
+  rate: Rate | null,
+): string {
+  if (shiftsFor(sample.plan, job).length === 0) return W.workedNone;
+  const parts = [
+    rate?.kind === 'flat'
+      ? `${hoursWords(worked.minutes)} · ${W.workedBy(worked.people)}`
+      : hoursWords(worked.minutes),
+  ];
+  if (worked.assumed > 0) parts.push(W.assumed(hoursWords(worked.assumed)));
+  if (worked.none > 0) parts.push(W.noAttendance(worked.none));
+
+  return parts.join(' · ');
+}
+
+export interface AfterHeadline {
+  worked: number;
+  minutes: number;
+  assumed: number;
+  scheduled: Headline;
+}
+
+export function afterHeadlineOf(sample: RatesSample): AfterHeadline {
+  return sample.plan.jobs.reduce<AfterHeadline>(
+    (sum, job) => {
+      const rate = sample.rates[job.id] ?? null;
+      const worked = jobWorked(sample, job.id, rate);
+
+      return {
+        ...sum,
+        worked: sum.worked + (worked.cost ?? 0),
+        minutes: sum.minutes + (rate == null ? 0 : worked.minutes),
+        assumed: sum.assumed + (rate == null ? 0 : worked.assumed),
+      };
+    },
+    { worked: 0, minutes: 0, assumed: 0, scheduled: headlineOf(sample) },
+  );
+}
 
 const at = budgetAt;
 
@@ -408,6 +517,20 @@ export const STAFF_RATES_PAGES: readonly DemoGroup[] = [
         name: 'No budget permission: not available (as Kemi)',
       },
       { to: at('staff_line'), name: 'The Budget’s Staff line, which links here' },
+    ],
+  },
+  {
+    name: 'After the event: Scheduled and Worked (sc-234)',
+    states: [
+      { to: at('staff_rates_after'), name: 'Each job’s Scheduled and Worked, the amount at each' },
+      {
+        to: at('staff_rates_after_read_only', { as: 'ana' }),
+        name: 'Sees the budget, cannot manage it (as Ana)',
+      },
+      {
+        to: at('staff_rates_after', { as: 'kemi' }),
+        name: 'No budget permission: not available (as Kemi)',
+      },
     ],
   },
   {
