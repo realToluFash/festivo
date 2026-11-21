@@ -496,6 +496,13 @@ export function GuestColumn({
       backOnList={backOnList}
       onRemove={onRemove}
       onRemovedAlready={onRemovedAlready}
+      onReadAgain={() =>
+        api.guest(eventId, guestId).then((tagged) => {
+          setPane({ kind: 'guest', tagged });
+          onChanged(tagged.guest);
+          return tagged.guest;
+        })
+      }
       gone={pane.gone === true}
       onNotFound={() => {
         setPane({ kind: 'notFound' });
@@ -531,6 +538,7 @@ function GuestView({
   backOnList,
   onRemove,
   onRemovedAlready,
+  onReadAgain,
   gone,
   onNotFound,
 }: {
@@ -561,6 +569,7 @@ function GuestView({
   backOnList: boolean;
   onRemove: (guest: GuestDetails) => Promise<void>;
   onRemovedAlready: () => void;
+  onReadAgain: () => Promise<GuestDetails>;
   /** Read again as not found, from another host's change: an open "Remove {full name}?" turns into the 404's refusal. */
   gone: boolean;
   onNotFound: () => void;
@@ -1049,12 +1058,17 @@ function GuestView({
           onRemove={removed}
           onGone={onRemovedAlready}
           onBack={() => {
-            const arrived = guest.companions.find((one) => one.arrival != null);
+            const back = (details: GuestDetails) => {
+              const arrived = details.companions.find((one) => one.arrival != null);
 
-            setRemoving(null);
-            if (guest.arrival == null && arrived != null)
-              focus(`arrival-${arrived.id}`, 'guest-heading');
-            else focus('guest-heading');
+              setRemoving(null);
+              if (details.arrival == null && arrived != null)
+                focus(`arrival-${arrived.id}`, 'guest-heading');
+              else focus('guest-heading');
+            };
+
+            // The details were read before the arrival that refused the removal.
+            onReadAgain().then(back, () => back(guest));
           }}
         />
       )}

@@ -3854,6 +3854,39 @@ describe('Remove from the list, with a short undo (sc-3774)', () => {
     await waitFor(() => expect(document.activeElement).toBe(title));
   });
 
+  it('reads them again when a companion arrived first, and Back to their details lands on that companion (sc-1454)', async () => {
+    let arrived = false;
+    const ARRIVED = {
+      ...NGOZI_TWO,
+      companions: [
+        { ...NGOZI_TWO.companions[0], arrival: { at: '2030-11-14T15:10:00Z', by: 'Door' } },
+        NGOZI_TWO.companions[1],
+      ],
+    };
+    await removing({
+      'GET /api/events/ev_1/guests/g_1': () => tagged(arrived ? ARRIVED : NGOZI_TWO, '"1"'),
+      'DELETE /api/events/ev_1/guests/g_1': () => {
+        arrived = true;
+
+        return problem('guest_arrived', 409, { why: 'companionArrived' });
+      },
+    });
+
+    fireEvent.click(
+      within(screen.getByRole('alertdialog')).getByRole('button', { name: 'Remove' }),
+    );
+    fireEvent.click(await screen.findByRole('button', { name: 'Back to their details' }));
+
+    const companion = await waitFor(() => {
+      const row = column().querySelector('[data-focus="arrival-c_1"]');
+      expect(row).not.toBeNull();
+
+      return row;
+    });
+    await waitFor(() => expect(document.activeElement).toBe(companion));
+    expect(screen.queryByRole('alertdialog')).toBeNull();
+  });
+
   it('turns the open question into already removed when another host’s removal arrives live (#49283)', async () => {
     const before = config();
     __setConfig({ ...before, mercureUrl: 'http://hub.test/.well-known/mercure' });
