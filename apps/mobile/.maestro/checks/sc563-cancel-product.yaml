@@ -10,8 +10,9 @@ appId: host.exp.Exponent
     element:
       id: emailDomains.${DOMAIN}.only.cancel
     direction: DOWN
-    centerElement: true
     timeout: 15000
+# The target is the last row, which cannot reach the middle: scroll to the page's end, clear of the tab bar.
+- scroll
 - tapOn:
     id: emailDomains.${DOMAIN}.only.cancel
 - extendedWaitUntil:
