@@ -38,6 +38,10 @@ describe('joining, every state (spec §5)', () => {
       checking: 'enter',
       refused: 'enter',
       'too-many': 'tooMany',
+      name: 'named',
+      'name-blank': 'named',
+      joining: 'named',
+      'name-used-up': 'named',
       event: 'event',
       'event-blank': 'event',
       'event-short': 'event',
@@ -69,6 +73,7 @@ describe('joining, every state (spec §5)', () => {
   it('holds checking and sending for a link to show them', () => {
     expect(flowAt('checking').held).toBe(true);
     expect(flowAt('sending').held).toBe(true);
+    expect(flowAt('joining').held).toBe(true);
     expect(flowAt('enter').held).toBe(false);
   });
 
@@ -86,6 +91,14 @@ describe('joining, every state (spec §5)', () => {
       'That number looks too short for Portugal. Check it and try again.',
     );
     expect(flowAt('used-up')).toMatchObject({ usedUp: true, full: true, name: 'Hugo Faria' });
+  });
+
+  it('asks a name only while the device holds the grant (sc-72, until sc-4235)', () => {
+    expect(flowAt('name')).toMatchObject({ name: 'João Pereira', nameSaid: null, usedUp: false });
+    expect(flowAt('name-blank')).toMatchObject({ name: '', nameSaid: 'Enter your full name.' });
+    expect(flowAt('name-used-up')).toMatchObject({ name: 'Hugo Faria', usedUp: true, full: false });
+    expect(W.join).toBe('Join');
+    expect(W.joining).toBe('Joining…');
   });
 
   it('opens More inside the event only for more-in', () => {

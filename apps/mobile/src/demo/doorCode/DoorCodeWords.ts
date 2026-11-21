@@ -51,6 +51,8 @@ export const W = {
   countryCode: 'Country code',
   mobileNumber: 'Mobile number',
   sendCode: 'Send code',
+  join: 'Join',
+  joining: 'Joining…',
   nameBlank: 'Enter your full name.',
   numberBlank: 'Enter your mobile number.',
   secondNumber:
