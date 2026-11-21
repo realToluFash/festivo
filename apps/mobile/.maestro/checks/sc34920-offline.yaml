@@ -1,0 +1,37 @@
+# sc-34920: with the API stopped, a save says it failed because you are offline. The check stops the api itself and starts it after.
+appId: host.exp.Exponent
+onFlowComplete:
+  - runScript:
+      file: ../batch/helper.js
+      env:
+        ASK: /api?to=up
+---
+- openLink: ${METRO_URL}/--/settings/personalisation
+- extendedWaitUntil:
+    visible:
+      id: personalisation.choose
+    timeout: 30000
+- runFlow: ../developer-menu-close.yaml
+- tapOn:
+    id: personalisation.choose
+- extendedWaitUntil:
+    visible:
+      id: personalisation.colours
+    timeout: 15000
+- tapOn:
+    id: personalisation.swatch.sorbet
+- runScript:
+    file: ../batch/helper.js
+    env:
+      ASK: /api?to=stopped
+- tapOn:
+    id: personalisation.save
+- waitForAnimationToEnd:
+    timeout: 8000
+- takeScreenshot: offline-save
+- scrollUntilVisible:
+    element:
+      id: personalisation.swatch.terracotta
+    direction: DOWN
+    timeout: 10000
+- takeScreenshot: offline-save-bottom

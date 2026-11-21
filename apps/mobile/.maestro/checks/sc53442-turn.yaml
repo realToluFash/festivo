@@ -1,0 +1,50 @@
+# sc-53442: a refused save's words in Cover show through a turn, and sit above Upload a photo before and after it.
+appId: host.exp.Exponent
+---
+- setOrientation: PORTRAIT
+- runScript:
+    file: ../scripts/event-role-elsewhere.js
+    env:
+      ROLE: can_edit
+- runFlow: ../checks/sc52652/open.yaml
+- scrollUntilVisible:
+    element:
+      id: 'event.edit.cover.remove'
+    direction: DOWN
+- tapOn:
+    id: 'event.edit.cover.remove'
+- runScript:
+    file: ../scripts/event-role-elsewhere.js
+    env:
+      ROLE: can_view
+- tapOn:
+    id: 'event.edit.cover.save'
+- extendedWaitUntil:
+    visible: '{{t:eventEdit.forbidden}}'
+    timeout: 20000
+- assertVisible:
+    text: '{{t:eventEdit.forbidden}}'
+    above:
+      id: 'event.edit.cover.upload'
+- takeScreenshot: refused-portrait
+- setOrientation: LANDSCAPE_LEFT
+- extendedWaitUntil:
+    visible: 'never.there'
+    timeout: 3000
+    optional: true
+- assertVisible: '{{t:eventEdit.forbidden}}'
+- takeScreenshot: refused-landscape
+- setOrientation: PORTRAIT
+- extendedWaitUntil:
+    visible: 'never.there'
+    timeout: 3000
+    optional: true
+- assertVisible:
+    text: '{{t:eventEdit.forbidden}}'
+    above:
+      id: 'event.edit.cover.upload'
+- takeScreenshot: refused-portrait-again
+- runScript:
+    file: ../scripts/event-role-elsewhere.js
+    env:
+      ROLE: can_edit

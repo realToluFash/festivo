@@ -1,0 +1,496 @@
+import { describe, expect, it } from 'vitest';
+
+import { TODAY, longDay, money } from './budget.ts';
+import { sampleEvent } from './events.ts';
+import {
+  LONGEST_REFERENCE,
+  PAYMENTS_PAGES,
+  PAYMENTS_STATES,
+  REMINDER_STATES,
+  SHAPE_STATES,
+  SHAPE_TERMS,
+  cancelledLine,
+  cancelledOf,
+  daysProblem,
+  differenceWords,
+  eventDays,
+  madeInset,
+  madeProblems,
+  offersShapes,
+  paidLineOf,
+  paymentsStart,
+  paymentsVendor,
+  reasonProblem,
+  scheduleOf,
+  shapeLine,
+  shapePayments,
+  shapingFrom,
+  shapingProblems,
+  shapeProblems,
+  shapeRows,
+  shapingOf,
+  sharesLine,
+  typedShapeDays,
+  typedShare,
+  typedTerms,
+  toMark,
+  typedDifference,
+} from './payments.ts';
+import { PW } from './paymentsWords.ts';
+import { draftToMark, markProblems, quotesStart, sampleBudget } from './quotes.ts';
+
+const SPEC_NAMES = [
+  'schedule',
+  'mark_paid',
+  'paid_more',
+  'mark_refused',
+  'already_paid',
+  'marked',
+  'cancel',
+  'cancelled',
+  'already_made',
+  'made_as_is',
+  'made_under',
+  'made_over',
+  'made_over_already',
+  'made_early',
+  'add_payment',
+  'shape_deposit',
+  'shape_clamped',
+  'shape_short',
+  'shape_refused',
+  'shape_too_small',
+  'shape_failed',
+  'shape_raced',
+  'reminders',
+  'reminders_bad',
+];
+
+const linked = PAYMENTS_PAGES.flatMap((page) => page.states).map(
+  (link) => new URLSearchParams(link.to.split('?')[1]),
+);
+
+const startOf = (state: string, vendor: string | null = null) => {
+  const vendorId = paymentsVendor(state, vendor);
+
+  return paymentsStart(quotesStart(state, vendorId, longDay), state, vendorId);
+};
+
+const WEDDING = eventDays(sampleEvent('evt-wed-4')!);
+const SAVOUR_QUOTE = sampleBudget().quotes.find((one) => one.vendor.id === 'v4')!;
+
+describe('payments on a vendor’s page, shapes and reminders, in A (sc-88, sc-1332, sc-95)', () => {
+  it('lists every name the spec gives, and opens each on its vendor', () => {
+    const listed = new Set(linked.map((query) => query.get('state')));
+    expect(SPEC_NAMES.filter((name) => !listed.has(name))).toEqual([]);
+    for (const name of [...PAYMENTS_STATES, ...SHAPE_STATES, ...REMINDER_STATES])
+      expect(listed.has(name)).toBe(true);
+    for (const query of linked) {
+      const state = query.get('state') ?? '';
+      if (REMINDER_STATES.includes(state)) continue;
+      expect(() => startOf(state, query.get('vendor'))).not.toThrow();
+    }
+    expect(paymentsVendor('schedule', null)).toBe('v3');
+    expect(paymentsVendor('shape_clamped', null)).toBe('v4');
+    expect(paymentsVendor('paid_more', 'v4')).toBe('v4');
+    expect(paymentsVendor('amend', null)).toBe('v4');
+    expect(paymentsVendor('add', null)).toBeNull();
+  });
+
+  it('starts each state on the sample its board draws', () => {
+    expect(startOf('mark_paid').marking).toMatchObject({
+      id: 'p6',
+      draft: { amount: '840.00', paidOn: TODAY },
+    });
+    expect(startOf('paid_more').marking?.draft.amount).toBe('900.00');
+    expect(startOf('paid_more', 'v4').marking).toMatchObject({
+      id: 'p7',
+      draft: { amount: '4,500.00' },
+    });
+    expect(Object.keys(startOf('mark_refused').marking?.problems ?? {})).toEqual([
+      'amount',
+      'reference',
+    ]);
+    const already = startOf('already_paid');
+    expect(already.marking?.refused).toBe('paid');
+    expect(already.budget.payments.find((one) => one.id === 'p6')?.paid?.by).toBe('Julien Moreau');
+    expect(startOf('already_cancelled').marking?.refused).toBe('cancelled');
+    const marked = startOf('marked');
+    expect(marked.marked).toBe('p6');
+    expect(marked.said).toBe('Marked paid: £900.00 on Tuesday, November 3.');
+    expect(marked.budget.payments.find((one) => one.id === 'p6')?.paid?.reference).toBe('FP-0001');
+    const longest = startOf('marked_long_reference');
+    expect(LONGEST_REFERENCE).toHaveLength(100);
+    expect(LONGEST_REFERENCE).not.toMatch(/\s/);
+    expect(longest.budget.payments.find((one) => one.id === 'p6')?.paid?.reference).toBe(
+      LONGEST_REFERENCE,
+    );
+    expect(longest.said).toBe(marked.said);
+    expect(startOf('cancel').cancelling?.why).toBe('The venue supplies the arch flowers');
+    expect(startOf('cancelled').budget.payments.find((one) => one.id === 'p6')?.cancelled).toEqual({
+      why: 'The venue supplies the arch flowers',
+    });
+    expect(startOf('already_made').made?.draft).toMatchObject({
+      vendorId: 'v3',
+      what: 'Buttonholes',
+      amount: '120.00',
+      paidOn: '2026-11-02',
+    });
+    expect(startOf('made_early').made?.problems).toEqual({
+      paidOn:
+        'The date paid cannot be before the quote from Bloom & Co on Tuesday, October 6. Choose that date or a later one.',
+    });
+    for (const state of [
+      'add_payment',
+      'shape_deposit',
+      'shape_clamped',
+      'shape_short',
+      'shape_refused',
+      'shape_failed',
+    ])
+      expect(offersShapes(startOf(state).budget, 'v4')).toBe(true);
+    expect(startOf('add_payment').shaping?.shape).toBe('rows');
+    expect(startOf('shape_clamped').shaping?.terms.map((one) => one.share)).toEqual([50, 30, 15]);
+    expect(startOf('shape_short').shaping?.typed.map((one) => one.share)).toEqual(['50', '40']);
+    expect(startOf('shape_refused').shaping?.problems).toEqual([
+      { what: 'Enter what the payment is for.' },
+      {
+        what: 'Shorten what the payment is for to 100 characters or fewer.',
+        share: 'Enter a percentage above 0 and up to 100, with up to two decimal places.',
+      },
+      { days: 'Enter a whole number of days from 0 to 730.' },
+    ]);
+    expect(startOf('shape_too_small').shaping?.problems).toEqual([
+      {},
+      {},
+      { share: 'This payment would come to less than £0.01. Enter a higher percentage.' },
+    ]);
+    expect(startOf('shape_failed').shaping).toMatchObject({
+      shape: 'instalments',
+      failed: true,
+      raced: false,
+    });
+    const raced = startOf('shape_raced');
+    expect(raced.shaping).toMatchObject({ shape: 'deposit', raced: true });
+    expect(offersShapes(raced.budget, 'v4')).toBe(false);
+  });
+
+  it('offers the shapes again when every payment a vendor has is cancelled, never when one was made', () => {
+    const sample = sampleBudget();
+    const savour = sample.payments.filter((one) => one.vendorId === 'v4');
+    const others = sample.payments.filter((one) => one.vendorId !== 'v4');
+    const cancelled = savour.map((one) => cancelledOf(one, ''));
+    expect(offersShapes({ ...sample, payments: [...others, ...cancelled] }, 'v4')).toBe(true);
+    expect(
+      offersShapes({ ...sample, payments: [...others, cancelled[0]!, savour[1]!] }, 'v4'),
+    ).toBe(false);
+    const made = {
+      ...savour[0]!,
+      paid: { amount: 450000, on: '2026-11-02', by: 'Ada', reference: '' },
+    };
+    expect(offersShapes({ ...sample, payments: [...others, made, cancelled[1]!] }, 'v4')).toBe(
+      false,
+    );
+  });
+
+  it('says a different amount, never absorbing it, and puts it on the paid row', () => {
+    const balance = sampleBudget().payments.find((one) => one.id === 'p6')!;
+    expect(differenceWords(84000, 84000)).toBeNull();
+    expect(differenceWords(84000, 90000)).toBe('£60.00 more than scheduled');
+    expect(differenceWords(84000, 80000)).toBe('£40.00 less than scheduled');
+    expect(typedDifference(balance, '900.00')).toBe(
+      '£60.00 more than scheduled. The difference stays visible; nothing absorbs it.',
+    );
+    expect(typedDifference(balance, '0')).toBeNull();
+    expect(
+      paidLineOf({
+        ...balance,
+        paid: { amount: 90000, on: TODAY, by: 'Folake Adeyemi', reference: '' },
+      }),
+    ).toBe('Paid £900.00 on Tue, Nov 3 · £60.00 more than scheduled · Marked by Folake Adeyemi');
+  });
+
+  it('takes a reference of 100 characters after trimming, and refuses 101', () => {
+    const balance = sampleBudget().payments.find((one) => one.id === 'p6')!;
+    const draft = draftToMark(balance);
+    expect(markProblems({ ...draft, reference: ` ${'a'.repeat(100)} ` }, balance)).toEqual({});
+    expect(markProblems({ ...draft, reference: 'a'.repeat(101) }, balance)).toEqual({
+      reference: 'Shorten the reference to 100 characters or fewer.',
+    });
+    expect(markProblems({ ...draft, reference: '     ' }, balance)).toEqual({});
+  });
+
+  it('cancels with an optional reason of 200 at most, kept on the row', () => {
+    const balance = sampleBudget().payments.find((one) => one.id === 'p6')!;
+    expect(reasonProblem('a'.repeat(200))).toBeNull();
+    expect(reasonProblem('a'.repeat(201))).toBe('Shorten the reason to 200 characters or fewer.');
+    expect(cancelledLine(cancelledOf(balance, ' The venue supplies the arch flowers '))).toBe(
+      'Cancelled · Not owed: the venue supplies the arch flowers · £840.00',
+    );
+    expect(cancelledLine(cancelledOf(balance, '   '))).toBe('Cancelled · Not owed · £840.00');
+    const budget = { ...sampleBudget(), payments: [cancelledOf(balance, '')] };
+    expect(scheduleOf(budget, 'v3').map((one) => one.id)).toEqual(['p6']);
+    expect(toMark(budget, 'v3')).toBeNull();
+  });
+
+  it('checks a payment already made against the vendor’s first quote, earlier ones included', () => {
+    const quotes = sampleBudget().quotes;
+    const bloom = quotes.find((one) => one.vendor.id === 'v3');
+    const draft = {
+      vendorId: 'v3',
+      what: 'Buttonholes',
+      amount: '120.00',
+      paidOn: '2026-10-06',
+      reference: '',
+    };
+    expect(madeProblems(draft, bloom)).toEqual({});
+    expect(
+      madeProblems({ ...draft, what: '  ', amount: '0', paidOn: '2026-10-05' }, bloom),
+    ).toEqual({
+      what: 'Enter what it was for.',
+      amount: 'Enter the amount as a number above 0, like 3,500.50.',
+      paidOn:
+        'The date paid cannot be before the quote from Bloom & Co on Tuesday, October 6. Choose that date or a later one.',
+    });
+    expect(madeProblems({ ...draft, vendorId: 'v4', paidOn: '2026-09-21' }, SAVOUR_QUOTE)).toEqual(
+      {},
+    );
+    expect(madeProblems({ ...draft, what: 'a'.repeat(101) }, bloom).what).toBe(
+      'Shorten the description to 100 characters or fewer.',
+    );
+  });
+
+  it('counts the wedding’s days in its own time zone', () => {
+    expect(WEDDING).toEqual({ starts: '2026-11-05', ends: '2026-11-07' });
+    expect(
+      eventDays({
+        startsAt: '2026-11-05T23:30:00Z',
+        endsAt: '2026-11-06T23:30:00Z',
+        timeZone: 'Africa/Lagos',
+      }),
+    ).toEqual({ starts: '2026-11-06', ends: '2026-11-07' });
+  });
+
+  it('fills a shape’s rows from the quote and the event’s dates, adding up to the quote', () => {
+    const deposit = shapeRows(SHAPE_TERMS.deposit, SAVOUR_QUOTE, WEDDING);
+    expect(deposit.map((row) => [row.what, shapeLine(row), money(row.amount)])).toEqual([
+      ['Deposit', '50% · On the date quoted · Tue, Oct 13', '£4,500.00'],
+      ['Balance', '50% · 14 days before the event · Thu, Oct 22', '£4,500.00'],
+    ]);
+    expect(sharesLine(deposit, SAVOUR_QUOTE.amount)).toBeNull();
+
+    const three = shapeRows(SHAPE_TERMS.instalments, SAVOUR_QUOTE, WEDDING);
+    expect(three[1]).toMatchObject({ dueOn: '2026-10-13', clamped: true, amount: 270000 });
+    expect(shapeLine(three[1]!)).toBe(
+      '30% · 60 days before the event · Set to the date quoted, Tue, Oct 13',
+    );
+    expect(three.reduce((sum, row) => sum + row.amount, 0)).toBe(SAVOUR_QUOTE.amount);
+
+    const terms = SHAPE_TERMS.instalments.map((one, index) =>
+      index === 2 ? { ...one, share: 15 } : one,
+    );
+    const short = shapeRows(terms, SAVOUR_QUOTE, WEDDING);
+    expect(short.map((row) => row.amount)).toEqual([450000, 270000, 135000]);
+    expect(sharesLine(short, SAVOUR_QUOTE.amount)).toBe(
+      'The percentages come to 95%, so £450.00 of the quote is not scheduled. You can still save these payments, and the vendor’s page will show the difference.',
+    );
+
+    expect(shapeLine(shapeRows(SHAPE_TERMS.before, SAVOUR_QUOTE, WEDDING)[0]!)).toBe(
+      '100% · 14 days before the event · Thu, Oct 22',
+    );
+    expect(shapeLine(shapeRows(SHAPE_TERMS.after, SAVOUR_QUOTE, WEDDING)[0]!)).toBe(
+      '100% · 7 days after the event · Sat, Nov 14',
+    );
+
+    const odd = shapeRows(SHAPE_TERMS.deposit, { amount: 100001, quotedOn: '2026-10-13' }, WEDDING);
+    expect(odd.map((row) => row.amount)).toEqual([50001, 50000]);
+  });
+
+  it('says a row’s days in their plural family, one day included', () => {
+    expect(PW.daysBefore(1)).toBe('1 day before the event');
+    expect(PW.daysBefore(30)).toBe('30 days before the event');
+    expect(PW.daysAfter(1)).toBe('1 day after the event');
+    expect(PW.daysAfter(14)).toBe('14 days after the event');
+    expect(PW.whenReminded(1)).toMatch(/^1 day before a payment is due/u);
+    expect(PW.whenReminded(3)).toMatch(/^3 days before a payment is due/u);
+    expect([PW.saveShapes(1), PW.saveShapes(3)]).toEqual(['Save 1 payment', 'Save 3 payments']);
+    expect(PW.shapeFailed(1)).toMatch(/^This payment was not saved.*Save 1 payment to send it/u);
+    expect(PW.shapeFailed(2)).toMatch(/^None of these payments.*Save 2 payments to send them/u);
+  });
+
+  it('takes a percentage above 0 and up to 100 with two decimals, and days from 0 to 730', () => {
+    for (const [typed, share] of [
+      ['0.01', 0.01],
+      ['100', 100],
+      [' 33.33 ', 33.33],
+      ['12.5', 12.5],
+    ] as const)
+      expect(typedShare(typed)).toBe(share);
+    for (const wrong of ['', '0', '0.00', '100.01', '101', '33.333', '-5', 'half', '1,5'])
+      expect(typedShare(wrong)).toBeNull();
+    for (const [typed, days] of [
+      ['0', 0],
+      ['730', 730],
+      [' 14 ', 14],
+    ] as const)
+      expect(typedShapeDays(typed)).toBe(days);
+    for (const wrong of ['', '731', '1.5', '-1', 'two']) expect(typedShapeDays(wrong)).toBeNull();
+
+    const [deposit, balance] = SHAPE_TERMS.deposit;
+    expect(shapeProblems(deposit!, { what: 'Deposit', share: '50', days: 'any' })).toEqual({});
+    expect(shapeProblems(balance!, { what: '   ', share: '50', days: '14' })).toEqual({
+      what: 'Enter what the payment is for.',
+    });
+    expect(shapeProblems(balance!, { what: 'x'.repeat(101), share: '50', days: '14' })).toEqual({
+      what: 'Shorten what the payment is for to 100 characters or fewer.',
+    });
+    expect(shapeProblems(balance!, { what: 'x'.repeat(100), share: '50', days: '14' })).toEqual({});
+  });
+
+  it('refuses a row that rounds to nothing at its percentage, the remainder too, and never drops it', () => {
+    const tooSmall = 'This payment would come to less than £0.01. Enter a higher percentage.';
+    const three = (shares: readonly number[]) =>
+      shapingFrom(
+        'instalments',
+        SHAPE_TERMS.instalments.map((one, index) => ({ ...one, share: shares[index] ?? 0 })),
+      );
+    expect(shapingProblems(three([45, 45, 10]), 10)).toEqual([{}, {}, { share: tooSmall }]);
+    expect(shapingProblems(three([45, 45, 20]), 10)).toEqual([{}, {}, {}]);
+    expect(shapingProblems(three([0.01, 49.99, 50]), 1000)).toEqual([{ share: tooSmall }, {}, {}]);
+    expect(shapingProblems(three([0, 50, 50]), 1000)[0]).toEqual({
+      share: 'Enter a percentage above 0 and up to 100, with up to two decimal places.',
+    });
+    expect(shapingProblems(three([0, 50, 50]), 1)).toEqual([
+      { share: 'Enter a percentage above 0 and up to 100, with up to two decimal places.' },
+      {},
+      { share: tooSmall },
+    ]);
+    expect(shapingProblems(three([45, 45, 10]))).toEqual([{}, {}, {}]);
+  });
+
+  it('counts a shape from its rows as typed, never adjusting shares that miss 100', () => {
+    const shaping = startOf('shape_short').shaping!;
+    const rows = shapeRows(typedTerms(shaping), SAVOUR_QUOTE, WEDDING);
+    expect(rows.map((row) => row.amount)).toEqual([450000, 360000]);
+    expect(sharesLine(rows, SAVOUR_QUOTE.amount)).toBe(
+      'The percentages come to 90%, so £900.00 of the quote is not scheduled. You can still save these payments, and the vendor’s page will show the difference.',
+    );
+    const typed = typedTerms({
+      ...shapingOf('deposit'),
+      typed: [
+        { what: ' Deposit ', share: '50', days: '0' },
+        { what: 'Balance', share: '50', days: '30' },
+      ],
+    });
+    expect(typed.map((one) => [one.what, one.days])).toEqual([
+      ['Deposit', 0],
+      ['Balance', 30],
+    ]);
+  });
+
+  it('saves a shape as ordinary payments, each with its own id', () => {
+    const budget = startOf('shape_deposit').budget;
+    const rows = shapeRows(SHAPE_TERMS.deposit, SAVOUR_QUOTE, WEDDING);
+    const added = shapePayments(rows, 'v4', budget.payments);
+    expect(added.map((one) => [one.id, one.what, one.amount, one.dueOn, one.paid])).toEqual([
+      ['p7', 'Deposit', 450000, '2026-10-13', null],
+      ['p8', 'Balance', 450000, '2026-10-22', null],
+    ]);
+  });
+
+  it('takes a whole number of days from 1 to 30, and refuses anything else naming the range', () => {
+    for (const fine of ['1', '3', ' 30 ']) expect(daysProblem(fine)).toBeNull();
+    for (const wrong of ['', '0', '31', '2.5', 'three', '-1'])
+      expect(daysProblem(wrong)).toBe('Enter a whole number of days from 1 to 30.');
+  });
+
+  it('counts a payment already made on top of a schedule already past the quote', () => {
+    const { budget, made, addedPaid } = startOf('made_over_already');
+    expect(addedPaid).toEqual(['p20']);
+    expect(made == null ? null : madeInset(budget, made.draft)).toEqual({
+      vendor: 'Bloom & Co',
+      now: { paid: 42000, scheduled: 126000 },
+      after: { paid: 54000, scheduled: 138000 },
+      over: 18000,
+    });
+  });
+});
+
+describe('sc-75579: the totals an already-made payment would leave', () => {
+  const quoted = (amount: number, scheduled: number) => {
+    const sample = sampleBudget();
+
+    return {
+      quotes: sample.quotes.map((one) => (one.vendor.id === 'v3' ? { ...one, amount } : one)),
+      payments: [
+        ...sample.payments.filter((one) => one.vendorId !== 'v3'),
+        {
+          id: 'p9',
+          vendorId: 'v3',
+          what: 'Flowers',
+          amount: scheduled,
+          dueOn: '2026-11-30',
+          paid: null,
+          cancelled: null,
+        },
+        {
+          id: 'p10',
+          vendorId: 'v3',
+          what: 'Arch',
+          amount: 50000,
+          dueOn: '2026-11-30',
+          paid: null,
+          cancelled: { why: 'The venue supplies it' },
+        },
+      ],
+    };
+  };
+  const draft = (vendorId: string, amount: string) => ({
+    vendorId,
+    what: 'Buttonholes',
+    amount,
+    paidOn: '2026-11-02',
+    reference: '',
+  });
+
+  it('adds the amount paid to both Paid and Scheduled, and says how far over the quote', () => {
+    expect(madeInset(quoted(100000, 100000), draft('v3', '180'))).toEqual({
+      vendor: 'Bloom & Co',
+      now: { paid: 0, scheduled: 100000 },
+      after: { paid: 18000, scheduled: 118000 },
+      over: 18000,
+    });
+  });
+
+  it('gives the gap after the payment when the schedule was already over, not the payment', () => {
+    expect(madeInset(quoted(100000, 105000), draft('v3', '180'))?.over).toBe(23000);
+  });
+
+  it('says nothing about the quote at or under it', () => {
+    expect(madeInset(quoted(100000, 82000), draft('v3', '180'))?.over).toBeNull();
+    expect(madeInset(quoted(100000, 81000), draft('v3', '180'))?.over).toBeNull();
+  });
+
+  it('shows the figures as they stand while the amount is blank or refused', () => {
+    for (const typed of ['', '0', '-5', 'abc', '12.345']) {
+      const inset = madeInset(sampleBudget(), draft('v3', typed));
+      expect(inset?.now).toEqual({ paid: 36000, scheduled: 120000 });
+      expect(inset?.after).toBeNull();
+      expect(inset?.over).toBeNull();
+    }
+  });
+
+  it('follows the vendor chosen, and the sample states say so', () => {
+    expect(madeInset(sampleBudget(), draft('v4', '1,000.00'))).toEqual({
+      vendor: 'Savour Kitchen',
+      now: { paid: 0, scheduled: 750000 },
+      after: { paid: 100000, scheduled: 850000 },
+      over: null,
+    });
+    expect(startOf('made_as_is').made?.draft.amount).toBe('');
+    expect(startOf('made_under').made?.draft).toMatchObject({ vendorId: 'v4', amount: '1,000.00' });
+    const over = startOf('made_over');
+    expect(over.made == null ? null : madeInset(over.budget, over.made.draft)?.over).toBe(12000);
+    expect(money(12000)).toBe('£120.00');
+  });
+});

@@ -1,0 +1,8 @@
+# sc-34175: CONFIRM pressed while the API is paused, so the busy words stay on screen.
+appId: host.exp.Exponent
+---
+- tapOn:
+    id: '${CONFIRM}'
+- waitForAnimationToEnd:
+    timeout: 3000
+- takeScreenshot: busy

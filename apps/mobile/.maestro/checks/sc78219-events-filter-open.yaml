@@ -1,0 +1,13 @@
+# sc-78219 regression: Events' Filter menu opens at the device's text size, its first drilled level shown.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events
+- extendedWaitUntil: { visible: { id: 'events.filter' }, timeout: 30000 }
+- waitForAnimationToEnd
+- tapOn: { id: 'events.filter' }
+- extendedWaitUntil: { visible: { id: 'events.filter.menu' }, timeout: 10000 }
+- waitForAnimationToEnd
+- takeScreenshot: p-filter
+- tapOn: { id: 'events.filter.type' }
+- waitForAnimationToEnd
+- takeScreenshot: p-filter-type

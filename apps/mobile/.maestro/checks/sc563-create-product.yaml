@@ -1,0 +1,13 @@
+# sc-563: a managed account opens Create an organisation from the switcher.
+appId: host.exp.Exponent
+---
+- runFlow: ../open-switcher.yaml
+- tapOn:
+    id: switcher.tile.create
+- extendedWaitUntil:
+    visible:
+      text: 'Managed by.*'
+    timeout: 20000
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: sc563-create-product

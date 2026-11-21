@@ -1,0 +1,25 @@
+# sc-3624: ${EV}, an upcoming event: Event View's Coming up panel with its rows and All dates, then All dates opened from it.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/${EV}
+- scrollUntilVisible:
+    element:
+      id: 'timeline.row'
+    direction: DOWN
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: 'timeline.allDates'
+    direction: DOWN
+- takeScreenshot: coming-up
+- tapOn:
+    id: 'timeline.allDates'
+- extendedWaitUntil:
+    visible:
+      id: 'timeline.allDates.page'
+    timeout: 15000
+- extendedWaitUntil:
+    visible:
+      id: 'timeline.row'
+    timeout: 15000
+- takeScreenshot: all-dates

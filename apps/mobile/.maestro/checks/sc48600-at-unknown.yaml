@@ -1,0 +1,18 @@
+# sc-48600: /events/${EVENT_ID}/edit?at=nonsense, and with no at, opens the event's page with no edit open. Needs ${METRO_URL}, ${EVENT_ID}.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/${EVENT_ID}/edit?at=nonsense
+- extendedWaitUntil:
+    visible:
+      id: 'events.page'
+    timeout: 30000
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 1500, optional: true }
+- assertNotVisible: '.*ShellContext.*'
+- takeScreenshot: at-unknown
+- openLink: ${METRO_URL}/--/events/${EVENT_ID}/edit
+- extendedWaitUntil:
+    visible:
+      id: 'events.page'
+    timeout: 30000
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 1500, optional: true }
+- takeScreenshot: at-none

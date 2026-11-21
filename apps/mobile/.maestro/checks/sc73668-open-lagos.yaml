@@ -1,0 +1,37 @@
+# The switcher, lagos's invitation opened, for a managed account: the banner, no answers. INVITATION_ID is its id. sc-73668.
+appId: host.exp.Exponent
+---
+- setOrientation: PORTRAIT
+- openLink: ${METRO_URL}/--/
+- tapOn:
+    id: 'tab-today|frame.home'
+    optional: true
+- tapOn:
+    id: 'frame.organisation|home.switchOrganisation'
+- extendedWaitUntil:
+    visible:
+      id: 'switcher.heading'
+    timeout: 10000
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: listed
+- scrollUntilVisible:
+    element:
+      id: 'switcher.tile.${INVITATION_ID}'
+    direction: DOWN
+    timeout: 15000
+- tapOn:
+    id: 'switcher.tile.${INVITATION_ID}'
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: opened
+- scrollUntilVisible:
+    element:
+      id: '.*managed.*change'
+    direction: DOWN
+    timeout: 15000
+- takeScreenshot: banner
+- assertNotVisible:
+    id: 'switcher.invitation.${INVITATION_ID}.accept'
+- assertNotVisible:
+    id: 'switcher.invitation.${INVITATION_ID}.decline'

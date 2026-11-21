@@ -1,0 +1,28 @@
+# sc-54450 regression: Record a reply opened from ${GUEST_ID}'s details opens with nothing chosen and no quote (sc-3787).
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/${EVENT_ID}?area=guests
+- extendedWaitUntil:
+    visible:
+      id: 'guests.search'
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: 'guests.row.${GUEST_ID}'
+    timeout: 15000
+- tapOn:
+    id: 'guests.row.${GUEST_ID}'
+- extendedWaitUntil:
+    visible:
+      id: 'guest.${GUEST_ID}'
+    timeout: 20000
+- takeScreenshot: details
+- tapOn:
+    text: 'Record a reply'
+- extendedWaitUntil:
+    visible:
+      id: 'guest.record.save'
+    timeout: 10000
+- assertNotVisible:
+    id: 'paste.quote'
+- takeScreenshot: from-details
