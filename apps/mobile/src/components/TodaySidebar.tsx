@@ -27,10 +27,11 @@ import {
   PERSON_GLYPH,
   ROOMS,
   glyphSide,
+  listLeast,
   rowPad,
+  sidebarRow,
 } from '../layout/sidebarSize.ts';
 import { SIDEBAR_WIDTH } from '../layout/textSize.ts';
-import { listLeast, sidebarRow } from '../sidebarEvents.ts';
 import { useNameLines } from '../layout/useLayout.ts';
 import { Text } from './Text.tsx';
 import { tokens } from '../theme/tokens.ts';

@@ -6,9 +6,11 @@ import {
   type Widths,
   atLargest,
   glyphSide,
+  listLeast,
   rowPad,
   sideStart,
   sideTextSize,
+  sidebarRow,
   wrapOf,
 } from './sidebarSize.ts';
 
@@ -311,5 +313,32 @@ describe('the sidebar at the largest text sizes', () => {
     expect(sideStart(ROOMS.place, 3.571, 43)).toBe(43);
     expect(sideStart(ROOMS.place, 3.571, 10)).toBe(14.5);
     expect(sideTextSize(ROOMS.place, 3.571, oneWord(10), 'label', 43)).toBe(43);
+  });
+});
+
+describe('listLeast', () => {
+  const LARGEST = 3.12;
+  const size = 12 * LARGEST;
+  const row = sidebarRow(LARGEST);
+  const twoLines = 103.5;
+
+  it('draws a row at the largest text with its padding', () => {
+    expect(row).toBeCloseTo(69.29, 2);
+  });
+
+  it.each([
+    [1, 172.79],
+    [2, 242.08],
+    [3, 311.37],
+  ])('counts a two-line heading as drawn over %i events', (rows, least) => {
+    expect(listLeast({ heading: twoLines, size, rows, row })).toBeCloseTo(least, 2);
+  });
+
+  it.each([4, 20])('stops at four rows with %i events', (rows) => {
+    expect(listLeast({ heading: twoLines, size, rows, row })).toBeCloseTo(380.66, 2);
+  });
+
+  it('counts the heading as one line before it has been drawn', () => {
+    expect(listLeast({ heading: null, size, rows: 2, row })).toBeCloseTo(196.26, 2);
   });
 });

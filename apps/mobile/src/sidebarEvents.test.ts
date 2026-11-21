@@ -4,13 +4,7 @@ import { beforeAll, describe, expect, it, vi } from 'vitest';
 
 import en from './i18n/locales/en.json';
 import { todayMoment } from './kit/todayMoment.ts';
-import {
-  listLeast,
-  listedFor,
-  publishSidebarEvents,
-  sidebarList,
-  sidebarRow,
-} from './sidebarEvents.ts';
+import { listedFor, publishSidebarEvents, sidebarList } from './sidebarEvents.ts';
 
 vi.mock('./api.ts', () => ({ api: {} }));
 vi.mock('./i18n/index.ts', () => ({ dateLocale: () => 'en-GB' }));
@@ -82,32 +76,5 @@ describe('listedFor', () => {
     expect(listedFor('acc', 'orgB')).toEqual([]);
     expect(listedFor('other', 'orgA')).toEqual([]);
     expect(listedFor(undefined, 'orgA')).toEqual([]);
-  });
-});
-
-describe('listLeast', () => {
-  const LARGEST = 3.12;
-  const size = 12 * LARGEST;
-  const row = sidebarRow(LARGEST);
-  const twoLines = 103.5;
-
-  it('draws a row at the largest text with its padding', () => {
-    expect(row).toBeCloseTo(69.29, 2);
-  });
-
-  it.each([
-    [1, 172.79],
-    [2, 242.08],
-    [3, 311.37],
-  ])('counts a two-line heading as drawn over %i events', (rows, least) => {
-    expect(listLeast({ heading: twoLines, size, rows, row })).toBeCloseTo(least, 2);
-  });
-
-  it.each([4, 20])('stops at four rows with %i events', (rows) => {
-    expect(listLeast({ heading: twoLines, size, rows, row })).toBeCloseTo(380.66, 2);
-  });
-
-  it('counts the heading as one line before it has been drawn', () => {
-    expect(listLeast({ heading: null, size, rows: 2, row })).toBeCloseTo(196.26, 2);
   });
 });
