@@ -2137,6 +2137,7 @@ function managedRefusal(waiting: WaitingInvitations, onChange: () => void) {
       organisation={outcome.organisation}
       message={outcome.message}
       onChange={onChange}
+      takesFocus
       testID="switcher.invitation.managed"
     />
   ) : undefined;
