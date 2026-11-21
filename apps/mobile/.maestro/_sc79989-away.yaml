@@ -1,0 +1,8 @@
+appId: com.soirely.app
+---
+- pressKey: home
+- launchApp:
+    appId: com.soirely.app
+    stopApp: false
+- waitForAnimationToEnd
+- takeScreenshot: ${OUT}
