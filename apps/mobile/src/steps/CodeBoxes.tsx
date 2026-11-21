@@ -120,6 +120,7 @@ export function CodeBoxes({
         caretHidden
         contextMenuHidden={false}
         selectionColor="transparent"
+        selectionHandleColor="transparent"
         onFocus={() => setFocused(true)}
         onBlur={() => setFocused(false)}
         style={inputFaced(styles.input, 'sans', bold)}

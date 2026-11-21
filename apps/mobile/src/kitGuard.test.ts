@@ -492,6 +492,19 @@ describe('a screen reader reaches each button in a group', () => {
   });
 });
 
+describe('a field that hides its selection hides its handles too (sc-80268)', () => {
+  it('in every TextInput with a transparent selection, on Android where the kit gives the handles ink', () => {
+    const offenders = sources(['src', 'app']).flatMap(({ path, text }) =>
+      selfClosing('TextInput', text)
+        .filter(({ markup }) => markup.includes('selectionColor="transparent"'))
+        .filter(({ markup }) => !markup.includes('selectionHandleColor="transparent"'))
+        .map(({ line }) => `${path}:${line}`),
+    );
+
+    expect(offenders).toEqual([]);
+  });
+});
+
 describe('a field is read by the name it shows', () => {
   // sc-11238: a label chosen once for the eye and once for the reader drifted apart (WCAG 2.5.3, Label in Name).
   // sc-11297: three fields in Ownership and leaving had no name, and TalkBack read each as "Edit box".

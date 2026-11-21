@@ -48,7 +48,7 @@ import {
   shownAboveKeys,
   shownEnd,
 } from './keyboard.ts';
-import { contrast } from './scrim.ts';
+import { contrast, mixed, rgbOf } from './scrim.ts';
 
 describe('the keyboard lifts the card once', () => {
   it('on iOS, by the scroll view alone', () => {
@@ -529,25 +529,13 @@ describe('every field carries the caret colour', () => {
       const alpha = Number.parseInt(fieldDefaults('android').selectionColor.slice(7), 16) / 255;
 
       for (const fill of [look.colorCard, look.colorInset]) {
-        const highlight = rgb(fill).map(
-          (channel, i) => channel * (1 - alpha) + (rgb(look.colorInk)[i] ?? 0) * alpha,
-        );
+        const highlight = mixed(rgbOf(fill), rgbOf(look.colorInk), alpha);
 
-        expect(contrast(look.colorInk, hex(highlight)), name).toBeGreaterThanOrEqual(4.5);
+        expect(contrast(look.colorInk, highlight), name).toBeGreaterThanOrEqual(4.5);
       }
     }
   });
 });
-
-function rgb(colour: string): number[] {
-  const value = Number.parseInt(colour.replace('#', '').slice(0, 6), 16);
-
-  return [(value >> 16) & 255, (value >> 8) & 255, value & 255];
-}
-
-function hex(channels: number[]): string {
-  return `#${channels.map((c) => Math.round(c).toString(16).padStart(2, '0')).join('')}`;
-}
 
 describe('the password field reveals', () => {
   it('hides by default and shows on request', () => {
