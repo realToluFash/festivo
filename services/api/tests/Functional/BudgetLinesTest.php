@@ -275,7 +275,7 @@ final class BudgetLinesTest extends ApiTestCase
         $tester->execute([]);
         $tester->assertCommandIsSuccessful();
 
-        self::assertSame("Erased 1 removed budget lines.\n", $tester->getDisplay());
+        self::assertSame("Erased 1 removed budget lines.\nErased 0 removed payers.\n", $tester->getDisplay());
         self::assertSame([$recent['id']], Type\vec(Type\string())->coerce(self::em()->getConnection()->fetchFirstColumn('SELECT id FROM budget_lines')));
         $this->as($this->owner, 'DELETE', $this->removal($lapsed['id']));
         self::assertSame(404, $this->statusCode());

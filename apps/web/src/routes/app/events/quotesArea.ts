@@ -418,17 +418,26 @@ export function budgetPath(eventId: string): string {
   return `/app/events/${encodeURIComponent(eventId)}/budget`;
 }
 
+export function payersPath(eventId: string): string {
+  return `${budgetPath(eventId)}/payers`;
+}
+
 export function vendorPagePath(eventId: string, vendorId: string): string {
   return `${budgetPath(eventId)}/vendors/${encodeURIComponent(vendorId)}`;
 }
 
 export type BudgetView =
-  { kind: 'home' } | { kind: 'due' } | { kind: 'vendor'; vendorId: string } | { kind: 'unknown' };
+  | { kind: 'home' }
+  | { kind: 'due' }
+  | { kind: 'payers' }
+  | { kind: 'vendor'; vendorId: string }
+  | { kind: 'unknown' };
 
 export function budgetView(rest: string): BudgetView {
   const parts = rest.split('/').filter((one) => one !== '');
   if (parts.length === 0) return { kind: 'home' };
   if (parts.length === 1 && parts[0] === 'due') return { kind: 'due' };
+  if (parts.length === 1 && parts[0] === 'payers') return { kind: 'payers' };
   if (parts.length === 2 && parts[0] === 'vendors' && parts[1] != null)
     return { kind: 'vendor', vendorId: parts[1] };
 

@@ -64,4 +64,12 @@ final readonly class Money
 
         return (string) $formatter->format(0 === $digits ? 12 : 12.5);
     }
+
+    /** "£1,234.50" in the reader's locale (CLDR currency format), at the currency's minor unit, for a refusal to name an amount. */
+    public function shown(int|Number $minor, string $currency): string
+    {
+        $formatter = new NumberFormatter($this->translator->getLocale() . '@currency=' . $currency, NumberFormatter::CURRENCY);
+
+        return (string) $formatter->formatCurrency(Type\float()->coerce(self::written($minor, $currency)), $currency);
+    }
 }

@@ -40,6 +40,8 @@ enum ErrorCode: string
     case QuoteUnchanged = 'quote_unchanged';
     case PaymentsAlreadyScheduled = 'payments_already_scheduled';
     case VendorOwed = 'vendor_owed';
+    case PayerLimit = 'payer_limit';
+    case PayerCoversCosts = 'payer_covers_costs';
     case PaymentAlreadyPaid = 'payment_already_paid';
     case PaymentCancelled = 'payment_cancelled';
     case PlanLimit = 'plan_limit';
@@ -186,7 +188,7 @@ enum ErrorCode: string
             self::PreconditionFailed => 412,
             self::PreconditionRequired => 428,
             self::EventCurrencyInUse, self::EventStateInvalid, self::EventConcluded, self::EventPaused, self::EventHostRequired, self::EventCallOffFirst => 409,
-            self::VendorAlreadyQuoted, self::QuoteUnchanged, self::PaymentsAlreadyScheduled, self::VendorOwed, self::PaymentAlreadyPaid, self::PaymentCancelled => 409,
+            self::VendorAlreadyQuoted, self::QuoteUnchanged, self::PaymentsAlreadyScheduled, self::VendorOwed, self::PaymentAlreadyPaid, self::PaymentCancelled, self::PayerLimit, self::PayerCoversCosts => 409,
             self::PlanLimit, self::PlanRequired => 403,
             self::SeatingPlanExists, self::SeatingSectionLimit, self::SeatingItemsOutside, self::SeatingTableFull, self::SeatingTableShort, self::SeatingSeatTaken, self::SeatingUndoStale, self::SeatingGuestsSeated, self::SeatingGuestNotWaiting, self::ScheduleItemLimit, self::ItemStarted, self::ItemNotStarted, self::ItemFinished, self::TrackBusy, self::GuestAlreadyListed, self::StaffNumberShared, self::StaffJobStaffed, self::StaffShiftFull, self::StaffWorksAs, self::StaffShiftOverlap, self::StaffOnShifts, self::RepliesClosed, self::RepliesOpen, self::GuestReplied, self::ReplyIsTheirs, self::GuestNotMarkedByHand, self::DishNameShared, self::DishInUse, self::MenuCourseLimit, self::MenuCoursePicked, self::MenuDishPicked, self::MenuDishOnCourse, self::MenuSameOneDish, self::VariantLimit, self::VariantPicked, self::VariantLastEveryone, self::ChoiceLimit, self::ChoiceAnswered, self::ChoiceOptionPicked => 409,
             self::Unauthenticated, self::InvalidCredentials, self::InvalidRefreshToken, self::OAuthTokenInvalid, self::TwoFactorChallengeInvalid, self::SessionTimedOut => 401,
