@@ -19,6 +19,7 @@ import { useSideFit } from './sideFit.tsx';
 import { titleWithInkRoom } from './titleWidth.ts';
 
 const NAME_LINE = 1.25;
+const WAITING_LINE = 1.3;
 
 export const OPENER = { rest: tokens.sizeHit, waiting: 56 } as const;
 
@@ -31,6 +32,7 @@ export function OpenerWords({
   wrap = false,
   lines,
   size,
+  waitingSize,
 }: {
   name: string;
   /** How many invitations wait, in words, or null when none do. */
@@ -42,6 +44,8 @@ export function OpenerWords({
   lines?: number | undefined;
   /** The name's size as iPad landscape's sidebar fits it, which the text size no longer grows (sc-68441). */
   size?: number | undefined;
+  /** The invitation line's size as the sidebar fits it on its own, apart from the name's (sc-79559). */
+  waitingSize?: number | undefined;
 }) {
   const ink = { color: onDark ? tokens.colorInkOnDark : tokens.colorInk };
 
@@ -66,11 +70,16 @@ export function OpenerWords({
             ]}
           />
           <Text
-            size={12.5}
+            size={waitingSize ?? 12.5}
             weight="semibold"
             numberOfLines={wrap ? undefined : 1}
+            allowFontScaling={waitingSize == null}
             accessible={false}
-            style={[styles.waitingWords, ink]}
+            style={[
+              styles.waitingWords,
+              waitingSize != null && { lineHeight: waitingSize * WAITING_LINE },
+              ink,
+            ]}
           >
             {waiting}
           </Text>
@@ -80,7 +89,7 @@ export function OpenerWords({
   );
 }
 
-/** The opener's words at the head of iPad landscape's sidebar: the name on one line, stepped down until it fits whole there (sc-68441). */
+/** The opener's words at the head of iPad landscape's sidebar: the name and the invitation line each on one line, each stepped down alone until it fits whole there (sc-68441, sc-79559). */
 function SidebarOpenerWords({
   name,
   waiting,
@@ -94,11 +103,21 @@ function SidebarOpenerWords({
 }) {
   const { fontScale } = useWindowDimensions();
   const { size, measure } = useSideFit(name, ROOMS.org, fontScale, 'semibold', 'line');
+  const line = useSideFit(waiting ?? '', ROOMS.waiting, fontScale, 'semibold', 'line');
 
   return (
     <>
       {measure}
-      <OpenerWords name={name} waiting={waiting} wrap={wrap} lines={lines} size={size} grow />
+      {waiting != null && line.measure}
+      <OpenerWords
+        name={name}
+        waiting={waiting}
+        wrap={wrap}
+        lines={lines}
+        size={size}
+        waitingSize={waiting == null ? undefined : line.size}
+        grow
+      />
     </>
   );
 }
@@ -209,7 +228,7 @@ const styles = StyleSheet.create({
     borderRadius: 7.5,
     backgroundColor: tokens.colorInset,
   },
-  waitingWords: { lineHeight: 12.5 * 1.3 },
+  waitingWords: { lineHeight: 12.5 * WAITING_LINE },
   org: {
     minHeight: OPENER.rest,
     flexShrink: 1,

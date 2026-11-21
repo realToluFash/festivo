@@ -233,6 +233,30 @@ describe('the sidebar at the largest text sizes', () => {
     expect(sideTextSize(ROOMS.place, TWELFTH, oneWord(5000))).toBe(14.5);
   });
 
+  it("gives the invitation line the name's room less its ring and the gap after it", () => {
+    expect(ROOMS.waiting.inside).toBe(ROOMS.org.inside - 11 - 6);
+  });
+
+  it('draws the invitation line as on main at the default size and wherever it fits whole', () => {
+    expect(sideTextSize(ROOMS.waiting, 1, oneWord(500), 'line')).toBe(12.5);
+    expect(sideTextSize(ROOMS.waiting, NINTH, oneWord(0.9 * ROOMS.waiting.inside), 'line')).toBe(
+      12.5 * NINTH,
+    );
+  });
+
+  it.each([EIGHTH, NINTH, TENTH, TWELFTH])(
+    'steps the invitation line down alone at fontScale %s until it reads whole on one line',
+    (scale) => {
+      const start = 12.5 * scale;
+      const line = (83.5 / 12.5) * start;
+      const size = sideTextSize(ROOMS.waiting, scale, oneWord(line), 'line');
+
+      expect(size).toBeLessThan(start);
+      expect(size).toBeGreaterThanOrEqual(12.5);
+      expect((line / start) * size).toBeLessThanOrEqual(ROOMS.waiting.inside);
+    },
+  );
+
   it('fits a one-line name whole, not only its widest word', () => {
     const scale = TWELFTH;
     const widths = {
