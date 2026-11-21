@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\Organisation\Controller;
 
+use App\Domain\Organisation\EmailDomains\ManagedAccounts;
 use App\Domain\Organisation\Http\MemberSerialiser;
 use App\Domain\Organisation\Http\OrganisationSerialiser;
 use App\Domain\Organisation\Invitations\InvitationResponder;
@@ -35,6 +36,7 @@ final readonly class InvitationsController
         private Security $security,
         private InvitationRepository $invitationRepository,
         private InvitationResponder $invitationResponder,
+        private ManagedAccounts $managedAccounts,
         private MembershipDirectoryInterface $membershipDirectory,
         private SignInRules $signInRules,
         private OrganisationSerialiser $organisationSerialiser,
@@ -114,6 +116,7 @@ final readonly class InvitationsController
             'refusal' => $this->invitationResponder->refusalOf($invitation)?->value,
             'forYou' => null === $user ? null : $this->invitationResponder->isFor($invitation, $user),
             'signedInAs' => $user?->getPrimaryEmailAddress()?->getAddress(),
+            'managed' => null === $user ? null : $this->managedAccounts->describeFor($user, $invitation->getOrganisation()),
         ];
     }
 
