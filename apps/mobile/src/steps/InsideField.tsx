@@ -19,7 +19,7 @@ import { fieldFocused, fieldLeft } from '../components/focusedField.ts';
 import { Text } from '../components/Text.tsx';
 import { UnseenName } from '../components/UnseenName.tsx';
 import {
-  FIELD_DEFAULTS,
+  fieldDefaults,
   fieldName,
   passwordProps,
   refusedHint,
@@ -116,8 +116,8 @@ export function InsideField({
       style={[styles.box, state === 'blank' && styles.blank]}
     >
       <TextInput
-        {...FIELD_DEFAULTS}
-        {...(password && passwordProps(revealed))}
+        {...fieldDefaults(Platform.OS)}
+        {...(password && passwordProps(Platform.OS, revealed))}
         {...rest}
         {...refusedName(Platform.OS, fieldName(Platform.OS, label, { labelID }), refused, label)}
         accessibilityHint={refusedHint(refused, rest.accessibilityHint)}

@@ -214,7 +214,11 @@ export function EventPeople({ event }: { event: OrganisationEvent }) {
                       ? addable
                       : [
                           ...addable,
-                          { membershipId: opened.membershipId, name: nameOf(opened, t) },
+                          {
+                            membershipId: opened.membershipId,
+                            name: nameOf(opened, t),
+                            role: null,
+                          },
                         ],
                 });
                 setOpen(null);

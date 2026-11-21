@@ -28,7 +28,7 @@ import { useTranslation } from 'react-i18next';
 
 import {
   codeProps,
-  FIELD_DEFAULTS,
+  fieldDefaults,
   fieldName,
   fieldText,
   handsHeld,
@@ -440,7 +440,7 @@ export function TextField({
 
   return (
     <TextInput
-      {...FIELD_DEFAULTS}
+      {...fieldDefaults(Platform.OS)}
       {...rest}
       {...refusedField(refused, rest, labelID)}
       {...holding}
@@ -478,7 +478,7 @@ export function CodeField({
 
   return (
     <TextInput
-      {...codeProps(takesRecoveryCode)}
+      {...codeProps(Platform.OS, takesRecoveryCode)}
       autoComplete="sms-otp"
       {...rest}
       {...refusedField(refused, rest, labelID)}

@@ -82,7 +82,7 @@ describe("every TextInput starts from the kit's defaults", () => {
 
     expect(
       offenders,
-      'Spread FIELD_DEFAULTS, codeProps() or passwordProps() from src/kit/fields.ts.',
+      'Spread fieldDefaults(), codeProps() or passwordProps() from src/kit/fields.ts.',
     ).toEqual([]);
   });
 
@@ -96,7 +96,7 @@ describe("every TextInput starts from the kit's defaults", () => {
       0,
     );
     expect(
-      selfClosing('TextInput', '<TextInput {...FIELD_DEFAULTS} style={x} />').filter(
+      selfClosing('TextInput', '<TextInput {...fieldDefaults(Platform.OS)} style={x} />').filter(
         (tag) => !startsFromKitDefaults(tag.markup),
       ),
     ).toHaveLength(0);
@@ -489,6 +489,19 @@ describe('a screen reader reaches each button in a group', () => {
         '<View accessible={false}>\n  <View>\n  </View>\n  <Pressable onPress={x} />\n</View>',
       ),
     ).toEqual([]);
+  });
+});
+
+describe('a field that hides its selection hides its handles too (sc-80268)', () => {
+  it('in every TextInput with a transparent selection, on Android where the kit gives the handles ink', () => {
+    const offenders = sources(['src', 'app']).flatMap(({ path, text }) =>
+      selfClosing('TextInput', text)
+        .filter(({ markup }) => markup.includes('selectionColor="transparent"'))
+        .filter(({ markup }) => !markup.includes('selectionHandleColor="transparent"'))
+        .map(({ line }) => `${path}:${line}`),
+    );
+
+    expect(offenders).toEqual([]);
   });
 });
 
@@ -1629,7 +1642,7 @@ function fixedAroundText(text: string): number[] {
 }
 
 function startsFromKitDefaults(markup: string): boolean {
-  return /\{\.\.\.(FIELD_DEFAULTS|codeProps\(|passwordProps\()/u.test(markup);
+  return /\{\.\.\.(fieldDefaults\(|codeProps\(|passwordProps\()/u.test(markup);
 }
 
 function takesRecoveryCode(markup: string): boolean {
