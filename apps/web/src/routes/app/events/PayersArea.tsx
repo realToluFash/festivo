@@ -1069,10 +1069,10 @@ function ChooseWhoPays({
   const currency = payers.currency;
   const [ticked, setTicked] = useState<readonly string[]>(start.ticked);
   const [mode, setMode] = useState<Mode>(start.mode);
-  const [payerPicked, setPayer] = useState(start.payer ?? '');
+  const [payerPicked, setPayerPicked] = useState(start.payer ?? '');
   const [percents, setPercents] = useState<Record<string, string>>({ ...start.percents });
   const [amounts, setAmounts] = useState<Record<string, string>>({ ...start.amounts });
-  const [restPicked, setRest] = useState(start.rest ?? '');
+  const [restPicked, setRestPicked] = useState(start.rest ?? '');
   const [checked, setChecked] = useState(start.checked === true);
   const [served, setServed] = useState<Served>({});
   const [stale, setStale] = useState<string | null>(start.stale ?? null);
@@ -1308,7 +1308,7 @@ function ChooseWhoPays({
                   payers={payers.payers}
                   error={payerError}
                   onChange={(id) => {
-                    setPayer(id);
+                    setPayerPicked(id);
                     setServed({});
                   }}
                 />
@@ -1377,7 +1377,7 @@ function ChooseWhoPays({
                     help={t('payers.restNow', { amount: range(fixed.rest[0], fixed.rest[1]) })}
                     error={restError}
                     onChange={(id) => {
-                      setRest(id);
+                      setRestPicked(id);
                       setServed({});
                     }}
                   />
