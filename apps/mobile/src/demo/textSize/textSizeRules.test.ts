@@ -6,6 +6,7 @@ import {
   languageOf,
   LONG_ORGANISATION,
   partOf,
+  phoneCountryOverNumber,
   scaleFor,
   TAB_GLYPH,
   TAB_GLYPH_GAP,
@@ -112,8 +113,23 @@ describe('Home’s This week at a text size (sc-13281)', () => {
 
   it('reads the board’s part and week from the address', () => {
     expect(partOf('week')).toBe('week');
+    expect(partOf('phone')).toBe('phone');
     expect(partOf(undefined)).toBe('card');
     expect(weekStateOf('nothing')).toBe('nothing');
     expect(weekStateOf('other')).toBe('events');
+  });
+});
+
+describe('a phone number’s two boxes at a text size (qa3, #78429)', () => {
+  it('keeps the country beside the number at the default sizes', () => {
+    expect(phoneCountryOverNumber(1)).toBe(false);
+    expect(phoneCountryOverNumber(1.35)).toBe(false);
+  });
+
+  it('puts the country over the number from the accessibility sizes on', () => {
+    expect(phoneCountryOverNumber(1.79)).toBe(true);
+    expect(phoneCountryOverNumber(scaleFor('android', 1))).toBe(true);
+    expect(phoneCountryOverNumber(scaleFor('iphone', 1))).toBe(true);
+    expect(phoneCountryOverNumber(scaleFor('twelfth', 1))).toBe(true);
   });
 });

@@ -13,6 +13,7 @@ import { closeBoldTextBoard, openBoldTextBoard } from '../boldText/boldTextStore
 import { YOU } from '../settings/sample.ts';
 import { TextSizeBar } from './TextSizeBar.tsx';
 import { TextSizeCard } from './TextSizeCard.tsx';
+import { TextSizePhone } from './TextSizePhone.tsx';
 import { TextSizeWeek } from './TextSizeWeek.tsx';
 import {
   LANGUAGES,
@@ -76,7 +77,9 @@ export function TextSizeScreen({ start }: { start: TextSizeStart }) {
         <NavBar />
         <View style={styles.page}>
           <I18nextProvider i18n={words}>
-            {part === 'week' ? (
+            {part === 'phone' ? (
+              <TextSizePhone scale={fontScale} />
+            ) : part === 'week' ? (
               <TextSizeWeek scale={scale} language={language} state={week} />
             ) : (
               <TextSizeCard
@@ -88,14 +91,22 @@ export function TextSizeScreen({ start }: { start: TextSizeStart }) {
               />
             )}
           </I18nextProvider>
-          <DemoOnly title="Stand in for the phone’s own settings and qa’s account. The card, Home’s This week and the bar are drawn at the size chosen; no string is added.">
-            <Choices
-              heading="Text size"
-              options={TEXT_SIZES}
-              chosen={size}
-              onChoose={setSize}
-              id="size"
-            />
+          <DemoOnly
+            title={
+              part === 'phone'
+                ? 'Stand in for qa’s account. The kit’s boxes take this phone’s own text size, so no size is chosen here: the country box goes over the number from iOS’s eighth Larger Text step (Settings › Accessibility › Display & Text Size › Larger Text) and Android’s 200% font size. No string is added.'
+                : 'Stand in for the phone’s own settings and qa’s account. The card, Home’s This week and the bar are drawn at the size chosen; no string is added.'
+            }
+          >
+            {part === 'phone' ? null : (
+              <Choices
+                heading="Text size"
+                options={TEXT_SIZES}
+                chosen={size}
+                onChoose={setSize}
+                id="size"
+              />
+            )}
             <Choices
               heading="Language"
               options={LANGUAGES}
@@ -108,6 +119,7 @@ export function TextSizeScreen({ start }: { start: TextSizeStart }) {
               options={[
                 { key: 'card', label: 'The Settings card' },
                 { key: 'week', label: 'Home’s This week' },
+                { key: 'phone', label: 'A phone number, at this phone’s size' },
               ]}
               chosen={part}
               onChoose={setPart}

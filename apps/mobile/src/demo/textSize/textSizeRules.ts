@@ -11,12 +11,12 @@ export const TEXT_SIZES: readonly { key: TextSizeChoice; label: string }[] = [
   { key: 'twelfth', label: 'iPhone twelfth step' },
 ];
 
-/** What the board draws: the Settings card, or Home's This week (sc-13281). */
-export type TextSizePart = 'card' | 'week';
+/** What the board draws: the Settings card, Home's This week, or a phone number's two boxes (sc-13281). */
+export type TextSizePart = 'card' | 'week' | 'phone';
 export type TextSizeWeekState = 'events' | 'nothing';
 
 export function partOf(name: string | undefined): TextSizePart {
-  return name === 'week' ? 'week' : 'card';
+  return name === 'week' || name === 'phone' ? name : 'card';
 }
 
 export function weekStateOf(name: string | undefined): TextSizeWeekState {
@@ -69,6 +69,11 @@ export function cardTileShown(scale: number): boolean {
 /** Seven columns cannot hold a day's name or its date at the accessibility sizes, so the week strip gives way and the agenda carries the week (sc-13281). */
 export function weekStripShown(scale: number): boolean {
   return !atAccessibilitySizes(scale);
+}
+
+/** Side by side, the country's box is under half the line, too narrow for Royaume-Uni at the accessibility sizes (qa3, #78429): from them on it sits over the number, each the field's full width. */
+export function phoneCountryOverNumber(scale: number): boolean {
+  return atAccessibilitySizes(scale);
 }
 
 /** sc-13280's longest organisation name, 100 characters. */
