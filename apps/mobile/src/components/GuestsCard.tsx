@@ -101,7 +101,7 @@ function ArrivedCount({ attended, expected }: { attended: number; expected: numb
         {t('checkIn.countFigure', { count: attended, expected })}
       </Text>
       <Text size={17} weight="semibold" accessible={false} style={styles.white}>
-        {t('checkIn.countWord')}
+        {t('checkIn.countWord', { count: attended })}
       </Text>
     </View>
   );

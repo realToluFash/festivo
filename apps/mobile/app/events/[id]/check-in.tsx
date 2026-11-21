@@ -53,7 +53,13 @@ export default function EventCheckIn() {
               <View style={styles.nav}>
                 <Back label={t('checkIn.back')} onPress={back} testID="checkIn.back" />
                 <View style={styles.navTitle} pointerEvents="none">
-                  <Text ref={title} size={17} weight="bold" accessibilityRole="header">
+                  <Text
+                    ref={title}
+                    size={17}
+                    weight="bold"
+                    numberOfLines={1}
+                    accessibilityRole="header"
+                  >
                     {t('checkIn.title')}
                   </Text>
                 </View>
