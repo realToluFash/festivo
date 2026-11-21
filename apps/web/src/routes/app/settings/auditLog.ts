@@ -144,6 +144,7 @@ export function factsOf(t: TFunction, entry: AuditEntry): Fact[] {
       ...(on.eventId == null || on.gone ? {} : { link: EVENT_PAGE(on.eventId) }),
     });
   if (entry.changes.length > 0) facts.push({ label: t('auditLog.changes'), value: entry.changes });
+  for (const row of entry.recorded) facts.push({ label: row.label, value: row.value });
   facts.push({
     label: t('auditLog.typeAndAction'),
     value: t('auditLog.typeAction', { type: typeWord(t, entry.type), action: entry.action }),
