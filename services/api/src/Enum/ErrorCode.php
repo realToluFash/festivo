@@ -89,6 +89,7 @@ enum ErrorCode: string
     case ChoiceOptionPicked = 'choice_option_picked';
 
     case AlreadyAMember = 'already_a_member';
+    case DoorCodeInvalid = 'door_code_invalid';
     case EmailTaken = 'email_taken';
     case InvitationNotFound = 'invitation_not_found';
     case InvitationExpired = 'invitation_expired';
@@ -177,7 +178,7 @@ enum ErrorCode: string
             self::AlreadyLinked, self::AddressLimitReached, self::AddressNotVerified, self::PrimaryAddress, self::LastVerifiedAddress => 409,
             self::RecoveryRequestInvalid => 404,
             self::AlreadyAMember, self::EmailTaken, self::InvitationAccepted, self::InvitationDeclined, self::JoinOfferUnavailable, self::RestoreNeedsAddress, self::TeamSeatsInUse => 409,
-            self::InvitationNotFound, self::RequestLinkDead => 404,
+            self::InvitationNotFound, self::RequestLinkDead, self::DoorCodeInvalid => 404,
             self::JoinRequestWaiting, self::JoinRequestCoolingOff, self::JoinRequestAnswered => 409,
             self::OwnerClaimAddress, self::OwnerClaimManaged, self::OwnerClaimOpen, self::OwnerClaimClosed, self::OwnerClaimEnded, self::OwnerClaimUnavailable, self::OwnerClaimOwn, self::EmailDomainTaken, self::DomainManaged => 409,
             self::InvitationExpired, self::InvitationRevoked, self::OrganisationDeleted, self::BudgetLineCurrencyChanged => 410,

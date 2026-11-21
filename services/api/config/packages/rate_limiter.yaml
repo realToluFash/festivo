@@ -150,3 +150,18 @@ framework:
             policy: fixed_window
             limit: 120
             interval: '10 minutes'
+
+        door_code_source:
+            # Per IP, spent only by a refused door code (sc-72), so fifteen waiters joining on one venue's
+            # network are not refused for each other. 10 a minute is about 14,400 tries a day against
+            # 32^8 codes: about 1 in 76 million of hitting a given live code. Fixed, so the time holds still.
+            policy: fixed_window
+            limit: 10
+            interval: '1 minute'
+
+        door_code_code:
+            # Per code, keyed by its hash, spent by every try at it, so one code cannot be worked at from many
+            # sources. A crew of 500 opening and joining together fits inside a few minutes.
+            policy: fixed_window
+            limit: 120
+            interval: '1 minute'

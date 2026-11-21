@@ -146,5 +146,6 @@
     "idempotency_key_reused": "Cette Idempotency-Key a déjà été envoyée avec un autre appui.",
     "plan_required": "Le forfait de l’organisation n’inclut pas cette fonctionnalité.",
     "email_domain_taken": "Une autre organisation a déjà vérifié ce domaine.",
-    "audit_export_too_many": "Trop d’entrées à exporter."
+    "audit_export_too_many": "Trop d’entrées à exporter.",
+    "door_code_invalid": "That code doesn’t work. Check it with whoever gave it to you."
 }

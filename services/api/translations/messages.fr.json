@@ -469,5 +469,14 @@
     "email_domains.only_ours_owner": "Seule une personne ayant le rôle Propriétaire peut modifier ce réglage.",
     "email_domains.only_ours_unproved": "« Réservé à notre organisation » nécessite un domaine vérifié par cette organisation.",
     "validation.payment_reminder_days": "Saisissez un nombre entier de jours de 1 à 30.",
-    "staff.link_needs_mobile": "Ajoutez un numéro de portable pour envoyer un lien."
+    "staff.link_needs_mobile": "Ajoutez un numéro de portable pour envoyer un lien.",
+    "access.plan_required": "Disponible avec le forfait Enterprise. Pour modifier ce réglage, contactez Soirely au sujet du forfait Enterprise.",
+    "door_codes.role": "A door code lets people view or check guests in, never edit.",
+    "door_codes.use_cap_required": "Enter how many people can use this code.",
+    "door_codes.use_cap_range": "Use a whole number from 1 to 500.",
+    "door_codes.expiry_past": "Choose a time that hasn't passed yet.",
+    "door_codes.not_made": "The door code was not made. Check your connection and try again.",
+    "door_codes.invalid": "That code doesn’t work. Check it with whoever gave it to you.",
+    "door_codes.too_many": "Too many tries. Try again at {when}.",
+    "door_codes.member": "You’re already a member of {organisation}. Members open an event from its People page. Ask its lead or an admin to add you."
 }

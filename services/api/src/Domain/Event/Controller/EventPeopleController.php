@@ -141,6 +141,8 @@ final readonly class EventPeopleController
             'address' => $shown,
             'addressKind' => null === $shown ? null : $person->getAddressKind()?->value,
             'endsAt' => $person->isOutside() ? $person->getEvent()->getClosesAt()?->format(\DATE_ATOM) : null,
+            'doorCode' => $person->getDoorCode()?->getCode(),
+            'joinedAt' => $person->getCreatedAt()->format(\DATE_ATOM),
         ];
     }
 
