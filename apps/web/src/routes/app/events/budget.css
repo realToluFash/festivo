@@ -12,6 +12,21 @@
   overflow: visible;
 }
 
+/* The crumbs are the way back, so in every language they wrap at word breaks rather than truncate, as the Guests' do (sc-79848). Staff rates shares .bt. */
+.bt .ev-crumb ol {
+  flex-wrap: wrap;
+}
+
+.bt .ev-crumb-part {
+  min-width: auto;
+  overflow-wrap: break-word;
+}
+
+.bt .ev-crumb-name {
+  overflow: visible;
+  white-space: normal;
+}
+
 .bt-page {
   display: flex;
   flex-direction: column;
