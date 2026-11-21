@@ -29,6 +29,7 @@ import {
   QUOTES,
   costLine,
   dueList,
+  LOCALE,
   lineState,
   money,
   overdue,
@@ -2168,9 +2169,111 @@ function MarkupDialog({
   );
 }
 
-type DueNowState = 'owed' | 'marked' | 'paidElsewhere' | 'cancelled' | 'refused';
+type DueNowState = 'owed' | 'marked' | 'paidElsewhere' | 'cancelled' | 'gone';
+type DueRefusal = 'paid' | 'cancelled' | 'plan';
 
-const REMINDED = ['p6', 'p7'];
+interface DueItem {
+  id: string;
+  vendor: string;
+  what: string;
+  amount: number;
+  dueOn: string;
+  event: string;
+  currency: string;
+}
+
+const GALA = { id: 'evt-gala-4', name: 'Gala Fundación Lucía', currency: 'EUR' } as const;
+const REMINDER_SENT = '2026-11-01';
+const COLLEAGUE = 'Julien Moreau';
+
+const DUE_REFUSED: Record<DueRefusal, string> = {
+  paid: `${COLLEAGUE} has already marked this paid, so nothing has changed.`,
+  cancelled: 'This payment has been cancelled, so it cannot be marked paid.',
+  plan: 'Payments cannot be marked paid on this organisation’s plan, so nothing has changed.',
+};
+
+/** sc-1331's reminders: the wedding's two payments, one since removed, and the gala's in euros. */
+function dueItemsOf(first: string, event: SampleEvent): DueItem[] {
+  const wedding = ['p6', 'p7'].flatMap((id) => {
+    const payment = PAYMENTS.find((one) => one.id === id);
+    return payment == null
+      ? []
+      : [
+          {
+            id,
+            vendor: vendorName(payment.vendorId),
+            what: payment.what,
+            amount: payment.amount,
+            dueOn: payment.dueOn,
+            event: event.name,
+            currency: CURRENCY,
+          },
+        ];
+  });
+  if (first === 'due_changed')
+    return [
+      ...wedding,
+      {
+        id: 'p9',
+        vendor: vendorName('v6'),
+        what: 'Album',
+        amount: 35000,
+        dueOn: '2026-11-02',
+        event: event.name,
+        currency: CURRENCY,
+      },
+    ];
+  if (first === 'due_several' || first === 'due_done_several')
+    return [
+      ...wedding,
+      {
+        id: 'g1',
+        vendor: 'Floristería Lirio',
+        what: 'Balance',
+        amount: 120000,
+        dueOn: '2026-11-06',
+        event: GALA.name,
+        currency: GALA.currency,
+      },
+    ];
+
+  return wedding;
+}
+
+function dueStartOf(first: string, items: readonly DueItem[]): Record<string, DueNowState> {
+  const all = (now: DueNowState) => Object.fromEntries(items.map((item) => [item.id, now]));
+  if (first === 'due_marked') return { ...all('owed'), p6: 'marked' };
+  if (first === 'due_changed') return { p6: 'paidElsewhere', p7: 'cancelled', p9: 'gone' };
+  if (first === 'due_refused') return { p6: 'owed', p7: 'cancelled' };
+  if (first === 'due_refused_paid') return { p6: 'paidElsewhere', p7: 'owed' };
+  if (first === 'due_done' || first === 'due_done_several') return all('paidElsewhere');
+
+  return all('owed');
+}
+
+function dueRefusedOf(first: string): Partial<Record<string, DueRefusal>> {
+  if (first === 'due_refused') return { p7: 'cancelled' };
+  if (first === 'due_refused_paid') return { p6: 'paid' };
+  if (first === 'due_refused_plan') return { p7: 'plan' };
+
+  return {};
+}
+
+function monthDay(day: string): string {
+  return new Intl.DateTimeFormat(LOCALE, {
+    month: 'short',
+    day: 'numeric',
+    timeZone: 'UTC',
+  }).format(new Date(`${day}T00:00:00Z`));
+}
+
+function dueSubline(count: number, events: number): string {
+  const payments = count === 1 ? '1 payment' : `${count} payments`;
+
+  return `From the reminder sent ${monthDay(REMINDER_SENT)} · ${payments}${
+    events > 1 ? ` across ${events} events` : ''
+  }`;
+}
 
 function DueNowDialog({
   event,
@@ -2182,18 +2285,27 @@ function DueNowDialog({
   onClose: () => void;
 }) {
   const readOnly = first === 'due_read_only';
-  const [rows, setRows] = useState<Record<string, DueNowState>>(() => {
-    if (first === 'due_marked') return { p6: 'marked', p7: 'owed' };
-    if (first === 'due_changed') return { p6: 'paidElsewhere', p7: 'cancelled' };
-    if (first === 'due_refused') return { p6: 'owed', p7: 'refused' };
-    if (first === 'due_done') return { p6: 'marked', p7: 'marked' };
+  const [items] = useState(() => dueItemsOf(first, event));
+  const [rows, setRows] = useState<Record<string, DueNowState>>(() => dueStartOf(first, items));
+  const [refused] = useState(() => dueRefusedOf(first));
+  const events = [...new Set(items.map((item) => item.event))];
+  const settled = items.every((item) => rows[item.id] !== 'owed');
 
-    return { p6: 'owed', p7: 'owed' };
-  });
-  const done = first === 'due_done' || REMINDED.every((id) => rows[id] === 'marked');
-  const payments = REMINDED.map((id) => PAYMENTS.find((one) => one.id === id)).filter(
-    (one): one is Payment => one != null,
-  );
+  if (first === 'due_not_found')
+    return (
+      <BudgetDialog
+        title="Due now"
+        verb="Close"
+        cancel={false}
+        onDismiss={onClose}
+        onConfirm={onClose}
+      >
+        <p className="bud-due-done">We cannot find these payments.</p>
+        <Link className="desk-text" to="/demo/events">
+          Go to your events
+        </Link>
+      </BudgetDialog>
+    );
 
   return (
     <BudgetDialog
@@ -2203,85 +2315,94 @@ function DueNowDialog({
       onDismiss={onClose}
       onConfirm={onClose}
     >
-      {done ? (
-        <>
-          <p className="bud-due-done" role="status">
-            Nothing left to pay from this reminder
-          </p>
-          <Link className="desk-text" to={budgetAt(undefined, { view: 'due' })}>
-            {`Everything due on ${event.name}`}
-          </Link>
-        </>
-      ) : (
-        <>
-          <p className="desk-line">From the reminder sent Nov 1 · 2 payments</p>
-          {readOnly && <ReadOnlyLine />}
-          <Rows label="Due now">
-            {payments.map((payment) => {
-              const now = rows[payment.id] ?? 'owed';
-              const where = `${payment.what} · ${
-                overdue(payment)
-                  ? `Overdue since ${shortDay(payment.dueOn)}`
-                  : W.due(shortDay(payment.dueOn))
-              } · ${event.name}`;
-              const said =
-                now === 'paidElsewhere'
-                  ? `${where} · Paid by Julien Moreau on Nov 2`
-                  : now === 'cancelled'
-                    ? `${where} · Cancelled`
-                    : now === 'refused'
-                      ? `${where} · This payment has been cancelled, so it cannot be marked paid.`
-                      : where;
-
-              return (
-                <li key={payment.id}>
-                  {now === 'marked' ? (
-                    <div className="desk-row bud-row is-on" role="status">
-                      <span className="bud-lead">
-                        <Mark kind="yes" />
-                      </span>
-                      <RowWords
-                        title={vendorName(payment.vendorId)}
-                        lines={[`Marked paid · ${money(payment.amount)}`]}
-                      />
-                      <button
-                        type="button"
-                        className="desk-text"
-                        onClick={() => setRows((was) => ({ ...was, [payment.id]: 'owed' }))}
-                      >
-                        <Glyph name="undo" size={16} weight={2.4} />
-                        {W.undo}
-                      </button>
-                    </div>
-                  ) : (
-                    <>
-                      <BudgetRow
-                        title={vendorName(payment.vendorId)}
-                        lines={[said]}
-                        end={<Amount value={money(payment.amount)} />}
-                      />
-                      {now === 'owed' && !readOnly && (
-                        <div className="bud-row-actions">
-                          <TextAction
-                            label="Paid"
-                            onClick={() => setRows((was) => ({ ...was, [payment.id]: 'marked' }))}
-                          />
-                          <Link
-                            className="desk-text"
-                            to={budgetAt('paid_more', { vendor: payment.vendorId })}
-                          >
-                            Paid a different amount
-                          </Link>
-                        </div>
-                      )}
-                    </>
-                  )}
-                </li>
-              );
-            })}
-          </Rows>
-        </>
+      {settled && (
+        <p className="bud-due-done" role="status">
+          Nothing left to pay from this reminder
+        </p>
       )}
+      <p className="desk-line">{dueSubline(items.length, events.length)}</p>
+      {readOnly && <ReadOnlyLine />}
+      <Rows label="Due now">
+        {items.map((item) => {
+          const now = rows[item.id] ?? 'owed';
+          const refusal = refused[item.id];
+          const amount = money(item.amount, item.currency);
+          const late = now !== 'gone' && item.dueOn < TODAY;
+          const where =
+            now === 'gone'
+              ? `${item.what} · ${item.event}`
+              : `${item.what} · ${
+                  late ? `Overdue since ${shortDay(item.dueOn)}` : W.due(shortDay(item.dueOn))
+                } · ${item.event}`;
+          const paidOn = first === 'due_changed' ? '2026-11-02' : TODAY;
+          const said =
+            now === 'paidElsewhere'
+              ? `${where} · Paid by ${COLLEAGUE} on ${monthDay(paidOn)}`
+              : now === 'cancelled'
+                ? `${where} · Cancelled`
+                : now === 'gone'
+                  ? `${where} · No longer on the schedule`
+                  : where;
+
+          return (
+            <li key={item.id}>
+              {now === 'marked' ? (
+                <div className="desk-row bud-row is-on" role="status">
+                  <span className="bud-lead">
+                    <Mark kind="yes" />
+                  </span>
+                  <RowWords title={item.vendor} lines={[`Marked paid · ${amount}`]} />
+                  <button
+                    type="button"
+                    className="desk-text"
+                    onClick={() => setRows((was) => ({ ...was, [item.id]: 'owed' }))}
+                  >
+                    <Glyph name="undo" size={16} weight={2.4} />
+                    {W.undo}
+                  </button>
+                </div>
+              ) : (
+                <>
+                  <BudgetRow title={item.vendor} lines={[said]} end={<Amount value={amount} />} />
+                  {refusal != null && <AlertInset>{DUE_REFUSED[refusal]}</AlertInset>}
+                  {now === 'owed' && !readOnly && refusal == null && (
+                    <div className="bud-row-actions">
+                      <TextAction
+                        label="Paid"
+                        onClick={() => setRows((was) => ({ ...was, [item.id]: 'marked' }))}
+                      />
+                      <Link
+                        className="desk-text"
+                        to={
+                          item.event === GALA.name
+                            ? `/demo/events/${GALA.id}`
+                            : budgetAt('paid_more', {
+                                vendor: PAYMENTS.find((one) => one.id === item.id)?.vendorId ?? '',
+                              })
+                        }
+                      >
+                        Paid a different amount
+                      </Link>
+                    </div>
+                  )}
+                </>
+              )}
+            </li>
+          );
+        })}
+      </Rows>
+      {settled &&
+        events.map((name) => (
+          <Link
+            key={name}
+            className="desk-text"
+            to={
+              name === GALA.name ? `/demo/events/${GALA.id}` : budgetAt(undefined, { view: 'due' })
+            }
+          >
+            {`Everything due on ${name}`}
+          </Link>
+        ))}
     </BudgetDialog>
   );
 }
