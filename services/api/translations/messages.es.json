@@ -469,5 +469,5 @@
     "email_domains.only_ours_owner": "Solo alguien con el rol Propietario puede cambiarlo.",
     "email_domains.only_ours_unproved": "«Solo nuestra organización» requiere un dominio verificado por esta organización.",
     "validation.payment_reminder_days": "Escriba un número entero de días de 1 a 30.",
-    "staff.link_needs_mobile": "Add a mobile number to send a link."
+    "staff.link_needs_mobile": "Añada un número de móvil para enviar un enlace."
 }
