@@ -6,6 +6,7 @@ import {
   COST_BASES,
   type CostBasis,
   type EventBudget,
+  type EventPayers,
   type EventQuote,
   type EventQuotes,
   type OrganisationEvent,
@@ -75,6 +76,7 @@ import {
   rowLine,
   sentPrice,
   minorMoney,
+  WASH_MS,
   wholeMoney,
 } from './budgetArea.ts';
 import {
@@ -102,19 +104,20 @@ import {
   type QuoteForm,
   budgetPath,
   budgetView,
+  payersPath,
   cardDue,
   dueInOrder,
   longDay,
   todayIn,
   vendorPagePath,
 } from './quotesArea.ts';
+import { PayersArea, WhoIsPaying } from './PayersArea.tsx';
 import { useHubTopics } from './useHubTopics.ts';
 import '../../../components/SettingsParts.css';
 import '../../../components/eventsDesk.css';
 import '../../../components/eventPage.css';
 import './budget.css';
 
-const WASH_MS = 1600;
 const MINUTE_MS = 60_000;
 
 type Load = { kind: 'loading' } | { kind: 'failed' } | { kind: 'loaded'; budget: EventBudget };
@@ -139,8 +142,19 @@ interface Removed {
   gone?: boolean;
 }
 
-/** An event's Budget at a desk (sc-85), as Budget A's demo draws it: the card with the range, the costs under their categories, a rate opened in place, Add a cost. */
+/** An event's Budget, or Who is paying under it (sc-91). */
 export function BudgetArea({ event }: { event: OrganisationEvent }) {
+  const { '*': rest = '' } = useParams();
+
+  return budgetView(rest).kind === 'payers' ? (
+    <PayersArea event={event} />
+  ) : (
+    <BudgetHome event={event} />
+  );
+}
+
+/** An event's Budget at a desk (sc-85), as Budget A's demo draws it: the card with the range, the costs under their categories, a rate opened in place, Add a cost. */
+function BudgetHome({ event }: { event: OrganisationEvent }) {
   const { t } = useTranslation();
   const desk = useDeskTop();
   const { layers, covered, setHost } = useDeskLayers();
@@ -172,6 +186,7 @@ export function BudgetArea({ event }: { event: OrganisationEvent }) {
   const view = budgetView(rest);
   const viewKey = view.kind === 'vendor' ? `vendor:${view.vendorId}` : view.kind;
   const [quotesLoad, setQuotesLoad] = useState<QuotesLoad>({ kind: 'loading' });
+  const [payers, setPayers] = useState<EventPayers | null>(null);
   const [quoting, setQuoting] = useState<Quoting | null>(null);
   const [paying, setPaying] = useState<EventQuote | null>(null);
   const [amending, setAmending] = useState<Amending | null>(null);
@@ -217,6 +232,12 @@ export function BudgetArea({ event }: { event: OrganisationEvent }) {
       current = false;
     };
   }, [event.id, attempt, answeredAgain]);
+
+  const readPayers = useCallback(() => {
+    api.payers(event.id).then(setPayers, () => undefined);
+  }, [event.id]);
+
+  useEffect(readPayers, [readPayers, attempt, answeredAgain]);
 
   const [seenView, setSeenView] = useState(viewKey);
   if (seenView !== viewKey) {
@@ -316,6 +337,7 @@ export function BudgetArea({ event }: { event: OrganisationEvent }) {
 
   const readLive = useCallback(() => {
     void readQuotes();
+    readPayers();
     api.budget(event.id).then(
       (budget) => {
         const was = shown.current;
@@ -327,7 +349,7 @@ export function BudgetArea({ event }: { event: OrganisationEvent }) {
       },
       () => undefined,
     );
-  }, [adopt, event.id, locale, readQuotes, t]);
+  }, [adopt, event.id, locale, readPayers, readQuotes, t]);
 
   const topics = useMemo(
     () => [
@@ -556,42 +578,46 @@ export function BudgetArea({ event }: { event: OrganisationEvent }) {
     <UndoBar removed={removed} undoRef={undoRef} onUndo={() => void undo()} />
   );
 
-  const quoteColumn = quotesShown && (
+  const dueNext =
+    quotes == null ? (
+      <QuotesNotLoaded
+        title={t('quotes.dueNext')}
+        busy={retryingQuotes}
+        onRetry={() => void retryQuotes()}
+      />
+    ) : (
+      <DueNext
+        quotes={quotes}
+        more={`${home}/due`}
+        marked={homeMarked}
+        {...(writes
+          ? {
+              onMark: (due: DuePayment) => setMarking({ quoteId: due.quoteId, paymentId: due.id }),
+              onUndo: (payment: ScheduledPayment) => void undoPaid(payment),
+            }
+          : {})}
+      />
+    );
+  const vendorsQuoted =
+    quotes == null ? (
+      <QuotesNotLoaded
+        title={t('quotes.vendorsQuoted')}
+        busy={retryingQuotes}
+        onRetry={() => void retryQuotes()}
+      />
+    ) : (
+      <VendorsQuoted
+        quotes={quotes}
+        vendorAt={vendorAt}
+        onAdd={writes ? () => setQuoting({ form: 'add', quote: null }) : null}
+      />
+    );
+  const whoIsPaying = <WhoIsPaying payers={payers} to={payersPath(event.id)} />;
+  const quoteColumn = (
     <div className="ev-right">
-      {quotes == null ? (
-        <>
-          <QuotesNotLoaded
-            title={t('quotes.dueNext')}
-            busy={retryingQuotes}
-            onRetry={() => void retryQuotes()}
-          />
-          <QuotesNotLoaded
-            title={t('quotes.vendorsQuoted')}
-            busy={retryingQuotes}
-            onRetry={() => void retryQuotes()}
-          />
-        </>
-      ) : (
-        <>
-          <DueNext
-            quotes={quotes}
-            more={`${home}/due`}
-            marked={homeMarked}
-            {...(writes
-              ? {
-                  onMark: (due: DuePayment) =>
-                    setMarking({ quoteId: due.quoteId, paymentId: due.id }),
-                  onUndo: (payment: ScheduledPayment) => void undoPaid(payment),
-                }
-              : {})}
-          />
-          <VendorsQuoted
-            quotes={quotes}
-            vendorAt={vendorAt}
-            onAdd={writes ? () => setQuoting({ form: 'add', quote: null }) : null}
-          />
-        </>
-      )}
+      {quotesShown && dueNext}
+      {whoIsPaying}
+      {quotesShown && vendorsQuoted}
     </div>
   );
 
@@ -697,12 +723,13 @@ export function BudgetArea({ event }: { event: OrganisationEvent }) {
               {budget.lines.length === 0 ? (
                 <>
                   <FirstCard event={event} budget={budget} onAdd={openAdd} />
-                  {quotesShown && (
-                    <div className="ev-columns">
-                      <div className="ev-left" />
-                      {quoteColumn}
+                  <div className="ev-columns">
+                    <div className="ev-left">{whoIsPaying}</div>
+                    <div className="ev-right">
+                      {quotesShown && dueNext}
+                      {quotesShown && vendorsQuoted}
                     </div>
-                  )}
+                  </div>
                 </>
               ) : onMarginFace ? (
                 <MarginCard event={event} margin={margin} washed={washed > 0} />
@@ -938,14 +965,14 @@ export function BudgetArea({ event }: { event: OrganisationEvent }) {
   );
 }
 
-function Loading() {
+export function Loading({ words }: { words?: string }) {
   const { t } = useTranslation();
 
   return (
     <div className="bt-loading" aria-busy="true">
       <div className="bt-bone is-card" aria-hidden="true" />
       <p className="desk-line" role="status">
-        {t('budget.loading')}
+        {words ?? t('budget.loading')}
       </p>
       {[0, 1, 2, 3].map((one) => (
         <div key={one} className="bt-bone-row" aria-hidden="true">
@@ -957,7 +984,7 @@ function Loading() {
   );
 }
 
-function LiveLine({ words }: { words: string }) {
+export function LiveLine({ words }: { words: string }) {
   return (
     <p className="bt-live" role="status">
       <span className="bt-live-dot" aria-hidden="true" />
@@ -966,7 +993,7 @@ function LiveLine({ words }: { words: string }) {
   );
 }
 
-function NotLive({ at, onTry }: { at: Date; onTry: () => void }) {
+export function NotLive({ at, onTry }: { at: Date; onTry: () => void }) {
   const { t } = useTranslation();
   const [now, setNow] = useState(() => Date.now());
 

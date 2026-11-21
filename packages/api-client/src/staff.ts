@@ -1,6 +1,7 @@
 /** An event's roster (sc-3906), with its jobs and shifts (sc-3908), as the API answers and the hub publishes it. Every time is an instant with the event's offset. */
 
-export type StaffLink = 'none' | 'no_mobile' | 'erased';
+/** How far a person's own link got (sc-3912), or why none can be given. */
+export type StaffLink = 'none' | 'copied' | 'sent' | 'opened' | 'no_mobile' | 'erased';
 
 export type StaffAccess = 'view' | 'check_in' | 'floor' | 'pass' | 'run';
 
@@ -41,6 +42,9 @@ export interface StaffEntry {
   floorLead: boolean;
   shifts: StaffEntryShift[];
   link: StaffLink;
+  /** Who copied or marked it as sent; null for Opened and No link yet. */
+  linkBy: string | null;
+  linkAt: string | null;
   contactsErased: boolean;
 }
 
@@ -133,7 +137,7 @@ export const STATION_NAME_MAXIMUM = 60;
 /** The API's StaffShift::NEEDED_MAXIMUM. */
 export const SHIFT_NEEDED_MAXIMUM = 50;
 
-const LINKS: readonly StaffLink[] = ['none', 'no_mobile', 'erased'];
+const LINKS: readonly StaffLink[] = ['none', 'copied', 'sent', 'opened', 'no_mobile', 'erased'];
 
 const KINDS: readonly StationKind[] = ['place', 'section'];
 
@@ -186,8 +190,19 @@ function asJobRef(raw: unknown): { id: string; name: string } | null | undefined
 
 export function asStaffEntry(raw: unknown): StaffEntry | null {
   if (!isRecord(raw)) return null;
-  const { id, fullName, mobile, email, stationRemoved, leads, floorLead, link, contactsErased } =
-    raw;
+  const {
+    id,
+    fullName,
+    mobile,
+    email,
+    stationRemoved,
+    leads,
+    floorLead,
+    link,
+    linkBy,
+    linkAt,
+    contactsErased,
+  } = raw;
   const job = asJobRef(raw.job);
   const station = raw.station === null ? null : asStationRef(raw.station);
   const stations = every(raw.stations, asStationRef);
@@ -207,6 +222,8 @@ export function asStaffEntry(raw: unknown): StaffEntry | null {
     shifts == null ||
     shifts.some((one) => one == null) ||
     !LINKS.includes(link as StaffLink) ||
+    !text(linkBy) ||
+    !text(linkAt) ||
     typeof contactsErased !== 'boolean'
   )
     return null;
@@ -224,6 +241,8 @@ export function asStaffEntry(raw: unknown): StaffEntry | null {
     floorLead,
     shifts: shifts as StaffEntryShift[],
     link: link as StaffLink,
+    linkBy,
+    linkAt,
     contactsErased,
   };
 }
@@ -336,4 +355,19 @@ export function asStaffRoster(raw: unknown): StaffEntry[] | null {
   const rows = raw.staff.map(asStaffEntry);
 
   return rows.every((row) => row != null) ? (rows as StaffEntry[]) : null;
+}
+
+/** Where a person's own link stands (sc-3912). Nothing about the person or the event reaches a caller before sign-in (sc-4235) beyond when the link opens, in the event's offset; `from` is null while they have no shift. */
+export type StaffLinkWindow =
+  { state: 'open' } | { state: 'ended' } | { state: 'not_yet'; from: string | null };
+
+export function asStaffLinkWindow(raw: unknown): StaffLinkWindow | null {
+  if (typeof raw !== 'object' || raw == null || !('state' in raw)) return null;
+  if (raw.state === 'open' || raw.state === 'ended') return { state: raw.state };
+  if (raw.state === 'not_yet') {
+    if (!('from' in raw)) return { state: 'not_yet', from: null };
+    if (typeof raw.from === 'string') return { state: 'not_yet', from: raw.from };
+  }
+
+  return null;
 }

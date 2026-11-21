@@ -107,6 +107,8 @@ function person(id: string, fullName: string, at: Ref | null, more: Record<strin
     floorLead: false,
     shifts: [],
     link: 'no_mobile',
+    linkBy: null,
+    linkAt: null,
     contactsErased: false,
     ...more,
   };

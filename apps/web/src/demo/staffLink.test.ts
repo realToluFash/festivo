@@ -1,18 +1,6 @@
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
 
-import {
-  NOW_AT,
-  SAMPLE_LINK,
-  YOU,
-  afterCopy,
-  afterMark,
-  afterReplace,
-  copyIssued,
-  trailLine,
-} from './staffLink.ts';
-
-const issued = () => Promise.resolve(SAMPLE_LINK);
-const notIssued = () => Promise.reject(new Error('503'));
+import { NOW_AT, YOU, afterCopy, afterMark, afterReplace, trailLine } from './staffLink.ts';
 
 describe('a staff link’s row (sc-3912)', () => {
   it('says who did what, and when', () => {
@@ -38,46 +26,5 @@ describe('a staff link’s row (sc-3912)', () => {
   it('marks as sent, and replaces back to No link yet', () => {
     expect(afterMark()).toEqual({ link: 'sent', trail: { by: YOU, at: NOW_AT } });
     expect(afterReplace()).toEqual({ link: 'none', trail: null });
-  });
-});
-
-describe('Copy link’s write (sc-3912)', () => {
-  it('says copied once the clipboard has the link', async () => {
-    const writeText = vi.fn(() => Promise.resolve());
-    await expect(copyIssued(issued, { writeText }, null)).resolves.toEqual({
-      kind: 'copied',
-      url: SAMPLE_LINK,
-    });
-    expect(writeText).toHaveBeenCalledWith(SAMPLE_LINK);
-  });
-
-  it('starts the write inside the press where the browser takes a promised item', async () => {
-    const write = vi.fn(() => Promise.resolve());
-    const writeText = vi.fn(() => Promise.resolve());
-    const item = {} as ClipboardItem;
-    const outcome = await copyIssued(issued, { writeText, write }, () => item);
-    expect(outcome.kind).toBe('copied');
-    expect(write).toHaveBeenCalledWith([item]);
-    expect(writeText).not.toHaveBeenCalled();
-  });
-
-  it('copies nothing when no link is issued', async () => {
-    const writeText = vi.fn(() => Promise.resolve());
-    await expect(copyIssued(notIssued, { writeText }, null)).resolves.toEqual({
-      kind: 'notIssued',
-    });
-    expect(writeText).not.toHaveBeenCalled();
-  });
-
-  it('hands back the issued link when the clipboard refuses it', async () => {
-    const writeText = () => Promise.reject(new Error('NotAllowedError'));
-    await expect(copyIssued(issued, { writeText }, null)).resolves.toEqual({
-      kind: 'refused',
-      url: SAMPLE_LINK,
-    });
-    await expect(copyIssued(issued, null, null)).resolves.toEqual({
-      kind: 'refused',
-      url: SAMPLE_LINK,
-    });
   });
 });

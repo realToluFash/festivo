@@ -64,7 +64,7 @@ import { ReadOut } from './ReadOut.tsx';
 import { SETTLED_MS } from './Screen.tsx';
 import type { CoverLayout } from './TodayCover.tsx';
 import { Pill } from './SettingsParts.tsx';
-import { Sheet } from './Sheet.tsx';
+import { Sheet, SheetScrollView } from './Sheet.tsx';
 import { type Anchor, anchorUnder, useAnchorFollowsTurn } from './Summary.tsx';
 import { Text } from './Text.tsx';
 
@@ -562,9 +562,9 @@ export function CalendarBoard<S extends string, E extends CalEvent>({
           headingTakesFocus
           testID="calendar.daySheet"
         >
-          <ScrollView bounces={false} contentContainerStyle={styles.sheetBody}>
+          <SheetScrollView bounces={false} contentContainerStyle={styles.sheetBody}>
             {shownDay}
-          </ScrollView>
+          </SheetScrollView>
         </Sheet>
       ) : (
         !landscape && (

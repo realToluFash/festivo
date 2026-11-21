@@ -1,7 +1,7 @@
 import type { CalendarFeedLink } from '@soirely/api-client';
 import { setStringAsync } from 'expo-clipboard';
 import { type RefObject, useEffect, useState } from 'react';
-import { Linking, Pressable, ScrollView, StyleSheet, View, type ViewInstance } from 'react-native';
+import { Linking, Pressable, StyleSheet, View, type ViewInstance } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { api } from '../api.ts';
@@ -12,7 +12,7 @@ import { Glyph, type GlyphName } from './Glyph.tsx';
 import { Notice } from './Notice.tsx';
 import { useReadOut } from './ReadOut.tsx';
 import { Pill } from './SettingsParts.tsx';
-import { Sheet } from './Sheet.tsx';
+import { Sheet, SheetScrollView } from './Sheet.tsx';
 import { TextAction } from './SummaryRows.tsx';
 import { Text } from './Text.tsx';
 
@@ -94,9 +94,9 @@ export function CalendarFeed({
         headingTakesFocus
         testID="calendarFeed.sheet"
       >
-        <ScrollView bounces={false} contentContainerStyle={styles.sheetBody}>
+        <SheetScrollView bounces={false} contentContainerStyle={styles.sheetBody}>
           {panel}
-        </ScrollView>
+        </SheetScrollView>
       </Sheet>
     );
 

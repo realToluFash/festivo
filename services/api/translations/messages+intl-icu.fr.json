@@ -386,6 +386,8 @@
     "validation.budget_client_price_too_many_decimals": "Il y a trop de décimales pour la devise de cet événement. Saisissez le prix sous la forme {example}.",
     "audit.export_file": "Journal d’audit – {organisation} – {day}",
     "audit.export_too_many": "Les entrées correspondantes dépassent la limite de {most, number, ::group-auto}. Affinez les filtres, puis exportez à nouveau.",
+    "budget.payer_covers_costs": "{count, plural, one {{name} couvre 1 coût. Choisissez d’abord qui le paie.} other {{name} couvre {count, number, ::group-auto} coûts. Choisissez d’abord qui les paie.}}",
+    "validation.payer_split_percent_total": "Les pourcentages font {percent, number, ::.00}. Faites en sorte qu’ils totalisent exactement 100.",
     "payment_reminder.title.overdue_on": "{count, plural, one {{count, number, ::group-auto} paiement en retard} many {{count, number, ::group-auto} de paiements en retard} other {{count, number, ::group-auto} paiements en retard}} pour {event}",
     "payment_reminder.title.overdue": "{count, plural, one {{count, number, ::group-auto} paiement en retard} many {{count, number, ::group-auto} de paiements en retard} other {{count, number, ::group-auto} paiements en retard}} sur {events, plural, one {{events, number, ::group-auto} événement} many {{events, number, ::group-auto} d’événements} other {{events, number, ::group-auto} événements}}",
     "payment_reminder.title.coming_due_on": "{count, plural, one {{count, number, ::group-auto} paiement à régler} many {{count, number, ::group-auto} de paiements à régler} other {{count, number, ::group-auto} paiements à régler}} {days, plural, =1 {d’ici demain} other {dans les {days, number, ::group-auto} prochains jours}} pour {event}",
@@ -401,5 +403,6 @@
     "payment_reminder.email.open_budget": "Open the budget",
     "payment_reminder.email.link": "{label}: {url}",
     "payment_reminder.email.settings": "Notification settings",
-    "payment_reminder.email.footer": "You're getting this because you can record payments at {organisation}. To stop these emails, turn off Money email in Notification settings."
+    "payment_reminder.email.footer": "You're getting this because you can record payments at {organisation}. To stop these emails, turn off Money email in Notification settings.",
+    "limits.staff_links": "This link has been opened too often. Try again {hour, plural, other {at {time}}}."
 }

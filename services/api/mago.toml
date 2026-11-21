@@ -166,6 +166,7 @@ domain_budget = [
     "App\\Domain\\Budget\\Model\\**",
     "App\\Domain\\Budget\\Reminder\\**",
     "App\\Domain\\Budget\\Http\\BudgetSerialiser",
+    "App\\Domain\\Budget\\Http\\PayersSerialiser",
     "App\\Domain\\Budget\\Http\\QuoteSerialiser",
     "App\\Domain\\Budget\\Http\\VendorDirectory",
     "App\\Domain\\Budget\\Http\\VendorDirectoryProvider",

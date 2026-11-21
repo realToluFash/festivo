@@ -386,6 +386,8 @@
     "validation.budget_client_price_too_many_decimals": "That has too many decimal places for this event’s currency. Enter the price like {example}.",
     "audit.export_file": "{organisation} audit log {day}",
     "audit.export_too_many": "More than {most, number, ::group-auto} entries match. Narrow the filters, then export again.",
+    "budget.payer_covers_costs": "{count, plural, one {{name} covers 1 cost. Choose who pays for it first.} other {{name} covers {count, number, ::group-auto} costs. Choose who pays for them first.}}",
+    "validation.payer_split_percent_total": "The percentages come to {percent, number, ::.00}. Make them add up to exactly 100.",
     "payment_reminder.title.overdue_on": "{count, plural, one {{count, number, ::group-auto} payment} other {{count, number, ::group-auto} payments}} overdue on {event}",
     "payment_reminder.title.overdue": "{count, plural, one {{count, number, ::group-auto} payment} other {{count, number, ::group-auto} payments}} overdue across {events, plural, one {{events, number, ::group-auto} event} other {{events, number, ::group-auto} events}}",
     "payment_reminder.title.coming_due_on": "{count, plural, one {{count, number, ::group-auto} payment} other {{count, number, ::group-auto} payments}} due {days, plural, =1 {by tomorrow} other {in the next {days, number, ::group-auto} days}} on {event}",
@@ -401,5 +403,6 @@
     "payment_reminder.email.open_budget": "Open the budget",
     "payment_reminder.email.link": "{label}: {url}",
     "payment_reminder.email.settings": "Notification settings",
-    "payment_reminder.email.footer": "You're getting this because you can record payments at {organisation}. To stop these emails, turn off Money email in Notification settings."
+    "payment_reminder.email.footer": "You're getting this because you can record payments at {organisation}. To stop these emails, turn off Money email in Notification settings.",
+    "limits.staff_links": "This link has been opened too often. Try again {hour, plural, other {at {time}}}."
 }

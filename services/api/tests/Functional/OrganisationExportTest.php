@@ -110,6 +110,8 @@ final class OrganisationExportTest extends ApiTestCase
         'cost_markups' => ['id', 'event_id', 'category', 'markup_tenths', 'created_at', 'updated_at'],
         'quotes' => ['id', 'event_id', 'vendor_id', 'covers', 'amount_minor', 'amount_currency', 'quoted_on', 'reference', 'superseded_at', 'created_at'],
         'scheduled_payments' => ['id', 'event_id', 'vendor_id', 'description', 'amount_minor', 'amount_currency', 'due_on', 'created_at'],
+        'payers' => ['id', 'event_id', 'name', 'note', 'created_at', 'updated_at'],
+        'cost_payers' => ['id', 'event_id', 'line_id', 'payer_id', 'split', 'value', 'value_currency', 'rest_payer_id'],
     ];
 
     /** Every table the archive does not read, and why: a new table fails the test below until it is in one or the other. */
@@ -147,6 +149,7 @@ final class OrganisationExportTest extends ApiTestCase
         'scheduled_notifications' => "notifications: one person's, or deliveries",
         'schema_probes' => "Soirely's own records",
         'screen_links' => 'a link that opens without signing in',
+        'staff_link_tokens' => 'a link that opens without signing in',
         'sign_in_proofs' => "sign-in credentials (sc-611's rule)",
         'subscription_changes' => "billing: Soirely's own records, the terms it sells on (pm, 19 Nov)",
         'subscriptions' => "billing: Soirely's own records, the terms it sells on (pm, 19 Nov)",

@@ -30,7 +30,7 @@ import { RadioMark } from './RadioMark.tsx';
 import { moveScreenReaderFocus, type ScreenReaderTarget } from './screenReaderFocus.ts';
 import { Pill } from './SettingsParts.tsx';
 import { CappedWholeWords, MeasuredWords, Title } from './Title.tsx';
-import { Sheet, sheetsGone } from './Sheet.tsx';
+import { Sheet, SheetScrollView, sheetsGone } from './Sheet.tsx';
 import { TextAction } from './SummaryRows.tsx';
 import { Text, TitleCap, type TextHandle } from './Text.tsx';
 
@@ -251,10 +251,10 @@ export function ExportSheet({
         <View style={styles.sheetHead}>
           <Head onClose={props.onClose} off={held} onDrawn={setDrawn} />
         </View>
-        <ScrollView style={styles.scroll} contentContainerStyle={styles.body} bounces={false}>
+        <SheetScrollView style={styles.scroll} contentContainerStyle={styles.body} bounces={false}>
           {body}
           {scrolls && <View style={styles.footScrolled}>{foot}</View>}
-        </ScrollView>
+        </SheetScrollView>
         {!scrolls && <View style={styles.sheetFoot}>{foot}</View>}
       </TitleCap.Provider>
     </Sheet>

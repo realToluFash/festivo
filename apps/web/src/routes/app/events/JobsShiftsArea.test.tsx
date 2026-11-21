@@ -104,6 +104,8 @@ function person(id: string, fullName: string, job: string | null, shifts: string
     floorLead: false,
     shifts: shifts.map(([sid, startsAt, endsAt]) => ({ id: sid, startsAt, endsAt })),
     link: 'no_mobile',
+    linkBy: null,
+    linkAt: null,
     contactsErased: false,
   };
 }
