@@ -87,19 +87,25 @@ final readonly class SubscriberTokenIssuer
     /** One event's budget lines and its headcount, which moves the range, for someone the route has already found holds budget.read on it (sc-83, sc-85). */
     public function issueForEventBudget(Uuid $eventId): IssuedSubscriberToken
     {
-        return $this->issue([RealtimeTopic::EventBudget->for($eventId->toRfc4122()), RealtimeTopic::EventQuotes->for($eventId->toRfc4122()), RealtimeTopic::EventHeadcount->for($eventId->toRfc4122())]);
+        return $this->issue([RealtimeTopic::EventBudget->for($eventId->toRfc4122()), RealtimeTopic::EventQuotes->for($eventId->toRfc4122()), RealtimeTopic::EventHeadcount->for($eventId->toRfc4122()), RealtimeTopic::EventCheckIn->for($eventId->toRfc4122())]);
     }
 
     /** One event's markups, client prices and margin, for someone the route has already found holds budget.margin on it with a plan that unlocks margin (sc-92). */
     public function issueForEventBudgetMargin(Uuid $eventId): IssuedSubscriberToken
     {
-        return $this->issue([RealtimeTopic::EventBudgetMargin->for($eventId->toRfc4122()), RealtimeTopic::EventHeadcount->for($eventId->toRfc4122())]);
+        return $this->issue([RealtimeTopic::EventBudgetMargin->for($eventId->toRfc4122()), RealtimeTopic::EventHeadcount->for($eventId->toRfc4122()), RealtimeTopic::EventCheckIn->for($eventId->toRfc4122())]);
     }
 
     /** One event's guest list and its headcount, for someone the route has already found holds guests.read on it (sc-1468, sc-99). */
     public function issueForEventGuests(Uuid $eventId): IssuedSubscriberToken
     {
-        return $this->issue([RealtimeTopic::EventGuests->for($eventId->toRfc4122()), RealtimeTopic::EventHeadcount->for($eventId->toRfc4122())]);
+        return $this->issue([RealtimeTopic::EventGuests->for($eventId->toRfc4122()), RealtimeTopic::EventHeadcount->for($eventId->toRfc4122()), RealtimeTopic::EventCheckIn->for($eventId->toRfc4122())]);
+    }
+
+    /** One event's check-in signal, for someone the route has already found holds guests.check_in on it (sc-1454); its messages carry nothing else. */
+    public function issueForCheckIn(Uuid $eventId): IssuedSubscriberToken
+    {
+        return $this->issue([RealtimeTopic::EventCheckIn->for($eventId->toRfc4122())]);
     }
 
     /**
@@ -109,7 +115,7 @@ final readonly class SubscriberTokenIssuer
      */
     public function issueForHeadcounts(array $eventIds): IssuedSubscriberToken
     {
-        return $this->issue(Vec\map($eventIds, static fn (Uuid $eventId): string => RealtimeTopic::EventHeadcount->for($eventId->toRfc4122())));
+        return $this->issue(Vec\flat_map($eventIds, static fn (Uuid $eventId): array => [RealtimeTopic::EventHeadcount->for($eventId->toRfc4122()), RealtimeTopic::EventCheckIn->for($eventId->toRfc4122())]));
     }
 
     /**

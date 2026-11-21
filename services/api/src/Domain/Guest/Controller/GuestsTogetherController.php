@@ -94,6 +94,7 @@ final readonly class GuestsTogetherController
             'guests' => $removed->guests,
             'companions' => $removed->companions,
             'gone' => $removed->gone,
+            'stayed' => $removed->stayed,
         ]);
     }
 

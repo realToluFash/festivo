@@ -15,6 +15,7 @@ const counts = {
   held: 1,
   notComing: 1,
   notYetInvited: 2,
+  walkIn: 0,
 };
 
 describe('the guest list filter', () => {

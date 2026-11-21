@@ -203,6 +203,7 @@ export function PayersArea({ event }: { event: OrganisationEvent }) {
       realtimeTopic('EventBudget', event.id),
       realtimeTopic('EventHeadcount', event.id),
       realtimeTopic('EventQuotes', event.id),
+      realtimeTopic('EventCheckIn', event.id),
     ],
     [event.id],
   );

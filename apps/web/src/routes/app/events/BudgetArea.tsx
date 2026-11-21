@@ -359,6 +359,7 @@ function BudgetHome({ event }: { event: OrganisationEvent }) {
       realtimeTopic('EventBudget', event.id),
       realtimeTopic('EventHeadcount', event.id),
       realtimeTopic('EventQuotes', event.id),
+      realtimeTopic('EventCheckIn', event.id),
     ],
     [event.id],
   );
@@ -369,7 +370,11 @@ function BudgetHome({ event }: { event: OrganisationEvent }) {
     () =>
       !marginHeld
         ? []
-        : [realtimeTopic('EventBudgetMargin', event.id), realtimeTopic('EventHeadcount', event.id)],
+        : [
+            realtimeTopic('EventBudgetMargin', event.id),
+            realtimeTopic('EventHeadcount', event.id),
+            realtimeTopic('EventCheckIn', event.id),
+          ],
     [event.id, marginHeld],
   );
   useHubTopics(

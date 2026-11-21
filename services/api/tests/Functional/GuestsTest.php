@@ -214,7 +214,7 @@ final class GuestsTest extends ApiTestCase
         self::assertSame(200, $this->statusCode());
         $token = new Parser(new JoseEncoder())->parse(Type\non_empty_string()->coerce($body['token'] ?? null));
         self::assertInstanceOf(UnencryptedToken::class, $token);
-        self::assertSame(['subscribe' => ['events/' . $this->eventId . '/guests', 'events/' . $this->eventId . '/headcount']], $token->claims()->get('mercure'));
+        self::assertSame(['subscribe' => ['events/' . $this->eventId . '/guests', 'events/' . $this->eventId . '/headcount', 'events/' . $this->eventId . '/check-in']], $token->claims()->get('mercure'));
     }
 
     /** @return iterable<string, array{EventRole}> */

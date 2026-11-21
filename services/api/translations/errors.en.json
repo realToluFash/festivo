@@ -38,6 +38,8 @@
     "seating_plan_exists": "This event already has a seating plan.",
     "seating_section_limit": "A plan can have up to 30 sections. Delete one to add another.",
     "guest_already_listed": "That name is already on the list.",
+    "guest_arrived": "They have arrived, so they stay on the list.",
+    "check_in_closed": "Arrivals can't be recorded now.",
     "staff_number_shared": "That number is already on the roster.",
     "staff_job_staffed": "People are on this job's shifts.",
     "staff_shift_full": "Every place on this shift is filled.",

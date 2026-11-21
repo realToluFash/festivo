@@ -3396,7 +3396,8 @@
       "notComing": "Não vem",
       "noReply": "Sem resposta",
       "held": "Em espera",
-      "notYetInvited": "Sem convite"
+      "notYetInvited": "Sem convite",
+      "walkIn": "Walk-in"
     },
     "replied": "{{reply}} · respondeu no dia {{date}}",
     "repliedOn": "respondeu no dia {{date}}",
@@ -3463,6 +3464,7 @@
     "morePlaces": "Mais lugares",
     "namedOf": "{{named, number}} de {{places, number}} com nome",
     "placesRefused": "{{name}} já tem {{named, number}} com nome. Retire primeiro algum nome.",
+    "placesRefusedArrived": "{{name}} already has {{named, number}} named or arrived. Arrived companions stay on the list.",
     "thisGuest": "Esta pessoa",
     "namedByGuest": "Nome indicado pelo convidado",
     "companionsNamed_one": "{{count, number}} acompanhante · {{named, number}} de {{count, number}} com nome",
@@ -3607,7 +3609,15 @@
     "undoOpen": "Pode anular durante 10 segundos.",
     "backOnList": "De volta à lista, tal como estava: com a ligação, a resposta e os acompanhantes.",
     "alreadyRemoved": "Outra pessoa já tinha removido {{name}} da lista.",
-    "seatedLine": "{{name}} tem lugar em {{table}}. Se remover este acompanhante, o lugar fica livre."
+    "seatedLine": "{{name}} tem lugar em {{table}}. Se remover este acompanhante, o lugar fica livre.",
+    "arrival": "Arrival",
+    "arrived": "Arrived",
+    "staysArrived": "They have arrived, so they stay on the list. Their record ends with the event’s guest data setting.",
+    "staysCompanionArrived": "One of their companions has arrived, so they stay on the list. Their record ends with the event’s guest data setting.",
+    "justArrived": "{{name}} has just arrived, so they stay on the list.",
+    "companionJustArrived": "A companion of {{name}} has just arrived, so they stay on the list.",
+    "backToDetails": "Back to their details",
+    "companionStays": "{{name}} has arrived, so they stay on the list."
   },
   "guestNumbers": {
     "title": "Convidados",
@@ -3864,7 +3874,14 @@
     "keptAsRecorded_one": "{{count, number}} convidado já tinha o convite registado, que se mantém como estava.",
     "keptAsRecorded_other": "{{count, number}} convidados já tinham o convite registado, que se mantém como estava.",
     "keptAsRecorded_many": "{{count, number}} de convidados já tinham o convite registado, que se mantém como estava.",
-    "notLive": "Nada mudou. Este evento já não está publicado, por isso não é possível registar convites."
+    "notLive": "Nada mudou. Este evento já não está publicado, por isso não é possível registar convites.",
+    "staysArrived": "{{name}} has arrived, so they stay on the list.",
+    "staysCompanion": "A companion of {{name}} has arrived, so they stay on the list.",
+    "notChanged_one": "{{count, number}} not changed: {{reasons}}.",
+    "notChanged_other": "{{count, number}} not changed: {{reasons}}.",
+    "hasArrived": "{{name}} has arrived",
+    "companionHasArrived": "a companion of {{name}} has arrived",
+    "notChanged_many": "{{count, number}} not changed: {{reasons}}."
   },
   "guestKitchen": {
     "title": "Há algo que a cozinha deva saber?",

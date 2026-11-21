@@ -52,12 +52,15 @@ final class HeadcountTest extends ApiTestCase
         'onList' => 0,
         'notYetInvited' => 0,
         'invited' => 0,
+        'walkIns' => 0,
         'accepted' => 0,
         'maybe' => 0,
         'awaitingReply' => 0,
         'held' => 0,
         'heldBy' => ['hostNoReply' => 0, 'hostMaybe' => 0, 'hostNotComing' => 0],
         'declined' => 0,
+        'attended' => 0,
+        'expected' => 0,
     ];
 
     private User $owner;
@@ -103,12 +106,15 @@ final class HeadcountTest extends ApiTestCase
             'onList' => 10,
             'notYetInvited' => 1,
             'invited' => 9,
+            'walkIns' => 0,
             'accepted' => 3,
             'maybe' => 1,
             'awaitingReply' => 1,
             'held' => 3,
             'heldBy' => ['hostNoReply' => 1, 'hostMaybe' => 1, 'hostNotComing' => 1],
             'declined' => 1,
+            'attended' => 0,
+            'expected' => 3,
         ], $counts);
         self::assertSame($counts['invited'], $counts['accepted'] + $counts['maybe'] + $counts['awaitingReply'] + $counts['held'] + $counts['declined']);
         self::assertSame($counts['onList'], $counts['invited'] + $counts['notYetInvited']);
@@ -305,7 +311,7 @@ final class HeadcountTest extends ApiTestCase
 
         $body = $this->as($member, 'POST', $this->headcountsSubscription(), ['events' => [$this->eventId, $other, 'not-an-id']]);
         self::assertSame(200, $this->statusCode(), Json\encode($body));
-        self::assertSame(['subscribe' => ['events/' . $this->eventId . '/headcount']], $this->claims($body));
+        self::assertSame(['subscribe' => ['events/' . $this->eventId . '/headcount', 'events/' . $this->eventId . '/check-in']], $this->claims($body));
     }
 
     #[Test]

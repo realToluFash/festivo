@@ -324,7 +324,7 @@ export function EventsScreen({
         () => undefined,
       );
     const stop = followReadingAgain(
-      ids.map((id) => realtimeTopic('EventHeadcount', id)),
+      ids.flatMap((id) => [realtimeTopic('EventHeadcount', id), realtimeTopic('EventCheckIn', id)]),
       () => api.headcountsSubscription(organisationId, ids),
       () => void readFigures(),
       FIGURES_AGAIN_MS,
