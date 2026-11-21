@@ -1,0 +1,58 @@
+/* Sign-in rules at a desk, in B · Where you stand: a mark of 22 leads each rule, as on the app's boards. Product and demo. */
+
+.desk-rows.signin-rows > * + * {
+  background-position: 34px 0;
+  background-size: calc(100% - 34px) 1px;
+}
+
+.signin-mark {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  width: 22px;
+  height: 22px;
+  border-radius: var(--radiusPill);
+}
+
+.signin-mark.is-met {
+  background: var(--deskGreen);
+  color: var(--colorInkOnDark);
+}
+
+.signin-mark.is-needs {
+  color: var(--colorAttentionText);
+  background: linear-gradient(90deg, currentcolor 50%, transparent 50%);
+  box-shadow: inset 0 0 0 2px currentcolor;
+}
+
+.signin-mark.is-not-applicable {
+  background: var(--colorNeutralFill);
+}
+
+.signin-mark.is-not-applicable span {
+  width: 10px;
+  height: 2px;
+  border-radius: var(--radiusPill);
+  background: var(--colorInkSecondary);
+}
+
+.signin-change {
+  flex: none;
+  color: var(--colorAccent);
+  font: var(--typeRowTitle);
+  white-space: nowrap;
+}
+
+.signin-refusal {
+  display: flex;
+  gap: var(--spaceLg);
+  color: var(--colorInk);
+}
+
+.signin-refusal > svg {
+  flex: none;
+  margin-top: var(--spaceHair);
+  color: var(--colorAttentionText);
+}

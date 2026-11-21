@@ -1,0 +1,15 @@
+# sc-49170: Members at 12,345 (demo, /demo/settings/members?state=largest), turned (the QA tablet upright), its top, for the pair beside the demo.
+appId: host.exp.Exponent
+---
+- setOrientation: LANDSCAPE_LEFT
+- waitForAnimationToEnd:
+    timeout: 3000
+- openLink: ${METRO_URL}/--/demo/settings/members?state=largest
+- extendedWaitUntil:
+    visible: { id: 'members.card' }
+    timeout: 60000
+- waitForAnimationToEnd:
+    timeout: 8000
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 2000, optional: true }
+- takeScreenshot: side-largest-demo
+- setOrientation: PORTRAIT

@@ -1,0 +1,33 @@
+# sc-23814, iPad ${ORIENT}: opened by its /notifications link with nothing under it; the swipe (Risks: does nothing), then Back goes Home. Opens through ${METRO_URL}. Needs a release build, per qa3.
+appId: host.exp.Exponent
+---
+- setOrientation: ${ORIENT}
+- waitForAnimationToEnd:
+    timeout: 5000
+- stopApp
+- openLink: ${METRO_URL}/--/notifications
+- extendedWaitUntil:
+    visible:
+      id: 'notifications.back'
+    timeout: 60000
+- runFlow:
+    when:
+      visible:
+        id: notifications.pushAsk.notNow
+    commands:
+      - tapOn:
+          id: notifications.pushAsk.notNow
+- takeScreenshot: link-notifications
+- swipe:
+    start: 1%, 50%
+    end: 85%, 50%
+    duration: 400
+- waitForAnimationToEnd
+- takeScreenshot: link-after-swipe
+- tapOn:
+    id: 'notifications.back'
+- extendedWaitUntil:
+    visible:
+      id: 'home.openSettings'
+    timeout: 10000
+- takeScreenshot: link-after-back

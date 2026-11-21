@@ -1,0 +1,31 @@
+# sc-611: filters no entry matches, with the way to clear them.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/settings/data-and-control/audit-log
+- extendedWaitUntil:
+    visible:
+      id: audit.card
+    timeout: 40000
+- waitForAnimationToEnd:
+    timeout: 8000
+- tapOn:
+    id: audit.filter.type
+- tapOn:
+    id: audit.menu.type.audit_log
+- extendedWaitUntil:
+    notVisible:
+      id: audit.menu.type
+    timeout: 10000
+- waitForAnimationToEnd:
+    timeout: 8000
+- tapOn:
+    id: audit.filter.event
+- tapOn:
+    id: audit.menu.event.${EVENT}
+- extendedWaitUntil:
+    visible:
+      id: audit.none.clear
+    timeout: 20000
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: audit-empty_filter-product

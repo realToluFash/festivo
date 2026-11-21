@@ -1,0 +1,35 @@
+# sc-67708: on its side, Menu with the API stopped then held on Try again: Refreshing… beside Menu's name, no ‹ above it.
+appId: host.exp.Exponent
+onFlowComplete:
+  - runScript:
+      file: ../batch/helper.js
+      env:
+        ASK: /api?to=up
+---
+- setOrientation: LANDSCAPE_LEFT
+- openLink: ${METRO_URL}/--/events/${EVENT_ID}?area=menu
+- extendedWaitUntil: { visible: { id: 'event.side.card' }, timeout: 30000 }
+- runFlow: ../developer-menu-close.yaml
+- waitForAnimationToEnd: { timeout: 8000 }
+- runScript:
+    file: ../batch/helper.js
+    env:
+      ASK: /api?to=stopped
+- pressKey: home
+- launchApp: { appId: host.exp.Exponent, stopApp: false }
+- extendedWaitUntil: { visible: { id: 'offline.band' }, timeout: 30000 }
+- takeScreenshot: menu-band
+- runScript:
+    file: ../batch/helper.js
+    env:
+      ASK: /api?to=paused
+- tapOn: { id: 'offline.retry' }
+- runScript:
+    file: ../batch/helper.js
+    env:
+      ASK: /shot?name=held-1
+- takeScreenshot: menu-held
+- runScript:
+    file: ../batch/helper.js
+    env:
+      ASK: /api?to=up

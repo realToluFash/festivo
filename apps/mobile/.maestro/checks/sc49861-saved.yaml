@@ -1,0 +1,33 @@
+# sc-49861 regression: as Can edit, ${EVENT_ID}'s Event name saves and says Saved.
+appId: host.exp.Exponent
+---
+- setOrientation: ${ORIENT}
+- runScript:
+    file: ../scripts/event-role-elsewhere.js
+    env:
+      ROLE: can_edit
+- openLink: ${METRO_URL}/--/events/${EVENT_ID}
+- extendedWaitUntil:
+    visible:
+      id: 'events.page'
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: 'events.details.name'
+    direction: DOWN
+    centerElement: true
+- tapOn:
+    id: 'events.details.name'
+- extendedWaitUntil:
+    visible:
+      id: 'event.edit.name.field'
+    timeout: 20000
+- tapOn:
+    id: 'event.edit.name.field'
+- inputText: ' saved'
+- tapOn:
+    id: 'event.edit.name.save'
+- extendedWaitUntil:
+    visible: 'Saved'
+    timeout: 15000
+- takeScreenshot: saved

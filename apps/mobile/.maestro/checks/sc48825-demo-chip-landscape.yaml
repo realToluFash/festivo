@@ -1,0 +1,18 @@
+# sc-48825: the demo's Members at ninetyNine (+99) and crowd (99+), LANDSCAPE_LEFT.
+appId: host.exp.Exponent
+---
+- setOrientation: LANDSCAPE_LEFT
+- openLink: ${METRO_URL}/--/demo/settings/members?state=ninetyNine
+- waitForAnimationToEnd:
+    timeout: 8000
+- runFlow: ../developer-menu-close.yaml
+- waitForAnimationToEnd:
+    timeout: 3000
+- takeScreenshot: demo-ninetyNine
+- openLink: ${METRO_URL}/--/demo/settings/members?state=crowd
+- waitForAnimationToEnd:
+    timeout: 8000
+- runFlow: ../developer-menu-close.yaml
+- waitForAnimationToEnd:
+    timeout: 3000
+- takeScreenshot: demo-crowd

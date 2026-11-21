@@ -1,0 +1,18 @@
+# sc-23282: where an organisation requires two-factor, Turn off two-factor has no ellipsis, and pressing it shows the refusal and opens no step. Needs ${METRO_URL}.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/settings/security
+- scrollUntilVisible:
+    element:
+      id: 'twoFactor.turnOff'
+    timeout: 30000
+    centerElement: true
+- takeScreenshot: opener
+- tapOn:
+    id: 'twoFactor.turnOff'
+- extendedWaitUntil:
+    visible: '{{t:twoFactorCard.keptByRule}}'
+    timeout: 10000
+- takeScreenshot: refused
+- assertNotVisible:
+    id: 'twoFactor.keepItOn'

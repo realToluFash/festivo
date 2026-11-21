@@ -1,0 +1,14 @@
+# sc-29961: Enter your code and Get back in without your authenticator opened with no sign-in in hand go to Sign in with no notice.
+appId: host.exp.Exponent
+---
+- runFlow: ../sign-out.yaml
+- openLink: ${METRO_URL}/--/sign-in-code
+- extendedWaitUntil: { visible: { id: 'welcome\.email|signIn\.email' }, timeout: 30000 }
+- waitForAnimationToEnd
+- assertNotVisible: '{{t:signIn.codeTimedOutTitle}}.*'
+- takeScreenshot: code-link
+- openLink: ${METRO_URL}/--/lost-two-factor
+- extendedWaitUntil: { visible: { id: 'welcome\.email|signIn\.email' }, timeout: 30000 }
+- waitForAnimationToEnd
+- assertNotVisible: '{{t:signIn.codeTimedOutTitle}}.*'
+- takeScreenshot: lost-link

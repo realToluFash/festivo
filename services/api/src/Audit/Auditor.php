@@ -1,0 +1,91 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Audit;
+
+use App\Entity\AuditEntry;
+use App\Enum\Actor;
+use App\Http\Listener\CorrelationIdListener;
+use DateTimeImmutable;
+use Doctrine\ORM\EntityManagerInterface;
+use Psl\Str;
+use Symfony\Component\HttpFoundation\RequestStack;
+use Symfony\Component\Uid\Uuid;
+
+final readonly class Auditor
+{
+    public function __construct(
+        private EntityManagerInterface $entityManager,
+        private RequestStack $requestStack,
+        private AuditScopes $auditScopes,
+    ) {
+    }
+
+    /** @param array<string, array{0: mixed, 1: mixed}> $changes field => [before, after] */
+    public function record(
+        string $action,
+        string $subjectType,
+        Uuid $subjectId,
+        Actor $actorType = Actor::System,
+        ?Uuid $actorId = null,
+        ?string $actorLabel = null,
+        array $changes = [],
+        ?DateTimeImmutable $occurredAt = null,
+    ): AuditEntry {
+        $request = $this->requestStack->getCurrentRequest();
+        $scope = $this->auditScopes->of($subjectType, $subjectId);
+        $userAgent = $request?->headers->get('User-Agent');
+
+        $entry = new AuditEntry(
+            $actorType,
+            $actorId,
+            $actorLabel,
+            $subjectType,
+            $subjectId,
+            $action,
+            $changes,
+            $request?->getClientIp(),
+            $this->correlationId($request),
+            $occurredAt,
+            $scope->organisationId,
+            $scope->eventId,
+            null === $scope->eventName ? null : Str\truncate($scope->eventName, 0, 240),
+            null === $scope->target ? null : Str\truncate($scope->target, 0, 720),
+            null === $userAgent || '' === $userAgent ? null : Str\truncate($userAgent, 0, 512),
+        );
+
+        $this->entityManager->persist($entry);
+
+        return $entry;
+    }
+
+    /**
+     * @param array<string, mixed> $before
+     * @param array<string, mixed> $after
+     *
+     * @return array<string, array{0: mixed, 1: mixed}>
+     */
+    public static function diff(array $before, array $after): array
+    {
+        $changes = [];
+
+        foreach (\array_keys($before + $after) as $field) {
+            $was = $before[$field] ?? null;
+            $now = $after[$field] ?? null;
+
+            if ($was !== $now) {
+                $changes[$field] = [$was, $now];
+            }
+        }
+
+        return $changes;
+    }
+
+    private function correlationId(?\Symfony\Component\HttpFoundation\Request $request): ?string
+    {
+        $id = $request?->attributes->get(CorrelationIdListener::ATTRIBUTE);
+
+        return \is_string($id) ? $id : null;
+    }
+}

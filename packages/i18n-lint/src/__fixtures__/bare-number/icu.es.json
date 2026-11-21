@@ -1,0 +1,7 @@
+{
+  "waiting": "{count, plural, one {# persona espera} other {# personas esperan}}",
+  "party": "🎉 {count, plural, one {# invitado} other {# invitados}}",
+  "expiry": "Funciona durante {minutes, number} minutos.",
+  "code": "Su código es {code}.",
+  "settings": "Turn it on at /settings#two-factor."
+}

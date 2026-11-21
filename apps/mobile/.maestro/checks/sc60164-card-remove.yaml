@@ -1,0 +1,40 @@
+# sc-60164: ${EV_DONE}, a Finished event whose thank-you is a two-letter line: emptied and saved (removed), then Add a thank-you and saved.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/${EV_DONE}
+- extendedWaitUntil:
+    visible:
+      id: 'events.phase.finished'
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: 'event.thankYou.edit'
+- tapOn:
+    id: 'event.thankYou.edit'
+- extendedWaitUntil:
+    visible:
+      id: 'event.thankYou.field'
+    timeout: 10000
+- tapOn:
+    id: 'event.thankYou.field'
+- eraseText: 60
+- tapOn:
+    id: 'event.thankYou.save'
+- takeScreenshot: removed-toast
+- scrollUntilVisible:
+    element:
+      id: 'event.thankYou.add'
+- takeScreenshot: card-add
+- tapOn:
+    id: 'event.thankYou.add'
+- extendedWaitUntil:
+    visible:
+      id: 'event.thankYou.field'
+    timeout: 10000
+- takeScreenshot: add-screen
+- tapOn:
+    id: 'event.thankYou.field'
+- inputText: 'Thank you all for coming to our anniversary!'
+- tapOn:
+    id: 'event.thankYou.save'
+- takeScreenshot: saved-toast
