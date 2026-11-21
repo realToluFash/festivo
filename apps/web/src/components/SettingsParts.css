@@ -384,7 +384,7 @@
 
 /* Each margin is how far the confetti reaches in from the inner box's right edge, rotation included. */
 @container desk-summary (width >= 560px) {
-  .desk-summary :is(.desk-says, .desk-who) {
+  .desk-summary :is(.desk-says, .desk-name) {
     max-width: min(80%, calc(100% - 176px));
   }
 
