@@ -10,6 +10,8 @@ appId: host.exp.Exponent
 - takeScreenshot: after-short
 - assertVisible:
     id: 'calendarFeed.close'
+- assertNotVisible:
+    id: 'calendarFeed.reset'
 - swipe:
     start: '201,750'
     end: '201,150'
