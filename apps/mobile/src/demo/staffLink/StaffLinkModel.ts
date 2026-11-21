@@ -1,6 +1,25 @@
 export type LinkStatus = 'none' | 'shared' | 'copied' | 'sent' | 'opened';
 
-export const PERSON = { name: 'Ada Obi', first: 'Ada', job: 'Waiter', shift: '17:00 to 00:00' };
+export interface Who {
+  id: string;
+  name: string;
+  first: string;
+  job: string;
+  shift: string;
+  mobile: boolean;
+}
+
+export const PERSON: Who = {
+  id: 'ada-obi',
+  name: 'Ada Obi',
+  first: 'Ada',
+  job: 'Waiter',
+  shift: '17:00 to 00:00',
+  mobile: true,
+};
+
+/** What the screen may do: share and copy, read the status only (no staff.manage), or nothing after the 30-day erasure. */
+export type LinkView = 'manage' | 'read' | 'erased';
 export const YOU = 'Amara Nwosu';
 export const NOW = '19:12';
 export const ISSUE_MS = 600;
@@ -26,6 +45,13 @@ export const W = {
   replaced: (first: string) => `[${first}’s link is replaced. Share link gives them a new one.]`,
   marked: (first: string) => `[Marked as sent to ${first}.]`,
   help: 'It opens their own shift, from 12 hours before it starts.',
+  noMobile: 'Add a mobile number to send a link',
+  noMobileLine: '[Their mobile number is added on the web, in the roster.]',
+  erased: 'Contact details removed after the event',
+  erasedLine: '[There is nothing to share or copy: their number went 30 days after the event.]',
+  readOnly: '[You can see their link. Sharing it needs permission to manage staff.]',
+  removed: (name: string) => `[${name} is no longer on the staff.]`,
+  removedLine: '[They were removed from the event on the web, and their link stopped working.]',
 };
 
 export const WORDS: Record<LinkStatus, string> = {
@@ -42,6 +68,10 @@ export interface Trail {
 }
 
 export interface LinkState {
+  who: Who;
+  view: LinkView;
+  /** Removed from the roster on the web while the screen is open: no actions, nothing issued. */
+  removed: boolean;
   status: LinkStatus;
   trail: Trail | null;
   asking: boolean;
@@ -102,7 +132,7 @@ export function backFromShare(s: LinkState): LinkState {
   const next = { ...s, ...delivered(s, 'shared'), busy: null };
 
   return next.status === 'shared'
-    ? { ...next, asking: true, say: W.didYouSend(PERSON.first) }
+    ? { ...next, asking: true, say: W.didYouSend(s.who.first) }
     : next;
 }
 
@@ -113,8 +143,8 @@ export function markSent(s: LinkState): LinkState {
     trail: mine(),
     asking: false,
     held: null,
-    toast: W.marked(PERSON.first),
-    say: W.marked(PERSON.first),
+    toast: W.marked(s.who.first),
+    say: W.marked(s.who.first),
   };
 }
 
@@ -128,7 +158,7 @@ export function askReplace(s: LinkState, open: boolean): LinkState {
 
 /** Replace link ends every link they were given and issues nothing: the next Share or Copy gives a new one. */
 export function replace(s: LinkState): LinkState {
-  const toast = W.replaced(PERSON.first);
+  const toast = W.replaced(s.who.first);
 
   return {
     ...s,
@@ -143,12 +173,58 @@ export function replace(s: LinkState): LinkState {
   };
 }
 
+/** Share link, Copy link, Mark as sent and Replace link… need staff.manage, a mobile number, and the person still on the staff. */
+export function acts(s: LinkState): boolean {
+  return s.view === 'manage' && s.who.mobile && !s.removed;
+}
+
 export function offersMarkSent(s: LinkState): boolean {
-  return !s.asking && (s.status === 'shared' || s.status === 'copied');
+  return acts(s) && !s.asking && (s.status === 'shared' || s.status === 'copied');
 }
 
 export function offersReplace(s: LinkState): boolean {
-  return s.status !== 'none';
+  return acts(s) && s.status !== 'none';
+}
+
+/** What a person's status shows, on their roster row and on their link screen alike: after the erasure and without a number, those; else the link's own. */
+export type Shown = LinkStatus | 'noMobile' | 'erased';
+
+export const SHOWN_WORDS: Record<Shown, string> = {
+  ...WORDS,
+  noMobile: W.noMobile,
+  erased: W.erased,
+};
+
+export function shownOf(link: { status: LinkStatus; mobile: boolean }, erased: boolean): Shown {
+  if (erased) return 'erased';
+  if (!link.mobile) return 'noMobile';
+
+  return link.status;
+}
+
+export function linkShown(s: LinkState): Shown {
+  return shownOf({ status: s.status, mobile: s.who.mobile }, s.view === 'erased');
+}
+
+export function statusWord(s: LinkState): string {
+  return SHOWN_WORDS[linkShown(s)];
+}
+
+/** Removed on the web: the screen says so and holds nothing, whatever was under way. */
+export function removedNow(s: LinkState): LinkState {
+  const say = W.removed(s.who.name);
+
+  return {
+    ...s,
+    removed: true,
+    asking: false,
+    replacing: false,
+    busy: null,
+    failed: false,
+    held: null,
+    toast: '',
+    say,
+  };
 }
 
 export const LINK_STATES = [
@@ -162,6 +238,10 @@ export const LINK_STATES = [
   'refused',
   'replaceAsk',
   'replaced',
+  'noMobile',
+  'erased',
+  'readOnly',
+  'removed',
 ] as const;
 
 export type LinkStateName = (typeof LINK_STATES)[number];
@@ -170,7 +250,10 @@ export function linkStateOf(raw: string | null | undefined): LinkStateName {
   return LINK_STATES.find((one) => one === raw) ?? 'none';
 }
 
-const fresh = (): LinkState => ({
+const fresh = (who: Who): LinkState => ({
+  who,
+  view: 'manage',
+  removed: false,
   status: 'none',
   trail: null,
   asking: false,
@@ -184,8 +267,17 @@ const fresh = (): LinkState => ({
   say: '',
 });
 
-export function seed(name: LinkStateName): LinkState {
-  const s = fresh();
+const NO_MOBILE: Who = {
+  id: 'ada',
+  name: 'Ada Nnaji',
+  first: 'Ada',
+  job: 'Cook',
+  shift: '15:00 to 23:00',
+  mobile: false,
+};
+
+export function seed(name: LinkStateName, who: Who = PERSON): LinkState {
+  const s = fresh(name === 'noMobile' ? NO_MOBILE : who);
   const opened: LinkState = { ...s, status: 'opened', trail: { by: '', at: '19:05' } };
   switch (name) {
     case 'asking':
@@ -206,7 +298,25 @@ export function seed(name: LinkStateName): LinkState {
       return askReplace(opened, true);
     case 'replaced':
       return replace(opened);
+    case 'noMobile':
+      return s;
+    case 'erased':
+      return { ...opened, view: 'erased', trail: null };
+    case 'readOnly':
+      return { ...s, view: 'read', status: 'sent', trail: { by: YOU, at: '18:44' } };
+    case 'removed':
+      return { ...removedNow(opened), say: '' };
     default:
       return s;
   }
+}
+
+/** The link screen opened from the roster: that person, their status as the roster has it, and what the viewer may do. */
+export function seedFor(
+  who: Who,
+  status: LinkStatus,
+  trail: Trail | null,
+  view: LinkView,
+): LinkState {
+  return { ...fresh(who), status, trail, view };
 }

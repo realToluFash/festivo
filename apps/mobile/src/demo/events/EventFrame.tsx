@@ -704,10 +704,13 @@ export function AreaPage({
   area,
   event,
   locale,
+  children,
 }: {
   area: Exclude<AreaKey, 'overview' | 'people'>;
   event: Shown;
   locale: string;
+  /** The area's own content in place of the card that says it is coming. */
+  children?: ReactNode;
 }) {
   const { layout } = useShell();
   return (
@@ -733,32 +736,34 @@ export function AreaPage({
           </Text>
         </View>
       </View>
-      <View style={styles.coming} testID={`event.coming.${area}`}>
-        <Text size={17} weight="semibold" style={styles.comingTitle}>
-          {AREA_WORDS[area]}
-        </Text>
-        <Text size={15} weight="medium" style={[styles.secondary, styles.comingLine]}>
-          {COMING[area]}
-        </Text>
-        {area === 'schedule' && event.id === RUN_EVENT && (
-          <View style={styles.comingAct}>
-            {nightWayIn(event) && (
+      {children ?? (
+        <View style={styles.coming} testID={`event.coming.${area}`}>
+          <Text size={17} weight="semibold" style={styles.comingTitle}>
+            {AREA_WORDS[area]}
+          </Text>
+          <Text size={15} weight="medium" style={[styles.secondary, styles.comingLine]}>
+            {COMING[area]}
+          </Text>
+          {area === 'schedule' && event.id === RUN_EVENT && (
+            <View style={styles.comingAct}>
+              {nightWayIn(event) && (
+                <SecondaryButton
+                  label={NW.title}
+                  link
+                  onPress={() => router.push('/demo/night')}
+                  testID="event.schedule.night"
+                />
+              )}
               <SecondaryButton
-                label={NW.title}
+                label={RUN_WORDS.openRun}
                 link
-                onPress={() => router.push('/demo/night')}
-                testID="event.schedule.night"
+                onPress={() => router.push('/demo/run-view')}
+                testID="event.schedule.run"
               />
-            )}
-            <SecondaryButton
-              label={RUN_WORDS.openRun}
-              link
-              onPress={() => router.push('/demo/run-view')}
-              testID="event.schedule.run"
-            />
-          </View>
-        )}
-      </View>
+            </View>
+          )}
+        </View>
+      )}
     </>
   );
 }
