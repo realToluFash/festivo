@@ -1,9 +1,18 @@
 import type { CalendarView } from '@soirely/domain';
 import { type Ref, type RefObject, useEffect, useRef, useState } from 'react';
-import { Animated, Easing, Pressable, StyleSheet, View, type ViewInstance } from 'react-native';
+import {
+  Animated,
+  Easing,
+  Pressable,
+  StyleSheet,
+  View,
+  type ViewInstance,
+  useWindowDimensions,
+} from 'react-native';
 import Svg, { Circle, Path } from 'react-native-svg';
 import { useTranslation } from 'react-i18next';
 
+import { atAccessibilitySizes } from '../layout/textSize.ts';
 import { motionEase } from '../motion.ts';
 import { useReducedMotion } from '../reducedMotion.ts';
 import { tokens } from '../theme/tokens.ts';
@@ -11,6 +20,7 @@ import { Glyph, type GlyphName } from './Glyph.tsx';
 import { useReadOut } from './ReadOut.tsx';
 import { type Anchor, AnchoredMenu } from './Summary.tsx';
 import { Text } from './Text.tsx';
+import { MenuWords } from './Title.tsx';
 import { Pill } from './SettingsParts.tsx';
 
 /** The toolbar's words grow to twice their size and no further, so Month, Show and the month's name are never cut. */
@@ -143,6 +153,7 @@ export function ShowMenu<S extends string>({
   onClose: () => void;
 }) {
   const first = useRef<ViewInstance>(null);
+  const grown = atAccessibilitySizes(useWindowDimensions().fontScale);
 
   return (
     <AnchoredMenu
@@ -168,6 +179,7 @@ export function ShowMenu<S extends string>({
               }}
               style={({ pressed }) => [
                 styles.choice,
+                grown && styles.choiceGrown,
                 on && styles.choiceOn,
                 pressed && !on && styles.choicePressed,
               ]}
@@ -176,14 +188,9 @@ export function ShowMenu<S extends string>({
               accessibilityLabel={word}
               testID={`calendar.show.${value}`}
             >
-              <Text
-                size={16}
-                weight={on ? 'semibold' : 'medium'}
-                accessible={false}
-                style={[styles.grow, on && styles.accent]}
-              >
+              <MenuWords size={16} weight={on ? 'semibold' : 'medium'} style={on && styles.accent}>
                 {word}
-              </Text>
+              </MenuWords>
               <View style={styles.tick}>
                 {on && <Glyph name="tick" size={18} ink={tokens.colorAccent} weight={2.6} />}
               </View>
@@ -420,7 +427,6 @@ export function Spinner() {
 }
 
 const styles = StyleSheet.create({
-  grow: { flex: 1, minWidth: 0 },
   accent: { color: tokens.colorAccentText },
   pressed: { opacity: tokens.opacityPressed },
   segment: {
@@ -491,6 +497,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: tokens.spacePillEnd,
     borderRadius: tokens.spaceLg,
   },
+  // From AX1 a wrapped row's tint keeps clear of its words; at the standard sizes the row is main's.
+  choiceGrown: { paddingVertical: tokens.spaceXs },
   choiceOn: { backgroundColor: tokens.colorAccentTint },
   choicePressed: { backgroundColor: tokens.colorInset },
   tick: { width: 18, alignItems: 'center' },
