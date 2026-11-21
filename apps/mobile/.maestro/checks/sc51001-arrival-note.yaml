@@ -1,0 +1,37 @@
+# sc-51001: ${EVENT_ID}'s Venue part, its Arrival note holding 500 characters: the label and hint, then one more character refused on Save with the too-long line. Needs ${METRO_URL}, ${EVENT_ID}.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/${EVENT_ID}
+- extendedWaitUntil:
+    visible:
+      id: 'events.page'
+    timeout: 60000
+- scrollUntilVisible:
+    element:
+      id: 'events.details.venue'
+    centerElement: true
+    timeout: 20000
+- tapOn:
+    id: 'events.details.venue'
+- extendedWaitUntil:
+    visible:
+      id: 'event.edit.venue.note'
+    timeout: 20000
+- scrollUntilVisible:
+    element:
+      id: 'event.edit.venue.note'
+    centerElement: true
+    timeout: 20000
+- takeScreenshot: hint
+- tapOn:
+    id: 'event.edit.venue.note'
+- inputText: 'x'
+- hideKeyboard
+- takeScreenshot: typed
+- tapOn:
+    id: 'event.edit.venue.save'
+- waitForAnimationToEnd
+- extendedWaitUntil:
+    visible: '.*500.*'
+    timeout: 10000
+- takeScreenshot: refused

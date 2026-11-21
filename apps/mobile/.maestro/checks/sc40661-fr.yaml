@@ -1,0 +1,15 @@
+# sc-40661 fr: perou finds Pérou.
+appId: host.exp.Exponent
+---
+- runFlow: ../sc40661-to-country-search.yaml
+- eraseText: 80
+- inputText: 'perou'
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 1500, optional: true }
+- takeScreenshot: s40661-fr-perou
+- assertVisible: { id: 'createWalk.country.PE' }
+- assertNotVisible: { id: 'createWalk.countries.noMatch' }
+- eraseText: 80
+- inputText: 'zzz'
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 1500, optional: true }
+- takeScreenshot: s40661-fr-zzz
+- assertVisible: { id: 'createWalk.countries.noMatch' }

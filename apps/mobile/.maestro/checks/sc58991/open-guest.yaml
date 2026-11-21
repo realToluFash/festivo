@@ -1,0 +1,27 @@
+# sc-58991: opens a guest's details on the host's device. Pass METRO_URL, EVENT_ID, GUEST_ID, ORIENT.
+appId: host.exp.Exponent
+---
+- setOrientation: ${ORIENT}
+- openLink: ${METRO_URL}/--/events/${EVENT_ID}?area=guests
+- extendedWaitUntil:
+    visible:
+      id: 'guests.showAll.*|guests.row.${GUEST_ID}'
+    timeout: 30000
+- runFlow:
+    when:
+      notVisible:
+        id: 'guests.row.${GUEST_ID}'
+    commands:
+      - tapOn:
+          id: 'guests.showAll.*'
+- scrollUntilVisible:
+    element:
+      id: 'guests.row.${GUEST_ID}'
+    timeout: 20000
+- tapOn:
+    id: 'guests.row.${GUEST_ID}'
+- extendedWaitUntil:
+    visible:
+      id: 'guest.${GUEST_ID}'
+    timeout: 20000
+- waitForAnimationToEnd

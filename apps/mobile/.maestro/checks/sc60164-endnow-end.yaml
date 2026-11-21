@@ -1,0 +1,25 @@
+# sc-60164: ${EV_END}, a Live event after its start: End now with a short thank-you; the toast once ended.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/${EV_END}
+- extendedWaitUntil:
+    visible:
+      id: 'events.phase.happening_now'
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: 'events.end'
+- tapOn:
+    id: 'events.end'
+- extendedWaitUntil:
+    visible:
+      id: 'events.endYes'
+    timeout: 10000
+- tapOn:
+    id: 'events.endThankYou'
+- inputText: 'Thank you all for coming!'
+- tapOn:
+    id: 'events.endYes'
+- waitForAnimationToEnd:
+    timeout: 3000
+- takeScreenshot: endnow-done

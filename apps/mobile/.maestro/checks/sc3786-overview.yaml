@@ -1,0 +1,18 @@
+# sc-3786: the event's Overview shows its six counts and the not-yet-invited line; Invited opens Guests with Invited chosen.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/${EVENT}
+- extendedWaitUntil:
+    visible:
+      id: 'overview.guests'
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: 'overview.guests.notYetInvited'
+    direction: DOWN
+    timeout: 20000
+- takeScreenshot: overview
+- tapOn:
+    id: 'overview.guests.invited'
+- waitForAnimationToEnd
+- takeScreenshot: invited

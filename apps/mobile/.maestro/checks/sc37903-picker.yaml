@@ -1,0 +1,37 @@
+# sc-37903: the Currency picker opened from Organisation details, its back label beside its title, at whatever text size the device is set to; then the demo's picker.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/settings/organisation
+- waitForAnimationToEnd:
+    timeout: 8000
+- scrollUntilVisible:
+    element:
+      id: organisation.edit
+    timeout: 30000
+- tapOn:
+    id: organisation.edit
+- extendedWaitUntil:
+    visible:
+      id: organisation.name
+    timeout: 30000
+- waitForAnimationToEnd
+- scrollUntilVisible:
+    element:
+      id: organisation.currency
+    timeout: 20000
+- tapOn:
+    id: organisation.currency
+- extendedWaitUntil:
+    visible:
+      id: organisation.currency.back
+    timeout: 15000
+- waitForAnimationToEnd
+- takeScreenshot: currency-picker
+- tapOn:
+    id: organisation.currency.back
+- waitForAnimationToEnd
+- takeScreenshot: picker-back
+- openLink: ${METRO_URL}/--/demo/focused-header?size=phone&lang=${DLANG}&screen=picker
+- waitForAnimationToEnd:
+    timeout: 8000
+- takeScreenshot: demo-picker

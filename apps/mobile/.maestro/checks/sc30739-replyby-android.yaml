@@ -1,0 +1,87 @@
+# sc-30739 on Android: ${OP}'s Reply by in the shown language — row, part, both Asks, every toast and the refusal, by testID so it runs in any locale. Starts and ends with no Reply by.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/${OP}
+- extendedWaitUntil:
+    visible:
+      id: 'events.page'
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: 'events.details.replyBy'
+    centerElement: true
+- takeScreenshot: row-none
+- tapOn:
+    id: 'events.details.replyBy'
+- waitForAnimationToEnd
+- takeScreenshot: part-none
+- tapOn:
+    id: 'event.edit.replyBy.date'
+- tapOn: '26'
+- tapOn: 'OK'
+- waitForAnimationToEnd
+- takeScreenshot: part-preview
+- tapOn:
+    id: 'event.edit.replyBy.save'
+- takeScreenshot: toast-saved
+- waitForAnimationToEnd:
+    timeout: 8000
+- scrollUntilVisible:
+    element:
+      id: 'events.details.replyBy'
+    centerElement: true
+- takeScreenshot: row-closes
+- tapOn:
+    id: 'events.details.replyBy'
+- tapOn:
+    id: 'event.edit.replyBy.date'
+- tapOn: '20'
+- tapOn: 'OK'
+- tapOn:
+    id: 'event.edit.replyBy.save'
+- waitForAnimationToEnd
+- takeScreenshot: ask-sooner
+- tapOn:
+    id: 'event.edit.replyBy.close'
+- takeScreenshot: toast-sooner
+- waitForAnimationToEnd:
+    timeout: 8000
+- scrollUntilVisible:
+    element:
+      id: 'events.details.replyBy'
+    centerElement: true
+- tapOn:
+    id: 'events.details.replyBy'
+- tapOn:
+    id: 'event.edit.replyBy.date'
+- tapOn: '10'
+- tapOn: 'OK'
+- tapOn:
+    id: 'event.edit.replyBy.save'
+- waitForAnimationToEnd
+- takeScreenshot: ask-now
+- tapOn:
+    id: 'event.edit.replyBy.close'
+- takeScreenshot: toast-now
+- waitForAnimationToEnd:
+    timeout: 8000
+- scrollUntilVisible:
+    element:
+      id: 'events.details.replyBy'
+    centerElement: true
+- takeScreenshot: row-closed
+- tapOn:
+    id: 'events.details.replyBy'
+- tapOn:
+    id: 'event.edit.replyBy.date'
+- tapOn: '28'
+- tapOn: 'OK'
+- tapOn:
+    id: 'event.edit.replyBy.save'
+- waitForAnimationToEnd
+- takeScreenshot: refused
+- tapOn:
+    id: 'event.edit.replyBy.remove'
+- tapOn:
+    id: 'event.edit.replyBy.save'
+- takeScreenshot: toast-removed

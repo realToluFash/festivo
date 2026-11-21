@@ -1,0 +1,28 @@
+# sc-29961 regression: Back to sign in on Enter your code and on Get back in without your authenticator goes to Sign in, with no timed-out notice.
+appId: host.exp.Exponent
+---
+- runFlow: ../sign-out.yaml
+- runFlow: ../sc33828-to-code-signed-out.yaml
+- runFlow: ../sc29072-close-code-pad.yaml
+- scrollUntilVisible: { element: { id: 'twoFactor.back' } }
+- tapOn: { id: 'twoFactor.back' }
+- extendedWaitUntil: { visible: { id: 'signIn\.email|welcome\.email' }, timeout: 30000 }
+- waitForAnimationToEnd
+- assertNotVisible: '{{t:signIn.codeTimedOutTitle}}.*'
+- takeScreenshot: from-code
+- runFlow: ../sc33828-to-code-signed-out.yaml
+- runFlow: ../sc29072-close-code-pad.yaml
+- scrollUntilVisible: { element: { id: 'twoFactor.lostBoth' } }
+- tapOn: { id: 'twoFactor.lostBoth' }
+- extendedWaitUntil:
+    { visible: { id: 'lostTwoFactor\.send|lostTwoFactor\.resend' }, timeout: 30000 }
+- runFlow:
+    when: { visible: { id: 'lostTwoFactor.resend' } }
+    commands:
+      - tapOn: '{{t:lostTwoFactor.codesTitle}}|{{t:lostTwoFactor.codesTitleEmailOnly}}'
+- scrollUntilVisible: { element: { id: 'lostTwoFactor.back' } }
+- tapOn: { id: 'lostTwoFactor.back' }
+- extendedWaitUntil: { visible: { id: 'signIn\.email|welcome\.email' }, timeout: 30000 }
+- waitForAnimationToEnd
+- assertNotVisible: '{{t:signIn.codeTimedOutTitle}}.*'
+- takeScreenshot: from-lost

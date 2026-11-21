@@ -1,0 +1,11 @@
+# sc-37903: Name still open after a text-size change: its header as drawn now, and the typed text kept.
+appId: host.exp.Exponent
+---
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: live-after
+- assertVisible:
+    id: 'account.name.screen'
+- assertVisible: 'Typed Before Change'
+- tapOn:
+    id: 'account.name.cancel'
