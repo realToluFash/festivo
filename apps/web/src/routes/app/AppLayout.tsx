@@ -37,7 +37,7 @@ import {
   useSessionState,
 } from '../../session.ts';
 import { useSidebarEvents } from '../../sidebarEvents.ts';
-import { useWaitingInvitations } from '../../invitations.ts';
+import { useInvitationAnswers, useWaitingInvitations } from '../../invitations.ts';
 import { UNASKED } from '../../pageArrival.ts';
 import { useDomainOffer } from '../../joinOffers.ts';
 import { NoOrganisation } from './NoOrganisation.tsx';
@@ -146,7 +146,8 @@ function Shell() {
   const menuId = useId();
   const organisation = session.organisation;
   const routedEvent = useRoutedEventId();
-  const waiting = useWaitingInvitations();
+  const answers = useInvitationAnswers();
+  const waiting = useWaitingInvitations(answers);
   const closeCreate = useCallback(() => setCreating(false), []);
   const offer = useDomainOffer();
   const overdue = useTwoFactorStanding(organisation) === 'overdue';
@@ -307,7 +308,7 @@ function Shell() {
             <LinkedNotice />
             <ErrorBoundary>
               <NoOrganisation
-                waiting={waiting}
+                waiting={answers}
                 onOpen={(id) => {
                   const joined = session.organisations.find((membership) => membership.id === id);
 

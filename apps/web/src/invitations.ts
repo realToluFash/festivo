@@ -87,9 +87,8 @@ export function useInvitationAnswers(load = true): WaitingInvitations {
   return { invitations, outcomes, firstJoined, answer };
 }
 
-/** For the switcher and its openers: one the account cannot accept reads as managed from the moment it is listed, so it is never counted (sc-73668). */
-export function useWaitingInvitations(): WaitingInvitations {
-  const answers = useInvitationAnswers();
+/** For the switcher and its openers: one the account cannot accept reads as managed from the moment it is listed, so it is never counted (sc-73668). You are not in an organisation keeps `answers` as they are. */
+export function useWaitingInvitations(answers: WaitingInvitations): WaitingInvitations {
   const { invitations, outcomes } = answers;
   const known = useMemo(() => withManaged(invitations, outcomes), [invitations, outcomes]);
 
