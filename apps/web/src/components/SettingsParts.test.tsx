@@ -130,13 +130,22 @@ describe('a card step', () => {
 });
 
 describe('p6 on a summary card (sc-77292)', () => {
-  function place(bottoms: Record<string, number>) {
-    vi.spyOn(Element.prototype, 'getBoundingClientRect').mockImplementation(function (
-      this: Element,
-    ) {
-      const bottom = bottoms[this.className] ?? 0;
-      return { top: 0, bottom } as DOMRect;
+  type Line = { top: number; bottom: number; right: number };
+
+  /** The card is 600 px wide, so p6's box runs from 381 to 395 px in from its left edge. */
+  function place(lines: Record<string, Line[]>) {
+    vi.spyOn(Element.prototype, 'getBoundingClientRect').mockReturnValue({
+      top: 0,
+      right: 600,
+    } as DOMRect);
+    vi.spyOn(Range.prototype, 'getClientRects').mockImplementation(function (this: Range) {
+      const word = this.startContainer.parentElement?.className ?? '';
+      return (lines[word] ?? []) as unknown as DOMRectList;
     });
+  }
+
+  function line(top: number, right: number): Line {
+    return { top, bottom: top + 20, right };
   }
 
   function drawCard() {
@@ -151,20 +160,36 @@ describe('p6 on a summary card (sc-77292)', () => {
     return container.querySelector('.desk-summary');
   }
 
-  it('is hidden once any of the words reaches below 145 px from the card’s top', () => {
-    place({ 'desk-says': 120, 'desk-on-card': 146, 'desk-step': 190 });
+  it('is hidden once a line of the words reaches into its box', () => {
+    place({ 'desk-says': [line(100, 420)], 'desk-on-card': [line(126, 300), line(146, 382)] });
 
-    expect(drawCard()?.classList.contains('is-words-low')).toBe(true);
+    expect(drawCard()?.classList.contains('is-p6-covered')).toBe(true);
   });
 
-  it('stays when the words end above it, whatever the step does', () => {
-    place({ 'desk-says': 120, 'desk-on-card': 145, 'desk-step': 190 });
+  it('stays when the low line ends left of its box, as Payment reminders reads in Portuguese', () => {
+    place({ 'desk-says': [line(100, 420)], 'desk-on-card': [line(110, 464), line(146, 380)] });
 
-    expect(drawCard()?.classList.contains('is-words-low')).toBe(false);
+    expect(drawCard()?.classList.contains('is-p6-covered')).toBe(false);
+  });
+
+  it('stays when the words end above its box, whatever the step does', () => {
+    place({
+      'desk-says': [line(80, 420)],
+      'desk-on-card': [line(125, 464)],
+      'desk-step': [line(150, 500)],
+    });
+
+    expect(drawCard()?.classList.contains('is-p6-covered')).toBe(false);
+  });
+
+  it('stays when the words start below its box', () => {
+    place({ 'desk-says': [line(100, 420)], 'desk-on-card': [line(163, 464)] });
+
+    expect(drawCard()?.classList.contains('is-p6-covered')).toBe(false);
   });
 
   it('looks past a step held in a wrapper, as General’s read-only card holds it', () => {
-    place({ 'desk-says': 120, 'desk-on-card': 140, held: 190, 'desk-step': 190 });
+    place({ 'desk-on-card': [line(100, 420)], 'desk-step': [line(150, 500)] });
     const { container } = render(
       <Card>
         <Says>Regras de entrada</Says>
@@ -175,14 +200,14 @@ describe('p6 on a summary card (sc-77292)', () => {
       </Card>,
     );
 
-    expect(container.querySelector('.desk-summary')?.classList.contains('is-words-low')).toBe(
+    expect(container.querySelector('.desk-summary')?.classList.contains('is-p6-covered')).toBe(
       false,
     );
   });
 
   it('is decided again when the words change height, without reloading', () => {
-    const bottoms = { 'desk-says': 120, 'desk-on-card': 140, 'desk-step': 190 };
-    place(bottoms);
+    const lines = { 'desk-says': [line(100, 420)], 'desk-on-card': [line(120, 464)] };
+    place(lines);
     const seen: ResizeObserverCallback[] = [];
     vi.stubGlobal(
       'ResizeObserver',
@@ -197,22 +222,21 @@ describe('p6 on a summary card (sc-77292)', () => {
     const card = drawCard();
     const resize = () => act(() => seen.forEach((callback) => callback([], {} as ResizeObserver)));
 
-    expect(card?.classList.contains('is-words-low')).toBe(false);
-    bottoms['desk-on-card'] = 170;
+    expect(card?.classList.contains('is-p6-covered')).toBe(false);
+    lines['desk-on-card'] = [line(120, 464), line(140, 400)];
     resize();
-    expect(card?.classList.contains('is-words-low')).toBe(true);
-    bottoms['desk-on-card'] = 130;
+    expect(card?.classList.contains('is-p6-covered')).toBe(true);
+    lines['desk-on-card'] = [line(110, 464)];
     resize();
-    expect(card?.classList.contains('is-words-low')).toBe(false);
+    expect(card?.classList.contains('is-p6-covered')).toBe(false);
   });
 
   it('is decided again when a box mounts above the words and moves them without a resize', async () => {
-    const bottoms: Record<string, number> = {
-      'desk-says': 120,
-      'desk-on-card': 140,
-      'desk-step': 190,
+    const lines: Record<string, Line[]> = {
+      'desk-says': [line(100, 420)],
+      'desk-on-card': [line(120, 464)],
     };
-    place(bottoms);
+    place(lines);
     vi.stubGlobal(
       'ResizeObserver',
       class {
@@ -231,18 +255,18 @@ describe('p6 on a summary card (sc-77292)', () => {
     const card = container.querySelector('.desk-summary');
     await act(async () => {});
 
-    expect(card?.classList.contains('is-words-low')).toBe(false);
-    bottoms['desk-glass-tags'] = 40;
-    bottoms['desk-on-card'] = 180;
+    expect(card?.classList.contains('is-p6-covered')).toBe(false);
+    lines['desk-glass-tags'] = [line(20, 200)];
+    lines['desk-on-card'] = [line(150, 464)];
     rerender(draw(true));
     await act(async () => {});
-    expect(card?.classList.contains('is-words-low')).toBe(true);
+    expect(card?.classList.contains('is-p6-covered')).toBe(true);
   });
 
   it('is hidden only by its own rule, on a card 560 px or wider', () => {
     const css = readFileSync(join(import.meta.dirname, 'SettingsParts.css'), 'utf8');
     const wide = css.slice(css.indexOf('@container desk-summary (width >= 560px)'));
 
-    expect(wide).toMatch(/\.desk-summary\.is-words-low > \.p6 \{\s*display: none;\s*\}/u);
+    expect(wide).toMatch(/\.desk-summary\.is-p6-covered > \.p6 \{\s*display: none;\s*\}/u);
   });
 });

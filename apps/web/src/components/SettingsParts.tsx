@@ -133,8 +133,8 @@ export function BackRow({
 
 const PIECES = [1, 2, 3, 4, 5, 6];
 
-/** Where p6's rotated box starts below the card's top edge. */
-const P6_TOP = 145;
+/** p6's rotated box, from the card's top edge down and from its right edge in. */
+const P6 = { top: 145, bottom: 163, left: 219 };
 
 function wordBoxes(box: Element): Element[] {
   return [...box.children].flatMap((child) => {
@@ -143,8 +143,27 @@ function wordBoxes(box: Element): Element[] {
   });
 }
 
-function useWordsLow(card: RefObject<HTMLElement | null>, inner: RefObject<HTMLElement | null>) {
-  const [low, setLow] = useState(false);
+function lines(word: Element): DOMRect[] {
+  const texts = document.createTreeWalker(word, NodeFilter.SHOW_TEXT);
+  const found: DOMRect[] = [];
+  const range = document.createRange();
+  for (let text = texts.nextNode(); text != null; text = texts.nextNode()) {
+    range.selectNodeContents(text);
+    found.push(...range.getClientRects());
+  }
+  return found;
+}
+
+function onP6(line: DOMRect, card: DOMRect): boolean {
+  return (
+    line.bottom - card.top > P6.top &&
+    line.top - card.top < P6.bottom &&
+    card.right - line.right < P6.left
+  );
+}
+
+function useWordsOnP6(card: RefObject<HTMLElement | null>, inner: RefObject<HTMLElement | null>) {
+  const [covered, setCovered] = useState(false);
 
   useLayoutEffect(() => {
     const top = card.current;
@@ -153,8 +172,8 @@ function useWordsLow(card: RefObject<HTMLElement | null>, inner: RefObject<HTMLE
     let live = true;
     const check = () => {
       if (!live) return;
-      const edge = top.getBoundingClientRect().top;
-      setLow(wordBoxes(box).some((word) => word.getBoundingClientRect().bottom - edge > P6_TOP));
+      const edges = top.getBoundingClientRect();
+      setCovered(wordBoxes(box).some((word) => lines(word).some((line) => onP6(line, edges))));
     };
     const sizes = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(check);
     const watch = () => {
@@ -174,7 +193,7 @@ function useWordsLow(card: RefObject<HTMLElement | null>, inner: RefObject<HTMLE
     };
   }, [card, inner]);
 
-  return low;
+  return covered;
 }
 
 /** B's summary card: Confetti, what it says, and its one step at the foot. */
@@ -187,12 +206,12 @@ export function Card({
 }) {
   const card = useRef<HTMLElement>(null);
   const inner = useRef<HTMLDivElement>(null);
-  const low = useWordsLow(card, inner);
+  const covered = useWordsOnP6(card, inner);
 
   return (
     <section
       ref={card}
-      className={`desk-card desk-summary is-${size}${low ? ' is-words-low' : ''}`}
+      className={`desk-card desk-summary is-${size}${covered ? ' is-p6-covered' : ''}`}
     >
       {PIECES.map((piece) => (
         <span key={piece} className={`desk-piece p${piece}`} aria-hidden="true" />
