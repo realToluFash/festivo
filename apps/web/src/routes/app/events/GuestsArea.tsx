@@ -5,6 +5,7 @@ import {
   type Guest,
   type GuestInvitationHow,
   type GuestDetails,
+  type GuestChange,
   type GuestGroup,
   type GuestList,
   type OrganisationEvent,
@@ -137,6 +138,7 @@ import {
   NeedsSection,
 } from './GuestNeeds.tsx';
 import { useNeedsOpen } from './guestNeeds.ts';
+import { type ChangedRow, changeAnswer, changeWhen, changedRows } from './guestChanges.ts';
 import { useGuestsAddress } from './useGuestsAddress.ts';
 import { useHubTopics } from './useHubTopics.ts';
 import { useStartingCountry } from './useStartingCountry.ts';
@@ -265,7 +267,18 @@ export function GuestsArea({
   const open = adding ? null : params.get('guest');
   const [counted, setCounted] = useState<Counts | 'failed' | null>(null);
   const [recount, setRecount] = useState(0);
-  const { choice, q, setChoice, setQ, clear } = useGuestsAddress();
+  const {
+    choice,
+    changed: changedOn,
+    since,
+    q,
+    setChoice,
+    setChanged,
+    setQ,
+    clear,
+  } = useGuestsAddress();
+  const [unseen, setUnseen] = useState(0);
+  const [changes, setChanges] = useState<readonly GuestChange[] | null>(null);
   const [dietaryOnly, setDietary] = useState(false);
   const [groupFilter, setGroupFilter] = useState<string | null>(null);
   const [grouping, setGrouping] = useState(false);
@@ -411,6 +424,33 @@ export function GuestsArea({
       current = false;
     };
   }, [event.id, manages, attempt, heard]);
+
+  useEffect(() => {
+    let current = true;
+
+    api.guestChanges(event.id).then(
+      (from) => current && setUnseen(from.rows.length),
+      () => undefined,
+    );
+
+    return () => {
+      current = false;
+    };
+  }, [event.id, attempt, heard]);
+
+  useEffect(() => {
+    if (since == null) return;
+    let current = true;
+
+    api.guestChanges(event.id, since).then(
+      (from) => current && setChanges(from.rows),
+      () => undefined,
+    );
+
+    return () => {
+      current = false;
+    };
+  }, [event.id, since, attempt, heard]);
 
   useLiveGuests(
     event.id,
@@ -658,15 +698,20 @@ export function GuestsArea({
         : 'loaded';
   const counts = typeof counted === 'object' ? counted : null;
   const dietaryOn = manages && dietaryOnly;
-  const { view, shown } = useMemo(
-    () =>
-      counts == null
-        ? { view: { kind: 'rows' as const, rows: [] }, shown: 0 }
-        : viewOf(guests, counts, choice, q, expanded, dietaryOn, groupFilter),
-    [guests, counts, choice, q, expanded, dietaryOn, groupFilter],
-  );
-  const looking = choice !== 'all' || q.trim() !== '' || dietaryOn || groupFilter != null;
-  const listLook = `${choice}\n${q}\n${dietaryOn}\n${groupFilter ?? ''}`;
+  const { view, shown } = useMemo(() => {
+    if (changedOn) {
+      const rows = changedRows(guests, changes ?? [], q);
+
+      return { view: { kind: 'rows' as const, rows }, shown: rows.length };
+    }
+
+    return counts == null
+      ? { view: { kind: 'rows' as const, rows: [] }, shown: 0 }
+      : viewOf(guests, counts, choice, q, expanded, dietaryOn, groupFilter);
+  }, [guests, counts, changedOn, changes, choice, q, expanded, dietaryOn, groupFilter]);
+  const looking =
+    changedOn || choice !== 'all' || q.trim() !== '' || dietaryOn || groupFilter != null;
+  const listLook = `${changedOn ? `changed ${since ?? ''}` : choice}\n${q}\n${dietaryOn}\n${groupFilter ?? ''}`;
   const [lookedAt, setLookedAt] = useState(listLook);
 
   // A tab, a search or a filter changes what is shown, so nothing hidden stays selected (PM #5003).
@@ -925,6 +970,17 @@ export function GuestsArea({
     setGroupFilter(null);
   }
 
+  function chooseChanged(): void {
+    api.lookAtGuestChanges(event.id).then(
+      (from) => {
+        setChanges(from.rows);
+        setUnseen(0);
+        setChanged(from.since);
+      },
+      () => undefined,
+    );
+  }
+
   function clearView(): void {
     clearLook();
     focus('find');
@@ -1056,10 +1112,13 @@ export function GuestsArea({
                         <SearchRow
                           q={q}
                           choice={choice}
+                          changed={changedOn}
+                          changedCount={changedOn ? (changes?.length ?? 0) : unseen}
                           counts={counts}
                           menu={menu}
                           onQ={setQ}
                           onChoice={setChoice}
+                          onChanged={chooseChanged}
                           onMenu={setMenu}
                         />
                         {manages && (
@@ -1147,7 +1206,19 @@ export function GuestsArea({
                             )}
                           </div>
                         )}
-                        {guests.length === 0 ? null : shown === 0 ? (
+                        {guests.length === 0 || (changedOn && changes == null) ? null : changedOn &&
+                          shown === 0 &&
+                          q.trim() === '' ? (
+                          <div className="gs-none">
+                            <h2 tabIndex={-1} data-focus="none-heading">
+                              {t('guestList.changed.nothing')}
+                            </h2>
+                            <TextAction
+                              label={t('guestList.changed.showAll')}
+                              onClick={clearView}
+                            />
+                          </div>
+                        ) : shown === 0 ? (
                           <div className="gs-none">
                             <h2 tabIndex={-1} data-focus="none-heading">
                               {t('guestList.noMatch')}
@@ -1516,26 +1587,36 @@ const CHOICE_KEY: Record<Choice, string> = {
   walkIn: REPLY_KEY.walkIn,
 };
 
+const CHANGED = 'changed';
+
 /** Find a guest, and the house filter menu beside it reading "{choice} · {n}". */
 function SearchRow({
   q,
   choice,
+  changed,
+  changedCount,
   counts,
   menu,
   onQ,
   onChoice,
+  onChanged,
   onMenu,
 }: {
   q: string;
   choice: Choice;
+  /** sc-4331: Changed since you looked, in use; its row leads the menu while it is or while something changed. */
+  changed: boolean;
+  changedCount: number;
   counts: Counts;
   menu: boolean;
   onQ: (q: string) => void;
   onChoice: (choice: Choice) => void;
+  onChanged: () => void;
   onMenu: (open: boolean) => void;
 }) {
   const { t } = useTranslation();
   const onClose = useCallback(() => onMenu(false), [onMenu]);
+  const apart = changed || changedCount > 0;
 
   return (
     <div className="ev-search-row gs-search-row">
@@ -1549,20 +1630,25 @@ function SearchRow({
           onClear={() => onQ('')}
         />
       </div>
-      <div className="gs-menu">
+      <div className={apart ? 'gs-menu has-apart' : 'gs-menu'}>
         <Menu
-          items={CHOICES.filter(
-            (key) => (key !== 'notYetInvited' && key !== 'walkIn') || counts[key] > 0,
-          ).map((key) => ({
-            key,
-            word: t(CHOICE_KEY[key]),
-            count: counts[key],
-          }))}
-          picked={choice}
+          items={[
+            ...(apart
+              ? [{ key: CHANGED, word: t('guestList.changed.filter'), count: changedCount }]
+              : []),
+            ...CHOICES.filter(
+              (key) => (key !== 'notYetInvited' && key !== 'walkIn') || counts[key] > 0,
+            ).map((key) => ({
+              key,
+              word: t(CHOICE_KEY[key]),
+              count: counts[key],
+            })),
+          ]}
+          picked={changed ? CHANGED : choice}
           open={menu}
           onOpen={() => onMenu(true)}
           onClose={onClose}
-          onPick={(key) => onChoice(key as Choice)}
+          onPick={(key) => (key === CHANGED ? onChanged() : onChoice(key as Choice))}
         />
       </div>
     </div>
@@ -1680,10 +1766,12 @@ function RowsFrom({
 
   return (
     <>
-      {rows.slice(from, to).map(({ person, indent }) => {
+      {rows.slice(from, to).map((row) => {
+        const { person, indent } = row;
         const { guest, companion } = person;
         const noReply = choice === 'noReply';
-        const { name, line } = rowWords(t, person, indent, timeZone, dateLocale(), {
+        const change = 'change' in row ? (row as ChangedRow).change : null;
+        const words = rowWords(t, person, indent, timeZone, dateLocale(), {
           places: noReply ? null : 'named',
           contact: true,
           invitation:
@@ -1693,6 +1781,14 @@ function RowsFrom({
                 ? invitationLine(t, guest, timeZone, dateLocale())
                 : decideRow(t, guest, replyBy, dateLocale()),
         });
+        const name = words.name;
+        const line =
+          change == null
+            ? words.line
+            : t('guestList.changed.line', {
+                answer: changeAnswer(t, change, person),
+                when: changeWhen(t, change, timeZone, dateLocale(), new Date()),
+              });
 
         if (companion == null)
           return (
@@ -1719,7 +1815,9 @@ function RowsFrom({
                   <ReplyMark reply={shownReply(guest)} />
                 </span>
                 <RowWords title={name} lines={[line]} />
-                <NeedsTags needs={guest.needs} group={guest.group?.name ?? null} />
+                {change == null && (
+                  <NeedsTags needs={guest.needs} group={guest.group?.name ?? null} />
+                )}
               </RowLink>
             </li>
           );

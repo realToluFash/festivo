@@ -1228,8 +1228,14 @@
   white-space: nowrap;
 }
 
-/* All and Invited, the totals, sit apart from the reply choices below them (sc-3786). */
-.gs-menu .desk-menu > li:nth-child(2) {
+/* sc-4331: Changed since you looked, then the totals All and Invited, sit apart from the reply choices. */
+.gs-menu.has-apart .desk-menu {
+  width: 320px;
+}
+
+.gs-menu:not(.has-apart) .desk-menu > li:nth-child(2),
+.gs-menu.has-apart .desk-menu > li:nth-child(3),
+.gs-menu.has-apart .desk-menu > li:first-child {
   margin-bottom: var(--spaceXs);
   padding-bottom: var(--spaceXs);
   border-bottom: 1px solid var(--colorBorder);

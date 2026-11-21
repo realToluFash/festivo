@@ -3451,7 +3451,20 @@
     "justArrived": "{{name}} has just arrived, so they stay on the list.",
     "companionJustArrived": "A companion of {{name}} has just arrived, so they stay on the list.",
     "backToDetails": "Back to their details",
-    "companionStays": "{{name}} has arrived, so they stay on the list."
+    "companionStays": "{{name}} has arrived, so they stay on the list.",
+    "changed": {
+      "filter": "Changed since you looked",
+      "nothing": "Nothing has changed since you last looked.",
+      "showAll": "Show all guests",
+      "line": "{{answer}} · {{when}}",
+      "repliedAt": "Replied at {{time}}",
+      "repliedOn": "Replied {{date}}",
+      "changedAt": "Changed at {{time}}",
+      "changedOn": "Changed {{date}}",
+      "needs": "Updated dietary needs",
+      "flagged": "Link may have reached the wrong person",
+      "question": "New question"
+    }
   },
   "guestNumbers": {
     "title": "Guests",
