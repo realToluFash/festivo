@@ -1,0 +1,8 @@
+# You are not in an organisation, for a managed account with one invitation. sc-73668 regression.
+appId: host.exp.Exponent
+---
+- setOrientation: PORTRAIT
+- openLink: ${METRO_URL}/--/
+- waitForAnimationToEnd:
+    timeout: 8000
+- takeScreenshot: noorg
