@@ -6,6 +6,7 @@ import {
   sidebarOrgOf,
   sidebarScale,
   sidebarSizeOf,
+  sidebarWaitingOf,
 } from './sidebarSizeRules.ts';
 
 describe('the sidebar size board', () => {
@@ -22,5 +23,10 @@ describe('the sidebar size board', () => {
   it('names the organisation Ire Events unless the link asks for QA Organisation', () => {
     expect(sidebarOrgName(sidebarOrgOf(undefined))).toBe('Ire Events');
     expect(sidebarOrgName(sidebarOrgOf('qa'))).toBe('QA Organisation');
+  });
+
+  it('waits on no invitation unless the link asks for two', () => {
+    expect(sidebarWaitingOf(undefined)).toBe('none');
+    expect(sidebarWaitingOf('two')).toBe('two');
   });
 });
