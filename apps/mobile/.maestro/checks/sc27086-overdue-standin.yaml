@@ -1,0 +1,86 @@
+# sc-27086 (lead's #27590): Calendar shows the offline band, then ${HOME_ORG}'s two-factor deadline passes with the screen open, so the overdue stand-in replaces Calendar; it shows no band and no Refreshing…. Then, with the API ${API_BACK}, a switch from the pill to ${OTHER_ORG} loads Calendar again; the band may return only when the API is stopped. iPad, ORIENT. The deadline must fall within 6 minutes of the band. Needs the batch helper's /api.
+appId: host.exp.Exponent
+onFlowComplete:
+  - runScript:
+      file: ../batch/helper.js
+      env:
+        ASK: /api?to=up
+---
+- setOrientation: ${ORIENT}
+- runFlow:
+    file: ../switch-organisation.yaml
+    env:
+      ORG: ${HOME_ORG}
+- openLink: ${METRO_URL}/--/calendar
+- extendedWaitUntil:
+    visible:
+      id: 'calendar.today'
+    timeout: 30000
+- waitForAnimationToEnd
+- assertNotVisible:
+    id: 'offline.band'
+- takeScreenshot: calendar-online
+- runScript:
+    file: ../batch/helper.js
+    env:
+      ASK: /api?to=stopped
+- pressKey: Home
+- launchApp:
+    appId: host.exp.Exponent
+    stopApp: false
+- extendedWaitUntil:
+    visible:
+      id: 'offline.band'
+    timeout: 30000
+- takeScreenshot: calendar-band
+- repeat:
+    while:
+      notVisible:
+        id: 'twoFactorOverdue.signOut'
+    times: 12
+    commands:
+      - runScript:
+          file: ../batch/helper.js
+          env:
+            ASK: /api?to=stopped
+      - extendedWaitUntil:
+          visible:
+            id: 'twoFactorOverdue.signOut'
+          timeout: 30000
+          optional: true
+- assertVisible:
+    id: 'twoFactorOverdue.signOut'
+- waitForAnimationToEnd
+- takeScreenshot: standin
+- assertNotVisible:
+    id: 'offline.band'
+- assertNotVisible:
+    id: 'calendar.refreshing'
+- runScript:
+    file: ../batch/helper.js
+    env:
+      ASK: /api?to=${API_BACK}
+- tapOn:
+    id: 'frame.organisation'
+- runFlow:
+    file: ../scroll-tap.yaml
+    env:
+      ID: switcher.tile.${OTHER_ORG}
+- extendedWaitUntil:
+    notVisible:
+      id: 'twoFactorOverdue.signOut'
+    timeout: 20000
+- extendedWaitUntil:
+    visible:
+      id: 'calendar.today'
+    timeout: 30000
+- extendedWaitUntil:
+    visible:
+      id: 'never.there'
+    timeout: 8000
+    optional: true
+- takeScreenshot: back
+- runScript:
+    file: ../batch/helper.js
+    env:
+      ASK: /api?to=up

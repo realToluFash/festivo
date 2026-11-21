@@ -1,0 +1,44 @@
+# sc-28122: Name: the Name row, tap Full name, keys up: Save and Cancel above the keys; Cancel with keys up closes to Your account with the Name row showing, past the ask that discards what was typed, name as it was; five in five. Needs ${METRO_URL}.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/settings/account
+- scrollUntilVisible:
+    element:
+      id: 'account.name'
+    timeout: 30000
+    centerElement: true
+- waitForAnimationToEnd:
+    timeout: 3000
+- repeat:
+    times: 5
+    commands:
+      - tapOn:
+          id: 'account.name'
+      - waitForAnimationToEnd:
+          timeout: 3000
+      - tapOn:
+          id: 'account.name.field'
+      - inputText: ' Typed'
+      - waitForAnimationToEnd:
+          timeout: 3000
+      - takeScreenshot: name-keys-up
+      - tapOn:
+          id: 'account.name.cancel'
+          waitToSettleTimeoutMs: 0
+          retryTapIfNoChange: false
+      # Typed text makes Cancel ask before it discards it; the ask showing is the tap landing.
+      - extendedWaitUntil:
+          visible:
+            id: 'account.name.discard'
+          timeout: 5000
+      - tapOn:
+          id: 'account.name.discard'
+      - waitForAnimationToEnd:
+          timeout: 3000
+      - takeScreenshot: name-after-cancel
+      - assertNotVisible:
+          id: 'account.name.cancel'
+      - assertNotVisible:
+          text: '.*Typed.*'
+      - assertVisible:
+          id: 'account.name'

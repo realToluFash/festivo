@@ -1,0 +1,20 @@
+# sc-29961: the demo's Waiting and Sign in timed out (opened over welcome, as PR #2917 draws it), on the iPad in portrait then landscape, for side-by-side pairs.
+appId: host.exp.Exponent
+---
+- setOrientation: PORTRAIT
+- openLink: ${METRO_URL}/--/demo/waiting?email=${EMAIL}
+- extendedWaitUntil: { visible: { id: 'demo.cancel' }, timeout: 30000 }
+- waitForAnimationToEnd
+- takeScreenshot: waiting-portrait
+- openLink: ${METRO_URL}/--/demo/welcome?signIn=timedOut
+- extendedWaitUntil: { visible: '{{t:signIn.codeTimedOutTitle}}.*', timeout: 30000 }
+- waitForAnimationToEnd
+- takeScreenshot: timed-out-portrait
+- setOrientation: LANDSCAPE_LEFT
+- waitForAnimationToEnd
+- takeScreenshot: timed-out-landscape
+- openLink: ${METRO_URL}/--/demo/waiting?email=${EMAIL}
+- extendedWaitUntil: { visible: { id: 'demo.cancel' }, timeout: 30000 }
+- waitForAnimationToEnd
+- takeScreenshot: waiting-landscape
+- setOrientation: PORTRAIT

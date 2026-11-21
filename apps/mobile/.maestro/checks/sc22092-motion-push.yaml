@@ -1,0 +1,46 @@
+# sc-22092: opens an event from Events home and goes back, then opens and closes the Call off sheet, for timing the push and the sheet from a screen recording.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events
+- extendedWaitUntil:
+    visible:
+      id: 'events.row.${EV_LIVE}'
+    timeout: 30000
+- waitForAnimationToEnd
+- tapOn:
+    id: 'events.row.${EV_LIVE}'
+- extendedWaitUntil:
+    visible:
+      id: 'events.phase.live'
+    timeout: 30000
+- waitForAnimationToEnd
+- takeScreenshot: pushed
+- tapOn:
+    point: '8%,10%'
+- waitForAnimationToEnd
+- tapOn:
+    id: 'events.row.${EV_LIVE}'
+- extendedWaitUntil:
+    visible:
+      id: 'events.phase.live'
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: 'events.end'
+- waitForAnimationToEnd
+- tapOn:
+    id: 'events.end'
+    retryTapIfNoChange: true
+- extendedWaitUntil:
+    visible:
+      id: 'events.endYes'
+    timeout: 10000
+- waitForAnimationToEnd
+- takeScreenshot: sheet-open
+- tapOn:
+    id: 'events.endNo'
+- extendedWaitUntil:
+    notVisible:
+      id: 'events.endYes'
+    timeout: 10000
+- waitForAnimationToEnd

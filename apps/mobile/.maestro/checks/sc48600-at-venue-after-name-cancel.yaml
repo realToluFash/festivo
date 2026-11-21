@@ -1,0 +1,28 @@
+# sc-48600: a link to ?at=name, Cancel, then a second link to ?at=venue on the same event still opens the Venue edit. Needs ${METRO_URL}, ${EVENT_ID}.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/${EVENT_ID}/edit?at=name
+- extendedWaitUntil:
+    visible:
+      id: 'event.edit.name.save'
+    timeout: 30000
+- tapOn:
+    id: 'event.edit.name.cancel'
+- extendedWaitUntil:
+    visible:
+      id: 'events.page'
+    timeout: 10000
+- waitForAnimationToEnd:
+    timeout: 3000
+- openLink: ${METRO_URL}/--/events/${EVENT_ID}/edit?at=venue
+- extendedWaitUntil:
+    visible:
+      id: 'event.edit.venue.save'
+    timeout: 20000
+- takeScreenshot: at-venue-after-name-cancel
+- tapOn:
+    id: 'event.edit.venue.cancel'
+- extendedWaitUntil:
+    visible:
+      id: 'events.page'
+    timeout: 10000

@@ -1,0 +1,22 @@
+# sc-3780 retest: a save from another part of ${EVENT_ID} (Venue's arrival note) shows its toast above the tab bar.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/${EVENT_ID}
+- extendedWaitUntil:
+    visible:
+      id: 'events.page'
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      text: 'Reply by.*'
+- tapOn: 'Venue to be confirmed.*'
+- waitForAnimationToEnd:
+    timeout: 5000
+- tapOn:
+    id: 'event.edit.venue.note'
+- inputText: 'Side gate, ring twice'
+- tapOn: 'Save'
+- takeScreenshot: other-toast-0
+- waitForAnimationToEnd:
+    timeout: 2000
+- takeScreenshot: other-toast

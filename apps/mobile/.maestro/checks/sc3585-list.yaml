@@ -1,0 +1,13 @@
+# sc-3585: the Events tab, each row's phase word.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events
+- extendedWaitUntil:
+    visible:
+      id: 'events\.phase\..+'
+    timeout: 30000
+- takeScreenshot: list
+- scroll
+- takeScreenshot: list-scrolled
+- scroll
+- takeScreenshot: list-scrolled-more

@@ -1,0 +1,14 @@
+# sc-65714: sc65714-sign-in-rules in the organisation ORG_ID, switched to first. Needs ORG_ID.
+appId: host.exp.Exponent
+---
+- runFlow: ../open-switcher.yaml
+- scrollUntilVisible:
+    element:
+      id: 'switcher.tile.${ORG_ID}'
+    direction: UP
+    timeout: 20000
+- tapOn:
+    id: 'switcher.tile.${ORG_ID}'
+- waitForAnimationToEnd:
+    timeout: 5000
+- runFlow: sc65714-sign-in-rules.yaml
