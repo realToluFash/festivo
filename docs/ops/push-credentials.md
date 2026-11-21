@@ -38,28 +38,52 @@ have leaked. Never on a schedule, and never to tidy up.
 
 1. Generate the new pair as above and replace both values in the secret store together.
 2. Deploy the api, which restarts the notification worker with it.
-3. Until each member next opens the web client signed in, their pushes fail and the old
-   target is dropped as expired. On that next load `apps/web/src/webPush.ts` sees the
-   key has changed, unsubscribes and subscribes again. Nobody is asked for permission again.
-4. Tell the owner the same turn, with the reason, since members miss web pushes until they
+3. Expect refusals, not expiries. A push service answers 403 to a send signed with a key the
+   subscription was not made with (RFC 8292 §4.2). For each old target the worker logs
+   `Web Push answered 403.` and keeps the target. That is the rotation working, not a bad
+   deploy: never put the old pair back because of it.
+4. A member's old target clears when they next open the web client signed in:
+   `apps/web/src/webPush.ts` sees the key has changed, unsubscribes the old endpoint and
+   subscribes again, without asking for permission again. The next send to the old endpoint
+   gets 410 and the target is dropped.
+5. A member who never comes back keeps a refused target until their session ends. Every
+   target belongs to a session, and `app:prune-refresh-tokens` (daily, 03:00 UTC, see
+   `docs/architecture/sessions.md`) ends a session 30 days after its last use, taking its
+   targets with it. So the 403s stop by themselves within about 31 days, and nothing needs
+   deleting by hand.
+6. Tell the owner the same turn, with the reason, since members miss web pushes until they
    come back.
 
 ## The owner's accounts
 
 These belong to the company and are created by the owner. Ops cannot make them.
 
-1. **EAS project** for `apps/mobile`, in the company's Expo account. Its id goes into the
-   build environment as `EAS_PROJECT_ID`; without it the app registers for no push.
+1. **EAS project** for `apps/mobile`, in the company's Expo account. Its id is
+   `EAS_PROJECT_ID`, read by `app.config.ts`; without it the app registers for no push. Set
+   it as an EAS environment variable in the `preview` and `production` environments, and
+   export it in the shell that runs `eas build`, which evaluates the config locally first.
+   The build profiles are in `apps/mobile/eas.json`.
 2. **APNs key** (`.p8`, key id, team id) from the company's Apple Developer account,
    uploaded to the EAS project's iOS credentials.
 3. **FCM v1 service account** from the company's Firebase project, with only the Firebase
    Cloud Messaging role, uploaded to the EAS project's Android credentials.
 
+## Check before the first push
+
+`compose.yaml` falls back to the development pair when `VAPID_PUBLIC_KEY` or
+`VAPID_PRIVATE_KEY` is unset, so a deploy compose that reuses its api environment and misses
+one boots on the private key in this repository without complaint. Before anyone is asked
+for push on a deployed environment, sign in on it and read `webPushKey` from
+`GET /api/auth/push-targets`. If it equals the `VAPID_PUBLIC_KEY` default in `compose.yaml`,
+stop: the environment is running the development pair. Set both variables and deploy again.
+
 ## Smoke test after a deploy
 
 1. In a desktop browser, sign in, allow notifications, and trigger a notification for that
    member: it arrives as a web push.
-2. On an iPhone and an Android phone, install a development build made from the EAS
-   project and do the same. Expo Go cannot receive remote push, so it proves nothing here.
+2. On an iPhone and an Android phone, install a build of the `preview` profile
+   (`eas build --profile preview`, from `apps/mobile`) and do the same. It is a release
+   build with the EAS project's credentials, so it receives push the way the store build
+   will. Expo Go cannot receive remote push, so it proves nothing here.
 3. Check the notification worker's logs for `Web Push answered` and Expo errors in the
    first minutes.
