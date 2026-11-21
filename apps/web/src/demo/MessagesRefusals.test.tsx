@@ -91,6 +91,14 @@ describe('The composer refuses a send that cannot go, at a desk (sc-3942)', () =
     await focused(subject());
   });
 
+  it('keeps the subject sentence while the subject is still too long', SLOW, async () => {
+    await messages('longSubject');
+    fireEvent.change(subject(), { target: { value: 'x'.repeat(151) } });
+
+    expect(subject().getAttribute('aria-invalid')).toBe('true');
+    expect(says(subject())[0]).toBe(SUBJECT);
+  });
+
   it('drops the subject sentence once the subject is short enough', SLOW, async () => {
     await messages('longSubject');
     fireEvent.change(subject(), { target: { value: 'Parking' } });

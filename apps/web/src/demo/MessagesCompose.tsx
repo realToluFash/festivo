@@ -105,7 +105,8 @@ export function ComposePane({ opening, later: laterFirst }: { opening: boolean; 
     focus('check');
   }
 
-  function fixed(field: Field): void {
+  function fixed(field: Field, next: Partial<Draft>): void {
+    if (refusalsOfDraft({ ...current, ...next })[field] != null) return;
     setWrong(({ [field]: _gone, ...left }) => left);
   }
 
@@ -142,7 +143,7 @@ export function ComposePane({ opening, later: laterFirst }: { opening: boolean; 
                   onPick={(to) => {
                     act({ kind: 'draft', draft: { to } });
                     setRefused(null);
-                    fixed('who');
+                    fixed('who', { to });
                   }}
                   onClose={(back) => {
                     setToOpen(false);
@@ -235,8 +236,8 @@ export function ComposePane({ opening, later: laterFirst }: { opening: boolean; 
           wrong={wrong}
           previewOff={(countOf(draft.to, event.book.groups) ?? 0) === 0 ? PW.nobodyToPreview : null}
           onDraft={(next) => {
-            if (next.subject != null) fixed('subject');
-            if (next.body != null) fixed('body');
+            if (next.subject != null) fixed('subject', next);
+            if (next.body != null) fixed('body', next);
             act({ kind: 'draft', draft: next });
           }}
           onSend={send}
@@ -465,7 +466,9 @@ export function Composer({
         'mg-composer',
         tools ? '' : 'is-held',
         wrong.subject == null && wrong.body == null ? '' : 'is-wrong',
-      ].join(' ')}
+      ]
+        .filter(Boolean)
+        .join(' ')}
       onSubmit={(event) => {
         event.preventDefault();
         onSend();
