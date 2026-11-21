@@ -1,5 +1,6 @@
 import { type Ref } from 'react';
 import {
+  Platform,
   Pressable,
   StyleSheet,
   TextInput,
@@ -57,7 +58,7 @@ export function PasswordField({
       <TextInput
         {...rest}
         {...refusedField(refused, rest, labelID)}
-        {...passwordProps(revealed)}
+        {...passwordProps(Platform.OS, revealed)}
         {...holding}
         ref={ref}
         {...edging}
