@@ -281,6 +281,54 @@ describe('Budget / Staff rates (sc-101)', () => {
     ).toBeTruthy();
   });
 
+  it('gives focus back to the row an editor opened from', async () => {
+    signedIn();
+    serve({
+      'PUT /api/events/ev_1/budget/staff-rates/jobs/waiter': () => json(rates()),
+    });
+
+    fireEvent.click(await screen.findByRole('button', { name: /^Waiter,/u }));
+    fireEvent.change(screen.getByLabelText('Rate an hour'), { target: { value: '15' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Save rate' }));
+    await waitFor(() => expect(document.activeElement).toBe(row('Waiter')));
+
+    fireEvent.click(screen.getByRole('button', { name: 'Set Bar’s rate' }));
+    fireEvent.keyDown(screen.getByLabelText('Rate an hour'), { key: 'Escape' });
+    expect(document.activeElement).toBe(row('Bar'));
+
+    fireEvent.click(row('Door'));
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+    expect(document.activeElement).toBe(row('Door'));
+
+    const kunle = () =>
+      within(screen.getByRole('region', { name: 'People on their own rate' })).getByRole('button', {
+        name: /^Kunle Ajayi/u,
+      });
+    fireEvent.click(kunle());
+    fireEvent.keyDown(screen.getByLabelText('Rate an hour'), { key: 'Escape' });
+    expect(document.activeElement).toBe(kunle());
+
+    fireEvent.click(screen.getByRole('button', { name: 'Add one' }));
+    fireEvent.keyDown(screen.getByLabelText('Who'), { key: 'Escape' });
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Add one' }));
+  });
+
+  it('keeps focus in the field when the server refuses the rate', async () => {
+    signedIn();
+    serve({
+      'PUT /api/events/ev_1/budget/staff-rates/jobs/waiter': () =>
+        problem(403, 'permission_required'),
+    });
+
+    fireEvent.click(await screen.findByRole('button', { name: /^Waiter,/u }));
+    fireEvent.change(screen.getByLabelText('Rate an hour'), { target: { value: '15' } });
+    screen.getByRole('button', { name: 'Save rate' }).focus();
+    fireEvent.click(screen.getByRole('button', { name: 'Save rate' }));
+
+    await screen.findByText(/^Not saved\./u);
+    expect(document.activeElement).toBe(screen.getByLabelText('Rate an hour'));
+  });
+
   it('removes a job’s rate', async () => {
     signedIn();
     const sent = serve({
