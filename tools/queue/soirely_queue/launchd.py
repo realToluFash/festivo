@@ -16,7 +16,7 @@ import subprocess
 import time
 
 from . import machine, remote
-from .systemd import DAEMON_WAIT_SECONDS, daemon_status
+from .systemd import DAEMON_WAIT_SECONDS, TOKEN, daemon_status
 
 LABEL = "com.soirely.routine"
 WEB_LABEL = "com.soirely.web"
@@ -283,8 +283,9 @@ class Mac:
         if "not running" not in daemon_status(env, run):
             return
         spawn(["claude", "daemon", "run"],
-              env={"PATH": search_path(), **{key: env[key] for key in ("CLAUDE_CONFIG_DIR", "HOME")
-                                             if key in env}},
+              env={"PATH": search_path(),
+                   **{key: env[key] for key in ("CLAUDE_CONFIG_DIR", "HOME", TOKEN)
+                      if key in env}},
               stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
               start_new_session=True)
         for _ in range(DAEMON_WAIT_SECONDS):

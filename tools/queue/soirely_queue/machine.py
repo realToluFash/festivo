@@ -56,6 +56,8 @@ def config_dir():
 def path():
     return config_dir() / "agents.json"
 
+TOKEN = "CLAUDE_CODE_OAUTH_TOKEN"
+
 
 def env_file():
     return config_dir() / "env"
@@ -232,8 +234,25 @@ def account_file(folder):
     return folder.parent / ".claude.json" if is_claude_default(folder) else folder / ".claude.json"
 
 
+def token_name(folder):
+    """The env file's variable for the folder's account: `~/.claude-soirely-3` reads
+    `CLAUDE_CODE_OAUTH_TOKEN_CLAUDE_SOIRELY_3`."""
+    return f"{TOKEN}_" + re.sub(r"[^A-Z0-9]+", "_", folder.name.upper()).strip("_")
+
+
+def token_source(folder):
+    """The variable holding the `claude setup-token` token the folder's workers sign in
+    with, or None: the folder's own, then the plain one, which is every folder's."""
+    return next((name for name in (token_name(folder), TOKEN) if os.environ.get(name)), None)
+
+
 def account(folder):
-    """The email of the account logged in under `folder`, or None. No token is read."""
+    """Who the folder's workers run as, or None: `token` and the name it is filed under when
+    the env file holds one, which Claude uses ahead of any login and which names no email,
+    else the email of the account logged in there. No token is read."""
+    source = token_source(folder)
+    if source:
+        return ("token " + source.removeprefix(f"{TOKEN}_")) if source != TOKEN else "token"
     try:
         data = json.loads(account_file(folder).read_text())
     except (OSError, json.JSONDecodeError):
@@ -438,7 +457,8 @@ def check(config, known=None, logged_in=account):
         if folder and not logged_in(folder):
             login = "claude" if is_claude_default(folder) else f"CLAUDE_CONFIG_DIR={folder} claude"
             refused[role] = (f"no Claude login in {folder}: run {login}, then /login with the "
-                             "account this role should use")
+                             f"account this role should use, or set {token_name(folder)} in "
+                             "the env file")
             continue
         ready[role] = values
     return errors, refused, ready
