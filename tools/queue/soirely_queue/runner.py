@@ -234,6 +234,7 @@ def tick(db, home, platform, sq, python, now, dry_run, say, remote, config, read
         void_passes(db, now, say)
     if not dry_run and update.check(db, home, now, say):
         say("the new sq takes over from the next minute")
+        platform.restart_web()
     if not dry_run:
         platform.install(sq, machine.env_file(), python)
     remote = remote or shared.GitHubRefs()

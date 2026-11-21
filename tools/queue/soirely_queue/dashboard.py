@@ -20,7 +20,11 @@ RECENT = 20
 NEXT = 5
 # Asked of a peer, so two machines settling with each other never ask in a circle.
 OWN = "status.json?own=1"
-KEPT_SECONDS = 30
+# A reading takes a second or more, and every open page and every peer asks for one every few
+# seconds: without these, two machines' pages slow each other past the peers' time limit.
+SHARED_SECONDS = 3
+ASK_SECONDS = 10
+KEPT_SECONDS = 45
 
 
 def first_line(text):
@@ -206,19 +210,19 @@ def peer_views(peers, secret, fetch=remote.fetch):
 
 
 class PeerViews:
-    """The same for the page, which is read every few seconds and waits for no peer: each
-    call asks again behind it and returns the answers already in, while they are fresh."""
+    """The same for the page, which is read every few seconds and waits for no peer: a call
+    asks again behind it, each peer at most every `ASK_SECONDS`, and returns the answers
+    already in, while they are fresh."""
 
     def __init__(self, peers, secret, fetch=remote.fetch):
         self.peers, self.secret, self.fetch = peers, secret, fetch
-        self.kept, self.asking, self.lock = {}, set(), threading.Lock()
+        self.kept, self.asked, self.asking, self.lock = {}, {}, set(), threading.Lock()
 
     def ask(self, name, base):
         try:
             view = own_view(base, self.secret, self.fetch)
-            with self.lock:
-                self.kept.pop(name, None)
-                if view is not None:
+            if view is not None:
+                with self.lock:
                     self.kept[name] = (time.monotonic(), view)
         finally:
             with self.lock:
@@ -227,10 +231,13 @@ class PeerViews:
     def views(self):
         peers = self.peers()
         with self.lock:
-            unasked = [name for name in peers if name not in self.asking]
+            now = time.monotonic()
+            unasked = [name for name in peers if name not in self.asking
+                       and now - self.asked.get(name, -ASK_SECONDS) >= ASK_SECONDS]
             self.asking.update(unasked)
+            self.asked.update(dict.fromkeys(unasked, now))
             fresh = {name: view for name, (at, view) in self.kept.items()
-                     if name in peers and time.monotonic() - at < KEPT_SECONDS}
+                     if name in peers and now - at < KEPT_SECONDS}
         for name in unasked:
             threading.Thread(target=self.ask, args=(name, peers[name]), daemon=True).start()
         return fresh
@@ -276,15 +283,21 @@ def serve(read, port, open_page=True, say=print, session=lambda session_id: None
     None, and `peers` the names and addresses of the other machines. Loopback needs no
     token; anyone else does. Each request has a thread of its own, so a peer that is slow to
     answer, or a connection left idle, holds only itself; the queue is read by one request
-    at a time."""
+    at a time, and requests within `SHARED_SECONDS` of each other share a reading."""
     if not remote.loopback(host) and not remote.usable(secret):
         say(f"error: sq web will not listen on {host} without {remote.TOKEN} of at least "
             f"{remote.TOKEN_MIN} characters in the env file")
         return
 
-    reading = threading.Lock()
+    reading, last = threading.Lock(), {}
     others = PeerViews(peers, secret, fetch)
     others.views()
+
+    def shared():
+        with reading:
+            if "view" not in last or time.monotonic() - last["at"] >= SHARED_SECONDS:
+                last.update(view=read(time.time()), at=time.monotonic())
+            return last["view"]
 
     class Page(http.server.BaseHTTPRequestHandler):
         timeout = 10
@@ -309,10 +322,9 @@ def serve(read, port, open_page=True, say=print, session=lambda session_id: None
                     return self.send_error(404)
                 status, body = fetch(base, rest + (f"?{query}" if query else ""), secret)
             elif path == "/status.json":
-                with reading:
-                    view = read(time.time())
+                view = shared()
                 if "own=1" not in query.split("&"):
-                    view = settle(view, others.views())
+                    view = settle(dict(view), others.views())
                 body = json.dumps(view).encode()
             elif path == "/session.json":
                 with reading:
