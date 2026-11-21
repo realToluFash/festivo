@@ -541,59 +541,65 @@ export function EditGuest({
           text={W.companions}
           line={companions.length === 0 ? say.noneYet(0) : say.ofTen(companions.length)}
         />
-        {shown.map((c, index) => (
-          <View key={`${index}`} style={styles.companionBlock}>
-            <View style={styles.companion}>
-              <View style={styles.grow}>
-                <BoxField
-                  value={c}
-                  onChangeText={(text) =>
-                    setCompanions(companions.map((one, i) => (i === index ? text : one)))
-                  }
-                  accessibilityLabel={W.companionName}
-                  testID={`guest.edit.companion.${index}`}
-                />
-              </View>
-              {seats[index]?.arrived == null && (
-                <TextAction
-                  label={W.remove}
-                  plain
-                  onPress={() => {
-                    const held = seats[index];
-                    if (held != null && (held.table != null || held.meal === true)) {
-                      setRemoving(index);
-                      return;
+        {shown.map((c, index) => {
+          const arrived = seats[index]?.arrived != null;
+          const stays = say.companionStays(
+            c.trim() !== '' ? c.trim() : say.guestOf(name.trim() !== '' ? name.trim() : g.name),
+          );
+
+          return (
+            <View key={`${index}`} style={styles.companionBlock}>
+              <View style={styles.companion}>
+                <View style={styles.grow}>
+                  <BoxField
+                    value={c}
+                    onChangeText={(text) =>
+                      setCompanions(companions.map((one, i) => (i === index ? text : one)))
                     }
-                    drop(index);
-                  }}
-                  accessibilityLabel={`${W.remove} ${c}`}
-                  testID={`guest.edit.remove.${index}`}
-                />
-              )}
+                    accessibilityLabel={W.companionName}
+                    {...(arrived ? { accessibilityHint: stays } : {})}
+                    testID={`guest.edit.companion.${index}`}
+                  />
+                </View>
+                {!arrived && (
+                  <TextAction
+                    label={W.remove}
+                    plain
+                    onPress={() => {
+                      const held = seats[index];
+                      if (held != null && (held.table != null || held.meal === true)) {
+                        setRemoving(index);
+                        return;
+                      }
+                      drop(index);
+                    }}
+                    accessibilityLabel={`${W.remove} ${c}`}
+                    testID={`guest.edit.remove.${index}`}
+                  />
+                )}
+              </View>
+              {arrived && <DoneLine text={stays} size={14} reads={false} />}
+              <NeedsSection
+                title={NW.theirNeeds}
+                needs={companionNeeds[index] ?? NO_NEEDS}
+                onChange={(next) =>
+                  setCompanionNeeds(companionNeeds.map((one, at) => (at === index ? next : one)))
+                }
+                open={companionOpen.includes(index)}
+                onToggle={() =>
+                  setCompanionOpen(
+                    companionOpen.includes(index)
+                      ? companionOpen.filter((at) => at !== index)
+                      : [...companionOpen, index],
+                  )
+                }
+                lines={companionLines[index] ?? {}}
+                refs={companionRefs(index)}
+                testID={`guest.edit.companion.${index}.needs`}
+              />
             </View>
-            {seats[index]?.arrived != null && (
-              <DoneLine text={say.companionStays(c)} size={14} reads={false} />
-            )}
-            <NeedsSection
-              title={NW.theirNeeds}
-              needs={companionNeeds[index] ?? NO_NEEDS}
-              onChange={(next) =>
-                setCompanionNeeds(companionNeeds.map((one, at) => (at === index ? next : one)))
-              }
-              open={companionOpen.includes(index)}
-              onToggle={() =>
-                setCompanionOpen(
-                  companionOpen.includes(index)
-                    ? companionOpen.filter((at) => at !== index)
-                    : [...companionOpen, index],
-                )
-              }
-              lines={companionLines[index] ?? {}}
-              refs={companionRefs(index)}
-              testID={`guest.edit.companion.${index}.needs`}
-            />
-          </View>
-        ))}
+          );
+        })}
         {shown.length < companions.length && (
           <TextAction
             label={say.moreCompanions(companions.length - shown.length)}
