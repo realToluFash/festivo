@@ -9,8 +9,9 @@ import {
   moved,
   myNightStateOf,
   nightOf,
-  signedOutAt,
+  yoursAlone,
 } from './myNight.ts';
+import { clockOf } from './doorCode.ts';
 
 describe('a staff member’s night (sc-3915)', () => {
   it('links every state from the demo’s home, and reads an unknown one as tonight', () => {
@@ -29,9 +30,9 @@ describe('a staff member’s night (sc-3915)', () => {
   it('names one ending: the link’s, in the header and the sign-out line', () => {
     const night = nightOf('night');
 
-    expect(MN.only(night.linkEnds)).toBe('Tonight only · ends 02:00');
-    expect(MN.yoursAlone(signedOutAt(night))).toBe(
-      'This link is yours alone. You’ll be signed out at Sunday 02:00, and nothing stays on this device.',
+    expect(MN.only(clockOf(night.linkEndsAt))).toBe('Tonight only · ends 02:00');
+    expect(yoursAlone(night)).toBe(
+      'This link is yours alone. You’ll be signed out at Sunday 02:00, and nothing stays on this phone.',
     );
   });
 

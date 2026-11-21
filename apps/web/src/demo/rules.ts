@@ -335,6 +335,10 @@ export const WAYS_IN_PAGES: { name: string; states: { name: string; to: string }
       { name: 'Withdrawn', to: way('invitation', 'withdrawn') },
       { name: 'Already declined', to: way('invitation', 'declined') },
       { name: 'Not yours', to: way('invitation', 'not-yours') },
+      {
+        name: 'A phone-only account: Add your email address first',
+        to: way('invitation', 'no-email'),
+      },
       { name: 'Deleted', to: way('invitation', 'deleted') },
     ],
   },

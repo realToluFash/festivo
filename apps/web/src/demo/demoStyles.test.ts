@@ -203,6 +203,11 @@ const SHARED: readonly Family[] = [
     part: 'the initials of the Queue, which Team reuses',
   },
   {
+    prefix: 'rd',
+    sheets: ['redeem.css', 'staffSignIn.css'],
+    part: 'the redeem page (Redeem), whose column and fields the staff link reuses',
+  },
+  {
     prefix: 'ro',
     sheets: [NARROW, 'schedule.css', WIDE],
     part: 'the Schedule (Schedule) at both desk widths',

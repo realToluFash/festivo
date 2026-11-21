@@ -18,6 +18,7 @@ import {
   seatingOf,
   shownName,
   shownPeople,
+  signedOutTime,
   undo,
 } from './doorCheckIn.ts';
 
@@ -87,5 +88,20 @@ describe('check-in in the browser (sc-28230)', () => {
     expect(seatOf('walkin-1', 'seated')).toBe(CW.noSeat);
     expect(seatingOf('none')).toBe('none');
     expect(seatOf('adaeze', seatingOf('none'))).toBeNull();
+  });
+});
+
+describe('the shift page says when a browser is signed out (sc-4235)', () => {
+  it('adds the weekday when the end falls on a later day, so 02:00 never reads as tonight', () => {
+    expect(signedOutTime('2026-11-15T02:00:00Z', '2026-11-14T18:05:00Z')).toBe('Sunday 02:00');
+    expect(
+      CW.shift.signedOutAt(signedOutTime('2026-11-15T02:00:00Z', '2026-11-14T18:05:00Z')),
+    ).toBe(
+      'This link is yours alone. You’ll be signed out at Sunday 02:00, and nothing stays on this phone.',
+    );
+  });
+
+  it('gives the clock alone when the end is later the same day', () => {
+    expect(signedOutTime('2026-11-14T23:30:00Z', '2026-11-14T18:05:00Z')).toBe('23:30');
   });
 });

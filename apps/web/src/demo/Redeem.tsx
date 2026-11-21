@@ -38,6 +38,7 @@ import {
   nameLine,
   redeemStart,
   redeemStateOf,
+  isSecondNumber,
   rightPhoneCode,
   sendNewIn,
   shownNumber,
@@ -59,7 +60,7 @@ type Want = 'title' | 'field' | 'select' | 'number' | null;
 /** Where focus starts: the field being typed in, the heading of a step that shows the event, nothing on "Signed out." (a status). */
 function firstFocus(state: RedeemState): Want {
   if (state === 'signed-out') return null;
-  if (state === 'event-short') return 'number';
+  if (state === 'event-short' || state === 'second-number') return 'number';
   if (state === 'code-wrong') return 'select';
   if (state === 'code-expired' || state === 'code-expired-whatsapp' || state === 'code-exhausted')
     return 'title';
@@ -145,7 +146,20 @@ function RedeemPage({ state }: { state: RedeemState }) {
     if (step.kind === 'joinAs') go({ kind: 'in', name, checks: true });
     if (step.kind === 'code') {
       if (rightPhoneCode(step.digits)) {
-        go({ kind: 'in', name, checks: true });
+        if (isSecondNumber(number))
+          go(
+            {
+              kind: 'event',
+              name,
+              number,
+              checked: true,
+              busy: 'no',
+              usedUp: false,
+              secondNumber: true,
+            },
+            'number',
+          );
+        else go({ kind: 'in', name, checks: true });
         return;
       }
       const wrongs = step.wrongs + 1;
@@ -219,7 +233,10 @@ function RedeemPage({ state }: { state: RedeemState }) {
             titleRef={title}
             fieldRef={field}
             onName={setName}
-            onNumber={setNumber}
+            onNumber={(typed) => {
+              setNumber(typed);
+              if (step.secondNumber === true) setStep({ ...step, secondNumber: false });
+            }}
             onCountry={setCountry}
             onSend={() => {
               const lines = eventLines(name, number, country);
@@ -367,7 +384,7 @@ function RedeemPage({ state }: { state: RedeemState }) {
   );
 }
 
-function Title({
+export function Title({
   titleRef,
   children,
 }: {
@@ -385,7 +402,7 @@ function Tile() {
   return <span className={`rd-tile today-cover is-${MESH}`} aria-hidden="true" />;
 }
 
-function Primary({
+export function Primary({
   busy = false,
   submit = false,
   onClick,
@@ -414,7 +431,7 @@ function Primary({
 }
 
 /** B's onboarding field: the label inside, small once something is typed or it has focus. */
-function Field({
+export function Field({
   id,
   label,
   value,
@@ -466,7 +483,7 @@ function Field({
   );
 }
 
-function Says({
+export function Says({
   id,
   alert = false,
   children,
@@ -615,6 +632,7 @@ function EventStep({
   onSend: () => void;
 }) {
   const lines: EventLines = step.checked ? eventLines(name, number, country) : {};
+  if (lines.number == null && step.secondNumber === true) lines.number = R.secondNumber;
 
   function submit(event: FormEvent<HTMLFormElement>): void {
     event.preventDefault();
@@ -704,7 +722,7 @@ const CODE_LINES = {
 } as const;
 
 /** The phone code in a browser: one field and Verify, as the web's onboarding has it (WCAG 3.2.2); nothing is sent as it is typed. */
-function CodeStep({
+export function CodeStep({
   step,
   number,
   titleRef,
@@ -713,6 +731,7 @@ function CodeStep({
   onVerify,
   onText,
   onSendNew,
+  action = { idle: R.verify, busy: R.verifying },
 }: {
   step: Extract<Step, { kind: 'code' }>;
   number: string;
@@ -722,6 +741,7 @@ function CodeStep({
   onVerify: () => void;
   onText: () => void;
   onSendNew: () => void;
+  action?: { idle: string; busy: string };
 }) {
   const texted = step.via === 'text';
   const problem =
@@ -778,7 +798,7 @@ function CodeStep({
               )}
             </div>
             <Primary submit busy={busy}>
-              {busy ? R.verifying : R.verify}
+              {busy ? action.busy : action.idle}
             </Primary>
           </form>
           <div className="rd-ways">
@@ -801,7 +821,7 @@ function CodeStep({
   );
 }
 
-function SignOutLine({ size = 18 }: { size?: number }) {
+export function SignOutLine({ size = 18 }: { size?: number }) {
   return (
     <svg
       width={size}

@@ -79,6 +79,8 @@ export const R = {
   signedInAs: (name: string) => `Signed in as ${name}`,
   signedOutAt: `You’ll be signed out at ${clockOf(EVENT_ENDS)}.`,
   signedOut: 'Signed out.',
+  secondNumber:
+    'This is an alternative number on a Soirely account, so it cannot sign you in. Enter that account’s primary number, or make this one primary.',
   eventLater: 'The event in the browser has its own design.',
   eventsLater: 'Events has its own design.',
 } as const;
@@ -144,7 +146,16 @@ export type Step =
       signedOut: boolean;
     }
   | { kind: 'tooMany' }
-  | { kind: 'event'; name: string; number: string; checked: boolean; busy: Busy; usedUp: boolean }
+  | {
+      kind: 'event';
+      name: string;
+      number: string;
+      checked: boolean;
+      busy: Busy;
+      usedUp: boolean;
+      /** After the right phone code, the number is a verified alternative on an account (sc-4235). */
+      secondNumber?: boolean;
+    }
   | { kind: 'named'; checked: boolean; busy: Busy; usedUp: boolean }
   | { kind: 'joinAs'; busy: Busy }
   | { kind: 'member' }
@@ -190,6 +201,8 @@ export const REDEEM_STATES = [
   'code-exhausted',
   'code-failed',
   'used-up',
+  'code-second-number',
+  'second-number',
   'browser-in',
   'browser-in-view',
   'from-check-in',
@@ -201,6 +214,11 @@ export type RedeemState = (typeof REDEEM_STATES)[number];
 export const JOAO = { name: 'João Pereira', number: '912 345 412' };
 export const HUGO = { name: 'Hugo Faria', number: '913 222 908' };
 export const KEMI = 'Kemi Okafor';
+/** A verified alternative on another account: the right code signs it into nothing (sc-4235). */
+export const RITA = { name: 'Rita Sousa', number: '916 480 233' };
+
+export const isSecondNumber = (typed: string) =>
+  typed.replace(/\D/gu, '') === RITA.number.replace(/\D/gu, '');
 
 export function redeemStateOf(name: string | null): RedeemState {
   return REDEEM_STATES.find((one) => one === name) ?? 'enter';
@@ -308,6 +326,10 @@ function startOf(state: RedeemState): { step: Step; number: string; name: string
       return { step: code({ digits: '713908', problem: 'failed' }), ...joao };
     case 'used-up':
       return { step: event({ ...HUGO, usedUp: true }), ...hugo };
+    case 'code-second-number':
+      return { step: code({ digits: '71' }), ...RITA };
+    case 'second-number':
+      return { step: event({ ...RITA, checked: true, secondNumber: true }), ...RITA };
     case 'browser-in':
     case 'from-check-in':
       return { step: { kind: 'in', name: HUGO.name, checks: true }, ...hugo };
@@ -375,6 +397,11 @@ export const REDEEM_PAGES: readonly { name: string; states: readonly DemoLink[] 
       redeem('code-exhausted', 'The phone code, tried too often'),
       redeem('code-failed', 'It did not go'),
       redeem('used-up', 'Used up'),
+      redeem('code-second-number', 'An alternative number on an account: the code (sc-4235)'),
+      redeem(
+        'second-number',
+        'An alternative number, after the right code: back to the name (sc-4235)',
+      ),
     ],
   },
   {

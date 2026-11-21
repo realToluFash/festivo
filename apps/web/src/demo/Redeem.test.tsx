@@ -261,6 +261,30 @@ describe('a name, a number and the phone code (sc-4235)', () => {
     );
     expect((screen.getByLabelText('Your name') as HTMLInputElement).value).toBe('Hugo Faria');
   });
+
+  it('returns a second number on an account to the name and number, both kept, with a line under the number', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    await redeem('code-second-number');
+
+    type('Code from WhatsApp', SAMPLE.code);
+    press('Verify');
+    await wait(1000);
+
+    const number = screen.getByLabelText('Mobile number') as HTMLInputElement;
+    expect(screen.getByRole('heading', { level: 1, name: 'Joana & Rui’s wedding' })).toBeDefined();
+    expect((screen.getByLabelText('Your name') as HTMLInputElement).value).toBe('Rita Sousa');
+    expect(number.value).toBe('916 480 233');
+    expect(number.getAttribute('aria-describedby')).toBe('rd-number-line');
+    expect(screen.getByText(R.secondNumber)).toBeDefined();
+    expect(R.secondNumber).toBe(
+      'This is an alternative number on a Soirely account, so it cannot sign you in. Enter that account’s primary number, or make this one primary.',
+    );
+    expect(screen.queryByText(/Signed in as/u)).toBeNull();
+    await waitFor(() => expect(document.activeElement).toBe(number));
+
+    type('Mobile number', '912 345 412');
+    expect(screen.queryByText(R.secondNumber)).toBeNull();
+  });
 });
 
 describe('the Soirely wordmark', () => {

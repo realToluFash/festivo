@@ -204,6 +204,11 @@ describe('door staff check guests in from a browser (sc-28230)', () => {
   it('opens from the shift page and from You’re in at Can check guests in only', SLOW, async () => {
     await open('/demo/check-in/shift');
     expect(screen.getByRole('link', { name: 'Check-in' })).toBeDefined();
+    expect(
+      screen.getByText(
+        'This link is yours alone. You’ll be signed out at Sunday 02:00, and nothing stays on this phone.',
+      ),
+    ).toBeDefined();
     cleanup();
 
     await open('/demo/redeem?state=browser-in');
