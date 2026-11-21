@@ -158,7 +158,7 @@ function usePicksFit(
         weight={look.weight}
         onWidth={(text, width) => {
           const key = keyOf(text);
-          if (picksWidths.get(key) === width) return;
+          if (picksWidths.get(key) === width && measured) return;
           picksWidths.set(key, width);
           setMeasures((count) => count + 1);
         }}
