@@ -1,0 +1,109 @@
+/* sc-4019: Auto-seat by group at the top of the Seat tab, and its proposal in Without a seat (AutoSeat.dc.html). */
+.st-auto {
+  gap: var(--spaceSm);
+  padding-bottom: var(--spaceLg);
+  border-bottom: 1px solid var(--colorBorder);
+}
+
+.st-auto-h {
+  margin: 0;
+  font: 700 15px/1.3 var(--fontFamily);
+}
+
+.st-auto-go {
+  align-self: flex-start;
+}
+
+.st-auto-by {
+  display: flex;
+  align-items: center;
+  gap: var(--spaceSm);
+  margin: 0;
+  color: var(--colorInk);
+  font: 600 14px/1.4 var(--fontFamily);
+}
+
+.st-auto-dash {
+  flex: none;
+  width: 14px;
+  height: 14px;
+  border: 1.6px dashed var(--colorAttention);
+  border-radius: 50%;
+}
+
+.st-auto-acts {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--spaceSm) var(--spaceLg);
+}
+
+.st-auto-replaces {
+  color: var(--colorAttentionText);
+  font-weight: 600;
+}
+
+.st-auto-tray {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceLg);
+}
+
+.st-auto-sub {
+  margin: 0 0 var(--spaceSm);
+  font: 700 14px/1.3 var(--fontFamily);
+  letter-spacing: 0.01em;
+}
+
+.st-auto-tables {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceSm);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.st-auto-table {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceXs);
+  padding: var(--spaceSm) var(--spaceMd);
+  border: 1.5px dashed var(--colorAttention);
+  border-radius: 12px;
+}
+
+.st-auto-table.is-changed {
+  border-style: solid;
+  background: var(--colorAttentionTint);
+}
+
+.st-auto-table-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--spaceSm);
+}
+
+.st-auto-changed {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--spaceSm);
+  margin: 0;
+  color: var(--colorAttentionText);
+  font: 600 14px/1.4 var(--fontFamily);
+}
+
+.st-auto-changed svg,
+.st-auto-left svg {
+  flex: none;
+  margin-top: 3px;
+  color: var(--colorAttention);
+}
+
+.st-auto-left {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--spaceSm);
+  padding: var(--spaceXs) 0;
+}

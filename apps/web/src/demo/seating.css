@@ -475,6 +475,13 @@
   stroke-dasharray: 3 2.5;
 }
 
+.st-chair-q {
+  fill: var(--colorAttention);
+  font-family: var(--fontFamily);
+  font-weight: 700;
+  pointer-events: none;
+}
+
 .st-chair.is-unusable {
   fill: var(--stOff);
   stroke: var(--stOffEdge);
@@ -2983,4 +2990,18 @@
 .st-kept {
   flex: none;
   padding: var(--spaceMd) var(--spaceLg) 0 24px;
+}
+
+.st-party.is-proposed {
+  cursor: default;
+}
+
+.st-avatar.is-proposed {
+  border: 1.5px dashed var(--colorAttention);
+  background: var(--colorCard);
+  color: var(--colorInk);
+}
+
+.st-row-line.is-amber {
+  color: var(--colorAttentionText);
 }
