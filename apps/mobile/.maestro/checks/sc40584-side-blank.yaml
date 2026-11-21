@@ -1,0 +1,23 @@
+# sc-40584, Android phone on its side: a blank name refused by the keys' action key (Gboard's bottom-right key, tapped where Gboard draws it on its side) keeps the keys up on the field, the next key lands in it, and one scroll down shows the reason. Turns back upright at the end.
+appId: host.exp.Exponent
+---
+- setOrientation: LANDSCAPE_LEFT
+- waitForAnimationToEnd
+- runFlow: ../open-create-organisation.yaml
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 1500, optional: true }
+- takeScreenshot: side-01-arrive
+- tapOn: { point: '93%,83%' }
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 1500, optional: true }
+- takeScreenshot: side-02-action-refused
+- inputText: 'Q'
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 1500, optional: true }
+- takeScreenshot: side-03-action-typed
+- eraseText: 10
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 1500, optional: true }
+- takeScreenshot: side-04-cleared
+- swipe: { start: '50%, 32%', end: '50%, 21%', duration: 400 }
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 1500, optional: true }
+- takeScreenshot: side-05-scrolled
+- hideKeyboard: { optional: true }
+- tapOn: { id: 'createWalk.cancel', optional: true }
+- setOrientation: PORTRAIT

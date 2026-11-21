@@ -1,0 +1,15 @@
+appId: com.soirely.app
+---
+- tapOn: { id: 'signIn.forgot' }
+- extendedWaitUntil:
+    visible:
+      id: 'recovery\.email'
+    timeout: 15000
+- takeScreenshot: ${OUT}-forgot
+- tapOn: { id: 'recovery.back' }
+- extendedWaitUntil:
+    visible:
+      id: 'signIn\.password'
+    timeout: 15000
+- waitForAnimationToEnd
+- takeScreenshot: ${OUT}

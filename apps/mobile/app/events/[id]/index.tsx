@@ -1,0 +1,55 @@
+import { useLocalSearchParams } from 'expo-router';
+
+import { EventScreen } from '../../../src/components/EventScreen.tsx';
+import { COPIED_FROM, DUPLICATING } from '../../../src/kit/eventDuplicate.ts';
+import { choiceOf } from '@soirely/domain';
+
+import {
+  EVENT_AREA,
+  FROM_HAPPENING_NOW,
+  GUESTS_FILTER,
+  areaOf,
+} from '../../../src/kit/eventNav.ts';
+import { OPENED_GUEST } from '../../../src/kit/searchLinks.ts';
+import { ASKS_END } from '../../../src/kit/upToEvent.ts';
+import { CAME_FROM } from '../../../src/kit/outsideEvent.ts';
+
+/** An event's page, pushed over whatever opened it; from a copy, back leads to its original. A link that swaps the id on a mounted page starts the page afresh, so nothing one event had open reaches another (sc-48601). */
+export default function EventPage() {
+  const {
+    id = '',
+    [COPIED_FROM]: from,
+    [EVENT_AREA]: area,
+    [FROM_HAPPENING_NOW]: now,
+    [GUESTS_FILTER]: filter,
+    [DUPLICATING]: duplicating,
+    [OPENED_GUEST]: guest,
+    [ASKS_END]: asks,
+    [CAME_FROM]: cameFrom,
+  } = useLocalSearchParams<{
+    id?: string;
+    [COPIED_FROM]?: string;
+    [EVENT_AREA]?: string;
+    [FROM_HAPPENING_NOW]?: string;
+    [GUESTS_FILTER]?: string;
+    [DUPLICATING]?: string;
+    [OPENED_GUEST]?: string;
+    [ASKS_END]?: string;
+    [CAME_FROM]?: string;
+  }>();
+
+  return (
+    <EventScreen
+      key={id}
+      eventId={id}
+      area={areaOf(area)}
+      filter={choiceOf(filter ?? null)}
+      copiedFrom={from}
+      opensDuplicate={duplicating != null}
+      keepsTab={now != null}
+      opensGuest={guest}
+      opensEndNow={asks === 'endNow'}
+      cameFrom={cameFrom}
+    />
+  );
+}

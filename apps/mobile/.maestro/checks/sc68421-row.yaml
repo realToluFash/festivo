@@ -1,0 +1,32 @@
+# sc-68421: someone from outside on an event's People, in each locale. ${EV} has ${PERSON} from outside, with a long job label, in an organisation with a long name; its row, role sheet and Remove confirm.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/${EV}?area=people
+- extendedWaitUntil:
+    visible:
+      id: 'people.row.${PERSON}'
+    timeout: 30000
+- waitForAnimationToEnd: { timeout: 5000 }
+- takeScreenshot: list
+- tapOn:
+    id: 'people.row.${PERSON}'
+- extendedWaitUntil:
+    visible:
+      id: 'people.role.done'
+    timeout: 10000
+- waitForAnimationToEnd: { timeout: 3000 }
+- takeScreenshot: role
+- scrollUntilVisible:
+    element:
+      id: 'people.remove'
+    direction: DOWN
+- takeScreenshot: role-foot
+- tapOn:
+    id: 'people.remove'
+- extendedWaitUntil:
+    visible:
+      id: 'people.remove.keep'
+    timeout: 10000
+- takeScreenshot: remove
+- tapOn:
+    id: 'people.remove.keep'

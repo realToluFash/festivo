@@ -1,0 +1,24 @@
+# sc-36126: the Transfer ownership sheet's title and verb, opened on MEMBER (a membership id) and left unsent, so it runs in every language with one owner.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/settings/organisation
+- extendedWaitUntil:
+    visible:
+      id: organisation.card
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: organisation.ownership.transfer
+- tapOn:
+    id: organisation.ownership.transfer
+- scrollUntilVisible:
+    element:
+      id: organisation.transfer.${MEMBER}
+    centerElement: true
+- tapOn:
+    id: organisation.transfer.${MEMBER}
+- scrollUntilVisible:
+    element:
+      id: organisation.transfer.send
+- waitForAnimationToEnd
+- takeScreenshot: transfer-sheet

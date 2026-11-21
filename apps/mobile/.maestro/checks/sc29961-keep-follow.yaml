@@ -1,0 +1,19 @@
+# sc-29961: after Keep waiting and a tap outside, the screen goes on following the request: an approval made now shows within 20 seconds (made from the shell, .qa/sc29961/answer.py).
+# The run-out and answer helpers are not in the repository: their recipe is qa's comment #67586 on sc-29961. Without them this check fails after its wait, with nothing saying why.
+appId: host.exp.Exponent
+---
+- runFlow: ../sign-out.yaml
+- runFlow: ../sc29961-to-waiting.yaml
+- tapOn: { id: 'lostTwoFactor.cancel' }
+- extendedWaitUntil: { visible: '{{t:lostTwoFactor.cancelTitle}}', timeout: 10000 }
+- waitForAnimationToEnd
+- tapOn: { id: 'lostTwoFactor.cancelNo' }
+- tapOn: { id: 'lostTwoFactor.cancel' }
+- extendedWaitUntil: { visible: '{{t:lostTwoFactor.cancelTitle}}', timeout: 10000 }
+- waitForAnimationToEnd
+- tapOn: { point: '50%,12%' }
+- extendedWaitUntil: { notVisible: '{{t:lostTwoFactor.cancelTitle}}', timeout: 10000 }
+- takeScreenshot: closed
+- extendedWaitUntil: { visible: '{{t:lostTwoFactor.approvedTitle}}', timeout: 120000 }
+- runScript: { file: ../sc29961-stamp.js }
+- takeScreenshot: approved

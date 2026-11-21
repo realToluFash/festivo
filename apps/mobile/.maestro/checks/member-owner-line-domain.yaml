@@ -1,0 +1,19 @@
+# sc-13023: the member page named by ${OWNER_SUSPENDED_ID} carries membersScreen.ownerOnly, and no Restore beside it.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/settings/members
+- extendedWaitUntil:
+    visible: '{{t:membersScreen.title}}'
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: members.row.${OWNER_SUSPENDED_ID}
+    timeout: 20000
+- tapOn:
+    id: members.row.${OWNER_SUSPENDED_ID}
+- scrollUntilVisible:
+    element: '{{t:membersScreen.ownerOnly}}'
+    timeout: 20000
+- assertNotVisible:
+    id: members.restore
+- takeScreenshot: member-owner-line-domain

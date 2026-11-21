@@ -1,0 +1,38 @@
+# sc-560: the signed-in organisation's Email domains and Data and control, upright and on its side, for the pairs beside the demo. TAG names the state.
+appId: host.exp.Exponent
+---
+- setOrientation: PORTRAIT
+- openLink: ${METRO_URL}/--/settings/data-and-control/email-domains
+- extendedWaitUntil:
+    visible:
+      id: emailDomains.card
+    timeout: 20000
+- waitForAnimationToEnd:
+    timeout: 8000
+- takeScreenshot: email-domains-upright-${TAG}-product
+- openLink: ${METRO_URL}/--/settings/data-and-control
+- extendedWaitUntil:
+    visible:
+      id: dataAndControl.emailDomains
+    timeout: 20000
+- waitForAnimationToEnd:
+    timeout: 8000
+- takeScreenshot: hub-upright-${TAG}-product
+- setOrientation: LANDSCAPE_LEFT
+- openLink: ${METRO_URL}/--/settings/data-and-control/email-domains
+- extendedWaitUntil:
+    visible:
+      id: emailDomains.card
+    timeout: 20000
+- waitForAnimationToEnd:
+    timeout: 8000
+- takeScreenshot: email-domains-side-${TAG}-product
+- openLink: ${METRO_URL}/--/settings/data-and-control
+- extendedWaitUntil:
+    visible:
+      id: dataAndControl.emailDomains
+    timeout: 20000
+- waitForAnimationToEnd:
+    timeout: 8000
+- takeScreenshot: hub-side-${TAG}-product
+- setOrientation: PORTRAIT

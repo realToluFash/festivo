@@ -1,0 +1,59 @@
+# sc-39471: the tops of Events, the Calendar, Settings and a Settings page, at rest and scrolled once, on the demo, to put beside the other.
+appId: host.exp.Exponent
+---
+- setOrientation: ${ORIENT}
+- openLink: ${METRO_URL}/--/demo/events
+- waitForAnimationToEnd:
+    timeout: 8000
+- runFlow: ../developer-menu-close.yaml
+- waitForAnimationToEnd:
+    timeout: 3000
+- takeScreenshot: demo-events-rest
+- scroll
+- waitForAnimationToEnd:
+    timeout: 2000
+- takeScreenshot: demo-events-scrolled
+- openLink: ${METRO_URL}/--/demo/calendar
+- waitForAnimationToEnd:
+    timeout: 8000
+- runFlow: ../developer-menu-close.yaml
+- waitForAnimationToEnd:
+    timeout: 3000
+- takeScreenshot: demo-calendar-rest
+- scroll
+- waitForAnimationToEnd:
+    timeout: 2000
+- takeScreenshot: demo-calendar-scrolled
+- openLink: ${METRO_URL}/--/demo/settings
+- waitForAnimationToEnd:
+    timeout: 8000
+- runFlow: ../developer-menu-close.yaml
+- waitForAnimationToEnd:
+    timeout: 3000
+- takeScreenshot: demo-settings-rest
+- scroll
+- waitForAnimationToEnd:
+    timeout: 2000
+- takeScreenshot: demo-settings-scrolled
+- openLink: ${METRO_URL}/--/demo/settings/account
+- waitForAnimationToEnd:
+    timeout: 8000
+- runFlow: ../developer-menu-close.yaml
+- waitForAnimationToEnd:
+    timeout: 3000
+- takeScreenshot: demo-settings-account-rest
+- scroll
+- waitForAnimationToEnd:
+    timeout: 2000
+- takeScreenshot: demo-settings-account-scrolled
+- openLink: ${METRO_URL}/--/demo/settings/organisation
+- waitForAnimationToEnd:
+    timeout: 8000
+- runFlow: ../developer-menu-close.yaml
+- waitForAnimationToEnd:
+    timeout: 3000
+- takeScreenshot: demo-settings-organisation-rest
+- scroll
+- waitForAnimationToEnd:
+    timeout: 2000
+- takeScreenshot: demo-settings-organisation-scrolled

@@ -1,0 +1,41 @@
+# Needs an organisation with events typed anniversary and party; text size set outside the flow.
+# sc-75213: the Type level at the device's text size, Anniversary and Party chosen.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events
+- extendedWaitUntil: { visible: { id: 'events.filter' }, timeout: 30000 }
+- waitForAnimationToEnd
+- tapOn: { id: 'events.filter' }
+- extendedWaitUntil: { visible: { id: 'events.filter.menu' }, timeout: 10000 }
+- waitForAnimationToEnd
+- tapOn: { id: 'events.filter.type' }
+- waitForAnimationToEnd
+- takeScreenshot: type-top
+- tapOn: { id: 'events.filter.type.anniversary' }
+- runFlow:
+    when: { notVisible: { id: 'events.filter.type.party' } }
+    commands:
+      - swipe: { from: { id: 'events.filter.menu' }, direction: UP, duration: 400 }
+      - waitForAnimationToEnd
+- runFlow:
+    when: { notVisible: { id: 'events.filter.type.party' } }
+    commands:
+      - swipe: { from: { id: 'events.filter.menu' }, direction: UP, duration: 400 }
+      - waitForAnimationToEnd
+- runFlow:
+    when: { notVisible: { id: 'events.filter.type.party' } }
+    commands:
+      - swipe: { from: { id: 'events.filter.menu' }, direction: UP, duration: 400 }
+      - waitForAnimationToEnd
+- tapOn: { id: 'events.filter.type.party' }
+- waitForAnimationToEnd
+- takeScreenshot: type-picked
+- swipe: { from: { id: 'events.filter.menu' }, direction: UP, duration: 400 }
+- waitForAnimationToEnd
+- takeScreenshot: type-mid
+- swipe: { from: { id: 'events.filter.menu' }, direction: UP, duration: 400 }
+- waitForAnimationToEnd
+- takeScreenshot: type-mid2
+- swipe: { from: { id: 'events.filter.menu' }, direction: UP, duration: 400 }
+- waitForAnimationToEnd
+- takeScreenshot: type-foot
