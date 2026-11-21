@@ -31,6 +31,7 @@ import {
 } from '../../src/demo/filterSize/FilterSizeBoards.ts';
 import { COUNT_SIZE_BOARDS } from '../../src/demo/countSize/CountSizeBoards.ts';
 import { SHOW_SIZE_BOARDS } from '../../src/demo/showSize/ShowSizeBoards.ts';
+import { CALENDAR_HEADER_BOARDS } from '../../src/demo/calendarHeader/CalendarHeaderBoards.ts';
 import { SWITCHER_BOARDS } from '../../src/demo/OrgSwitcherBoards.ts';
 import { Heading } from '../../src/steps/Lines.tsx';
 import { SAMPLE } from '../../src/demo/samples.ts';
@@ -168,6 +169,14 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
   {
     page: 'Calendar · the Show menu’s words whole at the largest text sizes (sc-78219)',
     boards: SHOW_SIZE_BOARDS.map(({ title, what, href }) => ({
+      title,
+      what,
+      href: href as Href,
+    })),
+  },
+  {
+    page: 'Calendar · the iPad header’s title and Subscribe whole at the largest text sizes (sc-79265)',
+    boards: CALENDAR_HEADER_BOARDS.map(({ title, what, href }) => ({
       title,
       what,
       href: href as Href,
