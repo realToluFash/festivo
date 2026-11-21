@@ -48,6 +48,18 @@ describe('a 100-character organisation name in the frame (sc-486)', () => {
     );
   });
 
+  it("fits the iPad sidebar pill's invitations line alone to its own room, never capped at the name's size (sc-79559)", () => {
+    const opener = PILL.slice(
+      PILL.indexOf('function SidebarOpenerWords('),
+      PILL.indexOf('export function OrgPill('),
+    );
+    expect(opener).toMatch(
+      /const line = useSideFit\(waiting \?\? '', ROOMS\.waiting, fontScale, 'semibold', 'line'\);/u,
+    );
+    expect(opener).toMatch(/waitingSize=\{waiting == null \? undefined : line\.size\}/u);
+    expect(opener).not.toMatch(/Math\.min/u);
+  });
+
   it.each([
     ['with spaces', SPACED],
     ['with none', WORD],

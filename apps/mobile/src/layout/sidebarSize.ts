@@ -1,4 +1,5 @@
 import { tokens } from '../theme/tokens.ts';
+import { WAITING_RING } from './pillFit.ts';
 import { SIDEBAR_WIDTH, besideGlyph, fitWidest, piecesOf } from './textSize.ts';
 
 const LARGEST_SCALE = 2.4;
@@ -17,6 +18,7 @@ export const OPENER_GLYPH = 14;
 export const CARD_THUMB = 40;
 export const PERSON_GLYPH = 15;
 const DOT = tokens.spaceMd + 2 * tokens.spaceXxs;
+const ORG_INSIDE = INNER - tokens.spaceSm - 3 * tokens.spaceMd - ORG_MARK - OPENER_GLYPH;
 
 export interface SideRoom {
   size: number;
@@ -34,11 +36,8 @@ export const ROOMS = {
   back: { size: 14, glyph: BACK_GLYPH, inside: INNER - 2 * tokens.spaceMd - tokens.spaceXs },
   heading: { size: 12, glyph: 0, inside: INNER - 2 * tokens.spaceLg, tracking: HEADING_TRACKING },
   event: { size: 14, glyph: 0, inside: INNER - 3 * tokens.spaceLg - DOT },
-  org: {
-    size: 15,
-    glyph: 0,
-    inside: INNER - tokens.spaceSm - 3 * tokens.spaceMd - ORG_MARK - OPENER_GLYPH,
-  },
+  org: { size: 15, glyph: 0, inside: ORG_INSIDE },
+  waiting: { size: 12.5, glyph: 0, inside: ORG_INSIDE - WAITING_RING },
   cardName: { size: 14, glyph: 0, inside: INNER - 3 * tokens.spaceMd - CARD_THUMB },
   cardTags: { size: 12.5, glyph: 0, inside: INNER - 3 * tokens.spaceMd - CARD_THUMB },
   person: {
