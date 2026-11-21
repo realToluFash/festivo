@@ -1117,11 +1117,11 @@ function ChooseWhoPays({
       ? t('payers.notHundred', { percent: percentText(percent.total, locale) })
       : (served['split.shares'] ?? null);
   const payerError =
-    checked && picked === 'one' && payer === ''
+    checked && picked === 'one' && payerPicked === ''
       ? t('payers.choosePayer')
       : (served['split.payerId'] ?? null);
   const restError =
-    checked && picked === 'fixed' && rest === ''
+    checked && picked === 'fixed' && restPicked === ''
       ? t('payers.chooseRest')
       : (served['split.restId'] ?? null);
   const fixedError = (id: string): string | null => {
@@ -1157,6 +1157,13 @@ function ChooseWhoPays({
       );
       if (raced != null) {
         setStale(raced.message);
+        setChecked(false);
+        if (split?.mode === 'one') setPayerPicked('');
+        if (
+          split?.mode === 'fixed' &&
+          violations.some((one) => one.propertyPath === 'split.restId')
+        )
+          setRestPicked('');
         onRaced();
 
         return;
@@ -1185,16 +1192,16 @@ function ChooseWhoPays({
     setServed({});
     const split: SplitTyped | null =
       picked === 'one'
-        ? payer === ''
+        ? payerPicked === ''
           ? null
-          : { mode: 'one', payerId: payer }
+          : { mode: 'one', payerId: payerPicked }
         : picked === 'percent'
           ? percent.right
             ? { mode: 'percent', shares: percent.shares }
             : null
-          : rest === '' || Object.keys(fixed.errors).length > 0
+          : restPicked === '' || Object.keys(fixed.errors).length > 0
             ? null
-            : { mode: 'fixed', amounts: fixed.amounts, restId: rest };
+            : { mode: 'fixed', amounts: fixed.amounts, restId: restPicked };
     if (split == null) {
       setChecked(true);
       setTries((n) => n + 1);

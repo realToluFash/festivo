@@ -756,6 +756,98 @@ describe('Who is paying while others change it (sc-91, Live)', () => {
     vi.unstubAllGlobals();
   });
 
+  const REMOVED = {
+    violations: [
+      {
+        propertyPath: 'split.payerId',
+        code: 'payer_removed',
+        message:
+          'Aunt Funmi was removed by someone else while this was open, so nothing was saved.',
+      },
+    ],
+  };
+
+  async function liveChoose(refusal: typeof REMOVED) {
+    __setConfig({ ...before, mercureUrl: 'http://hub.test/.well-known/mercure' });
+    StubSource.made = [];
+    vi.stubGlobal('EventSource', StubSource);
+    signedIn();
+    let now = payers();
+    const sent = serve({
+      'GET /api/events/ev_1/budget/payers': () => json(now),
+      'POST /api/events/ev_1/budget/subscriptions': () =>
+        json({ token: 'tok', expiresAt: new Date(Date.now() + 3_600_000).toISOString() }),
+      'PUT /api/events/ev_1/budget/payers/splits': () => problem(422, 'validation_failed', refusal),
+    });
+    fireEvent.click(await chooseWhoPays());
+    fireEvent.click(await screen.findByRole('checkbox', { name: /^Cars/u }));
+    const budgeted = () => StubSource.made.filter((one) => String(one.url).includes('budget'));
+    await waitFor(() => expect(budgeted()).toHaveLength(1));
+
+    return {
+      saves: () => sent.filter((one) => one.line.startsWith('PUT')),
+      removeFunmi: async () => {
+        now = payers({ payers: [OBI, BAKARE] });
+        budgeted()[0]!.publish();
+        await waitFor(() =>
+          expect(screen.queryByRole('option', { name: 'Aunt Funmi' })).toBeNull(),
+        );
+      },
+    };
+  }
+
+  it('refuses the save with the reason when the live list dropped the chosen payer first', async () => {
+    const { saves, removeFunmi } = await liveChoose(REMOVED);
+    fireEvent.change(screen.getByLabelText('Payer'), { target: { value: 'funmi' } });
+    await removeFunmi();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+    expect(
+      await screen.findByText(
+        'Aunt Funmi was removed by someone else while this was open, so nothing was saved.',
+      ),
+    ).toBeTruthy();
+    expect(saves().map((one) => one.body)).toMatchObject([
+      { split: { mode: 'one', payerId: 'funmi' } },
+    ]);
+    expect(screen.queryByText('Choose a payer.')).toBeNull();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+    expect(await screen.findByText('Choose a payer.')).toBeTruthy();
+    expect(saves()).toHaveLength(1);
+  });
+
+  it('refuses the save with the reason when the live list dropped the payer for the rest first', async () => {
+    const { saves, removeFunmi } = await liveChoose({
+      violations: [{ ...REMOVED.violations[0]!, propertyPath: 'split.restId' }],
+    });
+    fireEvent.click(
+      screen.getByRole('radio', { name: 'Fixed amounts, and one payer covers the rest' }),
+    );
+    fireEvent.change(screen.getByLabelText('Who covers what is left'), {
+      target: { value: 'funmi' },
+    });
+    fireEvent.change(screen.getByLabelText('Mr and Mrs Obi · amount'), {
+      target: { value: '100.00' },
+    });
+    await removeFunmi();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+    expect(
+      await screen.findByText(
+        'Aunt Funmi was removed by someone else while this was open, so nothing was saved.',
+      ),
+    ).toBeTruthy();
+    expect(saves().map((one) => one.body)).toMatchObject([
+      { split: { mode: 'fixed', restId: 'funmi' } },
+    ]);
+    expect(screen.queryByText('Choose who covers what is left.')).toBeNull();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+    expect(await screen.findByText('Choose who covers what is left.')).toBeTruthy();
+    expect(saves()).toHaveLength(1);
+  });
+
   it('says the first share that moved, and washes every row whose share moved', async () => {
     __setConfig({ ...before, mercureUrl: 'http://hub.test/.well-known/mercure' });
     StubSource.made = [];
