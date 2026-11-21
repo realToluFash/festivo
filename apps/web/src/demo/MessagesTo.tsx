@@ -104,7 +104,7 @@ export function ToPopover({
   const quicks = invite
     ? (['notInvited', 'coming', 'notReplied'] as const)
     : (['coming', 'notReplied'] as const);
-  const who = to.kind === 'who' ? to.conditions : null;
+  const who = to.kind === 'who' && to.pick !== 'chosen' ? to.conditions : null;
   const pick = pickOf(to, book);
   const from = savedOf(book, pick);
   const count = who == null ? null : countIn(who, groups, world);
@@ -459,10 +459,7 @@ export function ToPopover({
           )}
           <label className="mg-radio-row">
             <input
-              type="radio"
-              name={name}
-              className="desk-radio"
-              checked={false}
+              {...radio('chosen')}
               onChange={() => tell(`${MW.chooseGuests} has its own design.`)}
             />
             <span className="today-grow">{MW.chooseGuests}</span>
