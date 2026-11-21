@@ -1,11 +1,12 @@
 import type { ReactNode, Ref } from 'react';
-import { Pressable, StyleSheet, View, type ViewInstance } from 'react-native';
+import { Pressable, StyleSheet, useWindowDimensions, View, type ViewInstance } from 'react-native';
 import Svg, { Circle, Path } from 'react-native-svg';
 
 import { Glyph, type GlyphName } from '../../components/Glyph.tsx';
 import { useReadOut } from '../../components/ReadOut.tsx';
 import { ShapeMark } from '../../components/Summary.tsx';
 import { Text } from '../../components/Text.tsx';
+import { atAccessibilitySizes } from '../../layout/textSize.ts';
 import { tokens } from '../../theme/tokens.ts';
 import { PaneBell } from '../events/EventFrame.tsx';
 import type { CeilingState } from './BudgetModel.ts';
@@ -203,6 +204,9 @@ export function MoneyRow({
   const named = value == null ? title : `${title}: ${value}`;
   const label = [named, tag?.word, line, more].filter(Boolean).join('. ');
   const box = [styles.row, { minHeight: line == null ? 52 : 64 }, lit && styles.lit];
+  const stacked = atAccessibilitySizes(useWindowDimensions().fontScale);
+  const ends = trail ?? (value == null ? null : <Amount text={value} quiet={quiet} />);
+  const end = stacked ? null : ends;
   const inner = (
     <>
       <View style={styles.titleRow}>
@@ -221,9 +225,9 @@ export function MoneyRow({
           {more}
         </Text>
       )}
+      {stacked && ends != null && <View style={styles.endUnder}>{ends}</View>}
     </>
   );
-  const end = trail ?? (value == null ? null : <Amount text={value} quiet={quiet} />);
 
   if (action != null)
     return (
@@ -424,6 +428,7 @@ const styles = StyleSheet.create({
   rowTitle: { flexShrink: 1, lineHeight: 16 * 1.3 },
   line: { lineHeight: 14 * 1.4 },
   amount: { fontVariant: ['tabular-nums'], flexShrink: 0, textAlign: 'right' },
+  endUnder: { alignSelf: 'flex-start', paddingTop: 2 },
   markWord: { flexDirection: 'row', alignItems: 'center', gap: tokens.spaceXs, flexShrink: 0 },
   caps: { minHeight: 36, flexDirection: 'row', alignItems: 'center', paddingTop: tokens.spaceXs },
   capsTitle: { flex: 1, letterSpacing: 12.5 * 0.08 },
