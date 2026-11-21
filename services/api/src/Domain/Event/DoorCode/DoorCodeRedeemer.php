@@ -34,11 +34,7 @@ use Symfony\Component\RateLimiter\LimiterInterface;
 use Symfony\Component\RateLimiter\RateLimiterFactoryInterface;
 use Symfony\Contracts\Translation\TranslatorInterface;
 
-/**
- * Opening and redeeming a door code (sc-72). Unknown, full, expired, stopped and a removed person's code are one refusal,
- * so a code cannot be found by elimination; each refusal spends the source's 10 a minute, and every try spends the code's.
- * Redeeming grants the event at once, with no membership and nothing waiting on anyone.
- */
+/** Every refusal is the same one, so a live code cannot be found by elimination. */
 final readonly class DoorCodeRedeemer
 {
     public function __construct(
@@ -106,12 +102,7 @@ final readonly class DoorCodeRedeemer
         };
     }
 
-    /**
-     * Signed in, the grant is the account's on every device. Signed out, it is held by a new account the device holds,
-     * under the name given, until sc-4235 proves a number for it.
-     *
-     * @return array{user: User, person: EventPerson, tokens: ?IssuedTokens, again: bool}
-     */
+    /** @return array{user: User, person: EventPerson, tokens: ?IssuedTokens, again: bool} */
     public function redeem(string $typed, ?string $name, ?User $reader, Request $request): array
     {
         $doorCode = $this->open($typed, $reader, $request);

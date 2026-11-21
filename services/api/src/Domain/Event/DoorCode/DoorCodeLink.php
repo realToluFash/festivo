@@ -11,10 +11,7 @@ use BaconQrCode\Renderer\RendererStyle\RendererStyle;
 use BaconQrCode\Writer;
 use Psl\Str;
 
-/**
- * The redeem address a door code's QR carries (sc-72), with the code in it. The app claims it where installed, as it
- * does the staff link's /w/; the browser's redeem pages answer it otherwise.
- */
+/** The app claims /d/ where installed, as it does the staff link's /w/; the browser answers it otherwise. */
 final readonly class DoorCodeLink
 {
     public const string PATH = '/d/';

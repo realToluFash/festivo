@@ -7,10 +7,7 @@ namespace App\Domain\Event\DoorCode;
 use Psl\SecureRandom;
 use Psl\Str;
 
-/**
- * A door code's text (sc-72): 8 characters of Crockford's base32, 32^8 ≈ 1.1 × 10^12 codes, shown as two groups of four.
- * Read in any case with spaces and hyphens ignored, and I, L and O read as 1, 1 and 0, as Crockford decodes them.
- */
+/** Crockford's base32, so I, L and O typed by hand read as 1, 1 and 0. */
 final readonly class DoorCodeText
 {
     public const string ALPHABET = '0123456789ABCDEFGHJKMNPQRSTVWXYZ';
