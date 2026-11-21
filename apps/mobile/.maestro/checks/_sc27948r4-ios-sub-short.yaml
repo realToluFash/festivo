@@ -1,0 +1,31 @@
+# sc-27948 retest r4: on the phone, a slow strip drag short of half springs Subscribe back; a drag up does not raise it; a drag lower scrolls its body and leaves the sheet in place.
+appId: host.exp.Exponent
+---
+- runFlow: sc27948/open-subscribe.yaml
+- swipe:
+    start: '201,72'
+    end: '201,260'
+    duration: 2000
+- waitForAnimationToEnd
+- takeScreenshot: after-short
+- assertVisible:
+    id: 'calendarFeed.close'
+- swipe:
+    start: '201,90'
+    end: '201,20'
+    duration: 1500
+- waitForAnimationToEnd
+- takeScreenshot: after-up
+- swipe:
+    start: '201,650'
+    end: '201,250'
+    duration: 800
+- waitForAnimationToEnd
+- takeScreenshot: after-body-scroll
+- assertVisible:
+    id: 'calendarFeed.close'
+- tapOn:
+    id: 'calendarFeed.close'
+- waitForAnimationToEnd
+- assertNotVisible:
+    id: 'calendarFeed.panel'
