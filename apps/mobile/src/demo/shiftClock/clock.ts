@@ -44,7 +44,7 @@ export function timeWords(at: number, now: number): string {
 export function hoursWords(minutes: number): string {
   const hours = Math.floor(minutes / 60);
   const rest = minutes % 60;
-  if (hours === 0) return `${rest} min`;
+  if (hours === 0 && rest > 0) return `${rest} min`;
 
   return rest === 0 ? `${hours} h` : `${hours} h ${rest} min`;
 }

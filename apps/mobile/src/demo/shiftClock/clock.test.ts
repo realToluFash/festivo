@@ -83,6 +83,7 @@ describe('hours worked', () => {
     expect(hoursWords(h(8, 44))).toBe('8 h 44 min');
     expect(hoursWords(h(61))).toBe('61 h');
     expect(hoursWords(5)).toBe('5 min');
+    expect(hoursWords(0)).toBe('0 h');
   });
 });
 
