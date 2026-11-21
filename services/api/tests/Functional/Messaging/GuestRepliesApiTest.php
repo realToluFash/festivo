@@ -4,9 +4,11 @@ declare(strict_types=1);
 
 namespace App\Tests\Functional\Messaging;
 
+use App\Domain\Guest\GuestNeedsRecord;
+use App\Domain\Guest\Model\GuestNeeds;
+use App\Domain\Guest\Reply\GuestAnswers;
 use App\Domain\Messaging\GuestReplies\GuestRepliesUnsubscribe;
 use App\Domain\Messaging\GuestReplies\GuestReplyLog;
-use App\Domain\Messaging\GuestReplies\GuestReplyRecorder;
 use App\Domain\Messaging\Interfaces\NotificationPreferencesInterface;
 use App\Domain\Messaging\NotificationWorker;
 use App\Domain\Organisation\OrganisationFounder;
@@ -18,7 +20,7 @@ use App\Entity\User;
 use App\Enum\EventType;
 use App\Enum\GuestInvitationMethod;
 use App\Enum\GuestReply;
-use App\Enum\GuestReplySource;
+use App\Enum\NeedKind;
 use App\Enum\NotificationCategory;
 use App\Enum\NotificationChannel;
 use App\Tests\ApiTestCase;
@@ -68,7 +70,8 @@ final class GuestRepliesApiTest extends ApiTestCase
         $tomi = $this->reply('Tomi Bello', GuestReply::Coming);
         self::mockTime(new DateTimeImmutable('2026-11-02 09:10', new DateTimeZone('UTC')));
         $kemi = $this->guest('Kemi Ade');
-        self::em()->wrapInTransaction(static fn () => self::service(GuestReplyRecorder::class)->needs($kemi));
+        $none = GuestNeeds::none();
+        self::em()->wrapInTransaction(static fn () => self::service(GuestNeedsRecord::class)->write($kemi, new GuestNeeds([...$none->codes, NeedKind::Diet->value => ['vegan']], $none->others, null), null));
         $this->work();
 
         $all = $this->as('GET', $this->path('?since=all'));
@@ -239,11 +242,7 @@ final class GuestRepliesApiTest extends ApiTestCase
     private function reply(string $name, GuestReply $answer): Guest
     {
         $guest = $this->guest($name);
-        self::em()->wrapInTransaction(static function () use ($guest, $answer): void {
-            $guest->reply($answer, self::service(ClockInterface::class)->now(), GuestReplySource::GuestPage);
-            self::em()->flush();
-            self::service(GuestReplyRecorder::class)->replied($guest, null);
-        });
+        self::service(GuestAnswers::class)->answer($guest, $answer);
         $this->work();
 
         return $guest;

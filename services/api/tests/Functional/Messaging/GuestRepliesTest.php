@@ -4,11 +4,16 @@ declare(strict_types=1);
 
 namespace App\Tests\Functional\Messaging;
 
+use App\Domain\Guest\GuestNeedsRecord;
+use App\Domain\Guest\Link\InvitationLinks;
+use App\Domain\Guest\Model\GuestNeeds;
+use App\Domain\Guest\Model\PageReply;
+use App\Domain\Guest\Model\RecordedReply;
+use App\Domain\Guest\Reply\GuestAnswers;
 use App\Domain\Messaging\EventMuter;
 use App\Domain\Messaging\GuestReplies\GuestRepliesSummary;
 use App\Domain\Messaging\GuestReplies\GuestRepliesUnsubscribe;
 use App\Domain\Messaging\GuestReplies\GuestReplyLog;
-use App\Domain\Messaging\GuestReplies\GuestReplyRecorder;
 use App\Domain\Messaging\Model\Audience;
 use App\Domain\Messaging\Model\RenderedNotification;
 use App\Domain\Messaging\Model\Trigger;
@@ -24,7 +29,8 @@ use App\Enum\EventType;
 use App\Enum\GuestChangeKind;
 use App\Enum\GuestInvitationMethod;
 use App\Enum\GuestReply;
-use App\Enum\GuestReplySource;
+use App\Enum\GuestReplyHow;
+use App\Enum\NeedKind;
 use App\Enum\Permission;
 use App\Enum\SeededRole;
 use App\Tests\Double\Messaging\RecordingPushSender;
@@ -109,10 +115,8 @@ final class GuestRepliesTest extends MessagingTestCase
     #[Test]
     public function aGuestWhoseOnlyChangeIsTheirNeedsIsCountedUnderChangedWithItsLabel(): void
     {
-        $guest = $this->guest('Tomi Bello');
-        $this->transaction(static fn () => self::service(GuestReplyRecorder::class)->needs($guest));
-        $this->transaction(fn () => self::service(GuestReplyRecorder::class)->flagged($this->guest('Kemi Ade')));
-        self::runUntilIdle();
+        $this->needs($this->guest('Tomi Bello'), ['vegan']);
+        $this->flag($this->guest('Kemi Ade'));
 
         self::assertSame(['1 updated dietary needs, 1 link may have reached the wrong person'], $this->titles($this->ada));
         $rows = $this->log()->unseen($this->ada->getId(), $this->eventId())->rows;
@@ -123,9 +127,7 @@ final class GuestRepliesTest extends MessagingTestCase
     public function aGuestWithAReplyAndANeedsChangeShowsTheReply(): void
     {
         $guest = $this->guest('Tomi Bello');
-        $this->reply($guest, GuestReply::Coming);
-        $this->transaction(static fn () => self::service(GuestReplyRecorder::class)->needs($guest));
-        self::runUntilIdle();
+        $this->reply($guest, GuestReply::Coming, ['vegan']);
 
         self::assertSame(['1 coming'], $this->titles($this->ada));
     }
@@ -155,7 +157,7 @@ final class GuestRepliesTest extends MessagingTestCase
         $this->reply($this->guest('Tomi Bello'), GuestReply::Coming);
         self::at('2026-11-02 10:10');
         $this->reply($this->guest('Kemi Ade'), GuestReply::Coming);
-        $this->transaction(fn () => self::service(GuestReplyRecorder::class)->needs($this->guest('Femi Ojo')));
+        $this->needs($this->guest('Femi Ojo'), ['vegan']);
         self::at('2026-11-02 11:00');
         self::runUntilIdle();
 
@@ -201,8 +203,7 @@ final class GuestRepliesTest extends MessagingTestCase
         $this->reply($this->guest('Tomi Bello'), GuestReply::Coming);
         $this->reply($this->guest('Kemi Ade'), GuestReply::NotComing);
         $this->guest('Femi Ojo');
-        $this->transaction(fn () => self::service(GuestReplyRecorder::class)->flagged($this->guest('Bisi Oke')));
-        self::runUntilIdle();
+        $this->flag($this->guest('Bisi Oke'));
         self::assertSame([], $this->emails($this->ada));
 
         self::at('2026-11-03 08:00');
@@ -325,6 +326,45 @@ final class GuestRepliesTest extends MessagingTestCase
     }
 
     #[Test]
+    public function aReplyAHostRecordsForAGuestIsToldLikeTheGuestsOwn(): void
+    {
+        $guest = $this->guest('Tomi Bello');
+        self::service(GuestAnswers::class)->answer($guest, GuestReply::Coming, recorded: new RecordedReply($this->owner, GuestReplyHow::Phone, false));
+        self::runUntilIdle();
+
+        self::assertSame(['1 coming'], $this->titles($this->ada));
+        self::assertSame(['1 new reply · Gala'], $this->pushes($this->ada));
+    }
+
+    #[Test]
+    public function aGuestsOwnNeedsChangeIsToldAndAHostsEditOfThemIsNot(): void
+    {
+        $tomi = $this->guest('Tomi Bello');
+        $kemi = $this->guest('Kemi Ade');
+        $this->reply($tomi, GuestReply::Coming);
+        self::at('2026-11-02 10:01');
+        $this->open($this->ada);
+        self::at('2026-11-02 10:05');
+        $this->reply($tomi, GuestReply::Coming, ['vegan']);
+        $this->transaction(fn () => self::service(GuestNeedsRecord::class)->write($kemi, self::diet(['halal']), $this->owner));
+        self::runUntilIdle();
+
+        self::assertSame(['1 updated dietary needs', '1 coming'], $this->titles($this->ada), 'The same reply with new needs is a needs change, not a changed reply.');
+        self::assertSame([[GuestChangeKind::Needs, 'Tomi Bello']], Vec\map($this->log()->unseen($this->ada->getId(), $this->eventId())->rows, static fn ($row): array => [$row->kind, $row->name]));
+    }
+
+    #[Test]
+    public function aGuestWhoTellsUsTheirLinkReachedTheWrongPersonIsTold(): void
+    {
+        $guest = $this->guest('Tomi Bello');
+        $this->flag($guest);
+        $this->flag($guest);
+
+        self::assertSame(['1 link may have reached the wrong person'], $this->titles($this->ada));
+        self::assertSame(1, self::rowCount('SELECT COUNT(*) FROM guest_reply_changes WHERE guest_id = :guest', ['guest' => $guest->getId()->toRfc4122()]), 'A second tell changes nothing.');
+    }
+
+    #[Test]
     public function aDoubledJobSendsOnce(): void
     {
         $this->reply($this->guest('Tomi Bello'), GuestReply::Coming);
@@ -388,15 +428,36 @@ final class GuestRepliesTest extends MessagingTestCase
         return $guest;
     }
 
-    private function reply(Guest $guest, GuestReply $answer): void
+    /**
+     * From the guest's own page, as a guest sends it.
+     *
+     * @param list<string>|null $diet sent with Coming
+     */
+    private function reply(Guest $guest, GuestReply $answer, ?array $diet = null): void
     {
-        $before = $guest->getReply();
-        $this->transaction(static function () use ($guest, $answer, $before): void {
-            $guest->reply($answer, self::now(), GuestReplySource::GuestPage);
-            self::em()->flush();
-            self::service(GuestReplyRecorder::class)->replied($guest, $before);
-        });
+        self::service(GuestAnswers::class)->answer($guest, $answer, new PageReply([], null === $diet ? null : self::diet($diet)));
         self::runUntilIdle();
+    }
+
+    /** @param list<string> $diet */
+    private function needs(Guest $guest, array $diet): void
+    {
+        $this->transaction(static fn () => self::service(GuestNeedsRecord::class)->write($guest, self::diet($diet), null));
+        self::runUntilIdle();
+    }
+
+    private function flag(Guest $guest): void
+    {
+        self::service(InvitationLinks::class)->flag($guest);
+        self::runUntilIdle();
+    }
+
+    /** @param list<string> $codes */
+    private static function diet(array $codes): GuestNeeds
+    {
+        $none = GuestNeeds::none();
+
+        return new GuestNeeds([...$none->codes, NeedKind::Diet->value => $codes], $none->others, null);
     }
 
     private function transaction(callable $change): void
