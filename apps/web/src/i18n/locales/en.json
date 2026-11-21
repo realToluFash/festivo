@@ -3860,7 +3860,7 @@
     "replaceTitle": "Replace {{name}}’s link?",
     "replaceLine": "Their current link stops working now.",
     "keepLink": "Keep this link",
-    "linkReplaced": "{{name}}’s link is replaced. Copy link gives them a new one to send."
+    "linkReplaced": "{{name}}’s link has been replaced. Copy link gives them a new one to send."
   },
   "schedule": {
     "crumb": "Breadcrumb",

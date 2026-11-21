@@ -362,7 +362,7 @@ describe('The Roster on the Staff page (sc-3906)', () => {
     await screen.findByRole('button', { name: 'Amaka Eze' });
     const more = document.querySelector('.rs-more');
     expect(more?.textContent).toBe('+1 more');
-    expect(more?.parentElement?.textContent).toBe('16:30 to 21:00 +1 more');
+    expect(more?.parentElement?.textContent).toBe('16:30\u00a0to 21:00 +1 more');
   });
 
   it('keeps a Shift cell with no shift on one line below 720 px only, in the paler grey, beside one with a shift (sc-71607)', async () => {
@@ -394,7 +394,7 @@ describe('The Roster on the Staff page (sc-3906)', () => {
       .slice(1)
       .map((row) => row.querySelectorAll('td')[2] as HTMLElement);
     expect(cells.map((cell) => [cell.textContent, [...cell.classList]])).toEqual([
-      ['16:30 to 21:00', ['rs-shift']],
+      ['16:30\u00a0to 21:00', ['rs-shift']],
       ['Not on a shift yet', ['rs-no-shift', 'rs-quiet']],
     ]);
     expect(cssRule('.rs-table td.rs-shift', ROSTER_CSS)).toContain('white-space: nowrap;');
@@ -406,6 +406,31 @@ describe('The Roster on the Staff page (sc-3906)', () => {
     expect(cssRule('.rs-table tbody td.rs-quiet', ROSTER_CSS)).toContain(
       'color: var(--colorInkSecondary);',
     );
+  });
+
+  it('lets the card scroll the Roster, so the bar stays in view on a long roster (sc-3912)', () => {
+    expect(cssRule('.rs.desk-page', ROSTER_CSS)).toContain('overflow: visible;');
+    expect(cssRule('.rs-bar', ROSTER_CSS)).toContain('position: sticky;');
+  });
+
+  it('fits the Link column beside an open person: a 360 px panel, a shift that breaks only after its day and before its end, closer cells (sc-3912)', () => {
+    expect(cssRule('.rs .mn-panel', ROSTER_CSS)).toContain('width: 360px;');
+    expect(cssRule('.rs .mn-split:has(> .mn-panel) .rs-table td.rs-shift', ROSTER_CSS)).toContain(
+      'white-space: normal;',
+    );
+    expect(
+      cssRule(
+        '.rs .mn-split:has(> .mn-panel) .rs-frame > .rs-table :is(thead th, tbody th, tbody td)',
+        ROSTER_CSS,
+      ),
+    ).toContain('padding-right: var(--spaceSm);');
+    expect(
+      cssRule(
+        '.rs .mn-split:has(> .mn-panel) .rs-frame > .rs-table :is(th, td):last-child',
+        ROSTER_CSS,
+      ),
+    ).toContain('padding-right: 0;');
+    expect(cssRule('.rs-more', ROSTER_CSS)).toContain('white-space: nowrap;');
   });
 
   it.each([
@@ -856,7 +881,9 @@ describe('Each person’s own link on the Roster (sc-3912)', () => {
     );
     expect(await within(row()).findByText('No link yet')).toBeDefined();
     expect(
-      screen.getAllByText('Amaka Eze’s link is replaced. Copy link gives them a new one to send.'),
+      screen.getAllByText(
+        'Amaka Eze’s link has been replaced. Copy link gives them a new one to send.',
+      ),
     ).not.toHaveLength(0);
   });
 
