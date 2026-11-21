@@ -1069,10 +1069,10 @@ function ChooseWhoPays({
   const currency = payers.currency;
   const [ticked, setTicked] = useState<readonly string[]>(start.ticked);
   const [mode, setMode] = useState<Mode>(start.mode);
-  const [payer, setPayer] = useState(start.payer ?? '');
+  const [payerPicked, setPayer] = useState(start.payer ?? '');
   const [percents, setPercents] = useState<Record<string, string>>({ ...start.percents });
   const [amounts, setAmounts] = useState<Record<string, string>>({ ...start.amounts });
-  const [rest, setRest] = useState(start.rest ?? '');
+  const [restPicked, setRest] = useState(start.rest ?? '');
   const [checked, setChecked] = useState(start.checked === true);
   const [served, setServed] = useState<Served>({});
   const [stale, setStale] = useState<string | null>(start.stale ?? null);
@@ -1087,6 +1087,9 @@ function ChooseWhoPays({
     if (tries > 0) who.current?.querySelector<HTMLElement>('[aria-invalid="true"]')?.focus();
   }, [tries]);
 
+  const stillThere = (id: string) => (payers.payers.some((one) => one.id === id) ? id : '');
+  const payer = stillThere(payerPicked);
+  const rest = stillThere(restPicked);
   const lines = inBudgetOrder(payers.lines);
   const present = ticked.filter((id) => payers.lines.some((line) => line.id === id));
   const choices = choicesFor(present.length);

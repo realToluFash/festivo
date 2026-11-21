@@ -512,7 +512,13 @@ describe('Who is paying (sc-91)', () => {
 
   it('says a payer removed elsewhere refused the save, and reads the costs again', async () => {
     signedIn();
+    let reads = 0;
     const sent = serve({
+      'GET /api/events/ev_1/budget/payers': () => {
+        reads += 1;
+
+        return json(reads === 1 ? payers() : payers({ payers: [OBI, BAKARE] }));
+      },
       'PUT /api/events/ev_1/budget/payers/splits': () =>
         problem(422, 'validation_failed', {
           violations: [
@@ -540,6 +546,10 @@ describe('Who is paying (sc-91)', () => {
         2,
       ),
     );
+    await waitFor(() => expect(screen.queryByRole('option', { name: 'Aunt Funmi' })).toBeNull());
+    const select = screen.getByLabelText<HTMLSelectElement>('Payer');
+    expect(select.value).toBe('');
+    expect(select.selectedOptions[0]?.textContent).toBe('Choose a payer');
   });
 
   it('flags a fixed split that no longer adds up, and Change the amounts opens it', async () => {
