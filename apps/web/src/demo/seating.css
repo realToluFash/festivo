@@ -159,6 +159,23 @@
   gap: var(--spaceMd);
 }
 
+/* At 320 px the trail takes its own line above the plan's tools and wraps, so no step is clipped (sc-32279). */
+@media (width <= 40rem) {
+  .st-top {
+    flex-wrap: wrap;
+    height: auto;
+  }
+
+  .st-crumb {
+    flex: 1 0 100%;
+  }
+
+  .st-crumb ol {
+    flex-wrap: wrap;
+    white-space: normal;
+  }
+}
+
 .st-crumb svg {
   flex: none;
 }
