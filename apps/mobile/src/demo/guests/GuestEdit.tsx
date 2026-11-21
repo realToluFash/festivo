@@ -215,9 +215,11 @@ function startCompanions(state: EditState | null, g: SampleGuest): string[] {
 
 /** Each field's companion as the guest has them, so a seat or a meal is known; a field added or prefilled here has none. */
 function startSeats(state: EditState | null, g: SampleGuest): (Companion | null)[] {
-  return state === 'editCompanions' || state === 'editMax'
-    ? startCompanions(state, g).map(() => null)
-    : [...g.companions];
+  if (state === 'editCompanions' || state === 'editMax')
+    return startCompanions(state, g).map(() => null);
+  if (state === 'editCompanionArrived')
+    return g.companions.map((c, at) => (at === 0 ? { ...c, arrived: '18:05' } : c));
+  return [...g.companions];
 }
 
 /** Edit guest (sc-3773): sc-1468's fields filled in; every refusal under its field before anything is sent. */
@@ -552,21 +554,26 @@ export function EditGuest({
                   testID={`guest.edit.companion.${index}`}
                 />
               </View>
-              <TextAction
-                label={W.remove}
-                plain
-                onPress={() => {
-                  const held = seats[index];
-                  if (held != null && (held.table != null || held.meal === true)) {
-                    setRemoving(index);
-                    return;
-                  }
-                  drop(index);
-                }}
-                accessibilityLabel={`${W.remove} ${c}`}
-                testID={`guest.edit.remove.${index}`}
-              />
+              {seats[index]?.arrived == null && (
+                <TextAction
+                  label={W.remove}
+                  plain
+                  onPress={() => {
+                    const held = seats[index];
+                    if (held != null && (held.table != null || held.meal === true)) {
+                      setRemoving(index);
+                      return;
+                    }
+                    drop(index);
+                  }}
+                  accessibilityLabel={`${W.remove} ${c}`}
+                  testID={`guest.edit.remove.${index}`}
+                />
+              )}
             </View>
+            {seats[index]?.arrived != null && (
+              <DoneLine text={say.companionStays(c)} size={14} reads={false} />
+            )}
             <NeedsSection
               title={NW.theirNeeds}
               needs={companionNeeds[index] ?? NO_NEEDS}

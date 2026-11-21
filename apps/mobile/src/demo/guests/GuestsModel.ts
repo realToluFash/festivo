@@ -134,6 +134,7 @@ export const EDIT_STATES = [
   'editCompanions',
   'editMax',
   'editSeated',
+  'editCompanionArrived',
   'editDiscard',
   'edit412',
   'editNotSaved',
@@ -1419,6 +1420,7 @@ export function guestOf(state: GuestsState | null): string | null {
     case 'languageEdit':
     case 'languageGuestChose':
     case 'editSeated':
+    case 'editCompanionArrived':
       return 'ines';
     case 'languageSet':
       return 'sophie';

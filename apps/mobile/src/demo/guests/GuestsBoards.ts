@@ -152,6 +152,10 @@ const GUESTS: Record<GuestsState, Board> = {
   editCompanions: ['Edit, companions', 'One named, one removed'],
   editMax: ['Edit, ten companions', 'Add a companion goes, and why'],
   editSeated: ['Edit, a seated companion', 'Remove Rui Duarte? The seat and the meal go'],
+  editCompanionArrived: [
+    'Edit, an arrived companion',
+    'Rui Duarte has no Remove, and the line says why',
+  ],
   editDiscard: ['Edit, Cancel with a change', 'Discard your changes?'],
   edit412: ['Edit, a colleague’s change', 'The 412: Use theirs or Keep mine'],
   editNotSaved: ['Edit failed', 'What was typed stays'],
