@@ -109,6 +109,8 @@ export function priceProblemWords(
 
 export const WHAT_MAX = 100;
 export const NOTE_MAX = 500;
+/** How long a figure another tab changed stays washed: the length of `bt-wash` in budget.css. */
+export const WASH_MS = 1600;
 
 export const characters = (typed: string): number => [...typed.trim()].length;
 
@@ -175,8 +177,9 @@ export function removedWords(t: TFunction, line: BudgetLine, locale: string): st
   const state = lineState(line);
 
   if (state === 'notPriced') return t('budget.removedNotPriced', { name: line.label });
-  if (state === 'nothingYet' || Number(line.cost.confirmed) === 0)
-    return t('budget.removedNothingYet', { name: line.label });
+  if (state === 'nothingYet') return t('budget.removedNothingYet', { name: line.label });
+  if (Number(line.cost.confirmed) === 0)
+    return t('budget.removedCostNothing', { name: line.label });
 
   return t('budget.removed', {
     name: line.label,

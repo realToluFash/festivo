@@ -18,6 +18,7 @@ export * from './guests.ts';
 export * from './vendors.ts';
 export * from './budget.ts';
 export * from './margin.ts';
+export * from './payers.ts';
 export * from './quotes.ts';
 export * from './staff.ts';
 export * from './emailDomains.ts';

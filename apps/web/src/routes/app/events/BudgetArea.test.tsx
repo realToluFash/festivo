@@ -8,7 +8,10 @@ import { __setConfig, config } from '../../../config.ts';
 import { __setSessionState, type Session } from '../../../session.ts';
 import { OWNER_PERMISSIONS, membership } from '../../../test-memberships.ts';
 import { routes } from '../../index.tsx';
+import { cssRule, stylesheet } from '../../../test-styles.ts';
 import { todayIn } from './quotesArea.ts';
+
+const BUDGET_CSS = stylesheet(import.meta.dirname, 'budget.css');
 
 const IRE = membership({ id: 'org_1', name: 'Ìrè Events' });
 
@@ -340,6 +343,19 @@ describe('changing a rate in place (sc-85)', () => {
       rate: '70.00',
       currency: 'GBP',
     });
+  });
+
+  it('lets the opened rate’s tint reach past its rows at a desk, the page never clipping it (sc-92)', async () => {
+    signedIn();
+    serve({});
+
+    fireEvent.click(await screen.findByRole('button', { name: /^Dinner\./u }));
+    expect(
+      screen.getByRole('textbox', { name: 'Rate for Dinner' }).closest('.bt.desk-page'),
+    ).not.toBeNull();
+    expect(cssRule('.bt.desk-page', BUDGET_CSS.slice(0, BUDGET_CSS.indexOf('@media')))).toContain(
+      'overflow: visible;',
+    );
   });
 
   it('Escape leaves the rate as it was and sends nothing', async () => {
@@ -810,6 +826,65 @@ describe('the Budget while others change it (sc-85)', () => {
       await screen.findByText('Dinner removed. The settled total fell by £6,528.'),
     ).toBeTruthy();
     await waitFor(() => expect(screen.queryByRole('button', { name: /^Dinner\./u })).toBeNull());
+    expect(screen.queryByText(/in another tab/u)).toBeNull();
+  });
+
+  it('never tells the reader their own emptied price came from another tab (sc-75696)', async () => {
+    signedIn();
+    const fee = (notPriced: boolean) =>
+      costed(
+        'fee',
+        'Planning fee',
+        {
+          category: 'other',
+          basis: 'fixed',
+          amount: '0.00',
+          notPriced,
+          quantity: QUANTITIES.fixed,
+        },
+        '0.00',
+      );
+    let emptied = false;
+    const priced = {
+      ...MARGIN_DINNER,
+      id: 'fee',
+      label: 'Planning fee',
+      category: 'other',
+      basis: 'fixed',
+      source: 'price',
+      markup: null,
+      price: '3000.00',
+    };
+    serve({
+      'GET /api/events/ev_1/budget': () =>
+        json(budget({ lines: [DINNER, fee(emptied)], notPriced: emptied ? 1 : 0 })),
+      'GET /api/events/ev_1/budget/margin': () => json(margin({ lines: [MARGIN_DINNER, priced] })),
+      'POST /api/events/ev_1/budget/subscriptions': hub,
+      'POST /api/events/ev_1/budget/margin/subscriptions': hub,
+      'PUT /api/events/ev_1/budget/lines/fee/charge': () => {
+        emptied = true;
+        return json(margin());
+      },
+    });
+    const plain = () =>
+      StubSource.made.find((one) =>
+        new URL(one.url).searchParams
+          .getAll('topic')
+          .includes(realtimeTopic('EventBudget', 'ev_1')),
+      );
+    await waitFor(() => expect(plain()).toBeDefined());
+
+    fireEvent.click(await screen.findByRole('button', { name: 'See margin' }));
+    fireEvent.click(await screen.findByRole('button', { name: /^Planning fee/u }));
+    fireEvent.change(screen.getByRole('textbox', { name: 'Charged at' }), {
+      target: { value: '' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+    expect((await screen.findAllByText('Price removed.')).length).toBeGreaterThan(0);
+    act(() => plain()!.publish());
+
+    fireEvent.click(screen.getByRole('button', { name: 'Hide margin' }));
+    expect((await screen.findAllByText(/1 cost not priced yet/u)).length).toBeGreaterThan(0);
     expect(screen.queryByText(/in another tab/u)).toBeNull();
   });
 

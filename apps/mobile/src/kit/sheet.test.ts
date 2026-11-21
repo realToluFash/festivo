@@ -7,6 +7,7 @@ import {
   sheetDragStarts,
   sheetKeysCover,
   sheetPadding,
+  sheetStripHas,
   sheetUnderKeys,
   sheetWindows,
 } from './sheet.ts';
@@ -142,6 +143,13 @@ describe('dragging a sheet down', () => {
     expect(sheetDragStarts({ from: -10, dx: 0, dy: 20 })).toBe(false);
     expect(sheetDragStarts({ from: 10, dx: 30, dy: 20 })).toBe(false);
     expect(sheetDragStarts({ from: 10, dx: 0, dy: 4 })).toBe(false);
+  });
+
+  it('holds a finger that lands in the strip, from the top edge to 44 pt below it', () => {
+    expect(sheetStripHas(0)).toBe(true);
+    expect(sheetStripHas(44)).toBe(true);
+    expect(sheetStripHas(45)).toBe(false);
+    expect(sheetStripHas(-1)).toBe(false);
   });
 
   it('reads the speed over the last tenth of a second before the finger lifts', () => {

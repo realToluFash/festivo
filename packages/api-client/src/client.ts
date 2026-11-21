@@ -139,6 +139,14 @@ import { type RoomScreen, type ScreenLink, asRoomScreen, asScreenLinks } from '.
 import { type BudgetLineTyped, type EventBudget, asEventBudget } from './budget.ts';
 import { type BudgetMargin, type LineCharge, asBudgetMargin } from './margin.ts';
 import {
+  type EventPayers,
+  type Payer,
+  type PayerTyped,
+  type SplitTyped,
+  asEventPayers,
+  asPayer,
+} from './payers.ts';
+import {
   type EventQuote,
   type EventQuotes,
   type OfferedVendor,
@@ -3771,6 +3779,50 @@ export class ApiClient {
     };
   }
 
+  /** Who is paying (sc-91): each payer's share, Paid and Still to come, and every cost with its split; 403 without budget.read. */
+  async payers(eventId: string): Promise<EventPayers> {
+    return asEventPayers(await this.get<unknown>(`${this.budgetPath(eventId)}/payers`));
+  }
+
+  /** 422 on `name` or `note`; 409 `payer_limit` with 20 payers on the event. */
+  async addPayer(eventId: string, typed: PayerTyped): Promise<Payer> {
+    const body = await this.post<{ payer?: unknown }>(`${this.budgetPath(eventId)}/payers`, typed);
+
+    return asPayer(body.payer);
+  }
+
+  async changePayer(eventId: string, payerId: string, typed: PayerTyped): Promise<Payer> {
+    const body = await this.put<{ payer?: unknown }>(this.payerPath(eventId, payerId), typed);
+
+    return asPayer(body.payer);
+  }
+
+  /** 409 `payer_covers_costs`, with `lineIds` and `count`, while the payer covers any cost. */
+  async removePayer(eventId: string, payerId: string): Promise<void> {
+    await this.delete<unknown>(this.payerPath(eventId, payerId));
+  }
+
+  /** Undo: the payer back in their place. 404 once erased, 409 `payer_limit`, 422 `name` when another payer took the name meanwhile. */
+  async putBackPayer(eventId: string, payerId: string): Promise<void> {
+    await this.delete<unknown>(`${this.payerPath(eventId, payerId)}/removal`);
+  }
+
+  /** Replaces each cost's split, or leaves them with no payer with `split` null; answers with Who is paying as it now stands. */
+  async choosePayers(
+    eventId: string,
+    lineIds: readonly string[],
+    split: SplitTyped | null,
+    currency: string,
+  ): Promise<EventPayers> {
+    return asEventPayers(
+      await this.put<unknown>(`${this.budgetPath(eventId)}/payers/splits`, {
+        lineIds,
+        split,
+        currency,
+      }),
+    );
+  }
+
   /** Client prices, markups and margin (sc-92); 403 `plan_required` without a plan with margin, `permission_required` without budget.margin. */
   async budgetMargin(eventId: string): Promise<BudgetMargin> {
     return asBudgetMargin(await this.get<unknown>(`${this.budgetPath(eventId)}/margin`));
@@ -3932,6 +3984,10 @@ export class ApiClient {
 
   private budgetPath(eventId: string): string {
     return `/api/events/${encodeURIComponent(eventId)}/budget`;
+  }
+
+  private payerPath(eventId: string, payerId: string): string {
+    return `${this.budgetPath(eventId)}/payers/${encodeURIComponent(payerId)}`;
   }
 
   private budgetLinePath(eventId: string, lineId: string): string {

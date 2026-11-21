@@ -110,6 +110,11 @@ export function sheetWindows(): SheetWindows {
 /** The top of a phone sheet a drag that moves it starts in, Apple's minimum hit target (sc-27948). */
 export const SHEET_DRAG_STRIP = 44;
 
+/** Whether a finger that landed `from` below the sheet's top landed in its strip. */
+export function sheetStripHas(from: number): boolean {
+  return from >= 0 && from <= SHEET_DRAG_STRIP;
+}
+
 /** A drag that lands in the strip and moves more down or up than across moves the sheet; `from` is where the finger landed, measured from the sheet's top. */
 export function sheetDragStarts({
   from,
@@ -120,7 +125,7 @@ export function sheetDragStarts({
   dx: number;
   dy: number;
 }): boolean {
-  return from >= 0 && from <= SHEET_DRAG_STRIP && Math.abs(dy) > 8 && Math.abs(dy) > Math.abs(dx);
+  return sheetStripHas(from) && Math.abs(dy) > 8 && Math.abs(dy) > Math.abs(dx);
 }
 
 /** How fast the finger was moving down as it let go, in pt per ms, over its last tenth of a second. */

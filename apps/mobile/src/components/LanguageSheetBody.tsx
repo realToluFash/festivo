@@ -1,11 +1,12 @@
 import { LOCALES } from '@soirely/domain';
 import { type ReactNode, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, View, useWindowDimensions } from 'react-native';
+import { Pressable, StyleSheet, View, useWindowDimensions } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
 
 import { doneGap, doneUnder, lineInList } from '../layout/languageSheet.ts';
 import { titleSize, wordsIn } from '../layout/textSize.ts';
 import { tokens } from '../theme/tokens.ts';
+import { SheetScrollView } from './Sheet.tsx';
 import { Text, TitleCap } from './Text.tsx';
 import { MeasuredWords, Title } from './Title.tsx';
 
@@ -47,7 +48,7 @@ export function LanguageSheetBody({
         onClose={onClose}
         onDrawn={setDrawn}
       />
-      <ScrollView
+      <SheetScrollView
         style={styles.list}
         contentContainerStyle={styles.listContent}
         testID="language.list"
@@ -82,7 +83,7 @@ export function LanguageSheetBody({
             </Pressable>
           );
         })}
-      </ScrollView>
+      </SheetScrollView>
     </TitleCap.Provider>
   );
 }
