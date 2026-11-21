@@ -127,6 +127,8 @@ final class OrganisationExportTest extends ApiTestCase
         'email_suppressions' => "Soirely's own records",
         'event_changes' => 'change history',
         'event_covers' => 'photos',
+        'door_code_redemptions' => 'a link that opens without signing in',
+        'door_codes' => 'a link that opens without signing in',
         'event_mutes' => "notifications: one person's, or deliveries",
         'join_offer_dismissals' => "a person's own account (sc-611's rule)",
         'known_devices' => "sign-in credentials (sc-611's rule)",
