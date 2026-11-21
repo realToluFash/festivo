@@ -106,6 +106,8 @@ const RW_FR: typeof RW = {
     `[${mw(R.removed, { name })} ${shifts > 1 ? 'Ses services ne sont plus attribués.' : 'Son service n’est plus attribué.'}]`,
   notAdded: (name) => `[Impossible d’ajouter ${name}.]`,
   nextCopied: '[Étape suivante : une fois le lien copié envoyé, indiquez qu’il a été envoyé.]',
+  nextShared:
+    '[Étape suivante : une fois le lien partagé dans l’app envoyé, indiquez qu’il a été envoyé.]',
   stationChange: '[Changer de poste]',
   sectionGone: (section) => `[${section} a été supprimée du plan de table.]`,
 };
@@ -132,6 +134,7 @@ const FR: RosterWords = {
   links: {
     opened: '[Lien ouvert]',
     sent: '[Lien envoyé]',
+    shared: '[Partagé]',
     copied: fr.ownerClaim.copied,
     none: R.linkNone,
     noMobile: R.linkNoMobile,
@@ -145,6 +148,8 @@ const FR: RosterWords = {
   trail: (link, trail) => {
     if (trail == null || link === 'none') return null;
     if (link === 'copied') return `[Copié par ${trail.by} · ${trail.at} · pas marqué comme envoyé]`;
+    if (link === 'shared')
+      return `[Partagé par ${trail.by} · ${trail.at} · pas marqué comme envoyé]`;
     if (link === 'sent') return `[Marqué comme envoyé par ${trail.by} · ${trail.at}]`;
 
     return `[Ouvert à ${trail.at}]`;
@@ -160,6 +165,7 @@ interface Samples {
     | 'removed'
     | 'notAdded'
     | 'nextCopied'
+    | 'nextShared'
     | 'stationChange'
     | 'sectionGone'
   >;
@@ -167,7 +173,13 @@ interface Samples {
   lw: Omit<typeof LW, 'copy' | 'replace' | 'replaceOpen' | 'copied' | 'notIssued'>;
   opened: string;
   sent: string;
-  trail: { copied: (t: Trail) => string; sent: (t: Trail) => string; opened: (t: Trail) => string };
+  shared: string;
+  trail: {
+    copied: (t: Trail) => string;
+    shared: (t: Trail) => string;
+    sent: (t: Trail) => string;
+    opened: (t: Trail) => string;
+  };
 }
 
 const SAMPLES_ES: Samples = {
@@ -181,6 +193,8 @@ const SAMPLES_ES: Samples = {
     notAdded: (name) => `[No se ha podido añadir a ${name}.]`,
     nextCopied:
       '[Siguiente paso: cuando le haya enviado el enlace copiado, márquelo como enviado.]',
+    nextShared:
+      '[Siguiente paso: cuando le haya enviado el enlace compartido en la app, márquelo como enviado.]',
     stationChange: '[Cambiar de zona]',
     sectionGone: (section) => `[Se ha quitado ${section} del plano de mesas.]`,
   },
@@ -198,8 +212,10 @@ const SAMPLES_ES: Samples = {
   },
   opened: '[Enlace abierto]',
   sent: '[Enlace enviado]',
+  shared: '[Compartido]',
   trail: {
     copied: (t) => `[Copiado por ${t.by} · ${t.at} · sin marcar como enviado]`,
+    shared: (t) => `[Compartido por ${t.by} · ${t.at} · sin marcar como enviado]`,
     sent: (t) => `[Marcado como enviado por ${t.by} · ${t.at}]`,
     opened: (t) => `[Abierto a las ${t.at}]`,
   },
@@ -214,6 +230,8 @@ const SAMPLES_PT: Samples = {
       `[${mw(pt.roster.removed, { name })} ${shifts > 1 ? 'Os turnos ficam sem atribuição.' : 'O turno fica sem atribuição.'}]`,
     notAdded: (name) => `[Não foi possível adicionar ${name}.]`,
     nextCopied: '[Próximo passo: depois de enviar a ligação copiada, marque-a como enviada.]',
+    nextShared:
+      '[Próximo passo: depois de enviar a ligação partilhada na app, marque-a como enviada.]',
     stationChange: '[Mudar de posto]',
     sectionGone: (section) => `[${section} foi removida da planta de mesas.]`,
   },
@@ -231,8 +249,10 @@ const SAMPLES_PT: Samples = {
   },
   opened: '[Ligação aberta]',
   sent: '[Ligação enviada]',
+  shared: '[Partilhada]',
   trail: {
     copied: (t) => `[Copiada por ${t.by} · ${t.at} · não marcada como enviada]`,
+    shared: (t) => `[Partilhada por ${t.by} · ${t.at} · não marcada como enviada]`,
     sent: (t) => `[Marcada como enviada por ${t.by} · ${t.at}]`,
     opened: (t) => `[Aberta às ${t.at}]`,
   },
@@ -256,6 +276,7 @@ function productRoster(L: Locale, lang: 'es' | 'pt', s: Samples): RosterWords {
     links: {
       opened: s.opened,
       sent: s.sent,
+      shared: s.shared,
       copied: L.ownerClaim.copied,
       none: L.roster.linkNone,
       noMobile: L.roster.linkNoMobile,

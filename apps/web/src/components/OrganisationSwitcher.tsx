@@ -326,6 +326,7 @@ export function InvitationPanel({
         <ManagedBanner
           managed={{ organisation: { name: outcome.organisation }, message: outcome.message }}
           level={3}
+          takesFocus
         />
       ) : outcome?.kind === 'declined' ? (
         <Notice kind="quiet" lands={!onPage} takesFocus={onPage}>

@@ -572,7 +572,11 @@ describe('Settings > General > Company domain joining (sc-561)', () => {
       expect(screen.getByRole('button', { name: 'Remove ireweddings.com' }).textContent).toBe(
         'Remove…',
       );
-      expect(scrolled).toHaveBeenCalledWith({ block: 'nearest', inline: 'nearest' });
+      expect(scrolled).toHaveBeenCalledWith({
+        block: 'nearest',
+        inline: 'nearest',
+        behavior: 'smooth',
+      });
       expect(scrolled.mock.contexts).toEqual([notice]);
     });
 
