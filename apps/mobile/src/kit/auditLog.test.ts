@@ -41,6 +41,7 @@ const entry = (over: Partial<AuditEntry> & Pick<AuditEntry, 'id' | 'at' | 'day'>
   what: 'Made Ireti at 40 live',
   on: { name: 'Ireti at 40', eventId: 'evt-ireti', gone: false },
   changes: [],
+  recorded: [],
   type: 'events',
   action: 'event.made_live',
   address: null,
@@ -270,6 +271,45 @@ describe('an entry', () => {
       'reference',
     ]);
     expect(rows.find((row) => row.key === 'who')?.value).toBe('System');
+  });
+
+  it('shows what an entry recorded as rows of their own, after Changes and before Type and action', () => {
+    const exported = detailRows(
+      t,
+      entry({
+        id: 'exported',
+        at: '2026-10-19T11:42:09Z',
+        day: '2026-10-19',
+        action: 'audit_log.exported',
+        recorded: [
+          { label: 'Format', value: 'CSV' },
+          { label: 'Filters', value: 'Person: Priya Shah · Type: Event access' },
+          { label: 'Entries', value: '3' },
+        ],
+      }),
+    );
+    const plan = detailRows(
+      t,
+      entry({
+        id: 'plan',
+        at: '2026-10-16T09:20:14Z',
+        day: '2026-10-16',
+        changes: ['Plan: Free → Enterprise'],
+        recorded: [{ label: 'Reason', value: 'QA retest' }],
+      }),
+    );
+
+    expect(exported.map((row) => [row.label, row.value]).slice(4, 8)).toEqual([
+      ['Format', 'CSV'],
+      ['Filters', 'Person: Priya Shah · Type: Event access'],
+      ['Entries', '3'],
+      [t('auditLog.labels.kind'), expect.any(String)],
+    ]);
+    expect(exported.some((row) => row.key === 'changes')).toBe(false);
+    expect(plan.map((row) => row.value).slice(4, 6)).toEqual([
+      'Plan: Free → Enterprise',
+      'QA retest',
+    ]);
   });
 
   it('hands a phone’s entry page the entry it opened, and only that one', () => {

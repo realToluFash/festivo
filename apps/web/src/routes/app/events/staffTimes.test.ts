@@ -1,7 +1,7 @@
 import type { TFunction } from 'i18next';
 import { describe, expect, it } from 'vitest';
 
-import { rangeWords, staffTimes, wallOf } from './staffTimes.ts';
+import { rangeWords, shiftBreaks, staffTimes, wallOf } from './staffTimes.ts';
 
 const t = ((key: string, values: Record<string, string>) =>
   key === 'jobs.range'
@@ -73,5 +73,17 @@ describe('staff times (sc-3908)', () => {
       date: '2026-11-06',
       time: '16:30',
     });
+  });
+
+  it('lets a shift wrap only after its day and before its end, an overnight one too (sc-3912)', () => {
+    const keep = (line: string) => line.replaceAll(' ', '\u00a0');
+
+    expect(shiftBreaks('16:30 to 21:00')).toBe(`${keep('16:30 to')} 21:00`);
+    expect(shiftBreaks('Fri 6 Nov, 16:30 to 21:00')).toBe(
+      `${keep('Fri 6 Nov,')} ${keep('16:30 to')} 21:00`,
+    );
+    expect(shiftBreaks('Fri 6 Nov, 16:00 to Sat 7 Nov, 01:00')).toBe(
+      `${keep('Fri 6 Nov,')} ${keep('16:00 to')} ${keep('Sat 7 Nov,')} 01:00`,
+    );
   });
 });

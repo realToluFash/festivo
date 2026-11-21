@@ -32,6 +32,12 @@ export interface AuditOn {
   gone: boolean;
 }
 
+/** A row an entry records beside any change, in the reader's words: an export's Format, Filters and Entries, a plan change's Reason. */
+export interface AuditRecorded {
+  label: string;
+  value: string;
+}
+
 export interface AuditEntry {
   id: string;
   at: string;
@@ -43,6 +49,7 @@ export interface AuditEntry {
   what: string;
   on: AuditOn | null;
   changes: string[];
+  recorded: AuditRecorded[];
   type: AuditType;
   action: string;
   /** Sign-in and security entries only. */
@@ -115,17 +122,30 @@ function asLines(raw: unknown): string[] | null {
   return raw.every((line) => typeof line === 'string') ? (raw as string[]) : null;
 }
 
+function asRecorded(raw: unknown): AuditRecorded[] | null {
+  if (!Array.isArray(raw)) return null;
+  const rows = raw.map((row: unknown) =>
+    isRecord(row) && typeof row.label === 'string' && typeof row.value === 'string'
+      ? { label: row.label, value: row.value }
+      : null,
+  );
+
+  return rows.every((row) => row != null) ? rows : null;
+}
+
 function asEntry(raw: unknown): AuditEntry | null {
   if (!isRecord(raw)) return null;
   const type = AUDIT_TYPES.find((one) => one === raw.type);
   const who = asWho(raw.who);
   const on = raw.on === null ? null : asOn(raw.on);
   const changes = asLines(raw.changes);
+  const recorded = asRecorded(raw.recorded);
 
   if (
     type == null ||
     who == null ||
     changes == null ||
+    recorded == null ||
     (raw.on !== null && on == null) ||
     typeof raw.id !== 'string' ||
     typeof raw.at !== 'string' ||
@@ -150,6 +170,7 @@ function asEntry(raw: unknown): AuditEntry | null {
     what: raw.what,
     on,
     changes,
+    recorded,
     type,
     action: raw.action,
     address: raw.address,

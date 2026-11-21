@@ -363,7 +363,64 @@ final class AuditLogTest extends ApiTestCase
         $entries = Type\vec(Type\shape(['action' => Type\string(), 'changes' => Type\vec(Type\string())], true))->coerce($this->list($organisation, ['type' => 'audit_log'])['entries']);
         $exported = Iter\first(Vec\filter($entries, static fn (array $entry): bool => AuditType::EXPORTED === $entry['action'])) ?? self::fail('no export entry');
 
-        self::assertSame(['Format: None → csv', 'Filters: None → Person: Julien Moreau, Action type: Members and invitations, From: 2026-11-01', 'Rows: None → 0'], $exported['changes']);
+        self::assertSame([], $exported['changes']);
+        self::assertSame([
+            ['label' => 'Format', 'value' => 'CSV'],
+            ['label' => 'Filters', 'value' => 'Person: Julien Moreau · Type: Members and invitations · Dates: Nov 1 to …'],
+            ['label' => 'Entries', 'value' => '0'],
+        ], $exported['recorded']);
+    }
+
+    #[Test]
+    public function anExportsFormatFiltersAndEntriesAndAPlanChangesReasonAreRowsOfTheirOwnOnScreenAndInTheFile(): void
+    {
+        [$owner, $organisation] = $this->enterprise('folake@ire.events', 'Ìrè Events');
+        $export = static fn (mixed $format, mixed $filters, int $rows): array => ['format' => [null, $format], 'filters' => [null, $filters], 'rows' => [null, $rows]];
+        $this->entry($organisation, AuditType::EXPORTED, $owner, '-20 minutes', changes: $export('csv', null, 3));
+        $this->entry($organisation, AuditType::EXPORTED, $owner, '-19 minutes', changes: $export('jsonl', [], 12_345));
+        $this->entry($organisation, AuditType::EXPORTED, $owner, '-18 minutes', changes: $export('xlsx', ['person' => 'Priya Shah'], 1));
+        $this->entry($organisation, AuditType::EXPORTED, $owner, '-17 minutes', changes: $export('csv', ['type' => 'event_access'], 1));
+        $this->entry($organisation, AuditType::EXPORTED, $owner, '-16 minutes', changes: $export('csv', ['event' => 'Tola & Seun’s wedding'], 1));
+        $this->entry($organisation, AuditType::EXPORTED, $owner, '-15 minutes', changes: $export('csv', ['from' => '2026-11-01', 'to' => '2026-11-20'], 1));
+        $this->entry($organisation, AuditType::EXPORTED, $owner, '-14 minutes', changes: $export('csv', ['to' => '2026-11-20'], 1));
+        $this->entry($organisation, AuditType::EXPORTED, $owner, '-13 minutes', changes: $export('csv', ['to' => '2026-11-20', 'type' => 'retired_type', 'event' => 'A very long event name that goes on and on', 'person' => 'Priya Shah', 'from' => '2026-11-01'], 3));
+        $this->entry($organisation, 'organisation.plan_changed', $owner, '-12 minutes', changes: ['plan' => ['free', 'enterprise'], 'reason' => [null, 'QA retest']]);
+        $this->entry($organisation, 'organisation.plan_changed', $owner, '-11 minutes', changes: ['plan' => ['enterprise', 'free']]);
+
+        $this->signIn($owner);
+        $entries = Vec\reverse(Type\vec(Type\shape(['action' => Type\string(), 'changes' => Type\vec(Type\string()), 'recorded' => Type\vec(Type\shape(['label' => Type\string(), 'value' => Type\string()]))], true))->coerce($this->send('GET', $this->path($organisation))['entries']));
+        $rows = static fn (array $entry): array => Vec\map($entry['recorded'], static fn (array $row): string => $row['label'] . ': ' . $row['value']);
+
+        self::assertSame(['Format: CSV', 'Filters: None', 'Entries: 3'], $rows($entries[0]), 'an entry recorded before this story reads as a new one');
+        self::assertSame(['Format: JSON Lines', 'Filters: None', 'Entries: 12,345'], $rows($entries[1]));
+        self::assertSame(['Format: xlsx', 'Filters: Person: Priya Shah', 'Entries: 1'], $rows($entries[2]), 'a format the dialog does not offer reads as recorded');
+        self::assertSame('Filters: Type: Event access', $rows($entries[3])[1]);
+        self::assertSame('Filters: Event: Tola & Seun’s wedding', $rows($entries[4])[1]);
+        self::assertSame('Filters: Dates: Nov 1 to Nov 20', $rows($entries[5])[1]);
+        self::assertSame('Filters: Dates: … to Nov 20', $rows($entries[6])[1]);
+        self::assertSame('Filters: Person: Priya Shah · Type: retired_type · Event: A very long event name that goes on and on · Dates: Nov 1 to Nov 20', $rows($entries[7])[1], 'in the menu buttons\' order, a type the menu no longer has by its code');
+
+        foreach (Vec\take($entries, 8) as $entry) {
+            self::assertSame([], $entry['changes'], 'an export has no Changes row');
+        }
+
+        self::assertSame(['Plan: Free → Enterprise'], $entries[8]['changes']);
+        self::assertSame(['Reason: QA retest'], $rows($entries[8]));
+        self::assertSame(['Plan: Enterprise → Free'], $entries[9]['changes']);
+        self::assertSame([], $entries[9]['recorded'], 'no reason recorded, no Reason row');
+
+        $jsonl = Vec\map(Vec\filter(Str\split(Str\trim($this->export($organisation, 'jsonl')), "\n"), static fn (string $line): bool => '' !== $line), static fn (string $line): array => Type\dict(Type\string(), Type\nullable(Type\string()))->coerce(Json\decode($line)));
+        $changes = Vec\reverse(Vec\map($jsonl, static fn (array $row): ?string => $row['changes']));
+        self::assertSame('Format: CSV; Filters: None; Entries: 3', $changes[0]);
+        self::assertSame('Format: CSV; Filters: Person: Priya Shah · Type: retired_type · Event: A very long event name that goes on and on · Dates: Nov 1 to Nov 20; Entries: 3', $changes[7]);
+        self::assertSame('Plan: Free → Enterprise; Reason: QA retest', $changes[8]);
+        self::assertSame('Plan: Enterprise → Free', $changes[9]);
+        self::assertCount(12, Vec\keys($jsonl[0]));
+
+        $csv = $this->export($organisation, 'csv');
+        self::assertStringContainsString('"Format: JSON Lines; Filters: None; Entries: 12,345"', $csv);
+        self::assertStringContainsString('Plan: Free → Enterprise; Reason: QA retest', $csv);
+        self::assertStringNotContainsString('None →', $csv);
     }
 
     #[Test]

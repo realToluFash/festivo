@@ -226,6 +226,11 @@ export function detailRows(t: TFunction, entry: AuditEntry): DetailRow[] {
     entry.changes.length === 0
       ? null
       : { key: 'changes', label: label('changes'), value: entry.changes.join('\n') },
+    ...entry.recorded.map((row, at) => ({
+      key: `recorded-${at}`,
+      label: row.label,
+      value: row.value,
+    })),
     {
       key: 'kind',
       label: label('kind'),
