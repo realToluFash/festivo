@@ -1,5 +1,6 @@
 import {
   type Guest,
+  type GuestChange,
   type GuestDetails as Details,
   type GuestInvitationHow,
   type GuestList,
@@ -69,6 +70,7 @@ import {
   phaseCardOf,
 } from '../kit/guestRows.ts';
 import { checksIn, onEventDay } from '../kit/checkIn.ts';
+import { CHANGED, changeLine, changedRows, filterMenuWidth } from '../kit/guestChanges.ts';
 import { pasteBeside, pasteShown, waiting, whoseRows } from '../kit/pasteReply.ts';
 import { type GuestReplies, guestRepliesOf, guestReplyBy } from '../kit/replyBy.ts';
 import { type ScreenOffline, useHandOffline, useOffline, usePullToRefresh } from '../offline.ts';
@@ -154,6 +156,7 @@ export interface GuestsTop {
 export function EventGuests({
   event,
   filter = 'all',
+  changedSince,
   opens,
   leave,
   phase,
@@ -171,6 +174,8 @@ export function EventGuests({
   event: OrganisationEvent;
   /** The choice it opens on: a figure elsewhere opens the guests it counts (sc-3786). */
   filter?: Choice;
+  /** Changed since you looked, from the look it counts from (sc-4331). */
+  changedSince?: string | undefined;
   /** The guest whose details it opens on (sc-39534). */
   opens?: string | undefined;
   /** Back from the guest it opened on leaves the event, so a phone returns to Search with its term and matches (sc-39534). */
@@ -199,7 +204,18 @@ export function EventGuests({
   const invites = phase != null && eventAllows(phase, 'invite');
   const { kind } = useListAndPageLayout(SPACING, 'nothing');
   const [load, setLoad] = useState<Load>({ kind: 'loading' });
-  const [choice, setChoice] = useState<Choice>(filter);
+  const [choice, setReplyChoice] = useState<Choice>(filter);
+  const [since, setSince] = useState<string | null>(changedSince ?? null);
+  const [changes, setChanges] = useState<readonly GuestChange[] | null>(null);
+  const [unseen, setUnseen] = useState(0);
+  const sinceNow = useRef(since);
+  useEffect(() => {
+    sinceNow.current = since;
+  }, [since]);
+  const setChoice = useCallback((next: Choice) => {
+    setSince(null);
+    setReplyChoice(next);
+  }, []);
   const [typed, setTyped] = useState('');
   const [expanded, setExpanded] = useState<ReadonlySet<Standing>>(new Set());
   const [open, setOpen] = useState<string | null>(opens ?? null);
@@ -266,6 +282,19 @@ export function EventGuests({
             setLoad((was) => (was.kind === 'loaded' ? was : { kind: 'failed' }));
         },
       );
+      api.guestChanges(eventId).then(
+        (from) => {
+          if (mine === reading.current.list) setUnseen(from.rows.length);
+        },
+        () => undefined,
+      );
+      if (sinceNow.current != null)
+        api.guestChanges(eventId, sinceNow.current).then(
+          (from) => {
+            if (mine === reading.current.list) setChanges(from.rows);
+          },
+          () => undefined,
+        );
       // The wrong-person notice is read with the list, never in it: Can view reads the list (sc-1526).
       if (manages)
         api.flaggedGuests(eventId).then(
@@ -644,6 +673,21 @@ export function EventGuests({
         counts={counts}
         choice={choice}
         onChoice={setChoice}
+        changed={{
+          inUse: since != null,
+          count: since != null ? (changes?.length ?? 0) : unseen,
+          rows: changes,
+          onChoose: () =>
+            api.lookAtGuestChanges(eventId).then(
+              (from) => {
+                setChanges(from.rows);
+                setUnseen(0);
+                setReplyChoice('all');
+                setSince(from.since);
+              },
+              () => undefined,
+            ),
+        }}
         typed={typed}
         onTyped={setTyped}
         expanded={expanded}
@@ -950,6 +994,7 @@ function GuestRows({
   counts,
   choice,
   onChoice,
+  changed,
   typed,
   onTyped,
   expanded,
@@ -974,6 +1019,7 @@ function GuestRows({
   counts: Counts;
   choice: Choice;
   onChoice: (choice: Choice) => void;
+  changed: ChangedFilter;
   typed: string;
   onTyped: (typed: string) => void;
   expanded: ReadonlySet<Standing>;
@@ -998,8 +1044,12 @@ function GuestRows({
   pasteUnder: ReactNode;
 }) {
   const { t } = useTranslation();
-  const { view, shown } = viewOf(list.guests, counts, choice, typed, expanded);
-  const looking = choice !== 'all' || typed.trim() !== '';
+  const changedOnes = changed.inUse ? changedRows(list.guests, changed.rows ?? [], typed) : null;
+  const { view, shown } =
+    changedOnes == null
+      ? viewOf(list.guests, counts, choice, typed, expanded)
+      : { view: { kind: 'rows' as const, rows: [] }, shown: changedOnes.length };
+  const looking = changed.inUse || choice !== 'all' || typed.trim() !== '';
   const noReply = choice === 'noReply';
   const clear = () => {
     onTyped('');
@@ -1065,6 +1115,31 @@ function GuestRows({
     };
   };
 
+  const changedRow = (person: Person, change: GuestChange) => {
+    const name = person.guest.fullName;
+    const line = changeLine(t, change, person, timeZone, locale, new Date());
+    const selected = open === person.guest.id;
+
+    return {
+      key: person.id,
+      inset: 40,
+      selected,
+      row: (
+        <Row
+          title={name}
+          line={line}
+          lead={<MarkSlot kind={markOf(person.standing)} />}
+          opens
+          selected={selected}
+          pad={11}
+          onPress={() => onOpen(person.guest.id)}
+          accessibilityLabel={`${name}, ${line}`}
+          testID={`guests.row.${person.id}`}
+        />
+      ),
+    };
+  };
+
   return (
     <View style={styles.rows}>
       {done?.kind === 'added' && <DoneLine words={t('guestList.justAdded', { name: done.name })} />}
@@ -1094,7 +1169,7 @@ function GuestRows({
           testID="guests.search"
           ref={searchRef}
         />
-        <FilterChoice choice={choice} counts={counts} onChoose={onChoice} />
+        <FilterChoice choice={choice} counts={counts} onChoose={onChoice} changed={changed} />
         {pastes && pasteInRow}
       </View>
       {pastes && pasteUnder}
@@ -1112,7 +1187,17 @@ function GuestRows({
               <TextAction label={t('guestList.clear')} onPress={clear} testID="guests.clear" />
             </View>
           )}
-          {view.rows.length === 0 ? (
+          {changedOnes != null ? (
+            changed.rows == null ? null : changedOnes.length > 0 ? (
+              <RowList
+                items={changedOnes.map(({ person, change }) => changedRow(person, change))}
+              />
+            ) : typed.trim() === '' ? (
+              <NothingChanged onShowAll={clear} />
+            ) : (
+              <NoMatch onClear={clear} />
+            )
+          ) : view.rows.length === 0 ? (
             <NoMatch onClear={clear} />
           ) : (
             <RowList items={view.rows.map(({ person, indent }) => row(person, indent))} />
@@ -1143,18 +1228,23 @@ function FilterChoice({
   choice,
   counts,
   onChoose,
+  changed,
 }: {
   choice: Choice;
   counts: Counts;
   onChoose: (choice: Choice) => void;
+  changed: ChangedFilter;
 }) {
   const { t } = useTranslation();
   const trigger = useRef<ViewInstance>(null);
   const first = useRef<ViewInstance>(null);
   const [at, setAt] = useState<Anchor | null>(null);
   useAnchorFollowsTurn(trigger, at != null, setAt);
-  const word = t(CHOICE_KEY[choice]);
-  const figure = t('guestList.figure', { count: counts[choice] });
+  const apart = changed.inUse || changed.count > 0;
+  const word = changed.inUse ? t('guestList.changed.filter') : t(CHOICE_KEY[choice]);
+  const figure = t('guestList.figure', {
+    count: changed.inUse ? changed.count : counts[choice],
+  });
 
   return (
     <>
@@ -1171,17 +1261,28 @@ function FilterChoice({
         onClose={() => setAt(null)}
         opener={trigger}
         first={first}
-        width={230}
+        width={filterMenuWidth(apart)}
         testID="guests.filter.menu"
       >
+        {apart && (
+          <ChangedRow
+            first={first}
+            on={changed.inUse}
+            count={changed.count}
+            onPress={() => {
+              setAt(null);
+              changed.onChoose();
+            }}
+          />
+        )}
         {filterChoices(counts, choice).map((key, index) => {
-          const on = key === choice;
+          const on = !changed.inUse && key === choice;
           const n = t('guestList.figure', { count: counts[key] });
 
           return (
             <Pressable
               key={key}
-              ref={index === 0 ? first : undefined}
+              ref={index === 0 && !apart ? first : undefined}
               onPress={() => {
                 setAt(null);
                 onChoose(key);
@@ -1220,6 +1321,75 @@ function FilterChoice({
         })}
       </AnchoredMenu>
     </>
+  );
+}
+
+interface ChangedFilter {
+  inUse: boolean;
+  count: number;
+  rows: readonly GuestChange[] | null;
+  onChoose: () => void;
+}
+
+/** sc-4331: Changed since you looked, first in the menu and set apart from the reply choices. */
+function ChangedRow({
+  first,
+  on,
+  count,
+  onPress,
+}: {
+  first: RefObject<ViewInstance | null>;
+  on: boolean;
+  count: number;
+  onPress: () => void;
+}) {
+  const { t } = useTranslation();
+  const word = t('guestList.changed.filter');
+  const n = t('guestList.figure', { count });
+
+  return (
+    <Pressable
+      ref={first}
+      onPress={onPress}
+      style={({ pressed }) => [styles.menuRow, styles.menuApart, pressed && styles.menuPressed]}
+      accessibilityRole="button"
+      accessibilityState={{ selected: on }}
+      accessibilityLabel={`${word}, ${n}`}
+      testID={`guests.filter.${CHANGED}`}
+    >
+      <View style={styles.menuTick}>
+        {on && <Glyph name="tick" size={16} ink={tokens.colorAccentText} weight={2.6} />}
+      </View>
+      <Text
+        size={16}
+        weight={on ? 'semibold' : 'medium'}
+        accessible={false}
+        style={[styles.grow, on && styles.accent]}
+      >
+        {word}
+      </Text>
+      <Text size={15} weight="medium" accessible={false} style={[styles.secondary, styles.figures]}>
+        {n}
+      </Text>
+    </Pressable>
+  );
+}
+
+function NothingChanged({ onShowAll }: { onShowAll: () => void }) {
+  const { t } = useTranslation();
+  useReadOut(t('guestList.changed.nothing'));
+
+  return (
+    <View style={styles.noMatch} testID="guests.nothingChanged">
+      <Text size={18} weight="bold" accessibilityRole="header">
+        {t('guestList.changed.nothing')}
+      </Text>
+      <TextAction
+        label={t('guestList.changed.showAll')}
+        onPress={onShowAll}
+        testID="guests.nothingChanged.showAll"
+      />
+    </View>
   );
 }
 

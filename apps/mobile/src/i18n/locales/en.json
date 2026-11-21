@@ -2580,7 +2580,20 @@
     "reopenNotSaved": "Not saved. Check your connection and try again.",
     "askedBy": "{{reply}} · asked to decide by {{date}}",
     "askedByOn": "asked to decide by {{date}}",
-    "companionStays": "{{name}} has arrived, so they stay on the list."
+    "companionStays": "{{name}} has arrived, so they stay on the list.",
+    "changed": {
+      "filter": "Changed since you looked",
+      "nothing": "Nothing has changed since you last looked.",
+      "showAll": "Show all guests",
+      "line": "{{answer}} · {{when}}",
+      "repliedAt": "Replied at {{time}}",
+      "repliedOn": "Replied {{date}}",
+      "changedAt": "Changed at {{time}}",
+      "changedOn": "Changed {{date}}",
+      "needs": "Updated dietary needs",
+      "flagged": "Link may have reached the wrong person",
+      "question": "New question"
+    }
   },
   "guestNumbers": {
     "title": "Guests",

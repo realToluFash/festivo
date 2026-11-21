@@ -2673,7 +2673,20 @@
     "reopenNotSaved": "No se ha guardado. Compruebe su conexión e inténtelo de nuevo.",
     "askedBy": "{{reply}} · plazo hasta el {{date}}",
     "askedByOn": "plazo hasta el {{date}}",
-    "companionStays": "{{name}} ya ha llegado, así que se queda en la lista."
+    "companionStays": "{{name}} ya ha llegado, así que se queda en la lista.",
+    "changed": {
+      "filter": "Changed since you looked",
+      "nothing": "Nothing has changed since you last looked.",
+      "showAll": "Show all guests",
+      "line": "{{answer}} · {{when}}",
+      "repliedAt": "Replied at {{time}}",
+      "repliedOn": "Replied {{date}}",
+      "changedAt": "Changed at {{time}}",
+      "changedOn": "Changed {{date}}",
+      "needs": "Updated dietary needs",
+      "flagged": "Link may have reached the wrong person",
+      "question": "New question"
+    }
   },
   "guestNumbers": {
     "title": "Invitados",
