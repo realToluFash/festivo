@@ -61,6 +61,7 @@ import {
   STAFF_ROSTER_BOARDS,
   STAFF_TEXT_BOARDS,
 } from '../../src/demo/staffLink/StaffLinkBoards.ts';
+import { SHIFT_CLOCK_BOARDS, STAFF_HOURS_BOARDS } from '../../src/demo/shiftClock/boards.ts';
 import { tokens } from '../../src/theme/tokens.ts';
 
 interface Board {
@@ -2365,6 +2366,22 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
   {
     page: 'Staffing · one person’s own link, Share link first (sc-3912, sc-77903) · phone, tablet portrait and landscape',
     boards: [...STAFF_LINK_BOARDS, ...STAFF_TEXT_BOARDS].map(({ title, what, href }) => ({
+      title,
+      what,
+      href: href as Href,
+    })),
+  },
+  {
+    page: 'Staffing · clocking in and out, the clock card on a person’s own shift (sc-234) · phone (also the phone browser), tablet portrait and landscape',
+    boards: SHIFT_CLOCK_BOARDS.map(({ title, what, href }) => ({
+      title,
+      what,
+      href: href as Href,
+    })),
+  },
+  {
+    page: 'Staffing · the event’s hours, actual times and corrections (sc-234) · phone, tablet portrait and landscape',
+    boards: STAFF_HOURS_BOARDS.map(({ title, what, href }) => ({
       title,
       what,
       href: href as Href,

@@ -163,3 +163,32 @@ describe('Staff rates at a desk (sc-101)', () => {
     expect(staff.getAttribute('href')).toContain('state=staff_rates');
   });
 });
+
+describe('Staff rates after the event (sc-234)', () => {
+  beforeEach(() => {
+    __setConfig({ ...tested, environment: 'development' });
+  });
+
+  afterEach(() => {
+    cleanup();
+  });
+
+  it('puts Scheduled and Worked on each job, with the amount at each', SLOW, async () => {
+    await open('staff_rates_after');
+
+    const lead = within(main()).getByRole('button', { name: /^Floor lead/ });
+    expect(lead.textContent).toContain('Scheduled');
+    expect(lead.textContent).toContain('of which 9 h 8 min assumed (not clocked out)');
+    const door = within(main()).getByRole('button', { name: /^Door/ });
+    expect(door.textContent).toContain('1 person worked');
+    expect(door.textContent).toContain('£120.00');
+  });
+
+  it('keeps the scheduled cost as the headline, the worked cost under it', SLOW, async () => {
+    await open('staff_rates_after');
+
+    const head = within(main()).getByRole('region', { name: 'Staff rates' });
+    expect(head.querySelector('.srt-figure')?.textContent).toBe('£1,502');
+    expect(head.textContent).toContain('Worked 71 h 33 min of 91 h 30 min scheduled: £1,097.70.');
+  });
+});

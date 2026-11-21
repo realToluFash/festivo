@@ -885,6 +885,7 @@ export function StaffTabs({
     Roster: `/demo/events/${eventId}/staff/roster`,
     'Jobs and shifts': `/demo/events/${eventId}/staff/jobs`,
     Stations: `/demo/events/${eventId}/staff/stations`,
+    'Hours worked': `/demo/events/${eventId}/staff/hours`,
   };
 
   return (
