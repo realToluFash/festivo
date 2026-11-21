@@ -3979,6 +3979,7 @@
     "notChosen": "Not chosen yet",
     "marked_one": "A pick contains an allergen. Change it before you send.",
     "marked_other": "{{count, number}} picks contain an allergen. Change them before you send.",
+    "marked_many": "{{count, number}} picks contain an allergen. Change them before you send.",
     "yourPicks": "Your meal picks",
     "savedUntil": "Saved. You can change them until {{date}}.",
     "notSent": "Not sent yet",
