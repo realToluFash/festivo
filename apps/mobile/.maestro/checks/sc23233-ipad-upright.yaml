@@ -1,0 +1,39 @@
+# The bell's Notifications screen on an iPad, upright: card, the 12 pt under Back, More's centred card (sc-23233).
+appId: host.exp.Exponent
+---
+- setOrientation: PORTRAIT
+- openLink: ${METRO_URL}/--/events
+- extendedWaitUntil:
+    visible:
+      id: frame.bell
+    timeout: 30000
+- runFlow: ../developer-menu-close.yaml
+- openLink: ${METRO_URL}/--/notifications
+- extendedWaitUntil:
+    visible:
+      id: notifications.markAllRead
+    timeout: 15000
+- runFlow:
+    when:
+      visible:
+        id: notifications.pushAsk.notNow
+    commands:
+      - tapOn:
+          id: notifications.pushAsk.notNow
+- waitForAnimationToEnd
+- takeScreenshot: feed
+- tapOn:
+    id: notifications.item.${MUTED_ID}.more
+- extendedWaitUntil:
+    visible:
+      id: notifications.item.${MUTED_ID}.more.done
+    timeout: 10000
+- waitForAnimationToEnd
+- takeScreenshot: more
+- tapOn:
+    id: notifications.item.${MUTED_ID}.more.done
+- extendedWaitUntil:
+    notVisible:
+      id: notifications.item.${MUTED_ID}.more.done
+    timeout: 10000
+- waitForAnimationToEnd

@@ -1,0 +1,7 @@
+# sc-67659: the Guests demo, state offlinePt.
+appId: host.exp.Exponent
+---
+- setOrientation: ${ORIENT}
+- openLink: ${METRO_URL}/--/demo/guests?state=offlinePt
+- waitForAnimationToEnd: { timeout: 8000 }
+- takeScreenshot: d-offlinePt

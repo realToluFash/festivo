@@ -1,0 +1,36 @@
+# sc-68022: /demo/people and each of its page states on a phone reads ‹ Overview; with no event behind it, ‹ Overview opens the demo's index. The add states, loading and failed are sc68022-d-states2.yaml's.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/demo/people
+- extendedWaitUntil: { visible: '(Back to|Voltar a|Volver a|Retour à) Overview', timeout: 30000 }
+- waitForAnimationToEnd: { timeout: 5000 }
+- takeScreenshot: d-direct
+- tapOn: '(Back to|Voltar a|Volver a|Retour à) Overview'
+- waitForAnimationToEnd: { timeout: 6000 }
+- assertNotVisible: '(Back to|Voltar a|Volver a|Retour à) Overview'
+- takeScreenshot: d-direct-back
+- openLink: ${METRO_URL}/--/demo/people?state=people
+- extendedWaitUntil: { visible: '(Back to|Voltar a|Volver a|Retour à) Overview', timeout: 20000 }
+- waitForAnimationToEnd: { timeout: 4000 }
+- assertNotVisible: '(Back to|Voltar a|Volver a|Retour à) More'
+- takeScreenshot: d-state-people
+- openLink: ${METRO_URL}/--/demo/people?state=readOnly
+- extendedWaitUntil: { visible: '(Back to|Voltar a|Volver a|Retour à) Overview', timeout: 20000 }
+- waitForAnimationToEnd: { timeout: 4000 }
+- assertNotVisible: '(Back to|Voltar a|Volver a|Retour à) More'
+- takeScreenshot: d-state-readOnly
+- openLink: ${METRO_URL}/--/demo/people?state=lead
+- extendedWaitUntil: { visible: '(Back to|Voltar a|Volver a|Retour à) Overview', timeout: 20000 }
+- waitForAnimationToEnd: { timeout: 4000 }
+- assertNotVisible: '(Back to|Voltar a|Volver a|Retour à) More'
+- takeScreenshot: d-state-lead
+- openLink: ${METRO_URL}/--/demo/people?state=nobody
+- extendedWaitUntil: { visible: '(Back to|Voltar a|Volver a|Retour à) Overview', timeout: 20000 }
+- waitForAnimationToEnd: { timeout: 4000 }
+- assertNotVisible: '(Back to|Voltar a|Volver a|Retour à) More'
+- takeScreenshot: d-state-nobody
+- openLink: ${METRO_URL}/--/demo/people?state=roleFails
+- extendedWaitUntil: { visible: '(Back to|Voltar a|Volver a|Retour à) Overview', timeout: 20000 }
+- waitForAnimationToEnd: { timeout: 4000 }
+- assertNotVisible: '(Back to|Voltar a|Volver a|Retour à) More'
+- takeScreenshot: d-state-roleFails

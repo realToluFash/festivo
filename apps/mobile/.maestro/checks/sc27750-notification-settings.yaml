@@ -1,0 +1,12 @@
+# Settings › Notifications loaded and online, the start of each sc-27750 network move (left on screen for adb to drive).
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/settings/notifications
+- extendedWaitUntil:
+    visible:
+      id: 'notificationSettings'
+    timeout: 30000
+- runFlow: ../developer-menu-close.yaml
+- assertNotVisible:
+    id: offline.band
+- takeScreenshot: notification-settings-online

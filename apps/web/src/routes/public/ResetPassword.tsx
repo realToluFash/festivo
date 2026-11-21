@@ -1,0 +1,313 @@
+import { type Account, ApiError, ApiUnreachableError, awaiting } from '@soirely/api-client';
+import { PASSWORD_MINIMUM_LENGTH, meetsPasswordLength } from '@soirely/domain';
+import { type FormEvent, useEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import { Link, useLocation, useNavigate, useSearchParams } from 'react-router';
+
+import { api } from '../../api.ts';
+import { AuthPage } from '../../components/AuthPage.tsx';
+import { FieldError } from '../../components/FieldError.tsx';
+import { LinkRetryPage } from '../../components/LinkRetryPage.tsx';
+import { SignedInAs, Tick } from '../../components/Onboarding.tsx';
+import { PasswordField } from '../../components/PasswordField.tsx';
+import { PasswordRuleLine } from '../../components/PasswordRule.tsx';
+import { PendingPage } from '../../components/Pending.tsx';
+import { SecondFactorStep } from '../../components/SecondFactorStep.tsx';
+import { StillSignedIn } from '../../components/StillSignedIn.tsx';
+import { Unreachable } from '../../components/Unreachable.tsx';
+import { config } from '../../config.ts';
+import { useFormChecks } from '../../formChecks.ts';
+import { useLinkRetry } from '../../linkRetry.ts';
+import { focusWhereSent } from '../../offField.ts';
+import { adoptAccount, landingFor, providerOnlyBy } from '../../session.ts';
+import { useSignOut } from '../../signOut.ts';
+import { useStepFocus } from '../../stepFocus.ts';
+import { Nobody } from './LostTwoFactor.tsx';
+
+type Dead = 'used' | 'expired' | 'invalid';
+
+type Status =
+  | { kind: 'checking' }
+  | { kind: 'unreachable' }
+  | { kind: 'unread' }
+  | { kind: 'ready'; email: string }
+  | { kind: 'saving'; email: string }
+  | { kind: 'failed'; email: string }
+  | { kind: 'done'; email: string; account: Account }
+  | { kind: 'code'; email: string }
+  | { kind: 'used' }
+  | { kind: 'expired' }
+  | { kind: 'invalid' };
+
+/** "Set a new password", from the emailed link, which can be opened on any device. */
+export function ResetPassword() {
+  const { t } = useTranslation();
+  const navigate = useNavigate();
+  const [params] = useSearchParams();
+  const lostBoth = (useLocation().state as { lostBoth?: boolean } | null)?.lostBoth === true;
+  const token = params.get('token') ?? '';
+  const [status, setStatus] = useState<Status>({ kind: 'checking' });
+  const [password, setPassword] = useState('');
+  const [refusal, setRefusal] = useState<string | null>(null);
+  const [short, setShort] = useState(false);
+  const [reads, setReads] = useState(0);
+  const [retriedFrom, setRetriedFrom] = useState<Status['kind'] | null>(null);
+  const retry = useLinkRetry(status, () => {
+    setRetriedFrom(status.kind);
+    setReads((count) => count + 1);
+  });
+  const { signOut, unreached } = useSignOut(() => navigate('/sign-in', { replace: true }));
+  const passwordInput = useRef<HTMLInputElement>(null);
+  const [stepHeading, arriveAtStep] = useStepFocus();
+  const checks = useFormChecks(
+    ['password'] as const,
+    (_field, value) => (value === '' ? t('recovery.passwordBlank') : null),
+    () => passwordInput.current?.focus(),
+  );
+
+  useEffect(() => {
+    let live = true;
+
+    api
+      .checkResetLink(token)
+      .then(({ email, twoFactor }) => {
+        // With two-factor on the code comes first, and nothing changes until it passes.
+        if (!live) return;
+        setStatus({ kind: twoFactor ? 'code' : 'ready', email });
+        if (reads > 0) arriveAtStep();
+      })
+      .catch((error: unknown) => {
+        if (!live) return;
+        // Only the API's refusal makes a dead link: any other failure may read on a second try.
+        const dead = error instanceof ApiUnreachableError ? null : deadFrom(error);
+        setStatus(
+          error instanceof ApiUnreachableError
+            ? { kind: 'unreachable' }
+            : { kind: dead ?? 'unread' },
+        );
+        if (dead != null && reads > 0) arriveAtStep();
+      });
+
+    return () => {
+      live = false;
+    };
+  }, [token, reads, arriveAtStep]);
+
+  async function submit(event: FormEvent<HTMLFormElement>): Promise<void> {
+    event.preventDefault();
+    if (status.kind !== 'ready' && status.kind !== 'failed') return;
+
+    if (!checks.passes({ password })) return;
+
+    // The rule is stated before submit, so a short password is never sent.
+    if (!meetsPasswordLength(password)) {
+      setShort(true);
+      passwordInput.current?.focus();
+      return;
+    }
+
+    const email = status.email;
+    setStatus({ kind: 'saving', email });
+    const land = focusWhereSent();
+
+    try {
+      const { account } = await api.resetPassword(token, password);
+      await adoptAccount(account);
+      setStatus({ kind: 'done', email, account });
+      arriveAtStep();
+    } catch (error) {
+      const dead = deadFrom(error);
+      const providerOnly = error instanceof ApiError ? providerOnlyBy(error.problem) : undefined;
+
+      // The password is set, but signs in only where a password sign-in would (sc-69).
+      if (providerOnly != null) {
+        navigate('/sign-in', { replace: true, state: { providerOnly } });
+      } else if (dead != null) {
+        setStatus({ kind: dead });
+        arriveAtStep();
+      } else if (error instanceof ApiError && error.is('validation_failed')) {
+        const violation = error.problem.violations?.find((v) => v.propertyPath === 'password');
+        const refusal =
+          violation?.code === 'password_breached'
+            ? t('register.breached')
+            : (violation?.message ?? null);
+        setRefusal(refusal);
+        setStatus({ kind: 'ready', email });
+        if (refusal != null) land('password');
+      } else {
+        setStatus({ kind: 'failed', email });
+      }
+    }
+  }
+
+  if (status.kind === 'checking') return <PendingPage />;
+  if (status.kind === 'unreachable')
+    return <Unreachable signedIn={false} retry={retry} brought={retriedFrom === 'unread'} bare />;
+  if (status.kind === 'unread')
+    return (
+      <LinkRetryPage
+        title={t('recovery.failedTitle')}
+        body={t('recovery.failedBody')}
+        retry={retry}
+        brought={retriedFrom === 'unreachable'}
+      />
+    );
+
+  if (status.kind === 'used' || status.kind === 'expired' || status.kind === 'invalid') {
+    return (
+      <AuthPage bare end={null}>
+        <div className="auth-heading">
+          <h1 ref={stepHeading} tabIndex={-1}>
+            {t(`recovery.${status.kind}Title`)}
+          </h1>
+          <p>{t(`recovery.${status.kind}Body`)}</p>
+        </div>
+        <Link className="button button-primary" to="/forgot-password">
+          {t('recovery.sendNew')}
+        </Link>
+        <p className="auth-aside">
+          <span>{t('recovery.rememberedAfterAll')}</span>
+          <Link className="link-button" to="/sign-in">
+            {t('recovery.signIn')}
+          </Link>
+        </p>
+      </AuthPage>
+    );
+  }
+
+  // A reset link proves only the inbox, so it starts no recovery: that asks for the password first (Decided, 8 Nov).
+  if (status.kind === 'code' && lostBoth) {
+    return (
+      <AuthPage bare end={null}>
+        <Nobody
+          supportAddress={config().supportAddress}
+          intro={t('recovery.lostBothIntro')}
+          onBack={() => void navigate(`?token=${encodeURIComponent(token)}`, { replace: true })}
+        />
+      </AuthPage>
+    );
+  }
+
+  if (status.kind === 'code') {
+    const email = status.email;
+
+    return (
+      <AuthPage bare end={null}>
+        <SecondFactorStep
+          intro={t('recovery.codeIntro', { email })}
+          recoveryIntro={t('recovery.codeRecoveryIntro')}
+          submitLabel={t('recovery.continueToPassword')}
+          pausedNote={t('recovery.nothingChanged')}
+          failedTitle={t('recovery.failedTitle')}
+          failedBody={t('recovery.failedBody')}
+          lostBoth={{ to: `?token=${encodeURIComponent(token)}`, state: { lostBoth: true } }}
+          headingRef={stepHeading}
+          onVerify={async (factor) => {
+            try {
+              await api.passResetCode(token, factor);
+            } catch (error) {
+              const dead = deadFrom(error);
+              if (dead == null) throw error;
+              setStatus({ kind: dead });
+              arriveAtStep();
+              return;
+            }
+            setStatus({ kind: 'ready', email });
+            arriveAtStep();
+          }}
+          onExpired={() => {
+            setStatus({ kind: 'expired' });
+            arriveAtStep();
+          }}
+        />
+      </AuthPage>
+    );
+  }
+
+  if (status.kind === 'done') {
+    return (
+      <AuthPage bare end={<SignedInAs email={status.email} onSignOut={() => void signOut()} />}>
+        <div className="auth-heading">
+          <div className="auth-done">
+            <Tick size={26} />
+            <h1 ref={stepHeading} tabIndex={-1}>
+              {t('recovery.doneTitle')}
+            </h1>
+          </div>
+          <p>{t('recovery.doneBody', { email: status.email })}</p>
+        </div>
+        <button
+          className="button button-primary"
+          type="button"
+          onClick={() => navigate(landingFor(awaiting(status.account)), { replace: true })}
+        >
+          {t('recovery.continue')}
+        </button>
+        {unreached && <StillSignedIn />}
+      </AuthPage>
+    );
+  }
+
+  const saving = status.kind === 'saving';
+  const error =
+    checks.errors.password ??
+    refusal ??
+    (short ? t('register.tooShort', { count: PASSWORD_MINIMUM_LENGTH }) : null);
+
+  return (
+    <AuthPage bare end={null}>
+      <div className="auth-heading">
+        <h1 ref={stepHeading} tabIndex={-1}>
+          {t('recovery.newTitle')}
+        </h1>
+        <p>{t('recovery.newFor', { email: status.email })}</p>
+        {status.kind === 'failed' && (
+          <div className="auth-notice" role="alert">
+            <p className="auth-notice-title">{t('recovery.failedTitle')}</p>
+            <p>{t('recovery.failedBody')}</p>
+          </div>
+        )}
+      </div>
+
+      <form className="auth-form" noValidate onSubmit={(event) => void submit(event)}>
+        <div className={error == null ? 'field' : 'field field-wrong'}>
+          <label htmlFor="password">{t('recovery.newPassword')}</label>
+          <PasswordField
+            id="password"
+            autoComplete="new-password"
+            inputRef={passwordInput}
+            value={password}
+            onChange={(value) => {
+              setPassword(value);
+              setRefusal(null);
+              if (meetsPasswordLength(value)) setShort(false);
+              checks.edited('password', value);
+            }}
+            onBlur={(value) => checks.left('password', value)}
+            wrong={error != null}
+            disabled={saving}
+            submitting={saving}
+            describedBy={error == null ? 'password-rule' : 'password-error password-rule'}
+          />
+          {error != null && <FieldError id="password-error" message={error} />}
+          <PasswordRuleLine met={meetsPasswordLength(password)} id="password-rule" />
+        </div>
+
+        <p className="auth-aside">{t('recovery.signsOut')}</p>
+
+        <button className="button button-primary" type="submit" aria-busy={saving}>
+          {saving ? t('recovery.saving') : t('recovery.save')}
+        </button>
+      </form>
+    </AuthPage>
+  );
+}
+
+function deadFrom(error: unknown): Dead | null {
+  if (!(error instanceof ApiError)) return null;
+  if (error.is('reset_link_used')) return 'used';
+  if (error.is('reset_link_expired')) return 'expired';
+  if (error.is('reset_link_invalid')) return 'invalid';
+
+  return null;
+}

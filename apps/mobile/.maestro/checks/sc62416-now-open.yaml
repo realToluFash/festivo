@@ -1,0 +1,12 @@
+# sc-62416: Today's Now on an event day, read from the run of show, left open for the line to be timed.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/
+- extendedWaitUntil:
+    visible: '{{t:todayScreen.tab.today}}'
+    timeout: 45000
+- extendedWaitUntil:
+    visible: '{{t:todayScreen.openRunOfShow}}'
+    timeout: 30000
+- waitForAnimationToEnd
+- takeScreenshot: now-landed

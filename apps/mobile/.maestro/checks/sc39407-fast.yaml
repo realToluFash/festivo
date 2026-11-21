@@ -1,0 +1,30 @@
+# sc-39407: Next and Previous tapped quickly across August and September 2026 on a phone, the outgoing name mid-fade and the stepper's place; ends on the month it lands on.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/calendar
+- extendedWaitUntil:
+    visible:
+      id: calendar.view.month
+    timeout: 30000
+- tapOn:
+    id: calendar.view.month
+- tapOn:
+    id: calendar.today
+- waitForAnimationToEnd:
+    timeout: 4000
+- tapOn:
+    id: calendar.previous
+- tapOn:
+    id: calendar.previous
+- tapOn:
+    id: calendar.previous
+- takeScreenshot: fast-1
+- tapOn:
+    id: calendar.next
+- takeScreenshot: fast-2
+- tapOn:
+    id: calendar.previous
+- takeScreenshot: fast-3
+- waitForAnimationToEnd:
+    timeout: 4000
+- takeScreenshot: fast-settled

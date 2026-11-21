@@ -1,0 +1,85 @@
+# sc-56935, iPad upright: the tab strip on Overview and on Seating, each shot beside the demo's at evt-wed-4, then each tab tapped in turn opens its area and stays in view, and the strip is tapped back to its start for Overview. Pass EVENT_ID, an event the signed-in host owns; run on an iPad simulator.
+appId: host.exp.Exponent
+---
+- setOrientation: PORTRAIT
+- waitForAnimationToEnd
+- openLink: ${METRO_URL}/--/events/${EVENT_ID}
+- extendedWaitUntil: { visible: { id: 'event.nav.overview', selected: true }, timeout: 30000 }
+- runFlow: ../developer-menu-close.yaml
+- waitForAnimationToEnd: { timeout: 5000 }
+- takeScreenshot: strip-overview-product
+- openLink: ${METRO_URL}/--/demo/events/evt-wed-4
+- extendedWaitUntil: { visible: { id: 'event.area.overview' }, timeout: 30000 }
+- waitForAnimationToEnd: { timeout: 5000 }
+- takeScreenshot: strip-overview-demo
+- openLink: ${METRO_URL}/--/events/${EVENT_ID}?area=seating
+- extendedWaitUntil: { visible: { id: 'event.nav.seating', selected: true }, timeout: 30000 }
+- waitForAnimationToEnd: { timeout: 5000 }
+- takeScreenshot: strip-seating-product
+- openLink: ${METRO_URL}/--/demo/events/evt-wed-4?area=seating
+- extendedWaitUntil: { visible: { id: 'event.area.seating' }, timeout: 30000 }
+- waitForAnimationToEnd: { timeout: 5000 }
+- takeScreenshot: strip-seating-demo
+- openLink: ${METRO_URL}/--/events/${EVENT_ID}
+- extendedWaitUntil: { visible: { id: 'event.nav.overview', selected: true }, timeout: 30000 }
+- extendedWaitUntil: { visible: { id: 'event.nav.guests' }, timeout: 10000 }
+- tapOn: { id: 'event.nav.guests' }
+- extendedWaitUntil: { visible: { id: 'event.nav.guests', selected: true }, timeout: 10000 }
+- waitForAnimationToEnd: { timeout: 3000 }
+- takeScreenshot: tapped-guests
+- extendedWaitUntil: { visible: { id: 'event.nav.menu' }, timeout: 10000 }
+- tapOn: { id: 'event.nav.menu' }
+- extendedWaitUntil: { visible: { id: 'event.nav.menu', selected: true }, timeout: 10000 }
+- waitForAnimationToEnd: { timeout: 3000 }
+- takeScreenshot: tapped-menu
+- extendedWaitUntil: { visible: { id: 'event.nav.seating' }, timeout: 10000 }
+- tapOn: { id: 'event.nav.seating' }
+- extendedWaitUntil: { visible: { id: 'event.nav.seating', selected: true }, timeout: 10000 }
+- waitForAnimationToEnd: { timeout: 3000 }
+- takeScreenshot: tapped-seating
+- extendedWaitUntil: { visible: { id: 'event.nav.messages' }, timeout: 10000 }
+- tapOn: { id: 'event.nav.messages' }
+- extendedWaitUntil: { visible: { id: 'event.nav.messages', selected: true }, timeout: 10000 }
+- waitForAnimationToEnd: { timeout: 3000 }
+- takeScreenshot: tapped-messages
+- extendedWaitUntil: { visible: { id: 'event.nav.schedule' }, timeout: 10000 }
+- tapOn: { id: 'event.nav.schedule' }
+- extendedWaitUntil: { visible: { id: 'event.nav.schedule', selected: true }, timeout: 10000 }
+- waitForAnimationToEnd: { timeout: 3000 }
+- takeScreenshot: tapped-schedule
+- extendedWaitUntil: { visible: { id: 'event.nav.staff' }, timeout: 10000 }
+- tapOn: { id: 'event.nav.staff' }
+- extendedWaitUntil: { visible: { id: 'event.nav.staff', selected: true }, timeout: 10000 }
+- waitForAnimationToEnd: { timeout: 3000 }
+- takeScreenshot: tapped-staff
+- extendedWaitUntil: { visible: { id: 'event.nav.people' }, timeout: 10000 }
+- tapOn: { id: 'event.nav.people' }
+- extendedWaitUntil: { visible: { id: 'event.nav.people', selected: true }, timeout: 10000 }
+- waitForAnimationToEnd: { timeout: 3000 }
+- takeScreenshot: tapped-people
+- extendedWaitUntil: { visible: { id: 'event.nav.budget' }, timeout: 10000 }
+- tapOn: { id: 'event.nav.budget' }
+- extendedWaitUntil: { visible: { id: 'event.nav.budget', selected: true }, timeout: 10000 }
+- waitForAnimationToEnd: { timeout: 3000 }
+- takeScreenshot: tapped-budget
+- extendedWaitUntil: { visible: { id: 'event.nav.reports' }, timeout: 10000 }
+- tapOn: { id: 'event.nav.reports' }
+- extendedWaitUntil: { visible: { id: 'event.nav.reports', selected: true }, timeout: 10000 }
+- waitForAnimationToEnd: { timeout: 3000 }
+- takeScreenshot: tapped-reports
+- repeat:
+    while: { notVisible: { id: 'event.nav.overview' } }
+    times: 6
+    commands:
+      - tapOn: { id: 'event.nav.people', optional: true }
+      - tapOn: { id: 'event.nav.staff', optional: true }
+      - tapOn: { id: 'event.nav.schedule', optional: true }
+      - tapOn: { id: 'event.nav.messages', optional: true }
+      - tapOn: { id: 'event.nav.seating', optional: true }
+      - tapOn: { id: 'event.nav.menu', optional: true }
+      - tapOn: { id: 'event.nav.guests', optional: true }
+- takeScreenshot: back-left
+- tapOn: { id: 'event.nav.overview' }
+- extendedWaitUntil: { visible: { id: 'event.nav.overview', selected: true }, timeout: 10000 }
+- waitForAnimationToEnd: { timeout: 3000 }
+- takeScreenshot: tapped-overview

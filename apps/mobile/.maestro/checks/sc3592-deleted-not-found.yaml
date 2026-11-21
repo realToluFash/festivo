@@ -1,0 +1,9 @@
+# sc-3592: a deleted event's page answers not-found, with the way back to Events.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/${EVENT_ID}
+- extendedWaitUntil:
+    visible:
+      id: 'events.notFound'
+    timeout: 30000
+- takeScreenshot: not-found

@@ -1,0 +1,20 @@
+# sc-75471: You are not in an organisation, the product, from its top; then Your account opens Settings' list for no organisation, with the way back on top.
+appId: host.exp.Exponent
+---
+- setOrientation: PORTRAIT
+- openLink: ${METRO_URL}/--/
+- extendedWaitUntil: { visible: { id: noOrganisation }, timeout: 30000 }
+- extendedWaitUntil: { visible: { id: never.there }, timeout: 3000, optional: true }
+- waitForAnimationToEnd
+- assertNotVisible: { id: home.switchOrganisation }
+- takeScreenshot: landing
+- scroll
+- takeScreenshot: landing-foot
+- tapOn: { id: noOrganisation.account }
+- extendedWaitUntil: { visible: { id: never.there }, timeout: 3000, optional: true }
+- waitForAnimationToEnd
+- extendedWaitUntil: { visible: { id: frame.back }, timeout: 10000 }
+- takeScreenshot: settings
+- tapOn: { id: frame.back }
+- extendedWaitUntil: { visible: { id: noOrganisation }, timeout: 10000 }
+- takeScreenshot: back

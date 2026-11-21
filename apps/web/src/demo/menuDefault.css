@@ -1,0 +1,86 @@
+.mc-def {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceMd);
+  padding-top: var(--spaceLg);
+  border-top: 1px solid var(--colorInsetBorder);
+}
+
+.mc-def-h {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--spaceSm);
+  margin: 0;
+  color: var(--colorInk);
+  font: 600 16px/1.4 var(--fontFamily);
+}
+
+.mc-def > .desk-help {
+  margin: 0;
+}
+
+.mc-def-set {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceSm);
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.mc-def-set.is-nested {
+  margin-top: var(--spaceSm);
+  padding-left: var(--spaceLg);
+  border-left: 2px solid var(--colorInsetBorder);
+}
+
+.mc-def-set legend {
+  margin-bottom: var(--spaceXs);
+  padding: 0;
+}
+
+.mc-def-set .desk-help {
+  margin: 0;
+}
+
+.mc-def-radios {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  padding-left: var(--spaceSm);
+  border-left: 3px solid transparent;
+}
+
+.mc-def-radios.is-wrong {
+  border-left-color: var(--colorBroken);
+}
+
+.mc-def-date {
+  max-width: 220px;
+}
+
+.mc-def-locked {
+  display: flex;
+  align-items: center;
+  gap: var(--spaceSm);
+  min-height: var(--sizeHit);
+  margin: 0;
+  color: var(--colorInk);
+  font: 600 15px/1.4 var(--fontFamily);
+}
+
+.mc-def-clear {
+  align-self: flex-start;
+}
+
+.mc-def-line {
+  margin: var(--spaceXs) 0 0;
+  color: var(--colorInkSecondary);
+  font: 400 13px/1.45 var(--fontFamily);
+}
+
+.mc-move .dialog-heading h2 {
+  overflow-wrap: anywhere;
+}
