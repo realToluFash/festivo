@@ -153,6 +153,10 @@ class Linux:
             systemctl("start", f"{WEB}.service", check=False)
         return changed
 
+    def restart_web(self):
+        """The page is one long run, so it serves the `sq` it started with until restarted."""
+        systemctl("try-restart", f"{WEB}.service", check=False)
+
     def enable(self):
         systemctl("enable", "--now", f"{TIMER}.timer")
 

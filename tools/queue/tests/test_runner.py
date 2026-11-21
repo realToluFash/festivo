@@ -37,6 +37,9 @@ class FakePlatform:
     def install(self, sq, env_file, python):
         self.installed += 1
 
+    def restart_web(self):
+        self.web_restarts = getattr(self, "web_restarts", 0) + 1
+
     def worker_active(self, role):
         return role in self.active
 
@@ -113,6 +116,13 @@ class Run(unittest.TestCase):
                    say=self.said.append, load=lambda: self.config,
                    probe=lambda: kwargs.pop("version", "2.1.304"),
                    remote=kwargs.pop("remote", self.remote), **kwargs)
+
+    def test_an_updated_sq_restarts_the_page_which_would_serve_the_old_one(self):
+        self.run_once()
+        self.assertEqual(getattr(self.platform, "web_restarts", 0), 0)
+        with mock.patch("soirely_queue.update.check", return_value=True):
+            self.run_once()
+        self.assertEqual(self.platform.web_restarts, 1)
 
     def test_a_due_role_with_work_gets_one_worker(self):
         store.record(self.db, [work("ops")], ON_ZERO)

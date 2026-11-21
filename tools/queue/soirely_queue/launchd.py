@@ -214,6 +214,11 @@ class Mac:
             self.launchctl("bootstrap", domain(), str(target))
         return changed
 
+    def restart_web(self):
+        """The page is one long run, so it serves the `sq` it started with until restarted."""
+        if self.launchctl("print", f"{domain()}/{WEB_LABEL}").returncode == 0:
+            self.launchctl("kickstart", "-k", f"{domain()}/{WEB_LABEL}")
+
     def reload(self, target, detached=False):
         steps = f"launchctl bootout {domain()}/{LABEL}; launchctl bootstrap {domain()} '{target}'"
         if detached:
