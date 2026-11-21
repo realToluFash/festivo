@@ -193,7 +193,7 @@ export function EventNav({
         {areas
           .filter((area) => area !== 'budget' || seesBudget(event))
           .map((area) => {
-            const current = area === inside.area;
+            const current = area === litArea(inside.area, event);
             const sub =
               area === 'menu' && menuLine != null
                 ? t('eventNav.menuReady', { ready: menuLine.ready, count: menuLine.courses })
@@ -227,6 +227,11 @@ export function EventNav({
       </ul>
     </nav>
   );
+}
+
+/** The Budget withheld from a loaded event is drawn on Overview, as the demo's not-available page has it (sc-101). */
+function litArea(area: SideArea | null, event: OrganisationEvent | undefined): SideArea | null {
+  return area === 'budget' && event != null && !seesBudget(event) ? 'overview' : area;
 }
 
 /** Without budget.read the event's Budget is not in its navigation (sc-85); until the event has loaded, nobody is known to hold it. */
