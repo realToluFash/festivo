@@ -39,6 +39,14 @@ describe('The clock card in a browser (sc-234)', () => {
     expect((opens as HTMLButtonElement).disabled).toBe(true);
   });
 
+  it('points at My night for its place, with no stand-in shift card', SLOW, async () => {
+    open('ready');
+
+    const link = await screen.findByRole('link', { name: 'Open it in My night' }, SLOW);
+    expect(link.getAttribute('href')).toBe('/demo/my-night');
+    expect(screen.queryByText('Your shift')).toBeNull();
+  });
+
   it('ends on the link’s ended page, with no event name', SLOW, async () => {
     open('access_ended_clocked_out');
 

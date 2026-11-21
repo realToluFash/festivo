@@ -1,3 +1,5 @@
+import { type Card, cardOf } from './shiftClock.ts';
+
 export const MY_NIGHT_STATES = [
   'night',
   'before_doors',
@@ -38,7 +40,7 @@ export type Night = {
   doorsAt: string;
   doorsOpen: boolean;
   tables: readonly Table[] | null;
-  clockShows: string;
+  clock: Card;
   updated: string | null;
   staleAt: string | null;
   loading: boolean;
@@ -75,9 +77,6 @@ export const MN = {
   signOut: 'Sign out',
   signOutLater: 'Sign out lands on sc-4235’s Confirm it’s you, once its demo (PR #3365) merges.',
   events: 'Events',
-  clockFrame: 'sc-234’s clock card',
-  clockFrameBody: (shows: string) =>
-    `Its place, above Your shift, before and while its window is open. Its demo (PR #3372) has not merged, so only the frame is built here. It would show: ${shows}.`,
   demoMove: 'Demo: the organiser moves Grace to Section C',
   demoMoveButton: 'Move Grace to Section C',
   demoMoveBody: 'The page changes within 10 seconds and says so to screen readers.',
@@ -147,7 +146,7 @@ const NIGHT: Night = {
   doorsAt: '19:00',
   doorsOpen: true,
   tables: SECTION_B,
-  clockShows: 'Clocked in at 16:58, and Clock out',
+  clock: cardOf('clocked_in'),
   updated: null,
   staleAt: null,
   loading: false,
@@ -163,11 +162,17 @@ export function nightOf(state: MyNightState): Night {
 
   switch (state) {
     case 'before_doors':
-      return { ...night, doorsOpen: false, clockShows: 'Clock in' };
+      return { ...night, doorsOpen: false, clock: { ...cardOf('ready'), now: 16 * 60 + 20 } };
     case 'early':
-      return { ...night, doorsOpen: false, clockShows: 'Clock in opens at 16:00' };
+      return { ...night, doorsOpen: false, clock: cardOf('before') };
     case 'two_shifts':
-      return { ...night, ends: '23:00', endsOn: null, later: { job: 'Bartender', from: '23:00' } };
+      return {
+        ...night,
+        ends: '23:00',
+        endsOn: null,
+        later: { job: 'Bartender', from: '23:00' },
+        clock: { ...cardOf('clocked_in'), end: 23 * 60 },
+      };
     case 'no_station':
       return { ...night, station: null, lead: KEMI, tables: null };
     case 'no_lead':

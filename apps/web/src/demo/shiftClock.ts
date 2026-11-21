@@ -1,3 +1,5 @@
+import { useState } from 'react';
+
 import { hoursWords, outLimit as shiftOutLimit } from './hours.ts';
 import type { DemoLink } from './settings.ts';
 import { clock } from './shifts.ts';
@@ -58,7 +60,9 @@ export const KW = {
   signedOut: 'You are signed out of this browser.',
   ended: 'This link has ended. If you are working another event, you will get a new link for it.',
   nothingSaved: 'Nothing was saved on this phone.',
-  rest: 'The rest of the shift view is sc-3915’s, which has no demo yet.',
+  place:
+    'On the staff member’s page, this card sits above Your shift, before and while its window is open.',
+  openPage: 'Open it in My night',
   demoOffline: 'Demo: no connection',
   demoAgain: 'Demo: tap it again from another phone',
 } as const;
@@ -95,6 +99,7 @@ export interface Card {
   clockOut: number | null;
   line: Line;
   offline: boolean;
+  end: number;
 }
 
 const card = (over: Partial<Card>): Card => ({
@@ -105,6 +110,7 @@ const card = (over: Partial<Card>): Card => ({
   clockOut: null,
   line: null,
   offline: false,
+  end: SHIFT.end,
   ...over,
 });
 
@@ -157,6 +163,22 @@ export function tapped(c: Card): Card {
   }
 
   return c;
+}
+
+/** The card's own state and its send, shared by this page and My night (sc-3915), where the card lives. */
+export function useClockCard(first: Card) {
+  const [c, setCard] = useState<Card>(first);
+  const [busy, setBusy] = useState(false);
+
+  function press() {
+    setBusy(true);
+    setTimeout(() => {
+      setCard(tapped(c));
+      setBusy(false);
+    }, SEND_MS);
+  }
+
+  return { c, setCard, busy, press };
 }
 
 export function tappedAgain(c: Card): Card {

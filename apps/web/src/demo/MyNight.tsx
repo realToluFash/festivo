@@ -4,6 +4,7 @@ import { Link, useSearchParams } from 'react-router';
 import { Brand } from '../components/Brand.tsx';
 import { Glyph } from '../components/Glyph.tsx';
 import { Toast } from '../components/Toast.tsx';
+import { ClockCard } from './ShiftClock.tsx';
 import {
   type Lead,
   type Moment,
@@ -18,8 +19,10 @@ import {
   nightOf,
   signedOutAt,
 } from './myNight.ts';
+import { useClockCard } from './shiftClock.ts';
 import './doorCheckIn.css';
 import './myNight.css';
+import './shiftClock.css';
 
 /** A staff member's whole night on one page (sc-3915): 390 first, two columns from 800, at /demo/my-night?state=… */
 export function MyNight() {
@@ -89,7 +92,7 @@ function MyNightAt({ first }: { first: Night }) {
                     <span className="myn-on-station">{headingOf(night)}</span>
                   </h1>
                 </div>
-                <ClockFrame shows={night.clockShows} />
+                <Clock night={night} />
                 <Shift night={night} />
                 <YourLead lead={night.lead} />
                 {night.rules != null && (
@@ -136,13 +139,11 @@ function Loading() {
   );
 }
 
-function ClockFrame({ shows }: { shows: string }) {
-  return (
-    <section className="myn-clock" aria-labelledby="myn-clock">
-      <h2 id="myn-clock">{MN.clockFrame}</h2>
-      <p>{MN.clockFrameBody(shows)}</p>
-    </section>
-  );
+/** sc-234's clock card, live, above Your shift: its own states are at /demo/shift-clock. */
+function Clock({ night }: { night: Night }) {
+  const { c, busy, press } = useClockCard(night.clock);
+
+  return <ClockCard c={c} busy={busy} onPress={press} />;
 }
 
 function Shift({ night }: { night: Night }) {

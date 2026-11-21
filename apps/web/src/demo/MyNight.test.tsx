@@ -25,7 +25,6 @@ describe('the staff member’s page in the web demo (sc-3915)', () => {
       'Tonight you’re on Section B',
     );
     expect(screen.getAllByRole('heading', { level: 2 }).map((h) => h.textContent)).toEqual([
-      'sc-234’s clock card',
       'Your shift',
       'Your lead',
       'Before you start',
@@ -61,10 +60,26 @@ describe('the staff member’s page in the web demo (sc-3915)', () => {
       await open('/demo/my-night?state=early');
 
       expect(screen.getByText('Opens at 19:00 when doors open')).toBeDefined();
-      expect(screen.getByText('sc-234’s clock card')).toBeDefined();
-      expect(screen.getByText(/It would show: Clock in opens at 16:00\./)).toBeDefined();
+      const opens = screen.getByRole('button', { name: 'Clock in opens at 16:00' });
+      expect((opens as HTMLButtonElement).disabled).toBe(true);
     },
   );
+
+  it('clocks out from sc-234’s card above Your shift', SLOW, async () => {
+    await open('/demo/my-night?state=night');
+
+    const card = screen.getByRole('region', { name: 'Clock out' });
+    expect(card.nextElementSibling?.textContent).toContain('Your shift');
+    expect(screen.getByText('Clocked in at 16:58')).toBeDefined();
+    fireEvent.click(screen.getByRole('button', { name: 'Clock out' }));
+    expect(await screen.findByText(/8 h 44 min recorded/u, undefined, WAIT)).toBeDefined();
+  });
+
+  it('says clock out after the first shift’s end on a two-shift night', SLOW, async () => {
+    await open('/demo/my-night?state=two_shifts');
+
+    expect(screen.getByText('Clock out when you finish, even if it’s after 23:00.')).toBeDefined();
+  });
 
   it('stands the floor lead in, and says No lead named yet only with neither', SLOW, async () => {
     await open('/demo/my-night?state=no_station');

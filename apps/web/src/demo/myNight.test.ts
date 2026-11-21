@@ -56,8 +56,9 @@ describe('a staff member’s night (sc-3915)', () => {
 
   it('holds the tables until doors, and says when clocking in opens before its window', () => {
     expect(nightOf('before_doors').doorsOpen).toBe(false);
-    expect(nightOf('before_doors').clockShows).toBe('Clock in');
-    expect(nightOf('early').clockShows).toBe('Clock in opens at 16:00');
+    expect(nightOf('before_doors').clock.phase).toBe('ready');
+    expect(nightOf('early').clock.phase).toBe('before');
+    expect(nightOf('two_shifts').clock.end).toBe(23 * 60);
     expect(nightOf('no_station').tables).toBeNull();
   });
 

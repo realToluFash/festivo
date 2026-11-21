@@ -1,5 +1,4 @@
-import { useState } from 'react';
-import { useSearchParams } from 'react-router';
+import { Link, useSearchParams } from 'react-router';
 
 import { Brand } from '../components/Brand.tsx';
 import { Glyph } from '../components/Glyph.tsx';
@@ -7,18 +6,14 @@ import {
   type Card,
   type ClockState,
   EVENT,
-  JOB,
   KW,
-  LEAD,
-  SEND_MS,
   SHIFT,
-  VENUE,
   cardOf,
+  useClockCard,
   clock,
   clockStateOf,
   lineWords,
   outLimit,
-  tapped,
   tappedAgain,
   timeWords,
 } from './shiftClock.ts';
@@ -34,17 +29,8 @@ export function ShiftClockPage() {
 }
 
 function ShiftClock({ state }: { state: ClockState }) {
-  const [c, setCard] = useState<Card>(() => cardOf(state));
-  const [busy, setBusy] = useState(false);
+  const { c, setCard, busy, press } = useClockCard(cardOf(state));
   const ended = c.past && c.phase === 'off';
-
-  function press() {
-    setBusy(true);
-    setTimeout(() => {
-      setCard(tapped(c));
-      setBusy(false);
-    }, SEND_MS);
-  }
 
   return (
     <main id="content" className="rd sk">
@@ -56,14 +42,16 @@ function ShiftClock({ state }: { state: ClockState }) {
           <Ended c={c} />
         ) : (
           <>
-            <header className="sk-head">
-              {!c.past && <p className="sk-eyebrow">{KW.yourShift}</p>}
-              <h1 className="sk-title">{EVENT}</h1>
-              {!c.past && <p className="sk-sub">{VENUE}</p>}
-            </header>
+            <h1 className="sk-title">{EVENT}</h1>
             <ClockCard c={c} busy={busy} onPress={press} />
-            {!c.past && <ShiftCard />}
-            {!c.past && <p className="sk-note">{KW.rest}</p>}
+            {!c.past && (
+              <p className="sk-note">
+                {KW.place}{' '}
+                <Link className="desk-text" to="/demo/my-night">
+                  {KW.openPage}
+                </Link>
+              </p>
+            )}
           </>
         )}
         <div className="sk-demo">
@@ -116,7 +104,7 @@ function TapLine({ c }: { c: Card }) {
   );
 }
 
-function ClockCard({ c, busy, onPress }: { c: Card; busy: boolean; onPress: () => void }) {
+export function ClockCard({ c, busy, onPress }: { c: Card; busy: boolean; onPress: () => void }) {
   const at = (minutes: number | null) => timeWords(minutes ?? 0, c.now);
 
   if (c.phase === 'before')
@@ -147,7 +135,7 @@ function ClockCard({ c, busy, onPress }: { c: Card; busy: boolean; onPress: () =
           {busy ? KW.clockingOut : KW.clockOut}
         </button>
         <p className="sk-help">
-          {c.past ? KW.browserOut(at(outLimit(c.clockIn ?? 0))) : KW.stayLine(clock(SHIFT.end))}
+          {c.past ? KW.browserOut(at(outLimit(c.clockIn ?? 0))) : KW.stayLine(clock(c.end))}
         </p>
       </section>
     );
@@ -163,23 +151,8 @@ function ClockCard({ c, busy, onPress }: { c: Card; busy: boolean; onPress: () =
 
   return (
     <section className="sk-card" aria-label={KW.clockIn}>
-      <Status words={KW.closedAt(clock(SHIFT.end))} done={false} />
+      <Status words={KW.closedAt(clock(c.end))} done={false} />
       <p className="sk-strong">{KW.closedLine}</p>
-    </section>
-  );
-}
-
-function ShiftCard() {
-  return (
-    <section className="sk-card" aria-labelledby="sk-shift">
-      <h2 id="sk-shift" className="sk-eyebrow">
-        {KW.yourShift}
-      </h2>
-      <p className="sk-big">{KW.hours}</p>
-      <p className="sk-strong">{KW.endsOn}</p>
-      <p className="sk-help">{JOB}</p>
-      <p className="sk-eyebrow">{KW.yourLead}</p>
-      <p className="sk-strong">{LEAD}</p>
     </section>
   );
 }

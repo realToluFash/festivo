@@ -8,7 +8,7 @@ import {
   weekdayOf,
 } from './clock.ts';
 
-/** The staff member's own shift (sc-3915's frame) as page 34's proposal board draws it: Saturday 17:00 to Sunday 01:00. */
+/** The staff member's own shift, the one My night (sc-3915) shows, as page 34's proposal board draws it: Saturday 17:00 to Sunday 01:00. */
 export const SHIFT: Scheduled = { start: 17 * 60, end: 25 * 60 };
 export const EVENT = 'Adébáyọ̀ at 60';
 export const VENUE = 'Eko Hotel';
@@ -49,7 +49,9 @@ export const CW = {
   signedOut: 'You are signed out of this browser.',
   ended: 'This link has ended. If you are working another event, you will get a new link for it.',
   nothingSaved: 'Nothing was saved on this phone.',
-  restIsSc3915: 'The rest of the shift view is sc-3915’s, which has no demo yet.',
+  place:
+    'On the staff member’s page, this card sits above Your shift, before and while its window is open.',
+  openPage: 'Open it in My night',
 } as const;
 
 export const CLOCK_STATES = [
@@ -89,6 +91,7 @@ export interface Card {
   clockOut: number | null;
   line: Line;
   offline: boolean;
+  end: number;
 }
 
 const card = (over: Partial<Card>): Card => ({
@@ -99,6 +102,7 @@ const card = (over: Partial<Card>): Card => ({
   clockOut: null,
   line: null,
   offline: false,
+  end: SHIFT.end,
   ...over,
 });
 

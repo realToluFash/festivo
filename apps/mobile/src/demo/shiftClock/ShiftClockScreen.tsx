@@ -1,11 +1,9 @@
-import { useLocalSearchParams } from 'expo-router';
-import { useState } from 'react';
+import { router, useLocalSearchParams } from 'expo-router';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { PrimaryButton, QuietButton, SecondaryButton } from '../../components/Buttons.tsx';
 import { Notice } from '../../components/Notice.tsx';
-import { readOut } from '../../components/ReadOut.tsx';
 import { ShapeMark } from '../../components/StatusMark.tsx';
 import { Text } from '../../components/Text.tsx';
 import { useLayout } from '../../layout/useLayout.ts';
@@ -18,22 +16,16 @@ import {
   type ClockState,
   CW,
   EVENT,
-  JOB,
-  LEAD,
-  SHIFT,
   type Surface,
-  VENUE,
   cardOf,
   clockStateOf,
   limitOf,
   lineWords,
   opensWords,
   surfaceOf,
-  tapped,
   tappedAgain,
 } from './shiftClockModel.ts';
-
-const SEND_MS = 700;
+import { useClockCard } from './useClockCard.ts';
 
 export function ShiftClockRoute() {
   const params = useLocalSearchParams<{ state?: string; surface?: string }>();
@@ -44,32 +36,14 @@ export function ShiftClockRoute() {
 }
 
 function ShiftClock({ state, surface }: { state: ClockState; surface: Surface }) {
-  const [c, setCard] = useState<Card>(() => cardOf(state));
-  const [busy, setBusy] = useState(false);
-  const [said, setSaid] = useState(0);
+  const { c, setCard, busy, said, setSaid, press } = useClockCard(cardOf(state));
   const insets = useSafeAreaInsets();
   const { kind } = useLayout();
   const phone = kind === 'phone';
-  const landscape = kind === 'tabletLandscape';
   const browser = surface === 'browser';
   const endedPage = browser && c.past && c.phase === 'off';
 
-  function press(): void {
-    setBusy(true);
-    setTimeout(() => {
-      const next = tapped(c);
-      setCard(next);
-      setBusy(false);
-      setSaid((n) => n + 1);
-      if (next.line == null && next.phase === 'on')
-        readOut(CW.clockedInAt(timeWords(next.clockIn ?? 0, next.now)));
-      if (next.line == null && next.phase === 'off')
-        readOut(CW.clockedOutAt(timeWords(next.clockOut ?? 0, next.now)));
-    }, SEND_MS);
-  }
-
   const clockCard = <ClockCard c={c} busy={busy} said={said} browser={browser} onPress={press} />;
-  const shiftCard = c.past ? null : <ShiftCard />;
 
   return (
     <ScrollView
@@ -80,28 +54,27 @@ function ShiftClock({ state, surface }: { state: ClockState; surface: Surface })
       ]}
       testID={`shiftClock.${state}`}
     >
-      <View style={landscape ? styles.wide : styles.column}>
+      <View style={styles.column}>
         <QuietButton label="Back" onPress={goBack} testID="shiftClock.back" />
         {endedPage ? (
           <EndedPage c={c} said={said} />
         ) : (
           <>
-            <Head past={c.past} />
-            {landscape && shiftCard != null ? (
-              <View style={styles.sides}>
-                <View style={styles.main}>{clockCard}</View>
-                <View style={styles.aside}>{shiftCard}</View>
-              </View>
-            ) : (
-              <>
-                {clockCard}
-                {shiftCard}
-              </>
-            )}
+            <Text size={tokens.typeTitlePhone.size} weight="bold" accessibilityRole="header">
+              {EVENT}
+            </Text>
+            {clockCard}
             {!c.past && (
-              <Text size={14} style={styles.secondary} testID="shiftClock.rest">
-                {CW.restIsSc3915}
-              </Text>
+              <View style={styles.place} testID="shiftClock.place">
+                <Text size={15} style={styles.secondary}>
+                  {CW.place}
+                </Text>
+                <QuietButton
+                  label={CW.openPage}
+                  onPress={() => router.push('/demo/my-night')}
+                  testID="shiftClock.myNight"
+                />
+              </View>
             )}
           </>
         )}
@@ -129,26 +102,6 @@ function ShiftClock({ state, surface }: { state: ClockState; surface: Surface })
         </DemoOnly>
       </View>
     </ScrollView>
-  );
-}
-
-function Head({ past }: { past: boolean }) {
-  return (
-    <View style={styles.head}>
-      {!past && (
-        <Text size={14} weight="semibold" style={styles.secondary}>
-          {CW.yourShift}
-        </Text>
-      )}
-      <Text size={tokens.typeTitlePhone.size} weight="bold" accessibilityRole="header">
-        {EVENT}
-      </Text>
-      {!past && (
-        <Text size={15} style={styles.secondary}>
-          {VENUE}
-        </Text>
-      )}
-    </View>
   );
 }
 
@@ -180,7 +133,7 @@ function TapLine({ c, said }: { c: Card; said: number }) {
   );
 }
 
-function ClockCard({
+export function ClockCard({
   c,
   busy,
   said,
@@ -244,7 +197,7 @@ function ClockCard({
           )
         ) : (
           <Text size={15} style={styles.secondary}>
-            {CW.stayLine(clock(SHIFT.end))}
+            {CW.stayLine(clock(c.end))}
           </Text>
         )}
       </>
@@ -270,7 +223,7 @@ function ClockCard({
   else
     body = (
       <>
-        <StatusLine words={CW.closedAt(clock(SHIFT.end))} done={false} />
+        <StatusLine words={CW.closedAt(clock(c.end))} done={false} />
         <Text size={15} weight="medium">
           {CW.closedLine}
         </Text>
@@ -280,30 +233,6 @@ function ClockCard({
   return (
     <View style={styles.card} testID="shiftClock.card">
       {body}
-    </View>
-  );
-}
-
-function ShiftCard() {
-  return (
-    <View style={styles.card} testID="shiftClock.shift">
-      <Text size={14} weight="semibold" style={styles.secondary}>
-        {CW.yourShift}
-      </Text>
-      <Text size={20} weight="bold">
-        {CW.hours(SHIFT)}
-      </Text>
-      <Text size={15} weight="medium">
-        {CW.endsOn(SHIFT)}
-      </Text>
-      <Text size={15}>{JOB}</Text>
-      <View style={styles.rule} />
-      <Text size={14} weight="semibold" style={styles.secondary}>
-        {CW.yourLead}
-      </Text>
-      <Text size={15} weight="semibold">
-        {LEAD}
-      </Text>
     </View>
   );
 }
@@ -335,18 +264,7 @@ const styles = StyleSheet.create({
   bodyPhone: { paddingHorizontal: tokens.spaceLg },
   bodyTablet: { paddingHorizontal: tokens.spaceXl, alignItems: 'center' },
   column: { width: '100%', maxWidth: 560, gap: tokens.spaceLg },
-  wide: { width: '100%', maxWidth: 960, gap: tokens.spaceLg },
-  sides: { flexDirection: 'row', gap: tokens.spaceLg, alignItems: 'flex-start' },
-  main: { flex: 3 },
-  aside: { flex: 2 },
-  head: {
-    gap: tokens.spaceXxs,
-    padding: tokens.spaceLg,
-    borderRadius: tokens.radiusCardPhone,
-    backgroundColor: tokens.colorHeader,
-    borderWidth: 1,
-    borderColor: tokens.colorHeaderBorder,
-  },
+  place: { gap: tokens.spaceXs, alignItems: 'flex-start' },
   card: {
     gap: tokens.spaceMd,
     padding: tokens.spaceXl,
@@ -356,7 +274,6 @@ const styles = StyleSheet.create({
     borderColor: tokens.colorBorder,
   },
   status: { flexDirection: 'row', alignItems: 'center', gap: tokens.spaceSm },
-  rule: { height: 1, backgroundColor: tokens.colorBorder },
   ended: { gap: tokens.spaceLg, paddingTop: tokens.spaceXl },
   inset: {
     padding: tokens.spaceLg,
