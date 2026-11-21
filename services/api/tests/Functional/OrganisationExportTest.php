@@ -83,6 +83,7 @@ final class OrganisationExportTest extends ApiTestCase
         'event_people' => ['event_id', 'held_by', 'member_id', 'name', 'address', 'address_kind', 'role', 'job_label'],
         'guests' => ['id', 'event_id', 'host_id', 'full_name', 'email', 'mobile', 'reply', 'replied_at', 'guest_group_id', 'allergens', 'diets', 'access_needs', 'needs_note', 'created_at'],
         'guest_groups' => ['id', 'event_id', 'name', 'created_at'],
+        'guest_messages' => ['id', 'event_id', 'audience', 'subject', 'body', 'created_by_name', 'created_at'],
         'seating_plans' => ['id', 'event_id', 'room_name', 'width_cm', 'length_cm', 'shared_at', 'share_by', 'created_at'],
         'seating_sections' => ['id', 'event_id', 'plan_id', 'name', 'colour'],
         'seating_tables' => ['id', 'event_id', 'plan_id', 'section_id', 'name', 'shape', 'seats', 'end_seats', 'unusable_seats', 'width_cm', 'length_cm', 'x_cm', 'y_cm', 'rotation'],

@@ -113,6 +113,13 @@ final readonly class OrganisationArchive
              WHERE ev.organisation_id = :organisation AND ev.deleted_at IS NULL
              ORDER BY ev.starts_at_utc, gg.event_id, gg.name_key, gg.id
             SQL,
+        'guest_messages' => <<<'SQL'
+            SELECT m.id, m.event_id, m.audience, m.subject, m.body, m.created_by_name, m.created_at
+              FROM guest_messages m
+              JOIN events ev ON ev.id = m.event_id
+             WHERE ev.organisation_id = :organisation AND ev.deleted_at IS NULL
+             ORDER BY ev.starts_at_utc, m.event_id, m.created_at, m.id
+            SQL,
         'seating_plans' => <<<'SQL'
             SELECT p.id, p.event_id, p.room_name, p.width_cm, p.length_cm, t.shared_at, t.share_by, p.created_at
               FROM seating_plans p
