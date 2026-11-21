@@ -9,6 +9,7 @@ import {
   headlineLine,
   insetWords,
   ownInset,
+  ownLines,
   rateProblem,
   sourceLine,
   typedOf,
@@ -138,5 +139,24 @@ describe('Staff rates’ words (sc-101)', () => {
     expect(typedOf({ kind: 'hourly', amount: '14.00' }, 'en', 'GBP')).toBe('14');
     expect(typedOf({ kind: 'hourly', amount: '12.50' }, 'fr', 'EUR')).toBe('12,50');
     expect(typedOf({ kind: 'flat', amount: '1200' }, 'en', 'JPY')).toBe('1,200');
+  });
+
+  it('lists a person on their own rate with no shifts at no hours, so it can still be removed', () => {
+    expect(
+      ownLines(
+        t,
+        {
+          member: { id: 'kunle', name: 'Kunle Ajayi' },
+          job: { id: 'waiter', name: 'Waiter' },
+          rate: { kind: 'hourly', amount: '16.00' },
+          changed: null,
+          minutes: 0,
+          cost: '0.00',
+        },
+        null,
+        'GBP',
+        EN,
+      ),
+    ).toEqual(['£16 an hour · Instead of Waiter’s No rate yet', '0 h as Waiter']);
   });
 });

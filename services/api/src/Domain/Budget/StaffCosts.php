@@ -18,6 +18,7 @@ use App\Repository\StaffJobRepository;
 use App\Repository\StaffRateRepository;
 use App\Repository\StaffShiftRepository;
 use BcMath\Number;
+use Psl\Dict;
 use Psl\Iter;
 use Psl\Math;
 use Psl\Vec;
@@ -37,6 +38,7 @@ final readonly class StaffCosts
         $rates = $this->staffRateRepository->findOnEvent($event);
         $jobRates = [];
         $ownRates = [];
+        $jobOf = [];
 
         foreach ($rates as $rate) {
             $paid = new PayRate($rate->getPay(), $rate->getAmountMinor());
@@ -47,6 +49,7 @@ final readonly class StaffCosts
                 $jobRates[$job->getId()->toRfc4122()] = $paid;
             } elseif (null !== $person) {
                 $ownRates[$person->getId()->toRfc4122()] = $paid;
+                $jobOf[$person->getId()->toRfc4122()] = $person->getJob()?->getId()->toRfc4122();
             }
         }
 
@@ -55,6 +58,7 @@ final readonly class StaffCosts
             Vec\map($this->staffShiftRepository->findOnEvent($event), static fn (StaffShift $shift): ScheduledShift => self::scheduled($shift, $event)),
             $jobRates,
             $ownRates,
+            Dict\filter_nulls($jobOf),
         );
     }
 
@@ -79,8 +83,9 @@ final readonly class StaffCosts
      * @param list<ScheduledShift>   $shifts
      * @param array<string, PayRate> $jobRates by job
      * @param array<string, PayRate> $ownRates by person
+     * @param array<string, string>  $jobOf    each person on their own rate, their job
      */
-    public static function priced(array $jobs, array $shifts, array $jobRates, array $ownRates): StaffCost
+    public static function priced(array $jobs, array $shifts, array $jobRates, array $ownRates, array $jobOf): StaffCost
     {
         $own = [];
         $costs = Vec\map($jobs, static function (string $job) use ($shifts, $jobRates, $ownRates, &$own): JobCost {
@@ -131,6 +136,14 @@ final readonly class StaffCosts
                 $keepOwn,
             );
         });
+
+        foreach ($jobOf as $person => $job) {
+            $theirs = $ownRates[$person] ?? null;
+
+            if (null !== $theirs && !Iter\any($own, static fn (OwnCost $listed): bool => $listed->person === $person)) {
+                $own[] = new OwnCost($person, $job, $theirs, 0, 0);
+            }
+        }
 
         return new StaffCost(
             Iter\reduce($costs, static fn (int $sum, JobCost $job): int => $sum + ($job->costMinor ?? 0), 0),

@@ -262,6 +262,43 @@ final class StaffRatesTest extends ApiTestCase
     }
 
     #[Test]
+    public function anOwnRateStaysListedOffEveryShiftSoRemovingItFreesTheCurrency(): void
+    {
+        $shift = $this->shift('Waiter', '2027-06-12T18:00', '2027-06-13T00:00');
+        $kunle = $this->person('Kunle Ajayi');
+        $this->assign($shift, $kunle);
+        $this->setJob('Waiter', 'hourly', '14');
+        $this->as($this->owner, 'PUT', $this->rates('people/' . $kunle), ['kind' => 'hourly', 'amount' => '16', 'currency' => 'GBP']);
+        self::assertSame(200, $this->statusCode(), Json\encode($this->last()));
+
+        $this->as($this->owner, 'DELETE', $this->staffPath('/shifts/' . $shift['id'] . '/people/' . $kunle));
+        self::assertSame(200, $this->statusCode(), Json\encode($this->last()));
+        $this->as($this->owner, 'DELETE', $this->rates('jobs/' . $this->job('Waiter')));
+        self::assertSame(200, $this->statusCode());
+
+        self::assertSame([['member' => ['id' => $kunle, 'name' => 'Kunle Ajayi'], 'job' => ['id' => $this->job('Waiter'), 'name' => 'Waiter'], 'minutes' => 0, 'cost' => '0.00']], Vec\map($this->page()['own'], static fn (array $own): array => ['member' => $own['member'], 'job' => $own['job'], 'minutes' => $own['minutes'], 'cost' => $own['cost']]));
+        self::assertSame(409, $this->changeCurrency('EUR'));
+
+        $this->as($this->owner, 'DELETE', $this->rates('people/' . $kunle));
+        self::assertSame(200, $this->statusCode());
+        self::assertSame(200, $this->changeCurrency('EUR'));
+    }
+
+    #[Test]
+    public function anOwnRateGoesWithTheJobItWasSetAgainst(): void
+    {
+        $kunle = $this->person('Kunle Ajayi', 'Waiter');
+        $this->as($this->owner, 'PUT', $this->rates('people/' . $kunle), ['kind' => 'hourly', 'amount' => '16', 'currency' => 'GBP']);
+        self::assertSame(200, $this->statusCode(), Json\encode($this->last()));
+
+        $this->as($this->owner, 'DELETE', $this->staffPath('/jobs/' . $this->job('Waiter')));
+        self::assertSame(200, $this->statusCode(), Json\encode($this->last()));
+
+        self::assertSame([], $this->page()['own']);
+        self::assertSame(200, $this->changeCurrency('EUR'));
+    }
+
+    #[Test]
     public function theBudgetsStaffLineIsTheStaffRatesTotalAndHoldsNoRateOfItsOwn(): void
     {
         $this->shift('Waiter', '2027-06-12T18:00', '2027-06-13T00:00', 2);
