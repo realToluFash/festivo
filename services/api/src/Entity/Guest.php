@@ -518,10 +518,11 @@ class Guest
         return $this->checkInCode;
     }
 
-    /** Ends the old link at once and clears the wrong-person flag. */
-    public function replaceLink(#[SensitiveParameter] string $linkToken): void
+    /** Ends the old link and the check-in code its page showed at once, and clears the wrong-person flag. */
+    public function replaceLink(#[SensitiveParameter] string $linkToken, #[SensitiveParameter] string $checkInCode): void
     {
         $this->linkToken = $linkToken;
+        $this->checkInCode = $checkInCode;
         $this->linkFlagged = false;
     }
 

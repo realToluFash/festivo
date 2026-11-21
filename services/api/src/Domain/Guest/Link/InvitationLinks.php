@@ -62,7 +62,7 @@ final readonly class InvitationLinks
     /** Never limited by the phase: ending a link that has leaked is always possible. The audit holds who and when, never the token. */
     public function replace(Guest $guest, User $by): void
     {
-        $guest->replaceLink(self::token());
+        $guest->replaceLink(self::token(), self::token());
         $this->auditor->record(self::REPLACED, 'Guest', $guest->getId(), Actor::User, $by->getId(), $by->getName());
         $this->entityManager->flush();
         $this->guestListPublisher->publish($guest->getEvent());
