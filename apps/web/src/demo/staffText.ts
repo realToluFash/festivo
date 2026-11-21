@@ -45,7 +45,6 @@ export interface Result {
   time: string;
 }
 
-/** sc-77904's own words, each count a plural family; the check's lines are sc-3917's (MW). */
 const STAFF_TEXT = {
   text: 'Text the link',
   bulk_one: 'Text links to {{count, number}}',
@@ -207,7 +206,6 @@ export function textable(entry: Entry): boolean {
   return entry.mobile != null && entry.stopped !== true && entry.pending == null;
 }
 
-/** {n}: textable, reading No link yet, Copied or Shared. */
 export function owed(entry: Entry): boolean {
   return (
     textable(entry) && (entry.link === 'none' || entry.link === 'copied' || entry.link === 'shared')
@@ -224,7 +222,6 @@ export interface Check {
   wait: number;
 }
 
-/** The text in the event's language, the first form that fits one part, as [en] settled them (#77928). */
 const STAFF_SMS = {
   full: 'Your staff link for {{event}} from {{org}}: {{link}}',
   noEvent: 'Your staff link from {{org}}: {{link}}',
@@ -248,7 +245,6 @@ export function staffSmsOf(first: boolean): InviteSms {
   return asSent(fits, first);
 }
 
-/** sc-3928's rate for the person's own number, times the parts of their text. */
 export function creditsOf(entry: Entry): number {
   const country = entry.mobile == null ? null : phoneFields(entry.mobile)?.country;
   if (country == null) throw new Error(`No number to text for ${entry.name}`);
@@ -256,7 +252,6 @@ export function creditsOf(entry: Entry): number {
   return textCredits({ parts: staffSmsOf(entry.trail?.via !== 'text').parts, country });
 }
 
-/** How many of the texts, in order, the credits pay for. */
 function affordable(costs: readonly number[], credits: number): number {
   let left = credits;
   const paid = costs.findIndex((cost) => {

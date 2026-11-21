@@ -16,7 +16,6 @@ import { type OnRoster, sampleRoster } from './StaffRosterModel.ts';
 
 const PLURAL = new Intl.PluralRules('en');
 
-/** The count's CLDR plural form in en, one or other. */
 function byCount(count: number, one: string, other: string): string {
   return (PLURAL.select(count) === 'one' ? one : other).replaceAll('{count}', formatCount(count));
 }
@@ -80,7 +79,6 @@ export function resultLines(r: Result): string[] {
   ];
 }
 
-/** The text in the event's language, the first form that fits one part, as [en] settled them (#77928). */
 function staffSmsForms(link: string): string[] {
   const event = sampleEvent(EVENT_OF_KEY.wed)?.name ?? '';
 
@@ -99,7 +97,6 @@ export function staffSmsParts(first: boolean): number {
   return smsParts(asSent(fits, first));
 }
 
-/** sc-3928's rate for the person's own number, times the parts of their text. */
 export function textCostOf(mobile: string | null, trail: Trail | null): number {
   if (mobile == null) throw new Error('No number to text');
 
@@ -149,7 +146,6 @@ export interface Check {
   wait: number;
 }
 
-/** How many of the texts, in order, the credits pay for. */
 function affordable(costs: readonly number[], credits: number): number {
   let left = credits;
   const short = costs.findIndex((cost) => {
