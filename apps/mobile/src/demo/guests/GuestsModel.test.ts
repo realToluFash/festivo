@@ -87,7 +87,7 @@ describe('the states, as guests-a-spec §15 names them', () => {
     expect(
       GUESTS_STATES.filter((state) => (DOOR_STATES as readonly string[]).includes(state)),
     ).toEqual([]);
-    expect(GUESTS_STATES).toHaveLength(187);
+    expect(GUESTS_STATES).toHaveLength(188);
     expect(DOOR_STATES).toHaveLength(13);
   });
 
@@ -98,6 +98,7 @@ describe('the states, as guests-a-spec §15 names them', () => {
     expect(guestOf('recordReplace')).toBe('ngozi');
     expect(guestOf('editMax')).toBe('musa');
     expect(guestOf('editSeated')).toBe('ines');
+    expect(guestOf('editCompanionArrived')).toBe('ines');
     expect(guestOf('edit412')).toBe('kwame');
     expect(guestOf('inUse')).toBeNull();
   });
