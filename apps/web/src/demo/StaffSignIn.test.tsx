@@ -172,7 +172,11 @@ describe('signed in as someone else, and signed out (sc-4235)', () => {
   it('returns Sign out on the shift page to Confirm it’s you, with Signed out. as a status', async () => {
     const router = await open('/demo/check-in/shift');
 
-    expect(screen.getByText('You’ll be signed out at 02:00.')).toBeDefined();
+    expect(
+      screen.getByText(
+        'This link is yours alone. You’ll be signed out at Sunday 02:00, and nothing stays on this phone.',
+      ),
+    ).toBeDefined();
     press('Sign out');
     const status = await screen.findByText('Signed out.', {}, { timeout: 8000 });
 
