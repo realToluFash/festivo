@@ -8,6 +8,7 @@ appId: com.apple.Preferences
     direction: DOWN
 - tapOn: 'Accessibility'
 - tapOn: 'Display & Text Size'
+- assertVisible: 'Bold Text'
 - tapOn:
     point: '84%,18%'
 - waitForAnimationToEnd
