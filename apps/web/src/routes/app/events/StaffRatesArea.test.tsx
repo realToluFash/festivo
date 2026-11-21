@@ -340,6 +340,7 @@ describe('Budget / Staff rates (sc-101)', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Remove the rate' }));
 
     await waitFor(() => expect(row('Door').textContent).toContain('No rate yet'));
+    await waitFor(() => expect(document.activeElement).toBe(row('Door')));
     expect(
       screen.getByText('Door’s rate removed. Its hours are not counted until it has one.'),
     ).toBeTruthy();
@@ -376,11 +377,17 @@ describe('Budget / Staff rates (sc-101)', () => {
     const row = await own.findByRole('button', { name: /^Amina Yusuf/u });
     expect(row.textContent).toContain('£16 an hour · Instead of Waiter’s £14 an hour');
     expect(row.textContent).toContain('7 h as Waiter');
+    await waitFor(() => expect(document.activeElement).toBe(row));
     fireEvent.click(row);
     fireEvent.click(screen.getByRole('button', { name: 'Use Waiter’s rate' }));
 
     expect(await screen.findByText('Amina Yusuf is back on Waiter’s rate.')).toBeTruthy();
     expect(own.queryByRole('button', { name: /^Amina Yusuf/u })).toBeNull();
+    await waitFor(() =>
+      expect(document.activeElement).toBe(
+        within(main()).getByRole('button', { name: /^Waiter,/u }),
+      ),
+    );
     expect(
       sent.some((one) => one.line === 'DELETE /api/events/ev_1/budget/staff-rates/people/amina'),
     ).toBe(true);
