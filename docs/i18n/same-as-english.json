@@ -277,6 +277,8 @@
     "messages:staff.job_suggested.bar",
     "messages:stations.place_suggested.bar",
     "web:dataControl.enterprise",
+    "messagesCounts:audit.format.csv",
+    "messagesCounts:audit.format.jsonl",
     "messagesCounts:audit.value.enterprise",
     "mobile:dataAndControl.enterprise",
     "web:budget.margin.enterprise",
