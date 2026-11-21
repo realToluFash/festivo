@@ -1,0 +1,34 @@
+# Signed out, welcome shows Design demo under its ways in; it opens the demo, and Close returns to welcome.
+appId: host.exp.Exponent
+---
+- runFlow: ../sign-out.yaml
+- stopApp
+- openLink: ${METRO_URL}
+- extendedWaitUntil:
+    visible:
+      id: 'welcome.email'
+    timeout: 30000
+- extendedWaitUntil:
+    visible:
+      id: 'home.designDemo'
+    timeout: 15000
+- takeScreenshot: launch-demo-button
+- tapOn:
+    id: 'home.designDemo'
+- extendedWaitUntil:
+    visible: 'folake@ire.events'
+    timeout: 15000
+- tapOn:
+    id: 'demo.board.Welcome'
+- extendedWaitUntil:
+    visible: 'Plan the event. Run the night.'
+    timeout: 10000
+- takeScreenshot: demo-welcome
+- back
+- tapOn:
+    id: 'demo.close'
+- extendedWaitUntil:
+    visible:
+      id: 'home.designDemo'
+    timeout: 10000
+- takeScreenshot: launch-after-close

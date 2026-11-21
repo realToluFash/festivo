@@ -1,0 +1,99 @@
+/* The demo's own frame for Today, Events and Calendar in a phone's browser (sc-57468): the pages' rules are `components/phoneFit.css`, which the product's shell shares, and Today's narrow arrangement at a desk is deskFit.css. */
+
+.dp-menu {
+  display: none;
+}
+
+@media (width <= 40rem) {
+  .dp-fit.today {
+    flex-direction: column;
+    height: auto;
+    min-height: 100vh;
+  }
+
+  .dp-fit .today-side {
+    flex-direction: row;
+    align-items: center;
+    gap: var(--spaceMd);
+    width: auto;
+    height: auto;
+    padding: var(--spaceSm) var(--spaceLg);
+    overflow: visible;
+    border-bottom: var(--borderCard);
+    background: var(--colorCard);
+  }
+
+  .dp-fit .today-side > :not(.sw, .dp-menu, .desk-bell) {
+    display: none;
+  }
+
+  /* The bar's bell is the product shell's: the card's colour on the bar, not the title row's grey. */
+  .dp-fit .today-side > .desk-bell {
+    border-radius: var(--radiusNav);
+    background: var(--colorCard);
+    color: var(--colorInk);
+  }
+
+  .dp-fit .today-side > .desk-bell:hover {
+    background: var(--colorInset);
+  }
+
+  .dp-fit .today-side > .sw {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .dp-fit .today-side .sw-opener-name {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .dp-fit .dp-menu {
+    display: flex;
+    flex: none;
+    align-items: center;
+    gap: var(--spaceXs);
+    min-height: var(--sizeHit);
+    margin: 0;
+    padding: 0 var(--spaceLg);
+    border: var(--borderControl);
+    border-radius: var(--radiusPill);
+    white-space: nowrap;
+    background: var(--colorCard);
+    color: var(--colorInk);
+    font: var(--typeButton);
+    cursor: pointer;
+  }
+
+  .dp-fit .dp-menu svg {
+    width: 16px;
+    height: 16px;
+  }
+
+  .dp-fit :is(.today-main, .desk-main) {
+    margin: 0;
+    padding: var(--spaceXl) var(--spaceLg) var(--space3xl);
+    overflow: visible;
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+  }
+
+  /* Settings keeps the product shell's phone gutter, where Today, Events and Calendar keep theirs. */
+  .dp-fit .desk-main:has(> .desk-list) {
+    padding-inline: var(--spaceXl);
+  }
+
+  /* Calendar keeps the window's height, so its weeks scroll inside the page and the month's name follows them. */
+  .dp-fit.today:has(.cal-page) {
+    height: 100dvh;
+  }
+
+  .dp-fit .desk-main:has(> .cal-page) {
+    flex: 1;
+    min-height: 0;
+    padding-bottom: 0;
+    overflow: hidden;
+  }
+}

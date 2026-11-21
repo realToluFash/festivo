@@ -1,0 +1,66 @@
+# sc-68421: the Add people sheet with someone from outside, in each locale: an unusable address, one already on, the From outside group with the job label count at 0, 1, 2 and 60, and Lead off.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/${EV}?area=people
+- extendedWaitUntil:
+    visible:
+      id: 'people.add.open'
+    timeout: 30000
+- takeScreenshot: list-top
+- tapOn:
+    id: 'people.add.open'
+- extendedWaitUntil:
+    visible:
+      id: 'people.add.who'
+    timeout: 10000
+- tapOn:
+    id: 'people.add.who'
+- inputText: 'someone@'
+- takeScreenshot: unusable
+- eraseText: 60
+- inputText: 'outside-one@soirely.test'
+- takeScreenshot: on-already
+- eraseText: 60
+- inputText: 'new.person@soirely.test'
+- hideKeyboard
+- scrollUntilVisible:
+    element:
+      id: 'people.add.job'
+    direction: DOWN
+- takeScreenshot: offer-0
+- tapOn:
+    id: 'people.add.job'
+- inputText: 'A'
+- hideKeyboard
+- takeScreenshot: job-1
+- tapOn:
+    id: 'people.add.job'
+- inputText: 'J'
+- hideKeyboard
+- takeScreenshot: job-2
+- tapOn:
+    id: 'people.add.job'
+- eraseText: 10
+- inputText: 'Fotografa responsavel pela cobertura completa do casamento X'
+- hideKeyboard
+- scrollUntilVisible:
+    element:
+      id: 'people.add.job'
+    direction: DOWN
+- takeScreenshot: job-60
+- scrollUntilVisible:
+    element:
+      id: 'people.add.role'
+    direction: UP
+- tapOn:
+    id: 'people.add.role'
+- extendedWaitUntil:
+    visible:
+      id: 'people.add.roles.lead'
+    timeout: 10000
+- tapOn:
+    id: 'people.add.roles.lead'
+- tapOn:
+    id: 'people.add.roles.done'
+- waitForAnimationToEnd: { timeout: 3000 }
+- takeScreenshot: lead-off

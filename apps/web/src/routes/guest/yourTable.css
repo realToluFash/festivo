@@ -1,0 +1,42 @@
+/* sc-4022: Your table on the guest's page, as the demo (demo/guestTable.css) draws it. */
+:where(.guest-page) .gp-table {
+  gap: 10px;
+}
+
+:where(.guest-page) .gp-table-live {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+:where(.guest-page) .gp-table-line {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin: 0;
+  color: var(--colorInk);
+  font: 600 17px/1.4 var(--fontFamily);
+  overflow-wrap: anywhere;
+}
+
+:where(.guest-page) .gp-table-line.is-lead {
+  font-size: 18px;
+}
+
+:where(.guest-page) .gp-table-line svg {
+  flex: none;
+  margin-top: 2px;
+  color: var(--colorInkSecondary);
+}
+
+:where(.guest-page) .gp-table-elsewhere {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 0;
+  padding: 0 0 0 30px;
+  color: var(--colorInkSecondary);
+  font: 400 15px/1.45 var(--fontFamily);
+  list-style: none;
+  overflow-wrap: anywhere;
+}

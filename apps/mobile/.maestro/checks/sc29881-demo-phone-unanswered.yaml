@@ -1,0 +1,7 @@
+# sc-29881: the demo's party card on a phone at ?moment=plan&invites=unanswered.
+appId: host.exp.Exponent
+---
+- runFlow:
+    file: sc29881-demo-phone-party.yaml
+    env:
+      QS: 'moment=plan&invites=unanswered'
