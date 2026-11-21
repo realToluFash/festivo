@@ -401,7 +401,7 @@ describe('Due now (sc-1331): one tap each, no total', () => {
     const done = startOf('due_done', REMOVED_PAYER);
     expect(done.dueNow != null && dueNowSettled(done.dueNow, done.ledger)).toBe(true);
     expect(done.dueNow?.ids).toEqual(['bloom-balance', 'savour-deposit']);
-    expect(W.nothingLeftHead).toBe('Nothing left to pay.');
+    expect(W.nothingLeftHead).toBe('Nothing left to pay from this reminder');
   });
 
   it('reads the payments as they are now', () => {
@@ -449,9 +449,24 @@ describe('Due now (sc-1331): one tap each, no total', () => {
     expect(W.alreadyPaid('Julien Moreau')).toBe(
       'Julien Moreau has already marked this paid, so nothing has changed.',
     );
-    expect(startOf('due_refused_plan', REMOVED_PAYER).dueNow?.refused).toEqual({
-      'savour-deposit': 'plan',
-    });
+    const plan = startOf('due_refused_plan', REMOVED_PAYER);
+    expect(plan.dueNow?.refused).toEqual({ 'savour-deposit': 'plan' });
+    expect(plan.dueNow?.readOnly).toBe(true);
+    expect(canMark(plan)).toBe(false);
+  });
+
+  it('counts a row marked here as settled, with a link for each event and Undo kept', () => {
+    for (const state of ['due_now', 'due_several'] as const) {
+      let m = startOf(state, REMOVED_PAYER);
+      for (const id of m.dueNow?.ids ?? [])
+        m = reduce(m, { type: 'duePaid', id, reader: 'x', words: 'y' });
+
+      expect(m.dueNow != null && dueNowSettled(m.dueNow, m.ledger)).toBe(true);
+      expect(m.dueNow?.marked).toEqual(m.dueNow?.ids);
+      expect(m.dueNow?.readOnly).toBe(false);
+    }
+    const several = startOf('due_several', REMOVED_PAYER);
+    expect(eventsOf(several.dueNow?.ids ?? [])).toHaveLength(2);
   });
 
   it('settles a reminder across two events with a link for each, and answers not found alone', () => {

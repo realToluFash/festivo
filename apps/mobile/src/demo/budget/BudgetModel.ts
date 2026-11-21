@@ -908,7 +908,8 @@ export function startOf(state: BudgetState | null, removed: string): BudgetModel
     case 'due_refused_plan':
       return {
         ...base,
-        dueNow: sheet(REMINDER.payments, { refused: { 'savour-deposit': 'plan' } }),
+        vendors: 'readOnly',
+        dueNow: sheet(REMINDER.payments, { refused: { 'savour-deposit': 'plan' }, readOnly: true }),
       };
     case 'due_not_found':
       return { ...base, dueNow: sheet([], { notFound: true }) };
@@ -1021,12 +1022,9 @@ export type BudgetAction =
   | { type: 'payersChanged'; words: string }
   | { type: 'openReminder' };
 
-/** Every row on the sheet paid, cancelled or removed elsewhere, none marked here: "Nothing left to pay." heads it (sc-93, 7 Nov). */
 export function dueNowSettled(sheet: DueNowSheet, ledger: Ledger): boolean {
   return (
-    sheet.notFound !== true &&
-    sheet.marked.length === 0 &&
-    sheet.ids.every((id) => dueItemOf(id).gone || !isOwed(ledger, id))
+    sheet.notFound !== true && sheet.ids.every((id) => dueItemOf(id).gone || !isOwed(ledger, id))
   );
 }
 

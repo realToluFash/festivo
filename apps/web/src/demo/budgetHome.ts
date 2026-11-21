@@ -504,7 +504,7 @@ export const BUDGET_PAGES: readonly DemoGroup[] = [
       },
       { to: at('due_refused'), name: 'A tap refused: cancelled' },
       { to: at('due_refused_paid'), name: 'A tap refused: already paid by someone else' },
-      { to: at('due_refused_plan'), name: 'A tap refused: the plan no longer includes it' },
+      { to: at('due_refused_plan'), name: 'A tap refused by the plan: the sheet read only' },
       { to: at('due_done'), name: 'Nothing left to pay, one event' },
       { to: at('due_read_only'), name: 'Read only after a downgrade' },
       { to: at('due_several'), name: 'Across two events, each in its own currency' },

@@ -58,7 +58,7 @@ export const W = {
   paidOne: 'Paid',
   paidDifferent: 'Paid a different amount',
   cancelledWord: 'Cancelled',
-  nothingLeftHead: 'Nothing left to pay.',
+  nothingLeftHead: 'Nothing left to pay from this reminder',
   noLongerOnSchedule: 'No longer on the schedule',
   notFound: 'We cannot find these payments.',
   goToEvents: 'Go to your events',

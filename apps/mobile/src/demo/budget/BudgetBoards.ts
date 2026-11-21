@@ -72,7 +72,10 @@ const BOARDS: Record<BudgetState, readonly [string, string]> = {
     'Due now, refused, already paid',
     'Julien Moreau has already marked this paid',
   ],
-  due_refused_plan: ['Due now, refused, the plan', 'Payments cannot be marked paid on this plan'],
+  due_refused_plan: [
+    'Due now, refused, the plan',
+    'Payments cannot be marked paid on this plan, the sheet read only',
+  ],
   due_done_several: ['Due now, done, two events', 'Nothing left to pay, a link for each event'],
   due_not_found: ['Due now, not found', 'We cannot find these payments.'],
 };

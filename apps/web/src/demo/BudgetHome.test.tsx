@@ -359,6 +359,8 @@ describe('the Budget page at a desk in A (sc-31779)', () => {
       expect(within(dialog).getByRole('alert').textContent).toBe(
         'Payments cannot be marked paid on this organisation’s plan, so nothing has changed.',
       );
+      expect(within(dialog).queryByRole('button', { name: 'Paid' })).toBeNull();
+      expect(within(dialog).queryByRole('link', { name: 'Paid a different amount' })).toBeNull();
       cleanup();
       await open(at('due_not_found'));
       dialog = await screen.findByRole('dialog', {}, SLOW);

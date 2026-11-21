@@ -2284,7 +2284,7 @@ function DueNowDialog({
   first: string;
   onClose: () => void;
 }) {
-  const readOnly = first === 'due_read_only';
+  const readOnly = first === 'due_read_only' || first === 'due_refused_plan';
   const [items] = useState(() => dueItemsOf(first, event));
   const [rows, setRows] = useState<Record<string, DueNowState>>(() => dueStartOf(first, items));
   const [refused] = useState(() => dueRefusedOf(first));
