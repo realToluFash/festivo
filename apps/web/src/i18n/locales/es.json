@@ -3615,7 +3615,7 @@
     "staysArrived": "Esta persona se queda en la lista porque ya ha llegado. Sus datos se conservan según la configuración de datos de invitados del evento.",
     "staysCompanionArrived": "Esta persona se queda en la lista porque ya ha llegado uno de sus acompañantes. Sus datos se conservan según la configuración de datos de invitados del evento.",
     "justArrived": "{{name}} acaba de llegar, así que se queda en la lista.",
-    "companionJustArrived": "Acaba de llegar una persona que acompaña a {{name}}, así que {{name}} se queda en la lista.",
+    "companionJustArrived": "{{name}} se queda en la lista: acaba de llegar una persona que le acompaña.",
     "backToDetails": "Volver a los datos",
     "companionStays": "{{name}} ya ha llegado, así que se queda en la lista."
   },
@@ -3876,7 +3876,7 @@
     "keptAsRecorded_many": "{{count, number}} de invitados ya tenían la invitación registrada y se mantienen como estaban.",
     "notLive": "No ha cambiado nada. Este evento ya no está publicado, así que no se pueden registrar invitaciones.",
     "staysArrived": "{{name}} ya ha llegado, así que se queda en la lista.",
-    "staysCompanion": "Ya ha llegado una persona que acompaña a {{name}}, así que {{name}} se queda en la lista.",
+    "staysCompanion": "{{name}} se queda en la lista: ya ha llegado una persona que le acompaña.",
     "notChanged_one": "{{count, number}} invitado sin cambios: {{reasons}}.",
     "notChanged_other": "{{count, number}} invitados sin cambios: {{reasons}}.",
     "hasArrived": "{{name}} ya ha llegado",

@@ -3615,7 +3615,7 @@
     "staysArrived": "Cette personne est arrivée : elle reste donc sur la liste. Ses données sont conservées selon le réglage des données des invités de l’événement.",
     "staysCompanionArrived": "L’un de ses accompagnants est arrivé : cette personne reste donc sur la liste. Ses données sont conservées selon le réglage des données des invités de l’événement.",
     "justArrived": "{{name}} vient d’arriver et reste donc sur la liste.",
-    "companionJustArrived": "Une personne qui accompagne {{name}} vient d’arriver : {{name}} reste donc sur la liste.",
+    "companionJustArrived": "{{name}} reste sur la liste : une personne qui l’accompagne vient d’arriver.",
     "backToDetails": "Retour aux informations",
     "companionStays": "Arrivée enregistrée pour {{name}}, qui reste donc sur la liste."
   },
@@ -3876,7 +3876,7 @@
     "keptAsRecorded_many": "Les invitations déjà enregistrées de {{count, number}} d’invités restent inchangées.",
     "notLive": "Rien n’a changé. Cet événement n’est plus publié : les invitations ne peuvent pas être enregistrées.",
     "staysArrived": "Arrivée enregistrée pour {{name}}, qui reste donc sur la liste.",
-    "staysCompanion": "Une personne qui accompagne {{name}} est arrivée : {{name}} reste donc sur la liste.",
+    "staysCompanion": "{{name}} reste sur la liste : une personne qui l’accompagne est arrivée.",
     "notChanged_one": "{{count, number}} invité inchangé : {{reasons}}.",
     "notChanged_other": "{{count, number}} invités inchangés : {{reasons}}.",
     "hasArrived": "arrivée enregistrée pour {{name}}",
