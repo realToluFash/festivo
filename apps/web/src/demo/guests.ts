@@ -1976,6 +1976,10 @@ export const GUESTS_STATES = [
     name: 'Rui Duarte has arrived: Inês Duarte has no Remove',
   },
   {
+    key: 'editCompanionArrived',
+    name: 'Edit guest: Rui Duarte has arrived, no Remove beside him, and why',
+  },
+  {
     key: 'removeCompanionArrives',
     name: 'Their companion arrives while the question is open: Remove meets a 409',
   },
@@ -2705,6 +2709,12 @@ export function guestsStart(state: GuestsState | null, params: URLSearchParams):
         card: 'day1',
         list: companionArrivedIn(start.list, 'ines', '18:05'),
       });
+    case 'editCompanionArrived':
+      return {
+        ...edit('ines'),
+        choice: 'coming',
+        list: companionArrivedIn(start.list, 'ines', '18:05'),
+      };
     case 'removeCompanionArrives':
       return column(guestPane('ines'), {
         choice: 'coming',
@@ -2976,6 +2986,7 @@ export const GUESTS_PAGES: readonly { name: string; states: readonly DemoLink[] 
     'removeArrives',
     'removeRefusedArrived',
     'removeCompanionArrived',
+    'editCompanionArrived',
     'removeCompanionArrives',
     'removeRefusedCompanionArrived',
     'removeGoes',

@@ -42,6 +42,7 @@ import { NEEDS_FIELDS, NO_NEEDS, NW } from './guestNeeds.ts';
 import { NeedsSection } from './GuestNeeds.tsx';
 import { useLater } from '../useLater.ts';
 import { GroupField } from './GuestGroups.tsx';
+import { RMW, companionArrived } from './guestRemove.ts';
 import type { GuestGroup } from './guestGroups.ts';
 
 const SAVE_MS = 900;
@@ -160,6 +161,7 @@ function CompanionFields({
   onSaid,
   onAsk,
   seated,
+  arrived,
   focus,
   refusedStart = false,
   needs,
@@ -171,6 +173,7 @@ function CompanionFields({
   onSaid: (said: string) => void;
   onAsk?: (removing: Removing) => void;
   seated?: (id: string | null) => Seated | null;
+  arrived?: (id: string | null) => boolean;
   focus: (...keys: string[]) => void;
   refusedStart?: boolean;
   needs: { lines: Lines; open: ReadonlySet<string>; toggle: (who: string, open: boolean) => void };
@@ -277,6 +280,7 @@ function CompanionFields({
       {values.companions.map((companion, at) => {
         if (!seen(at)) return null;
         const shown = shownAt(at);
+        const stays = arrived?.(companion.id) === true;
 
         return (
           <div key={at} className="gs-companion-block">
@@ -289,6 +293,7 @@ function CompanionFields({
                   spellCheck={false}
                   data-focus={`companion-${at}`}
                   aria-label={GW.companionName(at + 1, count)}
+                  aria-describedby={stays ? `${id}-stays-${at}` : undefined}
                   onChange={(event) => {
                     setRefused(null);
                     onChange({
@@ -299,36 +304,44 @@ function CompanionFields({
                   }}
                 />
               </div>
-              <button
-                type="button"
-                className="desk-text gs-remove"
-                aria-label={
-                  companion.name.trim() !== '' || host === ''
-                    ? GW.removeNamed(shown)
-                    : at === 0
-                      ? GW.removeCompanionOf(host)
-                      : GW.removeCompanionOfNth(host, at + 1)
-                }
-                onClick={() => {
-                  const seat = seated?.(companion.id) ?? null;
-
-                  if (seat != null && onAsk != null) {
-                    onAsk({
-                      asks: [{ name: shown, seat }],
-                      after: removeCompanion(values, at),
-                      at,
-                    });
-                    return;
+              {!stays && (
+                <button
+                  type="button"
+                  className="desk-text gs-remove"
+                  aria-label={
+                    companion.name.trim() !== '' || host === ''
+                      ? GW.removeNamed(shown)
+                      : at === 0
+                        ? GW.removeCompanionOf(host)
+                        : GW.removeCompanionOfNth(host, at + 1)
                   }
-                  setRefused(null);
-                  onChange({ companions: removeCompanion(values, at) });
-                  onSaid(GW.removed(shown));
-                  focus(`companion-${at}`, `companion-${at - 1}`, 'places');
-                }}
-              >
-                {GW.remove}
-              </button>
+                  onClick={() => {
+                    const seat = seated?.(companion.id) ?? null;
+
+                    if (seat != null && onAsk != null) {
+                      onAsk({
+                        asks: [{ name: shown, seat }],
+                        after: removeCompanion(values, at),
+                        at,
+                      });
+                      return;
+                    }
+                    setRefused(null);
+                    onChange({ companions: removeCompanion(values, at) });
+                    onSaid(GW.removed(shown));
+                    focus(`companion-${at}`, `companion-${at - 1}`, 'places');
+                  }}
+                >
+                  {GW.remove}
+                </button>
+              )}
             </div>
+            {stays && (
+              <p id={`${id}-stays-${at}`} className="gs-stays">
+                <Glyph name="tick" size={16} weight={2.6} />
+                {RMW.companionStays(shown)}
+              </p>
+            )}
             <NeedsSection
               title={NW.theirNeeds}
               needs={companion.needs ?? NO_NEEDS}
@@ -587,6 +600,7 @@ export function EditForm({
           onSaid={setSaid}
           onAsk={setRemoving}
           seated={(id) => seatedOf(guest, id)}
+          arrived={(id) => companionArrived(guest, id)}
           focus={focus}
           refusedStart={start.placesRefused === true}
           needs={{ lines, open: opened.open, toggle: opened.toggle }}

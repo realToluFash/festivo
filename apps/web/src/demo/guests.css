@@ -1295,6 +1295,19 @@
   gap: var(--spaceXs);
 }
 
+.gs-stays {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--spaceSm);
+  color: var(--colorInkSecondary);
+  font: 500 14.5px/1.45 var(--fontFamily);
+}
+
+.gs-stays svg {
+  flex: none;
+  margin-top: 2px;
+}
+
 .gs-their-needs {
   margin-top: var(--spaceSm);
 }
