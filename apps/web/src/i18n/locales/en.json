@@ -5351,7 +5351,7 @@
     "nameLong": "Use 60 characters or fewer.",
     "noteLong": "Use 200 characters or fewer.",
     "cap": "An event can have up to 20 payers.",
-    "coversCosts_one": "{{name}} covers {{count, number}} cost. Choose who pays for them first.",
+    "coversCosts_one": "{{name}} covers {{count, number}} cost. Choose who pays for it first.",
     "coversCosts_other": "{{name}} covers {{count, number}} costs. Choose who pays for them first.",
     "removed": "{{name}} removed.",
     "back": "{{name}} is back.",

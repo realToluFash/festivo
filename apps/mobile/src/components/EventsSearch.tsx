@@ -336,10 +336,13 @@ export function FilterButton({
   open,
   onPress,
   ref,
+  unseen = false,
 }: FilterWords & {
   wraps: boolean;
   off: boolean;
   open: boolean;
+  /** Keeps Filter's room but draws nothing there: on Events' loading screen, whose row sits a line above where it settles (sc-78193). */
+  unseen?: boolean;
   onPress: () => void;
   ref: Ref<ViewInstance>;
 }) {
@@ -358,7 +361,10 @@ export function FilterButton({
 
   return (
     <View
-      style={wraps ? styles.filterWraps : styles.filterBeside}
+      style={[wraps ? styles.filterWraps : styles.filterBeside, unseen && styles.held]}
+      pointerEvents={unseen ? 'none' : 'auto'}
+      accessibilityElementsHidden={unseen}
+      importantForAccessibility={unseen ? 'no-hide-descendants' : 'auto'}
       onLayout={(event) => setSlot(event.nativeEvent.layout.width)}
     >
       {fit.measurer}
