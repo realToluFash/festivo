@@ -601,6 +601,8 @@ export interface NewDoorCode {
   jobLabel: string | null;
   useCap: number;
   expiresAt: string;
+  /** Make a new code: this code stops in the same write and leaves the list. */
+  replaces?: string;
 }
 
 /** What a door code opens, shown before a name is asked for; `standing` is null signed out. */

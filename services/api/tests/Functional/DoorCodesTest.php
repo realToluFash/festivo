@@ -258,6 +258,43 @@ final class DoorCodesTest extends ApiTestCase
     }
 
     #[Test]
+    public function aNewCodeTakesTheOldOnesPlaceOnPeopleAndKeepsWhoCameInByIt(): void
+    {
+        $old = $this->code('can_check_in', 12, jobLabel: 'Bar and drinks');
+        $this->redeem($old, 'Adébáyọ̀');
+
+        $again = ['role' => 'can_check_in', 'jobLabel' => 'Bar and drinks', 'useCap' => 12, 'expiresAt' => '2030-11-14T12:00:00+00:00', 'replaces' => $this->doorCode($old)->getId()->toRfc4122()];
+        $body = $this->as($this->owner, 'POST', '/api/events/' . $this->owambe . '/door-codes', $again);
+
+        self::assertSame(201, $this->statusCode(), Json\encode($body));
+        $fresh = Type\dict(Type\string(), Type\mixed())->coerce($body['doorCode']);
+        self::assertSame(['can_check_in', 'Bar and drinks', 12, 0, 'working', '2030-11-14T12:00:00+00:00'], [$fresh['role'], $fresh['jobLabel'], $fresh['useCap'], $fresh['used'], $fresh['status'], $fresh['expiresAt']]);
+        self::assertNotSame($old, $fresh['code']);
+        $listed = $this->as($this->owner, 'GET', '/api/events/' . $this->owambe . '/door-codes');
+        self::assertSame([$fresh['id']], Vec\map(Type\vec(Type\shape(['id' => Type\string()], true))->coerce($listed['doorCodes']), static fn (array $code): string => $code['id']), 'the replaced code leaves People');
+        $this->redeem($old, 'Tolú');
+        self::assertSame(404, $this->statusCode(), 'the old code lets nobody new in');
+        self::assertSame($old, $this->peopleRow('Adébáyọ̀')['doorCode'], 'whoever came in by it stays, with the code they used');
+
+        $this->as($this->owner, 'POST', '/api/events/' . $this->owambe . '/door-codes', $again);
+        self::assertSame(404, $this->statusCode(), 'a code is replaced once');
+        $this->as($this->owner, 'POST', '/api/events/' . $this->naming . '/door-codes', [...$again, 'replaces' => $fresh['id']]);
+        self::assertSame(404, $this->statusCode(), 'and only from its own event');
+        self::assertNull($this->doorCode(Type\string()->coerce($fresh['code']))->getStoppedAt(), 'a refused replacement stops nothing');
+    }
+
+    #[Test]
+    public function aStoppedCodeThatNobodyRemadeStaysOnPeople(): void
+    {
+        $code = $this->code('can_view');
+        $this->stop($code);
+        $this->make('can_view', 10, '2030-11-14T10:00:00+00:00', 'with no replaces');
+
+        $listed = $this->as($this->owner, 'GET', '/api/events/' . $this->owambe . '/door-codes');
+        self::assertSame(['working', 'stopped'], Vec\map(Type\vec(Type\shape(['status' => Type\string()], true))->coerce($listed['doorCodes']), static fn (array $one): string => $one['status']));
+    }
+
+    #[Test]
     public function aPersonRemovedOnPeopleCannotComeBackWithTheSameLiveCode(): void
     {
         $code = $this->code('can_view');
