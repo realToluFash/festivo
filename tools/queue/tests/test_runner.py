@@ -124,6 +124,18 @@ class Run(unittest.TestCase):
             self.run_once()
         self.assertEqual(self.platform.web_restarts, 1)
 
+    def test_a_worker_is_given_its_folders_token_and_never_another_accounts(self):
+        mine, plain = "CLAUDE_CODE_OAUTH_TOKEN_CLAUDE_3", "CLAUDE_CODE_OAUTH_TOKEN"
+        theirs = "CLAUDE_CODE_OAUTH_TOKEN_CLAUDE_4"
+        with mock.patch.dict("os.environ", {mine: "m", theirs: "t"}):
+            env = runner.account_env("/home/x/.claude-3")
+            self.assertEqual({k: v for k, v in env.items() if k.startswith(plain)}, {plain: "m"})
+            env = runner.account_env("/home/x/.claude-5")
+            self.assertEqual([k for k in env if k.startswith(plain)], [])
+            with mock.patch.dict("os.environ", {plain: "p"}):
+                self.assertEqual(runner.account_env("/home/x/.claude-5")[plain], "p")
+                self.assertEqual(runner.account_env("/home/x/.claude-3")[plain], "m")
+
     def test_a_due_role_with_work_gets_one_worker(self):
         store.record(self.db, [work("ops")], ON_ZERO)
         self.run_once()
