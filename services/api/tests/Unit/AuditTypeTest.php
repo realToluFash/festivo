@@ -38,7 +38,7 @@ final class AuditTypeTest extends TestCase
     private const array CHANGES_A_VALUE = [
         'event.updated', 'event.cover_changed', 'event.cover_removed', 'event.thank_you_saved', 'event.thank_you_removed',
         'event.made_live', 'event.paused', 'event.resumed', 'event.ended',
-        'event_person.changed',
+        'event_person.changed', 'door_code.stopped',
         'managed_account.refused',
         'request_link.turned_on', 'request_link.turned_off', 'request_link.replaced',
         'membership.approved', 'membership.turned_down', 'membership.request_expired', 'membership.suspended', 'membership.suspension_expired',

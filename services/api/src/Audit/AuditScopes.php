@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Audit;
 
+use App\Entity\DoorCode;
 use App\Entity\Event;
 use App\Entity\EventPerson;
 use App\Entity\Invitation;
@@ -31,6 +32,7 @@ final readonly class AuditScopes
             'OwnerClaim' => $this->ownerClaim($subjectId),
             'Event' => $this->event($subjectId),
             'EventPerson' => $this->eventPerson($subjectId),
+            'DoorCode' => $this->doorCode($subjectId),
             default => new AuditScope(),
         };
     }
@@ -105,6 +107,21 @@ final readonly class AuditScopes
         }
 
         $row = $this->row('SELECT e.organisation_id, e.id AS event_id, e.name AS event_name, COALESCE(u.name, p.address) AS name FROM event_people p JOIN events e ON e.id = p.event_id LEFT JOIN users u ON u.id = p.user_id WHERE p.id = :id', $id);
+
+        return null === $row ? new AuditScope() : new AuditScope(self::uuid($row['organisation_id']), self::uuid($row['event_id']), $row['event_name'], $row['name']);
+    }
+
+    private function doorCode(Uuid $id): AuditScope
+    {
+        $code = $this->managed(DoorCode::class, $id);
+
+        if ($code instanceof DoorCode) {
+            $event = $code->getEvent();
+
+            return new AuditScope($event->getOrganisation()->getId(), $event->getId(), $event->getName(), $code->getCode());
+        }
+
+        $row = $this->row('SELECT e.organisation_id, e.id AS event_id, e.name AS event_name, c.code AS name FROM door_codes c JOIN events e ON e.id = c.event_id WHERE c.id = :id', $id);
 
         return null === $row ? new AuditScope() : new AuditScope(self::uuid($row['organisation_id']), self::uuid($row['event_id']), $row['event_name'], $row['name']);
     }
