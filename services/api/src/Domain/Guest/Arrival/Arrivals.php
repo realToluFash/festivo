@@ -92,7 +92,7 @@ final readonly class Arrivals
                 throw ApiException::notFound('access.not_found');
             }
 
-            $this->entityManager->refresh($person, LockMode::PESSIMISTIC_WRITE);
+            $person = $this->lockedWithHost($person);
             $now = $this->open($event);
             $changed = $change($person, $now);
 
@@ -106,6 +106,30 @@ final readonly class Arrivals
 
         if ($changed) {
             $this->published($event);
+        }
+
+        return $person;
+    }
+
+    /** The host first, as a removal or an edit of the party locks it, so an arrival queues behind them and never lands on a companion they took off the list. */
+    private function lockedWithHost(Guest $person): Guest
+    {
+        $host = $person->getHost();
+
+        if (null !== $host) {
+            $this->entityManager->refresh($host, LockMode::PESSIMISTIC_WRITE);
+        }
+
+        $id = $person->getId()->toRfc4122();
+
+        if (false === $this->entityManager->getConnection()->fetchOne('SELECT 1 FROM guests WHERE id = :id FOR UPDATE', ['id' => $id])) {
+            throw ApiException::notFound('access.not_found');
+        }
+
+        $this->entityManager->refresh($person);
+
+        if ($person->isRemoved() || true === $host?->isRemoved()) {
+            throw ApiException::notFound('access.not_found');
         }
 
         return $person;
