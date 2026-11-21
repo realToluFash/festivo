@@ -1,5 +1,6 @@
 {
   "es": [
+    "web:staffRates.hoursMinutes",
     "web:app.name",
     "web:orgGeneral.title",
     "mobile:app.name",
@@ -61,6 +62,7 @@
     "messagesCounts:audit.field.plan"
   ],
   "fr": [
+    "web:staffRates.hoursMinutes",
     "web:nav.menu",
     "web:menuLibrary.desc",
     "mobile:app.name",
@@ -226,6 +228,7 @@
     "messagesCounts:audit.value.invitation"
   ],
   "pt": [
+    "web:staffRates.hoursMinutes",
     "web:seating.shapeCocktailShort",
     "web:nav.menu",
     "web:app.name",
