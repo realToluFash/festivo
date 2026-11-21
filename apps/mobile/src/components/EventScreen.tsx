@@ -314,6 +314,11 @@ export function EventScreen({
             nameRef={cardNamed ? cardName : undefined}
             onGuests={() => chooseArea('guests')}
             onPeople={() => chooseArea('people')}
+            onCheckIn={
+              outside.role === 'can_check_in' && kind !== 'tabletLandscape'
+                ? () => router.push({ pathname: '/events/[id]/check-in', params: { id: event.id } })
+                : null
+            }
           />
         </Arrived>
       ) : area === 'overview' ? (

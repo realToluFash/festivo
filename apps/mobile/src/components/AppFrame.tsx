@@ -254,6 +254,17 @@ interface NavEntry {
   opener?: RefObject<ViewInstance | null>;
 }
 
+/** Held from outside at Can check guests in, Check guests in heads the event's areas and opens Check-in (sc-1454). */
+function doorOf(inside: InsideEvent | null | undefined): string | null {
+  const outside = inside?.outside;
+
+  return outside?.role === 'can_check_in' ? outside.id : null;
+}
+
+function openDoor(eventId: string): void {
+  router.push({ pathname: '/events/[id]/check-in', params: { id: eventId } });
+}
+
 function areaEntry(t: (key: string) => string, inside: InsideEvent, area: EventPlace): NavEntry {
   return {
     key: area,
@@ -387,10 +398,23 @@ export function AppFrame({
     kind === 'tabletPortrait' &&
     outsideHere != null &&
     (heldGroups.organisations || heldGroups.events);
+  const door = kind === 'tabletLandscape' ? doorOf(inEvent) : null;
   const entries =
     inEvent == null
       ? []
       : [
+          ...(door == null
+            ? []
+            : [
+                {
+                  key: 'checkIn',
+                  label: t('checkIn.checkGuestsIn'),
+                  glyph: 'tick' as const,
+                  on: false,
+                  onPress: () => openDoor(door),
+                  testID: 'event.nav.checkIn',
+                },
+              ]),
           ...(inEvent.outside == null ? EVENT_PLACES : outsidePlaces(inEvent.outside.role)).map(
             (area) => areaEntry(t, inEvent, area),
           ),
@@ -1578,29 +1602,32 @@ function TabBar({ inEvent }: { inEvent: InsideEvent }) {
           </View>
           <View accessibilityRole="tablist">
             <RowList
-              items={inMore.map((area) => {
-                const on = area === inEvent.area;
+              items={[
+                ...doorRows(t, inEvent, () => setMore(false)),
+                ...inMore.map((area) => {
+                  const on = area === inEvent.area;
 
-                return {
-                  key: area,
-                  inset: 40,
-                  selected: on,
-                  row: (
-                    <Row
-                      title={t(`eventNav.${area}`)}
-                      lead={<MoreGlyph name={AREA_GLYPH[area]} on={on} />}
-                      opens
-                      selected={on}
-                      onPress={() => {
-                        setMore(false);
-                        inEvent.onArea(area);
-                      }}
-                      accessibilityRole="tab"
-                      testID={`event.nav.more.${area}`}
-                    />
-                  ),
-                };
-              })}
+                  return {
+                    key: area,
+                    inset: 40,
+                    selected: on,
+                    row: (
+                      <Row
+                        title={t(`eventNav.${area}`)}
+                        lead={<MoreGlyph name={AREA_GLYPH[area]} on={on} />}
+                        opens
+                        selected={on}
+                        onPress={() => {
+                          setMore(false);
+                          inEvent.onArea(area);
+                        }}
+                        accessibilityRole="tab"
+                        testID={`event.nav.more.${area}`}
+                      />
+                    ),
+                  };
+                }),
+              ]}
             />
           </View>
           {outside != null && (
@@ -1614,6 +1641,34 @@ function TabBar({ inEvent }: { inEvent: InsideEvent }) {
       </Sheet>
     </>
   );
+}
+
+function doorRows(
+  t: (key: string) => string,
+  inside: InsideEvent,
+  close: () => void,
+): { key: string; inset: number; row: ReactNode }[] {
+  const door = doorOf(inside);
+  if (door == null) return [];
+
+  return [
+    {
+      key: 'checkIn',
+      inset: 40,
+      row: (
+        <Row
+          title={t('checkIn.checkGuestsIn')}
+          lead={<MoreGlyph name="tick" on={false} />}
+          opens
+          onPress={() => {
+            close();
+            openDoor(door);
+          }}
+          testID="event.nav.more.checkIn"
+        />
+      ),
+    },
+  ];
 }
 
 /** Held from outside an organisation (sc-71), the account's own two: Your account and Sign out, in the phone's More and behind the sidebar's person button. */

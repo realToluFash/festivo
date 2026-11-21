@@ -24,6 +24,7 @@ export function OutsideOverview({
   nameRef,
   onGuests,
   onPeople,
+  onCheckIn,
 }: {
   event: OrganisationEvent;
   held: Pick<OutsideEvent, 'role' | 'jobLabel'>;
@@ -32,6 +33,8 @@ export function OutsideOverview({
   nameRef?: Ref<TextHandle> | undefined;
   onGuests: () => void;
   onPeople: () => void;
+  /** At Can check guests in, on a phone and an upright tablet: Check guests in on the card, under the level line (sc-1454). */
+  onCheckIn: (() => void) | null;
 }) {
   const { t } = useTranslation();
   const locale = dateLocale();
@@ -48,6 +51,11 @@ export function OutsideOverview({
             <EventMesh event={{ mesh: meshFor(event.id), photo: null }} shade="side" />
             <Confetti pieces={CARD_PIECES} />
           </>
+        }
+        step={
+          onCheckIn == null
+            ? null
+            : { label: t('checkIn.checkGuestsIn'), onPress: onCheckIn, testID: 'outside.checkIn' }
         }
         testID="outside.card"
       >
