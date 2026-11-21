@@ -569,10 +569,47 @@ describe('Who is paying (sc-91)', () => {
     expect(
       await screen.findByText('The split on Cars no longer adds up. Nothing was changed.'),
     ).toBeTruthy();
+    expect(
+      screen.getByText(
+        'Cars now costs £350.00, less than the £400.00 fixed for Aunt Funmi. Aunt Funmi keeps £400.00 and Mr and Mrs Obi have £0.00 until the amounts change.',
+      ),
+    ).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: 'Change the amounts' }));
     expect(await screen.findByRole('heading', { level: 1, name: 'Choose who pays' })).toBeTruthy();
     expect((screen.getByLabelText('Aunt Funmi · amount') as HTMLInputElement).value).toBe('400.00');
     expect(screen.getByText(/more than £350.00, the least this can cost/u)).toBeTruthy();
+  });
+
+  it('gives each fixed payer their own amount on the flag', async () => {
+    signedIn();
+    serve({
+      'GET /api/events/ev_1/budget/payers': () =>
+        json(
+          payers({
+            lines: [
+              {
+                ...CARS,
+                cost: pair('500.00'),
+                flagged: true,
+                split: {
+                  mode: 'fixed',
+                  amounts: [
+                    { payerId: 'bakare', amount: '200.00' },
+                    { payerId: 'funmi', amount: '400.00' },
+                  ],
+                  restId: 'obi',
+                },
+              },
+            ],
+          }),
+        ),
+    });
+
+    expect(
+      await screen.findByText(
+        'Cars now costs £500.00, less than the £600.00 fixed for Mr and Mrs Bakare and Aunt Funmi. Mr and Mrs Bakare keeps £200.00, Aunt Funmi keeps £400.00 and Mr and Mrs Obi have £0.00 until the amounts change.',
+      ),
+    ).toBeTruthy();
   });
 
   it('with no payers, says what payers are for and offers Add a payer', async () => {
