@@ -121,11 +121,7 @@ final readonly class GuestReplyRecorder
         return $next > $now ? $next : $now;
     }
 
-    /**
-     * One summary a morning per member and organisation, sent to the member while they belong to it: each event in it is checked for access when it goes, so losing one event leaves the others. Their zones and the summaries already queued are read in one query each, however many members the event has.
-     *
-     * @param list<Uuid> $members
-     */
+    /** @param list<Uuid> $members each gets one summary a morning per organisation; every event in it is checked for access when it goes, so losing one leaves the others */
     private function summariesFor(Uuid $organisationId, array $members, DateTimeImmutable $now): void
     {
         if ([] === $members) {
