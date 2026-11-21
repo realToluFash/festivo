@@ -555,6 +555,55 @@ class ServeElsewhere(unittest.TestCase):
         self.assertEqual(self.get(said, "/m/tolu%20mac/status.json", bearer).status, 502)
         self.assertEqual(asked[-1][0], "http://10.0.0.6:8765")
 
+    def post(self, said, path, body, headers=None):
+        port = int(said[0].split()[2].rsplit(":", 1)[1].strip("/"))
+        connection = http.client.HTTPConnection("127.0.0.1", port, timeout=5)
+        self.addCleanup(connection.close)
+        connection.request("POST", path, body=body, headers=headers or {})
+        answer = connection.getresponse()
+        answer.read()
+        return answer.status
+
+    def test_a_peer_tells_its_reading_and_the_counts_use_it_though_it_cannot_be_asked(self):
+        told = {"roles": [{"role": "qa", "state": "started", "waiting": 2, "next": [],
+                           "held": None}]}
+        own = {"roles": [], "elsewhere": [{"role": "qa", "waiting": 90, "held": None,
+                                           "next": []}]}
+        said, ready = [], threading.Event()
+        patch = mock.patch.object(remote, "loopback", return_value=False)
+        patch.start()
+        self.addCleanup(patch.stop)
+        threading.Thread(target=dashboard.serve, daemon=True, args=(lambda now: own, 0),
+                         kwargs={"open_page": False, "secret": SECRET,
+                                 "say": lambda line: said.append(line) or ready.set(),
+                                 "peers": lambda: {"tolu-linux": "http://10.0.0.5:8765"},
+                                 "fetch": lambda base, path, secret: (502, b"{}")}).start()
+        self.assertTrue(ready.wait(5))
+        bearer = {"Authorization": f"Bearer {SECRET}"}
+        body = json.dumps(told)
+        self.assertEqual(self.post(said, "/peer.json?from=tolu-linux", body), 401)
+        self.assertEqual(self.post(said, "/peer.json?from=stranger", body, bearer), 404)
+        self.assertEqual(self.post(said, "/other.json?from=tolu-linux", body, bearer), 404)
+        self.assertEqual(self.post(said, "/peer.json?from=tolu-linux", "[1]", bearer), 400)
+        self.assertEqual(self.post(said, "/peer.json?from=tolu-linux", "{", bearer), 400)
+        with mock.patch.object(dashboard, "TOLD_MOST_BYTES", 4):
+            self.assertEqual(self.post(said, "/peer.json?from=tolu-linux", body, bearer), 413)
+        self.assertEqual(json.loads(self.get(said, "/status.json", bearer).read())
+                         ["elsewhere"][0]["waiting"], 90)
+        self.assertEqual(self.post(said, "/peer.json?from=tolu-linux", body, bearer), 204)
+        self.assertEqual([(r["waiting"], r["counted_on"]) for r in json.loads(
+            self.get(said, "/status.json", bearer).read())["elsewhere"]], [(2, "tolu-linux")])
+
+    def test_a_machine_tells_every_peer_its_reading_under_its_own_name(self):
+        sent = []
+        dashboard.tell({"machine": "tolu linux", "roles": []},
+                       {"tolu-mac": "http://10.0.0.6:8765", "other": "http://10.0.0.7:8765"},
+                       SECRET, send=lambda *args: sent.append(args))
+        self.assertEqual(sorted(sent), [
+            (base, "peer.json?from=tolu%20linux", SECRET,
+             b'{"machine": "tolu linux", "roles": []}')
+            for base in ("http://10.0.0.6:8765", "http://10.0.0.7:8765")])
+
     def test_a_slow_peer_or_an_idle_connection_holds_up_no_one_else(self):
         answering = threading.Event()
 

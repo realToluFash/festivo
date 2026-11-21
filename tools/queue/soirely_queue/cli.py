@@ -696,6 +696,13 @@ def clip(line, width):
     return line if len(line) <= width else line[:width - 1] + "…"
 
 
+def tell_peers(db, platform):
+    peers = remote.peers(remote.config())
+    if peers and remote.usable(remote.token()):
+        dashboard.tell(dashboard.snapshot(db, platform, time.time(), home()), peers,
+                       remote.token())
+
+
 def shown(count):
     return "?" if count is None else str(count)
 
@@ -883,6 +890,8 @@ def admin(argv):
     elif a.command == "run":
         try:
             runner.run(db, home(), platform, sq_path, sys.executable, dry_run=a.dry_run)
+            if not a.dry_run:
+                tell_peers(db, platform)
         finally:
             platform.after_run()
     elif a.command == "worker":
