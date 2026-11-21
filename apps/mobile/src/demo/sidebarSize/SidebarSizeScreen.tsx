@@ -10,6 +10,7 @@ import { EventThumb } from '../../components/EventThumb.tsx';
 import { Glyph, type GlyphName } from '../../components/Glyph.tsx';
 import { Initials } from '../../components/Initials.tsx';
 import { OrgMark } from '../../components/OrgMark.tsx';
+import { OPENER } from '../../components/OrgPill.tsx';
 import { Text, TitleCap } from '../../components/Text.tsx';
 import { AREA_GLYPH } from '../../components/areaGlyph.ts';
 import { cardTags } from '../../kit/eventsList.ts';
@@ -615,7 +616,7 @@ const styles = StyleSheet.create({
     paddingRight: tokens.spaceMd,
     borderRadius: tokens.radiusRow,
   },
-  orgWaiting: { minHeight: 56 },
+  orgWaiting: { minHeight: OPENER.waiting },
   orgWords: { gap: tokens.spaceHair },
   waitingLine: { flexDirection: 'row', alignItems: 'center', gap: tokens.spaceXs },
   ring: {
