@@ -189,6 +189,13 @@ export function headlineOf(sample: RatesSample): Headline {
   );
 }
 
+export function biggestUnrated(head: Headline): Headline['unrated'][number] | undefined {
+  return head.unrated.reduce<Headline['unrated'][number] | undefined>(
+    (most, one) => (most == null || one.minutes > most.minutes ? one : most),
+    undefined,
+  );
+}
+
 export function hoursWords(minutes: number): string {
   const hours = Math.floor(minutes / 60);
   const rest = minutes % 60;
@@ -506,7 +513,7 @@ export const STAFF_RATES_PAGES: readonly DemoGroup[] = [
     name: 'Staff rates (Budget-A-StaffRates, sc-101)',
     states: [
       { to: at('staff_rates'), name: 'In use: the headline, each job, people on their own rate' },
-      { to: at('staff_rates_no_rate'), name: 'Two jobs with No rate yet, Set Bar’s rate next' },
+      { to: at('staff_rates_no_rate'), name: 'Two jobs with No rate yet, Set Runner’s rate next' },
       { to: at('staff_rates_empty'), name: 'No jobs on this event yet' },
       {
         to: at('staff_rates_read_only', { as: 'ana' }),
@@ -536,7 +543,7 @@ export const STAFF_RATES_PAGES: readonly DemoGroup[] = [
   {
     name: 'Changing a rate in place',
     states: [
-      { to: at('staff_rates_change'), name: 'Waiter at £15 an hour, Kunle keeps his own' },
+      { to: at('staff_rates_change'), name: 'Waiter at £15 an hour, Kunle keeps their own' },
       { to: at('staff_rates_saved'), name: 'Saved: Changed by you just now' },
       { to: at('staff_rates_flat_fee'), name: 'A flat fee: Tolu on 2 shifts is one fee' },
       { to: at('staff_rates_flat_fee_open'), name: 'A flat fee with a shift nobody has taken' },

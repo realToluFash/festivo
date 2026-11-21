@@ -124,5 +124,6 @@ export const STAFF_RATES_WORDS = {
     'A job with no rate is not counted, and says so.',
   ],
   hoursFrom: 'Worked hours are the clock-ins and clock-outs on Staff, Hours worked.',
+  backOn: (person: string, job: string) => `${person} is back on ${job}’s rate.`,
   removed: (job: string) => `${job}’s rate removed. Its hours are not counted until it has one.`,
 } as const;

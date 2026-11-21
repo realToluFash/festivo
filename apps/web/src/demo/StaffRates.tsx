@@ -15,7 +15,7 @@ import {
   PageTitle,
   Rows,
 } from './BudgetParts.tsx';
-import { money, whole } from './budget.ts';
+import { money } from './budget.ts';
 import { budgetAt, viewerOf } from './budgetSample.ts';
 import { BUDGET_WORDS } from './budgetWords.ts';
 import { type SampleEvent } from './events.ts';
@@ -29,6 +29,7 @@ import {
   type RatesStart,
   type Rate,
   afterHeadlineOf,
+  biggestUnrated,
   changedLine,
   figure,
   flatLine,
@@ -165,7 +166,7 @@ function StaffRates({ first }: { first: RatesStart }) {
     done(
       { ...sample, own: sample.own.filter((one) => one !== own) },
       own.job,
-      W.saved(jobName(plan, own.job)),
+      W.backOn(personName(plan, own.person), jobName(plan, own.job)),
     );
 
   if (plan.jobs.length === 0)
@@ -184,7 +185,7 @@ function StaffRates({ first }: { first: RatesStart }) {
       </>
     );
 
-  const firstUnrated = head.unrated[0];
+  const firstUnrated = biggestUnrated(head);
 
   return (
     <>
@@ -192,14 +193,14 @@ function StaffRates({ first }: { first: RatesStart }) {
       {!manages && <ReadOnly />}
       {after == null ? (
         <section className="srt-head" aria-label={W.title}>
-          <p className="srt-figure">{whole(head.total)}</p>
+          <p className="srt-figure">{figure(head.total)}</p>
           <p className="srt-line">{headlineLine(sample, head)}</p>
         </section>
       ) : (
         <section className="srt-head" aria-label={W.title}>
-          <p className="srt-figure">{whole(after.worked)}</p>
+          <p className="srt-figure">{figure(after.worked)}</p>
           <p className="srt-line">
-            {W.afterLine(hoursWords(after.minutes), hoursWords(head.counted), whole(head.total))}
+            {W.afterLine(hoursWords(after.minutes), hoursWords(head.counted), figure(head.total))}
           </p>
           {after.assumed > 0 && (
             <p className="srt-line">{W.afterAssumed(hoursWords(after.assumed))}</p>
