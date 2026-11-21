@@ -3,6 +3,7 @@ import {
   type Scheduled,
   type TimeProblem,
   type TimesDraft,
+  canClockOut,
   clock,
   draftOf,
   hoursWords,
@@ -13,11 +14,16 @@ import {
   workedOf,
 } from './clock.ts';
 
+export interface Change {
+  field: 'in' | 'out';
+  was: number | null;
+}
+
 export interface HoursRow extends Scheduled, Recorded {
   id: string;
   name: string;
   job: string;
-  corrected?: { field: 'in' | 'out'; was: number | null; by: string; at: number };
+  corrected?: { changes: Change[]; by: string; at: number };
 }
 
 const h = (hours: number, minutes = 0) => hours * 60 + minutes;
@@ -96,16 +102,18 @@ export const HW = {
   saving: 'Saving…',
   cancel: 'Cancel',
   saved: (name: string) => `${name}’s times saved.`,
-  correctedOut: (time: string, by: string, at: string) =>
-    `Out ${time} · corrected from no clock-out by ${by}, ${at}`,
-  correctedIn: (time: string, by: string, at: string) =>
-    `In ${time} · corrected from no clock-in by ${by}, ${at}`,
+  correctedOut: (time: string, from: string, by: string, at: string) =>
+    `Out ${time} · corrected from ${from} by ${by}, ${at}`,
+  correctedIn: (time: string, from: string, by: string, at: string) =>
+    `In ${time} · corrected from ${from} by ${by}, ${at}`,
+  noClockIn: 'no clock-in',
+  noClockOut: 'no clock-out',
   inBlank: 'Enter the time they started.',
   outBlank: 'Enter the time they finished.',
   order: 'The end must be after the start.',
   long: 'A shift can’t be longer than 24 hours. Check the dates.',
-  readOnly: 'Only people who can manage staff correct times.',
-  loading: 'Loading hours',
+  readOnly: 'You can see the hours. Correcting a time needs permission to manage staff.',
+  loading: 'Loading hours worked',
   failed: 'The hours could not load. Check your connection and try again.',
   tryAgain: 'Try again',
   empty: 'Nobody is on a shift yet',
@@ -141,20 +149,39 @@ export function liveWords(one: HoursRow): string {
 export const liveNote = (one: HoursRow) => HW.opensAt(clock(opensAt(one)));
 
 export function clockedWords(one: HoursRow): string {
-  if (one.corrected != null) {
-    const by = one.corrected;
-    const at = trailTime(by.at);
-
-    return by.field === 'out'
-      ? HW.correctedOut(clock(one.clockOut ?? 0), by.by, at)
-      : HW.correctedIn(clock(one.clockIn ?? 0), by.by, at);
-  }
   if (one.clockIn == null) return HW.noIn;
 
   return one.clockOut == null
     ? HW.inOnly(clock(one.clockIn))
     : HW.inOut(clock(one.clockIn), clock(one.clockOut));
 }
+
+/** One line for each time that differs from what was recorded, from what, by whom and when. */
+export function trailWords(one: HoursRow): string[] {
+  const trail = one.corrected;
+  if (trail == null) return [];
+  const at = trailTime(trail.at);
+
+  return trail.changes.map(({ field, was }) =>
+    field === 'in'
+      ? HW.correctedIn(
+          clock(one.clockIn ?? 0),
+          was == null ? HW.noClockIn : clock(was),
+          trail.by,
+          at,
+        )
+      : HW.correctedOut(
+          clock(one.clockOut ?? 0),
+          was == null ? HW.noClockOut : clock(was),
+          trail.by,
+          at,
+        ),
+  );
+}
+
+/** Clocked in, not clocked out, and still able to clock out under Recording's limit. */
+export const stillOnOf = (one: HoursRow, live: boolean, now = LIVE_NOW) =>
+  live && one.clockOut == null && canClockOut(one, one.clockIn, now);
 
 export function markWords(one: HoursRow): string | null {
   const { mark } = workedOf(one, one);
@@ -198,18 +225,32 @@ export function summaryLines(s: Summary): { head: string; rest: string | null } 
   };
 }
 
-/** Saving keeps the original beside the correction: the row reads the new time with who changed it, from what, and when. */
+/** What was recorded, before any correction. */
+export function recordedOf(one: HoursRow): Recorded {
+  const was = (field: Change['field'], now: number | null) => {
+    const change = one.corrected?.changes.find((each) => each.field === field);
+
+    return change == null ? now : change.was;
+  };
+
+  return { clockIn: was('in', one.clockIn), clockOut: was('out', one.clockOut) };
+}
+
+/** The trail names each time that now differs from what was recorded; saving nothing new leaves the row as it was. */
 export function corrected(one: HoursRow, draft: TimesDraft, by: string, at: number): HoursRow {
   const clockIn = minutesOf(draft.inDate, draft.inTime);
   const clockOut = draft.outTime.trim() === '' ? null : minutesOf(draft.outDate, draft.outTime);
-  const field = one.clockIn == null ? 'in' : 'out';
+  if (clockIn === one.clockIn && clockOut === one.clockOut) return one;
+  const recorded = recordedOf(one);
+  const changes: Change[] = [
+    ...(clockIn === recorded.clockIn ? [] : [{ field: 'in' as const, was: recorded.clockIn }]),
+    ...(clockOut === recorded.clockOut ? [] : [{ field: 'out' as const, was: recorded.clockOut }]),
+  ];
+  const { corrected: _was, ...rest } = one;
 
-  return {
-    ...one,
-    clockIn,
-    clockOut,
-    corrected: { field, was: field === 'in' ? one.clockIn : one.clockOut, by, at },
-  };
+  return changes.length === 0
+    ? { ...rest, clockIn, clockOut }
+    : { ...rest, clockIn, clockOut, corrected: { changes, by, at } };
 }
 
 export const HOURS_STATES = [

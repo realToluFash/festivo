@@ -24,10 +24,15 @@ const h = (hours: number, minutes = 0) => hours * 60 + minutes;
 export const LIVE_NOW = h(20, 30);
 export const CORRECTED_AT = h(26, 10);
 
+export interface Change {
+  field: 'in' | 'out';
+  was: number | null;
+}
+
 export interface Times {
   clockIn: number | null;
   clockOut: number | null;
-  corrected?: { field: 'in' | 'out'; was: number | null; by: string; at: number };
+  corrected?: { changes: Change[]; by: string; at: number };
 }
 
 export type Clocks = Record<string, Times>;
@@ -78,10 +83,11 @@ export function workedOf(shift: Pick<Shift, 'end'>, times: Times): Worked {
   return { minutes: times.clockOut - times.clockIn, assumed: 0, mark: null };
 }
 
+/** The one way a length of time is written in the web demo: "42 min", "0 h", "8 h", "8 h 44 min". */
 export function hoursWords(minutes: number): string {
   const hours = Math.floor(minutes / 60);
   const rest = minutes % 60;
-  if (hours === 0) return rest === 0 ? '0 h' : `${rest} min`;
+  if (hours === 0 && rest > 0) return `${rest} min`;
 
   return rest === 0 ? `${hours} h` : `${hours} h ${rest} min`;
 }
@@ -165,10 +171,12 @@ export const HW = {
   save: 'Save times',
   cancel: 'Cancel',
   saved: (name: string) => `${name}’s times saved.`,
-  correctedOut: (time: string, by: string, at: string) =>
-    `Out ${time} · corrected from no clock-out by ${by}, ${at}`,
-  correctedIn: (time: string, by: string, at: string) =>
-    `In ${time} · corrected from no clock-in by ${by}, ${at}`,
+  correctedOut: (time: string, from: string, by: string, at: string) =>
+    `Out ${time} · corrected from ${from} by ${by}, ${at}`,
+  correctedIn: (time: string, from: string, by: string, at: string) =>
+    `In ${time} · corrected from ${from} by ${by}, ${at}`,
+  noClockIn: 'no clock-in',
+  noClockOut: 'no clock-out',
   inBlank: 'Enter the time they started.',
   outBlank: 'Enter the time they finished.',
   order: 'The end must be after the start.',
@@ -178,7 +186,7 @@ export const HW = {
   failed: 'The hours could not load. Check your connection and try again.',
   tryAgain: 'Try again',
   empty: 'Nobody is on a shift yet',
-  emptyLine: 'Hours show here once people are assigned to shifts on Jobs and shifts.',
+  emptyLine: 'Hours show here once people are assigned to shifts.',
   openJobs: 'Open Jobs and shifts',
 } as const;
 
@@ -194,19 +202,34 @@ export function liveOf(row: HoursRow, now = LIVE_NOW): Live {
 
 export function clockedWords(row: HoursRow): string {
   const { times } = row;
-  if (times.corrected != null) {
-    const by = times.corrected;
-    const at = trailTime(by.at);
-
-    return by.field === 'out'
-      ? HW.correctedOut(clock(times.clockOut ?? 0), by.by, at)
-      : HW.correctedIn(clock(times.clockIn ?? 0), by.by, at);
-  }
   if (times.clockIn == null) return HW.noIn;
 
   return times.clockOut == null
     ? HW.inOnly(clock(times.clockIn))
     : HW.inOut(clock(times.clockIn), clock(times.clockOut));
+}
+
+/** One line for each time that differs from what was recorded, from what, by whom and when. */
+export function trailWords(row: HoursRow): string[] {
+  const trail = row.times.corrected;
+  if (trail == null) return [];
+  const at = trailTime(trail.at);
+
+  return trail.changes.map(({ field, was }) =>
+    field === 'in'
+      ? HW.correctedIn(
+          clock(row.times.clockIn ?? 0),
+          was == null ? HW.noClockIn : clock(was),
+          trail.by,
+          at,
+        )
+      : HW.correctedOut(
+          clock(row.times.clockOut ?? 0),
+          was == null ? HW.noClockOut : clock(was),
+          trail.by,
+          at,
+        ),
+  );
 }
 
 export function markWords(row: HoursRow): string | null {
@@ -270,6 +293,13 @@ export function timesProblems(draft: TimesDraft, stillOn: boolean): Problems {
   return {};
 }
 
+/** Clocked in, not clocked out, and still able to clock out under Recording's limit. */
+export const stillOnOf = (row: HoursRow, live: boolean, now = LIVE_NOW) =>
+  live &&
+  row.times.clockIn != null &&
+  row.times.clockOut == null &&
+  now <= outLimit(row.shift, row.times.clockIn);
+
 export function draftOf(row: HoursRow, stillOn = false): TimesDraft {
   const start = row.times.clockIn ?? row.shift.start;
   const end = row.times.clockOut ?? row.shift.end;
@@ -282,16 +312,31 @@ export function draftOf(row: HoursRow, stillOn = false): TimesDraft {
   };
 }
 
+/** What was recorded, before any correction. */
+export function recordedOf(times: Times): Pick<Times, 'clockIn' | 'clockOut'> {
+  const was = (field: Change['field'], now: number | null) => {
+    const change = times.corrected?.changes.find((one) => one.field === field);
+
+    return change == null ? now : change.was;
+  };
+
+  return { clockIn: was('in', times.clockIn), clockOut: was('out', times.clockOut) };
+}
+
+/** The trail names each time that now differs from what was recorded; saving nothing new leaves the row as it was. */
 export function corrected(times: Times, draft: TimesDraft, by: string, at: number): Times {
   const clockIn = minutesOf(draft.inDate, draft.inTime);
   const clockOut = draft.outTime.trim() === '' ? null : minutesOf(draft.outDate, draft.outTime);
-  const field = times.clockIn == null ? 'in' : 'out';
+  if (clockIn === times.clockIn && clockOut === times.clockOut) return times;
+  const recorded = recordedOf(times);
+  const changes: Change[] = [
+    ...(clockIn === recorded.clockIn ? [] : [{ field: 'in' as const, was: recorded.clockIn }]),
+    ...(clockOut === recorded.clockOut ? [] : [{ field: 'out' as const, was: recorded.clockOut }]),
+  ];
 
-  return {
-    clockIn,
-    clockOut,
-    corrected: { field, was: field === 'in' ? times.clockIn : times.clockOut, by, at },
-  };
+  return changes.length === 0
+    ? { clockIn, clockOut }
+    : { clockIn, clockOut, corrected: { changes, by, at } };
 }
 
 export const HOURS_STATES = [

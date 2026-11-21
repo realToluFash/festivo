@@ -7,8 +7,6 @@ export const STAFF_RATES_WORDS = {
   jobs: 'Jobs',
   ownRates: 'People on their own rate',
   addOne: 'Add one',
-  hours: (hours: number) => `${hours} h`,
-  hoursMinutes: (hours: number, minutes: number) => `${hours} h ${minutes} min`,
   anHour: (amount: string) => `${amount} an hour`,
   eachPerson: (amount: string) => `${amount} for the event, each person`,
   from: (counted: string, scheduled: string) => `From ${counted} of ${scheduled} scheduled.`,

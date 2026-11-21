@@ -10,15 +10,23 @@ import {
   tapped,
   tappedAgain,
 } from './shiftClockModel.ts';
+import { draftOf } from './clock.ts';
 import {
+  CORRECTED_AT,
   HW,
+  type HoursRow,
+  YOU,
   clockedWords,
+  corrected,
   hoursStart,
+  liveOf,
   liveWords,
   markWords,
   sampleRows,
+  stillOnOf,
   summaryLines,
   summaryOf,
+  trailWords,
 } from './staffHoursModel.ts';
 
 describe('the clock card', () => {
@@ -79,10 +87,45 @@ describe('the staff list’s hours', () => {
 
   it('reads a correction with who made it, from what, and when', () => {
     const tope = hoursStart('corrected').rows.find((one) => one.id === 'tope');
-    expect(tope == null ? null : clockedWords(tope)).toBe(
+    expect(tope == null ? null : clockedWords(tope)).toBe('In 16:55 · Out 01:15');
+    expect(tope == null ? null : trailWords(tope)).toEqual([
       'Out 01:15 · corrected from no clock-out by Amara Nwosu, Sunday 02:10',
-    );
+    ]);
     expect(tope == null ? null : markWords(tope)).toBeNull();
+  });
+
+  it('names in the trail only the time that changed, from what was recorded', () => {
+    const amina = sampleRows().find((one) => one.id === 'amina') as HoursRow;
+    const moved = corrected(
+      amina,
+      { ...draftOf(amina, amina), inTime: '17:30' },
+      YOU,
+      CORRECTED_AT,
+    );
+    expect(clockedWords(moved)).toBe('In 17:30 · Out 01:05');
+    expect(trailWords(moved)).toEqual([
+      'In 17:30 · corrected from 17:50 by Amara Nwosu, Sunday 02:10',
+    ]);
+    expect(corrected(amina, draftOf(amina, amina), YOU, CORRECTED_AT)).toBe(amina);
+  });
+
+  it('names both times when a shift with no attendance gets both', () => {
+    const yusuf = sampleRows().find((one) => one.id === 'yusuf') as HoursRow;
+    const entered = corrected(yusuf, draftOf(yusuf, yusuf), YOU, CORRECTED_AT);
+    expect(clockedWords(entered)).toBe('In 17:00 · Out 01:00');
+    expect(trailWords(entered)).toEqual([
+      'In 17:00 · corrected from no clock-in by Amara Nwosu, Sunday 02:10',
+      'Out 01:00 · corrected from no clock-out by Amara Nwosu, Sunday 02:10',
+    ]);
+  });
+
+  it('leaves the clock-out empty only for somebody still clocked in', () => {
+    const rows = hoursStart('list_live').rows;
+    const on = rows.find((one) => liveOf(one) === 'in') as HoursRow;
+    const notYet = rows.find((one) => liveOf(one) === 'notYet') as HoursRow;
+    expect(stillOnOf(on, true)).toBe(true);
+    expect(stillOnOf(notYet, true)).toBe(false);
+    expect(stillOnOf(on, false)).toBe(false);
   });
 
   it('shows during service who has clocked in and who has not yet', () => {

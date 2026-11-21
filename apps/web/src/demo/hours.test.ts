@@ -1,16 +1,23 @@
 import { describe, expect, it } from 'vitest';
 
+import { clock } from './shifts.ts';
 import {
+  CORRECTED_AT,
   HW,
   clockedWords,
+  corrected,
   draftOf,
   hoursStart,
   hoursWords,
+  liveOf,
   markWords,
+  outLimit,
   rowsOf,
+  stillOnOf,
   summaryOf,
   summaryRest,
   timesProblems,
+  trailWords,
   workedOf,
 } from './hours.ts';
 
@@ -54,9 +61,69 @@ describe('Hours worked (sc-234)', () => {
   });
 
   it('keeps the original beside a correction, with who and when', () => {
-    expect(clockedWords(row('lead:ifeoma', 'corrected'))).toBe(
+    const lead = row('lead:ifeoma', 'corrected');
+
+    expect(clockedWords(lead)).toBe('In 15:52 · Out 01:15');
+    expect(trailWords(lead)).toEqual([
       'Out 01:15 · corrected from no clock-out by Amara Nwosu, Sunday 02:10',
+    ]);
+  });
+
+  it('names in the trail only the time that changed, from what was recorded', () => {
+    const amina = row('w1:amina');
+    const moved = {
+      ...amina,
+      times: corrected(
+        amina.times,
+        { ...draftOf(amina), inTime: '16:30' },
+        'Amara Nwosu',
+        CORRECTED_AT,
+      ),
+    };
+
+    expect(clockedWords(moved)).toBe('In 16:30 · Out 00:20');
+    expect(trailWords(moved)).toEqual([
+      'In 16:30 · corrected from 16:55 by Amara Nwosu, Sunday 02:10',
+    ]);
+  });
+
+  it('names both times when a shift with no attendance gets both', () => {
+    const emeka = row('w2:emeka');
+    const entered = {
+      ...emeka,
+      times: corrected(emeka.times, draftOf(emeka), 'Amara Nwosu', CORRECTED_AT),
+    };
+
+    expect(clockedWords(entered)).toBe(
+      `In ${clock(emeka.shift.start)} · Out ${clock(emeka.shift.end)}`,
     );
+    expect(trailWords(entered)).toHaveLength(2);
+    expect(trailWords(entered)[0]).toContain('corrected from no clock-in');
+    expect(trailWords(entered)[1]).toContain('corrected from no clock-out');
+  });
+
+  it('writes no trail when nothing changed', () => {
+    const amina = row('w1:amina');
+
+    expect(corrected(amina.times, draftOf(amina), 'Amara Nwosu', CORRECTED_AT)).toBe(amina.times);
+  });
+
+  it('leaves the clock-out empty only for somebody still clocked in', () => {
+    const rows = rowsAt('list_live');
+    const on = rows.find((one) => liveOf(one) === 'in');
+    const notYet = rows.find((one) => liveOf(one) === 'notYet');
+    if (on == null || notYet == null) throw new Error('sample');
+
+    expect(stillOnOf(on, true)).toBe(true);
+    expect(stillOnOf(notYet, true)).toBe(false);
+    expect(draftOf(notYet, stillOnOf(notYet, true)).outTime).toBe(clock(notYet.shift.end));
+    expect(stillOnOf(on, true, outLimit(on.shift, on.times.clockIn ?? 0) + 1)).toBe(false);
+  });
+
+  it('writes a length of time one way', () => {
+    expect(hoursWords(42)).toBe('42 min');
+    expect(hoursWords(0)).toBe('0 h');
+    expect(hoursWords(8 * 60 + 44)).toBe('8 h 44 min');
   });
 
   it('prefills the recorded times, else the scheduled ones', () => {

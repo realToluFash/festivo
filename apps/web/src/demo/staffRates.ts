@@ -3,7 +3,9 @@ import { type DemoGroup, budgetAt } from './budgetSample.ts';
 import { exampleIn, typedMinor } from './quotes.ts';
 import { type Plan, type Shift, jobName, personName, samplePlan } from './shifts.ts';
 import { STAFF_RATES_WORDS as W } from './staffRatesWords.ts';
-import { type Clocks, placeKey, sampleClocks, workedOf } from './hours.ts';
+import { type Clocks, hoursWords, placeKey, sampleClocks, workedOf } from './hours.ts';
+
+export { hoursWords };
 
 export type RateKind = 'hourly' | 'flat';
 
@@ -194,13 +196,6 @@ export function biggestUnrated(head: Headline): Headline['unrated'][number] | un
     (most, one) => (most == null || one.minutes > most.minutes ? one : most),
     undefined,
   );
-}
-
-export function hoursWords(minutes: number): string {
-  const hours = Math.floor(minutes / 60);
-  const rest = minutes % 60;
-
-  return rest === 0 ? W.hours(hours) : W.hoursMinutes(hours, rest);
 }
 
 export function figure(minor: number, currency = CURRENCY): string {

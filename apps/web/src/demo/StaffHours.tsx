@@ -25,9 +25,11 @@ import {
   markWords,
   opensAt,
   rowsOf,
+  stillOnOf,
   summaryOf,
   summaryRest,
   timesProblems,
+  trailWords,
   workedOf,
 } from './hours.ts';
 import { When } from './JobsShifts.tsx';
@@ -126,20 +128,21 @@ function HoursView({
   }, [phase, firstPhase]);
 
   function correct(row: HoursRow) {
-    setOpen({ key: row.key, draft: draftOf(row, live), pressed: false });
+    setOpen({ key: row.key, draft: draftOf(row, stillOnOf(row, live)), pressed: false });
     setSaid('');
   }
 
   function save() {
     if (open == null || editing == null) return;
-    const stillOn = live && editing.times.clockOut == null;
+    const stillOn = stillOnOf(editing, live);
     const problems = timesProblems(open.draft, stillOn);
     if (problems.in != null || problems.out != null) {
       setOpen({ ...open, pressed: true });
       document.getElementById(problems.in != null ? 'hw-f-in-time' : 'hw-f-out-time')?.focus();
       return;
     }
-    setClocks({ ...clocks, [open.key]: corrected(editing.times, open.draft, YOU, CORRECTED_AT) });
+    const at = live ? LIVE_NOW : CORRECTED_AT;
+    setClocks({ ...clocks, [open.key]: corrected(editing.times, open.draft, YOU, at) });
     setOpen(null);
     setSaid(HW.saved(editing.name));
     document.getElementById(`hw-correct-${open.key}`)?.focus();
@@ -194,7 +197,7 @@ function HoursView({
               row={editing}
               draft={open.draft}
               pressed={open.pressed}
-              stillOn={live && editing.times.clockOut == null}
+              stillOn={stillOnOf(editing, live)}
               onDraft={(draft) => setOpen({ ...open, draft })}
               onSave={save}
               onCancel={() => {
@@ -308,6 +311,14 @@ function LiveMark({ row }: { row: HoursRow }) {
   );
 }
 
+function Trail({ row }: { row: HoursRow }) {
+  return trailWords(row).map((line) => (
+    <span key={line} className="hw-sub">
+      {line}
+    </span>
+  ));
+}
+
 function AfterMark({ row }: { row: HoursRow }) {
   const words = markWords(row);
   if (words == null) return null;
@@ -373,10 +384,12 @@ function HoursTable({
                       {row.times.clockIn != null && (
                         <span className="hw-sub">{clockedWords(row)}</span>
                       )}
+                      <Trail row={row} />
                     </>
                   ) : (
                     <>
                       <span className="hw-time">{clockedWords(row)}</span>
+                      <Trail row={row} />
                       <AfterMark row={row} />
                     </>
                   )}

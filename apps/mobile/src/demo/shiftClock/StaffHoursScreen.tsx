@@ -44,8 +44,10 @@ import {
   liveOf,
   liveWords,
   markWords,
+  stillOnOf,
   summaryLines,
   summaryOf,
+  trailWords,
 } from './staffHoursModel.ts';
 
 const LOCALE = 'en-GB';
@@ -86,7 +88,7 @@ function StaffHours({ state }: { state: HoursState }) {
 
   function save(): void {
     if (open == null || editing == null) return;
-    const stillOn = live && editing.clockOut == null;
+    const stillOn = stillOnOf(editing, live);
     if (timesProblem(open.draft, stillOn) != null) {
       setOpen({ ...open, pressed: true });
       return;
@@ -95,7 +97,9 @@ function StaffHours({ state }: { state: HoursState }) {
     setTimeout(() => {
       setRows(
         rows.map((one) =>
-          one.id === open.id ? corrected(one, open.draft, YOU, CORRECTED_AT) : one,
+          one.id === open.id
+            ? corrected(one, open.draft, YOU, live ? LIVE_NOW : CORRECTED_AT)
+            : one,
         ),
       );
       setSaving(false);
@@ -155,7 +159,11 @@ function StaffHours({ state }: { state: HoursState }) {
               manage={manage}
               onCorrect={(ref) => {
                 opener.current = ref;
-                setOpen({ id: one.id, draft: draftOf(one, one, live), pressed: false });
+                setOpen({
+                  id: one.id,
+                  draft: draftOf(one, one, stillOnOf(one, live)),
+                  pressed: false,
+                });
               }}
             />
           ))}
@@ -213,7 +221,7 @@ function StaffHours({ state }: { state: HoursState }) {
             one={editing}
             draft={open.draft}
             pressed={open.pressed}
-            stillOn={live && editing.clockOut == null}
+            stillOn={stillOnOf(editing, live)}
             saving={saving}
             phone={phone}
             onDraft={(draft) => setOpen({ ...open, draft })}
@@ -343,6 +351,11 @@ function HoursRowView({
         </View>
         {facts}
       </View>
+      {trailWords(one).map((line) => (
+        <Text key={line} size={14} style={styles.secondary}>
+          {line}
+        </Text>
+      ))}
       <MarkLine one={one} live={live} />
       {note != null && (
         <Text size={14} style={styles.secondary}>

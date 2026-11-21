@@ -1,4 +1,8 @@
+import { hoursWords, outLimit as shiftOutLimit } from './hours.ts';
 import type { DemoLink } from './settings.ts';
+import { clock } from './shifts.ts';
+
+export { clock };
 
 /** The clock card on a person's own shift in a browser (sc-234): Saturday 17:00 to Sunday 01:00, minutes from Saturday 00:00. */
 const DAY = 24 * 60;
@@ -15,26 +19,13 @@ export const CLOCK_OUT = h(25, 42);
 export const LATE_OUT = h(27, 12);
 export const SEND_MS = 700;
 
-export function clock(minutes: number): string {
-  const inDay = ((minutes % DAY) + DAY) % DAY;
-
-  return `${String(Math.floor(inDay / 60)).padStart(2, '0')}:${String(inDay % 60).padStart(2, '0')}`;
-}
-
 const dayOf = (minutes: number) => Math.floor(minutes / DAY);
 
 /** A time not today gives its weekday, never the date (#12988). */
 export const timeWords = (at: number, now: number) =>
   dayOf(at) === dayOf(now) ? clock(at) : `${WEEKDAYS[dayOf(at)] ?? ''} ${clock(at)}`;
 
-export const outLimit = (clockIn: number) => Math.min(SHIFT.end + 6 * 60, clockIn + 24 * 60);
-
-export function hoursWords(minutes: number): string {
-  const hours = Math.floor(minutes / 60);
-  const rest = minutes % 60;
-
-  return rest === 0 ? `${hours} h` : `${hours} h ${rest} min`;
-}
+export const outLimit = (clockIn: number) => shiftOutLimit(SHIFT, clockIn);
 
 export const KW = {
   staffLink: 'Staff link',
