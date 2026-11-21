@@ -120,7 +120,7 @@ describe('the browser’s redeem pages (sc-72)', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
 
     expect((await screen.findByRole('alert')).textContent).toBe(
-      'That code doesn’t work. Check it with whoever gave it to you.',
+      'That code does not work. Check it with whoever gave it to you.',
     );
     expect(screen.getByLabelText('Door code')).toHaveProperty('value', 'Q7KM 4XP3');
   });
