@@ -310,7 +310,7 @@ describe('Who is paying at a desk (sc-91, sc-1300)', () => {
       'The split on Cars no longer adds up. Nothing was changed.',
     );
     expect(main().textContent).toContain(
-      'Cars now costs £350.00, less than the £400.00 fixed for Aunt Funmi. Aunt Funmi keeps £400.00 and Mr and Mrs Obi have £0.00 until the amounts change.',
+      'Cars now costs £350.00, less than the £400.00 fixed for Aunt Funmi. £400.00 stays with Aunt Funmi and £0.00 is left for Mr and Mrs Obi until the amounts change.',
     );
     fireEvent.click(screen.getByRole('button', { name: 'Change the amounts' }));
 

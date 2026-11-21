@@ -581,7 +581,7 @@ describe('Who is paying (sc-91)', () => {
     ).toBeTruthy();
     expect(
       screen.getByText(
-        'Cars now costs £350.00, less than the £400.00 fixed for Aunt Funmi. Aunt Funmi keeps £400.00 and Mr and Mrs Obi have £0.00 until the amounts change.',
+        'Cars now costs £350.00, less than the £400.00 fixed for Aunt Funmi. £400.00 stays with Aunt Funmi and £0.00 is left for Mr and Mrs Obi until the amounts change.',
       ),
     ).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: 'Change the amounts' }));
@@ -617,7 +617,7 @@ describe('Who is paying (sc-91)', () => {
 
     expect(
       await screen.findByText(
-        'Cars now costs £500.00, less than the £600.00 fixed for Mr and Mrs Bakare and Aunt Funmi. Mr and Mrs Bakare keeps £200.00, Aunt Funmi keeps £400.00 and Mr and Mrs Obi have £0.00 until the amounts change.',
+        'Cars now costs £500.00, less than the £600.00 fixed for Mr and Mrs Bakare and Aunt Funmi. £200.00 stays with Mr and Mrs Bakare, £400.00 stays with Aunt Funmi and £0.00 is left for Mr and Mrs Obi until the amounts change.',
       ),
     ).toBeTruthy();
   });
