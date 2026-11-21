@@ -84,7 +84,6 @@ const ANSWERS: Record<string, unknown> = {
     changedAt: null,
     inactivityChoices: [7, 30],
     changes: [],
-    recorded: [],
     passwordOnly: { count: 0, named: [] },
     withoutTwoFactor: { count: 0, named: [] },
     twoFactorDeadline: null,
