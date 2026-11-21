@@ -58,6 +58,10 @@ import {
   exportNarrowing,
   exportsGuests,
   peopleInView,
+  type ChangedRow,
+  changeAnswer,
+  changeWhen,
+  changedRows,
 } from '@soirely/domain';
 import {
   type ReactNode,
@@ -138,7 +142,6 @@ import {
   NeedsSection,
 } from './GuestNeeds.tsx';
 import { useNeedsOpen } from './guestNeeds.ts';
-import { type ChangedRow, changeAnswer, changeWhen, changedRows } from './guestChanges.ts';
 import { useGuestsAddress } from './useGuestsAddress.ts';
 import { useHubTopics } from './useHubTopics.ts';
 import { useStartingCountry } from './useStartingCountry.ts';

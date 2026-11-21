@@ -33,6 +33,7 @@ import {
   exportsGuests,
   peopleInView,
   zonedAt,
+  changedRows,
 } from '@soirely/domain';
 import { router } from 'expo-router';
 import {
@@ -70,7 +71,7 @@ import {
   phaseCardOf,
 } from '../kit/guestRows.ts';
 import { checksIn, onEventDay } from '../kit/checkIn.ts';
-import { CHANGED, changeLine, changedRows, filterMenuWidth } from '../kit/guestChanges.ts';
+import { CHANGED, changeLine, filterMenuWidth } from '../kit/guestChanges.ts';
 import { pasteBeside, pasteShown, waiting, whoseRows } from '../kit/pasteReply.ts';
 import { type GuestReplies, guestRepliesOf, guestReplyBy } from '../kit/replyBy.ts';
 import { type ScreenOffline, useHandOffline, useOffline, usePullToRefresh } from '../offline.ts';
