@@ -187,11 +187,12 @@ describe('the demo’s states (budget-a-spec.md §9)', () => {
       expect(linked).toContain(`/demo/events/evt-wed-4?area=budget&state=${name}`);
   });
 
-  it('opens Mr and Mrs Obi by default, Adaeze and Tunde while sending, and the payer asked for', () => {
+  it('opens Mr and Mrs Obi by default, Adaeze and Tunde while sending or with no costs, and the payer asked for', () => {
     expect(start('payers').start.open).toBe('obi');
     expect(start('send_busy').start.open).toBe('couple');
     expect(start('payers', 'funmi').start.open).toBe('funmi');
     expect(start('payers', 'nobody').start.open).toBe('obi');
+    expect(start('no_costs').start.open).toBe('couple');
   });
 
   it('starts each refusal and result where the board draws it, in the product’s words', () => {
