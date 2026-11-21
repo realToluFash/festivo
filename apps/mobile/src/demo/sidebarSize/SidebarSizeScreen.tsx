@@ -29,7 +29,6 @@ import {
   ORG_MARK,
   PERSON_GLYPH,
   ROOMS,
-  type SideRoom,
   glyphSide,
   rowPad,
 } from '../../layout/sidebarSize.ts';
@@ -64,12 +63,6 @@ export interface SidebarSizeStart {
 }
 
 const RING = 11;
-
-const WAITING_ROOM = {
-  size: 12.5,
-  glyph: 0,
-  inside: ROOMS.org.inside - RING - tokens.spaceXs,
-} as const satisfies SideRoom;
 
 /** iPad landscape's sidebar at a text size and language the board chooses: each row grows to hold its words, and each word stays whole in the 252 column. */
 export function SidebarSizeScreen({ start }: { start: SidebarSizeStart }) {
@@ -293,7 +286,7 @@ function Place({
 function Org({ scale, org, waiting }: { scale: number; org: SidebarOrg; waiting: string | null }) {
   const name = sidebarOrgName(org);
   const { size, measure } = useSideFit(name, ROOMS.org, scale, 'semibold', 'line');
-  const line = useSideFit(waiting ?? '', WAITING_ROOM, scale, 'semibold', 'line');
+  const line = useSideFit(waiting ?? '', ROOMS.waiting, scale, 'semibold', 'line');
 
   return (
     <Pressable
