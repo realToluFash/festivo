@@ -180,15 +180,18 @@ function CompanionFields({
 }) {
   const id = useId();
   const count = values.companions.length;
-  const [refused, setRefused] = useState<number | null>(() =>
-    refusedStart ? values.companions.filter((one) => one.name.trim() !== '').length : null,
-  );
+  const [refused, setRefused] = useState<{ held: number; arrived: boolean } | null>(() => {
+    if (!refusedStart) return null;
+    const step = placesTo(values.companions, 0, arrived);
+
+    return 'refused' in step ? { held: step.refused, arrived: step.arrived } : null;
+  });
 
   function toPlaces(places: number): void {
-    const step = placesTo(values.companions, places);
+    const step = placesTo(values.companions, places, arrived);
 
     if ('refused' in step) {
-      setRefused(step.refused);
+      setRefused({ held: step.refused, arrived: step.arrived });
       focus('places');
       return;
     }
@@ -273,7 +276,10 @@ function CompanionFields({
         {refused != null && (
           <p id={`${id}-refused`} className="desk-error">
             <Glyph name="alert" size={15} weight={2.2} />
-            {GW.placesRefused(host === '' ? GW.thisGuest : host, refused)}
+            {(refused.arrived ? GW.placesRefusedArrived : GW.placesRefused)(
+              host === '' ? GW.thisGuest : host,
+              refused.held,
+            )}
           </p>
         )}
       </div>

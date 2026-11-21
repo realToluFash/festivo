@@ -1174,12 +1174,18 @@ export function namedOf(one: Guest): number {
   return one.companions.filter((companion) => (companion.name ?? '').trim() !== '').length;
 }
 
-export type PlacesStep = { companions: Values['companions'] } | { refused: number };
+export type PlacesStep =
+  { companions: Values['companions'] } | { refused: number; arrived: boolean };
 
-/** sc-3779: places are companion rows; fewer takes unnamed places only, from the end, and refuses once every place left is named. */
-export function placesTo(companions: Values['companions'], places: number): PlacesStep {
+/** sc-3779: places are companion rows; fewer takes unnamed places only, from the end, and refuses once every place left is named. An arrived place is held like a named one (sc-1454). */
+export function placesTo(
+  companions: Values['companions'],
+  places: number,
+  arrived: (id: string | null) => boolean = () => false,
+): PlacesStep {
   const wanted = Math.max(0, Math.min(MOST_COMPANIONS, Math.trunc(places)));
-  const named = companions.filter((one) => one.name.trim() !== '').length;
+  const held = (one: Values['companions'][number]) => one.name.trim() !== '' || arrived(one.id);
+  const named = companions.filter(held).length;
 
   if (wanted >= companions.length)
     return {
@@ -1188,12 +1194,12 @@ export function placesTo(companions: Values['companions'], places: number): Plac
         ...Array.from({ length: wanted - companions.length }, () => ({ id: null, name: '' })),
       ],
     };
-  if (wanted < named) return { refused: named };
+  if (wanted < named) return { refused: named, arrived: companions.some((one) => arrived(one.id)) };
   let drop = companions.length - wanted;
   const kept = [...companions]
     .reverse()
     .filter((one) => {
-      if (drop > 0 && one.name.trim() === '') {
+      if (drop > 0 && !held(one)) {
         drop -= 1;
         return false;
       }
@@ -1845,6 +1851,10 @@ export const GUESTS_STATES = [
   { key: 'placesSeated', name: 'Fewer places dropping an unnamed place with a seat: asked' },
   { key: 'placesSeatedTwo', name: 'Fewer places dropping two seated places: asked about each' },
   { key: 'placesRefused', name: 'Fewer places with every place named: refused' },
+  {
+    key: 'placesRefusedArrived',
+    name: 'Fewer places when the place left has arrived: refused, arrived stay',
+  },
   { key: 'placesMax', name: 'Add guest: ten places, the most' },
   { key: 'namedByGuest', name: 'Details: Named by the guest' },
   { key: 'needsDetails', name: 'Details: Dr Emeka Nwosu’s allergies, diet and note' },
@@ -2454,6 +2464,12 @@ export function guestsStart(state: GuestsState | null, params: URLSearchParams):
       return { ...edit('daniel-asamoah', { at: 'places' }), choice: 'coming' };
     case 'placesRefused':
       return { ...edit('sophie', { placesRefused: true, at: 'places' }), choice: 'coming' };
+    case 'placesRefusedArrived':
+      return {
+        ...edit('musa', { placesRefused: true, at: 'places' }),
+        choice: 'coming',
+        list: companionArrivedIn(start.list, 'musa', '18:05'),
+      };
     case 'placesMax':
       return add({
         values: {
@@ -2884,6 +2900,7 @@ export const GUESTS_PAGES: readonly { name: string; states: readonly DemoLink[] 
     'placesSeated',
     'placesSeatedTwo',
     'placesRefused',
+    'placesRefusedArrived',
     'placesMax',
     'namedByGuest',
   ]),
