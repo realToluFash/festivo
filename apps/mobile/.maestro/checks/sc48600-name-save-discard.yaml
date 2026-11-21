@@ -1,0 +1,74 @@
+# sc-48600: the Name edit's Save is off until a change; Cancel with a change asks (Keep editing stays, Discard closes, nothing saved); a change saved closes onto the page with the new name. Needs ${METRO_URL}, ${EVENT_ID}.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/${EVENT_ID}
+- extendedWaitUntil:
+    visible:
+      id: 'events.page'
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: 'events.details.name'
+    direction: DOWN
+    centerElement: true
+- tapOn:
+    id: 'events.details.name'
+- extendedWaitUntil:
+    visible:
+      id: 'event.edit.name.field'
+    timeout: 20000
+- assertVisible:
+    id: 'event.edit.name.save'
+    enabled: false
+- tapOn:
+    id: 'event.edit.name.field'
+- inputText: ' Two'
+- hideKeyboard
+- assertVisible:
+    id: 'event.edit.name.save'
+    enabled: true
+- takeScreenshot: name-changed
+- tapOn:
+    id: 'event.edit.name.cancel'
+- extendedWaitUntil:
+    visible:
+      id: 'event.edit.name.discard'
+    timeout: 10000
+- takeScreenshot: name-discard-ask
+- tapOn:
+    id: 'event.edit.name.keep'
+- extendedWaitUntil:
+    visible:
+      id: 'event.edit.name.field'
+    timeout: 10000
+- assertVisible: 'Ada Summer Party Two'
+- tapOn:
+    id: 'event.edit.name.cancel'
+- tapOn:
+    id: 'event.edit.name.discard'
+- extendedWaitUntil:
+    visible:
+      id: 'events.page'
+    timeout: 10000
+- assertNotVisible: 'Ada Summer Party Two'
+- scrollUntilVisible:
+    element:
+      id: 'events.details.name'
+    direction: DOWN
+    centerElement: true
+- tapOn:
+    id: 'events.details.name'
+- tapOn:
+    id: 'event.edit.name.field'
+- inputText: ' Two'
+- hideKeyboard
+- tapOn:
+    id: 'event.edit.name.save'
+- extendedWaitUntil:
+    visible:
+      id: 'events.page'
+    timeout: 20000
+- extendedWaitUntil:
+    visible: '.*Ada Summer Party Two.*'
+    timeout: 10000
+- takeScreenshot: name-saved

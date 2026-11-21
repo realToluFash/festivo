@@ -1,0 +1,46 @@
+# sc-31144: a Member's Settings list and read-only Organisation in the app's design demo, with Leave.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/demo/settings?as=member
+- waitForAnimationToEnd: { timeout: 8000 }
+- takeScreenshot: member-settings-list
+- scrollUntilVisible: { element: { text: 'Sign-in rules.*' }, timeout: 8000 }
+- takeScreenshot: member-settings-list-end
+- openLink: ${METRO_URL}/--/demo/settings?as=member
+- waitForAnimationToEnd: { timeout: 8000 }
+- tapOn: { text: 'Organisation' }
+- waitForAnimationToEnd: { timeout: 8000 }
+- takeScreenshot: member-org-from-row
+- openLink: ${METRO_URL}/--/demo/settings/organisation?as=planner
+- waitForAnimationToEnd: { timeout: 8000 }
+- takeScreenshot: planner-org
+- openLink: ${METRO_URL}/--/demo/settings/organisation?as=member
+- waitForAnimationToEnd: { timeout: 8000 }
+- takeScreenshot: member-org-top
+- tapOn: { text: 'Details.*', optional: true }
+- waitForAnimationToEnd: { timeout: 3000 }
+- takeScreenshot: member-org-details-tapped
+- scrollUntilVisible: { element: { text: 'Leave Ire Events.*' }, timeout: 10000 }
+- takeScreenshot: member-org-bottom
+- tapOn: { text: 'Leave Ire Events…' }
+- waitForAnimationToEnd: { timeout: 4000 }
+- takeScreenshot: member-leave-ask
+- tapOn: { text: 'Stay' }
+- waitForAnimationToEnd: { timeout: 4000 }
+- takeScreenshot: member-leave-stayed
+- tapOn: { text: 'Leave Ire Events…' }
+- waitForAnimationToEnd: { timeout: 4000 }
+- tapOn: { text: 'Leave Ire Events' }
+- waitForAnimationToEnd: { timeout: 6000 }
+- takeScreenshot: member-left
+- openLink: ${METRO_URL}/--/demo/settings/organisation
+- waitForAnimationToEnd: { timeout: 8000 }
+- takeScreenshot: owner-org-top
+- scrollUntilVisible: { element: { text: 'Delete Ire Events.*' }, timeout: 10000 }
+- takeScreenshot: owner-org-bottom
+- openLink: ${METRO_URL}/--/demo/settings
+- waitForAnimationToEnd: { timeout: 8000 }
+- takeScreenshot: owner-settings-list
+- openLink: ${METRO_URL}/--/demo/settings?as=noOrg
+- waitForAnimationToEnd: { timeout: 8000 }
+- takeScreenshot: noorg-settings-list

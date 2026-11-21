@@ -1,0 +1,32 @@
+# sc-75211: opens Events' Filter menu and chooses Anniversary and Party in Type, leaving the top level open at its top. Text size set outside the flow.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events
+- extendedWaitUntil: { visible: { id: 'events.filter' }, timeout: 30000 }
+- waitForAnimationToEnd
+- runFlow:
+    when: { visible: { id: 'events.clearFilters' } }
+    commands:
+      - tapOn: { id: 'events.clearFilters' }
+      - waitForAnimationToEnd
+- tapOn: { id: 'events.filter' }
+- extendedWaitUntil: { visible: { id: 'events.filter.menu' }, timeout: 10000 }
+- waitForAnimationToEnd
+- tapOn: { id: 'events.filter.type' }
+- waitForAnimationToEnd
+- tapOn: { id: 'events.filter.type.anniversary' }
+- repeat:
+    while: { notVisible: { id: 'events.filter.type.party' } }
+    times: 6
+    commands:
+      - swipe: { start: '40%,88%', end: '40%,60%', duration: 500 }
+      - waitForAnimationToEnd
+- tapOn: { id: 'events.filter.type.party' }
+- repeat:
+    times: 5
+    commands:
+      - swipe: { start: '40%,60%', end: '40%,88%', duration: 300 }
+- waitForAnimationToEnd
+- tapOn: { id: 'events.filter.back' }
+- waitForAnimationToEnd
+- extendedWaitUntil: { visible: { id: 'events.filter.type' }, timeout: 5000 }

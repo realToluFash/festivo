@@ -1,0 +1,16 @@
+# sc-54450: ${EVENT_ID}'s Guests shows Paste a reply; pressed with a message copied, it opens Whose reply is this? with the message.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/${EVENT_ID}?area=guests
+- extendedWaitUntil:
+    visible:
+      id: 'guests.search'
+    timeout: 30000
+- takeScreenshot: guests
+- tapOn:
+    id: 'guests.paste'
+- extendedWaitUntil:
+    visible:
+      id: 'paste.whose'
+    timeout: 10000
+- takeScreenshot: whose

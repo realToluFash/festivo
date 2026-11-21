@@ -1,0 +1,28 @@
+# sc-29914: ${PERSON}'s role picked with the API stopped: the radio goes back and the line says so; then picked twice quickly with it up.
+appId: host.exp.Exponent
+onFlowComplete:
+  - runScript:
+      file: ../batch/helper.js
+      env:
+        ASK: /api?to=up
+---
+- openLink: ${METRO_URL}/--/events/${EV}?area=people
+- extendedWaitUntil: { visible: { id: 'people.row.${PERSON}' }, timeout: 30000 }
+- tapOn: { id: 'people.row.${PERSON}' }
+- extendedWaitUntil: { visible: { id: 'people.roleSheet' }, timeout: 10000 }
+- waitForAnimationToEnd: { timeout: 4000 }
+- runScript: { file: ../batch/helper.js, env: { ASK: '/api?to=stopped' } }
+- tapOn: { id: 'people.role.${TO}' }
+- extendedWaitUntil:
+    { visible: '.*(connection|conexión|connexion|ligação|conexão).*', timeout: 40000 }
+- waitForAnimationToEnd: { timeout: 3000 }
+- takeScreenshot: failed
+- runScript: { file: ../batch/helper.js, env: { ASK: '/api?to=up' } }
+- tapOn: { id: 'people.role.${TO}' }
+- tapOn: { id: 'people.role.${OTHER}' }
+- extendedWaitUntil: { visible: '.*{{t:eventPeople.saved}}.*', timeout: 20000 }
+- waitForAnimationToEnd: { timeout: 4000 }
+- takeScreenshot: quick
+- tapOn: { id: 'people.role.done' }
+- waitForAnimationToEnd: { timeout: 4000 }
+- takeScreenshot: after

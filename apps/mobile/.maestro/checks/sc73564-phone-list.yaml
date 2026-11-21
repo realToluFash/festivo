@@ -1,0 +1,11 @@
+# sc-73564: the audit log on the phone, where there is no Export.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/settings/data-and-control/audit-log
+- extendedWaitUntil:
+    visible:
+      id: audit.card
+    timeout: 40000
+- waitForAnimationToEnd:
+    timeout: 8000
+- takeScreenshot: audit-phone-product

@@ -1,0 +1,18 @@
+# Create an organisation, from the switcher's row. Shared, as open-settings.yaml is.
+appId: host.exp.Exponent
+---
+- runFlow: return-home.yaml
+- tapOn:
+    id: 'home.switchOrganisation'
+- scrollUntilVisible:
+    element:
+      id: 'switcher.tile.create'
+    direction: DOWN
+    timeout: 30000
+- tapOn:
+    id: 'switcher.tile.create'
+- extendedWaitUntil:
+    visible:
+      id: 'createWalk'
+    timeout: 30000
+- takeScreenshot: mobile-create-organisation

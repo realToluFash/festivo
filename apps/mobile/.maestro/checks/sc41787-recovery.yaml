@@ -1,0 +1,60 @@
+# sc-41787: Settings › Members turned to ${O} (PORTRAIT or LANDSCAPE_LEFT), scrolled through Requests to get back in, screenshotted page by page, so each asker's name can be read beside or above Waiting for an answer. Needs an organisation the signed-in owner runs with members waiting on requests to get back in.
+appId: host.exp.Exponent
+---
+- setOrientation: ${O}
+- waitForAnimationToEnd:
+    timeout: 4000
+- openLink: ${METRO_URL}/--/settings/members
+- extendedWaitUntil:
+    visible:
+      id: 'members.recovery\..*'
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: 'members.recovery\..*'
+    direction: DOWN
+- waitForAnimationToEnd:
+    timeout: 3000
+- takeScreenshot: recovery-1
+- swipe:
+    start: 30%, 80%
+    end: 30%, 35%
+    duration: 800
+- waitForAnimationToEnd:
+    timeout: 2000
+- takeScreenshot: recovery-2
+- swipe:
+    start: 30%, 80%
+    end: 30%, 35%
+    duration: 800
+- waitForAnimationToEnd:
+    timeout: 2000
+- takeScreenshot: recovery-3
+- swipe:
+    start: 30%, 80%
+    end: 30%, 35%
+    duration: 800
+- waitForAnimationToEnd:
+    timeout: 2000
+- takeScreenshot: recovery-4
+- swipe:
+    start: 30%, 80%
+    end: 30%, 35%
+    duration: 800
+- waitForAnimationToEnd:
+    timeout: 2000
+- takeScreenshot: recovery-5
+- swipe:
+    start: 30%, 80%
+    end: 30%, 35%
+    duration: 800
+- waitForAnimationToEnd:
+    timeout: 2000
+- takeScreenshot: recovery-6
+- swipe:
+    start: 30%, 80%
+    end: 30%, 35%
+    duration: 800
+- waitForAnimationToEnd:
+    timeout: 2000
+- takeScreenshot: recovery-7

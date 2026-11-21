@@ -1,0 +1,14 @@
+# sc-71337: on the tablet, an account with no organisation opens the sidebar's person menu on an event: Your events, Under way, You're here.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/${EV}
+- extendedWaitUntil: { visible: { id: never.there }, timeout: 6000, optional: true }
+- waitForAnimationToEnd
+- swipe: { start: '90%, 9%', end: '10%, 9%' }
+- waitForAnimationToEnd
+- swipe: { start: '90%, 9%', end: '10%, 9%' }
+- waitForAnimationToEnd
+- tapOn: { id: event.nav.more, optional: true }
+- extendedWaitUntil: { visible: { id: never.there }, timeout: 4000, optional: true }
+- waitForAnimationToEnd
+- takeScreenshot: you

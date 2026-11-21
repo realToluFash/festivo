@@ -1,0 +1,27 @@
+# sc-37693: Members while the API hangs (loading), then while it is down (failed). Paired with a shell that pauses, then stops, the api.
+appId: host.exp.Exponent
+---
+- setOrientation: ${ORIENT}
+- openLink: ${METRO_URL}/--/settings
+- extendedWaitUntil:
+    visible: 'MARKER_ONE_NEVER'
+    timeout: 20000
+    optional: true
+- openLink: ${METRO_URL}/--/settings/members
+- extendedWaitUntil:
+    visible: 'NEVER_THERE_X'
+    timeout: 4000
+    optional: true
+- takeScreenshot: q-loading
+- extendedWaitUntil:
+    visible: 'MARKER_TWO_NEVER'
+    timeout: 25000
+    optional: true
+- openLink: ${METRO_URL}/--/settings
+- waitForAnimationToEnd
+- openLink: ${METRO_URL}/--/settings/members
+- extendedWaitUntil:
+    visible: 'NEVER_THERE_Y'
+    timeout: 15000
+    optional: true
+- takeScreenshot: q-failed

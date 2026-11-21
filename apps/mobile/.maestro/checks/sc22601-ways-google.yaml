@@ -1,0 +1,34 @@
+# sc-22601: Confirm it's you, opened from linking Apple under Ways to sign in, shows Google's button on an account with no password and Google linked, and fades it while busy. Needs ${METRO_URL}.
+appId: host.exp.Exponent
+---
+- runFlow:
+    when:
+      visible: 'Cancel'
+    commands:
+      - tapOn: 'Cancel'
+- openLink: ${METRO_URL}/--/settings/security
+- extendedWaitUntil:
+    visible: '{{t:security.title}}'
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: 'ways.apple.link'
+    direction: DOWN
+    timeout: 30000
+    centerElement: true
+- tapOn:
+    id: 'ways.apple.link'
+- scrollUntilVisible:
+    element:
+      id: 'ways.continue'
+    direction: DOWN
+    timeout: 15000
+    centerElement: true
+- takeScreenshot: confirm-google
+- tapOn:
+    id: 'ways.continue'
+- takeScreenshot: busy
+- extendedWaitUntil:
+    visible: '.*Wants to Use.*'
+    timeout: 15000
+- tapOn: 'Cancel'

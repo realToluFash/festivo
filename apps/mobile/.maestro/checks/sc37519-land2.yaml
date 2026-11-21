@@ -1,0 +1,25 @@
+# On a tablet at ${ORIENT} (landscape): Password changed in line with Continue, keys up and down; Country closes it. sc-37519, sc-42562.
+appId: host.exp.Exponent
+---
+- runFlow: ../batch/sign-out.yaml
+- setOrientation: ${ORIENT}
+- openLink: ${METRO_URL}/--/reset-password?token=${TOKEN_STEP}
+- extendedWaitUntil: { visible: { id: 'recovery.password' }, timeout: 30000 }
+- tapOn: { id: 'recovery.password' }
+- inputText: 'a-brand-new-password-37519'
+- tapOn: { id: 'recovery.save' }
+- extendedWaitUntil: { visible: { id: 'completeProfile.organisation' }, timeout: 30000 }
+- assertVisible: '{{t:any:recovery.changed}}'
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 1000, optional: true }
+- takeScreenshot: land2-01-keys-up
+- hideKeyboard
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 1000, optional: true }
+- takeScreenshot: land2-02-keys-down
+- assertVisible: '{{t:any:recovery.changed}}'
+- tapOn: { id: 'completeProfile.country' }
+- takeScreenshot: land2-03-picker
+- back
+- extendedWaitUntil: { visible: { id: 'completeProfile.organisation' }, timeout: 10000 }
+- assertNotVisible: '{{t:any:recovery.changed}}'
+- takeScreenshot: land2-04-closed
+- runFlow: ../sign-out-from-complete-profile.yaml

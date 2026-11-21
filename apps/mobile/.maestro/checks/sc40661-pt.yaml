@@ -1,0 +1,35 @@
+# sc-40661 pt: Nigeria, nigeria and Nigéria find Nigéria; Brazil finds nothing.
+appId: host.exp.Exponent
+---
+- runFlow: ../sc40661-to-country-search.yaml
+- eraseText: 80
+- inputText: 'Nigeria'
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 1500, optional: true }
+- takeScreenshot: s40661-pt-Nigeria
+- assertVisible: { id: 'createWalk.country.NG' }
+- assertNotVisible: { id: 'createWalk.countries.noMatch' }
+- eraseText: 80
+- inputText: 'nigeria'
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 1500, optional: true }
+- takeScreenshot: s40661-pt-nigeria
+- assertVisible: { id: 'createWalk.country.NG' }
+- eraseText: 80
+- inputText: 'Nigéria'
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 1500, optional: true }
+- takeScreenshot: s40661-pt-Nigeria-accent
+- assertVisible: { id: 'createWalk.country.NG' }
+- eraseText: 80
+- inputText: 'NIGERIA'
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 1500, optional: true }
+- takeScreenshot: s40661-pt-NIGERIA
+- assertVisible: { id: 'createWalk.country.NG' }
+- eraseText: 80
+- inputText: 'Brazil'
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 1500, optional: true }
+- takeScreenshot: s40661-pt-Brazil
+- assertVisible: { id: 'createWalk.countries.noMatch' }
+- eraseText: 80
+- inputText: 'zzz'
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 1500, optional: true }
+- takeScreenshot: s40661-pt-zzz
+- assertVisible: { id: 'createWalk.countries.noMatch' }
