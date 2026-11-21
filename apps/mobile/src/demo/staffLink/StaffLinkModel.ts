@@ -6,7 +6,7 @@ export interface Who {
   first: string;
   job: string;
   shift: string;
-  mobile: boolean;
+  mobile: string | null;
 }
 
 export const PERSON: Who = {
@@ -15,7 +15,7 @@ export const PERSON: Who = {
   first: 'Ada',
   job: 'Waiter',
   shift: '17:00 to 00:00',
-  mobile: true,
+  mobile: '+2348031110004',
 };
 
 /** What the screen may do: share and copy, read the status only (no staff.manage), or nothing after the 30-day erasure. */
@@ -199,7 +199,7 @@ export function replace(s: LinkState): LinkState {
 
 /** Share link, Copy link, Mark as sent and Replace link… need staff.manage, a mobile number, and the person still on the staff. */
 export function acts(s: LinkState): boolean {
-  return s.view === 'manage' && s.who.mobile && !s.removed;
+  return s.view === 'manage' && s.who.mobile != null && !s.removed;
 }
 
 export function offersMarkSent(s: LinkState): boolean {
@@ -218,9 +218,12 @@ export const SHOWN_WORDS: Record<Shown, string> = {
   erased: W.erased,
 };
 
-export function shownOf(link: { status: LinkStatus; mobile: boolean }, erased: boolean): Shown {
+export function shownOf(
+  link: { status: LinkStatus; mobile: string | null },
+  erased: boolean,
+): Shown {
   if (erased) return 'erased';
-  if (!link.mobile) return 'noMobile';
+  if (link.mobile == null) return 'noMobile';
 
   return link.status;
 }
@@ -296,7 +299,7 @@ const NO_MOBILE: Who = {
   first: 'Ada',
   job: 'Cook',
   shift: '15:00 to 23:00',
-  mobile: false,
+  mobile: null,
 };
 
 export function seed(name: LinkStateName, who: Who = PERSON): LinkState {

@@ -1,13 +1,30 @@
-import { type LinkState, type Texting, NOW, W, YOU, acts, seed } from './StaffLinkModel.ts';
+import { EVENT_OF_KEY, sampleEvent } from '../events/EventsSample.ts';
+import { LINK_CHARS, asSent, smsParts, textCost } from '../events/MakeLive.ts';
+import { ORG, formatCount } from '../messages/MessagesSample.ts';
+import { W, WW, say } from '../messages/MessagesWords.ts';
+import {
+  type LinkState,
+  type Texting,
+  type Trail,
+  NOW,
+  W as LW,
+  YOU,
+  acts,
+  seed,
+} from './StaffLinkModel.ts';
 import { type OnRoster, sampleRoster } from './StaffRosterModel.ts';
 
-const one = (n: number, single: string, many: string) => (n === 1 ? single : many);
-const counted = (n: number) => n.toLocaleString('en-GB');
+const PLURAL = new Intl.PluralRules('en');
+
+/** The count's CLDR plural form in en, one or other. */
+function byCount(count: number, one: string, other: string): string {
+  return (PLURAL.select(count) === 'one' ? one : other).replaceAll('{count}', formatCount(count));
+}
 
 /** sc-77904's words as the AC quotes [en] (#77928, #77937, #77953); [bracketed] ones are the drawing's, for [en]. */
 export const TW = {
   text: 'Text the link',
-  bulk: (n: number) => `Text links to ${n}`,
+  bulk: (n: number) => byCount(n, 'Text links to {count}', 'Text links to {count}'),
   sending: 'Sending text…',
   held: 'Text held: no credits',
   waits: (time: string) => `Text waits until ${time}, their time`,
@@ -15,21 +32,32 @@ export const TW = {
   stopped: 'Stopped texts',
   sendingTo: (name: string) => `Sending the link to ${name}.`,
   checkOne: (name: string) => `[Text the link to ${name}?]`,
-  checkMany: (n: number) => `[Text links to ${n} ${one(n, 'person', 'people')}?]`,
+  checkMany: (n: number) =>
+    byCount(n, '[Text links to {count} person?]', '[Text links to {count} people?]'),
   checkLine: '[Each gets a text with their own link. Links sent before keep working.]',
-  thisTextUses: (c: number) => `This text uses ${counted(c)} ${one(c, 'credit', 'credits')}.`,
-  textsUse: (c: number) => `Texts use ${counted(c)} ${one(c, 'credit', 'credits')}.`,
-  after: (c: number) => `Credits after sending: ${counted(c)}.`,
-  smsWaits: (w: number) =>
-    `${counted(w)} ${one(w, 'SMS message', 'SMS messages')} will wait for credits.`,
-  quiet: (n: number, time: string) =>
-    `Texts to ${counted(n)} ${one(n, 'person', 'people')} wait until ${time}, their time.`,
-  notInApp: 'Credits cannot be added in the app.',
-  askOwner: 'Ask an owner',
-  cancel: 'Cancel',
+  thisTextUses: (c: number) =>
+    byCount(c, 'This text uses {count} credit.', 'This text uses {count} credits.'),
+  textsUse: (c: number) => byCount(c, 'Texts use {count} credit.', 'Texts use {count} credits.'),
+  after: (c: number) => `Credits after sending: ${formatCount(c)}.`,
+  smsWaits: (w: number) => say.waits('sms', w),
+  quiet: (n: number, time: string) => say.quietWait(n, time),
+  notInApp: W.creditsNotInApp,
+  askOwner: WW.askOwner,
+  cancel: W.cancel,
   allSent: '[Everyone with a mobile number has been sent a link.]',
-  noMobile: (m: number) => `${m} ${one(m, 'has', 'have')} no mobile number.`,
-  stoppedCount: (k: number) => `${k} ${one(k, 'has', 'have')} stopped texts.`,
+  sendingToCount: (n: number) =>
+    byCount(n, 'Sending to {count} person.', 'Sending to {count} people.'),
+  noMobile: (m: number) =>
+    byCount(m, '{count} has no mobile number.', '{count} have no mobile number.'),
+  stoppedCount: (k: number) =>
+    byCount(k, '{count} has stopped texts.', '{count} have stopped texts.'),
+  heldCount: (h: number) => byCount(h, '{count} held: no credits.', '{count} held: no credits.'),
+  waitCount: (w: number, time: string) =>
+    byCount(
+      w,
+      `{count} waits until ${time}, their time.`,
+      `{count} wait until ${time}, their time.`,
+    ),
 };
 
 export interface Result {
@@ -44,33 +72,43 @@ export interface Result {
 /** Each sentence only above 0, every one with its full stop; a held or waiting person only in their own line. */
 export function resultLines(r: Result): string[] {
   return [
-    r.sending === 0 ? '' : `Sending to ${r.sending} ${one(r.sending, 'person', 'people')}.`,
-    r.m === 0 ? '' : TW.noMobile(r.m),
-    r.k === 0 ? '' : TW.stoppedCount(r.k),
-    r.held === 0 ? '' : `${r.held} held: no credits.`,
-    r.waits === 0 ? '' : `${r.waits} ${one(r.waits, 'waits', 'wait')} until ${r.time}, their time.`,
-  ].filter((line) => line !== '');
+    ...(r.sending > 0 ? [TW.sendingToCount(r.sending)] : []),
+    ...(r.m > 0 ? [TW.noMobile(r.m)] : []),
+    ...(r.k > 0 ? [TW.stoppedCount(r.k)] : []),
+    ...(r.held > 0 ? [TW.heldCount(r.held)] : []),
+    ...(r.waits > 0 ? [TW.waitCount(r.waits, r.time)] : []),
+  ];
 }
 
-/** A sample of sc-3928's unit costs: one text's credits by its number's country, never the event's. */
-export const CREDITS_A_TEXT: Readonly<Record<string, number>> = {
-  NG: 62,
-  GB: 9,
-  FR: 13,
-  ES: 14,
-  PT: 8,
-  BR: 10,
-  MX: 29,
-  US: 2,
-};
+/** The text in the event's language, the first form that fits one part, as [en] settled them (#77928). */
+function staffSmsForms(link: string): string[] {
+  const event = sampleEvent(EVENT_OF_KEY.wed)?.name ?? '';
+
+  return [
+    `Your staff link for ${event} from ${ORG}: ${link}`,
+    `Your staff link from ${ORG}: ${link}`,
+    `Your staff link: ${link}`,
+  ];
+}
+
+/** A first text from the organisation to a number ends on the STOP line, which may take it to two parts. */
+export function staffSmsParts(first: boolean): number {
+  const forms = staffSmsForms('x'.repeat(LINK_CHARS));
+  const fits = forms.find((text) => smsParts(asSent(text, false)) === 1) ?? forms.at(-1) ?? '';
+
+  return smsParts(asSent(fits, first));
+}
+
+/** sc-3928's rate for the person's own number, times the parts of their text. */
+export function textCostOf(mobile: string | null, trail: Trail | null): number {
+  if (mobile == null) throw new Error('No number to text');
+
+  return textCost({ phone: mobile, parts: staffSmsParts(trail?.via !== 'text') });
+}
 
 export const BALANCE = 1500;
 export const QUIET_ENDS = '09:00';
 export const SENT_MS = 2400;
-
-export function creditsFor(country = 'NG'): number {
-  return CREDITS_A_TEXT[country] ?? 0;
-}
 
 export function texting(over: Partial<Texting> = {}): Texting {
   return {
@@ -95,7 +133,7 @@ export function offersText(s: LinkState): boolean {
     s.texting != null &&
     acts(s) &&
     s.view === 'manage' &&
-    s.who.mobile &&
+    s.who.mobile != null &&
     !s.texting.stopped &&
     s.texting.pending == null &&
     !s.asking
@@ -111,11 +149,28 @@ export interface Check {
   wait: number;
 }
 
-export function checkOf(n: number, credits: number, m = 0, k = 0): Check {
-  const afford = Math.min(n, Math.floor(credits / creditsFor()));
-  const uses = afford * creditsFor();
+/** How many of the texts, in order, the credits pay for. */
+function affordable(costs: readonly number[], credits: number): number {
+  let left = credits;
+  const short = costs.findIndex((cost) => {
+    left -= cost;
+    return left < 0;
+  });
 
-  return { n, m, k, uses, after: credits - uses, wait: n - afford };
+  return short === -1 ? costs.length : short;
+}
+
+const total = (costs: readonly number[]) => costs.reduce((sum, cost) => sum + cost, 0);
+
+export function checkOf(costs: readonly number[], credits: number, m = 0, k = 0): Check {
+  const afford = affordable(costs, credits);
+  const uses = total(costs.slice(0, afford));
+
+  return { n: costs.length, m, k, uses, after: credits - uses, wait: costs.length - afford };
+}
+
+export function costOfText(s: LinkState): number {
+  return textCostOf(s.who.mobile, s.trail);
 }
 
 export function askText(s: LinkState, open: boolean): LinkState {
@@ -128,8 +183,9 @@ export function askText(s: LinkState, open: boolean): LinkState {
 export function pressText(s: LinkState): LinkState {
   const t = s.texting;
   if (t == null) return s;
-  if (t.refused) return { ...s, texting: { ...t, checkFailed: true }, say: W.notIssued };
-  const pending = t.quiet ? 'waits' : t.credits < creditsFor() ? 'held' : 'sending';
+  if (t.refused) return { ...s, texting: { ...t, checkFailed: true }, say: LW.notIssued };
+  const cost = costOfText(s);
+  const pending = t.quiet ? 'waits' : t.credits < cost ? 'held' : 'sending';
   const say =
     pending === 'sending'
       ? TW.sendingTo(s.who.name)
@@ -146,7 +202,7 @@ export function pressText(s: LinkState): LinkState {
       checkFailed: false,
       pending,
       notDelivered: null,
-      credits: pending === 'sending' ? t.credits - creditsFor() : t.credits,
+      credits: pending === 'sending' ? t.credits - cost : t.credits,
     },
     toast: say,
     say,
@@ -263,7 +319,7 @@ export function textingFor(person: OnRoster, over: Partial<Texting>): Texting {
 }
 
 export function textable(person: OnRoster): boolean {
-  return person.mobile && person.stopped !== true && person.pending == null;
+  return person.mobile != null && person.stopped !== true && person.pending == null;
 }
 
 export function owed(person: OnRoster): boolean {
@@ -273,12 +329,14 @@ export function owed(person: OnRoster): boolean {
   );
 }
 
+const costOfPerson = (p: OnRoster) => textCostOf(p.mobile, p.trail);
+
 export function bulkCheck(people: readonly OnRoster[], credits: number): Check {
   return checkOf(
-    people.filter(owed).length,
+    people.filter(owed).map(costOfPerson),
     credits,
-    people.filter((p) => !p.mobile && p.status === 'none').length,
-    people.filter((p) => p.mobile && p.stopped === true).length,
+    people.filter((p) => p.mobile == null && p.status === 'none').length,
+    people.filter((p) => p.mobile != null && p.stopped === true).length,
   );
 }
 
@@ -289,8 +347,10 @@ export interface Pressed {
 }
 
 export function textAll(people: readonly OnRoster[], credits: number, quiet: boolean): Pressed {
-  const ids = people.filter(owed).map((p) => p.id);
-  const afford = quiet ? 0 : Math.min(ids.length, Math.floor(credits / creditsFor()));
+  const due = people.filter(owed);
+  const ids = due.map((p) => p.id);
+  const costs = due.map(costOfPerson);
+  const afford = quiet ? 0 : affordable(costs, credits);
   const go = new Set(quiet ? [] : ids.slice(0, afford));
   const held = new Set(quiet ? [] : ids.slice(afford));
   const waits = new Set(quiet ? ids : []);
@@ -306,7 +366,7 @@ export function textAll(people: readonly OnRoster[], credits: number, quiet: boo
             ? { ...p, pending: 'waits' as const }
             : p,
     ),
-    credits: credits - go.size * creditsFor(),
+    credits: credits - total(costs.slice(0, go.size)),
     lines: resultLines({
       sending: go.size,
       m: check.m,

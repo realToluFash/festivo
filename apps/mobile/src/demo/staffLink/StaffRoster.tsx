@@ -205,7 +205,7 @@ export function StaffRoster({ state }: { state: RosterState }) {
           items={people.map((person) => {
             const shown = shownOf(person, erased);
             const note =
-              !sms || erased || !person.mobile
+              !sms || erased || person.mobile == null
                 ? null
                 : person.pending === 'sending'
                   ? TW.sending

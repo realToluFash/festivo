@@ -58,6 +58,7 @@ import {
   TW,
   askText,
   checkOf,
+  costOfText,
   creditsNow,
   offersText,
   pressText,
@@ -222,7 +223,7 @@ function StaffLink({ first, fromRoster }: { first: () => LinkState; fromRoster: 
   const texts = offersText(s);
   const t = s.texting;
   const note =
-    t == null || !who.mobile || s.view !== 'manage'
+    t == null || who.mobile == null || s.view !== 'manage'
       ? null
       : t.pending === 'sending'
         ? { mark: null, line: TW.sending, tone: 'secondary' as const }
@@ -237,7 +238,7 @@ function StaffLink({ first, fromRoster }: { first: () => LinkState; fromRoster: 
                   tone: 'broken' as const,
                 }
               : null;
-  const check = t == null ? null : checkOf(1, t.credits);
+  const check = t == null || who.mobile == null ? null : checkOf([costOfText(s)], t.credits);
 
   const person = (
     <View style={styles.header}>
@@ -361,7 +362,7 @@ function StaffLink({ first, fromRoster }: { first: () => LinkState; fromRoster: 
           testID="staffLink.text"
         />
       )}
-      {t != null && t.stopped && who.mobile && s.view === 'manage' && (
+      {t != null && t.stopped && who.mobile != null && s.view === 'manage' && (
         <View style={styles.note} testID="staffLink.stopped">
           <Glyph name="x" size={18} ink={tokens.colorInkSecondary} />
           <Text size={15} weight="semibold" style={[styles.secondary, styles.shrink]}>

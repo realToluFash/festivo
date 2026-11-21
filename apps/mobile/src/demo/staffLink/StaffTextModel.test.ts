@@ -8,7 +8,9 @@ import {
   askText,
   bulkCheck,
   checkOf,
-  creditsFor,
+  costOfText,
+  staffSmsParts,
+  textCostOf,
   offersText,
   pressText,
   reportedSent,
@@ -29,10 +31,10 @@ describe('texting a staff link (sc-77904)', () => {
   });
 
   it('checks one text first, with sc-3963’s lines', () => {
-    const check = checkOf(1, BALANCE);
+    const check = checkOf([costOfText(textSeed('smsOn'))], BALANCE);
     expect(TW.thisTextUses(check.uses)).toBe('This text uses 62 credits.');
     expect(TW.after(check.after)).toBe('Credits after sending: 1,438.');
-    expect(checkOf(1, 0).wait).toBe(1);
+    expect(checkOf([62], 0).wait).toBe(1);
     expect(TW.smsWaits(1)).toBe('1 SMS message will wait for credits.');
     expect(askText(textSeed('smsOn'), true).texting?.checking).toBe(true);
   });
@@ -45,7 +47,7 @@ describe('texting a staff link (sc-77904)', () => {
     const sent = reportedSent(sending);
     expect(sent.status).toBe('sent');
     expect(trailLine(sent.status, sent.trail)).toBe('Sent by Amara Nwosu · 19:12');
-    expect(sent.texting?.credits).toBe(BALANCE - creditsFor());
+    expect(sent.texting?.credits).toBe(BALANCE - 62);
   });
 
   it('keeps Link opened when an opened link is texted', () => {
@@ -126,5 +128,22 @@ describe('Text links to {n} (sc-77904)', () => {
     expect(
       textRoster('bulkNone')?.people.filter((p) => p.status === 'sent').length,
     ).toBeGreaterThan(4);
+  });
+
+  it('prices each text by its own number’s country, never the event’s', () => {
+    expect(textCostOf('+2348031110007', null)).toBe(62);
+    expect(textCostOf('+447400123456', null)).toBe(9);
+    expect(checkOf([62, 9], 70)).toMatchObject({ uses: 62, wait: 1 });
+    expect(() => textCostOf(null, null)).toThrow();
+  });
+
+  it('keeps the first text, STOP line and all, to one part with the sample names', () => {
+    expect(staffSmsParts(true)).toBe(1);
+  });
+
+  it('counts in en’s CLDR plural forms', () => {
+    expect(TW.noMobile(1)).toBe('1 has no mobile number.');
+    expect(TW.noMobile(0)).toBe('0 have no mobile number.');
+    expect(TW.textsUse(1_500)).toBe('Texts use 1,500 credits.');
   });
 });
