@@ -78,6 +78,11 @@
   min-width: 0;
 }
 
+.py-choose .ev-select select {
+  min-width: 0;
+  text-overflow: ellipsis;
+}
+
 .py-choose-side .desk-rows {
   margin: 0;
   padding: 0;

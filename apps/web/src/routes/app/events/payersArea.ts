@@ -362,11 +362,19 @@ export function flagWords(
 ): { title: string; line: string } {
   const split = line.split;
   const fixed = split?.mode === 'fixed' ? inPayerOrder(split.amounts, payers) : [];
-  const by = listFormat(locale, { type: 'conjunction' }).format(
-    fixed.map((one) => nameOf(payers, one.payerId)),
-  );
+  const and = listFormat(locale, { type: 'conjunction' });
   const money = (minor: number) =>
     minorMoney(fromMinor(minor, payers.currency), payers.currency, locale);
+  const kept = fixed.map((one) =>
+    t('payers.flagKeeps', {
+      name: nameOf(payers, one.payerId),
+      amount: minorMoney(one.amount, payers.currency, locale),
+    }),
+  );
+  const rest =
+    split?.mode === 'fixed'
+      ? [t('payers.flagRest', { name: nameOf(payers, split.restId), amount: money(0) })]
+      : [];
 
   return {
     title: t('payers.flagTitle', { cost: line.label }),
@@ -374,9 +382,8 @@ export function flagWords(
       cost: line.label,
       now: minorMoney(line.cost.confirmed, payers.currency, locale),
       fixed: money(sum(fixed.map((one) => toMinor(one.amount, payers.currency)))),
-      by,
-      rest: split?.mode === 'fixed' ? nameOf(payers, split.restId) : '',
-      zero: money(0),
+      by: and.format(fixed.map((one) => nameOf(payers, one.payerId))),
+      shares: and.format([...kept, ...rest]),
     }),
   };
 }

@@ -556,6 +556,76 @@ export function PayersScreen({
     setAttempt((n) => n + 1);
   };
 
+  const columns = (open: Payer, costs: boolean) =>
+    payers != null && (
+      <div className="ev-columns">
+        <div className="ev-left">
+          {costs && (
+            <PayersCard
+              renderCard={renderCard}
+              payers={payers}
+              step={offline == null && writes}
+              onNext={(id) => choose({ ticked: [id], mode: 'one' })}
+            />
+          )}
+          <Rows>
+            {payers.payers.map((one) => (
+              <li key={one.id}>
+                <button
+                  type="button"
+                  className={[
+                    'desk-row bt-row',
+                    one.id === open.id && 'is-on',
+                    washed.includes(one.id) && 'is-washed',
+                  ]
+                    .filter(Boolean)
+                    .join(' ')}
+                  aria-expanded={one.id === open.id}
+                  onClick={() => setOpenId(one.id)}
+                >
+                  <RowWords title={one.name} lines={rowLines(one)} />
+                  {costs && (
+                    <Amount
+                      value={moneyRange(
+                        t,
+                        one.share.confirmed,
+                        one.share.potential,
+                        payers.currency,
+                        locale,
+                      )}
+                    />
+                  )}
+                  <Chevron />
+                </button>
+              </li>
+            ))}
+          </Rows>
+        </div>
+        <div className="ev-right">
+          <PayerPane
+            payers={payers}
+            payer={open}
+            costs={costs}
+            writes={writes}
+            washed={washed.includes(open.id)}
+            extra={extra.renderPane?.(open)}
+            onEdit={() =>
+              setForm({
+                id: open.id,
+                name: open.name,
+                note: open.note ?? '',
+                error: null,
+                noteError: null,
+                busy: false,
+                failed: null,
+              })
+            }
+            onRemove={() => void removePressed(open)}
+          />
+        </div>
+      </div>
+    );
+
   let body: ReactNode;
   if (choosing != null && payers != null)
     body = (
@@ -670,16 +740,8 @@ export function PayersScreen({
                   <Glyph name="back" size={17} weight={2.3} />
                   {t('budget.title')}
                 </Link>
-                {payers.payers.length > 0 ? (
-                  <Rows>
-                    {payers.payers.map((one) => (
-                      <li key={one.id}>
-                        <div className="desk-row bt-row">
-                          <RowWords title={one.name} lines={rowLines(one)} />
-                        </div>
-                      </li>
-                    ))}
-                  </Rows>
+                {open != null ? (
+                  columns(open, false)
                 ) : (
                   <>
                     <p className="py-empty">{t('payers.noPayers')}</p>
@@ -701,67 +763,7 @@ export function PayersScreen({
                 )}
               </>
             ) : (
-              <div className="ev-columns">
-                <div className="ev-left">
-                  <PayersCard
-                    renderCard={renderCard}
-                    payers={payers}
-                    step={offline == null && writes}
-                    onNext={(id) => choose({ ticked: [id], mode: 'one' })}
-                  />
-                  <Rows>
-                    {payers.payers.map((one) => (
-                      <li key={one.id}>
-                        <button
-                          type="button"
-                          className={[
-                            'desk-row bt-row',
-                            one.id === open.id && 'is-on',
-                            washed.includes(one.id) && 'is-washed',
-                          ]
-                            .filter(Boolean)
-                            .join(' ')}
-                          aria-expanded={one.id === open.id}
-                          onClick={() => setOpenId(one.id)}
-                        >
-                          <RowWords title={one.name} lines={rowLines(one)} />
-                          <Amount
-                            value={moneyRange(
-                              t,
-                              one.share.confirmed,
-                              one.share.potential,
-                              payers.currency,
-                              locale,
-                            )}
-                          />
-                          <Chevron />
-                        </button>
-                      </li>
-                    ))}
-                  </Rows>
-                </div>
-                <div className="ev-right">
-                  <PayerPane
-                    payers={payers}
-                    payer={open}
-                    writes={writes}
-                    washed={washed.includes(open.id)}
-                    extra={extra.renderPane?.(open)}
-                    onEdit={() =>
-                      setForm({
-                        id: open.id,
-                        name: open.name,
-                        note: open.note ?? '',
-                        error: null,
-                        noteError: null,
-                        busy: false,
-                        failed: null,
-                      })
-                    }
-                    onRemove={() => void removePressed(open)}
-                  />
-                </div>
-              </div>
+              columns(open, true)
             )}
           </>
         )}
@@ -872,6 +874,7 @@ function Flag({
 function PayerPane({
   payers,
   payer,
+  costs,
   writes,
   washed,
   extra,
@@ -880,6 +883,7 @@ function PayerPane({
 }: {
   payers: EventPayers;
   payer: Payer;
+  costs: boolean;
   writes: boolean;
   washed: boolean;
   extra: ReactNode;
@@ -897,46 +901,48 @@ function PayerPane({
     <section className="py-pane" aria-label={payer.name}>
       <h2 className="py-name">{payer.name}</h2>
       {payer.note != null && <p className="py-note">{payer.note}</p>}
-      <Rows>
-        <li>
-          <div className={washed ? 'desk-row bt-row is-washed' : 'desk-row bt-row'}>
-            <RowWords
-              title={t('payers.theirShare')}
-              lines={[
-                Number(payer.share.confirmed) === Number(payer.share.potential)
-                  ? t('payers.fixedShare')
-                  : t('budget.rangeLine'),
-                ...(payer.notPriced > 0
-                  ? [t('budget.notPricedCount', { count: payer.notPriced })]
-                  : []),
-              ]}
-            />
-            <Amount value={range(payer.share.confirmed, payer.share.potential)} />
-          </div>
-        </li>
-        {shownPaid && (
-          <>
-            <li>
-              <div className="desk-row bt-row">
-                <RowWords title={t('payers.paid')} />
-                <Amount value={minorMoney(payer.paid ?? '0', payers.currency, locale)} />
-              </div>
-            </li>
-            <li>
-              <div className="desk-row bt-row">
-                <RowWords title={t('payers.stillToCome')} />
-                <Amount
-                  value={
-                    Number(still.confirmed) === 0 && Number(still.potential) === 0
-                      ? t('payers.nothingStillToCome')
-                      : range(still.confirmed, still.potential)
-                  }
-                />
-              </div>
-            </li>
-          </>
-        )}
-      </Rows>
+      {costs && (
+        <Rows>
+          <li>
+            <div className={washed ? 'desk-row bt-row is-washed' : 'desk-row bt-row'}>
+              <RowWords
+                title={t('payers.theirShare')}
+                lines={[
+                  Number(payer.share.confirmed) === Number(payer.share.potential)
+                    ? t('payers.fixedShare')
+                    : t('budget.rangeLine'),
+                  ...(payer.notPriced > 0
+                    ? [t('budget.notPricedCount', { count: payer.notPriced })]
+                    : []),
+                ]}
+              />
+              <Amount value={range(payer.share.confirmed, payer.share.potential)} />
+            </div>
+          </li>
+          {shownPaid && (
+            <>
+              <li>
+                <div className="desk-row bt-row">
+                  <RowWords title={t('payers.paid')} />
+                  <Amount value={minorMoney(payer.paid ?? '0', payers.currency, locale)} />
+                </div>
+              </li>
+              <li>
+                <div className="desk-row bt-row">
+                  <RowWords title={t('payers.stillToCome')} />
+                  <Amount
+                    value={
+                      Number(still.confirmed) === 0 && Number(still.potential) === 0
+                        ? t('payers.nothingStillToCome')
+                        : range(still.confirmed, still.potential)
+                    }
+                  />
+                </div>
+              </li>
+            </>
+          )}
+        </Rows>
+      )}
       {payer.covers.length > 0 && (
         <section className="desk-block" aria-labelledby={head}>
           <Head title={<span id={head}>{t('payers.covers')}</span>} level={3} />
