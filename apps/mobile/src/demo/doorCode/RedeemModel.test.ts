@@ -74,7 +74,7 @@ describe('joining, every state (spec §5)', () => {
     expect(flowAt('enter-blank').said).toBe('Enter the door code.');
     expect(flowAt('enter-short').said).toBe('A door code is 8 letters and numbers.');
     expect(flowAt('refused').said).toBe(
-      'That code doesn’t work. Check it with whoever gave it to you.',
+      'That code does not work. Check it with whoever gave it to you.',
     );
     expect(flowAt('event-blank')).toMatchObject({
       nameSaid: 'Enter your full name.',
