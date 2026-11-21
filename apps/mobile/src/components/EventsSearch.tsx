@@ -19,8 +19,10 @@ import {
   type ReactNode,
   type Ref,
   type RefObject,
+  createContext,
   useContext,
   useEffect,
+  useLayoutEffect,
   useRef,
   useState,
 } from 'react';
@@ -121,6 +123,12 @@ export function useFilterWords(filters: EventsFilters, locale: string): FilterWo
   return { picks, word: picks.length === 0 ? t('eventsSearch.all') : listed(picks, locale) };
 }
 
+/** Holds the search row unseen and untappable while Filter has not yet measured where it goes, so neither the field nor Filter is ever drawn where it then leaves (sc-78193). */
+const RowHold = createContext<((held: boolean) => void) | null>(null);
+
+/** Widths of the picks' texts by text size, kept across screens, so Events opened again, or arriving after its loading screen, draws Filter where it settles from its first frame (sc-78193). */
+const picksWidths = new Map<string, number>();
+
 /** Each way a line of picks can read, measured hidden, and how many show whole in a room (sc-39348). */
 function usePicksFit(
   picks: readonly string[],
@@ -128,15 +136,17 @@ function usePicksFit(
   look: { size: number; weight: 'semibold' | 'medium' },
 ) {
   const { t } = useTranslation();
-  const [widths, setWidths] = useState<Readonly<Record<string, number>>>({});
+  const { fontScale } = useWindowDimensions();
+  const [, setMeasures] = useState(0);
   const more = (count: number) => t('calendar.moreItems', { count });
   const tail = (shown: number) => ` ${more(picks.length - shown)}`;
   // Measured as the two texts a cut line is drawn as: the line measured as one string comes out narrower on Android.
   const parts = (shown: number) =>
     shown === picks.length ? [whole] : [picksLead(picks, shown), tail(shown)];
   const reads = picks.length === 0 ? [whole] : picks.flatMap((_, index) => parts(index + 1));
-  const measured = reads.every((text) => widths[`${look.weight}|${text}`] != null);
-  const widthOf = (text: string) => widths[`${look.weight}|${text}`] ?? 0;
+  const keyOf = (text: string) => `${fontScale}|${look.size}|${look.weight}|${text}`;
+  const measured = reads.every((text) => picksWidths.has(keyOf(text)));
+  const widthOf = (text: string) => picksWidths.get(keyOf(text)) ?? 0;
   const widthAt = (shown: number) =>
     parts(shown).reduce((sum, text) => sum + Math.ceil(widthOf(text)), 0);
 
@@ -147,8 +157,10 @@ function usePicksFit(
         size={look.size}
         weight={look.weight}
         onWidth={(text, width) => {
-          const key = `${look.weight}|${text}`;
-          setWidths((now) => (now[key] === width ? now : { ...now, [key]: width }));
+          const key = keyOf(text);
+          if (picksWidths.get(key) === width) return;
+          picksWidths.set(key, width);
+          setMeasures((count) => count + 1);
         }}
       />
     ),
@@ -338,6 +350,13 @@ export function FilterButton({
   const fit = usePicksFit(picks, word, { size: 15, weight: 'semibold' });
   const [slot, setSlot] = useState<number | null>(null);
   const line = slot == null ? null : slot - FILTER_SIDES;
+  const unplaced = wraps && fit.whole == null;
+  const hold = useContext(RowHold);
+
+  useLayoutEffect(() => {
+    hold?.(unplaced);
+    return () => hold?.(false);
+  }, [hold, unplaced]);
 
   return (
     <View
@@ -962,12 +981,20 @@ export function SearchRow({
   offline: boolean;
 }) {
   const { t } = useTranslation();
+  const [held, setHeld] = useState(false);
 
   return (
     <View style={styles.searchBlock}>
-      <View style={styles.searchRow}>
-        {field}
-        {filter}
+      <View
+        style={[styles.searchRow, held && styles.held]}
+        pointerEvents={held ? 'none' : 'auto'}
+        accessibilityElementsHidden={held}
+        importantForAccessibility={held ? 'no-hide-descendants' : 'auto'}
+      >
+        <RowHold.Provider value={setHeld}>
+          {field}
+          {filter}
+        </RowHold.Provider>
       </View>
       {offline && (
         <Text size={14} weight="medium" style={[styles.secondary, styles.said]}>
@@ -1285,6 +1312,7 @@ const styles = StyleSheet.create({
   filterWraps: { flexShrink: 1, minWidth: 0, alignItems: 'flex-start' },
   filterBeside: { flex: 1, minWidth: 0, alignItems: 'flex-start' },
   strut: { height: 0 },
+  held: { opacity: 0 },
   rule: { height: 1, marginVertical: tokens.spaceXs, backgroundColor: tokens.colorBorder },
   back: {
     minHeight: tokens.sizeHitPhonePrimary,
