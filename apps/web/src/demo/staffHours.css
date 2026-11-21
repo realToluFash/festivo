@@ -28,6 +28,14 @@
   overflow: hidden;
 }
 
+/* At 320 px the hours table scrolls inside its card, as the Roster's does, rather than past the window (sc-32279). */
+@media (width <= 40rem) {
+  .hw-card {
+    position: relative;
+    overflow-x: auto;
+  }
+}
+
 .hw-table {
   width: 100%;
   border-collapse: collapse;

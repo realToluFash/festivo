@@ -57,6 +57,7 @@ export const SW = {
   taken: 'Taken',
   held: 'Held for a companion',
   proposed: 'Proposed',
+  proposedChair: 'Proposed: {{name}}',
   empty: 'Empty',
   unusable: 'Unusable',
   legend: 'What the seats show',

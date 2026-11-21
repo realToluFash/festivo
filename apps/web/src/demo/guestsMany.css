@@ -57,35 +57,8 @@
   font: 500 15px/1.4 var(--fontFamily);
 }
 
-/* At 320 CSS px the desk reflows into one column (WCAG 2.2 1.4.10), and the bar docks to the foot of the screen with its pills wrapping. */
-@media (width <= 720px) {
-  .today.desk:has(.gb) {
-    flex-direction: column;
-    height: auto;
-    min-height: 100vh;
-  }
-
-  .today.desk:has(.gb) .today-side {
-    width: auto;
-    height: auto;
-    overflow: visible;
-  }
-
-  .today.desk:has(.gb) .desk-main {
-    margin: 0 var(--spaceMd) var(--spaceMd);
-    overflow: visible;
-  }
-
-  .gb.desk-page {
-    padding: var(--spaceXl) var(--spaceLg) var(--space3xl);
-    overflow: visible;
-  }
-
-  .gb .ev-crumb ol,
-  .gb .desk-row {
-    flex-wrap: wrap;
-  }
-
+/* Once the desk is one column (deskReflow.css), the bar docks to the foot of the screen with its pills wrapping. */
+@media (width <= 40rem) {
   .gb .gb-dock {
     position: fixed;
     inset: auto var(--spaceMd) var(--spaceMd);
