@@ -76,14 +76,6 @@ export function phoneCountryOverNumber(scale: number): boolean {
   return atAccessibilitySizes(scale);
 }
 
-/** The demo's stand-in for the API's refusal: blank, or too short to be a number, as "12" with Royaume-Uni is (sc-78438). */
-export function phoneRefusal(typed: string): 'numberBlank' | 'tooShort' | null {
-  const digits = typed.replace(/\D/g, '');
-  if (digits === '') return 'numberBlank';
-
-  return digits.length < 6 ? 'tooShort' : null;
-}
-
 /** sc-13280's longest organisation name, 100 characters. */
 export const LONG_ORGANISATION =
   'The Grand Ballroom Weddings, Galas and Garden Parties Company of Lagos, Lisbon, Madrid and Monterrey';
