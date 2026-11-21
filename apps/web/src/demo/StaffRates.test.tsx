@@ -183,4 +183,12 @@ describe('Staff rates after the event (sc-234)', () => {
     expect(door.textContent).toContain('1 person worked');
     expect(door.textContent).toContain('£120.00');
   });
+
+  it('keeps the scheduled cost as the headline, the worked cost under it', SLOW, async () => {
+    await open('staff_rates_after');
+
+    const head = within(main()).getByRole('region', { name: 'Staff rates' });
+    expect(head.querySelector('.srt-figure')?.textContent).toBe('£1,502');
+    expect(head.textContent).toContain('Worked 71 h 33 min of 91 h 30 min scheduled: £1,097.70.');
+  });
 });

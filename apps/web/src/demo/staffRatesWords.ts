@@ -114,7 +114,7 @@ export const STAFF_RATES_WORDS = {
       ? '1 shift with no attendance recorded'
       : `${count} shifts with no attendance recorded`,
   afterLine: (worked: string, scheduled: string, cost: string) =>
-    `Worked ${worked} of ${scheduled} scheduled. Scheduled, it was ${cost}.`,
+    `Worked ${worked} of ${scheduled} scheduled: ${cost}.`,
   afterAssumed: (hours: string) =>
     `Of the hours worked, ${hours} are assumed: a missing clock-out counts to the scheduled end.`,
   afterLines: [

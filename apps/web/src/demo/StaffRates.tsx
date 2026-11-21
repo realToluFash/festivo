@@ -198,9 +198,9 @@ function StaffRates({ first }: { first: RatesStart }) {
         </section>
       ) : (
         <section className="srt-head" aria-label={W.title}>
-          <p className="srt-figure">{figure(after.worked)}</p>
+          <p className="srt-figure">{figure(head.total)}</p>
           <p className="srt-line">
-            {W.afterLine(hoursWords(after.minutes), hoursWords(head.counted), figure(head.total))}
+            {W.afterLine(hoursWords(after.minutes), hoursWords(head.counted), figure(after.worked))}
           </p>
           {after.assumed > 0 && (
             <p className="srt-line">{W.afterAssumed(hoursWords(after.assumed))}</p>
