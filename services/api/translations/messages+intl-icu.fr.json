@@ -422,7 +422,6 @@
     "guestReplies.bell.changed": "{count, plural, one {{count, number, ::group-auto} changed their reply} other {{count, number, ::group-auto} changed their reply}}",
     "guestReplies.bell.needs": "{count, plural, one {{count, number, ::group-auto} updated dietary needs} other {{count, number, ::group-auto} updated dietary needs}}",
     "guestReplies.bell.flagged": "{count, plural, one {{count, number, ::group-auto} link may have reached the wrong person} other {{count, number, ::group-auto} links may have reached the wrong person}}",
-    "guestReplies.bell.question": "{count, plural, one {{count, number, ::group-auto} new question} other {{count, number, ::group-auto} new questions}}",
     "guestReplies.push.title": "Soirely",
     "guestReplies.push.replies": "{count, plural, one {1 new reply · {event}} other {{count, number, ::group-auto} new replies · {event}}}",
     "guestReplies.push.updates": "{count, plural, one {1 update from a guest · {event}} other {{count, number, ::group-auto} updates from guests · {event}}}",

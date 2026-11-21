@@ -22,7 +22,6 @@ export function filterMenuWidth(apart: boolean): number {
 const LABEL_KEY: Partial<Record<GuestChangeKind, string>> = {
   needs: 'guestList.changed.needs',
   flagged: 'guestList.changed.flagged',
-  question: 'guestList.changed.question',
 };
 
 export function changeWhen(

@@ -13,7 +13,7 @@ use Psl\Vec;
 final readonly class GuestReplyTally
 {
     /** The bell's order, which is also the summary's for the replies. */
-    public const array ORDER = ['coming', 'notComing', 'maybe', 'changed', 'needs', 'flagged', 'question'];
+    public const array ORDER = ['coming', 'notComing', 'maybe', 'changed', 'needs', 'flagged'];
 
     /** @param list<GuestChangeRow> $rows newest first */
     public function __construct(
@@ -70,7 +70,6 @@ final readonly class GuestReplyTally
             GuestChangeKind::Changed => 'changed',
             GuestChangeKind::Needs => 'needs',
             GuestChangeKind::Flagged => 'flagged',
-            GuestChangeKind::Question => 'question',
         };
     }
 }

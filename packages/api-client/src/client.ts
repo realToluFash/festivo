@@ -305,14 +305,8 @@ export interface NotificationArrival {
 
 /** Mute this event's saved state. Items already delivered keep the Muted mark they were delivered with. */
 /** What a guest did since a look (sc-4331): a reply outranks the rest on the guest's one row. */
-export type GuestChangeKind = 'replied' | 'changed' | 'needs' | 'flagged' | 'question';
-const GUEST_CHANGE_KINDS: readonly GuestChangeKind[] = [
-  'replied',
-  'changed',
-  'needs',
-  'flagged',
-  'question',
-];
+export type GuestChangeKind = 'replied' | 'changed' | 'needs' | 'flagged';
+const GUEST_CHANGE_KINDS: readonly GuestChangeKind[] = ['replied', 'changed', 'needs', 'flagged'];
 
 export interface GuestChange {
   guestId: string;

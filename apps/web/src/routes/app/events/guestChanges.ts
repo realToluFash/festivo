@@ -14,7 +14,6 @@ import type { TFunction } from 'i18next';
 const LABEL_KEY: Partial<Record<GuestChangeKind, string>> = {
   needs: 'guestList.changed.needs',
   flagged: 'guestList.changed.flagged',
-  question: 'guestList.changed.question',
 };
 
 /** "Replied at 09:31" today in the event's zone, "Changed Nov 2" before; anything that is not a first reply is Changed. */

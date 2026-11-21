@@ -11,7 +11,6 @@ enum GuestChangeKind: string
     case Changed = 'changed';
     case Needs = 'needs';
     case Flagged = 'flagged';
-    case Question = 'question';
 
     public function isReply(): bool
     {

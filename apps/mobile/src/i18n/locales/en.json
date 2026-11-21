@@ -2591,8 +2591,7 @@
       "changedAt": "Changed at {{time}}",
       "changedOn": "Changed {{date}}",
       "needs": "Updated dietary needs",
-      "flagged": "Link may have reached the wrong person",
-      "question": "New question"
+      "flagged": "Link may have reached the wrong person"
     }
   },
   "guestNumbers": {
