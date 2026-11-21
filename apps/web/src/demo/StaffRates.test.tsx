@@ -99,6 +99,11 @@ describe('Staff rates at a desk (sc-101)', () => {
           'Not saved. Changing a rate needs the Manage the budget permission, and you no longer have it on this event. The rate is still £14 an hour.',
         ),
       ).toBeTruthy();
+
+      const save = screen.getByRole('button', { name: 'Save rate' });
+      save.focus();
+      fireEvent.click(save);
+      expect(document.activeElement).toBe(screen.getByLabelText('Rate an hour'));
     },
   );
 

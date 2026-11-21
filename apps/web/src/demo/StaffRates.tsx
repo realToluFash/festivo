@@ -101,8 +101,8 @@ function StaffRates({ first }: { first: RatesStart }) {
     setServer(null);
     setSaid(null);
   };
-  // Closing an editor hands focus back to the row it opened from, not to the page (sc-101, #80095).
   const back = useRef<string | null>(null);
+  // No dependency list: the row's button exists only once the editor has unmounted.
   useEffect(() => {
     if (back.current == null) return;
     document.querySelector<HTMLElement>(`[data-srt="${back.current}"] button`)?.focus();
@@ -129,7 +129,7 @@ function StaffRates({ first }: { first: RatesStart }) {
     if (rate == null) return false;
     if (first.refuse) {
       setServer(refusedWords(sample.rates[job] ?? null));
-      return true;
+      return false;
     }
     const was = sample.rates[job] ?? null;
     done(
