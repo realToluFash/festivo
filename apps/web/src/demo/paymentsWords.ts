@@ -41,7 +41,7 @@ export const PW = {
     `The date paid cannot be before the quote from ${vendor} on ${day}. Choose that date or a later one.`,
   addAsPaid: 'Add as paid',
   paidTo: (vendor: string) => `Paid to ${vendor}`,
-  withThis: (now: string, after: string) => `${now} → ${after}`,
+  withThis: (now: string, after: string) => `${now} →\u00a0${after}`,
   withThisSaid: (now: string, after: string) => `${now} now, ${after} with this payment`,
   overWithThis: (gap: string) => `With this payment, the schedule is ${gap} over the quote.`,
   differenceVisible: 'The difference stays visible; nothing absorbs it.',

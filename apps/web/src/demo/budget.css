@@ -291,6 +291,32 @@ a.desk-row.bud-row:hover {
   border-radius: var(--radiusRow);
 }
 
+/* sc-75579: where the end would leave the words under 10rem (fr and es at 320 px), the end takes its own line beneath them, still at the right. */
+.bud-row:has(> .bud-row-end) {
+  flex-wrap: wrap;
+  row-gap: var(--spaceXs);
+}
+
+.bud-row:has(> .bud-row-end) > .desk-row-words {
+  flex: 1 1 10rem;
+}
+
+.bud-row-end {
+  display: flex;
+  flex: 0 1 auto;
+  align-items: center;
+  max-width: 100%;
+  gap: var(--spaceLg);
+  margin-inline-start: auto;
+}
+
+.bud-row-end > .bud-amount {
+  flex-shrink: 1;
+  min-width: 0;
+  white-space: normal;
+  text-align: end;
+}
+
 .bud-row-actions {
   display: flex;
   flex-wrap: wrap;
