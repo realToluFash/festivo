@@ -1,0 +1,150 @@
+/* You are not in an organisation: alone under its own header, with no card (sc-75471). */
+.cw-alone {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  background: var(--colorCard);
+  color: var(--colorInk);
+}
+
+:where(.cw-none) button {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: start;
+  cursor: pointer;
+}
+
+:where(.cw-header, .cw-none) :is(h1, h2, p, dl, dd) {
+  margin: 0;
+}
+
+.cw-header {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: space-between;
+  height: 72px;
+  padding: 0 var(--space6xl);
+  border-bottom: 1px solid var(--colorBorder);
+  background: var(--colorCard);
+}
+
+.cw-header .brand img {
+  width: auto;
+  height: var(--space4xl);
+}
+
+.cw-language {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spaceSm);
+  height: var(--space6xl);
+  padding: 0 var(--spacePillEnd);
+  border: 0;
+  border-radius: var(--spaceXxl);
+  background: var(--colorInset);
+  color: inherit;
+  font: 600 14px/1 var(--fontFamily);
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.cw-language svg {
+  color: var(--colorInkSecondary);
+}
+
+.cw-none {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceXl);
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 560px;
+  margin: 48px auto 0;
+  padding-bottom: 48px;
+}
+
+.cw-none h1 {
+  font: 700 32px/1.15 var(--fontFamily);
+  letter-spacing: -0.02em;
+}
+
+.cw-none-body {
+  font: 500 16px/1.5 var(--fontFamily);
+}
+
+.cw-none-body.is-quiet {
+  color: var(--colorInkSecondary);
+}
+
+.cw-signed {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceHair);
+  color: var(--colorInkSecondary);
+  font: 500 14px/1.45 var(--fontFamily);
+}
+
+.cw-signed-ways {
+  display: flex;
+  gap: var(--space3xl);
+}
+
+.cw-signed-ways a.desk-text {
+  text-decoration: none;
+}
+
+.cw-signed-ways a.desk-text:hover {
+  text-decoration: underline;
+}
+
+/* Invitations waiting, above Start your own (sc-75471): a hairline between rows, each tile beside its answers. */
+.cw-invitations {
+  --swLine: 500 13.5px/1.4 var(--fontFamily);
+
+  display: flex;
+  flex-direction: column;
+}
+
+.cw-invitations h2 {
+  margin-bottom: var(--spaceSm);
+  color: var(--colorInkSecondary);
+  font: 600 14px/1.4 var(--fontFamily);
+}
+
+.cw-invitation {
+  display: flex;
+  gap: var(--spaceLg);
+  padding: var(--spaceXl) 0;
+  border-top: var(--borderInset);
+}
+
+.cw-invitation:last-child {
+  border-bottom: var(--borderInset);
+}
+
+.cw-invitation-tile {
+  flex: none;
+  width: 48px;
+  height: 48px;
+}
+
+.cw-invitation-answer {
+  flex: 1;
+  min-width: 0;
+}
+
+.cw-invitations :is(.sw-button, .sw-lands):focus-visible {
+  outline: none;
+  box-shadow: var(--swRing);
+}
+
+/* The native select laid over the pill takes the 44 its drawing is short of. */
+.cw-language.language-pill select {
+  inset: -2px 0;
+}

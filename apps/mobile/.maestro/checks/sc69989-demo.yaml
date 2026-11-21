@@ -1,0 +1,7 @@
+# sc-69989: the Design demo's People row with its Outside tag.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/demo/people
+- waitForAnimationToEnd: { timeout: 10000 }
+- extendedWaitUntil: { visible: 'zz-never-on-screen-zz', timeout: 4000, optional: true }
+- takeScreenshot: demo-people

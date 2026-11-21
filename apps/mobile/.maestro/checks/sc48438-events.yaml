@@ -1,0 +1,18 @@
+# sc-48438: Events, each card's coming and no-reply line, in the batch language.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events
+- extendedWaitUntil:
+    visible:
+      id: 'events.row.${EVENT_ID}'
+    timeout: 45000
+- waitForAnimationToEnd
+- takeScreenshot: top
+- scrollUntilVisible:
+    element:
+      id: 'events.row.${EVENT_ID}'
+    direction: DOWN
+    centerElement: true
+    timeout: 15000
+- waitForAnimationToEnd
+- takeScreenshot: rows

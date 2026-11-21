@@ -1,0 +1,12 @@
+# sc-67709: on Enter your code whose challenge has run out, a code is refused and the timed-out Sign in opens. Run after sc67709-sheet-email-to-code with the challenge expired.
+appId: host.exp.Exponent
+---
+- tapOn:
+    id: 'twoFactor.code'
+- inputText: '000000'
+- extendedWaitUntil:
+    visible:
+      id: 'signIn.email'
+    timeout: 30000
+- waitForAnimationToEnd
+- takeScreenshot: timed-out-signin

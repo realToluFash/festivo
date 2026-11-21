@@ -1,0 +1,73 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Domain\User\Onboarding;
+
+use App\Entity\User;
+use App\Enum\AccountOrigin;
+use App\Enum\ErrorCode;
+use App\Http\Access\Interfaces\OnboardingGateInterface;
+use Psl\Iter;
+
+/** Verified, then complete. Every route with an account policy is behind it unless this list names it. */
+final readonly class OnboardingGate implements OnboardingGateInterface
+{
+    /** The whole list, by route name. Logout and refresh are public, so they never reach the gate. */
+    public const array EXEMPT = [
+        'auth_me',
+        // The language switcher in the auth frame, so the screens that must be finished can be read (sc-6887).
+        'auth_locale',
+        'auth_verify_email',
+        'auth_verify_resend',
+        'auth_verify_resend_cooldown',
+        'auth_complete_profile',
+        'auth_phone_set',
+        'auth_verify_phone',
+        'auth_verify_phone_resend',
+        'auth_verify_phone_resend_cooldown',
+        'auth_verify_phone_text_instead',
+        // A self-registered account in no organisation is incomplete until it joins one (sc-67).
+        'invitations_mine',
+        'invitations_accept',
+        'invitations_decline',
+        // "A few details" offers the organisations at the address's domain (sc-561).
+        'join_offers',
+        // Somebody registered from a request link asks before they have an organisation (sc-562); it checks verified itself.
+        'request_links_ask',
+    ];
+
+    /** Besides the events it holds a grant on, all a door code's account (sc-72) may reach. */
+    public const array DEVICE_REACHES = [
+        'auth_me',
+        'auth_locale',
+    ];
+
+    public function __construct(
+        private AccountCompleteness $accountCompleteness,
+    ) {
+    }
+
+    public function refusalFor(User $user, string $route, bool $onAnEvent): ?ErrorCode
+    {
+        if (self::heldByDevice($user) && !$onAnEvent && !Iter\contains(self::DEVICE_REACHES, $route)) {
+            return ErrorCode::AccountUnverified;
+        }
+
+        if (Iter\contains(self::EXEMPT, $route)) {
+            return null;
+        }
+
+        if (!$user->isVerified() && !self::heldByDevice($user)) {
+            return ErrorCode::AccountUnverified;
+        }
+
+        return $this->accountCompleteness->isComplete($user) ? null : ErrorCode::ProfileIncomplete;
+    }
+
+    /** A door code's account (sc-72) has no address to prove until sc-4235 asks it for a number. */
+    private static function heldByDevice(User $user): bool
+    {
+        return AccountOrigin::DoorCode === $user->getOrigin() && null === $user->getPrimaryEmailAddress() && null === $user->getPrimaryPhoneNumber();
+    }
+}

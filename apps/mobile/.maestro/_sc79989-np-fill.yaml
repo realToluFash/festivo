@@ -1,0 +1,11 @@
+appId: com.soirely.app
+---
+- extendedWaitUntil:
+    visible:
+      id: 'recovery\.password'
+    timeout: 30000
+- tapOn: { id: 'recovery.password' }
+- eraseText: 80
+- inputText: ${PASSWORD}
+- tapOn: { id: 'recovery.password.reveal' }
+- waitForAnimationToEnd

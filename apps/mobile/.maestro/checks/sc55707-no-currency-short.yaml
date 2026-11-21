@@ -1,0 +1,18 @@
+# sc-55707: the currency edit's search, typed '  zzz  ', replaces the list with the no-match line. Needs ${METRO_URL}, ${EVENT_ID}.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/${EVENT_ID}/edit?at=currency
+- extendedWaitUntil:
+    visible:
+      id: 'event.edit.currency.search'
+    timeout: 30000
+- tapOn:
+    id: 'event.edit.currency.search'
+- inputText: '  zzz  '
+- extendedWaitUntil:
+    visible:
+      id: 'event.edit.currency.none'
+    timeout: 10000
+- takeScreenshot: no-currency-short-keyboard
+- hideKeyboard: { optional: true }
+- takeScreenshot: no-currency-short
