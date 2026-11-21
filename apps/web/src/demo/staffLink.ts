@@ -1,5 +1,5 @@
 /** A person's own link on the roster (sc-3912): what Copy link, Mark as sent and Replace link do to a row, on sample data. */
-export type Delivered = 'opened' | 'sent' | 'copied' | 'none';
+export type Delivered = 'opened' | 'sent' | 'shared' | 'copied' | 'none';
 
 export interface Trail {
   by: string;
@@ -32,6 +32,7 @@ export const LW = {
 export function trailLine(link: Delivered, trail: Trail | null): string | null {
   if (trail == null || link === 'none') return null;
   if (link === 'copied') return `Copied by ${trail.by} · ${trail.at} · not marked as sent`;
+  if (link === 'shared') return `Shared by ${trail.by} · ${trail.at} · not marked as sent`;
   if (link === 'sent') return `Marked as sent by ${trail.by} · ${trail.at}`;
 
   return `Opened ${trail.at}`;
