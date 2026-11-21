@@ -65,7 +65,7 @@ type Go = (next: Partial<Flow>) => void;
 const PORTUGAL = COUNTRIES.find((one) => one.code === EVENT.country) ?? null;
 const NEXT_STEP_MS = 500;
 
-/** Joining with a door code (sc-72, sc-4235): the welcome or the camera, the code, the event, a phone code, then inside the event. */
+/** Joining with a door code (sc-72, sc-4235): the welcome or the camera, the code, the event and a name, then inside the event; the number and phone code wait for sc-4235. */
 export function RedeemRoute() {
   const { state } = useLocalSearchParams<{ state?: string }>();
   const name = redeemStateOf(state);
@@ -88,7 +88,7 @@ function RedeemFlow({ start }: { start: Flow }) {
     case 'welcome':
       return <Welcome onJoinCode={() => go({ step: 'enter', typed: '', said: null })} />;
     case 'camera':
-      return <CameraStandIn onChip={() => go({ step: 'event', code: flow.code })} />;
+      return <CameraStandIn onChip={() => go({ step: 'named', code: flow.code })} />;
     case 'enter':
       return <EnterStep key={step} flow={flow} go={go} />;
     case 'tooMany':
@@ -97,6 +97,8 @@ function RedeemFlow({ start }: { start: Flow }) {
           <Heading title={W.tooMany} intro={tryAgainAt(TRY_AT)} answer={flow.step} />
         </DemoScreen>
       );
+    case 'named':
+      return <NameStep key={step} flow={flow} go={go} locale={locale} />;
     case 'event':
       return <EventStep key={step} flow={flow} go={go} locale={locale} />;
     case 'joinAs':
@@ -112,7 +114,7 @@ function RedeemFlow({ start }: { start: Flow }) {
               />
               <QuietButton
                 label={W.signOut}
-                onPress={() => go({ ...freshFlow('event'), code: flow.code })}
+                onPress={() => go({ ...freshFlow('named'), code: flow.code })}
                 testID="redeem.joinAs.signOut"
               />
             </>
@@ -253,7 +255,7 @@ function EnterStep({ flow, go }: { flow: Flow; go: Go }) {
         const found = redeemed(typed.current);
         if (found != null) {
           go({
-            step: 'event',
+            step: 'named',
             code: found,
             role: found.role,
             typed: typed.current,
@@ -325,6 +327,89 @@ function EnterStep({ flow, go }: { flow: Flow; go: Go }) {
           testID="redeem.enter.code"
         />
         {said === W.refused ? <Refused words={said} /> : said != null && <Says words={said} />}
+      </View>
+    </DemoScreen>
+  );
+}
+
+/** Signed out, the device-held grant asks a name and nothing else (sc-72, until sc-4235). */
+function NameStep({ flow, go, locale }: { flow: Flow; go: Go; locale: string }) {
+  const field = useRef<TextInputInstance>(null);
+  const name = useRef(flow.name);
+  const held = useRef(flow.held);
+  const [said, setSaid] = useState(flow.nameSaid);
+  const [joining, setJoining] = useState(flow.held);
+  const [refusals, setRefusals] = useState(flow.usedUp ? 1 : 0);
+
+  useEffect(() => {
+    if (!joining) return;
+    const answer = setTimeout(
+      () => {
+        if (flow.usedUp) {
+          setJoining(false);
+          setRefusals((now) => now + 1);
+          return;
+        }
+        const who = name.current.trim();
+        go({ step: 'in', name: who, who });
+      },
+      held.current ? HELD_MS : SEND_MS,
+    );
+    held.current = false;
+
+    return () => clearTimeout(answer);
+  }, [joining, flow.usedUp, go]);
+
+  function join(): void {
+    if (joining) return;
+    const problem = nameProblem(name.current);
+    setSaid(problem);
+    if (problem != null) {
+      focusChecked(field);
+      return;
+    }
+    setJoining(true);
+  }
+
+  return (
+    <DemoScreen
+      nav={<NavBar left="close" onLeft={() => go({ step: 'welcome' })} />}
+      foot={
+        <PrimaryButton
+          label={joining ? W.joining : W.join}
+          busy={joining}
+          onPress={join}
+          testID="redeem.name.join"
+        />
+      }
+    >
+      <EventTile />
+      <Heading title={EVENT.name} intro={eventLine(flow.code, locale)} answer={flow.step} />
+      <View style={styles.fields}>
+        {refusals > 0 && <Refused key={refusals} words={W.refused} />}
+        <View>
+          <InsideField
+            ref={field}
+            label={W.yourName}
+            defaultValue={flow.name}
+            onChangeText={(text) => {
+              name.current = text;
+              if (said != null) setSaid(null);
+            }}
+            state={said == null ? 'plain' : 'blank'}
+            line={said}
+            submitting={joining}
+            autoCapitalize="words"
+            autoComplete="name"
+            textContentType="name"
+            returnKeyType="go"
+            submitBehavior="submit"
+            onSubmitEditing={join}
+            autoFocus={flow.name === '' && !flow.usedUp}
+            testID="redeem.name.field"
+          />
+          {said != null && <Says words={said} />}
+        </View>
       </View>
     </DemoScreen>
   );
