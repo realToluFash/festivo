@@ -417,11 +417,7 @@ const ListRoom = createContext<Room>({ short: false, laid: () => {} });
 /** Layout rounding, so a list that fits to the point is not taken for one that does not. */
 const SLACK = 1;
 
-/**
- * Your events take the room the places and the foot leave, in a column that does not scroll: under a scroll view
- * Yoga lays the list out at its full height, whatever its flex basis, and the foot runs off the sidebar. Where that
- * room is under four rows, the whole sidebar scrolls instead, the list four rows tall (sc-39340).
- */
+/** Under a scroll view Yoga ignores the list's flex basis, so the column scrolls only where four rows do not fit (sc-39340). */
 export function SidebarColumn({
   listing = false,
   children,
