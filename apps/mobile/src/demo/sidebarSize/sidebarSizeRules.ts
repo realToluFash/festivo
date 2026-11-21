@@ -1,8 +1,9 @@
 export type SidebarSize =
   'device' | 'default' | 'eighth' | 'ninth' | 'tenth' | 'eleventh' | 'twelfth';
-export type SidebarLanguage = 'en' | 'fr';
+export type SidebarLanguage = 'en' | 'es' | 'fr';
 export type SidebarAt = 'today' | 'events' | 'calendar' | 'members' | 'event';
 export type SidebarOrg = 'ire' | 'qa';
+export type SidebarWaiting = 'none' | 'one' | 'two';
 
 export const SIDEBAR_SIZES: readonly { key: SidebarSize; label: string }[] = [
   { key: 'device', label: 'This iPad' },
@@ -16,6 +17,7 @@ export const SIDEBAR_SIZES: readonly { key: SidebarSize; label: string }[] = [
 
 export const SIDEBAR_LANGUAGES: readonly { key: SidebarLanguage; label: string }[] = [
   { key: 'en', label: 'English' },
+  { key: 'es', label: 'Spanish' },
   { key: 'fr', label: 'French' },
 ];
 
@@ -31,6 +33,12 @@ export const SIDEBAR_PLACES: readonly { key: SidebarAt; label: string }[] = [
 export const SIDEBAR_ORGS: readonly { key: SidebarOrg; label: string }[] = [
   { key: 'ire', label: 'Ire Events' },
   { key: 'qa', label: 'QA Organisation' },
+];
+
+export const SIDEBAR_WAITING: readonly { key: SidebarWaiting; label: string }[] = [
+  { key: 'none', label: 'None' },
+  { key: 'one', label: 'One' },
+  { key: 'two', label: 'Two' },
 ];
 
 // React Native's fontScale on iOS at each step, so the board draws what the app draws.
@@ -65,4 +73,8 @@ export function sidebarOrgOf(name: string | undefined): SidebarOrg {
 
 export function sidebarOrgName(org: SidebarOrg): string {
   return SIDEBAR_ORGS.find((one) => one.key === org)?.label ?? 'Ire Events';
+}
+
+export function sidebarWaitingOf(name: string | undefined): SidebarWaiting {
+  return SIDEBAR_WAITING.find((waiting) => waiting.key === name)?.key ?? 'none';
 }
