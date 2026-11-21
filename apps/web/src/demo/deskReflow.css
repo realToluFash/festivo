@@ -29,26 +29,8 @@
 
   /* A long one-word title (Personalisation, Personnalisation) takes the compact size and breaks only at a hyphen. */
   .today.desk:not(.dp-fit) .desk-title {
-    font-size: 26px;
-    line-height: 1.1;
+    font: var(--typeTitlePhone);
     hyphens: auto;
-  }
-
-  /* A docked panel comes before its list, as from 641 to 960 (narrowDesk.css); the run of show keeps its own. */
-  .today.desk:not(.dp-fit) .mn-split:not(.ro .mn-split):has(> .mn-panel) {
-    flex-direction: column;
-    align-items: stretch;
-  }
-
-  .today.desk:not(.dp-fit) .mn-split:not(.ro .mn-split) > .mn-panel {
-    position: static;
-    order: -1;
-    width: auto;
-    max-height: none;
-  }
-
-  .today.desk:not(.dp-fit) .mn-split:not(.ro .mn-split) > .mn-panel .mn-panel-body {
-    overflow: visible;
   }
 
   /* Messages: the conversations above the open one. */
