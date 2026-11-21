@@ -67,6 +67,11 @@ const JOINING: Record<RedeemState, readonly [string, string]> = {
   'code-exhausted': ['Joining · too many wrong tries', 'Send a new code'],
   'code-failed': ['Joining · it did not go', 'No connection; nothing lost'],
   'used-up': ['Joining · used up after the phone code', 'Once sc-4235 is built'],
+  'code-second-number': [
+    'Joining · an alternative number, the code',
+    'Rita’s number is an alternative number',
+  ],
+  'second-number': ['Joining · an alternative number', 'Back to the name and number, both kept'],
   in: ['Joining · you’re in', 'Open the event'],
   'event-in': ['Inside the event · can check guests in', 'Check guests in on its card'],
   'event-in-view': ['Inside the event · can view', 'The same card with no step'],

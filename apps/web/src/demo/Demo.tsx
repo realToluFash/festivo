@@ -116,6 +116,8 @@ import { CHECK_IN_PAGES } from './doorCheckIn.ts';
 import { MyNight } from './MyNight.tsx';
 import { MY_NIGHT_PAGES } from './myNight.ts';
 import { REDEEM_PAGES } from './redeem.ts';
+import { StaffSignIn } from './StaffSignIn.tsx';
+import { STAFF_SIGN_IN_PAGES } from './staffSignIn.ts';
 import { Settings } from './Settings.tsx';
 import { SETTINGS_PAGES } from './settings.ts';
 import { SIGN_IN_RULES_PAGES } from './signInRules.ts';
@@ -347,6 +349,7 @@ export default function Demo() {
       <Route path="shift-clock" element={<ShiftClockPage />} />
       <Route path="check-in" element={<DoorCheckIn />} />
       <Route path="check-in/shift" element={<ShiftPage />} />
+      <Route path="staff-sign-in" element={<StaffSignIn />} />
       <Route path="my-night" element={<MyNight />} />
       <Route path="vendors" element={<VendorsMoved />} />
       <Route path="share/:scope" element={<ShareRecipient />} />
@@ -635,6 +638,8 @@ function DemoHome({ from }: { from: string }) {
           Check-in in the browser, from a staff link or a door code (sc-28230) · 390, 320 and desk
         </h3>
         <BoardPages pages={CHECK_IN_PAGES} />
+        <h3>A staff link in the browser, signed out (sc-4235) · 390 first, one column wider</h3>
+        <BoardPages pages={STAFF_SIGN_IN_PAGES} />
       </section>
 
       <section className="demo-home-page" aria-labelledby="demo-page-27">

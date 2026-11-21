@@ -1,9 +1,8 @@
 import { useState } from 'react';
-import { Link, useSearchParams } from 'react-router';
+import { Link, useNavigate, useSearchParams } from 'react-router';
 
 import { Brand } from '../components/Brand.tsx';
 import { Glyph } from '../components/Glyph.tsx';
-import { Toast } from '../components/Toast.tsx';
 import { ClockCard } from './ShiftClock.tsx';
 import {
   type Lead,
@@ -17,9 +16,11 @@ import {
   moved,
   myNightStateOf,
   nightOf,
-  signedOutAt,
+  yoursAlone,
 } from './myNight.ts';
 import { useClockCard } from './shiftClock.ts';
+import { SIGNED_OUT_HREF } from './doorCheckIn.ts';
+import { clockOf } from './doorCode.ts';
 import './doorCheckIn.css';
 import './myNight.css';
 import './shiftClock.css';
@@ -34,8 +35,8 @@ export function MyNight() {
 
 function MyNightAt({ first }: { first: Night }) {
   const [night, setNight] = useState(first);
-  const [told, setTold] = useState<string | null>(null);
-  const signOut = () => setTold(MN.signOutLater);
+  const navigate = useNavigate();
+  const signOut = () => void navigate(SIGNED_OUT_HREF);
 
   return (
     <main id="content" className="myn">
@@ -81,7 +82,7 @@ function MyNightAt({ first }: { first: Night }) {
         ) : (
           <>
             <div className="myn-head">
-              <p className="myn-only">{MN.only(night.linkEnds)}</p>
+              <p className="myn-only">{MN.only(clockOf(night.linkEndsAt))}</p>
               <p className="myn-event">{night.event}</p>
             </div>
             <div className="myn-columns">
@@ -124,7 +125,6 @@ function MyNightAt({ first }: { first: Night }) {
         )}
         <You night={night} place="foot" onSignOut={signOut} />
       </div>
-      {told != null && <Toast key={told} words={told} onClose={() => setTold(null)} />}
     </main>
   );
 }
@@ -288,7 +288,7 @@ function You({
   return (
     <div className={place === 'bar' ? 'myn-you myn-you-bar' : 'myn-you myn-you-foot'}>
       <p className="myn-strong">{MN.signedInAs(night.name)}</p>
-      {!night.inApp && <p className="myn-alone">{MN.yoursAlone(signedOutAt(night))}</p>}
+      {!night.inApp && <p className="myn-alone">{yoursAlone(night)}</p>}
       <button type="button" className="ci-secondary" onClick={onSignOut}>
         {MN.signOut}
       </button>

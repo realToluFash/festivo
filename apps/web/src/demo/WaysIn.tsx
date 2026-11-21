@@ -1,4 +1,4 @@
-import { REQUEST_MESSAGE_MAXIMUM } from '@soirely/domain';
+import { REQUEST_MESSAGE_MAXIMUM, callingCode } from '@soirely/domain';
 import { type FormEvent, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate, useSearchParams } from 'react-router';
 
@@ -18,9 +18,15 @@ import {
 import { NEW_ORG } from './createOrg.ts';
 import { ManagedBanner } from './managed.tsx';
 import { type AccountLines, BREACHED, SAMPLE, accountLines, way } from './rules.ts';
+import { maskedNumber } from './staffSignIn.ts';
 
 const FLOW: Flow = { name: SAMPLE.name, email: SAMPLE.email, phone: '' };
 const INVITED_BY = `Invitation from ${SAMPLE.inviter} · ${SAMPLE.role}`;
+/** A phone-only account has no email to name, so "Signed in as" names its primary number, masked in code (sc-4235). */
+const PHONE_ONLY = maskedNumber(
+  `${callingCode(SAMPLE.country) ?? ''}${SAMPLE.number}`,
+  SAMPLE.country,
+);
 
 export function WaysInBoard() {
   const [params] = useSearchParams();
@@ -246,6 +252,23 @@ function Invitation({ state }: { state: string }) {
         <Organisation line={INVITED_BY} />
         <Link className="button demo-wide" to="/demo/today">
           Go to Soirely
+        </Link>
+      </BoardPage>
+    );
+  }
+
+  if (state === 'no-email') {
+    return (
+      <BoardPage end={<SignedInAs email={PHONE_ONLY} />}>
+        <Heading title="Add your email address first">
+          <p className="demo-muted">
+            This invitation is for {SAMPLE.email}. Add that address to your account and verify it,
+            then accept the invitation.
+          </p>
+        </Heading>
+        <Organisation line={INVITED_BY} />
+        <Link className="button button-primary demo-wide" to="/demo/settings/account">
+          Add an email address
         </Link>
       </BoardPage>
     );
