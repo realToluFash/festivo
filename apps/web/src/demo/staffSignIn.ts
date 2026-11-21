@@ -191,7 +191,7 @@ export function linkStart(state: LinkState): LinkStart {
 }
 
 /** Where the right phone code lands: the authenticator next when the account has two-factor, else the shift at once. */
-export const SHIFT_HREF = '/demo/check-in/shift';
+export const SHIFT_HREF = '/demo/my-night';
 
 const at = (state: LinkState, name: string): DemoLink => ({
   to: `/demo/staff-sign-in?state=${state}`,

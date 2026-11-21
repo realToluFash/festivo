@@ -90,7 +90,7 @@ describe('the phone code, then the shift (sc-4235)', () => {
     type('Code from WhatsApp', SAMPLE.code);
     press('Sign in');
     await wait(1000);
-    expect(router.state.location.pathname).toBe('/demo/check-in/shift');
+    expect(router.state.location.pathname).toBe('/demo/my-night');
   });
 
   it('asks for the authenticator code next when the account has two-factor', async () => {
@@ -109,7 +109,7 @@ describe('the phone code, then the shift (sc-4235)', () => {
     type('Code', SAMPLE.authenticator);
     press('Verify and sign in');
     await wait(1000);
-    expect(router.state.location.pathname).toBe('/demo/check-in/shift');
+    expect(router.state.location.pathname).toBe('/demo/my-night');
   });
 });
 
@@ -169,15 +169,17 @@ describe('signed in as someone else, and signed out (sc-4235)', () => {
     expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('Confirm it’s you');
   });
 
-  it('returns Sign out on the shift page to Confirm it’s you, with Signed out. as a status', async () => {
-    const router = await open('/demo/check-in/shift');
+  it('returns Sign out on Your night to Confirm it’s you, with Signed out. as a status', async () => {
+    const router = createMemoryRouter(routes, { initialEntries: ['/demo/my-night'] });
+    render(<RouterProvider router={router} />);
+    await screen.findByText('Your shift', undefined, { timeout: 8000 });
 
     expect(
-      screen.getByText(
+      screen.getAllByText(
         'This link is yours alone. You’ll be signed out at Sunday 02:00, and nothing stays on this phone.',
-      ),
-    ).toBeDefined();
-    press('Sign out');
+      ).length,
+    ).toBeGreaterThan(0);
+    fireEvent.click(screen.getAllByRole('button', { name: 'Sign out' })[0]!);
     const status = await screen.findByText('Signed out.', {}, { timeout: 8000 });
 
     expect(router.state.location.search).toBe('?state=signed-out');

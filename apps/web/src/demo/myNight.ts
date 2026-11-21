@@ -1,3 +1,5 @@
+import { CW, signedOutTime } from './doorCheckIn.ts';
+
 export const MY_NIGHT_STATES = [
   'night',
   'before_doors',
@@ -23,8 +25,8 @@ export type Moment = { at: string; what: string; for: 'staff' | 'guests' };
 export type Night = {
   state: MyNightState;
   event: string;
-  linkEnds: string;
-  linkEndsDay: string;
+  now: string;
+  linkEndsAt: string;
   name: string;
   station: string | null;
   job: string;
@@ -70,10 +72,7 @@ export const MN = {
   tryAgain: 'Try again',
   loading: 'Loading your night…',
   signedInAs: (name: string) => `Signed in as ${name}`,
-  yoursAlone: (when: string) =>
-    `This link is yours alone. You’ll be signed out at ${when}, and nothing stays on this device.`,
   signOut: 'Sign out',
-  signOutLater: 'Sign out lands on sc-4235’s Confirm it’s you, once its demo (PR #3365) merges.',
   events: 'Events',
   clockFrame: 'sc-234’s clock card',
   clockFrameBody: (shows: string) =>
@@ -91,8 +90,8 @@ export function headingOf(night: Night): string {
   return night.station ?? night.job;
 }
 
-export function signedOutAt(night: Night): string {
-  return `${night.linkEndsDay} ${night.linkEnds}`;
+export function yoursAlone(night: Night): string {
+  return CW.shift.signedOutAt(signedOutTime(night.linkEndsAt, night.now));
 }
 
 const g = (name: string, diet: string | null = null): Guest => ({ name, diet });
@@ -132,8 +131,8 @@ const IFEANYI: Lead = { name: 'Ifeanyi Obi', phone: '+2348027654321', floor: fal
 const NIGHT: Night = {
   state: 'night',
   event: 'Adébáyọ̀ at 60',
-  linkEnds: '02:00',
-  linkEndsDay: 'Sunday',
+  now: '2026-11-14T19:40:00Z',
+  linkEndsAt: '2026-11-15T02:00:00Z',
   name: 'Grace Okon',
   station: 'Section B',
   job: 'Waiter',
