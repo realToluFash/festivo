@@ -40,4 +40,11 @@ appId: host.exp.Exponent
     direction: UP
 - waitForAnimationToEnd
 - assertNotVisible: 'Requests to get back in'
+- assertNotVisible: 'Only owners and admins see this.*'
 - takeScreenshot: answer-both
+- scrollUntilVisible:
+    element:
+      id: 'members.filter'
+- waitForAnimationToEnd
+- assertNotVisible: 'Requests to get back in'
+- assertNotVisible: 'Only owners and admins see this.*'
