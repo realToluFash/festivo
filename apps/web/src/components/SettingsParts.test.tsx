@@ -5,7 +5,7 @@ import { act, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { setLanguage } from '../i18n/index.ts';
-import { Menu, type MenuItem } from './SettingsParts.tsx';
+import { Card, CardStep, Menu, type MenuItem, OnCard, Says } from './SettingsParts.tsx';
 
 const NARROW = ' ';
 const NO_BREAK = ' ';
@@ -125,5 +125,47 @@ describe('a card step', () => {
     expect(rule).toContain('overflow-wrap: anywhere;');
     expect(rule).not.toMatch(/^\s*height:/mu);
     expect(css).toMatch(/^\.desk-step > svg \{\s*flex: none;\s*\}/mu);
+  });
+});
+
+describe('p6 on a summary card (sc-77292)', () => {
+  function place(bottoms: Record<string, number>) {
+    vi.spyOn(Element.prototype, 'getBoundingClientRect').mockImplementation(function (
+      this: Element,
+    ) {
+      const bottom = bottoms[this.className] ?? 0;
+      return { top: 0, bottom } as DOMRect;
+    });
+  }
+
+  function drawCard() {
+    const { container } = render(
+      <Card>
+        <Says>Regras de entrada</Says>
+        <OnCard>Uma linha por baixo</OnCard>
+        <CardStep label="Mudar" onClick={() => {}} />
+      </Card>,
+    );
+
+    return container.querySelector('.desk-summary');
+  }
+
+  it('is hidden once any of the words reaches below 145 px from the card’s top', () => {
+    place({ 'desk-says': 120, 'desk-on-card': 146, 'desk-step': 190 });
+
+    expect(drawCard()?.classList.contains('is-words-low')).toBe(true);
+  });
+
+  it('stays when the words end above it, whatever the step does', () => {
+    place({ 'desk-says': 120, 'desk-on-card': 145, 'desk-step': 190 });
+
+    expect(drawCard()?.classList.contains('is-words-low')).toBe(false);
+  });
+
+  it('is hidden only by its own rule, on a card 560 px or wider', () => {
+    const css = readFileSync(join(import.meta.dirname, 'SettingsParts.css'), 'utf8');
+    const wide = css.slice(css.indexOf('@container desk-summary (width >= 560px)'));
+
+    expect(wide).toMatch(/\.desk-summary\.is-words-low > \.p6 \{\s*display: none;\s*\}/u);
   });
 });
