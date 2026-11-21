@@ -2663,7 +2663,8 @@
     "letThemChange": "Permitir alterar a resposta",
     "reopenNotSaved": "Não foi guardado. Verifique a sua ligação e tente novamente.",
     "askedBy": "{{reply}} · resposta até {{date}}",
-    "askedByOn": "resposta até {{date}}"
+    "askedByOn": "resposta até {{date}}",
+    "companionStays": "{{name}} has arrived, so they stay on the list."
   },
   "guestNumbers": {
     "title": "Convidados",

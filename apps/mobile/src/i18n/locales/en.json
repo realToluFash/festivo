@@ -2573,7 +2573,8 @@
     "letThemChange": "Let them change their reply",
     "reopenNotSaved": "Not saved. Check your connection and try again.",
     "askedBy": "{{reply}} · asked to decide by {{date}}",
-    "askedByOn": "asked to decide by {{date}}"
+    "askedByOn": "asked to decide by {{date}}",
+    "companionStays": "{{name}} has arrived, so they stay on the list."
   },
   "guestNumbers": {
     "title": "Guests",

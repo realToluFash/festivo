@@ -3464,6 +3464,7 @@
     "morePlaces": "Mais lugares",
     "namedOf": "{{named, number}} de {{places, number}} com nome",
     "placesRefused": "{{name}} já tem {{named, number}} com nome. Retire primeiro algum nome.",
+    "placesRefusedArrived": "{{name}} already has {{named, number}} named or arrived. Arrived companions stay on the list.",
     "thisGuest": "Esta pessoa",
     "namedByGuest": "Nome indicado pelo convidado",
     "companionsNamed_one": "{{count, number}} acompanhante · {{named, number}} de {{count, number}} com nome",
@@ -3615,7 +3616,8 @@
     "staysCompanionArrived": "One of their companions has arrived, so they stay on the list. Their record ends with the event’s guest data setting.",
     "justArrived": "{{name}} has just arrived, so they stay on the list.",
     "companionJustArrived": "A companion of {{name}} has just arrived, so they stay on the list.",
-    "backToDetails": "Back to their details"
+    "backToDetails": "Back to their details",
+    "companionStays": "{{name}} has arrived, so they stay on the list."
   },
   "guestNumbers": {
     "title": "Convidados",

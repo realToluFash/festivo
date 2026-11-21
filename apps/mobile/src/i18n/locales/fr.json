@@ -2663,7 +2663,8 @@
     "letThemChange": "Autoriser une nouvelle réponse",
     "reopenNotSaved": "Non enregistré. Vérifiez votre connexion et réessayez.",
     "askedBy": "{{reply}} · réponse attendue d’ici le {{date}}",
-    "askedByOn": "réponse attendue d’ici le {{date}}"
+    "askedByOn": "réponse attendue d’ici le {{date}}",
+    "companionStays": "{{name}} has arrived, so they stay on the list."
   },
   "guestNumbers": {
     "title": "Invités",

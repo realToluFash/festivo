@@ -1770,6 +1770,7 @@ function EditForm({
           host={values.fullName.trim() === '' ? host.fullName : values.fullName.trim()}
           companions={values.companions}
           seatOf={(id) => host.companions.find((one) => one.id === id)?.seat ?? null}
+          arrivedOf={(id) => host.companions.some((one) => one.id === id && one.arrival != null)}
           said={said}
           words={words}
           needs={{ problems: needsProblems, open: opened.open, toggle: opened.toggle }}
@@ -1807,6 +1808,7 @@ function EditCompanions({
   host,
   companions,
   seatOf,
+  arrivedOf,
   said,
   words,
   needs,
@@ -1817,6 +1819,7 @@ function EditCompanions({
   host: string;
   companions: Values['companions'];
   seatOf: (id: string | null) => CompanionSeat | null;
+  arrivedOf: (id: string | null) => boolean;
   said: string | null;
   words: (key: string) => string | undefined;
   needs: CompanionNeeds;
@@ -1849,6 +1852,7 @@ function EditCompanions({
       <PlacesStepper
         host={host}
         names={companions.map((one) => one.name)}
+        arrived={companions.map((one) => arrivedOf(one.id))}
         onStep={(kept, added) => {
           const after = [
             ...kept.flatMap((at) => companions[at] ?? []),
@@ -1878,6 +1882,7 @@ function EditCompanions({
               label={label}
               placeholder={placeholder(at)}
               error={words(`companion-${at}`)}
+              arrived={arrivedOf(companion.id)}
               onChange={(name) =>
                 onChange(companions.map((each, index) => (index === at ? { ...each, name } : each)))
               }

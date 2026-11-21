@@ -3983,6 +3983,63 @@ describe('Remove from the list, with a short undo (sc-3774)', () => {
 
     expect(within(column()).queryByRole('button', { name: 'Remove from the list' })).toBeNull();
   });
+
+  async function editArrived(arrivedAt: readonly number[]) {
+    const companions = NGOZI_TWO.companions.map((one, at) =>
+      arrivedAt.includes(at)
+        ? { ...one, arrival: { at: '2030-11-14T15:10:00Z', by: 'Door' } }
+        : one,
+    );
+    await openNgozi({
+      'GET /api/events/ev_1/guests': () => json(listOf([{ ...NGOZI_ROW, companions }, AMAKA])),
+      'GET /api/events/ev_1/guests/g_1': () => tagged({ ...NGOZI_TWO, companions }, '"1"'),
+    });
+    fireEvent.click(within(column()).getByRole('button', { name: 'Edit' }));
+    await waitFor(() => expect(document.activeElement).toBe(field('Full name')));
+  }
+
+  function describedBy(input: HTMLElement): string {
+    return (input.getAttribute('aria-describedby') ?? '')
+      .split(' ')
+      .map((id) => document.getElementById(id)?.textContent ?? '')
+      .join(' | ');
+  }
+
+  it('offers no Remove on Edit guest for an arrived companion, and says why under their field (sc-1454)', async () => {
+    await editArrived([0, 1]);
+
+    expect(screen.queryByRole('button', { name: 'Remove Obi Eze' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Remove Ngozi Eze’s guest · 2' })).toBeNull();
+    expect(describedBy(field('Companion’s full name, 1 of 2'))).toBe(
+      'Obi Eze has arrived, so they stay on the list.',
+    );
+    expect(describedBy(field('Companion’s full name, 2 of 2'))).toBe(
+      'Guest of Ngozi Eze · 2 has arrived, so they stay on the list.',
+    );
+  });
+
+  it('offers Remove on Edit guest for a companion who has not arrived', async () => {
+    await editArrived([0]);
+
+    expect(screen.queryByRole('button', { name: 'Remove Obi Eze' })).toBeNull();
+    expect(screen.getByRole('button', { name: 'Remove Ngozi Eze’s guest · 2' })).toBeDefined();
+    expect(field('Companion’s full name, 2 of 2').getAttribute('aria-describedby')).toBeNull();
+  });
+
+  it('Fewer places never drops an arrived place, named or not, and refuses in its own words (sc-1454)', async () => {
+    await editArrived([1]);
+    const places = screen.getByRole('spinbutton', { name: 'Places for companions' });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Fewer places' }));
+
+    expect(
+      screen.getByText(
+        'Ngozi Eze already has 2 named or arrived. Arrived companions stay on the list.',
+      ),
+    ).toBeDefined();
+    expect(places.getAttribute('aria-invalid')).toBe('true');
+    expect((places as HTMLInputElement).value).toBe('2');
+  });
 });
 
 describe('Select many guests, then Add to group or Remove from the list (sc-3776)', () => {
