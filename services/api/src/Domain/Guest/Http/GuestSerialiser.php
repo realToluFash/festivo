@@ -121,6 +121,8 @@ final readonly class GuestSerialiser
             'id' => $host->getId()->toRfc4122(),
             'fullName' => $host->getFullName(),
             'group' => null === $group ? null : self::group($group),
+            'walkIn' => $host->isWalkIn(),
+            'arrival' => CheckInSerialiser::arrival($host, $zone),
             ...$contacts ? [
                 'email' => $host->getEmail(),
                 'mobile' => $host->getMobile(),
@@ -152,6 +154,7 @@ final readonly class GuestSerialiser
                 'state' => self::companionState(GuestStanding::of($reply, companion: true, invited: $host->isInvited(), notComingByGuest: $companion->isNotComingByGuest())),
                 'coming' => !$companion->isNotComingByGuest(),
                 'namedByGuest' => $companion->isNamedByGuest(),
+                'arrival' => CheckInSerialiser::arrival($companion, $zone),
                 ...$needsOf($companion),
             ]),
         ];

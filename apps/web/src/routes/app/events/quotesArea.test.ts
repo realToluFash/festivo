@@ -11,7 +11,9 @@ import '../../../i18n/index.ts';
 import {
   agreedElsewhere,
   budgetView,
+  cancelledLine,
   cardDifference,
+  cardDue,
   cardGap,
   differenceLine,
   differenceOf,
@@ -19,7 +21,14 @@ import {
   draftOfQuote,
   dueInOrder,
   firstOverdue,
+  firstQuoteOn,
   keptOf,
+  madeInset,
+  madeProblems,
+  markProblems,
+  paidDifference,
+  paidLine,
+  reasonProblem,
   lineLine,
   linesWords,
   offered,
@@ -89,6 +98,7 @@ function line(fields: Partial<BudgetLine> = {}): BudgetLine {
     amount: '900.00',
     currency: 'GBP',
     note: null,
+    notPriced: false,
     quantity: { count: 1, source: 'fixed', reason: null },
     cost: { confirmed: '900.00', potential: '900.00' },
     ...fields,
@@ -136,10 +146,32 @@ describe('payments in order', () => {
   });
 
   it('orders a schedule by its due dates and finds the first overdue payment', () => {
+    const owed = { addedAsPaid: false, paid: null, cancelled: null };
     const payments = [
-      { id: 'late', description: 'Balance', amount: '1.00', dueOn: '2026-11-10', overdue: true },
-      { id: 'early', description: 'Deposit', amount: '1.00', dueOn: '2026-10-10', overdue: true },
-      { id: 'next', description: 'Final', amount: '1.00', dueOn: '2026-12-10', overdue: false },
+      {
+        id: 'late',
+        description: 'Balance',
+        amount: '1.00',
+        dueOn: '2026-11-10',
+        overdue: true,
+        ...owed,
+      },
+      {
+        id: 'early',
+        description: 'Deposit',
+        amount: '1.00',
+        dueOn: '2026-10-10',
+        overdue: true,
+        ...owed,
+      },
+      {
+        id: 'next',
+        description: 'Final',
+        amount: '1.00',
+        dueOn: '2026-12-10',
+        overdue: false,
+        ...owed,
+      },
     ];
 
     expect(scheduleOf(quote({ payments })).map((one) => one.id)).toEqual(['early', 'late', 'next']);
@@ -221,7 +253,7 @@ describe('budget lines in the quote form', () => {
     expect(
       lineLine(
         t,
-        line({ amount: '0.00', cost: { confirmed: '0.00', potential: '0.00' } }),
+        line({ amount: '0.00', notPriced: true, cost: { confirmed: '0.00', potential: '0.00' } }),
         null,
         EN,
       ),
@@ -333,5 +365,146 @@ describe('Budget’s pages', () => {
 
     expect(todayIn('Europe/London', late)).toBe('2026-11-19');
     expect(todayIn('Asia/Tokyo', late)).toBe('2026-11-20');
+  });
+});
+
+describe('marking paid', () => {
+  const scheduled = {
+    id: 'p1',
+    description: 'Deposit',
+    amount: '3200.00',
+    dueOn: '2026-11-01',
+    overdue: false,
+    addedAsPaid: false,
+    paid: null,
+    cancelled: null,
+  };
+  const marked = (amount: string, by: { id: string; name: string } | null) => ({
+    ...scheduled,
+    paid: { amount, paidOn: '2026-11-09', reference: null, at: '', by, difference: '0' },
+  });
+
+  it('refuses a blank or zero amount, a day ahead and a reference over 100', () => {
+    const problems = markProblems(
+      t,
+      { amount: '0', paidOn: '2026-11-20', reference: 'r'.repeat(101) },
+      AT,
+    );
+
+    expect(Object.keys(problems)).toEqual(['amount', 'paidOn', 'reference']);
+    expect(problems.paidOn).toBe(
+      'The date paid cannot be in the future. Choose today or an earlier date.',
+    );
+    expect(problems.reference).toBe('Shorten the reference to 100 characters or fewer.');
+    expect(
+      markProblems(t, { amount: '3,200.50', paidOn: '2026-11-19', reference: '' }, AT),
+    ).toEqual({});
+  });
+
+  it('says by how much the amount paid differs, or nothing when it matches', () => {
+    expect(paidDifference(t, '3200.00', '3200.00', 'GBP', EN)).toBeNull();
+    expect(paidDifference(t, '3200.00', '3250.50', 'GBP', EN)).toBe('£50.50 more than scheduled');
+    expect(paidDifference(t, '3200.00', '3000.00', 'GBP', EN)).toBe('£200.00 less than scheduled');
+  });
+
+  it('names who marked it, and leaves the name out once they have gone', () => {
+    expect(paidLine(t, marked('3200.00', { id: 'u1', name: 'Ada Obi' }), 'GBP', EN)).toBe(
+      'Paid £3,200.00 on Mon 9 Nov · Marked by Ada Obi',
+    );
+    expect(paidLine(t, marked('3000.00', null), 'GBP', EN)).toBe(
+      'Paid £3,000.00 on Mon 9 Nov · £200.00 less than scheduled',
+    );
+  });
+
+  it('keeps a cancelled payment with its reason, which may be over 200 only before sending', () => {
+    expect(reasonProblem(t, 'w'.repeat(200))).toBeNull();
+    expect(reasonProblem(t, 'w'.repeat(201))).toBe(
+      'Shorten the reason to 200 characters or fewer.',
+    );
+    const cancelled = {
+      ...scheduled,
+      cancelled: { at: '', by: null, reason: 'Venue includes it' },
+    };
+    expect(cancelledLine(t, cancelled, 'GBP', EN)).toBe(
+      'Cancelled · Not owed: Venue includes it · £3,200.00',
+    );
+  });
+
+  it('dates a payment already made no earlier than the first quote, before any revision', () => {
+    const revised = quote({
+      quote: { ...quote().quote, quotedOn: '2026-10-20' },
+      earlier: [{ ...quote().quote, id: 'qv0', quotedOn: '2026-10-01' }],
+    });
+    const draft = {
+      quoteId: 'q1',
+      description: '  ',
+      amount: '180',
+      paidOn: '2026-09-30',
+      reference: '',
+    };
+
+    expect(firstQuoteOn(revised)).toBe('2026-10-01');
+    const problems = madeProblems(t, draft, revised, AT, EN);
+    expect(problems.description).toBe('Enter what it was for.');
+    expect(problems.paidOn).toBe(
+      'The date paid cannot be before the quote from Bloom & Co on Thursday 1 October. Choose that date or a later one.',
+    );
+    expect(
+      madeProblems(t, { ...draft, description: 'Stems', paidOn: '2026-10-01' }, revised, AT, EN),
+    ).toEqual({});
+  });
+});
+
+describe('cardDue', () => {
+  it('picks the sentence by the day it is due, against today in the event', () => {
+    expect(cardDue(due({ dueOn: '2026-11-19', overdue: true }), '2026-11-20')).toBe('cardOverdue');
+    expect(cardDue(due({ dueOn: '2026-11-20' }), '2026-11-20')).toBe('cardDueToday');
+    expect(cardDue(due({ dueOn: '2026-12-01' }), '2026-11-30')).toBe('cardDueTomorrow');
+    expect(cardDue(due({ dueOn: '2026-12-02' }), '2026-11-30')).toBe('cardDueOn');
+  });
+
+  it('says each case in a whole sentence', () => {
+    const slots = { what: 'deposit', vendor: 'Atlas', amount: '£1,880', day: 'Monday 3 November' };
+
+    expect(i18next.t('quotes.cardDueToday', slots)).toBe(
+      'The deposit for Atlas, £1,880, is due today.',
+    );
+    expect(i18next.t('quotes.cardDueTomorrow', slots)).toBe(
+      'The deposit for Atlas, £1,880, is due tomorrow, Monday 3 November.',
+    );
+  });
+});
+
+describe('the inset on Add a payment already made (sc-75579)', () => {
+  const at = (scheduled: string, paid = '0.00') =>
+    quote({ quote: { ...quote().quote, amount: '1000.00' }, scheduled, paid });
+
+  it('shows the figures as they stand and no after while no amount is usable', () => {
+    expect(madeInset(at('1000.00', '250.00'), null, 'GBP')).toEqual({
+      now: { paid: '250.00', scheduled: '1000.00' },
+      after: null,
+      over: null,
+    });
+  });
+
+  it('adds the amount paid to both Paid and Scheduled, and gives the gap over the quote', () => {
+    expect(madeInset(at('1000.00'), '180.00', 'GBP')).toEqual({
+      now: { paid: '0.00', scheduled: '1000.00' },
+      after: { paid: '180.00', scheduled: '1180.00' },
+      over: '180.00',
+    });
+  });
+
+  it('gives the gap after the payment, not the payment, when already over', () => {
+    expect(madeInset(at('1050.00'), '180.00', 'GBP').over).toBe('230.00');
+  });
+
+  it('says nothing about the quote at or under it', () => {
+    expect(madeInset(at('820.00'), '180.00', 'GBP').over).toBeNull();
+    expect(madeInset(at('500.00'), '180.00', 'GBP').over).toBeNull();
+  });
+
+  it('keeps a gap under one unit in its minor unit', () => {
+    expect(madeInset(at('1000.00'), '0.01', 'GBP').over).toBe('0.01');
   });
 });

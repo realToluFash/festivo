@@ -50,7 +50,7 @@ final readonly class GuestEditor
         $event = $guest->getEvent();
         $changed = $this->entityManager->wrapInTransaction(function () use ($guest, $event, $ifMatch, $new, $companionIds, $by, $allowDuplicate): bool {
             $this->entityManager->refresh($event, LockMode::PESSIMISTIC_WRITE);
-            $this->entityManager->refresh($guest);
+            $this->entityManager->refresh($guest, LockMode::PESSIMISTIC_WRITE);
 
             if (!EntityTag::matches($ifMatch, EntityTag::of($guest->getVersion()))) {
                 throw new ApiException(ErrorCode::PreconditionFailed, 'guest.changed_since');
@@ -58,6 +58,7 @@ final readonly class GuestEditor
 
             $companions = $this->guestRepository->findCompanionsOf($guest);
             $kept = $this->kept($companions, $companionIds);
+            self::keepsTheArrived($guest, $companions, $kept);
             $group = null === $new->group ? $guest->getGroup() : $this->guestGroupEditor->settle($event, $new->group, $by);
             $fields = self::changed($guest, $companions, $new, $companionIds, $group);
             $needsBefore = $this->guestNeedsRecord->of([$guest, ...$companions]);
@@ -133,6 +134,25 @@ final readonly class GuestEditor
         }
 
         return $guest;
+    }
+
+    /**
+     * Refused 409 `guest_arrived`, as a removal is (sc-1454): taking an arrived companion off would erase their arrival.
+     *
+     * @param list<Guest>          $companions
+     * @param array<string, Guest> $kept
+     */
+    private static function keepsTheArrived(Guest $guest, array $companions, array $kept): void
+    {
+        $dropped = Vec\filter($companions, static fn (Guest $companion): bool => $companion->hasArrived() && !Iter\contains_key($kept, $companion->getId()->toRfc4122()));
+
+        if ([] === $dropped) {
+            return;
+        }
+
+        $stayed = [['id' => $guest->getId()->toRfc4122(), 'fullName' => $guest->getFullName(), 'why' => 'companionArrived']];
+
+        throw new ApiException(ErrorCode::GuestArrived, 'guest.companion_arrived', parameters: ['{name}' => $guest->getFullName() ?? ''], members: ['stayed' => $stayed, 'why' => 'companionArrived']);
     }
 
     /**

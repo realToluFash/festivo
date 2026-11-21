@@ -474,8 +474,13 @@ function now(today: string, time: string, say: Say): Now {
     until: `until ${say.clock('17:30')}`,
     behind: '10 min behind',
     next: { time: say.clock('18:00'), title: 'Dinner is served' },
-    arrived: 87,
-    expected: 99,
+    arrived: {
+      count: '87',
+      of: '99',
+      share: 87 / 99,
+      label: 'arrived',
+      spoken: '87 of 99 arrived',
+    },
     rail: RAIL.map(([stop, name], index) => ({
       time: say.hour(stop),
       name,

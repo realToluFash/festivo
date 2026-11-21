@@ -25,6 +25,7 @@ final readonly class WhatIfChanges
             0 === $this->staffHours ? $facts->staffHours : ($facts->staffHours ?? 0) + $this->staffHours,
             $facts->eventDays + $this->days,
             $facts->ifAllCome + $this->guests,
+            $facts->staffCostMinor,
         );
     }
 }

@@ -1,0 +1,25 @@
+# sc-29914: ${PERSON}'s role sheet: pick ${TO}, Saving then Saved, pick ${FROM} back, pick ${TO} again, then Done and the row lit.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/${EV}?area=people
+- extendedWaitUntil: { visible: { id: 'people.row.${PERSON}' }, timeout: 30000 }
+- tapOn: { id: 'people.row.${PERSON}' }
+- extendedWaitUntil: { visible: { id: 'people.roleSheet' }, timeout: 10000 }
+- waitForAnimationToEnd: { timeout: 4000 }
+- takeScreenshot: sheet
+- tapOn: { id: 'people.role.${TO}' }
+- takeScreenshot: saving
+- extendedWaitUntil: { visible: '.*{{t:eventPeople.saved}}.*', timeout: 15000 }
+- takeScreenshot: saved
+- tapOn: { id: 'people.role.${FROM}' }
+- extendedWaitUntil: { visible: '.*{{t:eventPeople.saved}}.*', timeout: 15000 }
+- waitForAnimationToEnd: { timeout: 3000 }
+- takeScreenshot: back
+- tapOn: { id: 'people.role.${TO}' }
+- extendedWaitUntil: { visible: '.*{{t:eventPeople.saved}}.*', timeout: 15000 }
+- waitForAnimationToEnd: { timeout: 2000 }
+- assertVisible: { id: 'people.roleSheet' }
+- tapOn: { id: 'people.role.done' }
+- takeScreenshot: lit
+- waitForAnimationToEnd: { timeout: 4000 }
+- takeScreenshot: unlit

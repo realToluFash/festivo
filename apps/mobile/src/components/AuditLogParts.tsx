@@ -66,11 +66,13 @@ export function AuditDays({
   entries,
   now,
   zone,
+  locale,
   onOpen,
 }: {
   entries: readonly AuditEntry[];
   now: Date;
   zone: string | null;
+  locale: string;
   onOpen: (entry: AuditEntry, view: ViewInstance | null) => void;
 }) {
   const { t } = useTranslation();
@@ -78,7 +80,7 @@ export function AuditDays({
 
   return (
     <>
-      {byDay(t, entries, now, zone).map((day) => (
+      {byDay(t, entries, now, zone, locale).map((day) => (
         <Section key={day.key} title={day.heading}>
           <RowList
             items={day.entries.map((entry) => {

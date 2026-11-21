@@ -317,6 +317,15 @@ link, which in Expo Go lands on Home (sc-22740): each starts from Home or from a
   run, or a single check with no `setOrientation`, set the one you want:
   `adb shell wm user-rotation lock 1` for portrait, `lock 0` for landscape. In a warm batch,
   do not lock the rotation: the reset and any `setOrientation` write the same setting.
+- **On iOS, `ios-bold-text-switch` flips the real Bold Text switch** (Settings >
+  Accessibility > Display & Text Size), which `simctl` cannot reach, then returns to
+  `com.soirely.app` and takes `${OUT}-switch` and `${OUT}`. It toggles, so run it once per flip.
+  The switch has no id, so it is tapped by point (`84%,18%`, iOS 26.5 on an iPhone); a new iOS
+  that moves the row moves that point.
+- **The `_sc79989-*` flows are steps of sc-79989's release-build pass** (`com.soirely.app`,
+  no Expo Go): each fills, reveals, sends or screenshots one thing, and the pass chains them,
+  passing `ID`, `NEXT`, `OUT`, `EMAIL`, `PASSWORD`, `SUBMIT`, `ANSWER`, `PWD_ID` and `EMAIL_ID`
+  as each needs. None is a check on its own.
 - **On iOS, set a large text size only after the batch has signed in.** With
   `xcrun simctl ui <device> content_size` at `accessibility-extra-extra-large` or larger
   before the batch, its sign-in types the password into the email field (`--cold`) or misses

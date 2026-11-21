@@ -1,5 +1,5 @@
 import type { OutsideEvent } from '@soirely/api-client';
-import { invitationWording, refusalBody } from '@soirely/domain';
+import { invitationWording } from '@soirely/domain';
 import { useIsFocused } from 'expo-router';
 import { Fragment, type ReactNode, type RefObject, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -45,6 +45,7 @@ import { useModalOpen } from '../updateRequired.ts';
 import { TextField } from './Field.tsx';
 import { Glyph } from './Glyph.tsx';
 import { Initials } from './Initials.tsx';
+import { InvitationFailedNotice, InvitationRefusalNotice } from './InvitationNotices.tsx';
 import { Notice } from './Notice.tsx';
 import { OrgMark } from './OrgMark.tsx';
 import { OutsideEventsGroup } from './OutsideRows.tsx';
@@ -158,6 +159,7 @@ export function OrgDropDown({
   const scroller = useRef<ScrollViewInstance>(null);
   const seen = useRef({ offset: 0, viewport: 0 });
   const shownFor = useRef<string | null>(null);
+  const panel = useRef<ViewInstance>(null);
   const [typed, setTyped] = useState(session.query);
   const [cleared, setCleared] = useState(0);
   const [under, setUnder] = useState(false);
@@ -241,6 +243,11 @@ export function OrgDropDown({
   const reveal = (top: number, bottom: number) => {
     const to = scrollToShow({ top, bottom, ...seen.current });
     if (to != null) scroller.current?.scrollTo({ y: to, animated: !reduced });
+  };
+  const revealPanel = () => {
+    const content = scroller.current?.getInnerViewRef();
+    if (content == null) return;
+    panel.current?.measureLayout(content, (_x, y, _width, height) => reveal(y, y + height));
   };
   const answerWith = (invite: Invite, yes: boolean) => {
     setAnswered({});
@@ -414,12 +421,16 @@ export function OrgDropDown({
                         {opened != null && opened.kind !== 'place' && opened.kind !== 'create' && (
                           <View
                             style={styles.panel}
-                            onLayout={(event) => {
-                              const id = tileKey(opened);
+                            ref={panel}
+                            onLayout={() => {
+                              const refused =
+                                managed != null &&
+                                opened.kind !== 'offer' &&
+                                session.managed === opened.invite.id;
+                              const id = `${tileKey(opened)}${refused ? ':managed' : ''}`;
                               if (shownFor.current === id) return;
                               shownFor.current = id;
-                              const { y, height } = event.nativeEvent.layout;
-                              reveal(y, y + height);
+                              revealPanel();
                             }}
                             testID={`switcher.panel.${tileKey(opened)}`}
                           >
@@ -904,30 +915,18 @@ function InvitationPanel({
         </View>
       ) : outcome?.kind === 'refused' ? (
         <View style={styles.answerUnder}>
-          <Notice
-            tone={outcome.refusal === 'invitation_expired' ? 'attention' : 'quiet'}
-            mark={outcome.refusal === 'invitation_expired' ? '!' : 'i'}
-            title={t(`invitations.refused.${outcome.refusal}.word`)}
-            body={t(refusalBody(outcome.refusal, invite.invitedBy != null), {
-              inviter,
-              organisation,
-              email: invite.email,
-              signedInAs: invite.signedInAs ?? '',
-            })}
+          <InvitationRefusalNotice
+            refusal={outcome.refusal}
+            organisation={organisation}
+            invitation={invite}
             answer={answered}
-            takesFocus
           />
         </View>
       ) : (
         <View style={styles.answerUnder}>
           {outcome?.kind === 'failed' && (
             <View style={styles.failed}>
-              <Notice
-                tone="broken"
-                mark={tokens.marks.broken.glyph}
-                body={t('invitations.failed')}
-                answer={answered}
-              />
+              <InvitationFailedNotice answer={answered} />
             </View>
           )}
           {!full && (

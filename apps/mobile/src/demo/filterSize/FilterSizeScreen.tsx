@@ -5,8 +5,8 @@ import {
   type EventsWhen,
   NO_EVENTS_FILTERS,
   filtered,
+  formatWallDay,
   listFormat,
-  picksLead,
   withHostToggled,
   withTypeToggled,
 } from '@soirely/domain';
@@ -21,22 +21,26 @@ import {
 } from 'react';
 import { I18nextProvider, useTranslation } from 'react-i18next';
 import {
+  type LayoutChangeEvent,
   Pressable,
   ScrollView,
+  type StyleProp,
   StyleSheet,
+  type TextStyle,
   View,
   type ViewInstance,
   useWindowDimensions,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { FilterButton, useFilterWords } from '../../components/EventsSearch.tsx';
+import { FilterButton, GrownTopRow, useFilterWords } from '../../components/EventsSearch.tsx';
 import { Glyph } from '../../components/Glyph.tsx';
+import { type Picking, PickerLayer, pick } from '../../components/MomentPick.tsx';
+import { RadioMark } from '../../components/RadioMark.tsx';
+import { MeasuredWords } from '../../components/Title.tsx';
 import { type Anchor, AnchoredMenu, anchorUnder } from '../../components/Summary.tsx';
 import { Text } from '../../components/Text.tsx';
-import { MeasuredWords } from '../../components/Title.tsx';
 import { isTablet } from '../../layout/classify.ts';
-import { piecesIn } from '../../layout/textSize.ts';
 import { useLayout } from '../../layout/useLayout.ts';
 import { DemoOnly } from '../../steps/Lines.tsx';
 import { tokens } from '../../theme/tokens.ts';
@@ -45,41 +49,54 @@ import { Choices } from '../focusedHeader/FocusedHeaderScreen.tsx';
 import { LONG_HOST } from '../events/EventsModel.ts';
 import {
   FILTER_LANGUAGES,
+  FILTER_LEVELS,
   FILTER_PICKS,
   FILTER_SIZES,
   type FilterLanguage,
+  type FilterLevel,
   type FilterPicks,
   type FilterSize,
+  datesStacked,
+  drilledSize,
+  drilledStart,
   filterScale,
-  keptWhole,
-  rowDrawn,
-  rowStarts,
 } from './filterSizeRules.ts';
+import { rowStarts } from '../../layout/menuRowFit.ts';
+import { piecesIn, wholeLineHeight } from '../../layout/textSize.ts';
 import { frameTitleCap } from '../frameTitleCap.ts';
 
 export interface FilterSizeStart {
   size: FilterSize;
   language: FilterLanguage;
   picks: FilterPicks;
+  level: FilterLevel;
 }
 
-const HOSTS = ['Adaeze Obi', 'Ire Events', 'Kemi Adebayo', LONG_HOST] as const;
+// The hosts sc-75213's AC names.
+const HOSTS = ['Adaeze Obi', 'Tunde Bakare', LONG_HOST, 'Chidi Okafor'] as const;
 const MENU_AFTER_MS = 600;
-const WHENS: readonly { kind: Exclude<EventsWhen['kind'], 'between'>; word: string }[] = [
+const SPAN = { from: '2026-11-20', to: '2026-12-04' } as const;
+const WHENS: readonly { kind: EventsWhen['kind']; word: string }[] = [
   { kind: 'any', word: 'eventsSearch.anyTime' },
   { kind: 'week', word: 'eventsSearch.thisWeek' },
   { kind: 'month', word: 'eventsSearch.thisMonth' },
   { kind: 'next3', word: 'eventsSearch.next3Months' },
+  { kind: 'between', word: 'eventsSearch.between' },
 ];
+
+function whenOf(kind: EventsWhen['kind']): EventsWhen {
+  return kind === 'between' ? { kind, ...SPAN } : { kind };
+}
 
 function filtersOf(picks: FilterPicks): EventsFilters {
   if (picks === 'twoTypes') return { ...NO_EVENTS_FILTERS, types: ['anniversary', 'party'] };
   if (picks === 'longHost') return { ...NO_EVENTS_FILTERS, hosts: [LONG_HOST] };
+  if (picks === 'between') return { ...NO_EVENTS_FILTERS, when: whenOf('between') };
 
   return NO_EVENTS_FILTERS;
 }
 
-/** sc-73933: Events' Filter menu at a stand-in text size, its top-level values whole under their titles at the accessibility sizes. */
+/** sc-73933 and sc-75213: Events' Filter menu at a stand-in text size, every word whole at the accessibility sizes, in its top level and in the levels each row opens. */
 export function FilterSizeScreen({ start }: { start: FilterSizeStart }) {
   const { i18n } = useTranslation();
   const insets = useSafeAreaInsets();
@@ -88,6 +105,7 @@ export function FilterSizeScreen({ start }: { start: FilterSizeStart }) {
   const [size, setSize] = useState(start.size);
   const [language, setLanguage] = useState(start.language);
   const [filters, setFilters] = useState(() => filtersOf(start.picks));
+  const [level, setLevel] = useState(start.level);
   const [menuAt, setMenuAt] = useState<Anchor | null>(null);
   const filterRef = useRef<ViewInstance>(null);
   const words = useMemo(
@@ -120,8 +138,13 @@ export function FilterSizeScreen({ start }: { start: FilterSizeStart }) {
             />
             <Menu
               at={menuAt}
-              onClose={() => setMenuAt(null)}
+              onClose={() => {
+                setLevel('top');
+                setMenuAt(null);
+              }}
               opener={filterRef}
+              level={level}
+              onLevel={setLevel}
               filters={filters}
               onFilters={setFilters}
               scale={scale}
@@ -131,7 +154,7 @@ export function FilterSizeScreen({ start }: { start: FilterSizeStart }) {
           </View>
         </I18nextProvider>
         <View style={styles.page}>
-          <DemoOnly title="Stand-ins for the device’s text size, its language and what qa has chosen. Only the menu’s top-level rows draw at the size chosen; Filter and the drilled levels stay as main draws them at this device’s size. At AX1 to AX5 a row whose value cannot sit whole beside its title puts it on the line under, at the title’s start, with the › kept at the end. At the standard sizes every row is main’s one line. Tap Filter to open the menu again. Nothing is sent and no string is added.">
+          <DemoOnly title="Stand-ins for the device’s text size, its language, what qa has chosen and the level open. The menu draws at the size chosen; Filter stays as main draws it at this device’s size. At AX1 to AX5 a top-level row whose value cannot sit whole beside its title puts it on the line under (sc-73933). In a drilled level every word grows up to the Events title’s size, a row wraps between its words beside its check or radio, a word too wide for its line steps down until it fits whole, never under its default size, and From and To stack (sc-75213). At the standard sizes every level is main’s. Tap Filter to open the menu again. Nothing is sent and no string is added.">
             <Choices
               heading="Text size"
               options={FILTER_SIZES}
@@ -156,6 +179,17 @@ export function FilterSizeScreen({ start }: { start: FilterSizeStart }) {
               }
               onChoose={(key) => setFilters(filtersOf(key))}
               id="picks"
+              prefix="demo.filterSize"
+            />
+            <Choices
+              heading="Level"
+              options={FILTER_LEVELS}
+              chosen={level}
+              onChoose={(key) => {
+                setLevel(key);
+                anchorUnder(filterRef, setMenuAt);
+              }}
+              id="level"
               prefix="demo.filterSize"
             />
           </DemoOnly>
@@ -189,12 +223,12 @@ function Opener({
   );
 }
 
-type Level = 'top' | 'type' | 'when' | 'hosts';
-
 function Menu({
   at,
   onClose,
   opener,
+  level,
+  onLevel,
   filters,
   onFilters,
   scale,
@@ -204,6 +238,8 @@ function Menu({
   at: Anchor | null;
   onClose: () => void;
   opener: RefObject<ViewInstance | null>;
+  level: FilterLevel;
+  onLevel: (level: FilterLevel) => void;
   filters: EventsFilters;
   onFilters: (filters: EventsFilters) => void;
   scale: number;
@@ -211,17 +247,34 @@ function Menu({
   locale: string;
 }) {
   const { t } = useTranslation();
-  const [level, setLevel] = useState<Level>('top');
+  const [picking, setPicking] = useState<Picking | null>(null);
+  const setLevel = onLevel;
   const first = useRef<ViewInstance>(null);
   const listed = (picks: readonly string[]) =>
     listFormat(locale, { type: 'unit', style: 'short' }).format(picks);
   const types = filters.types.map((type) => t(`eventTypes.${type}`));
-  const whenWord = t(
-    WHENS.find(({ kind }) => kind === filters.when.kind)?.word ?? 'eventsSearch.anyTime',
-  );
+  const day = (value: string) => formatWallDay(value, locale);
+  const between = filters.when.kind === 'between' ? filters.when : null;
+  const whenWord =
+    between != null
+      ? t('eventsScreen.days', { first: day(between.from), last: day(between.to) })
+      : t(WHENS.find(({ kind }) => kind === filters.when.kind)?.word ?? 'eventsSearch.anyTime');
   const close = () => {
-    setLevel('top');
+    setPicking(null);
     onClose();
+  };
+  const words = { scale, cap };
+  const pickDay = (end: 'from' | 'to') => {
+    if (between == null) return;
+    pick(
+      {
+        title: t(end === 'from' ? 'eventsSearch.from' : 'eventsSearch.to'),
+        mode: 'date',
+        field: { date: between[end], time: '12:00' },
+        take: ({ date }) => onFilters({ ...filters, when: { ...between, [end]: date } }),
+      },
+      setPicking,
+    );
   };
 
   return (
@@ -232,11 +285,16 @@ function Menu({
       first={first}
       width={272}
       align="start"
+      over={
+        picking != null && (
+          <PickerLayer picking={picking} locale={locale} onClose={() => setPicking(null)} />
+        )
+      }
       testID="demo.filterSize.menu"
     >
       {level === 'top' && (
         <>
-          <TopRow
+          <GrownTopRow
             ref={first}
             title={t('eventsSearch.type')}
             picks={types}
@@ -246,7 +304,7 @@ function Menu({
             onPress={() => setLevel('type')}
             testID="demo.filterSize.type"
           />
-          <TopRow
+          <GrownTopRow
             title={t('eventsSearch.when')}
             picks={[whenWord]}
             value={whenWord}
@@ -255,7 +313,7 @@ function Menu({
             onPress={() => setLevel('when')}
             testID="demo.filterSize.when"
           />
-          <TopRow
+          <GrownTopRow
             title={t('eventsSearch.hostedBy')}
             picks={filters.hosts}
             value={filters.hosts.length === 0 ? t('eventsSearch.anyone') : listed(filters.hosts)}
@@ -289,37 +347,65 @@ function Menu({
         </>
       )}
       {level === 'type' && (
-        <Drilled title={t('eventsSearch.type')} onBack={() => setLevel('top')}>
+        <Drilled title={t('eventsSearch.type')} onBack={() => setLevel('top')} {...words}>
           {EVENT_TYPES.map((type: EventType) => (
             <Choice
               key={type}
+              kind="checkbox"
               word={t(`eventTypes.${type}`)}
               on={filters.types.includes(type)}
               onPress={() => onFilters(withTypeToggled(filters, type))}
+              testID={`demo.filterSize.type.${type}`}
+              {...words}
             />
           ))}
         </Drilled>
       )}
       {level === 'when' && (
-        <Drilled title={t('eventsSearch.when')} onBack={() => setLevel('top')}>
+        <Drilled title={t('eventsSearch.when')} onBack={() => setLevel('top')} {...words}>
           {WHENS.map(({ kind, word }) => (
             <Choice
               key={kind}
+              kind="radio"
               word={t(word)}
               on={filters.when.kind === kind}
-              onPress={() => onFilters({ ...filters, when: { kind } })}
+              onPress={() => onFilters({ ...filters, when: whenOf(kind) })}
+              testID={`demo.filterSize.when.${kind}`}
+              {...words}
             />
           ))}
+          {between != null && (
+            <View style={[styles.between, datesStacked(scale) && styles.betweenStacked]}>
+              {(['from', 'to'] as const).map((end) => (
+                <View key={end} style={datesStacked(scale) ? styles.dayStacked : styles.day}>
+                  <DayLabel
+                    label={t(end === 'from' ? 'eventsSearch.from' : 'eventsSearch.to')}
+                    {...words}
+                  />
+                  <DayBox
+                    label={t(end === 'from' ? 'eventsSearch.from' : 'eventsSearch.to')}
+                    words={day(between[end])}
+                    onPress={() => pickDay(end)}
+                    testID={`demo.filterSize.${end}`}
+                    {...words}
+                  />
+                </View>
+              ))}
+            </View>
+          )}
         </Drilled>
       )}
       {level === 'hosts' && (
-        <Drilled title={t('eventsSearch.hostedBy')} onBack={() => setLevel('top')}>
+        <Drilled title={t('eventsSearch.hostedBy')} onBack={() => setLevel('top')} {...words}>
           {HOSTS.map((host) => (
             <Choice
               key={host}
+              kind="checkbox"
               word={host}
               on={filters.hosts.includes(host)}
               onPress={() => onFilters(withHostToggled(filters, host, HOSTS))}
+              testID={`demo.filterSize.host.${host}`}
+              {...words}
             />
           ))}
         </Drilled>
@@ -328,189 +414,97 @@ function Menu({
   );
 }
 
-/** A top-level row: beside its title while its value fits whole, under it at the accessibility sizes when not. */
-function TopRow({
-  ref,
-  title,
-  picks,
-  value,
-  scale,
-  cap,
-  onPress,
-  testID,
-}: {
-  ref?: Ref<ViewInstance>;
-  title: string;
-  picks: readonly string[];
-  value: string;
+export interface Sizing {
   scale: number;
   cap: number;
-  onPress: () => void;
-  testID: string;
+}
+
+/** A drilled level's words at the stand-in size: measured piece by piece at their start, a piece being a word or its part up to a hyphen it has, and stepped down only where the widest is wider than `room` (sc-75213). */
+export function LevelWords({
+  text,
+  size,
+  scale,
+  cap,
+  room,
+  weight,
+  role,
+  style,
+  testID,
+}: Sizing & {
+  text: string;
+  size: number;
+  room: number;
+  weight: 'medium' | 'semibold' | 'bold';
+  role?: 'header';
+  style?: StyleProp<TextStyle>;
+  testID?: string;
 }) {
-  const { t } = useTranslation();
-  const shownPicks = picks.length === 0 ? [value] : picks;
-  const count = shownPicks.length;
-  const tail = (rest: number) => keptWhole(t('calendar.moreItems', { count: rest }));
-  const read = (shown: number) =>
-    shown === count ? value : `${picksLead(shownPicks, shown)} ${tail(count - shown)}`;
-  // Beside its title the line draws as two texts, so it is measured as two: as one string it comes out narrower on Android (main's usePicksFit).
-  const parts = (shown: number) =>
-    shown === count ? [value] : [picksLead(shownPicks, shown), ` ${tail(count - shown)}`];
-  const reads = shownPicks.map((_, index) => read(index + 1));
-  const besides = shownPicks.flatMap((_, index) => parts(index + 1));
-  const tails = shownPicks.slice(1).map((_, index) => tail(index + 1));
-  const valuePieces = [...piecesIn(shownPicks), ...tails];
-  const starts = rowStarts(scale, cap);
-  const [widths, setWidths] = useState<Readonly<Record<string, number>>>({});
-  const [room, setRoom] = useState(0);
-  const titleKey = (text: string) => `t|${starts.title}|${text}`;
-  const valueKey = (text: string) => `v|${starts.value}|${text}`;
-  const titlePieces = piecesIn([title]);
-  const keys = [
-    titleKey(title),
-    ...titlePieces.map(titleKey),
-    ...reads.map(valueKey),
-    ...besides.map(valueKey),
-    ...valuePieces.map(valueKey),
-  ];
-  const ready = room > 0 && keys.every((key) => widths[key] != null);
-  const widthOf = (key: string) => widths[key] ?? 0;
-  const widestOf = (texts: readonly string[], key: (text: string) => string) =>
-    Math.max(...texts.map((text) => widthOf(key(text))));
-  const drawn = ready
-    ? rowDrawn({
-        scale,
-        cap,
-        room,
-        gap: tokens.spaceMd,
-        title: widthOf(titleKey(title)),
-        titleWidest: widestOf(titlePieces, titleKey),
-        valueWidestAt: (shown) =>
-          widestOf(
-            [
-              ...piecesIn(shownPicks.slice(0, shown)),
-              ...(shown < count ? [tail(count - shown)] : []),
-            ],
-            valueKey,
-          ),
-        count,
-        besideAt: (shown) =>
-          parts(shown).reduce((sum, text) => sum + Math.ceil(widthOf(valueKey(text))), 0),
-        underAt: (shown) => widthOf(valueKey(read(shown))),
-      })
+  const start = drilledStart(size, scale, cap);
+  const key = `${start}|${weight}|${text}`;
+  const pieces = piecesIn([text]);
+  const [measured, setMeasured] = useState<{ key: string; widths: Record<string, number> }>({
+    key: '',
+    widths: {},
+  });
+  const widths = measured.key === key ? measured.widths : {};
+  const widest = pieces.every((piece) => widths[piece] != null)
+    ? Math.max(...pieces.map((piece) => widths[piece] ?? 0))
     : null;
-  const shown = drawn?.shown ?? count;
-  const rest = count - shown;
-  const lead = rest === 0 ? value : picksLead(shownPicks, shown);
-  const measured = (key: (text: string) => string) => (text: string, width: number) =>
-    setWidths((now) => (now[key(text)] === width ? now : { ...now, [key(text)]: width }));
+  const pending = widest == null || room === 0;
+  const drawn = pending ? start : drilledSize(size, scale, cap, widest, room);
 
   return (
-    <Pressable
-      ref={ref}
-      onPress={onPress}
-      style={({ pressed }) => [
-        styles.top,
-        drawn?.stacked === true && styles.topStacked,
-        pressed && styles.pressed,
-      ]}
-      accessibilityRole="button"
-      accessibilityLabel={t('eventsSearch.choice', { title, value })}
-      testID={testID}
-    >
+    <>
       <MeasuredWords
-        words={[title, ...titlePieces]}
-        size={starts.title}
-        weight="medium"
+        words={pieces}
+        size={start}
+        weight={weight}
         allowFontScaling={false}
-        onWidth={measured(titleKey)}
+        onWidth={(piece, width) =>
+          setMeasured((now) => {
+            const kept = now.key === key ? now.widths : {};
+
+            return kept[piece] === width ? now : { key, widths: { ...kept, [piece]: width } };
+          })
+        }
       />
-      <MeasuredWords
-        words={[...new Set([...reads, ...besides, ...valuePieces])]}
-        size={starts.value}
-        weight="medium"
+      <Text
+        // A new size mounts a new Text, so iOS never draws one size in the box laid out for another (sc-69816).
+        key={drawn}
+        size={drawn}
+        weight={weight}
         allowFontScaling={false}
-        onWidth={measured(valueKey)}
-      />
-      <View
-        style={[drawn?.stacked === true ? styles.stacked : styles.beside, !ready && styles.waiting]}
-        onLayout={(event) => setRoom(event.nativeEvent.layout.width)}
+        accessible={false}
+        accessibilityRole={role}
+        style={[{ lineHeight: wholeLineHeight(drawn, drawn) }, style, pending && styles.waiting]}
+        testID={testID}
       >
-        {drawn?.stacked === true ? (
-          <>
-            <Text
-              size={drawn.titleSize}
-              weight="medium"
-              allowFontScaling={false}
-              accessible={false}
-            >
-              {title}
-            </Text>
-            <Text
-              size={drawn.valueSize}
-              weight="medium"
-              allowFontScaling={false}
-              accessible={false}
-              style={styles.secondary}
-            >
-              {rest === 0 ? value : `${lead} ${tail(rest)}`}
-            </Text>
-          </>
-        ) : (
-          <>
-            <Text
-              size={starts.title}
-              weight="medium"
-              allowFontScaling={false}
-              numberOfLines={1}
-              accessible={false}
-              style={styles.title}
-            >
-              {title}
-            </Text>
-            <View style={styles.value}>
-              <Text
-                size={starts.value}
-                weight="medium"
-                allowFontScaling={false}
-                numberOfLines={1}
-                accessible={false}
-                style={[styles.shrink, styles.secondary]}
-              >
-                {lead}
-              </Text>
-              {rest > 0 && (
-                <Text
-                  size={starts.value}
-                  weight="medium"
-                  allowFontScaling={false}
-                  numberOfLines={1}
-                  accessible={false}
-                  style={[styles.kept, styles.secondary]}
-                >
-                  {` ${tail(rest)}`}
-                </Text>
-              )}
-            </View>
-          </>
-        )}
-      </View>
-      <Glyph name="chevron" size={16} ink={tokens.colorInkTertiary} weight={2.3} />
-    </Pressable>
+        {text}
+      </Text>
+    </>
   );
+}
+
+/** The width a row's words have, reported once it is laid out. */
+function useRoom(): [number, (event: LayoutChangeEvent) => void] {
+  const [room, setRoom] = useState(0);
+
+  return [room, (event) => setRoom(event.nativeEvent.layout.width)];
 }
 
 function Drilled({
   title,
   onBack,
   children,
-}: {
+  scale,
+  cap,
+}: Sizing & {
   title: string;
   onBack: () => void;
   children: ReactNode;
 }) {
   const { t } = useTranslation();
+  const [room, onRoom] = useRoom();
 
   return (
     <>
@@ -519,11 +513,20 @@ function Drilled({
         style={({ pressed }) => [styles.back, pressed && styles.pressed]}
         accessibilityRole="button"
         accessibilityLabel={t('eventsSearch.backFrom', { title })}
+        testID="demo.filterSize.back"
       >
-        <Glyph name="back" size={16} ink={tokens.colorAccentText} weight={2.3} />
-        <Text size={16} weight="semibold">
-          {title}
-        </Text>
+        <Glyph name="back" size={18} ink={tokens.colorAccentText} weight={2.4} />
+        <View style={styles.words} onLayout={onRoom}>
+          <LevelWords
+            text={title}
+            size={16}
+            weight="bold"
+            role="header"
+            room={room}
+            scale={scale}
+            cap={cap}
+          />
+        </View>
       </Pressable>
       <View style={styles.rule} />
       {children}
@@ -531,18 +534,103 @@ function Drilled({
   );
 }
 
-function Choice({ word, on, onPress }: { word: string; on: boolean; onPress: () => void }) {
+function Choice({
+  kind,
+  word,
+  on,
+  onPress,
+  testID,
+  scale,
+  cap,
+}: Sizing & {
+  kind: 'checkbox' | 'radio';
+  word: string;
+  on: boolean;
+  onPress: () => void;
+  testID: string;
+}) {
+  const [room, onRoom] = useRoom();
+
   return (
     <Pressable
       onPress={onPress}
       style={({ pressed }) => [styles.choice, pressed && styles.pressed]}
-      accessibilityRole="checkbox"
+      accessibilityRole={kind}
       accessibilityState={{ checked: on }}
+      accessibilityLabel={word}
+      testID={testID}
     >
-      <Text size={16} weight="medium" style={styles.shrink}>
-        {word}
-      </Text>
-      {on && <Glyph name="tick" size={18} ink={tokens.colorAccentText} weight={2.5} />}
+      {kind === 'radio' ? (
+        <RadioMark on={on} />
+      ) : (
+        <View style={[styles.box, on ? styles.boxOn : styles.boxOff]}>
+          {on && <Glyph name="tick" size={14} ink={tokens.colorInkOnDark} weight={3} />}
+        </View>
+      )}
+      <View style={styles.words} onLayout={onRoom}>
+        <LevelWords
+          text={word}
+          size={16}
+          weight={on ? 'semibold' : 'medium'}
+          room={room}
+          style={on && styles.on}
+          scale={scale}
+          cap={cap}
+        />
+      </View>
+    </Pressable>
+  );
+}
+
+function DayLabel({ label, scale, cap }: Sizing & { label: string }) {
+  const [room, onRoom] = useRoom();
+
+  return (
+    <View onLayout={onRoom}>
+      <LevelWords text={label} size={13} weight="semibold" room={room} scale={scale} cap={cap} />
+    </View>
+  );
+}
+
+/** Main's date box (MomentBox, year left out), its words at the stand-in size. */
+function DayBox({
+  label,
+  words,
+  onPress,
+  testID,
+  scale,
+  cap,
+}: Sizing & {
+  label: string;
+  words: string;
+  onPress: () => void;
+  testID: string;
+}) {
+  const [room, onRoom] = useRoom();
+
+  return (
+    <Pressable
+      onPress={onPress}
+      style={({ pressed }) => [
+        styles.dayBox,
+        datesStacked(scale) && styles.dayBoxGrown,
+        pressed && styles.dayBoxPressed,
+      ]}
+      accessibilityRole="button"
+      accessibilityLabel={`${label}, ${words}`}
+      testID={testID}
+    >
+      <View onLayout={onRoom}>
+        <LevelWords
+          text={words}
+          size={15}
+          weight="medium"
+          room={room}
+          style={styles.figures}
+          scale={scale}
+          cap={cap}
+        />
+      </View>
     </Pressable>
   );
 }
@@ -557,16 +645,7 @@ const styles = StyleSheet.create({
     gap: tokens.spaceMd,
     paddingHorizontal: tokens.spacePillEnd,
   },
-  topStacked: { paddingVertical: tokens.spaceSm },
   pressed: { backgroundColor: tokens.colorInset },
-  beside: { flex: 1, minWidth: 0, flexDirection: 'row', alignItems: 'center', gap: tokens.spaceMd },
-  stacked: { flex: 1, minWidth: 0, gap: tokens.spaceXxs },
-  waiting: { opacity: 0 },
-  title: { flexShrink: 0 },
-  value: { flex: 1, minWidth: 0, flexDirection: 'row', justifyContent: 'flex-end' },
-  shrink: { flexShrink: 1 },
-  kept: { flexShrink: 0 },
-  secondary: { color: tokens.colorInkSecondary },
   on: { color: tokens.colorAccentText },
   rule: { height: 1, marginVertical: tokens.spaceXs, backgroundColor: tokens.colorBorder },
   back: {
@@ -580,8 +659,35 @@ const styles = StyleSheet.create({
     minHeight: tokens.sizeHit,
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
     gap: tokens.spaceMd,
     paddingHorizontal: tokens.spacePillEnd,
+    paddingVertical: tokens.spaceXxs,
   },
+  words: { flex: 1, minWidth: 0 },
+  waiting: { opacity: 0 },
+  box: { width: 22, height: 22, borderRadius: 7, alignItems: 'center', justifyContent: 'center' },
+  boxOn: { backgroundColor: tokens.colorAccent },
+  boxOff: { borderWidth: 2, borderColor: tokens.colorFieldBorder },
+  between: {
+    flexDirection: 'row',
+    gap: tokens.spaceSm,
+    paddingHorizontal: tokens.spacePillEnd,
+    paddingTop: tokens.spaceXxs,
+    paddingBottom: tokens.spaceMd,
+  },
+  betweenStacked: { flexDirection: 'column', gap: tokens.spaceMd },
+  day: { flex: 1, gap: 5 },
+  dayStacked: { gap: 5 },
+  dayBox: {
+    minHeight: tokens.sizeHit,
+    justifyContent: 'center',
+    paddingHorizontal: tokens.spaceLg - 1.5,
+    borderWidth: 1.5,
+    borderRadius: tokens.radiusRow,
+    borderColor: tokens.colorFieldBorder,
+    backgroundColor: tokens.colorCard,
+  },
+  dayBoxGrown: { paddingVertical: tokens.spaceXs },
+  dayBoxPressed: { opacity: tokens.opacityPressed },
+  figures: { fontVariant: ['tabular-nums'] },
 });

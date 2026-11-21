@@ -5,7 +5,9 @@ declare(strict_types=1);
 namespace App\Repository;
 
 use App\Entity\Event;
+use App\Entity\Organisation;
 use App\Entity\ScheduledPayment;
+use App\Entity\VendorEngagement;
 use App\Http\Access\Interfaces\EventScopedRepositoryInterface;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\Persistence\ManagerRegistry;
@@ -47,6 +49,36 @@ final class ScheduledPaymentRepository extends ServiceEntityRepository implement
             ->setParameter('event', $event->getId(), 'uuid')
             ->orderBy('p.dueOn', 'ASC')
             ->addOrderBy('p.id', 'ASC')
+            ->getQuery()
+            ->getResult();
+    }
+
+    /** Paid ones and ones added as already made count; cancelled ones do not, as in what scheduled sums (sc-88). */
+    public function hasScheduled(VendorEngagement $engagement): bool
+    {
+        return null !== $this->createQueryBuilder('p')
+            ->select('1')
+            ->where('p.engagement = :engagement')
+            ->andWhere('p.cancelledAt IS NULL')
+            ->setParameter('engagement', $engagement->getId(), 'uuid')
+            ->setMaxResults(1)
+            ->getQuery()
+            ->getOneOrNullResult();
+    }
+
+    /** @return list<ScheduledPayment> neither paid nor cancelled, on the organisation's events that are not deleted */
+    public function findOwedInOrganisation(Organisation $organisation): array
+    {
+        /** @var list<ScheduledPayment> */
+        return $this->createQueryBuilder('p')
+            ->join('p.engagement', 'e')
+            ->join('e.event', 'v')
+            ->where('v.organisation = :organisation')
+            ->andWhere('v.deletedAt IS NULL')
+            ->andWhere('p.paidAt IS NULL')
+            ->andWhere('p.cancelledAt IS NULL')
+            ->setParameter('organisation', $organisation->getId(), 'uuid')
+            ->orderBy('p.id', 'ASC')
             ->getQuery()
             ->getResult();
     }

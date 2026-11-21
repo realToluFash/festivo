@@ -110,3 +110,16 @@ def fetch(base, path, secret, timeout=PEER_SECONDS):
     except (OSError, ValueError) as error:
         reason = getattr(error, "reason", None) or error
         return 502, json.dumps({"error": f"it did not answer ({reason})"}).encode()
+
+
+def send(base, path, secret, body, timeout=PEER_SECONDS):
+    """Posts JSON to a peer. True when it took it."""
+    request = urllib.request.Request(urllib.parse.urljoin(base.rstrip("/") + "/", path),
+                                     data=body, method="POST",
+                                     headers={"Authorization": f"Bearer {secret or ''}",
+                                              "Content-Type": "application/json"})
+    try:
+        with urllib.request.urlopen(request, timeout=timeout) as answer:
+            return answer.status < 300
+    except (OSError, ValueError):
+        return False

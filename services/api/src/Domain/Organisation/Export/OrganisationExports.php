@@ -17,6 +17,7 @@ use App\Http\Exception\ApiException;
 use App\Repository\OrganisationExportRepository;
 use DateInterval;
 use DateTimeImmutable;
+use DateTimeZone;
 use Doctrine\DBAL\LockMode;
 use Doctrine\ORM\EntityManagerInterface;
 use Psl\Iter;
@@ -33,9 +34,6 @@ final readonly class OrganisationExports
     public const string ASKED = 'organisation.export_asked';
 
     public const string DOWNLOADED = 'organisation.export_downloaded';
-
-    /** A try still running is left alone this long before the next run tries again. */
-    public const string RETRY_AFTER = 'PT5M';
 
     public const string CONTENT_TYPE = 'application/zip';
 
@@ -94,7 +92,7 @@ final readonly class OrganisationExports
     {
         $now = $this->clock->now();
 
-        if (!$this->organisationExportRepository->claimTry($export, $now, $now->sub(new DateInterval(self::RETRY_AFTER)))) {
+        if (!$this->organisationExportRepository->claimTry($export, $now, $now->sub(new DateInterval(OrganisationExport::RETRY_AFTER)))) {
             return;
         }
 
@@ -124,7 +122,7 @@ final readonly class OrganisationExports
     /** Each export still preparing whose last try has had its time, tried again. */
     public function prepareDue(): int
     {
-        $due = $this->organisationExportRepository->findDue($this->clock->now()->sub(new DateInterval(self::RETRY_AFTER)));
+        $due = $this->organisationExportRepository->findDue($this->clock->now()->sub(new DateInterval(OrganisationExport::RETRY_AFTER)));
 
         foreach ($due as $export) {
             $this->prepare($export);
@@ -155,6 +153,6 @@ final readonly class OrganisationExports
         ]);
         $this->entityManager->flush();
 
-        return new DownloadedArchive(Str\format('%s %s.zip', $organisation->getName(), $export->getAskedAt()->format('Y-m-d')), $chunks);
+        return new DownloadedArchive(Str\format('%s %s.zip', $organisation->getName(), $export->getAskedAt()->setTimezone(new DateTimeZone('UTC'))->format('Y-m-d')), $chunks);
     }
 }

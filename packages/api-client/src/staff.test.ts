@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { asStaffPlan } from './staff.ts';
+import { asStaffLinkWindow, asStaffPlan } from './staff.ts';
 
 const tablesOf = (count: number) =>
   Array.from({ length: count }, (_, n) => ({ id: `t${n + 1}`, name: `T${n + 1}` }));
@@ -20,6 +20,8 @@ const entry = {
     { id: 'h1', startsAt: '2026-11-07T16:00:00+01:00', endsAt: '2026-11-08T01:00:00+01:00' },
   ],
   link: 'no_mobile',
+  linkBy: null,
+  linkAt: null,
   contactsErased: false,
 };
 
@@ -99,5 +101,16 @@ describe('asStaffPlan', () => {
 
     expect(asStaffPlan(withoutStations)).toBeNull();
     expect(asStaffPlan({ ...plan, staff: [odd] })).toBeNull();
+  });
+});
+
+describe('asStaffLinkWindow', () => {
+  it('reads a link not open yet with no time as one for someone with no shift', () => {
+    expect(asStaffLinkWindow({ state: 'not_yet' })).toEqual({ state: 'not_yet', from: null });
+    expect(asStaffLinkWindow({ state: 'not_yet', from: '2026-10-24T05:00:00+01:00' })).toEqual({
+      state: 'not_yet',
+      from: '2026-10-24T05:00:00+01:00',
+    });
+    expect(asStaffLinkWindow({ state: 'not_yet', from: 5 })).toBeNull();
   });
 });

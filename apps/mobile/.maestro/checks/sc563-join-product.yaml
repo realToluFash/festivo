@@ -4,7 +4,7 @@ appId: host.exp.Exponent
 - openLink: ${METRO_URL}/--/join/${TOKEN}
 - extendedWaitUntil:
     visible:
-      id: join.managed
+      text: 'Managed by.*'
     timeout: 30000
 - waitForAnimationToEnd:
     timeout: 5000

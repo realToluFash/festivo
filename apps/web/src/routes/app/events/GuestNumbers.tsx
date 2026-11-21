@@ -62,7 +62,7 @@ export function GuestNumbers({ event }: { event: OrganisationEvent }) {
   }, [event.id, attempt, answeredAgain]);
 
   useHubTopics(
-    [realtimeTopic('EventHeadcount', event.id)],
+    [realtimeTopic('EventHeadcount', event.id), realtimeTopic('EventCheckIn', event.id)],
     () => api.guestsSubscription(event.id),
     (data) => {
       const headcount = asHeadcount((data as { headcount?: unknown } | null)?.headcount);

@@ -84,6 +84,8 @@ export interface AuditEntry {
   /** The event it is on, for the Event filter. */
   event: string | null;
   changes: string | null;
+  /** What an entry recorded beside any change, each a row of its own: an export's format, filters and count, or a plan change's reason. */
+  recorded?: readonly { label: string; value: string }[];
   address: string | null;
   device: string | null;
   reference: string;
@@ -116,6 +118,22 @@ const section = (type: AuditType, area: string) => ({
 
 /** Newest first, the instants in UTC: Lagos is an hour ahead. */
 export const ENTRIES: readonly AuditEntry[] = [
+  {
+    ...quiet,
+    ...FOLAKE,
+    id: 'exported',
+    at: '2026-10-19T10:42:09Z',
+    what: 'Exported the audit log',
+    type: 'Audit log',
+    action: 'audit_log.exported',
+    on: ORGANISATION,
+    reference: '7c3e9a14-2b6d-4f81-9e05-d8a1f62b3c47',
+    recorded: [
+      { label: 'Format', value: 'CSV' },
+      { label: 'Filters', value: 'Person: Priya Shah · Type: Event access' },
+      { label: 'Entries', value: '3' },
+    ],
+  },
   {
     ...quiet,
     ...FOLAKE,
@@ -311,6 +329,20 @@ export const ENTRIES: readonly AuditEntry[] = [
     on: { name: TOLA, href: null, gone: false },
     event: TOLA,
     reference: '1c9f5a8e-3d7b-4e2c-b6a1-9f4d2e7c0b38',
+  },
+  {
+    ...quiet,
+    id: 'planChanged',
+    at: '2026-10-16T08:20:14Z',
+    what: 'Changed the plan of Ire Events',
+    who: 'Soirely support',
+    whoEmail: null,
+    type: 'Organisation',
+    action: 'organisation.plan_changed',
+    on: ORGANISATION,
+    reference: '3b8e1f6a-0c4d-4a92-b7e5-6d2f9a1c8e07',
+    changes: 'Plan: Free → Enterprise',
+    recorded: [{ label: 'Reason', value: 'QA retest' }],
   },
   {
     ...quiet,

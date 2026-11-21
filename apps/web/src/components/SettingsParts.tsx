@@ -5,6 +5,7 @@ import {
   useContext,
   useEffect,
   useId,
+  useLayoutEffect,
   useRef,
   useState,
 } from 'react';
@@ -132,6 +133,79 @@ export function BackRow({
 
 const PIECES = [1, 2, 3, 4, 5, 6];
 
+/** p6's rotated box, from the card's top edge down and from its right edge in. */
+const P6 = { top: 145, bottom: 163, fromRight: 219 };
+
+function wordBoxes(box: Element): Element[] {
+  return [...box.children].flatMap((child) => {
+    if (child.matches('.desk-step')) return [];
+    return child.querySelector('.desk-step') == null ? [child] : wordBoxes(child);
+  });
+}
+
+type LineBox = { top: number; bottom: number; right: number };
+
+function lineBox(glyphs: DOMRect, lineHeight: number): LineBox {
+  if (Number.isNaN(lineHeight)) return glyphs;
+  const centre = (glyphs.top + glyphs.bottom) / 2;
+  return { top: centre - lineHeight / 2, bottom: centre + lineHeight / 2, right: glyphs.right };
+}
+
+function lines(word: Element): LineBox[] {
+  const texts = document.createTreeWalker(word, NodeFilter.SHOW_TEXT);
+  const found: LineBox[] = [];
+  const range = document.createRange();
+  for (let text = texts.nextNode(); text != null; text = texts.nextNode()) {
+    const owner = text.parentElement ?? word;
+    const lineHeight = Number.parseFloat(getComputedStyle(owner).lineHeight);
+    range.selectNodeContents(text);
+    found.push(...[...range.getClientRects()].map((glyphs) => lineBox(glyphs, lineHeight)));
+  }
+  return found;
+}
+
+function onP6(line: LineBox, card: DOMRect): boolean {
+  return (
+    line.bottom - card.top > P6.top &&
+    line.top - card.top < P6.bottom &&
+    card.right - line.right < P6.fromRight
+  );
+}
+
+function useWordsOnP6(card: RefObject<HTMLElement | null>, inner: RefObject<HTMLElement | null>) {
+  const [covered, setCovered] = useState(false);
+
+  useLayoutEffect(() => {
+    const top = card.current;
+    const box = inner.current;
+    if (top == null || box == null) return undefined;
+    let live = true;
+    const check = () => {
+      if (!live) return;
+      const edges = top.getBoundingClientRect();
+      setCovered(wordBoxes(box).some((word) => lines(word).some((line) => onP6(line, edges))));
+    };
+    const sizes = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(check);
+    const watch = () => {
+      sizes?.disconnect();
+      [box, ...wordBoxes(box)].forEach((node) => sizes?.observe(node));
+      check();
+    };
+    const changes = new MutationObserver(watch);
+    changes.observe(box, { childList: true, subtree: true, characterData: true });
+    watch();
+    void document.fonts?.ready.then(check);
+
+    return () => {
+      live = false;
+      sizes?.disconnect();
+      changes.disconnect();
+    };
+  }, [card, inner]);
+
+  return covered;
+}
+
 /** B's summary card: Confetti, what it says, and its one step at the foot. */
 export function Card({
   size = 'page',
@@ -140,12 +214,21 @@ export function Card({
   size?: 'page' | 'person' | 'column';
   children: ReactNode;
 }) {
+  const card = useRef<HTMLElement>(null);
+  const inner = useRef<HTMLDivElement>(null);
+  const covered = useWordsOnP6(card, inner);
+
   return (
-    <section className={`desk-card is-${size}`}>
+    <section
+      ref={card}
+      className={`desk-card desk-summary is-${size}${covered ? ' is-p6-covered' : ''}`}
+    >
       {PIECES.map((piece) => (
         <span key={piece} className={`desk-piece p${piece}`} aria-hidden="true" />
       ))}
-      <div className="desk-card-inner">{children}</div>
+      <div ref={inner} className="desk-card-inner">
+        {children}
+      </div>
     </section>
   );
 }

@@ -9,6 +9,7 @@ import {
 
 import { type WeightName } from '../theme/fonts.ts';
 import {
+  atAccessibilitySizes,
   type DrawnTitle,
   fitWidest,
   lineStart,
@@ -56,8 +57,8 @@ export function MeasuredWords({
       >
         {[...new Set(words)].map((word) => (
           <Text
-            // A new Text per start, so a layout read at the last start is never filed under this one when the title's cap moves (sc-69816).
-            key={`${look.maxFontSizeMultiplier ?? 1}|${word}`}
+            // A new Text per size and start, so a layout read at the last one is never filed under this one when the title's cap moves (sc-69816, sc-74113).
+            key={`${look.size ?? ''}|${look.maxFontSizeMultiplier ?? 1}|${word}`}
             {...look}
             style={[look.style, styles.word]}
             onLayout={(event) => onWidth(word, event.nativeEvent.layout.width)}
@@ -281,6 +282,43 @@ export function useTitleCap(at: string, size: number) {
   return { ...titleCapOn(drawn, key, size, fontScale), onDrawn };
 }
 
+/** A menu row's words: main's text at the standard sizes; from AX1 no larger than the page title, wrapping between words, a piece too wide for its line stepping down until it fits whole (sc-75213, sc-78219). */
+export function MenuWords({
+  size,
+  weight,
+  style,
+  accessible = false,
+  accessibilityRole,
+  children,
+}: {
+  size: number;
+  weight: 'medium' | 'semibold' | 'bold';
+  style?: StyleProp<TextStyle>;
+  accessible?: boolean;
+  accessibilityRole?: 'header';
+  children: string;
+}) {
+  const { fontScale } = useWindowDimensions();
+  const [room, setRoom] = useState(0);
+  const look = { size, weight, accessible, accessibilityRole, style };
+
+  if (!atAccessibilitySizes(fontScale)) {
+    return (
+      <Text {...look} style={[styles.words, style]}>
+        {children}
+      </Text>
+    );
+  }
+
+  return (
+    <View style={styles.words} onLayout={(event) => setRoom(event.nativeEvent.layout.width)}>
+      <CappedWholeWords {...look} room={room} breakAfterHyphens>
+        {children}
+      </CappedWholeWords>
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
   // Each word at its full size, unbounded, so a text can be sized before any of it breaks a word.
   measure: {
@@ -294,4 +332,6 @@ const styles = StyleSheet.create({
   // A caller's stretch or flex would make a word as wide as the box above, and every text would step down to its floor (sc-37693).
   word: { flex: 0, alignSelf: 'flex-start' },
   pending: { opacity: 0 },
+  // Grows across a row and stretches down a column, where flex 1 would leave it no height.
+  words: { flexGrow: 1, flexShrink: 1, minWidth: 0 },
 });

@@ -38,6 +38,10 @@ describe('joining, every state (spec §5)', () => {
       checking: 'enter',
       refused: 'enter',
       'too-many': 'tooMany',
+      name: 'named',
+      'name-blank': 'named',
+      joining: 'named',
+      'name-used-up': 'named',
       event: 'event',
       'event-blank': 'event',
       'event-short': 'event',
@@ -51,6 +55,8 @@ describe('joining, every state (spec §5)', () => {
       'code-exhausted': 'code',
       'code-failed': 'code',
       'used-up': 'event',
+      'code-second-number': 'code',
+      'second-number': 'event',
       in: 'in',
       'event-in': 'inside',
       'event-in-view': 'inside',
@@ -67,6 +73,7 @@ describe('joining, every state (spec §5)', () => {
   it('holds checking and sending for a link to show them', () => {
     expect(flowAt('checking').held).toBe(true);
     expect(flowAt('sending').held).toBe(true);
+    expect(flowAt('joining').held).toBe(true);
     expect(flowAt('enter').held).toBe(false);
   });
 
@@ -74,7 +81,7 @@ describe('joining, every state (spec §5)', () => {
     expect(flowAt('enter-blank').said).toBe('Enter the door code.');
     expect(flowAt('enter-short').said).toBe('A door code is 8 letters and numbers.');
     expect(flowAt('refused').said).toBe(
-      'That code doesn’t work. Check it with whoever gave it to you.',
+      'That code does not work. Check it with whoever gave it to you.',
     );
     expect(flowAt('event-blank')).toMatchObject({
       nameSaid: 'Enter your full name.',
@@ -84,6 +91,14 @@ describe('joining, every state (spec §5)', () => {
       'That number looks too short for Portugal. Check it and try again.',
     );
     expect(flowAt('used-up')).toMatchObject({ usedUp: true, full: true, name: 'Hugo Faria' });
+  });
+
+  it('asks a name only while the device holds the grant (sc-72, until sc-4235)', () => {
+    expect(flowAt('name')).toMatchObject({ name: 'João Pereira', nameSaid: null, usedUp: false });
+    expect(flowAt('name-blank')).toMatchObject({ name: '', nameSaid: 'Enter your full name.' });
+    expect(flowAt('name-used-up')).toMatchObject({ name: 'Hugo Faria', usedUp: true, full: false });
+    expect(W.join).toBe('Join');
+    expect(W.joining).toBe('Joining…');
   });
 
   it('opens More inside the event only for more-in', () => {
@@ -168,6 +183,20 @@ describe('a name and a number, then the phone code (sc-4235)', () => {
       step: 'event',
       usedUp: true,
     });
+  });
+
+  it('returns a second number on an account to the name and number, both kept (sc-4235)', () => {
+    expect(afterPhoneCode(flowAt('code-second-number'))).toMatchObject({
+      step: 'event',
+      name: 'Rita Sousa',
+      number: '916 480 233',
+      numberSaid: W.secondNumber,
+      usedUp: false,
+    });
+    expect(flowAt('second-number')).toMatchObject({ step: 'event', numberSaid: W.secondNumber });
+    expect(W.secondNumber).toBe(
+      'This is an alternative number on a Soirely account, so it cannot sign you in. Enter that account’s primary number, or make this one primary.',
+    );
   });
 
   it('starts again signed out with nothing kept', () => {

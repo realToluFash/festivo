@@ -1,3 +1,6 @@
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
+
 import { act, cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import { RouterProvider, createMemoryRouter } from 'react-router';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -235,7 +238,7 @@ describe('the Budget page at a desk in A (sc-31779)', () => {
     expect(paid).toContain('Client total');
     expect(paid).toContain('Margin after payments£4,856 to £5,522');
     expect(paid).toContain('19.2% to 18.9%');
-    expect(screen.getByText('Below cost: margin −£100.')).toBeTruthy();
+    expect(screen.getByText('Below cost: margin -£100.00.')).toBeTruthy();
     cleanup();
     await open(at('margin_before_paid'));
     const card = screen.getByRole('region', { name: 'Budget' }).textContent ?? '';
@@ -247,6 +250,26 @@ describe('the Budget page at a desk in A (sc-31779)', () => {
       'Client total',
     );
   });
+
+  it(
+    'wraps the who-sees pill inside the card, by the rule every glass pill takes (sc-30767)',
+    SLOW,
+    async () => {
+      const css = readFileSync(join(import.meta.dirname, 'demo.css'), 'utf8');
+      const rule = /\.glass-wraps \.desk-glass:is\(li, span\) \{([^}]*)\}/u.exec(css)?.[1] ?? '';
+
+      expect(rule).toContain('white-space: normal;');
+      expect(rule).toContain('height: auto;');
+      expect(rule).toContain('min-height: 28px;');
+      expect(rule).toContain('max-width: 100%;');
+
+      await open(at('margin'));
+      const pill = screen.getByText('Only owners, admins and this event’s lead see this');
+      expect(pill.tagName).toBe('LI');
+      expect(pill.classList.contains('desk-glass')).toBe(true);
+      expect(pill.parentElement?.classList.contains('glass-wraps')).toBe(true);
+    },
+  );
 
   it('is not available to someone who can only edit the event', SLOW, async () => {
     await open(at('populated', '&as=kemi'));
@@ -271,12 +294,81 @@ describe('the Budget page at a desk in A (sc-31779)', () => {
     fireEvent.click(within(dialog).getAllByRole('button', { name: 'Paid' })[0]!);
     fireEvent.click(within(dialog).getByRole('button', { name: 'Paid' }));
     expect(within(dialog).getByText('Nothing left to pay from this reminder')).toBeTruthy();
+    expect(within(dialog).getAllByRole('button', { name: 'Undo' })).toHaveLength(2);
     cleanup();
     await open(at('due_read_only'));
     expect(
       within(await screen.findByRole('dialog', {}, SLOW)).queryByRole('button', { name: 'Paid' }),
     ).toBeNull();
   });
+
+  it(
+    'names a reminder across two events, each in its currency, with no total (sc-1331)',
+    SLOW,
+    async () => {
+      await open(at('due_several'));
+      const dialog = await screen.findByRole('dialog', {}, SLOW);
+
+      expect(
+        within(dialog).getByText('From the reminder sent Nov 1 · 3 payments across 2 events'),
+      ).toBeTruthy();
+      expect(within(dialog).getByText('€1,200.00')).toBeTruthy();
+      expect(within(dialog).getAllByRole('button', { name: 'Paid' })).toHaveLength(3);
+      expect(within(dialog).queryByText(/Total/)).toBeNull();
+    },
+  );
+
+  it(
+    'says what changed since, and settles with a link for each event (sc-1331)',
+    SLOW,
+    async () => {
+      await open(at('due_changed'));
+      let dialog = await screen.findByRole('dialog', {}, SLOW);
+
+      expect(within(dialog).getByText('Nothing left to pay from this reminder')).toBeTruthy();
+      expect(within(dialog).getByText(/No longer on the schedule$/)).toBeTruthy();
+      expect(within(dialog).getByText(/Paid by Julien Moreau on Nov 2$/)).toBeTruthy();
+      expect(within(dialog).getByText(/Cancelled$/)).toBeTruthy();
+      expect(within(dialog).queryByRole('button', { name: 'Paid' })).toBeNull();
+      cleanup();
+      await open(at('due_done_several'));
+      dialog = await screen.findByRole('dialog', {}, SLOW);
+      expect(
+        within(dialog).getByRole('link', { name: 'Everything due on Adaeze & Tunde’s wedding' }),
+      ).toBeTruthy();
+      expect(
+        within(dialog).getByRole('link', { name: 'Everything due on Gala Fundación Lucía' }),
+      ).toBeTruthy();
+    },
+  );
+
+  it(
+    'shows a refused tap in sc-88’s words under its row, and not found alone (sc-1331)',
+    SLOW,
+    async () => {
+      await open(at('due_refused_paid'));
+      let dialog = await screen.findByRole('dialog', {}, SLOW);
+
+      expect(within(dialog).getByRole('alert').textContent).toBe(
+        'Julien Moreau has already marked this paid, so nothing has changed.',
+      );
+      expect(within(dialog).getAllByRole('button', { name: 'Paid' })).toHaveLength(1);
+      cleanup();
+      await open(at('due_refused_plan'));
+      dialog = await screen.findByRole('dialog', {}, SLOW);
+      expect(within(dialog).getByRole('alert').textContent).toBe(
+        'Payments cannot be marked paid on this organisation’s plan, so nothing has changed.',
+      );
+      expect(within(dialog).queryByRole('button', { name: 'Paid' })).toBeNull();
+      expect(within(dialog).queryByRole('link', { name: 'Paid a different amount' })).toBeNull();
+      cleanup();
+      await open(at('due_not_found'));
+      dialog = await screen.findByRole('dialog', {}, SLOW);
+      expect(within(dialog).getByText('We cannot find these payments.')).toBeTruthy();
+      expect(within(dialog).getByRole('link', { name: 'Go to your events' })).toBeTruthy();
+      expect(within(dialog).queryByRole('button', { name: 'Paid' })).toBeNull();
+    },
+  );
 
   it('opens Save as template over the page, from its row and from save_taken', SLOW, async () => {
     await open(at('save_taken'));

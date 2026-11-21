@@ -13,7 +13,8 @@ import { type CeilingKey, CEILINGS, budgetAt, ceilingState } from './budgetSampl
 import { type DemoGroup } from './budgetSample.ts';
 import { type CeilingState } from './BudgetParts.tsx';
 import { type Category } from './vendors.ts';
-import { exampleIn, typedMinor } from './quotes.ts';
+import { NO_COSTS_STATES, exampleIn, typedMinor } from './quotes.ts';
+import { headlineOf, ratesSample } from './staffRates.ts';
 import { CATEGORY_WORDS } from './vendorsWords.ts';
 
 /** The Budget home's states (spec §9: the Web board, the Ceiling board, and the margin and templates states drawn on the home). */
@@ -99,6 +100,8 @@ export const MARGIN_STATES = [
   'price_decimals',
   'margin_live',
   'margin_unset',
+  'fee_priced',
+  'fee_beside_not_priced',
   'free',
 ] as const;
 
@@ -111,6 +114,11 @@ export const DUE_NOW_STATES = [
   'due_refused',
   'due_done',
   'due_read_only',
+  'due_several',
+  'due_refused_paid',
+  'due_refused_plan',
+  'due_done_several',
+  'due_not_found',
 ] as const;
 
 export const HOME_STATES: readonly string[] = [
@@ -135,8 +143,11 @@ export function lineAmounts(line: CostLine, heads: Heads): { settled: number; if
       return { settled: line.rate * DAYS, ifAll: line.rate * DAYS };
     case 'perTable':
       return { settled: line.rate * TABLES, ifAll: line.rate * TABLES };
-    case 'perStaffHour':
-      return { settled: 0, ifAll: 0 };
+    case 'perStaffHour': {
+      const staff = headlineOf(ratesSample()).total;
+
+      return { settled: staff, ifAll: staff };
+    }
     default:
       return { settled: line.rate, ifAll: line.rate };
   }
@@ -174,17 +185,24 @@ export function linesOf(state: string): CostLine[] {
     if (line != null) line.rate = rate;
   };
 
-  if (state === 'all_priced') {
-    set('arch', 45000);
+  if (state === 'all_priced' || FEE_STATES.includes(state)) {
+    set('arch', state === 'fee_beside_not_priced' ? null : 45000);
     set('shuttle', 40000);
   }
+  if (FEE_STATES.includes(state)) lines.push({ ...FEE_LINE });
   if (state === 'rate_saved') set('dinner', 7000);
   if (state === 'removed_priced') return lines.filter((one) => one.id !== 'dj');
   if (state === 'removed_not_priced') return lines.filter((one) => one.id !== 'arch');
   if (state === 'removed_nothing_yet') return lines.filter((one) => one.id !== 'centre');
-  if (state === 'first_time' || state === 'nothing_to_start' || LAST_REMOVED.includes(state))
+  if (
+    state === 'first_time' ||
+    state === 'nothing_to_start' ||
+    LAST_REMOVED.includes(state) ||
+    NO_COSTS_STATES.includes(state)
+  )
     return [];
   if (state === 'add_cost_added') return [...lines, { ...WELCOME_DRINKS }];
+  if (state === 'staff_line') return [...lines, { ...STAFF_LINE }];
 
   return lines;
 }
@@ -291,6 +309,15 @@ export const WELCOME_DRINKS: CostLine = {
   rate: 1200,
 };
 
+/** sc-101: the Budget's one staff-time line, its amount the Staff rates headline. */
+export const STAFF_LINE: CostLine = {
+  id: 'staff',
+  name: 'Staff',
+  category: 'staffing',
+  basis: 'perStaffHour',
+  rate: 0,
+};
+
 export const STAFF_REFUSED =
   'The budget already has a staff-time cost. Choose another way it is counted.';
 
@@ -350,6 +377,7 @@ export function categoryCeilingsLine(ceilings: Partial<Record<CeilingKey, number
 /** The states where the event's only cost, Dinner, has just been removed. */
 export const LAST_REMOVED: readonly string[] = [
   'removed_last',
+  'removed_last_quoted',
   'removed_last_currency',
   'removed_last_expired',
   'undo_refused_currency',
@@ -484,10 +512,18 @@ export const BUDGET_PAGES: readonly DemoGroup[] = [
     states: [
       { to: at('due_now'), name: 'Due now: two payments, Paid or Paid a different amount' },
       { to: at('due_marked'), name: 'One marked paid, with Undo' },
-      { to: at('due_changed'), name: 'Changed since the reminder' },
-      { to: at('due_refused'), name: 'A tap refused' },
-      { to: at('due_done'), name: 'Nothing left to pay' },
+      {
+        to: at('due_changed'),
+        name: 'Changed since the reminder: paid, cancelled, no longer on the schedule',
+      },
+      { to: at('due_refused'), name: 'A tap refused: cancelled' },
+      { to: at('due_refused_paid'), name: 'A tap refused: already paid by someone else' },
+      { to: at('due_refused_plan'), name: 'A tap refused by the plan: the sheet read only' },
+      { to: at('due_done'), name: 'Nothing left to pay, one event' },
       { to: at('due_read_only'), name: 'Read only after a downgrade' },
+      { to: at('due_several'), name: 'Across two events, each in its own currency' },
+      { to: at('due_done_several'), name: 'Nothing left to pay, a link for each event' },
+      { to: at('due_not_found'), name: 'Not found' },
     ],
   },
   {
@@ -506,6 +542,14 @@ export const BUDGET_PAGES: readonly DemoGroup[] = [
       { to: at('margin_live'), name: 'Live: a markup changed in another tab' },
       { to: at('margin_unset'), name: 'No markup set anywhere: each line at its cost' },
       { to: at('populated'), name: 'The plain Budget, with See margin in the title row' },
+      {
+        to: at('fee_priced'),
+        name: 'The plain Budget with a Planning fee: £0.00, priced, no count',
+      },
+      {
+        to: at('fee_beside_not_priced'),
+        name: 'The fee priced beside Aisle arch, not priced: 1 cost not priced yet',
+      },
       { to: at('free', { plan: 'free' }), name: 'A Free organisation: no margin' },
     ],
   },
@@ -534,6 +578,28 @@ export const MARKUPS: Markups = {
 export const NO_MARKUPS: Markups = { event: null, categories: {}, costs: {}, prices: {} };
 
 export const PLANNING_FEE = 300000;
+
+/** sc-75696: the agency's fee as a fixed line at 0 with a client price of its own, which makes it priced. */
+export const FEE_LINE: CostLine = {
+  id: 'fee',
+  name: 'Planning fee',
+  category: 'other',
+  basis: 'fixed',
+  rate: 0,
+};
+
+export const FEE_STATES: readonly string[] = ['fee_priced', 'fee_beside_not_priced'];
+
+export const FEE_MARKUPS: Markups = { ...MARKUPS, prices: { [FEE_LINE.id]: PLANNING_FEE } };
+
+/** The plain face's lines (sc-75696): a line at 0 is priced only with a client price of its own above 0. */
+export function plainLines(lines: readonly CostLine[], markups: Markups): CostLine[] {
+  return lines.map((line) =>
+    line.rate === 0 && line.basis !== 'perStaffHour' && !((markups.prices[line.id] ?? 0) > 0)
+      ? { ...line, rate: null }
+      : line,
+  );
+}
 
 const percentWords = (n: number): string => `${n}%`;
 
@@ -564,8 +630,10 @@ export function markupWords(line: CostLine, markups: Markups): string {
       ? 'at cost, chosen'
       : `${percentWords(category)} markup, ${CATEGORY_WORDS[line.category]}’s`;
 
-  return markups.event == null
-    ? 'no markup set'
+  if (markups.event == null) return 'no markup set';
+
+  return markups.event === 0
+    ? 'at cost, chosen'
     : `${percentWords(markups.event)} markup, the event’s`;
 }
 

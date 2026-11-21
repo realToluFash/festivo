@@ -67,7 +67,7 @@ final class BudgetLineRepository extends ServiceEntityRepository implements Even
     public function markRemovedPastCurrency(Event $event): void
     {
         $this->getEntityManager()
-            ->createQuery('UPDATE App\\Entity\\BudgetLine b SET b.currencyChanged = true, b.label = NULL, b.priceMinor = NULL, b.note = NULL WHERE b.event = :event AND b.removedAt IS NOT NULL')
+            ->createQuery('UPDATE App\\Entity\\BudgetLine b SET b.currencyChanged = true, b.label = NULL, b.priceMinor = NULL, b.note = NULL, b.clientPriceMinor = NULL WHERE b.event = :event AND b.removedAt IS NOT NULL')
             ->setParameter('event', $event->getId(), 'uuid')
             ->execute();
     }

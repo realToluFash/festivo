@@ -297,6 +297,13 @@ final readonly class OrganisationArchive
              WHERE ev.organisation_id = :organisation AND ev.deleted_at IS NULL
              ORDER BY ev.starts_at_utc, j.event_id, j.position, s.starts_at, s.id, p.staff_member_id
             SQL,
+        'staff_rates' => <<<'SQL'
+            SELECT r.id, r.event_id, r.job_id, r.person_id AS staff_id, r.pay, r.amount_minor, ev.currency AS amount_currency, r.set_at
+              FROM staff_rates r
+              JOIN events ev ON ev.id = r.event_id
+             WHERE ev.organisation_id = :organisation AND ev.deleted_at IS NULL
+             ORDER BY ev.starts_at_utc, r.event_id, r.id
+            SQL,
         'staff_stations' => <<<'SQL'
             SELECT t.id, t.event_id, t.kind, t.name, t.section_id, t.lead_id, t.position, t.walk_position
               FROM staff_stations t
@@ -314,11 +321,20 @@ final readonly class OrganisationArchive
             SQL,
         'cost_lines' => <<<'SQL'
             SELECT b.id, b.event_id, b.label, b.category, b.basis, b.price_minor,
-                   CASE WHEN b.price_minor IS NOT NULL THEN ev.currency END AS price_currency, b.note, b.created_at, b.updated_at
+                   CASE WHEN b.price_minor IS NOT NULL THEN ev.currency END AS price_currency, b.note,
+                   b.markup_tenths, b.client_price_minor,
+                   CASE WHEN b.client_price_minor IS NOT NULL THEN ev.currency END AS client_price_currency, b.created_at, b.updated_at
               FROM budget_lines b
               JOIN events ev ON ev.id = b.event_id
              WHERE ev.organisation_id = :organisation AND ev.deleted_at IS NULL AND b.removed_at IS NULL
              ORDER BY ev.starts_at_utc, b.event_id, b.id
+            SQL,
+        'cost_markups' => <<<'SQL'
+            SELECT m.id, m.event_id, m.category, m.markup_tenths, m.created_at, m.updated_at
+              FROM budget_markups m
+              JOIN events ev ON ev.id = m.event_id
+             WHERE ev.organisation_id = :organisation AND ev.deleted_at IS NULL
+             ORDER BY ev.starts_at_utc, m.event_id, m.id
             SQL,
         'quotes' => <<<'SQL'
             SELECT q.id, e.event_id, e.vendor_id, q.covers, q.amount_minor, ev.currency AS amount_currency,
@@ -337,6 +353,22 @@ final readonly class OrganisationArchive
               JOIN events ev ON ev.id = e.event_id
              WHERE ev.organisation_id = :organisation AND ev.deleted_at IS NULL
              ORDER BY ev.starts_at_utc, e.event_id, p.due_on, p.id
+            SQL,
+        'payers' => <<<'SQL'
+            SELECT p.id, p.event_id, p.name, p.note, p.created_at, p.updated_at
+              FROM payers p
+              JOIN events ev ON ev.id = p.event_id
+             WHERE ev.organisation_id = :organisation AND ev.deleted_at IS NULL AND p.removed_at IS NULL
+             ORDER BY ev.starts_at_utc, p.event_id, p.id
+            SQL,
+        'cost_payers' => <<<'SQL'
+            SELECT pp.id, b.event_id, pp.line_id, pp.payer_id, b.payer_split AS split, pp.value,
+                   CASE WHEN b.payer_split = 'fixed' THEN ev.currency END AS value_currency, b.rest_payer_id
+              FROM payer_parts pp
+              JOIN budget_lines b ON b.id = pp.line_id
+              JOIN events ev ON ev.id = b.event_id
+             WHERE ev.organisation_id = :organisation AND ev.deleted_at IS NULL AND b.removed_at IS NULL
+             ORDER BY ev.starts_at_utc, b.event_id, pp.line_id, pp.id
             SQL,
     ];
 

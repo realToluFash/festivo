@@ -97,6 +97,16 @@ export interface RailStop {
   state: 'done' | 'now' | 'next' | 'later';
 }
 
+/** Now's arrived figure (sc-29978): "141/152" over "arrived" beside a ring, or "37" over "arrived" with none while nobody is Coming. */
+export interface ArrivedFigure {
+  count: string;
+  of: string | null;
+  share: number | null;
+  /** "arrived" under the numbers, agreeing with the count. */
+  label: string;
+  spoken: string;
+}
+
 export interface Now {
   event: ShownEvent;
   name: string;
@@ -105,8 +115,8 @@ export interface Now {
   until: string;
   behind: string;
   next: { time: string; title: string };
-  arrived: number;
-  expected: number;
+  /** Null while nobody has arrived (sc-29978). */
+  arrived: ArrivedFigure | null;
   rail: RailStop[];
   /** Where the moment sits along the rail, from 0 at its first stop to 1 at its last. */
   at: number;

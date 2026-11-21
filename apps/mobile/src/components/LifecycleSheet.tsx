@@ -1,6 +1,6 @@
 import { type OrganisationEvent } from '@soirely/api-client';
 import { type ReactNode, type RefObject, useState } from 'react';
-import { ScrollView, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { api } from '../api.ts';
@@ -8,7 +8,7 @@ import { tokens } from '../theme/tokens.ts';
 import { AnswerHeading } from './AnswerHeading.tsx';
 import { DestructiveButton, PrimaryButton, QuietButton, SecondaryButton } from './Buttons.tsx';
 import { useSendingWords } from './ReadOut.tsx';
-import { Sheet, SheetActions } from './Sheet.tsx';
+import { Sheet, SheetActions, SheetScrollView } from './Sheet.tsx';
 import { Text } from './Text.tsx';
 import { type ScreenReaderTarget } from './screenReaderFocus.ts';
 
@@ -185,7 +185,7 @@ export function LifecycleSheet({
           <AnswerHeading answer={retold} size={tokens.typeTitleSection.size} weight="bold">
             {title}
           </AnswerHeading>
-          <ScrollView
+          <SheetScrollView
             style={styles.body}
             contentContainerStyle={styles.lines}
             keyboardShouldPersistTaps="handled"
@@ -196,7 +196,7 @@ export function LifecycleSheet({
               </Text>
             ))}
             {children}
-          </ScrollView>
+          </SheetScrollView>
           <SheetActions>
             {confirm != null ? (
               <>

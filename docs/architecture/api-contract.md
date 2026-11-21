@@ -373,15 +373,20 @@ reading included. Entries are recorded on every plan.
 events, preparing}`: 50 entries a page, newest first, from the last 365 days. Each entry
   carries `at` (UTC), `day` (`YYYY-MM-DD`) and `time` (`HH:mm`) in the caller's zone, `who`
   (`{kind: person|support|system, name, email}`), `what` in words, `on` (`{name, eventId,
-gone}`, `eventId` null once the event is gone), `changes`, `type`, `action` (sc-73's code),
-  and `address` and `device` on Sign-in and security entries only. A start after the end is
-  `422` on `to`, `dates_backwards`.
+gone}`, `eventId` null once the event is gone), `changes`, `recorded`, `type`, `action`
+  (sc-73's code), and `address` and `device` on Sign-in and security entries only.
+  `recorded` (sc-76228) is `[{label, value}]` in the reader's words: what an entry records
+  beside a change, an export's Format, Filters and Entries and a plan change's Reason, which
+  no longer come in `changes`; `[]` on every other entry. A start after the end is `422` on
+  `to`, `dates_backwards`.
 - `POST …/audit-log/views` records the log being opened (`204`); the client sends it once per
   opening, not per filter or page.
 - `POST …/audit-log/exports` with `{format: csv|jsonl}` and the filters: up to 10,000 entries
   answer the file (`200`); up to 1,000,000 answer `202 {id, count, email}`, prepared after the
   response and emailed (`audit_export_ready`) to the person who asked only; more is `422
-audit_export_too_many` before anything starts. Each export is an entry of its own.
+audit_export_too_many` before anything starts. Each export is an entry of its own. The
+  file keeps its twelve columns; its `changes` column joins an entry's `changes` and then its
+  `recorded`, `; ` between.
 - `POST …/audit-log/exports/{exportId}/download` hands the prepared file to the person who
   asked, signed in, for 24 hours from its being ready: `404` for anyone else, `410
 export_expired` after.

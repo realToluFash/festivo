@@ -8,9 +8,10 @@ import {
 } from '@soirely/domain';
 import { type ReactNode, type RefObject, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Navigate, useParams } from 'react-router';
+import { Link, Navigate, useParams } from 'react-router';
 
 import { api } from '../../../api.ts';
+import { Glyph } from '../../../components/Glyph.tsx';
 import { Refreshing } from '../../../components/OfflineBand.tsx';
 import { keepsWhatLoaded, useOffline } from '../../../offline.ts';
 import { keepLoaded, keptFor, keptKeys, rekeep } from '../../../tabKept.ts';
@@ -45,6 +46,7 @@ import { useGoneEvent, useShowEvent } from './EventNav.tsx';
 import { Arrived, Skeleton } from '../../../components/Skeleton.tsx';
 import { NotFound } from '../../public/NotFound.tsx';
 import '../../../components/eventsDesk.css';
+import './budget.css';
 
 type Load =
   | { kind: 'loading' }
@@ -148,16 +150,28 @@ function Withheld() {
   );
 }
 
-/** Without budget.read, as an event of another organisation reads (sc-85): it never says what it is hiding. */
-function EventNotFound() {
+/** Without budget.read, as the Budget's demo draws it (sc-85, sc-101): the event's name, then Not available, and no word of what is withheld. */
+function BudgetWithheld({ event }: { event: OrganisationEvent }) {
   const { t } = useTranslation();
 
   return (
     <div className="event-page">
-      <EventCrumb name={null} />
-      <section className="card">
-        <h1 tabIndex={-1}>{t('eventPage.notFound')}</h1>
-      </section>
+      <EventCrumb
+        name={event.name}
+        area={{
+          label: t('eventPage.notAvailable'),
+          event: `/app/events/${encodeURIComponent(event.id)}`,
+        }}
+      />
+      <div className="bt-gone ev">
+        <h1 className="bt-title" tabIndex={-1}>
+          {t('eventPage.notFound')}
+        </h1>
+        <Link className="desk-text" to="/app/events">
+          <Glyph name="back" size={17} weight={2.4} />
+          {t('eventPage.backToEvents')}
+        </Link>
+      </div>
     </div>
   );
 }
@@ -247,7 +261,7 @@ function EventOf({
   }, [load, eventId]);
   const budgetUnseen =
     page === 'budget' && load.kind === 'loaded' && !canOn(load.event, PAGE_NEEDS.budget);
-  useShowEvent(eventId, load.kind === 'loaded' && !budgetUnseen ? load.event : undefined);
+  useShowEvent(eventId, load.kind === 'loaded' ? load.event : undefined);
   useGoneEvent(
     eventId,
     (page === 'guests' && load.kind === 'notFound') ||
@@ -274,7 +288,7 @@ function EventOf({
     return canOn(load.event, PAGE_NEEDS.menu) ? <MenuArea event={load.event} /> : <Withheld />;
 
   if (page === 'budget' && load.kind === 'loaded')
-    return budgetUnseen ? <EventNotFound /> : <BudgetArea event={load.event} />;
+    return budgetUnseen ? <BudgetWithheld event={load.event} /> : <BudgetArea event={load.event} />;
 
   if (page === 'schedule' && load.kind === 'loaded')
     return canOn(load.event, PAGE_NEEDS.schedule) ? (

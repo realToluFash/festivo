@@ -3,7 +3,7 @@ appId: host.exp.Exponent
 ---
 - extendedWaitUntil:
     visible:
-      id: completeProfile.managed
+      text: 'Managed by.*'
     timeout: 30000
 - waitForAnimationToEnd:
     timeout: 5000

@@ -1,3 +1,4 @@
+import { type StaffHeadline, asStaffHeadline } from './staffRates.ts';
 import { VENDOR_CATEGORIES, type VendorCategory } from './vendors.ts';
 
 /** What a line's rate is multiplied by (sc-83), in the order Add a cost offers them. */
@@ -23,6 +24,7 @@ export interface BudgetLine {
   amount: string | null;
   currency: string;
   note: string | null;
+  notPriced: boolean;
   quantity: BudgetQuantity;
   cost: { confirmed: string; potential: string };
 }
@@ -41,6 +43,8 @@ export interface EventBudget {
   notPriced: number;
   quantities: Record<CostBasis, BudgetQuantity>;
   lines: BudgetLine[];
+  /** Staff rates' headline (sc-101): the staff-time line's amount and the hours behind it. */
+  staff: StaffHeadline;
 }
 
 /** What Add a cost and a rate's change send: the API trims and checks each field (sc-83's Form checks). */
@@ -99,6 +103,7 @@ function asLine(value: unknown): BudgetLine | null {
     amount: textOrNull(one.amount),
     currency: text(one.currency),
     note: textOrNull(one.note),
+    notPriced: one.notPriced === true,
     quantity: asQuantity(one.quantity),
     cost: { confirmed: text(cost.confirmed) || '0', potential: text(cost.potential) || '0' },
   };
@@ -127,6 +132,7 @@ export function asEventBudget(value: unknown): EventBudget {
     lines: (Array.isArray(body.lines) ? body.lines : [])
       .map(asLine)
       .filter((line): line is BudgetLine => line != null),
+    staff: asStaffHeadline(body.staff),
   };
 }
 

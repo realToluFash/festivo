@@ -12,7 +12,7 @@ use BcMath\Number;
 use Psl\Iter;
 use Psl\Vec;
 
-/** Two figures, never one (sc-84): only a per-head line differs between them, priced at `ifAllCome` for `potential`. */
+/** Two figures, never one (sc-84): only a per-head line differs between them, priced at `ifAllCome` for `potential`. The staff-time line is Staff rates' total at both (sc-101). */
 final readonly class BudgetRange
 {
     /** @param list<LineCost> $lines */
@@ -31,6 +31,10 @@ final readonly class BudgetRange
     {
         $costs = Vec\map($lines, static function (BudgetLine $line) use ($facts): LineCost {
             $quantity = QuantityResolver::resolve($line->getBasis(), $facts);
+            if (CostBasis::PerStaffHour === $line->getBasis()) {
+                return new LineCost($line, $quantity, new Number($facts->staffCostMinor), new Number($facts->staffCostMinor));
+            }
+
             $price = new Number($line->getPriceMinor() ?? 0);
             $potential = CostBasis::PerHead === $line->getBasis() ? $facts->ifAllCome : $quantity->count;
 
@@ -42,7 +46,7 @@ final readonly class BudgetRange
             self::sum(Vec\map($costs, static fn (LineCost $cost): Number => $cost->potentialMinor)),
             $facts->accepted,
             $facts->ifAllCome,
-            Iter\count(Vec\filter($lines, static fn (BudgetLine $line): bool => 0 === $line->getPriceMinor())),
+            Iter\count(Vec\filter($lines, static fn (BudgetLine $line): bool => $line->isNotPriced())),
             $costs,
         );
     }

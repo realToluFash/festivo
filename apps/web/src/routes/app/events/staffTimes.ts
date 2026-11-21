@@ -64,6 +64,19 @@ export function rangeWords(
   });
 }
 
+/** A shift's words that wrap only after its day's comma and before its end, as the Roster beside an open person needs (sc-3912). */
+export function shiftBreaks(text: string): string {
+  const words = text.split(' ');
+  const start = words.findIndex((word) => /^\d{1,2}:\d{2}$/.test(word));
+  return words.reduce(
+    (line, word, i) =>
+      i === 0
+        ? word
+        : `${line}${words[i - 1]?.endsWith(',') === true || (start >= 0 && i === start + 2) ? ' ' : '\u00a0'}${word}`,
+    '',
+  );
+}
+
 /** The date and time a moment reads in a zone, as the form's fields hold them. */
 export function wallOf(moment: string | number, timeZone: string): { date: string; time: string } {
   const parts = new Intl.DateTimeFormat('en-CA', {

@@ -324,7 +324,7 @@ export function EventsScreen({
         () => undefined,
       );
     const stop = followReadingAgain(
-      ids.map((id) => realtimeTopic('EventHeadcount', id)),
+      ids.flatMap((id) => [realtimeTopic('EventHeadcount', id), realtimeTopic('EventCheckIn', id)]),
       () => api.headcountsSubscription(organisationId, ids),
       () => void readFigures(),
       FIGURES_AGAIN_MS,
@@ -387,7 +387,7 @@ export function EventsScreen({
     router.push(guestsHref(id, filter));
   };
 
-  const searchRow = (off: boolean) => (
+  const searchRow = (off: boolean, filterUnseen = false) => (
     <SearchRow
       offline={searchOff}
       field={
@@ -408,6 +408,7 @@ export function EventsScreen({
           off={off}
           open={menuAt != null}
           onPress={() => anchorUnder(filterRef, setMenuAt)}
+          unseen={filterUnseen}
         />
       }
     />
@@ -440,7 +441,7 @@ export function EventsScreen({
 
   const list = !reads ? null : load.kind === 'loading' ? (
     <View style={styles.loading}>
-      {searchRow(true)}
+      {searchRow(true, true)}
       <SunkTabs />
       <LoadingBlock words={t('eventsScreen.loading')} />
     </View>

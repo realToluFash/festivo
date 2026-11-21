@@ -12,6 +12,12 @@ interface PreparedFile
 {
     public const string LINK_LIFETIME = 'PT24H';
 
+    /** Tries in the background before the file is failed. */
+    public const int MOST_ATTEMPTS = 3;
+
+    /** How long a try is left alone before the next run takes it for stopped. */
+    public const string RETRY_AFTER = 'PT5M';
+
     public function getId(): Uuid;
 
     public function isAskedBy(User $user): bool;

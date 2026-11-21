@@ -52,3 +52,52 @@ export const FILTER_SIZE_BOARDS: readonly FilterSizeBoard[] = [
     href: '/demo/filter-size?size=ax5&lang=fr&picks=longHost',
   },
 ];
+
+/** The states sc-75213 asks for: each drilled level at the default size as on main, and at AX1 and AX5 in English and French. */
+export const FILTER_DRILLED_BOARDS: readonly FilterSizeBoard[] = [
+  {
+    title: 'Type · default size · English',
+    what: 'As on main: each type on one line',
+    href: '/demo/filter-size?size=default&lang=en&level=type',
+  },
+  {
+    title: 'Type · AX1 · English · two types',
+    what: 'Every type whole, Gala or fundraiser wrapping between its words',
+    href: '/demo/filter-size?size=ax1&lang=en&level=type&picks=twoTypes',
+  },
+  {
+    title: 'Type · AX5 · English · two types',
+    what: 'Conference and Anniversary step down to fit whole, never Conferen / ce',
+    href: '/demo/filter-size?size=ax5&lang=en&level=type&picks=twoTypes',
+  },
+  {
+    title: 'Type · AX5 · French · two types',
+    what: 'Anniversaire and Événement d’entreprise whole, the menu scrolling',
+    href: '/demo/filter-size?size=ax5&lang=fr&level=type&picks=twoTypes',
+  },
+  {
+    title: 'When · AX1 · French · between dates',
+    what: 'Entre deux dates… whole, Du and Au one above the other',
+    href: '/demo/filter-size?size=ax1&lang=fr&level=when&picks=between',
+  },
+  {
+    title: 'When · AX5 · English · between dates',
+    what: 'Each choice beside its radio, From and To and their dates whole',
+    href: '/demo/filter-size?size=ax5&lang=en&level=when&picks=between',
+  },
+  {
+    title: 'When · AX5 · French · nothing chosen',
+    what: 'Toutes les dates to Entre deux dates…, every word whole',
+    href: '/demo/filter-size?size=ax5&lang=fr&level=when',
+  },
+  {
+    title: 'Hosted by · AX5 · English · a long host',
+    what: 'Funmilayo Adéṣínà- / Ọláolúwa breaks only after its hyphen',
+    href: '/demo/filter-size?size=ax5&lang=en&level=hosts&picks=longHost',
+  },
+  {
+    title: 'Hosted by · AX5 · French · a long host',
+    what: '‹ Hôtes whole, the long host beside its check',
+    href: '/demo/filter-size?size=ax5&lang=fr&level=hosts&picks=longHost',
+  },
+];

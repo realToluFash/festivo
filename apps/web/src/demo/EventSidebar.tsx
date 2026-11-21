@@ -12,6 +12,7 @@ import type { Tell } from '../components/SettingsParts.tsx';
 import { SearchRow } from './Search.tsx';
 import './narrowDesk.css';
 import './wideDesk.css';
+import './deskReflow.css';
 
 interface Reader {
   name: string;

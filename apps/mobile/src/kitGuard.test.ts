@@ -82,7 +82,7 @@ describe("every TextInput starts from the kit's defaults", () => {
 
     expect(
       offenders,
-      'Spread FIELD_DEFAULTS, codeProps() or passwordProps() from src/kit/fields.ts.',
+      'Spread fieldDefaults(), codeProps() or passwordProps() from src/kit/fields.ts.',
     ).toEqual([]);
   });
 
@@ -96,7 +96,7 @@ describe("every TextInput starts from the kit's defaults", () => {
       0,
     );
     expect(
-      selfClosing('TextInput', '<TextInput {...FIELD_DEFAULTS} style={x} />').filter(
+      selfClosing('TextInput', '<TextInput {...fieldDefaults(Platform.OS)} style={x} />').filter(
         (tag) => !startsFromKitDefaults(tag.markup),
       ),
     ).toHaveLength(0);
@@ -492,6 +492,19 @@ describe('a screen reader reaches each button in a group', () => {
   });
 });
 
+describe('a field that hides its selection hides its handles too (sc-80268)', () => {
+  it('in every TextInput with a transparent selection, on Android where the kit gives the handles ink', () => {
+    const offenders = sources(['src', 'app']).flatMap(({ path, text }) =>
+      selfClosing('TextInput', text)
+        .filter(({ markup }) => markup.includes('selectionColor="transparent"'))
+        .filter(({ markup }) => !markup.includes('selectionHandleColor="transparent"'))
+        .map(({ line }) => `${path}:${line}`),
+    );
+
+    expect(offenders).toEqual([]);
+  });
+});
+
 describe('a field is read by the name it shows', () => {
   // sc-11238: a label chosen once for the eye and once for the reader drifted apart (WCAG 2.5.3, Label in Name).
   // sc-11297: three fields in Ownership and leaving had no name, and TalkBack read each as "Edit box".
@@ -727,6 +740,19 @@ describe('every field reports its focus to the lift (sc-29076)', () => {
       offenders,
       'Render the TextInput inside <Field>, or call fieldFocused on focus.',
     ).toEqual([]);
+  });
+});
+
+describe('a shown password hides again on a send, a screen left and the app sent away (sc-79989)', () => {
+  it('in every component that can show a password', () => {
+    const offenders = sources(['src', 'app'])
+      .filter(({ text }) => /(?:\.|&\s*)passwordProps\(/u.test(text))
+      .filter(({ text }) => !/=\s*useRevealed\(/u.test(text))
+      .map(({ path }) => path.replace(/^.*\/apps\/mobile\//u, ''));
+
+    expect(offenders, 'Take what is shown from useRevealed in src/components/Field.tsx.').toEqual(
+      [],
+    );
   });
 });
 
@@ -1616,7 +1642,7 @@ function fixedAroundText(text: string): number[] {
 }
 
 function startsFromKitDefaults(markup: string): boolean {
-  return /\{\.\.\.(FIELD_DEFAULTS|codeProps\(|passwordProps\()/u.test(markup);
+  return /\{\.\.\.(fieldDefaults\(|codeProps\(|passwordProps\()/u.test(markup);
 }
 
 function takesRecoveryCode(markup: string): boolean {
@@ -1947,6 +1973,16 @@ describe('a card’s sentence steps down rather than break a word (sc-37693)', (
 
     expect(says.slice(0, says.indexOf('\n}\n'))).toContain('<WholeWords');
   });
+
+  it.each(['SecurityCard.tsx', 'NotificationsCard.tsx'])(
+    'in %s, whose heading beside the glyph is a CardSays, so Double authentification désactivée never reads authentifica / tion (sc-13281)',
+    (file) => {
+      const card = readFileSync(join(__dirname, 'components', file), 'utf8');
+
+      expect(card).toContain('<CardSays');
+      expect(card).not.toMatch(/<Text[\s>]/u);
+    },
+  );
 });
 
 describe('a screen still reading says so in words (sc-23279)', () => {
@@ -2033,5 +2069,70 @@ describe("a hidden measure reads a word at its own width, whatever the caller's 
       word,
       'SectionHead stretches its title; measured stretched, a heading steps down to 18 at AX5.',
     ).toMatch(/alignSelf: 'flex-start'/u);
+  });
+});
+
+describe("a section's hint is drawn in lines of whole points (sc-13281)", () => {
+  const text = readFileSync(join('src', 'components', 'SummaryRows.tsx'), 'utf8');
+  const foot = /export function SectionFoot\([\s\S]*?\n\}\n/u.exec(text)?.[0] ?? '';
+  const footStyle = /\n {2}foot: \{([^}]*)\}/u.exec(text)?.[1] ?? '';
+
+  it("gives SectionFoot's Text wholeLines", () => {
+    expect(
+      textTags(foot).map(({ markup }) => markup),
+      'Without it the last line of a hint is clipped at the larger text sizes (QA #75205).',
+    ).toEqual([expect.stringMatching(/\bwholeLines\b/u)]);
+  });
+
+  it('sets no line height of its own over it', () => {
+    expect(footStyle).not.toMatch(/lineHeight/u);
+  });
+});
+
+describe('a pill with words grows with them rather than cutting them (sc-13281)', () => {
+  const styleOf = (file: string, name: string) =>
+    new RegExp(`\\n {2}${name}: \\{([^}]*)\\}`, 'u').exec(
+      readFileSync(join('src', 'components', file), 'utf8'),
+    )?.[1] ?? '';
+
+  it.each([
+    ['TodayParts.tsx', 'create', 'Créer votre premier événement (QA #76223)'],
+    ['CreateWalkParts.tsx', 'tag', 'De cet appareil (QA #76223)'],
+    ['TodayParts.tsx', 'action', "an event card's action at the ninth step"],
+    ['TodayParts.tsx', 'chip', "an event card's count and stage at the ninth step"],
+    ['TodayParts.tsx', 'chipSmall', "a tile's count and stage at the ninth step"],
+    ['TodayParts.tsx', 'count', "Home's Needs you count of 10 or more at the ninth step"],
+  ])('%s %s sets a least height, never a height', (file, name, seen) => {
+    const style = styleOf(file, name);
+
+    expect(style, seen).toMatch(/\bminHeight:/u);
+    expect(style, seen).not.toMatch(/(?<![A-Za-z])height:/u);
+  });
+
+  it("lets an event card's chips take a second line rather than end in an ellipsis", () => {
+    const text = readFileSync(join('src', 'components', 'TodayParts.tsx'), 'utf8');
+    const chips =
+      /function CountChip\([\s\S]*?\nfunction StageChip\([\s\S]*?\n\}\n/u.exec(text)?.[0] ?? '';
+
+    expect(chips, 'En cours · 12 invités beside Publié on a 232-wide tile').toMatch(/StageChip/u);
+    expect(chips).not.toMatch(/numberOfLines/u);
+    expect(styleOf('TodayParts.tsx', 'tileChips')).toMatch(/flexWrap: 'wrap'/u);
+    expect(styleOf('TodayParts.tsx', 'rowChips')).toMatch(/flexWrap: 'wrap'/u);
+  });
+});
+
+describe("a field's label inside the box wraps and the box grows (sc-13281)", () => {
+  const text = readFileSync(join('src', 'steps', 'InsideField.tsx'), 'utf8');
+  const label = /<Text\s+nativeID=\{labelID\}[\s\S]*?<\/Text>/u.exec(text)?.[0] ?? '';
+
+  it("never ends Nom de l'organisation in an ellipsis at the ninth step (QA #77151)", () => {
+    expect(label).toMatch(/onLayout=/u);
+    expect(label).not.toMatch(/numberOfLines/u);
+  });
+
+  it('sizes the box and the space above the value from the label as drawn', () => {
+    expect(text).toMatch(/minHeight: restingHeight/u);
+    expect(text).toMatch(/\(restingHeight - labelHeight\) \/ 2/u);
+    expect(text).toMatch(/\(labelHeight \* LABEL_SMALL\) \/ LABEL_LARGE/u);
   });
 });

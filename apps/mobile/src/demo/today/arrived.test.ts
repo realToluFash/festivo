@@ -22,6 +22,7 @@ describe('Now’s arrived figure', () => {
       count: '87',
       of: '99',
       share: 87 / 99,
+      label: 'arrived',
       spoken: '87 of 99 arrived',
     });
   });
@@ -31,6 +32,7 @@ describe('Now’s arrived figure', () => {
       count: '37',
       of: null,
       share: null,
+      label: 'arrived',
       spoken: '37 arrived',
     });
   });
@@ -106,7 +108,7 @@ describe('the built Now with arrivals', () => {
 
   it('keeps the built Now: no Next, its ends line and Open the event', () => {
     expect(arrived.now?.ends).toBe(day.now?.ends);
-    expect(arrived.figure?.spoken).toBe('87 of 99 arrived');
+    expect(arrived.now?.arrived?.spoken).toBe('87 of 99 arrived');
   });
 });
 
@@ -122,7 +124,6 @@ describe('the wedding, counted as Guests A and Messaging B count it', () => {
     const day = momentOf('day', sayIn('en-GB'), i18n.t);
 
     expect(readyOf(COUNTS.some, english)).toEqual(wedding('day')?.ready);
-    expect(day.now).toMatchObject({ arrived: 87, expected: 99 });
-    expect(COUNTS.some).toMatchObject({ arrived: day.now?.arrived, expected: day.now?.expected });
+    expect(day.now?.arrived).toEqual(figureOf(COUNTS.some, english));
   });
 });

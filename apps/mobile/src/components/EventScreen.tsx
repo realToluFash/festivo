@@ -314,6 +314,11 @@ export function EventScreen({
             nameRef={cardNamed ? cardName : undefined}
             onGuests={() => chooseArea('guests')}
             onPeople={() => chooseArea('people')}
+            onCheckIn={
+              outside.role === 'can_check_in' && kind !== 'tabletLandscape'
+                ? () => router.push({ pathname: '/events/[id]/check-in', params: { id: event.id } })
+                : null
+            }
           />
         </Arrived>
       ) : area === 'overview' ? (
@@ -399,7 +404,7 @@ export function EventScreen({
     ) : null;
   const underTitle =
     area === 'people' && event != null ? (
-      <Text size={15} weight="medium" style={styles.secondary}>
+      <Text size={15} weight="medium" style={[styles.secondary, phone && styles.nameUnderTitle]}>
         {event.name}
       </Text>
     ) : undefined;
@@ -525,8 +530,8 @@ export function EventScreen({
       ) : (
         <Screen
           edges={bodyEdges(kind)}
-          contentStyle={
-            phone
+          contentStyle={{
+            ...(phone
               ? cardNamed
                 ? styles.phoneUntitled
                 : styles.phone
@@ -534,8 +539,9 @@ export function EventScreen({
                 ? styles.tabletPortrait
                 : cardNamed
                   ? styles.landscapeUntitled
-                  : styles.tabletLandscape
-          }
+                  : styles.tabletLandscape),
+            ...(area === 'people' ? PEOPLE_UNDER_NAME[kind] : null),
+          }}
         >
           {kind === 'tabletLandscape' && cardNamed && refreshing}
           {cardNamed && event == null && !bare && <BellRow />}
@@ -763,8 +769,16 @@ function useOpened(
   };
 }
 
+/** People's blocks start 16 under the event's name at every size, as its demo draws them; the frame's own foot counts towards it. */
+const PEOPLE_UNDER_NAME = StyleSheet.create({
+  phone: { paddingTop: 0 },
+  tabletPortrait: { gap: tokens.spaceXl },
+  tabletLandscape: { paddingTop: tokens.spaceXl - tokens.spaceLg },
+});
+
 const styles = StyleSheet.create({
   stack: { gap: tokens.spaceMd },
+  nameUnderTitle: { marginTop: tokens.spaceXxs },
   runEntry: { paddingTop: tokens.spaceMd, alignItems: 'flex-start', gap: tokens.spaceSm },
   secondary: { color: tokens.colorInkSecondary },
   fill: { flex: 1 },

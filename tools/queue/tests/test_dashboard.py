@@ -33,7 +33,8 @@ class Snapshot(unittest.TestCase):
         self.platform.timer_active = lambda: True
         self.settings = config(self.root, roles={"ops": {}, "dev2": {"wakeEvery": "1m"}})
         for patch in (mock.patch("soirely_queue.machine.free_gb", return_value=40),
-                      mock.patch("soirely_queue.permissions.pending", return_value=[])):
+                      mock.patch("soirely_queue.permissions.pending", return_value=[]),
+                      mock.patch("soirely_queue.dashboard.peer_views", return_value={})):
             patch.start()
             self.addCleanup(patch.stop)
 
@@ -106,6 +107,60 @@ class Snapshot(unittest.TestCase):
         store.record(self.db, [work("qa")], NOW)
         view = self.snap()
         self.assertEqual([(r["role"], r["waiting"]) for r in view["elsewhere"]], [("qa", 1)])
+
+    def test_a_role_another_machine_runs_is_counted_as_that_machine_counts_it(self):
+        store.record(self.db, [work("qa", f"qa:{n}") for n in range(3)]
+                     + [work("pm"), work("bm"), work("dev2")], NOW)
+        store.set_meta(self.db, "shared_view", {"elsewhere": {"dev2": ["tolu-mac", 40]}})
+        runner.set_started(self.db, ["dev2"], True)
+        nxt = [{"id": 9, "reason": "comments for you on sc-7: #70"}]
+        mac = {"roles": [{"role": "qa", "state": "running", "waiting": 1, "next": nxt,
+                          "held": None},
+                         {"role": "pm", "state": "started", "waiting": 0, "next": [],
+                          "held": None},
+                         {"role": "dev2", "state": "started", "waiting": 0, "next": [],
+                          "held": None},
+                         {"role": "ops", "state": "elsewhere", "waiting": 8, "next": [],
+                          "held": None}]}
+        view = dashboard.settle(self.snap(), {"tolu-mac": mac})
+        self.assertEqual({r["role"]: (r["waiting"], r.get("counted_on"))
+                          for r in view["elsewhere"]},
+                         {"qa": (1, "tolu-mac"), "bm": (1, None)})
+        self.assertEqual(next(r for r in view["elsewhere"] if r["role"] == "qa")["next"], nxt)
+        roles = {r["role"]: r for r in view["roles"]}
+        self.assertEqual((roles["dev2"]["waiting"], roles["dev2"]["counted_on"]),
+                         (0, "tolu-mac"))
+        self.assertNotIn("counted_on", roles["ops"])
+
+    def test_a_machine_that_does_not_answer_leaves_its_roles_uncounted(self):
+        from soirely_queue import cli
+        store.record(self.db, [work("qa"), work("pm"), work("dev2")], NOW)
+        store.set_meta(self.db, "shared_view", {
+            "elsewhere": {"dev2": ["tolu-mac", 40]},
+            "machines": {"tolu-mac": {"seen": 40, "started": ["qa", "dev2"]}}})
+        runner.set_started(self.db, ["dev2"], True)
+        view = dashboard.settle(self.snap(), {})
+        self.assertEqual({r["role"]: (r["waiting"], r.get("counted_on"))
+                          for r in view["elsewhere"]},
+                         {"qa": (None, "tolu-mac"), "pm": (1, None)})
+        self.assertIsNone({r["role"]: r for r in view["roles"]}["dev2"]["waiting"])
+        out = io.StringIO()
+        with mock.patch.object(cli.dashboard, "snapshot", return_value=self.snap()), \
+                mock.patch.object(cli, "home", return_value=self.home), redirect_stdout(out):
+            cli.status(self.db, self.platform, NOW)
+        self.assertIn("  qa    ? waiting  on tolu-mac  it did not answer", out.getvalue())
+
+    def test_status_names_the_machine_a_count_came_from(self):
+        from soirely_queue import cli
+        store.record(self.db, [work("qa"), work("qa", "qa:2")], NOW)
+        mac = {"roles": [{"role": "qa", "state": "started", "waiting": 1, "held": None,
+                          "next": [{"id": 9, "reason": "sc-7 is ready"}]}]}
+        out = io.StringIO()
+        with mock.patch.object(cli.dashboard, "snapshot", return_value=self.snap()), \
+                mock.patch.object(cli.dashboard, "peer_views", return_value={"tolu-mac": mac}), \
+                mock.patch.object(cli, "home", return_value=self.home), redirect_stdout(out):
+            cli.status(self.db, self.platform, NOW)
+        self.assertIn("  qa    1 waiting  on tolu-mac  next: sc-7 is ready", out.getvalue())
 
     def test_other_machines_their_roles_and_what_they_hold_are_shown(self):
         store.set_meta(self.db, "shared_view", {
@@ -301,6 +356,9 @@ class Snapshot(unittest.TestCase):
         self.assertEqual(days[-1]["day"], time.strftime("%Y-%m-%d"))
 
 
+SECRET = "t" * remote.TOKEN_MIN
+
+
 class Serve(unittest.TestCase):
     def test_the_page_and_its_json_are_served_on_this_machine_only(self):
         said = []
@@ -323,6 +381,88 @@ class Serve(unittest.TestCase):
         with urllib.request.urlopen(url) as answer:
             self.assertIn("<title>Soirely agents</title>", answer.read().decode())
         self.assertEqual(len(reads), 1)
+
+    def test_requests_close_together_share_one_reading(self):
+        said, reads, server_ready = [], [], threading.Event()
+
+        def say(line):
+            said.append(line)
+            server_ready.set()
+
+        threading.Thread(target=dashboard.serve, daemon=True,
+                         args=(lambda now: reads.append(now) or {"machine": "here"}, 0),
+                         kwargs={"open_page": False, "say": say}).start()
+        self.assertTrue(server_ready.wait(5))
+        url = said[0].split()[2]
+        for path in ("status.json", "status.json?own=1", "status.json"):
+            with urllib.request.urlopen(url + path) as answer:
+                self.assertEqual(json.load(answer), {"machine": "here"})
+        self.assertEqual(len(reads), 1)
+        with mock.patch.object(dashboard, "SHARED_SECONDS", 0):
+            urllib.request.urlopen(url + "status.json").close()
+        self.assertEqual(len(reads), 2)
+
+    def test_a_peer_is_asked_again_only_after_a_while_and_its_last_answer_is_kept(self):
+        asked, answers = [], [(200, b'{"roles": []}'), (502, b"{}")]
+
+        def fetch(base, path, secret):
+            asked.append(base)
+            return answers[min(len(asked), 2) - 1]
+
+        def settled(views, want):
+            until = time.monotonic() + 5
+            while len(asked) < want and time.monotonic() < until:
+                time.sleep(0.01)
+            time.sleep(0.05)
+            return views.views()
+
+        views = dashboard.PeerViews(lambda: {"tolu-mac": "http://10.0.0.6:8765"}, SECRET, fetch)
+        views.views()
+        self.assertEqual(settled(views, 1), {"tolu-mac": {"roles": []}})
+        self.assertEqual(len(asked), 1)
+        with mock.patch.object(dashboard, "ASK_SECONDS", 0):
+            views.views()
+            self.assertEqual(settled(views, 2), {"tolu-mac": {"roles": []}})
+        with mock.patch.object(dashboard, "KEPT_SECONDS", 0):
+            self.assertEqual(views.views(), {})
+
+    def test_the_json_is_settled_with_the_peers_unless_a_peer_is_asking(self):
+        said, asked, server_ready = [], [], threading.Event()
+
+        def say(line):
+            said.append(line)
+            server_ready.set()
+
+        def fetch(base, path, secret):
+            asked.append((base, path))
+            if base != "http://10.0.0.6:8765":
+                return 502, b'{"error": "it did not answer"}'
+            return 200, json.dumps({"roles": [{"role": "qa", "state": "started", "waiting": 2,
+                                               "next": [], "held": None}]}).encode()
+
+        def read(now):
+            return {"roles": [], "elsewhere": [{"role": "qa", "waiting": 90, "held": None,
+                                                "next": []}]}
+
+        peers = {"tolu-mac": "http://10.0.0.6:8765", "down": "http://10.0.0.7:8765"}
+        threading.Thread(target=dashboard.serve, daemon=True, args=(read, 0),
+                         kwargs={"open_page": False, "say": say, "peers": lambda: peers,
+                                 "fetch": fetch}).start()
+        self.assertTrue(server_ready.wait(5))
+        url = said[0].split()[2]
+        until = time.monotonic() + 5
+        while True:
+            with urllib.request.urlopen(url + "status.json") as answer:
+                found = [(r["waiting"], r.get("counted_on"))
+                         for r in json.load(answer)["elsewhere"]]
+            if found != [(90, None)] or time.monotonic() > until:
+                break
+            time.sleep(0.01)
+        self.assertEqual(found, [(2, "tolu-mac")])
+        self.assertEqual({path for _, path in asked}, {"status.json?own=1"})
+        self.assertEqual({base for base, _ in asked}, set(peers.values()))
+        with urllib.request.urlopen(url + "status.json?own=1") as answer:
+            self.assertEqual(json.load(answer)["elsewhere"][0]["waiting"], 90)
 
     def test_a_session_is_served_by_its_id_and_an_unknown_one_is_not_found(self):
         said, asked = [], []
@@ -348,9 +488,6 @@ class Serve(unittest.TestCase):
             urllib.request.urlopen(url + "session.json?id=other")
         self.assertEqual(refused.exception.code, 404)
         self.assertEqual(asked, ["known", "other"])
-
-
-SECRET = "t" * remote.TOKEN_MIN
 
 
 class ServeElsewhere(unittest.TestCase):
@@ -403,7 +540,8 @@ class ServeElsewhere(unittest.TestCase):
         asked = []
 
         def fetch(base, path, secret):
-            asked.append((base, path, secret))
+            if path != dashboard.OWN:
+                asked.append((base, path, secret))
             return 502, b'{"error": "it did not answer"}'
 
         said = self.start(peers=lambda: {"tolu-linux": "http://10.0.0.5:8765"}, fetch=fetch)
@@ -416,6 +554,55 @@ class ServeElsewhere(unittest.TestCase):
         said = self.start(peers=lambda: {"tolu mac": "http://10.0.0.6:8765"}, fetch=fetch)
         self.assertEqual(self.get(said, "/m/tolu%20mac/status.json", bearer).status, 502)
         self.assertEqual(asked[-1][0], "http://10.0.0.6:8765")
+
+    def post(self, said, path, body, headers=None):
+        port = int(said[0].split()[2].rsplit(":", 1)[1].strip("/"))
+        connection = http.client.HTTPConnection("127.0.0.1", port, timeout=5)
+        self.addCleanup(connection.close)
+        connection.request("POST", path, body=body, headers=headers or {})
+        answer = connection.getresponse()
+        answer.read()
+        return answer.status
+
+    def test_a_peer_tells_its_reading_and_the_counts_use_it_though_it_cannot_be_asked(self):
+        told = {"roles": [{"role": "qa", "state": "started", "waiting": 2, "next": [],
+                           "held": None}]}
+        own = {"roles": [], "elsewhere": [{"role": "qa", "waiting": 90, "held": None,
+                                           "next": []}]}
+        said, ready = [], threading.Event()
+        patch = mock.patch.object(remote, "loopback", return_value=False)
+        patch.start()
+        self.addCleanup(patch.stop)
+        threading.Thread(target=dashboard.serve, daemon=True, args=(lambda now: own, 0),
+                         kwargs={"open_page": False, "secret": SECRET,
+                                 "say": lambda line: said.append(line) or ready.set(),
+                                 "peers": lambda: {"tolu-linux": "http://10.0.0.5:8765"},
+                                 "fetch": lambda base, path, secret: (502, b"{}")}).start()
+        self.assertTrue(ready.wait(5))
+        bearer = {"Authorization": f"Bearer {SECRET}"}
+        body = json.dumps(told)
+        self.assertEqual(self.post(said, "/peer.json?from=tolu-linux", body), 401)
+        self.assertEqual(self.post(said, "/peer.json?from=stranger", body, bearer), 404)
+        self.assertEqual(self.post(said, "/other.json?from=tolu-linux", body, bearer), 404)
+        self.assertEqual(self.post(said, "/peer.json?from=tolu-linux", "[1]", bearer), 400)
+        self.assertEqual(self.post(said, "/peer.json?from=tolu-linux", "{", bearer), 400)
+        with mock.patch.object(dashboard, "TOLD_MOST_BYTES", 4):
+            self.assertEqual(self.post(said, "/peer.json?from=tolu-linux", body, bearer), 413)
+        self.assertEqual(json.loads(self.get(said, "/status.json", bearer).read())
+                         ["elsewhere"][0]["waiting"], 90)
+        self.assertEqual(self.post(said, "/peer.json?from=tolu-linux", body, bearer), 204)
+        self.assertEqual([(r["waiting"], r["counted_on"]) for r in json.loads(
+            self.get(said, "/status.json", bearer).read())["elsewhere"]], [(2, "tolu-linux")])
+
+    def test_a_machine_tells_every_peer_its_reading_under_its_own_name(self):
+        sent = []
+        dashboard.tell({"machine": "tolu linux", "roles": []},
+                       {"tolu-mac": "http://10.0.0.6:8765", "other": "http://10.0.0.7:8765"},
+                       SECRET, send=lambda *args: sent.append(args))
+        self.assertEqual(sorted(sent), [
+            (base, "peer.json?from=tolu%20linux", SECRET,
+             b'{"machine": "tolu linux", "roles": []}')
+            for base in ("http://10.0.0.6:8765", "http://10.0.0.7:8765")])
 
     def test_a_slow_peer_or_an_idle_connection_holds_up_no_one_else(self):
         answering = threading.Event()

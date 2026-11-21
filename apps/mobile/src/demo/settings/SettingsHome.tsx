@@ -9,6 +9,8 @@ import { Title, useTitleCap } from '../../components/Title.tsx';
 import { tokens } from '../../theme/tokens.ts';
 import { PHONE_TAB_BAR, TabBarFade } from '../../components/TodayCover.tsx';
 import { Bell, Landscape, OrgPill, PortraitTop, SettingsTabBar } from './Frame.tsx';
+import { Back } from '../../components/SettingsParts.tsx';
+import { useWayBackToNone } from '../../components/wayBackToNone.ts';
 import { type Held, HeldStandIn } from './Held.tsx';
 import { useHeldChoice } from './PersonalisationModel.ts';
 import { SettingsDemoRow } from './SettingsDemoRow.tsx';
@@ -159,6 +161,10 @@ export function SettingsHome({
   const insets = useSafeAreaInsets();
   const { t } = useTranslation();
   const list = useDemoList(false, null, onSignOut, onDemo);
+  const fromNone = useWayBackToNone();
+  const backToNone = fromNone != null && (
+    <Back label={t('noOrganisation.wayBack')} onPress={fromNone} testID="settings.fromNone.back" />
+  );
   // As the product's frame: the title keeps its words whole, and nothing under it draws larger than it drew (sc-13496, sc-67338).
   const titleCap = useTitleCap(`${shell.layout}|${t('settings.title')}`, PAGE_TITLE);
   const title = (
@@ -188,12 +194,12 @@ export function SettingsHome({
           contentContainerStyle={{
             paddingTop: insets.top + tokens.spaceXs,
             paddingHorizontal: tokens.spaceXxl,
-            paddingBottom: foot + PHONE_TAB_BAR + tokens.space6xl,
+            paddingBottom: foot + (fromNone == null ? PHONE_TAB_BAR : 0) + tokens.space6xl,
           }}
           showsVerticalScrollIndicator={false}
         >
           <View style={styles.orgRow}>
-            <OrgPill />
+            {backToNone || <OrgPill />}
             <View style={styles.grow} />
             <Bell tell={shell.tell} />
           </View>
@@ -206,7 +212,7 @@ export function SettingsHome({
           </TitleCap.Provider>
         </ScrollView>
         <View style={[styles.statusStrip, { height: insets.top }]} pointerEvents="none" />
-        <TabBarFade />
+        {fromNone == null && <TabBarFade />}
         <SettingsTabBar bottom={foot} />
       </View>
     );
@@ -215,6 +221,7 @@ export function SettingsHome({
   return (
     <View style={styles.page}>
       <PortraitTop at="Settings" />
+      {backToNone !== false && <View style={styles.portraitBack}>{backToNone}</View>}
       <ScrollView
         style={styles.grow}
         contentContainerStyle={{
@@ -282,6 +289,7 @@ export function SettingsColumn({ onSignOut, onDemo }: Handlers) {
   const shell = useShell();
   const { t } = useTranslation();
   const list = useDemoList(true, shell.open, onSignOut, onDemo);
+  const fromNone = useWayBackToNone();
 
   return (
     <SettingsListBody
@@ -289,6 +297,15 @@ export function SettingsColumn({ onSignOut, onDemo }: Handlers) {
       {...list}
       top={
         <>
+          {fromNone != null && (
+            <View style={styles.columnBack}>
+              <Back
+                label={t('noOrganisation.wayBack')}
+                onPress={fromNone}
+                testID="settings.fromNone.back"
+              />
+            </View>
+          )}
           <View style={styles.columnTop}>
             <Text
               size={TOP_TITLE}
@@ -337,6 +354,8 @@ const styles = StyleSheet.create({
     gap: tokens.spaceMd,
     marginBottom: tokens.spaceLg,
   },
+  portraitBack: { flexDirection: 'row', paddingHorizontal: tokens.space5xl },
+  columnBack: { flexDirection: 'row', marginBottom: tokens.spaceXs },
   portraitTitle: { paddingTop: 30, paddingBottom: 22, paddingHorizontal: tokens.spaceHair },
   switched: { marginBottom: tokens.spaceXl },
   legal: { marginTop: tokens.spaceXs },

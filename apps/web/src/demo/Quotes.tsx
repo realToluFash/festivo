@@ -63,6 +63,7 @@ import {
   type PaymentOpen,
   type Quote,
   type BudgetAddresses,
+  NO_COSTS_STATES,
   DUE_NEXT,
   budgetAt,
   budgetViewerOf,
@@ -88,6 +89,7 @@ import {
   keptBudget,
 } from './quotes.ts';
 import { BudgetHomeContent } from './BudgetHome.tsx';
+import { linesOf } from './budgetHome.ts';
 import { QW } from './quotesWords.ts';
 import './quotes.css';
 
@@ -101,12 +103,14 @@ export function BudgetArea({ event }: { event: SampleEvent }) {
   const vendorId = paymentsVendor(state, params.get('vendor'));
   const page: BudgetPage =
     vendorId != null ? 'vendor' : params.get('view') === 'due' ? 'due' : 'home';
+  const noCosts = params.get('costs') === 'none';
 
   return (
     <QuotesBody
-      key={`${state}|${viewer.key}`}
+      key={`${state}|${viewer.key}|${noCosts}`}
       event={event}
       state={state}
+      noCosts={noCosts}
       page={page}
       vendorId={vendorId}
       viewer={viewer}
@@ -117,34 +121,49 @@ export function BudgetArea({ event }: { event: SampleEvent }) {
 function QuotesBody({
   event,
   state,
+  noCosts,
   page,
   vendorId,
   viewer,
 }: {
   event: SampleEvent;
   state: string;
+  noCosts: boolean;
   page: BudgetPage;
   vendorId: string | null;
   viewer: BudgetViewer;
 }) {
   const [start] = useState(() => {
     if (state !== '') forgetBudget();
-    return paymentsStart(quotesStart(state, vendorId, longDay), state, vendorId);
+    // sc-85's states with no costs start with no quote either; a link back from a vendor keeps the quotes.
+    const from =
+      state === ''
+        ? noCosts
+          ? 'empty_quoted'
+          : state
+        : !NO_COSTS_STATES.includes(state) && linesOf(state).length === 0
+          ? 'empty_no_quote'
+          : state;
+    return paymentsStart(quotesStart(from, vendorId, longDay), state, vendorId);
   });
   const [budget, setBudget] = useState<Budget>(
-    () => (state === '' ? keptBudget() : null) ?? start.budget,
+    () => (state === '' ? keptBudget(noCosts) : null) ?? start.budget,
   );
 
   useEffect(() => {
-    if (budget !== start.budget) keepBudget(budget);
-  }, [budget, start.budget]);
+    if (noCosts || NO_COSTS_STATES.includes(state)) keepBudget(budget, true);
+    else if (budget !== start.budget) keepBudget(budget, false);
+  }, [budget, start.budget, state, noCosts]);
+  const [hasCosts, setHasCosts] = useState(() => !noCosts && linesOf(state).length > 0);
   const [quote, setQuote] = useState<Opened | null>(start.quote);
   const [payment, setPayment] = useState<PaymentOpen | null>(start.payment);
   const [amending, setAmending] = useState<Amending | null>(start.amending);
   const [removing, setRemoving] = useState<string | null>(start.removing);
   const [removeFails, setRemoveFails] = useState(state === 'remove_failed');
   const [notRemoved, setNotRemoved] = useState(false);
-  const [quotesFailed, setQuotesFailed] = useState(state === 'quotes_failed');
+  const [quotesFailed, setQuotesFailed] = useState(
+    state === 'quotes_failed' || state === 'empty_quotes_failed',
+  );
   const [retrying, setRetrying] = useState(false);
   const [earlier, setEarlier] = useState(start.earlier);
   const [marking, setMarking] = useState<Marking | null>(start.marking);
@@ -159,7 +178,7 @@ function QuotesBody({
   const title = useRef<HTMLHeadingElement>(null);
   const opened = useRef(false);
   const readOnly = start.readOnly;
-  const at = budgetAt(event.id, viewer, readOnly);
+  const at = budgetAt(event.id, viewer, readOnly, !hasCosts);
   const open = page === 'vendor' ? budget.quotes.find((one) => one.vendor.id === vendorId) : null;
   const marks = marking == null ? null : budget.payments.find((one) => one.id === marking.id);
   const cancels =
@@ -342,6 +361,10 @@ function QuotesBody({
               titleRef={title}
               payments={budget.payments}
               onMark={readOnly ? undefined : markPaid}
+              readOnly={readOnly}
+              noCosts={!hasCosts}
+              quotesBeside={quotesFailed || !readOnly || budget.quotes.length > 0}
+              onCosts={setHasCosts}
               dueNext={
                 quotesFailed ? (
                   <QuotesNotLoaded title={BW.dueNext} busy={retrying} onRetry={retry} />
@@ -388,6 +411,7 @@ function QuotesBody({
               vendors={start.vendors}
               current={quote.form === 'add' ? null : (open ?? null)}
               viewer={viewer}
+              costs={hasCosts}
               onOpened={setQuote}
               onList={(list) => setQuote((now) => now && { ...now, list })}
               onClose={() => setQuote(null)}
@@ -484,7 +508,7 @@ function QuotesBody({
           {made != null && open != null && (
             <MadeDialog
               made={made}
-              quotes={budget.quotes}
+              budget={budget}
               onMade={setMade}
               onClose={() => setMade(null)}
               onSaved={(draft) => {
@@ -1041,20 +1065,26 @@ function ScheduleRow({
             !added
               ? paidLineOf(payment)
               : payment.paid.by === reader
-                ? PW.addedByYou(longDay(payment.paid.on))
-                : PW.addedBy(longDay(payment.paid.on), payment.paid.by),
+                ? (readOnly ? PW.addedByYouHeld : PW.addedByYou)(longDay(payment.paid.on))
+                : (readOnly ? PW.addedByHeld : PW.addedBy)(
+                    longDay(payment.paid.on),
+                    payment.paid.by,
+                  ),
+            ...(payment.paid.reference === '' ? [] : [PW.paidReference(payment.paid.reference)]),
           ]}
           lit={lit}
           end={
-            <>
-              {added && <Amount value={money(payment.paid.amount)} />}
-              {(lit || added) && !readOnly && (
-                <button type="button" className="desk-text" onClick={onUndo}>
-                  <Glyph name="undo" size={16} weight={2.4} />
-                  {BW.undo}
-                </button>
-              )}
-            </>
+            added || !readOnly ? (
+              <span className="bud-row-end">
+                {added && <Amount value={money(payment.paid.amount)} />}
+                {!readOnly && (
+                  <button type="button" className="desk-text" onClick={onUndo}>
+                    <Glyph name="undo" size={16} weight={2.4} />
+                    {BW.undo}
+                  </button>
+                )}
+              </span>
+            ) : undefined
           }
         />
       </li>

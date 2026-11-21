@@ -5,6 +5,7 @@ import {
   type EventPerson,
   type EventRole,
   type OrganisationEvent,
+  type StaffLinkHolder,
 } from '@soirely/api-client';
 import { firstName, initials, listFormat, numberFormat } from '@soirely/domain';
 import {
@@ -17,6 +18,7 @@ import {
   useRef,
   useState,
 } from 'react';
+import type { TFunction } from 'i18next';
 import { useTranslation } from 'react-i18next';
 
 import { api } from '../../../api.ts';
@@ -35,12 +37,13 @@ import {
 } from '../../../components/SettingsParts.tsx';
 import { Skeleton } from '../../../components/Skeleton.tsx';
 import { Toast } from '../../../components/Toast.tsx';
-import { currentLocale } from '../../../i18n/index.ts';
+import { currentLocale, dateLocale } from '../../../i18n/index.ts';
 import { focusWhenFree, LayersContext, useDeskLayers } from '../../../layers.ts';
 import { canOn, outsideOn, useSession } from '../../../session.ts';
 import { keptKeys, keptLoad, useAnsweredAgain, useKeptAsShown } from '../../../tabKept.ts';
 import '../../../components/SettingsParts.css';
 import { faceOf, outsideView, shownAddress } from './outside.ts';
+import { clockWords, wallOf } from './staffTimes.ts';
 import './people.css';
 
 /** `addable` is null for whoever may not change People: the API refuses them that list. */
@@ -52,6 +55,8 @@ type Load =
       people: EventPerson[];
       owners: string[];
       admins: string[];
+      /** Absent from a list kept before staff links (sc-3912). */
+      staffLinks?: StaffLinkHolder[];
       addable: AddableMember[] | null;
     };
 
@@ -163,6 +168,7 @@ export function EventPeople({ event }: { event: OrganisationEvent }) {
   const own = people.find((person) => person.user?.id === userId);
   const addable = loaded.addable;
   const managers = [...loaded.owners, ...loaded.admins];
+  const staffLinks = loaded.staffLinks ?? [];
   const list = listFormat(currentLocale(), { type: 'conjunction' });
   const count = numberFormat(currentLocale());
   const adds = manages && addable != null;
@@ -208,7 +214,11 @@ export function EventPeople({ event }: { event: OrganisationEvent }) {
                       ? addable
                       : [
                           ...addable,
-                          { membershipId: opened.membershipId, name: nameOf(opened, t) },
+                          {
+                            membershipId: opened.membershipId,
+                            name: nameOf(opened, t),
+                            role: null,
+                          },
                         ],
                 });
                 setOpen(null);
@@ -259,7 +269,7 @@ export function EventPeople({ event }: { event: OrganisationEvent }) {
         </button>
       )}
 
-      {people.length === 0 ? (
+      {people.length + staffLinks.length === 0 ? (
         <div className="people-nobody">
           <p className="desk-empty-title">{t('eventPeople.nobody')}</p>
           <p className="desk-line">{t('eventPeople.nobodyLine')}</p>
@@ -267,7 +277,7 @@ export function EventPeople({ event }: { event: OrganisationEvent }) {
       ) : (
         <section className="desk-block" aria-labelledby="event-people-on">
           <Head title={<span id="event-people-on">{t('eventPeople.onEvent')}</span>}>
-            <span className="people-count">{count.format(people.length)}</span>
+            <span className="people-count">{count.format(people.length + staffLinks.length)}</span>
           </Head>
           <ul className="desk-rows has-lead people-rows">
             {people.map((person, tone) => {
@@ -329,6 +339,11 @@ export function EventPeople({ event }: { event: OrganisationEvent }) {
                 </li>
               );
             })}
+            {staffLinks.map((holder) => (
+              <li key={`staff-link-${holder.id}`}>
+                <StaffLinkRow holder={holder} event={event} />
+              </li>
+            ))}
           </ul>
         </section>
       )}
@@ -878,4 +893,50 @@ function AddDialog({
       )}
     </>
   );
+}
+
+/** In by their own link from the roster (sc-3912): one row a person, however many links they were given, and it opens nothing, since a link is changed on the roster. */
+function StaffLinkRow({ holder, event }: { holder: StaffLinkHolder; event: OrganisationEvent }) {
+  const { t } = useTranslation();
+  const time = endsWords(holder.endsAt, event, t);
+
+  return (
+    <div className="desk-row">
+      <span className="people-outside-face" aria-hidden="true">
+        <Glyph name="link" size={18} />
+      </span>
+      <RowWords
+        title={
+          holder.job == null
+            ? t('eventPeople.staffLinkNoJob', { name: holder.name, time })
+            : t('eventPeople.staffLink', { name: holder.name, job: holder.job, time })
+        }
+        tag={
+          !holder.signedIn && (
+            <span className="desk-tag people-not-signed">
+              <span className="people-not-signed-mark" aria-hidden="true" />
+              {t('eventPeople.notSignedIn')}
+            </span>
+          )
+        }
+        lines={holder.access == null ? [] : [t(`jobs.access.${holder.access}`)]}
+      />
+    </div>
+  );
+}
+
+/** "03:00", or "03:00 on Sunday 25 Oct" when the link ends on a later day than the event starts. */
+function endsWords(endsAt: string, event: OrganisationEvent, t: TFunction): string {
+  const times = { long: false, timeZone: event.timeZone, locale: dateLocale() };
+  const time = clockWords(endsAt, times);
+  if (wallOf(endsAt, event.timeZone).date === wallOf(event.startsAt, event.timeZone).date)
+    return time;
+  const date = new Intl.DateTimeFormat(times.locale, {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'short',
+    timeZone: event.timeZone,
+  }).format(new Date(endsAt));
+
+  return t('eventPeople.endsOn', { time, date });
 }

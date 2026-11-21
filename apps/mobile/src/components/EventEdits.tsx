@@ -83,6 +83,8 @@ export interface ShellProps {
   elsewhere?: { onLatest: () => void; pending?: boolean } | null;
   /** A save that failed: today's Not saved, or the role's refusal (403), in the same place. */
   failed?: string | null;
+  /** Counts the saves answered with a notice up here: each one takes the screen back to its top (sc-74540). */
+  noticed?: number;
   ask?: AskProps | null;
   over?: { layer: ReactNode; onClose: () => void } | null;
   toast?: { words: string; onClose: () => void } | null;
@@ -107,6 +109,7 @@ export function EditShell({
   asking = null,
   elsewhere = null,
   failed = null,
+  noticed = 0,
   ask = null,
   over = null,
   toast = null,
@@ -167,6 +170,7 @@ export function EditShell({
       ask={asked && { ...asked, width: ASK_WIDTH }}
       over={over}
       toast={toast}
+      toTop={noticed}
       testID={testID}
     >
       {elsewhere != null && (

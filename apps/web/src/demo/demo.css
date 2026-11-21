@@ -763,3 +763,31 @@
 .demo-tall .demo-column {
   gap: var(--spaceXxl);
 }
+
+/* CardStep's wrap, for every card step; the product puts these lines on .desk-step itself (sc-563, sc-3930). */
+.step-wraps .desk-step {
+  height: auto;
+  min-height: var(--sizeHit);
+  max-width: 100%;
+  padding-block: var(--spaceSm);
+  line-height: 1.25;
+  text-align: left;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.step-wraps .desk-step > svg {
+  flex: none;
+}
+
+/* Demo-scoped so a visit to /demo never restyles the product; dev puts these lines on .desk-glass itself (sc-30767). */
+.glass-wraps .desk-glass:is(li, span) {
+  height: auto;
+  min-height: 28px;
+  max-width: 100%;
+  padding-block: var(--spaceXs);
+  line-height: 16px;
+  text-align: start;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}

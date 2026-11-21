@@ -11,6 +11,7 @@ import { SAMPLE } from './rules.ts';
 import { EVENTS, type EventKey } from './today.ts';
 import './narrowDesk.css';
 import './wideDesk.css';
+import './deskReflow.css';
 import type { Tell } from '../components/SettingsParts.tsx';
 import type { ShownEvent } from '../components/today.ts';
 

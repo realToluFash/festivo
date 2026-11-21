@@ -41,7 +41,7 @@ export function BudgetShell({
   event: SampleEvent;
   area?: Area;
   without?: readonly Area[];
-  trail?: readonly { label: string; to?: string }[];
+  trail?: readonly { label: string; to?: string; onClick?: () => void }[];
   told?: string | null;
   children: (tell: Tell) => ReactNode;
 }) {
@@ -79,7 +79,7 @@ export function BudgetShell({
                         >
                           <Glyph name="chevron" size={15} weight={2.4} className="desk-chevron" />
                           {part.to != null && index < all.length - 1 ? (
-                            <Link to={part.to}>
+                            <Link to={part.to} onClick={part.onClick}>
                               <span className="ev-crumb-name">{part.label}</span>
                             </Link>
                           ) : (
@@ -154,7 +154,9 @@ export function GlassTags({
   washed?: boolean;
 }) {
   return tags.length === 0 ? null : (
-    <ul className={washed ? 'desk-glass-tags is-washed' : 'desk-glass-tags'}>
+    <ul
+      className={washed ? 'desk-glass-tags glass-wraps is-washed' : 'desk-glass-tags glass-wraps'}
+    >
       {tags.map((tag) => (
         <li key={tag.word} className="desk-glass">
           {tag.mark}

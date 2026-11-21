@@ -1,10 +1,9 @@
-import { picksShown } from '@soirely/domain';
-
 import { atAccessibilitySizes, fitWidest, labelStart } from '../../layout/textSize.ts';
 
 export type FilterSize = 'device' | 'default' | 'seventh' | 'ax1' | 'ax2' | 'ax3' | 'ax4' | 'ax5';
 export type FilterLanguage = 'en' | 'fr';
-export type FilterPicks = 'none' | 'twoTypes' | 'longHost';
+export type FilterPicks = 'none' | 'twoTypes' | 'longHost' | 'between';
+export type FilterLevel = 'top' | 'type' | 'when' | 'hosts';
 
 export const FILTER_SIZES: readonly { key: FilterSize; label: string }[] = [
   { key: 'device', label: 'This device' },
@@ -26,6 +25,14 @@ export const FILTER_PICKS: readonly { key: FilterPicks; label: string }[] = [
   { key: 'none', label: 'Nothing chosen' },
   { key: 'twoTypes', label: 'Two types' },
   { key: 'longHost', label: 'A long host' },
+  { key: 'between', label: 'Between dates' },
+];
+
+export const FILTER_LEVELS: readonly { key: FilterLevel; label: string }[] = [
+  { key: 'top', label: 'Top level' },
+  { key: 'type', label: 'Type' },
+  { key: 'when', label: 'When' },
+  { key: 'hosts', label: 'Hosted by' },
 ];
 
 // React Native's fontScale on iOS at each step, as sc-68441's and sc-69816's boards.
@@ -51,70 +58,25 @@ export function keyOf<Key extends string>(
   return options.find((each) => each.key === given)?.key ?? fallback;
 }
 
-export const ROW_TYPE = { title: 16, value: 15 } as const;
-
-export function rowStarts(scale: number, cap: number): { title: number; value: number } {
-  return {
-    title: labelStart(ROW_TYPE.title, scale, cap),
-    value: labelStart(ROW_TYPE.value, scale, cap),
-  };
+/** A drilled level's words before they are fitted: main's size × the scale at the standard sizes; from AX1, no larger than the page title's `cap` (sc-75213). */
+export function drilledStart(size: number, scale: number, cap: number): number {
+  return atAccessibilitySizes(scale) ? labelStart(size, scale, cap) : size * scale;
 }
 
-export interface RowMeasure {
-  scale: number;
-  cap: number;
-  /** The row's width for its words: the menu less its side padding, the gap and the ›. */
-  room: number;
-  gap: number;
-  title: number;
-  titleWidest: number;
-  /** The widest piece of the first `shown` picks, and of the "+N more" drawn after them, at the value's start. */
-  valueWidestAt: (shown: number) => number;
-  count: number;
-  /** The line beside the title with the first `shown` picks, then "+N more" when any are left: its two texts measured apart and added up, as main's `usePicksFit`. */
-  besideAt: (shown: number) => number;
-  /** The same line as the one text the value under the title draws as. */
-  underAt: (shown: number) => number;
+/** The size a drilled level's words draw at: the start while their widest piece fits `room`; from AX1, else the largest at which it fits, never under `size` (sc-69816's rule). */
+export function drilledSize(
+  size: number,
+  scale: number,
+  cap: number,
+  widest: number,
+  room: number,
+): number {
+  const start = drilledStart(size, scale, cap);
+
+  return atAccessibilitySizes(scale) ? fitWidest(size, start, widest, room) : start;
 }
 
-export interface RowDrawn {
-  stacked: boolean;
-  shown: number;
-  titleSize: number;
-  valueSize: number;
-}
-
-function wholeIn(count: number, widthAt: (shown: number) => number, room: number): number {
-  const shown = picksShown(count, (each) => widthAt(each) <= room);
-
-  return widthAt(shown) <= room ? shown : 0;
-}
-
-export function rowDrawn(row: RowMeasure): RowDrawn {
-  const starts = rowStarts(row.scale, row.cap);
-  const beside = row.room - row.title - row.gap;
-  const oneLine = { stacked: false, titleSize: starts.title, valueSize: starts.value };
-
-  if (!atAccessibilitySizes(row.scale))
-    return { ...oneLine, shown: picksShown(row.count, (each) => row.besideAt(each) <= beside) };
-
-  const besideShown = wholeIn(row.count, row.besideAt, beside);
-  const under = wholeIn(row.count, row.underAt, row.room);
-
-  if (besideShown > 0 && besideShown >= under) return { ...oneLine, shown: besideShown };
-
-  // Only a line that shows a word wider than the row steps down: picks that fit whole on one line already fit.
-  const shown = Math.max(under, 1);
-
-  return {
-    stacked: true,
-    shown,
-    titleSize: fitWidest(ROW_TYPE.title, starts.title, row.titleWidest, row.room),
-    valueSize: fitWidest(ROW_TYPE.value, starts.value, row.valueWidestAt(shown), row.room),
-  };
-}
-
-/** "+N more" with its spaces unbreakable, so it moves to the next line whole rather than splitting. */
-export function keptWhole(tail: string): string {
-  return tail.replace(/ /gu, '\u00a0');
+/** From and To side by side as on main at the standard sizes; one above the other from AX1, so each date has the menu's width. */
+export function datesStacked(scale: number): boolean {
+  return atAccessibilitySizes(scale);
 }

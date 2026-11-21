@@ -76,12 +76,23 @@ export interface AuditDay {
   entries: AuditEntry[];
 }
 
-/** The server's day for each entry, newest first as it sends them; today's heading says so. */
+/** "Monday, Oct 19" for a YYYY-MM-DD already placed in the reader's zone. */
+export function dayWords(key: string, locale: string): string {
+  return new Intl.DateTimeFormat(locale, {
+    weekday: 'long',
+    month: 'short',
+    day: 'numeric',
+    timeZone: 'UTC',
+  }).format(new Date(`${key}T12:00:00Z`));
+}
+
+/** The entries newest first as the server sends them, a heading per day; today's says so. */
 export function byDay(
   t: TFunction,
   entries: readonly AuditEntry[],
   now: Date,
   zone: string | null,
+  locale: string,
 ): AuditDay[] {
   const today = dayKeyIn(now, zone);
   const days: AuditDay[] = [];
@@ -93,7 +104,10 @@ export function byDay(
     else
       days.push({
         key,
-        heading: key === today ? t('auditLog.today', { day: entry.day }) : entry.day,
+        heading:
+          key === today
+            ? t('auditLog.today', { day: dayWords(key, locale) })
+            : dayWords(key, locale),
         entries: [entry],
       });
   }
@@ -212,6 +226,11 @@ export function detailRows(t: TFunction, entry: AuditEntry): DetailRow[] {
     entry.changes.length === 0
       ? null
       : { key: 'changes', label: label('changes'), value: entry.changes.join('\n') },
+    ...entry.recorded.map((row, at) => ({
+      key: `recorded-${at}`,
+      label: row.label,
+      value: row.value,
+    })),
     {
       key: 'kind',
       label: label('kind'),

@@ -30,6 +30,33 @@ export function isWaiting(outcome: InvitationOutcome | undefined): boolean {
   return outcome == null || outcome.kind === 'busy' || outcome.kind === 'failed';
 }
 
+/** sc-73668: an invitation the API lists as managed reads as refused from the moment it is listed, unless something was pressed on it since. */
+export function withManaged(
+  invitations: readonly {
+    id: string;
+    managed: { organisation: { name: string }; message: string } | null;
+  }[],
+  outcomes: Readonly<Record<string, InvitationOutcome>>,
+): Readonly<Record<string, InvitationOutcome>> {
+  const managed = invitations.flatMap(({ id, managed }): [string, InvitationOutcome][] =>
+    managed == null
+      ? []
+      : [
+          [
+            id,
+            { kind: 'managed', organisation: managed.organisation.name, message: managed.message },
+          ],
+        ],
+  );
+
+  return managed.length === 0 ? outcomes : { ...Object.fromEntries(managed), ...outcomes };
+}
+
+/** sc-73668: kept in the switcher's list, its banner in place of the answers, though it no longer counts. */
+export function stillListed(outcome: InvitationOutcome | undefined): boolean {
+  return isWaiting(outcome) || outcome?.kind === 'managed';
+}
+
 export function waitingInvitations(
   invitations: readonly { id: string }[],
   outcomes: Readonly<Record<string, InvitationOutcome>>,

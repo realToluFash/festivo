@@ -37,6 +37,7 @@ const BOARDS: Record<BudgetState, readonly [string, string]> = {
   ],
   reminder_overdue: ['the reminder, overdue', 'Overdue · last reminder; it opens Due now'],
   reminder_mixed: ['the reminder, mixed', '1 overdue, 2 due in the next 3 days'],
+  reminder_due: ['the reminder, coming due', '2 due in the next 3 days on one event'],
   payers: ['Who is paying', 'A row per payer with its link’s state'],
   payer_never_sent: ['a payer, never sent', 'Send to Adaeze and Tunde'],
   payer_opened: ['a payer, opened', 'Opened 3 times, Send again'],
@@ -59,10 +60,24 @@ const BOARDS: Record<BudgetState, readonly [string, string]> = {
   payer_all_revoked: ['every link revoked', 'Send to Mr and Mrs Bakare, no state line'],
   due_now: ['Due now', 'From the reminder: Paid, or Paid a different amount'],
   due_marked: ['Due now, marked', 'Marked paid · £840.00, Undo'],
-  due_changed: ['Due now, changed since', 'Nothing left to pay, and why: paid, cancelled'],
-  due_refused: ['Due now, refused', 'This payment has been cancelled'],
+  due_changed: [
+    'Due now, changed since',
+    'Nothing left to pay, and why: paid, cancelled, no longer on the schedule',
+  ],
+  due_refused: ['Due now, refused, cancelled', 'This payment has been cancelled'],
   due_done: ['Due now, done', 'Nothing left to pay, the paid rows under it'],
   due_read_only: ['Due now, read only', 'No Paid, no Undo'],
+  due_several: ['Due now, two events', '3 payments across 2 events, each in its own currency'],
+  due_refused_paid: [
+    'Due now, refused, already paid',
+    'Julien Moreau has already marked this paid',
+  ],
+  due_refused_plan: [
+    'Due now, refused, the plan',
+    'Payments cannot be marked paid on this plan, the sheet read only',
+  ],
+  due_done_several: ['Due now, done, two events', 'Nothing left to pay, a link for each event'],
+  due_not_found: ['Due now, not found', 'We cannot find these payments.'],
 };
 
 /** The spec's viewer and language for the two states that name one; the state alone opens it. */

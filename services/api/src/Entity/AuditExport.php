@@ -18,6 +18,7 @@ use Symfony\Component\Uid\Uuid;
 #[ORM\Table(name: 'audit_exports')]
 #[ORM\Index(name: 'idx_audit_export_organisation', columns: ['organisation_id', 'asked_at'])]
 #[ORM\Index(name: 'idx_audit_export_asked_by', columns: ['asked_by_id'])]
+#[ORM\Index(name: 'idx_audit_export_preparing', columns: ['status'], options: ['where' => "(status = 'preparing')"])]
 class AuditExport implements PreparedFile
 {
     use Timestampable;
@@ -50,8 +51,19 @@ class AuditExport implements PreparedFile
     #[ORM\Column(type: Types::STRING, length: 20)]
     private string $locale;
 
+    /** The asker's zone when they asked, which the From and To days are read in on every try. */
+    #[ORM\Column(type: Types::STRING, length: 64)]
+    private string $zone;
+
     #[ORM\Column(type: Types::STRING, length: 20, enumType: AuditExportStatus::class)]
     private AuditExportStatus $status = AuditExportStatus::Preparing;
+
+    #[ORM\Column(type: Types::SMALLINT, options: ['default' => 0])]
+    private int $attempts = 0;
+
+    /** When the latest try was last seen writing or uploading its file; a try quiet for PreparedFile::RETRY_AFTER has stopped. */
+    #[ORM\Column(type: Types::DATETIME_IMMUTABLE, nullable: true)]
+    private ?DateTimeImmutable $workedAt = null;
 
     #[ORM\Column(type: Types::STRING, length: 255, nullable: true)]
     private ?string $fileKey = null;
@@ -60,7 +72,7 @@ class AuditExport implements PreparedFile
     private ?DateTimeImmutable $readyAt = null;
 
     /** @param array<string, string> $filters */
-    public function __construct(Organisation $organisation, User $askedBy, DateTimeImmutable $askedAt, string $format, array $filters, int $entries, string $locale)
+    public function __construct(Organisation $organisation, User $askedBy, DateTimeImmutable $askedAt, string $format, array $filters, int $entries, string $locale, string $zone)
     {
         $this->id = Uuid::v7();
         $this->organisation = $organisation;
@@ -70,6 +82,7 @@ class AuditExport implements PreparedFile
         $this->filters = $filters;
         $this->entries = $entries;
         $this->locale = $locale;
+        $this->zone = $zone;
     }
 
     public function getId(): Uuid
@@ -118,6 +131,21 @@ class AuditExport implements PreparedFile
         return $this->locale;
     }
 
+    public function getZone(): string
+    {
+        return $this->zone;
+    }
+
+    public function getAttempts(): int
+    {
+        return $this->attempts;
+    }
+
+    public function getWorkedAt(): ?DateTimeImmutable
+    {
+        return $this->workedAt;
+    }
+
     public function getStatus(): AuditExportStatus
     {
         return $this->status;
@@ -128,29 +156,14 @@ class AuditExport implements PreparedFile
         return AuditExportStatus::Ready === $this->status;
     }
 
-    public function setStatus(AuditExportStatus $status): void
-    {
-        $this->status = $status;
-    }
-
     public function getFileKey(): ?string
     {
         return $this->fileKey;
     }
 
-    public function setFileKey(?string $fileKey): void
-    {
-        $this->fileKey = $fileKey;
-    }
-
     public function getReadyAt(): ?DateTimeImmutable
     {
         return $this->readyAt;
-    }
-
-    public function setReadyAt(?DateTimeImmutable $readyAt): void
-    {
-        $this->readyAt = $readyAt;
     }
 
     public function expiresAt(): ?DateTimeImmutable

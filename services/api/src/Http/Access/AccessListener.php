@@ -55,7 +55,7 @@ final readonly class AccessListener
 
         match (true) {
             $policy instanceof PublicAccess => null,
-            $policy instanceof Authenticated => $this->account($route),
+            $policy instanceof Authenticated => $this->account($route, false),
             $policy instanceof InOrganisation => $this->inOrganisation($request, $route, $policy),
             $policy instanceof InEvent => $this->inEvent($request, $route, $policy),
             default => throw new LogicException(Str\format('Route "%s" has a policy nothing enforces.', $route)),
@@ -65,7 +65,7 @@ final readonly class AccessListener
     private function inOrganisation(Request $request, string $route, InOrganisation $policy): void
     {
         $organisationId = self::uuid($request, $policy->parameter);
-        $user = $this->account($route);
+        $user = $this->account($route, false);
 
         if ($policy->orOnAnEvent && null !== $policy->permission) {
             $scope = $this->membershipDirectory->eventScopeIn($user, $organisationId) ?? throw self::notFound();
@@ -81,11 +81,11 @@ final readonly class AccessListener
     private function inEvent(Request $request, string $route, InEvent $policy): void
     {
         $eventId = self::uuid($request, $policy->parameter);
-        $user = $this->account($route);
+        $user = $this->account($route, true);
         $organisationId = $this->eventDirectory->organisationOf($eventId) ?? throw self::notFound();
 
         $grants = $this->membershipDirectory->grantsOnEvent($user, $organisationId, $eventId) ?? throw self::notFound();
-        $this->check($request, $grants, $policy->permission, $policy->feature);
+        $this->check($request, $grants, $policy->permission, $policy->feature, $policy->featureLocksReading);
 
         $request->attributes->set(self::EVENT, $eventId);
     }
@@ -116,7 +116,7 @@ final readonly class AccessListener
     }
 
     /** Signed in, and through the onboarding gate unless the route is on its exempt list. */
-    private function account(string $route): User
+    private function account(string $route, bool $onAnEvent): User
     {
         $user = $this->security->getUser();
 
@@ -126,7 +126,7 @@ final readonly class AccessListener
             ]);
         }
 
-        $refusal = $this->onboardingGate->refusalFor($user, $route);
+        $refusal = $this->onboardingGate->refusalFor($user, $route, $onAnEvent);
 
         if (null !== $refusal) {
             throw new ApiException($refusal, $this->translator->trans(match (true) {

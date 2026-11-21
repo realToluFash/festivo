@@ -11,6 +11,7 @@ import {
   GUESTS_TOGETHER_MOST,
   asGuestList,
   realtimeTopic,
+  stayedOf,
 } from '@soirely/api-client';
 import {
   CHOICES,
@@ -114,6 +115,7 @@ import {
   companionsWith,
   markQuestion,
   onlyCompanions,
+  nothingRemoved,
   removeQuestion,
   shownGuests,
 } from './guestSelect.ts';
@@ -156,7 +158,7 @@ const FOCUSABLE = 'button, a[href], input, select, textarea, [tabindex]';
 /** The guest list as the API holds it, published to every page open on it. */
 function useLiveGuests(eventId: string, onList: (list: GuestList) => void, onGap: () => void) {
   useHubTopics(
-    [realtimeTopic('EventGuests', eventId)],
+    [realtimeTopic('EventGuests', eventId), realtimeTopic('EventCheckIn', eventId)],
     () => api.guestsSubscription(eventId),
     (data) => {
       const list = asGuestList(data);
@@ -780,11 +782,19 @@ export function GuestsArea({
   }
 
   function removeMany(ids: readonly string[] = [...picked]): void {
+    const stays = removeQuestion(guests, new Set(ids)).stays;
+
+    if (stays.length === ids.length) {
+      setSelected(NONE);
+      ended({ kind: 'removed', removed: nothingRemoved(stays) });
+      return;
+    }
     setRemoving({ busy: true });
     api.removeGuests(event.id, ids).then(
       (removed) => {
         endUndo();
-        const gone = new Set(ids);
+        const stayed = new Set(removed.stayed.map((one) => one.id));
+        const gone = new Set(ids.filter((id) => !stayed.has(id)));
 
         setLoad((was) =>
           was.kind === 'loaded'
@@ -801,7 +811,15 @@ export function GuestsArea({
         if (open != null && gone.has(open)) setParams(withGuest(null));
         ended({ kind: 'removed', removed });
       },
-      () => ended({ kind: 'failed', action: { kind: 'remove' } }),
+      (error: unknown) => {
+        if (error instanceof ApiError && error.is('guest_arrived')) {
+          setSelected(NONE);
+          setRecount((n) => n + 1);
+          ended({ kind: 'removed', removed: nothingRemoved(stayedOf(error.problem)) });
+          return;
+        }
+        ended({ kind: 'failed', action: { kind: 'remove' } });
+      },
     );
   }
 
@@ -1495,6 +1513,7 @@ const CHOICE_KEY: Record<Choice, string> = {
   held: REPLY_KEY.held,
   notComing: REPLY_KEY.notComing,
   notYetInvited: REPLY_KEY.notYetInvited,
+  walkIn: REPLY_KEY.walkIn,
 };
 
 /** Find a guest, and the house filter menu beside it reading "{choice} · {n}". */
@@ -1532,7 +1551,9 @@ function SearchRow({
       </div>
       <div className="gs-menu">
         <Menu
-          items={CHOICES.filter((key) => key !== 'notYetInvited' || counts[key] > 0).map((key) => ({
+          items={CHOICES.filter(
+            (key) => (key !== 'notYetInvited' && key !== 'walkIn') || counts[key] > 0,
+          ).map((key) => ({
             key,
             word: t(CHOICE_KEY[key]),
             count: counts[key],

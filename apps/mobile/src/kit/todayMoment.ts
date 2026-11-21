@@ -6,6 +6,9 @@ import {
   type TodaySub,
   formatEventClock,
   notThisYear,
+  numberFormat,
+  type TodayArrivals,
+  todayArrivalsOf,
   todayRepliesOf,
   todayView,
 } from '@soirely/domain';
@@ -13,6 +16,7 @@ import type { TFunction } from 'i18next';
 
 import {
   type AgendaItem,
+  type ArrivedFigure,
   type EventCard,
   meshFor,
   type Moment,
@@ -114,8 +118,43 @@ function card(one: TodayCard<ListedEvent>, now: Date, reader: Reader, t: TFuncti
   };
 }
 
-/** sc-29881's line, from the figures Events counts (sc-3786), so Today and Events agree. */
+function arrivedWords(arrivals: TodayArrivals, t: TFunction): string {
+  return arrivals.kind === 'alone'
+    ? t('todayScreen.arrivedAlone', { count: arrivals.attended })
+    : t('todayScreen.arrivedOf', { count: arrivals.attended, expected: arrivals.expected });
+}
+
+/** Now's figure once anyone has arrived (sc-29978), its numbers in the reader's language. */
+function arrivedFigure(event: ListedEvent, locale: string, t: TFunction): ArrivedFigure | null {
+  const arrivals = todayArrivalsOf(event.guests);
+
+  if (arrivals == null) return null;
+
+  const numbers = numberFormat(locale);
+  const count = numbers.format(arrivals.attended);
+  const label = t('todayScreen.arrivedCount', { count: arrivals.attended });
+  const spoken = arrivedWords(arrivals, t);
+
+  return arrivals.kind === 'alone'
+    ? { count, of: null, share: null, label, spoken }
+    : {
+        count,
+        of: numbers.format(arrivals.expected),
+        share: arrivals.attended / arrivals.expected,
+        label,
+        spoken,
+      };
+}
+
+/** sc-29978's arrived line once anyone has arrived, otherwise sc-29881's, from the figures Events counts (sc-3786), so Today and Events agree. */
 function readyOf(event: ListedEvent, draft: boolean, t: TFunction): EventCard['ready'] {
+  const arrivals = draft ? null : todayArrivalsOf(event.guests);
+
+  if (arrivals != null)
+    return arrivals.kind === 'alone'
+      ? { words: arrivedWords(arrivals, t), percent: 0 }
+      : { words: arrivedWords(arrivals, t), percent: arrivals.percent, track: true };
+
   const replies = todayRepliesOf(event.guests, draft);
 
   if (replies == null) return null;
@@ -156,13 +195,12 @@ function nowOf(now: TodayNow<ListedEvent>, at: Date, reader: Reader, t: TFunctio
         : now.endsIn === 1
           ? t('todayScreen.endsTomorrow', ends)
           : t('todayScreen.endsOn', ends),
-    // Only the dates are known: what is happening, the rail and arrivals have no source yet, so a moment that is not `full` never draws them.
+    // Only the dates and the arrivals are known: what is happening and the rail have no source here, so a moment that is not `full` never draws them.
     happening: '',
     until: '',
     behind: '',
     next: { time: '', title: '' },
-    arrived: 0,
-    expected: 0,
+    arrived: arrivedFigure(event, reader.locale, t),
     rail: [],
     at: 0,
   };

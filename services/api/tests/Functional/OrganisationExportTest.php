@@ -104,11 +104,15 @@ final class OrganisationExportTest extends ApiTestCase
         'staff_jobs' => ['id', 'event_id', 'name', 'access', 'position', 'created_at'],
         'staff_shifts' => ['id', 'job_id', 'starts_at', 'ends_at', 'needed'],
         'staff_shift_people' => ['shift_id', 'staff_id'],
+        'staff_rates' => ['id', 'event_id', 'job_id', 'staff_id', 'pay', 'amount_minor', 'amount_currency', 'set_at'],
         'staff_stations' => ['id', 'event_id', 'kind', 'name', 'section_id', 'lead_id', 'position', 'walk_position'],
         'staff_item_stations' => ['course_id', 'item_key', 'station_id'],
-        'cost_lines' => ['id', 'event_id', 'label', 'category', 'basis', 'price_minor', 'price_currency', 'note', 'created_at', 'updated_at'],
+        'cost_lines' => ['id', 'event_id', 'label', 'category', 'basis', 'price_minor', 'price_currency', 'note', 'markup_tenths', 'client_price_minor', 'client_price_currency', 'created_at', 'updated_at'],
+        'cost_markups' => ['id', 'event_id', 'category', 'markup_tenths', 'created_at', 'updated_at'],
         'quotes' => ['id', 'event_id', 'vendor_id', 'covers', 'amount_minor', 'amount_currency', 'quoted_on', 'reference', 'superseded_at', 'created_at'],
         'scheduled_payments' => ['id', 'event_id', 'vendor_id', 'description', 'amount_minor', 'amount_currency', 'due_on', 'created_at'],
+        'payers' => ['id', 'event_id', 'name', 'note', 'created_at', 'updated_at'],
+        'cost_payers' => ['id', 'event_id', 'line_id', 'payer_id', 'split', 'value', 'value_currency', 'rest_payer_id'],
     ];
 
     /** Every table the archive does not read, and why: a new table fails the test below until it is in one or the other. */
@@ -124,6 +128,8 @@ final class OrganisationExportTest extends ApiTestCase
         'email_suppressions' => "Soirely's own records",
         'event_changes' => 'change history',
         'event_covers' => 'photos',
+        'door_code_redemptions' => 'a link that opens without signing in',
+        'door_codes' => 'a link that opens without signing in',
         'event_mutes' => "notifications: one person's, or deliveries",
         'join_offer_dismissals' => "a person's own account (sc-611's rule)",
         'known_devices' => "sign-in credentials (sc-611's rule)",
@@ -146,6 +152,7 @@ final class OrganisationExportTest extends ApiTestCase
         'scheduled_notifications' => "notifications: one person's, or deliveries",
         'schema_probes' => "Soirely's own records",
         'screen_links' => 'a link that opens without signing in',
+        'staff_link_tokens' => 'a link that opens without signing in',
         'sign_in_proofs' => "sign-in credentials (sc-611's rule)",
         'subscription_changes' => "billing: Soirely's own records, the terms it sells on (pm, 19 Nov)",
         'subscriptions' => "billing: Soirely's own records, the terms it sells on (pm, 19 Nov)",
@@ -268,7 +275,8 @@ final class OrganisationExportTest extends ApiTestCase
         $staff = $this->row('staff_members', ['event_id' => $eventId, 'full_name' => 'Kemi Bello', 'mobile' => '+2348030000001', 'email' => 'kemi@example.com', 'member_id' => $this->owner->getId()->toRfc4122(), 'job_id' => $job, ...$stamps]);
         $shift = $this->row('staff_shifts', ['job_id' => $job, 'starts_at' => '2026-11-14 16:00:00', 'ends_at' => '2026-11-14 23:30:00', 'needed' => 3, ...$stamps]);
         $connection->insert('staff_shift_people', ['shift_id' => $shift, 'staff_member_id' => $staff]);
-        $this->row('budget_lines', ['event_id' => $eventId, 'label' => 'Catering', 'category' => 'catering', 'basis' => 'per_head', 'price_minor' => 4800, 'note' => 'Three courses', 'created_at' => $at, 'updated_at' => '2026-10-16 10:00:00']);
+        $this->row('budget_lines', ['event_id' => $eventId, 'label' => 'Catering', 'category' => 'catering', 'basis' => 'per_head', 'price_minor' => 4800, 'note' => 'Three courses', 'client_price_minor' => 560000, 'created_at' => $at, 'updated_at' => '2026-10-16 10:00:00']);
+        $this->row('budget_markups', ['event_id' => $eventId, 'category' => 'venue', 'markup_tenths' => 0, ...$stamps]);
         $this->row('budget_lines', ['event_id' => $eventId, 'label' => 'Staff', 'category' => 'staffing', 'basis' => 'per_staff_hour', 'price_minor' => null, 'note' => null, ...$stamps]);
         $currency = Type\string()->coerce($connection->fetchOne('SELECT currency FROM events WHERE id = ?', [$eventId]));
 
@@ -311,9 +319,10 @@ final class OrganisationExportTest extends ApiTestCase
         self::assertSame([[$shift, $staff]], Vec\map($table('staff_shift_people'), static fn (array $row): array => Vec\values($row)));
 
         self::assertSame(
-            [['Catering', 'catering', 'per_head', 4800, $currency, 'Three courses', '2026-10-16T09:00:00Z', '2026-10-16T10:00:00Z'], ['Staff', 'staffing', 'per_staff_hour', null, null, null, '2026-10-16T09:00:00Z', '2026-10-16T09:00:00Z']],
+            [['Catering', 'catering', 'per_head', 4800, $currency, 'Three courses', null, 560000, $currency, '2026-10-16T09:00:00Z', '2026-10-16T10:00:00Z'], ['Staff', 'staffing', 'per_staff_hour', null, null, null, null, null, null, '2026-10-16T09:00:00Z', '2026-10-16T09:00:00Z']],
             Vec\map($table('cost_lines'), static fn (array $row): array => Vec\values(Dict\drop($row, 2))),
         );
+        self::assertSame([['venue', 0]], Vec\map($table('cost_markups'), static fn (array $row): array => [$row['category'], $row['markup_tenths']]));
         self::assertStringContainsString('"served_time": "19:30"', $files['archive.json']);
         foreach (self::TABLES as $name => $columns) {
             $lines = Str\split(Str\trim(Str\strip_prefix($files[$name . '.csv'], "\u{FEFF}")), "\r\n");

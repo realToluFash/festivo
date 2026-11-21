@@ -21,6 +21,8 @@ import {
   PanResponder,
   Platform,
   Pressable,
+  ScrollView,
+  type ScrollViewProps,
   StyleSheet,
   View,
 } from 'react-native';
@@ -30,6 +32,7 @@ import {
   sheetDragCloses,
   sheetDragSpeed,
   sheetDragStarts,
+  sheetStripHas,
   sheetKeysCover,
   sheetPadding,
   sheetUnderKeys,
@@ -157,7 +160,16 @@ function SheetFrame({
     height,
   );
   const drags = phone && scrimLabel != null;
-  const drag = useSheetDrag({ shift, fade, reduced, held, keysCover, onClose });
+  const [stripHeld, setStripHeld] = useState(false);
+  const drag = useSheetDrag({
+    shift,
+    fade,
+    reduced,
+    held,
+    keysCover,
+    onClose,
+    holdStrip: setStripHeld,
+  });
   const { shown, gone } = useWindowTurn(useModalOpen(present));
   const unnamed = useUnnamedWindow(
     Platform.OS === 'android' && headingTakesFocus && shown,
@@ -241,7 +253,9 @@ function SheetFrame({
             {...(drags ? drag.handlers : {})}
             testID={testID}
           >
-            <Revealed.Provider value={!unnamed}>{children}</Revealed.Provider>
+            <StripHeld.Provider value={drags && stripHeld}>
+              <Revealed.Provider value={!unnamed}>{children}</Revealed.Provider>
+            </StripHeld.Provider>
             {drags && <View style={styles.grabber} pointerEvents="none" />}
             {/* The avoiding view's padding can stop short of the keys as they rise, so card shows there, never the screen. */}
             {phone && !underKeys && (
@@ -344,6 +358,8 @@ type SheetDragNow = {
   held: boolean;
   keysCover: number | null;
   onClose: () => void;
+  /** True while a finger that landed in the strip is down, so the content's scroll leaves its drag alone. */
+  holdStrip: (held: boolean) => void;
 };
 
 type SheetTouch = {
@@ -383,10 +399,12 @@ function sheetDrag(first: SheetDragNow) {
       onTouchStart: ({ nativeEvent }: GestureResponderEvent) => {
         const { pageX, pageY, timestamp, touches } = nativeEvent;
         if (touch?.dragging) back();
+        const from = pageY - frame.top;
+        now.holdStrip(touches.length === 1 && sheetStripHas(from));
         touch =
           touches.length === 1
             ? {
-                from: pageY - frame.top,
+                from,
                 x0: pageX,
                 y0: pageY,
                 samples: [{ y: pageY, t: timestamp }],
@@ -406,6 +424,7 @@ function sheetDrag(first: SheetDragNow) {
       onTouchEnd: ({ nativeEvent }: GestureResponderEvent) => {
         const ended = touch;
         touch = null;
+        now.holdStrip(false);
         if (!ended?.dragging) return;
         const closes = sheetDragCloses({
           dy: nativeEvent.pageY - ended.y0,
@@ -420,6 +439,7 @@ function sheetDrag(first: SheetDragNow) {
       onTouchCancel: () => {
         const cancelled = touch;
         touch = null;
+        now.holdStrip(false);
         if (cancelled?.dragging) back();
       },
     },
@@ -519,6 +539,15 @@ export function SilentWindowName() {
 }
 
 const Revealed = createContext(true);
+
+const StripHeld = createContext(false);
+
+/** A sheet's scrolling content. It holds still while a finger that landed in the sheet's top strip is down, or Android's scroll takes the drag and the sheet never moves (sc-27948). */
+export function SheetScrollView(props: ScrollViewProps) {
+  const held = useContext(StripHeld);
+
+  return <ScrollView {...props} scrollEnabled={!held && props.scrollEnabled !== false} />;
+}
 
 /** False while a sheet that names no window hides its content, so a heading waits to take focus until it can (sc-11032). */
 export function useSheetRevealed(): boolean {

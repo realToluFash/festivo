@@ -16,7 +16,7 @@ import subprocess
 import time
 
 from . import machine, remote
-from .systemd import DAEMON_WAIT_SECONDS, daemon_status
+from .systemd import DAEMON_WAIT_SECONDS, TOKEN, daemon_status
 
 LABEL = "com.soirely.routine"
 WEB_LABEL = "com.soirely.web"
@@ -214,6 +214,11 @@ class Mac:
             self.launchctl("bootstrap", domain(), str(target))
         return changed
 
+    def restart_web(self):
+        """The page is one long run, so it serves the `sq` it started with until restarted."""
+        if self.launchctl("print", f"{domain()}/{WEB_LABEL}").returncode == 0:
+            self.launchctl("kickstart", "-k", f"{domain()}/{WEB_LABEL}")
+
     def reload(self, target, detached=False):
         steps = f"launchctl bootout {domain()}/{LABEL}; launchctl bootstrap {domain()} '{target}'"
         if detached:
@@ -278,8 +283,9 @@ class Mac:
         if "not running" not in daemon_status(env, run):
             return
         spawn(["claude", "daemon", "run"],
-              env={"PATH": search_path(), **{key: env[key] for key in ("CLAUDE_CONFIG_DIR", "HOME")
-                                             if key in env}},
+              env={"PATH": search_path(),
+                   **{key: env[key] for key in ("CLAUDE_CONFIG_DIR", "HOME", TOKEN)
+                      if key in env}},
               stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
               start_new_session=True)
         for _ in range(DAEMON_WAIT_SECONDS):

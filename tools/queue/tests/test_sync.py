@@ -172,6 +172,64 @@ class PullRequestStories(unittest.TestCase):
         self.assertEqual(asked, [10])
 
 
+class DemoPullRequests(unittest.TestCase):
+    """A demo-only story whose demo merged before the window of 15 merges still has it."""
+
+    def setUp(self):
+        self.db, self.asked = store.connect(":memory:"), []
+
+    def story(self, id_, state="Ready For Dev", labels=("demo only",), **extra):
+        store.put_story(self.db, {"id": id_, "name": "demo", "state": state,
+                                  "labels": list(labels), "done": False, **extra})
+
+    def merged(self, number, story_id):
+        return {"number": number, "story_id": story_id, "state": "merged", "head_sha": "a",
+                "branch": f"ux/sc-{story_id}-demo", "merged_at": "2026-11-07T19:00:00Z"}
+
+    def run_at(self, now, found=None):
+        def search(story_id):
+            self.asked.append(story_id)
+            if isinstance(found, Exception):
+                raise found
+            return [self.merged(40 + story_id, story_id)]
+        with mock.patch.object(github, "merged_for_story", side_effect=search):
+            sync.demo_prs(self.db, now)
+        return sorted(pr["number"] for pr in store.prs(self.db))
+
+    def test_a_stranded_demo_is_found_and_stored_beside_the_window(self):
+        self.story(1)
+        store.put_prs(self.db, [self.merged(99, 5)])
+        self.assertEqual(self.run_at(NOW), [41, 99])
+        self.assertEqual(store.prs_for_story(self.db, 1)[0]["number"], 41)
+        self.assertEqual(self.asked, [1])
+
+    def test_it_is_searched_once_a_day_and_kept_across_syncs(self):
+        self.story(1)
+        self.run_at(NOW)
+        store.put_prs(self.db, [])
+        self.assertEqual(self.run_at(NOW + 60), [41])
+        store.put_prs(self.db, [])
+        self.run_at(NOW + sync.DEMO_SEARCH_SECONDS)
+        self.assertEqual(self.asked, [1, 1])
+
+    def test_a_failed_search_keeps_what_was_found(self):
+        self.story(1)
+        self.run_at(NOW)
+        store.put_prs(self.db, [])
+        self.assertEqual(self.run_at(NOW + sync.DEMO_SEARCH_SECONDS,
+                                     github.GitHubError("rate")), [41])
+
+    def test_only_a_demo_only_story_waiting_on_its_build_is_searched(self):
+        self.story(1, labels=())
+        self.story(2, state="Ready For QA")
+        self.story(3, done=True, state="Done")
+        self.story(4, archived=True)
+        self.story(5)
+        store.put_prs(self.db, [self.merged(50, 5)])
+        self.assertEqual(self.run_at(NOW), [50])
+        self.assertEqual(self.asked, [])
+
+
 class Blockers(unittest.TestCase):
     """A story's blockers are fetched whatever state they are in, so each is judged by it."""
 
@@ -294,13 +352,15 @@ class Budget(unittest.TestCase):
         self.assertEqual(self.made[0].deadline, 100.0 + sync.BUDGET_SECONDS)
         self.assertEqual(store.get_meta(self.db, "synced_ok_at"), NOW)
 
-    def test_github_out_of_time_is_cut_and_pr_stories_skipped(self):
+    def test_github_out_of_time_is_cut_and_pr_stories_and_demos_skipped(self):
         def slow_github(db):
             raise github.OutOfTime("out of time in gh api graphql")
 
-        with mock.patch.object(sync, "pr_stories") as stories:
+        with mock.patch.object(sync, "pr_stories") as stories, \
+                mock.patch.object(sync, "demo_prs") as demos:
             self.assertEqual(self.run_sync(github_step=slow_github), [])
         stories.assert_not_called()
+        demos.assert_not_called()
         self.assertEqual(store.get_meta(self.db, "sync_report")["cut"], ["github"])
 
     def test_each_part_reports_how_long_it_took(self):
@@ -309,7 +369,8 @@ class Budget(unittest.TestCase):
 
         self.run_sync(github_step=github_takes_four)
         self.assertEqual(store.get_meta(self.db, "sync_report")["took"],
-                         {"shortcut": 0.0, "github": 4.0, "pr stories": 0.0})
+                         {"shortcut": 0.0, "github": 4.0, "demo prs": 0.0,
+                          "pr stories": 0.0})
 
     def test_a_manual_sync_has_no_budget(self):
         with mock.patch.object(sync, "sync_github"), mock.patch.object(sync, "pr_stories"):

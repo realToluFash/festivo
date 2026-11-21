@@ -87,6 +87,10 @@ import { ServiceRoomPage } from './ServiceRoom.tsx';
 import { ROOM_STATES, ROOM_STATE_WHAT } from './serviceRoom.ts';
 import { QUEUE_STATES, type QueueStateName } from './queue.ts';
 import { JobsShiftsPage } from './JobsShifts.tsx';
+import { StaffHoursPage } from './StaffHours.tsx';
+import { HOURS_PAGES } from './hours.ts';
+import { ShiftClockPage } from './ShiftClock.tsx';
+import { SHIFT_CLOCK_PAGES } from './shiftClock.ts';
 import { RosterPage } from './Roster.tsx';
 import { ROSTER_PAGES } from './roster.ts';
 import { JOBS_PAGES } from './shifts.ts';
@@ -109,7 +113,11 @@ import { PEOPLE_PAGES } from './people.ts';
 import { Redeem } from './Redeem.tsx';
 import { DoorCheckIn, ShiftPage } from './DoorCheckIn.tsx';
 import { CHECK_IN_PAGES } from './doorCheckIn.ts';
+import { MyNight } from './MyNight.tsx';
+import { MY_NIGHT_PAGES } from './myNight.ts';
 import { REDEEM_PAGES } from './redeem.ts';
+import { StaffSignIn } from './StaffSignIn.tsx';
+import { STAFF_SIGN_IN_PAGES } from './staffSignIn.ts';
 import { Settings } from './Settings.tsx';
 import { SETTINGS_PAGES } from './settings.ts';
 import { SIGN_IN_RULES_PAGES } from './signInRules.ts';
@@ -133,6 +141,7 @@ import { PAYMENTS_PAGES } from './payments.ts';
 import { PLAN_PAGES } from './plan.ts';
 import { SHARE_PAGES } from './share.ts';
 import { ShareRecipient } from './ShareRecipient.tsx';
+import { STAFF_RATES_PAGES } from './staffRates.ts';
 import { TEMPLATES_PAGES } from './templates.ts';
 import { Today } from './Today.tsx';
 import { SEARCH_PAGES, searchStart, searchStateOf } from './search.ts';
@@ -286,6 +295,7 @@ export default function Demo() {
       <Route path="events/:id/staff/stations" element={<StationsPage />} />
       <Route path="events/:id/staff/roster" element={<RosterPage />} />
       <Route path="events/:id/staff/jobs" element={<JobsShiftsPage />} />
+      <Route path="events/:id/staff/hours" element={<StaffHoursPage />} />
       <Route path="events/:id/schedule" element={<SchedulePage />} />
       <Route path="events/:id/run" element={<RunViewPage />} />
       <Route path="events/:id/night" element={<NightPage />} />
@@ -336,8 +346,11 @@ export default function Demo() {
       <Route path="settings/payment-reminders" element={<Settings open="vendors" reminders />} />
       <Route path="people" element={<People />} />
       <Route path="redeem" element={<Redeem />} />
+      <Route path="shift-clock" element={<ShiftClockPage />} />
       <Route path="check-in" element={<DoorCheckIn />} />
       <Route path="check-in/shift" element={<ShiftPage />} />
+      <Route path="staff-sign-in" element={<StaffSignIn />} />
+      <Route path="my-night" element={<MyNight />} />
       <Route path="vendors" element={<VendorsMoved />} />
       <Route path="share/:scope" element={<ShareRecipient />} />
       <Route path="unsubscribe" element={<Unsubscribe />} />
@@ -525,6 +538,14 @@ function DemoHome({ from }: { from: string }) {
         <BoardPages pages={JOBS_PAGES} />
         <h3>Stations and leads, what each station serves, the walking order (sc-3910) · desktop</h3>
         <BoardPages pages={STATIONS_PAGES} />
+        <h3>Hours worked: actual times, the two marks and Correct times (sc-234) · desktop</h3>
+        <BoardPages pages={HOURS_PAGES} />
+        <h3>The clock card on a person’s own shift, in a browser (sc-234) · phone</h3>
+        <BoardPages pages={SHIFT_CLOCK_PAGES} />
+        <h3>
+          A staff member’s whole night on one page (sc-3915) · 390 first, two columns from 800
+        </h3>
+        <BoardPages pages={MY_NIGHT_PAGES} />
       </section>
 
       <section className="demo-home-page" aria-labelledby="demo-page-35">
@@ -565,6 +586,8 @@ function DemoHome({ from }: { from: string }) {
         <BoardPages pages={PLAN_PAGES} />
         <h3>Templates and calibration · desktop</h3>
         <BoardPages pages={TEMPLATES_PAGES} />
+        <h3>Staff rates · desktop</h3>
+        <BoardPages pages={STAFF_RATES_PAGES} />
         <h3>What a decision costs, in Add guest · desktop</h3>
         <BoardPages pages={DECIDE_PAGES} />
         <h3>Share links, and the signed-out share · desktop, phone and tablet</h3>
@@ -615,6 +638,8 @@ function DemoHome({ from }: { from: string }) {
           Check-in in the browser, from a staff link or a door code (sc-28230) · 390, 320 and desk
         </h3>
         <BoardPages pages={CHECK_IN_PAGES} />
+        <h3>A staff link in the browser, signed out (sc-4235) · 390 first, one column wider</h3>
+        <BoardPages pages={STAFF_SIGN_IN_PAGES} />
       </section>
 
       <section className="demo-home-page" aria-labelledby="demo-page-27">

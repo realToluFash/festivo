@@ -187,7 +187,7 @@ describe('creating an organisation in B · A short walk at a desk (sc-30335)', (
 
     await screen.findByRole('heading', { level: 1, name: 'You are not in an organisation' });
     const start = screen.getByRole('button', { name: 'Start organisation' });
-    expect(document.activeElement).toBe(start);
+    expect(document.activeElement).toBe(document.body);
     fireEvent.click(start);
     expect(await walk()).toBeDefined();
     cleanup();
@@ -197,4 +197,35 @@ describe('creating an organisation in B · A short walk at a desk (sc-30335)', (
     await waitFor(() => expect(document.activeElement).toBe(notice.closest('.sw-notice')));
     expect(screen.getByRole('button', { name: 'Start your first event' })).toBeDefined();
   });
+
+  it(
+    'lists the invitations waiting from no organisation, and Open moves into the one joined (sc-75471)',
+    SLOW,
+    async () => {
+      open('/demo/today?orgs=none&state=invitations');
+
+      await screen.findByRole('heading', { level: 1, name: 'You are not in an organisation' });
+      expect(screen.getByRole('heading', { level: 2, name: 'Invitations' })).toBeDefined();
+      expect(screen.queryByText(/Ask whoever runs yours/u)).toBeNull();
+      expect(screen.getByRole('button', { name: 'Start organisation' })).toBeDefined();
+
+      const bluebird = screen.getByRole('group', { name: 'Bluebird Gatherings' });
+      fireEvent.click(within(bluebird).getByRole('button', { name: /^Decline/u }));
+      await within(bluebird).findByText(/You declined\./u, {}, WAIT);
+
+      const alameda = screen.getByRole('group', { name: 'Celebraciones Alameda' });
+      fireEvent.click(within(alameda).getByRole('button', { name: /Accept/u }));
+      const into = await within(alameda).findByRole(
+        'button',
+        { name: /Celebraciones Alameda/u },
+        WAIT,
+      );
+      fireEvent.click(into);
+
+      expect(
+        await screen.findByText('Now working in Celebraciones Alameda.', {}, WAIT),
+      ).toBeDefined();
+      expect(screen.queryByRole('heading', { name: 'You are not in an organisation' })).toBeNull();
+    },
+  );
 });

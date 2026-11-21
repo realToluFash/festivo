@@ -32,6 +32,7 @@ import { EmailDomains } from './app/settings/EmailDomains.tsx';
 import { ExportAllData } from './app/settings/ExportAllData.tsx';
 import { General } from './app/settings/General.tsx';
 import { Members } from './app/settings/Members.tsx';
+import { PaymentReminders } from './app/settings/PaymentReminders.tsx';
 import { SignInRules } from './app/settings/SignInRules.tsx';
 import { Vendors } from './app/settings/Vendors.tsx';
 import { SettingsDesk } from './app/SettingsDesk.tsx';
@@ -39,6 +40,7 @@ import { SignedInHome } from './app/Today.tsx';
 import { GuestLayout } from './guest/GuestLayout.tsx';
 import { Invitation } from './guest/Invitation.tsx';
 import { RoomScreenPage } from './screen/RoomScreen.tsx';
+import { StaffLinkPage } from './public/StaffLink.tsx';
 import { ChangePhone } from './public/ChangePhone.tsx';
 import { CompleteProfile } from './public/CompleteProfile.tsx';
 import { ForgotPassword } from './public/ForgotPassword.tsx';
@@ -127,6 +129,7 @@ export const routes = [
               { path: 'settings/members', element: <Members /> },
               { path: 'settings/sign-in-rules', element: <SignInRules /> },
               { path: 'settings/vendors', element: <Vendors /> },
+              { path: 'settings/vendors/payment-reminders', element: <PaymentReminders /> },
               { path: 'settings/data-and-control', element: <DataAndControl /> },
               { path: 'settings/data-and-control/export', element: <ExportAllData /> },
               { path: 'settings/data-and-control/email-domains', element: <EmailDomains /> },
@@ -141,6 +144,7 @@ export const routes = [
         children: [{ index: true, element: <Invitation /> }],
       },
       { path: '/s/:token', element: <RoomScreenPage /> },
+      { path: '/w/:token', element: <StaffLinkPage /> },
       { path: '/demo/*', element: <DemoRoute /> },
       { path: '*', element: <NotFound /> },
     ],

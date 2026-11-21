@@ -7,6 +7,7 @@ type Family = { prefix: string; sheets: readonly string[] | 'all'; part: string 
 
 const NARROW = 'narrowDesk.css';
 const WIDE = 'wideDesk.css';
+const REFLOW = 'deskReflow.css';
 
 const SHARED: readonly Family[] = [
   { prefix: 'is', sheets: 'all', part: 'a state on any part (is-open, is-side)' },
@@ -28,6 +29,11 @@ const SHARED: readonly Family[] = [
     part: 'the web Button as the demo sizes it',
   },
   {
+    prefix: 'dp',
+    sheets: [REFLOW, 'phone.css'],
+    part: 'the phone-fit desk (Events, Calendar, Vendors), which the one-column desk leaves to its own bar',
+  },
+  {
     prefix: 'dc-switch',
     sheets: ['dataControl.css', 'schedule.css'],
     part: 'the switch of Data control (DataControlParts), which the Schedule uses',
@@ -40,10 +46,10 @@ const SHARED: readonly Family[] = [
   {
     prefix: 'desk',
     sheets: [
+      REFLOW,
       'arrivalNote.css',
       'budget.css',
       'budgetHome.css',
-      'createOrg.css',
       'dataControl.css',
       'dataSettings.css',
       'decide.css',
@@ -65,6 +71,7 @@ const SHARED: readonly Family[] = [
       'messages.css',
       'messagesStop.css',
       NARROW,
+      'overviewReflow.css',
       'payers.css',
       'payments.css',
       'people.css',
@@ -95,6 +102,7 @@ const SHARED: readonly Family[] = [
       'kitchen.css',
       'menuCourses.css',
       NARROW,
+      'overviewReflow.css',
       'payers.css',
       'quotes.css',
       'roster.css',
@@ -162,6 +170,7 @@ const SHARED: readonly Family[] = [
   {
     prefix: 'mg',
     sheets: [
+      REFLOW,
       'makeLive.css',
       'messages.css',
       'messagesInvite.css',
@@ -183,6 +192,7 @@ const SHARED: readonly Family[] = [
   {
     prefix: 'mn',
     sheets: [
+      REFLOW,
       'dishChoices.css',
       'dishVariants.css',
       'menu.css',
@@ -202,8 +212,13 @@ const SHARED: readonly Family[] = [
     part: 'the initials of the Queue, which Team reuses',
   },
   {
+    prefix: 'rd',
+    sheets: ['redeem.css', 'staffSignIn.css'],
+    part: 'the redeem page (Redeem), whose column and fields the staff link reuses',
+  },
+  {
     prefix: 'ro',
-    sheets: [NARROW, 'schedule.css', WIDE],
+    sheets: [REFLOW, NARROW, 'schedule.css', WIDE],
     part: 'the Schedule (Schedule) at both desk widths',
   },
   {
@@ -224,12 +239,14 @@ const SHARED: readonly Family[] = [
   {
     prefix: 'today',
     sheets: [
+      REFLOW,
       'budgetHome.css',
       'events.css',
       'guestsMany.css',
       'menuCourses.css',
       'menuLibrary.css',
       NARROW,
+      'overviewReflow.css',
       'people.css',
       'phone.css',
       'roster.css',

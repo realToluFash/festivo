@@ -12,10 +12,10 @@ import { useLayout } from '../../src/layout/useLayout.ts';
 import { withBoldText } from '../../src/demo/boldText/BoldTextSwitch.tsx';
 import { createStateOf } from '../../src/demo/createOrg/CreateWalk.ts';
 import { NoOrganisation } from '../../src/demo/createOrg/NoOrganisation.tsx';
+import { noOrgBoardOf } from '../../src/demo/settings/fromNone.ts';
 import { OrgSwitcherProvider, useCurrentPlace } from '../../src/demo/OrgSwitcher.tsx';
 import { switcherStateOf } from '../../src/demo/OrgSwitcherModel.ts';
 import { isNeedsState, MOMENTS, momentOf, planGuests, sayIn } from '../../src/demo/today.ts';
-import { ArrivedTodayScreen } from '../../src/demo/today/ArrivedToday.tsx';
 import {
   ARRIVED_AT,
   type ArrivedState,
@@ -196,17 +196,18 @@ function DemoTodayScreen() {
       state={switcherStateOf(params.switcher)}
       create={createStateOf(params.create)}
       none={params.orgs === 'none'}
+      invited={params.state === 'invitations'}
       statusBar={bar}
       tell={tell}
     >
       <TodayShellProvider value={shell}>
         <View style={styles.fill}>
           {place == null ? (
-            <NoOrganisation tell={tell} managed={params.state === 'managed'} />
+            <NoOrganisation tell={tell} board={noOrgBoardOf(params.state)} />
           ) : shownRun != null ? (
             <RunTodayScreen moment={shownRun} onTab={onTab} notices={notices} />
           ) : arrived != null ? (
-            <ArrivedTodayScreen moment={arrived} onTab={onTab} notices={notices} />
+            <TodayScreen moment={arrived} onTab={onTab} notices={notices} />
           ) : drawn.needs != null ? (
             <NeedsTodayScreen moment={drawn} onTab={onTab} notices={notices} />
           ) : kind === 'tabletLandscape' ? (

@@ -15,13 +15,11 @@ import {
 } from '@soirely/domain';
 import type { TFunction } from 'i18next';
 
-/** Never sharing a word or a mark (31 Oct): a price of 0 is Not priced, a priced line counting 0 is Nothing yet. */
+/** Never sharing a word or a mark (31 Oct): a line the API counts as waiting for a price is Not priced, a priced line counting 0 is Nothing yet. */
 export type LineState = 'priced' | 'notPriced' | 'nothingYet';
 
 export function lineState(line: BudgetLine): LineState {
-  const price = linePrice(line);
-
-  if (line.basis !== 'per_staff_hour' && price != null && Number(price) === 0) return 'notPriced';
+  if (line.basis !== 'per_staff_hour' && line.notPriced) return 'notPriced';
 
   return line.quantity.count === 0 ? 'nothingYet' : 'priced';
 }
@@ -111,6 +109,8 @@ export function priceProblemWords(
 
 export const WHAT_MAX = 100;
 export const NOTE_MAX = 500;
+/** How long a figure another tab changed stays washed: the length of `bt-wash` in budget.css. */
+export const WASH_MS = 1600;
 
 export const characters = (typed: string): number => [...typed.trim()].length;
 
@@ -177,8 +177,9 @@ export function removedWords(t: TFunction, line: BudgetLine, locale: string): st
   const state = lineState(line);
 
   if (state === 'notPriced') return t('budget.removedNotPriced', { name: line.label });
-  if (state === 'nothingYet' || Number(line.cost.confirmed) === 0)
-    return t('budget.removedNothingYet', { name: line.label });
+  if (state === 'nothingYet') return t('budget.removedNothingYet', { name: line.label });
+  if (Number(line.cost.confirmed) === 0)
+    return t('budget.removedCostNothing', { name: line.label });
 
   return t('budget.removed', {
     name: line.label,
@@ -207,7 +208,8 @@ export function liveWords(
         old.amount !== line.amount ||
         old.label !== line.label ||
         old.category !== line.category ||
-        old.basis !== line.basis)
+        old.basis !== line.basis ||
+        old.notPriced !== line.notPriced)
     );
   });
   const moved = minorOf(now.confirmed, now.currency) - minorOf(was.confirmed, was.currency);

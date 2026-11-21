@@ -144,6 +144,9 @@ function headcountOf({ guests }: Listed) {
           hostNotComing: held('notComing'),
         },
         declined: count('notComing'),
+        walkIns: 0,
+        attended: 0,
+        expected: count('coming') + held('coming'),
       },
       byGroup: [],
       byDietaryNeed: { addsUp: false, needs: [] },
@@ -1779,6 +1782,21 @@ describe('A guest’s details, and correcting them (sc-3773)', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Save' }));
 
     expect(await screen.findByText('Not saved. Nothing was changed. Try again.')).toBeDefined();
+    expect(field('Full name').value).toBe('Ngozi Okafor');
+  });
+
+  it('says in the API’s words why an arrived companion cannot be taken off, and keeps the form', async () => {
+    const line = 'A companion of Ngozi Eze has arrived, so they stay on the list.';
+    await editNgozi({
+      'PUT /api/events/ev_1/guests/g_1': () =>
+        problem('guest_arrived', 409, { detail: line, why: 'companionArrived' }),
+    });
+
+    type('Full name', 'Ngozi Okafor');
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+    expect(await screen.findByText(line)).toBeDefined();
+    expect(screen.queryByText('Not saved. Nothing was changed. Try again.')).toBeNull();
     expect(field('Full name').value).toBe('Ngozi Okafor');
   });
 
@@ -3851,6 +3869,39 @@ describe('Remove from the list, with a short undo (sc-3774)', () => {
     await waitFor(() => expect(document.activeElement).toBe(title));
   });
 
+  it('reads them again when a companion arrived first, and Back to their details lands on that companion (sc-1454)', async () => {
+    let arrived = false;
+    const ARRIVED = {
+      ...NGOZI_TWO,
+      companions: [
+        { ...NGOZI_TWO.companions[0], arrival: { at: '2030-11-14T15:10:00Z', by: 'Door' } },
+        NGOZI_TWO.companions[1],
+      ],
+    };
+    await removing({
+      'GET /api/events/ev_1/guests/g_1': () => tagged(arrived ? ARRIVED : NGOZI_TWO, '"1"'),
+      'DELETE /api/events/ev_1/guests/g_1': () => {
+        arrived = true;
+
+        return problem('guest_arrived', 409, { why: 'companionArrived' });
+      },
+    });
+
+    fireEvent.click(
+      within(screen.getByRole('alertdialog')).getByRole('button', { name: 'Remove' }),
+    );
+    fireEvent.click(await screen.findByRole('button', { name: 'Back to their details' }));
+
+    const companion = await waitFor(() => {
+      const row = column().querySelector('[data-focus="arrival-c_1"]');
+      expect(row).not.toBeNull();
+
+      return row;
+    });
+    await waitFor(() => expect(document.activeElement).toBe(companion));
+    expect(screen.queryByRole('alertdialog')).toBeNull();
+  });
+
   it('turns the open question into already removed when another host’s removal arrives live (#49283)', async () => {
     const before = config();
     __setConfig({ ...before, mercureUrl: 'http://hub.test/.well-known/mercure' });
@@ -3931,6 +3982,63 @@ describe('Remove from the list, with a short undo (sc-3774)', () => {
     );
 
     expect(within(column()).queryByRole('button', { name: 'Remove from the list' })).toBeNull();
+  });
+
+  async function editArrived(arrivedAt: readonly number[]) {
+    const companions = NGOZI_TWO.companions.map((one, at) =>
+      arrivedAt.includes(at)
+        ? { ...one, arrival: { at: '2030-11-14T15:10:00Z', by: 'Door' } }
+        : one,
+    );
+    await openNgozi({
+      'GET /api/events/ev_1/guests': () => json(listOf([{ ...NGOZI_ROW, companions }, AMAKA])),
+      'GET /api/events/ev_1/guests/g_1': () => tagged({ ...NGOZI_TWO, companions }, '"1"'),
+    });
+    fireEvent.click(within(column()).getByRole('button', { name: 'Edit' }));
+    await waitFor(() => expect(document.activeElement).toBe(field('Full name')));
+  }
+
+  function describedBy(input: HTMLElement): string {
+    return (input.getAttribute('aria-describedby') ?? '')
+      .split(' ')
+      .map((id) => document.getElementById(id)?.textContent ?? '')
+      .join(' | ');
+  }
+
+  it('offers no Remove on Edit guest for an arrived companion, and says why under their field (sc-1454)', async () => {
+    await editArrived([0, 1]);
+
+    expect(screen.queryByRole('button', { name: 'Remove Obi Eze' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Remove Ngozi Eze’s guest · 2' })).toBeNull();
+    expect(describedBy(field('Companion’s full name, 1 of 2'))).toBe(
+      'Obi Eze has arrived, so they stay on the list.',
+    );
+    expect(describedBy(field('Companion’s full name, 2 of 2'))).toBe(
+      'Guest of Ngozi Eze · 2 has arrived, so they stay on the list.',
+    );
+  });
+
+  it('offers Remove on Edit guest for a companion who has not arrived', async () => {
+    await editArrived([0]);
+
+    expect(screen.queryByRole('button', { name: 'Remove Obi Eze' })).toBeNull();
+    expect(screen.getByRole('button', { name: 'Remove Ngozi Eze’s guest · 2' })).toBeDefined();
+    expect(field('Companion’s full name, 2 of 2').getAttribute('aria-describedby')).toBeNull();
+  });
+
+  it('Fewer places never drops an arrived place, named or not, and refuses in its own words (sc-1454)', async () => {
+    await editArrived([1]);
+    const places = screen.getByRole('spinbutton', { name: 'Places for companions' });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Fewer places' }));
+
+    expect(
+      screen.getByText(
+        'Ngozi Eze already has 2 named or arrived. Arrived companions stay on the list.',
+      ),
+    ).toBeDefined();
+    expect(places.getAttribute('aria-invalid')).toBe('true');
+    expect((places as HTMLInputElement).value).toBe('2');
   });
 });
 

@@ -365,6 +365,10 @@ describe('a 100-character name (sc-486)', () => {
     expect(cssRule('.org-name,\n.org-role')).toMatch(/margin: 0;/u);
   });
 
+  it("keeps the menu's own lines free of a paragraph's margins, outside Today's page too (sc-563)", () => {
+    expect(MENU_STYLES).toMatch(/:where\(\.sw-menu\) :is\(h2, h3, p\) \{\s*margin: 0;/u);
+  });
+
   it('never lets the frame grow past the viewport, nor the open list', () => {
     expect(cssRule('.shell')).toMatch(
       /grid-template-columns: var\(--todaySide\) minmax\(0, 1fr\);/u,
@@ -955,15 +959,17 @@ describe('an invitation in the switcher, answered in its panel (sc-30412)', () =
           )
         : null,
     );
+    const scrolled = vi.spyOn(Element.prototype, 'scrollIntoView');
     inTwo();
     at('/app');
 
     const panel = await openInvitation();
     fireEvent.click(within(panel).getByRole('button', { name: 'Accept and join Adunni Weddings' }));
 
-    expect(
-      await within(panel).findByRole('heading', { name: 'Managed by Ìrè Events' }),
-    ).toBeDefined();
+    const title = await within(panel).findByRole('heading', { name: 'Managed by Ìrè Events' });
+    expect(document.activeElement).toBe(title);
+    expect(scrolled).toHaveBeenCalledWith(expect.objectContaining({ block: 'nearest' }));
+    expect(within(panel).queryByRole('alert')).toBeNull();
     expect(within(panel).getByText(message)).toBeDefined();
     expect(within(panel).getByText('Access to a single event still works.')).toBeDefined();
     expect(
@@ -977,6 +983,47 @@ describe('an invitation in the switcher, answered in its panel (sc-30412)', () =
     expect(
       await screen.findByRole('button', { name: /^Adunni Weddings, Invitation · / }),
     ).toBeDefined();
+  });
+
+  it('never counts one the API lists as managed, and opens it on the banner with no answers (sc-73668)', async () => {
+    const message =
+      'Your ire.events address is managed by Ìrè Events, so you can only be a member there.';
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) =>
+      new URL(String(input)).pathname === '/api/invitations'
+        ? json(
+            {
+              invitations: [
+                {
+                  ...INVITATION,
+                  managed: {
+                    domain: 'ire.events',
+                    organisation: { id: 'org_1', name: 'Ìrè Events' },
+                    message,
+                  },
+                },
+              ],
+            },
+            200,
+          )
+        : json({}, 404),
+    );
+    inTwo();
+    at('/app');
+
+    const button = await screen.findByRole('button', { name: /Switch organisation/ });
+    await waitFor(() => expect(fetch).toHaveBeenCalled());
+
+    expect(button.textContent).not.toMatch(/invitation/);
+    expect(button.getAttribute('aria-label') ?? button.textContent).not.toMatch(/invitation/);
+
+    const panel = await openInvitation();
+
+    expect(
+      await within(panel).findByRole('heading', { name: 'Managed by Ìrè Events' }),
+    ).toBeDefined();
+    expect(within(panel).getByText(message)).toBeDefined();
+    expect(within(panel).queryByRole('button', { name: /^Accept and join/ })).toBeNull();
+    expect(within(panel).queryByRole('button', { name: /^Decline/ })).toBeNull();
   });
 
   it('says when the answer did not reach us, and keeps both answers', async () => {

@@ -232,7 +232,7 @@ describe('Quotes and what is due on the wedding’s Budget, in A (sc-87, sc-88)'
       const top = card('Bloom & Co');
       expect(within(top).getByText('The balance, £840.00, was due Fri, Oct 30.')).toBeDefined();
       expect(rowOf('Deposit').textContent).toBe(
-        'DepositPaid £360.00 on Tue, Oct 6 · Marked by Folake Adeyemi',
+        'DepositPaid £360.00 on Tue, Oct 6 · Marked by Folake AdeyemiUndo',
       );
 
       fireEvent.click(within(top).getByRole('button', { name: 'Mark paid' }));

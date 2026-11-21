@@ -120,7 +120,7 @@ describe('Data and control › Audit log (sc-611)', () => {
     expect(screen.getByRole('button', { name: 'Type: Sign-in and security' })).toBeDefined();
     expect(entries()).toEqual(['signIn', 'domainAdded', 'proved']);
     fireEvent.click(screen.getByRole('button', { name: 'Clear filters' }));
-    expect(entries()).toHaveLength(18);
+    expect(entries()).toHaveLength(20);
   });
 
   it('lists the people with Marta as having left', async () => {
@@ -146,16 +146,16 @@ describe('Data and control › Audit log (sc-611)', () => {
 
     expect(screen.getByText('No entry matches these filters.')).toBeDefined();
     fireEvent.click(screen.getAllByRole('button', { name: 'Clear filters' })[1] as HTMLElement);
-    expect(entries()).toHaveLength(18);
+    expect(entries()).toHaveLength(20);
   });
 
   it('applies the dates as they change, and catches them the wrong way round', async () => {
     await log('?state=dates');
     const dialog = screen.getByRole('dialog', { name: 'Dates' });
 
-    expect(entries()).toHaveLength(18);
+    expect(entries()).toHaveLength(20);
     fireEvent.change(within(dialog).getByLabelText('To'), { target: { value: '2026-10-17' } });
-    expect(entries()).toHaveLength(8);
+    expect(entries()).toHaveLength(9);
     fireEvent.change(within(dialog).getByLabelText('From'), { target: { value: '2026-10-18' } });
 
     expect(
@@ -165,7 +165,7 @@ describe('Data and control › Audit log (sc-611)', () => {
       within(dialog).getByRole('button', { name: 'Apply' }).getAttribute('aria-disabled'),
     ).toBe('true');
     fireEvent.click(within(dialog).getByRole('button', { name: 'Cancel' }));
-    expect(entries()).toHaveLength(18);
+    expect(entries()).toHaveLength(20);
     expect(screen.getByRole('button', { name: 'Dates: Last 365 days' })).toBeDefined();
   });
 
@@ -222,7 +222,7 @@ describe('Data and control › Audit log (sc-611)', () => {
     ['export_small', 'Downloading the audit log as CSV.'],
     [
       'export_preparing',
-      'We’ll email folake@ire.events a link when it’s ready. It works once, for 24 hours.',
+      'We’ll email folake@ire.events a link when it’s ready. It downloads only for you, signed in, for 24 hours.',
     ],
     [
       'export_too_many',
@@ -255,6 +255,6 @@ describe('Data and control › Audit log (sc-611)', () => {
     await log('?state=failed');
     fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
 
-    await waitFor(() => expect(entries()).toHaveLength(18), { timeout: 3000 });
+    await waitFor(() => expect(entries()).toHaveLength(20), { timeout: 3000 });
   });
 });
