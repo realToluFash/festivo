@@ -30,12 +30,12 @@ import {
   currencySymbol,
   dateTooLate,
   days,
+  dueItemOf,
   money,
-  paymentOf,
   referenceTooLong,
   typedAmount,
 } from './BudgetModel.ts';
-import { COLLEAGUE, EVENT_NAME, TODAY, VENDORS } from './BudgetSample.ts';
+import { COLLEAGUE, TODAY } from './BudgetSample.ts';
 import { AlertBox, MoneyRow } from './BudgetParts.tsx';
 import { MomentBox } from '../../components/MomentPick.tsx';
 import { W, say } from './BudgetWords.ts';
@@ -57,7 +57,7 @@ export function useMarkForm(
   onMark: (pence: number, on: string) => void,
   startOn: string = TODAY,
 ) {
-  const scheduled = paymentOf(id).amount;
+  const scheduled = dueItemOf(id).amount;
   const fresh = (): MarkInput => ({
     amount: typedAmount(scheduled),
     reference: '',
@@ -108,7 +108,7 @@ export function MarkFields({
   headRef?: RefObject<TextHandle | null>;
   sending: boolean;
 }) {
-  const payment = paymentOf(form.id);
+  const payment = dueItemOf(form.id);
   const { input, setInput, scheduled, amountRef, referenceRef, submit } = hook;
   const typed = checkAmount(input.amount);
   const diff = typed.ok ? typed.pence - scheduled : 0;
@@ -116,12 +116,12 @@ export function MarkFields({
   return (
     <View style={styles.fields}>
       <Text ref={headRef} size={15} weight="medium" style={[styles.secondary, styles.lineHeight]}>
-        {say.paymentFor(VENDORS[payment.vendor].name, payment.what, EVENT_NAME)}
+        {say.paymentFor(payment.vendor, payment.what, payment.event)}
       </Text>
       <MoneyRow
         title={W.scheduled}
         line={say.due(days.short(payment.due, locale))}
-        value={money(payment.amount, locale)}
+        value={money(payment.amount, locale, payment.currency)}
       />
       {form.phase === 'refused' ? (
         <AlertBox text={refusalWords(form.refusal)} />
@@ -144,14 +144,16 @@ export function MarkFields({
               />
               <View style={styles.prefix} pointerEvents="none">
                 <Text size={16} weight="medium" accessible={false} style={styles.secondary}>
-                  {currencySymbol(locale)}
+                  {currencySymbol(locale, payment.currency)}
                 </Text>
               </View>
             </View>
           </Field>
           {diff !== 0 && (
             <Text size={14} weight="semibold" style={styles.lineHeight}>
-              {diff > 0 ? say.more(money(diff, locale)) : say.less(money(-diff, locale))}
+              {diff > 0
+                ? say.more(money(diff, locale, payment.currency))
+                : say.less(money(-diff, locale, payment.currency))}
             </Text>
           )}
           <Field label={W.datePaid} error={input.dateError}>

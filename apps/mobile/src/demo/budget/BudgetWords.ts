@@ -58,7 +58,10 @@ export const W = {
   paidOne: 'Paid',
   paidDifferent: 'Paid a different amount',
   cancelledWord: 'Cancelled',
-  nothingLeftHead: 'Nothing left to pay.',
+  nothingLeftHead: 'Nothing left to pay from this reminder',
+  noLongerOnSchedule: 'No longer on the schedule',
+  notFound: 'We cannot find these payments.',
+  goToEvents: 'Go to your events',
   hasAPayer: 'Has a payer',
   noPayerYet: 'No payer yet',
   chosenOnComputer: 'Who pays is chosen on a computer.',
@@ -145,8 +148,8 @@ export const say = {
   opened: (times: number, day: string, time: string) =>
     `Opened ${times === 1 ? 'once' : `${times} times`}. Last on ${day} at ${time}.`,
   removed: (name: string) => `${name} is no longer a payer on this event.`,
-  fromReminder: (date: string, count: number) =>
-    `From the reminder sent ${date} · ${count === 1 ? '1 payment' : `${count} payments`}`,
+  fromReminder: (date: string, count: number, events = 1) =>
+    `From the reminder sent ${date} · ${count === 1 ? '1 payment' : `${count} payments`}${events > 1 ? ` across ${events} events` : ''}`,
   overdueSince: (what: string, date: string, event: string) =>
     `${what} · Overdue since ${date} · ${event}`,
   dueOnEvent: (what: string, date: string, event: string) => `${what} · Due ${date} · ${event}`,

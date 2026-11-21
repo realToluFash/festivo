@@ -113,6 +113,11 @@ export const DUE_NOW_STATES = [
   'due_refused',
   'due_done',
   'due_read_only',
+  'due_several',
+  'due_refused_paid',
+  'due_refused_plan',
+  'due_done_several',
+  'due_not_found',
 ] as const;
 
 export const HOME_STATES: readonly string[] = [
@@ -493,10 +498,18 @@ export const BUDGET_PAGES: readonly DemoGroup[] = [
     states: [
       { to: at('due_now'), name: 'Due now: two payments, Paid or Paid a different amount' },
       { to: at('due_marked'), name: 'One marked paid, with Undo' },
-      { to: at('due_changed'), name: 'Changed since the reminder' },
-      { to: at('due_refused'), name: 'A tap refused' },
-      { to: at('due_done'), name: 'Nothing left to pay' },
+      {
+        to: at('due_changed'),
+        name: 'Changed since the reminder: paid, cancelled, no longer on the schedule',
+      },
+      { to: at('due_refused'), name: 'A tap refused: cancelled' },
+      { to: at('due_refused_paid'), name: 'A tap refused: already paid by someone else' },
+      { to: at('due_refused_plan'), name: 'A tap refused by the plan: the sheet read only' },
+      { to: at('due_done'), name: 'Nothing left to pay, one event' },
       { to: at('due_read_only'), name: 'Read only after a downgrade' },
+      { to: at('due_several'), name: 'Across two events, each in its own currency' },
+      { to: at('due_done_several'), name: 'Nothing left to pay, a link for each event' },
+      { to: at('due_not_found'), name: 'Not found' },
     ],
   },
   {
