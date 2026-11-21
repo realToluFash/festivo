@@ -4,7 +4,7 @@ appId: host.exp.Exponent
 - tapOn: 'Skip'
 - extendedWaitUntil:
     visible:
-      text: 'You are not in an?.*'
+      id: noOrganisation
     timeout: 30000
 - waitForAnimationToEnd:
     timeout: 5000

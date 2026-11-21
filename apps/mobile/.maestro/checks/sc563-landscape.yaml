@@ -1,4 +1,4 @@
-# sc-563: turns the tablet on its side for the checks after it in a batch.
+# sc-563: turns the tablet on its side. A batch resets the orientation before each check, so run it through a sc563-side-* wrapper.
 appId: host.exp.Exponent
 ---
 - setOrientation: LANDSCAPE_LEFT
