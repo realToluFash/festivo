@@ -141,39 +141,6 @@
   }
 }
 
-/* At 400% zoom (320 CSS px) the desk reflows into one column: the event's sidebar, then the page (WCAG 2.2 1.4.10). */
-@media (width <= 720px) {
-  .today.desk:has(.bud) {
-    flex-direction: column;
-    height: auto;
-    min-height: 100vh;
-  }
-
-  .today.desk:has(.bud) .today-side {
-    width: auto;
-    height: auto;
-    overflow: visible;
-  }
-
-  .today.desk:has(.bud) .desk-main {
-    margin: 0 var(--spaceMd) var(--spaceMd);
-    overflow: visible;
-  }
-
-  .bud.desk-page {
-    padding: var(--spaceXl) var(--spaceLg) var(--space3xl);
-    overflow: visible;
-  }
-
-  .bud .ev-crumb ol {
-    flex-wrap: wrap;
-  }
-
-  .bud .desk-row {
-    flex-wrap: wrap;
-  }
-}
-
 .bud-due-done {
   color: var(--colorInk);
   font: 700 20px/1.25 var(--fontFamily);
