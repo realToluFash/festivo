@@ -1,6 +1,8 @@
-# sc-563: turns the tablet on its side for the checks after it in a batch.
+# sc-563: turns the tablet on its side, SIDE (LANDSCAPE_LEFT, or PORTRAIT on a tablet whose natural orientation is landscape). A batch resets the orientation before each check, so run it through a sc563-side-* wrapper.
 appId: host.exp.Exponent
+env:
+  SIDE: LANDSCAPE_LEFT
 ---
-- setOrientation: LANDSCAPE_LEFT
+- setOrientation: ${SIDE}
 - waitForAnimationToEnd:
     timeout: 3000

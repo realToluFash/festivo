@@ -10,6 +10,7 @@ appId: host.exp.Exponent
     element:
       id: emailDomains.${DOMAIN}.only.cancel
     direction: DOWN
+    centerElement: true
     timeout: 15000
 - tapOn:
     id: emailDomains.${DOMAIN}.only.cancel
