@@ -1,0 +1,51 @@
+# sc-39534: tablet landscape, the sidebar's Search row (glyph and "Search", no key hint) opens the 600 palette on Events, Calendar and Settings. Needs WIDE: PORTRAIT on a landscape-natural tablet, LANDSCAPE_LEFT otherwise.
+appId: host.exp.Exponent
+---
+- setOrientation: ${WIDE}
+- waitForAnimationToEnd
+- openLink: ${METRO_URL}/--/events
+- extendedWaitUntil:
+    visible:
+      id: 'events.tab.upcoming'
+    timeout: 30000
+- assertNotVisible: '.*⌘.*'
+- tapOn: '^Search$'
+- extendedWaitUntil:
+    visible:
+      id: 'search.field'
+    timeout: 15000
+- waitForAnimationToEnd
+- takeScreenshot: events-idle
+- inputText: 'ines'
+- extendedWaitUntil:
+    visible: 'Inês Duarte'
+    timeout: 15000
+- hideKeyboard
+- takeScreenshot: events-mixed
+- tapOn:
+    id: 'search.scrim'
+- waitForAnimationToEnd
+- openLink: ${METRO_URL}/--/calendar
+- extendedWaitUntil:
+    visible:
+      id: 'calendar.grid'
+    timeout: 30000
+- tapOn: '^Search$'
+- extendedWaitUntil:
+    visible:
+      id: 'search.field'
+    timeout: 15000
+- waitForAnimationToEnd
+- takeScreenshot: calendar-opened
+- tapOn:
+    id: 'search.scrim'
+- waitForAnimationToEnd
+- openLink: ${METRO_URL}/--/settings
+- waitForAnimationToEnd
+- tapOn: '^Search$'
+- extendedWaitUntil:
+    visible:
+      id: 'search.field'
+    timeout: 15000
+- waitForAnimationToEnd
+- takeScreenshot: settings-opened
