@@ -11,13 +11,12 @@ final class Version20261121160000 extends AbstractMigration
 {
     public function getDescription(): string
     {
-        return 'Each guest\'s check-in code (sc-1301): 256 random bits, apart from the invitation link, held by every guest who has a link and by nobody else. Guests already listed get theirs here.';
+        return 'Each guest\'s check-in code (sc-1301): 256 random bits (244 for guests backfilled here), apart from the invitation link, held by every guest who has a link and by nobody else. Guests already listed get theirs here.';
     }
 
     public function up(Schema $schema): void
     {
         $this->addSql('ALTER TABLE guests ADD check_in_code VARCHAR(43) DEFAULT NULL');
-        // Two v4 UUIDs are 244 random bits from gen_random_uuid(), which needs no extension; base64url without padding is 43 characters.
         $this->addSql(<<<'SQL'
             UPDATE guests
             SET    check_in_code = rtrim(translate(encode(decode(replace(gen_random_uuid()::text || gen_random_uuid()::text, '-', ''), 'hex'), 'base64'), '+/', '-_'), '=')
