@@ -183,31 +183,31 @@ const at = (state: LinkState, name: string): DemoLink => ({
 
 export const STAFF_SIGN_IN_PAGES: readonly { name: string; states: readonly DemoLink[] }[] = [
   {
-    name: 'Opening the link, signed out',
+    name: 'Staff link · opening it, signed out',
     states: [
       at('confirm', 'Confirm it’s you: the event, the job, the masked number'),
       at('sending', 'Send code, sending'),
       at('not-your-number', 'Not your number?: ask the organiser, nothing sent'),
       at('no-mobile', 'No mobile number on the roster'),
-      at('too-many', 'Too many tries: nothing about the event'),
+      at('too-many', 'Over the limit (429): nothing about the event'),
     ],
   },
   {
-    name: 'The phone code',
+    name: 'Staff link · the phone code',
     states: [
       at('code', 'Check WhatsApp, Sign in'),
       at('code-blank', 'Sign in, left blank'),
       at('code-short', 'Not six digits'),
       at('code-wrong', 'A wrong code'),
       at('code-expired', 'An expired code'),
-      at('code-exhausted', 'Too many wrong tries'),
+      at('code-exhausted', 'The phone code, tried five times'),
       at('two-factor', 'Two-factor next: Enter your code'),
       at('two-factor-blank', 'Two-factor, left blank'),
       at('two-factor-wrong', 'Two-factor, a wrong code'),
     ],
   },
   {
-    name: 'Signed in, and signed out',
+    name: 'Staff link · signed in, and signed out',
     states: [
       at('wrong-account', 'Signed in as someone else: This link is for…'),
       { to: SHIFT_HREF, name: 'Signed in: straight to the shift, Sign out at the end' },
