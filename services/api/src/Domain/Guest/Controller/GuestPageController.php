@@ -7,6 +7,7 @@ namespace App\Domain\Guest\Controller;
 use App\Domain\Event\CalendarFeed\FeedLinkIssuer;
 use App\Domain\Event\EventVenue;
 use App\Domain\Event\Http\EventSerialiser;
+use App\Domain\Guest\Arrival\CheckInCodes;
 use App\Domain\Guest\GuestNeedsRecord;
 use App\Domain\Guest\GuestRules;
 use App\Domain\Guest\Http\GuestSerialiser;
@@ -53,6 +54,7 @@ final readonly class GuestPageController
         private GuestProgramme $guestProgramme,
         private SharedSeats $sharedSeats,
         private SubscriberTokenIssuer $subscriberTokenIssuer,
+        private CheckInCodes $checkInCodes,
     ) {
     }
 
@@ -211,6 +213,7 @@ final readonly class GuestPageController
             'answersOpen' => $this->guestAnswers->open($guest),
             'answersClosedOn' => $this->guestAnswers->closedOn($guest),
             'calendarFeed' => $this->calendarFeed($guest),
+            'checkInCode' => $this->checkInCodes->of($guest),
             'programme' => $this->guestProgramme->of($event, $phase),
             // Absent, not null, before the tables are shared (sc-4022).
             ...null === $seating ? [] : ['seating' => $seating],

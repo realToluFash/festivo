@@ -41,10 +41,10 @@ final readonly class Arrivals
     ) {
     }
 
-    /** A guest or companion, each on their own; one already arrived keeps their first arrival and nothing is refused. */
-    public function arrive(Event $event, string $personId, User $by, string $device): Guest
+    /** A guest or companion, each on their own; one already arrived keeps their first arrival and nothing is refused. `$recordedAt` is when a device that was offline recorded it (sc-1301): the door must have been open then, and a time after now is taken as now. */
+    public function arrive(Event $event, string $personId, User $by, string $device, ?DateTimeImmutable $recordedAt = null): Guest
     {
-        return $this->changed($event, $personId, $by, $device, static fn (Guest $person, DateTimeImmutable $at): bool => $person->arrive($at, $by), self::ARRIVED);
+        return $this->changed($event, $personId, $by, $device, static fn (Guest $person, DateTimeImmutable $now): bool => $person->arrive(null === $recordedAt || $recordedAt > $now ? $now : $recordedAt, $by), self::ARRIVED, $recordedAt);
     }
 
     /** Asks nothing first; one not arrived is left as they are. */
@@ -82,10 +82,10 @@ final readonly class Arrivals
     }
 
     /** @param Closure(Guest, DateTimeImmutable): bool $change */
-    private function changed(Event $event, string $personId, User $by, string $device, Closure $change, string $action): Guest
+    private function changed(Event $event, string $personId, User $by, string $device, Closure $change, string $action, ?DateTimeImmutable $recordedAt = null): Guest
     {
         $changed = false;
-        $person = $this->entityManager->wrapInTransaction(function () use ($event, $personId, $by, $device, $change, $action, &$changed): Guest {
+        $person = $this->entityManager->wrapInTransaction(function () use ($event, $personId, $by, $device, $change, $action, $recordedAt, &$changed): Guest {
             $person = Uuid::isValid($personId) ? $this->guestRepository->findOneInEvent($event->getId(), Uuid::fromString($personId)) : null;
 
             if (null === $person) {
@@ -93,7 +93,7 @@ final readonly class Arrivals
             }
 
             $person = $this->lockedWithHost($person);
-            $now = $this->open($event);
+            $now = $this->open($event, $recordedAt);
             $changed = $change($person, $now);
 
             if ($changed) {
@@ -135,11 +135,12 @@ final readonly class Arrivals
         return $person;
     }
 
-    private function open(Event $event): DateTimeImmutable
+    private function open(Event $event, ?DateTimeImmutable $recordedAt = null): DateTimeImmutable
     {
         $now = DateTimeImmutable::createFromInterface($this->clock->now());
+        $when = null === $recordedAt || $recordedAt > $now ? $now : $recordedAt;
 
-        if (CheckInState::Open !== CheckInWindow::stateOf($event, $now)) {
+        if (CheckInState::Open !== CheckInWindow::stateOf($event, $when)) {
             throw new ApiException(ErrorCode::CheckInClosed, 'check_in.closed');
         }
 

@@ -596,7 +596,7 @@ final class DishChoicesTest extends ApiTestCase
     private function guest(string $name, array $allergens, ?string $other = null): Guest
     {
         $event = self::em()->find(Event::class, Uuid::fromString($this->eventId)) ?? self::fail('no event');
-        $guest = Guest::listed($event, $name, Str\lowercase($name), null, null, null, Uuid::v4()->toRfc4122());
+        $guest = Guest::listed($event, $name, Str\lowercase($name), null, null, null, Uuid::v4()->toRfc4122(), Uuid::v4()->toRfc4122());
         self::em()->persist($guest);
         $needs = GuestNeeds::none();
         self::service(GuestNeedsRecord::class)->write($guest, new GuestNeeds(

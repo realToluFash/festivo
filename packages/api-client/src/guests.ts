@@ -363,6 +363,8 @@ export interface GuestPage {
   programme: GuestProgrammeItem[];
   /** Only while the hosts share the tables and this guest is Coming with a seat (sc-4022). */
   seating: GuestSeating | null;
+  /** What the guest shows at the door (sc-1301), only while they are Coming: the code, and its QR as an SVG. */
+  checkInCode: { code: string; qrSvg: string } | null;
 }
 
 /** A table by its name, a row by its label and the seat in it, a single seat by its name; each with its section's name. */
@@ -870,6 +872,10 @@ export interface CheckInGuest {
   id: string;
   fullName: string;
   reply: GuestReply;
+  /** When the reply was recorded, in the event's zone. */
+  repliedAt: string | null;
+  /** The SHA-256, in hex, of the guest's check-in code (sc-1301); null for a walk-in. */
+  code: string | null;
   walkIn: boolean;
   arrival: Arrival | null;
   companions: CheckInCompanion[];
@@ -911,6 +917,8 @@ function asCheckInGuest(value: unknown): CheckInGuest | null {
     id,
     fullName,
     reply,
+    repliedAt: text(row.repliedAt),
+    code: text(row.code),
     walkIn: row.walkIn === true,
     arrival: asArrival(row.arrival),
     companions: companions as CheckInCompanion[],

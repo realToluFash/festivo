@@ -45,7 +45,7 @@ final readonly class GuestAdder
                 throw new ApiException(ErrorCode::GuestAlreadyListed, 'guest.already_listed', parameters: ['{name}' => $new->fullName]);
             }
 
-            $guest = Guest::listed($event, $new->fullName, $new->nameKey, $new->email, $new->mobile, $by, InvitationLinks::token());
+            $guest = Guest::listed($event, $new->fullName, $new->nameKey, $new->email, $new->mobile, $by, InvitationLinks::token(), InvitationLinks::token());
             $guest->setLanguage($new->language);
             $guest->setGroup(null === $new->group ? null : $this->guestGroupEditor->settle($event, $new->group, $by));
             $this->entityManager->persist($guest);
