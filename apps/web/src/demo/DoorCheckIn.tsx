@@ -20,6 +20,8 @@ import {
   OPENS_AT,
   OTHER,
   SHIFT_NAME,
+  SHIFT_NOW,
+  SHIFT_SIGNED_IN_UNTIL,
   SIGNED_OUT_HREF,
   addWalkIn,
   arrive,
@@ -36,6 +38,7 @@ import {
   seatingOf,
   shownName,
   shownPeople,
+  signedOutTime,
   undo,
 } from './doorCheckIn.ts';
 import { ReplyMark } from './GuestsParts.tsx';
@@ -621,7 +624,7 @@ export function ShiftPage() {
       )}
       <div className="ci-you">
         <p>{CW.shift.signedInAs(SHIFT_NAME)}</p>
-        <p>{CW.shift.signedOutAt}</p>
+        <p>{CW.shift.signedOutAt(signedOutTime(SHIFT_SIGNED_IN_UNTIL, SHIFT_NOW))}</p>
         <button
           type="button"
           className="ci-secondary"
