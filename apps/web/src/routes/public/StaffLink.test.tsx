@@ -58,6 +58,15 @@ describe('A person’s own link (sc-3912)', () => {
     ).toBeTruthy();
   });
 
+  it('says a link for someone with no shift yet is not open yet, with no time', async () => {
+    await open(() => answer({ state: 'not_yet' }));
+
+    expect(await screen.findByRole('heading', { name: 'This link is not open yet.' })).toBeTruthy();
+    expect(
+      screen.getByText('This link is yours alone. Nothing stays on this device.'),
+    ).toBeTruthy();
+  });
+
   it('says an ended link has ended', async () => {
     await open(() => answer({ state: 'ended' }));
 
