@@ -931,6 +931,8 @@ export interface InvitationPreview {
   refusal: InvitationRefusal | null;
   forYou: boolean | null;
   signedInAs: string | null;
+  /** sc-73668: the account is managed by another organisation, so this one cannot be accepted; worked out on every load. */
+  managed: ManagedAccount | null;
 }
 
 export type MemberStatus = 'pending_approval' | 'active' | 'suspended' | 'left_or_removed';
@@ -6339,6 +6341,7 @@ function asInvitationPreview(raw: unknown): InvitationPreview | null {
     refusal: oneOf(preview.refusal, REFUSALS),
     forYou: typeof preview.forYou === 'boolean' ? preview.forYou : null,
     signedInAs: stringOrNull(preview.signedInAs),
+    managed: asManagedAccount(preview.managed),
   };
 }
 
