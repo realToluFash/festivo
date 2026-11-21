@@ -189,3 +189,10 @@
     flex: none;
   }
 }
+
+.bud-staff-note {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 10px;
+}

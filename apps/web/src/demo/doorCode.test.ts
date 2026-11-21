@@ -56,7 +56,7 @@ describe('the door code’s words and checks (sc-72)', () => {
 
   it('refuses an end that has passed, and never offers one after the event', () => {
     expect(endsLine({ kind: 'earlier', day: '2026-11-07', time: '09:00' })).toBe(
-      'Choose a time that hasn’t passed yet.',
+      'Choose a time that has not passed yet.',
     );
     expect(endsLine({ kind: 'earlier', day: '2026-11-14', time: '18:00' })).toBeNull();
     expect(endsLine({ kind: 'event' })).toBeNull();
