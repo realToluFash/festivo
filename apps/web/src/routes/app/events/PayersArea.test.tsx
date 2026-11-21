@@ -631,6 +631,39 @@ describe('Who is paying (sc-91)', () => {
     ).toBeTruthy();
     expect(screen.queryByRole('region', { name: 'Has a payer' })).toBeNull();
   });
+
+  it('with payers and no costs, opens the first added with Edit and Remove and no figures', async () => {
+    signedIn();
+    const bare = { share: pair('0.00'), paid: '0.00', stillToCome: pair('0.00'), covers: [] };
+    serve({
+      'GET /api/events/ev_1/budget/payers': () =>
+        json(
+          payers({
+            payers: [
+              { ...OBI, ...bare },
+              { ...FUNMI, ...bare },
+            ],
+            lines: [],
+            total: pair('0.00'),
+            hasPayer: pair('0.00'),
+            noPayer: { ...pair('0.00'), costs: 0, paid: '0.00' },
+            next: null,
+          }),
+        ),
+    });
+
+    const pane = await screen.findByRole('region', { name: 'Mr and Mrs Obi' });
+    expect(within(pane).getByText('Adaeze’s parents')).toBeTruthy();
+    expect(within(pane).getByRole('button', { name: 'Edit' })).toBeTruthy();
+    expect(within(pane).getByRole('button', { name: 'Remove' })).toBeTruthy();
+    for (const gone of ['Their share', 'Paid', 'Still to come', 'Covers'])
+      expect(within(pane).queryByText(gone)).toBeNull();
+    expect(screen.queryByText(/£/u)).toBeNull();
+    expect(screen.queryByRole('region', { name: 'Has a payer' })).toBeNull();
+
+    fireEvent.click(screen.getByRole('button', { name: /Aunt Funmi/u }));
+    expect(screen.getByRole('region', { name: 'Aunt Funmi' })).toBeTruthy();
+  });
 });
 
 class StubSource {
