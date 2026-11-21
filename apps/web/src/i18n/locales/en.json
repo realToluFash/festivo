@@ -273,6 +273,8 @@
     "loading": "Loading the event…",
     "failed": "The event did not load. Try again in a moment.",
     "notFound": "This event is not available",
+    "notAvailable": "Not available",
+    "backToEvents": "Back to Events",
     "venue": "Venue",
     "venueToBeConfirmed": "Venue to be confirmed",
     "addVenue": "Add the venue",
