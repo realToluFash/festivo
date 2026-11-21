@@ -7,6 +7,7 @@ import {
   LONG_ORGANISATION,
   partOf,
   phoneCountryOverNumber,
+  phoneRefusal,
   scaleFor,
   TAB_GLYPH,
   TAB_GLYPH_GAP,
@@ -131,5 +132,17 @@ describe('a phone number’s two boxes at a text size (qa3, #78429)', () => {
     expect(phoneCountryOverNumber(scaleFor('android', 1))).toBe(true);
     expect(phoneCountryOverNumber(scaleFor('iphone', 1))).toBe(true);
     expect(phoneCountryOverNumber(scaleFor('twelfth', 1))).toBe(true);
+  });
+});
+
+describe('a phone number refused in the demo (sc-78438)', () => {
+  it('refuses a blank number and one too short to be a number', () => {
+    expect(phoneRefusal('')).toBe('numberBlank');
+    expect(phoneRefusal(' ')).toBe('numberBlank');
+    expect(phoneRefusal('12')).toBe('tooShort');
+  });
+
+  it('takes a number long enough to be one', () => {
+    expect(phoneRefusal('07700 900123')).toBeNull();
   });
 });

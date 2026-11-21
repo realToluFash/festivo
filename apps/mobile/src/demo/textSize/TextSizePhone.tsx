@@ -1,22 +1,28 @@
+import { countryChoices } from '@soirely/domain';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { StyleSheet, View } from 'react-native';
 
+import { PrimaryButton } from '../../components/Buttons.tsx';
 import { CountryPicker } from '../../components/CountryPicker.tsx';
 import { Field, TextField } from '../../components/Field.tsx';
 import { tokens } from '../../theme/tokens.ts';
-import { phoneCountryOverNumber } from './textSizeRules.ts';
+import { phoneCountryOverNumber, phoneRefusal } from './textSizeRules.ts';
 
-/** The phone step's number as proposed at a text size: the country beside the number at the default sizes; from the accessibility sizes on, over it, each the field's full width. */
+/** Changez votre numéro de portable's number as proposed at a text size: the country beside the number at the default sizes; from the accessibility sizes on, over it, each the field's full width (sc-78438). */
 export function TextSizePhone({ scale }: { scale: number }) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const [country, setCountry] = useState('GB');
   const [number, setNumber] = useState('');
+  const [refused, setRefused] = useState<'numberBlank' | 'tooShort' | null>(null);
   const over = phoneCountryOverNumber(scale);
+  const countryName =
+    countryChoices(i18n.language).find((choice) => choice.code === country)?.name ?? country;
+  const error = refused == null ? null : t(`verifyPhone.${refused}`, { country: countryName });
 
   return (
-    <View testID="demo.textSize.phone">
-      <Field label={t('verifyPhone.numberLabel')} help={t('verifyPhone.numberHelp')} error={null}>
+    <View style={styles.part} testID="demo.textSize.phone">
+      <Field label={t('verifyPhone.numberLabel')} help={t('verifyPhone.numberHelp')} error={error}>
         <View
           style={over ? styles.over : styles.beside}
           testID={`demo.textSize.phone.${over ? 'over' : 'beside'}`}
@@ -25,7 +31,10 @@ export function TextSizePhone({ scale }: { scale: number }) {
             <CountryPicker
               label={t('verifyPhone.countryLabel')}
               value={country}
-              onChange={setCountry}
+              onChange={(code) => {
+                setCountry(code);
+                setRefused(null);
+              }}
               withCallingCode
               testID="demo.textSize.phone.country"
             />
@@ -33,21 +42,31 @@ export function TextSizePhone({ scale }: { scale: number }) {
           <TextField
             style={over ? styles.whole : styles.number}
             value={number}
+            wrong={error != null}
             keyboardType="phone-pad"
             textContentType="telephoneNumber"
             autoComplete="tel"
             returnKeyType="done"
-            onChangeText={setNumber}
+            onChangeText={(typed) => {
+              setNumber(typed);
+              setRefused(null);
+            }}
             accessibilityLabel={t('verifyPhone.numberLabel')}
             testID="demo.textSize.phone.number"
           />
         </View>
       </Field>
+      <PrimaryButton
+        label={t('verifyPhone.send')}
+        onPress={() => setRefused(phoneRefusal(number))}
+        testID="demo.textSize.phone.send"
+      />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
+  part: { gap: tokens.spaceMd },
   beside: { flexDirection: 'row', flexWrap: 'wrap', gap: tokens.spaceSm },
   over: { gap: tokens.spaceSm },
   country: { flexGrow: 1, flexBasis: 140 },

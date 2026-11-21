@@ -88,7 +88,7 @@ export const TEXT_SIZE_BOARDS: readonly TextSizeBoard[] = [
   },
   {
     title: 'A phone number · this phone’s text size · French',
-    what: 'qa3’s state (#78429): from the accessibility sizes on, Indicatif over Numéro de portable, each full width, so +44 Royaume-Uni stays whole; below them, side by side as on main. Set the size on the phone itself',
+    what: 'qa3’s state (#78429): from the accessibility sizes on, Indicatif over Numéro de portable, each full width, so +44 Royaume-Uni stays whole; below them, side by side as on main. Royaume-Uni, 12, Envoyer un code à ce numéro: the refusal line under both boxes, the number box red. Set the size on the phone itself',
     href: '/demo/text-size?part=phone&lang=fr',
   },
 ];
