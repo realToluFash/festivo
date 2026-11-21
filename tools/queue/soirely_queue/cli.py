@@ -696,9 +696,14 @@ def clip(line, width):
     return line if len(line) <= width else line[:width - 1] + "…"
 
 
+def shown(count):
+    return "?" if count is None else str(count)
+
+
 def status(db, platform, now):
     width = max(shutil.get_terminal_size((120, 20)).columns, 60)
-    view = dashboard.snapshot(db, platform, now, home())
+    view = dashboard.settle(dashboard.snapshot(db, platform, now, home()),
+                            dashboard.peer_views(remote.peers(remote.config()), remote.token()))
 
     def say(line=""):
         print(clip(line, width))
@@ -764,7 +769,7 @@ def status(db, platform, now):
                            + (f" (sc-{held['story']})" if held.get("story") else "")
                            + f" wanted {held.get('wanted') or 'a command it did not name'}")
         rows.append((role["role"], state, model, role["account"] or "not logged in", ran,
-                     str(role["waiting"]), details))
+                     shown(role["waiting"]), details))
     if rows:
         heads = ("role", "state", "model", "account", "last run", "waiting")
         sizes = [max([len(heads[i])] + [len(row[i]) for row in rows if row[2] or i < 2])
@@ -791,11 +796,13 @@ def status(db, platform, now):
     if view["elsewhere"]:
         say()
         say("roles not run here")
-        count_width = max(len(str(r["waiting"])) for r in view["elsewhere"])
+        count_width = max(len(shown(r["waiting"])) for r in view["elsewhere"])
         for role in view["elsewhere"]:
             what = f"working on {role['held']['reason']}" if role["held"] else \
-                f"next: {role['next'][0]['reason']}"
-            say(f"  {role['role']:5} {role['waiting']:>{count_width}} waiting  {what}")
+                f"next: {role['next'][0]['reason']}" if role["next"] else "it did not answer"
+            where = f"on {role['counted_on']}  " if role.get("counted_on") else ""
+            say(f"  {role['role']:5} {shown(role['waiting']):>{count_width}} waiting  "
+                f"{where}{what}")
 
 
 def cost(days):
