@@ -28,10 +28,22 @@ const { followTodayFigures } = await import('./todayFigures.ts');
 const event = (id: string, guests: ListedEvent['guests']) =>
   ({ id, name: id, milestones: [], guests }) as unknown as ListedEvent;
 
-const replied = event('e_replied', { invited: 10, coming: 4, notReplied: 6 });
-const quiet = event('e_quiet', { invited: 8, coming: 2, notReplied: 3 });
+const replied = event('e_replied', {
+  invited: 10,
+  coming: 4,
+  notReplied: 6,
+  attended: 0,
+  expected: 0,
+});
+const quiet = event('e_quiet', { invited: 8, coming: 2, notReplied: 3, attended: 0, expected: 0 });
 const finished = event('e_finished', null);
-const repliedNow = event('e_replied', { invited: 10, coming: 5, notReplied: 5 });
+const repliedNow = event('e_replied', {
+  invited: 10,
+  coming: 5,
+  notReplied: 5,
+  attended: 0,
+  expected: 0,
+});
 
 describe("Today's Your events when a headcount reply lands (sc-49692)", () => {
   beforeEach(() => {

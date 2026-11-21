@@ -662,6 +662,9 @@ export interface EventGuestFigures {
   invited: number;
   coming: number;
   notReplied: number;
+  /** sc-99's attended and expected, the door's count (sc-1454), for Today's arrived line (sc-29978). */
+  attended: number;
+  expected: number;
 }
 
 /** As a list shows it: with its timeline's milestones, so the list's Next up is the timeline's (sc-3624), and its guest figures from the list, null without guests.read on it (sc-3786). */
@@ -5937,10 +5940,17 @@ function asListedEvent(raw: unknown): ListedEvent | null {
 
 /** An event's guest figures, from the events list or from its headcount as published (sc-3786); undefined for a shape this client does not know. */
 export function asEventGuestFigures(raw: unknown): EventGuestFigures | undefined {
-  const { invited, coming, notReplied } = (raw ?? {}) as Record<string, unknown>;
+  const { invited, coming, notReplied, attended, expected } = (raw ?? {}) as Record<
+    string,
+    unknown
+  >;
 
-  return isCount(invited) && isCount(coming) && isCount(notReplied)
-    ? { invited, coming, notReplied }
+  return isCount(invited) &&
+    isCount(coming) &&
+    isCount(notReplied) &&
+    isCount(attended) &&
+    isCount(expected)
+    ? { invited, coming, notReplied, attended, expected }
     : undefined;
 }
 

@@ -233,7 +233,7 @@ describe('todayMoment', () => {
 });
 
 describe("Your events' replies line (sc-29881)", () => {
-  const wedding = { invited: 142, coming: 96, notReplied: 25 };
+  const wedding = { invited: 142, coming: 96, notReplied: 25, attended: 0, expected: 0 };
   const read = (guests: EventGuestFigures | null, rest: Partial<ListedEvent> = {}) =>
     moment([event('Wedding', { guests, ...rest })]).events[0]?.ready;
 
@@ -247,7 +247,7 @@ describe("Your events' replies line (sc-29881)", () => {
   });
 
   it('keeps the empty bar for an event invited with no replies yet', () => {
-    expect(read({ invited: 40, coming: 0, notReplied: 40 })).toEqual({
+    expect(read({ invited: 40, coming: 0, notReplied: 40, attended: 0, expected: 0 })).toEqual({
       words: '0 coming · 0% replied',
       spoken: '0 coming, 0% replied',
       percent: 0,
@@ -256,7 +256,7 @@ describe("Your events' replies line (sc-29881)", () => {
   });
 
   it('reads Invitations not sent, with no bar, when nobody is invited', () => {
-    expect(read({ invited: 0, coming: 0, notReplied: 0 })).toEqual({
+    expect(read({ invited: 0, coming: 0, notReplied: 0, attended: 0, expected: 0 })).toEqual({
       words: 'Invitations not sent',
       percent: 0,
     });
@@ -290,7 +290,7 @@ describe("Your events' replies line (sc-29881)", () => {
     });
     followPluralLocales(french.services.pluralResolver);
     followNumberLocales(french.services.formatter!);
-    const guests = { invited: 1400, coming: 1204, notReplied: 126 };
+    const guests = { invited: 1400, coming: 1204, notReplied: 126, attended: 0, expected: 0 };
 
     const ready = todayMoment(
       { events: [event('Mariage', { guests })], at: AT },
