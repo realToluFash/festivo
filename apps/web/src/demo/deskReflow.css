@@ -1,0 +1,29 @@
+/* sc-32279: at 400% zoom (320 CSS px, WCAG 2.2 1.4.10) every desk page reflows into one column, its sidebar above the page. The one rule for every page: an area adds only what its own page needs. */
+@media (width <= 40rem) {
+  .today.desk:not(.dp-fit) {
+    flex-direction: column;
+    height: auto;
+    min-height: 100vh;
+  }
+
+  .today.desk:not(.dp-fit) > .today-side {
+    width: auto;
+    height: auto;
+    overflow: visible;
+  }
+
+  .today.desk:not(.dp-fit) > .desk-main {
+    min-width: 0;
+    margin: 0 var(--spaceMd) var(--spaceMd);
+    overflow: visible;
+  }
+
+  .today.desk:not(.dp-fit) .desk-page {
+    padding: var(--spaceXl) var(--spaceLg) var(--space3xl);
+    overflow: visible;
+  }
+
+  .today.desk:not(.dp-fit) :is(.ev-crumb ol, .desk-row) {
+    flex-wrap: wrap;
+  }
+}
