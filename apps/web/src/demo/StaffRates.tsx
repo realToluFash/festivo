@@ -101,11 +101,27 @@ function StaffRates({ first }: { first: RatesStart }) {
     setServer(null);
     setSaid(null);
   };
-  const close = () => open(null);
-  const done = (next: RatesSample, key: string, words: string) => {
+  const back = useRef<string | null>(null);
+  // No dependency list: the row's button exists only once the editor has unmounted.
+  useEffect(() => {
+    if (back.current == null) return;
+    document.querySelector<HTMLElement>(`[data-srt="${back.current}"] button`)?.focus();
+    back.current = null;
+  });
+  const close = () => {
+    back.current =
+      panel?.kind === 'job'
+        ? `job:${panel.job}`
+        : panel?.kind === 'own'
+          ? `own:${panel.person}:${panel.job}`
+          : 'add';
+    open(null);
+  };
+  const done = (next: RatesSample, key: string, words: string, to: string) => {
     setSample(next);
     open(null);
     setSaid({ key, words });
+    back.current = to;
   };
 
   const saveJob = (job: string): boolean => {
@@ -113,7 +129,7 @@ function StaffRates({ first }: { first: RatesStart }) {
     if (rate == null) return false;
     if (first.refuse) {
       setServer(refusedWords(sample.rates[job] ?? null));
-      return true;
+      return false;
     }
     const was = sample.rates[job] ?? null;
     done(
@@ -124,6 +140,7 @@ function StaffRates({ first }: { first: RatesStart }) {
       },
       job,
       W.saved(jobName(plan, job)),
+      `job:${job}`,
     );
     return true;
   };
@@ -139,6 +156,7 @@ function StaffRates({ first }: { first: RatesStart }) {
       },
       job,
       W.removed(jobName(plan, job)),
+      `job:${job}`,
     );
   const saveOwn = (own: Pick<OwnRate, 'person' | 'job'>): boolean => {
     const rate = typedRate(draft.typed, draft.kind);
@@ -159,6 +177,7 @@ function StaffRates({ first }: { first: RatesStart }) {
       },
       key,
       W.saved(personName(plan, own.person)),
+      `own:${key}`,
     );
     return true;
   };
@@ -167,6 +186,7 @@ function StaffRates({ first }: { first: RatesStart }) {
       { ...sample, own: sample.own.filter((one) => one !== own) },
       own.job,
       W.backOn(personName(plan, own.person), jobName(plan, own.job)),
+      `job:${own.job}`,
     );
 
   if (plan.jobs.length === 0)
@@ -232,7 +252,7 @@ function StaffRates({ first }: { first: RatesStart }) {
                   rate?.kind === 'flat' ? flatLine(sample, job.id) : sourceLine(sample, job.id);
 
                 return (
-                  <li key={job.id}>
+                  <li key={job.id} data-srt={`job:${job.id}`}>
                     {panel?.kind === 'job' && panel.job === job.id ? (
                       <RateEditor
                         name={job.name}
@@ -305,11 +325,13 @@ function StaffRates({ first }: { first: RatesStart }) {
               title={W.ownRates}
               action={
                 manages && panel?.kind !== 'add' ? (
-                  <TextAction
-                    label={W.addOne}
-                    before="plus"
-                    onClick={() => open({ kind: 'add' })}
-                  />
+                  <span data-srt="add">
+                    <TextAction
+                      label={W.addOne}
+                      before="plus"
+                      onClick={() => open({ kind: 'add' })}
+                    />
+                  </span>
                 ) : undefined
               }
             >
@@ -340,7 +362,7 @@ function StaffRates({ first }: { first: RatesStart }) {
                     const hours = hoursWords(ownMinutes(sample, own));
 
                     return (
-                      <li key={key}>
+                      <li key={key} data-srt={`own:${key}`}>
                         {panel?.kind === 'own' &&
                         panel.person === own.person &&
                         panel.job === own.job ? (
