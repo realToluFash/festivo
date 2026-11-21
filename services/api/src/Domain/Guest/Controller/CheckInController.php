@@ -56,7 +56,7 @@ final readonly class CheckInController
     {
         $event = $this->event($eventId);
         $body = Input::body($request, Type\shape(['guestId' => Type\string(), 'arrivedAt' => Type\optional(Type\string())]));
-        $at = null === ($body['arrivedAt'] ?? null) ? null : DateTimeImmutable::createFromFormat(\DATE_ATOM, $body['arrivedAt']);
+        $at = null === ($body['arrivedAt'] ?? null) ? null : self::instant($body['arrivedAt']);
 
         if (false === $at) {
             throw new ShapeRefusal('arrivedAt', ShapeRefusal::FIELD);
@@ -104,6 +104,12 @@ final readonly class CheckInController
             'token' => $issued->token,
             'expiresAt' => $issued->expiresAt->format(\DATE_ATOM),
         ]);
+    }
+
+    /** RFC 3339 with or without milliseconds, as `Date.toISOString()` writes it. */
+    private static function instant(string $value): DateTimeImmutable|false
+    {
+        return DateTimeImmutable::createFromFormat(\DATE_ATOM, $value) ?: DateTimeImmutable::createFromFormat(\DATE_RFC3339_EXTENDED, $value);
     }
 
     private function read(Event $event): JsonResponse

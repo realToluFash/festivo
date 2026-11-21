@@ -445,6 +445,10 @@ final class CheckInTest extends ApiTestCase
         self::assertSame('2030-11-14T19:42:00+01:00', Type\shape(['at' => Type\string()], true)->coerce($this->row($read, $guest)['arrival'])['at']);
         $this->arrive($guest, 'not a time');
         self::assertSame(422, $this->statusCode());
+        $stamped = $this->add('Bisi Adewale');
+        $read = $this->arrive($stamped, '2030-11-14T18:30:00.000Z');
+
+        self::assertSame('2030-11-14T19:30:00+01:00', Type\shape(['at' => Type\string()], true)->coerce($this->row($read, $stamped)['arrival'])['at']);
     }
 
     /** @return array<string, mixed> */
