@@ -341,7 +341,7 @@ function RedeemPage({ state }: { state: RedeemState }) {
   );
 }
 
-function Title({
+export function Title({
   titleRef,
   children,
 }: {
@@ -359,7 +359,7 @@ function Tile() {
   return <span className={`rd-tile today-cover is-${MESH}`} aria-hidden="true" />;
 }
 
-function Primary({
+export function Primary({
   busy = false,
   submit = false,
   onClick,
@@ -388,7 +388,7 @@ function Primary({
 }
 
 /** B's onboarding field: the label inside, small once something is typed or it has focus. */
-function Field({
+export function Field({
   id,
   label,
   value,
@@ -440,7 +440,7 @@ function Field({
   );
 }
 
-function Says({
+export function Says({
   id,
   alert = false,
   children,
@@ -623,7 +623,7 @@ const CODE_LINES = {
 } as const;
 
 /** The phone code in a browser: one field and Verify, as the web's onboarding has it (WCAG 3.2.2); nothing is sent as it is typed. */
-function CodeStep({
+export function CodeStep({
   step,
   number,
   titleRef,
@@ -632,6 +632,7 @@ function CodeStep({
   onVerify,
   onText,
   onSendNew,
+  action = { idle: R.verify, busy: R.verifying },
 }: {
   step: Extract<Step, { kind: 'code' }>;
   number: string;
@@ -641,6 +642,7 @@ function CodeStep({
   onVerify: () => void;
   onText: () => void;
   onSendNew: () => void;
+  action?: { idle: string; busy: string };
 }) {
   const texted = step.via === 'text';
   const problem =
@@ -697,7 +699,7 @@ function CodeStep({
               )}
             </div>
             <Primary submit busy={busy}>
-              {busy ? R.verifying : R.verify}
+              {busy ? action.busy : action.idle}
             </Primary>
           </form>
           <div className="rd-ways">
@@ -720,7 +722,7 @@ function CodeStep({
   );
 }
 
-function SignOutLine({ size = 18 }: { size?: number }) {
+export function SignOutLine({ size = 18 }: { size?: number }) {
   return (
     <svg
       width={size}

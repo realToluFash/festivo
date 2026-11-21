@@ -78,6 +78,8 @@ export const OPENS_AT = '16:00';
 export const SHIFT_NAME = 'Bisi Adeyemi';
 export const OTHER = 'Samuel Okafor';
 export const JOB = 'Door';
+/** Sign out on the shift page lands on Confirm it's you, with "Signed out." as a status above it (sc-4235). */
+export const SIGNED_OUT_HREF = '/demo/staff-sign-in?state=signed-out';
 export const LONG_NAME =
   'Kunle Adeyemi with his driver and the two security men from the Lagos office, who were not on the list, but the host said on the phone at six to let all of them in at the side gate by the car park on Ozumba Mbadiwe Avenue';
 
@@ -164,9 +166,8 @@ export const CW = {
     times: '16:00 to 23:00',
     clocked: 'Clocked in at 17:52',
     signedInAs: (name: string) => `Signed in as ${name}`,
-    signedOutAt: 'You’ll be signed out at 02:00',
+    signedOutAt: 'You’ll be signed out at 02:00.',
     signOut: 'Sign out',
-    signOutLater: 'Signing out has its own design (sc-4235).',
   },
   connectionBack: 'Demo: the connection is back',
   noSeat: 'No seat yet',
