@@ -228,28 +228,32 @@ describe('the figure beside Next, as sc-29978 draws it', () => {
   it('is sc-29978’s figure, from its counts', () => {
     const figure = figureOf(COUNTS.some, numbers);
 
-    expect(withRun(day, 'on', figure, us)?.figure).toEqual(figure);
+    expect(withRun(day, 'on', figure, us)?.now.arrived).toEqual(figure);
     expect(figure?.spoken).toBe('87 of 99 arrived');
   });
 
   it('follows the phone’s numbers, and has no ring with nobody Coming', () => {
-    expect(withRun(day, 'on', figureOf(COUNTS.thousands, numbers), us)?.figure?.spoken).toBe(
+    expect(withRun(day, 'on', figureOf(COUNTS.thousands, numbers), us)?.now.arrived?.spoken).toBe(
       '1,204 of 1,250 arrived',
     );
-    expect(withRun(day, 'on', figureOf(COUNTS.nobodyComing, numbers), us)?.figure).toMatchObject({
+    expect(
+      withRun(day, 'on', figureOf(COUNTS.nobodyComing, numbers), us)?.now.arrived,
+    ).toMatchObject({
       of: null,
       share: null,
     });
   });
 
   it('is not there before anyone has arrived', () => {
-    expect(withRun(day, 'on', figureOf(COUNTS.none, numbers), us)?.figure).toBeNull();
+    expect(withRun(day, 'on', figureOf(COUNTS.none, numbers), us)?.now.arrived).toBeNull();
   });
 
   it('is drawn by sc-29978’s part beside the product’s Now, with no second copy of either', () => {
     const cover = readFileSync(join(import.meta.dirname, 'RunCover.tsx'), 'utf8');
 
-    expect(cover).toContain("import { ArrivedFigure } from './ArrivedCover.tsx';");
+    expect(cover).toMatch(
+      /import \{\n {2}ArrivedFigure,[^}]*\} from '\.\.\/\.\.\/components\/TodayCover\.tsx';/u,
+    );
     expect(cover).toContain("import { RunNowBlock } from '../../components/TodayRun.tsx';");
     expect(cover).not.toMatch(/function (Ring|Chips|WhiteButton|Rail|Head)\b|react-native-svg/u);
   });
