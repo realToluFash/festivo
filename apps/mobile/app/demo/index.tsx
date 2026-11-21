@@ -52,6 +52,7 @@ import { isReasonState } from '../../src/demo/messages/TrySms.ts';
 import { SEATING_BOARDS } from '../../src/demo/seating/SeatingBoards.ts';
 import { RUN_BOARDS, RUN_READ_BOARDS } from '../../src/demo/runView/runViewModel.ts';
 import { LOCK_CARD_BOARDS } from '../../src/demo/night/lockCard.ts';
+import { MY_NIGHT_BOARDS } from '../../src/demo/myNight/myNightModel.ts';
 import { NIGHT_BOARDS } from '../../src/demo/night/nightModel.ts';
 import { STATION_BOARDS } from '../../src/demo/station/StationBoards.ts';
 import { MOVED_BOARDS, TEAM_BOARDS } from '../../src/demo/team/TeamBoards.ts';
@@ -2385,6 +2386,10 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
       what,
       href: href as Href,
     })),
+  },
+  {
+    page: 'Staffing · a staff member’s whole night on one page (sc-3915) · phone, tablet portrait and landscape',
+    boards: MY_NIGHT_BOARDS.map(({ title, what, href }) => ({ title, what, href: href as Href })),
   },
   {
     page: 'Service · the pass’s print controls (sc-4018) · tablet landscape',
