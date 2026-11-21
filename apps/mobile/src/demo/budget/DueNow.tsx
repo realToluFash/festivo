@@ -1,3 +1,4 @@
+import { router } from 'expo-router';
 import { type RefObject, useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 
@@ -13,15 +14,16 @@ import {
   type DueNowSheet,
   type Ledger,
   type MarkForm,
+  type Refusal,
   days,
+  dueItemOf,
   dueNowSettled,
-  isOverdue,
+  eventsOf,
   isOwed,
   money,
-  paymentOf,
 } from './BudgetModel.ts';
-import { EVENT_NAME, REMINDER, VENDORS } from './BudgetSample.ts';
-import { MoneyRow, OverdueTag, PlanLine, UndoMark } from './BudgetParts.tsx';
+import { COLLEAGUE, EVENT_NAME, GALA, REMINDER, TODAY } from './BudgetSample.ts';
+import { AlertBox, MoneyRow, OverdueTag, PlanLine, UndoMark } from './BudgetParts.tsx';
 import { MarkFields, SheetHead, useMarkForm } from './MarkPaid.tsx';
 import { W, say } from './BudgetWords.ts';
 
@@ -142,6 +144,12 @@ export function DueNow({
   );
 }
 
+type RowActions = {
+  onPaid: (id: string) => void;
+  onUndo: (id: string) => void;
+  onDifferent: (id: string) => void;
+};
+
 function DueList({
   sheet,
   ledger,
@@ -151,14 +159,24 @@ function DueList({
   sheet: DueNowSheet;
   ledger: Ledger;
   locale: string;
-  on: {
-    onPaid: (id: string) => void;
-    onUndo: (id: string) => void;
-    onDifferent: (id: string) => void;
-    onClose: () => void;
-  };
+  on: RowActions & { onClose: () => void };
 }) {
+  if (sheet.notFound === true)
+    return (
+      <View style={styles.list}>
+        <Text size={16} weight="medium" accessibilityRole="header" style={styles.doneTitle}>
+          {W.notFound}
+        </Text>
+        <TextAction
+          label={W.goToEvents}
+          onPress={() => router.replace('/demo/events')}
+          testID="budget.dueNow.events"
+        />
+      </View>
+    );
+
   const settled = dueNowSettled(sheet, ledger);
+  const events = eventsOf(sheet.ids);
 
   return (
     <View style={styles.list}>
@@ -169,7 +187,7 @@ function DueList({
       )}
       {sheet.fromReminder && (
         <Text size={15} weight="medium" style={styles.secondary}>
-          {say.fromReminder(days.month(sheet.sent, locale), sheet.ids.length)}
+          {say.fromReminder(days.month(sheet.sent, locale), sheet.ids.length, events.length)}
         </Text>
       )}
       {sheet.readOnly && <PlanLine text={W.readOnly} />}
@@ -180,16 +198,27 @@ function DueList({
           row: <DueRow id={id} sheet={sheet} ledger={ledger} locale={locale} on={on} />,
         }))}
       />
-      {settled && (
-        <TextAction
-          label={say.everythingDueOn(EVENT_NAME)}
-          onPress={on.onClose}
-          testID="budget.dueNow.everything"
-        />
-      )}
+      {settled &&
+        events.map((event) => (
+          <TextAction
+            key={event}
+            label={say.everythingDueOn(event)}
+            onPress={
+              event === EVENT_NAME ? on.onClose : () => router.push(`/demo/events/${GALA.id}`)
+            }
+            testID={`budget.dueNow.everything.${event === EVENT_NAME ? 'wedding' : 'gala'}`}
+          />
+        ))}
     </View>
   );
 }
+
+const REFUSAL_WORDS: Record<Refusal, string> = {
+  paid: W.alreadyPaid(COLLEAGUE),
+  cancelled: W.cancelled,
+  currency: W.wrongCurrency,
+  plan: W.planRefused,
+};
 
 function DueRow({
   id,
@@ -202,25 +231,21 @@ function DueRow({
   sheet: DueNowSheet;
   ledger: Ledger;
   locale: string;
-  on: {
-    onPaid: (id: string) => void;
-    onUndo: (id: string) => void;
-    onDifferent: (id: string) => void;
-  };
+  on: RowActions;
 }) {
-  const payment = paymentOf(id);
-  const vendor = VENDORS[payment.vendor].name;
-  const amount = money(payment.amount, locale);
-  const due = days.short(payment.due, locale);
-  const base = isOverdue(payment)
-    ? say.overdueSince(payment.what, due, EVENT_NAME)
-    : say.dueOnEvent(payment.what, due, EVENT_NAME);
+  const item = dueItemOf(id);
+  const amount = money(item.amount, locale, item.currency);
+  const due = days.short(item.due, locale);
+  const overdue = !item.gone && item.due < TODAY;
+  const base = overdue
+    ? say.overdueSince(item.what, due, item.event)
+    : say.dueOnEvent(item.what, due, item.event);
 
   if (sheet.marked.includes(id))
     return (
       <MoneyRow
-        title={vendor}
-        line={say.markedRow(money(ledger.paid[id]?.amount ?? payment.amount, locale))}
+        title={item.vendor}
+        line={say.markedRow(money(ledger.paid[id]?.amount ?? item.amount, locale, item.currency))}
         lead={<ShapeMark kind="yes" side={22} ink={tokens.colorInkOnDark} />}
         lit
         action={
@@ -229,7 +254,7 @@ function DueRow({
               label={W.undo}
               renderMark={(ink) => <UndoMark ink={ink} />}
               onPress={() => on.onUndo(id)}
-              accessibilityLabel={`${W.undo}, ${vendor}`}
+              accessibilityLabel={`${W.undo}, ${item.vendor}`}
               testID={`budget.dueNow.undo.${id}`}
             />
           )
@@ -238,39 +263,46 @@ function DueRow({
     );
 
   const paid = ledger.paid[id];
-  const refused = sheet.refused.includes(id);
-  const changed = refused
-    ? W.cancelled
+  const refusal = sheet.refused[id];
+  const changed = item.gone
+    ? W.noLongerOnSchedule
     : paid != null
       ? say.paidBy(paid.by, days.month(paid.on, locale))
       : ledger.cancelled.includes(id)
         ? W.cancelledWord
         : null;
-  const owed = isOwed(ledger, id) && !sheet.readOnly;
+  const owed = !item.gone && isOwed(ledger, id) && !sheet.readOnly && refusal == null;
   const last = sheet.lastAbout.includes(id);
-  const chased = sheet.readOnly && isOverdue(payment) ? W.noLongerChased : null;
-  const line = [base, changed, chased].filter(Boolean).join(' · ');
+  const chased = sheet.readOnly && overdue ? W.noLongerChased : null;
+  const line = [item.gone ? `${item.what} · ${item.event}` : base, changed, chased]
+    .filter(Boolean)
+    .join(' · ');
 
   return (
     <View>
       <MoneyRow
-        title={vendor}
+        title={item.vendor}
         tag={last ? { node: <OverdueTag word={W.overdueLast} />, word: W.overdueLast } : undefined}
         line={line}
         value={amount}
       />
+      {refusal != null && (
+        <View style={styles.refusal}>
+          <AlertBox text={REFUSAL_WORDS[refusal]} />
+        </View>
+      )}
       {owed && (
         <View style={styles.actions}>
           <TextAction
             label={W.paidOne}
             onPress={() => on.onPaid(id)}
-            accessibilityLabel={`${W.paidOne}, ${vendor}, ${amount}`}
+            accessibilityLabel={`${W.paidOne}, ${item.vendor}, ${amount}`}
             testID={`budget.dueNow.paid.${id}`}
           />
           <TextAction
             label={W.paidDifferent}
             onPress={() => on.onDifferent(id)}
-            accessibilityLabel={`${W.paidDifferent}, ${vendor}`}
+            accessibilityLabel={`${W.paidDifferent}, ${item.vendor}`}
             testID={`budget.dueNow.different.${id}`}
           />
         </View>
@@ -288,6 +320,7 @@ const styles = StyleSheet.create({
     paddingBottom: 30,
   },
   list: { gap: tokens.spaceMd },
+  refusal: { paddingBottom: tokens.spaceSm },
   actions: {
     flexDirection: 'row',
     flexWrap: 'wrap',

@@ -22,7 +22,9 @@ import {
   coverAmount,
   dateTooLate,
   days,
+  dueItemOf,
   dueNowSettled,
+  eventsOf,
   ledgerFor,
   linkWords,
   money,
@@ -394,7 +396,7 @@ describe('Due now (sc-1331): one tap each, no total', () => {
     const open = startOf('due_now', REMOVED_PAYER);
 
     expect(changed.dueNow != null && dueNowSettled(changed.dueNow, changed.ledger)).toBe(true);
-    expect(changed.dueNow?.ids).toEqual(['bloom-balance', 'savour-deposit']);
+    expect(changed.dueNow?.ids).toEqual(['bloom-balance', 'savour-deposit', 'lens-album']);
     expect(open.dueNow != null && dueNowSettled(open.dueNow, open.ledger)).toBe(false);
     const done = startOf('due_done', REMOVED_PAYER);
     expect(done.dueNow != null && dueNowSettled(done.dueNow, done.ledger)).toBe(true);
@@ -406,8 +408,61 @@ describe('Due now (sc-1331): one tap each, no total', () => {
     expect(ledgerFor('due_changed').paid['bloom-balance']?.by).toBe('Julien Moreau');
     expect(ledgerFor('due_changed').cancelled).toEqual(['savour-deposit']);
     expect(owed(ledgerFor('due_done')).map((p) => p.id)).not.toContain('savour-deposit');
-    expect(startOf('due_refused', REMOVED_PAYER).dueNow?.refused).toEqual(['savour-deposit']);
+    expect(startOf('due_refused', REMOVED_PAYER).dueNow?.refused).toEqual({
+      'savour-deposit': 'cancelled',
+    });
     expect(startOf('due_read_only', REMOVED_PAYER).dueNow?.readOnly).toBe(true);
+  });
+
+  it('names a reminder across two events, each row in its event’s currency, and no total', () => {
+    const several = startOf('due_several', REMOVED_PAYER);
+    const ids = several.dueNow?.ids ?? [];
+
+    expect(ids).toEqual(['bloom-balance', 'savour-deposit', 'gala-flowers']);
+    expect(eventsOf(ids)).toEqual(['Adaeze & Tunde’s wedding', 'Gala Fundación Lucía']);
+    expect(say.fromReminder('Nov 1', ids.length, eventsOf(ids).length)).toBe(
+      'From the reminder sent Nov 1 · 3 payments across 2 events',
+    );
+    expect(say.fromReminder('Nov 1', 2, 1)).toBe('From the reminder sent Nov 1 · 2 payments');
+    expect(say.fromReminder('Nov 1', 1)).toBe('From the reminder sent Nov 1 · 1 payment');
+    const gala = dueItemOf('gala-flowers');
+    expect(money(gala.amount, 'en-US', gala.currency)).toBe('€1,200.00');
+  });
+
+  it('keeps the gala’s payment out of the wedding’s figures when it is paid', () => {
+    const several = startOf('due_several', REMOVED_PAYER);
+    const paid = reduce(several, { type: 'duePaid', id: 'gala-flowers', reader: 'x', words: 'y' });
+
+    expect(paid.ledger.paid['gala-flowers']?.amount).toBe(120000);
+    expect(planOf(paid.ledger).paid).toBe(planOf(several.ledger).paid);
+  });
+
+  it('says a removed payment is no longer on the schedule, and counts it as settled', () => {
+    expect(dueItemOf('lens-album').gone).toBe(true);
+    expect(W.noLongerOnSchedule).toBe('No longer on the schedule');
+  });
+
+  it('shows a refusal in sc-88’s words under its row, with the row as it is now', () => {
+    const paid = startOf('due_refused_paid', REMOVED_PAYER);
+    expect(paid.dueNow?.refused).toEqual({ 'bloom-balance': 'paid' });
+    expect(paid.ledger.paid['bloom-balance']?.by).toBe('Julien Moreau');
+    expect(W.alreadyPaid('Julien Moreau')).toBe(
+      'Julien Moreau has already marked this paid, so nothing has changed.',
+    );
+    expect(startOf('due_refused_plan', REMOVED_PAYER).dueNow?.refused).toEqual({
+      'savour-deposit': 'plan',
+    });
+  });
+
+  it('settles a reminder across two events with a link for each, and answers not found alone', () => {
+    const done = startOf('due_done_several', REMOVED_PAYER);
+    expect(done.dueNow != null && dueNowSettled(done.dueNow, done.ledger)).toBe(true);
+    expect(eventsOf(done.dueNow?.ids ?? [])).toHaveLength(2);
+    expect(planOf(done.ledger).paid).toBe(planOf(ledgerFor('due_done')).paid);
+    const gone = startOf('due_not_found', REMOVED_PAYER);
+    expect(gone.dueNow).toMatchObject({ ids: [], notFound: true });
+    expect(gone.dueNow != null && dueNowSettled(gone.dueNow, gone.ledger)).toBe(false);
+    expect(DUE_NOW_STATES).toContain('due_not_found');
   });
 });
 
@@ -693,6 +748,11 @@ const SPEC_STATES = [
   'due_refused',
   'due_done',
   'due_read_only',
+  'due_several',
+  'due_refused_paid',
+  'due_refused_plan',
+  'due_done_several',
+  'due_not_found',
   'mark_paid_earlier',
   'early_on',
   // The gaps of 8 Nov 2026: sc-88, sc-90 and sc-95 on the Budget tab; sc-30200 and sc-1300 on Who is paying.

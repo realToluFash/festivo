@@ -9,6 +9,9 @@ import {
   type Category,
   type Cover,
   EVENT_NAME,
+  GALA,
+  GALA_PAYMENTS,
+  GONE_PAYMENTS,
   GUESTS,
   HEADS_IF_ALL_COME,
   LINES,
@@ -24,6 +27,8 @@ import {
   type Payment,
   REMINDER,
   REMINDERS,
+  REMINDER_CHANGED,
+  REMINDER_SEVERAL,
   RENAMED,
   TODAY,
   VENDORS,
@@ -93,6 +98,11 @@ export const DUE_NOW_STATES = [
   'due_refused',
   'due_done',
   'due_read_only',
+  'due_several',
+  'due_refused_paid',
+  'due_refused_plan',
+  'due_done_several',
+  'due_not_found',
 ] as const;
 
 export const BUDGET_DEMO_STATES = [...BUDGET_STATES, ...PAYERS_STATES, ...DUE_NOW_STATES] as const;
@@ -106,18 +116,16 @@ export function isIn<T extends string>(states: readonly T[], state: string | nul
   return state != null && (states as readonly string[]).includes(state);
 }
 
-export function money(pence: number, locale = 'en-US'): string {
-  return new Intl.NumberFormat(locale, { style: 'currency', currency: CURRENCY }).format(
-    pence / 100,
-  );
+export function money(pence: number, locale = 'en-US', currency: string = CURRENCY): string {
+  return new Intl.NumberFormat(locale, { style: 'currency', currency }).format(pence / 100);
 }
 
-export function currencySymbol(locale = 'en-US'): string {
+export function currencySymbol(locale = 'en-US', currency: string = CURRENCY): string {
   const parts = new Intl.NumberFormat(locale, {
     style: 'currency',
-    currency: CURRENCY,
+    currency,
   }).formatToParts(0);
-  return parts.find((part) => part.type === 'currency')?.value ?? CURRENCY;
+  return parts.find((part) => part.type === 'currency')?.value ?? currency;
 }
 
 export function whole(pence: number, locale = 'en-US'): string {
@@ -275,6 +283,41 @@ export function paymentOf(id: string): Payment {
   return found;
 }
 
+/** A row Due now can name: a wedding payment, the gala's, or one since removed from the schedule (sc-1331). */
+export interface DueItem {
+  id: string;
+  vendor: string;
+  what: string;
+  amount: number;
+  due: string;
+  event: string;
+  currency: string;
+  gone: boolean;
+}
+
+export function dueItemOf(id: string): DueItem {
+  const gala = GALA_PAYMENTS.find((one) => one.id === id);
+  if (gala != null) return { ...gala, event: GALA.name, currency: GALA.currency, gone: false };
+  const gone = GONE_PAYMENTS.find((one) => one.id === id);
+  if (gone != null) return { ...gone, event: EVENT_NAME, currency: CURRENCY, gone: true };
+  const payment = paymentOf(id);
+  return {
+    id,
+    vendor: VENDORS[payment.vendor].name,
+    what: payment.what,
+    amount: payment.amount,
+    due: payment.due,
+    event: EVENT_NAME,
+    currency: CURRENCY,
+    gone: false,
+  };
+}
+
+/** The events a sheet's rows are on, in the order the reminder first names them. */
+export function eventsOf(ids: readonly string[]): string[] {
+  return [...new Set(ids.map((id) => dueItemOf(id).event))];
+}
+
 export function isOwed(ledger: Ledger, id: string): boolean {
   return (
     ledger.paid[id] == null && !ledger.cancelled.includes(id) && !ledger.unscheduled.includes(id)
@@ -345,7 +388,7 @@ export function notScheduledOf(ledger: Ledger): number {
 }
 
 export function planOf(ledger: Ledger, totals: Totals = totalsOf()): Plan {
-  const paid = Object.values(ledger.paid);
+  const paid = PAYMENTS.flatMap((payment) => ledger.paid[payment.id] ?? []);
   const due = owed(ledger);
   return {
     planned: totals.settled,
@@ -386,9 +429,11 @@ export function ledgerFor(state: BudgetState | null): Ledger {
       cancelled: ['savour-deposit'],
     };
   if (state === 'due_refused') return { ...START_LEDGER, cancelled: ['savour-deposit'] };
-  if (state === 'due_done')
-    return REMINDER.payments.reduce(
-      (ledger, id) => paidBy(ledger, id, COLLEAGUE, TODAY, amountDue(id)),
+  if (state === 'due_refused_paid')
+    return paidBy(START_LEDGER, 'bloom-balance', COLLEAGUE, TODAY, amountDue('bloom-balance'));
+  if (state === 'due_done' || state === 'due_done_several')
+    return (state === 'due_done' ? REMINDER : REMINDER_SEVERAL).payments.reduce(
+      (ledger, id) => paidBy(ledger, id, COLLEAGUE, TODAY, dueItemOf(id).amount),
       START_LEDGER,
     );
   return START_LEDGER;
@@ -571,8 +616,11 @@ export interface DueNowSheet {
   sent: string;
   lastAbout: readonly string[];
   marked: readonly string[];
-  refused: readonly string[];
+  /** Each refused tap and sc-88's case for it, shown under its row. */
+  refused: Readonly<Partial<Record<string, Refusal>>>;
   readOnly: boolean;
+  /** Not the reader's to see, or not there: the same answer either way. */
+  notFound?: boolean;
 }
 
 export interface BudgetModel {
@@ -676,7 +724,7 @@ export function reminderSheet(kind: ReminderKind): DueNowSheet {
     sent: REMINDERS[kind].sent,
     lastAbout: ids.filter((id) => isOverdue(paymentOf(id))),
     marked: [],
-    refused: [],
+    refused: {},
     readOnly: false,
   };
 }
@@ -751,7 +799,7 @@ export function startOf(state: BudgetState | null, removed: string): BudgetModel
     sent: REMINDER.sent,
     lastAbout: [],
     marked: [],
-    refused: [],
+    refused: {},
     readOnly: false,
     ...more,
   });
@@ -845,12 +893,25 @@ export function startOf(state: BudgetState | null, removed: string): BudgetModel
     case 'send_failed':
       return { ...base, view: { page: 'payer', key: 'couple' }, failed: 'couple' };
     case 'due_now':
-    case 'due_changed':
     case 'due_done':
       return {
         ...base,
         dueNow: sheet(REMINDER.payments),
       };
+    case 'due_changed':
+      return { ...base, dueNow: sheet(REMINDER_CHANGED.payments) };
+    case 'due_several':
+    case 'due_done_several':
+      return { ...base, dueNow: sheet(REMINDER_SEVERAL.payments) };
+    case 'due_refused_paid':
+      return { ...base, dueNow: sheet(REMINDER.payments, { refused: { [bloom]: 'paid' } }) };
+    case 'due_refused_plan':
+      return {
+        ...base,
+        dueNow: sheet(REMINDER.payments, { refused: { 'savour-deposit': 'plan' } }),
+      };
+    case 'due_not_found':
+      return { ...base, dueNow: sheet([], { notFound: true }) };
     case 'due_marked':
       return {
         ...base,
@@ -860,7 +921,7 @@ export function startOf(state: BudgetState | null, removed: string): BudgetModel
     case 'due_refused':
       return {
         ...base,
-        dueNow: sheet(REMINDER.payments, { refused: ['savour-deposit'] }),
+        dueNow: sheet(REMINDER.payments, { refused: { 'savour-deposit': 'cancelled' } }),
       };
     case 'due_read_only':
       return {
@@ -960,9 +1021,13 @@ export type BudgetAction =
   | { type: 'payersChanged'; words: string }
   | { type: 'openReminder' };
 
-/** Every row on the sheet paid or cancelled elsewhere, none marked here: "Nothing left to pay." heads it (sc-93, 7 Nov). */
+/** Every row on the sheet paid, cancelled or removed elsewhere, none marked here: "Nothing left to pay." heads it (sc-93, 7 Nov). */
 export function dueNowSettled(sheet: DueNowSheet, ledger: Ledger): boolean {
-  return sheet.marked.length === 0 && sheet.ids.every((id) => !isOwed(ledger, id));
+  return (
+    sheet.notFound !== true &&
+    sheet.marked.length === 0 &&
+    sheet.ids.every((id) => dueItemOf(id).gone || !isOwed(ledger, id))
+  );
 }
 
 /** Mark paid shows only with a connection, the figures current and `vendors` on (sc-93). */
@@ -1023,7 +1088,7 @@ export function reduce(m: BudgetModel, action: BudgetAction): BudgetModel {
           sent: REMINDER.sent,
           lastAbout: [],
           marked: [],
-          refused: [],
+          refused: {},
           readOnly: m.vendors === 'readOnly',
         },
       };
@@ -1031,10 +1096,9 @@ export function reduce(m: BudgetModel, action: BudgetAction): BudgetModel {
       return { ...m, dueNow: null, form: m.form?.from === 'dueNow' ? null : m.form };
     case 'duePaid': {
       if (m.dueNow == null) return m;
-      const payment = paymentOf(action.id);
       return {
         ...m,
-        ledger: paidBy(m.ledger, action.id, action.reader, TODAY, payment.amount),
+        ledger: paidBy(m.ledger, action.id, action.reader, TODAY, dueItemOf(action.id).amount),
         dueNow: { ...m.dueNow, marked: [...m.dueNow.marked, action.id] },
         told: told(action.words),
       };
