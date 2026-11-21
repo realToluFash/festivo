@@ -109,6 +109,8 @@ import { PEOPLE_PAGES } from './people.ts';
 import { Redeem } from './Redeem.tsx';
 import { DoorCheckIn, ShiftPage } from './DoorCheckIn.tsx';
 import { CHECK_IN_PAGES } from './doorCheckIn.ts';
+import { MyNight } from './MyNight.tsx';
+import { MY_NIGHT_PAGES } from './myNight.ts';
 import { REDEEM_PAGES } from './redeem.ts';
 import { StaffSignIn } from './StaffSignIn.tsx';
 import { STAFF_SIGN_IN_PAGES } from './staffSignIn.ts';
@@ -342,6 +344,7 @@ export default function Demo() {
       <Route path="check-in" element={<DoorCheckIn />} />
       <Route path="check-in/shift" element={<ShiftPage />} />
       <Route path="staff-sign-in" element={<StaffSignIn />} />
+      <Route path="my-night" element={<MyNight />} />
       <Route path="vendors" element={<VendorsMoved />} />
       <Route path="share/:scope" element={<ShareRecipient />} />
       <Route path="unsubscribe" element={<Unsubscribe />} />
@@ -529,6 +532,10 @@ function DemoHome({ from }: { from: string }) {
         <BoardPages pages={JOBS_PAGES} />
         <h3>Stations and leads, what each station serves, the walking order (sc-3910) · desktop</h3>
         <BoardPages pages={STATIONS_PAGES} />
+        <h3>
+          A staff member’s whole night on one page (sc-3915) · 390 first, two columns from 800
+        </h3>
+        <BoardPages pages={MY_NIGHT_PAGES} />
       </section>
 
       <section className="demo-home-page" aria-labelledby="demo-page-35">
