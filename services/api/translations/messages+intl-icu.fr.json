@@ -304,7 +304,7 @@
     "audit.field.useCap": "Personnes pouvant l’utiliser",
     "audit.field.expiresAt": "Valable jusqu’à",
     "audit.field.stoppedAt": "Désactivé",
-    "audit.field.signedIn": "Connecté",
+    "audit.field.signedIn": "Session ouverte",
     "audit.field.email": "Adresse e-mail",
     "audit.field.path": "Moyen d’arrivée",
     "audit.field.domain": "Domaine",
