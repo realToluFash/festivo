@@ -262,6 +262,27 @@ export function checkFixed(
   };
 }
 
+/** The payers the form shows, and any removed since it opened whose share was typed in full: sending that share is what gets the save refused with who was removed. */
+export function withHeld(
+  payers: EventPayers,
+  known: EventPayers['payers'],
+  mode: Mode,
+  typed: Readonly<Record<string, string>>,
+  language: MoneyLanguage,
+): EventPayers {
+  const typedRight = (id: string): boolean => {
+    const text = (typed[id] ?? '').trim();
+    if (mode === 'percent') return percentProblem(text) == null && (percentOf(text) ?? 0) > 0;
+
+    return mode === 'fixed' && Number(readAmount(text, language, payers.currency) ?? 0) > 0;
+  };
+  const held = known.filter(
+    (one) => !payers.payers.some((live) => live.id === one.id) && typedRight(one.id),
+  );
+
+  return held.length === 0 ? payers : { ...payers, payers: [...payers.payers, ...held] };
+}
+
 export function moneyRange(
   t: TFunction,
   low: string,

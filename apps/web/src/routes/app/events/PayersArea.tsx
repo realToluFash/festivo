@@ -66,6 +66,7 @@ import {
   noteProblem,
   openFirst,
   percentProblem,
+  withHeld,
   percentText,
   splitWords,
 } from './payersArea.ts';
@@ -1079,6 +1080,7 @@ function ChooseWhoPays({
   const [failed, setFailed] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [tries, setTries] = useState(start.checked === true ? 1 : 0);
+  const [known, setKnown] = useState(payers.payers);
   const who = useRef<HTMLDivElement>(null);
   const radios = useId();
   const totalError = useId();
@@ -1087,15 +1089,26 @@ function ChooseWhoPays({
     if (tries > 0) who.current?.querySelector<HTMLElement>('[aria-invalid="true"]')?.focus();
   }, [tries]);
 
-  const stillThere = (id: string) => (payers.payers.some((one) => one.id === id) ? id : '');
+  const joined = payers.payers.filter((one) => !known.some((was) => was.id === one.id));
+  if (joined.length > 0) setKnown([...known, ...joined]);
+
+  const live = (id: string) => payers.payers.some((one) => one.id === id);
+  const stillThere = (id: string) => (live(id) ? id : '');
   const payer = stillThere(payerPicked);
   const rest = stillThere(restPicked);
   const lines = inBudgetOrder(payers.lines);
   const present = ticked.filter((id) => payers.lines.some((line) => line.id === id));
   const choices = choicesFor(present.length);
   const picked = choices.includes(mode) ? mode : 'one';
-  const percent = checkPercents(payers, present, percents);
-  const fixed = checkFixed(payers, present[0] ?? '', amounts, rest, language);
+  const checking = withHeld(
+    payers,
+    known,
+    picked,
+    picked === 'percent' ? percents : amounts,
+    language,
+  );
+  const percent = checkPercents(checking, present, percents);
+  const fixed = checkFixed(checking, present[0] ?? '', amounts, rest, language);
   const off = present.length === 0 || busy;
   const money = (minor: number) => minorMoney(fromMinor(minor, currency), currency, locale);
   const range = (low: number, high: number) =>
@@ -1164,6 +1177,15 @@ function ChooseWhoPays({
           violations.some((one) => one.propertyPath === 'split.restId')
         )
           setRestPicked('');
+        const gone = violations
+          .map((one) => /^split\.(?:shares|amounts)\.(.+)$/u.exec(one.propertyPath ?? '')?.[1])
+          .filter((id) => id != null);
+        if (gone.length > 0) {
+          const forget = (typed: Record<string, string>) =>
+            Object.fromEntries(Object.entries(typed).filter(([id]) => !gone.includes(id)));
+          setPercents(forget);
+          setAmounts(forget);
+        }
         onRaced();
 
         return;
