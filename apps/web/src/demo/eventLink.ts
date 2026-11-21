@@ -44,7 +44,7 @@ const WHAT: Record<LinkState, string> = {
 export const LINK_PAGE: { name: string; states: readonly DemoLink[] } = {
   name: 'An event’s link from another organisation (sc-80863)',
   states: LINK_STATES.map((state) => ({
-    to: `/demo/events/evt-wed-4?state=${state}`,
+    to: `/demo/events/evt-wed-4?link=${state}`,
     name: WHAT[state],
   })),
 };

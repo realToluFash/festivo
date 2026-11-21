@@ -38,7 +38,7 @@ describe('an event link from another organisation at a desk', () => {
 
   it('links every state from the demo home', () => {
     expect(LINK_PAGE.states.map(({ to }) => to)).toEqual(
-      LINK_STATES.map((state) => `/demo/events/evt-wed-4?state=${state}`),
+      LINK_STATES.map((state) => `/demo/events/evt-wed-4?link=${state}`),
     );
   });
 });

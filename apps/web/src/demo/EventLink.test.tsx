@@ -13,7 +13,7 @@ const MOVED = 'Now working in Casa Lumen Eventos.';
 
 function open(state: string) {
   const router = createMemoryRouter(routes, {
-    initialEntries: [`/demo/events/evt-wed-4?state=${state}`],
+    initialEntries: [`/demo/events/evt-wed-4?link=${state}`],
   });
   render(<RouterProvider router={router} />);
 

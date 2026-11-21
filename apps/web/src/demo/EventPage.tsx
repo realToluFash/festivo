@@ -266,7 +266,7 @@ export function EventPage({
   useSwitcherStart();
   const noOrg = noOrgStateOf(raw);
   const outside = outsidePageOf(raw);
-  const link = linkStateOf(raw);
+  const link = dates || messages ? null : linkStateOf(params.get('link'));
 
   if (link != null && id != null) return <EventLink key={`${id}|${link}`} id={id} state={link} />;
 
@@ -296,7 +296,7 @@ export function EventPage({
   );
 }
 
-/** /demo/events/:id?state= for an event's link opened while working in Ire Events: the account moves only once the event has loaded (sc-80863). */
+/** /demo/events/:id?link= for an event's link opened while working in Ire Events: the account moves only once the event has loaded (sc-80863). */
 function EventLink({ id, state }: { id: string; state: LinkState }) {
   const { pathname } = useLocation();
   useState(linkStart);
