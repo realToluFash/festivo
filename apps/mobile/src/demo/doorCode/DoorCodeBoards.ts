@@ -26,7 +26,7 @@ const MAKING: Record<MakeState, readonly [string, string]> = {
   blank: ['Making · left blank', 'Enter how many people can use this code.'],
   malformed: ['Making · with 3000', 'Use a whole number from 1 to 500.'],
   ends: ['Making · ends earlier', 'The Ends sheet, a day and a time'],
-  past: ['Making · an end that has passed', 'Choose a time that hasn’t passed yet.'],
+  past: ['Making · an end that has passed', 'Choose a time that has not passed yet.'],
   making: ['Making · making', 'Making… held, then the card'],
   failed: ['Making · failed', 'The line at the top, and Try again'],
 };
