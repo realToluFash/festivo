@@ -2392,7 +2392,7 @@
     "pickAnother": "Escolha outra função para adicionar alguém de fora.",
     "jobLabel": "Cargo (opcional)",
     "jobHelp": "O que vem fazer, mostrado junto ao nome. Não dá nenhum acesso. {{length, number}} de {{most, number}}.",
-    "offerSeesEvery": "{{role}} · sees every event",
+    "offerSeesEvery": "{{role}} · vê todos os eventos",
     "everyoneOn": "Todas as pessoas de {{organisation}} já estão neste evento.",
     "cancel": "Cancelar",
     "addConfirm": "Adicionar",
