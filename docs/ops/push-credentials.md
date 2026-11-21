@@ -81,9 +81,12 @@ stop: the environment is running the development pair. Set both variables and de
 
 1. In a desktop browser, sign in, allow notifications, and trigger a notification for that
    member: it arrives as a web push.
-2. On an iPhone and an Android phone, install a build of the `preview` profile
+2. Register the test iPhone first: the `preview` profile is `distribution: internal`, an ad
+   hoc build on iOS, which installs only on a device whose UDID was registered before the
+   build. Run `eas device:create` from `apps/mobile`, open its link on the iPhone, then build.
+3. On an iPhone and an Android phone, install a build of the `preview` profile
    (`eas build --profile preview`, from `apps/mobile`) and do the same. It is a release
    build with the EAS project's credentials, so it receives push the way the store build
    will. Expo Go cannot receive remote push, so it proves nothing here.
-3. Check the notification worker's logs for `Web Push answered` and Expo errors in the
+4. Check the notification worker's logs for `Web Push answered` and Expo errors in the
    first minutes.
