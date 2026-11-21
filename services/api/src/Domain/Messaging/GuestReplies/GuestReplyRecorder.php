@@ -16,10 +16,12 @@ use App\Enum\ScheduledNotificationStatus;
 use DateInterval;
 use DateTimeImmutable;
 use DateTimeZone;
+use Doctrine\DBAL\ArrayParameterType;
 use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\Types\Types;
 use Psl\Iter;
 use Psl\Type;
+use Psl\Vec;
 use Psr\Clock\ClockInterface;
 use Symfony\Component\Uid\Uuid;
 
@@ -91,9 +93,7 @@ final readonly class GuestReplyRecorder
             );
         }
 
-        foreach ($this->members($audience) as $member) {
-            $this->summaryFor($organisationId, $member, $now);
-        }
+        $this->summariesFor($organisationId, $this->members($audience), $now);
     }
 
     private function pushPending(string $eventId): bool
@@ -121,30 +121,53 @@ final readonly class GuestReplyRecorder
         return $next > $now ? $next : $now;
     }
 
-    /** One summary a morning per member and organisation, sent to the member while they belong to it: each event in it is checked for access when it goes, so losing one event leaves the others. */
-    private function summaryFor(Uuid $organisationId, Uuid $member, DateTimeImmutable $now): void
+    /**
+     * One summary a morning per member and organisation, sent to the member while they belong to it: each event in it is checked for access when it goes, so losing one event leaves the others. Their zones and the summaries already queued are read in one query each, however many members the event has.
+     *
+     * @param list<Uuid> $members
+     */
+    private function summariesFor(Uuid $organisationId, array $members, DateTimeImmutable $now): void
     {
-        $zone = Type\nullable(Type\string())->coerce($this->connection->fetchOne('SELECT timezone FROM users WHERE id = :id', ['id' => $member->toRfc4122()]) ?: null);
-        $dueAt = self::morningAfter($now, $zone);
-        $day = $dueAt->setTimezone(new DateTimeZone($zone ?? 'UTC'))->format('Y-m-d');
-        $key = GuestRepliesSummary::NAME . ':' . $organisationId->toRfc4122() . ':' . $member->toRfc4122() . ':' . $day;
-        $queued = false !== $this->connection->fetchOne(
-            'SELECT 1 FROM scheduled_notifications WHERE cancellation_key = :key AND status = :pending',
-            ['key' => $key, 'pending' => ScheduledNotificationStatus::Pending->value],
-        );
-
-        if ($queued) {
+        if ([] === $members) {
             return;
         }
 
-        $this->notificationScheduler->schedule(
-            GuestRepliesSummary::NAME,
-            $key,
-            $key,
-            Trigger::at($dueAt),
-            Audience::members($organisationId, [$member]),
-            ['organisationId' => $organisationId->toRfc4122()],
-        );
+        $ids = Vec\map($members, static fn (Uuid $member): string => $member->toRfc4122());
+        $zones = Type\dict(Type\string(), Type\nullable(Type\string()))->coerce($this->connection->fetchAllKeyValue(
+            'SELECT id, timezone FROM users WHERE id IN (:ids)',
+            ['ids' => $ids],
+            ['ids' => ArrayParameterType::STRING],
+        ));
+        $due = [];
+
+        foreach ($members as $member) {
+            $zone = $zones[$member->toRfc4122()] ?? null;
+            $zone = '' === $zone ? null : $zone;
+            $dueAt = self::morningAfter($now, $zone);
+            $day = $dueAt->setTimezone(new DateTimeZone($zone ?? 'UTC'))->format('Y-m-d');
+            $due[GuestRepliesSummary::NAME . ':' . $organisationId->toRfc4122() . ':' . $member->toRfc4122() . ':' . $day] = [$member, $dueAt];
+        }
+
+        $queued = Type\vec(Type\string())->coerce($this->connection->fetchFirstColumn(
+            'SELECT cancellation_key FROM scheduled_notifications WHERE cancellation_key IN (:keys) AND status = :pending',
+            ['keys' => Vec\keys($due), 'pending' => ScheduledNotificationStatus::Pending->value],
+            ['keys' => ArrayParameterType::STRING],
+        ));
+
+        foreach ($due as $key => [$member, $dueAt]) {
+            if (Iter\contains($queued, $key)) {
+                continue;
+            }
+
+            $this->notificationScheduler->schedule(
+                GuestRepliesSummary::NAME,
+                $key,
+                $key,
+                Trigger::at($dueAt),
+                Audience::members($organisationId, [$member]),
+                ['organisationId' => $organisationId->toRfc4122()],
+            );
+        }
     }
 
     /** The next 08:00 in the zone, in UTC. */
