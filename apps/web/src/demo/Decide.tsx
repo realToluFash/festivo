@@ -385,14 +385,16 @@ function AnswerPanel<A>({
                     />,
                   ]}
                   end={
-                    <Amount
-                      value={
-                        <Woven
-                          text={W.plus(shown.row(one.delta))}
-                          figures={[shown.row(one.delta)]}
-                        />
-                      }
-                    />
+                    <span className="bud-row-end">
+                      <Amount
+                        value={
+                          <Woven
+                            text={W.plus(shown.row(one.delta))}
+                            figures={[shown.row(one.delta)]}
+                          />
+                        }
+                      />
+                    </span>
                   }
                 />
               </li>
@@ -402,7 +404,11 @@ function AnswerPanel<A>({
                 <BudgetRow
                   title={one}
                   lines={[W.notPricedYet]}
-                  end={<MarkWord mark={<DashedMark />} word={W.notKnown} />}
+                  end={
+                    <span className="bud-row-end">
+                      <MarkWord mark={<DashedMark />} word={W.notKnown} />
+                    </span>
+                  }
                 />
               </li>
             ))}

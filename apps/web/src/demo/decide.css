@@ -108,23 +108,6 @@
   overflow-wrap: break-word;
 }
 
-.dec-answer .bud-row {
-  flex-wrap: wrap;
-  row-gap: var(--spaceXs);
-}
-
-.dec-answer .bud-row .desk-row-words {
-  flex: 1 1 12rem;
-}
-
-.dec-answer .bud-row > .bud-amount {
-  flex: 0 1 auto;
-  max-width: 100%;
-  margin-inline-start: auto;
-  white-space: normal;
-  text-align: end;
-}
-
 /* sc-72618, at 320 CSS px (400% zoom, WCAG 2.2 SC 1.4.10): Add guest stacks under the list at the full width, so nothing scrolls sideways. */
 @media (width <= 40rem) {
   .dec-page .dec-cols {
