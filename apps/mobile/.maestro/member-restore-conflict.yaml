@@ -1,0 +1,12 @@
+# On a suspended member's page left open by member-restore-open, somebody else restored them; Restore access answers with the conflict notice. sc-13726.
+#
+#   node .qa/bin/qa-env.mjs maestro member-restore-conflict --android NOTICE=<regex of the notice> SHOT=…
+appId: host.exp.Exponent
+---
+- tapOn:
+    id: 'members.restore'
+- extendedWaitUntil:
+    visible: '${NOTICE}'
+    timeout: 15000
+- waitForAnimationToEnd
+- takeScreenshot: ${SHOT}

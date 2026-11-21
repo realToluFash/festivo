@@ -1,0 +1,44 @@
+# sc-75211: Filter closed while scrolled, at the top level or in a level, opens again at the top level's top; a tap at the foot clears.
+appId: host.exp.Exponent
+---
+- runFlow: sc75211-setup.yaml
+- swipe: { start: '40%,88%', end: '40%,60%', duration: 400 }
+- waitForAnimationToEnd
+- takeScreenshot: r-scrolled
+- tapOn: { point: '2%,62%' }
+- waitForAnimationToEnd
+- takeScreenshot: r-closed
+- runFlow:
+    when: { notVisible: { id: 'events.filter.menu' } }
+    commands:
+      - tapOn: { id: 'events.filter' }
+      - waitForAnimationToEnd
+- takeScreenshot: r-reopened
+- assertVisible: { id: 'events.filter.type' }
+- swipe: { start: '40%,88%', end: '40%,60%', duration: 400 }
+- waitForAnimationToEnd
+- tapOn: { id: 'events.filter.hosts' }
+- waitForAnimationToEnd
+- swipe: { start: '40%,88%', end: '40%,60%', duration: 400 }
+- waitForAnimationToEnd
+- takeScreenshot: r-hosts-scrolled
+- tapOn: { point: '2%,62%' }
+- waitForAnimationToEnd
+- runFlow:
+    when: { notVisible: { id: 'events.filter.menu' } }
+    commands:
+      - tapOn: { id: 'events.filter' }
+      - waitForAnimationToEnd
+- takeScreenshot: r-reopened-from-hosts
+- assertNotVisible: { id: 'events.filter.back' }
+- assertVisible: { id: 'events.filter.type' }
+- repeat:
+    while: { notVisible: { id: 'events.filter.clear' } }
+    times: 6
+    commands:
+      - swipe: { start: '40%,88%', end: '40%,60%', duration: 500 }
+      - waitForAnimationToEnd
+- tapOn: { id: 'events.filter.clear' }
+- waitForAnimationToEnd
+- takeScreenshot: r-cleared
+- assertNotVisible: { id: 'events.filter.clear' }

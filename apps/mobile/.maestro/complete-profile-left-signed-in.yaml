@@ -1,0 +1,30 @@
+# Signs in as an account with no profile and leaves it on A few details, in the account's
+# language, for a batch to sign it out. sc-21193.
+#
+#   node .qa/bin/qa-env.mjs maestro complete-profile-left-signed-in --android EMAIL=… PASSWORD=…
+appId: host.exp.Exponent
+---
+- launchApp:
+    appId: host.exp.Exponent
+    stopApp: true
+- openLink: ${METRO_URL}/--/sign-in
+- extendedWaitUntil:
+    visible:
+      id: 'signIn.email'
+    timeout: 90000
+- tapOn:
+    id: 'signIn.email'
+- eraseText: 120
+- inputText: ${EMAIL}
+- tapOn:
+    id: 'signIn.password'
+- eraseText: 120
+- inputText: ${PASSWORD}
+- hideKeyboard
+- tapOn:
+    id: 'signIn.submit'
+- extendedWaitUntil:
+    visible:
+      id: 'completeProfile.name'
+    timeout: 30000
+- takeScreenshot: mobile-left-on-a-few-details

@@ -1,0 +1,41 @@
+# sc-39534: Search from the Events header: idle words, under 2 characters, mixed results, no match and Clear search.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events
+- extendedWaitUntil:
+    visible:
+      id: 'frame.search'
+    timeout: 30000
+- tapOn:
+    id: 'frame.search'
+- extendedWaitUntil:
+    visible:
+      id: 'search.field'
+    timeout: 15000
+- waitForAnimationToEnd
+- takeScreenshot: idle
+- inputText: 'i'
+- waitForAnimationToEnd
+- takeScreenshot: short
+- inputText: 'nes'
+- extendedWaitUntil:
+    visible: 'Inês Duarte'
+    timeout: 15000
+- takeScreenshot: mixed
+- eraseText: 10
+- inputText: 'gala'
+- extendedWaitUntil:
+    visible: 'Galan Bright'
+    timeout: 15000
+- takeScreenshot: long
+- eraseText: 10
+- inputText: 'zzqx'
+- extendedWaitUntil:
+    visible:
+      id: 'search.clear'
+    timeout: 15000
+- takeScreenshot: none
+- tapOn:
+    id: 'search.clear'
+- waitForAnimationToEnd
+- takeScreenshot: cleared

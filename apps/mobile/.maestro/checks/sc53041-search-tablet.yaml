@@ -1,0 +1,61 @@
+# Search's words on a tablet, opened from the sidebar row, empty, short, results, nothing. sc-53041.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/
+- tapOn:
+    id: 'tab-today|frame.home'
+    optional: true
+- extendedWaitUntil:
+    visible: '{{t:search.row}}'
+    timeout: 15000
+- runFlow:
+    when:
+      visible:
+        id: 'today.search|frame.search'
+    commands:
+      - tapOn:
+          id: 'today.search|frame.search'
+- runFlow:
+    when:
+      notVisible:
+        id: 'search.field'
+    commands:
+      - tapOn: '{{t:search.row}}'
+- extendedWaitUntil:
+    visible:
+      id: 'search.field'
+    timeout: 10000
+- waitForAnimationToEnd:
+    timeout: 3000
+- takeScreenshot: empty
+- tapOn:
+    id: 'search.field'
+- inputText: 'g'
+- waitForAnimationToEnd:
+    timeout: 3000
+- takeScreenshot: short
+- eraseText: 10
+- inputText: 'gala'
+- waitForAnimationToEnd:
+    timeout: 4000
+- hideKeyboard
+- takeScreenshot: gala
+- scroll
+- takeScreenshot: gala-scrolled
+- tapOn:
+    id: 'search.field'
+- eraseText: 10
+- inputText: 'galax'
+- waitForAnimationToEnd:
+    timeout: 4000
+- takeScreenshot: galax
+- eraseText: 10
+- inputText: 'zebra'
+- waitForAnimationToEnd:
+    timeout: 4000
+- takeScreenshot: zebra
+- eraseText: 10
+- inputText: 'qqzz'
+- waitForAnimationToEnd:
+    timeout: 4000
+- takeScreenshot: nothing

@@ -1,0 +1,40 @@
+# sc-563: the Owner switches Only our organisation on and presses Schedule it; the row shows its start instant with Cancel. Pass DOMAIN: a proved email domain with Only our organisation off.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/settings/data-and-control/email-domains
+- extendedWaitUntil:
+    visible:
+      id: emailDomains.card
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: emailDomains.${DOMAIN}.only
+    direction: DOWN
+    timeout: 15000
+# The last row cannot reach the middle: scroll to the page's end, clear of the tab bar, and back up if it overshot.
+- scroll
+- scrollUntilVisible:
+    element:
+      id: emailDomains.${DOMAIN}.only
+    direction: UP
+    timeout: 10000
+- tapOn:
+    id: emailDomains.${DOMAIN}.only
+- extendedWaitUntil:
+    visible:
+      id: emailDomains.only.schedule
+    timeout: 15000
+- tapOn:
+    id: emailDomains.only.schedule
+- extendedWaitUntil:
+    visible:
+      id: emailDomains.${DOMAIN}.only.cancel
+    timeout: 15000
+- scrollUntilVisible:
+    element:
+      id: emailDomains.card
+    direction: UP
+    timeout: 10000
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: sc563-schedule-product

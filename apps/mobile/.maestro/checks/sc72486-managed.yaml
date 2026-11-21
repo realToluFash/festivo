@@ -1,0 +1,16 @@
+# sc-72486: a managed account opens Create an organisation from the switcher and gets the Managed by sheet.
+appId: host.exp.Exponent
+---
+- runFlow: ../return-home.yaml
+- tapOn:
+    id: 'home.switchOrganisation'
+- scrollUntilVisible:
+    element:
+      id: 'switcher.tile.create'
+    direction: DOWN
+    timeout: 30000
+- tapOn:
+    id: 'switcher.tile.create'
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: sc72486-managed

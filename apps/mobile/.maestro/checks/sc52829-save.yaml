@@ -1,0 +1,62 @@
+# sc-52829: Record a reply on a Not yet invited guest, Coming by phone, invites them: Reply line, Invited when they replied, no Mark as not invited.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/${EVENT_ID}?area=guests
+- extendedWaitUntil:
+    visible:
+      id: 'guests.search'
+    timeout: 30000
+- tapOn:
+    id: 'guests.search'
+- inputText: ${G_SAVE_NAME}
+- hideKeyboard
+- extendedWaitUntil:
+    visible:
+      id: 'guests.row.${G_SAVE}'
+    timeout: 15000
+- tapOn:
+    id: 'guests.row.${G_SAVE}'
+- extendedWaitUntil:
+    visible:
+      id: 'guest.${G_SAVE}'
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: 'guest.recordNotYet'
+    direction: DOWN
+- tapOn:
+    id: 'guest.recordNotYet'
+- extendedWaitUntil:
+    visible:
+      id: 'guest.record.coming'
+    timeout: 10000
+- takeScreenshot: form-open
+- tapOn:
+    id: 'guest.record.save'
+- takeScreenshot: form-refused
+- tapOn:
+    id: 'guest.record.coming'
+- tapOn:
+    id: 'guest.record.how.phone'
+- takeScreenshot: form-filled
+- tapOn:
+    id: 'guest.record.save'
+- extendedWaitUntil:
+    visible: '{{t:guestList.replyRecorded}}'
+    timeout: 15000
+- takeScreenshot: recorded
+- assertNotVisible:
+    id: 'guest.recordNotYet'
+- scrollUntilVisible:
+    element: '.*recorded by.*'
+    direction: DOWN
+- takeScreenshot: recorded-reply
+- scrollUntilVisible:
+    element:
+      id: 'guest.invitation'
+    direction: DOWN
+- takeScreenshot: recorded-invitation
+- assertNotVisible:
+    id: 'guest.unmark'
+- assertNotVisible:
+    id: 'guest.mark'

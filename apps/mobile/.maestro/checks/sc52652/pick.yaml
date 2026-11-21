@@ -1,0 +1,22 @@
+appId: host.exp.Exponent
+---
+- waitForAnimationToEnd
+- extendedWaitUntil:
+    visible: 'never.there'
+    timeout: 3000
+    optional: true
+- tapOn:
+    point: ${TILE}
+- extendedWaitUntil:
+    visible: 'never.there'
+    timeout: 5000
+    optional: true
+- runFlow:
+    when:
+      visible: 'Done'
+    commands:
+      - tapOn: 'Done'
+- extendedWaitUntil:
+    visible: 'never.there'
+    timeout: 4000
+    optional: true
