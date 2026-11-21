@@ -17,8 +17,8 @@ export interface WaitingInvitations {
   ) => Promise<InvitationOutcome>;
 }
 
-/** The invitations to any verified address of this account, read once per visit (`GET /api/invitations`), and only when `load` is on at first render. */
-export function useWaitingInvitations(load = true): WaitingInvitations {
+/** The invitations to any verified address of this account, read once per visit (`GET /api/invitations`), and only when `load` is on at first render. A managed one reads as managed only once its Join is refused, as sc-563's screens have it. */
+export function useInvitationAnswers(load = true): WaitingInvitations {
   const [loading] = useState(load);
   const [invitations, setInvitations] = useState<readonly InvitationPreview[]>([]);
   const [outcomes, setOutcomes] = useState<Record<string, InvitationOutcome>>({});
@@ -84,7 +84,14 @@ export function useWaitingInvitations(load = true): WaitingInvitations {
     return outcome;
   }
 
+  return { invitations, outcomes, firstJoined, answer };
+}
+
+/** For the switcher and its openers: one the account cannot accept reads as managed from the moment it is listed, so it is never counted (sc-73668). */
+export function useWaitingInvitations(): WaitingInvitations {
+  const answers = useInvitationAnswers();
+  const { invitations, outcomes } = answers;
   const known = useMemo(() => withManaged(invitations, outcomes), [invitations, outcomes]);
 
-  return { invitations, outcomes: known, firstJoined, answer };
+  return { ...answers, outcomes: known };
 }

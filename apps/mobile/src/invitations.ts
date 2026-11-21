@@ -15,20 +15,25 @@ export interface WaitingInvitations {
   ) => Promise<InvitationOutcome>;
 }
 
-/** The invitations to any verified address of this account, read with the account, so every frame on the stack shows the same ones. */
-export function useWaitingInvitations(): WaitingInvitations {
+/** The invitations to any verified address of this account, read with the account, so every frame on the stack shows the same ones. A managed one reads as managed only once its Join is refused, as sc-563's You are not in an organisation has it. */
+export function useInvitationAnswers(): WaitingInvitations {
   const { invitations, invitationOutcomes } = useSignedIn();
-  const outcomes = useMemo(
-    () => withManaged(invitations, invitationOutcomes),
-    [invitations, invitationOutcomes],
-  );
 
   return {
     invitations,
-    outcomes,
+    outcomes: invitationOutcomes,
     answer: (invitation, choice) =>
       answerInvitation(invitation, choice, settleInvitation, joinOrganisation),
   };
+}
+
+/** For the switcher and its openers: one the account cannot accept reads as managed from the moment it is listed, so it is never counted (sc-73668). */
+export function useWaitingInvitations(): WaitingInvitations {
+  const answers = useInvitationAnswers();
+  const { invitations, outcomes } = answers;
+  const known = useMemo(() => withManaged(invitations, outcomes), [invitations, outcomes]);
+
+  return { ...answers, outcomes: known };
 }
 
 /** Behind the onboarding gate, where the account's organisations cannot be read: the list read once, when `load` is on at first render. */
@@ -62,12 +67,10 @@ export function useInvitationsOnOpen(load: boolean): WaitingInvitations & { read
   const settle = (id: string, outcome: InvitationOutcome): void =>
     setOutcomes((now) => ({ ...now, [id]: outcome }));
 
-  const known = useMemo(() => withManaged(invitations, outcomes), [invitations, outcomes]);
-
   return {
     invitations,
     read,
-    outcomes: known,
+    outcomes,
     answer: (invitation, choice) => answerInvitation(invitation, choice, settle, () => {}),
   };
 }
