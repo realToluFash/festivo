@@ -160,8 +160,8 @@ framework:
             interval: '1 minute'
 
         door_code_code:
-            # Per code, keyed by its hash, spent by every try at it, so one code cannot be worked at from many
-            # sources. A crew of 500 opening and joining together fits inside a few minutes.
+            # Per code, keyed by its hash, spent only by a refused try at it (sc-72), so one code cannot be worked
+            # at from many sources while a crew of 500 opening and joining a working code together is never refused.
             policy: fixed_window
             limit: 120
             interval: '1 minute'

@@ -28,6 +28,7 @@ use Lexik\Bundle\JWTAuthenticationBundle\Services\JWTTokenManagerInterface;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use Psl\Json;
+use Psl\Math;
 use Psl\Regex;
 use Psl\Str;
 use Psl\Type;
@@ -325,14 +326,60 @@ final class DoorCodesTest extends ApiTestCase
         self::assertNotNull($this->last()['retryAt'] ?? null);
     }
 
+    /** In one kernel, since the limiter's pool is reset between requests. */
     #[Test]
     public function aRightCodeSpendsNothingOfTheSourcesTen(): void
     {
-        $code = $this->code('can_view', useCap: 30);
+        $code = $this->code('can_view');
+        $redeemer = self::service(DoorCodeRedeemer::class);
+        $source = Request::create('/', server: ['REMOTE_ADDR' => '203.0.113.9']);
 
         foreach (\range(1, 15) as $n) {
-            $this->redeem($code, 'Waiter ' . $n);
-            self::assertSame(201, $this->statusCode(), 'fifteen waiters on one venue network');
+            self::assertSame($code, $redeemer->open($code, null, $source)->getCode(), 'fifteen waiters on one venue network, ' . $n);
+        }
+
+        try {
+            $redeemer->open('ZZZZZZZZ', null, $source);
+            self::fail('a code that does not exist');
+        } catch (ApiException $refusal) {
+            self::assertSame(ErrorCode::DoorCodeInvalid, $refusal->errorCode, 'the source has its ten still');
+        }
+    }
+
+    /** In one kernel, since the limiter's pool is reset between requests. */
+    #[Test]
+    public function aWorkingCodeOpenedAndJoinedPastItsHundredAndTwentyIsNeverRefused(): void
+    {
+        $code = $this->code('can_view', useCap: 100);
+        $redeemer = self::service(DoorCodeRedeemer::class);
+
+        foreach (\range(1, 65) as $n) {
+            $source = Request::create('/', server: ['REMOTE_ADDR' => '203.0.113.9']);
+            self::assertSame($code, $redeemer->open($code, null, $source)->getCode(), 'open ' . $n);
+            self::assertFalse($redeemer->redeem($code, 'Crew ' . $n, null, $source)['again'], 'join ' . $n);
+        }
+    }
+
+    /** In one kernel, since the limiter's pool is reset between requests. */
+    #[Test]
+    public function aCodeGetsAHundredAndTwentyRefusedTriesAMinuteFromAnySourceThenIsRefusedForBeingBusy(): void
+    {
+        $redeemer = self::service(DoorCodeRedeemer::class);
+
+        foreach (\range(0, 119) as $try) {
+            try {
+                $redeemer->open('ZZZZZZZZ', null, Request::create('/', server: ['REMOTE_ADDR' => '203.0.113.' . (1 + Math\div($try, 10))]));
+                self::fail('a code that does not exist');
+            } catch (ApiException $refusal) {
+                self::assertSame(ErrorCode::DoorCodeInvalid, $refusal->errorCode, 'try ' . ($try + 1));
+            }
+        }
+
+        try {
+            $redeemer->open('ZZZZZZZZ', null, Request::create('/', server: ['REMOTE_ADDR' => '198.51.100.4']));
+            self::fail('the hundred and twenty-first refused try in the minute');
+        } catch (ApiException $busy) {
+            self::assertSame(ErrorCode::TooManyAttempts, $busy->errorCode);
         }
     }
 
