@@ -70,7 +70,7 @@ describe('the audit log’s states (sc-611)', () => {
     expect(
       days[0]?.entries.map((entry) => [say.time(entry.at), entry.what, entryLine(entry)]),
     ).toEqual([
-      ['11:42', 'Exported 3 audit log entries', 'Folake Adeyemi · Audit log'],
+      ['11:42', 'Exported the audit log', 'Folake Adeyemi · Audit log'],
       ['10:05', 'Downloaded Ire Events’s data', 'Folake Adeyemi · Organisation'],
       ['09:30', 'Asked for an export of Ire Events’s data', 'Folake Adeyemi · Organisation'],
       [

@@ -123,7 +123,7 @@ export const ENTRIES: readonly AuditEntry[] = [
     ...FOLAKE,
     id: 'exported',
     at: '2026-10-19T10:42:09Z',
-    what: 'Exported 3 audit log entries',
+    what: 'Exported the audit log',
     type: 'Audit log',
     action: 'audit_log.exported',
     on: ORGANISATION,
