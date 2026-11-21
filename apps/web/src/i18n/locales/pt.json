@@ -3876,7 +3876,8 @@
     "notChanged_one": "{{count, number}} not changed: {{reasons}}.",
     "notChanged_other": "{{count, number}} not changed: {{reasons}}.",
     "hasArrived": "{{name}} has arrived",
-    "companionHasArrived": "a companion of {{name}} has arrived"
+    "companionHasArrived": "a companion of {{name}} has arrived",
+    "notChanged_many": "{{count, number}} not changed: {{reasons}}."
   },
   "guestKitchen": {
     "title": "Há algo que a cozinha deva saber?",

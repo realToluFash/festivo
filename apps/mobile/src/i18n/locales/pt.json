@@ -3309,6 +3309,8 @@
     "addSomeoneNew": "Add as someone new",
     "close": "Close",
     "failed": "Check-in did not load. Check your connection and try again.",
-    "tryAgain": "Try again"
+    "tryAgain": "Try again",
+    "count_many": "{{count, number}} of {{expected, number}} arrived",
+    "countAlone_many": "{{count, number}} arrived"
   }
 }
