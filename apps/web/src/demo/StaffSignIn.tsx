@@ -8,7 +8,6 @@ import { CodeStep, Field, Primary, Says, SignOutLine, Title } from './Redeem.tsx
 import { MESH, phoneCodeLine, rightPhoneCode } from './redeem.ts';
 import { TRIES } from './rules.ts';
 import {
-  ACCOUNT_EMAIL,
   LINK_EVENT,
   LINK_JOB,
   type LinkState,
@@ -25,6 +24,7 @@ import {
   linkStart,
   linkStateOf,
   rightAuthenticator,
+  twoFactorFor,
 } from './staffSignIn.ts';
 import './today.css';
 import './redeem.css';
@@ -219,7 +219,7 @@ function LinkPage({ state }: { state: LinkState }) {
         return (
           <div className="rd-form">
             <Title titleRef={title}>{S.tfTitle}</Title>
-            <p className="rd-intro">{S.tfIntro(ACCOUNT_EMAIL)}</p>
+            <p className="rd-intro">{S.tfIntro(twoFactorFor(state))}</p>
             <form className="rd-form" noValidate onSubmit={submit}>
               <div className="rd-group">
                 <Field

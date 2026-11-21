@@ -31,8 +31,7 @@ export const S = {
   signOutContinue: 'Sign out and continue',
   signedOut: 'Signed out.',
   tfTitle: 'Enter your code',
-  tfIntro: (email: string) =>
-    `Open your authenticator app and enter the 6-digit code for ${email}.`,
+  tfIntro: (who: string) => `Open your authenticator app and enter the 6-digit code for ${who}.`,
   tfCode: 'Code',
   tfVerify: 'Verify and sign in',
   tfVerifying: 'Signing in…',
@@ -87,6 +86,7 @@ export const LINK_STATES = [
   'code-expired',
   'code-exhausted',
   'two-factor',
+  'two-factor-no-email',
   'two-factor-blank',
   'two-factor-wrong',
   'wrong-account',
@@ -132,6 +132,10 @@ export const freshTwoFactor = (): LinkStep => ({
   busy: 'no',
 });
 
+/** Who the authenticator line names: the account's email, or its masked number when it has none. */
+export const twoFactorFor = (state: LinkState) =>
+  state === 'two-factor-no-email' ? MASKED : ACCOUNT_EMAIL;
+
 /** The step a state opens on, and whether the account behind the number has two-factor on. */
 export function linkStart(state: LinkState): { step: LinkStep; twoFactor: boolean } {
   switch (state) {
@@ -154,6 +158,7 @@ export function linkStart(state: LinkState): { step: LinkStep; twoFactor: boolea
     case 'code-exhausted':
       return { step: code({ problem: 'exhausted', resend: 0 }), twoFactor: false };
     case 'two-factor':
+    case 'two-factor-no-email':
       return { step: freshTwoFactor(), twoFactor: true };
     case 'two-factor-blank':
       return { step: { ...freshTwoFactor(), line: S.tfBlank } as LinkStep, twoFactor: true };
@@ -202,6 +207,7 @@ export const STAFF_SIGN_IN_PAGES: readonly { name: string; states: readonly Demo
       at('code-expired', 'An expired code'),
       at('code-exhausted', 'The phone code, tried five times'),
       at('two-factor', 'Two-factor next: Enter your code'),
+      at('two-factor-no-email', 'Two-factor on an account with no email: the masked number'),
       at('two-factor-blank', 'Two-factor, left blank'),
       at('two-factor-wrong', 'Two-factor, a wrong code'),
     ],

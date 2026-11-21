@@ -113,6 +113,21 @@ describe('the phone code, then the shift (sc-4235)', () => {
   });
 });
 
+describe('two-factor on an account with no email (sc-4235)', () => {
+  it('names the masked number, not an email or a name', async () => {
+    await open('/demo/staff-sign-in?state=two-factor-no-email');
+
+    expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('Enter your code');
+    expect(
+      screen.getByText(
+        'Open your authenticator app and enter the 6-digit code for +351 ••• ••• 4512.',
+      ),
+    ).toBeDefined();
+    expect(screen.queryByText(/@/u)).toBeNull();
+    expect(screen.queryByText(/Bisi/u)).toBeNull();
+  });
+});
+
 describe('signed in as someone else, and signed out (sc-4235)', () => {
   it('names the link’s person and signs out to continue', async () => {
     await open('/demo/staff-sign-in?state=wrong-account');

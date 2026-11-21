@@ -9,6 +9,7 @@ import {
   linkStart,
   linkStateOf,
   maskedNumber,
+  twoFactorFor,
 } from './staffSignIn.ts';
 
 describe('a staff link opened in the browser, signed out (sc-4235)', () => {
@@ -27,6 +28,16 @@ describe('a staff link opened in the browser, signed out (sc-4235)', () => {
     expect(authenticatorLine('')).toBe('Enter the 6-digit code from your app.');
     expect(authenticatorLine('7143')).toBe('The code is 6 digits.');
     expect(authenticatorLine('714302')).toBeNull();
+  });
+
+  it('names the masked number in the two-factor line when the account has no email', () => {
+    expect(S.tfIntro(twoFactorFor('two-factor'))).toBe(
+      'Open your authenticator app and enter the 6-digit code for bisi.adeyemi@gmail.com.',
+    );
+    expect(S.tfIntro(twoFactorFor('two-factor-no-email'))).toBe(
+      'Open your authenticator app and enter the 6-digit code for +351 ••• ••• 4512.',
+    );
+    expect(linkStart('two-factor-no-email').twoFactor).toBe(true);
   });
 
   it('opens every listed state, and an unknown one on Confirm it’s you', () => {
