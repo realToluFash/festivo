@@ -552,6 +552,56 @@ describe('Who is paying (sc-91)', () => {
     expect(select.selectedOptions[0]?.textContent).toBe('Choose a payer');
   });
 
+  it('leaves Choose a payer for the rest when that payer was removed elsewhere', async () => {
+    signedIn();
+    let reads = 0;
+    const sent = serve({
+      'GET /api/events/ev_1/budget/payers': () => {
+        reads += 1;
+
+        return json(reads === 1 ? payers() : payers({ payers: [OBI, BAKARE] }));
+      },
+      'PUT /api/events/ev_1/budget/payers/splits': () =>
+        problem(422, 'validation_failed', {
+          violations: [
+            {
+              propertyPath: 'split.restId',
+              code: 'payer_removed',
+              message:
+                'Aunt Funmi was removed by someone else while this was open, so nothing was saved.',
+            },
+          ],
+        }),
+    });
+
+    fireEvent.click(await chooseWhoPays());
+    fireEvent.click(await screen.findByRole('checkbox', { name: /^Cars/u }));
+    fireEvent.click(
+      screen.getByRole('radio', { name: 'Fixed amounts, and one payer covers the rest' }),
+    );
+    fireEvent.change(screen.getByLabelText('Who covers what is left'), {
+      target: { value: 'funmi' },
+    });
+    fireEvent.change(screen.getByLabelText('Mr and Mrs Obi · amount'), {
+      target: { value: '100.00' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+    expect(
+      await screen.findByText(
+        'Aunt Funmi was removed by someone else while this was open, so nothing was saved.',
+      ),
+    ).toBeTruthy();
+    await waitFor(() =>
+      expect(sent.filter((one) => one.line === 'GET /api/events/ev_1/budget/payers')).toHaveLength(
+        2,
+      ),
+    );
+    await waitFor(() => expect(screen.queryByRole('option', { name: 'Aunt Funmi' })).toBeNull());
+    const select = screen.getByLabelText<HTMLSelectElement>('Who covers what is left');
+    expect(select.value).toBe('');
+    expect(select.selectedOptions[0]?.textContent).toBe('Choose a payer');
+  });
+
   it('flags a fixed split that no longer adds up, and Change the amounts opens it', async () => {
     signedIn();
     serve({
