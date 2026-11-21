@@ -47,7 +47,7 @@ function EnquiriesSidebar() {
         person: shell.looking,
       }}
     >
-      <SidebarColumn>
+      <SidebarColumn listing>
         <SidebarHead />
         <SidebarPlaces>
           {TABS.filter(([tab]) => tab !== 'Settings').map(([tab, glyph]) => (
