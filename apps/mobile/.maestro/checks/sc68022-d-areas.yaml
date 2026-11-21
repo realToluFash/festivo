@@ -1,0 +1,40 @@
+# sc-68022: nothing the More sheet opens on a phone says ‹ More.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/demo/events/evt-wed-4
+- extendedWaitUntil: { visible: { id: 'tab-more' }, timeout: 30000 }
+- tapOn: { id: 'tab-more' }
+- extendedWaitUntil: { visible: { id: 'event.more.seating' }, timeout: 10000 }
+- tapOn: { id: 'event.more.seating' }
+- waitForAnimationToEnd: { timeout: 6000 }
+- assertNotVisible: '(Back to|Voltar a|Volver a|Retour à) More'
+- assertNotVisible: '.*‹ More.*'
+- takeScreenshot: d-area-seating
+- tapOn: { id: 'tab-more' }
+- extendedWaitUntil: { visible: { id: 'event.more.schedule' }, timeout: 10000 }
+- tapOn: { id: 'event.more.schedule' }
+- waitForAnimationToEnd: { timeout: 6000 }
+- assertNotVisible: '(Back to|Voltar a|Volver a|Retour à) More'
+- assertNotVisible: '.*‹ More.*'
+- takeScreenshot: d-area-schedule
+- tapOn: { id: 'tab-more' }
+- extendedWaitUntil: { visible: { id: 'event.more.staff' }, timeout: 10000 }
+- tapOn: { id: 'event.more.staff' }
+- waitForAnimationToEnd: { timeout: 6000 }
+- assertNotVisible: '(Back to|Voltar a|Volver a|Retour à) More'
+- assertNotVisible: '.*‹ More.*'
+- takeScreenshot: d-area-staff
+- tapOn: { id: 'tab-more' }
+- extendedWaitUntil: { visible: { id: 'event.more.budget' }, timeout: 10000 }
+- tapOn: { id: 'event.more.budget' }
+- waitForAnimationToEnd: { timeout: 6000 }
+- assertNotVisible: '(Back to|Voltar a|Volver a|Retour à) More'
+- assertNotVisible: '.*‹ More.*'
+- takeScreenshot: d-area-budget
+- tapOn: { id: 'tab-more' }
+- extendedWaitUntil: { visible: { id: 'event.more.reports' }, timeout: 10000 }
+- tapOn: { id: 'event.more.reports' }
+- waitForAnimationToEnd: { timeout: 6000 }
+- assertNotVisible: '(Back to|Voltar a|Volver a|Retour à) More'
+- assertNotVisible: '.*‹ More.*'
+- takeScreenshot: d-area-reports

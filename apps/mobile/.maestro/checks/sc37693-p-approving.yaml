@@ -1,0 +1,14 @@
+# sc-37693: p-approving.
+appId: host.exp.Exponent
+---
+- setOrientation: ${ORIENT}
+- openLink: ${METRO_URL}/--/settings/members
+- extendedWaitUntil: { visible: { id: 'members.card' }, timeout: 30000 }
+- waitForAnimationToEnd: { timeout: 8000 }
+- tapOn: 'Answer .*'
+- waitForAnimationToEnd: { timeout: 8000 }
+- takeScreenshot: p-approving-top
+- scroll
+- scroll
+- waitForAnimationToEnd
+- takeScreenshot: p-approving-foot

@@ -1,0 +1,25 @@
+# sc-74024: opens the Calendar and shows where it opened.
+appId: host.exp.Exponent
+---
+- runFlow: ../return-home.yaml
+- runFlow:
+    when:
+      visible:
+        id: 'tab-calendar|frame.calendar'
+    commands:
+      - tapOn:
+          id: 'tab-calendar|frame.calendar'
+- runFlow:
+    when:
+      notVisible:
+        id: 'calendar.next'
+    commands:
+      - tapOn:
+          text: 'Calendar'
+          index: 0
+- extendedWaitUntil:
+    visible:
+      id: 'calendar.next'
+    timeout: 30000
+- waitForAnimationToEnd
+- takeScreenshot: calendar-opened

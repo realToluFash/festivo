@@ -1,0 +1,7 @@
+# sc-29881: the Today demo at ?moment=plan, for the side-by-side pair (orientation ${ORIENT}).
+appId: host.exp.Exponent
+---
+- runFlow:
+    file: sc29881-demo.yaml
+    env:
+      QS: 'moment=plan'

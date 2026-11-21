@@ -1,0 +1,29 @@
+# The Send it again countdown on Check your email, read at its longest (1:00) and later, in each language. sc-34593.
+appId: host.exp.Exponent
+---
+- runFlow: ../sign-out.yaml
+- openLink: ${METRO_URL}/--/sign-in
+- extendedWaitUntil: { visible: { id: 'signIn.email' }, timeout: 30000 }
+- tapOn: { id: 'signIn.email' }
+- eraseText: 80
+- inputText: '${CARRY}'
+- hideKeyboard
+- tapOn: { id: 'signIn.forgot' }
+- extendedWaitUntil: { visible: { id: 'recovery.email' }, timeout: 15000 }
+- tapOn: { id: 'recovery.send' }
+- extendedWaitUntil: { visible: { id: 'recovery.sendAgain' }, timeout: 15000 }
+- assertVisible: '{{t:recovery.sendAgain}}'
+- takeScreenshot: countdown-01-before
+- tapOn: { id: 'recovery.sendAgain' }
+- extendedWaitUntil: { visible: '.*[01]:[0-9][0-9].*', timeout: 15000 }
+- takeScreenshot: countdown-02-longest
+- tapOn: { id: 'recovery.sendAgain' }
+- takeScreenshot: countdown-03-pressed
+- extendedWaitUntil: { visible: '.*0:4[0-9].*', timeout: 30000 }
+- takeScreenshot: countdown-04-later
+- setOrientation: LANDSCAPE_LEFT
+- waitForAnimationToEnd
+- takeScreenshot: countdown-05-landscape
+- setOrientation: PORTRAIT
+- extendedWaitUntil: { visible: '{{t:recovery.sendAgain}}', timeout: 75000 }
+- takeScreenshot: countdown-06-back

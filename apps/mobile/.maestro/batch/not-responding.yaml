@@ -1,0 +1,19 @@
+# Android's "Expo Go isn't responding" dialog, where it is up: its Wait, by id, never Close app,
+# which ends the session the next check needs. A loaded host raises it over a reload. Decided
+# by notVisible, which returns at once when the dialog is absent. sc-66831.
+appId: host.exp.Exponent
+---
+- evalScript: ${output.notResponding = true}
+- runFlow:
+    when:
+      notVisible:
+        id: 'android:id/aerr_wait'
+    commands:
+      - evalScript: ${output.notResponding = false}
+- runFlow:
+    when:
+      true: ${output.notResponding}
+    commands:
+      - tapOn:
+          id: 'android:id/aerr_wait'
+      - waitForAnimationToEnd

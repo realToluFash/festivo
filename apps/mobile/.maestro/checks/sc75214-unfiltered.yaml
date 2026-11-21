@@ -1,0 +1,13 @@
+# sc-75214: the count line with no filter set, where Clear filters does not show; text size set outside the flow.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events
+- extendedWaitUntil: { visible: { id: 'events.filter' }, timeout: 30000 }
+- waitForAnimationToEnd
+- runFlow:
+    when: { visible: { id: 'events.clearFilters' } }
+    commands:
+      - tapOn: { id: 'events.clearFilters' }
+      - waitForAnimationToEnd
+- assertNotVisible: { id: 'events.clearFilters' }
+- takeScreenshot: count-unfiltered

@@ -1,0 +1,113 @@
+.gp-again {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-top: 24px;
+}
+
+.gp-again-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.gp-again-legend {
+  margin-bottom: 4px;
+  padding: 0;
+}
+
+.gp-again-error {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  color: var(--colorBrokenText);
+  font: 400 15px/1.45 var(--fontFamily);
+}
+
+.gp-again-error:empty {
+  display: none;
+}
+
+.gp-again-error-mark {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  margin-top: 1px;
+  border-radius: 50%;
+  background: var(--colorBroken);
+  color: var(--colorInkOnDark);
+}
+
+.gp-again-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  box-sizing: border-box;
+  min-height: 56px;
+  padding: 8px 16px;
+  border: 1.5px solid var(--colorFieldBorder);
+  border-radius: 14px;
+  background: var(--colorCard);
+  cursor: pointer;
+}
+
+.gp-again-row.is-on {
+  border: 2px solid var(--colorAccent);
+  background: var(--colorAccentTint);
+}
+
+.gp-again-row.is-invalid {
+  border: 2px solid var(--colorBroken);
+}
+
+.gp-again-row:has(:focus-visible) {
+  outline: 3px solid var(--colorAccent);
+  outline-offset: 2px;
+}
+
+.gp-again-row .desk-radio:focus-visible {
+  outline: none;
+}
+
+.gp-again-words {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.gp-again-name {
+  color: var(--colorInk);
+  font: 600 16px/1.35 var(--fontFamily);
+}
+
+.gp-again-saved {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin: 0;
+  padding: 14px 16px;
+  border: 1px solid var(--colorInsetBorder);
+  border-radius: 16px;
+  background: var(--colorInset);
+  color: var(--colorInk);
+  font: 600 15px/1.4 var(--fontFamily);
+}
+
+.gp-again-saved-mark {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--colorAccent);
+  color: var(--colorInkOnDark);
+}

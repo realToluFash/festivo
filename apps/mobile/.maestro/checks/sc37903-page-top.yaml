@@ -1,0 +1,69 @@
+# sc-37903: the page under a grown header at whatever text size the device is set to, scrolled to its top and its foot, keyboard down: Change password and Time zone.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/settings/security
+- waitForAnimationToEnd:
+    timeout: 8000
+- scrollUntilVisible:
+    element:
+      id: 'security.password'
+    centerElement: true
+    timeout: 30000
+- tapOn:
+    id: 'security.password'
+- extendedWaitUntil:
+    visible:
+      id: 'security.change.current'
+    timeout: 15000
+- waitForAnimationToEnd:
+    timeout: 3000
+- takeScreenshot: password-opened
+- repeat:
+    times: 5
+    commands:
+      - swipe:
+          start: 50%, 85%
+          end: 50%, 30%
+          duration: 500
+- takeScreenshot: password-foot
+- repeat:
+    times: 6
+    commands:
+      - swipe:
+          start: 50%, 40%
+          end: 50%, 95%
+          duration: 500
+- waitForAnimationToEnd:
+    timeout: 3000
+- takeScreenshot: password-top
+- tapOn:
+    id: 'security.change.cancel'
+- openLink: ${METRO_URL}/--/settings/account
+- waitForAnimationToEnd:
+    timeout: 8000
+- scrollUntilVisible:
+    element:
+      id: 'account.zone'
+    centerElement: true
+    timeout: 30000
+- tapOn:
+    id: 'account.zone'
+- extendedWaitUntil:
+    visible:
+      id: 'account.zone.screen'
+    timeout: 15000
+- waitForAnimationToEnd:
+    timeout: 3000
+- takeScreenshot: zone-opened
+- repeat:
+    times: 6
+    commands:
+      - swipe:
+          start: 50%, 40%
+          end: 50%, 95%
+          duration: 500
+- waitForAnimationToEnd:
+    timeout: 3000
+- takeScreenshot: zone-top
+- tapOn:
+    id: 'account.zone.cancel'
