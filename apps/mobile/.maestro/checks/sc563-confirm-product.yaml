@@ -10,8 +10,14 @@ appId: host.exp.Exponent
     element:
       id: emailDomains.${DOMAIN}.only
     direction: DOWN
-    centerElement: true
     timeout: 15000
+# The last row cannot reach the middle: scroll to the page's end, clear of the tab bar, and back up if it overshot.
+- scroll
+- scrollUntilVisible:
+    element:
+      id: emailDomains.${DOMAIN}.only
+    direction: UP
+    timeout: 10000
 - tapOn:
     id: emailDomains.${DOMAIN}.only
 - extendedWaitUntil:
