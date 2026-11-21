@@ -34,10 +34,9 @@ export const TW = {
   checkMany: (n: number) =>
     byCount(n, '[Text links to {count} person?]', '[Text links to {count} people?]'),
   checkLine: '[Each gets a text with their own link. Links sent before keep working.]',
-  thisTextUses: (c: number) =>
-    byCount(c, 'This text uses {count} credit.', 'This text uses {count} credits.'),
-  textsUse: (c: number) => byCount(c, 'Texts use {count} credit.', 'Texts use {count} credits.'),
-  after: (c: number) => `Credits after sending: ${formatCount(c)}.`,
+  thisTextUses: say.textUses,
+  textsUse: (c: number) => say.creditsUse(c, false),
+  after: (c: number) => say.creditsAfter(formatCount(c)),
   smsWaits: (w: number) => say.waits('sms', w),
   quiet: (n: number, time: string) => say.quietWait(n, time),
   notInApp: W.creditsNotInApp,
