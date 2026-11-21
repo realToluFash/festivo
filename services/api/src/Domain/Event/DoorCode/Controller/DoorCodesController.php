@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\Event\DoorCode\Controller;
 
+use App\Domain\Event\DoorCode\DoorCodeLink;
 use App\Domain\Event\DoorCode\DoorCodes;
 use App\Entity\DoorCode;
 use App\Entity\Event;
@@ -35,6 +36,7 @@ final readonly class DoorCodesController
         private DoorCodeRepository $doorCodeRepository,
         private DoorCodeRedemptionRepository $doorCodeRedemptionRepository,
         private DoorCodes $doorCodes,
+        private DoorCodeLink $doorCodeLink,
     ) {
     }
 
@@ -80,6 +82,8 @@ final readonly class DoorCodesController
         return [
             'id' => $code->getId()->toRfc4122(),
             'code' => $code->getCode(),
+            'link' => $this->doorCodeLink->of($code),
+            'qrSvg' => $this->doorCodeLink->qrSvgOf($code),
             'role' => $code->getRole()->value,
             'jobLabel' => $code->getJobLabel(),
             'useCap' => $code->getUseCap(),

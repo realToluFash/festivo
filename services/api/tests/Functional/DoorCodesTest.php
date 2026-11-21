@@ -74,7 +74,10 @@ final class DoorCodesTest extends ApiTestCase
         self::assertTrue(Regex\matches(Type\string()->coerce($card['code']), '/^[0-9ABCDEFGHJKMNPQRSTVWXYZ]{8}$/'));
         self::assertSame(['can_view', 'Bar and drinks', 30, 0, 'working'], [$card['role'], $card['jobLabel'], $card['useCap'], $card['used'], $card['status']]);
         self::assertSame('2030-11-14T10:00:00+00:00', $card['expiresAt']);
-        self::assertNotNull(self::em()->getRepository(AuditEntry::class)->findOneBy(['action' => 'door_code.made']));
+        self::assertTrue(Str\ends_with(Type\string()->coerce($card['link']), '/d/' . Type\string()->coerce($card['code'])), 'the QR carries the redeem address with the code in it');
+        self::assertStringStartsWith('<?xml', Type\string()->coerce($card['qrSvg']));
+        $made = self::em()->getRepository(AuditEntry::class)->findOneBy(['action' => 'door_code.made']) ?? self::fail('not audited');
+        self::assertSame(['Owambe', $card['code']], [$made->getEventName(), $made->getTarget()]);
 
         $listed = $this->as($this->owner, 'GET', '/api/events/' . $this->owambe . '/door-codes');
         self::assertSame([$card['id']], Vec\map(Type\vec(Type\shape(['id' => Type\string()], true))->coerce($listed['doorCodes']), static fn (array $code): string => $code['id']));

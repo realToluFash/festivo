@@ -147,5 +147,5 @@
     "plan_required": "Le forfait de l’organisation n’inclut pas cette fonctionnalité.",
     "email_domain_taken": "Une autre organisation a déjà vérifié ce domaine.",
     "audit_export_too_many": "Trop d’entrées à exporter.",
-    "door_code_invalid": "That code doesn’t work. Check it with whoever gave it to you."
+    "door_code_invalid": "Ce code ne fonctionne pas. Vérifiez-le auprès de la personne qui vous l’a donné."
 }

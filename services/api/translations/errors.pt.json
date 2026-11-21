@@ -147,5 +147,5 @@
     "plan_required": "O plano da organização não inclui esta funcionalidade.",
     "email_domain_taken": "Outra organização já verificou este domínio.",
     "audit_export_too_many": "Há demasiados registos para exportar.",
-    "door_code_invalid": "That code doesn’t work. Check it with whoever gave it to you."
+    "door_code_invalid": "Esse código não funciona. Confirme-o com quem lho deu."
 }

@@ -150,7 +150,7 @@ final readonly class DoorCodeRedeemer
             $person->setDoorCode($doorCode);
             $this->entityManager->persist($redemption);
             $this->entityManager->persist($person);
-            $this->auditor->record('door_code.redeemed', 'DoorCode', $doorCode->getId(), Actor::User, $user->getId(), $user->getName(), [
+            $this->auditor->record('door_code.redeemed', 'EventPerson', $person->getId(), Actor::User, $user->getId(), $user->getName(), [
                 ...EventPeople::whose($person),
                 'code' => [null, $doorCode->getCode()],
                 'role' => [null, $doorCode->getRole()->value],
