@@ -64,6 +64,23 @@ a.sn-tab {
   color: var(--colorInkSecondary);
 }
 
+/* With the person's panel open at 1280 × 800 the roster had about 470 px and cut its Link column (sc-3912, #78267): here the panel docks at 360 px, a shift breaks only after its day and before its end time, and the cells close up to 8 px with none after the last. */
+.rs .mn-panel {
+  width: 360px;
+}
+
+.rs .mn-split:has(> .mn-panel) .rs-frame > .rs-table :is(thead th, tbody th, tbody td) {
+  padding-right: var(--spaceSm);
+}
+
+.rs .mn-split:has(> .mn-panel) .rs-frame > .rs-table :is(th, td):last-child {
+  padding-right: 0;
+}
+
+.rs .mn-split:has(> .mn-panel) .rs-table td.rs-shift {
+  white-space: normal;
+}
+
 .rs-name {
   min-height: var(--sizeHit);
   padding: 0;
@@ -335,6 +352,7 @@ a.sn-tab {
   margin-left: var(--spaceXs);
   color: var(--colorInkSecondary);
   font: var(--typeSmallStrong);
+  white-space: nowrap;
 }
 
 .rs-shifts {

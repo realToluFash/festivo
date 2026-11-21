@@ -461,7 +461,7 @@ function RosterView({
                               )}
                             </td>
                             <td className={one.shift == null ? 'rs-no-shift rs-quiet' : 'rs-shift'}>
-                              {one.shift ?? first.noShift}
+                              {one.shift == null ? first.noShift : shiftBreaks(one.shift)}
                               {one.more.length > 0 && (
                                 <span className="rs-more">{RW.more(one.more.length)}</span>
                               )}
@@ -1086,5 +1086,17 @@ function PersonForm({
         onCancel={onCancel}
       />
     </>
+  );
+}
+
+function shiftBreaks(text: string): string {
+  const words = text.split(' ');
+  const start = words.findIndex((word) => /^\d{1,2}:\d{2}$/.test(word));
+  return words.reduce(
+    (line, word, i) =>
+      i === 0
+        ? word
+        : `${line}${words[i - 1]?.endsWith(',') === true || (start >= 0 && i === start + 2) ? ' ' : '\u00a0'}${word}`,
+    '',
   );
 }
