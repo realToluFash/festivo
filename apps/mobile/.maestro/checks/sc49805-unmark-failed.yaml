@@ -1,0 +1,45 @@
+# sc-49805: ${GUEST_ID}'s details in ${EVENT_ID}, Mark as not invited failing on a server error, then the needs; beside the demo's unmarkNotSaved.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/${EVENT_ID}?area=guests
+- extendedWaitUntil:
+    visible:
+      id: 'guests.row.${GUEST_ID}'
+    timeout: 30000
+- tapOn:
+    id: 'guests.row.${GUEST_ID}'
+- extendedWaitUntil:
+    visible:
+      id: 'guest.${GUEST_ID}'
+    timeout: 20000
+- waitForAnimationToEnd:
+    timeout: 3000
+- takeScreenshot: invited
+- scrollUntilVisible:
+    element:
+      id: 'guest.unmark'
+    direction: DOWN
+- tapOn:
+    id: 'guest.unmark'
+- waitForAnimationToEnd:
+    timeout: 5000
+- swipe:
+    direction: DOWN
+- swipe:
+    direction: DOWN
+- swipe:
+    direction: DOWN
+- waitForAnimationToEnd:
+    timeout: 2000
+- takeScreenshot: unmark-failed
+- scrollUntilVisible:
+    element:
+      id: 'guest.needs'
+    direction: DOWN
+- waitForAnimationToEnd:
+    timeout: 2000
+- takeScreenshot: needs
+- openLink: ${METRO_URL}/--/demo/guests?state=unmarkNotSaved
+- waitForAnimationToEnd:
+    timeout: 8000
+- takeScreenshot: demo-unmarkNotSaved

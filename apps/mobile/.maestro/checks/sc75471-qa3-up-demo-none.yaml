@@ -1,0 +1,9 @@
+# sc-75471: the demo today?orgs=none, from its top, for the side-by-side pair.
+appId: host.exp.Exponent
+---
+- setOrientation: PORTRAIT
+- openLink: ${METRO_URL}/--/demo/today?orgs=none
+- extendedWaitUntil: { visible: { id: never.there }, timeout: 3000, optional: true }
+- waitForAnimationToEnd
+- extendedWaitUntil: { visible: { id: never.there }, timeout: 5000, optional: true }
+- takeScreenshot: demo-none

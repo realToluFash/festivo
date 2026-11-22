@@ -1,0 +1,15 @@
+# sc-22145: Duplicate on the event's page in Happening now and Called off.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/${NOW}
+- scrollUntilVisible:
+    element:
+      id: 'events.page.duplicate'
+    timeout: 30000
+- takeScreenshot: happening-now
+- openLink: ${METRO_URL}/--/events/${OFF}
+- scrollUntilVisible:
+    element:
+      id: 'events.page.duplicate'
+    timeout: 30000
+- takeScreenshot: called-off

@@ -1,0 +1,13 @@
+# sc-33154: the run view on the day, top and scrolled.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/${EVENT}/run
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 8000, optional: true }
+- waitForAnimationToEnd
+- takeScreenshot: run-top
+- scroll
+- waitForAnimationToEnd
+- takeScreenshot: run-2
+- scroll
+- waitForAnimationToEnd
+- takeScreenshot: run-3

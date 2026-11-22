@@ -1,0 +1,12 @@
+# sc-31370: the app demo's Messages (B), upright, one screenshot per state.
+appId: host.exp.Exponent
+---
+- runFlow: { file: sc31370/demo-state.yaml, env: { STATE: invitedReached, LAYOUT: upright } }
+- runFlow: { file: sc31370/demo-state.yaml, env: { STATE: sentReached, LAYOUT: upright } }
+- runFlow: { file: sc31370/demo-state.yaml, env: { STATE: notMatched, LAYOUT: upright } }
+- runFlow: { file: sc31370/demo-state.yaml, env: { STATE: matchPicker, LAYOUT: upright } }
+- runFlow: { file: sc31370/demo-state.yaml, env: { STATE: matched, LAYOUT: upright } }
+- runFlow: { file: sc31370/demo-state.yaml, env: { STATE: later, LAYOUT: upright } }
+- runFlow: { file: sc31370/demo-state.yaml, env: { STATE: scheduledEdit, LAYOUT: upright } }
+- runFlow: { file: sc31370/demo-state.yaml, env: { STATE: sendNow, LAYOUT: upright } }
+- runFlow: { file: sc31370/demo-state.yaml, env: { STATE: cancelAsk, LAYOUT: upright } }

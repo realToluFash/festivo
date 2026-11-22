@@ -1,0 +1,18 @@
+# sc-51754: ${EVENT_ID}'s Details, a Venue row with no address: no Open in maps. Needs ${METRO_URL}, ${EVENT_ID}.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/${EVENT_ID}
+- extendedWaitUntil:
+    visible:
+      id: 'events.page'
+    timeout: 60000
+- scrollUntilVisible:
+    element:
+      id: 'events.details.venue'
+    centerElement: true
+    timeout: 20000
+- scroll
+- waitForAnimationToEnd
+- takeScreenshot: venue
+- assertNotVisible:
+    id: 'events.maps'

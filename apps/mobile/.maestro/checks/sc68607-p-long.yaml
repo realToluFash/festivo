@@ -1,0 +1,10 @@
+# sc-68607: the app's People card on an event's Overview (long), for the pair beside the demo.
+appId: host.exp.Exponent
+---
+- setOrientation: ${ORIENT}
+- openLink: ${METRO_URL}/--/events/${EV_LONG}?area=overview
+- extendedWaitUntil: { visible: { id: 'overview.people.open' }, timeout: 30000 }
+- scrollUntilVisible:
+    { element: { id: 'overview.people.open' }, centerElement: true, timeout: 20000 }
+- waitForAnimationToEnd: { timeout: 5000 }
+- takeScreenshot: p-long

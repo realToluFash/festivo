@@ -1,0 +1,11 @@
+# sc-48857: the app's design demo, Duplicate in state duplicateStartsBlank, the only place Starts' date and time boxes are empty; each is read as "<Starts>, <Date|Time>, <eventForm.notChosen>" in the account's language, with no key path.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/demo/events/evt-wed-4?state=duplicateStartsBlank
+- extendedWaitUntil:
+    visible: '.*, {{t:eventForm.date}}, {{t:eventForm.notChosen}}'
+    timeout: 30000
+- waitForAnimationToEnd
+- assertVisible: '.*, {{t:eventForm.time}}, {{t:eventForm.notChosen}}'
+- assertNotVisible: '.*eventForm\..*'
+- takeScreenshot: demo-duplicate-blank

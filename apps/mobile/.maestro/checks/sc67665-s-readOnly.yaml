@@ -1,0 +1,9 @@
+# sc-67665: the People demo, readOnly, on the iPad in ${ORIENT}.
+appId: host.exp.Exponent
+---
+- setOrientation: ${ORIENT}
+- openLink: ${METRO_URL}/--/demo/people?state=readOnly
+- extendedWaitUntil: { visible: '.*Only owners, admins and the lead change.*', timeout: 30000 }
+- assertNotVisible: { id: 'people.add.open' }
+- waitForAnimationToEnd: { timeout: 8000 }
+- takeScreenshot: d

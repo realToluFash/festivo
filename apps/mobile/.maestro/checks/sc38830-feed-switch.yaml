@@ -1,0 +1,91 @@
+# sc-38830: the Calendar's Subscribe sheet follows the organisation (its key is feed:<id>). On ORG it names ORG_NAME with FEED_A; after a switch to OTHER_ORG, opened again, it names OTHER_NAME with FEED_B. Then, with the sheet open on OTHER_ORG, a tap on Home leaves the sheet open (it covers the tab bar); closed, and switched back to ORG, the sheet opened afterwards names ORG_NAME with FEED_A. Needs ORG, ORG_NAME, FEED_A, OTHER_ORG, OTHER_NAME, FEED_B.
+appId: host.exp.Exponent
+---
+- runFlow:
+    file: ../switch-organisation.yaml
+    env:
+      ORG: ${ORG}
+- tapOn:
+    id: 'tab-calendar|frame.calendar'
+- extendedWaitUntil:
+    visible:
+      id: 'calendarFeed.open'
+    timeout: 30000
+- tapOn:
+    id: 'calendarFeed.open'
+- extendedWaitUntil:
+    visible:
+      id: 'calendarFeed.url'
+    timeout: 15000
+- assertVisible:
+    text: '.*${ORG_NAME}.*'
+- assertVisible:
+    text: '.*${FEED_A}.*'
+- takeScreenshot: feed-a-open
+- tapOn:
+    id: 'calendarFeed.close'
+- extendedWaitUntil:
+    notVisible:
+      id: 'calendarFeed.panel'
+    timeout: 10000
+- runFlow:
+    file: ../switch-organisation.yaml
+    env:
+      ORG: ${OTHER_ORG}
+- tapOn:
+    id: 'tab-calendar|frame.calendar'
+- extendedWaitUntil:
+    visible:
+      id: 'calendarFeed.open'
+    timeout: 30000
+- tapOn:
+    id: 'calendarFeed.open'
+- extendedWaitUntil:
+    visible:
+      id: 'calendarFeed.url'
+    timeout: 15000
+- assertVisible:
+    text: '.*${OTHER_NAME}.*'
+- assertVisible:
+    text: '.*${FEED_B}.*'
+- assertNotVisible:
+    text: '.*${FEED_A}.*'
+- takeScreenshot: feed-b-after-switch
+- tapOn:
+    id: 'tab-today|frame.home'
+    optional: true
+- takeScreenshot: sheet-open-home-tapped
+- assertVisible:
+    id: 'calendarFeed.panel'
+- tapOn:
+    id: 'calendarFeed.close'
+- extendedWaitUntil:
+    notVisible:
+      id: 'calendarFeed.panel'
+    timeout: 10000
+- runFlow:
+    file: ../switch-organisation.yaml
+    env:
+      ORG: ${ORG}
+- tapOn:
+    id: 'tab-calendar|frame.calendar'
+- extendedWaitUntil:
+    visible:
+      id: 'calendarFeed.open'
+    timeout: 30000
+- takeScreenshot: calendar-a-back
+- tapOn:
+    id: 'calendarFeed.open'
+- extendedWaitUntil:
+    visible:
+      id: 'calendarFeed.url'
+    timeout: 15000
+- assertVisible:
+    text: '.*${ORG_NAME}.*'
+- assertVisible:
+    text: '.*${FEED_A}.*'
+- assertNotVisible:
+    text: '.*${FEED_B}.*'
+- takeScreenshot: feed-a-back
+- tapOn:
+    id: 'calendarFeed.close'

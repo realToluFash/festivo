@@ -1,0 +1,26 @@
+# sc-34175: Settings › Your account, About you and every email and phone row's line, in the account's language. Needs an account holding a verified alternative address, a verified primary phone and an unverified second phone.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/settings/account
+- extendedWaitUntil:
+    visible:
+      id: 'account.card'
+    timeout: 30000
+- waitForAnimationToEnd
+- takeScreenshot: page-top
+- scrollUntilVisible:
+    element:
+      id: 'account.zone'
+    timeout: 20000
+- waitForAnimationToEnd
+- takeScreenshot: page-about
+- swipe:
+    start: 50%, 80%
+    end: 50%, 30%
+- waitForAnimationToEnd
+- takeScreenshot: page-contacts
+- swipe:
+    start: 50%, 80%
+    end: 50%, 20%
+- waitForAnimationToEnd
+- takeScreenshot: page-bottom
