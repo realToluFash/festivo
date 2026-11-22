@@ -1,5 +1,5 @@
 {
   "ios": {
-    "NSCameraUsageDescription": "Soirely usa la cámara para escanear los códigos que los invitados muestran en la entrada."
+    "NSCameraUsageDescription": "Soirely uses the camera to scan the codes guests show at the door."
   }
 }
