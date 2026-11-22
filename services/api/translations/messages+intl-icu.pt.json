@@ -443,6 +443,7 @@
     "guestReplies.email.flagged": "A ligação pode ter chegado a outra pessoa:",
     "guestReplies.email.flaggedFix": "Substitua a ligação a partir da lista de convidados.",
     "guestReplies.email.notSeated": "Sem lugar: {count, number, ::group-auto}",
+    "guestReplies.email.noMealChosen": "No meal chosen: {count, number, ::group-auto}",
     "guestReplies.email.openGuestList": "Abrir a lista de convidados",
     "guestReplies.email.footer": "Está a receber esta mensagem porque pode ver os convidados destes eventos em {organisation}.",
     "guestReplies.email.turnOff": "Desativar os e-mails de respostas dos convidados",

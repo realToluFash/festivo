@@ -21,7 +21,10 @@ use App\Domain\Messaging\NotificationReadMarker;
 use App\Entity\Event;
 use App\Entity\EventPerson;
 use App\Entity\Guest;
+use App\Entity\MealAnswer;
 use App\Entity\Membership;
+use App\Entity\MenuCourse;
+use App\Entity\MenuDish;
 use App\Entity\NotificationItem;
 use App\Entity\User;
 use App\Enum\EventRole;
@@ -30,6 +33,7 @@ use App\Enum\GuestChangeKind;
 use App\Enum\GuestInvitationMethod;
 use App\Enum\GuestReply;
 use App\Enum\GuestReplyHow;
+use App\Enum\MealAnswerKind;
 use App\Enum\NeedKind;
 use App\Enum\Permission;
 use App\Enum\SeededRole;
@@ -277,6 +281,87 @@ final class GuestRepliesTest extends MessagingTestCase
     }
 
     #[Test]
+    public function inEventWeekTheSummaryCountsEachPersonComingWithACourseNotChosenOnceAfterNotSeated(): void
+    {
+        self::connection()->insert('seating_plans', ['id' => Uuid::v7()->toRfc4122(), 'event_id' => $this->eventId(), 'width_cm' => 1000, 'length_cm' => 1000, 'created_at' => '2026-11-01 00:00:00', 'updated_at' => '2026-11-01 00:00:00']);
+        $starter = $this->course('Starter');
+        $main = $this->course('Main');
+        self::at('2026-11-06 10:00');
+        $tomi = $this->guest('Tomi Bello');
+        $this->reply($tomi, GuestReply::Coming);
+        $this->companion($tomi, 'Chidi Eze');
+        $kemi = $this->guest('Kemi Ade');
+        $this->reply($kemi, GuestReply::Coming);
+        $this->answer($kemi, $starter, MealAnswerKind::ChefsChoice);
+        $this->answer($kemi, $main, MealAnswerKind::Skipped);
+        $bisi = $this->guest('Bisi Oke');
+        $this->reply($bisi, GuestReply::Coming);
+        $this->answer($bisi, $starter, MealAnswerKind::NeedsHost);
+        $this->reply($this->guest('Femi Ojo'), GuestReply::NotComing);
+        $this->reply($this->guest('Sade Ola'), GuestReply::Maybe);
+        $this->guest('Yemi Ajayi');
+
+        self::at('2026-11-07 08:00');
+        self::runUntilIdle();
+
+        self::assertStringContainsString("Not seated: 4\nNo meal chosen: 3\n", ($this->emails($this->ada)[0] ?? self::fail('No summary.'))->body, 'Tomi once for two courses, Chidi as their companion, Bisi for Main; Kemi answered both, and Femi, Sade and Yemi are not coming.');
+    }
+
+    #[Test]
+    public function noMealLineIsShownWithoutACourseThatAsksOrWhenEveryoneComingHasAnswered(): void
+    {
+        $same = $this->course('Dessert', false);
+        self::at('2026-11-06 10:00');
+        $tomi = $this->guest('Tomi Bello');
+        $this->reply($tomi, GuestReply::Coming);
+
+        self::at('2026-11-07 08:00');
+        self::runUntilIdle();
+
+        self::assertStringNotContainsString('No meal chosen', ($this->emails($this->ada)[0] ?? self::fail('No summary.'))->body, 'Everyone gets the same asks nothing.');
+
+        $same->setGuestsChoose(true);
+        $this->answer($tomi, $same, MealAnswerKind::Chosen);
+        $kemi = $this->guest('Kemi Ade');
+        self::at('2026-11-07 10:00');
+        $this->reply($kemi, GuestReply::Coming);
+        $this->answer($kemi, $same, MealAnswerKind::Chosen);
+
+        self::at('2026-11-08 08:00');
+        self::runUntilIdle();
+
+        self::assertStringNotContainsString('No meal chosen', ($this->emails($this->ada)[1] ?? self::fail('No second summary.'))->body, 'A count of 0 is never shown.');
+    }
+
+    #[Test]
+    public function anEventEightDaysAwayHasNoMealLine(): void
+    {
+        $this->course('Main');
+        self::at('2026-11-03 10:00');
+        $this->reply($this->guest('Tomi Bello'), GuestReply::Coming);
+
+        self::at('2026-11-04 08:00');
+        self::runUntilIdle();
+
+        self::assertStringNotContainsString('No meal chosen', ($this->emails($this->ada)[0] ?? self::fail('No summary.'))->body);
+    }
+
+    #[Test]
+    public function peopleWithNoMealChosenSendNoSummaryWhenNothingIsUnread(): void
+    {
+        $this->course('Main');
+        self::at('2026-11-06 10:00');
+        $this->reply($this->guest('Tomi Bello'), GuestReply::Coming);
+        self::at('2026-11-06 10:01');
+        $this->open($this->ada);
+
+        self::at('2026-11-07 08:00');
+        self::runUntilIdle();
+
+        self::assertSame([], $this->emails($this->ada));
+    }
+
+    #[Test]
     public function aMutedEventGetsTheBellOnly(): void
     {
         self::service(EventMuter::class)->set($this->ada, $this->event, true);
@@ -406,6 +491,31 @@ final class GuestRepliesTest extends MessagingTestCase
         self::em()->flush();
 
         return $event;
+    }
+
+    private function course(string $name, bool $guestsChoose = true): MenuCourse
+    {
+        $course = new MenuCourse($this->event, $name, null, 0);
+        $course->setGuestsChoose($guestsChoose);
+        self::em()->persist($course);
+        self::em()->persist(new MenuDish($course, null, $name . ' one', null, [], [], 0));
+        self::em()->persist(new MenuDish($course, null, $name . ' two', null, [], [], 1));
+        self::em()->flush();
+
+        return $course;
+    }
+
+    private function companion(Guest $host, string $name): void
+    {
+        self::em()->persist(Guest::companionOf($host, $name, Str\lowercase($name), 1, null));
+        self::em()->flush();
+    }
+
+    private function answer(Guest $person, MenuCourse $course, MealAnswerKind $kind): void
+    {
+        $dish = MealAnswerKind::Chosen === $kind ? self::em()->getRepository(MenuDish::class)->findOneBy(['course' => $course]) : null;
+        self::em()->persist(new MealAnswer($person, $course, $kind, $dish, null, [], []));
+        self::em()->flush();
     }
 
     private function onEvent(User $user, Event $event): EventPerson
