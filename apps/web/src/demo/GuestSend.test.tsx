@@ -234,7 +234,7 @@ describe('Send on WhatsApp, the question (sc-26025)', () => {
       ).toBeDefined();
       expect(question()).toBeNull();
       expect(within(column()).queryByRole('link', { name: YUSUF })).toBeNull();
-      expect(keptAsked(WEDDING)).toEqual([]);
+      await waitFor(() => expect(keptAsked(WEDDING)).toEqual([]), WAIT);
     },
   );
 
