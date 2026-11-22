@@ -57,6 +57,19 @@ final readonly class HeadcountCalculator
     }
 
     /**
+     * Everybody sc-99 counts as coming, in the list's order: a companion their guest marked Not coming and a walk-in are not, and neither is anyone behind a removed guest.
+     *
+     * @return list<Guest>
+     */
+    public function coming(Event $event): array
+    {
+        return Vec\filter(
+            $this->guestRepository->findOnList($event),
+            static fn (Guest $person): bool => !($person->getHost()?->isRemoved() ?? false) && GuestStanding::Accepted === self::standing($person),
+        );
+    }
+
+    /**
      * @param list<Event> $events
      *
      * @return array<string, Counts> by event id

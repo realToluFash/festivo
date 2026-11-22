@@ -6,6 +6,7 @@ namespace App\Tests\Functional\Messaging;
 
 use App\Domain\Guest\GuestNeedsRecord;
 use App\Domain\Guest\Link\InvitationLinks;
+use App\Domain\Guest\Model\CompanionChoice;
 use App\Domain\Guest\Model\GuestNeeds;
 use App\Domain\Guest\Model\PageReply;
 use App\Domain\Guest\Model\RecordedReply;
@@ -26,6 +27,9 @@ use App\Entity\Membership;
 use App\Entity\MenuCourse;
 use App\Entity\MenuDish;
 use App\Entity\NotificationItem;
+use App\Entity\SeatAssignment;
+use App\Entity\SeatingPlan;
+use App\Entity\SeatingTable;
 use App\Entity\User;
 use App\Enum\EventRole;
 use App\Enum\EventType;
@@ -37,6 +41,8 @@ use App\Enum\MealAnswerKind;
 use App\Enum\NeedKind;
 use App\Enum\Permission;
 use App\Enum\SeededRole;
+use App\Enum\TableShape;
+use App\Repository\GuestRepository;
 use App\Tests\Double\Messaging\RecordingPushSender;
 use DateTimeImmutable;
 use DateTimeZone;
@@ -308,6 +314,79 @@ final class GuestRepliesTest extends MessagingTestCase
     }
 
     #[Test]
+    public function notSeatedLeavesOutACompanionTheirGuestMarkedNotComingAsNoMealChosenDoes(): void
+    {
+        $this->seatingPlan();
+        $this->course('Main');
+        self::at('2026-11-05 10:00');
+        $tomi = $this->guest('Tomi Bello');
+        $this->companion($tomi, 'Chidi Eze');
+        $this->companion($tomi, 'Ngozi Eze');
+        $this->reply($tomi, GuestReply::Coming);
+
+        self::at('2026-11-06 08:00');
+        self::runUntilIdle();
+
+        self::assertStringContainsString("Not seated: 3\nNo meal chosen: 3\n", ($this->emails($this->ada)[0] ?? self::fail('No summary.'))->body);
+
+        self::at('2026-11-06 10:00');
+        $this->companionsComing($tomi, ['Chidi Eze' => false, 'Ngozi Eze' => true]);
+        $this->reply($this->guest('Femi Ojo'), GuestReply::NotComing);
+
+        self::at('2026-11-07 08:00');
+        self::runUntilIdle();
+
+        self::assertStringContainsString("Not seated: 2\nNo meal chosen: 2\n", ($this->emails($this->ada)[1] ?? self::fail('No second summary.'))->body, 'Chidi is out of both lines.');
+
+        self::at('2026-11-07 10:00');
+        $this->companionsComing($tomi, ['Chidi Eze' => true, 'Ngozi Eze' => true]);
+        $this->reply($this->guest('Sade Ola'), GuestReply::NotComing);
+
+        self::at('2026-11-08 08:00');
+        self::runUntilIdle();
+
+        self::assertStringContainsString("Not seated: 3\nNo meal chosen: 3\n", ($this->emails($this->ada)[2] ?? self::fail('No third summary.'))->body, 'Chidi is back in both.');
+    }
+
+    #[Test]
+    public function notSeatedNeverCountsAWalkInAndFallsAsPeopleAreSeatedUntilItHasNoLine(): void
+    {
+        $table = $this->seatingPlan();
+        self::at('2026-11-05 10:00');
+        $tomi = $this->guest('Tomi Bello');
+        $this->companion($tomi, 'Chidi Eze');
+        $this->reply($tomi, GuestReply::Coming);
+        $walkIn = Guest::walkedIn($this->event, 'Bayo Ige', 'bayo ige', $this->owner, self::now());
+        self::em()->persist($walkIn);
+        self::em()->flush();
+
+        self::at('2026-11-06 08:00');
+        self::runUntilIdle();
+
+        self::assertStringContainsString("Not seated: 2\n", ($this->emails($this->ada)[0] ?? self::fail('No summary.'))->body, 'Bayo walked in unseated and is not counted.');
+
+        self::at('2026-11-06 10:00');
+        $this->seat($walkIn, $table, 1);
+        $this->seat($tomi, $table, 2);
+        $this->reply($this->guest('Femi Ojo'), GuestReply::NotComing);
+
+        self::at('2026-11-07 08:00');
+        self::runUntilIdle();
+
+        self::assertStringContainsString("Not seated: 1\n", ($this->emails($this->ada)[1] ?? self::fail('No second summary.'))->body, 'Seating Tomi lowers it by one; seating Bayo changes nothing.');
+
+        self::at('2026-11-07 10:00');
+        $companions = self::service(GuestRepository::class)->findCompanionsOf($tomi);
+        $this->seat($companions[0] ?? self::fail('No companion.'), $table, 3);
+        $this->reply($this->guest('Sade Ola'), GuestReply::NotComing);
+
+        self::at('2026-11-08 08:00');
+        self::runUntilIdle();
+
+        self::assertStringNotContainsString('Not seated', ($this->emails($this->ada)[2] ?? self::fail('No third summary.'))->body, 'A count of 0 is never shown.');
+    }
+
+    #[Test]
     public function noMealLineIsShownWithoutACourseThatAsksOrWhenEveryoneComingHasAnswered(): void
     {
         $same = $this->course('Dessert', false);
@@ -516,6 +595,38 @@ final class GuestRepliesTest extends MessagingTestCase
         $dish = MealAnswerKind::Chosen === $kind ? self::em()->getRepository(MenuDish::class)->findOneBy(['course' => $course]) : null;
         self::em()->persist(new MealAnswer($person, $course, $kind, $dish, null, [], []));
         self::em()->flush();
+    }
+
+    private function seatingPlan(): SeatingTable
+    {
+        $plan = new SeatingPlan($this->event, null, 1000, 1000, null);
+        $table = new SeatingTable($plan, 'Table 1', 'table 1', TableShape::Round, 100, 100, null);
+        self::em()->persist($plan);
+        self::em()->persist($table);
+        self::em()->flush();
+
+        return $table;
+    }
+
+    private function seat(Guest $person, SeatingTable $table, int $seat): void
+    {
+        self::em()->persist(new SeatAssignment($person, $table, $seat));
+        self::em()->flush();
+    }
+
+    /**
+     * From the guest's own page: Coming again, each named companion Coming or Not coming.
+     *
+     * @param array<string, bool> $coming by companion name
+     */
+    private function companionsComing(Guest $guest, array $coming): void
+    {
+        $choices = Vec\map(
+            self::service(GuestRepository::class)->findCompanionsOf($guest),
+            static fn (Guest $companion): CompanionChoice => new CompanionChoice($companion->getId()->toRfc4122(), $companion->getFullName() ?? '', Str\lowercase($companion->getFullName() ?? ''), $coming[$companion->getFullName() ?? ''] ?? true),
+        );
+        self::service(GuestAnswers::class)->answer($guest, GuestReply::Coming, new PageReply($choices, null));
+        self::runUntilIdle();
     }
 
     private function onEvent(User $user, Event $event): EventPerson

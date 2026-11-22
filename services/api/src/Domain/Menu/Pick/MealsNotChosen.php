@@ -9,8 +9,6 @@ use App\Domain\Messaging\Interfaces\MealsNotChosenInterface;
 use App\Entity\Event;
 use App\Entity\Guest;
 use App\Entity\MealAnswer;
-use App\Enum\GuestStanding;
-use App\Repository\GuestRepository;
 use App\Repository\MealAnswerRepository;
 use Psl\Dict;
 use Psl\Iter;
@@ -21,7 +19,7 @@ final readonly class MealsNotChosen implements MealsNotChosenInterface
 {
     public function __construct(
         private GuestMenu $guestMenu,
-        private GuestRepository $guestRepository,
+        private HeadcountCalculator $headcountCalculator,
         private MealAnswerRepository $mealAnswerRepository,
     ) {
     }
@@ -34,10 +32,7 @@ final readonly class MealsNotChosen implements MealsNotChosenInterface
             return [];
         }
 
-        $coming = Vec\filter(
-            $this->guestRepository->findOnList($event),
-            static fn (Guest $person): bool => !($person->getHost()?->isRemoved() ?? false) && GuestStanding::Accepted === HeadcountCalculator::standing($person),
-        );
+        $coming = $this->headcountCalculator->coming($event);
         $answered = Dict\map(
             Dict\group_by($this->mealAnswerRepository->findFor($coming), static fn (MealAnswer $answer): string => $answer->getPerson()->getId()->toRfc4122()),
             static fn (array $answers): array => Vec\map($answers, static fn (MealAnswer $answer): string => $answer->getCourse()->getId()->toRfc4122()),
