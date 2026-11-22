@@ -129,14 +129,14 @@ function useExport(props: ExportProps, live: boolean) {
   const scope = exportScope(asked, props.inView.length);
   const file = exportFileName(t, props.event, props.now, format);
   const busy = making === 'preparing';
-  const press = useRef(0);
+  const round = useRef(0);
 
   useEffect(() => {
-    if (!live) press.current += 1;
+    if (!live) round.current += 1;
   }, [live]);
   useEffect(
     () => () => {
-      press.current += 1;
+      round.current += 1;
     },
     [],
   );
@@ -145,7 +145,7 @@ function useExport(props: ExportProps, live: boolean) {
     if (busy) return;
     setRefused(false);
     if (!props.offline) setMaking('preparing');
-    const mine = ++press.current;
+    const mine = ++round.current;
 
     const { shared, hand } = await exportToShare({
       offline: props.offline,
@@ -157,7 +157,7 @@ function useExport(props: ExportProps, live: boolean) {
         }),
       write: (bytes) => writeToShare(bytes, file, EXPORT_TYPES[format]),
       unreachable: (error) => error instanceof ApiUnreachableError,
-      abandoned: () => press.current !== mine,
+      abandoned: () => round.current !== mine,
     });
 
     if (shared === 'abandoned') {
