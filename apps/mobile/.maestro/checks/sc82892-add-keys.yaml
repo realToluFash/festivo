@@ -1,0 +1,17 @@
+# sc-82892 on New event (Android): Add a host gives Host 2 with the cursor and the keyboard up. Ends with the keyboard state left as Add a host left it.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/new
+- extendedWaitUntil:
+    visible:
+      id: 'eventForm.hosts.field.0'
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: 'eventForm.hosts.add'
+    direction: DOWN
+    centerElement: true
+- tapOn:
+    id: 'eventForm.hosts.add'
+- waitForAnimationToEnd
+- takeScreenshot: added
