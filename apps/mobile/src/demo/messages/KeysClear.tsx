@@ -9,6 +9,7 @@ import {
 } from 'react-native';
 
 import { keyboardTopNow } from '../../components/keyboardWatch.ts';
+import { SETTLED_MS, useWindowOrigin } from '../../components/Screen.tsx';
 import { keyboardInWindow, keysOver } from '../../kit/keyboard.ts';
 
 // Not KeyboardAvoidingView: it reads its frame from its parent, and a conversation sits below the event's
@@ -20,8 +21,9 @@ export function KeysClear({
   style?: StyleProp<ViewStyle>;
   children: ReactNode;
 }) {
+  const origin = useWindowOrigin();
   const own = useRef<ViewInstance>(null);
-  const top = useRef<number | null>(keyboardTopNow(0));
+  const top = useRef<number | null>(null);
   const [cover, setCover] = useState(0);
   const measure = useCallback(() => {
     const keys = top.current;
@@ -36,8 +38,9 @@ export function KeysClear({
 
   useEffect(() => {
     const ios = Platform.OS === 'ios';
+    top.current = keyboardTopNow(origin);
     const shown = Keyboard.addListener(ios ? 'keyboardWillShow' : 'keyboardDidShow', (event) => {
-      top.current = keyboardInWindow(event.endCoordinates.screenY, 0);
+      top.current = keyboardInWindow(event.endCoordinates.screenY, origin);
       measure();
     });
     const hidden = Keyboard.addListener(ios ? 'keyboardWillHide' : 'keyboardDidHide', () => {
@@ -45,12 +48,14 @@ export function KeysClear({
       measure();
     });
     measure();
+    const settled = setTimeout(measure, SETTLED_MS);
 
     return () => {
+      clearTimeout(settled);
       shown.remove();
       hidden.remove();
     };
-  }, [measure]);
+  }, [origin, measure]);
 
   return (
     <View ref={own} onLayout={measure} style={[style, { paddingBottom: cover }]}>

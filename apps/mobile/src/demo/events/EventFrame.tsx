@@ -539,11 +539,15 @@ function AreaPills({
   const strip = useRef<ScrollViewInstance>(null);
   const ends = useRef<Partial<Record<AreaKey, number>>>({});
   const shown = useRef(0);
+  const content = useRef(0);
   const reveal = (one: AreaKey) => {
     const end = ends.current[one];
-    if (end != null && shown.current > 0)
+    if (end != null && shown.current > 0 && content.current > 0)
       strip.current?.scrollTo({
-        x: Math.max(0, end + tokens.space3xl - shown.current),
+        x: Math.max(
+          0,
+          Math.min(content.current - shown.current, end + tokens.space3xl - shown.current),
+        ),
         animated: false,
       });
   };
@@ -562,6 +566,10 @@ function AreaPills({
         accessibilityRole="tablist"
         onLayout={(event: LayoutChangeEvent) => {
           shown.current = event.nativeEvent.layout.width;
+          reveal(area);
+        }}
+        onContentSizeChange={(width: number) => {
+          content.current = width;
           reveal(area);
         }}
       >
