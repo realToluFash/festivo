@@ -203,7 +203,7 @@ export function CalendarBoard<S extends string, E extends CalEvent>({
   const agendaRef = useRef<ScrollViewInstance>(null);
   const weekY = useRef(0);
   const agendaY = useRef(0);
-  const asked = useRef<number | null>(null);
+  const weekAsked = useRef<number | null>(null);
   const places = useRef(new Map<string, number>());
   const glide = useGlide(reduced);
   const placed = start.view != null && start.at != null;
@@ -274,18 +274,17 @@ export function CalendarBoard<S extends string, E extends CalEvent>({
     setOpen(day);
   }, []);
   const toWeekY = useCallback((y: number) => {
-    asked.current = y;
+    weekAsked.current = y;
     listRef.current?.scrollToOffset({ offset: y, animated: false });
   }, []);
   const toAgendaY = useCallback((y: number) => {
-    asked.current = y;
     agendaRef.current?.scrollTo({ y, animated: false });
   }, []);
   const onTop = useCallback(
     (report: ScrollReport) => {
       if (!here) return;
-      const y = placeAfter(weekY.current, report, asked.current);
-      if (report.byHand) asked.current = null;
+      const y = placeAfter(weekY.current, report, weekAsked.current);
+      if (report.byHand) weekAsked.current = null;
       if (y !== report.y) toWeekY(y);
       weekY.current = y;
       setTop(topIndex(offsets, y));
@@ -348,9 +347,7 @@ export function CalendarBoard<S extends string, E extends CalEvent>({
   }, []);
   const onAgendaScroll = (report: ScrollReport) => {
     if (!here) return;
-    const y = placeAfter(agendaY.current, report, asked.current);
-    if (report.byHand) asked.current = null;
-    if (y !== report.y) toAgendaY(y);
+    const { y } = report;
     agendaY.current = y;
     let found: string | null = null;
     for (const entry of entries) {
