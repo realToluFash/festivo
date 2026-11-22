@@ -866,7 +866,7 @@ function Shown({
 }
 
 /** Answers closed: by the date to answer by, at the start, by a pause, or with the event over. */
-function Closed({
+export function Closed({
   visit,
   words,
   onKitchen,
