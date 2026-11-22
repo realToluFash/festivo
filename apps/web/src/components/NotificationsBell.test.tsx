@@ -662,6 +662,14 @@ describe('the bell in the B frame (sc-83081)', () => {
     expect(glyph).toMatch(/background: var\(--colorInset\);/u);
   });
 
+  it('keeps the gone line inset under its item, over the popover reset of p margins', () => {
+    expect(cssRule('.bell-pop p', BELL_CSS)).toMatch(/margin: 0;/u);
+    expect(cssRule('.bell-gone', BELL_CSS)).toBe('');
+    expect(cssRule('.bell-row > .bell-gone', BELL_CSS)).toMatch(
+      /margin: calc\(-1 \* var\(--spaceSm\)\) 0 var\(--spaceLg\) 56px;/u,
+    );
+  });
+
   it('holds the popover still under Reduce Motion', () => {
     expect(BELL_CSS).toMatch(
       /@media \(prefers-reduced-motion: reduce\) \{\s*\.bell-pop \{\s*animation: none;\s*\}\s*\}/u,
