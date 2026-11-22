@@ -197,6 +197,11 @@ export function MessagesScreen({
   const wide = !phone;
   const insets = useSafeAreaInsets();
   const refs = useRef<Partial<Record<string, ViewInstance | null>>>({});
+  const liveRef = (key: string): RefObject<ViewInstance | null> => ({
+    get current() {
+      return refs.current[key] ?? null;
+    },
+  });
   const headRef = useRef<TextHandle>(null);
   const checkRef = useRef<TextHandle>(null);
   const reachedHeadRef = useRef<TextHandle>(null);
@@ -333,29 +338,17 @@ export function MessagesScreen({
 
   useEffect(() => {
     if (!m.picking || phone) return undefined;
-    return openOnceSettled(
-      measuredUnder({ current: refs.current.to ?? null }),
-      setToAt,
-      MENU_AFTER_MS,
-    );
+    return openOnceSettled(measuredUnder(liveRef('to')), setToAt, MENU_AFTER_MS);
   }, [m.picking, phone]);
 
   useEffect(() => {
     if (!m.filtering || phone) return undefined;
-    return openOnceSettled(
-      measuredUnder({ current: refs.current.filter ?? null }),
-      setFilterAt,
-      MENU_AFTER_MS,
-    );
+    return openOnceSettled(measuredUnder(liveRef('filter')), setFilterAt, MENU_AFTER_MS);
   }, [m.filtering, phone]);
 
   useEffect(() => {
     if (!m.inserting || phone) return undefined;
-    return openOnceSettled(
-      measuredUnder({ current: refs.current.insert ?? null }),
-      setInsertAt,
-      MENU_AFTER_MS,
-    );
+    return openOnceSettled(measuredUnder(liveRef('insert')), setInsertAt, MENU_AFTER_MS);
   }, [m.inserting, phone]);
 
   const stop = stoppingOf(m);

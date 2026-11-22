@@ -29,6 +29,7 @@ import { EventThumb } from '../../components/EventThumb.tsx';
 import { Search } from '../../components/OrgDropDown.tsx';
 import { startsAWord } from '../OrgSwitcherModel.ts';
 import { useShell } from '../../components/settingsShell.ts';
+import { measuredUnder } from '../measuredUnder.ts';
 import { firstFew, type LedEvent, searches } from './MembersHandover.ts';
 import { HANDOVER_WORDS as W, type HandoverKind } from './MembersHandoverWords.ts';
 import type { HandoverStart, Person } from './MembersSample.ts';
@@ -170,11 +171,7 @@ export function HandoverAsk({
 
   useEffect(() => {
     if (!open || start?.menu !== true) return;
-    return openOnceSettled(
-      (then) => (button.current == null ? then(null) : anchorUnder(button, then)),
-      setMenuAt,
-      MENU_AFTER_MS,
-    );
+    return openOnceSettled(measuredUnder(button), setMenuAt, MENU_AFTER_MS);
   }, [open, start]);
 
   useEffect(() => {
