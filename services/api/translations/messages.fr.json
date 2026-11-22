@@ -272,6 +272,7 @@
     "guest.changed_since": "Quelqu’un d’autre a modifié les informations de cet invité depuis que vous les avez ouvertes. Votre modification n’a pas été enregistrée.",
     "guest.replies_closed": "Les réponses sont closes. Si quelque chose a changé, contactez votre hôte.",
     "menu.picks_closed": "Le choix est clos pour un service, votre modification n’y a donc pas été enregistrée.",
+    "menu.pick_ruled_out": "Sa fiche l’exclut. Confirmez pour le choisir quand même.",
     "guest.replies_open": "Les réponses sont encore ouvertes : cette personne peut déjà modifier sa réponse.",
     "guest.reply_is_theirs": "Cette personne a répondu elle-même. Confirmez pour remplacer sa réponse.",
     "guest.event_paused": "Les réponses sont closes tant que l’événement est en pause. Tout ce que vous avez envoyé est conservé.",

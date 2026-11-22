@@ -60,6 +60,7 @@
     "choice_answered": "Guests have answered this choice.",
     "choice_option_picked": "Guests have picked this option.",
     "meal_picks_closed": "Picks for this course have closed.",
+    "meal_pick_ruled_out": "Their record rules this out. Confirm to pick it anyway.",
     "replies_closed": "Answers have closed.",
     "replies_open": "Replies are still open.",
     "reply_is_theirs": "They replied themselves. Confirm to replace their reply.",

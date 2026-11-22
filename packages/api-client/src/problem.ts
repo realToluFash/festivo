@@ -56,6 +56,8 @@ export interface Problem {
   outside?: string[];
   /** On `meal_picks_closed`: the closed courses a send would have changed, none of them saved (sc-3907). */
   courses?: string[];
+  /** On `meal_pick_ruled_out`: each person the plate's allergens rule out, nothing saved until sent again with `anyway` (sc-3909). */
+  people?: { id: string; allergens: string[] }[];
   /** On `seating_table_short`: the place's free chairs and the party's size (sc-4013). */
   free?: number;
   party?: number;
