@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { holdLeaving, leaveThen } from './leaveHeld.ts';
+import { holdLeaving, keptEditing, leaveThen, leaveWithoutAsking } from './leaveHeld.ts';
 
 describe('leaving a screen with unsaved work', () => {
   it('goes at once when nothing holds it', () => {
@@ -68,5 +68,73 @@ describe('leaving a screen with unsaved work', () => {
 
     expect(went).toEqual([]);
     releaseNewer();
+  });
+});
+
+describe('one ask at a time (sc-82245)', () => {
+  it('does nothing for a second way out while the ask is open, and tells it so', () => {
+    const went: string[] = [];
+    const stayed: string[] = [];
+    const asked: (() => void)[] = [];
+    const release = holdLeaving((go) => asked.push(go));
+
+    leaveThen(() => went.push('/events'));
+    leaveThen(
+      () => went.push('/settings'),
+      () => stayed.push('/settings'),
+    );
+
+    expect(asked).toHaveLength(1);
+    expect(stayed).toEqual(['/settings']);
+    asked[0]?.();
+    expect(went).toEqual(['/events']);
+    release();
+  });
+
+  it('keeps editing: the way out stays put, and taking it again asks again', () => {
+    const went: string[] = [];
+    const stayed: string[] = [];
+    const asked: (() => void)[] = [];
+    const release = holdLeaving((go) => asked.push(go));
+
+    leaveThen(
+      () => went.push('/events'),
+      () => stayed.push('/events'),
+    );
+    keptEditing();
+    leaveThen(() => went.push('/events'));
+
+    expect(went).toEqual([]);
+    expect(stayed).toEqual(['/events']);
+    expect(asked).toHaveLength(2);
+    release();
+  });
+
+  it('lets the screen go before going, so leaving does not ask twice', () => {
+    const order: string[] = [];
+    const release = holdLeaving(
+      (go) => go(),
+      () => order.push('dropped'),
+    );
+
+    leaveThen(() => order.push('went'));
+
+    expect(order).toEqual(['dropped', 'went']);
+    release();
+  });
+
+  it('does not ask when the session ended without the reader choosing it', () => {
+    const went: string[] = [];
+    const dropped: string[] = [];
+    holdLeaving(
+      () => went.push('asked'),
+      () => dropped.push('dropped'),
+    );
+
+    leaveWithoutAsking();
+    leaveThen(() => went.push('/welcome'));
+
+    expect(dropped).toEqual(['dropped']);
+    expect(went).toEqual(['/welcome']);
   });
 });
