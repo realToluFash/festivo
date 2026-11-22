@@ -4,7 +4,6 @@ var login = http.post(API_URL + '/api/auth/login', {
   headers: {
     'Content-Type': 'application/json',
     'User-Agent': 'QA other device',
-    Origin: 'http://127.0.0.1:15173',
   },
   body: JSON.stringify({ email: EMAIL, password: PASSWORD, refreshTokenIn: 'body' }),
 });
@@ -16,7 +15,6 @@ var press = http.post(API_URL + '/api/events/' + EVENT + '/schedule/items/' + IT
     'Content-Type': 'application/json',
     Authorization: 'Bearer ' + token,
     'Idempotency-Key': key,
-    Origin: 'http://127.0.0.1:15173',
   },
   body: JSON.stringify({ kind: KIND, pressedAt: new Date(Date.now() - 30000).toISOString() }),
 });
