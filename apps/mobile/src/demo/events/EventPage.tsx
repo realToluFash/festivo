@@ -150,6 +150,7 @@ import { type OriginState, draftFromEnquiry } from '../enquiries/EnquiryToEventM
 import { FromEnquiryLine } from '../enquiries/FromEnquiryParts.tsx';
 import { EventsFailed } from '../../components/Events.tsx';
 import { SwitchedNotice } from '../../components/SwitchedNotice.tsx';
+import { isBellState } from '../messages/BellStates.ts';
 
 type Mute = 'ok' | 'notLoaded' | 'notSaved';
 
@@ -273,7 +274,7 @@ export function EventScreen({
   );
   const [at, setAt] = useState<AreaKey>(() => {
     if (guests != null && !isIn(OVERVIEW_STATES, guests)) seedLook(areaStart(guests).looked, now);
-    else if (messages === 'bell') resetLooked();
+    else if (isBellState(messages)) resetLooked();
 
     return figureOpens != null
       ? 'guests'
@@ -803,6 +804,7 @@ export function EventScreen({
         start={{
           fix: messages === 'fix',
           push: messages === 'bell',
+          bell: isBellState(messages) ? messages : 'bell',
           keys:
             messages === 'write' ||
             messages === 'cancelled' ||
