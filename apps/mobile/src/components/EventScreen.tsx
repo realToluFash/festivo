@@ -59,7 +59,7 @@ import { backRow } from '../layout/backRow.ts';
 import { useLayout } from '../layout/useLayout.ts';
 import { rereadAccount, switchOrganisation, useSignedIn } from '../signedIn.ts';
 import { tokens } from '../theme/tokens.ts';
-import { AppFrame, BackButton } from './AppFrame.tsx';
+import { AppFrame } from './AppFrame.tsx';
 import { BellRow } from './BellButton.tsx';
 import { bodyEdges } from './bodyEdges.ts';
 import { SecondaryButton } from './Buttons.tsx';
@@ -87,7 +87,7 @@ import { Text, type TextHandle } from './Text.tsx';
 import { BodyTitle } from './Title.tsx';
 import { PAGE_TITLE, pageTitle } from './topTitle.ts';
 import { useSidebarCard } from './sidebarCard.ts';
-import { eventTop } from '../kit/eventTop.ts';
+import { backToEvents, eventTop } from '../kit/eventTop.ts';
 import { EdgeSwipeBack } from './useEdgeSwipeBack.ts';
 import { useSystemBack } from './useSystemBack.ts';
 
@@ -419,7 +419,7 @@ export function EventScreen({
         </PlaceholderArea>
       )
     ) : opened.kind === 'notFound' ? (
-      <EventNotFound onBack={leave} />
+      <EventNotFound onBack={() => backToEvents(router)} />
     ) : opened.kind === 'failed' ? (
       <EventsFailed onRetry={opened.retry} testID="events.page.retry" />
     ) : (
@@ -500,6 +500,7 @@ export function EventScreen({
       title={t(`eventNav.${area}`)}
       titleRef={title}
       untitled={cardNamed || titledInList}
+      bareList={!top.inEvent}
       offline={guests ? (guestsOffline.stale ?? opened.stale) : opened.stale}
       besideBack={
         besideBackRow === 'givingWay'
@@ -575,9 +576,6 @@ export function EventScreen({
         >
           {kind === 'tabletLandscape' && cardNamed && refreshing}
           {cardNamed && event == null && !bare && <BellRow />}
-          {top.bodyBack && backs && (
-            <BackButton label={backLabel} onPress={back} testID="events.back" />
-          )}
           {areaTitled && (
             <View style={styles.areaTop}>
               <View style={styles.titleRow}>

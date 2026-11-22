@@ -119,6 +119,7 @@ export function EventFrame({
   bellRef,
   back: pushed,
   phoneBack,
+  behind,
   besideBack,
   without,
   loading = false,
@@ -142,7 +143,9 @@ export function EventFrame({
   back?: { label: string; onPress: () => void } | null;
   /** On the phone, a way back other than Overview, as Seating's ‹ Guests. */
   phoneBack?: { label: string; onPress: () => void } | undefined;
-  /** On the phone, a status beside Back, as Guests' Refreshing…; told whether it had room there (sc-71821). */
+  /** On Overview, ‹ and the screen the event was opened over, in place of Events (sc-83008). */
+  behind?: { label: string; onPress: () => void } | undefined;
+  /** A status beside Back, as Guests' Refreshing… and Overview's; pass it on a phone or upright only, since landscape has no ‹ to sit beside. Told whether it had room there (sc-71821, sc-83008). */
   besideBack?: BesideBackStatus | undefined;
   /** An area this viewer has no part in, as Budget for Can edit: gone from More, the pills and the sidebar. */
   without?: AreaKey | undefined;
@@ -230,7 +233,7 @@ export function EventFrame({
       ? phoneBack
       : phone && area !== 'overview'
         ? { label: W.overview, onPress: () => onArea('overview') }
-        : { label: W.backToEvents, onPress: backToEvents });
+        : (behind ?? { label: W.backToEvents, onPress: backToEvents }));
   const at = PHONE_TABS.includes(area) ? AREA_WORDS[area] : W.more;
 
   return (
@@ -243,7 +246,7 @@ export function EventFrame({
             : { paddingTop: insets.top + tokens.spaceMd, paddingHorizontal: tokens.space5xl },
         ]}
       >
-        <BackSlot beside={phone ? besideBack : undefined} capped={capped}>
+        <BackSlot beside={besideBack} capped={capped}>
           <Back label={back.label} onPress={back.onPress} />
         </BackSlot>
         <Bell tell={shell.tell} onPress={onBell} ref={bellRef} />

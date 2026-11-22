@@ -357,11 +357,13 @@ const STATE_REACH: Partial<Record<SearchStateName, Reach>> = {
   'nothing-to-find': REACHES.nobody,
 };
 
+/** ?q= is what was typed before an event opened from Search, which ‹ Search reopens with (sc-83008). */
 export function searchStart(
   state: SearchStateName | null,
   reach: Reach = REACHES.owner,
+  typed?: string,
 ): SearchStart {
-  const term = SEARCH_STATES.find((one) => one.key === state)?.term ?? '';
+  const term = SEARCH_STATES.find((one) => one.key === state)?.term ?? typed ?? '';
   const phase =
     state === 'loading' || state === 'offline' || state === 'failed' ? state : phaseOf(term);
 

@@ -6,11 +6,12 @@ namespace App\Entity;
 
 use App\Doctrine\Traits\Timestampable;
 use App\Enum\MealAnswerKind;
+use DateTimeImmutable;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Uid\Uuid;
 
-/** One person's answer to one course (sc-3907), with the allergens they had when it was made: one recorded since serves a chosen pick as needs the host. */
+/** One person's answer to one course (sc-3907), with the allergens they had when it was made: one recorded since serves a chosen pick as needs the host. A pick the host made for them names the host and the time, and the allergens the host confirmed despite the record (sc-3909). */
 #[ORM\Entity]
 #[ORM\HasLifecycleCallbacks]
 #[ORM\Table(name: 'meal_answers')]
@@ -50,6 +51,20 @@ class MealAnswer
     /** @var list<string> */
     #[ORM\Column(type: Types::JSON)]
     private array $allergensAtPick;
+
+    #[ORM\ManyToOne(targetEntity: User::class)]
+    #[ORM\JoinColumn(nullable: true, onDelete: 'SET NULL')]
+    private ?User $chosenBy = null;
+
+    #[ORM\Column(type: Types::STRING, length: 200, nullable: true)]
+    private ?string $chosenByName = null;
+
+    #[ORM\Column(type: Types::DATETIME_IMMUTABLE, nullable: true)]
+    private ?DateTimeImmutable $chosenAt = null;
+
+    /** @var list<string> */
+    #[ORM\Column(type: Types::JSON)]
+    private array $overridden = [];
 
     /**
      * @param list<string> $options
@@ -120,5 +135,44 @@ class MealAnswer
         $this->variant = $variant;
         $this->options = $options;
         $this->allergensAtPick = $allergensAtPick;
+        $this->chosenBy = null;
+        $this->chosenByName = null;
+        $this->chosenAt = null;
+        $this->overridden = [];
+    }
+
+    /**
+     * @param list<string> $options
+     * @param list<string> $allergensAtPick
+     * @param list<string> $overridden      the person's allergens on the plate the host confirmed despite the record
+     */
+    public function answerForThem(MealAnswerKind $kind, ?MenuDish $dish, ?MenuDishVariant $variant, array $options, array $allergensAtPick, User $host, DateTimeImmutable $at, array $overridden): void
+    {
+        $this->answer($kind, $dish, $variant, $options, $allergensAtPick);
+        $this->chosenBy = $host;
+        $this->chosenByName = $host->getName();
+        $this->chosenAt = $at;
+        $this->overridden = $overridden;
+    }
+
+    public function getChosenBy(): ?User
+    {
+        return $this->chosenBy;
+    }
+
+    public function getChosenByName(): ?string
+    {
+        return $this->chosenByName;
+    }
+
+    public function getChosenAt(): ?DateTimeImmutable
+    {
+        return $this->chosenAt;
+    }
+
+    /** @return list<string> */
+    public function getOverridden(): array
+    {
+        return $this->overridden;
     }
 }

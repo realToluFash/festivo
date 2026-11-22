@@ -60,6 +60,7 @@
     "choice_answered": "Los invitados ya han respondido a esta elección.",
     "choice_option_picked": "Los invitados ya han elegido esta opción.",
     "meal_picks_closed": "Las elecciones para este plato se han cerrado.",
+    "meal_pick_ruled_out": "Su ficha lo descarta. Confirme para elegirlo de todos modos.",
     "replies_closed": "El plazo para responder ha terminado.",
     "replies_open": "Las respuestas siguen abiertas.",
     "reply_is_theirs": "Esta persona ya ha respondido por su cuenta. Confirme que quiere sustituir esa respuesta.",

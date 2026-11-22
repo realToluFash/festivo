@@ -1,19 +1,7 @@
 import { type RefObject, useEffect, useId, useMemo, useRef, useState } from 'react';
-import { Link, useNavigate } from 'react-router';
 
-import { Glyph, type GlyphName } from '../components/Glyph.tsx';
-import {
-  type Told,
-  EVENT_NAME,
-  MW,
-  PARKING,
-  SAMPLE_EVENT,
-  changeId,
-  channelWord,
-  filled,
-  many,
-  reachedOfThread,
-} from './messages.ts';
+import { Glyph } from '../components/Glyph.tsx';
+import { type Told, MW, changeId, channelWord, many } from './messages.ts';
 import { useInbox } from './messagesContext.ts';
 import {
   type Figures,
@@ -29,15 +17,9 @@ import {
   sheetOf,
   titleOf,
 } from './messagesTell.ts';
-import { lastLooked, markLooked, repliesUnread } from './changedSince.ts';
-import { CLOCKS } from './events.ts';
-import { guestsAt } from './guests.ts';
 import { WhereGlyph } from './MessagesParts.tsx';
-import { BELL_WORDS } from './messagesWords.ts';
 import { Dialog } from '../components/SettingsParts.tsx';
 import type { Tell } from '../components/SettingsParts.tsx';
-
-const NOTIFICATIONS = BELL_WORDS;
 
 export interface Sent {
   allTold: boolean;
@@ -302,153 +284,6 @@ export function UntoldBanner() {
         />
       )}
     </>
-  );
-}
-
-interface Item {
-  key: string;
-  title: string;
-  line: string;
-  glyph: GlyphName;
-  unread: boolean;
-}
-
-/** The bell at a desk: sc-4331's batched replies, a message that missed people, and a change. */
-export function MessagesBell() {
-  const { act, focus, say, bell, inbox } = useInbox();
-  const navigate = useNavigate();
-  const [open, setOpen] = useState(bell.takeFirst);
-  const box = useRef<HTMLDivElement>(null);
-  const button = useRef<HTMLButtonElement>(null);
-  const titleId = useId();
-  const where = (when: string) => filled(NOTIFICATIONS.whereWhen, { event: EVENT_NAME, when });
-  const items: Item[] = [
-    {
-      key: 'replies',
-      title: filled(MW.repliesBatch, { coming: 3, notComing: 1, changed: 1 }),
-      line: where(filled(NOTIFICATIONS.atTime, { time: '09:31' })),
-      glyph: 'users',
-      unread: repliesUnread(),
-    },
-    {
-      key: 'missed',
-      title: `${PARKING.subject}: ${many('didntGetIt', 11)}`,
-      line: where('Mon, Nov 2'),
-      glyph: 'messages',
-      unread: !bell.read,
-    },
-    {
-      key: 'changed',
-      title: 'Ana Souza changed the event',
-      line: where('Mon, Nov 2'),
-      glyph: 'events',
-      unread: false,
-    },
-  ];
-  const unread = items.filter((item) => item.unread).length;
-
-  useEffect(() => {
-    if (!open) return;
-
-    const keys = (event: KeyboardEvent) => {
-      if (event.key !== 'Escape') return;
-      event.preventDefault();
-      setOpen(false);
-      button.current?.focus();
-    };
-    const outside = (event: PointerEvent) => {
-      const target = event.target as Node;
-
-      if (!box.current?.contains(target) && !button.current?.contains(target)) setOpen(false);
-    };
-
-    document.addEventListener('keydown', keys);
-    document.addEventListener('pointerdown', outside);
-
-    return () => {
-      document.removeEventListener('keydown', keys);
-      document.removeEventListener('pointerdown', outside);
-    };
-  }, [open]);
-
-  function pick(key: string): void {
-    setOpen(false);
-    if (key === 'missed') {
-      act({ kind: 'reached', of: reachedOfThread('parking', inbox), thread: 'parking' });
-      focus('heading');
-    } else if (key === 'replies') {
-      const since = lastLooked();
-
-      markLooked(CLOCKS.rest);
-      void navigate(
-        guestsAt(SAMPLE_EVENT, { filter: 'changed', ...(since == null ? {} : { since }) }),
-      );
-    } else void navigate(`/demo/events/${SAMPLE_EVENT}`);
-  }
-
-  return (
-    <div className="mg-bell-at">
-      <button
-        ref={button}
-        type="button"
-        className="desk-bell"
-        aria-label={
-          unread > 0
-            ? filled(NOTIFICATIONS.bellUnread_other, { count: unread })
-            : NOTIFICATIONS.bell
-        }
-        aria-haspopup="dialog"
-        aria-expanded={open}
-        onClick={() => setOpen((now) => !now)}
-      >
-        <Glyph name="bell" size={19} />
-        {unread > 0 && <span className="today-unread" aria-hidden="true" />}
-      </button>
-      {open && (
-        <div ref={box} className="mg-pop mg-bell-pop" role="dialog" aria-labelledby={titleId}>
-          <div className="mg-pop-head">
-            <h3 id={titleId}>{NOTIFICATIONS.heading}</h3>
-            <button
-              type="button"
-              className="desk-text"
-              onClick={() => {
-                markLooked(CLOCKS.rest);
-                bell.markRead();
-                say(NOTIFICATIONS.allRead);
-              }}
-            >
-              {NOTIFICATIONS.markAllRead}
-            </button>
-          </div>
-          <ul className="mg-bell-items">
-            {items.map((item) => (
-              <li key={item.key}>
-                <button type="button" className="mg-bell-item" onClick={() => pick(item.key)}>
-                  <span className="mg-bell-glyph" aria-hidden="true">
-                    <Glyph name={item.glyph} size={20} />
-                  </span>
-                  <span className="mg-bell-words">
-                    <span className={item.unread ? 'mg-bell-title is-unread' : 'mg-bell-title'}>
-                      {item.title}
-                    </span>
-                    <span className="mg-bell-line">{item.line}</span>
-                    {item.unread && (
-                      <span className="mg-bell-unread">
-                        <span className="mg-dot" aria-hidden="true" />
-                        {NOTIFICATIONS.unread}
-                      </span>
-                    )}
-                  </span>
-                </button>
-              </li>
-            ))}
-          </ul>
-          <Link className="desk-text mg-bell-settings" to="/demo/settings/notifications">
-            {NOTIFICATIONS.settings}
-          </Link>
-        </div>
-      )}
-    </div>
   );
 }
 

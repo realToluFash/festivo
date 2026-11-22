@@ -50,6 +50,7 @@
 }
 
 .unsub-words .unsub-body {
+  margin: 0;
   font: 400 16px/1.5 var(--fontFamily);
   color: var(--colorInkSecondary);
 }

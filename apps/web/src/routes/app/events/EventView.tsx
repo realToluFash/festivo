@@ -32,6 +32,7 @@ import { GuestsArea, GuestsGone } from './GuestsArea.tsx';
 import { RunArea } from './RunArea.tsx';
 import { BudgetArea } from './BudgetArea.tsx';
 import { MenuArea } from './MenuArea.tsx';
+import { SeePicksArea } from './SeePicksArea.tsx';
 import { ScheduleOrNight } from './NightArea.tsx';
 import { SeatingArea } from './SeatingArea.tsx';
 import { JobsShiftsArea } from './JobsShiftsArea.tsx';
@@ -64,6 +65,7 @@ type Page =
   | 'run'
   | 'staffJobs'
   | 'staffStations'
+  | 'menuPicks'
   | PlaceholderEventArea;
 
 export function EventView() {
@@ -97,6 +99,10 @@ export function EventJobsShifts() {
 
 export function EventStations() {
   return <ForEvent page="staffStations" />;
+}
+
+export function EventMenuPicks() {
+  return <ForEvent page="menuPicks" />;
 }
 
 /** Staff opens its first tab, the Roster (sc-3906). */
@@ -336,6 +342,9 @@ function EventOf({
 
   if (page === 'menu' && load.kind === 'loaded')
     return canOn(load.event, PAGE_NEEDS.menu) ? <MenuArea event={load.event} /> : <Withheld />;
+
+  if (page === 'menuPicks' && load.kind === 'loaded')
+    return canOn(load.event, PAGE_NEEDS.menu) ? <SeePicksArea event={load.event} /> : <Withheld />;
 
   if (page === 'budget' && load.kind === 'loaded')
     return budgetUnseen ? <BudgetWithheld event={load.event} /> : <BudgetArea event={load.event} />;

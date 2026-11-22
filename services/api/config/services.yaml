@@ -147,6 +147,12 @@ services:
             $googleClientIds: '%env(OAUTH_GOOGLE_CLIENT_IDS)%'
             $appleIssuers: '%env(OAUTH_APPLE_ISSUERS)%'
             $appleClientIds: '%env(OAUTH_APPLE_CLIENT_IDS)%'
+    App\Integrations\OpenIdConnect\AppleClientSecret:
+        arguments:
+            $privateKey: '%env(OAUTH_APPLE_WEB_PRIVATE_KEY)%'
+            $keyId: '%env(OAUTH_APPLE_WEB_KEY_ID)%'
+            $teamId: '%env(OAUTH_APPLE_TEAM_ID)%'
+            $clientId: '%env(OAUTH_APPLE_WEB_CLIENT_ID)%'
     App\Integrations\OpenIdConnect\HttpCodeRedeemer:
         arguments:
             $googleRedemptionEndpoint: '%env(OAUTH_GOOGLE_TOKEN_URI)%'
@@ -154,7 +160,6 @@ services:
             $googleWebClientSecret: '%env(OAUTH_GOOGLE_WEB_CLIENT_SECRET)%'
             $appleRedemptionEndpoint: '%env(OAUTH_APPLE_TOKEN_URI)%'
             $appleWebClientId: '%env(OAUTH_APPLE_WEB_CLIENT_ID)%'
-            $appleWebClientSecret: '%env(OAUTH_APPLE_WEB_CLIENT_SECRET)%'
     App\Domain\User\Interfaces\CodeRedeemerInterface: '@App\Integrations\OpenIdConnect\HttpCodeRedeemer'
     App\Integrations\OpenIdConnect\SigningKeysInterface: '@App\Integrations\OpenIdConnect\HttpSigningKeys'
     App\Domain\User\Controller\AppleReturnController:

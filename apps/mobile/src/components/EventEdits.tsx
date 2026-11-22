@@ -5,7 +5,14 @@ import {
   HOSTS_MAXIMUM,
   foldedName,
 } from '@soirely/domain';
-import { type ComponentProps, type ReactNode, type RefObject, useState } from 'react';
+import {
+  type ComponentProps,
+  type ReactNode,
+  type RefObject,
+  useEffect,
+  useRef,
+  useState,
+} from 'react';
 import {
   Pressable,
   StyleSheet,
@@ -26,7 +33,7 @@ import { EventMesh } from './EventMesh.tsx';
 import { currencyMatches } from './currencyMatches.ts';
 import { EventNotice } from './EventNotice.tsx';
 import { SearchField } from './EventsSearch.tsx';
-import { TextField, type TextFieldProps } from './Field.tsx';
+import { TextField, type TextFieldProps, focusChecked } from './Field.tsx';
 import { Glyph } from './Glyph.tsx';
 import { BoxField, MomentBox, type Picking, PickerLayer } from './MomentPick.tsx';
 import { RadioMark } from './RadioMark.tsx';
@@ -34,6 +41,7 @@ import { useReadOut } from './ReadOut.tsx';
 import { type ScreenReaderTarget } from './screenReaderFocus.ts';
 import { useShellLayout } from './settingsShell.ts';
 import { Pill } from './SettingsParts.tsx';
+import { GlyphMark } from './StatusMark.tsx';
 import { ASK_WIDTH, type AskProps, FocusedScreen, Row, RowList, TextAction } from './Summary.tsx';
 import { Text } from './Text.tsx';
 import { useLeaveAsk } from './useLeaveAsk.ts';
@@ -680,6 +688,7 @@ export function HostRows({
   focusAt = null,
   refs,
   off = false,
+  saysNone = false,
   onSaid,
   testID,
 }: {
@@ -690,11 +699,21 @@ export function HostRows({
   focusAt?: number | null;
   refs?: RefObject<Map<number, TextInputInstance>>;
   off?: boolean;
+  saysNone?: boolean;
   onSaid: (words: string) => void;
   testID: string;
 }) {
   const { t } = useTranslation();
+  const inputs = useRef(new Map<number, TextInputInstance>());
+  const added = useRef<number | null>(null);
   const label = (position: number) => t('eventHosts.label', { position });
+
+  useEffect(() => {
+    const key = added.current;
+    added.current = null;
+    if (key != null) focusChecked({ current: inputs.current.get(key) ?? null });
+  }, [hosts]);
+
   const move = (from: number, to: number) => {
     const moved = [...hosts];
     const [one] = moved.splice(from, 1);
@@ -715,6 +734,14 @@ export function HostRows({
       <Text size={15} weight="medium" style={[styles.secondary, styles.lines]}>
         {t('eventHosts.explainer')}
       </Text>
+      {saysNone && hosts.length === 0 && (
+        <View style={styles.noHosts} testID={`${testID}.none`}>
+          <GlyphMark mark={tokens.marks.notStarted} />
+          <Text size={tokens.typeBody.size} style={styles.grow}>
+            {t('eventHosts.none')}
+          </Text>
+        </View>
+      )}
       {hosts.map((host, index) => {
         const error = errors[index] ?? null;
         const named = host.name.trim() || label(index + 1);
@@ -741,8 +768,10 @@ export function HostRows({
               <View style={styles.grow}>
                 <BoxField
                   ref={(input) => {
-                    if (input == null) refs?.current.delete(host.key);
-                    else refs?.current.set(host.key, input);
+                    for (const map of [inputs.current, refs?.current]) {
+                      if (input == null) map?.delete(host.key);
+                      else map?.set(host.key, input);
+                    }
                   }}
                   value={host.name}
                   wrong={error != null}
@@ -753,6 +782,9 @@ export function HostRows({
                       hosts.map((one) => (one.key === host.key ? { ...one, name: typed } : one)),
                     )
                   }
+                  multiline
+                  scrollEnabled={false}
+                  submitBehavior="blurAndSubmit"
                   autoCapitalize="words"
                   autoCorrect={false}
                   accessibilityLabel={label(index + 1)}
@@ -794,12 +826,11 @@ export function HostRows({
           <TextAction
             label={t('eventHosts.add')}
             glyph="plus"
-            onPress={() =>
-              onHosts([
-                ...hosts,
-                { key: Math.max(HOSTS_MAXIMUM, ...hosts.map((one) => one.key + 1)), name: '' },
-              ])
-            }
+            onPress={() => {
+              const key = Math.max(HOSTS_MAXIMUM, ...hosts.map((one) => one.key + 1));
+              added.current = key;
+              onHosts([...hosts, { key, name: '' }]);
+            }}
             testID={`${testID}.add`}
           />
         )
@@ -1231,6 +1262,17 @@ const styles = StyleSheet.create({
   selectWrong: { borderWidth: 2, borderColor: tokens.colorBroken, paddingLeft: 14 },
   offer: { flexDirection: 'row', flexWrap: 'wrap', columnGap: tokens.spaceXxl },
   host: { gap: tokens.spaceHair },
+  noHosts: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: tokens.spaceMd,
+    paddingVertical: tokens.spaceMd,
+    paddingHorizontal: tokens.spaceLg,
+    borderRadius: tokens.radiusInset,
+    borderWidth: 1,
+    borderColor: tokens.colorInsetBorder,
+    backgroundColor: tokens.colorInset,
+  },
   hostHead: { minHeight: tokens.sizeHit, flexDirection: 'row', alignItems: 'center' },
   hostRow: { flexDirection: 'row', alignItems: 'center', gap: tokens.spaceSm },
   move: {

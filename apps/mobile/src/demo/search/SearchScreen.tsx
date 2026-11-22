@@ -23,6 +23,7 @@ import { useLayout } from '../../layout/useLayout.ts';
 import { tokens } from '../../theme/tokens.ts';
 import { EVENTS } from '../events/EventsSample.ts';
 import { openEvent } from '../events/openEvent.ts';
+import { openedOver } from '../events/opener.ts';
 import {
   type Found,
   type Phase,
@@ -113,7 +114,9 @@ export function SearchScreen({ start }: { start: SearchStart }) {
       return;
     }
     if (!phone) close();
-    if (row.kind === 'event') openEvent(row.id);
+    // An iPad's palette has closed, so ‹ Search reopens it with what was typed.
+    if (row.kind === 'event')
+      openEvent(row.id, phone ? openedOver('search') : { from: 'search', q: typed });
     else
       router.push(
         (row.kind === 'guest' ? '/demo/guests?state=guest' : '/demo/settings/members') as Href,

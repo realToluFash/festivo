@@ -93,7 +93,7 @@ import { BellButton, BellInPane } from './BellButton.tsx';
 import { SearchAndBell } from './SearchButton.tsx';
 import { SEARCH_HREF } from '../kit/searchLinks.ts';
 import { CreateWalkWindow, type WalkOpening, deviceNow } from './CreateWalkWindow.tsx';
-import { Sheet } from './Sheet.tsx';
+import { Sheet, SheetScrollView } from './Sheet.tsx';
 import { Glyph, type GlyphName } from './Glyph.tsx';
 import { Notice } from './Notice.tsx';
 import {
@@ -288,6 +288,7 @@ export function AppFrame({
   ownChrome = false,
   inEvent,
   untitled = false,
+  bareList = false,
   primary,
   underTitle,
   besideTitle,
@@ -310,6 +311,8 @@ export function AppFrame({
   inEvent?: InsideEvent | undefined;
   /** The body names the page itself (an event's Overview card, a member's own card in front of the list), so the frame draws no title (sc-30413, sc-37693). */
   untitled?: boolean;
+  /** The body alone in the Events frame, as the demo's ListFrame draws it: on a phone nothing above it, upright the pill, tabs and bell with no title (sc-1468, sc-80863). */
+  bareList?: boolean;
   title: string;
   /** The title on a phone, where it stands for the page's own heading. */
   titleRef?: RefObject<TextHandle | null> | undefined;
@@ -646,6 +649,7 @@ export function AppFrame({
     besideBack: standIn == null || besideBack === undefined ? besideBack : null,
     switched: ownTop ? switchedNotice : null,
     untitled,
+    bareList,
     cap,
     onTitleDrawn: titleCap.onDrawn,
   };
@@ -729,7 +733,9 @@ export function AppFrame({
                                   >
                                     <BodySwitched.Provider value={bodySwitched}>
                                       <UnderTabsProvider value={underTabs}>
-                                        <BellInPane.Provider value={sidebar && untitled}>
+                                        <BellInPane.Provider
+                                          value={sidebar && untitled && !bareList}
+                                        >
                                           {children}
                                         </BellInPane.Provider>
                                       </UnderTabsProvider>
@@ -904,6 +910,7 @@ interface FrameHeaderProps {
   switched: ReactNode;
   /** A page whose body names it (an event's Overview card, a member's own card in front of the list), so the frame draws no title. */
   untitled: boolean;
+  bareList: boolean;
   /** No title, back or bell above the body; upright, the area pills alone. */
   bare: boolean;
   /** The size the title drew at, which nothing under it outgrows; null where nothing caps (sc-67338). */
@@ -1126,6 +1133,7 @@ function FrameHeader({
   besideTitle,
   besideBack,
   untitled,
+  bareList,
   cap,
   onTitleDrawn,
 }: FrameHeaderProps) {
@@ -1219,7 +1227,7 @@ function FrameHeader({
           tabsCentred
         />
         {backView}
-        {titleRow()}
+        {!bareList && titleRow()}
       </View>
     );
   }
@@ -1253,6 +1261,7 @@ function FrameHeader({
   }
 
   if (bare) return <View style={{ paddingTop: insets.top + tokens.spaceLg }} />;
+  if (bareList) return <View style={{ height: insets.top }} />;
 
   // Inside an event, ‹ in its pill and the bell head the page; on Overview the event's card under them names it (sc-30413).
   if (inEvent && back != null) {
@@ -1597,7 +1606,7 @@ function TabBar({ inEvent }: { inEvent: InsideEvent }) {
         opener={moreTab}
         testID="event.nav.moreSheet"
       >
-        <View style={[styles.moreSheet, { paddingBottom: Math.max(MORE_FOOT - insets.bottom, 0) }]}>
+        <View style={styles.moreSheet}>
           <View style={styles.moreHead}>
             <Text
               size={22}
@@ -1617,43 +1626,52 @@ function TabBar({ inEvent }: { inEvent: InsideEvent }) {
               <Glyph name="x" size={18} ink={tokens.colorInk} weight={2.4} />
             </Pressable>
           </View>
-          <View accessibilityRole="tablist">
-            <RowList
-              items={[
-                ...doorRows(t, inEvent, () => setMore(false)),
-                ...inMore.map((area) => {
-                  const on = area === inEvent.area;
+          <SheetScrollView
+            style={styles.moreBody}
+            contentContainerStyle={[
+              styles.moreRows,
+              { paddingBottom: Math.max(MORE_FOOT - insets.bottom, 0) },
+            ]}
+            testID="event.nav.moreSheet.rows"
+          >
+            <View accessibilityRole="tablist">
+              <RowList
+                items={[
+                  ...doorRows(t, inEvent, () => setMore(false)),
+                  ...inMore.map((area) => {
+                    const on = area === inEvent.area;
 
-                  return {
-                    key: area,
-                    inset: 40,
-                    selected: on,
-                    row: (
-                      <Row
-                        title={t(`eventNav.${area}`)}
-                        lead={<MoreGlyph name={AREA_GLYPH[area]} on={on} />}
-                        opens
-                        selected={on}
-                        onPress={() => {
-                          setMore(false);
-                          inEvent.onArea(area);
-                        }}
-                        accessibilityRole="tab"
-                        testID={`event.nav.more.${area}`}
-                      />
-                    ),
-                  };
-                }),
-              ]}
-            />
-          </View>
-          {outside != null && (
-            <OutsideYou
-              here={outside.id}
-              onLeave={() => setMore(false)}
-              idPrefix="event.nav.more"
-            />
-          )}
+                    return {
+                      key: area,
+                      inset: 40,
+                      selected: on,
+                      row: (
+                        <Row
+                          title={t(`eventNav.${area}`)}
+                          lead={<MoreGlyph name={AREA_GLYPH[area]} on={on} />}
+                          opens
+                          selected={on}
+                          onPress={() => {
+                            setMore(false);
+                            inEvent.onArea(area);
+                          }}
+                          accessibilityRole="tab"
+                          testID={`event.nav.more.${area}`}
+                        />
+                      ),
+                    };
+                  }),
+                ]}
+              />
+            </View>
+            {outside != null && (
+              <OutsideYou
+                here={outside.id}
+                onLeave={() => setMore(false)}
+                idPrefix="event.nav.more"
+              />
+            )}
+          </SheetScrollView>
         </View>
       </Sheet>
     </>
@@ -1807,7 +1825,9 @@ function OutsideYouSheet({
             <Glyph name="x" size={18} ink={tokens.colorInk} weight={2.4} />
           </Pressable>
         </View>
-        <OutsideYou here={here} onLeave={onClose} idPrefix="frame.side.you" />
+        <SheetScrollView style={styles.moreBody} contentContainerStyle={styles.moreRows}>
+          <OutsideYou here={here} onLeave={onClose} idPrefix="frame.side.you" />
+        </SheetScrollView>
       </View>
     </Sheet>
   );
@@ -2133,9 +2153,16 @@ const styles = StyleSheet.create({
     borderRadius: tokens.sizeHit / 2,
   },
   pillOn: { backgroundColor: tokens.colorCard, ...tokens.elevationNative.raised.ios },
-  moreSheet: { gap: tokens.spaceXl, paddingHorizontal: tokens.spaceXxl, paddingTop: 31 },
+  moreSheet: { flexShrink: 1, gap: tokens.spaceXl, paddingTop: 31 },
+  moreBody: { flexGrow: 0, flexShrink: 1 },
+  moreRows: { gap: tokens.spaceXl, paddingHorizontal: tokens.spaceXxl },
   moreTitle: { letterSpacing: 22 * -0.015, lineHeight: 22 * 1.2 },
-  moreHead: { minHeight: tokens.sizeHit, flexDirection: 'row', alignItems: 'center' },
+  moreHead: {
+    minHeight: tokens.sizeHit,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: tokens.spaceXxl,
+  },
   moreClose: {
     width: tokens.sizeHit,
     height: tokens.sizeHit,

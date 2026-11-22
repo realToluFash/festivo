@@ -57,6 +57,7 @@ export function Landscape({
   at = 'Settings',
   sidebar,
   band,
+  search = true,
 }: {
   column: ReactNode;
   children: ReactNode;
@@ -65,6 +66,8 @@ export function Landscape({
   sidebar?: ReactNode;
   /** The offline band, across the column and the pane beside it. */
   band?: ReactNode;
+  /** False drops the sidebar's Search row, as a member paused in the organisation in use has none (sc-82858). */
+  search?: boolean;
 }) {
   const shell = useShell();
   const side = useSideFrame();
@@ -90,6 +93,7 @@ export function Landscape({
           <TodayShellProvider
             value={{
               ...demoShell(shell.tell, { search: () => openSearch(shell.looking.role) }),
+              search,
               person: shell.looking,
             }}
           >
@@ -279,8 +283,8 @@ export function SettingsTabBar({ bottom }: { bottom: number }) {
   );
 }
 
-/** The product's upright row: the pill, the tabs and the bell. */
-export function PortraitTop({ at = 'Settings' }: { at?: Tab }) {
+/** The product's upright row: the pill, the tabs and the bell, with Search before it unless `search` is false (sc-82858). */
+export function PortraitTop({ at = 'Settings', search = true }: { at?: Tab; search?: boolean }) {
   const { t } = useTranslation();
   const shell = useShell();
   const tabs = tabsFor(shell.viewer);
@@ -293,7 +297,13 @@ export function PortraitTop({ at = 'Settings' }: { at?: Tab }) {
   return (
     <ProductPortraitTop
       renderPill={(room, givesWay) => <OrgPill room={room} givesWay={givesWay} />}
-      bell={<SearchAndBell tell={shell.tell} role={shell.looking.role} />}
+      bell={
+        search ? (
+          <SearchAndBell tell={shell.tell} role={shell.looking.role} />
+        ) : (
+          <Bell tell={shell.tell} />
+        )
+      }
       tabLabels={tabs.map(([tab, glyph]) => say(tab, glyph))}
       renderTabs={(labelSize) => (
         <WhiteCapsule tabs={tabs} at={at} onTab={shell.onTab} say={say} labelSize={labelSize} />

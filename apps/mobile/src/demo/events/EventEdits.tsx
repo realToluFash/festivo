@@ -16,6 +16,7 @@ import {
   View,
   type ViewInstance,
 } from 'react-native';
+import { useTranslation } from 'react-i18next';
 
 import { AlertLine } from '../../components/AlertLine.tsx';
 import { SearchField } from '../../components/EventsSearch.tsx';
@@ -45,6 +46,7 @@ import {
 import { PhotoFill } from '../../components/EventThumb.tsx';
 import { currencyMatches } from '../../components/currencyMatches.ts';
 import { Glyph } from '../../components/Glyph.tsx';
+import { GlyphMark } from '../../components/StatusMark.tsx';
 import { RowRule } from '../../components/SummaryRows.tsx';
 import { MomentBox, type Picking, pick } from '../../components/MomentPick.tsx';
 import { useReadOut } from '../../components/ReadOut.tsx';
@@ -762,10 +764,12 @@ function HostsEdit(edit: EditProps) {
   );
   const [tried, setTried] = useState(false);
   const [said, setSaid] = useState<string | null>(null);
+  const [first, setFirst] = useState(false);
   const names = hosts.map((host) => host.name);
   const problems = hostProblems(names);
   const kept = keepsLastHost(event, hosts.length);
-  const changed = names.join('\n') !== event.hosts.join('\n');
+  const changed =
+    names.length !== event.hosts.length || names.some((name, at) => name !== event.hosts[at]);
 
   useReadOut(said);
 
@@ -779,16 +783,50 @@ function HostsEdit(edit: EditProps) {
 
   return (
     <Shell part="hosts" changed={changed} onSave={save} edit={edit}>
-      <HostRows
-        hosts={hosts}
-        onHosts={setHosts}
-        errors={hostErrorWords(names, tried)}
-        kept={kept}
-        focusAt={start === 'hostsDuplicate' ? 2 : start === 'lastHost' ? 0 : null}
-        onSaid={setSaid}
-        testID="event.edit.hosts"
-      />
+      {hosts.length === 0 ? (
+        <NoHosts
+          onAdd={() => {
+            setFirst(true);
+            setHosts([{ key: 0, name: '' }]);
+          }}
+        />
+      ) : (
+        <HostRows
+          hosts={hosts}
+          onHosts={setHosts}
+          errors={hostErrorWords(names, tried)}
+          kept={kept}
+          focusAt={start === 'hostsDuplicate' ? 2 : start === 'lastHost' || first ? 0 : null}
+          onSaid={setSaid}
+          testID="event.edit.hosts"
+        />
+      )}
     </Shell>
+  );
+}
+
+/** sc-15497: a draft with no hosts says so in an inset line between the explainer and Add a host. */
+function NoHosts({ onAdd }: { onAdd: () => void }) {
+  const { t: translate } = useTranslation();
+
+  return (
+    <>
+      <Text size={15} weight="medium" style={[styles.secondary, styles.lines]}>
+        {translate('eventHosts.explainer')}
+      </Text>
+      <View style={[styles.inset, styles.noHosts]} testID="event.edit.hosts.none">
+        <GlyphMark mark={tokens.marks.notStarted} />
+        <Text size={tokens.typeBody.size} style={styles.grow}>
+          {translate('eventHosts.none')}
+        </Text>
+      </View>
+      <TextAction
+        label={translate('eventHosts.add')}
+        glyph="plus"
+        onPress={onAdd}
+        testID="event.edit.hosts.add"
+      />
+    </>
   );
 }
 
@@ -1044,6 +1082,8 @@ const styles = StyleSheet.create({
   },
   lines: { lineHeight: 15 * 1.45 },
   start: { alignItems: 'flex-start' },
+  noHosts: { flexDirection: 'row', alignItems: 'center', gap: tokens.spaceMd },
+  grow: { flexGrow: 1, flexShrink: 1 },
   inset: {
     paddingVertical: tokens.spaceMd,
     paddingHorizontal: tokens.spaceLg,

@@ -134,6 +134,8 @@ interface Meal {
   pressed: boolean;
   told: 'marked' | 'nothing' | 'saved' | 'failed' | null;
   refused: ReadonlySet<string>;
+  /** The rows of a refused course whose answer the send changed, which carry its alert. */
+  unsaved: ReadonlySet<string>;
   busy: boolean;
 }
 
@@ -144,6 +146,7 @@ const NO_MEAL: Meal = {
   pressed: false,
   told: null,
   refused: new Set(),
+  unsaved: new Set(),
   busy: false,
 };
 
@@ -371,6 +374,7 @@ function savedMeal(page: GuestPage): Meal {
   return {
     ...NO_MEAL,
     refused: new Set(),
+    unsaved: new Set(),
     plates: savedPlates(page.meals, eatersOf(page.meals, partyOf(page))),
   };
 }
@@ -631,7 +635,8 @@ export function Card({
   /** Each person's picks, sent once the answer and the kitchen note are, so the API checks them against the allergens as now recorded. */
   function sendPicks(at: GuestPage, plates: Plates, told: Meal['told']): void {
     const named = new Set(at.guest.companions.map((one) => one.id));
-    const picks = picksOf(plates, eatersOf(at.meals, partyOf(at)), askedCourses(at.meals), (key) =>
+    const people = eatersOf(at.meals, partyOf(at));
+    const picks = picksOf(plates, people, askedCourses(at.meals), (key) =>
       key === YOU ? at.meals.you : named.has(key) ? key : null,
     );
     if (picks.length === 0) {
@@ -648,20 +653,29 @@ export function Card({
       (error: unknown) => {
         if (error instanceof ApiError && error.is('meal_picks_closed')) {
           const refused = new Set(error.problem.courses ?? []);
-          const first = askedCourses(at.meals).find((one) => refused.has(one.id));
+          const before = savedPlates(at.meals, people);
+          const unsaved = new Set(
+            people.flatMap((eater) =>
+              askedCourses(at.meals)
+                .filter((course) => refused.has(course.id))
+                .map((course) => keyOf(eater.key, course.id))
+                .filter((key) => !samePlate(plates[key], before[key])),
+            ),
+          );
+          const first = [...unsaved][0];
           const shown = () => {
-            if (first != null) focus(`refused-${first.id}`);
+            if (first != null) focus(`refused-${first}`);
           };
           api.guestPage(token).then(
             (after) => {
               seen.current = standing(after);
               setPage(after);
               if (!after.answersOpen) setView(opening(after, token));
-              setMeal({ ...savedMeal(after), refused });
+              setMeal({ ...savedMeal(after), refused, unsaved });
               shown();
             },
             () => {
-              setMeal((was) => ({ ...was, busy: false, refused }));
+              setMeal((was) => ({ ...was, busy: false, refused, unsaved }));
               shown();
             },
           );
@@ -1047,6 +1061,7 @@ export function Card({
       hosts={hosts}
       pending={(key) => head === 'back' && !samePlate(meal.plates[key], saved[key])}
       refused={meal.refused}
+      unsaved={meal.unsaved}
       locked={head === 'back' && paused}
       onChange={changeMeal}
     />
