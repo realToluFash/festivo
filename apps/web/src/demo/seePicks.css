@@ -287,14 +287,10 @@
   gap: var(--spaceSm);
 }
 
-.pk-dialog {
-  width: 36rem;
-}
-
-/* Under 40rem the dialog is the shell's full-width sheet; a bare .pk-dialog would hold it at 36rem. */
-@media (width <= 40rem) {
-  .dialog.pk-dialog {
-    width: 100%;
+/* Under 40rem the dialog is the shell's full-width sheet, so the fixed width holds only above it. */
+@media (width > 40rem) {
+  .pk-dialog {
+    width: 36rem;
   }
 }
 
