@@ -5,11 +5,14 @@ declare(strict_types=1);
 namespace App\Integrations\Meta;
 
 use App\Domain\User\Interfaces\WhatsAppSenderInterface;
+use App\Domain\User\Verification\WhatsAppPaymentRefusal;
+use Psl\Json;
 use Psl\Str;
 use Psl\Type;
 use RuntimeException;
 use SensitiveParameter;
 use Symfony\Contracts\HttpClient\HttpClientInterface;
+use Throwable;
 
 /** Meta's WhatsApp Cloud API: an authentication template with its copy-code button. In development, the mock. */
 final readonly class WhatsAppCloudSender implements WhatsAppSenderInterface
@@ -24,6 +27,7 @@ final readonly class WhatsAppCloudSender implements WhatsAppSenderInterface
         #[SensitiveParameter]
         private string $accessToken,
         private string $template,
+        private WhatsAppPaymentRefusal $paymentRefusal,
     ) {
     }
 
@@ -52,11 +56,29 @@ final readonly class WhatsAppCloudSender implements WhatsAppSenderInterface
         );
 
         if ($response->getStatusCode() >= 300) {
+            $this->paymentRefusal->noticeAmong(null, self::errorsIn($response->getContent(false)));
+
             throw new RuntimeException('WhatsApp refused the message with ' . $response->getStatusCode() . '.');
         }
 
         $body = Type\shape(['messages' => Type\vec(Type\shape(['id' => Type\string()], true))], true)->coerce($response->toArray());
 
         return $body['messages'][0]['id'] ?? throw new RuntimeException('WhatsApp answered with no message id.');
+    }
+
+    /** @return list<array{code?: int, title?: string, message?: string, ...}> Meta's error object, or nothing when the body is not one */
+    private static function errorsIn(string $body): array
+    {
+        $refusal = Type\shape(['error' => Type\shape([
+            'code' => Type\optional(Type\int()),
+            'title' => Type\optional(Type\string()),
+            'message' => Type\optional(Type\string()),
+        ], true)], true);
+
+        try {
+            return [$refusal->coerce(Json\decode($body))['error']];
+        } catch (Throwable) {
+            return [];
+        }
     }
 }

@@ -85,6 +85,31 @@
         "messages": [{ "id": "wamid.development", "message_status": "accepted" }]
       }
 
+# Meta refusing every message for the account's payment (sc-45470): a code to a number starting
+# +23480397 answers 131042, so the API's critical log line can be seen, and the code goes by SMS.
+- request:
+    method: POST
+    path:
+      matcher: ShouldMatch
+      value: '/whatsapp/v21\.0/.*/messages'
+    body:
+      matcher: ShouldContainSubstring
+      value: '"to":"+23480397'
+  response:
+    status: 400
+    headers:
+      Content-Type: [application/json]
+    body: >
+      {
+        "error": {
+          "message": "(#131042) Business eligibility payment issue",
+          "type": "OAuthException",
+          "code": 131042,
+          "error_data": { "messaging_product": "whatsapp", "details": "Message failed to send because there were one or more errors related to your payment method." },
+          "fbtrace_id": "development"
+        }
+      }
+
 # Stands in for DNS over HTTPS (sc-6640): every name answers "no record", in the JSON form Cloudflare
 # uses. To publish one, add a mock for GET /dns-query whose query `name` is the record's name, answering
 # {"Status":0,"Answer":[{"name":"_soirely-verify.<domain>","type":16,"TTL":300,"data":"\"<value>\""}]}.
