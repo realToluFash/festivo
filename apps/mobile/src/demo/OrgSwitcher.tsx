@@ -438,7 +438,7 @@ export function useOrgOpener(ref: OpenerRef, primary = true): OrgOpening {
     name: place.name,
     waiting: waiting > 0 ? t('invitations.count', { count: waiting }) : null,
     expanded: openedBy === ref,
-    label: openerLabel(place, waiting, paused ? { switches: session.places.length > 1 } : null),
+    label: openerLabel(place, waiting, paused),
     onPress: () => show(ref),
   };
 }

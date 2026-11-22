@@ -32,23 +32,19 @@ describe('sc-83881: the paused page in the reader language, its pill, the bell o
     expect(pausedIn('de').suspension.since.written).toBe('Monday, Nov 2 at 10:00 WAT');
   });
 
-  it('labels the paused pill with access paused in place of a role, in all three variants', () => {
+  it('labels the paused pill with access paused in place of a role, still naming the switch it opens', () => {
     const session = sessionFor('populated');
     const place = currentPlace(session);
-    const switches = { switches: true };
 
     expect(place.name).toBe(pausedIn('en').name);
-    expect(openerLabel(place, 0, switches)).toBe(
+    expect(openerLabel(place, 0, true)).toBe(
       'Organisation: Ire Events, access paused. Switch organisation',
     );
-    expect(openerLabel(place, waitingOf(session), switches)).toBe(
+    expect(openerLabel(place, waitingOf(session), true)).toBe(
       'Organisation: Ire Events, access paused. Switch organisation. 2 invitations waiting',
     );
-    expect(openerLabel(place, 1, { switches: false })).toBe(
+    expect(openerLabel(place, 1, true)).toBe(
       'Organisation: Ire Events, access paused. Switch organisation. 1 invitation waiting',
-    );
-    expect(openerLabel(place, 0, { switches: false })).toBe(
-      'Organisation: Ire Events, access paused',
     );
   });
 
@@ -57,7 +53,7 @@ describe('sc-83881: the paused page in the reader language, its pill, the bell o
       "<PausedHere.Provider value={held === 'paused'}>",
     );
     expect(bodyOf('../OrgSwitcher.tsx', 'useOrgOpener')).toContain(
-      'openerLabel(place, waiting, paused ? { switches: session.places.length > 1 } : null)',
+      'openerLabel(place, waiting, paused)',
     );
   });
 
