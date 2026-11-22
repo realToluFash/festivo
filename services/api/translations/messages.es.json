@@ -272,6 +272,7 @@
     "guest.changed_since": "Otra persona ha cambiado los datos de este invitado desde que los abrió. Su cambio no se ha guardado.",
     "guest.replies_closed": "El plazo para responder ha terminado. Si algo ha cambiado, contacte con quien organiza el evento.",
     "menu.picks_closed": "Se ha cerrado la elección de un pase, así que su cambio en ese pase no se ha guardado.",
+    "menu.pick_ruled_out": "Their record rules this out. Confirm to pick it anyway.",
     "guest.replies_open": "Las respuestas siguen abiertas, así que esta persona ya puede cambiar la suya.",
     "guest.reply_is_theirs": "Esta persona ya ha respondido por su cuenta. Confirme que quiere sustituir esa respuesta.",
     "guest.event_paused": "No se pueden enviar respuestas mientras el evento está en pausa. Lo que ya envió se conserva.",
