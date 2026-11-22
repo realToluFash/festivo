@@ -8,6 +8,7 @@ import { Field, focusChecked, focusRefused, keysStayDown, TextField } from './Fi
 import { useReadOut } from './ReadOut.tsx';
 import type { ScreenReaderTarget } from './screenReaderFocus.ts';
 import { FocusedScreen, Line, Row, RowList } from './Summary.tsx';
+import { useLeaveAsk } from './useLeaveAsk.ts';
 
 export const ZONES_SHOWN = 8;
 
@@ -45,6 +46,7 @@ export function ZoneScreen<Zone extends ZoneRow>({
   const noneMatch = wanted !== '' && !showingPicked && matches.length === 0;
   const changed = wanted !== '';
   const nothing = t('timeZone.noneMatch', { typed: wanted });
+  const leaves = useLeaveAsk(open && changed && !saving, () => setDiscarding(true));
 
   useReadOut(noneMatch && error == null ? nothing : null, { afterTyping: typed });
 
@@ -90,13 +92,22 @@ export function ZoneScreen<Zone extends ZoneRow>({
         testID: 'account.zone.save',
       }}
       waits={saving}
-      onCancel={() => (changed ? setDiscarding(true) : onClose())}
+      onCancel={() => leaves.leave(onClose)}
       cancelTestID="account.zone.cancel"
       opener={opener}
       ask={discardAsk(
         discarding,
         now == null ? t('account.zoneStaysUnset') : t('account.zoneStays', { zone: now }),
-        { keep: () => setDiscarding(false), discard: onClose },
+        {
+          keep: () => {
+            setDiscarding(false);
+            leaves.keep();
+          },
+          discard: () => {
+            setDiscarding(false);
+            leaves.discard();
+          },
+        },
         'account.zone',
         t,
       )}

@@ -13,6 +13,7 @@ import { PhoneEntry } from './PhoneEntry.tsx';
 import { SETTLED_MS } from './Screen.tsx';
 import type { ScreenReaderTarget } from './screenReaderFocus.ts';
 import { FocusedScreen } from './Summary.tsx';
+import { useLeaveAsk } from './useLeaveAsk.ts';
 
 /** What is added: the address, or the country and the number as typed. */
 export interface Adding {
@@ -48,6 +49,7 @@ export function AddScreen({
   const [errorOn, setErrorOn] = useState<'country' | 'number'>('number');
   const [discarding, setDiscarding] = useState(false);
   const [sending, setSending] = useState(false);
+  const leaves = useLeaveAsk(open && changed && !sending, () => setDiscarding(true));
 
   useEffect(() => {
     if (!open || email) return;
@@ -103,13 +105,22 @@ export function AddScreen({
         testID: `account.${kind}.add.submit`,
       }}
       waits={sending}
-      onCancel={() => (changed ? setDiscarding(true) : onClose())}
+      onCancel={() => leaves.leave(onClose)}
       cancelTestID={`account.${kind}.add.cancel`}
       opener={opener}
       ask={discardAsk(
         discarding,
         t('account.nothingAdded'),
-        { keep: () => setDiscarding(false), discard: onClose },
+        {
+          keep: () => {
+            setDiscarding(false);
+            leaves.keep();
+          },
+          discard: () => {
+            setDiscarding(false);
+            leaves.discard();
+          },
+        },
         `account.${kind}.add`,
         t,
       )}

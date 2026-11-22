@@ -22,6 +22,7 @@ import type { ScreenReaderTarget } from './screenReaderFocus.ts';
 import { Avatar } from './SettingsParts.tsx';
 import { type AskProps, FocusedScreen, Line, Section, TextAction } from './Summary.tsx';
 import { Text } from './Text.tsx';
+import { useLeaveAsk } from './useLeaveAsk.ts';
 
 type Asking = 'none' | 'turningDown' | 'discarding';
 
@@ -60,6 +61,9 @@ export function RequestScreen({
   const face = faceOf(member);
   const role = offered.find((one) => one.id === picked);
   const asked = member.since == null ? '' : formatDay(member.since, dateLocale());
+  const leaves = useLeaveAsk(open && picked !== firstRole && busy == null, () =>
+    setAsking('discarding'),
+  );
 
   async function approve(): Promise<void> {
     if (role == null) return;
@@ -140,8 +144,14 @@ export function RequestScreen({
               testID: 'members.approve.discard',
               removes: true,
             },
-            onKeep: () => setAsking('none'),
-            onConfirm: onClose,
+            onKeep: () => {
+              setAsking('none');
+              leaves.keep();
+            },
+            onConfirm: () => {
+              setAsking('none');
+              leaves.discard();
+            },
           }
         : null;
 
@@ -157,7 +167,7 @@ export function RequestScreen({
         testID: 'members.approve.confirm',
       }}
       waits={busy != null}
-      onCancel={() => (picked === firstRole ? onClose() : setAsking('discarding'))}
+      onCancel={() => leaves.leave(onClose)}
       cancelLabel={t('membersScreen.awaiting.cancel')}
       cancelTestID="members.approve.cancel"
       opener={opener}

@@ -36,6 +36,7 @@ import { useShellLayout } from './settingsShell.ts';
 import { Pill } from './SettingsParts.tsx';
 import { ASK_WIDTH, type AskProps, FocusedScreen, Row, RowList, TextAction } from './Summary.tsx';
 import { Text } from './Text.tsx';
+import { useLeaveAsk } from './useLeaveAsk.ts';
 
 export const EDIT_PARTS: readonly EditPart[] = [
   'dates',
@@ -118,6 +119,7 @@ export function EditShell({
   const { t } = useTranslation();
   const [question, setQuestion] = useState<'discard' | 'latest' | null>(asking);
   const gap = useEditGap();
+  const leaves = useLeaveAsk(open && changed, () => setQuestion('discard'));
   const discard: AskProps | null =
     question === 'discard'
       ? {
@@ -125,8 +127,14 @@ export function EditShell({
           line: t('eventEdit.discardLine'),
           keep: { label: t('eventEdit.keepEditing'), testID: `${testID}.keep` },
           confirm: { label: t('eventEdit.discard'), testID: `${testID}.discard`, removes: true },
-          onKeep: () => setQuestion(null),
-          onConfirm: onClose,
+          onKeep: () => {
+            setQuestion(null);
+            leaves.keep();
+          },
+          onConfirm: () => {
+            setQuestion(null);
+            leaves.discard();
+          },
         }
       : null;
   const latest: AskProps | null =
@@ -164,7 +172,7 @@ export function EditShell({
         testID: `${testID}.save`,
       }}
       waits={busy}
-      onCancel={() => (changed ? setQuestion('discard') : onClose())}
+      onCancel={() => leaves.leave(onClose)}
       cancelTestID={`${testID}.cancel`}
       opener={opener}
       ask={asked && { ...asked, width: ASK_WIDTH }}
