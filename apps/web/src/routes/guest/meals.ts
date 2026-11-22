@@ -148,7 +148,7 @@ function plateParts(dish: MealDish, plate: Plate): CardPart[] {
   const head: CardPart =
     way != null
       ? { way: way.name, name: dish.name, allergens: way.allergens }
-      : { way: null, name: dish.name, allergens: ways ? null : dishContains(dish) };
+      : { way: null, name: dish.name, allergens: dishContains(dish) };
 
   return [
     head,
@@ -160,8 +160,13 @@ function plateParts(dish: MealDish, plate: Plate): CardPart[] {
   ];
 }
 
-export const plateAllergens = (dish: MealDish, plate: Plate): string[] | null =>
-  partsAllergens(plateParts(dish, plate));
+/** What the plate holds, for its mark: not stated while a dish of two ways has no way picked, whatever the dish itself states. */
+export function plateAllergens(dish: MealDish, plate: Plate): string[] | null {
+  if (dish.variants.length >= 2 && !dish.variants.some((one) => one.id === plate.variant))
+    return null;
+
+  return partsAllergens(plateParts(dish, plate));
+}
 
 /** The dish card once its dish is picked: the way (or the dish) and each picked option, each with its own allergens. */
 export function cardParts(dish: MealDish, plate: Plate | null): CardPart[] | null {
