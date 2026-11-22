@@ -96,6 +96,7 @@ final class OrganisationExportTest extends ApiTestCase
         'menu_dish_variants' => ['id', 'dish_id', 'position', 'name', 'for_children', 'allergens', 'diets', 'cost_minor', 'cost_currency'],
         'menu_dish_choices' => ['id', 'dish_id', 'position', 'question', 'pick', 'required'],
         'menu_choice_options' => ['id', 'choice_id', 'position', 'name', 'allergens'],
+        'meal_answers' => ['id', 'guest_id', 'course_id', 'kind', 'dish_id', 'variant_id', 'options', 'created_at', 'updated_at'],
         'dish_library' => ['id', 'name', 'description', 'allergens', 'diets', 'last_price_minor', 'last_price_currency', 'archived_at', 'created_at'],
         'dish_library_variants' => ['id', 'dish_id', 'position', 'name', 'for_children', 'allergens', 'diets', 'last_price_minor', 'last_price_currency'],
         'vendors' => ['id', 'name', 'category', 'contact_name', 'email_address', 'phone_country_code', 'phone_number', 'website', 'address', 'note', 'archived_at', 'created_at'],

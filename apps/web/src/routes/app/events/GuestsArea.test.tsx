@@ -1977,6 +1977,83 @@ describe('A guest’s details, and correcting them (sc-3773)', () => {
     expect(screen.getByText('0 of 0 named')).toBeDefined();
   });
 
+  it('asks before removing a companion with a meal chosen, and names a seat beside it (sc-3907)', async () => {
+    const withMeal = (seat: unknown) => ({
+      'GET /api/events/ev_1/guests/g_1': () =>
+        tagged(
+          {
+            ...DETAILS,
+            companions: [
+              {
+                id: 'c_1',
+                fullName: 'Obi Eze',
+                state: 'coming',
+                coming: true,
+                namedByGuest: false,
+                seat,
+                meal: true,
+              },
+            ],
+          },
+          '"1"',
+        ),
+    });
+    await editNgozi(withMeal(null));
+
+    fireEvent.click(screen.getByRole('button', { name: 'Remove Obi Eze' }));
+    const ask = await screen.findByRole('alertdialog', { name: 'Remove Obi Eze?' });
+
+    expect(
+      within(ask).getByText('Obi Eze has a meal chosen. Removing this companion drops the meal.'),
+    ).toBeDefined();
+    expect(
+      within(ask)
+        .getAllByRole('button')
+        .map((one) => one.textContent),
+    ).toEqual(['Cancel', 'Remove']);
+    fireEvent.click(within(ask).getByRole('button', { name: 'Cancel' }));
+    expect(screen.queryByText('0 of 0 named')).toBeNull();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Remove Obi Eze' }));
+    fireEvent.click(
+      within(await screen.findByRole('alertdialog', { name: 'Remove Obi Eze?' })).getByRole(
+        'button',
+        { name: 'Remove' },
+      ),
+    );
+    expect(await screen.findByText('Obi Eze removed. Save to keep the change.')).toBeDefined();
+  });
+
+  it('words a seat and a meal together in the ask (sc-3907)', async () => {
+    await editNgozi({
+      'GET /api/events/ev_1/guests/g_1': () =>
+        tagged(
+          {
+            ...DETAILS,
+            companions: [
+              {
+                id: 'c_1',
+                fullName: 'Obi Eze',
+                state: 'coming',
+                coming: true,
+                namedByGuest: false,
+                seat: { kind: 'table', name: 'Table 4' },
+                meal: true,
+              },
+            ],
+          },
+          '"1"',
+        ),
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Remove Obi Eze' }));
+    expect(
+      await screen.findByText(
+        'Obi Eze has a seat at Table 4 and a meal chosen. Removing this companion frees the seat and drops the meal.',
+      ),
+    ).toBeDefined();
+  });
+
   it('names a row by its label when a seated companion is in one (sc-4013)', async () => {
     await editNgozi({
       'GET /api/events/ev_1/guests/g_1': () =>

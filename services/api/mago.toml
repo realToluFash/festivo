@@ -362,8 +362,9 @@ permit = [
 # account's parser, a name folded by the shared rule; each add is audited and published.
 # A guest's own page shows the event's cover as the event's page serialises it (sc-1526),
 # and the items the hosts show to guests as the running order works them out (sc-3899),
-# and their table once the hosts share the tables (sc-4022). A reply, a guest's own needs
-# and a flagged link tell the event's members through messaging's Guest replies (sc-4331).
+# and their table once the hosts share the tables (sc-4022), and the meal picks for
+# each person coming (sc-3907). A reply, a guest's own needs and a flagged link tell the
+# event's members through messaging's Guest replies (sc-4331).
 [[guard.perimeter.rules]]
 namespace = "App\\Domain\\Guest\\"
 permit = [
@@ -372,6 +373,7 @@ permit = [
     "@layer:shared",
     "@layer:domain_guest",
     "@layer:domain_event",
+    "@layer:domain_menu",
     "@layer:domain_messaging",
     "@layer:domain_run_of_show",
     "@layer:domain_seating",
