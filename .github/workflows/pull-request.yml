@@ -332,10 +332,38 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run typecheck --workspace @soirely/web
-      - run: npm run test --workspace @soirely/web
       # The build is a check in its own right: a change can lint and test and
       # still not compile, and finding that at deploy is finding it late.
-      - run: npm run build --workspace @soirely/web
+      # vite alone, because the package's build script repeats the typecheck
+      # the step above has just run.
+      - name: Build
+        working-directory: apps/web
+        run: npx vite build
+
+  # The suite is about forty minutes of CPU, so one runner took fifteen
+  # minutes of wall time; split four ways, each shard runs a quarter of the files.
+  web-tests:
+    name: Web tests ${{ matrix.shard }}/4
+    needs: changes
+    if: >-
+      needs.changes.outputs.web == 'true' ||
+      needs.changes.outputs.packages == 'true' ||
+      needs.changes.outputs.everything == 'true'
+    runs-on: ubuntu-latest
+    strategy:
+      # Every shard reports its own failures rather than being cancelled by
+      # the first one to fail.
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run test --workspace @soirely/web -- --shard=${{ matrix.shard }}/4
 
   # ── The mobile client ───────────────────────────────────────────────────────
   mobile:
@@ -423,7 +451,7 @@ jobs:
   required:
     name: All checks
     if: always()
-    needs: [changes, lint, comments, api, web, mobile, packages, locales]
+    needs: [changes, lint, comments, api, web, web-tests, mobile, packages, locales]
     runs-on: ubuntu-latest
     steps:
       - name: Fail if any check that ran did not pass
