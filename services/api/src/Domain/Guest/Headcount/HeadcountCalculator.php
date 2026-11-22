@@ -63,10 +63,14 @@ final readonly class HeadcountCalculator
      */
     public function coming(Event $event): array
     {
-        return Vec\filter(
-            $this->guestRepository->findOnList($event),
-            static fn (Guest $person): bool => !($person->getHost()?->isRemoved() ?? false) && GuestStanding::Accepted === self::standing($person),
-        );
+        return Vec\filter($this->guestRepository->findOnList($event), self::isComing(...));
+    }
+
+    public static function isComing(Guest $person): bool
+    {
+        return !$person->isRemoved()
+            && !($person->getHost()?->isRemoved() ?? false)
+            && GuestStanding::Accepted === self::standing($person);
     }
 
     /**
