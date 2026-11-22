@@ -216,11 +216,12 @@ def limit(name, percent, resets_at, severity=None):
             "resets_at": when(resets_at) if resets_at else None}
 
 
-def refresh_usage(folder, roles, run=subprocess.run, workdir=None):
+def refresh_usage(folder, roles, run=subprocess.run, workdir=None, clock=time.time):
     """Has the folder's Claude read its plan usage again, as `/usage` does: answered by
     Claude itself, with no model call, no hooks or settings loaded and no session kept,
-    in a folder of sq's own. None once read, else why it was not."""
+    in a folder of sq's own. None once a fresh reading is kept, else why it was not."""
     workdir = workdir or pathlib.Path.home() / ".cache" / "soirely-usage"
+    started = clock()
     try:
         workdir.mkdir(mode=0o700, parents=True, exist_ok=True)
         answer = run(USAGE_ARGV, capture_output=True, text=True, timeout=USAGE_TIMEOUT,
@@ -233,6 +234,9 @@ def refresh_usage(folder, roles, run=subprocess.run, workdir=None):
                 or f"claude /usage exited {answer.returncode}")
     if said.get("is_error") or said.get("local_command") != "usage":
         return first_line(said.get("result")) or "claude did not read its usage"
+    kept = cached_usage(folder)
+    if not kept or not kept["read_at"] or kept["read_at"] < int(started):
+        return "Claude answered /usage but kept no reading for this account (a token or no login)"
     return None
 
 
@@ -255,7 +259,7 @@ class Usage:
             if now - self.tried.get(folder, float("-inf")) < USAGE_SECONDS:
                 continue
             self.tried[folder] = now
-            failed = refresh_usage(folder, roles, self.run, self.workdir)
+            failed = refresh_usage(folder, roles, self.run, self.workdir, self.clock)
             with _lock:
                 _failed[folder] = failed
 

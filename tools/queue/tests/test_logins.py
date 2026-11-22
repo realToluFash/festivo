@@ -237,8 +237,14 @@ class Accounts(unittest.TestCase):
     def test_usage_is_read_by_claude_itself_with_no_settings_session_or_model_call(self):
         seen = []
         work = self.home / "work"
-        failed = logins.refresh_usage(self.home / "a", ["qa"], run=lambda argv, **k: seen.append(
-            (argv, k)) or USED, workdir=work)
+
+        def run(argv, **kwargs):
+            seen.append((argv, kwargs))
+            account_file(self.home / "a", WEEK)
+            return USED
+
+        failed = logins.refresh_usage(self.home / "a", ["qa"], run=run, workdir=work,
+                                      clock=lambda: NOW)
         self.assertIsNone(failed)
         argv, kwargs = seen[0]
         self.assertEqual(argv, ["claude", "-p", "/usage", "--output-format", "json",
@@ -264,6 +270,15 @@ class Accounts(unittest.TestCase):
                           (missing, "claude /usage failed (claude)")):
             self.assertEqual(logins.refresh_usage(self.home / "a", [], run=run,
                                                   workdir=self.home / "w"), said)
+
+    def test_a_usage_answered_with_no_fresh_reading_kept_says_why(self):
+        why = "Claude answered /usage but kept no reading for this account (a token or no login)"
+        account_file(self.home / "old", WEEK, fetchedAtMs=(NOW - 60) * 1000)
+        account_file(self.home / "none")
+        for name in ("old", "none", "missing"):
+            self.assertEqual(logins.refresh_usage(self.home / name, [], run=lambda *a, **k: USED,
+                                                  workdir=self.home / "w", clock=lambda: NOW),
+                             why)
 
     def test_the_usage_is_read_again_only_once_it_is_five_minutes_old(self):
         account_file(self.home / ".claude-qa", WEEK)
