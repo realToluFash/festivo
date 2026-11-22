@@ -89,6 +89,7 @@ export function EventScreen({
   eventId,
   area: asked,
   filter = 'all',
+  changedSince,
   copiedFrom,
   opensDuplicate = false,
   opensEdit,
@@ -102,6 +103,8 @@ export function EventScreen({
   area: EventPlace;
   /** The choice Guests opens on, from a figure that counts it (sc-3786). */
   filter?: Choice;
+  /** Changed since you looked, from the look it counts from, when the bell opened it (sc-4331). */
+  changedSince?: string | undefined;
   /** The event this one was duplicated from, when Duplicate opened it (sc-22145). */
   copiedFrom?: string | undefined;
   /** Opened by an Events card's Duplicate, so Duplicate is over the page as it opens. */
@@ -500,9 +503,10 @@ export function EventScreen({
       <EdgeSwipeBack active={area !== 'overview' && guestBack == null} onBack={back} />
       {guests ? (
         <EventGuests
-          key={`${event.id}.${filter}`}
+          key={`${event.id}.${filter}.${changedSince ?? ''}`}
           event={event}
           filter={filter}
+          changedSince={changedSince}
           opens={opensGuest}
           leave={fromSearch ? leave : undefined}
           phase={phase}

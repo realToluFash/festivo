@@ -38,6 +38,7 @@ import { SAMPLE } from '../../src/demo/samples.ts';
 import { SEARCH_BOARDS } from '../../src/demo/search/searchRules.ts';
 import { DOOR_CODE_BOARDS } from '../../src/demo/doorCode/DoorCodeBoards.ts';
 import { OUTSIDE_BOARDS } from '../../src/demo/outsideEvents/OutsideModel.ts';
+import { LINK_BOARDS } from '../../src/demo/events/EventLink.ts';
 import { GUESTS_BOARDS } from '../../src/demo/guests/GuestsBoards.ts';
 import { PASS_BOARDS } from '../../src/demo/pass/PassBoards.ts';
 import { NEXT_BOARDS, QUEUE_BOARDS } from '../../src/demo/queue/QueueBoards.ts';
@@ -2322,6 +2323,10 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
   {
     page: 'Door code',
     boards: DOOR_CODE_BOARDS.map(({ title, what, href }) => ({ title, what, href: href as Href })),
+  },
+  {
+    page: 'An event’s link from another organisation · sc-80863',
+    boards: LINK_BOARDS.map(({ title, what, href }) => ({ title, what, href: href as Href })),
   },
   {
     page: 'Events from outside · sc-68438',

@@ -2673,7 +2673,19 @@
     "reopenNotSaved": "Non enregistré. Vérifiez votre connexion et réessayez.",
     "askedBy": "{{reply}} · réponse attendue d’ici le {{date}}",
     "askedByOn": "réponse attendue d’ici le {{date}}",
-    "companionStays": "Arrivée enregistrée pour {{name}}, qui reste donc sur la liste."
+    "companionStays": "Arrivée enregistrée pour {{name}}, qui reste donc sur la liste.",
+    "changed": {
+      "filter": "Changed since you looked",
+      "nothing": "Nothing has changed since you last looked.",
+      "showAll": "Show all guests",
+      "line": "{{answer}} · {{when}}",
+      "repliedAt": "Replied at {{time}}",
+      "repliedOn": "Replied {{date}}",
+      "changedAt": "Changed at {{time}}",
+      "changedOn": "Changed {{date}}",
+      "needs": "Updated dietary needs",
+      "flagged": "Link may have reached the wrong person"
+    }
   },
   "guestNumbers": {
     "title": "Invités",
