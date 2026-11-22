@@ -600,3 +600,29 @@
 .mn-offer-button .mn-tag {
   margin-left: var(--spaceXxs);
 }
+
+/* sc-32279: at 320 px an item's field takes the row and its move and remove buttons sit under it, so a name is never squeezed. */
+@media (width <= 40rem) {
+  .mn-item-row {
+    flex-wrap: wrap;
+  }
+
+  .mn-item-main {
+    flex-basis: calc(100% - 20px - var(--spaceSm));
+  }
+
+  .mn-item-acts {
+    margin-inline-start: calc(20px + var(--spaceSm));
+  }
+
+  .mn-choice-item {
+    flex-wrap: wrap;
+    padding-block: var(--spaceXs);
+  }
+
+  .mn-choice-item-name {
+    flex: 1 0 auto;
+    min-width: auto;
+    overflow-wrap: normal;
+  }
+}
