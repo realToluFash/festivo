@@ -433,6 +433,11 @@ def check(config, known=None, logged_in=account):
     limit = config.get("sliceMemoryMax")
     if limit is not None and not SIZE.match(str(limit)):
         errors.append(f"sliceMemoryMax is {limit!r} in {path()}: a size such as 28G, or null")
+    profiles = config.get("chromeProfiles")
+    if profiles is not None and not (isinstance(profiles, dict) and all(
+            isinstance(key, str) and isinstance(value, str) for key, value in profiles.items())):
+        errors.append(f"chromeProfiles is {profiles!r} in {path()}: an account's email to "
+                      "its Chrome profile folder, such as {\"qa@example.com\": \"Profile 3\"}")
     for role in listed:
         if role in unknown:
             continue
