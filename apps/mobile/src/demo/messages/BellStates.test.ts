@@ -30,6 +30,11 @@ describe('the bell’s states (sc-83081)', () => {
     expect(bellStartOf('bellRefreshing').offline).toBe('refreshing');
   });
 
+  it('marks Muted only the items delivered after the mute, as main does at delivery', () => {
+    expect(bellStartOf('bellMuted')).toMatchObject({ muted: true, marked: ['replies', 'day'] });
+    expect(bellStartOf('bellMute')).toMatchObject({ muted: false, marked: [] });
+  });
+
   it('knows its own keys and no others', () => {
     expect(BELL_STATES.every(isBellState)).toBe(true);
     expect(isBellState('bell')).toBe(true);

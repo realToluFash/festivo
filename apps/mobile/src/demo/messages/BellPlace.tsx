@@ -218,7 +218,7 @@ export function BellPlace({
         lines: [],
         where: item.line,
         unread: item.unread,
-        muted: muted && item.event === EVENT,
+        muted: start.marked.includes(item.key),
         more:
           item.event == null
             ? null

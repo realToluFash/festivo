@@ -26,7 +26,7 @@ export const BELL_BOARDS: Record<(typeof BELL_STATES)[number], readonly [string,
   bellMore: ['the bell · show more', 'Two older items under Show more'],
   bellMoreFailed: ['the bell · more did not load', 'Show more, and Try again in a moment'],
   bellMute: ['the bell · an item’s more', 'Mute this event, its switch and its word'],
-  bellMuted: ['the bell · a muted event', 'Each of the wedding’s items marked Muted'],
+  bellMuted: ['the bell · a muted event', 'Today’s two items marked Muted, the older ones not'],
   bellGone: ['the bell · an event that has gone', 'This event is no longer available.'],
   bellOffline: ['the bell · offline', 'Offline · as of 09:40, with Try again'],
   bellRefreshing: ['the bell · refreshing', 'Refreshing… beside the title, the band kept'],
@@ -40,7 +40,10 @@ export interface BellStart {
   more: More;
   asking: boolean;
   menu: string | null;
+  /** Mute this event's switch as it opens; flipping it marks no item already shown. */
   muted: boolean;
+  /** The items delivered after the event was muted, each marked Muted when it arrived (sc-3980). */
+  marked: readonly string[];
   /** The item whose event has gone is listed, its line showing as after a tap. */
   gone: boolean;
   offline: 'none' | 'band' | 'refreshing';
@@ -53,6 +56,7 @@ const REST: BellStart = {
   asking: false,
   menu: null,
   muted: false,
+  marked: [],
   gone: false,
   offline: 'none',
 };
@@ -74,7 +78,7 @@ export function bellStartOf(state: BellState): BellStart {
     case 'bellMute':
       return { ...REST, menu: 'missed' };
     case 'bellMuted':
-      return { ...REST, muted: true };
+      return { ...REST, muted: true, marked: ['replies', 'day'] };
     case 'bellGone':
       return { ...REST, gone: true };
     case 'bellOffline':
