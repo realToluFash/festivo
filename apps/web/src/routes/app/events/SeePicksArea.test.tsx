@@ -214,9 +214,7 @@ describe('See picks (sc-3909)', () => {
             people: null,
             parties: null,
             canChoose: false,
-            needsHost: [
-              { person: null, course: 'c_main', reason: 'nothing', pick: null, allergens: [] },
-            ],
+            needsHost: null,
             courses: [{ ...picksOf().picks.courses[0], needsHost: 1, notChosen: 1 }],
           }),
         ),
@@ -285,6 +283,80 @@ describe('See picks (sc-3909)', () => {
     expect(within(dialog).getByText(/Nothing was saved/)).toBeDefined();
     expect(within(dialog).queryByRole('button', { name: 'Save' })).toBeNull();
     expect(within(dialog).getByRole('button', { name: 'Close' })).toBeDefined();
+  });
+});
+
+describe('See picks narrowed to one course (sc-3909)', () => {
+  const NARROWED = '/app/events/ev_1/menu/picks?course=c_main';
+  const twoCourses = {
+    menu: {
+      courses: [
+        { ...MENU.menu.courses[0], id: 'c_starter', name: 'Starter' },
+        MENU.menu.courses[0],
+      ],
+    },
+  };
+  const bothWaiting = picksOf({
+    waiting: [
+      {
+        id: 'g_bisi',
+        replier: 'Bisi Adewale',
+        people: [{ id: 'g_ada', name: 'Ada Obi', courses: ['c_starter', 'c_main'] }],
+      },
+    ],
+  });
+
+  it('moves the focus to the narrowed heading', async () => {
+    onPicks({ [`GET ${PICKS}`]: () => json(picksOf()) }, NARROWED);
+
+    const heading = await screen.findByRole('heading', { name: 'Who hasn’t picked · Main' });
+    await waitFor(() => expect(document.activeElement).toBe(heading));
+  });
+
+  it('says everyone has picked that course when nobody is left on it', async () => {
+    onPicks({ [`GET ${PICKS}`]: () => json(picksOf({ waiting: [] })) }, NARROWED);
+
+    expect(
+      await screen.findByText('Everyone coming has picked Main, or is with the host above.'),
+    ).toBeDefined();
+    expect(screen.queryByText(/picked every course/)).toBeNull();
+  });
+
+  it('opens Choose for them on the narrowed course, then goes on to the others', async () => {
+    onPicks(
+      {
+        [`GET ${PICKS}`]: () => json(bothWaiting),
+        ['GET /api/events/ev_1/menu']: () => json(twoCourses),
+      },
+      NARROWED,
+    );
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Choose for Ada Obi' }));
+    const dialog = screen.getByRole('dialog', { name: 'Choosing for Ada Obi' });
+    expect(within(dialog).getByRole('button', { name: 'Save and go on' })).toBeDefined();
+    expect(within(dialog).getByText('Main', { selector: 'legend' })).toBeDefined();
+  });
+
+  it('names the button that was pressed when a save fails', async () => {
+    onPicks(
+      {
+        [`GET ${PICKS}`]: () => json(bothWaiting),
+        ['GET /api/events/ev_1/menu']: () => json(twoCourses),
+        ['PUT /api/events/ev_1/menu/picks/people/g_ada/courses/c_main']: () =>
+          problem('server_error', 500),
+      },
+      NARROWED,
+    );
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Choose for Ada Obi' }));
+    const dialog = screen.getByRole('dialog', { name: 'Choosing for Ada Obi' });
+    fireEvent.click(within(dialog).getByRole('radio', { name: 'Egusi' }));
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Save and go on' }));
+
+    expect((await within(dialog).findByRole('alert')).textContent).toContain(
+      'Nothing was saved. Check your connection, then press Save and go on again.',
+    );
+    expect(within(dialog).getByRole('radio', { name: 'Egusi' })).toHaveProperty('checked', true);
   });
 });
 

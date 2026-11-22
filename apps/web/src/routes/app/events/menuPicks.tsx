@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router';
 
 import { api } from '../../../api.ts';
-import { shareOf } from './seePicks.ts';
+import { hostCount, shareOf } from './seePicks.ts';
 import './seePicks.css';
 
 const POLL_MS = 8000;
@@ -139,7 +139,7 @@ export function PicksSummary({ closeLine }: { closeLine: string | null }) {
         })}
       </p>
       <ul className="pk-lines">
-        <li>{t('seePicks.summaryHost', { count: picks.needsHost.length })}</li>
+        <li>{t('seePicks.summaryHost', { count: hostCount(picks) })}</li>
         {waiting != null && <li>{t('seePicks.summaryWaiting', { count: waiting })}</li>}
       </ul>
       {closeLine != null && <p className="mn-quiet">{closeLine}</p>}

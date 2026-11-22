@@ -75,4 +75,7 @@ export function sumOf(course: PicksCourse): number {
   );
 }
 
+export const hostCount = (picks: EventPicks): number =>
+  picks.courses.reduce((sum, course) => sum + course.needsHost, 0);
+
 export const clockOf = (at: string): string => at.slice(11, 16);

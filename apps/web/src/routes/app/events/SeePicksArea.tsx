@@ -26,6 +26,7 @@ import {
   clockOf,
   dishRuledOut,
   firstName,
+  hostCount,
   menuCourseOf,
   pickName,
   plateOf,
@@ -232,7 +233,10 @@ function Picks({
   const [askedFor] = useState(waitingFor);
 
   useEffect(() => {
-    if (askedFor != null) document.getElementById('pk-waiting-title')?.scrollIntoView();
+    if (askedFor == null) return;
+    const heading = document.getElementById('pk-waiting-title');
+    heading?.scrollIntoView();
+    heading?.focus();
   }, [askedFor]);
 
   const open = (next: Opened) => {
@@ -327,14 +331,14 @@ function Picks({
           </>
         )}
       </div>
-      {picks.needsHost.length > 0 && (
+      {hostCount(picks) > 0 && (
         <section className="desk-card pk-host" aria-labelledby="pk-host-title">
           <h2 id="pk-host-title" className="pk-card-title">
             <Triangle />
             {t('seePicks.needsHost')}
           </h2>
           <p className="mn-quiet">{t('seePicks.needsHostBody')}</p>
-          {names ? (
+          {picks.needsHost != null ? (
             <ul className="pk-people">
               {picks.needsHost.map((one) => {
                 const person = one.person ?? { id: '', name: '' };
@@ -400,7 +404,13 @@ function Picks({
               ? t('seePicks.whoHasnt')
               : t('seePicks.whoHasntOn', { course: courseName(askedFor) })}
           </h2>
-          {waiting.length === 0 && <p className="mn-quiet">{t('seePicks.whoHasntNone')}</p>}
+          {waiting.length === 0 && (
+            <p className="mn-quiet">
+              {askedFor == null
+                ? t('seePicks.whoHasntNone')
+                : t('seePicks.whoHasntNoneOn', { course: courseName(askedFor) })}
+            </p>
+          )}
           {waiting.map((party) => (
             <div key={party.id} className="pk-party">
               <h3>{t('seePicks.replied', { name: party.replier, count: party.people.length })}</h3>
@@ -428,9 +438,9 @@ function Picks({
                               kind: 'chooseFor',
                               personId: person.id,
                               courseIds:
-                                askedFor == null
+                                askedFor == null || !person.courses.includes(askedFor)
                                   ? person.courses
-                                  : person.courses.filter((one) => one === askedFor),
+                                  : [askedFor, ...person.courses.filter((one) => one !== askedFor)],
                               from: id,
                             })
                           }
@@ -673,6 +683,7 @@ function ChooseFor({
   const first = firstName(person.name);
   const dish = course.dishes.find((one) => one.id === choice.dishId) ?? null;
   const questions = dish?.choices.filter((one) => !one.draft) ?? [];
+  const saveLabel = at + 1 < courses.length ? t('seePicks.saveNext') : t('seePicks.save');
 
   const fail = (words: string, focus: string) => {
     setError(words);
@@ -735,7 +746,7 @@ function ChooseFor({
       if (refusedFor(failure)) setRefused(true);
       else if (failure instanceof ApiError && failure.is('meal_pick_ruled_out'))
         setAsking(failure.problem.people?.[0]?.allergens ?? ruled);
-      else setError(t('eventMenu.failedSave', { button: t('seePicks.save') }));
+      else setError(t('eventMenu.failedSave', { button: saveLabel }));
     } finally {
       setBusy(false);
     }
@@ -851,7 +862,7 @@ function ChooseFor({
               </fieldset>
             ))}
             {error != null && (
-              <p id="pk-for-error" className="pk-error">
+              <p id="pk-for-error" className="pk-error" role="alert">
                 <span className="pk-error-mark" aria-hidden="true">
                   !
                 </span>
@@ -876,7 +887,7 @@ function ChooseFor({
                 disabled={busy}
                 onClick={() => void save(false)}
               >
-                {at + 1 < courses.length ? t('seePicks.saveNext') : t('seePicks.save')}
+                {saveLabel}
               </button>
             </>
           )}
@@ -1026,6 +1037,7 @@ function ChooseWho({
   const holders = row.holders ?? [];
   const [ticked, setTicked] = useState<ReadonlySet<string>>(() => new Set(holders));
   const [asking, setAsking] = useState<PicksRoomPerson[] | null>(null);
+  const [error, setError] = useState<string | null>(null);
   const [refused, setRefused] = useState(false);
   const [busy, setBusy] = useState(false);
   const box = useRef<HTMLDivElement>(null);
@@ -1054,6 +1066,7 @@ function ChooseWho({
       return;
     }
     setAsking(null);
+    setError(null);
     setBusy(true);
     try {
       const next = await api.giveVariant(eventId, row.id, [...ticked], confirmed);
@@ -1070,7 +1083,7 @@ function ChooseWho({
       else if (failure instanceof ApiError && failure.is('meal_pick_ruled_out')) {
         const ids = (failure.problem.people ?? []).map((one) => one.id);
         setAsking(people.filter((one) => ids.includes(one.id)));
-      }
+      } else setError(t('eventMenu.failedSave', { button: t('seePicks.save') }));
     } finally {
       setBusy(false);
     }
@@ -1156,6 +1169,14 @@ function ChooseWho({
                 </fieldset>
               );
             })}
+            {error != null && (
+              <p id="pk-who-error" className="pk-error" role="alert">
+                <span className="pk-error-mark" aria-hidden="true">
+                  !
+                </span>
+                {error}
+              </p>
+            )}
           </div>
         )}
         <div className="dialog-actions">

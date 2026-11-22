@@ -62,7 +62,7 @@ export interface EventPicks {
   percent: number;
   allIn: boolean;
   courses: PicksCourse[];
-  needsHost: PicksHostLine[];
+  needsHost: PicksHostLine[] | null;
   waiting: PicksWaiting[] | null;
   people: PicksRoomPerson[] | null;
   parties: PicksParty[] | null;
@@ -138,17 +138,19 @@ export function asEventPicks(raw: unknown): EventPicks | null {
     percent: num(one.percent),
     allIn: one.allIn === true,
     courses: one.courses.map(asCourse),
-    needsHost: list(one.needsHost).map((line) => {
-      const host = record(line);
+    needsHost: Array.isArray(one.needsHost)
+      ? one.needsHost.map((line) => {
+          const host = record(line);
 
-      return {
-        person: host.person == null ? null : asPerson(host.person),
-        course: str(host.course),
-        reason: host.reason === 'allergy' ? 'allergy' : 'nothing',
-        pick: typeof host.pick === 'string' ? host.pick : null,
-        allergens: strings(host.allergens),
-      };
-    }),
+          return {
+            person: host.person == null ? null : asPerson(host.person),
+            course: str(host.course),
+            reason: host.reason === 'allergy' ? 'allergy' : 'nothing',
+            pick: typeof host.pick === 'string' ? host.pick : null,
+            allergens: strings(host.allergens),
+          };
+        })
+      : null,
     waiting: Array.isArray(one.waiting)
       ? one.waiting.map((party) => {
           const reply = record(party);

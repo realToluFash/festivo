@@ -6172,6 +6172,7 @@
     "whoHasnt": "Who hasn’t picked",
     "whoHasntOn": "Who hasn’t picked · {{course}}",
     "whoHasntNone": "Everyone coming has picked every course, or is with the host above.",
+    "whoHasntNoneOn": "Everyone coming has picked {{course}}, or is with the host above.",
     "replied_one": "Replied by {{name}} · {{count, number}} person",
     "replied_other": "Replied by {{name}} · {{count, number}} people",
     "replied_many": "Replied by {{name}} · {{count, number}} people",
