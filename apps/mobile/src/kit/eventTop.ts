@@ -1,7 +1,9 @@
 import type { OrganisationEvent } from '@soirely/api-client';
 import type { EventPhase } from '@soirely/domain';
+import type { router } from 'expo-router';
 
 import type { LayoutKind } from '../layout/classify.ts';
+import { DESTINATION_HREF } from './appNav.ts';
 import type { EventPlace } from './eventNav.ts';
 import type { Opened } from './eventsOpen.ts';
 import { type Shown, listEventOf, shownEvent } from './eventsList.ts';
@@ -31,6 +33,11 @@ export function eventTop(kind: LayoutKind, area: EventPlace, opened: Opened['kin
     areaTitled: portrait && area !== 'overview',
     frameBack: kind === 'phone' ? 'area' : portrait ? 'events' : null,
   };
+}
+
+/** A missing event's Back to Events opens the Events of the organisation still worked in, whatever the link was opened over (sc-80863). */
+export function backToEvents(nav: Pick<typeof router, 'dismissTo'>): void {
+  nav.dismissTo(DESTINATION_HREF.events);
 }
 
 /** The iPad sidebar's card: sunk (null) until the event and its phase are read. */

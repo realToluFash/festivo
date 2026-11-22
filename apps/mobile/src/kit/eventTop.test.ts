@@ -1,7 +1,7 @@
 import type { OrganisationEvent } from '@soirely/api-client';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
-import { eventTop, sidebarCardOf } from './eventTop.ts';
+import { backToEvents, eventTop, sidebarCardOf } from './eventTop.ts';
 
 const gala: OrganisationEvent = {
   id: 'evt_gala',
@@ -95,6 +95,17 @@ describe("an event's page top", () => {
       areaTitled: false,
       frameBack: 'area',
     });
+  });
+});
+
+describe("a missing event's Back to Events", () => {
+  it("opens Events whatever the link was opened over, never the stack's back", () => {
+    const nav = { dismissTo: vi.fn(), back: vi.fn() };
+
+    backToEvents(nav);
+
+    expect(nav.dismissTo).toHaveBeenCalledExactlyOnceWith('/events');
+    expect(nav.back).not.toHaveBeenCalled();
   });
 });
 

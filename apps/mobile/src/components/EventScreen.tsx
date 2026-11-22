@@ -87,7 +87,7 @@ import { Text, type TextHandle } from './Text.tsx';
 import { BodyTitle } from './Title.tsx';
 import { PAGE_TITLE, pageTitle } from './topTitle.ts';
 import { useSidebarCard } from './sidebarCard.ts';
-import { eventTop } from '../kit/eventTop.ts';
+import { backToEvents, eventTop } from '../kit/eventTop.ts';
 import { EdgeSwipeBack } from './useEdgeSwipeBack.ts';
 import { useSystemBack } from './useSystemBack.ts';
 
@@ -419,7 +419,7 @@ export function EventScreen({
         </PlaceholderArea>
       )
     ) : opened.kind === 'notFound' ? (
-      <EventNotFound onBack={() => router.dismissTo(DESTINATION_HREF.events)} />
+      <EventNotFound onBack={() => backToEvents(router)} />
     ) : opened.kind === 'failed' ? (
       <EventsFailed onRetry={opened.retry} testID="events.page.retry" />
     ) : (
@@ -500,7 +500,7 @@ export function EventScreen({
       title={t(`eventNav.${area}`)}
       titleRef={title}
       untitled={cardNamed || titledInList}
-      bareList={opened.kind === 'notFound'}
+      bareList={!top.inEvent}
       offline={guests ? (guestsOffline.stale ?? opened.stale) : opened.stale}
       besideBack={
         besideBackRow === 'givingWay'
