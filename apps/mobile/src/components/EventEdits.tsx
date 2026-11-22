@@ -41,6 +41,7 @@ import { useReadOut } from './ReadOut.tsx';
 import { type ScreenReaderTarget } from './screenReaderFocus.ts';
 import { useShellLayout } from './settingsShell.ts';
 import { Pill } from './SettingsParts.tsx';
+import { GlyphMark } from './StatusMark.tsx';
 import { ASK_WIDTH, type AskProps, FocusedScreen, Row, RowList, TextAction } from './Summary.tsx';
 import { Text } from './Text.tsx';
 import { useLeaveAsk } from './useLeaveAsk.ts';
@@ -687,6 +688,7 @@ export function HostRows({
   focusAt = null,
   refs,
   off = false,
+  saysNone = false,
   onSaid,
   testID,
 }: {
@@ -697,6 +699,7 @@ export function HostRows({
   focusAt?: number | null;
   refs?: RefObject<Map<number, TextInputInstance>>;
   off?: boolean;
+  saysNone?: boolean;
   onSaid: (words: string) => void;
   testID: string;
 }) {
@@ -731,6 +734,14 @@ export function HostRows({
       <Text size={15} weight="medium" style={[styles.secondary, styles.lines]}>
         {t('eventHosts.explainer')}
       </Text>
+      {saysNone && hosts.length === 0 && (
+        <View style={styles.noHosts} testID={`${testID}.none`}>
+          <GlyphMark mark={tokens.marks.notStarted} />
+          <Text size={tokens.typeBody.size} style={styles.grow}>
+            {t('eventHosts.none')}
+          </Text>
+        </View>
+      )}
       {hosts.map((host, index) => {
         const error = errors[index] ?? null;
         const named = host.name.trim() || label(index + 1);
@@ -1251,6 +1262,17 @@ const styles = StyleSheet.create({
   selectWrong: { borderWidth: 2, borderColor: tokens.colorBroken, paddingLeft: 14 },
   offer: { flexDirection: 'row', flexWrap: 'wrap', columnGap: tokens.spaceXxl },
   host: { gap: tokens.spaceHair },
+  noHosts: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: tokens.spaceMd,
+    paddingVertical: tokens.spaceMd,
+    paddingHorizontal: tokens.spaceLg,
+    borderRadius: tokens.radiusInset,
+    borderWidth: 1,
+    borderColor: tokens.colorInsetBorder,
+    backgroundColor: tokens.colorInset,
+  },
   hostHead: { minHeight: tokens.sizeHit, flexDirection: 'row', alignItems: 'center' },
   hostRow: { flexDirection: 'row', alignItems: 'center', gap: tokens.spaceSm },
   move: {
