@@ -1,0 +1,15 @@
+# sc-6476: a member who cannot end the event sees the line read-only (${EV_LINE}). Needs ${METRO_URL}, ${ORIENT}.
+appId: host.exp.Exponent
+---
+- setOrientation: ${ORIENT}
+- openLink: ${METRO_URL}/--/events/${EV_LINE}
+- extendedWaitUntil:
+    visible:
+      id: 'events.page'
+    timeout: 90000
+- waitForAnimationToEnd
+- takeScreenshot: thankYouReadOnly
+- assertVisible:
+    id: 'event.thankYou.line'
+- assertNotVisible:
+    id: 'event.thankYou.edit'
