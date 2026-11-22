@@ -444,9 +444,12 @@ function MuteMenu({
   const panel = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    if (open) panel.current?.focus();
+  }, [open]);
+
+  useEffect(() => {
     if (!open) return;
 
-    panel.current?.focus();
     const keys = (event: KeyboardEvent) => {
       if (event.key !== 'Escape') return;
       onOpen(false);

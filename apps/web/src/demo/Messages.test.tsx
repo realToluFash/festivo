@@ -1272,8 +1272,14 @@ describe('Messages in B · Conversations at a desk (sc-31371)', () => {
     const bell = screen.getByRole('dialog', { name: 'Notifications' });
 
     expect(within(bell).queryByText('Muted')).toBeNull();
-    fireEvent.click(within(bell).getByRole('switch', { name: 'Mute this event' }));
+    const mute = within(bell).getByRole('switch', { name: 'Mute this event' });
+    mute.focus();
+    fireEvent.click(mute);
     expect(within(bell).getAllByText('Muted').length).toBe(5);
+    expect(document.activeElement).toBe(mute);
+    fireEvent.click(mute);
+    expect(within(bell).queryByText('Muted')).toBeNull();
+    expect(document.activeElement).toBe(mute);
   });
 
   it('says an event has gone, and keeps the offline band with Refreshing…', SLOW, async () => {

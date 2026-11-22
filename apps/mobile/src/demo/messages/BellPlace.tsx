@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -7,11 +7,15 @@ import { Glyph } from '../../components/Glyph.tsx';
 import { OfflineBand } from '../../components/OfflineBand.tsx';
 import { ReadOut, readOut } from '../../components/ReadOut.tsx';
 import { Refreshing } from '../../components/Refreshing.tsx';
-import { type ScreenReaderTarget } from '../../components/screenReaderFocus.ts';
+import { SETTLED_MS } from '../../components/Screen.tsx';
+import {
+  moveScreenReaderFocus,
+  type ScreenReaderTarget,
+} from '../../components/screenReaderFocus.ts';
 import { Back, Pill } from '../../components/SettingsParts.tsx';
 import { Skeleton } from '../../components/Skeleton.tsx';
 import { type Anchor, AnchoredMenu, RowList, TextAction } from '../../components/Summary.tsx';
-import { Text } from '../../components/Text.tsx';
+import { Text, type TextHandle } from '../../components/Text.tsx';
 import { tokens } from '../../theme/tokens.ts';
 import { repliesUnread } from '../guests/ChangedSince.ts';
 import {
@@ -165,6 +169,7 @@ export function BellPlace({
   const [feed, setFeed] = useState(start.feed);
   const [more, setMore] = useState(start.more);
   const [asking, setAsking] = useState(start.asking);
+  const heading = useRef<TextHandle>(null);
   const [menu, setMenu] = useState(start.menu);
   const [muted, setMuted] = useState(start.muted);
   const [goneShown, setGoneShown] = useState(start.gone);
@@ -179,6 +184,10 @@ export function BellPlace({
   const items = itemsOf(start, allRead, more === 'shown');
   const read = feed !== 'loaded' || items.every((item) => !item.unread);
   const later = (then: () => void) => setTimeout(then, BUSY_MS);
+  const answered = () => {
+    setAsking(false);
+    setTimeout(() => moveScreenReaderFocus(heading.current), SETTLED_MS);
+  };
 
   const markAllRead = (
     <TextAction
@@ -225,14 +234,10 @@ export function BellPlace({
           label={BW.turnOn}
           full={false}
           height={tokens.sizeHit}
-          onPress={() => setAsking(false)}
+          onPress={answered}
           testID="messages.bell.turnOn"
         />
-        <TextAction
-          label={BW.notNow}
-          onPress={() => setAsking(false)}
-          testID="messages.bell.notNow"
-        />
+        <TextAction label={BW.notNow} onPress={answered} testID="messages.bell.notNow" />
       </View>
     </View>
   );
@@ -335,7 +340,7 @@ export function BellPlace({
           <View style={styles.popoverHead}>
             <View style={styles.bellHead}>
               <View style={styles.titleLine}>
-                <Text size={18} weight="bold" accessibilityRole="header">
+                <Text ref={heading} size={18} weight="bold" accessibilityRole="header">
                   {W.notifications}
                 </Text>
                 {refreshing}
@@ -367,7 +372,13 @@ export function BellPlace({
         ]}
       >
         <View style={styles.titleLine}>
-          <Text size={30} weight="bold" accessibilityRole="header" style={styles.pageTitle}>
+          <Text
+            ref={heading}
+            size={30}
+            weight="bold"
+            accessibilityRole="header"
+            style={styles.pageTitle}
+          >
             {W.notifications}
           </Text>
           {refreshing}

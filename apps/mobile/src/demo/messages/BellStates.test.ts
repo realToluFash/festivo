@@ -5,6 +5,14 @@ import { BELL_STATES, CATEGORY_MARK, bellStartOf, isBellState, markOf } from './
 describe('the bell’s states (sc-83081)', () => {
   it('gives each of the six categories its own mark, and an unknown one none', () => {
     expect(new Set(Object.values(CATEGORY_MARK)).size).toBe(6);
+    expect(CATEGORY_MARK).toEqual({
+      guest_replies: 'users',
+      messages: 'chat',
+      event_day: 'today',
+      event_changes: 'calendar',
+      money: 'wallet',
+      account_security: 'shield',
+    });
     expect(markOf('event_day')).toBe('today');
     expect(markOf('money')).toBe('wallet');
     expect(markOf('account_security')).toBe('shield');

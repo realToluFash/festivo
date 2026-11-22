@@ -1,5 +1,8 @@
 import type { GlyphName } from '../../components/Glyph.tsx';
 
+/** The demo home's group for the bell, named as the web's is. */
+export const BELL_GROUP = 'The bell (sc-83081)';
+
 /** The bell's states in the B frame (sc-83081), each a `?state=` beside `bell`, the same keys as the web's. */
 export const BELL_STATES = [
   'bellPush',
@@ -39,7 +42,7 @@ export const CATEGORY_MARK: Record<Category, GlyphName> = {
   guest_replies: 'users',
   messages: 'chat',
   event_day: 'today',
-  event_changes: 'events',
+  event_changes: 'calendar',
   money: 'wallet',
   account_security: 'shield',
 };

@@ -25,9 +25,9 @@ export type Category =
 /** Each category's mark, the same in both demos; Event day, Money and Account & security take Notification settings' marks for them. */
 export const CATEGORY_MARK: Record<Category, GlyphName> = {
   guest_replies: 'users',
-  messages: 'messages',
+  messages: 'message',
   event_day: 'day',
-  event_changes: 'events',
+  event_changes: 'calendar',
   money: 'wallet',
   account_security: 'shield',
 };

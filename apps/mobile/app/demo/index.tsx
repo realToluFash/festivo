@@ -47,6 +47,7 @@ import { SERVICE_BOARDS, SERVICE_NEXT_BOARDS } from '../../src/demo/service/HowI
 import { REQUEST_BOARDS } from '../../src/demo/service/RequestsBoards.ts';
 import { ROOM_BOARDS } from '../../src/demo/service/ServiceRoomBoards.ts';
 import { RUN_OUT_TRAY_BOARDS } from '../../src/demo/runOut/RunOutTrayBoards.ts';
+import { BELL_GROUP, isBellState } from '../../src/demo/messages/BellStates.ts';
 import { MESSAGES_BOARDS } from '../../src/demo/messages/MessagesBoards.ts';
 import { isSmsState } from '../../src/demo/messages/Sms.ts';
 import { isStopState } from '../../src/demo/messages/StopWriting.ts';
@@ -2349,8 +2350,15 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
   {
     page: 'Messages · B Conversations',
     boards: MESSAGES_BOARDS.filter(
-      ({ state }) => !isStopState(state) && !isReasonState(state) && !isSmsState(state),
+      ({ state }) =>
+        !isStopState(state) && !isReasonState(state) && !isSmsState(state) && !isBellState(state),
     ).map(({ title, what, href }) => ({ title, what, href: href as Href })),
+  },
+  {
+    page: BELL_GROUP,
+    boards: MESSAGES_BOARDS.filter(({ state }) => isBellState(state)).map(
+      ({ title, what, href }) => ({ title, what, href: href as Href }),
+    ),
   },
   {
     page: 'Who it reached: every reason, Try SMS instead (sc-3966)',
