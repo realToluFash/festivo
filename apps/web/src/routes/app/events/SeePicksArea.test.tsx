@@ -153,7 +153,7 @@ function picksOf(more: Record<string, unknown> = {}) {
   };
 }
 
-type Answer = (body: unknown) => Response;
+type Answer = (body: unknown) => Response | Promise<Response>;
 
 function onPicks(
   answers: Record<string, Answer>,
@@ -327,6 +327,51 @@ describe('See picks (sc-3909)', () => {
     expect(
       within(ask).getByText('Kwame Mensah and Ada Obi: give Small plate anyway?'),
     ).toBeDefined();
+  });
+
+  it('focuses Save when Choose who gets it fails to save', async () => {
+    let fail: (answer: Response) => void = () => undefined;
+    const saving = new Promise<Response>((resolve) => {
+      fail = resolve;
+    });
+    const main = picksOf().picks.courses[0];
+    const small = {
+      id: 'v_small',
+      kind: 'variant',
+      name: 'Small plate',
+      dish: 'd_jollof',
+      for: 'children',
+      allergens: [],
+      chosen: 0,
+      defaulted: 0,
+      holders: [],
+    };
+    onPicks({
+      [`GET ${PICKS}`]: () =>
+        json(picksOf({ courses: [{ ...main, rows: [...(main?.rows ?? []), small] }] })),
+      ['PUT /api/events/ev_1/menu/picks/variants/v_small']: () => saving,
+    });
+
+    fireEvent.click(await screen.findByRole('button', { name: /^Choose who gets Small plate/ }));
+    const dialog = screen.getByRole('dialog', { name: 'Choose who gets Small plate' });
+    fireEvent.click(within(dialog).getByRole('checkbox', { name: 'Ada Obi' }));
+    const save = within(dialog).getByRole('button', { name: 'Save' });
+    fireEvent.click(save);
+
+    await waitFor(() => expect(save.getAttribute('aria-disabled')).toBe('true'));
+    expect(save).toHaveProperty('disabled', false);
+    fail(problem('server_error', 500));
+
+    expect((await within(dialog).findByRole('alert')).textContent).toContain(
+      'Nothing was saved. Check your connection, then press Save again.',
+    );
+    expect(within(dialog).getByRole('checkbox', { name: 'Ada Obi' })).toHaveProperty(
+      'checked',
+      true,
+    );
+    await waitFor(() =>
+      expect(document.activeElement).toBe(within(dialog).getByRole('button', { name: 'Save' })),
+    );
   });
 
   it('says nothing was saved when the role lost Guests manage', async () => {
