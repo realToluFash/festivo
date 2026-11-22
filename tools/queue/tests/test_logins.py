@@ -102,9 +102,11 @@ class Rows(unittest.TestCase):
         clock[0] += logins.FRESH_SECONDS
         logins.read(self.config(), run=run, clock=lambda: clock[0], home=home)
         self.assertEqual(len(asked), 4)
+        logins._failed[self.root / "a"] = "claude /usage failed"
         logins.forget(self.root / "a")
-        logins.read(self.config(), run=run, clock=lambda: clock[0], home=home)
+        rows = logins.read(self.config(), run=run, clock=lambda: clock[0], home=home)
         self.assertEqual(asked[-1], str(self.root / "a"))
+        self.assertIsNone(rows[0]["usage_error"])
 
     def test_a_folder_under_home_is_shown_from_home_and_its_token_is_named(self):
         folder = pathlib.Path.home() / ".claude-abudu"
@@ -190,10 +192,13 @@ class Accounts(unittest.TestCase):
                          {self.home / ".claude-qa": ["qa", "qa3"], self.home / ".claude-spare": []})
         rows = logins.read(config, run=lambda *a, **k: said(), home=self.home)
         self.assertEqual([row["roles"] for row in rows], [["qa", "qa3"], []])
-        desk = logins.Desk(lambda: config)
-        with mock.patch.object(logins.pathlib.Path, "home", return_value=self.home):
-            self.assertEqual(desk.folder(str(self.home / ".claude-spare")),
-                             self.home / ".claude-spare")
+
+    def test_a_folder_no_role_uses_can_be_logged_in_from_the_page(self):
+        account_file(self.home / ".claude-spare")
+        desk = logins.Desk(lambda: {"roles": {}}, home=self.home)
+        self.assertEqual(desk.folder(str(self.home / ".claude-spare")), self.home / ".claude-spare")
+        self.assertIsNone(logins.Desk(lambda: {"roles": {}}, home=self.home / "nowhere")
+                          .folder(str(self.home / ".claude-spare")))
 
     def test_a_folder_no_role_uses_has_only_its_own_token(self):
         spare, used = self.home / ".claude-spare", self.home / ".claude-qa"
@@ -391,7 +396,7 @@ class Logins(unittest.TestCase):
                            wait=lambda s: self.clock.__setitem__(0, self.clock[0] + s),
                            timer=self.timer)
 
-    def test_only_a_folder_a_role_here_runs_under_can_be_logged_in(self):
+    def test_only_a_folder_the_page_lists_can_be_logged_in(self):
         desk = self.desk()
         self.assertEqual(desk.folder(str(self.root / "qa")), self.root / "qa")
         self.assertIsNone(desk.folder("/etc"))

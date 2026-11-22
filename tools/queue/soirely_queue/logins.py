@@ -92,13 +92,9 @@ def login_env(folder, base=None):
 
 
 def usage_env(folder, roles):
-    """The environment a folder's workers run in: its setup-token when it has one, so the
-    usage read is the account they spend. A folder no role uses has only its own token."""
-    env = login_env(folder)
-    source = machine.token_source(folder) if roles else machine.token_name(folder)
-    if source and os.environ.get(source):
-        env[machine.TOKEN] = os.environ[source]
-    return env
+    """The environment a folder's workers run in, so the usage read is the account they
+    spend. A folder no role uses has only its own token."""
+    return machine.account_env(folder, spare=not roles)
 
 
 def when(stamp):
@@ -145,6 +141,7 @@ def forget(folder=None):
             _failed.clear()
         else:
             _kept.pop(pathlib.Path(folder), None)
+            _failed.pop(pathlib.Path(folder), None)
 
 
 def read(config, run=subprocess.run, clock=time.monotonic, home=None):
@@ -371,14 +368,15 @@ class Desk:
     """The logins this machine holds, by id: at most one per folder."""
 
     def __init__(self, config, popen=subprocess.Popen, run=subprocess.run,
-                 clock=time.monotonic, wait=time.sleep, timer=threading.Timer):
+                 clock=time.monotonic, wait=time.sleep, timer=threading.Timer, home=None):
         self.config, self.popen, self.run, self.clock, self.wait = config, popen, run, clock, wait
-        self.timer = timer
+        self.timer, self.home = timer, home
         self.held, self.lock = {}, threading.Lock()
 
     def folder(self, asked):
-        """The folder asked for, only when it is one this machine's roles run under."""
-        for folder in folders(self.config()):
+        """The folder asked for, only when it is one the page lists: a folder this machine's
+        roles run under, or one of the home folder's no role uses."""
+        for folder in folders(self.config(), self.home):
             if asked in (shown(folder), str(folder)):
                 return folder
         return None
