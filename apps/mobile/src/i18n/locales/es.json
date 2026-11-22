@@ -796,10 +796,10 @@
     "labelSwitchWaiting_one": "Organización: {{name}}, su función {{role}}. Cambiar de organización. {{count, number}} invitación pendiente",
     "labelSwitchWaiting_other": "Organización: {{name}}, su función {{role}}. Cambiar de organización. {{count, number}} invitaciones pendientes",
     "labelSwitchWaiting_many": "Organización: {{name}}, su función {{role}}. Cambiar de organización. {{count, number}} de invitaciones pendientes",
-    "labelPaused": "Organisation: {{name}}, access paused. Switch organisation",
-    "labelPausedWaiting_one": "Organisation: {{name}}, access paused. Switch organisation. {{count, number}} invitation waiting",
-    "labelPausedWaiting_other": "Organisation: {{name}}, access paused. Switch organisation. {{count, number}} invitations waiting",
-    "labelPausedWaiting_many": "Organisation: {{name}}, access paused. Switch organisation. {{count, number}} invitations waiting"
+    "labelPaused": "Organización: {{name}}, acceso en pausa. Cambiar de organización",
+    "labelPausedWaiting_one": "Organización: {{name}}, acceso en pausa. Cambiar de organización. {{count, number}} invitación pendiente",
+    "labelPausedWaiting_other": "Organización: {{name}}, acceso en pausa. Cambiar de organización. {{count, number}} invitaciones pendientes",
+    "labelPausedWaiting_many": "Organización: {{name}}, acceso en pausa. Cambiar de organización. {{count, number}} de invitaciones pendientes"
   },
   "createOrganisation": {
     "row": "Crear una organización",
