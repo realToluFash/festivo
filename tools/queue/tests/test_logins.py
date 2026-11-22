@@ -10,6 +10,7 @@ import subprocess
 import tempfile
 import threading
 import unittest
+from contextlib import redirect_stderr
 from unittest import mock
 
 from soirely_queue import logins, machine
@@ -91,17 +92,18 @@ class Rows(unittest.TestCase):
     def test_each_folder_is_one_row_with_its_roles_read_again_only_after_a_while(self):
         asked, clock = [], [100.0]
         run = lambda argv, **k: asked.append(k["env"].get("CLAUDE_CONFIG_DIR")) or said()
-        rows = logins.read(self.config(), run=run, clock=lambda: clock[0])
+        home = self.root / "home"
+        rows = logins.read(self.config(), run=run, clock=lambda: clock[0], home=home)
         self.assertEqual([(row["folder"], row["roles"], row["email"]) for row in rows],
                          [(str(self.root / "a"), ["qa", "qa3"], "qa@example.com"),
                           (str(self.root / "b"), ["pm"], "qa@example.com")])
-        logins.read(self.config(), run=run, clock=lambda: clock[0])
+        logins.read(self.config(), run=run, clock=lambda: clock[0], home=home)
         self.assertEqual(len(asked), 2)
         clock[0] += logins.FRESH_SECONDS
-        logins.read(self.config(), run=run, clock=lambda: clock[0])
+        logins.read(self.config(), run=run, clock=lambda: clock[0], home=home)
         self.assertEqual(len(asked), 4)
         logins.forget(self.root / "a")
-        logins.read(self.config(), run=run, clock=lambda: clock[0])
+        logins.read(self.config(), run=run, clock=lambda: clock[0], home=home)
         self.assertEqual(asked[-1], str(self.root / "a"))
 
     def test_a_folder_under_home_is_shown_from_home_and_its_token_is_named(self):
@@ -109,7 +111,7 @@ class Rows(unittest.TestCase):
         self.assertEqual(logins.shown(folder), "~/.claude-abudu")
         with mock.patch.dict(logins.os.environ, {f"{machine.TOKEN}_CLAUDE_ABUDU": "t"}):
             rows = logins.read({"roles": {"qa": {"claudeConfigDir": str(folder)}}},
-                               run=lambda *a, **k: said())
+                               run=lambda *a, **k: said(), home=self.root / "home")
         self.assertEqual(rows[0]["token"], f"{machine.TOKEN}_CLAUDE_ABUDU")
 
     def test_a_login_that_runs_out_soon_has_run_out_or_is_gone_is_a_warning(self):
@@ -133,6 +135,186 @@ class Rows(unittest.TestCase):
     def test_time_left_reads_in_minutes_hours_then_days(self):
         self.assertEqual([logins.left(s) for s in (59, 3599, 3600, 2 * 86400 - 1, 2 * 86400)],
                          ["0 min", "59 min", "1 h", "47 h", "2 days"])
+
+
+def account_file(folder, usage=None, account="u-1", **fields):
+    """A folder's `.claude.json` as Claude leaves it once `/usage` has read the plan."""
+    folder.mkdir(parents=True, exist_ok=True)
+    said = {"oauthAccount": {"accountUuid": account, "emailAddress": "qa@example.com"}}
+    if usage is not None:
+        said["cachedUsageUtilization"] = dict({"fetchedAtMs": NOW * 1000, "accountUuid": "u-1",
+                                               "utilization": usage}, **fields)
+    (folder / ".claude.json").write_text(json.dumps(said))
+
+
+WEEK = {"limits": [
+    {"kind": "weekly_all", "group": "weekly", "percent": 96, "severity": "critical",
+     "resets_at": "2027-01-15T13:00:00+00:00", "scope": None, "is_active": True},
+    {"kind": "weekly_scoped", "group": "weekly", "percent": 0, "severity": "normal",
+     "resets_at": "2027-01-15T13:00:00+00:00",
+     "scope": {"model": {"id": None, "display_name": "Fable"}, "surface": None},
+     "is_active": False},
+    {"kind": "session", "group": "session", "percent": 40, "resets_at": None}]}
+USED = subprocess.CompletedProcess([], 0, json.dumps(
+    {"type": "result", "is_error": False, "num_turns": 0, "local_command": "usage",
+     "result": "Current week (all models): 96% used"}), "")
+
+
+class Accounts(unittest.TestCase):
+    """Every Claude config folder on the machine, and the usage Claude reads for each."""
+
+    def setUp(self):
+        logins.forget()
+        self.addCleanup(logins.forget)
+        self.folder = tempfile.TemporaryDirectory()
+        self.home = pathlib.Path(self.folder.name)
+        self.addCleanup(self.folder.cleanup)
+
+    def test_the_home_folders_claude_folders_are_found_and_nothing_else(self):
+        (self.home / ".claude").mkdir()
+        account_file(self.home / ".claude-spare")
+        (self.home / ".claude-old").mkdir()
+        (self.home / ".claude-x.json").write_text("{}")
+        (self.home / ".claude-set").mkdir()
+        (self.home / ".claude-set" / "settings.json").write_text("{}")
+        self.assertEqual(logins.found(self.home), [self.home / ".claude", self.home / ".claude-set",
+                                                   self.home / ".claude-spare"])
+        self.assertEqual(logins.found(self.home / "nowhere"), [])
+
+    def test_a_folder_no_role_uses_is_listed_after_the_roles_with_none(self):
+        account_file(self.home / ".claude-qa")
+        account_file(self.home / ".claude-spare")
+        config = {"roles": {"qa": {"claudeConfigDir": str(self.home / ".claude-qa")},
+                            "qa3": {"claudeConfigDir": str(self.home / ".claude-qa/")}}}
+        self.assertEqual(logins.folders(config, self.home),
+                         {self.home / ".claude-qa": ["qa", "qa3"], self.home / ".claude-spare": []})
+        rows = logins.read(config, run=lambda *a, **k: said(), home=self.home)
+        self.assertEqual([row["roles"] for row in rows], [["qa", "qa3"], []])
+        desk = logins.Desk(lambda: config)
+        with mock.patch.object(logins.pathlib.Path, "home", return_value=self.home):
+            self.assertEqual(desk.folder(str(self.home / ".claude-spare")),
+                             self.home / ".claude-spare")
+
+    def test_a_folder_no_role_uses_has_only_its_own_token(self):
+        spare, used = self.home / ".claude-spare", self.home / ".claude-qa"
+        with mock.patch.dict(logins.os.environ, {machine.TOKEN: "plain"}):
+            self.assertEqual(logins.usage_env(used, ["qa"])[machine.TOKEN], "plain")
+            self.assertNotIn(machine.TOKEN, logins.usage_env(spare, []))
+            account_file(spare)
+            rows = logins.read({"roles": {}}, run=lambda *a, **k: said(), home=self.home)
+        self.assertIsNone(rows[0]["token"])
+        with mock.patch.dict(logins.os.environ, {f"{machine.TOKEN}_CLAUDE_SPARE": "own"}):
+            self.assertEqual(logins.usage_env(spare, [])[machine.TOKEN], "own")
+
+    def test_the_usage_claude_last_read_is_named_as_usage_names_it(self):
+        account_file(self.home / "a", WEEK)
+        self.assertEqual(logins.cached_usage(self.home / "a"), {"read_at": NOW, "limits": [
+            {"name": "Week", "percent": 96, "tone": "critical", "resets_at": NOW + 5 * 3600},
+            {"name": "Week · Fable", "percent": 0, "tone": "good", "resets_at": NOW + 5 * 3600},
+            {"name": "Session", "percent": 40, "tone": "good", "resets_at": None}]})
+
+    def test_an_older_claudes_one_field_per_limit_is_read_too(self):
+        account_file(self.home / "a", {"five_hour": {"utilization": 80, "resets_at": None},
+                                       "seven_day": {"utilization": 12.5, "resets_at": None},
+                                       "seven_day_opus": None})
+        self.assertEqual([(each["name"], each["percent"], each["tone"])
+                          for each in logins.cached_usage(self.home / "a")["limits"]],
+                         [("Session", 80, "warning"), ("Week", 12.5, "good")])
+
+    def test_no_usage_another_accounts_usage_or_a_broken_file_reads_as_none(self):
+        account_file(self.home / "a")
+        account_file(self.home / "b", WEEK, account="u-2")
+        (self.home / "c").mkdir()
+        (self.home / "c" / ".claude.json").write_text("{")
+        for name in ("a", "b", "c", "d"):
+            self.assertIsNone(logins.cached_usage(self.home / name))
+
+    def test_usage_is_read_by_claude_itself_with_no_settings_session_or_model_call(self):
+        seen = []
+        work = self.home / "work"
+        failed = logins.refresh_usage(self.home / "a", ["qa"], run=lambda argv, **k: seen.append(
+            (argv, k)) or USED, workdir=work)
+        self.assertIsNone(failed)
+        argv, kwargs = seen[0]
+        self.assertEqual(argv, ["claude", "-p", "/usage", "--output-format", "json",
+                                "--no-session-persistence", "--setting-sources", ""])
+        self.assertEqual((kwargs["cwd"], kwargs["env"]["CLAUDE_CONFIG_DIR"], kwargs["stdin"]),
+                         (work, str(self.home / "a"), subprocess.DEVNULL))
+        self.assertEqual(work.stat().st_mode & 0o777, 0o700)
+
+    def test_a_usage_claude_could_not_read_says_why(self):
+        def answer(out, err="", code=0):
+            return lambda *a, **k: subprocess.CompletedProcess([], code, out, err)
+
+        refused = json.dumps({"is_error": True, "result": "Not logged in · Please run /login"})
+        prompt = json.dumps({"is_error": False, "result": "Hello", "num_turns": 1})
+
+        def missing(*a, **k):
+            raise FileNotFoundError("claude")
+
+        for run, said in ((answer(refused), "Not logged in · Please run /login"),
+                          (answer(prompt), "Hello"),
+                          (answer("", "error: unknown option\n", 1), "error: unknown option"),
+                          (answer("", "", 2), "claude /usage exited 2"),
+                          (missing, "claude /usage failed (claude)")):
+            self.assertEqual(logins.refresh_usage(self.home / "a", [], run=run,
+                                                  workdir=self.home / "w"), said)
+
+    def test_the_usage_is_read_again_only_once_it_is_five_minutes_old(self):
+        account_file(self.home / ".claude-qa", WEEK)
+        account_file(self.home / ".claude-spare")
+        asked, clock = [], [NOW + 60.0]
+        refusal = subprocess.CompletedProcess([], 0, json.dumps(
+            {"is_error": True, "result": "Not logged in"}), "")
+        usage = logins.Usage(lambda: {"roles": {"qa": {"claudeConfigDir": str(
+            self.home / ".claude-qa")}}}, run=lambda argv, **k: asked.append(
+            k["env"]["CLAUDE_CONFIG_DIR"]) or refusal, clock=lambda: clock[0], home=self.home,
+            workdir=self.home / "work")
+        usage.once()
+        self.assertEqual(asked, [str(self.home / ".claude-spare")])
+        usage.once()
+        self.assertEqual(len(asked), 1)
+        rows = logins.read({"roles": {}}, run=lambda *a, **k: said(), home=self.home)
+        self.assertEqual({row["folder"]: row["usage_error"] for row in rows},
+                         {str(self.home / ".claude-qa"): None,
+                          str(self.home / ".claude-spare"): "Not logged in"})
+        clock[0] += logins.USAGE_SECONDS
+        usage.once()
+        self.assertEqual(asked[1:], [str(self.home / ".claude-qa"),
+                                     str(self.home / ".claude-spare")])
+        account_file(self.home / ".claude-spare", WEEK, fetchedAtMs=clock[0] * 1000)
+        clock[0] += 1
+        usage.once()
+        self.assertIsNone(logins.read({"roles": {}}, run=lambda *a, **k: said(),
+                                      home=self.home)[1]["usage_error"])
+
+    def test_a_bad_reading_never_stops_the_usage_being_kept(self):
+        usage, waits = logins.Usage(lambda: {}), []
+
+        def wait(seconds):
+            waits.append(seconds)
+            if len(waits) == 2:
+                raise KeyboardInterrupt
+
+        with mock.patch.object(usage, "once", side_effect=OSError("disk")), \
+                redirect_stderr(io.StringIO()) as said_there, \
+                self.assertRaises(KeyboardInterrupt):
+            usage.keep(wait)
+        self.assertEqual(waits, [logins.USAGE_LOOK_SECONDS] * 2)
+        self.assertIn("sq web: usage not read (disk)", said_there.getvalue())
+
+    def test_an_account_a_role_uses_nearly_spent_is_a_warning_and_a_spare_one_never(self):
+        week = {"name": "Week", "percent": 96, "resets_at": NOW + 5 * 3600}
+        spent = {"name": "Session", "percent": 100, "resets_at": NOW - 1}
+        rows = [{"folder": "~/.a", "roles": ["qa", "qa3"], "email": "a@x", "logged_in": True,
+                 "expires_at": NOW + 20 * 86400,
+                 "usage": {"limits": [week, spent, dict(week, name="Week · Fable", percent=89)]}},
+                {"folder": "~/.b", "roles": [], "email": "b@x", "logged_in": False,
+                 "usage": {"limits": [week]}},
+                {"folder": "~/.c", "roles": ["dev"], "token": "T", "usage": {"limits": [week]}}]
+        self.assertEqual(logins.warnings(rows, NOW), [
+            "the Claude account a@x (qa, qa3) has used 96% of its week limit: it resets in 5 h",
+            "the Claude account ~/.c (dev) has used 96% of its week limit: it resets in 5 h"])
 
 
 class Chrome(unittest.TestCase):
