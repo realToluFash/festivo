@@ -3351,7 +3351,7 @@ export function composeBatch(
   });
   const subFlows = (flow, language, caller, chain, dir = '') =>
     flow.replace(
-      /^(\s*(?:-\s*runFlow|file):\s*)(['"]?)([\w./-]+)\.ya?ml\2(?=\s*$)/gm,
+      /^(\s*(?:-\s*runFlow:\s*\{\s*file|-\s*runFlow|file):\s*)(['"]?)([\w./-]+)\.ya?ml\2(?=\s*$|\s*[,}])/gm,
       (line, key, quote, ref) => {
         const name = posix.relative('checks', posix.join('checks', dir, ref));
         if (name.startsWith('../') || !existsSync(join(source, 'checks', `${name}.yaml`)))

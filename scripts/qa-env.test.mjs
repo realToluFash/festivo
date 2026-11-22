@@ -3771,6 +3771,40 @@ describe('a check that runs a sibling check', () => {
     }
   });
 
+  it('rewrites the file of an inline runFlow map', () => {
+    const source = mkdtempSync(join(tmpdir(), 'qa-source-'));
+    const target = mkdtempSync(join(tmpdir(), 'qa-batch-'));
+    mkdirSync(join(source, 'checks', 'part'), { recursive: true });
+    writeFileSync(
+      join(source, 'checks', 'outer.yaml'),
+      "appId: x\n---\n- runFlow: { file: part/state.yaml, env: { STATE: first } }\n- runFlow: {file: 'part/state.yaml'}\n",
+    );
+    writeFileSync(
+      join(source, 'checks', 'part', 'state.yaml'),
+      'appId: x\n---\n- takeScreenshot: shot\n',
+    );
+    try {
+      composeBatch(source, target, {
+        checks: ['outer'],
+        languages: ['en'],
+        cold: false,
+        catalogues: { en: {} },
+        email: 'qa@soirely.test',
+        onAndroid: false,
+      });
+      const checks = join(target, '_checks');
+      const outer = readFileSync(join(checks, 'outer.en.yaml'), 'utf8');
+      expect(outer).toContain(
+        '- runFlow: { file: part/outer.en.part.state.flow.yaml, env: { STATE: first } }\n',
+      );
+      expect(outer).toContain('- runFlow: {file: part/outer.en.part.state.flow.yaml}\n');
+      expect(readdirSync(join(checks, 'part'))).toEqual(['outer.en.part.state.flow.yaml']);
+    } finally {
+      rmSync(source, { recursive: true, force: true });
+      rmSync(target, { recursive: true, force: true });
+    }
+  });
+
   it('keeps a sibling that is also named as a check apart from its run', () => {
     const source = mkdtempSync(join(tmpdir(), 'qa-source-'));
     const target = mkdtempSync(join(tmpdir(), 'qa-batch-'));
