@@ -577,7 +577,9 @@ Then **tag what needs another role** — one `sq qa comment sc-55 --to <role>` p
 item that someone else has to decide or fix: `[pm]` for an undecided behaviour, `[ux]` for a
 missing state on an artboard, `[dev]` for a question about the build. See `role-comments`.
 **End each device pass by closing what it opened**: stop the background `ios` or `android`
-command (it is the bundler), then the device, with `node .qa/bin/qa-env.mjs android --stop`
+command (it is the bundler), or run `node .qa/bin/qa-env.mjs ios --stop`, which stops only
+the bundler on your own port. Never `pkill -f qa-env.mjs`: it matches every tester's
+bundler. Then the device, with `node .qa/bin/qa-env.mjs android --stop`
 or `xcrun simctl shutdown "Soirely QA<n> iPhone"` (and `iPad`, `iPhone SE`). A bundler left running
 holds your worker as busy, and an emulator holds several GB.
 Finish with `sq qa done <id> --note "<one line>"`; the note is what your next run on the

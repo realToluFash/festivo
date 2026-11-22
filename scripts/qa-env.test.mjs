@@ -63,6 +63,7 @@ import {
   leftDriverSay,
   clearForBatch,
   bundlerArgs,
+  bundlerGroups,
   bundlerEnv,
   commitTarget,
   checkId,
@@ -517,6 +518,23 @@ describe('the bundler command', () => {
       '18081',
       '--clear',
     ]);
+  });
+});
+
+describe('ios --stop', () => {
+  it("stops only the group listening on this tester's own port", () => {
+    const asked = [];
+    const look = (command, args) => {
+      asked.push([command, ...args].join(' '));
+      if (command === 'lsof') return '4101\n4102';
+      return { 4101: ' 4100', 4102: '4100' }[args.at(-1)];
+    };
+    expect(bundlerGroups(38081, look)).toEqual([4100]);
+    expect(asked[0]).toBe('lsof -nP -t -iTCP:38081 -sTCP:LISTEN');
+  });
+
+  it('stops nothing when no bundler listens', () => {
+    expect(bundlerGroups(38081, () => null)).toEqual([]);
   });
 });
 

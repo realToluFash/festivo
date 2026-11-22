@@ -135,7 +135,7 @@
     "validation.meal_answer_not_offered": "That answer is not offered for this course.",
     "validation.meal_variant_needed": "Choose a way for this dish.",
     "validation.meal_options_count": "Pick exactly {pick}.",
-    "validation.meal_ruled_out": "This can't be picked for {name}: it contains one of their allergens.",
+    "validation.meal_ruled_out": "This cannot be picked for {name}: it contains one of their allergens.",
     "validation.guest_kitchen_not_coming": "Only an answer of Coming tells the kitchen what you need.",
     "validation.guest_name_too_long": "Shorten the name to {max} characters or fewer.",
     "validation.guest_companions_too_many": "10 companions is the most one guest can bring.",
