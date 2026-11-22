@@ -1,0 +1,31 @@
+# sc-83008: an event opened from Today's Your events: ‹ Today, back to Today.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/
+- extendedWaitUntil:
+    visible:
+      id: 'tab-today'
+    timeout: 30000
+- tapOn:
+    id: 'tab-today'
+- scrollUntilVisible:
+    element: '.*Lagos Night.*'
+    timeout: 20000
+- tapOn: '.*Lagos Night.*'
+- extendedWaitUntil:
+    visible:
+      id: 'frame.back'
+    timeout: 20000
+- waitForAnimationToEnd
+- takeScreenshot: event
+- assertVisible:
+    id: 'frame.back'
+    text: '.*Today.*|.*Hoy.*'
+- tapOn:
+    id: 'frame.back'
+- waitForAnimationToEnd
+- assertVisible:
+    id: 'today.search'
+- assertNotVisible:
+    id: 'events.page'
+- takeScreenshot: back

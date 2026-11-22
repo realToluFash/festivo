@@ -1,0 +1,29 @@
+# sc-83008: on an iPad, an event row from Search's palette: ‹ Search reopens the palette with the term and its results.
+appId: host.exp.Exponent
+---
+- runFlow: sc83008-to-adire.yaml
+- tapOn:
+    id: 'today.search'
+- waitForAnimationToEnd
+- inputText: 'Ibadan'
+- extendedWaitUntil:
+    visible: '.*Ibadan Supper.*'
+    timeout: 15000
+- takeScreenshot: search
+- tapOn: '.*Ibadan Supper.*'
+- extendedWaitUntil:
+    visible:
+      id: 'frame.back'
+    timeout: 20000
+- waitForAnimationToEnd
+- takeScreenshot: event
+- assertVisible:
+    id: 'frame.back'
+    text: '.*Search.*|.*Buscar.*'
+- tapOn:
+    id: 'frame.back'
+- waitForAnimationToEnd
+- extendedWaitUntil:
+    visible: '.*Ibadan Supper.*'
+    timeout: 15000
+- takeScreenshot: back

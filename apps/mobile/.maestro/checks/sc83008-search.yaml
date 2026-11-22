@@ -1,0 +1,34 @@
+# sc-83008: an event row opened from Search: ‹ Search, back to Search with the term still typed.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/
+- extendedWaitUntil:
+    visible:
+      id: 'today.search'
+    timeout: 30000
+- tapOn:
+    id: 'today.search'
+- waitForAnimationToEnd
+- inputText: 'Ibadan'
+- waitForAnimationToEnd
+- extendedWaitUntil:
+    visible: '.*Ibadan Supper.*'
+    timeout: 15000
+- takeScreenshot: search
+- tapOn: '.*Ibadan Supper.*'
+- extendedWaitUntil:
+    visible:
+      id: 'frame.back'
+    timeout: 20000
+- waitForAnimationToEnd
+- takeScreenshot: event
+- assertVisible:
+    id: 'frame.back'
+    text: '.*Search.*|.*Buscar.*'
+- tapOn:
+    id: 'frame.back'
+- waitForAnimationToEnd
+- assertNotVisible:
+    id: 'events.page'
+- assertVisible: '.*Ibadan.*'
+- takeScreenshot: back

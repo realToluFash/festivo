@@ -1,0 +1,19 @@
+# sc-83008: leaves an event opened from Notifications on screen, for its ‹ at a text size.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/
+- extendedWaitUntil:
+    visible: 'Notifica.*'
+    timeout: 60000
+- tapOn: 'Notifica.*'
+- waitForAnimationToEnd
+- scrollUntilVisible:
+    element: '.*Ada and Tunde wedding.*'
+    timeout: 20000
+- tapOn: '.*Ada and Tunde wedding.*'
+- extendedWaitUntil:
+    visible:
+      id: 'events.page'
+    timeout: 20000
+- waitForAnimationToEnd
+- takeScreenshot: held

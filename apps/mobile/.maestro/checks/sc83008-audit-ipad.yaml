@@ -1,0 +1,27 @@
+# sc-83008: on an iPad, an event opened from an audit entry shown beside the log: ‹ Audit log, back to the log with that entry still open.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/settings/data-and-control/audit-log
+- extendedWaitUntil:
+    visible: '.*Lagos Night.*'
+    timeout: 30000
+- tapOn: '.*Lagos Night.*'
+- waitForAnimationToEnd
+- takeScreenshot: entry
+- tapOn:
+    id: 'audit.detail.on'
+- extendedWaitUntil:
+    visible:
+      id: 'events.page'
+    timeout: 20000
+- waitForAnimationToEnd
+- takeScreenshot: event
+- assertVisible:
+    id: 'frame.back'
+    text: '.*Audit log.*'
+- tapOn:
+    id: 'frame.back'
+- waitForAnimationToEnd
+- assertVisible:
+    id: 'audit.detail.on'
+- takeScreenshot: back
