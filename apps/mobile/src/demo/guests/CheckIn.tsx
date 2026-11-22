@@ -658,7 +658,7 @@ const styles = StyleSheet.create({
   noOne: { gap: 14 },
   panes: { flex: 1, flexDirection: 'row' },
   doorPane: { flex: 1, borderRightWidth: 1, borderRightColor: tokens.colorBorder },
-  doorPaneNarrow: { flex: 0, width: 520 },
+  doorPaneNarrow: { flexGrow: 0, flexShrink: 0, width: 520 },
   paneBody: { gap: 14, paddingTop: 22, paddingHorizontal: 20, paddingBottom: tokens.space6xl * 2 },
   sideBody: { gap: 14, paddingTop: 22, paddingHorizontal: 32 },
   sideHead: { minHeight: tokens.sizeHit, flexDirection: 'row', alignItems: 'center' },
