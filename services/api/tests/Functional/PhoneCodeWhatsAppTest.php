@@ -89,6 +89,19 @@ final class PhoneCodeWhatsAppTest extends ApiTestCase
         self::assertGreaterThan(0, $this->opening()['cooldownSeconds'], 'the fallback did not count as a resend');
     }
 
+    /** sc-45470: Meta refusing for Soirely's payment is still a failure like any other for the code. */
+    #[Test]
+    public function aPaymentRefusalReportTextsTheSameCode(): void
+    {
+        $this->order(smsOnly: 'US');
+        $this->call('PUT', '/api/auth/phone', ['countryCode' => 'NG', 'number' => '0803 555 0142']);
+
+        $this->report('failed', errors: [['code' => 131042, 'title' => 'Business eligibility payment issue']]);
+
+        self::assertSame($this->whatsAppCode(), $this->textedCode());
+        self::assertSame('sms_fallback', $this->opening()['route']);
+    }
+
     #[Test]
     public function aDeliveredCodeIsNeverTexted(): void
     {
@@ -309,9 +322,10 @@ final class PhoneCodeWhatsAppTest extends ApiTestCase
         self::em()->clear();
     }
 
-    private function report(string $status, string $signedWith = 'development-app-secret', ?string $messageId = null): void
+    /** @param list<array{code: int, title: string}> $errors */
+    private function report(string $status, string $signedWith = 'development-app-secret', ?string $messageId = null, array $errors = []): void
     {
-        $body = Json\encode(['entry' => [['changes' => [['value' => ['statuses' => [['id' => $messageId ?? Iter\last($this->whatsApp()->sent)['id'] ?? '', 'status' => $status]]]]]]]]);
+        $body = Json\encode(['entry' => [['changes' => [['value' => ['statuses' => [['id' => $messageId ?? Iter\last($this->whatsApp()->sent)['id'] ?? '', 'status' => $status, 'errors' => $errors]]]]]]]]);
 
         $this->client->request('POST', '/api/webhooks/whatsapp', server: [
             'CONTENT_TYPE' => 'application/json',

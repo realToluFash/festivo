@@ -596,3 +596,7 @@
   flex: none;
   margin-top: 2px;
 }
+
+.mc-preview {
+  flex: none;
+}

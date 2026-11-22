@@ -1809,6 +1809,26 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
         href: '/demo/events/evt-wed-4?state=venueDown',
       },
       {
+        title: 'Venue · one suggestion, credited',
+        what: 'OpenStreetMap at the list’s foot (sc-80918)',
+        href: '/demo/events/evt-wed-4?state=venueOne',
+      },
+      {
+        title: 'Venue · two letters, no list',
+        what: 'No credit without suggestions (sc-80918)',
+        href: '/demo/events/evt-wed-4?state=venueShort',
+      },
+      {
+        title: 'Venue · nothing matches',
+        what: 'No credit without suggestions (sc-80918)',
+        href: '/demo/events/evt-wed-4?state=venueNoMatch',
+      },
+      {
+        title: 'Venue · the credit in French',
+        what: 'Three suggestions, the line whole (sc-80918)',
+        href: '/demo/events/evt-wed-4?state=venueFrench',
+      },
+      {
         title: 'Venue · arrival note',
         what: 'The note under Address, its hint (sc-24385)',
         href: '/demo/events/evt-wed-4?state=venueNote',

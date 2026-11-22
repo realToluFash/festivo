@@ -38,8 +38,10 @@ export const SMS_REACH: Record<SmsSample, { reaches: number; noMobile: number; s
     notReplied: { reaches: 9, noMobile: 16, stopped: 0 },
   };
 
-export function smsReachLine(sample: SmsSample): string {
-  const { reaches, noMobile, stopped } = SMS_REACH[sample];
+export type SmsReach = (typeof SMS_REACH)[SmsSample];
+
+export function smsReachLine(sample: SmsSample | SmsReach): string {
+  const { reaches, noMobile, stopped } = typeof sample === 'string' ? SMS_REACH[sample] : sample;
   const cant = [
     ...(noMobile > 0 ? [sw.many('noMobile', noMobile)] : []),
     ...(stopped > 0 ? [sw.many('stoppedTexts', stopped)] : []),

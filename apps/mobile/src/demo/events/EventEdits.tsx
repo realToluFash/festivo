@@ -9,6 +9,7 @@ import {
 } from '@soirely/domain';
 import { type ReactNode, type RefObject, useEffect, useRef, useState } from 'react';
 import {
+  Linking,
   Pressable,
   StyleSheet,
   type TextInputInstance,
@@ -44,6 +45,7 @@ import {
 import { PhotoFill } from '../../components/EventThumb.tsx';
 import { currencyMatches } from '../../components/currencyMatches.ts';
 import { Glyph } from '../../components/Glyph.tsx';
+import { RowRule } from '../../components/SummaryRows.tsx';
 import { MomentBox, type Picking, pick } from '../../components/MomentPick.tsx';
 import { useReadOut } from '../../components/ReadOut.tsx';
 import {
@@ -54,7 +56,22 @@ import { ASK_WIDTH, type AskProps, TextAction } from '../../components/Summary.t
 import { Text } from '../../components/Text.tsx';
 import { tokens } from '../../theme/tokens.ts';
 import { LONG_NOTE, ARRIVAL_NOTE, NOTE_WORDS, noteTooLong, savedNote } from './ArrivalNote.ts';
-import { type EditPart, type EventDemoState, folded, instantOf, wallOf } from './EventsModel.ts';
+import {
+  CREDIT_TYPED,
+  type CreditLanguage,
+  OSM_COPYRIGHT,
+  OSM_CREDIT,
+  STADIA_ATTRIBUTION,
+  creditLanguageOf,
+  isCreditState,
+} from './addressCredit.ts';
+import {
+  type EditPart,
+  type EventDemoState,
+  instantOf,
+  suggestionsFor,
+  wallOf,
+} from './EventsModel.ts';
 import {
   CLOSES_AT,
   datesAsk,
@@ -522,6 +539,7 @@ export function VenueFields({
   addressRef,
   autoFocus = false,
   off = false,
+  credit = 'en',
   testID,
 }: {
   name: string;
@@ -538,66 +556,103 @@ export function VenueFields({
   addressRef?: RefObject<TextInputInstance | null>;
   autoFocus?: boolean;
   off?: boolean;
+  credit?: CreditLanguage;
   testID: string;
 }) {
   const [chosen, setChosen] = useState<Suggestion | null>(offering);
   const [offer, setOffer] = useState(offering != null);
-  const looking = chosen == null && !down && folded(address).length >= 3;
-  const found = looking
-    ? SUGGESTIONS.filter((one) => folded(one.name).includes(folded(address)))
-    : [];
+  const found = chosen == null && !down ? suggestionsFor(address) : [];
 
   useReadOut(found.length > 0 ? say.suggestionsBelow(found.length) : null);
 
   return (
-    <VenueFieldsView
-      name={name}
-      address={address}
-      onName={onName}
-      onAddress={(typed) => {
-        onAddress(typed);
-        setChosen(null);
-        setOffer(false);
-      }}
-      suggestions={found.map((one) => ({ key: one.name, title: one.name, line: one.address }))}
-      onSuggestion={(key) => {
-        const one = found.find((each) => each.name === key);
-        if (one == null) return;
-        onName(one.name);
-        onAddress(one.address);
-        setChosen(one);
-        setOffer(one.timeZone !== zone);
-      }}
-      down={down}
-      offer={
-        offer && chosen != null
-          ? {
-              zone: chosen.timeZone,
-              keep: zone,
-              onUse: () => {
-                onZone(chosen.timeZone);
-                setOffer(false);
-              },
-              onKeep: () => setOffer(false),
-            }
-          : null
-      }
-      nameError={nameError}
-      addressError={addressError}
-      {...(nameRef == null ? {} : { nameRef })}
-      {...(addressRef == null ? {} : { addressRef })}
-      autoFocus={autoFocus}
-      off={off}
-      testID={testID}
-    />
+    <>
+      <VenueFieldsView
+        name={name}
+        address={address}
+        onName={onName}
+        onAddress={(typed) => {
+          onAddress(typed);
+          setChosen(null);
+          setOffer(false);
+        }}
+        suggestions={found.map((one) => ({ key: one.name, title: one.name, line: one.address }))}
+        onSuggestion={(key) => {
+          const one = found.find((each) => each.name === key);
+          if (one == null) return;
+          onName(one.name);
+          onAddress(one.address);
+          setChosen(one);
+          setOffer(one.timeZone !== zone);
+        }}
+        down={down}
+        offer={
+          offer && chosen != null
+            ? {
+                zone: chosen.timeZone,
+                keep: zone,
+                onUse: () => {
+                  onZone(chosen.timeZone);
+                  setOffer(false);
+                },
+                onKeep: () => setOffer(false),
+              }
+            : null
+        }
+        nameError={nameError}
+        addressError={addressError}
+        {...(nameRef == null ? {} : { nameRef })}
+        {...(addressRef == null ? {} : { addressRef })}
+        autoFocus={autoFocus}
+        off={off}
+        testID={testID}
+      />
+      {found.length > 0 && <AddressCredit language={credit} testID={`${testID}.credit`} />}
+    </>
+  );
+}
+
+/** sc-80918: under the last suggestion, past a hairline, and not one of them: each link opens in the device's browser, and each is its own 48pt target. */
+function AddressCredit({ language, testID }: { language: CreditLanguage; testID: string }) {
+  const words = OSM_CREDIT[language];
+  const link = (url: string, name: string, id: string) => (
+    <Pressable
+      accessibilityRole="link"
+      accessibilityLanguage={language}
+      onPress={() => void Linking.openURL(url)}
+      style={({ pressed }) => [styles.creditLink, pressed && styles.pressed]}
+      testID={`${testID}.${id}`}
+    >
+      <Text size={13} weight="medium" style={styles.creditWords}>
+        {name}
+      </Text>
+    </Pressable>
+  );
+
+  return (
+    <>
+      <RowRule inset={40} />
+      <View style={styles.credit} testID={testID}>
+        <Text size={13} weight="medium" style={styles.secondary}>
+          ©{' '}
+        </Text>
+        {link(STADIA_ATTRIBUTION, words.stadia, 'stadia')}
+        <Text size={13} weight="medium" style={styles.secondary}>
+          {' '}
+          ©{' '}
+        </Text>
+        {link(OSM_COPYRIGHT, words.osm, 'osm')}
+      </View>
+    </>
   );
 }
 
 function VenueEdit(edit: EditProps) {
   const { event, start } = edit;
   const eko = SUGGESTIONS[0];
-  const sample =
-    start === 'venueSuggestions'
+  const sample = isCreditState(start)
+    ? { name: '', address: CREDIT_TYPED[start] }
+    : start === 'venueSuggestions'
       ? { name: '', address: 'Eko Hot' }
       : start === 'venueZone' && eko != null
         ? { name: eko.name, address: eko.address }
@@ -673,7 +728,8 @@ function VenueEdit(edit: EditProps) {
         onZone={setZone}
         down={down}
         offering={start === 'venueZone' ? (eko ?? null) : null}
-        autoFocus={start === 'venueSuggestions' || down}
+        autoFocus={start === 'venueSuggestions' || isCreditState(start) || down}
+        credit={creditLanguageOf(start)}
         testID="event.edit.venue"
       />
       <ArrivalNoteField
@@ -963,6 +1019,19 @@ const styles = StyleSheet.create({
   none: { gap: tokens.spaceSm, paddingVertical: tokens.spaceMd },
   secondary: { color: tokens.colorInkSecondary },
   pressed: { opacity: tokens.opacityPressed },
+  credit: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    paddingLeft: 40,
+  },
+  creditLink: {
+    minWidth: tokens.sizeHitPhonePrimary,
+    minHeight: tokens.sizeHitPhonePrimary,
+    flexShrink: 1,
+    justifyContent: 'center',
+  },
+  creditWords: { color: tokens.colorInkSecondary, textDecorationLine: 'underline' },
   acPill: {
     minHeight: 26,
     justifyContent: 'center',

@@ -36,7 +36,7 @@ import {
   tokenWord,
   byName,
   insteadOf,
-  sampleOf,
+  smsSampleOf,
   whatsAppLine,
 } from './messages.ts';
 import { useInbox } from './messagesContext.ts';
@@ -55,6 +55,7 @@ import { Preview } from './MessagesPreview.tsx';
 import { PW } from './messagesPreviewWords.ts';
 import { StreamItems } from './MessagesStream.tsx';
 import { ToPopover } from './MessagesTo.tsx';
+import { ChosenChips } from './MessagesChoose.tsx';
 import { SmsClock, SmsReach, SmsWait } from './MessagesSms.tsx';
 import { smsReachLine } from './messagesSms.ts';
 import { WaitBlock } from './MessagesWaits.tsx';
@@ -72,6 +73,7 @@ export function ComposePane({ opening, later: laterFirst }: { opening: boolean; 
   const { inbox, act, focus, say, to: event } = useInbox();
   const draft = inbox.draft;
   const [toOpen, setToOpen] = useState(opening || draft?.openTo === true);
+  const [toChoosing, setToChoosing] = useState(false);
   const [later, setLater] = useState(laterFirst);
   const [refused, setRefused] = useState(() => event.refused(draft?.to));
   const [wrong, setWrong] = useState<Refusals>(() =>
@@ -131,7 +133,10 @@ export function ComposePane({ opening, later: laterFirst }: { opening: boolean; 
                 aria-expanded={toOpen}
                 data-focus="to-chip"
                 aria-describedby={wrong.who == null ? undefined : whoId}
-                onClick={() => setToOpen((open) => !open)}
+                onClick={() => {
+                  setToChoosing(false);
+                  setToOpen((open) => !open);
+                }}
               >
                 {chipWords(draft.to, event.book)}
                 <Glyph name="chevdown" size={14} weight={2.6} />
@@ -149,10 +154,24 @@ export function ComposePane({ opening, later: laterFirst }: { opening: boolean; 
                     setToOpen(false);
                     if (back) focus('to-chip');
                   }}
+                  onNobody={() => {
+                    setToOpen(false);
+                    setWrong((was) => ({ ...was, who: MW.chooseOne }));
+                    focus('to-chip');
+                  }}
+                  choosingFirst={toChoosing}
                 />
               )}
             </div>
           </div>
+          <ChosenChips
+            to={draft.to}
+            onPick={(to) => act({ kind: 'draft', draft: { to } })}
+            onMore={() => {
+              setToChoosing(true);
+              setToOpen(true);
+            }}
+          />
           {wrong.who != null && (
             <p id={whoId} className="desk-error mg-field-error">
               <Glyph name="alert" size={15} weight={2.2} />
@@ -179,7 +198,7 @@ export function ComposePane({ opening, later: laterFirst }: { opening: boolean; 
               ))}
             </div>
           </div>
-          <SmsReach line={draft.ticks.sms ? smsReachLine(sampleOf(draft.to)) : null} />
+          <SmsReach line={draft.ticks.sms ? smsReachLine(smsSampleOf(draft.to)) : null} />
           {draft.ticks.whatsApp && <WhatsAppReach line={whatsAppLine(draft.to)} />}
           <Instead line={insteadOf(draft.to, draft.ticks)} />
         </header>

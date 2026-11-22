@@ -884,6 +884,10 @@ export function GuestsArea({
 
   function pressRemove(): void {
     if (picked.size > GUESTS_TOGETHER_MOST) return;
+    if (removeQuestion(guests, picked).stays.length === picked.size) {
+      removeMany();
+      return;
+    }
     setRemoving({ busy: false });
   }
 

@@ -473,6 +473,8 @@
 }
 
 .mn-item-rows {
+  --mnItemN: 20px;
+
   display: flex;
   flex-direction: column;
   gap: var(--spaceSm);
@@ -488,7 +490,7 @@
   display: grid;
   flex: none;
   place-items: center;
-  width: 20px;
+  width: var(--mnItemN);
   height: var(--sizeHit);
   color: var(--colorInkSecondary);
   font: 600 14px/1 var(--fontFamily);
@@ -510,6 +512,8 @@
 }
 
 .mn-choice-item {
+  --mnChoiceGlyph: 16px;
+
   display: flex;
   align-items: center;
   gap: var(--spaceSm);
@@ -521,6 +525,12 @@
   border-radius: var(--radiusField);
   background: var(--colorInset);
   font: 600 14px/1.3 var(--fontFamily);
+}
+
+.mn-choice-item > svg {
+  flex: none;
+  width: var(--mnChoiceGlyph);
+  height: var(--mnChoiceGlyph);
 }
 
 .mn-choice-item-name {
@@ -599,4 +609,34 @@
 
 .mn-offer-button .mn-tag {
   margin-left: var(--spaceXxs);
+}
+
+/* sc-32279: at 320 px an item's field takes the row and its move and remove buttons sit under it, so a name is never squeezed. */
+@media (width <= 40rem) {
+  .mn-item-row {
+    flex-wrap: wrap;
+  }
+
+  .mn-item-main {
+    flex-basis: calc(100% - var(--mnItemN) - var(--spaceSm));
+  }
+
+  .mn-item-acts {
+    margin-inline-start: calc(var(--mnItemN) + var(--spaceSm));
+  }
+
+  .mn-choice-item {
+    flex-wrap: wrap;
+    padding-block: var(--spaceXs);
+  }
+
+  .mn-choice-item-name {
+    flex: 1 1 calc(100% - var(--mnChoiceGlyph) - var(--spaceSm));
+    min-width: 0;
+    overflow-wrap: break-word;
+  }
+
+  .mn-choice-item-name + * {
+    margin-inline-start: calc(var(--mnChoiceGlyph) + var(--spaceSm));
+  }
 }

@@ -5,6 +5,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { __setConfig, config } from '../config.ts';
 import { routes } from '../routes/index.tsx';
 import { type PartyStateName, PW } from './mealParty.ts';
+import { CW } from './menuCourses.ts';
 
 const tested = config();
 const SLOW = { timeout: 20000 };
@@ -221,7 +222,16 @@ describe('a meal for each person coming (sc-3907)', () => {
     await party('checkAndSend', true);
     expect(screen.getByText(PW.preview)).toBeTruthy();
     expect(screen.queryByRole('button', { name: PW.send })).toBeNull();
-    click(PW.closePreview);
-    expect(screen.getByRole('status').textContent).toBe(PW.nothingSaved);
+    const actions = screen.getAllByRole('button', { name: PW.closePreview });
+    expect(actions).toHaveLength(2);
+    fireEvent.click(actions[actions.length - 1] as HTMLElement);
+    await screen.findByRole('heading', { level: 1, name: CW.title }, WAIT);
+    expect(document.getElementById('mc-said')?.textContent).toContain(CW.nothingSaved);
+  });
+
+  it('gives the band Close preview on the first meal screen too', SLOW, async () => {
+    await party('start', true);
+    fireEvent.click(screen.getByRole('button', { name: PW.closePreview }));
+    await screen.findByRole('heading', { level: 1, name: CW.title }, WAIT);
   });
 });
