@@ -419,7 +419,7 @@ export function EventScreen({
         </PlaceholderArea>
       )
     ) : opened.kind === 'notFound' ? (
-      <EventNotFound onBack={leave} />
+      <EventNotFound onBack={() => router.dismissTo(DESTINATION_HREF.events)} />
     ) : opened.kind === 'failed' ? (
       <EventsFailed onRetry={opened.retry} testID="events.page.retry" />
     ) : (
