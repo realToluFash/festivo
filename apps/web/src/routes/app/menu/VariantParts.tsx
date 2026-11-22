@@ -123,7 +123,7 @@ function Tags({ diets, name }: { diets: readonly DishDiet[]; name: string }) {
   );
 }
 
-function ChildrenTag() {
+export function ChildrenTag() {
   const { t } = useTranslation();
 
   return (
