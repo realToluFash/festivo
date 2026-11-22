@@ -113,7 +113,7 @@ export const SW = {
   none: 'Not chosen',
   changed: 'Menu changed',
   theRoom: 'The room',
-  noSkip: 'This course can’t be skipped.',
+  noSkip: 'This course cannot be skipped.',
   perPick: 'Options are counted per pick, so they add up to the dish, not to the room.',
   asksNothing: (dish: string) =>
     `Guests are asked nothing on this course. Everyone coming gets ${dish}, except the people you give a children’s variant and anyone it rules out, who wait under Needs the host.`,
@@ -140,22 +140,22 @@ export const SW = {
   kitchenChoose: 'Let the kitchen choose',
   whichWay: (dish: string) => `How should ${dish} come?`,
   allergyMark: 'Allergy',
-  ruledOut: (allergens: string, first: string) =>
-    `Contains ${allergens}, which ${first} is allergic to. You can still pick it.`,
-  ruledOutWho: (allergens: string, first: string) =>
-    `Contains ${allergens}, which ${first} is allergic to.`,
-  blank: (course: string, first: string) =>
-    `Choose ${course.toLocaleLowerCase('en')} for ${first}, or let the kitchen choose.`,
-  blankWay: (dish: string, first: string) => `Choose how ${first} has the ${dish}.`,
-  blankOption: (question: string, first: string) => `Answer “${question}” for ${first}.`,
+  ruledOut: (allergens: string, who: string) =>
+    `Contains ${allergens}, which ${who} is allergic to. You can still pick it.`,
+  ruledOutWho: (allergens: string, who: string) =>
+    `Contains ${allergens}, which ${who} is allergic to.`,
+  blank: (course: string, who: string) =>
+    `Choose ${course.toLocaleLowerCase('en')} for ${who}, or let the kitchen choose.`,
+  blankWay: (dish: string, who: string) => `Choose how ${who} has the ${dish}.`,
+  blankOption: (question: string, who: string) => `Answer “${question}” for ${who}.`,
   save: 'Save',
   saveNext: 'Save and go on',
   cancel: 'Cancel',
   close: 'Close',
-  overrideTitle: (first: string, allergens: string) =>
-    `${first}’s record says ${allergens}. Pick it anyway?`,
-  overrideBody: (dish: string, allergens: string, first: string) =>
-    `${dish} contains ${allergens}. If ${first}’s record is out of date, the pick is saved with your name and the time you confirmed it.`,
+  overrideTitle: (who: string, allergens: string) =>
+    `${who}’s record says ${allergens}. Pick it anyway?`,
+  overrideBody: (dish: string, allergens: string, who: string) =>
+    `${dish} contains ${allergens}. If ${who}’s record is out of date, the pick is saved with your name and the time you confirmed it.`,
   chooseAnother: 'Choose another dish',
   pickAnyway: 'Pick it anyway',
   overrideWhoTitle: (names: string, variant: string) => `${names}: give ${variant} anyway?`,
@@ -164,11 +164,10 @@ export const SW = {
   leaveOut: 'Leave them out',
   giveAnyway: 'Give it anyway',
   refused:
-    'You can’t choose for guests on this event any more: your role no longer has Guests manage. Nothing was saved.',
-  savedFor: (course: string, first: string, what: string) =>
-    `${course} chosen for ${first}: ${what}.`,
-  savedOverride: (first: string, dish: string, allergens: string) =>
-    `Recorded as your pick for ${first}, despite the record: ${dish} contains ${allergens}.`,
+    'You cannot choose for guests on this event any more: your role no longer has Guests manage. Nothing was saved.',
+  savedFor: (course: string, who: string, what: string) => `${course} chosen for ${who}: ${what}.`,
+  savedOverride: (who: string, dish: string, allergens: string) =>
+    `Recorded as your pick for ${who}, despite the record: ${dish} contains ${allergens}.`,
   whoTitle: (variant: string) => `Choose who gets ${variant}`,
   whoSub: (dish: string, course: string) => `${dish} · ${course}`,
   whoHelp:
@@ -197,8 +196,9 @@ export const numberIn = (n: number, locale = 'en'): string => n.toLocaleString(l
 export const percentOf = (n: number, room: number): number =>
   room === 0 ? 0 : Math.floor((n * 100) / room);
 
-const first = (name: string): string => name.split(' ')[0] ?? name;
-export const firstName = first;
+/** A list in the reader's words: “a, b and c”. */
+export const listOf = (items: readonly string[], lang = 'en'): string =>
+  new Intl.ListFormat(lang, { type: 'conjunction' }).format(items);
 
 export const shownCourses = (world: PicksWorld): readonly EvCourse[] =>
   world.courses.filter((course) => course.dishes.length > 0);
@@ -522,11 +522,11 @@ export function whoHasnt(world: PicksWorld): Waiting[] {
 
 export function openWords(open: readonly OpenCourse[]): string {
   return SW.notChosenOn(
-    open
-      .map(({ course, excluded }) =>
+    listOf(
+      open.map(({ course, excluded }) =>
         excluded == null ? course.name : SW.excludedOn(course.name, excludedWords(excluded)),
-      )
-      .join(', '),
+      ),
+    ),
   );
 }
 
