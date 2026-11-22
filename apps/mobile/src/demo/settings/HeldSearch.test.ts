@@ -18,6 +18,12 @@ describe('sc-82858: the paused page has no Search', () => {
     expect(home).toContain('<PortraitTop at="Settings" search={search} />');
   });
 
+  it('keeps Search on the phone only while overdue', () => {
+    expect(home).toMatch(
+      /search \? \(\s*<SearchAndBell tell=\{shell\.tell\} role=\{shell\.looking\.role\} \/>\s*\) : \(\s*<Bell tell=\{shell\.tell\} \/>/u,
+    );
+  });
+
   it('passes the flag to the sidebar and keeps the bell alone upright', () => {
     expect(frame).toMatch(/demoShell\([^\n]*\n\s*search,/u);
     expect(frame).toMatch(
