@@ -68,7 +68,6 @@ export function withWaiting(checkIn: CheckIn, waiting: readonly WaitingArrival[]
   };
 }
 
-/** Recorded once: a second Arrived for someone already waiting keeps the first, earlier time. */
 export function waitFor(
   waiting: readonly WaitingArrival[],
   arrival: WaitingArrival,
