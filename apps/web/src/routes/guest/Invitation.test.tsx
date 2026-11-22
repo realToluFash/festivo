@@ -2358,6 +2358,51 @@ describe('a meal for each person coming, the close and the allergy rules (sc-390
     ]);
   });
 
+  it('puts the refused alert only on the rows the send changed, after their close line', async () => {
+    const mine = [
+      saved('main', { answer: 'chefsChoice' }),
+      saved('dessert', { answer: 'skipped' }),
+    ];
+    const his = [saved('main', { answer: 'chefsChoice' }), saved('dessert', { answer: 'skipped' })];
+    const withChidi = (courses: object[]) => ({
+      ...answered('coming', undefined, 1, [CHIDI]),
+      meals: { ...MEALS, courses, answers: { [MEALS.you]: mine, [CHIDI.id]: his } },
+    });
+    api({
+      '/api/guest-links/page': [
+        { status: 200, body: withChidi([MAIN, DESSERT]) },
+        { status: 200, body: withChidi([{ ...MAIN, picksClose: CLOSED_CLOSE }, DESSERT]) },
+      ],
+      '/api/guest-links/meals': [
+        {
+          status: 409,
+          body: {
+            type: 'https://soirely.com/errors/meal_picks_closed',
+            title: 'Picks closed',
+            status: 409,
+            courses: ['main'],
+          },
+        },
+      ],
+    });
+    open();
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Change main for you' }));
+    fireEvent.click(screen.getByRole('radio', { name: /Jollof rice/ }));
+    fireEvent.click(screen.getByRole('button', { name: 'Next' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Send my changes' }));
+
+    const alert = (
+      await screen.findByText(/^Picks for Main closed on .*, so your change was not saved\.$/)
+    ).closest('[role="alert"]') as HTMLElement;
+    expect(screen.getAllByText(/, so your change was not saved\.$/)).toHaveLength(1);
+    expect(alert).toBe(document.activeElement);
+    const close = alert.parentElement?.querySelector('.mx-close') as HTMLElement;
+    expect(close.compareDocumentPosition(alert) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(screen.getAllByText(/^Picks closed on /)).toHaveLength(2);
+    expect(screen.queryByRole('button', { name: `Change main for ${CHIDI.fullName}` })).toBeNull();
+  });
+
   it('shows every pick read-only once Reply by closes answers, with no send and no Change', async () => {
     api({
       '/api/guest-links/page': [
