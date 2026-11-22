@@ -18,7 +18,7 @@ import { useEffect, useSyncExternalStore } from 'react';
 import { api } from './api.ts';
 import { registerAppPush } from './appPush.ts';
 import { currentLocale } from './i18n/index.ts';
-import { leaveThen } from './leaveHeld.ts';
+import { leaveThen, leaveWithoutAsking } from './leaveHeld.ts';
 import { takeDownRunOfShowCards } from './runOfShowCards.ts';
 import { tokens } from './tokens.ts';
 
@@ -235,16 +235,19 @@ export function replaceOrganisation(saved: Membership): void {
   });
 }
 
-/** Every "Sign out": no confirmation, straight to welcome. */
+/** Every "Sign out": no confirmation of its own, straight to welcome, though a form holding a change asks first (sc-82245). */
 export function signOutHere(): void {
-  void api.signOut().finally(() => {
-    forget();
-    router.replace('/welcome');
+  leaveThen(() => {
+    void api.signOut().finally(() => {
+      forget();
+      router.replace('/welcome');
+    });
   });
 }
 
-/** This device's session already ended elsewhere: only the tokens are left to clear. */
+/** This device's session already ended elsewhere: only the tokens are left to clear, and a form holding a change does not ask. */
 export function endedHere(): void {
+  leaveWithoutAsking();
   void Promise.resolve(tokens.clear()).finally(() => {
     forget();
     router.replace('/welcome');

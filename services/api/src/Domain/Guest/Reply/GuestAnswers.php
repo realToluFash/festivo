@@ -66,6 +66,16 @@ final readonly class GuestAnswers
         return null === $guest->getRepliesReopenedAt() ? ReplyDeadline::closedOn($guest->getEvent(), $this->clock->now()) : null;
     }
 
+    /** Refused 409 `event_paused` or `event_concluded` while the event's phase takes no answers. */
+    public function refuseByPhase(Guest $guest): void
+    {
+        $refusal = $this->phase($guest)->refusal();
+
+        if (null !== $refusal) {
+            throw new ApiException($refusal, ErrorCode::EventPaused === $refusal ? 'guest.event_paused' : 'guest.event_concluded');
+        }
+    }
+
     public function phase(Guest $guest): GuestPagePhase
     {
         $event = $guest->getEvent();
@@ -85,11 +95,7 @@ final readonly class GuestAnswers
         $changed = $this->entityManager->wrapInTransaction(function () use ($guest, $reply, $page, $recorded): bool {
             $this->entityManager->refresh($guest, LockMode::PESSIMISTIC_WRITE);
 
-            $refusal = $this->phase($guest)->refusal();
-
-            if (null !== $refusal) {
-                throw new ApiException($refusal, ErrorCode::EventPaused === $refusal ? 'guest.event_paused' : 'guest.event_concluded');
-            }
+            $this->refuseByPhase($guest);
 
             if (null !== $recorded && !$guest->isInvited()) {
                 $this->guestInvitations->assertInvitable($guest->getEvent());
@@ -174,11 +180,7 @@ final readonly class GuestAnswers
         $changed = $this->entityManager->wrapInTransaction(function () use ($guest, $own, $companions, $unnamed): bool {
             $this->entityManager->refresh($guest, LockMode::PESSIMISTIC_WRITE);
 
-            $refusal = $this->phase($guest)->refusal();
-
-            if (null !== $refusal) {
-                throw new ApiException($refusal, ErrorCode::EventPaused === $refusal ? 'guest.event_paused' : 'guest.event_concluded');
-            }
+            $this->refuseByPhase($guest);
 
             if ($this->started($guest)) {
                 throw new ApiException(ErrorCode::RepliesClosed, 'guest.replies_closed');

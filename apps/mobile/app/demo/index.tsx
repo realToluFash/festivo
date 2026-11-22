@@ -39,6 +39,7 @@ import { SEARCH_BOARDS } from '../../src/demo/search/searchRules.ts';
 import { DOOR_CODE_BOARDS } from '../../src/demo/doorCode/DoorCodeBoards.ts';
 import { OUTSIDE_BOARDS } from '../../src/demo/outsideEvents/OutsideModel.ts';
 import { LINK_BOARDS } from '../../src/demo/events/EventLink.ts';
+import { BEHIND_BOARDS } from '../../src/demo/events/opener.ts';
 import { GUESTS_BOARDS } from '../../src/demo/guests/GuestsBoards.ts';
 import { PASS_BOARDS } from '../../src/demo/pass/PassBoards.ts';
 import { NEXT_BOARDS, QUEUE_BOARDS } from '../../src/demo/queue/QueueBoards.ts';
@@ -1864,6 +1865,11 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
         href: '/demo/events/evt-wed-4?state=hosts',
       },
       {
+        title: 'Hosted by · no hosts yet',
+        what: 'A draft, before its first host',
+        href: '/demo/events/evt-draft-4?state=hosts',
+      },
+      {
         title: 'Hosted by · a name twice',
         what: 'The second, in red',
         href: '/demo/events/evt-wed-4?state=hostsDuplicate',
@@ -2327,6 +2333,10 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
   {
     page: 'An event’s link from another organisation · sc-80863',
     boards: LINK_BOARDS.map(({ title, what, href }) => ({ title, what, href: href as Href })),
+  },
+  {
+    page: 'An event’s ‹ names the screen it goes back to · sc-83008 · phone and tablet portrait',
+    boards: BEHIND_BOARDS.map(({ title, what, href }) => ({ title, what, href: href as Href })),
   },
   {
     page: 'Events from outside · sc-68438',

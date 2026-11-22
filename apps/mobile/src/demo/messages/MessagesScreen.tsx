@@ -13,7 +13,6 @@ import {
   Animated,
   Easing,
   Keyboard,
-  KeyboardAvoidingView,
   ScrollView,
   type ScrollViewInstance,
   StyleSheet,
@@ -44,6 +43,7 @@ import { Bell } from '../settings/Frame.tsx';
 import { Back } from '../../components/SettingsParts.tsx';
 import { type Anchor, anchorUnder } from '../../components/Summary.tsx';
 import { MiniComposer } from './Composers.tsx';
+import { KeysClear } from './KeysClear.tsx';
 import { type Talk, partsOf } from './Conversation.tsx';
 import { MessagesList, rowName } from './MessagesList.tsx';
 import {
@@ -1106,7 +1106,7 @@ function PhoneConversation({
   );
 
   return (
-    <KeyboardAvoidingView behavior="padding" style={[styles.fill, { paddingTop: insets.top }]}>
+    <KeysClear style={[styles.fill, { paddingTop: insets.top }]}>
       <View
         style={styles.nav}
         onLayout={(event) => setSides((now) => ({ ...now, nav: event.nativeEvent.layout.width }))}
@@ -1191,7 +1191,7 @@ function PhoneConversation({
           {parts.foot}
         </View>
       )}
-    </KeyboardAvoidingView>
+    </KeysClear>
   );
 }
 
@@ -1208,7 +1208,7 @@ function PaneConversation({
   const stream = useRef<ScrollViewInstance>(null);
 
   return (
-    <KeyboardAvoidingView behavior="padding" style={styles.fill}>
+    <KeysClear style={styles.fill}>
       {parts.bare !== true && (
         <View style={styles.paneHead}>
           {parts.head ?? (
@@ -1252,7 +1252,7 @@ function PaneConversation({
         {parts.stream}
       </ScrollView>
       {parts.foot != null && <View style={styles.paneFoot}>{parts.foot}</View>}
-    </KeyboardAvoidingView>
+    </KeysClear>
   );
 }
 

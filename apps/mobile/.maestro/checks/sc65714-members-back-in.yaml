@@ -1,0 +1,14 @@
+# sc-65714: Members, scrolled to Requests to get back in, with its "Asked … · ends …" line.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/settings/members
+- extendedWaitUntil:
+    visible: '.*Adaeze Okafor.*'
+    timeout: 30000
+- scrollUntilVisible:
+    element: '.*Adaeze Okafor.*'
+    direction: DOWN
+    centerElement: true
+- waitForAnimationToEnd:
+    timeout: 8000
+- takeScreenshot: members-back-in

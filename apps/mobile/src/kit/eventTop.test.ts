@@ -65,7 +65,6 @@ describe("an event's page top", () => {
     });
     expect(eventTop('tabletLandscape', 'overview', 'loaded').cardNamed).toBe(true);
     expect(eventTop('tabletLandscape', 'overview', 'failed').cardNamed).toBe(false);
-    expect(eventTop('tabletLandscape', 'overview', 'notFound').cardNamed).toBe(false);
   });
 
   it("on its side, draws no ‹ in the pane on any other area, the sidebar's Overview being the way back", () => {
@@ -79,9 +78,20 @@ describe("an event's page top", () => {
       });
   });
 
-  it('on its side, keeps the ‹ on a failed or missing event, which has no sidebar', () => {
+  it('on its side, keeps the ‹ on a failed event, which has no sidebar', () => {
     expect(eventTop('tabletLandscape', 'overview', 'failed').bodyBack).toBe(true);
-    expect(eventTop('tabletLandscape', 'guests', 'notFound').bodyBack).toBe(true);
+  });
+
+  it('draws a missing event in the bare Events frame, its own Back to Events the way back', () => {
+    for (const kind of ['phone', 'tabletPortrait', 'tabletLandscape'] as const)
+      for (const area of ['overview', 'guests'] as const)
+        expect(eventTop(kind, area, 'notFound')).toEqual({
+          inEvent: false,
+          cardNamed: true,
+          areaTitled: false,
+          frameBack: null,
+          bodyBack: false,
+        });
   });
 
   it("on a phone, names Overview by its card and goes back by the area's ‹", () => {

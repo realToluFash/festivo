@@ -235,3 +235,121 @@ describe('a meal for each person coming (sc-3907)', () => {
     await screen.findByRole('heading', { level: 1, name: CW.title }, WAIT);
   });
 });
+
+describe('Same as an earlier person (sc-17283)', () => {
+  const TOM_STARTER = 'For Tom, Starter, 1 of 3. Which starter?';
+
+  it(
+    'shows one button per earlier person outside the dishes, with names that start with the label',
+    SLOW,
+    async () => {
+      await party('sameAsTwo');
+      const mine = screen.getByRole('button', { name: 'Same as mine, for Tom' });
+      const chidi = screen.getByRole('button', { name: `Same as ${CHIDI}, for Tom` });
+
+      expect(mine.textContent).toBe('Same as mine');
+      expect(chidi.textContent).toBe(`Same as ${CHIDI}`);
+      expect(
+        within(screen.getByRole('group', { name: TOM_STARTER })).queryAllByRole('button'),
+      ).toHaveLength(0);
+    },
+  );
+
+  it(
+    'copies what can be picked, asks the rest with its line, refuses it blank, then shows the card',
+    SLOW,
+    async () => {
+      await party('sameAsTwo');
+      click(`Same as ${CHIDI}, for Tom`);
+
+      expect(document.activeElement).toBe(screen.getByRole('heading', { level: 2 }));
+      expect(screen.getByText(`${CHIDI}’s main can’t be picked for Tom.`)).toBeTruthy();
+      expect(screen.queryByRole('button', { name: /^Same as/ })).toBeNull();
+      click(PW.next);
+      expect(screen.getByRole('alert').textContent).toContain(
+        'Choose a main for Tom, or let the kitchen choose.',
+      );
+      radio(/Jollof rice/);
+      click(PW.next);
+
+      expect(heading()).toBe('For Tom');
+      expect(document.activeElement).toBe(screen.getByRole('heading', { level: 2 }));
+      expect(
+        screen.getByText(`Copied from ${CHIDI}. Change anything that should be different.`),
+      ).toBeTruthy();
+      expect(screen.getByText('Pepper soup')).toBeTruthy();
+      expect(screen.getByText('Jollof rice')).toBeTruthy();
+      expect(screen.getByText('[No dessert]')).toBeTruthy();
+    },
+  );
+
+  it('uses the guest’s own wording and asks the first course without buttons', SLOW, async () => {
+    await party('sameAsTwo');
+    click('Same as mine, for Tom');
+
+    expect(screen.getByRole('group', { name: TOM_STARTER })).toBeTruthy();
+    expect(screen.getByText('Your starter can’t be picked for Tom.')).toBeTruthy();
+    expect(screen.queryByRole('button', { name: /^Same as/ })).toBeNull();
+  });
+
+  it(
+    'returns Change to the card, Back to the first course with the copy selected, and Continue on',
+    SLOW,
+    async () => {
+      await party('copiedCard');
+      click('Change main for Tom');
+      click(PW.next);
+      expect(heading()).toBe('For Tom');
+
+      click(PW.back);
+      expect((screen.getByRole('radio', { name: /Pepper soup/ }) as HTMLInputElement).checked).toBe(
+        true,
+      );
+      expect(screen.getByRole('button', { name: 'Same as mine, for Tom' })).toBeTruthy();
+
+      click(PW.next);
+      expect(screen.queryByRole('button', { name: /^Same as/ })).toBeNull();
+      click(PW.back);
+      expect(screen.getByRole('button', { name: 'Same as mine, for Tom' })).toBeTruthy();
+      click(PW.next);
+      click(PW.next);
+      click(PW.next);
+      expect(heading()).toBe(PW.check);
+    },
+  );
+
+  it(
+    'goes straight to the card when everything copies, and Continue to the next person',
+    SLOW,
+    async () => {
+      await party('copiedCardYours');
+      expect(heading()).toBe(`For ${CHIDI}`);
+      expect(screen.getByText(PW.copiedFrom({ key: 'me', name: '', you: true }))).toBeTruthy();
+      click(PW.continue);
+      expect(screen.getByRole('group', { name: TOM_STARTER })).toBeTruthy();
+      expect(screen.getAllByRole('button', { name: /^Same as/ })).toHaveLength(2);
+    },
+  );
+
+  it(
+    'never shows the buttons for the first person or on a course reached by Change',
+    SLOW,
+    async () => {
+      await party('start');
+      expect(screen.queryByRole('button', { name: /^Same as/ })).toBeNull();
+      await party('checkAndSend');
+      click(`Change starter for ${CHIDI}`);
+      expect(screen.queryByRole('button', { name: /^Same as/ })).toBeNull();
+    },
+  );
+
+  it('copies within Preview as guest and closes instead of sending', SLOW, async () => {
+    await party('previewSameAs', true);
+    click(`Same as mine, for ${CHIDI}`);
+    expect(heading()).toBe(`For ${CHIDI}`);
+    click(PW.continue);
+    expect(heading()).toBe(PW.check);
+    expect(screen.getAllByRole('button', { name: PW.closePreview })).toHaveLength(2);
+    expect(screen.queryByRole('button', { name: PW.send })).toBeNull();
+  });
+});

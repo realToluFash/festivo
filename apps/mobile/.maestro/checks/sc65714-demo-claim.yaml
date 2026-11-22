@@ -1,0 +1,16 @@
+# sc-65714: the app demo's Members with the owner claim open (behind the withdraw ask; the demo has no open state alone), for the side-by-side pair beside the product. Needs ${METRO_URL}.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/demo/settings/members?state=withdraw
+- extendedWaitUntil:
+    {
+      visible: '.*(Members|Settings|Sign-in rules|Organisation|Delete|Paused|paused).*',
+      timeout: 30000,
+    }
+- waitForAnimationToEnd: { timeout: 8000 }
+- takeScreenshot: demo-claim-top
+- swipe:
+    start: 50%, 80%
+    end: 50%, 30%
+- waitForAnimationToEnd
+- takeScreenshot: demo-claim-foot

@@ -237,6 +237,19 @@ final class MealPicksTest extends ApiTestCase
     }
 
     #[Test]
+    public function aPausedEventRefusesPicksAndSavesNothing(): void
+    {
+        $token = $this->coming([], []);
+        self::service(Connection::class)->executeStatement("UPDATE events SET status = 'paused', paused_at = '2026-10-02 09:00:00' WHERE id = :id", ['id' => $this->eventId]);
+
+        $this->meals($token, [['person' => $this->guestId(), 'course' => $this->id($this->main), 'answer' => 'chosen', 'dish' => $this->id($this->jollof)]]);
+
+        self::assertSame(409, $this->statusCode());
+        self::assertSame(ErrorCode::EventPaused->type(), $this->last()['type'] ?? null);
+        self::assertSame([], self::em()->getRepository(MealAnswer::class)->findAll());
+    }
+
+    #[Test]
     public function aStoredAnswerIsRefusedOnTheMenuThroughItsRoutesAndCountedInKitchenPrep(): void
     {
         $chicken = new MenuDishVariant($this->jollof, 'Chicken', false, ['celery'], [], null, 0);

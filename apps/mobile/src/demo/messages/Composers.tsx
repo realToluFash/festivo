@@ -315,7 +315,7 @@ export function NewComposer({
         </View>
       )}
       {tools && (
-        <View style={styles.tools}>
+        <View style={[styles.tools, editing != null && styles.toolsWrap]}>
           <TextAction
             ref={insertRef}
             label={W.insert}
@@ -347,15 +347,16 @@ export function NewComposer({
                 onPress={editing.onChangeWhen}
                 testID="messages.changeWhen"
               />
-              <View style={styles.grow} />
-              <Pill
-                label={W.save}
-                height={tokens.sizeHit}
-                full={false}
-                kind={on ? 'primary' : 'off'}
-                onPress={editing.onSave}
-                testID="messages.saveScheduled"
-              />
+              <View style={styles.saveAt}>
+                <Pill
+                  label={W.save}
+                  height={tokens.sizeHit}
+                  full={false}
+                  kind={on ? 'primary' : 'off'}
+                  onPress={editing.onSave}
+                  testID="messages.saveScheduled"
+                />
+              </View>
             </>
           )}
         </View>
@@ -753,6 +754,9 @@ const styles = StyleSheet.create({
   body: { fontSize: 16, lineHeight: 24, maxHeight: 220, textAlignVertical: 'top' },
   tokenRun: { color: tokens.colorAccentText, backgroundColor: tokens.colorAccentTint },
   tools: { flexDirection: 'row', alignItems: 'center', gap: 18 },
+  // A phone has no room for Insert, Preview, Change when and Save in one row, so Save goes under them whole.
+  toolsWrap: { flexWrap: 'wrap', rowGap: 0 },
+  saveAt: { flexShrink: 0, marginLeft: 'auto' },
   goes: { textAlign: 'right' },
   answer: { gap: tokens.spaceXs },
   answerLine: { flexDirection: 'row', alignItems: 'flex-start', gap: tokens.spaceXs },

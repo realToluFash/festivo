@@ -93,7 +93,7 @@ import { BellButton, BellInPane } from './BellButton.tsx';
 import { SearchAndBell } from './SearchButton.tsx';
 import { SEARCH_HREF } from '../kit/searchLinks.ts';
 import { CreateWalkWindow, type WalkOpening, deviceNow } from './CreateWalkWindow.tsx';
-import { Sheet } from './Sheet.tsx';
+import { Sheet, SheetScrollView } from './Sheet.tsx';
 import { Glyph, type GlyphName } from './Glyph.tsx';
 import { Notice } from './Notice.tsx';
 import {
@@ -372,12 +372,18 @@ export function AppFrame({
     [],
   );
   const currencies = useCountryCurrencies(creating);
-  const [created, setCreated] = useState<{ name: string; takesFocus: boolean } | null>(null);
+  const [created, setCreated] = useState<{
+    id: string;
+    name: string;
+    takesFocus: boolean;
+  } | null>(null);
   const createdWords = useRef<ViewInstance>(null);
   const switched = created == null ? null : t('switcher.switched', { name: created.name });
   useEffect(
     () =>
-      inFront ? onMovedOn((next) => setCreated({ name: next.name, takesFocus: false })) : undefined,
+      inFront
+        ? onMovedOn((next) => setCreated({ id: next.id, name: next.name, takesFocus: false }))
+        : undefined,
     [inFront],
   );
   const [backHidden, setBackHidden] = useState(false);
@@ -528,7 +534,7 @@ export function AppFrame({
     (id: string) => {
       const name = signedIn.organisations.find((known) => known.id === id)?.name;
       switchOrganisation(id, () => {
-        if (name != null) setCreated({ name, takesFocus: true });
+        if (name != null) setCreated({ id, name, takesFocus: true });
       });
     },
     [signedIn.organisations],
@@ -552,6 +558,13 @@ export function AppFrame({
   if (standingSeen.id !== signedIn.organisation?.id || standingSeen.overdue !== overdue) {
     setStandingSeen({ id: signedIn.organisation?.id, overdue });
     setLapsed(standingSeen.id === signedIn.organisation?.id && overdue ? {} : undefined);
+  }
+  // A move made elsewhere, as an event's link does, leaves this screen's notice naming an organisation no longer worked in (sc-80863).
+  const workingIn = signedIn.organisation?.id;
+  const [seenIn, setSeenIn] = useState(workingIn);
+  if (seenIn !== workingIn) {
+    setSeenIn(workingIn);
+    if (created != null && created.id !== workingIn) setCreated(null);
   }
   const switchAnswer = useFrameSwitch();
   useEffect(() => {
@@ -786,7 +799,7 @@ export function AppFrame({
                   if (id !== signedIn.organisation?.id || signedIn.pausedIn != null) {
                     const name = signedIn.organisations.find((known) => known.id === id)?.name;
                     switchOrganisation(id, () => {
-                      if (name != null) setCreated({ name, takesFocus: false });
+                      if (name != null) setCreated({ id, name, takesFocus: false });
                     });
                   }
                 }}
@@ -847,7 +860,11 @@ export function AppFrame({
                   setCreating(false);
                   joinOrganisation(organisation);
                   switchOrganisation(organisation.id);
-                  setCreated({ name: organisation.name, takesFocus: fromNone });
+                  setCreated({
+                    id: organisation.id,
+                    name: organisation.name,
+                    takesFocus: fromNone,
+                  });
                 }}
               />
             )}
@@ -1580,7 +1597,7 @@ function TabBar({ inEvent }: { inEvent: InsideEvent }) {
         opener={moreTab}
         testID="event.nav.moreSheet"
       >
-        <View style={[styles.moreSheet, { paddingBottom: Math.max(MORE_FOOT - insets.bottom, 0) }]}>
+        <View style={styles.moreSheet}>
           <View style={styles.moreHead}>
             <Text
               size={22}
@@ -1600,43 +1617,52 @@ function TabBar({ inEvent }: { inEvent: InsideEvent }) {
               <Glyph name="x" size={18} ink={tokens.colorInk} weight={2.4} />
             </Pressable>
           </View>
-          <View accessibilityRole="tablist">
-            <RowList
-              items={[
-                ...doorRows(t, inEvent, () => setMore(false)),
-                ...inMore.map((area) => {
-                  const on = area === inEvent.area;
+          <SheetScrollView
+            style={styles.moreBody}
+            contentContainerStyle={[
+              styles.moreRows,
+              { paddingBottom: Math.max(MORE_FOOT - insets.bottom, 0) },
+            ]}
+            testID="event.nav.moreSheet.rows"
+          >
+            <View accessibilityRole="tablist">
+              <RowList
+                items={[
+                  ...doorRows(t, inEvent, () => setMore(false)),
+                  ...inMore.map((area) => {
+                    const on = area === inEvent.area;
 
-                  return {
-                    key: area,
-                    inset: 40,
-                    selected: on,
-                    row: (
-                      <Row
-                        title={t(`eventNav.${area}`)}
-                        lead={<MoreGlyph name={AREA_GLYPH[area]} on={on} />}
-                        opens
-                        selected={on}
-                        onPress={() => {
-                          setMore(false);
-                          inEvent.onArea(area);
-                        }}
-                        accessibilityRole="tab"
-                        testID={`event.nav.more.${area}`}
-                      />
-                    ),
-                  };
-                }),
-              ]}
-            />
-          </View>
-          {outside != null && (
-            <OutsideYou
-              here={outside.id}
-              onLeave={() => setMore(false)}
-              idPrefix="event.nav.more"
-            />
-          )}
+                    return {
+                      key: area,
+                      inset: 40,
+                      selected: on,
+                      row: (
+                        <Row
+                          title={t(`eventNav.${area}`)}
+                          lead={<MoreGlyph name={AREA_GLYPH[area]} on={on} />}
+                          opens
+                          selected={on}
+                          onPress={() => {
+                            setMore(false);
+                            inEvent.onArea(area);
+                          }}
+                          accessibilityRole="tab"
+                          testID={`event.nav.more.${area}`}
+                        />
+                      ),
+                    };
+                  }),
+                ]}
+              />
+            </View>
+            {outside != null && (
+              <OutsideYou
+                here={outside.id}
+                onLeave={() => setMore(false)}
+                idPrefix="event.nav.more"
+              />
+            )}
+          </SheetScrollView>
         </View>
       </Sheet>
     </>
@@ -1790,7 +1816,9 @@ function OutsideYouSheet({
             <Glyph name="x" size={18} ink={tokens.colorInk} weight={2.4} />
           </Pressable>
         </View>
-        <OutsideYou here={here} onLeave={onClose} idPrefix="frame.side.you" />
+        <SheetScrollView style={styles.moreBody} contentContainerStyle={styles.moreRows}>
+          <OutsideYou here={here} onLeave={onClose} idPrefix="frame.side.you" />
+        </SheetScrollView>
       </View>
     </Sheet>
   );
@@ -2116,9 +2144,16 @@ const styles = StyleSheet.create({
     borderRadius: tokens.sizeHit / 2,
   },
   pillOn: { backgroundColor: tokens.colorCard, ...tokens.elevationNative.raised.ios },
-  moreSheet: { gap: tokens.spaceXl, paddingHorizontal: tokens.spaceXxl, paddingTop: 31 },
+  moreSheet: { flexShrink: 1, gap: tokens.spaceXl, paddingTop: 31 },
+  moreBody: { flexGrow: 0, flexShrink: 1 },
+  moreRows: { gap: tokens.spaceXl, paddingHorizontal: tokens.spaceXxl },
   moreTitle: { letterSpacing: 22 * -0.015, lineHeight: 22 * 1.2 },
-  moreHead: { minHeight: tokens.sizeHit, flexDirection: 'row', alignItems: 'center' },
+  moreHead: {
+    minHeight: tokens.sizeHit,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: tokens.spaceXxl,
+  },
   moreClose: {
     width: tokens.sizeHit,
     height: tokens.sizeHit,

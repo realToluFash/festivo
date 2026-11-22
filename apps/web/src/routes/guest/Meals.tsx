@@ -20,6 +20,7 @@ import {
   keyOf,
   markOf,
   nothingSafe,
+  oneCloseDay,
   plateDish,
   against,
   changeFocus,
@@ -584,6 +585,8 @@ export function MealCards({
   hosts,
   pending,
   refused,
+  unsaved,
+  locked = false,
   onChange,
 }: {
   eaters: readonly Eater[];
@@ -596,12 +599,14 @@ export function MealCards({
   hosts: string;
   pending: (key: string) => boolean;
   refused: ReadonlySet<string>;
+  unsaved: ReadonlySet<string>;
+  /** Paused: every row read-only with its own close line, open courses too. */
+  locked?: boolean;
   onChange: (key: string) => void;
 }) {
   const { t } = useTranslation();
-  const days = new Set(courses.map((one) => dayOf(one.picksClose.at, timeZone)));
-  const single = days.size === 1 && courses.every((one) => !one.picksClose.closed);
-  const day = [...days][0] ?? '';
+  const day = oneCloseDay(courses, (at) => dayOf(at, timeZone));
+  const single = day != null;
 
   return (
     <div className="pc-meals">
@@ -611,12 +616,6 @@ export function MealCards({
           <p className="gk-text">{t('guestMeal.hostsGet', { hosts })}</p>
           {single && <p className="gk-text is-quiet">{t('guestMeal.picksClose', { date: day })}</p>}
         </div>
-      )}
-      {head === 'back' && single && (
-        <p className="pc-saved">
-          <Glyph name="tick" size={16} weight={2.6} />
-          <span>{t('guestMeal.savedUntil', { date: day })}</span>
-        </p>
       )}
       {eaters.map((eater) => (
         <section key={eater.key} className="pc-card" aria-labelledby={`pc-card-${eater.key}`}>
@@ -635,21 +634,26 @@ export function MealCards({
                   <div className="mx-words">
                     <p className="mx-course">{course.name}</p>
                     <Pick plate={plates[key]} course={course} />
-                    {pending(key) && !shut && (
+                    {pending(key) && !shut && !locked && (
                       <p className="mx-pending">{t('guestMeal.notSent')}</p>
                     )}
-                    {refused.has(course.id) && (
-                      <p className="desk-error" role="alert">
-                        <Glyph name="alert" size={15} weight={2.2} />
-                        {t('guestMeal.refusedClosed', { course: course.name, date })}
-                      </p>
-                    )}
-                    {!single && (
+                    {(!single || locked) && (
                       <p className="mx-close">
                         <Glyph name={shut ? 'lock' : 'clock'} size={15} weight={2.4} />
                         {shut
                           ? t('guestMeal.picksClosed', { date })
                           : t('guestMeal.picksClose', { date })}
+                      </p>
+                    )}
+                    {unsaved.has(key) && (
+                      <p
+                        className="desk-error ms-refused"
+                        role="alert"
+                        tabIndex={-1}
+                        data-focus={`refused-${key}`}
+                      >
+                        <Glyph name="alert" size={16} weight={2.2} />
+                        {t('guestMeal.refusedClosed', { course: course.name, date })}
                       </p>
                     )}
                     {mark != null && (
@@ -662,7 +666,7 @@ export function MealCards({
                       <p className="gk-text">{t('guestMeal.hostInTouchLine')}</p>
                     )}
                   </div>
-                  {!shut && (
+                  {!shut && !locked && (
                     <button
                       type="button"
                       className="gp-text is-ink"
@@ -711,12 +715,23 @@ export function MealsSaved({
   told,
   marked,
   busy,
+  savedUntil,
+  kitchen,
+  ending,
+  hosts,
   onSend,
   children,
 }: {
   told: 'marked' | 'nothing' | 'saved' | 'failed' | null;
   marked: number;
   busy: boolean;
+  /** The one day every course closes on, while all are open. */
+  savedUntil: string | null;
+  /** For the kitchen, above the picks, while answers are open. */
+  kitchen: ReactNode;
+  /** How the section ends: Send my changes, the line to ask the hosts once every course is closed, or nothing while the event is paused. */
+  ending: 'send' | 'askHosts' | 'none';
+  hosts: string;
   onSend: () => void;
   children: ReactNode;
 }) {
@@ -727,6 +742,13 @@ export function MealsSaved({
       <h2 id="pc-h" className="gp-h2 gk-h2" tabIndex={-1} data-focus="mealsSaved">
         {t('guestMeal.yourPicks')}
       </h2>
+      {savedUntil != null && (
+        <p className="pc-saved">
+          <Glyph name="tick" size={16} weight={2.6} />
+          <span>{t('guestMeal.savedUntil', { date: savedUntil })}</span>
+        </p>
+      )}
+      {kitchen != null && <div className="gk-rows">{kitchen}</div>}
       {children}
       {told === 'marked' && marked > 0 && <MarkedLine count={marked} />}
       {told === 'failed' && <Notice kind="broken">{t('guestMeal.notSaved')}</Notice>}
@@ -734,11 +756,14 @@ export function MealsSaved({
         {told === 'nothing' && <p>{t('guestMeal.nothingToSend')}</p>}
         {told === 'saved' && <p>{t('guestMeal.changesSaved')}</p>}
       </div>
-      <div className="gk-actions">
-        <Filled busy={busy} focus="mealsSend" onClick={onSend}>
-          {t('guestMeal.sendChanges')}
-        </Filled>
-      </div>
+      {ending === 'askHosts' && <p className="gk-text">{t('guestMeal.askHosts', { hosts })}</p>}
+      {ending === 'send' && (
+        <div className="gk-actions">
+          <Filled busy={busy} focus="mealsSend" onClick={onSend}>
+            {t('guestMeal.sendChanges')}
+          </Filled>
+        </div>
+      )}
     </section>
   );
 }
