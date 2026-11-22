@@ -35,7 +35,11 @@ describe('the bell’s states (sc-83081)', () => {
     expect(bellStartOf('bellMoreFailed').more).toBe('failed');
     expect(bellStartOf('bellMute').menu).toBe('missed');
     expect(bellStartOf('bellRefreshing').offline).toBe('refreshing');
-    expect(bellStartOf('bellUnknown')).toMatchObject({ unknown: true, muted: true });
+    expect(bellStartOf('bellUnknown')).toMatchObject({
+      unknown: true,
+      muted: true,
+      marked: ['replies', 'unknown'],
+    });
   });
 
   it('marks Muted an item of a category it does not know, as the server holds it (sc-84143)', () => {

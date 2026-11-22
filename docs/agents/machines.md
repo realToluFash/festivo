@@ -168,8 +168,11 @@ with `~/.claude-soirely`.
   whose `settings.json` no longer matches the default's, so a rule added there is not
   silently missing from the others.
 - **Logging in again, from `sq web`:** its **Claude logins** section lists every account
-  on every machine the page reads, soonest to run out first, with how long each login has
-  left (`claude auth status`'s `loginExpiresAt`) and a **Log in again** button. A login
+  on every machine the page reads: the folders the roles name, soonest to run out first,
+  then the rest of each home folder's (`~/.claude`, and each `~/.claude-*` holding an
+  account file, settings or a login) as **No role**, so a spare account can be logged in
+  before a role moves onto it. Each row has how long the login has left
+  (`claude auth status`'s `loginExpiresAt`) and a **Log in again** button. A login
   running out within three days, or gone, is also a warning on `sq status` and the page.
   The button runs `claude auth login --email <account>` on the machine that holds the
   folder, and the page's own machine opens the sign-in in the Chrome profile signed in as
@@ -178,9 +181,18 @@ with `~/.claude-soirely`.
   A login that comes back as another account is named on the page, since the folder's roles
   now run as it. Claude moves the date later each time it refreshes a login, so a login in
   daily use rarely runs out; one that is dropped shows as logged out straight away.
+- **Each account's usage**, beside its login: every limit Claude reports for it (the
+  session, the week, the week for one model), how much is used and when it resets, as
+  `/usage` shows them. The page has each folder's Claude read them again once they are 5
+  minutes old, one folder at a time, with
+  `claude -p /usage --no-session-persistence --setting-sources ""` in
+  `~/.cache/soirely-usage`. Claude answers it itself: no model call, so nothing is spent,
+  no hooks or settings loaded, no session kept. sq then reads the figures from the account
+  file Claude keeps them in. An account a role uses that is 90% through any limit is a
+  warning on `sq status` and the page; a folder no role uses never is.
 - **A folder with no login refuses its roles**, with the command to log in. The other
-  roles keep running. `sq` reads only the account's email from `.claude.json`, never a
-  token. On Linux the login is `.credentials.json` beside it; a Mac keeps it in the
+  roles keep running. `sq` reads only the account's email and the usage Claude last read
+  from `.claude.json`, never a token. On Linux the login is `.credentials.json` beside it; a Mac keeps it in the
   Keychain. _(To check on the Mac's first run with two folders: that each keeps its own
   Keychain login, which `sq status` shows as each role's account and the run log as each
   run's.)_

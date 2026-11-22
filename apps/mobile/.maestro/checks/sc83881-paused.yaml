@@ -1,0 +1,46 @@
+# sc-83881: suspended from the organisation in use, the paused page draws no page title from Today, Events, Calendar, Settings and a pushed Settings screen, and the pill names the paused organisation with "access paused". ORIENT, PAUSED, PAUSEDNAME, LABEL.
+appId: host.exp.Exponent
+---
+- setOrientation: ${ORIENT}
+- runFlow:
+    when:
+      visible:
+        id: 'switcher.heading'
+    commands:
+      - tapOn:
+          point: '50%,75%'
+- openLink: ${METRO_URL}/--/
+- extendedWaitUntil:
+    visible:
+      id: 'accessPaused\..+'
+    timeout: 30000
+- waitForAnimationToEnd:
+    timeout: 8000
+- takeScreenshot: paused-today
+- assertVisible: '${LABEL}'
+- openLink: ${METRO_URL}/--/events
+- waitForAnimationToEnd:
+    timeout: 8000
+- takeScreenshot: paused-events
+- assertVisible: '${LABEL}'
+- openLink: ${METRO_URL}/--/calendar
+- waitForAnimationToEnd:
+    timeout: 8000
+- takeScreenshot: paused-calendar
+- assertVisible: '${LABEL}'
+- openLink: ${METRO_URL}/--/settings
+- waitForAnimationToEnd:
+    timeout: 8000
+- takeScreenshot: paused-settings
+- assertVisible: '${LABEL}'
+- openLink: ${METRO_URL}/--/settings/members
+- waitForAnimationToEnd:
+    timeout: 8000
+- takeScreenshot: paused-settings-members
+- assertVisible: '${LABEL}'
+- tapOn: '${LABEL}'
+- waitForAnimationToEnd:
+    timeout: 8000
+- takeScreenshot: paused-switcher
+- assertNotVisible:
+    id: switcher.tile.${PAUSED}
