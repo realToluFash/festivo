@@ -1,0 +1,24 @@
+# sc-83720 on New event (Android phone): with the keyboard already up in Event name, Add a host keeps it up and moves the cursor to Host 2's name, above the keys.
+# Needs: a signed-in host who can create events.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/new
+- extendedWaitUntil:
+    visible:
+      id: 'eventForm.hosts.field.0'
+    timeout: 30000
+- tapOn:
+    id: 'eventForm.hosts.field.0'
+- waitForAnimationToEnd
+- takeScreenshot: keys-up-host-1
+- scrollUntilVisible:
+    element:
+      id: 'eventForm.hosts.add'
+    direction: DOWN
+- tapOn:
+    id: 'eventForm.hosts.add'
+- waitForAnimationToEnd
+- takeScreenshot: added
+- inputText: 'Kemi'
+- waitForAnimationToEnd
+- takeScreenshot: typed-no-tap
