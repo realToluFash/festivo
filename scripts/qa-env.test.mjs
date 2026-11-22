@@ -3777,7 +3777,7 @@ describe('a check that runs a sibling check', () => {
     mkdirSync(join(source, 'checks', 'part'), { recursive: true });
     writeFileSync(
       join(source, 'checks', 'outer.yaml'),
-      "appId: x\n---\n- runFlow: { file: part/state.yaml, env: { STATE: first } }\n- runFlow: {file: 'part/state.yaml'}\n",
+      'appId: x\n---\n- runFlow: { file: part/state.yaml, env: { STATE: first } }\n- runFlow: {file: \'part/state.yaml\'}\n- runFlow: { env: { STATE: first }, file: part/state.yaml }\n- runFlow: { when: { platform: iOS }, file: "part/state.yaml" }\n',
     );
     writeFileSync(
       join(source, 'checks', 'part', 'state.yaml'),
@@ -3798,6 +3798,12 @@ describe('a check that runs a sibling check', () => {
         '- runFlow: { file: part/outer.en.part.state.flow.yaml, env: { STATE: first } }\n',
       );
       expect(outer).toContain('- runFlow: {file: part/outer.en.part.state.flow.yaml}\n');
+      expect(outer).toContain(
+        '- runFlow: { env: { STATE: first }, file: part/outer.en.part.state.flow.yaml }\n',
+      );
+      expect(outer).toContain(
+        '- runFlow: { when: { platform: iOS }, file: part/outer.en.part.state.flow.yaml }\n',
+      );
       expect(readdirSync(join(checks, 'part'))).toEqual(['outer.en.part.state.flow.yaml']);
     } finally {
       rmSync(source, { recursive: true, force: true });
