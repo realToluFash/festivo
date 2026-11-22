@@ -12,9 +12,9 @@ import subprocess
 import sys
 import time
 
-from . import (actions, agents, dashboard, digests, github, launchd, machine, payloads,
-               permissions, remote, roles, runlog, runner, sessions, shared, store, sync, systemd,
-               update, work)
+from . import (actions, agents, dashboard, digests, github, launchd, logins, machine,
+               payloads, permissions, remote, roles, runlog, runner, sessions, shared, store, sync,
+               systemd, update, work)
 from . import text as T
 from . import views as V
 from .ledger import Printer
@@ -707,6 +707,25 @@ def shown(count):
     return "?" if count is None else str(count)
 
 
+def login_order(row):
+    return (bool(row.get("token")), bool(row.get("logged_in")), row.get("expires_at") or 0)
+
+
+def login_left(row, now):
+    """What a login has left, as `sq status` lists it."""
+    if row.get("token"):
+        return "setup-token"
+    if row.get("error"):
+        return "unread"
+    if not row.get("logged_in"):
+        return "logged out"
+    if row.get("expires_at") is None:
+        return "no end given"
+    if row["expires_at"] <= now:
+        return "ran out"
+    return f"{logins.left(row['expires_at'] - now)} left"
+
+
 def status(db, platform, now):
     width = max(shutil.get_terminal_size((120, 20)).columns, 60)
     view = dashboard.settle(dashboard.snapshot(db, platform, now, home()),
@@ -738,6 +757,14 @@ def status(db, platform, now):
         for other in view["machines"]:
             say(f"  {other['name']:{name_width}}  seen {ago(other['seen']):8}  "
                 f"{', '.join(other['started']) or 'no role'}")
+    held = [(view["machine"], row) for row in view.get("logins") or []] + \
+        [(name, row) for name, rows in (view.get("peer_logins") or {}).items() for row in rows]
+    if held:
+        say()
+        say("claude logins")
+        for name, row in sorted(held, key=lambda found: login_order(found[1])):
+            say(f"  {name}  {login_left(row, now)}  {row.get('email') or row['folder']}  "
+                f"{', '.join(row['roles'])}")
     rows = []
     for role in view["roles"]:
         if role["state"] == "refused":
@@ -886,7 +913,7 @@ def admin(argv):
                         a.port or port, open_page=not a.no_open,
                         session=lambda found: sessions.view(db, home(), platform, found),
                         host=a.listen or host, secret=remote.token(),
-                        peers=lambda: remote.peers(remote.config()))
+                        peers=lambda: remote.peers(remote.config()), config=remote.config)
     elif a.command == "run":
         try:
             runner.run(db, home(), platform, sq_path, sys.executable, dry_run=a.dry_run)
