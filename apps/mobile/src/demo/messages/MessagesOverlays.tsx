@@ -18,6 +18,7 @@ import {
   type ScreenReaderTarget,
   moveScreenReaderFocus,
 } from '../../components/screenReaderFocus.ts';
+import { SETTLED_MS } from '../../components/Screen.tsx';
 import { Sheet } from '../../components/Sheet.tsx';
 import { Text } from '../../components/Text.tsx';
 import { Toast } from '../../components/Toast.tsx';
@@ -727,12 +728,15 @@ export function MatchPicker({
   const [search, setSearch] = useState(first.search);
   const [picked, setPicked] = useState(first.picked);
   const searchRef = useRef<TextInputInstance>(null);
+  const [laidOut, setLaidOut] = useState(false);
+  if (!open && laidOut) setLaidOut(false);
+  // Not on a timer from open: a field that takes the keys before an iOS sheet's window is up can lose the window (qa3 #47084, #83800).
   useEffect(() => {
-    if (!open) return;
-    const later = setTimeout(() => searchRef.current?.focus(), 350);
+    if (!open || !laidOut) return;
+    const later = setTimeout(() => searchRef.current?.focus(), SETTLED_MS);
 
     return () => clearTimeout(later);
-  }, [open]);
+  }, [open, laidOut]);
   const shown = picks.filter((one) => one.name.toLowerCase().includes(search.trim().toLowerCase()));
   const body = (
     <>
@@ -747,7 +751,7 @@ export function MatchPicker({
         label={W.searchGuests}
         testID="messages.match.search"
       />
-      <View accessibilityRole="radiogroup">
+      <View accessibilityRole="radiogroup" onLayout={() => setLaidOut(true)}>
         {shown.map((one) => (
           <Row
             key={one.name}
