@@ -51,6 +51,12 @@ describe('‹ names the screen behind the event (sc-83008)', () => {
     expect(backScreenOf('audit', 'phone')).toBe('entry');
   });
 
+  it('names Notifications on a phone and the screen under the bell on an iPad, where it is a popover', () => {
+    expect(backScreenOf('notifications', 'phone')).toBe('notifications');
+    for (const layout of ['portrait', 'landscape'] as const)
+      expect(backScreenOf('notifications', layout)).toBe('today');
+  });
+
   it('says only the unmatched openers have nothing in the app behind them', () => {
     expect(OPENERS.filter((opener) => !opensOver(opener))).toEqual([
       'outside',
@@ -114,6 +120,12 @@ describe('‹ names the screen behind the event (sc-83008)', () => {
     expect(
       wayBack('notifications', 'notifications', opened('notifications', { pushed: true })),
     ).toBe('back');
+  });
+
+  it('goes straight to Today from the bell on an iPad, whose popover is not under the event', () => {
+    expect(wayBack('today', 'notifications', opened('notifications', { pushed: true }))).toBe(
+      '/demo/today',
+    );
   });
 
   it('goes straight to the screen from the page list, where nothing of it is under the event', () => {
