@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 
 import { api } from '../api.ts';
 import { announceMute, useMutes } from '../eventMutes.ts';
+import { BellMute } from './BellPanel.tsx';
 import { FieldError } from './FieldError.tsx';
 
 export type Mute =
@@ -76,23 +77,12 @@ export function MuteSwitch({ eventId }: { eventId: string }) {
   const unsaved = mute.status === 'loaded' && mute.unsaved;
 
   return (
-    <>
-      <label className="notification-switch">
-        <input
-          type="checkbox"
-          role="switch"
-          checked={mute.status === 'loaded' && mute.muted}
-          disabled={mute.status !== 'loaded'}
-          aria-busy={saving}
-          aria-disabled={saving}
-          aria-describedby={unsaved ? errorId : undefined}
-          onChange={(event) => void change(event.currentTarget.checked)}
-        />
-        <span className="notification-switch-track" aria-hidden="true">
-          <span className="notification-switch-knob" />
-        </span>
-        <span className="notification-switch-name">{t('notifications.muteEvent')}</span>
-      </label>
+    <BellMute
+      on={mute.status === 'loaded' && mute.muted}
+      busy={saving || mute.status !== 'loaded'}
+      told={unsaved ? errorId : undefined}
+      onChange={(next) => void change(next)}
+    >
       {mute.status === 'failed' && (
         <FieldError id={`${errorId}-load`} message={t('notifications.muteNotLoaded')}>
           <button type="button" className="link-button" onClick={retry}>
@@ -101,6 +91,6 @@ export function MuteSwitch({ eventId }: { eventId: string }) {
         </FieldError>
       )}
       {unsaved && <FieldError id={errorId} message={t('notifications.muteNotSaved')} />}
-    </>
+    </BellMute>
   );
 }

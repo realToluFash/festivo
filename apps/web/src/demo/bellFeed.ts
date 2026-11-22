@@ -1,5 +1,3 @@
-import type { GlyphName } from '../components/Glyph.tsx';
-
 export const BELL_GROUP = 'The bell (sc-83081)';
 
 /** The bell's states in the B frame (sc-83081), each at its own `?state=` beside `bell`. */
@@ -18,24 +16,6 @@ export const BELL_STATES = [
 ] as const;
 
 export type BellState = 'bell' | (typeof BELL_STATES)[number]['key'];
-
-export type Category =
-  'guest_replies' | 'messages' | 'event_day' | 'event_changes' | 'money' | 'account_security';
-
-/** Each category's mark, the same in both demos; Event day, Money and Account & security take Notification settings' marks for them. */
-export const CATEGORY_MARK: Record<Category, GlyphName> = {
-  guest_replies: 'users',
-  messages: 'message',
-  event_day: 'day',
-  event_changes: 'calendar',
-  money: 'wallet',
-  account_security: 'shield',
-};
-
-/** A category the client does not know draws no mark, and its item keeps its words. */
-export function markOf(category: string): GlyphName | null {
-  return Object.hasOwn(CATEGORY_MARK, category) ? CATEGORY_MARK[category as Category] : null;
-}
 
 export type Feed = 'loading' | 'failed' | 'loaded';
 export type More = 'none' | 'idle' | 'loading' | 'failed' | 'shown';
