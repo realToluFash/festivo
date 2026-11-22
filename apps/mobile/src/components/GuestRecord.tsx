@@ -19,12 +19,12 @@ import { dateLocale } from '../i18n/index.ts';
 import { markOf } from '../kit/guestRows.ts';
 import { tokens } from '../theme/tokens.ts';
 import { AlertLine } from './AlertLine.tsx';
+import { Amber, AmberChoices, AmberLine } from './Amber.tsx';
 import { Glyph } from './Glyph.tsx';
 import { RadioMark } from './RadioMark.tsx';
 import { ReplyMark } from './ReplyMark.tsx';
 import { type ScreenReaderTarget, moveScreenReaderFocus } from './screenReaderFocus.ts';
 import { Quote } from './PasteReply.tsx';
-import { Pill } from './SettingsParts.tsx';
 import { FocusedScreen } from './SummaryOverlays.tsx';
 import { Text } from './Text.tsx';
 
@@ -138,54 +138,35 @@ export function GuestRecord({
       testID="guest.record"
     >
       {asking && guest.repliedAt != null && (
-        <View
+        <Amber
           ref={replace}
-          style={styles.amber}
-          accessibilityRole="alert"
+          title={t('guestList.replaceAsk', {
+            name: guest.fullName,
+            reply: t(REPLY_KEY[guest.reply]),
+            date: replyDate(guest.repliedAt, timeZone, dateLocale()),
+          })}
+          readsTitle={false}
           testID="guest.record.replace"
         >
-          <View style={styles.amberHead}>
-            <View style={styles.amberMark}>
-              <Glyph name="alert" size={17} ink={tokens.colorAttentionText} weight={2.2} />
-            </View>
-            <Text
-              size={15.5}
-              weight="bold"
-              accessibilityRole="header"
-              style={[styles.grow, styles.amberTitle]}
-            >
-              {t('guestList.replaceAsk', {
-                name: guest.fullName,
-                reply: t(REPLY_KEY[guest.reply]),
-                date: replyDate(guest.repliedAt, timeZone, dateLocale()),
-              })}
-            </Text>
-          </View>
-          <Text size={14} weight="medium" style={[styles.secondary, styles.amberLines]}>
-            {t('guestList.replaceAskLine')}
-          </Text>
-          <View style={styles.choices}>
-            <Pill
-              label={t('guestList.replaceTheirs')}
-              height={tokens.sizeHit}
-              full={false}
-              busy={sending}
-              onPress={() => {
+          <AmberLine text={t('guestList.replaceAskLine')} />
+          <AmberChoices
+            primary
+            first={{
+              label: t('guestList.replaceTheirs'),
+              busy: sending,
+              onPress: () => {
                 setAsking(false);
                 if (answer != null && how != null) void send(answer, how, true);
-              }}
-              testID="guest.record.replaceYes"
-            />
-            <Pill
-              label={t('guestList.keepTheirs')}
-              kind="secondary"
-              height={tokens.sizeHit}
-              full={false}
-              onPress={onClose}
-              testID="guest.record.keep"
-            />
-          </View>
-        </View>
+              },
+              testID: 'guest.record.replaceYes',
+            }}
+            second={{
+              label: t('guestList.keepTheirs'),
+              onPress: onClose,
+              testID: 'guest.record.keep',
+            }}
+          />
+        </Amber>
       )}
       {refusal === 'offline' && (
         <View style={styles.tight} testID="guest.record.offline">
@@ -339,20 +320,6 @@ const styles = StyleSheet.create({
   lines: { lineHeight: 15 * 1.45 },
   small: { lineHeight: 13.5 * 1.45 },
   tight: { gap: 6 },
-  amber: {
-    gap: tokens.spaceSm,
-    paddingVertical: 14,
-    paddingHorizontal: 16,
-    borderRadius: 18,
-    borderWidth: 1.5,
-    borderColor: tokens.colorAttentionBorder,
-    backgroundColor: tokens.colorAttentionTint,
-  },
-  amberHead: { flexDirection: 'row', alignItems: 'flex-start', gap: tokens.spaceSm },
-  amberMark: { paddingTop: 2 },
-  amberTitle: { lineHeight: 15.5 * 1.35 },
-  amberLines: { lineHeight: 14 * 1.45 },
-  choices: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
   answer: {
     minHeight: 56,
     flexDirection: 'row',

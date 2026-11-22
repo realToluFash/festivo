@@ -27,7 +27,8 @@ import {
   doorShown,
   nameProblem,
 } from './GuestsModel.ts';
-import { Amber, Choices, GuestToast, GuestsCard, type Layout } from './GuestsParts.tsx';
+import { Amber, AmberChoices } from '../../components/Amber.tsx';
+import { GuestToast, GuestsCard, type Layout } from './GuestsParts.tsx';
 import { ARRIVALS, COLLEAGUE, KOFI_WALKIN, READER, WEDDING } from './GuestsSample.ts';
 import { REPLY_WORD, W, say } from './GuestsWords.ts';
 import { DoorGlyph, MarkSlot } from '../../components/ReplyMark.tsx';
@@ -596,7 +597,7 @@ function WalkInForm({
       />
       {same != null ? (
         <Amber title={say.sameName(same)} testID="door.walkIn.same">
-          <Choices
+          <AmberChoices
             first={{
               label: W.markThemArrived,
               onPress: () => onArrive(same),

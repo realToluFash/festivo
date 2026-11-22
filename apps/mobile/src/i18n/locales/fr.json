@@ -3311,6 +3311,7 @@
     "countWord_one": "arrivée",
     "countWord_other": "arrivées",
     "countWord_many": "arrivées",
+    "todayAt": "Today, {{time}}",
     "opensAt": "L’accueil des invités ouvre à {{time}}",
     "searchWorksNow": "La recherche fonctionne déjà. Les arrivées et les inscriptions sur place pourront être enregistrées à partir de {{time}}.",
     "openedAt": "L’accueil des invités a ouvert à {{time}}. Toute personne de la liste peut être marquée comme arrivée, quelle que soit sa réponse.",

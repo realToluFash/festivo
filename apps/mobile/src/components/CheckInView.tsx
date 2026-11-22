@@ -17,6 +17,7 @@ import { followReadingAgain } from '../followTopic.ts';
 import { currentLocale } from '../i18n/index.ts';
 import {
   type DoorRow,
+  beforeOpenTags,
   clockOf,
   countLine,
   doorRows,
@@ -30,6 +31,7 @@ import { useServerNow } from '../kit/serverNow.ts';
 import type { LayoutKind } from '../layout/classify.ts';
 import { tokens } from '../theme/tokens.ts';
 import { AlertLine } from './AlertLine.tsx';
+import { Amber, AmberChoices } from './Amber.tsx';
 import { usePhaseOf } from './Events.tsx';
 import { SearchField } from './EventsSearch.tsx';
 import { Field, TextField, focusChecked } from './Field.tsx';
@@ -238,7 +240,7 @@ export function CheckInView({
     <GuestsCard
       kind={kind}
       event={shown}
-      tags={shown == null ? [] : cardTags(shown, now, t)}
+      tags={shown == null ? [] : before ? beforeOpenTags(shown, now, t) : cardTags(shown, now, t)}
       says={before ? t('checkIn.opensAt', { time: opensAt }) : countLine(t, checkIn.count)}
       arrived={!before && attended > 0 && expected > 0 ? { attended, expected } : null}
       line={
@@ -623,26 +625,21 @@ function Same({
   onAdd: () => void;
 }) {
   const { t } = useTranslation();
-  const title = t('checkIn.alreadyListed', { name: same.name });
-  useReadOut(title);
-
   return (
-    <View style={styles.amber} accessibilityRole="alert" testID="checkIn.walkIn.same">
-      <Text size={15.5} weight="bold" accessibilityRole="header">
-        {title}
-      </Text>
-      <Pill
-        label={t('checkIn.markThemArrived')}
-        onPress={() => onArrive(same)}
-        testID="checkIn.walkIn.arrive"
+    <Amber title={t('checkIn.alreadyListed', { name: same.name })} testID="checkIn.walkIn.same">
+      <AmberChoices
+        first={{
+          label: t('checkIn.markThemArrived'),
+          onPress: () => onArrive(same),
+          testID: 'checkIn.walkIn.arrive',
+        }}
+        second={{
+          label: t('checkIn.addSomeoneNew'),
+          onPress: onAdd,
+          testID: 'checkIn.walkIn.new',
+        }}
       />
-      <Pill
-        label={t('checkIn.addSomeoneNew')}
-        kind="secondary"
-        onPress={onAdd}
-        testID="checkIn.walkIn.new"
-      />
-    </View>
+    </Amber>
   );
 }
 
@@ -672,15 +669,6 @@ const styles = StyleSheet.create({
   side: { gap: 14, paddingTop: 22, paddingHorizontal: 32 },
   sideHead: { minHeight: tokens.sizeHit, flexDirection: 'row', alignItems: 'center' },
   form: { gap: 14 },
-  amber: {
-    gap: tokens.spaceSm,
-    paddingVertical: 14,
-    paddingHorizontal: 16,
-    borderRadius: 18,
-    borderWidth: 1.5,
-    borderColor: tokens.colorAttentionBorder,
-    backgroundColor: tokens.colorAttentionTint,
-  },
 });
 
 /** The scroll's edges as the demo's `door` draws them on each layout. */
