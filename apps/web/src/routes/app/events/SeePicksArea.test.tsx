@@ -267,6 +267,65 @@ describe('See picks (sc-3909)', () => {
     expect(await screen.findByText('Main chosen for Kwame Mensah: Jollof rice.')).toBeDefined();
   });
 
+  it('lists every course a guest has not chosen as words, not commas', async () => {
+    const main = picksOf().picks.courses[0];
+    onPicks({
+      [`GET ${PICKS}`]: () =>
+        json(
+          picksOf({
+            courses: [{ ...main, id: 'c_starter', name: 'Starter' }, main],
+            waiting: [
+              {
+                id: 'g_bisi',
+                replier: 'Bisi Adewale',
+                people: [{ id: 'g_ada', name: 'Ada Obi', courses: ['c_starter', 'c_main'] }],
+              },
+            ],
+          }),
+        ),
+    });
+
+    expect(await screen.findByText('Not chosen: Starter and Main')).toBeDefined();
+  });
+
+  it('names everyone a variant rules out as words when asking to give it anyway', async () => {
+    const main = picksOf().picks.courses[0];
+    const small = {
+      id: 'v_small',
+      kind: 'variant',
+      name: 'Small plate',
+      dish: 'd_jollof',
+      for: 'children',
+      allergens: ['celery'],
+      chosen: 0,
+      defaulted: 0,
+      holders: [],
+    };
+    onPicks({
+      [`GET ${PICKS}`]: () =>
+        json(
+          picksOf({
+            courses: [{ ...main, rows: [...main.rows, small] }],
+            people: [
+              { id: 'g_kwame', name: 'Kwame Mensah', party: 'g_bisi', allergens: ['celery'] },
+              { id: 'g_ada', name: 'Ada Obi', party: 'g_bisi', allergens: ['celery'] },
+            ],
+          }),
+        ),
+    });
+
+    fireEvent.click(await screen.findByRole('button', { name: /^Choose who gets Small plate/ }));
+    const dialog = screen.getByRole('dialog', { name: 'Choose who gets Small plate' });
+    fireEvent.click(within(dialog).getByRole('checkbox', { name: 'Kwame Mensah' }));
+    fireEvent.click(within(dialog).getByRole('checkbox', { name: 'Ada Obi' }));
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Save' }));
+
+    const ask = screen.getByRole('alertdialog');
+    expect(
+      within(ask).getByText('Kwame Mensah and Ada Obi: give Small plate anyway?'),
+    ).toBeDefined();
+  });
+
   it('says nothing was saved when the role lost Guests manage', async () => {
     onPicks({
       [`GET ${PICKS}`]: () => json(picksOf()),
