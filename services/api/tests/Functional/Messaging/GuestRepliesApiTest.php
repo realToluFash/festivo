@@ -179,6 +179,22 @@ final class GuestRepliesApiTest extends ApiTestCase
     }
 
     #[Test]
+    public function aLinkCutShortOpensThePageAndChangesNothing(): void
+    {
+        $cut = Str\slice($this->token(), 0, 30);
+
+        $this->client->request('GET', '/api/unsubscribe/guest-replies/' . $cut);
+        self::assertSame(303, $this->statusCode());
+        self::assertSame('https://app.soirely.test/unsubscribe/guest-replies#' . $cut, $this->client->getResponse()->headers->get('Location'));
+
+        $this->oneClick($cut);
+        self::assertSame(404, $this->statusCode());
+        self::assertSame('', (string) $this->client->getResponse()->getContent());
+
+        self::assertTrue($this->emailOn());
+    }
+
+    #[Test]
     public function aLinkFromASummarySentMoreThanSixtyDaysAgoStillWorks(): void
     {
         $token = $this->token();
