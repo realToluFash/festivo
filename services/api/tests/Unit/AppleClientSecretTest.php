@@ -52,7 +52,7 @@ final class AppleClientSecretTest extends TestCase
         self::assertSame('TEAM123', $token->claims()->get('iss'));
         self::assertSame('soirely-web.test', $token->claims()->get('sub'));
         self::assertSame(['https://appleid.apple.com'], $token->claims()->get('aud'));
-        self::assertTrue((new Sha256())->verify($token->signature()->hash(), $token->payload(), InMemory::plainText($public)));
+        self::assertTrue(new Sha256()->verify($token->signature()->hash(), $token->payload(), InMemory::plainText($public)));
     }
 
     #[Test]
@@ -63,7 +63,7 @@ final class AppleClientSecretTest extends TestCase
         $payload = Json\decode(self::base64UrlDecode(Str\split(Type\string()->coerce(self::secret($private)->issue()), '.')[1]));
         $claims = Type\shape(['iat' => Type\int(), 'exp' => Type\int()], true)->coerce($payload);
 
-        self::assertSame((new DateTimeImmutable(self::NOW))->getTimestamp(), $claims['iat']);
+        self::assertSame(new DateTimeImmutable(self::NOW)->getTimestamp(), $claims['iat']);
         self::assertSame(AppleClientSecret::LIFETIME_SECONDS, $claims['exp'] - $claims['iat']);
         self::assertLessThanOrEqual(15_777_000, AppleClientSecret::LIFETIME_SECONDS);
     }
@@ -174,7 +174,7 @@ final class AppleClientSecretTest extends TestCase
 
     private static function parse(string $jwt): UnencryptedToken
     {
-        return Type\instance_of(UnencryptedToken::class)->coerce((new Parser(new JoseEncoder()))->parse(Type\non_empty_string()->coerce($jwt)));
+        return Type\instance_of(UnencryptedToken::class)->coerce(new Parser(new JoseEncoder())->parse(Type\non_empty_string()->coerce($jwt)));
     }
 
     private static function base64UrlDecode(string $part): string
