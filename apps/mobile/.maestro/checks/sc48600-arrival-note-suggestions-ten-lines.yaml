@@ -22,7 +22,7 @@ appId: host.exp.Exponent
       id: 'event\.edit\.venue\.suggestion\..*'
       index: 0
     timeout: 20000
-- tapOn: '(Address|Dirección|Adresse|Morada)\W+(Optional|Opcional|Facultatif)'
+- tapOn: '(Address|Dirección|Adresse|Morada), (Optional|Opcional|Facultatif)'
 - waitForAnimationToEnd:
     timeout: 3000
 - takeScreenshot: note-suggestions-open
