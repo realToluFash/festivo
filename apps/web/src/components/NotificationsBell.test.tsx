@@ -682,6 +682,34 @@ describe('the bell in the B frame (sc-83081)', () => {
     expect(pop.style.maxHeight).toBe(`${800 - 96}px`);
   });
 
+  it('places the open popover under the bell, and again on a scroll outside it but not inside it (#84360)', async () => {
+    answering({
+      'GET /api/notifications': () => json({ items: [item()], unreadCount: 1, next: null }),
+    });
+    vi.spyOn(window, 'innerHeight', 'get').mockReturnValue(800);
+    vi.spyOn(document.documentElement, 'clientWidth', 'get').mockReturnValue(1280);
+    let bottom = 78;
+    vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(
+      () =>
+        ({ top: bottom - 44, bottom, left: 1196, right: 1240, width: 44, height: 44 }) as DOMRect,
+    );
+    const { container } = renderedBell('banner');
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Notifications, 1 unread' }));
+    const pop = container.querySelector<HTMLElement>('.bell-pop');
+
+    expect(pop?.style.position).toBe('fixed');
+    expect(pop?.style.top).toBe('86px');
+    expect(pop?.style.right).toBe('40px');
+
+    bottom = 144;
+    fireEvent.scroll(container.querySelector('.bell-body') ?? document);
+    expect(pop?.style.top).toBe('86px');
+
+    fireEvent.scroll(document);
+    expect(pop?.style.top).toBe('152px');
+  });
+
   it('scrolls only the items', () => {
     expect(cssRule('.bell-body', BELL_CSS)).toMatch(/overflow-y: auto;/u);
     expect(cssRule('.bell-pop', BELL_CSS)).not.toMatch(/overflow-y/u);

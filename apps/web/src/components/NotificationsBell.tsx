@@ -229,15 +229,18 @@ export function NotificationsBell({
     const afterBand = (): void => {
       requestAnimationFrame(placeIt);
     };
+    const afterScroll = (event: Event): void => {
+      if (!container.current?.contains(event.target as Node)) placeIt();
+    };
     placeIt();
     window.addEventListener('resize', placeIt);
-    window.addEventListener('scroll', placeIt, true);
+    window.addEventListener('scroll', afterScroll, true);
     window.addEventListener('online', afterBand);
     window.addEventListener('offline', afterBand);
 
     return () => {
       window.removeEventListener('resize', placeIt);
-      window.removeEventListener('scroll', placeIt, true);
+      window.removeEventListener('scroll', afterScroll, true);
       window.removeEventListener('online', afterBand);
       window.removeEventListener('offline', afterBand);
     };
