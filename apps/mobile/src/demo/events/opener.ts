@@ -17,7 +17,6 @@ export const OPENERS = [
 ] as const;
 export type Opener = (typeof OPENERS)[number];
 
-/** The screen ‹ names and goes back to. */
 export type BackScreen =
   'events' | 'today' | 'calendar' | 'search' | 'notifications' | 'auditLog' | 'entry';
 
@@ -41,7 +40,6 @@ export const BACK_HREF: Record<BackScreen, string> = {
   entry: '/demo/settings/data-and-control/audit-log',
 };
 
-/** What the route read: the opener, whether a screen of the demo really pushed the event over it, and Search's term (sc-83008). */
 export interface Opened {
   opener: Opener | null;
   pushed: boolean;
@@ -86,12 +84,10 @@ export function openedOver(opener: Opener): Record<string, string> {
   return { from: opener, pushed: '1' };
 }
 
-/** The event's link from a screen that pushes it over itself. */
 export function withFrom(href: string, opener: Opener): string {
   return `${fromOnly(href, opener)}&pushed=1`;
 }
 
-/** The event's link from the page list, with nothing of the opener's under it. */
 function fromOnly(href: string, opener: Opener): string {
   return `${href}${href.includes('?') ? '&' : '?'}from=${opener}`;
 }
@@ -144,7 +140,6 @@ export function openerWords(opener: Opener, layout: CoverLayout): string {
 
 const BOARD_EVENT = '/demo/events/evt-wed-4';
 
-/** The demo's list: each opener, the iPhone SE's Spanish beside Refreshing…, and the move into another organisation over Today. */
 export const BEHIND_BOARDS: readonly { title: string; what: string; href: string }[] = [
   ...OPENERS.map((opener) => ({
     title: `‹ over ${openerWords(opener, 'portrait')}`,
