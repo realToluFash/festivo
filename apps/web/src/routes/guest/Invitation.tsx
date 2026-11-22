@@ -1332,7 +1332,9 @@ function DayAnswer({
       {view.kind === 'recorded' && view.same && (
         <p className="gp-sub is-ink">{t('guest.same', { answer: t(WORD[reply.answer]) })}</p>
       )}
-      {hasStep(party) && <p className="gp-sub">{partyLine(partyOf(page), t)}</p>}
+      {view.kind === 'recorded' && hasStep(party) && (
+        <p className="gp-sub">{partyLine(partyOf(page), t)}</p>
+      )}
       {closed && kitchenSaved && !page.started && <KitchenSaved />}
       {closed && (
         <p className="gp-sub">
