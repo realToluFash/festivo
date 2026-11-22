@@ -431,7 +431,11 @@ export function EventScreen({
     ) : opened.kind === 'notFound' ? (
       <EventNotFound onBack={() => backToEvents(router)} />
     ) : opened.kind === 'failed' ? (
-      <EventsFailed onRetry={opened.retry} testID="events.page.retry" />
+      <EventsFailed
+        words={t('eventsScreen.failedLoadEvent')}
+        onRetry={opened.retry}
+        testID="events.page.retry"
+      />
     ) : (
       <LoadingBlock words={t('eventsScreen.loadingEvent')} />
     );
