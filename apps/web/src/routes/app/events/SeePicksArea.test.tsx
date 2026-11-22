@@ -252,6 +252,9 @@ describe('See picks (sc-3909)', () => {
     expect(within(ask).getByRole('button', { name: 'Choose another dish' })).toBe(
       document.activeElement,
     );
+    expect(
+      within(ask).getByText('Kwame Mensah’s record says celery. Pick it anyway?'),
+    ).toBeDefined();
     expect(sent.some((one) => one.line === CHOOSE_KWAME)).toBe(false);
 
     fireEvent.click(within(ask).getByRole('button', { name: 'Pick it anyway' }));
@@ -305,7 +308,7 @@ describe('See picks (sc-3909)', () => {
       [`GET ${PICKS}`]: () =>
         json(
           picksOf({
-            courses: [{ ...main, rows: [...main.rows, small] }],
+            courses: [{ ...main, rows: [...(main?.rows ?? []), small] }],
             people: [
               { id: 'g_kwame', name: 'Kwame Mensah', party: 'g_bisi', allergens: ['celery'] },
               { id: 'g_ada', name: 'Ada Obi', party: 'g_bisi', allergens: ['celery'] },
@@ -416,6 +419,46 @@ describe('See picks narrowed to one course (sc-3909)', () => {
       'Nothing was saved. Check your connection, then press Save and go on again.',
     );
     expect(within(dialog).getByRole('radio', { name: 'Egusi' })).toHaveProperty('checked', true);
+    await waitFor(() =>
+      expect(document.activeElement).toBe(
+        within(dialog).getByRole('button', { name: 'Save and go on' }),
+      ),
+    );
+  });
+
+  it('keeps the focus in the dialog when Pick it anyway goes on to the next course', async () => {
+    onPicks(
+      {
+        [`GET ${PICKS}`]: () =>
+          json(
+            picksOf({
+              waiting: [
+                {
+                  id: 'g_bisi',
+                  replier: 'Bisi Adewale',
+                  people: [
+                    { id: 'g_kwame', name: 'Kwame Mensah', courses: ['c_starter', 'c_main'] },
+                  ],
+                },
+              ],
+            }),
+          ),
+        ['GET /api/events/ev_1/menu']: () => json(twoCourses),
+        [CHOOSE_KWAME]: () => json(picksOf()),
+      },
+      NARROWED,
+    );
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Choose for Kwame Mensah' }));
+    const dialog = screen.getByRole('dialog', { name: 'Choosing for Kwame Mensah' });
+    fireEvent.click(within(dialog).getByRole('radio', { name: /Jollof rice/ }));
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Save and go on' }));
+    fireEvent.click(
+      within(screen.getByRole('alertdialog')).getByRole('button', { name: 'Pick it anyway' }),
+    );
+
+    expect(await within(dialog).findByText('Starter · 2 of 2')).toBeDefined();
+    await waitFor(() => expect(document.activeElement).toBe(dialog));
   });
 });
 

@@ -55,10 +55,11 @@ interface Said {
 }
 
 function useAllergens(): (codes: readonly string[]) => string {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const list = useList();
 
-  return (codes) => list(codes.map((code) => t(`guestNeeds.allergen.${code}`)));
+  return (codes) =>
+    list(codes.map((code) => t(`guestNeeds.allergen.${code}`).toLocaleLowerCase(i18n.language)));
 }
 
 function useList(): (items: readonly string[]) => string {
@@ -678,7 +679,10 @@ function ChooseFor({
   const [refused, setRefused] = useState(false);
   const [busy, setBusy] = useState(false);
   const box = useRef<HTMLDivElement>(null);
+  const saveButton = useRef<HTMLButtonElement>(null);
   useDialogKeys(box, onClose, false);
+  const focusOn = (target: { current: HTMLElement | null }) =>
+    requestAnimationFrame(() => target.current?.focus());
 
   useEffect(() => box.current?.focus(), []);
 
@@ -695,6 +699,7 @@ function ChooseFor({
   };
 
   const save = async (confirmed: boolean) => {
+    if (busy) return;
     if (choice.dishId == null)
       return fail(
         t('seePicks.blank', { course: course.name.toLocaleLowerCase(), name: who }),
@@ -745,12 +750,18 @@ function ChooseFor({
         setAt(at + 1);
         setChoice(blankChoice);
         setError(null);
+        focusOn(box);
       } else onClose();
     } catch (failure) {
-      if (refusedFor(failure)) setRefused(true);
-      else if (failure instanceof ApiError && failure.is('meal_pick_ruled_out'))
+      if (refusedFor(failure)) {
+        setRefused(true);
+        focusOn(box);
+      } else if (failure instanceof ApiError && failure.is('meal_pick_ruled_out'))
         setAsking(failure.problem.people?.[0]?.allergens ?? ruled);
-      else setError(t('eventMenu.failedSave', { button: saveLabel }));
+      else {
+        setError(t('eventMenu.failedSave', { button: saveLabel }));
+        focusOn(saveButton);
+      }
     } finally {
       setBusy(false);
     }
@@ -886,9 +897,10 @@ function ChooseFor({
                 {t('seePicks.cancel')}
               </button>
               <button
+                ref={saveButton}
                 type="button"
                 className="gs-pill is-primary"
-                disabled={busy}
+                aria-disabled={busy}
                 onClick={() => void save(false)}
               >
                 {saveLabel}
@@ -1046,7 +1058,10 @@ function ChooseWho({
   const [refused, setRefused] = useState(false);
   const [busy, setBusy] = useState(false);
   const box = useRef<HTMLDivElement>(null);
+  const saveButton = useRef<HTMLButtonElement>(null);
   useDialogKeys(box, onClose, false);
+  const focusOn = (target: { current: HTMLElement | null }) =>
+    requestAnimationFrame(() => target.current?.focus());
 
   useEffect(() => box.current?.focus(), []);
 
@@ -1063,6 +1078,7 @@ function ChooseWho({
   };
 
   const save = async (confirmed: boolean) => {
+    if (busy) return;
     const ruled = people.filter(
       (one) => ticked.has(one.id) && !holders.includes(one.id) && ruledFor(one).length > 0,
     );
@@ -1084,11 +1100,16 @@ function ChooseWho({
       );
       onClose();
     } catch (failure) {
-      if (refusedFor(failure)) setRefused(true);
-      else if (failure instanceof ApiError && failure.is('meal_pick_ruled_out')) {
+      if (refusedFor(failure)) {
+        setRefused(true);
+        focusOn(box);
+      } else if (failure instanceof ApiError && failure.is('meal_pick_ruled_out')) {
         const ids = (failure.problem.people ?? []).map((one) => one.id);
         setAsking(people.filter((one) => ids.includes(one.id)));
-      } else setError(t('eventMenu.failedSave', { button: t('seePicks.save') }));
+      } else {
+        setError(t('eventMenu.failedSave', { button: t('seePicks.save') }));
+        focusOn(saveButton);
+      }
     } finally {
       setBusy(false);
     }
@@ -1195,9 +1216,10 @@ function ChooseWho({
                 {t('seePicks.cancel')}
               </button>
               <button
+                ref={saveButton}
                 type="button"
                 className="gs-pill is-primary"
-                disabled={busy}
+                aria-disabled={busy}
                 onClick={() => void save(false)}
               >
                 {t('seePicks.save')}
@@ -1232,6 +1254,7 @@ function ChooseWho({
               return next;
             });
             setAsking(null);
+            focusOn(saveButton);
           }}
           onGo={() => void save(true)}
         />
