@@ -52,7 +52,7 @@ export function openerOf(value: string | undefined): Opener | null {
   return OPENERS.find((opener) => opener === value) ?? null;
 }
 
-/** The screen behind the event. New event gives its place to the event it made, so ‹ names what New event was opened from. The audit log shows an entry beside itself on an iPad and as its own screen on a phone, one level below the log (sc-611). Nothing in the app behind it, the unmatched value, is Events, as today. */
+/** The screen behind the event. New event gives its place to the event it made, so ‹ names what New event was opened from. The audit log shows an entry beside itself on an iPad and as its own screen on a phone, one level below the log (sc-611). On an iPad the bell is a popover that closes as the event opens (sc-83081), so ‹ names the screen it was over, Today here. Nothing in the app behind it, the unmatched value, is Events, as today. */
 export function backScreenOf(opener: Opener | null, layout: CoverLayout): BackScreen {
   switch (opener) {
     case 'today':
@@ -64,7 +64,7 @@ export function backScreenOf(opener: Opener | null, layout: CoverLayout): BackSc
     case 'search':
       return 'search';
     case 'notifications':
-      return 'notifications';
+      return layout === 'phone' ? 'notifications' : 'today';
     case 'audit':
       return layout === 'phone' ? 'entry' : 'auditLog';
     default:
@@ -100,7 +100,9 @@ export function wayBack(
 ): 'events' | 'back' | string {
   if (screen === 'events') return 'events';
   const asOpened = opened != null && over === opened.opener;
-  if (asOpened && opened.pushed && opensOver(over)) return 'back';
+  // The demo's bell is its own screen even on an iPad, where the product's popover leaves nothing under the event.
+  const under = over !== 'notifications' || screen === 'notifications';
+  if (asOpened && opened.pushed && opensOver(over) && under) return 'back';
   const term = asOpened ? opened.term : null;
 
   return screen === 'search' && term != null && term !== ''
@@ -126,7 +128,7 @@ export function openerWords(opener: Opener, layout: CoverLayout): string {
     case 'search':
       return 'Search';
     case 'notifications':
-      return 'Notifications';
+      return layout === 'phone' ? 'Notifications' : 'The bell over Today';
     case 'audit':
       return layout === 'phone' ? 'An audit log entry' : 'Audit log';
     case 'outside':
@@ -146,9 +148,11 @@ export const BEHIND_BOARDS: readonly { title: string; what: string; href: string
     what:
       opener === 'audit'
         ? 'Audit log on an iPad, Entry on a phone'
-        : opensOver(opener)
-          ? 'Names it and goes back to it'
-          : 'Nothing behind it: Events, as today',
+        : opener === 'notifications'
+          ? 'Notifications on a phone; on an iPad the popover closes, ‹ Today'
+          : opensOver(opener)
+            ? 'Names it and goes back to it'
+            : 'Nothing behind it: Events, as today',
     href: fromOnly(BOARD_EVENT, opener),
   })),
   {

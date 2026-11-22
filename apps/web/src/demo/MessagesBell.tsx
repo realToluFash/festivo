@@ -277,7 +277,7 @@ export function MessagesBell() {
               lines: [],
               where: item.line,
               unread: item.unread,
-              muted: muted && item.event === EVENT_NAME,
+              muted: start.marked.includes(item.key),
               more:
                 item.event == null
                   ? null

@@ -1267,19 +1267,22 @@ describe('Messages in B · Conversations at a desk (sc-31371)', () => {
     ).toBeDefined();
   });
 
-  it('mutes the event from an item’s More, and marks its items Muted', SLOW, async () => {
+  it('mutes the event from an item’s More, and marks no item already shown', SLOW, async () => {
     await messages('bellMute');
-    const bell = screen.getByRole('dialog', { name: 'Notifications' });
+    let bell = screen.getByRole('dialog', { name: 'Notifications' });
 
     expect(within(bell).queryByText('Muted')).toBeNull();
     const mute = within(bell).getByRole('switch', { name: 'Mute this event' });
     mute.focus();
     fireEvent.click(mute);
-    expect(within(bell).getAllByText('Muted').length).toBe(5);
-    expect(document.activeElement).toBe(mute);
-    fireEvent.click(mute);
+    expect(mute.getAttribute('aria-checked')).toBe('true');
     expect(within(bell).queryByText('Muted')).toBeNull();
     expect(document.activeElement).toBe(mute);
+
+    cleanup();
+    await messages('bellMuted');
+    bell = screen.getByRole('dialog', { name: 'Notifications' });
+    expect(within(bell).getAllByText('Muted').length).toBe(1);
   });
 
   it('says an event has gone, and keeps the offline band with Refreshing…', SLOW, async () => {
