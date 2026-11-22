@@ -594,7 +594,7 @@
     "invalidBody": "Pode ter caducado, ter sido substituída por uma mais recente ou conter um erro. Se acha que devia funcionar, fale com quem lhe enviou o convite.",
     "noAccountNeeded": "Não precisa de uma conta para responder.",
     "doorTitle": "Mostre isto à entrada",
-    "doorLine": "Este código dá entrada a si e aos seus acompanhantes. Uma captura de ecrã também serve.",
+    "doorLine": "Este código dá entrada a si e a quem vier consigo. Uma captura de ecrã também serve.",
     "doorLineAlone": "Uma captura de ecrã também serve.",
     "doorCode": "O seu código para a entrada. Não contém nenhum nome.",
     "calendarTitle": "Adicionar ao seu calendário",
