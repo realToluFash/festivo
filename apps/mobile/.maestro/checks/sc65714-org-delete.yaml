@@ -1,0 +1,7 @@
+# sc-65714: Delete organisation open, with the restore window's close as the server writes it.
+appId: host.exp.Exponent
+---
+- runFlow: ../ownership-delete-open.yaml
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: org-delete
