@@ -21,6 +21,7 @@ import { useDeskTop } from '../../../deskTop.ts';
 import { useDialogKeys } from '../../../dialogFocus.ts';
 import { pageTitle, usePageTitle } from '../../../pageTitle.ts';
 import { ChildrenTag } from '../menu/VariantParts.tsx';
+import { allergensInSentence } from './allergenWords.ts';
 import {
   against,
   clockOf,
@@ -56,10 +57,8 @@ interface Said {
 
 function useAllergens(): (codes: readonly string[]) => string {
   const { t, i18n } = useTranslation();
-  const list = useList();
 
-  return (codes) =>
-    list(codes.map((code) => t(`guestNeeds.allergen.${code}`).toLocaleLowerCase(i18n.language)));
+  return (codes) => allergensInSentence(t, i18n.language, codes);
 }
 
 function useList(): (items: readonly string[]) => string {
@@ -670,7 +669,7 @@ function ChooseFor({
   onSaved: (picks: EventPicks, line: string, overridden: string | null) => void;
   onClose: () => void;
 }) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const allergens = useAllergens();
   const [at, setAt] = useState(0);
   const [choice, setChoice] = useState<Choice>(blankChoice);
@@ -702,7 +701,7 @@ function ChooseFor({
     if (busy) return;
     if (choice.dishId == null)
       return fail(
-        t('seePicks.blank', { course: course.name.toLocaleLowerCase(), name: who }),
+        t('seePicks.blank', { course: course.name.toLocaleLowerCase(i18n.language), name: who }),
         'pk-for-dish',
       );
     if (dish != null && dish.variants.length > 0 && choice.variantId == null)

@@ -92,6 +92,7 @@ import {
   zoneCity,
 } from './menuArea.ts';
 import { type ChoiceAsk, ChoiceFields, ChoiceIntro } from './ChoiceParts.tsx';
+import { allergensInSentence } from './allergenWords.ts';
 import { choiceName } from './choiceWords.ts';
 import { firstItemProblem, ownRowsOf, rowsOf, useOrList, withoutRow } from './menuItems.ts';
 import { useShowMenuReady } from './EventNav.tsx';
@@ -1171,10 +1172,10 @@ function Courses({
       t('dishChoices.unwarned', {
         count: line.count,
         option: line.option,
-        allergens: listFormat(i18n.language, { type: 'conjunction' }).format(
-          DISH_ALLERGENS.filter((code) => line.allergens.includes(code)).map((code) =>
-            t(`guestNeeds.allergen.${code}`).toLocaleLowerCase(i18n.language),
-          ),
+        allergens: allergensInSentence(
+          t,
+          i18n.language,
+          DISH_ALLERGENS.filter((code) => line.allergens.includes(code)),
         ),
       }),
     );
