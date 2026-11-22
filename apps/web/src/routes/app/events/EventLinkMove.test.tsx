@@ -1,8 +1,13 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { RouterProvider, createMemoryRouter } from 'react-router';
 
-import { __setSessionState, type Session, useSession } from '../../../session.ts';
+import {
+  __setSessionState,
+  type Session,
+  switchOrganisation,
+  useSession,
+} from '../../../session.ts';
 import { OWNER_PERMISSIONS, membership } from '../../../test-memberships.ts';
 import { routes } from '../../index.tsx';
 
@@ -145,5 +150,26 @@ describe("an event's link from another of the account's organisations (sc-80863)
 
     await waitFor(() => expect(workingIn()).toBe('org_2'));
     expect(await screen.findByText('Now working in Casa Lumen Eventos.')).toBeTruthy();
+  });
+
+  it('stays where the switcher puts it after the move, and reads not available there', async () => {
+    signedIn();
+    answering(() => json({ event: event('org_2') }));
+    openLink();
+    expect(await screen.findByText('Now working in Casa Lumen Eventos.')).toBeTruthy();
+
+    act(() => switchOrganisation('org_1'));
+
+    expect(await screen.findByText('This event is not available')).toBeTruthy();
+    expect(workingIn()).toBe('org_1');
+  });
+
+  it("stands under the organisation's sidebar until the event has loaded", async () => {
+    signedIn([IRE]);
+    answering(() => json({ event: event('org_2') }));
+    openLink();
+
+    expect(await screen.findByText('This event is not available')).toBeTruthy();
+    expect(screen.queryByRole('link', { name: 'Guests' })).toBeNull();
   });
 });
