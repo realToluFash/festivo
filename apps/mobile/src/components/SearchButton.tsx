@@ -2,7 +2,7 @@ import { router } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { StyleSheet, View } from 'react-native';
 
-import { SEARCH_HREF } from '../kit/searchLinks.ts';
+import { SEARCH_HREF, searchOffered } from '../kit/searchLinks.ts';
 import { useSignedIn } from '../signedIn.ts';
 import { tokens } from '../theme/tokens.ts';
 import { BellButton } from './BellButton.tsx';
@@ -11,9 +11,9 @@ import { RoundButton } from './SettingsParts.tsx';
 /** The 44 Search a top gains on a phone and upright, opening Search over the organisation in use (sc-39534). */
 export function SearchButton() {
   const { t } = useTranslation();
-  const { organisation } = useSignedIn();
+  const signedIn = useSignedIn();
 
-  if (organisation == null) return null;
+  if (!searchOffered(signedIn)) return null;
 
   return (
     <RoundButton

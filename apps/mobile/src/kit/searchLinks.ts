@@ -13,6 +13,17 @@ export const EVENTS_SEARCHED = 'q';
 
 export const SEARCH_HREF = '/search';
 
+/** Search runs over the organisation in use, so it is absent while the member is suspended from the one the screen names (sc-82858). */
+export function searchOffered({
+  organisation,
+  pausedIn,
+}: {
+  organisation: unknown;
+  pausedIn?: unknown;
+}): boolean {
+  return organisation != null && pausedIn == null;
+}
+
 export function searchRowHref(row: SearchRow): string {
   if (row.kind === 'event') return eventHref(row.id);
   if (row.kind === 'guest')
