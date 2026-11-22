@@ -5,7 +5,7 @@ import { useTranslation } from 'react-i18next';
 import { StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { AppFrame, BackButton } from '../../../src/components/AppFrame.tsx';
+import { AppFrame } from '../../../src/components/AppFrame.tsx';
 import { CheckInView } from '../../../src/components/CheckInView.tsx';
 import { Back } from '../../../src/components/SettingsParts.tsx';
 import { useSidebarCard } from '../../../src/components/sidebarCard.ts';
@@ -14,13 +14,14 @@ import { goToArea, goUpToEvent } from '../../../src/kit/upToEvent.ts';
 import { useLayout } from '../../../src/layout/useLayout.ts';
 import { tokens } from '../../../src/theme/tokens.ts';
 
-/** /events/<id>/check-in (sc-1454): the door, opened from the event's Guests with Open check-in. On a phone it draws its own compact bar and no tab bar, as the demo's `door` does. */
+/** /events/<id>/check-in (sc-1454): the door, opened from the event's Guests with Open check-in. On a phone it draws its own compact bar and no tab bar; upright, ‹ Guests beside the bell; on a tablet the title scrolls with the list, as the demo's `door` does. */
 export default function EventCheckIn() {
   const { t } = useTranslation();
   const { kind } = useLayout();
   const { id = '' } = useLocalSearchParams<{ id?: string }>();
   const navigation = useNavigation();
   const phone = kind === 'phone';
+  const landscape = kind === 'tabletLandscape';
   const back = () => goToArea(navigation, router, id, 'guests');
   const title = useRef<TextHandle>(null);
   const [event, setEvent] = useState<OrganisationEvent | null>(null);
@@ -32,9 +33,10 @@ export default function EventCheckIn() {
       current="events"
       title={t('checkIn.title')}
       titleRef={title}
-      back={phone ? { label: t('checkIn.back'), onPress: back } : undefined}
-      backInBody
+      back={landscape ? undefined : { label: t('checkIn.back'), onPress: back, pill: true }}
+      backInBody={landscape}
       ownChrome={phone}
+      untitled={!phone}
       inEvent={{
         area: 'guests',
         onArea: (area) =>
@@ -69,7 +71,15 @@ export default function EventCheckIn() {
         }
         top={
           phone ? null : (
-            <BackButton label={t('checkIn.back')} onPress={back} testID="checkIn.back" />
+            <Text
+              ref={title}
+              size={landscape ? 26 : 30}
+              weight="bold"
+              accessibilityRole="header"
+              style={styles.title}
+            >
+              {t('checkIn.title')}
+            </Text>
           )
         }
         onEvent={setEvent}
@@ -87,6 +97,7 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: tokens.colorBorder,
   },
+  title: { letterSpacing: -0.6 },
   navArea: { backgroundColor: tokens.colorCard },
   navTitle: {
     position: 'absolute',

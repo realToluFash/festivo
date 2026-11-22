@@ -94,6 +94,8 @@ export interface EvCourse {
 
 export const CW = {
   title: 'Menu',
+  previewAsGuest: 'Preview as guest',
+  nothingSaved: '[Nothing was saved.]',
   crumb: 'Breadcrumb',
   events: 'Events',
   navigation: 'Navigation',

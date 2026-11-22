@@ -178,6 +178,9 @@ export interface ListProps {
   /** sc-4331: the guests Changed since you looked would list; its menu row shows while above 0 or in use. */
   changed: number;
   onFilter: (key: ListFilter) => void;
+  /** sc-4331: choosing Changed since you looked failed; the list stays as it was. */
+  changeFailed: boolean;
+  onRetryChanged: () => void;
   typed: string;
   onTyped: (typed: string) => void;
   searched: string;
@@ -197,7 +200,7 @@ export interface ListProps {
   paste?: ReactNode;
 }
 
-/** Find a guest and the filter as one row, then the groups by reply, or the rows a filter or search leaves. */
+/** Find a guest and the filter as one row, the filter under the field when it does not fit beside it (Events' rule), then the groups by reply, or the rows a filter or search leaves. */
 export function GuestsRows({
   layout,
   counts,
@@ -205,6 +208,8 @@ export function GuestsRows({
   filter,
   changed,
   onFilter,
+  changeFailed,
+  onRetryChanged,
   typed,
   onTyped,
   searched,
@@ -254,6 +259,7 @@ export function GuestsRows({
         {pasteInRow}
       </View>
       {paste}
+      {changeFailed && <ChangedFailed onRetry={onRetryChanged} />}
       {looking ? (
         <View>
           <ShownLine
@@ -320,6 +326,28 @@ export function GuestsRows({
         </>
       )}
     </>
+  );
+}
+
+/** sc-4331: choosing Changed since you looked failed: nothing is marked read, and Try again chooses it again. */
+function ChangedFailed({ onRetry }: { onRetry: () => void }) {
+  useReadOut(W.changedFailed);
+
+  return (
+    <View style={styles.changedFailed} accessibilityRole="alert" testID="guests.changedFailed">
+      <View style={styles.changedFailedLine}>
+        <Glyph name="alert" size={15} ink={tokens.colorBroken} weight={2.2} />
+        <Text size={14} weight="medium" style={styles.grow}>
+          {W.changedFailed}
+        </Text>
+      </View>
+      <TextAction
+        label={W.tryAgain}
+        glyph="refresh"
+        onPress={onRetry}
+        testID="guests.changedFailed.retry"
+      />
+    </View>
   );
 }
 
@@ -405,7 +433,13 @@ const styles = StyleSheet.create({
   accent: { color: tokens.colorAccentText },
   figures: { fontVariant: ['tabular-nums'] },
   lines: { lineHeight: 15 * 1.45 },
-  searchRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  searchRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    columnGap: 10,
+    rowGap: tokens.spaceXxs,
+  },
   indent: { paddingLeft: 40 },
   reach: { marginHorizontal: -10 },
   menuRow: {
@@ -423,6 +457,8 @@ const styles = StyleSheet.create({
   },
   menuTick: { width: 18, alignItems: 'center' },
   noMatch: { gap: 6, paddingTop: tokens.spaceXs },
+  changedFailed: { gap: tokens.spaceXs, paddingTop: tokens.spaceXs },
+  changedFailedLine: { flexDirection: 'row', alignItems: 'center', gap: tokens.spaceSm },
   noMatchTitle: { lineHeight: 18 * 1.3 },
   loading: { gap: 18 },
   sunkCard: { borderRadius: 26, backgroundColor: tokens.colorNeutralFill },

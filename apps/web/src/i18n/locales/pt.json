@@ -3621,16 +3621,16 @@
     "backToDetails": "Voltar aos dados",
     "companionStays": "{{name}} já chegou, por isso fica na lista.",
     "changed": {
-      "filter": "Changed since you looked",
-      "nothing": "Nothing has changed since you last looked.",
-      "showAll": "Show all guests",
+      "filter": "Alterações desde a última visita",
+      "nothing": "Nada mudou desde a sua última visita.",
+      "showAll": "Mostrar todos os convidados",
       "line": "{{answer}} · {{when}}",
-      "repliedAt": "Replied at {{time}}",
-      "repliedOn": "Replied {{date}}",
-      "changedAt": "Changed at {{time}}",
-      "changedOn": "Changed {{date}}",
-      "needs": "Updated dietary needs",
-      "flagged": "Link may have reached the wrong person"
+      "repliedAt": "Resposta: {{time}}",
+      "repliedOn": "Resposta: {{date}}",
+      "changedAt": "Alteração: {{time}}",
+      "changedOn": "Alteração: {{date}}",
+      "needs": "Notas sobre alimentação atualizadas",
+      "flagged": "A ligação pode ter chegado a outra pessoa"
     }
   },
   "guestNumbers": {
@@ -6109,19 +6109,19 @@
     "notSaved": "Os dias não foram guardados. Verifique a ligação e tente novamente."
   },
   "guestReplyEmails": {
-    "onTitle": "Guest reply emails",
-    "turnOff": "Turn off guest reply emails",
-    "offTitle": "Guest reply emails are off",
-    "offBody": "You will still see replies in the bell, and push is as you set it.",
-    "turnOn": "Turn them back on",
-    "backOnTitle": "Guest reply emails are back on",
-    "backOnBody": "Your guest summary will arrive in the morning when there is something new.",
-    "saving": "Saving…",
-    "failed": "Saving did not work. Nothing has changed.",
-    "tryAgain": "Try again",
-    "unknownTitle": "This link does not work",
-    "unknownBody": "Nothing has changed. To turn guest reply emails on or off, sign in and open your notification settings.",
-    "signIn": "Sign in to notification settings",
-    "settings": "Notification settings"
+    "onTitle": "E-mails de respostas dos convidados",
+    "turnOff": "Desativar os e-mails de respostas dos convidados",
+    "offTitle": "Os e-mails de respostas dos convidados estão desativados",
+    "offBody": "Continuará a ver as respostas em Notificações, e as notificações push mantêm-se como as definiu.",
+    "turnOn": "Voltar a ativá-los",
+    "backOnTitle": "Os e-mails de respostas dos convidados voltaram a estar ativados",
+    "backOnBody": "O seu resumo de convidados chegará de manhã quando houver novidades.",
+    "saving": "A guardar…",
+    "failed": "Não foi possível guardar. Nada foi alterado.",
+    "tryAgain": "Tentar novamente",
+    "unknownTitle": "Esta ligação não funciona",
+    "unknownBody": "Nada foi alterado. Para ativar ou desativar os e-mails de respostas dos convidados, inicie sessão e abra as definições de notificações.",
+    "signIn": "Iniciar sessão nas definições de notificações",
+    "settings": "Definições de notificações"
   }
 }

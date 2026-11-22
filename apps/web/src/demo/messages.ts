@@ -1,4 +1,14 @@
 import { crowdName } from './sampleNames.ts';
+import {
+  CHOOSE_GROUP,
+  CHOOSE_STATES,
+  choseAudience,
+  chooseSeedOf,
+  chosenIds,
+  flagWord,
+  isChooseState,
+  pickedOf,
+} from './messagesChoose.ts';
 import { writtenTime } from './clock.ts';
 import type { SampleEvent } from './events.ts';
 import { demoWords } from './demoWords.ts';
@@ -60,6 +70,8 @@ import {
 } from './messagesInvite.ts';
 import {
   type Hour,
+  type SmsReach,
+  type SmsSample,
   SMS_GROUP,
   SMS_STATES,
   failedWhy,
@@ -214,6 +226,7 @@ export const MESSAGE_STATES = [
   ...WA_ANSWER_STATES,
   ...TAP_STATES,
   ...REFUSAL_STATES,
+  ...CHOOSE_STATES,
 ] as const;
 
 export type MessagesState = (typeof MESSAGE_STATES)[number]['key'];
@@ -248,7 +261,8 @@ export const MESSAGES_PAGES: readonly { name: string; states: readonly DemoLink[
         !isSmsState(one.key) &&
         !isTellState(one.key) &&
         !isTapState(one.key) &&
-        !isRefusalState(one.key),
+        !isRefusalState(one.key) &&
+        !isChooseState(one.key),
     ).map((one) => ({ to: `${MESSAGES_AT}?state=${one.key}`, name: one.name })),
   },
   {
@@ -287,6 +301,10 @@ export const MESSAGES_PAGES: readonly { name: string; states: readonly DemoLink[
       to: `${MESSAGES_AT}?state=${one.key}`,
       name: one.name,
     })),
+  },
+  {
+    name: CHOOSE_GROUP,
+    states: CHOOSE_STATES.map((one) => ({ to: `${MESSAGES_AT}?state=${one.key}`, name: one.name })),
   },
 ];
 
@@ -840,9 +858,49 @@ export function figuresOf(
   names: readonly Untellable[];
   smsOff: number;
 } {
+  if (audience.kind === 'who' && audience.pick === 'chosen')
+    return chosenFiguresOf(audience, ticks);
+
   const base = REACH[sampleOf(audience)];
   const counts = ticks.sms && ticks.whatsApp ? { ...base, sms: base.sms - base.whatsApp } : base;
   const names = untoldOf(audience, ticks);
+  const smsOff =
+    ticks.email && !ticks.sms ? names.filter((one) => one.why.includes(MW.smsIsOff)).length : 0;
+
+  return { counts, cantTell: names.length, names, smsOff };
+}
+
+/** SMS's reach for an audience: the sample's, or the chosen guests' own mobiles. */
+export function smsSampleOf(audience: Audience): SmsSample | SmsReach {
+  if (audience.kind !== 'who' || audience.pick !== 'chosen') return sampleOf(audience);
+
+  const people = pickedOf(chosenIds(audience));
+  const reaches = people.filter((one) => one.mobile).length;
+
+  return { reaches, noMobile: people.length - reaches, stopped: 0 };
+}
+
+/** The check for guests chosen one by one: each told by email unless flagged, by text with a mobile; nobody in the sample agreed to WhatsApp. */
+function chosenFiguresOf(audience: Audience, ticks: Ticks): ReturnType<typeof figuresOf> {
+  const people = pickedOf(chosenIds(audience));
+  const on = CHANNELS.filter((channel) => ticks[channel]);
+  const reasons: Reasons[] = people.map((one) => ({
+    name: one.name,
+    email: one.flag == null ? null : flagWord(one.flag),
+    sms: one.mobile ? null : MW.noPhone,
+    whatsApp: MW.hasNotAgreedWhatsApp,
+  }));
+  const names =
+    on.length === 0
+      ? []
+      : reasons
+          .filter((one) => on.every((channel) => one[channel] != null))
+          .map((one) => ({ name: one.name, why: whyOf(one, ticks) }));
+  const counts = {
+    email: people.filter((one) => one.flag == null).length,
+    sms: people.filter((one) => one.mobile).length,
+    whatsApp: 0,
+  };
   const smsOff =
     ticks.email && !ticks.sms ? names.filter((one) => one.why.includes(MW.smsIsOff)).length : 0;
 
@@ -908,7 +966,7 @@ export function checkOf(
         : credits === 0
           ? MW.emailNoCredits
           : `${ticks.whatsApp ? many('textsAndWhatsAppUse', credits) : many('textsUse', credits)} ${after}`,
-    sms: ticks.sms ? smsReachLine(sampleOf(audience)) : null,
+    sms: ticks.sms ? smsReachLine(smsSampleOf(audience)) : null,
     whatsApp: ticks.whatsApp ? whatsAppLine(audience) : null,
     instead: insteadOf(audience, ticks),
     wait: waitLine(ticks, hour),
@@ -2941,6 +2999,15 @@ export function seedOf(state: MessagesState | null): Inbox {
       }
 
       if (isRefusalState(state)) return refusedSeed(base, state);
+      if (isChooseState(state)) {
+        const seed = chooseSeedOf(state);
+
+        return {
+          ...base,
+          pane: { kind: 'compose' },
+          draft: { ...draftOf(choseAudience(seed.chosen)), openTo: seed.open },
+        };
+      }
 
       const waits = waitsTicksOf(state);
 

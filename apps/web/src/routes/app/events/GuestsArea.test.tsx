@@ -4488,6 +4488,24 @@ describe('Select many guests, then Add to group or Remove from the list (sc-3776
     expect(await screen.findByRole('alertdialog', { name: 'Remove 1 guest?' })).toBeDefined();
   });
 
+  it('asks nothing and sends nothing when every guest selected has arrived, and says who stays (sc-1454, #81075)', async () => {
+    const arrived = { ...KEMI, arrival: { at: '2030-11-14T15:10:00Z', by: 'Door' } };
+    const sent = await selecting({
+      'GET /api/events/ev_1/guests': () =>
+        json({ ...listOf([NGOZI, AMAKA, arrived]), groups: [BRIDE] }),
+    });
+    fireEvent.click(box('Select Kemi Bello'));
+
+    fireEvent.click(within(bar()).getByRole('button', { name: 'Remove from the list' }));
+
+    await waitFor(() => expect(said()[0]).toBe('Nothing removed.'));
+    expect(screen.getByText('Kemi Bello has arrived, so they stay on the list.')).toBeDefined();
+    expect(screen.queryByRole('alertdialog')).toBeNull();
+    expect(sent.some((one) => one.line.startsWith('POST /api/events/ev_1/guests/removals'))).toBe(
+      false,
+    );
+  });
+
   it('erases the removal once its Undo runs out', async () => {
     vi.useFakeTimers({ shouldAdvanceTime: true });
     try {

@@ -11,6 +11,8 @@ import {
   markedOpen,
   nothingSafe,
   ruledOut,
+  screenAt,
+  screensOf,
 } from './mealParty.ts';
 
 const dish = (course: 'starter' | 'main' | 'dessert', id: string) => {
@@ -59,7 +61,7 @@ const picked: Answers = {
 
 describe('a pick an allergy given since rules out (sc-3907)', () => {
   it('clears it going forward, keeps the rest, and keeps a pick the host made', () => {
-    const result = clearRuledOut(picked, { me: [], chidi: ['milk'] });
+    const result = clearRuledOut(picked, { me: [], chidi: ['milk'] }, SCREENS);
 
     expect(result.answers['chidi|main']).toBeUndefined();
     expect(result.answers['chidi|starter']).toEqual({ kind: 'kitchen' });
@@ -75,7 +77,17 @@ describe('a pick an allergy given since rules out (sc-3907)', () => {
     );
     expect(markOf('chidi|dessert', picked, milk, 'en')).toBeNull();
     expect(markOf('chidi|main', picked, NO_ALLERGIES, 'en')).toBeNull();
-    expect(markedOpen(picked, milk, () => false, 'en')).toEqual(['chidi|main']);
-    expect(markedOpen(picked, milk, (course) => course === 'main', 'en')).toEqual([]);
+    expect(markedOpen(picked, milk, () => false, 'en', SCREENS)).toEqual(['chidi|main']);
+    expect(markedOpen(picked, milk, (course) => course === 'main', 'en', SCREENS)).toEqual([]);
+  });
+
+  it('walks only the people it is given, as Preview as guest does for the host alone', () => {
+    const milk = { me: [], chidi: ['milk'] } as const;
+    const hostAlone = screensOf(['me']);
+
+    expect(clearRuledOut(picked, milk, hostAlone).cleared).toEqual({});
+    expect(markedOpen(picked, milk, () => false, 'en', hostAlone)).toEqual([]);
+    expect(screenAt('me', 'main', hostAlone)).toBe(1);
+    expect(screenAt('chidi', 'main', hostAlone)).toBe(-1);
   });
 });
