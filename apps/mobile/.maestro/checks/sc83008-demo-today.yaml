@@ -1,11 +1,8 @@
 # sc-83008: the demo's event Overview opened over today, for its side-by-side pair.
+# Needs: nothing signed in; the demo's own data.
 appId: host.exp.Exponent
 ---
 - openLink: ${METRO_URL}/--/demo/events/evt-wed-4?from=today
-- waitForAnimationToEnd
-- extendedWaitUntil:
-    visible:
-      id: 'sc83008.never'
+- waitForAnimationToEnd:
     timeout: 4000
-    optional: true
 - takeScreenshot: shot

@@ -1,4 +1,5 @@
 # sc-83008: on a phone, an event opened from an audit log entry's own screen: ‹ Entry, back to the entry, whose ‹ reads Audit log.
+# Needs: a phone, and an entry for Lagos Night in Adire Studio's audit log.
 appId: host.exp.Exponent
 ---
 - runFlow: sc83008-to-adire.yaml

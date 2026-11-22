@@ -1,6 +1,8 @@
 # sc-83008: an event opened from the Calendar on a later day: ‹ Calendar, back to the Calendar on that day.
+# Needs: Adire Studio holding Ibadan Supper on the 23rd of the month the Calendar opens on.
 appId: host.exp.Exponent
 ---
+- runFlow: sc83008-to-adire.yaml
 - openLink: ${METRO_URL}/--/
 - extendedWaitUntil:
     visible:
@@ -31,4 +33,7 @@ appId: host.exp.Exponent
 - waitForAnimationToEnd
 - assertNotVisible:
     id: 'events.page'
+- assertVisible:
+    id: 'calendar.month'
+- assertVisible: '.*Ibadan Supper.*'
 - takeScreenshot: back

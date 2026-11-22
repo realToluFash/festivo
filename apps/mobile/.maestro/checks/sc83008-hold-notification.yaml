@@ -1,6 +1,8 @@
 # sc-83008: leaves an event opened from Notifications on screen, for its ‹ at a text size.
+# Needs: a notification in Adire Studio's bell for the event "Ada and Tunde wedding", whose place is /app/events/<id>.
 appId: host.exp.Exponent
 ---
+- runFlow: sc83008-to-adire.yaml
 - openLink: ${METRO_URL}/--/
 - extendedWaitUntil:
     visible: 'Notifica.*'
