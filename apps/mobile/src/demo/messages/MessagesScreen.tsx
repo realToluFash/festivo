@@ -1085,6 +1085,9 @@ function PhoneConversation({
     held: null,
   });
   const toEnd = parts.align === 'end';
+  // With the keys and iOS's suggestion bar up, the nav, the To and channel rows and the composer outgrow a phone,
+  // and the composer went under the keys; the rows scroll with the stream instead, just above it (sc-31370).
+  const headFixed = parts.head != null && !keysUp;
   const settle = useCallback(() => {
     const { content, height, held } = view.current;
     if (held == null || height === 0) stream.current?.scrollToEnd({ animated: false });
@@ -1146,14 +1149,16 @@ function PhoneConversation({
         <View style={styles.grow} />
         {!moved && rightAt}
       </View>
-      {(parts.head != null || parts.line != null || moved) && (
+      {(headFixed || (parts.head == null && parts.line != null) || moved) && (
         <View style={styles.phoneHead}>
-          {parts.head ??
-            (parts.line != null && (
-              <Text size={14} weight="semibold" style={[styles.secondary, styles.headLine]}>
-                {parts.line}
-              </Text>
-            ))}
+          {headFixed
+            ? parts.head
+            : parts.head == null &&
+              parts.line != null && (
+                <Text size={14} weight="semibold" style={[styles.secondary, styles.headLine]}>
+                  {parts.line}
+                </Text>
+              )}
           {moved && rightAt}
         </View>
       )}
@@ -1176,6 +1181,7 @@ function PhoneConversation({
         }}
       >
         <HoldTop.Provider value={hold}>{parts.stream}</HoldTop.Provider>
+        {parts.head != null && !headFixed && parts.head}
       </ScrollView>
       {parts.foot != null && (
         <View
