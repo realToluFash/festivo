@@ -31,6 +31,7 @@ import {
   type RefFor,
 } from '../../components/EventOverview.tsx';
 import { AreaPage, BellRow, EventFrame, type EventToast, backToEvents } from './EventFrame.tsx';
+import { useEventBell } from './EventBell.tsx';
 import { INVITATION_HREF, liveToastOf, makeLiveStateOf, reachOf, seededEvent } from './MakeLive.ts';
 import { MakeLiveAsk, useMakeLive } from './MakeLiveAsk.tsx';
 import { EventNeedsYou } from './EventNeedsYou.tsx';
@@ -134,10 +135,11 @@ import { RefreshingWords } from '../guests/RefreshingWords.tsx';
 import {
   BACK_HREF,
   BACK_KEY,
-  OPENERS,
   type Opened,
   type Opener,
   backScreenOf,
+  bellOpens,
+  openersFor,
   openerWords,
   wayBack,
 } from './opener.ts';
@@ -551,6 +553,14 @@ export function EventScreen({
     setGuestsFrom('changed');
     setAt('guests');
   };
+  const bell = useEventBell({
+    eventId: event.id,
+    startOpen: openedOver?.bell === true,
+    onHere: (key) => {
+      if (bellOpens(key) === 'guests') openChanged();
+      else setAt('overview');
+    },
+  });
   const numbers = (
     <GuestNumbers
       state={guests != null && isIn(OVERVIEW_STATES, guests) ? guests : 'overview'}
@@ -898,10 +908,13 @@ export function EventScreen({
       without={without}
       behind={top.behind}
       besideBack={at === 'overview' ? top.besideBack : undefined}
+      onBell={bell.onBell}
+      bellRef={bell.bellRef}
       toast={liveToast ?? (told == null ? null : { words: told, onClose: () => setTold(null) })}
       overlay={
         <>
           {tell}
+          {bell.place}
           {round > 0 || edit != null ? (
             <EditScreen
               key={`${part}:${round}`}
@@ -1018,10 +1031,13 @@ function useBehind(opened: Opened | undefined) {
     besideBack: upright && node != null ? { node, onPlaced: setBeside } : undefined,
     ownLine: upright && node != null && !beside ? <View style={styles.ownLine}>{node}</View> : null,
     picker: upright ? (
-      <DemoOnly title="Demo only: what the event was opened over. ‹ reads that screen's name and goes back to it; a link from outside, a notification that started the app and the event after signing in have nothing behind them and read Events. Refreshing… sits beside ‹ while ‹ stays whole with it, else on its own line above the event's card. Spanish draws the top row in Spanish. Nothing is sent.">
+      <DemoOnly title="Demo only: what the event was opened over. ‹ reads that screen's name and goes back to it; a link from outside, a notification that started the app and the event after signing in have nothing behind them and read Events. Refreshing… sits beside ‹ while ‹ stays whole with it, else on its own line above the event's card. Spanish draws the top row in Spanish. On an iPad, another event's page from the bell reads Event and goes back to that event at its Guests, filtered to Coming; deleted meanwhile, that page reads This event is not available. The bell on this page opens over it: a notification for another event opens that event over this page, one for this event opens here. Nothing is sent.">
         <Choices
           heading="Opened over"
-          options={OPENERS.map((key) => ({ key, label: openerWords(key, shell.layout) }))}
+          options={openersFor(shell.layout).map((key) => ({
+            key,
+            label: openerWords(key, shell.layout),
+          }))}
           chosen={over}
           onChoose={setOver}
           id="opener"
