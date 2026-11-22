@@ -1,3 +1,5 @@
+import type { NotificationCategory } from '@soirely/api-client';
+
 /** The demo home's group for the bell, named as the web's is. */
 export const BELL_GROUP = 'The bell (sc-83081)';
 
@@ -121,9 +123,17 @@ export const BW = {
 };
 
 /** The categories Mute this event never holds, as the API's NotificationCategory::heldByMute; any other, one this app does not know included, it holds. */
-export const NEVER_HELD_BY_MUTE: ReadonlySet<string> = new Set(['event_day', 'account_security']);
+export const NEVER_HELD_BY_MUTE: ReadonlySet<NotificationCategory> = new Set([
+  'event_day',
+  'account_security',
+]);
 
 /** An item is marked Muted when it arrived after the mute, in a category the mute holds; the switch re-marks nothing shown. */
-export function mutedOf(start: BellStart, item: { key: string; category: string }): boolean {
-  return start.marked.includes(item.key) && !NEVER_HELD_BY_MUTE.has(item.category);
+export function mutedOf(
+  start: BellStart,
+  item: { key: string; category: NotificationCategory | typeof UNKNOWN_CATEGORY },
+): boolean {
+  if (!start.marked.includes(item.key)) return false;
+
+  return item.category === UNKNOWN_CATEGORY || !NEVER_HELD_BY_MUTE.has(item.category);
 }
