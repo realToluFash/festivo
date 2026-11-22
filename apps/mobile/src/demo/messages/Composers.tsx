@@ -342,6 +342,13 @@ export function NewComposer({
           ) : (
             <>
               <TextAction
+                label={W.preview}
+                glyph="eye"
+                onPress={onPreview ?? (() => undefined)}
+                off={!on}
+                testID="messages.preview"
+              />
+              <TextAction
                 label={W.changeWhen}
                 glyph="clock"
                 onPress={editing.onChangeWhen}
@@ -632,14 +639,17 @@ export function WhyNot({ words }: { words: string }) {
 }
 
 /** The preview's one-line bar: back to the words, Preview on, and Send. */
+/** With onSave, the preview of a scheduled message being edited: it saves, and still goes at its time. */
 export function PreviewBar({
   sendRef,
   onEdit,
   onSend,
+  onSave,
 }: {
   sendRef?: Ref<ViewInstance> | undefined;
   onEdit: () => void;
   onSend: () => void;
+  onSave?: (() => void) | undefined;
 }) {
   return (
     <View style={styles.bar}>
@@ -652,7 +662,18 @@ export function PreviewBar({
         testID="messages.previewOn"
       />
       <View style={styles.grow} />
-      <SendButton ref={sendRef} on onPress={onSend} testID="messages.preview.send" />
+      {onSave == null ? (
+        <SendButton ref={sendRef} on onPress={onSend} testID="messages.preview.send" />
+      ) : (
+        <Pill
+          label={W.save}
+          height={tokens.sizeHit}
+          full={false}
+          kind="primary"
+          onPress={onSave}
+          testID="messages.preview.save"
+        />
+      )}
     </View>
   );
 }

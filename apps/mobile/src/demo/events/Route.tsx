@@ -196,7 +196,8 @@ export function EventRoute() {
   const budget = area === 'budget' ? budgetStateOf(params.state) : null;
   // Can edit has no Budget: a deep link to it opens the event page, More open without it (sc-93).
   const noBudget = area === 'budget' && (budget === 'no_budget' || params.as === 'kemi');
-  const state = noBudget || noStaff ? 'more' : eventStateOf(params.state);
+  const state =
+    noBudget || noStaff ? 'more' : messages === 'loading' ? null : eventStateOf(params.state);
   const guests = area === 'guests' ? guestsStateOf(params.state) : null;
   const people = cardStateOf(params.people);
   const origin = params.id === CREATED_ID ? originStateOf(params.state) : null;

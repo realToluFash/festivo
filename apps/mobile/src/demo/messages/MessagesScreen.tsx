@@ -111,6 +111,7 @@ import {
 import { SHARED_NUMBER, readsOnly } from './NoticeStates.ts';
 import { NoManageCard } from './NoticeParts.tsx';
 import { StopActions, StopAsk } from './StopWritingParts.tsx';
+import { HoldTop } from './HoldTop.tsx';
 import { markLooked } from '../guests/ChangedSince.ts';
 
 const SAMPLE_CHANNELS: readonly ChannelKey[] = ['email', 'sms'];
@@ -1070,11 +1071,60 @@ function PhoneConversation({
   const insets = useSafeAreaInsets();
   const keysUp = useKeysUp();
   const stream = useRef<ScrollViewInstance>(null);
-  const [sides, setSides] = useState({ left: 0, right: 0 });
+  const [sides, setSides] = useState({ left: 0, right: 0, nav: 0, title: 0 });
+  const room = sides.nav - sides.left - Math.max(sides.left, sides.right) - 2 * tokens.spaceXl;
+  const moved = parts.right != null && sides.nav > 0 && sides.title > room;
+  const rightAt = (
+    <View
+      onLayout={(event) => setSides((now) => ({ ...now, right: event.nativeEvent.layout.width }))}
+      style={moved ? styles.movedRight : undefined}
+    >
+      {parts.right}
+    </View>
+  );
+  const view = useRef<{ content: number; height: number; held: number | null }>({
+    content: 0,
+    height: 0,
+    held: null,
+  });
+  const toEnd = parts.align === 'end';
+  const settle = useCallback(() => {
+    const { content, height, held } = view.current;
+    if (held == null || height === 0) stream.current?.scrollToEnd({ animated: false });
+    else
+      stream.current?.scrollTo({
+        y: Math.min(held, Math.max(content - height, 0)),
+        animated: false,
+      });
+  }, []);
+  const hold = useCallback(
+    (y: number | null) => {
+      view.current.held = y;
+      if (y != null && toEnd) settle();
+    },
+    [settle, toEnd],
+  );
 
   return (
     <KeyboardAvoidingView behavior="padding" style={[styles.fill, { paddingTop: insets.top }]}>
-      <View style={styles.nav}>
+      <View
+        style={styles.nav}
+        onLayout={(event) => setSides((now) => ({ ...now, nav: event.nativeEvent.layout.width }))}
+      >
+        <Text
+          size={17}
+          weight="bold"
+          numberOfLines={1}
+          accessible={false}
+          accessibilityElementsHidden
+          importantForAccessibility="no-hide-descendants"
+          style={styles.measure}
+          onLayout={(event) =>
+            setSides((now) => ({ ...now, title: event.nativeEvent.layout.width }))
+          }
+        >
+          {parts.title}
+        </Text>
         <View
           onLayout={(event) =>
             setSides((now) => ({ ...now, left: event.nativeEvent.layout.width }))
@@ -1087,7 +1137,7 @@ function PhoneConversation({
             styles.navTitle,
             {
               left: sides.left + tokens.spaceXl,
-              right: Math.max(sides.left, sides.right) + tokens.spaceXl,
+              right: (moved ? sides.left : Math.max(sides.left, sides.right)) + tokens.spaceXl,
             },
           ]}
           pointerEvents="none"
@@ -1097,21 +1147,17 @@ function PhoneConversation({
           </Text>
         </View>
         <View style={styles.grow} />
-        <View
-          onLayout={(event) =>
-            setSides((now) => ({ ...now, right: event.nativeEvent.layout.width }))
-          }
-        >
-          {parts.right}
-        </View>
+        {!moved && rightAt}
       </View>
-      {(parts.head != null || parts.line != null) && (
+      {(parts.head != null || parts.line != null || moved) && (
         <View style={styles.phoneHead}>
-          {parts.head ?? (
-            <Text size={14} weight="semibold" style={[styles.secondary, styles.headLine]}>
-              {parts.line}
-            </Text>
-          )}
+          {parts.head ??
+            (parts.line != null && (
+              <Text size={14} weight="semibold" style={[styles.secondary, styles.headLine]}>
+                {parts.line}
+              </Text>
+            ))}
+          {moved && rightAt}
         </View>
       )}
       {parts.under != null && <View style={styles.phoneUnder}>{parts.under}</View>}
@@ -1123,11 +1169,16 @@ function PhoneConversation({
           parts.align === 'end' ? styles.toFoot : styles.toTop,
         ]}
         keyboardShouldPersistTaps="handled"
-        onContentSizeChange={() => {
-          if (parts.align === 'end') stream.current?.scrollToEnd({ animated: false });
+        onLayout={(event) => {
+          view.current.height = event.nativeEvent.layout.height;
+          if (toEnd) settle();
+        }}
+        onContentSizeChange={(_, height) => {
+          view.current.content = height;
+          if (toEnd) settle();
         }}
       >
-        {parts.stream}
+        <HoldTop.Provider value={hold}>{parts.stream}</HoldTop.Provider>
       </ScrollView>
       {parts.foot != null && (
         <View
@@ -1269,6 +1320,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  measure: { position: 'absolute', top: 0, left: 0, opacity: 0 },
+  movedRight: { alignSelf: 'flex-end' },
   phoneHead: {
     paddingVertical: tokens.spaceLg,
     paddingHorizontal: tokens.spaceXxl,
