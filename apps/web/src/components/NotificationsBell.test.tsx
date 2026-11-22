@@ -710,6 +710,33 @@ describe('the bell in the B frame (sc-83081)', () => {
     expect(pop?.style.top).toBe('152px');
   });
 
+  it('follows the bell when the offline band of the page arrives above it and leaves (#84630)', async () => {
+    answering({
+      'GET /api/notifications': () => json({ items: [item()], unreadCount: 1, next: null }),
+    });
+    vi.spyOn(window, 'innerHeight', 'get').mockReturnValue(800);
+    vi.spyOn(document.documentElement, 'clientWidth', 'get').mockReturnValue(1280);
+    let bottom = 78;
+    vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(
+      () =>
+        ({ top: bottom - 44, bottom, left: 1196, right: 1240, width: 44, height: 44 }) as DOMRect,
+    );
+    const { container } = renderedBell('banner');
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Notifications, 1 unread' }));
+    const pop = container.querySelector<HTMLElement>('.bell-pop');
+    expect(pop?.style.top).toBe('86px');
+
+    const band = document.createElement('div');
+    bottom = 144;
+    document.body.prepend(band);
+    await waitFor(() => expect(pop?.style.top).toBe('152px'));
+
+    bottom = 78;
+    band.remove();
+    await waitFor(() => expect(pop?.style.top).toBe('86px'));
+  });
+
   it('scrolls only the items', () => {
     expect(cssRule('.bell-body', BELL_CSS)).toMatch(/overflow-y: auto;/u);
     expect(cssRule('.bell-pop', BELL_CSS)).not.toMatch(/overflow-y/u);
