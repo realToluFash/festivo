@@ -72,7 +72,7 @@
   color: var(--colorInkSecondary);
 }
 
-/* sc-614: the Ask never scrolls inside itself, so the open menu floats over its foot; Hand them to sits in the Ask's top half, so half the window always fits below it. */
+/* sc-614: the Ask never scrolls inside itself, so the open menu floats over its foot; Handover.tsx fits the menu's height to the window. */
 .desk-ask:has(.handover-menu) {
   overflow: visible;
 }
@@ -83,7 +83,6 @@
   right: 0;
   left: 0;
   z-index: 2;
-  max-height: 50vh;
   display: flex;
   flex-direction: column;
   box-sizing: border-box;
