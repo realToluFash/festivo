@@ -30,7 +30,14 @@ import {
   PartsSection,
   type RefFor,
 } from '../../components/EventOverview.tsx';
-import { AreaPage, BellRow, EventFrame, type EventToast, backToEvents } from './EventFrame.tsx';
+import {
+  AreaPage,
+  BellRow,
+  EventBellAt,
+  EventFrame,
+  type EventToast,
+  backToEvents,
+} from './EventFrame.tsx';
 import { useEventBell } from './EventBell.tsx';
 import { INVITATION_HREF, liveToastOf, makeLiveStateOf, reachOf, seededEvent } from './MakeLive.ts';
 import { MakeLiveAsk, useMakeLive } from './MakeLiveAsk.tsx';
@@ -708,9 +715,13 @@ export function EventScreen({
         };
 
   if (linked && at !== 'overview' && !leftOverview) setLeftOverview(true);
+  // Every area's frame opens the page's bell, the areas drawn by their own screen included (sc-84453).
+  const lend = (node: ReactNode) => (
+    <EventBellAt.Provider value={bell}>{node}</EventBellAt.Provider>
+  );
 
   if (state === 'loading' || failed != null)
-    return (
+    return lend(
       <EventFrame
         event={shown}
         now={now}
@@ -728,11 +739,11 @@ export function EventScreen({
         ) : (
           <EventsFailed words={W.failedLoadEvent} onRetry={failed} testID="event.link.retry" />
         )}
-      </EventFrame>
+      </EventFrame>,
     );
 
   if (at === 'people')
-    return (
+    return lend(
       <PeopleInEvent.Provider
         value={{
           event: shown,
@@ -745,11 +756,11 @@ export function EventScreen({
         }}
       >
         <PeopleSection params={peopleAt} />
-      </PeopleInEvent.Provider>
+      </PeopleInEvent.Provider>,
     );
 
   if (at === 'seating' && messagesHere)
-    return (
+    return lend(
       <SeatingScreen
         state={seating}
         event={shown}
@@ -757,7 +768,7 @@ export function EventScreen({
         more={more}
         onMore={setMore}
         onArea={setAt}
-      />
+      />,
     );
 
   const writeToThem = () => {
@@ -775,7 +786,7 @@ export function EventScreen({
   };
 
   if (at === 'guests' && (guests != null || GUESTS_ON.includes(event.id)))
-    return (
+    return lend(
       <GuestsScreen
         key={guestsFrom ?? ''}
         state={guests != null && !isIn(OVERVIEW_STATES, guests) ? guests : null}
@@ -790,11 +801,11 @@ export function EventScreen({
         onWrite={writeToThem}
         onConversation={theirConversation}
         onMakeLive={() => shell.tell(say.ownDesign(W.makeLive))}
-      />
+      />,
     );
 
   if (at === 'budget' && messagesHere)
-    return (
+    return lend(
       <BudgetScreen
         state={budget}
         event={shown}
@@ -803,11 +814,11 @@ export function EventScreen({
         more={more}
         onMore={setMore}
         onArea={setAt}
-      />
+      />,
     );
 
   if (at === 'messages' && messagesHere)
-    return (
+    return lend(
       <MessagesScreen
         m={m}
         dispatch={dispatch}
@@ -828,7 +839,7 @@ export function EventScreen({
             messages === 'typedBraces',
         }}
         extra={tell}
-      />
+      />,
     );
 
   let page: ReactNode;
@@ -896,7 +907,7 @@ export function EventScreen({
       />
     );
 
-  return (
+  return lend(
     <EventFrame
       event={shown}
       now={now}
@@ -908,13 +919,10 @@ export function EventScreen({
       without={without}
       behind={top.behind}
       besideBack={at === 'overview' ? top.besideBack : undefined}
-      onBell={bell.onBell}
-      bellRef={bell.bellRef}
       toast={liveToast ?? (told == null ? null : { words: told, onClose: () => setTold(null) })}
       overlay={
         <>
           {tell}
-          {bell.place}
           {round > 0 || edit != null ? (
             <EditScreen
               key={`${part}:${round}`}
@@ -1001,7 +1009,7 @@ export function EventScreen({
       }
     >
       {page}
-    </EventFrame>
+    </EventFrame>,
   );
 }
 
