@@ -56,7 +56,9 @@ Two things to hold onto throughout:
 3. **`docs/design/tokens.mjs`** in this repository — the tokens, one source, with usage
    notes and four settled decisions.
 4. **The worked example: page `29 · Events` of Soirely — Redesign,
-   https://claude.ai/artifact/5cRzwbgmEK6wqbxp4j1zqx**: Events home and Event view, each
+   https://claude.ai/artifact/5cRzwbgmEK6wqbxp4j1zqx**, now closed to new boards (see
+   **Step two**). Its `EventsHome` boards were gone from its live version on 22 Nov 2026;
+   where they are, read them as the example of finish. Events home and Event view, each
    as its three boards. Read `project/canvas.json`, then `EventsHome.dc.html`,
    `EventsHome-fd.dc.html` and `EventsHome-App.dc.html`. **Match their style, their density,
    and their level of finish.** Reading them will teach you more than this file can
@@ -83,10 +85,20 @@ building anything.**
 
 ## Step two: build the missing screens
 
-**Every epic lives in one artifact, Soirely — Redesign:
-https://claude.ai/artifact/5cRzwbgmEK6wqbxp4j1zqx**, one page per epic. Add your boards to
-your own epic's page, and add that page first when the epic has none. The owner set this on
-30 Oct 2026. Inside the page, one artboard per screen, named for what it is
+**Every new board goes in one artifact: https://claude.ai/artifact/M2NtaKFfJZMku2AFZ28jBW**,
+one page per epic. Add your boards to your own epic's page, and add that page first when
+the epic has none. The owner set one artifact for every epic on 30 Oct 2026, and moved the
+work to this one on 22 Nov 2026. Its canvas is titled "Soirely Settings · Summary first";
+leave its title as it is.
+
+The one before it, Soirely — Redesign (https://claude.ai/artifact/5cRzwbgmEK6wqbxp4j1zqx),
+is closed to new boards: on 22 Nov 2026 its canvas held 512 files, the limit for one
+canvas, and some boards that Design sections still name were no longer in its live
+version. Links to it stay as they are. A board revised from it is drawn again in the new
+artifact, and the story's Design section then links the new one. Where a skill still names
+the old artifact as the place to draw, this section wins.
+
+Inside the page, one artboard per screen, named for what it is
 (`SignIn.dc.html`, `GuestList.dc.html`). Several stories may share an artboard, and one
 story may need several.
 
