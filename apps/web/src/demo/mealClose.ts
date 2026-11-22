@@ -204,6 +204,8 @@ export interface SummaryStart {
   /** The day the send arrives at the API, when it is later than the page was opened. */
   sendOn: string | null;
   screen: CourseId | null;
+  /** Paused before Reply by (sc-3907, #82655): under the paused card, every row read-only with its close line, and no send. */
+  paused?: boolean;
 }
 
 export const EARLIER: Saved = { starter: 'canape', main: 'jollof', dessert: 'chinchin' };

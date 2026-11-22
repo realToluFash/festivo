@@ -485,6 +485,13 @@ const CLOSE_STATES = {
       note: 'Today is Tuesday, Oct 20: every row read-only, no send button, and the page says to ask the hosts.',
       today: '2026-10-20',
     }),
+  paused: () =>
+    back({
+      name: 'Paused before Reply by',
+      note: 'Today is Saturday, Oct 17 and the host has paused the event: answers are closed while Main and Dessert are still open by date. Under the paused card, Your meal picks stays, every row read-only with its own close line (Starter’s padlock, the others’ clock), no Change and no send button.',
+      today: '2026-10-17',
+      paused: true,
+    }),
   refused: () =>
     back({
       name: 'Refused: Starter had a pick, Main still open',
