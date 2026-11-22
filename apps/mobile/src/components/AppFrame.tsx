@@ -288,6 +288,7 @@ export function AppFrame({
   ownChrome = false,
   inEvent,
   untitled = false,
+  bareList = false,
   primary,
   underTitle,
   besideTitle,
@@ -310,6 +311,8 @@ export function AppFrame({
   inEvent?: InsideEvent | undefined;
   /** The body names the page itself (an event's Overview card, a member's own card in front of the list), so the frame draws no title (sc-30413, sc-37693). */
   untitled?: boolean;
+  /** The body alone in the Events frame, as the demo's ListFrame draws it: on a phone nothing above it, upright the pill, tabs and bell with no title (sc-1468, sc-80863). */
+  bareList?: boolean;
   title: string;
   /** The title on a phone, where it stands for the page's own heading. */
   titleRef?: RefObject<TextHandle | null> | undefined;
@@ -646,6 +649,7 @@ export function AppFrame({
     besideBack: standIn == null || besideBack === undefined ? besideBack : null,
     switched: ownTop ? switchedNotice : null,
     untitled,
+    bareList,
     cap,
     onTitleDrawn: titleCap.onDrawn,
   };
@@ -729,7 +733,9 @@ export function AppFrame({
                                   >
                                     <BodySwitched.Provider value={bodySwitched}>
                                       <UnderTabsProvider value={underTabs}>
-                                        <BellInPane.Provider value={sidebar && untitled}>
+                                        <BellInPane.Provider
+                                          value={sidebar && untitled && !bareList}
+                                        >
                                           {children}
                                         </BellInPane.Provider>
                                       </UnderTabsProvider>
@@ -904,6 +910,7 @@ interface FrameHeaderProps {
   switched: ReactNode;
   /** A page whose body names it (an event's Overview card, a member's own card in front of the list), so the frame draws no title. */
   untitled: boolean;
+  bareList: boolean;
   /** No title, back or bell above the body; upright, the area pills alone. */
   bare: boolean;
   /** The size the title drew at, which nothing under it outgrows; null where nothing caps (sc-67338). */
@@ -1126,6 +1133,7 @@ function FrameHeader({
   besideTitle,
   besideBack,
   untitled,
+  bareList,
   cap,
   onTitleDrawn,
 }: FrameHeaderProps) {
@@ -1219,7 +1227,7 @@ function FrameHeader({
           tabsCentred
         />
         {backView}
-        {titleRow()}
+        {!bareList && titleRow()}
       </View>
     );
   }
@@ -1253,6 +1261,7 @@ function FrameHeader({
   }
 
   if (bare) return <View style={{ paddingTop: insets.top + tokens.spaceLg }} />;
+  if (bareList) return <View style={{ height: insets.top }} />;
 
   // Inside an event, ‹ in its pill and the bell head the page; on Overview the event's card under them names it (sc-30413).
   if (inEvent && back != null) {

@@ -33,8 +33,12 @@ describe("an event's page top", () => {
     expect(eventTop('tabletLandscape', 'overview', 'loaded').inEvent).toBe(true);
   });
 
-  it("is not the event's on a failed or missing event", () => {
-    expect(eventTop('tabletLandscape', 'overview', 'failed').inEvent).toBe(false);
+  it("stays the event's over a failed load, as the demo draws Try again in the event's frame", () => {
+    for (const kind of ['phone', 'tabletPortrait', 'tabletLandscape'] as const)
+      expect(eventTop(kind, 'overview', 'failed')).toEqual(eventTop(kind, 'overview', 'loading'));
+  });
+
+  it("is not the event's on a missing event", () => {
     expect(eventTop('tabletPortrait', 'budget', 'notFound').inEvent).toBe(false);
   });
 
@@ -44,14 +48,12 @@ describe("an event's page top", () => {
       cardNamed: true,
       areaTitled: false,
       frameBack: 'events',
-      bodyBack: false,
     });
     expect(eventTop('tabletPortrait', 'budget', 'loaded')).toEqual({
       inEvent: true,
       cardNamed: false,
       areaTitled: true,
       frameBack: 'events',
-      bodyBack: false,
     });
   });
 
@@ -61,10 +63,8 @@ describe("an event's page top", () => {
       cardNamed: true,
       areaTitled: false,
       frameBack: null,
-      bodyBack: false,
     });
     expect(eventTop('tabletLandscape', 'overview', 'loaded').cardNamed).toBe(true);
-    expect(eventTop('tabletLandscape', 'overview', 'failed').cardNamed).toBe(false);
   });
 
   it("on its side, draws no ‹ in the pane on any other area, the sidebar's Overview being the way back", () => {
@@ -74,12 +74,7 @@ describe("an event's page top", () => {
         cardNamed: false,
         areaTitled: false,
         frameBack: null,
-        bodyBack: false,
       });
-  });
-
-  it('on its side, keeps the ‹ on a failed event, which has no sidebar', () => {
-    expect(eventTop('tabletLandscape', 'overview', 'failed').bodyBack).toBe(true);
   });
 
   it('draws a missing event in the bare Events frame, its own Back to Events the way back', () => {
@@ -90,7 +85,6 @@ describe("an event's page top", () => {
           cardNamed: true,
           areaTitled: false,
           frameBack: null,
-          bodyBack: false,
         });
   });
 
@@ -100,7 +94,6 @@ describe("an event's page top", () => {
       cardNamed: false,
       areaTitled: false,
       frameBack: 'area',
-      bodyBack: false,
     });
   });
 });
