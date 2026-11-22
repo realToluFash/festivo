@@ -17,10 +17,7 @@ use Psr\Clock\ClockInterface;
 use Psr\Log\LoggerInterface;
 use SensitiveParameter;
 
-/**
- * The client secret Apple's token endpoint asks of the web client: a JWT signed with the team's Sign in with Apple key,
- * made fresh for each redemption so none outlives its few minutes (sc-80881).
- */
+/** Apple's web client secret: an ES256 JWT made fresh for each redemption, so none is sent after its `exp`. */
 final readonly class AppleClientSecret
 {
     public const string AUDIENCE = 'https://appleid.apple.com';

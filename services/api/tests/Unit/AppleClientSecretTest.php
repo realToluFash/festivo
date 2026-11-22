@@ -8,6 +8,7 @@ use App\Enum\IdentityProvider;
 use App\Http\Exception\ApiException;
 use App\Integrations\OpenIdConnect\AppleClientSecret;
 use App\Integrations\OpenIdConnect\HttpCodeRedeemer;
+use DateTimeImmutable;
 use Lcobucci\JWT\Encoding\JoseEncoder;
 use Lcobucci\JWT\Signer\Ecdsa\Sha256;
 use Lcobucci\JWT\Signer\Key\InMemory;
@@ -19,7 +20,9 @@ use PHPUnit\Framework\TestCase;
 use Psl\Json;
 use Psl\Str;
 use Psl\Type;
+use Psr\Log\LoggerInterface;
 use Psr\Log\NullLogger;
+use SensitiveParameter;
 use Symfony\Component\Clock\MockClock;
 use Symfony\Component\ErrorHandler\BufferingLogger;
 use Symfony\Component\HttpClient\MockHttpClient;
@@ -60,7 +63,7 @@ final class AppleClientSecretTest extends TestCase
         $payload = Json\decode(self::base64UrlDecode(Str\split(Type\string()->coerce(self::secret($private)->issue()), '.')[1]));
         $claims = Type\shape(['iat' => Type\int(), 'exp' => Type\int()], true)->coerce($payload);
 
-        self::assertSame((new \DateTimeImmutable(self::NOW))->getTimestamp(), $claims['iat']);
+        self::assertSame((new DateTimeImmutable(self::NOW))->getTimestamp(), $claims['iat']);
         self::assertSame(AppleClientSecret::LIFETIME_SECONDS, $claims['exp'] - $claims['iat']);
         self::assertLessThanOrEqual(15_777_000, AppleClientSecret::LIFETIME_SECONDS);
     }
@@ -159,12 +162,12 @@ final class AppleClientSecretTest extends TestCase
         self::assertSame(self::GOOGLE_WEB_CLIENT_CREDENTIAL, $sent['client_secret'] ?? null);
     }
 
-    private static function secret(#[\SensitiveParameter] string $privateKey, ?MockClock $clock = null, ?\Psr\Log\LoggerInterface $logger = null): AppleClientSecret
+    private static function secret(#[SensitiveParameter] string $privateKey, ?MockClock $clock = null, ?LoggerInterface $logger = null): AppleClientSecret
     {
         return new AppleClientSecret($privateKey, 'KEY123', 'TEAM123', 'soirely-web.test', $clock ?? new MockClock(self::NOW), $logger ?? new NullLogger());
     }
 
-    private static function redeemer(MockHttpClient $client, #[\SensitiveParameter] AppleClientSecret $secret): HttpCodeRedeemer
+    private static function redeemer(MockHttpClient $client, #[SensitiveParameter] AppleClientSecret $secret): HttpCodeRedeemer
     {
         return new HttpCodeRedeemer($client, 'https://google.test/token', 'google-web', self::GOOGLE_WEB_CLIENT_CREDENTIAL, 'https://appleid.apple.test/token', 'soirely-web.test', $secret);
     }
