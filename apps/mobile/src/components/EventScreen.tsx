@@ -88,6 +88,8 @@ import { BodyTitle } from './Title.tsx';
 import { PAGE_TITLE, pageTitle } from './topTitle.ts';
 import { useSidebarCard } from './sidebarCard.ts';
 import { backToEvents, eventTop } from '../kit/eventTop.ts';
+import { BACK_KEY, eventBack, overviewGivesWay } from '../kit/eventBack.ts';
+import { searchHref } from '../kit/searchLinks.ts';
 import { EdgeSwipeBack } from './useEdgeSwipeBack.ts';
 import { useSystemBack } from './useSystemBack.ts';
 
@@ -105,6 +107,7 @@ export function EventScreen({
   opensGuest,
   opensEndNow = false,
   cameFrom,
+  searched,
 }: {
   eventId: string;
   area: EventPlace;
@@ -128,6 +131,8 @@ export function EventScreen({
   opensEndNow?: boolean;
   /** Chosen from the list of events held from outside, in this event: the way back if it has gone (sc-68438). */
   cameFrom?: string | undefined;
+  /** What was typed in a tablet's Search, which closes before the event opens: ‹ Search opens it again with that (sc-83008). */
+  searched?: string | undefined;
 }) {
   const { t } = useTranslation();
   const { kind } = useLayout();
@@ -145,7 +150,8 @@ export function EventScreen({
       [EDIT_LEAVES]?: string | undefined;
       [ASKS_END]?: string | undefined;
     }): void;
-    getState(): { routes: readonly { params?: unknown }[]; index: number } | undefined;
+    getState():
+      { routes: readonly { name?: string; params?: unknown }[]; index: number } | undefined;
   }>();
   const [editing, setEditing] = useState<{
     part: EditPart;
@@ -266,10 +272,13 @@ export function EventScreen({
 
   const chooseArea = (next: EventPlace, choice?: Choice) =>
     navigation.setParams({ [EVENT_AREA]: next, [GUESTS_FILTER]: choice });
+  const stack = navigation.getState();
+  const behind = eventBack(stack?.routes ?? [], stack?.index ?? 0, searched);
   const leave = () => {
     if (original != null) goUpToEvent(navigation, router, original);
-    else if (router.canGoBack()) router.back();
-    else router.replace(DESTINATION_HREF.events);
+    else if (behind.way === 'back' && router.canGoBack()) router.back();
+    else if (behind.way === 'search') router.replace(searchHref(behind.term));
+    else backToEvents(router);
   };
   const fromSearch = phone && opensGuest != null;
   const back = !fromSearch && areaBack(area) === 'overview' ? () => chooseArea('overview') : leave;
@@ -282,7 +291,7 @@ export function EventScreen({
       ? t('eventNav.overview')
       : original != null
         ? t('timeline.backToEvent')
-        : t('eventsScreen.title');
+        : t(BACK_KEY[behind.screen]);
 
   useSystemBack(backs, back);
 
@@ -429,7 +438,7 @@ export function EventScreen({
   const guests = area === 'guests' && event != null;
   const refreshing =
     opened.refreshing || (guests && guestsOffline.refreshing) ? (
-      <Refreshing testID="events.page.refreshing" wraps={guests} />
+      <Refreshing testID="events.page.refreshing" wraps={guests || area === 'overview'} />
     ) : null;
   const underTitle =
     area === 'people' && event != null ? (
@@ -457,7 +466,17 @@ export function EventScreen({
     ) : null;
   const guestBack = guests ? guestsTop.back : null;
   // On Guests' list on a phone, Refreshing… stays beside Back only where the pill stays whole, else it takes its own line under the heading (sc-71821).
-  const besideBackRow = backRow({ phone, guestsList: guests && guestBack == null, cardNamed });
+  const overviewBack = area === 'overview' && backs && top.frameBack != null;
+  const besideBackRow = backRow({
+    phone,
+    guestsList: guests && guestBack == null,
+    cardNamed,
+    overview: overviewGivesWay(kind, overviewBack),
+  });
+  const ownLine =
+    besideBackRow === 'givingWay' && area === 'overview' && !refreshingBesideBack
+      ? refreshing
+      : null;
   const titledInList = areaTitled || guests;
   const frameBack = !backs
     ? undefined
@@ -470,7 +489,7 @@ export function EventScreen({
         ? { label: backLabel, onPress: back }
         : top.frameBack === 'events' && outside == null
           ? {
-              label: original != null ? t('timeline.backToEvent') : t('eventsScreen.title'),
+              label: original != null ? t('timeline.backToEvent') : t(BACK_KEY[behind.screen]),
               onPress: leave,
             }
           : undefined;
@@ -594,6 +613,7 @@ export function EventScreen({
               {underTitle}
             </View>
           )}
+          {ownLine}
           {body}
         </Screen>
       )}

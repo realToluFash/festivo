@@ -1,12 +1,19 @@
 import { describe, expect, it } from 'vitest';
 
-import { eventsSearchHref, searchRowHref } from './searchLinks.ts';
+import { eventsSearchHref, searchHref, searchRowHref } from './searchLinks.ts';
 
 describe('Search’s links (sc-39534)', () => {
   it('opens an event on its page', () => {
     expect(searchRowHref({ kind: 'event', id: 'ev 1', name: 'Gala', line: '' })).toBe(
       '/events/ev%201',
     );
+  });
+
+  it('carries what was typed to an event opened after a tablet’s palette closed (sc-83008)', () => {
+    expect(searchRowHref({ kind: 'event', id: 'ev1', name: 'Gala', line: '' }, 'ga la')).toBe(
+      '/events/ev1?searched=ga%20la',
+    );
+    expect(searchHref('ga la')).toBe('/search?q=ga%20la');
   });
 
   it('opens a guest’s details on their event’s Guests', () => {
