@@ -1205,6 +1205,89 @@ describe('Messages in B · Conversations at a desk (sc-31371)', () => {
     expect(within(dialog).getByText('The start time is now 17:30 (was 18:00).')).toBeDefined();
   });
 
+  it(
+    'draws an item of each of the six kinds in the bell, the security one with no More',
+    SLOW,
+    async () => {
+      await messages('bell');
+      const bell = screen.getByRole('dialog', { name: 'Notifications' });
+
+      for (const title of [
+        'Ana Souza paused the event',
+        'Ana Souza changed the event',
+        '1 payment overdue on Adaeze & Tunde’s wedding',
+        'New sign-in to Soirely',
+      ])
+        expect(within(bell).getByText(title)).toBeDefined();
+      expect(within(bell).queryByRole('button', { name: /^More for New sign-in/u })).toBeNull();
+      expect(within(bell).getByRole('link', { name: 'Notification settings' })).toBeDefined();
+    },
+  );
+
+  it('asks to turn on push, and Not now takes the ask away', SLOW, async () => {
+    await messages('bellPush');
+    const bell = screen.getByRole('dialog', { name: 'Notifications' });
+
+    expect(within(bell).getByRole('heading', { name: 'Turn on push?' })).toBeDefined();
+    fireEvent.click(within(bell).getByRole('button', { name: 'Not now' }));
+    expect(within(bell).queryByRole('heading', { name: 'Turn on push?' })).toBeNull();
+  });
+
+  it('says the bell did not load, and Try again loads it', SLOW, async () => {
+    await messages('bellFailed');
+    const bell = screen.getByRole('dialog', { name: 'Notifications' });
+
+    expect(within(bell).getByText('Your notifications did not load.')).toBeDefined();
+    fireEvent.click(within(bell).getByRole('button', { name: 'Try again' }));
+    expect(within(bell).getByRole('list', { name: 'Loading notifications' })).toBeDefined();
+    await within(bell).findByText('New sign-in to Soirely', {}, WAIT);
+  });
+
+  it('draws the empty bell in its words', SLOW, async () => {
+    await messages('bellEmpty');
+
+    expect(
+      screen.getByText('Nothing yet. Replies, changes and reminders for your events show up here.'),
+    ).toBeDefined();
+  });
+
+  it('shows two older notifications under Show more, or says they did not load', SLOW, async () => {
+    await messages('bellMore');
+    let bell = screen.getByRole('dialog', { name: 'Notifications' });
+
+    fireEvent.click(within(bell).getByRole('button', { name: 'Show more' }));
+    await within(bell).findByText('Ana Souza made the event live', {}, WAIT);
+    expect(within(bell).queryByRole('button', { name: 'Show more' })).toBeNull();
+
+    cleanup();
+    await messages('bellMoreFailed');
+    bell = screen.getByRole('dialog', { name: 'Notifications' });
+    expect(
+      within(bell).getByText('More notifications did not load. Try again in a moment.'),
+    ).toBeDefined();
+  });
+
+  it('mutes the event from an item’s More, and marks its items Muted', SLOW, async () => {
+    await messages('bellMute');
+    const bell = screen.getByRole('dialog', { name: 'Notifications' });
+
+    expect(within(bell).queryByText('Muted')).toBeNull();
+    fireEvent.click(within(bell).getByRole('switch', { name: 'Mute this event' }));
+    expect(within(bell).getAllByText('Muted').length).toBe(5);
+  });
+
+  it('says an event has gone, and keeps the offline band with Refreshing…', SLOW, async () => {
+    await messages('bellGone');
+    expect(screen.getByText('This event is no longer available.')).toBeDefined();
+
+    cleanup();
+    await messages('bellRefreshing');
+    const bell = screen.getByRole('dialog', { name: 'Notifications' });
+
+    expect(within(bell).getByText('Refreshing…')).toBeDefined();
+    expect(within(bell).getByText(/^Offline · as of/u)).toBeDefined();
+  });
+
   it('opens the bell with the batched replies and a message that missed people', SLOW, async () => {
     await messages('bell');
     const bell = screen.getByRole('dialog', { name: 'Notifications' });
@@ -1213,7 +1296,9 @@ describe('Messages in B · Conversations at a desk (sc-31371)', () => {
     fireEvent.click(within(bell).getByRole('button', { name: 'Mark all read' }));
     expect(within(bell).queryByText('Unread')).toBeNull();
 
-    fireEvent.click(within(bell).getByRole('button', { name: /11 people didn’t get it/ }));
+    fireEvent.click(
+      within(bell).getByRole('button', { name: /^Parking[^,]*: 11 people didn’t get it/u }),
+    );
     expect(
       await screen.findByRole('heading', { level: 2, name: 'Reached 131 of 142' }),
     ).toBeDefined();
@@ -1258,7 +1343,8 @@ describe('Messages in B · Conversations at a desk (sc-31371)', () => {
         'Unread',
       );
       expect(
-        within(bell).getByRole('button', { name: /11 people didn’t get it/u }).textContent,
+        within(bell).getByRole('button', { name: /^Parking[^,]*: 11 people didn’t get it/u })
+          .textContent,
       ).toContain('Unread');
     },
   );
