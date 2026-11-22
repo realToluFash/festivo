@@ -133,7 +133,10 @@ export const HELD_BY_MUTE: ReadonlySet<string> = new Set<NotificationCategory>([
 ]);
 
 /** An item is marked Muted when it arrived after the mute, in a category the mute holds or one the app does not know, whose Muted is the server's; the switch re-marks nothing shown. */
-export function mutedOf(start: BellStart, item: { key: string; category: string }): boolean {
+export function mutedOf(
+  start: BellStart,
+  item: { key: string; category: NotificationCategory | typeof UNKNOWN_CATEGORY },
+): boolean {
   return (
     start.marked.includes(item.key) &&
     (HELD_BY_MUTE.has(item.category) || !Object.hasOwn(CATEGORY_MARK, item.category))

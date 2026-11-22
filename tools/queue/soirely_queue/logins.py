@@ -38,19 +38,41 @@ DESKTOP = ("DISPLAY", "WAYLAND_DISPLAY", "XAUTHORITY", "XDG_RUNTIME_DIR",
 LINK = re.compile(r"https://\S+/oauth/authorize\S*")
 PROMPT = "Paste code here if prompted >"
 QUIET = ("Opening browser", "If the browser didn't open")
+ACCOUNT_FILES = (".claude.json", "settings.json", ".credentials.json")
+USAGE_SECONDS = 5 * 60
+USAGE_LOOK_SECONDS = 30
+USAGE_TIMEOUT = 60
+USAGE_WARN = 90
+USAGE_ARGV = ["claude", "-p", "/usage", "--output-format", "json", "--no-session-persistence",
+              "--setting-sources", ""]
 ESCAPES = re.compile(r"\x1b\][^\x07\x1b]*(?:\x07|\x1b\\)|\x1b\[[0-9;?]*[A-Za-z]")
 
-_kept, _lock = {}, threading.Lock()
+_kept, _failed, _lock = {}, {}, threading.Lock()
 
 
-def folders(config):
-    """`{folder: [roles]}` for each Claude config folder this machine's roles run under."""
-    found = {}
+def found(home=None):
+    """The Claude config folders in the home folder, whether or not a role uses them:
+    `~/.claude`, and each `~/.claude-*` holding an account file, settings or a login."""
+    home = pathlib.Path.home() if home is None else home
+    named = [home / ".claude"] if (home / ".claude").is_dir() else []
+    return named + [path for path in sorted(home.glob(".claude-*")) if path.is_dir()
+                    and any((path / name).exists() for name in ACCOUNT_FILES)]
+
+
+def folders(config, home=None):
+    """`{folder: [roles]}` for each Claude config folder on this machine: the ones its roles
+    run under, then the rest of the home folder's, with no roles."""
+    held, seen = {}, {}
     for role in config.get("roles") or {}:
         folder = machine.claude_dir(config, role)
         if folder:
-            found.setdefault(folder, []).append(role)
-    return found
+            folder = seen.setdefault(folder.resolve(), folder)
+            held.setdefault(folder, []).append(role)
+    for folder in found(home):
+        if folder.resolve() not in seen:
+            seen[folder.resolve()] = folder
+            held[folder] = []
+    return held
 
 
 def shown(folder):
@@ -67,6 +89,12 @@ def login_env(folder, base=None):
     if not machine.is_claude_default(folder):
         env["CLAUDE_CONFIG_DIR"] = str(folder)
     return env
+
+
+def usage_env(folder, roles):
+    """The environment a folder's workers run in, so the usage read is the account they
+    spend. A folder no role uses has only its own token."""
+    return machine.account_env(folder, spare=not roles)
 
 
 def when(stamp):
@@ -110,23 +138,141 @@ def forget(folder=None):
     with _lock:
         if folder is None:
             _kept.clear()
+            _failed.clear()
         else:
             _kept.pop(pathlib.Path(folder), None)
+            _failed.pop(pathlib.Path(folder), None)
 
 
-def read(config, run=subprocess.run, clock=time.monotonic):
-    """One row per folder, each read again at most every `FRESH_SECONDS`."""
+def read(config, run=subprocess.run, clock=time.monotonic, home=None):
+    """One row per folder, each read again at most every `FRESH_SECONDS`, with the usage
+    Claude last read for it."""
     rows = []
-    for folder, names in folders(config).items():
+    for folder, names in folders(config, home).items():
         with _lock:
             at, said = _kept.get(folder, (None, None))
+            failed = _failed.get(folder)
         if at is None or clock() - at >= FRESH_SECONDS:
             said = status(folder, run)
             with _lock:
                 _kept[folder] = (clock(), said)
-        token = machine.token_source(folder)
-        rows.append(dict(said, folder=shown(folder), roles=names, token=token))
+        token = machine.token_source(folder) if names else (
+            machine.token_name(folder) if os.environ.get(machine.token_name(folder)) else None)
+        rows.append(dict(said, folder=shown(folder), roles=names, token=token,
+                         usage=cached_usage(folder), usage_error=failed))
     return rows
+
+
+def cached_usage(folder):
+    """The plan usage Claude last read for the folder's account, from the account file it
+    keeps it in: `{"read_at", "limits": [{"name", "percent", "resets_at", "tone"}]}`."""
+    try:
+        said = json.loads(machine.account_file(folder).read_text())
+    except (OSError, ValueError):
+        return None
+    kept = said.get("cachedUsageUtilization") if isinstance(said, dict) else None
+    if not isinstance(kept, dict) or not isinstance(kept.get("utilization"), dict):
+        return None
+    account = (said.get("oauthAccount") or {}).get("accountUuid")
+    if account and kept.get("accountUuid") and kept["accountUuid"] != account:
+        return None
+    read_at = kept.get("fetchedAtMs")
+    return {"read_at": read_at / 1000 if isinstance(read_at, (int, float)) else None,
+            "limits": limits_of(kept["utilization"])}
+
+
+OLD_LIMITS = (("five_hour", "Session"), ("seven_day", "Week"), ("seven_day_opus", "Week · Opus"),
+              ("seven_day_sonnet", "Week · Sonnet"))
+
+
+def limits_of(utilization):
+    """Each limit Claude reports, named as `/usage` names it, from its `limits` list or,
+    from a Claude before it, its one field per limit."""
+    listed = utilization.get("limits")
+    if isinstance(listed, list):
+        return [limit(limit_name(each), each.get("percent"), each.get("resets_at"),
+                      each.get("severity")) for each in listed if isinstance(each, dict)]
+    return [limit(name, utilization[key].get("utilization"), utilization[key].get("resets_at"))
+            for key, name in OLD_LIMITS if isinstance(utilization.get(key), dict)]
+
+
+def limit_name(each):
+    kind, group = str(each.get("kind") or ""), str(each.get("group") or "")
+    scope = each.get("scope") or {}
+    named = ((scope.get("model") or {}).get("display_name") or scope.get("surface")
+             if isinstance(scope, dict) else None)
+    base = ("Session" if "session" in (kind + group) or "five_hour" in kind
+            else "Week" if group == "weekly" or kind.startswith("weekly")
+            else kind.replace("_", " ").capitalize() or "Limit")
+    return f"{base} · {named}" if named else base
+
+
+def limit(name, percent, resets_at, severity=None):
+    percent = percent if isinstance(percent, (int, float)) else None
+    tone = {"critical": "critical", "warning": "warning"}.get(severity) or (
+        "" if percent is None else "critical" if percent >= USAGE_WARN
+        else "warning" if percent >= 75 else "good")
+    return {"name": name, "percent": percent, "tone": tone,
+            "resets_at": when(resets_at) if resets_at else None}
+
+
+def refresh_usage(folder, roles, run=subprocess.run, workdir=None, clock=time.time):
+    """Has the folder's Claude read its plan usage again, as `/usage` does: answered by
+    Claude itself, with no model call, no hooks or settings loaded and no session kept,
+    in a folder of sq's own. None once a fresh reading is kept, else why it was not."""
+    workdir = workdir or pathlib.Path.home() / ".cache" / "soirely-usage"
+    started = clock()
+    try:
+        workdir.mkdir(mode=0o700, parents=True, exist_ok=True)
+        answer = run(USAGE_ARGV, capture_output=True, text=True, timeout=USAGE_TIMEOUT,
+                     cwd=workdir, env=usage_env(folder, roles), stdin=subprocess.DEVNULL)
+    except (OSError, subprocess.TimeoutExpired) as error:
+        return f"claude /usage failed ({error})"
+    said = json_object(answer.stdout)
+    if said is None:
+        return (first_line(answer.stderr or answer.stdout)
+                or f"claude /usage exited {answer.returncode}")
+    if said.get("is_error") or said.get("local_command") != "usage":
+        return first_line(said.get("result")) or "claude did not read its usage"
+    kept = cached_usage(folder)
+    if not kept or not kept["read_at"] or kept["read_at"] < int(started):
+        return "Claude answered /usage but kept no reading for this account (a token or no login)"
+    return None
+
+
+class Usage:
+    """Keeps each folder's usage at most `USAGE_SECONDS` old, behind `sq web`, one folder at a
+    time, so the page never waits on it."""
+
+    def __init__(self, config, run=subprocess.run, clock=time.time, home=None, workdir=None):
+        self.config, self.run, self.clock = config, run, clock
+        self.home, self.workdir, self.tried = home, workdir, {}
+
+    def once(self):
+        for folder, roles in folders(self.config(), self.home).items():
+            said = cached_usage(folder)
+            now = self.clock()
+            if said and said["read_at"] and now - said["read_at"] < USAGE_SECONDS:
+                with _lock:
+                    _failed.pop(folder, None)
+                continue
+            if now - self.tried.get(folder, float("-inf")) < USAGE_SECONDS:
+                continue
+            self.tried[folder] = now
+            failed = refresh_usage(folder, roles, self.run, self.workdir, self.clock)
+            with _lock:
+                _failed[folder] = failed
+
+    def keep(self, wait=time.sleep):
+        while True:
+            try:
+                self.once()
+            except Exception as error:  # noqa: BLE001 — the page outlives a bad read
+                print(f"sq web: usage not read ({error})", file=sys.stderr)
+            wait(USAGE_LOOK_SECONDS)
+
+    def start(self):
+        threading.Thread(target=self.keep, name="usage", daemon=True).start()
 
 
 def left(seconds):
@@ -141,9 +287,17 @@ def warnings(rows, now):
     """A line for each login that has run out or runs out within `WARN_SECONDS`."""
     found = []
     for row in rows:
-        if row.get("token"):
+        if not row["roles"]:
             continue
         who = f"{row.get('email') or row['folder']} ({', '.join(row['roles'])})"
+        for each in (row.get("usage") or {}).get("limits") or []:
+            resets = each.get("resets_at")
+            if (each.get("percent") or 0) >= USAGE_WARN and (resets is None or resets > now):
+                found.append(f"the Claude account {who} has used {each['percent']:g}% of its "
+                             f"{each['name'].lower()} limit"
+                             + (f": it resets in {left(resets - now)}" if resets else ""))
+        if row.get("token"):
+            continue
         if row.get("error"):
             found.append(f"the Claude login of {who} could not be read: {row['error']}")
         elif not row.get("logged_in"):
@@ -218,14 +372,15 @@ class Desk:
     """The logins this machine holds, by id: at most one per folder."""
 
     def __init__(self, config, popen=subprocess.Popen, run=subprocess.run,
-                 clock=time.monotonic, wait=time.sleep, timer=threading.Timer):
+                 clock=time.monotonic, wait=time.sleep, timer=threading.Timer, home=None):
         self.config, self.popen, self.run, self.clock, self.wait = config, popen, run, clock, wait
-        self.timer = timer
+        self.timer, self.home = timer, home
         self.held, self.lock = {}, threading.Lock()
 
     def folder(self, asked):
-        """The folder asked for, only when it is one this machine's roles run under."""
-        for folder in folders(self.config()):
+        """The folder asked for, only when it is one the page lists: a folder this machine's
+        roles run under, or one of the home folder's no role uses."""
+        for folder in folders(self.config(), self.home):
             if asked in (shown(folder), str(folder)):
                 return folder
         return None
