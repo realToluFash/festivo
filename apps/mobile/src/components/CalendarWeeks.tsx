@@ -544,7 +544,7 @@ export function LoadingWeeks({
 }
 
 /** The handlers that tell a list's scroll moved by the reader's finger, through a drag and the glide after it, from one that moved by itself. */
-export function useHand() {
+function useHand() {
   const byHand = useRef(false);
   const handlers = useMemo(
     () => ({

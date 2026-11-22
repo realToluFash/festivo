@@ -345,9 +345,8 @@ export function CalendarBoard<S extends string, E extends CalEvent>({
   const onAgendaLand = useCallback((y: number) => {
     agendaY.current = y;
   }, []);
-  const onAgendaScroll = (report: ScrollReport) => {
+  const onAgendaScroll = (y: number) => {
     if (!here) return;
-    const { y } = report;
     agendaY.current = y;
     let found: string | null = null;
     for (const entry of entries) {

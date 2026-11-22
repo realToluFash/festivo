@@ -13,7 +13,6 @@ import { useTranslation } from 'react-i18next';
 import {
   type AgendaEntry,
   type Item,
-  type ScrollReport,
   dayHeading,
   dayNumber,
   monthName,
@@ -21,7 +20,6 @@ import {
 } from '../kit/calendar.ts';
 import { tokens } from '../theme/tokens.ts';
 import { DayRows, type RowProps } from './CalendarDay.tsx';
-import { useHand } from './CalendarWeeks.tsx';
 import { Text } from './Text.tsx';
 
 /** Each entry is placed below its rule, so landing on it leaves the rule above the fold. */
@@ -179,10 +177,9 @@ export function Agenda({
   onOpen: (item: Item) => void;
   onY: (key: string, y: number) => void;
   onLand: (y: number) => void;
-  onScroll: (report: ScrollReport) => void;
+  onScroll: (y: number) => void;
 }) {
   const landed = useRef(false);
-  const { byHand, handlers } = useHand();
   const placed = useCallback(
     (key: string, y: number) => {
       onY(key, y);
@@ -200,9 +197,8 @@ export function Agenda({
       style={styles.grow}
       contentContainerStyle={[{ paddingBottom: bottom }, maxWidth != null && { maxWidth }]}
       onScroll={(event: NativeSyntheticEvent<NativeScrollEvent>) =>
-        onScroll({ y: event.nativeEvent.contentOffset.y, byHand: byHand.current })
+        onScroll(event.nativeEvent.contentOffset.y)
       }
-      {...handlers}
       scrollEventThrottle={16}
       showsVerticalScrollIndicator={false}
       testID="calendar.agenda"
