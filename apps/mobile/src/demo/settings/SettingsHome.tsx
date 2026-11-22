@@ -240,15 +240,16 @@ export function SettingsHome({
   );
 }
 
-/** Paused access or two-factor overdue in place of Settings: the pill and the bell stay, so the switcher is a tap away. */
+/** Paused access or two-factor overdue in place of Settings: the pill and the bell stay, so the switcher is a tap away. Paused has no Search in any layout (sc-82858). */
 function HeldSettings({ held, onSignOut }: { held: Held; onSignOut: () => void }) {
   const shell = useShell();
+  const search = held !== 'paused';
   const insets = useSafeAreaInsets();
   const standIn = <HeldStandIn held={held} onSignOut={onSignOut} />;
 
   if (shell.layout === 'landscape')
     return (
-      <Landscape column={null}>
+      <Landscape column={null} search={search}>
         <View style={styles.heldSide}>{standIn}</View>
       </Landscape>
     );
@@ -256,7 +257,7 @@ function HeldSettings({ held, onSignOut }: { held: Held; onSignOut: () => void }
   if (shell.layout === 'portrait')
     return (
       <View style={styles.page}>
-        <PortraitTop at="Settings" />
+        <PortraitTop at="Settings" search={search} />
         <View style={styles.heldUpright}>{standIn}</View>
       </View>
     );
