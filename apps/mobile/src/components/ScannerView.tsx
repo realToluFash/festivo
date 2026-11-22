@@ -16,7 +16,7 @@ import {
   type ScanRead,
   type WaitingArrival,
   isCheckInCode,
-  refusedForGood,
+  passesLater,
   rescanned,
   scanned,
   sendWaiting,
@@ -162,7 +162,7 @@ function useDoorList(eventId: string, by: string | null) {
       shown(await api.arrive(eventId, personId));
       return 'recorded';
     } catch (error) {
-      if (refusedForGood(error)) return 'refused';
+      if (!passesLater(error)) return 'refused';
       lost(error);
       keep();
       return 'recorded';

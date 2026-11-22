@@ -88,6 +88,16 @@ export function refusedForGood(error: unknown): boolean {
   return error instanceof ApiError && FOR_GOOD.has(error.code);
 }
 
+const PASSES_LATER = new Set([408, 429]);
+
+/** An online Arrived that fails is kept to send later only when it can pass then: a failed connection, a 5xx, 408 or 429. Any other refusal, a 403 included, is not recorded. */
+export function passesLater(error: unknown): boolean {
+  if (!(error instanceof ApiError)) return true;
+  const { status } = error.problem;
+
+  return status >= 500 || PASSES_LATER.has(status);
+}
+
 /** Sends each waiting arrival in the order recorded. One the API can never record (the guest gone, the door shut at that time) is dropped; anything else, a 5xx or 429 included, stops, keeping it and the rest. */
 export async function sendWaiting(
   waiting: readonly WaitingArrival[],

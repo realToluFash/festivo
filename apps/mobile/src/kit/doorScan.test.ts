@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   isCheckInCode,
+  passesLater,
   refusedForGood,
   rescanned,
   scanned,
@@ -145,6 +146,17 @@ describe('arrivals waiting to sync (sc-1301)', () => {
     expect(refusedForGood(refusal(401, 'unauthorized'))).toBe(false);
     expect(refusedForGood(refusal(408, 'request_timeout'))).toBe(false);
     expect(refusedForGood(new TypeError('Network request failed'))).toBe(false);
+  });
+
+  it('keeps an online Arrived for later only when it can pass then', () => {
+    expect(passesLater(new TypeError('Network request failed'))).toBe(true);
+    expect(passesLater(refusal(503, 'server_error'))).toBe(true);
+    expect(passesLater(refusal(408, 'request_timeout'))).toBe(true);
+    expect(passesLater(refusal(429, 'too_many_requests'))).toBe(true);
+    expect(passesLater(refusal(403, 'permission_required'))).toBe(false);
+    expect(passesLater(refusal(403, 'organisation_two_factor_required'))).toBe(false);
+    expect(passesLater(refusal(404, 'not_found'))).toBe(false);
+    expect(passesLater(refusal(409, 'check_in_closed'))).toBe(false);
   });
 
   it("writes an arrival kept offline at the door's wall clock, in the zone's offset", () => {
