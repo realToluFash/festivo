@@ -1,0 +1,16 @@
+# sc-29072: a used recovery code (RCODE) keeps today's used line, selected to type over; RCODE2 then signs in.
+appId: host.exp.Exponent
+---
+- runFlow: ../sc29072-to-code.yaml
+- tapOn: { id: 'twoFactor.switch' }
+- extendedWaitUntil: { visible: '{{t:twoFactor.recoveryTitle}}', timeout: 10000 }
+- tapOn: { id: 'twoFactor.code' }
+- inputText: ${RCODE}
+- tapOn: { id: 'twoFactor.verify' }
+- extendedWaitUntil: { visible: '{{t:twoFactor.recoveryUsed}}', timeout: 15000 }
+- takeScreenshot: recovery-used
+- inputText: ${RCODE2}
+- assertVisible: '${RCODE2}'
+- tapOn: { id: 'twoFactor.verify' }
+- extendedWaitUntil: { notVisible: { id: 'twoFactor.code' }, timeout: 30000 }
+- takeScreenshot: recovery-used-then-in

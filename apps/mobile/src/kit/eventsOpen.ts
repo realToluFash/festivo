@@ -1,0 +1,97 @@
+import { ApiError, type OrganisationEvent } from '@soirely/api-client';
+import { eventMovesInto } from '@soirely/domain';
+
+/** The event open, and the organisation it was opened in: undefined while the account was still loading. */
+export interface Selection {
+  in: string | undefined;
+  id: string | null;
+}
+
+/** A link followed on a cold start keeps its event for the first organisation that loads; a switch clears it. */
+export function selectionIn(selection: Selection, organisationId: string | undefined): Selection {
+  if (selection.in === organisationId) return selection;
+  if (organisationId === undefined) return { in: undefined, id: null };
+  if (selection.in === undefined) return { in: organisationId, id: selection.id };
+
+  return { in: organisationId, id: null };
+}
+
+export type Opened =
+  | { kind: 'loading' }
+  | { kind: 'failed' }
+  | { kind: 'notFound' }
+  | { kind: 'loaded'; event: OrganisationEvent };
+
+/** Another organisation's event, one outside the role's grants and one that does not exist all read as not found; held from outside (null), the event is the account's whichever organisation holds it (sc-71). */
+export function openedOf(
+  answer: { event: OrganisationEvent } | { error: unknown },
+  organisationId: string | null,
+): Opened {
+  if ('event' in answer) {
+    return organisationId == null || answer.event.organisationId === organisationId
+      ? { kind: 'loaded', event: answer.event }
+      : { kind: 'notFound' };
+  }
+
+  return answer.error instanceof ApiError &&
+    (answer.error.status === 404 || answer.error.status === 403)
+    ? { kind: 'notFound' }
+    : { kind: 'failed' };
+}
+
+/** Where an event's link may still move the account from: the organisation it was opened in, until the move lands or the person picks another (null), and so once (sc-46032). */
+export interface LinkFrom {
+  eventId: string;
+  from: string | null | undefined;
+}
+
+export function linkFromIn(
+  link: LinkFrom,
+  eventId: string,
+  organisationId: string | undefined,
+): LinkFrom {
+  if (link.eventId !== eventId) return { eventId, from: organisationId };
+  if (link.from === undefined)
+    return organisationId === undefined ? link : { eventId, from: organisationId };
+  if (link.from !== null && link.from !== organisationId) return { eventId, from: null };
+
+  return link;
+}
+
+/** A link to the Overview of an event in another of the account's organisations moves the account there, only from the organisation it was opened in; a link to any other area, or a read after the move or a pick, reads as not found, as on main, since only Overview says the move (sc-80863). */
+export function openedOrMoved(
+  event: OrganisationEvent,
+  holder: string | null,
+  memberships: readonly { id: string }[],
+  overview: boolean,
+  linkFrom: string | null | undefined,
+): { moves: string } | { opened: Opened } {
+  const into = overview && linkFrom === holder ? eventMovesInto(event, holder, memberships) : null;
+
+  return into == null ? { opened: openedOf({ event }, holder) } : { moves: into };
+}
+
+/** Settled without asking the API: loading until the account has loaded, then not found with no organisation; a Member's other events are the API's 404 (sc-29914). */
+export function openedWithoutAsking(
+  accountLoaded: boolean,
+  organisation: { permissions: readonly string[] } | null,
+  outside = false,
+): Opened | null {
+  if (!accountLoaded) return { kind: 'loading' };
+  return organisation == null && !outside ? { kind: 'notFound' } : null;
+}
+
+/** What the Events list shows in place of its rows, as far as the pane beside it is concerned. */
+export type ListShown =
+  | { kind: 'loading' }
+  | { kind: 'failed' }
+  | { kind: 'loaded'; unfinished: readonly unknown[]; pastTotal: number };
+
+export function hasNoEvents(load: ListShown): boolean {
+  return load.kind === 'loaded' && load.unfinished.length === 0 && load.pastTotal === 0;
+}
+
+/** The pane shows only when there is something to put in it: an event open, or events to choose from. */
+export function pageless(load: ListShown, eventOpen: boolean): boolean {
+  return !eventOpen && (hasNoEvents(load) || load.kind === 'failed');
+}

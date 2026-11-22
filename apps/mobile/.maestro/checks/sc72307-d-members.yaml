@@ -1,0 +1,7 @@
+# sc-72307: the demo's iPad sidebar at ${SIZE}, QA Organisation, members.
+appId: host.exp.Exponent
+---
+- setOrientation: ${ORIENT}
+- openLink: ${METRO_URL}/--/demo/sidebar-size?size=${SIZE}&lang=${DLANG}&at=members&org=qa
+- waitForAnimationToEnd: { timeout: 10000 }
+- takeScreenshot: d-members-top

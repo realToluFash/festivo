@@ -1,0 +1,22 @@
+# sc-48857: on ${EVENT}, a draft with a host, Make live asks with eventLive.confirmLine as its body in the account's language, whole and with no key path; Not yet closes it and the event stays a draft.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/${EVENT}
+- extendedWaitUntil:
+    visible:
+      id: 'events.card.step'
+    timeout: 30000
+- tapOn:
+    id: 'events.card.step'
+- extendedWaitUntil:
+    visible:
+      id: 'events.makeLive.question'
+    timeout: 10000
+- waitForAnimationToEnd
+- assertVisible: '{{t:eventLive.confirmLine}}'
+- assertNotVisible: '.*eventLive\..*'
+- takeScreenshot: make-live-alert
+- tapOn:
+    id: 'events.makeLive.keep'
+- assertVisible:
+    id: 'events.phase.draft'

@@ -1,0 +1,25 @@
+# sc-27219: Settings › Account's Time zone row as the page first shows it, while the list is held, and settled. Needs GET /api/auth/timezones held about 20 seconds: QA_API_URL through `node scripts/qa-slow-proxy.mjs --target <api url> --path '^/api/auth/timezones$' --delay 20000` (on Android, adb reverse to the proxy's port); the batch helper holds only the whole API.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/settings/account
+- extendedWaitUntil:
+    visible:
+      id: 'account.name'
+    timeout: 30000
+- takeScreenshot: tz-first
+- scrollUntilVisible:
+    element:
+      id: 'account.zone'
+    direction: DOWN
+    timeout: 20000
+- takeScreenshot: tz-early
+# Settled once the row names the zone it holds, or says none is set.
+- extendedWaitUntil:
+    visible: '.*(?:{{t:account.zoneLine}}|{{t:timeZone.unset}}).*'
+    timeout: 40000
+- scrollUntilVisible:
+    element:
+      id: 'account.zone'
+    direction: DOWN
+    timeout: 10000
+- takeScreenshot: tz-settled

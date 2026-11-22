@@ -1,0 +1,15 @@
+# Add people on an event: the second line under an Owner or Admin offered (sc-80831).
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/${EV}?area=people
+- extendedWaitUntil:
+    visible:
+      id: people.add.open
+    timeout: 30000
+- tapOn:
+    id: people.add.open
+- extendedWaitUntil:
+    visible:
+      id: people.add.role
+    timeout: 15000
+- takeScreenshot: offer

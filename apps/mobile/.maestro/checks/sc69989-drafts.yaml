@@ -1,0 +1,8 @@
+# sc-69989 regression: an event's tag on a row of Events, in Drafts.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events
+- extendedWaitUntil: { visible: { id: 'events.tab.drafts' }, timeout: 30000 }
+- tapOn: { id: 'events.tab.drafts' }
+- waitForAnimationToEnd: { timeout: 8000 }
+- takeScreenshot: drafts

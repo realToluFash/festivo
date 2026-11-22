@@ -1,0 +1,12 @@
+# sc-68778: Guests' Back pill, before and after Refreshing… goes, and after pull-to-refresh.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/${EVENT_ID}?area=guests
+- extendedWaitUntil: { visible: { id: 'frame.back' }, timeout: 30000 }
+- takeScreenshot: guests-first
+- extendedWaitUntil: { visible: { id: 'guests.export' }, timeout: 30000 }
+- waitForAnimationToEnd: { timeout: 8000 }
+- takeScreenshot: guests-settled
+- swipe: { start: '50%,45%', end: '50%,90%', duration: 600 }
+- waitForAnimationToEnd: { timeout: 8000 }
+- takeScreenshot: guests-pulled

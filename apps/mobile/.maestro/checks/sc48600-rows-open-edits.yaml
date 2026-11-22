@@ -1,0 +1,148 @@
+# sc-48600: on ${EVENT_ID}'s page, each Details and Name and cover row opens its own edit (Cancel, title, Save) and Cancel with nothing changed closes it; never the ShellContext Render Error. Needs ${METRO_URL}, ${EVENT_ID}.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/${EVENT_ID}
+- extendedWaitUntil:
+    visible:
+      id: 'events.page'
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: 'events.details.dates'
+    direction: DOWN
+    centerElement: true
+    timeout: 20000
+- tapOn:
+    id: 'events.details.dates'
+- extendedWaitUntil:
+    visible:
+      id: 'event.edit.dates.save'
+    timeout: 20000
+- assertNotVisible: '.*ShellContext.*'
+- takeScreenshot: row-dates
+- tapOn:
+    id: 'event.edit.dates.cancel'
+- extendedWaitUntil:
+    visible:
+      id: 'events.page'
+    timeout: 10000
+- scrollUntilVisible:
+    element:
+      id: 'events.details.venue'
+    direction: DOWN
+    centerElement: true
+    timeout: 20000
+- tapOn:
+    id: 'events.details.venue'
+- extendedWaitUntil:
+    visible:
+      id: 'event.edit.venue.save'
+    timeout: 20000
+- assertNotVisible: '.*ShellContext.*'
+- takeScreenshot: row-venue
+- tapOn:
+    id: 'event.edit.venue.cancel'
+- extendedWaitUntil:
+    visible:
+      id: 'events.page'
+    timeout: 10000
+- scrollUntilVisible:
+    element:
+      id: 'events.details.hosts'
+    direction: DOWN
+    centerElement: true
+    timeout: 20000
+- tapOn:
+    id: 'events.details.hosts'
+- extendedWaitUntil:
+    visible:
+      id: 'event.edit.hosts.save'
+    timeout: 20000
+- assertNotVisible: '.*ShellContext.*'
+- takeScreenshot: row-hosts
+- tapOn:
+    id: 'event.edit.hosts.cancel'
+- extendedWaitUntil:
+    visible:
+      id: 'events.page'
+    timeout: 10000
+- scrollUntilVisible:
+    element:
+      id: 'events.details.type'
+    direction: DOWN
+    centerElement: true
+    timeout: 20000
+- tapOn:
+    id: 'events.details.type'
+- extendedWaitUntil:
+    visible:
+      id: 'event.edit.type.save'
+    timeout: 20000
+- assertNotVisible: '.*ShellContext.*'
+- takeScreenshot: row-type
+- tapOn:
+    id: 'event.edit.type.cancel'
+- extendedWaitUntil:
+    visible:
+      id: 'events.page'
+    timeout: 10000
+- scrollUntilVisible:
+    element:
+      id: 'events.details.currency'
+    direction: DOWN
+    centerElement: true
+    timeout: 20000
+- tapOn:
+    id: 'events.details.currency'
+- extendedWaitUntil:
+    visible:
+      id: 'event.edit.currency.save'
+    timeout: 20000
+- assertNotVisible: '.*ShellContext.*'
+- takeScreenshot: row-currency
+- tapOn:
+    id: 'event.edit.currency.cancel'
+- extendedWaitUntil:
+    visible:
+      id: 'events.page'
+    timeout: 10000
+- scrollUntilVisible:
+    element:
+      id: 'events.details.name'
+    direction: DOWN
+    centerElement: true
+    timeout: 20000
+- tapOn:
+    id: 'events.details.name'
+- extendedWaitUntil:
+    visible:
+      id: 'event.edit.name.save'
+    timeout: 20000
+- assertNotVisible: '.*ShellContext.*'
+- takeScreenshot: row-name
+- tapOn:
+    id: 'event.edit.name.cancel'
+- extendedWaitUntil:
+    visible:
+      id: 'events.page'
+    timeout: 10000
+- scrollUntilVisible:
+    element:
+      id: 'events.details.cover'
+    direction: DOWN
+    centerElement: true
+    timeout: 20000
+- tapOn:
+    id: 'events.details.cover'
+- extendedWaitUntil:
+    visible:
+      id: 'event.edit.cover.save'
+    timeout: 20000
+- assertNotVisible: '.*ShellContext.*'
+- takeScreenshot: row-cover
+- tapOn:
+    id: 'event.edit.cover.cancel'
+- extendedWaitUntil:
+    visible:
+      id: 'events.page'
+    timeout: 10000
