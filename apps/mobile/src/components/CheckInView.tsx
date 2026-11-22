@@ -1,7 +1,14 @@
 import { ApiError, type CheckIn, type OrganisationEvent, realtimeTopic } from '@soirely/api-client';
 import { REPLY_KEY } from '@soirely/domain';
 import { type ReactNode, useCallback, useEffect, useRef, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, type TextInputInstance, View } from 'react-native';
+import {
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  type TextInputInstance,
+  View,
+  type ViewInstance,
+} from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 
@@ -31,6 +38,7 @@ import { GuestsCard } from './GuestsCard.tsx';
 import { useReadOut } from './ReadOut.tsx';
 import { DoorGlyph, MarkSlot } from './ReplyMark.tsx';
 import { Pill } from './SettingsParts.tsx';
+import { Sheet } from './Sheet.tsx';
 import { PageToast, Row, RowList, TextAction } from './Summary.tsx';
 import { Text } from './Text.tsx';
 
@@ -99,7 +107,7 @@ export function CheckInView({
   kind: LayoutKind;
   /** Above the scroll on a phone: the compact bar with Back to Guests and the title. */
   nav: ReactNode;
-  /** At the head of the scroll on a tablet: Back to Guests. */
+  /** At the head of the scroll on a tablet: the page's title, which scrolls away with it. */
   top: ReactNode;
   onEvent: (event: OrganisationEvent) => void;
 }) {
@@ -114,6 +122,7 @@ export function CheckInView({
   const [said, setSaid] = useState<string | null>(null);
   const [walkIn, setWalkIn] = useState<WalkIn | null>(null);
   const search = useRef<TextInputInstance>(null);
+  const opener = useRef<ViewInstance>(null);
 
   useEffect(() => {
     let current = true;
@@ -280,12 +289,12 @@ export function CheckInView({
       )}
     </View>
   ) : looking && rows.length === 0 ? (
-    <View style={styles.tight}>
+    <View style={styles.noOne}>
       <NoOne typed={typed.trim()} />
       {open && (
         <Pill
+          ref={opener}
           label={t('checkIn.addWalkIn')}
-          full={false}
           onPress={() => startWalkIn(typed.trim())}
           testID="checkIn.walkIn"
         />
@@ -343,10 +352,23 @@ export function CheckInView({
       />
     );
   const closeWalkIn = () => setWalkIn(null);
+  const walkInBody = (
+    <SheetBody
+      title={t('checkIn.addWalkIn')}
+      close={t('checkIn.close')}
+      onClose={closeWalkIn}
+      closeTestID="checkIn.walkIn.close"
+    >
+      {form}
+    </SheetBody>
+  );
   const scroll = (
     <ScrollView
       style={styles.grow}
-      contentContainerStyle={[styles.list, { paddingBottom: insets.bottom + 120 }]}
+      contentContainerStyle={[
+        LIST_EDGES[kind],
+        kind === 'phone' && { paddingBottom: insets.bottom + 120 },
+      ]}
       keyboardShouldPersistTaps="handled"
       showsVerticalScrollIndicator={false}
     >
@@ -386,17 +408,22 @@ export function CheckInView({
     <View style={styles.page}>
       {nav}
       {scroll}
-      {walkIn != null && (
-        <SheetLayer onClose={closeWalkIn} label={t('checkIn.close')}>
-          <SheetBody
-            title={t('checkIn.addWalkIn')}
-            close={t('checkIn.close')}
-            onClose={closeWalkIn}
-            closeTestID="checkIn.walkIn.close"
-          >
-            {form}
-          </SheetBody>
-        </SheetLayer>
+      {kind === 'phone' ? (
+        <Sheet
+          open={walkIn != null}
+          onClose={closeWalkIn}
+          opener={opener}
+          scrimLabel={t('checkIn.close')}
+          testID="checkIn.walkIn.sheet"
+        >
+          {walkInBody}
+        </Sheet>
+      ) : (
+        walkIn != null && (
+          <SheetLayer onClose={closeWalkIn} label={t('checkIn.close')}>
+            {walkInBody}
+          </SheetLayer>
+        )
       )}
       {told}
     </View>
@@ -623,13 +650,13 @@ const styles = StyleSheet.create({
   grow: { flex: 1, minWidth: 0 },
   page: { flex: 1, backgroundColor: tokens.colorCard },
   pad: { gap: tokens.spaceLg, padding: tokens.spaceLg },
-  list: { gap: 14, paddingTop: 16, paddingHorizontal: tokens.spaceLg },
   searchRow: { flexDirection: 'row', alignItems: 'center' },
   figures: { fontVariant: ['tabular-nums'] },
   secondary: { color: tokens.colorInkSecondary },
   accent: { color: tokens.colorAccentText },
   pressed: { opacity: tokens.opacityPressed },
   tight: { gap: 10, alignItems: 'flex-start' },
+  noOne: { gap: 14 },
   indent: { paddingLeft: 40 },
   failedAt: { paddingLeft: 40, paddingBottom: tokens.spaceSm },
   arrived: {
@@ -653,5 +680,22 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
     borderColor: tokens.colorAttentionBorder,
     backgroundColor: tokens.colorAttentionTint,
+  },
+});
+
+/** The scroll's edges as the demo's `door` draws them on each layout. */
+const LIST_EDGES = StyleSheet.create({
+  phone: { gap: 14, paddingTop: 16, paddingHorizontal: tokens.spaceXxl },
+  tabletPortrait: {
+    gap: 18,
+    paddingTop: tokens.space3xl,
+    paddingHorizontal: tokens.space5xl,
+    paddingBottom: tokens.space6xl * 2,
+  },
+  tabletLandscape: {
+    gap: 14,
+    paddingTop: 22,
+    paddingHorizontal: 20,
+    paddingBottom: tokens.space6xl * 2,
   },
 });
