@@ -1058,9 +1058,8 @@
         panel.hidden = !f;
         if (!f) return;
         const end = (f.answer || {}).ended;
-        panel.className =
-          'panel login-flow' +
-          (end ? (end.state === 'done' ? ' good' : end.state === 'cancelled' ? '' : ' critical') : '');
+        const tone = end ? ({ done: ' good', cancelled: '' }[end.state] ?? ' critical') : '';
+        panel.className = 'panel login-flow' + tone;
         const link = (f.answer || {}).link;
         const waiting = f.phase === 'waiting';
         panel.innerHTML = `<div class="login-row"><b>Log in</b><span class="role-title">${esc(f.folder)} on ${esc(f.name)}</span></div>
