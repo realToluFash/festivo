@@ -3619,16 +3619,16 @@
     "backToDetails": "Volver a los datos",
     "companionStays": "{{name}} ya ha llegado, así que se queda en la lista.",
     "changed": {
-      "filter": "Changed since you looked",
-      "nothing": "Nothing has changed since you last looked.",
-      "showAll": "Show all guests",
+      "filter": "Cambios desde su última visita",
+      "nothing": "No ha cambiado nada desde su última visita.",
+      "showAll": "Mostrar todos los invitados",
       "line": "{{answer}} · {{when}}",
-      "repliedAt": "Replied at {{time}}",
-      "repliedOn": "Replied {{date}}",
-      "changedAt": "Changed at {{time}}",
-      "changedOn": "Changed {{date}}",
-      "needs": "Updated dietary needs",
-      "flagged": "Link may have reached the wrong person"
+      "repliedAt": "Respuesta: {{time}}",
+      "repliedOn": "Respuesta: {{date}}",
+      "changedAt": "Cambio: {{time}}",
+      "changedOn": "Cambio: {{date}}",
+      "needs": "Notas sobre alimentación actualizadas",
+      "flagged": "Puede que el enlace haya llegado a otra persona"
     }
   },
   "guestNumbers": {
@@ -6048,19 +6048,19 @@
     "notSaved": "No se han guardado los días. Compruebe su conexión y vuelva a intentarlo."
   },
   "guestReplyEmails": {
-    "onTitle": "Guest reply emails",
-    "turnOff": "Turn off guest reply emails",
-    "offTitle": "Guest reply emails are off",
-    "offBody": "You will still see replies in the bell, and push is as you set it.",
-    "turnOn": "Turn them back on",
-    "backOnTitle": "Guest reply emails are back on",
-    "backOnBody": "Your guest summary will arrive in the morning when there is something new.",
-    "saving": "Saving…",
-    "failed": "Saving did not work. Nothing has changed.",
-    "tryAgain": "Try again",
-    "unknownTitle": "This link does not work",
-    "unknownBody": "Nothing has changed. To turn guest reply emails on or off, sign in and open your notification settings.",
-    "signIn": "Sign in to notification settings",
-    "settings": "Notification settings"
+    "onTitle": "Correos de respuestas de invitados",
+    "turnOff": "Desactivar los correos de respuestas de invitados",
+    "offTitle": "Los correos de respuestas de invitados están desactivados",
+    "offBody": "Seguirá viendo las respuestas en Notificaciones, y las notificaciones push siguen como las haya configurado.",
+    "turnOn": "Volver a activarlos",
+    "backOnTitle": "Los correos de respuestas de invitados vuelven a estar activados",
+    "backOnBody": "Recibirá su resumen de invitados por la mañana cuando haya novedades.",
+    "saving": "Guardando…",
+    "failed": "No se ha podido guardar. No ha cambiado nada.",
+    "tryAgain": "Reintentar",
+    "unknownTitle": "Este enlace no funciona",
+    "unknownBody": "No ha cambiado nada. Para activar o desactivar los correos de respuestas de invitados, inicie sesión y abra la configuración de notificaciones.",
+    "signIn": "Iniciar sesión y abrir la configuración de notificaciones",
+    "settings": "Configuración de notificaciones"
   }
 }

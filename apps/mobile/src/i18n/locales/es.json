@@ -2675,16 +2675,16 @@
     "askedByOn": "plazo hasta el {{date}}",
     "companionStays": "{{name}} ya ha llegado, así que se queda en la lista.",
     "changed": {
-      "filter": "Changed since you looked",
-      "nothing": "Nothing has changed since you last looked.",
-      "showAll": "Show all guests",
+      "filter": "Cambios desde su última visita",
+      "nothing": "No ha cambiado nada desde su última visita.",
+      "showAll": "Mostrar todos los invitados",
       "line": "{{answer}} · {{when}}",
-      "repliedAt": "Replied at {{time}}",
-      "repliedOn": "Replied {{date}}",
-      "changedAt": "Changed at {{time}}",
-      "changedOn": "Changed {{date}}",
-      "needs": "Updated dietary needs",
-      "flagged": "Link may have reached the wrong person"
+      "repliedAt": "Respuesta: {{time}}",
+      "repliedOn": "Respuesta: {{date}}",
+      "changedAt": "Cambio: {{time}}",
+      "changedOn": "Cambio: {{date}}",
+      "needs": "Notas sobre alimentación actualizadas",
+      "flagged": "Puede que el enlace haya llegado a otra persona"
     }
   },
   "guestNumbers": {

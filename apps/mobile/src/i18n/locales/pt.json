@@ -2675,16 +2675,16 @@
     "askedByOn": "resposta até {{date}}",
     "companionStays": "{{name}} já chegou, por isso fica na lista.",
     "changed": {
-      "filter": "Changed since you looked",
-      "nothing": "Nothing has changed since you last looked.",
-      "showAll": "Show all guests",
+      "filter": "Alterações desde a última visita",
+      "nothing": "Nada mudou desde a sua última visita.",
+      "showAll": "Mostrar todos os convidados",
       "line": "{{answer}} · {{when}}",
-      "repliedAt": "Replied at {{time}}",
-      "repliedOn": "Replied {{date}}",
-      "changedAt": "Changed at {{time}}",
-      "changedOn": "Changed {{date}}",
-      "needs": "Updated dietary needs",
-      "flagged": "Link may have reached the wrong person"
+      "repliedAt": "Resposta: {{time}}",
+      "repliedOn": "Resposta: {{date}}",
+      "changedAt": "Alteração: {{time}}",
+      "changedOn": "Alteração: {{date}}",
+      "needs": "Notas sobre alimentação atualizadas",
+      "flagged": "A ligação pode ter chegado a outra pessoa"
     }
   },
   "guestNumbers": {
