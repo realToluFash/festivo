@@ -936,6 +936,20 @@
   font-variant-numeric: tabular-nums;
 }
 
+.gs-changed-failed p {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--spaceSm);
+  font: var(--deskLine);
+  color: var(--colorInk);
+}
+
+.gs-changed-failed svg {
+  flex: none;
+  margin-top: var(--spaceHair);
+  color: var(--colorBroken);
+}
+
 .gs-group {
   display: flex;
   flex-direction: column;
@@ -1228,8 +1242,14 @@
   white-space: nowrap;
 }
 
-/* All and Invited, the totals, sit apart from the reply choices below them (sc-3786). */
-.gs-menu .desk-menu > li:nth-child(2) {
+/* sc-4331: Changed since you looked, then the totals All and Invited, sit apart from the reply choices. */
+.gs-menu.has-apart .desk-menu {
+  width: 320px;
+}
+
+.gs-menu:not(.has-apart) .desk-menu > li:nth-child(2),
+.gs-menu.has-apart .desk-menu > li:nth-child(3),
+.gs-menu.has-apart .desk-menu > li:first-child {
   margin-bottom: var(--spaceXs);
   padding-bottom: var(--spaceXs);
   border-bottom: 1px solid var(--colorBorder);

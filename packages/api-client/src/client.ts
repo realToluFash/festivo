@@ -45,7 +45,12 @@ import {
   type GuestGroup,
   type GuestList,
   type GuestPage,
+  type GuestMeals,
   type Headcount,
+  type MealAnswer,
+  type MealAnswerKind,
+  type MealCourse,
+  type MealPick,
   type MarkedTogether,
   type MovedTogether,
   type RemovedTogether,
@@ -304,6 +309,39 @@ export interface NotificationArrival {
 }
 
 /** Mute this event's saved state. Items already delivered keep the Muted mark they were delivered with. */
+/** What a guest did since a look (sc-4331): a reply outranks the rest on the guest's one row. */
+export type GuestChangeKind = 'replied' | 'changed' | 'needs' | 'flagged';
+const GUEST_CHANGE_KINDS: readonly GuestChangeKind[] = ['replied', 'changed', 'needs', 'flagged'];
+
+export interface GuestChange {
+  guestId: string;
+  kind: GuestChangeKind;
+  at: string;
+}
+
+/** `since` is the time the rows count from, or `all` for a member who had never looked. */
+export interface GuestChanges {
+  since: string;
+  rows: GuestChange[];
+}
+
+function guestChangesOf(body: Record<string, unknown>): GuestChanges {
+  const rows = Array.isArray(body.rows) ? body.rows : [];
+
+  return {
+    since: typeof body.since === 'string' ? body.since : 'all',
+    rows: rows.flatMap((row: unknown): GuestChange[] => {
+      if (typeof row !== 'object' || row == null) return [];
+      const { guestId, kind, at } = row as Record<string, unknown>;
+      const known = GUEST_CHANGE_KINDS.find((each) => each === kind);
+
+      return typeof guestId === 'string' && typeof at === 'string' && known != null
+        ? [{ guestId, kind: known, at }]
+        : [];
+    }),
+  };
+}
+
 export interface EventMute {
   muted: boolean;
 }
@@ -1632,6 +1670,48 @@ export class ApiClient {
     );
 
     return { muted: body.muted === true };
+  }
+
+  /** Changed since you looked (sc-4331): from `since` in the address (`all` for every change), or from the caller's last look when none is given. Marks nothing read. */
+  async guestChanges(eventId: string, since?: string): Promise<GuestChanges> {
+    const query = since == null ? '' : `?since=${encodeURIComponent(since)}`;
+
+    return guestChangesOf(
+      await this.get<Record<string, unknown>>(
+        `/api/events/${encodeURIComponent(eventId)}/guests/changes${query}`,
+      ),
+    );
+  }
+
+  /** Choosing Changed since you looked from the menu: a look, which marks the event's Guest replies item read. */
+  async lookAtGuestChanges(eventId: string): Promise<GuestChanges> {
+    return guestChangesOf(
+      await this.post<Record<string, unknown>>(
+        `/api/events/${encodeURIComponent(eventId)}/guests/changes/look`,
+        {},
+      ),
+    );
+  }
+
+  /** Where Guest replies email stands for the member the summary's link names (sc-4331); a link that does not work is a 404. */
+  async guestReplyEmails(token: string): Promise<boolean> {
+    const body = await this.post<{ emailOn?: unknown }>(
+      '/api/unsubscribe/guest-replies',
+      { token },
+      { anonymous: true },
+    );
+
+    return body.emailOn === true;
+  }
+
+  async setGuestReplyEmails(token: string, emailOn: boolean): Promise<boolean> {
+    const body = await this.put<{ emailOn?: unknown }>(
+      '/api/unsubscribe/guest-replies',
+      { token, emailOn },
+      { anonymous: true },
+    );
+
+    return body.emailOn === true;
   }
 
   /** The VAPID public key this browser subscribes with (sc-3980). */
@@ -4254,6 +4334,13 @@ export class ApiClient {
     );
   }
 
+  /** Preview as guest (sc-3907): the guest page's meal step for the signed-in member alone, with no allergies or companions; menu.read, and it reads no guest. */
+  async menuPreview(eventId: string): Promise<GuestPage> {
+    const route = `${this.menuPath(eventId)}/preview`;
+
+    return this.guestPageOf(await this.get<unknown>(route), `GET ${route}`);
+  }
+
   /** The token is a credential, so it travels in the body. Refused `not_found` alike for an unknown or replaced token, a deleted event's and a Draft's. Records nothing. */
   async guestPage(token: string): Promise<GuestPage> {
     return this.guestPageOf(
@@ -4305,6 +4392,14 @@ export class ApiClient {
         { anonymous: true },
       ),
       'POST /api/guest-links/needs',
+    );
+  }
+
+  /** Each person's meal answers (sc-3907), sent after the kitchen note so its allergens count, and answers the page as it now stands. Refused 422 for a pick the person is not offered, a wrong count or a plate holding their allergen, nothing saved, and 409 `meal_picks_closed` with the closed `courses` once the open ones are saved. */
+  async sendMealPicks(token: string, picks: readonly MealPick[]): Promise<GuestPage> {
+    return this.guestPageOf(
+      await this.post<unknown>('/api/guest-links/meals', { token, picks }, { anonymous: true }),
+      'POST /api/guest-links/meals',
     );
   }
 
@@ -6098,6 +6193,7 @@ function asGuestPage(raw: unknown): GuestPage | null {
     programme,
     seating,
     checkInCode,
+    meals,
   } = raw as Record<string, unknown>;
   const shown = GUEST_PAGE_PHASES.find((known) => known === phase);
   const door = checkInCode as Record<string, unknown> | null | undefined;
@@ -6188,7 +6284,42 @@ function asGuestPage(raw: unknown): GuestPage | null {
     programme: items.filter((one) => one != null),
     seating: asGuestSeating(seating),
     checkInCode: door == null ? null : { code: door.code as string, qrSvg: door.qrSvg as string },
+    meals: asGuestMeals(meals),
   };
+}
+
+/** The server checks every pick, so a course or an answer this client cannot read is left out rather than failing the page. */
+function asGuestMeals(raw: unknown): GuestMeals {
+  const { you, courses, answers } = (raw ?? {}) as Record<string, unknown>;
+  const strings = (list: unknown): string[] =>
+    Array.isArray(list) ? list.filter((one): one is string => typeof one === 'string') : [];
+  const known = Array.isArray(courses)
+    ? courses.filter(
+        (course): course is MealCourse =>
+          typeof course === 'object' &&
+          course != null &&
+          typeof (course as MealCourse).id === 'string' &&
+          Array.isArray((course as MealCourse).dishes) &&
+          typeof (course as MealCourse).picksClose?.at === 'string',
+      )
+    : [];
+  const byPerson: Record<string, MealAnswer[]> = {};
+
+  for (const [person, list] of Object.entries((answers ?? {}) as Record<string, unknown>)) {
+    if (!Array.isArray(list)) continue;
+    byPerson[person] = list
+      .filter((one): one is Record<string, unknown> => typeof one === 'object' && one != null)
+      .filter((one) => typeof one.course === 'string' && typeof one.answer === 'string')
+      .map((one) => ({
+        course: one.course as string,
+        answer: one.answer as MealAnswerKind,
+        dish: typeof one.dish === 'string' ? one.dish : null,
+        variant: typeof one.variant === 'string' ? one.variant : null,
+        options: strings(one.options),
+      }));
+  }
+
+  return { you: typeof you === 'string' ? you : '', courses: known, answers: byPerson };
 }
 
 /** Undefined when the shape is not one this client knows. */

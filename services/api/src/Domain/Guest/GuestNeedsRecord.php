@@ -6,6 +6,7 @@ namespace App\Domain\Guest;
 
 use App\Audit\Auditor;
 use App\Domain\Guest\Model\GuestNeeds;
+use App\Domain\Messaging\GuestReplies\GuestReplyRecorder;
 use App\Entity\Guest;
 use App\Entity\GuestNeed;
 use App\Entity\User;
@@ -28,6 +29,7 @@ final readonly class GuestNeedsRecord
         private EntityManagerInterface $entityManager,
         private Auditor $auditor,
         private ClockInterface $clock,
+        private GuestReplyRecorder $guestReplyRecorder,
     ) {
     }
 
@@ -77,6 +79,7 @@ final readonly class GuestNeedsRecord
 
         if (null === $by) {
             $this->auditor->record(self::CHANGED, 'Guest', $person->getId());
+            $this->guestReplyRecorder->needs($person);
         } else {
             $this->auditor->record(self::CHANGED, 'Guest', $person->getId(), Actor::User, $by->getId(), $by->getName());
         }

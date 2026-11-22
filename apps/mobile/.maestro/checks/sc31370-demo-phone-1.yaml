@@ -1,0 +1,17 @@
+# sc-31370: the app demo's Messages (B), phone, one screenshot per state.
+appId: host.exp.Exponent
+---
+- runFlow: { file: sc31370/demo-state.yaml, env: { STATE: first, LAYOUT: phone } }
+- runFlow: { file: sc31370/demo-state.yaml, env: { STATE: loading, LAYOUT: phone } }
+- runFlow: { file: sc31370/demo-state.yaml, env: { STATE: inUse, LAYOUT: phone } }
+- runFlow: { file: sc31370/demo-state.yaml, env: { STATE: conversation, LAYOUT: phone } }
+- runFlow: { file: sc31370/demo-state.yaml, env: { STATE: replyArrived, LAYOUT: phone } }
+- runFlow: { file: sc31370/demo-state.yaml, env: { STATE: answered, LAYOUT: phone } }
+- runFlow: { file: sc31370/demo-state.yaml, env: { STATE: channelReply, LAYOUT: phone } }
+- runFlow: { file: sc31370/demo-state.yaml, env: { STATE: to, LAYOUT: phone } }
+- runFlow: { file: sc31370/demo-state.yaml, env: { STATE: write, LAYOUT: phone } }
+- runFlow: { file: sc31370/demo-state.yaml, env: { STATE: preview, LAYOUT: phone } }
+- runFlow: { file: sc31370/demo-state.yaml, env: { STATE: check, LAYOUT: phone } }
+- runFlow: { file: sc31370/demo-state.yaml, env: { STATE: countdown, LAYOUT: phone } }
+- runFlow: { file: sc31370/demo-state.yaml, env: { STATE: cancelled, LAYOUT: phone } }
+- runFlow: { file: sc31370/demo-state.yaml, env: { STATE: sending, LAYOUT: phone } }

@@ -38,6 +38,7 @@ import { SAMPLE } from '../../src/demo/samples.ts';
 import { SEARCH_BOARDS } from '../../src/demo/search/searchRules.ts';
 import { DOOR_CODE_BOARDS } from '../../src/demo/doorCode/DoorCodeBoards.ts';
 import { OUTSIDE_BOARDS } from '../../src/demo/outsideEvents/OutsideModel.ts';
+import { LINK_BOARDS } from '../../src/demo/events/EventLink.ts';
 import { GUESTS_BOARDS } from '../../src/demo/guests/GuestsBoards.ts';
 import { PASS_BOARDS } from '../../src/demo/pass/PassBoards.ts';
 import { NEXT_BOARDS, QUEUE_BOARDS } from '../../src/demo/queue/QueueBoards.ts';
@@ -1808,6 +1809,26 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
         href: '/demo/events/evt-wed-4?state=venueDown',
       },
       {
+        title: 'Venue · one suggestion, credited',
+        what: 'OpenStreetMap at the list’s foot (sc-80918)',
+        href: '/demo/events/evt-wed-4?state=venueOne',
+      },
+      {
+        title: 'Venue · two letters, no list',
+        what: 'No credit without suggestions (sc-80918)',
+        href: '/demo/events/evt-wed-4?state=venueShort',
+      },
+      {
+        title: 'Venue · nothing matches',
+        what: 'No credit without suggestions (sc-80918)',
+        href: '/demo/events/evt-wed-4?state=venueNoMatch',
+      },
+      {
+        title: 'Venue · the credit in French',
+        what: 'Three suggestions, the line whole (sc-80918)',
+        href: '/demo/events/evt-wed-4?state=venueFrench',
+      },
+      {
         title: 'Venue · arrival note',
         what: 'The note under Address, its hint (sc-24385)',
         href: '/demo/events/evt-wed-4?state=venueNote',
@@ -2302,6 +2323,10 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
   {
     page: 'Door code',
     boards: DOOR_CODE_BOARDS.map(({ title, what, href }) => ({ title, what, href: href as Href })),
+  },
+  {
+    page: 'An event’s link from another organisation · sc-80863',
+    boards: LINK_BOARDS.map(({ title, what, href }) => ({ title, what, href: href as Href })),
   },
   {
     page: 'Events from outside · sc-68438',

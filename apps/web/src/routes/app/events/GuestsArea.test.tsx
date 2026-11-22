@@ -80,7 +80,7 @@ const NGOZI = guest('g_1', 'Ngozi Eze', {
 const AMAKA = guest('g_2', 'Chief Amaka Obi', { reply: 'maybe' });
 const INVITED = { at: '2026-11-01T10:00:00+01:00', how: 'whatsapp', by: 'Folake Adeyemi' };
 
-function signedIn(): void {
+function signedIn(timezone: string | null = null): void {
   const session: Session = {
     name: 'Folake Adeyemi',
     email: 'folake@ire.events',
@@ -94,7 +94,7 @@ function signedIn(): void {
     organisation: IRE,
     organisations: [IRE],
     organisationCountry: 'GB',
-    timezone: null,
+    timezone,
     waitingFor: null,
   };
 
@@ -1975,6 +1975,83 @@ describe('A guest’s details, and correcting them (sc-3773)', () => {
     );
     expect(await screen.findByText('Obi Eze removed. Save to keep the change.')).toBeDefined();
     expect(screen.getByText('0 of 0 named')).toBeDefined();
+  });
+
+  it('asks before removing a companion with a meal chosen, and names a seat beside it (sc-3907)', async () => {
+    const withMeal = (seat: unknown) => ({
+      'GET /api/events/ev_1/guests/g_1': () =>
+        tagged(
+          {
+            ...DETAILS,
+            companions: [
+              {
+                id: 'c_1',
+                fullName: 'Obi Eze',
+                state: 'coming',
+                coming: true,
+                namedByGuest: false,
+                seat,
+                meal: true,
+              },
+            ],
+          },
+          '"1"',
+        ),
+    });
+    await editNgozi(withMeal(null));
+
+    fireEvent.click(screen.getByRole('button', { name: 'Remove Obi Eze' }));
+    const ask = await screen.findByRole('alertdialog', { name: 'Remove Obi Eze?' });
+
+    expect(
+      within(ask).getByText('Obi Eze has a meal chosen. Removing this companion drops the meal.'),
+    ).toBeDefined();
+    expect(
+      within(ask)
+        .getAllByRole('button')
+        .map((one) => one.textContent),
+    ).toEqual(['Cancel', 'Remove']);
+    fireEvent.click(within(ask).getByRole('button', { name: 'Cancel' }));
+    expect(screen.queryByText('0 of 0 named')).toBeNull();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Remove Obi Eze' }));
+    fireEvent.click(
+      within(await screen.findByRole('alertdialog', { name: 'Remove Obi Eze?' })).getByRole(
+        'button',
+        { name: 'Remove' },
+      ),
+    );
+    expect(await screen.findByText('Obi Eze removed. Save to keep the change.')).toBeDefined();
+  });
+
+  it('words a seat and a meal together in the ask (sc-3907)', async () => {
+    await editNgozi({
+      'GET /api/events/ev_1/guests/g_1': () =>
+        tagged(
+          {
+            ...DETAILS,
+            companions: [
+              {
+                id: 'c_1',
+                fullName: 'Obi Eze',
+                state: 'coming',
+                coming: true,
+                namedByGuest: false,
+                seat: { kind: 'table', name: 'Table 4' },
+                meal: true,
+              },
+            ],
+          },
+          '"1"',
+        ),
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Remove Obi Eze' }));
+    expect(
+      await screen.findByText(
+        'Obi Eze has a seat at Table 4 and a meal chosen. Removing this companion frees the seat and drops the meal.',
+      ),
+    ).toBeDefined();
   });
 
   it('names a row by its label when a seated companion is in one (sc-4013)', async () => {
@@ -4411,6 +4488,24 @@ describe('Select many guests, then Add to group or Remove from the list (sc-3776
     expect(await screen.findByRole('alertdialog', { name: 'Remove 1 guest?' })).toBeDefined();
   });
 
+  it('asks nothing and sends nothing when every guest selected has arrived, and says who stays (sc-1454, #81075)', async () => {
+    const arrived = { ...KEMI, arrival: { at: '2030-11-14T15:10:00Z', by: 'Door' } };
+    const sent = await selecting({
+      'GET /api/events/ev_1/guests': () =>
+        json({ ...listOf([NGOZI, AMAKA, arrived]), groups: [BRIDE] }),
+    });
+    fireEvent.click(box('Select Kemi Bello'));
+
+    fireEvent.click(within(bar()).getByRole('button', { name: 'Remove from the list' }));
+
+    await waitFor(() => expect(said()[0]).toBe('Nothing removed.'));
+    expect(screen.getByText('Kemi Bello has arrived, so they stay on the list.')).toBeDefined();
+    expect(screen.queryByRole('alertdialog')).toBeNull();
+    expect(sent.some((one) => one.line.startsWith('POST /api/events/ev_1/guests/removals'))).toBe(
+      false,
+    );
+  });
+
   it('erases the removal once its Undo runs out', async () => {
     vi.useFakeTimers({ shouldAdvanceTime: true });
     try {
@@ -5831,5 +5926,140 @@ describe('What adding them would cost (sc-86)', () => {
 
     expect(screen.queryByText('What adding them would cost')).toBeNull();
     expect(sent.some((one) => one.line === ASK)).toBe(false);
+  });
+});
+
+describe('Changed since you looked (sc-4331)', () => {
+  const CHANGES = {
+    since: '2026-11-02T09:00:00+00:00',
+    rows: [
+      { guestId: 'g_2', kind: 'needs', at: '2026-11-01T10:00:00Z' },
+      { guestId: 'g_1', kind: 'replied', at: '2026-10-30T10:00:00Z' },
+    ],
+  };
+
+  async function onChanged(
+    changes: unknown,
+    at = '',
+    look: () => Response | Promise<Response> = () => json(CHANGES),
+    timezone: string | null = null,
+  ) {
+    signedIn(timezone);
+    const sent = await onGuests(
+      {
+        'GET /api/events/ev_1/guests': () => json(listOf([NGOZI, AMAKA])),
+        'GET /api/events/ev_1/guests/changes': () => json(changes),
+        'POST /api/events/ev_1/guests/changes/look': look,
+      },
+      undefined,
+      at,
+    );
+    await screen.findByRole('searchbox', { name: 'Find a guest' });
+
+    return sent;
+  }
+
+  function changesAsked(): string[] {
+    return vi
+      .mocked(fetch)
+      .mock.calls.map(([input]) => new URL(String(input)))
+      .filter((url) => url.pathname.endsWith('/guests/changes'))
+      .map((url) => url.search);
+  }
+
+  function rows(): string[] {
+    return within(screen.getByRole('region', { name: 'Guests' }))
+      .getAllByRole('listitem')
+      .map((row) => row.textContent ?? '');
+  }
+
+  it('leads the menu with its row while something changed, and choosing it is a look kept in the address', async () => {
+    const sent = await onChanged(CHANGES);
+
+    fireEvent.click(await screen.findByRole('button', { name: /^All · /u }));
+    const menu = screen.getByRole('menu');
+    await waitFor(() =>
+      expect(within(menu).getAllByRole('menuitemradio')[0]?.textContent).toBe(
+        'Changed since you looked2',
+      ),
+    );
+    fireEvent.click(within(menu).getByRole('menuitemradio', { name: /^Changed since/u }));
+
+    await waitFor(() =>
+      expect(shownRouter?.state.location.search).toBe(
+        `?filter=changed&since=${encodeURIComponent(CHANGES.since)}`,
+      ),
+    );
+    expect(sent.map((one) => one.line)).toContain('POST /api/events/ev_1/guests/changes/look');
+    expect(
+      await screen.findByRole('button', { name: 'Changed since you looked · 2' }),
+    ).toBeDefined();
+  });
+
+  it('says so when choosing it fails, keeps the list on All, and Try again chooses it', async () => {
+    let fails = true;
+    await onChanged(CHANGES, '', () => (fails ? problem('internal_error', 500) : json(CHANGES)));
+
+    fireEvent.click(await screen.findByRole('button', { name: /^All · /u }));
+    const menu = screen.getByRole('menu');
+    fireEvent.click(await within(menu).findByRole('menuitemradio', { name: /^Changed since/u }));
+
+    expect((await screen.findByRole('alert')).textContent).toContain(
+      'We could not load what changed.',
+    );
+    expect(screen.getByRole('button', { name: /^All · /u })).toBeDefined();
+    expect(shownRouter?.state.location.search).toBe('');
+
+    fails = false;
+    fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
+
+    expect(
+      await screen.findByRole('button', { name: 'Changed since you looked · 2' }),
+    ).toBeDefined();
+    expect(screen.queryByText('We could not load what changed.')).toBeNull();
+  });
+
+  it('leaves the row out while nothing has changed', async () => {
+    await onChanged({ since: 'all', rows: [] });
+
+    fireEvent.click(await screen.findByRole('button', { name: /^All · /u }));
+
+    expect(
+      within(screen.getByRole('menu'))
+        .getAllByRole('menuitemradio')
+        .map((item) => item.textContent),
+    ).not.toContain('Changed since you looked0');
+  });
+
+  it('opened from the address counts from its time, marks nothing read, and shows a needs-only guest by its label', async () => {
+    const sent = await onChanged(CHANGES, '?filter=changed&since=2026-10-29T00%3A00%3A00Z');
+
+    await waitFor(() => expect(rows()).toHaveLength(2));
+    expect(rows()[0]).toContain('Updated dietary needs · Changed');
+    expect(rows()[1]).toContain('Replied');
+    expect(changesAsked()).toContain('?since=2026-10-29T00%3A00%3A00Z');
+    expect(sent.map((one) => one.line)).not.toContain('POST /api/events/ev_1/guests/changes/look');
+  });
+
+  it('writes when they changed in the member’s zone, not the event’s', async () => {
+    const late = {
+      since: 'all',
+      rows: [{ guestId: 'g_1', kind: 'replied', at: '2026-10-30T20:00:00Z' }],
+    };
+    await onChanged(late, '?filter=changed&since=all', undefined, 'Asia/Tokyo');
+
+    await waitFor(() => expect(rows()).toHaveLength(1));
+    expect(rows()[0]).toContain('Coming · Replied Oct 31');
+  });
+
+  it('says nothing has changed with Show all guests, which goes back to All', async () => {
+    await onChanged({ since: 'all', rows: [] }, '?filter=changed&since=all');
+
+    expect(
+      await screen.findByRole('heading', { name: 'Nothing has changed since you last looked.' }),
+    ).toBeDefined();
+    fireEvent.click(screen.getByRole('button', { name: 'Show all guests' }));
+
+    await waitFor(() => expect(shownRouter?.state.location.search).toBe(''));
   });
 });

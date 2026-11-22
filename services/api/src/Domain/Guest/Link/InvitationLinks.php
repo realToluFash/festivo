@@ -7,6 +7,7 @@ namespace App\Domain\Guest\Link;
 use App\Audit\Auditor;
 use App\Domain\Guest\GuestListPublisher;
 use App\Domain\Guest\Invitation\GuestInvitations;
+use App\Domain\Messaging\GuestReplies\GuestReplyRecorder;
 use App\Entity\Event;
 use App\Entity\Guest;
 use App\Entity\User;
@@ -36,6 +37,7 @@ final readonly class InvitationLinks
         private Auditor $auditor,
         private GuestInvitations $guestInvitations,
         private GuestListPublisher $guestListPublisher,
+        private GuestReplyRecorder $guestReplyRecorder,
     ) {
     }
 
@@ -81,9 +83,12 @@ final readonly class InvitationLinks
             return;
         }
 
-        $guest->flagLink();
-        $this->auditor->record(self::FLAGGED, 'Guest', $guest->getId());
-        $this->entityManager->flush();
+        $this->entityManager->wrapInTransaction(function () use ($guest): void {
+            $guest->flagLink();
+            $this->auditor->record(self::FLAGGED, 'Guest', $guest->getId());
+            $this->entityManager->flush();
+            $this->guestReplyRecorder->flagged($guest);
+        });
         $this->guestListPublisher->publish($guest->getEvent());
     }
 

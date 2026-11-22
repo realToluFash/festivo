@@ -119,7 +119,8 @@ export interface ExportProps {
   onShare: () => void;
 }
 
-function useExport(props: ExportProps) {
+/** `live` is false once the dialog has closed: a press still preparing its file then shares nothing. */
+function useExport(props: ExportProps, live: boolean) {
   const { t } = useTranslation();
   const [asked, setAsked] = useState<ExportScope>('view');
   const [format, setFormat] = useState<ExportFormat>('xlsx');
@@ -128,11 +129,23 @@ function useExport(props: ExportProps) {
   const scope = exportScope(asked, props.inView.length);
   const file = exportFileName(t, props.event, props.now, format);
   const busy = making === 'preparing';
+  const round = useRef(0);
+
+  useEffect(() => {
+    if (!live) round.current += 1;
+  }, [live]);
+  useEffect(
+    () => () => {
+      round.current += 1;
+    },
+    [],
+  );
 
   const share = async () => {
     if (busy) return;
     setRefused(false);
     if (!props.offline) setMaking('preparing');
+    const mine = ++round.current;
 
     const { shared, hand } = await exportToShare({
       offline: props.offline,
@@ -144,8 +157,13 @@ function useExport(props: ExportProps) {
         }),
       write: (bytes) => writeToShare(bytes, file, EXPORT_TYPES[format]),
       unreachable: (error) => error instanceof ApiUnreachableError,
+      abandoned: () => round.current !== mine,
     });
 
+    if (shared === 'abandoned') {
+      setMaking('ready');
+      return;
+    }
     if (hand == null) {
       setMaking(shared === 'failed' ? 'failed' : 'ready');
       setRefused(shared === 'dropped');
@@ -224,7 +242,7 @@ function useExport(props: ExportProps) {
     </View>
   );
 
-  return { body, foot, held: busy };
+  return { body, foot };
 }
 
 /** On a phone a bottom sheet, on a tablet in portrait a centred dialog: the note and Share stay at its foot while its body scrolls. */
@@ -234,7 +252,7 @@ export function ExportSheet({
   ...props
 }: ExportProps & { open: boolean; opener: RefObject<ScreenReaderTarget | null> }) {
   const { t } = useTranslation();
-  const { body, foot, held } = useExport(props);
+  const { body, foot } = useExport(props, open);
   const [drawn, setDrawn] = useState<number | null>(null);
   const scrolls = atAccessibilitySizes(useWindowDimensions().fontScale);
 
@@ -244,12 +262,11 @@ export function ExportSheet({
       onClose={props.onClose}
       opener={opener}
       scrimLabel={t('guestList.cancel')}
-      held={held}
       testID="guests.export.sheet"
     >
       <TitleCap.Provider value={drawn}>
         <View style={styles.sheetHead}>
-          <Head onClose={props.onClose} off={held} onDrawn={setDrawn} />
+          <Head onClose={props.onClose} onDrawn={setDrawn} />
         </View>
         <SheetScrollView style={styles.scroll} contentContainerStyle={styles.body} bounces={false}>
           {body}
@@ -263,7 +280,7 @@ export function ExportSheet({
 
 /** On a tablet in landscape the dialog docks beside the list, not modal: the list stays usable and This view follows it. */
 export function ExportPanel(props: ExportProps) {
-  const { body, foot, held } = useExport(props);
+  const { body, foot } = useExport(props, true);
   const title = useRef<TextHandle>(null);
   const [drawn, setDrawn] = useState<number | null>(null);
   const scrolls = atAccessibilitySizes(useWindowDimensions().fontScale);
@@ -277,7 +294,7 @@ export function ExportPanel(props: ExportProps) {
     <View style={styles.panel} testID="guests.export.panel">
       <TitleCap.Provider value={drawn}>
         <View style={styles.panelHead}>
-          <Head onClose={props.onClose} off={held} titleRef={title} onDrawn={setDrawn} />
+          <Head onClose={props.onClose} titleRef={title} onDrawn={setDrawn} />
         </View>
         <ScrollView style={styles.scroll} contentContainerStyle={styles.panelBody}>
           {body}
@@ -294,12 +311,10 @@ const TITLE = tokens.typeTitleDialog.size;
 /** sc-72136: the title at a title's steps, each word whole, never under its default size; Cancel beside it where its longest word and Cancel fit the row, else on the row under it at its end. Read in that order: the title, then Cancel. */
 function Head({
   onClose,
-  off,
   titleRef,
   onDrawn,
 }: {
   onClose: () => void;
-  off: boolean;
   titleRef?: Ref<TextHandle>;
   onDrawn: (size: number) => void;
 }) {
@@ -343,7 +358,6 @@ function Head({
         >
           <TextAction
             label={t('guestList.cancel')}
-            off={off}
             onPress={onClose}
             testID="guests.export.close"
           />

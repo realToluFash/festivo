@@ -10,6 +10,7 @@ export const W = {
   changedSince: 'Changed since you looked',
   nothingChanged: 'Nothing has changed since you last looked.',
   showAllGuests: 'Show all guests',
+  changedFailed: 'We could not load what changed.',
   updatedNeeds: 'Updated dietary needs',
   linkWrongPerson: 'Link may have reached the wrong person',
   newQuestion: 'New question',

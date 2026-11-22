@@ -1,8 +1,9 @@
-import type { CheckIn, CheckInGuest } from '@soirely/api-client';
+import type { CheckIn, CheckInGuest, ListedEvent } from '@soirely/api-client';
 import type { TFunction } from 'i18next';
 import { describe, expect, it } from 'vitest';
 
 import {
+  beforeOpenTags,
   checksIn,
   clockOf,
   countLine,
@@ -12,6 +13,7 @@ import {
   sameName,
   walkInProblem,
 } from './checkIn.ts';
+import { listEventOf, shownEvent } from './eventsList.ts';
 
 const t = ((key: string, values?: Record<string, unknown>) =>
   values == null ? key : `${key} ${JSON.stringify(values)}`) as unknown as TFunction;
@@ -126,5 +128,38 @@ describe('a walk-in', () => {
     expect(sameName(LIST, 'chief mrs adaeze okonkwo-williams')?.id).toBe('g_a');
     expect(sameName(LIST, 'RUI DUARTE')?.id).toBe('c_1');
     expect(sameName(LIST, 'Kofi Asante')).toBeNull();
+  });
+});
+
+describe('beforeOpenTags', () => {
+  const event = shownEvent(
+    listEventOf({
+      id: 'ev-1',
+      name: 'Adaeze at Eko',
+      type: 'wedding',
+      status: 'live',
+      startsAt: '2026-11-21T18:00:00+01:00',
+      endsAt: '2026-11-21T23:00:00+01:00',
+      timeZone: 'Africa/Lagos',
+      concludedAt: null,
+      venue: null,
+      cover: null,
+      milestones: [],
+    } as unknown as ListedEvent),
+    'live',
+  );
+
+  it('names the start beside Live on the day, as the demo draws "Today, 18:00"', () => {
+    expect(beforeOpenTags(event, new Date('2026-11-21T14:00:00+01:00'), t)).toEqual([
+      { word: 'eventsScreen.live', mark: 'live' },
+      { word: 'checkIn.todayAt {"time":"18:00"}' },
+    ]);
+  });
+
+  it("keeps the card's own chips on an earlier day", () => {
+    expect(beforeOpenTags(event, new Date('2026-11-20T23:30:00+01:00'), t)).toEqual([
+      { word: 'eventsScreen.live', mark: 'live' },
+      { word: 'timeline.inDays {"count":1}' },
+    ]);
   });
 });

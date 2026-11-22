@@ -372,7 +372,7 @@ export function MessagesList({
         >
           {W.messages}
         </Text>
-        {wide && m.phase !== 'loading' && !readsOnly(m) && (
+        {wide && !readsOnly(m) && (
           <Pill
             label={W.newButton}
             glyph="plus"

@@ -312,6 +312,11 @@ export function colourArrived(): void {
   change((now) => ({ ...now, arrived: null }));
 }
 
+/** An event's link (sc-80863): the account as it was before the link, working in Ire Events. Called before anything reads the store. */
+export function linkStart(): void {
+  where = whereOf(null);
+}
+
 export function switchTo(place: Place, at: string): void {
   change((now) => ({
     ...now,

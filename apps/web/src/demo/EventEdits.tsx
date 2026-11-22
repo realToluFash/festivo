@@ -16,6 +16,7 @@ import {
   timezoneLabel,
 } from '@soirely/domain';
 import { type RefObject, useEffect, useId, useLayoutEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 
 import {
   type Currency,
@@ -38,6 +39,16 @@ import {
 import { writtenTime } from './clock.ts';
 import { ARRIVAL_NOTE, LONG_NOTE, NOTE_WORDS, noteTooLong, savedNote } from './arrivalNote.ts';
 import './arrivalNote.css';
+import {
+  CREDIT_TYPED,
+  type CreditLanguage,
+  OSM_COPYRIGHT,
+  OSM_CREDIT,
+  STADIA_ATTRIBUTION,
+  creditLanguageOf,
+  isCreditState,
+} from './addressCredit.ts';
+import './addressCredit.css';
 import {
   REPLY_BY_WORDS,
   datesAsk,
@@ -341,6 +352,7 @@ export function VenueFields({
   addressRef,
   off = false,
   onPicked,
+  credit = 'en',
 }: {
   name: string;
   onName: (name: string) => void;
@@ -363,6 +375,7 @@ export function VenueFields({
   addressRef?: RefObject<HTMLInputElement | null>;
   off?: boolean;
   onPicked?: (venue: SampleVenue | null) => void;
+  credit?: CreditLanguage;
 }) {
   const made = useId();
   const own = useRef<HTMLInputElement>(null);
@@ -371,72 +384,140 @@ export function VenueFields({
   const [offer, setOffer] = useState<string | null>(offering);
   const [zoneSet, setZoneSet] = useState<string | null>(null);
   const shown = down || !listOpen || off ? [] : suggestionsFor(address);
+  const [holder, setHolder] = useState<HTMLDivElement | null>(null);
+  const combo = holder?.querySelector<HTMLElement>('.ev-combo') ?? null;
+  const creditRef = useRef<HTMLParagraphElement>(null);
+  const closeUnlessOn = (keepOnField: boolean) => () =>
+    window.setTimeout(() => {
+      const now = document.activeElement;
+      const onCredit = now != null && creditRef.current?.contains(now) === true;
+      if (!onCredit && !(keepOnField && now === field.current)) setListOpen(false);
+    });
 
   useEffect(() => {
     if (focus) field.current?.focus();
   }, [focus, field]);
 
   return (
-    <VenueFieldsView
-      venue={{ name, address, addressId: null, note }}
-      errors={{
-        ...(nameError == null ? {} : { venueName: nameError }),
-        ...(addressError == null ? {} : { venueAddress: addressError }),
-        ...(noteError == null ? {} : { arrivalNote: noteError }),
+    <div className="ev-venue" ref={setHolder}>
+      <VenueFieldsView
+        venue={{ name, address, addressId: null, note }}
+        errors={{
+          ...(nameError == null ? {} : { venueName: nameError }),
+          ...(addressError == null ? {} : { venueAddress: addressError }),
+          ...(noteError == null ? {} : { arrivalNote: noteError }),
+        }}
+        off={off}
+        ids={{ name: `${made}-name`, address: `${made}-address`, note: noteId }}
+        {...(nameRef == null ? {} : { nameRef })}
+        addressRef={field}
+        suggestions={shown.map((one) => ({
+          id: one.name,
+          text: one.name,
+          secondaryText: one.line,
+        }))}
+        down={down}
+        offer={offer == null ? null : { zone: offer, keep: zone }}
+        zoneSet={zoneSet}
+        onVenue={(change) => {
+          if (change.name != null) onName(change.name);
+          if (change.address != null) onAddress(change.address);
+          if (change.note != null) onNote(change.note);
+        }}
+        onType={(typed) => {
+          onAddress(typed);
+          onPicked?.(null);
+          setListOpen(true);
+          setZoneSet(null);
+        }}
+        onDismiss={closeUnlessOn(false)}
+        onPick={(chosen) => {
+          const one = shown.find((venue) => venue.name === chosen.id);
+          if (one == null) return;
+          onPicked?.(one);
+          onAddress(one.address);
+          if (name.trim() === '') onName(one.name);
+          setListOpen(false);
+          setOffer(one.timeZone === zone ? null : one.timeZone);
+        }}
+        onUseZone={(chosen) => {
+          onZone(chosen);
+          setOffer(null);
+          setZoneSet(chosen);
+        }}
+        onKeepZone={() => setOffer(null)}
+      />
+      {combo != null &&
+        shown.length > 0 &&
+        createPortal(
+          <AddressCredit
+            language={credit}
+            creditRef={creditRef}
+            onLeave={closeUnlessOn(true)}
+            onEscape={() => {
+              setListOpen(false);
+              field.current?.focus();
+            }}
+          />,
+          combo,
+        )}
+    </div>
+  );
+}
+
+/** sc-80918: the line at the foot of the suggestions' surface, after the listbox and never one of its options; pressing a link keeps Address focused so the list stays. */
+function AddressCredit({
+  language,
+  creditRef,
+  onLeave,
+  onEscape,
+}: {
+  language: CreditLanguage;
+  creditRef: RefObject<HTMLParagraphElement | null>;
+  onLeave: () => void;
+  onEscape: () => void;
+}) {
+  const words = OSM_CREDIT[language];
+  const link = (href: string, name: string) => (
+    <a
+      href={href}
+      target="_blank"
+      rel="noopener noreferrer"
+      onPointerDown={(pointer) => pointer.preventDefault()}
+      onBlur={onLeave}
+      onKeyDown={(key) => {
+        if (key.key !== 'Escape') return;
+        key.stopPropagation();
+        onEscape();
       }}
-      off={off}
-      ids={{ name: `${made}-name`, address: `${made}-address`, note: noteId }}
-      {...(nameRef == null ? {} : { nameRef })}
-      addressRef={field}
-      suggestions={shown.map((one) => ({ id: one.name, text: one.name, secondaryText: one.line }))}
-      down={down}
-      offer={offer == null ? null : { zone: offer, keep: zone }}
-      zoneSet={zoneSet}
-      onVenue={(change) => {
-        if (change.name != null) onName(change.name);
-        if (change.address != null) onAddress(change.address);
-        if (change.note != null) onNote(change.note);
-      }}
-      onType={(typed) => {
-        onAddress(typed);
-        onPicked?.(null);
-        setListOpen(true);
-        setZoneSet(null);
-      }}
-      onDismiss={() => setListOpen(false)}
-      onPick={(chosen) => {
-        const one = shown.find((venue) => venue.name === chosen.id);
-        if (one == null) return;
-        onPicked?.(one);
-        onAddress(one.address);
-        if (name.trim() === '') onName(one.name);
-        setListOpen(false);
-        setOffer(one.timeZone === zone ? null : one.timeZone);
-      }}
-      onUseZone={(chosen) => {
-        onZone(chosen);
-        setOffer(null);
-        setZoneSet(chosen);
-      }}
-      onKeepZone={() => setOffer(null)}
-    />
+    >
+      {name}
+    </a>
+  );
+
+  return (
+    <p className="ev-osm" lang={language} ref={creditRef}>
+      © {link(STADIA_ATTRIBUTION, words.stadia)} © {link(OSM_COPYRIGHT, words.osm)}
+    </p>
   );
 }
 
 /** Venue: its name and address, suggestions from 3 characters, and the zone it is in when that differs. */
 export function VenuePart({ event, state, onDirty, onClose, onSave }: PartProps) {
-  const typing = state === 'venueSuggestions' || state === 'venueDown';
+  const typing = state === 'venueSuggestions' || state === 'venueDown' || isCreditState(state);
   const [name, setName] = useState(
     typing ? '' : state === 'venueZone' ? 'Eko Hotel' : (event.venue?.name ?? ''),
   );
   const [address, setAddress] = useState(
-    state === 'venueSuggestions'
-      ? 'Eko Hot'
-      : state === 'venueDown'
-        ? '12 Rua'
-        : state === 'venueZone'
-          ? 'Adetokunbo Ademola Street, Victoria Island, Lagos'
-          : (event.venue?.address ?? ''),
+    isCreditState(state)
+      ? CREDIT_TYPED[state]
+      : state === 'venueSuggestions'
+        ? 'Eko Hot'
+        : state === 'venueDown'
+          ? '12 Rua'
+          : state === 'venueZone'
+            ? 'Adetokunbo Ademola Street, Victoria Island, Lagos'
+            : (event.venue?.address ?? ''),
   );
   const [picked, setPicked] = useState<SampleVenue | null>(null);
   const [zone, setZone] = useState(event.timeZone);
@@ -507,7 +588,8 @@ export function VenuePart({ event, state, onDirty, onClose, onSave }: PartProps)
         zone={zone}
         onZone={setZone}
         down={down}
-        listing={state === 'venueSuggestions'}
+        listing={state === 'venueSuggestions' || isCreditState(state)}
+        credit={creditLanguageOf(state)}
         offering={state === 'venueZone' ? 'Africa/Lagos' : null}
         focus={typing}
         note={note}

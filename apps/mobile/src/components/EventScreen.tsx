@@ -45,12 +45,12 @@ import {
 } from '../kit/eventNav.ts';
 import { markDeleted, takeCoverRefused } from '../kit/eventSaved.ts';
 import { outsideOn, outsidePlaces, readsOverview, wayBack } from '../kit/outsideEvent.ts';
-import { type Opened, openedOf, openedWithoutAsking } from '../kit/eventsOpen.ts';
+import { type Opened, openedOf, openedOrMoved, openedWithoutAsking } from '../kit/eventsOpen.ts';
 import { ASKS_END, SHOWN_EVENT, goUpToEvent } from '../kit/upToEvent.ts';
 import { useServerNow } from '../kit/serverNow.ts';
 import { backRow } from '../layout/backRow.ts';
 import { useLayout } from '../layout/useLayout.ts';
-import { rereadAccount, useSignedIn } from '../signedIn.ts';
+import { rereadAccount, switchOrganisation, useSignedIn } from '../signedIn.ts';
 import { tokens } from '../theme/tokens.ts';
 import { AppFrame, BackButton } from './AppFrame.tsx';
 import { BellRow } from './BellButton.tsx';
@@ -89,6 +89,7 @@ export function EventScreen({
   eventId,
   area: asked,
   filter = 'all',
+  changedSince,
   copiedFrom,
   opensDuplicate = false,
   opensEdit,
@@ -102,6 +103,8 @@ export function EventScreen({
   area: EventPlace;
   /** The choice Guests opens on, from a figure that counts it (sc-3786). */
   filter?: Choice;
+  /** Changed since you looked, from the look it counts from, when the bell opened it (sc-4331). */
+  changedSince?: string | undefined;
   /** The event this one was duplicated from, when Duplicate opened it (sc-22145). */
   copiedFrom?: string | undefined;
   /** Opened by an Events card's Duplicate, so Duplicate is over the page as it opens. */
@@ -185,9 +188,27 @@ export function EventScreen({
   const outside = outsideOn(signedIn, eventId);
   const outsideAt = outside == null ? null : outsidePlaces(outside.role);
   const area = outsideAt == null || outsideAt.includes(asked) ? asked : 'overview';
-  const opened = useOpened(eventId, account != null, organisation, outside != null, () =>
-    moveScreenReaderFocus(cardName.current ?? title.current),
+  // An event's link from another of the account's organisations moves it there once the event has loaded, said at the head of Overview until the person leaves it (sc-80863).
+  const [moved, setMoved] = useState<{ into: string; words: string } | null>(null);
+  const opened = useOpened(
+    eventId,
+    account != null,
+    organisation,
+    outside != null,
+    () => moveScreenReaderFocus(cardName.current ?? title.current),
+    area === 'overview',
+    (into, landed) => {
+      const name = signedIn.organisations.find(({ id }) => id === into)?.name;
+
+      if (name == null) return;
+      switchOrganisation(into, () => {
+        landed();
+        setMoved({ into, words: t('switcher.switched', { name }) });
+      });
+    },
+    signedIn.organisations,
   );
+  if (moved != null && (area !== 'overview' || moved.into !== organisationId)) setMoved(null);
   const { reload, freshen, change } = opened;
   const top = eventTop(kind, area, opened.kind);
   const { cardNamed, areaTitled } = top;
@@ -339,6 +360,7 @@ export function EventScreen({
             tell={(words) => setToast({ eventId, area, words })}
             opensEndNow={opensEndNow}
             onEndNowOpened={() => navigation.setParams({ [ASKS_END]: undefined })}
+            moved={moved}
             notice={
               coverRefused?.eventId === eventId ? (
                 <EventNotice
@@ -500,9 +522,10 @@ export function EventScreen({
       <EdgeSwipeBack active={area !== 'overview' && guestBack == null} onBack={back} />
       {guests ? (
         <EventGuests
-          key={`${event.id}.${filter}`}
+          key={`${event.id}.${filter}.${changedSince ?? ''}`}
           event={event}
           filter={filter}
+          changedSince={changedSince}
           opens={opensGuest}
           leave={fromSearch ? leave : undefined}
           phase={phase}
@@ -700,6 +723,9 @@ function useOpened(
   organisation: Membership | null,
   outside: boolean,
   focusTitle: () => void,
+  overview: boolean,
+  moveInto: (organisationId: string, landed: () => void) => void,
+  memberships: readonly Membership[],
 ): Opened & {
   retry: () => void;
   reload: () => void;
@@ -717,6 +743,10 @@ function useOpened(
   });
   const [attempt, setAttempt] = useState(0);
   const key = `${organisationId ?? ''}/${eventId}`;
+  const moves = useRef({ moveInto, memberships, overview });
+  useEffect(() => {
+    moves.current = { moveInto, memberships, overview };
+  });
   const retry = useCallback(() => {
     setHeld({ for: null, opened: { kind: 'loading' } });
     setAttempt((n) => n + 1);
@@ -740,7 +770,21 @@ function useOpened(
     const holder = outside ? null : (organisationId ?? null);
 
     watch(api.event(eventId)).then(
-      (event) => live && setHeld({ for: key, opened: openedOf({ event }, holder) }),
+      (event) => {
+        if (!live) return;
+        const { memberships: all, overview: onOverview, moveInto: move } = moves.current;
+        const next = openedOrMoved(event, holder, all, onOverview);
+
+        if ('opened' in next) {
+          setHeld({ for: key, opened: next.opened });
+          return;
+        }
+        // Until the move lands the page stays in this organisation, so Stay on an unsaved-changes ask leaves it as it would be here.
+        setHeld({ for: key, opened: openedOf({ event }, holder) });
+        move(next.moves, () =>
+          setHeld({ for: `${next.moves}/${eventId}`, opened: { kind: 'loaded', event } }),
+        );
+      },
       (error: unknown) =>
         live &&
         setHeld((before) =>

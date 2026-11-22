@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Link } from 'react-router';
+import { Link, useLocation, useSearchParams } from 'react-router';
 
 import { Glyph } from '../components/Glyph.tsx';
 import { NotFound } from '../routes/public/NotFound.tsx';
@@ -603,6 +603,16 @@ function firstFocus(
   );
 }
 
+/** Preview as guest (sc-3907): the guest's meal step for the host alone, coming back here on Close preview. */
+function previewAt(pathname: string, params: URLSearchParams): string {
+  const back = new URLSearchParams(params);
+  back.delete('told');
+  const query = back.toString();
+  const from = `${pathname}${query === '' ? '' : `?${query}`}`;
+
+  return `/demo/guest/meal?state=preview&from=${encodeURIComponent(from)}`;
+}
+
 function Courses({
   first,
   lang,
@@ -618,12 +628,21 @@ function Courses({
   const [open, setOpen] = useState<Open | null>(() => openOf(first, lang));
   const [asking, setAsking] = useState(first.asking);
   const [refused, setRefused] = useState(first.refused);
+  const location = useLocation();
+  const [params] = useSearchParams();
+  const backFromPreview = params.get('told') === 'preview';
   const [said, setSaid] = useState<Told | null>(
-    first.said === '' ? null : { words: first.said, more: first.saidMore ?? null },
+    backFromPreview
+      ? { words: CW.nothingSaved, more: null }
+      : first.said === ''
+        ? null
+        : { words: first.said, more: first.saidMore ?? null },
   );
   const [dragging, setDragging] = useState<string | null>(null);
   const failing = useRef(first.failing);
-  const focusAfter = useRef<string | null>(firstFocus(open, first.courses, budget, first.picks));
+  const focusAfter = useRef<string | null>(
+    backFromPreview ? 'mc-preview' : firstFocus(open, first.courses, budget, first.picks),
+  );
   const library = first.library ?? SAMPLE_LIBRARY;
   const [libraryFailed, setLibraryFailed] = useState(first.libraryFailed === true);
   const [libraryRetrying, setLibraryRetrying] = useState(false);
@@ -1334,6 +1353,16 @@ function Courses({
             )}
           </p>
         </div>
+        {courses.some(asksGuests) && (
+          <Link
+            id="mc-preview"
+            className="gs-pill is-secondary mc-preview"
+            to={previewAt(location.pathname, params)}
+          >
+            <Glyph name="eye" size={16} weight={2.4} />
+            {CW.previewAsGuest}
+          </Link>
+        )}
         {manage && courses.length > 0 && (
           <div className="mc-add-wrap">
             <button

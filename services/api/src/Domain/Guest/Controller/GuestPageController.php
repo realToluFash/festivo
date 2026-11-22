@@ -5,15 +5,17 @@ declare(strict_types=1);
 namespace App\Domain\Guest\Controller;
 
 use App\Domain\Event\CalendarFeed\FeedLinkIssuer;
-use App\Domain\Event\EventVenue;
-use App\Domain\Event\Http\EventSerialiser;
 use App\Domain\Guest\Arrival\CheckInCodes;
 use App\Domain\Guest\GuestNeedsRecord;
 use App\Domain\Guest\GuestRules;
+use App\Domain\Guest\Http\GuestPageEvent;
 use App\Domain\Guest\Http\GuestSerialiser;
 use App\Domain\Guest\Link\InvitationLinks;
 use App\Domain\Guest\Model\GuestNeeds;
 use App\Domain\Guest\Reply\GuestAnswers;
+use App\Domain\Menu\Pick\GuestMenu;
+use App\Domain\Menu\Pick\MealPicks;
+use App\Domain\Menu\Pick\ServedMeals;
 use App\Domain\RunOfShow\GuestProgramme;
 use App\Domain\Seating\SharedSeats;
 use App\Entity\Guest;
@@ -43,7 +45,7 @@ final readonly class GuestPageController
 {
     public function __construct(
         private InvitationLinks $invitationLinks,
-        private EventSerialiser $eventSerialiser,
+        private GuestPageEvent $guestPageEvent,
         private RateLimiterFactoryInterface $guestLinkWrongPersonLimiter,
         private GuestAnswers $guestAnswers,
         private GuestRules $guestRules,
@@ -55,6 +57,9 @@ final readonly class GuestPageController
         private SharedSeats $sharedSeats,
         private SubscriberTokenIssuer $subscriberTokenIssuer,
         private CheckInCodes $checkInCodes,
+        private MealPicks $mealPicks,
+        private GuestMenu $guestMenu,
+        private ServedMeals $servedMeals,
     ) {
     }
 
@@ -128,6 +133,19 @@ final readonly class GuestPageController
         return $this->answered($guest);
     }
 
+    /** A meal for each person coming (sc-3907): the guest's and each named companion's answers, sent after the kitchen note so its allergens count. Refused 422 by MealPicks's rules with nothing saved, and 409 `meal_picks_closed` for a changed answer on a closed course, once the open ones are saved. Answers the page as it now stands. */
+    #[Route('/api/guest-links/meals', name: 'guest_links_meals', methods: ['POST'])]
+    #[PublicAccess]
+    public function meals(Request $request): JsonResponse
+    {
+        $body = Input::body($request, Type\shape(['token' => Type\string(), 'picks' => MealPicks::sent()]));
+        $guest = $this->invitationLinks->guestFor($body['token']) ?? throw ApiException::notFound('access.not_found');
+
+        $this->mealPicks->send($guest, $body['picks']);
+
+        return $this->answered($guest);
+    }
+
     /**
      * sc-3777's needs without the private note, which belongs to the hosts alone.
      *
@@ -149,7 +167,6 @@ final readonly class GuestPageController
     {
         $event = $guest->getEvent();
         $zone = new DateTimeZone($event->getTimeZone());
-        $venue = EventVenue::of($event);
         $reply = $guest->getReply();
         $repliedAt = $guest->getRepliedAt();
         $places = $this->guestRepository->findCompanionsOf($guest);
@@ -194,20 +211,7 @@ final readonly class GuestPageController
                 'host' => $guest->getLanguage(),
                 'organisation' => SupportedLocales::narrow($event->getOrganisation()->getLocale()),
             ],
-            'event' => [
-                'id' => $event->getId()->toRfc4122(),
-                'name' => $event->getName(),
-                'type' => $event->getType()->value,
-                'cover' => $this->eventSerialiser->coverOf($event),
-                'hosts' => $event->getHosts(),
-                // The hosts' own words, shown only once it is over and never translated (sc-6476).
-                'thankYou' => GuestPagePhase::Finished === $phase ? $event->getThankYou() : null,
-                'startsAt' => $event->getStartsAt()->format(\DATE_ATOM),
-                'timeZone' => $event->getTimeZone(),
-                'venue' => null === $venue ? null : ['name' => $venue->name, 'address' => $venue->address?->formatted],
-                'arrivalNote' => $event->getArrivalNote(),
-                'replyBy' => $event->getReplyBy()?->format('Y-m-d'),
-            ],
+            'event' => $this->guestPageEvent->of($event, $phase),
             'phase' => $phase->value,
             'started' => $this->guestAnswers->started($guest),
             'answersOpen' => $this->guestAnswers->open($guest),
@@ -215,6 +219,11 @@ final readonly class GuestPageController
             'calendarFeed' => $this->calendarFeed($guest),
             'checkInCode' => $this->checkInCodes->of($guest),
             'programme' => $this->guestProgramme->of($event, $phase),
+            'meals' => [
+                'you' => $guest->getId()->toRfc4122(),
+                'courses' => $this->guestMenu->menu($event),
+                'answers' => $this->servedMeals->answersOf([$guest, ...$named]),
+            ],
             // Absent, not null, before the tables are shared (sc-4022).
             ...null === $seating ? [] : ['seating' => $seating],
         ], headers: ['Cache-Control' => 'no-store']);

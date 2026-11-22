@@ -2580,7 +2580,21 @@
     "reopenNotSaved": "Not saved. Check your connection and try again.",
     "askedBy": "{{reply}} · asked to decide by {{date}}",
     "askedByOn": "asked to decide by {{date}}",
-    "companionStays": "{{name}} has arrived, so they stay on the list."
+    "companionStays": "{{name}} has arrived, so they stay on the list.",
+    "changed": {
+      "filter": "Changed since you looked",
+      "nothing": "Nothing has changed since you last looked.",
+      "showAll": "Show all guests",
+      "line": "{{answer}} · {{when}}",
+      "repliedAt": "Replied at {{time}}",
+      "repliedOn": "Replied {{date}}",
+      "changedAt": "Changed at {{time}}",
+      "changedOn": "Changed {{date}}",
+      "needs": "Updated dietary needs",
+      "flagged": "Link may have reached the wrong person",
+      "failed": "We could not load what changed.",
+      "retry": "Try again"
+    }
   },
   "guestNumbers": {
     "title": "Guests",
@@ -3173,6 +3187,7 @@
     "countFigure": "{{count, number}} of {{expected, number}}",
     "countWord_one": "arrived",
     "countWord_other": "arrived",
+    "todayAt": "Today, {{time}}",
     "opensAt": "Check-in opens at {{time}}",
     "searchWorksNow": "Search works now. Arrivals and walk-ins can be recorded from {{time}}.",
     "openedAt": "Check-in opened at {{time}}. Anyone on the list can be marked arrived, whatever their reply.",
@@ -3189,7 +3204,7 @@
     "notRecorded": "Not recorded. Try again.",
     "noOne": "Nobody on the list matches “{{typed}}”.",
     "matches_one": "{{count, number}} match",
-    "matches_other": "{{count, number}} match",
+    "matches_other": "{{count, number}} matches",
     "nobodyYet": "Nobody is on the list yet",
     "nobodyYetLine": "Anyone who arrives can be added as a walk-in.",
     "addWalkIn": "Add walk-in",

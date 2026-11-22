@@ -1,7 +1,14 @@
 import { ApiError, type OrganisationEvent } from '@soirely/api-client';
 import { describe, expect, it } from 'vitest';
 
-import { hasNoEvents, openedOf, openedWithoutAsking, pageless, selectionIn } from './eventsOpen.ts';
+import {
+  hasNoEvents,
+  openedOf,
+  openedOrMoved,
+  openedWithoutAsking,
+  pageless,
+  selectionIn,
+} from './eventsOpen.ts';
 
 const gala: OrganisationEvent = {
   id: 'evt_gala',
@@ -116,5 +123,31 @@ describe('the pane beside the list on a tablet on its side', () => {
   it('shows while an event is open in it, whatever the list shows', () => {
     expect(pageless(none, true)).toBe(false);
     expect(pageless({ kind: 'failed' }, true)).toBe(false);
+  });
+});
+
+describe("a link to another of the account's organisations", () => {
+  const memberships = [{ id: 'org_a' }, { id: 'org_b' }];
+
+  it("moves the account into the event's organisation from Overview", () => {
+    expect(openedOrMoved(gala, 'org_b', memberships, true)).toEqual({ moves: 'org_a' });
+  });
+
+  it('reads as not found from Guests, and stays where it is', () => {
+    expect(openedOrMoved(gala, 'org_b', memberships, false)).toEqual({
+      opened: { kind: 'notFound' },
+    });
+  });
+
+  it('reads as not found where the account is no member', () => {
+    expect(openedOrMoved(gala, 'org_b', [{ id: 'org_b' }], true)).toEqual({
+      opened: { kind: 'notFound' },
+    });
+  });
+
+  it('opens the event where it is held, from any area', () => {
+    expect(openedOrMoved(gala, 'org_a', memberships, false)).toEqual({
+      opened: { kind: 'loaded', event: gala },
+    });
   });
 });
