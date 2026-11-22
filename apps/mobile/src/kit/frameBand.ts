@@ -1,10 +1,10 @@
-/** On a phone the organisation pill sits in the primary's row, or alone on Home; a screen standing in takes the primary away and leaves the pill where it was (sc-26270). */
+/** On a phone the organisation pill sits in the primary's row, or alone on Home; a page standing in for a screen takes its body's top away, so the pill stands alone over it on every screen (sc-26270, sc-83881). */
 export function phonePillAlone(
   onHome: boolean,
   screenHasPrimary: boolean,
   standingIn: boolean,
 ): boolean {
-  if (standingIn) return onHome || screenHasPrimary;
+  if (standingIn) return true;
 
   return onHome && !screenHasPrimary;
 }

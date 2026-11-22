@@ -47,7 +47,6 @@ import {
   dishDetailsOf,
   dishProblems,
   firstDishProblem,
-  listFormat,
   moneyLanguage,
   roleName,
   sameNamedDish,
@@ -337,14 +336,14 @@ function unwarnedLine(
   unwarned: UnwarnedPickers | null,
 ): string | null {
   if (unwarned == null) return null;
-  const names = DISH_ALLERGENS.filter((code) => unwarned.allergens.includes(code)).map((code) =>
-    t(`guestNeeds.allergen.${code}`),
-  );
-
   return t('eventMenu.unwarned', {
     count: unwarned.count,
     dish,
-    allergens: listFormat(language, { type: 'conjunction' }).format(names),
+    allergens: allergensInSentence(
+      t,
+      language,
+      DISH_ALLERGENS.filter((code) => unwarned.allergens.includes(code)),
+    ),
   });
 }
 
@@ -994,10 +993,10 @@ function Courses({
                 count: changed.unwarned.count,
                 dish: dishName,
                 variant: first.name,
-                allergens: listFormat(i18n.language, { type: 'conjunction' }).format(
-                  DISH_ALLERGENS.filter((code) => changed.unwarned?.allergens.includes(code)).map(
-                    (code) => t(`guestNeeds.allergen.${code}`),
-                  ),
+                allergens: allergensInSentence(
+                  t,
+                  i18n.language,
+                  DISH_ALLERGENS.filter((code) => changed.unwarned?.allergens.includes(code)),
                 ),
               }),
         );
