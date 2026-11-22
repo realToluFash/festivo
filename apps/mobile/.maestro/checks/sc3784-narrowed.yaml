@@ -29,16 +29,22 @@ appId: host.exp.Exponent
 - waitForAnimationToEnd:
     timeout: 3000
 - takeScreenshot: emptyList
-- runFlow:
-    when:
-      visible:
-        id: 'guests.export'
-    commands:
-      - tapOn:
-          id: 'guests.export'
-      - waitForAnimationToEnd:
-          timeout: 4000
-      - takeScreenshot: exportEmpty
+- tapOn:
+    id: 'guests.export'
+- waitForAnimationToEnd:
+    timeout: 4000
+- takeScreenshot: exportEmpty
+- assertVisible:
+    id: 'guests\.export\.(sheet|panel)'
+- assertVisible:
+    id: 'guests.export.who.view'
+    enabled: false
+- assertVisible:
+    id: 'guests.export.who.all'
+    checked: true
+- tapOn:
+    id: 'guests.export.close'
+- waitForAnimationToEnd
 - openLink: ${METRO_URL}/--/demo/guests?state=exportNarrowed
 - waitForAnimationToEnd:
     timeout: 8000

@@ -1,17 +1,11 @@
-# sc-3784: a Can view or Can check guests in grant holder sees the Guests header with no Export. ORG is the organisation that holds the event.
+# sc-3784: a Can view or Can check guests in grant holder sees the Guests header with no Export. ORG is the id of the organisation that holds the event.
 appId: host.exp.Exponent
 ---
 - setOrientation: ${ORIENT}
-- runFlow: ../open-switcher.yaml
-- scrollUntilVisible:
-    element:
-      text: ${ORG}
-    direction: UP
-    timeout: 20000
-- tapOn:
-    text: ${ORG}
-- waitForAnimationToEnd:
-    timeout: 4000
+- runFlow:
+    file: ../switch-organisation.yaml
+    env:
+      ORG: ${ORG}
 - openLink: ${METRO_URL}/--/events/${EV}?area=guests
 - extendedWaitUntil:
     visible:
