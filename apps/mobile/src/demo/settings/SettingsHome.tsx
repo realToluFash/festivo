@@ -28,6 +28,7 @@ import {
 import { SettingsListBody } from '../../components/SettingsList.tsx';
 import { SwitchedNotice } from '../../components/SwitchedNotice.tsx';
 import { LegalLinks } from '../LegalLinks.tsx';
+import { PausedHere } from '../OrgSwitcher.tsx';
 import { PAGE_TITLE, TOP_TITLE, topTitle } from '../../components/topTitle.ts';
 
 type Listed = Exclude<ShellSection, 'account'>;
@@ -173,7 +174,12 @@ export function SettingsHome({
     </Title>
   );
 
-  if (held != null) return <HeldSettings held={held} onSignOut={onSignOut} />;
+  if (held != null)
+    return (
+      <PausedHere.Provider value={held === 'paused'}>
+        <HeldSettings held={held} onSignOut={onSignOut} />
+      </PausedHere.Provider>
+    );
 
   if (shell.layout === 'landscape')
     return (
