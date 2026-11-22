@@ -30,10 +30,21 @@ describe('Hosted by is typed in as the AC has it (sc-15497)', () => {
     expect(raise).toMatch(
       /focusChecked\(\{ current: input \}\);\s+if \(Platform\.OS !== 'android'\) return/u,
     );
-    expect(raise).toMatch(
-      /if \(input\.isFocused\(\) && !Keyboard\.isVisible\(\)\) raiseKeysOn\(input\);/u,
-    );
+    expect(raise).toMatch(/if \(!Keyboard\.isVisible\(\)\) raiseKeysOn\(input\);/u);
     expect(raise).toMatch(/return \(\) => clearTimeout\(bound\);/u);
+  });
+
+  it('sends TalkBack to the name of the row Add a host adds, once it is laid out (sc-83720)', () => {
+    const field = readFileSync(join('src', 'components', 'Field.tsx'), 'utf8');
+    const raise = /export function focusNewField\([^)]*\): \(\) => void \{([\s\S]*?)\n\}/u.exec(
+      field,
+    )?.[1];
+
+    expect(raise).toMatch(
+      /setTimeout\(\(\) => \{\s+if \(!input\.isFocused\(\)\) return;\s+(?:\/\/.*\s+)?moveScreenReaderFocus\(input\);\s+if \(!Keyboard\.isVisible\(\)\) raiseKeysOn\(input\);\s+\}, NEW_FIELD_BOUND_MS\);/u,
+    );
+    expect(rows).toMatch(/accessibilityLabel=\{label\(index \+ 1\)\}/u);
+    expect(rows).toMatch(/if \(keys && to !== 'add'\) return focusNewField\(/u);
   });
 
   it('wraps a long name onto more lines, never scrolling it sideways', () => {
