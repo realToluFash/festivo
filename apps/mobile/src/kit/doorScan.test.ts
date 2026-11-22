@@ -1,8 +1,9 @@
-import type { CheckIn, CheckInGuest } from '@soirely/api-client';
+import { ApiError, type CheckIn, type CheckInGuest } from '@soirely/api-client';
 import { describe, expect, it } from 'vitest';
 
 import {
   isCheckInCode,
+  refusedForGood,
   rescanned,
   scanned,
   sendWaiting,
@@ -14,6 +15,12 @@ import {
 } from './doorScan.ts';
 
 const CODE_DIGEST = 'a'.repeat(64);
+
+function refusal(status: number, code: string): ApiError {
+  const problem = { type: `https://soirely.com/errors/${code}`, title: 'No.', status };
+
+  return new ApiError(problem, new Response(JSON.stringify(problem), { status }));
+}
 
 function guest(id: string, more: Partial<CheckInGuest> = {}): CheckInGuest {
   return {
@@ -113,27 +120,31 @@ describe('arrivals waiting to sync (sc-1301)', () => {
     expect(unwait([ON_SEVEN], 'adaeze')).toEqual([]);
   });
 
-  it('sends in order, drops one refused for good, and stops on a failed connection keeping the rest', async () => {
+  it('sends in order, drops one refused for good, and stops on any other failure keeping the rest', async () => {
     const obi = { ...ON_SEVEN, guestId: 'obi' };
     const musa = { ...ON_SEVEN, guestId: 'musa' };
     const sent: string[] = [];
-    const gone = new Error('gone');
-    const offline = new Error('offline');
 
-    const result = await sendWaiting(
-      [ON_SEVEN, obi, musa],
-      async (arrival) => {
-        sent.push(arrival.guestId);
-        if (arrival.guestId === 'adaeze') throw gone;
-        if (arrival.guestId === 'musa') throw offline;
+    const result = await sendWaiting([ON_SEVEN, obi, musa], async (arrival) => {
+      sent.push(arrival.guestId);
+      if (arrival.guestId === 'adaeze') throw refusal(404, 'not_found');
+      if (arrival.guestId === 'musa') throw refusal(503, 'server_error');
 
-        return LIST;
-      },
-      (error) => error === gone,
-    );
+      return LIST;
+    });
 
     expect(sent).toEqual(['adaeze', 'obi', 'musa']);
     expect(result).toEqual({ left: [musa], checkIn: LIST });
+  });
+
+  it('drops an arrival only when the guest is gone or the door was shut at that time', () => {
+    expect(refusedForGood(refusal(404, 'not_found'))).toBe(true);
+    expect(refusedForGood(refusal(409, 'check_in_closed'))).toBe(true);
+    expect(refusedForGood(refusal(503, 'server_error'))).toBe(false);
+    expect(refusedForGood(refusal(429, 'too_many_requests'))).toBe(false);
+    expect(refusedForGood(refusal(401, 'unauthorized'))).toBe(false);
+    expect(refusedForGood(refusal(408, 'request_timeout'))).toBe(false);
+    expect(refusedForGood(new TypeError('Network request failed'))).toBe(false);
   });
 
   it("writes an arrival kept offline at the door's wall clock, in the zone's offset", () => {

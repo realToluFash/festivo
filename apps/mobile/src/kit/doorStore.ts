@@ -57,3 +57,10 @@ export async function keptWaiting(eventId: string): Promise<WaitingArrival[]> {
       )
     : [];
 }
+
+/** On sign-out: the next person on this device neither reads this list nor sends these arrivals under their own name. */
+export async function forgetDoor(): Promise<void> {
+  const keys = await AsyncStorage.getAllKeys().catch(() => [] as readonly string[]);
+  const door = keys.filter((key) => key.startsWith('door.'));
+  if (door.length > 0) await AsyncStorage.multiRemove(door).catch(() => {});
+}

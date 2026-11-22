@@ -16,6 +16,7 @@ import {
   type ScanRead,
   type WaitingArrival,
   isCheckInCode,
+  refusedForGood,
   rescanned,
   scanned,
   sendWaiting,
@@ -98,11 +99,7 @@ function useDoorList(eventId: string, by: string | null) {
       let checkIn = await api.checkIn(eventId);
       const sending = waitingNow.current;
       if (sending.length > 0) {
-        const sent = await sendWaiting(
-          sending,
-          (one) => api.arrive(eventId, one.guestId, one.at),
-          (error) => error instanceof ApiError,
-        );
+        const sent = await sendWaiting(sending, (one) => api.arrive(eventId, one.guestId, one.at));
         const done = new Set(
           sending.slice(0, sending.length - sent.left.length).map((one) => one.guestId),
         );
@@ -143,6 +140,14 @@ function useDoorList(eventId: string, by: string | null) {
     };
   }, [eventId, read]);
 
+  const behind = offlineSince != null || waiting.length > 0;
+  useEffect(() => {
+    if (!behind) return;
+    const again = setInterval(() => void read(), READ_AGAIN_MS);
+
+    return () => clearInterval(again);
+  }, [behind, read]);
+
   const arrive = async (personId: string): Promise<'recorded' | 'refused'> => {
     if (list == null) return 'refused';
     const keep = () =>
@@ -157,7 +162,7 @@ function useDoorList(eventId: string, by: string | null) {
       shown(await api.arrive(eventId, personId));
       return 'recorded';
     } catch (error) {
-      if (error instanceof ApiError) return 'refused';
+      if (refusedForGood(error)) return 'refused';
       lost(error);
       keep();
       return 'recorded';

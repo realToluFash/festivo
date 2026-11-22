@@ -1,4 +1,10 @@
-import type { Arrival, CheckIn, CheckInCompanion, CheckInGuest } from '@soirely/api-client';
+import {
+  ApiError,
+  type Arrival,
+  type CheckIn,
+  type CheckInCompanion,
+  type CheckInGuest,
+} from '@soirely/api-client';
 import { zoneOffsets } from '@soirely/domain';
 
 /** An arrival recorded on this device while it had no connection, sent with its time once it has one (sc-1301). */
@@ -76,11 +82,17 @@ export function unwait(waiting: readonly WaitingArrival[], guestId: string): Wai
   return waiting.filter((one) => one.guestId !== guestId);
 }
 
-/** Sends each waiting arrival in the order recorded. One the API refuses for good (the guest removed, the door shut at that time) is dropped; a failed connection stops, keeping it and the rest. */
+const FOR_GOOD = new Set(['not_found', 'check_in_closed']);
+
+/** Only the API saying this arrival can never be recorded: the guest gone, or the door shut at that time. A 5xx, 408, 429 or 401 may pass on a later try. */
+export function refusedForGood(error: unknown): boolean {
+  return error instanceof ApiError && FOR_GOOD.has(error.code);
+}
+
+/** Sends each waiting arrival in the order recorded. One refused for good is dropped; anything else stops, keeping it and the rest. */
 export async function sendWaiting(
   waiting: readonly WaitingArrival[],
   send: (arrival: WaitingArrival) => Promise<CheckIn>,
-  refusedForGood: (error: unknown) => boolean,
 ): Promise<{ left: WaitingArrival[]; checkIn: CheckIn | null }> {
   let checkIn: CheckIn | null = null;
   for (const [at, arrival] of waiting.entries()) {
