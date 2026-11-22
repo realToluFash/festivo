@@ -79,7 +79,7 @@ export function bellStartOf(state: BellState): BellStart {
     case 'bellRefreshing':
       return { ...REST, offline: 'refreshing' };
     case 'bellUnknown':
-      return { ...REST, unknown: true, muted: true };
+      return { ...REST, unknown: true, muted: true, marked: ['unknown'] };
     case 'bell':
       return REST;
   }
