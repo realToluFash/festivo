@@ -382,7 +382,14 @@ export function Receipt({
         {words}
       </Text>
       {onWho != null && (
-        <TextAction label={W.whoItReached} after="chevron" onPress={onWho} testID="messages.who" />
+        <View>
+          <TextAction
+            label={W.whoItReached}
+            after="chevron"
+            onPress={onWho}
+            testID="messages.who"
+          />
+        </View>
       )}
     </View>
   );
