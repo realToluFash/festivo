@@ -20,7 +20,7 @@ appId: host.exp.Exponent
       id: 'eventForm\.venue\.suggestion\..*'
       index: 0
     timeout: 20000
-- tapOn: 'Address, Optional'
+- tapOn: '(Address|Dirección|Adresse|Morada)\W+(Optional|Opcional|Facultatif)'
 - waitForAnimationToEnd:
     timeout: 3000
 - scrollUntilVisible:
