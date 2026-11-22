@@ -4,11 +4,13 @@ import { Pressable, StyleSheet, View } from 'react-native';
 import { Text } from '../components/Text.tsx';
 import { tokens } from '../theme/tokens.ts';
 
-/** iOS names the app only on a push with no title, and every Soirely push has one. */
+/** iOS names the app only on a push with no title, and every Soirely push has one. The body shows `lines` lines until a long press opens it; `startOpen` draws it already pressed and held. */
 export function IosBanner({
   title,
   age,
   body,
+  lines = 2,
+  startOpen = false,
   raised = false,
   onPress,
   accessibilityLabel,
@@ -19,6 +21,8 @@ export function IosBanner({
   title: string;
   age: string;
   body: string;
+  lines?: number;
+  startOpen?: boolean;
   raised?: boolean;
   onPress: () => void;
   accessibilityLabel: string;
@@ -26,7 +30,7 @@ export function IosBanner({
   accessibilityRole?: 'button';
   testID?: string;
 }) {
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(startOpen);
 
   return (
     <Pressable
@@ -58,7 +62,12 @@ export function IosBanner({
             {age}
           </Text>
         </View>
-        <Text size={15} accessible={false} numberOfLines={open ? undefined : 2} style={styles.num}>
+        <Text
+          size={15}
+          accessible={false}
+          numberOfLines={open ? undefined : lines}
+          style={styles.num}
+        >
           {body}
         </Text>
       </View>

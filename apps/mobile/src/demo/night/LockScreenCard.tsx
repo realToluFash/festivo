@@ -51,9 +51,12 @@ export function RunCardView({
   if (surface !== 'shade' && surface !== 'shadeOpen') {
     return (
       <IosBanner
+        key={surface}
         title={card.title}
         age={age}
         body={card.lines.join('\n')}
+        lines={card.lines.length}
+        startOpen={surface === 'held'}
         onPress={() => onPress(card)}
         accessibilityLabel={card.spoken}
         accessibilityHint={hint}
