@@ -3,7 +3,7 @@ appId: host.exp.Exponent
 ---
 - openLink: ${METRO_URL}/--/settings/sign-in-rules
 - extendedWaitUntil:
-    visible: '.*27.*'
+    visible: '.*Turn it on by.*'
     timeout: 30000
 - waitForAnimationToEnd:
     timeout: 8000
