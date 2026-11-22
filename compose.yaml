@@ -82,7 +82,7 @@ services:
       EVENT_STATES_FILE: /event-states.json
       QUIET_HOURS_FILE: /quiet-hours.json
       GUEST_LANGUAGE_FILE: /guest-language.json
-      ADDRESS_ENDPOINT: ${ADDRESS_ENDPOINT}
+      ADDRESS_ENDPOINT: ${ADDRESS_ENDPOINT:-http://smocker:8080/nominatim}
       ADDRESS_USER_AGENT: ${ADDRESS_USER_AGENT}
       STORAGE_ENDPOINT: ${STORAGE_ENDPOINT}
       STORAGE_PUBLIC_ENDPOINT: ${STORAGE_PUBLIC_ENDPOINT}
@@ -379,7 +379,7 @@ services:
       retries: 10
     restart: unless-stopped
 
-  # Loads the SMS mock definitions, then exits. `docker compose up smocker-init`
+  # Loads the provider mock definitions, then exits. `docker compose up smocker-init`
   # re-loads them after editing infra/smocker/mocks.yml.
   smocker-init:
     image: curlimages/curl:8.11.0
@@ -393,7 +393,7 @@ services:
       - -c
       - 'curl -fsS -XPOST --header "Content-Type: application/x-yaml"
         --data-binary "@/mocks/mocks.yml"
-        "http://smocker:8081/mocks?reset=true" && echo "SMS mocks loaded"'
+        "http://smocker:8081/mocks?reset=true" && echo "Mocks loaded"'
     restart: 'no'
 
   oidc:

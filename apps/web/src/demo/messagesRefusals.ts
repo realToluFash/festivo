@@ -29,7 +29,7 @@ export function isRefusalState(state: string | null): state is RefusalState {
 export const CHOSE_NOBODY: Audience = { kind: 'who', conditions: [], pick: 'chosen' };
 
 export function choseNobody(to: Audience): boolean {
-  return to.kind === 'who' && to.pick === 'chosen' && to.conditions.length === 0;
+  return to.kind === 'who' && to.pick === 'chosen' && (to.chosen ?? []).length === 0;
 }
 
 /** Counted as the API counts it: characters, not UTF-16 units, with the ends trimmed. */
