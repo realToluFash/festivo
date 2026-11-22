@@ -5861,7 +5861,7 @@
     "skipped": "Skipped",
     "none": "Not chosen",
     "theRoom": "The room",
-    "noSkip": "This course can’t be skipped.",
+    "noSkip": "This course cannot be skipped.",
     "perPick": "Options are counted per pick, so they add up to the dish, not to the room.",
     "asksNothing": "Guests are asked nothing on this course. Everyone coming gets {{dish}}, except the people you give a children’s variant and anyone it rules out, who wait under Needs the host.",
     "chooseWho": "Choose who gets it",
@@ -5901,7 +5901,7 @@
     "overrideWhoBody": "{{lines}} If a record is out of date, it is saved with your name and the time you confirmed it.",
     "leaveOut": "Leave them out",
     "giveAnyway": "Give it anyway",
-    "refused": "You can’t choose for guests on this event any more: your role no longer has Guests manage. Nothing was saved.",
+    "refused": "You cannot choose for guests on this event any more: your role no longer has Guests manage. Nothing was saved.",
     "savedFor": "{{course}} chosen for {{name}}: {{what}}.",
     "savedOverride": "Recorded as your pick for {{name}}, despite the record: {{dish}} contains {{allergens}}.",
     "whoTitle": "Choose who gets {{variant}}",
@@ -5917,7 +5917,7 @@
     "menuPicks_other": "{{count, number}} picks · {{share, number}}% of the room",
     "summaryHost": "Needs the host · {{count, number}}",
     "summaryWaiting": "Who hasn’t picked · {{count, number}}",
-    "stillChoose": "You still can choose for any guest.",
+    "stillChoose": "You can still choose for any guest.",
     "percent": "{{n, number}}%",
     "whoHasntAria": "Who hasn’t picked {{course}}"
   }

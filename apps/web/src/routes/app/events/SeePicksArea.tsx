@@ -25,7 +25,6 @@ import {
   against,
   clockOf,
   dishRuledOut,
-  firstName,
   hostCount,
   menuCourseOf,
   pickName,
@@ -56,12 +55,16 @@ interface Said {
 }
 
 function useAllergens(): (codes: readonly string[]) => string {
-  const { t, i18n } = useTranslation();
+  const { t } = useTranslation();
+  const list = useList();
 
-  return (codes) =>
-    listFormat(i18n.language, { type: 'conjunction' }).format(
-      codes.map((code) => t(`guestNeeds.allergen.${code}`)),
-    );
+  return (codes) => list(codes.map((code) => t(`guestNeeds.allergen.${code}`)));
+}
+
+function useList(): (items: readonly string[]) => string {
+  const { i18n } = useTranslation();
+
+  return (items) => listFormat(i18n.language, { type: 'conjunction' }).format(items);
 }
 
 export function SeePicksArea({ event }: { event: OrganisationEvent }) {
@@ -223,6 +226,7 @@ function Picks({
 }) {
   const { t } = useTranslation();
   const allergens = useAllergens();
+  const list = useList();
   const [opened, setOpened] = useState<Opened | null>(null);
   const [said, setSaid] = useState<Said | null>(null);
   const manage = picks.canChoose;
@@ -425,7 +429,7 @@ function Picks({
                         <span className="pk-state">
                           <DashedCircle />
                           {t('seePicks.notChosenOn', {
-                            courses: person.courses.map(courseName).join(', '),
+                            courses: list(person.courses.map(courseName)),
                           })}
                         </span>
                       </div>
@@ -680,7 +684,7 @@ function ChooseFor({
 
   const course = courses[at];
   if (course == null) return null;
-  const first = firstName(person.name);
+  const who = person.name;
   const dish = course.dishes.find((one) => one.id === choice.dishId) ?? null;
   const questions = dish?.choices.filter((one) => !one.draft) ?? [];
   const saveLabel = at + 1 < courses.length ? t('seePicks.saveNext') : t('seePicks.save');
@@ -693,17 +697,17 @@ function ChooseFor({
   const save = async (confirmed: boolean) => {
     if (choice.dishId == null)
       return fail(
-        t('seePicks.blank', { course: course.name.toLocaleLowerCase(), name: first }),
+        t('seePicks.blank', { course: course.name.toLocaleLowerCase(), name: who }),
         'pk-for-dish',
       );
     if (dish != null && dish.variants.length > 0 && choice.variantId == null)
-      return fail(t('seePicks.blankWay', { dish: dish.name, name: first }), 'pk-for-way');
+      return fail(t('seePicks.blankWay', { dish: dish.name, name: who }), 'pk-for-way');
     const unanswered = questions.find(
       (one) => one.required && !one.options.some((option) => choice.optionIds.includes(option.id)),
     );
     if (unanswered != null)
       return fail(
-        t('seePicks.blankOption', { question: unanswered.question, name: first }),
+        t('seePicks.blankOption', { question: unanswered.question, name: who }),
         'pk-for-option',
       );
     const ruled =
@@ -732,9 +736,9 @@ function ChooseFor({
         dish == null ? t('seePicks.kitchen') : pickName(dish, choice.variantId, choice.optionIds);
       onSaved(
         next,
-        t('seePicks.savedFor', { course: course.name, name: first, what }),
+        t('seePicks.savedFor', { course: course.name, name: who, what }),
         ruled.length > 0
-          ? t('seePicks.savedOverride', { name: first, dish: what, allergens: allergens(ruled) })
+          ? t('seePicks.savedOverride', { name: who, dish: what, allergens: allergens(ruled) })
           : null,
       );
       if (at + 1 < courses.length) {
@@ -793,7 +797,7 @@ function ChooseFor({
                     label={one.name}
                     checked={choice.dishId === one.id}
                     ruled={dishRuledOut(one, person)}
-                    first={first}
+                    who={who}
                     onPick={() => pickDish(one.id)}
                   />
                 ))}
@@ -803,7 +807,7 @@ function ChooseFor({
                   label={t('seePicks.kitchenChoose')}
                   checked={choice.dishId === 'kitchen'}
                   ruled={[]}
-                  first={first}
+                  who={who}
                   onPick={() => pickDish('kitchen')}
                 />
               </div>
@@ -821,7 +825,7 @@ function ChooseFor({
                       childrenOnly={variant.for === 'children'}
                       checked={choice.variantId === variant.id}
                       ruled={against(variant.allergens, person.allergens)}
-                      first={first}
+                      who={who}
                       onPick={() => {
                         setChoice({ ...choice, variantId: variant.id });
                         setError(null);
@@ -843,7 +847,7 @@ function ChooseFor({
                       label={option.name}
                       checked={choice.optionIds.includes(option.id)}
                       ruled={against(option.allergens, person.allergens)}
-                      first={first}
+                      who={who}
                       onPick={() => {
                         setChoice({
                           ...choice,
@@ -895,11 +899,11 @@ function ChooseFor({
       </div>
       {asking != null && dish != null && (
         <Override
-          title={t('seePicks.overrideTitle', { name: first, allergens: allergens(asking) })}
+          title={t('seePicks.overrideTitle', { name: who, allergens: allergens(asking) })}
           body={t('seePicks.overrideBody', {
             dish: pickName(dish, choice.variantId, choice.optionIds),
             allergens: allergens(asking),
-            name: first,
+            name: who,
           })}
           keep={t('seePicks.chooseAnother')}
           go={t('seePicks.pickAnyway')}
@@ -920,7 +924,7 @@ function DishOption({
   label,
   checked,
   ruled,
-  first,
+  who,
   childrenOnly = false,
   onPick,
 }: {
@@ -929,7 +933,7 @@ function DishOption({
   label: string;
   checked: boolean;
   ruled: readonly string[];
-  first: string;
+  who: string;
   childrenOnly?: boolean;
   onPick: () => void;
 }) {
@@ -958,7 +962,7 @@ function DishOption({
               <Triangle />
               {t('seePicks.allergyMark')}
             </span>
-            {t('seePicks.ruledOut', { allergens: allergens(ruled), name: first })}
+            {t('seePicks.ruledOut', { allergens: allergens(ruled), name: who })}
           </span>
         )}
       </span>
@@ -1033,6 +1037,7 @@ function ChooseWho({
 }) {
   const { t } = useTranslation();
   const allergens = useAllergens();
+  const list = useList();
   const people = picks.people ?? [];
   const holders = row.holders ?? [];
   const [ticked, setTicked] = useState<ReadonlySet<string>>(() => new Set(holders));
@@ -1074,7 +1079,7 @@ function ChooseWho({
         next,
         t('seePicks.whoSaved', { variant: row.name, dish: dishName, count: ticked.size }),
         ruled.length > 0
-          ? t('seePicks.whoOverride', { names: ruled.map((one) => one.name).join(', ') })
+          ? t('seePicks.whoOverride', { names: list(ruled.map((one) => one.name)) })
           : null,
       );
       onClose();
@@ -1156,7 +1161,7 @@ function ChooseWho({
                                 </span>
                                 {t('seePicks.ruledOutWho', {
                                   allergens: allergens(ruled),
-                                  name: firstName(person.name),
+                                  name: person.name,
                                 })}
                               </span>
                             )}
@@ -1204,7 +1209,7 @@ function ChooseWho({
       {asking != null && (
         <Override
           title={t('seePicks.overrideWhoTitle', {
-            names: asking.map((one) => firstName(one.name)).join(', '),
+            names: list(asking.map((one) => one.name)),
             variant: row.name,
           })}
           body={t('seePicks.overrideWhoBody', {
@@ -1213,7 +1218,7 @@ function ChooseWho({
                 t('seePicks.overrideWhoLine', {
                   variant: row.name,
                   allergens: allergens(ruledFor(one)),
-                  name: firstName(one.name),
+                  name: one.name,
                 }),
               )
               .join(' '),

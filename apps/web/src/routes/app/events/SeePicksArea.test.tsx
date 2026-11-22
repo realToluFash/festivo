@@ -243,7 +243,7 @@ describe('See picks (sc-3909)', () => {
     const dialog = screen.getByRole('dialog', { name: 'Choosing for Kwame Mensah' });
     fireEvent.click(within(dialog).getByRole('button', { name: 'Save' }));
     expect(
-      within(dialog).getByText('Choose main for Kwame, or let the kitchen choose.'),
+      within(dialog).getByText('Choose main for Kwame Mensah, or let the kitchen choose.'),
     ).toBeDefined();
 
     fireEvent.click(within(dialog).getByRole('radio', { name: /Jollof rice/ }));
@@ -264,7 +264,7 @@ describe('See picks (sc-3909)', () => {
         anyway: true,
       }),
     );
-    expect(await screen.findByText('Main chosen for Kwame: Jollof rice.')).toBeDefined();
+    expect(await screen.findByText('Main chosen for Kwame Mensah: Jollof rice.')).toBeDefined();
   });
 
   it('says nothing was saved when the role lost Guests manage', async () => {
@@ -389,7 +389,7 @@ describe('The picks on the event’s Menu (sc-3909)', () => {
     const card = screen.getByRole('complementary', { name: 'Picks' });
     expect(within(card).getByText('2 of 4 picks in · 50% of the room')).toBeDefined();
     expect(within(card).getByText('Who hasn’t picked · 2')).toBeDefined();
-    expect(screen.getByText(/You still can choose for any guest\./)).toBeDefined();
+    expect(screen.getByText(/You can still choose for any guest\./)).toBeDefined();
     expect(screen.getByRole('link', { name: 'Who hasn’t picked Main' }).getAttribute('href')).toBe(
       '/app/events/ev_1/menu/picks?course=c_main',
     );
@@ -405,7 +405,7 @@ describe('The picks on the event’s Menu (sc-3909)', () => {
     );
 
     expect(await screen.findByText('1 pick · 25% of the room')).toBeDefined();
-    expect(screen.queryByText(/You still can choose/)).toBeNull();
+    expect(screen.queryByText(/You can still choose/)).toBeNull();
     expect(screen.queryByRole('link', { name: 'Who hasn’t picked Main' })).toBeNull();
   });
 });
