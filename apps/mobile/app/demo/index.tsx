@@ -1864,6 +1864,11 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
         href: '/demo/events/evt-wed-4?state=hosts',
       },
       {
+        title: 'Hosted by · no hosts yet',
+        what: 'A draft, before its first host',
+        href: '/demo/events/evt-draft-4?state=hosts',
+      },
+      {
         title: 'Hosted by · a name twice',
         what: 'The second, in red',
         href: '/demo/events/evt-wed-4?state=hostsDuplicate',
