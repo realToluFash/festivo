@@ -379,6 +379,24 @@ export function focusChecked(field: RefObject<TextInputInstance | null>): void {
   input.focus();
 }
 
+/** Android binds the keyboard to a field only after the field's first layout, and shows no keys for a field focused before that. */
+const NEW_FIELD_BOUND_MS = 150;
+
+/** To a field drawn in this commit, with the keyboard and the screen reader on it. Returns what cancels the moves still to come. */
+export function focusNewField(input: TextInputInstance | null): () => void {
+  if (input == null) return () => {};
+  focusChecked({ current: input });
+  if (Platform.OS !== 'android') return () => {};
+  const bound = setTimeout(() => {
+    if (!input.isFocused()) return;
+    // TalkBack does not follow input focus, and left on the button that added the row it went to the top of the screen (qa2 #83712).
+    moveScreenReaderFocus(input);
+    if (!Keyboard.isVisible()) raiseKeysOn(input);
+  }, NEW_FIELD_BOUND_MS);
+
+  return () => clearTimeout(bound);
+}
+
 /** At a submit the client checks passed: keys hidden over a focused field stay hidden while it runs and after it. */
 export function keysStayDown(): void {
   // A header tap on an iPhone hides the keys and leaves the field focused, and iOS raises them again as the held field changes.

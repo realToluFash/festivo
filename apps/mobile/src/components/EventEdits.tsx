@@ -40,7 +40,7 @@ import { EventMesh } from './EventMesh.tsx';
 import { currencyMatches } from './currencyMatches.ts';
 import { EventNotice } from './EventNotice.tsx';
 import { SearchField } from './EventsSearch.tsx';
-import { TextField, type TextFieldProps, focusChecked } from './Field.tsx';
+import { TextField, type TextFieldProps, focusNewField } from './Field.tsx';
 import { Glyph } from './Glyph.tsx';
 import { BoxField, MomentBox, type Picking, PickerLayer } from './MomentPick.tsx';
 import { RadioMark } from './RadioMark.tsx';
@@ -732,10 +732,7 @@ export function HostRows({
     if (next == null) return;
 
     const { to, keys } = next;
-    if (keys && to !== 'add') {
-      focusChecked({ current: inputs.current.get(to.key) ?? null });
-      return;
-    }
+    if (keys && to !== 'add') return focusNewField(inputs.current.get(to.key) ?? null);
     moveScreenReaderFocus(
       hostTarget<ScreenReaderTarget>(to, {
         names: inputs.current,
