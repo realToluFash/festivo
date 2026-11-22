@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\Menu\Pick;
 
+use App\Domain\Guest\Headcount\HeadcountCalculator;
 use App\Domain\Menu\Interfaces\MenuPicksInterface;
 use App\Entity\Guest;
 use App\Entity\MealAnswer;
@@ -11,6 +12,7 @@ use App\Entity\MenuChoiceOption;
 use App\Entity\MenuDish;
 use App\Entity\MenuDishChoice;
 use App\Entity\MenuDishVariant;
+use App\Enum\GuestStanding;
 use App\Enum\MealAnswerKind;
 use App\Repository\MealAnswerRepository;
 use App\Repository\MenuChoiceOptionRepository;
@@ -29,13 +31,13 @@ final readonly class StoredMenuPicks implements MenuPicksInterface
 
     public function pickersOf(MenuDish $dish): array
     {
-        return self::people($this->mealAnswerRepository->findNaming($dish));
+        return self::people($this->naming($dish));
     }
 
     public function pickersOfVariant(MenuDishVariant $variant): array
     {
         return self::people(Vec\filter(
-            $this->mealAnswerRepository->findNaming($variant->getDish()),
+            $this->naming($variant->getDish()),
             static fn (MealAnswer $answer): bool => $answer->getVariant()?->getId()->equals($variant->getId()) ?? false,
         ));
     }
@@ -45,7 +47,7 @@ final readonly class StoredMenuPicks implements MenuPicksInterface
         $id = $option->getId()->toRfc4122();
 
         return self::people(Vec\filter(
-            $this->mealAnswerRepository->findNaming($option->getChoice()->getDish()),
+            $this->naming($option->getChoice()->getDish()),
             static fn (MealAnswer $answer): bool => Iter\contains($answer->getOptions(), $id),
         ));
     }
@@ -59,10 +61,25 @@ final readonly class StoredMenuPicks implements MenuPicksInterface
         $ids = Vec\map($this->menuChoiceOptionRepository->findOnChoice($choice), static fn (MenuChoiceOption $option): string => $option->getId()->toRfc4122());
 
         return Iter\count(Vec\filter(
-            $this->mealAnswerRepository->findNaming($choice->getDish()),
+            $this->naming($choice->getDish()),
             static fn (MealAnswer $answer): bool => MealAnswerKind::Defaulted !== $answer->getKind()
                 && !Iter\any($answer->getOptions(), static fn (string $picked): bool => Iter\contains($ids, $picked)),
         ));
+    }
+
+    /** @return list<MealAnswer> the answers naming the dish from people the kitchen will cook for: not removed, and coming */
+    private function naming(MenuDish $dish): array
+    {
+        return Vec\filter(
+            $this->mealAnswerRepository->findNaming($dish),
+            static function (MealAnswer $answer): bool {
+                $person = $answer->getPerson();
+
+                return !$person->isRemoved()
+                    && !($person->getHost()?->isRemoved() ?? false)
+                    && GuestStanding::Accepted === HeadcountCalculator::standing($person);
+            },
+        );
     }
 
     /**

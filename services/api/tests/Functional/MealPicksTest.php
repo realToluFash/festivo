@@ -235,6 +235,78 @@ final class MealPicksTest extends ApiTestCase
     }
 
     #[Test]
+    public function aStoredAnswerIsRefusedOnTheMenuThroughItsRoutesAndCountedInKitchenPrep(): void
+    {
+        $chicken = new MenuDishVariant($this->jollof, 'Chicken', false, ['celery'], [], null, 0);
+        $fish = new MenuDishVariant($this->jollof, 'Fish', false, ['fish'], [], null, 1);
+        $side = new MenuDishChoice($this->jollof, 'And a side?', 1, true, 0);
+        $plantain = new MenuChoiceOption($side, 'Plantain', [], 0);
+        $moimoi = new MenuChoiceOption($side, 'Moi moi', ['eggs'], 1);
+        Iter\apply([$chicken, $fish, $side, $plantain, $moimoi], static fn (object $row) => self::em()->persist($row));
+        self::em()->flush();
+        $token = $this->coming([], []);
+        $this->meals($token, [['person' => $this->guestId(), 'course' => $this->id($this->main), 'answer' => 'chosen', 'dish' => $this->id($this->jollof), 'variant' => $chicken->getId()->toRfc4122(), 'options' => [$plantain->getId()->toRfc4122()]]]);
+        self::assertSame(200, $this->statusCode(), Json\encode($this->last()));
+
+        $this->as('DELETE', $this->menu('/dishes/' . $this->id($this->jollof)));
+        self::assertSame(409, $this->statusCode(), 'sc-3902: Remove… on a picked dish');
+        self::assertSame(ErrorCode::MenuDishPicked->type(), $this->last()['type'] ?? null);
+
+        $this->as('DELETE', $this->menu('/variants/' . $chicken->getId()->toRfc4122()));
+        self::assertSame(409, $this->statusCode(), 'sc-3903: Remove… on a picked variant');
+        self::assertSame(ErrorCode::VariantPicked->type(), $this->last()['type'] ?? null);
+
+        $this->as('DELETE', $this->menu('/choices/' . $side->getId()->toRfc4122()));
+        self::assertSame(409, $this->statusCode(), 'sc-3904: removing an answered choice');
+        self::assertSame(ErrorCode::ChoiceAnswered->type(), $this->last()['type'] ?? null);
+
+        self::assertSame(['Plantain' => 1, 'Moi moi' => 0], $this->kitchenPrep());
+    }
+
+    #[Test]
+    public function aRemovedOrNotComingPersonsPickIsNotCountedOnTheMenu(): void
+    {
+        $token = $this->coming([], []);
+        $guest = $this->guestId();
+        $this->meals($token, [['person' => $guest, 'course' => $this->id($this->main), 'answer' => 'chosen', 'dish' => $this->id($this->jollof)]]);
+        self::assertTrue($this->jollofPicked());
+
+        $person = self::em()->find(Guest::class, Uuid::fromString($guest)) ?? self::fail('no guest');
+        $person->remove(new DateTimeImmutable('2026-10-04T09:00:00+00:00'), null);
+        self::em()->flush();
+        self::assertFalse($this->jollofPicked(), 'removed');
+
+        self::service(Connection::class)->executeStatement('UPDATE guests SET removed_at = NULL WHERE id = :id', ['id' => $guest]);
+        self::em()->clear();
+        self::assertTrue($this->jollofPicked(), 'restored');
+
+        $this->anonymous('/api/guest-links/reply', ['token' => $token, 'answer' => 'notComing']);
+        self::assertSame(200, $this->statusCode(), Json\encode($this->last()));
+        self::assertFalse($this->jollofPicked(), 'not coming');
+    }
+
+    #[Test]
+    public function aPickALaterAllergyRulesOutOnAClosedCourseServesNeedsTheHostAndRepeatingItIsNotRefused(): void
+    {
+        $token = $this->coming([], []);
+        $guest = $this->guestId();
+        $pick = ['person' => $guest, 'course' => $this->id($this->main), 'answer' => 'chosen', 'dish' => $this->id($this->egusi)];
+        $this->meals($token, [$pick]);
+        self::mockTime(new DateTimeImmutable('2030-11-14T16:00:00+00:00'));
+
+        $this->hostRecords($guest, ['milk']);
+
+        self::assertSame('needsHost', $this->answerOfOpened($token, $guest)['answer'] ?? null);
+        self::assertSame($this->id($this->egusi), $this->answerOf($guest)['dish'] ?? null, 'the guest still sees the pick');
+
+        $this->meals($token, [$pick]);
+        self::assertSame(200, $this->statusCode(), 'an unchanged pick on a closed course is let through: ' . Json\encode($this->last()));
+
+        $this->hostRecords($guest, []);
+        self::assertSame('chosen', $this->answerOfOpened($token, $guest)['answer'] ?? null);
+    }
+
+    #[Test]
     public function aPersonNotWithTheGuestIsRefused(): void
     {
         $token = $this->coming([], []);
@@ -364,6 +436,55 @@ final class MealPicksTest extends ApiTestCase
         self::assertSame(200, $this->statusCode(), Json\encode($this->last()));
 
         return $id;
+    }
+
+    private function menu(string $path = ''): string
+    {
+        return '/api/events/' . $this->eventId . '/menu' . $path;
+    }
+
+    private function jollofPicked(): bool
+    {
+        self::em()->clear();
+        $this->as('GET', $this->menu());
+        self::assertSame(200, $this->statusCode(), Json\encode($this->last()));
+
+        foreach ($this->menuCourses() as $course) {
+            foreach (Type\vec(Type\shape(['id' => Type\string(), 'picked' => Type\bool()], true))->coerce($course['dishes'] ?? []) as $dish) {
+                if ($dish['id'] === $this->id($this->jollof)) {
+                    return $dish['picked'];
+                }
+            }
+        }
+
+        self::fail('no jollof on the menu');
+    }
+
+    /** @return array<string, int> each option's Kitchen prep count, by name */
+    private function kitchenPrep(): array
+    {
+        $this->as('GET', $this->menu());
+        $counts = [];
+
+        foreach ($this->menuCourses() as $course) {
+            foreach (Type\vec(Type\shape(['choices' => Type\vec(Type\shape(['options' => Type\vec(Type\shape(['name' => Type\string(), 'picks' => Type\int()], true))], true))], true))->coerce($course['dishes'] ?? []) as $dish) {
+                foreach ($dish['choices'] as $choice) {
+                    foreach ($choice['options'] as $option) {
+                        $counts[$option['name']] = $option['picks'];
+                    }
+                }
+            }
+        }
+
+        return $counts;
+    }
+
+    /** @return list<array<string, mixed>> */
+    private function menuCourses(): array
+    {
+        $body = $this->last();
+
+        return Type\vec(Type\dict(Type\string(), Type\mixed()))->coerce(Type\mixed_dict()->coerce($body['menu'] ?? $body)['courses'] ?? null);
     }
 
     private function guests(): string
