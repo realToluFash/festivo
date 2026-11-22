@@ -168,9 +168,10 @@ export function plateAllergens(dish: MealDish, plate: Plate): string[] | null {
   return partsAllergens(plateParts(dish, plate));
 }
 
-/** The dish card once its dish is picked: the way (or the dish) and each picked option, each with its own allergens. */
+/** The dish card once its dish is picked: the way (or the dish) and each picked option, each with its own allergens. A dish with no ways and no choices keeps its own Contains line. */
 export function cardParts(dish: MealDish, plate: Plate | null): CardPart[] | null {
   if (plate?.kind !== 'chosen' || plate.dish !== dish.id) return null;
+  if (dish.variants.length < 2 && dish.choices.length === 0) return null;
 
   return plateParts(dish, plate);
 }
