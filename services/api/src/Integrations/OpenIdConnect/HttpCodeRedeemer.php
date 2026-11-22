@@ -24,7 +24,6 @@ final readonly class HttpCodeRedeemer implements CodeRedeemerInterface
         private string $googleWebClientSecret,
         private string $appleRedemptionEndpoint,
         private string $appleWebClientId,
-        #[SensitiveParameter]
         private AppleClientSecret $appleClientSecret,
     ) {
     }

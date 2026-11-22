@@ -97,7 +97,25 @@ final class AppleClientSecretTest extends TestCase
         $logger = new BufferingLogger();
 
         self::assertNull(self::secret('', logger: $logger)->issue());
-        self::assertSame('error', $logger->cleanLogs()[0][0]);
+
+        $logs = $logger->cleanLogs();
+        self::assertSame('error', $logs[0][0]);
+        self::assertSame('OAUTH_APPLE_WEB_PRIVATE_KEY', $logs[0][2]['settings'] ?? null);
+    }
+
+    #[Test]
+    public function anEmptySettingIsLoggedByNameAndNotBlamedOnTheKey(): void
+    {
+        [$private] = self::keyPair('prime256v1');
+        $logger = new BufferingLogger();
+        $secret = new AppleClientSecret($private, 'KEY123', '', 'soirely-web.test', new MockClock(self::NOW), $logger);
+
+        self::assertNull($secret->issue());
+
+        $logs = $logger->cleanLogs();
+        self::assertCount(1, $logs);
+        self::assertSame('OAUTH_APPLE_TEAM_ID', $logs[0][2]['settings'] ?? null);
+        self::assertStringNotContainsString('private key', $logs[0][1]);
     }
 
     #[Test]
@@ -167,7 +185,7 @@ final class AppleClientSecretTest extends TestCase
         return new AppleClientSecret($privateKey, 'KEY123', 'TEAM123', 'soirely-web.test', $clock ?? new MockClock(self::NOW), $logger ?? new NullLogger());
     }
 
-    private static function redeemer(MockHttpClient $client, #[SensitiveParameter] AppleClientSecret $secret): HttpCodeRedeemer
+    private static function redeemer(MockHttpClient $client, AppleClientSecret $secret): HttpCodeRedeemer
     {
         return new HttpCodeRedeemer($client, 'https://google.test/token', 'google-web', self::GOOGLE_WEB_CLIENT_CREDENTIAL, 'https://appleid.apple.test/token', 'soirely-web.test', $secret);
     }
