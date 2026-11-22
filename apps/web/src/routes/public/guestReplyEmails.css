@@ -148,6 +148,16 @@
 }
 
 @media (width <= 40rem) {
+  /* The demo's phone frame, on this page alone: the 60 bar, and the column 32 under it. */
+  .auth-bare:has(.unsub) .auth-header {
+    min-height: var(--sizeTopBar);
+    padding: 0 var(--space3xl);
+  }
+
+  .auth-bare:has(.unsub) .auth-main {
+    padding: var(--space5xl) var(--space3xl) var(--space3xl);
+  }
+
   .unsub-actions {
     flex-direction: column;
     align-items: stretch;
@@ -159,5 +169,11 @@
 
   .unsub-failed {
     flex-basis: auto;
+  }
+}
+
+@media (width < 22.5rem) {
+  .auth-bare:has(.unsub) :is(.auth-header, .auth-main) {
+    padding-inline: var(--spaceXl);
   }
 }
