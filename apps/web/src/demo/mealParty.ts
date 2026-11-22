@@ -7,7 +7,7 @@ import { SAMPLE } from './rules.ts';
 import type { DemoLink } from './settings.ts';
 
 /** sc-3907's meal step for each person coming (board MealStep, page e32): person by person, course by course, then Check and send. */
-export type Who = 'me' | 'chidi';
+export type Who = 'me' | 'chidi' | 'isabela' | 'kemi' | 'tom';
 export type CourseKey = 'starter' | 'main' | 'dessert';
 export type RowKey = `${Who}|${CourseKey}`;
 
@@ -47,6 +47,9 @@ export const rowKey = (who: Who, course: CourseKey): RowKey => `${who}|${course}
 export const PARTY: readonly PartyPerson[] = [
   { key: 'me', name: 'Maria Fernanda Albuquerque Santos', you: true },
   { key: 'chidi', name: 'Chidi Okonkwo-Williams', you: false },
+  { key: 'isabela', name: 'Isabela Cristina Alves Ribeiro', you: false },
+  { key: 'kemi', name: 'Kemi', you: false },
+  { key: 'tom', name: 'Tom', you: false },
 ];
 
 export const HOSTS = 'Amara and Tomi';
@@ -188,7 +191,8 @@ export const PW = {
   yourAnswer: 'Your answer',
   coming: 'Coming',
   whoComing: 'Who’s coming',
-  party: (names: readonly string[]) => names.join(' and '),
+  party: (names: readonly string[]) =>
+    names.length < 3 ? names.join(' and ') : `${names.slice(0, -1).join(', ')} and ${names.at(-1)}`,
   kitchenRow: 'For the kitchen',
   kitchenNothing: '[Nothing for the kitchen.]',
   kitchenWho: (person: PartyPerson) => (person.you ? 'You' : person.name),
@@ -222,6 +226,16 @@ export const PW = {
   preview: 'Preview. Nothing is saved.',
   closePreview: 'Close preview',
   again: 'Start this state again',
+  sameAs: (from: PartyPerson) => (from.you ? 'Same as mine' : `Same as ${from.name}`),
+  sameAsName: (from: PartyPerson, to: PartyPerson) =>
+    `${from.you ? 'Same as mine' : `Same as ${from.name}`}, for ${to.you ? 'you' : to.name}`,
+  cantCopy: (from: PartyPerson, course: string, to: PartyPerson) =>
+    `${from.you ? 'Your' : `${from.name}’s`} ${lower(course)} can’t be picked for ${to.you ? 'you' : to.name}.`,
+  copiedFrom: (from: PartyPerson) =>
+    from.you
+      ? 'Copied from your picks. Change anything that should be different.'
+      : `Copied from ${from.name}. Change anything that should be different.`,
+  continue: 'Continue',
 } as const;
 
 export type Ruled = { kind: 'allergen'; codes: DishAllergen[] } | { kind: 'notStated' } | null;
@@ -253,7 +267,7 @@ export interface MealScreen {
   total: number;
 }
 
-export const EVERYONE: readonly Who[] = PARTY.map((one) => one.key);
+export const EVERYONE: readonly Who[] = ['me', 'chidi'];
 
 export const partyOf = (people: readonly Who[]): readonly PartyPerson[] =>
   PARTY.filter((one) => people.includes(one.key));
@@ -346,7 +360,56 @@ export const sameAnswer = (a: PartyAnswer | undefined, b: PartyAnswer | undefine
 export const sameAllergies = (a: readonly Allergen[], b: readonly Allergen[]): boolean =>
   a.length === b.length && a.every((one) => b.includes(one));
 
-export const NO_ALLERGIES: Allergies = { me: [], chidi: [] };
+export const NO_ALLERGIES: Allergies = { me: [], chidi: [], isabela: [], kemi: [], tom: [] };
+
+/** sc-17283: whether one person's answer on a course can be copied to another, under sc-3907's allergy rule. */
+export function copyable(
+  answer: PartyAnswer | undefined,
+  course: PartyCourse,
+  allergies: readonly Allergen[],
+): boolean {
+  if (answer == null) return false;
+  if (answer.kind === 'kitchen') return !nothingSafe(course, allergies);
+  if (answer.kind === 'skipped') return course.skip;
+  if (answer.kind === 'host') return false;
+  const picked = dishOf(course.key, answer.dishId);
+
+  return picked != null && ruledOut(picked, allergies) == null;
+}
+
+export interface Copied {
+  answers: Answers;
+  /** The courses not copied, in course order: asked straight after the press. */
+  asked: CourseKey[];
+}
+
+/** Same as {name}: every open course of `to` takes `from`'s answer where it can be picked, and is cleared where it can't. */
+export function copyAnswers(
+  answers: Answers,
+  from: Who,
+  to: Who,
+  allergies: readonly Allergen[],
+  closed: (course: CourseKey) => boolean,
+): Copied {
+  const next: Partial<Record<RowKey, PartyAnswer>> = { ...answers };
+  const asked: CourseKey[] = [];
+  for (const course of COURSES) {
+    if (closed(course.key)) continue;
+    const source = answers[rowKey(from, course.key)];
+    const key = rowKey(to, course.key);
+    if (source != null && copyable(source, course, allergies)) {
+      next[key] =
+        source.kind === 'chosen'
+          ? { kind: 'chosen', dishId: source.dishId, by: 'guest' }
+          : { ...source };
+      continue;
+    }
+    delete next[key];
+    asked.push(course.key);
+  }
+
+  return { answers: next, asked };
+}
 
 export const ONE_CLOSE: PicksDates = { ...SAMPLE_PICKS };
 export const MAIN_FIRST: PicksDates = {
@@ -357,6 +420,12 @@ export const MAIN_FIRST: PicksDates = {
 
 export const oneDate = (dates: PicksDates): boolean =>
   new Set(COURSES.map((one) => closeOf(one.key, dates).on)).size === 1;
+
+export interface CopyMade {
+  who: Who;
+  from: Who;
+  asked: readonly CourseKey[];
+}
 
 export interface PartyStart {
   name: string;
@@ -376,7 +445,9 @@ export interface PartyStart {
   /** On coming back, what was saved before; a row differing from it is not sent yet. */
   saved: Answers;
   savedAdded: Allergies;
-  view: { kind: 'course'; at: number } | { kind: 'check' };
+  view: { kind: 'course'; at: number } | { kind: 'check' } | { kind: 'card' };
+  /** sc-17283: a Same as press already made, opening on a course it left unanswered or on the card. */
+  copy?: CopyMade;
   cleared: Cleared;
   pressed: boolean;
   dates: PicksDates;
@@ -399,8 +470,8 @@ function without(answers: Answers, ...keys: RowKey[]): Answers {
 
 const MINE: Answers = without(PICKED, 'chidi|starter', 'chidi|main', 'chidi|dessert');
 const HOST_MAIN: Answers = { ...PICKED, 'me|main': { kind: 'host' } };
-const FISH_CELERY: Allergies = { me: ['celery', 'fish'], chidi: [] };
-const MILK: Allergies = { me: [], chidi: ['milk'] };
+const FISH_CELERY: Allergies = { ...NO_ALLERGIES, me: ['celery', 'fish'] };
+const MILK: Allergies = { ...NO_ALLERGIES, chidi: ['milk'] };
 const COCONUT_DESSERT: Answers = {
   ...PICKED,
   'chidi|dessert': { kind: 'chosen', dishId: 'coconut', by: 'guest' },
@@ -451,7 +522,7 @@ export const PARTY_STATES = {
     start({
       name: 'A dish ruled out, and Allergens not stated',
       note: 'Chidi Okonkwo-Williams is allergic to peanuts and sesame: Canapé selection is dashed and greyed with the reason, Gizdodo states no allergens and gives its own reason, both out of the Tab order, and the host’s line shows once below.',
-      recorded: { me: [], chidi: ['peanuts', 'sesame'] },
+      recorded: { ...NO_ALLERGIES, chidi: ['peanuts', 'sesame'] },
       answers: MINE,
       view: at('chidi', 'starter'),
     }),
@@ -459,7 +530,7 @@ export const PARTY_STATES = {
     start({
       name: 'Nothing safe on a course',
       note: 'Chidi is allergic to celery and fish: every main is ruled out. The red-outlined box says the host will be in touch, there is no Let the kitchen choose, and Next records needs the host.',
-      recorded: { me: [], chidi: ['celery', 'fish'] },
+      recorded: { ...NO_ALLERGIES, chidi: ['celery', 'fish'] },
       answers: without(PICKED, 'chidi|main', 'chidi|dessert'),
       view: at('chidi', 'main'),
     }),
@@ -467,7 +538,7 @@ export const PARTY_STATES = {
     start({
       name: 'Nothing safe, on an optional course',
       note: 'Chidi is allergic to eggs: every dessert is ruled out. No dessert for me is the one answer left; Next without it records needs the host.',
-      recorded: { me: [], chidi: ['eggs'] },
+      recorded: { ...NO_ALLERGIES, chidi: ['eggs'] },
       answers: without(PICKED, 'chidi|dessert'),
       view: at('chidi', 'dessert'),
     }),
@@ -567,12 +638,136 @@ export const PARTY_STATES = {
     }),
 } satisfies Record<string, () => PartyStart>;
 
-export type PartyStateName = keyof typeof PARTY_STATES;
+const THREE: readonly Who[] = ['me', 'chidi', 'tom'];
+const FIVE: readonly Who[] = ['me', 'chidi', 'isabela', 'kemi', 'tom'];
+const TOM_MILK: Allergies = { ...NO_ALLERGIES, tom: ['milk'] };
+
+/** Earlier people's picks, as the guest made them before reaching the next person's first course. */
+const EARLIER_PICKS: Answers = {
+  'me|starter': { kind: 'chosen', dishId: 'gizdodo', by: 'guest' },
+  'me|main': { kind: 'kitchen' },
+  'me|dessert': { kind: 'skipped' },
+  'chidi|starter': { kind: 'chosen', dishId: 'pepper', by: 'guest' },
+  'chidi|main': { kind: 'chosen', dishId: 'egusi', by: 'guest' },
+  'chidi|dessert': { kind: 'skipped' },
+  'isabela|starter': { kind: 'chosen', dishId: 'pepper', by: 'guest' },
+  'isabela|main': { kind: 'chosen', dishId: 'croaker', by: 'guest' },
+  'isabela|dessert': { kind: 'chosen', dishId: 'coconut', by: 'guest' },
+  'kemi|starter': { kind: 'kitchen' },
+  'kemi|main': { kind: 'chosen', dishId: 'jollof', by: 'guest' },
+  'kemi|dessert': { kind: 'skipped' },
+};
+
+const UP_TO_CHIDI = without(
+  EARLIER_PICKS,
+  'isabela|starter',
+  'isabela|main',
+  'isabela|dessert',
+  'kemi|starter',
+  'kemi|main',
+  'kemi|dessert',
+);
+const ME_ONLY = without(UP_TO_CHIDI, 'chidi|starter', 'chidi|main', 'chidi|dessert');
+
+function copied(answers: Answers, from: Who, to: Who, allergies: Allergies): Answers {
+  return copyAnswers(
+    answers,
+    from,
+    to,
+    allergies[to],
+    (course) => closeOf(course, ONE_CLOSE).closed,
+  ).answers;
+}
+
+const TOM_FROM_CHIDI = copied(UP_TO_CHIDI, 'chidi', 'tom', TOM_MILK);
+
+const at3 = (who: Who, course: CourseKey) =>
+  ({ kind: 'course', at: screenAt(who, course, screensOf(THREE)) }) as const;
+
+export const SAME_AS_STATES = {
+  sameAsTwo: () =>
+    start({
+      name: 'Same as, two earlier',
+      note: 'You, Chidi Okonkwo-Williams and Tom, who is allergic to milk. Tom’s starter, reached by Next: Same as mine and Same as Chidi Okonkwo-Williams under the progress line, outside the dishes’ group. Same as Chidi copies his starter and dessert and asks his main (Pounded yam and egusi contains milk); Same as mine asks his starter (Gizdodo states no allergens) and copies the rest. Back from the card and from Tom’s main come back here with the buttons.',
+      people: THREE,
+      recorded: TOM_MILK,
+      answers: UP_TO_CHIDI,
+      view: at3('tom', 'starter'),
+    }),
+  sameAsWrap: () =>
+    start({
+      name: 'Same as, four earlier, 320 wide',
+      note: 'Narrow the window to 320: four earlier people, Isabela Cristina Alves Ribeiro’s 30-character name among them. The buttons share each row and wrap; a long label wraps inside its own button, never cut off.',
+      people: FIVE,
+      recorded: TOM_MILK,
+      answers: EARLIER_PICKS,
+      view: { kind: 'course', at: screenAt('tom', 'starter', screensOf(FIVE)) },
+    }),
+  partlyCopied: () =>
+    start({
+      name: 'Partly copied, from a name',
+      note: 'Same as Chidi Okonkwo-Williams pressed on Tom’s starter: his starter and dessert copied, his main cleared and asked, with “Chidi Okonkwo-Williams’s main can’t be picked for Tom.” as the group’s description. Next unanswered is refused. Answer it for the card.',
+      people: THREE,
+      recorded: TOM_MILK,
+      answers: TOM_FROM_CHIDI,
+      copy: { who: 'tom', from: 'chidi', asked: ['main'] },
+      view: at3('tom', 'main'),
+    }),
+  partlyCopiedYours: () =>
+    start({
+      name: 'Partly copied, from your picks',
+      note: 'Same as mine pressed on Tom’s starter: Gizdodo states no allergens, so his starter is asked straight after the press, with “Your starter can’t be picked for Tom.” and no Same as buttons. His main (chef’s choice) and dessert (skipped) are copied.',
+      people: THREE,
+      recorded: TOM_MILK,
+      answers: copied(UP_TO_CHIDI, 'me', 'tom', TOM_MILK),
+      copy: { who: 'tom', from: 'me', asked: ['starter'] },
+      view: at3('tom', 'starter'),
+    }),
+  copiedCard: () =>
+    start({
+      name: 'The copied card, from a name',
+      note: 'Tom’s card after Same as Chidi Okonkwo-Williams and Jollof rice for his main: For Tom is focused, the Copied from line, a row per course with Change. Change opens the course, and Next or Back there returns here. Back goes to Tom’s starter with Pepper soup selected; Continue goes to Check and send.',
+      people: THREE,
+      recorded: TOM_MILK,
+      answers: { ...TOM_FROM_CHIDI, 'tom|main': { kind: 'chosen', dishId: 'jollof', by: 'guest' } },
+      copy: { who: 'tom', from: 'chidi', asked: ['main'] },
+      view: { kind: 'card' },
+    }),
+  copiedCardYours: () =>
+    start({
+      name: 'The copied card, from your picks',
+      note: 'Chidi Okonkwo-Williams’s card after Same as mine: every course copied, so the press came straight here, “Copied from your picks.” Continue goes to Tom’s starter, which has both buttons.',
+      people: THREE,
+      recorded: TOM_MILK,
+      answers: copied(ME_ONLY, 'me', 'chidi', TOM_MILK),
+      copy: { who: 'chidi', from: 'me', asked: [] },
+      view: { kind: 'card' },
+    }),
+} satisfies Record<string, () => PartyStart>;
+
+const PREVIEW_STATES = {
+  previewSameAs: () =>
+    start({
+      name: 'Preview as guest, Same as',
+      note: 'In preview with a companion: Same as mine under the amber band copies within the preview, and Check and send’s button is Close preview. Nothing is saved.',
+      you: SAMPLE.name,
+      answers: {
+        'me|starter': { kind: 'chosen', dishId: 'pepper', by: 'guest' },
+        'me|main': { kind: 'kitchen' },
+        'me|dessert': { kind: 'skipped' },
+      },
+      view: at('chidi', 'starter'),
+    }),
+} satisfies Record<string, () => PartyStart>;
+
+const ALL_PARTY = { ...PARTY_STATES, ...SAME_AS_STATES, ...PREVIEW_STATES };
+
+export type PartyStateName = keyof typeof ALL_PARTY;
 
 export const isPartyState = (raw: string | null): raw is PartyStateName =>
-  raw != null && Object.hasOwn(PARTY_STATES, raw);
+  raw != null && Object.hasOwn(ALL_PARTY, raw);
 
-export const partyStart = (state: PartyStateName): PartyStart => PARTY_STATES[state]();
+export const partyStart = (state: PartyStateName): PartyStart => ALL_PARTY[state]();
 
 export const MENU_WITH_PREVIEW = coursesAt('menu');
 
@@ -582,7 +777,7 @@ const partyAt = (state: PartyStateName, preview = false) =>
 export const PARTY_PAGES: readonly { name: string; states: readonly DemoLink[] }[] = [
   {
     name: 'A meal for each person coming (sc-3907)',
-    states: (Object.keys(PARTY_STATES) as PartyStateName[])
+    states: (Object.keys(PARTY_STATES) as (keyof typeof PARTY_STATES)[])
       .filter((state) => state !== 'preview')
       .map((state) => ({
         to: partyAt(state),
@@ -596,6 +791,14 @@ export const PARTY_PAGES: readonly { name: string; states: readonly DemoLink[] }
       { to: partyAt('preview', true), name: 'Preview as guest, the host alone' },
       { to: partyAt('start', true), name: 'Preview, the first meal screen' },
       { to: partyAt('checkAndSend', true), name: 'Preview, Close preview in place of Send' },
+      { to: partyAt('previewSameAs', true), name: 'Preview, Same as (sc-17283)' },
     ],
+  },
+  {
+    name: 'Same as an earlier person (sc-17283)',
+    states: (Object.keys(SAME_AS_STATES) as (keyof typeof SAME_AS_STATES)[]).map((state) => ({
+      to: partyAt(state),
+      name: SAME_AS_STATES[state]().name,
+    })),
   },
 ];
