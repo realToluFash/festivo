@@ -57,6 +57,7 @@ import { TwoFactorAgain } from './public/TwoFactorAgain.tsx';
 import { TwoFactorSignIn } from './public/TwoFactorSignIn.tsx';
 import { VerifyEmail } from './public/VerifyEmail.tsx';
 import { VerifyPhone } from './public/VerifyPhone.tsx';
+import { GuestReplyEmails } from './public/GuestReplyEmails.tsx';
 import { Status } from './public/Status.tsx';
 
 /**
@@ -96,6 +97,7 @@ export const routes = [
       { path: '/complete-profile', element: <CompleteProfile /> },
       { path: '/status', element: <Status /> },
       { path: '/join/:token', element: <Join /> },
+      { path: '/unsubscribe/guest-replies', element: <GuestReplyEmails /> },
       {
         path: '/app',
         element: <AppLayout />,

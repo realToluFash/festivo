@@ -131,6 +131,8 @@ final class OrganisationExportTest extends ApiTestCase
         'door_code_redemptions' => 'a link that opens without signing in',
         'door_codes' => 'a link that opens without signing in',
         'event_mutes' => "notifications: one person's, or deliveries",
+        'guest_reply_changes' => 'change history',
+        'guest_reply_looks' => "notifications: one person's, or deliveries",
         'join_offer_dismissals' => "a person's own account (sc-611's rule)",
         'known_devices' => "sign-in credentials (sc-611's rule)",
         'membership_transitions' => 'change history',

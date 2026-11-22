@@ -3617,7 +3617,19 @@
     "justArrived": "{{name}} vient d’arriver et reste donc sur la liste.",
     "companionJustArrived": "{{name}} reste sur la liste : une personne qui l’accompagne vient d’arriver.",
     "backToDetails": "Retour aux informations",
-    "companionStays": "Arrivée enregistrée pour {{name}}, qui reste donc sur la liste."
+    "companionStays": "Arrivée enregistrée pour {{name}}, qui reste donc sur la liste.",
+    "changed": {
+      "filter": "Changed since you looked",
+      "nothing": "Nothing has changed since you last looked.",
+      "showAll": "Show all guests",
+      "line": "{{answer}} · {{when}}",
+      "repliedAt": "Replied at {{time}}",
+      "repliedOn": "Replied {{date}}",
+      "changedAt": "Changed at {{time}}",
+      "changedOn": "Changed {{date}}",
+      "needs": "Updated dietary needs",
+      "flagged": "Link may have reached the wrong person"
+    }
   },
   "guestNumbers": {
     "title": "Invités",
@@ -6034,5 +6046,21 @@
     "failedLine": "Vérifiez votre connexion, puis réessayez.",
     "tryAgain": "Réessayer",
     "notSaved": "Les jours n’ont pas été enregistrés. Vérifiez votre connexion, puis réessayez."
+  },
+  "guestReplyEmails": {
+    "onTitle": "Guest reply emails",
+    "turnOff": "Turn off guest reply emails",
+    "offTitle": "Guest reply emails are off",
+    "offBody": "You will still see replies in the bell, and push is as you set it.",
+    "turnOn": "Turn them back on",
+    "backOnTitle": "Guest reply emails are back on",
+    "backOnBody": "Your guest summary will arrive in the morning when there is something new.",
+    "saving": "Saving…",
+    "failed": "Saving did not work. Nothing has changed.",
+    "tryAgain": "Try again",
+    "unknownTitle": "This link does not work",
+    "unknownBody": "Nothing has changed. To turn guest reply emails on or off, sign in and open your notification settings.",
+    "signIn": "Sign in to notification settings",
+    "settings": "Notification settings"
   }
 }

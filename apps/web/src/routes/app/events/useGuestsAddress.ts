@@ -5,11 +5,13 @@ import { type Choice, choiceOf } from '@soirely/domain';
 
 export const SEARCH_SETTLES_MS = 300;
 
-/** The menu's choice and the search live in the address, each change a step Back undoes (sc-3772); the search is written once typing settles, and dropped if Back or Forward moves the address under it, but not when its own write lands after more typing. */
+/** The menu's choice and the search live in the address, Changed since you looked with the time it counts from (sc-4331), each change a step Back undoes (sc-3772); the search is written once typing settles, and dropped if Back or Forward moves the address under it, but not when its own write lands after more typing. */
 export function useGuestsAddress() {
   const [params, setParams] = useSearchParams();
   const location = useLocation();
-  const choice = choiceOf(params.get('filter'));
+  const changed = params.get('filter') === 'changed';
+  const choice = choiceOf(changed ? null : params.get('filter'));
+  const since = changed ? (params.get('since') ?? 'all') : null;
   const addressQ = params.get('q') ?? '';
   const address = params.toString();
   const [q, setTyped] = useState(addressQ);
@@ -38,7 +40,7 @@ export function useGuestsAddress() {
 
   useEffect(() => cancel, []);
 
-  function write(next: { choice?: Choice; q?: string }): void {
+  function write(next: { choice?: Choice; since?: string; q?: string }): void {
     const nextQ = next.q ?? pending.current ?? undefined;
 
     cancel();
@@ -46,7 +48,11 @@ export function useGuestsAddress() {
     setParams((was) => {
       const at = new URLSearchParams(was);
 
-      if (next.choice !== undefined) {
+      if (next.since !== undefined) {
+        at.set('filter', 'changed');
+        at.set('since', next.since);
+      } else if (next.choice !== undefined) {
+        at.delete('since');
         if (next.choice === 'all') at.delete('filter');
         else at.set('filter', next.choice);
       }
@@ -69,8 +75,11 @@ export function useGuestsAddress() {
 
   return {
     choice,
+    changed,
+    since,
     q,
     setChoice: (next: Choice) => write({ choice: next }),
+    setChanged: (from: string) => write({ since: from }),
     setQ: type,
     clear: () => {
       setTyped('');

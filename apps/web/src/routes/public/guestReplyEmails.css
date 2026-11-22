@@ -1,0 +1,163 @@
+/* The summary's unsubscribe page (sc-4331), in the signed-out frame. */
+
+.unsub {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space3xl);
+}
+
+.unsub-mark {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 56px;
+  height: 56px;
+  border-radius: var(--radiusPill);
+  background: var(--colorAccentTint);
+  color: var(--colorAccent);
+}
+
+.unsub-glyph {
+  display: block;
+  fill: none;
+  stroke: currentcolor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* The line through the envelope, cut clear of it in the circle's own Tint. */
+.unsub-glyph .unsub-knock {
+  stroke: var(--colorAccentTint);
+  stroke-width: 6;
+}
+
+.unsub-words {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceLg);
+}
+
+.unsub-words h1 {
+  margin: 0;
+  font: var(--typeTitleFrameCompact);
+  letter-spacing: var(--typeTitleFrameCompactTracking);
+  overflow-wrap: anywhere;
+}
+
+.unsub-words h1:focus {
+  outline: none;
+}
+
+.unsub-words .unsub-body {
+  font: 400 16px/1.5 var(--fontFamily);
+  color: var(--colorInkSecondary);
+}
+
+.unsub-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--spaceXl);
+}
+
+.unsub-spinner {
+  border: 2px solid var(--colorBorder);
+  border-top-color: var(--colorAccent);
+  border-radius: 50%;
+  animation: spin 0.9s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .unsub-spinner {
+    animation: none;
+  }
+}
+
+/* 44 at every width, its label and width kept while it saves: the spinner and its gap take 12 from each end. */
+.unsub-actions .button.unsub-pill {
+  --buttonHit: var(--sizeHit);
+
+  gap: var(--spaceSm);
+  padding-inline: var(--space3xl);
+}
+
+.unsub-actions .button.unsub-pill[aria-busy='true'] {
+  padding-inline: var(--spaceLg);
+}
+
+.unsub-pill .unsub-spinner {
+  flex: none;
+  width: 16px;
+  height: 16px;
+  border-color: color-mix(in srgb, var(--colorInkOnDark) 35%, transparent);
+  border-top-color: var(--colorInkOnDark);
+}
+
+.unsub-actions .unsub-link {
+  display: inline-flex;
+  align-items: center;
+  text-decoration: none;
+}
+
+.unsub-failed {
+  display: flex;
+  flex-basis: 100%;
+  align-items: flex-start;
+  gap: var(--spaceMd);
+  padding: var(--spaceLg) var(--spaceXl) 0;
+  border: var(--borderInset);
+  border-radius: var(--radiusInset);
+  background: var(--colorInset);
+}
+
+.unsub-failed-mark {
+  flex: none;
+  fill: none;
+  stroke: var(--colorBroken);
+  stroke-width: 2;
+  stroke-linecap: round;
+}
+
+.unsub-failed-words {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  min-width: 0;
+}
+
+.unsub-failed .unsub-failed-line {
+  font: var(--typeBody);
+  color: var(--colorInk);
+}
+
+.unsub-retry {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+
+/* Before its label, under the ring, so Try again keeps its place. */
+.unsub-retry .unsub-spinner {
+  position: absolute;
+  right: calc(100% + var(--spaceLg));
+  width: 16px;
+  height: 16px;
+  border-color: var(--colorBorder);
+  border-top-color: var(--colorAccent);
+}
+
+@media (width <= 40rem) {
+  .unsub-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .unsub-actions .unsub-link {
+    align-self: flex-start;
+  }
+
+  .unsub-failed {
+    flex-basis: auto;
+  }
+}
