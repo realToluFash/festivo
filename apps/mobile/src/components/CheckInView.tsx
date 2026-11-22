@@ -34,6 +34,7 @@ import { AlertLine } from './AlertLine.tsx';
 import { usePhaseOf } from './Events.tsx';
 import { SearchField } from './EventsSearch.tsx';
 import { Field, TextField, focusChecked } from './Field.tsx';
+import { Glyph } from './Glyph.tsx';
 import { SheetBody, SheetLayer } from './FormLayers.tsx';
 import { GuestsCard } from './GuestsCard.tsx';
 import { useReadOut } from './ReadOut.tsx';
@@ -629,20 +630,37 @@ function Same({
 
   return (
     <View style={styles.amber} accessibilityRole="alert" testID="checkIn.walkIn.same">
-      <Text size={15.5} weight="bold" accessibilityRole="header">
-        {title}
-      </Text>
-      <Pill
-        label={t('checkIn.markThemArrived')}
-        onPress={() => onArrive(same)}
-        testID="checkIn.walkIn.arrive"
-      />
-      <Pill
-        label={t('checkIn.addSomeoneNew')}
-        kind="secondary"
-        onPress={onAdd}
-        testID="checkIn.walkIn.new"
-      />
+      <View style={styles.amberHead}>
+        <View style={styles.amberMark}>
+          <Glyph name="alert" size={17} ink={tokens.colorAttentionText} weight={2.2} />
+        </View>
+        <Text
+          size={15.5}
+          weight="bold"
+          accessibilityRole="header"
+          style={[styles.grow, styles.amberTitle]}
+        >
+          {title}
+        </Text>
+      </View>
+      <View style={styles.choices}>
+        <Pill
+          label={t('checkIn.markThemArrived')}
+          kind="secondary"
+          height={tokens.sizeHit}
+          full={false}
+          onPress={() => onArrive(same)}
+          testID="checkIn.walkIn.arrive"
+        />
+        <Pill
+          label={t('checkIn.addSomeoneNew')}
+          kind="secondary"
+          height={tokens.sizeHit}
+          full={false}
+          onPress={onAdd}
+          testID="checkIn.walkIn.new"
+        />
+      </View>
     </View>
   );
 }
@@ -682,6 +700,10 @@ const styles = StyleSheet.create({
     borderColor: tokens.colorAttentionBorder,
     backgroundColor: tokens.colorAttentionTint,
   },
+  amberHead: { flexDirection: 'row', alignItems: 'flex-start', gap: tokens.spaceSm },
+  amberMark: { paddingTop: 2 },
+  amberTitle: { lineHeight: 15.5 * 1.35 },
+  choices: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
 });
 
 /** The scroll's edges as the demo's `door` draws them on each layout. */
