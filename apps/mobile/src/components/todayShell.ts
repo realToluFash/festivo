@@ -1,4 +1,4 @@
-import { createContext, type RefObject, useContext } from 'react';
+import { type ReactNode, createContext, type RefObject, useContext, useRef } from 'react';
 import type { ViewInstance } from 'react-native';
 
 /** Where a tap on Today goes: the demo names it in a toast, the signed-in app opens it. */
@@ -32,6 +32,15 @@ export interface TodayShell {
   open: (opens: Opens) => void;
   /** A hook: the switcher as the opener at `ref` opens it; `primary` is the one an opening on load drops from. */
   useOrgOpener: (ref: OpenerRef, primary: boolean) => OrgOpening;
+  /** A hook: what the bell opens, given what it does on a phone; with none, the bell only opens. */
+  useBell?: (onPhone: () => void) => BellOpening;
+}
+
+/** The bell's opener, its tap, and the popover it opens on a tablet (sc-83081). */
+export interface BellOpening {
+  ref: OpenerRef;
+  open: () => void;
+  popover: ReactNode;
 }
 
 const Shell = createContext<TodayShell | null>(null);
@@ -43,4 +52,9 @@ export function useTodayShell(): TodayShell {
   if (shell == null) throw new Error('Today is drawn inside a TodayShellProvider.');
 
   return shell;
+}
+
+/** The bell that only opens, for a shell with no popover of its own: the demo's. */
+export function usePlainBell(onPhone: () => void): BellOpening {
+  return { ref: useRef<ViewInstance>(null), open: onPhone, popover: null };
 }

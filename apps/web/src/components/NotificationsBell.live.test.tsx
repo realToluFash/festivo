@@ -326,7 +326,7 @@ describe('the live line beside the offline band (sc-27096)', () => {
     return state;
   }
 
-  const band = () => document.querySelector('.notifications-band');
+  const band = () => document.querySelector('.bell-band');
 
   async function offlineWithBand() {
     const state = serving();

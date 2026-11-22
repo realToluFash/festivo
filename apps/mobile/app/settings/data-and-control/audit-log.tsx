@@ -318,10 +318,7 @@ export default function AuditLog() {
             <EntrySheet
               entry={open}
               opener={opener}
-              onEvent={(id) => {
-                setOpen(null);
-                openEvent(id);
-              }}
+              onEvent={openEvent}
               onClose={() => setOpen(null)}
             />
           )}

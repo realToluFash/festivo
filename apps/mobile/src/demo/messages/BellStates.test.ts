@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
-import { BELL_STATES, CATEGORY_MARK, bellStartOf, isBellState, markOf } from './BellStates.ts';
+import { CATEGORY_MARK, markOf } from '../../components/notificationMarks.ts';
+import { BELL_STATES, bellStartOf, isBellState } from './BellStates.ts';
 
 describe('the bell’s states (sc-83081)', () => {
   it('gives each of the six categories its own mark, and an unknown one none', () => {
@@ -16,7 +17,7 @@ describe('the bell’s states (sc-83081)', () => {
     expect(markOf('event_day')).toBe('today');
     expect(markOf('money')).toBe('wallet');
     expect(markOf('account_security')).toBe('shield');
-    expect(markOf('venue_news')).toBe('bell');
+    expect(markOf('venue_news')).toBeNull();
   });
 
   it('starts each state in the one thing it shows', () => {

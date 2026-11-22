@@ -1283,7 +1283,7 @@ describe('Messages in B · Conversations at a desk (sc-31371)', () => {
   });
 
   it(
-    'shows an item of a category it does not know, with the plain bell, Unread and Muted (sc-84143)',
+    'shows an item of a category it does not know, with Unread and Muted (sc-84143)',
     SLOW,
     async () => {
       await messages('bellUnknown');
@@ -1292,7 +1292,6 @@ describe('Messages in B · Conversations at a desk (sc-31371)', () => {
         name: /^Ana Souza added a note to the event/u,
       });
 
-      expect(item.querySelector('.mg-bell-glyph svg')).not.toBeNull();
       expect(within(item).getByText('Unread')).toBeDefined();
       expect(within(item).getByText('Muted')).toBeDefined();
       expect(

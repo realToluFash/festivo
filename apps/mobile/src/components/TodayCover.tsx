@@ -28,7 +28,7 @@ import { useAccessibilitySizes, useLayout, useNameLines } from '../layout/useLay
 import { OrgMark } from './OrgMark.tsx';
 import { Chips, RunNowBlock, WhiteButton } from './TodayRun.tsx';
 import { OPENER, OpenerWords, quietTap } from './OrgPill.tsx';
-import { useTodayShell } from './todayShell.ts';
+import { usePlainBell, useTodayShell } from './todayShell.ts';
 import { usePillFit } from './usePillFit.tsx';
 
 export type CoverLayout = 'phone' | 'portrait' | 'landscape';
@@ -190,24 +190,30 @@ export function OrgButton({
 
 export function BellButton() {
   const { t } = useTranslation();
-  const { unread, open } = useTodayShell();
+  const { unread, open, useBell = usePlainBell } = useTodayShell();
+  const bell = useBell(() => open({ to: 'notifications' }));
+  const { ref: bellRef, open: openBell, popover } = bell;
 
   return (
-    <Pressable
-      onPress={() => open({ to: 'notifications' })}
-      accessibilityRole="button"
-      accessibilityLabel={
-        unread > 0
-          ? t('todayScreen.notificationsUnread', { count: unread })
-          : t('todayScreen.notifications')
-      }
-      hitSlop={tokens.spaceXxs}
-    >
-      <Glass style={styles.bell}>
-        <Glyph name="bell" size={19} ink={tokens.colorInkOnDark} />
-        {unread > 0 && <View style={styles.unread} />}
-      </Glass>
-    </Pressable>
+    <>
+      <Pressable
+        ref={bellRef}
+        onPress={openBell}
+        accessibilityRole="button"
+        accessibilityLabel={
+          unread > 0
+            ? t('todayScreen.notificationsUnread', { count: unread })
+            : t('todayScreen.notifications')
+        }
+        hitSlop={tokens.spaceXxs}
+      >
+        <Glass style={styles.bell}>
+          <Glyph name="bell" size={19} ink={tokens.colorInkOnDark} />
+          {unread > 0 && <View style={styles.unread} />}
+        </Glass>
+      </Pressable>
+      {popover}
+    </>
   );
 }
 

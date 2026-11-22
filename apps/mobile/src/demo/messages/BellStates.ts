@@ -1,5 +1,3 @@
-import type { GlyphName } from '../../components/Glyph.tsx';
-
 /** The demo home's group for the bell, named as the web's is. */
 export const BELL_GROUP = 'The bell (sc-83081)';
 
@@ -36,25 +34,7 @@ export const BELL_BOARDS: Record<(typeof BELL_STATES)[number], readonly [string,
   bellUnknown: ['the bell · a category this app does not know', 'The plain bell, Unread and Muted'],
 };
 
-export type Category =
-  'guest_replies' | 'messages' | 'event_day' | 'event_changes' | 'money' | 'account_security';
-
-/** Each category's mark, the same as the web's; Event day, Money and Account & security take Notification settings' marks for them. */
-export const CATEGORY_MARK: Record<Category, GlyphName> = {
-  guest_replies: 'users',
-  messages: 'chat',
-  event_day: 'today',
-  event_changes: 'calendar',
-  money: 'wallet',
-  account_security: 'shield',
-};
-
-/** A category the client does not know takes the plain bell, which names no category, in the same square (sc-84143). */
-export function markOf(category: string): GlyphName {
-  return Object.hasOwn(CATEGORY_MARK, category) ? CATEGORY_MARK[category as Category] : 'bell';
-}
-
-/** The sample's category from a server newer than the app. */
+/** The sample's category from a server newer than the app (sc-84143). */
 export const UNKNOWN_CATEGORY = 'venue_news' as const;
 
 export type More = 'none' | 'idle' | 'loading' | 'failed' | 'shown';
@@ -125,22 +105,8 @@ export const OLDER_COUNT = 2;
 export const BUSY_MS = 900;
 
 export const BW = {
-  muted: 'Muted',
-  loading: 'Loading notifications',
-  couldNotLoad: 'Your notifications did not load.',
-  tryAgain: 'Try again',
-  empty: 'Nothing yet. Replies, changes and reminders for your events show up here.',
-  eventGone: 'This event is no longer available.',
-  showMore: 'Show more',
   moreShown: (count: number) => `${count} more notifications shown.`,
-  moreFailed: 'More notifications did not load. Try again in a moment.',
   more: (title: string, event: string) => `More for ${title}, ${event}`,
-  muteEvent: 'Mute this event',
-  pushTitle: 'Turn on push?',
-  pushReason:
-    'Hear about replies, changes and event days on this device, even with Soirely closed.',
-  turnOn: 'Turn on',
-  notNow: 'Not now',
   paused: 'Ana Souza paused the event',
   live: 'Ana Souza made the event live',
   deleted: 'Ana Souza deleted the event',
