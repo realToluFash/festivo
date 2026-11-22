@@ -9,6 +9,7 @@ import {
   nothingSafe,
   partsAllergens,
   picksOf,
+  plateAllergens,
   refusalOf,
   samePlate,
   stepsOf,
@@ -162,6 +163,19 @@ describe('the dish card once picked', () => {
     expect(cardParts(rice, plate)).toEqual([{ way: null, name: 'Jollof rice', allergens: [] }]);
     expect(cardParts(dish({ id: 'coconut' }), plate)).toBeNull();
     expect(cardParts(rice, { ...plate, kind: 'chefsChoice' })).toBeNull();
+  });
+
+  it('adds up a one-way dish with no way stored as its card does', () => {
+    const fish = dish({ allergens: null, variants: [WAYS[1]!], choices: [SIDE] });
+    const plate = {
+      kind: 'chosen',
+      dish: 'rice',
+      variant: null,
+      options: { side: ['beans'] },
+    } as const;
+
+    expect(plateAllergens(fish, plate)).toEqual(['fish', 'milk']);
+    expect(partsAllergens(cardParts(fish, plate) ?? [])).toEqual(plateAllergens(fish, plate));
   });
 
   it('reads not stated when any part never stated its allergens', () => {

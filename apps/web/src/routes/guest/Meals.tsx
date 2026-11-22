@@ -1,4 +1,4 @@
-import type { MealCourse, MealDish } from '@soirely/api-client';
+import type { MealCourse } from '@soirely/api-client';
 import { listFormat } from '@soirely/domain';
 import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -25,6 +25,7 @@ import {
   against,
   cardParts,
   changeFocus,
+  dishContains,
   partsAllergens,
 } from './meals.ts';
 import '../../components/SettingsParts.css';
@@ -185,12 +186,6 @@ function Plain({
       <span className="ms-option-name">{children}</span>
     </label>
   );
-}
-
-function dishContains(dish: MealDish): readonly string[] | null {
-  if (dish.variants.length === 1) return dish.variants[0]?.allergens ?? null;
-
-  return dish.allergens;
 }
 
 /** One question of the meal step (sc-3907): a person, a course, and its dish, its way or one of its choices. */
@@ -428,8 +423,8 @@ export function MealScreen({
               {one.card != null ? (
                 <>
                   <ContainsLine allergens={partsAllergens(one.card)} />
-                  {one.card.map((part) => (
-                    <span key={`${part.name}|${part.way ?? ''}`} className="ms-quiet">
+                  {one.card.map((part, index) => (
+                    <span key={index} className="ms-quiet">
                       {t('guestMeal.cardSource', {
                         name:
                           part.way == null
